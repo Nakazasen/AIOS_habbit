@@ -1,4 +1,4 @@
-﻿# AIOS Habit
+# AIOS Habit
 
 Public-safe MVP for a local-first, evidence-based, AI-independent personal memory platform.
 
@@ -21,6 +21,20 @@ Private runtime data remains local and is blocked by `.gitignore`.
 
 ```powershell
 py -3 -m pip install -e .
+```
+
+## AIOS Habit Studio (Web UI)
+
+The recommended way for normal users to interact with AIOS Habit is the Studio UI.
+Double-click `RUN_AIOS_HABIT_STUDIO.bat` or run:
+```powershell
+.\scripts\run_studio.ps1
+```
+See [STUDIO_UI.md](docs/STUDIO_UI.md) for more details.
+
+## CLI Usage (For AI Executors/Developers)
+
+```powershell
 aios-habit --help
 ```
 

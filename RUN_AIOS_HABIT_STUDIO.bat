@@ -1,0 +1,13 @@
+@echo off
+cd /d "%~dp0"
+
+echo Checking dependencies...
+py -3 -m pip show streamlit >nul 2>&1
+if %errorlevel% neq 0 (
+    echo Streamlit not found. Installing dependencies...
+    py -3 -m pip install -e .
+)
+
+echo Starting AIOS Habit Studio...
+py -3 -m streamlit run src\aios_habit\studio.py
+pause

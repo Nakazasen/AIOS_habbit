@@ -1,4 +1,12 @@
-﻿# Changelog
+# Changelog
+
+## 2026-06-20 - AIOS Habit Studio Local UI
+
+### Added
+- Streamlit-based Web UI (`aios-habit-studio`) to provide a graphical interface over the CLI tools.
+- Launcher scripts `RUN_AIOS_HABIT_STUDIO.bat` and `scripts/run_studio.ps1`.
+- UI tabs for Dashboard, Projects, Evidence, Memory, Review Queue, Profiles, Export, Audit, Handover, and Settings.
+- Documentation for the Studio UI (`docs/STUDIO_UI.md`).
 
 ## 2026-06-20 - AIOS Habit Local Platform Completed
 

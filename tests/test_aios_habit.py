@@ -130,3 +130,18 @@ def test_git_public_safety_ignore_rules():
     ]
     for pattern in required_patterns:
         assert pattern in gitignore
+
+
+def test_studio_importable():
+    import aios_habit.studio
+    assert aios_habit.studio
+
+
+def test_streamlit_dependency():
+    pyproject = Path("pyproject.toml").read_text(encoding="utf-8")
+    assert "streamlit" in pyproject
+
+
+def test_launchers_exist():
+    assert Path("scripts/run_studio.ps1").exists()
+    assert Path("RUN_AIOS_HABIT_STUDIO.bat").exists()
