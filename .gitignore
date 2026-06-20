@@ -1,4 +1,4 @@
-﻿# Python cache/build
+# Python cache/build
 __pycache__/
 **/__pycache__/
 *.pyc
@@ -64,3 +64,18 @@ Thumbs.db
 
 # Additional AIOS generated libraries
 06_workflow_library/**/*.jsonl
+
+# Case Cockpit
+local_cases/
+*.xlsx
+*.xls
+*.csv
+*.png
+*.jpg
+*.jpeg
+!examples/**/*.xlsx
+!examples/**/*.xls
+!examples/**/*.csv
+!examples/**/*.png
+!examples/**/*.jpg
+!examples/**/*.jpeg
