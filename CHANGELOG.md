@@ -1,4 +1,19 @@
-# Changelog
+﻿# Changelog
+
+## 2026-06-20 - WorkLens Governance and Inheritance Audit
+
+### Added
+- Product north star for AIOS WorkLens.
+- Master roadmap with 10 phase gates.
+- Migration policy and inheritance map for 4 repositories.
+- Monday pilot checklist and Case Cockpit acceptance criteria.
+- Read-only inheritance audit reports for ABW_NVIDIA_FUSION_CONTROL, skill-Anti-brain-wiki_note, and Nvidia.
+
+### Changed
+- Project handover reframed AIOS_habbit as central WorkLens / Case Cockpit product repo.
+
+### Security
+- Reaffirmed local-first public safety and no blind code/data copying.
 
 ## 2026-06-20 - AIOS Habit Studio Local UI
 
@@ -44,4 +59,3 @@
 
 ### Validation
 - py -3 -m pytest: 16 passed.
-

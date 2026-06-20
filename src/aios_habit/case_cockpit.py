@@ -35,6 +35,11 @@ def page_today_brief():
         st.session_state.page = "Audit"
         st.rerun()
 
+    st.divider()
+    st.subheader("Pilot & Governance")
+    st.markdown("- [Open Monday Pilot Checklist](MONDAY_PILOT_CHECKLIST.md)")
+    st.markdown("- [Open Product North Star](PRODUCT_NORTH_STAR.md)")
+
 def page_cases():
     st.title("🗂️ Cases")
     cases = load_cases()
@@ -91,6 +96,7 @@ def page_add_evidence():
         return
         
     st.write(f"**Active Case:** {active_case.title}")
+    st.warning("Evidence marked `local_only` stays on this machine and must not be copied into cloud prompts or public git.")
     
     import uuid
     new_ev_id = f"EVD-{str(uuid.uuid4())[:8].upper()}"
@@ -154,8 +160,9 @@ def page_case_map():
     st.write("**Case Nodes:**")
     st.write(f"- {active_case.title}")
     st.write("**Evidence:**")
+    type_icons = {"excel": "📊", "csv": "📊", "screenshot": "🖼️", "image": "🖼️", "chat_paste": "💬", "log_paste": "📜", "note": "📝"}
     for e in evs:
-        st.write(f"- {e.source_type}: {e.title}")
+        st.write(f"- {type_icons.get(e.source_type, '📌')} {e.source_type}: {e.title} — privacy: `{e.privacy_level}`")
     st.write("**Hypotheses:**")
     for h in active_case.hypotheses:
         st.write(f"- {h}")
@@ -240,6 +247,8 @@ def page_handover():
     
     st.markdown("### Preview")
     st.markdown(md)
+    st.info("Copy the Markdown below for handover. Keep it local unless all evidence is safe to share.")
+    st.download_button("Download Case Handover Markdown", md, file_name=f"{active_case.case_id}_handover.md", mime="text/markdown")
     st.text_area("Raw Markdown", value=md, height=200)
 
 def page_audit():
