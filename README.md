@@ -1,55 +1,43 @@
-# AIOS Habit
+# AIOS WorkLens & Case Cockpit
 
-Public-safe MVP for a local-first, evidence-based, AI-independent personal memory platform.
+AIOS WorkLens is a Personal Senior Work Intelligence System (Hệ thống trí tuệ công việc cá nhân). The **AIOS Case Cockpit** is its local workspace module designed for handling daily incidents, organizing evidence, generating Reasoning Maps, constructing safe AI Prompt Packs, and drafting secure handovers.
 
-## Public Repository Safety
+---
 
-This public repository contains code, docs, schemas, templates, and synthetic examples only. It must not contain private runtime data, real evidence JSONL, real memory vault JSONL, raw transcripts, secrets, credentials, or personal export packs.
+## 📖 Key Reference Documents
+- **Roadmap Index:** [ROADMAP.md](ROADMAP.md) - High-level development roadmap index and gate status.
+- **Product North Star & Doctrine:** [PRODUCT_NORTH_STAR.md](PRODUCT_NORTH_STAR.md) - The core loops, layers, values, and definitions of AIOS WorkLens.
+- **Development & Agent Rules:** [AGENT_RULES.md](AGENT_RULES.md) - Mandatory guidelines and model roles for AI developers.
+- **WorkLens Architecture:** [WORKLENS_ARCHITECTURE.md](WORKLENS_ARCHITECTURE.md) - Module boundaries and product layers.
 
-Private runtime data remains local and is blocked by `.gitignore`.
+---
 
-## What AIOS Habit Does
+## ⚡ Quick Start
+1. **Install Dependencies:**
+   Ensure Python 3.x is installed, then install the package in editable mode:
+   ```bash
+   py -3 -m pip install -e .
+   ```
+2. **Launch Case Cockpit:**
+   Double-click [RUN_AIOS_CASE_COCKPIT.bat](RUN_AIOS_CASE_COCKPIT.bat) on Windows, or run:
+   ```bash
+   py -3 -m streamlit run src\aios_habit\case_cockpit.py
+   ```
 
-- Discovers project folders using metadata-only signals.
-- Stores evidence pointers and hashes instead of raw content.
-- Stores memory units with strict evidence/status validation.
-- Extracts candidates for review, not verified truth.
-- Builds profiles from verified/export-allowed memory only.
-- Exports AI packs only after redaction/audit checks.
+---
 
-## Install
-
-```powershell
-py -3 -m pip install -e .
-```
-
-## AIOS Habit Studio (Web UI)
-
-The recommended way for normal users to interact with AIOS Habit is the Studio UI.
-Double-click `RUN_AIOS_HABIT_STUDIO.bat` or run:
-```powershell
-.\scripts\run_studio.ps1
-```
-See [STUDIO_UI.md](docs/STUDIO_UI.md) for more details.
-
-## CLI Usage (For AI Executors/Developers)
-
-```powershell
-aios-habit --help
-```
-
-Without install:
-
-```powershell
-$env:PYTHONPATH="src"
-py -3 -m aios_habit.cli status
-```
-
-## Validate
-
-```powershell
-py -3 -m pytest
-$env:PYTHONPATH="src"
-py -3 -m aios_habit.cli audit
-py -3 -m aios_habit.cli phase validate --phase 0
-```
+## 🧪 Running Tests & Audits
+- **Run Unit Tests:**
+  ```bash
+  py -3 -m pytest
+  ```
+- **Run Security & Integrity Audit:**
+  ```bash
+  $env:PYTHONPATH="src"
+  py -3 -m aios_habit.cli audit
+  ```
+- **Check Ignored Runtime Assets:**
+  Make sure local database and assets remain ignored:
+  ```bash
+  git status --short --ignored
+  ```

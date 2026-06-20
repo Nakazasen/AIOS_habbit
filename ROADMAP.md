@@ -1,20 +1,32 @@
-﻿# Roadmap
+# AIOS WorkLens High-Level Roadmap Index
 
-Current goal: public-safe MVP hardening for collaborative GitHub development.
+This document serves as the high-level index for the development phases, product loop, and doctrine of AIOS WorkLens.
 
-## Public MVP Scope
-- Publish code/docs/templates/schemas and synthetic examples.
-- Exclude private runtime data.
-- Real phase gates, audit checks, tests, and GitHub Actions.
+## Core Reference Documents
+- **Product North Star & Doctrine:** [PRODUCT_NORTH_STAR.md](file:///D:/Sandbox/AIOS_habbit/PRODUCT_NORTH_STAR.md) - Contains what AIOS WorkLens is, what it is NOT, the 7 product layers, and the core product loops.
+- **Master Roadmap & Governance:** [WORKLENS_MASTER_ROADMAP.md](file:///D:/Sandbox/AIOS_habbit/WORKLENS_MASTER_ROADMAP.md) - Details the 8 roadmap development phases, model role rules, legacy repository usage policies, and active gate status.
 
-## Phase Results
-- Phase A Initial Audit: PASS with note that git repository had to be initialized locally.
-- Phase B Public Safety Gate: PASS after `.gitignore` hardening and scan review.
-- Phase C Public Branch: pending final git push validation.
-- Phase D MVP Hardening: PASS, modules split.
-- Phase E Real Phase Gate: PASS, no phase auto-pass by numeric range.
-- Phase F Tests: PASS, 16 pytest tests.
-- Phase G GitHub Actions: PASS, workflow added.
-- Phase H Docs Update: PASS.
-- Phase I Final Local Validation: pending final command run.
-- Phase J Commit and Push: pending.
+---
+
+## Active Gate & Phase Status
+
+- **M1 to M1.3 (Intake Stabilization):** Completed.
+- **M1.4 (Senior Learning Memory MVP):** Completed (Conditional PASS).
+- **M1.5 (Pilot UX & Export Safety Hardening):** Completed.
+- **M1.6 (Roadmap Governance Lock):** **Current Gate** (Doctrine and roles locked in docs).
+- **M1.7 (Workspace + Knowledge Notebook + Simplified Navigation):** **Immediate Next Gate** (Simplify navigation, introduce isolated workspaces and notebooks, link cases to notebooks, upload source files).
+- **Phase 2 (Real Work Pilot):** Planned (Will start after M1.7 is stable).
+
+---
+
+## Historical Phase Results (Collaborative MVP Hardening)
+- **Phase A (Initial Audit):** PASS.
+- **Phase B (Public Safety Gate):** PASS (Git-ignore rules and scans verified).
+- **Phase C (Public Branch):** PASS.
+- **Phase D (MVP Hardening):** PASS.
+- **Phase E (Real Phase Gate):** PASS.
+- **Phase F (Tests):** PASS.
+- **Phase G (GitHub Actions):** PASS.
+- **Phase H (Docs Update):** PASS.
+- **Phase I (Final Local Validation):** PASS.
+- **Phase J (Commit and Push):** PASS.
