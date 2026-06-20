@@ -16,7 +16,7 @@ def test_notebooklm_safe_excludes_local_only():
     prompt = build_prompt_pack(c, [e1, e2], "notebooklm_safe")
     assert "Sensitive local text" not in prompt
     assert "Public text content" in prompt
-    assert "Some local_only evidence was excluded for privacy." in prompt
+    assert "Một số bằng chứng local_only (chỉ lưu cục bộ) đã bị loại bỏ vì lý do riêng tư." in prompt
 
 # 2. Gemini/GPT/Copilot prompt excludes local_only raw evidence by default
 def test_cloud_targets_exclude_local_only_by_default():
@@ -26,7 +26,7 @@ def test_cloud_targets_exclude_local_only_by_default():
     for target in ("gemini", "gpt", "copilot"):
         prompt = build_prompt_pack(c, [e1], target)
         assert "Sensitive local text" not in prompt
-        assert "Some local_only evidence was excluded for privacy." in prompt
+        assert "Một số bằng chứng local_only (chỉ lưu cục bộ) đã bị loại bỏ vì lý do riêng tư." in prompt
 
 # 3. local_ai prompt can include local_only only when include_local_only=True
 def test_local_ai_includes_local_only_only_when_requested():
@@ -36,12 +36,12 @@ def test_local_ai_includes_local_only_only_when_requested():
     # False by default / explicitly False
     prompt_default = build_prompt_pack(c, [e1], "local_ai", include_local_only=False)
     assert "Sensitive local text" not in prompt_default
-    assert "Some local_only evidence was excluded for privacy." in prompt_default
+    assert "Một số bằng chứng local_only (chỉ lưu cục bộ) đã bị loại bỏ vì lý do riêng tư." in prompt_default
     
     # True explicitly
     prompt_explicit = build_prompt_pack(c, [e1], "local_ai", include_local_only=True)
     assert "Sensitive local text" in prompt_explicit
-    assert "Some local_only evidence was excluded for privacy." not in prompt_explicit
+    assert "Một số bằng chứng local_only (chỉ lưu cục bộ) đã bị loại bỏ vì lý do riêng tư." not in prompt_explicit
 
 # 4. Synthetic .xlsx ingest works using pandas/openpyxl
 def test_xlsx_ingest_works(tmp_path):
@@ -61,7 +61,7 @@ def test_audit_fails_empty_situation():
     c = Case(case_id="C1", title="Test Title", current_situation="")
     result = audit_case_cockpit_state(c, [])
     assert result["status"] == "FAIL"
-    assert any("empty current situation" in err for err in result["errors"])
+    assert any("tình huống bị trống" in err for err in result["errors"])
 
 # 6. Audit passes for valid case + valid evidence
 def test_audit_passes_valid():
@@ -174,4 +174,34 @@ def test_direct_script_import_simulation():
     cmd = [sys.executable, "-c", "import sys; sys.path.insert(0, 'src/aios_habit'); import case_cockpit"]
     res = subprocess.run(cmd, capture_output=True, text=True)
     assert res.returncode == 0, f"Import failed in script execution mode.\nStdout: {res.stdout}\nStderr: {res.stderr}"
+
+# Verifies that no untranslated common English UI strings are present in the case_cockpit.py UI code
+def test_vietnamese_ui_translation_integrity():
+    ui_file = Path("src/aios_habit/case_cockpit.py")
+    assert ui_file.exists()
+    content = ui_file.read_text(encoding="utf-8")
+    
+    blocked_english_strings = [
+        "Today Brief",
+        "Navigation",
+        "Add Evidence",
+        "Case Map",
+        "Next Actions",
+        "Prompt Pack",
+        "Handover",
+        "Total Cases",
+        "Open Cases",
+        "High Priority",
+        "Top Cases to Focus",
+        "Refresh Brief",
+        "Run Audit"
+    ]
+    
+    found = []
+    for s in blocked_english_strings:
+        if s in content:
+            found.append(s)
+            
+    assert not found, f"Found untranslated English UI strings in case_cockpit.py: {found}"
+
 

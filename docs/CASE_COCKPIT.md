@@ -24,3 +24,6 @@ All case data and uploaded assets are stored strictly in `local_cases/` at the r
 - **Input Validation**: Empty titles and empty note contents are verified and blocked at the UI layer to keep the case database clean.
 - **Asset Sanitization**: Uploaded files have their names normalized and prefixed with millisecond-based timestamps to prevent directory traversal attacks and namespace collisions.
 
+## UI Language Policy
+The user interface is fully localized in Vietnamese to serve local operators, following the guidelines in [UI_LANGUAGE_POLICY.md](UI_LANGUAGE_POLICY.md). English technical constants (like `local_only`) are annotated with inline explanations.
+

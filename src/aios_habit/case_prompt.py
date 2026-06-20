@@ -20,7 +20,7 @@ def summarize_evidence_for_prompt(evidence_items: List[EvidenceItem], target: st
         if e.privacy_level == "local_only":
             if not should_include_local_only:
                 excluded_any = True
-                lines.append(f"- [{e.source_type}] {e.title}: [EXCLUDED FOR PRIVACY - local_only]")
+                lines.append(f"- [{e.source_type}] {e.title}: [ĐÃ LOẠI BỎ VÌ RIÊNG TƯ - local_only]")
                 continue
         
         snippet = e.extracted_text[:200] if e.extracted_text else ""
@@ -30,18 +30,18 @@ def summarize_evidence_for_prompt(evidence_items: List[EvidenceItem], target: st
     if excluded_any:
         if summary_text:
             summary_text += "\n"
-        summary_text += "Some local_only evidence was excluded for privacy."
+        summary_text += "Một số bằng chứng local_only (chỉ lưu cục bộ) đã bị loại bỏ vì lý do riêng tư."
     return summary_text
 
 def build_prompt_pack(case: Case, evidence_items: List[EvidenceItem], target: str, include_local_only: bool = False) -> str:
-    prompt = f"Case Title: {case.title}\n"
-    prompt += f"Current Situation: {case.current_situation}\n\n"
-    prompt += "Evidence Summary:\n"
+    prompt = f"Tiêu đề Hồ sơ: {case.title}\n"
+    prompt += f"Tình huống Hiện tại: {case.current_situation}\n\n"
+    prompt += "Tóm tắt Bằng chứng:\n"
     prompt += summarize_evidence_for_prompt(evidence_items, target, include_local_only)
     
-    prompt += "\n\nHypotheses:\n"
+    prompt += "\n\nGiả thuyết:\n"
     for h in case.hypotheses:
         prompt += f"- {h}\n"
         
-    prompt += "\nRequested Output: Please analyze the current situation and evidence. Do not invent facts. Ask for next diagnostic steps."
+    prompt += "\nKết quả yêu cầu: Vui lòng phân tích tình huống hiện tại và bằng chứng. Không tự bịa đặt sự thật. Hãy đề xuất các bước chẩn đoán tiếp theo."
     return prompt

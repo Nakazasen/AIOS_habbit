@@ -32,18 +32,18 @@ def generate_case_mermaid(case: Case, evidence_items: List[EvidenceItem]) -> str
         if ev.case_id == case.case_id:
             label = f"{safe_mermaid_label(ev.source_type)}: {safe_mermaid_label(ev.title)}"
             ev_node = f'{ev.evidence_id}["{label}"]'
-            lines.append(f'C -->|contains| {ev_node}')
+            lines.append(f'C -->|chứa| {ev_node}')
             
     for i, hypo in enumerate(case.hypotheses):
-        h_node = f'H{i}["Hypothesis: {safe_mermaid_label(hypo)}"]'
-        lines.append(f'C -->|explores| {h_node}')
+        h_node = f'H{i}["Giả thuyết: {safe_mermaid_label(hypo)}"]'
+        lines.append(f'C -->|khảo_sát| {h_node}')
         
     for i, action in enumerate(case.next_actions):
-        a_node = f'A{i}["Action: {safe_mermaid_label(action)}"]'
-        lines.append(f'C -->|needs| {a_node}')
+        a_node = f'A{i}["Hành động: {safe_mermaid_label(action)}"]'
+        lines.append(f'C -->|cần| {a_node}')
         
     for i, decision in enumerate(case.decisions):
-        d_node = f'D{i}["Decision: {safe_mermaid_label(decision)}"]'
-        lines.append(f'C -->|resulted_in| {d_node}')
+        d_node = f'D{i}["Quyết định: {safe_mermaid_label(decision)}"]'
+        lines.append(f'C -->|dẫn_đến| {d_node}')
         
     return "\n".join(lines)

@@ -24,11 +24,11 @@ def test_csv_ingest_reads_synthetic_file(tmp_path):
 def test_next_action_generation():
     c = Case(case_id="TEST-1", title="Test Case")
     actions = generate_next_actions(c, [])
-    assert "Add at least one evidence source." in actions
+    assert "Thêm ít nhất một nguồn bằng chứng." in actions
     
     e = EvidenceItem(evidence_id="EVD-1", case_id="TEST-1", source_type="screenshot", source_path="", title="Img", extracted_text="")
     actions2 = generate_next_actions(c, [e])
-    assert "Describe screenshot content." in actions2
+    assert "Mô tả nội dung ảnh chụp màn hình." in actions2
 
 def test_launchers_exist():
     assert Path("RUN_AIOS_CASE_COCKPIT.bat").exists()
