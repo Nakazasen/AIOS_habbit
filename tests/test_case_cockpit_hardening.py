@@ -166,3 +166,12 @@ def test_safe_asset_filename():
     fn1 = safe_asset_filename("file.csv")
     fn2 = safe_asset_filename("file.csv")
     assert fn1 != fn2  # Must be unique prefix
+
+# Simulates direct script launch (as done by Streamlit) to prevent relative import failure
+def test_direct_script_import_simulation():
+    import subprocess
+    import sys
+    cmd = [sys.executable, "-c", "import sys; sys.path.insert(0, 'src/aios_habit'); import case_cockpit"]
+    res = subprocess.run(cmd, capture_output=True, text=True)
+    assert res.returncode == 0, f"Import failed in script execution mode.\nStdout: {res.stdout}\nStderr: {res.stderr}"
+

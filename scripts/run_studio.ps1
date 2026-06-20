@@ -9,4 +9,5 @@ if (-not (Get-Command "streamlit" -ErrorAction SilentlyContinue)) {
 }
 
 Write-Host "Starting AIOS Habit Studio..."
+$env:PYTHONPATH = "src"
 py -3 -m streamlit run src\aios_habit\studio.py

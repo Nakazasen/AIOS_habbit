@@ -9,5 +9,6 @@ if %errorlevel% neq 0 (
 )
 
 echo Starting AIOS Habit Studio...
+set PYTHONPATH=src
 py -3 -m streamlit run src\aios_habit\studio.py
 pause

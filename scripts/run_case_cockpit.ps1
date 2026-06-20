@@ -8,4 +8,5 @@ if (-not (Get-Command "streamlit" -ErrorAction SilentlyContinue)) {
 }
 
 Write-Host "Starting AIOS Case Cockpit..."
+$env:PYTHONPATH = "src"
 py -3 -m streamlit run src\aios_habit\case_cockpit.py

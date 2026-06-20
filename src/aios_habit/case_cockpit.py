@@ -5,13 +5,13 @@ import sys
 from pathlib import Path
 from datetime import datetime
 
-from .case_models import Case, EvidenceItem
-from .case_store import load_cases, load_evidence, save_case, save_evidence, init_store
-from .case_ingest import ingest_excel, ingest_csv, save_uploaded_file
-from .case_graph import generate_case_mermaid
-from .case_actions import generate_next_actions
-from .case_prompt import build_prompt_pack
-from .case_audit import audit_case_cockpit_state
+from aios_habit.case_models import Case, EvidenceItem
+from aios_habit.case_store import load_cases, load_evidence, save_case, save_evidence, init_store
+from aios_habit.case_ingest import ingest_excel, ingest_csv, save_uploaded_file
+from aios_habit.case_graph import generate_case_mermaid
+from aios_habit.case_actions import generate_next_actions
+from aios_habit.case_prompt import build_prompt_pack
+from aios_habit.case_audit import audit_case_cockpit_state
 
 st.set_page_config(page_title="AIOS Case Cockpit v0.1", layout="wide")
 
