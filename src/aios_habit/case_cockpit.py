@@ -79,7 +79,7 @@ def page_quick_intake():
         st.success(f"🎉 Hồ sơ sự việc **{qs['title']}** (Mã: {qs['case_id']}) đã được tạo thành công cùng với {qs['evidences_count']} bằng chứng ban đầu!")
         
         st.info("💡 Bạn có thể tiếp tục xử lý sự việc bằng cách bấm các liên kết điều hướng nhanh dưới đây:")
-        col_nav1, col_nav2, col_nav3, col_nav4 = st.columns(4)
+        col_nav1, col_nav2, col_nav3, col_nav4, col_nav5 = st.columns(5)
         if col_nav1.button("🗺️ Xem bản đồ sự việc"):
             st.session_state.page = "Bản đồ sự việc"
             st.rerun()
@@ -92,6 +92,10 @@ def page_quick_intake():
         if col_nav4.button("🤝 Tạo bàn giao"):
             st.session_state.page = "Bàn giao"
             st.rerun()
+        if col_nav5.button("🧠 Rút bài học"):
+            st.session_state.page = "Rút bài học"
+            st.rerun()
+        st.info("Sau khi xử lý xong, hãy vào **Rút bài học** để lưu kinh nghiệm cho lần sau.")
         
         if st.button("Đóng thông báo"):
             del st.session_state.quick_success
@@ -360,6 +364,38 @@ def page_handover():
     for a in active_case.next_actions:
         md += f"- {a}\n"
         
+    # Tích hợp Senior Learning Card vào bàn giao công việc
+    try:
+        from aios_habit.learning_models import load_learning_cards_for_case
+        cards = load_learning_cards_for_case(active_case.case_id)
+        learning_card = cards[0] if cards else None
+    except Exception:
+        learning_card = None
+
+    if learning_card:
+        conf_map = {"draft": "Bản nháp", "reviewed": "Đã xem lại", "confirmed": "Đã xác nhận"}
+        conf_vn = conf_map.get(learning_card.confidence, learning_card.confidence)
+        
+        md += "\n## Bài học / Kinh nghiệm\n"
+        md += f"**Trạng thái thẻ:** {conf_vn}\n"
+        if learning_card.confidence != "confirmed":
+            md += "\n> ⚠️ Lưu ý: Nội dung dưới đây là bài học chưa được xác nhận hoàn toàn (chỉ mang tính chất tham khảo).\n\n"
+        else:
+            md += "\n> ✅ Bài học đã được xác nhận kiểm chứng.\n\n"
+            
+        if learning_card.symptoms:
+            md += f"- **Triệu chứng:** {learning_card.symptoms}\n"
+        if learning_card.true_cause:
+            md += f"- **Nguyên nhân thật:** {learning_card.true_cause}\n"
+        if learning_card.actions_taken:
+            md += f"- **Đối sách:** {learning_card.actions_taken}\n"
+        if learning_card.reusable_lesson:
+            md += f"- **Bài học tái sử dụng:** {learning_card.reusable_lesson}\n"
+        if learning_card.check_first_next_time:
+            md += f"- **Lần sau kiểm gì trước:** {learning_card.check_first_next_time}\n"
+        if learning_card.retrieval_keywords:
+            md += f"- **Từ khóa tìm lại:** {learning_card.retrieval_keywords}\n"
+        
     md += "\n> ⚠️ Cảnh báo Bảo mật: Tài liệu này chứa dữ liệu sự việc chỉ lưu cục bộ."
     
     st.markdown("### Xem trước (Preview)")
@@ -401,6 +437,105 @@ def page_audit():
             for warn in result["warnings"]:
                 st.write(f"- 🟡 {warn}")
 
+
+def page_learning_memory():
+    st.title("🧠 Rút bài học (Trí nhớ học nghề)")
+    active_case = get_active_case()
+    if not active_case:
+        st.warning("Vui lòng chọn một hồ sơ sự việc trong tab 'Hồ sơ sự việc' trước.")
+        return
+        
+    st.write(f"**Hồ sơ đang hoạt động:** {active_case.title} (Trạng thái: {active_case.status})")
+    
+    from aios_habit.learning_models import load_learning_cards_for_case, init_learning_card_for_case, save_learning_card
+    
+    cards = load_learning_cards_for_case(active_case.case_id)
+    if not cards:
+        st.info("Hồ sơ này chưa có thẻ học nghề. Hãy bấm nút dưới đây để tạo.")
+        if st.button("Tạo thẻ học nghề cho hồ sơ này"):
+            init_learning_card_for_case(active_case.case_id)
+            st.success("Đã tạo thẻ học nghề mới.")
+            st.rerun()
+        return
+        
+    card = cards[0]
+    
+    st.warning("⚠️ Không ghi nguyên nhân thật nếu chưa có bằng chứng xác nhận. Nếu case chưa kết thúc, hãy để trạng thái bản nháp hoặc ghi 'chưa xác nhận'.")
+    
+    with st.form("learning_card_form"):
+        # Status & Confidence
+        conf_options = ["draft", "reviewed", "confirmed"]
+        conf_labels = {"draft": "Bản nháp (draft)", "reviewed": "Đã xem lại (reviewed)", "confirmed": "Đã xác nhận (confirmed)"}
+        confidence = st.selectbox(
+            "Trạng thái xác nhận của bài học",
+            options=conf_options,
+            index=conf_options.index(card.confidence),
+            format_func=lambda x: conf_labels[x]
+        )
+        
+        # 1. Sự việc và triệu chứng
+        with st.expander("🔍 1. Sự việc và triệu chứng", expanded=True):
+            symptoms = st.text_area("Triệu chứng thấy được (Symptoms)", value=card.symptoms, height=80)
+            related_systems = st.text_input("Hệ thống/bộ phận liên quan (Related Systems)", value=card.related_systems)
+            related_artifacts = st.text_input("Log/bảng/file/màn hình liên quan (Related Artifacts)", value=card.related_artifacts)
+            
+        # 2. Suy luận và kiểm chứng
+        with st.expander("🧩 2. Suy luận và kiểm chứng", expanded=False):
+            initial_hypotheses = st.text_area("Giả thuyết ban đầu (Initial Hypotheses)", value=card.initial_hypotheses, height=80)
+            rejected_hypotheses = st.text_area("Giả thuyết bị loại bỏ (Rejected Hypotheses)", value=card.rejected_hypotheses, height=80)
+            true_cause = st.text_input("Nguyên nhân thật (True Cause)", value=card.true_cause, placeholder="Có thể để trống hoặc ghi 'chưa xác nhận'")
+            causal_chain = st.text_area("Chuỗi nhân quả (Causal Chain)", value=card.causal_chain, height=80)
+            verification_evidence = st.text_area("Bằng chứng xác nhận (Verification Evidence)", value=card.verification_evidence, height=80)
+            counter_evidence = st.text_area("Bằng chứng phản bác (Counter Evidence)", value=card.counter_evidence, height=80)
+            
+        # 3. Đối ứng
+        with st.expander("🛠️ 3. Đối ứng", expanded=False):
+            actions_taken = st.text_area("Đối sách đã làm (Actions Taken)", value=card.actions_taken, height=80)
+            result_outcome = st.text_area("Kết quả sau đối ứng (Result Outcome)", value=card.result_outcome, height=80)
+            
+        # 4. Bài học cho lần sau
+        with st.expander("💡 4. Bài học cho lần sau", expanded=False):
+            reusable_lesson = st.text_area("Bài học tái sử dụng (Reusable Lesson)", value=card.reusable_lesson, height=80)
+            pattern_to_recognize = st.text_area("Dấu hiệu nhận diện pattern này (Pattern to Recognize)", value=card.pattern_to_recognize, height=80)
+            applies_when = st.text_input("Điều kiện áp dụng (Applies When)", value=card.applies_when)
+            does_not_apply_when = st.text_input("Điều kiện không áp dụng (Does Not Apply When)", value=card.does_not_apply_when)
+            check_first_next_time = st.text_input("Lần sau nên kiểm gì trước (Check First Next Time)", value=card.check_first_next_time)
+            retrieval_keywords = st.text_input("Từ khóa để tìm lại (Retrieval Keywords)", value=card.retrieval_keywords)
+            
+        # 5. Giao tiếp hữu ích
+        with st.expander("💬 5. Giao tiếp hữu ích & Cập nhật tri thức", expanded=False):
+            useful_reply_vi = st.text_area("Câu trả lời tiếng Việt hữu ích (Useful Reply VI)", value=card.useful_reply_vi, height=80)
+            useful_reply_ja = st.text_area("Câu trả lời tiếng Nhật hữu ích (Useful Reply JA)", value=card.useful_reply_ja, height=80)
+            knowledge_update_note = st.text_area("Ghi chú cập nhật tri thức (Knowledge Update Note)", value=card.knowledge_update_note, height=80)
+            
+        if st.form_submit_button("Lưu thẻ học nghề"):
+            card.confidence = confidence
+            card.symptoms = symptoms
+            card.related_systems = related_systems
+            card.related_artifacts = related_artifacts
+            card.initial_hypotheses = initial_hypotheses
+            card.rejected_hypotheses = rejected_hypotheses
+            card.true_cause = true_cause
+            card.causal_chain = causal_chain
+            card.verification_evidence = verification_evidence
+            card.counter_evidence = counter_evidence
+            card.actions_taken = actions_taken
+            card.result_outcome = result_outcome
+            card.reusable_lesson = reusable_lesson
+            card.pattern_to_recognize = pattern_to_recognize
+            card.applies_when = applies_when
+            card.does_not_apply_when = does_not_apply_when
+            card.check_first_next_time = check_first_next_time
+            card.retrieval_keywords = retrieval_keywords
+            card.useful_reply_vi = useful_reply_vi
+            card.useful_reply_ja = useful_reply_ja
+            card.knowledge_update_note = knowledge_update_note
+            card.updated_at = datetime.now().isoformat()
+            
+            save_learning_card(card)
+            st.success("Đã cập nhật thẻ học nghề thành công!")
+            st.rerun()
+
 def main():
     init_store()
     if "page" not in st.session_state:
@@ -416,11 +551,17 @@ def main():
         "Việc cần làm tiếp": page_next_actions,
         "Gói câu lệnh cho AI": page_prompt_pack,
         "Bàn giao": page_handover,
+        "Rút bài học": page_learning_memory,
         "Kiểm tra an toàn": page_audit,
     }
     
-    # Sử dụng key="page" để liên kết trực tiếp với st.session_state.page nhằm tránh lỗi phải bấm 2 lần mới chuyển trang
-    selected = st.sidebar.radio("Điều hướng", list(pages.keys()), key="page")
+    # Sử dụng index để tránh lỗi StreamlitAPIException khi thay đổi trang lập trình
+    try:
+        current_idx = list(pages.keys()).index(st.session_state.page)
+    except ValueError:
+        current_idx = 0
+    selected = st.sidebar.radio("Điều hướng", list(pages.keys()), index=current_idx)
+    st.session_state.page = selected
     
     pages[selected]()
 

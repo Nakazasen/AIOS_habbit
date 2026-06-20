@@ -9,7 +9,8 @@
 - [ ] Xem được sơ đồ bản đồ sự việc (case map) trực quan.
 - [ ] Tự động sinh danh sách các việc cần làm tiếp theo (next actions).
 - [ ] Sinh được gói câu lệnh cho AI (prompt pack) tương ứng.
-- [ ] Sinh tệp Markdown bàn giao công việc (handover).
+- [ ] Sinh tệp Markdown bàn giao công việc (handover) và xem trước thông tin bài học tích hợp.
+- [ ] Rút bài học kinh nghiệm và tạo thẻ học nghề (learning card) thành công trong menu 'Rút bài học'.
 - [ ] Chạy kiểm tra an toàn (audit) cục bộ thành công trước khi xuất dữ liệu.
-- [ ] Xác nhận dữ liệu chỉ lưu cục bộ (local_only) không bị rò rỉ trong gói prompt an toàn cho NotebookLM.
+- [ ] Xác nhận dữ liệu và bài học chỉ lưu cục bộ (local_only) hoặc chưa confirmed không bị rò rỉ trong gói prompt cho NotebookLM/cloud.
 - [ ] Cảm thấy giảm bớt sự mơ hồ và biết rõ các hành động cần thực hiện tiếp theo.

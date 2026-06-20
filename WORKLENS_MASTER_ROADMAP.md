@@ -1,4 +1,4 @@
-﻿# WorkLens Master Roadmap
+# WorkLens Master Roadmap
 
 Every phase uses PASS/FAIL gates. A phase is not complete until deliverables, validation, handover, and rollback notes exist.
 
@@ -15,14 +15,14 @@ Every phase uses PASS/FAIL gates. A phase is not complete until deliverables, va
 
 ## Phase 1 Case Cockpit v0.1 Stabilization
 - Objective: Make the Monday pilot usable.
-- Scope: Launchers, case create/edit, evidence add, map, actions, prompts, handover, audit.
-- Deliverables: Streamlit app and tests.
+- Scope: Launchers, case create/edit, evidence add, map, actions, prompts, handover, audit, Senior Learning Memory MVP (Rút bài học).
+- Deliverables: Streamlit app, learning card storage, and tests.
 - Risk: UI too shallow for real work.
 - Dependencies: Streamlit, pandas, openpyxl.
-- Validation: compileall, pytest, import checks, launcher checks.
-- Exit Criteria: PASS if UI opens and core loop works.
+- Validation: compileall, pytest, import checks, launcher checks, privacy tests.
+- Exit Criteria: PASS if UI opens, core loop works, and learning memory is preserved.
 - Handover: docs/CASE_COCKPIT.md.
-- Rollback: Revert cockpit modules while preserving docs.
+- Rollback: Revert cockpit and learning modules while preserving docs.
 
 ## Phase 2 Real Work Pilot
 - Objective: Use Cockpit on real cases locally.

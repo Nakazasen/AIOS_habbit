@@ -67,6 +67,60 @@ def audit_case_cockpit_state(
                     if has_text and ev.extracted_text in prompt_text:
                         errors.append(f"Bằng chứng local_only '{ev.evidence_id}' bị rò rỉ văn bản trích xuất thô trong prompt đích '{target}'.")
 
+
+    # Kiểm tra an toàn cho Senior Learning Card
+    if case:
+        try:
+            from aios_habit.learning_models import load_learning_cards_for_case
+            cards = load_learning_cards_for_case(case.case_id)
+            learning_card = cards[0] if cards else None
+        except Exception:
+            learning_card = None
+
+        if learning_card:
+            # 1. Cảnh báo nếu đã confirmed nhưng không ghi nguyên nhân thật
+            if learning_card.confidence == "confirmed":
+                cause_clean = learning_card.true_cause.strip().lower()
+                if not cause_clean or cause_clean in ("", "chưa xác nhận", "n/a", "none"):
+                    warnings.append("Thẻ học nghề đã được xác nhận (confirmed) nhưng nguyên nhân thật (true_cause) chưa được ghi rõ hoặc ghi là 'chưa xác nhận'.")
+            
+            # 2. Ngăn rò rỉ thông tin thô của thẻ học nghề lên cloud nếu chưa confirmed hoặc case là local_only
+            should_exclude_from_cloud = (case.privacy_level == "local_only" or learning_card.confidence != "confirmed")
+            if should_exclude_from_cloud and prompt_outputs:
+                fields_to_check = [
+                    learning_card.symptoms,
+                    learning_card.related_systems,
+                    learning_card.related_artifacts,
+                    learning_card.initial_hypotheses,
+                    learning_card.rejected_hypotheses,
+                    learning_card.true_cause,
+                    learning_card.causal_chain,
+                    learning_card.verification_evidence,
+                    learning_card.counter_evidence,
+                    learning_card.actions_taken,
+                    learning_card.result_outcome,
+                    learning_card.reusable_lesson,
+                    learning_card.pattern_to_recognize,
+                    learning_card.applies_when,
+                    learning_card.does_not_apply_when,
+                    learning_card.check_first_next_time,
+                    learning_card.retrieval_keywords,
+                    learning_card.useful_reply_vi,
+                    learning_card.useful_reply_ja,
+                    learning_card.knowledge_update_note
+                ]
+                leaked = False
+                for text in fields_to_check:
+                    if leaked:
+                        break
+                    if text and text.strip():
+                        for target, prompt_text in prompt_outputs.items():
+                            if target.lower() in ("notebooklm_safe", "gemini", "gpt", "copilot"):
+                                if text in prompt_text:
+                                    errors.append(f"Kinh nghiệm học nghề có chứa nội dung riêng tư/chưa xác nhận bị rò rỉ trong prompt đích '{target}'.")
+                                    leaked = True
+                                    break
+
     status = "FAIL" if errors else "PASS"
     return {
         "status": status,
