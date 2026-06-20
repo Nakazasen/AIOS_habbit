@@ -15,6 +15,9 @@ from aios_habit.case_audit import audit_case_cockpit_state
 
 st.set_page_config(page_title="AIOS Case Cockpit v0.1", layout="wide")
 
+def nav_to_page(page_name):
+    st.session_state.page = page_name
+
 def page_quick_intake():
     st.title("⚡ Nhập nhanh sự việc")
     st.write("Tạo nhanh một hồ sơ sự việc mới đi kèm đầy đủ các bằng chứng ban đầu trong một màn hình duy nhất.")
@@ -80,21 +83,11 @@ def page_quick_intake():
         
         st.info("💡 Bạn có thể tiếp tục xử lý sự việc bằng cách bấm các liên kết điều hướng nhanh dưới đây:")
         col_nav1, col_nav2, col_nav3, col_nav4, col_nav5 = st.columns(5)
-        if col_nav1.button("🗺️ Xem bản đồ sự việc"):
-            st.session_state.page = "Bản đồ sự việc"
-            st.rerun()
-        if col_nav2.button("🚀 Việc cần làm tiếp"):
-            st.session_state.page = "Việc cần làm tiếp"
-            st.rerun()
-        if col_nav3.button("🤖 Gói câu lệnh cho AI"):
-            st.session_state.page = "Gói câu lệnh cho AI"
-            st.rerun()
-        if col_nav4.button("🤝 Tạo bàn giao"):
-            st.session_state.page = "Bàn giao"
-            st.rerun()
-        if col_nav5.button("🧠 Rút bài học"):
-            st.session_state.page = "Rút bài học"
-            st.rerun()
+        col_nav1.button("🗺️ Xem bản đồ sự việc", on_click=nav_to_page, args=("Bản đồ sự việc",))
+        col_nav2.button("🚀 Việc cần làm tiếp", on_click=nav_to_page, args=("Việc cần làm tiếp",))
+        col_nav3.button("🤖 Gói câu lệnh cho AI", on_click=nav_to_page, args=("Gói câu lệnh cho AI",))
+        col_nav4.button("🤝 Tạo bàn giao", on_click=nav_to_page, args=("Bàn giao",))
+        col_nav5.button("🧠 Rút bài học", on_click=nav_to_page, args=("Rút bài học",))
         st.info("Sau khi xử lý xong, hãy vào **Rút bài học** để lưu kinh nghiệm cho lần sau.")
         
         if st.button("Đóng thông báo"):
@@ -120,9 +113,7 @@ def page_today_brief():
         
     if st.button("Làm mới tóm tắt"):
         st.rerun()
-    if st.button("Chạy kiểm tra"):
-        st.session_state.page = "Kiểm tra an toàn"
-        st.rerun()
+    st.button("Chạy kiểm tra", on_click=nav_to_page, args=("Kiểm tra an toàn",))
 
     st.divider()
     st.subheader("Chạy thử & Quản trị")
@@ -555,13 +546,8 @@ def main():
         "Kiểm tra an toàn": page_audit,
     }
     
-    # Sử dụng index để tránh lỗi StreamlitAPIException khi thay đổi trang lập trình
-    try:
-        current_idx = list(pages.keys()).index(st.session_state.page)
-    except ValueError:
-        current_idx = 0
-    selected = st.sidebar.radio("Điều hướng", list(pages.keys()), index=current_idx)
-    st.session_state.page = selected
+    # Sử dụng key="page" để liên kết trực tiếp với st.session_state.page và đảm bảo chuyển trang tức thì chỉ với 1 click
+    selected = st.sidebar.radio("Điều hướng", list(pages.keys()), key="page")
     
     pages[selected]()
 
