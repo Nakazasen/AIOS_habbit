@@ -1,5 +1,5 @@
 import json
-import os
+import re
 from pathlib import Path
 from dataclasses import dataclass, field, asdict
 from datetime import datetime
@@ -10,6 +10,8 @@ from .case_ingest import safe_asset_filename
 LOCAL_CASES_DIR = Path.cwd() / "local_cases"
 SOURCES_FILE = LOCAL_CASES_DIR / "sources.jsonl"
 NOTEBOOK_ASSETS_DIR = LOCAL_CASES_DIR / "notebook_assets"
+NOTEBOOK_ID_PATTERN = re.compile(r"^[a-zA-Z0-9_-]+$")
+MAX_PREVIEW_CHARS = 1000
 
 @dataclass
 class SourceDocument:
@@ -66,9 +68,17 @@ def save_source(src: SourceDocument):
             f.write(json.dumps(asdict(s), ensure_ascii=False) + '\n')
 
 def get_notebook_assets_dir(notebook_id: str) -> Path:
-    p = NOTEBOOK_ASSETS_DIR / notebook_id
-    p.mkdir(parents=True, exist_ok=True)
-    return p
+    if not notebook_id or not NOTEBOOK_ID_PATTERN.fullmatch(notebook_id):
+        raise ValueError("Invalid notebook_id: only letters, numbers, underscores, and hyphens are allowed.")
+
+    root = NOTEBOOK_ASSETS_DIR.resolve()
+    candidate = (root / notebook_id).resolve()
+
+    if not candidate.is_relative_to(root):
+        raise ValueError("Invalid notebook asset path: directory traversal attempt detected.")
+
+    candidate.mkdir(parents=True, exist_ok=True)
+    return candidate
 
 def ingest_source_document(
     notebook_id: str,
@@ -109,7 +119,7 @@ def ingest_source_document(
     # Parse based on type
     if ext in ("txt", "md", "markdown"):
         try:
-            preview_text = file_bytes[:1000].decode("utf-8", errors="replace")
+            preview_text = file_bytes.decode("utf-8", errors="replace")
         except Exception as e:
             preview_text = f"Error reading text: {e}"
     elif ext == "csv":
@@ -134,6 +144,8 @@ def ingest_source_document(
             preview_text = f"Error reading Excel preview: {e}"
     else:
         preview_text = "Chưa có xem trước nội dung cho định dạng này ở M1.7."
+
+    preview_text = preview_text[:MAX_PREVIEW_CHARS]
         
     src_doc = SourceDocument(
         source_id=source_id,

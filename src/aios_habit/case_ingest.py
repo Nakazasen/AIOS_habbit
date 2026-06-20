@@ -90,14 +90,14 @@ def ingest_csv(file_path: str, case_id: str, evidence_id: str, original_name: st
         )
 
 def save_uploaded_file(uploaded_file, case_id: str) -> str:
-    assets_dir = get_case_assets_dir(case_id).resolve()
+    assets_dir_resolved = get_case_assets_dir(case_id).resolve()
     sanitized_name = safe_asset_filename(uploaded_file.name)
-    dest_path = (assets_dir / sanitized_name).resolve()
+    dest_path_resolved = (assets_dir_resolved / sanitized_name).resolve()
     
     # Path containment assertion (directory traversal defense)
-    if not str(dest_path).startswith(str(assets_dir)):
+    if not dest_path_resolved.is_relative_to(assets_dir_resolved):
         raise ValueError("Invalid file upload path: directory traversal detected.")
         
-    with open(dest_path, "wb") as f:
+    with open(dest_path_resolved, "wb") as f:
         f.write(uploaded_file.getbuffer())
-    return str(dest_path)
+    return str(dest_path_resolved)

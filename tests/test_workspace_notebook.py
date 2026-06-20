@@ -65,6 +65,27 @@ def test_source_upload_filename_safety(tmp_path, monkeypatch):
     with pytest.raises(ValueError, match="Invalid target path: directory traversal attempt detected."):
         ingest_source_document("NB_X", "traversal.txt", b"traversal", "Traversal Title")
 
+def test_notebook_id_traversal_rejected(tmp_path, monkeypatch):
+    monkeypatch.setattr("aios_habit.source_ingest.LOCAL_CASES_DIR", tmp_path)
+    monkeypatch.setattr("aios_habit.source_ingest.SOURCES_FILE", tmp_path / "sources.jsonl")
+    monkeypatch.setattr("aios_habit.source_ingest.NOTEBOOK_ASSETS_DIR", tmp_path / "notebook_assets")
+
+    malicious_notebook_ids = [
+        "../../escape_nb",
+        "..\\..\\escape_nb",
+        "/tmp/escape_nb",
+        "C:\\escape_nb",
+        "abc/def",
+        "abc\\def",
+    ]
+
+    for notebook_id in malicious_notebook_ids:
+        with pytest.raises(ValueError, match="Invalid notebook_id"):
+            ingest_source_document(notebook_id, "x.txt", b"SECRET", "Traversal Title")
+
+    assert not (tmp_path / "escape_nb").exists()
+    assert not (tmp_path.parent / "escape_nb").exists()
+
 def test_case_linked_notebooks_backward_compatibility():
     # Old case dict representation lacking workspace_id and linked_notebook_ids
     old_data = {

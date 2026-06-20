@@ -55,8 +55,9 @@ def audit_case_cockpit_state(
         if ev.source_path and ev.source_path not in ("clipboard", "manual"):
             try:
                 p = Path(ev.source_path).resolve()
-                if not str(p).startswith(str(assets_dir)):
-                    errors.append(f"Bằng chứng {ev.evidence_id} có đường dẫn tệp '{ev.source_path}' nằm ngoài thư mục tài nguyên cục bộ '{assets_dir}'.")
+                assets_dir_resolved = assets_dir.resolve()
+                if not p.is_relative_to(assets_dir_resolved):
+                    errors.append(f"Bằng chứng {ev.evidence_id} có đường dẫn tệp '{ev.source_path}' nằm ngoài thư mục tài nguyên cục bộ '{assets_dir_resolved}'.")
             except Exception as e:
                 errors.append(f"Bằng chứng {ev.evidence_id} có đường dẫn tệp không hợp lệ: {e}")
                 
