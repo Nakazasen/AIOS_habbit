@@ -1,0 +1,88 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://local.aios-habit/schemas/evidence_record.schema.json",
+  "title": "AIOS Habit Evidence Record",
+  "type": "object",
+  "required": [
+    "evidence_id",
+    "source_id",
+    "source_type",
+    "source_reference",
+    "summary",
+    "permission_status",
+    "retention_policy",
+    "created_at"
+  ],
+  "properties": {
+    "evidence_id": {
+      "type": "string",
+      "pattern": "^EVD-[0-9]{4,}$"
+    },
+    "source_id": {
+      "type": "string",
+      "pattern": "^SRC-[0-9]{4,}$"
+    },
+    "source_type": {
+      "type": "string",
+      "enum": [
+        "chat_transcript",
+        "markdown",
+        "audit_report",
+        "commit_history",
+        "roadmap",
+        "specification",
+        "project_folder",
+        "prompt_library",
+        "user_interview",
+        "other"
+      ]
+    },
+    "source_reference": {
+      "type": "string",
+      "description": "Local path, commit hash, artifact ID, or controlled reference."
+    },
+    "artifact_hash": {
+      "type": "string"
+    },
+    "summary": {
+      "type": "string"
+    },
+    "content_boundary": {
+      "type": "string",
+      "description": "What part of source this evidence covers."
+    },
+    "permission_status": {
+      "type": "string",
+      "enum": [
+        "user_provided",
+        "user_approved",
+        "local_only",
+        "excluded",
+        "unknown"
+      ]
+    },
+    "retention_policy": {
+      "type": "string",
+      "enum": [
+        "metadata_only",
+        "summary_only",
+        "local_raw_allowed",
+        "do_not_store_raw",
+        "delete_after_extraction"
+      ]
+    },
+    "linked_memory_ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date"
+    },
+    "notes": {
+      "type": "string"
+    }
+  }
+}

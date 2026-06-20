@@ -1,0 +1,81 @@
+# Python cache/build
+__pycache__/
+**/__pycache__/
+*.pyc
+.pytest_cache/
+.venv/
+venv/
+dist/
+build/
+*.egg-info/
+
+# Secrets
+.env
+.env.*
+credentials*
+token*
+tokens*
+api_key*
+api_keys*
+*.secret.*
+*.local.*
+*.pem
+*.key
+*.p12
+*.pfx
+
+# Local/private/runtime
+raw/
+inbox_local_only/
+**/inbox_local_only/**
+cache/
+.local/
+private/
+secrets/
+*.chatlog
+*.transcript
+*.har
+raw_*.txt
+raw_*.md
+chatgpt_export*/
+claude_export*/
+gemini_export*/
+
+# AIOS private runtime data
+03_evidence_registry/records/*.jsonl
+04_extraction_workspace/candidate_memory/*.json
+04_extraction_workspace/review_queue.md
+05_memory_vault/*.jsonl
+06_ai_export_packs/*/*_export_pack.md
+07_ai_export_packs/*/*_export_pack.md
+08_audit/final_audit_report.md
+09_handover/final_handover.md
+
+# Editor/OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Temporary
+*.tmp
+*.bak
+*.log
+
+# Additional AIOS generated libraries
+06_workflow_library/**/*.jsonl
+
+# Case Cockpit
+local_cases/
+*.xlsx
+*.xls
+*.csv
+*.png
+*.jpg
+*.jpeg
+!examples/**/*.xlsx
+!examples/**/*.xls
+!examples/**/*.csv
+!examples/**/*.png
+!examples/**/*.jpg
+!examples/**/*.jpeg

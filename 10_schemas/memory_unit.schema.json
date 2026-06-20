@@ -1,0 +1,150 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://local.aios-habit/schemas/memory_unit.schema.json",
+  "title": "AIOS Habit Memory Unit",
+  "type": "object",
+  "required": [
+    "memory_id",
+    "memory_type",
+    "title",
+    "statement",
+    "status",
+    "confidence",
+    "evidence",
+    "scope",
+    "created_at",
+    "updated_at"
+  ],
+  "properties": {
+    "memory_id": {
+      "type": "string",
+      "pattern": "^MEM-[A-Z]+-[0-9]{4,}$"
+    },
+    "memory_type": {
+      "type": "string",
+      "enum": [
+        "identity",
+        "behavior",
+        "language",
+        "workflow",
+        "project_knowledge",
+        "lessons_learned",
+        "decision_patterns"
+      ]
+    },
+    "title": {
+      "type": "string",
+      "minLength": 3
+    },
+    "statement": {
+      "type": "string",
+      "description": "Pattern/knowledge statement, not raw transcript."
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "candidate",
+        "validated",
+        "deprecated",
+        "conflicted",
+        "rejected"
+      ]
+    },
+    "confidence": {
+      "type": "string",
+      "enum": [
+        "low",
+        "medium",
+        "high",
+        "verified"
+      ]
+    },
+    "scope": {
+      "type": "string",
+      "description": "Where this memory applies and does not apply."
+    },
+    "evidence": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/evidence_link"
+      }
+    },
+    "tags": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "linked_projects": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "validation": {
+      "$ref": "#/$defs/validation"
+    },
+    "rollback": {
+      "type": "string"
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date"
+    },
+    "updated_at": {
+      "type": "string",
+      "format": "date"
+    }
+  },
+  "$defs": {
+    "evidence_link": {
+      "type": "object",
+      "required": [
+        "evidence_id",
+        "support_level"
+      ],
+      "properties": {
+        "evidence_id": {
+          "type": "string",
+          "pattern": "^EVD-[0-9]{4,}$"
+        },
+        "support_level": {
+          "type": "string",
+          "enum": [
+            "weak",
+            "moderate",
+            "strong"
+          ]
+        },
+        "notes": {
+          "type": "string"
+        }
+      }
+    },
+    "validation": {
+      "type": "object",
+      "properties": {
+        "review_status": {
+          "type": "string",
+          "enum": [
+            "not_reviewed",
+            "reviewed",
+            "approved",
+            "rejected"
+          ]
+        },
+        "reviewer": {
+          "type": "string"
+        },
+        "review_date": {
+          "type": "string",
+          "format": "date"
+        },
+        "notes": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}

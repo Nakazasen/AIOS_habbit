@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "AIOS Habit Decision Pattern",
+  "type": "object",
+  "required": [
+    "decision_id",
+    "name",
+    "context",
+    "rule",
+    "evidence",
+    "boundary",
+    "status"
+  ],
+  "properties": {
+    "decision_id": {
+      "type": "string",
+      "pattern": "^DEC-[0-9]{4,}$"
+    },
+    "name": {
+      "type": "string"
+    },
+    "context": {
+      "type": "string"
+    },
+    "rule": {
+      "type": "string"
+    },
+    "tradeoffs": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "boundary": {
+      "type": "string"
+    },
+    "evidence": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "candidate",
+        "validated",
+        "deprecated",
+        "conflicted"
+      ]
+    }
+  }
+}

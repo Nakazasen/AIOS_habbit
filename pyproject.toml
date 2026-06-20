@@ -1,0 +1,26 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "aios-habit"
+version = "0.1.0"
+description = "Local-first evidence-based personal memory platform"
+requires-python = ">=3.11"
+dependencies = [
+    "streamlit>=1.30.0",
+    "pandas>=2.0.0",
+    "openpyxl>=3.1.0",
+]
+
+[project.scripts]
+aios-habit = "aios_habit.cli:main"
+aios-habit-studio = "aios_habit.studio:main"
+aios-case-cockpit = "aios_habit.case_cockpit:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
