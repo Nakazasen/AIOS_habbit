@@ -1,0 +1,76 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "AIOS Habit Project Card",
+  "type": "object",
+  "required": [
+    "project_id",
+    "name",
+    "path",
+    "status",
+    "purpose",
+    "evidence"
+  ],
+  "properties": {
+    "project_id": {
+      "type": "string",
+      "pattern": "^PRJ-[0-9]{4,}$"
+    },
+    "name": {
+      "type": "string"
+    },
+    "path": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "active",
+        "paused",
+        "archived",
+        "unknown",
+        "candidate"
+      ]
+    },
+    "purpose": {
+      "type": "string"
+    },
+    "memory_relevance": {
+      "type": "string"
+    },
+    "key_files": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "relationships": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string"
+          },
+          "target_project_id": {
+            "type": "string"
+          },
+          "notes": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "evidence": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "risks": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  }
+}
