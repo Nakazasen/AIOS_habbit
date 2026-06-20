@@ -419,8 +419,8 @@ def main():
         "Kiểm tra an toàn": page_audit,
     }
     
-    selected = st.sidebar.radio("Điều hướng", list(pages.keys()), index=list(pages.keys()).index(st.session_state.page))
-    st.session_state.page = selected
+    # Sử dụng key="page" để liên kết trực tiếp với st.session_state.page nhằm tránh lỗi phải bấm 2 lần mới chuyển trang
+    selected = st.sidebar.radio("Điều hướng", list(pages.keys()), key="page")
     
     pages[selected]()
 
