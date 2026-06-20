@@ -1,8 +1,38 @@
 import os
+import re
+import time
 import pandas as pd
 from pathlib import Path
 from .case_models import EvidenceItem
 from .case_store import get_case_assets_dir
+
+def safe_asset_filename(original_name: str) -> str:
+    import uuid
+    uniq = uuid.uuid4().hex[:6]
+    timestamp = f"{int(time.time() * 1000)}"
+    
+    if not original_name:
+        return f"asset_{timestamp}_{uniq}"
+    
+    # Replace path separators to block traversal at the string level
+    name = original_name.replace("/", "_").replace("\\", "_")
+    
+    # Split stem and suffix
+    p = Path(name)
+    stem = p.stem
+    ext = p.suffix
+    
+    # Clean stem: keep only a-zA-Z0-9_-
+    stem_clean = re.sub(r'[^A-Za-z0-9_-]', '_', stem)
+    if not stem_clean:
+        stem_clean = "asset"
+        
+    # Clean extension: keep only a-zA-Z0-9
+    ext_clean = re.sub(r'[^A-Za-z0-9]', '', ext)
+    if ext_clean:
+        ext_clean = "." + ext_clean
+        
+    return f"{timestamp}_{uniq}_{stem_clean}{ext_clean}"
 
 def ingest_excel(file_path: str, case_id: str, evidence_id: str, original_name: str) -> EvidenceItem:
     try:
@@ -60,8 +90,14 @@ def ingest_csv(file_path: str, case_id: str, evidence_id: str, original_name: st
         )
 
 def save_uploaded_file(uploaded_file, case_id: str) -> str:
-    assets_dir = get_case_assets_dir(case_id)
-    dest_path = assets_dir / uploaded_file.name
+    assets_dir = get_case_assets_dir(case_id).resolve()
+    sanitized_name = safe_asset_filename(uploaded_file.name)
+    dest_path = (assets_dir / sanitized_name).resolve()
+    
+    # Path containment assertion (directory traversal defense)
+    if not str(dest_path).startswith(str(assets_dir)):
+        raise ValueError("Invalid file upload path: directory traversal detected.")
+        
     with open(dest_path, "wb") as f:
         f.write(uploaded_file.getbuffer())
     return str(dest_path)

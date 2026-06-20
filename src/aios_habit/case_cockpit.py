@@ -10,6 +10,8 @@ from .case_store import load_cases, load_evidence, save_case, save_evidence, ini
 from .case_ingest import ingest_excel, ingest_csv, save_uploaded_file
 from .case_graph import generate_case_mermaid
 from .case_actions import generate_next_actions
+from .case_prompt import build_prompt_pack
+from .case_audit import audit_case_cockpit_state
 
 st.set_page_config(page_title="AIOS Case Cockpit v0.1", layout="wide")
 
@@ -50,12 +52,15 @@ def page_cases():
             priority = st.selectbox("Priority", ["low", "normal", "high", "critical"], index=1)
             privacy = st.selectbox("Privacy Level", ["local_only", "redacted_export", "cloud_allowed"])
             if st.form_submit_button("Create"):
-                import uuid
-                c = Case(case_id=f"CASE-{str(uuid.uuid4())[:8].upper()}", title=title, priority=priority, privacy_level=privacy)
-                save_case(c)
-                st.success("Case created!")
-                st.rerun()
-                
+                if not title.strip():
+                    st.error("Case title cannot be empty.")
+                else:
+                    import uuid
+                    c = Case(case_id=f"CASE-{str(uuid.uuid4())[:8].upper()}", title=title.strip(), priority=priority, privacy_level=privacy)
+                    save_case(c)
+                    st.success("Case created!")
+                    st.rerun()
+                 
     st.subheader("Select Case")
     case_opts = {c.case_id: f"{c.case_id} - {c.title} ({c.status})" for c in cases}
     selected_id = st.selectbox("Active Case", options=list(case_opts.keys()), format_func=lambda x: case_opts[x])
@@ -128,19 +133,38 @@ def page_add_evidence():
         paste_text = st.text_area("Paste Chat or Log text here", height=200)
         title = st.text_input("Log Title")
         if st.button("Save Log Evidence"):
-            ev = EvidenceItem(evidence_id=new_ev_id, case_id=active_case.case_id, source_type="chat_paste", source_path="clipboard", title=title, extracted_text=paste_text)
-            save_evidence(ev)
-            # Create a timeline event
-            active_case.timeline_events.append({"date": datetime.now().isoformat(), "event": f"Log added: {title}"})
-            save_case(active_case)
-            st.success("Log saved and timeline updated.")
+            if not title.strip() and not paste_text.strip():
+                st.error("Cannot save log evidence: both title and text are empty.")
+            else:
+                ev = EvidenceItem(
+                    evidence_id=new_ev_id,
+                    case_id=active_case.case_id,
+                    source_type="chat_paste",
+                    source_path="clipboard",
+                    title=title.strip() or "Chat/Log Paste",
+                    extracted_text=paste_text.strip()
+                )
+                save_evidence(ev)
+                active_case.timeline_events.append({"date": datetime.now().isoformat(), "event": f"Log added: {title.strip() or 'Chat/Log Paste'}"})
+                save_case(active_case)
+                st.success("Log saved and timeline updated.")
             
     with tab4:
         note_text = st.text_area("Manual Note", height=150)
         if st.button("Save Note"):
-            ev = EvidenceItem(evidence_id=new_ev_id, case_id=active_case.case_id, source_type="note", source_path="manual", title="Manual Note", extracted_text=note_text)
-            save_evidence(ev)
-            st.success("Note saved.")
+            if not note_text.strip():
+                st.error("Cannot save note: text is empty.")
+            else:
+                ev = EvidenceItem(
+                    evidence_id=new_ev_id,
+                    case_id=active_case.case_id,
+                    source_type="note",
+                    source_path="manual",
+                    title="Manual Note",
+                    extracted_text=note_text.strip()
+                )
+                save_evidence(ev)
+                st.success("Note saved.")
 
 def page_case_map():
     st.title("🗺️ Case Map")
@@ -186,9 +210,12 @@ def page_next_actions():
     st.write("---")
     new_action = st.text_input("Add manual next action:")
     if st.button("Add Action"):
-        active_case.next_actions.append(new_action)
-        save_case(active_case)
-        st.rerun()
+        if new_action.strip():
+            active_case.next_actions.append(new_action.strip())
+            save_case(active_case)
+            st.rerun()
+        else:
+            st.error("Action text cannot be empty.")
         
     for i, a in enumerate(active_case.next_actions):
         st.write(f"{i+1}. {a}")
@@ -202,22 +229,18 @@ def page_prompt_pack():
         
     evs = [e for e in load_evidence() if e.case_id == active_case.case_id]
     
-    target = st.selectbox("Target", ["Gemini", "GPT", "Copilot", "NotebookLM-safe summary"])
+    target = st.selectbox("Target", ["Gemini", "GPT", "Copilot", "NotebookLM-safe summary", "Local AI (with local_only)"])
     
-    prompt = f"Case Title: {active_case.title}\n"
-    prompt += f"Current Situation: {active_case.current_situation}\n\n"
-    prompt += "Evidence Summary:\n"
+    target_mapping = {
+        "Gemini": ("gemini", False),
+        "GPT": ("gpt", False),
+        "Copilot": ("copilot", False),
+        "NotebookLM-safe summary": ("notebooklm_safe", False),
+        "Local AI (with local_only)": ("local_ai", True)
+    }
     
-    for e in evs:
-        if "NotebookLM" in target and e.privacy_level == "local_only":
-            continue
-        prompt += f"- [{e.source_type}] {e.title}: {e.extracted_text[:200]}...\n"
-        
-    prompt += "\nHypotheses:\n"
-    for h in active_case.hypotheses:
-        prompt += f"- {h}\n"
-        
-    prompt += "\nRequested Output: Please analyze the current situation and evidence. Do not invent facts. Ask for next diagnostic steps."
+    mapped_target, include_local_only = target_mapping[target]
+    prompt = build_prompt_pack(active_case, evs, mapped_target, include_local_only)
     
     st.text_area("Generated Prompt", value=prompt, height=300)
 
@@ -255,30 +278,34 @@ def page_audit():
     st.title("🛡️ Audit")
     
     if st.button("Run Local Audit"):
-        cases = load_cases()
-        evs = load_evidence()
         active = get_active_case()
+        evs = load_evidence()
         
-        checks = []
-        
-        # Check 1: case file exists
-        checks.append({"Check": "Cases file exists", "Status": "PASS" if cases else "WARN"})
-        
-        # Check 2: evidence has case_id
-        ev_no_case = [e for e in evs if not e.case_id]
-        checks.append({"Check": "All evidence has case_id", "Status": "FAIL" if ev_no_case else "PASS"})
-        
-        # Check 3: no missing selected case
-        checks.append({"Check": "Active case selected", "Status": "PASS" if active else "FAIL"})
-        
-        # Check 4: no empty current situation for active case
+        # Build prompt outputs for all default external targets to check for leakage
+        prompt_targets = ["gemini", "gpt", "copilot", "notebooklm_safe"]
+        prompt_outputs = {}
         if active:
-            checks.append({"Check": "Active case has situation", "Status": "FAIL" if not active.current_situation.strip() else "PASS"})
+            active_evs = [e for e in evs if e.case_id == active.case_id]
+            for t in prompt_targets:
+                prompt_outputs[t] = build_prompt_pack(active, active_evs, t, include_local_only=False)
+                
+        result = audit_case_cockpit_state(active, evs, prompt_outputs)
+        
+        st.subheader("Audit Results")
+        if result["status"] == "PASS":
+            st.success("✅ Case Cockpit Audit passed successfully!")
         else:
-            checks.append({"Check": "Active case has situation", "Status": "SKIP"})
+            st.error("❌ Case Cockpit Audit failed!")
             
-        import pandas as pd
-        st.table(pd.DataFrame(checks))
+        if result["errors"]:
+            st.subheader("Errors")
+            for err in result["errors"]:
+                st.write(f"- 🔴 {err}")
+                
+        if result["warnings"]:
+            st.subheader("Warnings")
+            for warn in result["warnings"]:
+                st.write(f"- 🟡 {warn}")
 
 def main():
     init_store()

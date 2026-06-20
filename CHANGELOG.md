@@ -1,4 +1,21 @@
-﻿# Changelog
+# Changelog
+
+## 2026-06-20 - Case Cockpit Privacy and Audit Hardening
+
+### Added
+- Created `src/aios_habit/case_prompt.py` for privacy-aware prompt compilation.
+- Created `src/aios_habit/case_audit.py` to run comprehensive, testable audits on case state, prompts, and local paths.
+- Added comprehensive test suite `tests/test_case_cockpit_hardening.py` covering prompt privacy, xlsx ingest, audit rules, Mermaid label escaping, store roundtrips, and launcher command checks.
+
+### Changed
+- Integrated prompt and audit helpers into `case_cockpit.py`.
+- Hardened `case_graph.py` with `safe_mermaid_label()` to escape quotes, brackets, braces, and newlines.
+- Hardened `case_ingest.py` with `safe_asset_filename()` to filter name path separators, normalize dangerous characters, and prefix with a unique timestamp to prevent overwrite collisions.
+- Applied Streamlit-level input validation preventing empty titles, empty notes, and empty chat logs.
+
+### Security
+- Excluded `local_only` evidence from cloud targets (`gemini`, `gpt`, `copilot`, `notebooklm_safe`) by default.
+- Added path containment assertion in file upload to block directory traversal attacks.
 
 ## 2026-06-20 - WorkLens Governance and Inheritance Audit
 
