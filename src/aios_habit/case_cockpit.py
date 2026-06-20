@@ -15,6 +15,88 @@ from aios_habit.case_audit import audit_case_cockpit_state
 
 st.set_page_config(page_title="AIOS Case Cockpit v0.1", layout="wide")
 
+def page_quick_intake():
+    st.title("⚡ Nhập nhanh sự việc")
+    st.write("Tạo nhanh một hồ sơ sự việc mới đi kèm đầy đủ các bằng chứng ban đầu trong một màn hình duy nhất.")
+    
+    with st.form("quick_intake_form"):
+        title = st.text_input("Tên sự việc / Tiêu đề", placeholder="Ví dụ: PolarisNext - Lỗi cấu hình xuất hàng U002")
+        sit = st.text_area("Mô tả ngắn tình huống hiện tại (Current Situation)", placeholder="Mô tả bối cảnh hiện tại của sự việc...", height=120)
+        
+        col1, col2 = st.columns(2)
+        priority = col1.selectbox("Mức độ ưu tiên", ["low", "normal", "high", "critical"], index=1, format_func=lambda x: {"low": "Thấp", "normal": "Bình thường", "high": "Cao", "critical": "Khẩn cấp"}[x])
+        privacy = col2.selectbox("Mức riêng tư", ["local_only", "redacted_export", "cloud_allowed"], index=0, format_func=lambda x: {
+            "local_only": "Chỉ lưu cục bộ (local_only)",
+            "redacted_export": "Xuất ẩn danh (redacted_export)",
+            "cloud_allowed": "Cho phép đưa lên đám mây (cloud_allowed)"
+        }[x])
+        
+        chat_log = st.text_area("Dán tin nhắn Chat/Log/Email nếu có", placeholder="Dán nội dung log lỗi hoặc đoạn hội thoại chat hỗ trợ vào đây...", height=150)
+        notes = st.text_area("Ghi chú bổ sung nếu có", placeholder="Nhập thêm ghi chú cá nhân, các hành động đã làm...", height=100)
+        
+        excel_csv_file = st.file_uploader("Tải lên Excel/CSV nếu có", type=["xlsx", "xls", "csv"])
+        img_file = st.file_uploader("Tải lên ảnh/screenshot nếu có", type=["png", "jpg", "jpeg"])
+        
+        submitted = st.form_submit_button("Tạo hồ sơ và thêm bằng chứng")
+        
+        if submitted:
+            if not title.strip():
+                st.error("Tiêu đề sự việc không được để trống.")
+            elif not sit.strip():
+                st.error("Tình huống hiện tại không được để trống.")
+            else:
+                excel_csv_name = excel_csv_file.name if excel_csv_file else ""
+                excel_csv_bytes = excel_csv_file.read() if excel_csv_file else b""
+                
+                img_name = img_file.name if img_file else ""
+                img_bytes = img_file.read() if img_file else b""
+                
+                from aios_habit.case_store import create_quick_case_with_evidence
+                
+                res = create_quick_case_with_evidence(
+                    title=title,
+                    situation=sit,
+                    priority=priority,
+                    privacy=privacy,
+                    chat_log=chat_log,
+                    notes=notes,
+                    excel_csv_file_name=excel_csv_name,
+                    excel_csv_content_bytes=excel_csv_bytes,
+                    img_file_name=img_name,
+                    img_content_bytes=img_bytes
+                )
+                
+                st.session_state.active_case_id = res["case_id"]
+                st.session_state.quick_success = {
+                    "case_id": res["case_id"],
+                    "title": title,
+                    "evidences_count": res["evidences_count"]
+                }
+                st.rerun()
+
+    if "quick_success" in st.session_state:
+        qs = st.session_state.quick_success
+        st.success(f"🎉 Hồ sơ sự việc **{qs['title']}** (Mã: {qs['case_id']}) đã được tạo thành công cùng với {qs['evidences_count']} bằng chứng ban đầu!")
+        
+        st.info("💡 Bạn có thể tiếp tục xử lý sự việc bằng cách bấm các liên kết điều hướng nhanh dưới đây:")
+        col_nav1, col_nav2, col_nav3, col_nav4 = st.columns(4)
+        if col_nav1.button("🗺️ Xem bản đồ sự việc"):
+            st.session_state.page = "Bản đồ sự việc"
+            st.rerun()
+        if col_nav2.button("🚀 Việc cần làm tiếp"):
+            st.session_state.page = "Việc cần làm tiếp"
+            st.rerun()
+        if col_nav3.button("🤖 Gói câu lệnh cho AI"):
+            st.session_state.page = "Gói câu lệnh cho AI"
+            st.rerun()
+        if col_nav4.button("🤝 Tạo bàn giao"):
+            st.session_state.page = "Bàn giao"
+            st.rerun()
+        
+        if st.button("Đóng thông báo"):
+            del st.session_state.quick_success
+            st.rerun()
+
 def page_today_brief():
     st.title("☀️ Tóm tắt hôm nay")
     cases = load_cases()
@@ -322,10 +404,11 @@ def page_audit():
 def main():
     init_store()
     if "page" not in st.session_state:
-        st.session_state.page = "Tóm tắt hôm nay"
+        st.session_state.page = "Nhập nhanh sự việc"
 
     st.sidebar.title("AIOS Case Cockpit")
     pages = {
+        "Nhập nhanh sự việc": page_quick_intake,
         "Tóm tắt hôm nay": page_today_brief,
         "Hồ sơ sự việc": page_cases,
         "Thêm bằng chứng": page_add_evidence,

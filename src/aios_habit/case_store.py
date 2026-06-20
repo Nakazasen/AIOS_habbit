@@ -82,3 +82,116 @@ def get_case_assets_dir(case_id: str) -> Path:
     p = ASSETS_DIR / case_id
     p.mkdir(parents=True, exist_ok=True)
     return p
+
+def create_quick_case_with_evidence(
+    title: str,
+    situation: str,
+    priority: str,
+    privacy: str,
+    chat_log: str = "",
+    notes: str = "",
+    excel_csv_file_name: str = "",
+    excel_csv_content_bytes: bytes = b"",
+    img_file_name: str = "",
+    img_content_bytes: bytes = b""
+) -> dict:
+    import uuid
+    from datetime import datetime
+    from .case_models import Case, EvidenceItem
+    from .case_ingest import ingest_csv, ingest_excel
+    
+    # 1. Create and save case
+    case_id = f"CASE-{str(uuid.uuid4())[:8].upper()}"
+    case = Case(
+        case_id=case_id,
+        title=title.strip(),
+        current_situation=situation.strip(),
+        priority=priority,
+        privacy_level=privacy,
+        status="open",
+        updated_at=datetime.now().isoformat()
+    )
+    save_case(case)
+    
+    evidences_added = 0
+    
+    # 2. Add Chat/Log evidence
+    if chat_log.strip():
+        ev_id = f"EVD-{str(uuid.uuid4())[:8].upper()}"
+        ev = EvidenceItem(
+            evidence_id=ev_id,
+            case_id=case_id,
+            source_type="chat_paste",
+            source_path="clipboard",
+            title="Đoạn Chat/Log dán nhanh",
+            extracted_text=chat_log.strip(),
+            privacy_level=privacy
+        )
+        save_evidence(ev)
+        case.timeline_events.append({"date": datetime.now().isoformat(), "event": "Đã thêm nhật ký từ nhập nhanh."})
+        evidences_added += 1
+        
+    # 3. Add Manual Notes
+    if notes.strip():
+        ev_id = f"EVD-{str(uuid.uuid4())[:8].upper()}"
+        ev = EvidenceItem(
+            evidence_id=ev_id,
+            case_id=case_id,
+            source_type="note",
+            source_path="manual",
+            title="Ghi chú nhập nhanh",
+            extracted_text=notes.strip(),
+            privacy_level=privacy
+        )
+        save_evidence(ev)
+        evidences_added += 1
+        
+    # 4. Add Excel/CSV
+    if excel_csv_file_name and excel_csv_content_bytes:
+        ev_id = f"EVD-{str(uuid.uuid4())[:8].upper()}"
+        case_assets_dir = get_case_assets_dir(case_id)
+        from .case_ingest import safe_asset_filename
+        safe_name = safe_asset_filename(excel_csv_file_name)
+        target_path = case_assets_dir / safe_name
+        target_path.write_bytes(excel_csv_content_bytes)
+        
+        path_str = str(target_path)
+        if excel_csv_file_name.lower().endswith(".csv"):
+            ev = ingest_csv(path_str, case_id, ev_id, excel_csv_file_name)
+        else:
+            ev = ingest_excel(path_str, case_id, ev_id, excel_csv_file_name)
+        ev.privacy_level = privacy
+        save_evidence(ev)
+        evidences_added += 1
+        
+    # 5. Add Image
+    if img_file_name and img_content_bytes:
+        ev_id = f"EVD-{str(uuid.uuid4())[:8].upper()}"
+        case_assets_dir = get_case_assets_dir(case_id)
+        from .case_ingest import safe_asset_filename
+        safe_name = safe_asset_filename(img_file_name)
+        target_path = case_assets_dir / safe_name
+        target_path.write_bytes(img_content_bytes)
+        
+        path_str = str(target_path)
+        ev = EvidenceItem(
+            evidence_id=ev_id,
+            case_id=case_id,
+            source_type="screenshot",
+            source_path=path_str,
+            title=f"Ảnh chụp: {img_file_name}",
+            extracted_text="Hình ảnh tải lên từ nhập nhanh",
+            privacy_level=privacy
+        )
+        save_evidence(ev)
+        evidences_added += 1
+        
+    if len(case.timeline_events) > 0:
+        save_case(case)
+        
+    return {
+        "case_id": case_id,
+        "case": case,
+        "evidences_count": evidences_added
+    }
+
