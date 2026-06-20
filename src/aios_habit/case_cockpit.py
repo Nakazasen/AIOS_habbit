@@ -6,16 +6,32 @@ from pathlib import Path
 from datetime import datetime
 
 from aios_habit.case_models import Case, EvidenceItem
-from aios_habit.case_store import load_cases, load_evidence, save_case, save_evidence, init_store
+from aios_habit.case_store import load_cases, load_evidence, save_case, save_evidence, init_store, load_cases_for_workspace
 from aios_habit.case_ingest import ingest_excel, ingest_csv, save_uploaded_file
 from aios_habit.case_graph import generate_case_mermaid
 from aios_habit.case_actions import generate_next_actions
 from aios_habit.case_prompt import build_prompt_pack
 from aios_habit.case_audit import audit_case_cockpit_state
+from aios_habit.workspace_models import init_workspace_store, load_workspaces, load_notebooks, save_workspace, save_notebook, Workspace, KnowledgeNotebook
+from aios_habit.source_ingest import init_source_store, load_sources, ingest_source_document
 
 st.set_page_config(page_title="AIOS Case Cockpit v0.1", layout="wide")
 
 def nav_to_page(page_name):
+    mapping = {
+        "Nhập nhanh sự việc": "🏠 Tổng quan & Bắt đầu",
+        "Tóm tắt hôm nay": "🏠 Tổng quan & Bắt đầu",
+        "Hồ sơ sự việc": "📁 Hồ sơ sự việc (Case)",
+        "Thêm bằng chứng": "📁 Hồ sơ sự việc (Case)",
+        "Bản đồ sự việc": "📁 Hồ sơ sự việc (Case)",
+        "Việc cần làm tiếp": "📁 Hồ sơ sự việc (Case)",
+        "Gói câu lệnh cho AI": "📤 Xuất kết quả",
+        "Bàn giao": "📤 Xuất kết quả",
+        "Rút bài học": "🎓 Học nghề & An toàn",
+        "Kiểm tra an toàn": "🎓 Học nghề & An toàn",
+    }
+    category = mapping.get(page_name, "🏠 Tổng quan & Bắt đầu")
+    st.session_state.active_main_category = category
     st.session_state.page = page_name
 
 def page_quick_intake():
@@ -96,7 +112,8 @@ def page_quick_intake():
 
 def page_today_brief():
     st.title("☀️ Tóm tắt hôm nay")
-    cases = load_cases()
+    active_ws_id = st.session_state.get("active_workspace_id", "default")
+    cases = load_cases_for_workspace(active_ws_id)
     open_cases = [c for c in cases if c.status == "open"]
     high_priority = [c for c in cases if c.priority == "high" and c.status != "resolved" and c.status != "archived"]
     recently_updated = sorted(cases, key=lambda c: c.updated_at, reverse=True)[:5]
@@ -122,7 +139,8 @@ def page_today_brief():
 
 def page_cases():
     st.title("🗂️ Hồ sơ sự việc")
-    cases = load_cases()
+    active_ws_id = st.session_state.get("active_workspace_id", "default")
+    cases = load_cases_for_workspace(active_ws_id)
     
     with st.expander("➕ Tạo hồ sơ mới"):
         with st.form("new_case"):
@@ -134,7 +152,13 @@ def page_cases():
                     st.error("Tiêu đề hồ sơ không được để trống.")
                 else:
                     import uuid
-                    c = Case(case_id=f"CASE-{str(uuid.uuid4())[:8].upper()}", title=title.strip(), priority=priority, privacy_level=privacy)
+                    c = Case(
+                        case_id=f"CASE-{str(uuid.uuid4())[:8].upper()}",
+                        title=title.strip(),
+                        priority=priority,
+                        privacy_level=privacy,
+                        workspace_id=active_ws_id
+                    )
                     save_case(c)
                     st.success("Đã tạo hồ sơ sự việc!")
                     st.rerun()
@@ -142,7 +166,23 @@ def page_cases():
     st.subheader("Chọn hồ sơ sự việc")
     status_map = {"open": "Mở", "investigating": "Đang điều tra", "waiting": "Đang chờ", "resolved": "Đã giải quyết", "archived": "Đã lưu trữ"}
     case_opts = {c.case_id: f"{c.case_id} - {c.title} (Trạng thái: {status_map.get(c.status, c.status)})" for c in cases}
-    selected_id = st.selectbox("Hồ sơ đang hoạt động", options=list(case_opts.keys()), format_func=lambda x: case_opts[x])
+    
+    # Check if active_case_id belongs to the current workspace
+    selected_idx = 0
+    active_id = st.session_state.get("active_case_id")
+    if active_id and active_id in case_opts:
+        selected_idx = list(case_opts.keys()).index(active_id)
+    else:
+        # Reset if not in options
+        if "active_case_id" in st.session_state:
+            del st.session_state.active_case_id
+            
+    selected_id = st.selectbox(
+        "Hồ sơ đang hoạt động",
+        options=list(case_opts.keys()),
+        index=selected_idx,
+        format_func=lambda x: case_opts[x]
+    )
     
     if selected_id:
         st.session_state.active_case_id = selected_id
@@ -150,18 +190,44 @@ def page_cases():
         st.write("---")
         st.subheader("Chi tiết hồ sơ")
         
+        # Load notebooks for linking
+        notebooks = [n for n in load_notebooks() if n.workspace_id == active_ws_id]
+        nb_opts = {n.notebook_id: n.name for n in notebooks}
+        
+        # Backward compatibility for linked_notebook_ids
+        if not hasattr(active_case, "linked_notebook_ids") or active_case.linked_notebook_ids is None:
+            active_case.linked_notebook_ids = []
+            
+        workspaces = load_workspaces()
+        ws_options = {w.workspace_id: w.name for w in workspaces}
+        ws_idx = list(ws_options.keys()).index(active_case.workspace_id) if active_case.workspace_id in ws_options else 0
+        
         with st.form("edit_case"):
             sit = st.text_area("Tình huống hiện tại (Current Situation)", value=active_case.current_situation, height=150)
             stat = st.selectbox("Trạng thái (Status)", ["open", "investigating", "waiting", "resolved", "archived"], index=["open", "investigating", "waiting", "resolved", "archived"].index(active_case.status), format_func=lambda x: {"open": "Mở (open)", "investigating": "Đang điều tra (investigating)", "waiting": "Đang chờ (waiting)", "resolved": "Đã giải quyết (resolved)", "archived": "Đã lưu trữ (archived)"}[x])
             pri = st.selectbox("Độ ưu tiên (Priority)", ["low", "normal", "high", "critical"], index=["low", "normal", "high", "critical"].index(active_case.priority), format_func=lambda x: {"low": "Thấp (low)", "normal": "Bình thường (normal)", "high": "Cao (high)", "critical": "Khẩn cấp (critical)"}[x])
             
+            # Select workspace
+            target_ws = st.selectbox("Workspace thuộc về (Di chuyển hồ sơ nếu cần)", options=list(ws_options.keys()), index=ws_idx, format_func=lambda x: ws_options[x])
+            
+            # Select linked notebooks
+            linked_nbs = st.multiselect(
+                "Liên kết Sổ tri thức (Workspace: " + active_case.workspace_id + ")",
+                options=list(nb_opts.keys()),
+                default=[nid for nid in active_case.linked_notebook_ids if nid in nb_opts],
+                format_func=lambda x: nb_opts[x]
+            )
+            
             if st.form_submit_button("Lưu thay đổi hồ sơ"):
                 active_case.current_situation = sit
                 active_case.status = stat
                 active_case.priority = pri
+                active_case.workspace_id = target_ws
+                active_case.linked_notebook_ids = linked_nbs
                 active_case.updated_at = datetime.now().isoformat()
                 save_case(active_case)
                 st.success("Đã cập nhật hồ sơ!")
+                st.rerun()
 
 def get_active_case():
     if "active_case_id" not in st.session_state:
@@ -563,29 +629,229 @@ def page_learning_memory():
             st.success("Đã cập nhật thẻ học nghề thành công!")
             st.rerun()
 
+def page_notebooks():
+    st.title("📚 Sổ tri thức (Knowledge Notebook)")
+    st.write("Quản lý tài liệu nguồn cục bộ, cấu hình bảo mật và liên kết tri thức nền.")
+    
+    active_ws_id = st.session_state.get("active_workspace_id", "default")
+    
+    tab1, tab2, tab3 = st.tabs(["Sổ tri thức", "Nạp tài liệu nguồn", "Danh sách & Xem trước"])
+    
+    # Load notebooks for active workspace
+    notebooks = [n for n in load_notebooks() if n.workspace_id == active_ws_id]
+    nb_opts = {n.notebook_id: n.name for n in notebooks}
+    
+    with tab1:
+        st.subheader("Tạo Sổ tri thức mới")
+        with st.form("new_notebook_form"):
+            nb_name = st.text_input("Tên Sổ tri thức (Notebook Name)")
+            nb_desc = st.text_area("Mô tả Sổ tri thức")
+            nb_privacy = st.selectbox("Mức độ riêng tư Sổ tri thức", ["local_only", "redacted_export", "cloud_allowed"], format_func=lambda x: {
+                "local_only": "Chỉ lưu cục bộ (local_only)",
+                "redacted_export": "Xuất ẩn danh (redacted_export)",
+                "cloud_allowed": "Cho phép đưa lên đám mây (cloud_allowed)"
+            }[x])
+            nb_tags_str = st.text_input("Thẻ phân loại (ngăn cách bằng dấu phẩy)")
+            
+            if st.form_submit_button("Tạo Sổ tri thức"):
+                if not nb_name.strip():
+                    st.error("Tên Sổ tri thức không được để trống.")
+                else:
+                    import uuid
+                    nb_id = f"NB-{str(uuid.uuid4())[:8].upper()}"
+                    tags = [t.strip() for t in nb_tags_str.split(",") if t.strip()]
+                    new_nb = KnowledgeNotebook(
+                        notebook_id=nb_id,
+                        workspace_id=active_ws_id,
+                        name=nb_name.strip(),
+                        description=nb_desc.strip(),
+                        domain_tags=tags,
+                        privacy_level=nb_privacy
+                    )
+                    save_notebook(new_nb)
+                    st.success(f"Đã tạo Sổ tri thức: {nb_name}")
+                    st.rerun()
+                    
+        st.subheader("Các Sổ tri thức hiện có")
+        if not notebooks:
+            st.info("Chưa có Sổ tri thức nào trong Workspace này. Hãy tạo một sổ ở trên.")
+        else:
+            for n in notebooks:
+                privacy_vn = {"local_only": "Cục bộ (local_only)", "redacted_export": "Ẩn danh (redacted_export)", "cloud_allowed": "Cho phép cloud (cloud_allowed)"}.get(n.privacy_level, n.privacy_level)
+                st.write(f"📖 **{n.name}** (Quyền: {privacy_vn}) - *{n.description}*")
+                
+    with tab2:
+        st.subheader("Nạp tài liệu nguồn")
+        if not notebooks:
+            st.warning("Vui lòng tạo ít nhất một Sổ tri thức trước khi tải lên tài liệu.")
+        else:
+            selected_nb_id = st.selectbox("Chọn Sổ tri thức đích", options=list(nb_opts.keys()), format_func=lambda x: nb_opts[x])
+            
+            uploaded_file = st.file_uploader("Chọn tài liệu nguồn (TXT, MD, CSV, Excel, PDF)", type=["txt", "md", "csv", "xlsx", "xls", "pdf"])
+            doc_title = st.text_input("Tiêu đề tài liệu (để trống sẽ dùng tên tệp)")
+            doc_desc = st.text_area("Mô tả tài liệu")
+            
+            selected_nb = next(n for n in notebooks if n.notebook_id == selected_nb_id)
+            doc_privacy = st.selectbox("Mức độ riêng tư tài liệu", ["local_only", "redacted_export", "cloud_allowed"], index=["local_only", "redacted_export", "cloud_allowed"].index(selected_nb.privacy_level))
+            
+            if uploaded_file and st.button("Nạp vào Sổ tri thức"):
+                file_bytes = uploaded_file.read()
+                try:
+                    ingest_source_document(
+                        notebook_id=selected_nb_id,
+                        original_filename=uploaded_file.name,
+                        file_bytes=file_bytes,
+                        title=doc_title,
+                        description=doc_desc,
+                        privacy_level=doc_privacy
+                    )
+                    st.success(f"Đã nạp thành công tài liệu: {uploaded_file.name}")
+                    st.rerun()
+                except Exception as e:
+                    st.error(f"Lỗi nạp tài liệu: {e}")
+                    
+    with tab3:
+        st.subheader("Danh sách Tài liệu nguồn đã nạp")
+        sources = load_sources()
+        ws_nb_ids = {n.notebook_id for n in notebooks}
+        ws_sources = [s for s in sources if s.notebook_id in ws_nb_ids]
+        
+        if not ws_sources:
+            st.info("Chưa có tài liệu nguồn nào được nạp trong Workspace này.")
+        else:
+            source_opts = {s.source_id: f"{s.title} (Sổ: {nb_opts.get(s.notebook_id, s.notebook_id)})" for s in ws_sources}
+            selected_src_id = st.selectbox("Chọn tài liệu để xem", options=list(source_opts.keys()), format_func=lambda x: source_opts[x])
+            
+            if selected_src_id:
+                src = next(s for s in ws_sources if s.source_id == selected_src_id)
+                st.write("---")
+                st.write(f"### Chi tiết tài liệu: {src.title}")
+                st.write(f"- **Tên tệp gốc:** {src.original_filename}")
+                st.write(f"- **Định dạng:** {src.source_type.upper()}")
+                st.write(f"- **Mức riêng tư:** {src.privacy_level}")
+                st.write(f"- **Mô tả:** {src.description}")
+                st.write(f"- **Đường dẫn cục bộ:** `{src.asset_path}`")
+                
+                st.write("#### Xem trước nội dung (Preview - Tối đa 1000 ký tự):")
+                if src.preview_text:
+                    st.text_area("Nội dung trích xuất", value=src.preview_text, height=250, disabled=True)
+                else:
+                    st.info("Chưa có xem trước nội dung cho định dạng này ở M1.7.")
+
 def main():
     init_store()
-    if "page" not in st.session_state:
-        st.session_state.page = "Nhập nhanh sự việc"
-
+    init_workspace_store()
+    init_source_store()
+    
     st.sidebar.title("AIOS Case Cockpit")
-    pages = {
-        "Nhập nhanh sự việc": page_quick_intake,
-        "Tóm tắt hôm nay": page_today_brief,
-        "Hồ sơ sự việc": page_cases,
-        "Thêm bằng chứng": page_add_evidence,
-        "Bản đồ sự việc": page_case_map,
-        "Việc cần làm tiếp": page_next_actions,
-        "Gói câu lệnh cho AI": page_prompt_pack,
-        "Bàn giao": page_handover,
-        "Rút bài học": page_learning_memory,
-        "Kiểm tra an toàn": page_audit,
+    
+    # 1. Workspace Selection
+    workspaces = load_workspaces()
+    ws_options = {w.workspace_id: f"{w.name} ({w.workspace_id})" for w in workspaces}
+    
+    if "active_workspace_id" not in st.session_state:
+        st.session_state.active_workspace_id = "default"
+        
+    if st.session_state.active_workspace_id not in ws_options:
+        st.session_state.active_workspace_id = "default"
+        
+    active_ws_id = st.sidebar.selectbox(
+        "Không gian làm việc (Workspace - Không gian làm việc)",
+        options=list(ws_options.keys()),
+        index=list(ws_options.keys()).index(st.session_state.active_workspace_id),
+        key="active_workspace_id"
+    )
+    
+    # Workspace management expander
+    with st.sidebar.expander("🛠️ Quản lý Workspace"):
+        ws_name = st.text_input("Tên Workspace mới", key="new_ws_name")
+        ws_desc = st.text_area("Mô tả Workspace", key="new_ws_desc")
+        if st.button("Tạo Workspace"):
+            if ws_name.strip():
+                import uuid
+                new_ws_id = f"WS-{str(uuid.uuid4())[:8].upper()}"
+                new_ws = Workspace(
+                    workspace_id=new_ws_id,
+                    name=ws_name.strip(),
+                    description=ws_desc.strip()
+                )
+                save_workspace(new_ws)
+                st.success(f"Đã tạo Workspace: {ws_name}")
+                st.rerun()
+            else:
+                st.error("Tên Workspace không được để trống.")
+                
+    st.sidebar.markdown("---")
+    
+    # 2. Category selection (5 main navigation groups)
+    main_categories = {
+        "🏠 Tổng quan & Bắt đầu": "home",
+        "📚 Sổ tri thức (Notebook - Sổ tri thức)": "notebook",
+        "📁 Hồ sơ sự việc (Case - Hồ sơ sự việc)": "case",
+        "📤 Xuất kết quả": "export",
+        "🎓 Học nghề & An toàn": "learning"
     }
     
-    # Sử dụng key="page" để liên kết trực tiếp với st.session_state.page và đảm bảo chuyển trang tức thì chỉ với 1 click
-    selected = st.sidebar.radio("Điều hướng", list(pages.keys()), key="page")
+    if "active_main_category" not in st.session_state:
+        st.session_state.active_main_category = "🏠 Tổng quan & Bắt đầu"
+        
+    if st.session_state.active_main_category not in main_categories:
+        st.session_state.active_main_category = "🏠 Tổng quan & Bắt đầu"
+        
+    selected_category = st.sidebar.radio(
+        "Phân vùng chức năng",
+        options=list(main_categories.keys()),
+        index=list(main_categories.keys()).index(st.session_state.active_main_category),
+        key="active_main_category"
+    )
     
-    pages[selected]()
+    # Reset case choice if switching workspaces
+    active_case = get_active_case()
+    if active_case and active_case.workspace_id != st.session_state.active_workspace_id:
+        if "active_case_id" in st.session_state:
+            del st.session_state.active_case_id
+            active_case = None
+            
+    # Show active case in sidebar
+    if active_case:
+        st.sidebar.markdown("---")
+        st.sidebar.info(f"📁 **Hồ sơ đang xử lý:**\n**{active_case.title}**\n({active_case.case_id})")
+        
+    # 3. Main Area - Render based on category and sub-tabs
+    if selected_category == "🏠 Tổng quan & Bắt đầu":
+        tab1, tab2 = st.tabs(["☀️ Tóm tắt hôm nay", "⚡ Nhập nhanh sự việc"])
+        with tab1:
+            page_today_brief()
+        with tab2:
+            page_quick_intake()
+            
+    elif selected_category == "📚 Sổ tri thức (Notebook - Sổ tri thức)":
+        page_notebooks()
+        
+    elif selected_category == "📁 Hồ sơ sự việc (Case - Hồ sơ sự việc)":
+        tab1, tab2, tab3, tab4 = st.tabs(["🗂️ Hồ sơ sự việc", "📎 Thêm bằng chứng", "🗺️ Bản đồ sự việc", "🚀 Việc cần làm tiếp"])
+        with tab1:
+            page_cases()
+        with tab2:
+            page_add_evidence()
+        with tab3:
+            page_case_map()
+        with tab4:
+            page_next_actions()
+            
+    elif selected_category == "📤 Xuất kết quả":
+        tab1, tab2 = st.tabs(["🤖 Gói câu lệnh cho AI", "🤝 Bàn giao"])
+        with tab1:
+            page_prompt_pack()
+        with tab2:
+            page_handover()
+            
+    elif selected_category == "🎓 Học nghề & An toàn":
+        tab1, tab2 = st.tabs(["🧠 Rút bài học", "🛡️ Kiểm tra an toàn"])
+        with tab1:
+            page_learning_memory()
+        with tab2:
+            page_audit()
 
 def launch():
     import subprocess

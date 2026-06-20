@@ -20,17 +20,23 @@ def init_store():
         EVIDENCE_FILE.touch()
 
 def load_cases() -> List[Case]:
+    import inspect
     init_store()
     cases = []
+    case_fields = {p.name for p in inspect.signature(Case).parameters.values()}
     with open(CASES_FILE, 'r', encoding='utf-8') as f:
         for line in f:
             if line.strip():
                 try:
                     data = json.loads(line)
-                    cases.append(Case(**data))
+                    filtered_data = {k: v for k, v in data.items() if k in case_fields}
+                    cases.append(Case(**filtered_data))
                 except Exception:
                     pass
     return cases
+
+def load_cases_for_workspace(workspace_id: str) -> List[Case]:
+    return [c for c in load_cases() if c.workspace_id == workspace_id]
 
 def load_evidence() -> List[EvidenceItem]:
     init_store()

@@ -101,6 +101,40 @@ def build_prompt_pack(case: Case, evidence_items: List[EvidenceItem], target: st
     prompt += "Tóm tắt Bằng chứng:\n"
     prompt += summarize_evidence_for_prompt(evidence_items, target, include_local_only)
     
+    # Tích hợp tài liệu tham chiếu từ Sổ tri thức
+    try:
+        from aios_habit.workspace_models import load_notebooks
+        from aios_habit.source_ingest import load_sources
+        notebooks = {n.notebook_id: n for n in load_notebooks()}
+        sources = load_sources()
+    except Exception:
+        notebooks = {}
+        sources = []
+        
+    target_lower = target.lower()
+    if target_lower == "notebooklm_safe":
+        should_include_local_only_data = False
+    elif target_lower in ("gemini", "gpt", "copilot"):
+        should_include_local_only_data = include_local_only
+    elif target_lower == "local_ai":
+        should_include_local_only_data = include_local_only
+    else:
+        should_include_local_only_data = False
+        
+    if hasattr(case, "linked_notebook_ids") and case.linked_notebook_ids:
+        linked_nbs = [notebooks[nb_id] for nb_id in case.linked_notebook_ids if nb_id in notebooks]
+        if linked_nbs:
+            prompt += "\n\nTài liệu tham chiếu từ Sổ tri thức (Knowledge Notebook References):\n"
+            for nb in linked_nbs:
+                prompt += f"- Sổ tri thức: {nb.name} (Mức riêng tư: {nb.privacy_level})\n"
+                nb_sources = [s for s in sources if s.notebook_id == nb.notebook_id]
+                for src in nb_sources:
+                    if src.privacy_level == "local_only" and not should_include_local_only_data:
+                        prompt += f"  * [Tài liệu nguồn] {src.title}: [ĐÃ LOẠI BỎ VÌ RIÊNG TƯ - local_only]\n"
+                    else:
+                        snippet = src.preview_text[:200] if src.preview_text else ""
+                        prompt += f"  * [Tài liệu nguồn] {src.title} ({src.filename}): {snippet}...\n"
+    
     prompt += "\n\nGiả thuyết:\n"
     for h in case.hypotheses:
         prompt += f"- {h}\n"

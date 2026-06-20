@@ -14,8 +14,8 @@ This document serves as the high-level index for the development phases, product
 - **M1.4 (Senior Learning Memory MVP):** Completed (Conditional PASS).
 - **M1.5 (Pilot UX & Export Safety Hardening):** Completed.
 - **M1.6 (Roadmap Governance Lock):** ✅ Completed (Doctrine and roles locked in docs).
-- **M1.6B (Governance Cleanup):** **Current Gate** (Changelog/status cleanup and role-first agent rules).
-- **M1.7 (Workspace + Knowledge Notebook + Simplified Navigation):** **Immediate Next Gate** (Simplify navigation, introduce isolated workspaces and notebooks, link cases to notebooks, upload source files).
+- **M1.6B (Governance Cleanup):** ✅ Completed (Changelog/status cleanup and role-first agent rules).
+- **M1.7 (Workspace + Knowledge Notebook + Simplified Navigation):** **Implemented / Pending Audit** (Workspace isolation, Knowledge Notebook upload, simplified central sidebar navigation, case linking).
 - **Phase 2 (Real Work Pilot):** Planned (Will start after M1.7 is stable).
 
 ---

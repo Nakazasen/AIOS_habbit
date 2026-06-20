@@ -1,5 +1,20 @@
 # Changelog
 
+## 2026-06-21 - Workspace, Notebook, and Navigation Simplification (M1.7)
+
+### Added
+- Created `src/aios_habit/workspace_models.py` defining `Workspace` and `KnowledgeNotebook` models and local storage.
+- Created `src/aios_habit/source_ingest.py` supporting safe document ingestion under `local_cases/notebook_assets/` using `Path.is_relative_to()` path containment checks.
+- Created user documentation `docs/KNOWLEDGE_NOTEBOOK.md` outlining workspaces, notebooks, and source vs. evidence data separation.
+- Created test suite `tests/test_workspace_notebook.py` covering model defaults, containment safety, and sentinel privacy leak protection.
+
+### Changed
+- Refactored `case_cockpit.py` sidebar navigation: reduced choice clutter by grouping pages into 5 main categories and using native Streamlit tabs inside the content area.
+- Added a Workspace selector and management tools directly in the sidebar.
+- Added Sổ tri thức (Knowledge Notebook) page enabling notebook creation and source document upload with preview parsing.
+- Expanded `Case` model with `workspace_id` and `linked_notebook_ids` fields while maintaining 100% backward compatibility.
+- Integrated linked notebook and source document reference sections in prompt compilations (`case_prompt.py`) and safety validation rules (`case_audit.py`).
+
 ## 2026-06-20 - Roadmap Governance Lock
 
 ### Added

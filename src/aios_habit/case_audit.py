@@ -126,6 +126,43 @@ def audit_case_cockpit_state(
                                     leaked = True
                                     break
 
+    # Kiểm tra bảo mật và toàn vẹn của Sổ tri thức & Tài liệu nguồn
+    if case:
+        try:
+            from aios_habit.workspace_models import load_notebooks
+            from aios_habit.source_ingest import load_sources, NOTEBOOK_ASSETS_DIR
+            notebooks = {n.notebook_id: n for n in load_notebooks()}
+            sources = load_sources()
+            resolved_notebook_assets_dir = NOTEBOOK_ASSETS_DIR.resolve()
+        except Exception:
+            notebooks = {}
+            sources = []
+            resolved_notebook_assets_dir = None
+
+        # 1. Kiểm tra sự tồn tại của Sổ tri thức liên kết
+        if hasattr(case, "linked_notebook_ids") and case.linked_notebook_ids:
+            for nb_id in case.linked_notebook_ids:
+                if nb_id not in notebooks:
+                    warnings.append(f"Hồ sơ liên kết với Sổ tri thức '{nb_id}' nhưng Sổ tri thức này không tồn tại trong hệ thống.")
+
+        # 2. Kiểm tra path containment và rò rỉ riêng tư của các tài liệu nguồn
+        for src in sources:
+            if src.asset_path and resolved_notebook_assets_dir:
+                try:
+                    p = Path(src.asset_path).resolve()
+                    if not p.is_relative_to(resolved_notebook_assets_dir):
+                        errors.append(f"Tài liệu nguồn {src.source_id} có đường dẫn tệp '{src.asset_path}' nằm ngoài thư mục lưu trữ Sổ tri thức cục bộ '{resolved_notebook_assets_dir}'.")
+                except Exception as e:
+                    errors.append(f"Tài liệu nguồn {src.source_id} có đường dẫn tệp không hợp lệ: {e}")
+
+            if src.privacy_level == "local_only" and prompt_outputs:
+                has_text = bool(src.preview_text and src.preview_text.strip())
+                if has_text:
+                    for target, prompt_text in prompt_outputs.items():
+                        if target.lower() in ("notebooklm_safe", "gemini", "gpt", "copilot"):
+                            if src.preview_text in prompt_text:
+                                errors.append(f"Tài liệu nguồn local_only '{src.source_id}' bị rò rỉ nội dung trong prompt đích '{target}'.")
+
     status = "FAIL" if errors else "PASS"
     return {
         "status": status,

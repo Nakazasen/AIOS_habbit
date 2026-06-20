@@ -34,3 +34,5 @@ class Case:
     outcome: str = ""
     lessons_learned: str = ""
     privacy_level: str = "local_only"
+    workspace_id: str = "default"
+    linked_notebook_ids: List[str] = field(default_factory=list)

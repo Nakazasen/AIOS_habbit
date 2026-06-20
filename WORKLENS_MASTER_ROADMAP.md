@@ -15,8 +15,8 @@ The project has advanced through the following local-first stabilization gates:
 - **M1.4: Senior Learning Memory MVP** — Completed (Conditional PASS; model, storage, and UI form completed).
 - **M1.5: Pilot UX / Export Safety Hardening** — Completed (Implemented and validated; compact UI mode, extracted pure handover helper, audit warnings, and export mode options).
 - **M1.6: Roadmap Governance Lock** — ✅ Completed (Locking product doctrine, loop, layers, model roles, and phase definitions).
-- **M1.6B: Governance Cleanup** — Current small cleanup (Changelog/status cleanup and role-first agent rules).
-- **M1.7: Workspace + Knowledge Notebook + Simplified Navigation** — Next immediate product gate (Simplify navigation, introduce isolated workspaces/notebooks, allow uploading source documents, link cases to notebooks, no full RAG yet).
+- **M1.6B: Governance Cleanup** — Completed (Changelog/status cleanup and role-first agent rules).
+- **M1.7: Workspace + Knowledge Notebook + Simplified Navigation** — Implemented / Pending Audit (Workspace isolation, Knowledge Notebook upload, simplified central sidebar navigation, case linking, no full RAG yet).
 - **Phase 2 Real Work Pilot** — **Upcoming** (Will begin once M1.7 and governance shells are stable).
 
 ---

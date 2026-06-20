@@ -13,6 +13,8 @@ AIOS Case Cockpit v0.1 is currently implemented as a Streamlit monolith in [case
 - [case_audit.py](file:///D:/Sandbox/AIOS_habbit/src/aios_habit/case_audit.py) (Safety Audits)
 - [case_handover.py](file:///D:/Sandbox/AIOS_habbit/src/aios_habit/case_handover.py) (Handover Formatting)
 - [learning_models.py](file:///D:/Sandbox/AIOS_habbit/src/aios_habit/learning_models.py) (Senior Learning Card Storage)
+- [workspace_models.py](file:///D:/Sandbox/AIOS_habbit/src/aios_habit/workspace_models.py) (Workspace & Knowledge Notebook storage/models)
+- [source_ingest.py](file:///D:/Sandbox/AIOS_habbit/src/aios_habit/source_ingest.py) (Source Document upload & preview parsing)
 
 ---
 
