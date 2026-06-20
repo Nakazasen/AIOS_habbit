@@ -93,22 +93,69 @@ def test_prompt_pack_respects_learning_privacy_sentinel():
         assert sentinel in prompt
         assert "ĐÃ LOẠI BỎ" not in prompt
 
-def test_handover_includes_learning_when_available():
-    # Handover layout check: must include learning card status and fields
-    import streamlit as st
-    # Handover is tested through output composition or formatting check.
-    # Handover generation is integrated into case_cockpit but we can check format rules here.
-    # If card is draft, handover must warning it is unconfirmed.
+def test_build_handover_markdown_local_includes_learning():
+    from aios_habit.case_handover import build_handover_markdown
+    c = Case(case_id="C1", title="Test Case", current_situation="Sit", privacy_level="local_only")
+    card = SeniorLearningCard(learning_id="L1", case_id="C1", confidence="draft", symptoms="Symp Text", true_cause="My Cause")
+    md = build_handover_markdown(c, [], card, "local")
+    assert "Bản nháp" in md
+    assert "Lưu ý" in md
+    assert "Symp Text" in md
+    assert "My Cause" in md
+    assert "Cảnh báo Bảo mật" in md
+
+def test_build_handover_markdown_cloud_safe_redacts_local_only_learning():
+    from aios_habit.case_handover import build_handover_markdown
+    # If case is local_only, cloud_safe handover must redact/exclude the learning raw text.
+    c = Case(case_id="C1", title="Test Case", current_situation="Sit", privacy_level="local_only")
+    card = SeniorLearningCard(learning_id="L1", case_id="C1", confidence="confirmed", symptoms="SECRET_HANDOVER_LOCAL_ONLY_DO_NOT_LEAK", true_cause="My Cause")
+    md = build_handover_markdown(c, [], card, "cloud_safe")
+    assert "SECRET_HANDOVER_LOCAL_ONLY_DO_NOT_LEAK" not in md
+    assert "My Cause" not in md
+    assert "bị loại bỏ vì hồ sơ chỉ lưu cục bộ" in md
+
+def test_build_handover_markdown_redacted_does_not_include_raw_local_only():
+    from aios_habit.case_handover import build_handover_markdown
+    c = Case(case_id="C1", title="Test Case", current_situation="Sit", privacy_level="local_only")
+    ev = EvidenceItem(evidence_id="E1", case_id="C1", source_type="note", source_path="manual", title="My Ev", extracted_text="SECRET_HANDOVER_LOCAL_ONLY_DO_NOT_LEAK", privacy_level="local_only")
+    card = SeniorLearningCard(learning_id="L1", case_id="C1", confidence="confirmed", symptoms="SECRET_HANDOVER_LOCAL_ONLY_DO_NOT_LEAK")
+    md = build_handover_markdown(c, [ev], card, "redacted")
+    assert "SECRET_HANDOVER_LOCAL_ONLY_DO_NOT_LEAK" not in md
+    assert "ĐÃ ẨN VÌ RIÊNG TƯ" in md
+
+def test_confirmed_learning_without_verification_warns():
+    c = Case(case_id="C1", title="Local Case", current_situation="Situation info", privacy_level="local_only")
+    card = SeniorLearningCard(learning_id="L1", case_id="C1", confidence="confirmed", symptoms="SECRET_DATA", verification_evidence="none")
     
-    card_draft = SeniorLearningCard(learning_id="L1", case_id="C1", confidence="draft", symptoms="Symp Text", true_cause="My Cause")
+    # Mock load_learning_cards_for_case to return card
+    import aios_habit.learning_models
+    original_load = aios_habit.learning_models.load_learning_cards_for_case
+    aios_habit.learning_models.load_learning_cards_for_case = lambda cid: [card]
     
-    md_draft = "## Bài học / Kinh nghiệm\nTrạng thái thẻ: Bản nháp\n"
-    md_draft += "> ⚠️ Lưu ý: Nội dung dưới đây là bài học chưa được xác nhận hoàn toàn (chỉ mang tính chất tham khảo).\n\n"
-    md_draft += f"- Triệu chứng: {card_draft.symptoms}\n"
+    try:
+        res = audit_case_cockpit_state(c, [], {})
+        assert any("thiếu bằng chứng kiểm chứng" in warn for warn in res["warnings"])
+    finally:
+        aios_habit.learning_models.load_learning_cards_for_case = original_load
+
+def test_prompt_pack_learning_inclusion_status():
+    from aios_habit.case_prompt import get_learning_prompt_policy
+    c_local = Case(case_id="C1", title="Local Case", current_situation="Sit", privacy_level="local_only")
+    c_cloud = Case(case_id="C2", title="Cloud Case", current_situation="Sit", privacy_level="cloud_allowed")
+    card_draft = SeniorLearningCard(learning_id="L1", case_id="C1", confidence="draft")
+    card_conf = SeniorLearningCard(learning_id="L2", case_id="C2", confidence="confirmed")
     
-    assert "Bản nháp" in md_draft
-    assert "Lưu ý" in md_draft
-    assert "Symp Text" in md_draft
+    p1 = get_learning_prompt_policy(c_local, card_conf, "gemini")
+    assert p1["include_raw"] is False
+    assert "hồ sơ chỉ lưu cục bộ" in p1["status_label_vi"]
+    
+    p2 = get_learning_prompt_policy(c_cloud, card_draft, "gemini")
+    assert p2["include_raw"] is False
+    assert "chưa xác nhận" in p2["status_label_vi"]
+    
+    p3 = get_learning_prompt_policy(c_cloud, card_conf, "gemini")
+    assert p3["include_raw"] is True
+    assert "đã xác nhận và privacy cho phép" in p3["status_label_vi"]
 
 def test_audit_checks_learning_safety():
     # Audit helper check

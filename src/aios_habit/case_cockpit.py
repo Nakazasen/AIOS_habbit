@@ -326,8 +326,24 @@ def page_prompt_pack():
     }
     
     mapped_target, include_local_only = target_mapping[target]
-    prompt = build_prompt_pack(active_case, evs, mapped_target, include_local_only)
     
+    # Lấy thông tin thẻ học nghề và gọi helper để hiển thị trạng thái
+    try:
+        from aios_habit.learning_models import load_learning_cards_for_case
+        cards = load_learning_cards_for_case(active_case.case_id)
+        learning_card = cards[0] if cards else None
+    except Exception:
+        learning_card = None
+        
+    from aios_habit.case_prompt import get_learning_prompt_policy
+    policy = get_learning_prompt_policy(active_case, learning_card, mapped_target, include_local_only)
+    
+    if policy["include_raw"]:
+        st.info(f"💡 {policy['status_label_vi']}")
+    else:
+        st.warning(f"⚠️ {policy['status_label_vi']}")
+        
+    prompt = build_prompt_pack(active_case, evs, mapped_target, include_local_only, learning_card=learning_card)
     st.text_area("Nội dung gói câu lệnh đã sinh (Copy-paste)", value=prompt, height=300)
 
 def page_handover():
@@ -339,23 +355,20 @@ def page_handover():
         
     evs = [e for e in load_evidence() if e.case_id == active_case.case_id]
     
-    status_vn = {"open": "Mở", "investigating": "Đang điều tra", "waiting": "Đang chờ", "resolved": "Đã giải quyết", "archived": "Đã lưu trữ"}.get(active_case.status, active_case.status)
-    priority_vn = {"low": "Thấp", "normal": "Bình thường", "high": "Cao", "critical": "Khẩn cấp"}.get(active_case.priority, active_case.priority)
+    st.write("---")
+    st.subheader("Cài đặt bàn giao")
+    export_mode_vn = st.selectbox(
+        "Chế độ xuất bàn giao",
+        ["Bản nội bộ", "Bản ẩn dữ liệu", "Bản an toàn cho AI/cloud"],
+        help="Lựa chọn mức độ bảo mật thông tin trước khi sao chép hoặc tải xuống."
+    )
+    mode_mapping = {
+        "Bản nội bộ": "local",
+        "Bản ẩn dữ liệu": "redacted",
+        "Bản an toàn cho AI/cloud": "cloud_safe"
+    }
+    export_mode = mode_mapping[export_mode_vn]
     
-    md = f"# Bàn giao Hồ sơ Sự việc: {active_case.title}\n"
-    md += f"**Trạng thái:** {status_vn} | **Độ ưu tiên:** {priority_vn}\n\n"
-    md += f"## Tóm tắt Tình huống (Situation)\n{active_case.current_situation}\n\n"
-    md += "## Bằng chứng (Evidence)\n"
-    for e in evs:
-        md += f"- {e.title} ({e.source_type})\n"
-    md += "\n## Dòng thời gian (Timeline)\n"
-    for t in active_case.timeline_events:
-        md += f"- {t['date']}: {t['event']}\n"
-    md += "\n## Các việc cần làm tiếp theo\n"
-    for a in active_case.next_actions:
-        md += f"- {a}\n"
-        
-    # Tích hợp Senior Learning Card vào bàn giao công việc
     try:
         from aios_habit.learning_models import load_learning_cards_for_case
         cards = load_learning_cards_for_case(active_case.case_id)
@@ -363,31 +376,8 @@ def page_handover():
     except Exception:
         learning_card = None
 
-    if learning_card:
-        conf_map = {"draft": "Bản nháp", "reviewed": "Đã xem lại", "confirmed": "Đã xác nhận"}
-        conf_vn = conf_map.get(learning_card.confidence, learning_card.confidence)
-        
-        md += "\n## Bài học / Kinh nghiệm\n"
-        md += f"**Trạng thái thẻ:** {conf_vn}\n"
-        if learning_card.confidence != "confirmed":
-            md += "\n> ⚠️ Lưu ý: Nội dung dưới đây là bài học chưa được xác nhận hoàn toàn (chỉ mang tính chất tham khảo).\n\n"
-        else:
-            md += "\n> ✅ Bài học đã được xác nhận kiểm chứng.\n\n"
-            
-        if learning_card.symptoms:
-            md += f"- **Triệu chứng:** {learning_card.symptoms}\n"
-        if learning_card.true_cause:
-            md += f"- **Nguyên nhân thật:** {learning_card.true_cause}\n"
-        if learning_card.actions_taken:
-            md += f"- **Đối sách:** {learning_card.actions_taken}\n"
-        if learning_card.reusable_lesson:
-            md += f"- **Bài học tái sử dụng:** {learning_card.reusable_lesson}\n"
-        if learning_card.check_first_next_time:
-            md += f"- **Lần sau kiểm gì trước:** {learning_card.check_first_next_time}\n"
-        if learning_card.retrieval_keywords:
-            md += f"- **Từ khóa tìm lại:** {learning_card.retrieval_keywords}\n"
-        
-    md += "\n> ⚠️ Cảnh báo Bảo mật: Tài liệu này chứa dữ liệu sự việc chỉ lưu cục bộ."
+    from aios_habit.case_handover import build_handover_markdown
+    md = build_handover_markdown(active_case, evs, learning_card, export_mode)
     
     st.markdown("### Xem trước (Preview)")
     st.markdown(md)
@@ -431,6 +421,9 @@ def page_audit():
 
 def page_learning_memory():
     st.title("🧠 Rút bài học (Trí nhớ học nghề)")
+    
+    st.info("💡 Senior Learning Memory MVP hiện là local-first. Chưa phải cloud/export-ready nếu chưa dùng redacted/cloud_safe mode và kiểm tra an toàn.")
+    
     active_case = get_active_case()
     if not active_case:
         st.warning("Vui lòng chọn một hồ sơ sự việc trong tab 'Hồ sơ sự việc' trước.")
@@ -453,6 +446,12 @@ def page_learning_memory():
     
     st.warning("⚠️ Không ghi nguyên nhân thật nếu chưa có bằng chứng xác nhận. Nếu case chưa kết thúc, hãy để trạng thái bản nháp hoặc ghi 'chưa xác nhận'.")
     
+    # Xác định giá trị ban đầu cho trường Nguyên nhân / Giả thuyết hiện tại
+    if card.confidence == "confirmed":
+        init_cause_hypo = card.true_cause
+    else:
+        init_cause_hypo = card.initial_hypotheses
+        
     with st.form("learning_card_form"):
         # Status & Confidence
         conf_options = ["draft", "reviewed", "confirmed"]
@@ -464,63 +463,100 @@ def page_learning_memory():
             format_func=lambda x: conf_labels[x]
         )
         
+        # PHẦN 1: TỐI THIỂU ĐỂ LƯU BÀI HỌC (COMPACT MODE)
+        st.markdown("### 📝 Tối thiểu để lưu bài học")
+        c_symptoms = st.text_area("Triệu chứng (Symptoms) [Bản rút gọn]", value=card.symptoms, height=70, key="c_symptoms")
+        c_cause_hypo = st.text_area("Nguyên nhân / giả thuyết hiện tại (nếu chưa xác nhận, hãy ghi ở dạng giả thuyết)", value=init_cause_hypo, height=70, key="c_cause_hypo")
+        c_verification_evidence = st.text_area("Bằng chứng kiểm chứng [Bản rút gọn]", value=card.verification_evidence, height=70, key="c_verification_evidence")
+        c_check_first_next_time = st.text_input("Lần sau nên kiểm gì trước [Bản rút gọn]", value=card.check_first_next_time, key="c_check_first_next_time")
+        c_reusable_lesson = st.text_area("Bài học tái sử dụng [Bản rút gọn]", value=card.reusable_lesson, height=70, key="c_reusable_lesson")
+        
+        st.markdown("---")
+        st.markdown("### 🔍 Các trường chi tiết nâng cao")
+        
         # 1. Sự việc và triệu chứng
-        with st.expander("🔍 1. Sự việc và triệu chứng", expanded=True):
-            symptoms = st.text_area("Triệu chứng thấy được (Symptoms)", value=card.symptoms, height=80)
-            related_systems = st.text_input("Hệ thống/bộ phận liên quan (Related Systems)", value=card.related_systems)
-            related_artifacts = st.text_input("Log/bảng/file/màn hình liên quan (Related Artifacts)", value=card.related_artifacts)
+        with st.expander("🔍 1. Sự việc và triệu chứng", expanded=False):
+            a_symptoms = st.text_area("Triệu chứng thấy được (Symptoms)", value=card.symptoms, height=80, key="a_symptoms")
+            a_related_systems = st.text_input("Hệ thống/bộ phận liên quan (Related Systems)", value=card.related_systems, key="a_related_systems")
+            a_related_artifacts = st.text_input("Log/bảng/file/màn hình liên quan (Related Artifacts)", value=card.related_artifacts, key="a_related_artifacts")
             
         # 2. Suy luận và kiểm chứng
         with st.expander("🧩 2. Suy luận và kiểm chứng", expanded=False):
-            initial_hypotheses = st.text_area("Giả thuyết ban đầu (Initial Hypotheses)", value=card.initial_hypotheses, height=80)
-            rejected_hypotheses = st.text_area("Giả thuyết bị loại bỏ (Rejected Hypotheses)", value=card.rejected_hypotheses, height=80)
-            true_cause = st.text_input("Nguyên nhân thật (True Cause)", value=card.true_cause, placeholder="Có thể để trống hoặc ghi 'chưa xác nhận'")
-            causal_chain = st.text_area("Chuỗi nhân quả (Causal Chain)", value=card.causal_chain, height=80)
-            verification_evidence = st.text_area("Bằng chứng xác nhận (Verification Evidence)", value=card.verification_evidence, height=80)
-            counter_evidence = st.text_area("Bằng chứng phản bác (Counter Evidence)", value=card.counter_evidence, height=80)
+            a_initial_hypotheses = st.text_area("Giả thuyết ban đầu (Initial Hypotheses)", value=card.initial_hypotheses, height=80, key="a_initial_hypotheses")
+            a_rejected_hypotheses = st.text_area("Giả thuyết bị loại bỏ (Rejected Hypotheses)", value=card.rejected_hypotheses, height=80, key="a_rejected_hypotheses")
+            a_true_cause = st.text_input("Nguyên nhân thật (True Cause)", value=card.true_cause, placeholder="Có thể để trống hoặc ghi 'chưa xác nhận'", key="a_true_cause")
+            a_causal_chain = st.text_area("Chuỗi nhân quả (Causal Chain)", value=card.causal_chain, height=80, key="a_causal_chain")
+            a_verification_evidence = st.text_area("Bằng chứng xác nhận (Verification Evidence)", value=card.verification_evidence, height=80, key="a_verification_evidence")
+            a_counter_evidence = st.text_area("Bằng chứng phản bác (Counter Evidence)", value=card.counter_evidence, height=80, key="a_counter_evidence")
             
         # 3. Đối ứng
         with st.expander("🛠️ 3. Đối ứng", expanded=False):
-            actions_taken = st.text_area("Đối sách đã làm (Actions Taken)", value=card.actions_taken, height=80)
-            result_outcome = st.text_area("Kết quả sau đối ứng (Result Outcome)", value=card.result_outcome, height=80)
+            a_actions_taken = st.text_area("Đối sách đã làm (Actions Taken)", value=card.actions_taken, height=80, key="a_actions_taken")
+            a_result_outcome = st.text_area("Kết quả sau đối ứng (Result Outcome)", value=card.result_outcome, height=80, key="a_result_outcome")
             
         # 4. Bài học cho lần sau
         with st.expander("💡 4. Bài học cho lần sau", expanded=False):
-            reusable_lesson = st.text_area("Bài học tái sử dụng (Reusable Lesson)", value=card.reusable_lesson, height=80)
-            pattern_to_recognize = st.text_area("Dấu hiệu nhận diện pattern này (Pattern to Recognize)", value=card.pattern_to_recognize, height=80)
-            applies_when = st.text_input("Điều kiện áp dụng (Applies When)", value=card.applies_when)
-            does_not_apply_when = st.text_input("Điều kiện không áp dụng (Does Not Apply When)", value=card.does_not_apply_when)
-            check_first_next_time = st.text_input("Lần sau nên kiểm gì trước (Check First Next Time)", value=card.check_first_next_time)
-            retrieval_keywords = st.text_input("Từ khóa để tìm lại (Retrieval Keywords)", value=card.retrieval_keywords)
+            a_reusable_lesson = st.text_area("Bài học tái sử dụng (Reusable Lesson)", value=card.reusable_lesson, height=80, key="a_reusable_lesson")
+            a_pattern_to_recognize = st.text_area("Dấu hiệu nhận diện pattern này (Pattern to Recognize)", value=card.pattern_to_recognize, height=80, key="a_pattern_to_recognize")
+            a_applies_when = st.text_input("Điều kiện áp dụng (Applies When)", value=card.applies_when, key="a_applies_when")
+            a_does_not_apply_when = st.text_input("Điều kiện không áp dụng (Does Not Apply When)", value=card.does_not_apply_when, key="a_does_not_apply_when")
+            a_check_first_next_time = st.text_input("Lần sau nên kiểm gì trước (Check First Next Time)", value=card.check_first_next_time, key="a_check_first_next_time")
+            a_retrieval_keywords = st.text_input("Từ khóa để tìm lại (Retrieval Keywords)", value=card.retrieval_keywords, key="a_retrieval_keywords")
             
         # 5. Giao tiếp hữu ích
         with st.expander("💬 5. Giao tiếp hữu ích & Cập nhật tri thức", expanded=False):
-            useful_reply_vi = st.text_area("Câu trả lời tiếng Việt hữu ích (Useful Reply VI)", value=card.useful_reply_vi, height=80)
-            useful_reply_ja = st.text_area("Câu trả lời tiếng Nhật hữu ích (Useful Reply JA)", value=card.useful_reply_ja, height=80)
-            knowledge_update_note = st.text_area("Ghi chú cập nhật tri thức (Knowledge Update Note)", value=card.knowledge_update_note, height=80)
+            a_useful_reply_vi = st.text_area("Câu trả lời tiếng Việt hữu ích (Useful Reply VI)", value=card.useful_reply_vi, height=80, key="a_useful_reply_vi")
+            a_useful_reply_ja = st.text_area("Câu trả lời tiếng Nhật hữu ích (Useful Reply JA)", value=card.useful_reply_ja, height=80, key="a_useful_reply_ja")
+            a_knowledge_update_note = st.text_area("Ghi chú cập nhật tri thức (Knowledge Update Note)", value=card.knowledge_update_note, height=80, key="a_knowledge_update_note")
             
         if st.form_submit_button("Lưu thẻ học nghề"):
+            def resolve_field(orig, comp, adv):
+                orig_s = (orig or "").strip()
+                comp_s = (comp or "").strip()
+                adv_s = (adv or "").strip()
+                if not comp_s:
+                    return adv_s if adv_s else orig_s
+                if comp_s != orig_s and adv_s == orig_s:
+                    return comp_s
+                if adv_s != orig_s and comp_s == orig_s:
+                    return adv_s
+                if adv_s != orig_s:
+                    return adv_s
+                return comp_s
+
+            # Resolve 4 simple shared fields
+            card.symptoms = resolve_field(card.symptoms, c_symptoms, a_symptoms)
+            card.verification_evidence = resolve_field(card.verification_evidence, c_verification_evidence, a_verification_evidence)
+            card.check_first_next_time = resolve_field(card.check_first_next_time, c_check_first_next_time, a_check_first_next_time)
+            card.reusable_lesson = resolve_field(card.reusable_lesson, c_reusable_lesson, a_reusable_lesson)
+
+            # Resolve Cause / Hypothesis field deterministically
+            orig_cause_hypo = card.true_cause if card.confidence == "confirmed" else card.initial_hypotheses
+            if (c_cause_hypo or "").strip() != (orig_cause_hypo or "").strip():
+                if confidence == "confirmed":
+                    card.true_cause = c_cause_hypo
+                else:
+                    card.initial_hypotheses = c_cause_hypo
+            else:
+                card.initial_hypotheses = a_initial_hypotheses
+                card.true_cause = a_true_cause
+
+            # Other fields from advanced expanders
             card.confidence = confidence
-            card.symptoms = symptoms
-            card.related_systems = related_systems
-            card.related_artifacts = related_artifacts
-            card.initial_hypotheses = initial_hypotheses
-            card.rejected_hypotheses = rejected_hypotheses
-            card.true_cause = true_cause
-            card.causal_chain = causal_chain
-            card.verification_evidence = verification_evidence
-            card.counter_evidence = counter_evidence
-            card.actions_taken = actions_taken
-            card.result_outcome = result_outcome
-            card.reusable_lesson = reusable_lesson
-            card.pattern_to_recognize = pattern_to_recognize
-            card.applies_when = applies_when
-            card.does_not_apply_when = does_not_apply_when
-            card.check_first_next_time = check_first_next_time
-            card.retrieval_keywords = retrieval_keywords
-            card.useful_reply_vi = useful_reply_vi
-            card.useful_reply_ja = useful_reply_ja
-            card.knowledge_update_note = knowledge_update_note
+            card.related_systems = a_related_systems
+            card.related_artifacts = a_related_artifacts
+            card.rejected_hypotheses = a_rejected_hypotheses
+            card.causal_chain = a_causal_chain
+            card.counter_evidence = a_counter_evidence
+            card.actions_taken = a_actions_taken
+            card.result_outcome = a_result_outcome
+            card.pattern_to_recognize = a_pattern_to_recognize
+            card.applies_when = a_applies_when
+            card.does_not_apply_when = a_does_not_apply_when
+            card.retrieval_keywords = a_retrieval_keywords
+            card.useful_reply_vi = a_useful_reply_vi
+            card.useful_reply_ja = a_useful_reply_ja
+            card.knowledge_update_note = a_knowledge_update_note
             card.updated_at = datetime.now().isoformat()
             
             save_learning_card(card)

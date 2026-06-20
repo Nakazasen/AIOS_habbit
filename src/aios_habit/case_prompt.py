@@ -33,6 +33,68 @@ def summarize_evidence_for_prompt(evidence_items: List[EvidenceItem], target: st
         summary_text += "Một số bằng chứng local_only (chỉ lưu cục bộ) đã bị loại bỏ vì lý do riêng tư."
     return summary_text
 
+def get_learning_prompt_policy(case, learning_card, target: str, include_local_only: bool = False) -> dict:
+    if not learning_card:
+        return {
+            "include_raw": False,
+            "reason": "no_card",
+            "status_label_vi": "Chưa có thẻ học nghề cho hồ sơ này."
+        }
+    
+    target_lower = target.lower()
+    
+    if target_lower == "local_ai":
+        if include_local_only:
+            return {
+                "include_raw": True,
+                "reason": "local_ai_with_local_only",
+                "status_label_vi": "Thẻ học nghề: được đưa vào prompt vì sử dụng AI cục bộ có hỗ trợ dữ liệu riêng tư."
+            }
+        else:
+            if case.privacy_level == "local_only":
+                return {
+                    "include_raw": False,
+                    "reason": "local_only_case",
+                    "status_label_vi": "Thẻ học nghề: đã bị loại vì hồ sơ chỉ lưu cục bộ."
+                }
+            elif learning_card.confidence != "confirmed":
+                return {
+                    "include_raw": False,
+                    "reason": "unconfirmed_card",
+                    "status_label_vi": "Thẻ học nghề: đã bị loại vì chưa xác nhận."
+                }
+            else:
+                return {
+                    "include_raw": False,
+                    "reason": "local_ai_no_local_only",
+                    "status_label_vi": "Thẻ học nghề: đã bị loại vì chưa chọn kèm dữ liệu cục bộ."
+                }
+                
+    if target_lower in ("gemini", "gpt", "copilot", "notebooklm_safe"):
+        if case.privacy_level == "local_only":
+            return {
+                "include_raw": False,
+                "reason": "local_only_case",
+                "status_label_vi": "Thẻ học nghề: đã bị loại vì hồ sơ chỉ lưu cục bộ."
+            }
+        if learning_card.confidence != "confirmed":
+            return {
+                "include_raw": False,
+                "reason": "unconfirmed_card",
+                "status_label_vi": "Thẻ học nghề: đã bị loại vì chưa xác nhận."
+            }
+        return {
+            "include_raw": True,
+            "reason": "allowed",
+            "status_label_vi": "Thẻ học nghề: được đưa vào prompt vì đã xác nhận và privacy cho phép."
+        }
+        
+    return {
+        "include_raw": False,
+        "reason": "unknown_target",
+        "status_label_vi": "Thẻ học nghề: đã bị loại vì AI đích không hỗ trợ."
+    }
+
 def build_prompt_pack(case: Case, evidence_items: List[EvidenceItem], target: str, include_local_only: bool = False, learning_card = None) -> str:
     prompt = f"Tiêu đề Hồ sơ: {case.title}\n"
     prompt += f"Tình huống Hiện tại: {case.current_situation}\n\n"
@@ -53,13 +115,8 @@ def build_prompt_pack(case: Case, evidence_items: List[EvidenceItem], target: st
             learning_card = None
 
     if learning_card:
-        target_lower = target.lower()
-        include_learning = False
-        if target_lower == "local_ai" and include_local_only:
-            include_learning = True
-        elif target_lower in ("gemini", "gpt", "copilot", "notebooklm_safe"):
-            if case.privacy_level != "local_only" and learning_card.confidence == "confirmed":
-                include_learning = True
+        policy = get_learning_prompt_policy(case, learning_card, target, include_local_only)
+        include_learning = policy["include_raw"]
                 
         if include_learning:
             prompt += "\n\nKinh nghiệm đã rút ra từ hồ sơ này:\n"

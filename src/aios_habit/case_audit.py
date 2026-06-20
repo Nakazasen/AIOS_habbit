@@ -81,8 +81,13 @@ def audit_case_cockpit_state(
             # 1. Cảnh báo nếu đã confirmed nhưng không ghi nguyên nhân thật
             if learning_card.confidence == "confirmed":
                 cause_clean = learning_card.true_cause.strip().lower()
-                if not cause_clean or cause_clean in ("", "chưa xác nhận", "n/a", "none"):
+                if not cause_clean or cause_clean in ("", "chưa xác nhận", "n/a", "none", "tbd", "unknown"):
                     warnings.append("Thẻ học nghề đã được xác nhận (confirmed) nhưng nguyên nhân thật (true_cause) chưa được ghi rõ hoặc ghi là 'chưa xác nhận'.")
+                
+                # Cảnh báo thiếu bằng chứng kiểm chứng
+                evidence_clean = learning_card.verification_evidence.strip().lower()
+                if not evidence_clean or len(evidence_clean) < 5 or evidence_clean in ("", "chưa xác nhận", "none", "n/a", "tbd", "unknown", "chưa có"):
+                    warnings.append("Thẻ học nghề đã đánh dấu xác nhận nhưng thiếu bằng chứng kiểm chứng. Hãy bổ sung bằng chứng trước khi coi đây là kinh nghiệm đáng tin.")
             
             # 2. Ngăn rò rỉ thông tin thô của thẻ học nghề lên cloud nếu chưa confirmed hoặc case là local_only
             should_exclude_from_cloud = (case.privacy_level == "local_only" or learning_card.confidence != "confirmed")
