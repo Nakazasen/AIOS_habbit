@@ -14,8 +14,9 @@ The project has advanced through the following local-first stabilization gates:
 - **M1.3: Quick Intake Flow** — Completed (Single-screen intake creating case + initial evidence).
 - **M1.4: Senior Learning Memory MVP** — Completed (Conditional PASS; model, storage, and UI form completed).
 - **M1.5: Pilot UX / Export Safety Hardening** — Completed (Implemented and validated; compact UI mode, extracted pure handover helper, audit warnings, and export mode options).
-- **M1.6: Roadmap Governance Lock** — **Current** (Locking product doctrine, loop, layers, model roles, and phase definitions).
-- **M1.7: Workspace + Knowledge Notebook + Simplified Navigation** — **Next Immediate Gate** (Simplify navigation, introduce isolated workspaces/notebooks, allow uploading source documents, link cases to notebooks, no full RAG yet).
+- **M1.6: Roadmap Governance Lock** — ✅ Completed (Locking product doctrine, loop, layers, model roles, and phase definitions).
+- **M1.6B: Governance Cleanup** — Current small cleanup (Changelog/status cleanup and role-first agent rules).
+- **M1.7: Workspace + Knowledge Notebook + Simplified Navigation** — Next immediate product gate (Simplify navigation, introduce isolated workspaces/notebooks, allow uploading source documents, link cases to notebooks, no full RAG yet).
 - **Phase 2 Real Work Pilot** — **Upcoming** (Will begin once M1.7 and governance shells are stable).
 
 ---
@@ -86,12 +87,14 @@ The project has advanced through the following local-first stabilization gates:
 
 To maintain high development quality and prevent "fake PASS" updates, future AI agents and models must strictly adhere to their designated roles:
 
-- **Codex GPT-5.5 (or Audit Specialist):**
+- **Audit Specialist:**
   - Handles independent audits, code reviews, anti-fake PASS checks, and critical reasoning.
   - Verifies that evidence, tests, and security guidelines are fully satisfied before merging.
-- **Gemini Flash 3.5 High / Gemini Pro 3.1 (or Execution Specialist):**
+  - Current recommended model: Codex GPT-5.5 or equivalent.
+- **Execution Specialist:**
   - Handles execution, coding, repository changes, and test creation.
   - Implements the feature changes detailed in approved plans.
+  - Current recommended models: Gemini Flash 3.5 High / Gemini Pro 3.1 or equivalent.
 - **Strict Constraint:** No feature merge is allowed without an audit review and validation confirmation.
 
 ---

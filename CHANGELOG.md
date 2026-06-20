@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-06-20 - Roadmap Governance Lock
+
+### Added
+- Locked AIOS WorkLens product doctrine.
+- Defined AIOS as Personal Senior Work Intelligence System.
+- Updated core loop: `Knowledge → Case → Evidence → Reasoning Map → Action / Communication → Outcome → Learning Memory → Better Work`.
+- Added/updated 7 product layers.
+- Clarified model/agent roles.
+- Defined M1.7 as next gate.
+
 ## 2026-06-20 - Case Cockpit Privacy and Audit Hardening
 
 ### Added

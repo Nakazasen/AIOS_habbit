@@ -6,20 +6,22 @@ This document specifies the locked rules that all future AI models, development 
 
 ## 1. Locked Model Roles
 
-To prevent regression, incomplete executions, or "fake PASS" verifications, development tasks are strictly partitioned by model specialties:
+To prevent regression, incomplete executions, or "fake PASS" verifications, development tasks are strictly partitioned by model/agent specialties:
 
-### A. Codex GPT-5.5 (or Audit Specialist)
+### A. Audit Specialist
 - **Primary Role:** Code quality audit, security review, anti-fake PASS checks, and architectural reasoning.
 - **Constraints:**
   - Must inspect all modified files and run independent checks.
   - Must highlight potential prompt leaks, UX overload, and missing validation evidence.
   - Does not commit or write feature code unless requested for minor edits.
+- **Current Recommended Model:** Codex GPT-5.5 or equivalent.
 
-### B. Gemini Flash 3.5 High / Gemini Pro 3.1 (or Execution Specialist)
+### B. Execution Specialist
 - **Primary Role:** Implementing features, fixing bugs, refactoring, and writing unit tests.
 - **Constraints:**
   - Must strictly adhere to the implementation plans approved by the user.
   - Must not skip writing unit tests or validating commands.
+- **Current Recommended Models:** Gemini Flash 3.5 High / Gemini Pro 3.1 or equivalent.
 
 ---
 
