@@ -15,8 +15,10 @@ This document serves as the high-level index for the development phases, product
 - **M1.5 (Pilot UX & Export Safety Hardening):** Completed.
 - **M1.6 (Roadmap Governance Lock):** ✅ Completed (Doctrine and roles locked in docs).
 - **M1.6B (Governance Cleanup):** ✅ Completed (Changelog/status cleanup and role-first agent rules).
-- **M1.7 (Workspace + Knowledge Notebook + Simplified Navigation):** **Implemented / Pending Audit** (Workspace isolation, Knowledge Notebook upload, simplified central sidebar navigation, case linking).
-- **Phase 2 (Real Work Pilot):** Planned (Will start after M1.7 is stable).
+- **M1.7 (Workspace + Knowledge Notebook + Simplified Navigation):** ✅ Passed after M1.7B hotfix (Workspace isolation, Knowledge Notebook upload, simplified central sidebar navigation, case linking; no RAG/OCR/vector DB).
+- **M1.7B (Notebook Source Path Containment Hotfix):** ✅ Completed / audit passed (`PASS_M1_7B_BLOCKER_FIXED`; `notebook_id` traversal blocked with allowlist + `resolve()`/`is_relative_to()`).
+- **Phase 2A (Fake-data Pilot):** Next (End-to-end validation with synthetic data only).
+- **Phase 2 (Real-data Pilot):** Not started / gated (Do not use real data until Phase 2A passes).
 
 ---
 

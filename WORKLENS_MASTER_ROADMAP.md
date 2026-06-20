@@ -16,8 +16,10 @@ The project has advanced through the following local-first stabilization gates:
 - **M1.5: Pilot UX / Export Safety Hardening** — Completed (Implemented and validated; compact UI mode, extracted pure handover helper, audit warnings, and export mode options).
 - **M1.6: Roadmap Governance Lock** — ✅ Completed (Locking product doctrine, loop, layers, model roles, and phase definitions).
 - **M1.6B: Governance Cleanup** — Completed (Changelog/status cleanup and role-first agent rules).
-- **M1.7: Workspace + Knowledge Notebook + Simplified Navigation** — Implemented / Pending Audit (Workspace isolation, Knowledge Notebook upload, simplified central sidebar navigation, case linking, no full RAG yet).
-- **Phase 2 Real Work Pilot** — **Upcoming** (Will begin once M1.7 and governance shells are stable).
+- **M1.7: Workspace + Knowledge Notebook + Simplified Navigation** — ✅ Passed after M1.7B hotfix (No longer `FAIL_BLOCKED`; Workspace isolation, Knowledge Notebook upload, simplified central sidebar navigation, case linking, no RAG/OCR/vector DB).
+- **M1.7B: Notebook Source Path Containment Hotfix** — ✅ Completed / audit passed (`PASS_M1_7B_BLOCKER_FIXED`; `notebook_id` path traversal blocked with strict allowlist and `resolve()`/`is_relative_to()`).
+- **Phase 2A Fake-data Pilot** — **Next immediate gate** (End-to-end validation with synthetic/fake data only).
+- **Phase 2 Real-data Pilot** — **Not started / gated** (Do not open real data until Phase 2A passes).
 
 ---
 
@@ -49,12 +51,19 @@ The project has advanced through the following local-first stabilization gates:
 - **Validation:** Isolated file storage structure and clean tabbed navigation.
 - **Exit Criteria:** PASS if workspaces and notebook document lists work without mixing with evidence.
 
-### Phase 2 — Real Work Pilot (Pending M1.7 Stability)
-- **Objective:** Run Case Cockpit on real incidents in local environments.
+### Phase 2A — Fake-data Pilot (Next)
+- **Objective:** Validate the full WorkLens loop end-to-end using synthetic/fake data only.
+- **Scope:** Run one or more simulated incidents in a single workspace and notebook. Create cases, add fake evidence/source docs, generate actions/handovers, and write learning cards.
+- **Deliverables:** Pilot feedback, test notes, and cleanup items. No real private data.
+- **Validation:** Checklist compliance and no local/private runtime data tracked in Git.
+- **Exit Criteria:** PASS if the user successfully completes at least one full incident loop using fake data.
+
+### Phase 2 — Real-data Pilot (Gated / Not Started)
+- **Objective:** Run Case Cockpit on real incidents in local environments only after Phase 2A passes.
 - **Scope:** Daily use in a single workspace and one knowledge notebook. Create cases, add evidence, generate actions/handovers, and write learning cards.
 - **Deliverables:** Pilot feedback, local-only notes. No real private data committed to Git.
-- **Validation:** Checklist compliance (`MONDAY_PILOT_CHECKLIST.md`).
-- **Exit Criteria:** PASS if the user successfully completes at least one full incident loop.
+- **Validation:** Checklist compliance (`MONDAY_PILOT_CHECKLIST.md`) and explicit public-safety review.
+- **Exit Criteria:** PASS if the user successfully completes at least one full real incident loop after fake-data validation.
 
 ### Phase 3 — Learning Memory Hardening
 - **Objective:** Enable query and lookup of experience cards.

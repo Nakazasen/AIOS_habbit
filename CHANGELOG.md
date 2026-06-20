@@ -1,5 +1,18 @@
 # Changelog
 
+## 2026-06-20 - M1.7B Path Containment Hotfix
+
+### Security
+- Fixed notebook source path traversal risk in Knowledge Notebook source storage.
+- Validated strict `notebook_id` allowlist policy (`^[a-zA-Z0-9_-]+$`).
+- Enforced `resolve()` + `is_relative_to()` containment for notebook asset directories and source file destinations.
+- Replaced legacy `startswith()` path containment in case upload/audit paths.
+- Capped source `preview_text` at 1000 characters after extraction.
+
+### Tests
+- Added regression test for malicious notebook IDs, including traversal, absolute paths, Windows drive-style paths, and nested path separators.
+- Codex retest passed with `PASS_M1_7B_BLOCKER_FIXED`.
+
 ## 2026-06-21 - Workspace, Notebook, and Navigation Simplification (M1.7)
 
 ### Added
