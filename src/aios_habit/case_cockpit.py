@@ -747,12 +747,31 @@ def page_notebooks():
                         st.info("Chưa có xem trước nội dung cho định dạng này ở M1.7.")
                         
     with tab3:
-        st.subheader("Tìm kiếm & Hỏi đáp trong Sổ tri thức")
+        st.subheader("Tìm kiếm, hỏi trong AIOS, hoặc tạo prompt")
+        st.markdown(
+            "**Có 2 cách:**\n"
+            "1. **Hỏi ngay trong AIOS:** Yêu cầu đã cấu hình AI provider (qua biến môi trường).\n"
+            "2. **Tạo prompt để copy:** Không cần cấu hình AI, sao chép thủ công để gửi cho Gemini/GPT/NotebookLM ngoài."
+        )
+        
+        from aios_habit.llm_client import is_llm_configured, load_llm_config
+        config = load_llm_config()
+        if config:
+            st.success(
+                f"✅ **Đã cấu hình AI Provider:** `{config.provider}` | "
+                f"**Model:** `{config.model}` | "
+                f"**Locality:** `{config.locality.upper()}`"
+            )
+        else:
+            st.warning(
+                "⚠️ **Chưa cấu hình AI provider.** Bạn vẫn có thể tạo prompt để copy sang AI ngoài."
+            )
+            
         if not notebooks:
             st.warning("Vui lòng tạo ít nhất một Sổ tri thức trước khi tìm kiếm.")
         else:
             from aios_habit.notebook_index import build_notebook_index, search_notebook_chunks
-            from aios_habit.notebook_qa import build_notebook_question_prompt
+            from aios_habit.notebook_qa import build_notebook_question_prompt, answer_notebook_question
             
             selected_nb_id = st.selectbox("Chọn Sổ tri thức để truy vấn", options=list(nb_opts.keys()), format_func=lambda x: nb_opts[x], key="qa_nb_select")
             
@@ -774,7 +793,7 @@ def page_notebooks():
                             st.text_area(f"Đoạn {hit.chunk.chunk_index}", value=hit.chunk.text, height=120, disabled=True, key=f"hit_text_{hit.chunk.chunk_id}")
                             
             st.write("---")
-            question = st.text_area("Nhập câu hỏi để soạn thảo prompt Q&A", placeholder="Ví dụ: Cấu hình DHCP và thiết lập FRPO U002 là gì?", key="qa_question")
+            question = st.text_area("Nhập câu hỏi để truy vấn Sổ tri thức", placeholder="Ví dụ: Cấu hình DHCP và thiết lập FRPO U002 là gì?", key="qa_question")
             
             col1, col2 = st.columns(2)
             target = col1.selectbox("AI đích nhận lệnh (Target)", ["Gemini", "GPT", "Copilot", "NotebookLM-safe summary", "Local AI (with local_only)"], key="qa_target_select")
@@ -792,7 +811,41 @@ def page_notebooks():
                 "Bản an toàn cho cloud (cloud_safe)": "cloud_safe"
             }
             
-            if st.button("Tạo prompt trả lời Q&A", key="qa_prompt_btn"):
+            # Warning for mismatch target & export mode
+            if target_map[target] != "local_ai" and export_map[export_mode] == "local":
+                st.warning("⚠️ Cảnh báo: Bạn đang chọn mục tiêu Cloud nhưng Chế độ xuất là Local. Prompt có thể chứa dữ liệu riêng tư local_only.")
+                
+            col_btn1, col_btn2 = st.columns(2)
+            ask_in_app = col_btn1.button("Hỏi ngay trong AIOS", key="qa_ask_in_app_btn")
+            generate_prompt = col_btn2.button("Tạo prompt để copy", key="qa_prompt_btn")
+            
+            if ask_in_app:
+                if not question.strip():
+                    st.error("Vui lòng nhập câu hỏi.")
+                elif not config:
+                    st.error("Chưa cấu hình AI provider. Hãy cấu hình biến môi trường AIOS_LLM_PROVIDER để sử dụng chức năng này.")
+                else:
+                    with st.spinner("AIOS đang suy nghĩ..."):
+                        res = answer_notebook_question(selected_nb_id, question, target_map[target], export_map[export_mode])
+                    if res.blocked:
+                        st.error(f"⚠️ Yêu cầu bị chặn: {res.block_reason}")
+                    else:
+                        st.markdown("### 🤖 Câu trả lời từ AIOS:")
+                        st.write(res.answer_text)
+                        
+                        # Warning if locality was cloud and coerced to cloud_safe
+                        if config.locality == "cloud" and export_mode == "local":
+                            st.warning("⚠️ Chú ý: Vì provider là Cloud, dữ liệu local_only đã được tự động loại bỏ để bảo mật thông tin.")
+                            
+                        with st.expander("📚 Các phân đoạn tài liệu được sử dụng làm bối cảnh"):
+                            for i, chunk in enumerate(res.used_chunks):
+                                st.markdown(f"**{i+1}. {chunk.source_title}** (File: {chunk.original_filename}, Privacy: {chunk.privacy_level})")
+                                st.text_area(f"Đoạn {chunk.chunk_index} ({chunk.chunk_id})", value=chunk.text, height=100, disabled=True, key=f"ans_chunk_{chunk.chunk_id}")
+                                
+                        with st.expander("📋 Xem prompt thực tế đã gửi đi"):
+                            st.text_area("Sent prompt", value=res.prompt_text, height=200, disabled=True, key="sent_prompt_area")
+                            
+            if generate_prompt:
                 if not question.strip():
                     st.error("Vui lòng nhập câu hỏi.")
                 else:

@@ -2,11 +2,24 @@ import json
 from pathlib import Path
 from datetime import datetime
 from typing import List, Optional
+from dataclasses import dataclass
 
 from aios_habit.notebook_index import load_chunks, build_notebook_index, search_notebook_chunks
 
 LOCAL_CASES_DIR = Path.cwd() / "local_cases"
 QUESTIONS_FILE = LOCAL_CASES_DIR / "notebook_questions.jsonl"
+ANSWERS_FILE = LOCAL_CASES_DIR / "notebook_answers.jsonl"
+
+@dataclass
+class NotebookAnswerResult:
+    answer_text: str
+    prompt_text: str
+    used_chunks: list
+    provider: str
+    model: str
+    privacy_mode: str
+    blocked: bool = False
+    block_reason: str = ""
 
 def save_question_history(notebook_id: str, question: str, target: str, export_mode: str):
     LOCAL_CASES_DIR.mkdir(parents=True, exist_ok=True)
@@ -19,6 +32,23 @@ def save_question_history(notebook_id: str, question: str, target: str, export_m
             "created_at": datetime.now().isoformat()
         }
         with open(QUESTIONS_FILE, 'a', encoding='utf-8') as f:
+            f.write(json.dumps(data, ensure_ascii=False) + '\n')
+    except Exception:
+        pass
+
+def save_answer_history(notebook_id: str, question: str, answer: str, target: str, provider: str, model: str):
+    LOCAL_CASES_DIR.mkdir(parents=True, exist_ok=True)
+    try:
+        data = {
+            "notebook_id": notebook_id,
+            "question": question,
+            "answer": answer,
+            "target": target,
+            "provider": provider,
+            "model": model,
+            "created_at": datetime.now().isoformat()
+        }
+        with open(ANSWERS_FILE, 'a', encoding='utf-8') as f:
             f.write(json.dumps(data, ensure_ascii=False) + '\n')
     except Exception:
         pass
@@ -137,3 +167,100 @@ def build_study_pack_prompt(
         "- Nếu một số dữ liệu bị loại bỏ vì lý do bảo mật, ghi nhận rõ sự thiếu hụt đó."
     )
     return prompt
+
+def answer_notebook_question(
+    notebook_id: str,
+    question: str,
+    target: str,
+    export_mode: str,
+    limit: int = 5,
+    allow_cloud_send: bool = False,
+) -> NotebookAnswerResult:
+    if not question.strip():
+        return NotebookAnswerResult(
+            answer_text="",
+            prompt_text="",
+            used_chunks=[],
+            provider="",
+            model="",
+            privacy_mode=export_mode,
+            blocked=True,
+            block_reason="Câu hỏi đang trống."
+        )
+        
+    from aios_habit.llm_client import load_llm_config, complete_chat
+    
+    config = load_llm_config()
+    if not config:
+        return NotebookAnswerResult(
+            answer_text="",
+            prompt_text="",
+            used_chunks=[],
+            provider="",
+            model="",
+            privacy_mode=export_mode,
+            blocked=True,
+            block_reason="AI provider chưa được cấu hình. Vui lòng thiết lập biến môi trường AIOS_LLM_PROVIDER."
+        )
+        
+    # Search relevant chunks
+    hits = search_notebook_chunks(notebook_id, question, limit=limit)
+    used_chunks_list = [hit.chunk for hit in hits]
+    
+    # Locality and privacy checks
+    if config.locality == "cloud":
+        if export_mode == "local":
+            has_local_only = any(chunk.privacy_level == "local_only" for chunk in used_chunks_list)
+            if has_local_only:
+                return NotebookAnswerResult(
+                    answer_text="",
+                    prompt_text="",
+                    used_chunks=used_chunks_list,
+                    provider=config.provider,
+                    model=config.model,
+                    privacy_mode=export_mode,
+                    blocked=True,
+                    block_reason="Không thể gửi dữ liệu local_only lên AI Cloud ở chế độ xuất local. Vui lòng chuyển sang Chế độ xuất cloud_safe hoặc sử dụng local_ai."
+                )
+        effective_export_mode = "cloud_safe" if export_mode == "local" else export_mode
+    else:
+        effective_export_mode = export_mode
+        
+    # Generate prompt using the effective export_mode
+    prompt = build_notebook_question_prompt(
+        notebook_id=notebook_id,
+        question=question,
+        target=target,
+        export_mode=effective_export_mode,
+        limit=limit
+    )
+    
+    # Call the LLM
+    try:
+        system_prompt = "Bạn là trợ lý AI thông minh phân tích tri thức."
+        answer = complete_chat(prompt, system_prompt=system_prompt, config=config)
+        
+        # Save answer history
+        save_answer_history(notebook_id, question, answer, target, config.provider, config.model)
+        
+        return NotebookAnswerResult(
+            answer_text=answer,
+            prompt_text=prompt,
+            used_chunks=used_chunks_list,
+            provider=config.provider,
+            model=config.model,
+            privacy_mode=effective_export_mode,
+            blocked=False
+        )
+    except Exception as e:
+        return NotebookAnswerResult(
+            answer_text="",
+            prompt_text=prompt,
+            used_chunks=used_chunks_list,
+            provider=config.provider,
+            model=config.model,
+            privacy_mode=effective_export_mode,
+            blocked=True,
+            block_reason=f"Lỗi khi gọi AI: {e}"
+        )
+
