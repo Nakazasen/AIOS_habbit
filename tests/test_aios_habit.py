@@ -145,3 +145,12 @@ def test_streamlit_dependency():
 def test_launchers_exist():
     assert Path("scripts/run_studio.ps1").exists()
     assert Path("RUN_AIOS_HABIT_STUDIO.bat").exists()
+
+
+
+def test_secret_pattern_ignores_api_key_variable_plumbing_but_catches_literals():
+    from aios_habit.core import SECRET_PATTERNS, scan_text_for_patterns
+
+    assert not scan_text_for_patterns('api_key=api_key,\nif config.api_key:\n', SECRET_PATTERNS)
+    runtime_secret_literal = 'api_key=' + chr(34) + 'real-looking-token' + chr(34)
+    assert scan_text_for_patterns(runtime_secret_literal, SECRET_PATTERNS)

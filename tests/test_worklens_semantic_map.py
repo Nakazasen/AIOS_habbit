@@ -430,3 +430,29 @@ def test_legacy_unknown_data_is_not_verified():
     assert graph["meta"]["has_verified_business_data"] is False
     assert graph["meta"]["has_unknown_business_data"] is True
     assert graph["nodes"][0]["provenance_label"] == "chưa rõ nguồn gốc"
+
+
+
+def test_mom_official_local_draft_is_distinct_not_verified():
+    case = MockCase(
+        case_id="case-mom",
+        title="MOM official local draft",
+        workspace_id="ws-mom",
+        source_origin="mom_official_local",
+        verification_status="draft",
+    )
+    graph = build_worklens_semantic_graph(
+        workspace="ws-mom",
+        notebooks=[],
+        sources=[],
+        cases=[case],
+        evidence=[],
+        learning_cards=[],
+        bridge_imports=[],
+    )
+
+    assert graph["meta"]["business_verification_state"] == "needs_verification"
+    assert graph["meta"]["has_verified_business_data"] is False
+    assert graph["meta"]["provenance_counts"]["mom_local_draft"] == 1
+    assert graph["nodes"][0]["source_origin"] == "mom_official_local"
+    assert graph["nodes"][0]["provenance_label"] == "MOM local/draft"

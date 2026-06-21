@@ -13,7 +13,7 @@ ROOT = Path(__file__).resolve().parents[2]
 SECRET_PATTERNS = [
     r"AKIA[0-9A-Z]{16}",
     r"-----BEGIN (?:RSA |OPENSSH |EC |DSA )?PRIVATE KEY-----",
-    r"(?i)(api[_-]?key|token|password|secret|credentials)\s*[:=]\s*[^\s]{8,}",
+    r"(?i)(api[_-]?key|token|password|secret|credentials)\s*[:=]\s*['\"][^'\"\s]{8,}['\"]",
 ]
 
 RAW_PATTERNS = [

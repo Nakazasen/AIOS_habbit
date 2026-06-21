@@ -67,7 +67,7 @@ def test_complete_chat_uses_openai_compatible_payload_without_logging_key(monkey
     config = LLMConfig(
         provider="openai_compatible",
         base_url="http://mock-api/v1/chat/completions",
-        api_key="secret-key-123",
+        api_key="dummy",
         model="mock-model",
         locality="local"
     )
@@ -77,7 +77,7 @@ def test_complete_chat_uses_openai_compatible_payload_without_logging_key(monkey
     assert sent_request is not None
     assert sent_request.full_url == "http://mock-api/v1/chat/completions"
     assert sent_request.headers.get("Content-type") == "application/json"
-    assert sent_request.headers.get("Authorization") == "Bearer secret-key-123"
+    assert sent_request.headers.get("Authorization") == "Bearer dummy"
     
     sent_body = json.loads(sent_request.data.decode("utf-8"))
     assert sent_body["model"] == "mock-model"

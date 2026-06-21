@@ -44,8 +44,11 @@ def _classify_business_record(record: Any, record_kind: str) -> Dict[str, Any]:
             "is_unknown": False,
         }
 
-    if source_origin in IMPORT_ORIGINS or verification_status in DRAFT_STATUSES:
-        if source_origin == "manual":
+    if source_origin in IMPORT_ORIGINS or verification_status in DRAFT_STATUSES or source_origin == "mom_official_local":
+        if source_origin == "mom_official_local":
+            label = "MOM local/draft"
+            bucket = "mom_local_draft"
+        elif source_origin == "manual":
             label = "nháp/manual"
             bucket = "manual_draft"
         elif source_origin in IMPORT_ORIGINS:
@@ -85,6 +88,7 @@ def _business_meta(cases: List[Any], evidence: List[Any], learning_cards: List[A
         "verified": 0,
         "import_draft": 0,
         "manual_draft": 0,
+        "mom_local_draft": 0,
         "unverified": 0,
         "unknown": 0,
     }

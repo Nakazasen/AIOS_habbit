@@ -1519,6 +1519,110 @@ def page_notebooks():
             )
 
 
+def page_mom_pilot():
+    st.title("🏭 MOM Pilot / Tài liệu MOM thật")
+    st.warning("Dữ liệu MOM là local_only: AIOS chỉ quét và lập chỉ mục cục bộ, không tự gửi lên cloud/NotebookLM.")
+    default_root = r"D:\Sandbox\MOM_WMS_QLLSSX\tailieugoc"
+    root_path = st.text_input("Thư mục tài liệu MOM", value=default_root, key="mom_root_path")
+
+    from aios_habit.real_doc_inventory import scan_mom_inventory, INVENTORY_FILE
+    from aios_habit.mom_local_index import (
+        build_mom_local_index,
+        search_mom_index,
+        build_mom_qa_prompt,
+        create_mom_case_from_hit,
+        generate_safe_benchmark_questions,
+        load_mom_chunks,
+        INDEX_FILE,
+    )
+    from aios_habit.mom_benchmark import (
+        notebooklm_manual_required_record,
+        save_benchmark_record,
+        BENCHMARK_RECORDS_FILE,
+        NOTEBOOK_TITLE,
+        NOTEBOOK_URL,
+    )
+
+    col_scan, col_index = st.columns(2)
+    with col_scan:
+        if st.button("Quét tài liệu MOM", key="scan_mom_docs"):
+            inv = scan_mom_inventory(root_path, write_runtime=True)
+            st.session_state.mom_inventory_summary = {
+                "root_exists": inv.root_exists,
+                "total_files": inv.total_files,
+                "file_types": inv.file_types,
+                "unsupported_count": len(inv.unsupported_files),
+                "inventory_path": str(INVENTORY_FILE),
+            }
+    with col_index:
+        if st.button("Tạo local index MOM", key="index_mom_docs"):
+            result = build_mom_local_index(root_path, write_runtime=True)
+            st.session_state.mom_index_summary = {
+                "root_exists": result.root_exists,
+                "files_seen": result.files_seen,
+                "chunks_generated": result.chunks_generated,
+                "unsupported_count": len(result.unsupported_files),
+                "errors_count": len(result.errors),
+                "index_path": result.index_path,
+            }
+
+    if "mom_inventory_summary" in st.session_state:
+        st.markdown("#### Inventory local-only")
+        st.json(st.session_state.mom_inventory_summary)
+    if "mom_index_summary" in st.session_state:
+        st.markdown("#### Index local-only")
+        st.json(st.session_state.mom_index_summary)
+
+    st.markdown("---")
+    question = st.text_input("Tìm / hỏi trong MOM", value="production history registration", key="mom_search_question")
+    limit = st.slider("Số nguồn tối đa", min_value=1, max_value=10, value=5, key="mom_search_limit")
+    if st.button("Tìm trong MOM", key="search_mom_index"):
+        hits = search_mom_index(question, limit=limit)
+        st.session_state.mom_search_hits = hits
+        st.session_state.mom_prompt_pack = build_mom_qa_prompt(question, hits)
+
+    hits = st.session_state.get("mom_search_hits", [])
+    if hits:
+        st.markdown("#### Kết quả tìm kiếm local_only")
+        for idx, hit in enumerate(hits):
+            chunk = hit.chunk
+            with st.expander(f"#{idx+1} score={hit.score:.1f} — {chunk.relative_path} — {chunk.chunk_id}"):
+                st.write(f"Privacy: `{chunk.privacy_level}`")
+                st.write(f"Sheet/section: `{chunk.sheet or chunk.section}`")
+                st.write(chunk.preview)
+                if st.button("Tạo draft Case/Evidence từ nguồn này", key=f"mom_create_case_{idx}"):
+                    res = create_mom_case_from_hit(question, hit, workspace_id=st.session_state.active_workspace_id)
+                    st.success(f"Đã tạo case draft {res['case_id']} với evidence {res['evidence_id']} — local_only/draft")
+
+    prompt_pack = st.session_state.get("mom_prompt_pack")
+    if prompt_pack:
+        st.markdown("#### Prompt pack local-only")
+        if prompt_pack.get("insufficient_evidence"):
+            st.warning("Chưa đủ bằng chứng từ index MOM cho câu hỏi này.")
+        st.info(prompt_pack.get("cloud_warning"))
+        st.code(prompt_pack.get("prompt", ""), language="markdown")
+
+        if st.button("Lưu benchmark record manual_required", key="mom_save_manual_benchmark"):
+            record = notebooklm_manual_required_record(
+                question_id="MOM-UI-MANUAL",
+                question=question,
+                aios_source_refs=prompt_pack.get("source_refs", []),
+                aios_answer_summary="AIOS tạo prompt/source refs local-only; NotebookLM query cần chạy qua Antigravity agent/browser hoặc nhập thủ công.",
+            )
+            save_benchmark_record(record)
+            st.success(f"Đã lưu benchmark local_only: {BENCHMARK_RECORDS_FILE}")
+
+    st.markdown("---")
+    st.markdown("#### So sánh AIOS vs NotebookLM")
+    st.write(f"NotebookLM comparator: **{NOTEBOOK_TITLE}**")
+    st.caption(NOTEBOOK_URL)
+    st.info("Streamlit app không gọi trực tiếp MCP/browser. Agent Antigravity sẽ query NotebookLM hiện có; trong app có fallback manual_required.")
+    if st.button("Sinh câu hỏi benchmark an toàn", key="mom_generate_questions"):
+        qs = generate_safe_benchmark_questions(load_mom_chunks(), limit=12)
+        st.session_state.mom_benchmark_questions = qs
+    if "mom_benchmark_questions" in st.session_state:
+        st.dataframe(st.session_state.mom_benchmark_questions)
+
 def main():
     init_store()
     init_workspace_store()
@@ -1569,6 +1673,7 @@ def main():
     main_categories = {
         "🏠 Tổng quan & Bắt đầu": "home",
         "📚 Sổ tri thức (Notebook - Sổ tri thức)": "notebook",
+        "🏭 MOM Pilot / Tài liệu MOM thật": "mom_pilot",
         "📁 Hồ sơ sự việc (Case - Hồ sơ sự việc)": "case",
         "📤 Xuất kết quả": "export",
         "🎓 Học nghề & An toàn": "learning"
@@ -1609,6 +1714,9 @@ def main():
             
     elif selected_category == "📚 Sổ tri thức (Notebook - Sổ tri thức)":
         page_notebooks()
+        
+    elif selected_category == "🏭 MOM Pilot / Tài liệu MOM thật":
+        page_mom_pilot()
         
     elif selected_category == "📁 Hồ sơ sự việc (Case - Hồ sơ sự việc)":
         tab1, tab2, tab3, tab4 = st.tabs(["🗂️ Hồ sơ sự việc", "📎 Thêm bằng chứng", "🗺️ Bản đồ sự việc", "🚀 Việc cần làm tiếp"])
