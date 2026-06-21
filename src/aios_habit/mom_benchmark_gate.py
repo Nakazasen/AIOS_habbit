@@ -32,16 +32,16 @@ def weighted_maturity_score(scores: dict[str, int]) -> float:
 
 
 def score_aios_prompt_pack(pack: dict[str, Any]) -> dict[str, int]:
-    """Score the local AIOS evidence pack without using NotebookLM as ground truth.
+    """Score the local AIOS evidence answer without using NotebookLM as ground truth.
 
     This rewards concrete properties that reduce hallucination risk: source refs,
-    file diversity, explicit answer discipline, and clear insufficient-evidence
-    handling. It intentionally does not award full completeness when evidence is
-    insufficient.
+    file diversity, explicit answer discipline, insufficient-evidence handling,
+    and an actual structured answer. Source refs alone must not be enough to
+    claim a 90+ benchmark score.
     """
     refs = pack.get("source_refs") or []
-    coverage = pack.get("source_coverage") or {}
     discipline = pack.get("answer_discipline") or {}
+    answer_text = str(pack.get("answer_text") or pack.get("aios_answer") or "")
     source_count = len(refs)
     file_count = len(set(ref.get("relative_path") for ref in refs))
     has_prompt = bool(str(pack.get("prompt") or "").strip())
@@ -52,13 +52,20 @@ def score_aios_prompt_pack(pack: dict[str, Any]) -> dict[str, int]:
         "next_checks_required",
         "notebooklm_comparator_not_ground_truth",
     ))
+    has_answer = bool(answer_text.strip())
+    answer_has_sections = all(token in answer_text.lower() for token in (
+        "confirmed",
+        "not found",
+        "next checks",
+        "source coverage",
+    ))
     return {
         "source_traceability": 5 if source_count >= 2 else 3 if source_count == 1 else 0,
-        "answer_completeness": 5 if source_count >= 3 and has_prompt and not insufficient else 4 if source_count and has_prompt else 0,
-        "hallucination_risk": 5 if required_discipline and source_count else 3 if source_count else 1,
-        "actionability": 5 if required_discipline and "Next checks" in str(pack.get("prompt") or "") else 3 if source_count else 0,
-        "vietnamese_clarity": 5 if has_prompt and "Câu hỏi nghiệp vụ MOM" in str(pack.get("prompt") or "") else 3 if has_prompt else 0,
-        "evidence_alignment": 5 if source_count >= 3 and file_count >= 2 else 4 if source_count >= 2 else 2 if source_count else 0,
+        "answer_completeness": 5 if source_count >= 3 and has_answer and answer_has_sections and not insufficient else 3 if source_count and has_prompt else 0,
+        "hallucination_risk": 5 if required_discipline and source_count and (has_answer or insufficient) else 3 if source_count else 1,
+        "actionability": 5 if answer_has_sections and "next checks" in answer_text.lower() else 3 if required_discipline and source_count else 0,
+        "vietnamese_clarity": 5 if has_answer and ("nguồn" in answer_text.lower() or "source" in answer_text.lower()) else 3 if has_prompt else 0,
+        "evidence_alignment": 5 if source_count >= 3 and file_count >= 2 and has_answer else 4 if source_count >= 2 else 2 if source_count else 0,
     }
 
 

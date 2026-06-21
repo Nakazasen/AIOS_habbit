@@ -371,6 +371,7 @@ def test_benchmark_scores_prompt_pack_above_90_with_diverse_refs():
 
     pack = {
         "prompt": "Câu hỏi nghiệp vụ MOM\nNext checks",
+        "answer_text": "Confirmed by source: có nguồn. Not found / insufficient evidence: chưa thấy phần ngoài nguồn. Next checks: kiểm tra nguồn liên quan. Source coverage: 3 nguồn local_only.",
         "insufficient_evidence": False,
         "source_refs": [
             {"relative_path": "a.xlsx"},
@@ -387,3 +388,25 @@ def test_benchmark_scores_prompt_pack_above_90_with_diverse_refs():
     }
 
     assert weighted_maturity_score(score_aios_prompt_pack(pack)) >= 90
+
+
+def test_benchmark_scores_weak_ref_only_answer_below_90():
+    from aios_habit.mom_benchmark_gate import score_aios_prompt_pack, weighted_maturity_score
+
+    pack = {
+        "prompt": "Câu hỏi nghiệp vụ MOM\nNext checks",
+        "insufficient_evidence": False,
+        "source_refs": [
+            {"relative_path": "a.xlsx"},
+            {"relative_path": "b.pdf"},
+            {"relative_path": "c.png"},
+        ],
+        "answer_discipline": {
+            "confirmed_by_source_required": True,
+            "insufficient_evidence_required": True,
+            "next_checks_required": True,
+            "notebooklm_comparator_not_ground_truth": True,
+        },
+    }
+
+    assert weighted_maturity_score(score_aios_prompt_pack(pack)) < 90
