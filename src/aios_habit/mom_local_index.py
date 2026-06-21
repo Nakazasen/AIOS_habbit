@@ -14,7 +14,7 @@ import pandas as pd
 
 from aios_habit.case_models import Case, EvidenceItem
 from aios_habit.case_store import save_case, save_evidence
-from aios_habit.document_extractors import extract_text_chunks_from_file, is_potentially_extractable
+from aios_habit.document_extractors import USABLE_STATUSES, extract_text_chunks_from_file, is_potentially_extractable
 from aios_habit.real_doc_inventory import MOM_RUNTIME_DIR, SUPPORTED_TEXT_EXTS, SUPPORTED_TABLE_EXTS, ensure_mom_runtime_dir
 
 INDEX_FILE = MOM_RUNTIME_DIR / "mom_local_index.jsonl"
@@ -43,8 +43,9 @@ class MomChunk:
     page: str = ""
     slide: str = ""
     extractor_name: str = "mom_local_index"
-    extraction_status: str = "success"
+    extraction_status: str = "extracted_success"
     warning: str = ""
+    ocr_engine: str = ""
     indexed_at: str = ""
 
 
@@ -112,8 +113,9 @@ def _chunk_text(text: str, base: dict[str, Any], max_chunks: int = MAX_CHUNKS_PE
             page=base.get("page", ""),
             slide=base.get("slide", ""),
             extractor_name=base.get("extractor_name", "mom_local_index"),
-            extraction_status=base.get("extraction_status", "success"),
+            extraction_status=base.get("extraction_status", "extracted_success"),
             warning=base.get("warning", ""),
+            ocr_engine=base.get("ocr_engine", ""),
             indexed_at=now,
         )
 
@@ -145,6 +147,7 @@ def _excel_chunks(path: Path, base: dict[str, Any]) -> list[MomChunk]:
             sheet_base["section"] = f"sheet {sheet} preview"
             sheet_base["row_range"] = f"1-{min(len(df), MAX_EXCEL_ROWS_PER_SHEET)}"
             sheet_base["extractor_name"] = "pandas"
+            sheet_base["extraction_status"] = "extracted_success"
             for chunk in _chunk_text(text, sheet_base, max_chunks=3):
                 chunks.append(chunk)
     except Exception as exc:
@@ -157,8 +160,8 @@ def _extractor_chunks(path: Path, base: dict[str, Any], root: Path) -> tuple[lis
     unsupported: list[dict[str, Any]] = []
     extracted = extract_text_chunks_from_file(path, root=root, max_chars_per_chunk=CHUNK_SIZE)
     for item in extracted:
-        status = str(item.get("extraction_status") or "unsupported")
-        if status != "success" or not str(item.get("text") or "").strip():
+        status = str(item.get("extraction_status") or "unsupported_no_local_tool")
+        if status not in USABLE_STATUSES or not str(item.get("text") or "").strip():
             unsupported.append({
                 "relative_path": item.get("relative_path") or base["relative_path"],
                 "file_type": item.get("file_type") or base["file_type"],
@@ -178,6 +181,7 @@ def _extractor_chunks(path: Path, base: dict[str, Any], root: Path) -> tuple[lis
             "extractor_name": item.get("extractor_name", "document_extractors"),
             "extraction_status": status,
             "warning": item.get("warning", ""),
+            "ocr_engine": item.get("ocr_engine", ""),
         })
         chunks.extend(list(_chunk_text(str(item.get("text") or ""), chunk_base, max_chunks=1)))
     return chunks, unsupported
@@ -210,9 +214,11 @@ def build_mom_local_index(root_path: str | Path, write_runtime: bool = True) -> 
                 }
                 if ext in {".txt", ".md", ".markdown", ".json"}:
                     text = _read_text_file(path)
+                    base["extraction_status"] = "extracted_success"
                     chunks.extend(list(_chunk_text(text, base)))
                 elif ext == ".csv":
                     text = _read_csv_file(path)
+                    base["extraction_status"] = "extracted_success"
                     chunks.extend(list(_chunk_text(text, base)))
                 elif ext in SUPPORTED_TABLE_EXTS and ext != ".xlsm":
                     chunks.extend(_excel_chunks(path, base))
@@ -306,6 +312,7 @@ def build_mom_qa_prompt(question: str, hits: list[MomSearchHit], min_score: floa
             "slide": chunk.slide,
             "extractor_name": chunk.extractor_name,
             "extraction_status": chunk.extraction_status,
+            "ocr_engine": chunk.ocr_engine,
         })
         lines.append(
             f"[Nguồn {i}] {ref} | score={hit.score:.1f} | privacy=local_only\n"

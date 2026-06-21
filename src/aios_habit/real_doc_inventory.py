@@ -14,9 +14,10 @@ INVENTORY_FILE = MOM_RUNTIME_DIR / "inventory.json"
 
 SUPPORTED_TEXT_EXTS = {".txt", ".md", ".markdown", ".csv", ".json", ".html", ".htm"}
 SUPPORTED_TABLE_EXTS = {".xlsx", ".xls", ".xlsm"}
-SUPPORTED_DOC_EXTS = {".pptx"}
+SUPPORTED_DOC_EXTS = {".docx", ".pptx"}
 SUPPORTED_PDF_EXTS = {".pdf"}
-SUPPORTED_EXTS = SUPPORTED_TEXT_EXTS | SUPPORTED_TABLE_EXTS | SUPPORTED_DOC_EXTS | SUPPORTED_PDF_EXTS
+SUPPORTED_IMAGE_EXTS = {".png", ".jpg", ".jpeg", ".bmp", ".tif", ".tiff"}
+SUPPORTED_EXTS = SUPPORTED_TEXT_EXTS | SUPPORTED_TABLE_EXTS | SUPPORTED_DOC_EXTS | SUPPORTED_PDF_EXTS | SUPPORTED_IMAGE_EXTS
 
 
 @dataclass

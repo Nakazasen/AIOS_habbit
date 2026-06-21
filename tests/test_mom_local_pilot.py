@@ -164,7 +164,7 @@ def test_document_extractor_html_removes_tags_local_only(tmp_path):
 
     chunks = extract_text_chunks_from_file(html_file, root=tmp_path)
 
-    assert chunks[0]["extraction_status"] == "success"
+    assert chunks[0]["extraction_status"] == "extracted_success"
     assert chunks[0]["privacy_level"] == "local_only"
     assert "Production History" in chunks[0]["text"]
     assert "<h1>" not in chunks[0]["text"]
@@ -182,7 +182,7 @@ def test_document_extractor_pptx_zip_xml_synthetic(tmp_path):
 
     chunks = extract_text_chunks_from_file(pptx_file, root=tmp_path)
 
-    assert chunks[0]["extraction_status"] == "success"
+    assert chunks[0]["extraction_status"] == "extracted_success"
     assert chunks[0]["file_type"] == ".pptx"
     assert "MOM confirmation slide" in chunks[0]["text"]
     assert chunks[0]["privacy_level"] == "local_only"
@@ -202,7 +202,7 @@ def test_document_extractor_xlsm_uses_openpyxl_when_available(tmp_path):
 
     chunks = extract_text_chunks_from_file(xlsm_file, root=tmp_path)
 
-    assert chunks[0]["extraction_status"] == "success"
+    assert chunks[0]["extraction_status"] == "extracted_success"
     assert chunks[0]["file_type"] == ".xlsm"
     assert chunks[0]["sheet"] == "Interface"
     assert "production_history_id" in chunks[0]["text"]
@@ -219,9 +219,9 @@ def test_document_extractor_pdf_and_png_fail_gracefully(tmp_path):
     pdf_chunks = extract_text_chunks_from_file(pdf_file, root=tmp_path)
     png_chunks = extract_text_chunks_from_file(png_file, root=tmp_path)
 
-    assert pdf_chunks[0]["extraction_status"] in {"unsupported", "failed"}
+    assert pdf_chunks[0]["extraction_status"] in {"unsupported_no_local_tool", "failed_with_reason"}
     assert pdf_chunks[0]["privacy_level"] == "local_only"
-    assert png_chunks[0]["extraction_status"] == "unsupported"
+    assert png_chunks[0]["extraction_status"] in {"unsupported_no_local_tool", "failed_with_reason", "ocr_partial", "ocr_success"}
     assert png_chunks[0]["privacy_level"] == "local_only"
 
 
@@ -253,5 +253,104 @@ def test_mom_local_index_uses_document_extractors_for_html_pptx_xlsm(tmp_path, m
     assert html_hits
     assert hits[0].chunk.extractor_name in {"pptx_zip_xml", "document_extractors"}
     assert pack["source_refs"][0]["file_type"] == ".pptx"
-    assert pack["source_refs"][0]["extraction_status"] == "success"
+    assert pack["source_refs"][0]["extraction_status"] == "extracted_success"
     assert pack["source_refs"][0]["privacy_level"] == "local_only"
+
+
+def test_document_extractor_docx_zip_xml_synthetic(tmp_path):
+    import zipfile
+    from aios_habit.document_extractors import extract_text_chunks_from_file
+
+    docx_file = tmp_path / "procedure.docx"
+    with zipfile.ZipFile(docx_file, "w") as archive:
+        archive.writestr("word/document.xml", "<w:document xmlns:w='http://schemas.openxmlformats.org/wordprocessingml/2006/main'><w:body><w:p><w:r><w:t>DOCX production registration rule</w:t></w:r></w:p></w:body></w:document>")
+        archive.writestr("word/header1.xml", "<w:hdr xmlns:w='http://schemas.openxmlformats.org/wordprocessingml/2006/main'><w:p><w:r><w:t>Header context</w:t></w:r></w:p></w:hdr>")
+
+    chunks = extract_text_chunks_from_file(docx_file, root=tmp_path)
+
+    assert chunks[0]["extraction_status"] == "extracted_success"
+    assert chunks[0]["file_type"] == ".docx"
+    assert chunks[0]["privacy_level"] == "local_only"
+    assert "DOCX production registration rule" in chunks[0]["text"]
+
+
+def test_document_extractor_png_ocr_local_or_safe_unsupported(tmp_path):
+    pytest.importorskip("PIL")
+    from PIL import Image, ImageDraw
+    from aios_habit.document_extractors import extract_text_chunks_from_file, local_capabilities
+
+    image_file = tmp_path / "ocr.png"
+    image = Image.new("RGB", (320, 80), color="white")
+    draw = ImageDraw.Draw(image)
+    draw.text((10, 25), "MOM OCR TEST", fill="black")
+    image.save(image_file)
+
+    chunks = extract_text_chunks_from_file(image_file, root=tmp_path)
+    caps = local_capabilities()
+
+    assert chunks[0]["privacy_level"] == "local_only"
+    if caps["ocr_available"]:
+        assert chunks[0]["extraction_status"] in {"ocr_success", "ocr_partial", "failed_with_reason"}
+    else:
+        assert chunks[0]["extraction_status"] == "unsupported_no_local_tool"
+        assert "local OCR unavailable" in chunks[0]["warning"]
+
+
+def test_mom_coverage_summary_no_unknown_unsupported(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    from aios_habit.mom_coverage import summarize_mom_coverage
+
+    root = tmp_path / "docs"
+    root.mkdir()
+    (root / "note.md").write_text("Production registration evidence", encoding="utf-8")
+    (root / "image.png").write_bytes(b"\x89PNG\r\n\x1a\n")
+
+    summary = summarize_mom_coverage(root)
+
+    assert summary.total_files == 2
+    assert summary.unknown_unsupported == 0
+    assert summary.status_counts["extracted_success"] >= 1
+    assert summary.privacy_level == "local_only"
+
+
+def test_benchmark_gate_blocks_50_when_score_below_90():
+    from aios_habit.mom_benchmark import MomBenchmarkRecord
+    from aios_habit.mom_benchmark_gate import evaluate_benchmark_gate
+
+    records = [MomBenchmarkRecord(
+        question_id=f"Q{i:02d}",
+        question="Q",
+        aios_answer_summary="Có nguồn nhưng chưa đủ bằng chứng.",
+        aios_source_refs=[{"chunk_id": "c1"}],
+        notebooklm_query_status="success",
+        comparison_scores={"source_traceability": 3, "answer_completeness": 3, "hallucination_risk": 5, "actionability": 3, "vietnamese_clarity": 4, "evidence_alignment": 4},
+        winner="Tie",
+    ) for i in range(20)]
+
+    gate = evaluate_benchmark_gate(records, target_questions=20, expansion_threshold=18)
+
+    assert gate.target_90_met is False
+    assert gate.attempted_50 is False
+    assert gate.reason == "average maturity score below 90"
+
+
+def test_benchmark_gate_allows_50_when_20q_passes():
+    from aios_habit.mom_benchmark import MomBenchmarkRecord
+    from aios_habit.mom_benchmark_gate import evaluate_benchmark_gate
+
+    records = [MomBenchmarkRecord(
+        question_id=f"Q{i:02d}",
+        question="Q",
+        aios_answer_summary="Trả lời dựa trên nguồn; next checks rõ.",
+        aios_source_refs=[{"chunk_id": "c1"}, {"chunk_id": "c2"}],
+        notebooklm_query_status="success",
+        comparison_scores={"source_traceability": 5, "answer_completeness": 5, "hallucination_risk": 5, "actionability": 5, "vietnamese_clarity": 5, "evidence_alignment": 5},
+        winner="AIOS",
+    ) for i in range(20)]
+
+    gate = evaluate_benchmark_gate(records, target_questions=20, expansion_threshold=18)
+
+    assert gate.target_90_met is True
+    assert gate.attempted_50 is True
+    assert gate.aios_answers_with_source_refs == 20
+
