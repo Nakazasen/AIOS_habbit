@@ -800,6 +800,9 @@ def page_notebooks():
             
             selected_nb_id = st.selectbox("Chọn Sổ tri thức để truy vấn", options=list(nb_opts.keys()), format_func=lambda x: nb_opts[x], key="qa_nb_select")
             
+            from aios_habit.notebook_import_store import load_bridge_imports, delete_bridge_import
+            saved_imports = load_bridge_imports(selected_nb_id)
+            
             # Assistant Panel "Bước tiếp theo nên làm gì?"
             from aios_habit.daily_next_actions import suggest_next_actions
             next_actions = suggest_next_actions(active_ws_id, selected_nb_id)
