@@ -244,28 +244,37 @@ def graph_to_case_board_html(graph: dict, max_nodes: int = 80, max_edges: int = 
         .structure { border-color: #4a78b8; }
         .warning { border-color: #b98b2f; background: #241f16; }
         .board {
-          min-width: 980px;
+          width: 100%;
           display: grid;
-          grid-template-columns: 1.1fr 1.1fr 1.35fr 1.1fr 1.1fr;
-          gap: 12px;
+          grid-template-columns: repeat(12, minmax(0, 1fr));
+          grid-template-areas:
+            "evidence evidence evidence evidence center center center center analysis analysis analysis analysis"
+            "systems systems systems systems center center center center analysis analysis analysis analysis"
+            "systems systems systems systems center center center center outcomes outcomes outcomes outcomes";
+          gap: 14px;
           align-items: stretch;
         }
         .zone {
           border: 1px solid var(--line);
           border-radius: 8px;
           background: var(--panel);
-          padding: 12px;
-          min-height: 420px;
+          padding: 14px;
+          min-height: 160px;
         }
+        .evidence-zone { grid-area: evidence; }
+        .systems-zone { grid-area: systems; }
+        .analysis-zone { grid-area: analysis; }
+        .outcomes-zone { grid-area: outcomes; }
         .zone h2 {
           margin: 0 0 10px;
-          font-size: 13px;
+          font-size: 13.5px;
           font-weight: 700;
           text-transform: uppercase;
           color: var(--muted);
           letter-spacing: 0;
         }
         .case-column {
+          grid-area: center;
           display: flex;
           flex-direction: column;
           gap: 12px;
@@ -280,19 +289,19 @@ def graph_to_case_board_html(graph: dict, max_nodes: int = 80, max_edges: int = 
           border: 1px solid #334155;
           border-radius: 8px;
           background: var(--panel-2);
-          padding: 10px;
+          padding: 12px;
           margin-bottom: 10px;
         }
         .node-card h3 {
-          margin: 4px 0 6px;
-          font-size: 14px;
+          margin: 6px 0 7px;
+          font-size: 16px;
           line-height: 1.3;
           letter-spacing: 0;
         }
         .node-card p {
           margin: 0;
           color: var(--muted);
-          font-size: 12px;
+          font-size: 13px;
           line-height: 1.45;
         }
         .node-type {
@@ -324,30 +333,31 @@ def graph_to_case_board_html(graph: dict, max_nodes: int = 80, max_edges: int = 
           padding: 2px 5px;
         }
         .relations {
+          flex: 1;
           border: 1px solid #3b4654;
           border-radius: 8px;
           background: #111820;
-          padding: 10px;
+          padding: 12px;
         }
         .relations h2 { margin-bottom: 8px; }
         .relation-strip {
           display: grid;
           grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
-          gap: 8px;
+          gap: 10px;
           align-items: center;
           border-top: 1px solid #2f3b49;
-          padding: 8px 0;
-          font-size: 12px;
+          padding: 10px 0;
+          font-size: 13px;
         }
         .relation-strip:first-of-type { border-top: 0; }
         .relation-strip span { overflow-wrap: anywhere; color: var(--text); }
         .relation-strip b {
           color: var(--case);
           white-space: nowrap;
-          font-size: 11px;
+          font-size: 12px;
           border: 1px solid #5b4c23;
           border-radius: 999px;
-          padding: 2px 7px;
+          padding: 3px 8px;
           background: #211d12;
         }
         .relation-strip small {
@@ -366,6 +376,17 @@ def graph_to_case_board_html(graph: dict, max_nodes: int = 80, max_edges: int = 
           font-size: 18px;
         }
         .empty-state p { margin: 0; color: var(--muted); }
+        @media (max-width: 1100px) {
+          .board {
+            grid-template-columns: 1fr;
+            grid-template-areas:
+              "center"
+              "evidence"
+              "systems"
+              "analysis"
+              "outcomes";
+          }
+        }
         """,
         "</style>",
         "</head>",
@@ -379,10 +400,10 @@ def graph_to_case_board_html(graph: dict, max_nodes: int = 80, max_edges: int = 
         html_lines.extend(
             [
                 "<main class=\"board\">",
-                "<section class=\"zone\"><h2>Bằng chứng</h2>",
+                "<section class=\"zone evidence-zone\"><h2>Bằng chứng</h2>",
                 zone_cards("evidence") or "<p class=\"muted\">Chưa có bằng chứng hiển thị.</p>",
                 "</section>",
-                "<section class=\"zone\"><h2>Hệ thống / Quy trình</h2>",
+                "<section class=\"zone systems-zone\"><h2>Hệ thống / Quy trình</h2>",
                 zone_cards("systems") or "<p class=\"muted\">Chưa có hệ thống/quy trình liên quan.</p>",
                 "</section>",
                 "<section class=\"case-column\">",
@@ -393,10 +414,10 @@ def graph_to_case_board_html(graph: dict, max_nodes: int = 80, max_edges: int = 
                 relation_html or "<p class=\"muted\">Chưa có quan hệ đủ dữ liệu để hiển thị.</p>",
                 "</section>",
                 "</section>",
-                "<section class=\"zone\"><h2>Thiết lập / Lỗi / Nguyên nhân</h2>",
+                "<section class=\"zone analysis-zone\"><h2>Thiết lập / Lỗi / Nguyên nhân</h2>",
                 zone_cards("analysis") or "<p class=\"muted\">Chưa có nguyên nhân đã xác minh.</p>",
                 "</section>",
-                "<section class=\"zone\"><h2>Đối ứng / Bài học / Tài liệu</h2>",
+                "<section class=\"zone outcomes-zone\"><h2>Đối ứng / Bài học / Tài liệu</h2>",
                 zone_cards("actions") + zone_cards("documents") + zone_cards("other")
                 or "<p class=\"muted\">Chưa có đối ứng hoặc bài học.</p>",
                 "</section>",

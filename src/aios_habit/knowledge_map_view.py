@@ -13,7 +13,15 @@ def build_saved_graph_view(import_record) -> dict:
             }
         }
     graph = dict(import_record.parsed_json)
-    graph.setdefault("nodes", [])
+    raw_nodes = graph.setdefault("nodes", [])
+    import_source = f"NotebookLM import — chưa xác nhận: {import_record.title}"
+    graph["nodes"] = []
+    for node in raw_nodes:
+        original_source = node.get("source_ref")
+        source_ref = import_source
+        if original_source:
+            source_ref = f"{import_source} | nguồn gốc: {original_source}"
+        graph["nodes"].append({**node, "source_ref": source_ref})
     graph.setdefault("edges", [])
     graph["meta"] = {
         "graph_kind": "imported",

@@ -220,7 +220,8 @@ def test_notebooklm_import_nodes_are_marked_unconfirmed():
         cases=[],
         evidence=[],
         learning_cards=[],
-        bridge_imports=[imported]
+        bridge_imports=[imported],
+        include_bridge_imports=True
     )
 
     imported_nodes = [n for n in graph["nodes"] if n["id"].startswith("imp_IMP_REAL")]
@@ -228,3 +229,75 @@ def test_notebooklm_import_nodes_are_marked_unconfirmed():
     assert imported_nodes[0]["description"].startswith("NotebookLM import — chưa xác nhận:")
     html_str = graph_to_html_map(graph)
     assert "NotebookLM import — chưa xác nhận:" in html_str
+
+
+def test_business_semantic_graph_excludes_notebooklm_imports_even_when_available():
+    case = MockCase(case_id="case-1", title="Verified Case", workspace_id="ws-mixed")
+    ev = MockEvidence(evidence_id="ev-1", case_id="case-1", title="Verified Evidence")
+    imported = MockBridgeImport(
+        import_id="IMP-MIXED",
+        notebook_id="nb-1",
+        workspace_id="ws-mixed",
+        import_type="knowledge_graph_json",
+        title="NotebookLM import",
+        parsed_json={
+            "nodes": [
+                {"id": "n1", "label": "Imported claim", "type": "cause", "description": "AI claim"}
+            ],
+            "edges": []
+        }
+    )
+
+    graph = build_worklens_semantic_graph(
+        workspace="ws-mixed",
+        notebooks=[],
+        sources=[],
+        cases=[case],
+        evidence=[ev],
+        learning_cards=[],
+        bridge_imports=[imported]
+    )
+
+    labels = {n["label"] for n in graph["nodes"]}
+    descriptions = " ".join(n.get("description", "") for n in graph["nodes"])
+    html_str = graph_to_html_map(graph)
+
+    assert graph["meta"]["graph_kind"] == "semantic"
+    assert "Verified Case" in labels
+    assert "Verified Evidence" in labels
+    assert "Imported claim" not in labels
+    assert "NotebookLM import" not in descriptions
+    assert "NotebookLM import" not in html_str
+
+
+def test_business_semantic_graph_does_not_fallback_to_import_only_data():
+    imported = MockBridgeImport(
+        import_id="IMP-ONLY",
+        notebook_id="nb-1",
+        workspace_id="ws-import-only",
+        import_type="knowledge_graph_json",
+        title="NotebookLM import",
+        parsed_json={
+            "nodes": [
+                {"id": "n1", "label": "Imported-only claim", "type": "cause"}
+            ],
+            "edges": []
+        }
+    )
+
+    graph = build_worklens_semantic_graph(
+        workspace="ws-import-only",
+        notebooks=[],
+        sources=[],
+        cases=[],
+        evidence=[],
+        learning_cards=[],
+        bridge_imports=[imported]
+    )
+    html_str = graph_to_html_map(graph)
+
+    assert graph["nodes"] == []
+    assert graph["edges"] == []
+    assert graph["meta"]["graph_kind"] == "empty"
+    assert "Imported-only claim" not in html_str
+    assert "Chưa đủ dữ liệu nghiệp vụ để dựng bản đồ tri thức" in html_str

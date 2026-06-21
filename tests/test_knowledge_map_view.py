@@ -65,3 +65,42 @@ def test_invalid_edges_are_skipped():
     mermaid = graph_to_pretty_mermaid(sample_graph)
     assert "node_99" not in mermaid
     assert "connects" not in mermaid
+
+
+class MockImportRecord:
+    def __init__(self, import_id="IMP-REAL", title="NotebookLM run", parsed_json=None):
+        self.import_id = import_id
+        self.title = title
+        self.parsed_json = parsed_json or {
+            "nodes": [{"id": "n1", "label": "Imported claim", "type": "cause"}],
+            "edges": []
+        }
+
+
+def test_saved_graph_view_marks_notebooklm_import_unverified():
+    graph = build_saved_graph_view(MockImportRecord())
+
+    assert graph["meta"]["graph_kind"] == "imported"
+    assert graph["meta"]["uses_sample_data"] is False
+    assert graph["nodes"][0]["source_ref"] == "NotebookLM import — chưa xác nhận: NotebookLM run"
+
+
+def test_saved_graph_view_marks_sample_import():
+    graph = build_saved_graph_view(MockImportRecord(import_id="IMP-C707A8DF"))
+
+    assert graph["meta"]["uses_sample_data"] is True
+
+
+def test_saved_graph_view_prefixes_existing_node_source_with_notebooklm_warning():
+    record = MockImportRecord(
+        parsed_json={
+            "nodes": [
+                {"id": "n1", "label": "Imported claim", "type": "cause", "source_ref": "Doc 1"}
+            ],
+            "edges": []
+        }
+    )
+
+    graph = build_saved_graph_view(record)
+
+    assert graph["nodes"][0]["source_ref"] == "NotebookLM import — chưa xác nhận: NotebookLM run | nguồn gốc: Doc 1"

@@ -1387,7 +1387,7 @@ def page_notebooks():
                 cases=rel_cases,
                 evidence=rel_evidence,
                 learning_cards=rel_learning,
-                bridge_imports=raw_saved
+                bridge_imports=[]
             )
             
             has_real_cases_or_evidence = len(rel_cases) > 0 or len(rel_evidence) > 0 or len(rel_learning) > 0

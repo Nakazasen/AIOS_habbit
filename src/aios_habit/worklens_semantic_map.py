@@ -18,6 +18,7 @@ def build_worklens_semantic_graph(
     evidence: Optional[List[Any]] = None,
     learning_cards: Optional[List[Any]] = None,
     bridge_imports: Optional[List[Any]] = None,
+    include_bridge_imports: bool = False,
     max_nodes: int = 80,
     max_edges: int = 160,
 ) -> dict:
@@ -32,8 +33,12 @@ def build_worklens_semantic_graph(
         evidence = load_evidence()
     if learning_cards is None:
         learning_cards = load_learning_cards()
-    if bridge_imports is None:
+    if include_bridge_imports and bridge_imports is None:
         bridge_imports = load_bridge_imports()
+    elif not include_bridge_imports:
+        bridge_imports = []
+    else:
+        bridge_imports = bridge_imports or []
 
     # 2. Filtering by Workspace
     if workspace:
