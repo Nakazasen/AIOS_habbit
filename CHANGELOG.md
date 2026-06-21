@@ -1,5 +1,33 @@
 # Changelog
 
+## 2026-06-21 - Notebook Intelligence & Bridge Persistence (M1.8A - M1.8D)
+
+### Added
+- Created `src/aios_habit/notebook_index.py` supporting localized source document chunk indexing (~1200 chars) and keyword/phrase matching (M1.8A).
+- Created `src/aios_habit/notebook_qa.py` compiling Q&A contexts and Study Pack prompts (M1.8A).
+- Created `src/aios_habit/notebook_graph.py` creating visual structural relation graphs (Mermaid format) (M1.8A).
+- Created `src/aios_habit/llm_client.py` containing a lightweight urllib-based OpenAI-compatible API client (M1.8B).
+- Created `src/aios_habit/notebook_bridge.py` supporting parsing NotebookLM output and converting JSON graphs to Mermaid format (M1.8C).
+- Created `src/aios_habit/notebook_import_store.py` providing a JSONL-based persistence layer for saved NotebookLM imports (M1.8D).
+- Added comprehensive unit test suites:
+  - `tests/test_notebook_intelligence.py` (M1.8A)
+  - `tests/test_notebook_in_app_qa.py` (M1.8B)
+  - `tests/test_llm_client.py` (M1.8B)
+  - `tests/test_notebook_bridge.py` (M1.8C)
+  - `tests/test_notebook_import_store.py` (M1.8D)
+
+### Changed
+- Integrated in-app Q&A and 4 Truth Modes (Local, Cloud-safe, NotebookLM Bridge, Prompt Copy Fallback) in `case_cockpit.py` Tab 3 (M1.8B & M1.8C).
+- Hard gated cloud targets to strictly prevent `local_only` raw data leakage, displaying UI warnings and blocking API execution (M1.8B & M1.8C).
+- Enabled pasting, formatting, and rendering of parsed JSON structures and Mermaid diagrams inside Case Cockpit (M1.8C).
+- Enabled saving, listing, viewing, and deleting saved NotebookLM imports in the Knowledge Notebook cockpit area (M1.8D).
+- Integrated visual graph rendering of saved NotebookLM imports in Tab 5 (Bản đồ) (M1.8D).
+- Synchronized roadmap and governance rules to prevent drift and locked M1.8D-R (M1.8D-R).
+
+### Security
+- Capped chunk indexing, restricted LLM execution context, and ensured all persistent imports default to `local_only` and `draft` status (M1.8A - M1.8D).
+
+
 ## 2026-06-20 - M1.7B Path Containment Hotfix
 
 ### Security

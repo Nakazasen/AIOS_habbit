@@ -16,8 +16,14 @@ This document serves as the high-level index for the development phases, product
 - **M1.6 (Roadmap Governance Lock):** ✅ Completed (Doctrine and roles locked in docs).
 - **M1.6B (Governance Cleanup):** ✅ Completed (Changelog/status cleanup and role-first agent rules).
 - **M1.7 (Workspace + Knowledge Notebook + Simplified Navigation):** ✅ Passed after M1.7B hotfix (Workspace isolation, Knowledge Notebook upload, simplified central sidebar navigation, case linking; no RAG/OCR/vector DB).
-- **M1.7B (Notebook Source Path Containment Hotfix):** ✅ Completed / audit passed (`PASS_M1_7B_BLOCKER_FIXED`; `notebook_id` traversal blocked with allowlist + `resolve()`/`is_relative_to()`).
-- **Phase 2A (Fake-data Pilot):** Next (End-to-end validation with synthetic data only).
+- **M1.7B (Notebook Source Path Containment Hotfix):** ✅ Passed (`PASS_M1_7B_BLOCKER_FIXED`; `notebook_id` traversal blocked with allowlist + `resolve()`/`is_relative_to()`).
+- **M1.8A (Practical Notebook Intelligence Fast Lane):** ✅ Passed (Local chunking ~1200 char, keyword/phrase search, Q&A/Study Pack prompt builders, structural Mermaid graph).
+- **M1.8B (In-App Notebook Q&A):** ✅ Passed (In-app answer button, lightweight OpenAI-compatible LLM adapter (urllib), provider config, local/cloud privacy behavior).
+- **M1.8C (Q&A Truth Modes + NotebookLM Bridge MVP):** ✅ Passed (Truth modes, hard block cloud/local_only unsafe flow, NotebookLM Bridge prompt schemas, JSON/Mermaid paste and preview).
+- **M1.8D (Persist NotebookLM Bridge Imports):** ✅ Passed (Persistent import store, save/view/delete imports, graph/study/case investigation import preview, graph tab integration).
+- **M1.8D-R (Roadmap Sync):** ✅ Passed (Roadmap & governance document synchronization, no drift guardrails).
+- **M1.8E (Daily Work Pain Polish):** **Next immediate gate** (Focusing on daily-use polish, making saved imports easier to reuse, context sufficiency checking, reducing copy-paste friction, no heavy RAG/traceability code).
+- **Phase 2A (Fake-data Pilot):** Gated (End-to-end validation with synthetic data only).
 - **Phase 2 (Real-data Pilot):** Not started / gated (Do not use real data until Phase 2A passes).
 
 ---

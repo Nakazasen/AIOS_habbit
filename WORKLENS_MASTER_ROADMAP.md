@@ -9,17 +9,23 @@ Every phase of the AIOS WorkLens lifecycle must use strict PASS/FAIL gates. A ph
 The project has advanced through the following local-first stabilization gates:
 
 - **M1: Merge PR #1** — Completed (Squash merged).
-- **M1.1: Streamlit Launch Hotfix** — Completed (ImportError resolved by correcting direct streamlit run paths).
+- **M1.1: Streamlit Launch Hotfix** — Completed (ImportError resolved).
 - **M1.2: Vietnamese UI Policy & Localization** — Completed (100% UI localization in Vietnamese).
 - **M1.3: Quick Intake Flow** — Completed (Single-screen intake creating case + initial evidence).
 - **M1.4: Senior Learning Memory MVP** — Completed (Conditional PASS; model, storage, and UI form completed).
-- **M1.5: Pilot UX / Export Safety Hardening** — Completed (Implemented and validated; compact UI mode, extracted pure handover helper, audit warnings, and export mode options).
-- **M1.6: Roadmap Governance Lock** — ✅ Completed (Locking product doctrine, loop, layers, model roles, and phase definitions).
+- **M1.5: Pilot UX / Export Safety Hardening** — Completed (Implemented and validated; compact UI mode, pure handover, export options).
+- **M1.6: Roadmap Governance Lock** — ✅ Completed (Doctrine and roles locked in docs).
 - **M1.6B: Governance Cleanup** — Completed (Changelog/status cleanup and role-first agent rules).
-- **M1.7: Workspace + Knowledge Notebook + Simplified Navigation** — ✅ Passed after M1.7B hotfix (No longer `FAIL_BLOCKED`; Workspace isolation, Knowledge Notebook upload, simplified central sidebar navigation, case linking, no RAG/OCR/vector DB).
-- **M1.7B: Notebook Source Path Containment Hotfix** — ✅ Completed / audit passed (`PASS_M1_7B_BLOCKER_FIXED`; `notebook_id` path traversal blocked with strict allowlist and `resolve()`/`is_relative_to()`).
-- **Phase 2A Fake-data Pilot** — **Next immediate gate** (End-to-end validation with synthetic/fake data only).
-- **Phase 2 Real-data Pilot** — **Not started / gated** (Do not open real data until Phase 2A passes).
+- **M1.7: Workspace + Knowledge Notebook + Simplified Navigation** — ✅ Passed after M1.7B hotfix (Workspace isolation, Knowledge Notebook upload, simplified central sidebar navigation, case linking; no RAG/OCR/vector DB).
+- **M1.7B: Notebook Source Path Containment Hotfix** — ✅ Passed (`PASS_M1_7B_BLOCKER_FIXED`; `notebook_id` traversal blocked with allowlist + `resolve()`/`is_relative_to()`).
+- **M1.8A: Practical Notebook Intelligence Fast Lane** — ✅ Passed (Local chunking, keyword/phrase search, prompt builders, structural Mermaid graph; commit: `dc94b7d`).
+- **M1.8B: In-App Notebook Q&A** — ✅ Passed (urllib OpenAI adapter, in-app answer button, local/cloud privacy logic; commit: `013f0c8`).
+- **M1.8C: Q&A Truth Modes + NotebookLM Bridge MVP** — ✅ Passed (Truth modes, hard block cloud/local_only unsafe flow, JSON/Mermaid paste preview; commit: `8b289fe`).
+- **M1.8D: Persist NotebookLM Bridge Imports** — ✅ Passed (Persistent import store, save/view/delete UI, graph tab integration; commit: `97e0243`).
+- **M1.8D-R: Roadmap Sync** — ✅ Passed (Roadmap & governance document synchronization, no drift guardrails).
+- **M1.8E: Daily Work Pain Polish** — **Next immediate gate** (Focusing on practical daily-use polish, making saved imports easier to reuse, context sufficiency checking, reducing copy-paste friction, no heavy RAG/traceability code).
+- **Phase 2A: Fake-data Pilot** — **Gated** (End-to-end validation with synthetic/fake data only).
+- **Phase 2: Real-data Pilot** — **Not started / gated** (Do not open real data until Phase 2A passes).
 
 ---
 
@@ -39,17 +45,26 @@ The project has advanced through the following local-first stabilization gates:
 - **Validation:** 100% compile check, green test suite (`pytest`), and manual execution.
 - **Exit Criteria:** PASS if UI opens, core loop works, and learning memory is preserved locally.
 
-### Phase 1.5 — Product Shell / Navigation / Knowledge Notebook Foundation (Active Target)
+### Phase 1.5 — Product Shell / Navigation / Knowledge Notebook Foundation (Completed)
 - **Objective:** Establish workspace/notebook concepts and clean navigation.
-- **Scope:**
-  - Simplify navigation (reduce sidebar radio button clutter).
-  - Introduce workspaces (industry/domain context isolation).
-  - Introduce knowledge notebooks (ingest background documentation separate from case evidence).
-  - Allow uploading source documents to notebooks, ensuring they do not pollute case evidence.
-  - Allow cases to link to a notebook.
-  - Source metadata/preview only; no full RAG implementation yet.
-- **Validation:** Isolated file storage structure and clean tabbed navigation.
+- **Scope:** Workspace selector, knowledge notebooks upload, local preview, and simplified sidebar navigation.
 - **Exit Criteria:** PASS if workspaces and notebook document lists work without mixing with evidence.
+
+### Phase 1.8 — Notebook Intelligence & Bridge Persistence (Completed)
+- **Objective:** Integrate local Q&A engine and import/persist rich structures from NotebookLM.
+- **Scope:** Local chunk indexing, keyword searching, Q&A/Study Pack prompt builders, urllib LLM client, truth modes, cloud safety hard gating, JSON/Mermaid parsing, and JSONL persistence.
+- **Exit Criteria:** PASS if NotebookLM JSON/Mermaid results are persistent, queryable, and rendering correctly in UI.
+
+### Phase 1.8E — Daily Work Pain Polish (Active Target)
+- **Objective:** Refine daily usability of NotebookLM imports and minimize operational friction.
+- **Scope:**
+  - Make saved NotebookLM imports easier to reuse.
+  - Convert saved investigation imports into draft Cases or evidence checklists.
+  - Improve "what should I do next?" guidance.
+  - Show context sufficiency before asking AI.
+  - Show recent imports / recent questions.
+  - NO heavy RAG or traceability implementation.
+- **Exit Criteria:** PASS if daily-use polish features work without regression.
 
 ### Phase 2A — Fake-data Pilot (Next)
 - **Objective:** Validate the full WorkLens loop end-to-end using synthetic/fake data only.
@@ -65,10 +80,21 @@ The project has advanced through the following local-first stabilization gates:
 - **Validation:** Checklist compliance (`MONDAY_PILOT_CHECKLIST.md`) and explicit public-safety review.
 - **Exit Criteria:** PASS if the user successfully completes at least one full real incident loop after fake-data validation.
 
-### Phase 3 — Learning Memory Hardening
-- **Objective:** Enable query and lookup of experience cards.
-- **Scope:** Search learning cards, case similarity indexing, pattern memory, communication memory, and review/confirmation governance.
-- **Validation:** Similarity tests and confirmed/unconfirmed card safety checks.
+### Phase 3 (Future) / P1.0 — Production Traceability Foundation
+- **Objective:** Establish the foundation schema for tracking production units and checking risk clusters.
+- **Scope:**
+  - Define generic traceability concepts: `unit_type`, `unit_serial`, `component_type`, `component_lot`, `supplier_lot`, `mold_id`, `cav_id`, `process_step`, `jig_id`, `jig_result`, `inspection_result`, `defect_type`, `risk_cluster`.
+  - Generic support for various units such as LSU, Drum, DLP, Fuser, Scanner, MainBody, and Other components (LSU is only the first sample scenario, not an LSU-only system).
+  - Build a lightweight schema, parse fake CSV files, and generate a simple join/risk summary.
+  - NO real-time prediction or ML models.
+  - NO heavy graph DB or vector DB integrations.
+  - NO production database connections (API/Direct).
+- **No Drift Guardrail:**
+  > [!IMPORTANT]
+  > Production Traceability is a future branch, not the immediate main lane.
+  > It must remain generic, not LSU-only. LSU is only the first sample scenario.
+  > No prediction/ML/graph DB/vector DB in P1.0.
+  > P1.0 must not delay daily WorkLens usability. Return to daily pain solving immediately after the foundation is laid.
 
 ### Phase 4 — Knowledge Notebook / Ingest Engine
 - **Objective:** Upgrade source document ingestion.

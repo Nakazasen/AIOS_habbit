@@ -1,6 +1,6 @@
 # Hướng dẫn sử dụng Sổ tri thức (Knowledge Notebook) trong AIOS Case Cockpit
 
-Tài liệu này giải thích các khái niệm cốt lõi, cách sử dụng và các nguyên tắc bảo mật của **Không gian làm việc (Workspace)**, **Sổ tri thức (Knowledge Notebook)** và **Tài liệu nguồn (Source Document)** trong AIOS Case Cockpit kể từ Gate M1.7.
+Tài liệu này giải thích các khái niệm cốt lõi, cách sử dụng và các nguyên tắc bảo mật của **Không gian làm việc (Workspace)**, **Sổ tri thức (Knowledge Notebook)** và **Tài liệu nguồn (Source Document)** trong AIOS Case Cockpit kể từ Gate M1.7 và nâng cấp NotebookLM Bridge ở M1.8.
 
 ---
 
@@ -55,3 +55,24 @@ Tài liệu này giải thích các khái niệm cốt lõi, cách sử dụng v
 * **Không theo dõi qua Git:** Toàn bộ dữ liệu Workspace, Notebook, metadata và tệp tin tải lên đều nằm trong thư mục `local_cases/` (đã cấu hình bỏ qua trong `.gitignore`), đảm bảo không bao giờ bị đẩy lên kho chứa Git công khai.
 * **Chống rò rỉ lên Cloud:** Các tài liệu nguồn được đánh dấu là `local_only` (Chỉ lưu cục bộ) sẽ tự động bị che giấu hoặc loại bỏ hoàn toàn phần preview thô trong Prompt Pack khi biên dịch cho các AI đám mây (Gemini, GPT, Copilot, NotebookLM Safe).
 * **Định vị đường dẫn an toàn:** Mọi tệp tin tải lên đều được kiểm tra tính hợp lệ của thư mục đích qua cơ chế so khớp Path Containment của Python (`Path.is_relative_to()`), ngăn ngừa hoàn toàn các cuộc tấn công Directory Traversal.
+
+---
+
+## 6. NotebookLM Bridge & Persistence (Nâng cấp M1.8)
+
+Kể từ Gate M1.8A - M1.8D, AIOS Case Cockpit bổ sung các khả năng nâng cao để tích hợp và lưu trữ dữ liệu từ NotebookLM:
+* **Q&A Truth Modes (Chế độ Chân lý Hỏi đáp):**
+  1. *AIOS Local Context:* Truy vấn bằng dữ liệu cục bộ hoàn toàn qua công cụ tìm kiếm keyword/phrase matching cục bộ và gọi LLM thông qua adapter tương thích OpenAI (urllib). Chế độ này bị chặn cứng nếu dùng Cloud AI để chống rò rỉ dữ liệu `local_only`.
+  2. *Cloud-safe Context:* Tự động ẩn các bằng chứng `local_only` (để lại placeholder redacted) trước khi gửi cho Cloud AI.
+  3. *NotebookLM Bridge:* Tạo prompt tối ưu để dán thủ công sang NotebookLM (không gửi dữ liệu tự động).
+* **NotebookLM Bridge Prompt Schemas:**
+  Hệ thống cung cấp các prompt có khuôn mẫu chặt chẽ để NotebookLM trả về dữ liệu chuẩn cấu trúc JSON/Mermaid cho 4 loại:
+  - `knowledge_graph_json`: Đồ thị tri thức dạng JSON.
+  - `study_pack_json`: Bộ học tập ôn bài dạng JSON.
+  - `case_investigation_json`: Phân tích điều tra hồ sơ dạng JSON.
+  - `mermaid_graph`: Sơ đồ Mermaid thô.
+* **Paste & Persistence Store:**
+  - Hỗ trợ dán trực tiếp kết quả trả về từ NotebookLM, tự động parse sạch codeblock fences và hiển thị preview trực quan.
+  - Nút **Lưu kết quả vào AIOS** ghi nhận dữ liệu vào `local_cases/notebook_bridge_imports.jsonl` với trạng thái mặc định là `draft` và quyền bảo mật `local_only`.
+  - Hiển thị danh sách kết quả đã lưu kèm tính năng xóa bản ghi.
+  - Tích hợp kết quả đồ thị Mermaid đã lưu vào tab **Bản đồ** để trực quan hóa quan hệ thực thể.

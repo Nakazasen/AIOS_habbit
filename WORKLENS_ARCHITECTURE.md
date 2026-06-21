@@ -15,6 +15,11 @@ AIOS Case Cockpit v0.1 is currently implemented as a Streamlit monolith in [case
 - [learning_models.py](file:///D:/Sandbox/AIOS_habbit/src/aios_habit/learning_models.py) (Senior Learning Card Storage)
 - [workspace_models.py](file:///D:/Sandbox/AIOS_habbit/src/aios_habit/workspace_models.py) (Workspace & Knowledge Notebook storage/models)
 - [source_ingest.py](file:///D:/Sandbox/AIOS_habbit/src/aios_habit/source_ingest.py) (Source Document upload & preview parsing)
+- [notebook_index.py](file:///D:/Sandbox/AIOS_habbit/src/aios_habit/notebook_index.py) (Local source chunk indexing & search)
+- [notebook_qa.py](file:///D:/Sandbox/AIOS_habbit/src/aios_habit/notebook_qa.py) (Local context compiler & Q&A prompt generator)
+- [llm_client.py](file:///D:/Sandbox/AIOS_habbit/src/aios_habit/llm_client.py) (Lightweight HTTP-based LLM provider client)
+- [notebook_bridge.py](file:///D:/Sandbox/AIOS_habbit/src/aios_habit/notebook_bridge.py) (NotebookLM import schema parsing & Mermaid graph conversion)
+- [notebook_import_store.py](file:///D:/Sandbox/AIOS_habbit/src/aios_habit/notebook_import_store.py) (Persistent storage for NotebookLM imported results)
 
 ---
 
@@ -29,6 +34,7 @@ Future development must organize boundaries along these locked layers:
 ### Layer 2: Knowledge Notebook Boundary (`notebook/`)
 - Ingests background knowledge resources (PDFs, Markdown manuals, procedures).
 - Keeps notebooks completely isolated. Avoids mixing raw notebook sources with case evidence.
+- Supports NotebookLM Bridge prompt compilation, structured results pasting, parsing, and persistent local storage (`notebook_import_store`).
 
 ### Layer 3: Case Cockpit Boundary (`cockpit/`)
 - Handles active incident cases.
@@ -46,6 +52,7 @@ Future development must organize boundaries along these locked layers:
 
 ### Layer 6: Visual Knowledge Graph (Advanced Boundary)
 - Maps relationships between procedures, tables, components, past incidents, and verified causes.
+- Renders structural workspace/notebook maps alongside importable/renderable graphs saved from external tools like NotebookLM.
 
 ### Layer 7: Field Intelligence / Alert (Advanced Boundary)
 - Live log anomaly detection using historical case schemas.
