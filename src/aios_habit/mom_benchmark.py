@@ -154,6 +154,22 @@ def _redact_snippet(text: str, max_len: int = 180) -> str:
     return cleaned[:max_len].rstrip()
 
 
+_GENERIC_QUERY_TERMS = {
+    "mom", "docs", "doc", "document", "documents", "production", "history", "result",
+    "registration", "system", "interface", "process", "overview", "evidence", "source",
+    "refs", "safe", "concise", "topic", "unsupported", "not", "in",
+}
+
+
+def _question_specific_terms(question: str) -> set[str]:
+    terms = set()
+    for token in question.lower().replace("/", " ").replace("_", " ").split():
+        clean = "".join(ch for ch in token if ch.isalnum())
+        if len(clean) >= 5 and clean not in _GENERIC_QUERY_TERMS:
+            terms.add(clean)
+    return terms
+
+
 def generate_mom_grounded_answer(question: str, search_results: list[Any], *, max_sources: int = 5) -> dict[str, Any]:
     """Generate a deterministic local-only answer from MOM search hits.
 
@@ -161,7 +177,16 @@ def generate_mom_grounded_answer(question: str, search_results: list[Any], *, ma
     evidence-grounded sections and source refs suitable for benchmark scoring,
     while detailed confidential text remains in ignored runtime records only.
     """
-    usable = [hit for hit in search_results[:max_sources] if getattr(hit, "score", 0) > 0]
+    specific_terms = _question_specific_terms(question)
+    raw_hits = [hit for hit in search_results[:max_sources] if getattr(hit, "score", 0) > 0]
+    if specific_terms:
+        usable = [
+            hit for hit in raw_hits
+            if specific_terms.intersection(set(hit.matched_terms))
+            or any(term in hit.chunk.relative_path.lower() or term in hit.chunk.preview.lower() for term in specific_terms)
+        ]
+    else:
+        usable = raw_hits
     source_refs: list[dict[str, Any]] = []
     confirmed: list[str] = []
     for index, hit in enumerate(usable, 1):
@@ -252,13 +277,14 @@ def score_mom_real_answer(answer: dict[str, Any], *, valid_source_refs: bool = T
     if not text.strip():
         return {"source_traceability": 0, "evidence_alignment": 0, "completeness": 0, "unknown_handling": 0, "actionability": 0, "clarity": 0, "hallucination_control": 0}
 
+    has_confirmed = bool(confirmed)
     source_traceability = 5 if refs and valid_source_refs else 0
-    evidence_alignment = 5 if refs and valid_source_refs and confirmed and not (confidence == "high" and len(refs) < 2) else 3 if refs and valid_source_refs else 0
-    completeness = 5 if has_sections and len(refs) >= 3 and len(files) >= 2 else 4 if has_sections and refs else 2 if has_sections else 1
+    evidence_alignment = 5 if refs and valid_source_refs and has_confirmed and not (confidence == "high" and len(refs) < 2) else 2 if refs and valid_source_refs else 0
+    completeness = 5 if has_sections and len(refs) >= 3 and len(files) >= 2 and has_confirmed else 3 if has_sections and refs and has_confirmed else 1 if has_sections else 0
     unknown_handling = 5 if "chưa đủ bằng chứng" in text.lower() or "không đủ bằng chứng" in text.lower() or "insufficient evidence" in text.lower() else 3 if refs else 5
-    actionability = 5 if len(next_checks) >= 2 and "kiểm" in text.lower() else 3 if next_checks else 0
+    actionability = 5 if has_confirmed and len(next_checks) >= 2 and "kiểm" in text.lower() else 2 if next_checks else 0
     clarity = 5 if has_sections and len(text) > 120 else 3 if text.strip() else 0
-    hallucination_control = 5 if not (confidence == "high" and insufficient) and valid_source_refs else 1
+    hallucination_control = 5 if not (confidence == "high" and insufficient) and valid_source_refs and (has_confirmed or insufficient) else 1
     if confidence == "high" and insufficient:
         hallucination_control = 0
         evidence_alignment = min(evidence_alignment, 1)

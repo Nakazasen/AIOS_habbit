@@ -449,6 +449,24 @@ def test_generate_mom_grounded_answer_insufficient_when_no_hits():
     assert weighted_real_answer_score(score_mom_real_answer(answer)) < 70
 
 
+def test_generate_mom_grounded_answer_filters_unsupported_specific_terms(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    from aios_habit.mom_benchmark import generate_mom_grounded_answer, score_mom_real_answer, weighted_real_answer_score
+    from aios_habit.mom_local_index import build_mom_local_index, search_mom_index
+
+    root = tmp_path / "docs"
+    root.mkdir()
+    (root / "process.md").write_text("MOM production history registration process evidence.", encoding="utf-8")
+    build_mom_local_index(root)
+
+    hits = search_mom_index("unsupported blockchain topic not in MOM docs", limit=5)
+    answer = generate_mom_grounded_answer("unsupported blockchain topic not in MOM docs", hits)
+
+    assert answer["confidence_level"] == "insufficient"
+    assert answer["source_refs"] == []
+    assert weighted_real_answer_score(score_mom_real_answer(answer)) < 70
+
+
 def test_real_answer_scoring_penalizes_prompt_only_and_weak_refs():
     from aios_habit.mom_benchmark import score_mom_real_answer, weighted_real_answer_score
 
