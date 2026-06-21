@@ -759,7 +759,8 @@ def main():
         "Không gian làm việc (Workspace - Không gian làm việc)",
         options=list(ws_options.keys()),
         index=list(ws_options.keys()).index(st.session_state.active_workspace_id),
-        key="active_workspace_id"
+        key="active_workspace_id",
+        format_func=lambda x: ws_options[x]
     )
     
     # Workspace management expander
