@@ -1499,8 +1499,8 @@ def page_notebooks():
                     st.info("Không có dữ liệu quan hệ.")
                     
             st.info(
-                "Bản đồ HTML là renderer nhẹ, không cần thư viện ngoài. "
-                "Dữ liệu gốc vẫn là node/edge JSON nên sau này có thể thay renderer bằng Cytoscape/React Flow nếu cần."
+                "Bản đồ hiện dùng renderer HTML nhẹ, không dùng thư viện ngoài. "
+                "Nếu sau này cần nâng cấp renderer, sẽ mở spike riêng sau khi daily flow ổn."
             )
 
 

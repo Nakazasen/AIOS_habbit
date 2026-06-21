@@ -164,6 +164,11 @@ def test_build_semantic_graph_learning_cards():
     
     nodes = {n["id"]: n for n in graph["nodes"]}
     assert "learning_lc_1" in nodes
+    assert nodes["learning_lc_1"]["type"] == "learning"
+    assert nodes["learning_lc_1"]["description"].startswith("Bài học kinh nghiệm:")
+    html_str = graph_to_html_map(graph)
+    assert "LEARNING (1)" in html_str
+    assert "Bài học kinh nghiệm:" in html_str
     assert "cause_lc_1_cause" in nodes
     assert "action_lc_1_countermeasure" in nodes
     assert "action_lc_1_nextcheck" in nodes
@@ -190,3 +195,36 @@ def test_build_semantic_graph_no_lsu_hardcode():
     for n in graph["nodes"]:
         assert "LSU" not in n["label"]
         assert "Drum" not in n["label"]
+
+
+def test_notebooklm_import_nodes_are_marked_unconfirmed():
+    notebook = MockNotebook("nb-1", "ws-import", "Notebook")
+    imported = MockBridgeImport(
+        import_id="IMP-REAL",
+        notebook_id="nb-1",
+        workspace_id="ws-import",
+        import_type="knowledge_graph_json",
+        title="NotebookLM import",
+        parsed_json={
+            "nodes": [
+                {"id": "n1", "label": "Imported concept", "type": "cause", "description": "Imported claim"}
+            ],
+            "edges": []
+        }
+    )
+
+    graph = build_worklens_semantic_graph(
+        workspace="ws-import",
+        notebooks=[notebook],
+        sources=[],
+        cases=[],
+        evidence=[],
+        learning_cards=[],
+        bridge_imports=[imported]
+    )
+
+    imported_nodes = [n for n in graph["nodes"] if n["id"].startswith("imp_IMP_REAL")]
+    assert len(imported_nodes) == 1
+    assert imported_nodes[0]["description"].startswith("NotebookLM import — chưa xác nhận:")
+    html_str = graph_to_html_map(graph)
+    assert "NotebookLM import — chưa xác nhận:" in html_str

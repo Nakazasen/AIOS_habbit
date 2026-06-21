@@ -26,7 +26,7 @@ def graph_to_html_map(graph: dict, max_nodes: int = 50, max_edges: int = 100) ->
                 break
     
     # Group nodes by type
-    lanes_keys = ["system", "process", "setting", "error", "cause", "action", "document", "case", "component", "other"]
+    lanes_keys = ["system", "process", "setting", "error", "cause", "action", "learning", "document", "case", "component", "other"]
     lanes = {lk: [] for lk in lanes_keys}
     for n in nodes:
         ntype = n.get("type", "other").lower()

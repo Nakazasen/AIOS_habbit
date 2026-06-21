@@ -67,7 +67,7 @@ def build_worklens_semantic_graph(
         added_node_ids.add(clean_id)
         
         # Ensure type is valid or fallback to other
-        valid_types = {"system", "process", "setting", "error", "cause", "action", "document", "case", "component", "other"}
+        valid_types = {"system", "process", "setting", "error", "cause", "action", "learning", "document", "case", "component", "other"}
         if ntype not in valid_types:
             ntype = "other"
             
@@ -160,7 +160,8 @@ def build_worklens_semantic_graph(
     for lc in learning_cards:
         lrn_nid = f"learning_{lc.learning_id}"
         label = f"Bài học: {lc.reusable_lesson[:40]}..." if lc.reusable_lesson else f"Bài học {lc.learning_id}"
-        add_node(lrn_nid, label=label, ntype="document", description=lc.reusable_lesson, source_ref=lc.learning_id, confidence=lc.confidence)
+        learning_desc = f"Bài học kinh nghiệm: {lc.reusable_lesson}" if lc.reusable_lesson else "Bài học kinh nghiệm"
+        add_node(lrn_nid, label=label, ntype="learning", description=learning_desc, source_ref=lc.learning_id, confidence=lc.confidence)
         
         case_nid = f"case_{lc.case_id}"
         if sanitize_id(case_nid) in added_node_ids:
@@ -203,11 +204,13 @@ def build_worklens_semantic_graph(
                 imp_nid = f"imp_{bi.import_id}_{orig_id}"
                 id_map[orig_id] = imp_nid
                 
+                node_desc = node.get("description", "")
+                imported_desc = f"NotebookLM import — chưa xác nhận: {node_desc}" if node_desc else "NotebookLM import — chưa xác nhận"
                 add_node(
                     imp_nid, 
                     label=node.get("label", orig_id), 
                     ntype=node.get("type", "other"), 
-                    description=node.get("description", ""), 
+                    description=imported_desc, 
                     source_ref=node.get("source_ref") or bi.title, 
                     confidence=node.get("confidence", "")
                 )
