@@ -410,3 +410,65 @@ def test_benchmark_scores_weak_ref_only_answer_below_90():
     }
 
     assert weighted_maturity_score(score_aios_prompt_pack(pack)) < 90
+
+
+def test_generate_mom_grounded_answer_returns_actual_sections(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    from aios_habit.mom_benchmark import generate_mom_grounded_answer, score_mom_real_answer, weighted_real_answer_score
+    from aios_habit.mom_local_index import build_mom_local_index, search_mom_index
+
+    root = tmp_path / "docs"
+    root.mkdir()
+    (root / "interface.md").write_text(
+        "Production registration interface confirms source records, required conditions, and next validation checks.",
+        encoding="utf-8",
+    )
+    build_mom_local_index(root)
+    hits = search_mom_index("Production registration", limit=3)
+    answer = generate_mom_grounded_answer("Production registration", hits)
+
+    assert answer["privacy_level"] == "local_only"
+    assert answer["answer_text"]
+    assert answer["confirmed_by_source"]
+    assert answer["next_checks"]
+    assert answer["source_refs"]
+    assert "Confirmed by source" in answer["answer_text"]
+    assert "Not found / insufficient evidence" in answer["answer_text"]
+    assert "Next checks" in answer["answer_text"]
+    assert weighted_real_answer_score(score_mom_real_answer(answer)) >= 90
+
+
+def test_generate_mom_grounded_answer_insufficient_when_no_hits():
+    from aios_habit.mom_benchmark import generate_mom_grounded_answer, score_mom_real_answer, weighted_real_answer_score
+
+    answer = generate_mom_grounded_answer("unknown unsupported", [])
+
+    assert answer["confidence_level"] == "insufficient"
+    assert "Không đủ bằng chứng" in answer["answer_text"]
+    assert answer["source_refs"] == []
+    assert weighted_real_answer_score(score_mom_real_answer(answer)) < 70
+
+
+def test_real_answer_scoring_penalizes_prompt_only_and_weak_refs():
+    from aios_habit.mom_benchmark import score_mom_real_answer, weighted_real_answer_score
+
+    prompt_only = {"answer_text": "", "source_refs": [{"chunk_id": "c1", "relative_path": "a.xlsx"}], "confidence_level": "high"}
+    weak = {"answer_text": "Có nguồn nhưng không trả lời thật.", "source_refs": [{"chunk_id": "c1", "relative_path": "a.xlsx"}], "confidence_level": "medium"}
+
+    assert weighted_real_answer_score(score_mom_real_answer(prompt_only)) < 70
+    assert weighted_real_answer_score(score_mom_real_answer(weak)) < 80
+
+
+def test_real_answer_scoring_penalizes_fake_refs_and_bad_high_confidence():
+    from aios_habit.mom_benchmark import score_mom_real_answer, weighted_real_answer_score
+
+    answer = {
+        "answer_text": "Confirmed by source: x\nNot found / insufficient evidence: không đủ bằng chứng\nNext checks: kiểm tra lại\nSource coverage: none",
+        "confirmed_by_source": ["x"],
+        "next_checks": ["kiểm tra lại", "đối chiếu"],
+        "source_refs": [],
+        "confidence_level": "high",
+    }
+
+    assert score_mom_real_answer(answer)["hallucination_control"] == 0
+    assert weighted_real_answer_score(score_mom_real_answer(answer, valid_source_refs=False)) < 80

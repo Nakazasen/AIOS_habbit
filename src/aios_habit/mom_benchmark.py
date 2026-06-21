@@ -147,3 +147,140 @@ def notebooklm_manual_required_record(question_id: str, question: str, aios_sour
         notebooklm_query_status="manual_required",
         notes="Streamlit app không gọi trực tiếp NotebookLM MCP; Antigravity agent/browser cần query notebook hiện có.",
     )
+
+
+def _redact_snippet(text: str, max_len: int = 180) -> str:
+    cleaned = " ".join(text.replace("\n", " ").split())
+    return cleaned[:max_len].rstrip()
+
+
+def generate_mom_grounded_answer(question: str, search_results: list[Any], *, max_sources: int = 5) -> dict[str, Any]:
+    """Generate a deterministic local-only answer from MOM search hits.
+
+    The function intentionally avoids cloud/LLM calls. It produces short,
+    evidence-grounded sections and source refs suitable for benchmark scoring,
+    while detailed confidential text remains in ignored runtime records only.
+    """
+    usable = [hit for hit in search_results[:max_sources] if getattr(hit, "score", 0) > 0]
+    source_refs: list[dict[str, Any]] = []
+    confirmed: list[str] = []
+    for index, hit in enumerate(usable, 1):
+        chunk = hit.chunk
+        source_refs.append({
+            "chunk_id": chunk.chunk_id,
+            "relative_path": chunk.relative_path,
+            "source_file": chunk.source_file,
+            "sheet": chunk.sheet,
+            "section": chunk.section,
+            "score": hit.score,
+            "privacy_level": chunk.privacy_level,
+            "file_type": chunk.file_type,
+            "page": chunk.page,
+            "slide": chunk.slide,
+            "extractor_name": chunk.extractor_name,
+            "extraction_status": chunk.extraction_status,
+            "ocr_engine": chunk.ocr_engine,
+        })
+        label_parts = [chunk.relative_path, chunk.chunk_id]
+        if chunk.sheet:
+            label_parts.append(f"sheet={chunk.sheet}")
+        if chunk.page is not None:
+            label_parts.append(f"page={chunk.page}")
+        if chunk.slide is not None:
+            label_parts.append(f"slide={chunk.slide}")
+        confirmed.append(
+            f"{index}. Nguồn {' | '.join(str(p) for p in label_parts if p)} khớp các thuật ngữ {', '.join(hit.matched_terms[:5]) or 'liên quan'}; trích yếu: {_redact_snippet(chunk.preview)}"
+        )
+
+    files = sorted({ref["relative_path"] for ref in source_refs})
+    file_types = sorted({ref["file_type"] for ref in source_refs})
+    has_ocr = any(str(ref.get("extraction_status", "")).startswith("ocr") for ref in source_refs)
+    source_coverage = {
+        "source_count": len(source_refs),
+        "files": files,
+        "file_types": file_types,
+        "has_ocr": has_ocr,
+    }
+
+    if not source_refs:
+        confidence = "insufficient"
+        not_found = "Không đủ bằng chứng trong MOM local index cho câu hỏi này."
+        next_checks = [
+            "Kiểm tra lại từ khóa tiếng Nhật/Anh/Việt trong tài liệu gốc.",
+            "Xác định đúng module/process trước khi kết luận.",
+        ]
+        confirmed_text = "Không có điểm nào được xác nhận bằng source refs."
+    else:
+        confidence = "high" if len(source_refs) >= 3 and len(files) >= 2 else "medium" if len(source_refs) >= 2 else "low"
+        not_found = "Không kết luận các field/process không xuất hiện trong nguồn trích dẫn; mọi phần ngoài phạm vi nguồn được xem là chưa đủ bằng chứng."
+        next_checks = [
+            f"Mở lại {files[0]} để kiểm tra ngữ cảnh đầy đủ quanh chunk được trích dẫn.",
+            "Đối chiếu thêm sheet/page/slide liên quan nếu cần quyết định nghiệp vụ.",
+        ]
+        confirmed_text = "\n".join(confirmed)
+
+    answer_text = (
+        f"Confirmed by source:\n{confirmed_text}\n\n"
+        f"Not found / insufficient evidence:\n{not_found}\n\n"
+        f"Next checks:\n- " + "\n- ".join(next_checks) + "\n\n"
+        f"Source coverage:\n{len(source_refs)} nguồn; loại file={', '.join(file_types) if file_types else 'none'}; OCR={'yes' if has_ocr else 'no'}; privacy=local_only."
+    )
+    return {
+        "question": question,
+        "answer_text": answer_text,
+        "confirmed_by_source": confirmed,
+        "not_found_or_insufficient_evidence": not_found,
+        "next_checks": next_checks,
+        "source_refs": source_refs,
+        "source_coverage": source_coverage,
+        "confidence_level": confidence,
+        "privacy_level": "local_only",
+        "prompt_only": False,
+    }
+
+
+def score_mom_real_answer(answer: dict[str, Any], *, valid_source_refs: bool = True) -> dict[str, int]:
+    refs = answer.get("source_refs") or []
+    text = str(answer.get("answer_text") or "")
+    confidence = str(answer.get("confidence_level") or "")
+    insufficient = confidence == "insufficient" or not refs
+    has_sections = all(token in text.lower() for token in ("confirmed by source", "not found", "next checks", "source coverage"))
+    confirmed = answer.get("confirmed_by_source") or []
+    next_checks = answer.get("next_checks") or []
+    files = {ref.get("relative_path") for ref in refs}
+
+    if not text.strip():
+        return {"source_traceability": 0, "evidence_alignment": 0, "completeness": 0, "unknown_handling": 0, "actionability": 0, "clarity": 0, "hallucination_control": 0}
+
+    source_traceability = 5 if refs and valid_source_refs else 0
+    evidence_alignment = 5 if refs and valid_source_refs and confirmed and not (confidence == "high" and len(refs) < 2) else 3 if refs and valid_source_refs else 0
+    completeness = 5 if has_sections and len(refs) >= 3 and len(files) >= 2 else 4 if has_sections and refs else 2 if has_sections else 1
+    unknown_handling = 5 if "chưa đủ bằng chứng" in text.lower() or "không đủ bằng chứng" in text.lower() or "insufficient evidence" in text.lower() else 3 if refs else 5
+    actionability = 5 if len(next_checks) >= 2 and "kiểm" in text.lower() else 3 if next_checks else 0
+    clarity = 5 if has_sections and len(text) > 120 else 3 if text.strip() else 0
+    hallucination_control = 5 if not (confidence == "high" and insufficient) and valid_source_refs else 1
+    if confidence == "high" and insufficient:
+        hallucination_control = 0
+        evidence_alignment = min(evidence_alignment, 1)
+    return {
+        "source_traceability": source_traceability,
+        "evidence_alignment": evidence_alignment,
+        "completeness": completeness,
+        "unknown_handling": unknown_handling,
+        "actionability": actionability,
+        "clarity": clarity,
+        "hallucination_control": hallucination_control,
+    }
+
+
+def weighted_real_answer_score(scores: dict[str, int]) -> float:
+    weights = {
+        "source_traceability": 20,
+        "evidence_alignment": 25,
+        "completeness": 20,
+        "unknown_handling": 10,
+        "actionability": 10,
+        "clarity": 5,
+        "hallucination_control": 10,
+    }
+    return round(sum((scores.get(key, 0) / 5) * weight for key, weight in weights.items()), 2)
