@@ -264,3 +264,85 @@ def answer_notebook_question(
             block_reason=f"Lỗi khi gọi AI: {e}"
         )
 
+def evaluate_context_sufficiency(
+    notebook_id: str,
+    question: str,
+    mode: str,
+    export_mode: str,
+    limit: int = 5
+) -> dict:
+    from aios_habit.llm_client import load_llm_config
+    config = load_llm_config()
+    
+    # Resolve target and export_mode for evaluation
+    if mode == "Hỏi bằng AIOS local context":
+        target = "local_ai"
+        eval_export_mode = "local"
+    else:
+        target = config.provider if config else "cloud_ai"
+        eval_export_mode = export_mode
+
+    hits = search_notebook_chunks(notebook_id, question, limit=limit)
+    total_chunks_found = len(hits)
+    
+    redacted_chunks_count = 0
+    local_only_chunks_count = 0
+    cloud_allowed_chunks_count = 0
+    top_source_titles = []
+    
+    for hit in hits:
+        chunk = hit.chunk
+        redact = should_redact_chunk(chunk.privacy_level, target, eval_export_mode)
+        if redact:
+            redacted_chunks_count += 1
+        if chunk.privacy_level == "local_only":
+            local_only_chunks_count += 1
+        else:
+            cloud_allowed_chunks_count += 1
+            
+        if chunk.source_title not in top_source_titles:
+            top_source_titles.append(chunk.source_title)
+            
+    sendable_chunks_count = total_chunks_found - redacted_chunks_count
+    
+    # Logic recommendation
+    locality = config.locality if config else "local"
+    
+    if total_chunks_found == 0:
+        recommendation = "Chưa đủ nguồn. Hãy cập nhật chỉ mục hoặc đổi từ khóa."
+    elif mode == "Hỏi cloud bằng context được phép" and redacted_chunks_count > total_chunks_found / 2:
+        recommendation = "Cloud AI có thể không đủ dữ liệu để trả lời chính xác. Nên dùng Local AI hoặc NotebookLM Bridge."
+    elif mode == "Hỏi bằng AIOS local context" and locality == "local":
+        recommendation = "Có thể hỏi trong AIOS bằng dữ liệu local."
+    elif mode == "NotebookLM Bridge":
+        recommendation = "AIOS không gửi source. Hãy bảo đảm NotebookLM đã chứa tài liệu."
+    else:
+        recommendation = "Nguồn tài liệu sẵn sàng."
+        
+    return {
+        "total_chunks_found": total_chunks_found,
+        "sendable_chunks_count": sendable_chunks_count,
+        "redacted_chunks_count": redacted_chunks_count,
+        "local_only_chunks_count": local_only_chunks_count,
+        "cloud_allowed_chunks_count": cloud_allowed_chunks_count,
+        "top_source_titles": top_source_titles,
+        "recommendation": recommendation
+    }
+
+def load_answer_history(notebook_id: Optional[str] = None, limit: int = 10) -> List[dict]:
+    LOCAL_CASES_DIR.mkdir(parents=True, exist_ok=True)
+    if not ANSWERS_FILE.exists():
+        return []
+    records = []
+    with open(ANSWERS_FILE, 'r', encoding='utf-8') as f:
+        for line in f:
+            if line.strip():
+                try:
+                    data = json.loads(line)
+                    if notebook_id is None or data.get("notebook_id") == notebook_id:
+                        records.append(data)
+                except Exception:
+                    pass
+    records.reverse()
+    return records[:limit]
+

@@ -633,6 +633,32 @@ def page_notebooks():
     st.title("📚 Sổ tri thức (Knowledge Notebook)")
     st.write("Quản lý tài liệu nguồn cục bộ, cấu hình bảo mật và liên kết tri thức nền.")
     
+    def render_sufficiency_panel(nb_id, q, t_mode, exp_mode):
+        if not q.strip():
+            return
+        from aios_habit.notebook_qa import evaluate_context_sufficiency
+        suff = evaluate_context_sufficiency(nb_id, q, t_mode, exp_mode)
+        
+        st.markdown("##### 📊 Mức độ đủ nguồn")
+        col1, col2, col3 = st.columns(3)
+        col1.metric("Tổng phân đoạn", suff["total_chunks_found"])
+        col2.metric("Gửi được", suff["sendable_chunks_count"])
+        col3.metric("Bị ẩn", suff["redacted_chunks_count"])
+        
+        if suff["top_source_titles"]:
+            st.markdown(f"**Nguồn liên quan:** " + ", ".join(f"`{t}`" for t in suff["top_source_titles"]))
+        st.markdown(f"*local_only:* `{suff['local_only_chunks_count']}` | *cloud_allowed:* `{suff['cloud_allowed_chunks_count']}`")
+        
+        recommendation = suff["recommendation"]
+        if "Chưa đủ nguồn" in recommendation:
+            st.error(recommendation)
+        elif "không đủ dữ liệu" in recommendation or "bị chặn" in recommendation:
+            st.warning(recommendation)
+        elif "Có thể hỏi" in recommendation or "sẵn sàng" in recommendation:
+            st.success(recommendation)
+        else:
+            st.info(recommendation)
+    
     active_ws_id = st.session_state.get("active_workspace_id", "default")
     
     tab1, tab2, tab3, tab4, tab5 = st.tabs([
@@ -774,6 +800,13 @@ def page_notebooks():
             
             selected_nb_id = st.selectbox("Chọn Sổ tri thức để truy vấn", options=list(nb_opts.keys()), format_func=lambda x: nb_opts[x], key="qa_nb_select")
             
+            # Assistant Panel "Bước tiếp theo nên làm gì?"
+            from aios_habit.daily_next_actions import suggest_next_actions
+            next_actions = suggest_next_actions(active_ws_id, selected_nb_id)
+            with st.expander("💡 Bước tiếp theo nên làm gì?", expanded=True):
+                for act in next_actions:
+                    st.write(f"- {act}")
+            
             if st.button("Cập nhật chỉ mục (Re-index)", key="reindex_btn"):
                 with st.spinner("Đang trích xuất và chỉ mục hóa tài liệu..."):
                     build_notebook_index(selected_nb_id)
@@ -808,6 +841,9 @@ def page_notebooks():
                 st.info("💡 Chế độ này sẽ gửi dữ liệu local_only cục bộ. Đảm bảo provider AI của bạn chạy nội bộ (local).")
                 question = st.text_area("Nhập câu hỏi", placeholder="Ví dụ: Cấu hình DHCP và thiết lập FRPO U002 là gì?", key="local_qa_question")
                 
+                # Context Sufficiency Panel
+                render_sufficiency_panel(selected_nb_id, question, truth_mode, "local")
+                
                 col_btn1, col_btn2 = st.columns(2)
                 ask_btn = col_btn1.button("Hỏi ngay trong AIOS", key="local_ask_btn")
                 copy_btn = col_btn2.button("Tạo prompt để copy", key="local_copy_btn")
@@ -827,6 +863,8 @@ def page_notebooks():
                         else:
                             st.markdown("### 🤖 Câu trả lời từ AIOS:")
                             st.write(res.answer_text)
+                            with st.expander("📝 Prompt đã gửi tới AIOS provider", expanded=False):
+                                st.code(res.prompt_text, language="markdown")
                             with st.expander("📚 Các phân đoạn tài liệu được sử dụng"):
                                 for i, chunk in enumerate(res.used_chunks):
                                     st.markdown(f"**{i+1}. {chunk.source_title}** ({chunk.original_filename})")
@@ -837,12 +875,17 @@ def page_notebooks():
                         st.error("Vui lòng nhập câu hỏi.")
                     else:
                         prompt = build_notebook_question_prompt(selected_nb_id, question, "local_ai", "local")
-                        st.text_area("Gói prompt Q&A đã sinh", value=prompt, height=300, key="local_prompt_out")
+                        st.text_area("Prompt để copy (Gói prompt Q&A đã sinh)", value=prompt, height=200, key="local_prompt_out")
+                        st.markdown("**Xem trước Prompt (để đọc dễ dàng):**")
+                        st.code(prompt, language="markdown")
                         st.success("Đã sinh prompt thành công!")
                         
             elif truth_mode == "Hỏi cloud bằng context được phép":
                 st.warning("⚠️ Dữ liệu local_only sẽ bị ẩn (redacted). Câu trả lời có thể yếu nếu phần lớn nguồn bị ẩn.")
                 question = st.text_area("Nhập câu hỏi", placeholder="Ví dụ: Quy trình DHCP xuất hàng là gì?", key="cloud_qa_question")
+                
+                # Context Sufficiency Panel
+                render_sufficiency_panel(selected_nb_id, question, truth_mode, "cloud_safe")
                 
                 col_btn1, col_btn2 = st.columns(2)
                 ask_btn = col_btn1.button("Hỏi ngay trong AIOS", key="cloud_ask_btn")
@@ -861,6 +904,8 @@ def page_notebooks():
                         else:
                             st.markdown("### 🤖 Câu trả lời từ AIOS:")
                             st.write(res.answer_text)
+                            with st.expander("📝 Prompt đã gửi tới AIOS provider", expanded=False):
+                                st.code(res.prompt_text, language="markdown")
                             with st.expander("📚 Các phân đoạn tài liệu được sử dụng (Đã mã hóa/ẩn local_only)"):
                                 for i, chunk in enumerate(res.used_chunks):
                                     st.markdown(f"**{i+1}. {chunk.source_title}** ({chunk.original_filename}, Privacy: {chunk.privacy_level})")
@@ -872,7 +917,9 @@ def page_notebooks():
                         st.error("Vui lòng nhập câu hỏi.")
                     else:
                         prompt = build_notebook_question_prompt(selected_nb_id, question, "gemini", "cloud_safe")
-                        st.text_area("Gói prompt Q&A đã sinh", value=prompt, height=300, key="cloud_prompt_out")
+                        st.text_area("Prompt để copy (Gói prompt Q&A đã sinh)", value=prompt, height=200, key="cloud_prompt_out")
+                        st.markdown("**Xem trước Prompt (để đọc dễ dàng):**")
+                        st.code(prompt, language="markdown")
                         st.success("Đã sinh prompt thành công!")
                         
             elif truth_mode == "NotebookLM Bridge":
@@ -904,16 +951,19 @@ def page_notebooks():
                 user_question = ""
                 if task_type == "case_investigation_json":
                     user_question = st.text_area("Nhập tình huống hoặc câu hỏi cụ thể", key="bridge_question")
+                    render_sufficiency_panel(selected_nb_id, user_question, truth_mode, "cloud_safe")
                     
                 if st.button("Tạo prompt NotebookLM", key="bridge_prompt_btn"):
                     from aios_habit.notebook_bridge import build_notebooklm_bridge_prompt
                     prompt = build_notebooklm_bridge_prompt(selected_nb_id, task_type, user_question)
-                    st.text_area("Prompt cho NotebookLM (Hãy copy toàn bộ)", value=prompt, height=250, key="bridge_prompt_out")
+                    st.text_area("Prompt để copy (Prompt cho NotebookLM - Hãy copy toàn bộ)", value=prompt, height=200, key="bridge_prompt_out")
+                    st.markdown("**Xem trước Prompt (để đọc dễ dàng):**")
+                    st.code(prompt, language="markdown")
                     st.success("Đã sinh prompt! Hãy dán prompt này vào giao diện NotebookLM của bạn.")
                     
                 st.write("---")
                 st.markdown("### Dán kết quả từ NotebookLM")
-                import_text = st.text_area("Kết quả từ NotebookLM", height=150, placeholder="Dán nội dung JSON hoặc mã Mermaid nhận được từ NotebookLM vào đây...", key="bridge_import_text")
+                import_text = st.text_area("Kết quả dán từ NotebookLM", height=150, placeholder="Dán nội dung JSON hoặc mã Mermaid nhận được từ NotebookLM vào đây...", key="bridge_import_text")
                 
                 if st.button("Kiểm tra và nhập kết quả", key="bridge_import_btn"):
                     if not import_text.strip():
@@ -1064,6 +1114,13 @@ def page_notebooks():
                                 st.write("**Phản hồi tiếng Việt:**", imp.parsed_json.get("draft_reply_vi", ""))
                                 st.write("**Phản hồi tiếng Nhật:**", imp.parsed_json.get("draft_reply_ja", ""))
                                 
+                                st.write("---")
+                                col_c1, col_c2 = st.columns(2)
+                                if col_c1.button("Tạo Case nháp từ kết quả này", key=f"create_case_btn_{imp.import_id}"):
+                                    from aios_habit.notebook_case_actions import create_case_from_investigation_import
+                                    res = create_case_from_investigation_import(imp, active_ws_id)
+                                    st.success(f"✅ Đã tạo thành công Case nháp `{res['case_id']}` với {res['evidence_count']} checklist bằng chứng!")
+                                
                             if st.button(f"Xóa kết quả này", key=f"del_imp_{imp.import_id}"):
                                 delete_bridge_import(imp.import_id)
                                 st.success("Đã xóa thành công!")
@@ -1088,6 +1145,9 @@ def page_notebooks():
                     "Bản an toàn cho cloud (cloud_safe)": "cloud_safe"
                 }
                 
+                # Context Sufficiency Panel
+                render_sufficiency_panel(selected_nb_id, question, truth_mode, export_map[export_mode])
+                
                 if target_map[target] != "local_ai" and export_map[export_mode] == "local":
                     st.warning("⚠️ Cảnh báo: Bạn đang chọn mục tiêu Cloud nhưng Chế độ xuất là Local. Prompt có thể chứa dữ liệu riêng tư local_only.")
                     
@@ -1096,8 +1156,39 @@ def page_notebooks():
                         st.error("Vui lòng nhập câu hỏi.")
                     else:
                         prompt = build_notebook_question_prompt(selected_nb_id, question, target_map[target], export_map[export_mode])
-                        st.text_area("Gói prompt Q&A đã sinh (Copy-paste)", value=prompt, height=300, key="fallback_prompt_output")
+                        st.text_area("Prompt để copy (Gói prompt Q&A đã sinh)", value=prompt, height=200, key="fallback_prompt_output")
+                        st.markdown("**Xem trước Prompt (để đọc dễ dàng):**")
+                        st.code(prompt, language="markdown")
                         st.success("Đã tạo prompt thành công! Bạn có thể copy để gửi cho AI của mình.")
+            
+            # Recent Activity Panel
+            st.write("---")
+            st.subheader("⏱️ Hoạt động gần đây")
+            col_act1, col_act2 = st.columns(2)
+            
+            with col_act1:
+                st.markdown("##### Import NotebookLM gần đây")
+                if not saved_imports:
+                    st.info("Chưa có import nào.")
+                else:
+                    for imp in saved_imports[:5]:
+                        type_vn = {
+                            "knowledge_graph_json": "Đồ thị",
+                            "study_pack_json": "Bộ học tập",
+                            "case_investigation_json": "Điều tra",
+                            "mermaid_graph": "Sơ đồ Mermaid"
+                        }.get(imp.import_type, imp.import_type)
+                        st.write(f"- **{imp.title}** ({type_vn}) — `{imp.status}` — *{imp.created_at[:16]}*")
+                        
+            with col_act2:
+                st.markdown("##### Câu hỏi & Câu trả lời gần đây")
+                from aios_habit.notebook_qa import load_answer_history
+                history = load_answer_history(selected_nb_id, limit=5)
+                if not history:
+                    st.info("Chưa có câu hỏi nào được trả lời trong AIOS.")
+                else:
+                    for item in history:
+                        st.write(f"- **Hỏi:** {item.get('question')}  \n  **AI:** {item.get('provider')}/{item.get('model')} — *{item.get('created_at', '')[:16]}*")
                     
     with tab4:
         st.subheader("Tạo Study Pack ôn bài")
@@ -1114,7 +1205,9 @@ def page_notebooks():
             
             if st.button("Tạo prompt ôn bài", key="study_prompt_btn"):
                 prompt = build_study_pack_prompt(selected_nb_id, target_map[target], export_map[export_mode], limit=8)
-                st.text_area("Gói prompt ôn bài đã sinh (Copy-paste)", value=prompt, height=350, key="study_prompt_output")
+                st.text_area("Prompt để copy (Gói prompt ôn bài đã sinh)", value=prompt, height=200, key="study_prompt_output")
+                st.markdown("**Xem trước Prompt (để đọc dễ dàng):**")
+                st.code(prompt, language="markdown")
                 st.success("Đã tạo prompt ôn bài thành công! Hãy copy đoạn prompt trên đưa vào AI của bạn để tạo bài ôn tập.")
                 
     with tab5:
