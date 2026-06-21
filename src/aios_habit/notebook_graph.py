@@ -155,3 +155,98 @@ def build_notebook_mermaid_graph(
         lines.append("    %% Đã giới hạn số node để tránh lag.")
         
     return "\n".join(lines)
+
+def build_notebook_structural_dict_graph(
+    workspace_id: Optional[str] = None,
+    notebook_id: Optional[str] = None,
+    max_nodes: int = 50
+) -> dict:
+    workspaces = load_workspaces()
+    notebooks = load_notebooks()
+    sources = load_sources()
+    cases = load_cases()
+    evidence = load_evidence()
+    
+    if notebook_id:
+        active_notebooks = [n for n in notebooks if n.notebook_id == notebook_id]
+        active_ws_ids = {n.workspace_id for n in active_notebooks}
+        active_workspaces = [w for w in workspaces if w.workspace_id in active_ws_ids]
+    elif workspace_id:
+        active_workspaces = [w for w in workspaces if w.workspace_id == workspace_id]
+        active_notebooks = [n for n in notebooks if n.workspace_id == workspace_id]
+    else:
+        active_workspaces = workspaces
+        active_notebooks = notebooks
+        
+    active_nb_ids = {n.notebook_id for n in active_notebooks}
+    active_sources = [s for s in sources if s.notebook_id in active_nb_ids]
+    
+    if notebook_id:
+        active_cases = [c for c in cases if notebook_id in getattr(c, "linked_notebook_ids", [])]
+    elif workspace_id:
+        active_cases = [c for c in cases if c.workspace_id == workspace_id]
+    else:
+        active_cases = cases
+        
+    active_case_ids = {c.case_id for c in active_cases}
+    active_evidence = [e for e in evidence if e.case_id in active_case_ids]
+    
+    nodes = []
+    edges = []
+    added_nodes = set()
+    
+    def add_node(nid: str, label: str, ntype: str):
+        if nid in added_nodes:
+            return True
+        if len(nodes) >= max_nodes:
+            return False
+        added_nodes.add(nid)
+        nodes.append({
+            "id": nid,
+            "label": label,
+            "type": ntype,
+            "description": "",
+            "source_ref": "",
+            "confidence": ""
+        })
+        return True
+        
+    for ws in active_workspaces:
+        if not add_node(f"WS_{ws.workspace_id}", f"WS: {ws.name}", "workspace"):
+            break
+            
+    for nb in active_notebooks:
+        nid = f"NB_{nb.notebook_id}"
+        if not add_node(nid, f"Notebook: {nb.name}", "notebook"):
+            break
+        ws_nid = f"WS_{nb.workspace_id}"
+        if ws_nid in added_nodes:
+            edges.append({"from": ws_nid, "to": nid, "relation": ""})
+            
+    for src in active_sources:
+        nid = f"SRC_{src.source_id}"
+        if not add_node(nid, f"Source: {src.title}", "source"):
+            break
+        nb_nid = f"NB_{src.notebook_id}"
+        if nb_nid in added_nodes:
+            edges.append({"from": nb_nid, "to": nid, "relation": ""})
+            
+    for case in active_cases:
+        nid = f"CASE_{case.case_id}"
+        if not add_node(nid, f"Case: {case.title}", "case"):
+            break
+        for nb_id in getattr(case, "linked_notebook_ids", []):
+            nb_nid = f"NB_{nb_id}"
+            if nb_nid in added_nodes:
+                edges.append({"from": nid, "to": nb_nid, "relation": ""})
+                
+    for ev in active_evidence:
+        nid = f"EVD_{ev.evidence_id}"
+        if not add_node(nid, f"Evidence: {ev.title}", "evidence"):
+            break
+        case_nid = f"CASE_{ev.case_id}"
+        if case_nid in added_nodes:
+            edges.append({"from": case_nid, "to": nid, "relation": ""})
+            
+    return {"nodes": nodes, "edges": edges}
+

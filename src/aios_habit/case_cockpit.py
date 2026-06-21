@@ -1367,79 +1367,141 @@ def page_notebooks():
             col_stat5.metric("Bằng chứng", len(rel_evidence))
             col_stat6.metric("Đồ thị imported", len(saved_graphs))
             
-            # Render Section 2: Graph tri thức từ NotebookLM
+            # Render Section 2: Bản đồ tri thức nghiệp vụ (Semantic & Structural)
             st.write("---")
-            st.markdown("### 2. Graph tri thức từ NotebookLM")
-            if not saved_graphs:
-                st.info("Chưa có đồ thị NotebookLM nào được lưu cho sổ tri thức này.")
+            st.markdown("### 2. Bản đồ tri thức nghiệp vụ")
+            
+            from aios_habit.worklens_semantic_map import build_worklens_semantic_graph
+            from aios_habit.learning_models import load_learning_cards
+            from aios_habit.notebook_graph import build_notebook_structural_dict_graph
+            
+            # Load learning cards and filter
+            learning_cards = load_learning_cards()
+            rel_learning = [lc for lc in learning_cards if lc.case_id in rel_case_ids]
+            
+            # Build semantic graph
+            semantic_graph = build_worklens_semantic_graph(
+                workspace=active_ws_id,
+                notebooks=ws_nbs,
+                sources=rel_sources,
+                cases=rel_cases,
+                evidence=rel_evidence,
+                learning_cards=rel_learning,
+                bridge_imports=raw_saved
+            )
+            
+            has_real_cases_or_evidence = len(rel_cases) > 0 or len(rel_evidence) > 0 or len(rel_learning) > 0
+            
+            # Build map options
+            map_source_opts = []
+            
+            # Add semantic map if real data exists
+            if has_real_cases_or_evidence:
+                map_source_opts.append("Bản đồ nghiệp vụ từ hồ sơ/sổ tri thức hiện có")
             else:
-                graph_opts = {imp.import_id: f"{imp.title} — {imp.status.upper()} — {imp.created_at[:16]}" for imp in saved_graphs}
-                selected_graph_id = st.selectbox(
-                    "Chọn đồ thị đã lưu",
-                    options=list(graph_opts.keys()),
-                    format_func=lambda x: graph_opts[x],
-                    key="saved_graph_select"
-                )
-                selected_graph = next(g for g in saved_graphs if g.import_id == selected_graph_id)
-                st.markdown(f"**Mức riêng tư:** `{selected_graph.privacy_level}`")
+                map_source_opts.append("Chưa đủ dữ liệu nghiệp vụ để dựng bản đồ tri thức. Đang hiển thị sơ đồ cấu trúc.")
                 
-                # Display mode selector
-                display_mode = st.selectbox(
-                    "Kiểu hiển thị",
-                    ["Bản đồ thẻ HTML", "Bảng + Mermaid", "Cả hai"],
-                    index=0,
-                    key="map_display_mode"
-                )
+            # Add NotebookLM imports options
+            for g in saved_graphs:
+                map_source_opts.append(f"Đồ thị nhập từ NotebookLM: {g.title} ({g.import_id})")
                 
-                graph_data = build_saved_graph_view(selected_graph)
-                nodes_list = graph_data.get("nodes", [])
-                
-                # 1. Render HTML card map
-                if display_mode in ("Bản đồ thẻ HTML", "Cả hai"):
-                    from aios_habit.knowledge_map_html import graph_to_html_map
-                    import streamlit.components.v1 as components
-                    
-                    html_str = graph_to_html_map(graph_data, max_nodes=50, max_edges=100)
-                    components.html(html_str, height=700, scrolling=True)
-                    
-                # 2. Render Bảng + Mermaid
-                if display_mode in ("Bảng + Mermaid", "Cả hai"):
-                    # Warn if exceeding max nodes
-                    if len(nodes_list) > 50:
-                        st.warning(f"⚠️ Đồ thị chứa {len(nodes_list)} nút. Bản xem thử Mermaid được giới hạn tối đa 50 nút đầu tiên để tránh lag.")
-                    
-                    pretty_mermaid = graph_to_pretty_mermaid(graph_data, max_nodes=50)
-                    st.markdown("#### Bản xem thử trực quan (Mermaid)")
-                    st.code(pretty_mermaid, language="mermaid")
-                    
-                    # Show full tables
-                    st.markdown("#### Bảng danh sách các nút (Nodes)")
-                    nodes_table = graph_to_node_table(graph_data)
-                    if nodes_table:
-                        st.dataframe(nodes_table)
-                    else:
-                        st.info("Không có dữ liệu nút.")
-                        
-                    st.markdown("#### Bảng danh sách các quan hệ (Edges)")
-                    edges_table = graph_to_edge_table(graph_data)
-                    if edges_table:
-                        st.dataframe(edges_table)
-                    else:
-                        st.info("Không có dữ liệu quan hệ.")
-                        
-                # Renderer decision note
-                st.info(
-                    "Bản đồ HTML là renderer nhẹ, không cần thư viện ngoài. "
-                    "Dữ liệu gốc vẫn là node/edge JSON nên sau này có thể thay renderer bằng Cytoscape/React Flow nếu cần."
-                )
+            # Add structural graph option
+            map_source_opts.append("Sơ đồ cấu trúc ứng dụng: Workspace → Notebook → Case")
             
-            # Render Section 3: Graph cấu trúc AIOS
-            st.write("---")
-            st.markdown("### 3. Graph cấu trúc AIOS: Workspace → Notebook → Source → Case → Evidence")
-            st.info("Lưu ý: Đây là sơ đồ biểu diễn mối liên kết cấu trúc dữ liệu của ứng dụng AIOS WorkLens, không phải đồ thị tri thức ngữ nghĩa.")
+            selected_map_source = st.selectbox(
+                "Chọn bản đồ hiển thị",
+                options=map_source_opts,
+                key="selected_map_source"
+            )
             
-            mermaid_str = build_notebook_mermaid_graph(workspace_id=active_ws_id, notebook_id=graph_nb)
-            st.code(mermaid_str, language="mermaid")
+            graph_data = None
+            label_kind = ""
+            
+            if selected_map_source == "Bản đồ nghiệp vụ từ hồ sơ/sổ tri thức hiện có":
+                graph_data = semantic_graph
+                label_kind = "semantic"
+            elif selected_map_source == "Chưa đủ dữ liệu nghiệp vụ để dựng bản đồ tri thức. Đang hiển thị sơ đồ cấu trúc.":
+                graph_data = build_notebook_structural_dict_graph(workspace_id=active_ws_id, notebook_id=graph_nb)
+                label_kind = "insufficient"
+            elif selected_map_source == "Sơ đồ cấu trúc ứng dụng: Workspace → Notebook → Case":
+                graph_data = build_notebook_structural_dict_graph(workspace_id=active_ws_id, notebook_id=graph_nb)
+                label_kind = "structural"
+            else:
+                # Find matching import
+                import_id = None
+                for g in saved_graphs:
+                    if f"({g.import_id})" in selected_map_source:
+                        import_id = g.import_id
+                        break
+                if import_id:
+                    selected_graph = next(g for g in saved_graphs if g.import_id == import_id)
+                    graph_data = build_saved_graph_view(selected_graph)
+                    if selected_graph.import_id == "IMP-C707A8DF":
+                        label_kind = "sample"
+                    else:
+                        label_kind = "imported"
+                else:
+                    graph_data = {"nodes": [], "edges": []}
+                    label_kind = "empty"
+                    
+            # Render labels
+            if label_kind == "semantic":
+                st.success("🗺️ Bản đồ nghiệp vụ từ hồ sơ/sổ tri thức hiện có")
+            elif label_kind == "insufficient":
+                st.warning("⚠️ Chưa đủ dữ liệu nghiệp vụ để dựng bản đồ tri thức. Đang hiển thị sơ đồ cấu trúc.")
+            elif label_kind == "sample":
+                st.info("💡 Dữ liệu mẫu — chưa phải hồ sơ thật")
+            elif label_kind == "imported":
+                st.info("📥 Đồ thị nhập từ NotebookLM — kiểm tra lại trước khi kết luận")
+            elif label_kind == "structural":
+                st.info("⚙️ Đang hiển thị sơ đồ cấu trúc hệ thống")
+                
+            # Display mode selector
+            display_mode = st.selectbox(
+                "Kiểu hiển thị",
+                ["Bản đồ thẻ HTML", "Bảng + Mermaid", "Cả hai"],
+                index=0,
+                key="map_display_mode"
+            )
+            
+            nodes_list = graph_data.get("nodes", []) if graph_data else []
+            
+            # 1. Render HTML card map
+            if display_mode in ("Bản đồ thẻ HTML", "Cả hai") and graph_data:
+                from aios_habit.knowledge_map_html import graph_to_html_map
+                import streamlit.components.v1 as components
+                
+                html_str = graph_to_html_map(graph_data, max_nodes=80, max_edges=160)
+                components.html(html_str, height=700, scrolling=True)
+                
+            # 2. Render Bảng + Mermaid
+            if display_mode in ("Bảng + Mermaid", "Cả hai") and graph_data:
+                if len(nodes_list) > 50:
+                    st.warning(f"⚠️ Đồ thị chứa {len(nodes_list)} nút. Bản xem thử Mermaid được giới hạn tối đa 50 nút đầu tiên để tránh lag.")
+                
+                pretty_mermaid = graph_to_pretty_mermaid(graph_data, max_nodes=50)
+                st.markdown("#### Bản xem thử trực quan (Mermaid)")
+                st.code(pretty_mermaid, language="mermaid")
+                
+                # Show full tables
+                st.markdown("#### Bảng danh sách các nút (Nodes)")
+                nodes_table = graph_to_node_table(graph_data)
+                if nodes_table:
+                    st.dataframe(nodes_table)
+                else:
+                    st.info("Không có dữ liệu nút.")
+                    
+                st.markdown("#### Bảng danh sách các quan hệ (Edges)")
+                edges_table = graph_to_edge_table(graph_data)
+                if edges_table:
+                    st.dataframe(edges_table)
+                else:
+                    st.info("Không có dữ liệu quan hệ.")
+                    
+            st.info(
+                "Bản đồ HTML là renderer nhẹ, không cần thư viện ngoài. "
+                "Dữ liệu gốc vẫn là node/edge JSON nên sau này có thể thay renderer bằng Cytoscape/React Flow nếu cần."
+            )
 
 
 def main():

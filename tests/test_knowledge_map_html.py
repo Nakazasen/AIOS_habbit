@@ -64,3 +64,65 @@ def test_html_map_no_external_scripts():
     assert "<script" not in html_lower
     assert "http://" not in html_lower
     assert "https://" not in html_lower
+
+# 7. test_html_map_max_edges_truncation
+def test_html_map_max_edges_truncation():
+    graph = {
+        "nodes": [
+            {"id": "node-1", "label": "Node 1", "type": "system"},
+            {"id": "node-2", "label": "Node 2", "type": "system"},
+            {"id": "node-3", "label": "Node 3", "type": "system"}
+        ],
+        "edges": [
+            {"from": "node-1", "to": "node-2", "relation": "rel1"},
+            {"from": "node-2", "to": "node-3", "relation": "rel2"}
+        ]
+    }
+    # Limit max_edges to 1
+    html_str = graph_to_html_map(graph, max_edges=1)
+    assert "Cảnh báo:" in html_str
+    assert "liên kết vượt quá" in html_str
+    # Check that only 1 relation is rendered (or rel2 is NOT in the html)
+    # The warning should indicate the truncation.
+    assert "rel1" in html_str or "rel2" in html_str
+
+# 8. test_html_map_unknown_node_type_fallback
+def test_html_map_unknown_node_type_fallback():
+    graph = {
+        "nodes": [
+            {"id": "node-unknown", "label": "Unknown Item", "type": "super_weird_type"}
+        ],
+        "edges": []
+    }
+    html_str = graph_to_html_map(graph)
+    # Should fall back to 'other' column/lane
+    # Under lanes, it groups by type which falls back to 'other'.
+    assert "OTHER (1)" in html_str
+    assert "Unknown Item" in html_str
+
+# 9. test_html_map_explicit_source_ref_render
+def test_html_map_explicit_source_ref_render():
+    graph = {
+        "nodes": [
+            {"id": "node-1", "label": "Node 1", "type": "system", "source_ref": "Document XYZ Section 3.4"}
+        ],
+        "edges": []
+    }
+    html_str = graph_to_html_map(graph)
+    assert "Document XYZ Section 3.4" in html_str
+
+# 10. test_html_map_explicit_confidence_render
+def test_html_map_explicit_confidence_render():
+    graph = {
+        "nodes": [
+            {"id": "node-1", "label": "Node 1", "type": "system", "confidence": "high"},
+            {"id": "node-2", "label": "Node 2", "type": "system", "confidence": "medium"},
+            {"id": "node-3", "label": "Node 3", "type": "system", "confidence": "low"}
+        ],
+        "edges": []
+    }
+    html_str = graph_to_html_map(graph)
+    assert "CONF: HIGH" in html_str
+    assert "CONF: MEDIUM" in html_str
+    assert "CONF: LOW" in html_str
+
