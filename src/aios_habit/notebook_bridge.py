@@ -183,3 +183,72 @@ def graph_json_to_mermaid(graph: dict, max_nodes: int = 50) -> str:
         lines.append("    %% Đã giới hạn số node để tránh lag.")
         
     return "\n".join(lines)
+
+def clean_code_fences(t: str) -> str:
+    t_clean = t.strip()
+    if t_clean.startswith("```"):
+        lines = t_clean.splitlines()
+        if lines:
+            if lines[0].startswith("```"):
+                lines = lines[1:]
+            if lines and lines[-1].strip() == "```":
+                lines = lines[:-1]
+            t_clean = "\n".join(lines).strip()
+    return t_clean
+
+def detect_bridge_import_type(text: str) -> str:
+    clean_text = clean_code_fences(text)
+    if clean_text.startswith("graph") or "graph TD" in clean_text or "graph LR" in clean_text:
+        return "mermaid_graph"
+        
+    try:
+        data = json.loads(clean_text)
+        if not isinstance(data, dict):
+            return "unknown"
+        if "nodes" in data or "edges" in data:
+            return "knowledge_graph_json"
+        if "summary" in data or "glossary" in data or "flashcards" in data:
+            return "study_pack_json"
+        if "symptoms" in data or "hypotheses" in data or "evidence_to_check" in data:
+            return "case_investigation_json"
+    except Exception:
+        pass
+        
+    return "unknown"
+
+def parse_bridge_import(text: str) -> dict:
+    clean_text = clean_code_fences(text)
+    t = detect_bridge_import_type(text)
+    if t == "mermaid_graph" or t == "unknown":
+        return {}
+    try:
+        data = json.loads(clean_text)
+        if isinstance(data, dict):
+            return data
+    except Exception:
+        pass
+    return {}
+
+def summarize_bridge_import(parsed_json: dict, import_type: str) -> dict:
+    if not parsed_json:
+        return {}
+    if import_type == "knowledge_graph_json":
+        return {
+            "node_count": len(parsed_json.get("nodes", [])),
+            "edge_count": len(parsed_json.get("edges", []))
+        }
+    elif import_type == "study_pack_json":
+        return {
+            "glossary_count": len(parsed_json.get("glossary", [])),
+            "flashcard_count": len(parsed_json.get("flashcards", [])),
+            "review_question_count": len(parsed_json.get("review_questions", [])),
+            "unknown_count": len(parsed_json.get("unknowns", []))
+        }
+    elif import_type == "case_investigation_json":
+        return {
+            "symptom_count": len(parsed_json.get("symptoms", [])),
+            "hypothesis_count": len(parsed_json.get("hypotheses", [])),
+            "evidence_to_check_count": len(parsed_json.get("evidence_to_check", []))
+        }
+    return {}
+

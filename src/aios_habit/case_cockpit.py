@@ -919,44 +919,155 @@ def page_notebooks():
                     if not import_text.strip():
                         st.error("Vui lòng dán kết quả cần kiểm tra.")
                     else:
-                        if import_text.strip().startswith("graph") or "graph TD" in import_text or "graph LR" in import_text:
-                            st.success("✅ Đọc thành công sơ đồ Mermaid trực tiếp!")
-                            st.markdown("### Sơ đồ Mermaid:")
-                            st.code(import_text, language="mermaid")
+                        from aios_habit.notebook_bridge import detect_bridge_import_type, parse_bridge_import, graph_json_to_mermaid
+                        imp_type = detect_bridge_import_type(import_text)
+                        
+                        if imp_type == "unknown":
+                            st.error("❌ Định dạng không được nhận diện hoặc JSON không hợp lệ.")
+                            if "parsed_import_data" in st.session_state:
+                                del st.session_state.parsed_import_data
                         else:
-                            try:
-                                data = json.loads(import_text)
-                                if "nodes" in data or "edges" in data:
-                                    st.success("✅ Đọc thành công Đồ thị tri thức!")
-                                    from aios_habit.notebook_bridge import graph_json_to_mermaid
-                                    mermaid = graph_json_to_mermaid(data)
-                                    st.markdown("### Sơ đồ Mermaid được sinh từ JSON:")
-                                    st.code(mermaid, language="mermaid")
+                            parsed_json = parse_bridge_import(import_text)
+                            mermaid = ""
+                            if imp_type == "mermaid_graph":
+                                from aios_habit.notebook_bridge import clean_code_fences
+                                mermaid = clean_code_fences(import_text)
+                            elif imp_type == "knowledge_graph_json":
+                                mermaid = graph_json_to_mermaid(parsed_json)
+                                
+                            st.session_state.parsed_import_data = {
+                                "type": imp_type,
+                                "raw_text": import_text,
+                                "parsed_json": parsed_json,
+                                "mermaid_text": mermaid
+                            }
+                            st.success(f"✅ Đọc thành công dữ liệu dạng {imp_type}!")
+                            st.rerun()
+                            
+                # Render preview and Save Form if parsed_import_data is loaded in session state
+                if "parsed_import_data" in st.session_state:
+                    pdata = st.session_state.parsed_import_data
+                    imp_type = pdata["type"]
+                    parsed_json = pdata["parsed_json"]
+                    mermaid = pdata["mermaid_text"]
+                    
+                    st.write("---")
+                    st.markdown("### Preview Dữ liệu vừa nhập")
+                    
+                    if imp_type == "mermaid_graph":
+                        st.code(mermaid, language="mermaid")
+                    elif imp_type == "knowledge_graph_json":
+                        st.code(mermaid, language="mermaid")
+                        st.markdown("#### Danh sách các nút:")
+                        for node in parsed_json.get("nodes", []):
+                            st.write(f"- **{node.get('label')}** ({node.get('type')}) — {node.get('description')} [Nguồn: {node.get('source_ref')}]")
+                    elif imp_type == "study_pack_json":
+                        st.write(f"**Tóm tắt:** {parsed_json.get('summary')}")
+                        st.markdown("#### Thuật ngữ:")
+                        for g in parsed_json.get("glossary", []):
+                            st.write(f"- **{g.get('term')}:** {g.get('meaning')} (Nguồn: {g.get('source_ref')})")
+                        st.markdown("#### Thẻ nhớ (Flashcards):")
+                        for f in parsed_json.get("flashcards", []):
+                            st.write(f"- **Hỏi:** {f.get('front')}  \n  **Đáp:** {f.get('back')} (Nguồn: {f.get('source_ref')})")
+                    elif imp_type == "case_investigation_json":
+                        st.write("**Triệu chứng:**", parsed_json.get("symptoms", []))
+                        st.write("**Giả thuyết:**", parsed_json.get("hypotheses", []))
+                        st.write("**Bằng chứng cần check:**", parsed_json.get("evidence_to_check", []))
+                        st.write("**Chưa kết luận vội:**", parsed_json.get("do_not_conclude_yet", []))
+                        st.write("**Phản hồi tiếng Việt:**", parsed_json.get("draft_reply_vi", ""))
+                        
+                    # Save Form
+                    st.write("---")
+                    st.subheader("Lưu kết quả vào AIOS")
+                    st.warning("Kết quả NotebookLM import là dữ liệu do AI đề xuất. Mặc định trạng thái draft. Chỉ dùng làm tri thức xác nhận sau khi người dùng review.")
+                    
+                    col_save1, col_save2 = st.columns(2)
+                    save_title = col_save1.text_input("Tiêu đề lưu trữ", value=f"NotebookLM import - {datetime.now().strftime('%Y-%m-%d %H:%M')}", key="bridge_save_title")
+                    save_status = col_save2.selectbox("Trạng thái lưu", ["draft", "reviewed", "confirmed"], key="bridge_save_status")
+                    
+                    if st.button("Lưu kết quả", key="save_bridge_import_btn"):
+                        import uuid
+                        from aios_habit.notebook_import_store import NotebookBridgeImport, save_bridge_import
+                        
+                        import_id = f"IMP-{str(uuid.uuid4())[:8].upper()}"
+                        new_record = NotebookBridgeImport(
+                            import_id=import_id,
+                            notebook_id=selected_nb_id,
+                            workspace_id=active_ws_id,
+                            import_type=imp_type,
+                            title=save_title.strip() if save_title.strip() else "NotebookLM import",
+                            raw_text=pdata["raw_text"],
+                            parsed_json=parsed_json,
+                            mermaid_text=mermaid,
+                            privacy_level="local_only",
+                            status=save_status
+                        )
+                        save_bridge_import(new_record)
+                        
+                        from aios_habit.notebook_bridge import summarize_bridge_import
+                        summary = summarize_bridge_import(parsed_json, imp_type)
+                        st.success(f"✅ Đã lưu kết quả thành công với ID: `{import_id}`")
+                        st.write("Thông số lưu trữ:", summary)
+                        
+                        del st.session_state.parsed_import_data
+                        st.rerun()
+                        
+                # Saved imports list
+                st.write("---")
+                st.subheader("Kết quả NotebookLM đã lưu")
+                
+                from aios_habit.notebook_import_store import load_bridge_imports, delete_bridge_import
+                saved_imports = load_bridge_imports(selected_nb_id)
+                
+                if not saved_imports:
+                    st.info("Chưa có kết quả NotebookLM nào được lưu cho sổ tri thức này.")
+                else:
+                    for imp in saved_imports:
+                        type_vn = {
+                            "knowledge_graph_json": "Đồ thị tri thức (JSON)",
+                            "study_pack_json": "Bộ học tập ôn bài (JSON)",
+                            "case_investigation_json": "Phân tích điều tra hồ sơ (JSON)",
+                            "mermaid_graph": "Sơ đồ Mermaid (Mã thô)"
+                        }.get(imp.import_type, imp.import_type)
+                        
+                        with st.expander(f"📖 {imp.title} ({type_vn}) - Trạng thái: {imp.status.upper()} ({imp.created_at[:16]})"):
+                            st.write(f"- **Mã nhập:** `{imp.import_id}`")
+                            st.write(f"- **Mức riêng tư:** `{imp.privacy_level}`")
+                            
+                            if imp.import_type == "mermaid_graph" or imp.import_type == "knowledge_graph_json":
+                                st.markdown("##### Sơ đồ quan hệ (Mermaid):")
+                                st.code(imp.mermaid_text, language="mermaid")
+                                if imp.import_type == "knowledge_graph_json" and imp.parsed_json:
+                                    st.markdown("##### Danh sách các nút:")
+                                    for node in imp.parsed_json.get("nodes", []):
+                                        st.write(f"  * **{node.get('label')}** ({node.get('type')}) — {node.get('description')} [Nguồn: {node.get('source_ref')}]")
+                            elif imp.import_type == "study_pack_json":
+                                st.markdown("##### Tóm tắt:")
+                                st.write(imp.parsed_json.get("summary", ""))
+                                
+                                st.markdown("##### Thuật ngữ:")
+                                for g in imp.parsed_json.get("glossary", []):
+                                    st.write(f"  * **{g.get('term')}:** {g.get('meaning')} (Nguồn: {g.get('source_ref')})")
                                     
-                                    st.markdown("### Danh sách các nút:")
-                                    for node in data.get("nodes", []):
-                                        st.write(f"- **{node.get('label')}** ({node.get('type')}) — {node.get('description')} [Nguồn: {node.get('source_ref')}]")
-                                elif "summary" in data or "glossary" in data or "flashcards" in data:
-                                    st.success("✅ Đọc thành công Study Pack!")
-                                    st.write(f"**Tóm tắt:** {data.get('summary')}")
-                                    st.markdown("#### Thuật ngữ:")
-                                    for g in data.get("glossary", []):
-                                        st.write(f"- **{g.get('term')}:** {g.get('meaning')} (Nguồn: {g.get('source_ref')})")
-                                    st.markdown("#### Thẻ nhớ (Flashcards):")
-                                    for f in data.get("flashcards", []):
-                                        st.write(f"- **Hỏi:** {f.get('front')}  \n  **Đáp:** {f.get('back')} (Nguồn: {f.get('source_ref')})")
-                                elif "symptoms" in data or "hypotheses" in data:
-                                    st.success("✅ Đọc thành công Kết quả điều tra hồ sơ!")
-                                    st.write("**Triệu chứng:**", data.get("symptoms", []))
-                                    st.write("**Giả thuyết:**", data.get("hypotheses", []))
-                                    st.write("**Bằng chứng cần check:**", data.get("evidence_to_check", []))
-                                    st.write("**Chưa kết luận vội:**", data.get("do_not_conclude_yet", []))
-                                    st.write("**Phản hồi tiếng Việt:**", data.get("draft_reply_vi", ""))
-                                else:
-                                    st.warning("⚠️ Đọc thành công JSON nhưng cấu trúc không khớp với schema định sẵn.")
-                                    st.json(data)
-                            except Exception as e:
-                                st.error(f"❌ Lỗi cú pháp JSON: {e}")
+                                st.markdown("##### Thẻ học (Flashcards):")
+                                for f in imp.parsed_json.get("flashcards", []):
+                                    st.write(f"  * **Hỏi:** {f.get('front')}  \n    **Đáp:** {f.get('back')} (Nguồn: {f.get('source_ref')})")
+                                    
+                                st.markdown("##### Câu hỏi ôn tập:")
+                                for q in imp.parsed_json.get("review_questions", []):
+                                    st.write(f"  * **Q:** {q.get('question')}  \n    **A:** {q.get('expected_answer')} (Nguồn: {q.get('source_ref')})")
+                            elif imp.import_type == "case_investigation_json":
+                                st.write("**Triệu chứng:**", imp.parsed_json.get("symptoms", []))
+                                st.write("**Giả thuyết:**", imp.parsed_json.get("hypotheses", []))
+                                st.write("**Bằng chứng cần check:**", imp.parsed_json.get("evidence_to_check", []))
+                                st.write("**Chưa kết luận vội:**", imp.parsed_json.get("do_not_conclude_yet", []))
+                                st.write("**Phản hồi tiếng Việt:**", imp.parsed_json.get("draft_reply_vi", ""))
+                                st.write("**Phản hồi tiếng Nhật:**", imp.parsed_json.get("draft_reply_ja", ""))
+                                
+                            if st.button(f"Xóa kết quả này", key=f"del_imp_{imp.import_id}"):
+                                delete_bridge_import(imp.import_id)
+                                st.success("Đã xóa thành công!")
+                                st.rerun()
                                 
             elif truth_mode == "Chỉ tạo prompt để copy":
                 question = st.text_area("Nhập câu hỏi để soạn prompt", placeholder="Ví dụ: Cấu hình DHCP và thiết lập FRPO U002 là gì?", key="fallback_qa_question")
@@ -1020,6 +1131,41 @@ def page_notebooks():
             
             st.markdown("### Sơ đồ cấu trúc trực quan (Mermaid)")
             st.code(mermaid_str, language="mermaid")
+            
+            # Graph từ NotebookLM đã lưu
+            st.markdown("---")
+            with st.expander("📊 Graph từ NotebookLM đã lưu"):
+                from aios_habit.notebook_import_store import load_bridge_imports
+                raw_saved = load_bridge_imports(graph_nb)
+                if graph_nb is None:
+                    ws_nb_ids = {n.notebook_id for n in notebooks}
+                    saved_graphs = [
+                        imp for imp in raw_saved
+                        if imp.import_type in ("knowledge_graph_json", "mermaid_graph") and imp.notebook_id in ws_nb_ids
+                    ]
+                else:
+                    saved_graphs = [
+                        imp for imp in raw_saved
+                        if imp.import_type in ("knowledge_graph_json", "mermaid_graph")
+                    ]
+                
+                if not saved_graphs:
+                    st.info("Chưa có đồ thị NotebookLM nào được lưu cho sổ tri thức này.")
+                else:
+                    graph_opts = {imp.import_id: f"{imp.title} ({imp.import_id})" for imp in saved_graphs}
+                    selected_graph_id = st.selectbox(
+                        "Chọn đồ thị đã lưu",
+                        options=list(graph_opts.keys()),
+                        format_func=lambda x: graph_opts[x],
+                        key="saved_graph_select"
+                    )
+                    selected_graph = next(g for g in saved_graphs if g.import_id == selected_graph_id)
+                    st.markdown(f"**Trạng thái:** `{selected_graph.status.upper()}` | **Mức riêng tư:** `{selected_graph.privacy_level}`")
+                    st.code(selected_graph.mermaid_text, language="mermaid")
+                    if selected_graph.import_type == "knowledge_graph_json" and selected_graph.parsed_json:
+                        st.markdown("##### Danh sách các nút:")
+                        for node in selected_graph.parsed_json.get("nodes", []):
+                            st.write(f"  * **{node.get('label')}** ({node.get('type')}) — {node.get('description')} [Nguồn: {node.get('source_ref')}]")
             
             # Relation stats
             st.markdown("### Thống kê quan hệ trong Bản đồ")
