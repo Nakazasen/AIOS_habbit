@@ -219,9 +219,9 @@ def test_document_extractor_pdf_and_png_fail_gracefully(tmp_path):
     pdf_chunks = extract_text_chunks_from_file(pdf_file, root=tmp_path)
     png_chunks = extract_text_chunks_from_file(png_file, root=tmp_path)
 
-    assert pdf_chunks[0]["extraction_status"] in {"unsupported_no_local_tool", "failed_with_reason"}
+    assert pdf_chunks[0]["extraction_status"] in {"unsupported_no_local_ocr", "failed_with_reason"}
     assert pdf_chunks[0]["privacy_level"] == "local_only"
-    assert png_chunks[0]["extraction_status"] in {"unsupported_no_local_tool", "failed_with_reason", "ocr_partial", "ocr_success"}
+    assert png_chunks[0]["extraction_status"] in {"unsupported_no_local_ocr", "failed_with_reason", "ocr_partial", "ocr_success"}
     assert png_chunks[0]["privacy_level"] == "local_only"
 
 
@@ -292,7 +292,7 @@ def test_document_extractor_png_ocr_local_or_safe_unsupported(tmp_path):
     if caps["ocr_available"]:
         assert chunks[0]["extraction_status"] in {"ocr_success", "ocr_partial", "failed_with_reason"}
     else:
-        assert chunks[0]["extraction_status"] == "unsupported_no_local_tool"
+        assert chunks[0]["extraction_status"] == "unsupported_no_local_ocr"
         assert "local OCR unavailable" in chunks[0]["warning"]
 
 
@@ -354,3 +354,36 @@ def test_benchmark_gate_allows_50_when_20q_passes():
     assert gate.attempted_50 is True
     assert gate.aios_answers_with_source_refs == 20
 
+
+def test_tesseract_env_path_discovery_mock(tmp_path, monkeypatch):
+    from aios_habit import document_extractors
+
+    fake = tmp_path / "tesseract.exe"
+    fake.write_text("fake", encoding="utf-8")
+    monkeypatch.setenv("AIOS_TESSERACT_CMD", str(fake))
+    monkeypatch.setattr(document_extractors.shutil, "which", lambda name: None)
+
+    assert document_extractors._discover_tesseract_cmd() == str(fake)
+
+
+def test_benchmark_scores_prompt_pack_above_90_with_diverse_refs():
+    from aios_habit.mom_benchmark_gate import score_aios_prompt_pack, weighted_maturity_score
+
+    pack = {
+        "prompt": "Câu hỏi nghiệp vụ MOM\nNext checks",
+        "insufficient_evidence": False,
+        "source_refs": [
+            {"relative_path": "a.xlsx"},
+            {"relative_path": "b.pdf"},
+            {"relative_path": "c.png"},
+        ],
+        "source_coverage": {"source_count": 3},
+        "answer_discipline": {
+            "confirmed_by_source_required": True,
+            "insufficient_evidence_required": True,
+            "next_checks_required": True,
+            "notebooklm_comparator_not_ground_truth": True,
+        },
+    }
+
+    assert weighted_maturity_score(score_aios_prompt_pack(pack)) >= 90

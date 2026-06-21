@@ -31,6 +31,37 @@ def weighted_maturity_score(scores: dict[str, int]) -> float:
     return round(source + completeness + hallucination + actionability + clarity + alignment, 2)
 
 
+def score_aios_prompt_pack(pack: dict[str, Any]) -> dict[str, int]:
+    """Score the local AIOS evidence pack without using NotebookLM as ground truth.
+
+    This rewards concrete properties that reduce hallucination risk: source refs,
+    file diversity, explicit answer discipline, and clear insufficient-evidence
+    handling. It intentionally does not award full completeness when evidence is
+    insufficient.
+    """
+    refs = pack.get("source_refs") or []
+    coverage = pack.get("source_coverage") or {}
+    discipline = pack.get("answer_discipline") or {}
+    source_count = len(refs)
+    file_count = len(set(ref.get("relative_path") for ref in refs))
+    has_prompt = bool(str(pack.get("prompt") or "").strip())
+    insufficient = bool(pack.get("insufficient_evidence"))
+    required_discipline = all(bool(discipline.get(key)) for key in (
+        "confirmed_by_source_required",
+        "insufficient_evidence_required",
+        "next_checks_required",
+        "notebooklm_comparator_not_ground_truth",
+    ))
+    return {
+        "source_traceability": 5 if source_count >= 2 else 3 if source_count == 1 else 0,
+        "answer_completeness": 5 if source_count >= 3 and has_prompt and not insufficient else 4 if source_count and has_prompt else 0,
+        "hallucination_risk": 5 if required_discipline and source_count else 3 if source_count else 1,
+        "actionability": 5 if required_discipline and "Next checks" in str(pack.get("prompt") or "") else 3 if source_count else 0,
+        "vietnamese_clarity": 5 if has_prompt and "Câu hỏi nghiệp vụ MOM" in str(pack.get("prompt") or "") else 3 if has_prompt else 0,
+        "evidence_alignment": 5 if source_count >= 3 and file_count >= 2 else 4 if source_count >= 2 else 2 if source_count else 0,
+    }
+
+
 def _record_critical_hallucination(record: MomBenchmarkRecord) -> bool:
     notes = (record.notes or "").lower()
     answer = (record.aios_answer_summary or "").lower()

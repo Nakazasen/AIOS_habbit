@@ -13,6 +13,7 @@ STATUS_BUCKETS = (
     "extracted_partial",
     "ocr_success",
     "ocr_partial",
+    "unsupported_no_local_ocr",
     "unsupported_no_local_tool",
     "failed_with_reason",
 )

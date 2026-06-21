@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import html
+import os
 import re
 import shutil
 import subprocess
@@ -16,6 +17,13 @@ MAX_CHUNKS_PER_FILE = 30
 MAX_OCR_IMAGE_BYTES = 8 * 1024 * 1024
 MAX_PDF_OCR_PAGES = 3
 OCR_TIMEOUT_SECONDS = 20
+DEFAULT_OCR_LANG = "eng"
+COMMON_TESSERACT_PATHS = (
+    r"C:\Program Files\Tesseract-OCR\tesseract.exe",
+    r"C:\Program Files (x86)\Tesseract-OCR\tesseract.exe",
+    r"D:\Tools\Tesseract-OCR\tesseract.exe",
+    r"D:\Sandbox\tools\Tesseract-OCR\tesseract.exe",
+)
 USABLE_STATUSES = {"success", "extracted_success", "extracted_partial", "ocr_success", "ocr_partial"}
 IMAGE_EXTS = {".png", ".jpg", ".jpeg", ".bmp", ".tif", ".tiff"}
 
@@ -33,6 +41,7 @@ class ExtractionResult:
     sheet: str = ""
     row_range: str = ""
     ocr_engine: str = ""
+    ocr_lang: str = ""
 
 
 class _ReadableHTMLParser(HTMLParser):
@@ -127,6 +136,7 @@ def _chunk_result(result: ExtractionResult, path: Path, root: Path | None, max_c
         "extraction_status": result.extraction_status,
         "warning": result.warning,
         "ocr_engine": result.ocr_engine,
+        "ocr_lang": result.ocr_lang,
     }
     if result.extraction_status not in USABLE_STATUSES or not text:
         return [{"text": "", **base}]
@@ -244,34 +254,58 @@ def _extract_docx(path: Path) -> ExtractionResult:
     return ExtractionResult(text, ".docx", "docx_zip_xml", "extracted_success", section="word/document.xml")
 
 
-def _tesseract_available() -> tuple[bool, str]:
-    if shutil.which("tesseract"):
-        return True, "tesseract_cli"
+def _discover_tesseract_cmd() -> str | None:
+    env_cmd = os.environ.get("AIOS_TESSERACT_CMD", "").strip().strip('"')
+    if env_cmd and Path(env_cmd).exists():
+        return env_cmd
+    path_cmd = shutil.which("tesseract")
+    if path_cmd:
+        return path_cmd
+    for candidate in COMMON_TESSERACT_PATHS:
+        if Path(candidate).exists():
+            return candidate
+    return None
+
+
+def _ocr_lang() -> str:
+    return os.environ.get("AIOS_OCR_LANG", DEFAULT_OCR_LANG).strip() or DEFAULT_OCR_LANG
+
+
+def _tesseract_available() -> tuple[bool, str, str]:
+    cmd = _discover_tesseract_cmd()
+    lang = _ocr_lang()
+    if not cmd:
+        return False, "none", "local OCR unavailable: tesseract executable not found; set AIOS_TESSERACT_CMD or add Tesseract to PATH"
     try:
         import pytesseract
+        pytesseract.pytesseract.tesseract_cmd = cmd
         pytesseract.get_tesseract_version()
-        return True, "pytesseract"
+        return True, "tesseract", cmd
     except Exception as exc:  # noqa: BLE001
-        return False, f"local OCR unavailable: {exc}"
+        return False, "none", f"local OCR unavailable with {cmd}: {exc}; OCR lang={lang}"
 
 
 def _ocr_image(path: Path, *, page: str = "") -> ExtractionResult:
     if path.stat().st_size > MAX_OCR_IMAGE_BYTES:
-        return ExtractionResult("", path.suffix.lower(), "local_ocr", "unsupported_no_local_tool", f"image exceeds OCR size guard: {MAX_OCR_IMAGE_BYTES} bytes", page=page)
-    available, engine = _tesseract_available()
+        return ExtractionResult("", path.suffix.lower(), "local_ocr", "unsupported_no_local_ocr", f"image exceeds OCR size guard: {MAX_OCR_IMAGE_BYTES} bytes", page=page, ocr_engine="none", ocr_lang=_ocr_lang())
+    available, engine, detail = _tesseract_available()
+    lang = _ocr_lang()
     if not available:
-        return ExtractionResult("", path.suffix.lower(), "local_ocr", "unsupported_no_local_tool", engine, page=page, ocr_engine="none")
+        return ExtractionResult("", path.suffix.lower(), "local_ocr", "unsupported_no_local_ocr", detail, page=page, ocr_engine="none", ocr_lang=lang)
     try:
         from PIL import Image
         import pytesseract
+        if detail and Path(detail).exists():
+            pytesseract.pytesseract.tesseract_cmd = detail
         with Image.open(path) as img:
-            text = pytesseract.image_to_string(img, timeout=OCR_TIMEOUT_SECONDS)
+            text = pytesseract.image_to_string(img, lang=lang, timeout=OCR_TIMEOUT_SECONDS)
     except Exception as exc:  # noqa: BLE001
-        return ExtractionResult("", path.suffix.lower(), "local_ocr", "failed_with_reason", f"OCR failed: {exc}", page=page, ocr_engine=engine)
+        return ExtractionResult("", path.suffix.lower(), "local_ocr", "failed_with_reason", f"OCR failed: {exc}", page=page, ocr_engine=engine, ocr_lang=lang)
     lines = _clean_lines(text.splitlines(), limit=120)
     if not lines:
-        return ExtractionResult("", path.suffix.lower(), "local_ocr", "ocr_partial", "OCR ran but returned no readable text", page=page, ocr_engine=engine)
-    return ExtractionResult("\n".join(lines), path.suffix.lower(), "local_ocr", "ocr_success", page=page, section="ocr text", ocr_engine=engine)
+        return ExtractionResult("", path.suffix.lower(), "local_ocr", "ocr_partial", "OCR ran but returned no readable text", page=page, ocr_engine=engine, ocr_lang=lang)
+    warning = "" if len(" ".join(lines)) >= 12 else "OCR output is very short; review manually"
+    return ExtractionResult("\n".join(lines), path.suffix.lower(), "local_ocr", "ocr_success", warning=warning, page=page, section="ocr text", ocr_engine=engine, ocr_lang=lang)
 
 
 def _extract_pdf_text_layer(path: Path) -> list[ExtractionResult]:
@@ -305,13 +339,14 @@ def _extract_pdf_text_layer(path: Path) -> list[ExtractionResult]:
 
 
 def _extract_pdf_ocr(path: Path) -> list[ExtractionResult]:
-    available, engine = _tesseract_available()
+    available, engine, detail = _tesseract_available()
+    lang = _ocr_lang()
     if not available:
-        return [ExtractionResult("", ".pdf", "pdf_image_ocr", "unsupported_no_local_tool", f"image_pdf_requires_ocr; {engine}", ocr_engine="none")]
+        return [ExtractionResult("", ".pdf", "pdf_image_ocr", "unsupported_no_local_ocr", f"image_pdf_requires_ocr; {detail}", ocr_engine="none", ocr_lang=lang)]
     try:
         import fitz  # type: ignore
     except Exception as exc:  # noqa: BLE001
-        return [ExtractionResult("", ".pdf", "pdf_image_ocr", "unsupported_no_local_tool", f"PyMuPDF unavailable for render: {exc}", ocr_engine=engine)]
+        return [ExtractionResult("", ".pdf", "pdf_image_ocr", "unsupported_no_local_ocr", f"PyMuPDF unavailable for render: {exc}", ocr_engine=engine, ocr_lang=lang)]
     results: list[ExtractionResult] = []
     try:
         document = fitz.open(str(path))
@@ -377,6 +412,7 @@ def extract_text_chunks_from_file(path: str | Path, *, root: str | Path | None =
             "extraction_status": "unsupported_no_local_tool",
             "warning": "unsupported file type",
             "ocr_engine": "",
+            "ocr_lang": "",
         }]
     chunks: list[dict[str, Any]] = []
     for result in results:
@@ -389,11 +425,13 @@ def is_potentially_extractable(ext: str) -> bool:
 
 
 def local_capabilities() -> dict[str, Any]:
-    ocr_available, ocr_engine = _tesseract_available()
+    ocr_available, ocr_engine, detail = _tesseract_available()
     return {
         "ocr_available": ocr_available,
-        "ocr_engine": ocr_engine if ocr_available else "none",
-        "ocr_warning": "" if ocr_available else ocr_engine,
+        "ocr_engine": ocr_engine,
+        "tesseract_cmd": detail if ocr_available else "",
+        "ocr_lang": _ocr_lang(),
+        "ocr_warning": "" if ocr_available else detail,
         "pdf_render_available": __import__("importlib").util.find_spec("fitz") is not None,
         "image_size_guard_bytes": MAX_OCR_IMAGE_BYTES,
         "pdf_ocr_page_guard": MAX_PDF_OCR_PAGES,

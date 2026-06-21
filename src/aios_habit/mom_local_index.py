@@ -289,7 +289,28 @@ def search_mom_index(query: str, limit: int = 5, index_path: str | Path = INDEX_
         if score > 0:
             hits.append(MomSearchHit(chunk=chunk, score=score, matched_terms=sorted(set(matched))))
     hits.sort(key=lambda h: h.score, reverse=True)
-    return hits[:limit]
+    diversified: list[MomSearchHit] = []
+    seen_files: set[str] = set()
+    seen_previews: set[str] = set()
+    for hit in hits:
+        preview_key = re.sub(r"\s+", " ", hit.chunk.preview.lower())[:160]
+        if preview_key in seen_previews:
+            continue
+        if hit.chunk.relative_path not in seen_files:
+            diversified.append(hit)
+            seen_files.add(hit.chunk.relative_path)
+            seen_previews.add(preview_key)
+        if len(diversified) >= limit:
+            return diversified
+    for hit in hits:
+        preview_key = re.sub(r"\s+", " ", hit.chunk.preview.lower())[:160]
+        if preview_key in seen_previews:
+            continue
+        diversified.append(hit)
+        seen_previews.add(preview_key)
+        if len(diversified) >= limit:
+            break
+    return diversified
 
 
 def build_mom_qa_prompt(question: str, hits: list[MomSearchHit], min_score: float = 1.0) -> dict[str, Any]:
@@ -321,17 +342,24 @@ def build_mom_qa_prompt(question: str, hits: list[MomSearchHit], min_score: floa
 
     insufficient = not usable
     context = "\n\n".join(lines) if lines else "Không tìm thấy nguồn MOM local đủ khớp."
+    source_coverage = {
+        "source_count": len(source_refs),
+        "files": sorted({ref["relative_path"] for ref in source_refs}),
+        "file_types": sorted({ref["file_type"] for ref in source_refs}),
+        "has_ocr": any(ref["extraction_status"].startswith("ocr") for ref in source_refs),
+    }
     prompt = (
         "Bạn là AIOS WorkLens phân tích tài liệu MOM local-only.\n"
         "Không gửi nội dung này lên cloud nếu chưa có phê duyệt privacy rõ ràng.\n\n"
         f"Câu hỏi nghiệp vụ MOM: {question}\n\n"
         "Nguồn MOM local được phép dùng:\n"
         f"{context}\n\n"
-        "Yêu cầu trả lời:\n"
-        "1. Trả lời ngắn gọn bằng tiếng Việt dựa trên nguồn trên.\n"
-        "2. Luôn trích dẫn chunk_id/relative_path.\n"
-        "3. Nếu nguồn chưa đủ, nói 'chưa đủ bằng chứng' và đề xuất next checks.\n"
-        "4. Không bịa nguyên nhân, không kết luận vượt quá nguồn.\n"
+        "Yêu cầu trả lời theo cấu trúc bắt buộc:\n"
+        "1. Confirmed by source: nêu các điểm được xác nhận, mỗi điểm kèm relative_path và chunk_id.\n"
+        "2. Not found / insufficient evidence: nêu rõ phần chưa thấy trong nguồn; nếu thiếu thì nói 'chưa đủ bằng chứng'.\n"
+        "3. Next checks: đề xuất kiểm tra tiếp trên file/sheet/page/slide liên quan.\n"
+        "4. Source coverage: tóm tắt số nguồn, loại file, OCR/text-layer nếu có.\n"
+        "5. Không bịa field/process, không kết luận vượt quá nguồn, không dùng NotebookLM làm ground truth.\n"
     )
     return {
         "question": question,
@@ -339,6 +367,13 @@ def build_mom_qa_prompt(question: str, hits: list[MomSearchHit], min_score: floa
         "source_refs": source_refs,
         "insufficient_evidence": insufficient,
         "privacy_level": "local_only",
+        "source_coverage": source_coverage,
+        "answer_discipline": {
+            "confirmed_by_source_required": True,
+            "insufficient_evidence_required": True,
+            "next_checks_required": True,
+            "notebooklm_comparator_not_ground_truth": True,
+        },
         "cloud_warning": "Dữ liệu MOM local_only: không tự gửi lên cloud/NotebookLM.",
     }
 
