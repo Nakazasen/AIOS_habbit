@@ -67,7 +67,7 @@ def build_worklens_semantic_graph(
         added_node_ids.add(clean_id)
         
         # Ensure type is valid or fallback to other
-        valid_types = {"system", "process", "setting", "error", "cause", "action", "learning", "document", "case", "component", "other"}
+        valid_types = {"system", "process", "setting", "error", "cause", "action", "learning", "document", "evidence", "case", "component", "other"}
         if ntype not in valid_types:
             ntype = "other"
             
@@ -150,7 +150,7 @@ def build_worklens_semantic_graph(
     # Add evidence items
     for ev in evidence:
         ev_nid = f"evidence_{ev.evidence_id}"
-        add_node(ev_nid, label=ev.title, ntype="document", description=ev.structured_summary or ev.extracted_text[:200], source_ref=ev.source_path, confidence=ev.confidence)
+        add_node(ev_nid, label=ev.title, ntype="evidence", description=ev.structured_summary or ev.extracted_text[:200], source_ref=ev.source_path, confidence=ev.confidence)
         case_nid = f"case_{ev.case_id}"
         if sanitize_id(case_nid) in added_node_ids:
             add_edge(case_nid, ev_nid, relation="HAS_EVIDENCE", confidence=ev.confidence, source_ref=ev.source_path)

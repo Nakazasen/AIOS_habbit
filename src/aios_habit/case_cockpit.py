@@ -1392,21 +1392,11 @@ def page_notebooks():
             
             has_real_cases_or_evidence = len(rel_cases) > 0 or len(rel_evidence) > 0 or len(rel_learning) > 0
             
-            # Build map options
-            map_source_opts = []
-            
-            # Add semantic map if real data exists
-            if has_real_cases_or_evidence:
-                map_source_opts.append("Bản đồ nghiệp vụ từ hồ sơ/sổ tri thức hiện có")
-            else:
-                map_source_opts.append("Chưa đủ dữ liệu nghiệp vụ để dựng bản đồ tri thức. Đang hiển thị sơ đồ cấu trúc.")
-                
-            # Add NotebookLM imports options
-            for g in saved_graphs:
-                map_source_opts.append(f"Đồ thị nhập từ NotebookLM: {g.title} ({g.import_id})")
-                
-            # Add structural graph option
-            map_source_opts.append("Sơ đồ cấu trúc ứng dụng: Workspace → Notebook → Case")
+            # Build three product-level map families. Imported and structural maps stay separate.
+            business_map_label = "Bản đồ nghiệp vụ"
+            import_map_label = "Đồ thị nhập từ NotebookLM"
+            structural_map_label = "Sơ đồ cấu trúc ứng dụng"
+            map_source_opts = [business_map_label, import_map_label, structural_map_label]
             
             selected_map_source = st.selectbox(
                 "Chọn bản đồ hiển thị",
@@ -1417,49 +1407,67 @@ def page_notebooks():
             graph_data = None
             label_kind = ""
             
-            if selected_map_source == "Bản đồ nghiệp vụ từ hồ sơ/sổ tri thức hiện có":
-                graph_data = semantic_graph
-                label_kind = "semantic"
-            elif selected_map_source == "Chưa đủ dữ liệu nghiệp vụ để dựng bản đồ tri thức. Đang hiển thị sơ đồ cấu trúc.":
-                graph_data = build_notebook_structural_dict_graph(workspace_id=active_ws_id, notebook_id=graph_nb)
-                label_kind = "insufficient"
-            elif selected_map_source == "Sơ đồ cấu trúc ứng dụng: Workspace → Notebook → Case":
+            if selected_map_source == business_map_label:
+                if has_real_cases_or_evidence:
+                    graph_data = semantic_graph
+                    label_kind = "semantic"
+                else:
+                    graph_data = {
+                        "nodes": [],
+                        "edges": [],
+                        "meta": {
+                            "graph_kind": "empty",
+                            "uses_sample_data": False,
+                            "warnings": []
+                        }
+                    }
+                    label_kind = "insufficient"
+            elif selected_map_source == structural_map_label:
                 graph_data = build_notebook_structural_dict_graph(workspace_id=active_ws_id, notebook_id=graph_nb)
                 label_kind = "structural"
             else:
-                # Find matching import
-                import_id = None
-                for g in saved_graphs:
-                    if f"({g.import_id})" in selected_map_source:
-                        import_id = g.import_id
-                        break
-                if import_id:
-                    selected_graph = next(g for g in saved_graphs if g.import_id == import_id)
+                if saved_graphs:
+                    selected_graph = st.selectbox(
+                        "Chọn đồ thị nhập",
+                        options=saved_graphs,
+                        format_func=lambda g: f"{g.title} ({g.import_id})",
+                        key="selected_import_graph"
+                    )
                     graph_data = build_saved_graph_view(selected_graph)
                     if selected_graph.import_id == "IMP-C707A8DF":
                         label_kind = "sample"
                     else:
                         label_kind = "imported"
                 else:
-                    graph_data = {"nodes": [], "edges": []}
+                    graph_data = {
+                        "nodes": [],
+                        "edges": [],
+                        "meta": {
+                            "graph_kind": "empty",
+                            "uses_sample_data": False,
+                            "warnings": ["Chưa có đồ thị NotebookLM đã nhập."]
+                        }
+                    }
                     label_kind = "empty"
                     
             # Render labels
             if label_kind == "semantic":
                 st.success("🗺️ Bản đồ nghiệp vụ từ hồ sơ/sổ tri thức hiện có")
             elif label_kind == "insufficient":
-                st.warning("⚠️ Chưa đủ dữ liệu nghiệp vụ để dựng bản đồ tri thức. Đang hiển thị sơ đồ cấu trúc.")
+                st.warning("⚠️ Chưa đủ dữ liệu nghiệp vụ để dựng bản đồ tri thức. Hãy tạo Case/Evidence hoặc chọn đồ thị nhập để xem trước.")
             elif label_kind == "sample":
                 st.info("💡 Dữ liệu mẫu — chưa phải hồ sơ thật")
             elif label_kind == "imported":
                 st.info("📥 Đồ thị nhập từ NotebookLM — kiểm tra lại trước khi kết luận")
             elif label_kind == "structural":
-                st.info("⚙️ Đang hiển thị sơ đồ cấu trúc hệ thống")
+                st.info("⚙️ Sơ đồ cấu trúc ứng dụng — Workspace → Notebook → Case")
+            elif label_kind == "empty":
+                st.warning("⚠️ Chưa có dữ liệu để hiển thị cho lựa chọn này.")
                 
             # Display mode selector
             display_mode = st.selectbox(
                 "Kiểu hiển thị",
-                ["Bản đồ thẻ HTML", "Bảng + Mermaid", "Cả hai"],
+                ["Bản đồ trực quan", "Bảng + Mermaid", "Cả hai"],
                 index=0,
                 key="map_display_mode"
             )
@@ -1467,7 +1475,7 @@ def page_notebooks():
             nodes_list = graph_data.get("nodes", []) if graph_data else []
             
             # 1. Render HTML card map
-            if display_mode in ("Bản đồ thẻ HTML", "Cả hai") and graph_data:
+            if display_mode in ("Bản đồ trực quan", "Cả hai") and graph_data:
                 from aios_habit.knowledge_map_html import graph_to_html_map
                 import streamlit.components.v1 as components
                 

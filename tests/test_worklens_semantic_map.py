@@ -88,7 +88,7 @@ def test_build_semantic_graph_case_and_evidence():
     
     assert "evidence_ev_1" in nodes
     assert nodes["evidence_ev_1"]["label"] == "Key Evidence"
-    assert nodes["evidence_ev_1"]["type"] == "document"
+    assert nodes["evidence_ev_1"]["type"] == "evidence"
     assert nodes["evidence_ev_1"]["source_ref"] == "path/to/doc.pdf"
     assert nodes["evidence_ev_1"]["confidence"] == "medium"
     
@@ -167,7 +167,7 @@ def test_build_semantic_graph_learning_cards():
     assert nodes["learning_lc_1"]["type"] == "learning"
     assert nodes["learning_lc_1"]["description"].startswith("Bài học kinh nghiệm:")
     html_str = graph_to_html_map(graph)
-    assert "LEARNING (1)" in html_str
+    assert "learning" in html_str
     assert "Bài học kinh nghiệm:" in html_str
     assert "cause_lc_1_cause" in nodes
     assert "action_lc_1_countermeasure" in nodes

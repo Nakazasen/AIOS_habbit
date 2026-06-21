@@ -3,8 +3,24 @@ from typing import Dict, List, Any
 
 def build_saved_graph_view(import_record) -> dict:
     if not import_record or not import_record.parsed_json:
-        return {"nodes": [], "edges": []}
-    return import_record.parsed_json
+        return {
+            "nodes": [],
+            "edges": [],
+            "meta": {
+                "graph_kind": "empty",
+                "uses_sample_data": False,
+                "warnings": []
+            }
+        }
+    graph = dict(import_record.parsed_json)
+    graph.setdefault("nodes", [])
+    graph.setdefault("edges", [])
+    graph["meta"] = {
+        "graph_kind": "imported",
+        "uses_sample_data": import_record.import_id == "IMP-C707A8DF",
+        "warnings": ["Đồ thị nhập từ NotebookLM - kiểm tra lại trước khi kết luận."]
+    }
+    return graph
 
 def graph_to_node_table(graph: dict) -> List[dict]:
     if not graph:

@@ -248,5 +248,12 @@ def build_notebook_structural_dict_graph(
         if case_nid in added_nodes:
             edges.append({"from": case_nid, "to": nid, "relation": ""})
             
-    return {"nodes": nodes, "edges": edges}
-
+    return {
+        "nodes": nodes,
+        "edges": edges,
+        "meta": {
+            "graph_kind": "structural",
+            "uses_sample_data": False,
+            "warnings": []
+        }
+    }
