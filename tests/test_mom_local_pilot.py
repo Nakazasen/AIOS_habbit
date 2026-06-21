@@ -466,6 +466,18 @@ def test_generate_mom_grounded_answer_filters_unsupported_specific_terms(tmp_pat
     assert answer["source_refs"] == []
     assert weighted_real_answer_score(score_mom_real_answer(answer)) < 70
 
+    for unsupported in [
+        "unsupported payroll approval workflow in MOM docs",
+        "unsupported machine learning prediction model accuracy",
+        "unsupported customer CRM sales opportunity pipeline",
+        "unsupported finance invoice tax compliance policy",
+    ]:
+        hits = search_mom_index(unsupported, limit=5)
+        answer = generate_mom_grounded_answer(unsupported, hits)
+        assert answer["confidence_level"] == "insufficient"
+        assert answer["source_refs"] == []
+        assert weighted_real_answer_score(score_mom_real_answer(answer)) < 70
+
 
 def test_generate_mom_grounded_answer_broadened_fallback_not_high_confidence(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)

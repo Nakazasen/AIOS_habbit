@@ -167,7 +167,11 @@ _INTENT_QUERY_TERMS = {
     "mapping", "flow", "confirmation", "approval", "points", "review", "image", "operator",
 }
 
-_UNSUPPORTED_STRICT_TERMS = {"blockchain", "crypto", "bitcoin"}
+_UNSUPPORTED_STRICT_TERMS = {
+    "blockchain", "crypto", "bitcoin", "payroll", "salary", "invoice", "finance",
+    "tax", "crm", "sales", "opportunity", "kubernetes", "deployment", "rollback",
+    "machinelearning", "prediction", "model", "accuracy",
+}
 
 
 def _question_specific_terms(question: str) -> set[str]:
