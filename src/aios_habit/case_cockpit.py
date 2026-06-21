@@ -635,7 +635,13 @@ def page_notebooks():
     
     active_ws_id = st.session_state.get("active_workspace_id", "default")
     
-    tab1, tab2, tab3 = st.tabs(["Sổ tri thức", "Nạp tài liệu nguồn", "Danh sách & Xem trước"])
+    tab1, tab2, tab3, tab4, tab5 = st.tabs([
+        "Sổ tri thức", 
+        "Tài liệu nguồn", 
+        "Tìm & hỏi", 
+        "Ôn bài", 
+        "Bản đồ"
+    ])
     
     # Load notebooks for active workspace
     notebooks = [n for n in load_notebooks() if n.workspace_id == active_ws_id]
@@ -681,62 +687,178 @@ def page_notebooks():
                 st.write(f"📖 **{n.name}** (Quyền: {privacy_vn}) - *{n.description}*")
                 
     with tab2:
-        st.subheader("Nạp tài liệu nguồn")
-        if not notebooks:
-            st.warning("Vui lòng tạo ít nhất một Sổ tri thức trước khi tải lên tài liệu.")
-        else:
-            selected_nb_id = st.selectbox("Chọn Sổ tri thức đích", options=list(nb_opts.keys()), format_func=lambda x: nb_opts[x])
-            
-            uploaded_file = st.file_uploader("Chọn tài liệu nguồn (TXT, MD, CSV, Excel, PDF)", type=["txt", "md", "csv", "xlsx", "xls", "pdf"])
-            doc_title = st.text_input("Tiêu đề tài liệu (để trống sẽ dùng tên tệp)")
-            doc_desc = st.text_area("Mô tả tài liệu")
-            
-            selected_nb = next(n for n in notebooks if n.notebook_id == selected_nb_id)
-            doc_privacy = st.selectbox("Mức độ riêng tư tài liệu", ["local_only", "redacted_export", "cloud_allowed"], index=["local_only", "redacted_export", "cloud_allowed"].index(selected_nb.privacy_level))
-            
-            if uploaded_file and st.button("Nạp vào Sổ tri thức"):
-                file_bytes = uploaded_file.read()
-                try:
-                    ingest_source_document(
-                        notebook_id=selected_nb_id,
-                        original_filename=uploaded_file.name,
-                        file_bytes=file_bytes,
-                        title=doc_title,
-                        description=doc_desc,
-                        privacy_level=doc_privacy
-                    )
-                    st.success(f"Đã nạp thành công tài liệu: {uploaded_file.name}")
-                    st.rerun()
-                except Exception as e:
-                    st.error(f"Lỗi nạp tài liệu: {e}")
-                    
-    with tab3:
-        st.subheader("Danh sách Tài liệu nguồn đã nạp")
-        sources = load_sources()
-        ws_nb_ids = {n.notebook_id for n in notebooks}
-        ws_sources = [s for s in sources if s.notebook_id in ws_nb_ids]
+        col_left, col_right = st.columns([1, 1])
         
-        if not ws_sources:
-            st.info("Chưa có tài liệu nguồn nào được nạp trong Workspace này.")
-        else:
-            source_opts = {s.source_id: f"{s.title} (Sổ: {nb_opts.get(s.notebook_id, s.notebook_id)})" for s in ws_sources}
-            selected_src_id = st.selectbox("Chọn tài liệu để xem", options=list(source_opts.keys()), format_func=lambda x: source_opts[x])
-            
-            if selected_src_id:
-                src = next(s for s in ws_sources if s.source_id == selected_src_id)
-                st.write("---")
-                st.write(f"### Chi tiết tài liệu: {src.title}")
-                st.write(f"- **Tên tệp gốc:** {src.original_filename}")
-                st.write(f"- **Định dạng:** {src.source_type.upper()}")
-                st.write(f"- **Mức riêng tư:** {src.privacy_level}")
-                st.write(f"- **Mô tả:** {src.description}")
-                st.write(f"- **Đường dẫn cục bộ:** `{src.asset_path}`")
+        with col_left:
+            st.subheader("Nạp tài liệu nguồn")
+            if not notebooks:
+                st.warning("Vui lòng tạo ít nhất một Sổ tri thức trước khi tải lên tài liệu.")
+            else:
+                selected_nb_id = st.selectbox("Chọn Sổ tri thức đích", options=list(nb_opts.keys()), format_func=lambda x: nb_opts[x], key="ingest_nb_select")
+                uploaded_file = st.file_uploader("Chọn tài liệu nguồn (TXT, MD, CSV, Excel, PDF)", type=["txt", "md", "csv", "xlsx", "xls", "pdf"])
+                doc_title = st.text_input("Tiêu đề tài liệu (để trống sẽ dùng tên tệp)")
+                doc_desc = st.text_area("Mô tả tài liệu")
                 
-                st.write("#### Xem trước nội dung (Preview - Tối đa 1000 ký tự):")
-                if src.preview_text:
-                    st.text_area("Nội dung trích xuất", value=src.preview_text, height=250, disabled=True)
+                selected_nb = next(n for n in notebooks if n.notebook_id == selected_nb_id)
+                doc_privacy = st.selectbox("Mức độ riêng tư tài liệu", ["local_only", "redacted_export", "cloud_allowed"], index=["local_only", "redacted_export", "cloud_allowed"].index(selected_nb.privacy_level), key="ingest_doc_privacy")
+                
+                if uploaded_file and st.button("Nạp vào Sổ tri thức", key="ingest_btn"):
+                    file_bytes = uploaded_file.read()
+                    try:
+                        ingest_source_document(
+                            notebook_id=selected_nb_id,
+                            original_filename=uploaded_file.name,
+                            file_bytes=file_bytes,
+                            title=doc_title,
+                            description=doc_desc,
+                            privacy_level=doc_privacy
+                        )
+                        st.success(f"Đã nạp thành công tài liệu: {uploaded_file.name}")
+                        st.rerun()
+                    except Exception as e:
+                        st.error(f"Lỗi nạp tài liệu: {e}")
+                        
+        with col_right:
+            st.subheader("Danh sách Tài liệu nguồn đã nạp")
+            sources = load_sources()
+            ws_nb_ids = {n.notebook_id for n in notebooks}
+            ws_sources = [s for s in sources if s.notebook_id in ws_nb_ids]
+            
+            if not ws_sources:
+                st.info("Chưa có tài liệu nguồn nào được nạp trong Workspace này.")
+            else:
+                source_opts = {s.source_id: f"{s.title} (Sổ: {nb_opts.get(s.notebook_id, s.notebook_id)})" for s in ws_sources}
+                selected_src_id = st.selectbox("Chọn tài liệu để xem", options=list(source_opts.keys()), format_func=lambda x: source_opts[x], key="preview_src_select")
+                
+                if selected_src_id:
+                    src = next(s for s in ws_sources if s.source_id == selected_src_id)
+                    st.write("---")
+                    st.write(f"### Chi tiết tài liệu: {src.title}")
+                    st.write(f"- **Tên tệp gốc:** {src.original_filename}")
+                    st.write(f"- **Định dạng:** {src.source_type.upper()}")
+                    st.write(f"- **Mức riêng tư:** {src.privacy_level}")
+                    st.write(f"- **Mô tả:** {src.description}")
+                    st.write(f"- **Đường dẫn cục bộ:** `{src.asset_path}`")
+                    
+                    st.write("#### Xem trước nội dung (Preview - Tối đa 1000 ký tự):")
+                    if src.preview_text:
+                        st.text_area("Nội dung trích xuất", value=src.preview_text, height=200, disabled=True, key="preview_text_area")
+                    else:
+                        st.info("Chưa có xem trước nội dung cho định dạng này ở M1.7.")
+                        
+    with tab3:
+        st.subheader("Tìm kiếm & Hỏi đáp trong Sổ tri thức")
+        if not notebooks:
+            st.warning("Vui lòng tạo ít nhất một Sổ tri thức trước khi tìm kiếm.")
+        else:
+            from aios_habit.notebook_index import build_notebook_index, search_notebook_chunks
+            from aios_habit.notebook_qa import build_notebook_question_prompt
+            
+            selected_nb_id = st.selectbox("Chọn Sổ tri thức để truy vấn", options=list(nb_opts.keys()), format_func=lambda x: nb_opts[x], key="qa_nb_select")
+            
+            if st.button("Cập nhật chỉ mục (Re-index)", key="reindex_btn"):
+                with st.spinner("Đang trích xuất và chỉ mục hóa tài liệu..."):
+                    build_notebook_index(selected_nb_id)
+                st.success("Đã cập nhật chỉ mục thành công!")
+                
+            search_query = st.text_input("Tìm kiếm từ khóa nhanh trong sổ", key="qa_search_query")
+            if search_query.strip():
+                hits = search_notebook_chunks(selected_nb_id, search_query, limit=5)
+                if not hits:
+                    st.info("Không tìm thấy đoạn tài liệu phù hợp.")
                 else:
-                    st.info("Chưa có xem trước nội dung cho định dạng này ở M1.7.")
+                    st.write(f"Tìm thấy {len(hits)} đoạn tài liệu phù hợp nhất:")
+                    for i, hit in enumerate(hits):
+                        with st.expander(f"📌 {i+1}. {hit.chunk.source_title} (Độ khớp: {hit.score:.1f})"):
+                            st.write(f"- **File gốc:** `{hit.chunk.original_filename}` | **ID:** `{hit.chunk.source_id}` | **Privacy:** `{hit.chunk.privacy_level}`")
+                            st.text_area(f"Đoạn {hit.chunk.chunk_index}", value=hit.chunk.text, height=120, disabled=True, key=f"hit_text_{hit.chunk.chunk_id}")
+                            
+            st.write("---")
+            question = st.text_area("Nhập câu hỏi để soạn thảo prompt Q&A", placeholder="Ví dụ: Cấu hình DHCP và thiết lập FRPO U002 là gì?", key="qa_question")
+            
+            col1, col2 = st.columns(2)
+            target = col1.selectbox("AI đích nhận lệnh (Target)", ["Gemini", "GPT", "Copilot", "NotebookLM-safe summary", "Local AI (with local_only)"], key="qa_target_select")
+            export_mode = col2.selectbox("Chế độ xuất (Export Mode)", ["Bản nội bộ (local)", "Bản an toàn cho cloud (cloud_safe)"], key="qa_export_mode_select")
+            
+            target_map = {
+                "Gemini": "gemini",
+                "GPT": "gpt",
+                "Copilot": "copilot",
+                "NotebookLM-safe summary": "notebooklm_safe",
+                "Local AI (with local_only)": "local_ai"
+            }
+            export_map = {
+                "Bản nội bộ (local)": "local",
+                "Bản an toàn cho cloud (cloud_safe)": "cloud_safe"
+            }
+            
+            if st.button("Tạo prompt trả lời Q&A", key="qa_prompt_btn"):
+                if not question.strip():
+                    st.error("Vui lòng nhập câu hỏi.")
+                else:
+                    prompt = build_notebook_question_prompt(selected_nb_id, question, target_map[target], export_map[export_mode])
+                    st.text_area("Gói prompt Q&A đã sinh (Copy-paste)", value=prompt, height=300, key="qa_prompt_output")
+                    st.success("Đã tạo prompt thành công! Bạn có thể copy để gửi cho AI của mình.")
+                    
+    with tab4:
+        st.subheader("Tạo Study Pack ôn bài")
+        if not notebooks:
+            st.warning("Vui lòng tạo ít nhất một Sổ tri thức trước khi ôn bài.")
+        else:
+            from aios_habit.notebook_qa import build_study_pack_prompt
+            
+            selected_nb_id = st.selectbox("Chọn Sổ tri thức để ôn bài", options=list(nb_opts.keys()), format_func=lambda x: nb_opts[x], key="study_nb_select")
+            
+            col1, col2 = st.columns(2)
+            target = col1.selectbox("AI đích nhận lệnh (Target)", ["Gemini", "GPT", "Copilot", "NotebookLM-safe summary", "Local AI (with local_only)"], key="study_target_select")
+            export_mode = col2.selectbox("Chế độ xuất (Export Mode)", ["Bản nội bộ (local)", "Bản an toàn cho cloud (cloud_safe)"], key="study_export_mode_select")
+            
+            if st.button("Tạo prompt ôn bài", key="study_prompt_btn"):
+                prompt = build_study_pack_prompt(selected_nb_id, target_map[target], export_map[export_mode], limit=8)
+                st.text_area("Gói prompt ôn bài đã sinh (Copy-paste)", value=prompt, height=350, key="study_prompt_output")
+                st.success("Đã tạo prompt ôn bài thành công! Hãy copy đoạn prompt trên đưa vào AI của bạn để tạo bài ôn tập.")
+                
+    with tab5:
+        st.subheader("Bản đồ quan hệ Sổ tri thức")
+        if not notebooks:
+            st.info("Chưa có Sổ tri thức để vẽ bản đồ.")
+        else:
+            from aios_habit.notebook_graph import build_notebook_mermaid_graph
+            
+            selected_nb_id = st.selectbox("Chọn phạm vi hiển thị bản đồ", ["Tất cả sổ tri thức"] + list(nb_opts.keys()), format_func=lambda x: "Tất cả sổ tri thức" if x == "Tất cả sổ tri thức" else nb_opts[x], key="graph_nb_select")
+            
+            graph_nb = None if selected_nb_id == "Tất cả sổ tri thức" else selected_nb_id
+            mermaid_str = build_notebook_mermaid_graph(workspace_id=active_ws_id, notebook_id=graph_nb)
+            
+            st.markdown("### Sơ đồ cấu trúc trực quan (Mermaid)")
+            st.code(mermaid_str, language="mermaid")
+            
+            # Relation stats
+            st.markdown("### Thống kê quan hệ trong Bản đồ")
+            sources_list = load_sources()
+            ws_nbs = notebooks
+            if graph_nb:
+                ws_nbs = [n for n in ws_nbs if n.notebook_id == graph_nb]
+            ws_nb_ids = {n.notebook_id for n in ws_nbs}
+            
+            rel_sources = [s for s in sources_list if s.notebook_id in ws_nb_ids]
+            
+            cases_list = load_cases()
+            if graph_nb:
+                rel_cases = [c for c in cases_list if graph_nb in getattr(c, "linked_notebook_ids", [])]
+            else:
+                rel_cases = [c for c in cases_list if any(nb_id in ws_nb_ids for nb_id in getattr(c, "linked_notebook_ids", []))]
+                
+            rel_case_ids = {c.case_id for c in rel_cases}
+            evidence_list = load_evidence()
+            rel_evidence = [e for e in evidence_list if e.case_id in rel_case_ids]
+            
+            col_stat1, col_stat2, col_stat3, col_stat4 = st.columns(4)
+            col_stat1.metric("Sổ tri thức", len(ws_nbs))
+            col_stat2.metric("Tài liệu nguồn", len(rel_sources))
+            col_stat3.metric("Hồ sơ liên kết", len(rel_cases))
+            col_stat4.metric("Bằng chứng liên kết", len(rel_evidence))
+
 
 def main():
     init_store()
