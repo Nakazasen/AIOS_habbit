@@ -1383,31 +1383,55 @@ def page_notebooks():
                 selected_graph = next(g for g in saved_graphs if g.import_id == selected_graph_id)
                 st.markdown(f"**Mức riêng tư:** `{selected_graph.privacy_level}`")
                 
+                # Display mode selector
+                display_mode = st.selectbox(
+                    "Kiểu hiển thị",
+                    ["Bản đồ thẻ HTML", "Bảng + Mermaid", "Cả hai"],
+                    index=0,
+                    key="map_display_mode"
+                )
+                
                 graph_data = build_saved_graph_view(selected_graph)
                 nodes_list = graph_data.get("nodes", [])
                 
-                # Warn if exceeding max nodes
-                if len(nodes_list) > 50:
-                    st.warning(f"⚠️ Đồ thị chứa {len(nodes_list)} nút. Bản xem thử Mermaid được giới hạn tối đa 50 nút đầu tiên để tránh lag.")
-                
-                pretty_mermaid = graph_to_pretty_mermaid(graph_data, max_nodes=50)
-                st.markdown("#### Bản xem thử trực quan (Mermaid)")
-                st.code(pretty_mermaid, language="mermaid")
-                
-                # Show full tables
-                st.markdown("#### Bảng danh sách các nút (Nodes)")
-                nodes_table = graph_to_node_table(graph_data)
-                if nodes_table:
-                    st.dataframe(nodes_table)
-                else:
-                    st.info("Không có dữ liệu nút.")
+                # 1. Render HTML card map
+                if display_mode in ("Bản đồ thẻ HTML", "Cả hai"):
+                    from aios_habit.knowledge_map_html import graph_to_html_map
+                    import streamlit.components.v1 as components
                     
-                st.markdown("#### Bảng danh sách các quan hệ (Edges)")
-                edges_table = graph_to_edge_table(graph_data)
-                if edges_table:
-                    st.dataframe(edges_table)
-                else:
-                    st.info("Không có dữ liệu quan hệ.")
+                    html_str = graph_to_html_map(graph_data, max_nodes=50, max_edges=100)
+                    components.html(html_str, height=700, scrolling=True)
+                    
+                # 2. Render Bảng + Mermaid
+                if display_mode in ("Bảng + Mermaid", "Cả hai"):
+                    # Warn if exceeding max nodes
+                    if len(nodes_list) > 50:
+                        st.warning(f"⚠️ Đồ thị chứa {len(nodes_list)} nút. Bản xem thử Mermaid được giới hạn tối đa 50 nút đầu tiên để tránh lag.")
+                    
+                    pretty_mermaid = graph_to_pretty_mermaid(graph_data, max_nodes=50)
+                    st.markdown("#### Bản xem thử trực quan (Mermaid)")
+                    st.code(pretty_mermaid, language="mermaid")
+                    
+                    # Show full tables
+                    st.markdown("#### Bảng danh sách các nút (Nodes)")
+                    nodes_table = graph_to_node_table(graph_data)
+                    if nodes_table:
+                        st.dataframe(nodes_table)
+                    else:
+                        st.info("Không có dữ liệu nút.")
+                        
+                    st.markdown("#### Bảng danh sách các quan hệ (Edges)")
+                    edges_table = graph_to_edge_table(graph_data)
+                    if edges_table:
+                        st.dataframe(edges_table)
+                    else:
+                        st.info("Không có dữ liệu quan hệ.")
+                        
+                # Renderer decision note
+                st.info(
+                    "Bản đồ HTML là renderer nhẹ, không cần thư viện ngoài. "
+                    "Dữ liệu gốc vẫn là node/edge JSON nên sau này có thể thay renderer bằng Cytoscape/React Flow nếu cần."
+                )
             
             # Render Section 3: Graph cấu trúc AIOS
             st.write("---")
