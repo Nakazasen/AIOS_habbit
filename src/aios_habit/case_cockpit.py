@@ -747,11 +747,10 @@ def page_notebooks():
                         st.info("Chưa có xem trước nội dung cho định dạng này ở M1.7.")
                         
     with tab3:
-        st.subheader("Tìm kiếm, hỏi trong AIOS, hoặc tạo prompt")
+        st.subheader("Tìm kiếm và hỏi theo nguồn tri thức")
         st.markdown(
-            "**Có 2 cách:**\n"
-            "1. **Hỏi ngay trong AIOS:** Yêu cầu đã cấu hình AI provider (qua biến môi trường).\n"
-            "2. **Tạo prompt để copy:** Không cần cấu hình AI, sao chép thủ công để gửi cho Gemini/GPT/NotebookLM ngoài."
+            "AI đích không tự có dữ liệu nội bộ. "
+            "AIOS phải gửi kèm đoạn nguồn liên quan, hoặc bạn phải dùng NotebookLM đã được upload tài liệu."
         )
         
         from aios_habit.llm_client import is_llm_configured, load_llm_config
@@ -764,7 +763,7 @@ def page_notebooks():
             )
         else:
             st.warning(
-                "⚠️ **Chưa cấu hình AI provider.** Bạn vẫn có thể tạo prompt để copy sang AI ngoài."
+                "⚠️ **Chưa cấu hình AI provider.** Bạn vẫn có thể tạo prompt hoặc dùng NotebookLM Bridge để copy sang AI ngoài."
             )
             
         if not notebooks:
@@ -793,65 +792,201 @@ def page_notebooks():
                             st.text_area(f"Đoạn {hit.chunk.chunk_index}", value=hit.chunk.text, height=120, disabled=True, key=f"hit_text_{hit.chunk.chunk_id}")
                             
             st.write("---")
-            question = st.text_area("Nhập câu hỏi để truy vấn Sổ tri thức", placeholder="Ví dụ: Cấu hình DHCP và thiết lập FRPO U002 là gì?", key="qa_question")
             
-            col1, col2 = st.columns(2)
-            target = col1.selectbox("AI đích nhận lệnh (Target)", ["Gemini", "GPT", "Copilot", "NotebookLM-safe summary", "Local AI (with local_only)"], key="qa_target_select")
-            export_mode = col2.selectbox("Chế độ xuất (Export Mode)", ["Bản nội bộ (local)", "Bản an toàn cho cloud (cloud_safe)"], key="qa_export_mode_select")
+            truth_mode = st.selectbox(
+                "Chế độ hỏi (Truth Mode)",
+                [
+                    "Hỏi bằng AIOS local context",
+                    "Hỏi cloud bằng context được phép",
+                    "NotebookLM Bridge",
+                    "Chỉ tạo prompt để copy"
+                ],
+                key="qa_truth_mode"
+            )
             
-            target_map = {
-                "Gemini": "gemini",
-                "GPT": "gpt",
-                "Copilot": "copilot",
-                "NotebookLM-safe summary": "notebooklm_safe",
-                "Local AI (with local_only)": "local_ai"
-            }
-            export_map = {
-                "Bản nội bộ (local)": "local",
-                "Bản an toàn cho cloud (cloud_safe)": "cloud_safe"
-            }
-            
-            # Warning for mismatch target & export mode
-            if target_map[target] != "local_ai" and export_map[export_mode] == "local":
-                st.warning("⚠️ Cảnh báo: Bạn đang chọn mục tiêu Cloud nhưng Chế độ xuất là Local. Prompt có thể chứa dữ liệu riêng tư local_only.")
+            if truth_mode == "Hỏi bằng AIOS local context":
+                st.info("💡 Chế độ này sẽ gửi dữ liệu local_only cục bộ. Đảm bảo provider AI của bạn chạy nội bộ (local).")
+                question = st.text_area("Nhập câu hỏi", placeholder="Ví dụ: Cấu hình DHCP và thiết lập FRPO U002 là gì?", key="local_qa_question")
                 
-            col_btn1, col_btn2 = st.columns(2)
-            ask_in_app = col_btn1.button("Hỏi ngay trong AIOS", key="qa_ask_in_app_btn")
-            generate_prompt = col_btn2.button("Tạo prompt để copy", key="qa_prompt_btn")
-            
-            if ask_in_app:
-                if not question.strip():
-                    st.error("Vui lòng nhập câu hỏi.")
-                elif not config:
-                    st.error("Chưa cấu hình AI provider. Hãy cấu hình biến môi trường AIOS_LLM_PROVIDER để sử dụng chức năng này.")
-                else:
-                    with st.spinner("AIOS đang suy nghĩ..."):
-                        res = answer_notebook_question(selected_nb_id, question, target_map[target], export_map[export_mode])
-                    if res.blocked:
-                        st.error(f"⚠️ Yêu cầu bị chặn: {res.block_reason}")
+                col_btn1, col_btn2 = st.columns(2)
+                ask_btn = col_btn1.button("Hỏi ngay trong AIOS", key="local_ask_btn")
+                copy_btn = col_btn2.button("Tạo prompt để copy", key="local_copy_btn")
+                
+                if ask_btn:
+                    if not question.strip():
+                        st.error("Vui lòng nhập câu hỏi.")
+                    elif not config:
+                        st.error("Chưa cấu hình AI provider. Hãy cấu hình biến môi trường AIOS_LLM_PROVIDER.")
+                    elif config.locality == "cloud":
+                        st.error("❌ Không thể gửi dữ liệu local_only tới Gemini/GPT/Copilot. Hãy chọn Cloud-safe context hoặc dùng Local AI / NotebookLM Bridge.")
                     else:
-                        st.markdown("### 🤖 Câu trả lời từ AIOS:")
-                        st.write(res.answer_text)
+                        with st.spinner("AIOS đang suy nghĩ cục bộ..."):
+                            res = answer_notebook_question(selected_nb_id, question, "local_ai", "local")
+                        if res.blocked:
+                            st.error(f"⚠️ Yêu cầu bị chặn: {res.block_reason}")
+                        else:
+                            st.markdown("### 🤖 Câu trả lời từ AIOS:")
+                            st.write(res.answer_text)
+                            with st.expander("📚 Các phân đoạn tài liệu được sử dụng"):
+                                for i, chunk in enumerate(res.used_chunks):
+                                    st.markdown(f"**{i+1}. {chunk.source_title}** ({chunk.original_filename})")
+                                    st.text_area(f"Đoạn {chunk.chunk_index}", value=chunk.text, height=100, disabled=True, key=f"local_ans_{chunk.chunk_id}")
+                
+                if copy_btn:
+                    if not question.strip():
+                        st.error("Vui lòng nhập câu hỏi.")
+                    else:
+                        prompt = build_notebook_question_prompt(selected_nb_id, question, "local_ai", "local")
+                        st.text_area("Gói prompt Q&A đã sinh", value=prompt, height=300, key="local_prompt_out")
+                        st.success("Đã sinh prompt thành công!")
                         
-                        # Warning if locality was cloud and coerced to cloud_safe
-                        if config.locality == "cloud" and export_mode == "local":
-                            st.warning("⚠️ Chú ý: Vì provider là Cloud, dữ liệu local_only đã được tự động loại bỏ để bảo mật thông tin.")
-                            
-                        with st.expander("📚 Các phân đoạn tài liệu được sử dụng làm bối cảnh"):
-                            for i, chunk in enumerate(res.used_chunks):
-                                st.markdown(f"**{i+1}. {chunk.source_title}** (File: {chunk.original_filename}, Privacy: {chunk.privacy_level})")
-                                st.text_area(f"Đoạn {chunk.chunk_index} ({chunk.chunk_id})", value=chunk.text, height=100, disabled=True, key=f"ans_chunk_{chunk.chunk_id}")
+            elif truth_mode == "Hỏi cloud bằng context được phép":
+                st.warning("⚠️ Dữ liệu local_only sẽ bị ẩn (redacted). Câu trả lời có thể yếu nếu phần lớn nguồn bị ẩn.")
+                question = st.text_area("Nhập câu hỏi", placeholder="Ví dụ: Quy trình DHCP xuất hàng là gì?", key="cloud_qa_question")
+                
+                col_btn1, col_btn2 = st.columns(2)
+                ask_btn = col_btn1.button("Hỏi ngay trong AIOS", key="cloud_ask_btn")
+                copy_btn = col_btn2.button("Tạo prompt để copy", key="cloud_copy_btn")
+                
+                if ask_btn:
+                    if not question.strip():
+                        st.error("Vui lòng nhập câu hỏi.")
+                    elif not config:
+                        st.error("Chưa cấu hình AI provider. Hãy cấu hình biến môi trường AIOS_LLM_PROVIDER.")
+                    else:
+                        with st.spinner("AIOS đang gọi AI Cloud..."):
+                            res = answer_notebook_question(selected_nb_id, question, "gemini", "cloud_safe")
+                        if res.blocked:
+                            st.error(f"⚠️ Yêu cầu bị chặn: {res.block_reason}")
+                        else:
+                            st.markdown("### 🤖 Câu trả lời từ AIOS:")
+                            st.write(res.answer_text)
+                            with st.expander("📚 Các phân đoạn tài liệu được sử dụng (Đã mã hóa/ẩn local_only)"):
+                                for i, chunk in enumerate(res.used_chunks):
+                                    st.markdown(f"**{i+1}. {chunk.source_title}** ({chunk.original_filename}, Privacy: {chunk.privacy_level})")
+                                    txt = "[ĐÃ LOẠI BỎ VÌ RIÊNG TƯ - local_only]" if chunk.privacy_level == "local_only" else chunk.text
+                                    st.text_area(f"Đoạn {chunk.chunk_index}", value=txt, height=100, disabled=True, key=f"cloud_ans_{chunk.chunk_id}")
+                
+                if copy_btn:
+                    if not question.strip():
+                        st.error("Vui lòng nhập câu hỏi.")
+                    else:
+                        prompt = build_notebook_question_prompt(selected_nb_id, question, "gemini", "cloud_safe")
+                        st.text_area("Gói prompt Q&A đã sinh", value=prompt, height=300, key="cloud_prompt_out")
+                        st.success("Đã sinh prompt thành công!")
+                        
+            elif truth_mode == "NotebookLM Bridge":
+                st.markdown(
+                    "**Chỉ dùng chế độ này với NotebookLM đã được phép chứa tài liệu của bạn.**  \n"
+                    "AIOS không tự gửi tài liệu sang NotebookLM trong bước này. "
+                    "Bạn tự copy prompt và paste kết quả về."
+                )
+                
+                task_type_vn = st.selectbox(
+                    "Loại nhiệm vụ (Task Type)",
+                    [
+                        "Trích xuất đồ thị (knowledge_graph_json)",
+                        "Bộ học tập ôn bài (study_pack_json)",
+                        "Phân tích điều tra hồ sơ (case_investigation_json)",
+                        "Vẽ sơ đồ Mermaid (mermaid_graph)"
+                    ],
+                    key="bridge_task_type"
+                )
+                
+                task_type_map = {
+                    "Trích xuất đồ thị (knowledge_graph_json)": "knowledge_graph_json",
+                    "Bộ học tập ôn bài (study_pack_json)": "study_pack_json",
+                    "Phân tích điều tra hồ sơ (case_investigation_json)": "case_investigation_json",
+                    "Vẽ sơ đồ Mermaid (mermaid_graph)": "mermaid_graph"
+                }
+                task_type = task_type_map[task_type_vn]
+                
+                user_question = ""
+                if task_type == "case_investigation_json":
+                    user_question = st.text_area("Nhập tình huống hoặc câu hỏi cụ thể", key="bridge_question")
+                    
+                if st.button("Tạo prompt NotebookLM", key="bridge_prompt_btn"):
+                    from aios_habit.notebook_bridge import build_notebooklm_bridge_prompt
+                    prompt = build_notebooklm_bridge_prompt(selected_nb_id, task_type, user_question)
+                    st.text_area("Prompt cho NotebookLM (Hãy copy toàn bộ)", value=prompt, height=250, key="bridge_prompt_out")
+                    st.success("Đã sinh prompt! Hãy dán prompt này vào giao diện NotebookLM của bạn.")
+                    
+                st.write("---")
+                st.markdown("### Dán kết quả từ NotebookLM")
+                import_text = st.text_area("Kết quả từ NotebookLM", height=150, placeholder="Dán nội dung JSON hoặc mã Mermaid nhận được từ NotebookLM vào đây...", key="bridge_import_text")
+                
+                if st.button("Kiểm tra và nhập kết quả", key="bridge_import_btn"):
+                    if not import_text.strip():
+                        st.error("Vui lòng dán kết quả cần kiểm tra.")
+                    else:
+                        if import_text.strip().startswith("graph") or "graph TD" in import_text or "graph LR" in import_text:
+                            st.success("✅ Đọc thành công sơ đồ Mermaid trực tiếp!")
+                            st.markdown("### Sơ đồ Mermaid:")
+                            st.code(import_text, language="mermaid")
+                        else:
+                            try:
+                                data = json.loads(import_text)
+                                if "nodes" in data or "edges" in data:
+                                    st.success("✅ Đọc thành công Đồ thị tri thức!")
+                                    from aios_habit.notebook_bridge import graph_json_to_mermaid
+                                    mermaid = graph_json_to_mermaid(data)
+                                    st.markdown("### Sơ đồ Mermaid được sinh từ JSON:")
+                                    st.code(mermaid, language="mermaid")
+                                    
+                                    st.markdown("### Danh sách các nút:")
+                                    for node in data.get("nodes", []):
+                                        st.write(f"- **{node.get('label')}** ({node.get('type')}) — {node.get('description')} [Nguồn: {node.get('source_ref')}]")
+                                elif "summary" in data or "glossary" in data or "flashcards" in data:
+                                    st.success("✅ Đọc thành công Study Pack!")
+                                    st.write(f"**Tóm tắt:** {data.get('summary')}")
+                                    st.markdown("#### Thuật ngữ:")
+                                    for g in data.get("glossary", []):
+                                        st.write(f"- **{g.get('term')}:** {g.get('meaning')} (Nguồn: {g.get('source_ref')})")
+                                    st.markdown("#### Thẻ nhớ (Flashcards):")
+                                    for f in data.get("flashcards", []):
+                                        st.write(f"- **Hỏi:** {f.get('front')}  \n  **Đáp:** {f.get('back')} (Nguồn: {f.get('source_ref')})")
+                                elif "symptoms" in data or "hypotheses" in data:
+                                    st.success("✅ Đọc thành công Kết quả điều tra hồ sơ!")
+                                    st.write("**Triệu chứng:**", data.get("symptoms", []))
+                                    st.write("**Giả thuyết:**", data.get("hypotheses", []))
+                                    st.write("**Bằng chứng cần check:**", data.get("evidence_to_check", []))
+                                    st.write("**Chưa kết luận vội:**", data.get("do_not_conclude_yet", []))
+                                    st.write("**Phản hồi tiếng Việt:**", data.get("draft_reply_vi", ""))
+                                else:
+                                    st.warning("⚠️ Đọc thành công JSON nhưng cấu trúc không khớp với schema định sẵn.")
+                                    st.json(data)
+                            except Exception as e:
+                                st.error(f"❌ Lỗi cú pháp JSON: {e}")
                                 
-                        with st.expander("📋 Xem prompt thực tế đã gửi đi"):
-                            st.text_area("Sent prompt", value=res.prompt_text, height=200, disabled=True, key="sent_prompt_area")
-                            
-            if generate_prompt:
-                if not question.strip():
-                    st.error("Vui lòng nhập câu hỏi.")
-                else:
-                    prompt = build_notebook_question_prompt(selected_nb_id, question, target_map[target], export_map[export_mode])
-                    st.text_area("Gói prompt Q&A đã sinh (Copy-paste)", value=prompt, height=300, key="qa_prompt_output")
-                    st.success("Đã tạo prompt thành công! Bạn có thể copy để gửi cho AI của mình.")
+            elif truth_mode == "Chỉ tạo prompt để copy":
+                question = st.text_area("Nhập câu hỏi để soạn prompt", placeholder="Ví dụ: Cấu hình DHCP và thiết lập FRPO U002 là gì?", key="fallback_qa_question")
+                
+                col1, col2 = st.columns(2)
+                target = col1.selectbox("AI đích nhận lệnh (Target)", ["Gemini", "GPT", "Copilot", "NotebookLM-safe summary", "Local AI (with local_only)"], key="fallback_target_select")
+                export_mode = col2.selectbox("Chế độ xuất (Export Mode)", ["Bản nội bộ (local)", "Bản an toàn cho cloud (cloud_safe)"], key="fallback_export_mode_select")
+                
+                target_map = {
+                    "Gemini": "gemini",
+                    "GPT": "gpt",
+                    "Copilot": "copilot",
+                    "NotebookLM-safe summary": "notebooklm_safe",
+                    "Local AI (with local_only)": "local_ai"
+                }
+                export_map = {
+                    "Bản nội bộ (local)": "local",
+                    "Bản an toàn cho cloud (cloud_safe)": "cloud_safe"
+                }
+                
+                if target_map[target] != "local_ai" and export_map[export_mode] == "local":
+                    st.warning("⚠️ Cảnh báo: Bạn đang chọn mục tiêu Cloud nhưng Chế độ xuất là Local. Prompt có thể chứa dữ liệu riêng tư local_only.")
+                    
+                if st.button("Tạo prompt trả lời", key="fallback_prompt_btn"):
+                    if not question.strip():
+                        st.error("Vui lòng nhập câu hỏi.")
+                    else:
+                        prompt = build_notebook_question_prompt(selected_nb_id, question, target_map[target], export_map[export_mode])
+                        st.text_area("Gói prompt Q&A đã sinh (Copy-paste)", value=prompt, height=300, key="fallback_prompt_output")
+                        st.success("Đã tạo prompt thành công! Bạn có thể copy để gửi cho AI của mình.")
                     
     with tab4:
         st.subheader("Tạo Study Pack ôn bài")
