@@ -157,8 +157,17 @@ def _redact_snippet(text: str, max_len: int = 180) -> str:
 _GENERIC_QUERY_TERMS = {
     "mom", "docs", "doc", "document", "documents", "production", "history", "result",
     "registration", "system", "interface", "process", "overview", "evidence", "source",
-    "refs", "safe", "concise", "topic", "unsupported", "not", "in",
+    "refs", "safe", "concise", "topic", "unsupported", "not", "in", "input", "output",
+    "fields", "field", "interaction", "compare", "specification", "mapping", "flow",
+    "confirmation", "approval", "points", "review", "image", "operator",
 }
+
+_INTENT_QUERY_TERMS = {
+    "input", "output", "fields", "field", "interaction", "compare", "specification",
+    "mapping", "flow", "confirmation", "approval", "points", "review", "image", "operator",
+}
+
+_UNSUPPORTED_STRICT_TERMS = {"blockchain", "crypto", "bitcoin"}
 
 
 def _question_specific_terms(question: str) -> set[str]:
@@ -179,12 +188,21 @@ def generate_mom_grounded_answer(question: str, search_results: list[Any], *, ma
     """
     specific_terms = _question_specific_terms(question)
     raw_hits = [hit for hit in search_results[:max_sources] if getattr(hit, "score", 0) > 0]
-    if specific_terms:
+    strict_unsupported = bool(_UNSUPPORTED_STRICT_TERMS.intersection(specific_terms))
+    broadened = False
+    if strict_unsupported:
+        usable = []
+    elif specific_terms:
         usable = [
             hit for hit in raw_hits
             if specific_terms.intersection(set(hit.matched_terms))
             or any(term in hit.chunk.relative_path.lower() or term in hit.chunk.preview.lower() for term in specific_terms)
         ]
+        if not usable and raw_hits:
+            # Safe fallback: broad business-intent terms may still retrieve useful refs,
+            # but these refs must never create high confidence.
+            usable = raw_hits[: min(max_sources, 3)]
+            broadened = True
     else:
         usable = raw_hits
     source_refs: list[dict[str, Any]] = []
@@ -236,7 +254,7 @@ def generate_mom_grounded_answer(question: str, search_results: list[Any], *, ma
         ]
         confirmed_text = "Không có điểm nào được xác nhận bằng source refs."
     else:
-        confidence = "high" if len(source_refs) >= 3 and len(files) >= 2 else "medium" if len(source_refs) >= 2 else "low"
+        confidence = "medium" if broadened else "high" if len(source_refs) >= 3 and len(files) >= 2 else "medium" if len(source_refs) >= 2 else "low"
         not_found = "Không kết luận các field/process không xuất hiện trong nguồn trích dẫn; mọi phần ngoài phạm vi nguồn được xem là chưa đủ bằng chứng."
         next_checks = [
             f"Mở lại {files[0]} để kiểm tra ngữ cảnh đầy đủ quanh chunk được trích dẫn.",
@@ -244,10 +262,12 @@ def generate_mom_grounded_answer(question: str, search_results: list[Any], *, ma
         ]
         confirmed_text = "\n".join(confirmed)
 
+    confidence_note = "Refs được lọc theo thuật ngữ đặc thù của câu hỏi." if not broadened else "Refs lấy từ fallback broadened nên chỉ dùng mức tin cậy medium/low, không kết luận vượt nguồn."
     answer_text = (
-        f"Confirmed by source:\n{confirmed_text}\n\n"
-        f"Not found / insufficient evidence:\n{not_found}\n\n"
-        f"Next checks:\n- " + "\n- ".join(next_checks) + "\n\n"
+        f"Tóm tắt trả lời / Answer summary:\nAIOS tìm thấy {len(source_refs)} nguồn local_only liên quan; mức tin cậy={confidence}. {confidence_note}\n\n"
+        f"Điều có bằng chứng / Confirmed by source:\n{confirmed_text}\n\n"
+        f"Điểm chưa đủ bằng chứng / Not found / insufficient evidence:\n{not_found}\n\n"
+        f"Cần kiểm tra tiếp / Next checks:\n- " + "\n- ".join(next_checks) + "\n\n"
         f"Source coverage:\n{len(source_refs)} nguồn; loại file={', '.join(file_types) if file_types else 'none'}; OCR={'yes' if has_ocr else 'no'}; privacy=local_only."
     )
     return {
@@ -259,6 +279,8 @@ def generate_mom_grounded_answer(question: str, search_results: list[Any], *, ma
         "source_refs": source_refs,
         "source_coverage": source_coverage,
         "confidence_level": confidence,
+        "confidence_explanation": confidence_note,
+        "broadened_fallback": broadened,
         "privacy_level": "local_only",
         "prompt_only": False,
     }

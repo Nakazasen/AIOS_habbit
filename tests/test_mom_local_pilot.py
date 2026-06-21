@@ -467,6 +467,26 @@ def test_generate_mom_grounded_answer_filters_unsupported_specific_terms(tmp_pat
     assert weighted_real_answer_score(score_mom_real_answer(answer)) < 70
 
 
+def test_generate_mom_grounded_answer_broadened_fallback_not_high_confidence(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    from aios_habit.mom_benchmark import generate_mom_grounded_answer
+    from aios_habit.mom_local_index import build_mom_local_index, search_mom_index
+
+    root = tmp_path / "docs"
+    root.mkdir()
+    (root / "interface.md").write_text("MOM production interface includes order data and registration flow.", encoding="utf-8")
+    build_mom_local_index(root)
+
+    hits = search_mom_index("unicorn interface", limit=5)
+    answer = generate_mom_grounded_answer("unicorn interface", hits)
+
+    assert answer["source_refs"]
+    assert answer["broadened_fallback"] is True
+    assert answer["confidence_level"] in {"low", "medium"}
+    assert "Tóm tắt trả lời" in answer["answer_text"]
+    assert "Điều có bằng chứng" in answer["answer_text"]
+
+
 def test_real_answer_scoring_penalizes_prompt_only_and_weak_refs():
     from aios_habit.mom_benchmark import score_mom_real_answer, weighted_real_answer_score
 
