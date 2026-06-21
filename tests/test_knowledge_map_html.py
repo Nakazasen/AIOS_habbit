@@ -120,7 +120,7 @@ def test_empty_state_is_honest_and_does_not_pretend_pass():
     html_str = graph_to_html_map({})
 
     assert "Chưa đủ dữ liệu nghiệp vụ để dựng bản đồ tri thức" in html_str
-    assert "Hãy tạo Case/Evidence hoặc chọn đồ thị nhập để xem trước" in html_str
+    assert "Hãy tạo Case/Evidence thật hoặc xác minh hồ sơ nháp" in html_str
     assert "PASS" not in html_str
 
 
@@ -200,3 +200,90 @@ def test_renderer_source_has_no_lsu_or_drum_default_data():
 
     assert "LSU" not in renderer_source
     assert "Drum" not in renderer_source
+
+
+
+def test_import_derived_semantic_map_does_not_render_verified_banner():
+    graph = {
+        "nodes": [
+            {
+                "id": "case-import",
+                "label": "NotebookLM imLSU Investigation Testport",
+                "type": "case",
+                "source_origin": "notebooklm_import",
+                "verification_status": "draft",
+                "provenance_label": "nháp/import",
+            }
+        ],
+        "edges": [],
+        "meta": {
+            "graph_kind": "semantic",
+            "uses_sample_data": False,
+            "warnings": [],
+            "business_verification_state": "needs_verification",
+            "has_verified_business_data": False,
+        },
+    }
+
+    html_str = graph_to_html_map(graph)
+
+    assert "Bản đồ nghiệp vụ từ hồ sơ nháp/import" in html_str
+    assert "cần xác minh trước khi kết luận" in html_str
+    assert "Bản đồ nghiệp vụ từ hồ sơ/sổ tri thức đã xác minh" not in html_str
+    assert "nháp/import" in html_str
+
+
+def test_verified_semantic_map_can_render_verified_banner_and_badge():
+    graph = {
+        "nodes": [
+            {
+                "id": "ev-verified",
+                "label": "Evidence đã review",
+                "type": "evidence",
+                "verification_status": "verified",
+                "provenance_label": "đã xác minh",
+            }
+        ],
+        "edges": [],
+        "meta": {
+            "graph_kind": "semantic",
+            "uses_sample_data": False,
+            "warnings": [],
+            "business_verification_state": "verified",
+            "has_verified_business_data": True,
+        },
+    }
+
+    html_str = graph_to_html_map(graph)
+
+    assert "Bản đồ nghiệp vụ từ hồ sơ/sổ tri thức đã xác minh" in html_str
+    assert "đã xác minh" in html_str
+
+
+def test_unknown_legacy_semantic_map_is_not_verified():
+    graph = {
+        "nodes": [
+            {
+                "id": "case-legacy",
+                "label": "Legacy Case",
+                "type": "case",
+                "source_origin": "unknown",
+                "verification_status": "unknown",
+                "provenance_label": "chưa rõ nguồn gốc",
+            }
+        ],
+        "edges": [],
+        "meta": {
+            "graph_kind": "semantic",
+            "uses_sample_data": False,
+            "warnings": [],
+            "business_verification_state": "unknown",
+            "has_verified_business_data": False,
+        },
+    }
+
+    html_str = graph_to_html_map(graph)
+
+    assert "dữ liệu chưa rõ nguồn gốc" in html_str
+    assert "chưa rõ nguồn gốc" in html_str
+    assert "Bản đồ nghiệp vụ từ hồ sơ/sổ tri thức đã xác minh" not in html_str

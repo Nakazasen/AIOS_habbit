@@ -39,14 +39,17 @@ def load_cases_for_workspace(workspace_id: str) -> List[Case]:
     return [c for c in load_cases() if c.workspace_id == workspace_id]
 
 def load_evidence() -> List[EvidenceItem]:
+    import inspect
     init_store()
     items = []
+    evidence_fields = {p.name for p in inspect.signature(EvidenceItem).parameters.values()}
     with open(EVIDENCE_FILE, 'r', encoding='utf-8') as f:
         for line in f:
             if line.strip():
                 try:
                     data = json.loads(line)
-                    items.append(EvidenceItem(**data))
+                    filtered_data = {k: v for k, v in data.items() if k in evidence_fields}
+                    items.append(EvidenceItem(**filtered_data))
                 except Exception:
                     pass
     return items
@@ -115,7 +118,9 @@ def create_quick_case_with_evidence(
         priority=priority,
         privacy_level=privacy,
         status="open",
-        updated_at=datetime.now().isoformat()
+        updated_at=datetime.now().isoformat(),
+        source_origin="manual",
+        verification_status="draft"
     )
     save_case(case)
     
@@ -131,7 +136,9 @@ def create_quick_case_with_evidence(
             source_path="clipboard",
             title="Đoạn Chat/Log dán nhanh",
             extracted_text=chat_log.strip(),
-            privacy_level=privacy
+            privacy_level=privacy,
+            source_origin="manual",
+            verification_status="draft"
         )
         save_evidence(ev)
         case.timeline_events.append({"date": datetime.now().isoformat(), "event": "Đã thêm nhật ký từ nhập nhanh."})
@@ -147,7 +154,9 @@ def create_quick_case_with_evidence(
             source_path="manual",
             title="Ghi chú nhập nhanh",
             extracted_text=notes.strip(),
-            privacy_level=privacy
+            privacy_level=privacy,
+            source_origin="manual",
+            verification_status="draft"
         )
         save_evidence(ev)
         evidences_added += 1
@@ -167,6 +176,8 @@ def create_quick_case_with_evidence(
         else:
             ev = ingest_excel(path_str, case_id, ev_id, excel_csv_file_name)
         ev.privacy_level = privacy
+        ev.source_origin = "manual"
+        ev.verification_status = "draft"
         save_evidence(ev)
         evidences_added += 1
         
@@ -187,7 +198,9 @@ def create_quick_case_with_evidence(
             source_path=path_str,
             title=f"Ảnh chụp: {img_file_name}",
             extracted_text="Hình ảnh tải lên từ nhập nhanh",
-            privacy_level=privacy
+            privacy_level=privacy,
+            source_origin="manual",
+            verification_status="draft"
         )
         save_evidence(ev)
         evidences_added += 1

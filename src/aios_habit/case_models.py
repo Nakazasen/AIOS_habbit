@@ -14,6 +14,8 @@ class EvidenceItem:
     confidence: str = "low"
     privacy_level: str = "local_only"  # local_only, redacted_export, cloud_allowed
     review_status: str = "raw"  # raw, parsed, reviewed, verified
+    source_origin: str = "unknown"  # unknown, manual, notebooklm_import, sample
+    verification_status: str = "unknown"  # unknown, draft, unverified, reviewed, verified, confirmed
     created_at: str = field(default_factory=lambda: datetime.now().isoformat())
 
 @dataclass
@@ -36,3 +38,5 @@ class Case:
     privacy_level: str = "local_only"
     workspace_id: str = "default"
     linked_notebook_ids: List[str] = field(default_factory=list)
+    source_origin: str = "unknown"  # unknown, manual, notebooklm_import, sample
+    verification_status: str = "unknown"  # unknown, draft, unverified, reviewed, verified, confirmed

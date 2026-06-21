@@ -79,7 +79,7 @@ def _banner(meta: dict, nodes_truncated: bool, edges_truncated: bool, raw_nodes_
     warnings = list(meta.get("warnings") or [])
 
     if graph_kind == "empty":
-        text = "Chưa đủ dữ liệu nghiệp vụ để dựng bản đồ tri thức. Hãy tạo Case/Evidence hoặc chọn đồ thị nhập để xem trước."
+        text = "Chưa đủ dữ liệu nghiệp vụ để dựng bản đồ tri thức. Hãy tạo Case/Evidence thật hoặc xác minh hồ sơ nháp."
         cls = "banner warning"
     elif uses_sample_data:
         text = "Dữ liệu mẫu/import - chưa phải hồ sơ thật."
@@ -91,8 +91,16 @@ def _banner(meta: dict, nodes_truncated: bool, edges_truncated: bool, raw_nodes_
         text = "Sơ đồ cấu trúc ứng dụng - không phải bản đồ nghiệp vụ đã xác minh."
         cls = "banner structure"
     elif graph_kind == "semantic":
-        text = "Bản đồ nghiệp vụ từ hồ sơ, bằng chứng và bài học hiện có."
-        cls = "banner semantic"
+        business_state = meta.get("business_verification_state")
+        if bool(meta.get("has_verified_business_data")) or business_state == "verified":
+            text = "Bản đồ nghiệp vụ từ hồ sơ/sổ tri thức đã xác minh."
+            cls = "banner semantic verified"
+        elif business_state == "needs_verification":
+            text = "Bản đồ nghiệp vụ từ hồ sơ nháp/import — cần xác minh trước khi kết luận."
+            cls = "banner warning"
+        else:
+            text = "Bản đồ nghiệp vụ có dữ liệu chưa rõ nguồn gốc — cần xác minh trước khi kết luận."
+            cls = "banner warning"
     else:
         text = f"Loại đồ thị: {graph_kind}"
         cls = "banner structure"
@@ -123,6 +131,15 @@ def _node_card(node: dict, role_class: str = "") -> str:
     if desc:
         bits.append(f"<p>{esc(desc)}</p>")
     meta = []
+    provenance_label = node.get("provenance_label") or ""
+    source_origin = node.get("source_origin") or ""
+    verification_status = node.get("verification_status") or ""
+    if provenance_label:
+        meta.append(f"<span class=\"meta-pill provenance-pill\">{esc(provenance_label)}</span>")
+    if verification_status:
+        meta.append(f"<span class=\"meta-pill\">trạng thái: {esc(verification_status)}</span>")
+    if source_origin:
+        meta.append(f"<span class=\"meta-pill\">nguồn gốc: {esc(source_origin)}</span>")
     if conf:
         meta.append(f"<span class=\"meta-pill\">tin cậy: {esc(conf)}</span>")
     if ref:
@@ -198,7 +215,7 @@ def graph_to_case_board_html(graph: dict, max_nodes: int = 80, max_edges: int = 
         empty_state = (
             "<section class=\"empty-state\">"
             "<h2>Chưa đủ dữ liệu nghiệp vụ để dựng bản đồ tri thức.</h2>"
-            "<p>Hãy tạo Case/Evidence hoặc chọn đồ thị nhập để xem trước.</p>"
+            "<p>Hãy tạo Case/Evidence thật hoặc xác minh hồ sơ nháp.</p>"
             "</section>"
         )
 
@@ -240,9 +257,10 @@ def graph_to_case_board_html(graph: dict, max_nodes: int = 80, max_edges: int = 
         }
         .banner ul { margin: 8px 0 0 18px; padding: 0; color: var(--muted); }
         .semantic { border-color: #2ea66f; }
+        .semantic.verified { background: #12281d; }
         .import, .sample { border-color: #d48a31; background: #2a2117; }
         .structure { border-color: #4a78b8; }
-        .warning { border-color: #b98b2f; background: #241f16; }
+        .warning { border-color: #d48a31; background: #2a2117; }
         .board {
           width: 100%;
           display: grid;
@@ -331,6 +349,11 @@ def graph_to_case_board_html(graph: dict, max_nodes: int = 80, max_edges: int = 
           color: var(--muted);
           font-size: 11px;
           padding: 2px 5px;
+        }
+        .provenance-pill {
+          border-color: #d48a31;
+          color: #ffd18a;
+          background: #251b0e;
         }
         .relations {
           flex: 1;

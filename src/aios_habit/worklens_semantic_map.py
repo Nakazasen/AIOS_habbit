@@ -10,6 +10,112 @@ from aios_habit.knowledge_map_view import sanitize_id
 
 logger = logging.getLogger(__name__)
 
+VERIFIED_STATUSES = {"verified", "confirmed", "local_confirmed"}
+DRAFT_STATUSES = {"draft", "unverified"}
+IMPORT_ORIGINS = {"notebooklm_import", "import_draft", "sample"}
+
+
+def _norm(value: Any) -> str:
+    return str(value or "").strip().lower()
+
+
+def _classify_business_record(record: Any, record_kind: str) -> Dict[str, Any]:
+    source_origin = _norm(getattr(record, "source_origin", "unknown")) or "unknown"
+    verification_status = _norm(getattr(record, "verification_status", "unknown")) or "unknown"
+    review_status = _norm(getattr(record, "review_status", ""))
+    confidence = _norm(getattr(record, "confidence", ""))
+
+    verified = False
+    if record_kind == "evidence":
+        verified = review_status == "verified" or verification_status in VERIFIED_STATUSES
+    elif record_kind == "learning":
+        verified = confidence == "confirmed"
+    else:
+        verified = verification_status in VERIFIED_STATUSES
+
+    if verified:
+        return {
+            "bucket": "verified",
+            "label": "đã xác minh",
+            "source_origin": source_origin,
+            "verification_status": verification_status,
+            "is_verified": True,
+            "is_unverified": False,
+            "is_unknown": False,
+        }
+
+    if source_origin in IMPORT_ORIGINS or verification_status in DRAFT_STATUSES:
+        if source_origin == "manual":
+            label = "nháp/manual"
+            bucket = "manual_draft"
+        elif source_origin in IMPORT_ORIGINS:
+            label = "nháp/import"
+            bucket = "import_draft"
+        else:
+            label = "cần xác minh"
+            bucket = "unverified"
+        return {
+            "bucket": bucket,
+            "label": label,
+            "source_origin": source_origin,
+            "verification_status": verification_status,
+            "is_verified": False,
+            "is_unverified": True,
+            "is_unknown": False,
+        }
+
+    return {
+        "bucket": "unknown",
+        "label": "chưa rõ nguồn gốc",
+        "source_origin": source_origin,
+        "verification_status": verification_status,
+        "is_verified": False,
+        "is_unverified": False,
+        "is_unknown": True,
+    }
+
+
+def _business_meta(cases: List[Any], evidence: List[Any], learning_cards: List[Any], warnings: List[str], graph_kind: str, uses_sample_data: bool) -> Dict[str, Any]:
+    records = []
+    records.extend(_classify_business_record(c, "case") for c in cases)
+    records.extend(_classify_business_record(e, "evidence") for e in evidence)
+    records.extend(_classify_business_record(lc, "learning") for lc in learning_cards)
+
+    counts = {
+        "verified": 0,
+        "import_draft": 0,
+        "manual_draft": 0,
+        "unverified": 0,
+        "unknown": 0,
+    }
+    for rec in records:
+        counts[rec["bucket"]] = counts.get(rec["bucket"], 0) + 1
+
+    has_verified = any(rec["is_verified"] for rec in records)
+    has_unverified = any(rec["is_unverified"] for rec in records)
+    has_unknown = any(rec["is_unknown"] for rec in records)
+
+    if not records:
+        business_state = "empty"
+    elif has_verified:
+        business_state = "verified"
+    elif has_unverified:
+        business_state = "needs_verification"
+    else:
+        business_state = "unknown"
+
+    return {
+        "graph_kind": graph_kind,
+        "uses_sample_data": uses_sample_data,
+        "warnings": warnings,
+        "business_verification_state": business_state,
+        "has_verified_business_data": has_verified,
+        "has_unverified_business_data": has_unverified,
+        "has_unknown_business_data": has_unknown,
+        "provenance_counts": counts,
+    }
+
+
 def build_worklens_semantic_graph(
     workspace: Optional[str] = None,
     notebooks: Optional[List[Any]] = None,
@@ -59,7 +165,17 @@ def build_worklens_semantic_graph(
     added_node_ids = set()
     warnings = []
 
-    def add_node(nid: str, label: str, ntype: str, description: str = "", source_ref: str = "", confidence: str = ""):
+    def add_node(
+        nid: str,
+        label: str,
+        ntype: str,
+        description: str = "",
+        source_ref: str = "",
+        confidence: str = "",
+        source_origin: str = "",
+        verification_status: str = "",
+        provenance_label: str = "",
+    ):
         if not nid:
             return False
         clean_id = sanitize_id(nid)
@@ -75,15 +191,22 @@ def build_worklens_semantic_graph(
         valid_types = {"system", "process", "setting", "error", "cause", "action", "learning", "document", "evidence", "case", "component", "other"}
         if ntype not in valid_types:
             ntype = "other"
-            
-        nodes_list.append({
+
+        node = {
             "id": clean_id,
             "label": label,
             "type": ntype,
             "description": description,
             "source_ref": source_ref,
-            "confidence": confidence
-        })
+            "confidence": confidence,
+        }
+        if source_origin:
+            node["source_origin"] = source_origin
+        if verification_status:
+            node["verification_status"] = verification_status
+        if provenance_label:
+            node["provenance_label"] = provenance_label
+        nodes_list.append(node)
         return True
 
     def add_edge(from_id: str, to_id: str, relation: str, description: str = "", source_ref: str = "", confidence: str = ""):
@@ -125,8 +248,19 @@ def build_worklens_semantic_graph(
 
     # 4. Build Cases & Evidence
     for case in cases:
+        case_prov = _classify_business_record(case, "case")
         case_nid = f"case_{case.case_id}"
-        add_node(case_nid, label=case.title, ntype="case", description=case.current_situation, source_ref=case.case_id, confidence=case.priority)
+        add_node(
+            case_nid,
+            label=case.title,
+            ntype="case",
+            description=case.current_situation,
+            source_ref=case.case_id,
+            confidence=case.priority,
+            source_origin=case_prov["source_origin"],
+            verification_status=case_prov["verification_status"],
+            provenance_label=case_prov["label"],
+        )
         
         # Link case to notebooks
         for nb_id in getattr(case, "linked_notebook_ids", []):
@@ -154,8 +288,19 @@ def build_worklens_semantic_graph(
 
     # Add evidence items
     for ev in evidence:
+        ev_prov = _classify_business_record(ev, "evidence")
         ev_nid = f"evidence_{ev.evidence_id}"
-        add_node(ev_nid, label=ev.title, ntype="evidence", description=ev.structured_summary or ev.extracted_text[:200], source_ref=ev.source_path, confidence=ev.confidence)
+        add_node(
+            ev_nid,
+            label=ev.title,
+            ntype="evidence",
+            description=ev.structured_summary or ev.extracted_text[:200],
+            source_ref=ev.source_path,
+            confidence=ev.confidence,
+            source_origin=ev_prov["source_origin"],
+            verification_status=ev_prov["verification_status"],
+            provenance_label=ev_prov["label"],
+        )
         case_nid = f"case_{ev.case_id}"
         if sanitize_id(case_nid) in added_node_ids:
             add_edge(case_nid, ev_nid, relation="HAS_EVIDENCE", confidence=ev.confidence, source_ref=ev.source_path)
@@ -163,10 +308,21 @@ def build_worklens_semantic_graph(
 
     # 5. Build Senior Learning Cards
     for lc in learning_cards:
+        lc_prov = _classify_business_record(lc, "learning")
         lrn_nid = f"learning_{lc.learning_id}"
         label = f"Bài học: {lc.reusable_lesson[:40]}..." if lc.reusable_lesson else f"Bài học {lc.learning_id}"
         learning_desc = f"Bài học kinh nghiệm: {lc.reusable_lesson}" if lc.reusable_lesson else "Bài học kinh nghiệm"
-        add_node(lrn_nid, label=label, ntype="learning", description=learning_desc, source_ref=lc.learning_id, confidence=lc.confidence)
+        add_node(
+            lrn_nid,
+            label=label,
+            ntype="learning",
+            description=learning_desc,
+            source_ref=lc.learning_id,
+            confidence=lc.confidence,
+            source_origin=lc_prov["source_origin"],
+            verification_status=lc_prov["verification_status"],
+            provenance_label=lc_prov["label"],
+        )
         
         case_nid = f"case_{lc.case_id}"
         if sanitize_id(case_nid) in added_node_ids:
@@ -217,7 +373,10 @@ def build_worklens_semantic_graph(
                     ntype=node.get("type", "other"), 
                     description=imported_desc, 
                     source_ref=node.get("source_ref") or bi.title, 
-                    confidence=node.get("confidence", "")
+                    confidence=node.get("confidence", ""),
+                    source_origin="notebooklm_import",
+                    verification_status="draft",
+                    provenance_label="nháp/import",
                 )
                 if sanitize_id(nb_nid) in added_node_ids:
                     add_edge(nb_nid, imp_nid, relation="CONTAINS")
@@ -245,7 +404,7 @@ def build_worklens_semantic_graph(
             symptom_ids = []
             for i, sym in enumerate(symptoms):
                 sym_nid = f"imp_sym_{bi.import_id}_{i}"
-                add_node(sym_nid, label=f"Triệu chứng: {sym}", ntype="error", description="Triệu chứng từ phân tích NotebookLM", source_ref=bi.title)
+                add_node(sym_nid, label=f"Triệu chứng: {sym}", ntype="error", description="Triệu chứng từ phân tích NotebookLM", source_ref=bi.title, source_origin="notebooklm_import", verification_status="draft", provenance_label="nháp/import")
                 symptom_ids.append(sym_nid)
                 if sanitize_id(nb_nid) in added_node_ids:
                     add_edge(nb_nid, sym_nid, relation="CONTAINS")
@@ -253,7 +412,7 @@ def build_worklens_semantic_graph(
             hyp_ids = []
             for i, hyp in enumerate(hypotheses):
                 hyp_nid = f"imp_hyp_{bi.import_id}_{i}"
-                add_node(hyp_nid, label=f"Giả thuyết: {hyp}", ntype="cause", description="Giả thuyết từ phân tích NotebookLM", source_ref=bi.title)
+                add_node(hyp_nid, label=f"Giả thuyết: {hyp}", ntype="cause", description="Giả thuyết từ phân tích NotebookLM", source_ref=bi.title, source_origin="notebooklm_import", verification_status="draft", provenance_label="nháp/import")
                 hyp_ids.append(hyp_nid)
                 if sanitize_id(nb_nid) in added_node_ids:
                     add_edge(nb_nid, hyp_nid, relation="CONTAINS")
@@ -262,7 +421,7 @@ def build_worklens_semantic_graph(
                     
             for i, evc in enumerate(evc_list):
                 evc_nid = f"imp_evc_{bi.import_id}_{i}"
-                add_node(evc_nid, label=f"Cần check: {evc}", ntype="action", description="Bằng chứng cần kiểm tra theo gợi ý", source_ref=bi.title)
+                add_node(evc_nid, label=f"Cần check: {evc}", ntype="action", description="Bằng chứng cần kiểm tra theo gợi ý", source_ref=bi.title, source_origin="notebooklm_import", verification_status="draft", provenance_label="nháp/import")
                 if sanitize_id(nb_nid) in added_node_ids:
                     add_edge(nb_nid, evc_nid, relation="CONTAINS")
                 for hyp_nid in hyp_ids:
@@ -287,9 +446,5 @@ def build_worklens_semantic_graph(
     return {
         "nodes": nodes_list,
         "edges": clean_edges,
-        "meta": {
-            "graph_kind": graph_kind,
-            "uses_sample_data": uses_sample_data,
-            "warnings": warnings
-        }
+        "meta": _business_meta(cases, evidence, learning_cards, warnings, graph_kind, uses_sample_data)
     }

@@ -1452,9 +1452,16 @@ def page_notebooks():
                     
             # Render labels
             if label_kind == "semantic":
-                st.success("🗺️ Bản đồ nghiệp vụ từ hồ sơ/sổ tri thức hiện có")
+                business_meta = graph_data.get("meta") or {}
+                business_state = business_meta.get("business_verification_state")
+                if business_meta.get("has_verified_business_data"):
+                    st.success("🗺️ Bản đồ nghiệp vụ từ hồ sơ/sổ tri thức đã xác minh")
+                elif business_state == "needs_verification":
+                    st.warning("⚠️ Bản đồ nghiệp vụ từ hồ sơ nháp/import — cần xác minh trước khi kết luận")
+                else:
+                    st.warning("⚠️ Bản đồ nghiệp vụ có dữ liệu chưa rõ nguồn gốc — cần xác minh trước khi kết luận")
             elif label_kind == "insufficient":
-                st.warning("⚠️ Chưa đủ dữ liệu nghiệp vụ để dựng bản đồ tri thức. Hãy tạo Case/Evidence hoặc chọn đồ thị nhập để xem trước.")
+                st.warning("⚠️ Chưa đủ dữ liệu nghiệp vụ để dựng bản đồ tri thức. Hãy tạo Case/Evidence thật hoặc xác minh hồ sơ nháp.")
             elif label_kind == "sample":
                 st.info("💡 Dữ liệu mẫu — chưa phải hồ sơ thật")
             elif label_kind == "imported":

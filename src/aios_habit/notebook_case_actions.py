@@ -38,7 +38,9 @@ def create_case_from_investigation_import(import_record, workspace_id: str) -> d
         current_situation=current_situation,
         privacy_level="local_only",
         workspace_id=workspace_id,
-        linked_notebook_ids=[notebook_id] if notebook_id else []
+        linked_notebook_ids=[notebook_id] if notebook_id else [],
+        source_origin="notebooklm_import",
+        verification_status="draft"
     )
     
     evidence_ids = []
@@ -55,7 +57,9 @@ def create_case_from_investigation_import(import_record, workspace_id: str) -> d
             title=str(item)[:60] + "..." if len(str(item)) > 60 else str(item),
             extracted_text=str(item),
             privacy_level="local_only",
-            review_status="raw"
+            review_status="raw",
+            source_origin="notebooklm_import",
+            verification_status="draft"
         )
         save_evidence(evidence)
         evidence_ids.append(ev_id)

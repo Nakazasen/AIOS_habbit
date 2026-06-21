@@ -23,7 +23,7 @@ class MockSource:
         self.description = description
 
 class MockCase:
-    def __init__(self, case_id, title, workspace_id="default", priority="normal", current_situation="", hypotheses=None, next_actions=None, decisions=None, linked_notebook_ids=None):
+    def __init__(self, case_id, title, workspace_id="default", priority="normal", current_situation="", hypotheses=None, next_actions=None, decisions=None, linked_notebook_ids=None, source_origin="unknown", verification_status="unknown"):
         self.case_id = case_id
         self.title = title
         self.workspace_id = workspace_id
@@ -33,9 +33,11 @@ class MockCase:
         self.next_actions = next_actions or []
         self.decisions = decisions or []
         self.linked_notebook_ids = linked_notebook_ids or []
+        self.source_origin = source_origin
+        self.verification_status = verification_status
 
 class MockEvidence:
-    def __init__(self, evidence_id, case_id, title, source_type="note", source_path="manual", extracted_text="", structured_summary="", confidence="low"):
+    def __init__(self, evidence_id, case_id, title, source_type="note", source_path="manual", extracted_text="", structured_summary="", confidence="low", source_origin="unknown", verification_status="unknown", review_status="raw"):
         self.evidence_id = evidence_id
         self.case_id = case_id
         self.title = title
@@ -44,6 +46,9 @@ class MockEvidence:
         self.extracted_text = extracted_text
         self.structured_summary = structured_summary
         self.confidence = confidence
+        self.source_origin = source_origin
+        self.verification_status = verification_status
+        self.review_status = review_status
 
 class MockLearningCard:
     def __init__(self, learning_id, case_id, reusable_lesson, true_cause="", actions_taken="", check_first_next_time="", confidence="draft"):
@@ -301,3 +306,127 @@ def test_business_semantic_graph_does_not_fallback_to_import_only_data():
     assert graph["meta"]["graph_kind"] == "empty"
     assert "Imported-only claim" not in html_str
     assert "Chưa đủ dữ liệu nghiệp vụ để dựng bản đồ tri thức" in html_str
+
+
+
+def test_business_graph_meta_marks_import_derived_case_as_needing_verification():
+    case = MockCase(
+        case_id="case-import",
+        title="NotebookLM Investigation Testport",
+        workspace_id="ws-prov",
+        source_origin="notebooklm_import",
+        verification_status="draft",
+    )
+    ev = MockEvidence(
+        evidence_id="ev-import",
+        case_id="case-import",
+        title="Imported checklist",
+        source_origin="notebooklm_import",
+        verification_status="draft",
+    )
+
+    graph = build_worklens_semantic_graph(
+        workspace="ws-prov",
+        notebooks=[],
+        sources=[],
+        cases=[case],
+        evidence=[ev],
+        learning_cards=[],
+        bridge_imports=[],
+    )
+
+    assert graph["meta"]["graph_kind"] == "semantic"
+    assert graph["meta"]["business_verification_state"] == "needs_verification"
+    assert graph["meta"]["has_verified_business_data"] is False
+    assert graph["meta"]["provenance_counts"]["import_draft"] == 2
+    labels = {n["label"]: n for n in graph["nodes"]}
+    assert labels["NotebookLM Investigation Testport"]["provenance_label"] == "nháp/import"
+
+
+def test_business_graph_meta_requires_explicit_verified_signal():
+    manual_case = MockCase(
+        case_id="case-manual",
+        title="Manual quick case",
+        workspace_id="ws-manual",
+        source_origin="manual",
+        verification_status="draft",
+    )
+    graph = build_worklens_semantic_graph(
+        workspace="ws-manual",
+        notebooks=[],
+        sources=[],
+        cases=[manual_case],
+        evidence=[],
+        learning_cards=[],
+        bridge_imports=[],
+    )
+
+    assert graph["meta"]["business_verification_state"] == "needs_verification"
+    assert graph["meta"]["has_verified_business_data"] is False
+    assert graph["nodes"][0]["provenance_label"] == "nháp/manual"
+
+
+def test_verified_evidence_signal_makes_business_graph_verified():
+    case = MockCase(case_id="case-verified", title="Reviewed Case", workspace_id="ws-verified")
+    ev = MockEvidence(
+        evidence_id="ev-verified",
+        case_id="case-verified",
+        title="Verified Evidence",
+        review_status="verified",
+    )
+
+    graph = build_worklens_semantic_graph(
+        workspace="ws-verified",
+        notebooks=[],
+        sources=[],
+        cases=[case],
+        evidence=[ev],
+        learning_cards=[],
+        bridge_imports=[],
+    )
+
+    assert graph["meta"]["business_verification_state"] == "verified"
+    assert graph["meta"]["has_verified_business_data"] is True
+    nodes = {n["id"]: n for n in graph["nodes"]}
+    assert nodes["evidence_ev_verified"]["provenance_label"] == "đã xác minh"
+
+
+def test_confirmed_learning_signal_makes_business_graph_verified():
+    case = MockCase(case_id="case-learn-confirmed", title="Learning Case", workspace_id="ws-learn-confirmed")
+    lc = MockLearningCard(
+        learning_id="lc-confirmed",
+        case_id="case-learn-confirmed",
+        reusable_lesson="Confirmed lesson",
+        confidence="confirmed",
+    )
+
+    graph = build_worklens_semantic_graph(
+        workspace="ws-learn-confirmed",
+        notebooks=[],
+        sources=[],
+        cases=[case],
+        evidence=[],
+        learning_cards=[lc],
+        bridge_imports=[],
+    )
+
+    assert graph["meta"]["business_verification_state"] == "verified"
+    assert graph["meta"]["has_verified_business_data"] is True
+
+
+def test_legacy_unknown_data_is_not_verified():
+    case = MockCase(case_id="case-legacy", title="Legacy Case", workspace_id="ws-legacy")
+    graph = build_worklens_semantic_graph(
+        workspace="ws-legacy",
+        notebooks=[],
+        sources=[],
+        cases=[case],
+        evidence=[],
+        learning_cards=[],
+        bridge_imports=[],
+    )
+
+    assert graph["meta"]["business_verification_state"] == "unknown"
+    assert graph["meta"]["has_verified_business_data"] is False
+    assert graph["meta"]["has_unknown_business_data"] is True
+    assert graph["nodes"][0]["provenance_label"] == "chưa rõ nguồn gốc"

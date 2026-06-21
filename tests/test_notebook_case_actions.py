@@ -40,12 +40,17 @@ def test_create_case_from_investigation_import_creates_local_only_case():
     assert "Symptom A" in case.current_situation
     assert "Hypothesis X" in case.current_situation
     assert "Check connection" in case.current_situation
+    assert case.source_origin == "notebooklm_import"
+    assert case.verification_status == "draft"
     
     evs = load_evidence()
     assert len(evs) == 2
     assert evs[0].case_id == case.case_id
     assert evs[0].source_type == "note"
     assert evs[0].privacy_level == "local_only"
+    assert evs[0].source_origin == "notebooklm_import"
+    assert evs[0].verification_status == "draft"
+    assert evs[0].review_status == "raw"
     assert evs[0].extracted_text == "Check connection"
     assert evs[1].extracted_text == "Check log file"
 
