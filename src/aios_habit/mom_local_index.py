@@ -14,6 +14,7 @@ import pandas as pd
 
 from aios_habit.case_models import Case, EvidenceItem
 from aios_habit.case_store import save_case, save_evidence
+from aios_habit.document_extractors import extract_text_chunks_from_file, is_potentially_extractable
 from aios_habit.real_doc_inventory import MOM_RUNTIME_DIR, SUPPORTED_TEXT_EXTS, SUPPORTED_TABLE_EXTS, ensure_mom_runtime_dir
 
 INDEX_FILE = MOM_RUNTIME_DIR / "mom_local_index.jsonl"
@@ -39,6 +40,11 @@ class MomChunk:
     section: str = ""
     sheet: str = ""
     row_range: str = ""
+    page: str = ""
+    slide: str = ""
+    extractor_name: str = "mom_local_index"
+    extraction_status: str = "success"
+    warning: str = ""
     indexed_at: str = ""
 
 
@@ -103,6 +109,11 @@ def _chunk_text(text: str, base: dict[str, Any], max_chunks: int = MAX_CHUNKS_PE
             section=base.get("section", f"chars {start}-{start + len(part)}"),
             sheet=base.get("sheet", ""),
             row_range=base.get("row_range", ""),
+            page=base.get("page", ""),
+            slide=base.get("slide", ""),
+            extractor_name=base.get("extractor_name", "mom_local_index"),
+            extraction_status=base.get("extraction_status", "success"),
+            warning=base.get("warning", ""),
             indexed_at=now,
         )
 
@@ -133,11 +144,43 @@ def _excel_chunks(path: Path, base: dict[str, Any]) -> list[MomChunk]:
             sheet_base["sheet"] = sheet
             sheet_base["section"] = f"sheet {sheet} preview"
             sheet_base["row_range"] = f"1-{min(len(df), MAX_EXCEL_ROWS_PER_SHEET)}"
+            sheet_base["extractor_name"] = "pandas"
             for chunk in _chunk_text(text, sheet_base, max_chunks=3):
                 chunks.append(chunk)
     except Exception as exc:
         raise RuntimeError(f"excel read failed: {exc}") from exc
     return chunks
+
+
+def _extractor_chunks(path: Path, base: dict[str, Any], root: Path) -> tuple[list[MomChunk], list[dict[str, Any]]]:
+    chunks: list[MomChunk] = []
+    unsupported: list[dict[str, Any]] = []
+    extracted = extract_text_chunks_from_file(path, root=root, max_chars_per_chunk=CHUNK_SIZE)
+    for item in extracted:
+        status = str(item.get("extraction_status") or "unsupported")
+        if status != "success" or not str(item.get("text") or "").strip():
+            unsupported.append({
+                "relative_path": item.get("relative_path") or base["relative_path"],
+                "file_type": item.get("file_type") or base["file_type"],
+                "reason": item.get("warning") or f"extractor status: {status}",
+                "privacy_level": "local_only",
+                "extractor_name": item.get("extractor_name", "document_extractors"),
+                "extraction_status": status,
+            })
+            continue
+        chunk_base = dict(base)
+        chunk_base.update({
+            "section": item.get("section", ""),
+            "sheet": item.get("sheet", ""),
+            "row_range": item.get("row_range", ""),
+            "page": item.get("page", ""),
+            "slide": item.get("slide", ""),
+            "extractor_name": item.get("extractor_name", "document_extractors"),
+            "extraction_status": status,
+            "warning": item.get("warning", ""),
+        })
+        chunks.extend(list(_chunk_text(str(item.get("text") or ""), chunk_base, max_chunks=1)))
+    return chunks, unsupported
 
 
 def build_mom_local_index(root_path: str | Path, write_runtime: bool = True) -> MomIndexBuildResult:
@@ -171,14 +214,16 @@ def build_mom_local_index(root_path: str | Path, write_runtime: bool = True) -> 
                 elif ext == ".csv":
                     text = _read_csv_file(path)
                     chunks.extend(list(_chunk_text(text, base)))
-                elif ext in SUPPORTED_TABLE_EXTS:
+                elif ext in SUPPORTED_TABLE_EXTS and ext != ".xlsm":
                     chunks.extend(_excel_chunks(path, base))
+                elif is_potentially_extractable(ext):
+                    extracted_chunks, extractor_unsupported = _extractor_chunks(path, base, root_resolved)
+                    chunks.extend(extracted_chunks)
+                    unsupported.extend(extractor_unsupported)
                 else:
                     reason = "unsupported file type"
-                    if ext == ".pdf":
-                        reason = "pdf extraction dependency not available"
-                    elif ext in {".doc", ".docx"}:
-                        reason = "doc/docx extraction dependency not available"
+                    if ext in {".doc", ".docx"}:
+                        reason = "doc/docx extraction not enabled for MOM pilot"
                     unsupported.append({"relative_path": rel, "file_type": ext or "[no_ext]", "reason": reason, "privacy_level": "local_only"})
             except Exception as exc:
                 errors.append({"relative_path": rel, "error": str(exc)})
@@ -256,6 +301,11 @@ def build_mom_qa_prompt(question: str, hits: list[MomSearchHit], min_score: floa
             "section": chunk.section,
             "score": hit.score,
             "privacy_level": chunk.privacy_level,
+            "file_type": chunk.file_type,
+            "page": chunk.page,
+            "slide": chunk.slide,
+            "extractor_name": chunk.extractor_name,
+            "extraction_status": chunk.extraction_status,
         })
         lines.append(
             f"[Nguồn {i}] {ref} | score={hit.score:.1f} | privacy=local_only\n"

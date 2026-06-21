@@ -12,10 +12,10 @@ LOCAL_CASES_DIR = Path.cwd() / "local_cases"
 MOM_RUNTIME_DIR = LOCAL_CASES_DIR / "mom_pilot"
 INVENTORY_FILE = MOM_RUNTIME_DIR / "inventory.json"
 
-SUPPORTED_TEXT_EXTS = {".txt", ".md", ".markdown", ".csv", ".json"}
-SUPPORTED_TABLE_EXTS = {".xlsx", ".xls"}
-SUPPORTED_DOC_EXTS = set()  # no extra dependency currently declared
-SUPPORTED_PDF_EXTS = set()  # no PDF extraction dependency currently declared
+SUPPORTED_TEXT_EXTS = {".txt", ".md", ".markdown", ".csv", ".json", ".html", ".htm"}
+SUPPORTED_TABLE_EXTS = {".xlsx", ".xls", ".xlsm"}
+SUPPORTED_DOC_EXTS = {".pptx"}
+SUPPORTED_PDF_EXTS = {".pdf"}
 SUPPORTED_EXTS = SUPPORTED_TEXT_EXTS | SUPPORTED_TABLE_EXTS | SUPPORTED_DOC_EXTS | SUPPORTED_PDF_EXTS
 
 
