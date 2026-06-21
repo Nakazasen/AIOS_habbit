@@ -40,3 +40,11 @@ def test_case_cockpit_local_qa_does_not_require_provider_for_mom():
     assert "Đang dùng chế độ local" in cockpit_source
     assert "không gọi AI ngoài" in cockpit_source
     assert "Tạo prompt đối chiếu NotebookLM" in cockpit_source
+
+
+def test_case_cockpit_mom_adapter_label_is_not_duplicated_by_persisted_notebooks():
+    cockpit_source = Path("src/aios_habit/case_cockpit.py").read_text(encoding="utf-8")
+
+    assert "user_notebooks = [n for n in notebooks if n.name.strip() != MOM_NOTEBOOK_NAME]" in cockpit_source
+    assert "nb_opts.update({n.notebook_id: n.name for n in user_notebooks})" in cockpit_source
+    assert 'st.session_state["unified_nb_select"] = MOM_NOTEBOOK_ID' not in cockpit_source

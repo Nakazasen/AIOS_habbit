@@ -676,8 +676,13 @@ def page_notebooks():
     MOM_NOTEBOOK_ID = "mom"
     MOM_NOTEBOOK_NAME = "Hệ thống MOM"
     MOM_DEFAULT_SOURCE_ROOT = r"D:\Sandbox\MOM_WMS_QLLSSX\tailieugoc"
+    # Avoid duplicate visible labels. Older runtime state may already contain a
+    # persisted notebook named "Hệ thống MOM"; the UI must route that name to
+    # the MOM adapter only, otherwise folder scan/Q&A fall into custom-notebook
+    # branches while still showing the same label to the user.
+    user_notebooks = [n for n in notebooks if n.name.strip() != MOM_NOTEBOOK_NAME]
     nb_opts = {MOM_NOTEBOOK_ID: MOM_NOTEBOOK_NAME}
-    nb_opts.update({n.notebook_id: n.name for n in notebooks})
+    nb_opts.update({n.notebook_id: n.name for n in user_notebooks})
     
     with tab1:
         st.subheader("Nạp tài liệu")
@@ -708,8 +713,6 @@ def page_notebooks():
                 c4.metric("Chưa đọc được", summary["total_files"] - summary["usable_files"])
                 c5.metric("Đoạn tri thức", summary["chunks_generated"])
                 c6.metric("Local-only", "YES" if summary["privacy_level"] == "local_only" else summary["privacy_level"])
-                st.session_state["unified_nb_select"] = MOM_NOTEBOOK_ID
-                st.session_state["open_ask_after_import"] = True
                 with st.expander("Chi tiết kỹ thuật", expanded=False):
                     st.json(summary)
             else:
@@ -748,10 +751,10 @@ def page_notebooks():
                     st.rerun()
                     
         st.subheader("Các Sổ tri thức hiện có")
-        if not notebooks:
-            st.info("Chưa có Sổ tri thức nào trong Workspace này. Hãy tạo một sổ ở trên.")
+        if not user_notebooks:
+            st.info("Chưa có Sổ tri thức tùy chỉnh nào trong Workspace này. Hệ thống MOM đã có sẵn ở selector.")
         else:
-            for n in notebooks:
+            for n in user_notebooks:
                 privacy_vn = {"local_only": "Cục bộ (local_only)", "redacted_export": "Ẩn danh (redacted_export)", "cloud_allowed": "Cho phép cloud (cloud_allowed)"}.get(n.privacy_level, n.privacy_level)
                 st.write(f"📖 **{n.name}** (Quyền: {privacy_vn}) - *{n.description}*")
                 
@@ -772,7 +775,7 @@ def page_notebooks():
                     st.info("Sổ Hệ thống MOM dùng nạp cả thư mục local ở tab Nguồn tài liệu. File lẻ dành cho các sổ tùy chỉnh.")
                     doc_privacy = "local_only"
                 else:
-                    selected_nb = next(n for n in notebooks if n.notebook_id == selected_nb_id)
+                    selected_nb = next(n for n in user_notebooks if n.notebook_id == selected_nb_id)
                     doc_privacy = st.selectbox("Mức độ riêng tư tài liệu", ["local_only", "redacted_export", "cloud_allowed"], index=["local_only", "redacted_export", "cloud_allowed"].index(selected_nb.privacy_level), key="ingest_doc_privacy")
                 
                 if selected_nb_id != MOM_NOTEBOOK_ID and uploaded_file and st.button("Nạp vào Sổ tri thức", key="ingest_btn"):
@@ -798,7 +801,7 @@ def page_notebooks():
         with col_right:
             st.subheader("Danh sách Tài liệu nguồn đã nạp")
             sources = load_sources()
-            ws_nb_ids = {n.notebook_id for n in notebooks}
+            ws_nb_ids = {n.notebook_id for n in user_notebooks}
             ws_sources = [s for s in sources if s.notebook_id in ws_nb_ids]
             
             if not ws_sources:
@@ -1276,8 +1279,8 @@ def page_notebooks():
                     
     with tab4:
         st.subheader("Ôn bài trong AIOS")
-        if not notebooks:
-            st.warning("Vui lòng tạo ít nhất một Sổ tri thức trước khi ôn bài.")
+        if not nb_opts:
+            st.warning("Chưa có sổ tri thức nào để ôn bài.")
         else:
             from aios_habit.study_store import (
                 load_study_cards,
@@ -1386,7 +1389,7 @@ def page_notebooks():
             st.info("Chưa gọi endpoint ở UX-1. Đây là cấu hình chuẩn bị; trả lời local deterministic vẫn hoạt động ngay.")
         st.markdown("---")
         st.subheader("Bản đồ quan hệ Sổ tri thức")
-        if not notebooks:
+        if not nb_opts:
             st.info("Chưa có Sổ tri thức để vẽ bản đồ.")
         else:
             from aios_habit.notebook_graph import build_notebook_mermaid_graph
@@ -1406,7 +1409,7 @@ def page_notebooks():
             # Load graph imports
             raw_saved = load_bridge_imports(graph_nb)
             if graph_nb is None:
-                ws_nb_ids = {n.notebook_id for n in notebooks}
+                ws_nb_ids = {n.notebook_id for n in user_notebooks}
                 saved_graphs = [
                     imp for imp in raw_saved
                     if imp.import_type in ("knowledge_graph_json", "mermaid_graph") and imp.notebook_id in ws_nb_ids
