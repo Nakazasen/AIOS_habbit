@@ -268,11 +268,11 @@ def generate_mom_grounded_answer(question: str, search_results: list[Any], *, ma
 
     confidence_note = "Refs được lọc theo thuật ngữ đặc thù của câu hỏi." if not broadened else "Refs lấy từ fallback broadened nên chỉ dùng mức tin cậy medium/low, không kết luận vượt nguồn."
     answer_text = (
-        f"Tóm tắt trả lời / Answer summary:\nAIOS tìm thấy {len(source_refs)} nguồn local_only liên quan; mức tin cậy={confidence}. {confidence_note}\n\n"
+        f"Tóm tắt trả lời / Answer summary:\nAIOS tìm thấy {len(source_refs)} nguồn cục bộ liên quan; mức tin cậy={confidence}. {confidence_note}\n\n"
         f"Điều có bằng chứng / Confirmed by source:\n{confirmed_text}\n\n"
         f"Điểm chưa đủ bằng chứng / Not found / insufficient evidence:\n{not_found}\n\n"
         f"Cần kiểm tra tiếp / Next checks:\n- " + "\n- ".join(next_checks) + "\n\n"
-        f"Source coverage:\n{len(source_refs)} nguồn; loại file={', '.join(file_types) if file_types else 'none'}; OCR={'yes' if has_ocr else 'no'}; privacy=local_only."
+        f"Source coverage:\n{len(source_refs)} nguồn; loại file={', '.join(file_types) if file_types else 'none'}; OCR={'yes' if has_ocr else 'no'}; chỉ cục bộ."
     )
     return {
         "question": question,

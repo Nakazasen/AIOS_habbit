@@ -45,9 +45,9 @@ def page_quick_intake():
         col1, col2 = st.columns(2)
         priority = col1.selectbox("Mức độ ưu tiên", ["low", "normal", "high", "critical"], index=1, format_func=lambda x: {"low": "Thấp", "normal": "Bình thường", "high": "Cao", "critical": "Khẩn cấp"}[x])
         privacy = col2.selectbox("Mức riêng tư", ["local_only", "redacted_export", "cloud_allowed"], index=0, format_func=lambda x: {
-            "local_only": "Chỉ lưu cục bộ (local_only)",
-            "redacted_export": "Xuất ẩn danh (redacted_export)",
-            "cloud_allowed": "Cho phép đưa lên đám mây (cloud_allowed)"
+            "local_only": "Chỉ lưu/đọc cục bộ",
+            "redacted_export": "Xuất ẩn danh",
+            "cloud_allowed": "Cho phép đưa lên đám mây"
         }[x])
         
         chat_log = st.text_area("Dán tin nhắn Chat/Log/Email nếu có", placeholder="Dán nội dung log lỗi hoặc đoạn hội thoại chat hỗ trợ vào đây...", height=150)
@@ -146,7 +146,7 @@ def page_cases():
         with st.form("new_case"):
             title = st.text_input("Tiêu đề")
             priority = st.selectbox("Độ ưu tiên", ["low", "normal", "high", "critical"], index=1, format_func=lambda x: {"low": "Thấp (low)", "normal": "Bình thường (normal)", "high": "Cao (high)", "critical": "Khẩn cấp (critical)"}[x])
-            privacy = st.selectbox("Mức độ riêng tư", ["local_only", "redacted_export", "cloud_allowed"], format_func=lambda x: {"local_only": "Chỉ lưu cục bộ (local_only)", "redacted_export": "Xuất ẩn danh (redacted_export)", "cloud_allowed": "Cho phép đưa lên đám mây (cloud_allowed)"}[x])
+            privacy = st.selectbox("Mức độ riêng tư", ["local_only", "redacted_export", "cloud_allowed"], format_func=lambda x: {"local_only": "Chỉ lưu/đọc cục bộ", "redacted_export": "Xuất ẩn danh", "cloud_allowed": "Cho phép đưa lên đám mây"}[x])
             if st.form_submit_button("Tạo hồ sơ"):
                 if not title.strip():
                     st.error("Tiêu đề hồ sơ không được để trống.")
@@ -246,7 +246,7 @@ def page_add_evidence():
         return
         
     st.write(f"**Hồ sơ đang hoạt động:** {active_case.title}")
-    st.warning("Bằng chứng được đánh dấu local_only (chỉ lưu cục bộ) sẽ chỉ ở trên máy tính này và tuyệt đối không được sao chép vào prompt đám mây hoặc kho lưu trữ Git công khai.")
+    st.warning("Bằng chứng được đánh dấu 'chỉ lưu cục bộ' sẽ chỉ ở trên máy tính này và tuyệt đối không được sao chép vào prompt đám mây hoặc kho lưu trữ Git công khai.")
     
     import uuid
     new_ev_id = f"EVD-{str(uuid.uuid4())[:8].upper()}"
@@ -331,8 +331,9 @@ def page_case_map():
     st.write("**Bằng chứng:**")
     type_icons = {"excel": "📊", "csv": "📊", "screenshot": "🖼️", "image": "🖼️", "chat_paste": "💬", "log_paste": "📜", "note": "📝"}
     for e in evs:
-        privacy_vn = {"local_only": "Chỉ lưu cục bộ (local_only)", "redacted_export": "Xuất ẩn danh (redacted_export)", "cloud_allowed": "Cho phép đưa lên đám mây (cloud_allowed)"}.get(e.privacy_level, e.privacy_level)
-        st.write(f"- {type_icons.get(e.source_type, '📌')} {e.source_type}: {e.title} — Quyền riêng tư: `{privacy_vn}`")
+        privacy_vn = {"local_only": "Chỉ lưu cục bộ", "redacted_export": "Xuất ẩn danh", "cloud_allowed": "Cho phép đưa lên đám mây"}.get(e.privacy_level, e.privacy_level)
+        source_type_vn = {"excel": "Bảng tính", "csv": "Bảng tính", "screenshot": "Ảnh chụp", "image": "Hình ảnh", "chat_paste": "Tin nhắn", "log_paste": "Nhật ký", "note": "Ghi chú"}.get(e.source_type, e.source_type)
+        st.write(f"- {type_icons.get(e.source_type, '📌')} {source_type_vn}: {e.title} — Quyền riêng tư: {privacy_vn}")
     st.write("**Giả thuyết:**")
     for h in active_case.hypotheses:
         st.write(f"- {h}")
@@ -375,12 +376,12 @@ def page_prompt_pack():
         
     evs = [e for e in load_evidence() if e.case_id == active_case.case_id]
     
-    target = st.selectbox("AI đích nhận lệnh (Target)", ["Gemini", "GPT", "Copilot", "NotebookLM-safe summary", "Local AI (with local_only)"], format_func=lambda x: {
-        "Gemini": "Gemini (Đám mây, tự động loại bỏ local_only)",
-        "GPT": "GPT (ChatGPT/Đám mây, tự động loại bỏ local_only)",
-        "Copilot": "Copilot (Đám mây, tự động loại bỏ local_only)",
-        "NotebookLM-safe summary": "Tóm tắt an toàn cho NotebookLM (NotebookLM-safe, loại bỏ local_only)",
-        "Local AI (with local_only)": "AI cục bộ có kèm dữ liệu local_only"
+    target = st.selectbox("Bộ AI nhận lệnh", ["Gemini", "GPT", "Copilot", "NotebookLM-safe summary", "Local AI (with local_only)"], format_func=lambda x: {
+        "Gemini": "Gemini (Đám mây, tự động loại bỏ dữ liệu cục bộ)",
+        "GPT": "GPT (ChatGPT/Đám mây, tự động loại bỏ dữ liệu cục bộ)",
+        "Copilot": "Copilot (Đám mây, tự động loại bỏ dữ liệu cục bộ)",
+        "NotebookLM-safe summary": "Tóm tắt an toàn cho đối chiếu (loại bỏ dữ liệu cục bộ)",
+        "Local AI (with local_only)": "AI cục bộ có kèm dữ liệu cục bộ"
     }[x])
     
     target_mapping = {
@@ -632,7 +633,7 @@ def page_learning_memory():
 def page_notebooks():
     st.title("📚 Sổ tri thức")
     st.write("Một nơi để nạp tài liệu, hỏi đáp nội bộ và kiểm tra nguồn bằng chứng. Mặc định chỉ đọc cục bộ, không gửi cloud.")
-    st.caption("AI trả lời nâng cao: có thể cấu hình local endpoint sau. Antigravity IDE chỉ gọi trực tiếp được nếu có API/MCP runtime; nếu không, AIOS vẫn trả lời bằng dữ liệu local.")
+    st.caption("AI nâng cao: có thể cấu hình bộ AI cục bộ sau. Nếu chưa có, AIOS vẫn trả lời bằng dữ liệu đã nạp.")
     
     def render_sufficiency_panel(nb_id, q, t_mode, exp_mode):
         if not q.strip():
@@ -642,13 +643,13 @@ def page_notebooks():
         
         st.markdown("##### 📊 Mức độ đủ nguồn")
         col1, col2, col3 = st.columns(3)
-        col1.metric("Tổng phân đoạn", suff["total_chunks_found"])
+        col1.metric("Tổng đoạn tri thức", suff["total_chunks_found"])
         col2.metric("Gửi được", suff["sendable_chunks_count"])
         col3.metric("Bị ẩn", suff["redacted_chunks_count"])
         
         if suff["top_source_titles"]:
             st.markdown(f"**Nguồn liên quan:** " + ", ".join(f"`{t}`" for t in suff["top_source_titles"]))
-        st.markdown(f"*local_only:* `{suff['local_only_chunks_count']}` | *cloud_allowed:* `{suff['cloud_allowed_chunks_count']}`")
+        st.markdown(f"*Chỉ cục bộ:* `{suff['local_only_chunks_count']}` | *Cho phép cloud:* `{suff['cloud_allowed_chunks_count']}`")
         
         recommendation = suff["recommendation"]
         if "Chưa đủ nguồn" in recommendation:
@@ -692,7 +693,7 @@ def page_notebooks():
             format_func=lambda x: nb_opts[x],
             key="unified_nb_select",
         )
-        st.caption("MOM được gộp vào đây như một sổ tri thức tên ‘Hệ thống MOM’, không còn là màn hình riêng.")
+        st.caption("Hệ thống MOM được gộp vào đây như một sổ tri thức, không còn là màn hình riêng.")
         st.markdown("#### A. Nạp cả thư mục local")
         folder_path = st.text_input(
             "Đường dẫn thư mục local",
@@ -703,16 +704,20 @@ def page_notebooks():
         if st.button("Quét & nạp toàn bộ thư mục", key="bulk_folder_scan_btn"):
             if selected_nb_id == MOM_NOTEBOOK_ID:
                 from aios_habit.mom_coverage import summarize_mom_coverage, coverage_summary_to_dict
-                with st.spinner("Đang quét thư mục và OCR local nếu cần..."):
+                with st.spinner("Đang quét thư mục... có thể mất 30–90 giây nếu có file cần OCR."):
                     summary = coverage_summary_to_dict(summarize_mom_coverage(folder_path))
-                st.success("Đã cập nhật sổ tri thức Hệ thống MOM từ thư mục local.")
+                st.success("✅ Đã cập nhật sổ tri thức Hệ thống MOM từ thư mục cục bộ.")
                 c1, c2, c3, c4, c5, c6 = st.columns(6)
                 c1.metric("Tổng file", summary["total_files"])
                 c2.metric("Đọc được", summary["usable_files"])
                 c3.metric("Cần OCR", summary["status_counts"].get("ocr_success", 0) + summary["status_counts"].get("ocr_partial", 0))
                 c4.metric("Chưa đọc được", summary["total_files"] - summary["usable_files"])
                 c5.metric("Đoạn tri thức", summary["chunks_generated"])
-                c6.metric("Local-only", "YES" if summary["privacy_level"] == "local_only" else summary["privacy_level"])
+                c6.metric("Chỉ cục bộ", "CÓ" if summary["privacy_level"] == "local_only" else summary["privacy_level"])
+                st.caption(
+                    "Số file hiển thị là số file có thể lập mục lục trong UI. "
+                    "File chưa đọc được (ảnh quét, định dạng đặc biệt) cần OCR hoặc chưa hỗ trợ."
+                )
                 with st.expander("Chi tiết kỹ thuật", expanded=False):
                     st.json(summary)
             else:
@@ -725,9 +730,9 @@ def page_notebooks():
             nb_name = st.text_input("Tên Sổ tri thức (Notebook Name)")
             nb_desc = st.text_area("Mô tả Sổ tri thức")
             nb_privacy = st.selectbox("Mức độ riêng tư Sổ tri thức", ["local_only", "redacted_export", "cloud_allowed"], format_func=lambda x: {
-                "local_only": "Chỉ lưu cục bộ (local_only)",
-                "redacted_export": "Xuất ẩn danh (redacted_export)",
-                "cloud_allowed": "Cho phép đưa lên đám mây (cloud_allowed)"
+                "local_only": "Chỉ lưu/đọc cục bộ",
+                "redacted_export": "Xuất ẩn danh",
+                "cloud_allowed": "Cho phép đưa lên đám mây"
             }[x])
             nb_tags_str = st.text_input("Thẻ phân loại (ngăn cách bằng dấu phẩy)")
             
@@ -755,7 +760,7 @@ def page_notebooks():
             st.info("Chưa có Sổ tri thức tùy chỉnh nào trong Workspace này. Hệ thống MOM đã có sẵn ở selector.")
         else:
             for n in user_notebooks:
-                privacy_vn = {"local_only": "Cục bộ (local_only)", "redacted_export": "Ẩn danh (redacted_export)", "cloud_allowed": "Cho phép cloud (cloud_allowed)"}.get(n.privacy_level, n.privacy_level)
+                privacy_vn = {"local_only": "Chỉ cục bộ", "redacted_export": "Ẩn danh", "cloud_allowed": "Cho phép cloud"}.get(n.privacy_level, n.privacy_level)
                 st.write(f"📖 **{n.name}** (Quyền: {privacy_vn}) - *{n.description}*")
                 
     with tab3:
@@ -776,7 +781,7 @@ def page_notebooks():
                     doc_privacy = "local_only"
                 else:
                     selected_nb = next(n for n in user_notebooks if n.notebook_id == selected_nb_id)
-                    doc_privacy = st.selectbox("Mức độ riêng tư tài liệu", ["local_only", "redacted_export", "cloud_allowed"], index=["local_only", "redacted_export", "cloud_allowed"].index(selected_nb.privacy_level), key="ingest_doc_privacy")
+                    doc_privacy = st.selectbox("Mức độ riêng tư tài liệu", ["local_only", "redacted_export", "cloud_allowed"], index=["local_only", "redacted_export", "cloud_allowed"].index(selected_nb.privacy_level), format_func=lambda x: {"local_only": "Chỉ lưu/đọc cục bộ", "redacted_export": "Xuất ẩn danh", "cloud_allowed": "Cho phép đưa lên đám mây"}[x], key="ingest_doc_privacy")
                 
                 if selected_nb_id != MOM_NOTEBOOK_ID and uploaded_file and st.button("Nạp vào Sổ tri thức", key="ingest_btn"):
                     ok_count = 0
@@ -816,7 +821,8 @@ def page_notebooks():
                     st.write(f"### Chi tiết tài liệu: {src.title}")
                     st.write(f"- **Tên tệp gốc:** {src.original_filename}")
                     st.write(f"- **Định dạng:** {src.source_type.upper()}")
-                    st.write(f"- **Mức riêng tư:** {src.privacy_level}")
+                    _priv_vn_src = {"local_only": "Chỉ cục bộ", "redacted_export": "Ẩn danh", "cloud_allowed": "Cho phép cloud"}.get(src.privacy_level, src.privacy_level)
+                    st.write(f"- **Mức riêng tư:** {_priv_vn_src}")
                     st.write(f"- **Mô tả:** {src.description}")
                     st.write(f"- **Đường dẫn cục bộ:** `{src.asset_path}`")
                     
@@ -833,15 +839,16 @@ def page_notebooks():
         from aios_habit.llm_client import is_llm_configured, load_llm_config
         config = load_llm_config()
         if config:
+            locality_vn = {"local": "Cục bộ", "cloud": "Đám mây"}.get(config.locality, config.locality)
             st.success(
-                f"✅ **Đã cấu hình AI Provider:** `{config.provider}` | "
-                f"**Model:** `{config.model}` | "
-                f"**Locality:** `{config.locality.upper()}`"
+                f"✅ **Đã cấu hình bộ AI:** `{config.provider}` | "
+                f"**Mô hình:** `{config.model}` | "
+                f"**Vùng chạy:** `{locality_vn}`"
             )
         else:
             st.info(
-                "🔒 Đang dùng chế độ local: trả lời dựa trên nguồn đã nạp, không gọi AI ngoài. "
-                "Có thể bật AI local sau để câu trả lời tự nhiên hơn."
+                "🔒 Đang dùng chế độ cục bộ: trả lời dựa trên nguồn đã nạp, không gọi AI ngoài. "
+                "Có thể bật AI cục bộ nâng cao sau để câu trả lời tự nhiên hơn."
             )
             
         if not nb_opts:
@@ -862,7 +869,7 @@ def page_notebooks():
                 for act in next_actions:
                     st.write(f"- {act}")
             
-            if selected_nb_id != MOM_NOTEBOOK_ID and st.button("Cập nhật tài liệu", key="reindex_btn"):
+            if selected_nb_id != MOM_NOTEBOOK_ID and st.button("Cập nhật mục lục tài liệu", key="reindex_btn"):
                 with st.spinner("Đang trích xuất và chỉ mục hóa tài liệu..."):
                     build_notebook_index(selected_nb_id)
                 st.success("Đã cập nhật chỉ mục thành công!")
@@ -878,7 +885,7 @@ def page_notebooks():
                         st.write(f"Tìm thấy {len(hits)} đoạn tài liệu phù hợp nhất:")
                         for i, hit in enumerate(hits):
                             with st.expander(f"📌 {i+1}. {hit.chunk.relative_path} (Độ khớp: {hit.score:.1f})"):
-                                st.write(f"- **Local-only:** `{hit.chunk.privacy_level}` | **Đoạn:** `{hit.chunk.chunk_id}`")
+                                st.write(f"- **Chỉ cục bộ:** `{hit.chunk.privacy_level}` | **Đoạn:** `{hit.chunk.chunk_id}`")
                                 st.text_area(f"Đoạn MOM {hit.chunk.chunk_id}", value=hit.chunk.text, height=120, disabled=True, key=f"mom_hit_text_{hit.chunk.chunk_id}")
                 else:
                     hits = search_notebook_chunks(selected_nb_id, search_query, limit=5)
@@ -888,7 +895,7 @@ def page_notebooks():
                         st.write(f"Tìm thấy {len(hits)} đoạn tài liệu phù hợp nhất:")
                         for i, hit in enumerate(hits):
                             with st.expander(f"📌 {i+1}. {hit.chunk.source_title} (Độ khớp: {hit.score:.1f})"):
-                                st.write(f"- **File gốc:** `{hit.chunk.original_filename}` | **ID:** `{hit.chunk.source_id}` | **Privacy:** `{hit.chunk.privacy_level}`")
+                                st.write(f"- **File gốc:** `{hit.chunk.original_filename}` | **Mã:** `{hit.chunk.source_id}` | **Riêng tư:** `{hit.chunk.privacy_level}`")
                                 st.text_area(f"Đoạn {hit.chunk.chunk_index}", value=hit.chunk.text, height=120, disabled=True, key=f"hit_text_{hit.chunk.chunk_id}")
                             
             st.write("---")
@@ -896,15 +903,15 @@ def page_notebooks():
             truth_mode = st.selectbox(
                 "Chế độ trả lời",
                 [
-                    "Trả lời bằng dữ liệu local",
-                    "Trả lời bằng AI local nếu đã cấu hình",
-                    "Tạo prompt đối chiếu NotebookLM"
+                    "Trả lời bằng dữ liệu cục bộ",
+                    "Trả lời bằng AI cục bộ nếu đã cấu hình",
+                    "Tạo prompt đối chiếu"
                 ],
                 key="qa_truth_mode"
             )
             
-            if truth_mode in ["Trả lời bằng dữ liệu local", "Trả lời bằng AI local nếu đã cấu hình"]:
-                st.info("🔒 Chế độ local-only: không gửi tài liệu ra cloud. Nếu chưa có AI local, AIOS vẫn trả lời bằng bộ sinh câu trả lời deterministic.")
+            if truth_mode in ["Trả lời bằng dữ liệu cục bộ", "Trả lời bằng AI cục bộ nếu đã cấu hình"]:
+                st.info("🔒 Chế độ chỉ cục bộ: không gửi tài liệu ra cloud. Nếu chưa có AI cục bộ, AIOS vẫn trả lời bằng dữ liệu đã nạp.")
                 question = st.text_area("Nhập câu hỏi", placeholder="Ví dụ: Quy trình ST/CO hoặc bảng T_IF_PROD_RESULT dùng để làm gì?", key="local_qa_question")
                 
                 # Context Sufficiency Panel
@@ -912,7 +919,7 @@ def page_notebooks():
                 
                 col_btn1, col_btn2 = st.columns(2)
                 ask_btn = col_btn1.button("Hỏi trong sổ này", key="local_ask_btn")
-                copy_btn = col_btn2.button("Tạo prompt đối chiếu NotebookLM", key="local_copy_btn")
+                copy_btn = col_btn2.button("Tạo prompt đối chiếu", key="local_copy_btn")
                 
                 if ask_btn:
                     if not question.strip():
@@ -925,18 +932,19 @@ def page_notebooks():
                                 answer = generate_mom_grounded_answer(question, search_mom_index(question, limit=5))
                             st.markdown("### 🤖 Câu trả lời")
                             st.write(answer["answer_text"])
-                            st.caption(f"Mức tin cậy: {answer['confidence_level']} · Local-only")
+                            st.caption(f"Mức tin cậy: {answer['confidence_level']} · Chỉ cục bộ")
                             st.markdown("#### Nguồn đã dùng")
                             if not answer["source_refs"]:
                                 st.info("Chưa có nguồn đủ mạnh cho câu hỏi này.")
                             for i, ref in enumerate(answer["source_refs"], 1):
-                                st.write(f"{i}. `{ref['relative_path']}` · đoạn `{ref['chunk_id']}` · {ref['privacy_level']}")
+                                _priv_vn = {"local_only": "cục bộ", "redacted_export": "ẩn danh", "cloud_allowed": "cloud"}.get(ref['privacy_level'], ref['privacy_level'])
+                                st.write(f"{i}. `{ref['relative_path']}` · đoạn `{ref['chunk_id']}` · {_priv_vn}")
                             with st.expander("Chi tiết kỹ thuật", expanded=False):
                                 st.json({k: v for k, v in answer.items() if k != "answer_text"})
                         elif not config:
-                            st.info("Sổ tùy chỉnh hiện chưa có AI local. Hãy dùng nút tạo prompt đối chiếu hoặc cấu hình AI local trong tab Cấu hình.")
+                            st.info("Sổ tùy chỉnh hiện chưa có AI cục bộ nâng cao. Hãy dùng nút tạo prompt đối chiếu hoặc cấu hình bộ AI cục bộ trong tab Cấu hình.")
                         elif config.locality == "cloud":
-                            st.error("❌ Không gửi dữ liệu local_only tới AI cloud. Hãy dùng AI local hoặc prompt đối chiếu.")
+                            st.error("❌ Không gửi dữ liệu cục bộ riêng tư tới AI đám mây. Hãy dùng AI cục bộ hoặc prompt đối chiếu.")
                         else:
                             with st.spinner("AIOS đang suy nghĩ cục bộ..."):
                                 res = answer_notebook_question(selected_nb_id, question, "local_ai", "local")
@@ -961,7 +969,7 @@ def page_notebooks():
                         st.success("Đã sinh prompt thành công!")
                         
             elif False and truth_mode == "Hỏi cloud bằng context được phép":
-                st.warning("⚠️ Dữ liệu local_only sẽ bị ẩn (redacted). Câu trả lời có thể yếu nếu phần lớn nguồn bị ẩn.")
+                st.warning("⚠️ Dữ liệu cục bộ riêng tư sẽ bị ẩn. Câu trả lời có thể yếu nếu phần lớn nguồn bị ẩn.")
                 question = st.text_area("Nhập câu hỏi", placeholder="Ví dụ: Quy trình DHCP xuất hàng là gì?", key="cloud_qa_question")
                 
                 # Context Sufficiency Panel
@@ -975,7 +983,7 @@ def page_notebooks():
                     if not question.strip():
                         st.error("Vui lòng nhập câu hỏi.")
                     elif not config:
-                        st.info("Chưa có AI local. AIOS vẫn có thể tạo prompt đối chiếu hoặc dùng trả lời deterministic cho sổ Hệ thống MOM.")
+                        st.info("Chưa có AI cục bộ nâng cao. AIOS vẫn có thể tạo prompt đối chiếu hoặc dùng trả lời bằng dữ liệu đã nạp cho sổ Hệ thống MOM.")
                     else:
                         with st.spinner("AIOS đang gọi AI Cloud..."):
                             res = answer_notebook_question(selected_nb_id, question, "gemini", "cloud_safe")
@@ -984,12 +992,12 @@ def page_notebooks():
                         else:
                             st.markdown("### 🤖 Câu trả lời từ AIOS:")
                             st.write(res.answer_text)
-                            with st.expander("📝 Prompt đã gửi tới AIOS provider", expanded=False):
+                            with st.expander("📝 Prompt đã gửi tới bộ AI", expanded=False):
                                 st.code(res.prompt_text, language="markdown")
-                            with st.expander("📚 Các phân đoạn tài liệu được sử dụng (Đã mã hóa/ẩn local_only)"):
+                            with st.expander("📚 Các đoạn tri thức đã dùng (dữ liệu cục bộ riêng tư đã ẩn)"):
                                 for i, chunk in enumerate(res.used_chunks):
-                                    st.markdown(f"**{i+1}. {chunk.source_title}** ({chunk.original_filename}, Privacy: {chunk.privacy_level})")
-                                    txt = "[ĐÃ LOẠI BỎ VÌ RIÊNG TƯ - local_only]" if chunk.privacy_level == "local_only" else chunk.text
+                                    st.markdown(f"**{i+1}. {chunk.source_title}** ({chunk.original_filename}, Riêng tư: {chunk.privacy_level})")
+                                    txt = "[ĐÃ LOẠI BỎ VÌ RIÊNG TƯ]" if chunk.privacy_level == "local_only" else chunk.text
                                     st.text_area(f"Đoạn {chunk.chunk_index}", value=txt, height=100, disabled=True, key=f"cloud_ans_{chunk.chunk_id}")
                 
                 if copy_btn:
@@ -1002,10 +1010,10 @@ def page_notebooks():
                         st.code(prompt, language="markdown")
                         st.success("Đã sinh prompt thành công!")
                         
-            elif truth_mode == "Tạo prompt đối chiếu NotebookLM":
+            elif truth_mode == "Tạo prompt đối chiếu":
                 st.markdown(
-                    "**Chỉ dùng chế độ này với NotebookLM đã được phép chứa tài liệu của bạn.**  \n"
-                    "AIOS không tự gửi tài liệu sang NotebookLM trong bước này. "
+                    "**Chỉ dùng chế độ này khi bạn đã cho phép công cụ đối chiếu chứa tài liệu của bạn.**  \n"
+                    "AIOS không tự gửi tài liệu ra ngoài trong bước này. "
                     "Bạn tự copy prompt và paste kết quả về."
                 )
                 
@@ -1033,17 +1041,17 @@ def page_notebooks():
                     user_question = st.text_area("Nhập tình huống hoặc câu hỏi cụ thể", key="bridge_question")
                     render_sufficiency_panel(selected_nb_id, user_question, truth_mode, "cloud_safe")
                     
-                if st.button("Tạo prompt NotebookLM", key="bridge_prompt_btn"):
+                if st.button("Tạo prompt đối chiếu", key="bridge_prompt_btn"):
                     from aios_habit.notebook_bridge import build_notebooklm_bridge_prompt
                     prompt = build_notebooklm_bridge_prompt(selected_nb_id, task_type, user_question)
                     st.text_area("Prompt để copy (Prompt cho NotebookLM - Hãy copy toàn bộ)", value=prompt, height=200, key="bridge_prompt_out")
                     st.markdown("**Xem trước Prompt (để đọc dễ dàng):**")
                     st.code(prompt, language="markdown")
-                    st.success("Đã sinh prompt! Hãy dán prompt này vào giao diện NotebookLM của bạn.")
+                    st.success("Đã sinh prompt! Hãy dán prompt này vào công cụ đối chiếu của bạn.")
                     
                 st.write("---")
-                st.markdown("### Dán kết quả từ NotebookLM")
-                import_text = st.text_area("Kết quả dán từ NotebookLM", height=150, placeholder="Dán nội dung JSON hoặc mã Mermaid nhận được từ NotebookLM vào đây...", key="bridge_import_text")
+                st.markdown("### Dán kết quả từ công cụ đối chiếu")
+                import_text = st.text_area("Kết quả dán từ công cụ đối chiếu", height=150, placeholder="Dán nội dung JSON hoặc mã Mermaid nhận được vào đây...", key="bridge_import_text")
                 
                 if st.button("Kiểm tra và nhập kết quả", key="bridge_import_btn"):
                     if not import_text.strip():
@@ -1165,7 +1173,7 @@ def page_notebooks():
                 render_sufficiency_panel(selected_nb_id, question, truth_mode, export_map[export_mode])
                 
                 if target_map[target] != "local_ai" and export_map[export_mode] == "local":
-                    st.warning("⚠️ Cảnh báo: Bạn đang chọn mục tiêu Cloud nhưng Chế độ xuất là Local. Prompt có thể chứa dữ liệu riêng tư local_only.")
+                    st.warning("⚠️ Cảnh báo: Bạn đang chọn mục tiêu Cloud nhưng Chế độ xuất là cục bộ. Prompt có thể chứa dữ liệu riêng tư chỉ dùng cục bộ.")
                     
                 if st.button("Tạo prompt trả lời", key="fallback_prompt_btn"):
                     if not question.strip():
@@ -1380,13 +1388,13 @@ def page_notebooks():
                 
     with tab5:
         st.subheader("Bản đồ & kiểm tra bằng chứng")
-        st.markdown("#### AI local nâng cao")
-        st.info("Chưa bật mặc định. Có thể cấu hình Local endpoint URL, model name và API key tùy chọn sau. Nếu gọi AI local lỗi hoặc chưa cấu hình, AIOS fallback về trả lời deterministic local-only.")
-        st.text_input("Local endpoint URL", value="", placeholder="http://localhost:11434/v1 hoặc endpoint OpenAI-compatible local", key="local_ai_endpoint_stub")
-        st.text_input("Model name", value="", placeholder="Ví dụ: llama, qwen, nim-local", key="local_ai_model_stub")
+        st.markdown("#### AI cục bộ nâng cao")
+        st.info("Chưa bật mặc định. Có thể cấu hình endpoint cục bộ, tên mô hình và API key tùy chọn sau. Nếu gọi AI cục bộ lỗi hoặc chưa cấu hình, AIOS trả lời bằng dữ liệu đã nạp.")
+        st.text_input("Endpoint cục bộ", value="", placeholder="http://localhost:11434/v1 hoặc endpoint tương thích", key="local_ai_endpoint_stub")
+        st.text_input("Tên mô hình", value="", placeholder="Ví dụ: llama, qwen, nim-local", key="local_ai_model_stub")
         st.text_input("API key tùy chọn", value="", type="password", key="local_ai_key_stub")
-        if st.button("Kiểm tra kết nối AI local", key="local_ai_test_stub"):
-            st.info("Chưa gọi endpoint ở UX-1. Đây là cấu hình chuẩn bị; trả lời local deterministic vẫn hoạt động ngay.")
+        if st.button("Kiểm tra kết nối AI cục bộ", key="local_ai_test_stub"):
+            st.info("Chưa gọi endpoint ở phiên bản này. Đây là cấu hình chuẩn bị; trả lời bằng dữ liệu đã nạp vẫn hoạt động ngay.")
         st.markdown("---")
         st.subheader("Bản đồ quan hệ Sổ tri thức")
         if not nb_opts:
@@ -1607,7 +1615,7 @@ def page_notebooks():
 
 def page_mom_pilot():
     st.title("📚 Hệ thống MOM trong Sổ tri thức")
-    st.warning("Dữ liệu MOM là local_only: AIOS chỉ quét và lập chỉ mục cục bộ, không tự gửi lên cloud/NotebookLM.")
+    st.warning("Dữ liệu MOM chỉ lưu cục bộ: AIOS chỉ quét và lập chỉ mục trên máy này, không tự gửi lên cloud.")
     default_root = r"D:\Sandbox\MOM_WMS_QLLSSX\tailieugoc"
     root_path = st.text_input("Thư mục tài liệu MOM", value=default_root, key="mom_root_path")
 
@@ -1669,20 +1677,20 @@ def page_mom_pilot():
 
     hits = st.session_state.get("mom_search_hits", [])
     if hits:
-        st.markdown("#### Kết quả tìm kiếm local_only")
+        st.markdown("#### Kết quả tìm kiếm cục bộ")
         for idx, hit in enumerate(hits):
             chunk = hit.chunk
             with st.expander(f"#{idx+1} score={hit.score:.1f} — {chunk.relative_path} — {chunk.chunk_id}"):
-                st.write(f"Privacy: `{chunk.privacy_level}`")
+                st.write(f"Riêng tư: `{chunk.privacy_level}`")
                 st.write(f"Sheet/section: `{chunk.sheet or chunk.section}`")
                 st.write(chunk.preview)
                 if st.button("Tạo draft Case/Evidence từ nguồn này", key=f"mom_create_case_{idx}"):
                     res = create_mom_case_from_hit(question, hit, workspace_id=st.session_state.active_workspace_id)
-                    st.success(f"Đã tạo case draft {res['case_id']} với evidence {res['evidence_id']} — local_only/draft")
+                    st.success(f"Đã tạo case draft {res['case_id']} với evidence {res['evidence_id']} — bản nháp cục bộ")
 
     prompt_pack = st.session_state.get("mom_prompt_pack")
     if prompt_pack:
-        st.markdown("#### Prompt pack local-only")
+        st.markdown("#### Prompt pack chỉ cục bộ")
         if prompt_pack.get("insufficient_evidence"):
             st.warning("Chưa đủ bằng chứng từ index MOM cho câu hỏi này.")
         st.info(prompt_pack.get("cloud_warning"))
@@ -1696,7 +1704,7 @@ def page_mom_pilot():
                 aios_answer_summary="AIOS tạo prompt/source refs local-only; NotebookLM query cần chạy qua Antigravity agent/browser hoặc nhập thủ công.",
             )
             save_benchmark_record(record)
-            st.success(f"Đã lưu benchmark local_only: {BENCHMARK_RECORDS_FILE}")
+            st.success(f"Đã lưu benchmark cục bộ: {BENCHMARK_RECORDS_FILE}")
 
     st.markdown("---")
     st.markdown("#### So sánh AIOS vs NotebookLM")
