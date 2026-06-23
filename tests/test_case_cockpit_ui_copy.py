@@ -102,4 +102,35 @@ def test_case_cockpit_notebook_upload_success_survives_rerun():
 
     assert 'st.session_state["notebook_upload_success"]' in cockpit_source
     assert 'st.success(f"Đã nạp thành công {upload_success[\'count\']} tài liệu.")' in cockpit_source
-    assert 'st.caption("Tệp đã nạp: " + ", ".join(upload_success["filenames"]))' in cockpit_source
+    assert 'for filename in upload_success.get("filenames", []):' in cockpit_source
+    assert 'st.write(f"- {filename}")' in cockpit_source
+    assert 'st.caption("Bấm Cập nhật mục lục tài liệu hoặc hỏi ngay trong tab Hỏi đáp.")' in cockpit_source
+
+
+def test_case_cockpit_upload_is_visible_in_document_sources_section():
+    """Section B owns the uploader; the source-view tab is not the upload entry point."""
+    cockpit_source = Path("src/aios_habit/case_cockpit.py").read_text(encoding="utf-8")
+    section_b = cockpit_source.index('st.markdown("#### B. Kéo thả / chọn nhiều file")')
+    section_c = cockpit_source.index('st.markdown("#### C. Tạo Sổ tri thức mới")')
+    view_tab = cockpit_source.index("with tab3:", section_c)
+    qa_tab = cockpit_source.index("with tab2:", view_tab)
+
+    assert 'st.file_uploader(' in cockpit_source[section_b:section_c]
+    assert 'key="notebook_source_files"' in cockpit_source[section_b:section_c]
+    assert 'st.file_uploader(' not in cockpit_source[view_tab:qa_tab]
+
+
+def test_case_cockpit_section_b_is_honest_for_mom():
+    cockpit_source = Path("src/aios_habit/case_cockpit.py").read_text(encoding="utf-8")
+
+    assert "mom_file_upload_disabled = selected_nb_id == MOM_NOTEBOOK_ID" in cockpit_source
+    assert "disabled=mom_file_upload_disabled" in cockpit_source
+    assert "Sổ Hệ thống MOM hiện nạp bằng cả thư mục" in cockpit_source
+
+
+def test_case_cockpit_upload_refreshes_index_and_view_lists_original_filenames():
+    cockpit_source = Path("src/aios_habit/case_cockpit.py").read_text(encoding="utf-8")
+
+    assert "build_notebook_index(selected_nb_id)" in cockpit_source
+    assert '"Chọn sổ tri thức để xem"' in cockpit_source
+    assert 'st.write(f"- {source.original_filename}")' in cockpit_source

@@ -725,7 +725,77 @@ def page_notebooks():
         st.markdown("#### B. Kéo thả / chọn nhiều file")
         st.caption("Muốn nạp cả thư mục, dùng ô đường dẫn local ở trên. Trình duyệt không luôn hỗ trợ chọn nguyên thư mục.")
 
-        st.subheader("Tạo Sổ tri thức mới")
+        mom_file_upload_disabled = selected_nb_id == MOM_NOTEBOOK_ID
+        uploaded_files = st.file_uploader(
+            "Chọn một hoặc nhiều tài liệu nguồn (TXT, MD, CSV, Excel, PDF)",
+            type=["txt", "md", "csv", "xlsx", "xls", "pdf"],
+            accept_multiple_files=True,
+            disabled=mom_file_upload_disabled,
+            key="notebook_source_files",
+        )
+        if mom_file_upload_disabled:
+            st.info(
+                "Sổ Hệ thống MOM hiện nạp bằng cả thư mục. Muốn upload file lẻ, "
+                "hãy tạo Sổ tri thức mới."
+            )
+        else:
+            selected_nb = next(n for n in user_notebooks if n.notebook_id == selected_nb_id)
+            doc_title = st.text_input("Tiêu đề tài liệu (để trống sẽ dùng tên tệp)", key="source_doc_title")
+            doc_desc = st.text_area("Mô tả tài liệu", key="source_doc_description")
+            doc_privacy = st.selectbox(
+                "Mức độ riêng tư tài liệu",
+                ["local_only", "redacted_export", "cloud_allowed"],
+                index=["local_only", "redacted_export", "cloud_allowed"].index(selected_nb.privacy_level),
+                format_func=lambda x: {
+                    "local_only": "Chỉ lưu/đọc cục bộ",
+                    "redacted_export": "Xuất ẩn danh",
+                    "cloud_allowed": "Cho phép đưa lên đám mây",
+                }[x],
+                key="source_doc_privacy",
+            )
+
+            if uploaded_files and st.button("Nạp file vào sổ tri thức", key="ingest_btn"):
+                ok_count = 0
+                uploaded_names = []
+                for one_file in uploaded_files:
+                    try:
+                        ingest_source_document(
+                            notebook_id=selected_nb_id,
+                            original_filename=one_file.name,
+                            file_bytes=one_file.read(),
+                            title=doc_title or one_file.name,
+                            description=doc_desc,
+                            privacy_level=doc_privacy,
+                        )
+                        ok_count += 1
+                        uploaded_names.append(one_file.name)
+                    except Exception as e:
+                        st.error(f"Lỗi nạp tài liệu {one_file.name}: {e}")
+                if ok_count:
+                    from aios_habit.notebook_index import build_notebook_index
+
+                    build_notebook_index(selected_nb_id)
+                    st.session_state["notebook_upload_success"] = {
+                        "notebook_id": selected_nb_id,
+                        "count": ok_count,
+                        "filenames": uploaded_names,
+                    }
+                    st.rerun()
+
+        upload_success = st.session_state.get("notebook_upload_success")
+        if upload_success and upload_success.get("notebook_id") == selected_nb_id:
+            st.success(f"Đã nạp thành công {upload_success['count']} tài liệu.")
+            for filename in upload_success.get("filenames", []):
+                st.write(f"- {filename}")
+            st.caption("Bấm Cập nhật mục lục tài liệu hoặc hỏi ngay trong tab Hỏi đáp.")
+
+        selected_sources = [s for s in load_sources() if s.notebook_id == selected_nb_id]
+        if selected_sources:
+            st.markdown("**Tài liệu hiện có trong sổ đã chọn:**")
+            for source in selected_sources:
+                st.write(f"- {source.original_filename}")
+
+        st.markdown("#### C. Tạo Sổ tri thức mới")
         with st.form("new_notebook_form"):
             nb_name = st.text_input("Tên Sổ tri thức (Notebook Name)")
             nb_desc = st.text_area("Mô tả Sổ tri thức")
@@ -755,7 +825,7 @@ def page_notebooks():
                     st.success(f"Đã tạo Sổ tri thức: {nb_name}")
                     st.rerun()
                     
-        st.subheader("Các Sổ tri thức hiện có")
+        st.markdown("#### D. Các Sổ tri thức hiện có")
         if not user_notebooks:
             st.info("Chưa có Sổ tri thức tùy chỉnh nào trong Workspace này. Hệ thống MOM đã có sẵn ở selector.")
         else:
@@ -764,85 +834,48 @@ def page_notebooks():
                 st.write(f"📖 **{n.name}** (Quyền: {privacy_vn}) - *{n.description}*")
                 
     with tab3:
-        col_left, col_right = st.columns([1, 1])
-        
-        with col_left:
-            st.subheader("Nạp thêm file lẻ")
-            if not nb_opts:
-                st.warning("Chưa có sổ tri thức nào để nạp tài liệu.")
-            else:
-                selected_nb_id = st.selectbox("Chọn Sổ tri thức đích", options=list(nb_opts.keys()), format_func=lambda x: nb_opts[x], key="ingest_nb_select")
-                uploaded_file = st.file_uploader("Chọn một hoặc nhiều tài liệu nguồn (TXT, MD, CSV, Excel, PDF)", type=["txt", "md", "csv", "xlsx", "xls", "pdf"], accept_multiple_files=True)
-                doc_title = st.text_input("Tiêu đề tài liệu (để trống sẽ dùng tên tệp)")
-                doc_desc = st.text_area("Mô tả tài liệu")
-                
-                if selected_nb_id == MOM_NOTEBOOK_ID:
-                    st.info("Sổ Hệ thống MOM dùng nạp cả thư mục local ở tab Nguồn tài liệu. File lẻ dành cho các sổ tùy chỉnh.")
-                    doc_privacy = "local_only"
-                else:
-                    selected_nb = next(n for n in user_notebooks if n.notebook_id == selected_nb_id)
-                    doc_privacy = st.selectbox("Mức độ riêng tư tài liệu", ["local_only", "redacted_export", "cloud_allowed"], index=["local_only", "redacted_export", "cloud_allowed"].index(selected_nb.privacy_level), format_func=lambda x: {"local_only": "Chỉ lưu/đọc cục bộ", "redacted_export": "Xuất ẩn danh", "cloud_allowed": "Cho phép đưa lên đám mây"}[x], key="ingest_doc_privacy")
-                
-                if selected_nb_id != MOM_NOTEBOOK_ID and uploaded_file and st.button("Nạp vào Sổ tri thức", key="ingest_btn"):
-                    ok_count = 0
-                    uploaded_names = []
-                    for one_file in uploaded_file:
-                        file_bytes = one_file.read()
-                        try:
-                            ingest_source_document(
-                                notebook_id=selected_nb_id,
-                                original_filename=one_file.name,
-                                file_bytes=file_bytes,
-                                title=doc_title or one_file.name,
-                                description=doc_desc,
-                                privacy_level=doc_privacy
-                            )
-                            ok_count += 1
-                            uploaded_names.append(one_file.name)
-                        except Exception as e:
-                            st.error(f"Lỗi nạp tài liệu {one_file.name}: {e}")
-                    if ok_count:
-                        st.session_state["notebook_upload_success"] = {
-                            "notebook_id": selected_nb_id,
-                            "count": ok_count,
-                            "filenames": uploaded_names,
-                        }
-                        st.rerun()
+        st.subheader("Danh sách tài liệu nguồn đã nạp")
+        selected_view_nb_id = st.selectbox(
+            "Chọn sổ tri thức để xem",
+            options=list(nb_opts.keys()),
+            format_func=lambda x: nb_opts[x],
+            key="preview_nb_select",
+        )
+        selected_view_sources = [s for s in load_sources() if s.notebook_id == selected_view_nb_id]
 
-                upload_success = st.session_state.get("notebook_upload_success")
-                if upload_success and upload_success.get("notebook_id") == selected_nb_id:
-                    st.success(f"Đã nạp thành công {upload_success['count']} tài liệu.")
-                    if upload_success.get("filenames"):
-                        st.caption("Tệp đã nạp: " + ", ".join(upload_success["filenames"]))
-                        
-        with col_right:
-            st.subheader("Danh sách Tài liệu nguồn đã nạp")
-            sources = load_sources()
-            ws_nb_ids = {n.notebook_id for n in user_notebooks}
-            ws_sources = [s for s in sources if s.notebook_id in ws_nb_ids]
-            
-            if not ws_sources:
-                st.info("Chưa có tài liệu nguồn nào được nạp trong Workspace này.")
-            else:
-                source_opts = {s.source_id: f"{s.title} (Sổ: {nb_opts.get(s.notebook_id, s.notebook_id)})" for s in ws_sources}
-                selected_src_id = st.selectbox("Chọn tài liệu để xem", options=list(source_opts.keys()), format_func=lambda x: source_opts[x], key="preview_src_select")
-                
-                if selected_src_id:
-                    src = next(s for s in ws_sources if s.source_id == selected_src_id)
-                    st.write("---")
-                    st.write(f"### Chi tiết tài liệu: {src.title}")
-                    st.write(f"- **Tên tệp gốc:** {src.original_filename}")
-                    st.write(f"- **Định dạng:** {src.source_type.upper()}")
-                    _priv_vn_src = {"local_only": "Chỉ cục bộ", "redacted_export": "Ẩn danh", "cloud_allowed": "Cho phép cloud"}.get(src.privacy_level, src.privacy_level)
-                    st.write(f"- **Mức riêng tư:** {_priv_vn_src}")
-                    st.write(f"- **Mô tả:** {src.description}")
-                    st.write(f"- **Đường dẫn cục bộ:** `{src.asset_path}`")
-                    
-                    st.write("#### Xem trước nội dung (Preview - Tối đa 1000 ký tự):")
-                    if src.preview_text:
-                        st.text_area("Nội dung trích xuất", value=src.preview_text, height=200, disabled=True, key="preview_text_area")
-                    else:
-                        st.info("Chưa có xem trước nội dung cho định dạng này ở M1.7.")
+        if selected_view_nb_id == MOM_NOTEBOOK_ID:
+            st.info("Nguồn Hệ thống MOM được đọc từ thư mục local đã chọn trong tab Nguồn tài liệu.")
+        elif not selected_view_sources:
+            st.info("Sổ tri thức này chưa có tài liệu nguồn nào được nạp.")
+        else:
+            st.markdown("**Tệp đã nạp:**")
+            for source in selected_view_sources:
+                st.write(f"- {source.original_filename}")
+
+            source_opts = {s.source_id: f"{s.original_filename} — {s.title}" for s in selected_view_sources}
+            selected_src_id = st.selectbox(
+                "Chọn tài liệu để xem",
+                options=list(source_opts.keys()),
+                format_func=lambda x: source_opts[x],
+                key="preview_src_select",
+            )
+
+            if selected_src_id:
+                src = next(s for s in selected_view_sources if s.source_id == selected_src_id)
+                st.write("---")
+                st.write(f"### Chi tiết tài liệu: {src.title}")
+                st.write(f"- **Tên tệp gốc:** {src.original_filename}")
+                st.write(f"- **Định dạng:** {src.source_type.upper()}")
+                _priv_vn_src = {"local_only": "Chỉ cục bộ", "redacted_export": "Ẩn danh", "cloud_allowed": "Cho phép cloud"}.get(src.privacy_level, src.privacy_level)
+                st.write(f"- **Mức riêng tư:** {_priv_vn_src}")
+                st.write(f"- **Mô tả:** {src.description}")
+                st.write(f"- **Đường dẫn cục bộ:** `{src.asset_path}`")
+
+                st.write("#### Xem trước nội dung (tối đa 1000 ký tự)")
+                if src.preview_text:
+                    st.text_area("Nội dung trích xuất", value=src.preview_text, height=200, disabled=True, key="preview_text_area")
+                else:
+                    st.info("Chưa có nội dung xem trước cho định dạng này.")
                         
     with tab2:
         st.subheader("Hỏi đáp trong sổ này")
