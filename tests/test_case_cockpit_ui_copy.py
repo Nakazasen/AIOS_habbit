@@ -134,3 +134,12 @@ def test_case_cockpit_upload_refreshes_index_and_view_lists_original_filenames()
     assert "build_notebook_index(selected_nb_id)" in cockpit_source
     assert '"Chọn sổ tri thức để xem"' in cockpit_source
     assert 'st.write(f"- {source.original_filename}")' in cockpit_source
+
+
+def test_case_cockpit_is_honest_when_mom_answer_to_case_is_unavailable():
+    cockpit_source = Path("src/aios_habit/case_cockpit.py").read_text(encoding="utf-8")
+
+    assert '"Tạo hồ sơ sự việc từ câu trả lời"' in cockpit_source
+    assert 'key="mom_answer_to_case_disabled"' in cockpit_source
+    assert "disabled=True" in cockpit_source
+    assert "Chưa hỗ trợ chuyển trực tiếp." in cockpit_source

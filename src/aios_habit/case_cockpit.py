@@ -984,6 +984,15 @@ def page_notebooks():
                             for i, ref in enumerate(answer["source_refs"], 1):
                                 _priv_vn = {"local_only": "cục bộ", "redacted_export": "ẩn danh", "cloud_allowed": "cloud"}.get(ref['privacy_level'], ref['privacy_level'])
                                 st.write(f"{i}. `{ref['relative_path']}` · đoạn `{ref['chunk_id']}` · {_priv_vn}")
+                            st.button(
+                                "Tạo hồ sơ sự việc từ câu trả lời",
+                                key="mom_answer_to_case_disabled",
+                                disabled=True,
+                            )
+                            st.caption(
+                                "Chưa hỗ trợ chuyển trực tiếp. Hiện hãy mở mục Hồ sơ sự việc, "
+                                "tạo hồ sơ mới và chép nguồn cần dùng thủ công."
+                            )
                             with st.expander("Chi tiết kỹ thuật", expanded=False):
                                 st.json({k: v for k, v in answer.items() if k != "answer_text"})
                         elif not config:
