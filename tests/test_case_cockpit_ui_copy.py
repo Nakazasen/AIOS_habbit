@@ -161,3 +161,17 @@ def test_case_cockpit_uses_stable_case_selector_for_switching():
     assert 'key="case_selector"' in cockpit_source
     assert 'st.session_state["case_selector"] = result["case_id"]' in cockpit_source
     assert "index=selected_idx" not in cockpit_source
+
+
+def test_case_cockpit_exposes_real_local_ai_bridge_copy():
+    cockpit_source = Path("src/aios_habit/case_cockpit.py").read_text(encoding="utf-8")
+
+    assert '"Trả lời bằng AI cục bộ nâng cao"' in cockpit_source
+    assert '"Endpoint cục bộ"' in cockpit_source
+    assert '"Tên mô hình"' in cockpit_source
+    assert '"Kiểm tra kết nối AI cục bộ"' in cockpit_source
+    assert "Antigravity direct bridge: chưa phát hiện API runtime" in cockpit_source
+    assert "Antigravity IDE chỉ gọi trực tiếp được" in cockpit_source
+    assert "answer_with_provider" in cockpit_source
+    assert "local_ai_endpoint_stub" not in cockpit_source
+    assert "local_ai_test_stub" not in cockpit_source

@@ -663,6 +663,22 @@ def render_mom_qa_result(qa_result: dict, active_ws_id: str):
 
     st.markdown("### 🤖 Câu trả lời")
     st.write(answer["answer_text"])
+    provider_meta = answer.get("provider_meta") or {}
+    if provider_meta.get("mode") == "advanced_local":
+        if provider_meta.get("used_fallback"):
+            st.warning(
+                "Chưa cấu hình hoặc chưa kết nối được AI cục bộ. "
+                "AIOS đang trả lời bằng dữ liệu cục bộ."
+            )
+        else:
+            provider_label = {
+                "openai_compatible_local": "Endpoint local tương thích OpenAI",
+                "antigravity_if_available": "Antigravity qua API runtime",
+            }.get(provider_meta.get("provider_name"), "AI local")
+            st.success(
+                f"AI local nâng cao: {provider_label} "
+                f"· Mô hình: {provider_meta.get('model_name', 'không rõ')}"
+            )
     confidence_vn = {
         "high": "Cao",
         "medium": "Vừa",
@@ -1049,13 +1065,13 @@ def page_notebooks():
                 "Chế độ trả lời",
                 [
                     "Trả lời bằng dữ liệu cục bộ",
-                    "Trả lời bằng AI cục bộ nếu đã cấu hình",
+                    "Trả lời bằng AI cục bộ nâng cao",
                     "Tạo prompt đối chiếu"
                 ],
                 key="qa_truth_mode"
             )
             
-            if truth_mode in ["Trả lời bằng dữ liệu cục bộ", "Trả lời bằng AI cục bộ nếu đã cấu hình"]:
+            if truth_mode in ["Trả lời bằng dữ liệu cục bộ", "Trả lời bằng AI cục bộ nâng cao"]:
                 st.info("🔒 Chế độ chỉ cục bộ: không gửi tài liệu ra cloud. Nếu chưa có AI cục bộ, AIOS vẫn trả lời bằng dữ liệu đã nạp.")
                 question = st.text_area("Nhập câu hỏi", placeholder="Ví dụ: Quy trình ST/CO hoặc bảng T_IF_PROD_RESULT dùng để làm gì?", key="local_qa_question")
                 
@@ -1074,7 +1090,47 @@ def page_notebooks():
                             from aios_habit.mom_local_index import search_mom_index
                             from aios_habit.mom_benchmark import generate_mom_grounded_answer
                             with st.spinner("AIOS đang tìm bằng chứng trong sổ Hệ thống MOM..."):
-                                answer = generate_mom_grounded_answer(question, search_mom_index(question, limit=5))
+                                hits = search_mom_index(question, limit=5)
+                                answer = generate_mom_grounded_answer(question, hits)
+                                if truth_mode == "Trả lời bằng AI cục bộ nâng cao":
+                                    from aios_habit.ai_provider_bridge import (
+                                        answer_with_provider,
+                                        load_provider_config_from_env_or_session,
+                                    )
+
+                                    allowed_chunk_ids = {
+                                        ref.get("chunk_id") for ref in answer["source_refs"]
+                                    }
+                                    source_context = "\n\n".join(
+                                        getattr(hit.chunk, "preview", "")
+                                        for hit in hits[:5]
+                                        if hit.chunk.chunk_id in allowed_chunk_ids
+                                    )
+                                    provider_config = load_provider_config_from_env_or_session(st.session_state)
+                                    provider_result = answer_with_provider(
+                                        question=question,
+                                        source_context=source_context,
+                                        config=provider_config,
+                                        deterministic_answer=answer["answer_text"],
+                                        source_refs=answer["source_refs"],
+                                        source_privacy="local_only",
+                                    )
+                                    answer["answer_text"] = provider_result.answer_text
+                                    answer["provider_meta"] = {
+                                        "mode": "advanced_local",
+                                        "ok": provider_result.ok,
+                                        "provider_name": provider_result.provider_name,
+                                        "model_name": provider_result.model_name,
+                                        "used_fallback": provider_result.used_fallback,
+                                        "safety_status": provider_result.safety_status,
+                                        "error_message": provider_result.error_message,
+                                    }
+                                else:
+                                    answer["provider_meta"] = {
+                                        "mode": "deterministic",
+                                        "used_fallback": False,
+                                        "safety_status": "deterministic_local",
+                                    }
                             st.session_state["last_mom_qa_result"] = {
                                 "question": question,
                                 "answer": answer,
@@ -1540,12 +1596,84 @@ def page_notebooks():
     with tab5:
         st.subheader("Bản đồ & kiểm tra bằng chứng")
         st.markdown("#### AI cục bộ nâng cao")
-        st.info("Chưa bật mặc định. Có thể cấu hình endpoint cục bộ, tên mô hình và API key tùy chọn sau. Nếu gọi AI cục bộ lỗi hoặc chưa cấu hình, AIOS trả lời bằng dữ liệu đã nạp.")
-        st.text_input("Endpoint cục bộ", value="", placeholder="http://localhost:11434/v1 hoặc endpoint tương thích", key="local_ai_endpoint_stub")
-        st.text_input("Tên mô hình", value="", placeholder="Ví dụ: llama, qwen, nim-local", key="local_ai_model_stub")
-        st.text_input("API key tùy chọn", value="", type="password", key="local_ai_key_stub")
-        if st.button("Kiểm tra kết nối AI cục bộ", key="local_ai_test_stub"):
-            st.info("Chưa gọi endpoint ở phiên bản này. Đây là cấu hình chuẩn bị; trả lời bằng dữ liệu đã nạp vẫn hoạt động ngay.")
+        st.info(
+            "Cấu hình này chỉ giữ trong phiên làm việc hiện tại. Nếu gọi AI cục bộ lỗi "
+            "hoặc chưa cấu hình, AIOS vẫn trả lời bằng dữ liệu cục bộ."
+        )
+        from aios_habit.ai_provider_bridge import (
+            load_provider_config_from_env_or_session,
+            test_provider_connection,
+        )
+
+        initial_provider = load_provider_config_from_env_or_session(st.session_state)
+        st.session_state.setdefault("local_ai_endpoint", initial_provider.endpoint_url)
+        st.session_state.setdefault("local_ai_model", initial_provider.model_name)
+        st.session_state.setdefault("local_ai_api_key", initial_provider.api_key)
+        st.session_state.setdefault("local_ai_timeout", initial_provider.timeout_seconds)
+        st.session_state.setdefault("local_ai_provider_type", "openai_compatible_local")
+        st.session_state.setdefault("local_ai_locality", "local")
+
+        def clear_local_ai_connection_status():
+            st.session_state.pop("local_ai_connection_status", None)
+
+        st.text_input(
+            "Endpoint cục bộ",
+            placeholder="http://127.0.0.1:11434/v1/chat/completions",
+            key="local_ai_endpoint",
+            on_change=clear_local_ai_connection_status,
+        )
+        st.text_input(
+            "Tên mô hình",
+            placeholder="Ví dụ: llama3, qwen-local, nim-local",
+            key="local_ai_model",
+            on_change=clear_local_ai_connection_status,
+        )
+        st.text_input(
+            "API key tùy chọn",
+            type="password",
+            key="local_ai_api_key",
+            help="Chỉ giữ trong session Streamlit; không ghi vào repo hoặc file cấu hình.",
+            on_change=clear_local_ai_connection_status,
+        )
+        st.number_input(
+            "Thời gian chờ tối đa (giây)",
+            min_value=1,
+            max_value=120,
+            step=1,
+            key="local_ai_timeout",
+            on_change=clear_local_ai_connection_status,
+        )
+        st.caption(
+            "Hỗ trợ endpoint cục bộ tương thích OpenAI như Ollama, LM Studio hoặc NVIDIA NIM."
+        )
+        st.caption(
+            "Antigravity direct bridge: chưa phát hiện API runtime. Có thể dùng endpoint cục bộ "
+            "tương thích OpenAI nếu IDE/model cung cấp. Antigravity IDE chỉ gọi trực tiếp được "
+            "khi nó mở API/MCP runtime."
+        )
+        if st.button("Kiểm tra kết nối AI cục bộ", key="local_ai_test_btn"):
+            provider_config = load_provider_config_from_env_or_session(st.session_state)
+            connection = test_provider_connection(provider_config)
+            st.session_state["local_ai_connection_status"] = {
+                "ok": connection.ok,
+                "provider_name": connection.provider_name,
+                "model_name": connection.model_name,
+                "error_message": connection.error_message,
+            }
+
+        connection_status = st.session_state.get("local_ai_connection_status")
+        if connection_status:
+            if connection_status.get("ok"):
+                st.success(
+                    f"Đã kết nối AI cục bộ · Mô hình: {connection_status.get('model_name', 'không rõ')}"
+                )
+            else:
+                st.warning(
+                    "Kết nối AI cục bộ thất bại. Fallback dữ liệu cục bộ đang hoạt động. "
+                    f"{connection_status.get('error_message', '')}"
+                )
+        elif not initial_provider.enabled:
+            st.caption("Trạng thái: chưa cấu hình · fallback deterministic đang hoạt động.")
         st.markdown("---")
         st.subheader("Bản đồ quan hệ Sổ tri thức")
         if not nb_opts:
