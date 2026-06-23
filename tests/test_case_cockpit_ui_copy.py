@@ -136,10 +136,20 @@ def test_case_cockpit_upload_refreshes_index_and_view_lists_original_filenames()
     assert 'st.write(f"- {source.original_filename}")' in cockpit_source
 
 
-def test_case_cockpit_is_honest_when_mom_answer_to_case_is_unavailable():
+def test_case_cockpit_exposes_working_mom_answer_to_case_action():
     cockpit_source = Path("src/aios_habit/case_cockpit.py").read_text(encoding="utf-8")
 
     assert '"Tạo hồ sơ sự việc từ câu trả lời"' in cockpit_source
-    assert 'key="mom_answer_to_case_disabled"' in cockpit_source
-    assert "disabled=True" in cockpit_source
-    assert "Chưa hỗ trợ chuyển trực tiếp." in cockpit_source
+    assert 'key="mom_answer_to_case_btn"' in cockpit_source
+    assert "create_case_draft_from_qa_answer" in cockpit_source
+    assert 'st.session_state["last_mom_qa_result"]' in cockpit_source
+    assert 'st.success("Đã tạo hồ sơ sự việc nháp.")' in cockpit_source
+    assert '"Mở hồ sơ sự việc"' in cockpit_source
+
+
+def test_case_cockpit_mom_sources_use_readable_primary_labels():
+    cockpit_source = Path("src/aios_habit/case_cockpit.py").read_text(encoding="utf-8")
+
+    assert "Tin cậy {confidence_vn} · Chỉ đọc cục bộ" in cockpit_source
+    assert 'with st.expander(f"Chi tiết nguồn {i}"' in cockpit_source
+    assert "`{ref['chunk_id']}`" not in cockpit_source

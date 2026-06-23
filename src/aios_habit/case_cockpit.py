@@ -21,10 +21,10 @@ def nav_to_page(page_name):
     mapping = {
         "Nhập nhanh sự việc": "🏠 Tổng quan",
         "Tóm tắt hôm nay": "🏠 Tổng quan",
-        "Hồ sơ sự việc": "📁 Hồ sơ sự việc (Case)",
-        "Thêm bằng chứng": "📁 Hồ sơ sự việc (Case)",
-        "Bản đồ sự việc": "📁 Hồ sơ sự việc (Case)",
-        "Việc cần làm tiếp": "📁 Hồ sơ sự việc (Case)",
+        "Hồ sơ sự việc": "📁 Hồ sơ sự việc",
+        "Thêm bằng chứng": "📁 Hồ sơ sự việc",
+        "Bản đồ sự việc": "📁 Hồ sơ sự việc",
+        "Việc cần làm tiếp": "📁 Hồ sơ sự việc",
         "Gói câu lệnh cho AI": "🧪 Xuất kết quả",
         "Bàn giao": "🧪 Xuất kết quả",
         "Rút bài học": "🎓 Học nghề & An toàn",
@@ -228,6 +228,29 @@ def page_cases():
                 save_case(active_case)
                 st.success("Đã cập nhật hồ sơ!")
                 st.rerun()
+
+        if active_case.source_origin in {"mom_official_local", "knowledge_notebook"}:
+            st.markdown("### Nội dung chuyển từ Hỏi đáp")
+            st.info("Bản nháp · Chỉ đọc cục bộ · Cần kiểm tra trước khi xác nhận")
+            st.markdown(active_case.current_situation)
+
+            case_evidence = [e for e in load_evidence() if e.case_id == active_case.case_id]
+            st.markdown("#### Bằng chứng / nguồn tham chiếu")
+            if not case_evidence:
+                st.warning("Hồ sơ chưa có nguồn tham chiếu; phần thiếu bằng chứng đã được giữ trong tình huống.")
+            for item in case_evidence:
+                st.write(f"- **{item.title}** · Chỉ đọc cục bộ · Trạng thái bản nháp")
+                with st.expander(f"Chi tiết nguồn {item.title}", expanded=False):
+                    st.write(f"Đường dẫn nguồn: `{item.source_path}`")
+                    st.write(f"Nguồn gốc: `{item.source_origin}`")
+                    st.write(f"Trạng thái xác minh: `{item.verification_status}`")
+
+            st.markdown("#### Việc cần làm tiếp")
+            if active_case.next_actions:
+                for action in active_case.next_actions:
+                    st.write(f"- {action}")
+            else:
+                st.info("Chưa có việc cần làm tiếp được chuyển từ câu trả lời.")
 
 def get_active_case():
     if "active_case_id" not in st.session_state:
@@ -630,6 +653,80 @@ def page_learning_memory():
             st.success("Đã cập nhật thẻ học nghề thành công!")
             st.rerun()
 
+def render_mom_qa_result(qa_result: dict, active_ws_id: str):
+    answer = qa_result["answer"]
+    question = qa_result["question"]
+    notebook_id = qa_result["notebook_id"]
+    notebook_name = qa_result["notebook_name"]
+
+    st.markdown("### 🤖 Câu trả lời")
+    st.write(answer["answer_text"])
+    confidence_vn = {
+        "high": "Cao",
+        "medium": "Vừa",
+        "low": "Thấp",
+        "insufficient": "Chưa đủ bằng chứng",
+    }.get(answer["confidence_level"], answer["confidence_level"])
+    st.caption(f"Mức tin cậy: {confidence_vn} · Chỉ đọc cục bộ")
+    st.markdown("#### Nguồn đã dùng")
+    if not answer["source_refs"]:
+        st.info("Chưa có nguồn đủ mạnh cho câu hỏi này.")
+    for i, ref in enumerate(answer["source_refs"], 1):
+        relative_path = str(ref.get("relative_path") or ref.get("source_file") or "Nguồn chưa đặt tên")
+        filename = Path(relative_path.replace("\\", "/")).name or relative_path
+        source_type = str(ref.get("file_type") or "Tài liệu MOM").upper()
+        st.write(f"**{i}. {filename}** · {source_type} · Tin cậy {confidence_vn} · Chỉ đọc cục bộ")
+        with st.expander(f"Chi tiết nguồn {i}", expanded=False):
+            st.write(f"Đường dẫn: `{relative_path}`")
+            st.write(f"Đoạn tri thức: `{ref.get('chunk_id', 'Không có')}`")
+            st.write(f"Trạng thái trích xuất: `{ref.get('extraction_status', 'Không có')}`")
+
+    created = st.session_state.get("last_created_qa_case")
+    same_answer_created = bool(
+        created
+        and created.get("question") == question
+        and created.get("notebook_id") == notebook_id
+    )
+    if not same_answer_created:
+        if st.button(
+            "Tạo hồ sơ sự việc từ câu trả lời",
+            key="mom_answer_to_case_btn",
+        ):
+            try:
+                from aios_habit.notebook_case_actions import create_case_draft_from_qa_answer
+
+                result = create_case_draft_from_qa_answer(
+                    question=question,
+                    answer=answer,
+                    notebook_name=notebook_name,
+                    notebook_id=notebook_id,
+                    workspace_id=active_ws_id,
+                )
+                st.session_state["active_case_id"] = result["case_id"]
+                st.session_state["last_created_qa_case"] = {
+                    "case_id": result["case_id"],
+                    "title": result["title"],
+                    "question": question,
+                    "notebook_id": notebook_id,
+                }
+                st.rerun()
+            except Exception as exc:
+                st.error(f"Không thể tạo hồ sơ sự việc: {exc}")
+
+    if same_answer_created:
+        st.success("Đã tạo hồ sơ sự việc nháp.")
+        st.write(f"**Hồ sơ:** {created['title']}")
+        st.button(
+            "Mở hồ sơ sự việc",
+            key="open_created_qa_case_btn",
+            on_click=nav_to_page,
+            args=("Hồ sơ sự việc",),
+        )
+
+    with st.expander("Chi tiết kỹ thuật", expanded=False):
+        st.json({k: v for k, v in answer.items() if k != "answer_text"})
+
+
 def page_notebooks():
     st.title("📚 Sổ tri thức")
     st.write("Một nơi để nạp tài liệu, hỏi đáp nội bộ và kiểm tra nguồn bằng chứng. Mặc định chỉ đọc cục bộ, không gửi cloud.")
@@ -975,26 +1072,15 @@ def page_notebooks():
                             from aios_habit.mom_benchmark import generate_mom_grounded_answer
                             with st.spinner("AIOS đang tìm bằng chứng trong sổ Hệ thống MOM..."):
                                 answer = generate_mom_grounded_answer(question, search_mom_index(question, limit=5))
-                            st.markdown("### 🤖 Câu trả lời")
-                            st.write(answer["answer_text"])
-                            st.caption(f"Mức tin cậy: {answer['confidence_level']} · Chỉ cục bộ")
-                            st.markdown("#### Nguồn đã dùng")
-                            if not answer["source_refs"]:
-                                st.info("Chưa có nguồn đủ mạnh cho câu hỏi này.")
-                            for i, ref in enumerate(answer["source_refs"], 1):
-                                _priv_vn = {"local_only": "cục bộ", "redacted_export": "ẩn danh", "cloud_allowed": "cloud"}.get(ref['privacy_level'], ref['privacy_level'])
-                                st.write(f"{i}. `{ref['relative_path']}` · đoạn `{ref['chunk_id']}` · {_priv_vn}")
-                            st.button(
-                                "Tạo hồ sơ sự việc từ câu trả lời",
-                                key="mom_answer_to_case_disabled",
-                                disabled=True,
-                            )
-                            st.caption(
-                                "Chưa hỗ trợ chuyển trực tiếp. Hiện hãy mở mục Hồ sơ sự việc, "
-                                "tạo hồ sơ mới và chép nguồn cần dùng thủ công."
-                            )
-                            with st.expander("Chi tiết kỹ thuật", expanded=False):
-                                st.json({k: v for k, v in answer.items() if k != "answer_text"})
+                            st.session_state["last_mom_qa_result"] = {
+                                "question": question,
+                                "answer": answer,
+                                "notebook_id": selected_nb_id,
+                                "notebook_name": nb_opts[selected_nb_id],
+                            }
+                            previous_case = st.session_state.get("last_created_qa_case")
+                            if previous_case and previous_case.get("question") != question:
+                                del st.session_state["last_created_qa_case"]
                         elif not config:
                             st.info("Sổ tùy chỉnh hiện chưa có AI cục bộ nâng cao. Hãy dùng nút tạo prompt đối chiếu hoặc cấu hình bộ AI cục bộ trong tab Cấu hình.")
                         elif config.locality == "cloud":
@@ -1011,6 +1097,14 @@ def page_notebooks():
                                     for i, chunk in enumerate(res.used_chunks):
                                         st.markdown(f"**{i+1}. {chunk.source_title}** ({chunk.original_filename})")
                                         st.text_area(f"Đoạn {chunk.chunk_index}", value=chunk.text, height=100, disabled=True, key=f"local_ans_{chunk.chunk_id}")
+
+                last_mom_result = st.session_state.get("last_mom_qa_result")
+                if (
+                    selected_nb_id == MOM_NOTEBOOK_ID
+                    and last_mom_result
+                    and last_mom_result.get("notebook_id") == selected_nb_id
+                ):
+                    render_mom_qa_result(last_mom_result, active_ws_id)
                 
                 if copy_btn:
                     if not question.strip():
