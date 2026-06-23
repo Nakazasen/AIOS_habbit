@@ -153,3 +153,11 @@ def test_case_cockpit_mom_sources_use_readable_primary_labels():
     assert "Tin cậy {confidence_vn} · Chỉ đọc cục bộ" in cockpit_source
     assert 'with st.expander(f"Chi tiết nguồn {i}"' in cockpit_source
     assert "`{ref['chunk_id']}`" not in cockpit_source
+
+
+def test_case_cockpit_uses_stable_case_selector_for_switching():
+    cockpit_source = Path("src/aios_habit/case_cockpit.py").read_text(encoding="utf-8")
+
+    assert 'key="case_selector"' in cockpit_source
+    assert 'st.session_state["case_selector"] = result["case_id"]' in cockpit_source
+    assert "index=selected_idx" not in cockpit_source

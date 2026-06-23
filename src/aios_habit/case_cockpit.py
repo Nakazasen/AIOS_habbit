@@ -86,6 +86,7 @@ def page_quick_intake():
                 )
                 
                 st.session_state.active_case_id = res["case_id"]
+                st.session_state["case_selector"] = res["case_id"]
                 st.session_state.quick_success = {
                     "case_id": res["case_id"],
                     "title": title,
@@ -167,20 +168,21 @@ def page_cases():
     status_map = {"open": "Mở", "investigating": "Đang điều tra", "waiting": "Đang chờ", "resolved": "Đã giải quyết", "archived": "Đã lưu trữ"}
     case_opts = {c.case_id: f"{c.case_id} - {c.title} (Trạng thái: {status_map.get(c.status, c.status)})" for c in cases}
     
-    # Check if active_case_id belongs to the current workspace
-    selected_idx = 0
+    # Keep a stable widget key so users can switch between cases. A dynamic
+    # ``index`` derived on every rerun resets the user's new selection.
     active_id = st.session_state.get("active_case_id")
-    if active_id and active_id in case_opts:
-        selected_idx = list(case_opts.keys()).index(active_id)
-    else:
-        # Reset if not in options
-        if "active_case_id" in st.session_state:
-            del st.session_state.active_case_id
+    selector_id = st.session_state.get("case_selector")
+    if selector_id not in case_opts:
+        st.session_state["case_selector"] = (
+            active_id if active_id in case_opts else next(iter(case_opts), None)
+        )
+    if active_id not in case_opts and "active_case_id" in st.session_state:
+        del st.session_state.active_case_id
             
     selected_id = st.selectbox(
         "Hồ sơ đang hoạt động",
         options=list(case_opts.keys()),
-        index=selected_idx,
+        key="case_selector",
         format_func=lambda x: case_opts[x]
     )
     
@@ -703,6 +705,7 @@ def render_mom_qa_result(qa_result: dict, active_ws_id: str):
                     workspace_id=active_ws_id,
                 )
                 st.session_state["active_case_id"] = result["case_id"]
+                st.session_state["case_selector"] = result["case_id"]
                 st.session_state["last_created_qa_case"] = {
                     "case_id": result["case_id"],
                     "title": result["title"],

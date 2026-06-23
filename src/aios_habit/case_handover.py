@@ -20,6 +20,8 @@ def build_handover_markdown(
         if e.privacy_level == "local_only":
             if export_mode == "local":
                 md += f"- [{e.source_type}] {e.title} (Tạo lúc: {e.created_at[:16]}) [local_only]"
+                if e.source_path:
+                    md += f"\n  - Nguồn tham chiếu: `{e.source_path}`"
                 if e.extracted_text:
                     md += f"\n  - Chi tiết: {e.extracted_text[:200]}...\n"
                 else:
@@ -30,6 +32,8 @@ def build_handover_markdown(
                 md += f"- [{e.source_type}] {e.title} (Tạo lúc: {e.created_at[:16]}): [ĐÃ LOẠI BỎ VÌ RIÊNG TƯ - local_only]\n"
         else:
             md += f"- [{e.source_type}] {e.title} (Tạo lúc: {e.created_at[:16]})\n"
+            if export_mode == "local" and e.source_path:
+                md += f"  - Nguồn tham chiếu: `{e.source_path}`\n"
             if export_mode in ("local", "cloud_safe") and e.extracted_text:
                 md += f"  - Chi tiết: {e.extracted_text[:200]}...\n"
                 
