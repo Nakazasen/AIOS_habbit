@@ -95,3 +95,11 @@ def test_case_cockpit_no_post_widget_session_mutation():
     assert 'st.session_state["unified_nb_select"]' not in cockpit_source
     assert 'st.session_state["qa_nb_select"]' not in cockpit_source
 
+
+def test_case_cockpit_notebook_upload_success_survives_rerun():
+    """Multi-file upload success must remain visible after Streamlit reruns."""
+    cockpit_source = Path("src/aios_habit/case_cockpit.py").read_text(encoding="utf-8")
+
+    assert 'st.session_state["notebook_upload_success"]' in cockpit_source
+    assert 'st.success(f"Đã nạp thành công {upload_success[\'count\']} tài liệu.")' in cockpit_source
+    assert 'st.caption("Tệp đã nạp: " + ", ".join(upload_success["filenames"]))' in cockpit_source

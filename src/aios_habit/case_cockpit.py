@@ -785,6 +785,7 @@ def page_notebooks():
                 
                 if selected_nb_id != MOM_NOTEBOOK_ID and uploaded_file and st.button("Nạp vào Sổ tri thức", key="ingest_btn"):
                     ok_count = 0
+                    uploaded_names = []
                     for one_file in uploaded_file:
                         file_bytes = one_file.read()
                         try:
@@ -797,11 +798,22 @@ def page_notebooks():
                                 privacy_level=doc_privacy
                             )
                             ok_count += 1
+                            uploaded_names.append(one_file.name)
                         except Exception as e:
                             st.error(f"Lỗi nạp tài liệu {one_file.name}: {e}")
                     if ok_count:
-                        st.success(f"Đã nạp thành công {ok_count} tài liệu.")
+                        st.session_state["notebook_upload_success"] = {
+                            "notebook_id": selected_nb_id,
+                            "count": ok_count,
+                            "filenames": uploaded_names,
+                        }
                         st.rerun()
+
+                upload_success = st.session_state.get("notebook_upload_success")
+                if upload_success and upload_success.get("notebook_id") == selected_nb_id:
+                    st.success(f"Đã nạp thành công {upload_success['count']} tài liệu.")
+                    if upload_success.get("filenames"):
+                        st.caption("Tệp đã nạp: " + ", ".join(upload_success["filenames"]))
                         
         with col_right:
             st.subheader("Danh sách Tài liệu nguồn đã nạp")
