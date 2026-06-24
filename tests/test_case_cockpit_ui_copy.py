@@ -37,8 +37,8 @@ def test_case_cockpit_local_qa_does_not_require_provider_for_mom():
     assert "generate_mom_grounded_answer" in cockpit_source
     assert "search_mom_index" in cockpit_source
     assert "Chưa cấu hình AI provider. Hãy cấu hình biến môi trường" not in cockpit_source
-    assert "Đang dùng chế độ cục bộ" in cockpit_source
-    assert "không gọi AI ngoài" in cockpit_source
+    assert "AIOS tự bảo vệ tài liệu công ty/mật" in cockpit_source
+    assert "không gửi ra ngoài" in cockpit_source
     assert "Tạo prompt đối chiếu" in cockpit_source
 
 
@@ -150,7 +150,7 @@ def test_case_cockpit_exposes_working_mom_answer_to_case_action():
 def test_case_cockpit_mom_sources_use_readable_primary_labels():
     cockpit_source = Path("src/aios_habit/case_cockpit.py").read_text(encoding="utf-8")
 
-    assert "Tin cậy {confidence_vn} · Chỉ đọc cục bộ" in cockpit_source
+    assert "Tin cậy {confidence_vn} · Không gửi ra ngoài" in cockpit_source
     assert 'with st.expander(f"Chi tiết nguồn {i}"' in cockpit_source
     assert "`{ref['chunk_id']}`" not in cockpit_source
 
@@ -166,7 +166,8 @@ def test_case_cockpit_uses_stable_case_selector_for_switching():
 def test_case_cockpit_exposes_real_local_ai_bridge_copy():
     cockpit_source = Path("src/aios_habit/case_cockpit.py").read_text(encoding="utf-8")
 
-    assert '"Trả lời bằng AI cục bộ nâng cao"' in cockpit_source
+    assert '"Tự động chọn AI tốt nhất"' in cockpit_source
+    assert '"Chỉ dùng trong máy"' in cockpit_source
     assert '"Endpoint cục bộ"' in cockpit_source
     assert '"Tên mô hình"' in cockpit_source
     assert '"Kiểm tra kết nối AI cục bộ"' in cockpit_source
@@ -175,3 +176,42 @@ def test_case_cockpit_exposes_real_local_ai_bridge_copy():
     assert "answer_with_provider" in cockpit_source
     assert "local_ai_endpoint_stub" not in cockpit_source
     assert "local_ai_test_stub" not in cockpit_source
+
+
+
+def test_case_cockpit_vietnamese_safety_modes_visible():
+    cockpit_source = Path("src/aios_habit/case_cockpit.py").read_text(encoding="utf-8")
+
+    assert '"Mức an toàn"' in cockpit_source
+    assert "SAFETY_MODE_COMPANY" in cockpit_source
+    assert "SAFETY_MODE_NORMAL" in cockpit_source
+    assert "get_safety_mode_options()" in cockpit_source
+    assert "AIOS sẽ tự chọn cách xử lý an toàn nhất" in cockpit_source
+
+
+def test_case_cockpit_route_log_copy_visible():
+    cockpit_source = Path("src/aios_habit/case_cockpit.py").read_text(encoding="utf-8")
+
+    assert "Nhật ký AI đã dùng" in cockpit_source
+    assert "Cách xử lý" in cockpit_source
+    assert "Có gửi ra ngoài không" in cockpit_source
+    assert "Nguồn AI" in cockpit_source
+    assert "Có tự đổi nguồn không" in cockpit_source
+
+
+def test_case_cockpit_no_raw_router_terms_in_main_source():
+    cockpit_source = Path("src/aios_habit/case_cockpit.py").read_text(encoding="utf-8")
+
+    assert "redacted_export" not in cockpit_source
+    assert "cloud_allowed" not in cockpit_source
+    assert "provider policy" not in cockpit_source.lower()
+    assert "route policy" not in cockpit_source.lower()
+
+
+def test_case_cockpit_qna_modes_are_router_1_copy():
+    cockpit_source = Path("src/aios_habit/case_cockpit.py").read_text(encoding="utf-8")
+
+    assert "Tự động chọn AI tốt nhất" in cockpit_source
+    assert "Chỉ dùng trong máy" in cockpit_source
+    assert "Tạo prompt đối chiếu" in cockpit_source
+    assert "Hiện AIOS đã có cổng AI cục bộ" in cockpit_source
