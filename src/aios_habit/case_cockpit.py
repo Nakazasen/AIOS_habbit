@@ -713,13 +713,24 @@ def render_mom_qa_result(qa_result: dict, active_ws_id: str):
     }.get(answer["confidence_level"], answer["confidence_level"])
     st.caption(f"Mức tin cậy: {confidence_vn} · Không gửi ra ngoài")
     st.markdown("#### Nhật ký AI đã dùng")
-    route_mode = "Nguồn AI tự động" if provider_meta.get("mode") == "auto_best_local_bridge" else "Trong máy"
-    provider_name = provider_meta.get("provider_name") or "dữ liệu cục bộ"
-    changed_source = "Chưa cần" if not provider_meta.get("used_fallback") else "Có, đã quay về dữ liệu trong máy"
-    st.write(f"- **Cách xử lý:** {route_mode}")
-    st.write("- **Có gửi ra ngoài không:** Không")
-    st.write(f"- **Nguồn AI:** {provider_name}")
-    st.write(f"- **Có tự đổi nguồn không:** {changed_source}")
+    if provider_meta.get("route_summary_vi"):
+        route_lines = str(provider_meta["route_summary_vi"]).splitlines()
+        for line in route_lines[1:]:
+            if line.startswith("- "):
+                st.write(line)
+            elif ":" in line:
+                label, value = line.split(":", 1)
+                st.write(f"- **{label}:** {value.strip()}")
+            elif line.strip() and line.strip() != "Các lần thử:":
+                st.write(line)
+    else:
+        route_mode = "Nguồn AI tự động" if provider_meta.get("mode") in {"auto_best_local_bridge", "auto_best_router"} else "Trong máy"
+        provider_name = provider_meta.get("provider_name") or "dữ liệu cục bộ"
+        changed_source = "Chưa cần" if not provider_meta.get("used_fallback") else "Có, đã quay về dữ liệu trong máy"
+        st.write(f"- **Cách xử lý:** {route_mode}")
+        st.write("- **Có gửi ra ngoài không:** Không")
+        st.write(f"- **Nguồn AI:** {provider_name}")
+        st.write(f"- **Có tự đổi nguồn không:** {changed_source}")
     st.markdown("#### Nguồn đã dùng")
     if not answer["source_refs"]:
         st.info("Chưa có nguồn đủ mạnh cho câu hỏi này.")
@@ -1120,10 +1131,10 @@ def page_notebooks():
                 ],
                 key="qa_truth_mode"
             )
-            st.caption("Hiện AIOS đã có cổng AI cục bộ. Nguồn AI bên ngoài sẽ được bổ sung ở bước Router tiếp theo.")
+            st.caption("AIOS tự chọn nguồn phù hợp: tài liệu công ty/mật không gửi ra ngoài; tài liệu thường dùng nguồn AI đã cấu hình khi có.")
             
             if truth_mode in ["Tự động chọn AI tốt nhất", "Chỉ dùng trong máy"]:
-                st.info("🔒 AIOS tự bảo vệ tài liệu công ty/mật: không gửi ra ngoài. Nếu là tài liệu thường, nguồn AI mở rộng sẽ được dùng ở bước Router tiếp theo.")
+                st.info("🔒 AIOS tự bảo vệ tài liệu công ty/mật: không gửi ra ngoài. Tài liệu thường sẽ tự dùng nguồn AI đã cấu hình khi có.")
                 question = st.text_area("Nhập câu hỏi", placeholder="Ví dụ: Quy trình ST/CO hoặc bảng T_IF_PROD_RESULT dùng để làm gì?", key="local_qa_question")
                 
                 # Context Sufficiency Panel
@@ -1144,9 +1155,11 @@ def page_notebooks():
                                 hits = search_mom_index(question, limit=5)
                                 answer = generate_mom_grounded_answer(question, hits)
                                 if truth_mode == "Tự động chọn AI tốt nhất":
-                                    from aios_habit.ai_provider_bridge import (
-                                        answer_with_provider,
-                                        load_provider_config_from_env_or_session,
+                                    from aios_habit.ai_router import (
+                                        RouterRequest,
+                                        fallback_to_deterministic,
+                                        providers_from_env_or_session,
+                                        route_answer,
                                     )
 
                                     allowed_chunk_ids = {
@@ -1157,24 +1170,26 @@ def page_notebooks():
                                         for hit in hits[:5]
                                         if hit.chunk.chunk_id in allowed_chunk_ids
                                     )
-                                    provider_config = load_provider_config_from_env_or_session(st.session_state)
-                                    provider_result = answer_with_provider(
+                                    router_request = RouterRequest(
                                         question=question,
                                         source_context=source_context,
-                                        config=provider_config,
                                         deterministic_answer=answer["answer_text"],
                                         source_refs=answer["source_refs"],
-                                        source_privacy="local_only",  # internal compatibility: company-safe
+                                        safety_mode_label=SAFETY_MODE_COMPANY,
+                                        notebook_name=nb_opts[selected_nb_id],
                                     )
-                                    answer["answer_text"] = provider_result.answer_text
+                                    provider_configs = providers_from_env_or_session(session_state=st.session_state)
+                                    router_result = route_answer(router_request, provider_configs, st.session_state.setdefault("ai_router_health", {}))
+                                    answer["answer_text"] = router_result.answer_text
                                     answer["provider_meta"] = {
-                                        "mode": "auto_best_local_bridge",
-                                        "ok": provider_result.ok,
-                                        "provider_name": provider_result.provider_name,
-                                        "model_name": provider_result.model_name,
-                                        "used_fallback": provider_result.used_fallback,
-                                        "safety_status": provider_result.safety_status,
-                                        "error_message": provider_result.error_message,
+                                        "mode": "auto_best_router",
+                                        "ok": not router_result.used_fallback,
+                                        "provider_name": router_result.used_provider,
+                                        "model_name": router_result.used_model,
+                                        "used_fallback": router_result.used_fallback,
+                                        "safety_status": router_result.safety_status,
+                                        "route_summary_vi": router_result.route_summary_vi,
+                                        "attempts": [attempt.__dict__ for attempt in router_result.attempts],
                                     }
                                 else:
                                     answer["provider_meta"] = {

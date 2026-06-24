@@ -173,7 +173,8 @@ def test_case_cockpit_exposes_real_local_ai_bridge_copy():
     assert '"Kiểm tra kết nối AI cục bộ"' in cockpit_source
     assert "Antigravity direct bridge: chưa phát hiện API runtime" in cockpit_source
     assert "Antigravity IDE chỉ gọi trực tiếp được" in cockpit_source
-    assert "answer_with_provider" in cockpit_source
+    assert "route_answer" in cockpit_source
+    assert "providers_from_env_or_session" in cockpit_source
     assert "local_ai_endpoint_stub" not in cockpit_source
     assert "local_ai_test_stub" not in cockpit_source
 
@@ -214,7 +215,7 @@ def test_case_cockpit_qna_modes_are_router_1_copy():
     assert "Tự động chọn AI tốt nhất" in cockpit_source
     assert "Chỉ dùng trong máy" in cockpit_source
     assert "Tạo prompt đối chiếu" in cockpit_source
-    assert "Hiện AIOS đã có cổng AI cục bộ" in cockpit_source
+    assert "AIOS tự chọn nguồn phù hợp" in cockpit_source
 
 
 
@@ -239,3 +240,16 @@ def test_provider_catalog_raw_router_terms_not_visible_in_main_ui():
     assert "route policy" not in cockpit_source.lower()
     assert "cloud_allowed" not in cockpit_source
     assert "redacted_export" not in cockpit_source
+
+
+
+def test_case_cockpit_router3_route_log_wiring():
+    cockpit_source = Path("src/aios_habit/case_cockpit.py").read_text(encoding="utf-8")
+    assert "RouterRequest" in cockpit_source
+    assert "route_answer" in cockpit_source
+    assert "route_summary_vi" in cockpit_source
+    assert "Nhật ký AI đã dùng" in cockpit_source
+    assert "Có gửi ra ngoài không" in cockpit_source
+    assert "Có tự đổi nguồn không" in cockpit_source or "Tự đổi nguồn" in cockpit_source
+    assert "provider policy" not in cockpit_source.lower()
+    assert "route policy" not in cockpit_source.lower()
