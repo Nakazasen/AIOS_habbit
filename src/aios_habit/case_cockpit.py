@@ -14,6 +14,14 @@ from aios_habit.case_prompt import build_prompt_pack
 from aios_habit.case_audit import audit_case_cockpit_state
 from aios_habit.workspace_models import init_workspace_store, load_workspaces, load_notebooks, save_workspace, save_notebook, Workspace, KnowledgeNotebook
 from aios_habit.source_ingest import init_source_store, load_sources, ingest_source_document
+from aios_habit.provider_catalog import (
+    GROUP_CUSTOM,
+    GROUP_LOCAL_INTERNAL,
+    GROUP_NORMAL_DOCS,
+    get_provider_catalog,
+    mask_secret,
+    summarize_provider_for_ui,
+)
 from aios_habit.safety_modes import (
     SAFETY_MODE_COMPANY,
     SAFETY_MODE_NORMAL,
@@ -1638,6 +1646,36 @@ def page_notebooks():
                 
     with tab5:
         st.subheader("Bản đồ & kiểm tra bằng chứng")
+
+        st.markdown("---")
+        st.markdown("### Nguồn AI")
+        st.info("AIOS sẽ tự chọn nguồn AI phù hợp. Tài liệu công ty/mật không gửi ra ngoài. Tài liệu thường có thể dùng toàn bộ nguồn AI đã cấu hình.")
+        provider_groups = {GROUP_LOCAL_INTERNAL: [], GROUP_NORMAL_DOCS: [], GROUP_CUSTOM: []}
+        for provider in get_provider_catalog():
+            provider_groups.setdefault(provider.provider_group, []).append(provider)
+        for group_name in [GROUP_LOCAL_INTERNAL, GROUP_NORMAL_DOCS, GROUP_CUSTOM]:
+            st.markdown(f"#### {group_name}")
+            for provider in provider_groups.get(group_name, []):
+                summary = summarize_provider_for_ui(provider)
+                with st.container(border=True):
+                    cols = st.columns([2, 3, 2, 2])
+                    cols[0].markdown(f"**{summary['name']}**")
+                    cols[1].write(summary['use_for'])
+                    cols[2].write(summary['api_key'])
+                    cols[3].write(summary['status'])
+                    st.caption(summary['notes'])
+                    if provider.provider_group == GROUP_NORMAL_DOCS:
+                        st.caption("Không dùng cho tài liệu công ty/mật. Được dùng khi tài liệu cho phép dùng nguồn AI bên ngoài.")
+                    with st.expander("Cài đặt nâng cao", expanded=False):
+                        st.write(f"- Provider id: `{provider.provider_id}`")
+                        st.write(f"- Loại endpoint: `{provider.endpoint_kind}`")
+                        st.write(f"- URL mặc định: `{provider.default_base_url or 'Người dùng tự nhập'}`")
+                        st.write(f"- Mô hình mặc định: `{', '.join(provider.default_models) if provider.default_models else 'Người dùng tự chọn'}`")
+                        st.write(f"- Khả năng kỹ thuật: `{summary['capabilities']}`")
+        masked_demo = mask_secret(st.session_state.get("local_ai_api_key", ""))
+        if masked_demo:
+            st.caption(f"Khóa đang nhập chỉ hiển thị dạng ẩn: {masked_demo}")
+
         st.markdown("#### AI cục bộ nâng cao")
         st.info(
             "Cấu hình này chỉ giữ trong phiên làm việc hiện tại. Nếu gọi AI cục bộ lỗi "

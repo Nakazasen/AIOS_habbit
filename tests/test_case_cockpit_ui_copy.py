@@ -215,3 +215,27 @@ def test_case_cockpit_qna_modes_are_router_1_copy():
     assert "Chỉ dùng trong máy" in cockpit_source
     assert "Tạo prompt đối chiếu" in cockpit_source
     assert "Hiện AIOS đã có cổng AI cục bộ" in cockpit_source
+
+
+
+def test_case_cockpit_provider_catalog_copy_visible():
+    cockpit_source = Path("src/aios_habit/case_cockpit.py").read_text(encoding="utf-8")
+
+    assert "Nguồn AI" in cockpit_source
+    provider_catalog_source = Path("src/aios_habit/provider_catalog.py").read_text(encoding="utf-8")
+    assert "Nguồn dùng trong máy / nội bộ" in provider_catalog_source
+    assert "Nguồn AI cho tài liệu thường" in provider_catalog_source
+    assert "Nguồn tự cấu hình" in provider_catalog_source
+    assert "Tài liệu công ty/mật không gửi ra ngoài" in cockpit_source
+    assert "Tài liệu thường có thể dùng toàn bộ nguồn AI đã cấu hình" in cockpit_source
+    assert "Ollama" in cockpit_source or "get_provider_catalog" in cockpit_source
+    assert "Gemini" in provider_catalog_source
+
+
+def test_provider_catalog_raw_router_terms_not_visible_in_main_ui():
+    cockpit_source = Path("src/aios_habit/case_cockpit.py").read_text(encoding="utf-8")
+
+    assert "provider policy" not in cockpit_source.lower()
+    assert "route policy" not in cockpit_source.lower()
+    assert "cloud_allowed" not in cockpit_source
+    assert "redacted_export" not in cockpit_source
