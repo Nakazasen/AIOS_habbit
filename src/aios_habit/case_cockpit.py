@@ -712,25 +712,32 @@ def render_mom_qa_result(qa_result: dict, active_ws_id: str):
         "insufficient": "Chưa đủ bằng chứng",
     }.get(answer["confidence_level"], answer["confidence_level"])
     st.caption(f"Mức tin cậy: {confidence_vn} · Không gửi ra ngoài")
-    st.markdown("#### Nhật ký AI đã dùng")
-    if provider_meta.get("route_summary_vi"):
-        route_lines = str(provider_meta["route_summary_vi"]).splitlines()
-        for line in route_lines[1:]:
-            if line.startswith("- "):
-                st.write(line)
-            elif ":" in line:
-                label, value = line.split(":", 1)
-                st.write(f"- **{label}:** {value.strip()}")
-            elif line.strip() and line.strip() != "Các lần thử:":
-                st.write(line)
-    else:
-        route_mode = "Nguồn AI tự động" if provider_meta.get("mode") in {"auto_best_local_bridge", "auto_best_router"} else "Trong máy"
-        provider_name = provider_meta.get("provider_name") or "dữ liệu cục bộ"
-        changed_source = "Chưa cần" if not provider_meta.get("used_fallback") else "Có, đã quay về dữ liệu trong máy"
-        st.write(f"- **Cách xử lý:** {route_mode}")
-        st.write("- **Có gửi ra ngoài không:** Không")
-        st.write(f"- **Nguồn AI:** {provider_name}")
-        st.write(f"- **Có tự đổi nguồn không:** {changed_source}")
+    from aios_habit.route_log_ui import format_route_log_for_ui
+    route_log = format_route_log_for_ui(provider_meta)
+    st.markdown(f"#### {route_log['title']}")
+    with st.container(border=True):
+        st.write(f"- **Cách xử lý:** {route_log['summary_badge']}")
+        st.write(f"- **Có gửi ra ngoài không:** {route_log['external_status']}")
+        st.write(f"- **Nguồn đã dùng:** {route_log['main_provider']}")
+        if route_log.get("model"):
+            st.write(f"- **Mô hình:** {route_log['model']}")
+        st.write(f"- **Tự đổi nguồn:** {route_log['fallback_status']}")
+        st.write(f"- **Lý do:** {route_log['reason']}")
+        if route_log['external_status'] == "Không gửi ra ngoài":
+            st.success("Tài liệu này được xử lý theo chế độ công ty/mật nên không gửi ra ngoài.")
+        else:
+            st.info("Tài liệu thường: AIOS được phép dùng nguồn AI đã cấu hình.")
+        if route_log['summary_badge'] == "Tự đổi về dữ liệu cục bộ":
+            st.warning("Chưa có nguồn AI phù hợp hoặc nguồn AI lỗi. AIOS đã tự trả lời bằng dữ liệu cục bộ.")
+    with st.expander("Chi tiết các lần thử", expanded=False):
+        if not route_log["attempts"]:
+            st.write("AIOS trả lời trực tiếp bằng dữ liệu cục bộ, chưa cần thử nguồn AI ngoài.")
+        for attempt in route_log["attempts"]:
+            st.write(f"- **Nguồn AI:** {attempt['source']}")
+            st.write(f"  - **Kết quả:** {attempt['status_vi']}")
+            st.write(f"  - **Lý do:** {attempt['reason_vi']}")
+            if attempt.get("latency_ms"):
+                st.write(f"  - **Thời gian:** {attempt['latency_ms']} ms")
     st.markdown("#### Nguồn đã dùng")
     if not answer["source_refs"]:
         st.info("Chưa có nguồn đủ mạnh cho câu hỏi này.")
@@ -1191,6 +1198,7 @@ def page_notebooks():
                                         "route_summary_vi": router_result.route_summary_vi,
                                         "attempts": [attempt.__dict__ for attempt in router_result.attempts],
                                     }
+                                    answer["route_log_note"] = router_result.route_summary_vi
                                 else:
                                     answer["provider_meta"] = {
                                         "mode": "machine_only",
@@ -1235,7 +1243,7 @@ def page_notebooks():
                     if not question.strip():
                         st.error("Vui lòng nhập câu hỏi.")
                     else:
-                        prompt = build_notebook_question_prompt(selected_nb_id, question, "local_ai", "local")
+                        prompt = build_notebook_question_prompt(selected_nb_id, question, "external_review", "cloud_safe")
                         st.text_area("Prompt để copy (Gói prompt Q&A đã sinh)", value=prompt, height=200, key="local_prompt_out")
                         st.markdown("**Xem trước Prompt (để đọc dễ dàng):**")
                         st.code(prompt, language="markdown")

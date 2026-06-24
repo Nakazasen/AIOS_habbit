@@ -193,11 +193,11 @@ def test_case_cockpit_vietnamese_safety_modes_visible():
 def test_case_cockpit_route_log_copy_visible():
     cockpit_source = Path("src/aios_habit/case_cockpit.py").read_text(encoding="utf-8")
 
-    assert "Nhật ký AI đã dùng" in cockpit_source
+    assert "Nhật ký AI đã dùng" in cockpit_source or "format_route_log_for_ui" in cockpit_source
     assert "Cách xử lý" in cockpit_source
     assert "Có gửi ra ngoài không" in cockpit_source
     assert "Nguồn AI" in cockpit_source
-    assert "Có tự đổi nguồn không" in cockpit_source
+    assert "Có tự đổi nguồn không" in cockpit_source or "Tự đổi nguồn" in cockpit_source
 
 
 def test_case_cockpit_no_raw_router_terms_in_main_source():
@@ -248,8 +248,29 @@ def test_case_cockpit_router3_route_log_wiring():
     assert "RouterRequest" in cockpit_source
     assert "route_answer" in cockpit_source
     assert "route_summary_vi" in cockpit_source
-    assert "Nhật ký AI đã dùng" in cockpit_source
+    assert "Nhật ký AI đã dùng" in cockpit_source or "format_route_log_for_ui" in cockpit_source
     assert "Có gửi ra ngoài không" in cockpit_source
-    assert "Có tự đổi nguồn không" in cockpit_source or "Tự đổi nguồn" in cockpit_source
+    assert "Có tự đổi nguồn không" in cockpit_source or "Tự đổi nguồn" in cockpit_source or "Tự đổi nguồn" in cockpit_source
     assert "provider policy" not in cockpit_source.lower()
     assert "route policy" not in cockpit_source.lower()
+
+
+
+def test_case_cockpit_router4_route_log_polish_copy():
+    cockpit_source = Path("src/aios_habit/case_cockpit.py").read_text(encoding="utf-8")
+    assert "Chi tiết các lần thử" in cockpit_source
+    assert "Có gửi ra ngoài không" in cockpit_source
+    assert "Tự đổi nguồn" in cockpit_source
+    assert "Tài liệu này được xử lý theo chế độ công ty/mật nên không gửi ra ngoài" in cockpit_source
+    assert "Tài liệu thường: AIOS được phép dùng nguồn AI đã cấu hình" in cockpit_source
+    assert "Chưa có nguồn AI phù hợp hoặc nguồn AI lỗi" in cockpit_source
+    assert "format_route_log_for_ui" in cockpit_source
+    assert "provider policy" not in cockpit_source.lower()
+    assert "route policy" not in cockpit_source.lower()
+
+
+
+def test_case_cockpit_prompt_comparison_uses_safe_redacted_prompt():
+    cockpit_source = Path("src/aios_habit/case_cockpit.py").read_text(encoding="utf-8")
+    assert 'build_notebook_question_prompt(selected_nb_id, question, "external_review", "cloud_safe")' in cockpit_source
+    assert 'build_notebook_question_prompt(selected_nb_id, question, "local_ai", "local")' not in cockpit_source
