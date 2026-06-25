@@ -242,6 +242,24 @@ def test_provider_catalog_raw_router_terms_not_visible_in_main_ui():
     assert "redacted_export" not in cockpit_source
 
 
+def test_case_cockpit_provider_health_copy_visible_and_secret_safe():
+    cockpit_source = Path("src/aios_habit/case_cockpit.py").read_text(encoding="utf-8")
+    provider_health_source = Path("src/aios_habit/provider_health.py").read_text(encoding="utf-8")
+    joined = cockpit_source + provider_health_source
+
+    assert "Tình trạng nguồn AI" in cockpit_source
+    assert "provider_health_table_for_ui" in cockpit_source
+    assert "Sẵn sàng" in provider_health_source
+    assert "Chưa cấu hình" in provider_health_source
+    assert "Đang tạm nghỉ" in provider_health_source
+    assert "Bị tắt do lỗi xác thực" in provider_health_source
+    assert "Tài liệu công ty/mật vẫn không gửi ra ngoài" in cockpit_source
+    assert ("sk" + "-") not in joined
+    assert ("AI" + "za") not in joined
+    assert ("nvapi" + "-") not in joined
+    assert ("Authorization" + ": Bearer") not in joined
+
+
 
 def test_case_cockpit_router3_route_log_wiring():
     cockpit_source = Path("src/aios_habit/case_cockpit.py").read_text(encoding="utf-8")

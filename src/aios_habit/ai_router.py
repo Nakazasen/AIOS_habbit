@@ -2,11 +2,18 @@ from __future__ import annotations
 
 import time
 import urllib.error
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from typing import Callable, Any
 
 from aios_habit.ai_provider_bridge import ProviderConfig, answer_with_provider
 from aios_habit.provider_catalog import get_provider_profile, is_provider_allowed_for_safety_mode
+from aios_habit.provider_health import (
+    ProviderHealthStore,
+    STATUS_COOLDOWN,
+    STATUS_DISABLED,
+    cooldown_seconds_for_error,
+    mask_key_id,
+)
 from aios_habit.safety_modes import SAFETY_MODE_AUTO, SAFETY_MODE_COMPANY, SAFETY_MODE_NORMAL
 
 @dataclass
@@ -31,6 +38,7 @@ class RouterProviderConfig:
     trusted_internal: bool = False
     priority: int = 100
     timeout_seconds: int = 30
+    api_keys: list[str] = field(default_factory=list)
 
 @dataclass
 class RouterAttempt:
@@ -80,7 +88,7 @@ def classify_provider_error(error: Exception | str) -> str:
 
 
 def should_cooldown(error_type: str) -> int:
-    return {"rate_limited": 600, "timeout": 120, "server_error": 120, "bad_response": 60}.get(error_type, 0)
+    return cooldown_seconds_for_error(error_type)
 
 
 def fallback_to_deterministic(request: RouterRequest, reason_vi: str, attempts: list[RouterAttempt] | None = None) -> RouterResult:
@@ -125,19 +133,93 @@ def call_openai_compatible_provider(config: RouterProviderConfig, request: Route
     return res.answer_text
 
 
-def route_answer(request: RouterRequest, provider_configs: list[RouterProviderConfig], health_state: dict[str, RouterHealthState] | None = None, provider_client: ProviderClient | None = None) -> RouterResult:
-    health_state = health_state if health_state is not None else {}
-    candidates, attempts = select_candidate_providers(request, provider_configs, health_state)
+def _candidate_keys(config: RouterProviderConfig) -> list[str]:
+    keys = [str(key) for key in config.api_keys if str(key).strip()]
+    if keys:
+        return keys
+    return [config.api_key] if config.api_key else [""]
+
+
+def _expand_provider_key_configs(provider_configs: list[RouterProviderConfig]) -> list[RouterProviderConfig]:
+    expanded: list[RouterProviderConfig] = []
+    for cfg in provider_configs:
+        keys = _candidate_keys(cfg)
+        for key in keys:
+            expanded.append(replace(cfg, api_key=key, api_keys=[]))
+    return expanded
+
+
+def _health_store_from_state(
+    health_state: dict[str, RouterHealthState] | ProviderHealthStore | None,
+) -> tuple[ProviderHealthStore, dict[str, RouterHealthState] | None]:
+    if isinstance(health_state, ProviderHealthStore):
+        return health_state, None
+    return ProviderHealthStore(), health_state if health_state is not None else {}
+
+
+def _sync_legacy_health(
+    legacy_state: dict[str, RouterHealthState] | None,
+    provider_id: str,
+    status: str,
+    error_type: str = "",
+    cooldown_until: float = 0.0,
+) -> None:
+    if legacy_state is None:
+        return
+    state = legacy_state.setdefault(provider_id, RouterHealthState(provider_id))
+    if status == "success":
+        state.status = "healthy"
+        state.last_error_type = ""
+        state.cooldown_until = 0.0
+        state.failure_count = max(0, state.failure_count - 1)
+        return
+    state.failure_count += 1
+    state.last_error_type = error_type
+    if status == STATUS_DISABLED:
+        state.status = "disabled"
+        state.cooldown_until = 0.0
+    elif status == STATUS_COOLDOWN:
+        state.status = "cooldown"
+        state.cooldown_until = cooldown_until
+    else:
+        state.status = "unknown"
+
+
+def _skip_reason_for_key(health_store: ProviderHealthStore, provider_id: str, key_id_masked: str) -> tuple[str, str]:
+    state = health_store.get_provider_state(provider_id).get(key_id_masked)
+    if state and state.status == STATUS_DISABLED:
+        return "blocked", "Khóa AI bị tắt trong phiên này do lỗi xác thực."
+    if state and state.status == STATUS_COOLDOWN and state.cooldown_until > time.time():
+        return "cooldown", "Nguồn AI đang tạm nghỉ sau lỗi gần nhất; AIOS thử nguồn khác nếu có."
+    return "skipped", "Nguồn AI chưa sẵn sàng."
+
+
+def route_answer(
+    request: RouterRequest,
+    provider_configs: list[RouterProviderConfig],
+    health_state: dict[str, RouterHealthState] | ProviderHealthStore | None = None,
+    provider_client: ProviderClient | None = None,
+) -> RouterResult:
+    health_store, legacy_state = _health_store_from_state(health_state)
+    key_configs = _expand_provider_key_configs(provider_configs)
+    candidates, attempts = select_candidate_providers(request, key_configs, legacy_state)
     if not candidates:
         reason = "Không gửi ra ngoài vì đây là tài liệu công ty/mật." if request.safety_mode_label == SAFETY_MODE_COMPANY else "Chưa có nguồn AI nào được cấu hình. AIOS đang trả lời bằng dữ liệu cục bộ."
         return fallback_to_deterministic(request, reason, attempts)
     client = provider_client or call_openai_compatible_provider
     for cfg in candidates[:max(1, request.max_attempts)]:
+        key_id_masked = mask_key_id(cfg.api_key)
+        if not health_store.is_key_available(cfg.provider_id, key_id_masked):
+            status, reason_vi = _skip_reason_for_key(health_store, cfg.provider_id, key_id_masked)
+            attempts.append(RouterAttempt(cfg.provider_id, cfg.display_name_vi, cfg.model_name, status, reason_vi, error_type=status))
+            continue
         started = time.time()
         try:
             answer = client(cfg, request)
             if not str(answer).strip():
                 raise RuntimeError("empty answer")
+            health_store.record_success(cfg.provider_id, key_id_masked)
+            _sync_legacy_health(legacy_state, cfg.provider_id, "success")
             attempts.append(RouterAttempt(cfg.provider_id, cfg.display_name_vi, cfg.model_name, "success", "Đã dùng nguồn AI phù hợp cho tài liệu thường.", round((time.time()-started)*1000)))
             result = RouterResult(answer, cfg.display_name_vi, cfg.model_name, False, "external_allowed_normal_docs", attempts, source_refs=request.source_refs)
             result.route_summary_vi = build_route_summary_vi(result, external_sent=_is_cloud(cfg.provider_id), reason_vi="Có, vì đây là tài liệu thường" if _is_cloud(cfg.provider_id) else "Không")
@@ -145,11 +227,12 @@ def route_answer(request: RouterRequest, provider_configs: list[RouterProviderCo
         except Exception as exc:
             et = classify_provider_error(exc)
             attempts.append(RouterAttempt(cfg.provider_id, cfg.display_name_vi, cfg.model_name, "failed", "Nguồn AI lỗi, AIOS thử nguồn tiếp theo.", round((time.time()-started)*1000), et))
-            state = health_state.setdefault(cfg.provider_id, RouterHealthState(cfg.provider_id))
-            state.failure_count += 1; state.last_error_type = et
-            if et == "auth_error": state.status = "disabled"
-            cd = should_cooldown(et)
-            if cd: state.status = "cooldown"; state.cooldown_until = time.time() + cd
+            key_state = health_store.record_failure(cfg.provider_id, key_id_masked, et)
+            _sync_legacy_health(legacy_state, cfg.provider_id, key_state.status, et, key_state.cooldown_until)
+            if key_state.status == STATUS_DISABLED:
+                attempts[-1].reason_vi = "Lỗi xác thực khóa AI; khóa này bị tắt trong phiên hiện tại."
+            elif key_state.status == STATUS_COOLDOWN:
+                attempts[-1].reason_vi = "Nguồn AI lỗi tạm thời; AIOS tạm nghỉ nguồn này và thử nguồn khác."
     return fallback_to_deterministic(request, "Tất cả nguồn AI đều lỗi. AIOS đang trả lời bằng dữ liệu cục bộ.", attempts)
 
 

@@ -1,4 +1,5 @@
 from aios_habit.ai_router import *
+from aios_habit.provider_health import ProviderHealthStore, mask_key_id
 from aios_habit.safety_modes import SAFETY_MODE_AUTO, SAFETY_MODE_COMPANY, SAFETY_MODE_NORMAL
 
 
@@ -152,3 +153,78 @@ def test_route_log_does_not_include_secret_like_provider_errors():
     )
     assert result.used_fallback
     assert "fake-secret-value" not in result.route_summary_vi
+
+
+def test_provider_success_records_health_store_success():
+    store = ProviderHealthStore()
+    config = RouterProviderConfig("groq", "Groq", "http://example.test/v1", "model", "fake-secret-value", True)
+    result = route_answer(req(SAFETY_MODE_NORMAL), [config], store, lambda c, r: "provider answer")
+    state = store.get_provider_state("groq")[mask_key_id("fake-secret-value")]
+    assert result.answer_text == "provider answer"
+    assert state.success_count == 1
+    assert state.status == "healthy"
+
+
+def test_first_key_rate_limited_rotates_to_second_key():
+    store = ProviderHealthStore()
+    config = RouterProviderConfig(
+        "groq",
+        "Groq",
+        "http://example.test/v1",
+        "model",
+        "",
+        True,
+        api_keys=["fake-secret-value-one", "fake-secret-value-two"],
+    )
+    calls = []
+
+    def client(c, r):
+        calls.append(c.api_key)
+        if c.api_key == "fake-secret-value-one":
+            raise RuntimeError("429 rate limit")
+        return "answer from second key"
+
+    result = route_answer(req(SAFETY_MODE_NORMAL), [config], store, client)
+    assert result.answer_text == "answer from second key"
+    assert calls == ["fake-secret-value-one", "fake-secret-value-two"]
+    assert store.get_provider_state("groq")[mask_key_id("fake-secret-value-one")].status == "cooldown"
+
+
+def test_auth_error_disables_failed_key_in_health_store():
+    store = ProviderHealthStore()
+    config = RouterProviderConfig("groq", "Groq", "http://example.test/v1", "model", "fake-secret-value", True)
+    result = route_answer(req(SAFETY_MODE_NORMAL), [config], store, lambda c, r: (_ for _ in ()).throw(RuntimeError("401 invalid api key")))
+    state = store.get_provider_state("groq")[mask_key_id("fake-secret-value")]
+    assert result.used_fallback
+    assert state.status == "disabled"
+
+
+def test_cooldown_key_is_skipped_before_provider_call():
+    store = ProviderHealthStore()
+    key_id = mask_key_id("fake-secret-value")
+    store.record_failure("groq", key_id, "rate_limited")
+    config = RouterProviderConfig("groq", "Groq", "http://example.test/v1", "model", "fake-secret-value", True)
+    calls = []
+    result = route_answer(req(SAFETY_MODE_NORMAL), [config], store, lambda c, r: calls.append(c.provider_id) or "bad")
+    assert calls == []
+    assert result.used_fallback
+    assert result.attempts[-1].status == "cooldown"
+
+
+def test_all_health_unavailable_falls_back_deterministic():
+    store = ProviderHealthStore()
+    store.record_failure("groq", mask_key_id("fake-secret-value"), "auth_error")
+    config = RouterProviderConfig("groq", "Groq", "http://example.test/v1", "model", "fake-secret-value", True)
+    result = route_answer(req(SAFETY_MODE_NORMAL), [config], store, lambda c, r: "bad")
+    assert result.answer_text == "fallback"
+    assert result.used_fallback
+
+
+def test_company_cloud_block_happens_before_health_or_provider_call():
+    store = ProviderHealthStore()
+    config = RouterProviderConfig("openrouter", "OpenRouter", "http://example.test/v1", "model", "fake-secret-value", True)
+    calls = []
+    result = route_answer(req(SAFETY_MODE_COMPANY), [config], store, lambda c, r: calls.append(c.provider_id) or "bad")
+    assert calls == []
+    assert store.get_provider_state("openrouter") == {}
+    assert result.attempts[0].status == "blocked"

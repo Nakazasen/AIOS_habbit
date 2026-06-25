@@ -22,6 +22,10 @@ from aios_habit.provider_catalog import (
     mask_secret,
     summarize_provider_for_ui,
 )
+from aios_habit.provider_health import (
+    ProviderHealthStore,
+    provider_health_table_for_ui,
+)
 from aios_habit.safety_modes import (
     SAFETY_MODE_COMPANY,
     SAFETY_MODE_NORMAL,
@@ -1186,7 +1190,8 @@ def page_notebooks():
                                         notebook_name=nb_opts[selected_nb_id],
                                     )
                                     provider_configs = providers_from_env_or_session(session_state=st.session_state)
-                                    router_result = route_answer(router_request, provider_configs, st.session_state.setdefault("ai_router_health", {}))
+                                    health_store = st.session_state.setdefault("ai_provider_health_store", ProviderHealthStore())
+                                    router_result = route_answer(router_request, provider_configs, health_store)
                                     answer["answer_text"] = router_result.answer_text
                                     answer["provider_meta"] = {
                                         "mode": "auto_best_router",
@@ -1673,6 +1678,17 @@ def page_notebooks():
         st.markdown("---")
         st.markdown("### Nguồn AI")
         st.info("AIOS sẽ tự chọn nguồn AI phù hợp. Tài liệu công ty/mật không gửi ra ngoài. Tài liệu thường có thể dùng toàn bộ nguồn AI đã cấu hình.")
+        from aios_habit.ai_router import providers_from_env_or_session
+
+        health_store = st.session_state.setdefault("ai_provider_health_store", ProviderHealthStore())
+        provider_configs = providers_from_env_or_session(session_state=st.session_state)
+        health_rows = provider_health_table_for_ui(provider_configs, health_store)
+        st.markdown("#### Tình trạng nguồn AI")
+        if not provider_configs:
+            st.info("Chưa có nguồn AI ngoài nào được cấu hình. AIOS vẫn trả lời bằng dữ liệu cục bộ.")
+        st.info("Tài liệu công ty/mật vẫn không gửi ra ngoài, dù nguồn AI ngoài đã cấu hình.")
+        st.table(health_rows)
+
         provider_groups = {GROUP_LOCAL_INTERNAL: [], GROUP_NORMAL_DOCS: [], GROUP_CUSTOM: []}
         for provider in get_provider_catalog():
             provider_groups.setdefault(provider.provider_group, []).append(provider)
