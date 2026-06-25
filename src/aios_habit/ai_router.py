@@ -171,11 +171,106 @@ def build_route_summary_vi(result: RouterResult, external_sent: bool | None = No
     return "\n".join(lines)
 
 
+
+ENV_PROVIDER_MAP = (
+    ("openrouter", "OPENROUTER_API_KEY", "AIOS_OPENROUTER_MODEL"),
+    ("groq", "GROQ_API_KEY", "AIOS_GROQ_MODEL"),
+    ("deepseek", "DEEPSEEK_API_KEY", "AIOS_DEEPSEEK_MODEL"),
+    ("mistral", "MISTRAL_API_KEY", "AIOS_MISTRAL_MODEL"),
+    ("cerebras", "CEREBRAS_API_KEY", "AIOS_CEREBRAS_MODEL"),
+    ("sambanova", "SAMBANOVA_API_KEY", "AIOS_SAMBANOVA_MODEL"),
+    ("github_models", "GITHUB_TOKEN", "AIOS_GITHUB_MODELS_MODEL"),
+    ("ai21", "AI21_API_KEY", "AIOS_AI21_MODEL"),
+)
+
+
+def _env_int(
+    env: dict[str, Any],
+    name: str,
+    default: int,
+    minimum: int = 1,
+    maximum: int = 120,
+) -> int:
+    try:
+        parsed = int(env.get(name, default))
+    except (TypeError, ValueError):
+        return default
+    return max(minimum, min(maximum, parsed))
+
+
+def provider_configs_from_env(env: dict[str, Any] | None = None) -> list[RouterProviderConfig]:
+    """Create provider configs from environment without logging secrets."""
+    import os
+    values = env if env is not None else os.environ
+    configs: list[RouterProviderConfig] = []
+    local_timeout = _env_int(values, "AIOS_LOCAL_AI_TIMEOUT_SECONDS", 30)
+    cloud_timeout = _env_int(values, "AIOS_PROVIDER_TIMEOUT_SECONDS", 30)
+    local_endpoint = str(values.get("AIOS_LOCAL_AI_ENDPOINT") or "").strip()
+    local_model = str(values.get("AIOS_LOCAL_AI_MODEL") or "").strip()
+    if local_endpoint and local_model:
+        profile = get_provider_profile("openai_compatible_local")
+        configs.append(
+            RouterProviderConfig(
+                "openai_compatible_local",
+                profile.display_name_vi if profile else "AI trong máy tương thích OpenAI",
+                local_endpoint,
+                local_model,
+                str(values.get("AIOS_LOCAL_AI_API_KEY") or ""),
+                True,
+                True,
+                10,
+                local_timeout,
+            )
+        )
+    priority = 100
+    for provider_id, key_name, model_name_env in ENV_PROVIDER_MAP:
+        api_key = str(values.get(key_name) or "").strip()
+        if not api_key:
+            continue
+        profile = get_provider_profile(provider_id)
+        if not profile or profile.endpoint_kind != "cloud_openai_compatible":
+            continue
+        model = str(values.get(model_name_env) or (profile.default_models[0] if profile.default_models else "")).strip()
+        if not model:
+            continue
+        configs.append(
+            RouterProviderConfig(
+                provider_id,
+                profile.display_name_vi,
+                profile.default_base_url.rstrip("/") + "/chat/completions",
+                model,
+                api_key,
+                True,
+                False,
+                priority,
+                cloud_timeout,
+            )
+        )
+        priority += 10
+    return configs
+
+
+def provider_env_presence(env: dict[str, Any] | None = None) -> dict[str, bool]:
+    """Return key presence only; never returns secret values."""
+    import os
+    values = env if env is not None else os.environ
+    names = [item[1] for item in ENV_PROVIDER_MAP] + [
+        "GEMINI_API_KEY",
+        "GOOGLE_API_KEY",
+        "HF_TOKEN",
+        "AIOS_LOCAL_AI_ENDPOINT",
+        "AIOS_LOCAL_AI_MODEL",
+        "AIOS_LOCAL_AI_API_KEY",
+    ]
+    names.extend(name for name in values if name.startswith("AIOS_PROVIDER_") or name.startswith("AIOS_LOCAL_AI_"))
+    names = sorted(set(names))
+    return {name: bool(values.get(name)) for name in names}
+
 def providers_from_env_or_session(catalog=None, session_state: dict[str, Any] | None = None) -> list[RouterProviderConfig]:
     session_state = session_state or {}
     endpoint = str(session_state.get("local_ai_endpoint", "")).strip()
     model = str(session_state.get("local_ai_model", "")).strip()
-    configs = []
+    configs = provider_configs_from_env()
     if endpoint and model:
         configs.append(RouterProviderConfig("openai_compatible_local", "AI trong máy tương thích OpenAI", endpoint, model, str(session_state.get("local_ai_api_key", "")), True, True, 10, int(session_state.get("local_ai_timeout", 30))))
     return configs

@@ -89,3 +89,66 @@ def test_route_summary_vietnamese_and_no_raw_labels():
     assert "local_only" not in summary
     assert "provider policy" not in summary.lower()
     assert "route policy" not in summary.lower()
+
+
+def test_provider_configs_from_env_uses_openai_compatible_without_printing_secret(capsys):
+    env = {
+        "GROQ_API_KEY": "fake-secret-value",
+        "AIOS_GROQ_MODEL": "llama-test",
+        "AIOS_PROVIDER_TIMEOUT_SECONDS": "bad",
+    }
+    configs = provider_configs_from_env(env)
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert captured.err == ""
+    assert len(configs) == 1
+    assert configs[0].provider_id == "groq"
+    assert configs[0].api_key == "fake-secret-value"
+    assert configs[0].endpoint_url.endswith("/chat/completions")
+    assert configs[0].model_name == "llama-test"
+    assert configs[0].timeout_seconds == 30
+
+
+def test_provider_env_presence_does_not_return_secret_values():
+    presence = provider_env_presence({
+        "OPENROUTER_API_KEY": "fake-secret-value",
+        "AIOS_PROVIDER_CUSTOM": "also-secret",
+    })
+    assert presence["OPENROUTER_API_KEY"] is True
+    assert presence["AIOS_PROVIDER_CUSTOM"] is True
+    assert "fake-secret-value" not in str(presence)
+    assert "also-secret" not in str(presence)
+
+
+def test_missing_key_env_loader_returns_no_cloud_config():
+    assert provider_configs_from_env({}) == []
+
+
+def test_company_secret_blocks_env_cloud_config_even_with_key():
+    configs = provider_configs_from_env({"OPENROUTER_API_KEY": "fake-secret-value"})
+    called = []
+    result = route_answer(req(SAFETY_MODE_COMPANY), configs, {}, lambda c, r: called.append(c.provider_id) or "bad")
+    assert called == []
+    assert result.used_fallback
+    assert all(a.status == "blocked" for a in result.attempts)
+
+
+def test_normal_docs_env_config_can_use_mock_provider():
+    configs = provider_configs_from_env({"DEEPSEEK_API_KEY": "fake-secret-value"})
+    result = route_answer(req(SAFETY_MODE_NORMAL), configs, {}, lambda c, r: "real-compatible mock answer")
+    assert result.answer_text == "real-compatible mock answer"
+    assert result.used_provider == "DeepSeek"
+    assert not result.used_fallback
+    assert "fake-secret-value" not in result.route_summary_vi
+
+
+def test_route_log_does_not_include_secret_like_provider_errors():
+    configs = provider_configs_from_env({"OPENROUTER_API_KEY": "fake-secret-value"})
+    result = route_answer(
+        req(SAFETY_MODE_NORMAL),
+        configs,
+        {},
+        lambda c, r: (_ for _ in ()).throw(RuntimeError("401 invalid api key fake-secret-value")),
+    )
+    assert result.used_fallback
+    assert "fake-secret-value" not in result.route_summary_vi
