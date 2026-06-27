@@ -1,6 +1,7 @@
 import json
 import socket
 import threading
+import urllib.error
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 import pytest
@@ -115,6 +116,30 @@ def test_provider_timeout_uses_fallback(monkeypatch):
     assert result.used_fallback
     assert result.answer_text == "Timeout fallback"
     assert result.safety_status == "fallback_provider_error"
+
+
+def test_provider_http_error_reports_sanitized_status(monkeypatch):
+    monkeypatch.setattr(
+        "aios_habit.ai_provider_bridge._post_chat",
+        lambda *args, **kwargs: (_ for _ in ()).throw(
+            urllib.error.HTTPError("https://example.invalid", 401, "Unauthorized", {}, None)
+        ),
+    )
+
+    result = answer_with_provider(
+        question="Synthetic question?",
+        source_context="Synthetic context",
+        config=_config(locality="cloud"),
+        deterministic_answer="HTTP fallback",
+        source_privacy="cloud_allowed",
+    )
+
+    assert not result.ok
+    assert result.used_fallback
+    assert result.answer_text == "HTTP fallback"
+    assert result.safety_status == "fallback_provider_error"
+    assert "HTTP 401" in result.error_message
+    assert "Unauthorized" not in result.error_message
 
 
 def test_openai_compatible_mock_provider_returns_grounded_answer(mock_openai_server):

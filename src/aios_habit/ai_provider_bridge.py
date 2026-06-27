@@ -272,10 +272,13 @@ def answer_with_provider(
             safety_status="local_provider_ok",
         )
     except (urllib.error.URLError, urllib.error.HTTPError, TimeoutError, socket.timeout, OSError, ValueError, RuntimeError) as exc:
+        error_detail = type(exc).__name__
+        if isinstance(exc, urllib.error.HTTPError):
+            error_detail = f"HTTP {exc.code}"
         return _fallback(
             deterministic_answer,
             config,
-            f"AI cục bộ không phản hồi: {type(exc).__name__}.",
+            f"Nguồn AI không phản hồi: {error_detail}.",
             "fallback_provider_error",
         )
 
