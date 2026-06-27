@@ -692,6 +692,8 @@ def render_mom_qa_result(qa_result: dict, active_ws_id: str):
     notebook_name = qa_result["notebook_name"]
 
     st.markdown("### 🤖 Câu trả lời")
+    st.info("Luồng hôm nay: chọn sổ tri thức → hỏi đáp → xem AI đã dùng gì → tạo hồ sơ từ câu trả lời này.")
+    st.caption("Tài liệu công ty/mật sẽ không gửi ra ngoài. Tài liệu thường có thể dùng nguồn AI đã cấu hình khi được phép.")
     st.write(answer["answer_text"])
     provider_meta = answer.get("provider_meta") or {}
     if provider_meta.get("mode") in {"advanced_local", "auto_best_local_bridge"}:
@@ -762,8 +764,9 @@ def render_mom_qa_result(qa_result: dict, active_ws_id: str):
         and created.get("notebook_id") == notebook_id
     )
     if not same_answer_created:
+        st.caption("Việc tiếp theo: nếu câu trả lời hữu ích, tạo hồ sơ để lưu tình huống, bằng chứng và bước xử lý tiếp theo.")
         if st.button(
-            "Tạo hồ sơ sự việc từ câu trả lời",
+            "Tạo hồ sơ từ câu trả lời này",
             key="mom_answer_to_case_btn",
         ):
             try:
@@ -796,14 +799,21 @@ def render_mom_qa_result(qa_result: dict, active_ws_id: str):
                 st.error(f"Không thể tạo hồ sơ sự việc: {exc}")
 
     if same_answer_created:
-        st.success("Đã tạo hồ sơ sự việc nháp.")
+        st.success(f"Đã tạo hồ sơ: {created['case_id']}")
         st.write(f"**Hồ sơ:** {created['title']}")
+        st.caption("Mở trang Hồ sơ sự việc để xem hồ sơ vừa tạo và kiểm tra lại trước khi xác nhận.")
         st.button(
             "Mở hồ sơ sự việc",
             key="open_created_qa_case_btn",
             on_click=nav_to_page,
             args=("Hồ sơ sự việc",),
         )
+        st.markdown("#### Tóm tắt tuyến AI đã lưu vào hồ sơ")
+        with st.container(border=True):
+            st.write(f"- **Có gửi ra ngoài không:** {route_log['external_status']}")
+            st.write(f"- **Nguồn AI đã dùng:** {route_log['main_provider']}")
+            st.write(f"- **Có dùng dự phòng cục bộ không:** {route_log['fallback_status']}")
+            st.write(f"- **Ghi chú an toàn:** {route_log['reason']}")
 
     with st.expander("Chi tiết kỹ thuật", expanded=False):
         st.json({k: v for k, v in answer.items() if k != "answer_text"})

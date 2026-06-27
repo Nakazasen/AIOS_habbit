@@ -139,11 +139,11 @@ def test_case_cockpit_upload_refreshes_index_and_view_lists_original_filenames()
 def test_case_cockpit_exposes_working_mom_answer_to_case_action():
     cockpit_source = Path("src/aios_habit/case_cockpit.py").read_text(encoding="utf-8")
 
-    assert '"Tạo hồ sơ sự việc từ câu trả lời"' in cockpit_source
+    assert '"Tạo hồ sơ từ câu trả lời này"' in cockpit_source
     assert 'key="mom_answer_to_case_btn"' in cockpit_source
     assert "create_case_draft_from_qa_answer" in cockpit_source
     assert 'st.session_state["last_mom_qa_result"]' in cockpit_source
-    assert 'st.success("Đã tạo hồ sơ sự việc nháp.")' in cockpit_source
+    assert 'st.success(f"Đã tạo hồ sơ: {created[\'case_id\']}")' in cockpit_source
     assert '"Mở hồ sơ sự việc"' in cockpit_source
 
 
@@ -292,3 +292,19 @@ def test_case_cockpit_prompt_comparison_uses_safe_redacted_prompt():
     cockpit_source = Path("src/aios_habit/case_cockpit.py").read_text(encoding="utf-8")
     assert 'build_notebook_question_prompt(selected_nb_id, question, "external_review", "cloud_safe")' in cockpit_source
     assert 'build_notebook_question_prompt(selected_nb_id, question, "local_ai", "local")' not in cockpit_source
+
+
+def test_case_cockpit_daily_flow_hardening_copy_visible_and_safe():
+    cockpit_source = Path("src/aios_habit/case_cockpit.py").read_text(encoding="utf-8")
+
+    assert "Luồng hôm nay" in cockpit_source
+    assert "Việc tiếp theo" in cockpit_source
+    assert "Đã tạo hồ sơ:" in cockpit_source
+    assert "Tóm tắt tuyến AI đã lưu vào hồ sơ" in cockpit_source
+    assert "Có gửi ra ngoài không" in cockpit_source
+    assert "Nguồn AI đã dùng" in cockpit_source
+    assert "Có dùng dự phòng cục bộ không" in cockpit_source
+    assert "Tài liệu công ty/mật sẽ không gửi ra ngoài" in cockpit_source
+    assert "API key" not in "\n".join(
+        line for line in cockpit_source.splitlines() if "Luồng hôm nay" in line or "Tóm tắt tuyến AI" in line
+    )
