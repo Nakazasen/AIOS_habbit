@@ -1,5 +1,27 @@
 # Changelog
 
+## 2026-06-27 - Real Provider Routing Foundation and Daily Pilot
+
+### Added
+- Added safe real-provider support for normal documents (`Tài liệu thường`) through the AI router.
+- Added provider health, key masking, cooldown, and key-rotation foundation.
+- Added `.gitignore` guard for local API key files including `API Key.txt`, `API*.txt`, `.env`, and provider config files.
+
+### Changed
+- Fixed the custom normal-notebook UI route so `Tự động chọn AI tốt nhất` uses the provider router instead of the old local-only path.
+- Consolidated Vietnamese route-log visibility for provider decisions, external-send status, fallback status, and provider used.
+
+### Validation
+- Verified DeepSeek with synthetic public normal-document pilots.
+- Verified MOM/company data remains blocked from external providers by tests, direct audits, and negative pilot checks.
+- Verified `API Key.txt` remains ignored and untracked; no real key is committed.
+
+### Known Warnings
+- Browser/DOM evidence is partial in some runs because browser-agent automation was unstable.
+- Q&A-to-Case currently preserves answer, source refs, and safety, but does not persist route summary as a dedicated case field yet.
+- Provider key-rotation foundation exists, but real multi-key rotation is not fully field-tested.
+- This is a usable foundation for normal documents, not P1.0 production readiness.
+
 ## 2026-06-21 - Notebook Intelligence & Bridge Persistence (M1.8A - M1.8D)
 
 ### Added
