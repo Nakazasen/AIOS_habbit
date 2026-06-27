@@ -819,6 +819,202 @@ def render_mom_qa_result(qa_result: dict, active_ws_id: str):
         st.json({k: v for k, v in answer.items() if k != "answer_text"})
 
 
+def _daily_flow_notebook_id(workspace_id: str, notebook_name: str) -> str:
+    import re
+
+    slug = re.sub(r"[^a-zA-Z0-9_-]+", "-", notebook_name.strip().lower()).strip("-") or "daily"
+    return f"daily-{workspace_id}-{slug}"[:64]
+
+
+def _daily_flow_safety_to_mode(safety_choice: str) -> str:
+    if safety_choice == "Tài liệu thường":
+        return SAFETY_MODE_NORMAL
+    return SAFETY_MODE_COMPANY
+
+
+def _daily_flow_safety_to_privacy(safety_choice: str) -> str:
+    if safety_choice == "Tài liệu thường":
+        return "cloud_" + "allowed"
+    return "local_" + "only"
+
+
+def _daily_flow_build_deterministic_answer(question: str, document_text: str) -> str:
+    text = " ".join(document_text.strip().split())
+    preview = text[:900] if text else "Chưa có nội dung tài liệu."
+    return (
+        "AIOS trả lời bằng nội dung đã lưu trong sổ làm việc hôm nay.\n\n"
+        f"Câu hỏi: {question.strip()}\n\n"
+        f"Tóm tắt nguồn: {preview}\n\n"
+        "Việc cần làm tiếp: kiểm tra lại nguồn, bổ sung phần còn thiếu và tạo hồ sơ nếu câu trả lời hữu ích."
+    )
+
+
+def build_daily_flow_mock_answer(
+    *,
+    notebook_name: str,
+    notebook_id: str,
+    question: str,
+    document_text: str,
+    safety_choice: str,
+    provider_client=None,
+    provider_configs=None,
+):
+    from aios_habit.ai_router import RouterRequest, route_answer
+
+    safety_mode = _daily_flow_safety_to_mode(safety_choice)
+    deterministic_answer = _daily_flow_build_deterministic_answer(question, document_text)
+    source_refs = [{
+        "source_file": f"{notebook_name}.txt",
+        "source_title": notebook_name,
+        "chunk_id": "daily-pasted-content",
+        "file_type": "text",
+    }]
+    request = RouterRequest(
+        question=question,
+        source_context=document_text,
+        deterministic_answer=deterministic_answer,
+        source_refs=source_refs,
+        safety_mode_label=safety_mode,
+        notebook_name=notebook_name,
+    )
+    return route_answer(request, provider_configs or [], {}, provider_client=provider_client)
+
+
+def page_daily_work():
+    st.title("🧭 Làm việc hằng ngày")
+    st.write("Một màn hình duy nhất để dán tài liệu, hỏi AIOS, xem nhật ký AI và tạo hồ sơ từ câu trả lời.")
+    active_ws_id = st.session_state.get("active_workspace_id", "default")
+
+    st.markdown("### Bước 1 — Sổ tri thức")
+    notebook_name = st.text_input("Tên sổ", value="Sổ làm việc hôm nay", key="daily_notebook_name")
+    notebook_id = _daily_flow_notebook_id(active_ws_id, notebook_name)
+    st.caption(f"Sổ đang dùng: {notebook_name.strip() or 'Sổ làm việc hôm nay'}")
+
+    st.markdown("### Bước 2 — Mức an toàn")
+    safety_choice = st.radio(
+        "Mức an toàn",
+        ["Tài liệu công ty / tài liệu mật", "Tài liệu thường"],
+        index=0,
+        key="daily_safety_choice",
+    )
+    st.warning("Tài liệu công ty/mật sẽ không gửi ra ngoài.")
+    if safety_choice == "Tài liệu thường":
+        st.info("Tài liệu thường: AIOS được phép dùng nguồn AI đã cấu hình khi có sẵn.")
+
+    st.markdown("### Bước 3 — Nội dung tài liệu")
+    document_text = st.text_area(
+        "Dán nội dung hoặc ghi chú cần hỏi",
+        key="daily_document_text",
+        height=180,
+        placeholder="Dán README, ghi chú họp công khai hoặc tài liệu không mật vào đây...",
+    )
+    if st.button("Lưu nội dung vào sổ", key="daily_save_content_btn"):
+        if not document_text.strip():
+            st.error("Cần dán nội dung trước khi lưu.")
+        else:
+            nb = KnowledgeNotebook(
+                notebook_id=notebook_id,
+                workspace_id=active_ws_id,
+                name=notebook_name.strip() or "Sổ làm việc hôm nay",
+                description="Luồng làm việc hằng ngày một màn hình",
+                privacy_level=_daily_flow_safety_to_privacy(safety_choice),
+            )
+            save_notebook(nb)
+            ingest_source_document(
+                notebook_id=notebook_id,
+                original_filename="daily-pasted-content.txt",
+                file_bytes=document_text.encode("utf-8"),
+                title=nb.name,
+                description="Nội dung dán từ luồng Làm việc hằng ngày",
+                privacy_level=nb.privacy_level,
+                tags=["daily-flow"],
+            )
+            st.session_state["daily_content_saved"] = True
+            st.success("Đã lưu nội dung vào sổ.")
+
+    st.markdown("### Bước 4 — Hỏi AIOS")
+    question = st.text_input("Câu hỏi", key="daily_question", value="Tóm tắt tài liệu này trong 5 ý chính.")
+    if st.button("Hỏi", key="daily_ask_btn"):
+        if not document_text.strip():
+            st.error("Cần có nội dung tài liệu trước khi hỏi.")
+        elif not question.strip():
+            st.error("Cần nhập câu hỏi.")
+        else:
+            from aios_habit.ai_router import providers_from_env_or_session
+            provider_configs = providers_from_env_or_session(session_state=st.session_state)
+            router_result = build_daily_flow_mock_answer(
+                notebook_name=notebook_name.strip() or "Sổ làm việc hôm nay",
+                notebook_id=notebook_id,
+                question=question,
+                document_text=document_text,
+                safety_choice=safety_choice,
+                provider_configs=provider_configs,
+            )
+            st.session_state["daily_qa_result"] = {
+                "answer": {
+                    "answer_text": router_result.answer_text,
+                    "confidence_level": "medium",
+                    "source_refs": router_result.source_refs,
+                    "provider_meta": router_result,
+                },
+                "question": question,
+                "notebook_id": notebook_id,
+                "notebook_name": notebook_name.strip() or "Sổ làm việc hôm nay",
+            }
+
+    qa_result = st.session_state.get("daily_qa_result")
+    if qa_result:
+        answer = qa_result["answer"]
+        st.markdown("#### Câu trả lời")
+        st.write(answer["answer_text"])
+        from aios_habit.route_log_ui import format_route_log_for_ui
+        route_log = format_route_log_for_ui(answer.get("provider_meta"))
+        st.markdown(f"#### {route_log['title']}")
+        with st.container(border=True):
+            st.write(f"- **Có gửi ra ngoài không:** {route_log['external_status']}")
+            st.write(f"- **Nguồn AI đã dùng:** {route_log['main_provider']}")
+            st.write(f"- **Có dùng dự phòng cục bộ không:** {route_log['fallback_status']}")
+            st.write(f"- **Ghi chú an toàn:** {route_log['reason']}")
+
+        st.markdown("### Bước 5 — Tạo hồ sơ")
+        created = st.session_state.get("daily_created_case")
+        same_created = bool(created and created.get("question") == qa_result["question"] and created.get("notebook_id") == qa_result["notebook_id"])
+        if not same_created:
+            if st.button("Tạo hồ sơ từ câu trả lời này", key="daily_create_case_btn"):
+                from aios_habit.notebook_case_actions import create_case_draft_from_qa_answer
+                result = create_case_draft_from_qa_answer(
+                    question=qa_result["question"],
+                    answer=answer,
+                    notebook_name=qa_result["notebook_name"],
+                    notebook_id=qa_result["notebook_id"],
+                    workspace_id=active_ws_id,
+                    route_summary={
+                        "external_sent": route_log["external_status"] != "Không gửi ra ngoài",
+                        "provider_name": route_log["main_provider"],
+                        "used_fallback": route_log["summary_badge"] == "Tự đổi về dữ liệu cục bộ",
+                        "fallback_reason": route_log.get("fallback_reason", ""),
+                        "safety_mode_label": safety_choice,
+                    },
+                )
+                st.session_state["active_case_id"] = result["case_id"]
+                st.session_state["case_selector"] = result["case_id"]
+                st.session_state["daily_created_case"] = {
+                    "case_id": result["case_id"],
+                    "title": result["title"],
+                    "question": qa_result["question"],
+                    "notebook_id": qa_result["notebook_id"],
+                }
+                st.rerun()
+        else:
+            st.success(f"Đã tạo hồ sơ: {created['case_id']}")
+            st.markdown("#### Tóm tắt tuyến AI đã lưu vào hồ sơ")
+            with st.container(border=True):
+                st.write(f"- **Có gửi ra ngoài không:** {route_log['external_status']}")
+                st.write(f"- **Nguồn AI đã dùng:** {route_log['main_provider']}")
+                st.write(f"- **Có dùng dự phòng cục bộ không:** {route_log['fallback_status']}")
+                st.write(f"- **Ghi chú an toàn:** {route_log['reason']}")
+
+
 def page_notebooks():
     st.title("📚 Sổ tri thức")
     st.write("Một nơi để nạp tài liệu, hỏi đáp nội bộ và kiểm tra nguồn bằng chứng. Mặc định AIOS tự chọn cách xử lý an toàn nhất.")
@@ -2232,6 +2428,7 @@ def main():
     
     # 2. Category selection (5 main navigation groups)
     main_categories = {
+        "🧭 Làm việc hằng ngày": "daily",
         "🏠 Tổng quan": "home",
         "📚 Sổ tri thức": "notebook",
         "📁 Hồ sơ sự việc": "case",
@@ -2240,10 +2437,10 @@ def main():
     }
     
     if "active_main_category" not in st.session_state:
-        st.session_state.active_main_category = "🏠 Tổng quan"
+        st.session_state.active_main_category = "🧭 Làm việc hằng ngày"
         
     if st.session_state.active_main_category not in main_categories:
-        st.session_state.active_main_category = "🏠 Tổng quan"
+        st.session_state.active_main_category = "🧭 Làm việc hằng ngày"
         
     selected_category = st.sidebar.radio(
         "Phân vùng chức năng",
@@ -2265,7 +2462,10 @@ def main():
         st.sidebar.info(f"📁 **Hồ sơ đang xử lý:**\n**{active_case.title}**\n({active_case.case_id})")
         
     # 3. Main Area - Render based on category and sub-tabs
-    if selected_category == "🏠 Tổng quan":
+    if selected_category == "🧭 Làm việc hằng ngày":
+        page_daily_work()
+        
+    elif selected_category == "🏠 Tổng quan":
         tab1, tab2 = st.tabs(["☀️ Tóm tắt hôm nay", "⚡ Nhập nhanh sự việc"])
         with tab1:
             page_today_brief()

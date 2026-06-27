@@ -308,3 +308,34 @@ def test_case_cockpit_daily_flow_hardening_copy_visible_and_safe():
     assert "API key" not in "\n".join(
         line for line in cockpit_source.splitlines() if "Luồng hôm nay" in line or "Tóm tắt tuyến AI" in line
     )
+
+
+def test_case_cockpit_one_screen_daily_work_flow_copy_and_defaults():
+    cockpit_source = Path("src/aios_habit/case_cockpit.py").read_text(encoding="utf-8")
+
+    assert "Làm việc hằng ngày" in cockpit_source
+    assert "Tên sổ" in cockpit_source
+    assert "Mức an toàn" in cockpit_source
+    assert "Tài liệu công ty / tài liệu mật" in cockpit_source
+    assert "Tài liệu thường" in cockpit_source
+    assert "Dán nội dung hoặc ghi chú cần hỏi" in cockpit_source
+    assert "Lưu nội dung vào sổ" in cockpit_source
+    assert '"Hỏi"' in cockpit_source
+    assert "Tạo hồ sơ từ câu trả lời này" in cockpit_source
+    assert "Đã tạo hồ sơ" in cockpit_source
+    assert "Nhật ký AI đã dùng" in cockpit_source or "format_route_log_for_ui" in cockpit_source
+    assert "Tài liệu công ty/mật sẽ không gửi ra ngoài" in cockpit_source
+    assert 'index=0' in cockpit_source
+    assert 'st.session_state.active_main_category = "🧭 Làm việc hằng ngày"' in cockpit_source
+
+
+def test_case_cockpit_one_screen_flow_has_no_visible_raw_policy_labels():
+    cockpit_source = Path("src/aios_habit/case_cockpit.py").read_text(encoding="utf-8")
+    start = cockpit_source.index("def page_daily_work")
+    end = cockpit_source.index("def page_notebooks")
+    daily_source = cockpit_source[start:end]
+
+    assert "provider policy" not in daily_source.lower()
+    assert "route policy" not in daily_source.lower()
+    assert "cloud_allowed" not in daily_source
+    assert "local_only" not in daily_source
