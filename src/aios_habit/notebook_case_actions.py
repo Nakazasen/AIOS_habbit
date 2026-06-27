@@ -19,12 +19,62 @@ def _safe_answer_summary(answer_text: str) -> str:
     return _short_text(text, 500) or "AIOS đã tạo câu trả lời cục bộ từ Sổ tri thức."
 
 
+_RAW_ROUTE_LABELS = ("cloud_allowed", "local_only", "provider policy", "route policy")
+
+
+def _clean_route_text(value: str, limit: int = 160) -> str:
+    import re
+
+    text = _short_text(value, limit)
+    text = re.sub(r"sk-[0-9A-Za-z_-]+", "", text)
+    text = re.sub(r"AIza[0-9A-Za-z_-]+", "", text)
+    text = re.sub(r"nvapi-[0-9A-Za-z_-]+", "", text)
+    text = re.sub(r"KEY-[0-9A-Za-z_-]+", "", text)
+    for raw in _RAW_ROUTE_LABELS:
+        text = text.replace(raw, "")
+    return " ".join(text.split())
+
+
+def build_safe_route_summary(route_summary: dict = None) -> dict:
+    """Normalize route metadata for persisted case drafts without secrets or raw labels."""
+    data = route_summary or {}
+    if not data:
+        return {}
+
+    external_sent = bool(data.get("external_sent", data.get("external_allowed", False)))
+    provider_name = _clean_route_text(data.get("provider_name") or data.get("provider_used") or "", 80)
+    used_fallback = bool(data.get("used_fallback", data.get("fallback_used", False)))
+    fallback_reason = _clean_route_text(data.get("fallback_reason") or "", 160)
+    safety_mode_label = _clean_route_text(
+        data.get("safety_mode_label")
+        or ("Tài liệu thường" if external_sent else "Tài liệu công ty / tài liệu mật"),
+        80,
+    )
+
+    if external_sent:
+        note_vi = "Có dùng nguồn AI ngoài vì đây là tài liệu thường."
+    else:
+        note_vi = "Không gửi ra ngoài. Câu trả lời được xử lý theo chế độ công ty/mật."
+    if used_fallback:
+        note_vi += " Có dùng trả lời cục bộ dự phòng."
+
+    return {
+        "external_sent": external_sent,
+        "provider_name": provider_name if external_sent else "",
+        "used_fallback": used_fallback,
+        "fallback_reason": fallback_reason,
+        "safety_mode_label": safety_mode_label,
+        "note_vi": note_vi,
+    }
+
+
 def create_case_draft_from_qa_answer(
     question: str,
     answer: dict,
     notebook_name: str,
     notebook_id: str,
     workspace_id: str,
+    route_summary: dict = None,
 ) -> dict:
     """Persist a local-only draft Case and EvidenceItems from one Q&A result."""
     question_clean = _short_text(question, 500)
@@ -45,6 +95,7 @@ def create_case_draft_from_qa_answer(
     )
     confidence = _short_text(answer.get("confidence_level") or "unknown", 30)
     source_origin = "mom_official_local" if notebook_id == "mom" else "knowledge_notebook"
+    safe_route_summary = build_safe_route_summary(route_summary or answer.get("route_summary"))
 
     case_id = f"CASE-{str(uuid.uuid4())[:8].upper()}"
     title = f"Điều tra từ Sổ tri thức: {_short_text(question_clean, 90)}"
@@ -96,6 +147,7 @@ def create_case_draft_from_qa_answer(
         linked_notebook_ids=[notebook_id] if notebook_id else [],
         source_origin=source_origin,
         verification_status="draft",
+        route_summary=safe_route_summary,
         updated_at=datetime.now().isoformat(),
     )
     save_case(new_case)

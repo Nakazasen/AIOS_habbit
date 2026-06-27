@@ -1,7 +1,10 @@
 import pytest
 
 from aios_habit.case_store import load_cases, load_evidence
-from aios_habit.notebook_case_actions import create_case_draft_from_qa_answer
+from aios_habit.notebook_case_actions import (
+    build_safe_route_summary,
+    create_case_draft_from_qa_answer,
+)
 
 
 @pytest.fixture(autouse=True)
@@ -99,3 +102,76 @@ def test_qa_answer_without_refs_still_creates_insufficient_evidence_case():
 def test_qa_case_mapping_rejects_empty_question():
     with pytest.raises(ValueError, match="Câu hỏi không được để trống"):
         create_case_draft_from_qa_answer("", {}, "Sổ thử", "NB-1", "default")
+
+
+def test_qa_case_stores_safe_normal_provider_route_summary():
+    result = create_case_draft_from_qa_answer(
+        question="Tóm tắt tài liệu thường",
+        answer={"answer_text": "Có thể xử lý bằng nguồn AI ngoài.", "source_refs": []},
+        notebook_name="Tài liệu thường",
+        notebook_id="normal-docs",
+        workspace_id="default",
+        route_summary={
+            "external_sent": True,
+            "provider_name": "DeepSeek KEY-SHOULD-NOT-BE-STORED cloud_allowed provider policy",
+            "used_fallback": False,
+            "fallback_reason": "",
+            "safety_mode_label": "Tài liệu thường cloud_allowed",
+        },
+    )
+
+    case = result["case"]
+    summary = case.route_summary
+    assert summary["external_sent"] is True
+    assert summary["provider_name"].startswith("DeepSeek")
+    assert summary["used_fallback"] is False
+    assert summary["fallback_reason"] == ""
+    assert summary["safety_mode_label"] == "Tài liệu thường"
+    assert summary["note_vi"] == "Có dùng nguồn AI ngoài vì đây là tài liệu thường."
+    serialized = str(summary)
+    assert "KEY-SHOULD-NOT-BE-STORED" not in serialized
+    for raw in ("cloud_allowed", "local_only", "provider policy", "route policy"):
+        assert raw not in serialized
+
+
+def test_qa_case_stores_company_private_route_summary_without_provider():
+    result = create_case_draft_from_qa_answer(
+        question="Kiểm tra tài liệu công ty",
+        answer={"answer_text": "Xử lý cục bộ.", "source_refs": []},
+        notebook_name="Hệ thống MOM",
+        notebook_id="mom",
+        workspace_id="default",
+        route_summary={
+            "external_sent": False,
+            "provider_name": "DeepSeek",
+            "used_fallback": True,
+            "fallback_reason": "blocked by local_only route policy",
+            "safety_mode_label": "local_only",
+        },
+    )
+
+    summary = result["case"].route_summary
+    assert summary["external_sent"] is False
+    assert summary["provider_name"] == ""
+    assert summary["used_fallback"] is True
+    assert "route policy" not in summary["fallback_reason"]
+    assert summary["note_vi"] == (
+        "Không gửi ra ngoài. Câu trả lời được xử lý theo chế độ công ty/mật. "
+        "Có dùng trả lời cục bộ dự phòng."
+    )
+    serialized = str(summary)
+    for raw in ("cloud_allowed", "local_only", "provider policy", "route policy"):
+        assert raw not in serialized
+
+
+def test_qa_case_without_route_summary_remains_backward_compatible():
+    result = create_case_draft_from_qa_answer(
+        question="Câu hỏi cũ",
+        answer={"answer_text": "Trả lời cũ.", "source_refs": []},
+        notebook_name="Sổ cũ",
+        notebook_id="NB-OLD",
+        workspace_id="default",
+    )
+
+    assert result["case"].route_summary == {}
+    assert result["case_id"]

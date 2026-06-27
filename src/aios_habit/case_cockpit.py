@@ -775,6 +775,13 @@ def render_mom_qa_result(qa_result: dict, active_ws_id: str):
                     notebook_name=notebook_name,
                     notebook_id=notebook_id,
                     workspace_id=active_ws_id,
+                    route_summary={
+                        "external_sent": route_log["external_status"] != "Không gửi ra ngoài",
+                        "provider_name": route_log["provider"],
+                        "used_fallback": route_log["summary_badge"] == "Tự đổi về dữ liệu cục bộ",
+                        "fallback_reason": route_log.get("fallback_reason", ""),
+                        "safety_mode_label": "Tài liệu thường" if route_log["external_status"] != "Không gửi ra ngoài" else "Tài liệu công ty / tài liệu mật",
+                    },
                 )
                 st.session_state["active_case_id"] = result["case_id"]
                 st.session_state["case_selector"] = result["case_id"]
