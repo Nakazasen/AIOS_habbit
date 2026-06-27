@@ -11,7 +11,13 @@ build/
 
 # Secrets
 .env
+*.env
 .env.*
+API Key.txt
+API*.txt
+provider_config*.json
+provider_config*.yaml
+provider_config*.yml
 credentials*
 token*
 tokens*
