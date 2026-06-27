@@ -1219,22 +1219,73 @@ def page_notebooks():
                             previous_case = st.session_state.get("last_created_qa_case")
                             if previous_case and previous_case.get("question") != question:
                                 del st.session_state["last_created_qa_case"]
-                        elif not config:
-                            st.info("Sổ tùy chỉnh hiện chưa có AI cục bộ nâng cao. Hãy dùng nút tạo prompt đối chiếu hoặc cấu hình bộ AI cục bộ trong tab Cấu hình.")
-                        elif config.locality == "cloud":
-                            st.error("❌ Không gửi dữ liệu cục bộ riêng tư tới AI đám mây. Hãy dùng AI cục bộ hoặc prompt đối chiếu.")
                         else:
-                            with st.spinner("AIOS đang suy nghĩ cục bộ..."):
-                                res = answer_notebook_question(selected_nb_id, question, "local_ai", "local")
-                            if res.blocked:
-                                st.error(f"⚠️ Yêu cầu bị chặn: {res.block_reason}")
-                            else:
-                                st.markdown("### 🤖 Câu trả lời")
-                                st.write(res.answer_text)
-                                with st.expander("Nguồn đã dùng"):
-                                    for i, chunk in enumerate(res.used_chunks):
-                                        st.markdown(f"**{i+1}. {chunk.source_title}** ({chunk.original_filename})")
-                                        st.text_area(f"Đoạn {chunk.chunk_index}", value=chunk.text, height=100, disabled=True, key=f"local_ans_{chunk.chunk_id}")
+                            from aios_habit.ai_router import (
+                                RouterRequest,
+                                providers_from_env_or_session,
+                                route_answer,
+                            )
+                            from aios_habit.route_log_ui import format_route_log_for_ui
+
+                            with st.spinner("AIOS đang tự chọn nguồn phù hợp..."):
+                                hits = search_notebook_chunks(selected_nb_id, question, limit=5)
+                                used_chunks = [hit.chunk for hit in hits]
+                                source_context = "\n\n".join(chunk.text for chunk in used_chunks)
+                                source_refs = [
+                                    {
+                                        "source_file": chunk.original_filename,
+                                        "source_title": chunk.source_title,
+                                        "chunk_id": chunk.chunk_id,
+                                    }
+                                    for chunk in used_chunks
+                                ]
+                                deterministic_answer = (
+                                    "AIOS chưa có đủ dữ liệu phù hợp để trả lời chắc chắn. "
+                                    "Hãy kiểm tra lại nguồn đã nạp hoặc bổ sung thêm tài liệu thường liên quan."
+                                    if not source_context.strip()
+                                    else f"AIOS tìm thấy {len(source_refs)} đoạn liên quan trong sổ tri thức và sẽ tóm tắt theo dữ liệu đã nạp."
+                                )
+                                normal_privacy_level = safety_mode_to_privacy_level(SAFETY_MODE_NORMAL, {})
+                                safety_mode_label = (
+                                    SAFETY_MODE_NORMAL
+                                    if used_chunks and all(chunk.privacy_level == normal_privacy_level for chunk in used_chunks)
+                                    else SAFETY_MODE_COMPANY
+                                )
+                                router_request = RouterRequest(
+                                    question=question,
+                                    source_context=source_context,
+                                    deterministic_answer=deterministic_answer,
+                                    source_refs=source_refs,
+                                    safety_mode_label=safety_mode_label,
+                                    notebook_name=nb_opts[selected_nb_id],
+                                )
+                                provider_configs = providers_from_env_or_session(session_state=st.session_state)
+                                health_store = st.session_state.setdefault("ai_provider_health_store", ProviderHealthStore())
+                                router_result = route_answer(router_request, provider_configs, health_store)
+
+                            st.markdown("### 🤖 Câu trả lời")
+                            st.write(router_result.answer_text)
+                            route_log = format_route_log_for_ui(router_result)
+                            st.markdown(f"#### {route_log['title']}")
+                            with st.container(border=True):
+                                st.write(f"- **Cách xử lý:** {route_log['summary_badge']}")
+                                st.write(f"- **Có gửi ra ngoài không:** {route_log['external_status']}")
+                                st.write(f"- **Nguồn đã dùng:** {route_log['main_provider']}")
+                                if route_log.get("model"):
+                                    st.write(f"- **Mô hình:** {route_log['model']}")
+                                st.write(f"- **Tự đổi nguồn:** {route_log['fallback_status']}")
+                                st.write(f"- **Lý do:** {route_log['reason']}")
+                            with st.expander("Chi tiết các lần thử", expanded=False):
+                                for attempt in route_log["attempts"]:
+                                    st.write(f"- **Nguồn AI:** {attempt['source']}")
+                                    st.write(f"  - **Kết quả:** {attempt['status_vi']}")
+                                    st.write(f"  - **Lý do:** {attempt['reason_vi']}")
+                                    if attempt.get("latency_ms"):
+                                        st.write(f"  - **Thời gian:** {attempt['latency_ms']} ms")
+                            with st.expander("Nguồn đã dùng"):
+                                for i, chunk in enumerate(used_chunks):
+                                    st.markdown(f"**{i+1}. {chunk.source_title}** ({chunk.original_filename})")
+                                    st.text_area(f"Đoạn {chunk.chunk_index}", value=chunk.text, height=100, disabled=True, key=f"local_ans_{chunk.chunk_id}")
 
                 last_mom_result = st.session_state.get("last_mom_qa_result")
                 if (
