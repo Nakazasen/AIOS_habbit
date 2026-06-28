@@ -1,4 +1,4 @@
-﻿# RAG Agent Harness Research
+# RAG Agent Harness Research
 
 Gate: AIOS-RAG-AGENT-HARNESS-0  
 Status: research/design only  

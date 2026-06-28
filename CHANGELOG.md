@@ -6,12 +6,10 @@
 
 ### Enhancements
 - Added RAG benchmark harness `rag_benchmark.py`.
-- Supports testing search and evidence pack building quality deterministically.
-- Configurable tiers (20Q, 50Q, 100Q).
-- Evaluates chunk hit rate, document hit rate, citation hit rate, insufficient evidence detection, and privacy pass rate.
+- Measures retrieval/evidence quality only with deterministic metrics.
+- Supports 20Q, 50Q, 100Q, and custom benchmark tiers.
 
 ### Safety
-- Measures retrieval/evidence quality only.
 - No provider or cloud calls.
 - No NotebookLM parity claim.
 - No runtime benchmark outputs committed.

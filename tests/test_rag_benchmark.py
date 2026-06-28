@@ -249,3 +249,55 @@ def test_formatting():
     assert "0.90" in text
     assert "Some warning" in text
     assert "NOT an LLM generation parity claim vs NotebookLM" in text
+
+
+def test_stable_id_uses_full_question_payload_and_config():
+    q1 = RAGBenchmarkQuestion(
+        question_id="Q1", question="What launches?", expected_answer_type="answerable",
+        expected_chunk_ids=["C1"], expected_document_ids=["D1"], expected_citation_labels=["Doc"],
+    )
+    q2 = RAGBenchmarkQuestion(
+        question_id="Q1", question="Different wording", expected_answer_type="answerable",
+        expected_chunk_ids=["C2"], expected_document_ids=["D1"], expected_citation_labels=["Doc"],
+    )
+    c1 = RAGBenchmarkConfig(tier="20Q", top_k=3)
+    c2 = RAGBenchmarkConfig(tier="20Q", top_k=4)
+    assert stable_benchmark_id([q1], c1) == stable_benchmark_id([q1], c1)
+    assert stable_benchmark_id([q1], c1) != stable_benchmark_id([q2], c1)
+    assert stable_benchmark_id([q1], c1) != stable_benchmark_id([q1], c2)
+
+
+def test_threshold_fail_and_latency_warning():
+    answerable = RAGBenchmarkResult(
+        question_id="A", question="q", expected_answer_type="answerable",
+        hit_expected_chunk=False, hit_expected_document=True, hit_expected_citation=True,
+        privacy_ok=True, latency_ms=10.0,
+    )
+    fail_summary = summarize_benchmark_results([answerable], RAGBenchmarkConfig(min_top_chunk_hit_rate=1.0))
+    assert fail_summary.pass_fail == "FAIL"
+    assert any("Top chunk" in warning for warning in fail_summary.warnings)
+
+    slow = RAGBenchmarkResult(
+        question_id="S", question="q", expected_answer_type="answerable",
+        hit_expected_chunk=True, hit_expected_document=True, hit_expected_citation=True,
+        privacy_ok=True, latency_ms=999.0,
+    )
+    warn_summary = summarize_benchmark_results([slow], RAGBenchmarkConfig(max_average_latency_ms=1.0))
+    assert warn_summary.pass_fail == "PASS_WITH_WARNINGS"
+    assert warn_summary.average_latency_ms == 999.0
+
+
+def test_invalid_tier_rejected():
+    try:
+        run_rag_benchmark(_mock_chunks(), _mock_questions(), RAGBenchmarkConfig(tier="fake"))
+    except ValueError as exc:
+        assert "Unsupported benchmark tier" in str(exc)
+    else:
+        raise AssertionError("invalid tier should be rejected")
+
+
+def test_run_benchmark_creates_no_output_files(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    summary = run_rag_benchmark(_mock_chunks(), _mock_questions(), RAGBenchmarkConfig(tier="custom"))
+    assert summary.question_count == 4
+    assert list(tmp_path.iterdir()) == []

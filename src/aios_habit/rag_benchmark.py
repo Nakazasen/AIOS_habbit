@@ -1,4 +1,3 @@
-import json
 import hashlib
 import time
 import sqlite3
@@ -7,7 +6,7 @@ from typing import List, Dict, Any, Optional
 
 from aios_habit.rag_ingest import RAGChunk
 from aios_habit.rag_search import (
-    RAGSearchResult, search_rag_chunks, RAGSearchFilter, 
+    RAGSearchResult, search_rag_chunks,
     create_rag_search_schema, index_rag_chunks
 )
 from aios_habit.rag_evidence import RAGEvidencePack, build_evidence_pack
@@ -75,10 +74,15 @@ class RAGBenchmarkConfig:
 
 def stable_benchmark_id(questions: List[RAGBenchmarkQuestion], config: RAGBenchmarkConfig) -> str:
     h = hashlib.sha256()
-    h.update(config.tier.encode("utf-8"))
-    for q in questions:
-        h.update(q.question_id.encode("utf-8"))
+    payload = {
+        "config": asdict(config),
+        "questions": [asdict(q) for q in questions],
+    }
+    h.update(json_dumps(payload).encode("utf-8"))
     return "BMK-" + h.hexdigest()[:10].upper()
+
+def json_dumps(payload: Dict[str, Any]) -> str:
+    return __import__("json").dumps(payload, sort_keys=True, separators=(",", ":"))
 
 def score_benchmark_result(question: RAGBenchmarkQuestion, search_results: List[RAGSearchResult], evidence_pack: RAGEvidencePack, latency_ms: float) -> RAGBenchmarkResult:
     retrieved_chunk_ids = [r.chunk_id for r in search_results]
@@ -176,6 +180,8 @@ def summarize_benchmark_results(results: List[RAGBenchmarkResult], config: RAGBe
 def run_rag_benchmark(chunks: List[RAGChunk], questions: List[RAGBenchmarkQuestion], config: Optional[RAGBenchmarkConfig] = None) -> RAGBenchmarkSummary:
     if config is None:
         config = RAGBenchmarkConfig()
+    if config.tier not in {"20Q", "50Q", "100Q", "custom"}:
+        raise ValueError(f"Unsupported benchmark tier: {config.tier}")
         
     conn = sqlite3.connect(":memory:")
     create_rag_search_schema(conn)
