@@ -41,3 +41,13 @@ AIOS WorkLens is a Personal Senior Work Intelligence System (Hệ thống trí t
   ```bash
   git status --short --ignored
   ```
+
+## Using full-bundle IDE handoff
+
+AIOS can create a local full-bundle request for Antigravity/IDE AI without calling a cloud provider.
+
+1. In Case Cockpit, create `Trả lời bằng AI IDE từ full bundle`.
+2. Ask the IDE AI to read the complete `local_runs/ide_handoff/outbox/REQ-...` folder and write response JSON to `local_runs/ide_handoff/inbox/`.
+3. Import that response JSON in AIOS. AIOS validates request ID, privacy acknowledgement, full-bundle use, and evidence IDs before saving.
+
+Do not commit `local_runs/` bundles or raw local documents.

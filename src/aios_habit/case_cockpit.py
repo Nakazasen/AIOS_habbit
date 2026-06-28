@@ -40,6 +40,11 @@ from aios_habit.strong_answer_ui import (
     prepare_local_evidence_answer,
     save_pasted_strong_answer,
 )
+from aios_habit.ide_handoff_bridge import (
+    import_ide_response,
+    save_imported_ide_answer,
+    write_ide_handoff_bundle,
+)
 
 st.set_page_config(page_title="AIOS Case Cockpit v0.1", layout="wide")
 
@@ -559,6 +564,60 @@ def page_prompt_pack():
         st.text_area("Final answer", value=saved.answer_text, height=180, disabled=True)
         st.write("Evidence refs:")
         for ref in saved.evidence_ids:
+            st.write(f"- {ref}")
+
+    st.divider()
+    st.subheader("Trả lời bằng AI IDE từ full bundle")
+    st.caption("Full bundle trong phạm vi đã chọn. Không tự động gọi cloud. Bạn chịu trách nhiệm nếu dùng IDE cloud model với dữ liệu local_only. AIOS sẽ kiểm tra response trước khi lưu.")
+    ide_question = st.text_area("Câu hỏi cần gửi full bundle", key="ide_full_bundle_question", height=90, value=strong_question)
+    scope_label = st.selectbox("Phạm vi bundle", ["Hồ sơ hiện tại: gửi toàn bộ bằng chứng trong case", "Kết quả truy xuất + toàn bộ manifest nguồn", "Thư mục local đã chọn: gửi toàn bộ evidence đã extract từ folder"], key="ide_bundle_scope_label")
+    scope_map = {
+        "Hồ sơ hiện tại: gửi toàn bộ bằng chứng trong case": "active_case_all",
+        "Kết quả truy xuất + toàn bộ manifest nguồn": "current_question_retrieval_plus_full_scope_manifest",
+        "Thư mục local đã chọn: gửi toàn bộ evidence đã extract từ folder": "selected_folder_all",
+    }
+    if st.button("1. Tạo full bundle cho Antigravity", key="create_ide_full_bundle"):
+        if not ide_question.strip():
+            st.error("Vui lòng nhập câu hỏi cần gửi full bundle.")
+        else:
+            try:
+                req = write_ide_handoff_bundle(active_case.case_id, ide_question, scope_map[scope_label], evs)
+                st.session_state["ide_full_bundle_request"] = req
+                st.success("Đã tạo full bundle cho Antigravity/IDE AI.")
+            except Exception as exc:
+                st.error(f"Không tạo được full bundle: {exc}")
+
+    req = st.session_state.get("ide_full_bundle_request")
+    if req:
+        st.write(f"request_id: `{req.request_id}`")
+        st.write(f"bundle path: `{req.bundle_dir}`")
+        st.write(f"source_count: `{req.manifest['source_count']}` · evidence_item_count: `{req.manifest['evidence_item_count']}` · chunk_count: `{req.manifest['chunk_count']}` · total_text_chars: `{req.manifest['total_text_chars']}`")
+        st.write(f"FULL_BUNDLE_COMPLETE: `{req.manifest['FULL_BUNDLE_COMPLETE']}`")
+        st.warning("Tự động gọi cloud bị chặn. Bundle local_only chỉ dùng với IDE/model path được owner phê duyệt.")
+        st.text_area("Lệnh cho Antigravity / IDE AI", value=req.ide_instruction, height=150)
+
+    response_json_path = st.text_input("Đường dẫn response JSON từ IDE", key="ide_response_json_path", placeholder="local_runs/ide_handoff/inbox/RESP-REQ-....json")
+    if st.button("2. Import câu trả lời từ IDE", key="import_ide_full_bundle_response"):
+        try:
+            validation = import_ide_response(response_json_path)
+            if not validation.ok:
+                st.error("Response không hợp lệ: " + "; ".join(validation.errors))
+            else:
+                saved_ide = save_imported_ide_answer(active_case.case_id, validation)
+                st.session_state["saved_ide_full_bundle_answer"] = saved_ide
+                st.success("Đã import và lưu câu trả lời IDE full bundle vào hồ sơ.")
+        except Exception as exc:
+            st.error(f"Không import được response IDE: {exc}")
+
+    saved_ide = st.session_state.get("saved_ide_full_bundle_answer")
+    if saved_ide:
+        st.markdown("### Final answer card — IDE full bundle")
+        st.write(f"Model/tool: `{saved_ide.model_tool_name}`")
+        st.write(f"Answer kind: `ide_handoff_strong_answer` · Final: `{saved_ide.final_answer}`")
+        st.write(f"Route: `{saved_ide.route_summary}`")
+        st.text_area("Final answer từ IDE", value=saved_ide.answer_text, height=160, disabled=True)
+        st.write("Used evidence IDs:")
+        for ref in saved_ide.evidence_ids:
             st.write(f"- {ref}")
 
 def page_handover():
