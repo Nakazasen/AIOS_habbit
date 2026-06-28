@@ -1,5 +1,16 @@
 ﻿# Changelog
 
+## 2026-06-28 - RAG v2 and Agent Harness Research
+
+### Research
+- Added docs-only architecture research for `AIOS-RAG-AGENT-HARNESS-0`.
+- Audited current ingest, retrieval, answer, provider route, and missing IDE/model bridge capabilities.
+- Compared public RAG/document intelligence and agent harness patterns without copying source code.
+- Designed Phase 4 Retrieval Engine v2 and Phase 5 IDE Answer Bridge architecture.
+- Confirmed P1.0 remains locked and NotebookLM parity is not claimed.
+
+### Next Gates
+- Recommended next order: `AIOS-RAG-INGEST-1`, `AIOS-RAG-SEARCH-1`, `AIOS-RAG-EVIDENCE-PACK-1`, `AIOS-IDE-BRIDGE-1`, `AIOS-RAG-BENCHMARK-1`.
 ## 2026-06-28 - Roadmap Reposition around WorkLens Mission, RAG v2, and IDE Bridge
 
 ### Roadmap
@@ -195,4 +206,5 @@
 
 ### Validation
 - py -3 -m pytest: 16 passed.
+
 

@@ -214,7 +214,7 @@ Future research should learn public patterns from RAGFlow, kotaemon, Microsoft G
 ## Next Gate Queue
 
 Immediate:
-1. **AIOS-RAG-AGENT-HARNESS-0** — research RAG + Claude-Code-style harness patterns, docs only.
+1. **AIOS-RAG-AGENT-HARNESS-0** — DONE locally; research RAG + Claude-Code-style harness patterns, docs only.
 2. **AIOS-RAG-INGEST-1** — improve parser/chunk metadata, no vector DB yet.
 3. **AIOS-RAG-SEARCH-1** — local hybrid search foundation, SQLite FTS/BM25, metadata filters, citation IDs.
 4. **AIOS-RAG-EVIDENCE-PACK-1** — evidence pack builder, source scoring, answer abstention.
@@ -235,3 +235,4 @@ Later:
 - Provider/router foundation, safety modes, one-screen daily UI, normal-provider UI pilot and company/mật privacy guard: completed with warnings.
 - Search / many-case management: NOT_READY.
 - P1.0: LOCKED.
+
