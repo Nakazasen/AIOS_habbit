@@ -111,7 +111,7 @@ def build_ide_prompt_pack(evidence_pack: RAGEvidencePack, target_model_hint: str
     
     lines.append("Instructions:")
     lines.append("1. Answer the goal using ONLY the provided Evidence Pack.")
-    lines.append("2. Cite your sources using the Citation IDs (e.g., [1]).")
+    lines.append("2. FORMAT REQUIREMENT: You MUST use inline citations like [E1], [E2] based on the citation IDs.")
     lines.append("3. If the evidence is insufficient to answer the goal fully, state clearly what is missing and abstain from guessing.")
     
     prompt_text = "\n".join(lines)

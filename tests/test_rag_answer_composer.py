@@ -29,7 +29,7 @@ def test_compose_local_answer_preserves_citations_and_is_deterministic():
     assert first.draft_id == second.draft_id
     assert first.provider_call is False
     assert first.notebooklm_call is False
-    assert first.citation_ids == [item.citation_id for item in pack.items]
+    assert first.citation_ids == ["[E1]", "[E2]", "[E3]"][:len(pack.items)]
     assert first.evidence_ids == [item.evidence_id for item in pack.items]
     assert "Evidence-grounded points" in first.answer_text
     assert all(citation in first.answer_text for citation in first.citation_ids)
@@ -91,7 +91,7 @@ def test_compose_local_answer_mixed_evidence():
     assert draft.insufficient_evidence is False
     assert len(draft.citation_ids) == 1
     assert "Real doc content here" in draft.answer_text
-    assert "Excluded 1 metadata-only results" in draft.answer_text
+    assert "Excluded 1 metadata-only results from draft." in draft.answer_text
 
 def test_strong_answer_via_fake_provider_returns_final_answer_true():
     from aios_habit.ai_provider_bridge import FakeProvider

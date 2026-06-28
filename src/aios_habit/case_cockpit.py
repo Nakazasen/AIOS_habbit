@@ -1248,12 +1248,20 @@ def page_today_workflow():
         st.subheader("AIOS hiểu vấn đề như sau")
         st.write("- **Tóm tắt tình huống**: " + (active_case.current_situation if active_case else ""))
         
-        st.subheader("Bằng chứng quan trọng")
-        if evs:
-            for e in evs:
-                st.write(f"- {e.title} ({e.source_type})")
+        answers = [e for e in evs if e.source_type in ["ide_handoff_strong_answer", "strong_model_answer"]]
+        if answers:
+            st.subheader("Kết quả phân tích (Từ AI)")
+            for a in answers:
+                st.markdown(a.extracted_text)
+                with st.expander("Chi tiết kỹ thuật bằng chứng"):
+                    st.write(f"Evidence ID: {a.evidence_id}")
         else:
-            st.write("Chưa có bằng chứng.")
+            st.subheader("Bằng chứng quan trọng")
+            if evs:
+                for e in evs:
+                    st.write(f"- {e.title} ({e.source_type})")
+            else:
+                st.write("Chưa có bằng chứng.")
             
         st.subheader("Hướng xử lý")
         st.write("Cần thu thập thêm log hoặc tài liệu thiết kế để làm rõ luồng xử lý.")

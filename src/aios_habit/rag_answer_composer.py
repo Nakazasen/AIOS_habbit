@@ -6,6 +6,7 @@ from datetime import datetime
 from typing import Any, Dict, List
 
 from aios_habit.rag_evidence import RAGEvidencePack
+from aios_habit.citation_answer import build_citation_index, compose_citation_first_answer
 
 
 @dataclass
@@ -134,20 +135,48 @@ def compose_local_answer(pack: RAGEvidencePack, max_items: int = 5) -> LocalAnsw
         lines.append("No extracted content evidence was available, so no factual answer is drafted.")
         if excluded_metadata_items:
             lines.append("Note: Only file metadata was retrieved. Document content extraction may be unsupported.")
+        final_answer_text = "\n".join(lines)
     else:
-        lines.append("Evidence-grounded points:")
-        for item in valid_items[:max_items]:
-            snippet = " ".join(item.snippet.split())
-            lines.append(f"- {item.citation_id} {snippet}")
+        # Use citation_answer module for structured composition
+        refs = build_citation_index(valid_items[:max_items])
+        
+        # Build initial draft answer combining warnings
+        draft_lines = [
+            f"Local draft for: {pack.query}",
+            f"Confidence: {pack.confidence_label}",
+        ]
+        if warnings:
+            draft_lines.append("Warnings:")
+            draft_lines.extend(f"- {warning}" for warning in warnings)
+        
+        draft_lines.append("Evidence-grounded points:")
+        for ref in refs:
+            draft_lines.append(f"- {ref.ref_id} {ref.snippet}")
+            
         if excluded_metadata_items:
-            lines.append(f"\n(Excluded {len(excluded_metadata_items)} metadata-only results from draft.)")
-        lines.append("Use only the cited points above; verify before taking action.")
+            draft_lines.append(f"\n(Excluded {len(excluded_metadata_items)} metadata-only results from draft.)")
+        draft_lines.append("Use only the cited points above; verify before taking action.")
+        
+        # Infer answer type based on evidence content roughly
+        answer_type = "general"
+        if any(f in ref.file_type.lower() for ref in refs for f in ["html", "png", "jpg"]):
+            answer_type = "screenshot"
+        elif any(f in ref.file_type.lower() for ref in refs for f in ["pdf", "pptx"]):
+            answer_type = "pdf"
+            
+        final_answer_text = compose_citation_first_answer(
+            question=pack.query,
+            refs=refs,
+            draft_answer="\n".join(draft_lines),
+            answer_type=answer_type
+        )
+        citation_ids = [ref.ref_id for ref in refs]
 
     return LocalAnswerDraft(
         draft_id=stable_answer_draft_id(pack),
         pack_id=pack.pack_id,
         query=pack.query,
-        answer_text="\n".join(lines),
+        answer_text=final_answer_text,
         citation_ids=citation_ids,
         evidence_ids=evidence_ids,
         privacy_mode=pack.privacy_mode,

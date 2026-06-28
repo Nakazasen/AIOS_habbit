@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 import hashlib
 import json
@@ -79,7 +79,7 @@ def build_full_bundle_request(case_id: str, question: str, bundle_scope: str, ev
 
 def build_prompt_md(manifest: dict[str, Any]) -> str:
     schema = {"request_id": manifest["request_id"], "model_tool_name": "...", "answer_text": "...", "evidence_ids_used": ["..."], "source_files_used": ["..."], "missing_evidence": ["..."], "confidence_label": "high|medium|low", "risk_label": "low|medium|high", "privacy_acknowledged": True, "used_full_bundle": True, "notes": "..."}
-    return "\n".join(["# IDE Full-Bundle Task", "", f"Question: {manifest['question']}", "", "Read every file in this bundle before answering. Use only evidence IDs from evidence_full.jsonl.", "", "Return JSON with schema:", "", "```json", json.dumps(schema, ensure_ascii=False, indent=2), "```", "", "NotebookLM parity claimed: NO. P1.0 opened: NO.", ""])
+    return "\n".join(["# IDE Full-Bundle Task", "", f"Question: {manifest['question']}", "", "Read every file in this bundle before answering. Use only evidence IDs from evidence_full.jsonl.", "", "FORMAT REQUIREMENT: You MUST use inline citations in your answer text like [E1], [E2] corresponding to the index in evidence_full.jsonl.", "", "Return JSON with schema:", "", "```json", json.dumps(schema, ensure_ascii=False, indent=2), "```", "", "NotebookLM parity claimed: NO. P1.0 opened: NO.", ""])
 
 def build_evidence_markdown(records: list[dict[str, Any]]) -> str:
     lines = ["# Full Evidence Bundle", ""]
