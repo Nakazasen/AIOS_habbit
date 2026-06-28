@@ -163,8 +163,9 @@ def test_fallback_search(memory_db):
     assert results2[0].chunk_id == "C2"
 
 def test_sanitize_fts_query():
-    assert sanitize_fts_query('hello "world"') == 'hello  world'
+    assert sanitize_fts_query('hello "world"') == 'hello world'
     assert sanitize_fts_query("it's test") == "it s test"
+    assert sanitize_fts_query("dog OR 1=1; DROP TABLE chunk_metadata; --") == "dog or 1 1 drop table chunk_metadata"
 
 def test_compatibility():
     sc1 = SourceChunk(
@@ -189,3 +190,83 @@ def test_compatibility():
     assert len(res) == 1
     assert res[0].citation_label == "old.txt"
     assert res[0].privacy_mode == "local_only"
+
+
+def test_deterministic_ordering_and_extra_filters(memory_db):
+    chunks = _create_test_chunks()
+    chunks.append(RAGChunk(
+        chunk_id="C0",
+        document_id="D0",
+        element_ids=[],
+        text="same token",
+        source_title="Tie A",
+        source_path="slides.pptx",
+        relative_path="slides.pptx",
+        citation_label="slides.pptx",
+        file_type=".pptx",
+        element_types=["slide_text"],
+        page_numbers=[],
+        sheet_names=[],
+        slide_numbers=[7],
+        section_labels=[],
+        row_ranges=[],
+        cell_ranges=[],
+        privacy_mode="cloud_safe",
+        source_hash="h0"
+    ))
+    chunks.append(RAGChunk(
+        chunk_id="C9",
+        document_id="D9",
+        element_ids=[],
+        text="same token",
+        source_title="Tie B",
+        source_path="slides2.pptx",
+        relative_path="slides2.pptx",
+        citation_label="slides2.pptx",
+        file_type=".pptx",
+        element_types=["slide_text"],
+        page_numbers=[],
+        sheet_names=[],
+        slide_numbers=[7],
+        section_labels=[],
+        row_ranges=[],
+        cell_ranges=[],
+        privacy_mode="cloud_safe",
+        source_hash="h9"
+    ))
+    index_rag_chunks(memory_db, chunks)
+
+    run1 = [r.chunk_id for r in search_rag_chunks(memory_db, "same token")]
+    run2 = [r.chunk_id for r in search_rag_chunks(memory_db, "same token")]
+    assert run1 == run2
+    assert run1[:2] == ["C0", "C9"]
+
+    by_slide = search_rag_chunks(memory_db, "", filters=RAGSearchFilter(slide_numbers=[7]))
+    assert [r.chunk_id for r in by_slide] == ["C0", "C9"]
+
+    by_element = search_rag_chunks(memory_db, "", filters=RAGSearchFilter(element_types=["slide_text"]))
+    assert [r.chunk_id for r in by_element] == ["C0", "C9"]
+
+
+def test_injection_like_query_does_not_execute_sql(memory_db):
+    chunks = _create_test_chunks()
+    index_rag_chunks(memory_db, chunks)
+
+    results = search_rag_chunks(memory_db, "dog OR 1=1; DROP TABLE chunk_metadata; --")
+    assert isinstance(results, list)
+    stats = get_rag_search_stats(memory_db)
+    assert stats.chunk_count == 3
+
+
+def test_old_search_notebook_chunks_behavior(monkeypatch):
+    from aios_habit import notebook_index
+
+    chunks = [
+        SourceChunk("s1", "n1", "src1", 0, "alpha beta", ["alpha"], "local_only", "Alpha", "alpha.txt", "2026"),
+        SourceChunk("s2", "n1", "src2", 1, "gamma", ["gamma"], "cloud_safe", "Gamma", "gamma.txt", "2026"),
+    ]
+    monkeypatch.setattr(notebook_index, "load_chunks", lambda notebook_id=None: chunks)
+
+    hits = notebook_index.search_notebook_chunks("n1", "alpha")
+    assert len(hits) == 1
+    assert hits[0].chunk.chunk_id == "s1"

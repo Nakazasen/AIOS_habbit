@@ -144,9 +144,13 @@ def index_rag_chunks(conn: sqlite3.Connection, chunks: List[RAGChunk]):
     conn.commit()
 
 def sanitize_fts_query(query: str) -> str:
-    # Remove quotes to avoid malformed FTS query issues
-    q = query.replace('"', ' ').replace("'", ' ')
-    return q.strip()
+    """Return a conservative FTS query made only from word tokens.
+
+    This avoids malformed MATCH expressions from quotes/operators and keeps SQL-like
+    punctuation as data, not syntax. SQL parameters are still used for execution.
+    """
+    tokens = re.findall(r"[a-zA-Z0-9_À-ỹ]+", query.lower())
+    return " ".join(tokens)
 
 def search_rag_chunks(conn: sqlite3.Connection, query: str, filters: Optional[RAGSearchFilter] = None, limit: int = 10) -> List[RAGSearchResult]:
     cursor = conn.cursor()
