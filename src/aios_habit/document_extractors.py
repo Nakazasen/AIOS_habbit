@@ -120,8 +120,24 @@ def _text_nodes(element) -> str:
     return " ".join(_clean_lines(parts, limit=200)).strip()
 
 
+
+def normalize_extracted_text(text: str, *, max_chars: int = 12000) -> str:
+    """Clean noisy extractor output while preserving Vietnamese/Japanese text."""
+    lines = []
+    for line in str(text or "").splitlines():
+        cleaned = re.sub(r"\s+", " ", line).strip()
+        if not cleaned:
+            continue
+        if re.fullmatch(r"[-+]?\d+(?:\.\d+)?(?:[ ,;:/|-]+[-+]?\d+(?:\.\d+)?){3,}", cleaned):
+            continue
+        if len(cleaned) <= 2 and cleaned.isdigit():
+            continue
+        lines.append(cleaned)
+    normalized = "\n".join(lines)
+    return normalized[:max_chars]
+
 def _chunk_result(result: ExtractionResult, path: Path, root: Path | None, max_chars_per_chunk: int) -> list[dict[str, Any]]:
-    text = result.text.strip()
+    text = normalize_extracted_text(result.text)
     rel = path.relative_to(root).as_posix() if root else path.name
     base = {
         "source_file": path.name,
@@ -424,8 +440,37 @@ def extract_text_chunks_from_file(path: str | Path, *, root: str | Path | None =
         }]
     chunks: list[dict[str, Any]] = []
     for result in results:
+        result.text = normalize_extracted_text(result.text)
         chunks.extend(_chunk_result(result, file_path, root_path, max_chars_per_chunk))
     return chunks
+
+
+# Register adapters for capability checks and alternate callers.
+def _registry_adapter(path: Path, root: Path | None):
+    from aios_habit.extractor_registry import ExtractorElement
+    elements = []
+    for chunk in extract_text_chunks_from_file(path, root=root):
+        elements.append(ExtractorElement(
+            source_path=str(path),
+            relative_path=chunk.get("relative_path", path.name),
+            element_type=chunk.get("element_type", "text") or "text",
+            text=chunk.get("text", ""),
+            metadata={k: v for k, v in chunk.items() if k not in {"text"}},
+            extraction_status=chunk.get("extraction_status", "metadata_only"),
+            extractor_name=chunk.get("extractor_name", "document_extractors"),
+            confidence="medium" if chunk.get("text") else "none",
+            page=chunk.get("page", ""),
+            sheet=chunk.get("sheet", ""),
+            slide=chunk.get("slide", ""),
+        ))
+    return elements
+
+try:
+    from aios_habit.extractor_registry import register_adapter
+    for _ext in [".pdf", ".pptx", ".docx", ".html", ".htm", ".xlsx", ".xlsm", ".png", ".jpg", ".jpeg", ".bmp", ".tif", ".tiff"]:
+        register_adapter(_ext, "document_extractors", _registry_adapter)
+except Exception:
+    pass
 
 
 def is_potentially_extractable(ext: str) -> bool:
