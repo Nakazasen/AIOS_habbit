@@ -7,6 +7,11 @@ from typing import List, Optional, Dict, Any
 
 from aios_habit.source_ingest import load_sources, NOTEBOOK_ASSETS_DIR
 
+try:
+    from aios_habit.rag_ingest import RAGChunk, compute_source_hash, stable_document_id, stable_chunk_id, normalize_privacy_mode
+except ImportError:
+    pass
+
 LOCAL_CASES_DIR = Path.cwd() / "local_cases"
 CHUNKS_FILE = LOCAL_CASES_DIR / "source_chunks.jsonl"
 MAX_SOURCE_CHARS = 20000
@@ -169,3 +174,55 @@ def search_notebook_chunks(notebook_id: str, query: str, limit: int = 5) -> List
             
     hits.sort(key=lambda x: x.score, reverse=True)
     return hits[:limit]
+
+def build_rag_chunks_from_notebook_chunks(notebook_chunks: List[SourceChunk]) -> List['RAGChunk']:
+    """Adapter to convert existing SourceChunk to RAGChunk format for RAG Engine v2."""
+    try:
+        from aios_habit.rag_ingest import RAGChunk, compute_source_hash, stable_document_id, stable_chunk_id, normalize_privacy_mode
+    except ImportError:
+        return []
+        
+    rag_chunks = []
+    for i, chunk in enumerate(notebook_chunks):
+        src_hash = chunk.source_id
+        doc_id = stable_document_id(chunk.original_filename, src_hash)
+        rag_chunk_id = stable_chunk_id(doc_id, chunk.chunk_index, compute_source_hash(chunk.text))
+        
+        # Ensure citation label does not expose absolute path
+        rel_path = chunk.original_filename
+        citation = Path(rel_path).name
+        
+        privacy = normalize_privacy_mode(chunk.privacy_level)
+        
+        rag_chunk = RAGChunk(
+            chunk_id=rag_chunk_id,
+            document_id=doc_id,
+            element_ids=[],
+            text=chunk.text,
+            source_title=chunk.source_title,
+            source_path=chunk.original_filename,
+            relative_path=rel_path,
+            citation_label=citation,
+            file_type=Path(chunk.original_filename).suffix.lower() or ".txt",
+            element_types=["text"],
+            page_numbers=[],
+            sheet_names=[],
+            slide_numbers=[],
+            section_labels=[],
+            row_ranges=[],
+            cell_ranges=[],
+            privacy_mode=privacy,
+            source_hash=src_hash,
+            chunk_index=chunk.chunk_index,
+            metadata={"notebook_id": chunk.notebook_id, "source_id": chunk.source_id, "created_at": chunk.created_at}
+        )
+        rag_chunks.append(rag_chunk)
+        
+    # Link previous/next
+    for i in range(len(rag_chunks)):
+        if i > 0 and rag_chunks[i-1].document_id == rag_chunks[i].document_id:
+            rag_chunks[i].previous_chunk_id = rag_chunks[i-1].chunk_id
+            rag_chunks[i-1].next_chunk_id = rag_chunks[i].chunk_id
+            
+    return rag_chunks
+

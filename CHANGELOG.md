@@ -1,5 +1,6 @@
 ﻿# Changelog
 
+
 ## 2026-06-28 - RAG v2 and Agent Harness Research
 
 ### Research
@@ -206,5 +207,6 @@
 
 ### Validation
 - py -3 -m pytest: 16 passed.
+
 
 
