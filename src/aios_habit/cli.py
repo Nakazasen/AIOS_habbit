@@ -321,6 +321,45 @@ def cmd_owner_workflow(args):
     return 0
 
 
+def cmd_notebooklm_compare(args):
+    from .notebooklm_compare import (
+        CompareConfig,
+        discover_nlm_capabilities,
+        evaluate_answers,
+        load_compare_config,
+        run_aios_answers,
+        run_notebooklm_answers,
+        write_questions,
+        write_redacted_summary,
+    )
+
+    config = load_compare_config(Path(args.config)) if args.config else CompareConfig(source_root=args.source_root)
+    if args.compare_cmd == "generate-questions":
+        path = write_questions(config)
+        print_json({"status": "PASS", "path": str(path)})
+        return 0
+    if args.compare_cmd == "aios-run":
+        path = run_aios_answers(config)
+        print_json({"status": "PASS", "path": str(path)})
+        return 0
+    if args.compare_cmd == "nlm-capabilities":
+        print_json({"status": "PASS", "capability": discover_nlm_capabilities().__dict__})
+        return 0
+    if args.compare_cmd == "notebooklm-run":
+        result = run_notebooklm_answers(config)
+        print_json(result)
+        return 0
+    if args.compare_cmd == "evaluate":
+        paths = evaluate_answers(config)
+        print_json({"status": "PASS", "paths": {k: str(v) for k, v in paths.items()}})
+        return 0
+    if args.compare_cmd == "summary":
+        path = write_redacted_summary(config, args.notebooklm_status)
+        print_json({"status": "PASS", "path": str(path)})
+        return 0
+    return 2
+
+
 def main(argv=None) -> None:
     parser = argparse.ArgumentParser(prog="aios-habit", description="Local-first evidence-based personal memory platform")
     subcommands = parser.add_subparsers(dest="cmd", required=True)
@@ -358,6 +397,19 @@ def main(argv=None) -> None:
     owner_workflow = subcommands.add_parser("owner-workflow", help="Print the safe owner-facing Phase 4 workflow guide")
     owner_workflow.add_argument("--fake-data", action="store_true", help="Use fake-data acceptance mode")
     owner_workflow.set_defaults(func=cmd_owner_workflow)
+
+    compare = subcommands.add_parser("notebooklm-compare", help="Run AIOS vs NotebookLM MVP benchmark helpers")
+    compare.add_argument("--config", help="Path to benchmark config JSON")
+    compare.add_argument("--source-root", default="D:/Sandbox/MOM_WMS_QLLSSX/tailieugoc")
+    compare_subcommands = compare.add_subparsers(dest="compare_cmd", required=True)
+    compare_subcommands.add_parser("generate-questions", help="Generate local benchmark questions")
+    compare_subcommands.add_parser("aios-run", help="Run AIOS local answers")
+    compare_subcommands.add_parser("nlm-capabilities", help="Inspect nlm CLI capability")
+    compare_subcommands.add_parser("notebooklm-run", help="Prepare or run NotebookLM answer collection")
+    compare_subcommands.add_parser("evaluate", help="Evaluate AIOS and NotebookLM answers")
+    summary = compare_subcommands.add_parser("summary", help="Write safe redacted summary")
+    summary.add_argument("--notebooklm-status", default="BLOCKED_BY_NLM_CLI_LIMITATION")
+    compare.set_defaults(func=cmd_notebooklm_compare)
 
     args = parser.parse_args(argv)
     result = args.func(args)

@@ -85,3 +85,6 @@ local_cases/
 !examples/**/*.png
 !examples/**/*.jpg
 !examples/**/*.jpeg
+# Real-data benchmark runtime outputs
+local_runs/
+config/real_benchmark.local.json

@@ -1,0 +1,8 @@
+{
+  "source_root": "D:/Sandbox/MOM_WMS_QLLSSX/tailieugoc",
+  "output_dir": "local_runs/notebooklm_compare",
+  "privacy_mode": "local_only",
+  "question_count": 12,
+  "use_local_reranker": true,
+  "notebooklm_notebook_id": ""
+}
