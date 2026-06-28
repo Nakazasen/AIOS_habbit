@@ -11,6 +11,7 @@ from aios_habit.rag_evidence import build_evidence_pack, evidence_pack_to_dict
 from aios_habit.rag_ingest import build_chunks_from_elements, build_elements_from_extracted_payload
 from aios_habit.rag_rerank import rerank_search_results
 from aios_habit.rag_search import create_rag_search_schema, index_rag_chunks, search_rag_chunks
+from aios_habit.document_extractors import _extract_excel
 
 SUPPORTED_TEXT_SUFFIXES = {".txt", ".md", ".csv", ".log", ".json", ".xml", ".html", ".htm"}
 SUPPORTED_METADATA_SUFFIXES = {".pdf", ".xlsx", ".xlsm", ".xls", ".pptx", ".ppt", ".png", ".jpg", ".jpeg"}
@@ -99,8 +100,23 @@ def build_chunks_from_folder(config: CompareConfig, limit: Optional[int] = None)
         relative = path.relative_to(source_root).as_posix()
         if path.suffix.lower() in SUPPORTED_TEXT_SUFFIXES:
             text = _safe_read_text(path)
+            status = "ok"
+        elif path.suffix.lower() in {".xlsx", ".xlsm"}:
+            excel_results = _extract_excel(path)
+            extracted_texts = []
+            for res in excel_results:
+                if res.text and res.text.strip():
+                    extracted_texts.append(f"--- {res.section} ---\n{res.text}")
+            if extracted_texts:
+                text = "\n\n".join(extracted_texts)
+                status = "extracted_success"
+            else:
+                text = f"Metadata-only source record for {path.name}. Relative path: {relative}. File type: {path.suffix.lower() or 'unknown'}. Raw binary content was not extracted by the MVP harness."
+                status = "metadata_only"
         else:
             text = f"Metadata-only source record for {path.name}. Relative path: {relative}. File type: {path.suffix.lower() or 'unknown'}. Raw binary content was not extracted by the MVP harness."
+            status = "metadata_only"
+            
         if not text.strip():
             continue
         elements = build_elements_from_extracted_payload(
@@ -110,8 +126,8 @@ def build_chunks_from_folder(config: CompareConfig, limit: Optional[int] = None)
             file_type=path.suffix.lower().lstrip(".") or "text",
             text=text,
             privacy_mode=config.privacy_mode,
-            extractor_name="notebooklm_compare_text_reader",
-            extraction_status="ok",
+            extractor_name="notebooklm_compare_extractor",
+            extraction_status=status,
             metadata={"benchmark_profile": "notebooklm_compare"},
         )
         chunks.extend(build_chunks_from_elements(elements, max_chars=1600))

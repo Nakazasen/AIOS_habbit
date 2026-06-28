@@ -220,8 +220,34 @@ def _extract_excel(path: Path) -> list[ExtractionResult]:
                 results.append(ExtractionResult("\n".join(lines), path.suffix.lower(), "openpyxl", "extracted_success", section=f"sheet {sheet_name} preview", sheet=sheet_name, row_range=f"1-{row_count}"))
     finally:
         workbook.close()
+        
+    try:
+        with zipfile.ZipFile(path, "r") as archive:
+            drawings = [n for n in archive.namelist() if n.lower().startswith("xl/drawings/drawing") and n.lower().endswith(".xml")]
+            shape_texts: list[str] = []
+            for drawing in drawings:
+                try:
+                    xml_text = archive.read(drawing).decode("utf-8", errors="ignore")
+                except KeyError:
+                    continue
+                tokens = _extract_xml_text(xml_text)
+                if tokens:
+                    shape_texts.extend(tokens)
+            if shape_texts:
+                clean_shapes = _clean_lines(shape_texts, limit=300)
+                if clean_shapes:
+                    results.append(ExtractionResult(
+                        "Excel Shapes/Text Boxes:\n" + "\n".join(clean_shapes),
+                        path.suffix.lower(),
+                        "openpyxl+zipfile",
+                        "extracted_success",
+                        section="shapes and text boxes"
+                    ))
+    except Exception:
+        pass
+
     if not results:
-        return [ExtractionResult("", path.suffix.lower(), "openpyxl", "failed_with_reason", "excel workbook has no readable values")]
+        return [ExtractionResult("", path.suffix.lower(), "openpyxl", "failed_with_reason", "excel workbook has no readable values or shapes")]
     return results
 
 

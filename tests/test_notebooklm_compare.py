@@ -56,3 +56,25 @@ def test_build_chunks_from_folder_uses_safe_relative_paths(tmp_path):
     assert chunks
     assert all(not chunk.relative_path.startswith("D:") for chunk in chunks)
     assert all(chunk.privacy_mode == "local_only" for chunk in chunks)
+
+def test_build_chunks_from_folder_extracts_excel(tmp_path):
+    src = tmp_path / "src"
+    src.mkdir()
+    
+    # Create valid base workbook
+    import openpyxl
+    file_path = src / "mock.xlsx"
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws["A1"] = "Real Excel Text Here"
+    wb.save(file_path)
+    wb.close()
+    
+    config = CompareConfig(source_root=str(src), output_dir=str(tmp_path / "runs"), question_count=1)
+    chunks = build_chunks_from_folder(config)
+    
+    assert len(chunks) > 0
+    # Should contain the real text from the Excel file
+    assert any("Real Excel Text Here" in chunk.text for chunk in chunks)
+    # Should not be just a metadata string
+    assert all("Raw binary content was not extracted" not in chunk.text for chunk in chunks if chunk.file_type == "xlsx")
