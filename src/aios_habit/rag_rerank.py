@@ -28,7 +28,7 @@ class RerankResult:
 
 
 def tokenize_query(query: str) -> List[str]:
-    tokens = re.findall(r"[a-zA-Z0-9_À-ỹ]+", query.lower())
+    tokens = re.findall(r"[\w]+", query.lower())
     seen = set()
     ordered = []
     for token in tokens:

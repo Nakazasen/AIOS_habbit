@@ -136,7 +136,15 @@ def build_chunks_from_folder(config: CompareConfig, limit: Optional[int] = None)
 
 def generate_questions(config: CompareConfig) -> List[CompareQuestion]:
     root = Path(config.source_root)
-    files = discover_source_files(config, limit=max(1, config.question_count))
+    files = discover_source_files(config, limit=None)
+    if files:
+        step = max(1, len(files) // max(1, config.question_count))
+        sampled_files = files[::step][:config.question_count]
+        # Pad if needed
+        while len(sampled_files) < config.question_count and sampled_files:
+            sampled_files.append(sampled_files[-1])
+        files = sampled_files
+    
     categories = [
         ("direct_lookup", "vi", "Tài liệu {name} nói gì về thông tin chính?"),
         ("procedure_step", "vi", "Các bước hoặc quy trình nào xuất hiện trong {name}?"),

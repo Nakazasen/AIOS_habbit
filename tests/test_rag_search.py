@@ -163,9 +163,9 @@ def test_fallback_search(memory_db):
     assert results2[0].chunk_id == "C2"
 
 def test_sanitize_fts_query():
-    assert sanitize_fts_query('hello "world"') == 'hello world'
-    assert sanitize_fts_query("it's test") == "it s test"
-    assert sanitize_fts_query("dog OR 1=1; DROP TABLE chunk_metadata; --") == "dog or 1 1 drop table chunk_metadata"
+    assert sanitize_fts_query('hello "world"') == 'hello OR world'
+    assert sanitize_fts_query("SELECT * FROM foo") == 'select OR from OR foo'
+    assert sanitize_fts_query("") == ""
 
 def test_compatibility():
     sc1 = SourceChunk(

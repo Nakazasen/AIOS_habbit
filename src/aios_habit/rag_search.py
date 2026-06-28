@@ -149,8 +149,10 @@ def sanitize_fts_query(query: str) -> str:
     This avoids malformed MATCH expressions from quotes/operators and keeps SQL-like
     punctuation as data, not syntax. SQL parameters are still used for execution.
     """
-    tokens = re.findall(r"[a-zA-Z0-9_À-ỹ]+", query.lower())
-    return " ".join(tokens)
+    tokens = re.findall(r"[\w]+", query.lower())
+    if not tokens:
+        return ""
+    return " OR ".join(tokens)
 
 def search_rag_chunks(conn: sqlite3.Connection, query: str, filters: Optional[RAGSearchFilter] = None, limit: int = 10) -> List[RAGSearchResult]:
     cursor = conn.cursor()
@@ -236,7 +238,7 @@ def search_rag_chunks(conn: sqlite3.Connection, query: str, filters: Optional[RA
         cursor.execute(sql, params)
         rows = cursor.fetchall()
         
-        query_tokens = [t for t in re.findall(r"[a-zA-Z0-9_À-ỹ]+", query_lower) if len(t) >= 2]
+        query_tokens = [t for t in re.findall(r"[\w]+", query_lower) if len(t) >= 2]
         
         for row in rows:
             chunk_id = row[0]
