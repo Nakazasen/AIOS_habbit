@@ -97,22 +97,13 @@ Warning:
 
 ### Phase 4 — RAG Engine v2 / NotebookLM-level Retrieval
 
-Status: NEXT.
+Status: IN PROGRESS.
 
 Scope:
-- better parser adapter;
-- structure-aware chunks;
-- SQLite FTS / BM25;
-- optional embeddings later;
-- hybrid search;
-- rerank;
-- query rewrite;
-- evidence pack;
-- citation scoring;
-- NotebookLM-style benchmark.
-
-Not allowed yet:
-- heavy vector DB without decision;
+- Ingest: `RAGChunk` and `RAGDocumentElement` with stable IDs (DONE `AIOS-RAG-INGEST-1`).
+- Search: Local SQLite FTS/BM25 + fallback string search (DONE `AIOS-RAG-SEARCH-1`).
+- Pack: Evidence pack builder, source scoring, and answer abstention (DONE `AIOS-RAG-EVIDENCE-PACK-1`).
+- Rerank: Local semantic reranker (PENDING `AIOS-RAG-RERANK-1`).
 - cloud embedding for company/mật;
 - fake NotebookLM parity claim.
 

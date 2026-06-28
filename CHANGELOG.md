@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026-06-28 - RAG Evidence Pack Foundation
+
+### Enhancements
+- Added evidence pack builder for RAG Engine v2 in `rag_evidence.py`.
+- Added citation IDs, source references, score details, coverage summary, and missing evidence warnings.
+- Preserved privacy mode and external-send guard metadata through the evidence pack.
+- Maintained zero dependency on vector databases, graph databases, or cloud embeddings for local retrieval.
+- No answer composer replacement yet.
+
 ## 2026-06-28 - Local FTS Search Foundation
 
 ### Enhancements

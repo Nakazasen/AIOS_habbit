@@ -235,3 +235,11 @@ def build_search_index_from_rag_chunks(conn, rag_chunks: List['RAGChunk']):
         
     create_rag_search_schema(conn)
     index_rag_chunks(conn, rag_chunks)
+
+def build_evidence_pack_from_rag_search(query: str, search_results: List['RAGSearchResult'], config=None) -> Optional['RAGEvidencePack']:
+    """Adapter to build an evidence pack from rag search results, if module is available."""
+    try:
+        from aios_habit.rag_evidence import build_evidence_pack
+        return build_evidence_pack(query, search_results, config)
+    except ImportError:
+        return None
