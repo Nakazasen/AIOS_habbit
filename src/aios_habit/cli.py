@@ -281,6 +281,45 @@ def cmd_handover(args) -> None:
     print_json({"status": "PASS", "dry_run": args.dry_run, "path": "09_handover/final_handover.md"})
 
 
+def cmd_owner_workflow(args):
+    """Print a safe owner-facing Phase 4 workflow guide.
+
+    The command is intentionally read-only: it does not ingest files, export prompt
+    packs, record paste-back answers, call providers, or create runtime outputs.
+    """
+    mode = "fake_data" if args.fake_data else "real_data_local_only"
+    steps = [
+        "Start with fake data, or mark real company data as local_only.",
+        "Search locally with RAG v2 and review returned evidence/citations.",
+        "Build or inspect the evidence pack before drafting any answer.",
+        "If evidence is insufficient, stop and record an insufficient-evidence result.",
+        "Export a prompt only when the pack is cloud_safe and export is allowed.",
+        "Never export local_only evidence to NotebookLM, cloud chat, or external IDEs.",
+        "Paste back model answers only with model/tool name, evidence refs, and route summary.",
+        "For P1 acceptance, the human owner records PASS/FAIL using docs/P1_OWNER_ACCEPTANCE_RUNBOOK.md.",
+    ]
+    warnings = [
+        "This guide does not call NotebookLM or any provider.",
+        "This guide does not read API keys or write prompt packs.",
+        "P1.0 remains closed until human owner acceptance passes.",
+    ]
+    print_json(
+        {
+            "status": "PASS",
+            "mode": mode,
+            "read_only": True,
+            "provider_call": False,
+            "notebooklm_call": False,
+            "writes_runtime_outputs": False,
+            "p1_opened": False,
+            "steps": steps,
+            "warnings": warnings,
+            "runbook": "docs/P1_OWNER_ACCEPTANCE_RUNBOOK.md",
+        }
+    )
+    return 0
+
+
 def main(argv=None) -> None:
     parser = argparse.ArgumentParser(prog="aios-habit", description="Local-first evidence-based personal memory platform")
     subcommands = parser.add_subparsers(dest="cmd", required=True)
@@ -314,6 +353,10 @@ def main(argv=None) -> None:
     build = handover_subcommands.add_parser("build", help="Build handover")
     build.add_argument("--dry-run", action="store_true")
     handover.set_defaults(func=cmd_handover)
+
+    owner_workflow = subcommands.add_parser("owner-workflow", help="Print the safe owner-facing Phase 4 workflow guide")
+    owner_workflow.add_argument("--fake-data", action="store_true", help="Use fake-data acceptance mode")
+    owner_workflow.set_defaults(func=cmd_owner_workflow)
 
     args = parser.parse_args(argv)
     result = args.func(args)
