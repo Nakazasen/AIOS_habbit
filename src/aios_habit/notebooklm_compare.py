@@ -25,6 +25,7 @@ class CompareConfig:
     question_count: int = 12
     use_local_reranker: bool = True
     notebooklm_notebook_id: str = ""
+    subset_filter: str = "none"
 
 
 @dataclass
@@ -34,6 +35,9 @@ class CompareQuestion:
     category: str
     language: str
     source_hint: str = ""
+    source_relative_path: str = ""
+    source_extension: str = ""
+    source_import_status: str = "unknown"
     expected_answer_type: str = "answerable"
 
 
@@ -58,9 +62,26 @@ def ensure_output_dir(config: CompareConfig) -> Path:
     return out
 
 
-def discover_source_files(source_root: Path, limit: Optional[int] = None) -> List[Path]:
+def discover_source_files(config: CompareConfig, limit: Optional[int] = None) -> List[Path]:
+    source_root = Path(config.source_root)
     files = [p for p in source_root.rglob("*") if p.is_file() and p.suffix.lower() in (SUPPORTED_TEXT_SUFFIXES | SUPPORTED_METADATA_SUFFIXES)]
     files.sort(key=lambda p: str(p).lower())
+    
+    if config.subset_filter != "none":
+        meta_path = Path(config.output_dir) / "notebooklm_run_meta.json"
+        if meta_path.exists():
+            try:
+                meta = json.loads(meta_path.read_text(encoding="utf-8"))
+                failed = meta.get("import_report", {}).get("failed_files", [])
+                failed_set = set(failed)
+                
+                if config.subset_filter == "notebooklm_success":
+                    files = [f for f in files if f.relative_to(source_root).as_posix() not in failed_set]
+                elif config.subset_filter == "notebooklm_failed_excel":
+                    files = [f for f in files if f.relative_to(source_root).as_posix() in failed_set and f.suffix.lower() in {".xlsx", ".xlsm", ".xls"}]
+            except Exception:
+                pass
+
     return files[:limit] if limit else files
 
 
@@ -71,9 +92,10 @@ def _safe_read_text(path: Path, max_chars: int = 12000) -> str:
         return ""
 
 
-def build_chunks_from_folder(source_root: Path, privacy_mode: str = "local_only", limit: Optional[int] = None):
+def build_chunks_from_folder(config: CompareConfig, limit: Optional[int] = None):
     chunks = []
-    for path in discover_source_files(source_root, limit=limit):
+    source_root = Path(config.source_root)
+    for path in discover_source_files(config, limit=limit):
         relative = path.relative_to(source_root).as_posix()
         if path.suffix.lower() in SUPPORTED_TEXT_SUFFIXES:
             text = _safe_read_text(path)
@@ -87,7 +109,7 @@ def build_chunks_from_folder(source_root: Path, privacy_mode: str = "local_only"
             source_title=path.name,
             file_type=path.suffix.lower().lstrip(".") or "text",
             text=text,
-            privacy_mode=privacy_mode,
+            privacy_mode=config.privacy_mode,
             extractor_name="notebooklm_compare_text_reader",
             extraction_status="ok",
             metadata={"benchmark_profile": "notebooklm_compare"},
@@ -98,7 +120,7 @@ def build_chunks_from_folder(source_root: Path, privacy_mode: str = "local_only"
 
 def generate_questions(config: CompareConfig) -> List[CompareQuestion]:
     root = Path(config.source_root)
-    files = discover_source_files(root, limit=max(1, config.question_count))
+    files = discover_source_files(config, limit=max(1, config.question_count))
     categories = [
         ("direct_lookup", "vi", "Tài liệu {name} nói gì về thông tin chính?"),
         ("procedure_step", "vi", "Các bước hoặc quy trình nào xuất hiện trong {name}?"),
@@ -108,14 +130,51 @@ def generate_questions(config: CompareConfig) -> List[CompareQuestion]:
         ("unanswerable", "ja", "このフォルダの証拠だけで、存在しない承認者の最終決定を特定できますか？"),
     ]
     questions: List[CompareQuestion] = []
+    
+    import_status_map = {}
+    meta_path = Path(config.output_dir) / "notebooklm_run_meta.json"
+    if meta_path.exists():
+        try:
+            meta = json.loads(meta_path.read_text(encoding="utf-8"))
+            failed = meta.get("import_report", {}).get("failed_files", [])
+            failed_set = set(failed)
+            for f in files:
+                try:
+                    rel = f.relative_to(root).as_posix()
+                    import_status_map[rel] = "FAILED_IMPORT" if rel in failed_set else "IMPORTED"
+                except ValueError:
+                    pass
+        except Exception:
+            pass
+
     if not files:
+        if config.subset_filter != "none":
+            raise ValueError("NO_VALID_SUBSET_FILES")
         files = [root / "no_supported_text_files_found.txt"]
+        
     for idx in range(config.question_count):
         category, lang, template = categories[idx % len(categories)]
         source = files[idx % len(files)]
         name = source.name
+        try:
+            rel_path = source.relative_to(root).as_posix()
+        except ValueError:
+            rel_path = name
+            
         expected = "insufficient" if category == "unanswerable" else "answerable"
-        questions.append(CompareQuestion(f"Q{idx+1:03d}", template.format(name=name), category, lang, name, expected))
+        import_status = import_status_map.get(rel_path, "unknown")
+        
+        questions.append(CompareQuestion(
+            question_id=f"Q{idx+1:03d}",
+            question=template.format(name=name),
+            category=category,
+            language=lang,
+            source_hint=name,
+            source_relative_path=rel_path,
+            source_extension=source.suffix.lower(),
+            source_import_status=import_status,
+            expected_answer_type=expected
+        ))
     return questions
 
 
@@ -134,7 +193,7 @@ def run_aios_answers(config: CompareConfig, questions_path: Optional[Path] = Non
     out_dir = ensure_output_dir(config)
     q_path = questions_path or out_dir / "questions.jsonl"
     questions = read_questions(q_path) if q_path.exists() else generate_questions(config)
-    chunks = build_chunks_from_folder(Path(config.source_root), config.privacy_mode)
+    chunks = build_chunks_from_folder(config)
     import sqlite3
     conn = sqlite3.connect(":memory:")
     try:

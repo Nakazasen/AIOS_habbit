@@ -52,7 +52,7 @@ def test_evaluator_marks_human_review_without_notebooklm_answers(tmp_path):
 
 def test_build_chunks_from_folder_uses_safe_relative_paths(tmp_path):
     config = _config(tmp_path)
-    chunks = build_chunks_from_folder(Path(config.source_root))
+    chunks = build_chunks_from_folder(config)
     assert chunks
     assert all(not chunk.relative_path.startswith("D:") for chunk in chunks)
     assert all(chunk.privacy_mode == "local_only" for chunk in chunks)
