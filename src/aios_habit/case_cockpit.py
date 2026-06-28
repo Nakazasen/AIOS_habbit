@@ -35,6 +35,11 @@ from aios_habit.safety_modes import (
     safety_mode_to_privacy_level,
     suggest_safety_mode,
 )
+from aios_habit.strong_answer_ui import (
+    build_strong_answer_prompt_for_ui,
+    prepare_local_evidence_answer,
+    save_pasted_strong_answer,
+)
 
 st.set_page_config(page_title="AIOS Case Cockpit v0.1", layout="wide")
 
@@ -467,6 +472,94 @@ def page_prompt_pack():
         
     prompt = build_prompt_pack(active_case, evs, mapped_target, include_local_only, learning_card=learning_card)
     st.text_area("Nội dung gói câu lệnh đã sinh (Copy-paste)", value=prompt, height=300)
+
+    st.divider()
+    st.subheader("Trả lời bằng AI mạnh từ bằng chứng")
+    st.caption("Luồng này tạo bản nháp bằng chứng local, xuất prompt để bạn tự copy sang Gemini/Codex/Claude, rồi dán câu trả lời mạnh ngược lại hồ sơ.")
+
+    strong_question = st.text_area(
+        "Câu hỏi cần trả lời",
+        key="strong_answer_question",
+        placeholder="Nhập câu hỏi cần AIOS trả lời từ bằng chứng trong hồ sơ...",
+        height=90,
+    )
+
+    if st.button("1. Tạo bản nháp bằng chứng local", key="create_local_evidence_draft"):
+        if not strong_question.strip():
+            st.error("Vui lòng nhập câu hỏi cần trả lời.")
+        else:
+            try:
+                prep = prepare_local_evidence_answer(strong_question, evs)
+                st.session_state["strong_answer_prep"] = prep
+                st.success("Đã tạo bản nháp bằng chứng local.")
+            except Exception as exc:
+                st.error(f"Không tạo được bản nháp bằng chứng: {exc}")
+
+    prep = st.session_state.get("strong_answer_prep")
+    if prep:
+        st.markdown("**Đây chưa phải câu trả lời cuối.**")
+        st.write(f"Detected intent: `{prep.detected_intent}`")
+        st.write(f"Evidence quality: `{prep.evidence_quality}`")
+        if prep.metadata_only_warning:
+            st.warning(prep.metadata_only_warning)
+        if prep.top_evidence_files:
+            st.markdown("**Top evidence files:**")
+            for source_name in prep.top_evidence_files:
+                st.write(f"- {source_name}")
+        st.text_area("Local Evidence Draft", value=prep.local_draft.answer_text, height=220, disabled=True)
+
+        if st.button("2. Tạo prompt cho Gemini/Codex/Claude", key="create_strong_prompt"):
+            prompt_export = build_strong_answer_prompt_for_ui(
+                prep.question,
+                prep.evidence_pack,
+                prep.local_draft.answer_text,
+            )
+            st.session_state["strong_prompt_export"] = prompt_export
+            if prompt_export.blocked_direct_provider_call:
+                st.warning(prompt_export.privacy_warning)
+            st.success("Đã tạo prompt pack để copy thủ công.")
+
+    prompt_export = st.session_state.get("strong_prompt_export")
+    if prompt_export:
+        if prompt_export.blocked_direct_provider_call:
+            st.warning(prompt_export.privacy_warning)
+        st.text_area("Prompt pack copyable", value=prompt_export.prompt_text, height=260)
+
+    pasted_answer = st.text_area("Dán câu trả lời AI mạnh vào đây", key="pasted_strong_answer", height=180)
+    model_tool_name = st.text_input(
+        "Tên model/công cụ đã dùng",
+        key="strong_model_tool_name",
+        placeholder="Gemini 3.1 Pro High / Codex GPT-5.5 / Claude...",
+    )
+    if st.button("3. Lưu câu trả lời AI mạnh vào hồ sơ", key="save_pasted_strong_answer"):
+        prep = st.session_state.get("strong_answer_prep")
+        if not prep:
+            st.error("Vui lòng tạo bản nháp bằng chứng local trước khi lưu câu trả lời.")
+        else:
+            try:
+                saved = save_pasted_strong_answer(
+                    active_case.case_id,
+                    prep.question,
+                    pasted_answer,
+                    model_tool_name,
+                    prep.evidence_pack,
+                )
+                st.session_state["saved_strong_answer"] = saved
+                st.success("Đã lưu câu trả lời AI mạnh vào hồ sơ.")
+            except Exception as exc:
+                st.error(f"Không lưu được câu trả lời AI mạnh: {exc}")
+
+    saved = st.session_state.get("saved_strong_answer")
+    if saved:
+        st.markdown("### Final answer card")
+        st.write(f"Model/tool: `{saved.model_tool_name}`")
+        st.write(f"Answer kind: `{saved.answer_kind}` · Final: `{saved.final_answer}`")
+        if saved.insufficient_evidence:
+            st.warning("Evidence còn yếu; cần owner review trước khi dùng vận hành.")
+        st.text_area("Final answer", value=saved.answer_text, height=180, disabled=True)
+        st.write("Evidence refs:")
+        for ref in saved.evidence_ids:
+            st.write(f"- {ref}")
 
 def page_handover():
     st.title("🤝 Bàn giao công việc")

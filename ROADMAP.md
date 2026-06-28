@@ -34,18 +34,20 @@ Case → Evidence → Map → Action → Learning → Memory
 
 
 
-- **Local HEAD:** `f28663b` (`Document roadmap review after normal provider UI pilot`).
+- **Local HEAD:** `2b7d714` (`Add source-aware retrieval for targeted evidence packs`).
 
-- **Remote HEAD:** `214c44f` (`Clarify provider fallback reason in daily flow`).
+- **Remote HEAD:** `2b7d714` (`Add source-aware retrieval for targeted evidence packs`).
 
-- **Current position:** End of Phase 5 (IDE / Strong Model Answer Bridge implemented).
+- **Current position:** Strong Answer UI foundation added; owner acceptance run still required.
 - **Current capability:** daily-pilot ready for normal documents, not production-ready.
 
 - **P1.0:** LOCKED; do not open until readiness criteria are met.
 
 - **NotebookLM parity:** NOT achieved; current retrieval is useful but not NotebookLM-level.
 
-- **IDE/model bridge:** NOT implemented yet.
+- **Remaining before P1.0:** owner acceptance run, PPTX/Image extraction optional/future, evaluator quality, UI usability check.
+
+- **IDE/model bridge:** Evidence-pack/manual paste-back flow available; direct cloud calls remain blocked for local-only evidence.
 
 
 
