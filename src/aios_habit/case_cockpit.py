@@ -1,4 +1,11 @@
 import streamlit as st
+from aios_habit.visual_knowledge_map import (
+    build_visual_knowledge_graph,
+    export_mermaid_graph,
+    export_markmap_markdown,
+    export_interactive_html,
+    summarize_map_metrics
+)
 import json
 import os
 import sys
@@ -55,8 +62,9 @@ def nav_to_page(page_name):
         "Hồ sơ sự việc": "📁 Hồ sơ sự việc",
         "Thêm bằng chứng": "📁 Hồ sơ sự việc",
         "Bản đồ sự việc": "📁 Hồ sơ sự việc",
+        "Bản đồ tri thức": "📁 Hồ sơ sự việc",
         "Việc cần làm tiếp": "📁 Hồ sơ sự việc",
-        "Gói câu lệnh cho AI": "🧪 Xuất kết quả",
+        "Hỏi AI từ bằng chứng": "🧪 Xuất kết quả",
         "Bàn giao": "🧪 Xuất kết quả",
         "Rút bài học": "🎓 Học nghề & An toàn",
         "Kiểm tra an toàn": "🎓 Học nghề & An toàn",
@@ -136,7 +144,7 @@ def page_quick_intake():
         col_nav1, col_nav2, col_nav3, col_nav4, col_nav5 = st.columns(5)
         col_nav1.button("🗺️ Xem bản đồ sự việc", on_click=nav_to_page, args=("Bản đồ sự việc",))
         col_nav2.button("🚀 Việc cần làm tiếp", on_click=nav_to_page, args=("Việc cần làm tiếp",))
-        col_nav3.button("🤖 Gói câu lệnh cho AI", on_click=nav_to_page, args=("Gói câu lệnh cho AI",))
+        col_nav3.button("🤖 Hỏi AI từ bằng chứng", on_click=nav_to_page, args=("Hỏi AI từ bằng chứng",))
         col_nav4.button("🤝 Tạo bàn giao", on_click=nav_to_page, args=("Bàn giao",))
         col_nav5.button("🧠 Rút bài học", on_click=nav_to_page, args=("Rút bài học",))
         st.info("Sau khi xử lý xong, hãy vào **Rút bài học** để lưu kinh nghiệm cho lần sau.")
@@ -433,7 +441,7 @@ def page_next_actions():
         st.write(f"{i+1}. {a}")
 
 def page_prompt_pack():
-    st.title("🤖 Gói câu lệnh cho AI (Prompt)")
+    st.title("🤖 Hỏi AI từ bằng chứng (Prompt)")
     active_case = get_active_case()
     if not active_case:
         st.warning("Vui lòng chọn một hồ sơ sự việc trong tab 'Hồ sơ sự việc' trước.")
@@ -567,25 +575,25 @@ def page_prompt_pack():
             st.write(f"- {ref}")
 
     st.divider()
-    st.subheader("Trả lời bằng AI IDE từ full bundle")
-    st.caption("Full bundle trong phạm vi đã chọn. Không tự động gọi cloud. Bạn chịu trách nhiệm nếu dùng IDE cloud model với dữ liệu local_only. AIOS sẽ kiểm tra response trước khi lưu.")
-    ide_question = st.text_area("Câu hỏi cần gửi full bundle", key="ide_full_bundle_question", height=90, value=strong_question)
+    st.subheader("2. Hỏi AI IDE từ gói bằng chứng đầy đủ")
+    st.caption("Gói bằng chứng đầy đủ trong phạm vi đã chọn. Không tự động gọi cloud. Bạn chịu trách nhiệm nếu dùng IDE cloud model với dữ liệu local_only. AIOS sẽ kiểm tra response trước khi lưu.")
+    ide_question = st.text_area("Câu hỏi cần gửi gói bằng chứng đầy đủ", key="ide_full_bundle_question", height=90, value=strong_question)
     scope_label = st.selectbox("Phạm vi bundle", ["Hồ sơ hiện tại: gửi toàn bộ bằng chứng trong case", "Kết quả truy xuất + toàn bộ manifest nguồn", "Thư mục local đã chọn: gửi toàn bộ evidence đã extract từ folder"], key="ide_bundle_scope_label")
     scope_map = {
         "Hồ sơ hiện tại: gửi toàn bộ bằng chứng trong case": "active_case_all",
         "Kết quả truy xuất + toàn bộ manifest nguồn": "current_question_retrieval_plus_full_scope_manifest",
         "Thư mục local đã chọn: gửi toàn bộ evidence đã extract từ folder": "selected_folder_all",
     }
-    if st.button("1. Tạo full bundle cho Antigravity", key="create_ide_full_bundle"):
+    if st.button("1. Gửi gói bằng chứng đầy đủ cho AI IDE", key="create_ide_full_bundle"):
         if not ide_question.strip():
-            st.error("Vui lòng nhập câu hỏi cần gửi full bundle.")
+            st.error("Vui lòng nhập câu hỏi cần gửi gói bằng chứng đầy đủ.")
         else:
             try:
                 req = write_ide_handoff_bundle(active_case.case_id, ide_question, scope_map[scope_label], evs)
                 st.session_state["ide_full_bundle_request"] = req
-                st.success("Đã tạo full bundle cho Antigravity/IDE AI.")
+                st.success("Đã tạo gói bằng chứng đầy đủ cho Antigravity/IDE AI.")
             except Exception as exc:
-                st.error(f"Không tạo được full bundle: {exc}")
+                st.error(f"Không tạo được gói bằng chứng đầy đủ: {exc}")
 
     req = st.session_state.get("ide_full_bundle_request")
     if req:
@@ -597,7 +605,7 @@ def page_prompt_pack():
         st.text_area("Lệnh cho Antigravity / IDE AI", value=req.ide_instruction, height=150)
 
     response_json_path = st.text_input("Đường dẫn response JSON từ IDE", key="ide_response_json_path", placeholder="local_runs/ide_handoff/inbox/RESP-REQ-....json")
-    if st.button("2. Import câu trả lời từ IDE", key="import_ide_full_bundle_response"):
+    if st.button("2. Nhập câu trả lời từ AI IDE", key="import_ide_full_bundle_response"):
         try:
             validation = import_ide_response(response_json_path)
             if not validation.ok:
@@ -605,13 +613,13 @@ def page_prompt_pack():
             else:
                 saved_ide = save_imported_ide_answer(active_case.case_id, validation)
                 st.session_state["saved_ide_full_bundle_answer"] = saved_ide
-                st.success("Đã import và lưu câu trả lời IDE full bundle vào hồ sơ.")
+                st.success("Đã import và lưu câu trả lời IDE gói bằng chứng đầy đủ vào hồ sơ.")
         except Exception as exc:
             st.error(f"Không import được response IDE: {exc}")
 
     saved_ide = st.session_state.get("saved_ide_full_bundle_answer")
     if saved_ide:
-        st.markdown("### Final answer card — IDE full bundle")
+        st.markdown("### Final answer card — IDE gói bằng chứng đầy đủ")
         st.write(f"Model/tool: `{saved_ide.model_tool_name}`")
         st.write(f"Answer kind: `ide_handoff_strong_answer` · Final: `{saved_ide.final_answer}`")
         st.write(f"Route: `{saved_ide.route_summary}`")
@@ -619,6 +627,46 @@ def page_prompt_pack():
         st.write("Used evidence IDs:")
         for ref in saved_ide.evidence_ids:
             st.write(f"- {ref}")
+
+
+def page_knowledge_map():
+    st.title("🧠 Bản đồ tri thức")
+    active_case = get_active_case()
+    if not active_case:
+        st.info("Vui lòng chọn một sự việc.")
+        return
+        
+    evs = load_evidence(active_case.case_id)
+    answers = [e for e in evs if e.source_type == "ide_handoff_strong_answer" or e.source_type == "strong_model_answer"]
+    lessons = [] # Placeholder for lessons if stored
+    
+    graph = build_visual_knowledge_graph(active_case, evs, lessons, answers)
+    metrics = summarize_map_metrics(graph)
+    
+    st.markdown("### Thống kê")
+    c1, c2, c3, c4 = st.columns(4)
+    c1.metric("Vụ việc", 1)
+    c2.metric("Bằng chứng", metrics["evidence_count"])
+    c3.metric("AI Answer", metrics["answer_count"])
+    c4.metric("Bài học", metrics["lesson_count"])
+    
+    st.markdown("### Bản đồ trực quan")
+    if not evs and not answers and not lessons:
+        st.info("Chưa có bằng chứng. Hãy thêm tài liệu/log/ảnh trước.")
+    else:
+        mermaid_data = export_mermaid_graph(graph)
+        st.components.v1.html(f'''
+        <div class="mermaid">
+        {mermaid_data}
+        </div>
+        <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+        <script>mermaid.initialize({{startOnLoad:true}});</script>
+        ''', height=500, scrolling=True)
+        
+    with st.expander("Chi tiết kỹ thuật & Export"):
+        st.text_area("Mermaid Graph", mermaid_data, height=200)
+        st.text_area("Markmap Markdown", export_markmap_markdown(graph), height=200)
+        st.text_area("Static HTML", export_interactive_html(graph), height=200)
 
 def page_handover():
     st.title("🤝 Bàn giao công việc")
@@ -2639,7 +2687,7 @@ def main():
             page_next_actions()
             
     elif selected_category == "🧪 Xuất kết quả":
-        tab1, tab2 = st.tabs(["🤖 Gói câu lệnh cho AI", "🤝 Bàn giao"])
+        tab1, tab2 = st.tabs(["🤖 Hỏi AI từ bằng chứng", "🤝 Bàn giao"])
         with tab1:
             page_prompt_pack()
         with tab2:
