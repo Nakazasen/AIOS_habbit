@@ -1,8 +1,8 @@
 import hashlib
 from dataclasses import dataclass, field, asdict
 from datetime import datetime
+from pathlib import PurePosixPath, PureWindowsPath
 from typing import Any, Dict, List, Optional
-import json
 
 from aios_habit.rag_search import RAGSearchResult
 
@@ -71,6 +71,16 @@ def make_snippet(text: str, max_chars: int) -> str:
         return text
     return text[:max_chars] + "..."
 
+def safe_citation_label(citation_label: str, source_title: str = "") -> str:
+    """Return a prompt-safe citation label without absolute/local path fragments."""
+    label = (citation_label or source_title or "unknown-source").strip()
+    label = label.replace("\\", "/")
+    if ":/" in label or label.startswith("/") or "/" in label:
+        label = PurePosixPath(label).name
+    if not label:
+        label = PureWindowsPath(citation_label or source_title or "unknown-source").name
+    return label or "unknown-source"
+
 def normalize_pack_privacy(items: List[RAGEvidenceItem]) -> str:
     if not items:
         return "local_only" # Safest default when empty
@@ -109,7 +119,7 @@ def build_evidence_pack(query: str, search_results: List[RAGSearchResult], confi
             chunk_id=result.chunk_id,
             document_id=result.document_id,
             citation_id=citation_id,
-            citation_label=result.citation_label,
+            citation_label=safe_citation_label(result.citation_label, result.source_title),
             source_title=result.source_title,
             relative_path=result.relative_path,
             file_type=result.file_type,
@@ -155,6 +165,9 @@ def build_evidence_pack(query: str, search_results: List[RAGSearchResult], confi
     elif top_score < config.min_top_score:
         insufficient_evidence = True
         missing_evidence_warnings.append(f"Top score {top_score:.2f} is below minimum {config.min_top_score:.2f}.")
+    elif coverage_score < config.min_coverage_score:
+        insufficient_evidence = True
+        missing_evidence_warnings.append(f"Coverage score {coverage_score:.2f} is below minimum {config.min_coverage_score:.2f}.")
         
     confidence_label = "insufficient"
     if not insufficient_evidence:
