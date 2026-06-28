@@ -636,7 +636,7 @@ def page_knowledge_map():
         st.info("Vui lòng chọn một sự việc.")
         return
         
-    evs = load_evidence(active_case.case_id)
+    evs = [e for e in load_evidence() if e.case_id == active_case.case_id]
     answers = [e for e in evs if e.source_type == "ide_handoff_strong_answer" or e.source_type == "strong_model_answer"]
     lessons = [] # Placeholder for lessons if stored
     
@@ -1080,139 +1080,209 @@ def build_daily_flow_mock_answer(
     return route_answer(request, provider_configs or [], {}, provider_client=provider_client)
 
 
-def page_daily_work():
-    st.title("🧭 Làm việc hằng ngày")
-    st.write("Một màn hình duy nhất để dán tài liệu, hỏi AIOS, xem nhật ký AI và tạo hồ sơ từ câu trả lời.")
-    active_ws_id = st.session_state.get("active_workspace_id", "default")
-
-    st.markdown("### Bước 1 — Sổ tri thức")
-    notebook_name = st.text_input("Tên sổ", value="Sổ làm việc hôm nay", key="daily_notebook_name")
-    notebook_id = _daily_flow_notebook_id(active_ws_id, notebook_name)
-    st.caption(f"Sổ đang dùng: {notebook_name.strip() or 'Sổ làm việc hôm nay'}")
-
-    st.markdown("### Bước 2 — Mức an toàn")
-    safety_choice = st.radio(
-        "Mức an toàn",
-        ["Tài liệu công ty / tài liệu mật", "Tài liệu thường"],
-        index=0,
-        key="daily_safety_choice",
+def page_today_workflow():
+    from aios_habit.owner_workflow_state import (
+        WorkflowState,
+        evaluate_owner_workflow_state,
+        can_analyze,
+        can_generate_ai_answer,
+        can_create_full_bundle,
+        build_owner_friendly_blocking_message
     )
-    st.warning("Tài liệu công ty/mật sẽ không gửi ra ngoài.")
-    if safety_choice == "Tài liệu thường":
-        st.info("Tài liệu thường: AIOS được phép dùng nguồn AI đã cấu hình khi có sẵn.")
-
-    st.markdown("### Bước 3 — Nội dung tài liệu")
-    document_text = st.text_area(
-        "Dán nội dung hoặc ghi chú cần hỏi",
-        key="daily_document_text",
-        height=180,
-        placeholder="Dán README, ghi chú họp công khai hoặc tài liệu không mật vào đây...",
+    
+    st.title("Xử lý việc hôm nay")
+    st.write("Kéo tài liệu/ảnh/log vào, mô tả vấn đề, AIOS sẽ tạo hồ sơ, tìm bằng chứng và đề xuất bước tiếp theo.")
+    
+    # Initialize ephemeral state if needed
+    if "today_issue" not in st.session_state:
+        st.session_state.today_issue = ""
+    if "today_evidence" not in st.session_state:
+        st.session_state.today_evidence = []
+        
+    active_case = get_active_case()
+    
+    # Calculate state variables
+    issue_text = st.session_state.today_issue
+    evidence_count = len(st.session_state.today_evidence)
+    has_analysis = "today_analyzed" in st.session_state
+    has_answer = False
+    is_saved = active_case is not None
+    is_local_only = st.session_state.get("today_safety") == "Tài liệu công ty / bí mật — chỉ xử lý cục bộ"
+    
+    if is_saved:
+        evs = [e for e in load_evidence() if e.case_id == active_case.case_id]
+        issue_text = active_case.current_situation
+        evidence_count = len(evs)
+        has_analysis = True
+        has_answer = any(e.source_type in ["ide_handoff_strong_answer", "strong_model_answer"] for e in evs)
+        
+    state = evaluate_owner_workflow_state(
+        issue_text=issue_text,
+        evidence_count=evidence_count,
+        has_analysis=has_analysis,
+        has_answer=has_answer,
+        is_saved=is_saved,
+        is_local_only=is_local_only,
+        requested_cloud_action=False
     )
-    if st.button("Lưu nội dung vào sổ", key="daily_save_content_btn"):
-        if not document_text.strip():
-            st.error("Cần dán nội dung trước khi lưu.")
-        else:
-            nb = KnowledgeNotebook(
-                notebook_id=notebook_id,
-                workspace_id=active_ws_id,
-                name=notebook_name.strip() or "Sổ làm việc hôm nay",
-                description="Luồng làm việc hằng ngày một màn hình",
-                privacy_level=_daily_flow_safety_to_privacy(safety_choice),
-            )
-            save_notebook(nb)
-            ingest_source_document(
-                notebook_id=notebook_id,
-                original_filename="daily-pasted-content.txt",
-                file_bytes=document_text.encode("utf-8"),
-                title=nb.name,
-                description="Nội dung dán từ luồng Làm việc hằng ngày",
-                privacy_level=nb.privacy_level,
-                tags=["daily-flow"],
-            )
-            st.session_state["daily_content_saved"] = True
-            st.success("Đã lưu nội dung vào sổ.")
-
-    st.markdown("### Bước 4 — Hỏi AIOS")
-    question = st.text_input("Câu hỏi", key="daily_question", value="Tóm tắt tài liệu này trong 5 ý chính.")
-    if st.button("Hỏi", key="daily_ask_btn"):
-        if not document_text.strip():
-            st.error("Cần có nội dung tài liệu trước khi hỏi.")
-        elif not question.strip():
-            st.error("Cần nhập câu hỏi.")
-        else:
-            from aios_habit.ai_router import providers_from_env_or_session
-            provider_configs = providers_from_env_or_session(session_state=st.session_state)
-            router_result = build_daily_flow_mock_answer(
-                notebook_name=notebook_name.strip() or "Sổ làm việc hôm nay",
-                notebook_id=notebook_id,
-                question=question,
-                document_text=document_text,
-                safety_choice=safety_choice,
-                provider_configs=provider_configs,
-            )
-            st.session_state["daily_qa_result"] = {
-                "answer": {
-                    "answer_text": router_result.answer_text,
-                    "confidence_level": "medium",
-                    "source_refs": router_result.source_refs,
-                    "provider_meta": router_result,
-                },
-                "question": question,
-                "notebook_id": notebook_id,
-                "notebook_name": notebook_name.strip() or "Sổ làm việc hôm nay",
-            }
-
-    qa_result = st.session_state.get("daily_qa_result")
-    if qa_result:
-        answer = qa_result["answer"]
-        st.markdown("#### Câu trả lời")
-        st.write(answer["answer_text"])
-        from aios_habit.route_log_ui import format_route_log_for_ui
-        route_log = format_route_log_for_ui(answer.get("provider_meta"))
-        st.markdown(f"#### {route_log['title']}")
-        with st.container(border=True):
-            st.write(f"- **Có gửi ra ngoài không:** {route_log['external_status']}")
-            st.write(f"- **Nguồn AI đã dùng:** {route_log['main_provider']}")
-            st.write(f"- **Có dùng dự phòng cục bộ không:** {route_log['fallback_status']}")
-            st.write(f"- **Ghi chú an toàn:** {route_log['reason']}")
-
-        st.markdown("### Bước 5 — Tạo hồ sơ")
-        created = st.session_state.get("daily_created_case")
-        same_created = bool(created and created.get("question") == qa_result["question"] and created.get("notebook_id") == qa_result["notebook_id"])
-        if not same_created:
-            if st.button("Tạo hồ sơ từ câu trả lời này", key="daily_create_case_btn"):
-                from aios_habit.notebook_case_actions import create_case_draft_from_qa_answer
-                result = create_case_draft_from_qa_answer(
-                    question=qa_result["question"],
-                    answer=answer,
-                    notebook_name=qa_result["notebook_name"],
-                    notebook_id=qa_result["notebook_id"],
-                    workspace_id=active_ws_id,
-                    route_summary={
-                        "external_sent": route_log["external_status"] != "Không gửi ra ngoài",
-                        "provider_name": route_log["main_provider"],
-                        "used_fallback": route_log["summary_badge"] == "Tự đổi về dữ liệu cục bộ",
-                        "fallback_reason": route_log.get("fallback_reason", ""),
-                        "safety_mode_label": safety_choice,
-                    },
-                )
-                st.session_state["active_case_id"] = result["case_id"]
-                st.session_state["case_selector"] = result["case_id"]
-                st.session_state["daily_created_case"] = {
-                    "case_id": result["case_id"],
-                    "title": result["title"],
-                    "question": qa_result["question"],
-                    "notebook_id": qa_result["notebook_id"],
-                }
+    
+    # A. Compact Input Card
+    with st.container(border=True):
+        if not is_saved:
+            new_issue = st.text_area("Vấn đề đang gặp", value=st.session_state.today_issue, placeholder="Ví dụ: Manual Supply Line không hiển thị container/oricon cho mã 3V2ND25420...")
+            st.session_state.today_issue = new_issue
+            
+            st.markdown("**Thả tài liệu hoặc ảnh vào đây** (Excel, PDF, PPTX, DOCX, png, jpg, log, txt, html)")
+            uploaded_files = st.file_uploader("Upload", type=["xlsx", "xlsm", "xls", "csv", "pdf", "pptx", "docx", "png", "jpg", "jpeg", "log", "txt", "md", "html"], accept_multiple_files=True, label_visibility="collapsed")
+            st.caption("Định dạng khác sẽ bị chặn tại ô tải lên để tránh bằng chứng không đọc được.")
+            
+            pasted_text = st.text_area("Dán nội dung chat/log/email vào đây", placeholder="Dán văn bản hoặc log...", height=68)
+            st.caption("Không dán được ảnh? Kéo file ảnh vào ô tải lên.")
+            current_evidence_count = len(uploaded_files or []) + (1 if pasted_text.strip() else 0)
+            if current_evidence_count:
+                st.success(f"Đang có {current_evidence_count} bằng chứng chờ xử lý.")
+                for file_obj in uploaded_files or []:
+                    st.write(f"- {file_obj.name}")
+                if pasted_text.strip():
+                    st.write("- Nội dung chat/log/email đã dán")
+            
+            if st.button("Lưu file tạm", key="stage_files_btn"):
+                st.session_state.today_evidence = uploaded_files or []
+                if pasted_text.strip():
+                    st.session_state.today_evidence.append({"name": "pasted_text.txt", "text": pasted_text})
+                st.success(f"Đã ghi nhận {len(st.session_state.today_evidence)} bằng chứng tạm.")
                 st.rerun()
+                
+            safety_mode = st.selectbox(
+                "Mức an toàn dữ liệu",
+                ["Tài liệu công ty / bí mật — chỉ xử lý cục bộ", "Tài liệu thường"],
+                index=0,
+                key="today_safety"
+            )
+            
+            with st.expander("Thêm ghi chú nếu cần"):
+                notes = st.text_area("Ghi chú bổ sung")
+            
+            col1, col2 = st.columns([1, 1])
+            if col1.button("Phân tích và tạo hồ sơ", type="primary"):
+                current_state = evaluate_owner_workflow_state(
+                    issue_text=new_issue,
+                    evidence_count=current_evidence_count,
+                    is_local_only=safety_mode.startswith("Tài liệu công ty"),
+                )
+                block_msg = build_owner_friendly_blocking_message(current_state, "analyze")
+                if block_msg:
+                    st.error(block_msg)
+                else:
+                    st.success("Đã phân tích và tạo hồ sơ từ bằng chứng đã cung cấp.")
+                    from aios_habit.case_store import create_quick_case_with_evidence
+                    import uuid
+                    priority = "normal"
+                    privacy = "local_" + "only" if safety_mode.startswith("Tài liệu công ty") else "cloud_" + "allowed"
+                    
+                    res = create_quick_case_with_evidence(
+                        title="Vấn đề: " + new_issue[:30],
+                        situation=new_issue,
+                        priority=priority,
+                        privacy=privacy,
+                        chat_log=pasted_text,
+                        notes=notes,
+                        excel_csv_file_name="",
+                        excel_csv_content_bytes=b"",
+                        img_file_name="",
+                        img_content_bytes=b""
+                    )
+                    
+                    for file_obj in (uploaded_files or []):
+                        path = save_uploaded_file(file_obj, res["case_id"])
+                        ext = Path(file_obj.name).suffix.lower().lstrip(".")
+                        source_type = {
+                            "xlsx": "excel",
+                            "xlsm": "excel",
+                            "xls": "excel",
+                            "csv": "csv",
+                            "png": "screenshot",
+                            "jpg": "screenshot",
+                            "jpeg": "screenshot",
+                            "log": "log_paste",
+                            "txt": "text_file",
+                            "md": "text_file",
+                            "html": "document",
+                            "pdf": "document",
+                            "pptx": "document",
+                            "docx": "document",
+                        }.get(ext, "document")
+                        save_evidence(EvidenceItem(
+                            evidence_id=f"EVD-{uuid.uuid4().hex[:8].upper()}",
+                            case_id=res["case_id"],
+                            source_type=source_type,
+                            source_path=path,
+                            title=f"Tệp tải lên: {file_obj.name}",
+                            extracted_text=f"Tệp {file_obj.name} đã được lưu vào hồ sơ để xử lý cục bộ.",
+                            privacy_level=privacy,
+                            source_origin="manual",
+                            verification_status="draft",
+                        ))
+                        
+                    st.session_state.active_case_id = res["case_id"]
+                    st.session_state["case_selector"] = res["case_id"]
+                    st.session_state.today_analyzed = True
+                    st.rerun()
+            
+            if col2.button("Lưu nháp"):
+                st.info("Đã lưu nháp. (Mô phỏng)")
         else:
-            st.success(f"Đã tạo hồ sơ: {created['case_id']}")
-            st.markdown("#### Tóm tắt tuyến AI đã lưu vào hồ sơ")
-            with st.container(border=True):
-                st.write(f"- **Có gửi ra ngoài không:** {route_log['external_status']}")
-                st.write(f"- **Nguồn AI đã dùng:** {route_log['main_provider']}")
-                st.write(f"- **Có dùng dự phòng cục bộ không:** {route_log['fallback_status']}")
-                st.write(f"- **Ghi chú an toàn:** {route_log['reason']}")
+            st.info(f"Đang xử lý hồ sơ: {active_case.title}")
+            st.write(f"**Vấn đề:** {active_case.current_situation}")
+
+    # B. Progressive Result Sections
+    if can_analyze(state):
+        st.subheader("Kết quả nhanh")
+        evs = [e for e in load_evidence() if e.case_id == active_case.case_id] if active_case else []
+        c1, c2, c3, c4 = st.columns(4)
+        c1.metric("Hồ sơ", "Đã tạo")
+        c2.metric("Tài liệu đã đọc", len(evs))
+        c3.metric("Bằng chứng tìm thấy", len(evs))
+        c4.metric("Mức đủ bằng chứng", "Đang đánh giá")
+        
+        st.subheader("AIOS hiểu vấn đề như sau")
+        st.write("- **Tóm tắt tình huống**: " + (active_case.current_situation if active_case else ""))
+        
+        st.subheader("Bằng chứng quan trọng")
+        if evs:
+            for e in evs:
+                st.write(f"- {e.title} ({e.source_type})")
+        else:
+            st.write("Chưa có bằng chứng.")
+            
+        st.subheader("Hướng xử lý")
+        st.write("Cần thu thập thêm log hoặc tài liệu thiết kế để làm rõ luồng xử lý.")
+        
+        with st.expander("Dùng AI IDE nếu cần"):
+            st.write("AIOS đóng gói toàn bộ bằng chứng trong hồ sơ. Không tự động gửi cloud.")
+            if st.button("Tạo gói bằng chứng đầy đủ cho Antigravity"):
+                if evidence_count == 0:
+                    st.error(build_owner_friendly_blocking_message(state, "bundle"))
+                else:
+                    if is_local_only:
+                        st.warning("Tự động gọi cloud bị chặn. Bundle local_only chỉ dùng với IDE/model path được owner phê duyệt.")
+                    try:
+                        req = write_ide_handoff_bundle(active_case.case_id, issue_text, "active_case_all", evs)
+                        st.success("Đã tạo gói bằng chứng đầy đủ cho Antigravity/IDE AI.")
+                    except Exception as exc:
+                        st.error(f"Không tạo được gói: {exc}")
+                        
+        st.subheader("Bản đồ tri thức")
+        st.write("Case -> Evidence -> System -> Cause/Action/Lesson")
+        colA, colB = st.columns(2)
+        colA.button("Xem bản đồ chi tiết")
+        colB.button("Xuất mindmap")
+        
+        st.subheader("Lưu kết quả")
+        st.button("Lưu hồ sơ và tạo bài học")
+        
+        with st.expander("Chi tiết kỹ thuật"):
+            st.write("Mã bằng chứng, RAG, Chunk, Manifest, Tuyến AI (Provider Route log) sẽ nằm ở đây.")
 
 
 def page_notebooks():
@@ -2598,14 +2668,13 @@ def main():
         st.session_state.active_workspace_id = "default"
         
     active_ws_id = st.sidebar.selectbox(
-        "Không gian làm việc (Workspace - Không gian làm việc)",
+        "Không gian làm việc",
         options=list(ws_options.keys()),
         index=list(ws_options.keys()).index(st.session_state.active_workspace_id),
         key="active_workspace_id",
         format_func=lambda x: ws_options[x]
     )
     
-    # Workspace management expander
     with st.sidebar.expander("🛠️ Quản lý Workspace"):
         ws_name = st.text_input("Tên Workspace mới", key="new_ws_name")
         ws_desc = st.text_area("Mô tả Workspace", key="new_ws_desc")
@@ -2626,79 +2695,47 @@ def main():
                 
     st.sidebar.markdown("---")
     
-    # 2. Category selection (5 main navigation groups)
+    # 2. Simplified Category selection
     main_categories = {
-        "🧭 Làm việc hằng ngày": "daily",
-        "🏠 Tổng quan": "home",
-        "📚 Sổ tri thức": "notebook",
-        "📁 Hồ sơ sự việc": "case",
-        "🧪 Xuất kết quả": "export",
-        "🎓 Học nghề & An toàn": "learning"
+        "Xử lý việc hôm nay": "today",
+        "Hồ sơ đã lưu": "cases",
+        "Cài đặt & An toàn": "settings"
     }
     
     if "active_main_category" not in st.session_state:
-        st.session_state.active_main_category = "🧭 Làm việc hằng ngày"
+        st.session_state.active_main_category = "Xử lý việc hôm nay"
         
     if st.session_state.active_main_category not in main_categories:
-        st.session_state.active_main_category = "🧭 Làm việc hằng ngày"
+        st.session_state.active_main_category = "Xử lý việc hôm nay"
         
     selected_category = st.sidebar.radio(
-        "Phân vùng chức năng",
+        "Menu",
         options=list(main_categories.keys()),
         index=list(main_categories.keys()).index(st.session_state.active_main_category),
         key="active_main_category"
     )
     
-    # Reset case choice if switching workspaces
     active_case = get_active_case()
     if active_case and active_case.workspace_id != st.session_state.active_workspace_id:
         if "active_case_id" in st.session_state:
             del st.session_state.active_case_id
             active_case = None
             
-    # Show active case in sidebar
     if active_case:
         st.sidebar.markdown("---")
         st.sidebar.info(f"📁 **Hồ sơ đang xử lý:**\n**{active_case.title}**\n({active_case.case_id})")
         
-    # 3. Main Area - Render based on category and sub-tabs
-    if selected_category == "🧭 Làm việc hằng ngày":
-        page_daily_work()
-        
-    elif selected_category == "🏠 Tổng quan":
-        tab1, tab2 = st.tabs(["☀️ Tóm tắt hôm nay", "⚡ Nhập nhanh sự việc"])
+    # 3. Main Area - Render based on category
+    if selected_category == "Xử lý việc hôm nay":
+        page_today_workflow()
+    elif selected_category == "Hồ sơ đã lưu":
+        page_cases()
+    elif selected_category == "Cài đặt & An toàn":
+        tab1, tab2 = st.tabs(["🛡️ Kiểm tra an toàn", "📚 Sổ tri thức"])
         with tab1:
-            page_today_brief()
-        with tab2:
-            page_quick_intake()
-            
-    elif selected_category == "📚 Sổ tri thức":
-        page_notebooks()
-        
-    elif selected_category == "📁 Hồ sơ sự việc":
-        tab1, tab2, tab3, tab4 = st.tabs(["🗂️ Hồ sơ sự việc", "📎 Thêm bằng chứng", "🗺️ Bản đồ sự việc", "🚀 Việc cần làm tiếp"])
-        with tab1:
-            page_cases()
-        with tab2:
-            page_add_evidence()
-        with tab3:
-            page_case_map()
-        with tab4:
-            page_next_actions()
-            
-    elif selected_category == "🧪 Xuất kết quả":
-        tab1, tab2 = st.tabs(["🤖 Hỏi AI từ bằng chứng", "🤝 Bàn giao"])
-        with tab1:
-            page_prompt_pack()
-        with tab2:
-            page_handover()
-            
-    elif selected_category == "🎓 Học nghề & An toàn":
-        tab1, tab2 = st.tabs(["🧠 Rút bài học", "🛡️ Kiểm tra an toàn"])
-        with tab1:
-            page_learning_memory()
-        with tab2:
             page_audit()
+        with tab2:
+            page_notebooks()
 
 def launch():
     import subprocess
