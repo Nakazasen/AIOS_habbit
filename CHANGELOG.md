@@ -1,5 +1,24 @@
 # Changelog
 
+## 2026-06-28 - Roadmap Review after Normal Provider UI Pilot
+
+### Validation
+- Marked the one-screen **Làm việc hằng ngày** flow as stable enough for guided daily pilot use.
+- Recorded the normal-document provider UI pilot as passed with DeepSeek, fallback disabled, visible route summary, and Q&A-to-Case creation.
+- Reconfirmed company/mật protection through direct negative checks: no cloud/provider call for protected mode.
+
+### Roadmap
+- Added next decision gate `AIOS-P1-READINESS-DECISION-1` for owner review before opening any P1.0 checklist.
+- Kept P1.0 closed; current state is daily-pilot ready, not production-ready.
+
+### Known Warnings
+- Browser automation could not type Vietnamese accents reliably.
+- Notebook name entry can append to the default value instead of replacing it.
+- Answer, route, and provider metadata may require scrolling.
+- Q2/Q3 browser automation sometimes needed repeated focus/submit attempts.
+- Selecting a newly created case from a long dropdown can require scrolling.
+- MOM UI safety was not rerun in the last browser pilot, although tests and direct safety checks pass.
+
 ## 2026-06-27 - Real Provider Routing Foundation and Daily Pilot
 
 ### Added

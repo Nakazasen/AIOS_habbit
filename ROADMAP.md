@@ -10,27 +10,31 @@ This document serves as the high-level index for the development phases, product
 
 ## Active Gate & Phase Status
 
-- **Current stable GitHub HEAD:** `3f2629e` (`Fix real normal document provider UI route`).
-- **Provider/router foundation:** ✅ Usable foundation for normal documents, not production-grade P1.0.
+- **Current stable GitHub HEAD:** `214c44f` (`Clarify provider fallback reason in daily flow`).
+- **Provider/router foundation:** ✅ Usable daily-pilot foundation for normal documents, not production-grade P1.0.
   - Local-first MOM/company safety remains the default protected path.
-  - Normal-document provider routing is wired through the router for custom notebooks.
-  - DeepSeek has been verified with synthetic public normal-document pilots.
+  - One-screen **Làm việc hằng ngày** flow is stable enough for guided daily pilot use.
+  - Normal-document provider routing is wired through the router and browser/UI pilot.
+  - DeepSeek has been verified with synthetic public normal-document smoke tests and UI pilot.
+  - Q&A-to-Case preserves answer, source refs, safety, and route summary in the generated case draft.
+  - Route log / route summary visibly reports provider, fallback state, and external-send status.
   - Provider health, key masking, cooldown, and key-rotation foundation are present.
-  - Vietnamese route-log UI is available for user-readable routing decisions.
   - `API Key.txt`, `API*.txt`, `.env`, and provider config files are ignored and not tracked.
-  - MOM/company cloud block is protected by tests and direct audits.
+  - MOM/company cloud block is protected by tests and direct negative audits.
 - **Current warnings:**
-  - DOM/browser evidence is still partial in some browser-agent runs because automation was unstable.
-  - The real daily pilot passed by direct path after the UI browser task failed internally.
-  - Q&A-to-Case preserves answer, source refs, and safety, but does not persist route summary as a dedicated case field yet.
+  - This is **not P1.0 production-ready**; it is ready for owner roadmap decision.
+  - Browser automation could not type Vietnamese accents reliably during the last pilot.
+  - Notebook name entry can append to the default value instead of replacing it.
+  - Answer, route, and provider metadata are visible but require scrolling in the UI.
+  - Q2/Q3 browser automation sometimes needed repeated focus/submit attempts.
+  - Selecting a newly created case from a long dropdown can require scrolling.
+  - MOM UI safety was not rerun in the last browser pilot, although direct/policy tests pass.
   - Provider key-rotation foundation exists, but real multi-key rotation is not fully field-tested.
-  - This is **not P1.0 production-ready**.
 - **Next recommended gates:**
-  1. **AIOS-REAL-USER-PILOT-1** — actual non-confidential document.
-  2. **AIOS-QA-CASE-ROUTE-SUMMARY-1** — preserve route summary in case draft.
-  3. **AIOS-UX-DAILY-HARDENING-1** — reduce friction in daily workflow.
-  4. Optional later: configure another provider key.
-  5. Optional later: Router-6 advanced provider pool, only after real user pilot.
+  1. **AIOS-P1-READINESS-DECISION-1** — owner decides whether to open P1.0 readiness checklist, run a short daily pilot, or harden UX first.
+  2. **AIOS-UX-DAILY-HARDENING-1** — reduce the top daily-flow frictions if owner chooses UX hardening.
+  3. Optional later: configure another provider key.
+  4. Optional later: Router-6 advanced provider pool, only after real daily use proves the need.
 
 ---
 
