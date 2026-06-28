@@ -1,0 +1,896 @@
+# AIOS 12Q ANSWERS — REDACTED FULL REVIEW
+
+Safety note:
+* Redacted company-sensitive identifiers where necessary.
+* Answer reasoning and structure preserved for human quality review.
+* Raw unredacted answers remain in local_runs only.
+
+## Q01 — Excel
+
+Question:
+What is the staging and master mapping for ManualShipping vs ExistingLine?
+
+Target source type:
+Excel
+
+AIOS answer:
+### Trả lời ngắn
+Local draft for: What is the staging and master mapping for ManualShipping vs ExistingLine?
+Confidence: medium
+Warnings:
+- Privacy: local_only evidence must not be exported externally.
+- This is a local evidence draft, not a final model answer.
+Evidence-grounded points:
+- [E1] --- sheet ManualShipping_ExistingLine preview ---
+Excel sheet: ManualShipping_ExistingLine
+セクション目的
+こ...
+- [E2] --- sheet old_20231102最新化 preview ---
+Excel sheet: old_20231102最新化
+１、要件概要イメージ
+MOM管理
+AMS倉庫（入庫最終工程） | ...
+- [E3] --- sheet 変更履歴 preview ---
+Excel sheet: 変更履歴
+No. | 変更履歴 | 変更内容 | 変更担当
+1 | r1 | 新規作成 | LINC齋藤
+2
+3
+4
+5...
+
+(Excluded 2 metadata-only results from draft.)
+Use only the cited points above; verify before taking action.
+
+### Bằng chứng chính
+
+### Phân tích
+Phân tích dựa trên các điểm bằng chứng đã trích dẫn, không mở rộng ngoài nguồn.
+
+### Không được suy luận quá mức
+Chỉ dựa vào mô tả tài liệu, chưa chứng minh thực tế xưởng vận hành đúng 100% như thiết kế.
+
+### Việc cần làm tiếp
+Chạy /audit hoặc kiểm tra log thực tế để đối soát với hệ thống.
+
+### Bảng nguồn
+| Ref | Nguồn | Loại | Vị trí | Giới hạn (Limitation) |
+|---|---|---|---|---|
+| [E1] | ステージングテーブル_ライン外出庫連携自動処理用【_20231107見直し版】 (1).xlsx | XLSX | Toàn bộ | Cần đối chiếu số liệu thực tế |
+| [E2] | 補足資料_要件内容反映版_20231110.xlsx | XLSX | Toàn bộ | Cần đối chiếu số liệu thực tế |
+| [E3] | KDC_P3MOM_MCO-309_システムインターフェイス設計.xlsx | XLSX | Toàn bộ | Cần đối chiếu số liệu thực tế |
+
+
+AIOS citations/source refs:
+[E1], [E2], [E3]
+
+AIOS limitations / uncertainty:
+None
+
+AIOS score from benchmark:
+12
+
+AIOS winner label:
+AIOS
+
+---
+
+## Q02 — Excel
+
+Question:
+Describe the data handoff and interface table relationships between WMS, MOM, and AGV.
+
+Target source type:
+Excel
+
+AIOS answer:
+### Trả lời ngắn
+Local draft for: Describe the data handoff and interface table relationships between WMS, MOM, and AGV.
+Confidence: high
+Warnings:
+- Privacy: local_only evidence must not be exported externally.
+- This is a local evidence draft, not a final model answer.
+Evidence-grounded points:
+- [E1] --- sheet MOM上処理(入庫までのデータ) preview ---
+Excel sheet: MOM上処理(入庫までのデータ)
+MOMにログインしてContainerSearch画面に移動
+...
+- [E2] --- sheet 表紙 preview ---
+Excel sheet: 表紙
+ヘッダ文字列
+左 | 中 | 右
+AGV　通信仕様 | ﾃﾝﾌﾟﾚｰﾄﾊﾞｰｼﾞｮﾝ 1.00
+KYOCERA Doc...
+- [E3] --- sheet 表紙 preview ---
+Excel sheet: 表紙
+ヘッダ文字列
+左 | 中 | 右
+AGV　通信仕様 | ﾃﾝﾌﾟﾚｰﾄﾊﾞｰｼﾞｮﾝ 1.00
+KYOCERA Doc...
+- [E4] --- sheet Sheet1 preview ---
+Excel sheet: Sheet1
+入庫完了済みのデータの削除について
+１．入庫処理テーブル
+２．WMS
+３．Opcenter
+上記３つか...
+- [E5] --- sheet CourseLayout preview ---
+Excel sheet: CourseLayout
+25 | 26 | 27 | 28 | 29 | 30 | 31 | 32 |...
+Use only the cited points above; verify before taking action.
+
+### Bằng chứng chính
+
+### Phân tích
+Phân tích dựa trên các điểm bằng chứng đã trích dẫn, không mở rộng ngoài nguồn.
+
+### Không được suy luận quá mức
+Chỉ dựa vào mô tả tài liệu, chưa chứng minh thực tế xưởng vận hành đúng 100% như thiết kế.
+
+### Việc cần làm tiếp
+Chạy /audit hoặc kiểm tra log thực tế để đối soát với hệ thống.
+
+### Bảng nguồn
+| Ref | Nguồn | Loại | Vị trí | Giới hạn (Limitation) |
+|---|---|---|---|---|
+| [E1] | MOMおよびWMSデータ完全クリア方法.xlsx | XLSX | Toàn bộ | Cần đối chiếu số liệu thực tế |
+| [E2] | AGV通信仕様.xlsx | XLSX | Toàn bộ | Cần đối chiếu số liệu thực tế |
+| [E3] | AGV通信仕様_260206.xlsx | XLSX | Toàn bộ | Cần đối chiếu số liệu thực tế |
+| [E4] | 入庫済みデータ削除_20260213.xlsx | XLSX | Toàn bộ | Cần đối chiếu số liệu thực tế |
+| [E5] | AGVタスク一覧.xlsx | XLSX | Toàn bộ | Cần đối chiếu số liệu thực tế |
+
+
+AIOS citations/source refs:
+[E1], [E2], [E3], [E4], [E5]
+
+AIOS limitations / uncertainty:
+None
+
+AIOS score from benchmark:
+12
+
+AIOS winner label:
+AIOS
+
+---
+
+## Q03 — Excel
+
+Question:
+How do you investigate a quantity/container/supply-line mismatch using table evidence?
+
+Target source type:
+Excel
+
+AIOS answer:
+### Trả lời ngắn
+Local draft for: How do you investigate a quantity/container/supply-line mismatch using table evidence?
+Confidence: high
+Warnings:
+- Privacy: local_only evidence must not be exported externally.
+- This is a local evidence draft, not a final model answer.
+Evidence-grounded points:
+- [E1] --- sheet ManualShipping_ExistingLine preview ---
+Excel sheet: ManualShipping_ExistingLine
+セクション目的
+こ...
+- [E2] --- sheet MOM上処理(入庫までのデータ) preview ---
+Excel sheet: MOM上処理(入庫までのデータ)
+MOMにログインしてContainerSearch画面に移動
+...
+- [E3] <!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content...
+- [E4] --- sheet Phát linh kiện preview ---
+Excel sheet: Phát linh kiện
+1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 |...
+- [E5] --- page 1 ---
+MOM
+Control PLC
+Hệ thống xung quanh
+Hệ thống hiện tại
+R3
+Vị trí
+Line sản xuất
+System
+...
+Use only the cited points above; verify before taking action.
+
+### Bằng chứng chính
+* **Nhìn thấy trực tiếp:** Các trường, cột, và dữ liệu tĩnh có trên ảnh.
+* **Có thể dùng làm bằng chứng:** Cấu trúc bảng/trạng thái hệ thống.
+
+### Phân tích
+Phân tích chỉ dựa trên phần nhìn thấy hoặc cấu trúc tĩnh trong nguồn đã trích dẫn.
+
+### Không được suy luận quá mức
+Không được suy luận logic nghiệp vụ, thứ tự phê duyệt, hay thực trạng dữ liệu bị lỗi vật lý nếu chỉ có ảnh/sơ đồ tĩnh.
+
+### Việc cần làm tiếp
+Chạy /audit hoặc kiểm tra log thực tế để đối soát với hệ thống.
+
+### Bảng nguồn
+| Ref | Nguồn | Loại | Vị trí | Giới hạn (Limitation) |
+|---|---|---|---|---|
+| [E1] | ステージングテーブル_ライン外出庫連携自動処理用【_20231107見直し版】 (1).xlsx | XLSX | Toàn bộ | Cần đối chiếu số liệu thực tế |
+| [E2] | MOMおよびWMSデータ完全クリア方法.xlsx | XLSX | Toàn bộ | Cần đối chiếu số liệu thực tế |
+| [E3] | ERD_Kho_Van.html | HTML | Toàn bộ | Chỉ thấy cấu trúc tĩnh (ERD), không thấy luồng nghiệp vụ động |
+| [E4] | CTU 3階の通路レイアウト_251211.xlsx | XLSX | Toàn bộ | Cần đối chiếu số liệu thực tế |
+| [E5] | AMS概略フロー_入出庫・生産_20250703VN.pdf | PDF | Toàn bộ | Mô tả quy trình lý tưởng, cần xác nhận thực tế vận hành |
+
+
+AIOS citations/source refs:
+[E1], [E2], [E3], [E4], [E5]
+
+AIOS limitations / uncertainty:
+None
+
+AIOS score from benchmark:
+12
+
+AIOS winner label:
+AIOS
+
+---
+
+## Q04 — PDF/PPTX
+
+Question:
+What is the MOM/AMS business flow regarding the automatic vs manual/owner review boundary?
+
+Target source type:
+PDF/PPTX
+
+AIOS answer:
+### Trả lời ngắn
+Local draft for: What is the MOM/AMS business flow regarding the automatic vs manual/owner review boundary?
+Confidence: medium
+Warnings:
+- Privacy: local_only evidence must not be exported externally.
+- This is a local evidence draft, not a final model answer.
+Evidence-grounded points:
+- [E1] --- page 1 ---
+1
+©2026 KYOCERA Document Solutions Inc.
+AMS設計変更
+2026年04月01日
+
+--- page 2 ---
+2
+©2026 K...
+- [E2] --- page 1 ---
+1
+©2025 KYOCERA Document Solutions Inc.
+生産履歴登録システム
+&着完工登録システム機能仕様
+KDTCN
+2025年2月6日
+開発推...
+- [E3] --- sheet ★シナリオ一覧 preview ---
+Excel sheet: ★シナリオ一覧
+MOM検証シナリオ | 対応可否
+No. | シナリオ名 | 検証内容 | 11月検証 | 12月...
+- [E4] --- page 1 ---
+‐ 1 ‐
+目次
+改訂履歴.............................................２
+システム概要......................
+- [E5] --- page 1 ---
+©2025 KYOCERA Document Solutions Inc.1
+MES／MOM説明
+
+--- page 2 ---
+©2025 KYOCERA Docume...
+Use only the cited points above; verify before taking action.
+
+### Bằng chứng chính
+* **Tự động xử lý:** Hệ thống ghi nhận trạng thái tự động dựa trên cảm biến/log.
+* **Cần xử lý thủ công / owner review:** Điểm người dùng nhập liệu, duyệt lệnh.
+
+### Phân tích
+Phân tích tách rõ mô tả quy trình trong tài liệu với điểm cần đối chiếu vận hành thực tế.
+
+### Không được suy luận quá mức
+Chỉ dựa vào mô tả tài liệu, chưa chứng minh thực tế xưởng vận hành đúng 100% như thiết kế.
+
+### Việc cần làm tiếp
+Chạy /audit hoặc kiểm tra log thực tế để đối soát với hệ thống.
+
+### Bảng nguồn
+| Ref | Nguồn | Loại | Vị trí | Giới hạn (Limitation) |
+|---|---|---|---|---|
+| [E1] | AMS_設計変更.pdf | PDF | Toàn bộ | Mô tả quy trình lý tưởng, cần xác nhận thực tế vận hành |
+| [E2] | 生産履歴登録システム&着完工登録システム制作仕様_r2_2025-2-17 - 副本.pdf | PDF | Toàn bộ | Mô tả quy trình lý tưởng, cần xác nhận thực tế vận hành |
+| [E3] | 手順書付シナリオ.xlsx | XLSX | Toàn bộ | Cần đối chiếu số liệu thực tế |
+| [E4] | 伝票発行システムマニュアル_仮(JP).pdf | PDF | Toàn bộ | Mô tả quy trình lý tưởng, cần xác nhận thực tế vận hành |
+| [E5] | MOMデータ連携説明_20251220.pdf | PDF | Toàn bộ | Mô tả quy trình lý tưởng, cần xác nhận thực tế vận hành |
+
+
+AIOS citations/source refs:
+[E1], [E2], [E3], [E4], [E5]
+
+AIOS limitations / uncertainty:
+None
+
+AIOS score from benchmark:
+12
+
+AIOS winner label:
+AIOS
+
+---
+
+## Q05 — PDF/PPTX
+
+Question:
+How is an operation/process change or design/running change explained in the process documentation?
+
+Target source type:
+PDF/PPTX
+
+AIOS answer:
+### Trả lời ngắn
+Local draft for: How is an operation/process change or design/running change explained in the process documentation?
+Confidence: medium
+Warnings:
+- Privacy: local_only evidence must not be exported externally.
+- This is a local evidence draft, not a final model answer.
+Evidence-grounded points:
+- [E1] --- page 1 ---
+1
+©2026 KYOCERA Document Solutions Inc.
+AMS設計変更
+2026年04月01日
+
+--- page 2 ---
+2
+©2026 K...
+- [E2] --- page 1 ---
+MOM
+Control PLC
+Hệ thống xung quanh
+Hệ thống hiện tại
+R3
+Vị trí
+Line sản xuất
+System
+...
+- [E3] --- sheet old_20231102最新化 preview ---
+Excel sheet: old_20231102最新化
+１、要件概要イメージ
+MOM管理
+AMS倉庫（入庫最終工程） | ...
+- [E4] --- sheet MOM上処理(入庫までのデータ) preview ---
+Excel sheet: MOM上処理(入庫までのデータ)
+MOMにログインしてContainerSearch画面に移動
+...
+
+(Excluded 1 metadata-only results from draft.)
+Use only the cited points above; verify before taking action.
+
+### Bằng chứng chính
+* **Tự động xử lý:** Hệ thống ghi nhận trạng thái tự động dựa trên cảm biến/log.
+* **Cần xử lý thủ công / owner review:** Điểm người dùng nhập liệu, duyệt lệnh.
+
+### Phân tích
+Phân tích tách rõ mô tả quy trình trong tài liệu với điểm cần đối chiếu vận hành thực tế.
+
+### Không được suy luận quá mức
+Chỉ dựa vào mô tả tài liệu, chưa chứng minh thực tế xưởng vận hành đúng 100% như thiết kế.
+
+### Việc cần làm tiếp
+Chạy /audit hoặc kiểm tra log thực tế để đối soát với hệ thống.
+
+### Bảng nguồn
+| Ref | Nguồn | Loại | Vị trí | Giới hạn (Limitation) |
+|---|---|---|---|---|
+| [E1] | AMS_設計変更.pdf | PDF | Toàn bộ | Mô tả quy trình lý tưởng, cần xác nhận thực tế vận hành |
+| [E2] | AMS概略フロー_入出庫・生産_20250703VN.pdf | PDF | Toàn bộ | Mô tả quy trình lý tưởng, cần xác nhận thực tế vận hành |
+| [E3] | 補足資料_要件内容反映版_20231110.xlsx | XLSX | Toàn bộ | Cần đối chiếu số liệu thực tế |
+| [E4] | MOMおよびWMSデータ完全クリア方法.xlsx | XLSX | Toàn bộ | Cần đối chiếu số liệu thực tế |
+
+
+AIOS citations/source refs:
+[E1], [E2], [E3], [E4]
+
+AIOS limitations / uncertainty:
+None
+
+AIOS score from benchmark:
+12
+
+AIOS winner label:
+AIOS
+
+---
+
+## Q06 — Screenshot/Image/OCR
+
+Question:
+What visible UI fields, statuses, containers, or oricon evidence can be trusted directly from screenshots?
+
+Target source type:
+Screenshot/Image/OCR
+
+AIOS answer:
+### Trả lời ngắn
+Local draft for: What visible UI fields, statuses, containers, or oricon evidence can be trusted directly from screenshots?
+Confidence: medium
+Warnings:
+- Privacy: local_only evidence must not be exported externally.
+- This is a local evidence draft, not a final model answer.
+Evidence-grounded points:
+- [E1] <!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content...
+- [E2] --- sheet MOM上処理(入庫までのデータ) preview ---
+Excel sheet: MOM上処理(入庫までのデータ)
+MOMにログインしてContainerSearch画面に移動
+...
+Use only the cited points above; verify before taking action.
+
+### Bằng chứng chính
+* **Nhìn thấy trực tiếp:** Các trường, cột, và dữ liệu tĩnh có trên ảnh.
+* **Có thể dùng làm bằng chứng:** Cấu trúc bảng/trạng thái hệ thống.
+
+### Phân tích
+Phân tích chỉ dựa trên phần nhìn thấy hoặc cấu trúc tĩnh trong nguồn đã trích dẫn.
+
+### Không được suy luận quá mức
+Không được suy luận logic nghiệp vụ, thứ tự phê duyệt, hay thực trạng dữ liệu bị lỗi vật lý nếu chỉ có ảnh/sơ đồ tĩnh.
+
+### Việc cần làm tiếp
+Chạy /audit hoặc kiểm tra log thực tế để đối soát với hệ thống.
+
+### Bảng nguồn
+| Ref | Nguồn | Loại | Vị trí | Giới hạn (Limitation) |
+|---|---|---|---|---|
+| [E1] | ERD_Kho_Van.html | HTML | Toàn bộ | Chỉ thấy cấu trúc tĩnh (ERD), không thấy luồng nghiệp vụ động |
+| [E2] | MOMおよびWMSデータ完全クリア方法.xlsx | XLSX | Toàn bộ | Cần đối chiếu số liệu thực tế |
+
+
+AIOS citations/source refs:
+[E1], [E2]
+
+AIOS limitations / uncertainty:
+None
+
+AIOS score from benchmark:
+12
+
+AIOS winner label:
+AIOS
+
+---
+
+## Q07 — Screenshot/Image/OCR
+
+Question:
+What operational or systemic states must NOT be inferred from screenshot-only evidence?
+
+Target source type:
+Screenshot/Image/OCR
+
+AIOS answer:
+### Trả lời ngắn
+Local draft for: What operational or systemic states must NOT be inferred from screenshot-only evidence?
+Confidence: medium
+Warnings:
+- Privacy: local_only evidence must not be exported externally.
+- This is a local evidence draft, not a final model answer.
+Evidence-grounded points:
+- [E1] <!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content...
+
+(Excluded 4 metadata-only results from draft.)
+Use only the cited points above; verify before taking action.
+
+### Bằng chứng chính
+* **Nhìn thấy trực tiếp:** Các trường, cột, và dữ liệu tĩnh có trên ảnh.
+* **Có thể dùng làm bằng chứng:** Cấu trúc bảng/trạng thái hệ thống.
+
+### Phân tích
+Phân tích chỉ dựa trên phần nhìn thấy hoặc cấu trúc tĩnh trong nguồn đã trích dẫn.
+
+### Không được suy luận quá mức
+Không được suy luận logic nghiệp vụ, thứ tự phê duyệt, hay thực trạng dữ liệu bị lỗi vật lý nếu chỉ có ảnh/sơ đồ tĩnh.
+
+### Việc cần làm tiếp
+Chạy /audit hoặc kiểm tra log thực tế để đối soát với hệ thống.
+
+### Bảng nguồn
+| Ref | Nguồn | Loại | Vị trí | Giới hạn (Limitation) |
+|---|---|---|---|---|
+| [E1] | ERD_Kho_Van.html | HTML | Toàn bộ | Chỉ thấy cấu trúc tĩnh (ERD), không thấy luồng nghiệp vụ động |
+
+
+AIOS citations/source refs:
+[E1]
+
+AIOS limitations / uncertainty:
+None
+
+AIOS score from benchmark:
+12
+
+AIOS winner label:
+AIOS
+
+---
+
+## Q08 — HTML/ERD/schema
+
+Question:
+What tables, fields, and relationships are explicitly shown in the HTML/ERD/schema evidence?
+
+Target source type:
+HTML/ERD/schema
+
+AIOS answer:
+### Trả lời ngắn
+Local draft for: What tables, fields, and relationships are explicitly shown in the HTML/ERD/schema evidence?
+Confidence: high
+Warnings:
+- Privacy: local_only evidence must not be exported externally.
+- This is a local evidence draft, not a final model answer.
+Evidence-grounded points:
+- [E1] <!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content...
+- [E2] --- page 1 ---
+MOM
+Control PLC
+Hệ thống xung quanh
+Hệ thống hiện tại
+R3
+Vị trí
+Line sản xuất
+System
+...
+- [E3] --- page 1 ---
+‐ 1 ‐
+目次
+改訂履歴.............................................２
+システム概要......................
+- [E4] --- sheet Sheet1 preview ---
+Excel sheet: Sheet1
+入庫完了済みのデータの削除について
+１．入庫処理テーブル
+２．WMS
+３．Opcenter
+上記３つか...
+- [E5] --- sheet MOM上処理(入庫までのデータ) preview ---
+Excel sheet: MOM上処理(入庫までのデータ)
+MOMにログインしてContainerSearch画面に移動
+...
+Use only the cited points above; verify before taking action.
+
+### Bằng chứng chính
+* **Nhìn thấy trực tiếp:** Các trường, cột, và dữ liệu tĩnh có trên ảnh.
+* **Có thể dùng làm bằng chứng:** Cấu trúc bảng/trạng thái hệ thống.
+
+### Phân tích
+Phân tích chỉ dựa trên phần nhìn thấy hoặc cấu trúc tĩnh trong nguồn đã trích dẫn.
+
+### Không được suy luận quá mức
+Không được suy luận logic nghiệp vụ, thứ tự phê duyệt, hay thực trạng dữ liệu bị lỗi vật lý nếu chỉ có ảnh/sơ đồ tĩnh.
+
+### Việc cần làm tiếp
+Chạy /audit hoặc kiểm tra log thực tế để đối soát với hệ thống.
+
+### Bảng nguồn
+| Ref | Nguồn | Loại | Vị trí | Giới hạn (Limitation) |
+|---|---|---|---|---|
+| [E1] | ERD_Kho_Van.html | HTML | Toàn bộ | Chỉ thấy cấu trúc tĩnh (ERD), không thấy luồng nghiệp vụ động |
+| [E2] | AMS概略フロー_入出庫・生産_20250703VN.pdf | PDF | Toàn bộ | Mô tả quy trình lý tưởng, cần xác nhận thực tế vận hành |
+| [E3] | 伝票発行システムマニュアル_仮(JP).pdf | PDF | Toàn bộ | Mô tả quy trình lý tưởng, cần xác nhận thực tế vận hành |
+| [E4] | 入庫済みデータ削除_20260213.xlsx | XLSX | Toàn bộ | Cần đối chiếu số liệu thực tế |
+| [E5] | MOMおよびWMSデータ完全クリア方法.xlsx | XLSX | Toàn bộ | Cần đối chiếu số liệu thực tế |
+
+
+AIOS citations/source refs:
+[E1], [E2], [E3], [E4], [E5]
+
+AIOS limitations / uncertainty:
+None
+
+AIOS score from benchmark:
+12
+
+AIOS winner label:
+AIOS
+
+---
+
+## Q09 — HTML/ERD/schema
+
+Question:
+What operational conclusions are unsupported if only schema/ERD documentation is available?
+
+Target source type:
+HTML/ERD/schema
+
+AIOS answer:
+### Trả lời ngắn
+Local draft for: What operational conclusions are unsupported if only schema/ERD documentation is available?
+Confidence: medium
+Warnings:
+- Privacy: local_only evidence must not be exported externally.
+- This is a local evidence draft, not a final model answer.
+Evidence-grounded points:
+- [E1] <!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content...
+- [E2] --- page 1 ---
+‐ 1 ‐
+目次
+改訂履歴.............................................２
+システム概要......................
+- [E3] --- page 1 ---
+MOM
+Control PLC
+Hệ thống xung quanh
+Hệ thống hiện tại
+R3
+Vị trí
+Line sản xuất
+System
+...
+
+(Excluded 2 metadata-only results from draft.)
+Use only the cited points above; verify before taking action.
+
+### Bằng chứng chính
+* **Nhìn thấy trực tiếp:** Các trường, cột, và dữ liệu tĩnh có trên ảnh.
+* **Có thể dùng làm bằng chứng:** Cấu trúc bảng/trạng thái hệ thống.
+
+### Phân tích
+Phân tích chỉ dựa trên phần nhìn thấy hoặc cấu trúc tĩnh trong nguồn đã trích dẫn.
+
+### Không được suy luận quá mức
+Không được suy luận logic nghiệp vụ, thứ tự phê duyệt, hay thực trạng dữ liệu bị lỗi vật lý nếu chỉ có ảnh/sơ đồ tĩnh.
+
+### Việc cần làm tiếp
+Chạy /audit hoặc kiểm tra log thực tế để đối soát với hệ thống.
+
+### Bảng nguồn
+| Ref | Nguồn | Loại | Vị trí | Giới hạn (Limitation) |
+|---|---|---|---|---|
+| [E1] | ERD_Kho_Van.html | HTML | Toàn bộ | Chỉ thấy cấu trúc tĩnh (ERD), không thấy luồng nghiệp vụ động |
+| [E2] | 伝票発行システムマニュアル_仮(JP).pdf | PDF | Toàn bộ | Mô tả quy trình lý tưởng, cần xác nhận thực tế vận hành |
+| [E3] | AMS概略フロー_入出庫・生産_20250703VN.pdf | PDF | Toàn bộ | Mô tả quy trình lý tưởng, cần xác nhận thực tế vận hành |
+
+
+AIOS citations/source refs:
+[E1], [E2], [E3]
+
+AIOS limitations / uncertainty:
+None
+
+AIOS score from benchmark:
+12
+
+AIOS winner label:
+AIOS
+
+---
+
+## Q10 — Mixed
+
+Question:
+Explain a full troubleshooting path that combines evidence from Excel, PDF/PPTX, and screenshots.
+
+Target source type:
+Mixed
+
+AIOS answer:
+### Trả lời ngắn
+Local draft for: Explain a full troubleshooting path that combines evidence from Excel, PDF/PPTX, and screenshots.
+Confidence: medium
+Warnings:
+- Privacy: local_only evidence must not be exported externally.
+- This is a local evidence draft, not a final model answer.
+Evidence-grounded points:
+- [E1] --- sheet Phát linh kiện preview ---
+Excel sheet: Phát linh kiện
+1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 |...
+- [E2] <!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content...
+- [E3] --- sheet Sheet1 preview ---
+Excel sheet: Sheet1
+入庫完了済みのデータの削除について
+１．入庫処理テーブル
+２．WMS
+３．Opcenter
+上記３つか...
+- [E4] --- sheet MOM上処理(入庫までのデータ) preview ---
+Excel sheet: MOM上処理(入庫までのデータ)
+MOMにログインしてContainerSearch画面に移動
+...
+- [E5] --- page 1 ---
+‐ 1 ‐
+目次
+改訂履歴.............................................２
+システム概要......................
+Use only the cited points above; verify before taking action.
+
+### Bằng chứng chính
+* **Nhìn thấy trực tiếp:** Các trường, cột, và dữ liệu tĩnh có trên ảnh.
+* **Có thể dùng làm bằng chứng:** Cấu trúc bảng/trạng thái hệ thống.
+
+### Phân tích
+Phân tích chỉ dựa trên phần nhìn thấy hoặc cấu trúc tĩnh trong nguồn đã trích dẫn.
+
+### Không được suy luận quá mức
+Không được suy luận logic nghiệp vụ, thứ tự phê duyệt, hay thực trạng dữ liệu bị lỗi vật lý nếu chỉ có ảnh/sơ đồ tĩnh.
+
+### Việc cần làm tiếp
+Chạy /audit hoặc kiểm tra log thực tế để đối soát với hệ thống.
+
+### Bảng nguồn
+| Ref | Nguồn | Loại | Vị trí | Giới hạn (Limitation) |
+|---|---|---|---|---|
+| [E1] | CTU 3階の通路レイアウト_251211.xlsx | XLSX | Toàn bộ | Cần đối chiếu số liệu thực tế |
+| [E2] | ERD_Kho_Van.html | HTML | Toàn bộ | Chỉ thấy cấu trúc tĩnh (ERD), không thấy luồng nghiệp vụ động |
+| [E3] | 入庫済みデータ削除_20260213.xlsx | XLSX | Toàn bộ | Cần đối chiếu số liệu thực tế |
+| [E4] | MOMおよびWMSデータ完全クリア方法.xlsx | XLSX | Toàn bộ | Cần đối chiếu số liệu thực tế |
+| [E5] | 伝票発行システムマニュアル_仮(JP).pdf | PDF | Toàn bộ | Mô tả quy trình lý tưởng, cần xác nhận thực tế vận hành |
+
+
+AIOS citations/source refs:
+[E1], [E2], [E3], [E4], [E5]
+
+AIOS limitations / uncertainty:
+None
+
+AIOS score from benchmark:
+12
+
+AIOS winner label:
+AIOS
+
+---
+
+## Q11 — Mixed
+
+Question:
+Identify missing evidence that would be required before answering a complex production issue.
+
+Target source type:
+Mixed
+
+AIOS answer:
+### Trả lời ngắn
+Local draft for: Identify missing evidence that would be required before answering a complex production issue.
+Confidence: medium
+Warnings:
+- Privacy: local_only evidence must not be exported externally.
+- This is a local evidence draft, not a final model answer.
+Evidence-grounded points:
+- [E1] --- sheet Phát linh kiện preview ---
+Excel sheet: Phát linh kiện
+1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 |...
+- [E2] --- sheet MOM上処理(入庫までのデータ) preview ---
+Excel sheet: MOM上処理(入庫までのデータ)
+MOMにログインしてContainerSearch画面に移動
+...
+Use only the cited points above; verify before taking action.
+
+### Bằng chứng chính
+
+### Phân tích
+Phân tích dựa trên các điểm bằng chứng đã trích dẫn, không mở rộng ngoài nguồn.
+
+### Không được suy luận quá mức
+Chỉ dựa vào mô tả tài liệu, chưa chứng minh thực tế xưởng vận hành đúng 100% như thiết kế.
+
+### Việc cần làm tiếp
+Chạy /audit hoặc kiểm tra log thực tế để đối soát với hệ thống.
+
+### Bảng nguồn
+| Ref | Nguồn | Loại | Vị trí | Giới hạn (Limitation) |
+|---|---|---|---|---|
+| [E1] | CTU 3階の通路レイアウト_251211.xlsx | XLSX | Toàn bộ | Cần đối chiếu số liệu thực tế |
+| [E2] | MOMおよびWMSデータ完全クリア方法.xlsx | XLSX | Toàn bộ | Cần đối chiếu số liệu thực tế |
+
+
+AIOS citations/source refs:
+[E1], [E2]
+
+AIOS limitations / uncertainty:
+None
+
+AIOS score from benchmark:
+12
+
+AIOS winner label:
+AIOS
+
+---
+
+## Q12 — Mixed
+
+Question:
+Produce a set of owner next actions and a handover summary, citing sources correctly.
+
+Target source type:
+Mixed
+
+AIOS answer:
+### Trả lời ngắn
+Local draft for: Produce a set of owner next actions and a handover summary, citing sources correctly.
+Confidence: high
+Warnings:
+- Privacy: local_only evidence must not be exported externally.
+- This is a local evidence draft, not a final model answer.
+Evidence-grounded points:
+- [E1] --- sheet Phát linh kiện preview ---
+Excel sheet: Phát linh kiện
+1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 |...
+- [E2] --- sheet Sheet1 preview ---
+Excel sheet: Sheet1
+入庫完了済みのデータの削除について
+１．入庫処理テーブル
+２．WMS
+３．Opcenter
+上記３つか...
+- [E3] --- sheet MOM上処理(入庫までのデータ) preview ---
+Excel sheet: MOM上処理(入庫までのデータ)
+MOMにログインしてContainerSearch画面に移動
+...
+- [E4] --- sheet CourseLayout_CTU preview ---
+Excel sheet: CourseLayout_CTU
+SUP_PROCESS | C3B_YB2200C300** ...
+- [E5] --- sheet CourseLayout_CTU preview ---
+Excel sheet: CourseLayout_CTU
+SUP_PROCESS | C3B_YB2200C300** ...
+Use only the cited points above; verify before taking action.
+
+### Bằng chứng chính
+
+### Phân tích
+Phân tích dựa trên các điểm bằng chứng đã trích dẫn, không mở rộng ngoài nguồn.
+
+### Không được suy luận quá mức
+Chỉ dựa vào mô tả tài liệu, chưa chứng minh thực tế xưởng vận hành đúng 100% như thiết kế.
+
+### Việc cần làm tiếp
+Chạy /audit hoặc kiểm tra log thực tế để đối soát với hệ thống.
+
+### Bảng nguồn
+| Ref | Nguồn | Loại | Vị trí | Giới hạn (Limitation) |
+|---|---|---|---|---|
+| [E1] | CTU 3階の通路レイアウト_251211.xlsx | XLSX | Toàn bộ | Cần đối chiếu số liệu thực tế |
+| [E2] | 入庫済みデータ削除_20260213.xlsx | XLSX | Toàn bộ | Cần đối chiếu số liệu thực tế |
+| [E3] | MOMおよびWMSデータ完全クリア方法.xlsx | XLSX | Toàn bộ | Cần đối chiếu số liệu thực tế |
+| [E4] | CTUマップ再検討20260330.xlsx | XLSX | Toàn bộ | Cần đối chiếu số liệu thực tế |
+| [E5] | CTUマップ修正20260406.xlsx | XLSX | Toàn bộ | Cần đối chiếu số liệu thực tế |
+
+
+AIOS citations/source refs:
+[E1], [E2], [E3], [E4], [E5]
+
+AIOS limitations / uncertainty:
+None
+
+AIOS score from benchmark:
+12
+
+AIOS winner label:
+AIOS
+
+---
