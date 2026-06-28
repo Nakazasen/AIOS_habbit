@@ -92,3 +92,39 @@ def test_compose_local_answer_mixed_evidence():
     assert len(draft.citation_ids) == 1
     assert "Real doc content here" in draft.answer_text
     assert "Excluded 1 metadata-only results" in draft.answer_text
+
+def test_strong_answer_via_fake_provider_returns_final_answer_true():
+    from aios_habit.ai_provider_bridge import FakeProvider
+    pack = _pack("cloud_safe")
+    provider = FakeProvider()
+    answer = provider.generate_answer("query", pack, "policy", "cloud_safe")
+    
+    assert answer.final_answer is True
+    assert answer.answer_kind == "strong_model_answer"
+    assert answer.provider_name == "fake_provider"
+    assert answer.provider_call is True
+    assert len(answer.citation_ids) > 0
+
+def test_paste_back_answer_stores_metadata():
+    from aios_habit.rag_answer_composer import PastedStrongModelAnswer
+    pack = _pack("cloud_safe")
+    
+    answer = PastedStrongModelAnswer(
+        draft_id="draft123",
+        pack_id=pack.pack_id,
+        query="query",
+        answer_text="User pasted this",
+        citation_ids=["CIT-1"],
+        evidence_ids=["EVD-1"],
+        privacy_mode="cloud_safe",
+        allowed_external=True,
+        insufficient_evidence=False,
+        confidence_label="high",
+        model_tool_name="chatgpt",
+    )
+    
+    assert answer.final_answer is True
+    assert answer.answer_kind == "pasted_strong_model_answer"
+    assert answer.provider_call is False
+    assert answer.model_tool_name == "chatgpt"
+    assert answer.route_summary == "Manual paste-back by user"

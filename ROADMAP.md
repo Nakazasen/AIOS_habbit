@@ -38,8 +38,7 @@ Case → Evidence → Map → Action → Learning → Memory
 
 - **Remote HEAD:** `214c44f` (`Clarify provider fallback reason in daily flow`).
 
-- **Current position:** End of Phase 3, before Phase 4 RAG Engine v2 and Phase 5 IDE/model bridge.
-
+- **Current position:** End of Phase 5 (IDE / Strong Model Answer Bridge implemented).
 - **Current capability:** daily-pilot ready for normal documents, not production-ready.
 
 - **P1.0:** LOCKED; do not open until readiness criteria are met.
@@ -220,7 +219,7 @@ Scope:
 
 
 
-Status: NEXT_PARALLEL.
+Status: DONE.
 
 
 

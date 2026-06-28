@@ -275,14 +275,21 @@ def run_notebooklm_answers(config: CompareConfig) -> Dict[str, Any]:
 
 def _score_pair(aios: Dict[str, Any], nlm: Optional[Dict[str, Any]]) -> Dict[str, Any]:
     answer = aios.get("answer", {})
+    answer_kind = answer.get("answer_kind", "local_evidence_draft")
     has_citations = bool(answer.get("citation_ids"))
     insufficient = bool(answer.get("insufficient_evidence"))
     
     is_metadata_only = insufficient and any("Only metadata was found" in w for w in answer.get("warnings", []))
-    if is_metadata_only and nlm:
-        winner = "notebooklm"
+    
+    if answer_kind == "local_evidence_draft":
+        winner = "notebooklm" if nlm else "aios_draft_only"
+        reason = "Deterministic heuristic self-eval; local draft is not a final competitor."
     else:
-        winner = "human_review_required" if nlm else "aios_only_no_notebooklm_answer"
+        if is_metadata_only and nlm:
+            winner = "notebooklm"
+        else:
+            winner = "human_review_required" if nlm else "aios_only_no_notebooklm_answer"
+        reason = f"Deterministic heuristic self-eval; {answer_kind} vs NotebookLM answer."
         
     return {
         "answer_relevance": 2 if answer.get("answer_text") and not is_metadata_only else 0,
@@ -294,7 +301,7 @@ def _score_pair(aios: Dict[str, Any], nlm: Optional[Dict[str, Any]]) -> Dict[str
         "actionability_for_owner": 2 if answer.get("answer_text") and not is_metadata_only else 0,
         "hallucination_risk": 3 if insufficient else 2,
         "winner": winner,
-        "reason": "Deterministic heuristic self-eval; local draft vs NotebookLM answer.",
+        "reason": reason,
     }
 
 

@@ -6,7 +6,10 @@ import urllib.error
 import urllib.parse
 import urllib.request
 from dataclasses import dataclass
-from typing import Any, Mapping, Optional
+from typing import Any, Mapping, Optional, Protocol
+
+from aios_habit.rag_evidence import RAGEvidencePack
+from aios_habit.rag_answer_composer import StrongModelAnswer, stable_answer_draft_id
 
 
 DEFAULT_ENDPOINT = "http://127.0.0.1:11434/v1/chat/completions"
@@ -37,6 +40,60 @@ class ProviderResult:
     used_fallback: bool = False
     safety_status: str = "safe"
 
+
+class StrongAnswerProvider(Protocol):
+    def generate_answer(
+        self,
+        question: str,
+        evidence_pack: RAGEvidencePack,
+        system_policy: str,
+        privacy_mode: str,
+    ) -> StrongModelAnswer:
+        ...
+
+class FakeProvider:
+    def __init__(self, provider_name="fake_provider", model_name="fake_model"):
+        self.provider_name = provider_name
+        self.model_name = model_name
+
+    def generate_answer(
+        self,
+        question: str,
+        evidence_pack: RAGEvidencePack,
+        system_policy: str,
+        privacy_mode: str,
+    ) -> StrongModelAnswer:
+        valid_items = [item for item in evidence_pack.items if item.metadata.get("_is_metadata_only") != "True"]
+        citation_ids = [item.citation_id for item in valid_items[:MAX_SOURCE_REFS]]
+        evidence_ids = [item.evidence_id for item in valid_items[:MAX_SOURCE_REFS]]
+
+        if not valid_items:
+            answer_text = "Không đủ bằng chứng do không có nội dung văn bản (metadata-only)."
+            final_answer = False
+            insufficient = True
+        else:
+            answer_text = f"Fake answer based on {len(valid_items)} evidence chunks."
+            final_answer = True
+            insufficient = False
+
+        return StrongModelAnswer(
+            draft_id=stable_answer_draft_id(evidence_pack),
+            pack_id=evidence_pack.pack_id,
+            query=question,
+            answer_text=answer_text,
+            citation_ids=citation_ids,
+            evidence_ids=evidence_ids,
+            privacy_mode=privacy_mode,
+            allowed_external=evidence_pack.allowed_external,
+            insufficient_evidence=insufficient,
+            confidence_label="high" if not insufficient else "insufficient",
+            model_tool_name="fake_tool",
+            provider_name=self.provider_name,
+            model_name=self.model_name,
+            route_summary="fake_route",
+            prompt_pack_id="fake_prompt_id",
+            final_answer=final_answer
+        )
 
 def _as_bool(value: Any, default: bool = False) -> bool:
     if value is None:
@@ -155,9 +212,9 @@ def build_grounded_prompt(
         f"{bounded_draft}\n\n"
         "Yêu cầu trả lời:\n"
         "- Trả lời bằng tiếng Việt, rõ ràng và hữu ích cho người vận hành.\n"
-        "- Chỉ kết luận từ nguồn đã cung cấp; không suy đoán ngoài nguồn.\n"
-        "- Nếu thiếu bằng chứng, phải nói rõ 'chưa đủ bằng chứng'.\n"
-        "- Giữ mục 'Nguồn đã dùng' và dẫn lại số nguồn tương ứng.\n"
+        "- Cảnh báo bảo mật: Chỉ kết luận từ nguồn đã cung cấp; tuyệt đối không suy đoán ngoài nguồn.\n"
+        "- Nếu thiếu bằng chứng, hoặc bằng chứng chỉ có tiêu đề (metadata-only) mà không có nội dung, phải nói rõ 'chưa đủ bằng chứng'.\n"
+        "- Giữ mục 'Nguồn đã dùng' và dẫn lại số nguồn tương ứng, nhưng không làm lộ đường dẫn gốc nếu nó là tuyệt mật.\n"
         "- Gồm: Tóm tắt, Điều đã xác nhận, Điểm chưa đủ bằng chứng, Việc cần kiểm tra tiếp."
     )
 
@@ -308,3 +365,75 @@ def test_provider_connection(config: ProviderConfig) -> ProviderResult:
             f"Không kết nối được AI cục bộ: {type(exc).__name__}.",
             "fallback_provider_error",
         )
+
+class RealStrongProvider:
+    def __init__(self, config: Optional[ProviderConfig] = None):
+        self.config = config
+
+    def generate_answer(
+        self,
+        question: str,
+        evidence_pack: RAGEvidencePack,
+        system_policy: str,
+        privacy_mode: str,
+    ) -> StrongModelAnswer:
+        if not self.config or not self.config.enabled:
+            raise ValueError("Strong model provider not configured.")
+
+        valid_items = [item for item in evidence_pack.items if item.metadata.get("_is_metadata_only") != "True"]
+        citation_ids = [item.citation_id for item in valid_items[:MAX_SOURCE_REFS]]
+        evidence_ids = [item.evidence_id for item in valid_items[:MAX_SOURCE_REFS]]
+
+        if not valid_items:
+            return StrongModelAnswer(
+                draft_id=stable_answer_draft_id(evidence_pack),
+                pack_id=evidence_pack.pack_id,
+                query=question,
+                answer_text="Không đủ bằng chứng do không có nội dung văn bản (metadata-only).",
+                citation_ids=citation_ids,
+                evidence_ids=evidence_ids,
+                privacy_mode=privacy_mode,
+                allowed_external=evidence_pack.allowed_external,
+                insufficient_evidence=True,
+                confidence_label="insufficient",
+                model_tool_name=self.config.provider_type,
+                provider_name=self.config.provider_type,
+                model_name=self.config.model_name,
+                route_summary="blocked_no_content_evidence",
+                prompt_pack_id="",
+                final_answer=False
+            )
+
+        source_context = "\n\n".join(f"[{item.citation_id}] {item.text}" for item in valid_items[:MAX_SOURCE_REFS])
+        source_refs = [{"chunk_id": item.chunk_id, "relative_path": item.relative_path} for item in valid_items[:MAX_SOURCE_REFS]]
+        
+        prompt = build_grounded_prompt(
+            question=question,
+            source_refs=source_refs,
+            deterministic_answer="[Sử dụng LLM để sinh câu trả lời thay vì bản nháp tĩnh]",
+            source_context=source_context,
+            max_context_chars=self.config.max_context_chars,
+        )
+
+        try:
+            answer_text = _post_chat(self.config, prompt)
+            return StrongModelAnswer(
+                draft_id=stable_answer_draft_id(evidence_pack),
+                pack_id=evidence_pack.pack_id,
+                query=question,
+                answer_text=answer_text,
+                citation_ids=citation_ids,
+                evidence_ids=evidence_ids,
+                privacy_mode=privacy_mode,
+                allowed_external=evidence_pack.allowed_external,
+                insufficient_evidence=False,
+                confidence_label="high",
+                model_tool_name=self.config.provider_type,
+                provider_name=self.config.provider_type,
+                model_name=self.config.model_name,
+                route_summary="real_provider_call",
+                prompt_pack_id="",
+                final_answer=True
+            )
+        except Exception as e:
+            raise ValueError(f"Provider call failed: {str(e)}")

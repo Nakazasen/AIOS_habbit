@@ -30,6 +30,59 @@ class LocalAnswerDraft:
     created_at: str = field(default_factory=lambda: datetime.now().isoformat())
     metadata: Dict[str, str] = field(default_factory=dict)
 
+@dataclass
+class StrongModelAnswer:
+    draft_id: str
+    pack_id: str
+    query: str
+    answer_text: str
+    citation_ids: List[str]
+    evidence_ids: List[str]
+    privacy_mode: str
+    allowed_external: bool
+    insufficient_evidence: bool
+    confidence_label: str
+    warnings: List[str] = field(default_factory=list)
+    composer_name: str = "strong_model_bridge"
+    provider_call: bool = True
+    notebooklm_call: bool = False
+    answer_kind: str = "strong_model_answer"
+    final_answer: bool = True
+    requires_strong_model_or_human_review: bool = False
+    model_tool_name: str = ""
+    provider_name: str = ""
+    model_name: str = ""
+    route_summary: str = ""
+    prompt_pack_id: str = ""
+    created_at: str = field(default_factory=lambda: datetime.now().isoformat())
+    metadata: Dict[str, str] = field(default_factory=dict)
+
+@dataclass
+class PastedStrongModelAnswer:
+    draft_id: str
+    pack_id: str
+    query: str
+    answer_text: str
+    citation_ids: List[str]
+    evidence_ids: List[str]
+    privacy_mode: str
+    allowed_external: bool
+    insufficient_evidence: bool
+    confidence_label: str
+    warnings: List[str] = field(default_factory=list)
+    composer_name: str = "pasted_strong_model"
+    provider_call: bool = False
+    notebooklm_call: bool = False
+    answer_kind: str = "pasted_strong_model_answer"
+    final_answer: bool = True
+    requires_strong_model_or_human_review: bool = False
+    model_tool_name: str = ""
+    route_summary: str = "Manual paste-back by user"
+    prompt_pack_id: str = ""
+    created_at: str = field(default_factory=lambda: datetime.now().isoformat())
+    pasted_back_at: str = field(default_factory=lambda: datetime.now().isoformat())
+    metadata: Dict[str, str] = field(default_factory=dict)
+
 
 def stable_answer_draft_id(pack: RAGEvidencePack) -> str:
     citation_payload = "|".join(item.citation_id + item.evidence_id for item in pack.items)
@@ -109,4 +162,7 @@ def compose_local_answer(pack: RAGEvidencePack, max_items: int = 5) -> LocalAnsw
 
 
 def local_answer_draft_to_dict(draft: LocalAnswerDraft) -> Dict[str, Any]:
+    return asdict(draft)
+
+def strong_answer_to_dict(draft: StrongModelAnswer | PastedStrongModelAnswer) -> Dict[str, Any]:
     return asdict(draft)
