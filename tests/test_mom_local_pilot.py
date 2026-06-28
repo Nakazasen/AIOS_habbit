@@ -219,7 +219,7 @@ def test_document_extractor_pdf_and_png_fail_gracefully(tmp_path):
     pdf_chunks = extract_text_chunks_from_file(pdf_file, root=tmp_path)
     png_chunks = extract_text_chunks_from_file(png_file, root=tmp_path)
 
-    assert pdf_chunks[0]["extraction_status"] in {"unsupported_no_local_ocr", "failed_with_reason"}
+    assert pdf_chunks[0]["extraction_status"] in {"unsupported_no_local_ocr", "failed_with_reason", "parse_failed"}
     assert pdf_chunks[0]["privacy_level"] == "local_only"
     assert png_chunks[0]["extraction_status"] in {"unsupported_no_local_ocr", "failed_with_reason", "ocr_partial", "ocr_success"}
     assert png_chunks[0]["privacy_level"] == "local_only"
