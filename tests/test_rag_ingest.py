@@ -7,7 +7,9 @@ from aios_habit.rag_ingest import (
     stable_document_id,
     stable_element_id,
     stable_chunk_id,
-    normalize_privacy_mode
+    normalize_privacy_mode,
+    build_elements_from_extracted_payload,
+    build_chunks_from_elements
 )
 from aios_habit.notebook_index import SourceChunk, build_rag_chunks_from_notebook_chunks
 
@@ -167,3 +169,47 @@ def test_compatibility():
     assert rag_chunks[0].next_chunk_id == rag_chunks[1].chunk_id
     assert rag_chunks[1].previous_chunk_id == rag_chunks[0].chunk_id
     assert rag_chunks[0].document_id == rag_chunks[1].document_id
+
+
+def test_builders_preserve_page_slide_ocr_metadata():
+    elements = build_elements_from_extracted_payload(
+        source_path="D:/Sandbox/AIOS_habbit/secret/doc.pdf",
+        text="page text",
+        source_title="Doc",
+        relative_path="doc.pdf",
+        file_type=".pdf",
+        privacy_mode="unknown",
+        extractor_name="test",
+        element_type="ocr_text",
+        metadata={"kind": "image_ocr"},
+    )
+    elements[0].page_number = 3
+    elements[0].slide_number = 2
+    chunks = build_chunks_from_elements(elements)
+
+    assert len(elements) == 1
+    assert elements[0].warnings == []
+    assert elements[0].privacy_mode == "local_only"
+    assert elements[0].element_type == "ocr_text"
+    assert elements[0].metadata == {"kind": "image_ocr"}
+    assert len(chunks) == 1
+    assert chunks[0].page_numbers == [3]
+    assert chunks[0].slide_numbers == [2]
+    assert chunks[0].element_types == ["ocr_text"]
+    assert chunks[0].citation_label == "Doc"
+    assert "D:/Sandbox" not in chunks[0].citation_label
+    json.dumps(asdict(elements[0]))
+    json.dumps(asdict(chunks[0]))
+
+
+def test_empty_extracted_payload_warns_and_filters_chunk():
+    elements = build_elements_from_extracted_payload(
+        source_path="empty.txt",
+        text="   ",
+        privacy_mode=None,
+    )
+    chunks = build_chunks_from_elements(elements)
+
+    assert elements[0].warnings == ["empty_text"]
+    assert elements[0].privacy_mode == "local_only"
+    assert chunks == []
