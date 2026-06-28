@@ -270,3 +270,46 @@ def test_old_search_notebook_chunks_behavior(monkeypatch):
     hits = notebook_index.search_notebook_chunks("n1", "alpha")
     assert len(hits) == 1
     assert hits[0].chunk.chunk_id == "s1"
+
+def _create_intent_test_chunks():
+    c_generic_wms = RAGChunk(chunk_id='C_WMS_1', document_id='D_WMS', element_ids=[], text='This is a generic WMS menu overview.', source_title='WMS Overview', source_path='wms.pdf', relative_path='wms.pdf', citation_label='wms.pdf', file_type='.pdf', element_types=['text'], page_numbers=[], sheet_names=[], slide_numbers=[], section_labels=[], row_ranges=[], cell_ranges=[], privacy_mode='local_only', source_hash='h1')
+    c_agv = RAGChunk(chunk_id='C_AGV_1', document_id='D_AGV', element_ids=[], text='The AGV expects an Oricon ID to match TANABAN address.', source_title='AGV通信仕様', source_path='AGV通信仕様.xlsx', relative_path='AGV通信仕様.xlsx', citation_label='AGV通信仕様.xlsx', file_type='.xlsx', element_types=['text'], page_numbers=[], sheet_names=['通信仕様'], slide_numbers=[], section_labels=[], row_ranges=[], cell_ranges=[], privacy_mode='local_only', source_hash='h2')
+    
+    c_generic_q3 = RAGChunk(chunk_id='C_Q3_1', document_id='D_Q3', element_ids=[], text='MaterialQueue is used for general supply line and generic container movement.', source_title='MOM Data', source_path='mom.xlsx', relative_path='mom.xlsx', citation_label='mom.xlsx', file_type='.xlsx', element_types=['text'], page_numbers=[], sheet_names=[], slide_numbers=[], section_labels=[], row_ranges=[], cell_ranges=[], privacy_mode='local_only', source_hash='h3')
+    c_specific_q3 = RAGChunk(chunk_id='C_Q3_2', document_id='D_Q3_S', element_ids=[], text='InboundDownload logic for existing line manual shipping requires Oricon.', source_title='補足資料', source_path='補足資料.xlsx', relative_path='補足資料.xlsx', citation_label='補足資料.xlsx', file_type='.xlsx', element_types=['text'], page_numbers=[], sheet_names=['ステージングテーブル'], slide_numbers=[], section_labels=[], row_ranges=[], cell_ranges=[], privacy_mode='local_only', source_hash='h4')
+
+    c_generic_q1 = RAGChunk(chunk_id='C_Q1_1', document_id='D_Q1', element_ids=[], text='AMS overview of manufacturing processes and design change generally.', source_title='AMS概略フロー', source_path='ams.pdf', relative_path='ams.pdf', citation_label='ams.pdf', file_type='.pdf', element_types=['text'], page_numbers=[], sheet_names=[], slide_numbers=[], section_labels=[], row_ranges=[], cell_ranges=[], privacy_mode='local_only', source_hash='h5')
+    c_specific_q1 = RAGChunk(chunk_id='C_Q1_2', document_id='D_Q1_S', element_ids=[], text='Running Change process ECO ECN out of stock check.', source_title='AMS_設計変更', source_path='AMS_設計変更.pdf', relative_path='AMS_設計変更.pdf', citation_label='AMS_設計変更.pdf', file_type='.pdf', element_types=['text'], page_numbers=[], sheet_names=[], slide_numbers=[], section_labels=[], row_ranges=[], cell_ranges=[], privacy_mode='local_only', source_hash='h6')
+    
+    c_metadata_only = RAGChunk(chunk_id='C_META', document_id='D_META', element_ids=[], text='This is a metadata-only source record. Raw binary content was not extracted.', source_title='ManualShipping Doc', source_path='doc.pdf', relative_path='doc.pdf', citation_label='doc.pdf', file_type='.pdf', element_types=[], page_numbers=[], sheet_names=[], slide_numbers=[], section_labels=[], row_ranges=[], cell_ranges=[], privacy_mode='local_only', source_hash='h7')
+
+    return [c_generic_wms, c_agv, c_generic_q3, c_specific_q3, c_generic_q1, c_specific_q1, c_metadata_only]
+
+def test_q3_intent_ranking(memory_db):
+    chunks = _create_intent_test_chunks()
+    index_rag_chunks(memory_db, chunks)
+    res = search_rag_chunks(memory_db, "What is the manual shipping existing line staging precondition container?")
+    assert len(res) > 0
+    assert res[0].chunk_id == "C_Q3_2"
+
+def test_q1_intent_ranking(memory_db):
+    chunks = _create_intent_test_chunks()
+    index_rag_chunks(memory_db, chunks)
+    res = search_rag_chunks(memory_db, "design change running change auto change ECO?")
+    assert len(res) > 0
+    assert res[0].chunk_id == "C_Q1_2"
+
+def test_q2_intent_ranking(memory_db):
+    chunks = _create_intent_test_chunks()
+    index_rag_chunks(memory_db, chunks)
+    res = search_rag_chunks(memory_db, "luồng wms mom agv matecon tanaban?")
+    assert len(res) > 0
+    assert res[0].chunk_id == "C_AGV_1"
+
+def test_metadata_only_penalty(memory_db):
+    chunks = _create_intent_test_chunks()
+    index_rag_chunks(memory_db, chunks)
+    res = search_rag_chunks(memory_db, "manual shipping existing line")
+    meta_result = next((r for r in res if r.chunk_id == 'C_META'), None)
+    if meta_result:
+        assert meta_result.score < res[0].score

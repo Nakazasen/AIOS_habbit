@@ -192,6 +192,7 @@ def build_grounded_prompt(
     deterministic_answer: str,
     source_context: str = "",
     max_context_chars: int = DEFAULT_MAX_CONTEXT_CHARS,
+    focus_note: str = "",
 ) -> str:
     refs = []
     for index, ref in enumerate((source_refs or [])[:MAX_SOURCE_REFS], 1):
@@ -201,7 +202,7 @@ def build_grounded_prompt(
     refs_text = "\n".join(refs) if refs else "Không có nguồn đủ mạnh."
     bounded_context = _bounded(source_context, max_context_chars)
     bounded_draft = _bounded(deterministic_answer, min(4000, max_context_chars))
-    return (
+    base_prompt = (
         "Câu hỏi người dùng:\n"
         f"{question.strip()}\n\n"
         "Nguồn tham chiếu cục bộ (tối đa 5):\n"
@@ -217,6 +218,9 @@ def build_grounded_prompt(
         "- Giữ mục 'Nguồn đã dùng' và dẫn lại số nguồn tương ứng, nhưng không làm lộ đường dẫn gốc nếu nó là tuyệt mật.\n"
         "- Gồm: Tóm tắt, Điều đã xác nhận, Điểm chưa đủ bằng chứng, Việc cần kiểm tra tiếp."
     )
+    if focus_note:
+        base_prompt += f"\n\nLƯU Ý TRỌNG TÂM: {focus_note}"
+    return base_prompt
 
 
 def _fallback(
@@ -406,13 +410,19 @@ class RealStrongProvider:
 
         source_context = "\n\n".join(f"[{item.citation_id}] {item.text}" for item in valid_items[:MAX_SOURCE_REFS])
         source_refs = [{"chunk_id": item.chunk_id, "relative_path": item.relative_path} for item in valid_items[:MAX_SOURCE_REFS]]
-        
+        focus_note = ""
+        for item in valid_items:
+            if "_focus_note" in item.metadata:
+                focus_note = item.metadata["_focus_note"]
+                break
+                
         prompt = build_grounded_prompt(
             question=question,
             source_refs=source_refs,
             deterministic_answer="[Sử dụng LLM để sinh câu trả lời thay vì bản nháp tĩnh]",
             source_context=source_context,
             max_context_chars=self.config.max_context_chars,
+            focus_note=focus_note,
         )
 
         try:

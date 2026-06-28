@@ -147,9 +147,12 @@ def build_evidence_pack(query: str, search_results: List[RAGSearchResult], confi
             slide_numbers=result.slide_numbers,
             element_types=result.element_types,
             metadata={k: str(v) for k, v in result.metadata.items() if isinstance(v, (str, int, float, bool))},
-            score_details={"base_score": result.score},
+            score_details={"base_score": result.score, "explanation": result.score_explanation},
             warnings=[]
         )
+        
+        if result.score_explanation:
+            item.metadata["_score_explanation"] = result.score_explanation
         
         # We store our internal quality classification in metadata for now
         item.metadata["_is_metadata_only"] = str(is_metadata_only)
@@ -288,6 +291,8 @@ def format_evidence_pack_for_prompt(pack: RAGEvidencePack) -> str:
         
         lines.append(f"Citation ID: {item.citation_id}")
         lines.append(f"Source: {item.citation_label}{meta_str}")
+        if "_score_explanation" in item.metadata:
+            lines.append(f"Score Explanation: {item.metadata['_score_explanation']}")
         lines.append(f"Snippet:\n{item.snippet}\n---")
         
     return "\n".join(lines)

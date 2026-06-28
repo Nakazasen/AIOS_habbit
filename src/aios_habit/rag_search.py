@@ -5,6 +5,7 @@ from typing import List, Optional, Dict, Any, Tuple
 import re
 
 from aios_habit.rag_ingest import RAGChunk
+from aios_habit.query_intent import extract_query_intent
 
 @dataclass
 class RAGSearchFilter:
@@ -34,6 +35,7 @@ class RAGSearchResult:
     slide_numbers: List[int]
     element_types: List[str]
     metadata: Dict[str, Any]
+    score_explanation: str = ""
 
 @dataclass
 class RAGSearchIndexStats:
@@ -267,17 +269,82 @@ def search_rag_chunks(conn: sqlite3.Connection, query: str, filters: Optional[RA
 
     # Apply exact phrase and source title boosts on all candidates
     results = []
+    intent = extract_query_intent(query_lower)
+    
     for chunk_id, raw_json, base_score in candidates:
         chunk_data = json.loads(raw_json)
         text_lower = chunk_data.get("text", "").lower()
         title_lower = chunk_data.get("source_title", "").lower()
+        relative_path_lower = chunk_data.get("relative_path", "").lower()
+        sheet_names = [s.lower() for s in chunk_data.get("sheet_names", [])]
         
         score = base_score
+        explanations = [f"base_score: {base_score:.2f}"]
         
+        lexical_boost = 0.0
         if query_lower and query_lower in text_lower:
-            score += 10.0
+            lexical_boost += 10.0
         if query_lower and query_lower in title_lower:
-            score += 5.0
+            lexical_boost += 5.0
+            
+        if lexical_boost > 0:
+            score += lexical_boost
+            explanations.append(f"lexical_boost: +{lexical_boost}")
+            
+        source_match_score = 0.0
+        sheet_match_score = 0.0
+        intent_match_score = 0.0
+        metadata_only_penalty = 0.0
+        off_topic_penalty = 0.0
+        
+        if intent:
+            # Source Match
+            for term in intent.preferred_source_terms:
+                if term.lower() in title_lower or term.lower() in relative_path_lower:
+                    source_match_score += 15.0
+                    explanations.append(f"source_match ({term}): +15")
+                    break # One match is enough for source
+            
+            # Sheet Match
+            for term in intent.preferred_sheet_terms:
+                if any(term.lower() in s for s in sheet_names):
+                    sheet_match_score += 10.0
+                    explanations.append(f"sheet_match ({term}): +10")
+                    break
+            
+            # Intent Match (Content)
+            for term in intent.preferred_source_terms + intent.required_terms_any:
+                if term.lower() in text_lower:
+                    intent_match_score += 5.0
+                    explanations.append(f"content_match ({term}): +5")
+                    break # Max 5 for content match per term type, just one break
+            
+            # Off-topic penalty
+            if source_match_score == 0 and sheet_match_score == 0 and intent_match_score == 0:
+                # If it's a broad file but we have a specific intent
+                off_topic_penalty = -5.0
+                explanations.append("off_topic_penalty: -5")
+                
+            # Focus note logic will be injected to RAGEvidencePack via ai_provider_bridge or evidence metadata
+            chunk_data["_focus_note"] = intent.evidence_focus_note
+            
+        is_metadata_only = (
+            "metadata-only source record" in text_lower or 
+            "raw binary content was not extracted" in text_lower or 
+            "metadata_only" in text_lower or
+            "content was not extracted" in text_lower
+        )
+        if is_metadata_only:
+            metadata_only_penalty = -10.0
+            explanations.append("metadata_only_penalty: -10")
+            
+        score += source_match_score + sheet_match_score + intent_match_score + off_topic_penalty + metadata_only_penalty
+        
+        # Avoid negative final score but keep order
+        if score < 0.1:
+            score = 0.1
+            
+        chunk_data["_score_explanation"] = ", ".join(explanations)
             
         results.append((score, chunk_id, chunk_data))
         
@@ -286,7 +353,7 @@ def search_rag_chunks(conn: sqlite3.Connection, query: str, filters: Optional[RA
     
     final_results = []
     for rank, (score, chunk_id, chunk_data) in enumerate(results[:limit]):
-        final_results.append(RAGSearchResult(
+        res = RAGSearchResult(
             chunk_id=chunk_id,
             document_id=chunk_data.get("document_id", ""),
             text=chunk_data.get("text", ""),
@@ -301,8 +368,13 @@ def search_rag_chunks(conn: sqlite3.Connection, query: str, filters: Optional[RA
             sheet_names=chunk_data.get("sheet_names", []),
             slide_numbers=chunk_data.get("slide_numbers", []),
             element_types=chunk_data.get("element_types", []),
-            metadata=chunk_data.get("metadata", {})
-        ))
+            metadata=chunk_data.get("metadata", {}),
+            score_explanation=chunk_data.get("_score_explanation", "")
+        )
+        # Pass focus note if exists
+        if "_focus_note" in chunk_data:
+            res.metadata["_focus_note"] = chunk_data["_focus_note"]
+        final_results.append(res)
         
     return final_results
 
