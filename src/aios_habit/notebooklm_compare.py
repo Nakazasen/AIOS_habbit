@@ -11,7 +11,7 @@ from aios_habit.rag_evidence import build_evidence_pack, evidence_pack_to_dict
 from aios_habit.rag_ingest import build_chunks_from_elements, build_elements_from_extracted_payload
 from aios_habit.rag_rerank import rerank_search_results
 from aios_habit.rag_search import create_rag_search_schema, index_rag_chunks, search_rag_chunks
-from aios_habit.document_extractors import _extract_excel
+from aios_habit.document_extractors import _extract_excel, _extract_pdf
 
 SUPPORTED_TEXT_SUFFIXES = {".txt", ".md", ".csv", ".log", ".json", ".xml", ".html", ".htm"}
 SUPPORTED_METADATA_SUFFIXES = {".pdf", ".xlsx", ".xlsm", ".xls", ".pptx", ".ppt", ".png", ".jpg", ".jpeg"}
@@ -110,6 +110,18 @@ def build_chunks_from_folder(config: CompareConfig, limit: Optional[int] = None)
             if extracted_texts:
                 text = "\n\n".join(extracted_texts)
                 status = "extracted_success"
+            else:
+                text = f"Metadata-only source record for {path.name}. Relative path: {relative}. File type: {path.suffix.lower() or 'unknown'}. Raw binary content was not extracted by the MVP harness."
+                status = "metadata_only"
+        elif path.suffix.lower() == ".pdf":
+            pdf_results = _extract_pdf(path)
+            extracted_texts = []
+            for res in pdf_results:
+                if res.extraction_status in {"extracted", "extracted_success"} and res.text.strip():
+                    extracted_texts.append(f"--- {res.section} ---\n{res.text}")
+            if extracted_texts:
+                text = "\n\n".join(extracted_texts)
+                status = "extracted"
             else:
                 text = f"Metadata-only source record for {path.name}. Relative path: {relative}. File type: {path.suffix.lower() or 'unknown'}. Raw binary content was not extracted by the MVP harness."
                 status = "metadata_only"

@@ -24,7 +24,7 @@ COMMON_TESSERACT_PATHS = (
     r"D:\Tools\Tesseract-OCR\tesseract.exe",
     r"D:\Sandbox\tools\Tesseract-OCR\tesseract.exe",
 )
-USABLE_STATUSES = {"success", "extracted_success", "extracted_partial", "ocr_success", "ocr_partial"}
+USABLE_STATUSES = {"success", "extracted_success", "extracted_partial", "ocr_success", "ocr_partial", "extracted"}
 IMAGE_EXTS = {".png", ".jpg", ".jpeg", ".bmp", ".tif", ".tiff"}
 
 
@@ -42,6 +42,7 @@ class ExtractionResult:
     row_range: str = ""
     ocr_engine: str = ""
     ocr_lang: str = ""
+    element_type: str = ""
 
 
 class _ReadableHTMLParser(HTMLParser):
@@ -137,6 +138,7 @@ def _chunk_result(result: ExtractionResult, path: Path, root: Path | None, max_c
         "warning": result.warning,
         "ocr_engine": result.ocr_engine,
         "ocr_lang": result.ocr_lang,
+        "element_type": result.element_type,
     }
     if result.extraction_status not in USABLE_STATUSES or not text:
         return [{"text": "", **base}]
@@ -334,75 +336,55 @@ def _ocr_image(path: Path, *, page: str = "") -> ExtractionResult:
     return ExtractionResult("\n".join(lines), path.suffix.lower(), "local_ocr", "ocr_success", warning=warning, page=page, section="ocr text", ocr_engine=engine, ocr_lang=lang)
 
 
-def _extract_pdf_text_layer(path: Path) -> list[ExtractionResult]:
-    reader_cls = None
-    backend = ""
-    try:
-        from pypdf import PdfReader  # type: ignore
-        reader_cls = PdfReader
-        backend = "pypdf"
-    except Exception:
-        try:
-            from PyPDF2 import PdfReader  # type: ignore
-            reader_cls = PdfReader
-            backend = "PyPDF2"
-        except Exception as exc:  # noqa: BLE001
-            return [ExtractionResult("", ".pdf", "pdf_optional", "unsupported_no_local_tool", f"pdf text dependency unavailable: {exc}")]
-    try:
-        reader = reader_cls(str(path))
-        results: list[ExtractionResult] = []
-        for index, page in enumerate(reader.pages, start=1):
-            try:
-                page_text = page.extract_text() or ""
-            except Exception:
-                page_text = ""
-            lines = _clean_lines(page_text.splitlines(), limit=120)
-            if lines:
-                results.append(ExtractionResult("\n".join(lines), ".pdf", backend, "extracted_success", section=f"page {index}", page=str(index)))
-        return results
-    except Exception as exc:  # noqa: BLE001
-        return [ExtractionResult("", ".pdf", backend or "pdf_optional", "failed_with_reason", f"pdf read failed: {exc}")]
-
-
-def _extract_pdf_ocr(path: Path) -> list[ExtractionResult]:
-    available, engine, detail = _tesseract_available()
-    lang = _ocr_lang()
-    if not available:
-        return [ExtractionResult("", ".pdf", "pdf_image_ocr", "unsupported_no_local_ocr", f"image_pdf_requires_ocr; {detail}", ocr_engine="none", ocr_lang=lang)]
-    try:
-        import fitz  # type: ignore
-    except Exception as exc:  # noqa: BLE001
-        return [ExtractionResult("", ".pdf", "pdf_image_ocr", "unsupported_no_local_ocr", f"PyMuPDF unavailable for render: {exc}", ocr_engine=engine, ocr_lang=lang)]
-    results: list[ExtractionResult] = []
-    try:
-        document = fitz.open(str(path))
-        limit = min(len(document), MAX_PDF_OCR_PAGES)
-        with tempfile.TemporaryDirectory() as tmp:
-            for index in range(limit):
-                page = document[index]
-                pixmap = page.get_pixmap(matrix=fitz.Matrix(2, 2), alpha=False)
-                image_path = Path(tmp) / f"page-{index + 1:03d}.png"
-                pixmap.save(str(image_path))
-                result = _ocr_image(image_path, page=str(index + 1))
-                result.file_type = ".pdf"
-                result.extractor_name = "pdf_image_ocr"
-                if not result.warning:
-                    result.warning = f"rendered with PyMuPDF; max_pages={MAX_PDF_OCR_PAGES}"
-                results.append(result)
-        document.close()
-    except Exception as exc:  # noqa: BLE001
-        return [ExtractionResult("", ".pdf", "pdf_image_ocr", "failed_with_reason", f"PDF OCR render failed: {exc}", ocr_engine=engine)]
-    usable = [row for row in results if row.extraction_status in {"ocr_success", "ocr_partial"}]
-    return usable or [ExtractionResult("", ".pdf", "pdf_image_ocr", "unsupported_no_local_tool", "image_pdf_requires_ocr but OCR produced no usable text", ocr_engine=engine)]
-
-
 def _extract_pdf(path: Path) -> list[ExtractionResult]:
-    text_results = _extract_pdf_text_layer(path)
-    if any(row.extraction_status in USABLE_STATUSES and row.text.strip() for row in text_results):
-        return text_results
-    if text_results and text_results[0].extraction_status in {"failed_with_reason", "unsupported_no_local_tool"} and "pdf read failed" in text_results[0].warning:
-        return text_results
-    return _extract_pdf_ocr(path)
+    try:
+        import pymupdf4llm
+        has_pymupdf4llm = True
+    except ImportError:
+        has_pymupdf4llm = False
+
+    try:
+        import fitz
+        has_fitz = True
+    except ImportError:
+        has_fitz = False
+
+    if not has_pymupdf4llm and not has_fitz:
+        return [ExtractionResult("", ".pdf", "pdf_optional_missing", "dependency_missing", "pymupdf4llm and fitz are not installed", element_type="pdf_page_text")]
+
+    results: list[ExtractionResult] = []
+    
+    if has_pymupdf4llm:
+        try:
+            import pymupdf4llm
+            md_text = pymupdf4llm.to_markdown(str(path))
+            if md_text and md_text.strip():
+                lines = _clean_lines(md_text.splitlines(), limit=500)
+                results.append(ExtractionResult("\n".join(lines), ".pdf", "pymupdf4llm", "extracted", section="markdown doc", element_type="pdf_markdown_page"))
+                return results
+        except Exception:
+            pass # fallback to fitz
+
+    if has_fitz:
+        try:
+            import fitz
+            doc = fitz.open(str(path))
+            for index, page in enumerate(doc, start=1):
+                try:
+                    text = page.get_text("text") or ""
+                except Exception:
+                    text = ""
+                lines = _clean_lines(text.splitlines(), limit=120)
+                if lines:
+                    results.append(ExtractionResult("\n".join(lines), ".pdf", "pymupdf", "extracted", section=f"page {index}", page=str(index), element_type="pdf_page_text"))
+            doc.close()
+        except Exception as exc:
+            return [ExtractionResult("", ".pdf", "pymupdf", "parse_failed", f"pdf read failed: {exc}", element_type="pdf_page_text")]
+
+    if not results:
+        return [ExtractionResult("", ".pdf", "pymupdf" if has_fitz else "pymupdf4llm", "empty_text", "pdf has no extractable text", element_type="pdf_page_text")]
+    
+    return results
 
 
 def extract_text_chunks_from_file(path: str | Path, *, root: str | Path | None = None, max_chars_per_chunk: int = 1200) -> list[dict[str, Any]]:
