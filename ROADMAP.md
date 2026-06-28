@@ -1,71 +1,237 @@
-# AIOS WorkLens High-Level Roadmap Index
+﻿# AIOS WorkLens High-Level Roadmap Index
 
-This document serves as the high-level index for the development phases, product loop, and doctrine of AIOS WorkLens.
+AIOS WorkLens / AIOS_habbit là một **hệ điều hành trí nhớ công việc cá nhân, local-first**: biến tài liệu, Excel, ảnh, log, chat, email, AI output và sự việc hằng ngày thành tri thức tái sử dụng theo vòng:
+
+```text
+Case → Evidence → Map → Action → Learning → Memory
+```
 
 ## Core Reference Documents
-- **Product North Star & Doctrine:** [PRODUCT_NORTH_STAR.md](file:///D:/Sandbox/AIOS_habbit/PRODUCT_NORTH_STAR.md) - Contains what AIOS WorkLens is, what it is NOT, the 7 product layers, and the core product loops.
-- **Master Roadmap & Governance:** [WORKLENS_MASTER_ROADMAP.md](file:///D:/Sandbox/AIOS_habbit/WORKLENS_MASTER_ROADMAP.md) - Details the 8 roadmap development phases, model role rules, legacy repository usage policies, and active gate status.
+
+- **Product North Star & Doctrine:** [PRODUCT_NORTH_STAR.md](file:///D:/Sandbox/AIOS_habbit/PRODUCT_NORTH_STAR.md)
+- **Master Roadmap & Governance:** [WORKLENS_MASTER_ROADMAP.md](file:///D:/Sandbox/AIOS_habbit/WORKLENS_MASTER_ROADMAP.md)
+- **Product Positioning:** [docs/AIOS_PRODUCT_POSITIONING.md](file:///D:/Sandbox/AIOS_habbit/docs/AIOS_PRODUCT_POSITIONING.md)
 
 ---
 
-## Active Gate & Phase Status
+## Active Position
 
-- **Current stable GitHub HEAD:** `214c44f` (`Clarify provider fallback reason in daily flow`).
-- **Provider/router foundation:** ✅ Usable daily-pilot foundation for normal documents, not production-grade P1.0.
-  - Local-first MOM/company safety remains the default protected path.
-  - One-screen **Làm việc hằng ngày** flow is stable enough for guided daily pilot use.
-  - Normal-document provider routing is wired through the router and browser/UI pilot.
-  - DeepSeek has been verified with synthetic public normal-document smoke tests and UI pilot.
-  - Q&A-to-Case preserves answer, source refs, safety, and route summary in the generated case draft.
-  - Route log / route summary visibly reports provider, fallback state, and external-send status.
-  - Provider health, key masking, cooldown, and key-rotation foundation are present.
-  - `API Key.txt`, `API*.txt`, `.env`, and provider config files are ignored and not tracked.
-  - MOM/company cloud block is protected by tests and direct negative audits.
-- **Current warnings:**
-  - This is **not P1.0 production-ready**; it is ready for owner roadmap decision.
-  - Browser automation could not type Vietnamese accents reliably during the last pilot.
-  - Notebook name entry can append to the default value instead of replacing it.
-  - Answer, route, and provider metadata are visible but require scrolling in the UI.
-  - Q2/Q3 browser automation sometimes needed repeated focus/submit attempts.
-  - Selecting a newly created case from a long dropdown can require scrolling.
-  - MOM UI safety was not rerun in the last browser pilot, although direct/policy tests pass.
-  - Provider key-rotation foundation exists, but real multi-key rotation is not fully field-tested.
-- **Next recommended gates:**
-  1. **AIOS-P1-READINESS-DECISION-1** — owner decides whether to open P1.0 readiness checklist, run a short daily pilot, or harden UX first.
-  2. **AIOS-UX-DAILY-HARDENING-1** — reduce the top daily-flow frictions if owner chooses UX hardening.
-  3. Optional later: configure another provider key.
-  4. Optional later: Router-6 advanced provider pool, only after real daily use proves the need.
+- **Local HEAD:** `f28663b` (`Document roadmap review after normal provider UI pilot`).
+- **Remote HEAD:** `214c44f` (`Clarify provider fallback reason in daily flow`).
+- **Current position:** End of Phase 3, before Phase 4 RAG Engine v2 and Phase 5 IDE/model bridge.
+- **Current capability:** daily-pilot ready for normal documents, not production-ready.
+- **P1.0:** LOCKED; do not open until readiness criteria are met.
+- **NotebookLM parity:** NOT achieved; current retrieval is useful but not NotebookLM-level.
+- **IDE/model bridge:** NOT implemented yet.
+
+## Mission and Non-goals
+
+AIOS is:
+- A local-first personal work memory operating system.
+- A system for evidence-grounded work: Case, Evidence, Map, Action, Learning, Memory.
+- A privacy-aware multi-model workbench that records evidence, route log, model/tool used and privacy mode.
+
+AIOS is not:
+- a chat backup;
+- a simple RAG chatbot;
+- only a NotebookLM clone;
+- a production prediction engine;
+- a cloud document upload tool;
+- an LSU-only traceability system.
+
+---
+
+## Phase Roadmap
+
+### Phase 0 — Vision & Governance
+
+Status: DONE.
+
+Scope:
+- mission;
+- local-first rules;
+- no fake PASS;
+- privacy constraints;
+- roadmap guardrails.
+
+### Phase 1 — Local Case Cockpit Foundation
+
+Status: DONE.
+
+Scope:
+- case model;
+- evidence;
+- quick intake;
+- handoff;
+- learning card;
+- audit gates.
+
+### Phase 2 — Real Document / MOM Foundation
+
+Status: DONE_WITH_WARNINGS.
+
+Scope:
+- MOM local ingest/index;
+- 50Q benchmark;
+- source refs;
+- local-only guard;
+- NotebookLM comparison baseline.
+
+Warning:
+- not NotebookLM-level semantic retrieval yet.
+
+### Phase 3 — Provider Safety + Daily UI
+
+Status: DONE_WITH_WARNINGS.
+
+Scope:
+- Vietnamese safety modes;
+- provider catalog;
+- route log;
+- DeepSeek normal-doc UI pilot;
+- one-screen daily flow;
+- Q&A to Case route summary.
+
+Warning:
+- daily-pilot ready, not production-ready.
+
+### Phase 4 — RAG Engine v2 / NotebookLM-level Retrieval
+
+Status: NEXT.
+
+Scope:
+- better parser adapter;
+- structure-aware chunks;
+- SQLite FTS / BM25;
+- optional embeddings later;
+- hybrid search;
+- rerank;
+- query rewrite;
+- evidence pack;
+- citation scoring;
+- NotebookLM-style benchmark.
+
+Not allowed yet:
+- heavy vector DB without decision;
+- cloud embedding for company/mật;
+- fake NotebookLM parity claim.
+
+### Phase 5 — IDE / Strong Model Answer Bridge
+
+Status: NEXT_PARALLEL.
+
+Scope:
+- export prompt pack;
+- use Codex/Gemini/Claude/GPT/Opus in external IDE/chat;
+- paste-back answer;
+- store model/tool name;
+- store evidence refs;
+- store route summary;
+- privacy guard.
+
+Not allowed yet:
+- direct cloud call for company/mật;
+- raw API keys in UI/logs;
+- automatic agent edits without approval.
+
+### Phase 6 — Case Memory at Scale
+
+Status: LATER.
+
+Scope:
+- many-case search;
+- case index;
+- duplicate detection;
+- cross-case lessons;
+- timeline;
+- tags/entities;
+- find similar incident.
+
+Warning:
+- currently NOT_READY.
+
+### Phase 7 — Work Stream Map / Knowledge Graph
+
+Status: LATER.
+
+Scope:
+- work stream graph;
+- case/evidence/action relation;
+- lightweight graph first;
+- no graph DB until proven necessary.
+
+### Phase 8 — Senior Learning / Personal OS
+
+Status: LATER.
+
+Scope:
+- senior learning memory;
+- repeated workflow extraction;
+- communication style;
+- decision pattern;
+- reusable prompts;
+- AI-independent personal memory.
+
+### Phase 9 — Production Traceability Foundation
+
+Status: LATER.
+
+Scope:
+- generic unit traceability foundation;
+- not LSU-only;
+- LSU/Drum/DLP/Fuser/Scanner/MainBody/Other;
+- fake CSV first;
+- simple join/risk summary.
+
+Forbidden:
+- prediction engine;
+- ML;
+- production DB integration;
+- long research branch.
+
+### Phase 10 — P1.0 Production Readiness
+
+Status: LOCKED.
+
+Open only if:
+- owner completes real daily scenario without agent assistance;
+- RAG v2 benchmark passes;
+- privacy audit passes;
+- route log/case/evidence trace stable;
+- docs/user guide ready;
+- no secret/runtime commit risk.
+
+---
+
+## Why model call is only a small part
+
+AIOS quality depends on the full chain: parser → index → retrieval → rerank → evidence pack → context → model → privacy guard → route log. A stronger model alone is not enough if parsing, chunking, retrieval, citations or privacy routing are weak. Free/low-tier models may be useful for simple public notes but are insufficient for complex documents. Strong models should be used safely through Phase 5 IDE/model bridge, with exported evidence packs, paste-back answers, model/tool name, route summary and privacy mode stored.
+
+Future research should learn public patterns from RAGFlow, kotaemon, Microsoft GraphRAG, LightRAG, LlamaIndex, Haystack, Docling, Unstructured, OpenHands, Aider, Cline, Continue, Goose, Cognee, Letta/MemGPT, LangGraph and Semantic Kernel. Do not copy leaked/proprietary code.
+
+---
+
+## Next Gate Queue
+
+Immediate:
+1. **AIOS-RAG-AGENT-HARNESS-0** — research RAG + Claude-Code-style harness patterns, docs only.
+2. **AIOS-RAG-INGEST-1** — improve parser/chunk metadata, no vector DB yet.
+3. **AIOS-RAG-SEARCH-1** — local hybrid search foundation, SQLite FTS/BM25, metadata filters, citation IDs.
+4. **AIOS-RAG-EVIDENCE-PACK-1** — evidence pack builder, source scoring, answer abstention.
+5. **AIOS-IDE-BRIDGE-1** — manual prompt export, paste-back answer, store model/tool/evidence/route log.
+
+Later:
+6. AIOS-RAG-RERANK-1
+7. AIOS-RAG-BENCHMARK-1
+8. AIOS-CASE-SCALE-1
+9. AIOS-WORKSTREAM-MAP-1
+10. AIOS-P1-READINESS-CHECKLIST
 
 ---
 
 ## Historical Gate & Phase Status
 
-- **M1 to M1.3 (Intake Stabilization):** Completed.
-- **M1.4 (Senior Learning Memory MVP):** Completed (Conditional PASS).
-- **M1.5 (Pilot UX & Export Safety Hardening):** Completed.
-- **M1.6 (Roadmap Governance Lock):** ✅ Completed (Doctrine and roles locked in docs).
-- **M1.6B (Governance Cleanup):** ✅ Completed (Changelog/status cleanup and role-first agent rules).
-- **M1.7 (Workspace + Knowledge Notebook + Simplified Navigation):** ✅ Passed after M1.7B hotfix (Workspace isolation, Knowledge Notebook upload, simplified central sidebar navigation, case linking; no RAG/OCR/vector DB).
-- **M1.7B (Notebook Source Path Containment Hotfix):** ✅ Passed (`PASS_M1_7B_BLOCKER_FIXED`; `notebook_id` traversal blocked with allowlist + `resolve()`/`is_relative_to()`).
-- **M1.8A (Practical Notebook Intelligence Fast Lane):** ✅ Passed (Local chunking ~1200 char, keyword/phrase search, Q&A/Study Pack prompt builders, structural Mermaid graph).
-- **M1.8B (In-App Notebook Q&A):** ✅ Passed (In-app answer button, lightweight OpenAI-compatible LLM adapter (urllib), provider config, local/cloud privacy behavior).
-- **M1.8C (Q&A Truth Modes + NotebookLM Bridge MVP):** ✅ Passed (Truth modes, hard block cloud/local_only unsafe flow, NotebookLM Bridge prompt schemas, JSON/Mermaid paste and preview).
-- **M1.8D (Persist NotebookLM Bridge Imports):** ✅ Passed (Persistent import store, save/view/delete imports, graph/study/case investigation import preview, graph tab integration).
-- **M1.8D-R (Roadmap Sync):** ✅ Passed (Roadmap & governance document synchronization, no drift guardrails).
-- **M1.8E (Daily Work Pain Polish):** **Next immediate gate** (Focusing on daily-use polish, making saved imports easier to reuse, context sufficiency checking, reducing copy-paste friction, no heavy RAG/traceability code).
-- **Phase 2A (Fake-data Pilot):** Gated (End-to-end validation with synthetic data only).
-- **Phase 2 (Real-data Pilot):** Not started / gated (Do not use real data until Phase 2A passes).
-
----
-
-## Historical Phase Results (Collaborative MVP Hardening)
-- **Phase A (Initial Audit):** PASS.
-- **Phase B (Public Safety Gate):** PASS (Git-ignore rules and scans verified).
-- **Phase C (Public Branch):** PASS.
-- **Phase D (MVP Hardening):** PASS.
-- **Phase E (Real Phase Gate):** PASS.
-- **Phase F (Tests):** PASS.
-- **Phase G (GitHub Actions):** PASS.
-- **Phase H (Docs Update):** PASS.
-- **Phase I (Final Local Validation):** PASS.
-- **Phase J (Commit and Push):** PASS.
+- M1 to M1.8D-R: completed local-first foundation, workspace/notebook, in-app Q&A, NotebookLM bridge persistence and governance sync.
+- Provider/router foundation, safety modes, one-screen daily UI, normal-provider UI pilot and company/mật privacy guard: completed with warnings.
+- Search / many-case management: NOT_READY.
+- P1.0: LOCKED.

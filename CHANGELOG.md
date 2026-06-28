@@ -1,5 +1,17 @@
-# Changelog
+﻿# Changelog
 
+## 2026-06-28 - Roadmap Reposition around WorkLens Mission, RAG v2, and IDE Bridge
+
+### Roadmap
+- Repositioned AIOS as a local-first personal work memory operating system, not only a document Q&A app.
+- Added explicit 10-phase roadmap from Vision/Governance through RAG Engine v2, IDE/model bridge, case memory at scale, work stream map, senior learning memory, production traceability foundation, and locked P1.0 readiness.
+- Set current position to the end of Phase 3, before Phase 4 RAG Engine v2 and Phase 5 IDE/model bridge.
+- Marked NotebookLM parity as not achieved and P1.0 as locked.
+
+### Strategy
+- Documented why model calls are only one part of answer quality: parser, index, retrieval, rerank, evidence pack, context, model, privacy guard, and route log all matter.
+- Added a future research queue for public RAG and agent-harness patterns only; no leaked/proprietary code copying.
+- Added immediate next gates `AIOS-RAG-AGENT-HARNESS-0`, `AIOS-RAG-INGEST-1`, `AIOS-RAG-SEARCH-1`, `AIOS-RAG-EVIDENCE-PACK-1`, and `AIOS-IDE-BRIDGE-1`.
 ## 2026-06-28 - Roadmap Review after Normal Provider UI Pilot
 
 ### Validation
@@ -183,3 +195,4 @@
 
 ### Validation
 - py -3 -m pytest: 16 passed.
+

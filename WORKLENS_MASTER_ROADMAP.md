@@ -1,147 +1,167 @@
-# WorkLens Master Roadmap & Governance
+﻿# WorkLens Master Roadmap & Governance
 
-Every phase of the AIOS WorkLens lifecycle must use strict PASS/FAIL gates. A phase or gate is not considered complete until deliverables, validation evidence, handover, and rollback options are clearly documented.
+Every phase of the AIOS WorkLens lifecycle must use strict PASS/FAIL gates. A phase or gate is not considered complete until deliverables, validation evidence, handover, privacy impact, and rollback options are clearly documented.
+
+AIOS WorkLens is a local-first personal work memory operating system. The core loop is:
+
+```text
+Case → Evidence → Map → Action → Learning → Memory
+```
 
 ---
 
 ## 1. Current Gate Status
 
-The project has advanced through the following local-first stabilization gates:
+- **Current local HEAD:** `f28663b` (`Document roadmap review after normal provider UI pilot`).
+- **Current remote HEAD:** `214c44f` (`Clarify provider fallback reason in daily flow`).
+- **Current position:** end of Phase 3, before Phase 4 RAG Engine v2 and Phase 5 IDE/model bridge.
+- **P1.0:** LOCKED. Do not open automatically.
+- **NotebookLM parity:** not achieved; Phase 4 is required before any parity claim.
+- **IDE/model bridge:** not implemented; Phase 5 is next-parallel.
 
-- **M1: Merge PR #1** — Completed (Squash merged).
-- **M1.1: Streamlit Launch Hotfix** — Completed (ImportError resolved).
-- **M1.2: Vietnamese UI Policy & Localization** — Completed (100% UI localization in Vietnamese).
-- **M1.3: Quick Intake Flow** — Completed (Single-screen intake creating case + initial evidence).
-- **M1.4: Senior Learning Memory MVP** — Completed (Conditional PASS; model, storage, and UI form completed).
-- **M1.5: Pilot UX / Export Safety Hardening** — Completed (Implemented and validated; compact UI mode, pure handover, export options).
-- **M1.6: Roadmap Governance Lock** — ✅ Completed (Doctrine and roles locked in docs).
-- **M1.6B: Governance Cleanup** — Completed (Changelog/status cleanup and role-first agent rules).
-- **M1.7: Workspace + Knowledge Notebook + Simplified Navigation** — ✅ Passed after M1.7B hotfix (Workspace isolation, Knowledge Notebook upload, simplified central sidebar navigation, case linking; no RAG/OCR/vector DB).
-- **M1.7B: Notebook Source Path Containment Hotfix** — ✅ Passed (`PASS_M1_7B_BLOCKER_FIXED`; `notebook_id` traversal blocked with allowlist + `resolve()`/`is_relative_to()`).
-- **M1.8A: Practical Notebook Intelligence Fast Lane** — ✅ Passed (Local chunking, keyword/phrase search, prompt builders, structural Mermaid graph; commit: `dc94b7d`).
-- **M1.8B: In-App Notebook Q&A** — ✅ Passed (urllib OpenAI adapter, in-app answer button, local/cloud privacy logic; commit: `013f0c8`).
-- **M1.8C: Q&A Truth Modes + NotebookLM Bridge MVP** — ✅ Passed (Truth modes, hard block cloud/local_only unsafe flow, JSON/Mermaid paste preview; commit: `8b289fe`).
-- **M1.8D: Persist NotebookLM Bridge Imports** — ✅ Passed (Persistent import store, save/view/delete UI, graph tab integration; commit: `97e0243`).
-- **M1.8D-R: Roadmap Sync** — ✅ Passed (Roadmap & governance document synchronization, no drift guardrails).
-- **M1.8E: Daily Work Pain Polish** — **Next immediate gate** (Focusing on practical daily-use polish, making saved imports easier to reuse, context sufficiency checking, reducing copy-paste friction, no heavy RAG/traceability code).
-- **Phase 2A: Fake-data Pilot** — **Gated** (End-to-end validation with synthetic/fake data only).
-- **Phase 2: Real-data Pilot** — **Not started / gated** (Do not open real data until Phase 2A passes).
+Completed foundation gates include local Case Cockpit, Workspace/Knowledge Notebook, MOM local benchmark, provider safety modes, route log, one-screen daily UI, DeepSeek normal-document UI pilot, Q&A-to-Case route summary, and company/mật privacy guard.
 
 ---
 
-## 2. Roadmap Phases
+## 2. Phase Roadmap
 
-### Phase 0 — Product Governance (Locked)
-- **Objective:** Establish core product loops, roadmap, privacy limits, and model roles.
-- **Scope:** Define North Star, migration policy, inheritance mapping, and agent constraints.
-- **Deliverables:** `PRODUCT_NORTH_STAR.md`, `WORKLENS_MASTER_ROADMAP.md`, and Root policy docs.
-- **Validation:** All governance files exist, align with daily loops, and are locked.
-- **Exit Criteria:** PASS if governance is locked and no model bypasses it.
+### Phase 0 — Vision & Governance
 
-### Phase 1 — Local-first Case Cockpit Foundation (Locked)
-- **Objective:** Create the initial incident case capture and learning card shell.
-- **Scope:** App launcher, quick intake, evidence ingestion, map visualization, prompt packaging, secure handovers, audit check, Vietnamese UI, and local/export safety.
-- **Deliverables:** Streamlit cockpit app, local JSONL storage for cases/evidence/learning cards, and test suite.
-- **Validation:** 100% compile check, green test suite (`pytest`), and manual execution.
-- **Exit Criteria:** PASS if UI opens, core loop works, and learning memory is preserved locally.
+Status: DONE.
 
-### Phase 1.5 — Product Shell / Navigation / Knowledge Notebook Foundation (Completed)
-- **Objective:** Establish workspace/notebook concepts and clean navigation.
-- **Scope:** Workspace selector, knowledge notebooks upload, local preview, and simplified sidebar navigation.
-- **Exit Criteria:** PASS if workspaces and notebook document lists work without mixing with evidence.
+Scope: mission, local-first rules, no fake PASS, privacy constraints, roadmap guardrails.
 
-### Phase 1.8 — Notebook Intelligence & Bridge Persistence (Completed)
-- **Objective:** Integrate local Q&A engine and import/persist rich structures from NotebookLM.
-- **Scope:** Local chunk indexing, keyword searching, Q&A/Study Pack prompt builders, urllib LLM client, truth modes, cloud safety hard gating, JSON/Mermaid parsing, and JSONL persistence.
-- **Exit Criteria:** PASS if NotebookLM JSON/Mermaid results are persistent, queryable, and rendering correctly in UI.
+### Phase 1 — Local Case Cockpit Foundation
 
-### Phase 1.8E — Daily Work Pain Polish (Active Target)
-- **Objective:** Refine daily usability of NotebookLM imports and minimize operational friction.
-- **Scope:**
-  - Make saved NotebookLM imports easier to reuse.
-  - Convert saved investigation imports into draft Cases or evidence checklists.
-  - Improve "what should I do next?" guidance.
-  - Show context sufficiency before asking AI.
-  - Show recent imports / recent questions.
-  - NO heavy RAG or traceability implementation.
-- **Exit Criteria:** PASS if daily-use polish features work without regression.
+Status: DONE.
 
-### Phase 2A — Fake-data Pilot (Next)
-- **Objective:** Validate the full WorkLens loop end-to-end using synthetic/fake data only.
-- **Scope:** Run one or more simulated incidents in a single workspace and notebook. Create cases, add fake evidence/source docs, generate actions/handovers, and write learning cards.
-- **Deliverables:** Pilot feedback, test notes, and cleanup items. No real private data.
-- **Validation:** Checklist compliance and no local/private runtime data tracked in Git.
-- **Exit Criteria:** PASS if the user successfully completes at least one full incident loop using fake data.
+Scope: case model, evidence, quick intake, handoff, learning card, audit gates.
 
-### Phase 2 — Real-data Pilot (Gated / Not Started)
-- **Objective:** Run Case Cockpit on real incidents in local environments only after Phase 2A passes.
-- **Scope:** Daily use in a single workspace and one knowledge notebook. Create cases, add evidence, generate actions/handovers, and write learning cards.
-- **Deliverables:** Pilot feedback, local-only notes. No real private data committed to Git.
-- **Validation:** Checklist compliance (`MONDAY_PILOT_CHECKLIST.md`) and explicit public-safety review.
-- **Exit Criteria:** PASS if the user successfully completes at least one full real incident loop after fake-data validation.
+### Phase 2 — Real Document / MOM Foundation
 
-### Phase 3 (Future) / P1.0 — Production Traceability Foundation
-- **Objective:** Establish the foundation schema for tracking production units and checking risk clusters.
-- **Scope:**
-  - Define generic traceability concepts: `unit_type`, `unit_serial`, `component_type`, `component_lot`, `supplier_lot`, `mold_id`, `cav_id`, `process_step`, `jig_id`, `jig_result`, `inspection_result`, `defect_type`, `risk_cluster`.
-  - Generic support for various units such as LSU, Drum, DLP, Fuser, Scanner, MainBody, and Other components (LSU is only the first sample scenario, not an LSU-only system).
-  - Build a lightweight schema, parse fake CSV files, and generate a simple join/risk summary.
-  - NO real-time prediction or ML models.
-  - NO heavy graph DB or vector DB integrations.
-  - NO production database connections (API/Direct).
-- **No Drift Guardrail:**
-  > [!IMPORTANT]
-  > Production Traceability is a future branch, not the immediate main lane.
-  > It must remain generic, not LSU-only. LSU is only the first sample scenario.
-  > No prediction/ML/graph DB/vector DB in P1.0.
-  > P1.0 must not delay daily WorkLens usability. Return to daily pain solving immediately after the foundation is laid.
+Status: DONE_WITH_WARNINGS.
 
-### Phase 4 — Knowledge Notebook / Ingest Engine
-- **Objective:** Upgrade source document ingestion.
-- **Scope:** PDF/Excel/Markdown metadata extractors, source isolation, no OCR overbuild, check legacy ingest harvest.
-- **Validation:** Synthetic document parsing tests.
+Scope: MOM local ingest/index, 50Q benchmark, source refs, local-only guard, NotebookLM comparison baseline.
 
-### Phase 5 — Visual Knowledge Graph
-- **Objective:** Build visual mapping of knowledge.
-- **Scope:** Graph visualization of systems, databases, procedures, personnel, cases, and patterns.
-- **Validation:** Interactive graph exploration views.
+Warning: not NotebookLM-level semantic retrieval yet.
 
-### Phase 6 — Senior Coach Layer
-- **Objective:** Connect the work intelligence helper.
-- **Scope:** Guided investigations, missing evidence prompts, check suggestion, user-styled drafts for chat/emails, and anti-fake-cause reasoning.
-- **Validation:** Actionable help metrics.
+### Phase 3 — Provider Safety + Daily UI
 
-### Phase 7 — Field Intelligence / Alert
-- **Objective:** Telemetry anomaly indicators.
-- **Scope:** Live log error hints, production context, no early predictions.
-- **Validation:** Grounded alerting rules on real case telemetry.
+Status: DONE_WITH_WARNINGS.
+
+Scope: Vietnamese safety modes, provider catalog, route log, DeepSeek normal-doc UI pilot, one-screen daily flow, Q&A to Case route summary.
+
+Warning: daily-pilot ready, not production-ready.
+
+### Phase 4 — RAG Engine v2 / NotebookLM-level Retrieval
+
+Status: NEXT.
+
+Scope:
+- better parser adapter;
+- structure-aware chunks;
+- SQLite FTS / BM25;
+- optional embeddings later;
+- hybrid search;
+- rerank;
+- query rewrite;
+- evidence pack;
+- citation scoring;
+- NotebookLM-style benchmark.
+
+Not allowed yet:
+- heavy vector DB without decision;
+- cloud embedding for company/mật;
+- fake NotebookLM parity claim.
+
+### Phase 5 — IDE / Strong Model Answer Bridge
+
+Status: NEXT_PARALLEL.
+
+Scope:
+- export prompt pack;
+- use Codex/Gemini/Claude/GPT/Opus in external IDE/chat;
+- paste-back answer;
+- store model/tool name;
+- store evidence refs;
+- store route summary;
+- privacy guard.
+
+Not allowed yet:
+- direct cloud call for company/mật;
+- raw API keys in UI/logs;
+- automatic agent edits without approval.
+
+### Phase 6 — Case Memory at Scale
+
+Status: LATER.
+
+Scope: many-case search, case index, duplicate detection, cross-case lessons, timeline, tags/entities, find similar incident.
+
+Warning: currently NOT_READY.
+
+### Phase 7 — Work Stream Map / Knowledge Graph
+
+Status: LATER.
+
+Scope: work stream graph, case/evidence/action relation, lightweight graph first, no graph DB until proven necessary.
+
+### Phase 8 — Senior Learning / Personal OS
+
+Status: LATER.
+
+Scope: senior learning memory, repeated workflow extraction, communication style, decision pattern, reusable prompts, AI-independent personal memory.
+
+### Phase 9 — Production Traceability Foundation
+
+Status: LATER.
+
+Scope: generic unit traceability foundation, not LSU-only, LSU/Drum/DLP/Fuser/Scanner/MainBody/Other, fake CSV first, simple join/risk summary.
+
+Forbidden: prediction engine, ML, production DB integration, long research branch.
+
+### Phase 10 — P1.0 Production Readiness
+
+Status: LOCKED.
+
+Open only if owner completes a real daily scenario without agent assistance, RAG v2 benchmark passes, privacy audit passes, route log/case/evidence trace is stable, docs/user guide are ready, and no secret/runtime commit risk remains.
 
 ---
 
-## 3. Model Role Rules
+## 3. Why model call is only a small part
 
-To maintain high development quality and prevent "fake PASS" updates, future AI agents and models must strictly adhere to their designated roles:
+AIOS quality depends on parser, index, retrieval, rerank, evidence pack, context, model, privacy guard and route log. Stronger models are useful but cannot compensate for weak evidence selection or unsafe privacy routing. Free/low-tier models are not enough for complex company documents. Strong models should be used through a safe IDE/model bridge that exports evidence packs and stores paste-back answers with model/tool name, evidence refs, route summary and privacy mode.
 
-- **Audit Specialist:**
-  - Handles independent audits, code reviews, anti-fake PASS checks, and critical reasoning.
-  - Verifies that evidence, tests, and security guidelines are fully satisfied before merging.
-  - Current recommended model: Codex GPT-5.5 or equivalent.
-- **Execution Specialist:**
-  - Handles execution, coding, repository changes, and test creation.
-  - Implements the feature changes detailed in approved plans.
-  - Current recommended models: Gemini Flash 3.5 High / Gemini Pro 3.1 or equivalent.
-- **Strict Constraint:** No feature merge is allowed without an audit review and validation confirmation.
+Learning sources for public pattern research: RAGFlow, kotaemon, Microsoft GraphRAG, LightRAG, LlamaIndex, Haystack, Docling, Unstructured, OpenHands, Aider, Cline, Continue, Goose, Cognee, Letta/MemGPT, LangGraph, Semantic Kernel. Do not copy leaked/proprietary code.
 
 ---
 
-## 4. Legacy Repository Policy
+## 4. Next Gate Queue
 
-The repository `AIOS_habbit` is the **central repository** for the WorkLens product.
-Other legacy repositories serve as **read-only reference sources** to harvest ideas/concepts after deep auditing, namely:
-- `ABW_NVIDIA_FUSION_CONTROL`
-- `skill-Anti-brain-wiki_note`
-- `Nvidia`
+Immediate:
+1. **AIOS-RAG-AGENT-HARNESS-0** — research RAG + Claude-Code-style harness patterns, docs only.
+2. **AIOS-RAG-INGEST-1** — improve parser/chunk metadata, no vector DB yet.
+3. **AIOS-RAG-SEARCH-1** — local hybrid search foundation, SQLite FTS/BM25, metadata filters, citation IDs.
+4. **AIOS-RAG-EVIDENCE-PACK-1** — evidence pack builder, source scoring, answer abstention.
+5. **AIOS-IDE-BRIDGE-1** — manual prompt export, paste-back answer, store model/tool/evidence/route log.
 
-### Key Constraints:
-1. **No direct porting:** Do not copy code blocks directly without adapting them to the new clean modular structure.
-2. **Audit first:** Do not harvest ingest, graph, or agent-bridge code until a pilot is executed and a thorough audit is completed.
+Later:
+6. AIOS-RAG-RERANK-1
+7. AIOS-RAG-BENCHMARK-1
+8. AIOS-CASE-SCALE-1
+9. AIOS-WORKSTREAM-MAP-1
+10. AIOS-P1-READINESS-CHECKLIST
+
+---
+
+## 5. Model Role Rules
+
+- **Audit Specialist:** independent audits, code reviews, anti-fake PASS checks, validation confirmation.
+- **Execution Specialist:** coding and test execution only after an approved plan.
+- **Strict Constraint:** no feature merge is allowed without audit review and validation confirmation.
+
+---
+
+## 6. Legacy Repository Policy
+
+The repository `AIOS_habbit` is the central repository for WorkLens. Legacy repositories are read-only references only. Do not copy code blocks directly, do not use leaked/proprietary code, and do not harvest ingest/graph/agent bridge code before an approved audit gate.
