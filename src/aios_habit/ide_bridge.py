@@ -1,5 +1,4 @@
 import hashlib
-import json
 from dataclasses import dataclass, field, asdict
 from datetime import datetime
 from typing import Any, Dict, List, Optional
@@ -71,11 +70,14 @@ def build_ide_prompt_pack(evidence_pack: RAGEvidencePack, target_model_hint: str
     allowed_external = False
     
     if evidence_pack.privacy_mode == "local_only":
+        export_policy = "blocked_local_only"
+        allowed_external = False
+    elif evidence_pack.privacy_mode == "redacted":
         if config.allow_redacted_export:
             export_policy = "allowed_redacted"
             allowed_external = True
         else:
-            export_policy = "blocked_local_only"
+            export_policy = "blocked_by_config"
             allowed_external = False
     elif evidence_pack.privacy_mode == "cloud_safe":
         if config.allow_cloud_safe_export:
@@ -106,8 +108,12 @@ def build_ide_prompt_pack(evidence_pack: RAGEvidencePack, target_model_hint: str
     prompt_text = "\n".join(lines)
     
     if len(prompt_text) > config.max_prompt_chars:
-        warnings.append(f"Prompt truncated from {len(prompt_text)} to {config.max_prompt_chars} chars.")
-        prompt_text = prompt_text[:config.max_prompt_chars]
+        warnings.append(f"Prompt truncated from {len(prompt_text)} to {config.max_prompt_chars} chars; review privacy notice before any external use.")
+        notice = "PRIVACY/TRUNCATION NOTICE: Prompt was truncated; do not export unless policy allows it.\n"
+        if config.max_prompt_chars <= len(notice):
+            prompt_text = notice[:config.max_prompt_chars]
+        else:
+            prompt_text = notice + prompt_text[:config.max_prompt_chars - len(notice)]
         
     return IDEPromptPack(
         prompt_pack_id=prompt_pack_id,

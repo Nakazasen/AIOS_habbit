@@ -63,13 +63,18 @@ def test_local_only_blocked():
     assert validate_prompt_export(prompt_pack) is False
 
 def test_redacted_export_policy():
-    ev_pack = _mock_evidence_pack("local_only")
+    local_pack = _mock_evidence_pack("local_only")
     config = IDEBridgeConfig(allow_redacted_export=True)
-    prompt_pack = build_ide_prompt_pack(ev_pack, "Gemini", config)
-    
-    assert prompt_pack.allowed_external is True
-    assert prompt_pack.export_policy == "allowed_redacted"
-    assert validate_prompt_export(prompt_pack) is True
+    local_prompt = build_ide_prompt_pack(local_pack, "Gemini", config)
+    assert local_prompt.allowed_external is False
+    assert local_prompt.export_policy == "blocked_local_only"
+    assert validate_prompt_export(local_prompt) is False
+
+    redacted_pack = _mock_evidence_pack("redacted")
+    redacted_prompt = build_ide_prompt_pack(redacted_pack, "Gemini", config)
+    assert redacted_prompt.allowed_external is True
+    assert redacted_prompt.export_policy == "allowed_redacted"
+    assert validate_prompt_export(redacted_prompt) is True
 
 def test_path_safety():
     ev_pack = _mock_evidence_pack("cloud_safe")
@@ -99,6 +104,7 @@ def test_prompt_truncation():
     assert len(prompt_pack.prompt_text) == 50
     assert len(prompt_pack.warnings) == 1
     assert "truncated" in prompt_pack.warnings[0]
+    assert "PRIVACY" in prompt_pack.prompt_text
 
 def test_paste_back_answer():
     ev_pack = _mock_evidence_pack("cloud_safe")
@@ -140,3 +146,21 @@ def test_json_serialization():
     
     assert p_dict["export_policy"] == "allowed_cloud_safe"
     assert a_dict["model_tool_name"] == "Gemini Web"
+
+
+def test_cloud_safe_blocked_by_config():
+    ev_pack = _mock_evidence_pack("cloud_safe")
+    config = IDEBridgeConfig(allow_cloud_safe_export=False)
+    prompt_pack = build_ide_prompt_pack(ev_pack, "Gemini", config)
+    assert prompt_pack.allowed_external is False
+    assert prompt_pack.export_policy == "blocked_by_config"
+    assert validate_prompt_export(prompt_pack) is False
+
+def test_answer_id_changes_with_model_or_answer():
+    ev_pack = _mock_evidence_pack("cloud_safe")
+    prompt_pack = build_ide_prompt_pack(ev_pack, "Gemini")
+    ans1 = record_paste_back_answer(prompt_pack, "Gemini Web", "Answer one")
+    ans2 = record_paste_back_answer(prompt_pack, "Gemini Web", "Answer two")
+    ans3 = record_paste_back_answer(prompt_pack, "Claude Web", "Answer one")
+    assert ans1.answer_id != ans2.answer_id
+    assert ans1.answer_id != ans3.answer_id
