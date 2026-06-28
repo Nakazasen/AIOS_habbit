@@ -301,3 +301,15 @@ def test_run_benchmark_creates_no_output_files(tmp_path, monkeypatch):
     summary = run_rag_benchmark(_mock_chunks(), _mock_questions(), RAGBenchmarkConfig(tier="custom"))
     assert summary.question_count == 4
     assert list(tmp_path.iterdir()) == []
+
+
+def test_benchmark_can_use_local_reranker_without_provider_or_vector_db():
+    chunks = [
+        RAGChunk("LOW", "D1", ["e1"], "generic dispatch note", "Generic", "g.txt", "g.txt", "Generic", "text", ["text"], [], [], [], [], [], [], "cloud_safe"),
+        RAGChunk("MATCH", "D2", ["e2"], "export mapping route code missing", "Match", "m.txt", "m.txt", "Match", "text", ["text"], [], [], [], [], [], [], "cloud_safe"),
+    ]
+    questions = [RAGBenchmarkQuestion("Q-RERANK", "export mapping route code", "answerable", ["MATCH"], ["D2"], ["Match"], "cloud_safe")]
+    summary = run_rag_benchmark(chunks, questions, RAGBenchmarkConfig(tier="custom", top_k=2, use_local_reranker=True))
+    assert summary.pass_fail == "PASS"
+    assert summary.results[0].retrieved_chunk_ids[0] == "MATCH"
+    assert summary.privacy_pass_rate == 1.0

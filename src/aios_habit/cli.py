@@ -292,6 +292,7 @@ def cmd_owner_workflow(args):
         "Start with fake data, or mark real company data as local_only.",
         "Search locally with RAG v2 and review returned evidence/citations.",
         "Build or inspect the evidence pack before drafting any answer.",
+        "Use the local answer composer first when you need a deterministic cited draft without any provider call.",
         "If evidence is insufficient, stop and record an insufficient-evidence result.",
         "Export a prompt only when the pack is cloud_safe and export is allowed.",
         "Never export local_only evidence to NotebookLM, cloud chat, or external IDEs.",

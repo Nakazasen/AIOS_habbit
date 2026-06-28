@@ -65,6 +65,7 @@ class RAGBenchmarkSummary:
 class RAGBenchmarkConfig:
     tier: str = "custom"
     top_k: int = 10
+    use_local_reranker: bool = False
     min_top_chunk_hit_rate: float = 0.8
     min_document_hit_rate: float = 0.9
     min_citation_hit_rate: float = 0.8
@@ -191,6 +192,9 @@ def run_rag_benchmark(chunks: List[RAGChunk], questions: List[RAGBenchmarkQuesti
     for q in questions:
         t0 = time.time()
         search_results = search_rag_chunks(conn, q.question, limit=config.top_k)
+        if config.use_local_reranker:
+            from aios_habit.rag_rerank import rerank_search_results
+            search_results = rerank_search_results(q.question, search_results).results
         evidence_pack = build_evidence_pack(q.question, search_results)
         latency_ms = (time.time() - t0) * 1000.0
         

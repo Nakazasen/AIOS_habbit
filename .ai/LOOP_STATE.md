@@ -22,3 +22,21 @@ Rollback risk: low, docs only.
 Cycle 3: add minimal owner workflow CLI guide that prints a safe step checklist without provider/cloud calls or file outputs.
 PASS criteria: CLI command exists, tested, and does not write runtime artifacts.
 Rollback risk: low, additive CLI surface.
+
+## Continue cycle 1
+
+Task: Local answer composer MVP.
+PASS criteria: deterministic local-only draft preserves citation IDs, shows insufficiency/privacy warnings, no provider/NotebookLM calls, unit tests pass.
+Rollback risk: low; additive module/tests.
+
+## Continue cycle 2
+
+Task: Deterministic local reranker MVP.
+PASS criteria: no ML/provider/vector DB; stable order; preserves result objects; tests pass.
+Rollback risk: low; additive module/tests.
+
+## Continue cycle 3
+
+Task: P1 opening plan draft only.
+PASS criteria: plan lists prerequisites and explicitly does not open P1.0.
+Rollback risk: low; docs only.
