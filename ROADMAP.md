@@ -454,6 +454,56 @@ Later:
 
 - P1.0: LOCKED.
 
+---
+
+## RAG / Document Intelligence Research-First Track
+
+1. **Principle:**
+   AIOS_habbit must not hand-write large RAG/extraction components blindly. Research strong repos/libraries first, then implement thin adapters with tests and benchmark.
+
+2. **Scope:**
+   This is not only Excel/PDF/PPTX/Image OCR. It covers:
+   - extraction
+   - ingestion pipeline
+   - chunking
+   - metadata/citation schema
+   - retrieval
+   - reranking
+   - answer synthesis
+   - evaluation
+   - benchmark
+   - owner workflow
+
+3. **Reference libraries/repos to study:**
+   - Docling
+   - Unstructured
+   - MarkItDown
+   - PyMuPDF4LLM
+   - MinerU / RAGFlow DeepDoc
+   - LlamaIndex
+   - Haystack
+   - Qdrant hybrid search
+   - RAGAS / DeepEval / TruLens
+
+4. **Current status:**
+   - Excel adapter added and improved AIOS RAG.
+   - AIOS insufficient evidence dropped from 12/12 to 2/12 after Excel extraction + FTS Unicode/search fixes.
+   - PDF, PPTX, image/OCR, richer HTML/DOCX/log parsing remain future adapter tracks.
+   - NotebookLM parity is not claimed.
+   - P1.0 is not opened.
+
+5. **Priority:**
+   - First, finish fair comparison after Excel extraction.
+   - Then choose next adapter by evidence.
+   - Likely next adapter: PDF via PyMuPDF4LLM, but only after comparison report.
+   - Do not add Vector DB/Graph DB until extraction and benchmark prove need.
+
+6. **Governance:**
+   - No fake parity.
+   - No real docs/runtime outputs committed.
+   - No vector/graph drift.
+   - Owner acceptance still required.
+
 
 
 
