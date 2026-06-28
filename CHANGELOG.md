@@ -1,5 +1,13 @@
-﻿# Changelog
+# Changelog
 
+## 2026-06-28 - Local FTS Search Foundation
+
+### Enhancements
+- Added local SQLite FTS/BM25 search foundation in `rag_search.py`.
+- Added metadata filters (privacy_mode, file_type, source_title, page_numbers, sheet_names).
+- Safe fallback mechanism implemented when SQLite FTS5 is not available.
+- Added adapter `build_search_index_from_rag_chunks` to `notebook_index.py`.
+- Maintained zero dependency on vector databases, graph databases, or cloud embeddings for local retrieval.
 
 ## 2026-06-28 - RAG v2 and Agent Harness Research
 

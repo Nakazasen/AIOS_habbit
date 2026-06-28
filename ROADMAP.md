@@ -1,4 +1,4 @@
-﻿# AIOS WorkLens High-Level Roadmap Index
+# AIOS WorkLens High-Level Roadmap Index
 
 AIOS WorkLens / AIOS_habbit là một **hệ điều hành trí nhớ công việc cá nhân, local-first**: biến tài liệu, Excel, ảnh, log, chat, email, AI output và sự việc hằng ngày thành tri thức tái sử dụng theo vòng:
 
@@ -216,7 +216,7 @@ Future research should learn public patterns from RAGFlow, kotaemon, Microsoft G
 Immediate:
 1. **AIOS-RAG-AGENT-HARNESS-0** — DONE locally; research RAG + Claude-Code-style harness patterns, docs only.
 2. **AIOS-RAG-INGEST-1** — DONE locally; foundation implemented locally, no vector DB/graph DB yet, no cloud OCR, no provider calls, no NotebookLM parity claim.
-3. **AIOS-RAG-SEARCH-1** — local hybrid search foundation, SQLite FTS/BM25, metadata filters, citation IDs.
+3. **AIOS-RAG-SEARCH-1** — DONE locally; local hybrid search foundation, SQLite FTS/BM25, metadata filters, citation IDs.
 4. **AIOS-RAG-EVIDENCE-PACK-1** — evidence pack builder, source scoring, answer abstention.
 5. **AIOS-IDE-BRIDGE-1** — manual prompt export, paste-back answer, store model/tool/evidence/route log.
 

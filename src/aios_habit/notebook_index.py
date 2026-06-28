@@ -226,3 +226,12 @@ def build_rag_chunks_from_notebook_chunks(notebook_chunks: List[SourceChunk]) ->
             
     return rag_chunks
 
+def build_search_index_from_rag_chunks(conn, rag_chunks: List['RAGChunk']):
+    """Adapter to index RAGChunk items using the new rag_search module, if available."""
+    try:
+        from aios_habit.rag_search import create_rag_search_schema, index_rag_chunks
+    except ImportError:
+        return
+        
+    create_rag_search_schema(conn)
+    index_rag_chunks(conn, rag_chunks)
