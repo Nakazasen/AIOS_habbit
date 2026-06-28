@@ -1,4 +1,19 @@
-# Changelog
+﻿# Changelog
+
+## 2026-06-28 - IDE/Model Answer Bridge Foundation
+
+### Enhancements
+- Added manual IDE/model bridge foundation in `ide_bridge.py`.
+- Added prompt pack export from evidence pack.
+- Added paste-back answer record model.
+- Added local_only export blocking and redaction policies.
+
+### Safety
+- No provider/API automation.
+- No cloud calls.
+- No vector DB/graph DB/reranker.
+- No NotebookLM parity claim.
+
 
 ## 2026-06-28 - RAG Evidence Pack Foundation
 
@@ -9,6 +24,21 @@
 - Maintained zero dependency on vector databases, graph databases, or cloud embeddings for local retrieval.
 - No answer composer replacement yet.
 
+## 2026-06-28 - IDE/Model Answer Bridge Foundation
+
+### Enhancements
+- Added manual IDE/model bridge foundation in `ide_bridge.py`.
+- Added prompt pack export from evidence pack.
+- Added paste-back answer record model.
+- Added local_only export blocking and redaction policies.
+
+### Safety
+- No provider/API automation.
+- No cloud calls.
+- No vector DB/graph DB/reranker.
+- No NotebookLM parity claim.
+
+
 ## 2026-06-28 - Local FTS Search Foundation
 
 ### Enhancements
@@ -17,6 +47,21 @@
 - Safe fallback mechanism implemented when SQLite FTS5 is not available.
 - Added adapter `build_search_index_from_rag_chunks` to `notebook_index.py`.
 - Maintained zero dependency on vector databases, graph databases, or cloud embeddings for local retrieval.
+
+## 2026-06-28 - IDE/Model Answer Bridge Foundation
+
+### Enhancements
+- Added manual IDE/model bridge foundation in `ide_bridge.py`.
+- Added prompt pack export from evidence pack.
+- Added paste-back answer record model.
+- Added local_only export blocking and redaction policies.
+
+### Safety
+- No provider/API automation.
+- No cloud calls.
+- No vector DB/graph DB/reranker.
+- No NotebookLM parity claim.
+
 
 ## 2026-06-28 - RAG v2 and Agent Harness Research
 
@@ -29,6 +74,21 @@
 
 ### Next Gates
 - Recommended next order: `AIOS-RAG-INGEST-1`, `AIOS-RAG-SEARCH-1`, `AIOS-RAG-EVIDENCE-PACK-1`, `AIOS-IDE-BRIDGE-1`, `AIOS-RAG-BENCHMARK-1`.
+## 2026-06-28 - IDE/Model Answer Bridge Foundation
+
+### Enhancements
+- Added manual IDE/model bridge foundation in `ide_bridge.py`.
+- Added prompt pack export from evidence pack.
+- Added paste-back answer record model.
+- Added local_only export blocking and redaction policies.
+
+### Safety
+- No provider/API automation.
+- No cloud calls.
+- No vector DB/graph DB/reranker.
+- No NotebookLM parity claim.
+
+
 ## 2026-06-28 - Roadmap Reposition around WorkLens Mission, RAG v2, and IDE Bridge
 
 ### Roadmap
@@ -41,12 +101,27 @@
 - Documented why model calls are only one part of answer quality: parser, index, retrieval, rerank, evidence pack, context, model, privacy guard, and route log all matter.
 - Added a future research queue for public RAG and agent-harness patterns only; no leaked/proprietary code copying.
 - Added immediate next gates `AIOS-RAG-AGENT-HARNESS-0`, `AIOS-RAG-INGEST-1`, `AIOS-RAG-SEARCH-1`, `AIOS-RAG-EVIDENCE-PACK-1`, and `AIOS-IDE-BRIDGE-1`.
+## 2026-06-28 - IDE/Model Answer Bridge Foundation
+
+### Enhancements
+- Added manual IDE/model bridge foundation in `ide_bridge.py`.
+- Added prompt pack export from evidence pack.
+- Added paste-back answer record model.
+- Added local_only export blocking and redaction policies.
+
+### Safety
+- No provider/API automation.
+- No cloud calls.
+- No vector DB/graph DB/reranker.
+- No NotebookLM parity claim.
+
+
 ## 2026-06-28 - Roadmap Review after Normal Provider UI Pilot
 
 ### Validation
-- Marked the one-screen **Làm việc hằng ngày** flow as stable enough for guided daily pilot use.
+- Marked the one-screen **Lﾃm vi盻㌘ h蘯ｱng ngﾃy** flow as stable enough for guided daily pilot use.
 - Recorded the normal-document provider UI pilot as passed with DeepSeek, fallback disabled, visible route summary, and Q&A-to-Case creation.
-- Reconfirmed company/mật protection through direct negative checks: no cloud/provider call for protected mode.
+- Reconfirmed company/m蘯ｭt protection through direct negative checks: no cloud/provider call for protected mode.
 
 ### Roadmap
 - Added next decision gate `AIOS-P1-READINESS-DECISION-1` for owner review before opening any P1.0 checklist.
@@ -60,15 +135,30 @@
 - Selecting a newly created case from a long dropdown can require scrolling.
 - MOM UI safety was not rerun in the last browser pilot, although tests and direct safety checks pass.
 
+## 2026-06-28 - IDE/Model Answer Bridge Foundation
+
+### Enhancements
+- Added manual IDE/model bridge foundation in `ide_bridge.py`.
+- Added prompt pack export from evidence pack.
+- Added paste-back answer record model.
+- Added local_only export blocking and redaction policies.
+
+### Safety
+- No provider/API automation.
+- No cloud calls.
+- No vector DB/graph DB/reranker.
+- No NotebookLM parity claim.
+
+
 ## 2026-06-27 - Real Provider Routing Foundation and Daily Pilot
 
 ### Added
-- Added safe real-provider support for normal documents (`Tài liệu thường`) through the AI router.
+- Added safe real-provider support for normal documents (`Tﾃi li盻㎡ thﾆｰ盻拵g`) through the AI router.
 - Added provider health, key masking, cooldown, and key-rotation foundation.
 - Added `.gitignore` guard for local API key files including `API Key.txt`, `API*.txt`, `.env`, and provider config files.
 
 ### Changed
-- Fixed the custom normal-notebook UI route so `Tự động chọn AI tốt nhất` uses the provider router instead of the old local-only path.
+- Fixed the custom normal-notebook UI route so `T盻ｱ ﾄ黛ｻ冢g ch盻肱 AI t盻奏 nh蘯･t` uses the provider router instead of the old local-only path.
 - Consolidated Vietnamese route-log visibility for provider decisions, external-send status, fallback status, and provider used.
 
 ### Validation
@@ -81,6 +171,21 @@
 - Q&A-to-Case currently preserves answer, source refs, and safety, but does not persist route summary as a dedicated case field yet.
 - Provider key-rotation foundation exists, but real multi-key rotation is not fully field-tested.
 - This is a usable foundation for normal documents, not P1.0 production readiness.
+
+## 2026-06-28 - IDE/Model Answer Bridge Foundation
+
+### Enhancements
+- Added manual IDE/model bridge foundation in `ide_bridge.py`.
+- Added prompt pack export from evidence pack.
+- Added paste-back answer record model.
+- Added local_only export blocking and redaction policies.
+
+### Safety
+- No provider/API automation.
+- No cloud calls.
+- No vector DB/graph DB/reranker.
+- No NotebookLM parity claim.
+
 
 ## 2026-06-21 - Notebook Intelligence & Bridge Persistence (M1.8A - M1.8D)
 
@@ -103,11 +208,26 @@
 - Hard gated cloud targets to strictly prevent `local_only` raw data leakage, displaying UI warnings and blocking API execution (M1.8B & M1.8C).
 - Enabled pasting, formatting, and rendering of parsed JSON structures and Mermaid diagrams inside Case Cockpit (M1.8C).
 - Enabled saving, listing, viewing, and deleting saved NotebookLM imports in the Knowledge Notebook cockpit area (M1.8D).
-- Integrated visual graph rendering of saved NotebookLM imports in Tab 5 (Bản đồ) (M1.8D).
+- Integrated visual graph rendering of saved NotebookLM imports in Tab 5 (B蘯｣n ﾄ黛ｻ・ (M1.8D).
 - Synchronized roadmap and governance rules to prevent drift and locked M1.8D-R (M1.8D-R).
 
 ### Security
 - Capped chunk indexing, restricted LLM execution context, and ensured all persistent imports default to `local_only` and `draft` status (M1.8A - M1.8D).
+
+
+## 2026-06-28 - IDE/Model Answer Bridge Foundation
+
+### Enhancements
+- Added manual IDE/model bridge foundation in `ide_bridge.py`.
+- Added prompt pack export from evidence pack.
+- Added paste-back answer record model.
+- Added local_only export blocking and redaction policies.
+
+### Safety
+- No provider/API automation.
+- No cloud calls.
+- No vector DB/graph DB/reranker.
+- No NotebookLM parity claim.
 
 
 ## 2026-06-20 - M1.7B Path Containment Hotfix
@@ -123,6 +243,21 @@
 - Added regression test for malicious notebook IDs, including traversal, absolute paths, Windows drive-style paths, and nested path separators.
 - Codex retest passed with `PASS_M1_7B_BLOCKER_FIXED`.
 
+## 2026-06-28 - IDE/Model Answer Bridge Foundation
+
+### Enhancements
+- Added manual IDE/model bridge foundation in `ide_bridge.py`.
+- Added prompt pack export from evidence pack.
+- Added paste-back answer record model.
+- Added local_only export blocking and redaction policies.
+
+### Safety
+- No provider/API automation.
+- No cloud calls.
+- No vector DB/graph DB/reranker.
+- No NotebookLM parity claim.
+
+
 ## 2026-06-21 - Workspace, Notebook, and Navigation Simplification (M1.7)
 
 ### Added
@@ -134,19 +269,49 @@
 ### Changed
 - Refactored `case_cockpit.py` sidebar navigation: reduced choice clutter by grouping pages into 5 main categories and using native Streamlit tabs inside the content area.
 - Added a Workspace selector and management tools directly in the sidebar.
-- Added Sổ tri thức (Knowledge Notebook) page enabling notebook creation and source document upload with preview parsing.
+- Added S盻・tri th盻ｩc (Knowledge Notebook) page enabling notebook creation and source document upload with preview parsing.
 - Expanded `Case` model with `workspace_id` and `linked_notebook_ids` fields while maintaining 100% backward compatibility.
 - Integrated linked notebook and source document reference sections in prompt compilations (`case_prompt.py`) and safety validation rules (`case_audit.py`).
+
+## 2026-06-28 - IDE/Model Answer Bridge Foundation
+
+### Enhancements
+- Added manual IDE/model bridge foundation in `ide_bridge.py`.
+- Added prompt pack export from evidence pack.
+- Added paste-back answer record model.
+- Added local_only export blocking and redaction policies.
+
+### Safety
+- No provider/API automation.
+- No cloud calls.
+- No vector DB/graph DB/reranker.
+- No NotebookLM parity claim.
+
 
 ## 2026-06-20 - Roadmap Governance Lock
 
 ### Added
 - Locked AIOS WorkLens product doctrine.
 - Defined AIOS as Personal Senior Work Intelligence System.
-- Updated core loop: `Knowledge → Case → Evidence → Reasoning Map → Action / Communication → Outcome → Learning Memory → Better Work`.
+- Updated core loop: `Knowledge 竊・Case 竊・Evidence 竊・Reasoning Map 竊・Action / Communication 竊・Outcome 竊・Learning Memory 竊・Better Work`.
 - Added/updated 7 product layers.
 - Clarified model/agent roles.
 - Defined M1.7 as next gate.
+
+## 2026-06-28 - IDE/Model Answer Bridge Foundation
+
+### Enhancements
+- Added manual IDE/model bridge foundation in `ide_bridge.py`.
+- Added prompt pack export from evidence pack.
+- Added paste-back answer record model.
+- Added local_only export blocking and redaction policies.
+
+### Safety
+- No provider/API automation.
+- No cloud calls.
+- No vector DB/graph DB/reranker.
+- No NotebookLM parity claim.
+
 
 ## 2026-06-20 - Case Cockpit Privacy and Audit Hardening
 
@@ -165,6 +330,21 @@
 - Excluded `local_only` evidence from cloud targets (`gemini`, `gpt`, `copilot`, `notebooklm_safe`) by default.
 - Added path containment assertion in file upload to block directory traversal attacks.
 
+## 2026-06-28 - IDE/Model Answer Bridge Foundation
+
+### Enhancements
+- Added manual IDE/model bridge foundation in `ide_bridge.py`.
+- Added prompt pack export from evidence pack.
+- Added paste-back answer record model.
+- Added local_only export blocking and redaction policies.
+
+### Safety
+- No provider/API automation.
+- No cloud calls.
+- No vector DB/graph DB/reranker.
+- No NotebookLM parity claim.
+
+
 ## 2026-06-20 - WorkLens Governance and Inheritance Audit
 
 ### Added
@@ -180,6 +360,21 @@
 ### Security
 - Reaffirmed local-first public safety and no blind code/data copying.
 
+## 2026-06-28 - IDE/Model Answer Bridge Foundation
+
+### Enhancements
+- Added manual IDE/model bridge foundation in `ide_bridge.py`.
+- Added prompt pack export from evidence pack.
+- Added paste-back answer record model.
+- Added local_only export blocking and redaction policies.
+
+### Safety
+- No provider/API automation.
+- No cloud calls.
+- No vector DB/graph DB/reranker.
+- No NotebookLM parity claim.
+
+
 ## 2026-06-20 - AIOS Habit Studio Local UI
 
 ### Added
@@ -187,6 +382,21 @@
 - Launcher scripts `RUN_AIOS_HABIT_STUDIO.bat` and `scripts/run_studio.ps1`.
 - UI tabs for Dashboard, Projects, Evidence, Memory, Review Queue, Profiles, Export, Audit, Handover, and Settings.
 - Documentation for the Studio UI (`docs/STUDIO_UI.md`).
+
+## 2026-06-28 - IDE/Model Answer Bridge Foundation
+
+### Enhancements
+- Added manual IDE/model bridge foundation in `ide_bridge.py`.
+- Added prompt pack export from evidence pack.
+- Added paste-back answer record model.
+- Added local_only export blocking and redaction policies.
+
+### Safety
+- No provider/API automation.
+- No cloud calls.
+- No vector DB/graph DB/reranker.
+- No NotebookLM parity claim.
+
 
 ## 2026-06-20 - AIOS Habit Local Platform Completed
 
@@ -214,6 +424,21 @@
 ### Handover
 - `PROJECT_HANDOVER.md` and `09_handover/final_handover.md` generated.
 
+## 2026-06-28 - IDE/Model Answer Bridge Foundation
+
+### Enhancements
+- Added manual IDE/model bridge foundation in `ide_bridge.py`.
+- Added prompt pack export from evidence pack.
+- Added paste-back answer record model.
+- Added local_only export blocking and redaction policies.
+
+### Safety
+- No provider/API automation.
+- No cloud calls.
+- No vector DB/graph DB/reranker.
+- No NotebookLM parity claim.
+
+
 ## 2026-06-20 - Public-safe MVP hardening
 
 ### Added
@@ -224,6 +449,7 @@
 
 ### Validation
 - py -3 -m pytest: 16 passed.
+
 
 
 

@@ -1,9 +1,9 @@
-# AIOS WorkLens High-Level Roadmap Index
+﻿# AIOS WorkLens High-Level Roadmap Index
 
-AIOS WorkLens / AIOS_habbit là một **hệ điều hành trí nhớ công việc cá nhân, local-first**: biến tài liệu, Excel, ảnh, log, chat, email, AI output và sự việc hằng ngày thành tri thức tái sử dụng theo vòng:
+AIOS WorkLens / AIOS_habbit lﾃ m盻冲 **h盻・ﾄ訴盻「 hﾃnh trﾃｭ nh盻・cﾃｴng vi盻㌘ cﾃ｡ nhﾃ｢n, local-first**: bi蘯ｿn tﾃi li盻㎡, Excel, 蘯｣nh, log, chat, email, AI output vﾃ s盻ｱ vi盻㌘ h蘯ｱng ngﾃy thﾃnh tri th盻ｩc tﾃ｡i s盻ｭ d盻･ng theo vﾃｲng:
 
 ```text
-Case → Evidence → Map → Action → Learning → Memory
+Case 竊・Evidence 竊・Map 竊・Action 竊・Learning 竊・Memory
 ```
 
 ## Core Reference Documents
@@ -43,7 +43,7 @@ AIOS is not:
 
 ## Phase Roadmap
 
-### Phase 0 — Vision & Governance
+### Phase 0 窶・Vision & Governance
 
 Status: DONE.
 
@@ -54,7 +54,7 @@ Scope:
 - privacy constraints;
 - roadmap guardrails.
 
-### Phase 1 — Local Case Cockpit Foundation
+### Phase 1 窶・Local Case Cockpit Foundation
 
 Status: DONE.
 
@@ -66,7 +66,7 @@ Scope:
 - learning card;
 - audit gates.
 
-### Phase 2 — Real Document / MOM Foundation
+### Phase 2 窶・Real Document / MOM Foundation
 
 Status: DONE_WITH_WARNINGS.
 
@@ -80,7 +80,7 @@ Scope:
 Warning:
 - not NotebookLM-level semantic retrieval yet.
 
-### Phase 3 — Provider Safety + Daily UI
+### Phase 3 窶・Provider Safety + Daily UI
 
 Status: DONE_WITH_WARNINGS.
 
@@ -95,7 +95,7 @@ Scope:
 Warning:
 - daily-pilot ready, not production-ready.
 
-### Phase 4 — RAG Engine v2 / NotebookLM-level Retrieval
+### Phase 4 窶・RAG Engine v2 / NotebookLM-level Retrieval
 
 Status: IN PROGRESS.
 
@@ -104,10 +104,10 @@ Scope:
 - Search: Local SQLite FTS/BM25 + fallback string search (DONE `AIOS-RAG-SEARCH-1`).
 - Pack: Evidence pack builder, source scoring, and answer abstention (DONE `AIOS-RAG-EVIDENCE-PACK-1`).
 - Rerank: Local semantic reranker (PENDING `AIOS-RAG-RERANK-1`).
-- cloud embedding for company/mật;
+- cloud embedding for company/m蘯ｭt;
 - fake NotebookLM parity claim.
 
-### Phase 5 — IDE / Strong Model Answer Bridge
+### Phase 5 窶・IDE / Strong Model Answer Bridge
 
 Status: NEXT_PARALLEL.
 
@@ -121,11 +121,11 @@ Scope:
 - privacy guard.
 
 Not allowed yet:
-- direct cloud call for company/mật;
+- direct cloud call for company/m蘯ｭt;
 - raw API keys in UI/logs;
 - automatic agent edits without approval.
 
-### Phase 6 — Case Memory at Scale
+### Phase 6 窶・Case Memory at Scale
 
 Status: LATER.
 
@@ -141,7 +141,7 @@ Scope:
 Warning:
 - currently NOT_READY.
 
-### Phase 7 — Work Stream Map / Knowledge Graph
+### Phase 7 窶・Work Stream Map / Knowledge Graph
 
 Status: LATER.
 
@@ -151,7 +151,7 @@ Scope:
 - lightweight graph first;
 - no graph DB until proven necessary.
 
-### Phase 8 — Senior Learning / Personal OS
+### Phase 8 窶・Senior Learning / Personal OS
 
 Status: LATER.
 
@@ -163,7 +163,7 @@ Scope:
 - reusable prompts;
 - AI-independent personal memory.
 
-### Phase 9 — Production Traceability Foundation
+### Phase 9 窶・Production Traceability Foundation
 
 Status: LATER.
 
@@ -180,7 +180,7 @@ Forbidden:
 - production DB integration;
 - long research branch.
 
-### Phase 10 — P1.0 Production Readiness
+### Phase 10 窶・P1.0 Production Readiness
 
 Status: LOCKED.
 
@@ -196,7 +196,7 @@ Open only if:
 
 ## Why model call is only a small part
 
-AIOS quality depends on the full chain: parser → index → retrieval → rerank → evidence pack → context → model → privacy guard → route log. A stronger model alone is not enough if parsing, chunking, retrieval, citations or privacy routing are weak. Free/low-tier models may be useful for simple public notes but are insufficient for complex documents. Strong models should be used safely through Phase 5 IDE/model bridge, with exported evidence packs, paste-back answers, model/tool name, route summary and privacy mode stored.
+AIOS quality depends on the full chain: parser 竊・index 竊・retrieval 竊・rerank 竊・evidence pack 竊・context 竊・model 竊・privacy guard 竊・route log. A stronger model alone is not enough if parsing, chunking, retrieval, citations or privacy routing are weak. Free/low-tier models may be useful for simple public notes but are insufficient for complex documents. Strong models should be used safely through Phase 5 IDE/model bridge, with exported evidence packs, paste-back answers, model/tool name, route summary and privacy mode stored.
 
 Future research should learn public patterns from RAGFlow, kotaemon, Microsoft GraphRAG, LightRAG, LlamaIndex, Haystack, Docling, Unstructured, OpenHands, Aider, Cline, Continue, Goose, Cognee, Letta/MemGPT, LangGraph and Semantic Kernel. Do not copy leaked/proprietary code.
 
@@ -205,11 +205,11 @@ Future research should learn public patterns from RAGFlow, kotaemon, Microsoft G
 ## Next Gate Queue
 
 Immediate:
-1. **AIOS-RAG-AGENT-HARNESS-0** — DONE locally; research RAG + Claude-Code-style harness patterns, docs only.
-2. **AIOS-RAG-INGEST-1** — DONE locally; foundation implemented locally, no vector DB/graph DB yet, no cloud OCR, no provider calls, no NotebookLM parity claim.
-3. **AIOS-RAG-SEARCH-1** — DONE locally; local hybrid search foundation, SQLite FTS/BM25, metadata filters, citation IDs.
-4. **AIOS-RAG-EVIDENCE-PACK-1** — evidence pack builder, source scoring, answer abstention.
-5. **AIOS-IDE-BRIDGE-1** — manual prompt export, paste-back answer, store model/tool/evidence/route log.
+1. **AIOS-RAG-AGENT-HARNESS-0** 窶・DONE locally; research RAG + Claude-Code-style harness patterns, docs only.
+2. **AIOS-RAG-INGEST-1** 窶・DONE locally; foundation implemented locally, no vector DB/graph DB yet, no cloud OCR, no provider calls, no NotebookLM parity claim.
+3. **AIOS-RAG-SEARCH-1** 窶・DONE locally; local hybrid search foundation, SQLite FTS/BM25, metadata filters, citation IDs.
+4. **AIOS-RAG-EVIDENCE-PACK-1** 窶・evidence pack builder, source scoring, answer abstention.
+5. **AIOS-IDE-BRIDGE-1** 窶・manual prompt export, paste-back answer, store model/tool/evidence/route log.
 
 Later:
 6. AIOS-RAG-RERANK-1
@@ -223,8 +223,10 @@ Later:
 ## Historical Gate & Phase Status
 
 - M1 to M1.8D-R: completed local-first foundation, workspace/notebook, in-app Q&A, NotebookLM bridge persistence and governance sync.
-- Provider/router foundation, safety modes, one-screen daily UI, normal-provider UI pilot and company/mật privacy guard: completed with warnings.
+- Provider/router foundation, safety modes, one-screen daily UI, normal-provider UI pilot and company/m蘯ｭt privacy guard: completed with warnings.
 - Search / many-case management: NOT_READY.
 - P1.0: LOCKED.
+
+
 
 
