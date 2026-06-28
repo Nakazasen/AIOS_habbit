@@ -1,4 +1,4 @@
-﻿import pytest
+import pytest
 import sqlite3
 import json
 from aios_habit.rag_evidence import (
@@ -114,3 +114,25 @@ def test_old_search_notebook_chunks_compatibility(monkeypatch):
     import aios_habit.notebook_index as notebook_index; monkeypatch.setattr(notebook_index, "load_chunks", lambda notebook_id: [chunk]); hits = search_notebook_chunks("nb", "legacy")
     assert len(hits) == 1
     assert hits[0].chunk.chunk_id == "old-1"
+
+def test_metadata_only_evidence():
+    import sqlite3
+    chunks = [
+        RAGChunk("C1", "D1", ["e1"], "metadata-only source record\nFile Path: doc.pdf\nSize: 100", "Metadata", "doc.pdf", "doc.pdf", "doc.pdf", "pdf", ["metadata"], [], [], [], [], [], [], "cloud_safe", metadata={"_is_metadata_only": "True"}),
+    ]
+    conn = sqlite3.connect(":memory:")
+    create_rag_search_schema(conn)
+    index_rag_chunks(conn, chunks)
+    results = search_rag_chunks(conn, "doc", limit=5)
+    
+    # Force high scores
+    for r in results:
+        r.score = 10.0
+        
+    pack = build_evidence_pack("doc", results)
+    
+    assert pack.insufficient_evidence is True
+    assert pack.confidence_label == "low"
+    assert pack.metadata_only_evidence_count == 1
+    assert pack.content_evidence_count == 0
+    assert pack.evidence_quality == "metadata_only"

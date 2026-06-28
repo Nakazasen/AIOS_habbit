@@ -331,6 +331,7 @@ def cmd_notebooklm_compare(args):
         run_notebooklm_answers,
         write_questions,
         write_redacted_summary,
+        print_local_review,
     )
 
     config = load_compare_config(Path(args.config)) if args.config else CompareConfig(source_root=args.source_root)
@@ -356,6 +357,9 @@ def cmd_notebooklm_compare(args):
     if args.compare_cmd == "summary":
         path = write_redacted_summary(config, args.notebooklm_status)
         print_json({"status": "PASS", "path": str(path)})
+        return 0
+    if args.compare_cmd == "review-local":
+        print_local_review(config, output_path=args.output)
         return 0
     return 2
 
@@ -409,6 +413,8 @@ def main(argv=None) -> None:
     compare_subcommands.add_parser("evaluate", help="Evaluate AIOS and NotebookLM answers")
     summary = compare_subcommands.add_parser("summary", help="Write safe redacted summary")
     summary.add_argument("--notebooklm-status", default="BLOCKED_BY_NLM_CLI_LIMITATION")
+    review = compare_subcommands.add_parser("review-local", help="Print safe owner-readable comparison")
+    review.add_argument("--output", help="Optional path to write the readable markdown output")
     compare.set_defaults(func=cmd_notebooklm_compare)
 
     args = parser.parse_args(argv)

@@ -24,6 +24,9 @@ class LocalAnswerDraft:
     composer_name: str = "deterministic_local_template_v1"
     provider_call: bool = False
     notebooklm_call: bool = False
+    answer_kind: str = "local_evidence_draft"
+    final_answer: bool = False
+    requires_strong_model_or_human_review: bool = True
     created_at: str = field(default_factory=lambda: datetime.now().isoformat())
     metadata: Dict[str, str] = field(default_factory=dict)
 
@@ -49,9 +52,22 @@ def compose_local_answer(pack: RAGEvidencePack, max_items: int = 5) -> LocalAnsw
         warnings.append("Privacy: local_only evidence must not be exported externally.")
     elif not pack.allowed_external:
         warnings.append("Privacy: external export is not allowed by the current pack configuration.")
+        
+    warnings.append("This is a local evidence draft, not a final model answer.")
+    if getattr(pack, "metadata_only_evidence_count", 0) > 0 and getattr(pack, "content_evidence_count", 0) == 0:
+        warnings.append("Only metadata was found; document content was not extracted.")
 
-    citation_ids = [item.citation_id for item in pack.items[:max_items]]
-    evidence_ids = [item.evidence_id for item in pack.items[:max_items]]
+    # Filter items to only include real content evidence
+    valid_items = []
+    excluded_metadata_items = []
+    for item in pack.items:
+        if item.metadata.get("_is_metadata_only") == "True":
+            excluded_metadata_items.append(item)
+        else:
+            valid_items.append(item)
+
+    citation_ids = [item.citation_id for item in valid_items[:max_items]]
+    evidence_ids = [item.evidence_id for item in valid_items[:max_items]]
 
     lines = [
         f"Local draft for: {pack.query}",
@@ -61,13 +77,17 @@ def compose_local_answer(pack: RAGEvidencePack, max_items: int = 5) -> LocalAnsw
         lines.append("Warnings:")
         lines.extend(f"- {warning}" for warning in warnings)
 
-    if not pack.items:
-        lines.append("No cited evidence was available, so no factual answer is drafted.")
+    if not valid_items:
+        lines.append("No extracted content evidence was available, so no factual answer is drafted.")
+        if excluded_metadata_items:
+            lines.append("Note: Only file metadata was retrieved. Document content extraction may be unsupported.")
     else:
         lines.append("Evidence-grounded points:")
-        for item in pack.items[:max_items]:
+        for item in valid_items[:max_items]:
             snippet = " ".join(item.snippet.split())
             lines.append(f"- {item.citation_id} {snippet}")
+        if excluded_metadata_items:
+            lines.append(f"\n(Excluded {len(excluded_metadata_items)} metadata-only results from draft.)")
         lines.append("Use only the cited points above; verify before taking action.")
 
     return LocalAnswerDraft(
@@ -82,6 +102,9 @@ def compose_local_answer(pack: RAGEvidencePack, max_items: int = 5) -> LocalAnsw
         insufficient_evidence=pack.insufficient_evidence,
         confidence_label=pack.confidence_label,
         warnings=warnings,
+        answer_kind="local_evidence_draft",
+        final_answer=False,
+        requires_strong_model_or_human_review=True,
     )
 
 

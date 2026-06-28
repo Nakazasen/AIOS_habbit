@@ -48,6 +48,8 @@ def test_evaluator_marks_human_review_without_notebooklm_answers(tmp_path):
     assert payload["status"] == "PASS_CANDIDATE"
     assert payload["notebooklm_answers"] == 0
     assert "human review" in payload["note"]
+    assert payload["comparison_mode"] == "local_draft_vs_notebooklm_answer"
+    assert "retrieval/extraction coverage" in payload["warning"]
 
 
 def test_build_chunks_from_folder_uses_safe_relative_paths(tmp_path):
@@ -77,4 +79,35 @@ def test_build_chunks_from_folder_extracts_excel(tmp_path):
     # Should contain the real text from the Excel file
     assert any("Real Excel Text Here" in chunk.text for chunk in chunks)
     # Should not be just a metadata string
+    # Should not be just a metadata string
     assert all("Raw binary content was not extracted" not in chunk.text for chunk in chunks if chunk.file_type == "xlsx")
+
+
+def test_print_local_review(tmp_path):
+    from aios_habit.notebooklm_compare import print_local_review
+    
+    config = CompareConfig(source_root=str(tmp_path / "src"), output_dir=str(tmp_path / "runs"), question_count=1)
+    out_dir = tmp_path / "runs"
+    out_dir.mkdir(parents=True, exist_ok=True)
+    
+    q_path = out_dir / "questions.jsonl"
+    a_path = out_dir / "aios_answers.jsonl"
+    
+    q_path.write_text(json.dumps({"question_id": "Q001", "question": "What is the procedure?"}), encoding="utf-8")
+    a_path.write_text(json.dumps({
+        "question": {"question_id": "Q001"},
+        "answer": {"answer_text": "Local draft text", "insufficient_evidence": False},
+        "evidence_pack": {"evidence_quality": "content_supported"}
+    }), encoding="utf-8")
+    
+    output_md = out_dir / "human_review.md"
+    print_local_review(config, str(output_md))
+    
+    assert output_md.exists()
+    content = output_md.read_text(encoding="utf-8")
+    assert "Q Q001" in content
+    assert "What is the procedure?" in content
+    assert "Local draft text" in content
+    assert "NotebookLM answer" in content
+    assert "Không có kết quả" in content
+    assert "Evidence quality: content_supported" in content

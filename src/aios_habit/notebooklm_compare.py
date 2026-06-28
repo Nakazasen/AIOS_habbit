@@ -277,17 +277,24 @@ def _score_pair(aios: Dict[str, Any], nlm: Optional[Dict[str, Any]]) -> Dict[str
     answer = aios.get("answer", {})
     has_citations = bool(answer.get("citation_ids"))
     insufficient = bool(answer.get("insufficient_evidence"))
+    
+    is_metadata_only = insufficient and any("Only metadata was found" in w for w in answer.get("warnings", []))
+    if is_metadata_only and nlm:
+        winner = "notebooklm"
+    else:
+        winner = "human_review_required" if nlm else "aios_only_no_notebooklm_answer"
+        
     return {
-        "answer_relevance": 2 if answer.get("answer_text") else 0,
+        "answer_relevance": 2 if answer.get("answer_text") and not is_metadata_only else 0,
         "citation_usefulness": 2 if has_citations else 1,
         "source_grounding": 2 if has_citations else 1,
         "completeness": 1 if insufficient else 2,
         "insufficient_evidence_honesty": 3 if insufficient else 2,
         "privacy_local_control": 3,
-        "actionability_for_owner": 2 if answer.get("answer_text") else 0,
+        "actionability_for_owner": 2 if answer.get("answer_text") and not is_metadata_only else 0,
         "hallucination_risk": 3 if insufficient else 2,
-        "winner": "human_review_required" if nlm else "aios_only_no_notebooklm_answer",
-        "reason": "Deterministic heuristic self-eval; NotebookLM answer missing or manual review required.",
+        "winner": winner,
+        "reason": "Deterministic heuristic self-eval; local draft vs NotebookLM answer.",
     }
 
 
@@ -303,16 +310,18 @@ def evaluate_answers(config: CompareConfig) -> Dict[str, Path]:
         evaluations.append({"question_id": row["question"]["question_id"], "scores": _score_pair(row, nlm), "requires_human_review": True})
     summary = {
         "status": "PASS_CANDIDATE" if evaluations else "NO_EVALUATION",
+        "comparison_mode": "local_draft_vs_notebooklm_answer",
+        "warning": "This comparison checks retrieval/extraction coverage, not final answer quality.",
         "note": "PASS_CANDIDATE only means deterministic self-eval ran; human review is required before any parity claim.",
         "question_count": len(evaluations),
-        "aios_answers": len(aios_rows),
+        "aios_local_drafts": len(aios_rows),
         "notebooklm_answers": len(nlm_rows),
         "evaluations": evaluations,
     }
     json_path = out_dir / "evaluation.json"
     md_path = out_dir / "evaluation_report.md"
     json_path.write_text(json.dumps(summary, ensure_ascii=False, indent=2), encoding="utf-8")
-    md_path.write_text(f"# AIOS vs NotebookLM MVP Evaluation\n\nStatus: {summary['status']}\n\n{summary['note']}\n\nQuestions: {len(evaluations)}\nAIOS answers: {len(aios_rows)}\nNotebookLM answers: {len(nlm_rows)}\n", encoding="utf-8")
+    md_path.write_text(f"# AIOS vs NotebookLM MVP Evaluation\n\nStatus: {summary['status']}\n\nWARNING: {summary['warning']}\n\n{summary['note']}\n\nQuestions: {len(evaluations)}\nAIOS local drafts: {len(aios_rows)}\nNotebookLM answers: {len(nlm_rows)}\n", encoding="utf-8")
     return {"json": json_path, "md": md_path}
 
 
@@ -324,7 +333,50 @@ def write_redacted_summary(config: CompareConfig, notebooklm_status: str) -> Pat
     e = out_dir / "evaluation.json"
     def count(path: Path) -> int:
         return len([line for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]) if path.exists() else 0
-    text = f"""# NotebookLM Compare Summary\n\n- Questions: {count(q)}\n- AIOS answers: {count(a)}\n- NotebookLM answers: {count(n)}\n- NotebookLM status: {notebooklm_status}\n- Parity claimed: NO\n- PASS_CANDIDATE means self-evaluation only; human review is required.\n"""
+    text = f"""# NotebookLM Compare Summary\n\n- Questions: {count(q)}\n- AIOS local drafts: {count(a)}\n- NotebookLM answers: {count(n)}\n- NotebookLM status: {notebooklm_status}\n- Parity claimed: NO\n- PASS_CANDIDATE means self-evaluation only; human review is required.\n"""
     path = Path(".ai/NOTEBOOKLM_COMPARE_SUMMARY.md")
     path.write_text(text, encoding="utf-8")
     return path
+
+
+def print_local_review(config: CompareConfig, output_path: Optional[str] = None) -> None:
+    out_dir = ensure_output_dir(config)
+    q_path = out_dir / "questions.jsonl"
+    a_path = out_dir / "aios_answers.jsonl"
+    n_path = out_dir / "notebooklm_answers.jsonl"
+    
+    questions = [json.loads(line) for line in q_path.read_text(encoding="utf-8").splitlines() if line.strip()] if q_path.exists() else []
+    aios_rows = [json.loads(line) for line in a_path.read_text(encoding="utf-8").splitlines() if line.strip()] if a_path.exists() else []
+    nlm_rows = [json.loads(line) for line in n_path.read_text(encoding="utf-8").splitlines() if line.strip()] if n_path.exists() else []
+
+    lines = []
+    
+    for i, q in enumerate(questions):
+        q_id = q.get("question_id")
+        q_text = q.get("question")
+        
+        aios_row = next((r for r in aios_rows if r.get("question", {}).get("question_id") == q_id), None)
+        nlm_row = next((r for r in nlm_rows if r.get("question_id") == q_id), None)
+        
+        if not aios_row: continue
+        
+        aios_ans = aios_row.get("answer", {}).get("answer_text", "")
+        insufficient = "YES" if aios_row.get("answer", {}).get("insufficient_evidence") else "NO"
+        quality = aios_row.get("evidence_pack", {}).get("evidence_quality", "unknown")
+        
+        nlm_ans = nlm_row.get("answer", "") if nlm_row else "Không có kết quả"
+        
+        lines.append(f"Q {q_id}")
+        lines.append(f"Question: {q_text}")
+        lines.append(f"AIOS local evidence draft:\n{aios_ans}")
+        lines.append(f"NotebookLM answer:\n{nlm_ans}")
+        lines.append(f"AIOS insufficient evidence: {insufficient}")
+        lines.append(f"Evidence quality: {quality}")
+        lines.append("Owner decision fields blank")
+        lines.append("-" * 40)
+        
+    text = "\n".join(lines)
+    print(text)
+    
+    if output_path:
+        Path(output_path).write_text(text, encoding="utf-8")

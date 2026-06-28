@@ -41,7 +41,7 @@ def test_compose_local_answer_insufficient_evidence_warning():
     draft = compose_local_answer(pack)
     assert draft.insufficient_evidence is True
     assert any("Insufficient evidence" in warning for warning in draft.warnings)
-    assert "No cited evidence was available" in draft.answer_text
+    assert "No extracted content evidence was available" in draft.answer_text
     assert draft.citation_ids == []
 
 
@@ -52,3 +52,43 @@ def test_compose_local_answer_local_only_privacy_warning():
     assert draft.allowed_external is False
     assert any("local_only" in warning for warning in draft.warnings)
     assert "must not be exported externally" in draft.answer_text
+
+
+def test_compose_local_answer_metadata_only():
+    import sqlite3
+    chunks = [
+        RAGChunk("C1", "D1", ["e1"], "metadata-only source record\nFile Path: doc.pdf\nSize: 100", "Metadata", "doc.pdf", "doc.pdf", "doc.pdf", "pdf", ["metadata"], [], [], [], [], [], [], "cloud_safe", metadata={"_is_metadata_only": "True"}),
+    ]
+    conn = sqlite3.connect(":memory:")
+    create_rag_search_schema(conn)
+    index_rag_chunks(conn, chunks)
+    results = search_rag_chunks(conn, "doc", limit=5)
+    pack = build_evidence_pack("doc", results)
+    
+    draft = compose_local_answer(pack)
+    assert pack.insufficient_evidence is True
+    assert pack.confidence_label == "low"
+    assert pack.metadata_only_evidence_count == 1
+    assert draft.answer_kind == "local_evidence_draft"
+    assert any("Only metadata was found" in warning for warning in draft.warnings)
+    assert "No extracted content evidence was available" in draft.answer_text
+    assert draft.citation_ids == []
+
+
+def test_compose_local_answer_mixed_evidence():
+    import sqlite3
+    chunks = [
+        RAGChunk("C1", "D1", ["e1"], "Real doc content here", "Content", "doc_file.txt", "doc_file.txt", "doc_file.txt", "txt", ["text"], [], [], [], [], [], [], "cloud_safe"),
+        RAGChunk("C2", "D2", ["e2"], "metadata-only source record\nFile Path: doc.pdf\nSize: 100", "Metadata", "doc.pdf", "doc.pdf", "doc.pdf", "pdf", ["metadata"], [], [], [], [], [], [], "cloud_safe", metadata={"_is_metadata_only": "True"}),
+    ]
+    conn = sqlite3.connect(":memory:")
+    create_rag_search_schema(conn)
+    index_rag_chunks(conn, chunks)
+    results = search_rag_chunks(conn, "doc", limit=5)
+    pack = build_evidence_pack("doc", results)
+    
+    draft = compose_local_answer(pack)
+    assert draft.insufficient_evidence is False
+    assert len(draft.citation_ids) == 1
+    assert "Real doc content here" in draft.answer_text
+    assert "Excluded 1 metadata-only results" in draft.answer_text

@@ -47,6 +47,11 @@ class RAGEvidencePack:
     allowed_external: bool = False
     source_count: int = 0
     document_count: int = 0
+    content_evidence_count: int = 0
+    metadata_only_evidence_count: int = 0
+    unsupported_binary_evidence_count: int = 0
+    has_content_evidence: bool = False
+    evidence_quality: str = "no_evidence"
     top_score: float = 0.0
     coverage_score: float = 0.0
     confidence_label: str = "insufficient"
@@ -114,6 +119,15 @@ def build_evidence_pack(query: str, search_results: List[RAGSearchResult], confi
         
         snippet = make_snippet(result.text, config.max_snippet_chars)
         
+        # Check if text is metadata-only
+        lower_text = result.text.lower()
+        is_metadata_only = (
+            "metadata-only source record" in lower_text or 
+            "raw binary content was not extracted" in lower_text or 
+            "metadata_only" in lower_text or
+            "content was not extracted" in lower_text
+        )
+        
         item = RAGEvidenceItem(
             evidence_id=evidence_id,
             chunk_id=result.chunk_id,
@@ -136,6 +150,10 @@ def build_evidence_pack(query: str, search_results: List[RAGSearchResult], confi
             score_details={"base_score": result.score},
             warnings=[]
         )
+        
+        # We store our internal quality classification in metadata for now
+        item.metadata["_is_metadata_only"] = str(is_metadata_only)
+        
         items.append(item)
         doc_ids.add(result.document_id)
         if result.source_title:
@@ -146,6 +164,27 @@ def build_evidence_pack(query: str, search_results: List[RAGSearchResult], confi
     
     source_count = len(source_titles)
     document_count = len(doc_ids)
+    
+    # Calculate evidence quality metrics
+    content_evidence_count = 0
+    metadata_only_evidence_count = 0
+    
+    for item in items:
+        if item.metadata.get("_is_metadata_only") == "True":
+            metadata_only_evidence_count += 1
+        else:
+            content_evidence_count += 1
+            
+    has_content_evidence = content_evidence_count > 0
+    
+    if content_evidence_count > 0 and metadata_only_evidence_count == 0:
+        evidence_quality = "content_supported"
+    elif content_evidence_count > 0 and metadata_only_evidence_count > 0:
+        evidence_quality = "mixed"
+    elif content_evidence_count == 0 and metadata_only_evidence_count > 0:
+        evidence_quality = "metadata_only"
+    else:
+        evidence_quality = "no_evidence"
     
     top_score = items[0].score if items else 0.0
     
@@ -169,6 +208,10 @@ def build_evidence_pack(query: str, search_results: List[RAGSearchResult], confi
         insufficient_evidence = True
         missing_evidence_warnings.append(f"Coverage score {coverage_score:.2f} is below minimum {config.min_coverage_score:.2f}.")
         
+    if not has_content_evidence and metadata_only_evidence_count > 0:
+        insufficient_evidence = True
+        missing_evidence_warnings.append("Only file metadata found. Document content was not extracted.")
+
     confidence_label = "insufficient"
     if not insufficient_evidence:
         if top_score > 10.0 and document_count > 1:
@@ -177,6 +220,12 @@ def build_evidence_pack(query: str, search_results: List[RAGSearchResult], confi
             confidence_label = "medium"
         else:
             confidence_label = "low"
+            
+        if evidence_quality == "mixed" and confidence_label == "high":
+            confidence_label = "medium"
+            
+    if evidence_quality == "metadata_only":
+        confidence_label = "low"
             
     if privacy_mode == "local_only":
         route_hint = "local_only"
@@ -193,6 +242,11 @@ def build_evidence_pack(query: str, search_results: List[RAGSearchResult], confi
         allowed_external=allowed_external,
         source_count=source_count,
         document_count=document_count,
+        content_evidence_count=content_evidence_count,
+        metadata_only_evidence_count=metadata_only_evidence_count,
+        unsupported_binary_evidence_count=0,
+        has_content_evidence=has_content_evidence,
+        evidence_quality=evidence_quality,
         top_score=top_score,
         coverage_score=coverage_score,
         confidence_label=confidence_label,

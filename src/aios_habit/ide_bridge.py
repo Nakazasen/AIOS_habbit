@@ -1,3 +1,12 @@
+"""IDE Bridge for AIOS.
+
+Important constraints and design notes:
+- IDE/model bridge currently means prompt pack + paste-back.
+- It is not an automatic live model call.
+- Strong model answer generation is a separate phase from local draft generation.
+- Local evidence draft should be sent to Gemini/Codex/Claude only through privacy-safe prompt packs.
+"""
+
 import hashlib
 from dataclasses import dataclass, field, asdict
 from datetime import datetime
