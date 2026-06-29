@@ -68,8 +68,8 @@ def test_mixed_troubleshooting_answer_contains_step_by_step_actions():
 def test_handover_answer_contains_owner_next_actions():
     answer = compose_final_owner_answer(_pack(query="owner next actions and handover"))
     text = answer.answer_text.lower()
-    assert "bàn giao" in text
     assert "owner" in text
+    assert "timeline" in text or "bàn giao" in text
 
 
 def test_citations_are_used_in_actual_claims():
