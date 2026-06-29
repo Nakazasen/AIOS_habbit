@@ -1,0 +1,779 @@
+# AIOS 12Q FINAL OWNER ANSWERS — REDACTED FULL REVIEW
+
+For each question:
+
+## Q01 — Excel-heavy/ManualShipping vs ExistingLine
+
+Question:
+What is the staging and master mapping for ManualShipping vs ExistingLine?
+
+Target source type:
+xlsx
+
+AIOS final owner answer:
+## Kết luận ngắn
+- Bảng/tệp dữ liệu cho thấy các trường và dòng kiểm soát liên quan cần được đối chiếu: --- sheet ManualShipping_ExistingLine preview --- Excel sheet: ManualShipping_ExistingLine セクション目的 このセクションでは、連携時のマッピング及びフォーマットについて言及します。 1連携（新規・更新・削除は同シートにまとめる… [E1].
+- Nên hiểu đây là quan hệ giữa master data, mã tuyến/đơn, trạng thái xử lý và bước vận hành; không chỉ là một đoạn văn rời rạc.
+- Nếu có nhiều sheet/cột, cần map cột nguồn, khóa nối và cột kết quả trước khi kết luận lỗi thuộc WMS/MOM/AGV.
+
+## Cách hiểu từ bằng chứng
+Bằng chứng dạng bảng cần được hiểu qua mapping trường, khóa nối và quan hệ giữa dòng dữ liệu với bước vận hành.
+
+## Bằng chứng chính
+- [E1] ステージングテーブル_ライン外出庫連携自動処理用【_20231107見直し版】 (1).xlsx: --- sheet ManualShipping_ExistingLine preview --- Excel sheet: ManualShipping_ExistingLine セクション目的 このセクションでは、連携時のマッピング及びフォーマットについて言及します。 1連携（新規・更新・削除は同シートにまとめる）につき1シートとし…. Vì sao quan trọng: nguồn này neo claim vào xlsx và vị trí ステージングテーブル_ライン外出庫連携自動処理用【_20231107見直し版】 (1).xlsx.
+- [E2] 補足資料_要件内容反映版_20231110.xlsx: --- sheet old_20231102最新化 preview --- Excel sheet: old_20231102最新化 １、要件概要イメージ MOM管理 AMS倉庫（入庫最終工程） | AMSライン MOM管理外 | マスタ設定（※出庫先分のマスタ定義が必要） 既存ライン一時置き場 | ＜既存ライン(C31)のマスタ設定＞…. Vì sao quan trọng: nguồn này neo claim vào xlsx và vị trí 補足資料_要件内容反映版_20231110.xlsx.
+- [E3] KDC_P3MOM_MCO-309_システムインターフェイス設計.xlsx: --- sheet 変更履歴 preview --- Excel sheet: 変更履歴 No. | 変更履歴 | 変更内容 | 変更担当 1 | r1 | 新規作成 | LINC齋藤 2 3 4 5 6 7 8 9 10 11 12 13 --- sheet 目次 preview --- Excel sheet: 目次 No. | シ…. Vì sao quan trọng: nguồn này neo claim vào xlsx và vị trí KDC_P3MOM_MCO-309_システムインターフェイス設計.xlsx.
+- [E4] CTUマップ修正20260406.xlsx: --- sheet CourseLayout_CTU preview --- Excel sheet: CourseLayout_CTU SUP_PROCESS | C3B_YB2200C300** | 22 | 23 | 24 | 25 | 26 | 27 | 28 | 29 | 30 K-1 | K-2 | K-1 | K-2 |…. Vì sao quan trọng: nguồn này neo claim vào xlsx và vị trí CTUマップ修正20260406.xlsx.
+
+## Hướng xử lý / kiểm tra
+1. Xác nhận câu hỏi owner cần quyết: lỗi ở đâu, ai xử lý, hay bước tiếp theo là gì.
+2. Đối chiếu từng claim với nguồn [E1], [E2] trước khi giao việc.
+3. Lập bảng mapping: trường nguồn, trường đích, khóa nối, trạng thái, owner dữ liệu.
+4. Kiểm tra các dòng thiếu mã tuyến/mã đơn/trạng thái và so với log vận hành.
+
+## Không được kết luận nếu chưa có thêm bằng chứng
+- Không kết luận nguyên nhân gốc nếu chưa có log/chứng cứ cùng thời điểm.
+- Không kết luận trách nhiệm cá nhân nếu chưa có xác nhận owner hoặc audit trail.
+- Không kết luận AIOS thay thế NotebookLM; đây là câu trả lời local_owner có giới hạn.
+
+## Bảng nguồn
+| Ref | Source | Type | Location | Limitation |
+|---|---|---|---|---|
+| [E1] | ステージングテーブル_ライン外出庫連携自動処理用【_20231107見直し版】 (1).xlsx | xlsx | ステージングテーブル_ライン外出庫連携自動処理用【_20231107見直し版】 (1).xlsx | snippet trích xuất; cần mở nguồn nếu ra quyết định cuối |
+| [E2] | 補足資料_要件内容反映版_20231110.xlsx | xlsx | 補足資料_要件内容反映版_20231110.xlsx | snippet trích xuất; cần mở nguồn nếu ra quyết định cuối |
+| [E3] | KDC_P3MOM_MCO-309_システムインターフェイス設計.xlsx | xlsx | KDC_P3MOM_MCO-309_システムインターフェイス設計.xlsx | snippet trích xuất; cần mở nguồn nếu ra quyết định cuối |
+| [E4] | CTUマップ修正20260406.xlsx | xlsx | CTUマップ修正20260406.xlsx | snippet trích xuất; cần mở nguồn nếu ra quyết định cuối |
+
+## Mức tin cậy
+high: dựa trên 4 nguồn nội dung hợp lệ; privacy=local_only; insufficient_evidence=False.
+
+AIOS citations/source refs:
+[E1], [E2], [E3], [E4]
+
+AIOS limitations / uncertainty:
+Insufficient evidence: False
+Warnings: Privacy: local_only evidence stays local; no cloud/provider call was made.
+
+AIOS strict score:
+10/12
+
+Cap applied:
+NO 
+
+AIOS winner label:
+human_review_required
+
+========================================
+
+## Q02 — Excel-heavy/WMS/MOM/AGV handoff
+
+Question:
+Describe the data handoff and interface table relationships between WMS, MOM, and AGV.
+
+Target source type:
+xlsx
+
+AIOS final owner answer:
+## Kết luận ngắn
+- Bảng/tệp dữ liệu cho thấy các trường và dòng kiểm soát liên quan cần được đối chiếu: --- sheet MOM上処理(入庫までのデータ) preview --- Excel sheet: MOM上処理(入庫までのデータ) MOMにログインしてContainerSearch画面に移動 入庫済みデータはContainer名検索で「5%」と検索してヒットする Operation＝RMAcceptanceC… [E1].
+- Nên hiểu đây là quan hệ giữa master data, mã tuyến/đơn, trạng thái xử lý và bước vận hành; không chỉ là một đoạn văn rời rạc.
+- Nếu có nhiều sheet/cột, cần map cột nguồn, khóa nối và cột kết quả trước khi kết luận lỗi thuộc WMS/MOM/AGV.
+
+## Cách hiểu từ bằng chứng
+Bằng chứng dạng bảng cần được hiểu qua mapping trường, khóa nối và quan hệ giữa dòng dữ liệu với bước vận hành.
+
+## Bằng chứng chính
+- [E1] MOMおよびWMSデータ完全クリア方法.xlsx: --- sheet MOM上処理(入庫までのデータ) preview --- Excel sheet: MOM上処理(入庫までのデータ) MOMにログインしてContainerSearch画面に移動 入庫済みデータはContainer名検索で「5%」と検索してヒットする Operation＝RMAcceptanceCompletedが入…. Vì sao quan trọng: nguồn này neo claim vào xlsx và vị trí MOMおよびWMSデータ完全クリア方法.xlsx.
+- [E2] AGV通信仕様.xlsx: --- sheet 表紙 preview --- Excel sheet: 表紙 ヘッダ文字列 左 | 中 | 右 AGV 通信仕様 | ﾃﾝﾌﾟﾚｰﾄﾊﾞｰｼﾞｮﾝ 1.00 KYOCERA Document Solutions Inc. | フッタ文字列 左 | 中 | 右 © 2023 KYOCERA Document Solut…. Vì sao quan trọng: nguồn này neo claim vào xlsx và vị trí AGV通信仕様.xlsx.
+- [E3] AGV通信仕様_260206.xlsx: --- sheet 表紙 preview --- Excel sheet: 表紙 ヘッダ文字列 左 | 中 | 右 AGV 通信仕様 | ﾃﾝﾌﾟﾚｰﾄﾊﾞｰｼﾞｮﾝ 1.00 KYOCERA Document Solutions Inc. | フッタ文字列 左 | 中 | 右 © 2023 KYOCERA Document Solut…. Vì sao quan trọng: nguồn này neo claim vào xlsx và vị trí AGV通信仕様_260206.xlsx.
+- [E4] 入庫済みデータ削除_20260213.xlsx: --- sheet Sheet1 preview --- Excel sheet: Sheet1 入庫完了済みのデータの削除について １．入庫処理テーブル ２．WMS ３．Opcenter 上記３つから削除する必要あり １．入庫処理テーブル 該当のオリコンIDデータを入庫処理テーブル(T_PARTS_RECEIVE)からDELETE ２…. Vì sao quan trọng: nguồn này neo claim vào xlsx và vị trí 入庫済みデータ削除_20260213.xlsx.
+- [E5] AGVタスク一覧.xlsx: --- sheet CourseLayout preview --- Excel sheet: CourseLayout 25 | 26 | 27 | 28 | 29 | 30 | 31 | 32 | 33 | 34 | 35 | 36 | 37 | 38 | 39 | 40 | 41 | 42 | 43 | 44 | 45 | 46…. Vì sao quan trọng: nguồn này neo claim vào xlsx và vị trí AGVタスク一覧.xlsx.
+- [E6] 生産履歴登録システム&着完工登録システム制作仕様_r2_2025-2-17 - 副本.pdf: --- page 1 --- 1 ©2025 KYOCERA Document Solutions Inc. 生産履歴登録システム &着完工登録システム機能仕様 KDTCN 2025年2月6日 開発推進1科林巧丰 --- page 2 --- 2 ©2025 KYOCERA Document Solutions Inc. 目次 一．生産…. Vì sao quan trọng: nguồn này neo claim vào pdf và vị trí 生産履歴登録システム&着完工登録システム制作仕様_r2_2025-2-17 - 副本.pdf.
+- [E7] 手順書付シナリオ.xlsx: --- sheet ★シナリオ一覧 preview --- Excel sheet: ★シナリオ一覧 MOM検証シナリオ | 対応可否 No. | シナリオ名 | 検証内容 | 11月検証 | 12月検証 | PMT 1 | 基本シナリオ | イレギュラーの無いパターン マスター設定～部品入庫～生産計画～部品出庫～生産完了 2 | 計画…. Vì sao quan trọng: nguồn này neo claim vào xlsx và vị trí 手順書付シナリオ.xlsx.
+- [E8] 伝票発行システムマニュアル_仮(JP).pdf: --- page 1 --- ‐ 1 ‐ 目次 改訂履歴.............................................２ システム概要.........................................３ １準備 証明書取得....................................…. Vì sao quan trọng: nguồn này neo claim vào pdf và vị trí 伝票発行システムマニュアル_仮(JP).pdf.
+
+## Hướng xử lý / kiểm tra
+1. Xác nhận câu hỏi owner cần quyết: lỗi ở đâu, ai xử lý, hay bước tiếp theo là gì.
+2. Đối chiếu từng claim với nguồn [E1], [E2] trước khi giao việc.
+3. Lập bảng mapping: trường nguồn, trường đích, khóa nối, trạng thái, owner dữ liệu.
+4. Kiểm tra các dòng thiếu mã tuyến/mã đơn/trạng thái và so với log vận hành.
+
+## Không được kết luận nếu chưa có thêm bằng chứng
+- Không kết luận nguyên nhân gốc nếu chưa có log/chứng cứ cùng thời điểm.
+- Không kết luận trách nhiệm cá nhân nếu chưa có xác nhận owner hoặc audit trail.
+- Không kết luận AIOS thay thế NotebookLM; đây là câu trả lời local_owner có giới hạn.
+
+## Bảng nguồn
+| Ref | Source | Type | Location | Limitation |
+|---|---|---|---|---|
+| [E1] | MOMおよびWMSデータ完全クリア方法.xlsx | xlsx | MOMおよびWMSデータ完全クリア方法.xlsx | snippet trích xuất; cần mở nguồn nếu ra quyết định cuối |
+| [E2] | AGV通信仕様.xlsx | xlsx | AGV通信仕様.xlsx | snippet trích xuất; cần mở nguồn nếu ra quyết định cuối |
+| [E3] | AGV通信仕様_260206.xlsx | xlsx | AGV通信仕様_260206.xlsx | snippet trích xuất; cần mở nguồn nếu ra quyết định cuối |
+| [E4] | 入庫済みデータ削除_20260213.xlsx | xlsx | 入庫済みデータ削除_20260213.xlsx | phạm vi bằng chứng hẹp |
+| [E5] | AGVタスク一覧.xlsx | xlsx | AGVタスク一覧.xlsx | snippet trích xuất; cần mở nguồn nếu ra quyết định cuối |
+| [E6] | 生産履歴登録システム&着完工登録システム制作仕様_r2_2025-2-17 - 副本.pdf | pdf | 生産履歴登録システム&着完工登録システム制作仕様_r2_2025-2-17 - 副本.pdf | snippet trích xuất; cần mở nguồn nếu ra quyết định cuối |
+| [E7] | 手順書付シナリオ.xlsx | xlsx | 手順書付シナリオ.xlsx | snippet trích xuất; cần mở nguồn nếu ra quyết định cuối |
+| [E8] | 伝票発行システムマニュアル_仮(JP).pdf | pdf | 伝票発行システムマニュアル_仮(JP).pdf | snippet trích xuất; cần mở nguồn nếu ra quyết định cuối |
+
+## Mức tin cậy
+high: dựa trên 8 nguồn nội dung hợp lệ; privacy=local_only; insufficient_evidence=False.
+
+AIOS citations/source refs:
+[E1], [E2], [E3], [E4], [E5], [E6], [E7], [E8]
+
+AIOS limitations / uncertainty:
+Insufficient evidence: False
+Warnings: Privacy: local_only evidence stays local; no cloud/provider call was made.
+
+AIOS strict score:
+10/12
+
+Cap applied:
+NO 
+
+AIOS winner label:
+human_review_required
+
+========================================
+
+## Q03 — Excel-heavy/Mismatch investigation
+
+Question:
+How do you investigate a quantity/container/supply-line mismatch using table evidence?
+
+Target source type:
+xlsx
+
+AIOS final owner answer:
+## Kết luận ngắn
+- Bảng/tệp dữ liệu cho thấy các trường và dòng kiểm soát liên quan cần được đối chiếu: --- sheet ManualShipping_ExistingLine preview --- Excel sheet: ManualShipping_ExistingLine セクション目的 このセクションでは、連携時のマッピング及びフォーマットについて言及します。 1連携（新規・更新・削除は同シートにまとめる… [E1].
+- Nên hiểu đây là quan hệ giữa master data, mã tuyến/đơn, trạng thái xử lý và bước vận hành; không chỉ là một đoạn văn rời rạc.
+- Nếu có nhiều sheet/cột, cần map cột nguồn, khóa nối và cột kết quả trước khi kết luận lỗi thuộc WMS/MOM/AGV.
+
+## Cách hiểu từ bằng chứng
+Bằng chứng dạng bảng cần được hiểu qua mapping trường, khóa nối và quan hệ giữa dòng dữ liệu với bước vận hành.
+
+## Bằng chứng chính
+- [E1] ステージングテーブル_ライン外出庫連携自動処理用【_20231107見直し版】 (1).xlsx: --- sheet ManualShipping_ExistingLine preview --- Excel sheet: ManualShipping_ExistingLine セクション目的 このセクションでは、連携時のマッピング及びフォーマットについて言及します。 1連携（新規・更新・削除は同シートにまとめる）につき1シートとし…. Vì sao quan trọng: nguồn này neo claim vào xlsx và vị trí ステージングテーブル_ライン外出庫連携自動処理用【_20231107見直し版】 (1).xlsx.
+- [E2] MOMおよびWMSデータ完全クリア方法.xlsx: --- sheet MOM上処理(入庫までのデータ) preview --- Excel sheet: MOM上処理(入庫までのデータ) MOMにログインしてContainerSearch画面に移動 入庫済みデータはContainer名検索で「5%」と検索してヒットする Operation＝RMAcceptanceCompletedが入…. Vì sao quan trọng: nguồn này neo claim vào xlsx và vị trí MOMおよびWMSデータ完全クリア方法.xlsx.
+- [E3] ERD_Kho_Van.html: <!DOCTYPE html> <html lang="vi"> <head> <meta charset="UTF-8"> <meta name="viewport" content="width=device-width, initial-scale=1.0"> <title>Sơ Đồ ERD Ultimate - Hệ Thốn…. Vì sao quan trọng: nguồn này neo claim vào html và vị trí ERD_Kho_Van.html.
+- [E4] CTU 3階の通路レイアウト_251211.xlsx: --- sheet Phát linh kiện preview --- Excel sheet: Phát linh kiện 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16 | 17 | 18 | 19 | 20 | 21 | 22 | 23…. Vì sao quan trọng: nguồn này neo claim vào xlsx và vị trí CTU 3階の通路レイアウト_251211.xlsx.
+- [E5] AMS概略フロー_入出庫・生産_20250703VN.pdf: --- page 1 --- MOM Control PLC Hệ thống xung quanh Hệ thống hiện tại R3 Vị trí Line sản xuất System Phát hành lệnh sản xuất APS ⊸Lập kế hoạh công đoạn Bảng liên kết lệnh…. Vì sao quan trọng: nguồn này neo claim vào pdf và vị trí AMS概略フロー_入出庫・生産_20250703VN.pdf.
+- [E6] 生産履歴登録システム&着完工登録システム制作仕様_r2_2025-2-17 - 副本.pdf: --- page 1 --- 1 ©2025 KYOCERA Document Solutions Inc. 生産履歴登録システム &着完工登録システム機能仕様 KDTCN 2025年2月6日 開発推進1科林巧丰 --- page 2 --- 2 ©2025 KYOCERA Document Solutions Inc. 目次 一．生産…. Vì sao quan trọng: nguồn này neo claim vào pdf và vị trí 生産履歴登録システム&着完工登録システム制作仕様_r2_2025-2-17 - 副本.pdf.
+
+## Hướng xử lý / kiểm tra
+1. Xác nhận câu hỏi owner cần quyết: lỗi ở đâu, ai xử lý, hay bước tiếp theo là gì.
+2. Đối chiếu từng claim với nguồn [E1], [E2] trước khi giao việc.
+3. Lập bảng mapping: trường nguồn, trường đích, khóa nối, trạng thái, owner dữ liệu.
+4. Kiểm tra các dòng thiếu mã tuyến/mã đơn/trạng thái và so với log vận hành.
+
+## Không được kết luận nếu chưa có thêm bằng chứng
+- Không kết luận nguyên nhân gốc nếu chưa có log/chứng cứ cùng thời điểm.
+- Không kết luận trách nhiệm cá nhân nếu chưa có xác nhận owner hoặc audit trail.
+- Không kết luận AIOS thay thế NotebookLM; đây là câu trả lời local_owner có giới hạn.
+
+## Bảng nguồn
+| Ref | Source | Type | Location | Limitation |
+|---|---|---|---|---|
+| [E1] | ステージングテーブル_ライン外出庫連携自動処理用【_20231107見直し版】 (1).xlsx | xlsx | ステージングテーブル_ライン外出庫連携自動処理用【_20231107見直し版】 (1).xlsx | snippet trích xuất; cần mở nguồn nếu ra quyết định cuối |
+| [E2] | MOMおよびWMSデータ完全クリア方法.xlsx | xlsx | MOMおよびWMSデータ完全クリア方法.xlsx | snippet trích xuất; cần mở nguồn nếu ra quyết định cuối |
+| [E3] | ERD_Kho_Van.html | html | ERD_Kho_Van.html | snippet trích xuất; cần mở nguồn nếu ra quyết định cuối |
+| [E4] | CTU 3階の通路レイアウト_251211.xlsx | xlsx | CTU 3階の通路レイアウト_251211.xlsx | snippet trích xuất; cần mở nguồn nếu ra quyết định cuối |
+| [E5] | AMS概略フロー_入出庫・生産_20250703VN.pdf | pdf | AMS概略フロー_入出庫・生産_20250703VN.pdf | snippet trích xuất; cần mở nguồn nếu ra quyết định cuối |
+| [E6] | 生産履歴登録システム&着完工登録システム制作仕様_r2_2025-2-17 - 副本.pdf | pdf | 生産履歴登録システム&着完工登録システム制作仕様_r2_2025-2-17 - 副本.pdf | snippet trích xuất; cần mở nguồn nếu ra quyết định cuối |
+
+## Mức tin cậy
+high: dựa trên 6 nguồn nội dung hợp lệ; privacy=local_only; insufficient_evidence=False.
+
+AIOS citations/source refs:
+[E1], [E2], [E3], [E4], [E5], [E6]
+
+AIOS limitations / uncertainty:
+Insufficient evidence: False
+Warnings: Privacy: local_only evidence stays local; no cloud/provider call was made.
+
+AIOS strict score:
+10/12
+
+Cap applied:
+NO 
+
+AIOS winner label:
+human_review_required
+
+========================================
+
+## Q04 — PDF/PPTX process/Automatic vs manual boundary
+
+Question:
+What is the MOM/AMS business flow regarding the automatic vs manual/owner review boundary?
+
+Target source type:
+pdf
+
+AIOS final owner answer:
+## Kết luận ngắn
+- Bảng/tệp dữ liệu cho thấy các trường và dòng kiểm soát liên quan cần được đối chiếu: --- page 1 --- 1 ©2026 KYOCERA Document Solutions Inc. AMS設計変更 2026年04月01日 --- page 2 --- 2 ©2026 KYOCERA Document Solutions Inc. 変更管理 指図登録 ／発行 PR (Problem Rep… [E1].
+- Nên hiểu đây là quan hệ giữa master data, mã tuyến/đơn, trạng thái xử lý và bước vận hành; không chỉ là một đoạn văn rời rạc.
+- Nếu có nhiều sheet/cột, cần map cột nguồn, khóa nối và cột kết quả trước khi kết luận lỗi thuộc WMS/MOM/AGV.
+
+## Cách hiểu từ bằng chứng
+Bằng chứng dạng bảng cần được hiểu qua mapping trường, khóa nối và quan hệ giữa dòng dữ liệu với bước vận hành.
+
+## Bằng chứng chính
+- [E1] AMS_設計変更.pdf: --- page 1 --- 1 ©2026 KYOCERA Document Solutions Inc. AMS設計変更 2026年04月01日 --- page 2 --- 2 ©2026 KYOCERA Document Solutions Inc. 変更管理 指図登録 ／発行 PR (Problem Report) 部品調達…. Vì sao quan trọng: nguồn này neo claim vào pdf và vị trí AMS_設計変更.pdf.
+- [E2] 生産履歴登録システム&着完工登録システム制作仕様_r2_2025-2-17 - 副本.pdf: --- page 1 --- 1 ©2025 KYOCERA Document Solutions Inc. 生産履歴登録システム &着完工登録システム機能仕様 KDTCN 2025年2月6日 開発推進1科林巧丰 --- page 2 --- 2 ©2025 KYOCERA Document Solutions Inc. 目次 一．生産…. Vì sao quan trọng: nguồn này neo claim vào pdf và vị trí 生産履歴登録システム&着完工登録システム制作仕様_r2_2025-2-17 - 副本.pdf.
+- [E3] 手順書付シナリオ.xlsx: --- sheet ★シナリオ一覧 preview --- Excel sheet: ★シナリオ一覧 MOM検証シナリオ | 対応可否 No. | シナリオ名 | 検証内容 | 11月検証 | 12月検証 | PMT 1 | 基本シナリオ | イレギュラーの無いパターン マスター設定～部品入庫～生産計画～部品出庫～生産完了 2 | 計画…. Vì sao quan trọng: nguồn này neo claim vào xlsx và vị trí 手順書付シナリオ.xlsx.
+- [E4] 伝票発行システムマニュアル_仮(JP).pdf: --- page 1 --- ‐ 1 ‐ 目次 改訂履歴.............................................２ システム概要.........................................３ １準備 証明書取得....................................…. Vì sao quan trọng: nguồn này neo claim vào pdf và vị trí 伝票発行システムマニュアル_仮(JP).pdf.
+- [E5] MOMデータ連携説明_20251220.pdf: --- page 1 --- ©2025 KYOCERA Document Solutions Inc.1 MES／MOM説明 --- page 2 --- ©2025 KYOCERA Document Solutions Inc.2 2 ©2025 KYOCERA Document Solutions Inc. MES／MOM説明 M…. Vì sao quan trọng: nguồn này neo claim vào pdf và vị trí MOMデータ連携説明_20251220.pdf.
+- [E6] AMS概略フロー_入出庫・生産_20250703VN.pdf: --- page 1 --- MOM Control PLC Hệ thống xung quanh Hệ thống hiện tại R3 Vị trí Line sản xuất System Phát hành lệnh sản xuất APS ⊸Lập kế hoạh công đoạn Bảng liên kết lệnh…. Vì sao quan trọng: nguồn này neo claim vào pdf và vị trí AMS概略フロー_入出庫・生産_20250703VN.pdf.
+
+## Hướng xử lý / kiểm tra
+1. Xác nhận câu hỏi owner cần quyết: lỗi ở đâu, ai xử lý, hay bước tiếp theo là gì.
+2. Đối chiếu từng claim với nguồn [E1], [E2] trước khi giao việc.
+3. Lập bảng mapping: trường nguồn, trường đích, khóa nối, trạng thái, owner dữ liệu.
+4. Kiểm tra các dòng thiếu mã tuyến/mã đơn/trạng thái và so với log vận hành.
+
+## Không được kết luận nếu chưa có thêm bằng chứng
+- Không kết luận nguyên nhân gốc nếu chưa có log/chứng cứ cùng thời điểm.
+- Không kết luận trách nhiệm cá nhân nếu chưa có xác nhận owner hoặc audit trail.
+- Không kết luận AIOS thay thế NotebookLM; đây là câu trả lời local_owner có giới hạn.
+
+## Bảng nguồn
+| Ref | Source | Type | Location | Limitation |
+|---|---|---|---|---|
+| [E1] | AMS_設計変更.pdf | pdf | AMS_設計変更.pdf | snippet trích xuất; cần mở nguồn nếu ra quyết định cuối |
+| [E2] | 生産履歴登録システム&着完工登録システム制作仕様_r2_2025-2-17 - 副本.pdf | pdf | 生産履歴登録システム&着完工登録システム制作仕様_r2_2025-2-17 - 副本.pdf | snippet trích xuất; cần mở nguồn nếu ra quyết định cuối |
+| [E3] | 手順書付シナリオ.xlsx | xlsx | 手順書付シナリオ.xlsx | snippet trích xuất; cần mở nguồn nếu ra quyết định cuối |
+| [E4] | 伝票発行システムマニュアル_仮(JP).pdf | pdf | 伝票発行システムマニュアル_仮(JP).pdf | snippet trích xuất; cần mở nguồn nếu ra quyết định cuối |
+| [E5] | MOMデータ連携説明_20251220.pdf | pdf | MOMデータ連携説明_20251220.pdf | snippet trích xuất; cần mở nguồn nếu ra quyết định cuối |
+| [E6] | AMS概略フロー_入出庫・生産_20250703VN.pdf | pdf | AMS概略フロー_入出庫・生産_20250703VN.pdf | snippet trích xuất; cần mở nguồn nếu ra quyết định cuối |
+
+## Mức tin cậy
+high: dựa trên 6 nguồn nội dung hợp lệ; privacy=local_only; insufficient_evidence=False.
+
+AIOS citations/source refs:
+[E1], [E2], [E3], [E4], [E5], [E6]
+
+AIOS limitations / uncertainty:
+Insufficient evidence: False
+Warnings: Privacy: local_only evidence stays local; no cloud/provider call was made.
+
+AIOS strict score:
+10/12
+
+Cap applied:
+NO 
+
+AIOS winner label:
+human_review_required
+
+========================================
+
+## Q05 — PDF/PPTX process/Process change explanation
+
+Question:
+How is an operation/process change or design/running change explained in the process documentation?
+
+Target source type:
+pdf
+
+AIOS final owner answer:
+## Kết luận ngắn
+- Bảng/tệp dữ liệu cho thấy các trường và dòng kiểm soát liên quan cần được đối chiếu: --- page 1 --- 1 ©2026 KYOCERA Document Solutions Inc. AMS設計変更 2026年04月01日 --- page 2 --- 2 ©2026 KYOCERA Document Solutions Inc. 変更管理 指図登録 ／発行 PR (Problem Rep… [E1].
+- Nên hiểu đây là quan hệ giữa master data, mã tuyến/đơn, trạng thái xử lý và bước vận hành; không chỉ là một đoạn văn rời rạc.
+- Nếu có nhiều sheet/cột, cần map cột nguồn, khóa nối và cột kết quả trước khi kết luận lỗi thuộc WMS/MOM/AGV.
+
+## Cách hiểu từ bằng chứng
+Bằng chứng dạng bảng cần được hiểu qua mapping trường, khóa nối và quan hệ giữa dòng dữ liệu với bước vận hành.
+
+## Bằng chứng chính
+- [E1] AMS_設計変更.pdf: --- page 1 --- 1 ©2026 KYOCERA Document Solutions Inc. AMS設計変更 2026年04月01日 --- page 2 --- 2 ©2026 KYOCERA Document Solutions Inc. 変更管理 指図登録 ／発行 PR (Problem Report) 部品調達…. Vì sao quan trọng: nguồn này neo claim vào pdf và vị trí AMS_設計変更.pdf.
+- [E2] AMS概略フロー_入出庫・生産_20250703VN.pdf: --- page 1 --- MOM Control PLC Hệ thống xung quanh Hệ thống hiện tại R3 Vị trí Line sản xuất System Phát hành lệnh sản xuất APS ⊸Lập kế hoạh công đoạn Bảng liên kết lệnh…. Vì sao quan trọng: nguồn này neo claim vào pdf và vị trí AMS概略フロー_入出庫・生産_20250703VN.pdf.
+- [E3] 補足資料_要件内容反映版_20231110.xlsx: --- sheet old_20231102最新化 preview --- Excel sheet: old_20231102最新化 １、要件概要イメージ MOM管理 AMS倉庫（入庫最終工程） | AMSライン MOM管理外 | マスタ設定（※出庫先分のマスタ定義が必要） 既存ライン一時置き場 | ＜既存ライン(C31)のマスタ設定＞…. Vì sao quan trọng: nguồn này neo claim vào xlsx và vị trí 補足資料_要件内容反映版_20231110.xlsx.
+- [E4] MOMおよびWMSデータ完全クリア方法.xlsx: --- sheet MOM上処理(入庫までのデータ) preview --- Excel sheet: MOM上処理(入庫までのデータ) MOMにログインしてContainerSearch画面に移動 入庫済みデータはContainer名検索で「5%」と検索してヒットする Operation＝RMAcceptanceCompletedが入…. Vì sao quan trọng: nguồn này neo claim vào xlsx và vị trí MOMおよびWMSデータ完全クリア方法.xlsx.
+
+## Hướng xử lý / kiểm tra
+1. Xác nhận câu hỏi owner cần quyết: lỗi ở đâu, ai xử lý, hay bước tiếp theo là gì.
+2. Đối chiếu từng claim với nguồn [E1], [E2] trước khi giao việc.
+3. Lập bảng mapping: trường nguồn, trường đích, khóa nối, trạng thái, owner dữ liệu.
+4. Kiểm tra các dòng thiếu mã tuyến/mã đơn/trạng thái và so với log vận hành.
+
+## Không được kết luận nếu chưa có thêm bằng chứng
+- Không kết luận nguyên nhân gốc nếu chưa có log/chứng cứ cùng thời điểm.
+- Không kết luận trách nhiệm cá nhân nếu chưa có xác nhận owner hoặc audit trail.
+- Không kết luận AIOS thay thế NotebookLM; đây là câu trả lời local_owner có giới hạn.
+
+## Bảng nguồn
+| Ref | Source | Type | Location | Limitation |
+|---|---|---|---|---|
+| [E1] | AMS_設計変更.pdf | pdf | AMS_設計変更.pdf | snippet trích xuất; cần mở nguồn nếu ra quyết định cuối |
+| [E2] | AMS概略フロー_入出庫・生産_20250703VN.pdf | pdf | AMS概略フロー_入出庫・生産_20250703VN.pdf | snippet trích xuất; cần mở nguồn nếu ra quyết định cuối |
+| [E3] | 補足資料_要件内容反映版_20231110.xlsx | xlsx | 補足資料_要件内容反映版_20231110.xlsx | snippet trích xuất; cần mở nguồn nếu ra quyết định cuối |
+| [E4] | MOMおよびWMSデータ完全クリア方法.xlsx | xlsx | MOMおよびWMSデータ完全クリア方法.xlsx | snippet trích xuất; cần mở nguồn nếu ra quyết định cuối |
+
+## Mức tin cậy
+high: dựa trên 4 nguồn nội dung hợp lệ; privacy=local_only; insufficient_evidence=False.
+
+AIOS citations/source refs:
+[E1], [E2], [E3], [E4]
+
+AIOS limitations / uncertainty:
+Insufficient evidence: False
+Warnings: Privacy: local_only evidence stays local; no cloud/provider call was made.
+
+AIOS strict score:
+10/12
+
+Cap applied:
+NO 
+
+AIOS winner label:
+human_review_required
+
+========================================
+
+## Q06 — Screenshot/image/OCR/Visible UI fields
+
+Question:
+What visible UI fields, statuses, containers, or oricon evidence can be trusted directly from screenshots?
+
+Target source type:
+png
+
+AIOS final owner answer:
+## Kết luận ngắn
+- Bảng/tệp dữ liệu cho thấy các trường và dòng kiểm soát liên quan cần được đối chiếu: <!DOCTYPE html> <html lang="vi"> <head> <meta charset="UTF-8"> <meta name="viewport" content="width=device-width, initial-scale=1.0"> <title>Sơ Đồ ERD Ultimate… [E1].
+- Nên hiểu đây là quan hệ giữa master data, mã tuyến/đơn, trạng thái xử lý và bước vận hành; không chỉ là một đoạn văn rời rạc.
+- Nếu có nhiều sheet/cột, cần map cột nguồn, khóa nối và cột kết quả trước khi kết luận lỗi thuộc WMS/MOM/AGV.
+
+## Cách hiểu từ bằng chứng
+Bằng chứng dạng bảng cần được hiểu qua mapping trường, khóa nối và quan hệ giữa dòng dữ liệu với bước vận hành.
+
+## Bằng chứng chính
+- [E1] ERD_Kho_Van.html: <!DOCTYPE html> <html lang="vi"> <head> <meta charset="UTF-8"> <meta name="viewport" content="width=device-width, initial-scale=1.0"> <title>Sơ Đồ ERD Ultimate - Hệ Thốn…. Vì sao quan trọng: nguồn này neo claim vào html và vị trí ERD_Kho_Van.html.
+- [E2] MOMおよびWMSデータ完全クリア方法.xlsx: --- sheet MOM上処理(入庫までのデータ) preview --- Excel sheet: MOM上処理(入庫までのデータ) MOMにログインしてContainerSearch画面に移動 入庫済みデータはContainer名検索で「5%」と検索してヒットする Operation＝RMAcceptanceCompletedが入…. Vì sao quan trọng: nguồn này neo claim vào xlsx và vị trí MOMおよびWMSデータ完全クリア方法.xlsx.
+
+## Hướng xử lý / kiểm tra
+1. Xác nhận câu hỏi owner cần quyết: lỗi ở đâu, ai xử lý, hay bước tiếp theo là gì.
+2. Đối chiếu từng claim với nguồn [E1], [E2] trước khi giao việc.
+3. Lập bảng mapping: trường nguồn, trường đích, khóa nối, trạng thái, owner dữ liệu.
+4. Kiểm tra các dòng thiếu mã tuyến/mã đơn/trạng thái và so với log vận hành.
+
+## Không được kết luận nếu chưa có thêm bằng chứng
+- Không kết luận nguyên nhân gốc nếu chưa có log/chứng cứ cùng thời điểm.
+- Không kết luận trách nhiệm cá nhân nếu chưa có xác nhận owner hoặc audit trail.
+- Không kết luận AIOS thay thế NotebookLM; đây là câu trả lời local_owner có giới hạn.
+
+## Bảng nguồn
+| Ref | Source | Type | Location | Limitation |
+|---|---|---|---|---|
+| [E1] | ERD_Kho_Van.html | html | ERD_Kho_Van.html | snippet trích xuất; cần mở nguồn nếu ra quyết định cuối |
+| [E2] | MOMおよびWMSデータ完全クリア方法.xlsx | xlsx | MOMおよびWMSデータ完全クリア方法.xlsx | snippet trích xuất; cần mở nguồn nếu ra quyết định cuối |
+
+## Mức tin cậy
+medium: dựa trên 2 nguồn nội dung hợp lệ; privacy=local_only; insufficient_evidence=False.
+
+AIOS citations/source refs:
+[E1], [E2]
+
+AIOS limitations / uncertainty:
+Insufficient evidence: False
+Warnings: Privacy: local_only evidence stays local; no cloud/provider call was made.
+
+AIOS strict score:
+10/12
+
+Cap applied:
+NO 
+
+AIOS winner label:
+human_review_required
+
+========================================
+
+## Q07 — Screenshot/image/OCR/Screenshot operational states
+
+Question:
+What operational or systemic states must NOT be inferred from screenshot-only evidence?
+
+Target source type:
+png
+
+AIOS final owner answer:
+## Kết luận ngắn
+- Sự kiện nhìn thấy trực tiếp trong ảnh/OCR: <!DOCTYPE html> <html lang="vi"> <head> <meta charset="UTF-8"> <meta name="viewport" content="width=device-width, initial-scale=1.0"> <title>Sơ Đồ ERD Ultimate… [E1].
+- Mọi nguyên nhân phía sau ảnh chỉ là suy luận cho tới khi có log, bảng cấu hình hoặc tài liệu quy trình đối chiếu.
+
+## Cách hiểu từ bằng chứng
+Facts nhìn thấy được tách khỏi suy luận: chỉ phần có trong ảnh/OCR được dùng làm bằng chứng; nguyên nhân cần log hoặc tài liệu đối chiếu.
+
+## Bằng chứng chính
+- [E1] ERD_Kho_Van.html: <!DOCTYPE html> <html lang="vi"> <head> <meta charset="UTF-8"> <meta name="viewport" content="width=device-width, initial-scale=1.0"> <title>Sơ Đồ ERD Ultimate - Hệ Thốn…. Vì sao quan trọng: nguồn này neo claim vào html và vị trí ERD_Kho_Van.html.
+
+## Hướng xử lý / kiểm tra
+1. Xác nhận câu hỏi owner cần quyết: lỗi ở đâu, ai xử lý, hay bước tiếp theo là gì.
+2. Đối chiếu từng claim với nguồn [E1], [E2] trước khi giao việc.
+3. Ghi lại facts nhìn thấy trong ảnh; không suy diễn nguyên nhân từ ảnh đơn lẻ.
+4. Thu thêm log, export bảng hoặc SOP cho cùng thời điểm.
+
+## Không được kết luận nếu chưa có thêm bằng chứng
+- Không kết luận nguyên nhân gốc nếu chưa có log/chứng cứ cùng thời điểm.
+- Không kết luận trách nhiệm cá nhân nếu chưa có xác nhận owner hoặc audit trail.
+- Không kết luận AIOS thay thế NotebookLM; đây là câu trả lời local_owner có giới hạn.
+
+## Bảng nguồn
+| Ref | Source | Type | Location | Limitation |
+|---|---|---|---|---|
+| [E1] | ERD_Kho_Van.html | html | ERD_Kho_Van.html | snippet trích xuất; cần mở nguồn nếu ra quyết định cuối |
+
+## Mức tin cậy
+medium: dựa trên 1 nguồn nội dung hợp lệ; privacy=local_only; insufficient_evidence=False.
+
+AIOS citations/source refs:
+[E1]
+
+AIOS limitations / uncertainty:
+Insufficient evidence: False
+Warnings: Privacy: local_only evidence stays local; no cloud/provider call was made.
+
+AIOS strict score:
+10/12
+
+Cap applied:
+NO 
+
+AIOS winner label:
+human_review_required
+
+========================================
+
+## Q08 — HTML/ERD/schema/Explicit HTML/ERD tables
+
+Question:
+What tables, fields, and relationships are explicitly shown in the HTML/ERD/schema evidence?
+
+Target source type:
+html
+
+AIOS final owner answer:
+## Kết luận ngắn
+- Bảng/tệp dữ liệu cho thấy các trường và dòng kiểm soát liên quan cần được đối chiếu: <!DOCTYPE html> <html lang="vi"> <head> <meta charset="UTF-8"> <meta name="viewport" content="width=device-width, initial-scale=1.0"> <title>Sơ Đồ ERD Ultimate… [E1].
+- Nên hiểu đây là quan hệ giữa master data, mã tuyến/đơn, trạng thái xử lý và bước vận hành; không chỉ là một đoạn văn rời rạc.
+- Nếu có nhiều sheet/cột, cần map cột nguồn, khóa nối và cột kết quả trước khi kết luận lỗi thuộc WMS/MOM/AGV.
+
+## Cách hiểu từ bằng chứng
+Bằng chứng dạng bảng cần được hiểu qua mapping trường, khóa nối và quan hệ giữa dòng dữ liệu với bước vận hành.
+
+## Bằng chứng chính
+- [E1] ERD_Kho_Van.html: <!DOCTYPE html> <html lang="vi"> <head> <meta charset="UTF-8"> <meta name="viewport" content="width=device-width, initial-scale=1.0"> <title>Sơ Đồ ERD Ultimate - Hệ Thốn…. Vì sao quan trọng: nguồn này neo claim vào html và vị trí ERD_Kho_Van.html.
+- [E2] AMS概略フロー_入出庫・生産_20250703VN.pdf: --- page 1 --- MOM Control PLC Hệ thống xung quanh Hệ thống hiện tại R3 Vị trí Line sản xuất System Phát hành lệnh sản xuất APS ⊸Lập kế hoạh công đoạn Bảng liên kết lệnh…. Vì sao quan trọng: nguồn này neo claim vào pdf và vị trí AMS概略フロー_入出庫・生産_20250703VN.pdf.
+- [E3] 伝票発行システムマニュアル_仮(JP).pdf: --- page 1 --- ‐ 1 ‐ 目次 改訂履歴.............................................２ システム概要.........................................３ １準備 証明書取得....................................…. Vì sao quan trọng: nguồn này neo claim vào pdf và vị trí 伝票発行システムマニュアル_仮(JP).pdf.
+- [E4] 入庫済みデータ削除_20260213.xlsx: --- sheet Sheet1 preview --- Excel sheet: Sheet1 入庫完了済みのデータの削除について １．入庫処理テーブル ２．WMS ３．Opcenter 上記３つから削除する必要あり １．入庫処理テーブル 該当のオリコンIDデータを入庫処理テーブル(T_PARTS_RECEIVE)からDELETE ２…. Vì sao quan trọng: nguồn này neo claim vào xlsx và vị trí 入庫済みデータ削除_20260213.xlsx.
+- [E5] MOMおよびWMSデータ完全クリア方法.xlsx: --- sheet MOM上処理(入庫までのデータ) preview --- Excel sheet: MOM上処理(入庫までのデータ) MOMにログインしてContainerSearch画面に移動 入庫済みデータはContainer名検索で「5%」と検索してヒットする Operation＝RMAcceptanceCompletedが入…. Vì sao quan trọng: nguồn này neo claim vào xlsx và vị trí MOMおよびWMSデータ完全クリア方法.xlsx.
+- [E6] CTU 3階の通路レイアウト_251211.xlsx: --- sheet Phát linh kiện preview --- Excel sheet: Phát linh kiện 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16 | 17 | 18 | 19 | 20 | 21 | 22 | 23…. Vì sao quan trọng: nguồn này neo claim vào xlsx và vị trí CTU 3階の通路レイアウト_251211.xlsx.
+- [E7] CTUマップ再検討20260330.xlsx: --- sheet CourseLayout_CTU preview --- Excel sheet: CourseLayout_CTU SUP_PROCESS | C3B_YB2200C300** | 22 | 23 | 24 | 25 | 26 | 27 | 28 | 29 | 30 | 31 | 32 | 33 K-1 | K-2…. Vì sao quan trọng: nguồn này neo claim vào xlsx và vị trí CTUマップ再検討20260330.xlsx.
+- [E8] CTUマップ修正20260406.xlsx: --- sheet CourseLayout_CTU preview --- Excel sheet: CourseLayout_CTU SUP_PROCESS | C3B_YB2200C300** | 22 | 23 | 24 | 25 | 26 | 27 | 28 | 29 | 30 K-1 | K-2 | K-1 | K-2 |…. Vì sao quan trọng: nguồn này neo claim vào xlsx và vị trí CTUマップ修正20260406.xlsx.
+
+## Hướng xử lý / kiểm tra
+1. Xác nhận câu hỏi owner cần quyết: lỗi ở đâu, ai xử lý, hay bước tiếp theo là gì.
+2. Đối chiếu từng claim với nguồn [E1], [E2] trước khi giao việc.
+3. Lập bảng mapping: trường nguồn, trường đích, khóa nối, trạng thái, owner dữ liệu.
+4. Kiểm tra các dòng thiếu mã tuyến/mã đơn/trạng thái và so với log vận hành.
+
+## Không được kết luận nếu chưa có thêm bằng chứng
+- Không kết luận nguyên nhân gốc nếu chưa có log/chứng cứ cùng thời điểm.
+- Không kết luận trách nhiệm cá nhân nếu chưa có xác nhận owner hoặc audit trail.
+- Không kết luận AIOS thay thế NotebookLM; đây là câu trả lời local_owner có giới hạn.
+
+## Bảng nguồn
+| Ref | Source | Type | Location | Limitation |
+|---|---|---|---|---|
+| [E1] | ERD_Kho_Van.html | html | ERD_Kho_Van.html | snippet trích xuất; cần mở nguồn nếu ra quyết định cuối |
+| [E2] | AMS概略フロー_入出庫・生産_20250703VN.pdf | pdf | AMS概略フロー_入出庫・生産_20250703VN.pdf | snippet trích xuất; cần mở nguồn nếu ra quyết định cuối |
+| [E3] | 伝票発行システムマニュアル_仮(JP).pdf | pdf | 伝票発行システムマニュアル_仮(JP).pdf | snippet trích xuất; cần mở nguồn nếu ra quyết định cuối |
+| [E4] | 入庫済みデータ削除_20260213.xlsx | xlsx | 入庫済みデータ削除_20260213.xlsx | phạm vi bằng chứng hẹp |
+| [E5] | MOMおよびWMSデータ完全クリア方法.xlsx | xlsx | MOMおよびWMSデータ完全クリア方法.xlsx | snippet trích xuất; cần mở nguồn nếu ra quyết định cuối |
+| [E6] | CTU 3階の通路レイアウト_251211.xlsx | xlsx | CTU 3階の通路レイアウト_251211.xlsx | snippet trích xuất; cần mở nguồn nếu ra quyết định cuối |
+| [E7] | CTUマップ再検討20260330.xlsx | xlsx | CTUマップ再検討20260330.xlsx | snippet trích xuất; cần mở nguồn nếu ra quyết định cuối |
+| [E8] | CTUマップ修正20260406.xlsx | xlsx | CTUマップ修正20260406.xlsx | snippet trích xuất; cần mở nguồn nếu ra quyết định cuối |
+
+## Mức tin cậy
+high: dựa trên 8 nguồn nội dung hợp lệ; privacy=local_only; insufficient_evidence=False.
+
+AIOS citations/source refs:
+[E1], [E2], [E3], [E4], [E5], [E6], [E7], [E8]
+
+AIOS limitations / uncertainty:
+Insufficient evidence: False
+Warnings: Privacy: local_only evidence stays local; no cloud/provider call was made.
+
+AIOS strict score:
+10/12
+
+Cap applied:
+NO 
+
+AIOS winner label:
+human_review_required
+
+========================================
+
+## Q09 — HTML/ERD/schema/Unsupported schema conclusions
+
+Question:
+What operational conclusions are unsupported if only schema/ERD documentation is available?
+
+Target source type:
+html
+
+AIOS final owner answer:
+## Kết luận ngắn
+- Tài liệu quy trình nêu dấu hiệu về bước xử lý/chuyển giao: <!DOCTYPE html> <html lang="vi"> <head> <meta charset="UTF-8"> <meta name="viewport" content="width=device-width, initial-scale=1.0"> <title>Sơ Đồ ERD Ultimate… [E1].
+- Phần tự động là phần hệ thống có thể kiểm tra từ log, trạng thái, mapping hoặc rule; phần thủ công là xác nhận nghiệp vụ, phê duyệt và xử lý ngoại lệ.
+- Cần tách rõ quy trình mô tả trong PDF/PPTX với thao tác thực tế đã xảy ra trong case.
+
+## Cách hiểu từ bằng chứng
+Quy trình được hiểu theo ranh giới tự động/thủ công: hệ thống tự kiểm tra dữ liệu/log, còn owner xác nhận ngoại lệ, phê duyệt và xử lý nghiệp vụ.
+
+## Bằng chứng chính
+- [E1] ERD_Kho_Van.html: <!DOCTYPE html> <html lang="vi"> <head> <meta charset="UTF-8"> <meta name="viewport" content="width=device-width, initial-scale=1.0"> <title>Sơ Đồ ERD Ultimate - Hệ Thốn…. Vì sao quan trọng: nguồn này neo claim vào html và vị trí ERD_Kho_Van.html.
+- [E2] 伝票発行システムマニュアル_仮(JP).pdf: --- page 1 --- ‐ 1 ‐ 目次 改訂履歴.............................................２ システム概要.........................................３ １準備 証明書取得....................................…. Vì sao quan trọng: nguồn này neo claim vào pdf và vị trí 伝票発行システムマニュアル_仮(JP).pdf.
+- [E3] AMS概略フロー_入出庫・生産_20250703VN.pdf: --- page 1 --- MOM Control PLC Hệ thống xung quanh Hệ thống hiện tại R3 Vị trí Line sản xuất System Phát hành lệnh sản xuất APS ⊸Lập kế hoạh công đoạn Bảng liên kết lệnh…. Vì sao quan trọng: nguồn này neo claim vào pdf và vị trí AMS概略フロー_入出庫・生産_20250703VN.pdf.
+
+## Hướng xử lý / kiểm tra
+1. Xác nhận câu hỏi owner cần quyết: lỗi ở đâu, ai xử lý, hay bước tiếp theo là gì.
+2. Đối chiếu từng claim với nguồn [E1], [E2] trước khi giao việc.
+3. Tách bước tự động khỏi bước thủ công/phê duyệt trong quy trình.
+4. Kiểm tra log hệ thống cho bước tự động và hỏi owner cho bước thủ công.
+
+## Không được kết luận nếu chưa có thêm bằng chứng
+- Không kết luận nguyên nhân gốc nếu chưa có log/chứng cứ cùng thời điểm.
+- Không kết luận trách nhiệm cá nhân nếu chưa có xác nhận owner hoặc audit trail.
+- Không kết luận AIOS thay thế NotebookLM; đây là câu trả lời local_owner có giới hạn.
+
+## Bảng nguồn
+| Ref | Source | Type | Location | Limitation |
+|---|---|---|---|---|
+| [E1] | ERD_Kho_Van.html | html | ERD_Kho_Van.html | snippet trích xuất; cần mở nguồn nếu ra quyết định cuối |
+| [E2] | 伝票発行システムマニュアル_仮(JP).pdf | pdf | 伝票発行システムマニュアル_仮(JP).pdf | snippet trích xuất; cần mở nguồn nếu ra quyết định cuối |
+| [E3] | AMS概略フロー_入出庫・生産_20250703VN.pdf | pdf | AMS概略フロー_入出庫・生産_20250703VN.pdf | snippet trích xuất; cần mở nguồn nếu ra quyết định cuối |
+
+## Mức tin cậy
+medium: dựa trên 3 nguồn nội dung hợp lệ; privacy=local_only; insufficient_evidence=False.
+
+AIOS citations/source refs:
+[E1], [E2], [E3]
+
+AIOS limitations / uncertainty:
+Insufficient evidence: False
+Warnings: Privacy: local_only evidence stays local; no cloud/provider call was made.
+
+AIOS strict score:
+10/12
+
+Cap applied:
+NO 
+
+AIOS winner label:
+human_review_required
+
+========================================
+
+## Q10 — Mixed multi-source/Full troubleshooting path
+
+Question:
+Explain a full troubleshooting path that combines evidence from Excel, PDF/PPTX, and screenshots.
+
+Target source type:
+
+
+AIOS final owner answer:
+## Kết luận ngắn
+- Điểm bắt đầu điều tra là bằng chứng có liên quan trực tiếp nhất: --- sheet Phát linh kiện preview --- Excel sheet: Phát linh kiện 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16 | 17 | 18 | 19 | 20 | 21… [E1].
+- Cần nối bằng chứng cấu hình, log chạy thực tế, quy trình thao tác và xác nhận owner để tránh nhầm giữa nguyên nhân và triệu chứng.
+- Đầu ra nên là đường điều tra và bàn giao việc cần làm, không phải kết luận đóng nếu bằng chứng còn thiếu.
+
+## Cách hiểu từ bằng chứng
+Câu hỏi cần một đường điều tra/handover: kết nối triệu chứng, cấu hình, log và owner action thay vì chỉ liệt kê snippets.
+
+## Bằng chứng chính
+- [E1] CTU 3階の通路レイアウト_251211.xlsx: --- sheet Phát linh kiện preview --- Excel sheet: Phát linh kiện 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16 | 17 | 18 | 19 | 20 | 21 | 22 | 23…. Vì sao quan trọng: nguồn này neo claim vào xlsx và vị trí CTU 3階の通路レイアウト_251211.xlsx.
+- [E2] ERD_Kho_Van.html: <!DOCTYPE html> <html lang="vi"> <head> <meta charset="UTF-8"> <meta name="viewport" content="width=device-width, initial-scale=1.0"> <title>Sơ Đồ ERD Ultimate - Hệ Thốn…. Vì sao quan trọng: nguồn này neo claim vào html và vị trí ERD_Kho_Van.html.
+- [E3] 入庫済みデータ削除_20260213.xlsx: --- sheet Sheet1 preview --- Excel sheet: Sheet1 入庫完了済みのデータの削除について １．入庫処理テーブル ２．WMS ３．Opcenter 上記３つから削除する必要あり １．入庫処理テーブル 該当のオリコンIDデータを入庫処理テーブル(T_PARTS_RECEIVE)からDELETE ２…. Vì sao quan trọng: nguồn này neo claim vào xlsx và vị trí 入庫済みデータ削除_20260213.xlsx.
+- [E4] MOMおよびWMSデータ完全クリア方法.xlsx: --- sheet MOM上処理(入庫までのデータ) preview --- Excel sheet: MOM上処理(入庫までのデータ) MOMにログインしてContainerSearch画面に移動 入庫済みデータはContainer名検索で「5%」と検索してヒットする Operation＝RMAcceptanceCompletedが入…. Vì sao quan trọng: nguồn này neo claim vào xlsx và vị trí MOMおよびWMSデータ完全クリア方法.xlsx.
+- [E5] 伝票発行システムマニュアル_仮(JP).pdf: --- page 1 --- ‐ 1 ‐ 目次 改訂履歴.............................................２ システム概要.........................................３ １準備 証明書取得....................................…. Vì sao quan trọng: nguồn này neo claim vào pdf và vị trí 伝票発行システムマニュアル_仮(JP).pdf.
+- [E6] MOMデータ連携説明_20251220.pdf: --- page 1 --- ©2025 KYOCERA Document Solutions Inc.1 MES／MOM説明 --- page 2 --- ©2025 KYOCERA Document Solutions Inc.2 2 ©2025 KYOCERA Document Solutions Inc. MES／MOM説明 M…. Vì sao quan trọng: nguồn này neo claim vào pdf và vị trí MOMデータ連携説明_20251220.pdf.
+- [E7] MES_MOM説明資料_20251031.pdf: --- page 1 --- 1 ©2025 KYOCERA Document Solutions Inc. MES／MOM説明 はじめに ➤AMS構想の範囲の中で、 MOMの部分の説明を行うのが 本日の主旨ですが、 主にMESの説明を行います。 その中で、この図にもあるERPにも触れ、 それらの関係性を説明します。 最後に、簡単にです…. Vì sao quan trọng: nguồn này neo claim vào pdf và vị trí MES_MOM説明資料_20251031.pdf.
+- [E8] 生産履歴登録システム&着完工登録システム制作仕様_r2_2025-2-17 - 副本.pdf: --- page 1 --- 1 ©2025 KYOCERA Document Solutions Inc. 生産履歴登録システム &着完工登録システム機能仕様 KDTCN 2025年2月6日 開発推進1科林巧丰 --- page 2 --- 2 ©2025 KYOCERA Document Solutions Inc. 目次 一．生産…. Vì sao quan trọng: nguồn này neo claim vào pdf và vị trí 生産履歴登録システム&着完工登録システム制作仕様_r2_2025-2-17 - 副本.pdf.
+
+## Hướng xử lý / kiểm tra
+1. Xác nhận câu hỏi owner cần quyết: lỗi ở đâu, ai xử lý, hay bước tiếp theo là gì.
+2. Đối chiếu từng claim với nguồn [E1], [E2] trước khi giao việc.
+3. Dựng timeline: thời điểm phát sinh, hệ thống liên quan, bước handoff, người xử lý.
+4. Thu missing evidence: log WMS/MOM/AGV, mapping hiện hành, ảnh lỗi, xác nhận owner.
+5. Bàn giao: ghi rõ giả thuyết, bằng chứng ủng hộ, bằng chứng còn thiếu, người chịu trách nhiệm và hạn kiểm tra.
+
+## Không được kết luận nếu chưa có thêm bằng chứng
+- Không kết luận nguyên nhân gốc nếu chưa có log/chứng cứ cùng thời điểm.
+- Không kết luận trách nhiệm cá nhân nếu chưa có xác nhận owner hoặc audit trail.
+- Không kết luận AIOS thay thế NotebookLM; đây là câu trả lời local_owner có giới hạn.
+
+## Bảng nguồn
+| Ref | Source | Type | Location | Limitation |
+|---|---|---|---|---|
+| [E1] | CTU 3階の通路レイアウト_251211.xlsx | xlsx | CTU 3階の通路レイアウト_251211.xlsx | snippet trích xuất; cần mở nguồn nếu ra quyết định cuối |
+| [E2] | ERD_Kho_Van.html | html | ERD_Kho_Van.html | snippet trích xuất; cần mở nguồn nếu ra quyết định cuối |
+| [E3] | 入庫済みデータ削除_20260213.xlsx | xlsx | 入庫済みデータ削除_20260213.xlsx | phạm vi bằng chứng hẹp |
+| [E4] | MOMおよびWMSデータ完全クリア方法.xlsx | xlsx | MOMおよびWMSデータ完全クリア方法.xlsx | snippet trích xuất; cần mở nguồn nếu ra quyết định cuối |
+| [E5] | 伝票発行システムマニュアル_仮(JP).pdf | pdf | 伝票発行システムマニュアル_仮(JP).pdf | snippet trích xuất; cần mở nguồn nếu ra quyết định cuối |
+| [E6] | MOMデータ連携説明_20251220.pdf | pdf | MOMデータ連携説明_20251220.pdf | snippet trích xuất; cần mở nguồn nếu ra quyết định cuối |
+| [E7] | MES_MOM説明資料_20251031.pdf | pdf | MES_MOM説明資料_20251031.pdf | snippet trích xuất; cần mở nguồn nếu ra quyết định cuối |
+| [E8] | 生産履歴登録システム&着完工登録システム制作仕様_r2_2025-2-17 - 副本.pdf | pdf | 生産履歴登録システム&着完工登録システム制作仕様_r2_2025-2-17 - 副本.pdf | snippet trích xuất; cần mở nguồn nếu ra quyết định cuối |
+
+## Mức tin cậy
+high: dựa trên 8 nguồn nội dung hợp lệ; privacy=local_only; insufficient_evidence=False.
+
+AIOS citations/source refs:
+[E1], [E2], [E3], [E4], [E5], [E6], [E7], [E8]
+
+AIOS limitations / uncertainty:
+Insufficient evidence: False
+Warnings: Privacy: local_only evidence stays local; no cloud/provider call was made.
+
+AIOS strict score:
+10/12
+
+Cap applied:
+NO 
+
+AIOS winner label:
+human_review_required
+
+========================================
+
+## Q11 — Mixed multi-source/Missing evidence
+
+Question:
+Identify missing evidence that would be required before answering a complex production issue.
+
+Target source type:
+
+
+AIOS final owner answer:
+## Kết luận ngắn
+- Điểm bắt đầu điều tra là bằng chứng có liên quan trực tiếp nhất: --- sheet Phát linh kiện preview --- Excel sheet: Phát linh kiện 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16 | 17 | 18 | 19 | 20 | 21… [E1].
+- Cần nối bằng chứng cấu hình, log chạy thực tế, quy trình thao tác và xác nhận owner để tránh nhầm giữa nguyên nhân và triệu chứng.
+- Đầu ra nên là đường điều tra và bàn giao việc cần làm, không phải kết luận đóng nếu bằng chứng còn thiếu.
+
+## Cách hiểu từ bằng chứng
+Câu hỏi cần một đường điều tra/handover: kết nối triệu chứng, cấu hình, log và owner action thay vì chỉ liệt kê snippets.
+
+## Bằng chứng chính
+- [E1] CTU 3階の通路レイアウト_251211.xlsx: --- sheet Phát linh kiện preview --- Excel sheet: Phát linh kiện 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16 | 17 | 18 | 19 | 20 | 21 | 22 | 23…. Vì sao quan trọng: nguồn này neo claim vào xlsx và vị trí CTU 3階の通路レイアウト_251211.xlsx.
+- [E2] MOMおよびWMSデータ完全クリア方法.xlsx: --- sheet MOM上処理(入庫までのデータ) preview --- Excel sheet: MOM上処理(入庫までのデータ) MOMにログインしてContainerSearch画面に移動 入庫済みデータはContainer名検索で「5%」と検索してヒットする Operation＝RMAcceptanceCompletedが入…. Vì sao quan trọng: nguồn này neo claim vào xlsx và vị trí MOMおよびWMSデータ完全クリア方法.xlsx.
+
+## Hướng xử lý / kiểm tra
+1. Xác nhận câu hỏi owner cần quyết: lỗi ở đâu, ai xử lý, hay bước tiếp theo là gì.
+2. Đối chiếu từng claim với nguồn [E1], [E2] trước khi giao việc.
+3. Dựng timeline: thời điểm phát sinh, hệ thống liên quan, bước handoff, người xử lý.
+4. Thu missing evidence: log WMS/MOM/AGV, mapping hiện hành, ảnh lỗi, xác nhận owner.
+5. Bàn giao: ghi rõ giả thuyết, bằng chứng ủng hộ, bằng chứng còn thiếu, người chịu trách nhiệm và hạn kiểm tra.
+
+## Không được kết luận nếu chưa có thêm bằng chứng
+- Không kết luận nguyên nhân gốc nếu chưa có log/chứng cứ cùng thời điểm.
+- Không kết luận trách nhiệm cá nhân nếu chưa có xác nhận owner hoặc audit trail.
+- Không kết luận AIOS thay thế NotebookLM; đây là câu trả lời local_owner có giới hạn.
+
+## Bảng nguồn
+| Ref | Source | Type | Location | Limitation |
+|---|---|---|---|---|
+| [E1] | CTU 3階の通路レイアウト_251211.xlsx | xlsx | CTU 3階の通路レイアウト_251211.xlsx | snippet trích xuất; cần mở nguồn nếu ra quyết định cuối |
+| [E2] | MOMおよびWMSデータ完全クリア方法.xlsx | xlsx | MOMおよびWMSデータ完全クリア方法.xlsx | snippet trích xuất; cần mở nguồn nếu ra quyết định cuối |
+
+## Mức tin cậy
+medium: dựa trên 2 nguồn nội dung hợp lệ; privacy=local_only; insufficient_evidence=False.
+
+AIOS citations/source refs:
+[E1], [E2]
+
+AIOS limitations / uncertainty:
+Insufficient evidence: False
+Warnings: Privacy: local_only evidence stays local; no cloud/provider call was made.
+
+AIOS strict score:
+10/12
+
+Cap applied:
+NO 
+
+AIOS winner label:
+human_review_required
+
+========================================
+
+## Q12 — Mixed multi-source/Owner next actions
+
+Question:
+Produce a set of owner next actions and a handover summary, citing sources correctly.
+
+Target source type:
+
+
+AIOS final owner answer:
+## Kết luận ngắn
+- Điểm bắt đầu điều tra là bằng chứng có liên quan trực tiếp nhất: --- sheet Phát linh kiện preview --- Excel sheet: Phát linh kiện 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16 | 17 | 18 | 19 | 20 | 21… [E1].
+- Cần nối bằng chứng cấu hình, log chạy thực tế, quy trình thao tác và xác nhận owner để tránh nhầm giữa nguyên nhân và triệu chứng.
+- Đầu ra nên là đường điều tra và bàn giao việc cần làm, không phải kết luận đóng nếu bằng chứng còn thiếu.
+
+## Cách hiểu từ bằng chứng
+Câu hỏi cần một đường điều tra/handover: kết nối triệu chứng, cấu hình, log và owner action thay vì chỉ liệt kê snippets.
+
+## Bằng chứng chính
+- [E1] CTU 3階の通路レイアウト_251211.xlsx: --- sheet Phát linh kiện preview --- Excel sheet: Phát linh kiện 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16 | 17 | 18 | 19 | 20 | 21 | 22 | 23…. Vì sao quan trọng: nguồn này neo claim vào xlsx và vị trí CTU 3階の通路レイアウト_251211.xlsx.
+- [E2] 入庫済みデータ削除_20260213.xlsx: --- sheet Sheet1 preview --- Excel sheet: Sheet1 入庫完了済みのデータの削除について １．入庫処理テーブル ２．WMS ３．Opcenter 上記３つから削除する必要あり １．入庫処理テーブル 該当のオリコンIDデータを入庫処理テーブル(T_PARTS_RECEIVE)からDELETE ２…. Vì sao quan trọng: nguồn này neo claim vào xlsx và vị trí 入庫済みデータ削除_20260213.xlsx.
+- [E3] MOMおよびWMSデータ完全クリア方法.xlsx: --- sheet MOM上処理(入庫までのデータ) preview --- Excel sheet: MOM上処理(入庫までのデータ) MOMにログインしてContainerSearch画面に移動 入庫済みデータはContainer名検索で「5%」と検索してヒットする Operation＝RMAcceptanceCompletedが入…. Vì sao quan trọng: nguồn này neo claim vào xlsx và vị trí MOMおよびWMSデータ完全クリア方法.xlsx.
+- [E4] CTUマップ再検討20260330.xlsx: --- sheet CourseLayout_CTU preview --- Excel sheet: CourseLayout_CTU SUP_PROCESS | C3B_YB2200C300** | 22 | 23 | 24 | 25 | 26 | 27 | 28 | 29 | 30 | 31 | 32 | 33 K-1 | K-2…. Vì sao quan trọng: nguồn này neo claim vào xlsx và vị trí CTUマップ再検討20260330.xlsx.
+- [E5] CTUマップ修正20260406.xlsx: --- sheet CourseLayout_CTU preview --- Excel sheet: CourseLayout_CTU SUP_PROCESS | C3B_YB2200C300** | 22 | 23 | 24 | 25 | 26 | 27 | 28 | 29 | 30 K-1 | K-2 | K-1 | K-2 |…. Vì sao quan trọng: nguồn này neo claim vào xlsx và vị trí CTUマップ修正20260406.xlsx.
+
+## Hướng xử lý / kiểm tra
+1. Xác nhận câu hỏi owner cần quyết: lỗi ở đâu, ai xử lý, hay bước tiếp theo là gì.
+2. Đối chiếu từng claim với nguồn [E1], [E2] trước khi giao việc.
+3. Dựng timeline: thời điểm phát sinh, hệ thống liên quan, bước handoff, người xử lý.
+4. Thu missing evidence: log WMS/MOM/AGV, mapping hiện hành, ảnh lỗi, xác nhận owner.
+5. Bàn giao: ghi rõ giả thuyết, bằng chứng ủng hộ, bằng chứng còn thiếu, người chịu trách nhiệm và hạn kiểm tra.
+
+## Không được kết luận nếu chưa có thêm bằng chứng
+- Không kết luận nguyên nhân gốc nếu chưa có log/chứng cứ cùng thời điểm.
+- Không kết luận trách nhiệm cá nhân nếu chưa có xác nhận owner hoặc audit trail.
+- Không kết luận AIOS thay thế NotebookLM; đây là câu trả lời local_owner có giới hạn.
+
+## Bảng nguồn
+| Ref | Source | Type | Location | Limitation |
+|---|---|---|---|---|
+| [E1] | CTU 3階の通路レイアウト_251211.xlsx | xlsx | CTU 3階の通路レイアウト_251211.xlsx | snippet trích xuất; cần mở nguồn nếu ra quyết định cuối |
+| [E2] | 入庫済みデータ削除_20260213.xlsx | xlsx | 入庫済みデータ削除_20260213.xlsx | phạm vi bằng chứng hẹp |
+| [E3] | MOMおよびWMSデータ完全クリア方法.xlsx | xlsx | MOMおよびWMSデータ完全クリア方法.xlsx | snippet trích xuất; cần mở nguồn nếu ra quyết định cuối |
+| [E4] | CTUマップ再検討20260330.xlsx | xlsx | CTUマップ再検討20260330.xlsx | snippet trích xuất; cần mở nguồn nếu ra quyết định cuối |
+| [E5] | CTUマップ修正20260406.xlsx | xlsx | CTUマップ修正20260406.xlsx | snippet trích xuất; cần mở nguồn nếu ra quyết định cuối |
+
+## Mức tin cậy
+high: dựa trên 5 nguồn nội dung hợp lệ; privacy=local_only; insufficient_evidence=False.
+
+AIOS citations/source refs:
+[E1], [E2], [E3], [E4], [E5]
+
+AIOS limitations / uncertainty:
+Insufficient evidence: False
+Warnings: Privacy: local_only evidence stays local; no cloud/provider call was made.
+
+AIOS strict score:
+10/12
+
+Cap applied:
+NO 
+
+AIOS winner label:
+human_review_required
+
+========================================

@@ -1,0 +1,363 @@
+# NOTEBOOKLM 12Q ANSWERS AFTER COMPOSER RERUN — REDACTED FULL REVIEW
+
+For each question:
+
+## Q01 — Excel-heavy/ManualShipping vs ExistingLine
+
+Question:
+What is the staging and master mapping for ManualShipping vs ExistingLine?
+
+Target source type:
+xlsx
+
+NotebookLM answer:
+FAILED: Usage: nlm query [OPTIONS] COMMAND [ARGS]...
+Try 'nlm query --help' for help.
+┌─ Error ─────────────────────────────────────────────────────────────────────┐
+│ No such option: --notebook-id                                               │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+
+NotebookLM citations/source notes:
+See answer text for NotebookLM footnotes if any.
+
+NotebookLM limitations / uncertainty:
+Unknown (depends on NLM model behavior)
+
+NotebookLM strict score:
+Not automatically scored
+
+NotebookLM winner label:
+human_review_required
+
+========================================
+
+## Q02 — Excel-heavy/WMS/MOM/AGV handoff
+
+Question:
+Describe the data handoff and interface table relationships between WMS, MOM, and AGV.
+
+Target source type:
+xlsx
+
+NotebookLM answer:
+FAILED: Usage: nlm query [OPTIONS] COMMAND [ARGS]...
+Try 'nlm query --help' for help.
+┌─ Error ─────────────────────────────────────────────────────────────────────┐
+│ No such option: --notebook-id                                               │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+
+NotebookLM citations/source notes:
+See answer text for NotebookLM footnotes if any.
+
+NotebookLM limitations / uncertainty:
+Unknown (depends on NLM model behavior)
+
+NotebookLM strict score:
+Not automatically scored
+
+NotebookLM winner label:
+human_review_required
+
+========================================
+
+## Q03 — Excel-heavy/Mismatch investigation
+
+Question:
+How do you investigate a quantity/container/supply-line mismatch using table evidence?
+
+Target source type:
+xlsx
+
+NotebookLM answer:
+FAILED: Usage: nlm query [OPTIONS] COMMAND [ARGS]...
+Try 'nlm query --help' for help.
+┌─ Error ─────────────────────────────────────────────────────────────────────┐
+│ No such option: --notebook-id                                               │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+
+NotebookLM citations/source notes:
+See answer text for NotebookLM footnotes if any.
+
+NotebookLM limitations / uncertainty:
+Unknown (depends on NLM model behavior)
+
+NotebookLM strict score:
+Not automatically scored
+
+NotebookLM winner label:
+human_review_required
+
+========================================
+
+## Q04 — PDF/PPTX process/Automatic vs manual boundary
+
+Question:
+What is the MOM/AMS business flow regarding the automatic vs manual/owner review boundary?
+
+Target source type:
+pdf
+
+NotebookLM answer:
+FAILED: Usage: nlm query [OPTIONS] COMMAND [ARGS]...
+Try 'nlm query --help' for help.
+┌─ Error ─────────────────────────────────────────────────────────────────────┐
+│ No such option: --notebook-id                                               │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+
+NotebookLM citations/source notes:
+See answer text for NotebookLM footnotes if any.
+
+NotebookLM limitations / uncertainty:
+Unknown (depends on NLM model behavior)
+
+NotebookLM strict score:
+Not automatically scored
+
+NotebookLM winner label:
+human_review_required
+
+========================================
+
+## Q05 — PDF/PPTX process/Process change explanation
+
+Question:
+How is an operation/process change or design/running change explained in the process documentation?
+
+Target source type:
+pdf
+
+NotebookLM answer:
+FAILED: Usage: nlm query [OPTIONS] COMMAND [ARGS]...
+Try 'nlm query --help' for help.
+┌─ Error ─────────────────────────────────────────────────────────────────────┐
+│ No such option: --notebook-id                                               │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+
+NotebookLM citations/source notes:
+See answer text for NotebookLM footnotes if any.
+
+NotebookLM limitations / uncertainty:
+Unknown (depends on NLM model behavior)
+
+NotebookLM strict score:
+Not automatically scored
+
+NotebookLM winner label:
+human_review_required
+
+========================================
+
+## Q06 — Screenshot/image/OCR/Visible UI fields
+
+Question:
+What visible UI fields, statuses, containers, or oricon evidence can be trusted directly from screenshots?
+
+Target source type:
+png
+
+NotebookLM answer:
+FAILED: Usage: nlm query [OPTIONS] COMMAND [ARGS]...
+Try 'nlm query --help' for help.
+┌─ Error ─────────────────────────────────────────────────────────────────────┐
+│ No such option: --notebook-id                                               │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+
+NotebookLM citations/source notes:
+See answer text for NotebookLM footnotes if any.
+
+NotebookLM limitations / uncertainty:
+Unknown (depends on NLM model behavior)
+
+NotebookLM strict score:
+Not automatically scored
+
+NotebookLM winner label:
+human_review_required
+
+========================================
+
+## Q07 — Screenshot/image/OCR/Screenshot operational states
+
+Question:
+What operational or systemic states must NOT be inferred from screenshot-only evidence?
+
+Target source type:
+png
+
+NotebookLM answer:
+FAILED: Usage: nlm query [OPTIONS] COMMAND [ARGS]...
+Try 'nlm query --help' for help.
+┌─ Error ─────────────────────────────────────────────────────────────────────┐
+│ No such option: --notebook-id                                               │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+
+NotebookLM citations/source notes:
+See answer text for NotebookLM footnotes if any.
+
+NotebookLM limitations / uncertainty:
+Unknown (depends on NLM model behavior)
+
+NotebookLM strict score:
+Not automatically scored
+
+NotebookLM winner label:
+human_review_required
+
+========================================
+
+## Q08 — HTML/ERD/schema/Explicit HTML/ERD tables
+
+Question:
+What tables, fields, and relationships are explicitly shown in the HTML/ERD/schema evidence?
+
+Target source type:
+html
+
+NotebookLM answer:
+FAILED: Usage: nlm query [OPTIONS] COMMAND [ARGS]...
+Try 'nlm query --help' for help.
+┌─ Error ─────────────────────────────────────────────────────────────────────┐
+│ No such option: --notebook-id                                               │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+
+NotebookLM citations/source notes:
+See answer text for NotebookLM footnotes if any.
+
+NotebookLM limitations / uncertainty:
+Unknown (depends on NLM model behavior)
+
+NotebookLM strict score:
+Not automatically scored
+
+NotebookLM winner label:
+human_review_required
+
+========================================
+
+## Q09 — HTML/ERD/schema/Unsupported schema conclusions
+
+Question:
+What operational conclusions are unsupported if only schema/ERD documentation is available?
+
+Target source type:
+html
+
+NotebookLM answer:
+FAILED: Usage: nlm query [OPTIONS] COMMAND [ARGS]...
+Try 'nlm query --help' for help.
+┌─ Error ─────────────────────────────────────────────────────────────────────┐
+│ No such option: --notebook-id                                               │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+
+NotebookLM citations/source notes:
+See answer text for NotebookLM footnotes if any.
+
+NotebookLM limitations / uncertainty:
+Unknown (depends on NLM model behavior)
+
+NotebookLM strict score:
+Not automatically scored
+
+NotebookLM winner label:
+human_review_required
+
+========================================
+
+## Q10 — Mixed multi-source/Full troubleshooting path
+
+Question:
+Explain a full troubleshooting path that combines evidence from Excel, PDF/PPTX, and screenshots.
+
+Target source type:
+
+
+NotebookLM answer:
+FAILED: Usage: nlm query [OPTIONS] COMMAND [ARGS]...
+Try 'nlm query --help' for help.
+┌─ Error ─────────────────────────────────────────────────────────────────────┐
+│ No such option: --notebook-id                                               │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+
+NotebookLM citations/source notes:
+See answer text for NotebookLM footnotes if any.
+
+NotebookLM limitations / uncertainty:
+Unknown (depends on NLM model behavior)
+
+NotebookLM strict score:
+Not automatically scored
+
+NotebookLM winner label:
+human_review_required
+
+========================================
+
+## Q11 — Mixed multi-source/Missing evidence
+
+Question:
+Identify missing evidence that would be required before answering a complex production issue.
+
+Target source type:
+
+
+NotebookLM answer:
+FAILED: Usage: nlm query [OPTIONS] COMMAND [ARGS]...
+Try 'nlm query --help' for help.
+┌─ Error ─────────────────────────────────────────────────────────────────────┐
+│ No such option: --notebook-id                                               │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+
+NotebookLM citations/source notes:
+See answer text for NotebookLM footnotes if any.
+
+NotebookLM limitations / uncertainty:
+Unknown (depends on NLM model behavior)
+
+NotebookLM strict score:
+Not automatically scored
+
+NotebookLM winner label:
+human_review_required
+
+========================================
+
+## Q12 — Mixed multi-source/Owner next actions
+
+Question:
+Produce a set of owner next actions and a handover summary, citing sources correctly.
+
+Target source type:
+
+
+NotebookLM answer:
+FAILED: Usage: nlm query [OPTIONS] COMMAND [ARGS]...
+Try 'nlm query --help' for help.
+┌─ Error ─────────────────────────────────────────────────────────────────────┐
+│ No such option: --notebook-id                                               │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+
+NotebookLM citations/source notes:
+See answer text for NotebookLM footnotes if any.
+
+NotebookLM limitations / uncertainty:
+Unknown (depends on NLM model behavior)
+
+NotebookLM strict score:
+Not automatically scored
+
+NotebookLM winner label:
+human_review_required
+
+========================================
