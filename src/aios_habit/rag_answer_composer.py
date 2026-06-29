@@ -7,6 +7,7 @@ from typing import Any, Dict, List
 
 from aios_habit.rag_evidence import RAGEvidencePack
 from aios_habit.citation_answer import build_citation_index, compose_citation_first_answer
+from aios_habit.final_answer_composer import FinalOwnerAnswer, compose_final_owner_answer, final_owner_answer_to_dict
 
 
 @dataclass
@@ -91,7 +92,12 @@ def stable_answer_draft_id(pack: RAGEvidencePack) -> str:
     return "ANS-" + hashlib.sha256(raw.encode("utf-8")).hexdigest()[:12].upper()
 
 
-def compose_local_answer(pack: RAGEvidencePack, max_items: int = 5) -> LocalAnswerDraft:
+def compose_local_answer(pack: RAGEvidencePack, max_items: int = 5, mode: str = "local_evidence_draft") -> LocalAnswerDraft | FinalOwnerAnswer:
+    if mode == "final_owner_answer":
+        return compose_final_owner_answer(pack, max_items=max_items)
+    if mode != "local_evidence_draft":
+        raise ValueError(f"Unsupported answer composition mode: {mode}")
+
     """Compose a deterministic local draft from evidence only.
 
     This is not an LLM and does not infer beyond snippets. It exists to give the
@@ -193,5 +199,17 @@ def compose_local_answer(pack: RAGEvidencePack, max_items: int = 5) -> LocalAnsw
 def local_answer_draft_to_dict(draft: LocalAnswerDraft) -> Dict[str, Any]:
     return asdict(draft)
 
+def compose_answer(pack: RAGEvidencePack, mode: str = "final_owner_answer", max_items: int = 5) -> LocalAnswerDraft | FinalOwnerAnswer:
+    if mode == "final_owner_answer":
+        return compose_final_owner_answer(pack, max_items=max_items)
+    return compose_local_answer(pack, max_items=max_items, mode="local_evidence_draft")
+
+
 def strong_answer_to_dict(draft: StrongModelAnswer | PastedStrongModelAnswer) -> Dict[str, Any]:
     return asdict(draft)
+
+
+def answer_to_dict(answer: LocalAnswerDraft | FinalOwnerAnswer | StrongModelAnswer | PastedStrongModelAnswer) -> Dict[str, Any]:
+    if isinstance(answer, FinalOwnerAnswer):
+        return final_owner_answer_to_dict(answer)
+    return asdict(answer)

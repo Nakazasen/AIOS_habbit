@@ -335,3 +335,11 @@ def test_case_cockpit_one_screen_flow_has_no_visible_raw_policy_labels():
     assert "route policy" not in daily_source.lower()
     assert "cloud_allowed" not in daily_source
 
+
+
+def test_case_cockpit_shows_final_owner_answer_and_hides_local_draft_details():
+    cockpit_source = Path("src/aios_habit/case_cockpit.py").read_text(encoding="utf-8")
+    assert "Câu trả lời đề xuất" in cockpit_source
+    assert 'compose_answer(prep.evidence_pack, mode="final_owner_answer")' in cockpit_source
+    assert "Chi tiết kỹ thuật: local evidence draft" in cockpit_source
+    assert "Bằng chứng chưa đủ" in cockpit_source

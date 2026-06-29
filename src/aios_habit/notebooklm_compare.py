@@ -1,12 +1,13 @@
 from __future__ import annotations
 
 import json
+import re
 import subprocess
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional
 
-from aios_habit.rag_answer_composer import compose_local_answer, local_answer_draft_to_dict
+from aios_habit.rag_answer_composer import answer_to_dict, compose_answer, compose_local_answer, local_answer_draft_to_dict
 from aios_habit.rag_evidence import build_evidence_pack, evidence_pack_to_dict
 from aios_habit.rag_ingest import build_chunks_from_elements, build_elements_from_extracted_payload
 from aios_habit.rag_rerank import rerank_search_results
@@ -241,10 +242,12 @@ def run_aios_answers(config: CompareConfig, questions_path: Optional[Path] = Non
             if config.use_local_reranker:
                 results = rerank_search_results(question.question, results).results
             pack = build_evidence_pack(question.question, results)
-            draft = compose_local_answer(pack)
+            draft = compose_answer(pack, mode="final_owner_answer")
+            technical_draft = compose_local_answer(pack)
             answers.append({
                 "question": asdict(question),
-                "answer": local_answer_draft_to_dict(draft),
+                "answer": answer_to_dict(draft),
+                "technical_local_draft": local_answer_draft_to_dict(technical_draft),
                 "evidence_pack": evidence_pack_to_dict(pack),
                 "chunk_count": len(chunks),
             })
@@ -285,37 +288,104 @@ def run_notebooklm_answers(config: CompareConfig) -> Dict[str, Any]:
     return {"status": "READY_FOR_MANUAL_OR_EXTENDED_RUNNER", "capability": asdict(capability), "output_path": str(out)}
 
 
+def _contains_any(text: str, needles: List[str]) -> bool:
+    lowered = text.lower()
+    return any(needle.lower() in lowered for needle in needles)
+
+
+def _is_generic_local_draft(text: str) -> bool:
+    return _contains_any(text, ["Local draft for", "This is a local evidence draft", "not a final model answer"])
+
+
+def _has_empty_or_generic_sections(text: str) -> bool:
+    lowered = text.lower()
+    if "bằng chứng chính" in lowered and re.search(r"bằng chứng chính\s*(?:\n\s*){0,2}(?:##|$)", lowered):
+        return True
+    return any(phrase in lowered for phrase in [
+        "phân tích\n\ndựa trên bằng chứng",
+        "phân tích: dựa trên bằng chứng",
+        "việc cần làm tiếp\n\nchạy audit",
+        "việc cần làm tiếp: chạy audit",
+    ])
+
+
+def _is_evidence_only_snippet_list(text: str) -> bool:
+    lines = [line.strip() for line in text.splitlines() if line.strip()]
+    bullet_lines = [line for line in lines if line.startswith(("-", "*"))]
+    citation_lines = [line for line in lines if "[E" in line or re.search(r"\[\d+\]", line)]
+    has_synthesis_sections = any(h in text for h in ["Kết luận ngắn", "Cách hiểu từ bằng chứng", "Hướng xử lý / kiểm tra"])
+    return len(citation_lines) >= 2 and len(bullet_lines) >= 2 and not has_synthesis_sections
+
+
+def _needs_concrete_steps(question: str) -> bool:
+    return _contains_any(question, ["troubleshooting", "điều tra", "next actions", "handover", "bàn giao", "missing evidence", "kiểm tra", "hướng xử lý"])
+
+
+def _has_concrete_steps(text: str) -> bool:
+    return bool(re.search(r"(?:^|\n)\s*(?:\d+\.|-\s*(?:kiểm tra|xác nhận|đối chiếu|thu|dựng|bàn giao))", text.lower()))
+
+
+def _citations_support_claims(text: str, has_citations: bool) -> bool:
+    if not has_citations:
+        return False
+    claim_lines = [line for line in text.splitlines() if "[E" in line and len(line.strip()) > 25]
+    return any(not line.strip().startswith(("| [E", "- [E")) or "vì sao quan trọng" in line.lower() for line in claim_lines)
+
+
+def _apply_score_cap(scores: Dict[str, Any], cap: int, reason: str) -> None:
+    scores.setdefault("caps_applied", []).append({"cap": cap, "reason": reason})
+    scores["max_total_score"] = min(scores.get("max_total_score", 12), cap)
+
+
 def _score_pair(aios: Dict[str, Any], nlm: Optional[Dict[str, Any]]) -> Dict[str, Any]:
     answer = aios.get("answer", {})
+    question = aios.get("question", {}).get("question", "")
+    answer_text = answer.get("answer_text", "") or ""
     answer_kind = answer.get("answer_kind", "local_evidence_draft")
     has_citations = bool(answer.get("citation_ids"))
     insufficient = bool(answer.get("insufficient_evidence"))
-    
     is_metadata_only = insufficient and any("Only metadata was found" in w for w in answer.get("warnings", []))
-    
-    if answer_kind == "local_evidence_draft":
-        winner = "notebooklm" if nlm else "aios_draft_only"
-        reason = "Deterministic heuristic self-eval; local draft is not a final competitor."
-    else:
-        if is_metadata_only and nlm:
-            winner = "notebooklm"
-        else:
-            winner = "human_review_required" if nlm else "aios_only_no_notebooklm_answer"
-        reason = f"Deterministic heuristic self-eval; {answer_kind} vs NotebookLM answer."
-        
-    return {
-        "answer_relevance": 2 if answer.get("answer_text") and not is_metadata_only else 0,
-        "citation_usefulness": 2 if has_citations else 1,
-        "source_grounding": 2 if has_citations else 1,
+    citation_supported = _citations_support_claims(answer_text, has_citations)
+
+    scores: Dict[str, Any] = {
+        "answer_relevance": 2 if answer_text and not is_metadata_only else 0,
+        "citation_usefulness": 2 if citation_supported else (1 if has_citations else 0),
+        "source_traceability": 2 if citation_supported else (1 if has_citations else 0),
         "completeness": 1 if insufficient else 2,
         "insufficient_evidence_honesty": 3 if insufficient else 2,
         "privacy_local_control": 3,
-        "actionability_for_owner": 2 if answer.get("answer_text") and not is_metadata_only else 0,
+        "practical_usefulness": 2 if answer_text and _has_concrete_steps(answer_text) and not is_metadata_only else (1 if answer_text and not is_metadata_only else 0),
         "hallucination_risk": 3 if insufficient else 2,
-        "winner": winner,
-        "reason": reason,
+        "max_total_score": 12,
+        "caps_applied": [],
     }
 
+    if _is_generic_local_draft(answer_text) or answer_kind == "local_evidence_draft":
+        _apply_score_cap(scores, 6, "generic/local draft marker is not a final answer")
+    if _has_empty_or_generic_sections(answer_text):
+        scores["practical_usefulness"] = min(scores["practical_usefulness"], 1)
+        scores["answer_relevance"] = min(scores["answer_relevance"], 1)
+        _apply_score_cap(scores, 7, "empty or generic answer sections")
+    if _is_evidence_only_snippet_list(answer_text):
+        _apply_score_cap(scores, 7, "evidence-only snippet list without synthesis")
+    if _needs_concrete_steps(question) and not _has_concrete_steps(answer_text):
+        _apply_score_cap(scores, 6, "question needs troubleshooting/handover steps but answer has none")
+    if has_citations and not citation_supported:
+        scores["source_traceability"] = min(scores["source_traceability"], 1)
+        scores["citation_usefulness"] = min(scores["citation_usefulness"], 1)
+
+    raw_total = sum(scores[k] for k in ["answer_relevance", "citation_usefulness", "source_traceability", "completeness", "practical_usefulness"])
+    scores["total_score_12"] = min(raw_total, scores["max_total_score"])
+
+    if answer_kind == "local_evidence_draft":
+        winner = "notebooklm" if nlm else "aios_draft_only"
+        reason = "Local evidence draft is not a final answer competitor; score caps apply."
+    else:
+        winner = "human_review_required" if nlm else "aios_only_no_notebooklm_answer"
+        reason = f"Strict heuristic quality score with hard caps; {answer_kind} vs NotebookLM answer."
+    scores["winner"] = winner
+    scores["reason"] = reason
+    return scores
 
 def evaluate_answers(config: CompareConfig) -> Dict[str, Path]:
     out_dir = ensure_output_dir(config)

@@ -111,3 +111,52 @@ def test_print_local_review(tmp_path):
     assert "NotebookLM answer" in content
     assert "Không có kết quả" in content
     assert "Evidence quality: content_supported" in content
+
+
+
+def _score_for_text(text, question="What is the answer?", answer_kind="final_owner_answer", citations=None):
+    from aios_habit.notebooklm_compare import _score_pair
+    row = {
+        "question": {"question_id": "QX", "question": question},
+        "answer": {
+            "answer_text": text,
+            "answer_kind": answer_kind,
+            "citation_ids": citations or ["[E1]"],
+            "insufficient_evidence": False,
+            "warnings": [],
+        },
+    }
+    return _score_pair(row, None)
+
+
+def test_generic_local_draft_score_is_capped_at_6():
+    score = _score_for_text("Local draft for: Q\nThis is a local evidence draft, not a final model answer.", answer_kind="local_evidence_draft")
+    assert score["max_total_score"] <= 6
+    assert score["total_score_12"] <= 6
+
+
+def test_evidence_only_snippet_list_score_is_capped_at_7():
+    text = "- [E1] route code missing\n- [E2] export mapping blank\n- [E3] dispatch failed"
+    score = _score_for_text(text, citations=["[E1]", "[E2]", "[E3]"])
+    assert score["max_total_score"] <= 7
+    assert score["total_score_12"] <= 7
+
+
+def test_final_synthesized_answer_can_score_higher_only_if_concrete():
+    text = """## Kết luận ngắn
+- Mapping thiếu route code nên owner cần kiểm tra master data [E1].
+## Cách hiểu từ bằng chứng
+Nguồn [E1] hỗ trợ claim vì nêu lỗi export mapping.
+## Hướng xử lý / kiểm tra
+1. Kiểm tra route code.
+2. Đối chiếu log export.
+3. Bàn giao owner dữ liệu.
+"""
+    score = _score_for_text(text, question="Give troubleshooting path")
+    assert score["max_total_score"] == 12
+    assert score["total_score_12"] > 6
+
+
+def test_citations_without_claim_support_traceability_max_1():
+    score = _score_for_text("## Kết luận ngắn\n- Route code missing.\n## Bảng nguồn\n| [E1] | file |", citations=["[E1]"])
+    assert score["source_traceability"] <= 1

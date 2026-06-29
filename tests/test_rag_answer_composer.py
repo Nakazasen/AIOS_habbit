@@ -128,3 +128,19 @@ def test_paste_back_answer_stores_metadata():
     assert answer.provider_call is False
     assert answer.model_tool_name == "chatgpt"
     assert answer.route_summary == "Manual paste-back by user"
+
+
+def test_compose_answer_final_owner_mode_returns_final_answer():
+    from aios_habit.rag_answer_composer import compose_answer, answer_to_dict
+    answer = compose_answer(_pack("local_only"), mode="final_owner_answer")
+    assert answer.answer_kind == "final_owner_answer"
+    assert answer.final_answer is True
+    assert "Câu trả lời" not in answer.answer_text or "Kết luận ngắn" in answer.answer_text
+    assert answer_to_dict(answer)["provider_call"] is False
+
+
+def test_compose_answer_local_evidence_draft_mode_kept():
+    from aios_habit.rag_answer_composer import compose_answer
+    answer = compose_answer(_pack("local_only"), mode="local_evidence_draft")
+    assert answer.answer_kind == "local_evidence_draft"
+    assert answer.final_answer is False

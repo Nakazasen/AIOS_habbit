@@ -47,6 +47,7 @@ from aios_habit.strong_answer_ui import (
     prepare_local_evidence_answer,
     save_pasted_strong_answer,
 )
+from aios_habit.rag_answer_composer import compose_answer
 from aios_habit.ide_handoff_bridge import (
     import_ide_response,
     save_imported_ide_answer,
@@ -510,7 +511,11 @@ def page_prompt_pack():
 
     prep = st.session_state.get("strong_answer_prep")
     if prep:
-        st.markdown("**Đây chưa phải câu trả lời cuối.**")
+        final_owner_answer = compose_answer(prep.evidence_pack, mode="final_owner_answer")
+        st.markdown("**Câu trả lời đề xuất**")
+        if final_owner_answer.insufficient_evidence:
+            st.warning("Bằng chứng chưa đủ; câu trả lời đề xuất có giới hạn và cần kiểm tra thêm.")
+        st.text_area("Câu trả lời đề xuất", value=final_owner_answer.answer_text, height=300, disabled=True)
         st.write(f"Detected intent: `{prep.detected_intent}`")
         st.write(f"Evidence quality: `{prep.evidence_quality}`")
         if prep.metadata_only_warning:
@@ -519,7 +524,8 @@ def page_prompt_pack():
             st.markdown("**Top evidence files:**")
             for source_name in prep.top_evidence_files:
                 st.write(f"- {source_name}")
-        st.text_area("Local Evidence Draft", value=prep.local_draft.answer_text, height=220, disabled=True)
+        with st.expander("Chi tiết kỹ thuật: local evidence draft"):
+            st.text_area("Local Evidence Draft", value=prep.local_draft.answer_text, height=220, disabled=True)
 
         if st.button("2. Tạo prompt cho Gemini/Codex/Claude", key="create_strong_prompt"):
             prompt_export = build_strong_answer_prompt_for_ui(
