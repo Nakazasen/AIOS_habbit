@@ -1,0 +1,1190 @@
+# NOTEBOOKLM 12Q ANSWERS AFTER COMPOSER RERUN — REDACTED FULL REVIEW
+
+For each question:
+
+## Q01 — Excel-heavy/ManualShipping vs ExistingLine
+
+Question:
+What is the staging and master mapping for ManualShipping vs ExistingLine?
+
+Target source type:
+xlsx
+
+NotebookLM answer:
+{
+  "answer": "Based on the provided documents, there is no explicit mention of the terms \"ManualShipping\" or \"ExistingLine,\" nor is there a specific \"staging and master mapping\" comparing the two. \n\nHowever, the sources do detail the system's master data mapping framework and how manual logistics operations are handle[REDACTED_LOCAL_PATH]
+  "conversation_id": "4dfcc9a1-7f3f-4b51-9a5f-752e1d17fe07",
+  "sources_used": [
+    "4136ccde-734b-42ae-bf2a-f51afead4e8d",
+    "1508e6a1-8c9a-480b-8697-c43d08a5db01"
+  ],
+  "citations": {
+    "1": "4136ccde-734b-42ae-bf2a-f51afead4e8d",
+    "2": "4136ccde-734b-42ae-bf2a-f51afead4e8d",
+    "3": "1508e6a1-8c9a-480b-8697-c43d08a5db01",
+    "4": "1508e6a1-8c9a-480b-8697-c43d08a5db01"
+  },
+  "references": [
+    {
+      "source_id": "4136ccde-734b-42ae-bf2a-f51afead4e8d",
+      "citation_number": 1,
+      "cited_text": "ECR （電気） ・変更連絡（製造） ・QA最終承認 2026.01更新 T/C O/C T/C-O/C マッピング Process C21 Comp Op. C21-1 Parts A0 REV01└ Rev 01 └ └ └ 組立BOP Execution Step└ WF_C21 ERP Route Workflow Spec 1 Operation└ Resource Group└ Resource└ Factory└ └ └ Product A0└ Resource└ BOE Plant Work area└ Resource└ Resource Type└ T/C O/C Parts_WC1 Comp Op. 供給元-1 Parts A0 REV01└ Rev 01 └ └ └ 供給BOP Execution Step└ Parts_WC1 ERP Route Workflow Spec Operation└ Resource Group└ Resource└ Factory└ └ └ Resource└ BOE Plant Work area└ Resource└ Comp Op. 供給先-1"
+    },
+    {
+      "source_id": "4136ccde-734b-42ae-bf2a-f51afead4e8d",
+      "citation_number": 2,
+      "cited_text": "Parts A0 Rev 01 └ └ └ Execution Step└ Spec Operation└ Resource Group└ Resource└ Factory└ └ Resource└ 供給元 供給先 組立用 供給用 ERP BOM Comp Op. C21-2 Parts C0 Rev 01 └ └ └ Spec 2 Operation└ Resource Group└ Resource└ Product B0└ Route step 1 Route step 2 ※複数品目有 ※単一品目Parts B0└ Product C0└ 工程 生産品 部品 実行step 品目_供給先W.C. やじ る Workflow (製造) Name 3A2V900630 生産品目 Workflow (供給) Name 302ND19100_0010_YB1000320004 品目&\"_\"&供給先W.C. | Revision 0010 製造ver. | Revision 01 W/FのREV | Status Active | Status Active | StepName Y302V900010101 BOP上の工程ID | StepName 302ND19100_Y302V9S1010106 品目&\"_\"&BOP上の工程ID"
+    },
+    {
+      "source_id": "1508e6a1-8c9a-480b-8697-c43d08a5db01",
+      "citation_number": 3,
+      "cited_text": "出庫情報 情報登録 ハンディターミナル 現品票情報 情報登録 CTUコントローラ 出庫完了 現品票情報 CNMOM 在庫管理テーブル オリコン 非オリコン 1 2 3 4 5 6 システム連携図（出庫） テーブルレイアウト システム名 テーブル名 3 部品出庫 T_PARTS_OUT 合計 270 byte № データ項目名（日本語） （英字） タイプ 長さ NULL P.key Idx1 Idx2 Idx3 Auto Default 備 考 1 出庫タイプ OUT_TYPE varchar 1 '':通常出庫 '1':マニュアル出庫(在庫移動対象外) 2 購買発注番号 PO_NO varchar 10 1 3 購買発注明細番号 PO_DETAIL_NO varchar 5 2 4 納品キー番号 PO_SEP_KEY varchar 4 3 5 箱連番 CASE_SEQNO varchar 10 4 6 供給ライン SUP_LINE varchar 10 MES_出庫指示情報①(R3ライン保管場所？) 7 供給工程 SUP_PROCESS varchar 20 MES_出庫指示情報①(BOPからの配膳工程)"
+    },
+    {
+      "source_id": "1508e6a1-8c9a-480b-8697-c43d08a5db01",
+      "citation_number": 4,
+      "cited_text": "検査テーブル CNMOM R/3 在庫転送テーブル 保管場所 コンベア CNMOM I/Fツール オリコン情報 統括PLC QR情報 検収状況 ブロック情報 I/Fツール 検収完了 棚番情報 Athena MFP 納品伝票情報 伝票読み取り デパレロボット 検査有無 検査場搬送 ACR モニター 検収状況確認 オリコンゲート CNMOM I/Fツール ベンダー出荷情報 Sテーブル CNMOM I/Fツール システム連携図（入庫） 未使用 未使用 未使用 未 使 用 未使用 未使用 1 2 3 未使用 Sテーブル VendorShippingInfo テーブルレイアウト システム名 テーブル名 3 部品入庫 T_PARTS_RECIEVE 合計 647 byte № データ項目名（日本語） （英字） タイプ 長さ NULL P.key Idx1 Idx2 Idx3 Auto Default 備 考 1 入庫タイプ RECEIVE_TYPE varchar 1 '':通常入庫 '1':マニュアル入庫(検収対象外) 2 オリコンID ORICON_ID varchar 30 3 品目コード ITEM_CODE varchar 20 ベンダー現品票情報(EDIのみは空白) 4 品目改訂レベル ITEM_REV varchar 2 ベンダー現品票情報(EDIのみは空白) 5 入数 INNER_QTY decimal 6 ベンダー現品票情報(EDIのみは空白) 6 ベンダーロット VENDOR_LOT varchar 50 ベンダー現品票情報(EDIのみは空白) 7 荷受(現品票)HTユーザーID TAG_READ_HTID varchar 100 ベンダー現品票情報(EDIのみは空白) 8 購買発注番号 PO_NO varchar 10 1 ベンダー現品票情報(EDIのみは空白) 9 購買発注明細番号 PO_DETAIL_NO varchar 5 2 ＥＤＩ現品票情報(必ず登録) 10 納品キー番号 PO_SEP_KEY varchar 4 3 ＥＤＩ現品票情報(必ず登録) 11 箱連番 CASE_SEQNO varchar 10 4 ＥＤＩ現品票情報(必ず登録) 12 注文数量 ORDER_QTY decimal 12 ＥＤＩ現品票情報(必ず登録) 13 品目 ORDER_ITEM_CODE varchar 18 ＥＤＩ現品票情報(必ず登録) 14 Rev ORDER_ITEM_REV varchar 2 ＥＤＩ現品票情報(必ず登録) 15 出荷数量 SHIP_QTY decimal 12 ＥＤＩ現品票情報(必ず登録)箱入数 16 製造ロット MANUFACTUAL_LOT varchar 50 ＥＤＩ現品票情報(必ず登録) 17 インボイス番号 INVOICE_NO varchar 25 ＥＤＩ現品票情報(必ず登録) 18 オリコン状態 ORICON_STATUS varchar 16 オリコンのチェック結果状態を示すコード 19 格納方法 HOUSE_METHOD varchar 1 '0':倉庫へ格納 '1':検査 20 荷受(伝票)HTユーザーID SLIP_READ_HTID varchar 12 21 データ連携時間１ IF_DATE datetime 14 22 オリコン重量 ORICON_WEIGHT int 3 単位グラム 23 入庫保管場所 STORAGE_PLACE varchar 10 24 格納口 HOUSE_ENTRANCE varchar 20 25 格納指示FLG HOUSE_ORDER_FLG varchar 1 '':未指示,'1':指示済 26 格納先棚番 HOUSE_SHELF varchar 20 27 データ連携時間２ IF2_DATE datetime 14 28 格納作業開始FLG HOUSE_START_FLG varchar 1 '':未指示,'1':指示済 29 格納完了FLG HOUSE_FINISH_FLG varchar 1 '':未指示,'1':指示済 30 格納完了時間 HOUSE_FINISH_DATE datetime 14 31 レコード更新者 UPD_USER varchar 50 32 レコード更新日 UPD_DATE datetime 14 33 CSVファイル名 CSV_FILENAME varchar 100 34 SEQ SEQ decimal 10 1 1 オート番号 35 36 37"
+    }
+  ]
+}
+
+NotebookLM citations/source notes:
+See answer text for NotebookLM footnotes if any.
+
+NotebookLM limitations / uncertainty:
+Unknown (depends on NLM model behavior)
+
+NotebookLM strict score:
+Not automatically scored
+
+NotebookLM winner label:
+human_review_required
+
+========================================
+
+## Q02 — Excel-heavy/WMS/MOM/AGV handoff
+
+Question:
+Describe the data handoff and interface table relationships between WMS, MOM, and AGV.
+
+Target source type:
+xlsx
+
+NotebookLM answer:
+{
+  "answer": "The data handoff and interface relationships between the WMS (Warehouse Management System), MOM (Manufacturing Operations Management), and AGVs (Automated Guided Vehicles) rely on intermediate database tables (`中間DB`) that act as communication bridges [1]. These tables use specific status flags, timestamps, and coordinates to trigger physical movements across the factory floor.\n\nHere is how the data handoff works across the system[REDACTED_LOCAL_PATH]
+  "conversation_id": "4dfcc9a1-7f3f-4b51-9a5f-752e1d17fe07",
+  "sources_used": [
+    "1508e6a1-8c9a-480b-8697-c43d08a5db01",
+    "88fc0018-c2be-43a8-9de9-732f9c041767"
+  ],
+  "citations": {
+    "1": "1508e6a1-8c9a-480b-8697-c43d08a5db01",
+    "2": "1508e6a1-8c9a-480b-8697-c43d08a5db01",
+    "3": "1508e6a1-8c9a-480b-8697-c43d08a5db01",
+    "4": "1508e6a1-8c9a-480b-8697-c43d08a5db01",
+    "5": "1508e6a1-8c9a-480b-8697-c43d08a5db01",
+    "6": "1508e6a1-8c9a-480b-8697-c43d08a5db01",
+    "7": "1508e6a1-8c9a-480b-8697-c43d08a5db01",
+    "8": "88fc0018-c2be-43a8-9de9-732f9c041767",
+    "9": "88fc0018-c2be-43a8-9de9-732f9c041767",
+    "10": "88fc0018-c2be-43a8-9de9-732f9c041767",
+    "11": "88fc0018-c2be-43a8-9de9-732f9c041767"
+  },
+  "references": [
+    {
+      "source_id": "1508e6a1-8c9a-480b-8697-c43d08a5db01",
+      "citation_number": 1,
+      "cited_text": "・ 品質管理 ・ 在庫管理 ・ パフォーマンス分析 ・ トレーサビリティの確保 ➤ MOMが「製造全体の統括」 を担うのに対し MESは「現場での実行」 に特化している MOMシステムの構成 OPCENTER Connect MOM(CNMOM) CN4T OPCENTER EX CR Manufacturing WIP トラッキング 系譜管理 仕様 ワークフロー管理 リーンフロー 工程データ収集 リワーク・返品管理 装置・資産トラッキング ディスパッチ管理 手順電子管理 電子承認 作業者管理 保守管理 ラベルプリンティング SPCSQC AQL サンプリング Customer Equipment ERPPLM OPCENTER Connect MOM(CNMOM) ERPとの連携 本体・ユニットの 工程計画作成 工程／品目定義 （入庫、出庫、生産） 実績登録／出力／参照 PLCとのデータ連携 Process Automation Control (PAC) OPCENTER APS (Scheduling) 詳細スケジューリング 製造・受入指示／在庫移動・製造実績BOP 生産ライン（PLC、中間DB）"
+    },
+    {
+      "source_id": "1508e6a1-8c9a-480b-8697-c43d08a5db01",
+      "citation_number": 2,
+      "cited_text": "検査テーブル CNMOM R/3 在庫転送テーブル 保管場所 コンベア CNMOM I/Fツール オリコン情報 統括PLC QR情報 検収状況 ブロック情報 I/Fツール 検収完了 棚番情報 Athena MFP 納品伝票情報 伝票読み取り デパレロボット 検査有無 検査場搬送 ACR モニター 検収状況確認 オリコンゲート CNMOM I/Fツール ベンダー出荷情報 Sテーブル CNMOM I/Fツール システム連携図（入庫） 未使用 未使用 未使用 未 使 用 未使用 未使用 1 2 3 未使用 Sテーブル VendorShippingInfo テーブルレイアウト システム名 テーブル名 3 部品入庫 T_PARTS_RECIEVE 合計 647 byte № データ項目名（日本語） （英字） タイプ 長さ NULL P.key Idx1 Idx2 Idx3 Auto Default 備 考 1 入庫タイプ RECEIVE_TYPE varchar 1 '':通常入庫 '1':マニュアル入庫(検収対象外) 2 オリコンID ORICON_ID varchar 30 3 品目コード ITEM_CODE varchar 20 ベンダー現品票情報(EDIのみは空白) 4 品目改訂レベル ITEM_REV varchar 2 ベンダー現品票情報(EDIのみは空白) 5 入数 INNER_QTY decimal 6 ベンダー現品票情報(EDIのみは空白) 6 ベンダーロット VENDOR_LOT varchar 50 ベンダー現品票情報(EDIのみは空白) 7 荷受(現品票)HTユーザーID TAG_READ_HTID varchar 100 ベンダー現品票情報(EDIのみは空白) 8 購買発注番号 PO_NO varchar 10 1 ベンダー現品票情報(EDIのみは空白) 9 購買発注明細番号 PO_DETAIL_NO varchar 5 2 ＥＤＩ現品票情報(必ず登録) 10 納品キー番号 PO_SEP_KEY varchar 4 3 ＥＤＩ現品票情報(必ず登録) 11 箱連番 CASE_SEQNO varchar 10 4 ＥＤＩ現品票情報(必ず登録) 12 注文数量 ORDER_QTY decimal 12 ＥＤＩ現品票情報(必ず登録) 13 品目 ORDER_ITEM_CODE varchar 18 ＥＤＩ現品票情報(必ず登録) 14 Rev ORDER_ITEM_REV varchar 2 ＥＤＩ現品票情報(必ず登録) 15 出荷数量 SHIP_QTY decimal 12 ＥＤＩ現品票情報(必ず登録)箱入数 16 製造ロット MANUFACTUAL_LOT varchar 50 ＥＤＩ現品票情報(必ず登録) 17 インボイス番号 INVOICE_NO varchar 25 ＥＤＩ現品票情報(必ず登録) 18 オリコン状態 ORICON_STATUS varchar 16 オリコンのチェック結果状態を示すコード 19 格納方法 HOUSE_METHOD varchar 1 '0':倉庫へ格納 '1':検査 20 荷受(伝票)HTユーザーID SLIP_READ_HTID varchar 12 21 データ連携時間１ IF_DATE datetime 14 22 オリコン重量 ORICON_WEIGHT int 3 単位グラム 23 入庫保管場所 STORAGE_PLACE varchar 10 24 格納口 HOUSE_ENTRANCE varchar 20 25 格納指示FLG HOUSE_ORDER_FLG varchar 1 '':未指示,'1':指示済 26 格納先棚番 HOUSE_SHELF varchar 20 27 データ連携時間２ IF2_DATE datetime 14 28 格納作業開始FLG HOUSE_START_FLG varchar 1 '':未指示,'1':指示済 29 格納完了FLG HOUSE_FINISH_FLG varchar 1 '':未指示,'1':指示済 30 格納完了時間 HOUSE_FINISH_DATE datetime 14 31 レコード更新者 UPD_USER varchar 50 32 レコード更新日 UPD_DATE datetime 14 33 CSVファイル名 CSV_FILENAME varchar 100 34 SEQ SEQ decimal 10 1 1 オート番号 35 36 37"
+    },
+    {
+      "source_id": "1508e6a1-8c9a-480b-8697-c43d08a5db01",
+      "citation_number": 3,
+      "cited_text": "PLC MOM WMS ACRCon PLC(MOM, PAC経由) オリコンゲート通過時にエラー(重量、重複…)が存在し なければ書き込み WMS ゲート通過後、 HOUSE_ORDER_FLG＝’1’かつHOUSE_SHELF ＝‘’の場合に書き込み ACR Controller（MATECON） HOUSE‗START‗FLG： HOUSE_SHELFが定められているかつ HOUSE_START_FLG＝’’の場合に書き込み HOUSE‗START‗FLG： P-Rackに格納が完了した段階で書き込み 1 2 3 テーブルレイアウト（入庫） ACRコントローラ 出庫ゲート 出庫処理テーブル OPCサーバー R/3 製造指図 CNMOM コンベア 進度管理 指図・S/No I/Fツール Sテーブル CNMOM WMS 棚番情報 払出先情報 統括PLC オリコン情報 OpcenterEXCR APS 供給計画 出庫情報 PAC R/3 在庫転送テーブル 保管場所 CNMOM I/Fツール CTUトリガ CNMOM 生産履歴登録システム 緊急停止 状態コード連携テーブル 停止指示 ACRコントローラ"
+    },
+    {
+      "source_id": "1508e6a1-8c9a-480b-8697-c43d08a5db01",
+      "citation_number": 4,
+      "cited_text": "出庫情報 情報登録 ハンディターミナル 現品票情報 情報登録 CTUコントローラ 出庫完了 現品票情報 CNMOM 在庫管理テーブル オリコン 非オリコン 1 2 3 4 5 6 システム連携図（出庫） テーブルレイアウト システム名 テーブル名 3 部品出庫 T_PARTS_OUT 合計 270 byte № データ項目名（日本語） （英字） タイプ 長さ NULL P.key Idx1 Idx2 Idx3 Auto Default 備 考 1 出庫タイプ OUT_TYPE varchar 1 '':通常出庫 '1':マニュアル出庫(在庫移動対象外) 2 購買発注番号 PO_NO varchar 10 1 3 購買発注明細番号 PO_DETAIL_NO varchar 5 2 4 納品キー番号 PO_SEP_KEY varchar 4 3 5 箱連番 CASE_SEQNO varchar 10 4 6 供給ライン SUP_LINE varchar 10 MES_出庫指示情報①(R3ライン保管場所？) 7 供給工程 SUP_PROCESS varchar 20 MES_出庫指示情報①(BOPからの配膳工程)"
+    },
+    {
+      "source_id": "1508e6a1-8c9a-480b-8697-c43d08a5db01",
+      "citation_number": 5,
+      "cited_text": "8 品目コード ITEM_CODE varchar 20 9 品目改訂レベル ITEM_REV varchar 2 10 出庫ゲート通過指示時間 GATEOUT_ORDER_TIME datetime 14 MES_出庫指示情報①(出庫ゲートの通過指示時間/ACR-CONが処理順序制御) 11 データ連携時間１ DATA_IF_TIME1 datetime 14 ※旧名：IF_DATE 12 出庫棚番 OUT_SHELF varchar 12 WMS_出庫対象指示情報② 13 オリコンID ORICON_ID varchar 30 14 オリコン重量 ORICON_WEIGHT int 3 15 データ連携時間２ DATA_IF_TIME2 datetime 14 ※旧名：IF2_DATE 16 搬送指示フラグ MOVE_ORDER_FLG varchar 1 ACR-CON_ACR出庫指示フラグ③ 17 データ連携時間2.5 DATA_IF_TIME25 datetime 0 ACR-CON_ACRオリコン積載時間④(ACRオリコン受取時間) 18 搬送完了FLG MOVE_FIN_FLG varchar 1 ACR-CON_ACR出庫完了フラグ④"
+    },
+    {
+      "source_id": "1508e6a1-8c9a-480b-8697-c43d08a5db01",
+      "citation_number": 6,
+      "cited_text": "WMS 倉庫在庫のORICON_IDが存在かつ OUT＿SHELF＝’’の場合に書き込み MOM 供給予定時間から逆算した時間になったら供給 指示として書き込み ACR Controller MOVE_ORDER_FLG,DATE_IF_TIME25： HOUSE_SHELFが書かれているかつ MOVE_ORDER_FLG=‘’の場合に書き込み MOVE_FIN_FLG,DATA_IF_TIME3： CTU受け取り場所まで搬送完了した段階で書き込み CTU Controller DELIVERY_FIN_FLG=‘2’： CTU受け取り時に書き込み DELIVERY_FIN_FLG=‘1’, DATA_IF_TIME5: 供給完了時に書き込み PLC 出庫ゲート通過時に書き込み 4 1 2 3 5 6 テーブルレイアウト（出庫） 組立 BOP MOM 生 産 着 手 情 報 連 携 PLM ①工程計画作成 生産着手時刻決定 供給 BOP R/3・進度管理 製造指図 S/No. MOM ②遅延があれば出庫計画修正 生産着手 出庫ゲート通過時刻修正 出庫 出庫ゲート通過時刻に間に合うように出発"
+    },
+    {
+      "source_id": "1508e6a1-8c9a-480b-8697-c43d08a5db01",
+      "citation_number": 7,
+      "cited_text": "19 データ連携時間３ DATA_IF_TIME3 datetime 0 ACR-CON_ACR出庫完了フラグ④(搬送完了FLG書き込み時間) 20 データ連携時間４ DATA_IF_TIME4 datetime 0 出庫ゲート通過実績時間(ゲート通過指示に対する実績時間) 21 データ連携時間５ DATA_IF_TIME5 datetime 0 AGV-CON_AGVオリコン受取時間⑥(搬送工程問合せ時間) 22 配膳完了FLG DELIVERY_FIN_FLG varchar 1 AGV-CON_AGVオリコン配膳完了フラグ⑦ 23 データ連携時間６ DATA_IF_TIME6 datetime 0 1 1 オリコン配膳完了時間⑦ 24 CSVファイル名 CSV_FILENAME varchar 100 25 出庫処理結果 OUT_STATUS varchar 1 '':正常完了 '1':出庫エラー 26 SEQ SEQ decimal 10 オート番号 27 28 29 30 31 32 33 34 35 36 37 WMS ACRCon MOM PLC CTUCon MOM"
+    },
+    {
+      "source_id": "88fc0018-c2be-43a8-9de9-732f9c041767",
+      "citation_number": 8,
+      "cited_text": "#103AGV停止， 地番=05フィード バック 状態：0→1 流れ AGV↑ 工程 地番 狀態 101 C-01 01 2 102 C-05 05 0 103 C-04 04 2 104 C-03 03 2 105 C-02 02 1 …… …… …… …… AGV↑ 工程 地番 狀態 101 C-01 01 2 102 C-05 05 0 103 C-04 04 0 104 C-03 03 2 105 C-02 02 1 …… …… …… …… AGV↑ 工程 地番 狀態 101 C-01 01 2 102 - - - 103 C-05 05 1 104 C-03 03 2 105 C-02 02 1 …… …… …… …… 0：移動中 1：工程到着 2：移動許可 工程ボタン AGV関連テーブル 連携システム本体組立工程テーブル AGV↑ 工程 SN 地番 狀態 101 C-01 64R907 01 2 102 C-05 64R901 05 0 103 C-04 64R903 04 1 104 C-03 64R904 03 2 105 C-02 64R906 02 1 …… …… …… …… ……"
+    },
+    {
+      "source_id": "88fc0018-c2be-43a8-9de9-732f9c041767",
+      "citation_number": 9,
+      "cited_text": "連携システム品質看板テーブル SN↑ 狀態 AGV 64R902 6 106 64R905 3 107 …… …… …… AGV狀態 0：移動中 1：工程到着 2：移動許可 3：LINEOUT 機器狀態 0：OutLine 1：修理待ち 2：却下(修理待ち) 3：修理中 4：修理完了 5：確認待ち 6：確認中 7：確認完了 8：LINE返却待ち 9：LINE返却 10：LINE返却完了 テーブル情報 合計 22 byte № データ項目名（日本語） （英字） タイプ 長さ NULL P.key Idx1 Idx2 Idx3 Auto Default 備　　　考 1 AGV号機番号 MACHINE_NUMBER varchar 3 1 AGVの号機番号 2 地番 ADDRESS varchar 3 マップ上AGVがどこにいるかを示す 3 工程名 CELL varchar 5 どこの工程で作業中か示す 4 状態 PROCESS_STATUS varchar 1 0 作業状態を示す;　NULL:デフォルト値/何もしない, ‘0’: 到着/作業中, '1': 移動中, '2': 作業完了 5 SEQ SEQ decimal 10 1"
+    },
+    {
+      "source_id": "88fc0018-c2be-43a8-9de9-732f9c041767",
+      "citation_number": 10,
+      "cited_text": "②最終工程 製品/ユニット完工SN登録 工程ボタン ③異常/リセット提出 ④ラインストップ時間収集 (KDCと機能検討中) ➋AGVトリガー 工程ボタン ①キーを押すとAGVが次の工程に移動する 工程ボタン システム構成 HT 統括PLC MOM (マテコン) ①②情報から部品供給タイミングをリアルタイムに更新(情報をMOMに連携) ③④情報から部品供給タイミングを再計算(情報をMOMに連携) 現場運用イメージ 先頭工程 HT 統括PLC 最終工程中間工程 中間工程 SNごとに各工程の着手・完了時点を記録・算出 一台完成時まとめて統括PLCへ送信 HT 着手登録(SN、指図) 完工登録(SN) C-1 C-2 C-10C-3… SNを利用する機器、Assy MOM (マテコン) 着完工登録システム·❶着手/完工 着完工登録システム·❶着手/完工 先頭工程 • 着手 最終工程 • 完工 C-1 ①スキャン 着手/完工 ②登録 着手/完工·操作画面 着手／完工 工程名称 ST CO C-1 10:00:00 10:09:59 C-2 10:10:00 10:19:59 C-3 10:20:00 10:29:59"
+    },
+    {
+      "source_id": "88fc0018-c2be-43a8-9de9-732f9c041767",
+      "citation_number": 11,
+      "cited_text": "MOM (マテコン) 工程ボタン システム構成 HT 統括PLC マテコン C01 作業完工→ マテコンが AGV104を走行させる C04C02 C03 AGV104 AGV103 AGV102 AGV101 AGV工程ボタン 処理の流れ 作業完工→ マテコンが AGV103を走行させる 作業完工→ マテコンが AGV102を走行させる 作業完工→ マテコンが AGV101を走行させる 着完工登録システム·➋AGVトリガー 連携DB Pull連携システム AGVトリガー処理の流れ マテコン 工程完工， AGVトリガー AGV 状態連携 マテコン マテコン AGVトリガー AGV移動、到着、 マテコンフィードバック 状態提出 1. 工程ID→C04 2. 工程状態→2 C04工程 状態=1？ 工程状態 1→2 Y N 不動作 AGV状態(本体組立工程テーブ ル) AGV↑ 工程 地番 狀態 101 C-01 01 2 102 C-05 05 0 103 C-04 04 1 104 C-03 03 2 105 C-02 02 1 C04工程 状態=2 #103AGV移動 状態2→0 Y"
+    }
+  ]
+}
+
+NotebookLM citations/source notes:
+See answer text for NotebookLM footnotes if any.
+
+NotebookLM limitations / uncertainty:
+Unknown (depends on NLM model behavior)
+
+NotebookLM strict score:
+Not automatically scored
+
+NotebookLM winner label:
+human_review_required
+
+========================================
+
+## Q03 — Excel-heavy/Mismatch investigation
+
+Question:
+How do you investigate a quantity/container/supply-line mismatch using table evidence?
+
+Target source type:
+xlsx
+
+NotebookLM answer:
+{
+  "answer": "To investigate a mismatch involving quantities, containers (Oricons), and supply lines, you should triangulate data across three core database tables that track the lifecycle of the parts. \n\n**1. Check the `ProcessInventoryControl` Table for Direct Mismatch Evidence**\nThis table is explicitly designed to record in-process inventory modifications and is your primary source for identifying discrepancies at the supply line [1, 2].\n*   Query the table using the **`ORICON_ID`** (the specific container's EPC barcode) or the **`SUP_LINE`** (the specific supply line) [1, 3].\n*   Look directly at the **`CHECK_QTY`** (Quantity Check) field, which explicitly calculates the variance between the system and physical reality [1, 2]. For example, a value of `0` indicates no mismatch, `1` indicates an excess of one unit (1個過多), and `-1` indicates a shortage of one unit (1個不足) [2].\n*   You can also verify the **`QTY`** (Quantity) and **`STATUS`** fields to see the exact quantity recorded at different stages of the process [1, 2]. This table captures the manual corrections made by line leaders when they scan the Oricon's EPC barcode with a Handy Terminal (HT) to override the system inventory [2, 3].\n\n**2. Verify the Dispatch Data in the `T_PARTS_OUT` (Parts Issue) Table**\nIf a mismatch is found at the line, verify what the warehouse actually sent.\n*   Cross-reference the `ORICON_ID` in this table to confirm the intended **`SUP_LINE`** (Supply Line) and **`SUP_PROCESS`** (Supply Process) [4, 5].\n*   Check the **`OUT_TYPE`** (Issue Type) field [4]. If this is marked as `'1'`, it indicates a **Manual Issue (マニュアル出庫)**, which means the transaction was explicitly excluded from standard inventory movement tracking [4]. This manual bypass is a common root cause for tracking mismatches.\n\n**3. Trace the Container's Origin in the `T_PARTS_RECEIVE` (Parts Receive) Table**\nIf the issue wasn't caused during dispatch, trace the container back to the moment it entered the facility.\n*   Look up the `ORICON_ID` to compare the actual **`INNER_QTY`** (Contained Quantity) and **`SHIP_QTY`** (Shipped Quantity) against the `ORDER_QTY` [6]. \n*   Check the **`RECEIVE_TYPE`** (Receive Type) field [6]. If it is set to `'1'`, it was a **Manual Receive (マニュアル入庫)**, meaning it bypassed the standard inspection process [6]. This could explain why a quantity mismatch entered the system undetected.",
+  "conversation_id": "4dfcc9a1-7f3f-4b51-9a5f-752e1d17fe07",
+  "sources_used": [
+    "88fc0018-c2be-43a8-9de9-732f9c041767",
+    "1508e6a1-8c9a-480b-8697-c43d08a5db01"
+  ],
+  "citations": {
+    "1": "88fc0018-c2be-43a8-9de9-732f9c041767",
+    "2": "88fc0018-c2be-43a8-9de9-732f9c041767",
+    "3": "88fc0018-c2be-43a8-9de9-732f9c041767",
+    "4": "1508e6a1-8c9a-480b-8697-c43d08a5db01",
+    "5": "1508e6a1-8c9a-480b-8697-c43d08a5db01",
+    "6": "1508e6a1-8c9a-480b-8697-c43d08a5db01"
+  },
+  "references": [
+    {
+      "source_id": "88fc0018-c2be-43a8-9de9-732f9c041767",
+      "citation_number": 1,
+      "cited_text": "連携コード登録 在庫コード連携テーブル 获取箱EPC在庫量 MOM 在庫指示修正登録 出庫処理テーブル 修正 物理名： dbo.ProcessInventoryControl ライン 工程 品目コード 品目改訂レベル オリコンID 購買発注番号 購買発注明細番号 納品キー番号 箱連番 数量 状態 数量チェック ID SUP_LINE PROCESS_ID ITEM_CODE ITEM_REV ORICON_ID PO_NO PO_DETAIL_NO PO_SEP_KEY CASE_SEQNO QTY STATUS CHECK_QTY decimal verchar(4) verchar(20) verchar(12) verchar(2) verchar(30) verchar(10) verchar(5) verchar(4) verchar(10) verchar(12) verchar(2) verchar(6) 1 0010 Y302V90001010101 3A2V900860 01 5105453184400101000001000532 1023052301 00010 +001 001/001 4 01 -5 ↑整数9桁＋小数点3桁（EDI現品票と同様）"
+    },
+    {
+      "source_id": "88fc0018-c2be-43a8-9de9-732f9c041767",
+      "citation_number": 2,
+      "cited_text": "MOM管理外出庫→ 0010 Y302V90001010101 3A2V900860 01 1023052301 00010 +001 001/001 50 03 ※组长、領班 MOMHT 在庫管理 連携テーブル SUP_LINE PROCESS_ID ITEM_CODE ITEM_REV ORICON_ID PO_NO PO_DETAIL_NO PO_SEP_KEY CASE_SEQNO QTY STATUS CHECK_QTY ※必須 ラインアウト 復帰登録❶ 修理内容入力❷ 看板 戻入／分割 入庫単作成❺ EDI印刷 部品供給停止 ／再開登録 ❸ 工程在庫修正❹ 製造人員登録❻ 生産履歴 登録システム 生産履歴登録システム構成 MOM 連携DB 連携 システム 戻入／分割入庫単作成 戻入 部品が倉庫に 戻る 新しいEDI票印刷、 貼付け 戻入 分割 PO確認 新しいEDI票印刷、 貼付け 入庫 元の箱のEDI票 をスキャン，数量修正 物流担当 箱分割、元のEDI票 をスキャン、数量修正 物流担当 戻入／分割フロー 携帯式プリンター 携帯式プリンター ※ オリコンをオリコンゲートに通過させるとき、オリコンに貼り付けたEDI入庫票はただ一回使用するこ とはできないので、もう一度入庫したら重複入庫と判断され、エラーが出るので、改めて入庫票を印刷 しなければいけない。"
+    },
+    {
+      "source_id": "88fc0018-c2be-43a8-9de9-732f9c041767",
+      "citation_number": 3,
+      "cited_text": "DELIVERY_FIN_FLG=2 CTU 出発 DELIVERY_FIN_FLG=1  目的地到着 ※必須 ラインアウト 復帰登録❶ 修理内容入力❷ 看板 戻入／分割 入庫単作成❺ EDI印刷 部品供給停止 ／再開登録 ❸ 工程在庫修正❹ 製造人員登録❻ 生産履歴 登録システム 生産履歴登録システム構成 MOM 連携DB 連携 システム 段階 製造部 倉庫 ①修正必要 処理情報流れ(AMS投入後) Oricon 在庫量修正 （MOM） 工程在庫修正 Oricon 在庫量修正 (組長/領班) Oricon EPC番号はオリコンの独自コードで、MOMはEPC番号に基 づき各部品のLine在庫数を記録する。実際の生産数と合わ せて出庫タイミングを計算する。 ※HTでEPC番号をスキャンしMOM在庫数を修正 ※组长、領班 MOM 工程在庫修正•操作画面 HT EPCを読取 数量修正 Oricon EPC番号 読取る 14 _ データ修正 [用途]:仕掛品のラインアウト処置-在庫修正 [機能]: ① 工程在庫修正の処理流れ: 工程在庫修正 製造／物流責任者 工程在庫修正 生産履歴登録システム"
+    },
+    {
+      "source_id": "1508e6a1-8c9a-480b-8697-c43d08a5db01",
+      "citation_number": 4,
+      "cited_text": "出庫情報 情報登録 ハンディターミナル 現品票情報 情報登録 CTUコントローラ 出庫完了 現品票情報 CNMOM 在庫管理テーブル オリコン 非オリコン 1 2 3 4 5 6 システム連携図（出庫） テーブルレイアウト システム名 テーブル名 3 部品出庫 T_PARTS_OUT 合計 270 byte № データ項目名（日本語） （英字） タイプ 長さ NULL P.key Idx1 Idx2 Idx3 Auto Default 備 考 1 出庫タイプ OUT_TYPE varchar 1 '':通常出庫 '1':マニュアル出庫(在庫移動対象外) 2 購買発注番号 PO_NO varchar 10 1 3 購買発注明細番号 PO_DETAIL_NO varchar 5 2 4 納品キー番号 PO_SEP_KEY varchar 4 3 5 箱連番 CASE_SEQNO varchar 10 4 6 供給ライン SUP_LINE varchar 10 MES_出庫指示情報①(R3ライン保管場所？) 7 供給工程 SUP_PROCESS varchar 20 MES_出庫指示情報①(BOPからの配膳工程)"
+    },
+    {
+      "source_id": "1508e6a1-8c9a-480b-8697-c43d08a5db01",
+      "citation_number": 5,
+      "cited_text": "8 品目コード ITEM_CODE varchar 20 9 品目改訂レベル ITEM_REV varchar 2 10 出庫ゲート通過指示時間 GATEOUT_ORDER_TIME datetime 14 MES_出庫指示情報①(出庫ゲートの通過指示時間/ACR-CONが処理順序制御) 11 データ連携時間１ DATA_IF_TIME1 datetime 14 ※旧名：IF_DATE 12 出庫棚番 OUT_SHELF varchar 12 WMS_出庫対象指示情報② 13 オリコンID ORICON_ID varchar 30 14 オリコン重量 ORICON_WEIGHT int 3 15 データ連携時間２ DATA_IF_TIME2 datetime 14 ※旧名：IF2_DATE 16 搬送指示フラグ MOVE_ORDER_FLG varchar 1 ACR-CON_ACR出庫指示フラグ③ 17 データ連携時間2.5 DATA_IF_TIME25 datetime 0 ACR-CON_ACRオリコン積載時間④(ACRオリコン受取時間) 18 搬送完了FLG MOVE_FIN_FLG varchar 1 ACR-CON_ACR出庫完了フラグ④"
+    },
+    {
+      "source_id": "1508e6a1-8c9a-480b-8697-c43d08a5db01",
+      "citation_number": 6,
+      "cited_text": "検査テーブル CNMOM R/3 在庫転送テーブル 保管場所 コンベア CNMOM I/Fツール オリコン情報 統括PLC QR情報 検収状況 ブロック情報 I/Fツール 検収完了 棚番情報 Athena MFP 納品伝票情報 伝票読み取り デパレロボット 検査有無 検査場搬送 ACR モニター 検収状況確認 オリコンゲート CNMOM I/Fツール ベンダー出荷情報 Sテーブル CNMOM I/Fツール システム連携図（入庫） 未使用 未使用 未使用 未 使 用 未使用 未使用 1 2 3 未使用 Sテーブル VendorShippingInfo テーブルレイアウト システム名 テーブル名 3 部品入庫 T_PARTS_RECIEVE 合計 647 byte № データ項目名（日本語） （英字） タイプ 長さ NULL P.key Idx1 Idx2 Idx3 Auto Default 備 考 1 入庫タイプ RECEIVE_TYPE varchar 1 '':通常入庫 '1':マニュアル入庫(検収対象外) 2 オリコンID ORICON_ID varchar 30 3 品目コード ITEM_CODE varchar 20 ベンダー現品票情報(EDIのみは空白) 4 品目改訂レベル ITEM_REV varchar 2 ベンダー現品票情報(EDIのみは空白) 5 入数 INNER_QTY decimal 6 ベンダー現品票情報(EDIのみは空白) 6 ベンダーロット VENDOR_LOT varchar 50 ベンダー現品票情報(EDIのみは空白) 7 荷受(現品票)HTユーザーID TAG_READ_HTID varchar 100 ベンダー現品票情報(EDIのみは空白) 8 購買発注番号 PO_NO varchar 10 1 ベンダー現品票情報(EDIのみは空白) 9 購買発注明細番号 PO_DETAIL_NO varchar 5 2 ＥＤＩ現品票情報(必ず登録) 10 納品キー番号 PO_SEP_KEY varchar 4 3 ＥＤＩ現品票情報(必ず登録) 11 箱連番 CASE_SEQNO varchar 10 4 ＥＤＩ現品票情報(必ず登録) 12 注文数量 ORDER_QTY decimal 12 ＥＤＩ現品票情報(必ず登録) 13 品目 ORDER_ITEM_CODE varchar 18 ＥＤＩ現品票情報(必ず登録) 14 Rev ORDER_ITEM_REV varchar 2 ＥＤＩ現品票情報(必ず登録) 15 出荷数量 SHIP_QTY decimal 12 ＥＤＩ現品票情報(必ず登録)箱入数 16 製造ロット MANUFACTUAL_LOT varchar 50 ＥＤＩ現品票情報(必ず登録) 17 インボイス番号 INVOICE_NO varchar 25 ＥＤＩ現品票情報(必ず登録) 18 オリコン状態 ORICON_STATUS varchar 16 オリコンのチェック結果状態を示すコード 19 格納方法 HOUSE_METHOD varchar 1 '0':倉庫へ格納 '1':検査 20 荷受(伝票)HTユーザーID SLIP_READ_HTID varchar 12 21 データ連携時間１ IF_DATE datetime 14 22 オリコン重量 ORICON_WEIGHT int 3 単位グラム 23 入庫保管場所 STORAGE_PLACE varchar 10 24 格納口 HOUSE_ENTRANCE varchar 20 25 格納指示FLG HOUSE_ORDER_FLG varchar 1 '':未指示,'1':指示済 26 格納先棚番 HOUSE_SHELF varchar 20 27 データ連携時間２ IF2_DATE datetime 14 28 格納作業開始FLG HOUSE_START_FLG varchar 1 '':未指示,'1':指示済 29 格納完了FLG HOUSE_FINISH_FLG varchar 1 '':未指示,'1':指示済 30 格納完了時間 HOUSE_FINISH_DATE datetime 14 31 レコード更新者 UPD_USER varchar 50 32 レコード更新日 UPD_DATE datetime 14 33 CSVファイル名 CSV_FILENAME varchar 100 34 SEQ SEQ decimal 10 1 1 オート番号 35 36 37"
+    }
+  ]
+}
+
+NotebookLM citations/source notes:
+See answer text for NotebookLM footnotes if any.
+
+NotebookLM limitations / uncertainty:
+Unknown (depends on NLM model behavior)
+
+NotebookLM strict score:
+Not automatically scored
+
+NotebookLM winner label:
+human_review_required
+
+========================================
+
+## Q04 — PDF/PPTX process/Automatic vs manual boundary
+
+Question:
+What is the MOM/AMS business flow regarding the automatic vs manual/owner review boundary?
+
+Target source type:
+pdf
+
+NotebookLM answer:
+{
+  "answer": "Within the MOM/AMS architecture, the boundary between automated system processes and manual interventions or \"owner reviews\" is strictly defined across four main business flow[REDACTED_LOCAL_PATH]
+  "conversation_id": "4dfcc9a1-7f3f-4b51-9a5f-752e1d17fe07",
+  "sources_used": [
+    "4136ccde-734b-42ae-bf2a-f51afead4e8d",
+    "88fc0018-c2be-43a8-9de9-732f9c041767",
+    "b7137170-f360-425b-a478-759a7a203a1a",
+    "1508e6a1-8c9a-480b-8697-c43d08a5db01"
+  ],
+  "citations": {
+    "1": "4136ccde-734b-42ae-bf2a-f51afead4e8d",
+    "2": "4136ccde-734b-42ae-bf2a-f51afead4e8d",
+    "3": "4136ccde-734b-42ae-bf2a-f51afead4e8d",
+    "4": "4136ccde-734b-42ae-bf2a-f51afead4e8d",
+    "5": "4136ccde-734b-42ae-bf2a-f51afead4e8d",
+    "6": "88fc0018-c2be-43a8-9de9-732f9c041767",
+    "7": "88fc0018-c2be-43a8-9de9-732f9c041767",
+    "8": "88fc0018-c2be-43a8-9de9-732f9c041767",
+    "9": "88fc0018-c2be-43a8-9de9-732f9c041767",
+    "10": "88fc0018-c2be-43a8-9de9-732f9c041767",
+    "11": "b7137170-f360-425b-a478-759a7a203a1a",
+    "12": "b7137170-f360-425b-a478-759a7a203a1a",
+    "13": "1508e6a1-8c9a-480b-8697-c43d08a5db01",
+    "14": "1508e6a1-8c9a-480b-8697-c43d08a5db01",
+    "15": "88fc0018-c2be-43a8-9de9-732f9c041767",
+    "16": "b7137170-f360-425b-a478-759a7a203a1a",
+    "17": "88fc0018-c2be-43a8-9de9-732f9c041767",
+    "18": "88fc0018-c2be-43a8-9de9-732f9c041767"
+  },
+  "references": [
+    {
+      "source_id": "4136ccde-734b-42ae-bf2a-f51afead4e8d",
+      "citation_number": 1,
+      "cited_text": "AMS設計変更 2026年 04月01日 変更管理 指図登録 ／発行 PR (Problem Report) 部品調達 生産日程 計画 ECR PL→(メカ) ECN 1 承認 E-BOM (メカ) ECN 2 承認 E-BOM (電気) ECN 3 承認 E-BOM (ソフト) ECN 1 承認 M-BOM (メカ) MCN 連携 MOM連携 ECN 4 承認 安規申請 ECN 2 承認 M-BOM (電気) ECN 3 承認 M-BOM (ソフト) Team Center R3 所要量計算 Opcenter 製造計画 製造実行 ECO投入 シリアル登録 品目／REV R3-BOM 組立BOP 供給BOP BOE 製造完了 ・品質不具合 ・改善要望 ・変更連絡（部品） ECO 受取 (Eng. Change Order) 供給計画 ECO 切替更新 指図 ・問題箇所確認 ・対策決定 ・QA実行承認 指図完了 ／BF 完了 消費部材 全関連ECN承認後 在庫切れ確認 ECR （ソフト） ECR （BOP） ECR （治工具） ECR （暗記申請） ECN 4 承認 BOP ECN 4 承認 治具設備（ソフト含む）"
+    },
+    {
+      "source_id": "4136ccde-734b-42ae-bf2a-f51afead4e8d",
+      "citation_number": 2,
+      "cited_text": "品目 Is ROR 部品a -01 True→False 部品a -02 False→True 製造実行 MFG Order Workflow：生産品目A -01 ERP BOM：生産品目A -01 ■品目変更時 MFG Order Workflow：生産品目A -01→02 ERP BOM：生産品目A -01→02 W/F Is ROR 生産品目A -01 True→False 生産品目A -02 False→True ※以降新規W/F作成時は02を適応 No Yes Yes 投入シリアル 登録 部品 新品？ 製造完了 Yes No 自動切替 単純/ ランチェン 自動切替 日付指定切替 は手動設定 品目変更時は 手動設定 2026.01更新 設変パターン 切替タイミング 部品 工程 作業 日単位 日中 ① 部品 REVUP ー ー 〇 (a0-01 → a0-02) ー 変更 〇 ② 部品追加削除／RPS版数UP ー ー 〇 〇 (a0 → b0 ／ a0-02 → a1-01) ー 変更 〇 〇 ③ 部品追加 ー 追加 〇 追加 追加 〇 ④ 部品削除 ー 削除 〇 削除 削除 〇"
+    },
+    {
+      "source_id": "4136ccde-734b-42ae-bf2a-f51afead4e8d",
+      "citation_number": 3,
+      "cited_text": "生産 X0 or Y0 IS ROR Pro. C21_生産品目 Rev 05└ Rev 06└ true false Pro. C21_生産品目 Rev 05└ Rev 06└ false true False→True(手動) Opcenter 設計変更自動切替 在庫 有り？ 部品2nd 登録有？ 部品 新REV 登録有？ 部品要求数と 在庫数確認 2nd部品在庫数 確認 生産品 新REV 登録有？ 新REV部品 在庫数確認 在庫 有り？ 部品変更 ? Mfg Order 新BOPに 一時的更新 追加部品 在庫数確認 在庫 有り？ 供給指示作成 2nd追加 ？ 2nd部品在庫数 確認 Mfg Order 更新確定 Err 不足 部品変更/ 2nd追加 混在？ No Yes No Yes No No Err 不足 Yes Yes No Yes Yes Err 不足 No Yes Yes No ログ 出力 ①部品REVUP ②部品変更 ⑧2nd追加 AMS倉庫在庫数確認 WorkflowのREV Is ROR設定 ※Workflow：製造ver_生産品目_名称 構成品目のREV Is ROR設定"
+    },
+    {
+      "source_id": "4136ccde-734b-42ae-bf2a-f51afead4e8d",
+      "citation_number": 4,
+      "cited_text": "Mfg Orderの Workflowと Material list 更新 ⑧2nd追加 新旧 部品点数 同数？ ログ 出力 ■自動切替■ ✓ 部品要求数に対する在庫数不足をトリガに自動切替 ①部品REVUP ②部品変更 ・ランニングチェンジ ・同親新旧REVの構成部品点数が同じ場合のみ ※⑥/⑦も同様 ⑧2nd追加 Yes end No No No start Err 不足 2026.01更新 ■自動切替■ ✓ 部品要求数に対する在庫数不足をトリガに自動切替 ①部品REVUP Opcenter 設計変更手動切替 指図取込/ Mfg Order作成 MOM連携用 MCN Release BOP割当 Mfg Orderの Workflowと Material list 更新 ※1台毎 Mfg Order 新BOPに 更新 Workflow 生産品目新REV ROR有効設定 製造計画 部品消費 予定時間 算出 指図発行 供給指示 作成実行 手動切替 供給計画作成 R3 ECN承認 PLM MOM 1台毎 ■手動切替■ ✓ ランチェン設変で自動切替不可時 ②部品変更 ・同親新旧REVの構成部品点数が異なる場合 ※⑥/⑦も同様"
+    },
+    {
+      "source_id": "4136ccde-734b-42ae-bf2a-f51afead4e8d",
+      "citation_number": 5,
+      "cited_text": "✓ 在庫基準ではなく日付指定切替時 ②部品変更 ・日指定切替 (規格絡み) ③部品追加 ④部品削除 ⑨2nd削除 ⑩SOFT変更 ✓ 複数LINE同時切替時 ⑦ 複数ライン間 複数品目 同時変更 供給計画 製造実行 生産品目有効REVを 元にBOP割当 ※この時点で適正な 生産品目のREVを 指定出来れば自動化 検討可能 Mfg Order：製造オーダー Workflow：生産品目に対する工程、作業、部品情報 【製造ver_生産品目_名称(50)】 ※REV毎管理 ※製造オーダー毎割当 Material List：製造オーダーで使用する部品一覧 2026.01更新 ■手動切替■ ✓ 部品変更 ✓ 2nd追加／削除時 ✓ SOFT変更 01→02 BOM情報修正 この作業を生産台数分実施する必要あり Mfg Order(製造オーダー) 2026.01追加 Model 2026.01追加 Opcenter 設計変更手動切替Timing 指図発行 指図取込/ Mfg Order 作成 BOP割当 製造計画 生産-4日 BOP変更 情報取込 MOM連携用 ECN Release Process     REV02"
+    },
+    {
+      "source_id": "88fc0018-c2be-43a8-9de9-732f9c041767",
+      "citation_number": 6,
+      "cited_text": "復帰登録❶ 修理内容入力❷ 看板 戻入／分割 入庫単作成❺ EDI印刷 生産履歴登録システム構成 部品供給停止 ／再開登録 ❸ 工程在庫修正❹ 製造人員登録❻ 連携 システム ラインアウト 復帰登録❶ 修理内容入力❷ 看板 戻入／分割 入庫単作成❺ EDI印刷 部品供給停止 ／再開登録 ❸ 工程在庫修正❹ 製造人員登録❻ 生産履歴 登録システム 生産履歴登録システム構成 MOM 連携DB 連携 システム 段階 製造部 工程QC 製造技術 関連部門 ①異常発生 ②異常処理 ③結果承認 ④再投入 結果承認 （QC担当） 修理、履歴の記録 （QC担当） 修理、履歴の記録 （IE担当） 結果承認 （IE担当） ※異常内容によって、対応部門が違う 結果承認、再投入 （領班/組長） 修理、履歴記録 (Meister/組長) 調査 （ KDC技術..） 連絡 ラインアウト/復帰登録、修理内容入力 Line-Out提出 （Meister/組長） 他部門 AMS導入後ライン異常処理情報流れ 調査、修理 (製造、QC) Line out (製造) 調査、修理 ※必要な時 （IE、KDC技術） NG Line復帰"
+    },
+    {
+      "source_id": "88fc0018-c2be-43a8-9de9-732f9c041767",
+      "citation_number": 7,
+      "cited_text": "（製造領班） 確認 （IE、QC） HT： 1. 機器修理申請 2. 修理内容登録 3. 修理結果確認 4. 機器ライン返却 看板： 1. ステータス検索 2. 履歴管理 3. 各拠点リアルタイムに見える 各ステップはHTで登録 ラインアウト/復帰登録、修理内容入力 システムフロー 機器修理申請： 1. Line、工程、工程ID 2. 機番 3. 故障類別、詳細 4. 処理部門、申請者 5. 写真、動画 修理内容登録： 1. 不良現象確認 2. 修理内容、修理担当者 3. 次の対応部門 4. 修理添付ファイル(写真、 動画） 修理結果確認： 1. 結果判定 2. 次の処理部門設定 3.  OK→Line返却 4. NG却下、直す 機器ライン返却： 1. 機器確認 2. Line返却の工程 HT 申請 機器製造 確認 工程QC Line返却 機器製造 修理 製造技術 看板 ※各段階の情報をリアルタイムに表示 ラインアウト/復帰登録、修理内容入力 処理フロー 修理中 返却 ラインアウト•操作画面 申請(製造用) 申請 修理 確認 Line返却 内容： 1、Line、工程、工程ID 2、機番"
+    },
+    {
+      "source_id": "88fc0018-c2be-43a8-9de9-732f9c041767",
+      "citation_number": 8,
+      "cited_text": "内容： 1、LineOut履歴管理 2、APPバージョン管理、発行 3、写真、動画プレビュー 4、多言語切替 異常写真プレビュー 異常動画プレビュー ステータス 異常内容 修理内容 クリックしプレビューできる ラインアウト/復帰登録•連携テーブル S_NO = 機番 Datetime PROCESS_ID DEFECT_ITEM_01 DEFECT_ITEM_02 CAUSE   ASSEMBLY TREATMENT  REASSEMBLY STATUS DETAIL ※必須 状態コード連携テーブル_ラインアウト Rev 保存先 日時 状態コード 状態細目 工程ID シリアルNo データ項目 データ ID REVISION DESTINATION DATE_TIME STATUS1 STATUS2 PROCESS_ID NO DATA_NAME DATA_VALUE decimal verchar(2) verchar(1) verchar(28) verchar(2) verchar(3) verchar(16) verchar(20) verchar(20) verchar(30)"
+    },
+    {
+      "source_id": "88fc0018-c2be-43a8-9de9-732f9c041767",
+      "citation_number": 9,
+      "cited_text": "ラインアウト 復帰登録❶ 修理内容入力❷ 看板 戻入／分割 入庫単作成❺ EDI印刷 部品供給停止 ／再開登録 ❸ 工程在庫修正❹ 製造人員登録❻ 生産履歴 登録システム 生産履歴登録システム構成 MOM 連携DB 連携 システム 段階 製造部 物流 ①異常発生 ②異常処理 ③供給再開 処理情報流れ(AMS導入後) 出庫停止 部品供給停止提出 (組長/領班) 部品供給停止／再開登録 ※異常処理完了、供給再開 出庫再開 部品供給再開提出 (組長/領班) 部品供給停止／再開登録 ※組長、領班 物流MOMHT 指示 停止／再開申請： 1. Line 2. 停止(原因） 3. 再開 受信： 1. 停止/再開指示 受信： ACR、AGV、CTU 処理フロー ※物流へ通知機能検討中 部品供給停止／再開登録•操作画面 部品供給停止/再開 供給停止/再開，MOMへリアルタイムに連携 [用途]: Pull連携システムとMOMシステムの連携 [機能]: ① 出庫処理テーブル: T_PARTS_OUT ② 列名: 「SUP_LINE」 ③ 対象LINE: Athena場所 「 C41L , C4AL 」"
+    },
+    {
+      "source_id": "88fc0018-c2be-43a8-9de9-732f9c041767",
+      "citation_number": 10,
+      "cited_text": "４:中間DB 登録日時 LO:ラインアウト ラインアウト_生産履歴登録システムが行うテーブル登録 生産履歴登録システムから、中間DBの 「状態コード連携テーブル」 「品質連携テーブル」へ情報登録する 状態コード連携テーブル_ライン復帰 Rev 保存先 日時 状態コード 状態細目 工程ID シリアルNo データ項目 データ ID REVISION DESTINATION DATE_TIME STATUS1 STATUS2 PROCESS_ID NO DATA_NAME DATA_VALUE decimal verchar(2) verchar(1) verchar(28) verchar(2) verchar(3) verchar(16) verchar(20) verchar(20) verchar(30) ４:中間DB 登録日時 LI:ライン復帰 日時 状態コード 状態細目 工程ID シリアルNo データ項目 データ 登録日時 PC:部品交換 品目 日時 状態コード 状態細目 工程ID シリアルNo データ項目 データ 登録日時 PC:部品交換 数量 セット 部品交換する場合 修理内容入力•部品交換"
+    },
+    {
+      "source_id": "b7137170-f360-425b-a478-759a7a203a1a",
+      "citation_number": 11,
+      "cited_text": "Cần xem xét việc nhập linh kiện dùng chung Chỉ định số giá nhập kho UP tồn kho UP tồn kho Bảng xử lý nhập kho ⊸Thông tin QR phiếu hiện vật ⊸ID Oricon Chỉ định mã giá nhập kho UP tồn kho UP tồn kho Cổng xuất kho Cho linh kiện thừa lên xe đẩy Từ chế tạo yêu cầu trả lại Hệ thống đăng ký lý lịch sản xuất ⊸Đọc phiếu hiện vật bằng điện thoại ⊸Thao tác điện thoại(Chọn hoàn nhập/ nhập số lượng) Xuất hóa đơn Dán hóa đơn hoàn nhập Sửa tồn kho Nhập lại Nhập lại Nhập sửa tồn kho ⊸Oricon＆không phải Oricon Thực hiện sửa tồn kho MOM của công đoạn thế nào? Bảng xử lý nhập kho"
+    },
+    {
+      "source_id": "b7137170-f360-425b-a478-759a7a203a1a",
+      "citation_number": 12,
+      "cited_text": "lượng) Xuất hóa đơn phân chia Dán hóa đơn phân chia Nhập kho"
+    },
+    {
+      "source_id": "1508e6a1-8c9a-480b-8697-c43d08a5db01",
+      "citation_number": 13,
+      "cited_text": "検査テーブル CNMOM R/3 在庫転送テーブル 保管場所 コンベア CNMOM I/Fツール オリコン情報 統括PLC QR情報 検収状況 ブロック情報 I/Fツール 検収完了 棚番情報 Athena MFP 納品伝票情報 伝票読み取り デパレロボット 検査有無 検査場搬送 ACR モニター 検収状況確認 オリコンゲート CNMOM I/Fツール ベンダー出荷情報 Sテーブル CNMOM I/Fツール システム連携図（入庫） 未使用 未使用 未使用 未 使 用 未使用 未使用 1 2 3 未使用 Sテーブル VendorShippingInfo テーブルレイアウト システム名 テーブル名 3 部品入庫 T_PARTS_RECIEVE 合計 647 byte № データ項目名（日本語） （英字） タイプ 長さ NULL P.key Idx1 Idx2 Idx3 Auto Default 備 考 1 入庫タイプ RECEIVE_TYPE varchar 1 '':通常入庫 '1':マニュアル入庫(検収対象外) 2 オリコンID ORICON_ID varchar 30 3 品目コード ITEM_CODE varchar 20 ベンダー現品票情報(EDIのみは空白) 4 品目改訂レベル ITEM_REV varchar 2 ベンダー現品票情報(EDIのみは空白) 5 入数 INNER_QTY decimal 6 ベンダー現品票情報(EDIのみは空白) 6 ベンダーロット VENDOR_LOT varchar 50 ベンダー現品票情報(EDIのみは空白) 7 荷受(現品票)HTユーザーID TAG_READ_HTID varchar 100 ベンダー現品票情報(EDIのみは空白) 8 購買発注番号 PO_NO varchar 10 1 ベンダー現品票情報(EDIのみは空白) 9 購買発注明細番号 PO_DETAIL_NO varchar 5 2 ＥＤＩ現品票情報(必ず登録) 10 納品キー番号 PO_SEP_KEY varchar 4 3 ＥＤＩ現品票情報(必ず登録) 11 箱連番 CASE_SEQNO varchar 10 4 ＥＤＩ現品票情報(必ず登録) 12 注文数量 ORDER_QTY decimal 12 ＥＤＩ現品票情報(必ず登録) 13 品目 ORDER_ITEM_CODE varchar 18 ＥＤＩ現品票情報(必ず登録) 14 Rev ORDER_ITEM_REV varchar 2 ＥＤＩ現品票情報(必ず登録) 15 出荷数量 SHIP_QTY decimal 12 ＥＤＩ現品票情報(必ず登録)箱入数 16 製造ロット MANUFACTUAL_LOT varchar 50 ＥＤＩ現品票情報(必ず登録) 17 インボイス番号 INVOICE_NO varchar 25 ＥＤＩ現品票情報(必ず登録) 18 オリコン状態 ORICON_STATUS varchar 16 オリコンのチェック結果状態を示すコード 19 格納方法 HOUSE_METHOD varchar 1 '0':倉庫へ格納 '1':検査 20 荷受(伝票)HTユーザーID SLIP_READ_HTID varchar 12 21 データ連携時間１ IF_DATE datetime 14 22 オリコン重量 ORICON_WEIGHT int 3 単位グラム 23 入庫保管場所 STORAGE_PLACE varchar 10 24 格納口 HOUSE_ENTRANCE varchar 20 25 格納指示FLG HOUSE_ORDER_FLG varchar 1 '':未指示,'1':指示済 26 格納先棚番 HOUSE_SHELF varchar 20 27 データ連携時間２ IF2_DATE datetime 14 28 格納作業開始FLG HOUSE_START_FLG varchar 1 '':未指示,'1':指示済 29 格納完了FLG HOUSE_FINISH_FLG varchar 1 '':未指示,'1':指示済 30 格納完了時間 HOUSE_FINISH_DATE datetime 14 31 レコード更新者 UPD_USER varchar 50 32 レコード更新日 UPD_DATE datetime 14 33 CSVファイル名 CSV_FILENAME varchar 100 34 SEQ SEQ decimal 10 1 1 オート番号 35 36 37"
+    },
+    {
+      "source_id": "1508e6a1-8c9a-480b-8697-c43d08a5db01",
+      "citation_number": 14,
+      "cited_text": "出庫情報 情報登録 ハンディターミナル 現品票情報 情報登録 CTUコントローラ 出庫完了 現品票情報 CNMOM 在庫管理テーブル オリコン 非オリコン 1 2 3 4 5 6 システム連携図（出庫） テーブルレイアウト システム名 テーブル名 3 部品出庫 T_PARTS_OUT 合計 270 byte № データ項目名（日本語） （英字） タイプ 長さ NULL P.key Idx1 Idx2 Idx3 Auto Default 備 考 1 出庫タイプ OUT_TYPE varchar 1 '':通常出庫 '1':マニュアル出庫(在庫移動対象外) 2 購買発注番号 PO_NO varchar 10 1 3 購買発注明細番号 PO_DETAIL_NO varchar 5 2 4 納品キー番号 PO_SEP_KEY varchar 4 3 5 箱連番 CASE_SEQNO varchar 10 4 6 供給ライン SUP_LINE varchar 10 MES_出庫指示情報①(R3ライン保管場所？) 7 供給工程 SUP_PROCESS varchar 20 MES_出庫指示情報①(BOPからの配膳工程)"
+    },
+    {
+      "source_id": "88fc0018-c2be-43a8-9de9-732f9c041767",
+      "citation_number": 15,
+      "cited_text": "④ FLG: ACRマテコンは、「MOVE_ORDER_FLG」が1または3のときにACRに対して出庫指示を出す ⑤ 供給停止／再開の処理流れ: 製造／物流責任者 供給停止を入力 生産履歴登録システム 連携コード登録 状態コード連携テーブル STATUS1＝SS LINE＝C41 MOM 状態コード確認 供給停止処理 出庫指示修正登録 出庫処理テーブル MOVE_ORDER_FLG＝2 供給停止 製造／物流責任者 供給再開を入力 生産履歴登録システム 連携コード登録 状態コード連携テーブル STATUS1＝SR LINE＝C41 MOM 状態コード確認 供給再開処理 出庫指示修正登録 出庫処理テーブル MOVE_ORDER_FLG＝3 供給再開 部品供給停止／再開登録 ※組長、領班 物流MOMHT 指示 部品供給停止／再開登録•操作画面 部品供給停止/再開 < 状態連携 SR/SS StatusCodeLinkage_Ver00 停止/再開 部品供給停止／再開登録•連携テーブル MOVE_ORDER_FLG =1   ACR 出庫 MOVE_FIN_FLG =1/2/3/4 箱がスタンド到着"
+    },
+    {
+      "source_id": "b7137170-f360-425b-a478-759a7a203a1a",
+      "citation_number": 16,
+      "cited_text": "⊸ID Oricon Hàng hóa đối tượng kho tự động AMS thì xử lý thế nào? Hiển thị yêu cầu Đăng ký vào bảng xử lý tồn kho ⊸Thông tin QR phiếu hiện vật(Ngoài PO・Item・Qty） ⊸Line/công đoạn Đăng ký tồn kho MOM Cập nhật thông tin ⊸Bỏ hiển thị yêu cầu ⊸Bỏ tồn kho 2 pallet Cấp phát bằng CTU Chỉ thị xuất kho MOM đối ứng quản lý thời gian Việc up tồn kho từ Oricon gate vào vị trí bảo quản kho tự động AMS(R３) là trường hợp nghiệm thu Linh kiện nhập kho bổ sung sẽ nhập vào vị trí bảo quản AMS(xếp bằng) từ ban đầu."
+    },
+    {
+      "source_id": "88fc0018-c2be-43a8-9de9-732f9c041767",
+      "citation_number": 17,
+      "cited_text": "MOM (マテコン) 工程ボタン システム構成 HT 統括PLC マテコン C01 作業完工→ マテコンが AGV104を走行させる C04C02 C03 AGV104 AGV103 AGV102 AGV101 AGV工程ボタン 処理の流れ 作業完工→ マテコンが AGV103を走行させる 作業完工→ マテコンが AGV102を走行させる 作業完工→ マテコンが AGV101を走行させる 着完工登録システム·➋AGVトリガー 連携DB Pull連携システム AGVトリガー処理の流れ マテコン 工程完工， AGVトリガー AGV 状態連携 マテコン マテコン AGVトリガー AGV移動、到着、 マテコンフィードバック 状態提出 1. 工程ID→C04 2. 工程状態→2 C04工程 状態=1？ 工程状態 1→2 Y N 不動作 AGV状態(本体組立工程テーブ ル) AGV↑ 工程 地番 狀態 101 C-01 01 2 102 C-05 05 0 103 C-04 04 1 104 C-03 03 2 105 C-02 02 1 C04工程 状態=2 #103AGV移動 状態2→0 Y"
+    },
+    {
+      "source_id": "88fc0018-c2be-43a8-9de9-732f9c041767",
+      "citation_number": 18,
+      "cited_text": "#103AGV停止， 地番=05フィード バック 状態：0→1 流れ AGV↑ 工程 地番 狀態 101 C-01 01 2 102 C-05 05 0 103 C-04 04 2 104 C-03 03 2 105 C-02 02 1 …… …… …… …… AGV↑ 工程 地番 狀態 101 C-01 01 2 102 C-05 05 0 103 C-04 04 0 104 C-03 03 2 105 C-02 02 1 …… …… …… …… AGV↑ 工程 地番 狀態 101 C-01 01 2 102 - - - 103 C-05 05 1 104 C-03 03 2 105 C-02 02 1 …… …… …… …… 0：移動中 1：工程到着 2：移動許可 工程ボタン AGV関連テーブル 連携システム本体組立工程テーブル AGV↑ 工程 SN 地番 狀態 101 C-01 64R907 01 2 102 C-05 64R901 05 0 103 C-04 64R903 04 1 104 C-03 64R904 03 2 105 C-02 64R906 02 1 …… …… …… …… ……"
+    }
+  ]
+}
+
+NotebookLM citations/source notes:
+See answer text for NotebookLM footnotes if any.
+
+NotebookLM limitations / uncertainty:
+Unknown (depends on NLM model behavior)
+
+NotebookLM strict score:
+Not automatically scored
+
+NotebookLM winner label:
+human_review_required
+
+========================================
+
+## Q05 — PDF/PPTX process/Process change explanation
+
+Question:
+How is an operation/process change or design/running change explained in the process documentation?
+
+Target source type:
+pdf
+
+NotebookLM answer:
+{
+  "answer": "The process documentation explains operation, process, and design changes through a highly structured change management framework that coordinates the PLM, ERP (R3), and MOM (Opcenter) systems. \n\nHere is how these changes are defined and execute[REDACTED_LOCAL_PATH]
+  "conversation_id": "4dfcc9a1-7f3f-4b51-9a5f-752e1d17fe07",
+  "sources_used": [
+    "4136ccde-734b-42ae-bf2a-f51afead4e8d"
+  ],
+  "citations": {
+    "1": "4136ccde-734b-42ae-bf2a-f51afead4e8d",
+    "2": "4136ccde-734b-42ae-bf2a-f51afead4e8d",
+    "3": "4136ccde-734b-42ae-bf2a-f51afead4e8d",
+    "4": "4136ccde-734b-42ae-bf2a-f51afead4e8d",
+    "5": "4136ccde-734b-42ae-bf2a-f51afead4e8d",
+    "6": "4136ccde-734b-42ae-bf2a-f51afead4e8d",
+    "7": "4136ccde-734b-42ae-bf2a-f51afead4e8d",
+    "8": "4136ccde-734b-42ae-bf2a-f51afead4e8d",
+    "9": "4136ccde-734b-42ae-bf2a-f51afead4e8d",
+    "10": "4136ccde-734b-42ae-bf2a-f51afead4e8d"
+  },
+  "references": [
+    {
+      "source_id": "4136ccde-734b-42ae-bf2a-f51afead4e8d",
+      "citation_number": 1,
+      "cited_text": "AMS設計変更 2026年 04月01日 変更管理 指図登録 ／発行 PR (Problem Report) 部品調達 生産日程 計画 ECR PL→(メカ) ECN 1 承認 E-BOM (メカ) ECN 2 承認 E-BOM (電気) ECN 3 承認 E-BOM (ソフト) ECN 1 承認 M-BOM (メカ) MCN 連携 MOM連携 ECN 4 承認 安規申請 ECN 2 承認 M-BOM (電気) ECN 3 承認 M-BOM (ソフト) Team Center R3 所要量計算 Opcenter 製造計画 製造実行 ECO投入 シリアル登録 品目／REV R3-BOM 組立BOP 供給BOP BOE 製造完了 ・品質不具合 ・改善要望 ・変更連絡（部品） ECO 受取 (Eng. Change Order) 供給計画 ECO 切替更新 指図 ・問題箇所確認 ・対策決定 ・QA実行承認 指図完了 ／BF 完了 消費部材 全関連ECN承認後 在庫切れ確認 ECR （ソフト） ECR （BOP） ECR （治工具） ECR （暗記申請） ECN 4 承認 BOP ECN 4 承認 治具設備（ソフト含む）"
+    },
+    {
+      "source_id": "4136ccde-734b-42ae-bf2a-f51afead4e8d",
+      "citation_number": 2,
+      "cited_text": "ECR （電気） ・変更連絡（製造） ・QA最終承認 2026.01更新 T/C O/C T/C-O/C マッピング Process C21 Comp Op. C21-1 Parts A0 REV01└ Rev 01 └ └ └ 組立BOP Execution Step└ WF_C21 ERP Route Workflow Spec 1 Operation└ Resource Group└ Resource└ Factory└ └ └ Product A0└ Resource└ BOE Plant Work area└ Resource└ Resource Type└ T/C O/C Parts_WC1 Comp Op. 供給元-1 Parts A0 REV01└ Rev 01 └ └ └ 供給BOP Execution Step└ Parts_WC1 ERP Route Workflow Spec Operation└ Resource Group└ Resource└ Factory└ └ └ Resource└ BOE Plant Work area└ Resource└ Comp Op. 供給先-1"
+    },
+    {
+      "source_id": "4136ccde-734b-42ae-bf2a-f51afead4e8d",
+      "citation_number": 3,
+      "cited_text": "Parts A0 Rev 01 └ └ └ Execution Step└ Spec Operation└ Resource Group└ Resource└ Factory└ └ Resource└ 供給元 供給先 組立用 供給用 ERP BOM Comp Op. C21-2 Parts C0 Rev 01 └ └ └ Spec 2 Operation└ Resource Group└ Resource└ Product B0└ Route step 1 Route step 2 ※複数品目有 ※単一品目Parts B0└ Product C0└ 工程 生産品 部品 実行step 品目_供給先W.C. やじ る Workflow (製造) Name 3A2V900630 生産品目 Workflow (供給) Name 302ND19100_0010_YB1000320004 品目&\"_\"&供給先W.C. | Revision 0010 製造ver. | Revision 01 W/FのREV | Status Active | Status Active | StepName Y302V900010101 BOP上の工程ID | StepName 302ND19100_Y302V9S1010106 品目&\"_\"&BOP上の工程ID"
+    },
+    {
+      "source_id": "4136ccde-734b-42ae-bf2a-f51afead4e8d",
+      "citation_number": 4,
+      "cited_text": "品目 Is ROR 部品a -01 True→False 部品a -02 False→True 製造実行 MFG Order Workflow：生産品目A -01 ERP BOM：生産品目A -01 ■品目変更時 MFG Order Workflow：生産品目A -01→02 ERP BOM：生産品目A -01→02 W/F Is ROR 生産品目A -01 True→False 生産品目A -02 False→True ※以降新規W/F作成時は02を適応 No Yes Yes 投入シリアル 登録 部品 新品？ 製造完了 Yes No 自動切替 単純/ ランチェン 自動切替 日付指定切替 は手動設定 品目変更時は 手動設定 2026.01更新 設変パターン 切替タイミング 部品 工程 作業 日単位 日中 ① 部品 REVUP ー ー 〇 (a0-01 → a0-02) ー 変更 〇 ② 部品追加削除／RPS版数UP ー ー 〇 〇 (a0 → b0 ／ a0-02 → a1-01) ー 変更 〇 〇 ③ 部品追加 ー 追加 〇 追加 追加 〇 ④ 部品削除 ー 削除 〇 削除 削除 〇"
+    },
+    {
+      "source_id": "4136ccde-734b-42ae-bf2a-f51afead4e8d",
+      "citation_number": 5,
+      "cited_text": "⑤ 同一ライン内 単一品目 複数個所 同時変更 ー ー 〇 〇 ー 変更 〇 〇 変更 変更 〇 〇 ⑥ 同一ライン内 複数品目 同時変更 ー ー 〇 〇 ー 変更 〇 〇 変更 変更 〇 〇 ⑦ 複数ライン間 複数品目 同時変更 ー ー 〇 〇 ー 変更 〇 〇 変更 変更 〇 〇 ⑧ 2nd品 追加 ー ー 〇 〇 ⑨ 2nd品 削除 ー ー 〇 ⑩ SOFT 変更 ー 変更 〇 ⑪ 副資材 変更 ー 変更 〇 ⑫ 部品変更無し ー 変更 〇 ⑬ BOE変更 ー ー 〇 プロセスREVUPの為、通常の部品 変更時と同様処理 複数のプロセス同時切替要(手動) ￥ 品目TypeをPLM→MOMに連携 【UNBW】/【HIBE】引落し対象外 ￥ 部品変更時同様構成変時は プロセスREVUP REVUP時も手動切替 ① 部品 REVUP Pro. C21_生産品目 -01 Comp Op. C21-1 -01 Parts A0 └ └ 組立BOP Step└ Pro._WC1_A0 -01 Comp Op. A0_元1 -01 Parts A0 └ └ 供給BOP Execution Step└"
+    },
+    {
+      "source_id": "4136ccde-734b-42ae-bf2a-f51afead4e8d",
+      "citation_number": 6,
+      "cited_text": "└ Resource Group Name 302ND19100_Y302V9S2010106 | Entry Type Resource | Entries 302ND19100_Y302V9S2010106 └ Resource Name 302ND19100_Y302V9S2010106 製造ver._生産品目_名称へ REVへ 供給先W.C._品目へ 青系、緑系は自由入力 切替パターン 切替指定日 TC設計指示 Opcenter切替管理 期日前 期日後 切替年月日 切替指示 期日まで 期日以降 切替期日有り 期日切替 YYYY/MM/DD The day 旧 新 期日以降に切替 YYYY/MM/DD After 旧 旧(優先) or 新 ※注1 期日までに切替 YYYY/MM/DD Before 旧(優先) or 新 ※注1 新 切替期日無し 旧品使用後 '－ '－ RC 旧(優先) or 新 ※注1 OR登録 切替生産可 '－ '－ OR 1st(優先) or 2nd ※注2 旧 新 ■切替時期指示 BOP設変 UNIT(Process) -01 オペレーション1 -01"
+    },
+    {
+      "source_id": "4136ccde-734b-42ae-bf2a-f51afead4e8d",
+      "citation_number": 7,
+      "cited_text": "Comp Op. A0_先1 -01 Parts A0 └ └ Execution Step└ 供給元 供給先 Resource└ Resource└ Solution Item Parts A0 -02 Parts A0-01→02 (Rev up) Rev 01└ Rev 02└ true false ※在庫有り Rev 01└ Rev 02└ false true ※在庫無し A0 -01 A0 -02倉庫在庫 09:00 10:00 11:00 12:00 A0 -01 A0 -02ライン在庫 供給Order IS ROR 自動切替 IS ROR A0 -01 A0 -02ERP BOM ➥ERP BOM先頭切替反映 →以降自動切替 ECO 投入シリアル入力 ※現物にてタイミング確認 初期 消費実績 ※R3への部品REVの実績 連携不要 Parts B0└ Parts A0 Parts A0 ② 部品追加削除／RPS版数UP Pro. C21_生産品目 -02 Comp Op. C21-1 -02 Parts C0 └ └ 組立BOP Step└ Pro._WC1_C0 -01"
+    },
+    {
+      "source_id": "4136ccde-734b-42ae-bf2a-f51afead4e8d",
+      "citation_number": 8,
+      "cited_text": "✓ 在庫基準ではなく日付指定切替時 ②部品変更 ・日指定切替 (規格絡み) ③部品追加 ④部品削除 ⑨2nd削除 ⑩SOFT変更 ✓ 複数LINE同時切替時 ⑦ 複数ライン間 複数品目 同時変更 供給計画 製造実行 生産品目有効REVを 元にBOP割当 ※この時点で適正な 生産品目のREVを 指定出来れば自動化 検討可能 Mfg Order：製造オーダー Workflow：生産品目に対する工程、作業、部品情報 【製造ver_生産品目_名称(50)】 ※REV毎管理 ※製造オーダー毎割当 Material List：製造オーダーで使用する部品一覧 2026.01更新 ■手動切替■ ✓ 部品変更 ✓ 2nd追加／削除時 ✓ SOFT変更 01→02 BOM情報修正 この作業を生産台数分実施する必要あり Mfg Order(製造オーダー) 2026.01追加 Model 2026.01追加 Opcenter 設計変更手動切替Timing 指図発行 指図取込/ Mfg Order 作成 BOP割当 製造計画 生産-4日 BOP変更 情報取込 MOM連携用 ECN Release Process     REV02"
+    },
+    {
+      "source_id": "4136ccde-734b-42ae-bf2a-f51afead4e8d",
+      "citation_number": 9,
+      "cited_text": "生産 X0 or Y0 IS ROR Pro. C21_生産品目 Rev 05└ Rev 06└ true false Pro. C21_生産品目 Rev 05└ Rev 06└ false true False→True(手動) Opcenter 設計変更自動切替 在庫 有り？ 部品2nd 登録有？ 部品 新REV 登録有？ 部品要求数と 在庫数確認 2nd部品在庫数 確認 生産品 新REV 登録有？ 新REV部品 在庫数確認 在庫 有り？ 部品変更 ? Mfg Order 新BOPに 一時的更新 追加部品 在庫数確認 在庫 有り？ 供給指示作成 2nd追加 ？ 2nd部品在庫数 確認 Mfg Order 更新確定 Err 不足 部品変更/ 2nd追加 混在？ No Yes No Yes No No Err 不足 Yes Yes No Yes Yes Err 不足 No Yes Yes No ログ 出力 ①部品REVUP ②部品変更 ⑧2nd追加 AMS倉庫在庫数確認 WorkflowのREV Is ROR設定 ※Workflow：製造ver_生産品目_名称 構成品目のREV Is ROR設定"
+    },
+    {
+      "source_id": "4136ccde-734b-42ae-bf2a-f51afead4e8d",
+      "citation_number": 10,
+      "cited_text": "Mfg Orderの Workflowと Material list 更新 ⑧2nd追加 新旧 部品点数 同数？ ログ 出力 ■自動切替■ ✓ 部品要求数に対する在庫数不足をトリガに自動切替 ①部品REVUP ②部品変更 ・ランニングチェンジ ・同親新旧REVの構成部品点数が同じ場合のみ ※⑥/⑦も同様 ⑧2nd追加 Yes end No No No start Err 不足 2026.01更新 ■自動切替■ ✓ 部品要求数に対する在庫数不足をトリガに自動切替 ①部品REVUP Opcenter 設計変更手動切替 指図取込/ Mfg Order作成 MOM連携用 MCN Release BOP割当 Mfg Orderの Workflowと Material list 更新 ※1台毎 Mfg Order 新BOPに 更新 Workflow 生産品目新REV ROR有効設定 製造計画 部品消費 予定時間 算出 指図発行 供給指示 作成実行 手動切替 供給計画作成 R3 ECN承認 PLM MOM 1台毎 ■手動切替■ ✓ ランチェン設変で自動切替不可時 ②部品変更 ・同親新旧REVの構成部品点数が異なる場合 ※⑥/⑦も同様"
+    }
+  ]
+}
+
+NotebookLM citations/source notes:
+See answer text for NotebookLM footnotes if any.
+
+NotebookLM limitations / uncertainty:
+Unknown (depends on NLM model behavior)
+
+NotebookLM strict score:
+Not automatically scored
+
+NotebookLM winner label:
+human_review_required
+
+========================================
+
+## Q06 — Screenshot/image/OCR/Visible UI fields
+
+Question:
+What visible UI fields, statuses, containers, or oricon evidence can be trusted directly from screenshots?
+
+Target source type:
+png
+
+NotebookLM answer:
+{
+  "answer": "Based on the provided screenshots and visual UI mockups, the following fields, statuses, containers, and operational evidence can be explicitly truste[REDACTED_LOCAL_PATH]
+  "conversation_id": "4dfcc9a1-7f3f-4b51-9a5f-752e1d17fe07",
+  "sources_used": [
+    "113335b6-8e43-4cba-abcd-88746646d3b6",
+    "3ef74dde-7c27-4d4d-8542-6811c716f19f",
+    "88fc0018-c2be-43a8-9de9-732f9c041767",
+    "da0d3d32-c5e7-4a84-8690-4bd83ca915e2",
+    "cef7f20d-746d-40db-98b1-c91f8571a351",
+    "82ac424d-4544-468d-8a85-3f6fb0f7eb8e",
+    "9a9ace56-8d77-4ed2-a8c4-a8e6f64868be",
+    "7de9d31c-a2a9-4ae9-92cd-ee937e64dda5"
+  ],
+  "citations": {
+    "1": "113335b6-8e43-4cba-abcd-88746646d3b6",
+    "2": "3ef74dde-7c27-4d4d-8542-6811c716f19f",
+    "3": "88fc0018-c2be-43a8-9de9-732f9c041767",
+    "4": "88fc0018-c2be-43a8-9de9-732f9c041767",
+    "5": "88fc0018-c2be-43a8-9de9-732f9c041767",
+    "6": "da0d3d32-c5e7-4a84-8690-4bd83ca915e2",
+    "7": "cef7f20d-746d-40db-98b1-c91f8571a351",
+    "8": "82ac424d-4544-468d-8a85-3f6fb0f7eb8e",
+    "9": "9a9ace56-8d77-4ed2-a8c4-a8e6f64868be",
+    "10": "7de9d31c-a2a9-4ae9-92cd-ee937e64dda5"
+  },
+  "references": [
+    {
+      "source_id": "113335b6-8e43-4cba-abcd-88746646d3b6",
+      "citation_number": 1
+    },
+    {
+      "source_id": "3ef74dde-7c27-4d4d-8542-6811c716f19f",
+      "citation_number": 2
+    },
+    {
+      "source_id": "88fc0018-c2be-43a8-9de9-732f9c041767",
+      "citation_number": 3,
+      "cited_text": "DELIVERY_FIN_FLG=2 CTU 出発 DELIVERY_FIN_FLG=1  目的地到着 ※必須 ラインアウト 復帰登録❶ 修理内容入力❷ 看板 戻入／分割 入庫単作成❺ EDI印刷 部品供給停止 ／再開登録 ❸ 工程在庫修正❹ 製造人員登録❻ 生産履歴 登録システム 生産履歴登録システム構成 MOM 連携DB 連携 システム 段階 製造部 倉庫 ①修正必要 処理情報流れ(AMS投入後) Oricon 在庫量修正 （MOM） 工程在庫修正 Oricon 在庫量修正 (組長/領班) Oricon EPC番号はオリコンの独自コードで、MOMはEPC番号に基 づき各部品のLine在庫数を記録する。実際の生産数と合わ せて出庫タイミングを計算する。 ※HTでEPC番号をスキャンしMOM在庫数を修正 ※组长、領班 MOM 工程在庫修正•操作画面 HT EPCを読取 数量修正 Oricon EPC番号 読取る 14 _ データ修正 [用途]:仕掛品のラインアウト処置-在庫修正 [機能]: ① 工程在庫修正の処理流れ: 工程在庫修正 製造／物流責任者 工程在庫修正 生産履歴登録システム"
+    },
+    {
+      "source_id": "88fc0018-c2be-43a8-9de9-732f9c041767",
+      "citation_number": 4,
+      "cited_text": "内容： 1、LineOut履歴管理 2、APPバージョン管理、発行 3、写真、動画プレビュー 4、多言語切替 異常写真プレビュー 異常動画プレビュー ステータス 異常内容 修理内容 クリックしプレビューできる ラインアウト/復帰登録•連携テーブル S_NO = 機番 Datetime PROCESS_ID DEFECT_ITEM_01 DEFECT_ITEM_02 CAUSE   ASSEMBLY TREATMENT  REASSEMBLY STATUS DETAIL ※必須 状態コード連携テーブル_ラインアウト Rev 保存先 日時 状態コード 状態細目 工程ID シリアルNo データ項目 データ ID REVISION DESTINATION DATE_TIME STATUS1 STATUS2 PROCESS_ID NO DATA_NAME DATA_VALUE decimal verchar(2) verchar(1) verchar(28) verchar(2) verchar(3) verchar(16) verchar(20) verchar(20) verchar(30)"
+    },
+    {
+      "source_id": "88fc0018-c2be-43a8-9de9-732f9c041767",
+      "citation_number": 5,
+      "cited_text": "定义 注文番号 明细番号 枝番 発注整数 発注小 数 品番+空+Rev 箱入整数 小数 サプライヤーCode 发票 箱连号 戻入／分割入庫単作成 元のラベル 箱分割ラベル 箱分割してから 戻入ラベル *はスペース システム機能(多言語/メッセージ通知など) 中、日、英、ベトナム語切替 メッセージ通知 目次 一．生産履歴登録システム機能仕様 二．着完工登録システム機能仕様 着完工登録システム 項目 システム 設備 機能 着完工登録 システム ❶着手/完工 HT ①先頭工程 製品/ユニット着手SN登録 ②最終工程 製品/ユニット完工SN登録 工程ボタン ③異常/リセット提出 ④ラインストップ時間収集 (KDCと機能検討中) ➋AGVトリガー 工程ボタン ⑤キーを押すとAGVが次の工程に移動する 工程ボタン システム構成 HT 統括PLC ※着完工登録システムと生産履歴登録システムの機能は1つのソフトウェアにまとめられ、HTは共通使用です。 MOM (マテコン) 着完工登録システム·❶着手/完工 項目 システム 設備 機能 着完工登録 システム ❶着手/完工 HT ①先頭工程 製品/ユニット着手SN登録"
+    },
+    {
+      "source_id": "da0d3d32-c5e7-4a84-8690-4bd83ca915e2",
+      "citation_number": 6
+    },
+    {
+      "source_id": "cef7f20d-746d-40db-98b1-c91f8571a351",
+      "citation_number": 7
+    },
+    {
+      "source_id": "82ac424d-4544-468d-8a85-3f6fb0f7eb8e",
+      "citation_number": 8
+    },
+    {
+      "source_id": "9a9ace56-8d77-4ed2-a8c4-a8e6f64868be",
+      "citation_number": 9
+    },
+    {
+      "source_id": "7de9d31c-a2a9-4ae9-92cd-ee937e64dda5",
+      "citation_number": 10
+    }
+  ]
+}
+
+NotebookLM citations/source notes:
+See answer text for NotebookLM footnotes if any.
+
+NotebookLM limitations / uncertainty:
+Unknown (depends on NLM model behavior)
+
+NotebookLM strict score:
+Not automatically scored
+
+NotebookLM winner label:
+human_review_required
+
+========================================
+
+## Q07 — Screenshot/image/OCR/Screenshot operational states
+
+Question:
+What operational or systemic states must NOT be inferred from screenshot-only evidence?
+
+Target source type:
+png
+
+NotebookLM answer:
+{
+  "answer": "**The Physical Authenticity of the Execution**\nWhile screenshots can display system status flags like `HOUSE_FINISH_FLG` (Storage Complete) or `MOVE_FIN_FLG` (Transport Complete), you must not infer the physical reality of the goods [1, 2]. These fields only prove that the system received a digital completion signal from a barcode scanner or robot controller [1, 2]. A screenshot cannot guarantee that the physical items were actually placed on the correct shelf without human error, nor can it confirm that the physical parts inside the container (Oricon) are undamaged [1, 2].\n\n**The True Identity of the Operator**\nScreenshots of the InterStock WMS clearly show the authenticated active session, such as \"Bui Duc Vinh\" logged in at the bottom of the screen, or user master lists showing accounts like \"matsunaga\" [3, 4]. However, you must not infer the true physical identity of the person performing the action [3, 4]. The database schema captures the authenticated account using fields like `UPD_USER` or `TAG_READ_HTID`, but a static screenshot cannot prove who was actually holding the Handy Terminal (HT) or pressing the execution button, as it cannot capture off-system badge hand-offs or shared passwords [1, 3, 4].\n\n**The Root Causes of Systemic Latency**\nSystem schemas and interface tables track the lifecycle of an action through sequential timestamps, such as the gap between a dispatch instruction (`GATEOUT_ORDER_TIME`) and its actual completion (`DATA_IF_TIME3` or `DATA_IF_TIME6`) [2, 5]. While a screenshot of these records can mathematically prove that a delay occurred, you must not infer the root cause of that latency [2, 5]. A static image or database field cannot determine whether the delay was caused by a network connection drop, an automated robot (AGV/ACR) getting physically blocked on the factory floor, or an operator simply forgetting to press the physical completion button [2, 5, 6].\n\n**Informal Bypasses and Offline Approvals**\nThe UI and databases capture programmed \"Happy Path\" workflows, such as a machine's repair status changing from \"Under Repair\" to \"Completed\" after a QC confirmation [7-9]. You must not infer that these strict procedures were genuinely followed in physical reality [8, 9]. Screenshots only reflect the data formally submitted into the digital boundaries; they cannot reveal if informal verbal bypasses were instructed by a manager on the floor, or if required physical paperwork—like the hand-signed \"Defect Machine Confirmation Record Sheet\" (不良机确认记录表)—was bypassed, forged, or left blank [8-10].",
+  "conversation_id": "4dfcc9a1-7f3f-4b51-9a5f-752e1d17fe07",
+  "sources_used": [
+    "1508e6a1-8c9a-480b-8697-c43d08a5db01",
+    "da0d3d32-c5e7-4a84-8690-4bd83ca915e2",
+    "82ac424d-4544-468d-8a85-3f6fb0f7eb8e",
+    "88fc0018-c2be-43a8-9de9-732f9c041767"
+  ],
+  "citations": {
+    "1": "1508e6a1-8c9a-480b-8697-c43d08a5db01",
+    "2": "1508e6a1-8c9a-480b-8697-c43d08a5db01",
+    "3": "da0d3d32-c5e7-4a84-8690-4bd83ca915e2",
+    "4": "82ac424d-4544-468d-8a85-3f6fb0f7eb8e",
+    "5": "1508e6a1-8c9a-480b-8697-c43d08a5db01",
+    "6": "88fc0018-c2be-43a8-9de9-732f9c041767",
+    "7": "88fc0018-c2be-43a8-9de9-732f9c041767",
+    "8": "88fc0018-c2be-43a8-9de9-732f9c041767",
+    "9": "88fc0018-c2be-43a8-9de9-732f9c041767",
+    "10": "88fc0018-c2be-43a8-9de9-732f9c041767"
+  },
+  "references": [
+    {
+      "source_id": "1508e6a1-8c9a-480b-8697-c43d08a5db01",
+      "citation_number": 1,
+      "cited_text": "検査テーブル CNMOM R/3 在庫転送テーブル 保管場所 コンベア CNMOM I/Fツール オリコン情報 統括PLC QR情報 検収状況 ブロック情報 I/Fツール 検収完了 棚番情報 Athena MFP 納品伝票情報 伝票読み取り デパレロボット 検査有無 検査場搬送 ACR モニター 検収状況確認 オリコンゲート CNMOM I/Fツール ベンダー出荷情報 Sテーブル CNMOM I/Fツール システム連携図（入庫） 未使用 未使用 未使用 未 使 用 未使用 未使用 1 2 3 未使用 Sテーブル VendorShippingInfo テーブルレイアウト システム名 テーブル名 3 部品入庫 T_PARTS_RECIEVE 合計 647 byte № データ項目名（日本語） （英字） タイプ 長さ NULL P.key Idx1 Idx2 Idx3 Auto Default 備 考 1 入庫タイプ RECEIVE_TYPE varchar 1 '':通常入庫 '1':マニュアル入庫(検収対象外) 2 オリコンID ORICON_ID varchar 30 3 品目コード ITEM_CODE varchar 20 ベンダー現品票情報(EDIのみは空白) 4 品目改訂レベル ITEM_REV varchar 2 ベンダー現品票情報(EDIのみは空白) 5 入数 INNER_QTY decimal 6 ベンダー現品票情報(EDIのみは空白) 6 ベンダーロット VENDOR_LOT varchar 50 ベンダー現品票情報(EDIのみは空白) 7 荷受(現品票)HTユーザーID TAG_READ_HTID varchar 100 ベンダー現品票情報(EDIのみは空白) 8 購買発注番号 PO_NO varchar 10 1 ベンダー現品票情報(EDIのみは空白) 9 購買発注明細番号 PO_DETAIL_NO varchar 5 2 ＥＤＩ現品票情報(必ず登録) 10 納品キー番号 PO_SEP_KEY varchar 4 3 ＥＤＩ現品票情報(必ず登録) 11 箱連番 CASE_SEQNO varchar 10 4 ＥＤＩ現品票情報(必ず登録) 12 注文数量 ORDER_QTY decimal 12 ＥＤＩ現品票情報(必ず登録) 13 品目 ORDER_ITEM_CODE varchar 18 ＥＤＩ現品票情報(必ず登録) 14 Rev ORDER_ITEM_REV varchar 2 ＥＤＩ現品票情報(必ず登録) 15 出荷数量 SHIP_QTY decimal 12 ＥＤＩ現品票情報(必ず登録)箱入数 16 製造ロット MANUFACTUAL_LOT varchar 50 ＥＤＩ現品票情報(必ず登録) 17 インボイス番号 INVOICE_NO varchar 25 ＥＤＩ現品票情報(必ず登録) 18 オリコン状態 ORICON_STATUS varchar 16 オリコンのチェック結果状態を示すコード 19 格納方法 HOUSE_METHOD varchar 1 '0':倉庫へ格納 '1':検査 20 荷受(伝票)HTユーザーID SLIP_READ_HTID varchar 12 21 データ連携時間１ IF_DATE datetime 14 22 オリコン重量 ORICON_WEIGHT int 3 単位グラム 23 入庫保管場所 STORAGE_PLACE varchar 10 24 格納口 HOUSE_ENTRANCE varchar 20 25 格納指示FLG HOUSE_ORDER_FLG varchar 1 '':未指示,'1':指示済 26 格納先棚番 HOUSE_SHELF varchar 20 27 データ連携時間２ IF2_DATE datetime 14 28 格納作業開始FLG HOUSE_START_FLG varchar 1 '':未指示,'1':指示済 29 格納完了FLG HOUSE_FINISH_FLG varchar 1 '':未指示,'1':指示済 30 格納完了時間 HOUSE_FINISH_DATE datetime 14 31 レコード更新者 UPD_USER varchar 50 32 レコード更新日 UPD_DATE datetime 14 33 CSVファイル名 CSV_FILENAME varchar 100 34 SEQ SEQ decimal 10 1 1 オート番号 35 36 37"
+    },
+    {
+      "source_id": "1508e6a1-8c9a-480b-8697-c43d08a5db01",
+      "citation_number": 2,
+      "cited_text": "8 品目コード ITEM_CODE varchar 20 9 品目改訂レベル ITEM_REV varchar 2 10 出庫ゲート通過指示時間 GATEOUT_ORDER_TIME datetime 14 MES_出庫指示情報①(出庫ゲートの通過指示時間/ACR-CONが処理順序制御) 11 データ連携時間１ DATA_IF_TIME1 datetime 14 ※旧名：IF_DATE 12 出庫棚番 OUT_SHELF varchar 12 WMS_出庫対象指示情報② 13 オリコンID ORICON_ID varchar 30 14 オリコン重量 ORICON_WEIGHT int 3 15 データ連携時間２ DATA_IF_TIME2 datetime 14 ※旧名：IF2_DATE 16 搬送指示フラグ MOVE_ORDER_FLG varchar 1 ACR-CON_ACR出庫指示フラグ③ 17 データ連携時間2.5 DATA_IF_TIME25 datetime 0 ACR-CON_ACRオリコン積載時間④(ACRオリコン受取時間) 18 搬送完了FLG MOVE_FIN_FLG varchar 1 ACR-CON_ACR出庫完了フラグ④"
+    },
+    {
+      "source_id": "da0d3d32-c5e7-4a84-8690-4bd83ca915e2",
+      "citation_number": 3
+    },
+    {
+      "source_id": "82ac424d-4544-468d-8a85-3f6fb0f7eb8e",
+      "citation_number": 4
+    },
+    {
+      "source_id": "1508e6a1-8c9a-480b-8697-c43d08a5db01",
+      "citation_number": 5,
+      "cited_text": "19 データ連携時間３ DATA_IF_TIME3 datetime 0 ACR-CON_ACR出庫完了フラグ④(搬送完了FLG書き込み時間) 20 データ連携時間４ DATA_IF_TIME4 datetime 0 出庫ゲート通過実績時間(ゲート通過指示に対する実績時間) 21 データ連携時間５ DATA_IF_TIME5 datetime 0 AGV-CON_AGVオリコン受取時間⑥(搬送工程問合せ時間) 22 配膳完了FLG DELIVERY_FIN_FLG varchar 1 AGV-CON_AGVオリコン配膳完了フラグ⑦ 23 データ連携時間６ DATA_IF_TIME6 datetime 0 1 1 オリコン配膳完了時間⑦ 24 CSVファイル名 CSV_FILENAME varchar 100 25 出庫処理結果 OUT_STATUS varchar 1 '':正常完了 '1':出庫エラー 26 SEQ SEQ decimal 10 オート番号 27 28 29 30 31 32 33 34 35 36 37 WMS ACRCon MOM PLC CTUCon MOM"
+    },
+    {
+      "source_id": "88fc0018-c2be-43a8-9de9-732f9c041767",
+      "citation_number": 6,
+      "cited_text": "連携システム品質看板テーブル SN↑ 狀態 AGV 64R902 6 106 64R905 3 107 …… …… …… AGV狀態 0：移動中 1：工程到着 2：移動許可 3：LINEOUT 機器狀態 0：OutLine 1：修理待ち 2：却下(修理待ち) 3：修理中 4：修理完了 5：確認待ち 6：確認中 7：確認完了 8：LINE返却待ち 9：LINE返却 10：LINE返却完了 テーブル情報 合計 22 byte № データ項目名（日本語） （英字） タイプ 長さ NULL P.key Idx1 Idx2 Idx3 Auto Default 備　　　考 1 AGV号機番号 MACHINE_NUMBER varchar 3 1 AGVの号機番号 2 地番 ADDRESS varchar 3 マップ上AGVがどこにいるかを示す 3 工程名 CELL varchar 5 どこの工程で作業中か示す 4 状態 PROCESS_STATUS varchar 1 0 作業状態を示す;　NULL:デフォルト値/何もしない, ‘0’: 到着/作業中, '1': 移動中, '2': 作業完了 5 SEQ SEQ decimal 10 1"
+    },
+    {
+      "source_id": "88fc0018-c2be-43a8-9de9-732f9c041767",
+      "citation_number": 7,
+      "cited_text": "3、故障類別、詳細 4、処理部門、申請者 5、写真、動画 写真、動画アップ ロード可能にする (添付機能) 修理内容入力•操作画面 修理(製技、機器製造、工程QCなど) < 申請 修理 確認 Line返却 内容： 1、部品交換 2、不良現象 3、修理内容、修理担当 4、確認部門 5、修理添付ファイル(写真、動画） 部品交換 メール通知 ※课题：1. 更换Unit/Assy/部品的SN绑定、Lot 2. 修理照合机能（？？） メール通知機能•操作画面 < 申請 修理 確認 Line返却 ※手入力のミスを防止するために事前に連絡先のMasterを作成する ①部門選択/直接検索 ②連絡先追加・削除操作 ③メール内容（不良情報自動生成） OK確認(QC) NG返却修理(QC) NG返却 申請 修理 確認 Line返却 内容： 1、確認担当 2、結果(NG/OK) 3、処理部門 修理内容入力•操作画面 復帰登録•操作画面 Line返却List(製造用) Line返却(製造用) 申請 修理 確認 Line返却 内容： 1、 Line返却工程 2、領班 看板(PC/HT/現場モニターで見える化) <"
+    },
+    {
+      "source_id": "88fc0018-c2be-43a8-9de9-732f9c041767",
+      "citation_number": 8,
+      "cited_text": "内容： 1、LineOut履歴管理 2、APPバージョン管理、発行 3、写真、動画プレビュー 4、多言語切替 異常写真プレビュー 異常動画プレビュー ステータス 異常内容 修理内容 クリックしプレビューできる ラインアウト/復帰登録•連携テーブル S_NO = 機番 Datetime PROCESS_ID DEFECT_ITEM_01 DEFECT_ITEM_02 CAUSE   ASSEMBLY TREATMENT  REASSEMBLY STATUS DETAIL ※必須 状態コード連携テーブル_ラインアウト Rev 保存先 日時 状態コード 状態細目 工程ID シリアルNo データ項目 データ ID REVISION DESTINATION DATE_TIME STATUS1 STATUS2 PROCESS_ID NO DATA_NAME DATA_VALUE decimal verchar(2) verchar(1) verchar(28) verchar(2) verchar(3) verchar(16) verchar(20) verchar(20) verchar(30)"
+    },
+    {
+      "source_id": "88fc0018-c2be-43a8-9de9-732f9c041767",
+      "citation_number": 9,
+      "cited_text": "品質連携テーブル_調査開始 日時 シリアルNo 最新フラグ 工程ID 不良現象01 不良現象02 原因 処置 担当 状態 詳細情報保存先 ID DATE_TIME S_NO LATEST_FLAG PROCESS_ID DEFECT_ITEM_01 DEFECT_ITEM_02 CAUSE TREATMENT MANAGER STATUS DETAIL decimal Datetime(8byte) verchar(20) verchar(1) verchar(20) verchar(20) verchar(20) verchar(20) verchar(20) verchar(5) verchar(1) verchar(20) 登録日時 0:調査中 品質連携テーブル_処置完了 日時 シリアルNo 最新フラグ 工程ID 不良現象01 不良現象02 原因 処置 担当 状態 詳細情報保存先 ID DATE_TIME S_NO LATEST_FLAG PROCESS_ID DEFECT_ITEM_01 DEFECT_ITEM_02 CAUSE TREATMENT MANAGER STATUS DETAIL"
+    },
+    {
+      "source_id": "88fc0018-c2be-43a8-9de9-732f9c041767",
+      "citation_number": 10,
+      "cited_text": "DecimalDatetime(8byte) verchar(20) verchar(1) verchar(20) verchar(20) verchar(20) verchar(20) verchar(20) verchar(5) verchar(1) verchar(20) 登録日時 １:処置完了 日時 不良現象02 原因 処置 担当 詳細情報保存先 DATE_TIME DEFECT_ITEM_02 CAUSE TREATMENT MANAGER DETAIL Datetime(8byte) verchar(20) verchar(20) verchar(20) verchar(5) verchar(20) 登録日時 調査進捗に応じて随時登録 ラインアウト/復帰登録•連携テーブル DESTINATION   統括PLC 2, 中間DB 3 DATE_TIME STATUS1 LINE PROCESS_ID S_NO ※必須 状態•連携テーブル ［本体］不良機確認記録テーブル 調整工程不良機確認記録テーブル ②修理記録欄 ①不良記録欄 ④ 製造承認欄 ③ IE／QC承認欄 既存履歴登記テーブル"
+    }
+  ]
+}
+
+NotebookLM citations/source notes:
+See answer text for NotebookLM footnotes if any.
+
+NotebookLM limitations / uncertainty:
+Unknown (depends on NLM model behavior)
+
+NotebookLM strict score:
+Not automatically scored
+
+NotebookLM winner label:
+human_review_required
+
+========================================
+
+## Q08 — HTML/ERD/schema/Explicit HTML/ERD tables
+
+Question:
+What tables, fields, and relationships are explicitly shown in the HTML/ERD/schema evidence?
+
+Target source type:
+html
+
+NotebookLM answer:
+{
+  "answer": "Based on the provided database schemas, table layouts, and ERD tree views in the documentation, the following tables, fields, and relationships are explicitly show[REDACTED_LOCAL_PATH]
+  "conversation_id": "4dfcc9a1-7f3f-4b51-9a5f-752e1d17fe07",
+  "sources_used": [
+    "1508e6a1-8c9a-480b-8697-c43d08a5db01",
+    "88fc0018-c2be-43a8-9de9-732f9c041767",
+    "a5149095-9a8e-4597-9d28-7bb79e1b7ab3"
+  ],
+  "citations": {
+    "1": "1508e6a1-8c9a-480b-8697-c43d08a5db01",
+    "2": "1508e6a1-8c9a-480b-8697-c43d08a5db01",
+    "3": "1508e6a1-8c9a-480b-8697-c43d08a5db01",
+    "4": "1508e6a1-8c9a-480b-8697-c43d08a5db01",
+    "5": "88fc0018-c2be-43a8-9de9-732f9c041767",
+    "6": "88fc0018-c2be-43a8-9de9-732f9c041767",
+    "7": "88fc0018-c2be-43a8-9de9-732f9c041767",
+    "8": "88fc0018-c2be-43a8-9de9-732f9c041767",
+    "9": "88fc0018-c2be-43a8-9de9-732f9c041767",
+    "10": "88fc0018-c2be-43a8-9de9-732f9c041767",
+    "11": "88fc0018-c2be-43a8-9de9-732f9c041767",
+    "12": "a5149095-9a8e-4597-9d28-7bb79e1b7ab3"
+  },
+  "references": [
+    {
+      "source_id": "1508e6a1-8c9a-480b-8697-c43d08a5db01",
+      "citation_number": 1,
+      "cited_text": "検査テーブル CNMOM R/3 在庫転送テーブル 保管場所 コンベア CNMOM I/Fツール オリコン情報 統括PLC QR情報 検収状況 ブロック情報 I/Fツール 検収完了 棚番情報 Athena MFP 納品伝票情報 伝票読み取り デパレロボット 検査有無 検査場搬送 ACR モニター 検収状況確認 オリコンゲート CNMOM I/Fツール ベンダー出荷情報 Sテーブル CNMOM I/Fツール システム連携図（入庫） 未使用 未使用 未使用 未 使 用 未使用 未使用 1 2 3 未使用 Sテーブル VendorShippingInfo テーブルレイアウト システム名 テーブル名 3 部品入庫 T_PARTS_RECIEVE 合計 647 byte № データ項目名（日本語） （英字） タイプ 長さ NULL P.key Idx1 Idx2 Idx3 Auto Default 備 考 1 入庫タイプ RECEIVE_TYPE varchar 1 '':通常入庫 '1':マニュアル入庫(検収対象外) 2 オリコンID ORICON_ID varchar 30 3 品目コード ITEM_CODE varchar 20 ベンダー現品票情報(EDIのみは空白) 4 品目改訂レベル ITEM_REV varchar 2 ベンダー現品票情報(EDIのみは空白) 5 入数 INNER_QTY decimal 6 ベンダー現品票情報(EDIのみは空白) 6 ベンダーロット VENDOR_LOT varchar 50 ベンダー現品票情報(EDIのみは空白) 7 荷受(現品票)HTユーザーID TAG_READ_HTID varchar 100 ベンダー現品票情報(EDIのみは空白) 8 購買発注番号 PO_NO varchar 10 1 ベンダー現品票情報(EDIのみは空白) 9 購買発注明細番号 PO_DETAIL_NO varchar 5 2 ＥＤＩ現品票情報(必ず登録) 10 納品キー番号 PO_SEP_KEY varchar 4 3 ＥＤＩ現品票情報(必ず登録) 11 箱連番 CASE_SEQNO varchar 10 4 ＥＤＩ現品票情報(必ず登録) 12 注文数量 ORDER_QTY decimal 12 ＥＤＩ現品票情報(必ず登録) 13 品目 ORDER_ITEM_CODE varchar 18 ＥＤＩ現品票情報(必ず登録) 14 Rev ORDER_ITEM_REV varchar 2 ＥＤＩ現品票情報(必ず登録) 15 出荷数量 SHIP_QTY decimal 12 ＥＤＩ現品票情報(必ず登録)箱入数 16 製造ロット MANUFACTUAL_LOT varchar 50 ＥＤＩ現品票情報(必ず登録) 17 インボイス番号 INVOICE_NO varchar 25 ＥＤＩ現品票情報(必ず登録) 18 オリコン状態 ORICON_STATUS varchar 16 オリコンのチェック結果状態を示すコード 19 格納方法 HOUSE_METHOD varchar 1 '0':倉庫へ格納 '1':検査 20 荷受(伝票)HTユーザーID SLIP_READ_HTID varchar 12 21 データ連携時間１ IF_DATE datetime 14 22 オリコン重量 ORICON_WEIGHT int 3 単位グラム 23 入庫保管場所 STORAGE_PLACE varchar 10 24 格納口 HOUSE_ENTRANCE varchar 20 25 格納指示FLG HOUSE_ORDER_FLG varchar 1 '':未指示,'1':指示済 26 格納先棚番 HOUSE_SHELF varchar 20 27 データ連携時間２ IF2_DATE datetime 14 28 格納作業開始FLG HOUSE_START_FLG varchar 1 '':未指示,'1':指示済 29 格納完了FLG HOUSE_FINISH_FLG varchar 1 '':未指示,'1':指示済 30 格納完了時間 HOUSE_FINISH_DATE datetime 14 31 レコード更新者 UPD_USER varchar 50 32 レコード更新日 UPD_DATE datetime 14 33 CSVファイル名 CSV_FILENAME varchar 100 34 SEQ SEQ decimal 10 1 1 オート番号 35 36 37"
+    },
+    {
+      "source_id": "1508e6a1-8c9a-480b-8697-c43d08a5db01",
+      "citation_number": 2,
+      "cited_text": "出庫情報 情報登録 ハンディターミナル 現品票情報 情報登録 CTUコントローラ 出庫完了 現品票情報 CNMOM 在庫管理テーブル オリコン 非オリコン 1 2 3 4 5 6 システム連携図（出庫） テーブルレイアウト システム名 テーブル名 3 部品出庫 T_PARTS_OUT 合計 270 byte № データ項目名（日本語） （英字） タイプ 長さ NULL P.key Idx1 Idx2 Idx3 Auto Default 備 考 1 出庫タイプ OUT_TYPE varchar 1 '':通常出庫 '1':マニュアル出庫(在庫移動対象外) 2 購買発注番号 PO_NO varchar 10 1 3 購買発注明細番号 PO_DETAIL_NO varchar 5 2 4 納品キー番号 PO_SEP_KEY varchar 4 3 5 箱連番 CASE_SEQNO varchar 10 4 6 供給ライン SUP_LINE varchar 10 MES_出庫指示情報①(R3ライン保管場所？) 7 供給工程 SUP_PROCESS varchar 20 MES_出庫指示情報①(BOPからの配膳工程)"
+    },
+    {
+      "source_id": "1508e6a1-8c9a-480b-8697-c43d08a5db01",
+      "citation_number": 3,
+      "cited_text": "19 データ連携時間３ DATA_IF_TIME3 datetime 0 ACR-CON_ACR出庫完了フラグ④(搬送完了FLG書き込み時間) 20 データ連携時間４ DATA_IF_TIME4 datetime 0 出庫ゲート通過実績時間(ゲート通過指示に対する実績時間) 21 データ連携時間５ DATA_IF_TIME5 datetime 0 AGV-CON_AGVオリコン受取時間⑥(搬送工程問合せ時間) 22 配膳完了FLG DELIVERY_FIN_FLG varchar 1 AGV-CON_AGVオリコン配膳完了フラグ⑦ 23 データ連携時間６ DATA_IF_TIME6 datetime 0 1 1 オリコン配膳完了時間⑦ 24 CSVファイル名 CSV_FILENAME varchar 100 25 出庫処理結果 OUT_STATUS varchar 1 '':正常完了 '1':出庫エラー 26 SEQ SEQ decimal 10 オート番号 27 28 29 30 31 32 33 34 35 36 37 WMS ACRCon MOM PLC CTUCon MOM"
+    },
+    {
+      "source_id": "1508e6a1-8c9a-480b-8697-c43d08a5db01",
+      "citation_number": 4,
+      "cited_text": "8 品目コード ITEM_CODE varchar 20 9 品目改訂レベル ITEM_REV varchar 2 10 出庫ゲート通過指示時間 GATEOUT_ORDER_TIME datetime 14 MES_出庫指示情報①(出庫ゲートの通過指示時間/ACR-CONが処理順序制御) 11 データ連携時間１ DATA_IF_TIME1 datetime 14 ※旧名：IF_DATE 12 出庫棚番 OUT_SHELF varchar 12 WMS_出庫対象指示情報② 13 オリコンID ORICON_ID varchar 30 14 オリコン重量 ORICON_WEIGHT int 3 15 データ連携時間２ DATA_IF_TIME2 datetime 14 ※旧名：IF2_DATE 16 搬送指示フラグ MOVE_ORDER_FLG varchar 1 ACR-CON_ACR出庫指示フラグ③ 17 データ連携時間2.5 DATA_IF_TIME25 datetime 0 ACR-CON_ACRオリコン積載時間④(ACRオリコン受取時間) 18 搬送完了FLG MOVE_FIN_FLG varchar 1 ACR-CON_ACR出庫完了フラグ④"
+    },
+    {
+      "source_id": "88fc0018-c2be-43a8-9de9-732f9c041767",
+      "citation_number": 5,
+      "cited_text": "連携コード登録 在庫コード連携テーブル 获取箱EPC在庫量 MOM 在庫指示修正登録 出庫処理テーブル 修正 物理名： dbo.ProcessInventoryControl ライン 工程 品目コード 品目改訂レベル オリコンID 購買発注番号 購買発注明細番号 納品キー番号 箱連番 数量 状態 数量チェック ID SUP_LINE PROCESS_ID ITEM_CODE ITEM_REV ORICON_ID PO_NO PO_DETAIL_NO PO_SEP_KEY CASE_SEQNO QTY STATUS CHECK_QTY decimal verchar(4) verchar(20) verchar(12) verchar(2) verchar(30) verchar(10) verchar(5) verchar(4) verchar(10) verchar(12) verchar(2) verchar(6) 1 0010 Y302V90001010101 3A2V900860 01 5105453184400101000001000532 1023052301 00010 +001 001/001 4 01 -5 ↑整数9桁＋小数点3桁（EDI現品票と同様）"
+    },
+    {
+      "source_id": "88fc0018-c2be-43a8-9de9-732f9c041767",
+      "citation_number": 6,
+      "cited_text": "MOM管理外出庫→ 0010 Y302V90001010101 3A2V900860 01 1023052301 00010 +001 001/001 50 03 ※组长、領班 MOMHT 在庫管理 連携テーブル SUP_LINE PROCESS_ID ITEM_CODE ITEM_REV ORICON_ID PO_NO PO_DETAIL_NO PO_SEP_KEY CASE_SEQNO QTY STATUS CHECK_QTY ※必須 ラインアウト 復帰登録❶ 修理内容入力❷ 看板 戻入／分割 入庫単作成❺ EDI印刷 部品供給停止 ／再開登録 ❸ 工程在庫修正❹ 製造人員登録❻ 生産履歴 登録システム 生産履歴登録システム構成 MOM 連携DB 連携 システム 戻入／分割入庫単作成 戻入 部品が倉庫に 戻る 新しいEDI票印刷、 貼付け 戻入 分割 PO確認 新しいEDI票印刷、 貼付け 入庫 元の箱のEDI票 をスキャン，数量修正 物流担当 箱分割、元のEDI票 をスキャン、数量修正 物流担当 戻入／分割フロー 携帯式プリンター 携帯式プリンター ※ オリコンをオリコンゲートに通過させるとき、オリコンに貼り付けたEDI入庫票はただ一回使用するこ とはできないので、もう一度入庫したら重複入庫と判断され、エラーが出るので、改めて入庫票を印刷 しなければいけない。"
+    },
+    {
+      "source_id": "88fc0018-c2be-43a8-9de9-732f9c041767",
+      "citation_number": 7,
+      "cited_text": "内容： 1、LineOut履歴管理 2、APPバージョン管理、発行 3、写真、動画プレビュー 4、多言語切替 異常写真プレビュー 異常動画プレビュー ステータス 異常内容 修理内容 クリックしプレビューできる ラインアウト/復帰登録•連携テーブル S_NO = 機番 Datetime PROCESS_ID DEFECT_ITEM_01 DEFECT_ITEM_02 CAUSE   ASSEMBLY TREATMENT  REASSEMBLY STATUS DETAIL ※必須 状態コード連携テーブル_ラインアウト Rev 保存先 日時 状態コード 状態細目 工程ID シリアルNo データ項目 データ ID REVISION DESTINATION DATE_TIME STATUS1 STATUS2 PROCESS_ID NO DATA_NAME DATA_VALUE decimal verchar(2) verchar(1) verchar(28) verchar(2) verchar(3) verchar(16) verchar(20) verchar(20) verchar(30)"
+    },
+    {
+      "source_id": "88fc0018-c2be-43a8-9de9-732f9c041767",
+      "citation_number": 8,
+      "cited_text": "品質連携テーブル_調査開始 日時 シリアルNo 最新フラグ 工程ID 不良現象01 不良現象02 原因 処置 担当 状態 詳細情報保存先 ID DATE_TIME S_NO LATEST_FLAG PROCESS_ID DEFECT_ITEM_01 DEFECT_ITEM_02 CAUSE TREATMENT MANAGER STATUS DETAIL decimal Datetime(8byte) verchar(20) verchar(1) verchar(20) verchar(20) verchar(20) verchar(20) verchar(20) verchar(5) verchar(1) verchar(20) 登録日時 0:調査中 品質連携テーブル_処置完了 日時 シリアルNo 最新フラグ 工程ID 不良現象01 不良現象02 原因 処置 担当 状態 詳細情報保存先 ID DATE_TIME S_NO LATEST_FLAG PROCESS_ID DEFECT_ITEM_01 DEFECT_ITEM_02 CAUSE TREATMENT MANAGER STATUS DETAIL"
+    },
+    {
+      "source_id": "88fc0018-c2be-43a8-9de9-732f9c041767",
+      "citation_number": 9,
+      "cited_text": "DecimalDatetime(8byte) verchar(20) verchar(1) verchar(20) verchar(20) verchar(20) verchar(20) verchar(20) verchar(5) verchar(1) verchar(20) 登録日時 １:処置完了 日時 不良現象02 原因 処置 担当 詳細情報保存先 DATE_TIME DEFECT_ITEM_02 CAUSE TREATMENT MANAGER DETAIL Datetime(8byte) verchar(20) verchar(20) verchar(20) verchar(5) verchar(20) 登録日時 調査進捗に応じて随時登録 ラインアウト/復帰登録•連携テーブル DESTINATION   統括PLC 2, 中間DB 3 DATE_TIME STATUS1 LINE PROCESS_ID S_NO ※必須 状態•連携テーブル ［本体］不良機確認記録テーブル 調整工程不良機確認記録テーブル ②修理記録欄 ①不良記録欄 ④ 製造承認欄 ③ IE／QC承認欄 既存履歴登記テーブル"
+    },
+    {
+      "source_id": "88fc0018-c2be-43a8-9de9-732f9c041767",
+      "citation_number": 10,
+      "cited_text": "連携システム品質看板テーブル SN↑ 狀態 AGV 64R902 6 106 64R905 3 107 …… …… …… AGV狀態 0：移動中 1：工程到着 2：移動許可 3：LINEOUT 機器狀態 0：OutLine 1：修理待ち 2：却下(修理待ち) 3：修理中 4：修理完了 5：確認待ち 6：確認中 7：確認完了 8：LINE返却待ち 9：LINE返却 10：LINE返却完了 テーブル情報 合計 22 byte № データ項目名（日本語） （英字） タイプ 長さ NULL P.key Idx1 Idx2 Idx3 Auto Default 備　　　考 1 AGV号機番号 MACHINE_NUMBER varchar 3 1 AGVの号機番号 2 地番 ADDRESS varchar 3 マップ上AGVがどこにいるかを示す 3 工程名 CELL varchar 5 どこの工程で作業中か示す 4 状態 PROCESS_STATUS varchar 1 0 作業状態を示す;　NULL:デフォルト値/何もしない, ‘0’: 到着/作業中, '1': 移動中, '2': 作業完了 5 SEQ SEQ decimal 10 1"
+    },
+    {
+      "source_id": "88fc0018-c2be-43a8-9de9-732f9c041767",
+      "citation_number": 11,
+      "cited_text": "テーブルレイアウト システム名 テーブル名 OEXPVCDB.kmcn.local 3 本体組立工程テーブル [EXAPP_IF] T_MAIN_PROCESS ～The end～"
+    },
+    {
+      "source_id": "a5149095-9a8e-4597-9d28-7bb79e1b7ab3",
+      "citation_number": 12,
+      "cited_text": "手順-６ 証明書ストア 、「証明書のすべて次のストアに配置する」 を選択 → 「参照」                  → 「信頼された証明機関」 を選択 → 「OK」 → 「次へ」 １ 準備 マスター登録 (管理者作業) 画面操作で品目選択して伝票発行するには予めマスター登録が必要 ‐登録方法 - 手順-１ Microsoft SQL Server Management Studioより、各拠点で定められたServerへ 接続する。 Server選択 → 「Connect」 KDC WMSP1JDB KDTCN TESTSVRCN01.kmcn.local KDTVN testsvrvn1.kdtvn.local 手順-２ 「Databases」 → 「MOM_IF」 → 「Tables」 を開く 手順-３ 「dbo.t_item master」 を右クリック → 「Edit Top 200 Rows」 を開く 手順-５ Object Explorer を開く 手順-６ 「dbo.t_item master」 を右クリック → 「Select Top 1000 Rows」 を開く"
+    }
+  ]
+}
+
+NotebookLM citations/source notes:
+See answer text for NotebookLM footnotes if any.
+
+NotebookLM limitations / uncertainty:
+Unknown (depends on NLM model behavior)
+
+NotebookLM strict score:
+Not automatically scored
+
+NotebookLM winner label:
+human_review_required
+
+========================================
+
+## Q09 — HTML/ERD/schema/Unsupported schema conclusions
+
+Question:
+What operational conclusions are unsupported if only schema/ERD documentation is available?
+
+Target source type:
+html
+
+NotebookLM answer:
+{
+  "answer": "**The Physical Authenticity of Execution**\nWhile database schemas explicitly define status flags such as **`HOUSE_FINISH_FLG`** (Storage Complete) [1] and **`MOVE_FIN_FLG`** (Transport Complete) [2], you cannot infer the physical reality of the goods from these fields alone. These boolean flags only prove that the system received a digital completion signal from a barcode scanner or robot controller [1, 2]. An ERD cannot guarantee that the physical items were actually placed on the correct shelf without human error, nor can it confirm that the physical parts inside the container (Oricon) match the system's expected `INNER_QTY` or remain undamaged [1].\n\n**The True Identity of the Operator**\nSystem schemas capture authenticated accounts using fields like **`UPD_USER`** (Update User) or **`TAG_READ_HTID`** (Handy Terminal ID) [1]. However, you must not infer the true physical identity of the person performing the action. A schema definition only proves which digital account was logged into the session; it cannot prove who was physically holding the terminal or pressing the execution button, as it cannot account for offline badge hand-offs or shared passwords [1, 3].\n\n**The Root Causes of Systemic Latency**\nInterface tables explicitly track the lifecycle of a physical action through sequential timestamps, such as the gap between a dispatch instruction (**`GATEOUT_ORDER_TIME`**) and its physical delivery completion (**`DATA_IF_TIME6`**) [2, 4]. While mathematical differences between these fields prove that a delay occurred, you cannot infer the root cause of that latency from the schema. A database field cannot determine whether the delay stemmed from a network lag, an Automated Guided Vehicle (AGV) getting physically blocked on the floor, or an operator simply forgetting to press the engineering button [2, 4, 5].\n\n**Informal Bypasses and Offline Approvals**\nERDs and schemas capture strict, programmed workflows, such as a machine's repair status changing from '0' (Investigating) to '1' (Treatment Complete) in the **`QualityInformationLinkage`** table [6, 7]. You must not infer that these strict procedures were genuinely followed in physical reality. Schemas only reflect the data formally submitted into the system and cannot reveal if informal verbal bypasses were instructed by a manager on the floor. Furthermore, they cannot verify if required offline paperwork—such as the hand-signed **\"Defect Machine Confirmation Record Sheet\" (不良机确认记录表)** [7]—was properly completed, forged, or ignored entirely.",
+  "conversation_id": "4dfcc9a1-7f3f-4b51-9a5f-752e1d17fe07",
+  "sources_used": [
+    "1508e6a1-8c9a-480b-8697-c43d08a5db01",
+    "82ac424d-4544-468d-8a85-3f6fb0f7eb8e",
+    "88fc0018-c2be-43a8-9de9-732f9c041767"
+  ],
+  "citations": {
+    "1": "1508e6a1-8c9a-480b-8697-c43d08a5db01",
+    "2": "1508e6a1-8c9a-480b-8697-c43d08a5db01",
+    "3": "82ac424d-4544-468d-8a85-3f6fb0f7eb8e",
+    "4": "1508e6a1-8c9a-480b-8697-c43d08a5db01",
+    "5": "88fc0018-c2be-43a8-9de9-732f9c041767",
+    "6": "88fc0018-c2be-43a8-9de9-732f9c041767",
+    "7": "88fc0018-c2be-43a8-9de9-732f9c041767"
+  },
+  "references": [
+    {
+      "source_id": "1508e6a1-8c9a-480b-8697-c43d08a5db01",
+      "citation_number": 1,
+      "cited_text": "検査テーブル CNMOM R/3 在庫転送テーブル 保管場所 コンベア CNMOM I/Fツール オリコン情報 統括PLC QR情報 検収状況 ブロック情報 I/Fツール 検収完了 棚番情報 Athena MFP 納品伝票情報 伝票読み取り デパレロボット 検査有無 検査場搬送 ACR モニター 検収状況確認 オリコンゲート CNMOM I/Fツール ベンダー出荷情報 Sテーブル CNMOM I/Fツール システム連携図（入庫） 未使用 未使用 未使用 未 使 用 未使用 未使用 1 2 3 未使用 Sテーブル VendorShippingInfo テーブルレイアウト システム名 テーブル名 3 部品入庫 T_PARTS_RECIEVE 合計 647 byte № データ項目名（日本語） （英字） タイプ 長さ NULL P.key Idx1 Idx2 Idx3 Auto Default 備 考 1 入庫タイプ RECEIVE_TYPE varchar 1 '':通常入庫 '1':マニュアル入庫(検収対象外) 2 オリコンID ORICON_ID varchar 30 3 品目コード ITEM_CODE varchar 20 ベンダー現品票情報(EDIのみは空白) 4 品目改訂レベル ITEM_REV varchar 2 ベンダー現品票情報(EDIのみは空白) 5 入数 INNER_QTY decimal 6 ベンダー現品票情報(EDIのみは空白) 6 ベンダーロット VENDOR_LOT varchar 50 ベンダー現品票情報(EDIのみは空白) 7 荷受(現品票)HTユーザーID TAG_READ_HTID varchar 100 ベンダー現品票情報(EDIのみは空白) 8 購買発注番号 PO_NO varchar 10 1 ベンダー現品票情報(EDIのみは空白) 9 購買発注明細番号 PO_DETAIL_NO varchar 5 2 ＥＤＩ現品票情報(必ず登録) 10 納品キー番号 PO_SEP_KEY varchar 4 3 ＥＤＩ現品票情報(必ず登録) 11 箱連番 CASE_SEQNO varchar 10 4 ＥＤＩ現品票情報(必ず登録) 12 注文数量 ORDER_QTY decimal 12 ＥＤＩ現品票情報(必ず登録) 13 品目 ORDER_ITEM_CODE varchar 18 ＥＤＩ現品票情報(必ず登録) 14 Rev ORDER_ITEM_REV varchar 2 ＥＤＩ現品票情報(必ず登録) 15 出荷数量 SHIP_QTY decimal 12 ＥＤＩ現品票情報(必ず登録)箱入数 16 製造ロット MANUFACTUAL_LOT varchar 50 ＥＤＩ現品票情報(必ず登録) 17 インボイス番号 INVOICE_NO varchar 25 ＥＤＩ現品票情報(必ず登録) 18 オリコン状態 ORICON_STATUS varchar 16 オリコンのチェック結果状態を示すコード 19 格納方法 HOUSE_METHOD varchar 1 '0':倉庫へ格納 '1':検査 20 荷受(伝票)HTユーザーID SLIP_READ_HTID varchar 12 21 データ連携時間１ IF_DATE datetime 14 22 オリコン重量 ORICON_WEIGHT int 3 単位グラム 23 入庫保管場所 STORAGE_PLACE varchar 10 24 格納口 HOUSE_ENTRANCE varchar 20 25 格納指示FLG HOUSE_ORDER_FLG varchar 1 '':未指示,'1':指示済 26 格納先棚番 HOUSE_SHELF varchar 20 27 データ連携時間２ IF2_DATE datetime 14 28 格納作業開始FLG HOUSE_START_FLG varchar 1 '':未指示,'1':指示済 29 格納完了FLG HOUSE_FINISH_FLG varchar 1 '':未指示,'1':指示済 30 格納完了時間 HOUSE_FINISH_DATE datetime 14 31 レコード更新者 UPD_USER varchar 50 32 レコード更新日 UPD_DATE datetime 14 33 CSVファイル名 CSV_FILENAME varchar 100 34 SEQ SEQ decimal 10 1 1 オート番号 35 36 37"
+    },
+    {
+      "source_id": "1508e6a1-8c9a-480b-8697-c43d08a5db01",
+      "citation_number": 2,
+      "cited_text": "8 品目コード ITEM_CODE varchar 20 9 品目改訂レベル ITEM_REV varchar 2 10 出庫ゲート通過指示時間 GATEOUT_ORDER_TIME datetime 14 MES_出庫指示情報①(出庫ゲートの通過指示時間/ACR-CONが処理順序制御) 11 データ連携時間１ DATA_IF_TIME1 datetime 14 ※旧名：IF_DATE 12 出庫棚番 OUT_SHELF varchar 12 WMS_出庫対象指示情報② 13 オリコンID ORICON_ID varchar 30 14 オリコン重量 ORICON_WEIGHT int 3 15 データ連携時間２ DATA_IF_TIME2 datetime 14 ※旧名：IF2_DATE 16 搬送指示フラグ MOVE_ORDER_FLG varchar 1 ACR-CON_ACR出庫指示フラグ③ 17 データ連携時間2.5 DATA_IF_TIME25 datetime 0 ACR-CON_ACRオリコン積載時間④(ACRオリコン受取時間) 18 搬送完了FLG MOVE_FIN_FLG varchar 1 ACR-CON_ACR出庫完了フラグ④"
+    },
+    {
+      "source_id": "82ac424d-4544-468d-8a85-3f6fb0f7eb8e",
+      "citation_number": 3
+    },
+    {
+      "source_id": "1508e6a1-8c9a-480b-8697-c43d08a5db01",
+      "citation_number": 4,
+      "cited_text": "19 データ連携時間３ DATA_IF_TIME3 datetime 0 ACR-CON_ACR出庫完了フラグ④(搬送完了FLG書き込み時間) 20 データ連携時間４ DATA_IF_TIME4 datetime 0 出庫ゲート通過実績時間(ゲート通過指示に対する実績時間) 21 データ連携時間５ DATA_IF_TIME5 datetime 0 AGV-CON_AGVオリコン受取時間⑥(搬送工程問合せ時間) 22 配膳完了FLG DELIVERY_FIN_FLG varchar 1 AGV-CON_AGVオリコン配膳完了フラグ⑦ 23 データ連携時間６ DATA_IF_TIME6 datetime 0 1 1 オリコン配膳完了時間⑦ 24 CSVファイル名 CSV_FILENAME varchar 100 25 出庫処理結果 OUT_STATUS varchar 1 '':正常完了 '1':出庫エラー 26 SEQ SEQ decimal 10 オート番号 27 28 29 30 31 32 33 34 35 36 37 WMS ACRCon MOM PLC CTUCon MOM"
+    },
+    {
+      "source_id": "88fc0018-c2be-43a8-9de9-732f9c041767",
+      "citation_number": 5,
+      "cited_text": "連携システム品質看板テーブル SN↑ 狀態 AGV 64R902 6 106 64R905 3 107 …… …… …… AGV狀態 0：移動中 1：工程到着 2：移動許可 3：LINEOUT 機器狀態 0：OutLine 1：修理待ち 2：却下(修理待ち) 3：修理中 4：修理完了 5：確認待ち 6：確認中 7：確認完了 8：LINE返却待ち 9：LINE返却 10：LINE返却完了 テーブル情報 合計 22 byte № データ項目名（日本語） （英字） タイプ 長さ NULL P.key Idx1 Idx2 Idx3 Auto Default 備　　　考 1 AGV号機番号 MACHINE_NUMBER varchar 3 1 AGVの号機番号 2 地番 ADDRESS varchar 3 マップ上AGVがどこにいるかを示す 3 工程名 CELL varchar 5 どこの工程で作業中か示す 4 状態 PROCESS_STATUS varchar 1 0 作業状態を示す;　NULL:デフォルト値/何もしない, ‘0’: 到着/作業中, '1': 移動中, '2': 作業完了 5 SEQ SEQ decimal 10 1"
+    },
+    {
+      "source_id": "88fc0018-c2be-43a8-9de9-732f9c041767",
+      "citation_number": 6,
+      "cited_text": "品質連携テーブル_調査開始 日時 シリアルNo 最新フラグ 工程ID 不良現象01 不良現象02 原因 処置 担当 状態 詳細情報保存先 ID DATE_TIME S_NO LATEST_FLAG PROCESS_ID DEFECT_ITEM_01 DEFECT_ITEM_02 CAUSE TREATMENT MANAGER STATUS DETAIL decimal Datetime(8byte) verchar(20) verchar(1) verchar(20) verchar(20) verchar(20) verchar(20) verchar(20) verchar(5) verchar(1) verchar(20) 登録日時 0:調査中 品質連携テーブル_処置完了 日時 シリアルNo 最新フラグ 工程ID 不良現象01 不良現象02 原因 処置 担当 状態 詳細情報保存先 ID DATE_TIME S_NO LATEST_FLAG PROCESS_ID DEFECT_ITEM_01 DEFECT_ITEM_02 CAUSE TREATMENT MANAGER STATUS DETAIL"
+    },
+    {
+      "source_id": "88fc0018-c2be-43a8-9de9-732f9c041767",
+      "citation_number": 7,
+      "cited_text": "DecimalDatetime(8byte) verchar(20) verchar(1) verchar(20) verchar(20) verchar(20) verchar(20) verchar(20) verchar(5) verchar(1) verchar(20) 登録日時 １:処置完了 日時 不良現象02 原因 処置 担当 詳細情報保存先 DATE_TIME DEFECT_ITEM_02 CAUSE TREATMENT MANAGER DETAIL Datetime(8byte) verchar(20) verchar(20) verchar(20) verchar(5) verchar(20) 登録日時 調査進捗に応じて随時登録 ラインアウト/復帰登録•連携テーブル DESTINATION   統括PLC 2, 中間DB 3 DATE_TIME STATUS1 LINE PROCESS_ID S_NO ※必須 状態•連携テーブル ［本体］不良機確認記録テーブル 調整工程不良機確認記録テーブル ②修理記録欄 ①不良記録欄 ④ 製造承認欄 ③ IE／QC承認欄 既存履歴登記テーブル"
+    }
+  ]
+}
+
+NotebookLM citations/source notes:
+See answer text for NotebookLM footnotes if any.
+
+NotebookLM limitations / uncertainty:
+Unknown (depends on NLM model behavior)
+
+NotebookLM strict score:
+Not automatically scored
+
+NotebookLM winner label:
+human_review_required
+
+========================================
+
+## Q10 — Mixed multi-source/Full troubleshooting path
+
+Question:
+Explain a full troubleshooting path that combines evidence from Excel, PDF/PPTX, and screenshots.
+
+Target source type:
+
+
+NotebookLM answer:
+{
+  "answer": "To perform a comprehensive system investigation—such as troubleshooting a missing part, a stalled production line, or an inventory mismatch—you must triangulate evidence across the initial production planning (Excel), the front-end UI logs (Screenshots), the defined business rules (PDF/PPTX), and the back-end database logs (Table/Schema documentation). \n\nHere is a full troubleshooting path utilizing all these layers of evidenc[REDACTED_LOCAL_PATH]
+  "conversation_id": "4dfcc9a1-7f3f-4b51-9a5f-752e1d17fe07",
+  "sources_used": [
+    "b7137170-f360-425b-a478-759a7a203a1a",
+    "113335b6-8e43-4cba-abcd-88746646d3b6",
+    "3ef74dde-7c27-4d4d-8542-6811c716f19f",
+    "82ac424d-4544-468d-8a85-3f6fb0f7eb8e",
+    "7de9d31c-a2a9-4ae9-92cd-ee937e64dda5",
+    "4136ccde-734b-42ae-bf2a-f51afead4e8d",
+    "88fc0018-c2be-43a8-9de9-732f9c041767",
+    "1508e6a1-8c9a-480b-8697-c43d08a5db01"
+  ],
+  "citations": {
+    "1": "b7137170-f360-425b-a478-759a7a203a1a",
+    "2": "113335b6-8e43-4cba-abcd-88746646d3b6",
+    "3": "3ef74dde-7c27-4d4d-8542-6811c716f19f",
+    "4": "82ac424d-4544-468d-8a85-3f6fb0f7eb8e",
+    "5": "7de9d31c-a2a9-4ae9-92cd-ee937e64dda5",
+    "6": "4136ccde-734b-42ae-bf2a-f51afead4e8d",
+    "7": "4136ccde-734b-42ae-bf2a-f51afead4e8d",
+    "8": "88fc0018-c2be-43a8-9de9-732f9c041767",
+    "9": "88fc0018-c2be-43a8-9de9-732f9c041767",
+    "10": "88fc0018-c2be-43a8-9de9-732f9c041767",
+    "11": "1508e6a1-8c9a-480b-8697-c43d08a5db01",
+    "12": "1508e6a1-8c9a-480b-8697-c43d08a5db01",
+    "13": "1508e6a1-8c9a-480b-8697-c43d08a5db01",
+    "14": "88fc0018-c2be-43a8-9de9-732f9c041767",
+    "15": "88fc0018-c2be-43a8-9de9-732f9c041767"
+  },
+  "references": [
+    {
+      "source_id": "b7137170-f360-425b-a478-759a7a203a1a",
+      "citation_number": 1,
+      "cited_text": "và hoàn thành ⊸Tạo thông tin bắt đầu sản xuất Opcenter ⊸Thực hiện xử lý bắt đầu sản xuất Opcenter ⊸Nhận thông tin kế hoạch Excel ⊸Lập bảng trình tự sản xuất Đăng ký thời gian bắt đầu Đọc Barcode S/No. Unit Liên kết mã Serial Unit Bảng liên kết mã trạng thái Đồ gá 2V9-8200 Đồ gá công đoạn điều chỉnh Liên kết dữ liệu đồ gá công đoạn điều chỉnh Bắt đầu sản xuất thông tin bị chậm Hệ thống đăng ký bắt đầu và hoàn thành ⊸Tạo thông tin dừng Line Line Out Hệ thống đăng ký lịch sử sản xuất ⊸Tạo thông tin Line out"
+    },
+    {
+      "source_id": "113335b6-8e43-4cba-abcd-88746646d3b6",
+      "citation_number": 2
+    },
+    {
+      "source_id": "3ef74dde-7c27-4d4d-8542-6811c716f19f",
+      "citation_number": 3
+    },
+    {
+      "source_id": "82ac424d-4544-468d-8a85-3f6fb0f7eb8e",
+      "citation_number": 4
+    },
+    {
+      "source_id": "7de9d31c-a2a9-4ae9-92cd-ee937e64dda5",
+      "citation_number": 5
+    },
+    {
+      "source_id": "4136ccde-734b-42ae-bf2a-f51afead4e8d",
+      "citation_number": 6,
+      "cited_text": "└ Resource Group Name 302ND19100_Y302V9S2010106 | Entry Type Resource | Entries 302ND19100_Y302V9S2010106 └ Resource Name 302ND19100_Y302V9S2010106 製造ver._生産品目_名称へ REVへ 供給先W.C._品目へ 青系、緑系は自由入力 切替パターン 切替指定日 TC設計指示 Opcenter切替管理 期日前 期日後 切替年月日 切替指示 期日まで 期日以降 切替期日有り 期日切替 YYYY/MM/DD The day 旧 新 期日以降に切替 YYYY/MM/DD After 旧 旧(優先) or 新 ※注1 期日までに切替 YYYY/MM/DD Before 旧(優先) or 新 ※注1 新 切替期日無し 旧品使用後 '－ '－ RC 旧(優先) or 新 ※注1 OR登録 切替生産可 '－ '－ OR 1st(優先) or 2nd ※注2 旧 新 ■切替時期指示 BOP設変 UNIT(Process) -01 オペレーション1 -01"
+    },
+    {
+      "source_id": "4136ccde-734b-42ae-bf2a-f51afead4e8d",
+      "citation_number": 7,
+      "cited_text": "生産 X0 or Y0 IS ROR Pro. C21_生産品目 Rev 05└ Rev 06└ true false Pro. C21_生産品目 Rev 05└ Rev 06└ false true False→True(手動) Opcenter 設計変更自動切替 在庫 有り？ 部品2nd 登録有？ 部品 新REV 登録有？ 部品要求数と 在庫数確認 2nd部品在庫数 確認 生産品 新REV 登録有？ 新REV部品 在庫数確認 在庫 有り？ 部品変更 ? Mfg Order 新BOPに 一時的更新 追加部品 在庫数確認 在庫 有り？ 供給指示作成 2nd追加 ？ 2nd部品在庫数 確認 Mfg Order 更新確定 Err 不足 部品変更/ 2nd追加 混在？ No Yes No Yes No No Err 不足 Yes Yes No Yes Yes Err 不足 No Yes Yes No ログ 出力 ①部品REVUP ②部品変更 ⑧2nd追加 AMS倉庫在庫数確認 WorkflowのREV Is ROR設定 ※Workflow：製造ver_生産品目_名称 構成品目のREV Is ROR設定"
+    },
+    {
+      "source_id": "88fc0018-c2be-43a8-9de9-732f9c041767",
+      "citation_number": 8,
+      "cited_text": "DecimalDatetime(8byte) verchar(20) verchar(1) verchar(20) verchar(20) verchar(20) verchar(20) verchar(20) verchar(5) verchar(1) verchar(20) 登録日時 １:処置完了 日時 不良現象02 原因 処置 担当 詳細情報保存先 DATE_TIME DEFECT_ITEM_02 CAUSE TREATMENT MANAGER DETAIL Datetime(8byte) verchar(20) verchar(20) verchar(20) verchar(5) verchar(20) 登録日時 調査進捗に応じて随時登録 ラインアウト/復帰登録•連携テーブル DESTINATION   統括PLC 2, 中間DB 3 DATE_TIME STATUS1 LINE PROCESS_ID S_NO ※必須 状態•連携テーブル ［本体］不良機確認記録テーブル 調整工程不良機確認記録テーブル ②修理記録欄 ①不良記録欄 ④ 製造承認欄 ③ IE／QC承認欄 既存履歴登記テーブル"
+    },
+    {
+      "source_id": "88fc0018-c2be-43a8-9de9-732f9c041767",
+      "citation_number": 9,
+      "cited_text": "（製造領班） 確認 （IE、QC） HT： 1. 機器修理申請 2. 修理内容登録 3. 修理結果確認 4. 機器ライン返却 看板： 1. ステータス検索 2. 履歴管理 3. 各拠点リアルタイムに見える 各ステップはHTで登録 ラインアウト/復帰登録、修理内容入力 システムフロー 機器修理申請： 1. Line、工程、工程ID 2. 機番 3. 故障類別、詳細 4. 処理部門、申請者 5. 写真、動画 修理内容登録： 1. 不良現象確認 2. 修理内容、修理担当者 3. 次の対応部門 4. 修理添付ファイル(写真、 動画） 修理結果確認： 1. 結果判定 2. 次の処理部門設定 3.  OK→Line返却 4. NG却下、直す 機器ライン返却： 1. 機器確認 2. Line返却の工程 HT 申請 機器製造 確認 工程QC Line返却 機器製造 修理 製造技術 看板 ※各段階の情報をリアルタイムに表示 ラインアウト/復帰登録、修理内容入力 処理フロー 修理中 返却 ラインアウト•操作画面 申請(製造用) 申請 修理 確認 Line返却 内容： 1、Line、工程、工程ID 2、機番"
+    },
+    {
+      "source_id": "88fc0018-c2be-43a8-9de9-732f9c041767",
+      "citation_number": 10,
+      "cited_text": "連携コード登録 在庫コード連携テーブル 获取箱EPC在庫量 MOM 在庫指示修正登録 出庫処理テーブル 修正 物理名： dbo.ProcessInventoryControl ライン 工程 品目コード 品目改訂レベル オリコンID 購買発注番号 購買発注明細番号 納品キー番号 箱連番 数量 状態 数量チェック ID SUP_LINE PROCESS_ID ITEM_CODE ITEM_REV ORICON_ID PO_NO PO_DETAIL_NO PO_SEP_KEY CASE_SEQNO QTY STATUS CHECK_QTY decimal verchar(4) verchar(20) verchar(12) verchar(2) verchar(30) verchar(10) verchar(5) verchar(4) verchar(10) verchar(12) verchar(2) verchar(6) 1 0010 Y302V90001010101 3A2V900860 01 5105453184400101000001000532 1023052301 00010 +001 001/001 4 01 -5 ↑整数9桁＋小数点3桁（EDI現品票と同様）"
+    },
+    {
+      "source_id": "1508e6a1-8c9a-480b-8697-c43d08a5db01",
+      "citation_number": 11,
+      "cited_text": "検査テーブル CNMOM R/3 在庫転送テーブル 保管場所 コンベア CNMOM I/Fツール オリコン情報 統括PLC QR情報 検収状況 ブロック情報 I/Fツール 検収完了 棚番情報 Athena MFP 納品伝票情報 伝票読み取り デパレロボット 検査有無 検査場搬送 ACR モニター 検収状況確認 オリコンゲート CNMOM I/Fツール ベンダー出荷情報 Sテーブル CNMOM I/Fツール システム連携図（入庫） 未使用 未使用 未使用 未 使 用 未使用 未使用 1 2 3 未使用 Sテーブル VendorShippingInfo テーブルレイアウト システム名 テーブル名 3 部品入庫 T_PARTS_RECIEVE 合計 647 byte № データ項目名（日本語） （英字） タイプ 長さ NULL P.key Idx1 Idx2 Idx3 Auto Default 備 考 1 入庫タイプ RECEIVE_TYPE varchar 1 '':通常入庫 '1':マニュアル入庫(検収対象外) 2 オリコンID ORICON_ID varchar 30 3 品目コード ITEM_CODE varchar 20 ベンダー現品票情報(EDIのみは空白) 4 品目改訂レベル ITEM_REV varchar 2 ベンダー現品票情報(EDIのみは空白) 5 入数 INNER_QTY decimal 6 ベンダー現品票情報(EDIのみは空白) 6 ベンダーロット VENDOR_LOT varchar 50 ベンダー現品票情報(EDIのみは空白) 7 荷受(現品票)HTユーザーID TAG_READ_HTID varchar 100 ベンダー現品票情報(EDIのみは空白) 8 購買発注番号 PO_NO varchar 10 1 ベンダー現品票情報(EDIのみは空白) 9 購買発注明細番号 PO_DETAIL_NO varchar 5 2 ＥＤＩ現品票情報(必ず登録) 10 納品キー番号 PO_SEP_KEY varchar 4 3 ＥＤＩ現品票情報(必ず登録) 11 箱連番 CASE_SEQNO varchar 10 4 ＥＤＩ現品票情報(必ず登録) 12 注文数量 ORDER_QTY decimal 12 ＥＤＩ現品票情報(必ず登録) 13 品目 ORDER_ITEM_CODE varchar 18 ＥＤＩ現品票情報(必ず登録) 14 Rev ORDER_ITEM_REV varchar 2 ＥＤＩ現品票情報(必ず登録) 15 出荷数量 SHIP_QTY decimal 12 ＥＤＩ現品票情報(必ず登録)箱入数 16 製造ロット MANUFACTUAL_LOT varchar 50 ＥＤＩ現品票情報(必ず登録) 17 インボイス番号 INVOICE_NO varchar 25 ＥＤＩ現品票情報(必ず登録) 18 オリコン状態 ORICON_STATUS varchar 16 オリコンのチェック結果状態を示すコード 19 格納方法 HOUSE_METHOD varchar 1 '0':倉庫へ格納 '1':検査 20 荷受(伝票)HTユーザーID SLIP_READ_HTID varchar 12 21 データ連携時間１ IF_DATE datetime 14 22 オリコン重量 ORICON_WEIGHT int 3 単位グラム 23 入庫保管場所 STORAGE_PLACE varchar 10 24 格納口 HOUSE_ENTRANCE varchar 20 25 格納指示FLG HOUSE_ORDER_FLG varchar 1 '':未指示,'1':指示済 26 格納先棚番 HOUSE_SHELF varchar 20 27 データ連携時間２ IF2_DATE datetime 14 28 格納作業開始FLG HOUSE_START_FLG varchar 1 '':未指示,'1':指示済 29 格納完了FLG HOUSE_FINISH_FLG varchar 1 '':未指示,'1':指示済 30 格納完了時間 HOUSE_FINISH_DATE datetime 14 31 レコード更新者 UPD_USER varchar 50 32 レコード更新日 UPD_DATE datetime 14 33 CSVファイル名 CSV_FILENAME varchar 100 34 SEQ SEQ decimal 10 1 1 オート番号 35 36 37"
+    },
+    {
+      "source_id": "1508e6a1-8c9a-480b-8697-c43d08a5db01",
+      "citation_number": 12,
+      "cited_text": "8 品目コード ITEM_CODE varchar 20 9 品目改訂レベル ITEM_REV varchar 2 10 出庫ゲート通過指示時間 GATEOUT_ORDER_TIME datetime 14 MES_出庫指示情報①(出庫ゲートの通過指示時間/ACR-CONが処理順序制御) 11 データ連携時間１ DATA_IF_TIME1 datetime 14 ※旧名：IF_DATE 12 出庫棚番 OUT_SHELF varchar 12 WMS_出庫対象指示情報② 13 オリコンID ORICON_ID varchar 30 14 オリコン重量 ORICON_WEIGHT int 3 15 データ連携時間２ DATA_IF_TIME2 datetime 14 ※旧名：IF2_DATE 16 搬送指示フラグ MOVE_ORDER_FLG varchar 1 ACR-CON_ACR出庫指示フラグ③ 17 データ連携時間2.5 DATA_IF_TIME25 datetime 0 ACR-CON_ACRオリコン積載時間④(ACRオリコン受取時間) 18 搬送完了FLG MOVE_FIN_FLG varchar 1 ACR-CON_ACR出庫完了フラグ④"
+    },
+    {
+      "source_id": "1508e6a1-8c9a-480b-8697-c43d08a5db01",
+      "citation_number": 13,
+      "cited_text": "19 データ連携時間３ DATA_IF_TIME3 datetime 0 ACR-CON_ACR出庫完了フラグ④(搬送完了FLG書き込み時間) 20 データ連携時間４ DATA_IF_TIME4 datetime 0 出庫ゲート通過実績時間(ゲート通過指示に対する実績時間) 21 データ連携時間５ DATA_IF_TIME5 datetime 0 AGV-CON_AGVオリコン受取時間⑥(搬送工程問合せ時間) 22 配膳完了FLG DELIVERY_FIN_FLG varchar 1 AGV-CON_AGVオリコン配膳完了フラグ⑦ 23 データ連携時間６ DATA_IF_TIME6 datetime 0 1 1 オリコン配膳完了時間⑦ 24 CSVファイル名 CSV_FILENAME varchar 100 25 出庫処理結果 OUT_STATUS varchar 1 '':正常完了 '1':出庫エラー 26 SEQ SEQ decimal 10 オート番号 27 28 29 30 31 32 33 34 35 36 37 WMS ACRCon MOM PLC CTUCon MOM"
+    },
+    {
+      "source_id": "88fc0018-c2be-43a8-9de9-732f9c041767",
+      "citation_number": 14,
+      "cited_text": "品質連携テーブル_調査開始 日時 シリアルNo 最新フラグ 工程ID 不良現象01 不良現象02 原因 処置 担当 状態 詳細情報保存先 ID DATE_TIME S_NO LATEST_FLAG PROCESS_ID DEFECT_ITEM_01 DEFECT_ITEM_02 CAUSE TREATMENT MANAGER STATUS DETAIL decimal Datetime(8byte) verchar(20) verchar(1) verchar(20) verchar(20) verchar(20) verchar(20) verchar(20) verchar(5) verchar(1) verchar(20) 登録日時 0:調査中 品質連携テーブル_処置完了 日時 シリアルNo 最新フラグ 工程ID 不良現象01 不良現象02 原因 処置 担当 状態 詳細情報保存先 ID DATE_TIME S_NO LATEST_FLAG PROCESS_ID DEFECT_ITEM_01 DEFECT_ITEM_02 CAUSE TREATMENT MANAGER STATUS DETAIL"
+    },
+    {
+      "source_id": "88fc0018-c2be-43a8-9de9-732f9c041767",
+      "citation_number": 15,
+      "cited_text": "４:中間DB 登録日時 LO:ラインアウト ラインアウト_生産履歴登録システムが行うテーブル登録 生産履歴登録システムから、中間DBの 「状態コード連携テーブル」 「品質連携テーブル」へ情報登録する 状態コード連携テーブル_ライン復帰 Rev 保存先 日時 状態コード 状態細目 工程ID シリアルNo データ項目 データ ID REVISION DESTINATION DATE_TIME STATUS1 STATUS2 PROCESS_ID NO DATA_NAME DATA_VALUE decimal verchar(2) verchar(1) verchar(28) verchar(2) verchar(3) verchar(16) verchar(20) verchar(20) verchar(30) ４:中間DB 登録日時 LI:ライン復帰 日時 状態コード 状態細目 工程ID シリアルNo データ項目 データ 登録日時 PC:部品交換 品目 日時 状態コード 状態細目 工程ID シリアルNo データ項目 データ 登録日時 PC:部品交換 数量 セット 部品交換する場合 修理内容入力•部品交換"
+    }
+  ]
+}
+
+NotebookLM citations/source notes:
+See answer text for NotebookLM footnotes if any.
+
+NotebookLM limitations / uncertainty:
+Unknown (depends on NLM model behavior)
+
+NotebookLM strict score:
+Not automatically scored
+
+NotebookLM winner label:
+human_review_required
+
+========================================
+
+## Q11 — Mixed multi-source/Missing evidence
+
+Question:
+Identify missing evidence that would be required before answering a complex production issue.
+
+Target source type:
+
+
+NotebookLM answer:
+{
+  "answer": "To definitively investigate a complex production issue, you need evidence that bridges the gap between the system's digital records and the physical reality of the factory floor. While the provided schemas, interfaces, and architecture diagrams establish a thorough digital audit trail, they lack the following critical missing evidenc[REDACTED_LOCAL_PATH]
+  "conversation_id": "4dfcc9a1-7f3f-4b51-9a5f-752e1d17fe07",
+  "sources_used": [
+    "1508e6a1-8c9a-480b-8697-c43d08a5db01",
+    "82ac424d-4544-468d-8a85-3f6fb0f7eb8e",
+    "88fc0018-c2be-43a8-9de9-732f9c041767",
+    "c6349645-5596-4a3d-aab8-8b8f4ecba76e",
+    "4136ccde-734b-42ae-bf2a-f51afead4e8d"
+  ],
+  "citations": {
+    "1": "1508e6a1-8c9a-480b-8697-c43d08a5db01",
+    "2": "82ac424d-4544-468d-8a85-3f6fb0f7eb8e",
+    "3": "1508e6a1-8c9a-480b-8697-c43d08a5db01",
+    "4": "1508e6a1-8c9a-480b-8697-c43d08a5db01",
+    "5": "88fc0018-c2be-43a8-9de9-732f9c041767",
+    "6": "c6349645-5596-4a3d-aab8-8b8f4ecba76e",
+    "7": "1508e6a1-8c9a-480b-8697-c43d08a5db01",
+    "8": "88fc0018-c2be-43a8-9de9-732f9c041767",
+    "9": "88fc0018-c2be-43a8-9de9-732f9c041767",
+    "10": "88fc0018-c2be-43a8-9de9-732f9c041767",
+    "11": "4136ccde-734b-42ae-bf2a-f51afead4e8d",
+    "12": "4136ccde-734b-42ae-bf2a-f51afead4e8d"
+  },
+  "references": [
+    {
+      "source_id": "1508e6a1-8c9a-480b-8697-c43d08a5db01",
+      "citation_number": 1,
+      "cited_text": "検査テーブル CNMOM R/3 在庫転送テーブル 保管場所 コンベア CNMOM I/Fツール オリコン情報 統括PLC QR情報 検収状況 ブロック情報 I/Fツール 検収完了 棚番情報 Athena MFP 納品伝票情報 伝票読み取り デパレロボット 検査有無 検査場搬送 ACR モニター 検収状況確認 オリコンゲート CNMOM I/Fツール ベンダー出荷情報 Sテーブル CNMOM I/Fツール システム連携図（入庫） 未使用 未使用 未使用 未 使 用 未使用 未使用 1 2 3 未使用 Sテーブル VendorShippingInfo テーブルレイアウト システム名 テーブル名 3 部品入庫 T_PARTS_RECIEVE 合計 647 byte № データ項目名（日本語） （英字） タイプ 長さ NULL P.key Idx1 Idx2 Idx3 Auto Default 備 考 1 入庫タイプ RECEIVE_TYPE varchar 1 '':通常入庫 '1':マニュアル入庫(検収対象外) 2 オリコンID ORICON_ID varchar 30 3 品目コード ITEM_CODE varchar 20 ベンダー現品票情報(EDIのみは空白) 4 品目改訂レベル ITEM_REV varchar 2 ベンダー現品票情報(EDIのみは空白) 5 入数 INNER_QTY decimal 6 ベンダー現品票情報(EDIのみは空白) 6 ベンダーロット VENDOR_LOT varchar 50 ベンダー現品票情報(EDIのみは空白) 7 荷受(現品票)HTユーザーID TAG_READ_HTID varchar 100 ベンダー現品票情報(EDIのみは空白) 8 購買発注番号 PO_NO varchar 10 1 ベンダー現品票情報(EDIのみは空白) 9 購買発注明細番号 PO_DETAIL_NO varchar 5 2 ＥＤＩ現品票情報(必ず登録) 10 納品キー番号 PO_SEP_KEY varchar 4 3 ＥＤＩ現品票情報(必ず登録) 11 箱連番 CASE_SEQNO varchar 10 4 ＥＤＩ現品票情報(必ず登録) 12 注文数量 ORDER_QTY decimal 12 ＥＤＩ現品票情報(必ず登録) 13 品目 ORDER_ITEM_CODE varchar 18 ＥＤＩ現品票情報(必ず登録) 14 Rev ORDER_ITEM_REV varchar 2 ＥＤＩ現品票情報(必ず登録) 15 出荷数量 SHIP_QTY decimal 12 ＥＤＩ現品票情報(必ず登録)箱入数 16 製造ロット MANUFACTUAL_LOT varchar 50 ＥＤＩ現品票情報(必ず登録) 17 インボイス番号 INVOICE_NO varchar 25 ＥＤＩ現品票情報(必ず登録) 18 オリコン状態 ORICON_STATUS varchar 16 オリコンのチェック結果状態を示すコード 19 格納方法 HOUSE_METHOD varchar 1 '0':倉庫へ格納 '1':検査 20 荷受(伝票)HTユーザーID SLIP_READ_HTID varchar 12 21 データ連携時間１ IF_DATE datetime 14 22 オリコン重量 ORICON_WEIGHT int 3 単位グラム 23 入庫保管場所 STORAGE_PLACE varchar 10 24 格納口 HOUSE_ENTRANCE varchar 20 25 格納指示FLG HOUSE_ORDER_FLG varchar 1 '':未指示,'1':指示済 26 格納先棚番 HOUSE_SHELF varchar 20 27 データ連携時間２ IF2_DATE datetime 14 28 格納作業開始FLG HOUSE_START_FLG varchar 1 '':未指示,'1':指示済 29 格納完了FLG HOUSE_FINISH_FLG varchar 1 '':未指示,'1':指示済 30 格納完了時間 HOUSE_FINISH_DATE datetime 14 31 レコード更新者 UPD_USER varchar 50 32 レコード更新日 UPD_DATE datetime 14 33 CSVファイル名 CSV_FILENAME varchar 100 34 SEQ SEQ decimal 10 1 1 オート番号 35 36 37"
+    },
+    {
+      "source_id": "82ac424d-4544-468d-8a85-3f6fb0f7eb8e",
+      "citation_number": 2
+    },
+    {
+      "source_id": "1508e6a1-8c9a-480b-8697-c43d08a5db01",
+      "citation_number": 3,
+      "cited_text": "8 品目コード ITEM_CODE varchar 20 9 品目改訂レベル ITEM_REV varchar 2 10 出庫ゲート通過指示時間 GATEOUT_ORDER_TIME datetime 14 MES_出庫指示情報①(出庫ゲートの通過指示時間/ACR-CONが処理順序制御) 11 データ連携時間１ DATA_IF_TIME1 datetime 14 ※旧名：IF_DATE 12 出庫棚番 OUT_SHELF varchar 12 WMS_出庫対象指示情報② 13 オリコンID ORICON_ID varchar 30 14 オリコン重量 ORICON_WEIGHT int 3 15 データ連携時間２ DATA_IF_TIME2 datetime 14 ※旧名：IF2_DATE 16 搬送指示フラグ MOVE_ORDER_FLG varchar 1 ACR-CON_ACR出庫指示フラグ③ 17 データ連携時間2.5 DATA_IF_TIME25 datetime 0 ACR-CON_ACRオリコン積載時間④(ACRオリコン受取時間) 18 搬送完了FLG MOVE_FIN_FLG varchar 1 ACR-CON_ACR出庫完了フラグ④"
+    },
+    {
+      "source_id": "1508e6a1-8c9a-480b-8697-c43d08a5db01",
+      "citation_number": 4,
+      "cited_text": "19 データ連携時間３ DATA_IF_TIME3 datetime 0 ACR-CON_ACR出庫完了フラグ④(搬送完了FLG書き込み時間) 20 データ連携時間４ DATA_IF_TIME4 datetime 0 出庫ゲート通過実績時間(ゲート通過指示に対する実績時間) 21 データ連携時間５ DATA_IF_TIME5 datetime 0 AGV-CON_AGVオリコン受取時間⑥(搬送工程問合せ時間) 22 配膳完了FLG DELIVERY_FIN_FLG varchar 1 AGV-CON_AGVオリコン配膳完了フラグ⑦ 23 データ連携時間６ DATA_IF_TIME6 datetime 0 1 1 オリコン配膳完了時間⑦ 24 CSVファイル名 CSV_FILENAME varchar 100 25 出庫処理結果 OUT_STATUS varchar 1 '':正常完了 '1':出庫エラー 26 SEQ SEQ decimal 10 オート番号 27 28 29 30 31 32 33 34 35 36 37 WMS ACRCon MOM PLC CTUCon MOM"
+    },
+    {
+      "source_id": "88fc0018-c2be-43a8-9de9-732f9c041767",
+      "citation_number": 5,
+      "cited_text": "#103AGV停止， 地番=05フィード バック 状態：0→1 流れ AGV↑ 工程 地番 狀態 101 C-01 01 2 102 C-05 05 0 103 C-04 04 2 104 C-03 03 2 105 C-02 02 1 …… …… …… …… AGV↑ 工程 地番 狀態 101 C-01 01 2 102 C-05 05 0 103 C-04 04 0 104 C-03 03 2 105 C-02 02 1 …… …… …… …… AGV↑ 工程 地番 狀態 101 C-01 01 2 102 - - - 103 C-05 05 1 104 C-03 03 2 105 C-02 02 1 …… …… …… …… 0：移動中 1：工程到着 2：移動許可 工程ボタン AGV関連テーブル 連携システム本体組立工程テーブル AGV↑ 工程 SN 地番 狀態 101 C-01 64R907 01 2 102 C-05 64R901 05 0 103 C-04 64R903 04 1 104 C-03 64R904 03 2 105 C-02 64R906 02 1 …… …… …… …… ……"
+    },
+    {
+      "source_id": "c6349645-5596-4a3d-aab8-8b8f4ecba76e",
+      "citation_number": 6
+    },
+    {
+      "source_id": "1508e6a1-8c9a-480b-8697-c43d08a5db01",
+      "citation_number": 7,
+      "cited_text": "PLC MOM WMS ACRCon PLC(MOM, PAC経由) オリコンゲート通過時にエラー(重量、重複…)が存在し なければ書き込み WMS ゲート通過後、 HOUSE_ORDER_FLG＝’1’かつHOUSE_SHELF ＝‘’の場合に書き込み ACR Controller（MATECON） HOUSE‗START‗FLG： HOUSE_SHELFが定められているかつ HOUSE_START_FLG＝’’の場合に書き込み HOUSE‗START‗FLG： P-Rackに格納が完了した段階で書き込み 1 2 3 テーブルレイアウト（入庫） ACRコントローラ 出庫ゲート 出庫処理テーブル OPCサーバー R/3 製造指図 CNMOM コンベア 進度管理 指図・S/No I/Fツール Sテーブル CNMOM WMS 棚番情報 払出先情報 統括PLC オリコン情報 OpcenterEXCR APS 供給計画 出庫情報 PAC R/3 在庫転送テーブル 保管場所 CNMOM I/Fツール CTUトリガ CNMOM 生産履歴登録システム 緊急停止 状態コード連携テーブル 停止指示 ACRコントローラ"
+    },
+    {
+      "source_id": "88fc0018-c2be-43a8-9de9-732f9c041767",
+      "citation_number": 8,
+      "cited_text": "C-4 10:30:00 10:39:59 C-5 10:40:00 10:49:59 C-6 10:50:00 10:59:59 ①先頭工程着手 ST 10:00 SN：Z2PTEST01 C41L CSV *CSVファイルを生成 合計11部(先頭工程の着手を除く)、一括登録 PLC 工程/tactime ②最終工程完工CO 11:00 SN：Z2PTEST01 SLMP PLC FTP 着手登録 完工登録 着手／完工•操作画面 着手 完工 内容： 1、Line、工程、工程ID 2、機番、機種 3、着手/完工 選択 4、PLC連携方式： ①SLMP(頭工程着手信号) ②FTP(CSV)(その他工程着手、完工) 5、着手完工時点確認 データ確認 C-1 ① ② 着完工登録システム 項目 システム 設備 機能 着完工登録 システム ❶着手/完工 HT ①先頭工程 製品/ユニット着手SN登録 ②最終工程 製品/ユニット完工SN登録 工程ボタン ③異常/リセット提出 ④ラインストップ時間収集 (KDC機能検討中) ➋AGVトリガー 工程ボタン ①キーを押すとAGVが次の工程に移動する"
+    },
+    {
+      "source_id": "88fc0018-c2be-43a8-9de9-732f9c041767",
+      "citation_number": 9,
+      "cited_text": "品質連携テーブル_調査開始 日時 シリアルNo 最新フラグ 工程ID 不良現象01 不良現象02 原因 処置 担当 状態 詳細情報保存先 ID DATE_TIME S_NO LATEST_FLAG PROCESS_ID DEFECT_ITEM_01 DEFECT_ITEM_02 CAUSE TREATMENT MANAGER STATUS DETAIL decimal Datetime(8byte) verchar(20) verchar(1) verchar(20) verchar(20) verchar(20) verchar(20) verchar(20) verchar(5) verchar(1) verchar(20) 登録日時 0:調査中 品質連携テーブル_処置完了 日時 シリアルNo 最新フラグ 工程ID 不良現象01 不良現象02 原因 処置 担当 状態 詳細情報保存先 ID DATE_TIME S_NO LATEST_FLAG PROCESS_ID DEFECT_ITEM_01 DEFECT_ITEM_02 CAUSE TREATMENT MANAGER STATUS DETAIL"
+    },
+    {
+      "source_id": "88fc0018-c2be-43a8-9de9-732f9c041767",
+      "citation_number": 10,
+      "cited_text": "DecimalDatetime(8byte) verchar(20) verchar(1) verchar(20) verchar(20) verchar(20) verchar(20) verchar(20) verchar(5) verchar(1) verchar(20) 登録日時 １:処置完了 日時 不良現象02 原因 処置 担当 詳細情報保存先 DATE_TIME DEFECT_ITEM_02 CAUSE TREATMENT MANAGER DETAIL Datetime(8byte) verchar(20) verchar(20) verchar(20) verchar(5) verchar(20) 登録日時 調査進捗に応じて随時登録 ラインアウト/復帰登録•連携テーブル DESTINATION   統括PLC 2, 中間DB 3 DATE_TIME STATUS1 LINE PROCESS_ID S_NO ※必須 状態•連携テーブル ［本体］不良機確認記録テーブル 調整工程不良機確認記録テーブル ②修理記録欄 ①不良記録欄 ④ 製造承認欄 ③ IE／QC承認欄 既存履歴登記テーブル"
+    },
+    {
+      "source_id": "4136ccde-734b-42ae-bf2a-f51afead4e8d",
+      "citation_number": 11,
+      "cited_text": "Mfg Orderの Workflowと Material list 更新 ⑧2nd追加 新旧 部品点数 同数？ ログ 出力 ■自動切替■ ✓ 部品要求数に対する在庫数不足をトリガに自動切替 ①部品REVUP ②部品変更 ・ランニングチェンジ ・同親新旧REVの構成部品点数が同じ場合のみ ※⑥/⑦も同様 ⑧2nd追加 Yes end No No No start Err 不足 2026.01更新 ■自動切替■ ✓ 部品要求数に対する在庫数不足をトリガに自動切替 ①部品REVUP Opcenter 設計変更手動切替 指図取込/ Mfg Order作成 MOM連携用 MCN Release BOP割当 Mfg Orderの Workflowと Material list 更新 ※1台毎 Mfg Order 新BOPに 更新 Workflow 生産品目新REV ROR有効設定 製造計画 部品消費 予定時間 算出 指図発行 供給指示 作成実行 手動切替 供給計画作成 R3 ECN承認 PLM MOM 1台毎 ■手動切替■ ✓ ランチェン設変で自動切替不可時 ②部品変更 ・同親新旧REVの構成部品点数が異なる場合 ※⑥/⑦も同様"
+    },
+    {
+      "source_id": "4136ccde-734b-42ae-bf2a-f51afead4e8d",
+      "citation_number": 12,
+      "cited_text": "✓ 在庫基準ではなく日付指定切替時 ②部品変更 ・日指定切替 (規格絡み) ③部品追加 ④部品削除 ⑨2nd削除 ⑩SOFT変更 ✓ 複数LINE同時切替時 ⑦ 複数ライン間 複数品目 同時変更 供給計画 製造実行 生産品目有効REVを 元にBOP割当 ※この時点で適正な 生産品目のREVを 指定出来れば自動化 検討可能 Mfg Order：製造オーダー Workflow：生産品目に対する工程、作業、部品情報 【製造ver_生産品目_名称(50)】 ※REV毎管理 ※製造オーダー毎割当 Material List：製造オーダーで使用する部品一覧 2026.01更新 ■手動切替■ ✓ 部品変更 ✓ 2nd追加／削除時 ✓ SOFT変更 01→02 BOM情報修正 この作業を生産台数分実施する必要あり Mfg Order(製造オーダー) 2026.01追加 Model 2026.01追加 Opcenter 設計変更手動切替Timing 指図発行 指図取込/ Mfg Order 作成 BOP割当 製造計画 生産-4日 BOP変更 情報取込 MOM連携用 ECN Release Process     REV02"
+    }
+  ]
+}
+
+NotebookLM citations/source notes:
+See answer text for NotebookLM footnotes if any.
+
+NotebookLM limitations / uncertainty:
+Unknown (depends on NLM model behavior)
+
+NotebookLM strict score:
+Not automatically scored
+
+NotebookLM winner label:
+human_review_required
+
+========================================
+
+## Q12 — Mixed multi-source/Owner next actions
+
+Question:
+Produce a set of owner next actions and a handover summary, citing sources correctly.
+
+Target source type:
+
+
+NotebookLM answer:
+{
+  "answer": "**Handover Summary**\n\n**Investigation Context:** We are currently investigating a complex production/logistics discrepancy within the MOM/AMS architecture. The core issue likely involves inventory mismatches, unexplained operational latencies, or potential workflow bypasses. \n\n**Current Findings:** \nA thorough review of the system databases, UI mockups, and business flow documentation has established a robust digital audit trail. The system reliably tracks intermediate database handoffs through tables such as `T_PARTS_RECEIVE`, `T_PARTS_OUT`, and `QualityInformationLinkage` [1-3]. It properly records timestamped system instructions for automated warehouse robots (ACR/CTU) and logs the authenticated user accounts performing tasks on the floor via Handy Terminals [1, 4]. \n\n**Critical Gaps Identified:** \nThe digital evidence alone is insufficient to close the investigation because schemas only reflect the \"Happy Path\" data formally submitted to the system. Static databases cannot confirm the physical integrity of the parts inside the Oricon containers, identify the actual human holding the Handy Terminal, explain the root hardware/network causes of robot latencies, or expose informal/offline managerial overrides.\n\n***\n\n**Owner Next Actions**\n\nTo conclusively resolve this issue, the system owner or investigating team must execute the following out-of-band verifications and physical audit[REDACTED_LOCAL_PATH]
+  "conversation_id": "4dfcc9a1-7f3f-4b51-9a5f-752e1d17fe07",
+  "sources_used": [
+    "1508e6a1-8c9a-480b-8697-c43d08a5db01",
+    "88fc0018-c2be-43a8-9de9-732f9c041767",
+    "4136ccde-734b-42ae-bf2a-f51afead4e8d"
+  ],
+  "citations": {
+    "1": "1508e6a1-8c9a-480b-8697-c43d08a5db01",
+    "2": "1508e6a1-8c9a-480b-8697-c43d08a5db01",
+    "3": "88fc0018-c2be-43a8-9de9-732f9c041767",
+    "4": "1508e6a1-8c9a-480b-8697-c43d08a5db01",
+    "5": "88fc0018-c2be-43a8-9de9-732f9c041767",
+    "6": "88fc0018-c2be-43a8-9de9-732f9c041767",
+    "7": "88fc0018-c2be-43a8-9de9-732f9c041767",
+    "8": "4136ccde-734b-42ae-bf2a-f51afead4e8d",
+    "9": "4136ccde-734b-42ae-bf2a-f51afead4e8d",
+    "10": "4136ccde-734b-42ae-bf2a-f51afead4e8d"
+  },
+  "references": [
+    {
+      "source_id": "1508e6a1-8c9a-480b-8697-c43d08a5db01",
+      "citation_number": 1,
+      "cited_text": "検査テーブル CNMOM R/3 在庫転送テーブル 保管場所 コンベア CNMOM I/Fツール オリコン情報 統括PLC QR情報 検収状況 ブロック情報 I/Fツール 検収完了 棚番情報 Athena MFP 納品伝票情報 伝票読み取り デパレロボット 検査有無 検査場搬送 ACR モニター 検収状況確認 オリコンゲート CNMOM I/Fツール ベンダー出荷情報 Sテーブル CNMOM I/Fツール システム連携図（入庫） 未使用 未使用 未使用 未 使 用 未使用 未使用 1 2 3 未使用 Sテーブル VendorShippingInfo テーブルレイアウト システム名 テーブル名 3 部品入庫 T_PARTS_RECIEVE 合計 647 byte № データ項目名（日本語） （英字） タイプ 長さ NULL P.key Idx1 Idx2 Idx3 Auto Default 備 考 1 入庫タイプ RECEIVE_TYPE varchar 1 '':通常入庫 '1':マニュアル入庫(検収対象外) 2 オリコンID ORICON_ID varchar 30 3 品目コード ITEM_CODE varchar 20 ベンダー現品票情報(EDIのみは空白) 4 品目改訂レベル ITEM_REV varchar 2 ベンダー現品票情報(EDIのみは空白) 5 入数 INNER_QTY decimal 6 ベンダー現品票情報(EDIのみは空白) 6 ベンダーロット VENDOR_LOT varchar 50 ベンダー現品票情報(EDIのみは空白) 7 荷受(現品票)HTユーザーID TAG_READ_HTID varchar 100 ベンダー現品票情報(EDIのみは空白) 8 購買発注番号 PO_NO varchar 10 1 ベンダー現品票情報(EDIのみは空白) 9 購買発注明細番号 PO_DETAIL_NO varchar 5 2 ＥＤＩ現品票情報(必ず登録) 10 納品キー番号 PO_SEP_KEY varchar 4 3 ＥＤＩ現品票情報(必ず登録) 11 箱連番 CASE_SEQNO varchar 10 4 ＥＤＩ現品票情報(必ず登録) 12 注文数量 ORDER_QTY decimal 12 ＥＤＩ現品票情報(必ず登録) 13 品目 ORDER_ITEM_CODE varchar 18 ＥＤＩ現品票情報(必ず登録) 14 Rev ORDER_ITEM_REV varchar 2 ＥＤＩ現品票情報(必ず登録) 15 出荷数量 SHIP_QTY decimal 12 ＥＤＩ現品票情報(必ず登録)箱入数 16 製造ロット MANUFACTUAL_LOT varchar 50 ＥＤＩ現品票情報(必ず登録) 17 インボイス番号 INVOICE_NO varchar 25 ＥＤＩ現品票情報(必ず登録) 18 オリコン状態 ORICON_STATUS varchar 16 オリコンのチェック結果状態を示すコード 19 格納方法 HOUSE_METHOD varchar 1 '0':倉庫へ格納 '1':検査 20 荷受(伝票)HTユーザーID SLIP_READ_HTID varchar 12 21 データ連携時間１ IF_DATE datetime 14 22 オリコン重量 ORICON_WEIGHT int 3 単位グラム 23 入庫保管場所 STORAGE_PLACE varchar 10 24 格納口 HOUSE_ENTRANCE varchar 20 25 格納指示FLG HOUSE_ORDER_FLG varchar 1 '':未指示,'1':指示済 26 格納先棚番 HOUSE_SHELF varchar 20 27 データ連携時間２ IF2_DATE datetime 14 28 格納作業開始FLG HOUSE_START_FLG varchar 1 '':未指示,'1':指示済 29 格納完了FLG HOUSE_FINISH_FLG varchar 1 '':未指示,'1':指示済 30 格納完了時間 HOUSE_FINISH_DATE datetime 14 31 レコード更新者 UPD_USER varchar 50 32 レコード更新日 UPD_DATE datetime 14 33 CSVファイル名 CSV_FILENAME varchar 100 34 SEQ SEQ decimal 10 1 1 オート番号 35 36 37"
+    },
+    {
+      "source_id": "1508e6a1-8c9a-480b-8697-c43d08a5db01",
+      "citation_number": 2,
+      "cited_text": "出庫情報 情報登録 ハンディターミナル 現品票情報 情報登録 CTUコントローラ 出庫完了 現品票情報 CNMOM 在庫管理テーブル オリコン 非オリコン 1 2 3 4 5 6 システム連携図（出庫） テーブルレイアウト システム名 テーブル名 3 部品出庫 T_PARTS_OUT 合計 270 byte № データ項目名（日本語） （英字） タイプ 長さ NULL P.key Idx1 Idx2 Idx3 Auto Default 備 考 1 出庫タイプ OUT_TYPE varchar 1 '':通常出庫 '1':マニュアル出庫(在庫移動対象外) 2 購買発注番号 PO_NO varchar 10 1 3 購買発注明細番号 PO_DETAIL_NO varchar 5 2 4 納品キー番号 PO_SEP_KEY varchar 4 3 5 箱連番 CASE_SEQNO varchar 10 4 6 供給ライン SUP_LINE varchar 10 MES_出庫指示情報①(R3ライン保管場所？) 7 供給工程 SUP_PROCESS varchar 20 MES_出庫指示情報①(BOPからの配膳工程)"
+    },
+    {
+      "source_id": "88fc0018-c2be-43a8-9de9-732f9c041767",
+      "citation_number": 3,
+      "cited_text": "内容： 1、LineOut履歴管理 2、APPバージョン管理、発行 3、写真、動画プレビュー 4、多言語切替 異常写真プレビュー 異常動画プレビュー ステータス 異常内容 修理内容 クリックしプレビューできる ラインアウト/復帰登録•連携テーブル S_NO = 機番 Datetime PROCESS_ID DEFECT_ITEM_01 DEFECT_ITEM_02 CAUSE   ASSEMBLY TREATMENT  REASSEMBLY STATUS DETAIL ※必須 状態コード連携テーブル_ラインアウト Rev 保存先 日時 状態コード 状態細目 工程ID シリアルNo データ項目 データ ID REVISION DESTINATION DATE_TIME STATUS1 STATUS2 PROCESS_ID NO DATA_NAME DATA_VALUE decimal verchar(2) verchar(1) verchar(28) verchar(2) verchar(3) verchar(16) verchar(20) verchar(20) verchar(30)"
+    },
+    {
+      "source_id": "1508e6a1-8c9a-480b-8697-c43d08a5db01",
+      "citation_number": 4,
+      "cited_text": "WMS 倉庫在庫のORICON_IDが存在かつ OUT＿SHELF＝’’の場合に書き込み MOM 供給予定時間から逆算した時間になったら供給 指示として書き込み ACR Controller MOVE_ORDER_FLG,DATE_IF_TIME25： HOUSE_SHELFが書かれているかつ MOVE_ORDER_FLG=‘’の場合に書き込み MOVE_FIN_FLG,DATA_IF_TIME3： CTU受け取り場所まで搬送完了した段階で書き込み CTU Controller DELIVERY_FIN_FLG=‘2’： CTU受け取り時に書き込み DELIVERY_FIN_FLG=‘1’, DATA_IF_TIME5: 供給完了時に書き込み PLC 出庫ゲート通過時に書き込み 4 1 2 3 5 6 テーブルレイアウト（出庫） 組立 BOP MOM 生 産 着 手 情 報 連 携 PLM ①工程計画作成 生産着手時刻決定 供給 BOP R/3・進度管理 製造指図 S/No. MOM ②遅延があれば出庫計画修正 生産着手 出庫ゲート通過時刻修正 出庫 出庫ゲート通過時刻に間に合うように出発"
+    },
+    {
+      "source_id": "88fc0018-c2be-43a8-9de9-732f9c041767",
+      "citation_number": 5,
+      "cited_text": "連携コード登録 在庫コード連携テーブル 获取箱EPC在庫量 MOM 在庫指示修正登録 出庫処理テーブル 修正 物理名： dbo.ProcessInventoryControl ライン 工程 品目コード 品目改訂レベル オリコンID 購買発注番号 購買発注明細番号 納品キー番号 箱連番 数量 状態 数量チェック ID SUP_LINE PROCESS_ID ITEM_CODE ITEM_REV ORICON_ID PO_NO PO_DETAIL_NO PO_SEP_KEY CASE_SEQNO QTY STATUS CHECK_QTY decimal verchar(4) verchar(20) verchar(12) verchar(2) verchar(30) verchar(10) verchar(5) verchar(4) verchar(10) verchar(12) verchar(2) verchar(6) 1 0010 Y302V90001010101 3A2V900860 01 5105453184400101000001000532 1023052301 00010 +001 001/001 4 01 -5 ↑整数9桁＋小数点3桁（EDI現品票と同様）"
+    },
+    {
+      "source_id": "88fc0018-c2be-43a8-9de9-732f9c041767",
+      "citation_number": 6,
+      "cited_text": "DecimalDatetime(8byte) verchar(20) verchar(1) verchar(20) verchar(20) verchar(20) verchar(20) verchar(20) verchar(5) verchar(1) verchar(20) 登録日時 １:処置完了 日時 不良現象02 原因 処置 担当 詳細情報保存先 DATE_TIME DEFECT_ITEM_02 CAUSE TREATMENT MANAGER DETAIL Datetime(8byte) verchar(20) verchar(20) verchar(20) verchar(5) verchar(20) 登録日時 調査進捗に応じて随時登録 ラインアウト/復帰登録•連携テーブル DESTINATION   統括PLC 2, 中間DB 3 DATE_TIME STATUS1 LINE PROCESS_ID S_NO ※必須 状態•連携テーブル ［本体］不良機確認記録テーブル 調整工程不良機確認記録テーブル ②修理記録欄 ①不良記録欄 ④ 製造承認欄 ③ IE／QC承認欄 既存履歴登記テーブル"
+    },
+    {
+      "source_id": "88fc0018-c2be-43a8-9de9-732f9c041767",
+      "citation_number": 7,
+      "cited_text": "④ FLG: ACRマテコンは、「MOVE_ORDER_FLG」が1または3のときにACRに対して出庫指示を出す ⑤ 供給停止／再開の処理流れ: 製造／物流責任者 供給停止を入力 生産履歴登録システム 連携コード登録 状態コード連携テーブル STATUS1＝SS LINE＝C41 MOM 状態コード確認 供給停止処理 出庫指示修正登録 出庫処理テーブル MOVE_ORDER_FLG＝2 供給停止 製造／物流責任者 供給再開を入力 生産履歴登録システム 連携コード登録 状態コード連携テーブル STATUS1＝SR LINE＝C41 MOM 状態コード確認 供給再開処理 出庫指示修正登録 出庫処理テーブル MOVE_ORDER_FLG＝3 供給再開 部品供給停止／再開登録 ※組長、領班 物流MOMHT 指示 部品供給停止／再開登録•操作画面 部品供給停止/再開 < 状態連携 SR/SS StatusCodeLinkage_Ver00 停止/再開 部品供給停止／再開登録•連携テーブル MOVE_ORDER_FLG =1   ACR 出庫 MOVE_FIN_FLG =1/2/3/4 箱がスタンド到着"
+    },
+    {
+      "source_id": "4136ccde-734b-42ae-bf2a-f51afead4e8d",
+      "citation_number": 8,
+      "cited_text": "Mfg Orderの Workflowと Material list 更新 ⑧2nd追加 新旧 部品点数 同数？ ログ 出力 ■自動切替■ ✓ 部品要求数に対する在庫数不足をトリガに自動切替 ①部品REVUP ②部品変更 ・ランニングチェンジ ・同親新旧REVの構成部品点数が同じ場合のみ ※⑥/⑦も同様 ⑧2nd追加 Yes end No No No start Err 不足 2026.01更新 ■自動切替■ ✓ 部品要求数に対する在庫数不足をトリガに自動切替 ①部品REVUP Opcenter 設計変更手動切替 指図取込/ Mfg Order作成 MOM連携用 MCN Release BOP割当 Mfg Orderの Workflowと Material list 更新 ※1台毎 Mfg Order 新BOPに 更新 Workflow 生産品目新REV ROR有効設定 製造計画 部品消費 予定時間 算出 指図発行 供給指示 作成実行 手動切替 供給計画作成 R3 ECN承認 PLM MOM 1台毎 ■手動切替■ ✓ ランチェン設変で自動切替不可時 ②部品変更 ・同親新旧REVの構成部品点数が異なる場合 ※⑥/⑦も同様"
+    },
+    {
+      "source_id": "4136ccde-734b-42ae-bf2a-f51afead4e8d",
+      "citation_number": 9,
+      "cited_text": "品目 Is ROR 部品a -01 True→False 部品a -02 False→True 製造実行 MFG Order Workflow：生産品目A -01 ERP BOM：生産品目A -01 ■品目変更時 MFG Order Workflow：生産品目A -01→02 ERP BOM：生産品目A -01→02 W/F Is ROR 生産品目A -01 True→False 生産品目A -02 False→True ※以降新規W/F作成時は02を適応 No Yes Yes 投入シリアル 登録 部品 新品？ 製造完了 Yes No 自動切替 単純/ ランチェン 自動切替 日付指定切替 は手動設定 品目変更時は 手動設定 2026.01更新 設変パターン 切替タイミング 部品 工程 作業 日単位 日中 ① 部品 REVUP ー ー 〇 (a0-01 → a0-02) ー 変更 〇 ② 部品追加削除／RPS版数UP ー ー 〇 〇 (a0 → b0 ／ a0-02 → a1-01) ー 変更 〇 〇 ③ 部品追加 ー 追加 〇 追加 追加 〇 ④ 部品削除 ー 削除 〇 削除 削除 〇"
+    },
+    {
+      "source_id": "4136ccde-734b-42ae-bf2a-f51afead4e8d",
+      "citation_number": 10,
+      "cited_text": "✓ 在庫基準ではなく日付指定切替時 ②部品変更 ・日指定切替 (規格絡み) ③部品追加 ④部品削除 ⑨2nd削除 ⑩SOFT変更 ✓ 複数LINE同時切替時 ⑦ 複数ライン間 複数品目 同時変更 供給計画 製造実行 生産品目有効REVを 元にBOP割当 ※この時点で適正な 生産品目のREVを 指定出来れば自動化 検討可能 Mfg Order：製造オーダー Workflow：生産品目に対する工程、作業、部品情報 【製造ver_生産品目_名称(50)】 ※REV毎管理 ※製造オーダー毎割当 Material List：製造オーダーで使用する部品一覧 2026.01更新 ■手動切替■ ✓ 部品変更 ✓ 2nd追加／削除時 ✓ SOFT変更 01→02 BOM情報修正 この作業を生産台数分実施する必要あり Mfg Order(製造オーダー) 2026.01追加 Model 2026.01追加 Opcenter 設計変更手動切替Timing 指図発行 指図取込/ Mfg Order 作成 BOP割当 製造計画 生産-4日 BOP変更 情報取込 MOM連携用 ECN Release Process     REV02"
+    }
+  ]
+}
+
+NotebookLM citations/source notes:
+See answer text for NotebookLM footnotes if any.
+
+NotebookLM limitations / uncertainty:
+Unknown (depends on NLM model behavior)
+
+NotebookLM strict score:
+Not automatically scored
+
+NotebookLM winner label:
+human_review_required
+
+========================================
