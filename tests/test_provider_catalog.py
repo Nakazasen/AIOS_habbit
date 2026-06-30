@@ -44,7 +44,7 @@ def test_mask_secret():
     assert mask_secret("") == ""
     assert mask_secret(None) == ""
     assert mask_secret("abc") == "***"
-    assert mask_secret("sk-secret-1234") == "****1234"
+    assert mask_secret("secret-1234") == "****1234"
 
 
 def test_company_mode_allows_only_internal_sources_by_default():

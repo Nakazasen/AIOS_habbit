@@ -48,6 +48,7 @@ claude_export*/
 gemini_export*/
 
 # AIOS private runtime data
+02_sources/project_inventory.json
 03_evidence_registry/records/*.jsonl
 04_extraction_workspace/candidate_memory/*.json
 04_extraction_workspace/review_queue.md

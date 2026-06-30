@@ -1,9 +1,9 @@
-﻿# Next NotebookLM Real Run Packet
+# Next NotebookLM Real Run Packet
 
 ## Current state
 
 - Current commit: `35dc85c`
-- Source folder: `[LOCAL_WORKSPACE]\MOM_WMS_QLLSSX\tailieugoc`
+- Source folder: `[LOCAL_SOURCE_ROOT]`
 - Existing AIOS run path: `local_runs/notebooklm_compare/`
 - Current status: AIOS answers exist; NotebookLM answers are missing.
 - P1.0: NOT opened
@@ -34,7 +34,7 @@ nlm notebook list --json
 
 Repo: [LOCAL_WORKSPACE]\AIOS_habbit
 Commit: 35dc85c
-Source folder: [LOCAL_WORKSPACE]\MOM_WMS_QLLSSX	ailieugoc
+Source folder: [LOCAL_SOURCE_ROOT]
 Runtime folder: local_runs/notebooklm_compare/
 
 Use nlm commands only:
@@ -49,4 +49,3 @@ Do not commit local_runs, NotebookLM answers, raw company content, generated DB/
 Do not claim NotebookLM parity.
 Do not open P1.0.
 ```
-

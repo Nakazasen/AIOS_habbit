@@ -14,8 +14,8 @@ from aios_habit.notebooklm_compare import (
 def _config(tmp_path):
     src = tmp_path / "src"
     src.mkdir()
-    (src / "mom.txt").write_text("Quy trinh WMS gom buoc nhap kho, kiem tra, va xuat kho.", encoding="utf-8")
-    (src / "error.log").write_text("ERROR route code missing after export mapping validation", encoding="utf-8")
+    (src / "policy.txt").write_text("HR leave policy includes eligibility, approval steps, and exceptions.", encoding="utf-8")
+    (src / "error.log").write_text("ERROR timeout after configuration validation", encoding="utf-8")
     return CompareConfig(source_root=str(src), output_dir=str(tmp_path / "runs"), question_count=6)
 
 
@@ -27,6 +27,10 @@ def test_generate_questions_has_required_categories(tmp_path):
         "direct_lookup", "procedure_step", "cause_effect", "evidence_sufficiency", "cross_document_relation", "unanswerable"
     }
     assert any(q.language == "ja" for q in questions)
+    joined = "\n".join(q.question.lower() for q in questions)
+    assert "mom" not in joined
+    assert "wms" not in joined
+    assert "agv" not in joined
 
 
 def test_aios_runner_writes_ignored_runtime_jsonl_with_citations(tmp_path):

@@ -14,7 +14,7 @@
 - `tests/` and `examples/` are kept unless a test explicitly replaces a fixture with temporary data.
 
 ## Real source docs
-- `D:/Sandbox/MOM_WMS_QLLSSX/tailieugoc` is read-only for this benchmark. Do not delete, move, or commit its contents.
+- `[LOCAL_SOURCE_ROOT]` is read-only for this benchmark. Do not delete, move, or commit its contents.
 
 ## Cleanup action
 - Deleted: none in this pass.

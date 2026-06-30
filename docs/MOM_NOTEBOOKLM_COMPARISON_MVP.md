@@ -4,7 +4,7 @@ This benchmark compares AIOS local RAG with NotebookLM on a user-approved local 
 
 ## Real data path
 
-User-local source folder example: `D:/Sandbox/MOM_WMS_QLLSSX/tailieugoc`.
+User-local source folder example: `[LOCAL_SOURCE_ROOT]`.
 
 Generated outputs must stay under ignored `local_runs/notebooklm_compare/`.
 

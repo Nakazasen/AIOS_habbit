@@ -405,7 +405,7 @@ def main(argv=None) -> None:
 
     compare = subcommands.add_parser("notebooklm-compare", help="Run AIOS vs NotebookLM MVP benchmark helpers")
     compare.add_argument("--config", help="Path to benchmark config JSON")
-    compare.add_argument("--source-root", default="D:/Sandbox/MOM_WMS_QLLSSX/tailieugoc")
+    compare.add_argument("--source-root", default=".")
     compare_subcommands = compare.add_subparsers(dest="compare_cmd", required=True)
     compare_subcommands.add_parser("generate-questions", help="Generate local benchmark questions")
     compare_subcommands.add_parser("aios-run", help="Run AIOS local answers")

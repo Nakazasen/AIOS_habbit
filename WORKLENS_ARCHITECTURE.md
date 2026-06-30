@@ -6,20 +6,20 @@ This document defines the architectural target boundaries of AIOS WorkLens and a
 
 ## 1. Current Monolith vs Target Modules
 
-AIOS Case Cockpit v0.1 is currently implemented as a Streamlit monolith in [case_cockpit.py](file:///D:/Sandbox/AIOS_habbit/src/aios_habit/case_cockpit.py) with supporting modules for:
-- [case_models.py](file:///D:/Sandbox/AIOS_habbit/src/aios_habit/case_models.py) (Data Model)
-- [case_store.py](file:///D:/Sandbox/AIOS_habbit/src/aios_habit/case_store.py) (Local Storage)
-- [case_prompt.py](file:///D:/Sandbox/AIOS_habbit/src/aios_habit/case_prompt.py) (AI Prompts & Gating Policy)
-- [case_audit.py](file:///D:/Sandbox/AIOS_habbit/src/aios_habit/case_audit.py) (Safety Audits)
-- [case_handover.py](file:///D:/Sandbox/AIOS_habbit/src/aios_habit/case_handover.py) (Handover Formatting)
-- [learning_models.py](file:///D:/Sandbox/AIOS_habbit/src/aios_habit/learning_models.py) (Senior Learning Card Storage)
-- [workspace_models.py](file:///D:/Sandbox/AIOS_habbit/src/aios_habit/workspace_models.py) (Workspace & Knowledge Notebook storage/models)
-- [source_ingest.py](file:///D:/Sandbox/AIOS_habbit/src/aios_habit/source_ingest.py) (Source Document upload & preview parsing)
-- [notebook_index.py](file:///D:/Sandbox/AIOS_habbit/src/aios_habit/notebook_index.py) (Local source chunk indexing & search)
-- [notebook_qa.py](file:///D:/Sandbox/AIOS_habbit/src/aios_habit/notebook_qa.py) (Local context compiler & Q&A prompt generator)
-- [llm_client.py](file:///D:/Sandbox/AIOS_habbit/src/aios_habit/llm_client.py) (Lightweight HTTP-based LLM provider client)
-- [notebook_bridge.py](file:///D:/Sandbox/AIOS_habbit/src/aios_habit/notebook_bridge.py) (NotebookLM import schema parsing & Mermaid graph conversion)
-- [notebook_import_store.py](file:///D:/Sandbox/AIOS_habbit/src/aios_habit/notebook_import_store.py) (Persistent storage for NotebookLM imported results)
+AIOS Case Cockpit v0.1 is currently implemented as a Streamlit monolith in [case_cockpit.py](src/aios_habit/case_cockpit.py) with supporting modules for:
+- [case_models.py](src/aios_habit/case_models.py) (Data Model)
+- [case_store.py](src/aios_habit/case_store.py) (Local Storage)
+- [case_prompt.py](src/aios_habit/case_prompt.py) (AI Prompts & Gating Policy)
+- [case_audit.py](src/aios_habit/case_audit.py) (Safety Audits)
+- [case_handover.py](src/aios_habit/case_handover.py) (Handover Formatting)
+- [learning_models.py](src/aios_habit/learning_models.py) (Senior Learning Card Storage)
+- [workspace_models.py](src/aios_habit/workspace_models.py) (Workspace & Knowledge Notebook storage/models)
+- [source_ingest.py](src/aios_habit/source_ingest.py) (Source Document upload & preview parsing)
+- [notebook_index.py](src/aios_habit/notebook_index.py) (Local source chunk indexing & search)
+- [notebook_qa.py](src/aios_habit/notebook_qa.py) (Local context compiler & Q&A prompt generator)
+- [llm_client.py](src/aios_habit/llm_client.py) (Lightweight HTTP-based LLM provider client)
+- [notebook_bridge.py](src/aios_habit/notebook_bridge.py) (NotebookLM import schema parsing & Mermaid graph conversion)
+- [notebook_import_store.py](src/aios_habit/notebook_import_store.py) (Persistent storage for NotebookLM imported results)
 
 ---
 

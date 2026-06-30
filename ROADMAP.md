@@ -18,11 +18,11 @@ Case → Evidence → Map → Action → Learning → Memory
 
 
 
-- **Product North Star & Doctrine:** [PRODUCT_NORTH_STAR.md](file:///D:/Sandbox/AIOS_habbit/PRODUCT_NORTH_STAR.md)
+- **Product North Star & Doctrine:** [PRODUCT_NORTH_STAR.md](PRODUCT_NORTH_STAR.md)
 
-- **Master Roadmap & Governance:** [WORKLENS_MASTER_ROADMAP.md](file:///D:/Sandbox/AIOS_habbit/WORKLENS_MASTER_ROADMAP.md)
+- **Master Roadmap & Governance:** [WORKLENS_MASTER_ROADMAP.md](WORKLENS_MASTER_ROADMAP.md)
 
-- **Product Positioning:** [docs/AIOS_PRODUCT_POSITIONING.md](file:///D:/Sandbox/AIOS_habbit/docs/AIOS_PRODUCT_POSITIONING.md)
+- **Product Positioning:** [docs/AIOS_PRODUCT_POSITIONING.md](docs/AIOS_PRODUCT_POSITIONING.md)
 
 
 
@@ -506,8 +506,3 @@ Later:
    - No real docs/runtime outputs committed.
    - No vector/graph drift.
    - Owner acceptance still required.
-
-
-
-
-

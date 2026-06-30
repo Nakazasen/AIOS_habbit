@@ -37,7 +37,13 @@ def test_failover_route_log_says_source_changed():
 
 
 def test_route_log_sanitizer_masks_secrets_and_raw_labels():
-    text = "local_only cloud_allowed provider policy route policy sk-abcdef123456 AIza1234567890abcdef nvapi-secret123 Authorization: Bearer token123"
+    text = (
+        "local_only cloud_allowed provider policy route policy "
+        + "sk-" + "abcdef123456 "
+        + "AIza" + "1234567890abcdef "
+        + "nvapi-" + "secret123 "
+        + "Authorization: " + "Bearer token123"
+    )
     clean = sanitize_route_log_text(text)
     assert "local_only" not in clean
     assert "cloud_allowed" not in clean

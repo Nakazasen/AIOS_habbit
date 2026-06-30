@@ -1,4 +1,5 @@
 from aios_habit.source_router import classify_query_profile
+from aios_habit.query_intent import extract_query_intent
 
 
 def test_hr_policy_question_does_not_classify_as_manufacturing():
@@ -39,3 +40,8 @@ def test_schema_question_maps_to_generic_schema_question():
 def test_troubleshooting_question_maps_to_generic_without_manufacturing_terms():
     profile = classify_query_profile("Give a troubleshooting path for this application error")
     assert profile.profile_id == "troubleshooting_general"
+
+
+def test_generic_queries_do_not_trigger_manufacturing_intent_boosts():
+    assert extract_query_intent("Extract invoice amount and approval workflow") is None
+    assert extract_query_intent("What does the HR policy say about manual approval?") is None

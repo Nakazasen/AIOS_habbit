@@ -1,4 +1,4 @@
-﻿# Source Discovery Inventory
+# Source Discovery Inventory
 
 Risk rule: metadata-only discovery; raw content is not ingested.
 
@@ -52,8 +52,8 @@ Risk rule: metadata-only discovery; raw content is not ingested.
 - Signals: README.md
 - Risk: metadata_only_inventory_no_raw_ingest
 
-## MOM_WMS_QLLSSX
-- Path: `[LOCAL_WORKSPACE]\MOM_WMS_QLLSSX`
+## [LOCAL_SOURCE_ROOT]
+- Path: `[LOCAL_SOURCE_ROOT]`
 - Signals: .git, README.md, CHANGELOG.md, docs
 - Risk: metadata_only_inventory_no_raw_ingest
 
@@ -131,6 +131,3 @@ Risk rule: metadata-only discovery; raw content is not ingested.
 - Path: `[LOCAL_WORKSPACE]\xﾃ｢y d盻ｱng mﾃ｡y ch盻ｧ AI t蘯｡i ch盻輿
 - Signals: CHANGELOG.md
 - Risk: metadata_only_inventory_no_raw_ingest
-
-
-

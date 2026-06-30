@@ -173,7 +173,7 @@ def test_compatibility():
 
 def test_builders_preserve_page_slide_ocr_metadata():
     elements = build_elements_from_extracted_payload(
-        source_path="D:/Sandbox/AIOS_habbit/secret/doc.pdf",
+        source_path="secret/doc.pdf",
         text="page text",
         source_title="Doc",
         relative_path="doc.pdf",
@@ -197,7 +197,7 @@ def test_builders_preserve_page_slide_ocr_metadata():
     assert chunks[0].slide_numbers == [2]
     assert chunks[0].element_types == ["ocr_text"]
     assert chunks[0].citation_label == "Doc"
-    assert "D:/Sandbox" not in chunks[0].citation_label
+    assert "LOCAL_WORKSPACE" not in chunks[0].citation_label
     json.dumps(asdict(elements[0]))
     json.dumps(asdict(chunks[0]))
 

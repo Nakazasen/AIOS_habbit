@@ -50,11 +50,28 @@ def evaluate_claim_readiness(
     if claim_type in {"p1_opened", "p1_0_opened"} and not owner_approved_p1:
         reasons.append("P1.0 cannot be claimed open without explicit owner approval.")
 
-    if claim_type == "mom_specific_assistant":
+    if claim_type in {"mom_specific_assistant", "mom_only_replacement"}:
         if not domains.intersection({"mom", "wms", "manufacturing", "manufacturing_mom_wms"}):
             reasons.append("MOM-specific assistant claim requires manufacturing-domain corpus evidence.")
+        if claim_type == "mom_only_replacement":
+            reasons.append("MOM-only replacement is not allowed without explicit non-benchmark human approval.")
+        if quality in {"benchmark_score_only", "score_only"} or ("benchmark" in scope and review != "passed"):
+            reasons.append("Benchmark score alone cannot support a MOM-specific replacement or assistant claim.")
         if quality in {"weaker", "fail", "unknown"}:
             reasons.append("MOM-specific assistant quality is not sufficiently proven.")
+
+    known_claims = {
+        "general_notebooklm_replacement",
+        "daily_replacement",
+        "notebooklm_parity",
+        "global_notebooklm_parity",
+        "p1_opened",
+        "p1_0_opened",
+        "mom_specific_assistant",
+        "mom_only_replacement",
+    }
+    if claim_type not in known_claims:
+        reasons.append(f"Unknown claim type '{claim_type}' is blocked by default.")
 
     return ClaimReadiness(
         allowed=not reasons,

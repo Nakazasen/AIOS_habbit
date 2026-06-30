@@ -165,7 +165,7 @@ def generate_questions(config: CompareConfig) -> List[CompareQuestion]:
         ("procedure_step", "vi", "Các bước hoặc quy trình nào xuất hiện trong {name}?"),
         ("cause_effect", "vi", "Có nguyên nhân hoặc hệ quả nào cần chú ý trong {name}?"),
         ("evidence_sufficiency", "en", "What evidence in {name} is sufficient to support an operational action?"),
-        ("cross_document_relation", "en", "How does {name} relate to another MOM/WMS document in the folder?"),
+        ("cross_document_relation", "en", "How does {name} relate to another document in the folder?"),
         ("unanswerable", "ja", "このフォルダの証拠だけで、存在しない承認者の最終決定を特定できますか？"),
     ]
     questions: List[CompareQuestion] = []

@@ -9,7 +9,7 @@ NotebookLM replacement, global NotebookLM parity, or P1.0 opening.
 
 ## Baseline
 
-- Repo: `D:\Sandbox\AIOS_habbit`
+- Repo: `[LOCAL_WORKSPACE]\AIOS_habbit`
 - Branch: `main`
 - Commit under audit: `bca82f1`
 - Current HEAD before this audit report update: `5b33337`

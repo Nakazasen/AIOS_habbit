@@ -79,3 +79,30 @@ def test_claim_guard_returns_clear_reason():
     assert result.allowed is False
     assert result.reasons
     assert all(isinstance(reason, str) and reason for reason in result.reasons)
+
+
+def test_mom_only_replacement_blocked_from_benchmark_score_only():
+    result = evaluate_claim_readiness(
+        test_scope="MOM/WMS 12Q benchmark",
+        corpus_domains=["manufacturing_mom_wms"],
+        answer_quality="benchmark_score_only",
+        model_used="deterministic",
+        human_review_status="pending",
+        claim_type="mom_only_replacement",
+    )
+    assert result.allowed is False
+    assert any("MOM-only replacement" in reason for reason in result.reasons)
+    assert any("Benchmark score alone" in reason for reason in result.reasons)
+
+
+def test_unknown_claim_type_blocked_by_default():
+    result = evaluate_claim_readiness(
+        test_scope="unknown",
+        corpus_domains=["general"],
+        answer_quality="strong",
+        model_used="model_assisted",
+        human_review_status="passed",
+        claim_type="surprise_replacement_claim",
+    )
+    assert result.allowed is False
+    assert any("Unknown claim type" in reason for reason in result.reasons)

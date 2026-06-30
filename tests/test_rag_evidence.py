@@ -74,8 +74,8 @@ def test_insufficient_evidence_and_coverage_threshold():
 def test_snippet_prompt_and_path_safety():
     res = _create_mock_results(1, privacy="local_only")
     res[0].text = "A" * 2000
-    res[0].relative_path = "D:/Sandbox/AIOS_habbit/secret/passwords.txt"
-    res[0].citation_label = "D:/Sandbox/AIOS_habbit/secret/passwords.txt"
+    res[0].relative_path = "secret/passwords.txt"
+    res[0].citation_label = "secret/passwords.txt"
     pack = build_evidence_pack("q", res, EvidencePackConfig(max_snippet_chars=100))
     assert len(pack.items[0].snippet) == 103
     assert pack.items[0].citation_label == "passwords.txt"
