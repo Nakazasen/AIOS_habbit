@@ -114,7 +114,13 @@ def test_print_local_review(tmp_path):
 
 
 
-def _score_for_text(text, question="What is the answer?", answer_kind="final_owner_answer", citations=None):
+def _score_for_text(
+    text,
+    question="What is the answer?",
+    answer_kind="final_owner_answer",
+    citations=None,
+    metadata=None,
+):
     from aios_habit.notebooklm_compare import _score_pair
     row = {
         "question": {"question_id": "QX", "question": question},
@@ -124,6 +130,7 @@ def _score_for_text(text, question="What is the answer?", answer_kind="final_own
             "citation_ids": citations or ["[E1]"],
             "insufficient_evidence": False,
             "warnings": [],
+            "metadata": metadata or {},
         },
     }
     return _score_pair(row, None)
@@ -160,3 +167,72 @@ Nguồn [E1] hỗ trợ claim vì nêu lỗi export mapping.
 def test_citations_without_claim_support_traceability_max_1():
     score = _score_for_text("## Kết luận ngắn\n- Route code missing.\n## Bảng nguồn\n| [E1] | file |", citations=["[E1]"])
     assert score["source_traceability"] <= 1
+
+
+def test_process_question_answered_as_excel_mapping_is_capped_at_6():
+    text = """## Kết luận ngắn
+- Mapping route code cần kiểm tra trong bảng dữ liệu [E1].
+## Hướng xử lý / kiểm tra
+1. Kiểm tra route code.
+2. Đối chiếu mapping export.
+3. Bàn giao owner dữ liệu.
+"""
+    score = _score_for_text(
+        text,
+        question="Explain automatic/manual boundary in the process",
+        metadata={"answer_profile": "excel_mapping"},
+    )
+    assert score["max_total_score"] <= 6
+    assert score["total_score_12"] <= 6
+
+
+def test_screenshot_answer_using_html_primary_is_capped_at_5():
+    text = """## Kết luận ngắn
+- schema/html shows route error markup [E1].
+## Hướng xử lý / kiểm tra
+1. Kiểm tra HTML.
+2. Đối chiếu schema.
+3. Bàn giao owner.
+"""
+    score = _score_for_text(
+        text,
+        question="What does the screenshot show?",
+        metadata={"answer_profile": "screenshot_visible_facts"},
+    )
+    assert score["max_total_score"] <= 5
+    assert score["total_score_12"] <= 5
+
+
+def test_excel_mapping_without_fields_or_keys_is_capped_at_7():
+    text = """## Kết luận ngắn
+- Export looks wrong [E1].
+## Hướng xử lý / kiểm tra
+1. Check export.
+2. Review data.
+3. Ask owner.
+"""
+    score = _score_for_text(text, metadata={"answer_profile": "excel_mapping"})
+    assert score["max_total_score"] <= 7
+    assert score["total_score_12"] <= 7
+
+
+def test_generic_check_logs_for_troubleshooting_is_capped_at_6():
+    score = _score_for_text(
+        "Check logs [E1].",
+        question="Give full troubleshooting path and missing evidence",
+    )
+    assert score["max_total_score"] <= 6
+    assert score["total_score_12"] <= 6
+
+
+def test_missing_target_source_without_admission_is_capped_at_6():
+    text = """## Kết luận ngắn
+- Route export failed [E1].
+## Hướng xử lý / kiểm tra
+1. Kiểm tra route.
+2. Đối chiếu log.
+3. Bàn giao owner.
+"""
+    score = _score_for_text(text, metadata={"source_type_pass": "FAIL"})
+    assert score["max_total_score"] <= 6
+    assert score["total_score_12"] <= 6

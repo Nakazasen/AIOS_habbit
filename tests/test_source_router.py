@@ -21,3 +21,18 @@ def test_process_prefers_pdf():
     routed = route_evidence_by_profile(items, profile, "")
     assert any(i.file_type == "pdf" for i in routed.primary_items)
     assert any(i.file_type == "xlsx" for i in routed.supporting_items)
+
+
+def test_handover_intent_beats_export_mapping_keyword():
+    profile = classify_query_profile("Owner next actions and handover process for missing export route")
+    assert profile.profile_id == "owner_handover"
+
+
+def test_troubleshooting_intent_beats_mapping_keyword():
+    profile = classify_query_profile("Give full troubleshooting path for export mapping failure")
+    assert profile.profile_id == "mixed_troubleshooting"
+
+
+def test_explicit_excel_mapping_still_routes_to_spreadsheet():
+    profile = classify_query_profile("Explain Excel mapping fields and relationships")
+    assert profile.profile_id == "excel_mapping"

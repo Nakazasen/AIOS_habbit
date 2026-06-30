@@ -31,26 +31,26 @@ def classify_query_profile(question: str, target_source_type: str = "") -> Query
             return QueryProfile("screenshot_visible_facts", ["screenshot", "image", "png", "jpg"])
         return QueryProfile("screenshot_unsupported_inference", ["screenshot", "image", "png", "jpg"])
 
-    if "map" in q_lower or "mapping" in q_lower or "export" in q_lower or "import" in q_lower:
-        return QueryProfile("excel_mapping", ["xlsx", "xls", "csv", "excel", "spreadsheet"])
+    if "design change" in q_lower or "eco" in q_lower or "ecn" in q_lower or "revup" in q_lower:
+        return QueryProfile("design_change", ["pdf", "pptx", "document", "excel", "xlsx"])
+
+    if "handover" in q_lower or "bàn giao" in q_lower or "next action" in q_lower:
+        return QueryProfile("owner_handover", ["log", "chat", "note", "mixed", "pdf", "xlsx", "screenshot"])
+
+    if "troubleshooting" in q_lower or "step-by-step" in q_lower or "kiểm tra gì" in q_lower or "thiếu bằng chứng" in q_lower:
+        return QueryProfile("mixed_troubleshooting", ["log", "chat", "note", "mixed", "pdf", "xlsx"])
 
     if "automatic/manual boundary" in q_lower or "process" in q_lower or "quy trình" in q_lower or "chủ sở hữu" in q_lower:
         return QueryProfile("process_boundary", ["pdf", "pptx", "word", "document"])
 
-    if "design change" in q_lower or "eco" in q_lower or "ecn" in q_lower or "revup" in q_lower:
-        return QueryProfile("design_change", ["pdf", "pptx", "document", "excel", "xlsx"])
+    if "map" in q_lower or "mapping" in q_lower or "export" in q_lower or "import" in q_lower:
+        return QueryProfile("excel_mapping", ["xlsx", "xls", "csv", "excel", "spreadsheet"])
 
     if "schema" in q_lower or "table" in q_lower and "field" in q_lower and "database" in q_lower:
         if "behavior" in q_lower or "logic" in q_lower:
             return QueryProfile("schema_unsupported_conclusions", ["html", "sql", "csv", "xlsx"])
         return QueryProfile("schema_tables_fields", ["html", "sql", "csv", "xlsx"])
 
-    if "troubleshooting" in q_lower or "step-by-step" in q_lower or "kiểm tra gì" in q_lower or "thiếu bằng chứng" in q_lower:
-        return QueryProfile("mixed_troubleshooting", ["log", "chat", "note", "mixed", "pdf", "xlsx"])
-        
-    if "handover" in q_lower or "bàn giao" in q_lower or "next action" in q_lower:
-        return QueryProfile("owner_handover", ["log", "chat", "note", "mixed", "pdf", "xlsx", "screenshot"])
-        
     if "missing" in q_lower and "evidence" in q_lower:
         return QueryProfile("missing_evidence", ["log", "chat", "note", "mixed"])
 
