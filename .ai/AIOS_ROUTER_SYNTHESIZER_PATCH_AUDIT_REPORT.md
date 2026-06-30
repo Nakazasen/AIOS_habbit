@@ -1,123 +1,143 @@
 # AIOS Router Synthesizer Patch Audit Report
 
-## Scope
+Scope: audit the source-aware router and profile-specific RAG synthesis patch
+introduced at commit `bca82f1`, using the current workspace state on
+`2026-06-30`.
 
-Audit of commit `bca82f1` and the tiny audit fixes applied on top of it. The
-goal was to verify whether the source-aware router and profile-specific RAG
-synthesis patch is ready for a full NotebookLM 12Q rerun. This audit does not
-claim NotebookLM replacement, global parity, or P1.0 opening.
+This audit checks readiness for a full NotebookLM 12Q rerun. It does not claim
+NotebookLM replacement, global NotebookLM parity, or P1.0 opening.
 
 ## Baseline
 
+- Repo: `D:\Sandbox\AIOS_habbit`
 - Branch: `main`
-- HEAD before audit fixes: `bca82f1`
-- `origin/main` before audit fixes: `bca82f1`
-- Dirty tracked files at baseline: none
+- Commit under audit: `bca82f1`
+- Current HEAD before this audit report update: `5b33337`
+- Current `origin/main` before this audit report update: `5b33337`
+- Ancestry: `bca82f1` is an ancestor of current HEAD.
+- Baseline caveat: dirty tracked files existed before this audit continuation.
+  The tree was not clean, so any commit/push must be scoped carefully and cannot
+  be treated as a clean baseline audit.
 - Untracked file observed: `uv.lock`
-- Ignored local/runtime paths observed: `.pytest_cache/`, `.venv/`,
-  `local_runs/`, `local_cases/`, `API Key.txt`, and local AIOS workspace output
 
 ## Implementation Verdict
 
-Verdict: `PASS_PATCH_PARTIAL_NEEDS_MORE_TESTS` before the tiny audit fix;
-`PASS_READY_FOR_12Q_RERUN` after the tiny classifier-priority fix and added
-audit tests.
+Verdict: `PASS_PATCH_VALID_BUT_BASELINE_DIRTY`.
 
-- Source router: implemented and used by the final answer composer. Screenshot
-  profiles prefer screenshot/image sources and explicitly demote schema/HTML
-  evidence. Process profiles prefer document sources. Spreadsheet profiles
-  prefer spreadsheet sources. Mixed profiles warn on single-source evidence.
-- Query profile classifier: real but order-sensitive. Audit found that owner
-  handover questions containing `export` or `process` could be misclassified as
-  `excel_mapping`. Fixed by checking owner handover and troubleshooting intents
-  before generic export/mapping keywords.
-- Profile-specific composer: implemented. It uses routed primary/supporting
-  evidence, writes role-marked evidence lines and source tables, includes
-  profile-specific conclusions/actions, and records `answer_profile` and
+- Source router: implemented in `src/aios_habit/source_router.py`.
+  `route_evidence_by_profile()` separates primary, supporting, and demoted
+  evidence and emits `source_type_pass` plus warnings.
+- Query profile classifier: implemented through
+  `classify_generic_query_profile()` and normalized legacy labels in
+  `src/aios_habit/rag_core_profiles.py`.
+- Screenshot behavior: screenshot/image profiles prefer screenshot evidence and
+  demote schema/HTML evidence. This is covered by
+  `test_image_visible_facts_prefers_png_and_demotes_html`.
+- Process behavior: procedure/process questions prefer document-like sources.
+  This is covered by `test_procedure_steps_prefers_document_sources`.
+- Spreadsheet mapping behavior: field/table/mapping questions prefer
+  spreadsheet/table-like sources and are synthesized with field/key/table
+  reminders.
+- Mixed troubleshooting and handover behavior: troubleshooting and handover
+  intents beat broad export/mapping keywords. This is covered by
+  `test_troubleshooting_intent_beats_mapping_keyword` and
+  `test_handover_intent_beats_export_mapping_keyword`.
+- Profile-specific composer: `compose_final_owner_answer()` calls
+  `classify_query_profile()` and `route_evidence_by_profile()`, orders routed
+  primary/supporting evidence, writes role-marked evidence lines, and records
+  `answer_profile`, `generic_profile`, `domain_playbook`, and
   `source_type_pass` metadata.
-- Wrong source warning: present. Missing required source type creates route
-  warnings, answer warnings, unsupported-conclusion text, and low/partial
-  confidence paths.
-- `local_only` safety: preserved. No provider or NotebookLM call is made by the
-  deterministic final owner composer, and local-only warnings remain present.
-
-## Main Concerns
-
-- The original 4Q rerun report overstated question coverage and score meaning.
-  It used Q06 as spreadsheet mapping and Q10 as screenshot facts, while the
-  failure analysis described Q06/Q07 as screenshot targets and Q10/Q12 as
-  troubleshooting/handover gaps.
-- Q04 with `source_type_pass=FAIL` proves the safety cap and missing-evidence
-  honesty path. It does not prove improved answer quality by itself.
-- The patch is ready for a strict 12Q rerun, not for any replacement or parity
-  claim.
+- Wrong source warning: missing required source types add route warnings,
+  answer warnings, unsupported-conclusion text, and low confidence.
+- `local_only` safety: preserved. The deterministic final composer does not call
+  a provider or NotebookLM, and local-only warnings remain covered by tests.
 
 ## Evaluator Caps Verdict
 
-Verdict: PASS for requested hard-cap mechanics after added tests.
+Verdict: PASS for requested hard-cap mechanics in the current test suite.
 
-- Generic template/local draft max <= 6/12: implemented and tested.
-- Wrong profile/process answered as Excel mapping max <= 6/12: implemented and
-  tested.
-- Wrong source-type/missing target without admission max <= 6/12: implemented
+- Generic/local draft max <= 6/12: implemented and tested.
+- Wrong profile / process answered as table mapping max <= 6/12: implemented
   and tested.
+- Wrong primary source type max <= 6/12: implemented through
+  `source_type_pass=FAIL` and tested.
 - Screenshot answer using HTML/schema primary max <= 5/12: implemented and
   tested.
 - Process question answered as table mapping max <= 6/12: implemented and
   tested.
-- Excel mapping without fields/keys/table terms max <= 7/12: implemented and
-  tested.
+- Excel mapping without concrete fields/keys/table terms max <= 7/12: intended
+  cap is documented; current implementation caps this path at 6/12, which is
+  stricter than the requested maximum.
 - Citations only in source table max <= 7/12: implemented and tested.
-- Generic "check logs" only for troubleshooting max <= 6/12: implemented and
-  tested through the concrete-steps cap.
+- Generic check-logs-only troubleshooting max <= 6/12: implemented through the
+  concrete-steps cap and tested.
 - Missing target source type without admitting missing evidence max <= 6/12:
   implemented and tested.
+- HUMAN_REVIEW handling: side-by-side `HUMAN_REVIEW` metadata is capped and is
+  not treated as a pass/win signal.
 
-## 4Q Report Validity Verdict
+## 4Q Rerun Report Validity Verdict
 
-Verdict: corrected.
+Verdict: corrected and usable as a smoke report, not a full benchmark.
 
 - Report valid as full 12Q rerun: NO.
 - Report valid as representative smoke check: YES, with caveats.
-- Q04: valid for process-boundary safety behavior, not answer-quality proof.
-- Q06: corrected to spreadsheet mapping smoke slot, not screenshot-visible slot.
-- Q10: corrected to screenshot-visible smoke slot, not mixed-troubleshooting
-  slot.
-- Q12: valid for owner handover after classifier-priority fix and tests.
+- Q04: valid for process-boundary routing and missing-evidence honesty. A
+  `source_type_pass=FAIL` path proves safety/capping, not answer quality by
+  itself.
+- Q06: corrected to spreadsheet mapping in the smoke check, not screenshot
+  visible facts.
+- Q10: corrected to screenshot visible facts in the smoke check, not mixed
+  troubleshooting.
+- Q12: valid for owner handover and classifier priority.
+- Exact 4Q smoke queries classify in current code as:
+  - Q04: `procedure_steps`
+  - Q06: `extract_fields`
+  - Q10: `image_visible_facts`
+  - Q12: `handover_general`
 - Misleading claims corrected: YES.
 
 ## Validation
 
 - `py -3 -m pytest tests/test_source_router.py -vv`: 5 passed.
-- `py -3 -m pytest tests/test_final_answer_composer.py -vv`: 9 passed.
-- `py -3 -m pytest tests/test_notebooklm_compare.py -vv`: 15 passed.
+- `py -3 -m pytest tests/test_final_answer_composer.py -vv`: 11 passed.
+- `py -3 -m pytest tests/test_notebooklm_compare.py -vv`: 21 passed.
 - `py -3 -m pytest tests/test_rag_answer_composer.py -vv`: 9 passed.
 - `py -3 -m pytest tests/test_citation_answer.py -vv`: 6 passed.
 - `py -3 -m pytest tests/test_case_cockpit_ui_copy.py -vv`: 32 passed.
-- Full pytest: 413 passed.
-- Full pytest exact count: 413.
-- Package import: `package import ok` plus benign Streamlit bare-mode warning.
-- CLI audit: `{"errors": [], "status": "PASS", "warnings": []}`.
+- Full pytest command: `py -3 -m pytest`
+- Full pytest count: 450 passed.
+- Package import:
+  `py -3 -c "import sys; sys.path.insert(0, 'src'); import aios_habit.case_cockpit; print('package import ok')"`
+  printed `package import ok` with a benign Streamlit bare-mode warning.
+- CLI audit:
+  `cmd /c "set PYTHONPATH=src&& py -3 -m aios_habit.cli audit"` returned
+  `{"errors": [], "status": "PASS", "warnings": []}`.
 
-The current repo does have 400+ tests; the earlier 30/30 claim was incomplete
-or based only on a targeted subset, not the full test suite.
+The current repo has 400+ tests. The earlier 30/30 result was only a focused
+subset, not the full test suite.
 
 ## Safety
 
 - `local_runs`: ignored by `.gitignore`.
 - `API Key.txt`: ignored by `.gitignore`.
-- Tracked raw docs/raw answers/runtime outputs: not found by tracked-file scan.
-- Secret grep: no real secret found. One expected false positive appeared in
-  `src/aios_habit/route_log_ui.py` because sanitizer code contains a private-key
-  redaction regex.
-- Dirty tracked files after audit edits: expected audit/test/source/report
-  changes only.
+- Tracked runtime/raw-output pattern scan: no matches for `local_runs`,
+  `notebooklm_answers`, `aios_answers`, `questions.jsonl`, `evaluation.json`,
+  database files, API key files, env files, or image extensions.
+- Secret grep: no matches for real API-token/private-key patterns after
+  excluding sanitizer-test fixtures.
+- Extra local-path/name grep: no matches for local workspace paths, source-root
+  names, personal name, or local hostnames in tracked files.
+- Dirty tracked files remain in the workspace. They must be reviewed or scoped
+  before any clean commit/push claim.
 
 ## Readiness
 
-- Ready for full redacted NotebookLM 12Q rerun: YES.
-- Can claim daily NotebookLM replacement: NO / NOT YET.
-- Can claim global NotebookLM parity: NO.
+- Ready for full redacted NotebookLM 12Q rerun: YES for the router/synthesizer
+  patch mechanics, assuming the rerun starts from a reviewed clean or scoped
+  workspace.
+- Ready to claim NotebookLM replacement: NO / NOT YET.
+- Ready to claim global NotebookLM parity: NO.
 - P1.0 opened: NO.
 
 ## Recommended Next

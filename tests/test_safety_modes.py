@@ -18,7 +18,7 @@ def test_safety_mode_options_are_vietnamese():
 
 
 def test_company_paths_suggest_company_safe():
-    assert suggest_safety_mode(path="D:/Sandbox/MOM_WMS_QLLSSX/tailieugoc") == SAFETY_MODE_COMPANY
+    assert suggest_safety_mode(path="company/internal/source_root") == SAFETY_MODE_COMPANY
     assert suggest_safety_mode(name="ERP production report") == SAFETY_MODE_COMPANY
     assert suggest_safety_mode(notebook_name="Hồ sơ khách hàng nội bộ") == SAFETY_MODE_COMPANY
 
