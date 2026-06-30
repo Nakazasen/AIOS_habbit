@@ -90,6 +90,34 @@ Exit criteria:
 - only safe design docs committed.
 
 
+
+
+### M1.14B — Visual Map UI Interaction Table-First Implementation
+
+Status: DONE.
+
+Scope:
+
+- implemented table-first UI helper without heavy graph dependencies;
+- updated Case Cockpit with interactive filtering and node/edge details;
+- ensured missing evidence, risk, action, and learning panels are visible;
+- kept visual graph generation local-first and privacy-safe;
+- verified no NotebookLM/P1.0 overclaims.
+
+Exit criteria:
+- table-first UI helper exists
+- Case Cockpit has interactive Visual Map section
+- filters work
+- node detail works
+- edge reason works
+- missing evidence/risk/action/learning panels visible
+- safe exports remain safe
+- tests pass
+- safety scan passes
+- no unsafe content committed
+- no NotebookLM/P1.0 overclaim
+
+
 ## Mission and Non-goals
 
 

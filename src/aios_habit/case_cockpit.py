@@ -796,31 +796,108 @@ def page_knowledge_map():
         lessons = []
         
     from aios_habit.visual_map_builder import build_active_case_visual_graph
-    from aios_habit.visual_map_export import (
-        export_visual_graph_json, 
-        export_visual_graph_mermaid, 
-        VisualMapExportMode, 
-        build_visual_graph_owner_summary
+    from aios_habit.visual_map_ui import (
+        build_visual_map_ui_state,
+        summarize_visual_map_for_owner,
+        filter_visual_map_nodes,
+        filter_visual_map_edges,
+        get_node_detail_payload,
+        get_edge_detail_payload,
+        list_missing_evidence_nodes,
+        list_risk_claim_nodes,
+        list_next_action_nodes,
+        list_learning_nodes,
+        build_visual_map_export_payload
     )
+    from aios_habit.visual_map_export import VisualMapExportMode
     
     graph = build_active_case_visual_graph(active_case, evs, learning_cards=lessons)
+    ui_state = build_visual_map_ui_state(graph)
     
-    st.markdown("### Thống kê")
-    missing = [n for n in graph.nodes if n.node_type == "missing_evidence"]
-    risks = [n for n in graph.nodes if n.node_type == "risk"]
-    
+    st.markdown("### Tóm tắt bản đồ")
     c1, c2, c3, c4 = st.columns(4)
-    c1.metric("Số Node", len(graph.nodes))
-    c2.metric("Số Cạnh (Edge)", len(graph.edges))
-    c3.metric("Bằng chứng thiếu", len(missing))
-    c4.metric("Rủi ro (Risk)", len(risks))
+    c1.metric("Số nút", ui_state["node_count"])
+    c2.metric("Số quan hệ", ui_state["edge_count"])
+    c3.metric("Bằng chứng còn thiếu", ui_state["missing_evidence_count"])
+    c4.metric("Rủi ro / claim cần kiểm", ui_state["risk_claim_count"])
     
-    st.markdown("### Bảng tổng hợp dữ liệu")
-    st.text_area("Owner Summary", build_visual_graph_owner_summary(graph, VisualMapExportMode.LOCAL_FULL), height=150, disabled=True)
+    with st.expander("Tóm tắt cho owner"):
+        summary = summarize_visual_map_for_owner(graph)
+        for k, v in summary.items():
+            st.markdown(f"**{k}**")
+            if isinstance(v, list):
+                if not v:
+                    st.write("- Không có")
+                for item in v:
+                    st.write(f"- {item}")
+            else:
+                st.write(v)
+
+    st.markdown("### Chọn góc nhìn")
+    view = st.selectbox("Chọn góc nhìn", ["Bản đồ hồ sơ hiện tại", "Bản đồ bằng chứng", "Bản đồ hành động", "Bản đồ bài học"])
+    
+    st.markdown("### Bộ lọc")
+    col_f1, col_f2, col_f3, col_f4 = st.columns(4)
+    node_type = col_f1.selectbox("Lọc theo loại nút", ["All", "case", "evidence", "claim", "risk", "action", "missing_evidence", "learning_card"])
+    edge_type = col_f2.selectbox("Lọc theo loại quan hệ", ["All", "supports", "cites", "has_missing_evidence", "has_limitation", "caused_by"])
+    privacy = col_f3.selectbox("Lọc theo mức riêng tư", ["All", "local_only", "safe"])
+    conf = col_f4.selectbox("Lọc theo độ tin cậy", ["All", "high", "medium", "low"])
+    search_text = st.text_input("Tìm trong bản đồ")
+    
+    filtered_nodes = filter_visual_map_nodes(graph, node_type, privacy, conf, None, search_text)
+    filtered_edges = filter_visual_map_edges(graph, edge_type, privacy, conf, search_text)
+    
+    st.markdown("### Danh sách Nút (Nodes)")
+    node_data = [{"ID": n.node_id, "Loại": n.node_type, "Tiêu đề": n.display_title or n.title, "Riêng tư": n.privacy_level} for n in filtered_nodes]
+    st.dataframe(node_data, use_container_width=True)
+    
+    st.markdown("### Danh sách Quan hệ (Edges)")
+    edge_data = [{"ID": e.edge_id, "Từ": e.from_node_id, "Đến": e.to_node_id, "Loại": e.edge_type, "Lý do": e.reason, "Riêng tư": e.privacy_level} for e in filtered_edges]
+    st.dataframe(edge_data, use_container_width=True)
+    
+    st.markdown("### Chi tiết")
+    c_det1, c_det2 = st.columns(2)
+    with c_det1:
+        sel_node = st.selectbox("Chọn nút để xem chi tiết", [""] + [n.node_id for n in filtered_nodes])
+        if sel_node:
+            det = get_node_detail_payload(graph, sel_node)
+            st.json(det)
+    with c_det2:
+        sel_edge = st.selectbox("Chọn quan hệ để xem lý do", [""] + [e.edge_id for e in filtered_edges])
+        if sel_edge:
+            det = get_edge_detail_payload(graph, sel_edge)
+            st.json(det)
+            
+    st.markdown("### Bằng chứng liên quan")
+    st.write("Chọn nút và quan hệ ở trên để thấy bằng chứng.")
+            
+    st.markdown("### Bằng chứng còn thiếu")
+    for n in list_missing_evidence_nodes(graph):
+        st.warning(n.display_title or n.title)
+        
+    st.markdown("### Rủi ro / claim cần kiểm")
+    for n in list_risk_claim_nodes(graph):
+        st.error(n.display_title or n.title)
+        
+    st.markdown("### Việc tiếp theo")
+    for n in list_next_action_nodes(graph):
+        st.info(n.display_title or n.title)
+        
+    st.markdown("### Bài học tái sử dụng")
+    for n in list_learning_nodes(graph):
+        st.success(n.display_title or n.title)
+        
+    st.info("Dữ liệu local_only chỉ dùng trong máy này")
     
     with st.expander("Xuất dữ liệu bản đồ"):
-        st.download_button("Export Local JSON", export_visual_graph_json(graph, VisualMapExportMode.LOCAL_FULL), file_name=f"{active_case.case_id}_graph.json")
-        st.download_button("Export Safe Mermaid", export_visual_graph_mermaid(graph, VisualMapExportMode.LOCAL_REDACTED), file_name=f"{active_case.case_id}_graph.mmd")
+        exports_local = build_visual_map_export_payload(graph, VisualMapExportMode.LOCAL_FULL)
+        exports_safe = build_visual_map_export_payload(graph, VisualMapExportMode.LOCAL_REDACTED)
+        
+        st.download_button("Xuất JSON local", exports_local["json"], file_name="local_graph.json")
+        st.download_button("Xuất Mermaid an toàn", exports_safe["mermaid"], file_name="safe_graph.mmd")
+        
+        st.markdown("**Bản xem trước Mermaid an toàn:**")
+        st.code(exports_safe["mermaid"], language="mermaid")
 
 def page_handover():
     st.title("🤝 Bàn giao công việc")
