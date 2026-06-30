@@ -88,3 +88,105 @@ def render_right_result_panel(
     with col2:
         if st.button(labels["explain_conclusion"], use_container_width=True):
             on_explain()
+
+def render_source_status(status: str) -> str:
+    if status == "ready":
+        return "Sẵn sàng"
+    if status == "preview_only":
+        return "Chỉ xem trước"
+    if status == "failed":
+        return "Lỗi"
+    # Do not display enum/internal ID/scopes or technical ID:
+    if status in ("notebook", "temporary", "conversation_only", "added_to_notebook"):
+        return ""
+    if status.startswith("SRC-") or status.startswith("CONV-") or status.startswith("SEL-"):
+        return ""
+    return ""
+
+def render_source_summary(enabled_notebook_count: int, enabled_temp_count: int):
+    st.subheader("Nguồn đang dùng")
+    total = enabled_notebook_count + enabled_temp_count
+    if total == 0:
+        st.write("Chưa có nguồn nào đang dùng.")
+    else:
+        st.write(f"Tổng số nguồn đang bật: {total}")
+        st.write(f"- Số nguồn trong sổ đang bật: {enabled_notebook_count}")
+        st.write(f"- Số nguồn tạm đang bật: {enabled_temp_count}")
+    st.info("Nguồn đang dùng là những nguồn bạn đã bật cho cuộc trò chuyện này.")
+
+def render_notebook_source_list(
+    sources: List[Any],
+    selections: Dict[str, bool],
+    on_toggle: Callable[[str, bool], None],
+    conversation_id: str
+):
+    st.subheader("Nguồn trong sổ")
+    st.info("Nguồn trong sổ được giữ lại để dùng trong nhiều cuộc trò chuyện.")
+
+    if not sources:
+        st.write("Chưa có nguồn trong sổ.")
+        return
+
+    for s in sources:
+        st.markdown(f"**{s.title}**")
+        if s.content_preview:
+            st.caption(f"Preview: {s.content_preview}")
+
+        status_lbl = render_source_status(s.extraction_status)
+        if status_lbl:
+            st.write(f"Trạng thái: {status_lbl}")
+
+        widget_key = f"wsc_source_notebook_{conversation_id}_{s.id}"
+        is_enabled = selections.get(s.id, False)
+
+        st.checkbox(
+            "Dùng trong cuộc trò chuyện này",
+            value=is_enabled,
+            key=widget_key,
+            on_change=lambda s_id=s.id, key=widget_key: on_toggle(s_id, st.session_state[key])
+        )
+        st.write(f"Trạng thái hoạt động: {'Dùng trong cuộc trò chuyện này' if is_enabled else 'Tạm không dùng'}")
+        st.write("---")
+
+def render_temporary_source_list(
+    sources: List[Any],
+    selections: Dict[str, bool],
+    on_toggle: Callable[[str, bool], None],
+    on_promote: Callable[[str], None],
+    conversation_id: str
+):
+    st.subheader("Nguồn tạm trong cuộc trò chuyện")
+    st.info("Nguồn tạm chỉ thuộc cuộc trò chuyện hiện tại.")
+
+    if not sources:
+        st.write("Chưa có nguồn tạm trong cuộc trò chuyện này.")
+        return
+
+    for s in sources:
+        st.markdown(f"**{s.title}**")
+        if s.content_preview:
+            st.caption(f"Preview: {s.content_preview}")
+
+        status_lbl = render_source_status(s.status)
+        if status_lbl:
+            st.write(f"Trạng thái: {status_lbl}")
+
+        widget_key = f"wsc_source_temporary_{conversation_id}_{s.id}"
+        is_enabled = selections.get(s.id, False)
+
+        st.checkbox(
+            "Dùng trong cuộc trò chuyện này",
+            value=is_enabled,
+            key=widget_key,
+            on_change=lambda s_id=s.id, key=widget_key: on_toggle(s_id, st.session_state[key])
+        )
+        st.write(f"Trạng thái hoạt động: {'Dùng trong cuộc trò chuyện này' if is_enabled else 'Tạm không dùng'}")
+
+        is_promoted = s.long_term_saved or s.status == "added_to_notebook"
+        if is_promoted:
+            st.write("Đã thêm vào sổ tài liệu")
+        else:
+            promote_key = f"wsc_promote_temporary_{conversation_id}_{s.id}"
+            if st.button("Thêm vào sổ tài liệu", key=promote_key):
+                on_promote(s.id)
+        st.write("---")

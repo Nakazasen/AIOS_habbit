@@ -11,20 +11,31 @@ from aios_habit.workspace_chat_store import (
     load_messages,
     save_message,
     load_temporary_sources,
-    save_temporary_source
+    save_temporary_source,
+    load_notebook_sources,
+    load_conversation_source_selections,
+    load_enabled_sources_for_conversation,
+    set_source_enabled,
+    promote_temporary_source_to_notebook
 )
 from aios_habit.workspace_chat_models import (
     DocumentNotebook,
     WorkspaceConversation,
     ChatMessage,
-    TemporaryConversationSource
+    TemporaryConversationSource,
+    SOURCE_SCOPE_NOTEBOOK,
+    SOURCE_SCOPE_TEMPORARY
 )
 from aios_habit.workspace_chat_ui import (
     get_vietnamese_labels,
     render_notebook_header,
     render_notebook_card,
     render_chat_bubble,
-    render_right_result_panel
+    render_right_result_panel,
+    render_source_summary,
+    render_notebook_source_list,
+    render_temporary_source_list,
+    render_source_status
 )
 
 # Tự động khởi tạo kho lưu trữ
@@ -39,6 +50,10 @@ if "wsc_show_save_placeholder" not in st.session_state:
     st.session_state.wsc_show_save_placeholder = False
 if "wsc_show_explain_placeholder" not in st.session_state:
     st.session_state.wsc_show_explain_placeholder = False
+if "wsc_action_message" not in st.session_state:
+    st.session_state.wsc_action_message = None
+if "wsc_action_error" not in st.session_state:
+    st.session_state.wsc_action_error = None
 
 def safe_rerun():
     try:
@@ -125,22 +140,78 @@ else:
                 rename_conversation(active_conversation.id, new_title)
                 safe_rerun()
                 
-        # Hiển thị Nguồn tạm dưới thanh bên
-        st.sidebar.write("---")
-        st.sidebar.subheader(labels["temp_sources"])
+        # Load sources & selections
+        notebook_sources = load_notebook_sources(active_nb_id)
         temp_sources = load_temporary_sources(active_conversation.id)
-        if temp_sources:
-            for s in temp_sources:
-                with st.sidebar.expander(f"📌 {s.title}", expanded=False):
-                    st.caption(f"⚠️ {labels['not_saved_longterm']} ({labels['only_this_conversation']})")
-                    st.write(f"**Xem trước:** {s.content_preview}...")
-                    if len(s.content_text) > 150:
-                        st.info("Nội dung dài đã được lưu trong nguồn tạm. Chỉ mở khi cần kiểm tra.")
-                        st.text_area("Nội dung đầy đủ", value=s.content_text, height=150, disabled=True, key=f"full_text_{s.id}")
-                    else:
-                        st.write(s.content_text)
-        else:
-            st.sidebar.write("Chưa có nguồn tạm.")
+        selections = load_conversation_source_selections(active_conversation.id)
+
+        # Build selections map: (source_scope, source_id) -> enabled
+        selections_map = {}
+        for sel in selections:
+            selections_map[(sel.source_scope, sel.source_id)] = sel.enabled
+
+        # Separate dictionaries for the helper components to read
+        notebook_selections = {
+            s.id: selections_map.get((SOURCE_SCOPE_NOTEBOOK, s.id), False)
+            for s in notebook_sources
+        }
+        temp_selections = {
+            s.id: selections_map.get((SOURCE_SCOPE_TEMPORARY, s.id), False)
+            for s in temp_sources
+        }
+
+        # Count active/enabled ones
+        notebook_ids = {s.id for s in notebook_sources}
+        temp_ids = {s.id for s in temp_sources}
+        enabled_notebook_count = sum(1 for sel in selections if sel.source_scope == SOURCE_SCOPE_NOTEBOOK and sel.enabled and sel.source_id in notebook_ids)
+        enabled_temp_count = sum(1 for sel in selections if sel.source_scope == SOURCE_SCOPE_TEMPORARY and sel.enabled and sel.source_id in temp_ids)
+
+        def on_toggle_notebook(source_id: str, enabled: bool):
+            set_source_enabled(active_conversation.id, SOURCE_SCOPE_NOTEBOOK, source_id, enabled)
+            st.session_state.wsc_action_message = "Đã cập nhật nguồn cho cuộc trò chuyện này."
+            safe_rerun()
+
+        def on_toggle_temporary(source_id: str, enabled: bool):
+            set_source_enabled(active_conversation.id, SOURCE_SCOPE_TEMPORARY, source_id, enabled)
+            st.session_state.wsc_action_message = "Đã cập nhật nguồn cho cuộc trò chuyện này."
+            safe_rerun()
+
+        def on_promote_temporary(source_id: str):
+            try:
+                promote_temporary_source_to_notebook(active_conversation.id, source_id, active_nb_id)
+                st.session_state.wsc_action_message = "Đã thêm nguồn vào sổ tài liệu. Nguồn mới chưa được tự động bật."
+            except Exception as e:
+                st.session_state.wsc_action_error = "Không thể thêm nguồn vào sổ tài liệu. Vui lòng thử lại."
+            safe_rerun()
+
+        # Hiển thị thông báo kết quả (nếu có) và UI chọn nguồn trong sidebar
+        with st.sidebar:
+            if "wsc_action_message" in st.session_state and st.session_state.wsc_action_message:
+                st.success(st.session_state.wsc_action_message)
+                st.session_state.wsc_action_message = None
+            if "wsc_action_error" in st.session_state and st.session_state.wsc_action_error:
+                st.error(st.session_state.wsc_action_error)
+                st.session_state.wsc_action_error = None
+
+            st.write("---")
+            render_source_summary(enabled_notebook_count, enabled_temp_count)
+
+            st.write("---")
+            render_notebook_source_list(
+                sources=notebook_sources,
+                selections=notebook_selections,
+                on_toggle=on_toggle_notebook,
+                conversation_id=active_conversation.id
+            )
+
+            st.write("---")
+            render_temporary_source_list(
+                sources=temp_sources,
+                selections=temp_selections,
+                on_toggle=on_toggle_temporary,
+                on_promote=on_promote_temporary,
+                conversation_id=active_conversation.id
+            )
             
     # Khu vực chính ở giữa
     st.subheader(f"💬 Đang chat trong sổ: {notebook.title}")
@@ -219,7 +290,8 @@ else:
                                 content_text=paste_content
                             )
                             save_temporary_source(ts)
-                            st.success(f"Đã lưu thành công nguồn tạm: {final_title}")
+                            set_source_enabled(active_conversation.id, SOURCE_SCOPE_TEMPORARY, ts.id, True)
+                            st.session_state.wsc_action_message = f"Đã lưu thành công nguồn tạm: {final_title}."
                             safe_rerun()
                         else:
                             st.error("Nội dung nguồn không được để trống.")
