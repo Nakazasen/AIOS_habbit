@@ -1,4 +1,5 @@
 import pytest
+from pathlib import Path
 
 from aios_habit.case_models import EvidenceItem
 from aios_habit.strong_answer_ui import (
@@ -79,3 +80,11 @@ def test_no_cloud_provider_call_in_ui_helpers(monkeypatch):
     prep = prepare_local_evidence_answer("manual shipping", [_ev("E1", "ManualShipping.xlsx", "ManualShipping Workflow")])
     export = build_strong_answer_prompt_for_ui(prep.question, prep.evidence_pack, prep.local_draft.answer_text)
     assert export.prompt_text
+
+
+
+def test_markdown_fallback_is_not_raw_json_paste_default():
+    source = Path("src/aios_habit/case_cockpit.py").read_text(encoding="utf-8")
+    assert "Dán câu trả lời Markdown từ Antigravity" in source
+    assert "response JSON cũ" in source
+    assert source.index("Dán câu trả lời Markdown từ Antigravity") < source.index("response JSON cũ")

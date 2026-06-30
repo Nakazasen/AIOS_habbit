@@ -51,6 +51,23 @@ Case → Evidence → Map → Action → Learning → Memory
 
 
 
+
+
+### M1.13 — Owner Trial Pain Point Fixes
+
+Status: DONE.
+
+Exit criteria:
+
+- pending requests visible in UI/helper;
+- response.json import can be discovered automatically;
+- Markdown paste fallback works with strict validation;
+- request_id folder navigation reduced;
+- Visual Map preview appears after save-back;
+- tests pass;
+- no unsafe content committed.
+
+
 ## Mission and Non-goals
 
 

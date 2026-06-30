@@ -35,6 +35,164 @@ class ImportValidationResult:
     response: dict[str, Any] = field(default_factory=dict)
     manifest: dict[str, Any] = field(default_factory=dict)
 
+
+
+@dataclass
+class PendingIdeRequest:
+    request_id: str
+    created_at: str
+    case_id: str
+    question: str
+    bundle_scope: str
+    privacy_mode: str
+    state: str
+    response_exists: bool
+    response_path: Path
+    status_path: Path
+    warnings: list[str] = field(default_factory=list)
+
+
+def _safe_read_json(path: Path) -> tuple[dict[str, Any], str]:
+    try:
+        return json.loads(path.read_text(encoding="utf-8")), ""
+    except Exception as exc:
+        return {}, str(exc)
+
+
+def find_response_for_request(request_id: str, base_dir: str | Path = HANDOFF_ROOT) -> Path | None:
+    if not str(request_id).strip():
+        return None
+    root = Path(base_dir)
+    candidates = [root / "inbox" / request_id / "response.json", root / "inbox" / f"RESP-{request_id}.json"]
+    for candidate in candidates:
+        if candidate.exists() and candidate.is_file():
+            return candidate
+    return None
+
+
+def list_pending_ide_requests(base_dir: str | Path = HANDOFF_ROOT) -> list[PendingIdeRequest]:
+    root = Path(base_dir)
+    outbox = root / "outbox"
+    if not outbox.exists():
+        return []
+    requests: list[PendingIdeRequest] = []
+    for folder in outbox.iterdir():
+        if not folder.is_dir():
+            continue
+        manifest_path = folder / "manifest.json"
+        status_path = folder / "request_status.json"
+        if not manifest_path.exists():
+            continue
+        manifest, manifest_error = _safe_read_json(manifest_path)
+        if manifest_error or not manifest.get("request_id"):
+            continue
+        status, status_error = _safe_read_json(status_path) if status_path.exists() else ({}, "")
+        request_id = str(manifest.get("request_id", folder.name))
+        response_path = find_response_for_request(request_id, root)
+        warnings = []
+        if status_error:
+            warnings.append("request_status.json is malformed")
+        requests.append(PendingIdeRequest(
+            request_id=request_id,
+            created_at=str(manifest.get("created_at", "")),
+            case_id=str(manifest.get("case_id", "")),
+            question=str(manifest.get("question", "")),
+            bundle_scope=str(manifest.get("bundle_scope", "")),
+            privacy_mode=str(manifest.get("privacy_mode", manifest.get("privacy_level", ""))),
+            state=str(status.get("state", "created")),
+            response_exists=response_path is not None,
+            response_path=response_path or (root / "inbox" / request_id / "response.json"),
+            status_path=status_path,
+            warnings=warnings,
+        ))
+    return sorted(requests, key=lambda r: (r.created_at, r.request_id), reverse=True)
+
+
+def get_latest_pending_ide_request(base_dir: str | Path = HANDOFF_ROOT) -> PendingIdeRequest | None:
+    requests = list_pending_ide_requests(base_dir)
+    return requests[0] if requests else None
+
+
+def summarize_pending_request(request: PendingIdeRequest) -> dict[str, Any]:
+    return {
+        "request_id": request.request_id,
+        "created_at": request.created_at,
+        "case_id": request.case_id,
+        "question": request.question,
+        "bundle_scope": request.bundle_scope,
+        "privacy_mode": request.privacy_mode,
+        "state": request.state,
+        "response_json_exists": request.response_exists,
+        "next_action": "Nhập phản hồi và kiểm tra bằng chứng" if request.response_exists else "Dán câu trả lời Markdown từ Antigravity hoặc chờ response.json",
+        "warnings": list(request.warnings),
+    }
+
+
+def convert_markdown_answer_to_ide_response(
+    request_id: str,
+    markdown_text: str,
+    cited_evidence_ids: list[str] | None = None,
+    confidence: str = "medium",
+    limitations: list[str] | None = None,
+    recommended_next_actions: list[str] | None = None,
+    *,
+    privacy_acknowledged: bool = False,
+    used_full_bundle: bool = False,
+    model_tool_name: str = "Antigravity IDE AI",
+    unsupported_claims: list[str] | None = None,
+) -> dict[str, Any]:
+    if not str(request_id).strip():
+        raise ValueError("request_id is required")
+    ids = list(cited_evidence_ids or [])
+    lims = list(limitations or [])
+    if not ids and "No explicit evidence IDs were provided." not in lims:
+        lims.append("No explicit evidence IDs were provided.")
+    return {
+        "request_id": str(request_id).strip(),
+        "answer_markdown": str(markdown_text or ""),
+        "cited_evidence_ids": ids,
+        "evidence_ids_used": ids,
+        "limitations": lims,
+        "confidence": confidence,
+        "confidence_label": confidence,
+        "privacy_acknowledged": privacy_acknowledged is True,
+        "used_full_bundle": used_full_bundle is True,
+        "unsupported_claims": list(unsupported_claims or []),
+        "recommended_next_actions": list(recommended_next_actions or []),
+        "model_tool_name": model_tool_name,
+    }
+
+
+def import_markdown_ide_response(
+    request_id: str,
+    markdown_text: str,
+    *,
+    root: str | Path = HANDOFF_ROOT,
+    cited_evidence_ids: list[str] | None = None,
+    confidence: str = "medium",
+    limitations: list[str] | None = None,
+    recommended_next_actions: list[str] | None = None,
+    privacy_acknowledged: bool = False,
+    used_full_bundle: bool = False,
+    model_tool_name: str = "Antigravity IDE AI",
+) -> ImportValidationResult:
+    response = convert_markdown_answer_to_ide_response(
+        request_id,
+        markdown_text,
+        cited_evidence_ids=cited_evidence_ids,
+        confidence=confidence,
+        limitations=limitations,
+        recommended_next_actions=recommended_next_actions,
+        privacy_acknowledged=privacy_acknowledged,
+        used_full_bundle=used_full_bundle,
+        model_tool_name=model_tool_name,
+    )
+    temp_dir = Path(root) / "inbox" / request_id
+    temp_dir.mkdir(parents=True, exist_ok=True)
+    draft_path = temp_dir / "response_draft_from_markdown.json"
+    draft_path.write_text(json.dumps(response, ensure_ascii=False, indent=2), encoding="utf-8")
+    return import_ide_response(draft_path, root=root)
+
 def _now_id() -> str:
     return f"REQ-{datetime.now().strftime('%Y%m%d-%H%M%S')}-{uuid.uuid4().hex[:8].upper()}"
 
@@ -136,7 +294,12 @@ def _load_manifest_for_request(request_id: str, root: str | Path) -> tuple[Path,
     return bundle_dir, manifest, evidence_ids
 
 def import_ide_response(response_path: str | Path, *, root: str | Path = HANDOFF_ROOT) -> ImportValidationResult:
-    response = json.loads(Path(response_path).read_text(encoding="utf-8"))
+    try:
+        response = json.loads(Path(response_path).read_text(encoding="utf-8"))
+    except FileNotFoundError:
+        return ImportValidationResult(False, False, errors=[f"response file not found: {response_path}"])
+    except json.JSONDecodeError as exc:
+        return ImportValidationResult(False, False, errors=[f"malformed JSON response: {exc}"])
     errors: list[str] = []
     warnings: list[str] = []
     request_id = str(response.get("request_id", ""))
@@ -195,18 +358,16 @@ def save_imported_ide_answer(case_id: str, validation: ImportValidationResult, *
     return answer
 
 def pending_handoff_request_ids(*, root: str | Path = HANDOFF_ROOT) -> list[str]:
-    outbox = Path(root) / "outbox"
-    if not outbox.exists():
-        return []
-    return sorted(p.name for p in outbox.iterdir() if p.is_dir() and (p / "request_status.json").exists())
+    return [req.request_id for req in list_pending_ide_requests(root)]
 
 def expected_inbox_response_path(request_id: str, *, root: str | Path = HANDOFF_ROOT) -> Path:
     return Path(root) / "inbox" / request_id / "response.json"
 
 def import_pending_ide_response(request_id: str, *, root: str | Path = HANDOFF_ROOT) -> ImportValidationResult:
-    path = expected_inbox_response_path(request_id, root=root)
-    if not path.exists():
-        return ImportValidationResult(False, False, errors=[f"response file not found: {path}"])
+    path = find_response_for_request(request_id, root)
+    if not path:
+        expected = expected_inbox_response_path(request_id, root=root)
+        return ImportValidationResult(False, False, errors=[f"response file not found: {expected}"])
     return import_ide_response(path, root=root)
 
 def vietnamese_next_step_instruction(request_id: str, outbox_dir: str | Path, inbox_response_path: str | Path, privacy_mode: str) -> str:

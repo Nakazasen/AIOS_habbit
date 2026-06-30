@@ -49,14 +49,53 @@ from aios_habit.strong_answer_ui import (
 )
 from aios_habit.rag_answer_composer import compose_answer
 from aios_habit.ide_handoff_bridge import (
+    convert_markdown_answer_to_ide_response,
     import_ide_response,
+    import_markdown_ide_response,
     import_pending_ide_response,
+    list_pending_ide_requests,
     save_imported_ide_answer,
+    summarize_pending_request,
     vietnamese_next_step_instruction,
     write_ide_handoff_bundle,
 )
 
 st.set_page_config(page_title="AIOS Case Cockpit v0.1", layout="wide")
+
+def antigravity_bridge_owner_labels():
+    return {
+        "title": "Cầu nối model mạnh qua Antigravity",
+        "pending": "Gói đang chờ phản hồi",
+        "scan_inbox": "Quét phản hồi trong thư mục inbox",
+        "paste_markdown": "Dán câu trả lời Markdown từ Antigravity",
+        "used_bundle": "Tôi xác nhận model đã dùng đúng gói bằng chứng",
+        "privacy_ack": "Tôi xác nhận không đưa dữ liệu local_only ra cloud",
+        "import_validate": "Nhập phản hồi và kiểm tra bằng chứng",
+        "save_answer": "Lưu câu trả lời vào hồ sơ",
+        "map_preview": "Xem nhanh bản đồ tri thức",
+    }
+
+
+def build_visual_map_preview_for_owner(active_case, evidence_items, final_answer=None, learning_cards=None):
+    from collections import Counter
+    from aios_habit.visual_map_builder import build_active_case_visual_graph
+    from aios_habit.visual_map_export import export_visual_graph_json, export_visual_graph_mermaid, VisualMapExportMode
+    graph = build_active_case_visual_graph(active_case, evidence_items, final_answer=final_answer, learning_cards=learning_cards or [])
+    node_counts = Counter(n.node_type for n in graph.nodes)
+    missing = [n for n in graph.nodes if n.node_type == "missing_evidence"]
+    risks = [n for n in graph.nodes if n.node_type in {"risk", "claim"}]
+    return {
+        "node_count": len(graph.nodes),
+        "edge_count": len(graph.edges),
+        "missing_evidence_count": len(missing),
+        "risk_count": len(risks),
+        "top_nodes_by_type": dict(node_counts),
+        "missing_evidence_nodes": [n.display_title or n.title for n in missing],
+        "risk_claim_nodes": [n.display_title or n.title for n in risks],
+        "local_json": export_visual_graph_json(graph, VisualMapExportMode.LOCAL_FULL),
+        "safe_mermaid": export_visual_graph_mermaid(graph, VisualMapExportMode.LOCAL_REDACTED),
+    }
+
 
 def nav_to_page(page_name):
     mapping = {
@@ -582,9 +621,10 @@ def page_prompt_pack():
         for ref in saved.evidence_ids:
             st.write(f"- {ref}")
 
+    labels = antigravity_bridge_owner_labels()
     st.divider()
-    st.subheader("Cầu nối model mạnh qua Antigravity")
-    st.caption("Luồng UI-first: tạo gói local, Antigravity đọc bundle, lưu response.json vào inbox, rồi Case Cockpit tự kiểm tra/import. Không cần CLI và không cần dán JSON ở luồng mặc định.")
+    st.subheader(labels["title"])
+    st.caption("Luồng UI-first: tạo gói local, Case Cockpit tự liệt kê request đang chờ, tự quét inbox, và hỗ trợ dán Markdown thay vì dán JSON. Không cần CLI và không cần dán JSON ở luồng mặc định.")
     ide_question = st.text_area("Câu hỏi cần gửi gói bằng chứng đầy đủ", key="ide_full_bundle_question", height=90, value=strong_question)
     scope_label = st.selectbox("Phạm vi bundle", ["Hồ sơ hiện tại: gửi toàn bộ bằng chứng trong case", "Kết quả truy xuất + toàn bộ manifest nguồn", "Thư mục local đã chọn: gửi toàn bộ evidence đã extract từ folder"], key="ide_bundle_scope_label")
     scope_map = {
@@ -599,34 +639,71 @@ def page_prompt_pack():
             try:
                 req = write_ide_handoff_bundle(active_case.case_id, ide_question, scope_map[scope_label], evs)
                 st.session_state["ide_full_bundle_request"] = req
+                st.session_state["selected_ide_request_id"] = req.request_id
                 st.success("Đã tạo gói bằng chứng đầy đủ cho Antigravity/IDE AI.")
             except Exception as exc:
                 st.error(f"Không tạo được gói bằng chứng đầy đủ: {exc}")
 
+    st.markdown(f"### {labels['pending']}")
+    pending_requests = list_pending_ide_requests()
+    if pending_requests:
+        request_options = [r.request_id for r in pending_requests]
+        default_request = st.session_state.get("selected_ide_request_id") or request_options[0]
+        default_index = request_options.index(default_request) if default_request in request_options else 0
+        selected_request_id = st.selectbox(labels["pending"], request_options, index=default_index, key="selected_ide_request_id")
+        selected_request = next(r for r in pending_requests if r.request_id == selected_request_id)
+        summary = summarize_pending_request(selected_request)
+        st.write(f"latest request_id: `{pending_requests[0].request_id}`")
+        st.json(summary)
+        if selected_request.privacy_mode == "local_only":
+            st.warning("Dữ liệu local_only: chỉ dùng Antigravity/model path được owner phê duyệt; không gửi raw data ra cloud.")
+    else:
+        selected_request_id = ""
+        st.info("Chưa có gói đang chờ phản hồi.")
+
     req = st.session_state.get("ide_full_bundle_request")
     if req:
-        st.write(f"request_id: `{req.request_id}`")
-        st.write(f"outbox folder: `{req.bundle_dir}`")
-        st.write(f"expected inbox response path: `{req.inbox_response_path}`")
+        st.write(f"request_id mới tạo: `{req.request_id}`")
         st.write(f"privacy status: `{req.manifest['privacy_mode']}` · local_only: `{req.manifest['local_only']}`")
-        st.write(f"source_count: `{req.manifest['source_count']}` · evidence_item_count: `{req.manifest['evidence_item_count']}` · chunk_count: `{req.manifest['chunk_count']}` · total_text_chars: `{req.manifest['total_text_chars']}`")
-        st.write(f"FULL_BUNDLE_COMPLETE: `{req.manifest['FULL_BUNDLE_COMPLETE']}`")
-        if req.manifest.get("local_only"):
-            st.warning("Dữ liệu local_only: AIOS chặn gọi cloud/provider tự động; chỉ dùng Antigravity/model path được owner phê duyệt.")
         st.info(vietnamese_next_step_instruction(req.request_id, req.bundle_dir, req.inbox_response_path or "", req.manifest["privacy_mode"]))
         st.text_area("Lệnh cho Antigravity / IDE AI", value=req.ide_instruction, height=150)
 
-    if st.button("Kiểm tra phản hồi từ Antigravity", key="check_ide_full_bundle_response"):
-        req = st.session_state.get("ide_full_bundle_request")
-        if not req:
-            st.error("Chưa có request_id. Hãy bấm Tạo gói gửi Antigravity trước.")
+    if st.button(labels["scan_inbox"], key="check_ide_full_bundle_response"):
+        if not selected_request_id:
+            st.error("Chưa có request_id đang chờ. Hãy bấm Tạo gói gửi Antigravity trước.")
         else:
-            validation = import_pending_ide_response(req.request_id)
+            validation = import_pending_ide_response(selected_request_id)
             st.session_state["ide_full_bundle_validation"] = validation
             if not validation.ok:
                 st.error("Response chưa hợp lệ: " + "; ".join(validation.errors))
+                st.info("Nếu chưa có response.json, có thể dùng ô Markdown bên dưới.")
             else:
-                st.success("Response hợp lệ. Có thể lưu câu trả lời mạnh vào hồ sơ.")
+                st.success("Response hợp lệ. Có thể lưu câu trả lời vào hồ sơ.")
+
+    with st.expander(labels["paste_markdown"], expanded=False):
+        markdown_answer = st.text_area(labels["paste_markdown"], key="ide_markdown_answer", height=180)
+        evidence_hint = st.text_input("Evidence IDs trích dẫn (phân tách bằng dấu phẩy)", key="ide_markdown_evidence_ids", placeholder="EVD-1,EVD-2")
+        markdown_confidence = st.selectbox("Độ tin cậy", ["medium", "high", "low"], key="ide_markdown_confidence")
+        used_bundle = st.checkbox(labels["used_bundle"], key="ide_markdown_used_bundle")
+        privacy_ack = st.checkbox(labels["privacy_ack"], key="ide_markdown_privacy_ack")
+        if st.button(labels["import_validate"], key="import_ide_markdown_answer"):
+            if not selected_request_id:
+                st.error("Chưa chọn request_id.")
+            else:
+                ids = [x.strip() for x in evidence_hint.split(",") if x.strip()]
+                validation = import_markdown_ide_response(
+                    selected_request_id,
+                    markdown_answer,
+                    cited_evidence_ids=ids,
+                    confidence=markdown_confidence,
+                    privacy_acknowledged=privacy_ack,
+                    used_full_bundle=used_bundle,
+                )
+                st.session_state["ide_full_bundle_validation"] = validation
+                if validation.ok:
+                    st.success("Markdown hợp lệ sau khi chuyển thành phản hồi có cấu trúc.")
+                else:
+                    st.error("Markdown chưa hợp lệ: " + "; ".join(validation.errors))
 
     validation = st.session_state.get("ide_full_bundle_validation")
     if validation:
@@ -641,7 +718,7 @@ def page_prompt_pack():
         for ref in validation.response.get("evidence_ids_used", []):
             st.write(f"- {ref}")
 
-    if st.button("Lưu câu trả lời mạnh vào hồ sơ", key="save_imported_ide_answer"):
+    if st.button(labels["save_answer"], key="save_imported_ide_answer"):
         validation = st.session_state.get("ide_full_bundle_validation")
         if not validation or not validation.ok:
             st.error("Chưa có response hợp lệ để lưu.")
@@ -649,9 +726,45 @@ def page_prompt_pack():
             try:
                 saved_ide = save_imported_ide_answer(active_case.case_id, validation)
                 st.session_state["saved_ide_full_bundle_answer"] = saved_ide
-                st.success("Đã lưu câu trả lời mạnh từ Antigravity vào hồ sơ.")
+                preview = build_visual_map_preview_for_owner(
+                    active_case,
+                    evs,
+                    final_answer={"cited_evidence_ids": saved_ide.evidence_ids, "confidence": saved_ide.confidence_label, "warnings": saved_ide.warnings},
+                )
+                st.session_state["ide_visual_map_preview"] = preview
+                st.success("Đã lưu câu trả lời từ Antigravity vào hồ sơ.")
             except Exception as exc:
                 st.error(f"Không lưu được response IDE: {exc}")
+
+    saved_ide = st.session_state.get("saved_ide_full_bundle_answer")
+    if saved_ide:
+        st.markdown("### Final answer card — IDE gói bằng chứng đầy đủ")
+        st.write(f"Model/tool: `{saved_ide.model_tool_name}`")
+        st.write(f"Answer kind: `ide_handoff_strong_answer` · Final: `{saved_ide.final_answer}`")
+        st.write(f"Route: `{saved_ide.route_summary}`")
+        st.text_area("Final answer từ IDE", value=saved_ide.answer_text, height=160, disabled=True)
+        st.write("Used evidence IDs:")
+        for ref in saved_ide.evidence_ids:
+            st.write(f"- {ref}")
+
+    preview = st.session_state.get("ide_visual_map_preview")
+    if preview:
+        st.markdown(f"### {labels['map_preview']}")
+        c1, c2, c3, c4 = st.columns(4)
+        c1.metric("Số Node", preview["node_count"])
+        c2.metric("Số Cạnh", preview["edge_count"])
+        c3.metric("Bằng chứng thiếu", preview["missing_evidence_count"])
+        c4.metric("Rủi ro/Claim", preview["risk_count"])
+        st.write("Top nodes by type:")
+        st.json(preview["top_nodes_by_type"])
+        if preview["missing_evidence_nodes"]:
+            st.write("Missing evidence nodes:")
+            st.write(preview["missing_evidence_nodes"])
+        if preview["risk_claim_nodes"]:
+            st.write("Risk/claim nodes:")
+            st.write(preview["risk_claim_nodes"])
+        st.download_button("Export Local JSON", preview["local_json"], file_name=f"{active_case.case_id}_visual_map.json")
+        st.text_area("Safe Mermaid", value=preview["safe_mermaid"], height=180)
 
     with st.expander("Fallback thủ công: nhập đường dẫn response JSON cũ"):
         response_json_path = st.text_input("Đường dẫn response JSON từ IDE", key="ide_response_json_path", placeholder="local_runs/ide_handoff/inbox/<request_id>/response.json")
@@ -665,17 +778,6 @@ def page_prompt_pack():
                     st.success("Đã kiểm tra response thủ công. Bấm lưu để ghi vào hồ sơ.")
             except Exception as exc:
                 st.error(f"Không import được response IDE: {exc}")
-
-    saved_ide = st.session_state.get("saved_ide_full_bundle_answer")
-    if saved_ide:
-        st.markdown("### Final answer card — IDE gói bằng chứng đầy đủ")
-        st.write(f"Model/tool: `{saved_ide.model_tool_name}`")
-        st.write(f"Answer kind: `ide_handoff_strong_answer` · Final: `{saved_ide.final_answer}`")
-        st.write(f"Route: `{saved_ide.route_summary}`")
-        st.text_area("Final answer từ IDE", value=saved_ide.answer_text, height=160, disabled=True)
-        st.write("Used evidence IDs:")
-        for ref in saved_ide.evidence_ids:
-            st.write(f"- {ref}")
 
 
 def page_knowledge_map():

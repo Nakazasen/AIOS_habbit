@@ -109,3 +109,19 @@ def test_bridge_manual_step_report_is_utf8_and_not_mojibake():
     assert "Cầu nối model mạnh qua Antigravity" in report
     assert ("C" + "?u n" + "?i") not in report
     assert ("m" + "?nh") not in report
+
+
+
+def test_owner_trial_pain_point_labels_and_no_raw_json_default():
+    source = Path("src/aios_habit/case_cockpit.py").read_text(encoding="utf-8")
+    assert "Gói đang chờ phản hồi" in source
+    assert "Quét phản hồi trong thư mục inbox" in source
+    assert "Dán câu trả lời Markdown từ Antigravity" in source
+    assert "Tôi xác nhận model đã dùng đúng gói bằng chứng" in source
+    assert "Tôi xác nhận không đưa dữ liệu local_only ra cloud" in source
+    assert "Xem nhanh bản đồ tri thức" in source
+    markdown_idx = source.index('key="import_ide_markdown_answer"')
+    fallback_idx = source.index("Fallback thủ công")
+    assert markdown_idx < fallback_idx
+    assert "NotebookLM replacement: YES" not in source
+    assert "P1.0 opened: YES" not in source
