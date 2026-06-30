@@ -425,6 +425,8 @@ Immediate:
 
 5. **AIOS-IDE-BRIDGE-1** — DONE locally; manual prompt export, paste-back answer, store model/tool/evidence/route log. Next: audit before push.
 
+6. **Visual Map MVP** — DONE; local JSON/Mermaid export, schema models, deterministic active-case graph builder, UI stub.
+
 
 
 Later:

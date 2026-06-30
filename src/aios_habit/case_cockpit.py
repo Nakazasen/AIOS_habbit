@@ -679,43 +679,46 @@ def page_prompt_pack():
 
 
 def page_knowledge_map():
-    st.title("🧠 Bản đồ tri thức")
+    st.title("🧠 Bản đồ tri thức công việc")
     active_case = get_active_case()
     if not active_case:
         st.info("Vui lòng chọn một sự việc.")
         return
         
     evs = [e for e in load_evidence() if e.case_id == active_case.case_id]
-    answers = [e for e in evs if e.source_type == "ide_handoff_strong_answer" or e.source_type == "strong_model_answer"]
-    lessons = [] # Placeholder for lessons if stored
     
-    graph = build_visual_knowledge_graph(active_case, evs, lessons, answers)
-    metrics = summarize_map_metrics(graph)
+    try:
+        from aios_habit.learning_models import load_learning_cards_for_case
+        lessons = load_learning_cards_for_case(active_case.case_id)
+    except Exception:
+        lessons = []
+        
+    from aios_habit.visual_map_builder import build_active_case_visual_graph
+    from aios_habit.visual_map_export import (
+        export_visual_graph_json, 
+        export_visual_graph_mermaid, 
+        VisualMapExportMode, 
+        build_visual_graph_owner_summary
+    )
+    
+    graph = build_active_case_visual_graph(active_case, evs, learning_cards=lessons)
     
     st.markdown("### Thống kê")
-    c1, c2, c3, c4 = st.columns(4)
-    c1.metric("Vụ việc", 1)
-    c2.metric("Bằng chứng", metrics["evidence_count"])
-    c3.metric("AI Answer", metrics["answer_count"])
-    c4.metric("Bài học", metrics["lesson_count"])
+    missing = [n for n in graph.nodes if n.node_type == "missing_evidence"]
+    risks = [n for n in graph.nodes if n.node_type == "risk"]
     
-    st.markdown("### Bản đồ trực quan")
-    if not evs and not answers and not lessons:
-        st.info("Chưa có bằng chứng. Hãy thêm tài liệu/log/ảnh trước.")
-    else:
-        mermaid_data = export_mermaid_graph(graph)
-        st.components.v1.html(f'''
-        <div class="mermaid">
-        {mermaid_data}
-        </div>
-        <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
-        <script>mermaid.initialize({{startOnLoad:true}});</script>
-        ''', height=500, scrolling=True)
-        
-    with st.expander("Chi tiết kỹ thuật & Export"):
-        st.text_area("Mermaid Graph", mermaid_data, height=200)
-        st.text_area("Markmap Markdown", export_markmap_markdown(graph), height=200)
-        st.text_area("Static HTML", export_interactive_html(graph), height=200)
+    c1, c2, c3, c4 = st.columns(4)
+    c1.metric("Số Node", len(graph.nodes))
+    c2.metric("Số Cạnh (Edge)", len(graph.edges))
+    c3.metric("Bằng chứng thiếu", len(missing))
+    c4.metric("Rủi ro (Risk)", len(risks))
+    
+    st.markdown("### Bảng tổng hợp dữ liệu")
+    st.text_area("Owner Summary", build_visual_graph_owner_summary(graph, VisualMapExportMode.LOCAL_FULL), height=150, disabled=True)
+    
+    with st.expander("Xuất dữ liệu bản đồ"):
+        st.download_button("Export Local JSON", export_visual_graph_json(graph, VisualMapExportMode.LOCAL_FULL), file_name=f"{active_case.case_id}_graph.json")
+        st.download_button("Export Safe Mermaid", export_visual_graph_mermaid(graph, VisualMapExportMode.LOCAL_REDACTED), file_name=f"{active_case.case_id}_graph.mmd")
 
 def page_handover():
     st.title("🤝 Bàn giao công việc")
