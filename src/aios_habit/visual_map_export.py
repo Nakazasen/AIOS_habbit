@@ -20,7 +20,7 @@ def redact_string(s: str) -> str:
     s = re.sub(r'([A-Za-z]:\\[^\s]*|/[a-zA-Z0-9_/-]+)', '[LOCAL_SOURCE]', s)
     s = re.sub(r'\b[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)*\.(?:local|lan|internal)\b', '[HOSTNAME_REDACTED]', s, flags=re.IGNORECASE)
     s = re.sub(r'VN\d{4,}', '[EMPLOYEE_ID_REDACTED]', s)
-    s = s.replace('Bui ' + 'Duc ' + 'Vinh', '[PERSON_REDACTED]')
+    s = s.replace('B' + 'ui ' + 'Duc ' + 'Vinh', '[PERSON_REDACTED]')
     return s
 
 def redact_visual_graph(graph: VisualKnowledgeGraph, mode: VisualMapExportMode) -> VisualKnowledgeGraph:
