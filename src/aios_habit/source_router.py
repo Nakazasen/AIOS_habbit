@@ -26,19 +26,18 @@ def classify_query_profile(question: str, target_source_type: str = "") -> Query
             return QueryProfile("screenshot_visible_facts", ["screenshot", "image", "png", "jpg"])
         return QueryProfile("screenshot_unsupported_inference", ["screenshot", "image", "png", "jpg"])
 
+    # Handover and missing evidence check
+    if "missing" in q_lower and "evidence" in q_lower:
+        return QueryProfile("missing_evidence", ["log", "chat", "note", "mixed"])
+    if "handover" in q_lower or "bàn giao" in q_lower or "next action" in q_lower:
+        return QueryProfile("owner_handover", ["log", "chat", "note", "mixed", "pdf", "xlsx", "screenshot"])
+    if "troubleshooting" in q_lower or "step-by-step" in q_lower or "kiểm tra gì" in q_lower or "thiếu bằng chứng" in q_lower:
+        return QueryProfile("mixed_troubleshooting", ["log", "chat", "note", "mixed", "pdf", "xlsx"])
+
     if "screenshot" in q_lower or "ảnh" in q_lower or "nhìn thấy" in q_lower:
         if "what does" in q_lower and "show" in q_lower or "visible" in q_lower or "thấy gì" in q_lower:
             return QueryProfile("screenshot_visible_facts", ["screenshot", "image", "png", "jpg"])
         return QueryProfile("screenshot_unsupported_inference", ["screenshot", "image", "png", "jpg"])
-
-    if "design change" in q_lower or "eco" in q_lower or "ecn" in q_lower or "revup" in q_lower:
-        return QueryProfile("design_change", ["pdf", "pptx", "document", "excel", "xlsx"])
-
-    if "handover" in q_lower or "bàn giao" in q_lower or "next action" in q_lower:
-        return QueryProfile("owner_handover", ["log", "chat", "note", "mixed", "pdf", "xlsx", "screenshot"])
-
-    if "troubleshooting" in q_lower or "step-by-step" in q_lower or "kiểm tra gì" in q_lower or "thiếu bằng chứng" in q_lower:
-        return QueryProfile("mixed_troubleshooting", ["log", "chat", "note", "mixed", "pdf", "xlsx"])
 
     if "automatic/manual boundary" in q_lower or "process" in q_lower or "quy trình" in q_lower or "chủ sở hữu" in q_lower:
         return QueryProfile("process_boundary", ["pdf", "pptx", "word", "document"])
@@ -51,8 +50,8 @@ def classify_query_profile(question: str, target_source_type: str = "") -> Query
             return QueryProfile("schema_unsupported_conclusions", ["html", "sql", "csv", "xlsx"])
         return QueryProfile("schema_tables_fields", ["html", "sql", "csv", "xlsx"])
 
-    if "missing" in q_lower and "evidence" in q_lower:
-        return QueryProfile("missing_evidence", ["log", "chat", "note", "mixed"])
+    if "design change" in q_lower or "eco" in q_lower or "ecn" in q_lower or "revup" in q_lower:
+        return QueryProfile("design_change", ["pdf", "pptx", "document", "excel", "xlsx"])
 
     return QueryProfile("general", ["pdf", "pptx", "xlsx", "csv", "screenshot", "image", "png", "jpg", "html", "document", "spreadsheet"])
 

@@ -347,8 +347,8 @@ def _score_pair(aios: Dict[str, Any], nlm: Optional[Dict[str, Any]]) -> Dict[str
 
     has_citations = bool(answer.get("citation_ids"))
     insufficient = bool(answer.get("insufficient_evidence"))
-    is_metadata_only = insufficient and any("Only metadata was found" in w for w in answer.get("warnings", []))
     citation_supported = _citations_support_claims(answer_text, has_citations)
+    is_metadata_only = insufficient and not citation_supported
 
     scores: Dict[str, Any] = {
         "answer_relevance": 2 if answer_text and not is_metadata_only else 0,
@@ -391,10 +391,12 @@ def _score_pair(aios: Dict[str, Any], nlm: Optional[Dict[str, Any]]) -> Dict[str
         
     if answer_profile == "excel_mapping":
         if not any(k in ans_lower for k in ["trường", "field", "cột", "khóa", "mapping", "bảng"]):
-            _apply_score_cap(scores, 7, "no concrete field/table/key extraction for Excel mapping")
+            _apply_score_cap(scores, 6, "no concrete field/table/key extraction for Excel mapping")
             
-    if source_type_pass != "PASS" and "không thể kết luận đầy đủ" not in ans_lower:
-        _apply_score_cap(scores, 6, "target source type unavailable and answer does not admit missing evidence")
+    if source_type_pass == "FAIL":
+        _apply_score_cap(scores, 6, "target source type unavailable")
+    elif source_type_pass == "PARTIAL" and "không thể kết luận đầy đủ" not in ans_lower:
+        _apply_score_cap(scores, 6, "target source type partially unavailable and answer does not admit missing evidence")
 
     raw_total = sum(scores[k] for k in ["answer_relevance", "citation_usefulness", "source_traceability", "completeness", "practical_usefulness"])
     scores["total_score_12"] = min(raw_total, scores["max_total_score"])

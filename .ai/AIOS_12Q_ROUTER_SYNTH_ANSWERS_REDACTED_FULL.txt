@@ -1,0 +1,1105 @@
+## Q01 — spreadsheet
+
+Question:
+What is the staging and master mapping for ManualShipping vs ExistingLine?
+
+Target source type:
+spreadsheet
+
+Query profile:
+excel_mapping
+
+Source routing:
+
+- primary source types: []
+
+- supporting source types: []
+
+- demoted/rejected source types: []
+
+- source_type_pass: PARTIAL
+
+- route warnings: ["Required primary source type 'spreadsheet' not found.", 'No optimal primary evidence found, falling back to supporting evidence.', 'Privacy: local_only evidence stays local; no cloud/provider call was made.', 'Missing target source types: spreadsheet.']
+
+
+AIOS final owner answer:
+## Kết luận ngắn
+- Bảng/tệp dữ liệu cho thấy các trường và dòng kiểm soát liên quan cần được đối chiếu: ECLARE @RetMsgType as [nvarchar](255); --SELECT @TransactionType = 'ManualShipping_OutLineAuto' --SELECT @TransactionType = '%' SELECT TOP 1 @RetMsgType = Tran… [E1].
+- Cần extract chính xác tên bảng, trường dữ liệu, khóa nối (join keys), và trạng thái (status flags).
+- Liệt kê mapping đích/nguồn, và đánh dấu nếu thiếu trường quan trọng.
+
+## Cách hiểu từ bằng chứng
+Bằng chứng dạng bảng cần được hiểu qua mapping trường, khóa nối và quan hệ giữa dòng dữ liệu với bước vận hành.
+
+## Bằng chứng chính
+- [E1] [Primary] KDC_P3MOM_MCO-309_コンポーネント設計.xlsx: ECLARE @RetMsgType as [nvarchar](255); --SELECT @TransactionType = 'ManualShipping_OutLineAuto' --SELECT @TransactionType = '%' SELECT TOP 1 @RetMsgType = TransactionTyp…. Vì sao quan trọng: nguồn này neo claim vào .xlsx và vị trí KDC_P3MOM_MCO-309_コンポーネント設計.xlsx.
+- [E2] [Primary] KDC_P3MOM_MCO-309_システムインターフェイス設計.xlsx: る場合 共通倉庫品または 既存倉庫品を出庫したい 上のコンテナ 在庫数をテーブルに更新 から出庫指示された情報に基づいて対象コンテナを対象工程へ供給する 在庫管理 NumberShortage_Inventory _ Result_Staging : エラー対象のトリガー名 ➀トリガーのエラー行番号 エラーメッセージ エラーの原因 廃止…. Vì sao quan trọng: nguồn này neo claim vào .xlsx và vị trí KDC_P3MOM_MCO-309_システムインターフェイス設計.xlsx.
+- [E3] [Primary] ステージングテーブル_ライン外出庫連携自動処理用【_20231107見直し版】 (1).xlsx: Excel sheet: ManualShipping_ExistingLine セクション目的 このセクションでは、連携時のマッピング及びフォーマットについて言及します。 1連携（新規・更新・削除は同シートにまとめる）につき1シートとし、必要に応じてシートを追加されます。 処理名 | 処理タイプ ManualShipping_Exis…. Vì sao quan trọng: nguồn này neo claim vào .xlsx và vị trí ステージングテーブル_ライン外出庫連携自動処理用【_20231107見直し版】 (1).xlsx.
+- [E4] [Primary] KDC_P3MOM_MCO-309_コンポーネント設計.xlsx: Excel sheet: DataModeling セクション目的 このセクションではOOBデータモデリングに対する変更点を明らかにする データ（標準外改修） 修正テーブル | 修正カラム | 補足 ManualShipping_ExistingLineAuto_InboundDownload | 全カラム | データ連携用ステージング…. Vì sao quan trọng: nguồn này neo claim vào .xlsx và vị trí KDC_P3MOM_MCO-309_コンポーネント設計.xlsx.
+- [E5] [Primary] 補足資料_要件内容反映版_20231110.xlsx: Excel sheet: 【マスタ案③】折衷案 【案③：案①と案②の折衷案（当初案）】 マスタ設定（※出庫先分のマスタ定義が必要） ＜既存ライン(C31)のマスタ設定＞ ・Resource：ExistingLine_Resource_C31（Location：ERPLocation「30C3」） ・Resource Group：Exis…. Vì sao quan trọng: nguồn này neo claim vào .xlsx và vị trí 補足資料_要件内容反映版_20231110.xlsx.
+- [E6] [Primary] 補足資料_要件内容反映版_20231110.xlsx: Excel sheet: 【当初マスタ案】 【当初案：既存ライン単位に保持する構成】 マスタ設定（※出庫先分のマスタ定義が必要） ＜既存ライン(C31)のマスタ設定＞ ・Resource：ExistingLine_Resource_C31（Location：ERPLocation「30C3」） ・Resource Group：Exist…. Vì sao quan trọng: nguồn này neo claim vào .xlsx và vị trí 補足資料_要件内容反映版_20231110.xlsx.
+
+## Hướng xử lý / kiểm tra
+1. Xác nhận câu hỏi owner cần quyết: lỗi ở đâu, ai xử lý, hay bước tiếp theo là gì.
+2. Đối chiếu từng claim với nguồn [E1], [E2] trước khi giao việc.
+3. Lập bảng mapping: trường nguồn, trường đích, khóa nối, trạng thái, owner dữ liệu.
+4. Kiểm tra các dòng thiếu mã tuyến/mã đơn/trạng thái và so với log vận hành.
+
+## Không được kết luận nếu chưa có thêm bằng chứng
+- BẮT BUỘC BỔ SUNG: Không thể kết luận đầy đủ do thiếu nguồn chính loại: spreadsheet.
+- Không kết luận nguyên nhân gốc nếu chưa có log/chứng cứ cùng thời điểm.
+- Không kết luận trách nhiệm cá nhân nếu chưa có xác nhận owner hoặc audit trail.
+- Không kết luận AIOS thay thế NotebookLM; đây là câu trả lời local_owner có giới hạn.
+
+## Bảng nguồn
+| Ref | Role | Source | Type | Location | Limitation |
+|---|---|---|---|---|---|
+| [E1] | Primary | KDC_P3MOM_MCO-309_コンポーネント設計.xlsx | .xlsx | KDC_P3MOM_MCO-309_コンポーネント設計.xlsx | phạm vi bằng chứng hẹp |
+| [E2] | Primary | KDC_P3MOM_MCO-309_システムインターフェイス設計.xlsx | .xlsx | KDC_P3MOM_MCO-309_システムインターフェイス設計.xlsx | phạm vi bằng chứng hẹp |
+| [E3] | Primary | ステージングテーブル_ライン外出庫連携自動処理用【_20231107見直し版】 (1).xlsx | .xlsx | ステージングテーブル_ライン外出庫連携自動処理用【_20231107見直し版】 (1).xlsx | phạm vi bằng chứng hẹp |
+| [E4] | Primary | KDC_P3MOM_MCO-309_コンポーネント設計.xlsx | .xlsx | KDC_P3MOM_MCO-309_コンポーネント設計.xlsx | phạm vi bằng chứng hẹp |
+| [E5] | Primary | 補足資料_要件内容反映版_20231110.xlsx | .xlsx | 補足資料_要件内容反映版_20231110.xlsx | phạm vi bằng chứng hẹp |
+| [E6] | Primary | 補足資料_要件内容反映版_20231110.xlsx | .xlsx | 補足資料_要件内容反映版_20231110.xlsx | phạm vi bằng chứng hẹp |
+
+## Mức tin cậy
+medium: dựa trên 6 nguồn nội dung hợp lệ; source_type_pass=PARTIAL; privacy=local_only; insufficient_evidence=False.
+
+
+AIOS citations/source refs:
+[E1]
+[E2]
+[E3]
+[E4]
+[E5]
+[E6]
+
+
+AIOS limitations / uncertainty:
+See warnings in answer.
+
+
+AIOS strict score:
+10
+
+
+Cap applied:
+NO - 
+
+
+Human review note:
+WAIT_FOR_CHATGPT_FULL_REVIEW
+
+----------------------------------------
+
+## Q02 — spreadsheet
+
+Question:
+Describe the data handoff and interface table relationships between WMS, MOM, and AGV.
+
+Target source type:
+spreadsheet
+
+Query profile:
+general
+
+Source routing:
+
+- primary source types: []
+
+- supporting source types: []
+
+- demoted/rejected source types: []
+
+- source_type_pass: PARTIAL
+
+- route warnings: ["Required primary source type 'document' not found.", 'No optimal primary evidence found, falling back to supporting evidence.', 'Privacy: local_only evidence stays local; no cloud/provider call was made.', 'Missing target source types: document.']
+
+
+AIOS final owner answer:
+## Kết luận ngắn
+- Bằng chứng chính cho câu hỏi là: Excel sheet: DB上処理 以下のクエリをまとめて実行 USE inter_stock3_eng_kdc truncate table cst.e_orikon_data truncate table cst.e_orikon_data_hist truncate table cst.e_orikon_st… [E1].
+- Các nguồn cần được đọc như một chuỗi dấu hiệu vận hành; kết luận chỉ nên bám vào nội dung đã được trích xuất và cite.
+
+## Cách hiểu từ bằng chứng
+Bằng chứng được tổng hợp thành câu trả lời owner-facing, với giới hạn rõ về điều chưa thể kết luận.
+
+## Bằng chứng chính
+- [E1] [Primary] MOMおよびWMSデータ完全クリア方法.xlsx: Excel sheet: DB上処理 以下のクエリをまとめて実行 USE inter_stock3_eng_kdc truncate table cst.e_orikon_data truncate table cst.e_orikon_data_hist truncate table cst.e_orikon_start trunca…. Vì sao quan trọng: nguồn này neo claim vào .xlsx và vị trí MOMおよびWMSデータ完全クリア方法.xlsx.
+- [E2] [Primary] AGV通信仕様.xlsx: Excel sheet: 3.AGV_CTL間通信(タッチパネル設定情報） 3.AGV - AGVコントローラ（PC）間通信 1.タッチパネル設定情報取得 タッチパネルで設定した経路選択を、AGVコントローラーに通知する必要がある。 AGV側から自発的に通知する手段はないので、AGVコントローラーから定期的にコマンドを送付して設定状態を…. Vì sao quan trọng: nguồn này neo claim vào .xlsx và vị trí AGV通信仕様.xlsx.
+- [E3] [Primary] AGV通信仕様_260206.xlsx: Excel sheet: 3.AGV_CTL間通信(タッチパネル設定情報） 3.AGV - AGVコントローラ（PC）間通信 1.タッチパネル設定情報取得 タッチパネルで設定した経路選択を、AGVコントローラーに通知する必要がある。 AGV側から自発的に通知する手段はないので、AGVコントローラーから定期的にコマンドを送付して設定状態を…. Vì sao quan trọng: nguồn này neo claim vào .xlsx và vị trí AGV通信仕様_260206.xlsx.
+- [E4] [Primary] AGV通信仕様.xlsx: Excel sheet: 2.AGV_CTL間通信(データセンシング) 2.AGV - AGVコントローラ（PC）間通信 1.データセンシング AGVでは、BMS、モータードライバー、各種センサーにより様々な情報をセンシングすることが可能である。 センシングしたデータの活用方法は今後検討する必要があるが、まずは、下記のデータを取得して収…. Vì sao quan trọng: nguồn này neo claim vào .xlsx và vị trí AGV通信仕様.xlsx.
+- [E5] [Primary] AGV通信仕様_260206.xlsx: Excel sheet: 2.AGV_CTL間通信(データセンシング) 2.AGV - AGVコントローラ（PC）間通信 1.データセンシング AGVでは、BMS、モータードライバー、各種センサーにより様々な情報をセンシングすることが可能である。 センシングしたデータの活用方法は今後検討する必要があるが、まずは、下記のデータを取得して収…. Vì sao quan trọng: nguồn này neo claim vào .xlsx và vị trí AGV通信仕様_260206.xlsx.
+- [E6] [Primary] AGV通信仕様.xlsx: 報取得コマンド]の戻り値をビット制御にして、タスク、アドレスのバックアップ読み出し完了を追加 | 高橋 2023-11-10 00:00:00 | 0.27 | シート「AGV_CTL間通信(タッチパネル設定情報）」 ●・[タッチパネル設定情報取得コマンド]の戻り値をビット制御にして、パネル有無を追加 シート「AGV_CTL間通信」 ●…. Vì sao quan trọng: nguồn này neo claim vào .xlsx và vị trí AGV通信仕様.xlsx.
+
+## Hướng xử lý / kiểm tra
+1. Xác nhận câu hỏi owner cần quyết: lỗi ở đâu, ai xử lý, hay bước tiếp theo là gì.
+2. Đối chiếu từng claim với nguồn [E1], [E2] trước khi giao việc.
+3. Nếu bằng chứng chưa đủ, yêu cầu đúng nguồn còn thiếu thay vì chốt nguyên nhân.
+
+## Không được kết luận nếu chưa có thêm bằng chứng
+- BẮT BUỘC BỔ SUNG: Không thể kết luận đầy đủ do thiếu nguồn chính loại: document.
+- Không kết luận nguyên nhân gốc nếu chưa có log/chứng cứ cùng thời điểm.
+- Không kết luận trách nhiệm cá nhân nếu chưa có xác nhận owner hoặc audit trail.
+- Không kết luận AIOS thay thế NotebookLM; đây là câu trả lời local_owner có giới hạn.
+
+## Bảng nguồn
+| Ref | Role | Source | Type | Location | Limitation |
+|---|---|---|---|---|---|
+| [E1] | Primary | MOMおよびWMSデータ完全クリア方法.xlsx | .xlsx | MOMおよびWMSデータ完全クリア方法.xlsx | phạm vi bằng chứng hẹp |
+| [E2] | Primary | AGV通信仕様.xlsx | .xlsx | AGV通信仕様.xlsx | phạm vi bằng chứng hẹp |
+| [E3] | Primary | AGV通信仕様_260206.xlsx | .xlsx | AGV通信仕様_260206.xlsx | phạm vi bằng chứng hẹp |
+| [E4] | Primary | AGV通信仕様.xlsx | .xlsx | AGV通信仕様.xlsx | phạm vi bằng chứng hẹp |
+| [E5] | Primary | AGV通信仕様_260206.xlsx | .xlsx | AGV通信仕様_260206.xlsx | phạm vi bằng chứng hẹp |
+| [E6] | Primary | AGV通信仕様.xlsx | .xlsx | AGV通信仕様.xlsx | phạm vi bằng chứng hẹp |
+
+## Mức tin cậy
+medium: dựa trên 6 nguồn nội dung hợp lệ; source_type_pass=PARTIAL; privacy=local_only; insufficient_evidence=False.
+
+
+AIOS citations/source refs:
+[E1]
+[E2]
+[E3]
+[E4]
+[E5]
+[E6]
+
+
+AIOS limitations / uncertainty:
+See warnings in answer.
+
+
+AIOS strict score:
+10
+
+
+Cap applied:
+NO - 
+
+
+Human review note:
+WAIT_FOR_CHATGPT_FULL_REVIEW
+
+----------------------------------------
+
+## Q03 — spreadsheet
+
+Question:
+How do you investigate a quantity/container/supply-line mismatch using table evidence?
+
+Target source type:
+spreadsheet
+
+Query profile:
+general
+
+Source routing:
+
+- primary source types: []
+
+- supporting source types: []
+
+- demoted/rejected source types: []
+
+- source_type_pass: PARTIAL
+
+- route warnings: ["Required primary source type 'document' not found.", 'No optimal primary evidence found, falling back to supporting evidence.', 'Privacy: local_only evidence stays local; no cloud/provider call was made.', 'Missing target source types: document.']
+
+
+AIOS final owner answer:
+## Kết luận ngắn
+- Bằng chứng chính cho câu hỏi là: 同上 Container（ChangeQty） | 〇 | NVarChar | 255 | 「ContainerName（Ship）」と同値 ※XMLDocument内で予め設定済 | 同上 Factory（ChangeQty） | 〇 | NVarChar | 255 | 「Factory（Ship）」と同値 ※… [E1].
+- Các nguồn cần được đọc như một chuỗi dấu hiệu vận hành; kết luận chỉ nên bám vào nội dung đã được trích xuất và cite.
+
+## Cách hiểu từ bằng chứng
+Bằng chứng được tổng hợp thành câu trả lời owner-facing, với giới hạn rõ về điều chưa thể kết luận.
+
+## Bằng chứng chính
+- [E1] [Primary] KDC_P3MOM_MCO-309_システムインターフェイス設計.xlsx: 同上 Container（ChangeQty） | 〇 | NVarChar | 255 | 「ContainerName（Ship）」と同値 ※XMLDocument内で予め設定済 | 同上 Factory（ChangeQty） | 〇 | NVarChar | 255 | 「Factory（Ship）」と同値 ※XMLDocumen…. Vì sao quan trọng: nguồn này neo claim vào .xlsx và vị trí KDC_P3MOM_MCO-309_システムインターフェイス設計.xlsx.
+- [E2] [Primary] KDC_P3MOM_MCO-309_システムインターフェイス設計.xlsx: Excel Shapes/Text Boxes: MOM テーブル 顧客テーブル トリガー ユーザによる操作 StoredProcedure Service ライン管理者（ VNMES ） 本機能対象外 本機能対象 AMS 自動倉庫品の出庫要求情報 既存システム（ VN-MES ）側から既存ライン出庫 MOMStaging テ ーブルに…. Vì sao quan trọng: nguồn này neo claim vào .xlsx và vị trí KDC_P3MOM_MCO-309_システムインターフェイス設計.xlsx.
+- [E3] [Primary] KDC_P3MOM_MCO-309_コンポーネント設計.xlsx: Excel sheet: BusinessLogic セクション目的 このセクションでは、このコンポーネントで実装されるアクションについて定義します。 OOBの場合、記載を省略可能とします。 操作/アクション アクション | トリガー | 条件 SQLトリガー処理 | 既存システム（VN-MES）側からライン外出庫MOMStagingテ…. Vì sao quan trọng: nguồn này neo claim vào .xlsx và vị trí KDC_P3MOM_MCO-309_コンポーネント設計.xlsx.
+- [E4] [Primary] KDC_P3MOM_MCO-309_コンポーネント設計.xlsx: 内容をステージングテーブルに更新 XMLドキュメント（※１） オリコンID（上記②の処理内で取得できるOriconIDで更新） トランザクションステータス（「1」で更新） 処理開始日時（システム日時で更新） | 既存ライン出庫MOMStagingテーブル | 既存ライン出庫MOMStagingテーブル （※１）XMLドキュメントに設定す…. Vì sao quan trọng: nguồn này neo claim vào .xlsx và vị trí KDC_P3MOM_MCO-309_コンポーネント設計.xlsx.
+- [E5] [Primary] KDC_P3MOM_MCO-309_システムインターフェイス設計.xlsx: る場合 共通倉庫品または 既存倉庫品を出庫したい 上のコンテナ 在庫数をテーブルに更新 から出庫指示された情報に基づいて対象コンテナを対象工程へ供給する 在庫管理 NumberShortage_Inventory _ Result_Staging : エラー対象のトリガー名 ➀トリガーのエラー行番号 エラーメッセージ エラーの原因 廃止…. Vì sao quan trọng: nguồn này neo claim vào .xlsx và vị trí KDC_P3MOM_MCO-309_システムインターフェイス設計.xlsx.
+- [E6] [Primary] KDC_P3MOM_MCO-309_コンポーネント設計.xlsx: Excel Shapes/Text Boxes: 整理中のため確定後に記載する SELECT TOP 1 PB.ProductName AS Product ,P.ProductRevision AS Rev ,C.OriginalStartDate AS ContainerStartDate ,C.ContainerName AS C…. Vì sao quan trọng: nguồn này neo claim vào .xlsx và vị trí KDC_P3MOM_MCO-309_コンポーネント設計.xlsx.
+
+## Hướng xử lý / kiểm tra
+1. Xác nhận câu hỏi owner cần quyết: lỗi ở đâu, ai xử lý, hay bước tiếp theo là gì.
+2. Đối chiếu từng claim với nguồn [E1], [E2] trước khi giao việc.
+3. Nếu bằng chứng chưa đủ, yêu cầu đúng nguồn còn thiếu thay vì chốt nguyên nhân.
+
+## Không được kết luận nếu chưa có thêm bằng chứng
+- BẮT BUỘC BỔ SUNG: Không thể kết luận đầy đủ do thiếu nguồn chính loại: document.
+- Không kết luận nguyên nhân gốc nếu chưa có log/chứng cứ cùng thời điểm.
+- Không kết luận trách nhiệm cá nhân nếu chưa có xác nhận owner hoặc audit trail.
+- Không kết luận AIOS thay thế NotebookLM; đây là câu trả lời local_owner có giới hạn.
+
+## Bảng nguồn
+| Ref | Role | Source | Type | Location | Limitation |
+|---|---|---|---|---|---|
+| [E1] | Primary | KDC_P3MOM_MCO-309_システムインターフェイス設計.xlsx | .xlsx | KDC_P3MOM_MCO-309_システムインターフェイス設計.xlsx | phạm vi bằng chứng hẹp |
+| [E2] | Primary | KDC_P3MOM_MCO-309_システムインターフェイス設計.xlsx | .xlsx | KDC_P3MOM_MCO-309_システムインターフェイス設計.xlsx | phạm vi bằng chứng hẹp |
+| [E3] | Primary | KDC_P3MOM_MCO-309_コンポーネント設計.xlsx | .xlsx | KDC_P3MOM_MCO-309_コンポーネント設計.xlsx | phạm vi bằng chứng hẹp |
+| [E4] | Primary | KDC_P3MOM_MCO-309_コンポーネント設計.xlsx | .xlsx | KDC_P3MOM_MCO-309_コンポーネント設計.xlsx | phạm vi bằng chứng hẹp |
+| [E5] | Primary | KDC_P3MOM_MCO-309_システムインターフェイス設計.xlsx | .xlsx | KDC_P3MOM_MCO-309_システムインターフェイス設計.xlsx | phạm vi bằng chứng hẹp |
+| [E6] | Primary | KDC_P3MOM_MCO-309_コンポーネント設計.xlsx | .xlsx | KDC_P3MOM_MCO-309_コンポーネント設計.xlsx | phạm vi bằng chứng hẹp |
+
+## Mức tin cậy
+medium: dựa trên 6 nguồn nội dung hợp lệ; source_type_pass=PARTIAL; privacy=local_only; insufficient_evidence=False.
+
+
+AIOS citations/source refs:
+[E1]
+[E2]
+[E3]
+[E4]
+[E5]
+[E6]
+
+
+AIOS limitations / uncertainty:
+See warnings in answer.
+
+
+AIOS strict score:
+10
+
+
+Cap applied:
+NO - 
+
+
+Human review note:
+WAIT_FOR_CHATGPT_FULL_REVIEW
+
+----------------------------------------
+
+## Q04 — document
+
+Question:
+What is the MOM/AMS business flow regarding the automatic vs manual/owner review boundary?
+
+Target source type:
+document
+
+Query profile:
+general
+
+Source routing:
+
+- primary source types: []
+
+- supporting source types: []
+
+- demoted/rejected source types: []
+
+- source_type_pass: PARTIAL
+
+- route warnings: ["Required primary source type 'document' not found.", 'No optimal primary evidence found, falling back to supporting evidence.', 'Privacy: local_only evidence stays local; no cloud/provider call was made.', 'Missing target source types: document.']
+
+
+AIOS final owner answer:
+## Kết luận ngắn
+- Bằng chứng chính cho câu hỏi là: MOM AMS WMS WMS R3 MES Logistics Logistics Office Nhận hàng Khu vực đỗ xe tải 30C0 Free Location Area 30C0 Free location 3*** Kho AMS xếp phẳng 3**** Kho AMS x… [E1].
+- Các nguồn cần được đọc như một chuỗi dấu hiệu vận hành; kết luận chỉ nên bám vào nội dung đã được trích xuất và cite.
+
+## Cách hiểu từ bằng chứng
+Bằng chứng được tổng hợp thành câu trả lời owner-facing, với giới hạn rõ về điều chưa thể kết luận.
+
+## Bằng chứng chính
+- [E1] [Primary] AMS概略フロー_入出庫・生産_20250703VN.pdf: MOM AMS WMS WMS R3 MES Logistics Logistics Office Nhận hàng Khu vực đỗ xe tải 30C0 Free Location Area 30C0 Free location 3*** Kho AMS xếp phẳng 3**** Kho AMS xếp thẳng 3…. Vì sao quan trọng: nguồn này neo claim vào .pdf và vị trí AMS概略フロー_入出庫・生産_20250703VN.pdf.
+- [E2] [Primary] AMS_設計変更.pdf: ©2026 KYOCERA Document Solutions Inc. KDC固有の考え方(カスタマイズ) 標準的な考え方 PLM (TC) ERP (R3) MOM (OP) ・製造品目 ・BOP ver. ・品目 ・BOM ・工程時間 ・作業手順 ・指定ver. BOP ・BOE ・製造実績 連携Tool ・指図 ・使用部品 ・…. Vì sao quan trọng: nguồn này neo claim vào .pdf và vị trí AMS_設計変更.pdf.
+- [E3] [Primary] KDC_P3MOM_MCO-309_システムインターフェイス設計.xlsx: Excel Shapes/Text Boxes: MOM テーブル 顧客テーブル トリガー ユーザによる操作 StoredProcedure Service ライン管理者（ VNMES ） 本機能対象外 本機能対象 AMS 自動倉庫品の出庫要求情報 既存システム（ VN-MES ）側から既存ライン出庫 MOMStaging テ ーブルに…. Vì sao quan trọng: nguồn này neo claim vào .xlsx và vị trí KDC_P3MOM_MCO-309_システムインターフェイス設計.xlsx.
+- [E4] [Primary] AMS_設計変更.pdf: ©2026 KYOCERA Document Solutions Inc. R3 指図 品目 指図 数量 完了 開始日 日付 内順 計画 順 Status AA 1234 2026/02/02 1234-1 2026/02/02未計画 BB 1235 1234-2 1235-1 1235-2 1235-3 1完了 2026/02/02完…. Vì sao quan trọng: nguồn này neo claim vào .pdf và vị trí AMS_設計変更.pdf.
+- [E5] [Primary] AMS_設計変更.pdf: ©2026 KYOCERA Document Solutions Inc. Opcenter 設計変更手動切替 指図取込/ Mfg Order作成 MOM連携用 MCN Release BOP割当 Mfg Orderの Workflowと Material list 更新 ※1台毎 Mfg Order 新BOPに 更新 Workflow…. Vì sao quan trọng: nguồn này neo claim vào .pdf và vị trí AMS_設計変更.pdf.
+- [E6] [Primary] 生産履歴登録システム&着完工登録システム制作仕様_r2_2025-2-17 - 副本.pdf: ©2025 KYOCERA Document Solutions Inc. ～The end～. Vì sao quan trọng: nguồn này neo claim vào .pdf và vị trí 生産履歴登録システム&着完工登録システム制作仕様_r2_2025-2-17 - 副本.pdf.
+
+## Hướng xử lý / kiểm tra
+1. Xác nhận câu hỏi owner cần quyết: lỗi ở đâu, ai xử lý, hay bước tiếp theo là gì.
+2. Đối chiếu từng claim với nguồn [E1], [E2] trước khi giao việc.
+3. Nếu bằng chứng chưa đủ, yêu cầu đúng nguồn còn thiếu thay vì chốt nguyên nhân.
+
+## Không được kết luận nếu chưa có thêm bằng chứng
+- BẮT BUỘC BỔ SUNG: Không thể kết luận đầy đủ do thiếu nguồn chính loại: document.
+- Không kết luận nguyên nhân gốc nếu chưa có log/chứng cứ cùng thời điểm.
+- Không kết luận trách nhiệm cá nhân nếu chưa có xác nhận owner hoặc audit trail.
+- Không kết luận AIOS thay thế NotebookLM; đây là câu trả lời local_owner có giới hạn.
+
+## Bảng nguồn
+| Ref | Role | Source | Type | Location | Limitation |
+|---|---|---|---|---|---|
+| [E1] | Primary | AMS概略フロー_入出庫・生産_20250703VN.pdf | .pdf | AMS概略フロー_入出庫・生産_20250703VN.pdf | phạm vi bằng chứng hẹp |
+| [E2] | Primary | AMS_設計変更.pdf | .pdf | AMS_設計変更.pdf | phạm vi bằng chứng hẹp |
+| [E3] | Primary | KDC_P3MOM_MCO-309_システムインターフェイス設計.xlsx | .xlsx | KDC_P3MOM_MCO-309_システムインターフェイス設計.xlsx | phạm vi bằng chứng hẹp |
+| [E4] | Primary | AMS_設計変更.pdf | .pdf | AMS_設計変更.pdf | phạm vi bằng chứng hẹp |
+| [E5] | Primary | AMS_設計変更.pdf | .pdf | AMS_設計変更.pdf | phạm vi bằng chứng hẹp |
+| [E6] | Primary | 生産履歴登録システム&着完工登録システム制作仕様_r2_2025-2-17 - 副本.pdf | .pdf | 生産履歴登録システム&着完工登録システム制作仕様_r2_2025-2-17 - 副本.pdf | phạm vi bằng chứng hẹp |
+
+## Mức tin cậy
+medium: dựa trên 6 nguồn nội dung hợp lệ; source_type_pass=PARTIAL; privacy=local_only; insufficient_evidence=False.
+
+
+AIOS citations/source refs:
+[E1]
+[E2]
+[E3]
+[E4]
+[E5]
+[E6]
+
+
+AIOS limitations / uncertainty:
+See warnings in answer.
+
+
+AIOS strict score:
+10
+
+
+Cap applied:
+NO - 
+
+
+Human review note:
+WAIT_FOR_CHATGPT_FULL_REVIEW
+
+----------------------------------------
+
+## Q05 — document
+
+Question:
+How is an operation/process change or design/running change explained in the process documentation?
+
+Target source type:
+document
+
+Query profile:
+process_boundary
+
+Source routing:
+
+- primary source types: []
+
+- supporting source types: []
+
+- demoted/rejected source types: []
+
+- source_type_pass: PARTIAL
+
+- route warnings: ["Required primary source type 'document' not found.", 'No optimal primary evidence found, falling back to supporting evidence.', 'Privacy: local_only evidence stays local; no cloud/provider call was made.', 'Missing target source types: document.']
+
+
+AIOS final owner answer:
+## Kết luận ngắn
+- Tài liệu quy trình nêu dấu hiệu về bước xử lý/chuyển giao: ©2026 KYOCERA Document Solutions Inc. 切替パターン 切替指定日 TC設計指示 Opcenter切替管理 期日前 期日後 切替年月日 切替指示 期日まで 期日以降 切替期日有り 期日切替 YYYY/MM/DD The day 旧 新 期日以降に切替 After 旧(優先) or 新… [E1].
+- Ranh giới tự động/thủ công: phần hệ thống tự chạy (cần check log) vs phần người dùng phải thao tác (cần owner check).
+- Cần tách rõ quy trình mô tả trong PDF/PPTX với thao tác thực tế đã xảy ra trong case.
+
+## Cách hiểu từ bằng chứng
+Quy trình được hiểu theo ranh giới tự động/thủ công: hệ thống tự kiểm tra dữ liệu/log, còn owner xác nhận ngoại lệ, phê duyệt và xử lý nghiệp vụ.
+
+## Bằng chứng chính
+- [E1] [Primary] AMS_設計変更.pdf: ©2026 KYOCERA Document Solutions Inc. 切替パターン 切替指定日 TC設計指示 Opcenter切替管理 期日前 期日後 切替年月日 切替指示 期日まで 期日以降 切替期日有り 期日切替 YYYY/MM/DD The day 旧 新 期日以降に切替 After 旧(優先) or 新 ※注1 期日までに…. Vì sao quan trọng: nguồn này neo claim vào .pdf và vị trí AMS_設計変更.pdf.
+- [E2] [Primary] AMS_設計変更.pdf: ©2026 KYOCERA Document Solutions Inc. 変更管理 指図登録 ／発行 PR (Problem Report) 部品調達 生産日程 計画 ECR PL→(メカ) ECN 1 承認 E-BOM (メカ) ECN 2 承認 E-BOM (電気) ECN 3 承認 E-BOM (ソフト) M-BOM (メカ)…. Vì sao quan trọng: nguồn này neo claim vào .pdf và vị trí AMS_設計変更.pdf.
+- [E3] [Primary] AMS_設計変更.pdf: ©2026 KYOCERA Document Solutions Inc. ④部品削除 Pro. C21_生産品目-04 Comp Op. C21-1 -04 Parts C0 └ 組立BOP Step Pro._WC1_B0 -01 Comp Op. B0_元1 -01 Parts B0 供給BOP Execution Step Co…. Vì sao quan trọng: nguồn này neo claim vào .pdf và vị trí AMS_設計変更.pdf.
+- [E4] [Primary] AMS_設計変更.pdf: ©2026 KYOCERA Document Solutions Inc. T/C O/C T/C-O/C マッピング Process C21 Comp Op. C21-1 Parts A0 REV01 └ Rev 01 組立BOP Execution Step WF_C21 ERP Route Workflow Spec 1 Oper…. Vì sao quan trọng: nguồn này neo claim vào .pdf và vị trí AMS_設計変更.pdf.
+- [E5] [Primary] AMS_設計変更.pdf: ©2026 KYOCERA Document Solutions Inc. ⑨2nd削除 Pro. C21_生産品目-06 Comp Op. C21-1 -06 Parts C0 └ 組立BOP Step Pro._WC1_Y0 -01 Comp Op. Y0_元1 -01 Parts Y0 供給BOP Execution Step C…. Vì sao quan trọng: nguồn này neo claim vào .pdf và vị trí AMS_設計変更.pdf.
+- [E6] [Primary] AMS_設計変更.pdf: ©2026 KYOCERA Document Solutions Inc. Opcenter 設計変更手動切替Timing 指図発行 指図取込/ Mfg Order 作成 BOP割当 製造計画 生産-4日 BOP変更 情報取込 MOM連携用 ECN Release Process REV02 設変新旧 切替設定 生産 生産日 設変投入日…. Vì sao quan trọng: nguồn này neo claim vào .pdf và vị trí AMS_設計変更.pdf.
+
+## Hướng xử lý / kiểm tra
+1. Xác nhận câu hỏi owner cần quyết: lỗi ở đâu, ai xử lý, hay bước tiếp theo là gì.
+2. Đối chiếu từng claim với nguồn [E1], [E2] trước khi giao việc.
+3. Tách bước tự động khỏi bước thủ công/phê duyệt trong quy trình.
+4. Kiểm tra log hệ thống cho bước tự động và hỏi owner cho bước thủ công.
+
+## Không được kết luận nếu chưa có thêm bằng chứng
+- BẮT BUỘC BỔ SUNG: Không thể kết luận đầy đủ do thiếu nguồn chính loại: document.
+- Không kết luận nguyên nhân gốc nếu chưa có log/chứng cứ cùng thời điểm.
+- Không kết luận trách nhiệm cá nhân nếu chưa có xác nhận owner hoặc audit trail.
+- Không kết luận AIOS thay thế NotebookLM; đây là câu trả lời local_owner có giới hạn.
+
+## Bảng nguồn
+| Ref | Role | Source | Type | Location | Limitation |
+|---|---|---|---|---|---|
+| [E1] | Primary | AMS_設計変更.pdf | .pdf | AMS_設計変更.pdf | phạm vi bằng chứng hẹp |
+| [E2] | Primary | AMS_設計変更.pdf | .pdf | AMS_設計変更.pdf | phạm vi bằng chứng hẹp |
+| [E3] | Primary | AMS_設計変更.pdf | .pdf | AMS_設計変更.pdf | phạm vi bằng chứng hẹp |
+| [E4] | Primary | AMS_設計変更.pdf | .pdf | AMS_設計変更.pdf | phạm vi bằng chứng hẹp |
+| [E5] | Primary | AMS_設計変更.pdf | .pdf | AMS_設計変更.pdf | phạm vi bằng chứng hẹp |
+| [E6] | Primary | AMS_設計変更.pdf | .pdf | AMS_設計変更.pdf | phạm vi bằng chứng hẹp |
+
+## Mức tin cậy
+medium: dựa trên 6 nguồn nội dung hợp lệ; source_type_pass=PARTIAL; privacy=local_only; insufficient_evidence=False.
+
+
+AIOS citations/source refs:
+[E1]
+[E2]
+[E3]
+[E4]
+[E5]
+[E6]
+
+
+AIOS limitations / uncertainty:
+See warnings in answer.
+
+
+AIOS strict score:
+10
+
+
+Cap applied:
+NO - 
+
+
+Human review note:
+WAIT_FOR_CHATGPT_FULL_REVIEW
+
+----------------------------------------
+
+## Q06 — screenshot
+
+Question:
+What visible UI fields, statuses, containers, or oricon evidence can be trusted directly from screenshots?
+
+Target source type:
+screenshot
+
+Query profile:
+screenshot_visible_facts
+
+Source routing:
+
+- primary source types: []
+
+- supporting source types: []
+
+- demoted/rejected source types: []
+
+- source_type_pass: PARTIAL
+
+- route warnings: ["Required primary source type 'screenshot' not found.", 'No optimal primary evidence found, falling back to supporting evidence.', 'Privacy: local_only evidence stays local; no cloud/provider call was made.', 'Missing target source types: screenshot.']
+
+
+AIOS final owner answer:
+## Kết luận ngắn
+- Sự kiện nhìn thấy trực tiếp trong ảnh/OCR: ECLARE @RetMsgType as [nvarchar](255); --SELECT @TransactionType = 'ManualShipping_OutLineAuto' --SELECT @TransactionType = '%' SELECT TOP 1 @RetMsgType = Tran… [E1].
+- Chỉ liệt kê các trường, trạng thái, ID, text thực sự thấy trong ảnh; tách biệt phần có OCR uncertainty.
+- Mọi nguyên nhân phía sau ảnh chỉ là suy luận cho tới khi có log/database.
+
+## Cách hiểu từ bằng chứng
+Facts nhìn thấy được tách khỏi suy luận: chỉ phần có trong ảnh/OCR được dùng làm bằng chứng; nguyên nhân cần log hoặc tài liệu đối chiếu.
+
+## Bằng chứng chính
+- [E1] [Primary] KDC_P3MOM_MCO-309_コンポーネント設計.xlsx: ECLARE @RetMsgType as [nvarchar](255); --SELECT @TransactionType = 'ManualShipping_OutLineAuto' --SELECT @TransactionType = '%' SELECT TOP 1 @RetMsgType = TransactionTyp…. Vì sao quan trọng: nguồn này neo claim vào .xlsx và vị trí KDC_P3MOM_MCO-309_コンポーネント設計.xlsx.
+- [E2] [Primary] KDC_P3MOM_MCO-309_コンポーネント設計.xlsx: Excel Shapes/Text Boxes: 整理中のため確定後に記載する SELECT TOP 1 PB.ProductName AS Product ,P.ProductRevision AS Rev ,C.OriginalStartDate AS ContainerStartDate ,C.ContainerName AS C…. Vì sao quan trọng: nguồn này neo claim vào .xlsx và vị trí KDC_P3MOM_MCO-309_コンポーネント設計.xlsx.
+- [E3] [Primary] ステージングテーブル_ライン外出庫連携自動処理用【_20231107見直し版】 (1).xlsx: ステム（VN-MES）側から登録【品目】 （「Rev.」指定無しの想定） | ManualShipping_ExistingLineAuto_InboundDownload.Item_Code ② | 供給ライン | 〇 | NVarChar | 4 | 既存システム（VN-MES）側から登録【供給ライン】 （ベトナム工場における想定値…. Vì sao quan trọng: nguồn này neo claim vào .xlsx và vị trí ステージングテーブル_ライン外出庫連携自動処理用【_20231107見直し版】 (1).xlsx.
+- [E4] [Primary] KDC_P3MOM_MCO-309_システムインターフェイス設計.xlsx: 既存システム（VN-MES）側から登録【品目】 （「Rev.」指定無しの想定） | ManualShipping_ExistingLineAuto_InboundDownload.Item_Code ② | 供給ライン | 〇 | NVarChar | 4 | 既存システム（VN-MES）側から登録【供給ライン】 （ベトナム工場における…. Vì sao quan trọng: nguồn này neo claim vào .xlsx và vị trí KDC_P3MOM_MCO-309_システムインターフェイス設計.xlsx.
+- [E5] [Primary] ステージングテーブル_ライン外出庫連携自動処理用【_20231107見直し版】 (1).xlsx: Excel sheet: 参考＿テーブルレイアウトおよびサンプルデータイメージ 【既存ライン出庫MOMStagingテーブルのテーブルレイアウトおよびサンプルデータイメージ】 物理名：ManualShipping_ExistingLineAuto_InboundDownload | ① | ② | ② | ③ | ④ ドキュメントID…. Vì sao quan trọng: nguồn này neo claim vào .xlsx và vị trí ステージングテーブル_ライン外出庫連携自動処理用【_20231107見直し版】 (1).xlsx.
+- [E6] [Primary] KDC_P3MOM_MCO-309_システムインターフェイス設計.xlsx: Excel sheet: 参考＿テーブルレイアウトおよびサンプルデータイメージ 【既存ライン出庫MOMStagingテーブルのテーブルレイアウトおよびサンプルデータイメージ】 物理名：ManualShipping_ExistingLineAuto_InboundDownload | ① | ② | ② | ③ | ④ ドキュメントID…. Vì sao quan trọng: nguồn này neo claim vào .xlsx và vị trí KDC_P3MOM_MCO-309_システムインターフェイス設計.xlsx.
+
+## Hướng xử lý / kiểm tra
+1. Xác nhận câu hỏi owner cần quyết: lỗi ở đâu, ai xử lý, hay bước tiếp theo là gì.
+2. Đối chiếu từng claim với nguồn [E1], [E2] trước khi giao việc.
+3. Ghi lại facts nhìn thấy trong ảnh; không suy diễn nguyên nhân từ ảnh đơn lẻ.
+4. Thu thêm log, export bảng hoặc SOP cho cùng thời điểm.
+
+## Không được kết luận nếu chưa có thêm bằng chứng
+- BẮT BUỘC BỔ SUNG: Không thể kết luận đầy đủ do thiếu nguồn chính loại: screenshot.
+- Không kết luận nguyên nhân gốc nếu chưa có log/chứng cứ cùng thời điểm.
+- Không kết luận trách nhiệm cá nhân nếu chưa có xác nhận owner hoặc audit trail.
+- Không kết luận AIOS thay thế NotebookLM; đây là câu trả lời local_owner có giới hạn.
+
+## Bảng nguồn
+| Ref | Role | Source | Type | Location | Limitation |
+|---|---|---|---|---|---|
+| [E1] | Primary | KDC_P3MOM_MCO-309_コンポーネント設計.xlsx | .xlsx | KDC_P3MOM_MCO-309_コンポーネント設計.xlsx | phạm vi bằng chứng hẹp |
+| [E2] | Primary | KDC_P3MOM_MCO-309_コンポーネント設計.xlsx | .xlsx | KDC_P3MOM_MCO-309_コンポーネント設計.xlsx | phạm vi bằng chứng hẹp |
+| [E3] | Primary | ステージングテーブル_ライン外出庫連携自動処理用【_20231107見直し版】 (1).xlsx | .xlsx | ステージングテーブル_ライン外出庫連携自動処理用【_20231107見直し版】 (1).xlsx | phạm vi bằng chứng hẹp |
+| [E4] | Primary | KDC_P3MOM_MCO-309_システムインターフェイス設計.xlsx | .xlsx | KDC_P3MOM_MCO-309_システムインターフェイス設計.xlsx | phạm vi bằng chứng hẹp |
+| [E5] | Primary | ステージングテーブル_ライン外出庫連携自動処理用【_20231107見直し版】 (1).xlsx | .xlsx | ステージングテーブル_ライン外出庫連携自動処理用【_20231107見直し版】 (1).xlsx | phạm vi bằng chứng hẹp |
+| [E6] | Primary | KDC_P3MOM_MCO-309_システムインターフェイス設計.xlsx | .xlsx | KDC_P3MOM_MCO-309_システムインターフェイス設計.xlsx | phạm vi bằng chứng hẹp |
+
+## Mức tin cậy
+medium: dựa trên 6 nguồn nội dung hợp lệ; source_type_pass=PARTIAL; privacy=local_only; insufficient_evidence=False.
+
+
+AIOS citations/source refs:
+[E1]
+[E2]
+[E3]
+[E4]
+[E5]
+[E6]
+
+
+AIOS limitations / uncertainty:
+See warnings in answer.
+
+
+AIOS strict score:
+10
+
+
+Cap applied:
+NO - 
+
+
+Human review note:
+WAIT_FOR_CHATGPT_FULL_REVIEW
+
+----------------------------------------
+
+## Q07 — screenshot
+
+Question:
+What operational or systemic states must NOT be inferred from screenshot-only evidence?
+
+Target source type:
+screenshot
+
+Query profile:
+screenshot_unsupported_inference
+
+Source routing:
+
+- primary source types: []
+
+- supporting source types: []
+
+- demoted/rejected source types: []
+
+- source_type_pass: PARTIAL
+
+- route warnings: ["Required primary source type 'screenshot' not found.", 'No optimal primary evidence found, falling back to supporting evidence.', 'Privacy: local_only evidence stays local; no cloud/provider call was made.', 'Missing target source types: screenshot.']
+
+
+AIOS final owner answer:
+## Kết luận ngắn
+- Bằng chứng hình ảnh/màn hình: ECLARE @RetMsgType as [nvarchar](255); --SELECT @TransactionType = 'ManualShipping_OutLineAuto' --SELECT @TransactionType = '%' SELECT TOP 1 @RetMsgType = Tran… [E1].
+- KHÔNG SUY LUẬN trạng thái backend/database hoặc luồng ngầm nếu chỉ nhìn ảnh.
+- Liệt kê rõ những gì không thể kết luận từ ảnh này và yêu cầu cung cấp log hoặc config bổ sung.
+
+## Cách hiểu từ bằng chứng
+Facts nhìn thấy được tách khỏi suy luận: chỉ phần có trong ảnh/OCR được dùng làm bằng chứng; nguyên nhân cần log hoặc tài liệu đối chiếu.
+
+## Bằng chứng chính
+- [E1] [Primary] KDC_P3MOM_MCO-309_コンポーネント設計.xlsx: ECLARE @RetMsgType as [nvarchar](255); --SELECT @TransactionType = 'ManualShipping_OutLineAuto' --SELECT @TransactionType = '%' SELECT TOP 1 @RetMsgType = TransactionTyp…. Vì sao quan trọng: nguồn này neo claim vào .xlsx và vị trí KDC_P3MOM_MCO-309_コンポーネント設計.xlsx.
+- [E2] [Primary] Screenshot 2026-03-20 183839.png: a = x InterStock 3 © *#7278 i « TER STOCI = PD = @ we | SS PATh-S 0) = PAF bE . EsDUSEODKLEDD-L8hy Se x AURVEAMTE PRE BET 828375 CaN | axes | 06-4965-5757 | 48(FS : Bui…. Vì sao quan trọng: nguồn này neo claim vào .png và vị trí Screenshot 2026-03-20 183839.png.
+- [E3] [Primary] Screenshot 2026-03-20 183600.png: ‘ \ SSeeRRS yj x XYTHYA 1X23 “BMY OB BEN ALAI YF FE 2)SEIBC FIP OSAR MEM 3) SPALAEAA Ost Oat OnE Ose Oe Orch @1-k i Tie 3 Oeet OMX Ors24 8S Ones OnE Onze O89 OSHS OR OR…. Vì sao quan trọng: nguồn này neo claim vào .png và vị trí Screenshot 2026-03-20 183600.png.
+- [E4] [Primary] KDC_P3MOM_MCO-309_コンポーネント設計.xlsx: 0C4」 上記の情報をキーとして、予め登録済みのマスタ情報から下記の方法で対象マスタデータを取得する 「固定識別文字列_マスタ名_供給ライン（製造バージョン）の3桁」の命名規約とし、 「供給ライン（製造バージョン）」（下記名称部分のXXX箇所3桁部分）を置換することで名称を特定し取得する方式とする ・Resource：ExistingL…. Vì sao quan trọng: nguồn này neo claim vào .xlsx và vị trí KDC_P3MOM_MCO-309_コンポーネント設計.xlsx.
+- [E5] [Primary] ERD_Kho_Van.html: NO" KanbanTable ||--o| T_MAIN_PROCESS : "Mã AGV = MACHINE_NUMBER" Tầm quan trọng của Length Constraint (Giới hạn dữ liệu): Nhờ vào những khai báo này, chúng ta nhận ra h…. Vì sao quan trọng: nguồn này neo claim vào .html và vị trí ERD_Kho_Van.html.
+- [E6] [Primary] AMS_設計変更.pdf: ©2026 KYOCERA Document Solutions Inc. 切替パターン 切替指定日 TC設計指示 Opcenter切替管理 期日前 期日後 切替年月日 切替指示 期日まで 期日以降 切替期日有り 期日切替 YYYY/MM/DD The day 旧 新 期日以降に切替 After 旧(優先) or 新 ※注1 期日までに…. Vì sao quan trọng: nguồn này neo claim vào .pdf và vị trí AMS_設計変更.pdf.
+
+## Hướng xử lý / kiểm tra
+1. Xác nhận câu hỏi owner cần quyết: lỗi ở đâu, ai xử lý, hay bước tiếp theo là gì.
+2. Đối chiếu từng claim với nguồn [E1], [E2] trước khi giao việc.
+3. Ghi lại facts nhìn thấy trong ảnh; không suy diễn nguyên nhân từ ảnh đơn lẻ.
+4. Thu thêm log, export bảng hoặc SOP cho cùng thời điểm.
+
+## Không được kết luận nếu chưa có thêm bằng chứng
+- BẮT BUỘC BỔ SUNG: Không thể kết luận đầy đủ do thiếu nguồn chính loại: screenshot.
+- Không kết luận nguyên nhân gốc nếu chưa có log/chứng cứ cùng thời điểm.
+- Không kết luận trách nhiệm cá nhân nếu chưa có xác nhận owner hoặc audit trail.
+- Không kết luận AIOS thay thế NotebookLM; đây là câu trả lời local_owner có giới hạn.
+
+## Bảng nguồn
+| Ref | Role | Source | Type | Location | Limitation |
+|---|---|---|---|---|---|
+| [E1] | Primary | KDC_P3MOM_MCO-309_コンポーネント設計.xlsx | .xlsx | KDC_P3MOM_MCO-309_コンポーネント設計.xlsx | phạm vi bằng chứng hẹp |
+| [E2] | Primary | Screenshot 2026-03-20 183839.png | .png | Screenshot 2026-03-20 183839.png | phạm vi bằng chứng hẹp |
+| [E3] | Primary | Screenshot 2026-03-20 183600.png | .png | Screenshot 2026-03-20 183600.png | phạm vi bằng chứng hẹp |
+| [E4] | Primary | KDC_P3MOM_MCO-309_コンポーネント設計.xlsx | .xlsx | KDC_P3MOM_MCO-309_コンポーネント設計.xlsx | phạm vi bằng chứng hẹp |
+| [E5] | Primary | ERD_Kho_Van.html | .html | ERD_Kho_Van.html | phạm vi bằng chứng hẹp |
+| [E6] | Primary | AMS_設計変更.pdf | .pdf | AMS_設計変更.pdf | phạm vi bằng chứng hẹp |
+
+## Mức tin cậy
+medium: dựa trên 6 nguồn nội dung hợp lệ; source_type_pass=PARTIAL; privacy=local_only; insufficient_evidence=False.
+
+
+AIOS citations/source refs:
+[E1]
+[E2]
+[E3]
+[E4]
+[E5]
+[E6]
+
+
+AIOS limitations / uncertainty:
+See warnings in answer.
+
+
+AIOS strict score:
+10
+
+
+Cap applied:
+NO - 
+
+
+Human review note:
+WAIT_FOR_CHATGPT_FULL_REVIEW
+
+----------------------------------------
+
+## Q08 — schema
+
+Question:
+What tables, fields, and relationships are explicitly shown in the HTML/ERD/schema evidence?
+
+Target source type:
+schema
+
+Query profile:
+schema_tables_fields
+
+Source routing:
+
+- primary source types: []
+
+- supporting source types: []
+
+- demoted/rejected source types: []
+
+- source_type_pass: PASS
+
+- route warnings: ['Privacy: local_only evidence stays local; no cloud/provider call was made.']
+
+
+AIOS final owner answer:
+## Kết luận ngắn
+- Schema/HTML cho thấy cấu trúc hoặc trường được trích xuất: 0) SUP_LINE "Chuyền cấp" varchar(20) SUP_PROCESS "Công đoạn cấp" varchar(20) ITEM_CODE "Mã linh kiện" varchar(2) ITEM_REV "Bản in linh kiện" datetime GATEOUT_O… [E1].
+- Cần liệt kê bảng, trường và quan hệ được định nghĩa cứng.
+- Không tự tiện suy diễn hành vi runtime từ schema.
+
+## Cách hiểu từ bằng chứng
+Schema/ERD/HTML chỉ chứng minh cấu trúc được nêu rõ; không tự chứng minh hành vi vận hành nếu thiếu log/SOP.
+
+## Bằng chứng chính
+- [E1] [Primary] ERD_Kho_Van.html: 0) SUP_LINE "Chuyền cấp" varchar(20) SUP_PROCESS "Công đoạn cấp" varchar(20) ITEM_CODE "Mã linh kiện" varchar(2) ITEM_REV "Bản in linh kiện" datetime GATEOUT_ORDER_TIME…. Vì sao quan trọng: nguồn này neo claim vào .html và vị trí ERD_Kho_Van.html.
+- [E2] [Primary] ERD_Kho_Van.html: NO" KanbanTable ||--o| T_MAIN_PROCESS : "Mã AGV = MACHINE_NUMBER" Tầm quan trọng của Length Constraint (Giới hạn dữ liệu): Nhờ vào những khai báo này, chúng ta nhận ra h…. Vì sao quan trọng: nguồn này neo claim vào .html và vị trí ERD_Kho_Van.html.
+- [E3] [Primary] ERD_Kho_Van.html: Sơ Đồ ERD Ultimate - Hệ Thống Kho Vận Sơ Đồ ERD Ultimate (Có độ dài Data Type) Cập nhật chính xác giới hạn ký tự (Size) cho từng trường varchar/decimal theo đúng thiết k…. Vì sao quan trọng: nguồn này neo claim vào .html và vị trí ERD_Kho_Van.html.
+- [E4] [Primary] ERD_Kho_Van.html: à máy" varchar(3) BUILDING "Tòa nhà" varchar(2) FLOOR "Tầng" varchar(5) LINE "Chuyền" varchar(9) WORKER_ID "ID Công nhân" varchar(26) TRACEABILITY_ID "Mã truy vết" varch…. Vì sao quan trọng: nguồn này neo claim vào .html và vị trí ERD_Kho_Van.html.
+- [E5] [Primary] 生産履歴登録システム&着完工登録システム制作仕様_r2_2025-2-17 - 副本.pdf: ©2025 KYOCERA Document Solutions Inc. ～The end～. Vì sao quan trọng: nguồn này neo claim vào .pdf và vị trí 生産履歴登録システム&着完工登録システム制作仕様_r2_2025-2-17 - 副本.pdf.
+- [E6] [Primary] 伝票発行システムマニュアル_仮(JP).pdf: ‐ 6 ‐ 伝票発行システムマニュアル準備 １準備 マスター登録(管理者作業) 画面操作で品目選択して伝票発行するには予めマスター登録が必要 ‐ 登録方法- 手順-１Microsoft SQL Server Management Studioより、各拠点で定められたServerへ 接続する。Server選択→「Connect」 KDC…. Vì sao quan trọng: nguồn này neo claim vào .pdf và vị trí 伝票発行システムマニュアル_仮(JP).pdf.
+
+## Hướng xử lý / kiểm tra
+1. Xác nhận câu hỏi owner cần quyết: lỗi ở đâu, ai xử lý, hay bước tiếp theo là gì.
+2. Đối chiếu từng claim với nguồn [E1], [E2] trước khi giao việc.
+3. Nếu bằng chứng chưa đủ, yêu cầu đúng nguồn còn thiếu thay vì chốt nguyên nhân.
+
+## Không được kết luận nếu chưa có thêm bằng chứng
+- Không kết luận nguyên nhân gốc nếu chưa có log/chứng cứ cùng thời điểm.
+- Không kết luận trách nhiệm cá nhân nếu chưa có xác nhận owner hoặc audit trail.
+- Không kết luận AIOS thay thế NotebookLM; đây là câu trả lời local_owner có giới hạn.
+
+## Bảng nguồn
+| Ref | Role | Source | Type | Location | Limitation |
+|---|---|---|---|---|---|
+| [E1] | Primary | ERD_Kho_Van.html | .html | ERD_Kho_Van.html | phạm vi bằng chứng hẹp |
+| [E2] | Primary | ERD_Kho_Van.html | .html | ERD_Kho_Van.html | phạm vi bằng chứng hẹp |
+| [E3] | Primary | ERD_Kho_Van.html | .html | ERD_Kho_Van.html | phạm vi bằng chứng hẹp |
+| [E4] | Primary | ERD_Kho_Van.html | .html | ERD_Kho_Van.html | phạm vi bằng chứng hẹp |
+| [E5] | Primary | 生産履歴登録システム&着完工登録システム制作仕様_r2_2025-2-17 - 副本.pdf | .pdf | 生産履歴登録システム&着完工登録システム制作仕様_r2_2025-2-17 - 副本.pdf | phạm vi bằng chứng hẹp |
+| [E6] | Primary | 伝票発行システムマニュアル_仮(JP).pdf | .pdf | 伝票発行システムマニュアル_仮(JP).pdf | phạm vi bằng chứng hẹp |
+
+## Mức tin cậy
+high: dựa trên 6 nguồn nội dung hợp lệ; source_type_pass=PASS; privacy=local_only; insufficient_evidence=False.
+
+
+AIOS citations/source refs:
+[E1]
+[E2]
+[E3]
+[E4]
+[E5]
+[E6]
+
+
+AIOS limitations / uncertainty:
+See warnings in answer.
+
+
+AIOS strict score:
+10
+
+
+Cap applied:
+NO - 
+
+
+Human review note:
+WAIT_FOR_CHATGPT_FULL_REVIEW
+
+----------------------------------------
+
+## Q09 — schema
+
+Question:
+What operational conclusions are unsupported if only schema/ERD documentation is available?
+
+Target source type:
+schema
+
+Query profile:
+schema_tables_fields
+
+Source routing:
+
+- primary source types: []
+
+- supporting source types: []
+
+- demoted/rejected source types: []
+
+- source_type_pass: PASS
+
+- route warnings: ['Privacy: local_only evidence stays local; no cloud/provider call was made.']
+
+
+AIOS final owner answer:
+## Kết luận ngắn
+- Schema/HTML cho thấy cấu trúc hoặc trường được trích xuất: 0) SUP_LINE "Chuyền cấp" varchar(20) SUP_PROCESS "Công đoạn cấp" varchar(20) ITEM_CODE "Mã linh kiện" varchar(2) ITEM_REV "Bản in linh kiện" datetime GATEOUT_O… [E1].
+- Cần liệt kê bảng, trường và quan hệ được định nghĩa cứng.
+- Không tự tiện suy diễn hành vi runtime từ schema.
+
+## Cách hiểu từ bằng chứng
+Schema/ERD/HTML chỉ chứng minh cấu trúc được nêu rõ; không tự chứng minh hành vi vận hành nếu thiếu log/SOP.
+
+## Bằng chứng chính
+- [E1] [Primary] ERD_Kho_Van.html: 0) SUP_LINE "Chuyền cấp" varchar(20) SUP_PROCESS "Công đoạn cấp" varchar(20) ITEM_CODE "Mã linh kiện" varchar(2) ITEM_REV "Bản in linh kiện" datetime GATEOUT_ORDER_TIME…. Vì sao quan trọng: nguồn này neo claim vào .html và vị trí ERD_Kho_Van.html.
+- [E2] [Primary] MOMデータ連携説明_20251220.pdf: ©2025 KYOCERA Document Solutions Inc. テーブルレイアウト システム名 テーブル名 部品出庫 T_PARTS_OUT 合計 270 byte № データ項目名（日本語） （英字） タイプ 長さ NULL P.key Idx1 Idx2 Idx3 Auto Default 備 考 1 出庫タイプ OUT…. Vì sao quan trọng: nguồn này neo claim vào .pdf và vị trí MOMデータ連携説明_20251220.pdf.
+- [E3] [Primary] Screenshot 2026-03-20 183509.png: - a x 970418000 is_admin is_batch kams [EMPLOYEE_ID_REDACTED] TENA 1 stee hanasaki 1 Aas Baa sees 1 stee Baa IS/(y FARE 1 Aas ie KAMS-LAB) (YF 9—-Jx—AI-H— ea [PERSON_REDACTED] 305 AbyL AMS…. Vì sao quan trọng: nguồn này neo claim vào .png và vị trí Screenshot 2026-03-20 183509.png.
+- [E4] [Primary] ERD_Kho_Van.html: Sơ Đồ ERD Ultimate - Hệ Thống Kho Vận Sơ Đồ ERD Ultimate (Có độ dài Data Type) Cập nhật chính xác giới hạn ký tự (Size) cho từng trường varchar/decimal theo đúng thiết k…. Vì sao quan trọng: nguồn này neo claim vào .html và vị trí ERD_Kho_Van.html.
+- [E5] [Primary] ERD_Kho_Van.html: NO" KanbanTable ||--o| T_MAIN_PROCESS : "Mã AGV = MACHINE_NUMBER" Tầm quan trọng của Length Constraint (Giới hạn dữ liệu): Nhờ vào những khai báo này, chúng ta nhận ra h…. Vì sao quan trọng: nguồn này neo claim vào .html và vị trí ERD_Kho_Van.html.
+- [E6] [Primary] AMS_設計変更.pdf: ©2026 KYOCERA Document Solutions Inc. ①部品 REVUP Pro. C21_生産品目 -01 Comp Op. C21-1 -01 Parts A0 └ 組立BOP Step Pro._WC1_A0 -01 Comp Op. A0_元1 -01 供給BOP Execution Step Comp O…. Vì sao quan trọng: nguồn này neo claim vào .pdf và vị trí AMS_設計変更.pdf.
+
+## Hướng xử lý / kiểm tra
+1. Xác nhận câu hỏi owner cần quyết: lỗi ở đâu, ai xử lý, hay bước tiếp theo là gì.
+2. Đối chiếu từng claim với nguồn [E1], [E2] trước khi giao việc.
+3. Nếu bằng chứng chưa đủ, yêu cầu đúng nguồn còn thiếu thay vì chốt nguyên nhân.
+
+## Không được kết luận nếu chưa có thêm bằng chứng
+- Không kết luận nguyên nhân gốc nếu chưa có log/chứng cứ cùng thời điểm.
+- Không kết luận trách nhiệm cá nhân nếu chưa có xác nhận owner hoặc audit trail.
+- Không kết luận AIOS thay thế NotebookLM; đây là câu trả lời local_owner có giới hạn.
+
+## Bảng nguồn
+| Ref | Role | Source | Type | Location | Limitation |
+|---|---|---|---|---|---|
+| [E1] | Primary | ERD_Kho_Van.html | .html | ERD_Kho_Van.html | phạm vi bằng chứng hẹp |
+| [E2] | Primary | MOMデータ連携説明_20251220.pdf | .pdf | MOMデータ連携説明_20251220.pdf | phạm vi bằng chứng hẹp |
+| [E3] | Primary | Screenshot 2026-03-20 183509.png | .png | Screenshot 2026-03-20 183509.png | phạm vi bằng chứng hẹp |
+| [E4] | Primary | ERD_Kho_Van.html | .html | ERD_Kho_Van.html | phạm vi bằng chứng hẹp |
+| [E5] | Primary | ERD_Kho_Van.html | .html | ERD_Kho_Van.html | phạm vi bằng chứng hẹp |
+| [E6] | Primary | AMS_設計変更.pdf | .pdf | AMS_設計変更.pdf | phạm vi bằng chứng hẹp |
+
+## Mức tin cậy
+high: dựa trên 6 nguồn nội dung hợp lệ; source_type_pass=PASS; privacy=local_only; insufficient_evidence=False.
+
+
+AIOS citations/source refs:
+[E1]
+[E2]
+[E3]
+[E4]
+[E5]
+[E6]
+
+
+AIOS limitations / uncertainty:
+See warnings in answer.
+
+
+AIOS strict score:
+10
+
+
+Cap applied:
+NO - 
+
+
+Human review note:
+WAIT_FOR_CHATGPT_FULL_REVIEW
+
+----------------------------------------
+
+## Q10 — mixed
+
+Question:
+Explain a full troubleshooting path that combines evidence from Excel, PDF/PPTX, and screenshots.
+
+Target source type:
+mixed
+
+Query profile:
+mixed_troubleshooting
+
+Source routing:
+
+- primary source types: []
+
+- supporting source types: []
+
+- demoted/rejected source types: []
+
+- source_type_pass: PARTIAL
+
+- route warnings: ['Mixed profile requested but only one source type found.', 'Privacy: local_only evidence stays local; no cloud/provider call was made.']
+
+
+AIOS final owner answer:
+## Kết luận ngắn
+- Điểm bắt đầu điều tra là bằng chứng có liên quan trực tiếp nhất: Excel Shapes/Text Boxes: 整理中のため確定後に記載する SELECT TOP 1 PB.ProductName AS Product ,P.ProductRevision AS Rev ,C.OriginalStartDate AS ContainerStartDate ,C.Containe… [E1].
+- Bắt buộc cung cấp đường hướng điều tra từng bước (step-by-step investigation path).
+- Nêu chuỗi log, cấu hình, và owner action tương ứng.
+
+## Cách hiểu từ bằng chứng
+Câu hỏi cần một đường điều tra/handover: kết nối triệu chứng, cấu hình, log và owner action thay vì chỉ liệt kê snippets.
+
+## Bằng chứng chính
+- [E1] [Primary] KDC_P3MOM_MCO-309_コンポーネント設計.xlsx: Excel Shapes/Text Boxes: 整理中のため確定後に記載する SELECT TOP 1 PB.ProductName AS Product ,P.ProductRevision AS Rev ,C.OriginalStartDate AS ContainerStartDate ,C.ContainerName AS C…. Vì sao quan trọng: nguồn này neo claim vào .xlsx và vị trí KDC_P3MOM_MCO-309_コンポーネント設計.xlsx.
+- [E2] [Primary] KDC_P3MOM_MCO-309_コンポーネント設計.xlsx: ECLARE @RetMsgType as [nvarchar](255); --SELECT @TransactionType = 'ManualShipping_OutLineAuto' --SELECT @TransactionType = '%' SELECT TOP 1 @RetMsgType = TransactionTyp…. Vì sao quan trọng: nguồn này neo claim vào .xlsx và vị trí KDC_P3MOM_MCO-309_コンポーネント設計.xlsx.
+- [E3] [Primary] KDTVN_AMS対応でのMES設定箇所 1.pptx: nships" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main"> MOM 連携条件マスタ（ M_MOMIF_CRITERIA ）登録 本体、従属品に関わらず で扱う指図 （参考）他拠点の設定 {5C22544A-7EE6-4342-B048-85B…. Vì sao quan trọng: nguồn này neo claim vào .pptx và vị trí KDTVN_AMS対応でのMES設定箇所 1.pptx.
+- [E4] [Primary] Screenshot 2026-03-20 183839.png: a = x InterStock 3 © *#7278 i « TER STOCI = PD = @ we | SS PATh-S 0) = PAF bE . EsDUSEODKLEDD-L8hy Se x AURVEAMTE PRE BET 828375 CaN | axes | 06-4965-5757 | 48(FS : Bui…. Vì sao quan trọng: nguồn này neo claim vào .png và vị trí Screenshot 2026-03-20 183839.png.
+- [E5] [Primary] 補足資料_要件内容反映版_20231110.xlsx: Excel sheet: 【マスタ案①】最小構成 【案①：最小構成】 マスタ設定（※出庫先分のマスタ定義が必要） ＜既存ライン(当初の５ライン分)のマスタ設定＞ ・Resource：ExistingLine_Resource_C3（Location：ERPLocation「30C3」） ・Resource Group：ExistingL…. Vì sao quan trọng: nguồn này neo claim vào .xlsx và vị trí 補足資料_要件内容反映版_20231110.xlsx.
+- [E6] [Primary] 補足資料_要件内容反映版_20231110.xlsx: Excel sheet: 【当初マスタ案】 【当初案：既存ライン単位に保持する構成】 マスタ設定（※出庫先分のマスタ定義が必要） ＜既存ライン(C31)のマスタ設定＞ ・Resource：ExistingLine_Resource_C31（Location：ERPLocation「30C3」） ・Resource Group：Exist…. Vì sao quan trọng: nguồn này neo claim vào .xlsx và vị trí 補足資料_要件内容反映版_20231110.xlsx.
+
+## Hướng xử lý / kiểm tra
+1. Xác nhận câu hỏi owner cần quyết: lỗi ở đâu, ai xử lý, hay bước tiếp theo là gì.
+2. Đối chiếu từng claim với nguồn [E1], [E2] trước khi giao việc.
+3. Dựng timeline: thời điểm phát sinh, hệ thống liên quan, bước handoff, người xử lý.
+4. Thu missing evidence: log WMS/MOM/AGV, mapping hiện hành, ảnh lỗi, xác nhận owner.
+5. Bàn giao: ghi rõ giả thuyết, bằng chứng ủng hộ, bằng chứng còn thiếu, người chịu trách nhiệm và hạn kiểm tra.
+
+## Không được kết luận nếu chưa có thêm bằng chứng
+- Không kết luận nguyên nhân gốc nếu chưa có log/chứng cứ cùng thời điểm.
+- Không kết luận trách nhiệm cá nhân nếu chưa có xác nhận owner hoặc audit trail.
+- Không kết luận AIOS thay thế NotebookLM; đây là câu trả lời local_owner có giới hạn.
+
+## Bảng nguồn
+| Ref | Role | Source | Type | Location | Limitation |
+|---|---|---|---|---|---|
+| [E1] | Primary | KDC_P3MOM_MCO-309_コンポーネント設計.xlsx | .xlsx | KDC_P3MOM_MCO-309_コンポーネント設計.xlsx | phạm vi bằng chứng hẹp |
+| [E2] | Primary | KDC_P3MOM_MCO-309_コンポーネント設計.xlsx | .xlsx | KDC_P3MOM_MCO-309_コンポーネント設計.xlsx | phạm vi bằng chứng hẹp |
+| [E3] | Primary | KDTVN_AMS対応でのMES設定箇所 1.pptx | .pptx | KDTVN_AMS対応でのMES設定箇所 1.pptx | phạm vi bằng chứng hẹp |
+| [E4] | Primary | Screenshot 2026-03-20 183839.png | .png | Screenshot 2026-03-20 183839.png | phạm vi bằng chứng hẹp |
+| [E5] | Primary | 補足資料_要件内容反映版_20231110.xlsx | .xlsx | 補足資料_要件内容反映版_20231110.xlsx | phạm vi bằng chứng hẹp |
+| [E6] | Primary | 補足資料_要件内容反映版_20231110.xlsx | .xlsx | 補足資料_要件内容反映版_20231110.xlsx | phạm vi bằng chứng hẹp |
+
+## Mức tin cậy
+medium: dựa trên 6 nguồn nội dung hợp lệ; source_type_pass=PARTIAL; privacy=local_only; insufficient_evidence=False.
+
+
+AIOS citations/source refs:
+[E1]
+[E2]
+[E3]
+[E4]
+[E5]
+[E6]
+
+
+AIOS limitations / uncertainty:
+See warnings in answer.
+
+
+AIOS strict score:
+6
+
+
+Cap applied:
+YES - 
+
+
+Human review note:
+WAIT_FOR_CHATGPT_FULL_REVIEW
+
+----------------------------------------
+
+## Q11 — mixed
+
+Question:
+Identify missing evidence that would be required before answering a complex production issue.
+
+Target source type:
+mixed
+
+Query profile:
+missing_evidence
+
+Source routing:
+
+- primary source types: []
+
+- supporting source types: []
+
+- demoted/rejected source types: []
+
+- source_type_pass: PASS
+
+- route warnings: ['Privacy: local_only evidence stays local; no cloud/provider call was made.']
+
+
+AIOS final owner answer:
+## Kết luận ngắn
+- Phân tích hiện tại: a = x InterStock 3 © *#7278 i « TER STOCI = PD = @ we | SS PATh-S 0) = PAF bE . EsDUSEODKLEDD-L8hy Se x AURVEAMTE PRE BET 828375 CaN | axes | 06-4965-5757 | 48… [E1].
+- Vẫn còn thiếu bằng chứng trọng yếu. Cần chỉ ra đích danh (artifact) nào bị thiếu và tại sao.
+- Đưa ra thứ tự ưu tiên các evidence cần bổ sung.
+
+## Cách hiểu từ bằng chứng
+Câu hỏi cần một đường điều tra/handover: kết nối triệu chứng, cấu hình, log và owner action thay vì chỉ liệt kê snippets.
+
+## Bằng chứng chính
+- [E1] [Primary] Screenshot 2026-03-20 183839.png: a = x InterStock 3 © *#7278 i « TER STOCI = PD = @ we | SS PATh-S 0) = PAF bE . EsDUSEODKLEDD-L8hy Se x AURVEAMTE PRE BET 828375 CaN | axes | 06-4965-5757 | 48(FS : Bui…. Vì sao quan trọng: nguồn này neo claim vào .png và vị trí Screenshot 2026-03-20 183839.png.
+- [E2] [Primary] ERD_Kho_Van.html: NO" KanbanTable ||--o| T_MAIN_PROCESS : "Mã AGV = MACHINE_NUMBER" Tầm quan trọng của Length Constraint (Giới hạn dữ liệu): Nhờ vào những khai báo này, chúng ta nhận ra h…. Vì sao quan trọng: nguồn này neo claim vào .html và vị trí ERD_Kho_Van.html.
+- [E3] [Primary] MOMおよびWMSデータ完全クリア方法.xlsx: Excel sheet: DB上処理 以下のクエリをまとめて実行 USE inter_stock3_eng_kdc truncate table cst.e_orikon_data truncate table cst.e_orikon_data_hist truncate table cst.e_orikon_start trunca…. Vì sao quan trọng: nguồn này neo claim vào .xlsx và vị trí MOMおよびWMSデータ完全クリア方法.xlsx.
+- [E4] [Primary] MOMデータ連携説明_20251220.pdf: ©2025 KYOCERA Document Solutions Inc. 最終工程 SNo.001 統括PLC 工程完了 SNo.001組立 MOM SNo.001完了登録 Production_FinSerialNo シリアルNo.読み取り SNo.001完了検出 実績収集トランザクション自動実行 StatusCodeLinkage…. Vì sao quan trọng: nguồn này neo claim vào .pdf và vị trí MOMデータ連携説明_20251220.pdf.
+- [E5] [Primary] AMS_設計変更.pdf: ©2026 KYOCERA Document Solutions Inc. 切替パターン 切替指定日 TC設計指示 Opcenter切替管理 期日前 期日後 切替年月日 切替指示 期日まで 期日以降 切替期日有り 期日切替 YYYY/MM/DD The day 旧 新 期日以降に切替 After 旧(優先) or 新 ※注1 期日までに…. Vì sao quan trọng: nguồn này neo claim vào .pdf và vị trí AMS_設計変更.pdf.
+- [E6] [Primary] KDC_P3MOM_MCO-309_システムインターフェイス設計.xlsx: る場合 共通倉庫品または 既存倉庫品を出庫したい 上のコンテナ 在庫数をテーブルに更新 から出庫指示された情報に基づいて対象コンテナを対象工程へ供給する 在庫管理 NumberShortage_Inventory _ Result_Staging : エラー対象のトリガー名 ➀トリガーのエラー行番号 エラーメッセージ エラーの原因 廃止…. Vì sao quan trọng: nguồn này neo claim vào .xlsx và vị trí KDC_P3MOM_MCO-309_システムインターフェイス設計.xlsx.
+
+## Hướng xử lý / kiểm tra
+1. Xác nhận câu hỏi owner cần quyết: lỗi ở đâu, ai xử lý, hay bước tiếp theo là gì.
+2. Đối chiếu từng claim với nguồn [E1], [E2] trước khi giao việc.
+3. Dựng timeline: thời điểm phát sinh, hệ thống liên quan, bước handoff, người xử lý.
+4. Thu missing evidence: log WMS/MOM/AGV, mapping hiện hành, ảnh lỗi, xác nhận owner.
+5. Bàn giao: ghi rõ giả thuyết, bằng chứng ủng hộ, bằng chứng còn thiếu, người chịu trách nhiệm và hạn kiểm tra.
+
+## Không được kết luận nếu chưa có thêm bằng chứng
+- Không kết luận nguyên nhân gốc nếu chưa có log/chứng cứ cùng thời điểm.
+- Không kết luận trách nhiệm cá nhân nếu chưa có xác nhận owner hoặc audit trail.
+- Không kết luận AIOS thay thế NotebookLM; đây là câu trả lời local_owner có giới hạn.
+
+## Bảng nguồn
+| Ref | Role | Source | Type | Location | Limitation |
+|---|---|---|---|---|---|
+| [E1] | Primary | Screenshot 2026-03-20 183839.png | .png | Screenshot 2026-03-20 183839.png | phạm vi bằng chứng hẹp |
+| [E2] | Primary | ERD_Kho_Van.html | .html | ERD_Kho_Van.html | phạm vi bằng chứng hẹp |
+| [E3] | Primary | MOMおよびWMSデータ完全クリア方法.xlsx | .xlsx | MOMおよびWMSデータ完全クリア方法.xlsx | phạm vi bằng chứng hẹp |
+| [E4] | Primary | MOMデータ連携説明_20251220.pdf | .pdf | MOMデータ連携説明_20251220.pdf | phạm vi bằng chứng hẹp |
+| [E5] | Primary | AMS_設計変更.pdf | .pdf | AMS_設計変更.pdf | phạm vi bằng chứng hẹp |
+| [E6] | Primary | KDC_P3MOM_MCO-309_システムインターフェイス設計.xlsx | .xlsx | KDC_P3MOM_MCO-309_システムインターフェイス設計.xlsx | phạm vi bằng chứng hẹp |
+
+## Mức tin cậy
+high: dựa trên 6 nguồn nội dung hợp lệ; source_type_pass=PASS; privacy=local_only; insufficient_evidence=False.
+
+
+AIOS citations/source refs:
+[E1]
+[E2]
+[E3]
+[E4]
+[E5]
+[E6]
+
+
+AIOS limitations / uncertainty:
+See warnings in answer.
+
+
+AIOS strict score:
+10
+
+
+Cap applied:
+NO - 
+
+
+Human review note:
+WAIT_FOR_CHATGPT_FULL_REVIEW
+
+----------------------------------------
+
+## Q12 — mixed
+
+Question:
+Produce a set of owner next actions and a handover summary, citing sources correctly.
+
+Target source type:
+mixed
+
+Query profile:
+owner_handover
+
+Source routing:
+
+- primary source types: []
+
+- supporting source types: []
+
+- demoted/rejected source types: []
+
+- source_type_pass: PASS
+
+- route warnings: ['Privacy: local_only evidence stays local; no cloud/provider call was made.']
+
+
+AIOS final owner answer:
+## Kết luận ngắn
+- Trích xuất phục vụ bàn giao: of="0" smtClean="0"> ( 空箱 ) <a:rPr kumimoji="0" lang="ja-JP" altLang="en-US" sz="1200" b="0" i="0" u="none" strike="noStrike" kern="1200" cap="none" spc="0" no… [E1].
+- Tổng hợp định dạng handover ngắn gọn, nêu rõ next actions của owner.
+- Chỉ ra các rủi ro, deadline (nếu có), và người phụ trách.
+
+## Cách hiểu từ bằng chứng
+Câu hỏi cần một đường điều tra/handover: kết nối triệu chứng, cấu hình, log và owner action thay vì chỉ liệt kê snippets.
+
+## Bằng chứng chính
+- [E1] [Primary] 通函管理システム.pptx: of="0" smtClean="0"> ( 空箱 ) <a:rPr kumimoji="0" lang="ja-JP" altLang="en-US" sz="1200" b="0" i="0" u="none" strike="noStrike" kern="1200" cap="none" spc="0" normalizeH="…. Vì sao quan trọng: nguồn này neo claim vào .pptx và vị trí 通函管理システム.pptx.
+- [E2] [Primary] MES_MOM説明資料_20251031.pdf: ©2025 KYOCERA Document Solutions Inc. MES／MOM説明 最後に ➤MOMを使用することで、生産を自動化、最適化することが可能になる。しかし、自動化のためには、 PLMに登録される、BOM（Bill of material：部品表）やBOP（Bill of process：工程表） といった、生産に…. Vì sao quan trọng: nguồn này neo claim vào .pdf và vị trí MES_MOM説明資料_20251031.pdf.
+- [E3] [Primary] Screenshot 2026-03-20 183658.png: EI x4x22- InterStock 3% 97-92"77-% - © ~ ITER STOCK ee s ie) Ab+L_AMSBE C2A01010102 al O | 30cs A by L_AMSBE | C2A01010103 a OO 30c5 Ab+L_AMSBE C2A01010104 al O | 30cs A…. Vì sao quan trọng: nguồn này neo claim vào .png và vị trí Screenshot 2026-03-20 183658.png.
+- [E4] [Primary] Screenshot 2026-03-20 184246.png: 1 oO 1 960 960 +¥0 ¥13,180 ie) 112603192000100009 | 2026/03/19 | 2026/03/19 3W2ND25310 3W2ND25310-02 0 1 28 28 +¥0 | ¥14,320 ia) 112603192000100008 2026/03/19 2026/03/19…. Vì sao quan trọng: nguồn này neo claim vào .png và vị trí Screenshot 2026-03-20 184246.png.
+- [E5] [Primary] KDC_P3MOM_MCO-309_コンポーネント設計.xlsx: Excel Shapes/Text Boxes: 整理中のため確定後に記載する SELECT TOP 1 PB.ProductName AS Product ,P.ProductRevision AS Rev ,C.OriginalStartDate AS ContainerStartDate ,C.ContainerName AS C…. Vì sao quan trọng: nguồn này neo claim vào .xlsx và vị trí KDC_P3MOM_MCO-309_コンポーネント設計.xlsx.
+- [E6] [Primary] CTU 3階の通路レイアウト_251211.xlsx: Excel sheet: Phát linh kiện A | A 自動倉庫 大物パレット管理【吹き抜け】 1Fは南側より格納し 2Ｆ、3Fでは南側より出庫 | EPS B | B 製品 | 製品 C | 製品 | 製品 | C. Vì sao quan trọng: nguồn này neo claim vào .xlsx và vị trí CTU 3階の通路レイアウト_251211.xlsx.
+
+## Hướng xử lý / kiểm tra
+1. Xác nhận câu hỏi owner cần quyết: lỗi ở đâu, ai xử lý, hay bước tiếp theo là gì.
+2. Đối chiếu từng claim với nguồn [E1], [E2] trước khi giao việc.
+3. Dựng timeline: thời điểm phát sinh, hệ thống liên quan, bước handoff, người xử lý.
+4. Thu missing evidence: log WMS/MOM/AGV, mapping hiện hành, ảnh lỗi, xác nhận owner.
+5. Bàn giao: ghi rõ giả thuyết, bằng chứng ủng hộ, bằng chứng còn thiếu, người chịu trách nhiệm và hạn kiểm tra.
+
+## Không được kết luận nếu chưa có thêm bằng chứng
+- Không kết luận nguyên nhân gốc nếu chưa có log/chứng cứ cùng thời điểm.
+- Không kết luận trách nhiệm cá nhân nếu chưa có xác nhận owner hoặc audit trail.
+- Không kết luận AIOS thay thế NotebookLM; đây là câu trả lời local_owner có giới hạn.
+
+## Bảng nguồn
+| Ref | Role | Source | Type | Location | Limitation |
+|---|---|---|---|---|---|
+| [E1] | Primary | 通函管理システム.pptx | .pptx | 通函管理システム.pptx | phạm vi bằng chứng hẹp |
+| [E2] | Primary | MES_MOM説明資料_20251031.pdf | .pdf | MES_MOM説明資料_20251031.pdf | phạm vi bằng chứng hẹp |
+| [E3] | Primary | Screenshot 2026-03-20 183658.png | .png | Screenshot 2026-03-20 183658.png | phạm vi bằng chứng hẹp |
+| [E4] | Primary | Screenshot 2026-03-20 184246.png | .png | Screenshot 2026-03-20 184246.png | phạm vi bằng chứng hẹp |
+| [E5] | Primary | KDC_P3MOM_MCO-309_コンポーネント設計.xlsx | .xlsx | KDC_P3MOM_MCO-309_コンポーネント設計.xlsx | phạm vi bằng chứng hẹp |
+| [E6] | Primary | CTU 3階の通路レイアウト_251211.xlsx | .xlsx | CTU 3階の通路レイアウト_251211.xlsx | phạm vi bằng chứng hẹp |
+
+## Mức tin cậy
+high: dựa trên 6 nguồn nội dung hợp lệ; source_type_pass=PASS; privacy=local_only; insufficient_evidence=False.
+
+
+AIOS citations/source refs:
+[E1]
+[E2]
+[E3]
+[E4]
+[E5]
+[E6]
+
+
+AIOS limitations / uncertainty:
+See warnings in answer.
+
+
+AIOS strict score:
+10
+
+
+Cap applied:
+NO - 
+
+
+Human review note:
+WAIT_FOR_CHATGPT_FULL_REVIEW
+
+----------------------------------------
