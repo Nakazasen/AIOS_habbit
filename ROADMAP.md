@@ -508,7 +508,7 @@ Later:
    - Owner acceptance still required.
 
 
-## M1.10 ? Antigravity Bridge Manual-Step Reduction
+## M1.10 - Antigravity Bridge Manual-Step Reduction
 
 Exit criteria:
 - Owner can create a local Antigravity handoff bundle from Case Cockpit.

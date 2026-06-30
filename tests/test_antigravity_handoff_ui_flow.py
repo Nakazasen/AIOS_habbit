@@ -1,5 +1,7 @@
 ﻿import json
 import subprocess
+from pathlib import Path
+
 from aios_habit.case_models import EvidenceItem
 from aios_habit.ide_handoff_bridge import (
     block_cloud_provider_for_local_only,
@@ -75,11 +77,35 @@ def test_local_only_cloud_provider_blocked_and_vi_instruction(tmp_path):
     blocked, message = block_cloud_provider_for_local_only(req.manifest)
     assert blocked is True
     assert "local_only" in message
+    assert "Bị chặn" in message
     instruction = vietnamese_next_step_instruction(req.request_id, req.bundle_dir, req.inbox_response_path, req.manifest["privacy_mode"])
     assert "Mở Antigravity" in instruction
     assert "Kiểm tra phản hồi từ Antigravity" in instruction
+    assert ("C" + "?u") not in instruction
+    assert ("m" + "?nh") not in instruction
 
 
 def test_no_local_runs_tracked_by_git():
     tracked = subprocess.run(["git", "ls-files", "local_runs"], text=True, capture_output=True, check=True)
     assert tracked.stdout.strip() == ""
+    ignored = subprocess.run(["git", "check-ignore", "-v", "local_runs"], text=True, capture_output=True, check=True)
+    assert "local_runs/" in ignored.stdout
+
+
+def test_case_cockpit_ui_first_flow_keeps_manual_json_fallback_secondary():
+    source = Path("src/aios_habit/case_cockpit.py").read_text(encoding="utf-8")
+    create_idx = source.index('key="create_ide_full_bundle"')
+    check_idx = source.index('key="check_ide_full_bundle_response"')
+    fallback_idx = source.index("Fallback thủ công")
+    manual_import_idx = source.index('key="import_ide_full_bundle_response"')
+    assert create_idx < check_idx < fallback_idx < manual_import_idx
+    assert "Cầu nối model mạnh qua Antigravity" in source
+    assert "Không cần CLI" in source
+    assert "không cần dán JSON ở luồng mặc định" in source
+
+
+def test_bridge_manual_step_report_is_utf8_and_not_mojibake():
+    report = Path(".ai/BRIDGE_MANUAL_STEP_REDUCTION_REPORT.md").read_text(encoding="utf-8")
+    assert "Cầu nối model mạnh qua Antigravity" in report
+    assert ("C" + "?u n" + "?i") not in report
+    assert ("m" + "?nh") not in report

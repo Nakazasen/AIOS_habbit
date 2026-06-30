@@ -88,7 +88,7 @@ def build_prompt_md(manifest: dict[str, Any]) -> str:
 def build_evidence_markdown(records: list[dict[str, Any]]) -> str:
     lines = ["# Full Evidence Bundle", ""]
     for record in records:
-        lines += [f"## {record['evidence_id']} 窶・{record['title']}", f"- source_type: `{record['source_type']}`", f"- metadata_only: `{record['metadata_only']}`", "", "```text", record["text"], "```", ""]
+        lines += [f"## {record['evidence_id']} - {record['title']}", f"- source_type: `{record['source_type']}`", f"- metadata_only: `{record['metadata_only']}`", "", "```text", record["text"], "```", ""]
     return "\n".join(lines)
 
 def write_ide_handoff_bundle(case_id: str, question: str, bundle_scope: str, evidence_items: Iterable[EvidenceItem], *, root: str | Path = HANDOFF_ROOT, owner_note: str = "", target_model_tool_name: str = "Antigravity IDE AI", max_total_text_chars: int = 2_000_000, request_id: str | None = None) -> FullBundleRequest:
@@ -176,7 +176,7 @@ def save_imported_ide_answer(case_id: str, validation: ImportValidationResult, *
     response, manifest = validation.response, validation.manifest
     evidence_ids = list(response.get("evidence_ids_used") or [])
     answer = PastedStrongModelAnswer(draft_id=f"IDE-{uuid.uuid4().hex[:12].upper()}", pack_id=manifest["request_id"], query=manifest["question"], answer_text=response["answer_text"].strip(), citation_ids=evidence_ids, evidence_ids=evidence_ids, privacy_mode=manifest.get("privacy_mode", "local_only"), allowed_external=manifest.get("allowed_external", False), insufficient_evidence=not validation.final_answer, confidence_label=response.get("confidence_label", "low"), warnings=list(validation.warnings), final_answer=validation.final_answer, model_tool_name=response["model_tool_name"].strip(), route_summary="ide_full_bundle_handoff", prompt_pack_id=manifest["request_id"], metadata={"answer_kind": "ide_handoff_strong_answer", "route_summary": "ide_full_bundle_handoff", "risk_label": response.get("risk_label", ""), "used_full_bundle": str(response.get("used_full_bundle")), "request_id": manifest["request_id"]})
-    save_evidence(EvidenceItem(evidence_id=answer.draft_id, case_id=case_id, source_type="ide_handoff_strong_answer", source_path=f"ide_handoff:{manifest['request_id']}", title=f"Cﾃ｢u tr蘯｣ l盻拱 AI IDE full bundle - {answer.model_tool_name}", extracted_text=answer.answer_text, structured_summary=json.dumps(asdict(answer), ensure_ascii=False), confidence=answer.confidence_label, privacy_level=answer.privacy_mode, review_status="reviewed" if answer.final_answer else "draft", source_origin="ide_handoff", verification_status="reviewed" if answer.final_answer else "draft"))
+    save_evidence(EvidenceItem(evidence_id=answer.draft_id, case_id=case_id, source_type="ide_handoff_strong_answer", source_path=f"ide_handoff:{manifest['request_id']}", title=f"Câu trả lời AI IDE full bundle - {answer.model_tool_name}", extracted_text=answer.answer_text, structured_summary=json.dumps(asdict(answer), ensure_ascii=False), confidence=answer.confidence_label, privacy_level=answer.privacy_mode, review_status="reviewed" if answer.final_answer else "draft", source_origin="ide_handoff", verification_status="reviewed" if answer.final_answer else "draft"))
     processed_dir = Path(root) / "processed" / manifest["request_id"]
     processed_dir.mkdir(parents=True, exist_ok=True)
     resp_path = Path(root) / "inbox" / manifest["request_id"] / "response.json"
@@ -214,5 +214,5 @@ def vietnamese_next_step_instruction(request_id: str, outbox_dir: str | Path, in
     return f"Mở Antigravity, đọc gói tại {outbox_dir}, làm theo prompt_for_antigravity.md, rồi lưu response.json vào {inbox_response_path}. Quay lại màn hình này và bấm Kiểm tra phản hồi từ Antigravity.{warning}"
 def block_cloud_provider_for_local_only(manifest: dict[str, Any]) -> tuple[bool, str]:
     if manifest.get("local_only") or manifest.get("privacy_mode") == "local_only":
-        return True, "B盻・ch蘯ｷn: bundle local_only khﾃｴng ﾄ柁ｰ盻｣c g盻絞 cloud/provider t盻ｱ ﾄ黛ｻ冢g."
-    return False, "Cho phﾃｩp n蘯ｿu provider ﾄ妥｣ ﾄ柁ｰ盻｣c owner phﾃｪ duy盻㏄."
+        return True, "Bị chặn: bundle local_only không được gửi cloud/provider tự động."
+    return False, "Cho phép nếu provider đã được owner phê duyệt."

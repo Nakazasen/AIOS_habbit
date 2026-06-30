@@ -20,13 +20,13 @@ Case Cockpit creates a local Antigravity handoff bundle under ignored `local_run
 `local_only` bundles remain blocked from automatic cloud/provider calls. The prompt and UI warn the owner to use only approved local/IDE routes.
 
 ## Citation validation behavior
-Import validates request_id, privacy acknowledgement, full-bundle usage, and cited evidence IDs against allowed evidence IDs from the bundle.
+Import validates `request_id`, privacy acknowledgement, full-bundle usage, and cited evidence IDs against allowed evidence IDs from the bundle.
 
 ## Save-back behavior
 A validated answer is saved as `ide_handoff_strong_answer` in the case and a processed import result is written locally.
 
 ## UI behavior
-The owner section is labeled ÅgC?u n?i model m?nh qua AntigravityÅh and provides buttons to create the bundle, check Antigravity response, and save the validated strong answer.
+The owner section is labeled "C·∫ßu n·ªëi model m·∫°nh qua Antigravity" and provides buttons to create the bundle, check Antigravity response, and save the validated strong answer. The raw JSON path input remains inside a manual fallback expander, not the default path.
 
 ## Remaining gap to 100% daily-use ready
 The bridge is owner-pilot ready but not fully automated: Antigravity execution and writing `response.json` are still manual steps.

@@ -83,6 +83,12 @@ def test_response_import_fails_if_privacy_not_acknowledged(tmp_path):
     assert result.ok is False
 
 
+def test_response_import_fails_if_full_bundle_not_used(tmp_path):
+    req = write_ide_handoff_bundle("CASE-1", "question", "active_case_all", fake_items(), root=tmp_path, request_id="REQ-FULL")
+    result = import_ide_response(write_response(tmp_path, req.request_id, ["EVD-1"], used_full_bundle=False), root=tmp_path)
+    assert result.ok is False
+
+
 def test_response_import_rejects_unknown_evidence_ids(tmp_path):
     req = write_ide_handoff_bundle("CASE-1", "question", "active_case_all", fake_items(), root=tmp_path, request_id="REQ-BADID")
     result = import_ide_response(write_response(tmp_path, req.request_id, ["UNKNOWN"]), root=tmp_path)
