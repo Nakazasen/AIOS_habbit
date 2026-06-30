@@ -2,6 +2,7 @@ import pytest
 from aios_habit.case_models import Case, EvidenceItem
 from aios_habit.learning_models import SeniorLearningCard
 from aios_habit.visual_map_builder import build_active_case_visual_graph
+from aios_habit.visual_map_models import validate_visual_graph
 
 def test_builder_creates_expected_nodes_and_edges():
     case = Case(case_id="CASE-1", title="Sample", privacy_level="safe")
@@ -77,6 +78,10 @@ def test_claim_guard_blocked_claim_becomes_risk_claim_node():
     assert len(claim_nodes) == 1
     blocks_edges = [e for e in g.edges if e.edge_type == "blocks"]
     assert len(blocks_edges) == 1
+    missing_edges = [e for e in g.edges if e.edge_type == "has_missing_evidence"]
+    assert len(missing_edges) == 1
+    res = validate_visual_graph(g)
+    assert res.ok, res.errors
 
 def test_duplicate_evidence_nodes_are_collapsed():
     case = Case(case_id="CASE-1", title="Sample", privacy_level="safe")

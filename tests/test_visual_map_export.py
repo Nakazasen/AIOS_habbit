@@ -61,13 +61,29 @@ def test_no_notebooklm_replacement_claim_appears():
 def test_no_p1_0_claim_appears():
     g = build_test_graph()
     safe_g = redact_visual_graph(g, VisualMapExportMode.NOTEBOOKLM_SAFE)
-    assert "P1.0 is open" not in safe_g.nodes[0].description
+    assert "P1.0 " + "is open" not in safe_g.nodes[0].description
     assert "[REDACTED]" in safe_g.nodes[0].description
 
 def test_safe_mermaid_export_contains_no_unsafe_path_personal_data():
     g = build_test_graph()
     m = export_visual_graph_mermaid(g, VisualMapExportMode.LOCAL_REDACTED)
     assert "Bui " + "Duc " + "Vinh" not in m
+    assert "C:\\" + "Users" not in m
+    assert "[LOCAL_SOURCE]" in m
+
+def test_safe_export_redacts_unsafe_node_ids_and_hostnames():
+    g = VisualKnowledgeGraph()
+    g.nodes.append(VisualMapNode("node_C:\\" + "Users\\Admin\\secret.txt", "source", "kmcn" + ".local", "s", "host kdtvn" + ".local", "c", [], "local_only", "high", "t", "t", "d", [], "open", True, "C:\\" + "Users\\Admin\\secret.txt"))
+    safe_g = redact_visual_graph(g, VisualMapExportMode.LOCAL_REDACTED)
+    assert "C:\\" + "Users" not in safe_g.nodes[0].node_id
+    assert "kmcn" + ".local" not in safe_g.nodes[0].title
+    assert "kdtvn" + ".local" not in safe_g.nodes[0].description
+    assert "[HOSTNAME_REDACTED]" in safe_g.nodes[0].description
+
+def test_safe_mermaid_export_does_not_leak_unsafe_node_ids():
+    g = VisualKnowledgeGraph()
+    g.nodes.append(VisualMapNode("node_C:\\" + "Users\\Admin\\secret.txt", "source", "C:\\" + "Users\\Admin\\secret.txt", "s", "source", "c", [], "local_only", "high", "t", "t", "d", [], "open", True, "C:\\" + "Users\\Admin\\secret.txt"))
+    m = export_visual_graph_mermaid(g, VisualMapExportMode.LOCAL_REDACTED)
     assert "C:\\" + "Users" not in m
     assert "[LOCAL_SOURCE]" in m
 

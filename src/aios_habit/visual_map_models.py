@@ -93,8 +93,19 @@ def validate_visual_graph(graph: VisualKnowledgeGraph) -> VisualMapValidationRes
         if e.to_node_id not in node_ids:
             errors.append(f"Edge to unknown node: {e.to_node_id}")
             
+    node_by_id = {n.node_id: n for n in graph.nodes}
     claim_nodes = {n.node_id for n in graph.nodes if n.node_type == "claim"}
-    claims_with_edges = {e.from_node_id for e in graph.edges if e.edge_type in ("supports", "has_missing_evidence")}
+    claims_with_edges = set()
+    for e in graph.edges:
+        if e.edge_type == "supports":
+            if e.from_node_id in claim_nodes:
+                claims_with_edges.add(e.from_node_id)
+            if e.to_node_id in claim_nodes:
+                claims_with_edges.add(e.to_node_id)
+        elif e.edge_type == "has_missing_evidence" and e.from_node_id in claim_nodes:
+            target = node_by_id.get(e.to_node_id)
+            if target and target.node_type == "missing_evidence":
+                claims_with_edges.add(e.from_node_id)
     for c in claim_nodes:
         if c not in claims_with_edges:
             errors.append(f"Claim node {c} missing supports or has_missing_evidence edge")
@@ -104,19 +115,16 @@ def validate_visual_graph(graph: VisualKnowledgeGraph) -> VisualMapValidationRes
         if n.node_type == "evidence":
             for ref in n.evidence_ids:
                 evidence_nodes_refs.add(ref)
-                
-    missing_evidence_nodes = [n for n in graph.nodes if n.node_type == "missing_evidence"]
-    has_missing_evidence_node = len(missing_evidence_nodes) > 0
-    
+
     for n in graph.nodes:
         if n.node_type != "evidence":
             for ref in n.evidence_ids:
-                if ref not in evidence_nodes_refs and not has_missing_evidence_node:
-                    errors.append(f"Cited evidence ID {ref} not in graph and no missing_evidence node found")
+                if ref not in evidence_nodes_refs:
+                    errors.append(f"Cited evidence ID {ref} not in graph evidence nodes")
                     
     for e in graph.edges:
         for ref in e.evidence_ids:
-            if ref not in evidence_nodes_refs and not has_missing_evidence_node:
-                errors.append(f"Cited evidence ID {ref} in edge not in graph and no missing_evidence node found")
+            if ref not in evidence_nodes_refs:
+                errors.append(f"Cited evidence ID {ref} in edge not in graph evidence nodes")
 
     return VisualMapValidationResult(ok=len(errors) == 0, errors=errors)

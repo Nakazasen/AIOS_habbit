@@ -1,4 +1,6 @@
 import datetime
+import hashlib
+import re
 from typing import List, Dict, Any, Optional
 from aios_habit.case_models import Case, EvidenceItem
 from aios_habit.learning_models import SeniorLearningCard
@@ -6,6 +8,14 @@ from aios_habit.visual_map_models import (
     VisualKnowledgeGraph, VisualMapNode, VisualMapEdge, 
     ALLOWED_NODE_TYPES, ALLOWED_EDGE_TYPES
 )
+
+def _safe_node_key(value: str) -> str:
+    raw = value or "unknown"
+    slug = re.sub(r"[^A-Za-z0-9_-]+", "_", raw).strip("_")
+    if len(slug) > 48:
+        digest = hashlib.sha256(raw.encode("utf-8")).hexdigest()[:10]
+        slug = f"{slug[:37]}_{digest}"
+    return slug or "unknown"
 
 def build_active_case_visual_graph(
     case: Case,
@@ -74,7 +84,8 @@ def build_active_case_visual_graph(
         ))
         
     for ev in evidence_items:
-        src_node_id = f"node_source_{ev.source_type}_{ev.source_path or ev.evidence_id}"
+        src_ref = ev.source_path or ev.evidence_id
+        src_node_id = f"node_source_{_safe_node_key(ev.source_type)}_{_safe_node_key(src_ref)}"
         if not any(n.node_id == src_node_id for n in graph.nodes):
             src_node = VisualMapNode(
                 node_id=src_node_id,
@@ -392,12 +403,45 @@ def build_active_case_visual_graph(
                 display_title="Blocked claim"
             )
             graph.nodes.append(c_node)
+            me_node_id = f"node_cg_missing_ev_{i}"
+            me_node = VisualMapNode(
+                node_id=me_node_id,
+                node_type="missing_evidence",
+                title="Missing evidence for blocked claim",
+                short_label="Missing Ev",
+                description="Claim guard blocked this claim before evidence support was established",
+                source_case_id=case.case_id,
+                evidence_ids=[],
+                privacy_level="safe",
+                confidence="high",
+                created_at=now,
+                updated_at=now,
+                domain="general",
+                tags=[],
+                status="open",
+                local_only=False,
+                display_title="Missing evidence for blocked claim"
+            )
+            graph.nodes.append(me_node)
             graph.edges.append(VisualMapEdge(
                 edge_id=f"edge_cg_blocks_{i}",
                 from_node_id=cg_node.node_id,
                 to_node_id=c_node.node_id,
                 edge_type="blocks",
                 reason="Claim guard blocked claim",
+                evidence_ids=[],
+                confidence="high",
+                direction="directed",
+                created_at=now,
+                privacy_level="safe",
+                local_only=False
+            ))
+            graph.edges.append(VisualMapEdge(
+                edge_id=f"edge_cg_claim_me_{i}",
+                from_node_id=c_node.node_id,
+                to_node_id=me_node_id,
+                edge_type="has_missing_evidence",
+                reason="Blocked claim has no accepted supporting evidence",
                 evidence_ids=[],
                 confidence="high",
                 direction="directed",

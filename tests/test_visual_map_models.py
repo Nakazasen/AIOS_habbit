@@ -57,3 +57,20 @@ def test_every_claim_node_has_evidence_or_missing_evidence_edge():
     g.edges.append(VisualMapEdge("e1", "n1", "n2", "supports", "reason", ["E-1"], "high", "dir", "t", "safe", False))
     res = validate_visual_graph(g)
     assert res.ok
+
+def test_evidence_to_claim_support_edge_satisfies_claim_contract():
+    g = VisualKnowledgeGraph()
+    g.nodes.append(VisualMapNode("claim1", "claim", "c", "c", "c", "c", [], "safe", "high", "t", "t", "d", [], "open", False, "c"))
+    g.nodes.append(VisualMapNode("ev1", "evidence", "e", "e", "e", "c", ["E-1"], "safe", "high", "t", "t", "d", [], "open", False, "e"))
+    g.edges.append(VisualMapEdge("edge1", "ev1", "claim1", "supports", "Evidence directly supports claim", ["E-1"], "high", "dir", "t", "safe", False))
+    res = validate_visual_graph(g)
+    assert res.ok, res.errors
+
+def test_missing_evidence_node_does_not_mask_unknown_evidence_ids():
+    g = VisualKnowledgeGraph()
+    g.nodes.append(VisualMapNode("claim1", "claim", "c", "c", "c", "c", ["E-MISSING"], "safe", "high", "t", "t", "d", [], "open", False, "c"))
+    g.nodes.append(VisualMapNode("missing1", "missing_evidence", "m", "m", "m", "c", [], "safe", "high", "t", "t", "d", [], "open", False, "m"))
+    g.edges.append(VisualMapEdge("edge1", "claim1", "missing1", "has_missing_evidence", "Claim needs evidence", [], "high", "dir", "t", "safe", False))
+    res = validate_visual_graph(g)
+    assert not res.ok
+    assert any("E-MISSING" in e for e in res.errors)

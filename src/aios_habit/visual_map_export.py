@@ -1,12 +1,24 @@
 import json
+import hashlib
 import re
 from typing import Dict, Any, List
 from aios_habit.visual_map_models import VisualKnowledgeGraph, VisualMapExportMode
+
+def safe_export_id(value: str) -> str:
+    if not value:
+        return "node_unknown"
+    cleaned = re.sub(r"[^A-Za-z0-9_-]+", "_", value).strip("_")
+    if cleaned == value and len(cleaned) <= 64:
+        return cleaned
+    digest = hashlib.sha256(value.encode("utf-8")).hexdigest()[:12]
+    prefix = cleaned[:48] if cleaned else "id"
+    return f"{prefix}_{digest}"
 
 def redact_string(s: str) -> str:
     if not s:
         return s
     s = re.sub(r'([A-Za-z]:\\[^\s]*|/[a-zA-Z0-9_/-]+)', '[LOCAL_SOURCE]', s)
+    s = re.sub(r'\b[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)*\.(?:local|lan|internal)\b', '[HOSTNAME_REDACTED]', s, flags=re.IGNORECASE)
     s = re.sub(r'VN\d{4,}', '[EMPLOYEE_ID_REDACTED]', s)
     s = s.replace('Bui ' + 'Duc ' + 'Vinh', '[PERSON_REDACTED]')
     return s
@@ -30,7 +42,11 @@ def redact_visual_graph(graph: VisualKnowledgeGraph, mode: VisualMapExportMode) 
         new_graph.edges = [e for e in new_graph.edges if not e.local_only and e.from_node_id in valid_node_ids and e.to_node_id in valid_node_ids]
         
     if redact_paths:
+        id_map = {}
         for n in new_graph.nodes:
+            safe_id = safe_export_id(n.node_id)
+            id_map[n.node_id] = safe_id
+            n.node_id = safe_id
             n.title = redact_string(n.title)
             n.description = redact_string(n.description)
             n.display_title = redact_string(n.display_title)
@@ -39,6 +55,9 @@ def redact_visual_graph(graph: VisualKnowledgeGraph, mode: VisualMapExportMode) 
                 n.title = "[LOCAL_SOURCE]"
                 
         for e in new_graph.edges:
+            e.edge_id = safe_export_id(e.edge_id)
+            e.from_node_id = id_map.get(e.from_node_id, safe_export_id(e.from_node_id))
+            e.to_node_id = id_map.get(e.to_node_id, safe_export_id(e.to_node_id))
             e.reason = redact_string(e.reason)
             
     # Check for NotebookLM/P1.0 claim
