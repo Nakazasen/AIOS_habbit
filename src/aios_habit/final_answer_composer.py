@@ -4,8 +4,10 @@ import hashlib
 import re
 from dataclasses import asdict, dataclass, field
 from datetime import datetime
-from typing import Any, Dict, Iterable, List
+from typing import Any, Dict, List
 
+from aios_habit.domain_playbooks import GENERAL_PLAYBOOK, get_domain_playbook, select_domain_playbook
+from aios_habit.rag_core_profiles import normalize_profile_id
 from aios_habit.rag_evidence import RAGEvidenceItem, RAGEvidencePack
 from aios_habit.source_router import classify_query_profile, route_evidence_by_profile
 
@@ -23,7 +25,7 @@ class FinalOwnerAnswer:
     insufficient_evidence: bool
     confidence_label: str
     warnings: List[str] = field(default_factory=list)
-    composer_name: str = "deterministic_final_owner_composer_v2"
+    composer_name: str = "deterministic_generic_rag_composer_v1"
     provider_call: bool = False
     notebooklm_call: bool = False
     answer_kind: str = "final_owner_answer"
@@ -48,7 +50,7 @@ def _ref_id(index: int) -> str:
 
 def _clean(text: str, limit: int = 220) -> str:
     text = re.sub(r"\s+", " ", (text or "")).strip()
-    return text[: limit - 1].rstrip() + "…" if len(text) > limit else text
+    return text[: limit - 1].rstrip() + "..." if len(text) > limit else text
 
 
 def _source_location(item: RAGEvidenceItem) -> str:
@@ -64,194 +66,218 @@ def _source_location(item: RAGEvidenceItem) -> str:
 
 def _claim_lines(items: List[RAGEvidenceItem], kind: str) -> List[str]:
     if not items:
-        return ["- Chưa có bằng chứng nội dung đủ để trả lời trực tiếp; cần bổ sung nguồn trước khi ra quyết định."]
+        return ["- No extracted content evidence is available for a direct answer."]
+
     top = [_clean(i.snippet, 160) for i in items[:3]]
-    if kind == "excel_mapping":
+    if kind in ("extract_fields", "table_question"):
         return [
-            f"- Bảng/tệp dữ liệu cho thấy các trường và dòng kiểm soát liên quan cần được đối chiếu: {top[0]} [E1].",
-            "- Cần extract chính xác tên bảng, trường dữ liệu, khóa nối (join keys), và trạng thái (status flags).",
-            "- Liệt kê mapping đích/nguồn, và đánh dấu nếu thiếu trường quan trọng.",
+            f"- The table-like evidence relevant to the question starts here: {top[0]} [E1].",
+            "- Extract the concrete table, field/column, key, value, status, or row reference before concluding.",
+            "- If a required field or row is missing, mark it as missing evidence instead of guessing.",
         ]
-    if kind == "process_boundary":
+    if kind == "procedure_steps":
         return [
-            f"- Tài liệu quy trình nêu dấu hiệu về bước xử lý/chuyển giao: {top[0]} [E1].",
-            "- Ranh giới tự động/thủ công: phần hệ thống tự chạy (cần check log) vs phần người dùng phải thao tác (cần owner check).",
-            "- Cần tách rõ quy trình mô tả trong PDF/PPTX với thao tác thực tế đã xảy ra trong case.",
+            f"- The cited procedure evidence describes a step or condition: {top[0]} [E1].",
+            "- Separate documented steps from events that still need logs, records, or other confirmation.",
+            "- Do not turn a procedure description into proof that the event actually happened.",
         ]
-    if kind == "design_change":
+    if kind == "decision_support":
         return [
-            f"- Dấu hiệu thay đổi thiết kế (ECO/ECN/RC): {top[0]} [E1].",
-            "- Đây là luồng design change, không áp dụng template table mapping thông thường.",
-            "- Chú ý sự kiện thay thế linh kiện BOM/BOP, ngày bắt đầu chạy thay đổi, và xác nhận tồn kho cũ.",
+            f"- The strongest cited evidence for the decision is: {top[0]} [E1].",
+            "- Keep recommendations bounded by cited facts and list unresolved risks separately.",
         ]
-    if kind == "screenshot_visible_facts":
+    if kind == "image_visible_facts":
         return [
-            f"- Sự kiện nhìn thấy trực tiếp trong ảnh/OCR: {top[0]} [E1].",
-            "- Chỉ liệt kê các trường, trạng thái, ID, text thực sự thấy trong ảnh; tách biệt phần có OCR uncertainty.",
-            "- Mọi nguyên nhân phía sau ảnh chỉ là suy luận cho tới khi có log/database.",
+            f"- The directly visible image/OCR fact is: {top[0]} [E1].",
+            "- Only use text, IDs, numbers, statuses, or objects visible in the image as image evidence.",
+            "- Causes behind the image require another source; do not infer them from the image alone.",
         ]
-    if kind == "screenshot_unsupported_inference":
+    if kind == "image_limitations":
         return [
-            f"- Bằng chứng hình ảnh/màn hình: {top[0]} [E1].",
-            "- KHÔNG SUY LUẬN trạng thái backend/database hoặc luồng ngầm nếu chỉ nhìn ảnh.",
-            "- Liệt kê rõ những gì không thể kết luận từ ảnh này và yêu cầu cung cấp log hoặc config bổ sung.",
+            f"- The image/screen evidence is: {top[0]} [E1].",
+            "- The image alone cannot prove hidden system state, database state, or background process flow.",
+            "- List what cannot be concluded and what source would be needed next.",
         ]
-    if kind == "schema_tables_fields":
+    if kind == "schema_question":
         return [
-            f"- Schema/HTML cho thấy cấu trúc hoặc trường được trích xuất: {top[0]} [E1].",
-            "- Cần liệt kê bảng, trường và quan hệ được định nghĩa cứng.",
-            "- Không tự tiện suy diễn hành vi runtime từ schema.",
+            f"- The schema/HTML/SQL evidence defines this structure: {top[0]} [E1].",
+            "- List only fields, tables, keys, and relationships visible in the source.",
+            "- Runtime behavior still needs logs, execution records, or operating documents.",
         ]
-    if kind == "schema_unsupported_conclusions":
+    if kind == "troubleshooting_general":
         return [
-            f"- Phân tích schema/HTML: {top[0]} [E1].",
-            "- Cảnh báo: từ schema không thể kết luận được logic hoạt động thực tế đang chạy hay luồng dữ liệu (runtime behavior).",
-            "- Yêu cầu thêm log hệ thống hoặc tài liệu SOP vận hành.",
+            f"- Start the investigation from the most directly relevant cited evidence: {top[0]} [E1].",
+            "- Provide concrete checks tied to available sources, not a generic check-list.",
+            "- Identify missing logs, records, screenshots, configuration, or documents explicitly.",
         ]
-    if kind == "mixed_troubleshooting":
+    if kind == "missing_evidence_general":
         return [
-            f"- Điểm bắt đầu điều tra là bằng chứng có liên quan trực tiếp nhất: {top[0]} [E1].",
-            "- Bắt buộc cung cấp đường hướng điều tra từng bước (step-by-step investigation path).",
-            "- Nêu chuỗi log, cấu hình, và owner action tương ứng.",
+            f"- Current evidence is limited to: {top[0]} [E1].",
+            "- Name the missing artifact/source type and explain why it is required.",
+            "- Prioritize missing evidence by how directly it would answer the question.",
         ]
-    if kind == "missing_evidence":
+    if kind == "handover_general":
         return [
-            f"- Phân tích hiện tại: {top[0]} [E1].",
-            "- Vẫn còn thiếu bằng chứng trọng yếu. Cần chỉ ra đích danh (artifact) nào bị thiếu và tại sao.",
-            "- Đưa ra thứ tự ưu tiên các evidence cần bổ sung.",
+            f"- The handover-relevant evidence is: {top[0]} [E1].",
+            "- Separate next actions, existing evidence, missing evidence, and responsible party only when the source supports it.",
+            "- Do not assign responsibility or deadlines if the evidence does not state them.",
         ]
-    if kind == "owner_handover":
+    if kind == "compare_contrast":
         return [
-            f"- Trích xuất phục vụ bàn giao: {top[0]} [E1].",
-            "- Tổng hợp định dạng handover ngắn gọn, nêu rõ next actions của owner.",
-            "- Chỉ ra các rủi ro, deadline (nếu có), và người phụ trách.",
+            f"- The first comparison anchor is: {top[0]} [E1].",
+            "- Present similarities, differences, and the citation supporting each point.",
         ]
-    # general
+    if kind == "summarize_document":
+        return [
+            f"- The document summary should be anchored in: {top[0]} [E1].",
+            "- Keep the summary scoped to extracted content, not filename assumptions.",
+        ]
     return [
-        f"- Bằng chứng chính cho câu hỏi là: {top[0]} [E1].",
-        "- Các nguồn cần được đọc như một chuỗi dấu hiệu vận hành; kết luận chỉ nên bám vào nội dung đã được trích xuất và cite.",
+        f"- The strongest cited evidence for the question is: {top[0]} [E1].",
+        "- Conclusions must stay inside the extracted content and cited source boundaries.",
     ]
 
 
-def _actions(kind: str, sufficient: bool) -> List[str]:
+def _actions(kind: str, playbook_id: str = GENERAL_PLAYBOOK) -> List[str]:
     common = [
-        "1. Xác nhận câu hỏi owner cần quyết: lỗi ở đâu, ai xử lý, hay bước tiếp theo là gì.",
-        "2. Đối chiếu từng claim với nguồn [E1], [E2] trước khi giao việc.",
+        "1. Restate the exact question and decision needed.",
+        "2. Check every claim against cited evidence [E1], [E2] before acting.",
     ]
-    if kind == "excel_mapping":
-        return common + [
-            "3. Lập bảng mapping: trường nguồn, trường đích, khóa nối, trạng thái, owner dữ liệu.",
-            "4. Kiểm tra các dòng thiếu mã tuyến/mã đơn/trạng thái và so với log vận hành.",
+    if kind in ("extract_fields", "table_question"):
+        actions = common + [
+            "3. Make a field/value/source table for the extracted facts.",
+            "4. Mark absent fields, keys, rows, or values as missing evidence.",
         ]
-    if kind in ("process_boundary", "design_change"):
-        return common + [
-            "3. Tách bước tự động khỏi bước thủ công/phê duyệt trong quy trình.",
-            "4. Kiểm tra log hệ thống cho bước tự động và hỏi owner cho bước thủ công.",
+    elif kind in ("procedure_steps", "decision_support"):
+        actions = common + [
+            "3. Split documented steps from checks that still require records or logs.",
+            "4. Give a recommendation only when the cited evidence supports it.",
         ]
-    if kind.startswith("screenshot"):
-        return common + [
-            "3. Ghi lại facts nhìn thấy trong ảnh; không suy diễn nguyên nhân từ ảnh đơn lẻ.",
-            "4. Thu thêm log, export bảng hoặc SOP cho cùng thời điểm.",
+    elif kind.startswith("image_"):
+        actions = common + [
+            "3. Record visible facts from the image separately from inferred causes.",
+            "4. Ask for another source if the question needs hidden state or causality.",
         ]
-    if kind in ("mixed_troubleshooting", "missing_evidence", "owner_handover"):
-        return common + [
-            "3. Dựng timeline: thời điểm phát sinh, hệ thống liên quan, bước handoff, người xử lý.",
-            "4. Thu missing evidence: log WMS/MOM/AGV, mapping hiện hành, ảnh lỗi, xác nhận owner.",
-            "5. Bàn giao: ghi rõ giả thuyết, bằng chứng ủng hộ, bằng chứng còn thiếu, người chịu trách nhiệm và hạn kiểm tra.",
+    elif kind in ("troubleshooting_general", "missing_evidence_general", "handover_general"):
+        actions = common + [
+            "3. Build a short timeline from the evidence: time, symptom, source, and next check.",
+            "4. Collect missing evidence such as logs, records, configuration, documents, or images.",
+            "5. Handover with: hypothesis, supporting evidence, missing evidence, and responsible party only if cited.",
         ]
-    return common + [
-        "3. Nếu bằng chứng chưa đủ, yêu cầu đúng nguồn còn thiếu thay vì chốt nguyên nhân.",
-    ]
+    else:
+        actions = common + [
+            "3. If evidence is not enough, request the specific missing source instead of guessing.",
+        ]
+
+    if playbook_id != GENERAL_PLAYBOOK:
+        playbook = get_domain_playbook(playbook_id)
+        actions.extend(f"{index}. {text}" for index, text in enumerate(playbook.action_reminders, start=len(actions) + 1))
+    return actions
 
 
-def compose_final_owner_answer(pack: RAGEvidencePack, target_source_type: str = "", case_context: str = "", max_items: int = 6) -> FinalOwnerAnswer:
+def _understanding(kind: str) -> str:
+    if kind.startswith("image_"):
+        return "Visible facts are separated from inference; hidden state or cause needs another source."
+    if kind in ("procedure_steps", "decision_support"):
+        return "Procedure and decision answers must separate documented steps, observed events, and missing checks."
+    if kind in ("extract_fields", "table_question"):
+        return "Table evidence must be handled as fields, rows, keys, values, and source locations."
+    if kind == "schema_question":
+        return "Schema evidence proves structure only; runtime behavior needs execution evidence."
+    if kind in ("troubleshooting_general", "missing_evidence_general", "handover_general"):
+        return "The answer should connect symptom, cited evidence, missing artifacts, and next checks without filling gaps."
+    return "The answer is bounded by extracted content, citations, and explicit uncertainty."
+
+
+def compose_final_owner_answer(
+    pack: RAGEvidencePack,
+    target_source_type: str = "",
+    case_context: str = "",
+    max_items: int = 6,
+    domain_playbook: str = GENERAL_PLAYBOOK,
+    allow_domain_assist: bool = False,
+) -> FinalOwnerAnswer:
     items = _valid_items(pack, max_items)
     profile = classify_query_profile(pack.query, target_source_type)
     routed = route_evidence_by_profile(items, profile, target_source_type)
-    
-    # We use primary items first, then supporting if we need more
+    selected_playbook = select_domain_playbook(
+        question=pack.query,
+        corpus_texts=[i.snippet for i in items],
+        requested_playbook=domain_playbook,
+        allow_domain_assist=allow_domain_assist,
+    )
+
     ordered_items = routed.primary_items + routed.supporting_items
     if not ordered_items and items:
-        ordered_items = items  # ultimate fallback
-        
-    kind = profile.profile_id
+        ordered_items = items
+
+    kind = normalize_profile_id(profile.profile_id)
     citation_ids = [_ref_id(i + 1) for i in range(len(ordered_items))]
     evidence_ids = [i.evidence_id for i in ordered_items]
-    
+
     warnings: List[str] = routed.route_warnings.copy()
     if pack.privacy_mode == "local_only":
         warnings.append("Privacy: local_only evidence stays local; no cloud/provider call was made.")
     if pack.insufficient_evidence or not ordered_items:
-        warnings.append("Evidence is insufficient; treat this as a bounded owner answer with explicit gaps.")
-
+        warnings.append("Evidence is insufficient; treat this as a bounded answer with explicit gaps.")
     if routed.missing_required_source_types:
         warnings.append(f"Missing target source types: {', '.join(routed.missing_required_source_types)}.")
+    if selected_playbook != GENERAL_PLAYBOOK:
+        warnings.append(f"Domain playbook active: {selected_playbook}.")
 
-    conclusion = _claim_lines(ordered_items, kind)
-    actions = _actions(kind, bool(ordered_items) and not pack.insufficient_evidence)
-    
     evidence_lines = []
     for idx, item in enumerate(ordered_items, 1):
         role = "Primary" if item in routed.primary_items else "Supporting"
-        evidence_lines.append(f"- [E{idx}] [{role}] {item.source_title or item.citation_label}: {_clean(item.snippet, 170)}. Vì sao quan trọng: nguồn này neo claim vào {getattr(item, 'file_type', 'source')} và vị trí {_source_location(item)}.")
+        evidence_lines.append(
+            f"- [E{idx}] [{role}] {item.source_title or item.citation_label}: {_clean(item.snippet, 170)}. "
+            f"Why it matters: this source anchors a claim to {getattr(item, 'file_type', 'source')} at {_source_location(item)}."
+        )
 
     table_rows = ["| Ref | Role | Source | Type | Location | Limitation |", "|---|---|---|---|---|---|"]
     for idx, item in enumerate(ordered_items, 1):
         role = "Primary" if item in routed.primary_items else "Supporting"
-        limitation = "snippet trích xuất; cần mở nguồn nếu ra quyết định cuối" if len(item.text) > len(item.snippet) else "phạm vi bằng chứng hẹp"
+        limitation = "extracted snippet; inspect original source before final action" if len(item.text) > len(item.snippet) else "narrow evidence scope"
         table_rows.append(f"| [E{idx}] | {role} | {item.source_title or item.citation_label} | {getattr(item, 'file_type', 'unknown')} | {_source_location(item)} | {limitation} |")
     if not ordered_items:
-        table_rows.append("| n/a | n/a | no extracted content evidence | n/a | n/a | cần bổ sung nguồn nội dung |")
-
-    if kind.startswith("screenshot"):
-        understanding = "Facts nhìn thấy được tách khỏi suy luận: chỉ phần có trong ảnh/OCR được dùng làm bằng chứng; nguyên nhân cần log hoặc tài liệu đối chiếu."
-    elif kind in ("process_boundary", "design_change"):
-        understanding = "Quy trình được hiểu theo ranh giới tự động/thủ công: hệ thống tự kiểm tra dữ liệu/log, còn owner xác nhận ngoại lệ, phê duyệt và xử lý nghiệp vụ."
-    elif kind == "excel_mapping":
-        understanding = "Bằng chứng dạng bảng cần được hiểu qua mapping trường, khóa nối và quan hệ giữa dòng dữ liệu với bước vận hành."
-    elif kind.startswith("schema"):
-        understanding = "Schema/ERD/HTML chỉ chứng minh cấu trúc được nêu rõ; không tự chứng minh hành vi vận hành nếu thiếu log/SOP."
-    elif kind in ("mixed_troubleshooting", "missing_evidence", "owner_handover"):
-        understanding = "Câu hỏi cần một đường điều tra/handover: kết nối triệu chứng, cấu hình, log và owner action thay vì chỉ liệt kê snippets."
-    else:
-        understanding = "Bằng chứng được tổng hợp thành câu trả lời owner-facing, với giới hạn rõ về điều chưa thể kết luận."
+        table_rows.append("| n/a | n/a | no extracted content evidence | n/a | n/a | source content required |")
 
     unsupported = [
-        "- Không kết luận nguyên nhân gốc nếu chưa có log/chứng cứ cùng thời điểm.",
-        "- Không kết luận trách nhiệm cá nhân nếu chưa có xác nhận owner hoặc audit trail.",
-        "- Không kết luận AIOS thay thế NotebookLM; đây là câu trả lời local_owner có giới hạn.",
+        "- Do not conclude root cause without same-period supporting evidence.",
+        "- Do not assign personal responsibility without a cited source.",
+        "- Do not claim AIOS replaces NotebookLM; this is a bounded deterministic answer.",
     ]
     if not ordered_items:
-        unsupported.insert(0, "- Không kết luận nội dung tài liệu vì chưa có extracted content evidence.")
-        
+        unsupported.insert(0, "- Do not conclude document content because no extracted content evidence is available.")
     if routed.missing_required_source_types:
-        unsupported.insert(0, f"- BẮT BUỘC BỔ SUNG: Không thể kết luận đầy đủ do thiếu nguồn chính loại: {', '.join(routed.missing_required_source_types)}.")
+        unsupported.insert(0, f"- REQUIRED MISSING EVIDENCE: cannot conclude fully because primary source type is missing: {', '.join(routed.missing_required_source_types)}.")
 
     confidence = "medium" if ordered_items and not pack.insufficient_evidence else "low"
     if len(ordered_items) >= 4 and not pack.insufficient_evidence and routed.source_type_pass == "PASS":
         confidence = "high"
+    if routed.source_type_pass != "PASS":
+        confidence = "low"
 
     sections = [
-        "## Kết luận ngắn",
-        *conclusion[:6],
+        "## Ket luan ngan",
+        *_claim_lines(ordered_items, kind)[:6],
         "",
-        "## Cách hiểu từ bằng chứng",
-        understanding + (f" Bối cảnh case: {case_context}" if case_context else ""),
+        "## Cach hieu tu bang chung",
+        _understanding(kind) + (f" Case context: {case_context}" if case_context else ""),
         "",
-        "## Bằng chứng chính",
-        *(evidence_lines or ["- Chưa có [E1] vì không có evidence nội dung hợp lệ."]),
+        "## Bang chung chinh",
+        *(evidence_lines or ["- No [E1] content evidence is available."]),
         "",
-        "## Hướng xử lý / kiểm tra",
-        *actions,
+        "## Huong xu ly / kiem tra",
+        *_actions(kind, selected_playbook),
         "",
-        "## Không được kết luận nếu chưa có thêm bằng chứng",
+        "## Khong duoc ket luan neu chua co them bang chung",
         *unsupported,
         "",
-        "## Bảng nguồn",
+        "## Bang nguon",
         *table_rows,
         "",
-        "## Mức tin cậy",
-        f"{confidence}: dựa trên {len(ordered_items)} nguồn nội dung hợp lệ; source_type_pass={routed.source_type_pass}; privacy={pack.privacy_mode}; insufficient_evidence={pack.insufficient_evidence}.",
+        "## Muc tin cay",
+        f"{confidence}: based on {len(ordered_items)} content sources; source_type_pass={routed.source_type_pass}; privacy={pack.privacy_mode}; insufficient_evidence={pack.insufficient_evidence}; domain_playbook={selected_playbook}.",
     ]
 
     return FinalOwnerAnswer(
@@ -266,7 +292,14 @@ def compose_final_owner_answer(pack: RAGEvidencePack, target_source_type: str = 
         insufficient_evidence=pack.insufficient_evidence or not bool(ordered_items),
         confidence_label=confidence,
         warnings=warnings,
-        metadata={"target_source_type": target_source_type, "answer_profile": kind, "source_type_pass": routed.source_type_pass},
+        metadata={
+            "target_source_type": target_source_type,
+            "answer_profile": kind,
+            "generic_profile": kind,
+            "domain_playbook": selected_playbook,
+            "source_type_pass": routed.source_type_pass,
+            "answer_mode": "deterministic",
+        },
     )
 
 

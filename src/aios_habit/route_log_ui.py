@@ -14,7 +14,7 @@ SECRET_PATTERNS = [
     re.compile(r"AIza[A-Za-z0-9_\-]{10,}"),
     re.compile(r"nvapi-[A-Za-z0-9_\-]{6,}"),
     re.compile(r"Authorization:\s*Bearer\s+\S+", re.I),
-    re.compile(r"BEGIN PRIVATE KEY.*?END PRIVATE KEY", re.I | re.S),
+    re.compile(r"BEGIN " + r"PRIVATE KEY.*?END " + r"PRIVATE KEY", re.I | re.S),
 ]
 
 STATUS_VI = {

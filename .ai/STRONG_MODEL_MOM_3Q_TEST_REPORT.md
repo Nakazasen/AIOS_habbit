@@ -1,12 +1,12 @@
-# AIOS Strong Model MOM Test — 3 Câu hỏi khó
+﻿# AIOS Strong Model MOM Test — 3 Câu hỏi khó
 
 Thử nghiệm đánh giá khả năng của Strong Model Answer Bridge (chạy qua chế độ Mode B: evidence-pack manual override) trên tập tài liệu MOM/WMS thực tế.
 
 ## Thông tin môi trường
-- **Repo:** D:\Sandbox\AIOS_habbit
+- **Repo:** [LOCAL_WORKSPACE]\AIOS_habbit
 - **Branch:** main
 - **HEAD pushed:** f4da74a
-- **Dữ liệu thực tế:** D:\Sandbox\MOM_WMS_QLLSSX\tailieugoc
+- **Dữ liệu thực tế:** [LOCAL_WORKSPACE]\MOM_WMS_QLLSSX\tailieugoc
 - **Chế độ chạy:** Mode B (Owner-approved manual strong model test on selected evidence pack)
 
 ## Q1: Thay đổi thiết kế / Running Change
@@ -102,3 +102,4 @@ Strong Model cho thấy khả năng vượt trội so với thuật toán ghép 
 **Recommended next:**
 1. OWNER_REVIEW_3Q_STRONG_ANSWERS
 2. ADD_PDF_ADAPTER_PYMUPDF4LLM (để tăng lượng "Content" thật cho PDF/PPTX, giúp Model có nhiều dữ liệu hơn).
+

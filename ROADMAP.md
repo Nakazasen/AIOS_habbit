@@ -413,6 +413,8 @@ Future research should learn public patterns from RAGFlow, kotaemon, Microsoft G
 
 Immediate:
 
+0. **M1.9 - General RAG Core Reset** - IN PROGRESS; separate generic core from domain playbooks, add claim guard, anti-overfit tests, and fair model-assisted benchmark design. Exit criteria: multi-domain smoke tests pass, no manufacturing text appears in general mode, no general claim is made from a MOM-only benchmark, and privacy-safe AI-assisted flow is defined.
+
 1. **AIOS-RAG-AGENT-HARNESS-0** — DONE locally; research RAG + Claude-Code-style harness patterns, docs only.
 
 2. **AIOS-RAG-INGEST-1** — DONE locally; foundation implemented locally, no vector DB/graph DB yet, no cloud OCR, no provider calls, no NotebookLM parity claim.

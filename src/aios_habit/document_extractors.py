@@ -22,7 +22,6 @@ COMMON_TESSERACT_PATHS = (
     r"C:\Program Files\Tesseract-OCR\tesseract.exe",
     r"C:\Program Files (x86)\Tesseract-OCR\tesseract.exe",
     r"D:\Tools\Tesseract-OCR\tesseract.exe",
-    r"D:\Sandbox\tools\Tesseract-OCR\tesseract.exe",
 )
 USABLE_STATUSES = {"success", "extracted_success", "extracted_partial", "ocr_success", "ocr_partial", "extracted"}
 IMAGE_EXTS = {".png", ".jpg", ".jpeg", ".bmp", ".tif", ".tiff"}

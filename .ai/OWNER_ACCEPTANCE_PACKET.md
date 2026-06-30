@@ -1,8 +1,8 @@
-# Gói chấp nhận Owner AIOS P1
+﻿# Gói chấp nhận Owner AIOS P1
 
 ## Trạng thái hiện tại
 
-- Repo: `D:\Sandbox\AIOS_habbit`
+- Repo: `[LOCAL_WORKSPACE]\AIOS_habbit`
 - Branch: `main`
 - Commit đã push: `e89c848`
 - P1.0: **CHƯA MỞ**
@@ -80,3 +80,4 @@ Không paste dữ liệu công ty thật, MOM docs, API key, file `.env`, `local
 
 - Nếu owner acceptance **PASS**: chuẩn bị P1 opening review.
 - Nếu owner acceptance **FAIL**: quay lại polish owner workflow, ưu tiên giảm thao tác thủ công và làm rõ privacy/evidence flow.
+

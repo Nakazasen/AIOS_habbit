@@ -2,6 +2,8 @@ import re
 from dataclasses import dataclass, field
 from typing import List, Optional
 
+from aios_habit.domain_playbooks import text_has_manufacturing_terms
+
 @dataclass
 class QueryIntent:
     intent_name: str
@@ -50,6 +52,9 @@ INTENT_RULES = [
 
 def extract_query_intent(query: str) -> Optional[QueryIntent]:
     query_lower = query.lower()
+    if not text_has_manufacturing_terms(query_lower):
+        return None
+
     best_intent = None
     max_matches = 0
     

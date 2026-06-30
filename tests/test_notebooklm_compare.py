@@ -127,7 +127,7 @@ def _score_for_text(
         "answer": {
             "answer_text": text,
             "answer_kind": answer_kind,
-            "citation_ids": citations or ["[E1]"],
+            "citation_ids": ["[E1]"] if citations is None else citations,
             "insufficient_evidence": False,
             "warnings": [],
             "metadata": metadata or {},
@@ -236,3 +236,70 @@ def test_missing_target_source_without_admission_is_capped_at_6():
     score = _score_for_text(text, metadata={"source_type_pass": "FAIL"})
     assert score["max_total_score"] <= 6
     assert score["total_score_12"] <= 6
+
+
+def test_source_type_partial_score_cap_at_8_without_override():
+    text = """## Ket luan ngan
+- Application timeout is visible in log [E1].
+## Huong xu ly / kiem tra
+1. Check the cited log.
+2. Compare configuration.
+3. Collect missing record.
+"""
+    score = _score_for_text(text, metadata={"source_type_pass": "PARTIAL"})
+    assert score["max_total_score"] <= 8
+    assert score["total_score_12"] <= 8
+
+
+def test_source_type_fail_score_cap_at_6():
+    score = _score_for_text(
+        "## Ket luan ngan\n- Direct answer [E1].\n## Huong xu ly / kiem tra\n1. Check source.\n2. Check record.\n3. Check log.",
+        metadata={"source_type_pass": "FAIL"},
+    )
+    assert score["max_total_score"] <= 6
+    assert score["total_score_12"] <= 6
+
+
+def test_wrong_domain_playbook_cap_at_6():
+    score = _score_for_text(
+        "## Ket luan ngan\n- Direct answer [E1].\n## Huong xu ly / kiem tra\n1. Check source.\n2. Check record.\n3. Check log.",
+        metadata={"domain_playbook": "manufacturing_mom_wms", "expected_domain_playbook": "general"},
+    )
+    assert score["max_total_score"] <= 6
+    assert score["total_score_12"] <= 6
+
+
+def test_manufacturing_template_in_general_domain_cap_at_6():
+    text = """## Ket luan ngan
+- Check WMS/MOM/AGV handoff [E1].
+## Huong xu ly / kiem tra
+1. Check WMS log.
+2. Check MOM record.
+3. Check AGV signal.
+"""
+    score = _score_for_text(text, metadata={"domain_playbook": "general"})
+    assert score["max_total_score"] <= 6
+    assert score["total_score_12"] <= 6
+
+
+def test_human_review_side_by_side_does_not_imply_pass_or_win():
+    score = _score_for_text(
+        "## Ket luan ngan\n- Direct answer [E1].\n## Huong xu ly / kiem tra\n1. Check source.\n2. Check record.\n3. Check log.",
+        metadata={"side_by_side_status": "HUMAN_REVIEW"},
+    )
+    assert score["max_total_score"] <= 8
+    assert score["winner"] == "aios_only_no_notebooklm_answer"
+
+
+def test_score_10_requires_correct_primary_evidence_and_citations():
+    weak = _score_for_text(
+        "## Ket luan ngan\n- Direct answer.\n## Huong xu ly / kiem tra\n1. Check source.\n2. Check record.\n3. Check log.",
+        citations=[],
+        metadata={"source_type_pass": "PARTIAL"},
+    )
+    strong = _score_for_text(
+        "## Ket luan ngan\n- Direct answer supported by citation [E1].\n## Huong xu ly / kiem tra\n1. Check source.\n2. Check record.\n3. Check log.",
+        metadata={"source_type_pass": "PASS"},
+    )
+    assert weak["total_score_12"] < 10
+    assert strong["max_total_score"] == 12

@@ -1347,7 +1347,7 @@ def page_notebooks():
     notebooks = [n for n in load_notebooks() if n.workspace_id == active_ws_id]
     MOM_NOTEBOOK_ID = "mom"
     MOM_NOTEBOOK_NAME = "Hệ thống MOM"
-    MOM_DEFAULT_SOURCE_ROOT = r"D:\Sandbox\MOM_WMS_QLLSSX\tailieugoc"
+    MOM_DEFAULT_SOURCE_ROOT = ""
     # Avoid duplicate visible labels. Older runtime state may already contain a
     # persisted notebook named "Hệ thống MOM"; the UI must route that name to
     # the MOM adapter only, otherwise folder scan/Q&A fall into custom-notebook
@@ -2563,7 +2563,7 @@ def page_notebooks():
 def page_mom_pilot():
     st.title("📚 Hệ thống MOM trong Sổ tri thức")
     st.warning("Sổ này được xem là tài liệu công ty/mật nên không gửi ra ngoài.")
-    default_root = r"D:\Sandbox\MOM_WMS_QLLSSX\tailieugoc"
+    default_root = ""
     root_path = st.text_input("Thư mục tài liệu MOM", value=default_root, key="mom_root_path")
 
     from aios_habit.real_doc_inventory import scan_mom_inventory, INVENTORY_FILE

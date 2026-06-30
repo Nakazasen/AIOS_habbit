@@ -12,12 +12,12 @@ Danh sﾃ｡ch dﾆｰ盻嬖 ﾄ妥｢y lﾃ seed list ban ﾄ黛ｺｧu, **k
 
 | Project | Path | Status | Role | Evidence Status | Notes |
 |---|---|---|---|---|---|
-| AIOS_habbit | `D:\Sandbox\AIOS_habbit` | active | Main project | candidate | Repository m盻･c tiﾃｪu c盻ｧa n盻］ t蘯｣ng memory |
+| AIOS_habbit | `[LOCAL_WORKSPACE]\AIOS_habbit` | active | Main project | candidate | Repository m盻･c tiﾃｪu c盻ｧa n盻］ t蘯｣ng memory |
 | MP2027 | `<LOCAL_PROJECT_PATH>` | unknown | Related project | candidate | C蘯ｧn Phase 1 inventory |
 | Master Knowledge Manager System (MKMS) | `<LOCAL_PROJECT_PATH>` | unknown | Related knowledge system | candidate | Cﾃｳ th盻・liﾃｪn quan tr盻ｱc ti蘯ｿp ﾄ黛ｺｿn AIOS Habit |
 | ABW_NVIDIA_FUSION_CONTROL | `<LOCAL_PROJECT_PATH>` | unknown | Related project | candidate | C蘯ｧn inventory |
 | Nvidia | `<LOCAL_PROJECT_PATH>` | unknown | Related project | candidate | C蘯ｧn inventory |
-| skill-Anti-brain-wiki_note | `D:\Sandbox\skill-Anti-brain-wiki_note` | unknown | Related skill/project | candidate | C蘯ｧn inventory |
+| skill-Anti-brain-wiki_note | `[LOCAL_WORKSPACE]\skill-Anti-brain-wiki_note` | unknown | Related skill/project | candidate | C蘯ｧn inventory |
 
 ## Project Card Requirements
 
@@ -66,4 +66,5 @@ Phase 1 ph蘯｣i scan cﾃ｡c root ﾄ柁ｰ盻｣c ngﾆｰ盻拱 dﾃｹng c
 - Discover additional projects under allowed roots.
 - Create project cards.
 - Separate active, archived, experimental and unknown projects.
+
 

@@ -1,9 +1,9 @@
-# Next NotebookLM Real Run Packet
+﻿# Next NotebookLM Real Run Packet
 
 ## Current state
 
 - Current commit: `35dc85c`
-- Source folder: `D:\Sandbox\MOM_WMS_QLLSSX\tailieugoc`
+- Source folder: `[LOCAL_WORKSPACE]\MOM_WMS_QLLSSX\tailieugoc`
 - Existing AIOS run path: `local_runs/notebooklm_compare/`
 - Current status: AIOS answers exist; NotebookLM answers are missing.
 - P1.0: NOT opened
@@ -32,9 +32,9 @@ nlm notebook list --json
 ```text
 /goal Run the real NotebookLM import/query/collect pass for AIOS_habbit comparison MVP.
 
-Repo: D:\Sandbox\AIOS_habbit
+Repo: [LOCAL_WORKSPACE]\AIOS_habbit
 Commit: 35dc85c
-Source folder: D:\Sandbox\MOM_WMS_QLLSSX	ailieugoc
+Source folder: [LOCAL_WORKSPACE]\MOM_WMS_QLLSSX	ailieugoc
 Runtime folder: local_runs/notebooklm_compare/
 
 Use nlm commands only:
@@ -49,3 +49,4 @@ Do not commit local_runs, NotebookLM answers, raw company content, generated DB/
 Do not claim NotebookLM parity.
 Do not open P1.0.
 ```
+

@@ -13,6 +13,8 @@ from aios_habit.rag_ingest import build_chunks_from_elements, build_elements_fro
 from aios_habit.rag_rerank import rerank_search_results
 from aios_habit.rag_search import create_rag_search_schema, index_rag_chunks, search_rag_chunks
 from aios_habit.document_extractors import _extract_excel, _extract_pdf
+from aios_habit.domain_playbooks import GENERAL_PLAYBOOK, MANUFACTURING_PLAYBOOK, text_has_manufacturing_terms
+from aios_habit.rag_core_profiles import normalize_profile_id
 
 SUPPORTED_TEXT_SUFFIXES = {".txt", ".md", ".csv", ".log", ".json", ".xml", ".html", ".htm"}
 SUPPORTED_METADATA_SUFFIXES = {".pdf", ".xlsx", ".xlsm", ".xls", ".pptx", ".ppt", ".png", ".jpg", ".jpeg"}
@@ -342,8 +344,12 @@ def _score_pair(aios: Dict[str, Any], nlm: Optional[Dict[str, Any]]) -> Dict[str
     question = aios.get("question", {}).get("question", "")
     answer_text = answer.get("answer_text", "") or ""
     answer_kind = answer.get("answer_kind", "local_evidence_draft")
-    answer_profile = answer.get("metadata", {}).get("answer_profile", "")
+    metadata = answer.get("metadata", {})
+    answer_profile = normalize_profile_id(metadata.get("answer_profile", ""))
     source_type_pass = answer.get("metadata", {}).get("source_type_pass", "PASS")
+    domain_playbook = metadata.get("domain_playbook", GENERAL_PLAYBOOK)
+    expected_domain_playbook = metadata.get("expected_domain_playbook", "")
+    human_override = str(metadata.get("human_override", "")).lower() == "true"
 
     has_citations = bool(answer.get("citation_ids"))
     insufficient = bool(answer.get("insufficient_evidence"))
@@ -382,21 +388,39 @@ def _score_pair(aios: Dict[str, Any], nlm: Optional[Dict[str, Any]]) -> Dict[str
     q_lower = question.lower()
     ans_lower = answer_text.lower()
     
-    is_process_q = any(k in q_lower for k in ["process", "quy trình", "automatic/manual", "boundary", "troubleshooting", "điều tra"])
-    if is_process_q and answer_profile == "excel_mapping":
+    is_process_q = any(k in q_lower for k in ["process", "quy trﾃｬnh", "quy trình", "automatic/manual", "boundary", "troubleshooting", "ﾄ訴盻「 tra", "điều tra"])
+    if is_process_q and answer_profile in {"extract_fields", "table_question"}:
         _apply_score_cap(scores, 6, "process question answered as table mapping")
         
-    if answer_profile.startswith("screenshot") and "schema/html" in ans_lower and "sự kiện nhìn thấy trực tiếp" not in ans_lower:
+    if answer_profile.startswith("image_") and "schema/html" in ans_lower and "directly visible" not in ans_lower:
         _apply_score_cap(scores, 5, "screenshot question using HTML primary evidence")
         
-    if answer_profile == "excel_mapping":
-        if not any(k in ans_lower for k in ["trường", "field", "cột", "khóa", "mapping", "bảng"]):
+    if answer_profile in {"extract_fields", "table_question"}:
+        if not any(k in ans_lower for k in ["trﾆｰ盻拵g", "trường", "field", "column", "cột", "key", "khﾃｳa", "khóa", "mapping", "table", "b蘯｣ng"]):
             _apply_score_cap(scores, 6, "no concrete field/table/key extraction for Excel mapping")
             
     if source_type_pass == "FAIL":
         _apply_score_cap(scores, 6, "target source type unavailable")
-    elif source_type_pass == "PARTIAL" and "không thể kết luận đầy đủ" not in ans_lower:
-        _apply_score_cap(scores, 6, "target source type partially unavailable and answer does not admit missing evidence")
+    elif source_type_pass == "PARTIAL":
+        if not human_override:
+            _apply_score_cap(scores, 8, "source routing is PARTIAL")
+        if "cannot conclude fully" not in ans_lower and "không thể kết luận đầy đủ" not in ans_lower and "khong the ket luan day du" not in ans_lower:
+            _apply_score_cap(scores, 6, "target source type partially unavailable and answer does not admit missing evidence")
+
+    if expected_domain_playbook and domain_playbook != expected_domain_playbook:
+        _apply_score_cap(scores, 6, "answer used the wrong domain playbook")
+
+    if domain_playbook == GENERAL_PLAYBOOK and text_has_manufacturing_terms(answer_text):
+        _apply_score_cap(scores, 6, "manufacturing playbook language appeared in general-domain answer")
+
+    if domain_playbook == MANUFACTURING_PLAYBOOK and expected_domain_playbook == GENERAL_PLAYBOOK:
+        _apply_score_cap(scores, 6, "manufacturing playbook used for a general-domain question")
+
+    if str(metadata.get("side_by_side_status", "")).upper() == "HUMAN_REVIEW":
+        _apply_score_cap(scores, 8, "side-by-side HUMAN_REVIEW is not a pass/win signal")
+
+    if source_type_pass != "PASS" or insufficient or not citation_supported or _is_generic_local_draft(answer_text):
+        _apply_score_cap(scores, 9, "score 10 requires direct answer, correct primary evidence, concrete facts, claim citations, and no undermining missing-evidence warning")
 
     raw_total = sum(scores[k] for k in ["answer_relevance", "citation_usefulness", "source_traceability", "completeness", "practical_usefulness"])
     scores["total_score_12"] = min(raw_total, scores["max_total_score"])

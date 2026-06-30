@@ -17,7 +17,7 @@ Gate: AIOS-Router-0 — Source Audit + Vietnamese Auto Policy Plan
 
 ### translation_app
 
-- local path: `D:\Sandbox\translation_app`
+- local path: `[LOCAL_WORKSPACE]\translation_app`
 - exists: yes
 - remote: `https://github.com/Nakazasen/translation_app.git`
 - branch: `wip/phase-5n-f-ocr-benchmark`
@@ -27,7 +27,7 @@ Gate: AIOS-Router-0 — Source Audit + Vietnamese Auto Policy Plan
 
 ### nvidia-server
 
-- local path: `D:\Sandbox\Nvidia`
+- local path: `[LOCAL_WORKSPACE]\Nvidia`
 - exists: yes
 - remote: `https://github.com/Nakazasen/nvidia-server`
 - branch: `main`
@@ -416,3 +416,4 @@ Reason:
 - AIOS must first protect users from technical routing concepts.
 - It must ensure company/confidential documents are safely handled before enabling the broad provider pool for normal documents.
 - This creates the correct UX and safety foundation for AIOS-Router-2 and AIOS-Router-3.
+

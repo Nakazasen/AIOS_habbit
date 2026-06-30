@@ -1,5 +1,6 @@
 from dataclasses import dataclass, field
 from typing import List, Dict, Any, Union
+from .rag_core_profiles import classify_generic_query_profile, expected_source_types_for, normalize_profile_id
 from .rag_search import RAGSearchResult
 from .rag_evidence import RAGEvidenceItem
 
@@ -18,42 +19,8 @@ class RoutedEvidence:
     source_type_pass: str  # "PASS", "PARTIAL", "FAIL"
 
 def classify_query_profile(question: str, target_source_type: str = "") -> QueryProfile:
-    q_lower = question.lower()
-    
-    # Priority classification
-    if target_source_type in ["png", "jpg", "screenshot", "image"]:
-        if "what does" in q_lower and "show" in q_lower or "visible" in q_lower or "thấy gì" in q_lower:
-            return QueryProfile("screenshot_visible_facts", ["screenshot", "image", "png", "jpg"])
-        return QueryProfile("screenshot_unsupported_inference", ["screenshot", "image", "png", "jpg"])
-
-    # Handover and missing evidence check
-    if "missing" in q_lower and "evidence" in q_lower:
-        return QueryProfile("missing_evidence", ["log", "chat", "note", "mixed"])
-    if "handover" in q_lower or "bàn giao" in q_lower or "next action" in q_lower:
-        return QueryProfile("owner_handover", ["log", "chat", "note", "mixed", "pdf", "xlsx", "screenshot"])
-    if "troubleshooting" in q_lower or "step-by-step" in q_lower or "kiểm tra gì" in q_lower or "thiếu bằng chứng" in q_lower:
-        return QueryProfile("mixed_troubleshooting", ["log", "chat", "note", "mixed", "pdf", "xlsx"])
-
-    if "screenshot" in q_lower or "ảnh" in q_lower or "nhìn thấy" in q_lower:
-        if "what does" in q_lower and "show" in q_lower or "visible" in q_lower or "thấy gì" in q_lower:
-            return QueryProfile("screenshot_visible_facts", ["screenshot", "image", "png", "jpg"])
-        return QueryProfile("screenshot_unsupported_inference", ["screenshot", "image", "png", "jpg"])
-
-    if "automatic/manual boundary" in q_lower or "process" in q_lower or "quy trình" in q_lower or "chủ sở hữu" in q_lower:
-        return QueryProfile("process_boundary", ["pdf", "pptx", "word", "document"])
-
-    if "map" in q_lower or "mapping" in q_lower or "export" in q_lower or "import" in q_lower:
-        return QueryProfile("excel_mapping", ["xlsx", "xls", "csv", "excel", "spreadsheet"])
-
-    if "schema" in q_lower or "table" in q_lower and "field" in q_lower and "database" in q_lower:
-        if "behavior" in q_lower or "logic" in q_lower:
-            return QueryProfile("schema_unsupported_conclusions", ["html", "sql", "csv", "xlsx"])
-        return QueryProfile("schema_tables_fields", ["html", "sql", "csv", "xlsx"])
-
-    if "design change" in q_lower or "eco" in q_lower or "ecn" in q_lower or "revup" in q_lower:
-        return QueryProfile("design_change", ["pdf", "pptx", "document", "excel", "xlsx"])
-
-    return QueryProfile("general", ["pdf", "pptx", "xlsx", "csv", "screenshot", "image", "png", "jpg", "html", "document", "spreadsheet"])
+    profile_id = classify_generic_query_profile(question, target_source_type)
+    return QueryProfile(profile_id, expected_source_types_for(profile_id))
 
 def get_base_source_type(file_type: str) -> str:
     ft = file_type.lower()
@@ -84,7 +51,9 @@ def route_evidence_by_profile(items: List[Union[RAGSearchResult, RAGEvidenceItem
             expected_bases.insert(0, explicit_target_base)
             
     # Also if the profile is screenshot related but target_source_type is empty, still prefer screenshot
-    if profile.profile_id.startswith("screenshot"):
+    normalized_profile = normalize_profile_id(profile.profile_id)
+
+    if normalized_profile.startswith("image_"):
         if "screenshot" not in expected_bases:
             expected_bases.insert(0, "screenshot")
     
@@ -100,8 +69,8 @@ def route_evidence_by_profile(items: List[Union[RAGSearchResult, RAGEvidenceItem
             else:
                 supporting.append(item)
         else:
-            if base_type == "schema" and profile.profile_id.startswith("screenshot"):
-                # Very specific demotion: html/erd for screenshot questions
+            if base_type == "schema" and normalized_profile.startswith("image_"):
+                # Very specific demotion: html/erd for image-visible questions.
                 demoted.append(item)
             else:
                 # Still use as supporting if not explicitly demoted
@@ -116,9 +85,9 @@ def route_evidence_by_profile(items: List[Union[RAGSearchResult, RAGEvidenceItem
             warnings.append(f"Required primary source type '{primary_expected}' not found.")
         else:
             # Maybe partial if mixed profile
-            if profile.profile_id.startswith("mixed") and len(found_bases) < 2:
+            if normalized_profile in {"troubleshooting_general", "missing_evidence_general", "handover_general"} and len(found_bases) < 2:
                 source_type_pass = "PARTIAL"
-                warnings.append("Mixed profile requested but only one source type found.")
+                warnings.append("Multi-evidence profile requested but only one source type found.")
                 
     if not primary and supporting:
         # Fallback

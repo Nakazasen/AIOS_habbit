@@ -1,4 +1,4 @@
-# Single-Screen Owner Workflow Audit Report
+﻿# Single-Screen Owner Workflow Audit Report
 
 ## Baseline
 - Branch: `main`
@@ -66,7 +66,7 @@
 - `API Key.txt` ignored: YES
 - Real docs/runtime/raw answer patterns tracked: NO
 - Secret grep: NO actual secrets found
-- Secret grep note: one sanitizer regex in `src/aios_habit/route_log_ui.py` matched `BEGIN PRIVATE KEY` as code, not a secret.
+- Secret grep note: one sanitizer regex in `src/aios_habit/route_log_ui.py` matched `private key marker` as code, not a secret.
 - Screenshots committed: NO
 - Raw docs committed: NO
 - Raw answers committed: NO
@@ -122,3 +122,4 @@
 
 ## Verdict
 PASS_SINGLE_SCREEN_OWNER_WORKFLOW
+

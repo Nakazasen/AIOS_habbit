@@ -66,7 +66,7 @@ def page_dashboard():
 def page_projects():
     st.title("📂 Project Discovery")
     
-    root_path = st.text_input("Root Path to Scan", value=r"D:\Sandbox")
+    root_path = st.text_input("Root Path to Scan", value="")
     max_depth = st.number_input("Max Depth", min_value=1, max_value=5, value=2)
     dry_run = st.checkbox("Dry Run (Don't save to inventory)", value=True)
     

@@ -1,6 +1,6 @@
 ﻿# RAG Weak Format Audit Report
 
-Real MOM folder used locally only: `D:\Sandbox\MOM_WMS_QLLSSX\tailieugoc`.
+Real MOM folder used locally only: `[LOCAL_WORKSPACE]\MOM_WMS_QLLSSX\tailieugoc`.
 
 No raw document text is included here. Aggregates were written under ignored `local_runs/rag_hardening_sweep/`.
 
@@ -26,3 +26,4 @@ No raw document text is included here. Aggregates were written under ignored `lo
 2. Improve PPTX/DOCX fidelity only if owner needs layout-level reconstruction.
 3. Improve OCR language packs for Japanese/Vietnamese screenshots.
 4. Add evaluator/owner acceptance before claiming any parity.
+
