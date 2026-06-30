@@ -517,3 +517,19 @@ Exit criteria:
 - Privacy and citation validation are enforced.
 - Validated answer is saved back to the case.
 - Bridge tests and full pytest pass.
+
+## M1.11 - Visual Knowledge Map MVP Design
+
+Status: DESIGN_READY.
+
+Scope:
+- Design a local-first evidence-grounded work graph for Cases, Evidence, Sources, Claims, Answers, Decisions, Actions, Risks, Learning Cards, and Domain Playbooks.
+- Define generic node and typed edge schemas.
+- Define deterministic graph generation pipeline, privacy export modes, UI MVP boundaries, and future tests.
+- Keep the graph generic across HR, accounting, Japanese learning, IT manuals, legal/contracts, manufacturing, and general office work.
+
+Not included:
+- No graph UI implementation yet.
+- No new visualization library yet.
+- No NotebookLM replacement or parity claim.
+- No P1.0 opening.
