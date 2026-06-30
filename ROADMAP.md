@@ -506,3 +506,14 @@ Later:
    - No real docs/runtime outputs committed.
    - No vector/graph drift.
    - Owner acceptance still required.
+
+
+## M1.10 ? Antigravity Bridge Manual-Step Reduction
+
+Exit criteria:
+- Owner can create a local Antigravity handoff bundle from Case Cockpit.
+- Owner can import a response from the UI without CLI.
+- Raw JSON paste is not required as the default path.
+- Privacy and citation validation are enforced.
+- Validated answer is saved back to the case.
+- Bridge tests and full pytest pass.

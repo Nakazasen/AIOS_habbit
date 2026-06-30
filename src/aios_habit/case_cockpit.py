@@ -50,7 +50,9 @@ from aios_habit.strong_answer_ui import (
 from aios_habit.rag_answer_composer import compose_answer
 from aios_habit.ide_handoff_bridge import (
     import_ide_response,
+    import_pending_ide_response,
     save_imported_ide_answer,
+    vietnamese_next_step_instruction,
     write_ide_handoff_bundle,
 )
 
@@ -581,8 +583,8 @@ def page_prompt_pack():
             st.write(f"- {ref}")
 
     st.divider()
-    st.subheader("2. Hỏi AI IDE từ gói bằng chứng đầy đủ")
-    st.caption("Gói bằng chứng đầy đủ trong phạm vi đã chọn. Không tự động gọi cloud. Bạn chịu trách nhiệm nếu dùng IDE cloud model với dữ liệu local_only. AIOS sẽ kiểm tra response trước khi lưu.")
+    st.subheader("Cầu nối model mạnh qua Antigravity")
+    st.caption("Luồng UI-first: tạo gói local, Antigravity đọc bundle, lưu response.json vào inbox, rồi Case Cockpit tự kiểm tra/import. Không cần CLI và không cần dán JSON ở luồng mặc định.")
     ide_question = st.text_area("Câu hỏi cần gửi gói bằng chứng đầy đủ", key="ide_full_bundle_question", height=90, value=strong_question)
     scope_label = st.selectbox("Phạm vi bundle", ["Hồ sơ hiện tại: gửi toàn bộ bằng chứng trong case", "Kết quả truy xuất + toàn bộ manifest nguồn", "Thư mục local đã chọn: gửi toàn bộ evidence đã extract từ folder"], key="ide_bundle_scope_label")
     scope_map = {
@@ -590,7 +592,7 @@ def page_prompt_pack():
         "Kết quả truy xuất + toàn bộ manifest nguồn": "current_question_retrieval_plus_full_scope_manifest",
         "Thư mục local đã chọn: gửi toàn bộ evidence đã extract từ folder": "selected_folder_all",
     }
-    if st.button("1. Gửi gói bằng chứng đầy đủ cho AI IDE", key="create_ide_full_bundle"):
+    if st.button("Tạo gói gửi Antigravity", key="create_ide_full_bundle"):
         if not ide_question.strip():
             st.error("Vui lòng nhập câu hỏi cần gửi gói bằng chứng đầy đủ.")
         else:
@@ -604,24 +606,65 @@ def page_prompt_pack():
     req = st.session_state.get("ide_full_bundle_request")
     if req:
         st.write(f"request_id: `{req.request_id}`")
-        st.write(f"bundle path: `{req.bundle_dir}`")
+        st.write(f"outbox folder: `{req.bundle_dir}`")
+        st.write(f"expected inbox response path: `{req.inbox_response_path}`")
+        st.write(f"privacy status: `{req.manifest['privacy_mode']}` · local_only: `{req.manifest['local_only']}`")
         st.write(f"source_count: `{req.manifest['source_count']}` · evidence_item_count: `{req.manifest['evidence_item_count']}` · chunk_count: `{req.manifest['chunk_count']}` · total_text_chars: `{req.manifest['total_text_chars']}`")
         st.write(f"FULL_BUNDLE_COMPLETE: `{req.manifest['FULL_BUNDLE_COMPLETE']}`")
-        st.warning("Tự động gọi cloud bị chặn. Bundle local_only chỉ dùng với IDE/model path được owner phê duyệt.")
+        if req.manifest.get("local_only"):
+            st.warning("Dữ liệu local_only: AIOS chặn gọi cloud/provider tự động; chỉ dùng Antigravity/model path được owner phê duyệt.")
+        st.info(vietnamese_next_step_instruction(req.request_id, req.bundle_dir, req.inbox_response_path or "", req.manifest["privacy_mode"]))
         st.text_area("Lệnh cho Antigravity / IDE AI", value=req.ide_instruction, height=150)
 
-    response_json_path = st.text_input("Đường dẫn response JSON từ IDE", key="ide_response_json_path", placeholder="local_runs/ide_handoff/inbox/RESP-REQ-....json")
-    if st.button("2. Nhập câu trả lời từ AI IDE", key="import_ide_full_bundle_response"):
-        try:
-            validation = import_ide_response(response_json_path)
+    if st.button("Kiểm tra phản hồi từ Antigravity", key="check_ide_full_bundle_response"):
+        req = st.session_state.get("ide_full_bundle_request")
+        if not req:
+            st.error("Chưa có request_id. Hãy bấm Tạo gói gửi Antigravity trước.")
+        else:
+            validation = import_pending_ide_response(req.request_id)
+            st.session_state["ide_full_bundle_validation"] = validation
             if not validation.ok:
-                st.error("Response không hợp lệ: " + "; ".join(validation.errors))
+                st.error("Response chưa hợp lệ: " + "; ".join(validation.errors))
             else:
+                st.success("Response hợp lệ. Có thể lưu câu trả lời mạnh vào hồ sơ.")
+
+    validation = st.session_state.get("ide_full_bundle_validation")
+    if validation:
+        st.write(f"validation status: `{validation.ok}` · final: `{validation.final_answer}`")
+        if validation.errors:
+            st.error("; ".join(validation.errors))
+        if validation.warnings:
+            st.warning("; ".join(validation.warnings))
+        if validation.response.get("answer_text"):
+            st.text_area("Imported answer preview", value=validation.response.get("answer_text", ""), height=160, disabled=True)
+        st.write("Citation/evidence validation:")
+        for ref in validation.response.get("evidence_ids_used", []):
+            st.write(f"- {ref}")
+
+    if st.button("Lưu câu trả lời mạnh vào hồ sơ", key="save_imported_ide_answer"):
+        validation = st.session_state.get("ide_full_bundle_validation")
+        if not validation or not validation.ok:
+            st.error("Chưa có response hợp lệ để lưu.")
+        else:
+            try:
                 saved_ide = save_imported_ide_answer(active_case.case_id, validation)
                 st.session_state["saved_ide_full_bundle_answer"] = saved_ide
-                st.success("Đã import và lưu câu trả lời IDE gói bằng chứng đầy đủ vào hồ sơ.")
-        except Exception as exc:
-            st.error(f"Không import được response IDE: {exc}")
+                st.success("Đã lưu câu trả lời mạnh từ Antigravity vào hồ sơ.")
+            except Exception as exc:
+                st.error(f"Không lưu được response IDE: {exc}")
+
+    with st.expander("Fallback thủ công: nhập đường dẫn response JSON cũ"):
+        response_json_path = st.text_input("Đường dẫn response JSON từ IDE", key="ide_response_json_path", placeholder="local_runs/ide_handoff/inbox/<request_id>/response.json")
+        if st.button("Nhập câu trả lời từ đường dẫn thủ công", key="import_ide_full_bundle_response"):
+            try:
+                validation = import_ide_response(response_json_path)
+                st.session_state["ide_full_bundle_validation"] = validation
+                if not validation.ok:
+                    st.error("Response không hợp lệ: " + "; ".join(validation.errors))
+                else:
+                    st.success("Đã kiểm tra response thủ công. Bấm lưu để ghi vào hồ sơ.")
+            except Exception as exc:
+                st.error(f"Không import được response IDE: {exc}")
 
     saved_ide = st.session_state.get("saved_ide_full_bundle_answer")
     if saved_ide:
