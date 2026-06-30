@@ -18,11 +18,18 @@ AIOS WorkLens is a Personal Senior Work Intelligence System (Hệ thống trí t
    ```bash
    py -3 -m pip install -e .
    ```
-2. **Launch Case Cockpit:**
+2. **Launch Case Cockpit (Legacy):**
    Double-click [RUN_AIOS_CASE_COCKPIT.bat](RUN_AIOS_CASE_COCKPIT.bat) on Windows, or run:
    ```bash
    py -3 -m streamlit run src\aios_habit\case_cockpit.py
    ```
+3. **Launch Workspace Chat (New):**
+   Run the following command to start the new owner-friendly workspace chat interface:
+   ```bash
+   py -3 -m streamlit run src\aios_habit\workspace_chat_app.py
+   ```
+   > [!NOTE]
+   > The Workspace Chat is currently in **Phase 1 (UI Shell & Mock Placeholders)**. It provides a parallel, independent UI for managing notebooks, conversations, and temporary sources, but does not yet connect to live AI routing, execute real case saving, or run structural map validation.
 
 ---
 

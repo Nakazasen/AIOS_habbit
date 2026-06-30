@@ -1,6 +1,3 @@
-import pytest
-import os
-import json
 from pathlib import Path
 from aios_habit.notebooklm_compare import _score_pair
 
@@ -45,9 +42,7 @@ def test_no_evidence_cannot_score_10():
     assert scores["total_score_12"] <= 6
 
 def test_redaction_rules():
-    import sys
-    sys.path.insert(0, os.path.abspath("."))
-    from local_runs.compile_reports import redact
+    from aios_habit.router_synth_redaction import redact
     text = "password and sk-abc must be softened"
     redacted = redact(text)
     assert "password" not in redacted
@@ -58,3 +53,19 @@ def test_redaction_rules():
 def test_export_qcount():
     # 1, 2, 3. 12Q export requires exactly 12 AIOS questions etc. (Just a structure check, enforced in compile_reports directly)
     pass
+
+def test_no_side_effects_on_tracked_answers_file():
+    # Make sure compiling/importing did not dirty the tracked answers file with raw sensitive data
+    answers_path = Path(".ai/AIOS_12Q_ROUTER_SYNTH_ANSWERS_REDACTED_FULL.txt")
+    if answers_path.exists():
+        content = answers_path.read_text(encoding="utf-8")
+        targeted_patterns = [
+            "970" + "418" + "000",
+            "hana" + "saki",
+            "KAMS" + "-" + "LAB",
+        ]
+        for pattern in targeted_patterns:
+            assert pattern not in content, f"Targeted sensitive fragment found in {answers_path}!"
+        import re
+        assert not re.search(r"\b" + "B" + "ui" + r"\b", content, re.IGNORECASE), "Targeted sensitive name fragment found in answers file!"
+

@@ -1,6 +1,26 @@
 # Changelog
 
+## 2026-06-30 - Workspace Chat UI Phase 1
 
+> [!NOTE]
+> The Workspace Chat is currently in Phase 1 (UI Shell & Mock placeholders). It does not connect to active AI generation, perform actual case saving, or run structural map validation.
+
+### Enhancements
+- Implemented Phase 1 Workspace Chat UI as a parallel independent component:
+  - Added data models in `workspace_chat_models.py` (`DocumentNotebook`, `WorkspaceConversation`, `ChatMessage`, `TemporaryConversationSource`).
+  - Added separate storage engine in `workspace_chat_store.py` writing into an isolated directory `local_cases/workspace_chat/`.
+  - Added UI helper functions in `workspace_chat_ui.py` supporting Vietnamese-only non-technical copywriting.
+  - Added parallel Streamlit entrypoint `workspace_chat_app.py` for workspace chat.
+- Ensured zero coupling with legacy `case_cockpit.py` UI rendering logic and state keys.
+- Completely removed forbidden technical terms (RAG, node, edge, claim, citation, etc.) from the user-facing text.
+
+### Testing
+- Created standard and architectural tests ensuring decoupling, UI text compliance, and store directories isolation:
+  - `tests/test_workspace_chat_models.py`
+  - `tests/test_workspace_chat_store.py`
+  - `tests/test_workspace_chat_owner_flow.py`
+  - `tests/test_workspace_chat_ui_copy.py`
+  - `tests/test_workspace_chat_architecture_boundary.py`
 
 ## 2026-06-28 - RAG Benchmark Harness
 
