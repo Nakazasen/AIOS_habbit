@@ -68,6 +68,28 @@ Exit criteria:
 - no unsafe content committed.
 
 
+
+
+### M1.14A — Visual Map UI Reference Study
+
+Status: DONE.
+
+Scope:
+
+- studied Obsidian, React Flow, Cytoscape.js, D3-force, and optional graph/citation UX patterns;
+- translated proven patterns into an AIOS-specific, evidence-grounded, local-first Visual Map UI design;
+- selected Streamlit table-first UI as the recommended next implementation path;
+- did not implement UI, add dependencies, add a graph database, run benchmarks, open P1.0, or claim NotebookLM replacement/global parity.
+
+Exit criteria:
+
+- reference study document created;
+- interaction decision document created;
+- roadmap updated;
+- validation and safety scan passed;
+- only safe design docs committed.
+
+
 ## Mission and Non-goals
 
 
