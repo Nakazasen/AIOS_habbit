@@ -26,6 +26,7 @@ from aios_habit.workspace_chat_models import (
     SOURCE_SCOPE_NOTEBOOK,
     SOURCE_SCOPE_TEMPORARY
 )
+from aios_habit.workspace_chat_excel import extract_xlsx_text
 from aios_habit.workspace_chat_ui import (
     get_vietnamese_labels,
     render_notebook_header,
@@ -295,6 +296,38 @@ else:
                             safe_rerun()
                         else:
                             st.error("Nội dung nguồn không được để trống.")
+
+            # Khung thêm file Excel .xlsx vào nguồn tạm của cuộc trò chuyện
+            st.write(" ")
+            with st.expander("📊 Thêm file Excel .xlsx"):
+                with st.form(f"excel_upload_form_{active_conversation.id}"):
+                    uploaded_excel = st.file_uploader(
+                        "Chọn file Excel cho cuộc trò chuyện này",
+                        type=["xlsx", "xls"],
+                        key=f"wsc_excel_upload_{active_conversation.id}",
+                    )
+                    if st.form_submit_button("Đọc và thêm vào nguồn tạm"):
+                        if uploaded_excel is None:
+                            st.error("Không thể đọc file Excel này. Vui lòng kiểm tra lại file hoặc thử file nhỏ hơn.")
+                        else:
+                            result = extract_xlsx_text(uploaded_excel.getvalue(), uploaded_excel.name)
+                            if result.ok:
+                                temporary_source = TemporaryConversationSource(
+                                    id=f"SRC-{uuid.uuid4().hex[:8].upper()}",
+                                    conversation_id=active_conversation.id,
+                                    source_type="xlsx",
+                                    title=result.filename,
+                                    content_preview=result.preview,
+                                    content_text=result.text
+                                )
+                                save_temporary_source(temporary_source)
+                                set_source_enabled(active_conversation.id, SOURCE_SCOPE_TEMPORARY, temporary_source.id, True)
+                                st.session_state.wsc_action_message = "Đã đọc nội dung Excel và thêm vào nguồn tạm của cuộc trò chuyện. Nguồn Excel mới đã được bật cho cuộc trò chuyện này."
+                                if result.truncated:
+                                    st.session_state.wsc_action_error = result.owner_message
+                                safe_rerun()
+                            else:
+                                st.error(result.owner_message)
                             
         with col_results:
             # Hiển thị câu trả lời và nguồn chứng minh bên phải

@@ -284,4 +284,169 @@ def test_app_wiring_structure():
             
     PromoteChecker().visit(tree)
 
+    # Phase 2C: XLSX upload form is conversation-scoped and main-area only.
+    assert "Thêm file Excel .xlsx" in source
+    assert "Chọn file Excel cho cuộc trò chuyện này" in source
+    assert "Đọc và thêm vào nguồn tạm" in source
+    assert 'key=f"wsc_excel_upload_{active_conversation.id}"' in source
+    assert 'type=["xlsx", "xls"]' in source
 
+    # Phase 2C: success flow order is extract -> temp source -> save -> enable -> rerun.
+    extract_idx = source.find("result = extract_xlsx_text(uploaded_excel.getvalue(), uploaded_excel.name)")
+    temp_idx = source.find("temporary_source = TemporaryConversationSource", extract_idx)
+    xlsx_type_idx = source.find('source_type="xlsx"', temp_idx)
+    title_idx = source.find("title=result.filename", temp_idx)
+    preview_idx = source.find("content_preview=result.preview", temp_idx)
+    text_idx = source.find("content_text=result.text", temp_idx)
+    save_xlsx_idx = source.find("save_temporary_source(temporary_source)", temp_idx)
+    enable_xlsx_idx = source.find("set_source_enabled(active_conversation.id, SOURCE_SCOPE_TEMPORARY, temporary_source.id, True)", save_xlsx_idx)
+    rerun_xlsx_idx = source.find("safe_rerun()", enable_xlsx_idx)
+
+    assert extract_idx != -1
+    assert temp_idx != -1
+    assert xlsx_type_idx != -1
+    assert title_idx != -1
+    assert preview_idx != -1
+    assert text_idx != -1
+    assert save_xlsx_idx != -1
+    assert enable_xlsx_idx != -1
+    assert rerun_xlsx_idx != -1
+    assert extract_idx < temp_idx < save_xlsx_idx < enable_xlsx_idx < rerun_xlsx_idx
+    assert temp_idx < xlsx_type_idx < save_xlsx_idx
+    assert temp_idx < title_idx < save_xlsx_idx
+    assert temp_idx < preview_idx < save_xlsx_idx
+    assert temp_idx < text_idx < save_xlsx_idx
+
+    # Phase 2C: failure path reports result.owner_message and does not save/enable/rerun.
+    failure_idx = source.find("else:", rerun_xlsx_idx)
+    error_idx = source.find("st.error(result.owner_message)", rerun_xlsx_idx)
+    assert error_idx != -1
+    assert source.find("save_temporary_source", error_idx, error_idx + 120) == -1
+    assert source.find("set_source_enabled", error_idx, error_idx + 120) == -1
+    assert source.find("safe_rerun", error_idx, error_idx + 120) == -1
+
+    assert "promote_temporary_source_to_notebook(active_conversation.id, temporary_source.id" not in source
+    assert "SOURCE_SCOPE_NOTEBOOK, temporary_source.id, True" not in source
+
+
+def _simulate_excel_upload_submit(result):
+    from aios_habit.workspace_chat_models import TemporaryConversationSource, SOURCE_SCOPE_TEMPORARY
+
+    calls = []
+    errors = []
+
+    def save_temporary_source(src):
+        calls.append(("save", src))
+
+    def set_source_enabled(conversation_id, source_scope, source_id, enabled):
+        calls.append(("enable", conversation_id, source_scope, source_id, enabled))
+
+    def safe_rerun():
+        calls.append(("rerun",))
+
+    if result.ok:
+        temporary_source = TemporaryConversationSource(
+            id="SRC-TEST",
+            conversation_id="conv_1",
+            source_type="xlsx",
+            title=result.filename,
+            content_preview=result.preview,
+            content_text=result.text,
+        )
+        save_temporary_source(temporary_source)
+        set_source_enabled("conv_1", SOURCE_SCOPE_TEMPORARY, temporary_source.id, True)
+        safe_rerun()
+    else:
+        errors.append(result.owner_message)
+
+    return calls, errors
+
+
+def test_excel_upload_xls_failure_does_not_save_enable_or_rerun():
+    from aios_habit.workspace_chat_excel import XLS_UNSUPPORTED_MESSAGE, extract_xlsx_text
+
+    result = extract_xlsx_text(b"legacy", "legacy.xls")
+    calls, errors = _simulate_excel_upload_submit(result)
+
+    assert result.ok is False
+    assert errors == [XLS_UNSUPPORTED_MESSAGE]
+    assert calls == []
+
+
+def test_excel_upload_corrupt_failure_does_not_save_enable_or_rerun():
+    from aios_habit.workspace_chat_excel import GENERIC_READ_ERROR_MESSAGE, extract_xlsx_text
+
+    result = extract_xlsx_text(b"not-a-workbook", "bad.xlsx")
+    calls, errors = _simulate_excel_upload_submit(result)
+
+    assert result.ok is False
+    assert errors == [GENERIC_READ_ERROR_MESSAGE]
+    assert "Traceback" not in errors[0]
+    assert calls == []
+
+
+def test_excel_upload_success_callback_flow_order_and_payload():
+    from aios_habit.workspace_chat_excel import ExtractedWorkspaceSource
+
+    result = ExtractedWorkspaceSource(
+        ok=True,
+        filename="ok.xlsx",
+        text="full text",
+        preview="preview",
+        owner_message="ok",
+    )
+    calls, errors = _simulate_excel_upload_submit(result)
+
+    assert errors == []
+    assert [call[0] for call in calls] == ["save", "enable", "rerun"]
+    saved_source = calls[0][1]
+    assert saved_source.source_type == "xlsx"
+    assert saved_source.title == "ok.xlsx"
+    assert saved_source.content_preview == "preview"
+    assert saved_source.content_text == "full text"
+    assert calls[1] == ("enable", "conv_1", SOURCE_SCOPE_TEMPORARY, "SRC-TEST", True)
+
+
+def test_excel_upload_passive_rerun_does_not_extract_or_persist():
+    import ast
+
+    source = Path("src/aios_habit/workspace_chat_app.py").read_text(encoding="utf-8")
+    tree = ast.parse(source)
+    extract_calls = []
+
+    class SubmitBranchChecker(ast.NodeVisitor):
+        def __init__(self):
+            self.submit_depth = 0
+            self.extracts_inside_submit = 0
+            self.extracts_outside_submit = 0
+
+        def visit_If(self, node):
+            is_submit_if = (
+                isinstance(node.test, ast.Call)
+                and isinstance(node.test.func, ast.Attribute)
+                and node.test.func.attr == "form_submit_button"
+                and node.test.args
+                and isinstance(node.test.args[0], ast.Constant)
+                and node.test.args[0].value == "Đọc và thêm vào nguồn tạm"
+            )
+            if is_submit_if:
+                self.submit_depth += 1
+            self.generic_visit(node)
+            if is_submit_if:
+                self.submit_depth -= 1
+
+        def visit_Call(self, node):
+            if isinstance(node.func, ast.Name) and node.func.id == "extract_xlsx_text":
+                extract_calls.append(node)
+                if self.submit_depth:
+                    self.extracts_inside_submit += 1
+                else:
+                    self.extracts_outside_submit += 1
+            self.generic_visit(node)
+
+    checker = SubmitBranchChecker()
+    checker.visit(tree)
+
+    assert len(extract_calls) == 1
+    assert checker.extracts_inside_submit == 1
+    assert checker.extracts_outside_submit == 0
