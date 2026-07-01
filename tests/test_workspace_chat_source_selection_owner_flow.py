@@ -41,21 +41,21 @@ def mock_streamlit_app(monkeypatch):
     session_state.wsc_show_explain_placeholder = False
     session_state.wsc_action_message = None
     session_state.wsc_action_error = None
-    
+
     monkeypatch.setattr(st, "session_state", session_state)
-    
+
     reruns = []
     def mock_rerun():
         reruns.append(True)
     monkeypatch.setattr(st, "rerun", mock_rerun)
-    
+
     return session_state, reruns
 
 def test_owner_toggle_notebook_source(mock_streamlit_app):
     # Setup notebook source
     src = NotebookSource(id="src_nb_1", notebook_id="mom_opcenter", title="Opcenter Checklist", source_type="pasted_text")
     store.save_notebook_source(src)
-    
+
     # Toggle enable notebook source
     store.set_source_enabled("conv_1", SOURCE_SCOPE_NOTEBOOK, "src_nb_1", True)
     selections = store.load_conversation_source_selections("conv_1")
@@ -63,7 +63,7 @@ def test_owner_toggle_notebook_source(mock_streamlit_app):
     assert selections[0].source_id == "src_nb_1"
     assert selections[0].source_scope == SOURCE_SCOPE_NOTEBOOK
     assert selections[0].enabled is True
-    
+
     # Toggle disable notebook source
     store.set_source_enabled("conv_1", SOURCE_SCOPE_NOTEBOOK, "src_nb_1", False)
     selections = store.load_conversation_source_selections("conv_1")
@@ -73,7 +73,7 @@ def test_owner_toggle_temporary_source(mock_streamlit_app):
     # Setup temporary source
     ts = TemporaryConversationSource(id="ts_1", conversation_id="conv_1", title="Temp log", source_type="pasted_text", content_preview="Preview")
     store.save_temporary_source(ts)
-    
+
     # Toggle enable temporary source
     store.set_source_enabled("conv_1", SOURCE_SCOPE_TEMPORARY, "ts_1", True)
     selections = store.load_conversation_source_selections("conv_1")
@@ -81,7 +81,7 @@ def test_owner_toggle_temporary_source(mock_streamlit_app):
     assert selections[0].source_id == "ts_1"
     assert selections[0].source_scope == SOURCE_SCOPE_TEMPORARY
     assert selections[0].enabled is True
-    
+
     # Toggle disable temporary source
     store.set_source_enabled("conv_1", SOURCE_SCOPE_TEMPORARY, "ts_1", False)
     selections = store.load_conversation_source_selections("conv_1")
@@ -91,7 +91,7 @@ def test_paste_temporary_source_auto_enables(mock_streamlit_app, monkeypatch):
     # Mock active conversation and notebook
     conv = WorkspaceConversation(id="conv_1", notebook_id="mom_opcenter", title="Cuộc trò chuyện 1")
     store.save_conversation(conv)
-    
+
     # We will simulate the submit handler in workspace_chat_app.py:
     # 1. create temporary source
     ts = TemporaryConversationSource(
@@ -106,12 +106,12 @@ def test_paste_temporary_source_auto_enables(mock_streamlit_app, monkeypatch):
     store.save_temporary_source(ts)
     # 3. enable
     store.set_source_enabled("conv_1", SOURCE_SCOPE_TEMPORARY, ts.id, True)
-    
+
     # Verify both temporary source is saved and selection is enabled
     saved_sources = store.load_temporary_sources("conv_1")
     assert len(saved_sources) == 1
     assert saved_sources[0].id == "ts_pasted"
-    
+
     selections = store.load_conversation_source_selections("conv_1")
     assert len(selections) == 1
     assert selections[0].source_id == "ts_pasted"
@@ -129,32 +129,32 @@ def test_promote_temporary_source_keeps_temp_and_creates_notebook_source_not_ena
         content_text="Full text"
     )
     store.save_temporary_source(ts)
-    
+
     # Enable temporary source selection prior to promote
     store.set_source_enabled("conv_1", SOURCE_SCOPE_TEMPORARY, "ts_promote", True)
-    
+
     # Promote it
     nb_src = store.promote_temporary_source_to_notebook("conv_1", "ts_promote", "mom_opcenter")
-    
+
     # Verify temporary source still exists and status updated
     temp_sources = store.load_temporary_sources("conv_1")
     assert len(temp_sources) == 1
     assert temp_sources[0].id == "ts_promote"
     assert temp_sources[0].long_term_saved is True
     assert temp_sources[0].status == "added_to_notebook"
-    
+
     # Verify notebook source is created
     nb_sources = store.load_notebook_sources("mom_opcenter")
     assert len(nb_sources) == 1
     assert nb_sources[0].origin_temporary_source_id == "ts_promote"
-    
+
     # Verify new notebook source is NOT auto-enabled
     selections = store.load_conversation_source_selections("conv_1")
     # Only the original temporary source selection should exist
     assert len(selections) == 1
     assert selections[0].source_id == "ts_promote"
     assert selections[0].source_scope == SOURCE_SCOPE_TEMPORARY
-    
+
     # Query selections for the new notebook source and ensure it's not enabled
     nb_selections = [sel for sel in selections if sel.source_scope == SOURCE_SCOPE_NOTEBOOK and sel.source_id == nb_src.id]
     assert len(nb_selections) == 0
@@ -162,11 +162,11 @@ def test_promote_temporary_source_keeps_temp_and_creates_notebook_source_not_ena
 def test_rerun_restores_from_store_source_of_truth(mock_streamlit_app):
     # Enable a source directly in store
     store.set_source_enabled("conv_1", SOURCE_SCOPE_NOTEBOOK, "src_direct", True)
-    
+
     # Simulating UI reload - read selections
     selections = store.load_conversation_source_selections("conv_1")
     selections_map = {(sel.source_scope, sel.source_id): sel.enabled for sel in selections}
-    
+
     # Check that reload gets current selection state
     assert selections_map.get((SOURCE_SCOPE_NOTEBOOK, "src_direct")) is True
 
@@ -175,49 +175,49 @@ def test_source_selection_helpers_called_inside_sidebar_context():
     app_path = Path("src/aios_habit/workspace_chat_app.py")
     source = app_path.read_text(encoding="utf-8")
     tree = ast.parse(source)
-    
+
     target_helpers = {"render_source_summary", "render_notebook_source_list", "render_temporary_source_list"}
     found_calls = {helper: False for helper in target_helpers}
-    
+
     class SidebarCallChecker(ast.NodeVisitor):
         def __init__(self):
             self.in_sidebar = False
-            
+
         def visit_With(self, node):
             is_sidebar_context = False
             for item in node.items:
                 expr = item.context_expr
                 if isinstance(expr, ast.Attribute) and isinstance(expr.value, ast.Name) and expr.value.id == "st" and expr.attr == "sidebar":
                     is_sidebar_context = True
-            
+
             old_in_sidebar = self.in_sidebar
             if is_sidebar_context:
                 self.in_sidebar = True
-                
+
             self.generic_visit(node)
             self.in_sidebar = old_in_sidebar
-            
+
         def visit_Call(self, node):
             if isinstance(node.func, ast.Name) and node.func.id in target_helpers:
                 if not self.in_sidebar:
                     pytest.fail(f"Function {node.func.id} called outside of 'with st.sidebar:' context!")
                 found_calls[node.func.id] = True
             self.generic_visit(node)
-            
+
     checker = SidebarCallChecker()
     checker.visit(tree)
-    
+
     for helper, found in found_calls.items():
         assert found, f"Expected call to {helper} not found in workspace_chat_app.py"
 
 def test_conversation_isolation_selection_keys():
     conv_id = "conv_abc"
     source_id = "src_123"
-    
+
     key_nb = f"wsc_source_notebook_{conv_id}_{source_id}"
     key_temp = f"wsc_source_temporary_{conv_id}_{source_id}"
     key_promote = f"wsc_promote_temporary_{conv_id}_{source_id}"
-    
+
     assert key_nb == "wsc_source_notebook_conv_abc_src_123"
     assert key_temp == "wsc_source_temporary_conv_abc_src_123"
     assert key_promote == "wsc_promote_temporary_conv_abc_src_123"
@@ -225,13 +225,13 @@ def test_conversation_isolation_selection_keys():
 def test_conversation_isolation_store(mock_streamlit_app):
     store.set_source_enabled("conv_1", SOURCE_SCOPE_NOTEBOOK, "src_nb", True)
     store.set_source_enabled("conv_2", SOURCE_SCOPE_NOTEBOOK, "src_nb", False)
-    
+
     selections_1 = store.load_conversation_source_selections("conv_1")
     selections_2 = store.load_conversation_source_selections("conv_2")
-    
+
     assert len(selections_1) == 1
     assert selections_1[0].enabled is True
-    
+
     assert len(selections_2) == 1
     assert selections_2[0].enabled is False
 
@@ -240,7 +240,7 @@ def test_app_wiring_structure():
     app_path = Path("src/aios_habit/workspace_chat_app.py")
     source = app_path.read_text(encoding="utf-8")
     tree = ast.parse(source)
-    
+
     # 3.1 & 3.2: Notebook/Temporary toggle scope checks
     class ToggleChecker(ast.NodeVisitor):
         def visit_FunctionDef(self, node):
@@ -250,7 +250,7 @@ def test_app_wiring_structure():
                 args = calls[0].args
                 assert len(args) >= 4
                 assert isinstance(args[1], ast.Name) and args[1].id == "SOURCE_SCOPE_NOTEBOOK"
-                
+
             elif node.name == "on_toggle_temporary":
                 calls = [c for c in ast.walk(node) if isinstance(c, ast.Call) and isinstance(c.func, ast.Name) and c.func.id == "set_source_enabled"]
                 assert len(calls) == 1
@@ -258,14 +258,14 @@ def test_app_wiring_structure():
                 assert len(args) >= 4
                 assert isinstance(args[1], ast.Name) and args[1].id == "SOURCE_SCOPE_TEMPORARY"
             self.generic_visit(node)
-            
+
     ToggleChecker().visit(tree)
 
     # 3.3: Temporary source submit order check: save -> enable -> rerun
     save_idx = source.find("save_temporary_source(ts)")
     enable_idx = source.find("set_source_enabled(active_conversation.id, SOURCE_SCOPE_TEMPORARY, ts.id, True)")
     rerun_idx = source.find("safe_rerun()", enable_idx)
-    
+
     assert save_idx != -1, "save_temporary_source(ts) not found in app"
     assert enable_idx != -1, "set_source_enabled for temporary not found in app"
     assert rerun_idx != -1, "safe_rerun() after enable not found in app"
@@ -281,7 +281,7 @@ def test_app_wiring_structure():
                 assert "safe_rerun" in call_names
                 assert "set_source_enabled" not in call_names
             self.generic_visit(node)
-            
+
     PromoteChecker().visit(tree)
 
     # Phase 2C: XLSX upload form is conversation-scoped and main-area only.
@@ -450,3 +450,148 @@ def test_excel_upload_passive_rerun_does_not_extract_or_persist():
     assert len(extract_calls) == 1
     assert checker.extracts_inside_submit == 1
     assert checker.extracts_outside_submit == 0
+
+
+def test_phase2d_app_submit_builds_source_aware_placeholder_structure():
+    source = Path("src/aios_habit/workspace_chat_app.py").read_text(encoding="utf-8")
+    assert "load_enabled_sources_for_conversation(active_conversation.id)" in source
+    assert "current_notebook_sources = load_notebook_sources(active_nb_id)" in source
+    assert "current_temp_sources = load_temporary_sources(active_conversation.id)" in source
+    assert "selection.source_scope == SOURCE_SCOPE_NOTEBOOK" in source
+    assert "selection.source_scope == SOURCE_SCOPE_TEMPORARY" in source
+    assert "resolved_source is None" in source
+    assert "WorkspaceTrialSourceInput(" in source
+    assert "preview = build_trial_answer_preview(user_input, enabled_preview_sources)" in source
+    assert "content=preview.answer_text" in source
+    assert "selected_source_ids" not in source[source.find("if user_input:"):source.find("# Khung dán nhật ký")]
+
+
+def test_phase2d_submit_order_save_user_resolve_build_save_assistant_rerun():
+    source = Path("src/aios_habit/workspace_chat_app.py").read_text(encoding="utf-8")
+    start = source.index("if user_input:")
+    end = source.index("# Khung dán nhật ký", start)
+    block = source[start:end]
+    order_tokens = [
+        "save_message(user_msg)",
+        "load_enabled_sources_for_conversation(active_conversation.id)",
+        "load_notebook_sources(active_nb_id)",
+        "load_temporary_sources(active_conversation.id)",
+        "build_trial_answer_preview(user_input, enabled_preview_sources)",
+        "save_message(assistant_msg)",
+        "safe_rerun()",
+    ]
+    positions = [block.index(token) for token in order_tokens]
+    assert positions == sorted(positions)
+    assert block.count("save_message(user_msg)") == 1
+    assert block.count("save_message(assistant_msg)") == 1
+
+
+def test_phase2d_app_does_not_reparse_xlsx_or_update_source_use_metadata_on_submit():
+    source = Path("src/aios_habit/workspace_chat_app.py").read_text(encoding="utf-8")
+    start = source.index("if user_input:")
+    end = source.index("# Khung dán nhật ký", start)
+    block = source[start:end]
+    assert "extract_xlsx_text" not in block
+    assert "openpyxl" not in block
+    assert "used_in_last_answer" not in block
+    assert "last_used_at" not in block
+    assert "save_conversation_source_selection" not in block
+
+
+def test_phase2d_app_imports_no_case_cockpit():
+    source = Path("src/aios_habit/workspace_chat_app.py").read_text(encoding="utf-8")
+    assert "case_cockpit" not in source
+
+
+def test_right_panel_resolution_logic():
+    conv_id = "conv_1"
+    nb_id = "mom_opcenter"
+
+    # 1. Enabled Notebook Source
+    ns_enabled = NotebookSource(id="ns_en", notebook_id=nb_id, title="Notebook Active", source_type="xlsx")
+    store.save_notebook_source(ns_enabled)
+    store.set_source_enabled(conv_id, SOURCE_SCOPE_NOTEBOOK, "ns_en", True)
+
+    # 2. Disabled Notebook Source
+    ns_disabled = NotebookSource(id="ns_dis", notebook_id=nb_id, title="Notebook Inactive", source_type="pasted_text")
+    store.save_notebook_source(ns_disabled)
+    store.set_source_enabled(conv_id, SOURCE_SCOPE_NOTEBOOK, "ns_dis", False)
+
+    # 3. Enabled Temporary Source
+    ts_enabled = TemporaryConversationSource(id="ts_en", conversation_id=conv_id, title="Temp Active", source_type="pasted_text", content_preview="P")
+    store.save_temporary_source(ts_enabled)
+    store.set_source_enabled(conv_id, SOURCE_SCOPE_TEMPORARY, "ts_en", True)
+
+    # 4. Disabled Temporary Source
+    ts_disabled = TemporaryConversationSource(id="ts_dis", conversation_id=conv_id, title="Temp Inactive", source_type="pasted_text", content_preview="P")
+    store.save_temporary_source(ts_disabled)
+    store.set_source_enabled(conv_id, SOURCE_SCOPE_TEMPORARY, "ts_dis", False)
+
+    # 5. Orphan selection
+    store.set_source_enabled(conv_id, SOURCE_SCOPE_TEMPORARY, "ts_orphan", True)
+
+    # 6. Cross-conversation temporary source
+    ts_cross_conv = TemporaryConversationSource(id="ts_cross", conversation_id="conv_2", title="Temp Cross", source_type="pasted_text", content_preview="P")
+    store.save_temporary_source(ts_cross_conv)
+    store.set_source_enabled(conv_id, SOURCE_SCOPE_TEMPORARY, "ts_cross", True)
+
+    # 7. Cross-notebook notebook source
+    ns_cross_nb = NotebookSource(id="ns_cross", notebook_id="nb_2", title="Notebook Cross", source_type="pasted_text")
+    store.save_notebook_source(ns_cross_nb)
+    store.set_source_enabled(conv_id, SOURCE_SCOPE_NOTEBOOK, "ns_cross", True)
+
+    enabled_selections = store.load_enabled_sources_for_conversation(conv_id)
+    current_notebook_sources = store.load_notebook_sources(nb_id)
+    current_temp_sources = store.load_temporary_sources(conv_id)
+    notebook_source_by_id = {s.id: s for s in current_notebook_sources}
+    temp_source_by_id = {s.id: s for s in current_temp_sources}
+
+    proven_sources = []
+    for selection in enabled_selections:
+        if selection.source_scope == SOURCE_SCOPE_NOTEBOOK:
+            resolved = notebook_source_by_id.get(selection.source_id)
+            prefix = "Nguồn trong sổ"
+        elif selection.source_scope == SOURCE_SCOPE_TEMPORARY:
+            resolved = temp_source_by_id.get(selection.source_id)
+            prefix = "Nguồn tạm"
+        else:
+            resolved = None
+
+        if resolved is None:
+            continue
+
+        stype = (resolved.source_type or "").strip().lower()
+        if stype == "xlsx":
+            friendly_type = "Excel"
+        elif stype in {"text", "pasted_text", "plain_text"}:
+            friendly_type = "Văn bản"
+        else:
+            friendly_type = "Nguồn"
+
+        proven_sources.append(f"{prefix}: {resolved.title} ({friendly_type})")
+
+    assert "Nguồn trong sổ: Notebook Active (Excel)" in proven_sources
+    assert "Nguồn tạm: Temp Active (Văn bản)" in proven_sources
+    assert any("Notebook Inactive" in s for s in proven_sources) is False
+    assert any("Temp Inactive" in s for s in proven_sources) is False
+    assert any("ts_orphan" in s for s in proven_sources) is False
+    assert any("Temp Cross" in s for s in proven_sources) is False
+    assert any("Notebook Cross" in s for s in proven_sources) is False
+    assert len(proven_sources) == 2
+
+
+def test_right_panel_empty_state_logic():
+    conv_id = "conv_empty"
+    ts_disabled = TemporaryConversationSource(id="ts_dis", conversation_id=conv_id, title="Temp Inactive", source_type="pasted_text", content_preview="P")
+    store.save_temporary_source(ts_disabled)
+    store.set_source_enabled(conv_id, SOURCE_SCOPE_TEMPORARY, "ts_dis", False)
+
+    enabled_selections = store.load_enabled_sources_for_conversation(conv_id)
+    assert len(enabled_selections) == 0
+
+
+def test_phase2d_app_explain_popup_copy():
+    source = Path("src/aios_habit/workspace_chat_app.py").read_text(encoding="utf-8")
+    assert "phân tích đối chiếu" not in source.lower()
+    assert "khớp hoàn toàn" not in source.lower()
+    assert "gợi ý phân tích" not in source.lower()

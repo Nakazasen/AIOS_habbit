@@ -11,12 +11,12 @@ def get_vietnamese_labels():
         "temp_sources": "Nguồn tạm trong cuộc trò chuyện",
         "not_saved_longterm": "Chưa lưu lâu dài",
         "only_this_conversation": "Chỉ dùng trong cuộc trò chuyện này",
-        "main_answer": "Trả lời chính",
-        "proven_sources": "Nguồn chứng minh",
-        "to_check": "Ý cần kiểm lại",
+        "main_answer": "Bản xem trước câu trả lời",
+        "proven_sources": "Nguồn đang bật cho cuộc trò chuyện",
+        "to_check": "Điều owner cần kiểm tra",
         "next_actions": "Việc nên làm tiếp",
         "save_to_case": "Lưu vào hồ sơ",
-        "explain_conclusion": "Xem vì sao AIOS kết luận như vậy"
+        "explain_conclusion": "Xem đoạn xem trước sẽ dùng ở bước sau"
     }
 
 def render_notebook_header():
@@ -63,14 +63,14 @@ def render_right_result_panel(
         for src in proven_sources:
             st.write(f"- {src}")
     else:
-        st.write("Chưa ghi nhận nguồn chứng minh.")
+        st.write("Chưa có nguồn nào đang bật cho cuộc trò chuyện này.")
         
     st.subheader(f"⚠️ {labels['to_check']}")
     if to_check_items:
         for item in to_check_items:
             st.warning(item)
     else:
-        st.write("Mọi thông tin đều đã được đối chiếu.")
+        st.write("Chưa có mục cần kiểm tra.")
         
     st.subheader(f"🚀 {labels['next_actions']}")
     if next_actions:

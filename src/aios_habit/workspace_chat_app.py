@@ -27,6 +27,7 @@ from aios_habit.workspace_chat_models import (
     SOURCE_SCOPE_TEMPORARY
 )
 from aios_habit.workspace_chat_excel import extract_xlsx_text
+from aios_habit.workspace_chat_answer_preview import WorkspaceTrialSourceInput, build_trial_answer_preview
 from aios_habit.workspace_chat_ui import (
     get_vietnamese_labels,
     render_notebook_header,
@@ -87,22 +88,22 @@ else:
     if not notebook:
         st.session_state.wsc_active_notebook_id = None
         safe_rerun()
-        
+
     labels = get_vietnamese_labels()
-    
+
     # Thanh điều hướng bên trái (Sidebar)
     st.sidebar.markdown(f"## 📂 {notebook.title}")
     if st.sidebar.button("⬅️ Quay lại danh sách sổ", key="back_to_nbs"):
         st.session_state.wsc_active_notebook_id = None
         st.session_state.wsc_active_conversation_id = None
         safe_rerun()
-        
+
     st.sidebar.write("---")
     st.sidebar.subheader(labels["conversations"])
-    
+
     # Danh sách các cuộc trò chuyện
     conversations = load_conversations(active_nb_id)
-    
+
     if st.sidebar.button(labels["create_conversation"], key="btn_create_conv"):
         new_conv = WorkspaceConversation(
             id=f"CONV-{uuid.uuid4().hex[:8].upper()}",
@@ -112,16 +113,16 @@ else:
         save_conversation(new_conv)
         st.session_state.wsc_active_conversation_id = new_conv.id
         safe_rerun()
-        
+
     active_conv_id = st.session_state.wsc_active_conversation_id
     if not active_conv_id and conversations:
         active_conv_id = conversations[0].id
         st.session_state.wsc_active_conversation_id = active_conv_id
-        
+
     active_conversation = None
     if active_conv_id:
         active_conversation = load_conversation(active_conv_id)
-        
+
     for c in conversations:
         is_active = (c.id == active_conv_id)
         btn_label = f"💬 {c.title}"
@@ -132,7 +133,7 @@ else:
             st.session_state.wsc_show_save_placeholder = False
             st.session_state.wsc_show_explain_placeholder = False
             safe_rerun()
-            
+
     if active_conversation:
         st.sidebar.write("---")
         with st.sidebar.form("rename_form"):
@@ -140,7 +141,7 @@ else:
             if st.form_submit_button("Cập nhật tên"):
                 rename_conversation(active_conversation.id, new_title)
                 safe_rerun()
-                
+
         # Load sources & selections
         notebook_sources = load_notebook_sources(active_nb_id)
         temp_sources = load_temporary_sources(active_conversation.id)
@@ -213,10 +214,10 @@ else:
                 on_promote=on_promote_temporary,
                 conversation_id=active_conversation.id
             )
-            
+
     # Khu vực chính ở giữa
     st.subheader(f"💬 Đang chat trong sổ: {notebook.title}")
-    
+
     if not active_conversation:
         st.info("Vui lòng tạo hoặc chọn một cuộc trò chuyện để bắt đầu.")
     else:
@@ -227,14 +228,14 @@ else:
                 st.session_state.wsc_show_save_placeholder = False
                 safe_rerun()
         if st.session_state.wsc_show_explain_placeholder:
-            st.info("🔍 [Tính năng mô phỏng] Gợi ý phân tích đối chiếu nguồn tài liệu: Các ý chính trong câu trả lời đều khớp hoàn toàn với nguồn tạm.")
-            if st.button("Đóng thông báo phân tích"):
+            st.info("🔍 Bản thử nghiệm: AIOS chưa nối AI thật ở bước này. Danh sách này chỉ cho biết những nguồn đang bật và đoạn xem trước sẽ dùng ở bước sau. Đây chưa phải phần phân tích, đối chiếu hoặc kết luận cuối cùng.")
+            if st.button("Đóng thông báo"):
                 st.session_state.wsc_show_explain_placeholder = False
                 safe_rerun()
 
         # Chia cột: Cột chat ở giữa và cột kết quả bên phải
         col_chat, col_results = st.columns([3, 2])
-        
+
         with col_chat:
             # Lịch sử chat
             messages = load_messages(active_conversation.id)
@@ -244,7 +245,7 @@ else:
                     st.write("Hãy bắt đầu cuộc trò chuyện bằng cách đặt câu hỏi ở dưới.")
                 for m in messages:
                     render_chat_bubble(m)
-                    
+
             # Ô nhập câu hỏi của Streamlit
             user_input = st.chat_input("Nhập câu hỏi của bạn tại đây...")
             if user_input:
@@ -255,24 +256,44 @@ else:
                     content=user_input
                 )
                 save_message(user_msg)
-                
-                # Tạo câu trả lời an toàn
-                temp_sources_list = load_temporary_sources(active_conversation.id)
-                if temp_sources_list:
-                    sources_str = ", ".join(f"'{s.title}'" for s in temp_sources_list)
-                    ans_text = f"Đã ghi nhận câu hỏi liên quan đến các nguồn tạm: {sources_str}. Hệ thống sẽ sử dụng các nguồn tạm này để trả lời đầy đủ ở các phase sau."
-                else:
-                    ans_text = "Đã ghi nhận câu hỏi. Phase sau sẽ nối AI thật dựa trên nguồn trong sổ và nguồn tạm."
-                    
+
+                # Tạo bản thử nghiệm có nhận biết đúng nguồn đang bật
+                enabled_selections = load_enabled_sources_for_conversation(active_conversation.id)
+                current_notebook_sources = load_notebook_sources(active_nb_id)
+                current_temp_sources = load_temporary_sources(active_conversation.id)
+                notebook_source_by_id = {s.id: s for s in current_notebook_sources}
+                temp_source_by_id = {s.id: s for s in current_temp_sources}
+                enabled_preview_sources = []
+                for selection in enabled_selections:
+                    if selection.source_scope == SOURCE_SCOPE_NOTEBOOK:
+                        resolved_source = notebook_source_by_id.get(selection.source_id)
+                    elif selection.source_scope == SOURCE_SCOPE_TEMPORARY:
+                        resolved_source = temp_source_by_id.get(selection.source_id)
+                    else:
+                        resolved_source = None
+                    if resolved_source is None:
+                        continue
+                    enabled_preview_sources.append(
+                        WorkspaceTrialSourceInput(
+                            source_id=resolved_source.id,
+                            source_scope=selection.source_scope,
+                            source_type=resolved_source.source_type,
+                            title=resolved_source.title,
+                            content_preview=resolved_source.content_preview,
+                            content_text=resolved_source.content_text,
+                        )
+                    )
+                preview = build_trial_answer_preview(user_input, enabled_preview_sources)
+
                 assistant_msg = ChatMessage(
                     id=f"MSG-{uuid.uuid4().hex[:8].upper()}",
                     conversation_id=active_conversation.id,
                     role="assistant",
-                    content=ans_text
+                    content=preview.answer_text
                 )
                 save_message(assistant_msg)
                 safe_rerun()
-                
+
             # Khung dán nhật ký/email/đoạn chat dài
             st.write(" ")
             with st.expander("📝 Dán văn bản dài (log lỗi, email, hoặc đoạn chat...)"):
@@ -328,35 +349,57 @@ else:
                                 safe_rerun()
                             else:
                                 st.error(result.owner_message)
-                            
+
         with col_results:
-            # Hiển thị câu trả lời và nguồn chứng minh bên phải
+            # Hiển thị bản xem trước câu trả lời và nguồn đang bật bên phải
             last_assistant_msg = next((m for m in reversed(messages) if m.role == "assistant"), None)
             answer_text = last_assistant_msg.content if last_assistant_msg else "Hãy gửi câu hỏi để nhận phản hồi từ AIOS."
-            
-            # Danh sách nguồn chứng minh được dùng
-            temp_sources_list = load_temporary_sources(active_conversation.id)
+
+            # Danh sách nguồn đang bật cho cuộc trò chuyện
+            enabled_selections = load_enabled_sources_for_conversation(active_conversation.id)
+            current_notebook_sources = load_notebook_sources(active_nb_id)
+            current_temp_sources = load_temporary_sources(active_conversation.id)
+            notebook_source_by_id = {s.id: s for s in current_notebook_sources}
+            temp_source_by_id = {s.id: s for s in current_temp_sources}
+
             proven_sources = []
-            if temp_sources_list:
-                for s in temp_sources_list:
-                    proven_sources.append(f"Nguồn tạm: {s.title} (Trạng thái: Chưa lưu lâu dài)")
-            else:
-                proven_sources = ["Không có nguồn tạm nào được đính kèm."]
-                
+            for selection in enabled_selections:
+                if selection.source_scope == SOURCE_SCOPE_NOTEBOOK:
+                    resolved = notebook_source_by_id.get(selection.source_id)
+                    prefix = "Nguồn trong sổ"
+                elif selection.source_scope == SOURCE_SCOPE_TEMPORARY:
+                    resolved = temp_source_by_id.get(selection.source_id)
+                    prefix = "Nguồn tạm"
+                else:
+                    resolved = None
+
+                if resolved is None:
+                    continue
+
+                stype = (resolved.source_type or "").strip().lower()
+                if stype == "xlsx":
+                    friendly_type = "Excel"
+                elif stype in {"text", "pasted_text", "plain_text"}:
+                    friendly_type = "Văn bản"
+                else:
+                    friendly_type = "Nguồn"
+
+                proven_sources.append(f"{prefix}: {resolved.title} ({friendly_type})")
+
             # Ý cần kiểm tra và hành động tiếp theo
             if last_assistant_msg:
-                to_check = ["Cần kiểm tra xem nguồn dữ liệu tạm có khớp với sổ tài liệu chính không."]
-                next_actions = ["Xác thực lại lỗi vận hành trong Opcenter", "Chạy kiểm chứng an toàn dữ liệu"]
+                to_check = ["Bản thử nghiệm: Kiểm tra danh sách nguồn bật và đoạn xem trước."]
+                next_actions = ["Kiểm tra nguồn trước khi nối AI ở bước sau"]
             else:
                 to_check = []
                 next_actions = []
-                
+
             def on_save_case_cb():
                 st.session_state.wsc_show_save_placeholder = True
-                
+
             def on_explain_cb():
                 st.session_state.wsc_show_explain_placeholder = True
-                
+
             render_right_result_panel(
                 answer_text=answer_text,
                 proven_sources=proven_sources,
