@@ -482,8 +482,8 @@ def test_phase2d_submit_order_save_user_resolve_build_save_assistant_rerun():
     ]
     positions = [block.index(token) for token in order_tokens]
     assert positions == sorted(positions)
-    assert block.count("save_message(user_msg)") == 1
-    assert block.count("save_message(assistant_msg)") == 1
+    assert block.count("save_message(user_msg)") == 2
+    assert block.count("save_message(assistant_msg)") == 2
 
 
 def test_phase2d_app_does_not_reparse_xlsx_or_update_source_use_metadata_on_submit():

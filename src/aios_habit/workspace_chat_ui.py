@@ -57,30 +57,30 @@ def render_right_result_panel(
         st.info(answer_text)
     else:
         st.write("Chưa có câu trả lời.")
-        
+
     st.subheader(f"📎 {labels['proven_sources']}")
     if proven_sources:
         for src in proven_sources:
             st.write(f"- {src}")
     else:
         st.write("Chưa có nguồn nào đang bật cho cuộc trò chuyện này.")
-        
+
     st.subheader(f"⚠️ {labels['to_check']}")
     if to_check_items:
         for item in to_check_items:
             st.warning(item)
     else:
         st.write("Chưa có mục cần kiểm tra.")
-        
+
     st.subheader(f"🚀 {labels['next_actions']}")
     if next_actions:
         for act in next_actions:
             st.write(f"- {act}")
     else:
         st.write("Chưa có việc cần làm tiếp.")
-        
+
     st.write("---")
-    
+
     col1, col2 = st.columns(2)
     with col1:
         if st.button(labels["save_to_case"], use_container_width=True):
