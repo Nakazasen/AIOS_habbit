@@ -36,6 +36,15 @@ class MockStreamlit:
         self.calls.append(("checkbox", str(label), value, key, on_change))
         return value
 
+    def expander(self, label, expanded=False, *args, **kwargs):
+        self.calls.append(("expander", str(label), expanded, None))
+        class MockExpander:
+            def __enter__(self):
+                return self
+            def __exit__(self, exc_type, exc_val, exc_tb):
+                pass
+        return MockExpander()
+
     def button(self, label, key=None, *args, **kwargs):
         self.calls.append(("button", str(label), key, None))
         return False
@@ -60,6 +69,7 @@ def mock_st(monkeypatch):
     monkeypatch.setattr(st, "checkbox", mock.checkbox)
     monkeypatch.setattr(st, "button", mock.button)
     monkeypatch.setattr(st, "container", mock.container)
+    monkeypatch.setattr(st, "expander", mock.expander)
     return mock
 
 def test_render_source_status():
@@ -131,7 +141,7 @@ def test_render_notebook_source_list_with_items(mock_st):
         NotebookSource(id="src_2", notebook_id="nb_1", title="Title 2", source_type="pasted_text", content_preview="Preview 2", extraction_status="failed")
     ]
     selections = {"src_1": True, "src_2": False}
-    
+
     render_notebook_source_list(srcs, selections, lambda *a: None, "conv_1")
     all_text = " ".join([c[1] for c in mock_st.calls])
     assert "Title 1" in all_text
@@ -139,10 +149,21 @@ def test_render_notebook_source_list_with_items(mock_st):
     assert "Trạng thái: Sẵn sàng" in all_text
     assert "Title 2" in all_text
     assert "Trạng thái: Lỗi" in all_text
-    
-    checkbox_keys = [c[3] for c in mock_st.calls if c[0] == "checkbox"]
-    assert "wsc_source_notebook_conv_1_src_1" in checkbox_keys
-    assert "wsc_source_notebook_conv_1_src_2" in checkbox_keys
+
+    checkbox_calls = [c for c in mock_st.calls if c[0] == "checkbox"]
+    assert len(checkbox_calls) == 2
+    assert checkbox_calls[0][1] == "Bật nguồn này cho cuộc trò chuyện"
+    assert checkbox_calls[0][3] == "wsc_source_notebook_conv_1_src_1"
+    assert checkbox_calls[1][1] == "Bật nguồn này cho cuộc trò chuyện"
+    assert checkbox_calls[1][3] == "wsc_source_notebook_conv_1_src_2"
+
+    expander_calls = [c for c in mock_st.calls if c[0] == "expander"]
+    assert len(expander_calls) == 2
+    assert expander_calls[0][1] == "Xem trước nguồn"
+    assert expander_calls[0][2] is False
+
+    assert "Đang bật cho cuộc trò chuyện" in all_text
+    assert "Đang tắt" in all_text
 
 def test_render_temporary_source_list_empty(mock_st):
     render_temporary_source_list([], {}, lambda *a: None, lambda *a: None, "conv_1")
@@ -157,25 +178,35 @@ def test_render_temporary_source_list_with_items(mock_st):
         TemporaryConversationSource(id="temp_2", conversation_id="conv_1", title="Temp Title 2", source_type="pasted_text", content_preview="Temp Preview 2", status="added_to_notebook", long_term_saved=True)
     ]
     selections = {"temp_1": True, "temp_2": False}
-    
+
     render_temporary_source_list(srcs, selections, lambda *a: None, lambda *a: None, "conv_1")
     all_text = " ".join([c[1] for c in mock_st.calls])
     assert "Temp Title 1" in all_text
     assert "Temp Preview 1" in all_text
-    
-    checkbox_keys = [c[3] for c in mock_st.calls if c[0] == "checkbox"]
-    assert "wsc_source_temporary_conv_1_temp_1" in checkbox_keys
-    
+
+    checkbox_calls = [c for c in mock_st.calls if c[0] == "checkbox"]
+    assert len(checkbox_calls) == 2
+    assert checkbox_calls[0][1] == "Bật nguồn này cho cuộc trò chuyện"
+    assert checkbox_calls[0][3] == "wsc_source_temporary_conv_1_temp_1"
+
     button_keys = [c[2] for c in mock_st.calls if c[0] == "button"]
     assert "wsc_promote_temporary_conv_1_temp_1" in button_keys
     assert "Đã thêm vào sổ tài liệu" in all_text
     assert "wsc_promote_temporary_conv_1_temp_2" not in button_keys
 
+    expander_calls = [c for c in mock_st.calls if c[0] == "expander"]
+    assert len(expander_calls) == 2
+    assert expander_calls[0][1] == "Xem trước nguồn"
+    assert expander_calls[0][2] is False
+
+    assert "Đang bật cho cuộc trò chuyện" in all_text
+    assert "Đang tắt" in all_text
+
 def test_no_forbidden_words_in_generated_copy(mock_st):
     render_source_summary(1, 1)
     render_notebook_source_list([NotebookSource(id="src_1", notebook_id="nb_1", title="Title 1", source_type="pasted_text")], {"src_1": True}, lambda *a: None, "conv_1")
     render_temporary_source_list([TemporaryConversationSource(id="temp_1", conversation_id="conv_1", title="Temp Title 1", source_type="pasted_text", content_preview="Temp Preview 1")], {"temp_1": True}, lambda *a: None, lambda *a: None, "conv_1")
-    
+
     all_text = " ".join([c[1] for c in mock_st.calls]).lower()
     for word in FORBIDDEN_WORDS:
         assert word.lower() not in all_text, f"Forbidden word '{word}' found in owner-facing output copy"

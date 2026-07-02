@@ -11,7 +11,7 @@ def get_vietnamese_labels():
         "temp_sources": "Nguồn tạm trong cuộc trò chuyện",
         "not_saved_longterm": "Chưa lưu lâu dài",
         "only_this_conversation": "Chỉ dùng trong cuộc trò chuyện này",
-        "main_answer": "Bản xem trước câu trả lời",
+        "main_answer": "Tóm tắt nguồn đang dùng",
         "proven_sources": "Nguồn đang bật cho câu hỏi",
         "to_check": "Cần kiểm tra lại",
         "next_actions": "Việc nên làm tiếp",
@@ -53,12 +53,6 @@ def render_right_result_panel(
 ):
     labels = get_vietnamese_labels()
     st.subheader(f"💡 {labels['main_answer']}")
-    if answer_text:
-        st.info(answer_text)
-    else:
-        st.write("Chưa có câu trả lời.")
-
-    st.subheader(f"📎 {labels['proven_sources']}")
     if proven_sources:
         for src in proven_sources:
             st.write(f"- {src}")
@@ -130,7 +124,8 @@ def render_notebook_source_list(
     for s in sources:
         st.markdown(f"**{s.title}**")
         if s.content_preview:
-            st.caption(f"Preview: {s.content_preview}")
+            with st.expander("Xem trước nguồn", expanded=False):
+                st.caption(f"Preview: {s.content_preview}")
         elif not getattr(s, "content_text", ""):
             st.warning("Nguồn chưa có nội dung để gửi")
 
@@ -150,12 +145,12 @@ def render_notebook_source_list(
         is_enabled = selections.get(s.id, False)
 
         st.checkbox(
-            "Dùng trong cuộc trò chuyện này",
+            "Bật nguồn này cho cuộc trò chuyện",
             value=is_enabled,
             key=widget_key,
             on_change=lambda s_id=s.id, key=widget_key: on_toggle(s_id, st.session_state[key])
         )
-        st.write(f"Trạng thái hoạt động: {'Dùng trong cuộc trò chuyện này' if is_enabled else 'Tạm không dùng'}")
+        st.write(f"Trạng thái hoạt động: {'Đang bật cho cuộc trò chuyện' if is_enabled else 'Đang tắt'}")
         st.write("---")
 
 def render_temporary_source_list(
@@ -175,7 +170,8 @@ def render_temporary_source_list(
     for s in sources:
         st.markdown(f"**{s.title}**")
         if s.content_preview:
-            st.caption(f"Preview: {s.content_preview}")
+            with st.expander("Xem trước nguồn", expanded=False):
+                st.caption(f"Preview: {s.content_preview}")
         elif not getattr(s, "content_text", ""):
             st.warning("Nguồn chưa có nội dung để gửi")
 
@@ -195,12 +191,12 @@ def render_temporary_source_list(
         is_enabled = selections.get(s.id, False)
 
         st.checkbox(
-            "Dùng trong cuộc trò chuyện này",
+            "Bật nguồn này cho cuộc trò chuyện",
             value=is_enabled,
             key=widget_key,
             on_change=lambda s_id=s.id, key=widget_key: on_toggle(s_id, st.session_state[key])
         )
-        st.write(f"Trạng thái hoạt động: {'Dùng trong cuộc trò chuyện này' if is_enabled else 'Tạm không dùng'}")
+        st.write(f"Trạng thái hoạt động: {'Đang bật cho cuộc trò chuyện' if is_enabled else 'Đang tắt'}")
 
         is_promoted = s.long_term_saved or s.status == "added_to_notebook"
         if is_promoted:

@@ -4,6 +4,7 @@ from datetime import datetime
 from aios_habit.workspace_chat_store import (
     init_chat_store,
     load_notebooks,
+    save_notebook,
     load_conversations,
     load_conversation,
     save_conversation,
@@ -100,6 +101,31 @@ active_nb_id = st.session_state.wsc_active_notebook_id
 if active_nb_id is None:
     # MÀN HÌNH 1: Sổ tài liệu của tôi
     render_notebook_header()
+
+    if "wsc_action_message" in st.session_state and st.session_state.wsc_action_message:
+        st.success(st.session_state.wsc_action_message)
+        st.session_state.wsc_action_message = None
+    if "wsc_action_error" in st.session_state and st.session_state.wsc_action_error:
+        st.error(st.session_state.wsc_action_error)
+        st.session_state.wsc_action_error = None
+
+    with st.expander("Tạo sổ tài liệu mới", expanded=False):
+        with st.form("create_notebook_form", clear_on_submit=True):
+            new_nb_title = st.text_input("Tên sổ", placeholder="Nhập tên sổ tài liệu...")
+            new_nb_desc = st.text_input("Mô tả ngắn", placeholder="Nhập mô tả ngắn...")
+            if st.form_submit_button("Tạo sổ tài liệu"):
+                if not new_nb_title.strip():
+                    st.session_state.wsc_action_error = "Vui lòng nhập tên sổ tài liệu."
+                else:
+                    new_nb = DocumentNotebook(
+                        id=f"NB-{uuid.uuid4().hex[:8].upper()}",
+                        title=new_nb_title.strip(),
+                        description=new_nb_desc.strip()
+                    )
+                    save_notebook(new_nb)
+                    st.session_state.wsc_action_message = "Đã tạo sổ tài liệu mới."
+                safe_rerun()
+
     notebooks = load_notebooks()
     for nb in notebooks:
         conv_count = len(load_conversations(nb.id))
@@ -231,6 +257,8 @@ else:
                 index=0,
                 key=f"wsc_privacy_mode_widget_{active_conversation.id}"
             )
+            if privacy_mode_label == "Chỉ xem trước trên máy":
+                st.caption("Không gửi dữ liệu ra ngoài. Dùng để kiểm tra nguồn đang bật và đoạn xem trước an toàn trên máy; đây chưa phải câu trả lời phân tích cuối cùng.")
             privacy_mode = PRIVACY_MODE_LOCAL_PREVIEW_ONLY if privacy_mode_label == "Chỉ xem trước trên máy" else PRIVACY_MODE_CLOUD_ALLOWED
 
             enabled_selections = load_enabled_sources_for_conversation(active_conversation.id)
@@ -439,6 +467,7 @@ else:
 
             # Khung dán nhật ký/email/đoạn chat dài
             st.write(" ")
+            st.info("Hiện tại màn hình này hỗ trợ dán văn bản dài, thêm Excel .xlsx và tạo dữ liệu test không mật. Ô hỏi chỉ hỗ trợ nhập chữ; chưa hỗ trợ dán ảnh hoặc thêm PDF/Word trực tiếp. Các định dạng này sẽ được xem xét ở giai đoạn mở rộng nguồn dữ liệu.")
             with st.expander("📝 Dán văn bản dài (log lỗi, email, hoặc đoạn chat...)"):
                 with st.form("paste_log_form"):
                     paste_title = st.text_input("Tiêu đề nguồn tạm", placeholder="Ví dụ: Email lỗi Opcenter, Nhật ký log hệ thống...")

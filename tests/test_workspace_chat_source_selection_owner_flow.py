@@ -641,3 +641,66 @@ def test_safe_test_data_generation_uses_app_helper_without_real_store_writes(tmp
 
     assert not (tmp_path / ".ai").exists()
     assert not (tmp_path / "local_cases").exists()
+
+
+def test_notebook_creation_flow(tmp_path, monkeypatch):
+    session_state = MockSessionState()
+    session_state.wsc_action_message = None
+    session_state.wsc_action_error = None
+    monkeypatch.setattr(st, "session_state", session_state)
+
+    reruns = []
+    def mock_rerun():
+        reruns.append(True)
+    monkeypatch.setattr(st, "rerun", mock_rerun)
+
+    from aios_habit.workspace_chat_store import save_notebook, load_notebooks
+    from aios_habit.workspace_chat_models import DocumentNotebook
+    import uuid
+
+    # 1. Title empty
+    title = "   "
+    if not title.strip():
+        session_state.wsc_action_error = "Vui lòng nhập tên sổ tài liệu."
+    else:
+        new_nb = DocumentNotebook(
+            id=f"NB-{uuid.uuid4().hex[:8].upper()}",
+            title=title.strip(),
+            description="Mô tả"
+        )
+        save_notebook(new_nb)
+        session_state.wsc_action_message = "Đã tạo sổ tài liệu mới."
+
+    assert session_state.wsc_action_error == "Vui lòng nhập tên sổ tài liệu."
+    assert session_state.wsc_action_message is None
+    assert len(load_notebooks()) == 4
+
+    # 2. Title valid
+    session_state.wsc_action_error = None
+    title = "Sổ tài liệu tiếng Việt 日本語"
+    desc = "Mô tả ngắn"
+
+    if not title.strip():
+        session_state.wsc_action_error = "Vui lòng nhập tên sổ tài liệu."
+    else:
+        new_nb = DocumentNotebook(
+            id=f"NB-{uuid.uuid4().hex[:8].upper()}",
+            title=title.strip(),
+            description=desc.strip()
+        )
+        save_notebook(new_nb)
+        session_state.wsc_action_message = "Đã tạo sổ tài liệu mới."
+
+    assert session_state.wsc_action_error is None
+    assert session_state.wsc_action_message == "Đã tạo sổ tài liệu mới."
+
+    nbs = load_notebooks()
+    assert len(nbs) == 5
+    created_nb = nbs[-1]
+    assert created_nb.title == "Sổ tài liệu tiếng Việt 日本語"
+    assert created_nb.description == "Mô tả ngắn"
+    assert created_nb.id.startswith("NB-")
+
+    # Verify no .ai or local_cases written in root workspace
+    assert not (tmp_path / ".ai").exists()
+    assert not (tmp_path / "local_cases").exists()

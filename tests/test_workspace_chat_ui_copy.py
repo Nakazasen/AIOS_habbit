@@ -54,12 +54,13 @@ def test_workspace_chat_ui_vietnamese_labels():
     assert "Nguồn tạm trong cuộc trò chuyện" in ui_source
     assert "Chưa lưu lâu dài" in ui_source
     assert "Chỉ dùng trong cuộc trò chuyện này" in ui_source
-    assert "Bản xem trước câu trả lời" in ui_source
+    assert "Tóm tắt nguồn đang dùng" in ui_source
     assert "Nguồn đang bật cho câu hỏi" in ui_source
     assert "Cần kiểm tra lại" in ui_source
     assert "Việc nên làm tiếp" in ui_source
     assert "Lưu vào hồ sơ" in ui_source
     assert "Xem đoạn xem trước sẽ dùng ở bước sau" in ui_source
+    assert "Bật nguồn này cho cuộc trò chuyện" in ui_source
 
 
 def test_phase2e_required_copy_in_app():
@@ -71,6 +72,16 @@ def test_phase2e_required_copy_in_app():
     assert "Nguồn đang bật được đưa vào câu hỏi" in app_source
     assert "Nội dung có thể bị rút gọn để tránh quá dài" in app_source
     assert "Đây là câu trả lời do AI tạo, cần kiểm tra lại trước khi dùng." in app_source
+
+
+def test_phase2g_required_copy():
+    app_source = Path("src/aios_habit/workspace_chat_app.py").read_text(encoding="utf-8")
+    assert "Không gửi dữ liệu ra ngoài" in app_source
+    assert "dán văn bản dài" in app_source
+    assert "Excel .xlsx" in app_source
+    assert "dữ liệu test không mật" in app_source
+    assert "ô hỏi chỉ hỗ trợ nhập chữ" in app_source.lower()
+    assert "chưa hỗ trợ dán ảnh hoặc thêm PDF/Word trực tiếp" in app_source
 
 
 def test_phase2e_forbidden_copy_absent():
