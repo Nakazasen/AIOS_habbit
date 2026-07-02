@@ -89,6 +89,13 @@ def safe_rerun():
         except AttributeError:
             pass
 
+SAVE_CASE_PLACEHOLDER_MESSAGE = "Chưa lưu dữ liệu. Tính năng ‘Lưu vào hồ sơ’ hiện đang ở chế độ mô phỏng."
+
+
+def show_save_case_placeholder_feedback():
+    st.session_state.wsc_show_save_placeholder = True
+    safe_rerun()
+
 def open_notebook_callback(notebook_id: str):
     st.session_state.wsc_active_notebook_id = notebook_id
     st.session_state.wsc_active_conversation_id = None
@@ -333,7 +340,7 @@ else:
 """)
         # Hiển thị các thông báo thử nghiệm
         if st.session_state.wsc_show_save_placeholder:
-            st.success("🎉 [Tính năng mô phỏng] Đã kích hoạt lưu cuộc trò chuyện này thành hồ sơ sự việc mới thành công!")
+            st.info(f"ℹ️ {SAVE_CASE_PLACEHOLDER_MESSAGE}")
             if st.button("Đóng thông báo lưu"):
                 st.session_state.wsc_show_save_placeholder = False
                 safe_rerun()
@@ -578,7 +585,7 @@ else:
                 next_actions = []
 
             def on_save_case_cb():
-                st.session_state.wsc_show_save_placeholder = True
+                show_save_case_placeholder_feedback()
 
             def on_explain_cb():
                 st.session_state.wsc_show_explain_placeholder = True

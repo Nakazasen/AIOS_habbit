@@ -704,3 +704,61 @@ def test_notebook_creation_flow(tmp_path, monkeypatch):
     # Verify no .ai or local_cases written in root workspace
     assert not (tmp_path / ".ai").exists()
     assert not (tmp_path / "local_cases").exists()
+
+
+def test_save_case_placeholder_feedback_sets_state_and_reruns(monkeypatch):
+    session_state = MockSessionState()
+    session_state.wsc_show_save_placeholder = False
+    monkeypatch.setattr(st, "session_state", session_state)
+
+    reruns = []
+    monkeypatch.setattr(st, "rerun", lambda: reruns.append(True))
+
+    sys.modules.pop("aios_habit.workspace_chat_app", None)
+    app = importlib.import_module("aios_habit.workspace_chat_app")
+    app.show_save_case_placeholder_feedback()
+
+    assert session_state.wsc_show_save_placeholder is True
+    assert reruns == [True]
+
+
+def test_save_case_placeholder_path_does_not_call_persistence_or_provider():
+    app_source = Path("src/aios_habit/workspace_chat_app.py").read_text(encoding="utf-8")
+    helper_start = app_source.index("def show_save_case_placeholder_feedback():")
+    helper_end = app_source.index("def open_notebook_callback", helper_start)
+    helper_block = app_source[helper_start:helper_end]
+    callback_start = app_source.index("def on_save_case_cb():")
+    callback_end = app_source.index("def on_explain_cb():", callback_start)
+    callback_block = app_source[callback_start:callback_end]
+    save_path = helper_block + callback_block
+
+    forbidden_calls = [
+        "save_notebook(",
+        "save_conversation(",
+        "save_message(",
+        "save_temporary_source(",
+        "load_notebooks(",
+        "load_conversations(",
+        "load_messages(",
+        "promote_temporary_source_to_notebook(",
+        "generate_workspace_ai_answer(",
+        "RealWorkspaceAIProviderClient(",
+        "extract_xlsx_text(",
+        "case_cockpit",
+        "Case(",
+    ]
+    for token in forbidden_calls:
+        assert token not in save_path
+    assert "wsc_show_save_placeholder = True" in save_path
+    assert "safe_rerun()" in save_path
+
+
+def test_save_case_placeholder_render_uses_info_not_success():
+    app_source = Path("src/aios_habit/workspace_chat_app.py").read_text(encoding="utf-8")
+    start = app_source.index("if st.session_state.wsc_show_save_placeholder:")
+    end = app_source.index("if st.session_state.wsc_show_explain_placeholder:", start)
+    block = app_source[start:end]
+
+    assert "st.info" in block
+    assert "st.success" not in block
+    assert "SAVE_CASE_PLACEHOLDER_MESSAGE" in block

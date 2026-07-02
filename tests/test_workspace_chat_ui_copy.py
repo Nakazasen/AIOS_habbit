@@ -1,4 +1,4 @@
-from pathlib import Path
+﻿from pathlib import Path
 
 FORBIDDEN_WORDS = [
     "RAG",
@@ -96,3 +96,16 @@ def test_phase2e_forbidden_copy_absent():
     for word in forbidden:
         assert word.lower() not in app_source.lower(), f"Forbidden word '{word}' found in app"
         assert word.lower() not in ui_source.lower(), f"Forbidden word '{word}' found in UI"
+
+
+def test_phase2g_save_feedback_placeholder_truthful_copy():
+    app_source = Path("src/aios_habit/workspace_chat_app.py").read_text(encoding="utf-8")
+    assert "Chưa lưu dữ liệu. Tính năng ‘Lưu vào hồ sơ’ hiện đang ở chế độ mô phỏng." in app_source
+    assert "st.info(f\"ℹ️ {SAVE_CASE_PLACEHOLDER_MESSAGE}\")" in app_source
+    forbidden_success_claims = [
+        "Đã kích hoạt lưu",
+        "hồ sơ sự việc mới thành công",
+        "hồ sơ đã được tạo",
+    ]
+    for phrase in forbidden_success_claims:
+        assert phrase not in app_source
