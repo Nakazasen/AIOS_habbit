@@ -76,45 +76,45 @@ def test_render_source_status():
 def test_source_summary_0_sources(mock_st):
     render_source_summary(0, 0)
     all_text = " ".join([c[1] for c in mock_st.calls])
-    assert "Nguồn đang dùng" in all_text
-    assert "Chưa có nguồn nào đang dùng." in all_text
-    assert "Nguồn đang dùng là những nguồn bạn đã bật cho cuộc trò chuyện này." in all_text
+    assert "Nguồn đang bật" in all_text
+    assert "Chưa có nguồn nào đang bật." in all_text
+    assert "Nguồn đang bật là những nguồn bạn đã chọn cho câu hỏi." in all_text
     for word in FORBIDDEN_WORDS:
         assert word.lower() not in all_text.lower()
 
 def test_source_summary_notebook_only(mock_st):
     render_source_summary(3, 0)
     all_text = " ".join([c[1] for c in mock_st.calls])
-    assert "Nguồn đang dùng" in all_text
+    assert "Nguồn đang bật" in all_text
     assert "Tổng số nguồn đang bật: 3" in all_text
     assert "Số nguồn trong sổ đang bật: 3" in all_text
     assert "Số nguồn tạm đang bật: 0" in all_text
-    assert "Chưa có nguồn nào đang dùng." not in all_text
-    assert "Nguồn đang dùng là những nguồn bạn đã bật cho cuộc trò chuyện này." in all_text
+    assert "Chưa có nguồn nào đang bật." not in all_text
+    assert "Nguồn đang bật là những nguồn bạn đã chọn cho câu hỏi." in all_text
     for word in FORBIDDEN_WORDS:
         assert word.lower() not in all_text.lower()
 
 def test_source_summary_temporary_only(mock_st):
     render_source_summary(0, 4)
     all_text = " ".join([c[1] for c in mock_st.calls])
-    assert "Nguồn đang dùng" in all_text
+    assert "Nguồn đang bật" in all_text
     assert "Tổng số nguồn đang bật: 4" in all_text
     assert "Số nguồn trong sổ đang bật: 0" in all_text
     assert "Số nguồn tạm đang bật: 4" in all_text
-    assert "Chưa có nguồn nào đang dùng." not in all_text
-    assert "Nguồn đang dùng là những nguồn bạn đã bật cho cuộc trò chuyện này." in all_text
+    assert "Chưa có nguồn nào đang bật." not in all_text
+    assert "Nguồn đang bật là những nguồn bạn đã chọn cho câu hỏi." in all_text
     for word in FORBIDDEN_WORDS:
         assert word.lower() not in all_text.lower()
 
 def test_source_summary_both(mock_st):
     render_source_summary(2, 5)
     all_text = " ".join([c[1] for c in mock_st.calls])
-    assert "Nguồn đang dùng" in all_text
+    assert "Nguồn đang bật" in all_text
     assert "Tổng số nguồn đang bật: 7" in all_text
     assert "Số nguồn trong sổ đang bật: 2" in all_text
     assert "Số nguồn tạm đang bật: 5" in all_text
-    assert "Chưa có nguồn nào đang dùng." not in all_text
-    assert "Nguồn đang dùng là những nguồn bạn đã bật cho cuộc trò chuyện này." in all_text
+    assert "Chưa có nguồn nào đang bật." not in all_text
+    assert "Nguồn đang bật là những nguồn bạn đã chọn cho câu hỏi." in all_text
     for word in FORBIDDEN_WORDS:
         assert word.lower() not in all_text.lower()
 

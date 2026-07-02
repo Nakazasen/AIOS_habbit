@@ -257,7 +257,7 @@ def test_generate_workspace_ai_answer_cloud_privacy_block_local_only():
     assert res.ok is False
     assert res.externally_sent is False
     assert client.call_count == 0
-    assert "chỉ được phép dùng trên máy" in res.error_message
+    assert "chỉ được dùng trên máy" in res.error_message
 
 def test_generate_workspace_ai_answer_cloud_privacy_block_confidential():
     client = MockProviderClient()
@@ -274,7 +274,7 @@ def test_generate_workspace_ai_answer_cloud_privacy_block_confidential():
     assert res.ok is False
     assert res.externally_sent is False
     assert client.call_count == 0
-    assert "chỉ được phép dùng trên máy" in res.error_message
+    assert "chỉ được dùng trên máy" in res.error_message
 
 def test_generate_workspace_ai_answer_cloud_privacy_block_unknown():
     client = MockProviderClient()
@@ -291,7 +291,7 @@ def test_generate_workspace_ai_answer_cloud_privacy_block_unknown():
     assert res.ok is False
     assert res.externally_sent is False
     assert client.call_count == 0
-    assert "chỉ được phép dùng trên máy" in res.error_message
+    assert "chỉ được dùng trên máy" in res.error_message
 
 def test_generate_workspace_ai_answer_cloud_empty_question():
     client = MockProviderClient()
@@ -385,7 +385,7 @@ def test_block_entire_request_on_one_blocked_source():
     res = generate_workspace_ai_answer(req, client)
     assert res.ok is False
     assert client.call_count == 0
-    assert "chỉ được phép dùng trên máy" in res.error_message
+    assert "chỉ được dùng trên máy" in res.error_message
 
 
 def test_disabled_and_orphan_sources_excluded_during_packing():
@@ -508,7 +508,7 @@ def test_regression_blocked_source_after_cap():
     assert res.ok is False
     assert client.call_count == 0
     assert res.externally_sent is False
-    assert "chỉ được phép dùng trên máy" in res.error_message
+    assert "chỉ được dùng trên máy" in res.error_message
 
 
 def test_regression_unknown_blocked_after_cap():
@@ -536,7 +536,7 @@ def test_regression_unknown_blocked_after_cap():
     assert res.ok is False
     assert client.call_count == 0
     assert res.externally_sent is False
-    assert "chỉ được phép dùng trên máy" in res.error_message
+    assert "chỉ được dùng trên máy" in res.error_message
 
 
 def test_regression_invalid_privacy_mode():
@@ -659,7 +659,7 @@ def test_regression_empty_source_excluded():
     assert res_empty.ok is False
     assert client_empty.call_count == 0
     assert res_empty.externally_sent is False
-    assert "chưa có nội dung để gửi" in res_empty.error_message
+    assert "chưa có nội dung" in res_empty.error_message
 
 
 def test_regression_provider_exception_sanitization():
@@ -683,7 +683,7 @@ def test_regression_provider_exception_sanitization():
     assert res.ok is False
     assert "SECRET_TOKEN" not in res.error_message
     assert "chưa được cấu hình" in res.error_message
-    assert "Dịch vụ AI chưa được cấu hình. Nội dung nguồn vẫn được giữ trong Workspace Chat." == res.error_message
+    assert "Chưa gửi tới AI. AI chưa được cấu hình." == res.error_message
 
     # 2. Other error
     class MockOtherErrorClient:
@@ -711,7 +711,7 @@ def test_regression_blank_privacy_label_blocks_cloud():
     assert res.ok is False
     assert client.call_count == 0
     assert res.externally_sent is False
-    assert "chỉ được phép dùng trên máy" in res.error_message
+    assert "chỉ được dùng trên máy" in res.error_message
 
 
 def test_regression_whitespace_privacy_label_blocks_cloud():
@@ -729,7 +729,7 @@ def test_regression_whitespace_privacy_label_blocks_cloud():
     assert res.ok is False
     assert client.call_count == 0
     assert res.externally_sent is False
-    assert "chỉ được phép dùng trên máy" in res.error_message
+    assert "chỉ được dùng trên máy" in res.error_message
 
 
 def test_regression_unknown_privacy_label_blocks_cloud():
@@ -747,7 +747,7 @@ def test_regression_unknown_privacy_label_blocks_cloud():
     assert res.ok is False
     assert client.call_count == 0
     assert res.externally_sent is False
-    assert "chỉ được phép dùng trên máy" in res.error_message
+    assert "chỉ được dùng trên máy" in res.error_message
 
 
 def test_regression_none_privacy_label_blocks_cloud():
@@ -765,7 +765,7 @@ def test_regression_none_privacy_label_blocks_cloud():
     assert res.ok is False
     assert client.call_count == 0
     assert res.externally_sent is False
-    assert "chỉ được phép dùng trên máy" in res.error_message
+    assert "chỉ được dùng trên máy" in res.error_message
 
 
 def test_regression_blank_source_after_cap_blocks_cloud():
@@ -791,7 +791,7 @@ def test_regression_blank_source_after_cap_blocks_cloud():
     assert res.ok is False
     assert client.call_count == 0
     assert res.externally_sent is False
-    assert "chỉ được phép dùng trên máy" in res.error_message
+    assert "chỉ được dùng trên máy" in res.error_message
 
 
 def test_regression_whitespace_source_after_cap_blocks_cloud_through_real_packer():
@@ -817,7 +817,7 @@ def test_regression_whitespace_source_after_cap_blocks_cloud_through_real_packer
     assert res.ok is False
     assert client.call_count == 0
     assert res.externally_sent is False
-    assert "chỉ được phép dùng trên máy" in res.error_message
+    assert "chỉ được dùng trên máy" in res.error_message
 
 
 def test_regression_none_source_after_cap_blocks_cloud_through_real_packer():
@@ -843,4 +843,4 @@ def test_regression_none_source_after_cap_blocks_cloud_through_real_packer():
     assert res.ok is False
     assert client.call_count == 0
     assert res.externally_sent is False
-    assert "chỉ được phép dùng trên máy" in res.error_message
+    assert "chỉ được dùng trên máy" in res.error_message

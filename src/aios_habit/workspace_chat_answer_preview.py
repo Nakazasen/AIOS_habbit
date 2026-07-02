@@ -75,7 +75,7 @@ def build_trial_answer_preview(
     visible_source_inputs = source_inputs[:MAX_SOURCES_IN_ANSWER]
     source_previews: list[WorkspaceTrialSourcePreview] = []
     answer_lines = [
-        "Bản thử nghiệm",
+        "Chỉ xem trước trên máy",
         "",
         "AIOS chưa nối AI thật ở bước này.",
         "",

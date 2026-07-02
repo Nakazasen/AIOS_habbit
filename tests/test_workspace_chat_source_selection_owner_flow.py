@@ -1,6 +1,10 @@
+import importlib
+import sys
+from pathlib import Path
+
 import pytest
 import streamlit as st
-from pathlib import Path
+
 import aios_habit.workspace_chat_store as store
 from aios_habit.workspace_chat_models import (
     DocumentNotebook,
@@ -595,3 +599,45 @@ def test_phase2d_app_explain_popup_copy():
     assert "phân tích đối chiếu" not in source.lower()
     assert "khớp hoàn toàn" not in source.lower()
     assert "gợi ý phân tích" not in source.lower()
+
+
+def test_safe_test_data_generation_uses_app_helper_without_real_store_writes(tmp_path, monkeypatch):
+    test_dir = tmp_path / "workspace_chat_safe_data"
+    monkeypatch.setattr(store, "LOCAL_CHAT_DIR", test_dir)
+    monkeypatch.setattr(store, "NOTEBOOKS_FILE", test_dir / "notebooks.jsonl")
+    monkeypatch.setattr(store, "CONVERSATIONS_FILE", test_dir / "conversations.jsonl")
+    monkeypatch.setattr(store, "MESSAGES_FILE", test_dir / "messages.jsonl")
+    monkeypatch.setattr(store, "TEMPORARY_SOURCES_FILE", test_dir / "temporary_sources.jsonl")
+    monkeypatch.setattr(store, "NOTEBOOK_SOURCES_FILE", test_dir / "notebook_sources.jsonl")
+    monkeypatch.setattr(store, "SOURCE_SELECTIONS_FILE", test_dir / "conversation_source_selections.jsonl")
+    store.init_chat_store()
+
+    sys.modules.pop("aios_habit.workspace_chat_app", None)
+    app = importlib.import_module("aios_habit.workspace_chat_app")
+
+    source = app.create_safe_test_data("CONV-SAFE-TEST")
+
+    assert source.conversation_id == "CONV-SAFE-TEST"
+    assert source.source_type == "plain_text"
+    assert source.privacy_label == "machine_only"
+    assert "Dữ liệu test an toàn" in source.title
+    assert "dữ liệu test giả lập" in source.content_preview
+    assert "dữ liệu test giả lập" in source.content_text
+    assert "thông tin mật" in source.content_text
+    assert "API" not in source.content_text
+
+    saved_sources = store.load_temporary_sources("CONV-SAFE-TEST")
+    assert [saved.id for saved in saved_sources] == [source.id]
+
+    selections = store.load_conversation_source_selections("CONV-SAFE-TEST")
+    assert len(selections) == 1
+    assert selections[0].source_scope == SOURCE_SCOPE_TEMPORARY
+    assert selections[0].source_id == source.id
+    assert selections[0].enabled is True
+
+    app_source = Path("src/aios_habit/workspace_chat_app.py").read_text(encoding="utf-8")
+    assert "Tạo dữ liệu test không mật" in app_source
+    assert "create_safe_test_data(active_conversation.id)" in app_source
+
+    assert not (tmp_path / ".ai").exists()
+    assert not (tmp_path / "local_cases").exists()

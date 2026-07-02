@@ -55,8 +55,8 @@ def test_workspace_chat_ui_vietnamese_labels():
     assert "Chưa lưu lâu dài" in ui_source
     assert "Chỉ dùng trong cuộc trò chuyện này" in ui_source
     assert "Bản xem trước câu trả lời" in ui_source
-    assert "Nguồn đang bật cho cuộc trò chuyện" in ui_source
-    assert "Điều owner cần kiểm tra" in ui_source
+    assert "Nguồn đang bật cho câu hỏi" in ui_source
+    assert "Cần kiểm tra lại" in ui_source
     assert "Việc nên làm tiếp" in ui_source
     assert "Lưu vào hồ sơ" in ui_source
     assert "Xem đoạn xem trước sẽ dùng ở bước sau" in ui_source

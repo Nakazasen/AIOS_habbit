@@ -259,7 +259,7 @@ def generate_workspace_ai_answer(
             included_source_titles=(),
             warnings=(),
             externally_sent=False,
-            error_message="Một hoặc nhiều nguồn chỉ được phép dùng trên máy. Hãy tắt các nguồn đó hoặc chọn chế độ chỉ xem trước trên máy."
+            error_message="Chưa gửi tới AI. Một hoặc nhiều nguồn chỉ được dùng trên máy."
         )
 
     if not request.cloud_consent_confirmed:
@@ -297,7 +297,7 @@ def generate_workspace_ai_answer(
             included_source_titles=tuple(src.title for src in request.context_sources),
             warnings=warnings,
             externally_sent=False,
-            error_message="Nguồn đang bật chưa có nội dung để gửi tới AI."
+            error_message="Chưa gửi tới AI. Nguồn đang bật chưa có nội dung."
         )
 
     # Everything is valid for cloud call
@@ -326,7 +326,7 @@ def generate_workspace_ai_answer(
     except Exception as e:
         msg = str(e)
         if "chưa được cấu hình" in msg or "chưa được cấu hình" in msg.lower():
-            err_msg = "Dịch vụ AI chưa được cấu hình. Nội dung nguồn vẫn được giữ trong Workspace Chat."
+            err_msg = "Chưa gửi tới AI. AI chưa được cấu hình."
         else:
             err_msg = "Dịch vụ AI chưa phản hồi. Nội dung nguồn vẫn được giữ trong Workspace Chat; vui lòng thử lại sau."
         return WorkspaceAIAnswerResult(
@@ -342,5 +342,5 @@ class RealWorkspaceAIProviderClient:
     def generate(self, *, system_prompt: str, user_prompt: str) -> str:
         from aios_habit.llm_client import is_llm_configured, complete_chat
         if not is_llm_configured():
-            raise RuntimeError("Dịch vụ AI chưa được cấu hình. Nội dung nguồn vẫn được giữ trong Workspace Chat.")
+            raise RuntimeError("Chưa gửi tới AI. AI chưa được cấu hình.")
         return complete_chat(prompt=user_prompt, system_prompt=system_prompt)

@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 import ast
 from dataclasses import dataclass
@@ -34,7 +34,7 @@ def _source(**kwargs):
 
 def test_no_enabled_sources_copy():
     preview = build_trial_answer_preview("Câu hỏi là gì?", [])
-    assert "Bản thử nghiệm" in preview.answer_text
+    assert "Chỉ xem trước trên máy" in preview.answer_text
     assert "AIOS chưa nối AI thật ở bước này." in preview.answer_text
     assert "Chưa có nguồn nào đang bật cho cuộc trò chuyện này." in preview.answer_text
     assert "Đây chưa phải câu trả lời phân tích cuối cùng." in preview.answer_text

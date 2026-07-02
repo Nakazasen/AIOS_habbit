@@ -355,6 +355,11 @@ def page_settings():
     
     st.write("These paths are isolated to prevent accidental public git commits of your private data.")
 
+def page_workspace_chat():
+    st.title("💬 Workspace Chat (Pilot)")
+    st.write("Workspace Chat là môi trường hỏi đáp an toàn, bảo vệ dữ liệu cục bộ.")
+    st.info("Để khởi động Workspace Chat, vui lòng mở terminal mới ở thư mục gốc và chạy: `py -3 -m streamlit run src/aios_habit/workspace_chat_app.py` hoặc sử dụng launcher Workspace Chat riêng. Tính năng mở cửa sổ tự động từ Studio đã được vô hiệu hóa để đảm bảo an toàn đa tiến trình.")
+
 def main():
     if "page" not in st.session_state:
         st.session_state.page = "Dashboard"
@@ -370,6 +375,7 @@ def main():
         "Export": page_export,
         "Audit": page_audit,
         "Handover": page_handover,
+        "Workspace Chat": page_workspace_chat,
         "Settings": page_settings,
     }
     

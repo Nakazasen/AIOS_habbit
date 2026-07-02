@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 import re
 import zipfile
@@ -22,8 +22,8 @@ MAX_SHEETS = 12
 MAX_ROWS_PER_SHEET = 1000
 MAX_NON_EMPTY_CELLS = 20_000
 
-XLS_UNSUPPORTED_MESSAGE = "File .xls chưa được hỗ trợ. Vui lòng mở file bằng Excel và lưu lại dạng .xlsx."
-GENERIC_READ_ERROR_MESSAGE = "Không thể đọc file Excel này. Vui lòng kiểm tra lại file hoặc thử file nhỏ hơn."
+XLS_UNSUPPORTED_MESSAGE = "Định dạng file không được hỗ trợ. Vui lòng lưu file dưới dạng .xlsx và thử lại."
+GENERIC_READ_ERROR_MESSAGE = "Không thể đọc nội dung file Excel. File có thể bị hỏng hoặc có mật khẩu. Vui lòng kiểm tra lại."
 EMPTY_WORKBOOK_MESSAGE = "File Excel này không có ô dữ liệu nào có thể đọc."
 TRUNCATED_MESSAGE = "File Excel lớn nên AIOS chỉ đọc một phần nội dung. Bạn có thể chia file nhỏ hơn nếu cần."
 

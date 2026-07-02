@@ -28,6 +28,19 @@ from aios_habit.workspace_chat_models import (
 )
 from aios_habit.workspace_chat_excel import extract_xlsx_text
 from aios_habit.workspace_chat_answer_preview import WorkspaceTrialSourceInput, build_trial_answer_preview
+
+def create_safe_test_data(conversation_id: str) -> TemporaryConversationSource:
+    ts = TemporaryConversationSource(
+        id=f"SRC-{uuid.uuid4().hex[:8].upper()}",
+        conversation_id=conversation_id,
+        source_type="plain_text",
+        title="Dữ liệu test an toàn",
+        content_preview="Đây là dữ liệu test giả lập, không chứa thông tin thật.",
+        content_text="Đây là dữ liệu test giả lập, không chứa thông tin mật hay dữ liệu công ty. Người dùng có thể dùng dữ liệu này để thử nghiệm tính năng Workspace Chat một cách an toàn."
+    )
+    save_temporary_source(ts)
+    set_source_enabled(conversation_id, SOURCE_SCOPE_TEMPORARY, ts.id, True)
+    return ts
 from aios_habit.workspace_chat_ai_answer import (
     PRIVACY_MODE_LOCAL_PREVIEW_ONLY,
     PRIVACY_MODE_CLOUD_ALLOWED,
@@ -282,6 +295,14 @@ else:
     if not active_conversation:
         st.info("Vui lòng tạo hoặc chọn một cuộc trò chuyện để bắt đầu.")
     else:
+        with st.expander("✅ Các bước thử nghiệm Workspace Chat (Pilot)", expanded=True):
+            st.markdown("""
+- Thêm nguồn
+- Bật nguồn cần dùng
+- Hỏi thử ở chế độ chỉ xem trước trên máy
+- Nếu muốn gửi AI, kiểm nguồn và xác nhận
+- Kiểm tra câu trả lời trước khi dùng
+""")
         # Hiển thị các thông báo thử nghiệm
         if st.session_state.wsc_show_save_placeholder:
             st.success("🎉 [Tính năng mô phỏng] Đã kích hoạt lưu cuộc trò chuyện này thành hồ sơ sự việc mới thành công!")
@@ -289,7 +310,7 @@ else:
                 st.session_state.wsc_show_save_placeholder = False
                 safe_rerun()
         if st.session_state.wsc_show_explain_placeholder:
-            st.info("🔍 Bản thử nghiệm: AIOS chưa nối AI thật ở bước này. Danh sách này chỉ cho biết những nguồn đang bật và đoạn xem trước sẽ dùng ở bước sau. Đây chưa phải phần phân tích, đối chiếu hoặc kết luận cuối cùng.")
+            st.info("🔍 Chỉ xem trước trên máy: AIOS chưa nối AI thật ở bước này. Danh sách này chỉ cho biết những nguồn đang bật và đoạn xem trước sẽ dùng ở bước sau. Đây chưa phải phần phân tích, đối chiếu hoặc kết luận cuối cùng.")
             if st.button("Đóng thông báo"):
                 st.session_state.wsc_show_explain_placeholder = False
                 safe_rerun()
@@ -440,6 +461,14 @@ else:
                         else:
                             st.error("Nội dung nguồn không được để trống.")
 
+            st.write(" ")
+            with st.expander("🛠️ Tạo dữ liệu test không mật"):
+                st.write("Tạo một nguồn tạm với dữ liệu giả, an toàn để thử nghiệm tính năng, không chứa dữ liệu thật.")
+                if st.button("Tạo dữ liệu test không mật"):
+                    create_safe_test_data(active_conversation.id)
+                    st.session_state.wsc_action_message = "Đã tạo nguồn dữ liệu test an toàn và bật cho cuộc trò chuyện."
+                    safe_rerun()
+
             # Khung thêm file Excel .xlsx vào nguồn tạm của cuộc trò chuyện
             st.write(" ")
             with st.expander("📊 Thêm file Excel .xlsx"):
@@ -451,7 +480,7 @@ else:
                     )
                     if st.form_submit_button("Đọc và thêm vào nguồn tạm"):
                         if uploaded_excel is None:
-                            st.error("Không thể đọc file Excel này. Vui lòng kiểm tra lại file hoặc thử file nhỏ hơn.")
+                            st.error("Không thể đọc nội dung file Excel. File có thể bị hỏng hoặc có mật khẩu. Vui lòng kiểm tra lại.")
                         else:
                             result = extract_xlsx_text(uploaded_excel.getvalue(), uploaded_excel.name)
                             if result.ok:
@@ -466,8 +495,8 @@ else:
                                 save_temporary_source(temporary_source)
                                 set_source_enabled(active_conversation.id, SOURCE_SCOPE_TEMPORARY, temporary_source.id, True)
                                 st.session_state.wsc_action_message = "Đã đọc nội dung Excel và thêm vào nguồn tạm của cuộc trò chuyện. Nguồn Excel mới đã được bật cho cuộc trò chuyện này."
-                                if result.truncated:
-                                    st.session_state.wsc_action_error = result.owner_message
+                                if getattr(result, "truncated", False):
+                                    st.session_state.wsc_action_error = "Excel quá lớn hoặc nội dung đã bị rút gọn."
                                 safe_rerun()
                             else:
                                 st.error(result.owner_message)
@@ -510,8 +539,8 @@ else:
 
             # Ý cần kiểm tra và hành động tiếp theo
             if last_assistant_msg:
-                if "Bản thử nghiệm" in last_assistant_msg.content:
-                    to_check = ["Bản thử nghiệm: Kiểm tra danh sách nguồn bật và đoạn xem trước."]
+                if "Chỉ xem trước trên máy" in last_assistant_msg.content:
+                    to_check = ["Chỉ xem trước trên máy: Kiểm tra danh sách nguồn bật và đoạn xem trước."]
                 else:
                     to_check = ["Đây là câu trả lời do AI tạo, cần kiểm tra lại trước khi dùng."]
                 next_actions = ["Kiểm tra nguồn trước khi kết luận"]

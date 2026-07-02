@@ -12,8 +12,8 @@ def get_vietnamese_labels():
         "not_saved_longterm": "Chưa lưu lâu dài",
         "only_this_conversation": "Chỉ dùng trong cuộc trò chuyện này",
         "main_answer": "Bản xem trước câu trả lời",
-        "proven_sources": "Nguồn đang bật cho cuộc trò chuyện",
-        "to_check": "Điều owner cần kiểm tra",
+        "proven_sources": "Nguồn đang bật cho câu hỏi",
+        "to_check": "Cần kiểm tra lại",
         "next_actions": "Việc nên làm tiếp",
         "save_to_case": "Lưu vào hồ sơ",
         "explain_conclusion": "Xem đoạn xem trước sẽ dùng ở bước sau"
@@ -104,15 +104,15 @@ def render_source_status(status: str) -> str:
     return ""
 
 def render_source_summary(enabled_notebook_count: int, enabled_temp_count: int):
-    st.subheader("Nguồn đang dùng")
+    st.subheader("Nguồn đang bật")
     total = enabled_notebook_count + enabled_temp_count
     if total == 0:
-        st.write("Chưa có nguồn nào đang dùng.")
+        st.write("Chưa có nguồn nào đang bật.")
     else:
         st.write(f"Tổng số nguồn đang bật: {total}")
         st.write(f"- Số nguồn trong sổ đang bật: {enabled_notebook_count}")
         st.write(f"- Số nguồn tạm đang bật: {enabled_temp_count}")
-    st.info("Nguồn đang dùng là những nguồn bạn đã bật cho cuộc trò chuyện này.")
+    st.info("Nguồn đang bật là những nguồn bạn đã chọn cho câu hỏi.")
 
 def render_notebook_source_list(
     sources: List[Any],
@@ -131,8 +131,18 @@ def render_notebook_source_list(
         st.markdown(f"**{s.title}**")
         if s.content_preview:
             st.caption(f"Preview: {s.content_preview}")
+        elif not getattr(s, "content_text", ""):
+            st.warning("Nguồn chưa có nội dung để gửi")
 
-        status_lbl = render_source_status(s.extraction_status)
+        privacy_label = getattr(s, "privacy_label", "")
+        if privacy_label is None or privacy_label.strip().lower() not in {"machine_only", "cloud_allowed"}:
+            st.error("Nguồn này chỉ được dùng trên máy")
+
+        content = getattr(s, "content_text", "")
+        if content and len(content) > 4000:
+            st.warning("Nội dung có thể bị rút gọn để tránh quá dài")
+
+        status_lbl = render_source_status(getattr(s, "extraction_status", ""))
         if status_lbl:
             st.write(f"Trạng thái: {status_lbl}")
 
@@ -166,8 +176,18 @@ def render_temporary_source_list(
         st.markdown(f"**{s.title}**")
         if s.content_preview:
             st.caption(f"Preview: {s.content_preview}")
+        elif not getattr(s, "content_text", ""):
+            st.warning("Nguồn chưa có nội dung để gửi")
 
-        status_lbl = render_source_status(s.status)
+        privacy_label = getattr(s, "privacy_label", "")
+        if privacy_label is None or privacy_label.strip().lower() not in {"machine_only", "cloud_allowed"}:
+            st.error("Nguồn này chỉ được dùng trên máy")
+
+        content = getattr(s, "content_text", "")
+        if content and len(content) > 4000:
+            st.warning("Nội dung có thể bị rút gọn để tránh quá dài")
+
+        status_lbl = render_source_status(getattr(s, "status", ""))
         if status_lbl:
             st.write(f"Trạng thái: {status_lbl}")
 
