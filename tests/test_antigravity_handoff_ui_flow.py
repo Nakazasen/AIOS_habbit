@@ -1,4 +1,4 @@
-﻿import json
+import json
 import subprocess
 from pathlib import Path
 
@@ -86,9 +86,9 @@ def test_local_only_cloud_provider_blocked_and_vi_instruction(tmp_path):
 
 
 def test_no_local_runs_tracked_by_git():
-    tracked = subprocess.run(["git", "ls-files", "local_runs"], text=True, capture_output=True, check=True)
+    tracked = subprocess.run(["git", "ls-files", "local_runs/"], text=True, capture_output=True, check=True)
     assert tracked.stdout.strip() == ""
-    ignored = subprocess.run(["git", "check-ignore", "-v", "local_runs"], text=True, capture_output=True, check=True)
+    ignored = subprocess.run(["git", "check-ignore", "-v", "local_runs/"], text=True, capture_output=True, check=True)
     assert "local_runs/" in ignored.stdout
 
 
