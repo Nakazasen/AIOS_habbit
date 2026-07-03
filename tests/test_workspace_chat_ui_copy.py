@@ -1,4 +1,4 @@
-﻿from pathlib import Path
+from pathlib import Path
 
 FORBIDDEN_WORDS = [
     "RAG",
@@ -65,18 +65,15 @@ def test_workspace_chat_ui_vietnamese_labels():
 
 def test_phase2e_required_copy_in_app():
     app_source = Path("src/aios_habit/workspace_chat_app.py").read_text(encoding="utf-8")
-    assert "Chế độ trả lời" in app_source
-    assert "Chỉ xem trước trên máy" in app_source
-    assert "Cho phép gửi nội dung nguồn đang bật tới AI" in app_source
-    assert "Câu trả lời AI" in app_source
-    assert "Nguồn đang bật được đưa vào câu hỏi" in app_source
-    assert "Nội dung có thể bị rút gọn để tránh quá dài" in app_source
-    assert "Đây là câu trả lời do AI tạo, cần kiểm tra lại trước khi dùng." in app_source
+    # Phase 2H: Radio removed, check AI-first flow labels instead
+    assert "Đây là câu trả lời do AI tạo" in app_source
+    assert "Hỏi AI với nguồn đang bật" in app_source
+    assert "Kiểm tra nguồn trước" in app_source
 
 
 def test_phase2g_required_copy():
     app_source = Path("src/aios_habit/workspace_chat_app.py").read_text(encoding="utf-8")
-    assert "Không gửi dữ liệu ra ngoài" in app_source
+    # Phase 2H: 'Không gửi dữ liệu ra ngoài' caption was removed with the radio
     assert "dán văn bản dài" in app_source
     assert "Excel .xlsx" in app_source
     assert "dữ liệu test không mật" in app_source
@@ -109,3 +106,31 @@ def test_phase2g_save_feedback_placeholder_truthful_copy():
     ]
     for phrase in forbidden_success_claims:
         assert phrase not in app_source
+
+
+def test_phase2h_no_mode_radio_in_app():
+    app_source = Path("src/aios_habit/workspace_chat_app.py").read_text(encoding="utf-8")
+    ui_source = Path("src/aios_habit/workspace_chat_ui.py").read_text(encoding="utf-8")
+    # The owner-facing radio must be absent
+    assert "Chế độ trả lời" not in app_source
+    assert "Chỉ xem trước trên máy" not in app_source
+    assert "Cho phép gửi nội dung nguồn đang bật tới AI" not in app_source
+    assert "st.radio" not in app_source
+
+
+def test_phase2h_required_copy():
+    app_source = Path("src/aios_habit/workspace_chat_app.py").read_text(encoding="utf-8")
+    ui_source = Path("src/aios_habit/workspace_chat_ui.py").read_text(encoding="utf-8")
+    # Phase 2H required labels
+    assert "Hỏi AI với nguồn đang bật" in ui_source
+    assert "AI chưa trả lời" in ui_source
+    assert "AI đã trả lời" in ui_source
+    assert "Thiếu ngữ cảnh" in ui_source
+    assert "Nguồn gửi cùng câu hỏi" in ui_source
+    assert "Dán nhanh nhiều nguồn" in ui_source
+    assert "Kiểm tra nguồn trước" in ui_source
+    # App uses labels from ui
+    assert "render_ai_answer_header" in app_source
+    assert "render_insufficient_context" in app_source
+    assert "render_source_check_panel" in app_source
+    assert "render_privacy_block_message" in app_source

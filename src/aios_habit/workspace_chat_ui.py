@@ -16,7 +16,17 @@ def get_vietnamese_labels():
         "to_check": "Cần kiểm tra lại",
         "next_actions": "Việc nên làm tiếp",
         "save_to_case": "Lưu vào hồ sơ",
-        "explain_conclusion": "Xem đoạn xem trước sẽ dùng ở bước sau"
+        "explain_conclusion": "Xem đoạn xem trước sẽ dùng ở bước sau",
+        # Phase 2H labels
+        "ai_action": "Hỏi AI với nguồn đang bật",
+        "source_check": "Kiểm tra nguồn trước",
+        "ai_not_answered": "AI chưa trả lời",
+        "ai_answered": "AI đã trả lời",
+        "insufficient_context": "Thiếu ngữ cảnh",
+        "sources_sent": "Nguồn gửi cùng câu hỏi",
+        "quick_paste": "Dán nhanh nhiều nguồn",
+        "quick_paste_add": "Thêm làm 1 nguồn",
+        "question_placeholder": "Nhập câu hỏi bạn muốn AI hỗ trợ...",
     }
 
 def render_notebook_header():
@@ -206,3 +216,61 @@ def render_temporary_source_list(
             if st.button("Thêm vào sổ tài liệu", key=promote_key):
                 on_promote(s.id)
         st.write("---")
+
+
+# --- Phase 2H: New render helpers ---
+
+def render_ai_source_context_summary(enabled_count: int):
+    """Compact AI source context summary shown near the question area."""
+    if enabled_count > 0:
+        st.info(f"AI sẽ dùng {enabled_count} nguồn đang bật.")
+    else:
+        st.warning("Chưa có nguồn nào đang bật.")
+
+
+def render_source_check_panel(source_titles: List[str], source_previews: List[str]):
+    """Renders local source check panel OUTSIDE chat history.
+    Badge: AI chưa trả lời. Never saved as ChatMessage(role='assistant')."""
+    st.warning("🔍 **AI chưa trả lời**")
+    st.caption("Đây chỉ là danh sách nguồn và đoạn xem trước sẽ dùng nếu bạn hỏi AI.")
+    if not source_titles:
+        st.write("Chưa có nguồn để kiểm tra. Hãy bật nguồn hoặc dán thêm dữ liệu.")
+        return
+    st.write(f"Nguồn đang bật: {len(source_titles)}")
+    for i, title in enumerate(source_titles):
+        preview = source_previews[i] if i < len(source_previews) else ""
+        st.markdown(f"**{title}**")
+        if preview:
+            st.caption(preview)
+
+
+def render_ai_answer_header(source_count: int, source_titles: List[str]):
+    """Renders 'AI đã trả lời' badge and source summary above the answer."""
+    st.success("✅ **AI đã trả lời**")
+    st.write(f"Nguồn gửi cùng câu hỏi: {source_count}")
+    if source_titles:
+        with st.expander("Xem nguồn gửi cùng câu hỏi", expanded=False):
+            for title in source_titles:
+                st.write(f"- {title}")
+    st.caption("Đây là câu trả lời do AI tạo. Hãy kiểm tra lại trước khi dùng.")
+
+
+def render_insufficient_context(reason: str = "no_sources"):
+    """Renders 'Thiếu ngữ cảnh' badge with appropriate message."""
+    st.error("⚠️ **Thiếu ngữ cảnh**")
+    if reason == "no_sources":
+        st.write("Hãy bật nguồn hoặc dán thêm dữ liệu trước khi hỏi AI.")
+    elif reason == "empty_content":
+        st.write("Nguồn đang bật chưa có nội dung để hỏi AI.")
+    else:
+        st.write("Hãy bật nguồn hoặc dán thêm dữ liệu trước khi hỏi AI.")
+
+
+def render_privacy_block_message():
+    """Renders friendly privacy block message."""
+    st.error("Có nguồn không được gửi AI. Hãy tắt nguồn đó rồi thử lại.")
+
+
+def render_source_changed_message():
+    """Renders source-set-changed warning."""
+    st.warning("Nguồn đang bật đã thay đổi. Hãy xem lại danh sách rồi bấm Hỏi AI lần nữa.")

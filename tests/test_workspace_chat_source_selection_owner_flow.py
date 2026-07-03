@@ -465,35 +465,30 @@ def test_phase2d_app_submit_builds_source_aware_placeholder_structure():
     assert "selection.source_scope == SOURCE_SCOPE_TEMPORARY" in source
     assert "resolved_source is None" in source
     assert "WorkspaceTrialSourceInput(" in source
-    assert "preview = build_trial_answer_preview(user_input, enabled_preview_sources)" in source
-    assert "content=preview.answer_text" in source
-    assert "selected_source_ids" not in source[source.find("if user_input:"):source.find("# Khung dán nhật ký")]
+    # Phase 2H: AI-first flow uses build_source_check_summary and pack_workspace_ai_context
+    assert "build_source_check_summary(check_source_inputs)" in source
+    assert "pack_workspace_ai_context" in source
+    assert "selected_source_ids" not in source
 
 
 def test_phase2d_submit_order_save_user_resolve_build_save_assistant_rerun():
     source = Path("src/aios_habit/workspace_chat_app.py").read_text(encoding="utf-8")
-    start = source.index("if user_input:")
-    end = source.index("# Khung dán nhật ký", start)
-    block = source[start:end]
-    order_tokens = [
-        "save_message(user_msg)",
-        "load_enabled_sources_for_conversation(active_conversation.id)",
-        "load_notebook_sources(active_nb_id)",
-        "load_temporary_sources(active_conversation.id)",
-        "build_trial_answer_preview(user_input, enabled_preview_sources)",
-        "save_message(assistant_msg)",
-        "safe_rerun()",
-    ]
-    positions = [block.index(token) for token in order_tokens]
-    assert positions == sorted(positions)
-    assert block.count("save_message(user_msg)") == 2
-    assert block.count("save_message(assistant_msg)") == 2
+    # Phase 2H: AI-first flow uses ask_submitted pattern
+    assert "ask_submitted" in source
+    # Save order: save_message(user_msg) before save_message(assistant_msg) before safe_rerun()
+    user_save_idx = source.index("save_message(user_msg)")
+    assistant_save_idx = source.index("save_message(assistant_msg)", user_save_idx)
+    rerun_idx = source.index("safe_rerun()", assistant_save_idx)
+    assert user_save_idx < assistant_save_idx < rerun_idx
+    assert source.count("save_message(user_msg)") == 1
+    assert source.count("save_message(assistant_msg)") == 1
 
 
 def test_phase2d_app_does_not_reparse_xlsx_or_update_source_use_metadata_on_submit():
     source = Path("src/aios_habit/workspace_chat_app.py").read_text(encoding="utf-8")
-    start = source.index("if user_input:")
-    end = source.index("# Khung dán nhật ký", start)
+    # Phase 2H: AI-first flow uses ask_submitted pattern
+    start = source.index("if ask_submitted")
+    end = source.index("# Phase 2H: Dán nhanh", start)
     block = source[start:end]
     assert "extract_xlsx_text" not in block
     assert "openpyxl" not in block
@@ -762,3 +757,96 @@ def test_save_case_placeholder_render_uses_info_not_success():
     assert "st.info" in block
     assert "st.success" not in block
     assert "SAVE_CASE_PLACEHOLDER_MESSAGE" in block
+
+
+# --- Phase 2H structural tests ---
+
+def test_phase2h_source_check_not_saved_as_assistant():
+    """Source check panel must never save a ChatMessage(role='assistant')."""
+    import ast
+    app_source = Path("src/aios_habit/workspace_chat_app.py").read_text(encoding="utf-8")
+
+    # Find the source check block using the precise comment marker
+    check_start = app_source.index("# Phase 2H: Source check panel")
+    check_end = app_source.index("# Phase 2H: AI answer badge", check_start)
+    check_block = app_source[check_start:check_end]
+
+    assert "save_message" not in check_block
+    assert 'role="assistant"' not in check_block
+    assert "ChatMessage" not in check_block
+
+
+def test_phase2h_source_check_no_provider_call():
+    """Source check panel must never call provider or generate AI answer."""
+    app_source = Path("src/aios_habit/workspace_chat_app.py").read_text(encoding="utf-8")
+
+    check_start = app_source.index("# Phase 2H: Source check panel")
+    check_end = app_source.index("# Phase 2H: AI answer badge", check_start)
+    check_block = app_source[check_start:check_end]
+
+    assert "generate_workspace_ai_answer" not in check_block
+    assert "RealWorkspaceAIProviderClient" not in check_block
+    assert "pack_workspace_ai_context" not in check_block
+
+
+def test_phase2h_quick_paste_creates_one_source(mock_streamlit_app):
+    """Quick paste saves exactly one temp source, auto-enables, no AI call."""
+    from aios_habit.workspace_chat_models import TemporaryConversationSource, SOURCE_SCOPE_TEMPORARY
+
+    conv_id = "conv_quick_paste"
+    content = "Nội dung dán nhanh test 日本語"
+    title = "Log sáng 3/7"
+
+    ts = TemporaryConversationSource(
+        id="SRC-QUICK",
+        conversation_id=conv_id,
+        source_type="pasted_text",
+        title=title,
+        content_preview=content[:150],
+        content_text=content
+    )
+    store.save_temporary_source(ts)
+    store.set_source_enabled(conv_id, SOURCE_SCOPE_TEMPORARY, ts.id, True)
+
+    saved = store.load_temporary_sources(conv_id)
+    assert len(saved) == 1
+    assert saved[0].title == title
+    assert saved[0].content_text == content
+
+    sels = store.load_conversation_source_selections(conv_id)
+    assert len(sels) == 1
+    assert sels[0].source_id == "SRC-QUICK"
+    assert sels[0].enabled is True
+
+
+def test_phase2h_quick_paste_empty_rejected():
+    """Empty quick paste should be caught by UI form validation."""
+    app_source = Path("src/aios_habit/workspace_chat_app.py").read_text(encoding="utf-8")
+
+    # Find the quick paste form
+    quick_start = app_source.index("quick_paste_form")
+    quick_end = app_source.index("# Khung dán nhật ký", quick_start)
+    quick_block = app_source[quick_start:quick_end]
+
+    assert "quick_content.strip()" in quick_block
+    assert 'Nội dung không được để trống.' in quick_block
+    assert "save_temporary_source" in quick_block
+
+
+def test_phase2h_no_radio_no_consent_checkbox_in_sidebar():
+    """Phase 2H removes the radio and consent checkbox from sidebar."""
+    app_source = Path("src/aios_habit/workspace_chat_app.py").read_text(encoding="utf-8")
+    assert "st.radio" not in app_source
+    assert "wsc_privacy_mode_widget" not in app_source
+    assert "consent_key" not in app_source
+    assert "cloud_consent_confirmed = st.checkbox" not in app_source
+
+
+def test_phase2h_ask_button_explicit():
+    """Phase 2H requires explicit button for AI action."""
+    app_source = Path("src/aios_habit/workspace_chat_app.py").read_text(encoding="utf-8")
+    assert "wsc_ai_ask_form" in app_source
+    assert "ask_submitted" in app_source
+    assert "check_submitted" in app_source
+    # st.chat_input auto-submit must not be used for AI calls
+    assert "st.chat_input" not in app_source

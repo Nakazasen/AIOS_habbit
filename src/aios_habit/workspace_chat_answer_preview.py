@@ -106,3 +106,30 @@ def build_trial_answer_preview(
         answer_lines.append(f"Còn {hidden_count} nguồn đang bật chưa hiển thị trong bản xem trước.")
     answer_lines.extend(["", "Đây chưa phải câu trả lời phân tích cuối cùng."])
     return WorkspaceTrialAnswerPreview(normalized_question, "\n".join(answer_lines), tuple(source_previews))
+
+
+@dataclass(frozen=True)
+class SourceCheckSummary:
+    source_count: int
+    source_titles: tuple[str, ...]
+    source_previews: tuple[str, ...]
+
+
+def build_source_check_summary(
+    enabled_sources: Iterable[WorkspaceTrialSourceInput | WorkspacePreviewSourceLike],
+) -> SourceCheckSummary:
+    source_inputs = tuple(_source_input_from_any(source) for source in enabled_sources)
+    visible = source_inputs[:MAX_SOURCES_IN_ANSWER]
+    titles: list[str] = []
+    previews: list[str] = []
+    for source in visible:
+        title = _normalize_whitespace(source.title) or "Nguồn chưa đặt tên"
+        friendly_type = _friendly_source_type(source.source_type)
+        titles.append(f"{title} · {friendly_type}")
+        preview_text = _cap_preview(source.content_preview or source.content_text)
+        previews.append(preview_text)
+    return SourceCheckSummary(
+        source_count=len(source_inputs),
+        source_titles=tuple(titles),
+        source_previews=tuple(previews),
+    )

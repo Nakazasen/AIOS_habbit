@@ -458,7 +458,8 @@ def test_app_imports_no_case_cockpit():
 def test_app_no_xlsx_reparse_in_ai_path():
     # 43. no .xlsx reparse in app AI path
     app_source = Path("src/aios_habit/workspace_chat_app.py").read_text(encoding="utf-8")
-    assert "extract_xlsx_text" not in app_source[app_source.find("if user_input:"):app_source.find("# Khung dán nhật ký")]
+    # Phase 2H: AI-first flow uses ask_submitted pattern
+    assert "extract_xlsx_text" not in app_source[app_source.find("if ask_submitted"):app_source.find("# Phase 2H: Dán nhanh")]
 
 
 def _build_request_through_packer(

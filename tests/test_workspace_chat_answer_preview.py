@@ -118,3 +118,50 @@ def test_helper_is_pure_architecture():
     for node in ast.walk(tree):
         if isinstance(node, ast.Call) and isinstance(node.func, ast.Name):
             assert node.func.id not in forbidden_calls
+
+
+# --- Phase 2H: build_source_check_summary tests ---
+
+from aios_habit.workspace_chat_answer_preview import build_source_check_summary, SourceCheckSummary
+
+
+def test_source_check_summary_empty():
+    result = build_source_check_summary([])
+    assert result.source_count == 0
+    assert result.source_titles == ()
+    assert result.source_previews == ()
+
+
+def test_source_check_summary_basic():
+    sources = [
+        _source(source_id="SRC-1", title="Log sáng", source_type="pasted_text", content_preview="Nội dung log"),
+        _source(source_id="SRC-2", title="Bang.xlsx", source_type="xlsx", content_preview="Row 1"),
+    ]
+    result = build_source_check_summary(sources)
+    assert result.source_count == 2
+    assert "Log sáng · Văn bản" in result.source_titles
+    assert "Bang.xlsx · Excel" in result.source_titles
+    assert "Nội dung log" in result.source_previews[0]
+    assert "Row 1" in result.source_previews[1]
+
+
+def test_source_check_summary_no_internal_ids():
+    sources = [_source(source_id="SRC-SECRET", title="Sổ vận hành")]
+    result = build_source_check_summary(sources)
+    for title in result.source_titles:
+        assert "SRC-SECRET" not in title
+    for preview in result.source_previews:
+        assert "SRC-SECRET" not in preview
+
+
+def test_source_check_summary_caps_preview():
+    long_content = "A" * 500
+    sources = [_source(content_preview="", content_text=long_content)]
+    result = build_source_check_summary(sources)
+    assert len(result.source_previews[0]) <= MAX_PREVIEW_CHARS_PER_SOURCE
+
+
+def test_source_check_summary_unnamed():
+    sources = [_source(title="   ", content_preview="some content")]
+    result = build_source_check_summary(sources)
+    assert "Nguồn chưa đặt tên" in result.source_titles[0]

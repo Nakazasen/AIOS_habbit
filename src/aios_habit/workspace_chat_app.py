@@ -28,7 +28,7 @@ from aios_habit.workspace_chat_models import (
     SOURCE_SCOPE_TEMPORARY
 )
 from aios_habit.workspace_chat_excel import extract_xlsx_text
-from aios_habit.workspace_chat_answer_preview import WorkspaceTrialSourceInput, build_trial_answer_preview
+from aios_habit.workspace_chat_answer_preview import WorkspaceTrialSourceInput, build_trial_answer_preview, build_source_check_summary
 
 def create_safe_test_data(conversation_id: str) -> TemporaryConversationSource:
     ts = TemporaryConversationSource(
@@ -60,7 +60,13 @@ from aios_habit.workspace_chat_ui import (
     render_source_summary,
     render_notebook_source_list,
     render_temporary_source_list,
-    render_source_status
+    render_source_status,
+    render_ai_source_context_summary,
+    render_source_check_panel,
+    render_ai_answer_header,
+    render_insufficient_context,
+    render_privacy_block_message,
+    render_source_changed_message
 )
 
 # Tự động khởi tạo kho lưu trữ
@@ -79,6 +85,10 @@ if "wsc_action_message" not in st.session_state:
     st.session_state.wsc_action_message = None
 if "wsc_action_error" not in st.session_state:
     st.session_state.wsc_action_error = None
+if "wsc_source_check_visible" not in st.session_state:
+    st.session_state.wsc_source_check_visible = False
+if "wsc_last_ai_badge" not in st.session_state:
+    st.session_state.wsc_last_ai_badge = None
 
 def safe_rerun():
     try:
@@ -254,60 +264,6 @@ else:
             render_source_summary(enabled_notebook_count, enabled_temp_count)
 
             st.write("---")
-            st.subheader("Chế độ trả lời")
-            privacy_mode_label = st.radio(
-                "Chọn chế độ trả lời:",
-                options=[
-                    "Chỉ xem trước trên máy",
-                    "Cho phép gửi nội dung nguồn đang bật tới AI"
-                ],
-                index=0,
-                key=f"wsc_privacy_mode_widget_{active_conversation.id}"
-            )
-            if privacy_mode_label == "Chỉ xem trước trên máy":
-                st.caption("Không gửi dữ liệu ra ngoài. Dùng để kiểm tra nguồn đang bật và đoạn xem trước an toàn trên máy; đây chưa phải câu trả lời phân tích cuối cùng.")
-            privacy_mode = PRIVACY_MODE_LOCAL_PREVIEW_ONLY if privacy_mode_label == "Chỉ xem trước trên máy" else PRIVACY_MODE_CLOUD_ALLOWED
-
-            enabled_selections = load_enabled_sources_for_conversation(active_conversation.id)
-            current_keys = tuple(sorted((sel.source_scope, sel.source_id) for sel in enabled_selections))
-            consent_hash = hash(current_keys)
-            consent_key = f"wsc_consent_{active_conversation.id}_{consent_hash}"
-
-            cloud_consent_confirmed = False
-            if privacy_mode == PRIVACY_MODE_CLOUD_ALLOWED:
-                st.write("**Câu trả lời AI**")
-                st.info("Nguồn đang bật được đưa vào câu hỏi. Nội dung có thể bị rút gọn để tránh quá dài.")
-
-                notebook_source_by_id = {s.id: s for s in notebook_sources}
-                temp_source_by_id = {s.id: s for s in temp_sources}
-                if enabled_selections:
-                    st.write("Các nguồn đang bật sẽ gửi:")
-                    for sel in enabled_selections:
-                        if sel.source_scope == SOURCE_SCOPE_NOTEBOOK:
-                            resolved = notebook_source_by_id.get(sel.source_id)
-                        else:
-                            resolved = temp_source_by_id.get(sel.source_id)
-                        if resolved:
-                            st.write(f"- `{resolved.title}`")
-                else:
-                    st.write("Chưa có nguồn nào đang bật.")
-
-                cloud_consent_confirmed = st.checkbox(
-                    "Tôi xác nhận gửi các nguồn đang bật tới AI",
-                    value=False,
-                    key=consent_key
-                )
-                if cloud_consent_confirmed:
-                    st.session_state.wsc_consent_snapshot = {
-                        "conversation_id": active_conversation.id,
-                        "privacy_mode": privacy_mode,
-                        "consent_source_keys": current_keys
-                    }
-                else:
-                    if "wsc_consent_snapshot" in st.session_state:
-                        st.session_state.wsc_consent_snapshot = None
-
-            st.write("---")
             render_notebook_source_list(
                 sources=notebook_sources,
                 selections=notebook_selections,
@@ -332,10 +288,10 @@ else:
     else:
         with st.expander("✅ Các bước thử nghiệm Workspace Chat (Pilot)", expanded=True):
             st.markdown("""
-- Thêm nguồn
+- Thêm nguồn (dán văn bản, Excel, hoặc dữ liệu test)
 - Bật nguồn cần dùng
-- Hỏi thử ở chế độ chỉ xem trước trên máy
-- Nếu muốn gửi AI, kiểm nguồn và xác nhận
+- Nếu muốn kiểm tra trước, bấm "Kiểm tra nguồn trước"
+- Nhập câu hỏi rồi bấm "Hỏi AI với nguồn đang bật"
 - Kiểm tra câu trả lời trước khi dùng
 """)
         # Hiển thị các thông báo thử nghiệm
@@ -345,7 +301,7 @@ else:
                 st.session_state.wsc_show_save_placeholder = False
                 safe_rerun()
         if st.session_state.wsc_show_explain_placeholder:
-            st.info("🔍 Chỉ xem trước trên máy: AIOS chưa nối AI thật ở bước này. Danh sách này chỉ cho biết những nguồn đang bật và đoạn xem trước sẽ dùng ở bước sau. Đây chưa phải phần phân tích, đối chiếu hoặc kết luận cuối cùng.")
+            st.info("🔍 AIOS chưa nối AI thật ở bước này. Danh sách này cho biết nguồn đang bật và đoạn xem trước sẽ dùng nếu bạn hỏi AI. Đây chưa phải phần phân tích hoặc kết luận cuối cùng.")
             if st.button("Đóng thông báo"):
                 st.session_state.wsc_show_explain_placeholder = False
                 safe_rerun()
@@ -363,69 +319,85 @@ else:
                 for m in messages:
                     render_chat_bubble(m)
 
-            # Ô nhập câu hỏi của Streamlit
-            user_input = st.chat_input("Nhập câu hỏi của bạn tại đây...")
-            if user_input:
-                user_msg = ChatMessage(
-                    id=f"MSG-{uuid.uuid4().hex[:8].upper()}",
-                    conversation_id=active_conversation.id,
-                    role="user",
-                    content=user_input
-                )
-
-                if privacy_mode == PRIVACY_MODE_LOCAL_PREVIEW_ONLY:
-                    save_message(user_msg)
-                    enabled_selections = load_enabled_sources_for_conversation(active_conversation.id)
-                    current_notebook_sources = load_notebook_sources(active_nb_id)
-                    current_temp_sources = load_temporary_sources(active_conversation.id)
-                    notebook_source_by_id = {s.id: s for s in current_notebook_sources}
-                    temp_source_by_id = {s.id: s for s in current_temp_sources}
-                    enabled_preview_sources = []
-                    for selection in enabled_selections:
-                        if selection.source_scope == SOURCE_SCOPE_NOTEBOOK:
-                            resolved_source = notebook_source_by_id.get(selection.source_id)
-                        elif selection.source_scope == SOURCE_SCOPE_TEMPORARY:
-                            resolved_source = temp_source_by_id.get(selection.source_id)
-                        else:
-                            resolved_source = None
-                        if resolved_source is None:
-                            continue
-                        enabled_preview_sources.append(
-                            WorkspaceTrialSourceInput(
-                                source_id=resolved_source.id,
-                                source_scope=selection.source_scope,
-                                source_type=resolved_source.source_type,
-                                title=resolved_source.title,
-                                content_preview=resolved_source.content_preview,
-                                content_text=resolved_source.content_text,
-                            )
+            # Phase 2H: Source check panel (outside chat, never saved to history)
+            if st.session_state.wsc_source_check_visible:
+                enabled_selections = load_enabled_sources_for_conversation(active_conversation.id)
+                current_notebook_sources = load_notebook_sources(active_nb_id)
+                current_temp_sources = load_temporary_sources(active_conversation.id)
+                notebook_source_by_id = {s.id: s for s in current_notebook_sources}
+                temp_source_by_id = {s.id: s for s in current_temp_sources}
+                check_source_inputs = []
+                for selection in enabled_selections:
+                    if selection.source_scope == SOURCE_SCOPE_NOTEBOOK:
+                        resolved_source = notebook_source_by_id.get(selection.source_id)
+                    elif selection.source_scope == SOURCE_SCOPE_TEMPORARY:
+                        resolved_source = temp_source_by_id.get(selection.source_id)
+                    else:
+                        resolved_source = None
+                    if resolved_source is None:
+                        continue
+                    check_source_inputs.append(
+                        WorkspaceTrialSourceInput(
+                            source_id=resolved_source.id,
+                            source_scope=selection.source_scope,
+                            source_type=resolved_source.source_type,
+                            title=resolved_source.title,
+                            content_preview=resolved_source.content_preview,
+                            content_text=resolved_source.content_text,
                         )
-                    preview = build_trial_answer_preview(user_input, enabled_preview_sources)
-
-                    assistant_msg = ChatMessage(
-                        id=f"MSG-{uuid.uuid4().hex[:8].upper()}",
-                        conversation_id=active_conversation.id,
-                        role="assistant",
-                        content=preview.answer_text
                     )
-                    save_message(assistant_msg)
+                summary = build_source_check_summary(check_source_inputs)
+                render_source_check_panel(list(summary.source_titles), list(summary.source_previews))
+                if st.button("Đóng kiểm tra nguồn"):
+                    st.session_state.wsc_source_check_visible = False
+                    safe_rerun()
+
+            # Phase 2H: AI answer badge (outside chat, shows source info after successful AI call)
+            badge_data = st.session_state.wsc_last_ai_badge
+            if badge_data and badge_data.get("conversation_id") == active_conversation.id:
+                if badge_data.get("type") == "ai_answered":
+                    render_ai_answer_header(badge_data.get("source_count", 0), badge_data.get("source_titles", []))
+                elif badge_data.get("type") == "insufficient_context":
+                    render_insufficient_context(badge_data.get("reason", "no_sources"))
+                elif badge_data.get("type") == "privacy_block":
+                    render_privacy_block_message()
+                elif badge_data.get("type") == "source_changed":
+                    render_source_changed_message()
+
+            # Phase 2H: Question + AI action area (explicit button, not chat_input auto-submit)
+            st.write("---")
+
+            # Context summary before question
+            total_enabled = enabled_notebook_count + enabled_temp_count
+            render_ai_source_context_summary(total_enabled)
+
+            with st.form(f"wsc_ai_ask_form_{active_conversation.id}", clear_on_submit=True):
+                user_input = st.text_area(labels["question_placeholder"], height=80, key=f"wsc_question_{active_conversation.id}")
+
+                ask_col, check_col = st.columns([2, 1])
+                with ask_col:
+                    ask_submitted = st.form_submit_button(labels["ai_action"], use_container_width=True)
+                with check_col:
+                    check_submitted = st.form_submit_button(labels["source_check"], use_container_width=True)
+
+            if check_submitted:
+                st.session_state.wsc_source_check_visible = True
+                st.session_state.wsc_last_ai_badge = None
+                safe_rerun()
+
+            if ask_submitted and user_input and user_input.strip():
+                # Phase 2H: AI-first flow
+                enabled_selections = load_enabled_sources_for_conversation(active_conversation.id)
+
+                # Check zero sources → Thiếu ngữ cảnh
+                if not enabled_selections:
+                    st.session_state.wsc_last_ai_badge = {
+                        "conversation_id": active_conversation.id,
+                        "type": "insufficient_context",
+                        "reason": "no_sources",
+                    }
                     safe_rerun()
                 else:
-                    # cloud_allowed
-                    enabled_selections = load_enabled_sources_for_conversation(active_conversation.id)
-                    current_keys = tuple(sorted((sel.source_scope, sel.source_id) for sel in enabled_selections))
-
-                    # Check fingerprint/mismatch against confirmed consent snapshot
-                    snapshot = st.session_state.get("wsc_consent_snapshot")
-                    if (not cloud_consent_confirmed or
-                        not snapshot or
-                        snapshot.get("conversation_id") != active_conversation.id or
-                        snapshot.get("privacy_mode") != privacy_mode or
-                        snapshot.get("consent_source_keys") != current_keys):
-
-                        st.session_state.wsc_action_error = "Tập nguồn đang bật đã thay đổi sau khi xác nhận. Vui lòng kiểm tra lại và xác nhận lại trước khi gửi."
-                        safe_rerun()
-
                     current_notebook_sources = load_notebook_sources(active_nb_id)
                     current_temp_sources = load_temporary_sources(active_conversation.id)
 
@@ -436,41 +408,100 @@ else:
                         enabled_selections
                     )
 
-                    req = WorkspaceAIAnswerRequest(
-                        conversation_id=active_conversation.id,
-                        question=q_text,
-                        context_sources=packed_sources,
-                        privacy_mode=privacy_mode,
-                        cloud_consent_confirmed=cloud_consent_confirmed,
-                        consent_source_keys=snapshot.get("consent_source_keys", ())
-                    )
-
-                    res = generate_workspace_ai_answer(req, RealWorkspaceAIProviderClient())
-
-                    if res.ok:
-                        save_message(user_msg)
-                        assistant_msg = ChatMessage(
-                            id=f"MSG-{uuid.uuid4().hex[:8].upper()}",
-                            conversation_id=active_conversation.id,
-                            role="assistant",
-                            content=res.answer_text
-                        )
-                        save_message(assistant_msg)
-
-                        # Invalidate/reset consent checkbox state
-                        st.session_state[consent_key] = False
-                        if "wsc_consent_snapshot" in st.session_state:
-                            st.session_state.wsc_consent_snapshot = None
-
-                        if res.warnings:
-                            st.session_state.wsc_action_message = "\n".join(res.warnings)
-                        else:
-                            st.session_state.wsc_action_message = "Đã nhận câu trả lời từ AI thành công."
-
+                    # Check if all sources are empty → Thiếu ngữ cảnh
+                    non_empty_sources = [s for s in packed_sources if s.text and s.text.strip()]
+                    if not non_empty_sources:
+                        st.session_state.wsc_last_ai_badge = {
+                            "conversation_id": active_conversation.id,
+                            "type": "insufficient_context",
+                            "reason": "empty_content",
+                        }
                         safe_rerun()
                     else:
-                        st.session_state.wsc_action_error = res.error_message
-                        safe_rerun()
+                        # Build consent keys from current snapshot
+                        current_keys = tuple(sorted((sel.source_scope, sel.source_id) for sel in enabled_selections))
+
+                        req = WorkspaceAIAnswerRequest(
+                            conversation_id=active_conversation.id,
+                            question=q_text,
+                            context_sources=packed_sources,
+                            privacy_mode=PRIVACY_MODE_CLOUD_ALLOWED,
+                            cloud_consent_confirmed=True,
+                            consent_source_keys=current_keys
+                        )
+
+                        res = generate_workspace_ai_answer(req, RealWorkspaceAIProviderClient())
+
+                        if res.ok:
+                            user_msg = ChatMessage(
+                                id=f"MSG-{uuid.uuid4().hex[:8].upper()}",
+                                conversation_id=active_conversation.id,
+                                role="user",
+                                content=user_input
+                            )
+                            save_message(user_msg)
+                            assistant_msg = ChatMessage(
+                                id=f"MSG-{uuid.uuid4().hex[:8].upper()}",
+                                conversation_id=active_conversation.id,
+                                role="assistant",
+                                content=res.answer_text
+                            )
+                            save_message(assistant_msg)
+
+                            source_titles = list(res.included_source_titles)
+                            st.session_state.wsc_last_ai_badge = {
+                                "conversation_id": active_conversation.id,
+                                "type": "ai_answered",
+                                "source_count": len(source_titles),
+                                "source_titles": source_titles,
+                            }
+
+                            if res.warnings:
+                                st.session_state.wsc_action_message = "\n".join(res.warnings)
+                            else:
+                                st.session_state.wsc_action_message = "Đã nhận câu trả lời từ AI thành công."
+
+                            safe_rerun()
+                        else:
+                            # Handle error cases
+                            if "chỉ được dùng trên máy" in (res.error_message or ""):
+                                st.session_state.wsc_last_ai_badge = {
+                                    "conversation_id": active_conversation.id,
+                                    "type": "privacy_block",
+                                }
+                            elif "Tập nguồn đang bật đã thay đổi" in (res.error_message or ""):
+                                st.session_state.wsc_last_ai_badge = {
+                                    "conversation_id": active_conversation.id,
+                                    "type": "source_changed",
+                                }
+                            else:
+                                st.session_state.wsc_action_error = res.error_message
+                                st.session_state.wsc_last_ai_badge = None
+                            safe_rerun()
+
+            # Phase 2H: Dán nhanh nhiều nguồn (quick multi-source paste)
+            st.write(" ")
+            with st.expander(f"📋 {labels['quick_paste']}"):
+                with st.form("quick_paste_form", clear_on_submit=True):
+                    quick_title = st.text_input("Tên nhóm nguồn (tuỳ chọn)", placeholder="Ví dụ: Log sáng 3/7, Email lỗi...")
+                    quick_content = st.text_area("Dán nội dung vào đây", placeholder="Dán nội dung vào đây...", height=120)
+                    if st.form_submit_button(labels["quick_paste_add"]):
+                        if quick_content.strip():
+                            final_title = quick_title.strip() or f"Nguồn dán nhanh {datetime.now().strftime('%d/%m %H:%M')}"
+                            ts = TemporaryConversationSource(
+                                id=f"SRC-{uuid.uuid4().hex[:8].upper()}",
+                                conversation_id=active_conversation.id,
+                                source_type="pasted_text",
+                                title=final_title,
+                                content_preview=quick_content[:150],
+                                content_text=quick_content
+                            )
+                            save_temporary_source(ts)
+                            set_source_enabled(active_conversation.id, SOURCE_SCOPE_TEMPORARY, ts.id, True)
+                            st.session_state.wsc_action_message = f"Đã thêm nguồn: {final_title}."
+                            safe_rerun()
+                        else:
+                            st.error("Nội dung không được để trống.")
 
             # Khung dán nhật ký/email/đoạn chat dài
             st.write(" ")
@@ -575,10 +606,7 @@ else:
 
             # Ý cần kiểm tra và hành động tiếp theo
             if last_assistant_msg:
-                if "Chỉ xem trước trên máy" in last_assistant_msg.content:
-                    to_check = ["Chỉ xem trước trên máy: Kiểm tra danh sách nguồn bật và đoạn xem trước."]
-                else:
-                    to_check = ["Đây là câu trả lời do AI tạo, cần kiểm tra lại trước khi dùng."]
+                to_check = ["Đây là câu trả lời do AI tạo, cần kiểm tra lại trước khi dùng."]
                 next_actions = ["Kiểm tra nguồn trước khi kết luận"]
             else:
                 to_check = []
