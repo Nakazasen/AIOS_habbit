@@ -1,5 +1,16 @@
 # Changelog
 
+## 2026-07-04 - Workspace Chat Primary UI & Legacy Retirement Sync
+
+### Enhancements
+- Established Workspace Chat as the primary UI for WorkLens.
+- Replaced default launcher shortcuts (`RUN_AIOS_HABIT_STUDIO.bat`, `run_studio.ps1`) to run the Workspace Chat application.
+- Added legacy warning banners and console output to older UI components (`studio.py`, `case_cockpit.py`, `RUN_AIOS_CASE_COCKPIT.bat`, `run_case_cockpit.ps1`) to mark them as reference/debug only.
+- Completed multi-format source ingestion, multi-file uploader, image/WebP graceful handling, and local retrieval/evidence items (Gate 1B).
+- Completed repository-wide Vietnamese mojibake scan and encoding audit.
+- Updated documentation and roadmaps to reflect the primary UI status and next queue for Gate 1C (Source Library / Source Management UX).
+- Ensured P1.0 production readiness remains LOCKED.
+
 ## 2026-06-30 - Workspace Chat UI Phase 1
 
 > [!NOTE]

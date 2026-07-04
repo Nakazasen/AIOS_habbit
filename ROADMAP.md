@@ -32,22 +32,13 @@ Case → Evidence → Map → Action → Learning → Memory
 
 ## Active Position
 
-
-
-- **Local HEAD:** `2b7d714` (`Add source-aware retrieval for targeted evidence packs`).
-
-- **Remote HEAD:** `2b7d714` (`Add source-aware retrieval for targeted evidence packs`).
-
-- **Current position:** Strong Answer UI foundation added; owner acceptance run still required.
-- **Current capability:** daily-pilot ready for normal documents, not production-ready.
-
-- **P1.0:** LOCKED; do not open until readiness criteria are met.
-
-- **NotebookLM parity:** NOT achieved; current retrieval is useful but not NotebookLM-level.
-
-- **Remaining before P1.0:** owner acceptance run, PPTX/Image extraction optional/future, evaluator quality, UI usability check.
-
-- **IDE/model bridge:** Evidence-pack/manual paste-back flow available; direct cloud calls remain blocked for local-only evidence.
+- **Local HEAD:** `8adab34` (`Mark Workspace Chat as primary UI`).
+- **Remote HEAD:** `8adab34` (`Mark Workspace Chat as primary UI`).
+- **Current position:** Workspace Chat is the primary UI; local retrieval, multi-file uploader, and Vietnamese encoding are fully implemented and pushed.
+- **Current capability:** Workspace Chat supports notebook lifecycle, hard delete, multi-format sources, local retrieval, and image/WebP OCR.
+- **P1.0:** LOCKED; remains locked until the Gate 1C Source Library UX is stable.
+- **NotebookLM parity:** NOT achieved; retrieval and source library still require MVP improvements before parity claims.
+- **IDE/model bridge:** Manual IDE response import and full-bundle outbox/inbox is fully operational.
 
 
 
@@ -480,19 +471,17 @@ Future research should learn public patterns from RAGFlow, kotaemon, Microsoft G
 
 Immediate:
 
-0. **M1.9 - General RAG Core Reset** - IN PROGRESS; separate generic core from domain playbooks, add claim guard, anti-overfit tests, and fair model-assisted benchmark design. Exit criteria: multi-domain smoke tests pass, no manufacturing text appears in general mode, no general claim is made from a MOM-only benchmark, and privacy-safe AI-assisted flow is defined.
+0. **Gate 1C — Workspace Chat Source Library / Source Management UX** - IN PROGRESS; implement search/filter, bulk toggle, temporary source deletion, and failed upload visibility in Workspace Chat.
 
-1. **AIOS-RAG-AGENT-HARNESS-0** — DONE locally; research RAG + Claude-Code-style harness patterns, docs only.
+1. **AIOS-RAG-EVIDENCE-PACK-1** — evidence pack builder, source scoring, answer abstention.
 
-2. **AIOS-RAG-INGEST-1** — DONE locally; foundation implemented locally, no vector DB/graph DB yet, no cloud OCR, no provider calls, no NotebookLM parity claim.
+2. **AIOS-RAG-INGEST-1** — improve parser/chunk metadata, no vector DB yet.
 
-3. **AIOS-RAG-SEARCH-1** — DONE locally; local hybrid search foundation, SQLite FTS/BM25, metadata filters, citation IDs.
+3. **AIOS-RAG-SEARCH-1** — local hybrid search foundation, SQLite FTS/BM25, metadata filters, citation IDs.
 
-4. **AIOS-RAG-EVIDENCE-PACK-1** — evidence pack builder, source scoring, answer abstention.
+4. **AIOS-IDE-BRIDGE-1** — manual prompt export, paste-back answer, store model/tool/evidence/route log.
 
-5. **AIOS-IDE-BRIDGE-1** — DONE locally; manual prompt export, paste-back answer, store model/tool/evidence/route log. Next: audit before push.
-
-6. **Visual Map MVP** — DONE; local JSON/Mermaid export, schema models, deterministic active-case graph builder, UI stub.
+5. **Visual Map MVP** — DONE; local JSON/Mermaid export, schema models, deterministic active-case graph builder, UI stub.
 
 
 

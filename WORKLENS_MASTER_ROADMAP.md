@@ -1,4 +1,4 @@
-﻿# WorkLens Master Roadmap & Governance
+# WorkLens Master Roadmap & Governance
 
 Every phase of the AIOS WorkLens lifecycle must use strict PASS/FAIL gates. A phase or gate is not considered complete until deliverables, validation evidence, handover, privacy impact, and rollback options are clearly documented.
 
@@ -12,14 +12,14 @@ Case → Evidence → Map → Action → Learning → Memory
 
 ## 1. Current Gate Status
 
-- **Current local HEAD:** `f28663b` (`Document roadmap review after normal provider UI pilot`).
-- **Current remote HEAD:** `214c44f` (`Clarify provider fallback reason in daily flow`).
-- **Current position:** end of Phase 3, before Phase 4 RAG Engine v2 and Phase 5 IDE/model bridge.
+- **Current local HEAD:** `8adab34` (`Mark Workspace Chat as primary UI`).
+- **Current remote HEAD:** `8adab34` (`Mark Workspace Chat as primary UI`).
+- **Current position:** Workspace Chat is established as the primary UI; legacy Studio and Case Cockpit are retained as reference/debug only.
 - **P1.0:** LOCKED. Do not open automatically.
-- **NotebookLM parity:** not achieved; Phase 4 is required before any parity claim.
-- **IDE/model bridge:** not implemented; Phase 5 is next-parallel.
+- **NotebookLM parity:** not achieved; Retrieval Engine v2 and Source Library MVP are required.
+- **IDE/model bridge:** Manual IDE response import is operational; direct cloud calls remain blocked for local-only evidence.
 
-Completed foundation gates include local Case Cockpit, Workspace/Knowledge Notebook, MOM local benchmark, provider safety modes, route log, one-screen daily UI, DeepSeek normal-document UI pilot, Q&A-to-Case route summary, and company/mật privacy guard.
+Completed foundation gates include local Case Cockpit, Workspace/Knowledge Notebook, MOM local benchmark, provider safety modes, route log, one-screen daily UI, DeepSeek normal-document UI pilot, Q&A-to-Case route summary, company/mật privacy guard, Workspace Chat primary UI, multi-format uploader, local retrieval/evidence items, Vietnamese mojibake cleanup, and legacy retirement docs sync.
 
 ---
 
@@ -139,10 +139,10 @@ Learning sources for public pattern research: RAGFlow, kotaemon, Microsoft Graph
 ## 4. Next Gate Queue
 
 Immediate:
-1. **AIOS-RAG-AGENT-HARNESS-0** — research RAG + Claude-Code-style harness patterns, docs only.
-2. **AIOS-RAG-INGEST-1** — improve parser/chunk metadata, no vector DB yet.
-3. **AIOS-RAG-SEARCH-1** — local hybrid search foundation, SQLite FTS/BM25, metadata filters, citation IDs.
-4. **AIOS-RAG-EVIDENCE-PACK-1** — evidence pack builder, source scoring, answer abstention.
+1. **Gate 1C — Workspace Chat Source Library / Source Management UX** — IN PROGRESS; implement search/filter, bulk actions, temporary source cleanup with warnings, and failed upload visibility in Workspace Chat.
+2. **AIOS-RAG-EVIDENCE-PACK-1** — evidence pack builder, source scoring, answer abstention.
+3. **AIOS-RAG-INGEST-1** — improve parser/chunk metadata, no vector DB yet.
+4. **AIOS-RAG-SEARCH-1** — local hybrid search foundation, SQLite FTS/BM25, metadata filters, citation IDs.
 5. **AIOS-IDE-BRIDGE-1** — manual prompt export, paste-back answer, store model/tool/evidence/route log.
 
 Later:
