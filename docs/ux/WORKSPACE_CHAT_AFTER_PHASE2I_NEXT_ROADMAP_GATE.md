@@ -1,5 +1,12 @@
 # Workspace Chat After Phase 2I Next Roadmap Gate
 
+> [!IMPORTANT]
+> This gate’s Phase 2J recommendation is superseded by owner correction.
+> Phase 2J owner-flow implementation was reverted.
+> See:
+> - `WORKSPACE_CHAT_AFTER_PHASE2I_OWNER_CORRECTION.md`
+> - `WORKSPACE_CHAT_NOTEBOOK_DELETE_DESIGN_GATE.md`
+
 ## 1. Kết luận
 
 `PASS_READY_FOR_NEXT_IMPLEMENTATION_PROMPT`
