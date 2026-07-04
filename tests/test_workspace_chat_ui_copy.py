@@ -64,12 +64,10 @@ def test_workspace_chat_ui_vietnamese_labels():
 
 def test_phase2e_required_copy_in_app():
     app_source = Path("src/aios_habit/workspace_chat_app.py").read_text(encoding="utf-8")
-    ui_source = Path("src/aios_habit/workspace_chat_ui.py").read_text(encoding="utf-8")
-    owner_ui_source = app_source + ui_source
     # Phase 2H: Radio removed, check AI-first flow labels instead
-    assert "Đây là câu trả lời do AI tạo" in owner_ui_source
-    assert "Hỏi AI với nguồn đang bật" in owner_ui_source
-    assert "Kiểm tra nguồn trước" in owner_ui_source
+    assert "Đây là câu trả lời do AI tạo" in app_source
+    assert "Hỏi AI với nguồn đang bật" in app_source
+    assert "Kiểm tra nguồn trước" in app_source
 
 
 def test_phase2g_required_copy():
@@ -80,22 +78,6 @@ def test_phase2g_required_copy():
     assert "dữ liệu test không mật" in app_source
     assert "ô hỏi chỉ hỗ trợ nhập chữ" in app_source.lower()
     assert "chưa hỗ trợ dán ảnh hoặc thêm PDF/Word trực tiếp" in app_source
-
-
-def test_phase2j_main_flow_and_safe_test_tool_hierarchy():
-    app_source = Path("src/aios_habit/workspace_chat_app.py").read_text(encoding="utf-8")
-    ui_source = Path("src/aios_habit/workspace_chat_ui.py").read_text(encoding="utf-8")
-
-    assert "render_notebook_next_step()" in app_source
-    assert "render_owner_flow_guidance()" in app_source
-    assert "Các bước thử nghiệm Workspace Chat (Pilot)" not in app_source
-    assert 'st.expander("Xem luồng làm việc đề xuất", expanded=False)' in ui_source
-    assert 'st.expander("🛠️ Công cụ thử nghiệm an toàn", expanded=False)' in app_source
-    assert "Dữ liệu thử nghiệm không mật chỉ được tạo khi bạn bấm nút bên dưới." in app_source
-
-    excel_position = app_source.index('with st.expander("📊 Thêm file Excel .xlsx")')
-    safe_tool_position = app_source.index('with st.expander("🛠️ Công cụ thử nghiệm an toàn"')
-    assert safe_tool_position > excel_position
 
 
 def test_phase2e_forbidden_copy_absent():

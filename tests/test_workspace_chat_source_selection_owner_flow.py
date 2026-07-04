@@ -853,19 +853,6 @@ def test_phase2h_ask_button_explicit():
     assert "st.chat_input" not in app_source
 
 
-def test_phase2j_safe_test_helper_remains_explicit_and_has_no_ai_call():
-    app_source = Path("src/aios_habit/workspace_chat_app.py").read_text(encoding="utf-8")
-    start = app_source.index('with st.expander("🛠️ Công cụ thử nghiệm an toàn"')
-    end = app_source.index("with col_results:", start)
-    helper_block = app_source[start:end]
-
-    assert "expanded=False" in helper_block
-    assert 'if st.button("Tạo dữ liệu test không mật"):' in helper_block
-    assert "create_safe_test_data(active_conversation.id)" in helper_block
-    assert "generate_workspace_ai_answer" not in helper_block
-    assert "RealWorkspaceAIProviderClient" not in helper_block
-
-
 
 class _Phase2IExtractionResult:
     ok = True

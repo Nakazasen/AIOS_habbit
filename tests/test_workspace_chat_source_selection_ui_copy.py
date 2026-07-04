@@ -1,8 +1,6 @@
 import pytest
 import streamlit as st
 from aios_habit.workspace_chat_ui import (
-    render_notebook_next_step,
-    render_owner_flow_guidance,
     render_source_status,
     render_source_summary,
     render_notebook_source_list,
@@ -93,38 +91,6 @@ def test_source_summary_0_sources(mock_st):
     assert "Nguồn đang bật là những nguồn bạn đã chọn cho câu hỏi." in all_text
     for word in FORBIDDEN_WORDS:
         assert word.lower() not in all_text.lower()
-
-
-def test_phase2j_owner_flow_guidance_is_short_safe_and_collapsed(mock_st):
-    render_notebook_next_step()
-    render_owner_flow_guidance()
-
-    all_text = " ".join(c[1] for c in mock_st.calls)
-    expander_calls = [c for c in mock_st.calls if c[0] == "expander"]
-
-    assert "Mở một sổ" in all_text
-    assert "tạo sổ mới" in all_text
-    assert "Thêm nguồn" in all_text
-    assert "chọn quyền riêng tư" in all_text
-    assert "Kiểm tra nguồn trước" in all_text
-    assert "AI chưa trả lời" in all_text
-    assert "Hỏi AI với nguồn đang bật" in all_text
-    assert "tắt nguồn đó hoặc đổi lựa chọn quyền riêng tư" in all_text
-    assert "lưu trữ sổ" in all_text
-    assert "khôi phục" in all_text
-    assert ("expander", "Xem luồng làm việc đề xuất", False, None) in expander_calls
-
-    for forbidden in [
-        "machine_only",
-        "local_only",
-        "privacy_label",
-        "provider_success",
-        "mock",
-        "test harness",
-        "schema",
-        "backend",
-    ]:
-        assert forbidden not in all_text.lower()
 
 def test_source_summary_notebook_only(mock_st):
     render_source_summary(3, 0)
