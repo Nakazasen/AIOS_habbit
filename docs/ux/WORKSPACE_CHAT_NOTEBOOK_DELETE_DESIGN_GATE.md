@@ -2,17 +2,31 @@
 
 ## 1. Baseline
 
-- HEAD: `08a1b3b27b86746dcfb01fc2eda9af8aaa567806`
-- `origin/main`: `08a1b3b27b86746dcfb01fc2eda9af8aaa567806`
+- HEAD: `831e98d4373886d7b6c9711f3050b70a076d3553`
+- `origin/main`: `831e98d4373886d7b6c9711f3050b70a076d3553`
 
-## 2. Problem statement
+## 2. Owner final decision
 
-Owner asked why the UI has no notebook delete.
+Owner selected Option C: hard delete notebook.
+
+Reason:
+
+- “Xóa sổ” means permanently deleting all data inside the notebook;
+- the goal is to free local machine/storage footprint;
+- old notebooks may become unnecessary;
+- keeping old notebook data forever is not acceptable.
+
+Archive/hide/restore is not enough for this need.
+Soft delete/trash is not selected for this MVP because owner explicitly chose permanent deletion for storage cleanup.
+
+## 3. Problem statement
+
 Current Phase 2I implemented archive/hide/restore only.
 Archive is not delete.
-There is no notebook hard delete UI.
+There is no owner-facing notebook hard delete UI.
+Notebook hard delete must be designed before implementation because it is destructive and cascades across Workspace Chat local data.
 
-## 3. Current implementation evidence
+## 4. Current implementation evidence
 
 Current repository evidence shows:
 
@@ -22,76 +36,50 @@ Current repository evidence shows:
 - the app renders active and archived notebook lists;
 - archived notebooks can be restored;
 - no hard delete notebook path was found;
-- `delete_notebook_source()` deletes a notebook source only, not a notebook.
+- `delete_notebook_source()` deletes a notebook source only, not a notebook;
+- Phase 2I intentionally excluded hard delete, cascade delete, and trash purge.
 
-## 4. Definitions
+## 5. Definitions
 
 - Archive: hide from main list, data preserved, restore possible.
 - Soft delete / trash: hide from normal list, visible in trash, restore possible, optional purge later.
 - Hard delete: destructive deletion of notebook and all child data.
 - Cascade delete: deletion of conversations, messages, notebook sources, temporary sources, source selections, and metadata.
 
-## 5. Options
+## 6. Options and final decision
 
 ### Option A — Keep archive/hide/restore only
 
-- Best if owner only needs list cleanup.
-- No destructive data loss.
-- Already implemented.
-- Could improve copy so owner understands archive means cleanup.
+Rejected for the current owner need.
+It remains useful for reversible list cleanup, but it does not free old notebook data permanently.
 
 ### Option B — Add soft delete / trash layer
 
-- Safer than hard delete.
-- More complex than archive.
-- Needs trash UI, restore, retention policy, and no accidental provider/privacy changes.
-- Might duplicate archive unless use case is clearly different.
+Rejected for this MVP.
+It is safer than hard delete, but it duplicates archive unless owner needs a distinct recoverable trash concept.
+It also does not immediately satisfy the selected “xóa vĩnh viễn” meaning.
 
 ### Option C — Add hard delete notebook
 
-- Highest risk.
-- Requires explicit confirm.
+Selected.
+
+- Highest risk, but matches owner intent.
+- Requires exact confirmation.
 - Requires child-data cascade design.
 - Requires partial failure/recovery strategy.
-- Requires tests for conversations, messages, notebook sources, temporary sources, selections, privacy labels, active sessions.
-- Should not be implemented without owner approval.
+- Requires tests for conversations, messages, notebook sources, temporary sources, selections, privacy labels, and active sessions.
+- Must not call provider or weaken privacy behavior.
 
-## 6. Risk matrix
+## 7. Risk matrix
 
 | Option | Data-loss risk | Implementation risk | Owner value | Testability | MVP suitability |
 | --- | --- | --- | --- | --- | --- |
-| A. Archive/hide/restore only | Low | Low | Medium if cleanup is enough | High | High |
-| B. Soft delete / trash | Medium | Medium | Medium to high if owner needs delete semantics | Medium | Medium |
-| C. Hard delete notebook | High | High | High only if permanent deletion is required | Medium to low | Low without explicit approval |
+| A. Archive/hide/restore only | Low | Low | Low for disk cleanup | High | Not enough |
+| B. Soft delete / trash | Medium | Medium | Medium | Medium | Deferred |
+| C. Hard delete notebook | High | High | High | Medium | Selected with safeguards |
 
-## 7. Recommended decision
+## 8. Selected gate status
 
-Do not implement delete immediately.
-Ask owner to choose:
+`PASS_READY_FOR_HARD_DELETE_IMPLEMENTATION_PROMPT`
 
-- A: archive is enough;
-- B: soft delete/trash needed;
-- C: hard delete needed with full safeguards.
-
-Recommended status: `PASS_READY_FOR_OWNER_DELETE_DECISION`
-
-## 8. Required owner decision
-
-Ask exactly:
-
-“Bạn muốn ‘xóa sổ’ nghĩa là ẩn khỏi danh sách chính, đưa vào thùng rác có thể khôi phục, hay xóa vĩnh viễn toàn bộ dữ liệu bên trong?”
-
-## 9. If owner chooses hard delete later
-
-Future requirements:
-
-- allowed files to be decided later;
-- no provider changes;
-- no privacy weakening;
-- no runtime JSON manual edits;
-- tests for cascade safety;
-- owner smoke for delete confirmation and restore/impossibility depending option.
-
-## 10. Final status
-
-`PASS_READY_FOR_OWNER_DELETE_DECISION`
+Hard delete is now the target, but implementation must not start until the implementation prompt uses the cascade contract, confirmation UX, tests, and safeguards in `WORKSPACE_CHAT_NOTEBOOK_HARD_DELETE_IMPLEMENTATION_DESIGN.md`.
