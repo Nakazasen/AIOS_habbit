@@ -1,4 +1,4 @@
-﻿# WORKSPACE_CHAT_PHASE2I_NOTEBOOK_LIFECYCLE_IMPLEMENTATION_AUDIT
+# WORKSPACE_CHAT_PHASE2I_NOTEBOOK_LIFECYCLE_IMPLEMENTATION_AUDIT
 
 ## 1. Baseline
 
@@ -115,3 +115,12 @@ runtime dirty check: empty
 ## 10. Final status
 
 `PASS_READY_FOR_CODEX_AUDIT`
+
+## 11. Owner smoke result
+
+Owner smoke after the pushed Phase 2I implementation is documented in
+[WORKSPACE_CHAT_PHASE2I_NOTEBOOK_LIFECYCLE_OWNER_SMOKE_RESULT.md](file:///D:/Sandbox/AIOS_habbit/docs/ux/WORKSPACE_CHAT_PHASE2I_NOTEBOOK_LIFECYCLE_OWNER_SMOKE_RESULT.md).
+
+Final owner smoke status: `PASS_WITH_ACCEPTED_GAP_ACCEPTED_FOR_PHASE2I`.
+The accepted gap is stale two-session browser automation coverage, tracked as
+`HARDEN_WORKSPACE_CHAT_PHASE2I_STALE_SESSION_BROWSER_AUTOMATION` for future hardening.
