@@ -176,7 +176,7 @@ def ingest_and_extract_bytes(
             }
 
     # Allowed complex document formats parsed via document_extractors
-    supported_complex_exts = {".pdf", ".docx", ".pptx", ".html", ".htm", ".png", ".jpg", ".jpeg", ".bmp", ".tif", ".tiff"}
+    supported_complex_exts = {".pdf", ".docx", ".pptx", ".html", ".htm", ".png", ".jpg", ".jpeg", ".webp", ".bmp", ".tif", ".tiff"}
     if ext not in supported_complex_exts:
         return {
             "ok": False,
@@ -191,7 +191,11 @@ def ingest_and_extract_bytes(
     # Write to safe temp file to call document_extractors
     temp_dir = tempfile.gettempdir()
     unique_id = uuid.uuid4().hex[:8]
-    temp_path = Path(temp_dir) / f"wsc_extract_{unique_id}_{safe_name}"
+    # If .webp, we fake the extension as .png to let document_extractors route it to _ocr_image
+    if ext == ".webp":
+        temp_path = Path(temp_dir) / f"wsc_extract_{unique_id}_{safe_name}.png"
+    else:
+        temp_path = Path(temp_dir) / f"wsc_extract_{unique_id}_{safe_name}"
 
     try:
         with open(temp_path, "wb") as tmp:
@@ -214,7 +218,6 @@ def ingest_and_extract_bytes(
             chunk_text = chunk.get("text", "").strip()
 
             if status in {"failed_with_reason", "parse_failed", "zip_failed", "unsupported_no_local_tool"}:
-                # If complex documents return failed status, they are malformed
                 if ext in {".docx", ".pptx", ".xlsx", ".xlsm"}:
                     is_malformed = True
 
@@ -236,50 +239,52 @@ def ingest_and_extract_bytes(
         combined_text = "\n\n".join(text_parts).strip()
 
         # Handle specific error cases first
-        if is_malformed:
-            return {
-                "ok": False,
-                "filename": safe_name,
-                "error_code": "malformed",
-                "owner_message": "Không thể đọc tập tin này. Vui lòng kiểm tra lại tập tin hoặc thử định dạng khác.",
-                "text": "",
-                "preview": "",
-                "metadata": {"file_size_bytes": file_size, "extension": ext, "raw_warnings": warnings},
-            }
+        is_image = ext in {".png", ".jpg", ".jpeg", ".webp", ".bmp", ".tif", ".tiff"}
 
-        if is_dependency_missing and ext == ".pdf":
-            return {
-                "ok": False,
-                "filename": safe_name,
-                "error_code": "dependency_missing",
-                "owner_message": "Không thể đọc PDF vì máy hiện chưa có bộ đọc PDF tùy chọn.",
-                "text": "",
-                "preview": "",
-                "metadata": {"file_size_bytes": file_size, "extension": ext, "raw_warning": missing_dep_msg},
-            }
+        if is_image:
+            if is_ocr_missing or is_dependency_missing or not has_text or is_malformed:
+                return {
+                    "ok": False,
+                    "filename": safe_name,
+                    "error_code": "dependency_missing" if (is_ocr_missing or is_dependency_missing) else "empty",
+                    "owner_message": "Chưa đọc được nội dung ảnh. Có thể máy chưa có OCR hoặc ảnh không có chữ rõ.",
+                    "text": "",
+                    "preview": "",
+                    "metadata": {"file_size_bytes": file_size, "extension": ext},
+                }
+        else:
+            if is_malformed:
+                return {
+                    "ok": False,
+                    "filename": safe_name,
+                    "error_code": "malformed",
+                    "owner_message": "Không thể đọc tập tin này. Vui lòng kiểm tra lại tập tin hoặc thử định dạng khác.",
+                    "text": "",
+                    "preview": "",
+                    "metadata": {"file_size_bytes": file_size, "extension": ext, "raw_warnings": warnings},
+                }
 
-        # If it's an image and OCR failed due to missing tools
-        if is_ocr_missing and ext in {".png", ".jpg", ".jpeg", ".bmp", ".tif", ".tiff"}:
-            return {
-                "ok": False,
-                "filename": safe_name,
-                "error_code": "dependency_missing",
-                "owner_message": "Không thể đọc ảnh vì máy hiện chưa có bộ đọc chữ trong ảnh.",
-                "text": "",
-                "preview": "",
-                "metadata": {"file_size_bytes": file_size, "extension": ext},
-            }
+            if is_dependency_missing and ext == ".pdf":
+                return {
+                    "ok": False,
+                    "filename": safe_name,
+                    "error_code": "dependency_missing",
+                    "owner_message": "Không thể đọc PDF vì máy hiện chưa có bộ đọc PDF tùy chọn.",
+                    "text": "",
+                    "preview": "",
+                    "metadata": {"file_size_bytes": file_size, "extension": ext, "raw_warning": missing_dep_msg},
+                }
 
-        if not has_text:
-            return {
-                "ok": False,
-                "filename": safe_name,
-                "error_code": "empty",
-                "owner_message": "Tập tin rỗng hoặc không có nội dung đọc được.",
-                "text": "",
-                "preview": "",
-                "metadata": {"file_size_bytes": file_size, "extension": ext, "raw_warnings": warnings},
-            }
+            if not has_text:
+                return {
+                    "ok": False,
+                    "filename": safe_name,
+                    "error_code": "empty",
+                    "owner_message": "Tập tin rỗng hoặc không có nội dung đọc được.",
+                    "text": "",
+                    "preview": "",
+                    "metadata": {"file_size_bytes": file_size, "extension": ext, "raw_warnings": warnings},
+                }
 
         # Apply sizes limits
         if len(combined_text.encode("utf-8")) > WORKSPACE_CHAT_SOURCE_TEXT_LIMIT_BYTES:
@@ -303,6 +308,16 @@ def ingest_and_extract_bytes(
         }
 
     except Exception as e:
+        if ext in {".png", ".jpg", ".jpeg", ".webp", ".bmp", ".tif", ".tiff"}:
+            return {
+                "ok": False,
+                "filename": safe_name,
+                "error_code": "malformed",
+                "owner_message": "Chưa đọc được nội dung ảnh. Có thể máy chưa có OCR hoặc ảnh không có chữ rõ.",
+                "text": "",
+                "preview": "",
+                "metadata": {"file_size_bytes": file_size, "extension": ext},
+            }
         return {
             "ok": False,
             "filename": safe_name,

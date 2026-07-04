@@ -133,7 +133,7 @@ def test_image_ocr_graceful_degradation():
         res = ingest_and_extract_bytes(b"img_bytes", "screenshot.png")
         assert res["ok"] is False
         assert res["error_code"] == "dependency_missing"
-        assert "chưa có bộ đọc chữ trong ảnh" in res["owner_message"]
+        assert "Có thể máy chưa có OCR hoặc ảnh không có chữ rõ." in res["owner_message"]
 
 def test_temp_file_cleanup_on_success_and_failure(tmp_path):
     # Mock OS temp dir to use our tmp_path to easily inspect files

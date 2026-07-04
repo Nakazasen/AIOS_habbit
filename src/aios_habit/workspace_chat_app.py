@@ -126,6 +126,68 @@ def create_general_temporary_source(
         set_source_enabled(conversation_id, SOURCE_SCOPE_TEMPORARY, ts.id, True)
     return ts
 
+
+def process_workspace_upload_batch(
+    uploaded_files: list,
+    conversation_id: str,
+    doc_privacy_choice: str,
+    enable_now: bool
+) -> dict:
+    """
+    Process a list of uploaded files, ingest each one, and save as temporary source.
+    Returns a dictionary of results.
+    """
+    success_count = 0
+    fail_count = 0
+    success_files = []
+    failed_files = []
+    errors_by_file = {}
+    has_truncated = False
+
+    for uploaded_file in uploaded_files:
+        try:
+            file_bytes = uploaded_file.getvalue()
+            filename = uploaded_file.name
+        except Exception as e:
+            fail_count += 1
+            fname = getattr(uploaded_file, "name", "unknown_file")
+            failed_files.append(fname)
+            errors_by_file[fname] = f"Không thể đọc bytes từ tập tin: {e}"
+            continue
+
+        result = ingest_and_extract_bytes(file_bytes, filename, doc_privacy_choice)
+        if result.get("ok"):
+            ext = result.get("metadata", {}).get("extension", "").lower()
+            should_enable = enable_now
+
+            create_general_temporary_source(
+                conversation_id=conversation_id,
+                title=result.get("filename"),
+                source_type=ext.replace(".", "") or "txt",
+                content_preview=result.get("preview", ""),
+                content_text=result.get("text", ""),
+                owner_choice=doc_privacy_choice,
+                enable_source=should_enable,
+            )
+            success_count += 1
+            success_files.append(filename)
+            if result.get("metadata", {}).get("truncated"):
+                has_truncated = True
+        else:
+            fail_count += 1
+            failed_files.append(filename)
+            errors_by_file[filename] = result.get("owner_message", "Đã xảy ra lỗi khi trích xuất tài liệu.")
+
+    return {
+        "success_count": success_count,
+        "fail_count": fail_count,
+        "success_files": success_files,
+        "failed_files": failed_files,
+        "errors_by_file": errors_by_file,
+        "has_truncated": has_truncated,
+    }
+
+
 from aios_habit.workspace_chat_ai_answer import (
     PRIVACY_MODE_LOCAL_PREVIEW_ONLY,
     PRIVACY_MODE_CLOUD_ALLOWED,
@@ -189,6 +251,8 @@ if "wsc_archive_confirm_notebook_id" not in st.session_state:
     st.session_state.wsc_archive_confirm_notebook_id = None
 if "wsc_delete_confirm_notebook_id" not in st.session_state:
     st.session_state.wsc_delete_confirm_notebook_id = None
+if "wsc_upload_version" not in st.session_state:
+    st.session_state.wsc_upload_version = 0
 
 def safe_rerun():
     try:
@@ -810,50 +874,59 @@ else:
             st.write(" ")
             with st.expander("📁 Thêm tài liệu"):
                 st.write("Tải lên tài liệu để dùng làm nguồn cho cuộc trò chuyện.")
+                st.write("Có thể chọn hoặc kéo thả nhiều tài liệu cùng lúc.")
                 st.write("Hỗ trợ: TXT, MD, CSV, Excel, Word, PowerPoint, PDF và ảnh nếu máy có bộ đọc phù hợp.")
                 with st.form(f"wsc_doc_upload_form_{active_conversation.id}"):
-                    uploaded_file = st.file_uploader(
+                    uploaded_files = st.file_uploader(
                         "Chọn tài liệu cho cuộc trò chuyện này",
-                        type=["txt", "md", "markdown", "csv", "xlsx", "xls", "docx", "pptx", "pdf", "png", "jpg", "jpeg", "bmp", "tif", "tiff"],
-                        key=f"wsc_doc_upload_{active_conversation.id}",
+                        type=["txt", "md", "markdown", "csv", "xlsx", "xls", "docx", "pptx", "pdf", "png", "jpg", "jpeg", "webp", "bmp", "tif", "tiff"],
+                        key=f"wsc_doc_upload_{active_conversation.id}_{st.session_state.wsc_upload_version}",
+                        accept_multiple_files=True,
                     )
                     doc_privacy_choice = render_privacy_choice(f"wsc_doc_privacy_{active_conversation.id}")
 
                     # Checkbox to enable now (default OFF)
-                    enable_now = st.checkbox("Dùng tài liệu này trong câu trả lời", value=False)
+                    enable_now = st.checkbox("Dùng các tài liệu này trong câu trả lời", value=False)
 
                     if st.form_submit_button("Đọc và thêm vào nguồn tạm"):
-                        if uploaded_file is None:
+                        if not uploaded_files:
                             st.error("Vui lòng chọn tập tin trước khi thêm.")
                         else:
-                            file_bytes = uploaded_file.getvalue()
-                            filename = uploaded_file.name
+                            batch_res = process_workspace_upload_batch(
+                                uploaded_files,
+                                active_conversation.id,
+                                doc_privacy_choice,
+                                enable_now
+                            )
 
-                            result = ingest_and_extract_bytes(file_bytes, filename, doc_privacy_choice)
-                            if result.get("ok"):
-                                ext = result.get("metadata", {}).get("extension", "").lower()
-                                should_enable = enable_now
+                            success_count = batch_res["success_count"]
+                            fail_count = batch_res["fail_count"]
 
-                                temporary_source = create_general_temporary_source(
-                                    conversation_id=active_conversation.id,
-                                    title=result.get("filename"),
-                                    source_type=ext.replace(".", "") or "txt",
-                                    content_preview=result.get("preview", ""),
-                                    content_text=result.get("text", ""),
-                                    owner_choice=doc_privacy_choice,
-                                    enable_source=should_enable,
-                                )
-
-                                if should_enable:
-                                    st.session_state.wsc_action_message = f"Đã đọc tài liệu và thêm vào nguồn tạm của cuộc trò chuyện. Nguồn mới đã được bật cho cuộc trò chuyện này."
+                            if success_count > 0:
+                                st.session_state.wsc_upload_version += 1
+                                if enable_now:
+                                    st.session_state.wsc_action_message = f"Đã thêm {success_count} tài liệu. Nguồn mới đã được bật cho câu trả lời."
                                 else:
-                                    st.session_state.wsc_action_message = f"Đã đọc tài liệu và thêm vào nguồn tạm của cuộc trò chuyện."
-
-                                if result.get("metadata", {}).get("truncated"):
-                                    st.session_state.wsc_action_error = "Nội dung quá lớn hoặc đã bị rút gọn."
-                                safe_rerun()
+                                    st.session_state.wsc_action_message = f"Đã thêm {success_count} tài liệu."
                             else:
-                                st.error(result.get("owner_message", "Đã xảy ra lỗi không xác định khi trích xuất tài liệu."))
+                                st.session_state.wsc_action_message = None
+
+                            # Render error batch clear format
+                            err_parts = []
+                            if fail_count > 0:
+                                err_parts.append(f"Một số tài liệu chưa đọc được ({fail_count} tập tin thất bại):")
+                                for fname in batch_res["failed_files"]:
+                                    err_parts.append(f"- {fname}: {batch_res['errors_by_file'][fname]}")
+
+                            if batch_res["has_truncated"]:
+                                err_parts.append("Lưu ý: Một số nội dung quá lớn đã bị rút gọn.")
+
+                            if err_parts:
+                                st.session_state.wsc_action_error = "\n".join(err_parts)
+                            else:
+                                st.session_state.wsc_action_error = None
+
+                            safe_rerun()
 
         with col_results:
             # Hiển thị bản xem trước câu trả lời và nguồn đang bật bên phải
