@@ -109,6 +109,8 @@ from aios_habit.workspace_chat_ai_answer import (
 from aios_habit.workspace_chat_ui import (
     get_vietnamese_labels,
     render_notebook_header,
+    render_notebook_next_step,
+    render_owner_flow_guidance,
     render_notebook_card,
     render_archived_notebook_card,
     render_chat_bubble,
@@ -240,6 +242,7 @@ active_nb_id = st.session_state.wsc_active_notebook_id
 if active_nb_id is None:
     # MÀN HÌNH 1: Sổ tài liệu của tôi
     render_notebook_header()
+    render_notebook_next_step()
 
     if "wsc_action_message" in st.session_state and st.session_state.wsc_action_message:
         st.success(st.session_state.wsc_action_message)
@@ -443,14 +446,7 @@ else:
     if not active_conversation:
         st.info("Vui lòng tạo hoặc chọn một cuộc trò chuyện để bắt đầu.")
     else:
-        with st.expander("✅ Các bước thử nghiệm Workspace Chat (Pilot)", expanded=True):
-            st.markdown("""
-- Thêm nguồn (dán văn bản, Excel, hoặc dữ liệu test)
-- Bật nguồn cần dùng
-- Nếu muốn kiểm tra trước, bấm "Kiểm tra nguồn trước"
-- Nhập câu hỏi rồi bấm "Hỏi AI với nguồn đang bật"
-- Kiểm tra câu trả lời trước khi dùng
-""")
+        render_owner_flow_guidance()
         # Hiển thị các thông báo thử nghiệm
         if st.session_state.wsc_show_save_placeholder:
             st.info(f"ℹ️ {SAVE_CASE_PLACEHOLDER_MESSAGE}")
@@ -659,7 +655,7 @@ else:
 
             # Khung dán nhật ký/email/đoạn chat dài
             st.write(" ")
-            st.info("Hiện tại màn hình này hỗ trợ dán văn bản dài, thêm Excel .xlsx và tạo dữ liệu test không mật. Ô hỏi chỉ hỗ trợ nhập chữ; chưa hỗ trợ dán ảnh hoặc thêm PDF/Word trực tiếp. Các định dạng này sẽ được xem xét ở giai đoạn mở rộng nguồn dữ liệu.")
+            st.info("Bạn có thể dán văn bản dài hoặc thêm Excel .xlsx làm nguồn. Ô hỏi chỉ hỗ trợ nhập chữ; chưa hỗ trợ dán ảnh hoặc thêm PDF/Word trực tiếp.")
             with st.expander("📝 Dán văn bản dài (log lỗi, email, hoặc đoạn chat...)"):
                 with st.form("paste_log_form"):
                     paste_title = st.text_input("Tiêu đề nguồn tạm", placeholder="Ví dụ: Email lỗi Opcenter, Nhật ký log hệ thống...")
@@ -678,14 +674,6 @@ else:
                             safe_rerun()
                         else:
                             st.error("Nội dung nguồn không được để trống.")
-
-            st.write(" ")
-            with st.expander("🛠️ Tạo dữ liệu test không mật"):
-                st.write("Tạo một nguồn tạm với dữ liệu giả, an toàn để thử nghiệm tính năng, không chứa dữ liệu thật.")
-                if st.button("Tạo dữ liệu test không mật"):
-                    create_safe_test_data(active_conversation.id)
-                    st.session_state.wsc_action_message = "Đã tạo nguồn dữ liệu test an toàn và bật cho cuộc trò chuyện."
-                    safe_rerun()
 
             # Khung thêm file Excel .xlsx vào nguồn tạm của cuộc trò chuyện
             st.write(" ")
@@ -714,6 +702,14 @@ else:
                                 safe_rerun()
                             else:
                                 st.error(result.owner_message)
+
+            st.write(" ")
+            with st.expander("🛠️ Công cụ thử nghiệm an toàn", expanded=False):
+                st.write("Dữ liệu thử nghiệm không mật chỉ được tạo khi bạn bấm nút bên dưới.")
+                if st.button("Tạo dữ liệu test không mật"):
+                    create_safe_test_data(active_conversation.id)
+                    st.session_state.wsc_action_message = "Đã tạo nguồn dữ liệu test an toàn và bật cho cuộc trò chuyện."
+                    safe_rerun()
 
         with col_results:
             # Hiển thị bản xem trước câu trả lời và nguồn đang bật bên phải

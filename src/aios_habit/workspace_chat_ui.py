@@ -88,6 +88,28 @@ def render_notebook_header():
     st.title("📚 Sổ tài liệu của tôi")
     st.write("Quản lý các tài liệu, hồ sơ và thực hiện hỏi đáp riêng biệt theo từng sổ công việc.")
 
+
+def render_notebook_next_step():
+    st.info("Bước tiếp theo: Mở một sổ bên dưới hoặc tạo sổ mới để bắt đầu.")
+    st.caption("Khi làm xong, bạn có thể lưu trữ sổ để ẩn khỏi danh sách chính và khôi phục lại khi cần.")
+
+
+def render_owner_flow_guidance():
+    st.info("Bước tiếp theo: Thêm nguồn, chọn quyền riêng tư và bật đúng nguồn bạn muốn dùng.")
+    st.caption("Kiểm tra nguồn chỉ đọc nội dung trên máy và vẫn hiển thị “AI chưa trả lời”. Chỉ bấm Hỏi AI khi bạn đã sẵn sàng.")
+    with st.expander("Xem luồng làm việc đề xuất", expanded=False):
+        st.markdown(
+            """
+1. Thêm nguồn cho cuộc trò chuyện.
+2. Chọn **Có thể gửi AI** hoặc **Chỉ dùng trên máy / không gửi AI** cho từng nguồn.
+3. Bật đúng nguồn cần dùng rồi bấm **Kiểm tra nguồn trước** để xem trên máy.
+4. Khi đã sẵn sàng, chủ động bấm **Hỏi AI với nguồn đang bật**.
+5. Nếu có nguồn không được gửi AI, hãy tắt nguồn đó hoặc đổi lựa chọn quyền riêng tư.
+6. Khi hoàn tất, quay lại danh sách để lưu trữ sổ; bạn có thể khôi phục sổ khi cần.
+"""
+        )
+
+
 def render_notebook_card(
     nb: DocumentNotebook,
     conv_count: int,
