@@ -14,6 +14,7 @@ from aios_habit.workspace_chat_store import (
     load_temporary_sources,
     save_temporary_source,
     load_notebook_sources,
+    save_notebook_source,
     load_conversation_source_selections,
     load_enabled_sources_for_conversation,
     set_source_enabled,
@@ -42,6 +43,56 @@ def create_safe_test_data(conversation_id: str) -> TemporaryConversationSource:
     save_temporary_source(ts)
     set_source_enabled(conversation_id, SOURCE_SCOPE_TEMPORARY, ts.id, True)
     return ts
+
+
+def create_temporary_source_with_privacy(
+    conversation_id: str,
+    source_type: str,
+    title: str,
+    content_preview: str,
+    content_text: str,
+    owner_choice: str,
+) -> TemporaryConversationSource:
+    ts = TemporaryConversationSource(
+        id=f"SRC-{uuid.uuid4().hex[:8].upper()}",
+        conversation_id=conversation_id,
+        source_type=source_type,
+        title=title,
+        content_preview=content_preview,
+        content_text=content_text,
+        privacy_label=owner_choice_to_privacy_label(owner_choice),
+    )
+    save_temporary_source(ts)
+    set_source_enabled(conversation_id, SOURCE_SCOPE_TEMPORARY, ts.id, True)
+    return ts
+
+
+def create_pasted_text_temporary_source(
+    conversation_id: str,
+    title: str,
+    content_text: str,
+    owner_choice: str,
+) -> TemporaryConversationSource:
+    return create_temporary_source_with_privacy(
+        conversation_id=conversation_id,
+        source_type="pasted_text",
+        title=title,
+        content_preview=content_text[:150],
+        content_text=content_text,
+        owner_choice=owner_choice,
+    )
+
+
+def create_excel_temporary_source_from_extraction(conversation_id: str, extraction_result, owner_choice: str) -> TemporaryConversationSource:
+    return create_temporary_source_with_privacy(
+        conversation_id=conversation_id,
+        source_type="xlsx",
+        title=extraction_result.filename,
+        content_preview=extraction_result.preview,
+        content_text=extraction_result.text,
+        owner_choice=owner_choice,
+    )
+
 from aios_habit.workspace_chat_ai_answer import (
     PRIVACY_MODE_LOCAL_PREVIEW_ONLY,
     PRIVACY_MODE_CLOUD_ALLOWED,
@@ -66,7 +117,10 @@ from aios_habit.workspace_chat_ui import (
     render_ai_answer_header,
     render_insufficient_context,
     render_privacy_block_message,
-    render_source_changed_message
+    render_source_changed_message,
+    render_privacy_choice,
+    owner_choice_to_privacy_label,
+    PRIVACY_SAVED_FEEDBACK
 )
 
 # Tự động khởi tạo kho lưu trữ
@@ -112,6 +166,24 @@ def open_notebook_callback(notebook_id: str):
     st.session_state.wsc_show_save_placeholder = False
     st.session_state.wsc_show_explain_placeholder = False
     safe_rerun()
+
+
+def update_notebook_source_privacy_for_active_notebook(notebook_id: str, source_id: str, owner_choice: str) -> bool:
+    source = next((s for s in load_notebook_sources(notebook_id) if s.id == source_id), None)
+    if source is None:
+        return False
+    source.privacy_label = owner_choice_to_privacy_label(owner_choice)
+    save_notebook_source(source)
+    return True
+
+
+def update_temporary_source_privacy_for_active_conversation(conversation_id: str, source_id: str, owner_choice: str) -> bool:
+    source = next((s for s in load_temporary_sources(conversation_id) if s.id == source_id), None)
+    if source is None:
+        return False
+    source.privacy_label = owner_choice_to_privacy_label(owner_choice)
+    save_temporary_source(source)
+    return True
 
 active_nb_id = st.session_state.wsc_active_notebook_id
 
@@ -251,6 +323,20 @@ else:
                 st.session_state.wsc_action_error = "Không thể thêm nguồn vào sổ tài liệu. Vui lòng thử lại."
             safe_rerun()
 
+        def on_save_notebook_source_privacy(source_id: str, owner_choice: str):
+            if update_notebook_source_privacy_for_active_notebook(active_nb_id, source_id, owner_choice):
+                st.session_state.wsc_action_message = PRIVACY_SAVED_FEEDBACK
+            else:
+                st.session_state.wsc_action_error = "Không tìm thấy nguồn trong sổ tài liệu hiện tại."
+            safe_rerun()
+
+        def on_save_temporary_source_privacy(source_id: str, owner_choice: str):
+            if update_temporary_source_privacy_for_active_conversation(active_conversation.id, source_id, owner_choice):
+                st.session_state.wsc_action_message = PRIVACY_SAVED_FEEDBACK
+            else:
+                st.session_state.wsc_action_error = "Không tìm thấy nguồn tạm trong cuộc trò chuyện hiện tại."
+            safe_rerun()
+
         # Hiển thị thông báo kết quả (nếu có) và UI chọn nguồn trong sidebar
         with st.sidebar:
             if "wsc_action_message" in st.session_state and st.session_state.wsc_action_message:
@@ -268,7 +354,8 @@ else:
                 sources=notebook_sources,
                 selections=notebook_selections,
                 on_toggle=on_toggle_notebook,
-                conversation_id=active_conversation.id
+                conversation_id=active_conversation.id,
+                on_privacy_save=on_save_notebook_source_privacy
             )
 
             st.write("---")
@@ -277,7 +364,8 @@ else:
                 selections=temp_selections,
                 on_toggle=on_toggle_temporary,
                 on_promote=on_promote_temporary,
-                conversation_id=active_conversation.id
+                conversation_id=active_conversation.id,
+                on_privacy_save=on_save_temporary_source_privacy
             )
 
     # Khu vực chính ở giữa
@@ -485,19 +573,16 @@ else:
                 with st.form("quick_paste_form", clear_on_submit=True):
                     quick_title = st.text_input("Tên nhóm nguồn (tuỳ chọn)", placeholder="Ví dụ: Log sáng 3/7, Email lỗi...")
                     quick_content = st.text_area("Dán nội dung vào đây", placeholder="Dán nội dung vào đây...", height=120)
+                    quick_privacy_choice = render_privacy_choice(f"wsc_quick_privacy_{active_conversation.id}")
                     if st.form_submit_button(labels["quick_paste_add"]):
                         if quick_content.strip():
                             final_title = quick_title.strip() or f"Nguồn dán nhanh {datetime.now().strftime('%d/%m %H:%M')}"
-                            ts = TemporaryConversationSource(
-                                id=f"SRC-{uuid.uuid4().hex[:8].upper()}",
+                            ts = create_pasted_text_temporary_source(
                                 conversation_id=active_conversation.id,
-                                source_type="pasted_text",
                                 title=final_title,
-                                content_preview=quick_content[:150],
-                                content_text=quick_content
+                                content_text=quick_content,
+                                owner_choice=quick_privacy_choice,
                             )
-                            save_temporary_source(ts)
-                            set_source_enabled(active_conversation.id, SOURCE_SCOPE_TEMPORARY, ts.id, True)
                             st.session_state.wsc_action_message = f"Đã thêm nguồn: {final_title}."
                             safe_rerun()
                         else:
@@ -510,19 +595,16 @@ else:
                 with st.form("paste_log_form"):
                     paste_title = st.text_input("Tiêu đề nguồn tạm", placeholder="Ví dụ: Email lỗi Opcenter, Nhật ký log hệ thống...")
                     paste_content = st.text_area("Nội dung văn bản dài", placeholder="Dán nội dung vào đây...", height=120)
+                    paste_privacy_choice = render_privacy_choice(f"wsc_paste_privacy_{active_conversation.id}")
                     if st.form_submit_button("Thêm vào nguồn tạm"):
                         if paste_content.strip():
                             final_title = paste_title.strip() or f"Nguồn dán tay {datetime.now().strftime('%d/%m %H:%M')}"
-                            ts = TemporaryConversationSource(
-                                id=f"SRC-{uuid.uuid4().hex[:8].upper()}",
+                            ts = create_pasted_text_temporary_source(
                                 conversation_id=active_conversation.id,
-                                source_type="pasted_text",
                                 title=final_title,
-                                content_preview=paste_content[:150],
-                                content_text=paste_content
+                                content_text=paste_content,
+                                owner_choice=paste_privacy_choice,
                             )
-                            save_temporary_source(ts)
-                            set_source_enabled(active_conversation.id, SOURCE_SCOPE_TEMPORARY, ts.id, True)
                             st.session_state.wsc_action_message = f"Đã lưu thành công nguồn tạm: {final_title}."
                             safe_rerun()
                         else:
@@ -545,22 +627,18 @@ else:
                         type=["xlsx", "xls"],
                         key=f"wsc_excel_upload_{active_conversation.id}",
                     )
+                    excel_privacy_choice = render_privacy_choice(f"wsc_excel_privacy_{active_conversation.id}")
                     if st.form_submit_button("Đọc và thêm vào nguồn tạm"):
                         if uploaded_excel is None:
                             st.error("Không thể đọc nội dung file Excel. File có thể bị hỏng hoặc có mật khẩu. Vui lòng kiểm tra lại.")
                         else:
                             result = extract_xlsx_text(uploaded_excel.getvalue(), uploaded_excel.name)
                             if result.ok:
-                                temporary_source = TemporaryConversationSource(
-                                    id=f"SRC-{uuid.uuid4().hex[:8].upper()}",
+                                temporary_source = create_excel_temporary_source_from_extraction(
                                     conversation_id=active_conversation.id,
-                                    source_type="xlsx",
-                                    title=result.filename,
-                                    content_preview=result.preview,
-                                    content_text=result.text
+                                    extraction_result=result,
+                                    owner_choice=excel_privacy_choice,
                                 )
-                                save_temporary_source(temporary_source)
-                                set_source_enabled(active_conversation.id, SOURCE_SCOPE_TEMPORARY, temporary_source.id, True)
                                 st.session_state.wsc_action_message = "Đã đọc nội dung Excel và thêm vào nguồn tạm của cuộc trò chuyện. Nguồn Excel mới đã được bật cho cuộc trò chuyện này."
                                 if getattr(result, "truncated", False):
                                     st.session_state.wsc_action_error = "Excel quá lớn hoặc nội dung đã bị rút gọn."

@@ -267,11 +267,11 @@ def test_app_wiring_structure():
 
     # 3.3: Temporary source submit order check: save -> enable -> rerun
     save_idx = source.find("save_temporary_source(ts)")
-    enable_idx = source.find("set_source_enabled(active_conversation.id, SOURCE_SCOPE_TEMPORARY, ts.id, True)")
+    enable_idx = source.find("set_source_enabled(conversation_id, SOURCE_SCOPE_TEMPORARY, ts.id, True)")
     rerun_idx = source.find("safe_rerun()", enable_idx)
 
     assert save_idx != -1, "save_temporary_source(ts) not found in app"
-    assert enable_idx != -1, "set_source_enabled for temporary not found in app"
+    assert enable_idx != -1, "set_source_enabled for temporary not found in app helper"
     assert rerun_idx != -1, "safe_rerun() after enable not found in app"
     assert save_idx < enable_idx < rerun_idx, "Incorrect submit order: save, enable, then rerun required!"
 
@@ -297,14 +297,14 @@ def test_app_wiring_structure():
 
     # Phase 2C: success flow order is extract -> temp source -> save -> enable -> rerun.
     extract_idx = source.find("result = extract_xlsx_text(uploaded_excel.getvalue(), uploaded_excel.name)")
-    temp_idx = source.find("temporary_source = TemporaryConversationSource", extract_idx)
-    xlsx_type_idx = source.find('source_type="xlsx"', temp_idx)
-    title_idx = source.find("title=result.filename", temp_idx)
-    preview_idx = source.find("content_preview=result.preview", temp_idx)
-    text_idx = source.find("content_text=result.text", temp_idx)
-    save_xlsx_idx = source.find("save_temporary_source(temporary_source)", temp_idx)
-    enable_xlsx_idx = source.find("set_source_enabled(active_conversation.id, SOURCE_SCOPE_TEMPORARY, temporary_source.id, True)", save_xlsx_idx)
-    rerun_xlsx_idx = source.find("safe_rerun()", enable_xlsx_idx)
+    temp_idx = source.find("temporary_source = create_excel_temporary_source_from_extraction", extract_idx)
+    xlsx_type_idx = source.find("source_type=\"xlsx\"", source.find("def create_excel_temporary_source_from_extraction"))
+    title_idx = source.find("title=extraction_result.filename", source.find("def create_excel_temporary_source_from_extraction"))
+    preview_idx = source.find("content_preview=extraction_result.preview", source.find("def create_excel_temporary_source_from_extraction"))
+    text_idx = source.find("content_text=extraction_result.text", source.find("def create_excel_temporary_source_from_extraction"))
+    save_xlsx_idx = source.find("save_temporary_source(ts)", source.find("def create_temporary_source_with_privacy"))
+    enable_xlsx_idx = source.find("set_source_enabled(conversation_id, SOURCE_SCOPE_TEMPORARY, ts.id, True)", save_xlsx_idx)
+    rerun_xlsx_idx = source.find("safe_rerun()", temp_idx)
 
     assert extract_idx != -1
     assert temp_idx != -1
@@ -315,11 +315,12 @@ def test_app_wiring_structure():
     assert save_xlsx_idx != -1
     assert enable_xlsx_idx != -1
     assert rerun_xlsx_idx != -1
-    assert extract_idx < temp_idx < save_xlsx_idx < enable_xlsx_idx < rerun_xlsx_idx
-    assert temp_idx < xlsx_type_idx < save_xlsx_idx
-    assert temp_idx < title_idx < save_xlsx_idx
-    assert temp_idx < preview_idx < save_xlsx_idx
-    assert temp_idx < text_idx < save_xlsx_idx
+    assert extract_idx < temp_idx < rerun_xlsx_idx
+    assert save_xlsx_idx < enable_xlsx_idx
+    assert xlsx_type_idx != -1
+    assert title_idx != -1
+    assert preview_idx != -1
+    assert text_idx != -1
 
     # Phase 2C: failure path reports result.owner_message and does not save/enable/rerun.
     failure_idx = source.find("else:", rerun_xlsx_idx)
@@ -830,7 +831,7 @@ def test_phase2h_quick_paste_empty_rejected():
 
     assert "quick_content.strip()" in quick_block
     assert 'Nội dung không được để trống.' in quick_block
-    assert "save_temporary_source" in quick_block
+    assert "create_pasted_text_temporary_source" in quick_block
 
 
 def test_phase2h_no_radio_no_consent_checkbox_in_sidebar():
@@ -850,3 +851,128 @@ def test_phase2h_ask_button_explicit():
     assert "check_submitted" in app_source
     # st.chat_input auto-submit must not be used for AI calls
     assert "st.chat_input" not in app_source
+
+
+
+class _Phase2IExtractionResult:
+    ok = True
+    filename = "owner_source.xlsx"
+    preview = "Excel preview"
+    text = "Excel extracted text"
+    truncated = False
+
+
+def _assert_one_created_source(conv_id, expected_label, expected_source_type, expected_text):
+    saved = store.load_temporary_sources(conv_id)
+    assert len(saved) == 1
+    assert saved[0].privacy_label == expected_label
+    assert saved[0].source_type == expected_source_type
+    assert saved[0].content_text == expected_text
+    selections = store.load_conversation_source_selections(conv_id)
+    assert len(selections) == 1
+    assert selections[0].source_scope == SOURCE_SCOPE_TEMPORARY
+    assert selections[0].source_id == saved[0].id
+    assert selections[0].enabled is True
+    assert store.load_messages(conv_id) == []
+
+
+def test_phase2i_owner_choice_mapping_helpers():
+    from aios_habit.workspace_chat_ui import PRIVACY_CHOICE_SENDABLE, PRIVACY_CHOICE_LOCAL_ONLY, owner_choice_to_privacy_label, privacy_label_to_owner_choice, privacy_label_is_sendable
+    assert owner_choice_to_privacy_label(PRIVACY_CHOICE_SENDABLE) == "machine_only"
+    assert owner_choice_to_privacy_label(PRIVACY_CHOICE_LOCAL_ONLY) == "local_only"
+    assert privacy_label_to_owner_choice("machine_only") == PRIVACY_CHOICE_SENDABLE
+    assert privacy_label_to_owner_choice("cloud_allowed") == PRIVACY_CHOICE_SENDABLE
+    for blocked in ["local_only", "confidential", "", "   ", None, "unknown"]:
+        assert privacy_label_to_owner_choice(blocked) == PRIVACY_CHOICE_LOCAL_ONLY
+        assert privacy_label_is_sendable(blocked) is False
+
+
+def test_phase2i_source_creation_forms_call_production_helpers_with_privacy_choice():
+    app_source = Path("src/aios_habit/workspace_chat_app.py").read_text(encoding="utf-8")
+    quick_block = app_source[app_source.index("quick_paste_form"):app_source.index("# Khung dán nhật ký", app_source.index("quick_paste_form"))]
+    assert "quick_privacy_choice = render_privacy_choice" in quick_block
+    assert "create_pasted_text_temporary_source" in quick_block
+    assert "owner_choice=quick_privacy_choice" in quick_block
+    paste_block = app_source[app_source.index("paste_log_form"):app_source.index("Tạo dữ liệu test không mật", app_source.index("paste_log_form"))]
+    assert "paste_privacy_choice = render_privacy_choice" in paste_block
+    assert "create_pasted_text_temporary_source" in paste_block
+    assert "owner_choice=paste_privacy_choice" in paste_block
+    excel_block = app_source[app_source.index("excel_upload_form"):]
+    assert "excel_privacy_choice = render_privacy_choice" in excel_block
+    assert "create_excel_temporary_source_from_extraction" in excel_block
+    assert "owner_choice=excel_privacy_choice" in excel_block
+
+
+def test_phase2i_real_quick_paste_creation_path_executes_both_privacy_choices():
+    sys.modules.pop("aios_habit.workspace_chat_app", None)
+    app = importlib.import_module("aios_habit.workspace_chat_app")
+    from aios_habit.workspace_chat_ui import PRIVACY_CHOICE_SENDABLE, PRIVACY_CHOICE_LOCAL_ONLY
+    for idx, (choice, expected_label) in enumerate([(PRIVACY_CHOICE_SENDABLE, "machine_only"), (PRIVACY_CHOICE_LOCAL_ONLY, "local_only")]):
+        conv_id = f"conv_quick_real_{idx}"
+        app.create_pasted_text_temporary_source(conv_id, "Quick paste title", "Quick paste text", choice)
+        _assert_one_created_source(conv_id, expected_label, "pasted_text", "Quick paste text")
+
+
+def test_phase2i_real_long_text_creation_path_executes_both_privacy_choices():
+    sys.modules.pop("aios_habit.workspace_chat_app", None)
+    app = importlib.import_module("aios_habit.workspace_chat_app")
+    from aios_habit.workspace_chat_ui import PRIVACY_CHOICE_SENDABLE, PRIVACY_CHOICE_LOCAL_ONLY
+    for idx, (choice, expected_label) in enumerate([(PRIVACY_CHOICE_SENDABLE, "machine_only"), (PRIVACY_CHOICE_LOCAL_ONLY, "local_only")]):
+        conv_id = f"conv_long_real_{idx}"
+        app.create_pasted_text_temporary_source(conv_id, "Long text title", "Long text body", choice)
+        _assert_one_created_source(conv_id, expected_label, "pasted_text", "Long text body")
+
+
+def test_phase2i_real_excel_creation_path_uses_extracted_text_and_both_privacy_choices():
+    sys.modules.pop("aios_habit.workspace_chat_app", None)
+    app = importlib.import_module("aios_habit.workspace_chat_app")
+    from aios_habit.workspace_chat_ui import PRIVACY_CHOICE_SENDABLE, PRIVACY_CHOICE_LOCAL_ONLY
+    for idx, (choice, expected_label) in enumerate([(PRIVACY_CHOICE_SENDABLE, "machine_only"), (PRIVACY_CHOICE_LOCAL_ONLY, "local_only")]):
+        conv_id = f"conv_excel_real_{idx}"
+        app.create_excel_temporary_source_from_extraction(conv_id, _Phase2IExtractionResult(), choice)
+        saved = store.load_temporary_sources(conv_id)
+        assert saved[0].title == "owner_source.xlsx"
+        assert saved[0].content_preview == "Excel preview"
+        _assert_one_created_source(conv_id, expected_label, "xlsx", "Excel extracted text")
+
+
+def test_phase2i_actual_privacy_edit_helpers_two_way_and_scope_safe(monkeypatch):
+    sys.modules.pop("aios_habit.workspace_chat_app", None)
+    app = importlib.import_module("aios_habit.workspace_chat_app")
+    from aios_habit.workspace_chat_ui import PRIVACY_CHOICE_SENDABLE, PRIVACY_CHOICE_LOCAL_ONLY
+    nb = NotebookSource(id="nb_edit", notebook_id="nb_active", title="NB", source_type="pasted_text", privacy_label="machine_only")
+    nb_cross = NotebookSource(id="nb_cross", notebook_id="nb_other", title="Cross", source_type="pasted_text", privacy_label="machine_only")
+    ts = TemporaryConversationSource(id="ts_edit", conversation_id="conv_active", title="TS", source_type="pasted_text", content_preview="P", privacy_label="machine_only")
+    ts_cross = TemporaryConversationSource(id="ts_cross", conversation_id="conv_other", title="Cross", source_type="pasted_text", content_preview="P", privacy_label="machine_only")
+    store.save_notebook_source(nb); store.save_notebook_source(nb_cross); store.save_temporary_source(ts); store.save_temporary_source(ts_cross)
+    store.set_source_enabled("conv_active", SOURCE_SCOPE_NOTEBOOK, "nb_edit", True); store.set_source_enabled("conv_active", SOURCE_SCOPE_TEMPORARY, "ts_edit", True)
+    assert app.update_notebook_source_privacy_for_active_notebook("nb_active", "nb_edit", PRIVACY_CHOICE_LOCAL_ONLY) is True
+    assert app.update_temporary_source_privacy_for_active_conversation("conv_active", "ts_edit", PRIVACY_CHOICE_LOCAL_ONLY) is True
+    assert store.load_notebook_sources("nb_active")[0].privacy_label == "local_only"
+    assert store.load_temporary_sources("conv_active")[0].privacy_label == "local_only"
+    assert app.update_notebook_source_privacy_for_active_notebook("nb_active", "nb_edit", PRIVACY_CHOICE_SENDABLE) is True
+    assert app.update_temporary_source_privacy_for_active_conversation("conv_active", "ts_edit", PRIVACY_CHOICE_SENDABLE) is True
+    assert store.load_notebook_sources("nb_active")[0].privacy_label == "machine_only"
+    assert store.load_temporary_sources("conv_active")[0].privacy_label == "machine_only"
+    assert app.update_notebook_source_privacy_for_active_notebook("nb_active", "missing", PRIVACY_CHOICE_LOCAL_ONLY) is False
+    assert app.update_temporary_source_privacy_for_active_conversation("conv_active", "missing", PRIVACY_CHOICE_LOCAL_ONLY) is False
+    assert app.update_notebook_source_privacy_for_active_notebook("nb_active", "nb_cross", PRIVACY_CHOICE_LOCAL_ONLY) is False
+    assert app.update_temporary_source_privacy_for_active_conversation("conv_active", "ts_cross", PRIVACY_CHOICE_LOCAL_ONLY) is False
+    assert store.load_notebook_sources("nb_other")[0].privacy_label == "machine_only"
+    assert store.load_temporary_sources("conv_other")[0].privacy_label == "machine_only"
+
+
+def test_phase2i_mixed_sources_block_without_messages_or_ai_badge():
+    from aios_habit.workspace_chat_ai_answer import WorkspaceAIAnswerRequest, pack_workspace_ai_context, generate_workspace_ai_answer, PRIVACY_MODE_CLOUD_ALLOWED
+    conv_id = "conv_mixed_block"
+    sendable = TemporaryConversationSource(id="ts_send", conversation_id=conv_id, title="Send", source_type="pasted_text", content_preview="S", content_text="send", privacy_label="machine_only")
+    blocked = TemporaryConversationSource(id="ts_block", conversation_id=conv_id, title="Block", source_type="pasted_text", content_preview="B", content_text="block", privacy_label="local_only")
+    store.save_temporary_source(sendable); store.save_temporary_source(blocked)
+    store.set_source_enabled(conv_id, SOURCE_SCOPE_TEMPORARY, sendable.id, True); store.set_source_enabled(conv_id, SOURCE_SCOPE_TEMPORARY, blocked.id, True)
+    enabled = store.load_enabled_sources_for_conversation(conv_id)
+    _, packed, _ = pack_workspace_ai_context("question", [], [sendable, blocked], enabled)
+    req = WorkspaceAIAnswerRequest(conversation_id=conv_id, question="question", context_sources=packed, privacy_mode=PRIVACY_MODE_CLOUD_ALLOWED, cloud_consent_confirmed=True, consent_source_keys=tuple((s.source_scope, s.source_id) for s in enabled))
+    result = generate_workspace_ai_answer(req, provider_client=object())
+    assert result.ok is False
+    assert "chỉ được dùng trên máy" in result.error_message
+    assert store.load_messages(conv_id) == []

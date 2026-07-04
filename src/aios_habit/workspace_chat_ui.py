@@ -29,6 +29,48 @@ def get_vietnamese_labels():
         "question_placeholder": "Nhập câu hỏi bạn muốn AI hỗ trợ...",
     }
 
+PRIVACY_CHOICE_SENDABLE = "Có thể gửi AI"
+PRIVACY_CHOICE_LOCAL_ONLY = "Chỉ dùng trên máy / không gửi AI"
+PRIVACY_FIELD_LABEL = "Nguồn này được dùng thế nào?"
+PRIVACY_HELP_COPY = "Bạn vẫn cần bấm Hỏi AI để gửi. Nguồn chỉ dùng trên máy sẽ không được gửi AI."
+PRIVACY_EDITOR_LABEL = "Quyền riêng tư nguồn"
+PRIVACY_SENDABLE_STATUS = "Có thể gửi AI khi bạn bấm Hỏi AI"
+PRIVACY_BLOCKED_STATUS = "Nguồn này sẽ không được gửi AI"
+PRIVACY_SAVE_BUTTON = "Lưu lựa chọn"
+PRIVACY_SAVED_FEEDBACK = "Đã cập nhật quyền riêng tư nguồn."
+PRIVACY_AI_HARD_BLOCK_COPY = "Có nguồn không được gửi AI. Hãy tắt nguồn đó hoặc đổi lựa chọn quyền riêng tư."
+PRIVACY_SENDABLE_LABELS = {"machine_only", "cloud_allowed"}
+
+
+def privacy_label_is_sendable(privacy_label: str) -> bool:
+    if privacy_label is None:
+        return False
+    return privacy_label.strip().lower() in PRIVACY_SENDABLE_LABELS
+
+
+def owner_choice_to_privacy_label(owner_choice: str) -> str:
+    if owner_choice == PRIVACY_CHOICE_LOCAL_ONLY:
+        return "local_only"
+    return "machine_only"
+
+
+def privacy_label_to_owner_choice(privacy_label: str) -> str:
+    if privacy_label_is_sendable(privacy_label):
+        return PRIVACY_CHOICE_SENDABLE
+    return PRIVACY_CHOICE_LOCAL_ONLY
+
+
+def render_privacy_choice(key: str, privacy_label: str = "machine_only") -> str:
+    choices = [PRIVACY_CHOICE_SENDABLE, PRIVACY_CHOICE_LOCAL_ONLY]
+    initial_choice = privacy_label_to_owner_choice(privacy_label)
+    return st.radio(
+        PRIVACY_FIELD_LABEL,
+        choices,
+        index=choices.index(initial_choice),
+        key=key,
+        help=PRIVACY_HELP_COPY,
+    )
+
 def render_notebook_header():
     st.title("📚 Sổ tài liệu của tôi")
     st.write("Quản lý các tài liệu, hồ sơ và thực hiện hỏi đáp riêng biệt theo từng sổ công việc.")
@@ -122,7 +164,8 @@ def render_notebook_source_list(
     sources: List[Any],
     selections: Dict[str, bool],
     on_toggle: Callable[[str, bool], None],
-    conversation_id: str
+    conversation_id: str,
+    on_privacy_save: Callable[[str, str], None] = None
 ):
     st.subheader("Nguồn trong sổ")
     st.info("Nguồn trong sổ được giữ lại để dùng trong nhiều cuộc trò chuyện.")
@@ -140,8 +183,17 @@ def render_notebook_source_list(
             st.warning("Nguồn chưa có nội dung để gửi")
 
         privacy_label = getattr(s, "privacy_label", "")
-        if privacy_label is None or privacy_label.strip().lower() not in {"machine_only", "cloud_allowed"}:
-            st.error("Nguồn này chỉ được dùng trên máy")
+        if privacy_label_is_sendable(privacy_label):
+            st.caption(PRIVACY_SENDABLE_STATUS)
+        else:
+            st.warning(PRIVACY_BLOCKED_STATUS)
+
+        if on_privacy_save is not None:
+            with st.expander(PRIVACY_EDITOR_LABEL, expanded=False):
+                privacy_key = f"wsc_privacy_notebook_{conversation_id}_{s.id}"
+                owner_choice = render_privacy_choice(privacy_key, privacy_label)
+                if st.button(PRIVACY_SAVE_BUTTON, key=f"wsc_save_privacy_notebook_{conversation_id}_{s.id}"):
+                    on_privacy_save(s.id, owner_choice)
 
         content = getattr(s, "content_text", "")
         if content and len(content) > 4000:
@@ -168,7 +220,8 @@ def render_temporary_source_list(
     selections: Dict[str, bool],
     on_toggle: Callable[[str, bool], None],
     on_promote: Callable[[str], None],
-    conversation_id: str
+    conversation_id: str,
+    on_privacy_save: Callable[[str, str], None] = None
 ):
     st.subheader("Nguồn tạm trong cuộc trò chuyện")
     st.info("Nguồn tạm chỉ thuộc cuộc trò chuyện hiện tại.")
@@ -186,8 +239,17 @@ def render_temporary_source_list(
             st.warning("Nguồn chưa có nội dung để gửi")
 
         privacy_label = getattr(s, "privacy_label", "")
-        if privacy_label is None or privacy_label.strip().lower() not in {"machine_only", "cloud_allowed"}:
-            st.error("Nguồn này chỉ được dùng trên máy")
+        if privacy_label_is_sendable(privacy_label):
+            st.caption(PRIVACY_SENDABLE_STATUS)
+        else:
+            st.warning(PRIVACY_BLOCKED_STATUS)
+
+        if on_privacy_save is not None:
+            with st.expander(PRIVACY_EDITOR_LABEL, expanded=False):
+                privacy_key = f"wsc_privacy_temporary_{conversation_id}_{s.id}"
+                owner_choice = render_privacy_choice(privacy_key, privacy_label)
+                if st.button(PRIVACY_SAVE_BUTTON, key=f"wsc_save_privacy_temporary_{conversation_id}_{s.id}"):
+                    on_privacy_save(s.id, owner_choice)
 
         content = getattr(s, "content_text", "")
         if content and len(content) > 4000:
@@ -268,7 +330,7 @@ def render_insufficient_context(reason: str = "no_sources"):
 
 def render_privacy_block_message():
     """Renders friendly privacy block message."""
-    st.error("Có nguồn không được gửi AI. Hãy tắt nguồn đó rồi thử lại.")
+    st.error(PRIVACY_AI_HARD_BLOCK_COPY)
 
 
 def render_source_changed_message():

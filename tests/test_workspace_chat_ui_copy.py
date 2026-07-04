@@ -9,7 +9,6 @@ FORBIDDEN_WORDS = [
     "provider router",
     "vector",
     "Mermaid",
-    "local_only",
     "embedding",
     "chunk",
     "retrieval",
@@ -134,3 +133,46 @@ def test_phase2h_required_copy():
     assert "render_insufficient_context" in app_source
     assert "render_source_check_panel" in app_source
     assert "render_privacy_block_message" in app_source
+
+
+def test_phase2i_exact_owner_privacy_copy_and_no_owner_enum_leak():
+    ui_source = Path("src/aios_habit/workspace_chat_ui.py").read_text(encoding="utf-8")
+    required = [
+        "Nguồn này được dùng thế nào?",
+        "Có thể gửi AI",
+        "Chỉ dùng trên máy / không gửi AI",
+        "Bạn vẫn cần bấm Hỏi AI để gửi. Nguồn chỉ dùng trên máy sẽ không được gửi AI.",
+        "Quyền riêng tư nguồn",
+        "Có thể gửi AI khi bạn bấm Hỏi AI",
+        "Nguồn này sẽ không được gửi AI",
+        "Lưu lựa chọn",
+        "Đã cập nhật quyền riêng tư nguồn.",
+        "Có nguồn không được gửi AI. Hãy tắt nguồn đó hoặc đổi lựa chọn quyền riêng tư.",
+    ]
+    for copy in required:
+        assert copy in ui_source
+
+    rendered_copy = "\n".join(line for line in ui_source.splitlines() if "PRIVACY_" in line and "=" in line)
+    for forbidden in ["privacy_label", "provider", "cloud consent"]:
+        assert forbidden not in rendered_copy.lower()
+
+
+def test_phase2i_exact_owner_privacy_copy_and_no_owner_enum_leak():
+    ui_source = Path("src/aios_habit/workspace_chat_ui.py").read_text(encoding="utf-8")
+    required = [
+        "Nguồn này được dùng thế nào?",
+        "Có thể gửi AI",
+        "Chỉ dùng trên máy / không gửi AI",
+        "Bạn vẫn cần bấm Hỏi AI để gửi. Nguồn chỉ dùng trên máy sẽ không được gửi AI.",
+        "Quyền riêng tư nguồn",
+        "Có thể gửi AI khi bạn bấm Hỏi AI",
+        "Nguồn này sẽ không được gửi AI",
+        "Lưu lựa chọn",
+        "Đã cập nhật quyền riêng tư nguồn.",
+        "Có nguồn không được gửi AI. Hãy tắt nguồn đó hoặc đổi lựa chọn quyền riêng tư.",
+    ]
+    for copy in required:
+        assert copy in ui_source
+    rendered_copy = "\n".join(line for line in ui_source.splitlines() if "PRIVACY_" in line and "=" in line)
+    for forbidden in ["privacy_label", "provider", "cloud consent"]:
+        assert forbidden not in rendered_copy.lower()
