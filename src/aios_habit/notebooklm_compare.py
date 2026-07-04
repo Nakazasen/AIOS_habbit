@@ -388,7 +388,7 @@ def _score_pair(aios: Dict[str, Any], nlm: Optional[Dict[str, Any]]) -> Dict[str
     q_lower = question.lower()
     ans_lower = answer_text.lower()
     
-    is_process_q = any(k in q_lower for k in ["process", "quy trﾃｬnh", "quy trình", "automatic/manual", "boundary", "troubleshooting", "ﾄ訴盻「 tra", "điều tra"])
+    is_process_q = any(k in q_lower for k in ["process", "quy trình", "automatic/manual", "boundary", "troubleshooting", "điều tra"])
     if is_process_q and answer_profile in {"extract_fields", "table_question"}:
         _apply_score_cap(scores, 6, "process question answered as table mapping")
         
@@ -396,7 +396,7 @@ def _score_pair(aios: Dict[str, Any], nlm: Optional[Dict[str, Any]]) -> Dict[str
         _apply_score_cap(scores, 5, "screenshot question using HTML primary evidence")
         
     if answer_profile in {"extract_fields", "table_question"}:
-        if not any(k in ans_lower for k in ["trﾆｰ盻拵g", "trường", "field", "column", "cột", "key", "khﾃｳa", "khóa", "mapping", "table", "b蘯｣ng"]):
+        if not any(k in ans_lower for k in ["trường", "field", "column", "cột", "key", "khóa", "mapping", "table", "bảng"]):
             _apply_score_cap(scores, 6, "no concrete field/table/key extraction for Excel mapping")
             
     if source_type_pass == "FAIL":
