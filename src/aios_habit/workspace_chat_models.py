@@ -20,6 +20,14 @@ class DocumentNotebook:
     description: str = ""
     created_at: str = field(default_factory=lambda: datetime.now().isoformat())
     updated_at: str = field(default_factory=lambda: datetime.now().isoformat())
+    archived_at: Optional[str] = None
+
+    def is_archived(self) -> bool:
+        if self.archived_at is None:
+            return False
+        if isinstance(self.archived_at, str):
+            return bool(self.archived_at.strip())
+        return True
 
 @dataclass
 class WorkspaceConversation:

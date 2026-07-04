@@ -58,6 +58,41 @@ def load_notebooks() -> List[DocumentNotebook]:
                     pass
     return notebooks
 
+
+def notebook_is_archived(notebook: DocumentNotebook) -> bool:
+    return notebook.is_archived()
+
+
+def load_active_notebooks() -> List[DocumentNotebook]:
+    return [nb for nb in load_notebooks() if not notebook_is_archived(nb)]
+
+
+def load_archived_notebooks() -> List[DocumentNotebook]:
+    return [nb for nb in load_notebooks() if notebook_is_archived(nb)]
+
+
+def archive_notebook(notebook_id: str) -> bool:
+    notebook = load_notebook(notebook_id)
+    if notebook is None:
+        return False
+    if not notebook_is_archived(notebook):
+        now_iso = datetime.now().isoformat()
+        notebook.archived_at = now_iso
+        notebook.updated_at = now_iso
+        save_notebook(notebook)
+    return True
+
+
+def restore_notebook(notebook_id: str) -> bool:
+    notebook = load_notebook(notebook_id)
+    if notebook is None:
+        return False
+    if notebook_is_archived(notebook):
+        notebook.archived_at = None
+        notebook.updated_at = datetime.now().isoformat()
+        save_notebook(notebook)
+    return True
+
 def load_notebook(notebook_id: str) -> Optional[DocumentNotebook]:
     for nb in load_notebooks():
         if nb.id == notebook_id:

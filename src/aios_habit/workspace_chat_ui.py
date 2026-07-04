@@ -40,6 +40,19 @@ PRIVACY_SAVE_BUTTON = "Lưu lựa chọn"
 PRIVACY_SAVED_FEEDBACK = "Đã cập nhật quyền riêng tư nguồn."
 PRIVACY_AI_HARD_BLOCK_COPY = "Có nguồn không được gửi AI. Hãy tắt nguồn đó hoặc đổi lựa chọn quyền riêng tư."
 PRIVACY_SENDABLE_LABELS = {"machine_only", "cloud_allowed"}
+NOTEBOOK_ARCHIVE_ACTION = "Lưu trữ sổ"
+NOTEBOOK_ARCHIVE_CONFIRM_COPY = "Sổ này sẽ được ẩn khỏi danh sách chính. Dữ liệu bên trong không bị xóa."
+NOTEBOOK_ARCHIVE_CONFIRM_ACTION = "Xác nhận lưu trữ"
+NOTEBOOK_ARCHIVE_CANCEL_ACTION = "Hủy"
+NOTEBOOK_ARCHIVED_SECTION = "Sổ đã lưu trữ"
+NOTEBOOK_ARCHIVED_EMPTY_COPY = "Chưa có sổ đã lưu trữ."
+NOTEBOOK_RESTORE_ACTION = "Khôi phục sổ"
+NOTEBOOK_ARCHIVE_SUCCESS = "Đã lưu trữ sổ."
+NOTEBOOK_RESTORE_SUCCESS = "Đã khôi phục sổ."
+NOTEBOOK_ARCHIVE_FAILURE = "Không thể lưu trữ sổ. Vui lòng thử lại."
+NOTEBOOK_RESTORE_FAILURE = "Không thể khôi phục sổ. Vui lòng thử lại."
+NOTEBOOK_MISSING_COPY = "Không tìm thấy sổ này. Danh sách đã được cập nhật."
+NOTEBOOK_NO_DELETE_COPY = "Không xóa dữ liệu trong Phase 2I."
 
 
 def privacy_label_is_sendable(privacy_label: str) -> bool:
@@ -75,7 +88,15 @@ def render_notebook_header():
     st.title("📚 Sổ tài liệu của tôi")
     st.write("Quản lý các tài liệu, hồ sơ và thực hiện hỏi đáp riêng biệt theo từng sổ công việc.")
 
-def render_notebook_card(nb: DocumentNotebook, conv_count: int, on_open: Callable[[str], None]):
+def render_notebook_card(
+    nb: DocumentNotebook,
+    conv_count: int,
+    on_open: Callable[[str], None],
+    on_archive_request: Callable[[str], None] = None,
+    on_archive_confirm: Callable[[str], None] = None,
+    on_archive_cancel: Callable[[str], None] = None,
+    archive_pending: bool = False,
+):
     labels = get_vietnamese_labels()
     with st.container():
         st.markdown(f"### 📂 {nb.title}")
@@ -83,6 +104,30 @@ def render_notebook_card(nb: DocumentNotebook, conv_count: int, on_open: Callabl
         st.write(f"Số cuộc trò chuyện: `{conv_count}`")
         if st.button(f"{labels['open_notebook']} {nb.title}", key=f"open_nb_{nb.id}"):
             on_open(nb.id)
+        if on_archive_request is not None:
+            if archive_pending:
+                st.warning(NOTEBOOK_ARCHIVE_CONFIRM_COPY)
+                st.info(NOTEBOOK_NO_DELETE_COPY)
+                confirm_col, cancel_col = st.columns(2)
+                with confirm_col:
+                    if st.button(NOTEBOOK_ARCHIVE_CONFIRM_ACTION, key=f"confirm_archive_nb_{nb.id}"):
+                        on_archive_confirm(nb.id)
+                with cancel_col:
+                    if st.button(NOTEBOOK_ARCHIVE_CANCEL_ACTION, key=f"cancel_archive_nb_{nb.id}"):
+                        on_archive_cancel(nb.id)
+            elif st.button(NOTEBOOK_ARCHIVE_ACTION, key=f"archive_nb_{nb.id}"):
+                on_archive_request(nb.id)
+        st.write("---")
+
+
+def render_archived_notebook_card(nb: DocumentNotebook, conv_count: int, on_restore: Callable[[str], None]):
+    with st.container():
+        st.markdown(f"### 📦 {nb.title}")
+        st.write(nb.description or "Không có mô tả.")
+        st.write(f"Số cuộc trò chuyện: `{conv_count}`")
+        st.caption(NOTEBOOK_NO_DELETE_COPY)
+        if st.button(NOTEBOOK_RESTORE_ACTION, key=f"restore_nb_{nb.id}"):
+            on_restore(nb.id)
         st.write("---")
 
 def render_chat_bubble(msg: ChatMessage):

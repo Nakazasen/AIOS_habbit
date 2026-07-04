@@ -976,3 +976,93 @@ def test_phase2i_mixed_sources_block_without_messages_or_ai_badge():
     assert result.ok is False
     assert "chỉ được dùng trên máy" in result.error_message
     assert store.load_messages(conv_id) == []
+
+
+def test_phase2i_notebook_lifecycle_store_archive_restore_preserves_child_data():
+    nb = DocumentNotebook(id="nb_life", title="Lifecycle", description="Keep children")
+    store.save_notebook(nb)
+    conv = WorkspaceConversation(id="conv_life", notebook_id=nb.id, title="Conversation")
+    store.save_conversation(conv)
+    msg = store.ChatMessage(id="msg_life", conversation_id=conv.id, role="user", content="hello") if hasattr(store, "ChatMessage") else None
+    from aios_habit.workspace_chat_models import ChatMessage
+    store.save_message(ChatMessage(id="msg_life", conversation_id=conv.id, role="user", content="hello"))
+    nb_src = NotebookSource(id="nb_src_life", notebook_id=nb.id, title="Notebook source", source_type="pasted_text", privacy_label="local_only")
+    temp_src = TemporaryConversationSource(id="temp_src_life", conversation_id=conv.id, title="Temp source", source_type="pasted_text", content_preview="preview", content_text="full", privacy_label="local_only")
+    store.save_notebook_source(nb_src)
+    store.save_temporary_source(temp_src)
+    store.set_source_enabled(conv.id, SOURCE_SCOPE_NOTEBOOK, nb_src.id, True)
+    store.set_source_enabled(conv.id, SOURCE_SCOPE_TEMPORARY, temp_src.id, False)
+
+    before = {
+        "conversations": [c.__dict__.copy() for c in store.load_conversations(nb.id)],
+        "messages": [m.__dict__.copy() for m in store.load_messages(conv.id)],
+        "notebook_sources": [src.to_dict() for src in store.load_notebook_sources(nb.id)],
+        "temporary_sources": [src.__dict__.copy() for src in store.load_temporary_sources(conv.id)],
+        "selections": [sel.to_dict() for sel in store.load_conversation_source_selections(conv.id)],
+    }
+
+    assert store.load_notebook(nb.id).archived_at is None
+    assert [n.id for n in store.load_active_notebooks()] == ["mom_opcenter", "interstock_wms", "email_jp_vn", "aios_project", nb.id]
+    assert store.archive_notebook(nb.id) is True
+    archived = store.load_notebook(nb.id)
+    assert archived.archived_at
+    assert nb.id not in [n.id for n in store.load_active_notebooks()]
+    assert nb.id in [n.id for n in store.load_archived_notebooks()]
+    assert store.archive_notebook(nb.id) is True
+
+    after_archive = {
+        "conversations": [c.__dict__.copy() for c in store.load_conversations(nb.id)],
+        "messages": [m.__dict__.copy() for m in store.load_messages(conv.id)],
+        "notebook_sources": [src.to_dict() for src in store.load_notebook_sources(nb.id)],
+        "temporary_sources": [src.__dict__.copy() for src in store.load_temporary_sources(conv.id)],
+        "selections": [sel.to_dict() for sel in store.load_conversation_source_selections(conv.id)],
+    }
+    assert after_archive == before
+    assert store.load_notebook_sources(nb.id)[0].privacy_label == "local_only"
+    assert {(s.source_scope, s.source_id): s.enabled for s in store.load_conversation_source_selections(conv.id)} == {
+        (SOURCE_SCOPE_NOTEBOOK, nb_src.id): True,
+        (SOURCE_SCOPE_TEMPORARY, temp_src.id): False,
+    }
+
+    assert store.restore_notebook(nb.id) is True
+    assert store.load_notebook(nb.id).archived_at is None
+    assert nb.id in [n.id for n in store.load_active_notebooks()]
+    assert nb.id not in [n.id for n in store.load_archived_notebooks()]
+    assert store.restore_notebook(nb.id) is True
+
+
+def test_phase2i_notebook_lifecycle_backward_compat_and_malformed_fail_safe():
+    import json
+    store.NOTEBOOKS_FILE.write_text(
+        json.dumps({"id": "old_nb", "title": "Old", "description": "Legacy"}, ensure_ascii=False) + "\n" +
+        json.dumps({"id": "bad_nb", "title": "Bad", "description": "Malformed", "archived_at": {"bad": True}}, ensure_ascii=False) + "\n",
+        encoding="utf-8",
+    )
+    active_ids = [nb.id for nb in store.load_active_notebooks()]
+    archived_ids = [nb.id for nb in store.load_archived_notebooks()]
+    assert "old_nb" in active_ids
+    assert "bad_nb" not in active_ids
+    assert "bad_nb" in archived_ids
+
+
+def test_phase2i_notebook_lifecycle_ui_copy_and_no_hard_delete_actions():
+    app_source = Path("src/aios_habit/workspace_chat_app.py").read_text(encoding="utf-8")
+    ui_source = Path("src/aios_habit/workspace_chat_ui.py").read_text(encoding="utf-8")
+    combined = app_source + ui_source
+    for text in [
+        "Lưu trữ sổ",
+        "Sổ đã lưu trữ",
+        "Khôi phục sổ",
+        "Sổ này sẽ được ẩn khỏi danh sách chính. Dữ liệu bên trong không bị xóa.",
+        "Đã lưu trữ sổ.",
+        "Đã khôi phục sổ.",
+        "Không xóa dữ liệu trong Phase 2I.",
+    ]:
+        assert text in combined
+    assert "Xóa vĩnh viễn" not in combined
+    assert "cascade delete" not in combined.lower()
+    assert "confirm hard delete" not in combined.lower()
+    assert "load_active_notebooks()" in app_source
+    assert "load_archived_notebooks()" in app_source
+    assert "render_archived_notebook_card" in app_source
+    assert "st.stop()" in app_source

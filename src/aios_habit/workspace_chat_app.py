@@ -4,6 +4,10 @@ from datetime import datetime
 from aios_habit.workspace_chat_store import (
     init_chat_store,
     load_notebooks,
+    load_active_notebooks,
+    load_archived_notebooks,
+    archive_notebook,
+    restore_notebook,
     save_notebook,
     load_conversations,
     load_conversation,
@@ -106,6 +110,7 @@ from aios_habit.workspace_chat_ui import (
     get_vietnamese_labels,
     render_notebook_header,
     render_notebook_card,
+    render_archived_notebook_card,
     render_chat_bubble,
     render_right_result_panel,
     render_source_summary,
@@ -120,7 +125,12 @@ from aios_habit.workspace_chat_ui import (
     render_source_changed_message,
     render_privacy_choice,
     owner_choice_to_privacy_label,
-    PRIVACY_SAVED_FEEDBACK
+    PRIVACY_SAVED_FEEDBACK,
+    NOTEBOOK_ARCHIVE_SUCCESS,
+    NOTEBOOK_RESTORE_SUCCESS,
+    NOTEBOOK_ARCHIVE_FAILURE,
+    NOTEBOOK_RESTORE_FAILURE,
+    NOTEBOOK_MISSING_COPY,
 )
 
 # Tự động khởi tạo kho lưu trữ
@@ -143,6 +153,8 @@ if "wsc_source_check_visible" not in st.session_state:
     st.session_state.wsc_source_check_visible = False
 if "wsc_last_ai_badge" not in st.session_state:
     st.session_state.wsc_last_ai_badge = None
+if "wsc_archive_confirm_notebook_id" not in st.session_state:
+    st.session_state.wsc_archive_confirm_notebook_id = None
 
 def safe_rerun():
     try:
@@ -161,12 +173,50 @@ def show_save_case_placeholder_feedback():
     safe_rerun()
 
 def open_notebook_callback(notebook_id: str):
+    notebook = next((nb for nb in load_active_notebooks() if nb.id == notebook_id), None)
+    if notebook is None:
+        st.session_state.wsc_action_error = NOTEBOOK_MISSING_COPY
+        st.session_state.wsc_active_notebook_id = None
+        st.session_state.wsc_active_conversation_id = None
+        safe_rerun()
+        return
     st.session_state.wsc_active_notebook_id = notebook_id
     st.session_state.wsc_active_conversation_id = None
     st.session_state.wsc_show_save_placeholder = False
     st.session_state.wsc_show_explain_placeholder = False
     safe_rerun()
 
+
+
+def request_archive_notebook_callback(notebook_id: str):
+    st.session_state.wsc_archive_confirm_notebook_id = notebook_id
+    safe_rerun()
+
+
+def cancel_archive_notebook_callback(notebook_id: str):
+    if st.session_state.wsc_archive_confirm_notebook_id == notebook_id:
+        st.session_state.wsc_archive_confirm_notebook_id = None
+    safe_rerun()
+
+
+def confirm_archive_notebook_callback(notebook_id: str):
+    if archive_notebook(notebook_id):
+        if st.session_state.wsc_active_notebook_id == notebook_id:
+            st.session_state.wsc_active_notebook_id = None
+            st.session_state.wsc_active_conversation_id = None
+        st.session_state.wsc_action_message = NOTEBOOK_ARCHIVE_SUCCESS
+    else:
+        st.session_state.wsc_action_error = NOTEBOOK_ARCHIVE_FAILURE
+    st.session_state.wsc_archive_confirm_notebook_id = None
+    safe_rerun()
+
+
+def restore_notebook_callback(notebook_id: str):
+    if restore_notebook(notebook_id):
+        st.session_state.wsc_action_message = NOTEBOOK_RESTORE_SUCCESS
+    else:
+        st.session_state.wsc_action_error = NOTEBOOK_RESTORE_FAILURE
+    safe_rerun()
 
 def update_notebook_source_privacy_for_active_notebook(notebook_id: str, source_id: str, owner_choice: str) -> bool:
     source = next((s for s in load_notebook_sources(notebook_id) if s.id == source_id), None)
@@ -215,16 +265,35 @@ if active_nb_id is None:
                     st.session_state.wsc_action_message = "Đã tạo sổ tài liệu mới."
                 safe_rerun()
 
-    notebooks = load_notebooks()
+    notebooks = load_active_notebooks()
+    archived_notebooks = load_archived_notebooks()
     for nb in notebooks:
         conv_count = len(load_conversations(nb.id))
-        render_notebook_card(nb, conv_count, open_notebook_callback)
+        render_notebook_card(
+            nb,
+            conv_count,
+            open_notebook_callback,
+            request_archive_notebook_callback,
+            confirm_archive_notebook_callback,
+            cancel_archive_notebook_callback,
+            st.session_state.wsc_archive_confirm_notebook_id == nb.id,
+        )
+
+    with st.expander("Sổ đã lưu trữ", expanded=False):
+        if not archived_notebooks:
+            st.write("Chưa có sổ đã lưu trữ.")
+        for nb in archived_notebooks:
+            conv_count = len(load_conversations(nb.id))
+            render_archived_notebook_card(nb, conv_count, restore_notebook_callback)
 else:
     # MÀN HÌNH 2: Chat trong sổ
-    notebook = next((nb for nb in load_notebooks() if nb.id == active_nb_id), None)
+    notebook = next((nb for nb in load_active_notebooks() if nb.id == active_nb_id), None)
     if not notebook:
         st.session_state.wsc_active_notebook_id = None
+        st.session_state.wsc_active_conversation_id = None
+        st.session_state.wsc_action_error = NOTEBOOK_MISSING_COPY
         safe_rerun()
+        st.stop()
 
     labels = get_vietnamese_labels()
 
