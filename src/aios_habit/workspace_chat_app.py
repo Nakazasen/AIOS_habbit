@@ -3,6 +3,7 @@ import uuid
 from datetime import datetime
 from aios_habit.workspace_chat_store import (
     init_chat_store,
+    load_notebook,
     load_notebooks,
     load_active_notebooks,
     load_archived_notebooks,
@@ -22,7 +23,8 @@ from aios_habit.workspace_chat_store import (
     load_conversation_source_selections,
     load_enabled_sources_for_conversation,
     set_source_enabled,
-    promote_temporary_source_to_notebook
+    promote_temporary_source_to_notebook,
+    delete_notebook_permanently
 )
 from aios_habit.workspace_chat_models import (
     DocumentNotebook,
@@ -131,6 +133,9 @@ from aios_habit.workspace_chat_ui import (
     NOTEBOOK_ARCHIVE_FAILURE,
     NOTEBOOK_RESTORE_FAILURE,
     NOTEBOOK_MISSING_COPY,
+    NOTEBOOK_DELETE_SUCCESS,
+    NOTEBOOK_DELETE_WRONG_TITLE,
+    NOTEBOOK_DELETE_FAILURE,
 )
 
 # Tự động khởi tạo kho lưu trữ
@@ -155,6 +160,8 @@ if "wsc_last_ai_badge" not in st.session_state:
     st.session_state.wsc_last_ai_badge = None
 if "wsc_archive_confirm_notebook_id" not in st.session_state:
     st.session_state.wsc_archive_confirm_notebook_id = None
+if "wsc_delete_confirm_notebook_id" not in st.session_state:
+    st.session_state.wsc_delete_confirm_notebook_id = None
 
 def safe_rerun():
     try:
@@ -218,6 +225,58 @@ def restore_notebook_callback(notebook_id: str):
         st.session_state.wsc_action_error = NOTEBOOK_RESTORE_FAILURE
     safe_rerun()
 
+
+def _clear_delete_notebook_confirmation_state(notebook_id: str):
+    if "wsc_delete_confirm_notebook_id" in st.session_state:
+        if st.session_state.wsc_delete_confirm_notebook_id == notebook_id:
+            st.session_state.wsc_delete_confirm_notebook_id = None
+    keys_to_pop = [
+        f"delete_confirm_title_active_{notebook_id}",
+        f"delete_confirm_ack_active_{notebook_id}",
+        f"delete_confirm_title_archive_{notebook_id}",
+        f"delete_confirm_ack_archive_{notebook_id}",
+    ]
+    for key in keys_to_pop:
+        if key in st.session_state:
+            st.session_state.pop(key, None)
+
+
+def request_delete_notebook_callback(notebook_id: str):
+    st.session_state.wsc_delete_confirm_notebook_id = notebook_id
+    safe_rerun()
+
+
+def cancel_delete_notebook_callback(notebook_id: str):
+    _clear_delete_notebook_confirmation_state(notebook_id)
+    safe_rerun()
+
+
+def confirm_delete_notebook_callback(notebook_id: str, confirmation_title: str, ack: bool):
+    notebook = load_notebook(notebook_id)
+    if notebook is None:
+        st.session_state.wsc_action_error = NOTEBOOK_MISSING_COPY
+        _clear_delete_notebook_confirmation_state(notebook_id)
+        safe_rerun()
+        return
+
+    if confirmation_title != notebook.title or not ack:
+        st.session_state.wsc_action_error = NOTEBOOK_DELETE_WRONG_TITLE
+        _clear_delete_notebook_confirmation_state(notebook_id)
+        safe_rerun()
+        return
+
+    if delete_notebook_permanently(notebook_id):
+        if st.session_state.wsc_active_notebook_id == notebook_id:
+            st.session_state.wsc_active_notebook_id = None
+            st.session_state.wsc_active_conversation_id = None
+        st.session_state.wsc_action_message = NOTEBOOK_DELETE_SUCCESS
+        _clear_delete_notebook_confirmation_state(notebook_id)
+        st.session_state.wsc_archive_confirm_notebook_id = None
+    else:
+        st.session_state.wsc_action_error = NOTEBOOK_DELETE_FAILURE
+        _clear_delete_notebook_confirmation_state(notebook_id)
+    safe_rerun()
+
 def update_notebook_source_privacy_for_active_notebook(notebook_id: str, source_id: str, owner_choice: str) -> bool:
     source = next((s for s in load_notebook_sources(notebook_id) if s.id == source_id), None)
     if source is None:
@@ -277,6 +336,10 @@ if active_nb_id is None:
             confirm_archive_notebook_callback,
             cancel_archive_notebook_callback,
             st.session_state.wsc_archive_confirm_notebook_id == nb.id,
+            request_delete_notebook_callback,
+            confirm_delete_notebook_callback,
+            cancel_delete_notebook_callback,
+            st.session_state.wsc_delete_confirm_notebook_id == nb.id,
         )
 
     with st.expander("Sổ đã lưu trữ", expanded=False):
@@ -284,7 +347,15 @@ if active_nb_id is None:
             st.write("Chưa có sổ đã lưu trữ.")
         for nb in archived_notebooks:
             conv_count = len(load_conversations(nb.id))
-            render_archived_notebook_card(nb, conv_count, restore_notebook_callback)
+            render_archived_notebook_card(
+                nb,
+                conv_count,
+                restore_notebook_callback,
+                request_delete_notebook_callback,
+                confirm_delete_notebook_callback,
+                cancel_delete_notebook_callback,
+                st.session_state.wsc_delete_confirm_notebook_id == nb.id,
+            )
 else:
     # MÀN HÌNH 2: Chat trong sổ
     notebook = next((nb for nb in load_active_notebooks() if nb.id == active_nb_id), None)

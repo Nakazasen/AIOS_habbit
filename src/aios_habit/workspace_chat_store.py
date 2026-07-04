@@ -1,4 +1,6 @@
 import json
+import os
+import shutil
 import uuid
 from dataclasses import asdict
 from datetime import datetime
@@ -23,7 +25,7 @@ SOURCE_SELECTIONS_FILE = LOCAL_CHAT_DIR / "conversation_source_selections.jsonl"
 
 def init_chat_store():
     LOCAL_CHAT_DIR.mkdir(parents=True, exist_ok=True)
-    
+
     # Touch files
     for filepath in [
         NOTEBOOKS_FILE, CONVERSATIONS_FILE, MESSAGES_FILE, TEMPORARY_SOURCES_FILE,
@@ -31,7 +33,7 @@ def init_chat_store():
     ]:
         if not filepath.exists():
             filepath.touch()
-            
+
     # Auto-initialize default notebooks if empty
     nbs = load_notebooks()
     if not nbs:
@@ -109,7 +111,7 @@ def save_notebook(nb: DocumentNotebook):
             break
     if not found:
         notebooks.append(nb)
-        
+
     with open(NOTEBOOKS_FILE, 'w', encoding='utf-8') as f:
         for item in notebooks:
             f.write(json.dumps(asdict(item), ensure_ascii=False) + '\n')
@@ -147,7 +149,7 @@ def save_conversation(conv: WorkspaceConversation):
             break
     if not found:
         conversations.append(conv)
-        
+
     with open(CONVERSATIONS_FILE, 'w', encoding='utf-8') as f:
         for item in conversations:
             f.write(json.dumps(asdict(item), ensure_ascii=False) + '\n')
@@ -209,7 +211,7 @@ def save_temporary_source(src: TemporaryConversationSource):
             break
     if not found:
         sources.append(src)
-        
+
     with open(TEMPORARY_SOURCES_FILE, 'w', encoding='utf-8') as f:
         for item in sources:
             f.write(json.dumps(asdict(item), ensure_ascii=False) + '\n')
@@ -241,7 +243,7 @@ def save_notebook_source(source: NotebookSource) -> NotebookSource:
             break
     if not found:
         sources.append(source)
-        
+
     with open(NOTEBOOK_SOURCES_FILE, 'w', encoding='utf-8') as f:
         for item in sources:
             f.write(json.dumps(item.to_dict(), ensure_ascii=False) + '\n')
@@ -291,7 +293,7 @@ def save_conversation_source_selection(selection: ConversationSourceSelection) -
             break
     if not found:
         selections.append(selection)
-        
+
     with open(SOURCE_SELECTIONS_FILE, 'w', encoding='utf-8') as f:
         for item in selections:
             f.write(json.dumps(item.to_dict(), ensure_ascii=False) + '\n')
@@ -309,7 +311,7 @@ def set_source_enabled(
         if s.source_id == source_id and s.source_scope == source_scope:
             existing = s
             break
-            
+
     now_iso = datetime.now().isoformat()
     if existing:
         existing.enabled = enabled
@@ -347,14 +349,14 @@ def promote_temporary_source_to_notebook(
         if s.id == temporary_source_id:
             temp_src = s
             break
-            
+
     if not temp_src:
         raise ValueError(f"Temporary source not found: {temporary_source_id} in conversation {conversation_id}")
-        
+
     temp_src.long_term_saved = True
     temp_src.status = "added_to_notebook"
     save_temporary_source(temp_src)
-    
+
     nb_src = NotebookSource(
         id=f"SRC-{uuid.uuid4().hex[:8].upper()}",
         notebook_id=notebook_id,
@@ -366,5 +368,125 @@ def promote_temporary_source_to_notebook(
         origin_temporary_source_id=temp_src.id
     )
     save_notebook_source(nb_src)
-    
+
     return nb_src
+
+
+def delete_notebook_permanently(notebook_id: str) -> bool:
+    notebook = load_notebook(notebook_id)
+    if notebook is None:
+        return False
+
+    conversations = load_conversations(notebook_id)
+    conv_ids = {c.id for c in conversations}
+
+    notebooks = load_notebooks()
+    notebooks = [nb for nb in notebooks if nb.id != notebook_id]
+
+    all_convs = load_all_conversations()
+    all_convs = [c for c in all_convs if c.notebook_id != notebook_id]
+
+    all_msgs = load_all_messages()
+    all_msgs = [m for m in all_msgs if m.conversation_id not in conv_ids]
+
+    all_nb_sources = load_all_notebook_sources()
+    all_nb_sources = [s for s in all_nb_sources if s.notebook_id != notebook_id]
+
+    all_temp_sources = load_all_temporary_sources()
+    all_temp_sources = [s for s in all_temp_sources if s.conversation_id not in conv_ids]
+
+    all_selections = load_all_conversation_source_selections()
+    all_selections = [sel for sel in all_selections if sel.conversation_id not in conv_ids]
+
+    targets = [
+        (NOTEBOOKS_FILE, notebooks, None),
+        (CONVERSATIONS_FILE, all_convs, None),
+        (MESSAGES_FILE, all_msgs, None),
+        (NOTEBOOK_SOURCES_FILE, all_nb_sources, lambda x: x.to_dict()),
+        (TEMPORARY_SOURCES_FILE, all_temp_sources, None),
+        (SOURCE_SELECTIONS_FILE, all_selections, lambda x: x.to_dict()),
+    ]
+
+    temp_files = []
+    backups = []
+    success_replaced = []
+
+    try:
+        # Step A: Prepare and write all .tmp files first
+        for filepath, items, to_dict_func in targets:
+            temp_filepath = filepath.with_suffix(".tmp")
+            temp_files.append(temp_filepath)
+            with open(temp_filepath, 'w', encoding='utf-8') as f:
+                for item in items:
+                    if to_dict_func:
+                        d = to_dict_func(item)
+                    elif hasattr(item, "to_dict"):
+                        d = item.to_dict()
+                    else:
+                        d = asdict(item)
+                    f.write(json.dumps(d, ensure_ascii=False) + '\n')
+    except Exception:
+        # Cleanup temp files if write fails
+        for temp_filepath in temp_files:
+            if temp_filepath.exists():
+                try:
+                    temp_filepath.unlink()
+                except Exception:
+                    pass
+        return False
+
+    # Step B: Perform per-file atomic replacements with best-effort rollback
+    replace_error = False
+    try:
+        for filepath, items, to_dict_func in targets:
+            temp_filepath = filepath.with_suffix(".tmp")
+            bak_filepath = filepath.with_suffix(".bak")
+            has_bak = False
+            if filepath.exists():
+                shutil.copy2(str(filepath), str(bak_filepath))
+                has_bak = True
+                backups.append((filepath, bak_filepath))
+
+            try:
+                os.replace(str(temp_filepath), str(filepath))
+                success_replaced.append((filepath, bak_filepath, has_bak))
+            except Exception as ex:
+                raise ex
+    except Exception:
+        replace_error = True
+
+    if replace_error:
+        # Rollback successfully replaced files
+        for filepath, bak_filepath, has_bak in success_replaced:
+            try:
+                if has_bak and bak_filepath.exists():
+                    os.replace(str(bak_filepath), str(filepath))
+                else:
+                    if filepath.exists():
+                        filepath.unlink()
+            except Exception:
+                pass
+        # Cleanup backups
+        for filepath, bak_filepath in backups:
+            if bak_filepath.exists():
+                try:
+                    bak_filepath.unlink()
+                except Exception:
+                    pass
+        # Cleanup remaining temp files
+        for temp_filepath in temp_files:
+            if temp_filepath.exists():
+                try:
+                    temp_filepath.unlink()
+                except Exception:
+                    pass
+        return False
+
+    # Step C: Success, cleanup backups
+    for _, bak_filepath in backups:
+        if bak_filepath.exists():
+            try:
+                bak_filepath.unlink()
+            except Exception:
+                pass
+    return True

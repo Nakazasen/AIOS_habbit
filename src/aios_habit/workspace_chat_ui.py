@@ -54,6 +54,15 @@ NOTEBOOK_RESTORE_FAILURE = "Không thể khôi phục sổ. Vui lòng thử lạ
 NOTEBOOK_MISSING_COPY = "Không tìm thấy sổ này. Danh sách đã được cập nhật."
 NOTEBOOK_NO_DELETE_COPY = "Không xóa dữ liệu trong Phase 2I."
 
+NOTEBOOK_DELETE_ACTION = "Xóa vĩnh viễn sổ"
+NOTEBOOK_DELETE_WARNING = "Hành động này sẽ xóa vĩnh viễn sổ và toàn bộ dữ liệu bên trong. Không thể khôi phục."
+NOTEBOOK_DELETE_PROMPT = "Nhập chính xác tên sổ để xác nhận xóa"
+NOTEBOOK_DELETE_ACK = "Tôi hiểu dữ liệu sẽ bị xóa vĩnh viễn"
+NOTEBOOK_DELETE_CONFIRM = "Xác nhận xóa vĩnh viễn"
+NOTEBOOK_DELETE_SUCCESS = "Đã xóa vĩnh viễn sổ."
+NOTEBOOK_DELETE_WRONG_TITLE = "Không thể xóa sổ vì tên xác nhận chưa đúng."
+NOTEBOOK_DELETE_FAILURE = "Không thể xóa sổ. Vui lòng thử lại."
+
 
 def privacy_label_is_sendable(privacy_label: str) -> bool:
     if privacy_label is None:
@@ -96,6 +105,10 @@ def render_notebook_card(
     on_archive_confirm: Callable[[str], None] = None,
     on_archive_cancel: Callable[[str], None] = None,
     archive_pending: bool = False,
+    on_delete_request: Callable[[str], None] = None,
+    on_delete_confirm: Callable[[str, str, bool], None] = None,
+    on_delete_cancel: Callable[[str], None] = None,
+    delete_pending: bool = False,
 ):
     labels = get_vietnamese_labels()
     with st.container():
@@ -117,10 +130,52 @@ def render_notebook_card(
                         on_archive_cancel(nb.id)
             elif st.button(NOTEBOOK_ARCHIVE_ACTION, key=f"archive_nb_{nb.id}"):
                 on_archive_request(nb.id)
+
+        # Danger zone
+        st.write("---")
+        st.markdown("**Vùng nguy hiểm**")
+        if on_delete_request is not None:
+            if delete_pending:
+                st.error(NOTEBOOK_DELETE_WARNING)
+                confirm_title = st.text_input(
+                    NOTEBOOK_DELETE_PROMPT,
+                    key=f"delete_confirm_title_active_{nb.id}"
+                )
+                ack = st.checkbox(
+                    NOTEBOOK_DELETE_ACK,
+                    key=f"delete_confirm_ack_active_{nb.id}"
+                )
+                btn_disabled = not (confirm_title == nb.title and ack)
+
+                confirm_col, cancel_col = st.columns(2)
+                with confirm_col:
+                    if st.button(
+                        NOTEBOOK_DELETE_CONFIRM,
+                        key=f"confirm_delete_nb_{nb.id}",
+                        disabled=btn_disabled
+                    ):
+                        on_delete_confirm(nb.id, confirm_title, ack)
+                with cancel_col:
+                    if st.button(
+                        "Hủy",
+                        key=f"cancel_delete_nb_{nb.id}"
+                    ):
+                        on_delete_cancel(nb.id)
+            else:
+                if st.button(NOTEBOOK_DELETE_ACTION, key=f"delete_nb_active_{nb.id}"):
+                    on_delete_request(nb.id)
         st.write("---")
 
 
-def render_archived_notebook_card(nb: DocumentNotebook, conv_count: int, on_restore: Callable[[str], None]):
+def render_archived_notebook_card(
+    nb: DocumentNotebook,
+    conv_count: int,
+    on_restore: Callable[[str], None],
+    on_delete_request: Callable[[str], None] = None,
+    on_delete_confirm: Callable[[str, str, bool], None] = None,
+    on_delete_cancel: Callable[[str], None] = None,
+    delete_pending: bool = False,
+):
     with st.container():
         st.markdown(f"### 📦 {nb.title}")
         st.write(nb.description or "Không có mô tả.")
@@ -128,6 +183,40 @@ def render_archived_notebook_card(nb: DocumentNotebook, conv_count: int, on_rest
         st.caption(NOTEBOOK_NO_DELETE_COPY)
         if st.button(NOTEBOOK_RESTORE_ACTION, key=f"restore_nb_{nb.id}"):
             on_restore(nb.id)
+
+        # Danger zone
+        st.write("---")
+        st.markdown("**Vùng nguy hiểm**")
+        if on_delete_request is not None:
+            if delete_pending:
+                st.error(NOTEBOOK_DELETE_WARNING)
+                confirm_title = st.text_input(
+                    NOTEBOOK_DELETE_PROMPT,
+                    key=f"delete_confirm_title_archive_{nb.id}"
+                )
+                ack = st.checkbox(
+                    NOTEBOOK_DELETE_ACK,
+                    key=f"delete_confirm_ack_archive_{nb.id}"
+                )
+                btn_disabled = not (confirm_title == nb.title and ack)
+
+                confirm_col, cancel_col = st.columns(2)
+                with confirm_col:
+                    if st.button(
+                        NOTEBOOK_DELETE_CONFIRM,
+                        key=f"confirm_delete_nb_archive_{nb.id}",
+                        disabled=btn_disabled
+                    ):
+                        on_delete_confirm(nb.id, confirm_title, ack)
+                with cancel_col:
+                    if st.button(
+                        "Hủy",
+                        key=f"cancel_delete_nb_archive_{nb.id}"
+                    ):
+                        on_delete_cancel(nb.id)
+            else:
+                if st.button(NOTEBOOK_DELETE_ACTION, key=f"delete_nb_archive_{nb.id}"):
+                    on_delete_request(nb.id)
         st.write("---")
 
 def render_chat_bubble(msg: ChatMessage):

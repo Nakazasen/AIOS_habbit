@@ -11,6 +11,7 @@ from aios_habit.workspace_chat_models import (
     WorkspaceConversation,
     TemporaryConversationSource,
     NotebookSource,
+    ChatMessage,
     SOURCE_SCOPE_NOTEBOOK,
     SOURCE_SCOPE_TEMPORARY
 )
@@ -1045,7 +1046,7 @@ def test_phase2i_notebook_lifecycle_backward_compat_and_malformed_fail_safe():
     assert "bad_nb" in archived_ids
 
 
-def test_phase2i_notebook_lifecycle_ui_copy_and_no_hard_delete_actions():
+def test_phase2i_notebook_lifecycle_ui_copy_and_hard_delete_actions():
     app_source = Path("src/aios_habit/workspace_chat_app.py").read_text(encoding="utf-8")
     ui_source = Path("src/aios_habit/workspace_chat_ui.py").read_text(encoding="utf-8")
     combined = app_source + ui_source
@@ -1059,10 +1060,288 @@ def test_phase2i_notebook_lifecycle_ui_copy_and_no_hard_delete_actions():
         "Không xóa dữ liệu trong Phase 2I.",
     ]:
         assert text in combined
-    assert "Xóa vĩnh viễn" not in combined
+    assert "Xóa vĩnh viễn sổ" in combined
+    assert "Nhập chính xác tên sổ để xác nhận xóa" in combined
     assert "cascade delete" not in combined.lower()
     assert "confirm hard delete" not in combined.lower()
     assert "load_active_notebooks()" in app_source
     assert "load_archived_notebooks()" in app_source
     assert "render_archived_notebook_card" in app_source
-    assert "st.stop()" in app_source
+
+
+def test_app_hard_delete_behavioral_flows(mock_streamlit_app, monkeypatch):
+    session_state, reruns = mock_streamlit_app
+
+    # 1. Setup target notebook, unrelated notebook, and archived notebook in store
+    nb_target = DocumentNotebook(id="target_nb", title="Target Notebook", description="Desc")
+    nb_unrelated = DocumentNotebook(id="unrelated_nb", title="Unrelated Notebook", description="Desc")
+    nb_archived = DocumentNotebook(id="archived_nb", title="Archived Notebook", description="Desc", archived_at="2026-07-04T12:00:00")
+    store.save_notebook(nb_target)
+    store.save_notebook(nb_unrelated)
+    store.save_notebook(nb_archived)
+
+    conv_target = WorkspaceConversation(id="conv_target", notebook_id="target_nb", title="Target Conv")
+    conv_unrelated = WorkspaceConversation(id="conv_unrelated", notebook_id="unrelated_nb", title="Unrelated Conv")
+    store.save_conversation(conv_target)
+    store.save_conversation(conv_unrelated)
+
+    # Setup unrelated conversation with existing messages
+    store.save_message(ChatMessage(id="msg_u1", conversation_id="conv_unrelated", role="user", content="hello"))
+    store.save_message(ChatMessage(id="msg_u2", conversation_id="conv_unrelated", role="assistant", content="hi there"))
+
+    # Setup a local-only source in the unrelated notebook to test RAG blocking later
+    src_unrelated = NotebookSource(
+        id="src_unrelated",
+        notebook_id="unrelated_nb",
+        title="Unrelated Source",
+        source_type="plain_text",
+        privacy_label="local_only",
+        content_preview="some preview",
+        content_text="some content"
+    )
+    store.save_notebook_source(src_unrelated)
+    store.set_source_enabled("conv_unrelated", "notebook", "src_unrelated", True)
+
+    # Import app module to invoke callbacks
+    sys.modules.pop("aios_habit.workspace_chat_app", None)
+    app = importlib.import_module("aios_habit.workspace_chat_app")
+
+    # Setup spies
+    delete_call_count = 0
+    delete_called_with = None
+
+    def spy_delete_notebook_permanently(notebook_id):
+        nonlocal delete_call_count, delete_called_with
+        delete_call_count += 1
+        delete_called_with = notebook_id
+        return store.delete_notebook_permanently(notebook_id)
+
+    monkeypatch.setattr(app, "delete_notebook_permanently", spy_delete_notebook_permanently)
+
+    # Mock generate_workspace_ai_answer to prevent and detect any AI provider path calls
+    # app module imports generate_workspace_ai_answer directly, so we must patch app's namespace
+    original_generate_answer = app.generate_workspace_ai_answer
+
+    ai_called = False
+    def spy_generate_workspace_ai_answer(*args, **kwargs):
+        nonlocal ai_called
+        ai_called = True
+        raise AssertionError("AI generation path must not be called during delete operations!")
+    monkeypatch.setattr(app, "generate_workspace_ai_answer", spy_generate_workspace_ai_answer)
+
+    # Mock active session pointing to target notebook
+    session_state.wsc_active_notebook_id = "target_nb"
+    session_state.wsc_active_conversation_id = "conv_target"
+    session_state.wsc_delete_confirm_notebook_id = None
+    session_state.wsc_archive_confirm_notebook_id = "target_nb"
+
+    # Capture a full snapshot of unrelated messages before any delete action
+    unrelated_msgs_before = sorted([
+        (m.id, m.conversation_id, m.role, m.content)
+        for m in store.load_messages("conv_unrelated")
+    ])
+    assert unrelated_msgs_before
+    assert any(role == "user" and content == "hello" for _, _, role, content in unrelated_msgs_before)
+    assert any(role == "assistant" and content == "hi there" for _, _, role, content in unrelated_msgs_before)
+
+    # --- Scenario A: Wrong title spy & Confirmation state cleanup ---
+    # Request delete on archived
+    app.request_delete_notebook_callback("archived_nb")
+    assert session_state.wsc_delete_confirm_notebook_id == "archived_nb"
+
+    # Set text widget state to wrong title
+    session_state[f"delete_confirm_title_archive_archived_nb"] = "Wrong Title"
+    session_state[f"delete_confirm_ack_archive_archived_nb"] = True
+
+    app.confirm_delete_notebook_callback("archived_nb", "Wrong Title", True)
+
+    # Assertions for wrong title:
+    assert delete_call_count == 0, "Delete helper should NOT be called with wrong title!"
+    assert session_state.wsc_action_error == app.NOTEBOOK_DELETE_WRONG_TITLE
+    # Verify widget keys and pending state are cleared
+    assert session_state.wsc_delete_confirm_notebook_id is None
+    assert f"delete_confirm_title_archive_archived_nb" not in session_state
+    assert f"delete_confirm_ack_archive_archived_nb" not in session_state
+    # Verify archived notebook is still in store
+    assert store.load_notebook("archived_nb") is not None
+
+    # --- Scenario B: Exact title spy on archived notebook ---
+    app.request_delete_notebook_callback("archived_nb")
+    # Simulate widget values
+    session_state[f"delete_confirm_title_archive_archived_nb"] = "Archived Notebook"
+    session_state[f"delete_confirm_ack_archive_archived_nb"] = True
+
+    app.confirm_delete_notebook_callback("archived_nb", "Archived Notebook", True)
+
+    # Assertions for exact title:
+    assert delete_call_count == 1
+    assert delete_called_with == "archived_nb"
+    assert session_state.wsc_action_message == app.NOTEBOOK_DELETE_SUCCESS
+    # Verify store actually has it deleted
+    assert store.load_notebook("archived_nb") is None
+    # Verify widgets cleaned
+    assert f"delete_confirm_title_archive_archived_nb" not in session_state
+    assert f"delete_confirm_ack_archive_archived_nb" not in session_state
+
+    # Verify archived list does not have it
+    archived_list = store.load_archived_notebooks()
+    assert not any(n.id == "archived_nb" for n in archived_list)
+
+    # --- Scenario C: Active notebook exact delete and session clearing ---
+    delete_call_count = 0  # reset spy
+    app.request_delete_notebook_callback("target_nb")
+    session_state[f"delete_confirm_title_active_target_nb"] = "Target Notebook"
+    session_state[f"delete_confirm_ack_active_target_nb"] = True
+
+    app.confirm_delete_notebook_callback("target_nb", "Target Notebook", True)
+
+    # Assertions:
+    assert delete_call_count == 1
+    assert delete_called_with == "target_nb"
+    assert store.load_notebook("target_nb") is None
+
+    # Verify session cleared
+    assert session_state.wsc_active_notebook_id is None
+    assert session_state.wsc_active_conversation_id is None
+    assert session_state.wsc_delete_confirm_notebook_id is None
+    assert session_state.wsc_archive_confirm_notebook_id is None
+    assert f"delete_confirm_title_active_target_nb" not in session_state
+    assert f"delete_confirm_ack_active_target_nb" not in session_state
+
+    # --- Scenario D: No AI answer created & Provider safety ---
+    assert not ai_called, "AI path was triggered during delete flow!"
+    # Ensure messages in the unrelated notebook conversation were not modified or added to
+    unrelated_msgs = store.load_messages("conv_unrelated")
+    unrelated_msgs_after = sorted([
+        (m.id, m.conversation_id, m.role, m.content)
+        for m in unrelated_msgs
+    ])
+    assert len(unrelated_msgs) == 2, "Messages count in unrelated conv changed!"
+    assert [m.role for m in unrelated_msgs] == ["user", "assistant"], "Stale messages or new assistant messages were created!"
+    assert unrelated_msgs_after == unrelated_msgs_before, "Unrelated messages content or attributes changed!"
+
+    # --- Scenario E: Cancel state cleanup ---
+    app.request_delete_notebook_callback("unrelated_nb")
+    session_state[f"delete_confirm_title_active_unrelated_nb"] = "Unrelated Notebook"
+    session_state[f"delete_confirm_ack_active_unrelated_nb"] = True
+
+    app.cancel_delete_notebook_callback("unrelated_nb")
+    assert session_state.wsc_delete_confirm_notebook_id is None
+    assert f"delete_confirm_title_active_unrelated_nb" not in session_state
+    assert f"delete_confirm_ack_active_unrelated_nb" not in session_state
+
+    # --- Scenario F: Local-only source in unrelated notebook still blocks AI ---
+    # restore generate_workspace_ai_answer spy on app namespace to test RAG blocking without calling monkeypatch.undo()
+    monkeypatch.setattr(app, "generate_workspace_ai_answer", original_generate_answer)
+    from aios_habit.workspace_chat_ai_answer import WorkspaceAIAnswerRequest, pack_workspace_ai_context, generate_workspace_ai_answer, PRIVACY_MODE_CLOUD_ALLOWED
+    enabled = store.load_enabled_sources_for_conversation("conv_unrelated")
+    _, packed, _ = pack_workspace_ai_context("question", [src_unrelated], [], enabled)
+    req = WorkspaceAIAnswerRequest(
+        conversation_id="conv_unrelated",
+        question="question",
+        context_sources=packed,
+        privacy_mode=PRIVACY_MODE_CLOUD_ALLOWED,
+        cloud_consent_confirmed=True,
+        consent_source_keys=tuple((s.source_scope, s.source_id) for s in enabled)
+    )
+
+    # Record provider calls
+    provider_calls = 0
+    class FakeProvider:
+        def generate_answer(self, *args, **kwargs):
+            nonlocal provider_calls
+            provider_calls += 1
+            return None
+
+    result = generate_workspace_ai_answer(req, provider_client=FakeProvider())
+    assert result.ok is False
+    assert "chỉ được dùng trên máy" in result.error_message.lower()
+    assert provider_calls == 0, "Provider was called despite local_only source restriction!"
+
+
+def test_app_hard_delete_helper_failure_behavioral_flow(mock_streamlit_app, monkeypatch):
+    session_state, _ = mock_streamlit_app
+
+    # 1. Setup target notebook and data in store
+    nb_target = DocumentNotebook(id="target_nb_fail", title="Target Notebook Fail", description="Desc")
+    store.save_notebook(nb_target)
+
+    conv_target = WorkspaceConversation(id="conv_target_fail", notebook_id="target_nb_fail", title="Target Conv Fail")
+    store.save_conversation(conv_target)
+
+    # Setup conversation with existing messages
+    store.save_message(ChatMessage(id="msg_f1", conversation_id="conv_target_fail", role="user", content="hello"))
+    store.save_message(ChatMessage(id="msg_f2", conversation_id="conv_target_fail", role="assistant", content="hi there"))
+
+    # Import app module
+    sys.modules.pop("aios_habit.workspace_chat_app", None)
+    app = importlib.import_module("aios_habit.workspace_chat_app")
+
+    # Spy AI answer path to assert it is never called
+    ai_called = False
+    def spy_generate_workspace_ai_answer(*args, **kwargs):
+        nonlocal ai_called
+        ai_called = True
+        raise AssertionError("AI generation must not be called!")
+    monkeypatch.setattr(app, "generate_workspace_ai_answer", spy_generate_workspace_ai_answer)
+
+    # Spy delete helper to return False
+    delete_calls = 0
+    def mock_delete_permanently(notebook_id):
+        nonlocal delete_calls
+        delete_calls += 1
+        return False
+
+    monkeypatch.setattr(app, "delete_notebook_permanently", mock_delete_permanently)
+
+    # Mock active session pointing to target notebook
+    session_state.wsc_active_notebook_id = "target_nb_fail"
+    session_state.wsc_active_conversation_id = "conv_target_fail"
+    session_state.wsc_delete_confirm_notebook_id = None
+    session_state.wsc_archive_confirm_notebook_id = "target_nb_fail"
+
+    # Request delete
+    app.request_delete_notebook_callback("target_nb_fail")
+    assert session_state.wsc_delete_confirm_notebook_id == "target_nb_fail"
+
+    # Set widgets values
+    session_state["delete_confirm_title_active_target_nb_fail"] = "Target Notebook Fail"
+    session_state["delete_confirm_ack_active_target_nb_fail"] = True
+
+    # Capture target messages snapshot before calling callback
+    fail_msgs_before = sorted([
+        (m.id, m.conversation_id, m.role, m.content)
+        for m in store.load_messages("conv_target_fail")
+    ])
+    assert fail_msgs_before
+    assert any(role == "user" and content == "hello" for _, _, role, content in fail_msgs_before)
+    assert any(role == "assistant" and content == "hi there" for _, _, role, content in fail_msgs_before)
+
+    # Confirm delete (fails due to spy returning False)
+    app.confirm_delete_notebook_callback("target_nb_fail", "Target Notebook Fail", True)
+
+    # Assertions:
+    assert delete_calls == 1
+    # Error message set
+    assert session_state.wsc_action_error == app.NOTEBOOK_DELETE_FAILURE
+    # Active session MUST REMAIN UNCHANGED
+    assert session_state.wsc_active_notebook_id == "target_nb_fail"
+    assert session_state.wsc_active_conversation_id == "conv_target_fail"
+    # Pending states and widgets are cleared
+    assert session_state.wsc_delete_confirm_notebook_id is None
+    assert "delete_confirm_title_active_target_nb_fail" not in session_state
+    assert "delete_confirm_ack_active_target_nb_fail" not in session_state
+
+    # Verify notebook is still in store
+    assert store.load_notebook("target_nb_fail") is not None
+    # Verify AI generation path not called
+    assert not ai_called
+    # Verify messages count/roles/content not changed
+    msgs = store.load_messages("conv_target_fail")
+    fail_msgs_after = sorted([
+        (m.id, m.conversation_id, m.role, m.content)
+        for m in msgs
+    ])
+    assert len(msgs) == 2
+    assert [m.role for m in msgs] == ["user", "assistant"]
+    assert fail_msgs_after == fail_msgs_before, "Target messages content or attributes changed upon helper failure!"
