@@ -18,18 +18,16 @@ AIOS WorkLens is a Personal Senior Work Intelligence System (Hệ thống trí t
    ```bash
    py -3 -m pip install -e .
    ```
-2. **Launch Case Cockpit (Legacy):**
+2. **Launch Workspace Chat (UI Chính):**
+   Double-click [RUN_AIOS_HABIT_STUDIO.bat](RUN_AIOS_HABIT_STUDIO.bat) on Windows, or run:
+   ```bash
+   py -3 -m streamlit run src\aios_habit\workspace_chat_app.py
+   ```
+3. **Launch Case Cockpit (Legacy / Reference Only):**
    Double-click [RUN_AIOS_CASE_COCKPIT.bat](RUN_AIOS_CASE_COCKPIT.bat) on Windows, or run:
    ```bash
    py -3 -m streamlit run src\aios_habit\case_cockpit.py
    ```
-3. **Launch Workspace Chat (New):**
-   Run the following command to start the new owner-friendly workspace chat interface:
-   ```bash
-   py -3 -m streamlit run src\aios_habit\workspace_chat_app.py
-   ```
-   > [!NOTE]
-   > The Workspace Chat is currently in **Phase 1 (UI Shell & Mock Placeholders)**. It provides a parallel, independent UI for managing notebooks, conversations, and temporary sources, but does not yet connect to live AI routing, execute real case saving, or run structural map validation.
 
 ---
 
@@ -53,7 +51,7 @@ AIOS WorkLens is a Personal Senior Work Intelligence System (Hệ thống trí t
 
 AIOS can create a local full-bundle request for Antigravity/IDE AI without calling a cloud provider.
 
-1. In Case Cockpit, create `Trả lời bằng AI IDE từ full bundle`.
+1. In Workspace Chat (hoặc Case Cockpit legacy), create `Trả lời bằng AI IDE từ full bundle`.
 2. Ask the IDE AI to read the complete `local_runs/ide_handoff/outbox/REQ-...` folder and write response JSON to `local_runs/ide_handoff/inbox/`.
 3. Import that response JSON in AIOS. AIOS validates request ID, privacy acknowledgement, full-bundle use, and evidence IDs before saving.
 

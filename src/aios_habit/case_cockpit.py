@@ -61,6 +61,7 @@ from aios_habit.ide_handoff_bridge import (
 )
 
 st.set_page_config(page_title="AIOS Case Cockpit v0.1", layout="wide")
+st.warning("Legacy / reference only. Flow chính hiện dùng Workspace Chat.", icon="⚠️")
 
 def antigravity_bridge_owner_labels():
     return {

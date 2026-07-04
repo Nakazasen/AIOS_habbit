@@ -7,6 +7,7 @@ if (-not (Get-Command "streamlit" -ErrorAction SilentlyContinue)) {
     py -3 -m pip install -e .
 }
 
+Write-Host "[WARNING] Legacy / reference only. Flow chính hiện dùng Workspace Chat." -ForegroundColor Yellow
 Write-Host "Starting AIOS Case Cockpit..."
 $env:PYTHONPATH = "src"
 py -3 -m streamlit run src\aios_habit\case_cockpit.py

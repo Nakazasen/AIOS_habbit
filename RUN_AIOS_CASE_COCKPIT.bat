@@ -8,6 +8,7 @@ if %errorlevel% neq 0 (
     py -3 -m pip install -e .
 )
 
+echo [WARNING] Legacy / reference only. Flow chính hiện dùng Workspace Chat.
 echo Starting AIOS Case Cockpit...
 set PYTHONPATH=src
 py -3 -m streamlit run src\aios_habit\case_cockpit.py

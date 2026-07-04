@@ -24,6 +24,7 @@ DECISION_PATH = REPO / "06_workflow_library" / "decision_patterns.jsonl"
 EXPORT_DIR = REPO / "07_ai_export_packs"
 
 st.set_page_config(page_title="AIOS Habit Studio", page_icon="🧠", layout="wide")
+st.warning("Legacy / reference only. Flow chính hiện dùng Workspace Chat.", icon="⚠️")
 
 def load_evidence():
     return read_jsonl(EVIDENCE_PATH)
