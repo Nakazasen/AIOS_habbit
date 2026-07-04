@@ -181,7 +181,7 @@ def test_source_selection_helpers_called_inside_sidebar_context():
     source = app_path.read_text(encoding="utf-8")
     tree = ast.parse(source)
 
-    target_helpers = {"render_source_summary", "render_notebook_source_list", "render_temporary_source_list"}
+    target_helpers = {"render_source_library"}
     found_calls = {helper: False for helper in target_helpers}
 
     class SidebarCallChecker(ast.NodeVisitor):

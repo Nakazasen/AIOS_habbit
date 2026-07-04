@@ -264,6 +264,31 @@ def delete_notebook_source(source_id: str) -> bool:
     with open(NOTEBOOK_SOURCES_FILE, 'w', encoding='utf-8') as f:
         for item in sources:
             f.write(json.dumps(item.to_dict(), ensure_ascii=False) + '\n')
+
+    selections = load_all_conversation_source_selections()
+    selections = [s for s in selections if not (s.source_id == source_id and s.source_scope == "notebook")]
+    with open(SOURCE_SELECTIONS_FILE, 'w', encoding='utf-8') as f:
+        for item in selections:
+            f.write(json.dumps(item.to_dict(), ensure_ascii=False) + '\n')
+
+    return True
+
+def delete_temporary_source(source_id: str) -> bool:
+    sources = load_all_temporary_sources()
+    initial_len = len(sources)
+    sources = [s for s in sources if s.id != source_id]
+    if len(sources) == initial_len:
+        return False
+    with open(TEMPORARY_SOURCES_FILE, 'w', encoding='utf-8') as f:
+        for item in sources:
+            f.write(json.dumps(asdict(item), ensure_ascii=False) + '\n')
+
+    selections = load_all_conversation_source_selections()
+    selections = [s for s in selections if not (s.source_id == source_id and s.source_scope == "temporary")]
+    with open(SOURCE_SELECTIONS_FILE, 'w', encoding='utf-8') as f:
+        for item in selections:
+            f.write(json.dumps(item.to_dict(), ensure_ascii=False) + '\n')
+
     return True
 
 def load_all_conversation_source_selections() -> List[ConversationSourceSelection]:

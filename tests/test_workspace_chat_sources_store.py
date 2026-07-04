@@ -183,10 +183,9 @@ def test_delete_notebook_source_dangling_selection():
     # Delete source
     store.delete_notebook_source("src_to_delete")
     
-    # Verify current selection remains as current Phase 2A non-goal (no auto-cascade delete)
+    # Verify current selection is cascade deleted for Gate 1C
     selections = store.load_conversation_source_selections("conv_del")
-    assert len(selections) == 1
-    assert selections[0].source_id == "src_to_delete"
+    assert len(selections) == 0
 
 def test_malformed_jsonl_tolerance():
     # Write a malformed JSONL line into notebook sources file

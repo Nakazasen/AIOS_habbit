@@ -278,3 +278,21 @@ def test_hard_delete_required_copy():
     for term in forbidden_terms:
         for val in user_facing_strings:
             assert term not in val, f"Forbidden term '{term}' leaked in user-facing UI text: '{val}'"
+
+def test_gate_1c_source_library_copy():
+    ui_source = Path("src/aios_habit/workspace_chat_ui.py").read_text(encoding="utf-8")
+    app_source = Path("src/aios_habit/workspace_chat_app.py").read_text(encoding="utf-8")
+    required_ui = [
+        "📚 Thư viện nguồn",
+        "🔍 Tìm nguồn",
+        "Chỉ hiển thị nguồn đang bật",
+        "Bật nguồn đang lọc",
+        "Tắt nguồn đang lọc",
+        "Xác nhận xóa nguồn này?",
+        "Xác nhận xóa",
+        "Đã bật",
+        "Đã tắt",
+        "Đã xóa nguồn"
+    ]
+    for copy in required_ui:
+        assert (copy in ui_source) or (copy in app_source), f"Required copy '{copy}' not found in ui or app"

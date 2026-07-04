@@ -204,9 +204,7 @@ from aios_habit.workspace_chat_ui import (
     render_archived_notebook_card,
     render_chat_bubble,
     render_right_result_panel,
-    render_source_summary,
-    render_notebook_source_list,
-    render_temporary_source_list,
+    render_source_library,
     render_source_status,
     render_ai_source_context_summary,
     render_source_check_panel,
@@ -577,26 +575,70 @@ else:
                 st.error(st.session_state.wsc_action_error)
                 st.session_state.wsc_action_error = None
 
-            st.write("---")
-            render_source_summary(enabled_notebook_count, enabled_temp_count)
+            def on_toggle_source(scope: str, source_id: str, enabled: bool):
+                set_source_enabled(active_conversation.id, scope, source_id, enabled)
+                st.session_state.wsc_action_message = "Đã cập nhật trạng thái bật/tắt nguồn."
+
+            def on_bulk_toggle(sources_to_toggle: list, enabled: bool):
+                for scope, source_id in sources_to_toggle:
+                    set_source_enabled(active_conversation.id, scope, source_id, enabled)
+                count = len(sources_to_toggle)
+                state_str = "Đã bật" if enabled else "Đã tắt"
+                st.session_state.wsc_action_message = f"{state_str} {count} nguồn đang lọc."
+
+                try:
+                    st.rerun()
+                except AttributeError:
+                    try:
+                        st.experimental_rerun()
+                    except AttributeError:
+                        pass
+
+            def on_privacy_save(scope: str, source_id: str, choice: str):
+                if scope == SOURCE_SCOPE_NOTEBOOK:
+                    on_save_notebook_source_privacy(source_id, choice)
+                else:
+                    on_save_temporary_source_privacy(source_id, choice)
+
+            def on_delete_source(scope: str, source_id: str):
+                if scope == SOURCE_SCOPE_NOTEBOOK:
+                    from aios_habit.workspace_chat_store import delete_notebook_source
+                    if delete_notebook_source(source_id):
+                        st.session_state.wsc_action_message = "Đã xóa nguồn trong sổ."
+                    else:
+                        st.session_state.wsc_action_error = "Không tìm thấy nguồn để xóa."
+                else:
+                    from aios_habit.workspace_chat_store import delete_temporary_source
+                    if delete_temporary_source(source_id):
+                        st.session_state.wsc_action_message = "Đã xóa nguồn tạm."
+                    else:
+                        st.session_state.wsc_action_error = "Không tìm thấy nguồn để xóa."
+
+                try:
+                    st.rerun()
+                except AttributeError:
+                    try:
+                        st.experimental_rerun()
+                    except AttributeError:
+                        pass
+
+            selections_map = {}
+            for sid, val in notebook_selections.items():
+                selections_map[("notebook", sid)] = val
+            for sid, val in temp_selections.items():
+                selections_map[("temporary", sid)] = val
 
             st.write("---")
-            render_notebook_source_list(
-                sources=notebook_sources,
-                selections=notebook_selections,
-                on_toggle=on_toggle_notebook,
+            render_source_library(
+                notebook_sources=notebook_sources,
+                temp_sources=temp_sources,
+                selections_map=selections_map,
                 conversation_id=active_conversation.id,
-                on_privacy_save=on_save_notebook_source_privacy
-            )
-
-            st.write("---")
-            render_temporary_source_list(
-                sources=temp_sources,
-                selections=temp_selections,
-                on_toggle=on_toggle_temporary,
-                on_promote=on_promote_temporary,
-                conversation_id=active_conversation.id,
-                on_privacy_save=on_save_temporary_source_privacy
+                on_toggle_source=on_toggle_source,
+                on_promote_temporary=on_promote_temporary,
+                on_privacy_save=on_privacy_save,
+                on_bulk_toggle=on_bulk_toggle,
+                on_delete_source=on_delete_source
             )
 
     # Khu vực chính ở giữa
