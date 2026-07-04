@@ -845,3 +845,129 @@ def test_regression_none_source_after_cap_blocks_cloud_through_real_packer():
     assert client.call_count == 0
     assert res.externally_sent is False
     assert "chỉ được dùng trên máy" in res.error_message
+
+
+def test_generate_workspace_ai_answer_with_retrieval():
+    client = MockProviderClient()
+    # 1. full enabled context sources (snapshot)
+    src_full = WorkspaceAIContextSource(
+        source_id="src_1",
+        source_scope="temporary",
+        source_type="txt",
+        title="raw_doc.txt",
+        privacy_label="cloud_allowed",
+        text="Irrelevant raw content not retrieved",
+        included_chars=36,
+        truncated=False,
+    )
+    # 2. retrieved snippet sources (subset)
+    src_retrieved = WorkspaceAIContextSource(
+        source_id="src_1_chunk_1",
+        source_scope="temporary",
+        source_type="txt",
+        title="raw_doc.txt",
+        privacy_label="cloud_allowed",
+        text="Hello retrieval snippet content!",
+        included_chars=32,
+        truncated=False,
+    )
+
+    req = WorkspaceAIAnswerRequest(
+        conversation_id="conv_1",
+        question="Hỏi",
+        context_sources=(src_full,),
+        privacy_mode=PRIVACY_MODE_CLOUD_ALLOWED,
+        cloud_consent_confirmed=True,
+        consent_source_keys=(("temporary", "src_1"),),
+        retrieval_applied=True,
+        retrieved_context_sources=(src_retrieved,),
+    )
+
+    res = generate_workspace_ai_answer(req, client)
+    assert res.ok is True
+    assert client.call_count == 1
+    assert "Hello retrieval snippet content!" in client.last_user_prompt
+    assert "Irrelevant raw content" not in client.last_user_prompt
+
+
+def test_generate_workspace_ai_answer_with_retrieval_no_evidence():
+    client = MockProviderClient()
+    src_full = WorkspaceAIContextSource(
+        source_id="src_1",
+        source_scope="temporary",
+        source_type="txt",
+        title="doc.txt",
+        privacy_label="cloud_allowed",
+        text="Some context text",
+        included_chars=17,
+        truncated=False,
+    )
+
+    req = WorkspaceAIAnswerRequest(
+        conversation_id="conv_1",
+        question="Hỏi",
+        context_sources=(src_full,),
+        privacy_mode=PRIVACY_MODE_CLOUD_ALLOWED,
+        cloud_consent_confirmed=True,
+        consent_source_keys=(("temporary", "src_1"),),
+        retrieval_applied=True,
+        retrieved_context_sources=(),  # No evidence
+    )
+
+    res = generate_workspace_ai_answer(req, client)
+    assert res.ok is False
+    assert client.call_count == 0
+    assert res.error_message == "Chưa tìm thấy đoạn phù hợp trong nguồn đang bật."
+
+
+def test_generate_workspace_ai_answer_with_retrieval_privacy_and_consent_full_snapshot():
+    client = MockProviderClient()
+    # Retrieved snippet belongs to a cloud_allowed source
+    src_retrieved = WorkspaceAIContextSource(
+        source_id="src_allowed_chunk_1",
+        source_scope="temporary",
+        source_type="txt",
+        title="allowed.txt",
+        privacy_label="cloud_allowed",
+        text="Allowed snippet text",
+        included_chars=20,
+        truncated=False,
+    )
+    # But one of the enabled sources in the full snapshot is local_only!
+    src_allowed = WorkspaceAIContextSource(
+        source_id="src_allowed",
+        source_scope="temporary",
+        source_type="txt",
+        title="allowed.txt",
+        privacy_label="cloud_allowed",
+        text="Allowed raw content",
+        included_chars=19,
+        truncated=False,
+    )
+    src_local = WorkspaceAIContextSource(
+        source_id="src_local",
+        source_scope="temporary",
+        source_type="txt",
+        title="local.txt",
+        privacy_label="local_only",  # local_only blocker!
+        text="Secret local only text",
+        included_chars=22,
+        truncated=False,
+    )
+
+    req = WorkspaceAIAnswerRequest(
+        conversation_id="conv_1",
+        question="Hỏi",
+        context_sources=(src_allowed, src_local),
+        privacy_mode=PRIVACY_MODE_CLOUD_ALLOWED,
+        cloud_consent_confirmed=True,
+        consent_source_keys=(("temporary", "src_allowed"), ("temporary", "src_local")),
+        retrieval_applied=True,
+        retrieved_context_sources=(src_retrieved,),
+    )
+
+    res = generate_workspace_ai_answer(req, client)
+    # Must be blocked by the local_only source in full snapshot
+    assert res.ok is False
+    assert client.call_count == 0
+    assert "chỉ được dùng trên máy" in res.error_message

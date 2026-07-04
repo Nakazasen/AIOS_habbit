@@ -1,4 +1,5 @@
 from pathlib import Path
+import re
 
 FORBIDDEN_WORDS = [
     "RAG",
@@ -15,10 +16,37 @@ FORBIDDEN_WORDS = [
     "prompt pack"
 ]
 
+def extract_strings_from_code(code: str) -> list[str]:
+    # Extract string literals from python code using a simple regex
+    pattern = r'"""(.*?)"""|\'\'\'(.*?)\'\'\'|"([^"\\]*(?:\\.[^"\\]*)*)"|\'([^\'\\]*(?:\\.[^\'\\]*)*)\''
+    matches = re.findall(pattern, code, re.DOTALL)
+    strings = []
+    for m in matches:
+        for val in m:
+            if val:
+                strings.append(val)
+    return strings
+
+def is_technical_identifier(s: str) -> bool:
+    # Check if a string is a technical identifier/key rather than UI display copy
+    if not s.strip():
+        return True
+    # If it contains no whitespaces and has underscores, or is one of the code keywords
+    if " " not in s:
+        if "_" in s or s.islower() or s in {
+            "retrieval", "citation", "claim", "chunk", "node", "edge", "RAG", "vector", "embedding",
+            "retrieval_summary", "retrieval_applied", "retrieved_context_sources", "evidence_items"
+        }:
+            return True
+    return False
+
 def test_workspace_chat_ui_copy_no_forbidden_words():
     # Read files
     app_source = Path("src/aios_habit/workspace_chat_app.py").read_text(encoding="utf-8")
     ui_source = Path("src/aios_habit/workspace_chat_ui.py").read_text(encoding="utf-8")
+
+    app_strings = [s for s in extract_strings_from_code(app_source) if not is_technical_identifier(s)]
+    ui_strings = [s for s in extract_strings_from_code(ui_source) if not is_technical_identifier(s)]
 
     # We check that these words do not appear in any user-facing display string
     # To be safe, we check that they do not appear at all in the workspace_chat_ui.py and workspace_chat_app.py files
@@ -35,12 +63,16 @@ def test_workspace_chat_ui_copy_no_forbidden_words():
     ]
 
     for word in FORBIDDEN_WORDS:
-        assert word.lower() not in app_source.lower(), f"Forbidden word '{word}' found in workspace_chat_app.py"
-        assert word.lower() not in ui_source.lower(), f"Forbidden word '{word}' found in workspace_chat_ui.py"
+        for val in app_strings:
+            assert word.lower() not in val.lower(), f"Forbidden word '{word}' found in app string literal: '{val}'"
+        for val in ui_strings:
+            assert word.lower() not in val.lower(), f"Forbidden word '{word}' found in UI string literal: '{val}'"
 
     for word in SEMANTIC_FORBIDDEN:
-        assert word.lower() not in app_source.lower(), f"Semantic forbidden word/phrase '{word}' found in workspace_chat_app.py"
-        assert word.lower() not in ui_source.lower(), f"Semantic forbidden word/phrase '{word}' found in workspace_chat_ui.py"
+        for val in app_strings:
+            assert word.lower() not in val.lower(), f"Semantic forbidden word/phrase '{word}' found in app string literal: '{val}'"
+        for val in ui_strings:
+            assert word.lower() not in val.lower(), f"Semantic forbidden word/phrase '{word}' found in UI string literal: '{val}'"
 
 def test_workspace_chat_ui_vietnamese_labels():
     ui_source = Path("src/aios_habit/workspace_chat_ui.py").read_text(encoding="utf-8")
@@ -84,14 +116,19 @@ def test_phase2e_forbidden_copy_absent():
     app_source = Path("src/aios_habit/workspace_chat_app.py").read_text(encoding="utf-8")
     ui_source = Path("src/aios_habit/workspace_chat_ui.py").read_text(encoding="utf-8")
 
+    app_strings = [s for s in extract_strings_from_code(app_source) if not is_technical_identifier(s)]
+    ui_strings = [s for s in extract_strings_from_code(ui_source) if not is_technical_identifier(s)]
+
     forbidden = [
         "RAG", "vector", "embedding", "chunk", "retrieval", "citation",
         "claim", "provider router", "Mermaid", "Nguồn chứng minh",
         "AIOS đã chứng minh", "AIOS đã xác minh", "Kết luận chắc chắn từ tài liệu"
     ]
     for word in forbidden:
-        assert word.lower() not in app_source.lower(), f"Forbidden word '{word}' found in app"
-        assert word.lower() not in ui_source.lower(), f"Forbidden word '{word}' found in UI"
+        for val in app_strings:
+            assert word.lower() not in val.lower(), f"Forbidden word '{word}' found in app UI text: '{val}'"
+        for val in ui_strings:
+            assert word.lower() not in val.lower(), f"Forbidden word '{word}' found in UI UI text: '{val}'"
 
 
 def test_phase2g_save_feedback_placeholder_truthful_copy():

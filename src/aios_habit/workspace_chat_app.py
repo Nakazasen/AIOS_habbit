@@ -612,6 +612,15 @@ else:
             if badge_data and badge_data.get("conversation_id") == active_conversation.id:
                 if badge_data.get("type") == "ai_answered":
                     render_ai_answer_header(badge_data.get("source_count", 0), badge_data.get("source_titles", []))
+                    if "retrieval_summary" in badge_data:
+                        st.info(badge_data["retrieval_summary"])
+                    if "evidence_items" in badge_data and badge_data["evidence_items"]:
+                        with st.expander("🔍 Chi tiết các đoạn tài liệu được sử dụng"):
+                            for item in badge_data["evidence_items"]:
+                                st.markdown(f"**Nguồn**: {item['title']}")
+                                if item.get("location_info"):
+                                    st.markdown(f"*Vị trí*: {item['location_info']}")
+                                st.text_area(f"Đoạn trích {item['snippet_index']}", value=item['text'], height=100, disabled=True, key=f"wsc_evidence_snippet_{active_conversation.id}_{item['snippet_index']}")
                 elif badge_data.get("type") == "insufficient_context":
                     render_insufficient_context(badge_data.get("reason", "no_sources"))
                 elif badge_data.get("type") == "privacy_block":
@@ -676,63 +685,75 @@ else:
                         # Build consent keys from current snapshot
                         current_keys = tuple(sorted((sel.source_scope, sel.source_id) for sel in enabled_selections))
 
-                        req = WorkspaceAIAnswerRequest(
-                            conversation_id=active_conversation.id,
-                            question=q_text,
-                            context_sources=packed_sources,
-                            privacy_mode=PRIVACY_MODE_CLOUD_ALLOWED,
-                            cloud_consent_confirmed=True,
-                            consent_source_keys=current_keys
-                        )
+                        from aios_habit.workspace_chat_retrieval import retrieve_local_evidence
+                        ret_res = retrieve_local_evidence(q_text, packed_sources)
 
-                        res = generate_workspace_ai_answer(req, RealWorkspaceAIProviderClient())
-
-                        if res.ok:
-                            user_msg = ChatMessage(
-                                id=f"MSG-{uuid.uuid4().hex[:8].upper()}",
-                                conversation_id=active_conversation.id,
-                                role="user",
-                                content=user_input
-                            )
-                            save_message(user_msg)
-                            assistant_msg = ChatMessage(
-                                id=f"MSG-{uuid.uuid4().hex[:8].upper()}",
-                                conversation_id=active_conversation.id,
-                                role="assistant",
-                                content=res.answer_text
-                            )
-                            save_message(assistant_msg)
-
-                            source_titles = list(res.included_source_titles)
-                            st.session_state.wsc_last_ai_badge = {
-                                "conversation_id": active_conversation.id,
-                                "type": "ai_answered",
-                                "source_count": len(source_titles),
-                                "source_titles": source_titles,
-                            }
-
-                            if res.warnings:
-                                st.session_state.wsc_action_message = "\n".join(res.warnings)
-                            else:
-                                st.session_state.wsc_action_message = "Đã nhận câu trả lời từ AI thành công."
-
+                        if ret_res["summary_count"] == 0:
+                            st.session_state.wsc_action_error = "Chưa tìm thấy đoạn phù hợp trong nguồn đang bật."
+                            st.session_state.wsc_last_ai_badge = None
                             safe_rerun()
                         else:
-                            # Handle error cases
-                            if "chỉ được dùng trên máy" in (res.error_message or ""):
+                            req = WorkspaceAIAnswerRequest(
+                                conversation_id=active_conversation.id,
+                                question=q_text,
+                                context_sources=packed_sources,
+                                privacy_mode=PRIVACY_MODE_CLOUD_ALLOWED,
+                                cloud_consent_confirmed=True,
+                                consent_source_keys=current_keys,
+                                retrieval_applied=True,
+                                retrieved_context_sources=ret_res["retrieved_context_sources"]
+                            )
+
+                            res = generate_workspace_ai_answer(req, RealWorkspaceAIProviderClient())
+
+                            if res.ok:
+                                user_msg = ChatMessage(
+                                    id=f"MSG-{uuid.uuid4().hex[:8].upper()}",
+                                    conversation_id=active_conversation.id,
+                                    role="user",
+                                    content=user_input
+                                )
+                                save_message(user_msg)
+                                assistant_msg = ChatMessage(
+                                    id=f"MSG-{uuid.uuid4().hex[:8].upper()}",
+                                    conversation_id=active_conversation.id,
+                                    role="assistant",
+                                    content=res.answer_text
+                                )
+                                save_message(assistant_msg)
+
+                                source_titles = list(res.included_source_titles)
                                 st.session_state.wsc_last_ai_badge = {
                                     "conversation_id": active_conversation.id,
-                                    "type": "privacy_block",
+                                    "type": "ai_answered",
+                                    "source_count": len(source_titles),
+                                    "source_titles": source_titles,
+                                    "retrieval_summary": ret_res["safe_owner_message"],
+                                    "evidence_items": ret_res["evidence_items"],
                                 }
-                            elif "Tập nguồn đang bật đã thay đổi" in (res.error_message or ""):
-                                st.session_state.wsc_last_ai_badge = {
-                                    "conversation_id": active_conversation.id,
-                                    "type": "source_changed",
-                                }
+
+                                if res.warnings:
+                                    st.session_state.wsc_action_message = "\n".join(res.warnings)
+                                else:
+                                    st.session_state.wsc_action_message = "Đã nhận câu trả lời từ AI thành công."
+
+                                safe_rerun()
                             else:
-                                st.session_state.wsc_action_error = res.error_message
-                                st.session_state.wsc_last_ai_badge = None
-                            safe_rerun()
+                                # Handle error cases
+                                if "chỉ được dùng trên máy" in (res.error_message or ""):
+                                    st.session_state.wsc_last_ai_badge = {
+                                        "conversation_id": active_conversation.id,
+                                        "type": "privacy_block",
+                                    }
+                                elif "Tập nguồn đang bật đã thay đổi" in (res.error_message or ""):
+                                    st.session_state.wsc_last_ai_badge = {
+                                        "conversation_id": active_conversation.id,
+                                        "type": "source_changed",
+                                    }
+                                else:
+                                    st.session_state.wsc_action_error = res.error_message
+                                    st.session_state.wsc_last_ai_badge = None
+                                safe_rerun()
 
             # Phase 2H: Dán nhanh nhiều nguồn (quick multi-source paste)
             st.write(" ")

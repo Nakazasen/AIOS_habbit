@@ -28,6 +28,8 @@ class WorkspaceAIAnswerRequest:
     privacy_mode: str
     cloud_consent_confirmed: bool = False
     consent_source_keys: Tuple[Tuple[str, str], ...] = ()
+    retrieval_applied: bool = False
+    retrieved_context_sources: Tuple[WorkspaceAIContextSource, ...] = ()
 
 @dataclass(frozen=True)
 class WorkspaceAIAnswerResult:
@@ -286,18 +288,22 @@ def generate_workspace_ai_answer(
         )
 
     # 2. Cap & pack sources AFTER passing privacy gates
-    q_text, packed_sources, warnings = _cap_and_pack_sources(request.question, request.context_sources)
+    if request.retrieval_applied:
+        q_text, packed_sources, warnings = _cap_and_pack_sources(request.question, request.retrieved_context_sources)
+    else:
+        q_text, packed_sources, warnings = _cap_and_pack_sources(request.question, request.context_sources)
 
     # 7. Exclude empty-content sources from prompt, warn, and fail if no content at all
     prompt_sources = [src for src in packed_sources if src.included_chars > 0]
     if not prompt_sources:
+        err_msg = "Chưa tìm thấy đoạn phù hợp trong nguồn đang bật." if request.retrieval_applied else "Chưa gửi tới AI. Nguồn đang bật chưa có nội dung."
         return WorkspaceAIAnswerResult(
             ok=False,
             answer_text="",
             included_source_titles=tuple(src.title for src in request.context_sources),
             warnings=warnings,
             externally_sent=False,
-            error_message="Chưa gửi tới AI. Nguồn đang bật chưa có nội dung."
+            error_message=err_msg
         )
 
     # Everything is valid for cloud call
