@@ -8,6 +8,6 @@ if (-not (Get-Command "streamlit" -ErrorAction SilentlyContinue)) {
     py -3 -m pip install -e .
 }
 
-Write-Host "Starting AIOS Habit Studio..."
+Write-Host "Starting AIOS Habit Workspace Chat..."
 $env:PYTHONPATH = "src"
-py -3 -m streamlit run src\aios_habit\studio.py
+py -3 -m streamlit run src\aios_habit\workspace_chat_app.py

@@ -13,7 +13,7 @@ if %errorlevel% neq 0 (
     )
 )
 
-echo Starting AIOS Habit Studio...
+echo Starting AIOS Habit Workspace Chat...
 set PYTHONPATH=src
-py -3 -m streamlit run src\aios_habit\studio.py
+py -3 -m streamlit run src\aios_habit\workspace_chat_app.py
 pause

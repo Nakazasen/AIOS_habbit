@@ -1,6 +1,8 @@
 import streamlit as st
 import uuid
 from datetime import datetime
+
+st.set_page_config(page_title="AIOS Habit Workspace Chat", page_icon="💬", layout="wide")
 from aios_habit.workspace_chat_store import (
     init_chat_store,
     load_notebook,
