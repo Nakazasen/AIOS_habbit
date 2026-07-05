@@ -1,5 +1,19 @@
 # Changelog
 
+## 2026-07-05 - Agent Task Pack Export MVP Completion & Roadmap Sync
+
+### Enhancements
+- Completed Agent Task Pack Export MVP (AI-GW-A17A) implementing validated, version-controlled local task pack generation using deterministic JSON, SHA-256 integrity hash calculation, strict destination enum, and atomic outbox exports.
+- Prepared Roadmap Synchronization (RM-SYNC-A17A) updating the candidate gate queue, documenting A17A design/implementation details, commit chain verification, and the accepted hardening backlog.
+
+### Safety
+- Restricts `destination` to `local_owner_only`, `external_manual_agent`, or `owner_managed_chat`. Rejected direct cloud destination.
+- Imposes strictest-wins privacy orders and filters sensitive credentials, path segments (such as `.ai`, `local_cases`), and raw transcript markers from exported pack objectives.
+- Enforces strict path policy on external/chat packs by blocking absolute, UNC, system, or traversal paths.
+- Uses atomic writes with `os.replace` under `local_runs/agent_bridge/outbox` to prevent data corruption.
+- Trailing whitespaces stripped and `uv.lock` safely isolated/removed from version control.
+
+
 ## 2026-07-05 - IDE Agent Bridge Design Completion & Roadmap Sync
 
 ### Enhancements

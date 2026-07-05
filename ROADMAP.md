@@ -27,12 +27,13 @@ Case → Evidence → Map → Action → Learning → Memory
 ## Active Position
 
 - Current phase: Phase 4 — Workspace Chat Foundation & AI Gateway Preparation.
-- Latest closed implementation gate: AI-GW-A16 — Router Mock Integration with Owner Consent Gateway — DONE/CLOSED/REMOTE_SYNCED.
-- Latest roadmap sync gate: RM-SYNC-A16 — Sync Master Roadmap after AI-GW-A16 — DONE/PUSHED; remote verification is handled by external audit/post-push records, not self-attested by this file.
+- Latest closed implementation gate: AI-GW-A17A — Agent Task Pack Export MVP — DONE/PUSHED/REMOTE_VERIFIED.
+- Current roadmap sync gate: RM-SYNC-A17A — Sync Master Roadmap after AI-GW-A17A — IN PROGRESS.
 - Latest closed design gate: AI-GW-A17-DESIGN — IDE Agent Bridge docs-only design — DONE/PUSHED/REMOTE_VERIFIED.
-- Next candidate gate: AI-GW-A17A — Agent Task Pack Export MVP — NOT_STARTED / NEXT_CANDIDATE; implementation not opened.
-- AI-GW-A18 — NotebookLM Comparison Arena — NOT_STARTED.
+- Next candidate gate: AI-GW-A17B — Result Import MVP — NOT_STARTED / NEXT_CANDIDATE (after roadmap sync is complete).
+- AI-GW-A17C / A17D / A18 — NOT_STARTED.
 - P1.0 — Owner Pilot / Productization — LOCKED.
+
 
 ### M1.13 — Owner Trial Pain Point Fixes
 
@@ -225,8 +226,8 @@ Clarification:
 
 - Manual IDE answer/evidence bridge foundation exists: prompt/evidence pack export, paste-back answer import, model/tool name, evidence refs, route summary, and privacy guard.
 - A17 docs-only design is now complete (AI-GW-A17-DESIGN is DONE/PUSHED/REMOTE_VERIFIED).
-- Runtime repo-task bridge implementation is still not complete (A17A/A17B/A17C/A17D remain future subgates).
-- AI-GW-A17A (Task Pack Export MVP) is NOT_STARTED / NEXT_CANDIDATE.
+- Runtime repo-task bridge Task Pack Export MVP is now complete (AI-GW-A17A is DONE/PUSHED/REMOTE_VERIFIED).
+- A17B/A17C/A17D subgates remain future gates (NOT_STARTED).
 - Phase 5 is therefore not fully complete as a runtime-controlled IDE Agent Bridge.
 
 Scope:
@@ -367,15 +368,13 @@ Future research should learn public patterns from RAGFlow, kotaemon, Microsoft G
 
 Immediate:
 
-- **AI-GW-A17A — Agent Task Pack Export MVP** (NOT_STARTED / NEXT_CANDIDATE) — implementation MVP gate; implementation has not opened yet.
+- **RM-SYNC-A17A — Sync Master Roadmap after AI-GW-A17A** (IN_PROGRESS) — this roadmap sync gate recording commit hashes, validation evidence, and accepted hardening backlog.
+- **AI-GW-A17B — Result Import MVP** (NOT_STARTED / NEXT_CANDIDATE) — parser and validation checks for agent reports.
 - **AI-GW-A18 — NotebookLM Comparison Arena** (NOT_STARTED) — after A17 or later strategy decision.
-
-Pending / Local:
-
-- **RM-SYNC-A17-DESIGN — Sync Master Roadmap after AI-GW-A17-DESIGN** (LOCAL_COMMIT_READY_FOR_PUSH_SAFETY) — this roadmap sync gate updating gateway design status, queue position and commit timeline; remote verification must be handled by external post-push audit, not self-attested by this file.
 
 Completed:
 
+- **AI-GW-A17A — Agent Task Pack Export MVP** (DONE/PUSHED/REMOTE_VERIFIED) — local-only task pack export with SHA-256 integrity hash, canonical JSON, task ID validation, privacy and destination checks, and atomic export.
 - **AI-GW-A17-DESIGN — IDE Agent Bridge docs-only design** (DONE/PUSHED/REMOTE_VERIFIED) — architecture boundaries, result import, task pack schema and safety prompt design completed.
 - **RM-SYNC-A16 — Sync Master Roadmap after AI-GW-A16** (DONE/PUSHED/REMOTE_VERIFIED) — roadmap naming, baseline, commit timeline, and prompt governance synchronized after A16.
 - **AI-GW-A16 — Router Mock Integration with Owner Consent Gateway** (DONE/CLOSED/REMOTE_SYNCED) — mock router adapter, privacy gateway, no real provider calls, local validation tests.
@@ -386,11 +385,15 @@ Risks & Gaps:
 
 - local brain runtime has not been aligned or implemented.
 - router mock is implemented.
-- IDE bridge runtime is not yet implemented.
+- IDE bridge runtime (A17B/A17C/A17D) is not yet implemented.
 - NotebookLM comparison arena is not yet implemented.
 - Old legacy AI code is intentionally retained for reference and will be migrated/deprecated in step with the new gateway.
 - Real provider API calls are strictly blocked in AI-GW-A16 (mock only).
 - P1.0 remains locked.
+- Accepted A17A hardening backlog:
+  - A17A-HARDEN-1: `repo_path_policy` is required but not strict enum-validated. Future hardening should normalize to strict design enum such as `local_owner_only_absolute | logical_relative`.
+  - A17A-HARDEN-2: `machine_only` / `cloud_safe` privacy classes are still permitted. Future hardening should normalize privacy class policy before any broader external/cloud use.
+  - A17A-HARDEN-3: Recursive scanning of all structured text fields is not comprehensive. Future hardening should add deeper structured text scanning before broader external/cloud use.
 
 ---
 
@@ -519,3 +522,5 @@ Not included:
 - **13. RM-SYNC-A16 Roadmap Sync after AI-GW-A16:** `bf4c39c9b6b44611b826be3201bbdf39e8cae099` — Message: Sync roadmap after AI-GW-A16
 - **14. RM-SYNC-A16 Stale Status Fix:** `f3a9b6c42d2aa40f2cd225f1684d70c06e9dc039` — Message: Fix roadmap sync status after A16
 - **15. AI-GW-A17-DESIGN IDE Agent Bridge Design:** `6ea3f573e62db7fbb4bf2089e0f6f2eb932394e5` — Message: Unify A17 design destination enum
+- **16. AI-GW-A17A Agent Task Pack Export MVP:** `a2660583c53d2eb67c6123a36648fbc74d4b8879` — Message: Add A17A agent task pack export MVP
+- **17. AI-GW-A17A Blockers Fix:** `3da1882f8d7c71968d35cea15078d43dc9d8bcce` — Message: Fix A17A task pack export audit blockers
