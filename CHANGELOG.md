@@ -1,5 +1,17 @@
 # Changelog
 
+## 2026-07-05 - AIOS Brain Gateway Design & Source Library Management
+
+### Enhancements
+- Completed Workspace Chat Source Library (WSC-1C) management, including search/filter, bulk enable/disable, temporary deletion, confirmation dialogues, and test coverage (754 passed).
+- Completed AIOS Brain Gateway Integration Design (AI-GW-A15) which details the system inventory, gateway architecture, router adapters, IDE bridge, and import design docs.
+- Updated project roadmap indexes and master roadmaps to align with the current HEAD status.
+
+### Safety
+- No code modifications performed.
+- P1.0 production readiness remains LOCKED.
+- Verified local test suites, mojibake clean status, and CLI audits.
+
 ## 2026-07-04 - Workspace Chat Primary UI & Legacy Retirement Sync
 
 ### Enhancements

@@ -32,13 +32,13 @@ Case → Evidence → Map → Action → Learning → Memory
 
 ## Active Position
 
-- **Local HEAD:** `8adab34` (`Mark Workspace Chat as primary UI`).
-- **Remote HEAD:** `8adab34` (`Mark Workspace Chat as primary UI`).
-- **Current position:** Workspace Chat is the primary UI; local retrieval, multi-file uploader, and Vietnamese encoding are fully implemented and pushed.
-- **Current capability:** Workspace Chat supports notebook lifecycle, hard delete, multi-format sources, local retrieval, and image/WebP OCR.
-- **P1.0:** LOCKED; remains locked until the Gate 1C Source Library UX is stable.
-- **NotebookLM parity:** NOT achieved; retrieval and source library still require MVP improvements before parity claims.
-- **IDE/model bridge:** Manual IDE response import and full-bundle outbox/inbox is fully operational.
+- **Local HEAD:** `44d40f4` (`Document AIOS brain gateway integration design`).
+- **Remote HEAD:** `44d40f4` (`Document AIOS brain gateway integration design`).
+- **Current position:** Brain Gateway integration design is completed; Workspace Chat is the primary UI, and Source Library Management (WSC-1C) is fully implemented and pushed.
+- **Current capability:** Workspace Chat supports notebook lifecycle, hard delete, multi-format sources, local retrieval, image/WebP OCR, and source library management (search/filter, bulk enable/disable, delete confirmation).
+- **P1.0:** LOCKED; remains locked until the router mock/privacy gateway and owner-facing AI flow are safe and stable.
+- **NotebookLM parity:** NOT achieved; retrieval and source library still require improvements before parity claims.
+- **IDE/model bridge:** Manual IDE response import is operational; Brain Gateway integration design is ready for router mock implementation.
 
 
 
@@ -467,37 +467,23 @@ Future research should learn public patterns from RAGFlow, kotaemon, Microsoft G
 
 ## Next Gate Queue
 
-
-
 Immediate:
+- **AI-GW-A16 — Router Mock Integration** (IN PROGRESS) — mock router adapter, privacy gateway, no real provider calls, local validation tests.
+- **AI-GW-A17 — IDE Agent Bridge** (PENDING) — runtime integration for agent workspace and IDE messaging bridge.
+- **AI-GW-A18 — NotebookLM Comparison Arena** (PENDING) — comparative evaluation between local RAG and NotebookLM.
 
-0. **Gate 1C — Workspace Chat Source Library / Source Management UX** - IN PROGRESS; implement search/filter, bulk toggle, temporary source deletion, and failed upload visibility in Workspace Chat.
+Completed:
+- **Gate 1C — Workspace Chat Source Library / Source Management UX** (COMPLETE) — implemented search/filter, bulk actions, source toggle, and delete confirmation.
+- **AI-GW-A15 — Brain Gateway Integration Design** (COMPLETE) — documented brain gateway integration design, system inventory, router adapters, IDE bridge, and import designs.
 
-1. **AIOS-RAG-EVIDENCE-PACK-1** — evidence pack builder, source scoring, answer abstention.
-
-2. **AIOS-RAG-INGEST-1** — improve parser/chunk metadata, no vector DB yet.
-
-3. **AIOS-RAG-SEARCH-1** — local hybrid search foundation, SQLite FTS/BM25, metadata filters, citation IDs.
-
-4. **AIOS-IDE-BRIDGE-1** — manual prompt export, paste-back answer, store model/tool/evidence/route log.
-
-5. **Visual Map MVP** — DONE; local JSON/Mermaid export, schema models, deterministic active-case graph builder, UI stub.
-
-
-
-Later:
-
-6. AIOS-RAG-RERANK-1
-
-7. AIOS-RAG-BENCHMARK-1
-
-8. AIOS-CASE-SCALE-1
-
-9. AIOS-WORKSTREAM-MAP-1
-
-10. AIOS-P1-READINESS-CHECKLIST
-
-
+Risks & Gaps:
+- local brain runtime has not been aligned or implemented.
+- router mock is not yet implemented.
+- IDE bridge runtime is not yet implemented.
+- NotebookLM comparison arena is not yet implemented.
+- Old legacy AI code is intentionally retained for reference and will be migrated/deprecated in step with the new gateway.
+- Real provider API calls are strictly blocked in AI-GW-A16 (mock only).
+- Roadmap drift fixed for A15.
 
 ---
 

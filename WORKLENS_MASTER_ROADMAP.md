@@ -12,14 +12,14 @@ Case → Evidence → Map → Action → Learning → Memory
 
 ## 1. Current Gate Status
 
-- **Current local HEAD:** `8adab34` (`Mark Workspace Chat as primary UI`).
-- **Current remote HEAD:** `8adab34` (`Mark Workspace Chat as primary UI`).
-- **Current position:** Workspace Chat is established as the primary UI; legacy Studio and Case Cockpit are retained as reference/debug only.
-- **P1.0:** LOCKED. Do not open automatically.
+- **Current local HEAD:** `44d40f4` (`Document AIOS brain gateway integration design`).
+- **Current remote HEAD:** `44d40f4` (`Document AIOS brain gateway integration design`).
+- **Current position:** Brain Gateway integration design is completed; Workspace Chat is the primary UI, and Source Library Management (WSC-1C) is fully implemented and pushed.
+- **P1.0:** LOCKED. Do not open automatically; remains locked until the router mock/privacy gateway and owner-facing AI flow are safe and stable.
 - **NotebookLM parity:** not achieved; Retrieval Engine v2 and Source Library MVP are required.
-- **IDE/model bridge:** Manual IDE response import is operational; direct cloud calls remain blocked for local-only evidence.
+- **IDE/model bridge:** Manual IDE response import is operational; Brain Gateway integration design is ready for router mock implementation.
 
-Completed foundation gates include local Case Cockpit, Workspace/Knowledge Notebook, MOM local benchmark, provider safety modes, route log, one-screen daily UI, DeepSeek normal-document UI pilot, Q&A-to-Case route summary, company/mật privacy guard, Workspace Chat primary UI, multi-format uploader, local retrieval/evidence items, Vietnamese mojibake cleanup, and legacy retirement docs sync.
+Completed foundation gates include local Case Cockpit, Workspace/Knowledge Notebook, MOM local benchmark, provider safety modes, route log, one-screen daily UI, DeepSeek normal-document UI pilot, Q&A-to-Case route summary, company/mật privacy guard, Workspace Chat primary UI, multi-format uploader, local retrieval/evidence items, Vietnamese mojibake cleanup, legacy retirement docs sync, Workspace Chat Source Library (WSC-1C), and Brain Gateway integration design (AI-GW-A15).
 
 ---
 
@@ -139,18 +139,22 @@ Learning sources for public pattern research: RAGFlow, kotaemon, Microsoft Graph
 ## 4. Next Gate Queue
 
 Immediate:
-1. **Gate 1C — Workspace Chat Source Library / Source Management UX** — IN PROGRESS; implement search/filter, bulk actions, temporary source cleanup with warnings, and failed upload visibility in Workspace Chat.
-2. **AIOS-RAG-EVIDENCE-PACK-1** — evidence pack builder, source scoring, answer abstention.
-3. **AIOS-RAG-INGEST-1** — improve parser/chunk metadata, no vector DB yet.
-4. **AIOS-RAG-SEARCH-1** — local hybrid search foundation, SQLite FTS/BM25, metadata filters, citation IDs.
-5. **AIOS-IDE-BRIDGE-1** — manual prompt export, paste-back answer, store model/tool/evidence/route log.
+- **AI-GW-A16 — Router Mock Integration** (IN PROGRESS) — mock router adapter, privacy gateway, no real provider calls, local validation tests.
+- **AI-GW-A17 — IDE Agent Bridge** (PENDING) — runtime integration for agent workspace and IDE messaging bridge.
+- **AI-GW-A18 — NotebookLM Comparison Arena** (PENDING) — comparative evaluation between local RAG and NotebookLM.
 
-Later:
-6. AIOS-RAG-RERANK-1
-7. AIOS-RAG-BENCHMARK-1
-8. AIOS-CASE-SCALE-1
-9. AIOS-WORKSTREAM-MAP-1
-10. AIOS-P1-READINESS-CHECKLIST
+Completed:
+- **Gate 1C — Workspace Chat Source Library / Source Management UX** (COMPLETE) — implemented search/filter, bulk actions, source toggle, and delete confirmation.
+- **AI-GW-A15 — Brain Gateway Integration Design** (COMPLETE) — documented brain gateway integration design, system inventory, router adapters, IDE bridge, and import designs.
+
+Risks & Gaps:
+- local brain runtime has not been aligned or implemented.
+- router mock is not yet implemented.
+- IDE bridge runtime is not yet implemented.
+- NotebookLM comparison arena is not yet implemented.
+- Old legacy AI code is intentionally retained for reference and will be migrated/deprecated in step with the new gateway.
+- Real provider API calls are strictly blocked in AI-GW-A16 (mock only).
+- Roadmap drift fixed for A15.
 
 ---
 
