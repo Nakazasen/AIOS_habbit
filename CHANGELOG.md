@@ -1,5 +1,28 @@
 # Changelog
 
+## 2026-07-05 - Workspace Chat Hidden UX Guardrails & Roadmap Sync
+
+### Enhancements
+- Completed Workspace Chat Hidden UX Guardrail Hardening (AI-GW-A17C) implementing test-first automatic guardrails to prevent Workspace Chat from regressing to cockpit complexity.
+  - Verification results:
+    - commit: `bc45d88f18650b1bea172572d1c2cafdd1c65864 — Harden Workspace Chat hidden UX guardrails`
+    - Codex re-audit: PASS_A17C_HIDDEN_WORKSPACE_CHAT_GUARDRAILS_AUDITED_READY_FOR_PUSH_SAFETY
+    - push-safety: PASS_A17C_HIDDEN_WORKSPACE_CHAT_GUARDRAILS_PUSHED_REMOTE_VERIFIED
+    - focused tests: 23 passed
+    - A17A/A17B regression: 61 passed
+    - full pytest: 857 passed
+    - diff checks: PASS
+    - force push used: NO
+    - only test files changed
+    - no normal UI changes
+    - accepted caveat: a single `gate` match in comment/docstring at `workspace_chat_app.py:1020` (does not display to user).
+- Initiated Roadmap Synchronization (RM-SYNC-A17C) updating master roadmap and index.
+
+### Governance
+- Preserved absolute NotebookLM-simple UX law verbatim: "GIAO DIỆN PHẢI DỄ SỬ DỤNG NHƯ NOTEBOOKLM. Nếu khó hiểu, coi như thất bại. Người dùng không có thời gian để ghi nhớ cách dùng quá phức tạp."
+- A17C is marked complete (DONE/PUSHED/REMOTE_VERIFIED). A17D remains NOT_STARTED.
+- P1.0 remains LOCKED.
+
 ## 2026-07-05 - Workspace Chat NotebookLM-Simple UI Cleanup & Roadmap Sync
 
 ### Enhancements

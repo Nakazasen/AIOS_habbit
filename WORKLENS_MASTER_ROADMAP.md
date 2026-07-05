@@ -21,11 +21,13 @@ Case → Evidence → Map → Action → Learning → Memory
 ### Active Position
 
 - Current phase: Phase 4 — Workspace Chat Foundation & AI Gateway Preparation.
-- Latest closed implementation gate: Workspace Chat NotebookLM-simple cleanup — DONE / PUSHED / REMOTE_VERIFIED / OWNER_VISUAL_SMOKE_PASS.
-- Current roadmap sync gate: RM-SYNC-UI-NOTEBOOKLM-CLEANUP — Sync Master Roadmap after Workspace Chat UI Cleanup — IN PROGRESS.
+- Latest closed implementation gate: AI-GW-A17C — Hidden Workspace Chat Guardrail Hardening — DONE / PUSHED / REMOTE_VERIFIED.
+- Latest closed roadmap sync gate: RM-SYNC-UI-NOTEBOOKLM-CLEANUP — DONE / PUSHED / REMOTE_VERIFIED.
+- Current roadmap sync gate: RM-SYNC-A17C — Sync Master Roadmap after A17C Hidden Guardrails — IN PROGRESS.
 - Latest closed design gate: AI-GW-A17-DESIGN — IDE Agent Bridge docs-only design — DONE/PUSHED/REMOTE_VERIFIED.
-- Next candidate gate: A17C Scope Discussion — Owner-approved A17C scope discussion or docs/prompt planning only, not implementation.
-- AI-GW-A17C — Workspace Chat helper — NOT_STARTED / UX-LOCKED (pending owner scope approval: A17C can only be considered after RM-SYNC-UI-NOTEBOOKLM-CLEANUP is pushed/remote verified and the owner explicitly accepts the next A17C scope. Any future A17C must be hidden/simple Workspace Chat support only, with no new cockpit, no multi-step agent UI, and no task-pack/report-import UI).
+- Next candidate gate: A17D Scope Discussion / Planning — Git observer / anti-fake hardening planning.
+- AI-GW-A17C — Workspace Chat helper — DONE / PUSHED / REMOTE_VERIFIED (test-first hidden UX guardrails).
+- RM-SYNC-A17C — Sync Master Roadmap after A17C — IN PROGRESS (local docs sync, pending push-safety).
 - AI-GW-A17D / A18 — NOT_STARTED.
 - P1.0 — Owner Pilot / Productization — LOCKED.
 
@@ -119,7 +121,7 @@ Clarification:
 - A17 docs-only design is now complete (AI-GW-A17-DESIGN is DONE/PUSHED/REMOTE_VERIFIED).
 - Runtime repo-task bridge Task Pack Export MVP is now complete (AI-GW-A17A is DONE/PUSHED/REMOTE_VERIFIED).
 - Runtime repo-task bridge Result Import MVP is now complete (AI-GW-A17B is DONE/PUSHED/REMOTE_VERIFIED).
-- A17C/A17D subgates remain future gates (NOT_STARTED).
+- A17C is complete (DONE/PUSHED/REMOTE_VERIFIED). A17D subgate remains a future gate (NOT_STARTED).
 - Phase 5 is therefore not fully complete as a runtime-controlled IDE Agent Bridge.
 
 Scope:
@@ -186,13 +188,28 @@ Learning sources for public pattern research: RAGFlow, kotaemon, Microsoft Graph
 
 Immediate:
 
-- **RM-SYNC-UI-NOTEBOOKLM-CLEANUP — Sync Master Roadmap after Workspace Chat UI Cleanup** (IN_PROGRESS) — this roadmap sync gate updating roadmap status after UI cleanup and owner smoke PASS.
-- **AI-GW-A17C — Workspace Chat helper** (NOT_STARTED / UX-LOCKED) — background chat helper. UX-locked: can only be considered after RM-SYNC-UI-NOTEBOOKLM-CLEANUP is pushed/remote verified and the owner explicitly accepts the next A17C scope. Any future A17C must be hidden/simple Workspace Chat support only, with no new cockpit, no multi-step agent UI, and no task-pack/report-import UI.
+- **RM-SYNC-A17C — Sync Master Roadmap after A17C Hidden Guardrails** (IN_PROGRESS) — roadmap sync gate updating roadmap and changelog status after AI-GW-A17C hidden guardrail commit is pushed/remote verified.
 - **AI-GW-A17D — Git observer / anti-fake hardening** (NOT_STARTED).
 - **AI-GW-A18 — NotebookLM Comparison Arena** (NOT_STARTED) — after A17 or later strategy decision.
 
 Completed:
 
+- **AI-GW-A17C — Workspace Chat helper / Hidden UX Guardrails** (DONE/PUSHED/REMOTE_VERIFIED) — test-first hidden UX guardrails to prevent regression to cockpit complexity.
+  Validation evidence:
+  - commit: `bc45d88f18650b1bea172572d1c2cafdd1c65864 — Harden Workspace Chat hidden UX guardrails`
+  - focused test: 23 passed
+  - A17A/A17B regression: 61 passed
+  - full pytest: 857 passed
+  - diff check: PASS
+  - force push used: NO
+  - only test files changed
+  - no normal UI changes
+  - accepted caveat: a single `gate` match in comment/docstring at `workspace_chat_app.py:1020` (does not display to user).
+- **RM-SYNC-UI-NOTEBOOKLM-CLEANUP — Sync Master Roadmap after Workspace Chat UI Cleanup** (DONE/PUSHED/REMOTE_VERIFIED) — roadmap sync gate recording commit hashes, validation evidence, and absolute NotebookLM-simple UX lock.
+  Validation evidence:
+  - commit: `007800f982a31f4caa0c0b9bc031387eb74cd2ab`
+  - git diff --check: PASS
+  - post-push remote verification: PASS
 - **Workspace Chat NotebookLM-simple cleanup** (DONE/PUSHED/REMOTE_VERIFIED / OWNER_VISUAL_SMOKE_PASS) — simplified Workspace Chat daily UX.
   Validation evidence:
   - commit: `f23ea1345e1c3644f6037aa21ee428077cf1ac5a — Simplify Workspace Chat daily UX`
@@ -237,7 +254,7 @@ Risks & Gaps:
 
 - local brain runtime has not been aligned or implemented.
 - router mock is implemented.
-- IDE bridge runtime (A17B/A17C/A17D) is not yet implemented.
+- IDE bridge runtime (A17D) is not yet implemented. (A17C is complete as hidden UX guardrail tests).
 - NotebookLM comparison arena is not yet implemented.
 - Old legacy AI code is intentionally retained for reference and will be migrated/deprecated in step with the new gateway.
 - Real provider API calls are strictly blocked in AI-GW-A16 (mock only).
