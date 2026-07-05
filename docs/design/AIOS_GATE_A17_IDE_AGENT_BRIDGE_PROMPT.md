@@ -75,20 +75,46 @@ Không thực hiện commit hoặc push lên origin nếu các bước kiểm tr
 
 ---
 
-## 6. Định Dạng Kết Quả Đầu Ra (Output Format)
+## 6. Định Dạng Kết Quả Đầu Ra (Output Format Template)
+
+Báo cáo kết quả phải sử dụng đúng mẫu cấu trúc dưới đây để điền thông tin sau khi kiểm tra. Chỉ được điền PASS khi có bằng chứng (evidence) rõ ràng, nếu không có đủ bằng chứng, trạng thái bắt buộc phải là FAIL hoặc REVIEW_REQUIRED. Không được mặc định điền `RISKS: none`; nếu không phát hiện rủi ro nào sau khi chạy các bước kiểm tra, phải ghi rõ `none observed after checks` kèm danh sách cụ thể các bước kiểm tra đã thực hiện.
 
 ```text
-FINAL_STATUS: PASS_A17_DESIGN_LOCAL_COMMIT_READY_FOR_CODEX_AUDIT
-BASELINE: 71e1cd3123878e4857bff1f35df40744e591f004
+FINAL_STATUS:
+- PASS_A17_DESIGN_DOCS_READY_FOR_AUDIT
+hoặc
+- FAIL_PRECONDITION
+hoặc
+- FAIL_SCOPE
+hoặc
+- FAIL_VALIDATION
+hoặc
+- FAIL_NEEDS_FIX
+
+AUDIT_RESULT:
+- PASS_WITH_EVIDENCE
+hoặc
+- FAIL_WITH_BLOCKERS
+
+BASELINE: [sha256/git hash of base commit]
 TASK_PACK_SCHEMA: aios_agent_task_pack_v1
 REPORT_IMPORT_SCHEMA: aios_agent_report_v1
 FAKE_PASS_DETECTION: YES (phân biệt declared vs observed evidence, reason codes)
 FILES_TOUCHED: docs/design/AIOS_IDE_AGENT_BRIDGE_DESIGN.md, docs/design/AIOS_AGENT_RESULT_IMPORT_DESIGN.md, docs/design/AIOS_GATE_A17_IDE_AGENT_BRIDGE_PROMPT.md
-TESTS: N/A (docs-only gate)
-AUDIT: PASS (linter clean, git diff check passed)
-FORBIDDEN_DIRTY: none
-RISKS: none (implementation remains closed)
+
+TESTS: N/A (docs-only design gate, verification via docs checking)
+
+AUDIT_STATUS: [PASS_WITH_EVIDENCE | FAIL_WITH_BLOCKERS | REVIEW_REQUIRED]
+
+FORBIDDEN_DIRTY: [none | list files if any]
+
+RISKS:
+- blockers: [danh sách blockers hoặc ghi "none observed after checks" kèm mô tả kiểm tra]
+- high: [danh sách rủi ro cao hoặc ghi "none observed after checks" kèm mô tả kiểm tra]
+- medium: [danh sách rủi ro trung bình hoặc ghi "none observed after checks" kèm mô tả kiểm tra]
+- low: [danh sách rủi ro thấp hoặc ghi "none observed after checks" kèm mô tả kiểm tra]
+
 COMMIT_CREATED: YES
 PUSH_PERFORMED: NO
-NEXT_STEP: Đợi Codex Design Audit phê duyệt
+NEXT_STEP: Đợi Codex Design Audit phê duyệt bản cập nhật thiết kế
 ```
