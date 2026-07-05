@@ -30,6 +30,7 @@ class WorkspaceAIAnswerRequest:
     consent_source_keys: Tuple[Tuple[str, str], ...] = ()
     retrieval_applied: bool = False
     retrieved_context_sources: Tuple[WorkspaceAIContextSource, ...] = ()
+    router_enabled: bool = False
 
 @dataclass(frozen=True)
 class WorkspaceAIAnswerResult:
@@ -39,6 +40,10 @@ class WorkspaceAIAnswerResult:
     warnings: Tuple[str, ...]
     externally_sent: bool = False
     error_message: str = ""
+    reason_code: str = ""
+    next_action: str = ""
+    mock_external_send: bool = False
+    would_send_externally: bool = False
 
 class WorkspaceAIProviderClient(Protocol):
     def generate(self, *, system_prompt: str, user_prompt: str) -> str:
@@ -252,6 +257,114 @@ def generate_workspace_ai_answer(
         )
 
     # Privacy mode is cloud_allowed
+    # Tích hợp tiền kiểm tra gateway (preflight guard) cho A16 nếu router_enabled được bật
+    if getattr(request, "router_enabled", False):
+        from aios_habit.brain_gateway import BrainGateway, GatewaySource, BrainRequest, OwnerConsent, calculate_source_set_hash
+        gw_sources = tuple(
+            GatewaySource(
+                source_id=src.source_id,
+                source_scope=src.source_scope,
+                source_type=src.source_type,
+                title=src.title,
+                privacy_label=src.privacy_label,
+                text=src.text
+            ) for src in request.context_sources
+        )
+
+        # Sửa: Không tự dựng consent hợp lệ từ current_hash. Dựng từ consent_source_keys (snapshot).
+        consent_obj = None
+        if request.cloud_consent_confirmed:
+            # Tạo snapshot sources từ consent_source_keys
+            snapshot_sources = []
+            for scope, sid in request.consent_source_keys:
+                matching_src = next((s for s in request.context_sources if s.source_scope == scope and s.source_id == sid), None)
+                plabel = matching_src.privacy_label if matching_src else "unknown"
+                snapshot_sources.append(
+                    GatewaySource(
+                        source_id=sid,
+                        source_scope=scope,
+                        source_type="",
+                        title="",
+                        privacy_label=plabel,
+                        text=""
+                    )
+                )
+            consent_hash = calculate_source_set_hash(tuple(snapshot_sources))
+
+            import time
+            consent_obj = OwnerConsent(
+                source_set_hash=consent_hash,
+                destination="mock_router",
+                purpose="workspace_chat_answer",
+                timestamp=time.time()
+            )
+
+        gw = BrainGateway()
+        brain_req = BrainRequest(
+            question=request.question,
+            sources=gw_sources,
+            consent=consent_obj,
+            router_enabled=True,
+            purpose="workspace_chat_answer",
+            destination="mock_router"
+        )
+        decision = gw.preflight_check(brain_req)
+        if not decision.allowed:
+            friendly_message = f"Chưa gửi tới AI. Lý do: {decision.message} Hành động tiếp theo: {decision.next_action}"
+            return WorkspaceAIAnswerResult(
+                ok=False,
+                answer_text="",
+                included_source_titles=tuple(src.title for src in request.context_sources),
+                warnings=(),
+                externally_sent=False,
+                error_message=friendly_message,
+                reason_code=decision.reason_code,
+                next_action=decision.next_action
+            )
+
+        # Nếu allowed, định tuyến qua MockRouterAdapter
+        from aios_habit.router_adapter import MockRouterAdapter
+        adapter = MockRouterAdapter(enabled=True)
+        try:
+            router_res = adapter.send_payload(decision.sanitized_payload)
+            if router_res["ok"]:
+                return WorkspaceAIAnswerResult(
+                    ok=True,
+                    answer_text=router_res["response_text"] + "\n\nĐây là câu trả lời do AI tạo, cần kiểm tra lại trước khi dùng.",
+                    included_source_titles=tuple(src.title for src in decision.sanitized_payload.sanitized_sources),
+                    warnings=(),
+                    externally_sent=False, # mock only, no real external send
+                    reason_code=decision.reason_code,
+                    next_action=decision.next_action,
+                    mock_external_send=True,
+                    would_send_externally=True
+                )
+            else:
+                return WorkspaceAIAnswerResult(
+                    ok=False,
+                    answer_text="",
+                    included_source_titles=tuple(src.title for src in request.context_sources),
+                    warnings=(),
+                    externally_sent=False,
+                    error_message=router_res["error_message"],
+                    reason_code=decision.reason_code,
+                    next_action=decision.next_action
+                )
+        except Exception as e:
+            # Map exception thành thông báo cố định, an toàn, không chứa str(e) thô
+            safe_msg = "Yêu cầu đã bị chặn vì payload có dấu hiệu chứa thông tin nhạy cảm. Vui lòng dùng dữ liệu local hoặc làm sạch nội dung trước khi gửi AI cloud."
+            return WorkspaceAIAnswerResult(
+                ok=False,
+                answer_text="",
+                included_source_titles=tuple(src.title for src in request.context_sources),
+                warnings=(),
+                externally_sent=False,
+                error_message=safe_msg,
+                reason_code=decision.reason_code,
+                next_action=decision.next_action
+            )
+
+    # Luồng cũ của Workspace Chat (chạy khi router_enabled là False)
     # 1. Privacy check occurs on ALL enabled sources (request.context_sources)
     has_blocked_source = any(not is_privacy_label_cloud_allowed(src.privacy_label) for src in request.context_sources)
     if has_blocked_source:
