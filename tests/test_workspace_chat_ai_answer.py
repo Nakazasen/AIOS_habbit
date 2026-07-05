@@ -971,3 +971,195 @@ def test_generate_workspace_ai_answer_with_retrieval_privacy_and_consent_full_sn
     assert res.ok is False
     assert client.call_count == 0
     assert "chỉ được dùng trên máy" in res.error_message
+
+
+def test_workspace_chat_ai_answer_via_real_router_success(monkeypatch):
+    called = []
+    def mock_generate(question, system_prompt, user_prompt):
+        called.append((question, system_prompt, user_prompt))
+        return True, "Mocked Router Reply"
+    monkeypatch.setattr("aios_habit.workspace_chat_router_adapter.generate_answer_via_router", mock_generate)
+
+    src_local = WorkspaceAIContextSource(
+        source_id="src_local",
+        source_scope="temporary",
+        source_type="txt",
+        title="local.txt",
+        privacy_label="local_only",
+        text="Secret local only text",
+        included_chars=22,
+        truncated=False,
+    )
+
+    req = WorkspaceAIAnswerRequest(
+        conversation_id="conv_1",
+        question="Hỏi",
+        context_sources=(src_local,),
+        privacy_mode=PRIVACY_MODE_CLOUD_ALLOWED,
+        cloud_consent_confirmed=True,
+        consent_source_keys=(("temporary", "src_local"),),
+        real_router_enabled=True
+    )
+
+    client = MockProviderClient()
+    res = generate_workspace_ai_answer(req, client)
+
+    assert res.ok is True
+    assert "Mocked Router Reply" in res.answer_text
+    assert "Đây là câu trả lời do AI tạo, cần kiểm tra lại trước khi dùng." in res.answer_text
+    assert res.included_source_titles == ("local.txt",)
+    assert len(called) == 1
+    assert called[0][0] == "Hỏi"
+    assert "local.txt" in called[0][2]
+    assert client.call_count == 0
+
+
+def test_workspace_chat_ai_answer_via_real_router_without_consent(monkeypatch):
+    called = []
+    def mock_generate(question, system_prompt, user_prompt):
+        called.append((question, system_prompt, user_prompt))
+        return True, "Mocked Router Reply"
+    monkeypatch.setattr("aios_habit.workspace_chat_router_adapter.generate_answer_via_router", mock_generate)
+
+    src_local = WorkspaceAIContextSource(
+        source_id="src_local",
+        source_scope="temporary",
+        source_type="txt",
+        title="local.txt",
+        privacy_label="local_only",
+        text="Secret local only text",
+        included_chars=22,
+        truncated=False,
+    )
+
+    req = WorkspaceAIAnswerRequest(
+        conversation_id="conv_1",
+        question="Hỏi",
+        context_sources=(src_local,),
+        privacy_mode=PRIVACY_MODE_CLOUD_ALLOWED,
+        cloud_consent_confirmed=False,
+        consent_source_keys=(("temporary", "src_local"),),
+        real_router_enabled=True
+    )
+
+    client = MockProviderClient()
+    res = generate_workspace_ai_answer(req, client)
+
+    assert res.ok is False
+    assert "chưa xác nhận" in res.error_message
+    assert len(called) == 0
+    assert client.call_count == 0
+
+
+def test_workspace_chat_ai_answer_via_real_router_stale_fingerprint(monkeypatch):
+    called = []
+    def mock_generate(question, system_prompt, user_prompt):
+        called.append((question, system_prompt, user_prompt))
+        return True, "Mocked Router Reply"
+    monkeypatch.setattr("aios_habit.workspace_chat_router_adapter.generate_answer_via_router", mock_generate)
+
+    src_local = WorkspaceAIContextSource(
+        source_id="src_local",
+        source_scope="temporary",
+        source_type="txt",
+        title="local.txt",
+        privacy_label="local_only",
+        text="Secret local only text",
+        included_chars=22,
+        truncated=False,
+    )
+
+    req = WorkspaceAIAnswerRequest(
+        conversation_id="conv_1",
+        question="Hỏi",
+        context_sources=(src_local,),
+        privacy_mode=PRIVACY_MODE_CLOUD_ALLOWED,
+        cloud_consent_confirmed=True,
+        consent_source_keys=(("temporary", "other_source"),),
+        real_router_enabled=True
+    )
+
+    client = MockProviderClient()
+    res = generate_workspace_ai_answer(req, client)
+
+    assert res.ok is False
+    assert "Tập nguồn đang bật đã thay đổi" in res.error_message
+    assert len(called) == 0
+    assert client.call_count == 0
+
+
+def test_workspace_chat_ai_answer_via_real_router_failure(monkeypatch):
+    def mock_generate(question, system_prompt, user_prompt):
+        return False, "Dịch vụ AI chưa phản hồi. Vui lòng kiểm tra lại kết nối mạng hoặc cấu hình API key."
+    monkeypatch.setattr("aios_habit.workspace_chat_router_adapter.generate_answer_via_router", mock_generate)
+
+    src_local = WorkspaceAIContextSource(
+        source_id="src_local",
+        source_scope="temporary",
+        source_type="txt",
+        title="local.txt",
+        privacy_label="local_only",
+        text="Secret text",
+        included_chars=11,
+        truncated=False,
+    )
+
+    req = WorkspaceAIAnswerRequest(
+        conversation_id="conv_1",
+        question="Hỏi",
+        context_sources=(src_local,),
+        privacy_mode=PRIVACY_MODE_CLOUD_ALLOWED,
+        cloud_consent_confirmed=True,
+        consent_source_keys=(("temporary", "src_local"),),
+        real_router_enabled=True
+    )
+
+    res = generate_workspace_ai_answer(req, MockProviderClient())
+    assert res.ok is False
+    assert "Vui lòng kiểm tra lại kết nối mạng hoặc cấu hình API key." in res.error_message
+
+
+def test_generate_answer_via_router_integration_mocked_outcome(monkeypatch):
+    from aios_habit.workspace_chat_router_adapter import generate_answer_via_router
+    from nakazasen_ai_router import AIRouteOutcome, AIResult
+
+    class FakeRouter:
+        def __init__(self, outcome):
+            self.outcome = outcome
+            self.calls = []
+        def route_outcome(self, request):
+            self.calls.append(request)
+            return self.outcome
+
+    fake_outcome = AIRouteOutcome(
+        status="success",
+        result=AIResult(text="Success response", provider_name="fake_provider")
+    )
+    fake_router = FakeRouter(fake_outcome)
+
+    monkeypatch.setattr("aios_habit.workspace_chat_router_adapter.create_router_from_env", lambda **k: fake_router)
+
+    ok, text = generate_answer_via_router("Q", "System", "User")
+    assert ok is True
+    assert text == "Success response"
+    assert len(fake_router.calls) == 1
+    assert fake_router.calls[0].prompt == "User"
+    assert fake_router.calls[0].metadata["messages"] == [
+        {"role": "system", "content": "System"},
+        {"role": "user", "content": "User"}
+    ]
+
+
+def test_workspace_chat_router_adapter_class_instantiation(monkeypatch):
+    from aios_habit.workspace_chat_router_adapter import WorkspaceChatRouterAdapter
+    called = []
+    def mock_generate(question, system_prompt, user_prompt):
+        called.append((question, system_prompt, user_prompt))
+        return True, "class response"
+    monkeypatch.setattr("aios_habit.workspace_chat_router_adapter.generate_answer_via_router", mock_generate)
+
+    adapter = WorkspaceChatRouterAdapter()
+    ok, text = adapter.generate_answer("Q", "System", "User")
+    assert ok is True
+    assert text == "class response"
+    assert called == [("Q", "System", "User")]

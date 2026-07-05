@@ -31,6 +31,7 @@ class WorkspaceAIAnswerRequest:
     retrieval_applied: bool = False
     retrieved_context_sources: Tuple[WorkspaceAIContextSource, ...] = ()
     router_enabled: bool = False
+    real_router_enabled: bool = False
 
 @dataclass(frozen=True)
 class WorkspaceAIAnswerResult:
@@ -245,6 +246,87 @@ def generate_workspace_ai_answer(
             externally_sent=False,
             error_message="Chế độ trả lời chưa hợp lệ. Vui lòng chọn lại chế độ trả lời."
         )
+
+    if getattr(request, "real_router_enabled", False):
+        if request.privacy_mode == PRIVACY_MODE_LOCAL_PREVIEW_ONLY:
+            return WorkspaceAIAnswerResult(
+                ok=False,
+                answer_text="",
+                included_source_titles=(),
+                warnings=(),
+                externally_sent=False,
+                error_message="Chưa gửi tới AI vì bạn đang ở chế độ Chỉ xem trước trên máy."
+            )
+
+        if not request.cloud_consent_confirmed:
+            return WorkspaceAIAnswerResult(
+                ok=False,
+                answer_text="",
+                included_source_titles=(),
+                warnings=(),
+                externally_sent=False,
+                error_message="Chưa gửi tới AI vì bạn chưa xác nhận cho lần trả lời này."
+            )
+
+        # Check exact enabled-source set fingerprint matching
+        current_keys = set((src.source_scope, src.source_id) for src in request.context_sources)
+        consent_keys = set(request.consent_source_keys)
+        if current_keys != consent_keys:
+            return WorkspaceAIAnswerResult(
+                ok=False,
+                answer_text="",
+                included_source_titles=(),
+                warnings=(),
+                externally_sent=False,
+                error_message="Tập nguồn đang bật đã thay đổi sau khi xác nhận. Vui lòng kiểm tra lại và xác nhận lại trước khi gửi."
+            )
+
+        # Cap and pack sources
+        if request.retrieval_applied:
+            q_text, packed_sources, warnings = _cap_and_pack_sources(request.question, request.retrieved_context_sources)
+        else:
+            q_text, packed_sources, warnings = _cap_and_pack_sources(request.question, request.context_sources)
+
+        # Exclude empty-content sources from prompt
+        prompt_sources = [src for src in packed_sources if src.included_chars > 0]
+        if not prompt_sources:
+            err_msg = "Chưa tìm thấy đoạn phù hợp trong nguồn đang bật." if request.retrieval_applied else "Chưa gửi tới AI. Nguồn đang bật chưa có nội dung."
+            return WorkspaceAIAnswerResult(
+                ok=False,
+                answer_text="",
+                included_source_titles=tuple(src.title for src in request.context_sources),
+                warnings=warnings,
+                externally_sent=False,
+                error_message=err_msg
+            )
+
+        system_prompt, user_prompt = build_workspace_ai_prompt(q_text, prompt_sources)
+
+        from aios_habit.workspace_chat_router_adapter import generate_answer_via_router
+        ok, res_text = generate_answer_via_router(
+            question=q_text,
+            system_prompt=system_prompt,
+            user_prompt=user_prompt
+        )
+
+        if ok:
+            disclaimer = "\n\nĐây là câu trả lời do AI tạo, cần kiểm tra lại trước khi dùng."
+            return WorkspaceAIAnswerResult(
+                ok=True,
+                answer_text=res_text.strip() + disclaimer,
+                included_source_titles=tuple(src.title for src in prompt_sources),
+                warnings=warnings,
+                externally_sent=True
+            )
+        else:
+            return WorkspaceAIAnswerResult(
+                ok=False,
+                answer_text="",
+                included_source_titles=tuple(src.title for src in request.context_sources),
+                warnings=warnings,
+                externally_sent=True,
+                error_message=res_text
+            )
 
     if request.privacy_mode == PRIVACY_MODE_LOCAL_PREVIEW_ONLY:
         return WorkspaceAIAnswerResult(

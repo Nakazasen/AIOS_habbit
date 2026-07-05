@@ -801,7 +801,8 @@ else:
                                 cloud_consent_confirmed=True,
                                 consent_source_keys=current_keys,
                                 retrieval_applied=True,
-                                retrieved_context_sources=ret_res["retrieved_context_sources"]
+                                retrieved_context_sources=ret_res["retrieved_context_sources"],
+                                real_router_enabled=True
                             )
 
                             res = generate_workspace_ai_answer(req, RealWorkspaceAIProviderClient())
