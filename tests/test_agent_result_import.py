@@ -466,3 +466,154 @@ def test_forbidden_imports():
         assert f"import {term}" not in content
         assert f"from {term}" not in content
         assert f"import aios_habit.{term}" not in content
+
+# 29. Control characters in paths rejected
+def test_paths_with_control_characters():
+    tp = get_valid_task_pack()
+
+    # Path with newline
+    rep = get_valid_report()
+    rep["declared_files"]["changed_files"] = ["src/aios_habit/agent_task_pack\n.py"]
+    rep = attach_report_sha256(rep)
+    decision = validate_agent_report(rep, tp)
+    assert decision.verdict == INVALID_REPORT
+    assert "UNSAFE_PATH" in decision.reason_codes
+
+    # Path with tab
+    rep = get_valid_report()
+    rep["declared_files"]["changed_files"] = ["src/aios_habit/agent_task_pack\t.py"]
+    rep = attach_report_sha256(rep)
+    decision = validate_agent_report(rep, tp)
+    assert decision.verdict == INVALID_REPORT
+    assert "UNSAFE_PATH" in decision.reason_codes
+
+    # Path with NUL character
+    rep = get_valid_report()
+    rep["declared_files"]["changed_files"] = ["src/aios_habit/agent_task_pack\x00.py"]
+    rep = attach_report_sha256(rep)
+    decision = validate_agent_report(rep, tp)
+    assert decision.verdict == INVALID_REPORT
+    assert "UNSAFE_PATH" in decision.reason_codes
+
+# 30. Unsafe values/secrets/absolute paths are not echoed in summaries
+def test_summaries_privacy():
+    tp = get_valid_task_pack()
+
+    # 30a. Unsafe path should not be echoed
+    rep = get_valid_report()
+    unsafe_path = "C:\\Users\\Admin\\secret.txt"
+    rep["declared_files"]["changed_files"] = [unsafe_path]
+    rep = attach_report_sha256(rep)
+    decision = validate_agent_report(rep, tp)
+    assert decision.verdict == INVALID_REPORT
+    assert "UNSAFE_PATH" in decision.reason_codes
+    assert "C:\\Users" not in decision.safe_summary
+    assert "C:\\Users" not in decision.evidence_summary
+    assert "secret.txt" not in decision.safe_summary
+    assert "secret.txt" not in decision.evidence_summary
+
+    # 30b. Secret pattern should not be echoed
+    rep2 = get_valid_report()
+    secret_str = "sk-1234567890abcdef"
+    rep2["risks"] = [f"Look at my {secret_str} api key."]
+    rep2 = attach_report_sha256(rep2)
+    decision2 = validate_agent_report(rep2, tp)
+    assert decision2.verdict == INVALID_REPORT
+    assert "SECRET_PATTERN_DETECTED" in decision2.reason_codes
+    assert secret_str not in decision2.safe_summary
+    assert secret_str not in decision2.evidence_summary
+
+    # 30c. Private key pattern should not be echoed
+    rep3 = get_valid_report()
+    pkey_str = "-----BEGIN PRIVATE KEY-----"
+    rep3["risks"] = [f"Private info: {pkey_str}"]
+    rep3 = attach_report_sha256(rep3)
+    decision3 = validate_agent_report(rep3, tp)
+    assert decision3.verdict == INVALID_REPORT
+    assert "SECRET_PATTERN_DETECTED" in decision3.reason_codes
+    assert "-----BEGIN" not in decision3.safe_summary
+    assert "-----BEGIN" not in decision3.evidence_summary
+
+# 31. Non-object JSON roots structurally rejected without crash
+def test_non_object_json_roots():
+    tp = get_valid_task_pack()
+
+    # Direct list validate
+    decision = validate_agent_report([], tp)
+    assert decision.verdict == INVALID_REPORT
+    assert "INVALID_FIELD_TYPE" in decision.reason_codes
+
+    # Direct string validate
+    decision = validate_agent_report("string_report", tp)
+    assert decision.verdict == INVALID_REPORT
+    assert "INVALID_FIELD_TYPE" in decision.reason_codes
+
+    # Direct None/null validate
+    decision = validate_agent_report(None, tp)
+    assert decision.verdict == INVALID_REPORT
+    assert "INVALID_FIELD_TYPE" in decision.reason_codes
+
+    # File loading JSON root list
+    with tempfile.NamedTemporaryFile(delete=False, mode="w", encoding="utf-8") as f:
+        json.dump([1, 2, 3], f)
+        f_path = Path(f.name)
+    try:
+        decision = load_agent_report_for_task_pack(f_path, Path("dummy.json"))
+        assert decision.verdict == INVALID_REPORT
+        assert "INVALID_FIELD_TYPE" in decision.reason_codes
+    finally:
+        f_path.unlink()
+
+    # File loading JSON root string
+    with tempfile.NamedTemporaryFile(delete=False, mode="w", encoding="utf-8") as f:
+        json.dump("just a string", f)
+        f_path = Path(f.name)
+    try:
+        decision = load_agent_report_for_task_pack(f_path, Path("dummy.json"))
+        assert decision.verdict == INVALID_REPORT
+        assert "INVALID_FIELD_TYPE" in decision.reason_codes
+    finally:
+        f_path.unlink()
+
+# 32. agent_class match only if available
+def test_agent_class_match_only_if_available():
+    tp = get_valid_task_pack()
+    tp.pop("agent_class", None) # agent_class not available in task pack
+    rep = get_valid_report()
+    rep["agent_class"] = "implementation" # report agent class can be anything
+    rep = attach_report_sha256(rep)
+    decision = validate_agent_report(rep, tp)
+    # Baseline matched, no WRONG_TASK_PACK since agent_class is not in task_pack
+    assert "WRONG_TASK_PACK" not in decision.reason_codes
+
+    # But if agent_class is in task pack and mismatches
+    tp["agent_class"] = "testing"
+    decision = validate_agent_report(rep, tp)
+    assert "WRONG_TASK_PACK" in decision.reason_codes
+
+# 33. Comprehensive observed evidence downgrade parameterized test
+@pytest.mark.parametrize(
+    "prop_name, wrong_value",
+    [
+        ("command_source", "REPORT_COMMAND"),
+        ("command_source", None),
+        ("command_from_report", True),
+        ("report_command_ignored", False),
+        ("worktree_clean", False),
+        ("staged_files", ["unauthorized.py"]),
+        ("untracked_files", ["unauthorized.py"]),
+        ("forbidden_files_touched", ["src/aios_habit/agent_task_pack.py"]),
+        ("required_tests_passed", False),
+        ("changed_files", ["src/aios_habit/unauthorized.py"]),
+    ]
+)
+def test_observed_evidence_downgrades_exhaustive(prop_name, wrong_value):
+    tp = get_valid_task_pack()
+    rep = get_valid_report()
+    oe = get_valid_observed_evidence()
+
+    # Apply wrong value
+    oe[prop_name] = wrong_value
+
+    decision = validate_agent_report(rep, tp, observed_evidence=oe)
+    assert decision.verdict == REVIEW_REQUIRED

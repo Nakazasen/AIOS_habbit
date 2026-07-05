@@ -123,6 +123,8 @@ def is_safe_relative_path(path_str: str) -> bool:
     """
     if not isinstance(path_str, str):
         return False
+    if any(ord(c) < 32 for c in path_str):
+        return False
     if is_absolute_or_system_path(path_str):
         return False
     if contains_path_traversal(path_str):
@@ -186,6 +188,9 @@ def load_agent_report(path: Path) -> Dict[str, Any]:
     except json.JSONDecodeError:
         raise ValueError("MALFORMED_JSON")
 
+    if not isinstance(report_data, dict):
+        raise ValueError("INVALID_FIELD_TYPE")
+
     # Depth check
     if get_json_depth(report_data) > 20:
         raise ValueError("REPORT_TOO_DEEP")
@@ -201,6 +206,18 @@ def validate_agent_report(
     Validates report against schema and matching task pack.
     Returns ImportDecision object.
     """
+    if not isinstance(report, dict):
+        return ImportDecision(
+            verdict=INVALID_REPORT,
+            reason_codes=["INVALID_FIELD_TYPE"],
+            task_id=None,
+            task_pack_sha256=None,
+            report_sha256=None,
+            declared_status=None,
+            safe_summary="Báo cáo không phải là một đối tượng JSON.",
+            evidence_summary="Dữ liệu báo cáo đầu vào không hợp lệ (không phải dict)."
+        )
+
     reason_codes = []
 
     # 1. Schema check
@@ -236,7 +253,7 @@ def validate_agent_report(
             report_sha256=None,
             declared_status=report.get("declared_status") if isinstance(report.get("declared_status"), str) else None,
             safe_summary="Thiếu trường bắt buộc hoặc chứa trường lỗi thời.",
-            evidence_summary=f"Lỗi trường schema: {reason_codes}"
+            evidence_summary="Thiếu trường bắt buộc hoặc chứa trường lỗi thời trong lược đồ."
         )
 
     # 4. Field types check
@@ -303,7 +320,7 @@ def validate_agent_report(
             report_sha256=report_sha256,
             declared_status=declared_status,
             safe_summary="Hash báo cáo không hợp lệ.",
-            evidence_summary=f"Sai biệt report_sha256 thực tế vs khai báo: {computed_hash} != {report_sha256}"
+            evidence_summary="Sai biệt report_sha256 thực tế so với khai báo."
         )
 
     # 7. Task Pack Matching Checks
@@ -317,7 +334,7 @@ def validate_agent_report(
     if task_pack_sha256 != pack_sha:
         reason_codes.append("PACK_HASH_MISMATCH")
         reason_codes.append("WRONG_TASK_PACK")
-    if report["agent_class"] != pack_agent_class:
+    if pack_agent_class and report["agent_class"] != pack_agent_class:
         reason_codes.append("WRONG_TASK_PACK")
 
     if "WRONG_TASK_PACK" in reason_codes or "TASK_ID_MISMATCH" in reason_codes or "PACK_HASH_MISMATCH" in reason_codes:
@@ -361,7 +378,7 @@ def validate_agent_report(
             report_sha256=report_sha256,
             declared_status=declared_status,
             safe_summary="Baseline lệch so với Task Pack.",
-            evidence_summary=f"Lệch baseline: {rep_branch}@{rep_head} (báo cáo) != {expected_branch}@{expected_head} (yêu cầu)"
+            evidence_summary="Baseline branch hoặc head lệch so với yêu cầu trong Task Pack."
         )
 
     # 9. Verify final_state and declared_files nested structure
@@ -424,7 +441,7 @@ def validate_agent_report(
                 report_sha256=report_sha256,
                 declared_status=declared_status,
                 safe_summary="Phát hiện đường dẫn không an toàn.",
-                evidence_summary=f"Đường dẫn vi phạm ranh giới hoặc không hợp lệ: {p}"
+                evidence_summary="Khai báo chứa đường dẫn không hợp lệ hoặc vi phạm quy tắc an toàn."
             )
 
     # 11. Sensitive data check in unsafe text fields
@@ -474,7 +491,7 @@ def validate_agent_report(
                 report_sha256=report_sha256,
                 declared_status=declared_status,
                 safe_summary="Sửa đổi tệp ngoài danh sách cho phép.",
-                evidence_summary=f"Tệp không được phép chạm vào: {f}"
+                evidence_summary="Phát hiện sửa đổi tệp không thuộc danh sách cho phép trong Task Pack."
             )
         # Check forbidden list (glob matching)
         for pattern in forbidden_files_patterns:
@@ -487,7 +504,7 @@ def validate_agent_report(
                     report_sha256=report_sha256,
                     declared_status=declared_status,
                     safe_summary="Sửa đổi tệp nằm trong danh sách cấm.",
-                    evidence_summary=f"Tệp thuộc danh sách cấm: {f} khớp với pattern {pattern}"
+                    evidence_summary="Phát hiện sửa đổi tệp thuộc danh sách cấm của Task Pack."
                 )
 
     # 13. Command execution check: reject forbidden commands in declared commands
@@ -527,7 +544,7 @@ def validate_agent_report(
                     report_sha256=report_sha256,
                     declared_status=declared_status,
                     safe_summary="Lệnh tự khai chứa nội dung cấm thực thi.",
-                    evidence_summary=f"Lệnh vi phạm chứa chuỗi cấm: '{f_cmd}' trong '{cmd_str}'"
+                    evidence_summary="Phát hiện lệnh tự khai chứa từ khóa hoặc lệnh cấm thực thi."
                 )
 
     # 14. Required tests check
@@ -596,7 +613,7 @@ def validate_agent_report(
             report_sha256=report_sha256,
             declared_status=declared_status,
             safe_summary="Thiếu kết quả kiểm thử bắt buộc.",
-            evidence_summary=f"Yêu cầu test: {required_tests} nhưng tự khai báo có: {declared_test_names}"
+            evidence_summary="Thiếu kết quả của một hoặc nhiều kiểm thử bắt buộc theo yêu cầu."
         )
 
     # 15. Check dirty state for pass-like reports
@@ -754,7 +771,7 @@ def load_agent_report_for_task_pack(
             report_sha256=None,
             declared_status=None,
             safe_summary="Lỗi tải file báo cáo.",
-            evidence_summary=f"Không thể đọc file JSON report: {err_msg}"
+            evidence_summary="Không thể đọc hoặc phân tích cú pháp file JSON report."
         )
     except FileNotFoundError:
         return ImportDecision(
@@ -795,7 +812,7 @@ def load_agent_report_for_task_pack(
             report_sha256=None,
             declared_status=None,
             safe_summary="Lỗi tải file Task Pack.",
-            evidence_summary=f"Không thể phân tích Task Pack: {e}"
+            evidence_summary="Không thể đọc hoặc phân tích cú pháp file Task Pack."
         )
 
     return validate_agent_report(report_data, task_pack, observed_evidence)
