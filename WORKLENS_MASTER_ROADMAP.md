@@ -68,6 +68,7 @@ Status: IN PROGRESS.
 *Note: M1.x is an internal milestone stream under Phase 4, not a separate product phase.*
 
 Scope:
+
 - better parser adapter;
 - structure-aware chunks;
 - SQLite FTS / BM25;
@@ -80,6 +81,7 @@ Scope:
 - NotebookLM-style benchmark.
 
 Not allowed yet:
+
 - heavy vector DB without decision;
 - cloud embedding for company/mật;
 - fake NotebookLM parity claim.
@@ -89,6 +91,7 @@ Not allowed yet:
 Status: NEXT_PARALLEL.
 
 Scope:
+
 - export prompt pack;
 - use Codex/Gemini/Claude/GPT/Opus in external IDE/chat;
 - paste-back answer;
@@ -98,6 +101,7 @@ Scope:
 - privacy guard.
 
 Not allowed yet:
+
 - direct cloud call for company/mật;
 - raw API keys in UI/logs;
 - automatic agent edits without approval.
@@ -149,16 +153,19 @@ Learning sources for public pattern research: RAGFlow, kotaemon, Microsoft Graph
 ## 4. Next Gate Queue
 
 Immediate:
+
 - **AI-GW-A17 — IDE Agent Bridge** (NOT_STARTED / NEXT_CANDIDATE) — planning/design gate only; implementation not opened yet.
 - **AI-GW-A18 — NotebookLM Comparison Arena** (NOT_STARTED) — after A17 or later strategy decision.
 
 Completed:
+
 - **RM-SYNC-A16 — Sync Master Roadmap after AI-GW-A16** (DONE/PUSHED/REMOTE_VERIFIED) — roadmap naming, baseline, commit timeline, and prompt governance synchronized after A16.
 - **AI-GW-A16 — Router Mock Integration with Owner Consent Gateway** (DONE/CLOSED/REMOTE_SYNCED) — mock router adapter, privacy gateway, no real provider calls, local validation tests.
 - **Gate 1C — Workspace Chat Source Library / Source Management UX** (COMPLETE) — implemented search/filter, bulk actions, source toggle, and delete confirmation.
 - **AI-GW-A15 — Brain Gateway Integration Design** (COMPLETE) — documented brain gateway integration design, system inventory, router adapters, IDE bridge, and import designs.
 
 Risks & Gaps:
+
 - local brain runtime has not been aligned or implemented.
 - router mock is implemented.
 - IDE bridge runtime is not yet implemented.
@@ -208,14 +215,9 @@ The repository `AIOS_habbit` is the central repository for WorkLens. Legacy repo
 
 ### Historical Commits
 
-- **12.** AI-GW-A16 Router Mock Integration: `5cf0cca9cdc9f5b4b2a22a45e0525cb4d8c050d4`
-    Message: Add AIOS brain gateway mock router guard
-
-- **13.** RM-SYNC-A16 Roadmap Sync after AI-GW-A16: `bf4c39c9b6b44611b826be3201bbdf39e8cae099`
-    Message: Sync roadmap after AI-GW-A16
-
-- **14.** RM-SYNC-A16 Stale Status Fix: `f3a9b6c42d2aa40f2cd225f1684d70c06e9dc039`
-    Message: Fix roadmap sync status after A16
+- **12. AI-GW-A16 Router Mock Integration:** `5cf0cca9cdc9f5b4b2a22a45e0525cb4d8c050d4` — Message: Add AIOS brain gateway mock router guard
+- **13. RM-SYNC-A16 Roadmap Sync after AI-GW-A16:** `bf4c39c9b6b44611b826be3201bbdf39e8cae099` — Message: Sync roadmap after AI-GW-A16
+- **14. RM-SYNC-A16 Stale Status Fix:** `f3a9b6c42d2aa40f2cd225f1684d70c06e9dc039` — Message: Fix roadmap sync status after A16
 
 ---
 

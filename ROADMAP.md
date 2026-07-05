@@ -79,6 +79,7 @@ Scope:
 - verified no NotebookLM/P1.0 overclaims.
 
 Exit criteria:
+
 - table-first UI helper exists
 - Case Cockpit has interactive Visual Map section
 - filters work
@@ -356,16 +357,19 @@ Future research should learn public patterns from RAGFlow, kotaemon, Microsoft G
 ## Next Gate Queue
 
 Immediate:
+
 - **AI-GW-A17 — IDE Agent Bridge** (NOT_STARTED / NEXT_CANDIDATE) — planning/design gate only; implementation not opened yet.
 - **AI-GW-A18 — NotebookLM Comparison Arena** (NOT_STARTED) — after A17 or later strategy decision.
 
 Completed:
+
 - **RM-SYNC-A16 — Sync Master Roadmap after AI-GW-A16** (DONE/PUSHED/REMOTE_VERIFIED) — roadmap naming, baseline, commit timeline, and prompt governance synchronized after A16.
 - **AI-GW-A16 — Router Mock Integration with Owner Consent Gateway** (DONE/CLOSED/REMOTE_SYNCED) — mock router adapter, privacy gateway, no real provider calls, local validation tests.
 - **Gate 1C — Workspace Chat Source Library / Source Management UX** (COMPLETE) — implemented search/filter, bulk actions, source toggle, and delete confirmation.
 - **AI-GW-A15 — Brain Gateway Integration Design** (COMPLETE) — documented brain gateway integration design, system inventory, router adapters, IDE bridge, and import designs.
 
 Risks & Gaps:
+
 - local brain runtime has not been aligned or implemented.
 - router mock is implemented.
 - IDE bridge runtime is not yet implemented.
@@ -391,10 +395,13 @@ Risks & Gaps:
 ## RAG / Document Intelligence Research-First Track
 
 1. **Principle:**
+
    AIOS_habbit must not hand-write large RAG/extraction components blindly. Research strong repos/libraries first, then implement thin adapters with tests and benchmark.
 
 2. **Scope:**
+
    This is not only Excel/PDF/PPTX/Image OCR. It covers:
+
    - extraction
    - ingestion pipeline
    - chunking
@@ -439,6 +446,7 @@ Risks & Gaps:
 ## M1.10 - Antigravity Bridge Manual-Step Reduction
 
 Exit criteria:
+
 - Owner can create a local Antigravity handoff bundle from Case Cockpit.
 - Owner can import a response from the UI without CLI.
 - Raw JSON paste is not required as the default path.
@@ -451,12 +459,14 @@ Exit criteria:
 Status: DESIGN_READY.
 
 Scope:
+
 - Design a local-first evidence-grounded work graph for Cases, Evidence, Sources, Claims, Answers, Decisions, Actions, Risks, Learning Cards, and Domain Playbooks.
 - Define generic node and typed edge schemas.
 - Define deterministic graph generation pipeline, privacy export modes, UI MVP boundaries, and future tests.
 - Keep the graph generic across HR, accounting, Japanese learning, IT manuals, legal/contracts, manufacturing, and general office work.
 
 Not included:
+
 - No graph UI implementation yet.
 - No new visualization library yet.
 - No NotebookLM replacement or parity claim.
@@ -491,11 +501,6 @@ Not included:
 
 ## Commit Timeline
 
-- **12.** AI-GW-A16 Router Mock Integration: `5cf0cca9cdc9f5b4b2a22a45e0525cb4d8c050d4`
-    Message: Add AIOS brain gateway mock router guard
-
-- **13.** RM-SYNC-A16 Roadmap Sync after AI-GW-A16: `bf4c39c9b6b44611b826be3201bbdf39e8cae099`
-    Message: Sync roadmap after AI-GW-A16
-
-- **14.** RM-SYNC-A16 Stale Status Fix: `f3a9b6c42d2aa40f2cd225f1684d70c06e9dc039`
-    Message: Fix roadmap sync status after A16
+- **12. AI-GW-A16 Router Mock Integration:** `5cf0cca9cdc9f5b4b2a22a45e0525cb4d8c050d4` — Message: Add AIOS brain gateway mock router guard
+- **13. RM-SYNC-A16 Roadmap Sync after AI-GW-A16:** `bf4c39c9b6b44611b826be3201bbdf39e8cae099` — Message: Sync roadmap after AI-GW-A16
+- **14. RM-SYNC-A16 Stale Status Fix:** `f3a9b6c42d2aa40f2cd225f1684d70c06e9dc039` — Message: Fix roadmap sync status after A16
