@@ -12,9 +12,9 @@ Case → Evidence → Map → Action → Learning → Memory
 
 ## 1. Current Gate Status
 
-- **Current local HEAD:** `5cf0cca` (`Add AIOS brain gateway mock router guard`).
-- **Current remote HEAD:** `5cf0cca` (`Add AIOS brain gateway mock router guard`).
-- **Current position:** AI-GW-A16 Router Mock Integration is DONE/CLOSED/REMOTE_SYNCED. Workspace Chat is the primary UI, and the Brain Gateway Mock Router Guard has been implemented and verified.
+- **Current local HEAD:** `bf4c39c9b6b44611b826be3201bbdf39e8cae099` (`Sync roadmap after AI-GW-A16`).
+- **Current remote HEAD:** `bf4c39c9b6b44611b826be3201bbdf39e8cae099` (`Sync roadmap after AI-GW-A16`).
+- **Current position:** AI-GW-A16 Router Mock Integration and RM-SYNC-A16 Roadmap Sync are DONE/CLOSED/REMOTE_SYNCED. Workspace Chat is the primary UI, and the Brain Gateway Mock Router Guard has been implemented, verified, and pushed.
 - **P1.0:** LOCKED. Do not open automatically; remains locked until the router mock/privacy gateway and owner-facing AI flow are safe and stable, A17 and A18 are completed.
 - **NotebookLM parity:** not achieved; Retrieval Engine v2 and Source Library MVP are required.
 - **IDE/model bridge:** Manual IDE response import is operational; Brain Gateway Mock Router Guard is implemented.
@@ -141,11 +141,11 @@ Learning sources for public pattern research: RAGFlow, kotaemon, Microsoft Graph
 ## 4. Next Gate Queue
 
 Immediate:
-- **RM-SYNC-A16 — Sync Master Roadmap after AI-GW-A16** (IN PROGRESS) — synchronize master roadmap, names, and commit timeline.
-- **AI-GW-A17 — IDE Agent Bridge** (NOT_STARTED / NEXT_CANDIDATE) — runtime integration for agent workspace and IDE messaging bridge.
-- **AI-GW-A18 — NotebookLM Comparison Arena** (NOT_STARTED) — comparative evaluation between local RAG and NotebookLM.
+- **AI-GW-A17 — IDE Agent Bridge** (NOT_STARTED / NEXT_CANDIDATE) — planning/design gate only; implementation not opened yet.
+- **AI-GW-A18 — NotebookLM Comparison Arena** (NOT_STARTED) — after A17 or later strategy decision.
 
 Completed:
+- **RM-SYNC-A16 — Sync Master Roadmap after AI-GW-A16** (DONE/PUSHED/REMOTE_VERIFIED) — roadmap naming, baseline, commit timeline, and prompt governance synchronized after A16.
 - **AI-GW-A16 — Router Mock Integration with Owner Consent Gateway** (DONE/CLOSED/REMOTE_SYNCED) — mock router adapter, privacy gateway, no real provider calls, local validation tests.
 - **Gate 1C — Workspace Chat Source Library / Source Management UX** (COMPLETE) — implemented search/filter, bulk actions, source toggle, and delete confirmation.
 - **AI-GW-A15 — Brain Gateway Integration Design** (COMPLETE) — documented brain gateway integration design, system inventory, router adapters, IDE bridge, and import designs.
@@ -157,7 +157,6 @@ Risks & Gaps:
 - NotebookLM comparison arena is not yet implemented.
 - Old legacy AI code is intentionally retained for reference and will be migrated/deprecated in step with the new gateway.
 - Real provider API calls are strictly blocked in AI-GW-A16 (mock only).
-- Roadmap sync for A16.
 - P1.0 remains locked.
 
 ---
@@ -195,3 +194,13 @@ The repository `AIOS_habbit` is the central repository for WorkLens. Legacy repo
 
 12. AI-GW-A16 Router Mock Integration: `5cf0cca9cdc9f5b4b2a22a45e0525cb4d8c050d4`
     Message: Add AIOS brain gateway mock router guard
+
+13. RM-SYNC-A16 Roadmap Sync after AI-GW-A16: `bf4c39c9b6b44611b826be3201bbdf39e8cae099`
+    Message: Sync roadmap after AI-GW-A16
+
+---
+
+## 10. Gate Family Naming Standard
+- WSC-* = Workspace Chat Foundation gates.
+- AI-GW-* = AI Brain Gateway / Router / Agent gates.
+- RM-SYNC-* = Roadmap synchronization gates.
