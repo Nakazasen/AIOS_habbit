@@ -29,7 +29,8 @@ Case → Evidence → Map → Action → Learning → Memory
 - Current phase: Phase 4 — Workspace Chat Foundation & AI Gateway Preparation.
 - Latest closed implementation gate: AI-GW-A16 — Router Mock Integration with Owner Consent Gateway — DONE/CLOSED/REMOTE_SYNCED.
 - Latest roadmap sync gate: RM-SYNC-A16 — Sync Master Roadmap after AI-GW-A16 — DONE/PUSHED; remote verification is handled by external audit/post-push records, not self-attested by this file.
-- Next candidate gate: AI-GW-A17 — IDE Agent Bridge — NOT_STARTED / NEXT_CANDIDATE; planning/design only, implementation not opened.
+- Latest closed design gate: AI-GW-A17-DESIGN — IDE Agent Bridge docs-only design — DONE/PUSHED/REMOTE_VERIFIED.
+- Next candidate gate: AI-GW-A17A — Agent Task Pack Export MVP — NOT_STARTED / NEXT_CANDIDATE; implementation not opened.
 - AI-GW-A18 — NotebookLM Comparison Arena — NOT_STARTED.
 - P1.0 — Owner Pilot / Productization — LOCKED.
 
@@ -223,7 +224,9 @@ Status: DONE_WITH_WARNINGS / FOUNDATION_DONE.
 Clarification:
 
 - Manual IDE answer/evidence bridge foundation exists: prompt/evidence pack export, paste-back answer import, model/tool name, evidence refs, route summary, and privacy guard.
-- AI-GW-A17 repo-task pack / trusted result-import bridge is NOT_STARTED / NEXT_CANDIDATE.
+- A17 docs-only design is now complete (AI-GW-A17-DESIGN is DONE/PUSHED/REMOTE_VERIFIED).
+- Runtime repo-task bridge implementation is still not complete (A17A/A17B/A17C/A17D remain future subgates).
+- AI-GW-A17A (Task Pack Export MVP) is NOT_STARTED / NEXT_CANDIDATE.
 - Phase 5 is therefore not fully complete as a runtime-controlled IDE Agent Bridge.
 
 Scope:
@@ -364,11 +367,13 @@ Future research should learn public patterns from RAGFlow, kotaemon, Microsoft G
 
 Immediate:
 
-- **AI-GW-A17 — IDE Agent Bridge** (NOT_STARTED / NEXT_CANDIDATE) — planning/design gate only; implementation not opened yet.
+- **AI-GW-A17A — Agent Task Pack Export MVP** (NOT_STARTED / NEXT_CANDIDATE) — implementation MVP gate; implementation has not opened yet.
 - **AI-GW-A18 — NotebookLM Comparison Arena** (NOT_STARTED) — after A17 or later strategy decision.
 
 Completed:
 
+- **RM-SYNC-A17-DESIGN — Sync Master Roadmap after AI-GW-A17-DESIGN** (DONE/PUSHED/REMOTE_VERIFIED) — this roadmap sync gate updating gateway design status, queue position and commit timeline.
+- **AI-GW-A17-DESIGN — IDE Agent Bridge docs-only design** (DONE/PUSHED/REMOTE_VERIFIED) — architecture boundaries, result import, task pack schema and safety prompt design completed.
 - **RM-SYNC-A16 — Sync Master Roadmap after AI-GW-A16** (DONE/PUSHED/REMOTE_VERIFIED) — roadmap naming, baseline, commit timeline, and prompt governance synchronized after A16.
 - **AI-GW-A16 — Router Mock Integration with Owner Consent Gateway** (DONE/CLOSED/REMOTE_SYNCED) — mock router adapter, privacy gateway, no real provider calls, local validation tests.
 - **Gate 1C — Workspace Chat Source Library / Source Management UX** (COMPLETE) — implemented search/filter, bulk actions, source toggle, and delete confirmation.
@@ -482,7 +487,7 @@ Not included:
 
 - **AI Brain Gateway architecture:** design done, runtime runtime increased from 25-30% to 35-40% (A16 mock router guard is completed).
 - **Router integration (real):** 10-15% (mock-only).
-- **IDE Agent Bridge runtime:** 5%.
+- **IDE Agent Bridge:** design complete, runtime implementation not started (5%).
 - **NotebookLM Comparison Arena:** 0-5%.
 - **Overall Program Progress:** estimated at 38-42% (qualitative estimate).
 
@@ -510,3 +515,4 @@ Not included:
 - **12. AI-GW-A16 Router Mock Integration:** `5cf0cca9cdc9f5b4b2a22a45e0525cb4d8c050d4` — Message: Add AIOS brain gateway mock router guard
 - **13. RM-SYNC-A16 Roadmap Sync after AI-GW-A16:** `bf4c39c9b6b44611b826be3201bbdf39e8cae099` — Message: Sync roadmap after AI-GW-A16
 - **14. RM-SYNC-A16 Stale Status Fix:** `f3a9b6c42d2aa40f2cd225f1684d70c06e9dc039` — Message: Fix roadmap sync status after A16
+- **15. AI-GW-A17-DESIGN IDE Agent Bridge Design:** `6ea3f573e62db7fbb4bf2089e0f6f2eb932394e5` — Message: Unify A17 design destination enum

@@ -1,5 +1,18 @@
 # Changelog
 
+## 2026-07-05 - IDE Agent Bridge Design Completion & Roadmap Sync
+
+### Enhancements
+- Completed IDE Agent Bridge Design (AI-GW-A17-DESIGN) establishing task pack schemas, result import boundaries, strict observed-evidence provenance checking, and path traversal controls.
+- Completed Roadmap Synchronization (RM-SYNC-A17-DESIGN) updating the active candidate gate queue, Phase 5 status clarification, and commit timeline records.
+
+### Safety
+- Strict path policy: Absolute repository paths are strictly forbidden except for `local_owner_only` workflows remaining on the owner's machine.
+- Observed evidence provenance: verifier receipts require mandatory tracking fields (`command_source`, `command_from_report`, `report_command_ignored`, `validation_config_sha256`) to ensure tests are owner-triggered under fixed configurations, not agent-supplied commands.
+- Removed all pre-filled success outputs in prompt audit templates to prevent fake PASS.
+- Clarified that SHA-256 is strictly an integrity hash/checksum, not a digital signature.
+
+
 ## 2026-07-05 - AIOS Brain Gateway Mock Router Guard & Roadmap Sync
 
 ### Enhancements
