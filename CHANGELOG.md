@@ -4,7 +4,7 @@
 
 ### Enhancements
 - Completed IDE Agent Bridge Design (AI-GW-A17-DESIGN) establishing task pack schemas, result import boundaries, strict observed-evidence provenance checking, and path traversal controls.
-- Completed Roadmap Synchronization (RM-SYNC-A17-DESIGN) updating the active candidate gate queue, Phase 5 status clarification, and commit timeline records.
+- Prepared Roadmap Synchronization (RM-SYNC-A17-DESIGN) locally, updating the active candidate gate queue, Phase 5 status clarification, and commit timeline records (pending push-safety and post-push verification).
 
 ### Safety
 - Strict path policy: Absolute repository paths are strictly forbidden except for `local_owner_only` workflows remaining on the owner's machine.

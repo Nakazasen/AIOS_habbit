@@ -168,7 +168,7 @@ Immediate:
 
 Completed:
 
-- **RM-SYNC-A17-DESIGN — Sync Master Roadmap after AI-GW-A17-DESIGN** (DONE/PUSHED/REMOTE_VERIFIED) — this roadmap sync gate updating gateway design status, queue position and commit timeline.
+- **RM-SYNC-A17-DESIGN — Sync Master Roadmap after AI-GW-A17-DESIGN** (LOCAL_COMMIT_READY_FOR_PUSH_SAFETY) — this roadmap sync gate updating gateway design status, queue position and commit timeline; remote verification must be handled by external post-push audit, not self-attested by this file.
 - **AI-GW-A17-DESIGN — IDE Agent Bridge docs-only design** (DONE/PUSHED/REMOTE_VERIFIED) — architecture boundaries, result import, task pack schema and safety prompt design completed.
 - **RM-SYNC-A16 — Sync Master Roadmap after AI-GW-A16** (DONE/PUSHED/REMOTE_VERIFIED) — roadmap naming, baseline, commit timeline, and prompt governance synchronized after A16.
 - **AI-GW-A16 — Router Mock Integration with Owner Consent Gateway** (DONE/CLOSED/REMOTE_SYNCED) — mock router adapter, privacy gateway, no real provider calls, local validation tests.
@@ -203,7 +203,7 @@ The repository `AIOS_habbit` is the central repository for WorkLens. Legacy repo
 
 ## 7. Program Progress Estimate & Metrics
 
-- **AI Brain Gateway architecture:** design done, runtime runtime increased from 25-30% to 35-40% (A16 mock router guard is completed).
+- **AI Brain Gateway architecture:** design done, runtime readiness increased from 25-30% to 35-40% (A16 mock router guard is completed).
 - **Router integration (real):** 10-15% (mock-only).
 - **IDE Agent Bridge:** design complete, runtime implementation not started (5%).
 - **NotebookLM Comparison Arena:** 0-5%.
