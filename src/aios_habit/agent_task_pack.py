@@ -188,7 +188,7 @@ def resolve_privacy_level(privacy_levels: List[str]) -> str:
     """
     if not privacy_levels:
         return "local_only"
-        
+
     strictest_idx = -1
     for lvl in privacy_levels:
         cleaned = lvl.strip().lower()
@@ -197,7 +197,7 @@ def resolve_privacy_level(privacy_levels: List[str]) -> str:
         idx = PRIVACY_ORDER.index(cleaned)
         if idx > strictest_idx:
             strictest_idx = idx
-            
+
     return PRIVACY_ORDER[strictest_idx]
 
 # --- Core API ---
@@ -258,11 +258,11 @@ def build_agent_task_pack(
             "reason_codes",
             "report_sha256"
         ]
-        
+
     if created_at is None:
         from datetime import datetime, timezone
         created_at = datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
-        
+
     return {
         "schema_version": "aios_agent_task_pack_v1",
         "task_id": task_id,
@@ -317,14 +317,14 @@ def compute_task_pack_sha256(pack_dict: Dict[str, Any]) -> str:
     """
     temp_dict = pack_dict.copy()
     temp_dict.pop("pack_sha256", None)
-    
+
     canonical_str = canonicalize_task_pack(temp_dict)
     utf8_bytes = canonical_str.encode("utf-8")
-    
+
     # Check that there is no BOM signature
     if utf8_bytes.startswith(b"\xef\xbb\xbf"):
         raise ValidationError("BOM signature is not allowed in UTF-8 encoding.")
-        
+
     return hashlib.sha256(utf8_bytes).hexdigest()
 
 def validate_agent_task_pack(pack: Dict[str, Any]) -> None:
@@ -335,15 +335,15 @@ def validate_agent_task_pack(pack: Dict[str, Any]) -> None:
     schema_version = pack.get("schema_version")
     if schema_version != "aios_agent_task_pack_v1":
         raise ValidationError(f"Unsupported or missing schema version: {schema_version}")
-        
+
     # 2. Check required fields
     for field in REQUIRED_FIELDS:
         if field not in pack:
             raise ValidationError(f"Missing required field: '{field}'")
-            
+
     # 3. Validate task_id
     validate_task_id(pack["task_id"])
-    
+
     # 4. Validate privacy
     privacy = pack["privacy"]
     if not isinstance(privacy, dict):
@@ -351,9 +351,9 @@ def validate_agent_task_pack(pack: Dict[str, Any]) -> None:
     for f in REQUIRED_PRIVACY_FIELDS:
         if f not in privacy or privacy[f] is None:
             raise ValidationError(f"Missing or null required privacy field: 'privacy.{f}'")
-            
+
     validate_destination(privacy["destination"])
-    
+
     # 5. Validate repo
     repo = pack["repo"]
     if not isinstance(repo, dict):
@@ -361,7 +361,7 @@ def validate_agent_task_pack(pack: Dict[str, Any]) -> None:
     for f in REQUIRED_REPO_FIELDS:
         if f not in repo:
             raise ValidationError(f"Missing required repo field: 'repo.{f}'")
-            
+
     # 6. Validate scope
     scope = pack["scope"]
     if not isinstance(scope, dict):
@@ -369,9 +369,9 @@ def validate_agent_task_pack(pack: Dict[str, Any]) -> None:
     for f in REQUIRED_SCOPE_FIELDS:
         if f not in scope:
             raise ValidationError(f"Missing required scope field: 'scope.{f}'")
-            
+
     destination = privacy["destination"]
-    
+
     # Relative path list check
     for path_list_name in ["allowed_files", "forbidden_files", "required_tests"]:
         paths = scope.get(path_list_name, [])
@@ -382,12 +382,12 @@ def validate_agent_task_pack(pack: Dict[str, Any]) -> None:
                 raise ValidationError(f"Path in '{path_list_name}' must be a string.")
             if contains_path_traversal(p):
                 raise ValidationError(f"Path traversal detected in '{path_list_name}': '{p}'")
-            
+
             # Apply forbidden metadata path restriction ONLY to allowed_files and required_tests
             if path_list_name in {"allowed_files", "required_tests"}:
                 if is_forbidden_metadata_path(p):
                     raise ValidationError(f"Forbidden path reference detected in '{path_list_name}': '{p}'")
-                
+
             # If destination is external/chat, reject absolute local paths, UNC, etc.
             if destination in {"external_manual_agent", "owner_managed_chat"}:
                 if is_absolute_or_system_path(p):
@@ -400,7 +400,7 @@ def validate_agent_task_pack(pack: Dict[str, Any]) -> None:
     privacy_class = privacy["privacy_class"]
     if privacy_class not in {"local_only", "confidential", "internal", "public", "machine_only", "cloud_safe"}:
         raise ValidationError(f"Unknown privacy class: '{privacy_class}'")
-        
+
     if privacy_class in {"local_only", "confidential"}:
         check_sensitive_content(pack["objective"])
         for field_name in ["objective", "created_at"]:
@@ -413,12 +413,12 @@ def validate_agent_task_pack(pack: Dict[str, Any]) -> None:
     req_report_fields = pack.get("required_report_fields", [])
     if not isinstance(req_report_fields, list):
         raise ValidationError("Field 'required_report_fields' must be a list.")
-        
+
     obsolete_report_fields = {"status", "final_head", "files_touched", "commands_run", "tests_run"}
     for f in req_report_fields:
         if f in obsolete_report_fields:
             raise ValidationError(f"Obsolete report field '{f}' requested in 'required_report_fields'")
-            
+
     expected_report_fields = {
         "schema_version", "task_id", "task_pack_sha256", "agent_class", "model_tool_name",
         "declared_status", "baseline.branch", "baseline.head", "final_state.branch",
@@ -443,34 +443,34 @@ def export_agent_task_pack(
     Returns: Tuple[str, str] representing the (exported_file_path, pack_sha256).
     """
     pack_copy = pack_dict.copy()
-    
+
     # Calculate integrity hash and attach it
     pack_sha256 = compute_task_pack_sha256(pack_copy)
     pack_copy["pack_sha256"] = pack_sha256
-    
+
     # Run full schema and security validation
     validate_agent_task_pack(pack_copy)
-    
+
     task_id = pack_copy["task_id"]
-    
+
     root_path = Path(export_root).resolve()
     target_dir = root_path / task_id
     target_file = target_dir / f"{pack_sha256}.json"
-    
+
     # Enforce path containment
     resolved_target = target_file.resolve()
     try:
         resolved_target.relative_to(root_path)
     except ValueError:
         raise ExportError("Path containment violation: target path is outside export root.")
-        
+
     # Create parent directories
     target_dir.mkdir(parents=True, exist_ok=True)
-    
+
     # Check overwrite
     if target_file.exists() and not overwrite:
         raise ExportError(f"Target file already exists and overwrite is disabled: {target_file}")
-        
+
     # Atomic write behavior
     temp_file = target_dir / f"{pack_sha256}.tmp"
     try:
@@ -484,5 +484,5 @@ def export_agent_task_pack(
             except Exception:
                 pass
         raise ExportError(f"Failed to write task pack atomically: {e}")
-        
+
     return str(target_file), pack_sha256

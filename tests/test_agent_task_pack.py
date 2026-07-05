@@ -69,12 +69,12 @@ def test_canonical_json_key_ordering_stable():
 def test_hash_excludes_pack_sha256():
     pack = get_valid_pack()
     hash_without = compute_task_pack_sha256(pack)
-    
+
     # Add pack_sha256 and verify hash doesn't change
     pack_with = pack.copy()
     pack_with["pack_sha256"] = "dummy_hash_value"
     hash_with = compute_task_pack_sha256(pack_with)
-    
+
     assert hash_without == hash_with
 
 def test_md5_not_used_in_implementation():
@@ -92,7 +92,7 @@ def test_task_id_validation():
         pack["task_id"] = tid
         # Should not raise ValidationError
         validate_agent_task_pack(pack)
-        
+
     # Invalid cases
     invalid_ids = [
         "",                 # Empty
@@ -210,12 +210,12 @@ def test_confidential_local_only_raw_content_rejected():
     for p_class in sensitive_privacy_classes:
         pack = get_valid_pack()
         pack["privacy"]["privacy_class"] = p_class
-        
+
         # Test secret leak
         pack["objective"] = "My secret api key is sk-1234567890abcdef."
         with pytest.raises(ValidationError):
             validate_agent_task_pack(pack)
-            
+
         # Test Windows path leak
         pack = get_valid_pack()
         pack["privacy"]["privacy_class"] = p_class
@@ -236,7 +236,7 @@ def test_utf8_parseable_no_bom():
         exported_path, sha = export_agent_task_pack(pack, export_root=tmp_dir)
         content_bytes = Path(exported_path).read_bytes()
         assert not content_bytes.startswith(b"\xef\xbb\xbf")
-        
+
         # Verify JSON parseable
         parsed = json.loads(content_bytes.decode("utf-8"))
         assert parsed["task_id"] == pack["task_id"]
@@ -253,7 +253,7 @@ def test_no_overwrite_by_default():
     pack = get_valid_pack()
     with tempfile.TemporaryDirectory() as tmp_dir:
         export_agent_task_pack(pack, export_root=tmp_dir)
-        
+
         # Second export of same pack without overwrite must fail
         with pytest.raises(ExportError):
             export_agent_task_pack(pack, export_root=tmp_dir, overwrite=False)
@@ -283,7 +283,7 @@ def test_no_obsolete_report_fields():
 def test_forbidden_imports_and_usage():
     imp_file = Path(__file__).resolve().parents[1] / "src" / "aios_habit" / "agent_task_pack.py"
     content = imp_file.read_text(encoding="utf-8")
-    
+
     forbidden = [
         "subprocess",
         "requests",
@@ -296,7 +296,7 @@ def test_forbidden_imports_and_usage():
         "notebook_qa",
         "ide_handoff_bridge"
     ]
-    
+
     for term in forbidden:
         assert f"import {term}" not in content
         assert f"from {term}" not in content
