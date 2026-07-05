@@ -158,5 +158,6 @@ Thiết kế của IDE Agent Bridge phải ngăn chặn toàn diện các mối 
 6. **RM-SYNC-A17:** Master roadmap sync after A17 (đồng bộ và cập nhật trạng thái Phase 5 thành DONE hoàn toàn sau khi A17 hoàn tất).
 
 > [!IMPORTANT]
+>
 > - `AI-GW-A17-DESIGN` là gate thiết kế tài liệu duy nhất. Các subgate tiếp theo chưa được mở và hoạt động implementation chưa bắt đầu.
 > - Bất kỳ hoạt động sửa đổi mã nguồn (`src/`) hoặc kiểm thử (`tests/`) nào cho A17 đều bị nghiêm cấm trong gate này.
