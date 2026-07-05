@@ -1,5 +1,35 @@
 # Changelog
 
+## 2026-07-05 - Workspace Chat Hidden Router Adapter & Roadmap Sync
+
+### Enhancements
+- Completed Workspace Chat Hidden Router Adapter (AI-GW-A17D) implementing direct integration of the nakazasen-ai-router library to connect Workspace Chat's "Hỏi" button with the routed AI backend.
+  - Verification results:
+    - commit: `0c79958805faf1b45d3df53976a832dde1109bd7 — Add hidden router adapter for Workspace Chat ask`
+    - dependency: `nakazasen-ai-router` version `v0.2.2` pinned in `pyproject.toml`
+    - import check: IMPORT_PASS
+    - focused AI answer tests: 50 passed
+    - UI guard tests: 23 passed
+    - A17A/A17B regression: 61 passed
+    - full pytest: 863 passed
+    - diff checks: PASS
+    - dependency scan: PASS
+    - forbidden UI scan: PASS
+    - secret scan: PASS
+    - raw logging scan: PASS
+    - no-network validation: PASS (via mock/monkeypatch)
+- Initiated Roadmap Synchronization (RM-SYNC-A17D) to record A17D completion and verify active/future gate statuses.
+
+### Governance
+- Preserved absolute NotebookLM-simple UX law verbatim: "GIAO DIỆN PHẢI DỄ SỬ DỤNG NHƯ NOTEBOOKLM. Nếu khó hiểu, coi như thất bại. Người dùng không có thời gian để ghi nhớ cách dùng quá phức tạp."
+- Enforced strict fail-closed consent and snapshot gates:
+  - If owner cloud consent is missing, the request fails closed and the router is not called.
+  - If the active source set changes or doesn't match the consent snapshot, the request fails closed and the router is not called.
+- Verified that all enabled sources (regardless of `local_only`, `machine_only`, `unknown`, `cloud_ok`, `public/test` labels) are routed upon valid owner consent, while disabled sources and the whole store are never sent.
+- Maintained zero UI footprint: no new buttons, panels, dashboard, queue, metrics, or programming bridge exposed on the primary screen.
+- AI-GW-A17D is marked complete (DONE/PUSHED/REMOTE_VERIFIED). RM-SYNC-A17D is the local docs-only sync gate pending Codex re-audit/push-safety. A18 remains NOT_STARTED.
+- P1.0 remains LOCKED.
+
 ## 2026-07-05 - Workspace Chat Hidden UX Guardrails & Roadmap Sync
 
 ### Enhancements

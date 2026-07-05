@@ -27,14 +27,14 @@ Case → Evidence → Map → Action → Learning → Memory
 ## Active Position
 
 - Current phase: Phase 4 — Workspace Chat Foundation & AI Gateway Preparation.
-- Latest closed implementation gate: AI-GW-A17C — Hidden Workspace Chat Guardrail Hardening — DONE / PUSHED / REMOTE_VERIFIED.
-- Latest closed roadmap sync gate: RM-SYNC-UI-NOTEBOOKLM-CLEANUP — DONE / PUSHED / REMOTE_VERIFIED.
-- Current roadmap sync gate: RM-SYNC-A17C — Sync Master Roadmap after A17C Hidden Guardrails — IN PROGRESS.
+- Latest closed implementation gate: AI-GW-A17D — Hidden Router Adapter for Workspace Chat Ask — DONE / PUSHED / REMOTE_VERIFIED.
+- Latest closed roadmap sync gate: RM-SYNC-A17C — DONE / PUSHED / REMOTE_VERIFIED.
+- Current roadmap sync gate: RM-SYNC-A17D — Sync Master Roadmap after A17D Hidden Router — IN PROGRESS.
 - Latest closed design gate: AI-GW-A17-DESIGN — IDE Agent Bridge docs-only design — DONE/PUSHED/REMOTE_VERIFIED.
-- Next candidate gate: A17D Scope Discussion / Planning — Git observer / anti-fake hardening planning.
-- AI-GW-A17C — Workspace Chat helper — DONE / PUSHED / REMOTE_VERIFIED (test-first hidden UX guardrails).
-- RM-SYNC-A17C — Sync Master Roadmap after A17C — IN PROGRESS (local docs sync, pending push-safety).
-- AI-GW-A17D / A18 — NOT_STARTED.
+- Next candidate gate: Codex re-audit / push-safety of RM-SYNC-A17D docs-only commit.
+- AI-GW-A17D — Hidden Router Adapter for Workspace Chat Ask — DONE / PUSHED / REMOTE_VERIFIED (hidden direct library integration with v0.2.2).
+- RM-SYNC-A17D — Sync Master Roadmap after A17D — IN PROGRESS (local docs sync, pending push-safety).
+- A18 — NotebookLM Comparison Arena — NOT_STARTED.
 - P1.0 — Owner Pilot / Productization — LOCKED.
 
 ---
@@ -252,7 +252,7 @@ Clarification:
 - A17 docs-only design is now complete (AI-GW-A17-DESIGN is DONE/PUSHED/REMOTE_VERIFIED).
 - Runtime repo-task bridge Task Pack Export MVP is now complete (AI-GW-A17A is DONE/PUSHED/REMOTE_VERIFIED).
 - Runtime repo-task bridge Result Import MVP is now complete (AI-GW-A17B is DONE/PUSHED/REMOTE_VERIFIED).
-- A17C is complete (DONE/PUSHED/REMOTE_VERIFIED). A17D subgate remains a future gate (NOT_STARTED).
+- A17C is complete (DONE/PUSHED/REMOTE_VERIFIED). A17D is complete (DONE/PUSHED/REMOTE_VERIFIED).
 - Phase 5 is therefore not fully complete as a runtime-controlled IDE Agent Bridge.
 
 Scope:
@@ -391,12 +391,31 @@ Future research should learn public patterns from RAGFlow, kotaemon, Microsoft G
 
 Immediate:
 
-- **RM-SYNC-A17C — Sync Master Roadmap after A17C Hidden Guardrails** (IN_PROGRESS) — roadmap sync gate updating roadmap and changelog status after AI-GW-A17C hidden guardrail commit is pushed/remote verified.
-- **AI-GW-A17D — Git observer / anti-fake hardening** (NOT_STARTED).
+- **RM-SYNC-A17D — Sync Master Roadmap after A17D Hidden Router** (IN_PROGRESS) — roadmap sync gate updating roadmap and changelog status after AI-GW-A17D hidden router adapter commit is pushed/remote verified.
 - **AI-GW-A18 — NotebookLM Comparison Arena** (NOT_STARTED) — after A17 or later strategy decision.
 
 Completed:
 
+- **AI-GW-A17D — Hidden Router Adapter for Workspace Chat Ask** (DONE/PUSHED/REMOTE_VERIFIED) — direct integration of the nakazasen-ai-router library with Workspace Chat's "Hỏi" button.
+  Validation evidence:
+  - commit: `0c79958805faf1b45d3df53976a832dde1109bd7 — Add hidden router adapter for Workspace Chat ask`
+  - dependency: `nakazasen-ai-router` version `v0.2.2` pinned in `pyproject.toml`
+  - import check: IMPORT_PASS
+  - focused AI answer tests: 50 passed
+  - UI guard tests: 23 passed
+  - A17A/A17B regression: 61 passed
+  - full pytest: 863 passed
+  - diff checks: PASS
+  - dependency scan: PASS
+  - forbidden UI scan: PASS
+  - secret scan: PASS
+  - raw logging scan: PASS
+  - no-network validation: PASS (via mock/monkeypatch)
+- **RM-SYNC-A17C — Sync Master Roadmap after A17C Hidden Guardrails** (DONE/PUSHED/REMOTE_VERIFIED) — roadmap sync gate recording commit hashes, validation evidence, and hidden UX guardrail status.
+  Validation evidence:
+  - commit: `6371ea7dca8a83664fceb75a622a1b2482f3f9b6`
+  - git diff --check: PASS
+  - post-push remote verification: PASS
 - **AI-GW-A17C — Workspace Chat helper / Hidden UX Guardrails** (DONE/PUSHED/REMOTE_VERIFIED) — test-first hidden UX guardrails to prevent regression to cockpit complexity.
   Validation evidence:
   - commit: `bc45d88f18650b1bea172572d1c2cafdd1c65864 — Harden Workspace Chat hidden UX guardrails`
@@ -457,7 +476,7 @@ Risks & Gaps:
 
 - local brain runtime has not been aligned or implemented.
 - router mock is implemented.
-- IDE bridge runtime (A17D) is not yet implemented. (A17C is complete as hidden UX guardrail tests).
+- A17D is complete as a hidden Workspace Chat router adapter behind the normal Ask path; no IDE bridge UI/runtime, Router Server, dashboard, queue, or metrics UI is exposed to normal users, and the IDE bridge remains unopened. (A17C is complete as hidden UX guardrail tests).
 - NotebookLM comparison arena is not yet implemented.
 - Old legacy AI code is intentionally retained for reference and will be migrated/deprecated in step with the new gateway.
 - Real provider API calls are strictly blocked in AI-GW-A16 (mock only).
