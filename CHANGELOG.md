@@ -1,5 +1,27 @@
 # Changelog
 
+## 2026-07-06 - MOM PDF Ingestion, Retrieval Ranking & Roadmap Sync
+
+### Enhancements
+- Completed MOM PDF Ingestion and Retrieval Ranking MVP (`FIX-MOM-PDF-INGESTION-RETRIEVAL-MIN`) adding reproducible PDF text-layer local-first extraction.
+  - Code commit: `361bbc470db4970e584991b029c06f2f8846e910` (Message: `Improve MOM PDF ingestion and retrieval ranking`)
+  - Declared `pymupdf4llm>=1.28.0` in `pyproject.toml` to ensure reproducible local environments.
+  - Expanded `_tokens` tokenization pattern in `mom_local_index.py` to support CJK Japanese characters, enabling search matching on Japanese query terms.
+  - Integrated domain-tuned boosts and penalties in `search_mom_index`:
+    - **Q1 (MES/MOM)**: Boosted matching terms, `.pdf` files, and filenames containing `mes`/`mom`.
+    - **Q2 (Production History)**: Boosted Japanese history terms, `.pdf` files, and filenames containing `生産履歴`/`着完工`/`仕様`.
+    - **Q3 (Manual Shipping)**: Boosted Excel columns/metadata terms, `.xlsx`/`.xlsm` formats, and sheets/filenames containing `manual`/`ship` to prevent regressions.
+    - **ERD Penalty**: Subtracted `50.0` from `ERD_Kho_Van_NEW.html` when a Q2 query is matched but the chunk lacks exact Q2 terms.
+  - Added unit test suite `tests/test_mom_pdf_ingestion_retrieval.py` testing PDF extraction success (monkeypatched), fail-soft, PDF index generation, Q1/Q2 retrieval, and Q3 no-regression. All 869 tests pass.
+  - Verified local MOM/WMS index smoke on real dataset: 518 rows (42 PDF chunks from 6 PDFs).
+- Initiated Roadmap Synchronization (`RM-SYNC-FIX-MOM-PDF-RETRIEVAL`) to document MVP status, integration results, and licensing/retrieval caveats.
+
+### Governance
+- Preserved absolute NotebookLM-simple UX law: no new buttons, sidebar panels, or agent cockpit UI exposed on primary Workspace Chat screen.
+- Accepted `pymupdf4llm` license caveat (AGPL/commercial dual-license): approved for local-first MVP validation, but requires review before broader distribution.
+- Documented MVP caveats: PNG OCR remains deferred (no pytesseract dependency), Q3 Excel answer composer is pending, and router-grounded MOM answer path remains deferred.
+- A18 is marked `NOT_STARTED`. P1.0 remains `LOCKED`.
+
 ## 2026-07-05 - Workspace Chat Hidden Router Adapter & Roadmap Sync
 
 ### Enhancements

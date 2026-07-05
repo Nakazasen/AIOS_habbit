@@ -27,13 +27,13 @@ Case → Evidence → Map → Action → Learning → Memory
 ## Active Position
 
 - Current phase: Phase 4 — Workspace Chat Foundation & AI Gateway Preparation.
-- Latest closed implementation gate: AI-GW-A17D — Hidden Router Adapter for Workspace Chat Ask — DONE / PUSHED / REMOTE_VERIFIED.
-- Latest closed roadmap sync gate: RM-SYNC-A17C — DONE / PUSHED / REMOTE_VERIFIED.
-- Current roadmap sync gate: RM-SYNC-A17D — Sync Master Roadmap after A17D Hidden Router — IN PROGRESS.
+- Latest closed implementation gate: FIX-MOM-PDF-INGESTION-RETRIEVAL-MIN — Improve MOM PDF ingestion and retrieval ranking — DONE / PUSHED / REMOTE_VERIFIED.
+- Latest closed roadmap sync gate: RM-SYNC-A17D — DONE / PUSHED / REMOTE_VERIFIED.
+- Current roadmap sync gate: RM-SYNC-FIX-MOM-PDF-RETRIEVAL — Sync Master Roadmap after PDF Ingestion & Retrieval — IN PROGRESS.
 - Latest closed design gate: AI-GW-A17-DESIGN — IDE Agent Bridge docs-only design — DONE/PUSHED/REMOTE_VERIFIED.
-- Next candidate gate: Codex re-audit / push-safety of RM-SYNC-A17D docs-only commit.
-- AI-GW-A17D — Hidden Router Adapter for Workspace Chat Ask — DONE / PUSHED / REMOTE_VERIFIED (hidden direct library integration with v0.2.2).
-- RM-SYNC-A17D — Sync Master Roadmap after A17D — IN PROGRESS (local docs sync, pending push-safety).
+- Next candidate gate: Codex re-audit / push-safety of RM-SYNC-FIX-MOM-PDF-RETRIEVAL docs-only commit.
+- FIX-MOM-PDF-INGESTION-RETRIEVAL-MIN — Improve MOM PDF ingestion and retrieval ranking — DONE / PUSHED / REMOTE_VERIFIED (commit 361bbc470db4970e584991b029c06f2f8846e910).
+- RM-SYNC-FIX-MOM-PDF-RETRIEVAL — Sync Master Roadmap after PDF Retrieval — IN PROGRESS (local docs sync, pending push-safety).
 - A18 — NotebookLM Comparison Arena — NOT_STARTED.
 - P1.0 — Owner Pilot / Productization — LOCKED.
 
@@ -533,16 +533,20 @@ Risks & Gaps:
    - RAGAS / DeepEval / TruLens
 
 4. **Current status:**
-   - Excel adapter added and improved AIOS RAG.
-   - AIOS insufficient evidence dropped from 12/12 to 2/12 after Excel extraction + FTS Unicode/search fixes.
-   - PDF, PPTX, image/OCR, richer HTML/DOCX/log parsing remain future adapter tracks.
+   - Excel and PDF adapters added, improving AIOS RAG capability.
+   - PDF text-layer ingestion added with `pymupdf4llm>=1.28.0` (FIX-MOM-PDF-INGESTION-RETRIEVAL-MIN is DONE/PUSHED/REMOTE_VERIFIED).
+   - Local index smoke test successfully processed 52 files seen: 21 Excel files, 6 PDF files (42 chunks), 25 other files, yielding 518 chunks total.
+   - Q1 (MES/MOM comparison) and Q2 (Production History) retrieval improved via CJK tokenization and domain-tuned boosters.
+   - Q3 Excel retrieval preserved with no regression.
+   - Image OCR, PPTX OCR, and richer HTML/DOCX/log parsing remain future tracks.
    - NotebookLM parity is not claimed.
    - P1.0 is not opened.
+   - Remaining caveats: Q3 Excel answer composer is still pending; router-grounded MOM answer path is deferred; PNG OCR remains deferred/no local OCR in this MVP.
 
 5. **Priority:**
-   - First, finish fair comparison after Excel extraction.
-   - Then choose next adapter by evidence.
-   - Likely next adapter: PDF via PyMuPDF4LLM, but only after comparison report.
+   - Completed local-first PDF ingestion and search ranking improvements.
+   - Excel and PDF local index and retrieval gaps are minimized.
+   - Rerun NotebookLM battle is pending to verify answers using the official local AIOS index.
    - Do not add Vector DB/Graph DB until extraction and benchmark prove need.
 
 6. **Governance:**
@@ -620,3 +624,8 @@ Not included:
 - **20. AI-GW-A17B Audit Blockers Fix:** `75a8f0be64586df0cedfb6ddfc28c0f32225d82a` — Message: Fix A17B result import audit blockers
 - **21. RM-SYNC-A17B Roadmap Sync after AI-GW-A17B:** `dd7394b5859c1cdda2aa1da849ec715b1fd0c9ee` — Message: Sync A17B roadmap and NotebookLM-simple UX lock
 - **22. Workspace Chat NotebookLM-simple UI Cleanup:** `f23ea1345e1c3644f6037aa21ee428077cf1ac5a` — Message: Simplify Workspace Chat daily UX
+- **23. AI-GW-A17C Workspace Chat Hidden UX Guardrails:** `bc45d88f18650b1bea172572d1c2cafdd1c65864` — Message: Harden Workspace Chat hidden UX guardrails
+- **24. RM-SYNC-A17C Roadmap Sync after AI-GW-A17C:** `6371ea7dca8a83664fceb75a622a1b2482f3f9b6` — Message: Sync A17C hidden guardrail status
+- **25. AI-GW-A17D Hidden Router Adapter for Workspace Chat Ask:** `0c79958805faf1b45d3df53976a832dde1109bd7` — Message: Add hidden router adapter for Workspace Chat ask
+- **26. RM-SYNC-A17D Roadmap Sync after AI-GW-A17D:** `eb97f44216eddd56939a4a3f86ded672aa4b3083` — Message: Sync A17D hidden router status
+- **27. FIX-MOM-PDF-INGESTION-RETRIEVAL-MIN MOM PDF Ingestion and Retrieval Ranking:** `361bbc470db4970e584991b029c06f2f8846e910` — Message: Improve MOM PDF ingestion and retrieval ranking
