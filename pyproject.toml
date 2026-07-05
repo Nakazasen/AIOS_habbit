@@ -11,6 +11,7 @@ dependencies = [
     "streamlit>=1.30.0",
     "pandas>=2.0.0",
     "openpyxl>=3.1.0",
+    "pymupdf4llm>=1.28.0",
     "nakazasen-ai-router @ git+https://github.com/Nakazasen/nakazasen-ai-router.git@v0.2.2",
 ]
 
