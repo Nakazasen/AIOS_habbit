@@ -30,15 +30,18 @@ Case → Evidence → Map → Action → Learning → Memory
 
 
 
-## Active Position
+## Repository State Policy
+- Authoritative current HEAD/origin state must be verified by Git during each gate.
+- This roadmap intentionally does not claim the hash of its own latest commit.
+- Commit hashes recorded below are historical gate evidence, not self-updating current HEAD fields.
 
-- **Local HEAD:** `bf4c39c9b6b44611b826be3201bbdf39e8cae099` (`Sync roadmap after AI-GW-A16`).
-- **Remote HEAD:** `bf4c39c9b6b44611b826be3201bbdf39e8cae099` (`Sync roadmap after AI-GW-A16`).
-- **Current position:** AI-GW-A16 Router Mock Integration and RM-SYNC-A16 Roadmap Sync are DONE/CLOSED/REMOTE_SYNCED. Workspace Chat is the primary UI, and the Brain Gateway Mock Router Guard has been implemented, verified, and pushed.
-- **Current capability:** Workspace Chat supports notebook lifecycle, source library management, privacy-aware gateway, mock router, and owner consent verification based on source snapshots.
-- **P1.0:** LOCKED; remains locked until the router mock/privacy gateway and owner-facing AI flow are safe and stable, A17 and A18 are completed.
-- **NotebookLM parity:** NOT achieved; retrieval and source library still require improvements.
-- **IDE/model bridge:** Manual IDE response import is operational; Brain Gateway Mock Router Guard is implemented.
+## Active Position
+- Current phase: Phase 4 — Workspace Chat Foundation & AI Gateway Preparation.
+- Latest closed implementation gate: AI-GW-A16 — Router Mock Integration with Owner Consent Gateway — DONE/CLOSED/REMOTE_SYNCED.
+- Latest roadmap sync gate: RM-SYNC-A16 — Sync Master Roadmap after AI-GW-A16 — DONE/PUSHED; remote verification is handled by external audit/post-push records, not self-attested by this file.
+- Next candidate gate: AI-GW-A17 — IDE Agent Bridge — NOT_STARTED / NEXT_CANDIDATE; planning/design only, implementation not opened.
+- AI-GW-A18 — NotebookLM Comparison Arena — NOT_STARTED.
+- P1.0 — Owner Pilot / Productization — LOCKED.
 
 
 
@@ -597,6 +600,11 @@ Not included:
 - AI-GW-* = AI Brain Gateway / Router / Agent gates.
 - RM-SYNC-* = Roadmap synchronization gates.
 
+## Commit Timeline Policy
+- Functional gate commits and major roadmap sync commits may be recorded as historical evidence.
+- The current repository HEAD is not maintained inside this roadmap to avoid self-referential stale hashes.
+- To verify current HEAD/origin, run `git rev-parse HEAD` and `git rev-parse origin/main` during the active gate.
+
 ## Commit Timeline
 
 12. AI-GW-A16 Router Mock Integration: `5cf0cca9cdc9f5b4b2a22a45e0525cb4d8c050d4`
@@ -604,3 +612,6 @@ Not included:
 
 13. RM-SYNC-A16 Roadmap Sync after AI-GW-A16: `bf4c39c9b6b44611b826be3201bbdf39e8cae099`
     Message: Sync roadmap after AI-GW-A16
+
+14. RM-SYNC-A16 Stale Status Fix: `f3a9b6c42d2aa40f2cd225f1684d70c06e9dc039`
+    Message: Fix roadmap sync status after A16
