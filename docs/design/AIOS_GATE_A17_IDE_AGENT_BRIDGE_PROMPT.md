@@ -7,6 +7,7 @@ Bạn là docs-only design executor cho repo `AIOS_habbit`.
 Thiết lập và hoàn thiện tài liệu kiến trúc, ranh giới an toàn, lược đồ truyền tin (Task Pack & Report Schemas) và mô hình chống gian lận cho cấu phần IDE Agent Bridge.
 
 > [!IMPORTANT]
+>
 > - Đây là gate **chỉ thiết kế tài liệu** (docs-only design).
 > - Nghiêm cấm sửa đổi bất kỳ tệp tin mã nguồn (`src/`) hoặc kiểm thử (`tests/`) nào.
 > - Nghiêm cấm sửa đổi các tệp `ROADMAP.md`, `WORKLENS_MASTER_ROADMAP.md`, `CHANGELOG.md` trong phạm vi gate này.
@@ -64,6 +65,7 @@ Kiến trúc IDE Agent Bridge được triển khai theo các giai đoạn tuầ
 ## 5. Các Lệnh Xác Minh Tài Liệu (Design Validation Commands)
 
 Chạy kiểm tra tình trạng Git và linter của các tài liệu:
+
 ```powershell
 git diff --name-only
 git diff --stat
