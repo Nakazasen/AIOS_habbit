@@ -370,9 +370,12 @@ Immediate:
 - **AI-GW-A17A — Agent Task Pack Export MVP** (NOT_STARTED / NEXT_CANDIDATE) — implementation MVP gate; implementation has not opened yet.
 - **AI-GW-A18 — NotebookLM Comparison Arena** (NOT_STARTED) — after A17 or later strategy decision.
 
-Completed:
+Pending / Local:
 
 - **RM-SYNC-A17-DESIGN — Sync Master Roadmap after AI-GW-A17-DESIGN** (LOCAL_COMMIT_READY_FOR_PUSH_SAFETY) — this roadmap sync gate updating gateway design status, queue position and commit timeline; remote verification must be handled by external post-push audit, not self-attested by this file.
+
+Completed:
+
 - **AI-GW-A17-DESIGN — IDE Agent Bridge docs-only design** (DONE/PUSHED/REMOTE_VERIFIED) — architecture boundaries, result import, task pack schema and safety prompt design completed.
 - **RM-SYNC-A16 — Sync Master Roadmap after AI-GW-A16** (DONE/PUSHED/REMOTE_VERIFIED) — roadmap naming, baseline, commit timeline, and prompt governance synchronized after A16.
 - **AI-GW-A16 — Router Mock Integration with Owner Consent Gateway** (DONE/CLOSED/REMOTE_SYNCED) — mock router adapter, privacy gateway, no real provider calls, local validation tests.
