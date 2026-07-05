@@ -12,12 +12,12 @@ Case → Evidence → Map → Action → Learning → Memory
 
 ## 1. Current Gate Status
 
-- **Current local HEAD:** `44d40f4` (`Document AIOS brain gateway integration design`).
-- **Current remote HEAD:** `44d40f4` (`Document AIOS brain gateway integration design`).
-- **Current position:** Brain Gateway integration design is completed; Workspace Chat is the primary UI, and Source Library Management (WSC-1C) is fully implemented and pushed.
-- **P1.0:** LOCKED. Do not open automatically; remains locked until the router mock/privacy gateway and owner-facing AI flow are safe and stable.
+- **Current local HEAD:** `5cf0cca` (`Add AIOS brain gateway mock router guard`).
+- **Current remote HEAD:** `5cf0cca` (`Add AIOS brain gateway mock router guard`).
+- **Current position:** AI-GW-A16 Router Mock Integration is DONE/CLOSED/REMOTE_SYNCED. Workspace Chat is the primary UI, and the Brain Gateway Mock Router Guard has been implemented and verified.
+- **P1.0:** LOCKED. Do not open automatically; remains locked until the router mock/privacy gateway and owner-facing AI flow are safe and stable, A17 and A18 are completed.
 - **NotebookLM parity:** not achieved; Retrieval Engine v2 and Source Library MVP are required.
-- **IDE/model bridge:** Manual IDE response import is operational; Brain Gateway integration design is ready for router mock implementation.
+- **IDE/model bridge:** Manual IDE response import is operational; Brain Gateway Mock Router Guard is implemented.
 
 Completed foundation gates include local Case Cockpit, Workspace/Knowledge Notebook, MOM local benchmark, provider safety modes, route log, one-screen daily UI, DeepSeek normal-document UI pilot, Q&A-to-Case route summary, company/mật privacy guard, Workspace Chat primary UI, multi-format uploader, local retrieval/evidence items, Vietnamese mojibake cleanup, legacy retirement docs sync, Workspace Chat Source Library (WSC-1C), and Brain Gateway integration design (AI-GW-A15).
 
@@ -53,9 +53,11 @@ Scope: Vietnamese safety modes, provider catalog, route log, DeepSeek normal-doc
 
 Warning: daily-pilot ready, not production-ready.
 
-### Phase 4 — RAG Engine v2 / NotebookLM-level Retrieval
+### Phase 4 — Workspace Chat Foundation & AI Gateway Preparation
 
-Status: NEXT.
+Status: IN PROGRESS.
+
+*Note: M1.x is an internal milestone stream under Phase 4, not a separate product phase.*
 
 Scope:
 - better parser adapter;
@@ -139,22 +141,24 @@ Learning sources for public pattern research: RAGFlow, kotaemon, Microsoft Graph
 ## 4. Next Gate Queue
 
 Immediate:
-- **AI-GW-A16 — Router Mock Integration** (IN PROGRESS) — mock router adapter, privacy gateway, no real provider calls, local validation tests.
-- **AI-GW-A17 — IDE Agent Bridge** (PENDING) — runtime integration for agent workspace and IDE messaging bridge.
-- **AI-GW-A18 — NotebookLM Comparison Arena** (PENDING) — comparative evaluation between local RAG and NotebookLM.
+- **RM-SYNC-A16 — Sync Master Roadmap after AI-GW-A16** (IN PROGRESS) — synchronize master roadmap, names, and commit timeline.
+- **AI-GW-A17 — IDE Agent Bridge** (NOT_STARTED / NEXT_CANDIDATE) — runtime integration for agent workspace and IDE messaging bridge.
+- **AI-GW-A18 — NotebookLM Comparison Arena** (NOT_STARTED) — comparative evaluation between local RAG and NotebookLM.
 
 Completed:
+- **AI-GW-A16 — Router Mock Integration with Owner Consent Gateway** (DONE/CLOSED/REMOTE_SYNCED) — mock router adapter, privacy gateway, no real provider calls, local validation tests.
 - **Gate 1C — Workspace Chat Source Library / Source Management UX** (COMPLETE) — implemented search/filter, bulk actions, source toggle, and delete confirmation.
 - **AI-GW-A15 — Brain Gateway Integration Design** (COMPLETE) — documented brain gateway integration design, system inventory, router adapters, IDE bridge, and import designs.
 
 Risks & Gaps:
 - local brain runtime has not been aligned or implemented.
-- router mock is not yet implemented.
+- router mock is implemented.
 - IDE bridge runtime is not yet implemented.
 - NotebookLM comparison arena is not yet implemented.
 - Old legacy AI code is intentionally retained for reference and will be migrated/deprecated in step with the new gateway.
 - Real provider API calls are strictly blocked in AI-GW-A16 (mock only).
-- Roadmap drift fixed for A15.
+- Roadmap sync for A16.
+- P1.0 remains locked.
 
 ---
 
@@ -169,3 +173,25 @@ Risks & Gaps:
 ## 6. Legacy Repository Policy
 
 The repository `AIOS_habbit` is the central repository for WorkLens. Legacy repositories are read-only references only. Do not copy code blocks directly, do not use leaked/proprietary code, and do not harvest ingest/graph/agent bridge code before an approved audit gate.
+
+---
+
+## 7. Program Progress Estimate & Metrics
+
+- **AI Brain Gateway architecture:** design done, runtime runtime increased from 25-30% to 35-40% (A16 mock router guard is completed).
+- **Router integration (real):** 10-15% (mock-only).
+- **IDE Agent Bridge runtime:** 5%.
+- **NotebookLM Comparison Arena:** 0-5%.
+- **Overall Program Progress:** estimated at 38-42% (qualitative estimate).
+
+## 8. Prompt & Gate Governance
+
+- Every future AIOS_habbit agent prompt must reference the master roadmap.
+- If a task changes phase, gate name, scope, status, commit timeline, next gate, or P1.0 lock condition, the task must include a roadmap sync requirement.
+- Do not open a new implementation gate when the roadmap is stale.
+- Do not call a gate DONE unless it has PASS evidence, commit status, push status, and remote verification when required.
+
+## 9. Commit Timeline
+
+12. AI-GW-A16 Router Mock Integration: `5cf0cca9cdc9f5b4b2a22a45e0525cb4d8c050d4`
+    Message: Add AIOS brain gateway mock router guard

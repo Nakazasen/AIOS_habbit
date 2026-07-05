@@ -1,16 +1,19 @@
 # Changelog
 
-## 2026-07-05 - AIOS Brain Gateway Design & Source Library Management
+## 2026-07-05 - AIOS Brain Gateway Mock Router Guard & Roadmap Sync
 
 ### Enhancements
 - Completed Workspace Chat Source Library (WSC-1C) management, including search/filter, bulk enable/disable, temporary deletion, confirmation dialogues, and test coverage (754 passed).
 - Completed AIOS Brain Gateway Integration Design (AI-GW-A15) which details the system inventory, gateway architecture, router adapters, IDE bridge, and import design docs.
-- Updated project roadmap indexes and master roadmaps to align with the current HEAD status.
+- Completed AIOS Brain Gateway Router Mock Integration (AI-GW-A16) implementing privacy gateway, OwnerConsent validation with source snapshots, opaque metadata mapping, marker redactions, and offline MockRouterAdapter.
+- Completed Roadmap Synchronization (RM-SYNC-A16) standardizing Phase/Gate names, updates on progress estimate, and prompt governance.
 
 ### Safety
-- No code modifications performed.
+- Added comprehensive leak validation (paths, secrets, tokens) inside MockRouterAdapter (fail-closed).
+- Error messages are anonymized to prevent raw token/path leakage.
+- Workspace Chat security errors are mapped to a fixed safe Vietnamese message.
 - P1.0 production readiness remains LOCKED.
-- Verified local test suites, mojibake clean status, and CLI audits.
+- Verified local test suites (794 passed), mojibake clean status (280 files), and CLI audits.
 
 ## 2026-07-04 - Workspace Chat Primary UI & Legacy Retirement Sync
 
