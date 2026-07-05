@@ -1,128 +1,94 @@
-# Gate A17 — IDE Agent Bridge Prompt
+# Gate AI-GW-A17-DESIGN — IDE Agent Bridge Design Prompt
 
-Bạn là implementation executor cho repo `AIOS_habbit`.
+Bạn là docs-only design executor cho repo `AIOS_habbit`.
 
-## Mục tiêu
+## 1. Mục tiêu (Docs-Only Design Goal)
 
-Triển khai task-pack export và agent-report import parser theo:
+Thiết lập và hoàn thiện tài liệu kiến trúc, ranh giới an toàn, lược đồ truyền tin (Task Pack & Report Schemas) và mô hình chống gian lận cho cấu phần IDE Agent Bridge.
 
-- `docs/design/AIOS_BRAIN_GATEWAY_DESIGN.md`
-- `docs/design/AIOS_IDE_AGENT_BRIDGE_DESIGN.md`
-- `docs/design/AIOS_AGENT_RESULT_IMPORT_DESIGN.md`
+> [!IMPORTANT]
+> - Đây là gate **chỉ thiết kế tài liệu** (docs-only design).
+> - Nghiêm cấm sửa đổi bất kỳ tệp tin mã nguồn (`src/`) hoặc kiểm thử (`tests/`) nào.
+> - Nghiêm cấm sửa đổi các tệp `ROADMAP.md`, `WORKLENS_MASTER_ROADMAP.md`, `CHANGELOG.md` trong phạm vi gate này.
+> - Nghiêm cấm mở implementation subgate `AI-GW-A17A` hoặc bắt đầu viết mã.
+> - Sau khi thiết kế tài liệu này đạt trạng thái PASS, việc mở subgate `AI-GW-A17A` để triển khai code bắt buộc phải trải qua một task roadmap sync riêng biệt tuân thủ cơ chế quản trị (governance).
 
-Không triển khai autonomous agent execution.
+---
 
-## Baseline
+## 2. Phạm vi Thiết kế (Design Scope)
 
-Chạy và ghi lại branch, HEAD, origin/main, status, staged/untracked và forbidden/runtime state. Nếu baseline owner cung cấp không khớp, dừng; không tự reset/clean.
+### Thiết kế Task Pack (`aios_agent_task_pack_v1`)
 
-## Phạm vi
+Hỗ trợ xuất gói tác vụ JSON deterministic sử dụng hàm băm **SHA-256** (không dùng MD5 làm khóa toàn vẹn). Các trường bao gồm:
 
-### Task pack export
+- Thông tin nhận diện và mục tiêu (`schema_version`, `task_id`, `task_type`, `gate`, `agent_class`, `objective`).
+- baseline môi trường repo (`repo` chứa `logical_repo_id`, `repo_path_policy` không chứa absolute path thực tế khi truyền cloud, `expected_branch`, `expected_head`).
+- phạm vi cho phép (`allowed_files`, `forbidden_files`, `allowed_commands`, `forbidden_commands`, `required_tests`).
+- chính sách riêng tư (`privacy_class`, `destination`, `purpose`, `consent_ref`, `source_policy`).
+- thông tin quản trị và rollback (`roadmap_reference`, `pass_fail_rules`, `rollback`, `required_report_fields`, `created_at`, `pack_sha256`).
 
-Hỗ trợ schema versioned với:
+### Thiết kế Report Import (`aios_agent_report_v1`)
 
-- repo path;
-- branch/baseline head;
-- agent class;
-- objective;
-- allowed/forbidden files;
-- allowed commands;
-- required tests/report fields;
-- PASS/FAIL rule;
-- anti-overeager rule;
-- no secret/key access;
-- `.ai`/`local_cases` cleanliness;
-- task-pack hash.
+Thiết lập bộ phân tích và đối chiếu bằng chứng bao gồm:
 
-Agent classes: `audit-only`, `implementation`, `push-safety`, `smoke-test`.
+- Thông tin tự khai từ agent (`declared_status`, `baseline`, `final_state`, `declared_files`, `declared_commands`, `declared_tests`, `risks`, `blockers`, `rollback`, `reason_codes`, `report_sha256`).
+- Thuật toán phân biệt rõ ràng **Declared Evidence** (tự khai) và **Observed Evidence** (kiểm chứng độc lập qua môi trường đĩa local).
+- Phán quyết verdict hữu hạn: `VERIFIED_PASS`, `FAIL`, `REVIEW_REQUIRED`, `INVALID_REPORT` kết hợp với các lý do cụ thể trong `reason_codes[]`.
+- Không tự động phong `VERIFIED_PASS` hoặc tự động tạo confirmed memory khi thiếu bằng chứng thực tế quan sát được.
 
-### Report import
+---
 
-Parse và normalize:
+## 3. Các Chốt Chặn Bảo Mật (Import Safety Controls)
 
-- status;
-- branch/head/commit;
-- files touched;
-- commands/tests;
-- audit result;
-- forbidden/runtime dirty;
-- untracked scratch;
-- risks/next step.
+- Cấm path traversal (`../`) và theo dõi symlink độc hại để thoát khỏi thư mục dự án.
+- Cô lập lưu trữ cục bộ tại `local_runs/agent_bridge/{outbox,inbox,processed}` (bị Git ignore).
+- Giới hạn kích thước file và độ sâu của JSON parser.
+- UTF-8 strict và không sửa mojibake tự động im lặng.
+- Ghi đè file nguyên tử (atomic writes).
 
-Phát hiện:
+---
 
-- scope violation;
-- malformed/missing evidence;
-- fake PASS;
-- test count change không giải thích;
-- forbidden/runtime dirty;
-- claim không có command;
-- commit/head mismatch.
+## 4. Kế Hoạch Subgate Thống Nhất (Unified Subgate Plan)
 
-Kết quả import không tự động tạo verified memory. Senior Learning Card, nếu có, chỉ là draft/review-required.
+Kiến trúc IDE Agent Bridge được triển khai theo các giai đoạn tuần tự sau:
 
-## Tái sử dụng
+1. **AI-GW-A17-DESIGN:** Docs-only design (thiết kế tài liệu - gate hiện tại).
+2. **AI-GW-A17A:** Task Pack Export MVP (tạo file task pack có ký số SHA-256).
+3. **AI-GW-A17B:** Result Import MVP (parser và kiểm tra tính toàn vẹn của report).
+4. **AI-GW-A17C:** Workspace Chat export/import helper (tích hợp helper UI).
+5. **AI-GW-A17D:** Git observer / validation receipt / anti-fake hardening (xác minh observed evidence cục bộ).
+6. **RM-SYNC-A17:** Master roadmap sync after A17 (đồng bộ và mở Phase 5 thành DONE).
 
-Tái sử dụng request ID, checksum, outbox/inbox và validation patterns trong `ide_bridge.py`/`ide_handoff_bridge.py` khi phù hợp. Giữ schema answer handoff hiện có tương thích; task-report là schema riêng.
+---
 
-## Không được
+## 5. Các Lệnh Xác Minh Tài Liệu (Design Validation Commands)
 
-- Không tự chạy agent.
-- Không launch external process, shell job, IDE hoặc MCP trừ khi owner phê duyệt gate riêng.
-- Không đọc secret/key/env credential.
-- Không thực thi command lấy từ report.
-- Không checkout/reset/delete.
-- Không sửa legacy UI nếu không cần.
-- Không commit/push nếu owner chưa phê duyệt.
-
-## Tests bắt buộc
-
-- task pack round-trip UTF-8;
-- required fields/schema/hash;
-- PASS/FAIL/REVIEW_REQUIRED parsing;
-- allowed file pass;
-- file ngoài scope fail;
-- forbidden file fail;
-- `.ai`/`local_cases` dirty fail;
-- untracked scratch fail;
-- branch/head/commit mismatch;
-- missing test evidence;
-- changed test count unexplained;
-- claims without commands;
-- path traversal/unsafe report path;
-- safe summary không leak secret sentinel;
-- không process/network launch;
-- optional learning card luôn draft.
-
-## Validation
-
+Chạy kiểm tra tình trạng Git và linter của các tài liệu:
 ```powershell
 git diff --name-only
 git diff --stat
 git diff --check
-uv run --no-sync pytest -q
-$env:PYTHONPATH="src"; uv run --no-sync python -m aios_habit.cli audit
-py -m compileall src scripts
-git status --short -- .ai local_cases task.md walkthrough.md implementation_plan.md
+git status --short
 ```
 
-Không fake PASS. Nếu validation không chạy được, ghi command, exit code và blocker.
+Không thực hiện commit hoặc push lên origin nếu các bước kiểm tra diff hoặc mojibake báo lỗi.
 
-## Output
+---
+
+## 6. Định Dạng Kết Quả Đầu Ra (Output Format)
 
 ```text
-FINAL_STATUS:
-BASELINE:
-TASK_PACK_SCHEMA:
-REPORT_IMPORT_SCHEMA:
-FAKE_PASS_DETECTION:
-FILES_TOUCHED:
-TESTS:
-AUDIT:
-FORBIDDEN_DIRTY:
-RISKS:
-COMMIT_CREATED: NO (trừ khi owner phê duyệt)
+FINAL_STATUS: PASS_A17_DESIGN_LOCAL_COMMIT_READY_FOR_CODEX_AUDIT
+BASELINE: 71e1cd3123878e4857bff1f35df40744e591f004
+TASK_PACK_SCHEMA: aios_agent_task_pack_v1
+REPORT_IMPORT_SCHEMA: aios_agent_report_v1
+FAKE_PASS_DETECTION: YES (phân biệt declared vs observed evidence, reason codes)
+FILES_TOUCHED: docs/design/AIOS_IDE_AGENT_BRIDGE_DESIGN.md, docs/design/AIOS_AGENT_RESULT_IMPORT_DESIGN.md, docs/design/AIOS_GATE_A17_IDE_AGENT_BRIDGE_PROMPT.md
+TESTS: N/A (docs-only gate)
+AUDIT: PASS (linter clean, git diff check passed)
+FORBIDDEN_DIRTY: none
+RISKS: none (implementation remains closed)
+COMMIT_CREATED: YES
 PUSH_PERFORMED: NO
-NEXT_STEP:
+NEXT_STEP: Đợi Codex Design Audit phê duyệt
 ```
