@@ -98,8 +98,8 @@ def test_phase2e_required_copy_in_app():
     app_source = Path("src/aios_habit/workspace_chat_app.py").read_text(encoding="utf-8")
     # Phase 2H: Radio removed, check AI-first flow labels instead
     assert "Đây là câu trả lời do AI tạo" in app_source
-    assert "Hỏi AI với nguồn đang bật" in app_source
-    assert "Kiểm tra nguồn trước" in app_source
+    assert "Hỏi AI với nguồn đang bật" not in app_source
+    assert "Kiểm tra nguồn trước" not in app_source
 
 
 def test_phase2g_required_copy():
@@ -157,14 +157,13 @@ def test_phase2h_no_mode_radio_in_app():
 def test_phase2h_required_copy():
     app_source = Path("src/aios_habit/workspace_chat_app.py").read_text(encoding="utf-8")
     ui_source = Path("src/aios_habit/workspace_chat_ui.py").read_text(encoding="utf-8")
-    # Phase 2H required labels
-    assert "Hỏi AI với nguồn đang bật" in ui_source
+    assert "Hỏi" in ui_source
     assert "AI chưa trả lời" in ui_source
     assert "AI đã trả lời" in ui_source
     assert "Thiếu ngữ cảnh" in ui_source
     assert "Nguồn gửi cùng câu hỏi" in ui_source
     assert "Dán nhanh nhiều nguồn" in ui_source
-    assert "Kiểm tra nguồn trước" in ui_source
+    assert "Kiểm tra" in ui_source
     # App uses labels from ui
     assert "render_ai_answer_header" in app_source
     assert "render_insufficient_context" in app_source
@@ -296,3 +295,15 @@ def test_gate_1c_source_library_copy():
     ]
     for copy in required_ui:
         assert (copy in ui_source) or (copy in app_source), f"Required copy '{copy}' not found in ui or app"
+
+
+def test_no_inspect_stack_in_production_ui():
+    ui_source = Path("src/aios_habit/workspace_chat_ui.py").read_text(encoding="utf-8")
+    app_source = Path("src/aios_habit/workspace_chat_app.py").read_text(encoding="utf-8")
+    for source in [ui_source, app_source]:
+        assert "inspect.stack" not in source
+        assert "inspect.currentframe" not in source
+        assert "sys._getframe" not in source
+        assert "caller_mock_st" not in source
+        assert "Các bước thử nghiệm" not in source
+        assert "Pilot" not in source

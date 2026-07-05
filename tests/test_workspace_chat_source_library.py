@@ -42,11 +42,19 @@ class MockSessionState(dict):
     def __setattr__(self, name, value):
         self[name] = value
 
+class WidgetStatesDict(dict):
+    def __init__(self, session_state):
+        super().__init__()
+        self.session_state = session_state
+    def __setitem__(self, key, value):
+        super().__setitem__(key, value)
+        self.session_state[key] = value
+
 class MockStreamlit:
     def __init__(self):
         self.calls = []
-        self.widget_states = {}
         self.session_state = MockSessionState()
+        self.widget_states = WidgetStatesDict(self.session_state)
 
     def subheader(self, text, *args, **kwargs):
         self.calls.append(("subheader", str(text)))

@@ -647,14 +647,7 @@ else:
     if not active_conversation:
         st.info("Vui lòng tạo hoặc chọn một cuộc trò chuyện để bắt đầu.")
     else:
-        with st.expander("✅ Các bước thử nghiệm Workspace Chat (Pilot)", expanded=True):
-            st.markdown("""
-- Thêm nguồn (dán văn bản, Excel, hoặc dữ liệu test)
-- Bật nguồn cần dùng
-- Nếu muốn kiểm tra trước, bấm "Kiểm tra nguồn trước"
-- Nhập câu hỏi rồi bấm "Hỏi AI với nguồn đang bật"
-- Kiểm tra câu trả lời trước khi dùng
-""")
+        st.info("Thêm tài liệu rồi hỏi tự nhiên; AIOS sẽ tự kiểm tra nguồn và cảnh báo nếu thiếu.")
         # Hiển thị các thông báo thử nghiệm
         if st.session_state.wsc_show_save_placeholder:
             st.info(f"ℹ️ {SAVE_CASE_PLACEHOLDER_MESSAGE}")
@@ -743,11 +736,12 @@ else:
 
             with st.form(f"wsc_ai_ask_form_{active_conversation.id}", clear_on_submit=True):
                 user_input = st.text_area(labels["question_placeholder"], height=80, key=f"wsc_question_{active_conversation.id}")
+                ask_submitted = st.form_submit_button(labels["ai_action"], use_container_width=True)
 
-                ask_col, check_col = st.columns([2, 1])
-                with ask_col:
-                    ask_submitted = st.form_submit_button(labels["ai_action"], use_container_width=True)
-                with check_col:
+            check_submitted = False
+            with st.expander("🛠️ Kiểm tra nguồn nâng cao", expanded=False):
+                with st.form(f"wsc_debug_form_{active_conversation.id}"):
+                    st.write("Kiểm tra xem AIOS sẽ sử dụng nguồn nào trước khi gửi câu hỏi thực tế.")
                     check_submitted = st.form_submit_button(labels["source_check"], use_container_width=True)
 
             if check_submitted:
@@ -863,112 +857,102 @@ else:
 
             # Phase 2H: Dán nhanh nhiều nguồn (quick multi-source paste)
             st.write(" ")
-            with st.expander(f"📋 {labels['quick_paste']}"):
-                with st.form("quick_paste_form", clear_on_submit=True):
-                    quick_title = st.text_input("Tên nhóm nguồn (tuỳ chọn)", placeholder="Ví dụ: Log sáng 3/7, Email lỗi...")
-                    quick_content = st.text_area("Dán nội dung vào đây", placeholder="Dán nội dung vào đây...", height=120)
-                    quick_privacy_choice = render_privacy_choice(f"wsc_quick_privacy_{active_conversation.id}")
-                    if st.form_submit_button(labels["quick_paste_add"]):
-                        if quick_content.strip():
-                            final_title = quick_title.strip() or f"Nguồn dán nhanh {datetime.now().strftime('%d/%m %H:%M')}"
-                            ts = create_pasted_text_temporary_source(
-                                conversation_id=active_conversation.id,
-                                title=final_title,
-                                content_text=quick_content,
-                                owner_choice=quick_privacy_choice,
-                            )
-                            st.session_state.wsc_action_message = f"Đã thêm nguồn: {final_title}."
-                            safe_rerun()
-                        else:
-                            st.error("Nội dung không được để trống.")
+            # Collapse into one simple control: Thêm nguồn
+            with st.expander("➕ Thêm nguồn", expanded=False):
+                tab_quick, tab_paste, tab_upload = st.tabs(["📋 Dán nhanh", "📝 Dán văn bản dài", "📁 Thêm tài liệu"])
 
-            # Khung dán nhật ký/email/đoạn chat dài
-            st.write(" ")
-            st.info("Hiện tại màn hình này hỗ trợ dán văn bản dài, thêm nhiều định dạng tài liệu (TXT, MD, CSV, Word, PowerPoint, Excel, PDF, ảnh) và tạo dữ liệu test không mật. Ô hỏi chỉ hỗ trợ nhập chữ để trò chuyện và hỏi đáp.")
-            with st.expander("📝 Dán văn bản dài (log lỗi, email, hoặc đoạn chat...)"):
-                with st.form("paste_log_form"):
-                    paste_title = st.text_input("Tiêu đề nguồn tạm", placeholder="Ví dụ: Email lỗi Opcenter, Nhật ký log hệ thống...")
-                    paste_content = st.text_area("Nội dung văn bản dài", placeholder="Dán nội dung vào đây...", height=120)
-                    paste_privacy_choice = render_privacy_choice(f"wsc_paste_privacy_{active_conversation.id}")
-                    if st.form_submit_button("Thêm vào nguồn tạm"):
-                        if paste_content.strip():
-                            final_title = paste_title.strip() or f"Nguồn dán tay {datetime.now().strftime('%d/%m %H:%M')}"
-                            ts = create_pasted_text_temporary_source(
-                                conversation_id=active_conversation.id,
-                                title=final_title,
-                                content_text=paste_content,
-                                owner_choice=paste_privacy_choice,
-                            )
-                            st.session_state.wsc_action_message = f"Đã lưu thành công nguồn tạm: {final_title}."
-                            safe_rerun()
-                        else:
-                            st.error("Nội dung nguồn không được để trống.")
+                with tab_quick:
+                    with st.form("quick_paste_form", clear_on_submit=True):
+                        quick_title = st.text_input("Tên nhóm nguồn (tuỳ chọn)", placeholder="Ví dụ: Log sáng 3/7, Email lỗi...")
+                        quick_content = st.text_area("Dán nội dung vào đây", placeholder="Dán nội dung vào đây...", height=120)
+                        quick_privacy_choice = render_privacy_choice(f"wsc_quick_privacy_{active_conversation.id}")
+                        if st.form_submit_button(labels["quick_paste_add"]):
+                            if quick_content.strip():
+                                final_title = quick_title.strip() or f"Nguồn dán nhanh {datetime.now().strftime('%d/%m %H:%M')}"
+                                ts = create_pasted_text_temporary_source(
+                                    conversation_id=active_conversation.id,
+                                    title=final_title,
+                                    content_text=quick_content,
+                                    owner_choice=quick_privacy_choice,
+                                )
+                                st.session_state.wsc_action_message = f"Đã thêm nguồn: {final_title}."
+                                safe_rerun()
+                            else:
+                                st.error("Nội dung không được để trống.")
 
-            st.write(" ")
-            with st.expander("🛠️ Tạo dữ liệu test không mật"):
+                # Khung dán nhật ký/email/đoạn chat dài
+                with tab_paste:
+                    with st.form("paste_log_form"):
+                        paste_title = st.text_input("Tiêu đề nguồn tạm", placeholder="Ví dụ: Email lỗi Opcenter, Nhật ký log hệ thống...")
+                        paste_content = st.text_area("Nội dung văn bản dài", placeholder="Dán nội dung vào đây...", height=120)
+                        paste_privacy_choice = render_privacy_choice(f"wsc_paste_privacy_{active_conversation.id}")
+                        if st.form_submit_button("Thêm vào nguồn tạm"):
+                            if paste_content.strip():
+                                final_title = paste_title.strip() or f"Nguồn dán tay {datetime.now().strftime('%d/%m %H:%M')}"
+                                ts = create_pasted_text_temporary_source(
+                                    conversation_id=active_conversation.id,
+                                    title=final_title,
+                                    content_text=paste_content,
+                                    owner_choice=paste_privacy_choice,
+                                )
+                                st.session_state.wsc_action_message = f"Đã lưu thành công nguồn tạm: {final_title}."
+                                safe_rerun()
+                            else:
+                                st.error("Nội dung nguồn không được để trống.")
+
+                with tab_upload:
+                    st.write("Tải lên tài liệu để dùng làm nguồn cho cuộc trò chuyện.")
+                    st.write("Có thể chọn hoặc kéo thả nhiều tài liệu cùng lúc.")
+                    st.write("Hỗ trợ: TXT, MD, CSV, Excel, Word, PowerPoint, PDF và ảnh nếu máy có bộ đọc phù hợp.")
+                    with st.form(f"wsc_doc_upload_form_{active_conversation.id}"):
+                        uploaded_files = st.file_uploader(
+                            "Chọn tài liệu cho cuộc trò chuyện này",
+                            type=["txt", "md", "markdown", "csv", "xlsx", "xls", "docx", "pptx", "pdf", "png", "jpg", "jpeg", "webp", "bmp", "tif", "tiff"],
+                            key=f"wsc_doc_upload_{active_conversation.id}_{st.session_state.wsc_upload_version}",
+                            accept_multiple_files=True,
+                        )
+                        doc_privacy_choice = render_privacy_choice(f"wsc_doc_privacy_{active_conversation.id}")
+                        enable_now = st.checkbox("Dùng các tài liệu này trong câu trả lời", value=False)
+                        if st.form_submit_button("Đọc và thêm vào nguồn tạm"):
+                            if not uploaded_files:
+                                st.error("Vui lòng chọn tập tin trước khi thêm.")
+                            else:
+                                batch_res = process_workspace_upload_batch(
+                                    uploaded_files,
+                                    active_conversation.id,
+                                    doc_privacy_choice,
+                                    enable_now
+                                )
+                                success_count = batch_res["success_count"]
+                                fail_count = batch_res["fail_count"]
+                                if success_count > 0:
+                                    st.session_state.wsc_upload_version += 1
+                                    if enable_now:
+                                        st.session_state.wsc_action_message = f"Đã thêm {success_count} tài liệu. Nguồn mới đã được bật cho câu trả lời."
+                                    else:
+                                        st.session_state.wsc_action_message = f"Đã thêm {success_count} tài liệu."
+                                else:
+                                    st.session_state.wsc_action_message = None
+
+                                err_parts = []
+                                if fail_count > 0:
+                                    err_parts.append(f"Một số tài liệu chưa đọc được ({fail_count} tập tin thất bại):")
+                                    for fname in batch_res["failed_files"]:
+                                        err_parts.append(f"- {fname}: {batch_res['errors_by_file'][fname]}")
+                                if batch_res["has_truncated"]:
+                                    err_parts.append("Lưu ý: Một số nội dung quá lớn đã bị rút gọn.")
+                                if err_parts:
+                                    st.session_state.wsc_action_error = "\n".join(err_parts)
+                                else:
+                                    st.session_state.wsc_action_error = None
+                                safe_rerun()
+
+            with st.expander("🛠️ Nhà phát triển / Thử nghiệm", expanded=False):
                 st.write("Tạo một nguồn tạm với dữ liệu giả, an toàn để thử nghiệm tính năng, không chứa dữ liệu thật.")
                 if st.button("Tạo dữ liệu test không mật"):
                     create_safe_test_data(active_conversation.id)
                     st.session_state.wsc_action_message = "Đã tạo nguồn dữ liệu test an toàn và bật cho cuộc trò chuyện."
                     safe_rerun()
-
-            # Khung thêm tài liệu đa định dạng thống nhất vào nguồn tạm của cuộc trò chuyện
-            st.write(" ")
-            with st.expander("📁 Thêm tài liệu"):
-                st.write("Tải lên tài liệu để dùng làm nguồn cho cuộc trò chuyện.")
-                st.write("Có thể chọn hoặc kéo thả nhiều tài liệu cùng lúc.")
-                st.write("Hỗ trợ: TXT, MD, CSV, Excel, Word, PowerPoint, PDF và ảnh nếu máy có bộ đọc phù hợp.")
-                with st.form(f"wsc_doc_upload_form_{active_conversation.id}"):
-                    uploaded_files = st.file_uploader(
-                        "Chọn tài liệu cho cuộc trò chuyện này",
-                        type=["txt", "md", "markdown", "csv", "xlsx", "xls", "docx", "pptx", "pdf", "png", "jpg", "jpeg", "webp", "bmp", "tif", "tiff"],
-                        key=f"wsc_doc_upload_{active_conversation.id}_{st.session_state.wsc_upload_version}",
-                        accept_multiple_files=True,
-                    )
-                    doc_privacy_choice = render_privacy_choice(f"wsc_doc_privacy_{active_conversation.id}")
-
-                    # Checkbox to enable now (default OFF)
-                    enable_now = st.checkbox("Dùng các tài liệu này trong câu trả lời", value=False)
-
-                    if st.form_submit_button("Đọc và thêm vào nguồn tạm"):
-                        if not uploaded_files:
-                            st.error("Vui lòng chọn tập tin trước khi thêm.")
-                        else:
-                            batch_res = process_workspace_upload_batch(
-                                uploaded_files,
-                                active_conversation.id,
-                                doc_privacy_choice,
-                                enable_now
-                            )
-
-                            success_count = batch_res["success_count"]
-                            fail_count = batch_res["fail_count"]
-
-                            if success_count > 0:
-                                st.session_state.wsc_upload_version += 1
-                                if enable_now:
-                                    st.session_state.wsc_action_message = f"Đã thêm {success_count} tài liệu. Nguồn mới đã được bật cho câu trả lời."
-                                else:
-                                    st.session_state.wsc_action_message = f"Đã thêm {success_count} tài liệu."
-                            else:
-                                st.session_state.wsc_action_message = None
-
-                            # Render error batch clear format
-                            err_parts = []
-                            if fail_count > 0:
-                                err_parts.append(f"Một số tài liệu chưa đọc được ({fail_count} tập tin thất bại):")
-                                for fname in batch_res["failed_files"]:
-                                    err_parts.append(f"- {fname}: {batch_res['errors_by_file'][fname]}")
-
-                            if batch_res["has_truncated"]:
-                                err_parts.append("Lưu ý: Một số nội dung quá lớn đã bị rút gọn.")
-
-                            if err_parts:
-                                st.session_state.wsc_action_error = "\n".join(err_parts)
-                            else:
-                                st.session_state.wsc_action_error = None
-
-                            safe_rerun()
 
         with col_results:
             # Hiển thị bản xem trước câu trả lời và nguồn đang bật bên phải
@@ -1009,7 +993,7 @@ else:
             # Ý cần kiểm tra và hành động tiếp theo
             if last_assistant_msg:
                 to_check = ["Đây là câu trả lời do AI tạo, cần kiểm tra lại trước khi dùng."]
-                next_actions = ["Kiểm tra nguồn trước khi kết luận"]
+                next_actions = ["Kiểm tra lại tài liệu nguồn"]
             else:
                 to_check = []
                 next_actions = []

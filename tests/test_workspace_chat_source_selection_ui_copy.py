@@ -20,11 +20,19 @@ class MockSessionState(dict):
     def __setattr__(self, name, value):
         self[name] = value
 
+class WidgetStatesDict(dict):
+    def __init__(self, session_state):
+        super().__init__()
+        self.session_state = session_state
+    def __setitem__(self, key, value):
+        super().__setitem__(key, value)
+        self.session_state[key] = value
+
 class MockStreamlit:
     def __init__(self):
         self.calls = []
-        self.widget_states = {}
         self.session_state = MockSessionState()
+        self.widget_states = WidgetStatesDict(self.session_state)
 
     def subheader(self, text, *args, **kwargs):
         self.calls.append(("subheader", str(text), None, None))
@@ -241,9 +249,9 @@ def test_render_notebook_source_list_with_items(mock_st):
     assert "Đang bật" in all_text
 
     checkbox_calls = [c for c in mock_st.calls if c[0] == "checkbox"]
-    assert checkbox_calls[0][1] == "Chỉ hiển thị nguồn đang bật"
-    assert checkbox_calls[1][1] == "Bật nguồn này cho cuộc trò chuyện"
-    assert checkbox_calls[1][3] == "wsc_toggle_notebook_conv_1_src_1"
+    assert checkbox_calls[0][1] == "Bật nguồn này cho cuộc trò chuyện"
+    assert checkbox_calls[0][3] == "wsc_toggle_notebook_conv_1_src_1"
+    assert checkbox_calls[1][1] == "Chỉ hiển thị nguồn đang bật"
 
 def test_render_temporary_source_list_empty(mock_st):
     render_source_library(
