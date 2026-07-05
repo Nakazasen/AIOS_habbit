@@ -1,5 +1,30 @@
 # Changelog
 
+## 2026-07-05 - Agent Result Import MVP Completion & Roadmap Sync
+
+### Enhancements
+- Completed Agent Result Import MVP (AI-GW-A17B) implementing local-only validation of agent reports under the `aios_agent_report_v1` schema.
+  - Verification results:
+    - focused A17B tests: 42 passed
+    - A17A + A17B regression: 61 passed
+    - full pytest: 855 passed
+    - git diff --check: PASS
+    - uv.lock: absent / not tracked
+    - source scan: PASS, only safe comment match
+    - force push used: NO
+    - post-push remote verification: PASS
+- Enforced strict canonical JSON hashing, depth checks (max 20), size limits (max 1 MiB), and non-object JSON root guards to prevent unstructured exceptions.
+- Added path security checks to reject control characters in declared files and prevent echoing raw absolute/UNC/system paths or secrets in safe summaries.
+- Modified agent class validation to match only if available in the task pack.
+- Expanded parameterized tests to ensure observed evidence missing/false values properly downgrade verdicts to `REVIEW_REQUIRED`.
+- Initiated Roadmap Synchronization (RM-SYNC-A17B) introducing the absolute "NotebookLM-simple UX lock" rule to guarantee the interface remains clean and easy to use.
+
+### Governance
+- Added the absolute UX governance rule: "GIAO DIỆN PHẢI DỄ SỬ DỤNG NHƯ NOTEBOOKLM. Nếu khó hiểu, coi như thất bại. Người dùng không có thời gian để ghi nhớ cách dùng quá phức tạp."
+- Confirmed Workspace Chat is the primary daily UX and Case Cockpit-style complexity is retired.
+- Placed AI-GW-A17C "Workspace Chat helper" under UX lock. Next required gate is UI audit before opening A17C implementation.
+- P1.0 remains LOCKED.
+
 ## 2026-07-05 - Agent Task Pack Export MVP Completion & Roadmap Sync
 
 ### Enhancements
@@ -548,10 +573,3 @@
 ### Validation
 
 - py -3 -m pytest: 16 passed.
-
-
-
-
-
-
-

@@ -27,13 +27,35 @@ Case → Evidence → Map → Action → Learning → Memory
 ## Active Position
 
 - Current phase: Phase 4 — Workspace Chat Foundation & AI Gateway Preparation.
-- Latest closed implementation gate: AI-GW-A17A — Agent Task Pack Export MVP — DONE/PUSHED/REMOTE_VERIFIED.
-- Current roadmap sync gate: RM-SYNC-A17A — Sync Master Roadmap after AI-GW-A17A — IN PROGRESS.
+- Latest closed implementation gate: AI-GW-A17B — Result Import MVP — DONE/PUSHED/REMOTE_VERIFIED.
+- Current roadmap sync gate: RM-SYNC-A17B — Sync Master Roadmap after AI-GW-A17B — IN PROGRESS.
 - Latest closed design gate: AI-GW-A17-DESIGN — IDE Agent Bridge docs-only design — DONE/PUSHED/REMOTE_VERIFIED.
-- Next candidate gate: AI-GW-A17B — Result Import MVP — NOT_STARTED / NEXT_CANDIDATE (after roadmap sync is complete).
-- AI-GW-A17C / A17D / A18 — NOT_STARTED.
+- Next candidate gate: UI Audit — Workspace Chat simplicity audit for NotebookLM-simple UX drift — NOT_STARTED / NEXT_CANDIDATE.
+- AI-GW-A17C — Workspace Chat helper — NOT_STARTED / UX-LOCKED (pending UI Audit completion and owner approval).
+- AI-GW-A17D / A18 — NOT_STARTED.
 - P1.0 — Owner Pilot / Productization — LOCKED.
 
+---
+
+## NotebookLM-Simple UX Governance Law
+
+### Absolute UX Law:
+"GIAO DIỆN PHẢI DỄ SỬ DỤNG NHƯ NOTEBOOKLM. Nếu khó hiểu, coi như thất bại. Người dùng không có thời gian để ghi nhớ cách dùng quá phức tạp."
+
+### UX Law Interpretation:
+- Workspace Chat is the primary daily user experience.
+- Do not recreate or reintroduce a complex Case Cockpit-style interface.
+- Do not expose task pack, report import, hash, gate, commit, branch, push, or agent bridge concepts to normal users.
+- A17A/A17B are backend/developer safety layers only.
+- A17A/A17B must stay invisible in normal daily WorkLens usage.
+- Any future A17C "Workspace Chat helper" must simplify the NotebookLM-like chat experience.
+- A17C must not add visible multi-step workflow, cockpit, new sidebar complexity, or buttons such as "Giao AI xử lý" / "Nhập kết quả AI" unless explicitly approved by the owner after UX audit.
+- If a proposed UI change requires the user to remember a complicated workflow, it fails.
+- The product direction is: open Workspace Chat, add/select sources, ask questions naturally, receive grounded answers.
+- Advanced safety checks must be automatic or hidden behind simple warnings.
+- UI audit is mandatory before opening any UI-affecting A17C work.
+
+---
 
 ### M1.13 — Owner Trial Pain Point Fixes
 
@@ -368,14 +390,27 @@ Future research should learn public patterns from RAGFlow, kotaemon, Microsoft G
 
 Immediate:
 
-- **RM-SYNC-A17A — Sync Master Roadmap after AI-GW-A17A** (IN_PROGRESS) — this roadmap sync gate recording commit hashes, validation evidence, and accepted hardening backlog.
-- **AI-GW-A17B — Result Import MVP** (NOT_STARTED / NEXT_CANDIDATE) — parser and validation checks for agent reports.
+- **RM-SYNC-A17B — Sync Master Roadmap after AI-GW-A17B** (IN_PROGRESS) — this roadmap sync gate recording commit hashes, validation evidence, and absolute NotebookLM-simple UX lock.
+- **UI Audit — Workspace Chat simplicity audit for NotebookLM-simple UX drift** (NOT_STARTED / NEXT_CANDIDATE) — a mandatory UX check to prevent complex Case Cockpit workflows from entering the chat experience.
+- **AI-GW-A17C — Workspace Chat helper** (NOT_STARTED / UX-LOCKED) — background chat helper, UX-locked until UI audit passes and owner accepts UX scope.
+- **AI-GW-A17D — Git observer / anti-fake hardening** (NOT_STARTED).
 - **AI-GW-A18 — NotebookLM Comparison Arena** (NOT_STARTED) — after A17 or later strategy decision.
 
 Completed:
 
+- **AI-GW-A17B — Result Import MVP** (DONE/PUSHED/REMOTE_VERIFIED) — parser and validation checks for agent reports.
+  Validation evidence:
+  - focused A17B tests: 42 passed
+  - A17A + A17B regression: 61 passed
+  - full pytest: 855 passed
+  - git diff --check: PASS
+  - uv.lock: absent / not tracked
+  - source scan: PASS, only safe comment match
+  - force push used: NO
+  - post-push remote verification: PASS
 - **AI-GW-A17A — Agent Task Pack Export MVP** (DONE/PUSHED/REMOTE_VERIFIED) — local-only task pack export with SHA-256 integrity hash, canonical JSON, task ID validation, privacy and destination checks, and atomic export.
 - **AI-GW-A17-DESIGN — IDE Agent Bridge docs-only design** (DONE/PUSHED/REMOTE_VERIFIED) — architecture boundaries, result import, task pack schema and safety prompt design completed.
+- **RM-SYNC-A17A — Sync Master Roadmap after AI-GW-A17A** (DONE/PUSHED/REMOTE_VERIFIED) — roadmap sync gate recording A17A hashes and backlog.
 - **RM-SYNC-A16 — Sync Master Roadmap after AI-GW-A16** (DONE/PUSHED/REMOTE_VERIFIED) — roadmap naming, baseline, commit timeline, and prompt governance synchronized after A16.
 - **AI-GW-A16 — Router Mock Integration with Owner Consent Gateway** (DONE/CLOSED/REMOTE_SYNCED) — mock router adapter, privacy gateway, no real provider calls, local validation tests.
 - **Gate 1C — Workspace Chat Source Library / Source Management UX** (COMPLETE) — implemented search/filter, bulk actions, source toggle, and delete confirmation.
@@ -524,3 +559,6 @@ Not included:
 - **15. AI-GW-A17-DESIGN IDE Agent Bridge Design:** `6ea3f573e62db7fbb4bf2089e0f6f2eb932394e5` — Message: Unify A17 design destination enum
 - **16. AI-GW-A17A Agent Task Pack Export MVP:** `a2660583c53d2eb67c6123a36648fbc74d4b8879` — Message: Add A17A agent task pack export MVP
 - **17. AI-GW-A17A Blockers Fix:** `3da1882f8d7c71968d35cea15078d43dc9d8bcce` — Message: Fix A17A task pack export audit blockers
+- **18. RM-SYNC-A17A Roadmap Sync after AI-GW-A17A:** `bb154657a6843724f4eb201f197f43acf3e68d2a` — Message: Sync roadmap after A17A task pack export
+- **19. AI-GW-A17B Agent Result Import MVP:** `65449764d7a35b0ace01891e8e02028f9db9eef2` — Message: Add A17B agent result import MVP
+- **20. AI-GW-A17B Audit Blockers Fix:** `75a8f0be64586df0cedfb6ddfc28c0f32225d82a` — Message: Fix A17B result import audit blockers
