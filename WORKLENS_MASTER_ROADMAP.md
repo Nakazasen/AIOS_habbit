@@ -88,7 +88,13 @@ Not allowed yet:
 
 ### Phase 5 — IDE / Strong Model Answer Bridge
 
-Status: NEXT_PARALLEL.
+Status: DONE_WITH_WARNINGS / FOUNDATION_DONE.
+
+Clarification:
+
+- Manual IDE answer/evidence bridge foundation exists: prompt/evidence pack export, paste-back answer import, model/tool name, evidence refs, route summary, and privacy guard.
+- AI-GW-A17 repo-task pack / trusted result-import bridge is NOT_STARTED / NEXT_CANDIDATE.
+- Phase 5 is therefore not fully complete as a runtime-controlled IDE Agent Bridge.
 
 Scope:
 
