@@ -54,7 +54,7 @@ Thiết lập bộ phân tích và đối chiếu bằng chứng bao gồm:
 Kiến trúc IDE Agent Bridge được triển khai theo các giai đoạn tuần tự sau:
 
 1. **AI-GW-A17-DESIGN:** Docs-only design (thiết kế tài liệu - gate hiện tại).
-2. **AI-GW-A17A:** Task Pack Export MVP (tạo file task pack có ký số SHA-256).
+2. **AI-GW-A17A:** Task Pack Export MVP (tạo file task pack có hash toàn vẹn/checksum SHA-256).
 3. **AI-GW-A17B:** Result Import MVP (parser và kiểm tra tính toàn vẹn của report).
 4. **AI-GW-A17C:** Workspace Chat export/import helper (tích hợp helper UI).
 5. **AI-GW-A17D:** Git observer / validation receipt / anti-fake hardening (xác minh observed evidence cục bộ).
@@ -101,22 +101,35 @@ hoặc
 BASELINE: [sha256/git hash of base commit]
 TASK_PACK_SCHEMA: aios_agent_task_pack_v1
 REPORT_IMPORT_SCHEMA: aios_agent_report_v1
-FAKE_PASS_DETECTION: YES (phân biệt declared vs observed evidence, reason codes)
-FILES_TOUCHED: docs/design/AIOS_IDE_AGENT_BRIDGE_DESIGN.md, docs/design/AIOS_AGENT_RESULT_IMPORT_DESIGN.md, docs/design/AIOS_GATE_A17_IDE_AGENT_BRIDGE_PROMPT.md
+
+FAKE_PASS_DETECTION:
+- PASS_WITH_EVIDENCE
+hoặc
+- FAIL_WITH_BLOCKERS
+hoặc
+- REVIEW_REQUIRED
+
+FILES_CHANGED:
+- observed_files:
 
 TESTS: N/A (docs-only design gate, verification via docs checking)
 
-AUDIT_STATUS: [PASS_WITH_EVIDENCE | FAIL_WITH_BLOCKERS | REVIEW_REQUIRED]
+AUDIT_STATUS:
 
-FORBIDDEN_DIRTY: [none | list files if any]
+FORBIDDEN_DIRTY:
+
+COMMIT_CREATED:
+- YES_WITH_HASH:
+hoặc
+- NO_WITH_REASON:
+
+PUSH_PERFORMED: NO
 
 RISKS:
-- blockers: [danh sách blockers hoặc ghi "none observed after checks" kèm mô tả kiểm tra]
-- high: [danh sách rủi ro cao hoặc ghi "none observed after checks" kèm mô tả kiểm tra]
-- medium: [danh sách rủi ro trung bình hoặc ghi "none observed after checks" kèm mô tả kiểm tra]
-- low: [danh sách rủi ro thấp hoặc ghi "none observed after checks" kèm mô tả kiểm tra]
+- blockers:
+- high:
+- medium:
+- low:
 
-COMMIT_CREATED: YES
-PUSH_PERFORMED: NO
 NEXT_STEP: Đợi Codex Design Audit phê duyệt bản cập nhật thiết kế
 ```
