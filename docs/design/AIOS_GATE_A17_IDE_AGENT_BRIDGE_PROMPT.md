@@ -23,7 +23,7 @@ Thiết lập và hoàn thiện tài liệu kiến trúc, ranh giới an toàn, 
 Hỗ trợ xuất gói tác vụ JSON deterministic sử dụng hàm băm **SHA-256** (không dùng MD5 làm khóa toàn vẹn). Các trường bao gồm:
 
 - Thông tin nhận diện và mục tiêu (`schema_version`, `task_id`, `task_type`, `gate`, `agent_class`, `objective`).
-- baseline môi trường repo (`repo` chứa `logical_repo_id`, `repo_path_policy` không chứa absolute path thực tế khi truyền cloud, `expected_branch`, `expected_head`).
+- baseline môi trường repo (`repo` chứa `logical_repo_id`, `repo_path_policy` không chứa absolute path thực tế cho các workflow bên ngoài (external/manual/chat/cloud/out-of-process), `expected_branch`, `expected_head`).
 - phạm vi cho phép (`allowed_files`, `forbidden_files`, `allowed_commands`, `forbidden_commands`, `required_tests`).
 - chính sách riêng tư (`privacy_class`, `destination`, `purpose`, `consent_ref`, `source_policy`).
 - thông tin quản trị và rollback (`roadmap_reference`, `pass_fail_rules`, `rollback`, `required_report_fields`, `created_at`, `pack_sha256`).
