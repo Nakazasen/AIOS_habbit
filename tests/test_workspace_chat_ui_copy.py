@@ -307,3 +307,71 @@ def test_no_inspect_stack_in_production_ui():
         assert "caller_mock_st" not in source
         assert "Các bước thử nghiệm" not in source
         assert "Pilot" not in source
+
+
+def test_workspace_chat_ui_copy_notebooklm_governance_harden():
+    ui_source = Path("src/aios_habit/workspace_chat_ui.py").read_text(encoding="utf-8")
+    app_source = Path("src/aios_habit/workspace_chat_app.py").read_text(encoding="utf-8")
+
+    # 1. Ensure the exact simple instruction is recorded
+    assert "Thêm tài liệu rồi hỏi tự nhiên; AIOS sẽ tự kiểm tra nguồn và cảnh báo nếu thiếu." in app_source
+
+    # 2. Ensure main button is "Hỏi"
+    assert "Hỏi" in ui_source
+
+    # 3. List of strictly forbidden UI strings
+    forbidden_terms = [
+        "giao ai xử lý",
+        "nhập kết quả ai",
+        "task pack",
+        "report import",
+        "hash",
+        "gate",
+        "commit",
+        "branch",
+        "push",
+        "a17",
+        "các bước thử nghiệm",
+        "pilot",
+        "hỏi ai với nguồn đang bật",
+        "kiểm tra nguồn trước"
+    ]
+
+    # Extract user-facing string literals
+    user_facing_strings = []
+    streamlit_display_pattern = re.compile(
+        r'(?:st\.(?:write|error|warning|info|success|markdown|text_input|checkbox|button|caption|title|header|subheader))\((.*?)\)'
+    )
+    constant_assign_pattern = re.compile(r'^([A-Z_0-9]+)\s*=\s*["\']([^"\']*)["\']\s*$')
+
+    # Also parse get_vietnamese_labels dictionary values
+    labels_pattern = re.compile(r'["\']([a-z0-9_]+)["\']\s*:\s*["\']([^"\']+)["\']')
+
+    for source_text in [ui_source, app_source]:
+        for line in source_text.splitlines():
+            line_str = line.strip()
+            if line_str.startswith("#"):
+                continue
+            # Streamlit calls
+            for match in streamlit_display_pattern.finditer(line_str):
+                args_str = match.group(1)
+                for q_match in re.findall(r'"([^"]*)"|\'([^\']*)\'', args_str):
+                    val = q_match[0] or q_match[1]
+                    if val:
+                        user_facing_strings.append(val.lower())
+            # Constants
+            m = constant_assign_pattern.match(line_str)
+            if m:
+                val = m.group(2)
+                if val:
+                    user_facing_strings.append(val.lower())
+            # Dictionary labels
+            for match in labels_pattern.finditer(line_str):
+                val = match.group(2)
+                if val:
+                    user_facing_strings.append(val.lower())
+
+    for term in forbidden_terms:
+        for val in user_facing_strings:
+            # We allow words like "gate" if they are in technical variables, but not in user-facing literals.
+            assert term not in val, f"Forbidden term '{term}' leaked in user-facing UI text: '{val}'"

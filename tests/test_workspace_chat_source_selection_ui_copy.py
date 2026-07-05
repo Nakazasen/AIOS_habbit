@@ -8,7 +8,10 @@ from aios_habit.workspace_chat_models import NotebookSource, TemporaryConversati
 
 FORBIDDEN_WORDS = [
     "RAG", "vector", "embedding", "chunk", "retrieval", "citation", "claim",
-    "provider router", "Mermaid", "prompt pack", "Nguồn AIOS đã dùng", "Nguồn chứng minh"
+    "provider router", "Mermaid", "prompt pack", "Nguồn AIOS đã dùng", "Nguồn chứng minh",
+    "Giao AI xử lý", "Nhập kết quả AI", "task pack", "report import", "hash", "gate",
+    "commit", "branch", "push", "A17", "Các bước thử nghiệm", "Pilot",
+    "Hỏi AI với nguồn đang bật", "Kiểm tra nguồn trước"
 ]
 
 class MockSessionState(dict):
