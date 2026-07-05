@@ -21,11 +21,11 @@ Case → Evidence → Map → Action → Learning → Memory
 ### Active Position
 
 - Current phase: Phase 4 — Workspace Chat Foundation & AI Gateway Preparation.
-- Latest closed implementation gate: AI-GW-A17B — Result Import MVP — DONE/PUSHED/REMOTE_VERIFIED.
-- Current roadmap sync gate: RM-SYNC-A17B — Sync Master Roadmap after AI-GW-A17B — IN PROGRESS.
+- Latest closed implementation gate: Workspace Chat NotebookLM-simple cleanup — DONE / PUSHED / REMOTE_VERIFIED / OWNER_VISUAL_SMOKE_PASS.
+- Current roadmap sync gate: RM-SYNC-UI-NOTEBOOKLM-CLEANUP — Sync Master Roadmap after Workspace Chat UI Cleanup — IN PROGRESS.
 - Latest closed design gate: AI-GW-A17-DESIGN — IDE Agent Bridge docs-only design — DONE/PUSHED/REMOTE_VERIFIED.
-- Next candidate gate: UI Audit — Workspace Chat simplicity audit for NotebookLM-simple UX drift — NOT_STARTED / NEXT_CANDIDATE.
-- AI-GW-A17C — Workspace Chat helper — NOT_STARTED / UX-LOCKED (pending UI Audit completion and owner approval).
+- Next candidate gate: A17C Scope Discussion — Owner-approved A17C scope discussion or docs/prompt planning only, not implementation.
+- AI-GW-A17C — Workspace Chat helper — NOT_STARTED / UX-LOCKED (pending owner scope approval: A17C can only be considered after RM-SYNC-UI-NOTEBOOKLM-CLEANUP is pushed/remote verified and the owner explicitly accepts the next A17C scope. Any future A17C must be hidden/simple Workspace Chat support only, with no new cockpit, no multi-step agent UI, and no task-pack/report-import UI).
 - AI-GW-A17D / A18 — NOT_STARTED.
 - P1.0 — Owner Pilot / Productization — LOCKED.
 
@@ -118,7 +118,8 @@ Clarification:
 - Manual IDE answer/evidence bridge foundation exists: prompt/evidence pack export, paste-back answer import, model/tool name, evidence refs, route summary, and privacy guard.
 - A17 docs-only design is now complete (AI-GW-A17-DESIGN is DONE/PUSHED/REMOTE_VERIFIED).
 - Runtime repo-task bridge Task Pack Export MVP is now complete (AI-GW-A17A is DONE/PUSHED/REMOTE_VERIFIED).
-- A17B/A17C/A17D subgates remain future gates (NOT_STARTED).
+- Runtime repo-task bridge Result Import MVP is now complete (AI-GW-A17B is DONE/PUSHED/REMOTE_VERIFIED).
+- A17C/A17D subgates remain future gates (NOT_STARTED).
 - Phase 5 is therefore not fully complete as a runtime-controlled IDE Agent Bridge.
 
 Scope:
@@ -185,14 +186,35 @@ Learning sources for public pattern research: RAGFlow, kotaemon, Microsoft Graph
 
 Immediate:
 
-- **RM-SYNC-A17B — Sync Master Roadmap after AI-GW-A17B** (IN_PROGRESS) — this roadmap sync gate recording commit hashes, validation evidence, and absolute NotebookLM-simple UX lock.
-- **UI Audit — Workspace Chat simplicity audit for NotebookLM-simple UX drift** (NOT_STARTED / NEXT_CANDIDATE) — a mandatory UX check to prevent complex Case Cockpit workflows from entering the chat experience.
-- **AI-GW-A17C — Workspace Chat helper** (NOT_STARTED / UX-LOCKED) — background chat helper, UX-locked until UI audit passes and owner accepts UX scope.
+- **RM-SYNC-UI-NOTEBOOKLM-CLEANUP — Sync Master Roadmap after Workspace Chat UI Cleanup** (IN_PROGRESS) — this roadmap sync gate updating roadmap status after UI cleanup and owner smoke PASS.
+- **AI-GW-A17C — Workspace Chat helper** (NOT_STARTED / UX-LOCKED) — background chat helper. UX-locked: can only be considered after RM-SYNC-UI-NOTEBOOKLM-CLEANUP is pushed/remote verified and the owner explicitly accepts the next A17C scope. Any future A17C must be hidden/simple Workspace Chat support only, with no new cockpit, no multi-step agent UI, and no task-pack/report-import UI.
 - **AI-GW-A17D — Git observer / anti-fake hardening** (NOT_STARTED).
 - **AI-GW-A18 — NotebookLM Comparison Arena** (NOT_STARTED) — after A17 or later strategy decision.
 
 Completed:
 
+- **Workspace Chat NotebookLM-simple cleanup** (DONE/PUSHED/REMOTE_VERIFIED / OWNER_VISUAL_SMOKE_PASS) — simplified Workspace Chat daily UX.
+  Validation evidence:
+  - commit: `f23ea1345e1c3644f6037aa21ee428077cf1ac5a — Simplify Workspace Chat daily UX`
+  - Codex re-audit: PASS_WORKSPACE_CHAT_NOTEBOOKLM_SIMPLE_CLEANUP_AUDITED_READY_FOR_PUSH_SAFETY
+  - push-safety: PASS_WORKSPACE_CHAT_NOTEBOOKLM_SIMPLE_CLEANUP_PUSHED_REMOTE_VERIFIED
+  - focused tests: 76 passed
+  - full pytest: 856 passed
+  - diff checks: PASS
+  - force push used: NO
+  - owner visual smoke check: PASS_OWNER_VISUAL_SMOKE
+    - App launched directly into Workspace Chat at localhost:8501
+    - Exact instruction: “Thêm tài liệu rồi hỏi tự nhiên; AIOS sẽ tự kiểm tra nguồn và cảnh báo nếu thiếu.”
+    - Primary ask button: “Hỏi”
+    - No visible stale/cockpit/test labels: “Các bước thử nghiệm”, “Pilot”, “Hỏi AI với nguồn đang bật”, “Kiểm tra nguồn trước”
+    - No visible technical/dev concepts: “Giao AI xử lý”, “Nhập kết quả AI”, task pack, report import, hash, gate, commit, branch, push, A17
+    - Advanced controls are collapsed: “Kiểm tra nguồn nâng cao”, “Thêm nguồn”, “Nhà phát triển / Thử nghiệm”, “Tùy chọn”, “Quản lý nguồn nâng cao”
+  - post-push remote verification: PASS
+- **RM-SYNC-A17B — Sync Master Roadmap after AI-GW-A17B** (DONE/PUSHED/REMOTE_VERIFIED) — roadmap sync gate recording commit hashes, validation evidence, and absolute NotebookLM-simple UX lock.
+  Validation evidence:
+  - commit: `dd7394b5859c1cdda2aa1da849ec715b1fd0c9ee`
+  - git diff --check: PASS
+  - post-push remote verification: PASS
 - **AI-GW-A17B — Result Import MVP** (DONE/PUSHED/REMOTE_VERIFIED) — parser and validation checks for agent reports.
   Validation evidence:
   - focused A17B tests: 42 passed
@@ -275,6 +297,8 @@ The repository `AIOS_habbit` is the central repository for WorkLens. Legacy repo
 - **18. RM-SYNC-A17A Roadmap Sync after AI-GW-A17A:** `bb154657a6843724f4eb201f197f43acf3e68d2a` — Message: Sync roadmap after A17A task pack export
 - **19. AI-GW-A17B Agent Result Import MVP:** `65449764d7a35b0ace01891e8e02028f9db9eef2` — Message: Add A17B agent result import MVP
 - **20. AI-GW-A17B Audit Blockers Fix:** `75a8f0be64586df0cedfb6ddfc28c0f32225d82a` — Message: Fix A17B result import audit blockers
+- **21. RM-SYNC-A17B Roadmap Sync after AI-GW-A17B:** `dd7394b5859c1cdda2aa1da849ec715b1fd0c9ee` — Message: Sync A17B roadmap and NotebookLM-simple UX lock
+- **22. Workspace Chat NotebookLM-simple UI Cleanup:** `f23ea1345e1c3644f6037aa21ee428077cf1ac5a` — Message: Simplify Workspace Chat daily UX
 
 ---
 

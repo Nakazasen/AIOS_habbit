@@ -1,5 +1,31 @@
 # Changelog
 
+## 2026-07-05 - Workspace Chat NotebookLM-Simple UI Cleanup & Roadmap Sync
+
+### Enhancements
+- Completed Workspace Chat NotebookLM-simple UI Cleanup.
+  - Verification results:
+    - commit: `f23ea1345e1c3644f6037aa21ee428077cf1ac5a — Simplify Workspace Chat daily UX`
+    - Codex re-audit: PASS_WORKSPACE_CHAT_NOTEBOOKLM_SIMPLE_CLEANUP_AUDITED_READY_FOR_PUSH_SAFETY
+    - push-safety: PASS_WORKSPACE_CHAT_NOTEBOOKLM_SIMPLE_CLEANUP_PUSHED_REMOTE_VERIFIED
+    - focused tests: 76 passed
+    - full pytest: 856 passed
+    - diff checks: PASS
+    - force push used: NO
+    - owner visual smoke check: PASS_OWNER_VISUAL_SMOKE
+      - App launched directly into Workspace Chat at localhost:8501
+      - Exact instruction: “Thêm tài liệu rồi hỏi tự nhiên; AIOS sẽ tự kiểm tra nguồn và cảnh báo nếu thiếu.”
+      - Primary ask button: “Hỏi”
+      - No visible stale/cockpit/test labels: “Các bước thử nghiệm”, “Pilot”, “Hỏi AI với nguồn đang bật”, “Kiểm tra nguồn trước”
+      - No visible technical/dev concepts: “Giao AI xử lý”, “Nhập kết quả AI”, task pack, report import, hash, gate, commit, branch, push, A17
+      - Advanced controls are collapsed: “Kiểm tra nguồn nâng cao”, “Thêm nguồn”, “Nhà phát triển / Thử nghiệm”, “Tùy chọn”, “Quản lý nguồn nâng cao”
+- Initiated Roadmap Synchronization (RM-SYNC-UI-NOTEBOOKLM-CLEANUP) updating roadmap and master roadmap.
+
+### Governance
+- Preserved absolute NotebookLM-simple UX law verbatim: "GIAO DIỆN PHẢI DỄ SỬ DỤNG NHƯ NOTEBOOKLM. Nếu khó hiểu, coi như thất bại. Người dùng không có thời gian để ghi nhớ cách dùng quá phức tạp."
+- A17C remains NOT_STARTED / UX-LOCKED. A17C can only be considered after RM-SYNC-UI-NOTEBOOKLM-CLEANUP is pushed/remote verified and the owner explicitly accepts the next A17C scope. Any future A17C must be hidden/simple Workspace Chat support only (no new cockpit, no multi-step agent UI, no task-pack/report-import UI).
+- P1.0 remains LOCKED.
+
 ## 2026-07-05 - Agent Result Import MVP Completion & Roadmap Sync
 
 ### Enhancements
