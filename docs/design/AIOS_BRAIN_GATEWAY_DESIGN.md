@@ -75,7 +75,7 @@ Raw evidence text chỉ tồn tại trong local preparation object. Nó không m
 ## Bảng quyết định routing
 
 | Điều kiện | Local Brain | Router Brain | IDE Agent Brain | Quyết định mặc định |
-|---|---:|---:|---:|---|
+| --- | ---: | ---: | ---: | --- |
 | `local_only` | Có | Không | Chỉ local/manual, không cloud | Local only |
 | `confidential` | Có | Không | Chỉ local/manual | Local only |
 | `unknown` hoặc thiếu metadata | Có | Không | Không external | Deny cloud |
@@ -148,7 +148,7 @@ Không log raw prompt, raw response, evidence, API key, header hoặc company do
 ## Failure behavior
 
 | Failure | Hành vi bắt buộc |
-|---|---|
+| --- | --- |
 | Thiếu privacy metadata | Deny cloud, Local Brain hoặc explicit no-answer |
 | Nguồn hỗn hợp | Strictest privacy wins |
 | Sanitizer không xác nhận safe | Deny external |

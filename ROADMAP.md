@@ -1,10 +1,6 @@
 # AIOS WorkLens High-Level Roadmap Index
 
-
-
 AIOS WorkLens / AIOS_habbit là một **hệ điều hành trí nhớ công việc cá nhân, local-first**: biến tài liệu, Excel, ảnh, log, chat, email, AI output và sự việc hằng ngày thành tri thức tái sử dụng theo vòng:
-
-
 
 ```text
 
@@ -12,11 +8,7 @@ Case → Evidence → Map → Action → Learning → Memory
 
 ```
 
-
-
 ## Core Reference Documents
-
-
 
 - **Product North Star & Doctrine:** [PRODUCT_NORTH_STAR.md](PRODUCT_NORTH_STAR.md)
 
@@ -24,28 +16,22 @@ Case → Evidence → Map → Action → Learning → Memory
 
 - **Product Positioning:** [docs/AIOS_PRODUCT_POSITIONING.md](docs/AIOS_PRODUCT_POSITIONING.md)
 
-
-
 ---
 
-
-
 ## Repository State Policy
+
 - Authoritative current HEAD/origin state must be verified by Git during each gate.
 - This roadmap intentionally does not claim the hash of its own latest commit.
 - Commit hashes recorded below are historical gate evidence, not self-updating current HEAD fields.
 
 ## Active Position
+
 - Current phase: Phase 4 — Workspace Chat Foundation & AI Gateway Preparation.
 - Latest closed implementation gate: AI-GW-A16 — Router Mock Integration with Owner Consent Gateway — DONE/CLOSED/REMOTE_SYNCED.
 - Latest roadmap sync gate: RM-SYNC-A16 — Sync Master Roadmap after AI-GW-A16 — DONE/PUSHED; remote verification is handled by external audit/post-push records, not self-attested by this file.
 - Next candidate gate: AI-GW-A17 — IDE Agent Bridge — NOT_STARTED / NEXT_CANDIDATE; planning/design only, implementation not opened.
 - AI-GW-A18 — NotebookLM Comparison Arena — NOT_STARTED.
 - P1.0 — Owner Pilot / Productization — LOCKED.
-
-
-
-
 
 ### M1.13 — Owner Trial Pain Point Fixes
 
@@ -60,9 +46,6 @@ Exit criteria:
 - Visual Map preview appears after save-back;
 - tests pass;
 - no unsafe content committed.
-
-
-
 
 ### M1.14A — Visual Map UI Reference Study
 
@@ -82,9 +65,6 @@ Exit criteria:
 - roadmap updated;
 - validation and safety scan passed;
 - only safe design docs committed.
-
-
-
 
 ### M1.14B — Visual Map UI Interaction Table-First Implementation
 
@@ -111,10 +91,7 @@ Exit criteria:
 - no unsafe content committed
 - no NotebookLM/P1.0 overclaim
 
-
 ## Mission and Non-goals
-
-
 
 AIOS is:
 
@@ -123,8 +100,6 @@ AIOS is:
 - A system for evidence-grounded work: Case, Evidence, Map, Action, Learning, Memory.
 
 - A privacy-aware multi-model workbench that records evidence, route log, model/tool used and privacy mode.
-
-
 
 AIOS is not:
 
@@ -140,23 +115,13 @@ AIOS is not:
 
 - an LSU-only traceability system.
 
-
-
 ---
-
-
 
 ## Phase Roadmap
 
-
-
 ### Phase 0 — Vision & Governance
 
-
-
 Status: DONE.
-
-
 
 Scope:
 
@@ -170,15 +135,9 @@ Scope:
 
 - roadmap guardrails.
 
-
-
 ### Phase 1 — Local Case Cockpit Foundation
 
-
-
 Status: DONE.
-
-
 
 Scope:
 
@@ -194,15 +153,9 @@ Scope:
 
 - audit gates.
 
-
-
 ### Phase 2 — Real Document / MOM Foundation
 
-
-
 Status: DONE_WITH_WARNINGS.
-
-
 
 Scope:
 
@@ -216,21 +169,13 @@ Scope:
 
 - NotebookLM comparison baseline.
 
-
-
 Warning:
 
 - not NotebookLM-level semantic retrieval yet.
 
-
-
 ### Phase 3 — Provider Safety + Daily UI
 
-
-
 Status: DONE_WITH_WARNINGS.
-
-
 
 Scope:
 
@@ -246,13 +191,9 @@ Scope:
 
 - Q&A to Case route summary.
 
-
-
 Warning:
 
 - daily-pilot ready, not production-ready.
-
-
 
 ### Phase 4 — Workspace Chat Foundation & AI Gateway Preparation
 
@@ -274,15 +215,9 @@ Scope:
 
 - fake NotebookLM parity claim.
 
-
-
 ### Phase 5 — IDE / Strong Model Answer Bridge
 
-
-
 Status: DONE.
-
-
 
 Scope:
 
@@ -300,8 +235,6 @@ Scope:
 
 - privacy guard.
 
-
-
 Not allowed yet:
 
 - direct cloud call for company/mật;
@@ -310,15 +243,9 @@ Not allowed yet:
 
 - automatic agent edits without approval.
 
-
-
 ### Phase 6 — Case Memory at Scale
 
-
-
 Status: LATER.
-
-
 
 Scope:
 
@@ -336,21 +263,13 @@ Scope:
 
 - find similar incident.
 
-
-
 Warning:
 
 - currently NOT_READY.
 
-
-
 ### Phase 7 — Work Stream Map / Knowledge Graph
 
-
-
 Status: LATER.
-
-
 
 Scope:
 
@@ -362,15 +281,9 @@ Scope:
 
 - no graph DB until proven necessary.
 
-
-
 ### Phase 8 — Senior Learning / Personal OS
 
-
-
 Status: LATER.
-
-
 
 Scope:
 
@@ -386,15 +299,9 @@ Scope:
 
 - AI-independent personal memory.
 
-
-
 ### Phase 9 — Production Traceability Foundation
 
-
-
 Status: LATER.
-
-
 
 Scope:
 
@@ -408,8 +315,6 @@ Scope:
 
 - simple join/risk summary.
 
-
-
 Forbidden:
 
 - prediction engine;
@@ -420,15 +325,9 @@ Forbidden:
 
 - long research branch.
 
-
-
 ### Phase 10 — P1.0 Production Readiness
 
-
-
 Status: LOCKED.
-
-
 
 Open only if:
 
@@ -444,27 +343,15 @@ Open only if:
 
 - no secret/runtime commit risk.
 
-
-
 ---
-
-
 
 ## Why model call is only a small part
 
-
-
 AIOS quality depends on the full chain: parser → index → retrieval → rerank → evidence pack → context → model → privacy guard → route log. A stronger model alone is not enough if parsing, chunking, retrieval, citations or privacy routing are weak. Free/low-tier models may be useful for simple public notes but are insufficient for complex documents. Strong models should be used safely through Phase 5 IDE/model bridge, with exported evidence packs, paste-back answers, model/tool name, route summary and privacy mode stored.
-
-
 
 Future research should learn public patterns from RAGFlow, kotaemon, Microsoft GraphRAG, LightRAG, LlamaIndex, Haystack, Docling, Unstructured, OpenHands, Aider, Cline, Continue, Goose, Cognee, Letta/MemGPT, LangGraph and Semantic Kernel. Do not copy leaked/proprietary code.
 
-
-
 ---
-
-
 
 ## Next Gate Queue
 
@@ -489,11 +376,7 @@ Risks & Gaps:
 
 ---
 
-
-
 ## Historical Gate & Phase Status
-
-
 
 - M1 to M1.8D-R: completed local-first foundation, workspace/notebook, in-app Q&A, NotebookLM bridge persistence and governance sync.
 
@@ -553,7 +436,6 @@ Risks & Gaps:
    - No vector/graph drift.
    - Owner acceptance still required.
 
-
 ## M1.10 - Antigravity Bridge Manual-Step Reduction
 
 Exit criteria:
@@ -596,22 +478,24 @@ Not included:
 - Do not call a gate DONE unless it has PASS evidence, commit status, push status, and remote verification when required.
 
 ## Gate Family Naming Standard
+
 - WSC-* = Workspace Chat Foundation gates.
 - AI-GW-* = AI Brain Gateway / Router / Agent gates.
 - RM-SYNC-* = Roadmap synchronization gates.
 
 ## Commit Timeline Policy
+
 - Functional gate commits and major roadmap sync commits may be recorded as historical evidence.
 - The current repository HEAD is not maintained inside this roadmap to avoid self-referential stale hashes.
 - To verify current HEAD/origin, run `git rev-parse HEAD` and `git rev-parse origin/main` during the active gate.
 
 ## Commit Timeline
 
-12. AI-GW-A16 Router Mock Integration: `5cf0cca9cdc9f5b4b2a22a45e0525cb4d8c050d4`
+- **12.** AI-GW-A16 Router Mock Integration: `5cf0cca9cdc9f5b4b2a22a45e0525cb4d8c050d4`
     Message: Add AIOS brain gateway mock router guard
 
-13. RM-SYNC-A16 Roadmap Sync after AI-GW-A16: `bf4c39c9b6b44611b826be3201bbdf39e8cae099`
+- **13.** RM-SYNC-A16 Roadmap Sync after AI-GW-A16: `bf4c39c9b6b44611b826be3201bbdf39e8cae099`
     Message: Sync roadmap after AI-GW-A16
 
-14. RM-SYNC-A16 Stale Status Fix: `f3a9b6c42d2aa40f2cd225f1684d70c06e9dc039`
+- **14.** RM-SYNC-A16 Stale Status Fix: `f3a9b6c42d2aa40f2cd225f1684d70c06e9dc039`
     Message: Fix roadmap sync status after A16

@@ -13,11 +13,13 @@ Case → Evidence → Map → Action → Learning → Memory
 ## 1. Current Gate Status
 
 ### Repository State Policy
+
 - Authoritative current HEAD/origin state must be verified by Git during each gate.
 - This roadmap intentionally does not claim the hash of its own latest commit.
 - Commit hashes recorded below are historical gate evidence, not self-updating current HEAD fields.
 
 ### Active Position
+
 - Current phase: Phase 4 — Workspace Chat Foundation & AI Gateway Preparation.
 - Latest closed implementation gate: AI-GW-A16 — Router Mock Integration with Owner Consent Gateway — DONE/CLOSED/REMOTE_SYNCED.
 - Latest roadmap sync gate: RM-SYNC-A16 — Sync Master Roadmap after AI-GW-A16 — DONE/PUSHED; remote verification is handled by external audit/post-push records, not self-attested by this file.
@@ -199,23 +201,26 @@ The repository `AIOS_habbit` is the central repository for WorkLens. Legacy repo
 ## 9. Commit Timeline
 
 ### Commit Timeline Policy
+
 - Functional gate commits and major roadmap sync commits may be recorded as historical evidence.
 - The current repository HEAD is not maintained inside this roadmap to avoid self-referential stale hashes.
 - To verify current HEAD/origin, run `git rev-parse HEAD` and `git rev-parse origin/main` during the active gate.
 
 ### Historical Commits
-12. AI-GW-A16 Router Mock Integration: `5cf0cca9cdc9f5b4b2a22a45e0525cb4d8c050d4`
+
+- **12.** AI-GW-A16 Router Mock Integration: `5cf0cca9cdc9f5b4b2a22a45e0525cb4d8c050d4`
     Message: Add AIOS brain gateway mock router guard
 
-13. RM-SYNC-A16 Roadmap Sync after AI-GW-A16: `bf4c39c9b6b44611b826be3201bbdf39e8cae099`
+- **13.** RM-SYNC-A16 Roadmap Sync after AI-GW-A16: `bf4c39c9b6b44611b826be3201bbdf39e8cae099`
     Message: Sync roadmap after AI-GW-A16
 
-14. RM-SYNC-A16 Stale Status Fix: `f3a9b6c42d2aa40f2cd225f1684d70c06e9dc039`
+- **14.** RM-SYNC-A16 Stale Status Fix: `f3a9b6c42d2aa40f2cd225f1684d70c06e9dc039`
     Message: Fix roadmap sync status after A16
 
 ---
 
 ## 10. Gate Family Naming Standard
+
 - WSC-* = Workspace Chat Foundation gates.
 - AI-GW-* = AI Brain Gateway / Router / Agent gates.
 - RM-SYNC-* = Roadmap synchronization gates.

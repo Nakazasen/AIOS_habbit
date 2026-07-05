@@ -16,7 +16,7 @@ Không xóa gì trong A15.
 ## Bảng inventory
 
 | Thành phần | File/module chính | Hiện dùng ở đâu | Có gọi cloud? | Privacy gate hiện có? | Test hiện có? | Rủi ro chính | Quyết định |
-|---|---|---|---:|---:|---:|---|---|
+| --- | --- | --- | ---: | ---: | ---: | --- | --- |
 | Workspace Chat AI answer | `workspace_chat_app.py`, `workspace_chat_ai_answer.py`, `llm_client.py` | UI chính: retrieval cục bộ, đóng gói snippet, gọi endpoint OpenAI-compatible từ biến môi trường | Có, nếu `AIOS_LLM_PROVIDER` và endpoint cloud được cấu hình | Có nhưng cục bộ trong module; block nhãn không cho gửi, kiểm source fingerprint; `machine_only` lại được coi là gửi được | Có: `test_workspace_chat_ai_answer.py`, owner-flow, UI-copy, architecture-boundary | UI tự đặt `cloud_consent_confirmed=True`; không có gateway/audit log chung; locality trong `LLMConfig` không được enforcement tại call site; lỗi có thể chứa body provider | `MIGRATE_TO_BRAIN_GATEWAY` |
 | Workspace Chat local retrieval/evidence | `workspace_chat_retrieval.py`, `rag_search.py`, `rag_ingest.py` | UI chính; SQLite in-memory FTS/LIKE, chọn tối đa 5 snippet | Không | Retrieval là local; blank/unknown fail về `local_only`, nhưng `machine_only` bị map thành `cloud_safe` | Có: `test_workspace_chat_retrieval.py`, RAG tests | Privacy vocabulary không thống nhất; snippet được chuyển thẳng sang prompt ở đường cloud | `KEEP`, gateway nhận output qua contract |
 | Workspace source privacy UX/model | `workspace_chat_ui.py`, `workspace_chat_models.py`, `workspace_chat_store.py` | UI chính; owner chọn “Có thể gửi AI” hoặc “Chỉ dùng trên máy” | Không tự gọi | Có; mặc định model là `machine_only`, nhưng UI ánh xạ “Có thể gửi AI” thành `machine_only` | Có: source/privacy/owner-flow tests | Tên `machine_only` trái nghĩa với hành vi “sendable”; dễ leak khi tái sử dụng ngoài UI | `MIGRATE_TO_BRAIN_GATEWAY`; giữ storage compatibility |
@@ -60,7 +60,7 @@ Những đường này không đi qua một policy owner duy nhất. Nakazasen R
 ## Ma trận giữ/chuyển/deprecate/xóa sau
 
 | Nhóm | KEEP | MIGRATE_TO_BRAIN_GATEWAY | DEPRECATE | DELETE_LATER |
-|---|---|---|---|---|
+| --- | --- | --- | --- | --- |
 | Retrieval/evidence | Local retrieval, RAG evidence/citations | Quyết định external route | Không | Không |
 | Provider/network | Provider adapters làm implementation detail | Mọi call site và policy | Direct `llm_client` cho code mới; in-repo router sau migration | Chỉ đề xuất phần router trùng lặp sau A16+ và test parity |
 | Prompt/export | Formatters và safe placeholders | Privacy resolution, consent, audit receipt | Target-string tự do cho flow mới | Không |
