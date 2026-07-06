@@ -47,8 +47,10 @@ class BaseDocumentConverterAdapter:
     """Optional base class for common adapter patterns."""
 
     def _create_failed_element(self, path: str, error_msg: str, context: ConversionContext, extractor_name: str) -> DocumentElement:
+        import hashlib
+        path_hash = hashlib.sha256(path.encode("utf-8")).hexdigest()[:16]
         return DocumentElement(
-            element_id=f"failed_{hash(path)}",
+            element_id=f"failed_{path_hash}",
             document_id=context.document_id,
             source_path=path,
             source_name=path.split("/")[-1] if "/" in path else path.split("\\")[-1],

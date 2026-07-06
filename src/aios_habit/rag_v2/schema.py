@@ -163,4 +163,7 @@ class DocumentElement:
         if "bbox" in data_copy and data_copy["bbox"] is not None:
             data_copy["bbox"] = tuple(data_copy["bbox"])
 
-        return cls(**data_copy)
+        import dataclasses
+        fields = {f.name for f in dataclasses.fields(cls)}
+        filtered_data = {k: v for k, v in data_copy.items() if k in fields}
+        return cls(**filtered_data)
