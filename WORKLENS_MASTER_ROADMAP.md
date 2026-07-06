@@ -21,29 +21,33 @@ Case → Evidence → Map → Action → Learning → Memory
 ### Active Position
 
 - Current phase: Phase 4 — Workspace Chat Foundation & AI Gateway Preparation.
-- Latest closed implementation gate: RAG-V2-DOC-CONVERTER-ADAPTERS-MIN — DONE / PUSHED / REMOTE_VERIFIED.
-  - RAG v2 converter adapter MVP completed and remote verified: `e2e39428f150f455a73beb84be0b7693252c9767`
-  - This is the second RAG v2 foundation implementation layer after schema/adapter interface.
-  - The system now has generic minimal local converters for common document formats.
-  - This is still not retrieval, not chunking, not index, not synthesis.
-  - Previous schema caveats are fixed:
-    - deterministic failed-element id
-    - unknown future fields in `from_dict`
-- Latest closed roadmap sync gate: RM-SYNC-RAG-V2-SCHEMA-ADAPTER — DONE / PUSHED / REMOTE_VERIFIED.
+- Latest closed implementation gate: RAG-V2-STRUCTURE-AWARE-CHUNKING-AND-LOCAL-INDEX-MIN — DONE / PUSHED / REMOTE_VERIFIED.
+  - RAG v2 structure-aware chunking and local index MVP completed and remote verified: `c75c319847af070f8b863cae8aaea19205c93baa`
+  - This is the third RAG v2 foundation implementation layer after:
+    - schema/adapter interface
+    - minimal document converter adapters
+  - The system now has:
+    - generic structure-aware chunks
+    - deterministic chunk IDs
+    - metadata/privacy preservation
+    - local SQLite lexical index
+    - search result metadata return
+  - This is still not answer synthesis/composer.
+  - This is still not NotebookLM battle rerun.
+  - This is still not Workspace Chat integration.
+  - This is still not company 68-file retrieval robustness.
+- Latest closed roadmap sync gate: RM-SYNC-RAG-V2-DOC-CONVERTER-ADAPTERS-MIN — DONE / PUSHED / REMOTE_VERIFIED.
 - Latest closed design gate: RAG-V2-DESIGN-DOC — Generic element-first local-first RAG core — DONE / PUSHED / REMOTE_VERIFIED.
-- Current roadmap sync gate: RM-SYNC-RAG-V2-DOC-CONVERTER-ADAPTERS-MIN — IN PROGRESS.
-- Next candidate gate: Codex re-audit / push-safety of RM-SYNC-RAG-V2-DOC-CONVERTER-ADAPTERS-MIN docs-only commit.
-- Next is: `RAG-V2-STRUCTURE-AWARE-CHUNKING-AND-LOCAL-INDEX-MIN`
-- Next is not retrieval/synthesis yet.
+- Current roadmap sync gate: RM-SYNC-RAG-V2-STRUCTURE-AWARE-CHUNKING-AND-LOCAL-INDEX-MIN — IN PROGRESS.
+- Next gate: `RAG-V2-HYBRID-RETRIEVAL-MIN`
 - No dependency changes.
 - No UI changes.
 - No MOM/WMS-specific runtime rule engine.
 - No technical UI/panel drift.
+- Company 68-file dataset retrieval robustness remains separate/pending.
 - A18 — NOT_STARTED / no A18.
 - P1.0 — LOCKED / no P1.0.
 - IDE bridge — unopened.
-- MOM-specific composer (FIX-MOM-ANSWER-COMPOSER-MIN) is STOPPED due to hard-code risk.
-- MOM/WMS remains benchmark/eval/private dataset only, not core logic.
 
 ### Recent verified gates / historical status labels
 - KEY SETUP LOCAL — PASS
@@ -55,6 +59,8 @@ Case → Evidence → Map → Action → Learning → Memory
 - RAG-V2-RESEARCH-FIRST-ARCHITECTURE-AUDIT — PASS
 - RAG-V2-DESIGN-DOC — PASS / PUSHED / REMOTE_VERIFIED
 - RAG-V2-ELEMENT-SCHEMA-AND-ADAPTER-INTERFACE — PASS / PUSHED / REMOTE_VERIFIED
+- RAG-V2-DOC-CONVERTER-ADAPTERS-MIN — PASS_WITH_WARNINGS / PUSHED / REMOTE_VERIFIED
+- RAG-V2-STRUCTURE-AWARE-CHUNKING-AND-LOCAL-INDEX-MIN — PASS_WITH_WARNINGS / PUSHED / REMOTE_VERIFIED
 - A18 — NOT_STARTED
 - P1.0 — LOCKED
 - IDE bridge — unopened
@@ -431,6 +437,7 @@ The repository `AIOS_habbit` is the central repository for WorkLens. Legacy repo
 - **28. RAG-V2-ELEMENT-SCHEMA-AND-ADAPTER-INTERFACE RAG v2 Element Schema and Adapter Interface:** `7db254a74889d4500e2bdf3dfcef6b6e9a7afe2e` — Message: Add RAG v2 element schema and adapter interface
 - **29. RM-SYNC-RAG-V2-SCHEMA-ADAPTER Roadmap Sync after RAG v2 Schema Adapter:** `0a2208497fd1d8e6602d9a42e955075619e84b40` — Message: Sync Roadmap after RAG v2 Schema Adapter
 - **30. RAG-V2-DOC-CONVERTER-ADAPTERS-MIN RAG v2 Document Converter Adapters:** `e2e39428f150f455a73beb84be0b7693252c9767` — Message: Add RAG v2 minimal document converter adapters
+- **31. RAG-V2-STRUCTURE-AWARE-CHUNKING-AND-LOCAL-INDEX-MIN RAG v2 Chunking and Local Index:** `c75c319847af070f8b863cae8aaea19205c93baa` — Message: Add RAG v2 structure-aware chunking and local index
 
 
 ---

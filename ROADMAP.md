@@ -27,43 +27,61 @@ Case → Evidence → Map → Action → Learning → Memory
 ## Active Position
 
 - Current phase: Phase 4 — Workspace Chat Foundation & AI Gateway Preparation.
-- Latest closed implementation gate: RAG-V2-DOC-CONVERTER-ADAPTERS-MIN — DONE / PUSHED / REMOTE_VERIFIED.
-  - Commit: `e2e39428f150f455a73beb84be0b7693252c9767`
-  - Implemented MVP converter adapters: text/md/csv, html, pdf (existing fitz), excel (existing openpyxl), docx/pptx (manual xml parser).
-  - Registry/selection layer present.
-  - Unsupported, missing, or parsing errors fail closed.
-  - Previous caveats fixed:
-    - deterministic failed-element id fixed
-    - `DocumentElement.from_dict()` ignores unknown future fields
+- Latest closed implementation gate: RAG-V2-STRUCTURE-AWARE-CHUNKING-AND-LOCAL-INDEX-MIN — DONE / PUSHED / REMOTE_VERIFIED.
+  - Commit: `c75c319847af070f8b863cae8aaea19205c93baa`
+  - Implemented MVP:
+    - `DocumentChunk`
+    - `StructureAwareChunker`
+    - `LocalChunkIndex`
+    - `SearchResult`
+    - deterministic SHA-256 chunk IDs
+    - metadata preservation
+    - privacy-label preservation
+    - table/cell metadata preservation
+    - page/slide/sheet/row/column/cell metadata preservation
+    - SQLite stdlib local lexical index
+    - temp-path tests only
+    - deterministic lexical search
+    - upsert without duplicate chunk IDs
   - Validation evidence:
-    - Codex re-audit PASS_WITH_WARNINGS
+    - Codex re-audit PASS
     - push-safety PASS_WITH_WARNINGS
     - focused schema/adapters/hardcode tests PASS — `7 passed`
     - converter tests PASS — `10 passed`
-    - all RAG v2 tests PASS — `17 passed`
-    - full pytest PASS — `886 passed`
-    - import smoke PASS — `RAG_V2_CONVERTER_IMPORT_PASS`
+    - chunk/index tests PASS — `13 passed`
+    - all RAG v2 tests PASS — `30 passed`
+    - full pytest PASS — `899 passed`
+    - import smoke PASS — `RAG_V2_CHUNK_INDEX_IMPORT_PASS`
     - diff check PASS
     - scope check PASS
     - secret scan PASS
     - API Key.txt safety PASS
-    - hard-code guard PASS
+    - hard-code guard PASS_WITH_WARNINGS
   - Accepted warnings:
-    - old report full-hash mismatch resolved to actual commit `e2e39428f150f455a73beb84be0b7693252c9767`
-    - registry class name is `ConverterRegistry`, not `DocumentConverterRegistry`
-    - unknown extension fail-closes with `ExtractionStatus.FAILED`, accepted for MVP
+    - case-insensitive hard-code scan matched only false positives: `indexing_timestamp`, `sheet_names`, `sheetnames`, `slide_names`, `Timestamps`
+    - case-sensitive forbidden-term scan had no true runtime hits
+    - full pytest ran successfully but terminal tool moved it to background due duration
+  - Remaining limitation: SQLite lexical search is intentionally minimal/deterministic; no vector search / advanced ranking yet.
+- Latest closed implementation gate (foundation): RAG-V2-DOC-CONVERTER-ADAPTERS-MIN — DONE / PUSHED / REMOTE_VERIFIED.
+  - Commit: `e2e39428f150f455a73beb84be0b7693252c9767`
 - Latest closed implementation gate (foundation): RAG-V2-ELEMENT-SCHEMA-AND-ADAPTER-INTERFACE — DONE / PUSHED / REMOTE_VERIFIED.
   - Commit: `7db254a74889d4500e2bdf3dfcef6b6e9a7afe2e`
-- Latest closed roadmap sync gate: RM-SYNC-RAG-V2-SCHEMA-ADAPTER — DONE / PUSHED / REMOTE_VERIFIED.
-- Current roadmap sync gate: RM-SYNC-RAG-V2-DOC-CONVERTER-ADAPTERS-MIN — IN PROGRESS.
-- Next candidate gate: Codex re-audit / push-safety of RM-SYNC-RAG-V2-DOC-CONVERTER-ADAPTERS-MIN docs-only commit.
-- Next implementation gate: RAG-V2-STRUCTURE-AWARE-CHUNKING-AND-LOCAL-INDEX-MIN.
+- Latest closed roadmap sync gate: RM-SYNC-RAG-V2-DOC-CONVERTER-ADAPTERS-MIN — DONE / PUSHED / REMOTE_VERIFIED.
+- Current roadmap sync gate: RM-SYNC-RAG-V2-STRUCTURE-AWARE-CHUNKING-AND-LOCAL-INDEX-MIN — IN PROGRESS.
+- Next implementation gate: RAG-V2-HYBRID-RETRIEVAL-MIN.
 - RAG v2 core remains generic/local-first/element-first/privacy-first.
 - No dependency changes.
-- No retrieval/chunking/index/synthesis implemented.
-- No normal UI changes.
-- MOM-specific composer (FIX-MOM-ANSWER-COMPOSER-MIN) is STOPPED due to hard-code risk.
-- MOM/WMS remains benchmark/eval/private dataset only, not core logic.
+- No UI changes.
+- No retrieval synthesis/composer implemented.
+- No Workspace Chat integration.
+- No NotebookLM integration.
+- No company 68-file dataset processing.
+- No MOM/WMS-specific rule-engine drift.
+- No normal UI technical panel drift.
+- Company 68-file dataset retrieval robustness remains separate/pending.
+- A18 — NOT_STARTED / not opened.
+- P1.0 — LOCKED.
+- IDE bridge — unopened.
 
 ### Recent verified gates / historical status labels
 - KEY SETUP LOCAL — PASS
@@ -76,6 +94,7 @@ Case → Evidence → Map → Action → Learning → Memory
 - RAG-V2-DESIGN-DOC — PASS / PUSHED / REMOTE_VERIFIED
 - RAG-V2-ELEMENT-SCHEMA-AND-ADAPTER-INTERFACE — PASS / PUSHED / REMOTE_VERIFIED
 - RAG-V2-DOC-CONVERTER-ADAPTERS-MIN — PASS_WITH_WARNINGS / PUSHED / REMOTE_VERIFIED
+- RAG-V2-STRUCTURE-AWARE-CHUNKING-AND-LOCAL-INDEX-MIN — PASS_WITH_WARNINGS / PUSHED / REMOTE_VERIFIED
 - A18 — NOT_STARTED
 - P1.0 — LOCKED
 - IDE bridge — unopened
@@ -675,3 +694,4 @@ Not included:
 - **28. RAG-V2-ELEMENT-SCHEMA-AND-ADAPTER-INTERFACE RAG v2 Element Schema and Adapter Interface:** `7db254a74889d4500e2bdf3dfcef6b6e9a7afe2e` — Message: Add RAG v2 element schema and adapter interface
 - **29. RM-SYNC-RAG-V2-SCHEMA-ADAPTER Roadmap Sync after RAG v2 Schema Adapter:** `0a2208497fd1d8e6602d9a42e955075619e84b40` — Message: Sync Roadmap after RAG v2 Schema Adapter
 - **30. RAG-V2-DOC-CONVERTER-ADAPTERS-MIN RAG v2 Document Converter Adapters:** `e2e39428f150f455a73beb84be0b7693252c9767` — Message: Add RAG v2 minimal document converter adapters
+- **31. RAG-V2-STRUCTURE-AWARE-CHUNKING-AND-LOCAL-INDEX-MIN RAG v2 Chunking and Local Index:** `c75c319847af070f8b863cae8aaea19205c93baa` — Message: Add RAG v2 structure-aware chunking and local index

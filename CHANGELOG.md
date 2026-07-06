@@ -1,5 +1,37 @@
 # Changelog
 
+## 2026-07-06 - RAG v2 Structure-Aware Chunking, Local Index & Roadmap Sync
+
+### Enhancements
+- Added RAG v2 structure-aware chunking and local index (`RAG-V2-STRUCTURE-AWARE-CHUNKING-AND-LOCAL-INDEX-MIN`).
+  - Code commit: `c75c319847af070f8b863cae8aaea19205c93baa` (Message: `Add RAG v2 structure-aware chunking and local index`)
+  - Added:
+    - `DocumentChunk`
+    - `StructureAwareChunker`
+    - `LocalChunkIndex`
+    - `SearchResult`
+  - Added deterministic SHA-256 chunk IDs.
+  - Added metadata and privacy-label preservation.
+  - Added table/cell/page/slide/sheet/range metadata preservation.
+  - Added SQLite stdlib local lexical index.
+  - Added upsert/search/clear/close/count behavior.
+  - Added chunking/index tests.
+  - Validation: 7 passed focused schema/adapters/hardcode, 10 passed converter tests, 13 passed chunk/index tests, 30 passed all RAG v2 tests, 899 passed full pytest.
+  - Import smoke: `RAG_V2_CHUNK_INDEX_IMPORT_PASS`.
+
+### Governance
+- No dependency changes.
+- No UI changes.
+- No retrieval synthesis/composer.
+- No Workspace Chat integration.
+- No NotebookLM integration.
+- No MOM/WMS-specific rule-engine drift.
+- Accepted warnings:
+  - hard-code scan false positives only.
+  - full pytest command duration/background terminal behavior.
+- Next gate should be `RAG-V2-HYBRID-RETRIEVAL-MIN`.
+- A18 remains `NOT_STARTED`. P1.0 remains `LOCKED`. IDE bridge remains unopened.
+
 ## 2026-07-06 - RAG v2 Minimal Document Converter Adapters & Roadmap Sync
 
 ### Enhancements
