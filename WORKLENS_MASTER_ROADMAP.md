@@ -22,14 +22,27 @@ Case → Evidence → Map → Action → Learning → Memory
 
 - Current phase: Phase 4 — Workspace Chat Foundation & AI Gateway Preparation.
 - Latest closed implementation gate: FIX-MOM-PDF-INGESTION-RETRIEVAL-MIN — Improve MOM PDF ingestion and retrieval ranking — DONE / PUSHED / REMOTE_VERIFIED.
-- Latest closed roadmap sync gate: RM-SYNC-A17D — DONE / PUSHED / REMOTE_VERIFIED.
-- Current roadmap sync gate: RM-SYNC-FIX-MOM-PDF-RETRIEVAL — Sync Master Roadmap after PDF Ingestion & Retrieval — IN PROGRESS.
-- Latest closed design gate: AI-GW-A17-DESIGN — IDE Agent Bridge docs-only design — DONE/PUSHED/REMOTE_VERIFIED.
-- Next candidate gate: Codex re-audit / push-safety of RM-SYNC-FIX-MOM-PDF-RETRIEVAL docs-only commit.
-- FIX-MOM-PDF-INGESTION-RETRIEVAL-MIN — Improve MOM PDF ingestion and retrieval ranking — DONE / PUSHED / REMOTE_VERIFIED (commit 361bbc470db4970e584991b029c06f2f8846e910).
-- RM-SYNC-FIX-MOM-PDF-RETRIEVAL — Sync Master Roadmap after PDF Retrieval — IN PROGRESS (local docs sync, pending push-safety).
-- A18 — NotebookLM Comparison Arena — NOT_STARTED.
-- P1.0 — Owner Pilot / Productization — LOCKED.
+- Latest closed roadmap sync gate: RM-SYNC-FIX-MOM-PDF-RETRIEVAL — DONE / PUSHED / REMOTE_VERIFIED.
+- Latest closed design gate: RAG-V2-DESIGN-DOC — Generic element-first local-first RAG core — DONE / LOCAL_DOC_READY.
+- Current roadmap sync gate: RM-SYNC-RAG-V2-ROADMAP-AND-DESIGN-DOC — Sync Master Roadmap after RAG v2 Design — IN PROGRESS.
+- Next candidate gate: Codex re-audit / push-safety of RM-SYNC-RAG-V2-ROADMAP-AND-DESIGN-DOC docs-only commit.
+- Next implementation gate: RAG-V2-ELEMENT-SCHEMA-AND-ADAPTER-INTERFACE (after push-safety of design).
+- MOM-specific composer (FIX-MOM-ANSWER-COMPOSER-MIN) is STOPPED due to hard-code risk.
+- MOM/WMS remains benchmark/eval/private dataset only, not core logic.
+
+### Recent verified gates / historical status labels
+- KEY SETUP LOCAL — PASS
+- REAL AI SMOKE — PASS
+- OWNER UI SMOKE — PASS
+- FIX-AIOS-MOM-WMS-RUNTIME-ENV — PASS
+- HOME TEMP 52 DATASET battle — PASS_WITH_LIMITATIONS
+- COMPANY 68 DATASET retrieval robustness — PENDING
+- RAG-V2-RESEARCH-FIRST-ARCHITECTURE-AUDIT — PASS
+- RAG-V2-DESIGN-DOC — PASS / LOCAL_DOC_READY
+- RAG-V2 roadmap/design docs commit — LOCAL_COMMIT_READY_FOR_PUSH_SAFETY
+- A18 — NOT_STARTED
+- P1.0 — LOCKED
+- IDE bridge — unopened
 
 Completed foundation gates include local Case Cockpit, Workspace/Knowledge Notebook, MOM local benchmark, provider safety modes, route log, one-screen daily UI, DeepSeek normal-document UI pilot, Q&A-to-Case route summary, company/mật privacy guard, Workspace Chat primary UI, multi-format uploader, local retrieval/evidence items, Vietnamese mojibake cleanup, legacy retirement docs sync, Workspace Chat Source Library (WSC-1C), and Brain Gateway integration design (AI-GW-A15).
 
@@ -93,23 +106,21 @@ Status: IN PROGRESS.
 *Note: M1.x is an internal milestone stream under Phase 4, not a separate product phase.*
 
 Scope:
-
-- better parser adapter;
-- structure-aware chunks;
-- SQLite FTS / BM25;
-- optional embeddings later;
-- hybrid search;
-- rerank;
-- query rewrite;
-- evidence pack;
-- citation scoring;
-- NotebookLM-style benchmark.
+- RAG v2 generic element-first local-first foundation.
+- Side-by-side migration to not break legacy MOM index.
+- Generic DocumentElement schema & converter adapters.
+- Structure-aware chunks (heading, page, table, cell range).
+- SQLite FTS / BM25 local index first.
+- Hybrid search & generic rerank (no business hard-code).
+- Evidence pack & generic citation synthesis.
+- NotebookLM-style benchmark without overfitting to MOM/WMS.
 
 Not allowed yet:
-
-- heavy vector DB without decision;
-- cloud embedding for company/mật;
-- fake NotebookLM parity claim.
+- Hard-coded MOM/WMS business logic in core.
+- Heavy vector DB without decision.
+- Cloud embedding for company/mật.
+- Fake NotebookLM parity claim.
+- New technical UI/panels.
 
 ### Phase 5 — IDE / Strong Model Answer Bridge
 

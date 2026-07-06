@@ -1,5 +1,23 @@
 # Changelog
 
+## 2026-07-06 - RAG v2 Design Document & Roadmap Sync
+
+### Enhancements
+- Added `docs/rag_v2/RAG_V2_DESIGN.md` establishing the architecture for a generic, element-first, local-first RAG core.
+- Recorded decision to stop the MOM-specific answer composer (`FIX-MOM-ANSWER-COMPOSER-MIN`) path due to hard-coding risks.
+- Added RAG v2 design direction:
+  - Generic `DocumentElement` schema and converter adapter interface.
+  - Structure-aware chunking (page, heading, table, cell range).
+  - SQLite FTS/BM25 local index first, skipping cloud vector DB initially.
+  - Standardized evidence packs and generic synthesis discipline.
+  - Generic and private eval harness strategies.
+  - Strict hard-code prevention policy: MOM/WMS terms are restricted to benchmark and eval config only.
+
+### Governance
+- Reaffirmed the absolute NotebookLM-simple UX law: RAG v2 will run side-by-side with the legacy MOM pilot without adding complex UI or new technical tabs to Workspace Chat.
+- No code, runtime, test, or dependency changes were made in this design gate.
+- A18 remains `NOT_STARTED`. P1.0 remains `LOCKED`.
+
 ## 2026-07-06 - MOM PDF Ingestion, Retrieval Ranking & Roadmap Sync
 
 ### Enhancements
