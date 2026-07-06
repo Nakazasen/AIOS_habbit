@@ -21,12 +21,23 @@ Case → Evidence → Map → Action → Learning → Memory
 ### Active Position
 
 - Current phase: Phase 4 — Workspace Chat Foundation & AI Gateway Preparation.
-- Latest closed implementation gate: FIX-MOM-PDF-INGESTION-RETRIEVAL-MIN — Improve MOM PDF ingestion and retrieval ranking — DONE / PUSHED / REMOTE_VERIFIED.
-- Latest closed roadmap sync gate: RM-SYNC-FIX-MOM-PDF-RETRIEVAL — DONE / PUSHED / REMOTE_VERIFIED.
-- Latest closed design gate: RAG-V2-DESIGN-DOC — Generic element-first local-first RAG core — DONE / LOCAL_DOC_READY.
-- Current roadmap sync gate: RM-SYNC-RAG-V2-ROADMAP-AND-DESIGN-DOC — Sync Master Roadmap after RAG v2 Design — IN PROGRESS.
-- Next candidate gate: Codex re-audit / push-safety of RM-SYNC-RAG-V2-ROADMAP-AND-DESIGN-DOC docs-only commit.
-- Next implementation gate: RAG-V2-ELEMENT-SCHEMA-AND-ADAPTER-INTERFACE (after push-safety of design).
+- Latest closed implementation gate: RAG-V2-ELEMENT-SCHEMA-AND-ADAPTER-INTERFACE — DONE / PUSHED / REMOTE_VERIFIED.
+  - Schema/adapter interface remote verified: `7db254a74889d4500e2bdf3dfcef6b6e9a7afe2e`
+  - First RAG v2 foundation implementation layer completed.
+  - Carry forward:
+    - deterministic failed-element id
+    - unknown future fields in `from_dict`
+- Latest closed roadmap sync gate: RM-SYNC-RAG-V2-ROADMAP-AND-DESIGN-DOC — DONE / PUSHED / REMOTE_VERIFIED.
+- Latest closed design gate: RAG-V2-DESIGN-DOC — Generic element-first local-first RAG core — DONE / PUSHED / REMOTE_VERIFIED.
+- Current roadmap sync gate: RM-SYNC-RAG-V2-SCHEMA-ADAPTER — IN PROGRESS.
+- Next candidate gate: Codex re-audit / push-safety of RM-SYNC-RAG-V2-SCHEMA-ADAPTER docs-only commit.
+- Next is converter adapter MVP: `RAG-V2-DOC-CONVERTER-ADAPTERS-MIN`
+- Next is not retrieval/synthesis yet.
+- No MOM/WMS-specific rule-engine drift.
+- No new technical UI/panels.
+- A18 — NOT_STARTED / no A18.
+- P1.0 — LOCKED / no P1.0.
+- IDE bridge — unopened.
 - MOM-specific composer (FIX-MOM-ANSWER-COMPOSER-MIN) is STOPPED due to hard-code risk.
 - MOM/WMS remains benchmark/eval/private dataset only, not core logic.
 
@@ -38,8 +49,8 @@ Case → Evidence → Map → Action → Learning → Memory
 - HOME TEMP 52 DATASET battle — PASS_WITH_LIMITATIONS
 - COMPANY 68 DATASET retrieval robustness — PENDING
 - RAG-V2-RESEARCH-FIRST-ARCHITECTURE-AUDIT — PASS
-- RAG-V2-DESIGN-DOC — PASS / LOCAL_DOC_READY
-- RAG-V2 roadmap/design docs commit — LOCAL_COMMIT_READY_FOR_PUSH_SAFETY
+- RAG-V2-DESIGN-DOC — PASS / PUSHED / REMOTE_VERIFIED
+- RAG-V2-ELEMENT-SCHEMA-AND-ADAPTER-INTERFACE — PASS / PUSHED / REMOTE_VERIFIED
 - A18 — NOT_STARTED
 - P1.0 — LOCKED
 - IDE bridge — unopened
@@ -199,10 +210,27 @@ Learning sources for public pattern research: RAGFlow, kotaemon, Microsoft Graph
 
 Immediate:
 
-- **RM-SYNC-A17D — Sync Master Roadmap after A17D Hidden Router** (IN_PROGRESS) — roadmap sync gate updating roadmap and changelog status after AI-GW-A17D hidden router adapter commit is pushed/remote verified.
+- **RM-SYNC-RAG-V2-SCHEMA-ADAPTER — Sync Roadmap after RAG v2 Schema Adapter** (IN_PROGRESS)
+- **RAG-V2-DOC-CONVERTER-ADAPTERS-MIN** (NOT_STARTED)
 - **AI-GW-A18 — NotebookLM Comparison Arena** (NOT_STARTED) — after A17 or later strategy decision.
 
 Completed:
+
+- **RAG-V2-ELEMENT-SCHEMA-AND-ADAPTER-INTERFACE — Add RAG v2 element schema and adapter interface** (DONE/PUSHED/REMOTE_VERIFIED) — Implemented the first generic foundation layer for RAG v2.
+  Validation evidence:
+  - commit: `7db254a74889d4500e2bdf3dfcef6b6e9a7afe2e`
+  - full pytest: 876 passed
+  - diff check: PASS
+  - hard-code guard: PASS
+  - carry-forward caveats:
+    - deterministic failed-element id (uses `hash(path)`).
+    - unknown future fields in `from_dict`.
+- **RM-SYNC-RAG-V2-ROADMAP-AND-DESIGN-DOC — Sync Master Roadmap after RAG v2 Design** (DONE/PUSHED/REMOTE_VERIFIED) — roadmap sync gate updating roadmap and changelog status after RAG v2 design commit.
+  Validation evidence:
+  - commit: `73f440ffcd0f7e5011b6e4af8e80dd01dffe5662`
+  - git diff --check: PASS
+  - post-push remote verification: PASS
+- **RM-SYNC-A17D — Sync Master Roadmap after A17D Hidden Router** (DONE/PUSHED/REMOTE_VERIFIED) — roadmap sync gate updating roadmap and changelog status after AI-GW-A17D hidden router adapter commit is pushed/remote verified.
 
 - **AI-GW-A17D — Hidden Router Adapter for Workspace Chat Ask** (DONE/PUSHED/REMOTE_VERIFIED) — direct integration of the nakazasen-ai-router library with Workspace Chat's "Hỏi" button.
   Validation evidence:

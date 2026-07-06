@@ -27,12 +27,26 @@ Case → Evidence → Map → Action → Learning → Memory
 ## Active Position
 
 - Current phase: Phase 4 — Workspace Chat Foundation & AI Gateway Preparation.
-- Latest closed implementation gate: FIX-MOM-PDF-INGESTION-RETRIEVAL-MIN — Improve MOM PDF ingestion and retrieval ranking — DONE / PUSHED / REMOTE_VERIFIED.
-- Latest closed roadmap sync gate: RM-SYNC-FIX-MOM-PDF-RETRIEVAL — DONE / PUSHED / REMOTE_VERIFIED.
-- Latest closed design gate: RAG-V2-DESIGN-DOC — Generic element-first local-first RAG core — DONE / LOCAL_DOC_READY.
-- Current roadmap sync gate: RM-SYNC-RAG-V2-ROADMAP-AND-DESIGN-DOC — Sync Master Roadmap after RAG v2 Design — IN PROGRESS.
-- Next candidate gate: Codex re-audit / push-safety of RM-SYNC-RAG-V2-ROADMAP-AND-DESIGN-DOC docs-only commit.
-- Next implementation gate: RAG-V2-ELEMENT-SCHEMA-AND-ADAPTER-INTERFACE (after push-safety of design).
+- Latest closed implementation gate: RAG-V2-ELEMENT-SCHEMA-AND-ADAPTER-INTERFACE — DONE / PUSHED / REMOTE_VERIFIED.
+  - Commit: `7db254a74889d4500e2bdf3dfcef6b6e9a7afe2e`
+  - Codex re-audit PASS
+  - push-safety PASS
+  - focused RAG v2 tests PASS
+  - existing related tests PASS
+  - full pytest `876 passed`
+  - import smoke `RAG_V2_IMPORT_PASS`
+  - diff check PASS
+  - secret scan PASS
+  - core hard-code scan PASS
+  - Carry-forward caveats:
+    - deterministic failed-element id
+    - unknown future fields in `from_dict`
+- Latest closed roadmap sync gate: RM-SYNC-RAG-V2-ROADMAP-AND-DESIGN-DOC — DONE / PUSHED / REMOTE_VERIFIED.
+- Latest closed design gate: RAG-V2-DESIGN-DOC — Generic element-first local-first RAG core — DONE / PUSHED / REMOTE_VERIFIED.
+- Current roadmap sync gate: RM-SYNC-RAG-V2-SCHEMA-ADAPTER — IN PROGRESS.
+- Next candidate gate: Codex re-audit / push-safety of RM-SYNC-RAG-V2-SCHEMA-ADAPTER docs-only commit.
+- Next implementation gate: RAG-V2-DOC-CONVERTER-ADAPTERS-MIN.
+- RAG v2 core remains generic/local-first/element-first/privacy-first.
 - MOM-specific composer (FIX-MOM-ANSWER-COMPOSER-MIN) is STOPPED due to hard-code risk.
 - MOM/WMS remains benchmark/eval/private dataset only, not core logic.
 
@@ -44,8 +58,8 @@ Case → Evidence → Map → Action → Learning → Memory
 - HOME TEMP 52 DATASET battle — PASS_WITH_LIMITATIONS
 - COMPANY 68 DATASET retrieval robustness — PENDING
 - RAG-V2-RESEARCH-FIRST-ARCHITECTURE-AUDIT — PASS
-- RAG-V2-DESIGN-DOC — PASS / LOCAL_DOC_READY
-- RAG-V2 roadmap/design docs commit — LOCAL_COMMIT_READY_FOR_PUSH_SAFETY
+- RAG-V2-DESIGN-DOC — PASS / PUSHED / REMOTE_VERIFIED
+- RAG-V2-ELEMENT-SCHEMA-AND-ADAPTER-INTERFACE — PASS / PUSHED / REMOTE_VERIFIED
 - A18 — NOT_STARTED
 - P1.0 — LOCKED
 - IDE bridge — unopened

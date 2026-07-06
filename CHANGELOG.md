@@ -1,5 +1,31 @@
 # Changelog
 
+## 2026-07-06 - RAG v2 Element Schema & Adapter Interface & Roadmap Sync
+
+### Enhancements
+- Completed RAG v2 Element Schema & Adapter Interface MVP (`RAG-V2-ELEMENT-SCHEMA-AND-ADAPTER-INTERFACE`) implementing the first generic foundation layer for RAG v2.
+  - Code commit: `7db254a74889d4500e2bdf3dfcef6b6e9a7afe2e` (Message: `Add RAG v2 element schema and adapter interface`)
+  - Added generic `DocumentElement`.
+  - Added `AdapterCapabilities`.
+  - Added table/cell metadata support.
+  - Added serialization helpers and privacy metadata fields.
+  - Added converter adapter protocol.
+  - Added `ConversionContext`.
+  - Added hard-code guard tests for RAG v2 core.
+  - Validation: `876 passed`.
+  - Import smoke: `RAG_V2_IMPORT_PASS`.
+- Initiated Roadmap Synchronization (`RM-SYNC-RAG-V2-SCHEMA-ADAPTER`) to document MVP status, caveats, and next steps.
+
+### Governance
+- Preserved absolute NotebookLM-simple UX law.
+- No UI/runtime retrieval/synthesis/index changes.
+- No dependency changes.
+- Ensured no hard-coding of MOM/WMS business logic in core.
+- Caveats carried forward:
+  - deterministic failed-element id
+  - unknown future fields in `from_dict`
+- A18 is marked `NOT_STARTED`. P1.0 remains `LOCKED`.
+
 ## 2026-07-06 - RAG v2 Design Document & Roadmap Sync
 
 ### Enhancements
