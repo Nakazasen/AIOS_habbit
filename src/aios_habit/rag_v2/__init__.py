@@ -11,6 +11,8 @@ from .converters import (
     PowerPointDocumentConverterAdapter
 )
 from .registry import ConverterRegistry
+from .chunking import DocumentChunk, StructureAwareChunker
+from .index import LocalChunkIndex, SearchResult
 
 __all__ = [
     "DocumentElement",
@@ -29,4 +31,8 @@ __all__ = [
     "WordDocumentConverterAdapter",
     "PowerPointDocumentConverterAdapter",
     "ConverterRegistry",
+    "DocumentChunk",
+    "StructureAwareChunker",
+    "LocalChunkIndex",
+    "SearchResult",
 ]
