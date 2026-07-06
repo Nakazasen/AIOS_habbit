@@ -27,26 +27,41 @@ Case → Evidence → Map → Action → Learning → Memory
 ## Active Position
 
 - Current phase: Phase 4 — Workspace Chat Foundation & AI Gateway Preparation.
-- Latest closed implementation gate: RAG-V2-ELEMENT-SCHEMA-AND-ADAPTER-INTERFACE — DONE / PUSHED / REMOTE_VERIFIED.
+- Latest closed implementation gate: RAG-V2-DOC-CONVERTER-ADAPTERS-MIN — DONE / PUSHED / REMOTE_VERIFIED.
+  - Commit: `e2e39428f150f455a73beb84be0b7693252c9767`
+  - Implemented MVP converter adapters: text/md/csv, html, pdf (existing fitz), excel (existing openpyxl), docx/pptx (manual xml parser).
+  - Registry/selection layer present.
+  - Unsupported, missing, or parsing errors fail closed.
+  - Previous caveats fixed:
+    - deterministic failed-element id fixed
+    - `DocumentElement.from_dict()` ignores unknown future fields
+  - Validation evidence:
+    - Codex re-audit PASS_WITH_WARNINGS
+    - push-safety PASS_WITH_WARNINGS
+    - focused schema/adapters/hardcode tests PASS — `7 passed`
+    - converter tests PASS — `10 passed`
+    - all RAG v2 tests PASS — `17 passed`
+    - full pytest PASS — `886 passed`
+    - import smoke PASS — `RAG_V2_CONVERTER_IMPORT_PASS`
+    - diff check PASS
+    - scope check PASS
+    - secret scan PASS
+    - API Key.txt safety PASS
+    - hard-code guard PASS
+  - Accepted warnings:
+    - old report full-hash mismatch resolved to actual commit `e2e39428f150f455a73beb84be0b7693252c9767`
+    - registry class name is `ConverterRegistry`, not `DocumentConverterRegistry`
+    - unknown extension fail-closes with `ExtractionStatus.FAILED`, accepted for MVP
+- Latest closed implementation gate (foundation): RAG-V2-ELEMENT-SCHEMA-AND-ADAPTER-INTERFACE — DONE / PUSHED / REMOTE_VERIFIED.
   - Commit: `7db254a74889d4500e2bdf3dfcef6b6e9a7afe2e`
-  - Codex re-audit PASS
-  - push-safety PASS
-  - focused RAG v2 tests PASS
-  - existing related tests PASS
-  - full pytest `876 passed`
-  - import smoke `RAG_V2_IMPORT_PASS`
-  - diff check PASS
-  - secret scan PASS
-  - core hard-code scan PASS
-  - Carry-forward caveats:
-    - deterministic failed-element id
-    - unknown future fields in `from_dict`
-- Latest closed roadmap sync gate: RM-SYNC-RAG-V2-ROADMAP-AND-DESIGN-DOC — DONE / PUSHED / REMOTE_VERIFIED.
-- Latest closed design gate: RAG-V2-DESIGN-DOC — Generic element-first local-first RAG core — DONE / PUSHED / REMOTE_VERIFIED.
-- Current roadmap sync gate: RM-SYNC-RAG-V2-SCHEMA-ADAPTER — IN PROGRESS.
-- Next candidate gate: Codex re-audit / push-safety of RM-SYNC-RAG-V2-SCHEMA-ADAPTER docs-only commit.
-- Next implementation gate: RAG-V2-DOC-CONVERTER-ADAPTERS-MIN.
+- Latest closed roadmap sync gate: RM-SYNC-RAG-V2-SCHEMA-ADAPTER — DONE / PUSHED / REMOTE_VERIFIED.
+- Current roadmap sync gate: RM-SYNC-RAG-V2-DOC-CONVERTER-ADAPTERS-MIN — IN PROGRESS.
+- Next candidate gate: Codex re-audit / push-safety of RM-SYNC-RAG-V2-DOC-CONVERTER-ADAPTERS-MIN docs-only commit.
+- Next implementation gate: RAG-V2-STRUCTURE-AWARE-CHUNKING-AND-LOCAL-INDEX-MIN.
 - RAG v2 core remains generic/local-first/element-first/privacy-first.
+- No dependency changes.
+- No retrieval/chunking/index/synthesis implemented.
+- No normal UI changes.
 - MOM-specific composer (FIX-MOM-ANSWER-COMPOSER-MIN) is STOPPED due to hard-code risk.
 - MOM/WMS remains benchmark/eval/private dataset only, not core logic.
 
@@ -60,6 +75,7 @@ Case → Evidence → Map → Action → Learning → Memory
 - RAG-V2-RESEARCH-FIRST-ARCHITECTURE-AUDIT — PASS
 - RAG-V2-DESIGN-DOC — PASS / PUSHED / REMOTE_VERIFIED
 - RAG-V2-ELEMENT-SCHEMA-AND-ADAPTER-INTERFACE — PASS / PUSHED / REMOTE_VERIFIED
+- RAG-V2-DOC-CONVERTER-ADAPTERS-MIN — PASS_WITH_WARNINGS / PUSHED / REMOTE_VERIFIED
 - A18 — NOT_STARTED
 - P1.0 — LOCKED
 - IDE bridge — unopened
@@ -656,3 +672,6 @@ Not included:
 - **25. AI-GW-A17D Hidden Router Adapter for Workspace Chat Ask:** `0c79958805faf1b45d3df53976a832dde1109bd7` — Message: Add hidden router adapter for Workspace Chat ask
 - **26. RM-SYNC-A17D Roadmap Sync after AI-GW-A17D:** `eb97f44216eddd56939a4a3f86ded672aa4b3083` — Message: Sync A17D hidden router status
 - **27. FIX-MOM-PDF-INGESTION-RETRIEVAL-MIN MOM PDF Ingestion and Retrieval Ranking:** `361bbc470db4970e584991b029c06f2f8846e910` — Message: Improve MOM PDF ingestion and retrieval ranking
+- **28. RAG-V2-ELEMENT-SCHEMA-AND-ADAPTER-INTERFACE RAG v2 Element Schema and Adapter Interface:** `7db254a74889d4500e2bdf3dfcef6b6e9a7afe2e` — Message: Add RAG v2 element schema and adapter interface
+- **29. RM-SYNC-RAG-V2-SCHEMA-ADAPTER Roadmap Sync after RAG v2 Schema Adapter:** `0a2208497fd1d8e6602d9a42e955075619e84b40` — Message: Sync Roadmap after RAG v2 Schema Adapter
+- **30. RAG-V2-DOC-CONVERTER-ADAPTERS-MIN RAG v2 Document Converter Adapters:** `e2e39428f150f455a73beb84be0b7693252c9767` — Message: Add RAG v2 minimal document converter adapters

@@ -1,5 +1,37 @@
 # Changelog
 
+## 2026-07-06 - RAG v2 Minimal Document Converter Adapters & Roadmap Sync
+
+### Enhancements
+- Completed RAG v2 Minimal Document Converter Adapters MVP (`RAG-V2-DOC-CONVERTER-ADAPTERS-MIN`) implementing the second RAG v2 foundation layer.
+  - Code commit: `e2e39428f150f455a73beb84be0b7693252c9767` (Message: `Add RAG v2 minimal document converter adapters`)
+  - Added generic converter layer and registry (`ConverterRegistry`).
+  - Implemented generic minimal document converters:
+    - `TextDocumentConverterAdapter` (TXT/MD/CSV)
+    - `HTMLDocumentConverterAdapter` (HTML/HTM)
+    - `PDFDocumentConverterAdapter` (PDF via PyMuPDF/fitz)
+    - `ExcelDocumentConverterAdapter` (XLSX/XLSM via openpyxl)
+    - `WordDocumentConverterAdapter` (DOCX zip/xml manual parser)
+    - `PowerPointDocumentConverterAdapter` (PPTX zip/xml manual parser)
+  - Fixed previous caveats:
+    - Deterministic failed-element ID using SHA-256 path hash instead of Python `hash(path)`.
+    - Future-proofed `DocumentElement.from_dict()` to ignore unknown fields.
+  - Added new comprehensive test suite `tests/test_rag_v2_converters.py`.
+  - Validation: 7 passed focused schema/adapters/hardcode, 10 passed converter tests, 17 passed all RAG v2 tests, 886 passed full pytest.
+  - Import smoke: `RAG_V2_CONVERTER_IMPORT_PASS`.
+- Initiated Roadmap Synchronization (`RM-SYNC-RAG-V2-DOC-CONVERTER-ADAPTERS-MIN`) to document MVP status, caveats, and next steps.
+
+### Governance
+- Preserved absolute NotebookLM-simple UX law.
+- No UI changes, no runtime retrieval/chunking/index/synthesis.
+- No dependency changes.
+- Ensured no hard-coding of MOM/WMS business logic in core.
+- Accepted warnings:
+  - Wrong full-hash resolved to actual HEAD commit `e2e39428f150f455a73beb84be0b7693252c9767`.
+  - Class named `ConverterRegistry` instead of `DocumentConverterRegistry`.
+  - Unknown extension fail-closed with `FAILED` under fail-soft mode.
+- A18 remains `NOT_STARTED`. P1.0 remains `LOCKED`.
+
 ## 2026-07-06 - RAG v2 Element Schema & Adapter Interface & Roadmap Sync
 
 ### Enhancements

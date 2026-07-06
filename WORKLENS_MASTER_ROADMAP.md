@@ -21,20 +21,24 @@ Case → Evidence → Map → Action → Learning → Memory
 ### Active Position
 
 - Current phase: Phase 4 — Workspace Chat Foundation & AI Gateway Preparation.
-- Latest closed implementation gate: RAG-V2-ELEMENT-SCHEMA-AND-ADAPTER-INTERFACE — DONE / PUSHED / REMOTE_VERIFIED.
-  - Schema/adapter interface remote verified: `7db254a74889d4500e2bdf3dfcef6b6e9a7afe2e`
-  - First RAG v2 foundation implementation layer completed.
-  - Carry forward:
+- Latest closed implementation gate: RAG-V2-DOC-CONVERTER-ADAPTERS-MIN — DONE / PUSHED / REMOTE_VERIFIED.
+  - RAG v2 converter adapter MVP completed and remote verified: `e2e39428f150f455a73beb84be0b7693252c9767`
+  - This is the second RAG v2 foundation implementation layer after schema/adapter interface.
+  - The system now has generic minimal local converters for common document formats.
+  - This is still not retrieval, not chunking, not index, not synthesis.
+  - Previous schema caveats are fixed:
     - deterministic failed-element id
     - unknown future fields in `from_dict`
-- Latest closed roadmap sync gate: RM-SYNC-RAG-V2-ROADMAP-AND-DESIGN-DOC — DONE / PUSHED / REMOTE_VERIFIED.
+- Latest closed roadmap sync gate: RM-SYNC-RAG-V2-SCHEMA-ADAPTER — DONE / PUSHED / REMOTE_VERIFIED.
 - Latest closed design gate: RAG-V2-DESIGN-DOC — Generic element-first local-first RAG core — DONE / PUSHED / REMOTE_VERIFIED.
-- Current roadmap sync gate: RM-SYNC-RAG-V2-SCHEMA-ADAPTER — IN PROGRESS.
-- Next candidate gate: Codex re-audit / push-safety of RM-SYNC-RAG-V2-SCHEMA-ADAPTER docs-only commit.
-- Next is converter adapter MVP: `RAG-V2-DOC-CONVERTER-ADAPTERS-MIN`
+- Current roadmap sync gate: RM-SYNC-RAG-V2-DOC-CONVERTER-ADAPTERS-MIN — IN PROGRESS.
+- Next candidate gate: Codex re-audit / push-safety of RM-SYNC-RAG-V2-DOC-CONVERTER-ADAPTERS-MIN docs-only commit.
+- Next is: `RAG-V2-STRUCTURE-AWARE-CHUNKING-AND-LOCAL-INDEX-MIN`
 - Next is not retrieval/synthesis yet.
-- No MOM/WMS-specific rule-engine drift.
-- No new technical UI/panels.
+- No dependency changes.
+- No UI changes.
+- No MOM/WMS-specific runtime rule engine.
+- No technical UI/panel drift.
 - A18 — NOT_STARTED / no A18.
 - P1.0 — LOCKED / no P1.0.
 - IDE bridge — unopened.
@@ -210,12 +214,23 @@ Learning sources for public pattern research: RAGFlow, kotaemon, Microsoft Graph
 
 Immediate:
 
-- **RM-SYNC-RAG-V2-SCHEMA-ADAPTER — Sync Roadmap after RAG v2 Schema Adapter** (IN_PROGRESS)
-- **RAG-V2-DOC-CONVERTER-ADAPTERS-MIN** (NOT_STARTED)
+- **RM-SYNC-RAG-V2-DOC-CONVERTER-ADAPTERS-MIN — Sync Roadmap after RAG v2 Converter Adapters** (IN_PROGRESS)
+- **RAG-V2-STRUCTURE-AWARE-CHUNKING-AND-LOCAL-INDEX-MIN** (NOT_STARTED)
 - **AI-GW-A18 — NotebookLM Comparison Arena** (NOT_STARTED) — after A17 or later strategy decision.
 
 Completed:
 
+- **RAG-V2-DOC-CONVERTER-ADAPTERS-MIN — RAG v2 Document Converter Adapters** (DONE/PUSHED/REMOTE_VERIFIED) — Implemented generic minimal document converter adapters.
+  Validation evidence:
+  - commit: `e2e39428f150f455a73beb84be0b7693252c9767`
+  - full pytest: 886 passed
+  - import smoke: `RAG_V2_CONVERTER_IMPORT_PASS`
+  - diff check: PASS
+  - secret scan: PASS
+  - hard-code guard: PASS
+- **RM-SYNC-RAG-V2-SCHEMA-ADAPTER — Sync Roadmap after RAG v2 Schema Adapter** (DONE/PUSHED/REMOTE_VERIFIED) — Sync roadmap after RAG v2 schema adapter interface commit.
+  Validation evidence:
+  - commit: `0a2208497fd1d8e6602d9a42e955075619e84b40`
 - **RAG-V2-ELEMENT-SCHEMA-AND-ADAPTER-INTERFACE — Add RAG v2 element schema and adapter interface** (DONE/PUSHED/REMOTE_VERIFIED) — Implemented the first generic foundation layer for RAG v2.
   Validation evidence:
   - commit: `7db254a74889d4500e2bdf3dfcef6b6e9a7afe2e`
@@ -413,6 +428,10 @@ The repository `AIOS_habbit` is the central repository for WorkLens. Legacy repo
 - **25. AI-GW-A17D Hidden Router Adapter for Workspace Chat Ask:** `0c79958805faf1b45d3df53976a832dde1109bd7` — Message: Add hidden router adapter for Workspace Chat ask
 - **26. RM-SYNC-A17D Roadmap Sync after AI-GW-A17D:** `eb97f44216eddd56939a4a3f86ded672aa4b3083` — Message: Sync A17D hidden router status
 - **27. FIX-MOM-PDF-INGESTION-RETRIEVAL-MIN MOM PDF Ingestion and Retrieval Ranking:** `361bbc470db4970e584991b029c06f2f8846e910` — Message: Improve MOM PDF ingestion and retrieval ranking
+- **28. RAG-V2-ELEMENT-SCHEMA-AND-ADAPTER-INTERFACE RAG v2 Element Schema and Adapter Interface:** `7db254a74889d4500e2bdf3dfcef6b6e9a7afe2e` — Message: Add RAG v2 element schema and adapter interface
+- **29. RM-SYNC-RAG-V2-SCHEMA-ADAPTER Roadmap Sync after RAG v2 Schema Adapter:** `0a2208497fd1d8e6602d9a42e955075619e84b40` — Message: Sync Roadmap after RAG v2 Schema Adapter
+- **30. RAG-V2-DOC-CONVERTER-ADAPTERS-MIN RAG v2 Document Converter Adapters:** `e2e39428f150f455a73beb84be0b7693252c9767` — Message: Add RAG v2 minimal document converter adapters
+
 
 ---
 
