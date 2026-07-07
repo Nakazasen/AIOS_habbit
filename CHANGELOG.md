@@ -1,5 +1,34 @@
 # Changelog
 
+## 2026-07-07 - Recorded Company 68 RAG v2 Local Smoke
+
+### Enhancements
+- Recorded Company 68-file RAG v2 local smoke evaluation results.
+  - Dataset stats:
+    - total files: 68
+    - converted successfully: 51
+    - unsupported files: 17 (.png)
+    - elements created: 446
+    - chunks created: 721
+    - chunks indexed: 721
+    - SQLite database generated at OS Temp path and not committed to repository.
+  - Search smoke:
+    - Q1: relevant MES/MOM source `MES_MOM説明資料_20251031.pdf` appeared but was not top-ranked (ranked 4th).
+    - Q2: weak search results; generic Vietnamese/WMS documents ranked above target `生産履歴登録システム` / `着完工登録システム` evidence due to Vietnamese stop-word dominance in bilingual query.
+    - Q3: strong search results; found correct staging table and system interface Excel evidence (`ステージングテーブル_ライン外出庫連携自動処理用【_20231107見直し版】 (1).xlsx`, `KDC_P3MOM_MCO-309_システムインターフェイス設計.xlsx`).
+
+### Governance
+- No code changes.
+- No docs changes during the smoke test itself.
+- No commit/push during the smoke test.
+- No cloud/LLM/NotebookLM used.
+- Company data remained strictly local.
+- Next gate: `RAG-V2-HYBRID-RETRIEVAL-MIN`.
+- Accepted process warnings:
+  - Read-only smoke should not run `git merge` in the future.
+  - Avoid background/waiting wording in future gates.
+- A18 remains `NOT_STARTED`, P1.0 remains `LOCKED`, IDE bridge remains unopened.
+
 ## 2026-07-06 - RAG v2 Structure-Aware Chunking, Local Index & Roadmap Sync
 
 ### Enhancements

@@ -23,28 +23,32 @@ Case → Evidence → Map → Action → Learning → Memory
 - Current phase: Phase 4 — Workspace Chat Foundation & AI Gateway Preparation.
 - Latest closed implementation gate: RAG-V2-STRUCTURE-AWARE-CHUNKING-AND-LOCAL-INDEX-MIN — DONE / PUSHED / REMOTE_VERIFIED.
   - RAG v2 structure-aware chunking and local index MVP completed and remote verified: `c75c319847af070f8b863cae8aaea19205c93baa`
-  - This is the third RAG v2 foundation implementation layer after:
-    - schema/adapter interface
-    - minimal document converter adapters
-  - The system now has:
-    - generic structure-aware chunks
-    - deterministic chunk IDs
-    - metadata/privacy preservation
-    - local SQLite lexical index
-    - search result metadata return
-  - This is still not answer synthesis/composer.
-  - This is still not NotebookLM battle rerun.
-  - This is still not Workspace Chat integration.
-  - This is still not company 68-file retrieval robustness.
-- Latest closed roadmap sync gate: RM-SYNC-RAG-V2-DOC-CONVERTER-ADAPTERS-MIN — DONE / PUSHED / REMOTE_VERIFIED.
-- Latest closed design gate: RAG-V2-DESIGN-DOC — Generic element-first local-first RAG core — DONE / PUSHED / REMOTE_VERIFIED.
-- Current roadmap sync gate: RM-SYNC-RAG-V2-STRUCTURE-AWARE-CHUNKING-AND-LOCAL-INDEX-MIN — IN PROGRESS.
+  - This is the third RAG v2 foundation implementation layer.
+- Recorded evaluation: COMPANY-68-RAG-V2-LOCAL-SMOKE-READONLY — RECORDED / LOCAL_ONLY.
+  - Company 68-file local smoke has been recorded after RAG v2 chunk/index foundation.
+  - This confirms RAG v2 can locally convert/chunk/index the supported portion of the real 68-file company dataset:
+    - 51/68 files converted
+    - 721 chunks indexed
+    - 17 PNG unsupported
+  - Search quality is not yet sufficient:
+    - Q1 relevant evidence appears but ranking is weak
+    - Q2 is poor due stop-word dominance in bilingual query
+    - Q3 is strongest with Excel evidence
+  - This result justifies next gate: `RAG-V2-HYBRID-RETRIEVAL-MIN`
+  - Still not:
+    - final answer synthesis
+    - NotebookLM battle rerun
+    - OCR/image extraction
+    - company 68 retrieval robustness completion
+    - Workspace Chat integration
+- Latest closed roadmap sync gate: RM-SYNC-RAG-V2-STRUCTURE-AWARE-CHUNKING-AND-LOCAL-INDEX-MIN — DONE / PUSHED / REMOTE_VERIFIED.
+- Current roadmap sync gate: RM-SYNC-COMPANY-68-RAG-V2-LOCAL-SMOKE — IN PROGRESS.
 - Next gate: `RAG-V2-HYBRID-RETRIEVAL-MIN`
 - No dependency changes.
 - No UI changes.
 - No MOM/WMS-specific runtime rule engine.
 - No technical UI/panel drift.
-- Company 68-file dataset retrieval robustness remains separate/pending.
+- Company 68-file dataset retrieval robustness remains separate/pending until hybrid retrieval/eval gates improve it.
 - A18 — NOT_STARTED / no A18.
 - P1.0 — LOCKED / no P1.0.
 - IDE bridge — unopened.
@@ -55,12 +59,13 @@ Case → Evidence → Map → Action → Learning → Memory
 - OWNER UI SMOKE — PASS
 - FIX-AIOS-MOM-WMS-RUNTIME-ENV — PASS
 - HOME TEMP 52 DATASET battle — PASS_WITH_LIMITATIONS
-- COMPANY 68 DATASET retrieval robustness — PENDING
+- COMPANY 68 DATASET retrieval robustness — PENDING (after local smoke recorded)
 - RAG-V2-RESEARCH-FIRST-ARCHITECTURE-AUDIT — PASS
 - RAG-V2-DESIGN-DOC — PASS / PUSHED / REMOTE_VERIFIED
 - RAG-V2-ELEMENT-SCHEMA-AND-ADAPTER-INTERFACE — PASS / PUSHED / REMOTE_VERIFIED
 - RAG-V2-DOC-CONVERTER-ADAPTERS-MIN — PASS_WITH_WARNINGS / PUSHED / REMOTE_VERIFIED
 - RAG-V2-STRUCTURE-AWARE-CHUNKING-AND-LOCAL-INDEX-MIN — PASS_WITH_WARNINGS / PUSHED / REMOTE_VERIFIED
+- COMPANY-68-RAG-V2-LOCAL-SMOKE-READONLY — RECORDED / LOCAL_ONLY / NO_CODE_CHANGE
 - A18 — NOT_STARTED
 - P1.0 — LOCKED
 - IDE bridge — unopened
@@ -438,6 +443,8 @@ The repository `AIOS_habbit` is the central repository for WorkLens. Legacy repo
 - **29. RM-SYNC-RAG-V2-SCHEMA-ADAPTER Roadmap Sync after RAG v2 Schema Adapter:** `0a2208497fd1d8e6602d9a42e955075619e84b40` — Message: Sync Roadmap after RAG v2 Schema Adapter
 - **30. RAG-V2-DOC-CONVERTER-ADAPTERS-MIN RAG v2 Document Converter Adapters:** `e2e39428f150f455a73beb84be0b7693252c9767` — Message: Add RAG v2 minimal document converter adapters
 - **31. RAG-V2-STRUCTURE-AWARE-CHUNKING-AND-LOCAL-INDEX-MIN RAG v2 Chunking and Local Index:** `c75c319847af070f8b863cae8aaea19205c93baa` — Message: Add RAG v2 structure-aware chunking and local index
+- **32. RM-SYNC-RAG-V2-STRUCTURE-AWARE-CHUNKING-AND-LOCAL-INDEX-MIN Roadmap Sync after RAG v2 Chunking and Local Index:** `30e722ecd386cb005f4f0560f55c0d84a9936f82` — Message: Sync Roadmap after RAG v2 Chunking and Local Index
+- **33. RM-SYNC-COMPANY-68-RAG-V2-LOCAL-SMOKE Roadmap Sync after Company 68 RAG v2 Local Smoke:** (IN PROGRESS / pending)
 
 
 ---

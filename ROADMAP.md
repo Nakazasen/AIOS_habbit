@@ -62,12 +62,61 @@ Case → Evidence → Map → Action → Learning → Memory
     - case-sensitive forbidden-term scan had no true runtime hits
     - full pytest ran successfully but terminal tool moved it to background due duration
   - Remaining limitation: SQLite lexical search is intentionally minimal/deterministic; no vector search / advanced ranking yet.
+- Recorded evaluation: COMPANY-68-RAG-V2-LOCAL-SMOKE-READONLY — RECORDED / LOCAL_ONLY / NO_CODE_CHANGE.
+  - baseline:
+    - HEAD/origin/main: `30e722ecd386cb005f4f0560f55c0d84a9936f82`
+    - worktree clean
+  - dataset:
+    - path: `D:\Sandbox\MOM_QLLSSX_WMS\tailieugoc`
+    - total files: 68
+    - extensions:
+      - `.xlsx`: 25
+      - `.png`: 17
+      - `.pdf`: 11
+      - `.pptx`: 8
+      - `.csv`: 3
+      - `.txt`: 2
+      - `.html`: 1
+      - `.xlsm`: 1
+    - temp files: 0
+    - permission errors: 0
+  - RAG v2 smoke:
+    - files scanned: 68
+    - files converted: 51
+    - unsupported files: 17 `.png`
+    - files failed: 0
+    - elements created: 446
+    - chunks created: 721
+    - chunks indexed: 721
+    - index path was OS Temp, not committed
+    - cloud/LLM/NotebookLM used: NO
+  - Search smoke:
+    - Q1: correct file `MES_MOM説明資料_20251031.pdf` appeared but only rank 4
+    - Q2: weak; generic Vietnamese/WMS documents ranked above target 生産履歴登録システム / 着完工登録システム evidence
+    - Q3: good direction; found staging table and interface Excel evidence:
+      - `ステージングテーブル_ライン外出庫連携自動処理用【_20231107見直し版】 (1).xlsx`
+      - `KDC_P3MOM_MCO-309_システムインターフェイス設計.xlsx`
+  - Weakness recorded:
+    - current lexical scoring uses simple token frequency
+    - bilingual Vietnamese/Japanese queries are affected by stop-word dominance
+    - `.png` OCR/extraction unsupported
+  - Governance:
+    - no code changes
+    - no docs changes during smoke
+    - no commit during smoke
+    - no push during smoke
+    - company data stayed local
+    - no cloud/NotebookLM
+    - no MOM/WMS hard-code
+  - Accepted process warnings:
+    - smoke agent ran `git merge origin/main`; final state remained clean and identical, but future read-only smoke should not merge
+    - smoke agent used background/waiting language; future gates should avoid background task wording
 - Latest closed implementation gate (foundation): RAG-V2-DOC-CONVERTER-ADAPTERS-MIN — DONE / PUSHED / REMOTE_VERIFIED.
   - Commit: `e2e39428f150f455a73beb84be0b7693252c9767`
 - Latest closed implementation gate (foundation): RAG-V2-ELEMENT-SCHEMA-AND-ADAPTER-INTERFACE — DONE / PUSHED / REMOTE_VERIFIED.
   - Commit: `7db254a74889d4500e2bdf3dfcef6b6e9a7afe2e`
-- Latest closed roadmap sync gate: RM-SYNC-RAG-V2-DOC-CONVERTER-ADAPTERS-MIN — DONE / PUSHED / REMOTE_VERIFIED.
-- Current roadmap sync gate: RM-SYNC-RAG-V2-STRUCTURE-AWARE-CHUNKING-AND-LOCAL-INDEX-MIN — IN PROGRESS.
+- Latest closed roadmap sync gate: RM-SYNC-RAG-V2-STRUCTURE-AWARE-CHUNKING-AND-LOCAL-INDEX-MIN — DONE / PUSHED / REMOTE_VERIFIED.
+- Current roadmap sync gate: RM-SYNC-COMPANY-68-RAG-V2-LOCAL-SMOKE — IN PROGRESS.
 - Next implementation gate: RAG-V2-HYBRID-RETRIEVAL-MIN.
 - RAG v2 core remains generic/local-first/element-first/privacy-first.
 - No dependency changes.
@@ -78,7 +127,7 @@ Case → Evidence → Map → Action → Learning → Memory
 - No company 68-file dataset processing.
 - No MOM/WMS-specific rule-engine drift.
 - No normal UI technical panel drift.
-- Company 68-file dataset retrieval robustness remains separate/pending.
+- Company 68-file dataset retrieval robustness remains separate/pending until hybrid retrieval/eval gates improve it.
 - A18 — NOT_STARTED / not opened.
 - P1.0 — LOCKED.
 - IDE bridge — unopened.
@@ -89,12 +138,13 @@ Case → Evidence → Map → Action → Learning → Memory
 - OWNER UI SMOKE — PASS
 - FIX-AIOS-MOM-WMS-RUNTIME-ENV — PASS
 - HOME TEMP 52 DATASET battle — PASS_WITH_LIMITATIONS
-- COMPANY 68 DATASET retrieval robustness — PENDING
+- COMPANY 68 DATASET retrieval robustness — PENDING (after local smoke recorded)
 - RAG-V2-RESEARCH-FIRST-ARCHITECTURE-AUDIT — PASS
 - RAG-V2-DESIGN-DOC — PASS / PUSHED / REMOTE_VERIFIED
 - RAG-V2-ELEMENT-SCHEMA-AND-ADAPTER-INTERFACE — PASS / PUSHED / REMOTE_VERIFIED
 - RAG-V2-DOC-CONVERTER-ADAPTERS-MIN — PASS_WITH_WARNINGS / PUSHED / REMOTE_VERIFIED
 - RAG-V2-STRUCTURE-AWARE-CHUNKING-AND-LOCAL-INDEX-MIN — PASS_WITH_WARNINGS / PUSHED / REMOTE_VERIFIED
+- COMPANY-68-RAG-V2-LOCAL-SMOKE-READONLY — RECORDED / LOCAL_ONLY / NO_CODE_CHANGE
 - A18 — NOT_STARTED
 - P1.0 — LOCKED
 - IDE bridge — unopened
@@ -695,3 +745,5 @@ Not included:
 - **29. RM-SYNC-RAG-V2-SCHEMA-ADAPTER Roadmap Sync after RAG v2 Schema Adapter:** `0a2208497fd1d8e6602d9a42e955075619e84b40` — Message: Sync Roadmap after RAG v2 Schema Adapter
 - **30. RAG-V2-DOC-CONVERTER-ADAPTERS-MIN RAG v2 Document Converter Adapters:** `e2e39428f150f455a73beb84be0b7693252c9767` — Message: Add RAG v2 minimal document converter adapters
 - **31. RAG-V2-STRUCTURE-AWARE-CHUNKING-AND-LOCAL-INDEX-MIN RAG v2 Chunking and Local Index:** `c75c319847af070f8b863cae8aaea19205c93baa` — Message: Add RAG v2 structure-aware chunking and local index
+- **32. RM-SYNC-RAG-V2-STRUCTURE-AWARE-CHUNKING-AND-LOCAL-INDEX-MIN Roadmap Sync after RAG v2 Chunking and Local Index:** `30e722ecd386cb005f4f0560f55c0d84a9936f82` — Message: Sync Roadmap after RAG v2 Chunking and Local Index
+- **33. RM-SYNC-COMPANY-68-RAG-V2-LOCAL-SMOKE Roadmap Sync after Company 68 RAG v2 Local Smoke:** (IN PROGRESS / pending)
