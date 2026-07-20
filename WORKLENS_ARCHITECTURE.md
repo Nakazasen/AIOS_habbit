@@ -1,64 +1,54 @@
 # WorkLens Architecture & Modular Boundaries
 
-This document defines the architectural target boundaries of AIOS WorkLens and aligns them with the product's locked layers.
+## 1. Kiến trúc hiện tại
 
----
+AIOS WorkLens là một ứng dụng **local-first** với **Workspace Chat** là primary
+UI. Người dùng thêm/chọn nguồn cục bộ, hỏi tự nhiên và nhận phản hồi theo source
+context. UI không được biến thành Case Cockpit mới.
 
-## 1. Current Monolith vs Target Modules
+```text
+Workspace Chat UI
+  → workspace/chat models + local stores
+  → source ingestion + source selection
+  → local retrieval / answer composition boundaries
+  → privacy and safety policy
+  → local runtime data (Git ignored)
+```
 
-AIOS Case Cockpit v0.1 is currently implemented as a Streamlit monolith in [case_cockpit.py](src/aios_habit/case_cockpit.py) with supporting modules for:
-- [case_models.py](src/aios_habit/case_models.py) (Data Model)
-- [case_store.py](src/aios_habit/case_store.py) (Local Storage)
-- [case_prompt.py](src/aios_habit/case_prompt.py) (AI Prompts & Gating Policy)
-- [case_audit.py](src/aios_habit/case_audit.py) (Safety Audits)
-- [case_handover.py](src/aios_habit/case_handover.py) (Handover Formatting)
-- [learning_models.py](src/aios_habit/learning_models.py) (Senior Learning Card Storage)
-- [workspace_models.py](src/aios_habit/workspace_models.py) (Workspace & Knowledge Notebook storage/models)
-- [source_ingest.py](src/aios_habit/source_ingest.py) (Source Document upload & preview parsing)
-- [notebook_index.py](src/aios_habit/notebook_index.py) (Local source chunk indexing & search)
-- [notebook_qa.py](src/aios_habit/notebook_qa.py) (Local context compiler & Q&A prompt generator)
-- [llm_client.py](src/aios_habit/llm_client.py) (Lightweight HTTP-based LLM provider client)
-- [notebook_bridge.py](src/aios_habit/notebook_bridge.py) (NotebookLM import schema parsing & Mermaid graph conversion)
-- [notebook_import_store.py](src/aios_habit/notebook_import_store.py) (Persistent storage for NotebookLM imported results)
+RAG v2 được xây tách khỏi UI theo các boundary element → converter → chunk →
+local index → retrieval → synthesis. Core RAG v2 phải generic, deterministic
+khi có thể, privacy-preserving và không chứa hard-code domain/pilot.
 
----
+## 2. Product boundaries
 
-## 2. Seven Product Architecture Layers
+| Boundary | Trách nhiệm | Quy tắc |
+|---|---|---|
+| Workspace Chat | Luồng hàng ngày: workspace, nguồn, hỏi/đáp | Vietnamese-first, simple, không lộ technical workflow |
+| Source & Notebook | Metadata, upload, parsing, source selection | Local-first, source privacy rõ ràng |
+| RAG v2 | Element/converter/chunk/index/retrieval/synthesis | Không provider/network/UI import trong core |
+| AI Gateway / Bridge | Export-import có policy, observed validation evidence | Không tự chạy lệnh do report đưa vào; owner-triggered verification |
+| Case domain services | Case/evidence/audit/map/handover legacy-compatible | Audit dependency trước khi rename/migrate/delete |
+| Runtime data | `local_cases/`, `local_runs/`, private source/assets | Luôn Git ignored, không bị cleanup source xóa |
 
-Future development must organize boundaries along these locked layers:
+## 3. Legacy boundary
 
-### Layer 1: Workspace Boundary (`workspace/`)
-- Manages configuration, user profiles, and active industry domain settings.
-- Isolates distinct domains (e.g. MOM manufacturing vs IT support) in different local folders.
+`studio.py` và `case_cockpit.py` không được coi là primary UI. Workspace Chat
+không được import chúng. Các direct launch routes, package scripts, tests và
+documentation của legacy được inventory trong
+[RETIREMENT_MANIFEST.md](docs/legacy/RETIREMENT_MANIFEST.md).
 
-### Layer 2: Knowledge Notebook Boundary (`notebook/`)
-- Ingests background knowledge resources (PDFs, Markdown manuals, procedures).
-- Keeps notebooks completely isolated. Avoids mixing raw notebook sources with case evidence.
-- Supports NotebookLM Bridge prompt compilation, structured results pasting, parsing, and persistent local storage (`notebook_import_store`).
+- Studio/public routes: retirement slice riêng, có launcher Workspace Chat thay
+  thế và regression tests.
+- Case Cockpit: không xóa cùng lúc với shared `case_*`/visual-map/handoff
+  services. Dependency graph và capability replacement phải được audit trước.
+- Git history là archive code đã xóa; documentation history được phân loại bằng
+  [docs/archive/README.md](docs/archive/README.md).
 
-### Layer 3: Case Cockpit Boundary (`cockpit/`)
-- Handles active incident cases.
-- Aggregates logs, screenshots, Excel sheets, and timeline events.
-- Generates Case Map visualizations, next action recommendations, prompt packs, and handover markdown.
+## 4. Constraints không được phá
 
-### Layer 4: Learning Memory Boundary (`memory/`)
-- Saves experience memory as **Senior Learning Cards** (`SeniorLearningCard`).
-- Coordinates state transitions (Draft, Reviewed, Confirmed).
-- Gated by prompt privacy: draft cards are redacting placeholders; confirmed cards are included if the case is not `local_only`.
-
-### Layer 5: Senior Coach / Work Intelligence Boundary (`coach/`)
-- Guides the user's investigation flow, checks evidence gaps, and drafts styled communications (VI/JA).
-- References historical cases and lessons learned without executing RAG overbuild.
-
-### Layer 6: Visual Knowledge Graph (Advanced Boundary)
-- Maps relationships between procedures, tables, components, past incidents, and verified causes.
-- Renders structural workspace/notebook maps alongside importable/renderable graphs saved from external tools like NotebookLM.
-
-### Layer 7: Field Intelligence / Alert (Advanced Boundary)
-- Live log anomaly detection using historical case schemas.
-
----
-
-## 3. Strict Refactor Rules
-- **No Premature Abstraction:** Do not construct a modular refactor or distribute modules across separate services until Case Cockpit v0.1 has been validated through the Phase 2 Real Work Pilot.
-- **Maintain Local-First Gating:** The `governance` and `export` boundaries must be strictly independent of UI scripts so they can be executed by automated test runners and command-line audit tools.
+1. `local_only` evidence và raw local sources không được đi ra cloud/NotebookLM
+   khi không có policy/owner permission phù hợp.
+2. Runtime/private files không được stage hoặc commit.
+3. Workspace Chat phải giữ boundary không import Studio/Case Cockpit.
+4. Không claim `PASS` nếu không có command/test evidence của gate hiện tại.
+5. Mọi migration/deletion có rollback rõ ràng và full validation sau slice.

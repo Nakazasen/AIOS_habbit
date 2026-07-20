@@ -1,12 +1,16 @@
-﻿# RAG V2 Design
+# RAG V2 Design
 
-Status: `DRAFT_FOR_OWNER_REVIEW`
+Status: `ACTIVE_ARCHITECTURE_REFERENCE`
 
-Date: 2026-07-06
+Last reviewed: 2026-07-20
 
-Repo/head: `AIOS_habbit` at `957cf857162002075199c27763603378acd2d5aa`
+Current implementation foundation completed: element schema/adapters, document
+converter adapters, structure-aware chunking and local SQLite lexical index.
+The next planned implementation card is
+[docs/roadmap/backlog/RAG-V2-HYBRID-RETRIEVAL-MIN.md](../roadmap/backlog/RAG-V2-HYBRID-RETRIEVAL-MIN.md).
 
-Scope: design only. This document does not implement runtime code, add dependencies, change UI, open A18/P1.0, or modify roadmap/changelog files.
+Scope: architecture reference. This document does not itself open A18/P1.0,
+change UI, add dependencies or authorize a cloud/default-network path.
 
 ## 1. Goals
 

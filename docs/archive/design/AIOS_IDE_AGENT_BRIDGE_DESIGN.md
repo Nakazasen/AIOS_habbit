@@ -137,6 +137,7 @@ Chính sách cụ thể cho từng loại đích (destination):
 | `cloud` | forbidden | logical_repo_id + relative only |
 
 Các thông tin đường dẫn tuyệt đối bị cấm hoàn toàn đối với các external packs bao gồm:
+
 - Đường dẫn cục bộ tuyệt đối (absolute local path)
 - Đường dẫn phân vùng Windows (Windows drive path, ví dụ: `D:\...`, `C:\...`)
 - Tên người dùng hệ điều hành (username)

@@ -1,15 +1,23 @@
 # Operator Runbook
 
-## Human Operator Workflow
-1. Launch AIOS Habit Studio (`RUN_AIOS_HABIT_STUDIO.bat`).
-2. Run discovery from the **Projects** tab.
-3. Manage evidence and memories in the **Evidence** and **Memory** tabs.
-4. Keep unsupported claims as UNKNOWN or `needs_evidence`.
-5. Build profiles only from verified/export-allowed memory via the **Profiles** tab.
-6. Run the full audit via the **Audit** tab before any exports.
+## Luồng dùng hằng ngày
 
-## AI Executor Workflow
-1. Use the CLI interface (`aios-habit`).
-2. Run tests and `aios-habit audit`.
-3. Use `--dry-run` to preview changes before writing JSONL files.
-4. Run `aios-habit phase validate` to ensure phase gate compliance.
+1. Mở `RUN_AIOS_WORKSPACE_CHAT.bat`.
+2. Tạo hoặc chọn workspace phù hợp.
+3. Tạo hoặc chọn knowledge notebook; thêm nguồn cục bộ khi cần.
+4. Kiểm tra nhãn privacy trước khi hỏi về nguồn.
+5. Đặt câu hỏi tự nhiên trong Workspace Chat; dùng source context/citations để
+   kiểm tra câu trả lời.
+6. Khi thông tin chưa đủ, bổ sung nguồn hoặc giữ kết quả ở trạng thái cần review;
+   không biến claim chưa có evidence thành kết luận chắc chắn.
+
+## Xử lý sự cố
+
+- Nếu launcher báo thiếu dependency: chạy `py -3 -m pip install -e .` tại root
+  repository rồi mở launcher lại.
+- Nếu nguồn không được dùng: kiểm tra notebook/source đang chọn và privacy
+  setting trước khi thay đổi code.
+- Không đưa raw local documents, secrets hoặc runtime data vào Git/cloud.
+
+Developer xem [developer.md](runbooks/developer.md) thay vì dùng tài liệu này để
+chạy test/audit/release.

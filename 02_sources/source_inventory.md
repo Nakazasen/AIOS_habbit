@@ -127,7 +127,7 @@ Risk rule: metadata-only discovery; raw content is not ingested.
 - Signals: README.md, CHANGELOG.md, docs
 - Risk: metadata_only_inventory_no_raw_ingest
 
-## xﾃ｢y d盻ｱng mﾃ｡y ch盻ｧ AI t蘯｡i ch盻・
-- Path: `[LOCAL_WORKSPACE]\xﾃ｢y d盻ｱng mﾃ｡y ch盻ｧ AI t蘯｡i ch盻輿
+## xây dựng máy chủ AI tại chỗ
+- Path: [LOCAL_WORKSPACE]\xây dựng máy chủ AI tại chỗ
 - Signals: CHANGELOG.md
 - Risk: metadata_only_inventory_no_raw_ingest

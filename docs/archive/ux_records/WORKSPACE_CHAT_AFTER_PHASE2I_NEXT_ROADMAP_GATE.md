@@ -62,15 +62,20 @@ liệu tương ứng theo tên
 - Phase 2H answer clarity đã hoàn tất: source check không giả làm câu trả lời,
   chỉ explicit ask mới đi vào AI path, và provider chưa cấu hình được báo
   trung thực.
+
 - Phase 2I privacy source control đã hoàn tất: owner có thể chọn nguồn được gửi
   AI hoặc chỉ dùng trên máy; một nguồn bị chặn sẽ chặn toàn bộ request.
+
 - Phase 2I notebook lifecycle đã hoàn tất: archive/hide/restore có persistence,
   không hard delete và không sửa child data.
+
 - Owner smoke lifecycle được chấp nhận với trạng thái
   `PASS_WITH_ACCEPTED_GAP_ACCEPTED_FOR_PHASE2I`.
+
 - Core archive/restore và privacy quick smoke đều PASS.
 - Lỗi import Streamlit cũ được xác định là stale process/module cache và hết sau
   restart, không cần code change.
+
 - Stale two-session browser path chưa được browser-verify end-to-end, nhưng đã
   có structural test và được ghi nhận là accepted gap, không phải blocker.
 
@@ -82,18 +87,23 @@ Do đó không có bằng chứng buộc phải mở lại Phase 2I.
    success/error/privacy coverage, nhưng owner chưa smoke được provider success
    vì môi trường chưa có provider được cấu hình và phê duyệt. Workspace Chat
    cũng chưa có owner-facing provider setup.
+
 2. **Stale two-session browser automation.** Task tương lai đã được ghi nhận:
    `HARDEN_WORKSPACE_CHAT_PHASE2I_STALE_SESSION_BROWSER_AUTOMATION`.
+
 3. **Test hygiene.** Test lifecycle còn dead variable `msg`; một số test phụ
    thuộc seeded notebook IDs; confirmation/cancel/stale-session cần direct UI
    behavior coverage mạnh hơn.
+
 4. **Hành trình owner chưa được hợp nhất.** Các capability đã có nhưng UI vẫn
    trình bày theo nhiều khối kỹ thuật/pilot. App còn expander checklist pilot,
    action tạo dữ liệu test, nhiều đường thêm nguồn, và phân tách source check /
    ask / privacy / lifecycle chưa thành một đường đi ngắn, dễ tự hoàn thành.
+
 5. **Handoff chưa thật.** `Lưu vào Case` hiện là placeholder trung thực, được
    test để không persist và không gọi provider. Chưa có Workspace Chat evidence
    pack/handoff thật.
+
 6. **Roadmap cấp repo bị cũ ở phần Active Position.** Đây là vấn đề tài liệu
    rộng hơn gate này; sửa `ROADMAP.md` sẽ không còn là thay đổi tối thiểu và
    không nên trộn vào next implementation.
@@ -156,7 +166,7 @@ Thang điểm: owner value và testability `1` thấp đến `5` cao; safety ris
 implementation risk `1` thấp đến `5` cao.
 
 | Option | Owner value | Safety risk | Implementation risk | Testability | Recommended timing |
-|---|---:|---:|---:|---:|---|
+| --- | ---: | ---: | ---: | ---: | --- |
 | A. Provider success smoke | 4 | 4 | 3 | 3 | Khi owner phê duyệt provider |
 | B. Real-work owner flow hẹp | 5 | 2 | 2 | 4 | **Tiếp theo** |
 | C. Test/browser hardening | 2 | 1 | 2 | 5 | Sau B; sớm hơn nếu có regression |
@@ -169,6 +179,7 @@ implementation risk `1` thấp đến `5` cao.
 
 - Exact task name:
   `IMPLEMENT_WORKSPACE_CHAT_PHASE2J_REAL_WORK_OWNER_FLOW`
+
 - Model: **Codex**
 
 Codex phù hợp vì task cần thay đổi nhỏ nhưng xuyên qua Streamlit wiring, copy và
@@ -187,6 +198,7 @@ Task không cần khả năng provider/cloud hay nghiên cứu ngoài repo.
 
 1. Tạo một owner-facing “đường đi tiếp theo” ngắn, progressive, dùng capability
    hiện có:
+
    - tạo/mở sổ;
    - thêm nguồn;
    - chọn hoặc sửa quyền riêng tư;
@@ -197,12 +209,16 @@ Task không cần khả năng provider/cloud hay nghiên cứu ngoài repo.
 2. Thu gọn checklist pilot dài thành trợ giúp collapsed, ngắn và theo ngữ cảnh.
 3. Chuyển `Tạo dữ liệu test không mật` ra khỏi luồng chính và giữ nó trong một
    vùng trợ giúp/thử nghiệm collapsed; không xóa helper hoặc thay semantics.
+
 4. Làm rõ trạng thái hiện tại và next action bằng copy tiếng Việt owner-facing;
    không thêm internal jargon.
+
 5. Giữ `Lưu vào Case` là placeholder trung thực hoặc hạ độ nổi bật nếu cần;
    không hiển thị success giả, không persist.
+
 6. Không thay đổi thứ tự safety backend: source resolution, privacy gate,
    exact-source consent và provider call.
+
 7. Không thay đổi archive/restore persistence hoặc child-data policy.
 
 ### Non-goals / forbidden scope
@@ -216,8 +232,10 @@ Task không cần khả năng provider/cloud hay nghiên cứu ngoài repo.
 - Không hard delete, bulk action, rename hoặc migration.
 - Không thêm dependency, RAG, vector, embedding, retrieval, citation, OCR hay
   file format mới.
+
 - Không sửa `.ai`, `local_cases`, `task.md`, `walkthrough.md`,
   `implementation_plan.md` hoặc runtime JSON.
+
 - Không sửa `ROADMAP.md`/`CHANGELOG.md` trong implementation task.
 - Không stage, commit hoặc push nếu owner chưa yêu cầu rõ sau audit.
 
@@ -248,6 +266,7 @@ phê duyệt; không tự mở rộng.
 - Pilot help collapsed và không chặn flow chính.
 - Safe test data không nằm trong action hierarchy chính, vẫn tạo đúng một
   synthetic non-secret source khi owner explicit click.
+
 - Privacy choices/copy và all-or-nothing block giữ nguyên.
 - Source check không lưu assistant message và không gọi provider.
 - Typing, paste/upload và privacy edit không gọi provider.
@@ -256,6 +275,7 @@ phê duyệt; không tự mở rộng.
 - `Lưu vào Case` vẫn là placeholder, không persistence/provider call.
 - Archive confirmation/cancel/restore và stale-session structural behavior
   không regression.
+
 - Không lộ internal terms trong owner-facing copy.
 - Chạy nguyên bộ `tests/test_workspace_chat_ai_answer.py` không sửa file này.
 
@@ -277,6 +297,7 @@ git status --short .ai local_cases task.md walkthrough.md implementation_plan.md
 - Implementation agent không stage, commit hoặc push.
 - Sau implementation audit PASS, owner quyết định có audit độc lập và
   commit/push hay không.
+
 - Không reset, clean, stash, delete hoặc ghi đè dirty work của owner.
 
 ### Owner smoke plan
@@ -291,6 +312,7 @@ Dùng dữ liệu synthetic, không mật và không yêu cầu provider:
 6. Đổi lại `Có thể gửi AI`; explicit ask.
 7. Nếu provider chưa cấu hình, xác nhận thông báo no-send trung thực. Provider
    success không phải điều kiện PASS của smoke này.
+
 8. Kiểm tra `Lưu vào Case` không báo success/persist giả.
 9. Quay lại danh sách, archive, cancel một lần, archive thật và restore.
 10. Xác nhận dữ liệu/nguồn còn nguyên và runtime paths không dirty ngoài dữ
@@ -302,7 +324,7 @@ có safety regression.
 ## 9. Risk controls
 
 | Risk | Control |
-|---|---|
+| --- | --- |
 | “UX consolidation” trượt thành redesign | Chỉ thay hierarchy/copy/progressive disclosure trong allowlist |
 | Copy làm yếu privacy | Backend không sửa; regression tests chạy nguyên |
 | Test helper bị hiểu là production action | Đưa vào vùng collapsed ghi rõ thử nghiệm |
@@ -316,9 +338,11 @@ có safety regression.
 2. Nếu owner đã chọn provider/locality: chạy task docs/audit độc lập
    `AUDIT_WORKSPACE_CHAT_LOCAL_DEV_PROVIDER_SMOKE_PATH`, sau đó mới smoke bằng
    synthetic data; không cần implementation provider trong Phase 2J.
+
 3. Nếu pilot cho thấy handoff là điểm nghẽn: mở design gate riêng cho Workspace
    Chat evidence/handoff contract và kiểm tra overlap với Case Cockpit/IDE
    bridge.
+
 4. Chạy `HARDEN_WORKSPACE_CHAT_PHASE2I_STALE_SESSION_BROWSER_AUTOMATION` cùng
    test hygiene khi accepted gap tăng rủi ro hoặc trước production-readiness,
    không chặn owner value hiện tại.

@@ -149,14 +149,15 @@ def test_store_round_trip(tmp_path, monkeypatch):
     assert len(loaded_ev) == 1
     assert loaded_ev[0].evidence_id == "T_EVD_1"
 
-# 10. Launcher content contains streamlit run command
-def test_launcher_contents_check():
-    bat_content = Path("RUN_AIOS_CASE_COCKPIT.bat").read_text(encoding="utf-8")
-    ps1_content = Path("scripts/run_case_cockpit.ps1").read_text(encoding="utf-8")
-    
-    assert "streamlit run" in bat_content.lower()
-    assert "streamlit run" in ps1_content.lower()
+# 10. Supported launcher content contains the Workspace Chat entry
+def test_workspace_chat_launcher_contents_check():
+    bat_content = Path("RUN_AIOS_WORKSPACE_CHAT.bat").read_text(encoding="utf-8")
+    ps1_content = Path("scripts/run_workspace_chat.ps1").read_text(encoding="utf-8")
 
+    assert "streamlit run" in bat_content.lower()
+    assert "workspace_chat_app.py" in bat_content
+    assert "streamlit run" in ps1_content.lower()
+    assert "workspace_chat_app.py" in ps1_content
 # Bonus: Filename sanitization / collision handling tests
 def test_safe_asset_filename():
     assert "secret" in safe_asset_filename("..\\secret.png")
@@ -166,42 +167,3 @@ def test_safe_asset_filename():
     fn1 = safe_asset_filename("file.csv")
     fn2 = safe_asset_filename("file.csv")
     assert fn1 != fn2  # Must be unique prefix
-
-# Simulates direct script launch (as done by Streamlit) to prevent relative import failure
-def test_direct_script_import_simulation():
-    import subprocess
-    import sys
-    cmd = [sys.executable, "-c", "import sys; sys.path.insert(0, 'src/aios_habit'); import case_cockpit"]
-    res = subprocess.run(cmd, capture_output=True, text=True)
-    assert res.returncode == 0, f"Import failed in script execution mode.\nStdout: {res.stdout}\nStderr: {res.stderr}"
-
-# Verifies that no untranslated common English UI strings are present in the case_cockpit.py UI code
-def test_vietnamese_ui_translation_integrity():
-    ui_file = Path("src/aios_habit/case_cockpit.py")
-    assert ui_file.exists()
-    content = ui_file.read_text(encoding="utf-8")
-    
-    blocked_english_strings = [
-        "Today Brief",
-        "Navigation",
-        "Add Evidence",
-        "Case Map",
-        "Next Actions",
-        "Prompt Pack",
-        "Handover",
-        "Total Cases",
-        "Open Cases",
-        "High Priority",
-        "Top Cases to Focus",
-        "Refresh Brief",
-        "Run Audit"
-    ]
-    
-    found = []
-    for s in blocked_english_strings:
-        if s in content:
-            found.append(s)
-            
-    assert not found, f"Found untranslated English UI strings in case_cockpit.py: {found}"
-
-

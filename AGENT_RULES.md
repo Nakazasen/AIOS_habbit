@@ -32,7 +32,8 @@ No pull request or code change is allowed to be merged or pushed without satisfy
 1. **Compilation Check:** Code must compile cleanly using `py -3 -m compileall src tests`.
 2. **Pytest Coverage:** All existing unit tests and any newly added tests must pass with `py -3 -m pytest -q`.
 3. **Local CLI Audit Check:** Running `$env:PYTHONPATH="src"; py -3 -m aios_habit.cli audit` must return `"status": "PASS"` with no errors.
-4. **Package Import Check:** Running `$env:PYTHONPATH="src"; py -3 -c "import aios_habit.case_cockpit"` must run without errors.
+4. **Primary UI Import Check:** Running `$env:PYTHONPATH="src"; py -3 -c "import aios_habit.workspace_chat_app"` must run without errors.
+5. **Legacy Boundary Check:** Supported Workspace Chat modules must not import `studio` or `case_cockpit`; retiring a legacy slice must also remove its supported launch path and stale test expectation.
 
 ---
 

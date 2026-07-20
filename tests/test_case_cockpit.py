@@ -29,11 +29,3 @@ def test_next_action_generation():
     e = EvidenceItem(evidence_id="EVD-1", case_id="TEST-1", source_type="screenshot", source_path="", title="Img", extracted_text="")
     actions2 = generate_next_actions(c, [e])
     assert "Mô tả nội dung ảnh chụp màn hình." in actions2
-
-def test_launchers_exist():
-    assert Path("RUN_AIOS_CASE_COCKPIT.bat").exists()
-    assert Path("scripts/run_case_cockpit.ps1").exists()
-
-def test_case_cockpit_module_imports():
-    import aios_habit.case_cockpit
-    assert aios_habit.case_cockpit

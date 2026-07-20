@@ -7,13 +7,13 @@ if %errorlevel% neq 0 (
     echo Streamlit not found. Installing dependencies...
     py -3 -m pip install -e .
     if %errorlevel% neq 0 (
-        echo Launcher missing package/dependency problem: Khong the cai dat cac goi phu thuoc. Vui long kiem tra lai.
+        echo Khong the cai dat cac goi phu thuoc. Vui long kiem tra lai.
         pause
         exit /b 1
     )
 )
 
-echo Starting AIOS Habit Workspace Chat...
+echo Starting AIOS WorkLens Workspace Chat...
 set PYTHONPATH=src
 py -3 -m streamlit run src\aios_habit\workspace_chat_app.py
 pause

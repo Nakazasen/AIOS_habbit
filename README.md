@@ -1,58 +1,61 @@
-# AIOS WorkLens & Case Cockpit
+﻿# AIOS WorkLens
 
-AIOS WorkLens is a Personal Senior Work Intelligence System (Hệ thống trí tuệ công việc cá nhân). The **AIOS Case Cockpit** is its local workspace module designed for handling daily incidents, organizing evidence, generating Reasoning Maps, constructing safe AI Prompt Packs, and drafting secure handovers.
+AIOS WorkLens là môi trường tri thức công việc **local-first**. Luồng sử dụng
+chính là: mở Workspace Chat, thêm hoặc chọn nguồn cục bộ, hỏi bằng ngôn ngữ tự
+nhiên và nhận câu trả lời có ngữ cảnh nguồn.
 
----
+> [!IMPORTANT]
+> **Workspace Chat là giao diện duy nhất dành cho người dùng thông thường.**
+> Case Cockpit và Habit Studio cũ đang được retirement; chúng không còn là một
+> phần của quick start hay runbook vận hành.
 
-## 📖 Key Reference Documents
-- **Roadmap Index:** [ROADMAP.md](ROADMAP.md) - High-level development roadmap index and gate status.
-- **Product North Star & Doctrine:** [PRODUCT_NORTH_STAR.md](PRODUCT_NORTH_STAR.md) - The core loops, layers, values, and definitions of AIOS WorkLens.
-- **Development & Agent Rules:** [AGENT_RULES.md](AGENT_RULES.md) - Mandatory guidelines and model roles for AI developers.
-- **WorkLens Architecture:** [WORKLENS_ARCHITECTURE.md](WORKLENS_ARCHITECTURE.md) - Module boundaries and product layers.
+## Bắt đầu nhanh trên Windows
 
----
+1. Cài Python 3.11 trở lên.
+2. Tại thư mục repository, cài môi trường local:
 
-## ⚡ Quick Start
-1. **Install Dependencies:**
-   Ensure Python 3.x is installed, then install the package in editable mode:
-   ```bash
+   ```powershell
    py -3 -m pip install -e .
    ```
-2. **Launch Workspace Chat (UI Chính):**
-   Double-click [RUN_AIOS_HABIT_STUDIO.bat](RUN_AIOS_HABIT_STUDIO.bat) on Windows, or run:
-   ```bash
-   py -3 -m streamlit run src\aios_habit\workspace_chat_app.py
-   ```
-3. **Launch Case Cockpit (Legacy / Reference Only):**
-   Double-click [RUN_AIOS_CASE_COCKPIT.bat](RUN_AIOS_CASE_COCKPIT.bat) on Windows, or run:
-   ```bash
-   py -3 -m streamlit run src\aios_habit\case_cockpit.py
+
+3. Mở [RUN_AIOS_WORKSPACE_CHAT.bat](RUN_AIOS_WORKSPACE_CHAT.bat).
+
+   Hoặc chạy PowerShell:
+
+   ```powershell
+   .\scripts\run_workspace_chat.ps1
    ```
 
----
+4. Trong Workspace Chat: tạo/chọn workspace, thêm/chọn tài liệu, rồi đặt câu
+   hỏi. Không cần nhớ thuật ngữ RAG, bridge, provider hoặc gate.
 
-## 🧪 Running Tests & Audits
-- **Run Unit Tests:**
-  ```bash
-  py -3 -m pytest
-  ```
-- **Run Security & Integrity Audit:**
-  ```bash
-  $env:PYTHONPATH="src"
-  py -3 -m aios_habit.cli audit
-  ```
-- **Check Ignored Runtime Assets:**
-  Make sure local database and assets remain ignored:
-  ```bash
-  git status --short --ignored
-  ```
+## Tài liệu chính thức
 
-## Using full-bundle IDE handoff
+- [ROADMAP.md](ROADMAP.md) — roadmap/index canonical và gate đang mở.
+- [PROJECT_HANDOVER.md](PROJECT_HANDOVER.md) — trạng thái bàn giao ngắn, rủi ro
+  và bước kế tiếp.
+- [WORKLENS_ARCHITECTURE.md](WORKLENS_ARCHITECTURE.md) — ranh giới kiến trúc
+  hiện hành.
+- [docs/roadmap/README.md](docs/roadmap/README.md) — quy ước Gate Card.
+- [docs/runbooks/operator.md](docs/runbooks/operator.md) — quy trình dùng app.
+- [docs/runbooks/developer.md](docs/runbooks/developer.md) — setup, validation
+  và quy tắc release cho developer.
+- [docs/legacy/RETIREMENT_MANIFEST.md](docs/legacy/RETIREMENT_MANIFEST.md) —
+  inventory legacy và trạng thái dọn dẹp.
 
-AIOS can create a local full-bundle request for Antigravity/IDE AI without calling a cloud provider.
+## Kiểm thử và audit
 
-1. In Workspace Chat (hoặc Case Cockpit legacy), create `Trả lời bằng AI IDE từ full bundle`.
-2. Ask the IDE AI to read the complete `local_runs/ide_handoff/outbox/REQ-...` folder and write response JSON to `local_runs/ide_handoff/inbox/`.
-3. Import that response JSON in AIOS. AIOS validates request ID, privacy acknowledgement, full-bundle use, and evidence IDs before saving.
+```powershell
+py -3 -m compileall src tests
+py -3 -m pytest -q
+$env:PYTHONPATH="src"; py -3 -m aios_habit.cli audit
+git diff --check
+git status --short --ignored
+```
 
-Do not commit `local_runs/` bundles or raw local documents.
+## An toàn dữ liệu local
+
+Không commit dữ liệu runtime hoặc dữ liệu riêng tư: `local_cases/`,
+`local_runs/`, JSONL evidence/memory, tài liệu gốc, ảnh/screenshot, `.env`,
+tokens, credentials và cache. Cloud/NotebookLM không phải điều kiện để dùng
+Workspace Chat local.

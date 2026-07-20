@@ -1,18 +1,31 @@
-# Install
-Use Python 3.11+.
+# Cài đặt
 
-## AIOS Habit Studio (Web UI)
-The recommended way for normal users to interact with AIOS Habit is the Studio UI.
-Just double-click `RUN_AIOS_HABIT_STUDIO.bat` at the repository root. It will automatically install `streamlit` if missing and launch the UI.
+Dùng Python 3.11 trở lên. AIOS WorkLens chạy local-first; không cần cloud service
+để dùng Workspace Chat.
 
-Alternatively, via PowerShell:
+## Workspace Chat
+
+1. Tại root repository, cài package local:
+
+   ```powershell
+   py -3 -m pip install -e .
+   ```
+
+2. Mở `RUN_AIOS_WORKSPACE_CHAT.bat`.
+
+   Hoặc dùng PowerShell:
+
+   ```powershell
+   .\scripts\run_workspace_chat.ps1
+   ```
+
+Launcher sẽ kiểm tra Streamlit; nếu chưa có, nó cài dependencies local trước khi
+mở Workspace Chat.
+
+## CLI cho developer
+
 ```powershell
-.\scripts\run_studio.ps1
-```
-
-## CLI Interface (For Agents / Developers)
-```powershell
-py -3 -m pip install -e .
 aios-habit --help
 ```
-No cloud service is required.
+
+Xem validation/release workflow tại [runbooks/developer.md](runbooks/developer.md).
