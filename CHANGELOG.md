@@ -1,5 +1,234 @@
 # Changelog
 
+## 2026-07-26 - RAG v2 Fail-Closed Corpus Remediation and Live Benchmark Rerun
+
+### Changed
+
+- Enforced fail-closed canonical manifest in `battle_notebooklm_rag_v2.py`:
+  `EXPECTED_SOURCE_COUNT` updated 48 → 70; `resolve_benchmark_source_root()`
+  now raises `BenchmarkError` when source root is not exactly `tailieugoc`,
+  preventing workspace-root contamination (previously indexed 1,065 files
+  instead of the canonical 70).
+- Added exact 70-file business file count validation in `build_local_manifest()`.
+- Extended `eval_harness.py` `BenchmarkQuestion` with gold obligation fields:
+  `required_sources`, `required_spans`, `required_facets` for future
+  oracle-based quality evaluation.
+
+### Evidence
+
+- Preflight rejects contaminated source root:
+  `--source-root D:/Sandbox/AIOS_habbit` → `BenchmarkError` (fail-closed).
+- Preflight passes canonical root:
+  `--source-root D:/Sandbox/MOM_WMS_QLLSSX/tailieugoc` → `PASS`.
+- Live benchmark `BATTLE-RAGv2-1785003571-e33e5670` completed: mode `run`
+  (not dry-run), 70 business files, 12/12 questions answered across all three
+  systems. Corpus fingerprint `78957a10...`, question set hash `e33e5670...`.
+- Blind scoring imported (11 shared rows): NotebookLM won 11/11, RAG v2 0,
+  Workspace Chat 0, ties 0.
+- Mean rubric scores: NotebookLM **4.27/5**, RAG v2 **3.15/5**,
+  Workspace Chat **2.68/5**.
+
+### Decision
+
+- Gate verdict: **HOLD** — RAG v2 remains `NOT_READY_FOR_PRIMARY_UI`.
+- NotebookLM parity not achieved: 1.12-point gap (26% deficit).
+- RAG v2 improves from prior 2.898 → 3.15 (+0.25), but gap remains significant.
+- Key weakness: retrieval quality (BQ04 returned irrelevant BOP content),
+  synthesis depth, and cross-source synthesis.
+- Next: fix retrieval quality, improve synthesis depth, re-run when ready.
+
+## 2026-07-25 - RAG v2 Dev Quality Convergence Closure
+
+### Changed
+
+- Added the independent `RagV2DevPipeline` and Dev CLI over converters,
+  structure-aware chunks, persistent local indexing, retrieval, evidence, and
+  provider-independent synthesis contracts.
+- Added SQLite FTS5/BM25 candidate retrieval with deterministic fallback,
+  set-level coverage, granular citation coordinates, claim validation, truthful
+  local evidence digests, and synthesis-aware continuous local evaluation.
+- Migrated the RAG v2 battle arm to the shared Dev pipeline while preserving
+  checkpointing and strict `local_only` isolation.
+
+### Evidence
+
+- Focused RAG v2 regression: 79 passed. Full compile and repository regression:
+  998 passed.
+- Documentation contract, CLI audit, Workspace Chat bare-mode import, and Git
+  whitespace checks: PASS.
+- Private offline replay `BATTLE-RAGv2-1784998427-e33e5670`: preflight PASS;
+  70 files seen, 53 converted, 17 fail-soft, 767 chunks indexed.
+- Router was `SKIPPED_LOCAL_ONLY`; no key was configured, no provider was
+  constructed, and all 12 rows were correctly labeled `DRY_RUN_ONLY`.
+
+### Decision
+
+- Gate verdict: `DEV_READY_WITH_LIMITATIONS` and `NOT_READY_FOR_PRIMARY_UI`.
+- The replay did not generate answers and therefore does not replace the latest
+  blind quality evidence: RAG v2 2.898/5 versus NotebookLM 3.807/5.
+- No live provider rerun, Workspace Chat migration, UI change, A18 opening, or
+  P1.0 opening was performed.
+- Gate card moved to
+  `docs/roadmap/completed/RAG-V2-DEV-QUALITY-CONVERGENCE.md`.
+
+## 2026-07-25 - RAG v2 Capability Benchmark Closure
+
+### Changed
+
+- Reworked the NotebookLM battle runner from hard source-count parity to a
+  three-arm capability protocol for NotebookLM, Workspace Chat, and RAG v2.
+- Added corpus/workflow applicability, canonical-source boundaries,
+  checkpoint/resume, bounded NotebookLM retry, deterministic blinded bundles,
+  and validated eight-dimension score import.
+- Repaired RAG v2 benchmark retrieval with generic query planning and
+  multi-variant reciprocal-rank fusion; no project-domain terms were added to
+  RAG v2 core.
+
+### Evidence
+
+- Final run: 12 RAG v2, 12 Workspace Chat, and 11 applicable NotebookLM
+  workflows completed; no provider errors remained. `BQ09` was excluded from
+  shared quality as an Excel-native NotebookLM-non-applicable workflow.
+- Independent blind review imported 11 shared rows: NotebookLM 8 wins, RAG v2
+  2 wins, Workspace Chat 1 win; no ties.
+- Mean rubric score: NotebookLM 3.807/5, RAG v2 2.898/5, Workspace Chat
+  2.841/5. The evidence does not support a NotebookLM-parity claim.
+- Focused benchmark/RAG tests: 57 passed. Full suite: 977 passed.
+- Documentation contract, compile, and CLI audit: PASS.
+
+### Governance
+
+- Gate card moved to
+  `docs/roadmap/completed/NOTEBOOKLM-BATTLE-RERUN-RAG-V2.md`.
+- Private source data, answers, assignments, and credentials remain in ignored
+  local artifacts and are not committed.
+- RAG v2 remains an independent candidate, not the active Workspace Chat path.
+- A18 remains `PLANNED` / not opened. P1.0 remains `LOCKED`.
+
+## 2026-07-25 - RAG v2 Eval Harness
+
+### Changed
+
+- Added `rag_v2/eval_harness.py` with generic benchmark runner, independent
+  of legacy `rag_benchmark.py` and `rag_evaluator.py`.
+- Added `BenchmarkConfig`, `BenchmarkQuestion`, `BenchmarkResult`,
+  `BenchmarkSummary` data types.
+- Added `run_benchmark(index, questions, config)` exercising full RAG v2
+  pipeline: `LocalChunkIndex.search_with_summary()` → `build_evidence_pack()`
+  → `score_question()` → `summarize_results()`.
+- Metrics: retrieval hit rate, document hit rate, citation source hit rate,
+  insufficiency detection rate, privacy pass rate, average latency.
+- Forbidden term check prevents hallucination-like retrieval.
+- Stable reproducible benchmark ID from SHA-256 of questions + config.
+- `format_benchmark_summary(summary)` and `benchmark_summary_to_dict(summary)`.
+- Re-exported all eval types from `rag_v2/__init__.py`.
+
+### Verification
+
+- Focused eval + hard-code guard tests: `11 passed` in 0.37s.
+- Documentation contract: PASS.
+- Compile: PASS.
+- Full test suite: `931 passed` in 25.45s.
+- CLI audit: PASS, no errors or warnings.
+- Workspace Chat import: PASS (expected Streamlit bare-mode warnings only).
+
+### Governance
+
+- No Workspace Chat UI or runtime migration.
+- No cloud/provider/LLM call, credential, or new dependency.
+- No import from legacy benchmark/evaluator/search modules.
+- No domain-specific terms in RAG v2 source or comments.
+- No private dataset committed to Git.
+- Gate card moved to `docs/roadmap/completed/RAG-V2-EVAL-HARNESS-GENERIC-AND-PRIVATE.md`.
+- At this milestone, the next candidate gate was
+  `NOTEBOOKLM-BATTLE-RERUN-RAG-V2`; it is now completed above.
+- A18 remains `PLANNED` / not opened. P1.0 remains `LOCKED`.
+
+## 2026-07-25 - RAG v2 Generic Evidence Synthesis
+
+### Changed
+
+- Added `rag_v2/evidence.py` with generic evidence pack builder, independent
+  of legacy `rag_evidence.py`, `rag_search.py`, and `query_intent.py`.
+- Added `EvidencePackConfig`, `EvidenceConfidence` (enum), `EvidenceItem`,
+  `PrivacySummary`, and `EvidencePack` data types.
+- Added `build_evidence_pack(query, response, config)` converting
+  `SearchResponse` into cited, confidence-assessed `EvidencePack`.
+- Added `format_evidence_for_prompt(pack)` for prompt-ready evidence text with
+  citation labels, source locations, scores, and insufficient-evidence warnings.
+- Added `evidence_pack_to_dict(pack)` with JSON-compatible recursive
+  tuple-to-list serialization.
+- Confidence computed from retrieval insufficiency reasons plus configurable
+  score/coverage thresholds (high ≥ 8.0, medium ≥ 3.0).
+- Privacy: strictest-wins across all items; `local_only`/`confidential` in any
+  item makes the whole pack `local_only`.
+- Re-exported all evidence types from `rag_v2/__init__.py`.
+
+### Verification
+
+- Focused evidence + hard-code guard tests: `15 passed` in 0.19s.
+- Documentation contract: PASS.
+- Compile: PASS.
+- Full test suite: `921 passed` in 45.98s.
+- CLI audit: PASS, no errors or warnings.
+- Workspace Chat import: PASS (expected Streamlit bare-mode warnings only).
+
+### Governance
+
+- No Workspace Chat UI or runtime migration.
+- No cloud/provider call, credential, or new dependency.
+- No import from legacy evidence/search/intent modules.
+- No domain-specific terms in RAG v2 source or comments.
+- Gate card moved to `docs/roadmap/completed/RAG-V2-GENERIC-EVIDENCE-SYNTHESIS-MIN.md`.
+- Next candidate gate: `RAG-V2-EVAL-HARNESS-GENERIC-AND-PRIVATE`.
+- A18 remains `PLANNED` / not opened. P1.0 remains `LOCKED`.
+
+## 2026-07-25 - RAG v2 Hybrid Retrieval
+
+### Changed
+
+- Upgraded `LocalChunkIndex` in `rag_v2/index.py` from naïve token-count
+  retrieval to staged local retrieval with transparent multi-signal ranking.
+- Added pre-ranking filters: privacy label allow-list, selected document/source
+  path, and source fingerprint freshness check.
+- Added generic ranking signals: lexical term frequency, exact text phrase,
+  source name/path match, section/sheet structure match, table element type,
+  optional confidence/freshness metadata, and metadata-only penalty.
+- Added per-document source diversity cap (default: two chunks per document).
+- Added deterministic tie-breaking: score descending, then document ID / source
+  path / chunk ID ascending.
+- Added `SearchOptions`, `SearchSummary`, `SearchResponse` types and
+  `search_with_summary()` entry point; the existing `search()` list API remains
+  backward-compatible.
+- Added safe insufficiency reasons: `empty_or_tokenless_query`,
+  `no_indexed_chunks`, `source_filter_excluded_all_chunks`,
+  `privacy_filter_excluded_all_chunks`, `stale_fingerprint_excluded_all_chunks`,
+  `no_lexical_or_metadata_match`, `incomplete_query_term_coverage`,
+  `weak_query_term_coverage`.
+- Re-exported new types from `rag_v2/__init__.py`.
+
+### Verification
+
+- Focused RAG v2 index/chunking/hard-code tests: `18 passed` in 0.55s.
+- Documentation contract: PASS.
+- Compile: PASS.
+- Full test suite: `907 passed` in 12.94s.
+- CLI audit: PASS, no errors or warnings.
+- Workspace Chat import: PASS (expected Streamlit bare-mode warnings only).
+- `git diff --check` and `git diff --cached --check`: PASS.
+
+### Governance
+
+- No vector database, embedding, cloud/provider call, or new dependency.
+- No Workspace Chat UI or runtime migration; legacy `rag_search.py` remains the
+  active retrieval path.
+- No project-specific domain hard-code in RAG v2 source or comments.
+- External design references consulted: Haystack `DocumentJoiner`, LlamaIndex
+  `QueryFusionRetriever`, Vespa hybrid-search, SQLite FTS5.
+- Gate card moved to `docs/roadmap/completed/RAG-V2-HYBRID-RETRIEVAL-MIN.md`.
+- Next candidate gate: `RAG-V2-GENERIC-EVIDENCE-SYNTHESIS-MIN`.
+- A18 remains `PLANNED` / not opened. P1.0 remains `LOCKED`.
+
 ## 2026-07-25 - Professionalization Baseline Closure
 
 ### Enhancements
@@ -30,10 +259,35 @@
 
 - Professionalization Baseline moved to `DONE`; no runtime/UI/schema/cloud-default
   behavior changed.
-- P0 follow-up `AI-GW-REAL-ROUTE-POLICY-CONSOLIDATION` is `PLANNED` before any
-  external-provider production-readiness claim.
+- P0 follow-up `AI-GW-REAL-ROUTE-POLICY-CONSOLIDATION` is `DONE`; its route-specific
+  validation is recorded below before any external-provider production-readiness claim.
 - Security reporting, distribution/support, retention/RTO-RPO, named ownership
   and advisory-enforcement decisions remain owner-controlled.
+
+## 2026-07-25 - AI Gateway P0 Real-Route Policy Consolidation
+
+### Changed
+
+- Routed the real Workspace Chat provider path through `BrainGateway` before an
+  adapter can construct provider messages.
+- Bound owner consent to the exact full selected-source set,
+  `workspace_chat_external_router` and `workspace_chat_answer`.
+- Restricted the live router adapter to `SanitizedRouterPayload`; raw prompts are
+  now constructed only inside that adapter from Gateway-approved content.
+- Kept `local_only`/`confidential` as hard-deny and `unknown`/`machine_only` as
+  consent-bound; explicit current external sharing now maps to `cloud_safe`.
+- Preserved legacy `machine_only`/`cloud_allowed` labels as non-sendable until an
+  owner explicitly reclassifies them; no stored data was silently migrated.
+- Preserved retrieval provenance so every outbound evidence snippet is authorized
+  against the complete enabled-source snapshot.
+
+### Verification
+
+- Focused Gateway/real-route/owner-flow/retrieval regressions: `155 passed`.
+- Full quality gate: documentation contract PASS, compile PASS, `903 passed in
+  18.16s`, CLI audit PASS with no errors/warnings, Workspace Chat import PASS
+  (expected Streamlit bare-mode warnings only), and Git whitespace checks PASS.
+- No live provider request or credentials were used.
 
 ## 2026-07-25 - Nakazasen AI Router v0.4.0 & Cleanup Gate Closure
 

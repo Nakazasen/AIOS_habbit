@@ -2,12 +2,25 @@
 
 Status: `ACTIVE_ARCHITECTURE_REFERENCE`
 
-Last reviewed: 2026-07-20
+Last reviewed: 2026-07-26
 
-Current implementation foundation completed: element schema/adapters, document
-converter adapters, structure-aware chunking and local SQLite lexical index.
-The next planned implementation card is
-[docs/roadmap/backlog/RAG-V2-HYBRID-RETRIEVAL-MIN.md](../roadmap/backlog/RAG-V2-HYBRID-RETRIEVAL-MIN.md).
+Current Dev implementation completed: element schema/adapters, document converter
+adapters, structure-aware chunking, persistent local SQLite FTS5/BM25 retrieval
+with deterministic fallback, set-level evidence packaging, provider-independent
+synthesis planning/validation, a local-only evaluation harness, and an independent
+Dev orchestration/CLI. The closed capability benchmark and non-parity decision
+remain recorded in
+[NOTEBOOKLM-BATTLE-RERUN-RAG-V2](../roadmap/completed/NOTEBOOKLM-BATTLE-RERUN-RAG-V2.md).
+The Dev convergence closure is recorded in
+[RAG-V2-DEV-QUALITY-CONVERGENCE](../roadmap/completed/RAG-V2-DEV-QUALITY-CONVERGENCE.md)
+with verdict `DEV_READY_WITH_LIMITATIONS` / `NOT_READY_FOR_PRIMARY_UI`.
+
+Fail-closed corpus remediation completed 2026-07-26: `resolve_benchmark_source_root`
+now rejects workspace root fallback; `build_local_manifest` validates exact 70-file
+count; gold obligation fields added to eval harness. Live benchmark
+`BATTLE-RAGv2-1785003571-e33e5670` on clean 70-file corpus: NotebookLM **4.27/5**,
+RAG v2 **3.15/5**, Workspace Chat **2.68/5**. NotebookLM won 11/11 shared rows.
+Verdict: **HOLD**. Gap: -1.12 points (26% deficit).
 
 Scope: architecture reference. This document does not itself open A18/P1.0,
 change UI, add dependencies or authorize a cloud/default-network path.
@@ -257,6 +270,30 @@ Rerank concept:
 5. Penalize stale, low-confidence, or privacy-disallowed evidence.
 6. Return insufficient-evidence reasons when scores are weak or coverage is incomplete.
 
+### 10.1 Bounded multilingual query planning
+
+`RetrievalQueryPlan` preserves the original question and may include a small set of
+validated equivalent retrieval variants. The local default is an identity plan, so
+normal RAG v2 calls remain offline and backward compatible.
+
+- Variants are query-only inputs; the planner and optional expander never receive
+  chunk text, source titles, paths, manifests, or evidence.
+- Validation bounds count, length, total size and unsafe/operator-like text; invalid
+  expansion falls back to the original query.
+- Filters for enabled sources, privacy labels and stale fingerprints execute before
+  every variant is scored; expansion cannot bypass them.
+- `LocalChunkIndex` fuses per-variant rankings deterministically by reciprocal rank,
+  deduplicates by chunk ID and exposes variant/fusion provenance in result metadata.
+- A translated query match is not evidence: citations and confidence still derive
+  only from the returned local chunk text.
+- Content-term coverage excludes common English function words so a query's answer
+  sufficiency is not penalized merely by terms such as `what`, `is`, or `the`.
+
+The optional battle-only cloud adapter may ask a configured provider to produce a
+schema-constrained plan only when the owner has selected `cloud_safe` or `public`.
+It sends the question alone, caches only the validated plan in the private run
+folder, and fails safely to identity retrieval when unavailable.
+
 ## 11. Evidence pack format
 
 Evidence pack fields:
@@ -430,8 +467,12 @@ Proposed gates:
    - Add generic and private benchmark harness.
 7. `NOTEBOOKLM-BATTLE-RERUN-RAG-V2`
    - Rerun comparison after RAG v2 benchmark evidence exists.
+8. `RAG-V2-DEV-QUALITY-CONVERGENCE`
+   - Integrate the independent Dev pipeline, FTS5/BM25 retrieval, evidence and
+     synthesis contracts, continuous local evaluation, and private offline replay.
+   - Closed `DEV_READY_WITH_LIMITATIONS`; no primary-UI migration or parity claim.
 
-Roadmap/changelog changes must be handled only in a separate owner-approved docs sync gate.
+Roadmap/changelog changes require an owner-approved execution plan.
 
 ## 17. Test plan
 
