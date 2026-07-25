@@ -1,11 +1,14 @@
-﻿name: tests
+name: quality-gates
 
 on:
   push:
   pull_request:
 
+permissions:
+  contents: read
+
 jobs:
-  pytest:
+  verify:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
@@ -16,5 +19,19 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           python -m pip install -e . pytest
+      - name: Validate professional documentation
+        run: python scripts/check_docs.py
+      - name: Compile source and tests
+        run: python -m compileall src tests
       - name: Run tests
-        run: python -m pytest
+        run: python -m pytest -q
+      - name: Run local CLI audit
+        shell: pwsh
+        run: |
+          $env:PYTHONPATH = "src"
+          python -m aios_habit.cli audit
+      - name: Import supported Workspace Chat UI
+        shell: pwsh
+        run: |
+          $env:PYTHONPATH = "src"
+          python -c "import aios_habit.workspace_chat_app"

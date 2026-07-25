@@ -409,3 +409,20 @@ Không thực hiện:
 - UI.
 
 Chỉ tạo nền móng để Phase 1 có thể audit và triển khai an toàn.
+
+## 13. Current Implementation and Control References
+
+Tài liệu này giữ vai trò kiến trúc logic/data-memory lịch sử. Runtime/container,
+trust-boundary, sequence, decision và control hiện hành nằm trong:
+
+- [Professionalization index](docs/PROFESSIONALIZATION_INDEX.md)
+- [Architecture context](docs/architecture/CONTEXT.md)
+- [Architecture containers](docs/architecture/CONTAINERS.md)
+- [Architecture components](docs/architecture/COMPONENTS.md)
+- [Deployment view](docs/architecture/DEPLOYMENT.md)
+- [Architecture Decision Records](docs/adr/README.md)
+- [Threat model](docs/security/THREAT_MODEL.md)
+- [Runtime interfaces](docs/contracts/RUNTIME_INTERFACES.md)
+
+Các hồ sơ đó không thay thế nguyên tắc local-first/evidence-first ở đây; chúng
+mô tả implementation boundary và operational evidence cho trạng thái hiện tại.

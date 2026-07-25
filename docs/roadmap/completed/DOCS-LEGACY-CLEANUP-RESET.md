@@ -1,6 +1,6 @@
-﻿# DOCS-LEGACY-CLEANUP-RESET
+# DOCS-LEGACY-CLEANUP-RESET
 
-Status: `ACTIVE`
+Status: `DONE`
 
 ## Goal
 
@@ -29,11 +29,17 @@ source, and classify historical evidence without losing traceability.
 4. Staged documentation with stale claims is preserved as archive, not committed
    as current architecture/roadmap truth.
 
-## Verification
+## Verification evidence
 
-- `git diff --check`
-- Markdown link/path review for canonical docs
-- full validation runs before gate closure
+Verified on 2026-07-25:
+
+- Implementation commit: `9123caa` (`Clean legacy routes and reset project documentation`).
+- Compile: passed.
+- Full pytest: `892 passed`.
+- CLI audit: passed.
+- The intentional secret-pattern fixtures are constructed at runtime, preserving
+  detector coverage without storing complete fake credential literals in source.
+- `git diff --check`: passed before closure.
 
 ## Rollback
 

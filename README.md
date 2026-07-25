@@ -1,4 +1,4 @@
-﻿# AIOS WorkLens
+# AIOS WorkLens
 
 AIOS WorkLens là môi trường tri thức công việc **local-first**. Luồng sử dụng
 chính là: mở Workspace Chat, thêm hoặc chọn nguồn cục bộ, hỏi bằng ngôn ngữ tự
@@ -36,6 +36,8 @@ nhiên và nhận câu trả lời có ngữ cảnh nguồn.
   và bước kế tiếp.
 - [WORKLENS_ARCHITECTURE.md](WORKLENS_ARCHITECTURE.md) — ranh giới kiến trúc
   hiện hành.
+- [docs/PROFESSIONALIZATION_INDEX.md](docs/PROFESSIONALIZATION_INDEX.md) —
+  security, privacy, ADR, quality, operations, release và onboarding records.
 - [docs/roadmap/README.md](docs/roadmap/README.md) — quy ước Gate Card.
 - [docs/runbooks/operator.md](docs/runbooks/operator.md) — quy trình dùng app.
 - [docs/runbooks/developer.md](docs/runbooks/developer.md) — setup, validation

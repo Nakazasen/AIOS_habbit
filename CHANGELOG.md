@@ -1,5 +1,70 @@
 # Changelog
 
+## 2026-07-25 - Professionalization Baseline Closure
+
+### Enhancements
+
+- Added professional engineering records for security/privacy, threat model,
+  dependency governance, ADRs, runtime architecture views, requirements,
+  interface/data compatibility, quality, operations, release and productization.
+- Added documentation-as-code contract validation with focused tests, and expanded
+  Windows CI from pytest-only to docs check, compile, full pytest, CLI audit and
+  Workspace Chat import.
+- Added a local-only CycloneDX-style SBOM generator with test coverage; generated
+  output defaults to ignored `local_runs/sbom/`.
+- Added contributor/security templates, maintainer/user guides, risk/ownership
+  records, release governance and canonical documentation navigation.
+- Completed a temporary-directory-only synthetic restore drill for six Workspace
+  Chat JSONL entity types and one RAG SQLite index/search.
+
+### Verification
+
+- Documentation contract: PASS; documentation/SBOM focused tests: `4 passed`.
+- Full validation: compile PASS, `896 passed in 30.64s`, CLI audit PASS with no
+  errors/warnings and Workspace Chat import PASS.
+- `git diff --check` and staged diff check: PASS.
+- `API Key.txt` and generated local SBOM confirmed ignored/untracked; no key,
+  real owner data or live provider request was used by this gate.
+
+### Governance
+
+- Professionalization Baseline moved to `DONE`; no runtime/UI/schema/cloud-default
+  behavior changed.
+- P0 follow-up `AI-GW-REAL-ROUTE-POLICY-CONSOLIDATION` is `PLANNED` before any
+  external-provider production-readiness claim.
+- Security reporting, distribution/support, retention/RTO-RPO, named ownership
+  and advisory-enforcement decisions remain owner-controlled.
+
+## 2026-07-25 - Nakazasen AI Router v0.4.0 & Cleanup Gate Closure
+
+### Enhancements
+
+- Upgraded `nakazasen-ai-router` from `v0.2.2` to `v0.4.0` after verifying
+  `v0.4.0` as the latest tag on `origin/main`.
+- Revalidated the A17D Workspace Chat router adapter against the new release.
+- Confirmed AI-GW-A15 integration design was already complete; no redesign was
+  required for this upgrade.
+- Removed a CLI audit false positive by constructing intentional secret test
+  fixtures at runtime instead of storing complete fake credential literals.
+- Closed documentation cleanup and public legacy-route retirement after current
+  validation passed.
+
+### Verification
+
+- Router metadata: `0.4.0`; public SDK imports: PASS.
+- Focused router/audit/Workspace Chat tests: `110 passed`.
+- Compile: PASS; full pytest: `892 passed`; CLI audit: PASS.
+- Official live smoke: Gemini `gemini-3.6-flash` PASS; stopped after first
+  successful provider.
+- Live call through `WorkspaceChatRouterAdapter`: PASS.
+- `API Key.txt` remained ignored/untracked; no key value was logged or committed.
+
+### Governance
+
+- Live calls were explicit and minimal; no all-model sweep was performed.
+- A18 remains unopened and P1.0 remains locked.
+- Next candidate gate remains `RAG-V2-HYBRID-RETRIEVAL-MIN` (`PLANNED`).
+
 ## 2026-07-07 - Recorded Company 68 RAG v2 Local Smoke
 
 ### Enhancements

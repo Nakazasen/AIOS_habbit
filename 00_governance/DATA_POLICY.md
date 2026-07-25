@@ -1,42 +1,55 @@
 # Data Policy
 
+Status: `ACTIVE`
+Owner role: Project owner / privacy decision maker
+Last reviewed: 2026-07-25
+Review cadence: Before a new data class, persistent store or external recipient
+
 ## Local First
 
-Mọi dữ liệu mặc định được lưu local. Không đồng bộ cloud nếu chưa có quyết định riêng.
+Mọi dữ liệu mặc định được lưu local. Không đồng bộ cloud hoặc gửi provider nếu
+chưa có policy route và xác nhận owner phù hợp. Git repository chỉ chứa code,
+schema, docs, template và fixture synthetic.
 
 ## Data Classes
 
-| Class | Description | Default Handling |
+| Class | Description | Default handling |
 |---|---|---|
-| Raw source | Chat transcript, email, logs, files gốc | Không commit, không đưa vào memory vault |
+| Raw source | Chat transcript, email, log, file gốc | Không commit; chỉ local/owner-controlled |
+| Workspace Chat state | Notebook, conversation, message, selected source | JSONL local dưới `local_cases/workspace_chat/`, Git ignored |
 | Evidence record | Metadata/source reference/summary/hash | Có thể commit nếu không chứa nội dung nhạy cảm |
-| Candidate memory | Memory chưa review | Có thể lưu trong extraction workspace |
-| Validated memory | Memory đã review | Có thể lưu trong memory vault |
-| Export pack | Profile chuyển cho AI khác | Có thể tạo từ master profile |
-| Secrets | Token, key, credential | Không commit |
+| Candidate memory | Memory chưa review | Chỉ extraction workspace/local theo policy |
+| Validated memory | Memory đã review | Memory vault theo evidence/boundary |
+| RAG chunk/index | Chunk/evidence metadata và SQLite index cục bộ | Local, caller-managed path; không cloud-default |
+| Export pack | Profile chuyển cho AI khác | Chỉ tạo từ master profile và audit trước use |
+| Secrets | Token, key, credential | Không commit/không đưa vào diagnostics hoặc docs |
 
-## Retention Rules
+## Retention and deletion reality
 
-- Raw source chỉ giữ khi cần audit và phải nằm ngoài git hoặc trong vùng local-only.
-- Evidence record giữ lâu dài nếu không vi phạm privacy.
-- Deprecated memory không xóa ngay nếu đã được tham chiếu; đánh dấu deprecated và ghi lý do.
+- Raw source chỉ giữ khi cần audit và phải nằm ngoài Git hoặc trong vùng
+  local-only.
+- Evidence record giữ lâu dài nếu không vi phạm privacy; deprecated memory được
+  đánh dấu lý do trước khi xem xét xóa.
+- Workspace Chat/runtime data và backup có retention **owner-managed**. Hiện chưa
+  có automatic retention/deletion scheduler; không được claim thời hạn pháp lý.
+- RAG index chỉ có thể rebuild khi source/chunk input tương ứng vẫn còn và owner
+  cho phép dùng nó.
 
-## Sensitive Data Rule
+## External route boundary
 
-Không lưu thông tin nhạy cảm nếu không có yêu cầu rõ ràng và không cần cho mục tiêu memory platform.
+`local_only` và `confidential` không được gửi provider. Các route external khác
+phải dùng privacy/consent controls đã kiểm chứng; coverage hiện tại và P0 gap
+được mô tả trong [Privacy Impact Assessment](../docs/security/PRIVACY_IMPACT_ASSESSMENT.md).
+Không dùng router/provider như authority quyết định consent.
 
-## Evidence Without Raw Storage
+## Evidence without raw storage
 
-Ưu tiên lưu:
+Ưu tiên lưu hash, local reference, short summary, line reference và artifact ID.
+Tránh lưu toàn văn hội thoại/email hoặc dữ liệu nhận dạng không cần thiết.
 
-- Hash.
-- Path cục bộ.
-- Short summary.
-- Line reference nếu có.
-- Artifact ID.
+## Related controls
 
-Tránh lưu:
-
-- Toàn văn hội thoại.
-- Toàn văn email.
-- Dữ liệu nhận dạng không cần thiết.
+- [Source policy](SOURCE_POLICY.md)
+- [Privacy model](../docs/PRIVACY_MODEL.md)
+- [Backup and restore](../docs/operations/BACKUP_RESTORE.md)
+- [Data migration compatibility](../docs/operations/DATA_MIGRATION_COMPATIBILITY.md)

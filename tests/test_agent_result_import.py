@@ -406,7 +406,8 @@ def test_too_deep_json():
 def test_secret_pattern_detected():
     tp = get_valid_task_pack()
     rep = get_valid_report()
-    rep["risks"] = ["Look at my sk-1234567890abcdef api key."]
+    fake_secret = "sk-" + "1234567890abcdef"
+    rep["risks"] = [f"Look at my {fake_secret} api key."]
     rep = attach_report_sha256(rep)
     decision = validate_agent_report(rep, tp)
     assert decision.verdict == INVALID_REPORT
@@ -514,7 +515,7 @@ def test_summaries_privacy():
 
     # 30b. Secret pattern should not be echoed
     rep2 = get_valid_report()
-    secret_str = "sk-1234567890abcdef"
+    secret_str = "sk-" + "1234567890abcdef"
     rep2["risks"] = [f"Look at my {secret_str} api key."]
     rep2 = attach_report_sha256(rep2)
     decision2 = validate_agent_report(rep2, tp)
@@ -525,7 +526,7 @@ def test_summaries_privacy():
 
     # 30c. Private key pattern should not be echoed
     rep3 = get_valid_report()
-    pkey_str = "-----BEGIN PRIVATE KEY-----"
+    pkey_str = "-----BEGIN " + "PRIVATE KEY-----"
     rep3["risks"] = [f"Private info: {pkey_str}"]
     rep3 = attach_report_sha256(rep3)
     decision3 = validate_agent_report(rep3, tp)

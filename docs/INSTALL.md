@@ -28,4 +28,7 @@ mở Workspace Chat.
 aios-habit --help
 ```
 
-Xem validation/release workflow tại [runbooks/developer.md](runbooks/developer.md).
+- Developer/validation/release: [runbooks/developer.md](runbooks/developer.md)
+- Người dùng Workspace Chat: [user guide](user/WORKSPACE_CHAT_USER_GUIDE.md)
+- Vận hành, backup và xử lý sự cố: [operator runbook](OPERATOR_RUNBOOK.md)
+- Professional records index: [PROFESSIONALIZATION_INDEX.md](PROFESSIONALIZATION_INDEX.md)

@@ -19,12 +19,14 @@ The main lesson from agent/IDE tools is that AIOS should begin with safe prompt 
 Current implementation includes local document extraction helpers in `src/aios_habit/document_extractors.py` and notebook source/index flows in `source_ingest.py`, `notebook_index.py`, and MOM-specific local index code.
 
 Current strengths:
+
 - Supports text/markdown-style source content in notebook index.
 - Document extractor has local handlers for HTML, PPTX, Excel via `openpyxl`, images, OCR-limited PDFs/images via local Tesseract where available, and ZIP/XML-based parsing for Office documents.
 - Chunk metadata already includes source file, relative path, file type, section, page, slide, sheet, row range, privacy level, extractor name, extraction status, OCR engine, and OCR language.
 - Privacy defaults are local-first for extracted chunks.
 
 Limitations:
+
 - Notebook index currently uses fixed character chunks and simple keyword extraction.
 - Document structure is not yet normalized into one stable cross-format chunk schema for all downstream QA paths.
 - Excel handling is preview-limited and not yet robust for multi-sheet table retrieval.
@@ -35,11 +37,13 @@ Limitations:
 ### Retrieval
 
 Current strengths:
+
 - `notebook_index.py` provides local chunk loading/building and keyword search.
 - Ranking combines exact phrase, title, filename, and token frequency scores.
 - MOM benchmark/index modules exist for local-only document evaluation.
 
 Limitations:
+
 - No SQLite FTS/BM25 foundation yet.
 - No vector index yet.
 - No hybrid ranking, reranking, query rewrite, synonym expansion, or multilingual query planning.
@@ -50,6 +54,7 @@ Limitations:
 ### Answer
 
 Current strengths:
+
 - Local deterministic fallback exists.
 - Provider route answer exists through `ai_router.py` and `ai_provider_bridge.py` for normal documents.
 - Route log includes provider/model/attempt status and whether content was sent outside.
@@ -57,6 +62,7 @@ Current strengths:
 - Privacy handling blocks company/mật content from cloud routes.
 
 Limitations:
+
 - Evidence packs are implicit; there is no first-class evidence pack object with coverage/confidence/abstention metadata.
 - Answer composer does not yet separate known facts, inference, missing evidence, and recommended next evidence.
 - Citation scoring is not yet explicit.
@@ -64,11 +70,13 @@ Limitations:
 ### Agent / Model Bridge
 
 Current strengths:
+
 - Provider catalog and router exist for controlled normal-document provider use.
 - Route summary and provider attempts are tracked.
 - Export pack directories exist as ignored runtime artifacts, but no committed IDE bridge implementation exists.
 
 Missing:
+
 - No prompt pack ID model.
 - No committed manual prompt export workflow.
 - No paste-back answer model with model/tool name, prompt ID, evidence refs, route summary, confidence, and warnings.
@@ -76,6 +84,7 @@ Missing:
 - No agent harness with task state, permissions, context compaction, subtask delegation, rollback, or handoff.
 
 Why free/low-tier model is not enough:
+
 - Complex work documents fail when parser, chunking, retrieval, or evidence selection are weak.
 - Free/low-tier models are useful for low-risk public notes but cannot guarantee grounded analysis of tables, scans, multi-hop cases, or company/mật workflows.
 - Strong models should be used through evidence-grounded, privacy-aware prompt packs, not raw document uploads.
@@ -83,7 +92,7 @@ Why free/low-tier model is not enough:
 ## External Repo / Pattern Matrix
 
 | Target | Purpose | Useful AIOS Ideas | Do Not Copy | Difficulty | Privacy Risk | Local-first Fit | Value |
-|---|---|---|---|---|---|---|---|
+| --- | --- | --- | --- | --- | --- | --- | --- |
 | RAGFlow | Deep document RAG with parsing, hybrid search, rerank, citations | Layout/table/OCR-first parsing, hybrid search, rerank, traceable citations | Do not copy source or deploy heavy stack blindly | HIGH | MEDIUM | MEDIUM | HIGH |
 | kotaemon | Local/private document QA UI/framework | Local deployment, hybrid retrieval, PDF citation UX, modular components | Do not copy UI or provider configs | MEDIUM | MEDIUM | HIGH | HIGH |
 | Microsoft GraphRAG | Graph-based global/local corpus reasoning | Community summaries, global vs local search, graph as later layer | Do not introduce graph DB now | HIGH | HIGH if LLM indexing is cloud | MEDIUM | MEDIUM-HIGH later |
@@ -110,6 +119,7 @@ Why free/low-tier model is not enough:
 Goal: convert inputs into typed local elements while preserving structure.
 
 Requirements:
+
 - page, section, heading, paragraph, table, sheet, cell, slide, image, and OCR markers;
 - stable document ID and source path;
 - extractor status and warning fields;
@@ -121,6 +131,7 @@ Recommended first step: adapt current `document_extractors.py` output into a nor
 ### 2. Chunk & Metadata Builder
 
 Required metadata:
+
 - stable chunk ID;
 - source document ID;
 - source title and relative path;
@@ -138,6 +149,7 @@ Required metadata:
 Phase 4 should start with SQLite FTS/BM25 and metadata tables.
 
 Initial design:
+
 - `documents` table;
 - `chunks` table;
 - `chunk_fts` virtual table;
@@ -150,6 +162,7 @@ Optional vector search should come later only after FTS/BM25 benchmark gaps are 
 ### 4. Query Planner
 
 Responsibilities:
+
 - normalize Vietnamese/Japanese/English terms;
 - expand domain synonyms for MOM/WMS/Opcenter/InterStock;
 - generate multiple query variants;
@@ -159,6 +172,7 @@ Responsibilities:
 ### 5. Retriever + Reranker
 
 Initial retrieval:
+
 - FTS/BM25 candidate search;
 - filename/title/source boosts;
 - metadata filters;
@@ -168,12 +182,14 @@ Initial retrieval:
 - diversity across documents/pages/sheets.
 
 Later rerank:
+
 - local cross-encoder or lightweight heuristic reranker first;
 - optional provider rerank only for non-sensitive documents and explicit approval.
 
 ### 6. Evidence Pack Builder
 
 Evidence pack fields:
+
 - pack ID;
 - query;
 - top evidence snippets;
@@ -191,6 +207,7 @@ This pack becomes the input to local answer, provider answer, prompt export, and
 ### 7. Answer Composer
 
 Answer format:
+
 - direct answer;
 - evidence-backed facts;
 - inference/hypothesis clearly labeled;
@@ -200,6 +217,7 @@ Answer format:
 - attach-to-case summary.
 
 Rules:
+
 - abstain if evidence is insufficient;
 - never claim NotebookLM parity until benchmark passes;
 - never send company/mật evidence outside.
@@ -207,11 +225,13 @@ Rules:
 ### 8. Benchmark Harness
 
 Benchmark tiers:
+
 - 20-question smoke;
 - 50-question gate;
 - 100-question regression.
 
 Metrics:
+
 - correctness;
 - citation accuracy;
 - hallucination rate;
@@ -222,6 +242,7 @@ Metrics:
 - answer usefulness.
 
 Comparison:
+
 - AIOS vs NotebookLM on the same public/non-sensitive docs/questions only;
 - no fake parity claim.
 
@@ -230,6 +251,7 @@ Comparison:
 ### Mode A — Prompt Export
 
 AIOS creates an evidence-grounded prompt pack containing:
+
 - goal/question;
 - evidence pack;
 - source refs;
@@ -239,6 +261,7 @@ AIOS creates an evidence-grounded prompt pack containing:
 - warnings and non-goals.
 
 Privacy:
+
 - company/mật: local-only/trusted-model only; external export blocked unless user explicitly marks safe;
 - tài liệu thường: cloud-safe prompt export allowed.
 
@@ -247,6 +270,7 @@ Privacy:
 User pastes output from Codex/Gemini/Claude/GPT/Opus/IDE.
 
 AIOS stores:
+
 - model/tool name;
 - prompt pack ID;
 - answer;
@@ -260,6 +284,7 @@ AIOS stores:
 ### Mode C — Tool/IDE Adapter Later
 
 Adapters can include:
+
 - Codex CLI adapter;
 - Gemini API/CLI adapter;
 - Claude API/CLI adapter;
@@ -267,6 +292,7 @@ Adapters can include:
 - local-only adapter.
 
 Rules:
+
 - approval gate before file edit/action;
 - no automatic agent writes without user approval;
 - no raw secrets in logs;
@@ -275,6 +301,7 @@ Rules:
 ### Mode D — Agent Harness
 
 Harness state:
+
 - task state;
 - evidence state;
 - tool permission;
@@ -289,12 +316,14 @@ Design principle: AIOS should learn from Claude-Code-style loops, Cline approval
 ## Privacy Model
 
 Privacy modes:
+
 - `local_only`: never exported to cloud/provider;
 - `cloud_safe`: allowed for normal documents;
 - `trusted_internal`: allowed only for explicitly configured local/trusted endpoint;
 - `redacted_export`: only redacted snippets exported.
 
 Required controls:
+
 - explicit safety mode on every evidence pack;
 - prompt export checks;
 - paste-back answer labeling;
@@ -334,6 +363,7 @@ Required controls:
    - No fake parity.
 
 Later:
+
 - AIOS-RAG-RERANK-1;
 - AIOS-CASE-SCALE-1;
 - AIOS-WORKSTREAM-MAP-1;

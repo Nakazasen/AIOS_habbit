@@ -1,5 +1,10 @@
 # Operator Runbook
 
+Status: `ACTIVE`
+Owner role: Operator / local data owner
+Last reviewed: 2026-07-25
+Review cadence: Before release and after an operational workflow change
+
 ## Luồng dùng hằng ngày
 
 1. Mở `RUN_AIOS_WORKSPACE_CHAT.bat`.
@@ -11,13 +16,19 @@
 6. Khi thông tin chưa đủ, bổ sung nguồn hoặc giữ kết quả ở trạng thái cần review;
    không biến claim chưa có evidence thành kết luận chắc chắn.
 
-## Xử lý sự cố
+## An toàn vận hành
 
-- Nếu launcher báo thiếu dependency: chạy `py -3 -m pip install -e .` tại root
-  repository rồi mở launcher lại.
-- Nếu nguồn không được dùng: kiểm tra notebook/source đang chọn và privacy
-  setting trước khi thay đổi code.
-- Không đưa raw local documents, secrets hoặc runtime data vào Git/cloud.
+- Không đưa raw local documents, secrets, runtime JSONL/SQLite, screenshots hoặc
+  diagnostic bundle vào Git/cloud/public issue.
+- External AI provider là optional; khi có lỗi provider, ưu tiên local-only flow.
+- Không tự xóa hoặc ghi đè `local_cases/` để "sửa nhanh" khi chưa có backup.
 
-Developer xem [developer.md](runbooks/developer.md) thay vì dùng tài liệu này để
-chạy test/audit/release.
+## Runbook liên quan
+
+- [Troubleshooting](operations/TROUBLESHOOTING.md)
+- [Backup and restore](operations/BACKUP_RESTORE.md)
+- [Incident response](operations/INCIDENT_RESPONSE.md)
+- [Observability and diagnostics](operations/OBSERVABILITY.md)
+- [Workspace Chat user guide](user/WORKSPACE_CHAT_USER_GUIDE.md)
+
+Developer xem [developer.md](runbooks/developer.md) để chạy test/audit/release.

@@ -1,6 +1,6 @@
-﻿# STUDIO-AND-PUBLIC-LEGACY-ROUTE-RETIREMENT
+# STUDIO-AND-PUBLIC-LEGACY-ROUTE-RETIREMENT
 
-Status: `ACTIVE`
+Status: `DONE`
 
 ## Goal
 
@@ -28,6 +28,19 @@ Chat launcher naming truthful.
 3. No Studio module, old Studio launcher or direct Case Cockpit launcher remains.
 4. Workspace Chat boundary regression succeeds.
 5. Full test, compile and CLI audit pass; ignored runtime assets stay untouched.
+
+## Verification evidence
+
+Verified on 2026-07-25:
+
+- Implementation commit: `9123caa` (`Clean legacy routes and reset project documentation`).
+- Studio source, legacy launchers and package routes were removed.
+- Workspace Chat launcher and boundary regression are present.
+- Compile: passed.
+- Full pytest: `892 passed`.
+- CLI audit: passed.
+- Ignored runtime assets and Case Cockpit shared services remain untouched.
+- `git diff --check`: passed before closure.
 
 ## Rollback
 

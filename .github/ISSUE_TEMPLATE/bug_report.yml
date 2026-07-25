@@ -1,0 +1,38 @@
+name: Bug report
+description: Report a reproducible issue without private data or credentials
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Do not include API keys, passwords, Authorization headers, private documents,
+        screenshots with customer data, raw prompts, local paths or runtime JSONL/SQLite files.
+        For a suspected security/privacy issue, use the private reporting process once configured.
+  - type: input
+    id: version
+    attributes:
+      label: Version or commit
+      description: Sanitized version/commit identifier
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Synthetic reproduction steps
+      description: Use minimal synthetic data only.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+      description: Include sanitized error class/message, not raw private output.
+    validations:
+      required: true
