@@ -36,6 +36,12 @@ from aios_habit.rag_v2.evidence import (  # noqa: E402
     evidence_pack_to_dict,
     format_evidence_for_prompt,
 )
+from aios_habit.rag_v2.eval_harness import (  # noqa: E402
+    BenchmarkConfig,
+    BenchmarkQuestion,
+    score_question,
+    summarize_results,
+)
 from aios_habit.rag_v2.pipeline import (  # noqa: E402
     RagV2DevConfig,
     RagV2DevPipeline,
@@ -64,6 +70,17 @@ NOTEBOOK_QUERY_MAX_ATTEMPTS = 3
 NOTEBOOK_QUERY_RETRY_BACKOFF_SECONDS = 2.0
 REFERENCE_SCHEMA_VERSION = 1
 REFERENCE_QUERY_CONTRACT = "notebooklm_query_v1"
+ABLATION_PROFILES = ("lexical", "hybrid", "hybrid_rerank")
+_RANK_METRIC_FIELDS = (
+    "lexical_candidate_recall",
+    "dense_candidate_recall",
+    "fused_candidate_recall",
+    "recall_at_5",
+    "recall_at_10",
+    "mrr_at_10",
+    "mean_first_relevant_rank",
+    "median_first_relevant_rank",
+)
 _REFERENCE_ANSWER_STATUSES = frozenset({"success", "not_applicable"})
 SUPPORTED_EXTENSIONS = frozenset({
     ".txt", ".md", ".csv", ".log", ".json", ".xml", ".html", ".htm",
@@ -1492,8 +1509,9 @@ def build_preflight(args: argparse.Namespace) -> dict[str, Any]:
         questions,
         corpus_fingerprint=str(local.get("corpus_fingerprint") or ""),
     )
-    local_only_preflight = bool(args.dry_run)
-    if local_only_preflight:
+    dry_run_preflight = bool(args.dry_run)
+    provider_free_preflight = dry_run_preflight or bool(getattr(args, "ablation", False))
+    if dry_run_preflight:
         notebook = {
             "notebook_id": args.notebook_id,
             "title": "",
@@ -1518,7 +1536,16 @@ def build_preflight(args: argparse.Namespace) -> dict[str, Any]:
         notebook = dict(reference_info["snapshot"]["notebook_manifest"])
         notebook["reference_mode"] = reference_mode
         notebook["status"] = "PASS"
-        router = router_readiness(Path(args.api_key_file))
+        router = (
+            {
+                "status": "SKIPPED_LOCAL_ONLY",
+                "key_configured": False,
+                "provider_constructed": False,
+                "reason": "ablation_is_local_rag_only_and_does_not_read_credentials",
+            }
+            if provider_free_preflight
+            else router_readiness(Path(args.api_key_file))
+        )
     else:
         notebook = verify_notebook(args.notebook_id)
         router = router_readiness(Path(args.api_key_file))
@@ -1533,7 +1560,7 @@ def build_preflight(args: argparse.Namespace) -> dict[str, Any]:
             system: workflow_applicability(question, system, local, notebook)
             for system in ("workspace_chat", "rag_v2", "notebooklm")
         }
-        if local_only_preflight:
+        if dry_run_preflight:
             systems["notebooklm"] = {
                 "applicable": False,
                 "reason": "dry_run_local_only",
@@ -1544,13 +1571,13 @@ def build_preflight(args: argparse.Namespace) -> dict[str, Any]:
             "expected_type": question["expected_type"],
             "systems": systems,
         })
-    blockers = [] if local_only_preflight else [
+    blockers = [] if dry_run_preflight else [
         name
         for name, item in (("notebook", notebook), ("router", router))
-        if item["status"] != "PASS"
+        if item["status"] != "PASS" and not (name == "router" and provider_free_preflight)
     ]
     warnings = []
-    if not local_only_preflight and not notebook.get("count_ok"):
+    if not dry_run_preflight and not notebook.get("count_ok"):
         warnings.append("notebook_source_count_differs_from_historical_48_source_snapshot")
     if int(local.get("business_file_count", 0)) == 0:
         warnings.append("no_local_business_corpus_candidate_and_production_arms_not_applicable")
@@ -1558,7 +1585,15 @@ def build_preflight(args: argparse.Namespace) -> dict[str, Any]:
         warnings.append("ambiguous_corpus_matches_require_review")
     return {
         "status": "PASS" if not blockers else "BLOCKED_PREFLIGHT",
-        "mode": "local_only" if local_only_preflight else (reference_mode if reference_info is not None else "strict_external"),
+        "mode": (
+            "local_only"
+            if dry_run_preflight
+            else "registry_ablation"
+            if getattr(args, "ablation", False)
+            else reference_mode
+            if reference_info is not None
+            else "strict_external"
+        ),
         "blocking_checks": blockers,
         "warnings": warnings,
         "notebook": {key: value for key, value in notebook.items() if key != "sources"},
@@ -1581,11 +1616,11 @@ def build_preflight(args: argparse.Namespace) -> dict[str, Any]:
         "question_set_hash": question_set_fingerprint(questions),
         "candidate": promotion_candidate_identity(
             args.privacy_label,
-            router_provider="none" if local_only_preflight else "deepseek",
+            router_provider="none" if provider_free_preflight else "deepseek",
         ),
         "config_hash": stable_hash({
             "privacy_label": args.privacy_label,
-            "router_provider": "none" if local_only_preflight else "deepseek",
+            "router_provider": "none" if provider_free_preflight else "deepseek",
             "expected_router_version": EXPECTED_ROUTER_VERSION,
         }),
     }
@@ -1650,7 +1685,12 @@ def run_dry_or_live(args: argparse.Namespace, preflight: Mapping[str, Any], *, l
     )
     workspace_sources, workspace_ingestion = ingest_workspace_sources(source_root, local, privacy_label=args.privacy_label)
     rag_sources = build_rag_v2_sources(source_root, local, corpus_audit=corpus_audit, privacy_label=args.privacy_label)
-    config = RagV2DevConfig(runtime_root=run_dir / "rag_v2_runtime", allowed_privacy_labels=("cloud_safe", "public") if args.privacy_label in {"cloud_safe", "public"} else ("local_only",))
+    config = RagV2DevConfig(
+        runtime_root=run_dir / "rag_v2_runtime",
+        allowed_privacy_labels=("cloud_safe", "public") if args.privacy_label in {"cloud_safe", "public"} else ("local_only",),
+        retrieval_profile=getattr(args, "rag_profile", "lexical"),
+        strict_semantic=getattr(args, "rag_profile", "lexical") != "lexical",
+    )
     with RagV2DevPipeline(config) as pipeline:
         ingestion_report = pipeline.ingest(rag_sources)
         ingestion_coverage = rag_v2_ingestion_coverage(ingestion_report, local)
@@ -1755,13 +1795,315 @@ def run_dry_or_live(args: argparse.Namespace, preflight: Mapping[str, Any], *, l
     )
     atomic_write_json(run_dir / "run_metadata.json", metadata)
     return {"status": "PASS", "run_id": run_id, "run_dir": str(run_dir), "preflight_status": preflight.get("status"), "report": {key: str(value) for key, value in paths.items()}, "algorithm_report": {key: str(value) for key, value in algorithm_paths.items()}}
+
+
+def _benchmark_question_from_manifest(question: Mapping[str, Any]) -> BenchmarkQuestion:
+    """Convert only explicit owner annotations; never infer gold targets from benchmark hints."""
+    def values(key: str) -> tuple[str, ...]:
+        raw = question.get(key, ())
+        if not isinstance(raw, (list, tuple)):
+            return ()
+        return tuple(str(value) for value in raw if str(value))
+
+    expected_type = str(question.get("expected_type") or "answerable")
+    if expected_type not in {"answerable", "insufficient"}:
+        expected_type = "answerable"
+    return BenchmarkQuestion(
+        question_id=str(question["id"]),
+        question=str(question["question"]),
+        expected_answer_type=expected_type,
+        expected_chunk_ids=values("expected_chunk_ids"),
+        expected_document_ids=values("expected_document_ids"),
+        expected_source_names=values("expected_source_names"),
+        required_sources=values("required_sources"),
+        required_spans=values("required_spans"),
+        required_facets=values("required_facets"),
+        expected_privacy=str(question.get("expected_privacy") or "any"),
+        forbidden_terms=values("forbidden_terms"),
+        tags=(str(question.get("category") or "uncategorized"),),
+    )
+
+
+def _installed_package_versions() -> dict[str, str]:
+    versions: dict[str, str] = {}
+    for package in ("fastembed", "onnxruntime", "numpy"):
+        try:
+            versions[package] = importlib.metadata.version(package)
+        except importlib.metadata.PackageNotFoundError:
+            versions[package] = "not_installed"
+    return versions
+
+
+def _ablation_summary_payload(summary: Any, target_count: int) -> dict[str, Any]:
+    payload = asdict(summary)
+    payload.pop("results", None)
+    payload["rank_metric_target_count"] = target_count
+    payload["rank_metrics_status"] = "measured" if target_count else "not_scored_no_gold_identity"
+    if not target_count:
+        for field_name in _RANK_METRIC_FIELDS:
+            payload[field_name] = None
+    payload["quality_gate_status"] = "not_evaluated_requires_owner_rubric"
+    payload.pop("pass_fail", None)
+    return payload
+
+
+def _ablation_blind_bundle(
+    questions: Sequence[Mapping[str, Any]],
+    rows: Sequence[Mapping[str, Any]],
+    question_hash: str,
+) -> tuple[list[dict[str, Any]], dict[str, dict[str, str]], dict[str, Any]]:
+    """Build a deterministic blind bundle without exposing raw evidence or profile labels."""
+    labels = ("system_a", "system_b", "system_c")
+    rows_by_profile = {
+        profile: {
+            str(row.get("question_id")): row
+            for row in rows
+            if str(row.get("profile")) == profile
+        }
+        for profile in ABLATION_PROFILES
+    }
+    rubric = (
+        "correctness",
+        "completeness",
+        "citation_support",
+        "faithfulness",
+        "insufficiency_handling",
+        "actionability",
+        "cross_source_synthesis",
+        "spreadsheet_handling",
+    )
+    bundle: list[dict[str, Any]] = []
+    assignment: dict[str, dict[str, str]] = {}
+    score_rows: list[dict[str, Any]] = []
+    for question in questions:
+        qid = str(question["id"])
+        ordered_profiles = list(ABLATION_PROFILES)
+        seed = int(stable_hash({"question_id": qid, "question_hash": question_hash, "scope": "ablation"})[:16], 16)
+        for index in range(len(ordered_profiles) - 1, 0, -1):
+            swap_index = seed % (index + 1)
+            ordered_profiles[index], ordered_profiles[swap_index] = ordered_profiles[swap_index], ordered_profiles[index]
+            seed //= index + 1
+        assignment[qid] = dict(zip(labels, ordered_profiles))
+        bundle_row: dict[str, Any] = {
+            "question_id": qid,
+            "question": str(question["question"]),
+            "expected_type": str(question.get("expected_type") or "answerable"),
+        }
+        score_row: dict[str, Any] = {"question_id": qid, "reviewer_notes": ""}
+        for label, profile in assignment[qid].items():
+            result = rows_by_profile[profile].get(qid, {})
+            synthesis = result.get("synthesis", {})
+            bundle_row[label] = {
+                "answer": str(synthesis.get("answer", "")),
+                "grounded": bool(synthesis.get("grounded", False)),
+                "abstained": bool(synthesis.get("abstained", True)),
+                "citation_ids": list(synthesis.get("citation_ids", ())),
+                "abstention_reasons": list(synthesis.get("abstention_reasons", ())),
+                "limitation_reasons": list(synthesis.get("limitation_reasons", ())),
+            }
+            score_row[label] = {field: None for field in rubric}
+        bundle.append(bundle_row)
+        score_rows.append(score_row)
+    score_template = {
+        "scale": {"minimum": 0, "maximum": 5},
+        "rubric": list(rubric),
+        "scores": score_rows,
+    }
+    return bundle, assignment, score_template
+
+
+def run_ablation(
+    args: argparse.Namespace,
+    preflight: Mapping[str, Any],
+    *,
+    output_dir: Path,
+) -> dict[str, Any]:
+    """Run lexical/hybrid/hybrid-rerank locally against one sealed reference identity."""
+    reference_mode, _, _ = resolve_reference_input(args)
+    if reference_mode != "registry_reference":
+        raise BenchmarkError("--ablation requires only --reference-registry and --reference-capture-id")
+    questions = load_question_set(resolve_question_set_path(args))
+    if question_set_fingerprint(questions) != str(preflight.get("question_set_hash")):
+        raise BenchmarkError("Question set changed after preflight; rerun preflight before ablation")
+    fixed_ids = {str(question["id"]) for question in BATTLE_QUESTIONS}
+    question_ids = {str(question["id"]) for question in questions}
+    selected_ids = {value.strip() for value in str(args.question_ids).split(",") if value.strip()}
+    if question_ids != fixed_ids or (selected_ids and selected_ids != fixed_ids):
+        raise BenchmarkError("Ablation requires the complete fixed 12-question regression set")
+
+    local = preflight["local_manifest"]
+    reference_mode, reference_info = load_selected_reference(
+        args,
+        questions,
+        corpus_fingerprint=str(local.get("corpus_fingerprint") or ""),
+    )
+    if reference_mode != "registry_reference" or reference_info is None:
+        raise BenchmarkError("Ablation failed to load the immutable SQLite reference capture")
+
+    source_root = resolve_benchmark_source_root(Path(args.source_root).resolve())
+    corpus_audit = preflight["corpus_audit"]
+    rag_sources = build_rag_v2_sources(
+        source_root,
+        local,
+        corpus_audit,
+        privacy_label=args.privacy_label,
+    )
+    suffix = f"{int(time.time())}-{str(preflight['question_set_hash'])[:8]}"
+    run_id = f"ABLATION-RAGv2-{suffix}"
+    run_dir = output_dir / run_id
+    run_dir.mkdir(parents=True, exist_ok=True)
+    allowed_labels = (
+        ("cloud_safe", "public")
+        if args.privacy_label in {"cloud_safe", "public"}
+        else ("local_only",)
+    )
+    benchmark_config = BenchmarkConfig()
+    all_rows: list[dict[str, Any]] = []
+    arms: dict[str, Any] = {}
+
+    for profile in ABLATION_PROFILES:
+        runtime_root = run_dir / f"{profile}_runtime"
+        config = RagV2DevConfig(
+            runtime_root=runtime_root,
+            allowed_privacy_labels=allowed_labels,
+            retrieval_profile=profile,
+            strict_semantic=profile != "lexical",
+        )
+        with RagV2DevPipeline(config) as pipeline:
+            ingestion_report = pipeline.ingest(rag_sources)
+            capability = pipeline.inspect(rag_sources)
+            retrieval_state = capability["retrieval"]
+            if retrieval_state["effective_profile"] != profile or retrieval_state["degraded"]:
+                raise BenchmarkError(
+                    f"Ablation profile {profile} degraded to {retrieval_state['effective_profile']}: "
+                    f"{retrieval_state['degraded_reason']}"
+                )
+            scored_results = []
+            profile_rows = []
+            for question in questions:
+                started = time.perf_counter()
+                query_result = pipeline.query(
+                    identity_query_plan(str(question["question"])),
+                    rag_sources,
+                    evidence_config=EvidencePackConfig(),
+                )
+                total_latency_ms = round((time.perf_counter() - started) * 1000, 3)
+                search_summary = query_result.search_response.summary
+                search_latency_ms = round(sum((
+                    search_summary.lexical_latency_ms,
+                    search_summary.dense_latency_ms,
+                    search_summary.fusion_latency_ms,
+                    search_summary.rerank_latency_ms,
+                    search_summary.assembly_latency_ms,
+                )), 3)
+                scored = score_question(
+                    _benchmark_question_from_manifest(question),
+                    query_result.search_response,
+                    query_result.evidence_pack,
+                    total_latency_ms,
+                    query_result.synthesis_result,
+                    search_latency_ms=search_latency_ms,
+                    evidence_latency_ms=max(0.0, total_latency_ms - search_latency_ms),
+                )
+                scored_results.append(scored)
+                synthesis_result = query_result.synthesis_result
+                row = {
+                    "profile": profile,
+                    "question_id": str(question["id"]),
+                    "score": asdict(scored),
+                    "search_summary": asdict(search_summary),
+                    "synthesis": {
+                        "answer": str(synthesis_result.answer),
+                        "grounded": bool(synthesis_result.grounded),
+                        "abstained": bool(synthesis_result.abstained),
+                        "citation_ids": list(synthesis_result.citation_ids),
+                        "abstention_reasons": list(synthesis_result.abstention_reasons),
+                        "limitation_reasons": list(synthesis_result.limitation_reasons),
+                        "provider_used": bool(synthesis_result.provider_used),
+                        "mode": str(synthesis_result.mode),
+                    },
+                }
+                profile_rows.append(row)
+                all_rows.append(row)
+
+            target_count = sum(result.expected_target_defined for result in scored_results)
+            aggregate = summarize_results(scored_results, benchmark_config)
+            arms[profile] = {
+                "requested_profile": profile,
+                "effective_profile": retrieval_state["effective_profile"],
+                "degraded": retrieval_state["degraded"],
+                "ingestion": asdict(ingestion_report),
+                "runtime": capability,
+                "metrics": _ablation_summary_payload(aggregate, target_count),
+                "question_count": len(profile_rows),
+            }
+
+    reference_rows = [
+        {
+            **dict(reference_info["answers"][str(question["id"])]),
+            "question_id": str(question["id"]),
+            "reference_capture_id": reference_info["snapshot"]["reference_capture_id"],
+        }
+        for question in questions
+    ]
+    manifest = {
+        "status": "PASS",
+        "ablation_id": run_id,
+        "timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+        "profiles": list(ABLATION_PROFILES),
+        "question_count": len(questions),
+        "question_set_hash": preflight["question_set_hash"],
+        "corpus_fingerprint": local.get("corpus_fingerprint"),
+        "reference_mode": reference_mode,
+        "reference_capture_id": reference_info["snapshot"]["reference_capture_id"],
+        "reference_snapshot_digest": reference_info.get("registry", {}).get("snapshot_digest", ""),
+        "reference_registry_schema_version": reference_info.get("registry", {}).get("schema_version"),
+        "reference_registry_file_sha256": reference_info.get("registry", {}).get("file_sha256", ""),
+        "notebook_query_count": 0,
+        "provider_query_count": 0,
+        "query_plan_mode": "local_identity",
+        "package_versions": _installed_package_versions(),
+        "candidate": preflight.get("candidate"),
+        "arms": arms,
+    }
+    if manifest["notebook_query_count"] != 0:
+        raise BenchmarkError("Ablation invariant violated: NotebookLM query count must remain zero")
+    blind_bundle, blind_assignment, score_template = _ablation_blind_bundle(
+        questions,
+        all_rows,
+        str(preflight["question_set_hash"]),
+    )
+    manifest["human_review"] = {
+        "status": "ready_for_blind_scoring",
+        "bundle_rows": len(blind_bundle),
+        "raw_evidence_included": False,
+        "score_scale": "0_to_5",
+    }
+    write_jsonl(run_dir / "questions.jsonl", questions)
+    write_jsonl(run_dir / "ablation_results.jsonl", all_rows)
+    write_jsonl(run_dir / "notebooklm_reference_rows.jsonl", reference_rows)
+    write_jsonl(run_dir / "blind_bundle.jsonl", blind_bundle)
+    atomic_write_json(run_dir / "blind_assignment.json", blind_assignment)
+    atomic_write_json(run_dir / "blind_score_template.json", score_template)
+    atomic_write_json(run_dir / "preflight.json", preflight)
+    atomic_write_json(run_dir / "ablation_manifest.json", manifest)
+    return {
+        "status": "PASS",
+        "run_id": run_id,
+        "run_dir": str(run_dir),
+        "preflight_status": preflight.get("status"),
+        "notebook_query_count": 0,
+    }
+
+
 def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Fail-closed NotebookLM reference and RAG v2 evidence gate")
     parser.add_argument("--source-root", required=True)
     modes = parser.add_mutually_exclusive_group(required=True)
     modes.add_argument("--preflight", action="store_true")
     modes.add_argument("--dry-run", action="store_true")
-    modes.add_argument("--run", action="store_true", help="Run RAG v2 and Workspace Chat using --notebooklm-reference")
+    modes.add_argument("--run", action="store_true", help="Run RAG v2 and Workspace Chat using an immutable cached reference")
+    modes.add_argument("--ablation", action="store_true", help="Run local lexical/hybrid/hybrid-rerank RAG ablation from the SQLite reference registry")
     modes.add_argument("--reference-acquire", action="store_true", help="Query NotebookLM once and write a validated reference snapshot")
     modes.add_argument("--score", metavar="SCORE_FILE")
     parser.add_argument("--api-key-file", default=os.environ.get("AIOS_ROUTER_API_KEY_FILE", str(DEFAULT_API_KEY_FILE)))
@@ -1776,6 +2118,7 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--question-set", default="", help="Owner-approved JSON/JSONL question manifest")
     parser.add_argument("--question-ids", default="", help="Comma-separated selected question IDs")
     parser.add_argument("--privacy-label", default="cloud_safe", choices=("cloud_safe", "public", "local_only"))
+    parser.add_argument("--rag-profile", default="lexical", choices=ABLATION_PROFILES, help="RAG retrieval profile for --run/--dry-run")
     parser.add_argument("--allow-partial", action="store_true", help="Allow partial corpus for dry-runs or test environments")
     return parser.parse_args(argv)
 
@@ -1785,11 +2128,13 @@ def main(argv: Sequence[str] | None = None) -> int:
     try:
         output_dir = Path(args.output_dir)
         reference_mode, _, _ = resolve_reference_input(args)
-        if args.run and reference_mode == "not_used":
+        if (args.run or args.ablation) and reference_mode == "not_used":
             raise BenchmarkError(
-                "--run requires --reference-registry/--reference-capture-id or compatibility "
-                "--notebooklm-reference; use --reference-acquire for the only NotebookLM query path"
+                "--run requires a cached reference; --ablation requires "
+                "--reference-registry/--reference-capture-id"
             )
+        if args.ablation and reference_mode != "registry_reference":
+            raise BenchmarkError("--ablation accepts only the immutable SQLite reference registry")
         if args.reference_acquire and reference_mode != "not_used":
             raise BenchmarkError("Do not combine --reference-acquire with a cached reference source")
         if args.score:
@@ -1803,14 +2148,17 @@ def main(argv: Sequence[str] | None = None) -> int:
         if args.preflight:
             print(json.dumps({"status": preflight["status"], "preflight": str(output_dir / "preflight_latest.json")}, ensure_ascii=False))
             return 0 if preflight["status"] == "PASS" else 2
-        if (args.run or args.reference_acquire) and preflight["status"] != "PASS":
+        if (args.run or args.ablation or args.reference_acquire) and preflight["status"] != "PASS":
             print(json.dumps({"status": "BLOCKED_PREFLIGHT", "preflight": str(output_dir / "preflight_latest.json")}, ensure_ascii=False))
             return 2
         if args.reference_acquire:
             result = acquire_notebooklm_reference(args, preflight, output_dir)
             print(json.dumps(result, ensure_ascii=False))
             return 0
-        result = run_dry_or_live(args, preflight, live=args.run, output_dir=output_dir)
+        if args.ablation:
+            result = run_ablation(args, preflight, output_dir=output_dir)
+        else:
+            result = run_dry_or_live(args, preflight, live=args.run, output_dir=output_dir)
         print(json.dumps({key: result[key] for key in ("status", "run_id", "run_dir", "preflight_status")}, ensure_ascii=False))
         return 0
     except BenchmarkError as exc:

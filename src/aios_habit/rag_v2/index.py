@@ -11,6 +11,7 @@ import re
 import sqlite3
 import struct
 from pathlib import Path
+from time import perf_counter
 from typing import Any, Dict, Iterable, List, Mapping, Optional, Sequence, Tuple
 
 from .chunking import DocumentChunk
@@ -140,7 +141,7 @@ class SearchResult:
 
 @dataclass(frozen=True)
 class SearchSummary:
-    """Inspectable local retrieval outcome without exposing source text."""
+    """Inspectable local retrieval outcome without exposing source text or vectors."""
 
     query: str
     indexed_chunk_count: int
@@ -164,6 +165,16 @@ class SearchSummary:
     planned_obligation_ids: tuple[str, ...] = field(default_factory=tuple)
     covered_obligation_ids: tuple[str, ...] = field(default_factory=tuple)
     missing_obligation_ids: tuple[str, ...] = field(default_factory=tuple)
+    lexical_pool: tuple[tuple[str, str, str], ...] = field(default_factory=tuple)
+    dense_pool: tuple[tuple[str, str, str], ...] = field(default_factory=tuple)
+    fused_pool: tuple[tuple[str, str, str], ...] = field(default_factory=tuple)
+    ranked_pool: tuple[tuple[str, str, str], ...] = field(default_factory=tuple)
+    assembly_rejected_pool: tuple[tuple[str, str, str], ...] = field(default_factory=tuple)
+    lexical_latency_ms: float = 0.0
+    dense_latency_ms: float = 0.0
+    fusion_latency_ms: float = 0.0
+    rerank_latency_ms: float = 0.0
+    assembly_latency_ms: float = 0.0
 
 
 @dataclass(frozen=True)
@@ -293,7 +304,7 @@ def _select_hybrid_results(
     limit: int,
     per_document_limit: int,
     near_duplicate_threshold: float,
-) -> tuple[list[SearchResult], int]:
+) -> tuple[list[SearchResult], list[SearchResult]]:
     selected: list[SearchResult] = []
     selected_ids: set[str] = set()
     rejected_ids: set[str] = set()
@@ -345,7 +356,8 @@ def _select_hybrid_results(
         signals = dict(result.ranking_signals)
         signals["final_rank"] = float(final_rank)
         finalized.append(replace(result, ranking_signals=signals))
-    return finalized, len(rejected_ids)
+    rejected = [result for result in ranked if result.chunk_id in rejected_ids]
+    return finalized, rejected
 
 
 def fuse_ranked_channels(
@@ -373,7 +385,9 @@ def fuse_ranked_channels(
             ),
         )
 
+    fusion_started = perf_counter()
     records: Dict[str, Dict[str, Any]] = {}
+    channel_pools: dict[str, list[SearchResult]] = {"lexical": [], "dense": []}
     channels = (
         ("lexical", lexical_response.results, ranking.lexical_weight),
         ("dense", dense_results, ranking.dense_weight),
@@ -382,6 +396,7 @@ def fuse_ranked_channels(
         for rank, result in enumerate(results, 1):
             if not _hybrid_result_is_safe(result, options):
                 continue
+            channel_pools[channel].append(result)
             record = records.setdefault(result.chunk_id, {
                 "result": result,
                 "rrf": 0.0,
@@ -406,19 +421,26 @@ def fuse_ranked_channels(
         })
         fused.append(replace(result, ranking_signals=signals))
     fused.sort(key=lambda result: (-result.ranking_signals["fused_rrf"], result.chunk_id))
+    fused_pre_rerank = tuple(fused)
+    fusion_latency_ms = (perf_counter() - fusion_started) * 1000.0
 
     candidate_backend = "hybrid_rrf"
+    rerank_latency_ms = 0.0
     if reranker is not None and fused:
+        rerank_started = perf_counter()
         fused = _rerank_hybrid_window(plan.original_query, fused, reranker, ranking.rerank_limit)
+        rerank_latency_ms = (perf_counter() - rerank_started) * 1000.0
         candidate_backend = "hybrid_rrf_rerank"
 
-    final_results, diversity_limited = _select_hybrid_results(
+    assembly_started = perf_counter()
+    final_results, assembly_rejected = _select_hybrid_results(
         fused,
         plan,
         limit=limit,
         per_document_limit=options.per_document_limit,
         near_duplicate_threshold=ranking.near_duplicate_threshold,
     )
+    assembly_latency_ms = (perf_counter() - assembly_started) * 1000.0
     content_terms = set(plan.content_terms)
     matched_terms = {
         term
@@ -449,11 +471,12 @@ def fuse_ranked_channels(
         obligation for obligation in planned_obligations
         if any(obligation in result.matched_obligations for result in final_results)
     )
+    identity = lambda result: (result.chunk_id, result.document_id, result.source_name)
     summary = replace(
         lexical_response.summary,
         candidate_count=len(fused),
         returned_count=len(final_results),
-        diversity_limited_count=diversity_limited,
+        diversity_limited_count=len(assembly_rejected),
         best_term_coverage=best_coverage,
         insufficiency_reasons=tuple(dict.fromkeys(reasons)),
         candidate_backend=candidate_backend,
@@ -466,6 +489,14 @@ def fuse_ranked_channels(
         missing_obligation_ids=tuple(
             item for item in planned_obligations if item not in covered_obligations
         ),
+        lexical_pool=tuple(identity(result) for result in channel_pools["lexical"]),
+        dense_pool=tuple(identity(result) for result in channel_pools["dense"]),
+        fused_pool=tuple(identity(result) for result in fused_pre_rerank),
+        ranked_pool=tuple(identity(result) for result in fused),
+        assembly_rejected_pool=tuple(identity(result) for result in assembly_rejected),
+        fusion_latency_ms=fusion_latency_ms,
+        rerank_latency_ms=rerank_latency_ms,
+        assembly_latency_ms=assembly_latency_ms,
     )
     return SearchResponse(results=tuple(final_results), summary=summary)
 
@@ -918,17 +949,21 @@ class LocalChunkIndex:
                 dense_limit,
             ),
         )
+        lexical_started = perf_counter()
         lexical = self.search_with_summary(
             query,
             limit=options.candidate_limit,
             options=pool_options,
         )
+        lexical_latency_ms = (perf_counter() - lexical_started) * 1000.0
+        dense_started = perf_counter()
         dense = self.dense_candidates(
             query,
             limit=dense_limit,
             options=pool_options,
         )
-        return fuse_ranked_channels(
+        dense_latency_ms = (perf_counter() - dense_started) * 1000.0
+        response = fuse_ranked_channels(
             query,
             lexical,
             dense,
@@ -936,6 +971,14 @@ class LocalChunkIndex:
             options=options,
             config=ranking_config,
             reranker=reranker,
+        )
+        return replace(
+            response,
+            summary=replace(
+                response.summary,
+                lexical_latency_ms=lexical_latency_ms,
+                dense_latency_ms=dense_latency_ms,
+            ),
         )
 
     def search(
@@ -1198,6 +1241,18 @@ class LocalChunkIndex:
             for obligation_id in planned_obligation_ids
             if obligation_id not in covered_obligation_ids
         )
+        candidate_identities = tuple(
+            (
+                str(candidate["row"]["chunk_id"]),
+                str(candidate["row"]["document_id"]),
+                str(candidate["row"]["source_name"]),
+            )
+            for candidate in candidates
+        )
+        returned_ids = {result.chunk_id for result in results}
+        assembly_rejected = tuple(
+            identity for identity in candidate_identities if identity[0] not in returned_ids
+        )
         summary = SearchSummary(
             query=query_text,
             indexed_chunk_count=len(indexed_rows),
@@ -1221,6 +1276,10 @@ class LocalChunkIndex:
             planned_obligation_ids=planned_obligation_ids,
             covered_obligation_ids=covered_obligation_ids,
             missing_obligation_ids=missing_obligation_ids,
+            lexical_pool=candidate_identities,
+            fused_pool=candidate_identities,
+            ranked_pool=candidate_identities,
+            assembly_rejected_pool=assembly_rejected,
         )
         return SearchResponse(results=tuple(results), summary=summary)
 

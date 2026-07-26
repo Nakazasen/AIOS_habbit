@@ -952,3 +952,222 @@ def test_generate_report_separates_provider_completion_from_grounded_success(tmp
         "insufficient_evidence": 1,
         "provider_errors": 1,
     }
+
+
+def test_rag_profile_cli_accepts_each_ablation_profile():
+    for profile in runner.ABLATION_PROFILES:
+        args = runner.parse_args([
+            "--source-root",
+            ".",
+            "--dry-run",
+            "--rag-profile",
+            profile,
+        ])
+        assert args.rag_profile == profile
+
+
+def test_registry_ablation_runs_three_isolated_profiles_without_external_queries(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+):
+    from aios_habit.benchmark_reference_registry import import_snapshot
+    from aios_habit.rag_v2.eval_harness import BenchmarkResult
+    from aios_habit.rag_v2.index import SearchSummary
+    from aios_habit.rag_v2.pipeline import RagV2IngestionReport
+    from aios_habit.rag_v2.synthesis import LocalSynthesisResult
+
+    questions = [dict(question) for question in runner.BATTLE_QUESTIONS]
+    source_root = tmp_path / "tailieugoc"
+    source_root.mkdir()
+    (source_root / "manual.txt").write_text("deterministic local evidence", encoding="utf-8")
+    local = runner.build_local_manifest(tmp_path, allow_partial=True)
+    notebook_sources = [{"source_id": "source-1", "title": "manual.txt", "status": "READY"}]
+    notebook_manifest = {
+        "status": "PASS",
+        "notebook_id": runner.NOTEBOOK_ID,
+        "title": runner.NOTEBOOK_TITLE,
+        "source_count": 1,
+        "ready_count": 1,
+        "all_ready": True,
+        "sources": notebook_sources,
+        "manifest_hash": runner.stable_hash(notebook_sources),
+    }
+    snapshot = runner.build_reference_snapshot(
+        {
+            "notebook_manifest": notebook_manifest,
+            "local_manifest": {
+                "corpus_fingerprint": local["corpus_fingerprint"],
+                "source_root_name": "tailieugoc",
+            },
+            "corpus_audit": {"audit_hash": "audit-hash"},
+        },
+        questions,
+        [
+            {"status": "success", "answer": "cached", "latency_ms": 1.0, "error": ""}
+            for _question in questions
+        ],
+        notebook_id=runner.NOTEBOOK_ID,
+    )
+    registry = tmp_path / "reference.sqlite3"
+    import_snapshot(registry, snapshot)
+    args = runner.parse_args([
+        "--source-root",
+        str(tmp_path),
+        "--ablation",
+        "--allow-partial",
+        "--reference-registry",
+        str(registry),
+        "--reference-capture-id",
+        snapshot["reference_capture_id"],
+        "--output-dir",
+        str(tmp_path / "runs"),
+    ])
+
+    def unexpected_external_call(*_args, **_kwargs):
+        raise AssertionError("ablation attempted credential, provider, or NotebookLM access")
+
+    created_configs = []
+    query_counts = {profile: 0 for profile in runner.ABLATION_PROFILES}
+
+    class FakePipeline:
+        def __init__(self, config):
+            self.config = config
+            created_configs.append(config)
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args):
+            return False
+
+        def ingest(self, _sources):
+            return RagV2IngestionReport(
+                items=(),
+                converted_count=1,
+                skipped_count=0,
+                failed_count=0,
+                disabled_count=0,
+                indexed_chunk_count=1,
+                created_at="2026-01-01T00:00:00Z",
+            )
+
+        def inspect(self, _sources):
+            return {
+                "retrieval": {
+                    "requested_profile": self.config.retrieval_profile,
+                    "effective_profile": self.config.retrieval_profile,
+                    "degraded": False,
+                    "degraded_reason": "",
+                }
+            }
+
+        def query(self, _query_plan, _sources, *, evidence_config):
+            assert evidence_config is not None
+            profile = self.config.retrieval_profile
+            query_counts[profile] += 1
+            summary = SearchSummary(
+                query="redacted",
+                indexed_chunk_count=1,
+                eligible_chunk_count=1,
+                candidate_count=1,
+                returned_count=1,
+                lexical_pool=(("chunk-1", "document-1", "manual.txt"),),
+                dense_pool=(
+                    (("chunk-1", "document-1", "manual.txt"),)
+                    if profile != "lexical"
+                    else ()
+                ),
+                fused_pool=(("chunk-1", "document-1", "manual.txt"),),
+                ranked_pool=(("chunk-1", "document-1", "manual.txt"),),
+            )
+            return SimpleNamespace(
+                search_response=SimpleNamespace(summary=summary),
+                evidence_pack=object(),
+                synthesis_result=LocalSynthesisResult(
+                    answer="deterministic answer [S1]",
+                    claims=(),
+                    citation_ids=("S1",),
+                    grounded=True,
+                    abstained=False,
+                    abstention_reasons=(),
+                ),
+            )
+
+    def fake_score(question, _response, _pack, latency_ms, _synthesis, **_latencies):
+        return BenchmarkResult(
+            question_id=question.question_id,
+            question=question.question,
+            expected_answer_type=question.expected_answer_type,
+            latency_ms=latency_ms,
+        )
+
+    monkeypatch.setattr(runner, "query_notebooklm", unexpected_external_call)
+    monkeypatch.setattr(runner, "verify_notebook", unexpected_external_call)
+    monkeypatch.setattr(runner, "router_readiness", unexpected_external_call)
+    monkeypatch.setattr(runner, "RagV2DevPipeline", FakePipeline)
+    monkeypatch.setattr(runner, "score_question", fake_score)
+
+    preflight = runner.build_preflight(args)
+    result = runner.run_ablation(args, preflight, output_dir=tmp_path / "runs")
+    manifest = json.loads(
+        (Path(result["run_dir"]) / "ablation_manifest.json").read_text(encoding="utf-8")
+    )
+    blind_bundle = [
+        json.loads(line)
+        for line in (Path(result["run_dir"]) / "blind_bundle.jsonl").read_text(encoding="utf-8").splitlines()
+        if line.strip()
+    ]
+    blind_assignment = json.loads(
+        (Path(result["run_dir"]) / "blind_assignment.json").read_text(encoding="utf-8")
+    )
+    score_template = json.loads(
+        (Path(result["run_dir"]) / "blind_score_template.json").read_text(encoding="utf-8")
+    )
+
+    assert preflight["status"] == "PASS"
+    assert preflight["mode"] == "registry_ablation"
+    assert preflight["router"]["reason"] == "ablation_is_local_rag_only_and_does_not_read_credentials"
+    assert result["notebook_query_count"] == 0
+    assert manifest["notebook_query_count"] == 0
+    assert manifest["provider_query_count"] == 0
+    assert tuple(manifest["arms"]) == runner.ABLATION_PROFILES
+    assert query_counts == {profile: 12 for profile in runner.ABLATION_PROFILES}
+    assert [config.retrieval_profile for config in created_configs] == list(runner.ABLATION_PROFILES)
+    assert [config.strict_semantic for config in created_configs] == [False, True, True]
+    assert len({config.runtime_root for config in created_configs}) == 3
+    assert manifest["human_review"] == {
+        "status": "ready_for_blind_scoring",
+        "bundle_rows": 12,
+        "raw_evidence_included": False,
+        "score_scale": "0_to_5",
+    }
+    assert len(blind_bundle) == len(blind_assignment) == len(score_template["scores"]) == 12
+    assert score_template["scale"] == {"minimum": 0, "maximum": 5}
+    assert set(blind_assignment) == {f"BQ{index:02d}" for index in range(1, 13)}
+    for row in blind_bundle:
+        assert set(row) == {
+            "question_id",
+            "question",
+            "expected_type",
+            "system_a",
+            "system_b",
+            "system_c",
+        }
+        assert not any(profile in json.dumps(row) for profile in runner.ABLATION_PROFILES)
+        for label in ("system_a", "system_b", "system_c"):
+            assert set(row[label]) == {
+                "answer",
+                "grounded",
+                "abstained",
+                "citation_ids",
+                "abstention_reasons",
+                "limitation_reasons",
+            }
+            assert "evidence" not in row[label]
+    for profile in runner.ABLATION_PROFILES:
+        arm = manifest["arms"][profile]
+        assert arm["effective_profile"] == profile
+        assert arm["degraded"] is False
+        assert arm["metrics"]["rank_metric_target_count"] == 0
+        assert arm["metrics"]["rank_metrics_status"] == "not_scored_no_gold_identity"
+        assert arm["metrics"]["recall_at_5"] is None
