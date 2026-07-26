@@ -131,6 +131,84 @@ BATTLE_QUESTIONS = (
 )
 
 
+_ALLOWED_QUESTION_FIELDS = frozenset({
+    "id",
+    "question",
+    "category",
+    "expected_type",
+    "required_source_roles",
+    "citation_granularity",
+    "expected_chunk_ids",
+    "expected_document_ids",
+    "expected_source_names",
+    "required_sources",
+    "required_spans",
+    "required_facets",
+    "expected_privacy",
+    "forbidden_terms",
+    "tags",
+})
+_ALLOWED_EXPECTED_TYPES = frozenset({"answerable", "insufficient"})
+
+
+def _question_rows_from_file(path: Path) -> list[Any]:
+    try:
+        if path.suffix.casefold() == ".jsonl":
+            rows = [json.loads(line) for line in path.read_text(encoding="utf-8-sig").splitlines() if line.strip()]
+        else:
+            payload = json.loads(path.read_text(encoding="utf-8-sig"))
+            rows = payload.get("questions") if isinstance(payload, Mapping) else payload
+    except (OSError, json.JSONDecodeError) as exc:
+        raise BenchmarkError(f"Question set is invalid: {_safe_text(exc)}") from exc
+    if not isinstance(rows, list):
+        raise BenchmarkError("Question set must be a JSON array, JSONL file, or object with a questions array")
+    return rows
+
+
+def load_question_set(path: Path | None = None) -> tuple[dict[str, Any], ...]:
+    """Load a strict question manifest; preserve scoring metadata only for reporting."""
+    rows = list(BATTLE_QUESTIONS) if path is None else _question_rows_from_file(path)
+    if not rows:
+        raise BenchmarkError("Question set must contain at least one question")
+    normalized: list[dict[str, Any]] = []
+    seen_ids: set[str] = set()
+    for index, raw in enumerate(rows, 1):
+        if not isinstance(raw, Mapping):
+            raise BenchmarkError(f"Question set row {index} must be an object")
+        unknown = sorted(set(raw) - _ALLOWED_QUESTION_FIELDS)
+        if unknown:
+            raise BenchmarkError(f"Question set row {index} contains unsupported fields: {', '.join(unknown)}")
+        question_id = str(raw.get("id") or "").strip()
+        question = str(raw.get("question") or "").strip()
+        expected_type = str(raw.get("expected_type") or "").strip().casefold()
+        if not question_id or not question:
+            raise BenchmarkError(f"Question set row {index} requires non-empty id and question")
+        if question_id in seen_ids:
+            raise BenchmarkError(f"Question set contains duplicate id: {question_id}")
+        if expected_type not in _ALLOWED_EXPECTED_TYPES:
+            raise BenchmarkError(f"Question set row {index} has invalid expected_type")
+        seen_ids.add(question_id)
+        normalized.append(dict(raw, id=question_id, question=question, expected_type=expected_type))
+    return tuple(normalized)
+
+
+def resolve_question_set_path(args: argparse.Namespace) -> Path | None:
+    selected = str(getattr(args, "question_set", "") or "").strip()
+    legacy = str(getattr(args, "question_map", "") or "").strip()
+    if selected and legacy:
+        raise BenchmarkError("Use only one of --question-set or legacy --question-map")
+    return Path(selected or legacy) if selected or legacy else None
+
+
+def question_set_fingerprint(questions: Sequence[Mapping[str, Any]]) -> str:
+    return stable_hash(tuple(dict(question) for question in questions))
+
+
+def production_question_payload(question: Mapping[str, Any]) -> dict[str, str]:
+    """Project a benchmark row to the only fields allowed into production arms."""
+    return {"id": str(question["id"]), "question": str(question["question"])}
+
+
 class BenchmarkError(RuntimeError):
     """Safe benchmark failure without raw payloads."""
 
@@ -280,7 +358,7 @@ def discover_local_files(source_root: Path) -> tuple[list[Path], list[Path]]:
     return supported, [path for path in files if path not in supported]
 
 
-def build_local_manifest(source_root: Path) -> dict[str, Any]:
+def build_local_manifest(source_root: Path, *, allow_partial: bool = False) -> dict[str, Any]:
     source_root = resolve_benchmark_source_root(source_root)
     root_exists = source_root.exists() and source_root.is_dir()
     supported, unsupported = discover_local_files(source_root)
@@ -291,7 +369,7 @@ def build_local_manifest(source_root: Path) -> dict[str, Any]:
         except OSError as exc:
             raise BenchmarkError(f"Could not fingerprint local source: {_safe_text(exc)}") from exc
     business_records = [row for row in records if not str(row["relative_path"]).casefold().startswith(("readme", "source_inventory", "project_inventory", "excluded_sources"))]
-    if len(business_records) != EXPECTED_SOURCE_COUNT:
+    if not allow_partial and len(business_records) != EXPECTED_SOURCE_COUNT:
         raise BenchmarkError(f"Canonical manifest must contain exactly {EXPECTED_SOURCE_COUNT} business files, but found {len(business_records)}. Contamination blocked.")
     return {"source_root_name": source_root.name, "root_exists": root_exists, "supported_file_count": len(records), "business_file_count": len(business_records), "all_file_count": len(records) + len(unsupported), "unsupported_files": [path.relative_to(source_root).as_posix() for path in unsupported], "files": records, "manifest_hash": stable_hash(records), "corpus_fingerprint": stable_hash([(row["relative_path"], row["sha256"]) for row in records])}
 
@@ -437,6 +515,7 @@ def build_rag_v2_sources(
     privacy_label: str = "cloud_safe",
 ) -> tuple[SourceSpec, ...]:
     """Translate the audited battle corpus into the canonical Dev source contract."""
+    resolved_root = resolve_benchmark_source_root(source_root)
     pairs = list((corpus_audit or {}).get("shared_native", [])) + list(
         (corpus_audit or {}).get("shared_mirrored", [])
     )
@@ -446,7 +525,7 @@ def build_rag_v2_sources(
     owner_consent = privacy_label in {"cloud_safe", "public"}
     return tuple(
         SourceSpec(
-            path=source_root / str(row["relative_path"]),
+            path=resolved_root / str(row["relative_path"]),
             source_id=source_ids.get(str(row["relative_path"]), ""),
             document_id=f"doc-{str(row['sha256'])[:16]}",
             privacy_labels=(privacy_label,),
@@ -477,12 +556,13 @@ def ingest_workspace_sources(source_root: Path, local_manifest: Mapping[str, Any
     from aios_habit.workspace_chat_ai_answer import WorkspaceAIContextSource
     from aios_habit.workspace_chat_source_ingest import ingest_and_extract_bytes
 
+    resolved_root = resolve_benchmark_source_root(source_root)
     sources: list[Any] = []
     files: list[dict[str, Any]] = []
     # Keep the benchmark caller-approved label intact. Do not reinterpret legacy labels.
     workspace_label = privacy_label
     for row in local_manifest.get("files", []):
-        path = source_root / str(row["relative_path"])
+        path = resolved_root / str(row["relative_path"])
         try:
             result = ingest_and_extract_bytes(path.read_bytes(), path.name, workspace_label)
         except OSError as exc:
@@ -560,7 +640,7 @@ def run_router_synthesis(
             "errors": list(validation.errors),
         }
         if not validation.valid:
-            fallback = synthesize_evidence(evidence_pack)
+            fallback = synthesize_evidence(evidence_pack, answer_shape=answer_shape)
             route.update({"status": "provider_validation_fallback", "externally_sent": True, "fallback_used": True})
             return {
                 "status": "success",
@@ -743,7 +823,7 @@ def answer_one(
             pack,
             api_key_file=api_key_file,
             privacy_label=privacy_label,
-            answer_shape=str(question.get("category") or "grounded_summary"),
+            answer_shape=query_result.query_plan.intent_category,
         )
         result.update({
             "status": synthesis["status"],
@@ -890,7 +970,8 @@ def generate_report(output_dir: Path, *, metadata: Mapping[str, Any], questions:
 
 
 def build_preflight(args: argparse.Namespace) -> dict[str, Any]:
-    local = build_local_manifest(Path(args.source_root).resolve())
+    questions = load_question_set(resolve_question_set_path(args))
+    local = build_local_manifest(Path(args.source_root).resolve(), allow_partial=getattr(args, "allow_partial", False))
     local_only_preflight = bool(args.dry_run)
     if local_only_preflight:
         notebook = {
@@ -922,7 +1003,7 @@ def build_preflight(args: argparse.Namespace) -> dict[str, Any]:
         load_mapping(Path(args.source_map) if args.source_map else None),
     )
     workflow_matrix = []
-    for question in BATTLE_QUESTIONS:
+    for question in questions:
         systems = {
             system: workflow_applicability(question, system, local, notebook)
             for system in ("workspace_chat", "rag_v2", "notebooklm")
@@ -961,7 +1042,7 @@ def build_preflight(args: argparse.Namespace) -> dict[str, Any]:
         "corpus_audit": corpus_audit,
         "workflow_matrix": workflow_matrix,
         "router": router,
-        "question_set_hash": stable_hash(BATTLE_QUESTIONS),
+        "question_set_hash": question_set_fingerprint(questions),
         "candidate": promotion_candidate_identity(
             args.privacy_label,
             router_provider="none" if local_only_preflight else "deepseek",
@@ -975,10 +1056,13 @@ def build_preflight(args: argparse.Namespace) -> dict[str, Any]:
 
 
 def run_dry_or_live(args: argparse.Namespace, preflight: Mapping[str, Any], *, live: bool, output_dir: Path) -> dict[str, Any]:
-    source_root = resolve_benchmark_source_root(Path(args.source_root).resolve())
-    local, corpus_audit = preflight["local_manifest"], preflight["corpus_audit"]
     if live and args.privacy_label not in {"cloud_safe", "public"}:
         raise BenchmarkError("Live synthesis requires cloud_safe or public sources")
+    questions = load_question_set(resolve_question_set_path(args))
+    if question_set_fingerprint(questions) != str(preflight.get("question_set_hash")):
+        raise BenchmarkError("Question set changed after preflight; rerun preflight before execution")
+    source_root = resolve_benchmark_source_root(Path(args.source_root).resolve())
+    local, corpus_audit = preflight["local_manifest"], preflight["corpus_audit"]
     suffix = f"{int(time.time())}-{str(preflight['question_set_hash'])[:8]}"
     run_id, run_dir = f"BATTLE-RAGv2-{suffix}", output_dir / f"BATTLE-RAGv2-{suffix}"
     run_dir.mkdir(parents=True, exist_ok=True)
@@ -994,19 +1078,20 @@ def run_dry_or_live(args: argparse.Namespace, preflight: Mapping[str, Any], *, l
         privacy_label=args.privacy_label,
     )
     selected_ids = {value.strip() for value in str(args.question_ids).split(",") if value.strip()}
-    run_questions = [question for question in BATTLE_QUESTIONS if not selected_ids or str(question["id"]) in selected_ids]
-    unknown_ids = selected_ids - {str(question["id"]) for question in BATTLE_QUESTIONS}
+    run_questions = [question for question in questions if not selected_ids or str(question["id"]) in selected_ids]
+    unknown_ids = selected_ids - {str(question["id"]) for question in questions}
     if unknown_ids: raise BenchmarkError("Unknown question IDs: " + ", ".join(sorted(unknown_ids)))
     if not run_questions: raise BenchmarkError("No benchmark questions selected")
     write_jsonl(run_dir / "questions.jsonl", run_questions)
     rag_results, workspace_results, nlm_results, checkpoint_dir = [], [], [], run_dir / "checkpoints"
     matrix = {str(row["question_id"]): row["systems"] for row in preflight.get("workflow_matrix", [])}
-    pipeline_config = RagV2DevConfig(
-        runtime_root=run_dir,
-        index_filename="rag_v2_battle.db",
-        allowed_privacy_labels=(args.privacy_label,),
-    )
-    with RagV2DevPipeline(pipeline_config) as pipeline:
+    source_root = resolve_benchmark_source_root(Path(args.source_root).resolve())
+    local = build_local_manifest(source_root, allow_partial=getattr(args, "allow_partial", False))
+    corpus_audit = classify_corpus_capabilities(preflight.get("notebook", {}).get("sources", []), local, source_map=load_mapping(Path(args.source_map) if args.source_map else None))
+    workspace_sources, workspace_ingestion = ingest_workspace_sources(source_root, local, privacy_label=args.privacy_label)
+    rag_sources = build_rag_v2_sources(source_root, local, corpus_audit=corpus_audit, privacy_label=args.privacy_label)
+    config = RagV2DevConfig(runtime_root=run_dir / "rag_v2_runtime", allowed_privacy_labels=("cloud_safe", "public") if args.privacy_label in {"cloud_safe", "public"} else ("local_only",))
+    with RagV2DevPipeline(config) as pipeline:
         ingestion_report = pipeline.ingest(rag_sources)
         ingestion_coverage = rag_v2_ingestion_coverage(ingestion_report, local)
         for name, value in (
@@ -1033,7 +1118,7 @@ def run_dry_or_live(args: argparse.Namespace, preflight: Mapping[str, Any], *, l
                 rag = answer_one(
                     pipeline,
                     rag_sources,
-                    question,
+                    production_question_payload(question),
                     api_key_file=Path(args.api_key_file),
                     privacy_label=args.privacy_label,
                     do_synthesis=live,
@@ -1042,7 +1127,7 @@ def run_dry_or_live(args: argparse.Namespace, preflight: Mapping[str, Any], *, l
                 )
             rag = rag or {"question_id": qid, "status": "not_applicable", "answer": "", "reason": applicability.get("rag_v2", {}).get("reason")}
             workspace = checkpoint.get("workspace_chat") if checkpoint and checkpoint.get("workspace_chat", {}).get("status") == "success" else None
-            workspace = workspace or (answer_workspace_one(workspace_sources, question, api_key_file=Path(args.api_key_file), do_synthesis=live) if workspace_app else {"question_id": qid, "status": "not_applicable", "answer": "", "reason": applicability.get("workspace_chat", {}).get("reason")})
+            workspace = workspace or (answer_workspace_one(workspace_sources, production_question_payload(question), api_key_file=Path(args.api_key_file), do_synthesis=live) if workspace_app else {"question_id": qid, "status": "not_applicable", "answer": "", "reason": applicability.get("workspace_chat", {}).get("reason")})
             nlm = checkpoint.get("notebooklm") if checkpoint and checkpoint.get("notebooklm", {}).get("status") == "success" else None
             nlm = nlm or (query_notebooklm(question["question"], args.notebook_id) if live and nlm_app else {"status": "not_queried" if nlm_app else "not_applicable", "answer": "", "latency_ms": 0, "error": "dry_run" if nlm_app else applicability.get("notebooklm", {}).get("reason")})
             rag["question_id"] = workspace["question_id"] = nlm["question_id"] = qid
@@ -1061,7 +1146,7 @@ def run_dry_or_live(args: argparse.Namespace, preflight: Mapping[str, Any], *, l
 
 
 def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Fail-closed NotebookLM vs RAG v2 evidence gate"); parser.add_argument("--source-root", required=True); modes = parser.add_mutually_exclusive_group(required=True); modes.add_argument("--preflight", action="store_true"); modes.add_argument("--dry-run", action="store_true"); modes.add_argument("--run", action="store_true"); modes.add_argument("--score", metavar="SCORE_FILE"); parser.add_argument("--api-key-file", default=os.environ.get("AIOS_ROUTER_API_KEY_FILE", str(DEFAULT_API_KEY_FILE))); parser.add_argument("--notebook-id", default=NOTEBOOK_ID); parser.add_argument("--output-dir", default=str(DEFAULT_OUTPUT_DIR)); parser.add_argument("--source-map", default=""); parser.add_argument("--question-map", default=""); parser.add_argument("--question-ids", default="", help="Comma-separated frozen question IDs for bounded smoke runs"); parser.add_argument("--privacy-label", default="cloud_safe", choices=("cloud_safe", "public", "local_only")); return parser.parse_args(argv)
+    parser = argparse.ArgumentParser(description="Fail-closed NotebookLM vs RAG v2 evidence gate"); parser.add_argument("--source-root", required=True); modes = parser.add_mutually_exclusive_group(required=True); modes.add_argument("--preflight", action="store_true"); modes.add_argument("--dry-run", action="store_true"); modes.add_argument("--run", action="store_true"); modes.add_argument("--score", metavar="SCORE_FILE"); parser.add_argument("--api-key-file", default=os.environ.get("AIOS_ROUTER_API_KEY_FILE", str(DEFAULT_API_KEY_FILE))); parser.add_argument("--notebook-id", default=NOTEBOOK_ID); parser.add_argument("--output-dir", default=str(DEFAULT_OUTPUT_DIR)); parser.add_argument("--source-map", default=""); parser.add_argument("--question-map", default="", help="Legacy alias for --question-set"); parser.add_argument("--question-set", default="", help="Owner-approved JSON/JSONL question manifest"); parser.add_argument("--question-ids", default="", help="Comma-separated selected question IDs"); parser.add_argument("--privacy-label", default="cloud_safe", choices=("cloud_safe", "public", "local_only")); parser.add_argument("--allow-partial", action="store_true", help="Allow partial corpus for dry-runs or test environments"); return parser.parse_args(argv)
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -1069,7 +1154,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     try:
         output_dir = Path(args.output_dir)
         if args.score:
-            assignment = json.loads((output_dir / "blind_assignment.json").read_text(encoding="utf-8")); result = import_scores(Path(args.score), assignment, {question["id"] for question in BATTLE_QUESTIONS}); atomic_write_json(output_dir / "score_result.json", result); print(json.dumps({"status": "PASS", "score_result": str(output_dir / "score_result.json")}, ensure_ascii=False)); return 0
+            assignment = json.loads((output_dir / "blind_assignment.json").read_text(encoding="utf-8")); result = import_scores(Path(args.score), assignment, set(assignment)); atomic_write_json(output_dir / "score_result.json", result); print(json.dumps({"status": "PASS", "score_result": str(output_dir / "score_result.json")}, ensure_ascii=False)); return 0
         preflight = build_preflight(args); atomic_write_json(output_dir / "preflight_latest.json", preflight)
         if args.preflight:
             print(json.dumps({"status": preflight["status"], "preflight": str(output_dir / "preflight_latest.json")}, ensure_ascii=False)); return 0 if preflight["status"] == "PASS" else 2

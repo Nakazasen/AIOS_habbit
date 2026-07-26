@@ -12,7 +12,55 @@ from .converters import (
 )
 from .registry import ConverterRegistry
 from .chunking import DocumentChunk, StructureAwareChunker
-from .index import LocalChunkIndex, SearchResult
+from .index import LocalChunkIndex, SearchOptions, SearchResponse, SearchResult, SearchSummary
+from .query_planning import (
+    QueryExpander,
+    RetrievalQueryPlan,
+    RetrievalQueryVariant,
+    build_query_plan,
+    coerce_query_plan,
+    identity_query_plan,
+)
+from .evidence import (
+    EvidenceAnswerMode,
+    EvidenceConfidence,
+    EvidenceFacetCoverage,
+    EvidenceObligationCoverage,
+    EvidenceItem,
+    EvidencePack,
+    EvidencePackConfig,
+    build_evidence_pack,
+    format_evidence_for_prompt,
+    evidence_pack_to_dict,
+)
+from .synthesis import (
+    GroundedClaim,
+    LocalSynthesisResult,
+    ProviderSynthesisValidation,
+    SynthesisPlan,
+    build_synthesis_plan,
+    format_provider_synthesis_contract,
+    synthesize_evidence,
+    validate_grounded_claims,
+    validate_provider_synthesis_answer,
+)
+from .eval_harness import (
+    BenchmarkConfig,
+    BenchmarkQuestion,
+    BenchmarkResult,
+    BenchmarkSummary,
+    run_benchmark,
+    format_benchmark_summary,
+    benchmark_summary_to_dict,
+)
+from .pipeline import (
+    IngestionItemReport,
+    RagV2DevConfig,
+    RagV2DevPipeline,
+    RagV2IngestionReport,
+    RagV2QueryResult,
+    SourceSpec,
+)
 
 __all__ = [
     "DocumentElement",
@@ -34,5 +82,46 @@ __all__ = [
     "DocumentChunk",
     "StructureAwareChunker",
     "LocalChunkIndex",
+    "SearchOptions",
+    "SearchResponse",
     "SearchResult",
+    "SearchSummary",
+    "QueryExpander",
+    "RetrievalQueryPlan",
+    "RetrievalQueryVariant",
+    "build_query_plan",
+    "coerce_query_plan",
+    "identity_query_plan",
+    "EvidenceAnswerMode",
+    "EvidenceConfidence",
+    "EvidenceFacetCoverage",
+    "EvidenceObligationCoverage",
+    "EvidenceItem",
+    "EvidencePack",
+    "EvidencePackConfig",
+    "build_evidence_pack",
+    "format_evidence_for_prompt",
+    "evidence_pack_to_dict",
+    "GroundedClaim",
+    "LocalSynthesisResult",
+    "ProviderSynthesisValidation",
+    "SynthesisPlan",
+    "build_synthesis_plan",
+    "format_provider_synthesis_contract",
+    "synthesize_evidence",
+    "validate_grounded_claims",
+    "validate_provider_synthesis_answer",
+    "BenchmarkConfig",
+    "BenchmarkQuestion",
+    "BenchmarkResult",
+    "BenchmarkSummary",
+    "run_benchmark",
+    "format_benchmark_summary",
+    "benchmark_summary_to_dict",
+    "IngestionItemReport",
+    "RagV2DevConfig",
+    "RagV2DevPipeline",
+    "RagV2IngestionReport",
+    "RagV2QueryResult",
+    "SourceSpec",
 ]
