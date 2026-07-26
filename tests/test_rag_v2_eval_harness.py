@@ -322,6 +322,27 @@ def test_provider_execution_is_a_hard_failure():
     assert any("Local execution pass rate" in warning for warning in summary.warnings)
 
 
+def test_negative_control_false_support_is_an_explicit_quality_failure():
+    result = BenchmarkResult(
+        question_id="NEGATIVE",
+        question="q",
+        expected_answer_type="insufficient",
+        synthesis_grounded=True,
+        synthesis_abstained=False,
+        citation_valid=True,
+        false_support=True,
+        false_support_reason="insufficient_question_material_answer",
+        privacy_ok=True,
+    )
+
+    summary = summarize_results([result], BenchmarkConfig())
+
+    assert summary.negative_control_false_support_rate == 1.0
+    assert summary.abstention_accuracy == 0.0
+    assert summary.pass_fail == "FAIL"
+    assert any("Negative-control false support rate" in warning for warning in summary.warnings)
+
+
 # --- No output files --------------------------------------------------------
 
 def test_no_output_files_created(tmp_path):

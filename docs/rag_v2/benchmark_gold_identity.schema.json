@@ -1,0 +1,42 @@
+﻿{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "RAG v2 evaluation-only benchmark gold identity manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "corpus_fingerprint", "question_set_hash", "annotations"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "corpus_fingerprint": {"type": "string", "minLength": 1},
+    "question_set_hash": {"type": "string", "minLength": 1},
+    "annotations": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["question_id", "expected_answer_type", "annotation_state"],
+        "properties": {
+          "question_id": {"type": "string", "minLength": 1},
+          "expected_answer_type": {"enum": ["answerable", "insufficient"]},
+          "annotation_state": {"enum": ["verified", "pending_owner_review", "not_applicable"]},
+          "expected_chunk_ids": {"type": "array", "items": {"type": "string", "minLength": 1}, "uniqueItems": true},
+          "expected_document_ids": {"type": "array", "items": {"type": "string", "minLength": 1}, "uniqueItems": true},
+          "expected_source_names": {"type": "array", "items": {"type": "string", "minLength": 1}, "uniqueItems": true},
+          "required_facets": {"type": "array", "items": {"type": "string", "minLength": 1}, "uniqueItems": true},
+          "location": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "page": {"type": "integer", "minimum": 1},
+              "sheet": {"type": "string", "minLength": 1},
+              "slide": {"type": "integer", "minimum": 1},
+              "row_range": {"type": "string", "minLength": 1},
+              "cell_range": {"type": "string", "minLength": 1},
+              "section": {"type": "string", "minLength": 1}
+            }
+          }
+        }
+      }
+    }
+  }
+}

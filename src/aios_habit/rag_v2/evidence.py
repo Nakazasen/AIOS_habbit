@@ -15,7 +15,11 @@ from enum import Enum
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 from .index import SearchResponse, SearchResult, SearchSummary
-from .query_planning import RetrievalQueryPlan, coerce_query_plan
+from .query_planning import (
+    RetrievalQueryPlan,
+    coerce_query_plan,
+    extract_content_terms,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -30,6 +34,7 @@ class EvidencePackConfig:
     min_items_for_sufficient: int = 1
     min_top_score: float = 0.1
     min_term_coverage: float = 0.3
+    min_final_evidence_term_coverage: float = 0.6
     max_snippet_chars: int = 1500
     per_document_limit: int = 3
     high_score_threshold: float = 8.0
@@ -38,6 +43,8 @@ class EvidencePackConfig:
     def __post_init__(self) -> None:
         if self.max_items < 1:
             raise ValueError("max_items must be at least 1")
+        if not 0.0 <= self.min_final_evidence_term_coverage <= 1.0:
+            raise ValueError("min_final_evidence_term_coverage must be between 0 and 1")
         if self.max_snippet_chars < 1:
             raise ValueError("max_snippet_chars must be at least 1")
 
@@ -161,6 +168,9 @@ class EvidencePack:
     item_count: int
     top_score: float
     best_term_coverage: float
+    final_evidence_term_coverage: float
+    supported_obligation_count: int
+    planned_obligation_count: int
     created_at: str
 
 
@@ -315,6 +325,28 @@ def _compute_confidence(
         return EvidenceConfidence.MEDIUM, ()
 
     return EvidenceConfidence.LOW, ()
+
+
+def _final_evidence_relevance(
+    items: Sequence[EvidenceItem],
+    query_plan: RetrievalQueryPlan,
+) -> float:
+    """Measure query-term support in the *selected* pack, not a candidate pool."""
+    query_terms = set(query_plan.content_terms)
+    if not query_terms:
+        return 1.0
+    matched_terms = {
+        term.casefold()
+        for item in items
+        for term in item.matched_terms
+        if term.casefold() in query_terms
+    }
+    # Retrieval provenance is preferred, but textual overlap prevents a stale or
+    # incomplete matched_terms trace from masking directly supported local evidence.
+    for item in items:
+        item_text_tokens = set(extract_content_terms(item.text))
+        matched_terms.update(query_terms & item_text_tokens)
+    return len(matched_terms) / len(query_terms)
 
 
 def _classify_evidence_reasons(
@@ -498,8 +530,23 @@ def build_evidence_pack(
         for matching in [tuple(item for item in items_tuple if obligation_id in item.matched_obligations)]
     )
 
+    final_evidence_coverage = _final_evidence_relevance(items_tuple, query_plan)
+    supported_obligation_count = sum(
+        item.status == "covered" for item in obligation_coverage_map
+    )
+    planned_obligation_count = len(obligation_coverage_map)
     confidence, insufficiency_reasons = _compute_confidence(
         items_tuple, response.summary, config
+    )
+    relevance_reasons: List[str] = []
+    if items_tuple and final_evidence_coverage == 0.0:
+        relevance_reasons.append("no_direct_query_evidence")
+    elif items_tuple and final_evidence_coverage < config.min_final_evidence_term_coverage:
+        relevance_reasons.append("final_evidence_query_coverage_below_threshold")
+    if planned_obligation_count and not supported_obligation_count:
+        relevance_reasons.append("all_required_obligations_missing")
+    insufficiency_reasons = tuple(
+        dict.fromkeys((*insufficiency_reasons, *relevance_reasons))
     )
     hard_reasons, soft_reasons, answer_mode = _classify_evidence_reasons(
         items_tuple, insufficiency_reasons
@@ -527,6 +574,9 @@ def build_evidence_pack(
             response.summary.evidence_set_term_coverage,
             max((item.term_coverage for item in items_tuple), default=0.0),
         ),
+        final_evidence_term_coverage=final_evidence_coverage,
+        supported_obligation_count=supported_obligation_count,
+        planned_obligation_count=planned_obligation_count,
         created_at=datetime.now().isoformat(),
     )
 

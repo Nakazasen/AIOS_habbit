@@ -17,6 +17,7 @@ _COMMON_STOPWORDS = frozenset({
     "a", "an", "and", "are", "as", "at", "be", "by", "for", "from",
     "how", "in", "is", "it", "of", "on", "or", "that", "the", "this",
     "to", "what", "when", "where", "which", "who", "with",
+    "based", "does", "do", "did", "specific", "system", "use", "using",
 })
 _FACET_SPLIT_RE = re.compile(r"(?:[\r\n;]+|(?<=[.!?])\s+)")
 _MAX_FACETS = 4

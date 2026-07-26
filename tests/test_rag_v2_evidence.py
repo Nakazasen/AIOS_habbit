@@ -1,4 +1,7 @@
+from dataclasses import replace
+
 from aios_habit.rag_v2.index import SearchOptions, SearchResponse, SearchResult, SearchSummary
+from aios_habit.rag_v2.query_planning import extract_content_terms
 from aios_habit.rag_v2.evidence import (
     EvidenceAnswerMode,
     EvidenceConfidence,
@@ -28,13 +31,17 @@ def _make_result(
     file_type="txt",
     privacy_labels=("allowed",),
     ranking_signals=None,
-    matched_terms=("sample",),
+    matched_terms=None,
     term_coverage=1.0,
     matched_query_variant_ids=(),
     matched_query_facets=(),
     matched_obligations=(),
     metadata=None,
 ):
+    fixture_metadata = dict(metadata or {})
+    if matched_terms is None:
+        fixture_metadata["fixture_auto_query_support"] = True
+        matched_terms = ()
     return SearchResult(
         chunk_id=chunk_id,
         score=score,
@@ -43,7 +50,7 @@ def _make_result(
         source_path=source_path,
         source_name=source_name,
         file_type=file_type,
-        metadata=metadata or {},
+        metadata=fixture_metadata,
         privacy_labels=privacy_labels,
         ranking_signals=ranking_signals or {"lexical": score},
         matched_terms=matched_terms,
@@ -63,8 +70,15 @@ def _make_response(results, query="test query", **summary_kwargs):
         returned_count=len(results),
     )
     defaults.update(summary_kwargs)
+    supported_terms = extract_content_terms(query)
+    normalized_results = tuple(
+        replace(result, matched_terms=supported_terms)
+        if result.metadata.get("fixture_auto_query_support")
+        else result
+        for result in results
+    )
     return SearchResponse(
-        results=tuple(results),
+        results=normalized_results,
         summary=SearchSummary(**defaults),
     )
 
@@ -393,6 +407,31 @@ def test_unknown_insufficiency_reason_fails_closed():
     assert synthesize_evidence(pack).abstained is True
 
 
+def test_high_score_unrelated_evidence_abstains_with_final_relevance_reason():
+    response = _make_response(
+        [
+            _make_result(
+                "unrelated",
+                "d1",
+                100.0,
+                text="Quarterly office catering was approved.",
+                matched_terms=(),
+            ),
+        ],
+        query="quantum propulsion verification protocol",
+    )
+
+    pack = build_evidence_pack("quantum propulsion verification protocol", response)
+    synthesis = synthesize_evidence(pack)
+
+    assert pack.final_evidence_term_coverage == 0.0
+    assert "no_direct_query_evidence" in pack.hard_insufficiency_reasons
+    assert pack.answer_mode == EvidenceAnswerMode.ABSTAIN
+    assert synthesis.abstained is True
+    assert synthesis.grounded is False
+    assert synthesis.citation_ids == ()
+
+
 def test_evidence_coverage_map_serializes_stable_ids_without_facet_text():
     response = _make_response(
         [
@@ -614,7 +653,16 @@ def test_provider_synthesis_validation_enforces_actionable_shape_markers():
 
 def test_missing_required_obligation_becomes_a_limit_and_never_an_invented_claim():
     response = _make_response(
-        [_make_result("problem", "d1", 5.0, text="A service outage is reported.")],
+        [
+            _make_result(
+                "problem",
+                "d1",
+                5.0,
+                text="A service outage is reported.",
+                matched_terms=("service", "unavailable", "recover"),
+                matched_obligations=("problem",),
+            )
+        ],
         planned_obligation_ids=("problem", "check", "action"),
         covered_obligation_ids=("problem",),
         missing_obligation_ids=("check", "action"),
@@ -624,7 +672,7 @@ def test_missing_required_obligation_becomes_a_limit_and_never_an_invented_claim
 
     assert pack.answer_mode == EvidenceAnswerMode.ANSWER_WITH_LIMITS
     assert "missing_required_obligations" in pack.soft_warning_reasons
-    assert [item.status for item in pack.obligation_coverage_map] == ["missing", "missing", "missing"]
+    assert [item.status for item in pack.obligation_coverage_map] == ["covered", "missing", "missing"]
     assert "No grounded evidence retrieved for this section." in synthesis.answer
     assert "Verify log and operational status" not in synthesis.answer
     assert "Refer to documented resolution steps" not in synthesis.answer
@@ -645,3 +693,20 @@ def test_evidence_obligation_coverage_serializes_without_source_text():
     assert [item.status for item in pack.obligation_coverage_map] == ["missing", "covered", "missing"]
     assert serialized["obligation_coverage_map"][1]["obligation_id"] == "check"
     assert "private question" not in str(serialized["obligation_coverage_map"])
+def test_generic_query_boilerplate_does_not_count_as_final_evidence_support():
+    query = "What specific blockchain-based quality assurance mechanism does the system use?"
+    response = _make_response([
+        _make_result(
+            "c1", "d1", 8.0,
+            "The system uses a documented quality procedure.",
+            matched_terms=("system", "use"),
+        )
+    ], query=query)
+
+    pack = build_evidence_pack(query, response)
+    result = synthesize_evidence(pack)
+
+    assert pack.final_evidence_term_coverage < 0.6
+    assert "final_evidence_query_coverage_below_threshold" in pack.hard_insufficiency_reasons
+    assert result.abstained is True
+    assert result.grounded is False

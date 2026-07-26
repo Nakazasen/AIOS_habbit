@@ -173,6 +173,83 @@ _ALLOWED_QUESTION_FIELDS = frozenset({
     "tags",
 })
 _ALLOWED_EXPECTED_TYPES = frozenset({"answerable", "insufficient"})
+_GOLD_IDENTITY_SCHEMA_VERSION = 1
+_GOLD_ANNOTATION_STATES = frozenset({
+    "verified", "pending_owner_review", "not_applicable",
+})
+_GOLD_ANNOTATION_FIELDS = frozenset({
+    "question_id",
+    "expected_answer_type",
+    "annotation_state",
+    "expected_chunk_ids",
+    "expected_document_ids",
+    "expected_source_names",
+    "required_facets",
+    "location",
+})
+
+
+def load_gold_identity_manifest(
+    path: Path,
+    questions: Sequence[Mapping[str, Any]],
+    *,
+    corpus_fingerprint: str,
+) -> dict[str, dict[str, Any]]:
+    """Load verified evaluation identities without putting annotations in production paths."""
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8-sig"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise BenchmarkError(f"Gold identity manifest is invalid: {_safe_text(exc)}") from exc
+    if not isinstance(payload, Mapping) or set(payload) != {
+        "schema_version", "corpus_fingerprint", "question_set_hash", "annotations",
+    }:
+        raise BenchmarkError("Gold identity manifest has unsupported or missing top-level fields")
+    if payload.get("schema_version") != _GOLD_IDENTITY_SCHEMA_VERSION:
+        raise BenchmarkError("Gold identity manifest schema_version is unsupported")
+    if str(payload.get("corpus_fingerprint") or "") != corpus_fingerprint:
+        raise BenchmarkError("Gold identity manifest corpus fingerprint does not match")
+    if str(payload.get("question_set_hash") or "") != question_set_fingerprint(questions):
+        raise BenchmarkError("Gold identity manifest question-set hash does not match")
+    annotations = payload.get("annotations")
+    if not isinstance(annotations, list):
+        raise BenchmarkError("Gold identity manifest annotations must be an array")
+    question_by_id = {str(question["id"]): question for question in questions}
+    normalized: dict[str, dict[str, Any]] = {}
+    for position, raw in enumerate(annotations, 1):
+        if not isinstance(raw, Mapping) or set(raw) - _GOLD_ANNOTATION_FIELDS:
+            raise BenchmarkError(f"Gold identity annotation {position} has unsupported fields")
+        question_id = str(raw.get("question_id") or "").strip()
+        state = str(raw.get("annotation_state") or "").strip()
+        expected_type = str(raw.get("expected_answer_type") or "").strip()
+        if question_id not in question_by_id or question_id in normalized:
+            raise BenchmarkError(f"Gold identity annotation {position} has unknown or duplicate question_id")
+        if state not in _GOLD_ANNOTATION_STATES:
+            raise BenchmarkError(f"Gold identity annotation {position} has invalid annotation_state")
+        if expected_type != str(question_by_id[question_id].get("expected_type") or ""):
+            raise BenchmarkError(f"Gold identity annotation {position} expected type does not match question")
+        identity_fields = (
+            "expected_chunk_ids", "expected_document_ids", "expected_source_names",
+        )
+        normalized_row = {
+            "annotation_state": state,
+            "expected_chunk_ids": tuple(str(value) for value in raw.get("expected_chunk_ids", ()) if str(value)),
+            "expected_document_ids": tuple(str(value) for value in raw.get("expected_document_ids", ()) if str(value)),
+            "expected_source_names": tuple(str(value) for value in raw.get("expected_source_names", ()) if str(value)),
+            "required_facets": tuple(str(value) for value in raw.get("required_facets", ()) if str(value)),
+        }
+        if any(
+            field in raw and not isinstance(raw[field], list)
+            for field in (*identity_fields, "required_facets")
+        ):
+            raise BenchmarkError(f"Gold identity annotation {position} identity fields must be arrays")
+        if state == "verified" and expected_type == "answerable" and not any(normalized_row[field] for field in identity_fields):
+            raise BenchmarkError(f"Gold identity annotation {position} verified answerable target is missing identity")
+        if state != "verified" and any(normalized_row[field] for field in identity_fields):
+            raise BenchmarkError(f"Gold identity annotation {position} non-verified target must not define identity")
+        normalized[question_id] = normalized_row
+    if set(normalized) != set(question_by_id):
+        raise BenchmarkError("Gold identity manifest must annotate every selected question")
+    return normalized
 
 
 def _question_rows_from_file(path: Path) -> list[Any]:
@@ -1797,7 +1874,10 @@ def run_dry_or_live(args: argparse.Namespace, preflight: Mapping[str, Any], *, l
     return {"status": "PASS", "run_id": run_id, "run_dir": str(run_dir), "preflight_status": preflight.get("status"), "report": {key: str(value) for key, value in paths.items()}, "algorithm_report": {key: str(value) for key, value in algorithm_paths.items()}}
 
 
-def _benchmark_question_from_manifest(question: Mapping[str, Any]) -> BenchmarkQuestion:
+def _benchmark_question_from_manifest(
+    question: Mapping[str, Any],
+    annotation: Mapping[str, Any] | None = None,
+) -> BenchmarkQuestion:
     """Convert only explicit owner annotations; never infer gold targets from benchmark hints."""
     def values(key: str) -> tuple[str, ...]:
         raw = question.get(key, ())
@@ -1808,16 +1888,17 @@ def _benchmark_question_from_manifest(question: Mapping[str, Any]) -> BenchmarkQ
     expected_type = str(question.get("expected_type") or "answerable")
     if expected_type not in {"answerable", "insufficient"}:
         expected_type = "answerable"
+    verified_annotation = annotation if annotation and annotation.get("annotation_state") == "verified" else {}
     return BenchmarkQuestion(
         question_id=str(question["id"]),
         question=str(question["question"]),
         expected_answer_type=expected_type,
-        expected_chunk_ids=values("expected_chunk_ids"),
-        expected_document_ids=values("expected_document_ids"),
-        expected_source_names=values("expected_source_names"),
+        expected_chunk_ids=tuple(verified_annotation.get("expected_chunk_ids", ())),
+        expected_document_ids=tuple(verified_annotation.get("expected_document_ids", ())),
+        expected_source_names=tuple(verified_annotation.get("expected_source_names", ())),
         required_sources=values("required_sources"),
         required_spans=values("required_spans"),
-        required_facets=values("required_facets"),
+        required_facets=tuple(verified_annotation.get("required_facets", values("required_facets"))),
         expected_privacy=str(question.get("expected_privacy") or "any"),
         forbidden_terms=values("forbidden_terms"),
         tags=(str(question.get("category") or "uncategorized"),),
@@ -1958,6 +2039,23 @@ def run_ablation(
         else ("local_only",)
     )
     benchmark_config = BenchmarkConfig()
+    gold_identity_path = Path(str(args.gold_identity_manifest)) if str(args.gold_identity_manifest).strip() else None
+    gold_annotations = (
+        load_gold_identity_manifest(
+            gold_identity_path,
+            questions,
+            corpus_fingerprint=str(local.get("corpus_fingerprint") or ""),
+        )
+        if gold_identity_path is not None
+        else {}
+    )
+    annotation_state_counts = {
+        state: sum(
+            1 for annotation in gold_annotations.values()
+            if annotation["annotation_state"] == state
+        )
+        for state in sorted(_GOLD_ANNOTATION_STATES)
+    }
     all_rows: list[dict[str, Any]] = []
     arms: dict[str, Any] = {}
 
@@ -1997,7 +2095,10 @@ def run_ablation(
                     search_summary.assembly_latency_ms,
                 )), 3)
                 scored = score_question(
-                    _benchmark_question_from_manifest(question),
+                    _benchmark_question_from_manifest(
+                        question,
+                        gold_annotations.get(str(question["id"])),
+                    ),
                     query_result.search_response,
                     query_result.evidence_pack,
                     total_latency_ms,
@@ -2064,6 +2165,17 @@ def run_ablation(
         "query_plan_mode": "local_identity",
         "package_versions": _installed_package_versions(),
         "candidate": preflight.get("candidate"),
+        "gold_identity": {
+            "status": "loaded" if gold_identity_path is not None else "not_provided",
+            "verified_target_count": sum(
+                1 for annotation in gold_annotations.values()
+                if annotation["annotation_state"] == "verified"
+                and any(annotation[field] for field in (
+                    "expected_chunk_ids", "expected_document_ids", "expected_source_names",
+                ))
+            ),
+            "annotation_state_counts": annotation_state_counts,
+        },
         "arms": arms,
     }
     if manifest["notebook_query_count"] != 0:
@@ -2116,6 +2228,7 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--source-map", default="")
     parser.add_argument("--question-map", default="", help="Legacy alias for --question-set")
     parser.add_argument("--question-set", default="", help="Owner-approved JSON/JSONL question manifest")
+    parser.add_argument("--gold-identity-manifest", default="", help="Evaluation-only verified identity manifest for rank metrics")
     parser.add_argument("--question-ids", default="", help="Comma-separated selected question IDs")
     parser.add_argument("--privacy-label", default="cloud_safe", choices=("cloud_safe", "public", "local_only"))
     parser.add_argument("--rag-profile", default="lexical", choices=ABLATION_PROFILES, help="RAG retrieval profile for --run/--dry-run")

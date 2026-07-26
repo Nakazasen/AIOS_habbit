@@ -49,6 +49,7 @@ class BenchmarkConfig:
     min_abstention_accuracy: float = 0.8
     min_privacy_pass_rate: float = 1.0
     min_local_execution_pass_rate: float = 1.0
+    max_negative_control_false_support_rate: float = 0.0
     max_average_latency_ms: float = 500.0
     evidence_config: Optional[EvidencePackConfig] = None
 
@@ -119,6 +120,12 @@ class BenchmarkResult:
     covered_facet_count: int = 0
     missing_facet_count: int = 0
     answer_mode: str = "abstain"
+    final_evidence_term_coverage: float = 0.0
+    planned_obligation_count: int = 0
+    supported_obligation_count: int = 0
+    missing_obligation_count: int = 0
+    false_support: bool = False
+    false_support_reason: str = ""
     hard_insufficiency_reasons: Tuple[str, ...] = ()
     soft_warning_reasons: Tuple[str, ...] = ()
     primary_error_class: str = ""
@@ -359,6 +366,18 @@ def score_question(
         )
     )
     local_execution_ok = not synthesis.provider_used
+    false_support = bool(
+        question.expected_answer_type == "insufficient"
+        and (
+            synthesis.grounded
+            or not synthesis.abstained
+            or synthesis.claims
+            or synthesis.citation_ids
+        )
+    )
+    false_support_reason = (
+        "insufficient_question_material_answer" if false_support else ""
+    )
     primary_error_class, secondary_error_classes = _classify_observable_failures(
         question,
         hit_chunk=hit_chunk,
@@ -423,6 +442,12 @@ def score_question(
         covered_facet_count=len(response.summary.covered_facet_ids),
         missing_facet_count=len(response.summary.missing_facet_ids),
         answer_mode=pack.answer_mode.value,
+        final_evidence_term_coverage=pack.final_evidence_term_coverage,
+        planned_obligation_count=len(pack.retrieval_summary.planned_obligation_ids),
+        supported_obligation_count=len(pack.retrieval_summary.covered_obligation_ids),
+        missing_obligation_count=len(pack.retrieval_summary.missing_obligation_ids),
+        false_support=false_support,
+        false_support_reason=false_support_reason,
         hard_insufficiency_reasons=pack.hard_insufficiency_reasons,
         soft_warning_reasons=pack.soft_warning_reasons,
         primary_error_class=primary_error_class,
@@ -521,7 +546,7 @@ def summarize_results(
     mean_first_rank = sum(relevant_ranks) / len(relevant_ranks) if relevant_ranks else 0.0
     median_first_rank = float(median(relevant_ranks)) if relevant_ranks else 0.0
     false_support_rate = (
-        sum(1 for result in insufficient if result.synthesis_grounded or not result.synthesis_abstained)
+        sum(1 for result in insufficient if result.false_support)
         / ins_count
         if ins_count else 0.0
     )
@@ -571,6 +596,11 @@ def summarize_results(
         warnings.append(
             f"Local execution pass rate {local_execution_pass:.2f} < {config.min_local_execution_pass_rate}"
         )
+    if false_support_rate > config.max_negative_control_false_support_rate:
+        warnings.append(
+            "Negative-control false support rate "
+            f"{false_support_rate:.2f} > {config.max_negative_control_false_support_rate}"
+        )
     if avg_latency > config.max_average_latency_ms:
         warnings.append(
             f"Average latency {avg_latency:.2f}ms > {config.max_average_latency_ms}ms"
@@ -584,6 +614,7 @@ def summarize_results(
         grounded_rate < config.min_grounded_answer_rate,
         citation_validity < config.min_citation_validity_rate,
         abstention_accuracy < config.min_abstention_accuracy,
+        false_support_rate > config.max_negative_control_false_support_rate,
         privacy_pass < config.min_privacy_pass_rate,
         local_execution_pass < config.min_local_execution_pass_rate,
     ))

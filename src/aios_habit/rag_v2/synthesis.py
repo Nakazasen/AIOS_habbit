@@ -15,6 +15,7 @@ class GroundedClaim:
     text: str
     citation_ids: Tuple[str, ...]
     evidence_ids: Tuple[str, ...]
+    obligation_ids: Tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -296,7 +297,7 @@ def synthesize_evidence(
         if not pack.items:
             fatal_reasons.append("no_citable_evidence")
         return LocalSynthesisResult(
-            answer="Insufficient evidence to provide a grounded answer.",
+            answer="Không tìm thấy bằng chứng đủ liên quan trong corpus.",
             claims=(),
             citation_ids=(),
             grounded=False,
@@ -310,6 +311,7 @@ def synthesize_evidence(
             text=item.snippet.strip(),
             citation_ids=(item.citation_id,),
             evidence_ids=(item.evidence_id,),
+            obligation_ids=item.matched_obligations,
         )
         for item in pack.items[:max_claims]
         if item.snippet.strip()
@@ -319,26 +321,18 @@ def synthesize_evidence(
         return _abstention(pack, (*pack.insufficiency_reasons, *validation_errors, "no_valid_grounded_claims"))
 
     normalized_shape = (answer_shape or "").strip().lower()
+    sections = _sections_for_shape(normalized_shape)
+    if sections and not any(
+        obligation_id in claim.obligation_ids
+        for obligation_id in sections.values()
+        for claim in claims
+    ):
+        return _abstention(pack, (*pack.insufficiency_reasons, "no_supported_answer_section"))
     if normalized_shape == "diagnosis":
-        sections = {
-            "SYMPTOMS:": "problem",
-            "CHECKS:": "check",
-            "ACTIONS:": "action",
-        }
         answer = _format_structured_claims(claims, sections)
     elif normalized_shape in ("procedure", "actionable_output"):
-        sections = {
-            "PRECHECKS:": "precheck",
-            "STEPS:": "step",
-            "POSTCHECKS:": "postcheck",
-        }
         answer = _format_structured_claims(claims, sections)
     elif normalized_shape == "compare_change":
-        sections = {
-            "SIDE_A:": "side_a",
-            "SIDE_B:": "side_b",
-            "DIFFERENCES:": "differences",
-        }
         answer = _format_structured_claims(claims, sections)
     else:
         answer = "\n".join(
@@ -362,27 +356,39 @@ def synthesize_evidence(
     )
 
 
+def _sections_for_shape(answer_shape: str) -> dict[str, str]:
+    """Return the fixed evidence obligations for a structured answer shape."""
+    if answer_shape == "diagnosis":
+        return {
+            "SYMPTOMS:": "problem",
+            "CHECKS:": "check",
+            "ACTIONS:": "action",
+        }
+    if answer_shape in ("procedure", "actionable_output"):
+        return {
+            "PRECHECKS:": "precheck",
+            "STEPS:": "step",
+            "POSTCHECKS:": "postcheck",
+        }
+    if answer_shape == "compare_change":
+        return {
+            "SIDE_A:": "side_a",
+            "SIDE_B:": "side_b",
+            "DIFFERENCES:": "differences",
+        }
+    return {}
+
+
 def _format_structured_claims(
     claims: Tuple[GroundedClaim, ...],
     sections: dict[str, str],
 ) -> str:
-    """Render only extractive claims; missing sections are explicit uncited limits."""
+    """Render claims only in sections explicitly supported by their evidence."""
     rendered = []
-    unassigned = list(claims)
     for marker, obligation_id in sections.items():
         supported = [
-            claim
-            for claim in claims
-            if obligation_id in _claim_obligations(claim)
+            claim for claim in claims if obligation_id in claim.obligation_ids
         ]
-        if supported:
-            for claim in supported:
-                if claim in unassigned:
-                    unassigned.remove(claim)
-        elif unassigned:
-            # An extractive claim may be relevant but lacks a deterministic obligation cue.
-            # Preserve it in one section rather than creating any new factual statement.
-            supported = [unassigned.pop(0)]
         rendered.append(marker)
         if supported:
             rendered.extend(
@@ -394,21 +400,10 @@ def _format_structured_claims(
     return "\n".join(rendered)
 
 
-def _claim_obligations(claim: GroundedClaim) -> Tuple[str, ...]:
-    # Claim texts are excerpts from evidence; caller-specific matching is not retained in
-    # GroundedClaim, so structured local rendering only uses conservative local cues.
-    from .query_planning import match_text_obligations
-    return match_text_obligations(
-        "structured",
-        claim.text,
-        required_obligations=("problem", "check", "action", "precheck", "step", "postcheck", "side_a", "side_b", "differences"),
-    )
-
-
 def _abstention(pack: EvidencePack, reasons: Iterable[str]) -> LocalSynthesisResult:
     normalized = tuple(dict.fromkeys(reason for reason in reasons if reason))
     return LocalSynthesisResult(
-        answer="Insufficient evidence to answer with validated citations.",
+        answer="Không tìm thấy bằng chứng đủ liên quan trong corpus.",
         claims=(),
         citation_ids=(),
         grounded=False,

@@ -12,7 +12,15 @@ from aios_habit.rag_v2.synthesis import (
 )
 
 
-def _make_result(chunk_id, doc_id, score, text, ranking_signals=None):
+def _make_result(
+    chunk_id,
+    doc_id,
+    score,
+    text,
+    ranking_signals=None,
+    matched_terms=("error",),
+    matched_obligations=(),
+):
     return SearchResult(
         chunk_id=chunk_id,
         score=score,
@@ -24,8 +32,9 @@ def _make_result(chunk_id, doc_id, score, text, ranking_signals=None):
         metadata={},
         privacy_labels=("allowed",),
         ranking_signals=ranking_signals or {"lexical": score},
-        matched_terms=("error",),
+        matched_terms=matched_terms,
         term_coverage=1.0,
+        matched_obligations=matched_obligations,
     )
 
 
@@ -44,9 +53,24 @@ def _make_response(results):
 
 def test_synthesize_evidence_diagnosis_shape_formatting():
     results = [
-        _make_result("c1", "d1", 5.0, "Error 404 occurs when database connection drops."),
-        _make_result("c2", "d1", 4.0, "Verify database credentials and check network socket."),
-        _make_result("c3", "d1", 3.5, "Restart connection pool to resolve the issue."),
+        _make_result(
+            "c1", "d1", 5.0,
+            "Error 404 occurs when database connection drops.",
+            matched_terms=("errors", "occur", "fix", "them"),
+            matched_obligations=("problem",),
+        ),
+        _make_result(
+            "c2", "d1", 4.0,
+            "Verify database credentials and check network socket.",
+            matched_terms=("errors", "occur", "fix", "them"),
+            matched_obligations=("check",),
+        ),
+        _make_result(
+            "c3", "d1", 3.5,
+            "Restart connection pool to resolve the issue.",
+            matched_terms=("errors", "occur", "fix", "them"),
+            matched_obligations=("action",),
+        ),
     ]
     pack = build_evidence_pack("What errors occur and how to fix them?", _make_response(results))
     result = synthesize_evidence(pack, answer_shape="diagnosis")
@@ -61,9 +85,21 @@ def test_synthesize_evidence_diagnosis_shape_formatting():
 
 def test_synthesize_evidence_procedure_shape_formatting():
     results = [
-        _make_result("c1", "d1", 5.0, "Step 1: Check initial system status."),
-        _make_result("c2", "d1", 4.0, "Step 2: Run deployment script."),
-        _make_result("c3", "d1", 3.0, "Step 3: Validate service availability."),
+        _make_result(
+            "c1", "d1", 5.0, "Step 1: Check initial system status.",
+            matched_terms=("deploy", "service"),
+            matched_obligations=("precheck",),
+        ),
+        _make_result(
+            "c2", "d1", 4.0, "Step 2: Run deployment script.",
+            matched_terms=("deploy", "service"),
+            matched_obligations=("step",),
+        ),
+        _make_result(
+            "c3", "d1", 3.0, "Step 3: Validate service availability.",
+            matched_terms=("deploy", "service"),
+            matched_obligations=("postcheck",),
+        ),
     ]
     pack = build_evidence_pack("How to deploy service?", _make_response(results))
     result = synthesize_evidence(pack, answer_shape="procedure")
@@ -72,6 +108,24 @@ def test_synthesize_evidence_procedure_shape_formatting():
     assert "PRECHECKS:" in result.answer
     assert "STEPS:" in result.answer
     assert "POSTCHECKS:" in result.answer
+
+
+def test_structured_synthesis_abstains_without_supported_section():
+    pack = build_evidence_pack(
+        "What errors occur and how to fix them?",
+        _make_response([
+            _make_result(
+                "c1", "d1", 5.0, "A generic note is present.",
+                matched_terms=("errors", "occur", "fix", "them"),
+            )
+        ]),
+    )
+    result = synthesize_evidence(pack, answer_shape="diagnosis")
+
+    assert result.abstained is True
+    assert result.grounded is False
+    assert result.answer == "Không tìm thấy bằng chứng đủ liên quan trong corpus."
+    assert "no_supported_answer_section" in result.abstention_reasons
 
 
 def test_diagnosis_synthesis_contract_format():

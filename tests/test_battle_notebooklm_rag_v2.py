@@ -15,6 +15,74 @@ def test_question_set_is_frozen_and_stable():
     assert runner.stable_hash(runner.BATTLE_QUESTIONS) == runner.stable_hash(tuple(runner.BATTLE_QUESTIONS))
 
 
+def test_gold_identity_loader_accepts_verified_targets_and_preserves_production_boundary(tmp_path: Path):
+    questions = (
+        {"id": "Q1", "question": "Where is it?", "expected_type": "answerable"},
+        {"id": "Q2", "question": "Is it known?", "expected_type": "insufficient"},
+        {"id": "Q3", "question": "Which sheet?", "expected_type": "answerable"},
+    )
+    manifest = {
+        "schema_version": 1,
+        "corpus_fingerprint": "sealed-corpus",
+        "question_set_hash": runner.question_set_fingerprint(questions),
+        "annotations": [
+            {
+                "question_id": "Q1",
+                "expected_answer_type": "answerable",
+                "annotation_state": "verified",
+                "expected_chunk_ids": ["chunk-1"],
+                "required_facets": ["location"],
+            },
+            {
+                "question_id": "Q2",
+                "expected_answer_type": "insufficient",
+                "annotation_state": "not_applicable",
+            },
+            {
+                "question_id": "Q3",
+                "expected_answer_type": "answerable",
+                "annotation_state": "pending_owner_review",
+            },
+        ],
+    }
+    path = tmp_path / "gold.json"
+    path.write_text(json.dumps(manifest), encoding="utf-8")
+
+    annotations = runner.load_gold_identity_manifest(
+        path, questions, corpus_fingerprint="sealed-corpus"
+    )
+    benchmark_question = runner._benchmark_question_from_manifest(
+        questions[0], annotations["Q1"]
+    )
+
+    assert benchmark_question.expected_chunk_ids == ("chunk-1",)
+    assert runner._benchmark_question_from_manifest(
+        questions[2], annotations["Q3"]
+    ).expected_chunk_ids == ()
+    assert runner.production_question_payload({**questions[0], **annotations["Q1"]}) == {
+        "id": "Q1", "question": "Where is it?"
+    }
+
+
+def test_gold_identity_loader_rejects_fingerprint_mismatch(tmp_path: Path):
+    questions = ({"id": "Q1", "question": "Where is it?", "expected_type": "answerable"},)
+    path = tmp_path / "gold.json"
+    path.write_text(json.dumps({
+        "schema_version": 1,
+        "corpus_fingerprint": "wrong-corpus",
+        "question_set_hash": runner.question_set_fingerprint(questions),
+        "annotations": [{
+            "question_id": "Q1",
+            "expected_answer_type": "answerable",
+            "annotation_state": "verified",
+            "expected_document_ids": ["doc-1"],
+        }],
+    }), encoding="utf-8")
+
+    with pytest.raises(runner.BenchmarkError, match="corpus fingerprint"):
+        runner.load_gold_identity_manifest(path, questions, corpus_fingerprint="sealed-corpus")
+
+
 def test_local_manifest_fingerprints_files_without_reading_content_into_output(tmp_path: Path):
     root = tmp_path / "tailieugoc"
     root.mkdir()
