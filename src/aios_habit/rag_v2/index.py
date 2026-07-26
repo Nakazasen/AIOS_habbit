@@ -2,10 +2,11 @@
 from __future__ import annotations
 
 from collections import Counter
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import datetime, timezone
 import hashlib
 import json
+import math
 import re
 import sqlite3
 import struct
@@ -21,6 +22,7 @@ from .query_planning import (
 )
 from .semantic import (
     EmbeddingBackend,
+    RerankerBackend,
     SemanticBackendError,
     SemanticCapability,
     cosine_similarity,
@@ -168,6 +170,304 @@ class SearchSummary:
 class SearchResponse:
     results: tuple[SearchResult, ...]
     summary: SearchSummary
+
+
+@dataclass(frozen=True)
+class HybridRankingConfig:
+    """Bounded, scale-independent ranking controls for two retrieval channels."""
+
+    rrf_k: int = 60
+    lexical_weight: float = 1.0
+    dense_weight: float = 1.0
+    rerank_limit: int = 30
+    near_duplicate_threshold: float = 0.92
+
+    def __post_init__(self) -> None:
+        if self.rrf_k < 1 or self.rerank_limit < 1:
+            raise ValueError("ranking limits must be positive")
+        if self.lexical_weight <= 0.0 or self.dense_weight <= 0.0:
+            raise ValueError("channel weights must be positive")
+        if not 0.0 <= self.near_duplicate_threshold <= 1.0:
+            raise ValueError("near_duplicate_threshold must be between zero and one")
+
+
+def _ordered_union(*values: Iterable[str]) -> tuple[str, ...]:
+    return tuple(dict.fromkeys(item for group in values for item in group))
+
+
+def _hybrid_result_is_safe(result: SearchResult, options: SearchOptions) -> bool:
+    """Recheck every fused candidate against the original safety constraints."""
+    if options.allowed_document_ids is not None and result.document_id not in options.allowed_document_ids:
+        return False
+    if options.allowed_source_paths is not None and result.source_path not in options.allowed_source_paths:
+        return False
+    if options.allowed_privacy_labels is not None:
+        allowed = set(options.allowed_privacy_labels)
+        if not result.privacy_labels or any(label not in allowed for label in result.privacy_labels):
+            return False
+    expected = options.expected_source_fingerprints
+    if result.document_id in expected:
+        expected_fingerprint = expected[result.document_id]
+    elif result.source_path in expected:
+        expected_fingerprint = expected[result.source_path]
+    else:
+        return True
+    return result.metadata.get("source_fingerprint") == expected_fingerprint
+
+
+def _merge_search_results(current: SearchResult, incoming: SearchResult) -> SearchResult:
+    """Merge channel provenance while retaining lexical diagnostics when present."""
+    signals = dict(current.ranking_signals)
+    signals.update(incoming.ranking_signals)
+    return replace(
+        current,
+        ranking_signals=signals,
+        matched_terms=_ordered_union(current.matched_terms, incoming.matched_terms),
+        term_coverage=max(current.term_coverage, incoming.term_coverage),
+        matched_query_variants=_ordered_union(
+            current.matched_query_variants, incoming.matched_query_variants
+        ),
+        matched_query_variant_ids=_ordered_union(
+            current.matched_query_variant_ids, incoming.matched_query_variant_ids
+        ),
+        matched_query_facets=_ordered_union(
+            current.matched_query_facets, incoming.matched_query_facets
+        ),
+        matched_obligations=_ordered_union(
+            current.matched_obligations, incoming.matched_obligations
+        ),
+    )
+
+
+def _result_tokens(text: str) -> set[str]:
+    return {match.group(0).casefold() for match in _TOKEN_RE.finditer(text or "")}
+
+
+def _is_near_duplicate(
+    candidate: SearchResult,
+    selected: Sequence[SearchResult],
+    threshold: float,
+) -> bool:
+    candidate_tokens = _result_tokens(candidate.text)
+    if not candidate_tokens:
+        return any(candidate.text == result.text for result in selected)
+    for result in selected:
+        existing_tokens = _result_tokens(result.text)
+        union = candidate_tokens | existing_tokens
+        if union and len(candidate_tokens & existing_tokens) / len(union) >= threshold:
+            return True
+    return False
+
+
+def _rerank_hybrid_window(
+    query: str,
+    ranked: Sequence[SearchResult],
+    backend: RerankerBackend,
+    limit: int,
+) -> list[SearchResult]:
+    backend.capability.require()
+    depth = min(len(ranked), limit)
+    head = list(ranked[:depth])
+    scores = backend.score_pairs(tuple((query, result.text) for result in head))
+    if len(scores) != len(head) or any(not math.isfinite(float(score)) for score in scores):
+        raise SemanticBackendError(
+            f"reranker score count mismatch: expected {len(head)}, received {len(scores)}"
+        )
+    rescored = []
+    for result, score in zip(head, scores):
+        signals = dict(result.ranking_signals)
+        signals["reranker_score"] = float(score)
+        rescored.append(replace(result, ranking_signals=signals))
+    rescored.sort(key=lambda result: (
+        -result.ranking_signals["reranker_score"],
+        -result.ranking_signals["fused_rrf"],
+        result.chunk_id,
+    ))
+    return rescored + list(ranked[depth:])
+
+
+def _select_hybrid_results(
+    ranked: Sequence[SearchResult],
+    plan: RetrievalQueryPlan,
+    *,
+    limit: int,
+    per_document_limit: int,
+    near_duplicate_threshold: float,
+) -> tuple[list[SearchResult], int]:
+    selected: list[SearchResult] = []
+    selected_ids: set[str] = set()
+    rejected_ids: set[str] = set()
+    document_counts: Counter[str] = Counter()
+
+    def add(result: SearchResult, reason: str) -> bool:
+        if result.chunk_id in selected_ids or result.chunk_id in rejected_ids:
+            return False
+        document_key = result.document_id or result.source_path
+        if document_counts[document_key] >= per_document_limit or _is_near_duplicate(
+            result, selected, near_duplicate_threshold
+        ):
+            rejected_ids.add(result.chunk_id)
+            return False
+        signals = dict(result.ranking_signals)
+        signals[reason] = 1.0
+        selected.append(replace(result, ranking_signals=signals))
+        selected_ids.add(result.chunk_id)
+        document_counts[document_key] += 1
+        return True
+
+    obligations = tuple(item for item in plan.required_obligations if item != "query")
+    facets = tuple(item for item in plan.facet_ids if item != "query")
+    for obligation_id in obligations:
+        for result in ranked:
+            if obligation_id in result.matched_obligations and add(
+                result, "selected_for_obligation"
+            ):
+                break
+        if len(selected) >= limit:
+            break
+    if len(selected) < limit:
+        for facet_id in facets:
+            for result in ranked:
+                if facet_id in result.matched_query_facets and add(
+                    result, "selected_for_facet"
+                ):
+                    break
+            if len(selected) >= limit:
+                break
+    if len(selected) < limit:
+        for result in ranked:
+            add(result, "selected_by_rank")
+            if len(selected) >= limit:
+                break
+
+    finalized = []
+    for final_rank, result in enumerate(selected, 1):
+        signals = dict(result.ranking_signals)
+        signals["final_rank"] = float(final_rank)
+        finalized.append(replace(result, ranking_signals=signals))
+    return finalized, len(rejected_ids)
+
+
+def fuse_ranked_channels(
+    query: str | RetrievalQueryPlan,
+    lexical_response: SearchResponse,
+    dense_results: Sequence[SearchResult],
+    *,
+    limit: int,
+    options: SearchOptions,
+    config: Optional[HybridRankingConfig] = None,
+    reranker: Optional[RerankerBackend] = None,
+) -> SearchResponse:
+    """Fuse pre-filtered channel ranks without mixing raw lexical and cosine scales."""
+    ranking = config or HybridRankingConfig()
+    plan = coerce_query_plan(query)
+    if limit <= 0:
+        return SearchResponse(
+            results=(),
+            summary=replace(
+                lexical_response.summary,
+                candidate_count=0,
+                returned_count=0,
+                candidate_backend="hybrid_rrf",
+                insufficiency_reasons=("non_positive_limit",),
+            ),
+        )
+
+    records: Dict[str, Dict[str, Any]] = {}
+    channels = (
+        ("lexical", lexical_response.results, ranking.lexical_weight),
+        ("dense", dense_results, ranking.dense_weight),
+    )
+    for channel, results, weight in channels:
+        for rank, result in enumerate(results, 1):
+            if not _hybrid_result_is_safe(result, options):
+                continue
+            record = records.setdefault(result.chunk_id, {
+                "result": result,
+                "rrf": 0.0,
+                "lexical_rank": 0,
+                "dense_rank": 0,
+            })
+            if channel == "lexical":
+                record["result"] = _merge_search_results(result, record["result"])
+            else:
+                record["result"] = _merge_search_results(record["result"], result)
+            record["rrf"] += weight / (ranking.rrf_k + rank)
+            record[f"{channel}_rank"] = rank
+
+    fused = []
+    for record in records.values():
+        result = record["result"]
+        signals = dict(result.ranking_signals)
+        signals.update({
+            "lexical_channel_rank": float(record["lexical_rank"]),
+            "dense_channel_rank": float(record["dense_rank"]),
+            "fused_rrf": float(record["rrf"]),
+        })
+        fused.append(replace(result, ranking_signals=signals))
+    fused.sort(key=lambda result: (-result.ranking_signals["fused_rrf"], result.chunk_id))
+
+    candidate_backend = "hybrid_rrf"
+    if reranker is not None and fused:
+        fused = _rerank_hybrid_window(plan.original_query, fused, reranker, ranking.rerank_limit)
+        candidate_backend = "hybrid_rrf_rerank"
+
+    final_results, diversity_limited = _select_hybrid_results(
+        fused,
+        plan,
+        limit=limit,
+        per_document_limit=options.per_document_limit,
+        near_duplicate_threshold=ranking.near_duplicate_threshold,
+    )
+    content_terms = set(plan.content_terms)
+    matched_terms = {
+        term
+        for result in final_results
+        for term in result.matched_terms
+        if term in content_terms
+    }
+    evidence_coverage = len(matched_terms) / len(content_terms) if content_terms else 0.0
+    best_coverage = max((result.term_coverage for result in final_results), default=0.0)
+    reasons = [
+        reason
+        for reason in lexical_response.summary.insufficiency_reasons
+        if reason not in {"incomplete_query_term_coverage", "weak_query_term_coverage"}
+        and not (final_results and reason == "no_lexical_or_metadata_match")
+    ]
+    if final_results and len(content_terms) > 1 and evidence_coverage < 1.0:
+        reasons.append("incomplete_query_term_coverage")
+    if final_results and len(content_terms) > 1 and evidence_coverage < 0.5:
+        reasons.append("weak_query_term_coverage")
+
+    planned_facets = plan.facet_ids
+    planned_obligations = tuple(item for item in plan.required_obligations if item != "query")
+    covered_facets = tuple(
+        facet for facet in planned_facets
+        if any(facet in result.matched_query_facets for result in final_results)
+    )
+    covered_obligations = tuple(
+        obligation for obligation in planned_obligations
+        if any(obligation in result.matched_obligations for result in final_results)
+    )
+    summary = replace(
+        lexical_response.summary,
+        candidate_count=len(fused),
+        returned_count=len(final_results),
+        diversity_limited_count=diversity_limited,
+        best_term_coverage=best_coverage,
+        insufficiency_reasons=tuple(dict.fromkeys(reasons)),
+        candidate_backend=candidate_backend,
+        evidence_set_term_coverage=evidence_coverage,
+        planned_facet_ids=planned_facets,
+        covered_facet_ids=covered_facets,
+        missing_facet_ids=tuple(item for item in planned_facets if item not in covered_facets),
+        planned_obligation_ids=planned_obligations,
+        covered_obligation_ids=covered_obligations,
+        missing_obligation_ids=tuple(
+            item for item in planned_obligations if item not in covered_obligations
+        ),
+    )
+    return SearchResponse(results=tuple(final_results), summary=summary)
 
 
 class LocalChunkIndex:
@@ -595,6 +895,48 @@ class LocalChunkIndex:
                 matched_obligations=tuple(obligations),
             ))
         return results
+
+    def hybrid_search_with_summary(
+        self,
+        query: str | RetrievalQueryPlan,
+        *,
+        limit: int = 10,
+        options: Optional[SearchOptions] = None,
+        dense_limit: int = 100,
+        ranking_config: Optional[HybridRankingConfig] = None,
+        reranker: Optional[RerankerBackend] = None,
+    ) -> SearchResponse:
+        """Generate independent channel pools, fuse by rank, and assemble evidence."""
+        options = options or SearchOptions()
+        if dense_limit < 1:
+            raise ValueError("dense_limit must be positive")
+        pool_options = replace(
+            options,
+            per_document_limit=max(
+                options.per_document_limit,
+                options.candidate_limit,
+                dense_limit,
+            ),
+        )
+        lexical = self.search_with_summary(
+            query,
+            limit=options.candidate_limit,
+            options=pool_options,
+        )
+        dense = self.dense_candidates(
+            query,
+            limit=dense_limit,
+            options=pool_options,
+        )
+        return fuse_ranked_channels(
+            query,
+            lexical,
+            dense,
+            limit=limit,
+            options=options,
+            config=ranking_config,
+            reranker=reranker,
+        )
 
     def search(
         self,

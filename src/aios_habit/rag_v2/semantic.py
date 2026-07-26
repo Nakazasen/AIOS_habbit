@@ -387,10 +387,15 @@ class FastEmbedEmbeddingBackend:
     def embed_documents(self, texts: Sequence[str]) -> tuple[tuple[float, ...], ...]:
         if not texts:
             return ()
-        vectors = tuple(
-            normalize_vector(vector, dimension=self._descriptor.dimension)
-            for vector in self._model.embed(list(texts))
-        )
+        try:
+            vectors = tuple(
+                normalize_vector(vector, dimension=self._descriptor.dimension)
+                for vector in self._model.embed(list(texts))
+            )
+        except SemanticBackendError:
+            raise
+        except Exception as exc:
+            raise SemanticBackendError("FastEmbed embedding inference failed") from exc
         if len(vectors) != len(texts):
             raise SemanticBackendError("FastEmbed returned an unexpected document count")
         return vectors
@@ -460,11 +465,16 @@ class FastEmbedRerankerBackend:
 
     def score_pairs(self, pairs: Sequence[tuple[str, str]]) -> tuple[float, ...]:
         scores = []
-        for query, document in pairs:
-            values = tuple(float(value) for value in self._model.rerank(query, [document]))
-            if len(values) != 1 or not math.isfinite(values[0]):
-                raise SemanticBackendError("FastEmbed reranker returned an invalid score")
-            scores.append(values[0])
+        try:
+            for query, document in pairs:
+                values = tuple(float(value) for value in self._model.rerank(query, [document]))
+                if len(values) != 1 or not math.isfinite(values[0]):
+                    raise SemanticBackendError("FastEmbed reranker returned an invalid score")
+                scores.append(values[0])
+        except SemanticBackendError:
+            raise
+        except Exception as exc:
+            raise SemanticBackendError("FastEmbed reranker inference failed") from exc
         return tuple(scores)
 
 

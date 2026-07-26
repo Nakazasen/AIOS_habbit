@@ -10,7 +10,11 @@ from aios_habit.rag_v2 import (
 )
 from aios_habit.rag_v2.semantic import (
     DeterministicEmbeddingBackend,
+    DeterministicRerankerBackend,
+    SemanticBackendError,
     SemanticBackendUnavailable,
+    SemanticModelDescriptor,
+    UnavailableRerankerBackend,
     unavailable_embedding_backend,
 )
 
@@ -142,7 +146,7 @@ def test_pipeline_default_lexical_profile_never_constructs_fastembed(tmp_path, m
     assert state["retrieval"]["semantic"]["configured"] is False
 
 
-def test_pipeline_prepares_dense_backend_without_claiming_gate_d_fusion(tmp_path):
+def test_pipeline_activates_hybrid_fusion_and_reports_ranking_profile(tmp_path):
     source_path = tmp_path / "guide.txt"
     source_path.write_text("semantic local evidence", encoding="utf-8")
     backend = DeterministicEmbeddingBackend(dimension=8)
@@ -154,16 +158,21 @@ def test_pipeline_prepares_dense_backend_without_claiming_gate_d_fusion(tmp_path
     )
 
     with RagV2DevPipeline(config, embedding_backend=backend) as pipeline:
-        pipeline.ingest([SourceSpec(source_path)])
+        source = SourceSpec(source_path)
+        pipeline.ingest([source])
+        result = pipeline.query("semantic local evidence", [source])
         state = pipeline.inspect()
 
     retrieval = state["retrieval"]
     assert retrieval["requested_profile"] == "hybrid"
-    assert retrieval["effective_profile"] == "lexical"
-    assert retrieval["degraded"] is True
-    assert retrieval["degraded_reason"] == "cross_channel_fusion_pending_gate_d"
+    assert retrieval["effective_profile"] == "hybrid"
+    assert retrieval["degraded"] is False
+    assert retrieval["degraded_reason"] == ""
     assert retrieval["semantic"]["available"] is True
     assert retrieval["semantic"]["embedded_chunk_count"] == 1
+    assert retrieval["ranking"]["rrf_k"] == config.rrf_k
+    assert result.search_response.summary.candidate_backend == "hybrid_rrf"
+    assert result.search_response.results[0].ranking_signals["final_rank"] == 1.0
 
 
 def test_pipeline_reports_unavailable_semantic_backend_or_fails_strict_preflight(tmp_path):
@@ -194,3 +203,114 @@ def test_pipeline_reports_unavailable_semantic_backend_or_fails_strict_preflight
     )
     with pytest.raises(SemanticBackendUnavailable, match="not cached"):
         RagV2DevPipeline(strict_config, embedding_backend=backend)
+
+
+def test_pipeline_reranker_capability_degrades_or_fails_strict_preflight(tmp_path):
+    embedding = DeterministicEmbeddingBackend(dimension=8)
+    unavailable = UnavailableRerankerBackend(
+        "reranker model is not cached locally",
+        SemanticModelDescriptor(
+            model_id="missing/reranker",
+            revision="v1",
+            runtime="deterministic-test",
+            dimension=1,
+            normalized=False,
+        ),
+    )
+    degraded_config = _config(
+        tmp_path,
+        retrieval_profile="hybrid_rerank",
+        embedding_model_id=embedding.descriptor.model_id,
+        embedding_dimension=embedding.descriptor.dimension,
+        reranker_model_id="missing/reranker",
+    )
+    with RagV2DevPipeline(
+        degraded_config,
+        embedding_backend=embedding,
+        reranker_backend=unavailable,
+    ) as pipeline:
+        state = pipeline.inspect()
+
+    assert state["retrieval"]["effective_profile"] == "hybrid"
+    assert state["retrieval"]["degraded"] is True
+    assert state["retrieval"]["degraded_reason"] == "reranker model is not cached locally"
+    assert state["retrieval"]["reranker"]["available"] is False
+
+    strict_config = _config(
+        tmp_path,
+        retrieval_profile="hybrid_rerank",
+        embedding_model_id=embedding.descriptor.model_id,
+        embedding_dimension=embedding.descriptor.dimension,
+        reranker_model_id="missing/reranker",
+        strict_semantic=True,
+    )
+    with pytest.raises(SemanticBackendUnavailable, match="reranker model"):
+        RagV2DevPipeline(
+            strict_config,
+            embedding_backend=embedding,
+            reranker_backend=unavailable,
+        )
+
+
+def test_pipeline_hybrid_rerank_uses_injected_local_cross_encoder(tmp_path):
+    source_path = tmp_path / "guide.txt"
+    source_path.write_text("alpha beta complete local evidence", encoding="utf-8")
+    embedding = DeterministicEmbeddingBackend(dimension=8)
+    reranker = DeterministicRerankerBackend()
+    config = _config(
+        tmp_path,
+        retrieval_profile="hybrid_rerank",
+        embedding_model_id=embedding.descriptor.model_id,
+        embedding_dimension=embedding.descriptor.dimension,
+        reranker_model_id=reranker.descriptor.model_id,
+    )
+
+    with RagV2DevPipeline(
+        config,
+        embedding_backend=embedding,
+        reranker_backend=reranker,
+    ) as pipeline:
+        source = SourceSpec(source_path)
+        pipeline.ingest([source])
+        result = pipeline.query("alpha beta", [source])
+        state = pipeline.inspect()
+
+    assert state["retrieval"]["effective_profile"] == "hybrid_rerank"
+    assert state["retrieval"]["degraded"] is False
+    assert state["retrieval"]["reranker"]["available"] is True
+    assert result.search_response.summary.candidate_backend == "hybrid_rrf_rerank"
+    assert "reranker_score" in result.search_response.results[0].ranking_signals
+
+
+def test_pipeline_runtime_reranker_failure_retries_hybrid_and_reports_degradation(tmp_path):
+    class FailingReranker(DeterministicRerankerBackend):
+        def score_pairs(self, pairs):
+            del pairs
+            raise SemanticBackendError("synthetic reranker inference failure")
+
+    source_path = tmp_path / "guide.txt"
+    source_path.write_text("alpha beta local evidence", encoding="utf-8")
+    embedding = DeterministicEmbeddingBackend(dimension=8)
+    reranker = FailingReranker()
+    config = _config(
+        tmp_path,
+        retrieval_profile="hybrid_rerank",
+        embedding_model_id=embedding.descriptor.model_id,
+        embedding_dimension=embedding.descriptor.dimension,
+        reranker_model_id=reranker.descriptor.model_id,
+    )
+
+    with RagV2DevPipeline(
+        config,
+        embedding_backend=embedding,
+        reranker_backend=reranker,
+    ) as pipeline:
+        source = SourceSpec(source_path)
+        pipeline.ingest([source])
+        result = pipeline.query("alpha beta", [source])
+        state = pipeline.inspect()
+
+    assert result.search_response.summary.candidate_backend == "hybrid_rrf"
+    assert state["retrieval"]["effective_profile"] == "hybrid"
+    assert state["retrieval"]["degraded"] is True
+    assert state["retrieval"]["degraded_reason"] == "synthetic reranker inference failure"

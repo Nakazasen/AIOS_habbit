@@ -1,11 +1,23 @@
 import pytest
 
 from aios_habit.rag_v2.chunking import DocumentChunk
-from aios_habit.rag_v2.index import LocalChunkIndex, SearchOptions
+from aios_habit.rag_v2.index import (
+    HybridRankingConfig,
+    LocalChunkIndex,
+    SearchOptions,
+    SearchResponse,
+    SearchResult,
+    SearchSummary,
+    fuse_ranked_channels,
+)
 from aios_habit.rag_v2.semantic import (
     DeterministicEmbeddingBackend,
+    DeterministicRerankerBackend,
+    FastEmbedRerankerBackend,
+    SemanticBackendError,
     SemanticBackendUnavailable,
     SemanticModelDescriptor,
+    normalize_vector,
     unavailable_embedding_backend,
 )
 
@@ -155,3 +167,150 @@ def test_embedding_failure_rolls_back_chunk_and_vector_mutation(tmp_path):
 
         assert index.count() == 0
         assert index._conn.execute("SELECT COUNT(*) FROM chunk_embeddings").fetchone()[0] == 0
+
+
+def _ranked_result(chunk_id, text, raw_score, *, labels=("allowed",)):
+    return SearchResult(
+        chunk_id=chunk_id,
+        score=raw_score,
+        text=text,
+        document_id=f"doc-{chunk_id}",
+        source_path=f"/workspace/{chunk_id}.txt",
+        source_name=f"{chunk_id}.txt",
+        file_type="txt",
+        metadata={"source_fingerprint": "v1"},
+        privacy_labels=labels,
+        matched_terms=tuple(text.casefold().split()),
+        term_coverage=1.0,
+        matched_query_variants=("alpha beta",),
+        matched_query_variant_ids=("query_original",),
+        matched_query_facets=("query",),
+    )
+
+
+def _lexical_response(results):
+    return SearchResponse(
+        results=tuple(results),
+        summary=SearchSummary(
+            query="alpha beta",
+            indexed_chunk_count=len(results),
+            eligible_chunk_count=len(results),
+            candidate_count=len(results),
+            returned_count=len(results),
+        ),
+    )
+
+
+def test_cross_channel_rrf_is_rank_based_not_raw_score_scaled():
+    low_scale = _lexical_response([
+        _ranked_result("a", "alpha", 0.01),
+        _ranked_result("b", "beta", 0.001),
+    ])
+    high_scale = _lexical_response([
+        _ranked_result("a", "alpha", 10**12),
+        _ranked_result("b", "beta", -(10**12)),
+    ])
+    dense = [
+        _ranked_result("b", "beta", -99999.0),
+        _ranked_result("a", "alpha", 99999.0),
+    ]
+    options = SearchOptions(per_document_limit=2)
+
+    first = fuse_ranked_channels("alpha beta", low_scale, dense, limit=2, options=options)
+    second = fuse_ranked_channels("alpha beta", high_scale, dense, limit=2, options=options)
+
+    assert [item.chunk_id for item in first.results] == ["a", "b"]
+    assert [item.chunk_id for item in second.results] == ["a", "b"]
+    assert [item.ranking_signals["fused_rrf"] for item in first.results] == [
+        item.ranking_signals["fused_rrf"] for item in second.results
+    ]
+    assert first.results[0].ranking_signals["lexical_channel_rank"] == 1.0
+    assert first.results[0].ranking_signals["dense_channel_rank"] == 2.0
+    assert [item.ranking_signals["final_rank"] for item in first.results] == [1.0, 2.0]
+
+
+def test_dense_channel_rescues_paraphrase_when_lexical_channel_misses(tmp_path):
+    class ParaphraseEmbeddingBackend(DeterministicEmbeddingBackend):
+        def _embed(self, text):
+            lowered = text.casefold()
+            if ("automobile" in lowered and "maintenance" in lowered) or (
+                "car" in lowered and "service" in lowered
+            ):
+                return normalize_vector((1.0, 0.0, 0.0, 0.0), dimension=4)
+            return normalize_vector((0.0, 1.0, 0.0, 0.0), dimension=4)
+
+    backend = ParaphraseEmbeddingBackend(dimension=4)
+    chunk = make_chunk(
+        "semantic",
+        "manual",
+        "The automobile maintenance schedule is published quarterly.",
+    )
+    with LocalChunkIndex(tmp_path / "index.sqlite", embedding_backend=backend) as index:
+        index.upsert_chunks([chunk])
+        lexical = index.search_with_summary("car service timetable")
+        hybrid = index.hybrid_search_with_summary("car service timetable", limit=1)
+
+    assert lexical.results == ()
+    assert [item.chunk_id for item in hybrid.results] == ["semantic"]
+    assert hybrid.summary.candidate_backend == "hybrid_rrf"
+    assert hybrid.results[0].ranking_signals["lexical_channel_rank"] == 0.0
+    assert hybrid.results[0].ranking_signals["dense_channel_rank"] == 1.0
+
+
+def test_cross_encoder_reranks_fused_window_and_preserves_trace():
+    lexical = _lexical_response([
+        _ranked_result("partial", "alpha", 1000.0),
+        _ranked_result("complete", "alpha beta", 1.0),
+    ])
+    dense = [
+        _ranked_result("partial", "alpha", 0.99),
+        _ranked_result("complete", "alpha beta", 0.5),
+    ]
+
+    response = fuse_ranked_channels(
+        "alpha beta",
+        lexical,
+        dense,
+        limit=2,
+        options=SearchOptions(per_document_limit=2),
+        config=HybridRankingConfig(rerank_limit=2),
+        reranker=DeterministicRerankerBackend(),
+    )
+
+    assert [item.chunk_id for item in response.results] == ["complete", "partial"]
+    assert response.summary.candidate_backend == "hybrid_rrf_rerank"
+    assert response.results[0].ranking_signals["reranker_score"] == 1.0
+    assert response.results[1].ranking_signals["reranker_score"] == 0.5
+    assert all("fused_rrf" in item.ranking_signals for item in response.results)
+
+
+def test_fusion_rechecks_privacy_before_accepting_dense_only_candidate():
+    lexical = _lexical_response([_ranked_result("safe", "alpha beta", 1.0)])
+    dense = [
+        _ranked_result("blocked", "alpha beta", 1.0, labels=("restricted",)),
+        _ranked_result("safe", "alpha beta", 0.5),
+    ]
+
+    response = fuse_ranked_channels(
+        "alpha beta",
+        lexical,
+        dense,
+        limit=2,
+        options=SearchOptions(allowed_privacy_labels=("allowed",), per_document_limit=2),
+    )
+
+    assert [item.chunk_id for item in response.results] == ["safe"]
+    assert all(item.privacy_labels == ("allowed",) for item in response.results)
+
+
+def test_fastembed_reranker_normalizes_vendor_runtime_failure():
+    class FailingModel:
+        def rerank(self, query, documents):
+            del query, documents
+            raise RuntimeError("synthetic ONNX failure")
+
+    backend = object.__new__(FastEmbedRerankerBackend)
+    backend._model = FailingModel()
+
+    with pytest.raises(SemanticBackendError, match="inference failed"):
+        backend.score_pairs((("alpha", "alpha evidence"),))

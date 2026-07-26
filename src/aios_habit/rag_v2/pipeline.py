@@ -10,13 +10,21 @@ from typing import Any, Iterable, Mapping, Optional, Tuple
 from .adapters import ConversionContext
 from .chunking import StructureAwareChunker
 from .evidence import EvidencePack, EvidencePackConfig, build_evidence_pack
-from .index import LocalChunkIndex, SearchOptions, SearchResponse
+from .index import (
+    HybridRankingConfig,
+    LocalChunkIndex,
+    SearchOptions,
+    SearchResponse,
+)
 from .query_planning import RetrievalQueryPlan, build_query_plan, coerce_query_plan
 from .registry import ConverterRegistry
 from .schema import ExtractionStatus
 from .semantic import (
     EmbeddingBackend,
     FastEmbedEmbeddingBackend,
+    FastEmbedRerankerBackend,
+    RerankerBackend,
+    SemanticBackendError,
     SemanticBackendUnavailable,
     unavailable_embedding_backend,
 )
@@ -56,6 +64,8 @@ class RagV2DevConfig:
     embedding_model_revision: str = ""
     embedding_dimension: int = 384
     embedding_cache_dir: Path | str | None = None
+    reranker_model_id: str = "Xenova/ms-marco-MiniLM-L-6-v2"
+    reranker_model_revision: str = ""
     rrf_k: int = 60
     lexical_channel_weight: float = 1.0
     dense_channel_weight: float = 1.0
@@ -88,6 +98,8 @@ class RagV2DevConfig:
             raise ValueError("retrieval_profile must be lexical, hybrid, or hybrid_rerank")
         if not self.embedding_model_id.strip():
             raise ValueError("embedding_model_id is required")
+        if not self.reranker_model_id.strip():
+            raise ValueError("reranker_model_id is required")
         if self.embedding_dimension < 1:
             raise ValueError("embedding_dimension must be positive")
         if self.rrf_k < 1:
@@ -198,6 +210,34 @@ def _resolve_embedding_backend(
     return resolved
 
 
+def _resolve_reranker_backend(
+    config: RagV2DevConfig,
+    backend: Optional[RerankerBackend],
+) -> tuple[Optional[RerankerBackend], str]:
+    """Resolve reranking only for its requested profile and preserve failure reason."""
+    if config.retrieval_profile != "hybrid_rerank":
+        return None, ""
+    if backend is not None:
+        resolved = backend
+    else:
+        try:
+            resolved = FastEmbedRerankerBackend(
+                model_id=config.reranker_model_id,
+                revision=config.reranker_model_revision,
+                cache_dir=config.embedding_cache_dir,
+                local_files_only=True,
+            )
+        except SemanticBackendUnavailable as exc:
+            if config.strict_semantic:
+                raise
+            return None, str(exc)
+    if not resolved.capability.available:
+        if config.strict_semantic:
+            resolved.capability.require()
+        return resolved, resolved.capability.reason or "reranker_backend_unavailable"
+    return resolved, ""
+
+
 class RagV2DevPipeline:
     """Compose existing RAG v2 primitives without touching Workspace Chat."""
 
@@ -209,12 +249,16 @@ class RagV2DevPipeline:
         chunker: Optional[StructureAwareChunker] = None,
         index: Optional[LocalChunkIndex] = None,
         embedding_backend: Optional[EmbeddingBackend] = None,
+        reranker_backend: Optional[RerankerBackend] = None,
     ) -> None:
         self.config = config or RagV2DevConfig()
         Path(self.config.runtime_root).mkdir(parents=True, exist_ok=True)
         self.registry = registry or ConverterRegistry()
         self.chunker = chunker or StructureAwareChunker(self.config.max_chunk_chars)
         self.embedding_backend = _resolve_embedding_backend(self.config, embedding_backend)
+        self.reranker_backend, reranker_reason = _resolve_reranker_backend(
+            self.config, reranker_backend
+        )
         self.index = index or LocalChunkIndex(
             self.config.index_path,
             embedding_backend=self.embedding_backend,
@@ -227,9 +271,19 @@ class RagV2DevPipeline:
                     "strict semantic profile requires an embedding-enabled LocalChunkIndex"
                 )
             capability.require()
-        # Gate C prepares dense candidates and persistence only. Cross-channel fusion is
-        # activated in Gate D, so the effective query profile remains truthfully lexical.
-        self._effective_retrieval_profile = "lexical"
+        self._effective_retrieval_profile = self.config.retrieval_profile
+        self._degraded_reason = ""
+        if self.config.retrieval_profile != "lexical" and (
+            capability is None or not capability.available
+        ):
+            self._effective_retrieval_profile = "lexical"
+            self._degraded_reason = (
+                capability.reason if capability is not None
+                else "embedding_backend_not_configured"
+            )
+        elif self.config.retrieval_profile == "hybrid_rerank" and reranker_reason:
+            self._effective_retrieval_profile = "hybrid"
+            self._degraded_reason = reranker_reason
 
     def ingest(self, sources: Iterable[SourceSpec]) -> RagV2IngestionReport:
         items = []
@@ -344,11 +398,60 @@ class RagV2DevPipeline:
             candidate_limit=self.config.candidate_limit,
             per_document_limit=self.config.per_document_limit,
         )
-        response = self.index.search_with_summary(
-            plan,
-            limit=self.config.retrieval_limit,
-            options=options,
+        ranking_config = HybridRankingConfig(
+            rrf_k=self.config.rrf_k,
+            lexical_weight=self.config.lexical_channel_weight,
+            dense_weight=self.config.dense_channel_weight,
+            rerank_limit=self.config.rerank_limit,
         )
+        effective_profile = self._effective_retrieval_profile
+        if effective_profile == "lexical":
+            response = self.index.search_with_summary(
+                plan,
+                limit=self.config.retrieval_limit,
+                options=options,
+            )
+        else:
+            reranker = self.reranker_backend if effective_profile == "hybrid_rerank" else None
+            try:
+                response = self.index.hybrid_search_with_summary(
+                    plan,
+                    limit=self.config.retrieval_limit,
+                    options=options,
+                    dense_limit=self.config.dense_candidate_limit,
+                    ranking_config=ranking_config,
+                    reranker=reranker,
+                )
+            except SemanticBackendError as exc:
+                if self.config.strict_semantic:
+                    raise
+                if effective_profile == "hybrid_rerank":
+                    self._effective_retrieval_profile = "hybrid"
+                    self._degraded_reason = str(exc)
+                    try:
+                        response = self.index.hybrid_search_with_summary(
+                            plan,
+                            limit=self.config.retrieval_limit,
+                            options=options,
+                            dense_limit=self.config.dense_candidate_limit,
+                            ranking_config=ranking_config,
+                        )
+                    except SemanticBackendError as dense_exc:
+                        self._effective_retrieval_profile = "lexical"
+                        self._degraded_reason = str(dense_exc)
+                        response = self.index.search_with_summary(
+                            plan,
+                            limit=self.config.retrieval_limit,
+                            options=options,
+                        )
+                else:
+                    self._effective_retrieval_profile = "lexical"
+                    self._degraded_reason = str(exc)
+                    response = self.index.search_with_summary(
+                        plan,
+                        limit=self.config.retrieval_limit,
+                        options=options,
+                    )
         pack = build_evidence_pack(plan, response, config=evidence_config)
         synthesis = synthesize_evidence(pack, answer_shape=plan.intent_category)
         return RagV2QueryResult(
@@ -373,13 +476,17 @@ class RagV2DevPipeline:
         requested_profile = self.config.retrieval_profile
         effective_profile = self._effective_retrieval_profile
         degraded = requested_profile != effective_profile
-        degraded_reason = ""
-        if degraded:
-            degraded_reason = (
-                "cross_channel_fusion_pending_gate_d"
-                if semantic.get("available")
-                else str(semantic.get("reason", "semantic_backend_unavailable"))
-            )
+        reranker_capability = (
+            self.reranker_backend.capability.to_safe_dict()
+            if self.reranker_backend is not None
+            else {
+                "capability": "reranker",
+                "available": False,
+                "backend": "not_configured",
+                "reason": self._degraded_reason if requested_profile == "hybrid_rerank" else "",
+                "model": None,
+            }
+        )
         return {
             "mode": "local_only",
             "provider_used": False,
@@ -389,9 +496,17 @@ class RagV2DevPipeline:
                 "requested_profile": requested_profile,
                 "effective_profile": effective_profile,
                 "degraded": degraded,
-                "degraded_reason": degraded_reason,
+                "degraded_reason": self._degraded_reason if degraded else "",
                 "lexical_backend": self.index.retrieval_backend,
                 "semantic": semantic,
+                "reranker": reranker_capability,
+                "ranking": {
+                    "rrf_k": self.config.rrf_k,
+                    "lexical_channel_weight": self.config.lexical_channel_weight,
+                    "dense_channel_weight": self.config.dense_channel_weight,
+                    "dense_candidate_limit": self.config.dense_candidate_limit,
+                    "rerank_limit": self.config.rerank_limit,
+                },
             },
             "sources": states,
         }
