@@ -41,6 +41,10 @@ from aios_habit.rag_v2.pipeline import (  # noqa: E402
     RagV2DevPipeline,
     SourceSpec,
 )
+from aios_habit.benchmark_reference_registry import (  # noqa: E402
+    ReferenceRegistryError,
+    load_snapshot as load_registry_snapshot,
+)
 from aios_habit.rag_v2.query_planning import build_query_plan, identity_query_plan  # noqa: E402
 from aios_habit.rag_v2.synthesis import (  # noqa: E402
     build_synthesis_plan,
@@ -338,6 +342,78 @@ def load_reference_snapshot(
         notebook_id=notebook_id,
         corpus_fingerprint=corpus_fingerprint,
     )
+
+
+def resolve_reference_input(args: argparse.Namespace) -> tuple[str, str, str]:
+    """Resolve one unambiguous cached-reference source without provider access."""
+    registry_path = str(getattr(args, "reference_registry", "") or "").strip()
+    capture_id = str(getattr(args, "reference_capture_id", "") or "").strip()
+    json_path = str(getattr(args, "notebooklm_reference", "") or "").strip()
+    if registry_path and json_path:
+        raise BenchmarkError("Use only one of --reference-registry or --notebooklm-reference")
+    if capture_id and not registry_path:
+        raise BenchmarkError("--reference-capture-id requires --reference-registry")
+    if registry_path and not capture_id:
+        raise BenchmarkError("--reference-registry requires --reference-capture-id")
+    if registry_path:
+        return "registry_reference", registry_path, capture_id
+    if json_path:
+        return "cached_reference", json_path, ""
+    return "not_used", "", ""
+
+
+def load_reference_registry_snapshot(
+    path: Path,
+    capture_id: str,
+    questions: Sequence[Mapping[str, Any]],
+    *,
+    notebook_id: str,
+    corpus_fingerprint: str,
+) -> dict[str, Any]:
+    """Materialize one sealed registry capture and apply the battle identity contract."""
+    try:
+        registry_result = load_registry_snapshot(path, capture_id)
+    except ReferenceRegistryError as exc:
+        raise BenchmarkError(f"NotebookLM reference registry rejected: {_safe_text(exc)}") from exc
+    validated = validate_reference_snapshot(
+        registry_result["snapshot"],
+        questions,
+        notebook_id=notebook_id,
+        corpus_fingerprint=corpus_fingerprint,
+    )
+    validated["registry"] = {
+        "path": str(path),
+        "schema_version": registry_result["schema_version"],
+        "snapshot_digest": registry_result["snapshot_digest"],
+        "file_sha256": registry_result["registry_file_sha256"],
+    }
+    return validated
+
+
+def load_selected_reference(
+    args: argparse.Namespace,
+    questions: Sequence[Mapping[str, Any]],
+    *,
+    corpus_fingerprint: str,
+) -> tuple[str, dict[str, Any] | None]:
+    """Load the selected cache through its strict, evaluation-only adapter."""
+    mode, path, capture_id = resolve_reference_input(args)
+    if mode == "registry_reference":
+        return mode, load_reference_registry_snapshot(
+            Path(path),
+            capture_id,
+            questions,
+            notebook_id=args.notebook_id,
+            corpus_fingerprint=corpus_fingerprint,
+        )
+    if mode == "cached_reference":
+        return mode, load_reference_snapshot(
+            Path(path),
+            questions,
+            notebook_id=args.notebook_id,
+            corpus_fingerprint=corpus_fingerprint,
+        )
+    return mode, None
 
 
 def build_reference_snapshot(
@@ -1411,14 +1487,11 @@ def generate_report(output_dir: Path, *, metadata: Mapping[str, Any], questions:
 def build_preflight(args: argparse.Namespace) -> dict[str, Any]:
     questions = load_question_set(resolve_question_set_path(args))
     local = build_local_manifest(Path(args.source_root).resolve(), allow_partial=getattr(args, "allow_partial", False))
-    reference_info = None
-    if getattr(args, "notebooklm_reference", ""):
-        reference_info = load_reference_snapshot(
-            Path(args.notebooklm_reference),
-            questions,
-            notebook_id=args.notebook_id,
-            corpus_fingerprint=str(local.get("corpus_fingerprint") or ""),
-        )
+    reference_mode, reference_info = load_selected_reference(
+        args,
+        questions,
+        corpus_fingerprint=str(local.get("corpus_fingerprint") or ""),
+    )
     local_only_preflight = bool(args.dry_run)
     if local_only_preflight:
         notebook = {
@@ -1443,7 +1516,7 @@ def build_preflight(args: argparse.Namespace) -> dict[str, Any]:
         }
     elif reference_info is not None:
         notebook = dict(reference_info["snapshot"]["notebook_manifest"])
-        notebook["reference_mode"] = "cached_reference"
+        notebook["reference_mode"] = reference_mode
         notebook["status"] = "PASS"
         router = router_readiness(Path(args.api_key_file))
     else:
@@ -1485,7 +1558,7 @@ def build_preflight(args: argparse.Namespace) -> dict[str, Any]:
         warnings.append("ambiguous_corpus_matches_require_review")
     return {
         "status": "PASS" if not blockers else "BLOCKED_PREFLIGHT",
-        "mode": "local_only" if local_only_preflight else ("cached_reference" if reference_info is not None else "strict_external"),
+        "mode": "local_only" if local_only_preflight else (reference_mode if reference_info is not None else "strict_external"),
         "blocking_checks": blockers,
         "warnings": warnings,
         "notebook": {key: value for key, value in notebook.items() if key != "sources"},
@@ -1495,10 +1568,15 @@ def build_preflight(args: argparse.Namespace) -> dict[str, Any]:
         "workflow_matrix": workflow_matrix,
         "router": router,
         "reference": {
-            "mode": "cached_reference",
-            "path": str(args.notebooklm_reference),
+            "mode": reference_mode,
+            "path": str(reference_info.get("registry", {}).get("path") or getattr(args, "notebooklm_reference", "")),
             "reference_capture_id": reference_info["snapshot"]["reference_capture_id"],
             "manifest_hash": reference_info["snapshot"]["notebook_manifest_hash"],
+            "question_set_hash": reference_info["snapshot"]["question_set_hash"],
+            "corpus_fingerprint": reference_info["snapshot"]["corpus_fingerprint"],
+            "registry_schema_version": reference_info.get("registry", {}).get("schema_version"),
+            "registry_snapshot_digest": reference_info.get("registry", {}).get("snapshot_digest", ""),
+            "registry_file_sha256": reference_info.get("registry", {}).get("file_sha256", ""),
         } if reference_info is not None else {"mode": "not_used"},
         "question_set_hash": question_set_fingerprint(questions),
         "candidate": promotion_candidate_identity(
@@ -1522,16 +1600,18 @@ def run_dry_or_live(args: argparse.Namespace, preflight: Mapping[str, Any], *, l
     source_root = resolve_benchmark_source_root(Path(args.source_root).resolve())
     local, corpus_audit = preflight["local_manifest"], preflight["corpus_audit"]
     reference_info = None
+    reference_mode = "not_used"
     if live:
-        reference_path = str(getattr(args, "notebooklm_reference", "") or "").strip()
-        if not reference_path:
-            raise BenchmarkError("Live algorithm rerun requires --notebooklm-reference; NotebookLM is queried only by --reference-acquire")
-        reference_info = load_reference_snapshot(
-            Path(reference_path),
+        reference_mode, reference_info = load_selected_reference(
+            args,
             questions,
-            notebook_id=args.notebook_id,
             corpus_fingerprint=str(local.get("corpus_fingerprint") or ""),
         )
+        if reference_info is None:
+            raise BenchmarkError(
+                "Live algorithm rerun requires --reference-registry/--reference-capture-id "
+                "or compatibility --notebooklm-reference; NotebookLM is queried only by --reference-acquire"
+            )
     suffix = f"{int(time.time())}-{str(preflight['question_set_hash'])[:8]}"
     run_id, run_dir = f"BATTLE-RAGv2-{suffix}", output_dir / f"BATTLE-RAGv2-{suffix}"
     run_dir.mkdir(parents=True, exist_ok=True)
@@ -1650,9 +1730,14 @@ def run_dry_or_live(args: argparse.Namespace, preflight: Mapping[str, Any], *, l
         "production_arm": "workspace_chat",
         "candidate_arm": "rag_v2",
         "comparison_arm": "notebooklm",
-        "reference_mode": "cached_reference" if reference_info is not None else "not_used",
+        "reference_mode": reference_mode if reference_info is not None else "not_used",
         "reference_capture_id": reference_info["snapshot"]["reference_capture_id"] if reference_info is not None else "",
         "reference_manifest_hash": reference_info["snapshot"]["notebook_manifest_hash"] if reference_info is not None else "",
+        "reference_question_set_hash": reference_info["snapshot"]["question_set_hash"] if reference_info is not None else "",
+        "reference_corpus_fingerprint": reference_info["snapshot"]["corpus_fingerprint"] if reference_info is not None else "",
+        "reference_registry_schema_version": reference_info.get("registry", {}).get("schema_version") if reference_info is not None else None,
+        "reference_snapshot_digest": reference_info.get("registry", {}).get("snapshot_digest", "") if reference_info is not None else "",
+        "reference_registry_file_sha256": reference_info.get("registry", {}).get("file_sha256", "") if reference_info is not None else "",
         "live_arms": ["rag_v2", "workspace_chat"] if live else [],
         "notebook_query_count": 0,
         "mode": "run" if live else "dry-run",
@@ -1683,7 +1768,9 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--notebook-id", default=NOTEBOOK_ID)
     parser.add_argument("--output-dir", default=str(DEFAULT_OUTPUT_DIR))
     parser.add_argument("--reference-output", default="", help="Output path for --reference-acquire")
-    parser.add_argument("--notebooklm-reference", default="", help="Validated immutable NotebookLM reference snapshot")
+    parser.add_argument("--reference-registry", default="", help="Read-only SQLite reference registry")
+    parser.add_argument("--reference-capture-id", default="", help="Immutable registry capture ID")
+    parser.add_argument("--notebooklm-reference", default="", help="Compatibility JSON reference snapshot")
     parser.add_argument("--source-map", default="")
     parser.add_argument("--question-map", default="", help="Legacy alias for --question-set")
     parser.add_argument("--question-set", default="", help="Owner-approved JSON/JSONL question manifest")
@@ -1697,10 +1784,14 @@ def main(argv: Sequence[str] | None = None) -> int:
     args, output_dir = parse_args(argv), None
     try:
         output_dir = Path(args.output_dir)
-        if args.run and not str(args.notebooklm_reference).strip():
-            raise BenchmarkError("--run requires --notebooklm-reference; use --reference-acquire for the only NotebookLM query path")
-        if args.reference_acquire and str(args.notebooklm_reference).strip():
-            raise BenchmarkError("Do not combine --reference-acquire with --notebooklm-reference")
+        reference_mode, _, _ = resolve_reference_input(args)
+        if args.run and reference_mode == "not_used":
+            raise BenchmarkError(
+                "--run requires --reference-registry/--reference-capture-id or compatibility "
+                "--notebooklm-reference; use --reference-acquire for the only NotebookLM query path"
+            )
+        if args.reference_acquire and reference_mode != "not_used":
+            raise BenchmarkError("Do not combine --reference-acquire with a cached reference source")
         if args.score:
             assignment = json.loads((output_dir / "blind_assignment.json").read_text(encoding="utf-8"))
             result = import_scores(Path(args.score), assignment, set(assignment))

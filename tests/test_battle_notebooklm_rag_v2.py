@@ -581,6 +581,90 @@ def _reference_fixture(tmp_path: Path) -> tuple[list[dict], dict, Path]:
     return questions, snapshot, path
 
 
+def test_reference_input_rejects_ambiguous_or_incomplete_registry_flags():
+    with pytest.raises(runner.BenchmarkError, match="requires --reference-capture-id"):
+        runner.resolve_reference_input(SimpleNamespace(
+            reference_registry="reference.sqlite3",
+            reference_capture_id="",
+            notebooklm_reference="",
+        ))
+    with pytest.raises(runner.BenchmarkError, match="only one"):
+        runner.resolve_reference_input(SimpleNamespace(
+            reference_registry="reference.sqlite3",
+            reference_capture_id="capture-1",
+            notebooklm_reference="reference.json",
+        ))
+
+
+def test_registry_live_rerun_never_queries_notebooklm(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+):
+    from aios_habit.benchmark_reference_registry import import_snapshot
+
+    questions, snapshot, _ = _reference_fixture(tmp_path)
+    source_root = tmp_path / "tailieugoc"
+    source_root.mkdir()
+    local = runner.build_local_manifest(tmp_path, allow_partial=True)
+    snapshot = json.loads(json.dumps(snapshot))
+    snapshot["corpus_fingerprint"] = local["corpus_fingerprint"]
+    registry = tmp_path / "reference.sqlite3"
+    import_snapshot(registry, snapshot)
+    args = runner.parse_args([
+        "--source-root",
+        str(tmp_path),
+        "--run",
+        "--allow-partial",
+        "--question-ids",
+        "BQ01",
+        "--reference-registry",
+        str(registry),
+        "--reference-capture-id",
+        snapshot["reference_capture_id"],
+        "--output-dir",
+        str(tmp_path / "runs"),
+    ])
+
+    def unexpected_notebook_call(*_args, **_kwargs):
+        raise AssertionError("registry rerun attempted NotebookLM access")
+
+    monkeypatch.setattr(runner, "load_question_set", lambda _path: questions)
+    monkeypatch.setattr(runner, "query_notebooklm", unexpected_notebook_call)
+    monkeypatch.setattr(runner, "verify_notebook", unexpected_notebook_call)
+    monkeypatch.setattr(
+        runner,
+        "router_readiness",
+        lambda _path: {
+            "status": "PASS",
+            "key_configured": True,
+            "provider_constructed": True,
+        },
+    )
+
+    preflight = runner.build_preflight(args)
+    result = runner.run_dry_or_live(
+        args,
+        preflight,
+        live=True,
+        output_dir=tmp_path / "runs",
+    )
+    run_dir = Path(result["run_dir"])
+    metadata = json.loads((run_dir / "run_metadata.json").read_text(encoding="utf-8"))
+    notebook_rows = [
+        json.loads(line)
+        for line in (run_dir / "notebooklm_answers.jsonl").read_text(encoding="utf-8").splitlines()
+    ]
+
+    assert preflight["mode"] == "registry_reference"
+    assert preflight["reference"]["registry_schema_version"] == 1
+    assert result["status"] == "PASS"
+    assert metadata["reference_mode"] == "registry_reference"
+    assert metadata["reference_capture_id"] == snapshot["reference_capture_id"]
+    assert metadata["reference_snapshot_digest"] == runner.stable_hash(snapshot)
+    assert metadata["notebook_query_count"] == 0
+    assert notebook_rows[0]["answer"] == "Grounded answer"
+
+
 def test_reference_snapshot_round_trips_with_strict_identity(tmp_path: Path):
     questions, snapshot, path = _reference_fixture(tmp_path)
 
