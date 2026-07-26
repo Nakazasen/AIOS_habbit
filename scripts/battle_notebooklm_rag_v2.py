@@ -1131,29 +1131,118 @@ def answer_one(
     return result
 
 
-def answer_workspace_one(sources: tuple[Any, ...], question: Mapping[str, Any], *, api_key_file: Path, do_synthesis: bool) -> dict[str, Any]:
-    """Exercise production Workspace Chat retrieval and, optionally, its real router path."""
-    from aios_habit.workspace_chat_ai_answer import PRIVACY_MODE_CLOUD_ALLOWED, RealWorkspaceAIProviderClient, WorkspaceAIAnswerRequest, generate_workspace_ai_answer
+def answer_workspace_one(
+    sources: tuple[Any, ...],
+    question: Mapping[str, Any],
+    *,
+    api_key_file: Path,
+    do_synthesis: bool,
+) -> dict[str, Any]:
+    """Exercise production Workspace Chat retrieval and its real router path."""
+    from aios_habit.workspace_chat_ai_answer import (
+        PRIVACY_MODE_CLOUD_ALLOWED,
+        RealWorkspaceAIProviderClient,
+        WorkspaceAIAnswerRequest,
+        generate_workspace_ai_answer,
+    )
     from aios_habit.workspace_chat_retrieval import retrieve_local_evidence
 
     started = time.perf_counter()
     query = str(question["question"])
     retrieval = retrieve_local_evidence(query, sources)
-    result: dict[str, Any] = {"question_id": question["id"], "question": query, "category": question.get("category"), "expected_type": question.get("expected_type"), "status": "retrieval_only" if not do_synthesis else "pending", "answer": "", "retrieval_latency_ms": round((time.perf_counter() - started) * 1000, 2), "retrieval": _json_ready({key: value for key, value in retrieval.items() if key != "retrieved_context_sources"}), "citations": _json_ready(retrieval.get("citations", []))}
+    retrieval_error = str(retrieval.get("retrieval_error", ""))
+    evidence_count = int(retrieval.get("summary_count", 0))
+    retrieval_status = (
+        "failed"
+        if retrieval_error
+        else "completed_with_evidence"
+        if evidence_count > 0
+        else "completed_without_evidence"
+    )
+    result: dict[str, Any] = {
+        "question_id": question["id"],
+        "question": query,
+        "category": question.get("category"),
+        "expected_type": question.get("expected_type"),
+        "status": "retrieval_only" if not do_synthesis else "pending",
+        "provider_completion_status": "not_requested" if not do_synthesis else "pending",
+        "grounding_status": (
+            "evidence_retrieved_unverified"
+            if evidence_count > 0
+            else "retrieval_failed"
+            if retrieval_error
+            else "insufficient_evidence"
+        ),
+        "answer": "",
+        "retrieval_latency_ms": round((time.perf_counter() - started) * 1000, 2),
+        "retrieval_status": retrieval_status,
+        "retrieval": _json_ready({
+            key: value
+            for key, value in retrieval.items()
+            if key != "retrieved_context_sources"
+        }),
+        "citations": _json_ready(retrieval.get("citations", [])),
+        "outbound_manifest": None,
+    }
     if not do_synthesis:
         return result
     key = read_key_from_file(api_key_file)
     if not key:
-        return {**result, "status": "provider_error", "llm_error": "missing_deepseek_key"}
-    request = WorkspaceAIAnswerRequest(conversation_id="benchmark", question=query, context_sources=sources, privacy_mode=PRIVACY_MODE_CLOUD_ALLOWED, cloud_consent_confirmed=True, consent_source_keys=tuple((source.source_scope, source.source_id) for source in sources), retrieval_applied=True, retrieved_context_sources=tuple(retrieval.get("retrieved_context_sources", ())), router_enabled=True, real_router_enabled=True)
+        return {
+            **result,
+            "status": "provider_error",
+            "provider_completion_status": "not_started_missing_key",
+            "llm_error": "missing_deepseek_key",
+        }
+    request = WorkspaceAIAnswerRequest(
+        conversation_id="benchmark",
+        question=query,
+        context_sources=sources,
+        privacy_mode=PRIVACY_MODE_CLOUD_ALLOWED,
+        cloud_consent_confirmed=True,
+        consent_source_keys=tuple(
+            (source.source_scope, source.source_id) for source in sources
+        ),
+        retrieval_applied=True,
+        retrieved_context_sources=tuple(retrieval.get("retrieved_context_sources", ())),
+        router_enabled=True,
+        real_router_enabled=True,
+    )
     old_key = os.environ.get("DEEPSEEK_API_KEY")
     os.environ["DEEPSEEK_API_KEY"] = key
     try:
         response = generate_workspace_ai_answer(request, RealWorkspaceAIProviderClient())
     finally:
-        if old_key is None: os.environ.pop("DEEPSEEK_API_KEY", None)
-        else: os.environ["DEEPSEEK_API_KEY"] = old_key
-    result.update({"status": "success" if response.ok else "provider_error", "answer": response.answer_text, "llm_error": response.error_message, "reason_code": response.reason_code, "externally_sent": response.externally_sent, "included_source_titles": list(response.included_source_titles), "llm_latency_ms": round((time.perf_counter() - started) * 1000 - result["retrieval_latency_ms"], 2), "route": {"requested_provider": "deepseek", "adapter": "WorkspaceChatRouterAdapter", "effective_model": "not_exposed_by_production_adapter"}})
+        if old_key is None:
+            os.environ.pop("DEEPSEEK_API_KEY", None)
+        else:
+            os.environ["DEEPSEEK_API_KEY"] = old_key
+    result.update({
+        "status": response.outcome_status,
+        "provider_success": response.provider_success,
+        "provider_completion_status": response.provider_completion_status,
+        "grounding_status": response.grounding_status,
+        "answer": response.answer_text,
+        "llm_error": response.error_message,
+        "reason_code": response.reason_code,
+        "externally_sent": response.externally_sent,
+        "included_source_titles": list(response.included_source_titles),
+        "outbound_manifest": _json_ready(response.outbound_manifest),
+        "outbound_manifest_sha256": (
+            response.outbound_manifest.get("manifest_sha256", "")
+            if response.outbound_manifest
+            else ""
+        ),
+        "llm_latency_ms": round(
+            (time.perf_counter() - started) * 1000 - result["retrieval_latency_ms"],
+            2,
+        ),
+        "route": {
+            "requested_provider": "deepseek",
+            "adapter": "WorkspaceChatRouterAdapter",
+            "effective_model": "not_exposed_by_production_adapter",
+        },
+    })
     return result
 
 
@@ -1198,7 +1287,7 @@ def triage_row(question: Mapping[str, Any], results: Mapping[str, Mapping[str, A
     applicable_systems = [system for system, applies in applicability.items() if applies]
     statuses = {system: str(results.get(system, {}).get("status", "missing")) for system in applicable_systems}
     status_values = set(statuses.values())
-    status = "NOT_APPLICABLE" if len(applicable_systems) < 2 else "PROVIDER_ERROR" if "provider_error" in status_values else "EXTRACTION_FAILURE" if status_values & {"extraction_failure", "blocked", "missing"} else "DRY_RUN_ONLY" if status_values & {"retrieval_only", "not_queried"} else "HUMAN_REVIEW_REQUIRED"
+    status = "NOT_APPLICABLE" if len(applicable_systems) < 2 else "PROVIDER_ERROR" if "provider_error" in status_values else "EXTRACTION_FAILURE" if status_values & {"extraction_failure", "blocked", "missing", "not_requested", "simulation_only"} else "DRY_RUN_ONLY" if status_values & {"retrieval_only", "not_queried"} else "HUMAN_REVIEW_REQUIRED"
     reason = "Automatic checks triage only; quality winner requires blinded human scoring." if status == "HUMAN_REVIEW_REQUIRED" else "Fewer than two arms are applicable to this corpus/workflow." if status == "NOT_APPLICABLE" else "Dry-run validated ingestion and retrieval only; no synthesized answers exist for quality review." if status == "DRY_RUN_ONLY" else "At least one applicable arm did not complete normally; the row is excluded from quality scoring."
     return {"question_id": question["id"], "category": question.get("category"), "expected_type": question.get("expected_type"), "status": status, "systems_applicable": applicable_systems, "system_statuses": statuses, "winner": "human_review" if status == "HUMAN_REVIEW_REQUIRED" else status, "reason": reason}
 
@@ -1246,6 +1335,28 @@ def import_scores(score_path: Path, assignment: Mapping[str, Mapping[str, str]],
     aggregates["assignment_hash"] = stable_hash(dict(assignment)); return {"scores": parsed, "aggregates": aggregates}
 
 
+def build_outbound_manifest_rows(
+    workspace_results: Sequence[Mapping[str, Any]],
+) -> list[dict[str, Any]]:
+    """Build standalone proof rows and fail closed on broken answer linkage."""
+    outbound_manifest_rows = []
+    for row in workspace_results:
+        manifest = row.get("outbound_manifest")
+        if not isinstance(manifest, Mapping):
+            continue
+        manifest_hash = str(manifest.get("manifest_sha256", ""))
+        if not manifest_hash or row.get("outbound_manifest_sha256") != manifest_hash:
+            raise BenchmarkError(
+                f"Workspace outbound manifest hash mismatch: {row.get('question_id')}"
+            )
+        outbound_manifest_rows.append({
+            "question_id": row.get("question_id"),
+            "manifest_sha256": manifest_hash,
+            "manifest": dict(manifest),
+        })
+    return outbound_manifest_rows
+
+
 def generate_report(output_dir: Path, *, metadata: Mapping[str, Any], questions: Sequence[Mapping[str, Any]], results_by_system: Mapping[str, Sequence[Mapping[str, Any]]], applicability_by_question: Mapping[str, Mapping[str, bool]] | None = None, score_result: Mapping[str, Any] | None = None) -> dict[str, Path]:
     indexed = {system: {str(row.get("question_id")): row for row in values} for system, values in results_by_system.items()}
     default_applicability = {system: True for system in results_by_system}
@@ -1253,11 +1364,47 @@ def generate_report(output_dir: Path, *, metadata: Mapping[str, Any], questions:
     rows = [triage_row(question, {system: values.get(str(question["id"]), {}) for system, values in indexed.items()}, applicability.get(str(question["id"]), default_applicability)) for question in questions]
     counts = {status: sum(row["status"] == status for row in rows) for status in sorted({row["status"] for row in rows})}
     evidence_ready = counts.get("HUMAN_REVIEW_REQUIRED", 0) > 0
-    coverage = {system: {"applicable": sum(bool(applicability.get(str(question["id"]), {}).get(system)) for question in questions), "completed": sum(indexed.get(system, {}).get(str(question["id"]), {}).get("status") == "success" for question in questions)} for system in results_by_system}
+    coverage = {}
+    for system in results_by_system:
+        applicable_ids = [
+            str(question["id"])
+            for question in questions
+            if applicability.get(str(question["id"]), {}).get(system)
+        ]
+        system_rows = [indexed.get(system, {}).get(qid, {}) for qid in applicable_ids]
+        coverage[system] = {
+            "applicable": len(applicable_ids),
+            "provider_completed": sum(
+                row.get("provider_completion_status") == "completed"
+                or (
+                    "provider_completion_status" not in row
+                    and row.get("status") in {"success", "answer_with_limits"}
+                )
+                for row in system_rows
+            ),
+            "grounded_success": sum(
+                row.get("status") == "success"
+                and (
+                    row.get("grounding_status") in {
+                        "grounded",
+                        "grounded_success",
+                        "evidence_verified",
+                    }
+                    or (
+                        "grounding_status" not in row
+                        and row.get("grounded_success") is True
+                    )
+                )
+                for row in system_rows
+            ),
+            "answer_with_limits": sum(row.get("status") == "answer_with_limits" for row in system_rows),
+            "insufficient_evidence": sum(row.get("status") == "insufficient_evidence" for row in system_rows),
+            "provider_errors": sum(row.get("status") == "provider_error" for row in system_rows),
+        }
     summary = {**dict(metadata), "question_count": len(questions), "row_status_counts": counts, "valid_row_count": counts.get("HUMAN_REVIEW_REQUIRED", 0), "not_applicable_count": counts.get("NOT_APPLICABLE", 0), "provider_error_count": counts.get("PROVIDER_ERROR", 0), "native_daily_utility": {"workflow_coverage": coverage, "corpus_bucket_counts": metadata.get("corpus_bucket_counts")}, "shared_corpus_quality": {"reviewable_rows": counts.get("HUMAN_REVIEW_REQUIRED", 0), "blind_scores": score_result}, "verdict": "INSUFFICIENT_EVIDENCE" if not score_result else "HUMAN_REVIEW_IMPORTED", "evidence_ready_for_blind_review": evidence_ready, "warning": "Comparison evidence only. Automatic checks do not establish a quality winner or a NotebookLM-parity claim.", "rows": rows}
     json_path, md_path = output_dir / "battle_report.json", output_dir / "battle_report.md"; atomic_write_json(json_path, summary)
-    lines = ["# Capability Benchmark: Workspace Chat vs RAG v2 vs NotebookLM", "", f"**Battle ID:** {metadata.get('battle_id')}", f"**Notebook:** {metadata.get('notebook_id')}", f"**Questions:** {len(questions)}", f"**Provisional verdict:** {summary['verdict']}", "", "> **Warning:** Automatic checks are triage only. Non-applicable, provider-error and unreviewed rows are excluded from quality totals.", "", "## Native daily utility coverage", "", "| System | Applicable | Completed |", "| --- | ---: | ---: |"]
-    lines.extend(f"| {system} | {values['applicable']} | {values['completed']} |" for system, values in coverage.items()); lines.extend(["", "## Row status", "", "| Status | Count |", "| --- | ---: |"]); lines.extend(f"| {status} | {count} |" for status, count in counts.items()); lines.extend(["", "## Per-question triage", ""]); lines.extend(f"- `{row['question_id']}` ({row['category']}) — **{row['status']}** — {row['reason']}" for row in rows)
+    lines = ["# Capability Benchmark: Workspace Chat vs RAG v2 vs NotebookLM", "", f"**Battle ID:** {metadata.get('battle_id')}", f"**Notebook:** {metadata.get('notebook_id')}", f"**Questions:** {len(questions)}", f"**Provisional verdict:** {summary['verdict']}", "", "> **Warning:** Automatic checks are triage only. Non-applicable, provider-error and unreviewed rows are excluded from quality totals.", "", "## Native daily utility coverage", "", "| System | Applicable | Provider completed | Grounded success | Answer with limits | Insufficient evidence | Provider errors |", "| --- | ---: | ---: | ---: | ---: | ---: | ---: |"]
+    lines.extend(f"| {system} | {values['applicable']} | {values['provider_completed']} | {values['grounded_success']} | {values['answer_with_limits']} | {values['insufficient_evidence']} | {values['provider_errors']} |" for system, values in coverage.items()); lines.extend(["", "## Row status", "", "| Status | Count |", "| --- | ---: |"]); lines.extend(f"| {status} | {count} |" for status, count in counts.items()); lines.extend(["", "## Per-question triage", ""]); lines.extend(f"- `{row['question_id']}` ({row['category']}) — **{row['status']}** — {row['reason']}" for row in rows)
     atomic_write_text(md_path, "\n".join(lines) + "\n"); return {"json": json_path, "md": md_path}
 
 
@@ -1482,6 +1629,10 @@ def run_dry_or_live(args: argparse.Namespace, preflight: Mapping[str, Any], *, l
     write_jsonl(run_dir / "rag_v2_answers.jsonl", rag_results)
     write_jsonl(run_dir / "workspace_chat_answers.jsonl", workspace_results)
     write_jsonl(run_dir / "notebooklm_answers.jsonl", nlm_results)
+    write_jsonl(
+        run_dir / "workspace_chat_outbound_manifests.jsonl",
+        build_outbound_manifest_rows(workspace_results),
+    )
     metadata = {
         "battle_id": run_id,
         "timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),

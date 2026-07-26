@@ -16,6 +16,7 @@ from aios_habit.workspace_chat_ai_answer import (
     is_privacy_label_cloud_allowed,
     pack_workspace_ai_context,
     build_workspace_ai_prompt,
+    classify_workspace_ai_outcome,
     generate_workspace_ai_answer,
     _cap_and_pack_sources
 )
@@ -306,6 +307,10 @@ def test_generate_workspace_ai_answer_cloud_empty_question():
     res = generate_workspace_ai_answer(req, client)
     assert res.ok is False
     assert res.externally_sent is False
+    assert res.provider_success is False
+    assert res.provider_completion_status == "not_requested"
+    assert res.grounding_status == "not_assessed"
+    assert res.outcome_status == "not_requested"
     assert client.call_count == 0
     assert "không được rỗng" in res.error_message
 
@@ -362,6 +367,10 @@ def test_generate_workspace_ai_answer_provider_exception():
     res = generate_workspace_ai_answer(req, client)
     assert res.ok is False
     assert res.externally_sent is True
+    assert res.provider_success is False
+    assert res.provider_completion_status == "failed"
+    assert res.grounding_status == "not_assessed_provider_failure"
+    assert res.outcome_status == "provider_error"
     assert client.call_count == 1
     assert "Dịch vụ AI chưa phản hồi. Nội dung nguồn vẫn được giữ trong Workspace Chat; vui lòng thử lại sau." in res.error_message
     assert "Fake connection error" not in res.error_message  # no raw details leaked
@@ -975,29 +984,29 @@ def test_generate_workspace_ai_answer_with_retrieval_privacy_and_consent_full_sn
 
 def test_workspace_chat_ai_answer_via_real_router_success(monkeypatch):
     called = []
-    def mock_generate(question, system_prompt, user_prompt):
-        called.append((question, system_prompt, user_prompt))
+    def mock_generate(payload):
+        called.append(payload)
         return True, "Mocked Router Reply"
     monkeypatch.setattr("aios_habit.workspace_chat_router_adapter.generate_answer_via_router", mock_generate)
 
-    src_local = WorkspaceAIContextSource(
-        source_id="src_local",
+    src = WorkspaceAIContextSource(
+        source_id="src_safe",
         source_scope="temporary",
         source_type="txt",
-        title="local.txt",
-        privacy_label="local_only",
-        text="Secret local only text",
-        included_chars=22,
+        title="safe.txt",
+        privacy_label="cloud_safe",
+        text="Public safe text",
+        included_chars=16,
         truncated=False,
     )
 
     req = WorkspaceAIAnswerRequest(
         conversation_id="conv_1",
         question="Hỏi",
-        context_sources=(src_local,),
+        context_sources=(src,),
         privacy_mode=PRIVACY_MODE_CLOUD_ALLOWED,
         cloud_consent_confirmed=True,
-        consent_source_keys=(("temporary", "src_local"),),
+        consent_source_keys=(("temporary", "src_safe"),),
         real_router_enabled=True
     )
 
@@ -1007,27 +1016,44 @@ def test_workspace_chat_ai_answer_via_real_router_success(monkeypatch):
     assert res.ok is True
     assert "Mocked Router Reply" in res.answer_text
     assert "Đây là câu trả lời do AI tạo, cần kiểm tra lại trước khi dùng." in res.answer_text
-    assert res.included_source_titles == ("local.txt",)
+    assert res.included_source_titles == ("safe.txt",)
     assert len(called) == 1
-    assert called[0][0] == "Hỏi"
-    assert "local.txt" in called[0][2]
+    assert called[0].sanitized_question == "Hỏi"
+    assert "safe.txt" in called[0].sanitized_sources[0].title
     assert client.call_count == 0
+
+    import hashlib
+    import json
+
+    manifest = res.outbound_manifest
+    sanitized_text = called[0].sanitized_sources[0].text
+    assert manifest is not None
+    assert manifest["schema_version"] == 1
+    assert manifest["source_count"] == 1
+    assert manifest["omitted_source_count"] == 0
+    assert manifest["input_chars_total"] == len(src.text)
+    assert manifest["outbound_chars_total"] == len(sanitized_text)
+    assert manifest["sources"][0]["content_sha256"] == hashlib.sha256(
+        sanitized_text.encode("utf-8")
+    ).hexdigest()
+    assert len(manifest["payload_sha256"]) == 64
+    assert "Public safe text" not in json.dumps(manifest)
 
 
 def test_workspace_chat_ai_answer_via_real_router_without_consent(monkeypatch):
     called = []
-    def mock_generate(question, system_prompt, user_prompt):
-        called.append((question, system_prompt, user_prompt))
+    def mock_generate(payload):
+        called.append(payload)
         return True, "Mocked Router Reply"
     monkeypatch.setattr("aios_habit.workspace_chat_router_adapter.generate_answer_via_router", mock_generate)
 
-    src_local = WorkspaceAIContextSource(
-        source_id="src_local",
+    src = WorkspaceAIContextSource(
+        source_id="src_machine",
         source_scope="temporary",
         source_type="txt",
-        title="local.txt",
-        privacy_label="local_only",
-        text="Secret local only text",
+        title="machine.txt",
+        privacy_label="machine_only",
+        text="Sensitive machine text",
         included_chars=22,
         truncated=False,
     )
@@ -1035,10 +1061,10 @@ def test_workspace_chat_ai_answer_via_real_router_without_consent(monkeypatch):
     req = WorkspaceAIAnswerRequest(
         conversation_id="conv_1",
         question="Hỏi",
-        context_sources=(src_local,),
+        context_sources=(src,),
         privacy_mode=PRIVACY_MODE_CLOUD_ALLOWED,
         cloud_consent_confirmed=False,
-        consent_source_keys=(("temporary", "src_local"),),
+        consent_source_keys=(("temporary", "src_machine"),),
         real_router_enabled=True
     )
 
@@ -1046,33 +1072,37 @@ def test_workspace_chat_ai_answer_via_real_router_without_consent(monkeypatch):
     res = generate_workspace_ai_answer(req, client)
 
     assert res.ok is False
-    assert "chưa xác nhận" in res.error_message
+    assert "xác nhận của Owner" in res.error_message
     assert len(called) == 0
     assert client.call_count == 0
+    assert res.provider_success is False
+    assert res.provider_completion_status == "not_requested"
+    assert res.grounding_status == "not_assessed"
+    assert res.outcome_status == "not_requested"
 
 
 def test_workspace_chat_ai_answer_via_real_router_stale_fingerprint(monkeypatch):
     called = []
-    def mock_generate(question, system_prompt, user_prompt):
-        called.append((question, system_prompt, user_prompt))
+    def mock_generate(payload):
+        called.append(payload)
         return True, "Mocked Router Reply"
     monkeypatch.setattr("aios_habit.workspace_chat_router_adapter.generate_answer_via_router", mock_generate)
 
-    src_local = WorkspaceAIContextSource(
-        source_id="src_local",
+    src = WorkspaceAIContextSource(
+        source_id="src_safe",
         source_scope="temporary",
         source_type="txt",
-        title="local.txt",
-        privacy_label="local_only",
-        text="Secret local only text",
-        included_chars=22,
+        title="safe.txt",
+        privacy_label="cloud_safe",
+        text="Public text",
+        included_chars=11,
         truncated=False,
     )
 
     req = WorkspaceAIAnswerRequest(
         conversation_id="conv_1",
         question="Hỏi",
-        context_sources=(src_local,),
+        context_sources=(src,),
         privacy_mode=PRIVACY_MODE_CLOUD_ALLOWED,
         cloud_consent_confirmed=True,
         consent_source_keys=(("temporary", "other_source"),),
@@ -1089,17 +1119,17 @@ def test_workspace_chat_ai_answer_via_real_router_stale_fingerprint(monkeypatch)
 
 
 def test_workspace_chat_ai_answer_via_real_router_failure(monkeypatch):
-    def mock_generate(question, system_prompt, user_prompt):
+    def mock_generate(payload):
         return False, "Dịch vụ AI chưa phản hồi. Vui lòng kiểm tra lại kết nối mạng hoặc cấu hình API key."
     monkeypatch.setattr("aios_habit.workspace_chat_router_adapter.generate_answer_via_router", mock_generate)
 
-    src_local = WorkspaceAIContextSource(
-        source_id="src_local",
+    src = WorkspaceAIContextSource(
+        source_id="src_safe",
         source_scope="temporary",
         source_type="txt",
-        title="local.txt",
-        privacy_label="local_only",
-        text="Secret text",
+        title="safe.txt",
+        privacy_label="cloud_safe",
+        text="Public text",
         included_chars=11,
         truncated=False,
     )
@@ -1107,10 +1137,10 @@ def test_workspace_chat_ai_answer_via_real_router_failure(monkeypatch):
     req = WorkspaceAIAnswerRequest(
         conversation_id="conv_1",
         question="Hỏi",
-        context_sources=(src_local,),
+        context_sources=(src,),
         privacy_mode=PRIVACY_MODE_CLOUD_ALLOWED,
         cloud_consent_confirmed=True,
-        consent_source_keys=(("temporary", "src_local"),),
+        consent_source_keys=(("temporary", "src_safe"),),
         real_router_enabled=True
     )
 
@@ -1121,6 +1151,7 @@ def test_workspace_chat_ai_answer_via_real_router_failure(monkeypatch):
 
 def test_generate_answer_via_router_integration_mocked_outcome(monkeypatch):
     from aios_habit.workspace_chat_router_adapter import generate_answer_via_router
+    from aios_habit.brain_gateway import SanitizedRouterPayload, SanitizedSourcePayload
     from nakazasen_ai_router import AIRouteOutcome, AIResult
 
     class FakeRouter:
@@ -1138,28 +1169,134 @@ def test_generate_answer_via_router_integration_mocked_outcome(monkeypatch):
     fake_router = FakeRouter(fake_outcome)
 
     monkeypatch.setattr("aios_habit.workspace_chat_router_adapter.create_router_from_env", lambda **k: fake_router)
-
-    ok, text = generate_answer_via_router("Q", "System", "User")
+    payload = SanitizedRouterPayload(
+        sanitized_question="Q",
+        sanitized_sources=(SanitizedSourcePayload("source_1", "public", "text", "Public", "User", "public"),),
+        metadata={"source_set_hash": "hash"},
+    )
+    ok, text = generate_answer_via_router(payload)
     assert ok is True
     assert text == "Success response"
     assert len(fake_router.calls) == 1
-    assert fake_router.calls[0].prompt == "User"
-    assert fake_router.calls[0].metadata["messages"] == [
-        {"role": "system", "content": "System"},
-        {"role": "user", "content": "User"}
-    ]
+    assert "Q" in fake_router.calls[0].prompt
 
 
 def test_workspace_chat_router_adapter_class_instantiation(monkeypatch):
     from aios_habit.workspace_chat_router_adapter import WorkspaceChatRouterAdapter
+    from aios_habit.brain_gateway import SanitizedRouterPayload
     called = []
-    def mock_generate(question, system_prompt, user_prompt):
-        called.append((question, system_prompt, user_prompt))
+    def mock_generate(payload):
+        called.append(payload)
         return True, "class response"
     monkeypatch.setattr("aios_habit.workspace_chat_router_adapter.generate_answer_via_router", mock_generate)
 
     adapter = WorkspaceChatRouterAdapter()
-    ok, text = adapter.generate_answer("Q", "System", "User")
+    payload = SanitizedRouterPayload("Q", (), {"source_set_hash": "hash"})
+    ok, text = adapter.generate_answer(payload)
     assert ok is True
     assert text == "class response"
-    assert called == [("Q", "System", "User")]
+    assert called == [payload]
+
+
+def test_workspace_chat_router_creation_enables_network_and_v051_recovery(monkeypatch):
+    from aios_habit.workspace_chat_router_adapter import generate_answer_via_router
+    from aios_habit.brain_gateway import SanitizedRouterPayload
+    from nakazasen_ai_router import AIRouteOutcome, AIResult
+
+    kwargs_passed = {}
+
+    def mock_create_router(**kwargs):
+        kwargs_passed.update(kwargs)
+
+        class DummyRouter:
+            def route_outcome(self, request):
+                return AIRouteOutcome(status="success", result=AIResult(text="OK", provider_name="p"))
+
+        return DummyRouter()
+
+    monkeypatch.setattr("aios_habit.workspace_chat_router_adapter.create_router_from_env", mock_create_router)
+    payload = SanitizedRouterPayload("Q", (), {"source_set_hash": "hash"})
+    ok, text = generate_answer_via_router(payload)
+
+    assert ok is True
+    assert kwargs_passed.get("enable_network") is True
+
+
+def test_workspace_outcome_classifier_positive_negative_and_multilingual():
+    for limited_answer in (
+        "Chưa đủ thông tin trong các nguồn được cung cấp.",
+        "Không tìm thấy đủ thông tin để so sánh hai quy trình.",
+        "Thông tin trong các nguồn được cung cấp là không đầy đủ.",
+        "Không có nguồn nào mô tả cụ thể các bước thực hiện.",
+        "There is insufficient evidence in the provided documents.",
+    ):
+        assert classify_workspace_ai_outcome(
+            limited_answer,
+            provider_success=True,
+            evidence_supplied=True,
+        ) == ("answer_with_limits", "explicit_answer_limitation")
+    assert classify_workspace_ai_outcome(
+        "Thông tin không thiếu; hồ sơ mô tả đầy đủ quy trình.",
+        provider_success=True,
+        evidence_supplied=True,
+    ) == ("success", "evidence_supplied_unverified")
+    assert classify_workspace_ai_outcome(
+        "The evidence is not insufficient; all steps are documented.",
+        provider_success=True,
+        evidence_supplied=True,
+    ) == ("success", "evidence_supplied_unverified")
+    assert classify_workspace_ai_outcome(
+        "",
+        provider_success=False,
+        evidence_supplied=True,
+    ) == ("provider_error", "not_assessed_provider_failure")
+    assert classify_workspace_ai_outcome(
+        "",
+        provider_success=True,
+        evidence_supplied=False,
+    ) == ("insufficient_evidence", "insufficient_evidence")
+
+
+def test_real_router_result_exposes_limited_outcome_and_canonical_manifest_hash(monkeypatch):
+    monkeypatch.setattr(
+        "aios_habit.workspace_chat_router_adapter.generate_answer_via_router",
+        lambda _payload: (True, "Không tìm thấy thông tin trong nguồn được cung cấp."),
+    )
+    src = WorkspaceAIContextSource(
+        source_id="src-safe",
+        source_scope="temporary",
+        source_type="txt",
+        title="safe.txt",
+        privacy_label="cloud_safe",
+        text="Evidence text",
+        included_chars=13,
+        truncated=False,
+    )
+    request = WorkspaceAIAnswerRequest(
+        conversation_id="contract-test",
+        question="Hỏi",
+        context_sources=(src,),
+        privacy_mode=PRIVACY_MODE_CLOUD_ALLOWED,
+        cloud_consent_confirmed=True,
+        consent_source_keys=(("temporary", "src-safe"),),
+        real_router_enabled=True,
+    )
+
+    result = generate_workspace_ai_answer(request, MockProviderClient())
+
+    assert result.ok is True
+    assert result.provider_success is True
+    assert result.provider_completion_status == "completed"
+    assert result.grounding_status == "explicit_answer_limitation"
+    assert result.outcome_status == "answer_with_limits"
+    manifest = dict(result.outbound_manifest or {})
+    manifest_hash = manifest.pop("manifest_sha256")
+    import hashlib
+    import json
+    canonical = json.dumps(
+        manifest,
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+    )
+    assert manifest_hash == hashlib.sha256(canonical.encode("utf-8")).hexdigest()

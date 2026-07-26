@@ -722,3 +722,149 @@ def test_reference_acquisition_rejects_noncanonical_question_set(tmp_path: Path,
 
     with pytest.raises(runner.BenchmarkError, match="owner-approved complete question set"):
         runner.acquire_notebooklm_reference(args, {"workflow_matrix": []}, tmp_path)
+
+
+def test_workspace_provider_completion_does_not_claim_grounding(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+):
+    from aios_habit.workspace_chat_ai_answer import WorkspaceAIContextSource
+
+    source = WorkspaceAIContextSource(
+        source_id="source-1",
+        source_scope="temporary",
+        source_type="txt",
+        title="manual.txt",
+        privacy_label="cloud_safe",
+        text="Evidence text",
+        included_chars=13,
+        truncated=False,
+    )
+    manifest = {
+        "schema_version": 1,
+        "payload_sha256": "a" * 64,
+        "manifest_sha256": "b" * 64,
+    }
+    monkeypatch.setattr(
+        "aios_habit.workspace_chat_retrieval.retrieve_local_evidence",
+        lambda _query, _sources: {
+            "summary_count": 1,
+            "retrieval_error": "",
+            "retrieved_context_sources": (source,),
+            "citations": [{"source_id": "source-1"}],
+        },
+    )
+    monkeypatch.setattr(
+        "aios_habit.workspace_chat_ai_answer.generate_workspace_ai_answer",
+        lambda _request, _client: SimpleNamespace(
+            ok=True,
+            answer_text="Provider completed with limits",
+            error_message="",
+            reason_code="ROUTER_ALLOWED_PUBLIC",
+            externally_sent=True,
+            included_source_titles=("manual.txt",),
+            outbound_manifest=manifest,
+            provider_success=True,
+            provider_completion_status="completed",
+            grounding_status="explicit_answer_limitation",
+            outcome_status="answer_with_limits",
+        ),
+    )
+    monkeypatch.setattr(runner, "read_key_from_file", lambda _path: "test-key")
+
+    result = runner.answer_workspace_one(
+        (source,),
+        runner.BATTLE_QUESTIONS[0],
+        api_key_file=tmp_path / "unused.txt",
+        do_synthesis=True,
+    )
+
+    assert result["status"] == "answer_with_limits"
+    assert result["provider_success"] is True
+    assert result["provider_completion_status"] == "completed"
+    assert result["grounding_status"] == "explicit_answer_limitation"
+    assert result["retrieval_status"] == "completed_with_evidence"
+    assert result["outbound_manifest"] == manifest
+    assert result["outbound_manifest_sha256"] == manifest["manifest_sha256"]
+
+
+def test_build_outbound_manifest_rows_links_answer_and_artifact_hash():
+    manifest = {"schema_version": 1, "manifest_sha256": "b" * 64}
+    rows = runner.build_outbound_manifest_rows([{
+        "question_id": "Q1",
+        "outbound_manifest_sha256": "b" * 64,
+        "outbound_manifest": manifest,
+    }])
+
+    assert rows == [{
+        "question_id": "Q1",
+        "manifest_sha256": "b" * 64,
+        "manifest": manifest,
+    }]
+    with pytest.raises(runner.BenchmarkError, match="hash mismatch"):
+        runner.build_outbound_manifest_rows([{
+            "question_id": "Q1",
+            "outbound_manifest_sha256": "c" * 64,
+            "outbound_manifest": manifest,
+        }])
+
+
+def test_generate_report_separates_provider_completion_from_grounded_success(tmp_path: Path):
+    questions = [
+        {"id": "Q1", "question": "one", "category": "test", "expected_type": "text"},
+        {"id": "Q2", "question": "two", "category": "test", "expected_type": "text"},
+        {"id": "Q3", "question": "three", "category": "test", "expected_type": "text"},
+        {"id": "Q4", "question": "four", "category": "test", "expected_type": "text"},
+        {"id": "Q5", "question": "five", "category": "test", "expected_type": "text"},
+    ]
+    results = {"workspace_chat": [
+        {
+            "question_id": "Q1",
+            "status": "success",
+            "provider_completion_status": "completed",
+            "grounding_status": "grounded",
+        },
+        {
+            "question_id": "Q2",
+            "status": "success",
+            "provider_completion_status": "completed",
+            "grounding_status": "evidence_supplied_unverified",
+        },
+        {
+            "question_id": "Q3",
+            "status": "answer_with_limits",
+            "provider_completion_status": "completed",
+            "grounding_status": "explicit_answer_limitation",
+        },
+        {
+            "question_id": "Q4",
+            "status": "insufficient_evidence",
+            "provider_completion_status": "not_requested",
+            "grounding_status": "insufficient_evidence",
+        },
+        {
+            "question_id": "Q5",
+            "status": "provider_error",
+            "provider_completion_status": "failed",
+        },
+    ]}
+    applicability = {question["id"]: {"workspace_chat": True} for question in questions}
+
+    paths = runner.generate_report(
+        tmp_path,
+        metadata={"battle_id": "test", "notebook_id": "cached"},
+        questions=questions,
+        results_by_system=results,
+        applicability_by_question=applicability,
+    )
+    report = json.loads(paths["json"].read_text(encoding="utf-8"))
+    coverage = report["native_daily_utility"]["workflow_coverage"]["workspace_chat"]
+
+    assert coverage == {
+        "applicable": 5,
+        "provider_completed": 3,
+        "grounded_success": 1,
+        "answer_with_limits": 1,
+        "insufficient_evidence": 1,
+        "provider_errors": 1,
+    }

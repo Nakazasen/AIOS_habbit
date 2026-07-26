@@ -1,5 +1,20 @@
 from dataclasses import dataclass
-from typing import Protocol, Tuple, Optional
+import hashlib
+import json
+import time
+import unicodedata
+from typing import Any, Dict, Optional, Protocol, Tuple
+
+from aios_habit.brain_gateway import (
+    BrainGateway,
+    BrainRequest,
+    GatewaySource,
+    OwnerConsent,
+    SanitizedRouterPayload,
+    WORKSPACE_CHAT_ANSWER_PURPOSE,
+    WORKSPACE_CHAT_EXTERNAL_ROUTER_DESTINATION,
+    calculate_source_set_hash,
+)
 
 PRIVACY_MODE_LOCAL_PREVIEW_ONLY = "local_preview_only"
 PRIVACY_MODE_CLOUD_ALLOWED = "cloud_allowed"
@@ -32,6 +47,7 @@ class WorkspaceAIAnswerRequest:
     retrieved_context_sources: Tuple[WorkspaceAIContextSource, ...] = ()
     router_enabled: bool = False
     real_router_enabled: bool = False
+    external_destination: str = WORKSPACE_CHAT_EXTERNAL_ROUTER_DESTINATION
 
 @dataclass(frozen=True)
 class WorkspaceAIAnswerResult:
@@ -45,6 +61,77 @@ class WorkspaceAIAnswerResult:
     next_action: str = ""
     mock_external_send: bool = False
     would_send_externally: bool = False
+    outbound_manifest: Optional[Dict[str, Any]] = None
+    provider_success: bool = False
+    provider_completion_status: str = "not_requested"
+    grounding_status: str = "not_assessed"
+    outcome_status: str = "not_requested"
+
+
+_LIMITATION_MARKERS = (
+    "chua du thong tin",
+    "khong du thong tin",
+    "khong tim thay du thong tin",
+    "chua du bang chung",
+    "khong du bang chung",
+    "khong day du",
+    "khong tim thay thong tin",
+    "khong co nguon nao",
+    "khong co thong tin trong",
+    "nguon khong de cap",
+    "tai lieu khong de cap",
+    "du lieu khong de cap",
+    "cannot determine from",
+    "cannot be determined from",
+    "not enough information",
+    "insufficient information",
+    "insufficient evidence",
+    "no evidence in",
+    "not found in the provided",
+    "sources do not mention",
+    "documents do not mention",
+)
+_LIMITATION_NEGATIONS = (
+    "khong phai la khong du",
+    "khong con thieu thong tin",
+    "khong thieu thong tin",
+    "thong tin khong thieu",
+    "not insufficient",
+    "not lacking information",
+)
+
+
+def _fold_for_outcome_classification(value: str) -> str:
+    normalized = unicodedata.normalize(
+        "NFKD",
+        value.casefold().replace("đ", "d"),
+    )
+    folded = "".join(
+        char for char in normalized
+        if not unicodedata.combining(char)
+    )
+    return " ".join(folded.split())
+
+
+def classify_workspace_ai_outcome(
+    answer_text: str,
+    *,
+    provider_success: bool,
+    evidence_supplied: bool,
+) -> Tuple[str, str]:
+    """Classify transport-independent answer outcome using explicit limitations only."""
+    if not provider_success:
+        return "provider_error", "not_assessed_provider_failure"
+    if not evidence_supplied:
+        return "insufficient_evidence", "insufficient_evidence"
+    folded = _fold_for_outcome_classification(answer_text)
+    without_negations = folded
+    for phrase in _LIMITATION_NEGATIONS:
+        without_negations = without_negations.replace(phrase, "")
+    if any(marker in without_negations for marker in _LIMITATION_MARKERS):
+        return "answer_with_limits", "explicit_answer_limitation"
+    return "success", "evidence_supplied_unverified"
+
 
 class WorkspaceAIProviderClient(Protocol):
     def generate(self, *, system_prompt: str, user_prompt: str) -> str:
@@ -222,6 +309,260 @@ def build_workspace_ai_prompt(
 
     return system_prompt, "\n".join(user_parts)
 
+
+def _to_gateway_sources(
+    sources: Tuple[WorkspaceAIContextSource, ...],
+) -> Tuple[GatewaySource, ...]:
+    return tuple(
+        GatewaySource(
+            source_id=source.source_id,
+            source_scope=source.source_scope,
+            source_type=source.source_type,
+            title=source.title,
+            privacy_label=source.privacy_label,
+            text=source.text,
+        )
+        for source in sources
+    )
+
+
+def _stable_sha256(value: Any) -> str:
+    serialized = json.dumps(
+        value,
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+    )
+    return hashlib.sha256(serialized.encode("utf-8")).hexdigest()
+
+
+def _build_outbound_manifest(
+    payload: SanitizedRouterPayload,
+    *,
+    original_question: str,
+    source_candidates: Tuple[WorkspaceAIContextSource, ...],
+    outbound_sources: Tuple[WorkspaceAIContextSource, ...],
+) -> Dict[str, Any]:
+    """Describe the exact post-sanitization payload without retaining raw text."""
+    candidate_indices_by_key: Dict[Tuple[str, str], list[int]] = {}
+    for index, source in enumerate(source_candidates):
+        key = (source.source_scope, source.source_id)
+        candidate_indices_by_key.setdefault(key, []).append(index)
+
+    consumed_candidate_indices = set()
+    source_entries = []
+    canonical_sources = []
+    for ordinal, (sanitized, packed) in enumerate(
+        zip(payload.sanitized_sources, outbound_sources),
+        1,
+    ):
+        key = (packed.source_scope, packed.source_id)
+        matching_indices = candidate_indices_by_key.get(key, [])
+        candidate_index = next(
+            (index for index in matching_indices if index not in consumed_candidate_indices),
+            None,
+        )
+        candidate = source_candidates[candidate_index] if candidate_index is not None else packed
+        if candidate_index is not None:
+            consumed_candidate_indices.add(candidate_index)
+        input_chars = len(candidate.text)
+        packed_chars = len(packed.text)
+        outbound_chars = len(sanitized.text)
+        source_entries.append({
+            "ordinal": ordinal,
+            "source_id": sanitized.source_id,
+            "source_scope": sanitized.source_scope,
+            "source_type": sanitized.source_type,
+            "title": sanitized.title,
+            "input_chars": input_chars,
+            "packed_chars": packed_chars,
+            "outbound_chars": outbound_chars,
+            "truncated": bool(
+                candidate.truncated
+                or packed.truncated
+                or packed_chars < input_chars
+                or outbound_chars < packed_chars
+            ),
+            "sanitized": sanitized.text != packed.text or sanitized.title != packed.title,
+            "content_sha256": hashlib.sha256(sanitized.text.encode("utf-8")).hexdigest(),
+        })
+        canonical_sources.append({
+            "source_id": sanitized.source_id,
+            "source_scope": sanitized.source_scope,
+            "source_type": sanitized.source_type,
+            "title": sanitized.title,
+            "privacy_label": sanitized.privacy_label,
+            "text": sanitized.text,
+        })
+
+    omitted_entries = []
+    for index, candidate in enumerate(source_candidates):
+        if index not in consumed_candidate_indices:
+            omitted_entries.append({
+                "ordinal": index + 1,
+                "source_id": candidate.source_id,
+                "source_scope": candidate.source_scope,
+                "input_chars": len(candidate.text),
+                "omitted": True,
+                "truncated": bool(candidate.truncated),
+            })
+
+    canonical_payload = {
+        "sanitized_question": payload.sanitized_question,
+        "sanitized_sources": canonical_sources,
+        "metadata": payload.metadata,
+    }
+    manifest = {
+        "schema_version": 1,
+        "hash_algorithm": "sha256",
+        "question": {
+            "input_chars": len(original_question),
+            "outbound_chars": len(payload.sanitized_question),
+            "truncated_or_sanitized": payload.sanitized_question != original_question,
+            "content_sha256": hashlib.sha256(
+                payload.sanitized_question.encode("utf-8")
+            ).hexdigest(),
+        },
+        "source_count": len(source_entries),
+        "omitted_source_count": len(omitted_entries),
+        "input_chars_total": sum(len(source.text) for source in source_candidates),
+        "outbound_chars_total": sum(entry["outbound_chars"] for entry in source_entries),
+        "sources": source_entries,
+        "omitted_sources": omitted_entries,
+        "payload_sha256": _stable_sha256(canonical_payload),
+    }
+    manifest["manifest_sha256"] = _stable_sha256(manifest)
+    return manifest
+
+
+def _generate_real_router_answer(
+    request: WorkspaceAIAnswerRequest,
+) -> WorkspaceAIAnswerResult:
+    if request.privacy_mode == PRIVACY_MODE_LOCAL_PREVIEW_ONLY:
+        return WorkspaceAIAnswerResult(
+            ok=False,
+            answer_text="",
+            included_source_titles=(),
+            warnings=(),
+            externally_sent=False,
+            error_message="Chưa gửi tới AI vì bạn đang ở chế độ Chỉ xem trước trên máy.",
+        )
+
+    full_gateway_sources = _to_gateway_sources(request.context_sources)
+    consent = None
+    if request.cloud_consent_confirmed:
+        consent = OwnerConsent(
+            source_set_hash=calculate_source_set_hash(full_gateway_sources),
+            destination=request.external_destination,
+            purpose=WORKSPACE_CHAT_ANSWER_PURPOSE,
+            timestamp=time.time(),
+            source_keys=tuple(sorted(request.consent_source_keys)),
+        )
+
+    source_candidates = (
+        request.retrieved_context_sources
+        if request.retrieval_applied
+        else request.context_sources
+    )
+    question, packed_sources, warnings = _cap_and_pack_sources(
+        request.question,
+        source_candidates,
+    )
+    outbound_sources = tuple(
+        source for source in packed_sources if source.included_chars > 0
+    )
+    if not outbound_sources:
+        error_message = (
+            "Chưa tìm thấy đoạn phù hợp trong nguồn đang bật."
+            if request.retrieval_applied
+            else "Chưa gửi tới AI. Nguồn đang bật chưa có nội dung."
+        )
+        return WorkspaceAIAnswerResult(
+            ok=False,
+            answer_text="",
+            included_source_titles=tuple(source.title for source in request.context_sources),
+            warnings=warnings,
+            externally_sent=False,
+            error_message=error_message,
+            provider_completion_status="not_requested",
+            grounding_status="insufficient_evidence",
+            outcome_status="insufficient_evidence",
+        )
+
+    decision = BrainGateway().preflight_check(
+        BrainRequest(
+            question=question,
+            sources=full_gateway_sources,
+            consent=consent,
+            router_enabled=True,
+            purpose=WORKSPACE_CHAT_ANSWER_PURPOSE,
+            destination=request.external_destination,
+            outbound_sources=_to_gateway_sources(outbound_sources),
+        )
+    )
+    if not decision.allowed:
+        return WorkspaceAIAnswerResult(
+            ok=False,
+            answer_text="",
+            included_source_titles=tuple(source.title for source in request.context_sources),
+            warnings=warnings,
+            externally_sent=False,
+            error_message=f"Chưa gửi tới AI. Lý do: {decision.message} Hành động tiếp theo: {decision.next_action}",
+            reason_code=decision.reason_code,
+            next_action=decision.next_action,
+        )
+
+    from aios_habit.workspace_chat_router_adapter import generate_answer_via_router
+
+    outbound_manifest = _build_outbound_manifest(
+        decision.sanitized_payload,
+        original_question=request.question,
+        source_candidates=source_candidates,
+        outbound_sources=outbound_sources,
+    )
+    ok, response_text = generate_answer_via_router(decision.sanitized_payload)
+    included_titles = tuple(
+        source.title for source in decision.sanitized_payload.sanitized_sources
+    )
+    if ok:
+        disclaimer = "\n\nĐây là câu trả lời do AI tạo, cần kiểm tra lại trước khi dùng."
+        answer_text = response_text.strip() + disclaimer
+        outcome_status, grounding_status = classify_workspace_ai_outcome(
+            answer_text,
+            provider_success=True,
+            evidence_supplied=bool(outbound_sources),
+        )
+        return WorkspaceAIAnswerResult(
+            ok=True,
+            answer_text=answer_text,
+            included_source_titles=included_titles,
+            warnings=warnings,
+            externally_sent=True,
+            reason_code=decision.reason_code,
+            next_action=decision.next_action,
+            outbound_manifest=outbound_manifest,
+            provider_success=True,
+            provider_completion_status="completed",
+            grounding_status=grounding_status,
+            outcome_status=outcome_status,
+        )
+
+    return WorkspaceAIAnswerResult(
+        ok=False,
+        answer_text="",
+        included_source_titles=included_titles,
+        warnings=warnings,
+        externally_sent=True,
+        error_message=response_text,
+        reason_code=decision.reason_code,
+        next_action=decision.next_action,
+        outbound_manifest=outbound_manifest,
+        provider_completion_status="failed",
+        grounding_status="not_assessed_provider_failure",
+        outcome_status="provider_error",
+    )
+
+
 def generate_workspace_ai_answer(
     request: WorkspaceAIAnswerRequest,
     provider_client: WorkspaceAIProviderClient
@@ -247,86 +588,8 @@ def generate_workspace_ai_answer(
             error_message="Chế độ trả lời chưa hợp lệ. Vui lòng chọn lại chế độ trả lời."
         )
 
-    if getattr(request, "real_router_enabled", False):
-        if request.privacy_mode == PRIVACY_MODE_LOCAL_PREVIEW_ONLY:
-            return WorkspaceAIAnswerResult(
-                ok=False,
-                answer_text="",
-                included_source_titles=(),
-                warnings=(),
-                externally_sent=False,
-                error_message="Chưa gửi tới AI vì bạn đang ở chế độ Chỉ xem trước trên máy."
-            )
-
-        if not request.cloud_consent_confirmed:
-            return WorkspaceAIAnswerResult(
-                ok=False,
-                answer_text="",
-                included_source_titles=(),
-                warnings=(),
-                externally_sent=False,
-                error_message="Chưa gửi tới AI vì bạn chưa xác nhận cho lần trả lời này."
-            )
-
-        # Check exact enabled-source set fingerprint matching
-        current_keys = set((src.source_scope, src.source_id) for src in request.context_sources)
-        consent_keys = set(request.consent_source_keys)
-        if current_keys != consent_keys:
-            return WorkspaceAIAnswerResult(
-                ok=False,
-                answer_text="",
-                included_source_titles=(),
-                warnings=(),
-                externally_sent=False,
-                error_message="Tập nguồn đang bật đã thay đổi sau khi xác nhận. Vui lòng kiểm tra lại và xác nhận lại trước khi gửi."
-            )
-
-        # Cap and pack sources
-        if request.retrieval_applied:
-            q_text, packed_sources, warnings = _cap_and_pack_sources(request.question, request.retrieved_context_sources)
-        else:
-            q_text, packed_sources, warnings = _cap_and_pack_sources(request.question, request.context_sources)
-
-        # Exclude empty-content sources from prompt
-        prompt_sources = [src for src in packed_sources if src.included_chars > 0]
-        if not prompt_sources:
-            err_msg = "Chưa tìm thấy đoạn phù hợp trong nguồn đang bật." if request.retrieval_applied else "Chưa gửi tới AI. Nguồn đang bật chưa có nội dung."
-            return WorkspaceAIAnswerResult(
-                ok=False,
-                answer_text="",
-                included_source_titles=tuple(src.title for src in request.context_sources),
-                warnings=warnings,
-                externally_sent=False,
-                error_message=err_msg
-            )
-
-        system_prompt, user_prompt = build_workspace_ai_prompt(q_text, prompt_sources)
-
-        from aios_habit.workspace_chat_router_adapter import generate_answer_via_router
-        ok, res_text = generate_answer_via_router(
-            question=q_text,
-            system_prompt=system_prompt,
-            user_prompt=user_prompt
-        )
-
-        if ok:
-            disclaimer = "\n\nĐây là câu trả lời do AI tạo, cần kiểm tra lại trước khi dùng."
-            return WorkspaceAIAnswerResult(
-                ok=True,
-                answer_text=res_text.strip() + disclaimer,
-                included_source_titles=tuple(src.title for src in prompt_sources),
-                warnings=warnings,
-                externally_sent=True
-            )
-        else:
-            return WorkspaceAIAnswerResult(
-                ok=False,
-                answer_text="",
-                included_source_titles=tuple(src.title for src in request.context_sources),
-                warnings=warnings,
-                externally_sent=True,
-                error_message=res_text
-            )
+    if request.real_router_enabled:
+        return _generate_real_router_answer(request)
 
     if request.privacy_mode == PRIVACY_MODE_LOCAL_PREVIEW_ONLY:
         return WorkspaceAIAnswerResult(
@@ -419,7 +682,10 @@ def generate_workspace_ai_answer(
                     reason_code=decision.reason_code,
                     next_action=decision.next_action,
                     mock_external_send=True,
-                    would_send_externally=True
+                    would_send_externally=True,
+                    provider_completion_status="simulated",
+                    grounding_status="not_assessed_simulation",
+                    outcome_status="simulation_only",
                 )
             else:
                 return WorkspaceAIAnswerResult(
@@ -513,16 +779,29 @@ def generate_workspace_ai_answer(
                 included_source_titles=tuple(src.title for src in request.context_sources),
                 warnings=warnings,
                 externally_sent=True,
-                error_message="Dịch vụ AI phản hồi rỗng."
+                error_message="Dịch vụ AI phản hồi rỗng.",
+                provider_completion_status="failed",
+                grounding_status="not_assessed_provider_failure",
+                outcome_status="provider_error",
             )
 
         disclaimer = "\n\nĐây là câu trả lời do AI tạo, cần kiểm tra lại trước khi dùng."
+        answer_text = ans.strip() + disclaimer
+        outcome_status, grounding_status = classify_workspace_ai_outcome(
+            answer_text,
+            provider_success=True,
+            evidence_supplied=bool(prompt_sources),
+        )
         return WorkspaceAIAnswerResult(
             ok=True,
-            answer_text=ans.strip() + disclaimer,
+            answer_text=answer_text,
             included_source_titles=tuple(src.title for src in prompt_sources),
             warnings=warnings,
-            externally_sent=True
+            externally_sent=True,
+            provider_success=True,
+            provider_completion_status="completed",
+            grounding_status=grounding_status,
+            outcome_status=outcome_status,
         )
     except Exception as e:
         msg = str(e)
@@ -536,7 +815,10 @@ def generate_workspace_ai_answer(
             included_source_titles=tuple(src.title for src in request.context_sources),
             warnings=(),
             externally_sent=True,
-            error_message=err_msg
+            error_message=err_msg,
+            provider_completion_status="failed",
+            grounding_status="not_assessed_provider_failure",
+            outcome_status="provider_error",
         )
 
 class RealWorkspaceAIProviderClient:
