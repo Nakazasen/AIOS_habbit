@@ -8,6 +8,11 @@ from aios_habit.rag_v2 import (
     RagV2DevPipeline,
     SourceSpec,
 )
+from aios_habit.rag_v2.semantic import (
+    DeterministicEmbeddingBackend,
+    SemanticBackendUnavailable,
+    unavailable_embedding_backend,
+)
 
 
 def _config(tmp_path, **overrides):
@@ -118,3 +123,74 @@ def test_pipeline_defaults_local_and_rejects_network_or_unknown_labels(tmp_path)
         RagV2DevConfig(runtime_root=tmp_path / "runtime", enable_network=True)
     with pytest.raises(ValueError, match="canonical"):
         SourceSpec(tmp_path / "anything.txt", privacy_labels=("unclassified",))
+
+
+def test_pipeline_default_lexical_profile_never_constructs_fastembed(tmp_path, monkeypatch):
+    import aios_habit.rag_v2.pipeline as pipeline_module
+
+    def fail_if_constructed(*args, **kwargs):
+        del args, kwargs
+        raise AssertionError("FastEmbed must not initialize for lexical profile")
+
+    monkeypatch.setattr(pipeline_module, "FastEmbedEmbeddingBackend", fail_if_constructed)
+    with RagV2DevPipeline(_config(tmp_path)) as pipeline:
+        state = pipeline.inspect()
+
+    assert state["retrieval"]["requested_profile"] == "lexical"
+    assert state["retrieval"]["effective_profile"] == "lexical"
+    assert state["retrieval"]["degraded"] is False
+    assert state["retrieval"]["semantic"]["configured"] is False
+
+
+def test_pipeline_prepares_dense_backend_without_claiming_gate_d_fusion(tmp_path):
+    source_path = tmp_path / "guide.txt"
+    source_path.write_text("semantic local evidence", encoding="utf-8")
+    backend = DeterministicEmbeddingBackend(dimension=8)
+    config = _config(
+        tmp_path,
+        retrieval_profile="hybrid",
+        embedding_model_id=backend.descriptor.model_id,
+        embedding_dimension=backend.descriptor.dimension,
+    )
+
+    with RagV2DevPipeline(config, embedding_backend=backend) as pipeline:
+        pipeline.ingest([SourceSpec(source_path)])
+        state = pipeline.inspect()
+
+    retrieval = state["retrieval"]
+    assert retrieval["requested_profile"] == "hybrid"
+    assert retrieval["effective_profile"] == "lexical"
+    assert retrieval["degraded"] is True
+    assert retrieval["degraded_reason"] == "cross_channel_fusion_pending_gate_d"
+    assert retrieval["semantic"]["available"] is True
+    assert retrieval["semantic"]["embedded_chunk_count"] == 1
+
+
+def test_pipeline_reports_unavailable_semantic_backend_or_fails_strict_preflight(tmp_path):
+    backend = unavailable_embedding_backend(
+        "missing/model",
+        dimension=8,
+        reason="model is not cached locally",
+    )
+    degraded_config = _config(
+        tmp_path,
+        retrieval_profile="hybrid",
+        embedding_model_id="missing/model",
+        embedding_dimension=8,
+    )
+    with RagV2DevPipeline(degraded_config, embedding_backend=backend) as pipeline:
+        state = pipeline.inspect()
+
+    assert state["retrieval"]["effective_profile"] == "lexical"
+    assert state["retrieval"]["degraded"] is True
+    assert state["retrieval"]["degraded_reason"] == "model is not cached locally"
+
+    strict_config = _config(
+        tmp_path,
+        retrieval_profile="hybrid",
+        embedding_model_id="missing/model",
+        embedding_dimension=8,
+        strict_semantic=True,
+    )
+    with pytest.raises(SemanticBackendUnavailable, match="not cached"):
+        RagV2DevPipeline(strict_config, embedding_backend=backend)

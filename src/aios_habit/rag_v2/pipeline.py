@@ -14,6 +14,12 @@ from .index import LocalChunkIndex, SearchOptions, SearchResponse
 from .query_planning import RetrievalQueryPlan, build_query_plan, coerce_query_plan
 from .registry import ConverterRegistry
 from .schema import ExtractionStatus
+from .semantic import (
+    EmbeddingBackend,
+    FastEmbedEmbeddingBackend,
+    SemanticBackendUnavailable,
+    unavailable_embedding_backend,
+)
 from .synthesis import LocalSynthesisResult, synthesize_evidence
 
 _CANONICAL_PRIVACY_LABELS = frozenset({
@@ -43,7 +49,18 @@ class RagV2DevConfig:
     max_chunk_chars: int = 1200
     retrieval_limit: int = 10
     candidate_limit: int = 100
+    dense_candidate_limit: int = 100
     per_document_limit: int = 3
+    retrieval_profile: str = "lexical"
+    embedding_model_id: str = "BAAI/bge-small-en-v1.5"
+    embedding_model_revision: str = ""
+    embedding_dimension: int = 384
+    embedding_cache_dir: Path | str | None = None
+    rrf_k: int = 60
+    lexical_channel_weight: float = 1.0
+    dense_channel_weight: float = 1.0
+    rerank_limit: int = 30
+    strict_semantic: bool = False
     allowed_privacy_labels: Tuple[str, ...] = (
         "local_only", "confidential", "cloud_safe", "public",
     )
@@ -59,8 +76,27 @@ class RagV2DevConfig:
             raise ValueError("index_filename must be a file name")
         if self.max_chunk_chars < 80:
             raise ValueError("max_chunk_chars must be at least 80")
-        if self.retrieval_limit < 1 or self.candidate_limit < 1 or self.per_document_limit < 1:
+        if (
+            self.retrieval_limit < 1
+            or self.candidate_limit < 1
+            or self.dense_candidate_limit < 1
+            or self.per_document_limit < 1
+            or self.rerank_limit < 1
+        ):
             raise ValueError("retrieval limits must be positive")
+        if self.retrieval_profile not in {"lexical", "hybrid", "hybrid_rerank"}:
+            raise ValueError("retrieval_profile must be lexical, hybrid, or hybrid_rerank")
+        if not self.embedding_model_id.strip():
+            raise ValueError("embedding_model_id is required")
+        if self.embedding_dimension < 1:
+            raise ValueError("embedding_dimension must be positive")
+        if self.rrf_k < 1:
+            raise ValueError("rrf_k must be positive")
+        if self.lexical_channel_weight <= 0.0 or self.dense_channel_weight <= 0.0:
+            raise ValueError("retrieval channel weights must be positive")
+        cache_dir = self.embedding_cache_dir
+        if cache_dir is not None:
+            object.__setattr__(self, "embedding_cache_dir", Path(cache_dir))
         labels = tuple(dict.fromkeys(self.allowed_privacy_labels))
         if not labels or any(label not in _CANONICAL_PRIVACY_LABELS for label in labels):
             raise ValueError("allowed_privacy_labels must use canonical labels")
@@ -132,6 +168,36 @@ class RagV2QueryResult:
     provider_used: bool = False
 
 
+def _resolve_embedding_backend(
+    config: RagV2DevConfig,
+    backend: Optional[EmbeddingBackend],
+) -> Optional[EmbeddingBackend]:
+    """Resolve a semantic backend without network acquisition or silent fake scores."""
+    if backend is not None:
+        resolved = backend
+    elif config.retrieval_profile == "lexical":
+        return None
+    else:
+        try:
+            resolved = FastEmbedEmbeddingBackend(
+                model_id=config.embedding_model_id,
+                revision=config.embedding_model_revision,
+                dimension=config.embedding_dimension,
+                cache_dir=config.embedding_cache_dir,
+                local_files_only=True,
+            )
+        except SemanticBackendUnavailable as exc:
+            resolved = unavailable_embedding_backend(
+                config.embedding_model_id,
+                revision=config.embedding_model_revision,
+                dimension=config.embedding_dimension,
+                reason=str(exc),
+            )
+    if config.strict_semantic:
+        resolved.capability.require()
+    return resolved
+
+
 class RagV2DevPipeline:
     """Compose existing RAG v2 primitives without touching Workspace Chat."""
 
@@ -142,13 +208,28 @@ class RagV2DevPipeline:
         registry: Optional[ConverterRegistry] = None,
         chunker: Optional[StructureAwareChunker] = None,
         index: Optional[LocalChunkIndex] = None,
+        embedding_backend: Optional[EmbeddingBackend] = None,
     ) -> None:
         self.config = config or RagV2DevConfig()
         Path(self.config.runtime_root).mkdir(parents=True, exist_ok=True)
         self.registry = registry or ConverterRegistry()
         self.chunker = chunker or StructureAwareChunker(self.config.max_chunk_chars)
-        self.index = index or LocalChunkIndex(self.config.index_path)
+        self.embedding_backend = _resolve_embedding_backend(self.config, embedding_backend)
+        self.index = index or LocalChunkIndex(
+            self.config.index_path,
+            embedding_backend=self.embedding_backend,
+        )
         self._owns_index = index is None
+        capability = self.index.semantic_capability
+        if self.config.strict_semantic and self.config.retrieval_profile != "lexical":
+            if capability is None:
+                raise SemanticBackendUnavailable(
+                    "strict semantic profile requires an embedding-enabled LocalChunkIndex"
+                )
+            capability.require()
+        # Gate C prepares dense candidates and persistence only. Cross-channel fusion is
+        # activated in Gate D, so the effective query profile remains truthfully lexical.
+        self._effective_retrieval_profile = "lexical"
 
     def ingest(self, sources: Iterable[SourceSpec]) -> RagV2IngestionReport:
         items = []
@@ -288,11 +369,30 @@ class RagV2DevPipeline:
                 "chunk_count": state["chunk_count"],
                 "source_fingerprint": state["source_fingerprint"],
             })
+        semantic = self.index.embedding_status()
+        requested_profile = self.config.retrieval_profile
+        effective_profile = self._effective_retrieval_profile
+        degraded = requested_profile != effective_profile
+        degraded_reason = ""
+        if degraded:
+            degraded_reason = (
+                "cross_channel_fusion_pending_gate_d"
+                if semantic.get("available")
+                else str(semantic.get("reason", "semantic_backend_unavailable"))
+            )
         return {
             "mode": "local_only",
             "provider_used": False,
             "index_path": self.config.index_filename,
             "indexed_chunk_count": self.index.count(),
+            "retrieval": {
+                "requested_profile": requested_profile,
+                "effective_profile": effective_profile,
+                "degraded": degraded,
+                "degraded_reason": degraded_reason,
+                "lexical_backend": self.index.retrieval_backend,
+                "semantic": semantic,
+            },
             "sources": states,
         }
 

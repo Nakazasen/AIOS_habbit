@@ -3,11 +3,14 @@ from __future__ import annotations
 
 from collections import Counter
 from dataclasses import dataclass, field
+from datetime import datetime, timezone
+import hashlib
 import json
 import re
 import sqlite3
+import struct
 from pathlib import Path
-from typing import Any, Dict, Iterable, List, Mapping, Optional, Tuple
+from typing import Any, Dict, Iterable, List, Mapping, Optional, Sequence, Tuple
 
 from .chunking import DocumentChunk
 from .query_planning import (
@@ -15,6 +18,13 @@ from .query_planning import (
     coerce_query_plan,
     extract_content_terms,
     match_text_obligations,
+)
+from .semantic import (
+    EmbeddingBackend,
+    SemanticBackendError,
+    SemanticCapability,
+    cosine_similarity,
+    normalize_vector,
 )
 
 _TOKEN_RE = re.compile(r"[\w]+", re.UNICODE)
@@ -36,6 +46,24 @@ def _unique_tokens(value: str) -> Tuple[str, ...]:
 
 def _normalized_terms(value: str) -> str:
     return " ".join(_tokens(value))
+
+
+def _embedding_content_hash(text: str) -> str:
+    return hashlib.sha256(text.encode("utf-8")).hexdigest()
+
+
+def _pack_vector(vector: Sequence[float], dimension: int) -> bytes:
+    normalized = normalize_vector(vector, dimension=dimension)
+    return struct.pack(f"<{dimension}f", *normalized)
+
+
+def _unpack_vector(payload: bytes, dimension: int) -> tuple[float, ...]:
+    expected_size = struct.calcsize(f"<{dimension}f")
+    if len(payload) != expected_size:
+        raise SemanticBackendError(
+            f"embedding payload size mismatch: expected {expected_size}, received {len(payload)}"
+        )
+    return tuple(float(value) for value in struct.unpack(f"<{dimension}f", payload))
 
 
 def _contains_phrase(value: str, phrase: str) -> bool:
@@ -143,14 +171,24 @@ class SearchResponse:
 
 
 class LocalChunkIndex:
-    def __init__(self, db_path: str | Path, *, enable_fts5: bool = True) -> None:
+    def __init__(
+        self,
+        db_path: str | Path,
+        *,
+        enable_fts5: bool = True,
+        embedding_backend: Optional[EmbeddingBackend] = None,
+    ) -> None:
         self.db_path = Path(db_path)
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
         self._conn = sqlite3.connect(str(self.db_path))
+        self._conn.execute("PRAGMA foreign_keys = ON")
         self._conn.row_factory = sqlite3.Row
         self._fts5_requested = enable_fts5
         self._fts5_available = False
+        self._embedding_backend = embedding_backend
         self._create_schema()
+        if embedding_backend is not None and embedding_backend.capability.available:
+            self.ensure_embeddings()
 
     @property
     def retrieval_backend(self) -> str:
@@ -175,6 +213,35 @@ class LocalChunkIndex:
             """
         )
         self._conn.execute("CREATE INDEX IF NOT EXISTS idx_chunks_document_id ON chunks(document_id)")
+        self._conn.executescript(
+            """
+            CREATE TABLE IF NOT EXISTS chunk_embeddings (
+                chunk_id TEXT NOT NULL REFERENCES chunks(chunk_id) ON DELETE CASCADE,
+                model_fingerprint TEXT NOT NULL,
+                content_hash TEXT NOT NULL,
+                model_id TEXT NOT NULL,
+                model_revision TEXT NOT NULL,
+                runtime TEXT NOT NULL,
+                runtime_version TEXT NOT NULL,
+                dimension INTEGER NOT NULL CHECK (dimension > 0),
+                dtype TEXT NOT NULL CHECK (dtype = 'float32-le'),
+                normalized INTEGER NOT NULL CHECK (normalized IN (0, 1)),
+                vector_blob BLOB NOT NULL,
+                created_at TEXT NOT NULL,
+                PRIMARY KEY (chunk_id, model_fingerprint)
+            );
+            CREATE INDEX IF NOT EXISTS idx_chunk_embeddings_model
+            ON chunk_embeddings(model_fingerprint, chunk_id);
+            CREATE TRIGGER IF NOT EXISTS chunks_embeddings_content_update
+            AFTER UPDATE OF text, normalized_text, checksum ON chunks
+            WHEN old.text IS NOT new.text
+              OR old.normalized_text IS NOT new.normalized_text
+              OR old.checksum IS NOT new.checksum
+            BEGIN
+                DELETE FROM chunk_embeddings WHERE chunk_id = old.chunk_id;
+            END;
+            """
+        )
         if self._fts5_requested:
             try:
                 self._conn.execute(
@@ -221,11 +288,13 @@ class LocalChunkIndex:
         self._conn.commit()
 
     def upsert_chunks(self, chunks: Iterable[DocumentChunk]) -> int:
-        rows = [self._chunk_row(chunk) for chunk in chunks]
+        prepared = tuple(chunks)
+        rows = [self._chunk_row(chunk) for chunk in prepared]
         if not rows:
             return 0
-        self._upsert_rows(rows)
-        self._conn.commit()
+        with self._conn:
+            self._upsert_rows(rows)
+            self._ensure_embeddings(tuple(chunk.chunk_id for chunk in prepared))
         return len(rows)
 
     def replace_document_chunks(
@@ -233,7 +302,7 @@ class LocalChunkIndex:
         document_id: str,
         chunks: Iterable[DocumentChunk],
     ) -> int:
-        """Atomically replace one document so stale chunks cannot survive re-index."""
+        """Atomically replace one document while preserving valid embedding cache rows."""
         normalized_id = (document_id or "").strip()
         if not normalized_id:
             raise ValueError("document_id is required")
@@ -241,10 +310,18 @@ class LocalChunkIndex:
         if any(chunk.document_id != normalized_id for chunk in prepared):
             raise ValueError("all chunks must belong to document_id")
         rows = [self._chunk_row(chunk) for chunk in prepared]
+        chunk_ids = tuple(chunk.chunk_id for chunk in prepared)
         with self._conn:
-            self._conn.execute("DELETE FROM chunks WHERE document_id = ?", (normalized_id,))
             if rows:
                 self._upsert_rows(rows)
+                placeholders = ",".join("?" for _ in chunk_ids)
+                self._conn.execute(
+                    f"DELETE FROM chunks WHERE document_id = ? AND chunk_id NOT IN ({placeholders})",
+                    (normalized_id, *chunk_ids),
+                )
+                self._ensure_embeddings(chunk_ids)
+            else:
+                self._conn.execute("DELETE FROM chunks WHERE document_id = ?", (normalized_id,))
         return len(rows)
 
     def delete_document(self, document_id: str) -> int:
@@ -297,6 +374,227 @@ class LocalChunkIndex:
             """,
             rows,
         )
+
+    @property
+    def semantic_capability(self) -> Optional[SemanticCapability]:
+        backend = self._embedding_backend
+        return backend.capability if backend is not None else None
+
+    def ensure_embeddings(self) -> int:
+        """Persist only missing or stale vectors for the configured local model."""
+        with self._conn:
+            return self._ensure_embeddings()
+
+    def _ensure_embeddings(self, chunk_ids: Sequence[str] = ()) -> int:
+        backend = self._embedding_backend
+        if backend is None or not backend.capability.available:
+            return 0
+        descriptor = backend.descriptor
+        parameters: list[Any] = [descriptor.fingerprint]
+        where = ""
+        if chunk_ids:
+            placeholders = ",".join("?" for _ in chunk_ids)
+            where = f"WHERE c.chunk_id IN ({placeholders})"
+            parameters.extend(chunk_ids)
+        rows = self._conn.execute(
+            f"""
+            SELECT c.chunk_id, c.text, e.content_hash
+            FROM chunks AS c
+            LEFT JOIN chunk_embeddings AS e
+              ON e.chunk_id = c.chunk_id AND e.model_fingerprint = ?
+            {where}
+            ORDER BY c.chunk_id
+            """,
+            parameters,
+        ).fetchall()
+        pending = [
+            row for row in rows
+            if row["content_hash"] != _embedding_content_hash(str(row["text"]))
+        ]
+        if not pending:
+            return 0
+        vectors = backend.embed_documents(tuple(str(row["text"]) for row in pending))
+        if len(vectors) != len(pending):
+            raise SemanticBackendError(
+                f"embedding count mismatch: expected {len(pending)}, received {len(vectors)}"
+            )
+        created_at = datetime.now(timezone.utc).isoformat()
+        records = []
+        for row, vector in zip(pending, vectors):
+            records.append((
+                str(row["chunk_id"]),
+                descriptor.fingerprint,
+                _embedding_content_hash(str(row["text"])),
+                descriptor.model_id,
+                descriptor.revision,
+                descriptor.runtime,
+                descriptor.runtime_version,
+                descriptor.dimension,
+                "float32-le",
+                int(descriptor.normalized),
+                _pack_vector(vector, descriptor.dimension),
+                created_at,
+            ))
+        self._conn.executemany(
+            """
+            INSERT INTO chunk_embeddings (
+                chunk_id, model_fingerprint, content_hash, model_id, model_revision,
+                runtime, runtime_version, dimension, dtype, normalized, vector_blob, created_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(chunk_id, model_fingerprint) DO UPDATE SET
+                content_hash=excluded.content_hash,
+                model_id=excluded.model_id,
+                model_revision=excluded.model_revision,
+                runtime=excluded.runtime,
+                runtime_version=excluded.runtime_version,
+                dimension=excluded.dimension,
+                dtype=excluded.dtype,
+                normalized=excluded.normalized,
+                vector_blob=excluded.vector_blob,
+                created_at=excluded.created_at
+            """,
+            records,
+        )
+        return len(records)
+
+    def embedding_status(self) -> Dict[str, Any]:
+        """Return vector coverage/provenance without exposing text or vectors."""
+        backend = self._embedding_backend
+        total = self.count()
+        if backend is None:
+            return {
+                "configured": False,
+                "available": False,
+                "indexed_chunk_count": total,
+                "embedded_chunk_count": 0,
+                "model": None,
+            }
+        descriptor = backend.descriptor
+        embedded = int(self._conn.execute(
+            "SELECT COUNT(*) FROM chunk_embeddings WHERE model_fingerprint = ?",
+            (descriptor.fingerprint,),
+        ).fetchone()[0])
+        return {
+            "configured": True,
+            "available": backend.capability.available,
+            "reason": backend.capability.reason,
+            "indexed_chunk_count": total,
+            "embedded_chunk_count": embedded,
+            "model": descriptor.to_safe_dict(),
+        }
+
+    def dense_candidates(
+        self,
+        query: str | RetrievalQueryPlan,
+        *,
+        limit: int = 100,
+        options: Optional[SearchOptions] = None,
+    ) -> List[SearchResult]:
+        """Return filtered local cosine candidates fused only across query variants."""
+        backend = self._embedding_backend
+        if backend is None:
+            raise SemanticBackendError("embedding backend is not configured")
+        backend.capability.require()
+        if limit <= 0:
+            return []
+        options = options or SearchOptions()
+        plan = coerce_query_plan(query)
+        self.ensure_embeddings()
+        descriptor = backend.descriptor
+        rows = self._conn.execute(
+            """
+            SELECT c.*, e.dimension AS embedding_dimension, e.vector_blob
+            FROM chunks AS c
+            JOIN chunk_embeddings AS e ON e.chunk_id = c.chunk_id
+            WHERE e.model_fingerprint = ? AND e.dtype = 'float32-le' AND e.normalized = 1
+            """,
+            (descriptor.fingerprint,),
+        ).fetchall()
+        eligible = []
+        for row in rows:
+            privacy_labels = tuple(json.loads(row["privacy_labels_json"] or "[]"))
+            if not self._is_selected(row, options):
+                continue
+            if not self._privacy_is_allowed(privacy_labels, options):
+                continue
+            if self._is_stale(row, options):
+                continue
+            eligible.append((row, privacy_labels))
+
+        fused: dict[str, dict[str, Any]] = {}
+        for variant in plan.variants:
+            query_vector = normalize_vector(
+                backend.embed_query(variant.text),
+                dimension=descriptor.dimension,
+            )
+            ranked = []
+            for row, privacy_labels in eligible:
+                dimension = int(row["embedding_dimension"])
+                if dimension != descriptor.dimension:
+                    continue
+                vector = _unpack_vector(bytes(row["vector_blob"]), dimension)
+                similarity = cosine_similarity(query_vector, vector)
+                ranked.append((similarity, row, privacy_labels))
+            ranked.sort(key=lambda item: (
+                -item[0], item[1]["document_id"], item[1]["source_path"], item[1]["chunk_id"]
+            ))
+            variant_weight = 1.25 if variant.origin == "original" else 1.0
+            for rank, (similarity, row, privacy_labels) in enumerate(
+                ranked[: options.candidate_limit], 1
+            ):
+                key = str(row["chunk_id"])
+                record = fused.setdefault(key, {
+                    "rrf_score": 0.0,
+                    "best_similarity": similarity,
+                    "row": row,
+                    "privacy_labels": privacy_labels,
+                    "variants": [],
+                    "variant_ids": [],
+                    "facet_ids": [],
+                })
+                record["rrf_score"] += variant_weight / (60.0 + rank)
+                record["variants"].append(variant.text)
+                record["variant_ids"].append(variant.variant_id)
+                record["facet_ids"].append(variant.facet_id)
+                if similarity > record["best_similarity"]:
+                    record["best_similarity"] = similarity
+                    record["row"] = row
+                    record["privacy_labels"] = privacy_labels
+
+        ordered = sorted(fused.values(), key=lambda item: (
+            -item["rrf_score"], -item["best_similarity"], item["row"]["document_id"],
+            item["row"]["source_path"], item["row"]["chunk_id"],
+        ))[:limit]
+        results = []
+        for record in ordered:
+            row = record["row"]
+            metadata = json.loads(row["metadata_json"])
+            section_text = " ".join(_text_values(metadata.get("section_path")))
+            obligations = match_text_obligations(
+                plan.intent_category,
+                (str(row["normalized_text"]), section_text),
+                required_obligations=plan.required_obligations,
+            )
+            results.append(SearchResult(
+                chunk_id=row["chunk_id"],
+                score=float(record["best_similarity"]),
+                text=row["text"],
+                document_id=row["document_id"],
+                source_path=row["source_path"],
+                source_name=row["source_name"],
+                file_type=row["file_type"],
+                metadata=metadata,
+                privacy_labels=record["privacy_labels"],
+                ranking_signals={
+                    "dense_cosine": float(record["best_similarity"]),
+                    "dense_multi_variant_rrf": float(record["rrf_score"]),
+                },
+                matched_query_variants=tuple(record["variants"]),
+                matched_query_variant_ids=tuple(dict.fromkeys(record["variant_ids"])),
+                matched_query_facets=tuple(dict.fromkeys(record["facet_ids"])),
+                matched_obligations=tuple(obligations),
+            ))
+        return results
 
     def search(
         self,
