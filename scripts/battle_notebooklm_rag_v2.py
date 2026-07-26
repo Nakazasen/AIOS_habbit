@@ -58,6 +58,9 @@ DEFAULT_API_KEY_FILE = Path(r"D:\Sandbox\nakazasen-ai-router\API Key.txt")
 NOTEBOOK_QUERY_TIMEOUT_SECONDS = 240
 NOTEBOOK_QUERY_MAX_ATTEMPTS = 3
 NOTEBOOK_QUERY_RETRY_BACKOFF_SECONDS = 2.0
+REFERENCE_SCHEMA_VERSION = 1
+REFERENCE_QUERY_CONTRACT = "notebooklm_query_v1"
+_REFERENCE_ANSWER_STATUSES = frozenset({"success", "not_applicable"})
 SUPPORTED_EXTENSIONS = frozenset({
     ".txt", ".md", ".csv", ".log", ".json", ".xml", ".html", ".htm",
     ".pdf", ".xlsx", ".xlsm", ".docx", ".pptx",
@@ -204,9 +207,247 @@ def question_set_fingerprint(questions: Sequence[Mapping[str, Any]]) -> str:
     return stable_hash(tuple(dict(question) for question in questions))
 
 
+def question_identity_fingerprint(question: Mapping[str, Any]) -> str:
+    return stable_hash({"id": str(question["id"]), "question": str(question["question"])})
+
+
 def production_question_payload(question: Mapping[str, Any]) -> dict[str, str]:
     """Project a benchmark row to the only fields allowed into production arms."""
     return {"id": str(question["id"]), "question": str(question["question"])}
+
+
+def _reference_manifest_hash(manifest: Mapping[str, Any]) -> str:
+    sources = manifest.get("sources")
+    if not isinstance(sources, list):
+        raise BenchmarkError("NotebookLM reference is missing its source manifest")
+    return stable_hash(sources)
+
+
+def validate_reference_snapshot(
+    payload: Mapping[str, Any],
+    questions: Sequence[Mapping[str, Any]],
+    *,
+    notebook_id: str,
+    corpus_fingerprint: str,
+) -> dict[str, Any]:
+    """Validate a decoded immutable NotebookLM reference without querying providers."""
+    if not isinstance(payload, Mapping):
+        raise BenchmarkError("NotebookLM reference must be a JSON object")
+    errors: list[str] = []
+    if _safe_int(payload.get("schema_version"), -1) != REFERENCE_SCHEMA_VERSION:
+        errors.append("schema_version_mismatch")
+
+    if str(payload.get("notebook_id") or "") != str(notebook_id):
+        errors.append("notebook_id_mismatch")
+    if str(payload.get("notebook_title") or "") != NOTEBOOK_TITLE:
+        errors.append("notebook_title_mismatch")
+    if str(payload.get("question_set_hash") or "") != question_set_fingerprint(questions):
+        errors.append("question_set_hash_mismatch")
+    if str(payload.get("corpus_fingerprint") or "") != str(corpus_fingerprint):
+        errors.append("corpus_fingerprint_mismatch")
+    if not str(payload.get("reference_capture_id") or "").strip():
+        errors.append("missing_reference_capture_id")
+    if str(payload.get("query_contract") or "") != REFERENCE_QUERY_CONTRACT:
+        errors.append("query_contract_mismatch")
+
+    manifest = payload.get("notebook_manifest")
+    if not isinstance(manifest, Mapping):
+        errors.append("missing_notebook_manifest")
+        manifest = {}
+    else:
+        try:
+            recomputed_manifest_hash = _reference_manifest_hash(manifest)
+        except BenchmarkError:
+            recomputed_manifest_hash = ""
+            errors.append("malformed_notebook_manifest")
+        if str(payload.get("notebook_manifest_hash") or "") != recomputed_manifest_hash:
+            errors.append("notebook_manifest_hash_mismatch")
+        if str(manifest.get("notebook_id") or "") != str(notebook_id):
+            errors.append("manifest_notebook_id_mismatch")
+        if str(manifest.get("title") or "") != NOTEBOOK_TITLE:
+            errors.append("manifest_title_mismatch")
+        sources = manifest.get("sources")
+        source_count = len(sources) if isinstance(sources, list) else 0
+        if source_count != _safe_int(manifest.get("source_count"), -1):
+            errors.append("manifest_source_count_mismatch")
+        if _safe_int(manifest.get("ready_count"), -1) != source_count or manifest.get("all_ready") is not True:
+            errors.append("manifest_sources_not_ready")
+
+        if not source_count:
+            errors.append("manifest_has_no_sources")
+
+    expected_questions = [
+        {"id": str(question["id"]), "question": str(question["question"]), "question_hash": question_identity_fingerprint(question)}
+        for question in questions
+    ]
+    if payload.get("questions") != expected_questions:
+        errors.append("question_identity_mismatch")
+
+    answers: dict[str, dict[str, Any]] = {}
+    answer_rows = payload.get("answers")
+    if not isinstance(answer_rows, list):
+        errors.append("answers_not_an_array")
+        answer_rows = []
+    for raw_row in answer_rows:
+        if not isinstance(raw_row, Mapping):
+            errors.append("malformed_answer_row")
+            continue
+        qid = str(raw_row.get("question_id") or "")
+        if not qid or qid in answers:
+            errors.append("missing_or_duplicate_answer_id")
+            continue
+        row = dict(raw_row)
+        answers[qid] = row
+        question = next((item for item in questions if str(item["id"]) == qid), None)
+        if question is None or str(row.get("question") or "") != str(question["question"]):
+            errors.append(f"answer_question_mismatch:{qid or 'missing'}")
+            continue
+        if str(row.get("question_hash") or "") != question_identity_fingerprint(question):
+            errors.append(f"answer_question_hash_mismatch:{qid}")
+        status = str(row.get("status") or "")
+        if status not in _REFERENCE_ANSWER_STATUSES:
+            errors.append(f"invalid_answer_status:{qid}")
+        if status == "success" and not str(row.get("answer") or "").strip():
+            errors.append(f"empty_success_answer:{qid}")
+        if status == "not_applicable" and not str(row.get("error") or row.get("reason") or "").strip():
+            errors.append(f"not_applicable_without_reason:{qid}")
+        if str(row.get("answer_hash") or "") != stable_hash(str(row.get("answer") or "")):
+            errors.append(f"answer_hash_mismatch:{qid}")
+    if set(answers) != {str(question["id"]) for question in questions}:
+        errors.append("answer_id_coverage_mismatch")
+    if errors:
+        raise BenchmarkError("NotebookLM reference rejected: " + ", ".join(dict.fromkeys(errors)))
+    return {"snapshot": dict(payload), "answers": answers}
+
+
+def load_reference_snapshot(
+    path: Path,
+    questions: Sequence[Mapping[str, Any]],
+    *,
+    notebook_id: str,
+    corpus_fingerprint: str,
+) -> dict[str, Any]:
+    """Load an immutable NotebookLM reference and reject identity drift."""
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8-sig"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise BenchmarkError(f"NotebookLM reference is invalid: {_safe_text(exc)}") from exc
+    return validate_reference_snapshot(
+        payload,
+        questions,
+        notebook_id=notebook_id,
+        corpus_fingerprint=corpus_fingerprint,
+    )
+
+
+def build_reference_snapshot(
+    preflight: Mapping[str, Any],
+    questions: Sequence[Mapping[str, Any]],
+    answers: Sequence[Mapping[str, Any]],
+    *,
+    notebook_id: str,
+) -> dict[str, Any]:
+    """Build and self-validate a one-time NotebookLM reference snapshot."""
+    manifest = preflight.get("notebook_manifest")
+    if not isinstance(manifest, Mapping) or manifest.get("status") != "PASS":
+        raise BenchmarkError("NotebookLM reference acquisition requires a passing notebook preflight")
+    if len(answers) != len(questions):
+        raise BenchmarkError("NotebookLM reference acquisition did not cover the complete question set")
+    rows: list[dict[str, Any]] = []
+    for question, raw in zip(questions, answers):
+        row = dict(raw)
+        row["question_id"] = str(question["id"])
+        row["question"] = str(question["question"])
+        row["question_hash"] = question_identity_fingerprint(question)
+        row["answer_hash"] = stable_hash(str(row.get("answer") or ""))
+        rows.append(row)
+    snapshot = {
+        "schema_version": REFERENCE_SCHEMA_VERSION,
+        "reference_capture_id": f"NLM-REFERENCE-{int(time.time())}-{question_set_fingerprint(questions)[:8]}",
+        "captured_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+        "notebook_id": str(notebook_id),
+        "notebook_title": NOTEBOOK_TITLE,
+        "notebook_manifest_hash": str(manifest.get("manifest_hash") or ""),
+        "notebook_manifest": _json_ready(manifest),
+        "question_set_hash": question_set_fingerprint(questions),
+        "questions": [
+            {"id": str(question["id"]), "question": str(question["question"]), "question_hash": question_identity_fingerprint(question)}
+            for question in questions
+        ],
+        "answers": rows,
+        "corpus_fingerprint": str(preflight.get("local_manifest", {}).get("corpus_fingerprint") or ""),
+        "source_root_name": str(preflight.get("local_manifest", {}).get("source_root_name") or ""),
+        "corpus_audit_hash": str(preflight.get("corpus_audit", {}).get("audit_hash") or ""),
+        "query_contract": REFERENCE_QUERY_CONTRACT,
+        "capture_config": {
+            "timeout_seconds": NOTEBOOK_QUERY_TIMEOUT_SECONDS,
+            "max_attempts": NOTEBOOK_QUERY_MAX_ATTEMPTS,
+            "retry_backoff_seconds": NOTEBOOK_QUERY_RETRY_BACKOFF_SECONDS,
+            "profile": "default",
+        },
+    }
+    manifest_hash = _reference_manifest_hash(snapshot["notebook_manifest"])
+    if manifest_hash != snapshot["notebook_manifest_hash"]:
+        raise BenchmarkError("NotebookLM reference manifest hash is not self-consistent")
+    validate_reference_snapshot(
+        snapshot,
+        questions,
+        notebook_id=notebook_id,
+        corpus_fingerprint=str(snapshot["corpus_fingerprint"]),
+    )
+    return snapshot
+
+
+def cached_reference_row(
+    reference: Mapping[str, Any],
+    question: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Project a cached answer into the comparison arm without live latency."""
+    row = dict(reference["answers"][str(question["id"])])
+    row["reference_mode"] = "cached_reference"
+    row["reference_capture_id"] = reference["snapshot"]["reference_capture_id"]
+    row["reference_manifest_hash"] = reference["snapshot"]["notebook_manifest_hash"]
+    row["reference_status"] = row.get("status")
+    row["reference_latency_ms"] = row.get("latency_ms", 0.0)
+    row["latency_ms"] = 0.0
+    return row
+
+
+def notebooklm_result_for_run(
+    question: Mapping[str, Any],
+    applicability: Mapping[str, Any],
+    *,
+    live: bool,
+    reference: Mapping[str, Any] | None,
+) -> dict[str, Any]:
+    """Resolve the comparison arm; live algorithm runs can only use a cache."""
+    qid = str(question["id"])
+    applies = bool(applicability.get("applicable"))
+    reason = str(applicability.get("reason") or "")
+    if live:
+        if reference is None:
+            raise BenchmarkError("Live algorithm rerun requires a validated NotebookLM reference")
+        if applies:
+            return cached_reference_row(reference, question)
+        return {
+            "question_id": qid,
+            "question": str(question["question"]),
+            "status": "not_applicable",
+            "reference_mode": "cached_reference",
+            "reference_capture_id": reference["snapshot"]["reference_capture_id"],
+            "reference_manifest_hash": reference["snapshot"]["notebook_manifest_hash"],
+            "answer": "",
+            "latency_ms": 0.0,
+            "error": reason,
+        }
+    return {
+        "question_id": qid,
+        "question": str(question["question"]),
+        "status": "not_queried" if applies else "not_applicable",
+        "answer": "",
+        "latency_ms": 0.0,
+        "error": "dry_run" if applies else reason,
+    }
 
 
 class BenchmarkError(RuntimeError):
@@ -233,6 +474,13 @@ class NotebookSourceRecord:
     url: str | None = None
 
 
+
+
+def _safe_int(value: Any, default: int = -1) -> int:
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return default
 
 
 def _safe_text(value: Any, limit: int = 300) -> str:
@@ -714,7 +962,7 @@ def query_notebooklm(
     timeout_seconds: int = NOTEBOOK_QUERY_TIMEOUT_SECONDS,
     retry_backoff_seconds: float = NOTEBOOK_QUERY_RETRY_BACKOFF_SECONDS,
 ) -> dict[str, Any]:
-    """Query NotebookLM with bounded retries for transient CLI/provider stalls."""
+    """Query NotebookLM with bounded retries for explicit reference acquisition only."""
     started = time.perf_counter()
     attempts = max(1, int(max_attempts))
     errors: list[str] = []
@@ -730,6 +978,7 @@ def query_notebooklm(
             return {
                 "status": "success",
                 "answer": str(answer),
+                "provider_response": _json_ready(data),
                 "latency_ms": round((time.perf_counter() - started) * 1000, 2),
                 "error": "",
                 "attempt_count": attempt,
@@ -746,6 +995,49 @@ def query_notebooklm(
         "attempt_count": attempts,
     }
 
+
+def acquire_notebooklm_reference(
+    args: argparse.Namespace,
+    preflight: Mapping[str, Any],
+    output_dir: Path,
+) -> dict[str, Any]:
+    """Query NotebookLM once for the complete fixed set and write an immutable snapshot."""
+    questions = load_question_set(resolve_question_set_path(args))
+    selected_ids = {value.strip() for value in str(args.question_ids).split(",") if value.strip()}
+    question_ids = {str(question["id"]) for question in questions}
+    if selected_ids and selected_ids != question_ids:
+        raise BenchmarkError("Reference acquisition requires the complete question set; do not acquire a partial cache")
+    if not selected_ids and question_ids != {str(question["id"]) for question in BATTLE_QUESTIONS}:
+        raise BenchmarkError("Reference acquisition requires the owner-approved complete question set")
+    matrix = {str(row["question_id"]): row["systems"] for row in preflight.get("workflow_matrix", [])}
+    answers: list[dict[str, Any]] = []
+    for question in questions:
+        qid = str(question["id"])
+        applicability = matrix.get(qid, {}).get("notebooklm", {})
+        if not applicability.get("applicable"):
+            answers.append({
+                "question_id": qid,
+                "question": question["question"],
+                "status": "not_applicable",
+                "answer": "",
+                "latency_ms": 0.0,
+                "error": str(applicability.get("reason") or "not_applicable"),
+                "attempt_count": 0,
+            })
+            continue
+        answer = query_notebooklm(question["question"], args.notebook_id)
+        if answer.get("status") != "success":
+            raise BenchmarkError(f"NotebookLM reference acquisition failed for {qid}: {_safe_text(answer.get('error'))}")
+        answer = {
+            **answer,
+            "question_id": qid,
+            "question": str(question["question"]),
+        }
+        answers.append(answer)
+    snapshot = build_reference_snapshot(preflight, questions, answers, notebook_id=args.notebook_id)
+    destination = Path(args.reference_output) if args.reference_output else output_dir / "notebooklm_reference.json"
+    atomic_write_json(destination, snapshot)
+    return {"status": "PASS", "reference": str(destination), "reference_capture_id": snapshot["reference_capture_id"], "question_count": len(questions), "notebook_query_count": sum(row.get("status") == "success" for row in answers)}
 
 def answer_one(
     pipeline: RagV2DevPipeline,
@@ -972,6 +1264,14 @@ def generate_report(output_dir: Path, *, metadata: Mapping[str, Any], questions:
 def build_preflight(args: argparse.Namespace) -> dict[str, Any]:
     questions = load_question_set(resolve_question_set_path(args))
     local = build_local_manifest(Path(args.source_root).resolve(), allow_partial=getattr(args, "allow_partial", False))
+    reference_info = None
+    if getattr(args, "notebooklm_reference", ""):
+        reference_info = load_reference_snapshot(
+            Path(args.notebooklm_reference),
+            questions,
+            notebook_id=args.notebook_id,
+            corpus_fingerprint=str(local.get("corpus_fingerprint") or ""),
+        )
     local_only_preflight = bool(args.dry_run)
     if local_only_preflight:
         notebook = {
@@ -994,6 +1294,11 @@ def build_preflight(args: argparse.Namespace) -> dict[str, Any]:
             "provider_constructed": False,
             "reason": "dry_run_does_not_read_credentials_or_use_providers",
         }
+    elif reference_info is not None:
+        notebook = dict(reference_info["snapshot"]["notebook_manifest"])
+        notebook["reference_mode"] = "cached_reference"
+        notebook["status"] = "PASS"
+        router = router_readiness(Path(args.api_key_file))
     else:
         notebook = verify_notebook(args.notebook_id)
         router = router_readiness(Path(args.api_key_file))
@@ -1033,7 +1338,7 @@ def build_preflight(args: argparse.Namespace) -> dict[str, Any]:
         warnings.append("ambiguous_corpus_matches_require_review")
     return {
         "status": "PASS" if not blockers else "BLOCKED_PREFLIGHT",
-        "mode": "local_only" if local_only_preflight else "strict_external",
+        "mode": "local_only" if local_only_preflight else ("cached_reference" if reference_info is not None else "strict_external"),
         "blocking_checks": blockers,
         "warnings": warnings,
         "notebook": {key: value for key, value in notebook.items() if key != "sources"},
@@ -1042,6 +1347,12 @@ def build_preflight(args: argparse.Namespace) -> dict[str, Any]:
         "corpus_audit": corpus_audit,
         "workflow_matrix": workflow_matrix,
         "router": router,
+        "reference": {
+            "mode": "cached_reference",
+            "path": str(args.notebooklm_reference),
+            "reference_capture_id": reference_info["snapshot"]["reference_capture_id"],
+            "manifest_hash": reference_info["snapshot"]["notebook_manifest_hash"],
+        } if reference_info is not None else {"mode": "not_used"},
         "question_set_hash": question_set_fingerprint(questions),
         "candidate": promotion_candidate_identity(
             args.privacy_label,
@@ -1063,6 +1374,17 @@ def run_dry_or_live(args: argparse.Namespace, preflight: Mapping[str, Any], *, l
         raise BenchmarkError("Question set changed after preflight; rerun preflight before execution")
     source_root = resolve_benchmark_source_root(Path(args.source_root).resolve())
     local, corpus_audit = preflight["local_manifest"], preflight["corpus_audit"]
+    reference_info = None
+    if live:
+        reference_path = str(getattr(args, "notebooklm_reference", "") or "").strip()
+        if not reference_path:
+            raise BenchmarkError("Live algorithm rerun requires --notebooklm-reference; NotebookLM is queried only by --reference-acquire")
+        reference_info = load_reference_snapshot(
+            Path(reference_path),
+            questions,
+            notebook_id=args.notebook_id,
+            corpus_fingerprint=str(local.get("corpus_fingerprint") or ""),
+        )
     suffix = f"{int(time.time())}-{str(preflight['question_set_hash'])[:8]}"
     run_id, run_dir = f"BATTLE-RAGv2-{suffix}", output_dir / f"BATTLE-RAGv2-{suffix}"
     run_dir.mkdir(parents=True, exist_ok=True)
@@ -1080,14 +1402,25 @@ def run_dry_or_live(args: argparse.Namespace, preflight: Mapping[str, Any], *, l
     selected_ids = {value.strip() for value in str(args.question_ids).split(",") if value.strip()}
     run_questions = [question for question in questions if not selected_ids or str(question["id"]) in selected_ids]
     unknown_ids = selected_ids - {str(question["id"]) for question in questions}
-    if unknown_ids: raise BenchmarkError("Unknown question IDs: " + ", ".join(sorted(unknown_ids)))
-    if not run_questions: raise BenchmarkError("No benchmark questions selected")
+    if unknown_ids:
+        raise BenchmarkError("Unknown question IDs: " + ", ".join(sorted(unknown_ids)))
+    if not run_questions:
+        raise BenchmarkError("No benchmark questions selected")
+    if live and reference_info is not None:
+        missing_reference_ids = {str(question["id"]) for question in run_questions} - set(reference_info["answers"])
+        if missing_reference_ids:
+            raise BenchmarkError("NotebookLM reference is missing selected question IDs")
     write_jsonl(run_dir / "questions.jsonl", run_questions)
     rag_results, workspace_results, nlm_results, checkpoint_dir = [], [], [], run_dir / "checkpoints"
     matrix = {str(row["question_id"]): row["systems"] for row in preflight.get("workflow_matrix", [])}
-    source_root = resolve_benchmark_source_root(Path(args.source_root).resolve())
-    local = build_local_manifest(source_root, allow_partial=getattr(args, "allow_partial", False))
-    corpus_audit = classify_corpus_capabilities(preflight.get("notebook", {}).get("sources", []), local, source_map=load_mapping(Path(args.source_map) if args.source_map else None))
+    # Use the complete notebook manifest. The redacted notebook summary intentionally
+    # omits sources and must never be used for corpus matching.
+    notebook_sources = preflight.get("notebook_manifest", {}).get("sources", [])
+    corpus_audit = classify_corpus_capabilities(
+        notebook_sources,
+        local,
+        source_map=load_mapping(Path(args.source_map) if args.source_map else None),
+    )
     workspace_sources, workspace_ingestion = ingest_workspace_sources(source_root, local, privacy_label=args.privacy_label)
     rag_sources = build_rag_v2_sources(source_root, local, corpus_audit=corpus_audit, privacy_label=args.privacy_label)
     config = RagV2DevConfig(runtime_root=run_dir / "rag_v2_runtime", allowed_privacy_labels=("cloud_safe", "public") if args.privacy_label in {"cloud_safe", "public"} else ("local_only",))
@@ -1128,40 +1461,120 @@ def run_dry_or_live(args: argparse.Namespace, preflight: Mapping[str, Any], *, l
             rag = rag or {"question_id": qid, "status": "not_applicable", "answer": "", "reason": applicability.get("rag_v2", {}).get("reason")}
             workspace = checkpoint.get("workspace_chat") if checkpoint and checkpoint.get("workspace_chat", {}).get("status") == "success" else None
             workspace = workspace or (answer_workspace_one(workspace_sources, production_question_payload(question), api_key_file=Path(args.api_key_file), do_synthesis=live) if workspace_app else {"question_id": qid, "status": "not_applicable", "answer": "", "reason": applicability.get("workspace_chat", {}).get("reason")})
-            nlm = checkpoint.get("notebooklm") if checkpoint and checkpoint.get("notebooklm", {}).get("status") == "success" else None
-            nlm = nlm or (query_notebooklm(question["question"], args.notebook_id) if live and nlm_app else {"status": "not_queried" if nlm_app else "not_applicable", "answer": "", "latency_ms": 0, "error": "dry_run" if nlm_app else applicability.get("notebooklm", {}).get("reason")})
+            nlm = notebooklm_result_for_run(
+                question,
+                applicability.get("notebooklm", {}),
+                live=live,
+                reference=reference_info,
+            )
             rag["question_id"] = workspace["question_id"] = nlm["question_id"] = qid
-            rag_results.append(rag); workspace_results.append(workspace); nlm_results.append(nlm)
+
+            rag_results.append(rag)
+            workspace_results.append(workspace)
+            nlm_results.append(nlm)
             atomic_write_json(checkpoint_path(checkpoint_dir, qid), {"question_id": qid, "applicability": applicability, "rag_v2": rag, "workspace_chat": workspace, "notebooklm": nlm})
     applicability_by_question = {str(question["id"]): {system: bool(matrix.get(str(question["id"]), {}).get(system, {}).get("applicable")) for system in ("rag_v2", "workspace_chat", "notebooklm")} for question in run_questions}
     shared_questions = [question for question in run_questions if all(applicability_by_question[str(question["id"])].values())]
     results_by_system = {"rag_v2": rag_results, "workspace_chat": workspace_results, "notebooklm": nlm_results}
     bundle, assignment = make_blind_bundle(shared_questions, results_by_system, str(preflight["question_set_hash"]))
-    write_jsonl(run_dir / "blind_bundle.jsonl", bundle); atomic_write_json(run_dir / "blind_assignment.json", assignment)
-    write_jsonl(run_dir / "rag_v2_answers.jsonl", rag_results); write_jsonl(run_dir / "workspace_chat_answers.jsonl", workspace_results); write_jsonl(run_dir / "notebooklm_answers.jsonl", nlm_results)
-    metadata = {"battle_id": run_id, "timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), "notebook_id": args.notebook_id, "source_root_name": source_root.name, "corpus_fingerprint": local.get("corpus_fingerprint"), "question_set_hash": preflight["question_set_hash"], "candidate": preflight.get("candidate"), "selected_question_ids": [str(question["id"]) for question in run_questions], "corpus_audit_hash": corpus_audit.get("audit_hash"), "corpus_bucket_counts": corpus_audit.get("counts"), "router": preflight.get("router"), "rag_v2_ingestion": {key: value for key, value in ingestion_coverage.items() if key != "files"}, "workspace_ingestion": {key: value for key, value in workspace_ingestion.items() if key != "files"}, "production_arm": "workspace_chat", "candidate_arm": "rag_v2", "comparison_arm": "notebooklm", "mode": "run" if live else "dry-run"}
+    write_jsonl(run_dir / "blind_bundle.jsonl", bundle)
+    atomic_write_json(run_dir / "blind_assignment.json", assignment)
+    write_jsonl(run_dir / "rag_v2_answers.jsonl", rag_results)
+    write_jsonl(run_dir / "workspace_chat_answers.jsonl", workspace_results)
+    write_jsonl(run_dir / "notebooklm_answers.jsonl", nlm_results)
+    metadata = {
+        "battle_id": run_id,
+        "timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+        "notebook_id": args.notebook_id,
+        "source_root_name": source_root.name,
+        "corpus_fingerprint": local.get("corpus_fingerprint"),
+        "question_set_hash": preflight["question_set_hash"],
+        "candidate": preflight.get("candidate"),
+        "selected_question_ids": [str(question["id"]) for question in run_questions],
+        "corpus_audit_hash": corpus_audit.get("audit_hash"),
+        "corpus_bucket_counts": corpus_audit.get("counts"),
+        "router": preflight.get("router"),
+        "rag_v2_ingestion": {key: value for key, value in ingestion_coverage.items() if key != "files"},
+        "workspace_ingestion": {key: value for key, value in workspace_ingestion.items() if key != "files"},
+        "production_arm": "workspace_chat",
+        "candidate_arm": "rag_v2",
+        "comparison_arm": "notebooklm",
+        "reference_mode": "cached_reference" if reference_info is not None else "not_used",
+        "reference_capture_id": reference_info["snapshot"]["reference_capture_id"] if reference_info is not None else "",
+        "reference_manifest_hash": reference_info["snapshot"]["notebook_manifest_hash"] if reference_info is not None else "",
+        "live_arms": ["rag_v2", "workspace_chat"] if live else [],
+        "notebook_query_count": 0,
+        "mode": "run" if live else "dry-run",
+    }
     paths = generate_report(run_dir, metadata=metadata, questions=run_questions, results_by_system=results_by_system, applicability_by_question=applicability_by_question)
+    algorithm_paths = generate_report(
+        run_dir / "algorithm_comparison",
+        metadata={**metadata, "comparison_scope": "rag_v2_vs_workspace_chat"},
+        questions=run_questions,
+        results_by_system={"rag_v2": rag_results, "workspace_chat": workspace_results},
+        applicability_by_question={
+            qid: {system: values.get(system, False) for system in ("rag_v2", "workspace_chat")}
+            for qid, values in applicability_by_question.items()
+        },
+    )
     atomic_write_json(run_dir / "run_metadata.json", metadata)
-    return {"status": "PASS", "run_id": run_id, "run_dir": str(run_dir), "preflight_status": preflight.get("status"), "report": {key: str(value) for key, value in paths.items()}}
-
-
+    return {"status": "PASS", "run_id": run_id, "run_dir": str(run_dir), "preflight_status": preflight.get("status"), "report": {key: str(value) for key, value in paths.items()}, "algorithm_report": {key: str(value) for key, value in algorithm_paths.items()}}
 def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Fail-closed NotebookLM vs RAG v2 evidence gate"); parser.add_argument("--source-root", required=True); modes = parser.add_mutually_exclusive_group(required=True); modes.add_argument("--preflight", action="store_true"); modes.add_argument("--dry-run", action="store_true"); modes.add_argument("--run", action="store_true"); modes.add_argument("--score", metavar="SCORE_FILE"); parser.add_argument("--api-key-file", default=os.environ.get("AIOS_ROUTER_API_KEY_FILE", str(DEFAULT_API_KEY_FILE))); parser.add_argument("--notebook-id", default=NOTEBOOK_ID); parser.add_argument("--output-dir", default=str(DEFAULT_OUTPUT_DIR)); parser.add_argument("--source-map", default=""); parser.add_argument("--question-map", default="", help="Legacy alias for --question-set"); parser.add_argument("--question-set", default="", help="Owner-approved JSON/JSONL question manifest"); parser.add_argument("--question-ids", default="", help="Comma-separated selected question IDs"); parser.add_argument("--privacy-label", default="cloud_safe", choices=("cloud_safe", "public", "local_only")); parser.add_argument("--allow-partial", action="store_true", help="Allow partial corpus for dry-runs or test environments"); return parser.parse_args(argv)
+    parser = argparse.ArgumentParser(description="Fail-closed NotebookLM reference and RAG v2 evidence gate")
+    parser.add_argument("--source-root", required=True)
+    modes = parser.add_mutually_exclusive_group(required=True)
+    modes.add_argument("--preflight", action="store_true")
+    modes.add_argument("--dry-run", action="store_true")
+    modes.add_argument("--run", action="store_true", help="Run RAG v2 and Workspace Chat using --notebooklm-reference")
+    modes.add_argument("--reference-acquire", action="store_true", help="Query NotebookLM once and write a validated reference snapshot")
+    modes.add_argument("--score", metavar="SCORE_FILE")
+    parser.add_argument("--api-key-file", default=os.environ.get("AIOS_ROUTER_API_KEY_FILE", str(DEFAULT_API_KEY_FILE)))
+    parser.add_argument("--notebook-id", default=NOTEBOOK_ID)
+    parser.add_argument("--output-dir", default=str(DEFAULT_OUTPUT_DIR))
+    parser.add_argument("--reference-output", default="", help="Output path for --reference-acquire")
+    parser.add_argument("--notebooklm-reference", default="", help="Validated immutable NotebookLM reference snapshot")
+    parser.add_argument("--source-map", default="")
+    parser.add_argument("--question-map", default="", help="Legacy alias for --question-set")
+    parser.add_argument("--question-set", default="", help="Owner-approved JSON/JSONL question manifest")
+    parser.add_argument("--question-ids", default="", help="Comma-separated selected question IDs")
+    parser.add_argument("--privacy-label", default="cloud_safe", choices=("cloud_safe", "public", "local_only"))
+    parser.add_argument("--allow-partial", action="store_true", help="Allow partial corpus for dry-runs or test environments")
+    return parser.parse_args(argv)
 
 
 def main(argv: Sequence[str] | None = None) -> int:
     args, output_dir = parse_args(argv), None
     try:
         output_dir = Path(args.output_dir)
+        if args.run and not str(args.notebooklm_reference).strip():
+            raise BenchmarkError("--run requires --notebooklm-reference; use --reference-acquire for the only NotebookLM query path")
+        if args.reference_acquire and str(args.notebooklm_reference).strip():
+            raise BenchmarkError("Do not combine --reference-acquire with --notebooklm-reference")
         if args.score:
-            assignment = json.loads((output_dir / "blind_assignment.json").read_text(encoding="utf-8")); result = import_scores(Path(args.score), assignment, set(assignment)); atomic_write_json(output_dir / "score_result.json", result); print(json.dumps({"status": "PASS", "score_result": str(output_dir / "score_result.json")}, ensure_ascii=False)); return 0
-        preflight = build_preflight(args); atomic_write_json(output_dir / "preflight_latest.json", preflight)
+            assignment = json.loads((output_dir / "blind_assignment.json").read_text(encoding="utf-8"))
+            result = import_scores(Path(args.score), assignment, set(assignment))
+            atomic_write_json(output_dir / "score_result.json", result)
+            print(json.dumps({"status": "PASS", "score_result": str(output_dir / "score_result.json")}, ensure_ascii=False))
+            return 0
+        preflight = build_preflight(args)
+        atomic_write_json(output_dir / "preflight_latest.json", preflight)
         if args.preflight:
-            print(json.dumps({"status": preflight["status"], "preflight": str(output_dir / "preflight_latest.json")}, ensure_ascii=False)); return 0 if preflight["status"] == "PASS" else 2
-        if args.run and preflight["status"] != "PASS": print(json.dumps({"status": "BLOCKED_PREFLIGHT", "preflight": str(output_dir / "preflight_latest.json")}, ensure_ascii=False)); return 2
-        result = run_dry_or_live(args, preflight, live=args.run, output_dir=output_dir); print(json.dumps({key: result[key] for key in ("status", "run_id", "run_dir", "preflight_status")}, ensure_ascii=False)); return 0
+            print(json.dumps({"status": preflight["status"], "preflight": str(output_dir / "preflight_latest.json")}, ensure_ascii=False))
+            return 0 if preflight["status"] == "PASS" else 2
+        if (args.run or args.reference_acquire) and preflight["status"] != "PASS":
+            print(json.dumps({"status": "BLOCKED_PREFLIGHT", "preflight": str(output_dir / "preflight_latest.json")}, ensure_ascii=False))
+            return 2
+        if args.reference_acquire:
+            result = acquire_notebooklm_reference(args, preflight, output_dir)
+            print(json.dumps(result, ensure_ascii=False))
+            return 0
+        result = run_dry_or_live(args, preflight, live=args.run, output_dir=output_dir)
+        print(json.dumps({key: result[key] for key in ("status", "run_id", "run_dir", "preflight_status")}, ensure_ascii=False))
+        return 0
     except BenchmarkError as exc:
-        print(json.dumps({"status": "ERROR", "error": _safe_text(exc)}, ensure_ascii=False)); return 2
+        print(json.dumps({"status": "ERROR", "error": _safe_text(exc)}, ensure_ascii=False))
+        return 2
+
 
 
 if __name__ == "__main__":

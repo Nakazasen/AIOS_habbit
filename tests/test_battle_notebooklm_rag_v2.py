@@ -550,3 +550,175 @@ def test_dry_preflight_skips_notebook_and_router_credentials(
     assert candidate["effective_config"]["router_provider"] == "none"
     assert candidate["effective_config"]["privacy_label"] == "local_only"
     assert set(candidate["file_hashes"]) == set(runner._PROMOTION_CANDIDATE_FILES)
+
+
+def _reference_fixture(tmp_path: Path) -> tuple[list[dict], dict, Path]:
+    questions = [dict(question) for question in runner.BATTLE_QUESTIONS[:2]]
+    sources = [{"source_id": "source-1", "title": "manual.pdf", "status": "READY"}]
+    manifest = {
+        "status": "PASS",
+        "notebook_id": runner.NOTEBOOK_ID,
+        "title": runner.NOTEBOOK_TITLE,
+        "source_count": len(sources),
+        "ready_count": len(sources),
+        "all_ready": True,
+        "sources": sources,
+    }
+    manifest["manifest_hash"] = runner.stable_hash(sources)
+    corpus_fingerprint = "corpus-fingerprint"
+    answers = [
+        {"status": "success", "answer": "Grounded answer", "latency_ms": 12.0, "error": ""},
+        {"status": "not_applicable", "answer": "", "latency_ms": 0.0, "error": "test_not_applicable"},
+    ]
+    preflight = {
+        "notebook_manifest": manifest,
+        "local_manifest": {"corpus_fingerprint": corpus_fingerprint, "source_root_name": "tailieugoc"},
+        "corpus_audit": {"audit_hash": "audit-hash"},
+    }
+    snapshot = runner.build_reference_snapshot(preflight, questions, answers, notebook_id=runner.NOTEBOOK_ID)
+    path = tmp_path / "notebooklm_reference.json"
+    path.write_text(json.dumps(snapshot, ensure_ascii=False), encoding="utf-8")
+    return questions, snapshot, path
+
+
+def test_reference_snapshot_round_trips_with_strict_identity(tmp_path: Path):
+    questions, snapshot, path = _reference_fixture(tmp_path)
+
+    loaded = runner.load_reference_snapshot(
+        path,
+        questions,
+        notebook_id=runner.NOTEBOOK_ID,
+        corpus_fingerprint="corpus-fingerprint",
+    )
+
+    assert loaded["snapshot"]["reference_capture_id"] == snapshot["reference_capture_id"]
+    assert loaded["answers"]["BQ01"]["answer"] == "Grounded answer"
+    assert loaded["answers"]["BQ02"]["status"] == "not_applicable"
+
+
+@pytest.mark.parametrize("mutation", ["question", "manifest", "duplicate_answer"])
+def test_reference_snapshot_rejects_provenance_or_answer_drift(tmp_path: Path, mutation: str):
+    questions, snapshot, path = _reference_fixture(tmp_path)
+    mutated = json.loads(json.dumps(snapshot))
+    if mutation == "question":
+        mutated["questions"][0]["question"] = "tampered question"
+    elif mutation == "manifest":
+        mutated["notebook_manifest"]["sources"][0]["title"] = "tampered.pdf"
+    else:
+        mutated["answers"].append(dict(mutated["answers"][0]))
+    path.write_text(json.dumps(mutated, ensure_ascii=False), encoding="utf-8")
+
+    with pytest.raises(runner.BenchmarkError, match="NotebookLM reference rejected"):
+        runner.load_reference_snapshot(
+            path,
+            questions,
+            notebook_id=runner.NOTEBOOK_ID,
+            corpus_fingerprint="corpus-fingerprint",
+        )
+
+
+def test_cached_notebooklm_resolution_never_queries_provider(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    questions, snapshot, _ = _reference_fixture(tmp_path)
+    calls = []
+
+    def unexpected_query(*_args, **_kwargs):
+        calls.append(True)
+        raise AssertionError("cached algorithm rerun queried NotebookLM")
+
+    monkeypatch.setattr(runner, "query_notebooklm", unexpected_query)
+    reference = runner.validate_reference_snapshot(
+        snapshot,
+        questions,
+        notebook_id=runner.NOTEBOOK_ID,
+        corpus_fingerprint="corpus-fingerprint",
+    )
+
+    result = runner.notebooklm_result_for_run(
+        questions[0],
+        {"applicable": True},
+        live=True,
+        reference=reference,
+    )
+
+    assert result["reference_mode"] == "cached_reference"
+    assert result["status"] == "success"
+    assert result["answer"] == "Grounded answer"
+    assert calls == []
+
+
+def test_live_run_requires_reference_before_execution(tmp_path: Path):
+    root = tmp_path / "tailieugoc"
+    root.mkdir()
+    args = runner.parse_args(["--source-root", str(tmp_path), "--run"])
+
+    assert runner.main(["--source-root", str(tmp_path), "--run"]) == 2
+    assert args.run is True
+
+
+def test_reference_snapshot_rejects_notebook_identity_drift(tmp_path: Path):
+    questions, _snapshot, path = _reference_fixture(tmp_path)
+
+    with pytest.raises(runner.BenchmarkError, match="notebook_id_mismatch"):
+        runner.load_reference_snapshot(
+            path,
+            questions,
+            notebook_id="different-notebook",
+            corpus_fingerprint="corpus-fingerprint",
+        )
+
+def test_reference_acquisition_adds_question_identity_to_provider_rows(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    questions = [dict(question) for question in runner.BATTLE_QUESTIONS]
+    manifest = {
+        "status": "PASS",
+        "notebook_id": runner.NOTEBOOK_ID,
+        "title": runner.NOTEBOOK_TITLE,
+        "source_count": 1,
+        "ready_count": 1,
+        "all_ready": True,
+        "sources": [{"source_id": "source-1", "title": "manual.pdf", "status": "READY"}],
+    }
+    manifest["manifest_hash"] = runner.stable_hash(manifest["sources"])
+    preflight = {
+        "notebook_manifest": manifest,
+        "local_manifest": {"corpus_fingerprint": "corpus-fingerprint", "source_root_name": "tailieugoc"},
+        "corpus_audit": {"audit_hash": "audit-hash"},
+        "workflow_matrix": [
+            {"question_id": question["id"], "systems": {"notebooklm": {"applicable": True}}}
+            for question in questions
+        ],
+    }
+    args = SimpleNamespace(
+        question_ids="",
+        notebook_id=runner.NOTEBOOK_ID,
+        reference_output=str(tmp_path / "reference.json"),
+    )
+    monkeypatch.setattr(runner, "resolve_question_set_path", lambda _args: None)
+    monkeypatch.setattr(runner, "load_question_set", lambda _path: questions)
+    monkeypatch.setattr(
+        runner,
+        "query_notebooklm",
+        lambda question, _notebook_id: {"status": "success", "answer": f"Answer for {question}", "latency_ms": 1.0, "error": ""},
+    )
+
+    result = runner.acquire_notebooklm_reference(args, preflight, tmp_path)
+    snapshot = json.loads(Path(result["reference"]).read_text(encoding="utf-8"))
+
+    assert result["notebook_query_count"] == len(questions)
+    assert all(row["question_id"] == question["id"] for row, question in zip(snapshot["answers"], questions))
+    assert all(row["question"] == question["question"] for row, question in zip(snapshot["answers"], questions))
+    runner.validate_reference_snapshot(
+        snapshot,
+        questions,
+        notebook_id=runner.NOTEBOOK_ID,
+        corpus_fingerprint="corpus-fingerprint",
+    )
+
+
+def test_reference_acquisition_rejects_noncanonical_question_set(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    custom_questions = [dict(runner.BATTLE_QUESTIONS[0])]
+    args = SimpleNamespace(question_ids="", notebook_id=runner.NOTEBOOK_ID, reference_output=str(tmp_path / "reference.json"))
+    monkeypatch.setattr(runner, "resolve_question_set_path", lambda _args: None)
+    monkeypatch.setattr(runner, "load_question_set", lambda _path: custom_questions)
+
+    with pytest.raises(runner.BenchmarkError, match="owner-approved complete question set"):
+        runner.acquire_notebooklm_reference(args, {"workflow_matrix": []}, tmp_path)
