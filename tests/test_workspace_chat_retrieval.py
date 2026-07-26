@@ -67,6 +67,9 @@ def test_retrieve_local_evidence_txt():
     assert res["evidence_items"][0]["title"] == "data.txt"
     assert res["citations"][0]["title"] == "data.txt"
     assert "InterStock" in res["evidence_items"][0]["text"]
+    assert res["retrieved_context_sources"][0].source_id == source_txt.source_id
+    assert res["retrieved_context_sources"][0].source_scope == source_txt.source_scope
+    assert res["retrieved_context_sources"][0].privacy_label == source_txt.privacy_label
 
 def test_disabled_source_not_retrieved():
     # If the source is not passed to context_sources parameter, it must never be retrieved.
