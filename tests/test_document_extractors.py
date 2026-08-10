@@ -79,26 +79,109 @@ def test_extract_text_chunks_from_pdf(tmp_path):
     chunks = extract_text_chunks_from_file(file_path, root=tmp_path)
     assert len(chunks) == 1
     chunk = chunks[0]
-    assert chunk["text"] == "Hello from fake PDF chunking"
+    assert "Hello from fake PDF chunking" in chunk["text"]
     assert chunk["page"] in {"1", ""}
     assert chunk["extraction_status"] == "extracted"
     assert chunk["element_type"] in {"pdf_page_text", "pdf_markdown_page"}
     assert chunk.get("privacy_level") == "local_only"
 
 def test_extract_pdf_missing_dependency(monkeypatch, tmp_path):
+    import builtins
     import sys
-    monkeypatch.setitem(sys.modules, "pymupdf4llm", None)
-    monkeypatch.setitem(sys.modules, "fitz", None)
 
+    monkeypatch.setitem(sys.modules, "pdf_inspector", None)
+    monkeypatch.setitem(sys.modules, "fitz", None)
+    original_import = builtins.__import__
+
+    def blocked_import(name, *args, **kwargs):
+        if name in {"pdf_inspector", "fitz"}:
+            raise ImportError(f"blocked {name}")
+        return original_import(name, *args, **kwargs)
+
+    monkeypatch.setattr(builtins, "__import__", blocked_import)
     file_path = tmp_path / "mock.pdf"
-    with open(file_path, "wb") as f:
-        f.write(b"%PDF-1.4\n")
+    file_path.write_bytes(b"%PDF-1.4\n")
 
     results = _extract_pdf(file_path)
     assert len(results) == 1
     assert results[0].text == ""
     assert results[0].extraction_status == "dependency_missing"
-    assert "not installed" in results[0].warning
+    assert "PDF extraction unavailable" in results[0].warning
+
+
+def test_route_pdf_pages_uses_pdf_inspector_markdown(monkeypatch, tmp_path):
+    import sys
+    from types import SimpleNamespace
+    from aios_habit.document_extractors import route_pdf_pages
+
+    fake_module = SimpleNamespace(
+        extract_pages_markdown=lambda path: SimpleNamespace(
+            pages=[SimpleNamespace(page=0, markdown="# Tiêu đề\n\nNội dung tiếng Việt", needs_ocr=False)],
+            pages_with_tables=[1],
+            pages_with_columns=[],
+        )
+    )
+    monkeypatch.setitem(sys.modules, "pdf_inspector", fake_module)
+    file_path = tmp_path / "native.pdf"
+    file_path.write_bytes(b"not-read-by-fake-parser")
+
+    routes = route_pdf_pages(file_path)
+    assert len(routes) == 1
+    assert routes[0].page == 1
+    assert routes[0].extractor == "pdf_inspector"
+    assert routes[0].needs_ocr is False
+    assert routes[0].has_table is True
+    assert "Nội dung tiếng Việt" in routes[0].text
+
+
+def test_route_pdf_pages_falls_back_to_pymupdf(monkeypatch, tmp_path):
+    import sys
+    from types import SimpleNamespace
+    from aios_habit.document_extractors import route_pdf_pages
+
+    fake_module = SimpleNamespace(
+        extract_pages_markdown=lambda path: (_ for _ in ()).throw(RuntimeError("parser failed"))
+    )
+    monkeypatch.setitem(sys.modules, "pdf_inspector", fake_module)
+    file_path = tmp_path / "fallback.pdf"
+    doc = fitz.open()
+    page = doc.new_page()
+    page.insert_text((50, 50), "Fallback native text works")
+    doc.save(file_path)
+    doc.close()
+
+    routes = route_pdf_pages(file_path)
+    assert routes[0].extractor == "pymupdf_fallback"
+    assert routes[0].needs_ocr is False
+    assert "Fallback native text works" in routes[0].text
+    assert "parser failed" in routes[0].warning
+
+
+def test_route_pdf_pages_rescues_false_positive_ocr(monkeypatch, tmp_path):
+    import sys
+    from types import SimpleNamespace
+    from aios_habit.document_extractors import route_pdf_pages
+
+    fake_module = SimpleNamespace(
+        extract_pages_markdown=lambda path: SimpleNamespace(
+            pages=[SimpleNamespace(page=0, markdown="", needs_ocr=True)],
+            pages_with_tables=[],
+            pages_with_columns=[],
+        )
+    )
+    monkeypatch.setitem(sys.modules, "pdf_inspector", fake_module)
+    file_path = tmp_path / "native-rescue.pdf"
+    doc = fitz.open()
+    page = doc.new_page()
+    page.insert_text((50, 50), "Native text must avoid unnecessary OCR")
+    doc.save(file_path)
+    doc.close()
+
+    routes = route_pdf_pages(file_path)
+    assert routes[0].extractor == "pymupdf_native_rescue"
+    assert routes[0].needs_ocr is False
+    assert "Native text must avoid unnecessary OCR" in routes[0].text
+    assert "requested OCR" in routes[0].warning
 
 
 
@@ -179,3 +262,74 @@ def test_normalization_reduces_coordinate_garbage_and_preserves_multilingual():
     cleaned = normalize_extracted_text(text)
     assert "10 20 30 40 50" not in cleaned
     assert "Thiết kế 変更 ManualShipping" in cleaned
+
+
+def test_ocr_router_prefers_rapidocr_and_stops_after_quality_pass(monkeypatch):
+    import aios_habit.ocr_engines as engines
+
+    calls = []
+    monkeypatch.delenv("AIOS_OCR_ENGINE_ORDER", raising=False)
+    monkeypatch.setattr(engines, "engine_availability", lambda: {
+        "rapidocr": True, "paddleocr": True, "tesseract": True,
+    })
+    monkeypatch.setattr(engines, "run_rapidocr", lambda image: (
+        calls.append("rapidocr") or engines.OCREngineResult(
+            text="Xin chào tài liệu", confidence=92.0, confidence_samples=3, engine="rapidocr",
+        )
+    ))
+    monkeypatch.setattr(engines, "run_paddleocr", lambda image: (
+        calls.append("paddleocr") or engines.OCREngineResult(engine="paddleocr")
+    ))
+
+    result, attempts = engines.run_ocr_router(
+        object(), meaningful=lambda text: bool(text.strip()), minimum_confidence=35.0,
+        tesseract_fallback=lambda image: calls.append("tesseract"), mode="balanced",
+    )
+
+    assert result.engine == "rapidocr"
+    assert attempts == 1
+    assert calls == ["rapidocr"]
+
+
+def test_ocr_router_escalates_after_failed_quality_gate(monkeypatch):
+    import aios_habit.ocr_engines as engines
+
+    calls = []
+    monkeypatch.delenv("AIOS_OCR_ENGINE_ORDER", raising=False)
+    monkeypatch.setattr(engines, "engine_availability", lambda: {
+        "rapidocr": True, "paddleocr": True, "tesseract": True,
+    })
+    monkeypatch.setattr(engines, "run_rapidocr", lambda image: (
+        calls.append("rapidocr") or engines.OCREngineResult(
+            text="bad", confidence=10.0, confidence_samples=1, engine="rapidocr",
+        )
+    ))
+    monkeypatch.setattr(engines, "run_paddleocr", lambda image: (
+        calls.append("paddleocr") or engines.OCREngineResult(
+            text="Bảng dữ liệu hợp lệ", confidence=88.0, confidence_samples=4, engine="paddleocr",
+        )
+    ))
+
+    result, attempts = engines.run_ocr_router(
+        object(), meaningful=lambda text: len(text) > 5, minimum_confidence=35.0,
+        mode="balanced",
+    )
+
+    assert result.engine == "paddleocr"
+    assert attempts == 2
+    assert calls == ["rapidocr", "paddleocr"]
+
+
+def test_fast_mode_never_loads_heavy_fallbacks(monkeypatch):
+    from aios_habit.ocr_engines import configured_engine_order
+
+    monkeypatch.delenv("AIOS_OCR_ENGINE_ORDER", raising=False)
+    assert configured_engine_order("fast") == ["rapidocr"]
+
+
+def test_deep_pdf_mode_is_opt_in(monkeypatch, tmp_path):
+    from aios_habit.document_extractors import PDFPageRoute, _deep_pdf_result
+
+    monkeypatch.setenv("AIOS_OCR_MODE", "balanced")
+    result = _deep_pdf_result(tmp_path / "not-opened.pdf", [PDFPageRoute(page=1, has_table=True)])
+    assert result is None

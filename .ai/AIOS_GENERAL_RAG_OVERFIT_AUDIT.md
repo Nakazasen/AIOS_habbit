@@ -109,3 +109,38 @@ It can only support a partial manufacturing-assistant claim with caveats.
 - Can AIOS claim MOM-specific assistant: PARTIAL only, with caveats.
 - Can AIOS claim global NotebookLM parity: NO.
 - P1.0 opened: NO.
+
+## 2026-08-09 BGE-M3 RAG v2 Clean-Core Re-audit
+
+The active package at `src/aios_habit/rag_v2/` is now separated from the old
+benchmark-aware code:
+
+- Removed built-in named-subject translations and target-equivalent aliases.
+- Removed multilingual intent, facet, incident, and obligation cue dictionaries.
+- Removed the final `named_procedure_*` synthesis branch.
+- Kept only corpus-neutral signals: literal query segments, validated external
+  query-only expansions, semantic/sparse retrieval, source-derived metadata,
+  provenance, citation checks, and generic sanitation.
+- Restored only a small English function-word list to prevent overlap on words
+  such as `the` and `for` from counting as evidence. This is linguistic
+  normalization, not benchmark knowledge.
+
+The old `query_intent.py`, `domain_playbooks.py`, `mom_local_index.py`,
+`rag_search.py`, and Workspace Chat modules still contain domain-specific
+behavior. They are classified as **quarantined legacy**, not BGE-M3 RAG v2.
+The hardcode regression guard now scans every Python file in `rag_v2`, detects
+known benchmark literals and suspicious module-level semantic vocabularies, and
+fails if active modules import a quarantined legacy prefix.
+
+Verification after cleanup:
+
+- compile check: PASS;
+- structural hardcode/import-boundary guard: PASS;
+- clean planner and targeted retrieval/synthesis regressions: 12 PASS;
+- broader legacy-shaped core test run: 54 PASS / 35 FAIL because those tests
+  still require removed intent dictionaries, named aliases, and fixed answer
+  shapes. These failures are recorded as stale-contract debt, not hidden.
+
+All BQ01 answer-quality results produced before this cleanup are invalid for the
+clean-core competition. BQ01 must be rerun before unlocking BQ02-BQ12, and no
+handcrafted vocabulary may be restored to recover the old score.

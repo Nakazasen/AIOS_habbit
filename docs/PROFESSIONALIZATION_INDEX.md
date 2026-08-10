@@ -26,6 +26,8 @@ replace it.
 | Release | [Release policy](release/RELEASE_POLICY.md), [checklist](release/RELEASE_CHECKLIST.md), [supported versions](release/SUPPORTED_VERSIONS.md) | Distribution/support window pending |
 | Governance | [Risk register](governance/RISK_REGISTER.md), [ownership](governance/OWNERSHIP_AND_REVIEW.md), [DoR/DoD](governance/DEFINITION_OF_READY_DONE.md) | Named ownership pending |
 | Productization | [User guide](user/WORKSPACE_CHAT_USER_GUIDE.md), [onboarding](onboarding/MAINTAINER_ONBOARDING.md), [migration](operations/DATA_MIGRATION_COMPATIBILITY.md) | Manual reviews and policy decisions pending |
+| Production Vision | [Production intelligence vision](design/PRODUCTION_INTELLIGENCE_VISION.md) | Long-term design reference; no delivery gate opened |
+
 
 ## Required owner decisions
 

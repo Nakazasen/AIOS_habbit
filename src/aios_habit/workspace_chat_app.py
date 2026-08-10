@@ -197,6 +197,11 @@ from aios_habit.workspace_chat_ai_answer import (
     pack_workspace_ai_context,
     generate_workspace_ai_answer
 )
+from aios_habit.workspace_chat_rag_v2_adapter import (
+    schedule_workspace_chat_source_preparation,
+    retry_workspace_chat_source_preparation,
+    get_workspace_chat_source_preparation_status,
+)
 from aios_habit.workspace_chat_ui import (
     get_vietnamese_labels,
     render_notebook_header,
@@ -207,7 +212,6 @@ from aios_habit.workspace_chat_ui import (
     render_source_library,
     render_source_status,
     render_ai_source_context_summary,
-    render_source_check_panel,
     render_ai_answer_header,
     render_insufficient_context,
     render_privacy_block_message,
@@ -224,6 +228,54 @@ from aios_habit.workspace_chat_ui import (
     NOTEBOOK_DELETE_WRONG_TITLE,
     NOTEBOOK_DELETE_FAILURE,
 )
+from aios_habit.workspace_agent_bridge_client import WorkspaceAgentBridgeClient
+from aios_habit.workspace_agent_models import WorkspaceAgentRequest
+from aios_habit.workspace_agent_orchestrator import WorkspaceAgentOrchestrator
+
+
+def _workspace_context_sources(notebook_sources, temp_sources):
+    ctx_sources = []
+    for source in notebook_sources:
+        text = (
+            getattr(source, "content_text", "")
+            or getattr(source, "content_preview", "")
+        )
+        ctx_sources.append(
+            WorkspaceAIContextSource(
+                source_id=source.id,
+                source_scope=SOURCE_SCOPE_NOTEBOOK,
+                source_type=getattr(source, "source_type", "plain_text"),
+                title=getattr(source, "title", "Untitled"),
+                privacy_label=getattr(source, "privacy_label", "local_only"),
+                text=text,
+                included_chars=len(text),
+                truncated=bool(getattr(source, "truncated", False)),
+            )
+        )
+    for source in temp_sources:
+        text = (
+            getattr(source, "content_text", "")
+            or getattr(source, "content_preview", "")
+        )
+        ctx_sources.append(
+            WorkspaceAIContextSource(
+                source_id=source.id,
+                source_scope=SOURCE_SCOPE_TEMPORARY,
+                source_type=getattr(source, "source_type", "plain_text"),
+                title=getattr(source, "title", "Untitled"),
+                privacy_label=getattr(source, "privacy_label", "local_only"),
+                text=text,
+                included_chars=len(text),
+                truncated=bool(getattr(source, "truncated", False)),
+            )
+        )
+    return tuple(ctx_sources)
+
+
+def _schedule_sources_for_preparation(notebook_sources, temp_sources):
+    ctx_sources = _workspace_context_sources(notebook_sources, temp_sources)
+    schedule_workspace_chat_source_preparation(ctx_sources)
+    return get_workspace_chat_source_preparation_status(ctx_sources)
 
 # Tự động khởi tạo kho lưu trữ
 init_chat_store()
@@ -241,8 +293,6 @@ if "wsc_action_message" not in st.session_state:
     st.session_state.wsc_action_message = None
 if "wsc_action_error" not in st.session_state:
     st.session_state.wsc_action_error = None
-if "wsc_source_check_visible" not in st.session_state:
-    st.session_state.wsc_source_check_visible = False
 if "wsc_last_ai_badge" not in st.session_state:
     st.session_state.wsc_last_ai_badge = None
 if "wsc_archive_confirm_notebook_id" not in st.session_state:
@@ -251,6 +301,14 @@ if "wsc_delete_confirm_notebook_id" not in st.session_state:
     st.session_state.wsc_delete_confirm_notebook_id = None
 if "wsc_upload_version" not in st.session_state:
     st.session_state.wsc_upload_version = 0
+if "wsc_agent_workspace_root" not in st.session_state:
+    st.session_state.wsc_agent_workspace_root = r"D:\Sandbox\AIOS_habbit"
+if "wsc_agent_scope_confirmed" not in st.session_state:
+    st.session_state.wsc_agent_scope_confirmed = False
+if "wsc_agent_last_result" not in st.session_state:
+    st.session_state.wsc_agent_last_result = None
+if "wsc_agent_pending_action" not in st.session_state:
+    st.session_state.wsc_agent_pending_action = None
 
 def safe_rerun():
     try:
@@ -547,7 +605,10 @@ else:
         def on_promote_temporary(source_id: str):
             try:
                 promote_temporary_source_to_notebook(active_conversation.id, source_id, active_nb_id)
-                st.session_state.wsc_action_message = "Đã thêm nguồn vào sổ tài liệu. Nguồn mới chưa được tự động bật."
+                st.session_state.wsc_action_message = (
+                    "Đã thêm nguồn vào sổ tài liệu. Nguồn mới đang được chuẩn bị "
+                    "trong nền và chưa được tự động bật."
+                )
             except Exception as e:
                 st.session_state.wsc_action_error = "Không thể thêm nguồn vào sổ tài liệu. Vui lòng thử lại."
             safe_rerun()
@@ -578,21 +639,6 @@ else:
             def on_toggle_source(scope: str, source_id: str, enabled: bool):
                 set_source_enabled(active_conversation.id, scope, source_id, enabled)
                 st.session_state.wsc_action_message = "Đã cập nhật trạng thái bật/tắt nguồn."
-
-            def on_bulk_toggle(sources_to_toggle: list, enabled: bool):
-                for scope, source_id in sources_to_toggle:
-                    set_source_enabled(active_conversation.id, scope, source_id, enabled)
-                count = len(sources_to_toggle)
-                state_str = "Đã bật" if enabled else "Đã tắt"
-                st.session_state.wsc_action_message = f"{state_str} {count} nguồn đang lọc."
-
-                try:
-                    st.rerun()
-                except AttributeError:
-                    try:
-                        st.experimental_rerun()
-                    except AttributeError:
-                        pass
 
             def on_privacy_save(scope: str, source_id: str, choice: str):
                 if scope == SOURCE_SCOPE_NOTEBOOK:
@@ -628,6 +674,26 @@ else:
             for sid, val in temp_selections.items():
                 selections_map[("temporary", sid)] = val
 
+            prep_context_sources = _workspace_context_sources(
+                notebook_sources, temp_sources
+            )
+            schedule_workspace_chat_source_preparation(prep_context_sources)
+            prep_status_map = get_workspace_chat_source_preparation_status(
+                prep_context_sources
+            )
+
+            def on_retry_preparation(scope: str, source_id: str):
+                retry_sources = tuple(
+                    source
+                    for source in prep_context_sources
+                    if source.source_scope == scope and source.source_id == source_id
+                )
+                retry_workspace_chat_source_preparation(retry_sources)
+                st.session_state.wsc_action_message = (
+                    "Đang thử chuẩn bị lại nguồn trong nền."
+                )
+                safe_rerun()
+
             st.write("---")
             render_source_library(
                 notebook_sources=notebook_sources,
@@ -637,8 +703,9 @@ else:
                 on_toggle_source=on_toggle_source,
                 on_promote_temporary=on_promote_temporary,
                 on_privacy_save=on_privacy_save,
-                on_bulk_toggle=on_bulk_toggle,
-                on_delete_source=on_delete_source
+                on_delete_source=on_delete_source,
+                preparation_status_map=prep_status_map,
+                on_retry_preparation=on_retry_preparation,
             )
 
     # Khu vực chính ở giữa
@@ -648,6 +715,198 @@ else:
         st.info("Vui lòng tạo hoặc chọn một cuộc trò chuyện để bắt đầu.")
     else:
         st.info("Thêm tài liệu rồi hỏi tự nhiên; AIOS sẽ tự kiểm tra nguồn và cảnh báo nếu thiếu.")
+
+        with st.expander("🧠 Agent IDE cục bộ (NVIDIA Agent Core)", expanded=False):
+            st.caption("Workspace Agent IDE chỉ đọc code mặc định. Nó không gửi tài liệu Notebook lên cloud và không tự sửa tệp hoặc chạy lệnh.")
+            agent_mode = st.selectbox(
+                "Chế độ Agent IDE",
+                options=["analyze", "debug", "plan", "implement"],
+                format_func=lambda value: {
+                    "analyze": "Phân tích codebase", "debug": "Tìm nguyên nhân lỗi",
+                    "plan": "Lập kế hoạch thay đổi", "implement": "Chuẩn bị thay đổi (chưa ghi tệp)",
+                }[value],
+                key=f"wsc_agent_mode_{active_conversation.id}",
+            )
+            workspace_root = st.text_input(
+                "Thư mục code workspace", value=st.session_state.wsc_agent_workspace_root,
+                key=f"wsc_agent_workspace_{active_conversation.id}",
+                help="Agent Core chỉ được phép truy cập các tệp nằm trong thư mục này.",
+            )
+            st.session_state.wsc_agent_workspace_root = workspace_root
+            scope_confirmed = st.checkbox(
+                "Tôi xác nhận Agent IDE có thể đọc code và Git metadata trong workspace này.",
+                value=st.session_state.wsc_agent_scope_confirmed,
+                key=f"wsc_agent_scope_{active_conversation.id}",
+            )
+            st.session_state.wsc_agent_scope_confirmed = scope_confirmed
+            trust_col, status_col = st.columns([1, 2])
+            with trust_col:
+                if st.button("Tin cậy workspace này", key=f"wsc_agent_trust_{active_conversation.id}"):
+                    if not scope_confirmed:
+                        st.warning("Hãy xác nhận phạm vi code workspace trước khi đặt mức tin cậy.")
+                    else:
+                        try:
+                            client = WorkspaceAgentBridgeClient(workspace_root)
+                            trust = client.trust_workspace()
+                            client.close()
+                            st.success(f"Đã tin cậy workspace cục bộ: {trust.get('workspace', workspace_root)}")
+                        except Exception as error:
+                            st.error(f"Không thể đặt mức tin cậy cho Agent IDE: {error}")
+            with status_col:
+                st.caption("Lệnh, áp diff và mọi sửa đổi tệp sẽ luôn yêu cầu một phê duyệt riêng ở bước sau.")
+            with st.form(f"wsc_agent_ask_form_{active_conversation.id}", clear_on_submit=True):
+                agent_instruction = st.text_area("Yêu cầu cho Agent IDE", placeholder="Ví dụ: Tìm luồng xử lý RAG và các điểm có thể lỗi.", height=90)
+                agent_submitted = st.form_submit_button("Khảo sát workspace", use_container_width=True)
+            if agent_submitted:
+                result = WorkspaceAgentOrchestrator().run(WorkspaceAgentRequest(
+                    conversation_id=active_conversation.id,
+                    workspace_root=workspace_root,
+                    instruction=agent_instruction,
+                    mode=agent_mode,
+                    workspace_scope_confirmed=scope_confirmed,
+                ))
+                st.session_state.wsc_agent_last_result = result
+                if result.state == "completed":
+                    save_message(ChatMessage(
+                        id=f"MSG-{uuid.uuid4().hex[:8].upper()}", conversation_id=active_conversation.id,
+                        role="assistant", content=result.answer_text,
+                    ))
+                    st.success("Agent IDE đã hoàn tất khảo sát chỉ-đọc.")
+                    safe_rerun()
+                else:
+                    st.error(result.error_message or "Agent IDE chưa thể hoàn tất yêu cầu.")
+            agent_result = st.session_state.wsc_agent_last_result
+            if agent_result and agent_result.session_id:
+                with st.expander("Dấu vết công cụ Agent IDE", expanded=False):
+                    for event in agent_result.events:
+                        icon = "✅" if event.ok else "⚠️"
+                        st.write(f"{icon} `{event.tool}` · {event.elapsed_ms}ms · {event.summary}")
+
+            st.markdown("#### Tạo proposal có kiểm soát")
+            st.caption("Agent không được phép tự sửa hoặc chạy lệnh. Bạn tạo proposal, kiểm tra payload chính xác, rồi phê duyệt riêng từng proposal.")
+            proposal_tab, command_tab = st.tabs(["Đề xuất patch", "Đề xuất lệnh"])
+            with proposal_tab:
+                with st.form(f"wsc_agent_patch_form_{active_conversation.id}", clear_on_submit=True):
+                    patch_path = st.text_input("Tệp cần đề xuất sửa", placeholder="src/aios_habit/rag_v2/chunking.py")
+                    patch_find = st.text_area("Đoạn hiện tại (phải khớp chính xác)", height=100)
+                    patch_replace = st.text_area("Đoạn thay thế", height=100)
+                    patch_reason = st.text_input("Lý do thay đổi", placeholder="Ví dụ: bổ sung xử lý edge-case chunk rỗng")
+                    patch_submit = st.form_submit_button("Tạo diff để review", use_container_width=True)
+                if patch_submit:
+                    patch_result = WorkspaceAgentOrchestrator().propose_patch(
+                        workspace_root=workspace_root, file_path=patch_path, find=patch_find,
+                        replace=patch_replace, reason=patch_reason, scope_confirmed=scope_confirmed,
+                    )
+                    st.session_state.wsc_agent_last_result = patch_result
+                    if patch_result.pending_action:
+                        st.session_state.wsc_agent_pending_action = {
+                            "proposal_session_id": patch_result.session_id,
+                            "action": patch_result.pending_action,
+                        }
+                        st.success("Đã tạo diff. Hãy review phần phê duyệt phía dưới; chưa có thay đổi nào được ghi.")
+                    else:
+                        st.error(patch_result.error_message or "Không thể tạo proposal patch.")
+            with command_tab:
+                with st.form(f"wsc_agent_command_form_{active_conversation.id}", clear_on_submit=True):
+                    proposed_command = st.text_area("Lệnh sẽ chạy trong workspace", placeholder="py -m pytest tests/test_rag_v2_chunking.py -q", height=80)
+                    command_reason = st.text_input("Mục đích chạy lệnh", placeholder="Ví dụ: kiểm chứng thay đổi chunking")
+                    command_submit = st.form_submit_button("Tạo proposal lệnh", use_container_width=True)
+                if command_submit:
+                    command_result = WorkspaceAgentOrchestrator().propose_command(
+                        workspace_root=workspace_root, command=proposed_command,
+                        reason=command_reason, scope_confirmed=scope_confirmed,
+                    )
+                    st.session_state.wsc_agent_last_result = command_result
+                    if command_result.pending_action:
+                        st.session_state.wsc_agent_pending_action = {
+                            "proposal_session_id": command_result.session_id,
+                            "action": command_result.pending_action,
+                        }
+                        st.success("Đã tạo proposal lệnh. Lệnh chưa được chạy.")
+                    else:
+                        st.error(command_result.error_message or "Không thể tạo proposal lệnh.")
+
+            pending = st.session_state.wsc_agent_pending_action
+            if pending:
+                action = pending["action"]
+                st.markdown("#### ⚠️ Cổng phê duyệt bắt buộc")
+                st.warning("Đây là thao tác có thể thay đổi workspace. Kiểm tra payload chính xác bên dưới trước khi phê duyệt.")
+                st.write(f"**Loại:** `{action.kind}`  ·  **Mục đích:** {action.summary}")
+                if action.kind == "edit":
+                    payload = action.payload
+                    st.write(f"**Tệp:** `{payload.get('relPath', 'unknown')}`")
+                    st.code(payload.get("diff", "Không có diff để hiển thị."), language="diff")
+                    hunks = payload.get("hunks", [])
+                    selected_hunks = None
+                    if hunks:
+                        selected_hunks = st.multiselect(
+                            "Chọn hunk để áp dụng (bỏ trống = áp dụng toàn bộ proposal)",
+                            options=[hunk.get("id") for hunk in hunks],
+                            format_func=lambda hunk_id: next((hunk.get("preview", hunk_id) for hunk in hunks if hunk.get("id") == hunk_id), hunk_id),
+                            key=f"wsc_agent_hunks_{pending['proposal_session_id']}",
+                        )
+                    reviewed = st.checkbox(
+                        "Tôi đã kiểm tra diff này và đồng ý áp dụng đúng các thay đổi hiển thị.",
+                        key=f"wsc_agent_edit_review_{pending['proposal_session_id']}",
+                    )
+                    approve_col, reject_col = st.columns(2)
+                    with approve_col:
+                        if st.button("Phê duyệt và áp dụng patch", type="primary", key=f"wsc_agent_apply_{pending['proposal_session_id']}"):
+                            if not reviewed:
+                                st.error("Hãy xác nhận bạn đã review diff trước khi áp dụng.")
+                            else:
+                                result = WorkspaceAgentOrchestrator().approve_edit(
+                                    proposal_session_id=pending["proposal_session_id"], pending_edit_id=payload["id"],
+                                    workspace_root=workspace_root, scope_confirmed=scope_confirmed,
+                                    hunk_ids=selected_hunks or None,
+                                )
+                                st.session_state.wsc_agent_last_result = result
+                                st.session_state.wsc_agent_pending_action = None
+                                if result.state == "completed":
+                                    st.success(result.answer_text)
+                                else:
+                                    st.error(result.error_message or "Không thể áp dụng proposal.")
+                                safe_rerun()
+                    with reject_col:
+                        if st.button("Từ chối và hủy patch", key=f"wsc_agent_discard_{pending['proposal_session_id']}"):
+                            result = WorkspaceAgentOrchestrator().discard_edit(
+                                proposal_session_id=pending["proposal_session_id"], pending_edit_id=payload["id"],
+                            )
+                            st.session_state.wsc_agent_last_result = result
+                            st.session_state.wsc_agent_pending_action = None
+                            st.info(result.answer_text)
+                            safe_rerun()
+                else:
+                    command = action.payload.get("command", "")
+                    st.code(command, language="powershell")
+                    st.caption(f"Thư mục chạy: `{action.payload.get('workspace_root', workspace_root)}`")
+                    reviewed = st.checkbox(
+                        "Tôi đã kiểm tra lệnh này và đồng ý cho chạy duy nhất lệnh hiển thị.",
+                        key=f"wsc_agent_command_review_{pending['proposal_session_id']}",
+                    )
+                    approve_col, reject_col = st.columns(2)
+                    with approve_col:
+                        if st.button("Phê duyệt và chạy lệnh", type="primary", key=f"wsc_agent_execute_{pending['proposal_session_id']}"):
+                            if not reviewed:
+                                st.error("Hãy xác nhận bạn đã review lệnh trước khi chạy.")
+                            else:
+                                result = WorkspaceAgentOrchestrator().approve_command(
+                                    workspace_root=action.payload.get("workspace_root", workspace_root), command=command,
+                                    scope_confirmed=scope_confirmed,
+                                )
+                                st.session_state.wsc_agent_last_result = result
+                                st.session_state.wsc_agent_pending_action = None
+                                if result.state == "completed":
+                                    st.success(result.answer_text)
+                                else:
+                                    st.error(result.error_message or "Không thể chạy lệnh đã phê duyệt.")
+                                safe_rerun()
+                    with reject_col:
+                        if st.button("Từ chối lệnh", key=f"wsc_agent_reject_command_{pending['proposal_session_id']}"):
+                            st.session_state.wsc_agent_pending_action = None
+                            st.info("Đã từ chối proposal lệnh. Không có lệnh nào được chạy.")
+                            safe_rerun()
+
         # Hiển thị các thông báo thử nghiệm
         if st.session_state.wsc_show_save_placeholder:
             st.info(f"ℹ️ {SAVE_CASE_PLACEHOLDER_MESSAGE}")
@@ -672,39 +931,6 @@ else:
                     st.write("Hãy bắt đầu cuộc trò chuyện bằng cách đặt câu hỏi ở dưới.")
                 for m in messages:
                     render_chat_bubble(m)
-
-            # Phase 2H: Source check panel (outside chat, never saved to history)
-            if st.session_state.wsc_source_check_visible:
-                enabled_selections = load_enabled_sources_for_conversation(active_conversation.id)
-                current_notebook_sources = load_notebook_sources(active_nb_id)
-                current_temp_sources = load_temporary_sources(active_conversation.id)
-                notebook_source_by_id = {s.id: s for s in current_notebook_sources}
-                temp_source_by_id = {s.id: s for s in current_temp_sources}
-                check_source_inputs = []
-                for selection in enabled_selections:
-                    if selection.source_scope == SOURCE_SCOPE_NOTEBOOK:
-                        resolved_source = notebook_source_by_id.get(selection.source_id)
-                    elif selection.source_scope == SOURCE_SCOPE_TEMPORARY:
-                        resolved_source = temp_source_by_id.get(selection.source_id)
-                    else:
-                        resolved_source = None
-                    if resolved_source is None:
-                        continue
-                    check_source_inputs.append(
-                        WorkspaceTrialSourceInput(
-                            source_id=resolved_source.id,
-                            source_scope=selection.source_scope,
-                            source_type=resolved_source.source_type,
-                            title=resolved_source.title,
-                            content_preview=resolved_source.content_preview,
-                            content_text=resolved_source.content_text,
-                        )
-                    )
-                summary = build_source_check_summary(check_source_inputs)
-                render_source_check_panel(list(summary.source_titles), list(summary.source_previews))
-                if st.button("Đóng kiểm tra nguồn"):
-                    st.session_state.wsc_source_check_visible = False
-                    safe_rerun()
 
             # Phase 2H: AI answer badge (outside chat, shows source info after successful AI call)
             badge_data = st.session_state.wsc_last_ai_badge
@@ -737,17 +963,6 @@ else:
             with st.form(f"wsc_ai_ask_form_{active_conversation.id}", clear_on_submit=True):
                 user_input = st.text_area(labels["question_placeholder"], height=80, key=f"wsc_question_{active_conversation.id}")
                 ask_submitted = st.form_submit_button(labels["ai_action"], use_container_width=True)
-
-            check_submitted = False
-            with st.expander("🛠️ Kiểm tra nguồn nâng cao", expanded=False):
-                with st.form(f"wsc_debug_form_{active_conversation.id}"):
-                    st.write("Kiểm tra xem AIOS sẽ sử dụng nguồn nào trước khi gửi câu hỏi thực tế.")
-                    check_submitted = st.form_submit_button(labels["source_check"], use_container_width=True)
-
-            if check_submitted:
-                st.session_state.wsc_source_check_visible = True
-                st.session_state.wsc_last_ai_badge = None
-                safe_rerun()
 
             if ask_submitted and user_input and user_input.strip():
                 # Phase 2H: AI-first flow
@@ -782,79 +997,116 @@ else:
                         }
                         safe_rerun()
                     else:
-                        # Build consent keys from current snapshot
-                        current_keys = tuple(sorted((sel.source_scope, sel.source_id) for sel in enabled_selections))
-
-                        from aios_habit.workspace_chat_retrieval import retrieve_local_evidence
-                        ret_res = retrieve_local_evidence(q_text, packed_sources)
-
-                        if ret_res["summary_count"] == 0:
-                            st.session_state.wsc_action_error = "Chưa tìm thấy đoạn phù hợp trong nguồn đang bật."
+                        preparation_states = (
+                            get_workspace_chat_source_preparation_status(
+                                non_empty_sources
+                            )
+                        )
+                        failed_sources = [
+                            identity
+                            for identity, state in preparation_states.items()
+                            if state == "failed"
+                        ]
+                        waiting_sources = [
+                            identity
+                            for identity, state in preparation_states.items()
+                            if state != "ready" and state != "failed"
+                        ]
+                        if failed_sources:
+                            st.session_state.wsc_action_error = (
+                                "Có nguồn chuẩn bị thất bại. Hãy bấm “Thử chuẩn bị lại” "
+                                "ở danh sách nguồn trước khi Hỏi."
+                            )
+                            st.session_state.wsc_last_ai_badge = None
+                            safe_rerun()
+                        elif waiting_sources:
+                            st.session_state.wsc_action_error = (
+                                "Nguồn đang được chuẩn bị để tìm kiếm. Vui lòng thử Hỏi "
+                                "lại sau ít phút."
+                            )
                             st.session_state.wsc_last_ai_badge = None
                             safe_rerun()
                         else:
-                            req = WorkspaceAIAnswerRequest(
-                                conversation_id=active_conversation.id,
-                                question=q_text,
-                                context_sources=packed_sources,
-                                privacy_mode=PRIVACY_MODE_CLOUD_ALLOWED,
-                                cloud_consent_confirmed=True,
-                                consent_source_keys=current_keys,
-                                retrieval_applied=True,
-                                retrieved_context_sources=ret_res["retrieved_context_sources"],
-                                real_router_enabled=True
+                            # Build consent keys from the same ready source snapshot.
+                            current_keys = tuple(sorted((sel.source_scope, sel.source_id) for sel in enabled_selections))
+
+                            from aios_habit.workspace_chat_rag_v2_adapter import (
+                                retrieve_workspace_chat_evidence as retrieve_local_evidence,
                             )
+                            with st.spinner("Đang tìm trong tài liệu..."):
+                                ret_res = retrieve_local_evidence(q_text, packed_sources)
 
-                            res = generate_workspace_ai_answer(req, RealWorkspaceAIProviderClient())
-
-                            if res.ok:
-                                user_msg = ChatMessage(
-                                    id=f"MSG-{uuid.uuid4().hex[:8].upper()}",
-                                    conversation_id=active_conversation.id,
-                                    role="user",
-                                    content=user_input
-                                )
-                                save_message(user_msg)
-                                assistant_msg = ChatMessage(
-                                    id=f"MSG-{uuid.uuid4().hex[:8].upper()}",
-                                    conversation_id=active_conversation.id,
-                                    role="assistant",
-                                    content=res.answer_text
-                                )
-                                save_message(assistant_msg)
-
-                                source_titles = list(res.included_source_titles)
-                                st.session_state.wsc_last_ai_badge = {
-                                    "conversation_id": active_conversation.id,
-                                    "type": "ai_answered",
-                                    "source_count": len(source_titles),
-                                    "source_titles": source_titles,
-                                    "retrieval_summary": ret_res["safe_owner_message"],
-                                    "evidence_items": ret_res["evidence_items"],
-                                }
-
-                                if res.warnings:
-                                    st.session_state.wsc_action_message = "\n".join(res.warnings)
-                                else:
-                                    st.session_state.wsc_action_message = "Đã nhận câu trả lời từ AI thành công."
-
+                            if ret_res.get("status") == "quality_search_unavailable":
+                                st.session_state.wsc_action_error = ret_res["safe_owner_message"]
+                                st.session_state.wsc_last_ai_badge = None
+                                safe_rerun()
+                            elif ret_res["summary_count"] == 0:
+                                st.session_state.wsc_action_error = "Chưa tìm thấy đoạn phù hợp trong nguồn đang bật."
+                                st.session_state.wsc_last_ai_badge = None
                                 safe_rerun()
                             else:
-                                # Handle error cases
-                                if "chỉ được dùng trên máy" in (res.error_message or ""):
+                                req = WorkspaceAIAnswerRequest(
+                                    conversation_id=active_conversation.id,
+                                    question=q_text,
+                                    context_sources=packed_sources,
+                                    privacy_mode=PRIVACY_MODE_CLOUD_ALLOWED,
+                                    cloud_consent_confirmed=True,
+                                    consent_source_keys=current_keys,
+                                    retrieval_applied=True,
+                                    retrieved_context_sources=ret_res["retrieved_context_sources"],
+                                    real_router_enabled=True
+                                )
+
+                                res = generate_workspace_ai_answer(req, RealWorkspaceAIProviderClient())
+
+                                if res.ok:
+                                    user_msg = ChatMessage(
+                                        id=f"MSG-{uuid.uuid4().hex[:8].upper()}",
+                                        conversation_id=active_conversation.id,
+                                        role="user",
+                                        content=user_input
+                                    )
+                                    save_message(user_msg)
+                                    assistant_msg = ChatMessage(
+                                        id=f"MSG-{uuid.uuid4().hex[:8].upper()}",
+                                        conversation_id=active_conversation.id,
+                                        role="assistant",
+                                        content=res.answer_text
+                                    )
+                                    save_message(assistant_msg)
+
+                                    source_titles = list(res.included_source_titles)
                                     st.session_state.wsc_last_ai_badge = {
                                         "conversation_id": active_conversation.id,
-                                        "type": "privacy_block",
+                                        "type": "ai_answered",
+                                        "source_count": len(source_titles),
+                                        "source_titles": source_titles,
+                                        "retrieval_summary": ret_res["safe_owner_message"],
+                                        "evidence_items": ret_res["evidence_items"],
                                     }
-                                elif "Tập nguồn đang bật đã thay đổi" in (res.error_message or ""):
-                                    st.session_state.wsc_last_ai_badge = {
-                                        "conversation_id": active_conversation.id,
-                                        "type": "source_changed",
-                                    }
+
+                                    if res.warnings:
+                                        st.session_state.wsc_action_message = "\n".join(res.warnings)
+                                    else:
+                                        st.session_state.wsc_action_message = "Đã nhận câu trả lời từ AI thành công."
+
+                                    safe_rerun()
                                 else:
-                                    st.session_state.wsc_action_error = res.error_message
-                                    st.session_state.wsc_last_ai_badge = None
-                                safe_rerun()
+                                    # Handle error cases
+                                    if "chỉ được dùng trên máy" in (res.error_message or ""):
+                                        st.session_state.wsc_last_ai_badge = {
+                                            "conversation_id": active_conversation.id,
+                                            "type": "privacy_block",
+                                        }
+                                    elif "Tập nguồn đang bật đã thay đổi" in (res.error_message or ""):
+                                        st.session_state.wsc_last_ai_badge = {
+                                            "conversation_id": active_conversation.id,
+                                            "type": "source_changed",
+                                        }
+                                    else:
+                                        st.session_state.wsc_action_error = res.error_message
+                                        st.session_state.wsc_last_ai_badge = None
+                                    safe_rerun()
 
             # Phase 2H: Dán nhanh nhiều nguồn (quick multi-source paste)
             st.write(" ")
@@ -876,7 +1128,9 @@ else:
                                     content_text=quick_content,
                                     owner_choice=quick_privacy_choice,
                                 )
-                                st.session_state.wsc_action_message = f"Đã thêm nguồn: {final_title}."
+                                st.session_state.wsc_action_message = (
+                                    f"Đã thêm nguồn: {final_title}. Đang chuẩn bị để tìm kiếm."
+                                )
                                 safe_rerun()
                             else:
                                 st.error("Nội dung không được để trống.")

@@ -61,6 +61,14 @@ def _normalize_cell_value(value: Any) -> str:
         raw = value.isoformat(sep=" ")
     elif isinstance(value, (date, time)):
         raw = value.isoformat()
+    elif hasattr(value, "ref") and hasattr(value, "text"):
+        # openpyxl formula reprs contain process-specific memory addresses.
+        # Serialize their stable fields so identical workbooks fingerprint
+        # identically across staging and query runs.
+        raw = (
+            f"{type(value).__name__}(ref={getattr(value, 'ref', '')}, "
+            f"text={getattr(value, 'text', '')})"
+        )
     else:
         raw = str(value)
     return re.sub(r"\s+", " ", raw).strip()
@@ -79,18 +87,67 @@ def _preflight_zip(file_bytes: bytes, filename: str) -> ExtractedWorkspaceSource
     return None
 
 
+def _extract_xls_text(file_bytes: bytes, filename: str) -> ExtractedWorkspaceSource:
+    """Capability-gated legacy XLS extraction using the shared guarded core.
+
+    Returns XLS_UNSUPPORTED_MESSAGE when xlrd is not installed, preserving
+    the original fail-soft behaviour for users without the optional extra.
+    """
+    from aios_habit.excel_extractors import extract_excel
+
+    extracted = extract_excel(file_bytes, filename=filename, include_images=False, include_charts=False)
+    if extracted.dependency_missing:
+        return _failure(filename, XLS_UNSUPPORTED_MESSAGE)
+    if extracted.error:
+        return _failure(filename, GENERIC_READ_ERROR_MESSAGE)
+
+    output_lines: list[str] = [f"File Excel: {filename}"]
+    sheet_names: list[str] = []
+    non_empty_cells = 0
+    for region in extracted.regions:
+        if region.sheet not in sheet_names:
+            sheet_names.append(region.sheet)
+            output_lines.extend(["", f"Trang tính: {region.sheet}"])
+        rows: dict[int, list[str]] = {}
+        for cell in region.cells:
+            if not cell.text:
+                continue
+            non_empty_cells += 1
+            rows.setdefault(cell.row, []).append(f"{cell.coordinate}={cell.text}")
+        output_lines.extend(" | ".join(rows[row]) for row in sorted(rows))
+
+    if non_empty_cells == 0:
+        return ExtractedWorkspaceSource(
+            ok=False, filename=filename, file_type="xls", sheet_names=tuple(sheet_names),
+            truncated=extracted.partial, owner_message=EMPTY_WORKBOOK_MESSAGE,
+        )
+    text = "\n".join(output_lines).strip() + "\n"
+    text, capped = _cap_utf8(text, WORKSPACE_CHAT_SOURCE_TEXT_LIMIT_BYTES)
+    truncated = extracted.partial or capped
+    if truncated:
+        text, _ = _cap_utf8(
+            text.rstrip() + "\n" + TRUNCATED_MESSAGE + "\n",
+            WORKSPACE_CHAT_SOURCE_TEXT_LIMIT_BYTES,
+        )
+    return ExtractedWorkspaceSource(
+        ok=True, filename=filename, file_type="xls", sheet_names=tuple(sheet_names),
+        text=text, preview=text[:WORKSPACE_CHAT_SOURCE_PREVIEW_LIMIT], truncated=truncated,
+        owner_message=TRUNCATED_MESSAGE if truncated else "Đã đọc nội dung Excel và thêm vào nguồn tạm của cuộc trò chuyện.",
+    )
+
+
 def extract_xlsx_text(file_bytes: bytes, filename: str) -> ExtractedWorkspaceSource:
     safe_name = _safe_filename(filename)
     lower_name = safe_name.lower()
 
-    if lower_name.endswith(".xls"):
-        return _failure(safe_name, XLS_UNSUPPORTED_MESSAGE)
-    if not lower_name.endswith(".xlsx"):
+    if not lower_name.endswith((".xlsx", ".xls")):
         return _failure(safe_name, GENERIC_READ_ERROR_MESSAGE)
     if not file_bytes:
         return _failure(safe_name, GENERIC_READ_ERROR_MESSAGE)
     if len(file_bytes) > MAX_UPLOAD_BYTES:
         return _failure(safe_name, GENERIC_READ_ERROR_MESSAGE, truncated=True)
+    if lower_name.endswith(".xls") and not lower_name.endswith(".xlsx"):
+        return _extract_xls_text(file_bytes, safe_name)
 
     zip_failure = _preflight_zip(file_bytes, safe_name)
     if zip_failure is not None:

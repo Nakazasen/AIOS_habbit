@@ -9,6 +9,7 @@ from .adapters import DocumentConverterAdapter, ConversionContext, BaseDocumentC
 from .converters import (
     TextDocumentConverterAdapter,
     HTMLDocumentConverterAdapter,
+    ImageOCRDocumentConverterAdapter,
     PDFDocumentConverterAdapter,
     ExcelDocumentConverterAdapter,
     WordDocumentConverterAdapter,
@@ -20,6 +21,7 @@ class ConverterRegistry:
         self._adapters: List[DocumentConverterAdapter] = [
             TextDocumentConverterAdapter(),
             HTMLDocumentConverterAdapter(),
+            ImageOCRDocumentConverterAdapter(),
             PDFDocumentConverterAdapter(),
             ExcelDocumentConverterAdapter(),
             WordDocumentConverterAdapter(),
@@ -43,7 +45,13 @@ class ConverterRegistry:
         # Unknown/Unsupported extension fallback
         if context.fail_soft:
             fallback = BaseDocumentConverterAdapter()
-            return [fallback._create_failed_element(path, f"No supported adapter found for file: {path}", context, "ConverterRegistry")]
+            return [fallback._create_failed_element(
+                path,
+                f"No supported adapter found for file: {path}",
+                context,
+                "ConverterRegistry",
+                ExtractionStatus.UNSUPPORTED,
+            )]
         
         raise ValueError(f"No supported adapter found for file: {path}")
 

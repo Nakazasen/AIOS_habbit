@@ -1,4 +1,4 @@
-# Sequence: Optional Cloud Preflight
+# Sequence: Workspace Chat External Preflight
 
 Status: `ACTIVE`
 Owner role: Project owner / privacy reviewer
@@ -7,30 +7,37 @@ Review cadence: Before changing labels, consent or external destinations
 
 ```mermaid
 sequenceDiagram
-    participant UI as Caller
+    participant UI as Workspace Chat
     participant G as BrainGateway
     participant O as Owner consent
     participant A as Router adapter
-    UI->>G: BrainRequest(question, sources, destination, purpose)
-    G->>G: Determine strictest privacy label
+    participant P as Optional provider
+    UI->>G: BrainRequest(full sources, retrieved evidence, destination, purpose)
+    G->>G: Verify full source set and strictest privacy label
     alt local_only or confidential
-        G-->>UI: Deny: local-only response path
+        G-->>UI: Deny: use local-only path
     else unknown or machine_only
         G->>O: Validate source-set/destination/purpose consent
         alt invalid or missing consent
-            G-->>UI: Deny: request classification/consent
+            G-->>UI: Deny: request classification or consent
         else valid
+            G->>G: Authorize evidence against full source set
             G->>G: Sanitize payload
-            G-->>A: Allowed sanitized payload
+            G-->>A: SanitizedRouterPayload
         end
     else cloud_safe or public
-        G->>G: Sanitize payload
-        G-->>A: Allowed sanitized payload
+        G->>G: Authorize evidence and sanitize payload
+        G-->>A: SanitizedRouterPayload
     end
+    A->>A: Build provider messages from sanitized payload only
+    A->>P: Optional provider request
+    P-->>A: Result or safe failure
+    A-->>UI: Vietnamese-safe response
 ```
 
-This sequence documents the policy contract; it does not enable providers by
-default. The route must remain blocked if router configuration is disabled.
+This sequence documents the implemented optional route; it does not enable any
+provider by default. The route remains blocked when router configuration is
+unavailable, policy denies, or retrieval yields no eligible evidence.
 
 ## Related records
 

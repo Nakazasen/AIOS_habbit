@@ -84,7 +84,7 @@ def test_complete_chat_uses_openai_compatible_payload_without_logging_key(monkey
     assert sent_body["messages"][0] == {"role": "system", "content": "Sys prompt"}
     assert sent_body["messages"][1] == {"role": "user", "content": "Hello AI"}
 
-def test_complete_chat_rejects_oversized_prompt():
+def test_complete_chat_rejects_oversized_prompt(monkeypatch):
     config = LLMConfig(
         provider="openai_compatible",
         base_url="http://mock-api/v1/chat/completions",
@@ -101,15 +101,13 @@ def test_complete_chat_rejects_oversized_prompt():
 
     # Prompt alone is 120 > 100 -> truncated
     # allowed_len will be 100 - 0 - 50 = 50. Prompt of 120 characters truncated to 50 + suffix
-    sent_request = None
     class MockResponse:
         def read(self):
             return b'{"choices": [{"message": {"content": "OK"}}]}'
         def __enter__(self): return self
         def __exit__(self, *args): pass
 
-    import urllib.request
-    urllib.request.urlopen = lambda req, timeout=None: MockResponse()
+    monkeypatch.setattr(urllib.request, "urlopen", lambda req, timeout=None: MockResponse())
     
     resp = complete_chat("A" * 120, config=config)
     assert resp == "OK"

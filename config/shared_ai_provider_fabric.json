@@ -1,0 +1,9 @@
+﻿{
+  "schema_version": 1,
+  "providers": [
+    {"provider_id":"openai_compatible_local","display_name":"OpenAI-compatible local","endpoint_kind":"local_openai_compatible","base_url_env":"AIOS_LOCAL_OPENAI_BASE_URL","default_base_url":"http://localhost:1234/v1","api_key_env":"AIOS_LOCAL_OPENAI_API_KEY","model_env":"AIOS_LOCAL_OPENAI_MODEL","default_model":"local-model","capabilities":["chat","coding","reasoning","agent_tool_calling"],"safety_scope":"company_safe_possible","enabled_by_default":false},
+    {"provider_id":"nvidia","display_name":"NVIDIA NIM","endpoint_kind":"cloud_openai_compatible","base_url_env":"NVIDIA_BASE_URL","default_base_url":"https://integrate.api.nvidia.com/v1","api_key_env":"NVIDIA_API_KEY","model_env":"NVIDIA_IDE_NVIDIA_MODEL","default_model":"deepseek-ai/deepseek-v4-pro","capabilities":["chat","coding","reasoning","agent_tool_calling"],"safety_scope":"normal_docs_only","enabled_by_default":false},
+    {"provider_id":"gemini","display_name":"Gemini","endpoint_kind":"cloud_openai_compatible","base_url_env":"GEMINI_OPENAI_BASE_URL","default_base_url":"https://generativelanguage.googleapis.com/v1beta/openai/","api_key_env":"GEMINI_API_KEY","model_env":"NVIDIA_IDE_GEMINI_MODEL","default_model":"gemini-2.5-pro","capabilities":["chat","long_context","coding","reasoning","vision","agent_tool_calling"],"safety_scope":"normal_docs_only","enabled_by_default":false},
+    {"provider_id":"openai","display_name":"OpenAI","endpoint_kind":"cloud_openai_compatible","base_url_env":"OPENAI_BASE_URL","default_base_url":"https://api.openai.com/v1","api_key_env":"OPENAI_API_KEY","model_env":"NVIDIA_IDE_OPENAI_MODEL","default_model":"gpt-5-codex","capabilities":["chat","coding","reasoning","agent_tool_calling"],"safety_scope":"normal_docs_only","enabled_by_default":false}
+  ]
+}

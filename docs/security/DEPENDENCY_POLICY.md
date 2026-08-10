@@ -2,7 +2,7 @@
 
 Status: `PROPOSED`
 Owner role: Release owner with security reviewer
-Last reviewed: 2026-07-25
+Last reviewed: 2026-08-02
 Review cadence: Each dependency update and release candidate
 
 ## Policy
@@ -10,7 +10,9 @@ Review cadence: Each dependency update and release candidate
 1. Add a dependency only when it supports an approved Gate Card and its license,
    support status, privacy implications and rollback are recorded.
 2. Pin Git dependencies to an explicit immutable release tag or commit. The
-   current router dependency is pinned to `nakazasen-ai-router@v0.4.0`.
+   current router dependency is pinned to `nakazasen-ai-router@v0.8.0`
+   (`f95c6609a34446be9ebca578f2ad187f40c9c985`); the known rollback target is
+   `nakazasen-ai-router@v0.5.2`.
 3. Use bounded version ranges only where a clean-install validation and rollback
    path exist. `pyproject.toml` alone is not a lockfile.
 4. Never put credentials, private package indexes or owner data in dependency

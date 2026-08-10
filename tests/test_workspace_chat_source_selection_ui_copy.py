@@ -136,12 +136,11 @@ def test_source_summary_0_sources(mock_st):
         on_toggle_source=lambda *a: None,
         on_promote_temporary=lambda *a: None,
         on_privacy_save=lambda *a: None,
-        on_bulk_toggle=lambda *a: None,
         on_delete_source=lambda *a: None,
     )
     all_text = " ".join([c[1] for c in mock_st.calls if c[1] is not None])
     assert "Đang bật 0 nguồn cho câu hỏi" in all_text
-    assert "Không có nguồn phù hợp với bộ lọc hiện tại." in all_text
+    assert "Chưa có nguồn tài liệu." in all_text
     for word in FORBIDDEN_WORDS:
         assert word.lower() not in all_text.lower()
 
@@ -159,7 +158,6 @@ def test_source_summary_notebook_only(mock_st):
         on_toggle_source=lambda *a: None,
         on_promote_temporary=lambda *a: None,
         on_privacy_save=lambda *a: None,
-        on_bulk_toggle=lambda *a: None,
         on_delete_source=lambda *a: None,
     )
     all_text = " ".join([c[1] for c in mock_st.calls if c[1] is not None])
@@ -183,7 +181,6 @@ def test_source_summary_temporary_only(mock_st):
         on_toggle_source=lambda *a: None,
         on_promote_temporary=lambda *a: None,
         on_privacy_save=lambda *a: None,
-        on_bulk_toggle=lambda *a: None,
         on_delete_source=lambda *a: None,
     )
     all_text = " ".join([c[1] for c in mock_st.calls if c[1] is not None])
@@ -205,7 +202,6 @@ def test_source_summary_both(mock_st):
         on_toggle_source=lambda *a: None,
         on_promote_temporary=lambda *a: None,
         on_privacy_save=lambda *a: None,
-        on_bulk_toggle=lambda *a: None,
         on_delete_source=lambda *a: None,
     )
     all_text = " ".join([c[1] for c in mock_st.calls if c[1] is not None])
@@ -222,12 +218,11 @@ def test_render_notebook_source_list_empty(mock_st):
         on_toggle_source=lambda *a: None,
         on_promote_temporary=lambda *a: None,
         on_privacy_save=lambda *a: None,
-        on_bulk_toggle=lambda *a: None,
         on_delete_source=lambda *a: None,
     )
     all_text = " ".join([c[1] for c in mock_st.calls if c[1] is not None])
     assert "📚 Thư viện nguồn" in all_text
-    assert "Không có nguồn phù hợp với bộ lọc hiện tại." in all_text
+    assert "Chưa có nguồn tài liệu." in all_text
 
 def test_render_notebook_source_list_with_items(mock_st):
     notebook_sources = [
@@ -242,19 +237,16 @@ def test_render_notebook_source_list_with_items(mock_st):
         on_toggle_source=lambda *a: None,
         on_promote_temporary=lambda *a: None,
         on_privacy_save=lambda *a: None,
-        on_bulk_toggle=lambda *a: None,
         on_delete_source=lambda *a: None,
     )
     all_text = " ".join([c[1] for c in mock_st.calls if c[1] is not None])
     assert "Opcenter Checklist" in all_text
-    assert "Some opcenter checks" in all_text
     assert "Trong sổ" in all_text
     assert "Đang bật" in all_text
 
     checkbox_calls = [c for c in mock_st.calls if c[0] == "checkbox"]
     assert checkbox_calls[0][1] == "Bật nguồn này cho cuộc trò chuyện"
     assert checkbox_calls[0][3] == "wsc_toggle_notebook_conv_1_src_1"
-    assert checkbox_calls[1][1] == "Chỉ hiển thị nguồn đang bật"
 
 def test_render_temporary_source_list_empty(mock_st):
     render_source_library(
@@ -265,11 +257,10 @@ def test_render_temporary_source_list_empty(mock_st):
         on_toggle_source=lambda *a: None,
         on_promote_temporary=lambda *a: None,
         on_privacy_save=lambda *a: None,
-        on_bulk_toggle=lambda *a: None,
         on_delete_source=lambda *a: None,
     )
     all_text = " ".join([c[1] for c in mock_st.calls if c[1] is not None])
-    assert "Không có nguồn phù hợp với bộ lọc hiện tại." in all_text
+    assert "Chưa có nguồn tài liệu." in all_text
 
 def test_render_temporary_source_list_with_items(mock_st):
     temp_sources = [
@@ -284,14 +275,13 @@ def test_render_temporary_source_list_with_items(mock_st):
         on_toggle_source=lambda *a: None,
         on_promote_temporary=lambda *a: None,
         on_privacy_save=lambda *a: None,
-        on_bulk_toggle=lambda *a: None,
         on_delete_source=lambda *a: None,
     )
     all_text = " ".join([c[1] for c in mock_st.calls if c[1] is not None])
     assert "Temp Title 1" in all_text
     assert "Temp Preview 1" in all_text
     assert "Tạm trong cuộc trò chuyện" in all_text
-    assert "Đang tắt" in all_text
+    assert "Đã tắt" in all_text
 
     button_calls = [c for c in mock_st.calls if c[0] == "button"]
     button_labels = [c[1] for c in button_calls]
@@ -309,7 +299,6 @@ def test_no_forbidden_words_in_generated_copy(mock_st):
         on_toggle_source=lambda *a: None,
         on_promote_temporary=lambda *a: None,
         on_privacy_save=lambda *a: None,
-        on_bulk_toggle=lambda *a: None,
         on_delete_source=lambda *a: None,
     )
     all_text = " ".join([c[1] for c in mock_st.calls if c[1] is not None]).lower()

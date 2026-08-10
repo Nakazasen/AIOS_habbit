@@ -29,17 +29,17 @@ def get_vietnamese_labels():
         "question_placeholder": "Nhập câu hỏi bạn muốn AI hỗ trợ...",
     }
 
-PRIVACY_CHOICE_SENDABLE = "Có thể gửi AI"
+PRIVACY_CHOICE_SENDABLE = "Có thể gửi nội dung tới AI bên ngoài"
 PRIVACY_CHOICE_LOCAL_ONLY = "Chỉ dùng trên máy / không gửi AI"
 PRIVACY_FIELD_LABEL = "Nguồn này được dùng thế nào?"
-PRIVACY_HELP_COPY = "Bạn vẫn cần bấm Hỏi AI để gửi. Nguồn chỉ dùng trên máy sẽ không được gửi AI."
+PRIVACY_HELP_COPY = "Chỉ chọn gửi AI ngoài khi nội dung được phép chia sẻ. Bạn vẫn cần bấm Hỏi để gửi."
 PRIVACY_EDITOR_LABEL = "Quyền riêng tư nguồn"
-PRIVACY_SENDABLE_STATUS = "Có thể gửi AI khi bạn bấm Hỏi AI"
+PRIVACY_SENDABLE_STATUS = "Nội dung có thể gửi AI ngoài khi bạn bấm Hỏi"
 PRIVACY_BLOCKED_STATUS = "Nguồn này sẽ không được gửi AI"
 PRIVACY_SAVE_BUTTON = "Lưu lựa chọn"
 PRIVACY_SAVED_FEEDBACK = "Đã cập nhật quyền riêng tư nguồn."
 PRIVACY_AI_HARD_BLOCK_COPY = "Có nguồn không được gửi AI. Hãy tắt nguồn đó hoặc đổi lựa chọn quyền riêng tư."
-PRIVACY_SENDABLE_LABELS = {"machine_only", "cloud_allowed"}
+PRIVACY_SENDABLE_LABELS = {"cloud_safe", "public"}
 NOTEBOOK_ARCHIVE_ACTION = "Lưu trữ sổ"
 NOTEBOOK_ARCHIVE_CONFIRM_COPY = "Sổ này sẽ được ẩn khỏi danh sách chính. Dữ liệu bên trong không bị xóa."
 NOTEBOOK_ARCHIVE_CONFIRM_ACTION = "Xác nhận lưu trữ"
@@ -73,7 +73,7 @@ def privacy_label_is_sendable(privacy_label: str) -> bool:
 def owner_choice_to_privacy_label(owner_choice: str) -> str:
     if owner_choice == PRIVACY_CHOICE_LOCAL_ONLY:
         return "local_only"
-    return "machine_only"
+    return "cloud_safe"
 
 
 def privacy_label_to_owner_choice(privacy_label: str) -> str:
@@ -293,6 +293,17 @@ def __safe_rerun():
         except AttributeError:
             pass
 
+def _format_prep_status(prep_status: str, extraction_status: str = "") -> str:
+    if extraction_status in ("failed", "unsupported_no_local_ocr", "dependency_missing"):
+        return "Lỗi đọc file"
+    if prep_status in ("processing", "pending", "not_prepared"):
+        return "Đang chuẩn bị..."
+    if prep_status == "ready":
+        return "Sẵn sàng"
+    if prep_status == "failed":
+        return "Chuẩn bị thất bại"
+    return ""
+
 def render_source_library(
     notebook_sources: List[Any],
     temp_sources: List[Any],
@@ -301,24 +312,15 @@ def render_source_library(
     on_toggle_source: Callable[[str, str, bool], None],
     on_promote_temporary: Callable[[str], None],
     on_privacy_save: Callable[[str, str, str], None],
-    on_bulk_toggle: Callable[[List[tuple], bool], None],
-    on_delete_source: Callable[[str, str], None],
+    on_delete_source: Callable[[str, str], None] = lambda *a: None,
     widget_state: Optional[Dict[str, Any]] = None,
+    preparation_status_map: Optional[Dict[str, str]] = None,
+    on_retry_preparation: Optional[Callable[[str, str], None]] = None,
 ):
     st.subheader("📚 Thư viện nguồn")
 
     enabled_count = sum(1 for val in selections_map.values() if val)
     st.write(f"Đang bật {enabled_count} nguồn cho câu hỏi.")
-
-    search_key = f"wsc_search_{conversation_id}"
-    filter_key = f"wsc_filter_enabled_{conversation_id}"
-
-    if widget_state is not None:
-        search_query = widget_state.get(search_key, "")
-        filter_enabled = widget_state.get(filter_key, False)
-    else:
-        search_query = st.session_state.get(search_key, "")
-        filter_enabled = st.session_state.get(filter_key, False)
 
     all_items = []
     for s in notebook_sources:
@@ -334,112 +336,89 @@ def render_source_library(
             "enabled": selections_map.get(("temporary", s.id), False)
         })
 
-    # Filter items based on active search/filters
-    filtered_items = []
+    if not all_items:
+        st.write("Chưa có nguồn tài liệu.")
+        return
+
+    prep_map = preparation_status_map or {}
+
     for item in all_items:
         s = item["source"]
-        if filter_enabled and not item["enabled"]:
-            continue
-        if search_query and search_query.lower() not in (s.title or "").lower():
-            continue
-        filtered_items.append(item)
+        scope = item["scope"]
+        is_enabled = item["enabled"]
 
-    # --- Daily view: Simple list of filtered sources with name/title and simple check/toggle ---
-    if not filtered_items:
-        st.write("Chưa có nguồn tài liệu.")
-    else:
-        for item in filtered_items:
-            s = item["source"]
-            scope = item["scope"]
-            is_enabled = item["enabled"]
+        st.markdown(f"📄 **{s.title}**")
 
-            st.markdown(f"📄 **{s.title}**")
-            widget_key = f"wsc_toggle_{scope}_{conversation_id}_{s.id}"
-            st.checkbox(
-                "Bật nguồn này cho cuộc trò chuyện",
-                value=is_enabled,
-                key=widget_key,
-                on_change=lambda sc=scope, sid=s.id, k=widget_key: on_toggle_source(sc, sid, st.session_state[k])
-            )
-            privacy_label = getattr(s, "privacy_label", "")
-            if not privacy_label_is_sendable(privacy_label):
-                st.warning(PRIVACY_BLOCKED_STATUS)
-            st.write("---")
+        scope_str = "Trong sổ" if scope == "notebook" else "Tạm trong cuộc trò chuyện"
+        status_str = "Đã bật" if is_enabled else "Đã tắt"
 
-    # --- Advanced view: Quản lý nguồn nâng cao expander (closed by default) ---
-    with st.expander("⚙️ Quản lý nguồn nâng cao", expanded=False):
-        search_query = st.text_input("🔍 Tìm nguồn", value=search_query, key=search_key)
-        filter_enabled = st.checkbox("Chỉ hiển thị nguồn đang bật", value=filter_enabled, key=filter_key)
+        prep_st = prep_map.get(f"{scope}:{s.id}", "ready")
+        ext_st = getattr(s, "extraction_status", "") or getattr(s, "status", "")
+        prep_label = _format_prep_status(prep_st, ext_st)
 
-        col1, col2 = st.columns(2)
-        with col1:
-            if st.button("Bật nguồn đang lọc", key=f"wsc_bulk_enable_{conversation_id}"):
-                if filtered_items:
-                    on_bulk_toggle([(i["scope"], i["source"].id) for i in filtered_items], True)
-        with col2:
-            if st.button("Tắt nguồn đang lọc", key=f"wsc_bulk_disable_{conversation_id}"):
-                if filtered_items:
-                    on_bulk_toggle([(i["scope"], i["source"].id) for i in filtered_items], False)
+        status_line = f"{scope_str} | {status_str}"
+        if prep_label:
+            status_line += f" | {prep_label}"
+        st.caption(status_line)
+        if prep_st == "failed" and on_retry_preparation is not None:
+            if st.button(
+                "Thử chuẩn bị lại",
+                key=f"wsc_retry_prepare_{scope}_{conversation_id}_{s.id}",
+            ):
+                on_retry_preparation(scope, s.id)
+
+        widget_key = f"wsc_toggle_{scope}_{conversation_id}_{s.id}"
+        st.checkbox(
+            "Bật nguồn này cho cuộc trò chuyện",
+            value=is_enabled,
+            key=widget_key,
+            on_change=lambda sc=scope, sid=s.id, k=widget_key, default_val=is_enabled: on_toggle_source(sc, sid, st.session_state.get(k, default_val))
+        )
+
+        privacy_label = getattr(s, "privacy_label", "")
+        if not privacy_label_is_sendable(privacy_label):
+            st.warning(PRIVACY_BLOCKED_STATUS)
+
+        with st.expander("⚙️ Tùy chọn nguồn", expanded=False):
+            st.markdown("**Nội dung đọc được:**")
+            if getattr(s, "content_preview", None):
+                st.write(s.content_preview)
+            else:
+                st.write("Chưa có nội dung.")
+
+            st.markdown("---")
+            privacy_key = f"wsc_privacy_{scope}_{conversation_id}_{s.id}"
+            owner_choice = render_privacy_choice(privacy_key, privacy_label)
+            if st.button(PRIVACY_SAVE_BUTTON, key=f"wsc_save_privacy_{scope}_{conversation_id}_{s.id}"):
+                on_privacy_save(scope, s.id, owner_choice)
+
+            if scope == "temporary":
+                is_promoted = getattr(s, "long_term_saved", False) or getattr(s, "status", "") == "added_to_notebook"
+                if is_promoted:
+                    st.caption("Đã thêm vào sổ tài liệu")
+                else:
+                    if st.button("Thêm vào sổ tài liệu", key=f"wsc_promote_{conversation_id}_{s.id}"):
+                        on_promote_temporary(s.id)
+
+            st.markdown("---")
+            confirm_key = f"wsc_delete_confirm_{scope}_{s.id}"
+            if st.session_state.get(confirm_key, False):
+                st.warning("Xác nhận xóa nguồn này?")
+                dcol1, dcol2 = st.columns(2)
+                with dcol1:
+                    if st.button("Hủy", key=f"wsc_del_cancel_{scope}_{s.id}"):
+                        st.session_state[confirm_key] = False
+                        __safe_rerun()
+                with dcol2:
+                    if st.button("Xác nhận xóa", key=f"wsc_del_exec_{scope}_{s.id}"):
+                        st.session_state[confirm_key] = False
+                        on_delete_source(scope, s.id)
+            else:
+                if st.button("Xóa", key=f"wsc_del_req_{scope}_{s.id}"):
+                    st.session_state[confirm_key] = True
+                    __safe_rerun()
 
         st.write("---")
-
-        if not filtered_items:
-            st.write("Không có nguồn phù hợp với bộ lọc hiện tại.")
-        else:
-            for item in filtered_items:
-                s = item["source"]
-                scope = item["scope"]
-                is_enabled = item["enabled"]
-
-                st.markdown(f"**{s.title}**")
-                scope_str = "Trong sổ" if scope == "notebook" else "Tạm trong cuộc trò chuyện"
-                status_str = "Đang bật" if is_enabled else "Đang tắt"
-                st.caption(f"{scope_str} | {status_str}")
-
-                privacy_label = getattr(s, "privacy_label", "")
-                if privacy_label_is_sendable(privacy_label):
-                    st.caption(PRIVACY_SENDABLE_STATUS)
-                else:
-                    st.warning(PRIVACY_BLOCKED_STATUS)
-
-                with st.expander("Xem nội dung đọc được", expanded=False):
-                    if getattr(s, "content_preview", None):
-                        st.write(s.content_preview)
-                    else:
-                        st.write("Chưa có nội dung.")
-
-                with st.expander(PRIVACY_EDITOR_LABEL, expanded=False):
-                    privacy_key = f"wsc_privacy_{scope}_{conversation_id}_{s.id}"
-                    owner_choice = render_privacy_choice(privacy_key, privacy_label)
-                    if st.button(PRIVACY_SAVE_BUTTON, key=f"wsc_save_privacy_{scope}_{conversation_id}_{s.id}"):
-                        on_privacy_save(scope, s.id, owner_choice)
-
-                if scope == "temporary":
-                    is_promoted = getattr(s, "long_term_saved", False) or getattr(s, "status", "") == "added_to_notebook"
-                    if is_promoted:
-                        st.caption("Đã thêm vào sổ tài liệu")
-                    else:
-                        if st.button("Thêm vào sổ tài liệu", key=f"wsc_promote_{conversation_id}_{s.id}"):
-                            on_promote_temporary(s.id)
-
-                confirm_key = f"wsc_delete_confirm_{scope}_{s.id}"
-                if st.session_state.get(confirm_key, False):
-                    st.warning("Xác nhận xóa nguồn này?")
-                    dcol1, dcol2 = st.columns(2)
-                    with dcol1:
-                        if st.button("Hủy", key=f"wsc_del_cancel_{scope}_{s.id}"):
-                            st.session_state[confirm_key] = False
-                            __safe_rerun()
-                    with dcol2:
-                        if st.button("Xác nhận xóa", key=f"wsc_del_exec_{scope}_{s.id}"):
-                            st.session_state[confirm_key] = False
-                            on_delete_source(scope, s.id)
-                else:
-                    if st.button("Xóa", key=f"wsc_del_req_{scope}_{s.id}"):
-                        st.session_state[confirm_key] = True
-                        __safe_rerun()
-
-                st.write("---")
 
 
 # --- Phase 2H: New render helpers ---
@@ -450,22 +429,6 @@ def render_ai_source_context_summary(enabled_count: int):
         st.info(f"AI sẽ dùng {enabled_count} nguồn đang bật.")
     else:
         st.warning("Chưa có nguồn nào đang bật.")
-
-
-def render_source_check_panel(source_titles: List[str], source_previews: List[str]):
-    """Renders local source check panel OUTSIDE chat history.
-    Badge: AI chưa trả lời. Never saved as ChatMessage(role='assistant')."""
-    st.warning("🔍 **AI chưa trả lời**")
-    st.caption("Đây chỉ là danh sách nguồn và đoạn xem trước sẽ dùng nếu bạn hỏi AI.")
-    if not source_titles:
-        st.write("Chưa có nguồn để kiểm tra. Hãy bật nguồn hoặc dán thêm dữ liệu.")
-        return
-    st.write(f"Nguồn đang bật: {len(source_titles)}")
-    for i, title in enumerate(source_titles):
-        preview = source_previews[i] if i < len(source_previews) else ""
-        st.markdown(f"**{title}**")
-        if preview:
-            st.caption(preview)
 
 
 def render_ai_answer_header(source_count: int, source_titles: List[str]):

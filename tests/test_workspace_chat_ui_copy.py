@@ -167,19 +167,24 @@ def test_phase2h_required_copy():
     # App uses labels from ui
     assert "render_ai_answer_header" in app_source
     assert "render_insufficient_context" in app_source
-    assert "render_source_check_panel" in app_source
     assert "render_privacy_block_message" in app_source
 
+    # Advanced expanders must be removed from production UI
+    assert "Quản lý nguồn nâng cao" not in app_source
+    assert "Quản lý nguồn nâng cao" not in ui_source
+    assert "Kiểm tra nguồn nâng cao" not in app_source
+    assert "Kiểm tra nguồn nâng cao" not in ui_source
+
 
 def test_phase2i_exact_owner_privacy_copy_and_no_owner_enum_leak():
     ui_source = Path("src/aios_habit/workspace_chat_ui.py").read_text(encoding="utf-8")
     required = [
         "Nguồn này được dùng thế nào?",
-        "Có thể gửi AI",
+        "Có thể gửi nội dung tới AI bên ngoài",
         "Chỉ dùng trên máy / không gửi AI",
-        "Bạn vẫn cần bấm Hỏi AI để gửi. Nguồn chỉ dùng trên máy sẽ không được gửi AI.",
+        "Chỉ chọn gửi AI ngoài khi nội dung được phép chia sẻ. Bạn vẫn cần bấm Hỏi để gửi.",
         "Quyền riêng tư nguồn",
-        "Có thể gửi AI khi bạn bấm Hỏi AI",
+        "Nội dung có thể gửi AI ngoài khi bạn bấm Hỏi",
         "Nguồn này sẽ không được gửi AI",
         "Lưu lựa chọn",
         "Đã cập nhật quyền riêng tư nguồn.",
@@ -188,27 +193,6 @@ def test_phase2i_exact_owner_privacy_copy_and_no_owner_enum_leak():
     for copy in required:
         assert copy in ui_source
 
-    rendered_copy = "\n".join(line for line in ui_source.splitlines() if "PRIVACY_" in line and "=" in line)
-    for forbidden in ["privacy_label", "provider", "cloud consent"]:
-        assert forbidden not in rendered_copy.lower()
-
-
-def test_phase2i_exact_owner_privacy_copy_and_no_owner_enum_leak():
-    ui_source = Path("src/aios_habit/workspace_chat_ui.py").read_text(encoding="utf-8")
-    required = [
-        "Nguồn này được dùng thế nào?",
-        "Có thể gửi AI",
-        "Chỉ dùng trên máy / không gửi AI",
-        "Bạn vẫn cần bấm Hỏi AI để gửi. Nguồn chỉ dùng trên máy sẽ không được gửi AI.",
-        "Quyền riêng tư nguồn",
-        "Có thể gửi AI khi bạn bấm Hỏi AI",
-        "Nguồn này sẽ không được gửi AI",
-        "Lưu lựa chọn",
-        "Đã cập nhật quyền riêng tư nguồn.",
-        "Có nguồn không được gửi AI. Hãy tắt nguồn đó hoặc đổi lựa chọn quyền riêng tư.",
-    ]
-    for copy in required:
-        assert copy in ui_source
     rendered_copy = "\n".join(line for line in ui_source.splitlines() if "PRIVACY_" in line and "=" in line)
     for forbidden in ["privacy_label", "provider", "cloud consent"]:
         assert forbidden not in rendered_copy.lower()
@@ -283,15 +267,11 @@ def test_gate_1c_source_library_copy():
     app_source = Path("src/aios_habit/workspace_chat_app.py").read_text(encoding="utf-8")
     required_ui = [
         "📚 Thư viện nguồn",
-        "🔍 Tìm nguồn",
-        "Chỉ hiển thị nguồn đang bật",
-        "Bật nguồn đang lọc",
-        "Tắt nguồn đang lọc",
         "Xác nhận xóa nguồn này?",
         "Xác nhận xóa",
         "Đã bật",
         "Đã tắt",
-        "Đã xóa nguồn"
+        "Tùy chọn nguồn",
     ]
     for copy in required_ui:
         assert (copy in ui_source) or (copy in app_source), f"Required copy '{copy}' not found in ui or app"

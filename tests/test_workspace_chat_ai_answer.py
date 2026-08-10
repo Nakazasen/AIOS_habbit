@@ -1178,7 +1178,18 @@ def test_generate_answer_via_router_integration_mocked_outcome(monkeypatch):
     assert ok is True
     assert text == "Success response"
     assert len(fake_router.calls) == 1
-    assert "Q" in fake_router.calls[0].prompt
+    request = fake_router.calls[0]
+    assert "Q" in request.prompt
+    assert request.metadata == {
+        "messages": [
+            {"role": "system", "content": request.metadata["messages"][0]["content"]},
+            {"role": "user", "content": request.prompt},
+        ],
+        "privacy_label": "cloud_safe",
+        "sanitized_by": "aios_habit.brain_gateway",
+        "contains_raw_evidence": False,
+        "contains_confidential_files": False,
+    }
 
 
 def test_workspace_chat_router_adapter_class_instantiation(monkeypatch):
@@ -1220,6 +1231,7 @@ def test_workspace_chat_router_creation_enables_network_and_v051_recovery(monkey
 
     assert ok is True
     assert kwargs_passed.get("enable_network") is True
+    assert kwargs_passed["policy"].require_privacy_label is True
 
 
 def test_workspace_outcome_classifier_positive_negative_and_multilingual():

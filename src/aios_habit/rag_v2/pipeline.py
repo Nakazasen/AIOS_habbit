@@ -4,6 +4,7 @@ from __future__ import annotations
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 import hashlib
+import json
 from pathlib import Path
 from typing import Any, Iterable, Mapping, Optional, Tuple
 
@@ -15,6 +16,7 @@ from .index import (
     LocalChunkIndex,
     SearchOptions,
     SearchResponse,
+    fuse_ranked_channels,
 )
 from .query_planning import RetrievalQueryPlan, build_query_plan, coerce_query_plan
 from .registry import ConverterRegistry
@@ -28,11 +30,44 @@ from .semantic import (
     SemanticBackendUnavailable,
     unavailable_embedding_backend,
 )
-from .synthesis import LocalSynthesisResult, synthesize_evidence
+from .retrieval_backends import BgeM3Backend, CrossEncoderRerankBackend
+from .synthesis import (
+    LocalSynthesisResult,
+    ProviderSynthesisProvider,
+    synthesize_evidence,
+    synthesize_with_provider,
+)
 
 _CANONICAL_PRIVACY_LABELS = frozenset({
     "local_only", "confidential", "cloud_safe", "public",
 })
+INDEX_BUILD_SCHEMA_VERSION = 1
+_INDEX_BUILD_IMPLEMENTATION_FILES = (
+    "adapters.py",
+    "chunking.py",
+    "converters.py",
+    "registry.py",
+    "schema.py",
+)
+_BGE_SPARSE_PROFILES = frozenset({
+    "bge_m3_hybrid",
+    "bge_m3_multivector",
+    "bge_m3_hybrid_rerank",
+    "bge_m3_hybrid_rerank_expand",
+})
+
+
+def _index_build_implementation_fingerprint() -> str:
+    """Fingerprint only code that can change extracted chunks or their identity."""
+    root = Path(__file__).resolve().parent
+    digest = hashlib.sha256()
+    for name in _INDEX_BUILD_IMPLEMENTATION_FILES:
+        path = root / name
+        digest.update(name.encode("utf-8"))
+        digest.update(b"\0")
+        digest.update(path.read_bytes())
+        digest.update(b"\0")
+    return digest.hexdigest()
 
 
 def _stable_document_id(path: Path) -> str:
@@ -69,13 +104,30 @@ class RagV2DevConfig:
     rrf_k: int = 60
     lexical_channel_weight: float = 1.0
     dense_channel_weight: float = 1.0
+    sparse_channel_weight: float = 1.0
     rerank_limit: int = 30
+    context_neighbor_window: int = 1
+    context_parent_limit: int = 1
     strict_semantic: bool = False
+    bge_m3_model_path: Path | str | None = None
+    bge_m3_model_revision: str = ""
+    bge_m3_model_checksum: str = ""
+    bge_m3_dimension: int = 1024
+    bge_m3_batch_size: int = 1
+    bge_m3_max_length: int = 2048
+    bge_m3_use_fp16: bool = False
+    bge_reranker_model_path: Path | str | None = None
+    bge_reranker_model_revision: str = ""
+    bge_reranker_model_checksum: str = ""
+    retrieval_device: str = "cpu"
     allowed_privacy_labels: Tuple[str, ...] = (
         "local_only", "confidential", "cloud_safe", "public",
     )
     enable_network: bool = False
     enable_provider_synthesis: bool = False
+    sqlite_check_same_thread: bool = True
+    ensure_embeddings_on_open: bool = True
+    index_read_only: bool = False
 
     def __post_init__(self) -> None:
         root = Path(self.runtime_root)
@@ -94,31 +146,92 @@ class RagV2DevConfig:
             or self.rerank_limit < 1
         ):
             raise ValueError("retrieval limits must be positive")
-        if self.retrieval_profile not in {"lexical", "hybrid", "hybrid_rerank"}:
-            raise ValueError("retrieval_profile must be lexical, hybrid, or hybrid_rerank")
+        valid_profiles = {
+            "lexical", "hybrid", "hybrid_rerank", "lexical_baseline",
+            "bge_m3_dense", "bge_m3_hybrid", "bge_m3_multivector",
+            "bge_m3_hybrid_rerank", "bge_m3_hybrid_rerank_expand",
+        }
+        if self.retrieval_profile not in valid_profiles:
+            raise ValueError(f"retrieval_profile must be one of {sorted(valid_profiles)}")
         if not self.embedding_model_id.strip():
             raise ValueError("embedding_model_id is required")
         if not self.reranker_model_id.strip():
             raise ValueError("reranker_model_id is required")
-        if self.embedding_dimension < 1:
-            raise ValueError("embedding_dimension must be positive")
+        if self.embedding_dimension < 1 or self.bge_m3_dimension < 1:
+            raise ValueError("embedding dimensions must be positive")
+        if self.bge_m3_batch_size < 1:
+            raise ValueError("bge_m3_batch_size must be positive")
+        if self.bge_m3_max_length < 1:
+            raise ValueError("bge_m3_max_length must be positive")
         if self.rrf_k < 1:
             raise ValueError("rrf_k must be positive")
-        if self.lexical_channel_weight <= 0.0 or self.dense_channel_weight <= 0.0:
+        if self.context_neighbor_window < 0 or self.context_parent_limit < 0:
+            raise ValueError("context expansion limits must be non-negative")
+        if (
+            self.lexical_channel_weight <= 0.0
+            or self.dense_channel_weight <= 0.0
+            or self.sparse_channel_weight <= 0.0
+        ):
             raise ValueError("retrieval channel weights must be positive")
         cache_dir = self.embedding_cache_dir
         if cache_dir is not None:
             object.__setattr__(self, "embedding_cache_dir", Path(cache_dir))
+        for attribute in ("bge_m3_model_path", "bge_reranker_model_path"):
+            value = getattr(self, attribute)
+            if value is not None:
+                object.__setattr__(self, attribute, Path(value))
         labels = tuple(dict.fromkeys(self.allowed_privacy_labels))
         if not labels or any(label not in _CANONICAL_PRIVACY_LABELS for label in labels):
             raise ValueError("allowed_privacy_labels must use canonical labels")
         object.__setattr__(self, "allowed_privacy_labels", labels)
         if self.enable_network or self.enable_provider_synthesis:
             raise ValueError("Dev pipeline is local-only; provider synthesis is a separate gate")
+        if self.index_read_only and self.ensure_embeddings_on_open:
+            raise ValueError("index_read_only requires ensure_embeddings_on_open=False")
 
     @property
     def index_path(self) -> Path:
         return Path(self.runtime_root) / self.index_filename
+
+    def index_build_compatibility(self) -> dict[str, Any]:
+        """Return settings that can change persisted chunks or embeddings.
+
+        Retrieval limits, fusion weights, reranking, context expansion, synthesis,
+        and scoring are intentionally excluded so those algorithms can evolve while
+        reusing a compatible expensive index.
+        """
+        semantic_required = self.retrieval_profile not in {"lexical", "lexical_baseline"}
+        sparse_required = self.retrieval_profile in _BGE_SPARSE_PROFILES
+        multivector_required = self.retrieval_profile == "bge_m3_multivector"
+        payload: dict[str, Any] = {
+            "schema_version": INDEX_BUILD_SCHEMA_VERSION,
+            "implementation_fingerprint": _index_build_implementation_fingerprint(),
+            "max_chunk_chars": self.max_chunk_chars,
+            "allowed_privacy_labels": list(self.allowed_privacy_labels),
+            "semantic_required": semantic_required,
+            "sparse_required": sparse_required,
+            "multivector_required": multivector_required,
+        }
+        if semantic_required:
+            if _is_retrieval_lab_profile(self.retrieval_profile):
+                payload["embedding_model"] = {
+                    "kind": "bge_m3",
+                    "model_path": str(Path(self.bge_m3_model_path).resolve()) if self.bge_m3_model_path else "",
+                    "revision": self.bge_m3_model_revision,
+                    "artifact_checksum": self.bge_m3_model_checksum,
+                    "dimension": self.bge_m3_dimension,
+                    "device": self.retrieval_device,
+                    "multivector_schema_version": 1 if multivector_required else 0,
+                }
+            else:
+                payload["embedding_model"] = {
+                    "kind": "fastembed",
+                    "model_id": self.embedding_model_id,
+                    "revision": self.embedding_model_revision,
+                    "dimension": self.embedding_dimension,
+                }
+        encoded = json.dumps(payload, ensure_ascii=True, sort_keys=True, separators=(",", ":"))
+        return {**payload, "compatibility_hash": hashlib.sha256(encoded.encode("utf-8")).hexdigest()}
 
 
 @dataclass(frozen=True)
@@ -165,6 +278,8 @@ class RagV2IngestionReport:
     disabled_count: int
     indexed_chunk_count: int
     created_at: str
+    unsupported_count: int = 0
+    empty_count: int = 0
 
     def to_safe_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -180,6 +295,10 @@ class RagV2QueryResult:
     provider_used: bool = False
 
 
+def _is_retrieval_lab_profile(profile: str) -> bool:
+    return profile.startswith("bge_m3_")
+
+
 def _resolve_embedding_backend(
     config: RagV2DevConfig,
     backend: Optional[EmbeddingBackend],
@@ -187,8 +306,26 @@ def _resolve_embedding_backend(
     """Resolve a semantic backend without network acquisition or silent fake scores."""
     if backend is not None:
         resolved = backend
-    elif config.retrieval_profile == "lexical":
+    elif config.retrieval_profile in {"lexical", "lexical_baseline"}:
         return None
+    elif _is_retrieval_lab_profile(config.retrieval_profile):
+        if config.bge_m3_model_path is None:
+            raise SemanticBackendUnavailable("BGE-M3 profile requires bge_m3_model_path")
+        if not config.bge_m3_model_revision.strip():
+            raise SemanticBackendUnavailable("BGE-M3 profile requires a pinned model revision")
+        if not config.bge_m3_model_checksum.strip():
+            raise SemanticBackendUnavailable("BGE-M3 profile requires bge_m3_model_checksum")
+        resolved = BgeM3Backend(
+            model_path=config.bge_m3_model_path,
+            revision=config.bge_m3_model_revision,
+            artifact_checksum=config.bge_m3_model_checksum,
+            dimension=config.bge_m3_dimension,
+            device=config.retrieval_device,
+            batch_size=config.bge_m3_batch_size,
+            max_length=config.bge_m3_max_length,
+            use_fp16=config.bge_m3_use_fp16,
+            enable_multivector=config.retrieval_profile == "bge_m3_multivector",
+        )
     else:
         try:
             resolved = FastEmbedEmbeddingBackend(
@@ -205,7 +342,7 @@ def _resolve_embedding_backend(
                 dimension=config.embedding_dimension,
                 reason=str(exc),
             )
-    if config.strict_semantic:
+    if config.strict_semantic or _is_retrieval_lab_profile(config.retrieval_profile):
         resolved.capability.require()
     return resolved
 
@@ -215,10 +352,37 @@ def _resolve_reranker_backend(
     backend: Optional[RerankerBackend],
 ) -> tuple[Optional[RerankerBackend], str]:
     """Resolve reranking only for its requested profile and preserve failure reason."""
-    if config.retrieval_profile != "hybrid_rerank":
+    rerank_profiles = {
+        "hybrid_rerank",
+        "bge_m3_hybrid_rerank",
+        "bge_m3_hybrid_rerank_expand",
+    }
+    if config.retrieval_profile not in rerank_profiles:
         return None, ""
     if backend is not None:
         resolved = backend
+    elif config.retrieval_profile in {
+        "bge_m3_hybrid_rerank",
+        "bge_m3_hybrid_rerank_expand",
+    }:
+        if config.bge_reranker_model_path is None:
+            raise SemanticBackendUnavailable(
+                "BGE reranker profile requires bge_reranker_model_path"
+            )
+        if not config.bge_reranker_model_revision.strip():
+            raise SemanticBackendUnavailable(
+                "BGE reranker profile requires a pinned model revision"
+            )
+        if not config.bge_reranker_model_checksum.strip():
+            raise SemanticBackendUnavailable(
+                "BGE reranker profile requires bge_reranker_model_checksum"
+            )
+        resolved = CrossEncoderRerankBackend(
+            model_path=config.bge_reranker_model_path,
+            revision=config.bge_reranker_model_revision,
+            artifact_checksum=config.bge_reranker_model_checksum,
+            device=config.retrieval_device,
+        )
     else:
         try:
             resolved = FastEmbedRerankerBackend(
@@ -232,7 +396,7 @@ def _resolve_reranker_backend(
                 raise
             return None, str(exc)
     if not resolved.capability.available:
-        if config.strict_semantic:
+        if config.strict_semantic or _is_retrieval_lab_profile(config.retrieval_profile):
             resolved.capability.require()
         return resolved, resolved.capability.reason or "reranker_backend_unavailable"
     return resolved, ""
@@ -250,9 +414,15 @@ class RagV2DevPipeline:
         index: Optional[LocalChunkIndex] = None,
         embedding_backend: Optional[EmbeddingBackend] = None,
         reranker_backend: Optional[RerankerBackend] = None,
+        synthesis_provider: Optional[ProviderSynthesisProvider] = None,
     ) -> None:
         self.config = config or RagV2DevConfig()
-        Path(self.config.runtime_root).mkdir(parents=True, exist_ok=True)
+        self.synthesis_provider = synthesis_provider
+        if self.config.index_read_only:
+            if not self.config.index_path.is_file():
+                raise FileNotFoundError(f"read-only index does not exist: {self.config.index_path}")
+        else:
+            Path(self.config.runtime_root).mkdir(parents=True, exist_ok=True)
         self.registry = registry or ConverterRegistry()
         self.chunker = chunker or StructureAwareChunker(self.config.max_chunk_chars)
         self.embedding_backend = _resolve_embedding_backend(self.config, embedding_backend)
@@ -262,18 +432,44 @@ class RagV2DevPipeline:
         self.index = index or LocalChunkIndex(
             self.config.index_path,
             embedding_backend=self.embedding_backend,
+            sparse_backend=(
+                self.embedding_backend
+                if self.config.retrieval_profile in _BGE_SPARSE_PROFILES
+                else None
+            ),
+            sqlite_check_same_thread=self.config.sqlite_check_same_thread,
+            ensure_embeddings_on_open=self.config.ensure_embeddings_on_open,
+            read_only=self.config.index_read_only,
         )
         self._owns_index = index is None
         capability = self.index.semantic_capability
-        if self.config.strict_semantic and self.config.retrieval_profile != "lexical":
+        retrieval_lab = _is_retrieval_lab_profile(self.config.retrieval_profile)
+        if (self.config.strict_semantic or retrieval_lab) and self.config.retrieval_profile not in {
+            "lexical", "lexical_baseline",
+        }:
             if capability is None:
                 raise SemanticBackendUnavailable(
                     "strict semantic profile requires an embedding-enabled LocalChunkIndex"
                 )
             capability.require()
-        self._effective_retrieval_profile = self.config.retrieval_profile
+        profile_aliases = {
+            "lexical_baseline": "lexical",
+            "bge_m3_dense": "dense",
+            "bge_m3_hybrid": "hybrid",
+            "bge_m3_multivector": "hybrid_multivector",
+            "bge_m3_hybrid_rerank": "hybrid_rerank",
+            "bge_m3_hybrid_rerank_expand": "hybrid_rerank_expand",
+        }
+        self._effective_retrieval_profile = profile_aliases.get(
+            self.config.retrieval_profile, self.config.retrieval_profile
+        )
         self._degraded_reason = ""
-        if self.config.retrieval_profile != "lexical" and (
+        if retrieval_lab and (capability is None or not capability.available):
+            raise SemanticBackendUnavailable(
+                capability.reason if capability is not None
+                else "embedding_backend_not_configured"
+            )
+        if not retrieval_lab and self.config.retrieval_profile not in {"lexical", "lexical_baseline"} and (
             capability is None or not capability.available
         ):
             self._effective_retrieval_profile = "lexical"
@@ -281,7 +477,7 @@ class RagV2DevPipeline:
                 capability.reason if capability is not None
                 else "embedding_backend_not_configured"
             )
-        elif self.config.retrieval_profile == "hybrid_rerank" and reranker_reason:
+        elif not retrieval_lab and self.config.retrieval_profile == "hybrid_rerank" and reranker_reason:
             self._effective_retrieval_profile = "hybrid"
             self._degraded_reason = reranker_reason
 
@@ -336,18 +532,34 @@ class RagV2DevPipeline:
                 ExtractionStatus.FAILED, ExtractionStatus.UNSUPPORTED,
             }]
             if not usable:
+                unsupported = bool(elements) and all(
+                    item.extraction_status == ExtractionStatus.UNSUPPORTED
+                    for item in elements
+                )
                 items.append(IngestionItemReport(
                     document_id=source.document_id,
                     source_name=source.path.name,
-                    status="failed",
+                    status="unsupported" if unsupported else "failed",
                     source_fingerprint=fingerprint,
                     element_count=len(elements),
-                    warning_codes=("conversion_failed",),
+                    warning_codes=(
+                        "unsupported_file_type" if unsupported else "conversion_failed",
+                    ),
                 ))
                 continue
 
             chunks = self.chunker.chunk_elements(usable)
             self.index.replace_document_chunks(source.document_id, chunks)
+            if not chunks:
+                items.append(IngestionItemReport(
+                    document_id=source.document_id,
+                    source_name=source.path.name,
+                    status="empty",
+                    source_fingerprint=fingerprint,
+                    element_count=len(elements),
+                    warning_codes=("empty_extracted_content",),
+                ))
+                continue
             warning_codes = ("partial_conversion",) if failed else ()
             items.append(IngestionItemReport(
                 document_id=source.document_id,
@@ -367,6 +579,8 @@ class RagV2DevPipeline:
             disabled_count=sum(item.status == "disabled" for item in items),
             indexed_chunk_count=self.index.count(),
             created_at=datetime.now(timezone.utc).isoformat(),
+            unsupported_count=sum(item.status == "unsupported" for item in items),
+            empty_count=sum(item.status == "empty" for item in items),
         )
 
     def query(
@@ -402,6 +616,7 @@ class RagV2DevPipeline:
             rrf_k=self.config.rrf_k,
             lexical_weight=self.config.lexical_channel_weight,
             dense_weight=self.config.dense_channel_weight,
+            sparse_weight=self.config.sparse_channel_weight,
             rerank_limit=self.config.rerank_limit,
         )
         effective_profile = self._effective_retrieval_profile
@@ -412,18 +627,42 @@ class RagV2DevPipeline:
                 options=options,
             )
         else:
-            reranker = self.reranker_backend if effective_profile == "hybrid_rerank" else None
+            reranker = (
+                self.reranker_backend
+                if effective_profile in {"hybrid_rerank", "hybrid_rerank_expand"}
+                else None
+            )
             try:
-                response = self.index.hybrid_search_with_summary(
-                    plan,
-                    limit=self.config.retrieval_limit,
-                    options=options,
-                    dense_limit=self.config.dense_candidate_limit,
-                    ranking_config=ranking_config,
-                    reranker=reranker,
-                )
+                if effective_profile == "dense":
+                    response = self.index.dense_search_with_summary(
+                        plan,
+                        limit=self.config.retrieval_limit,
+                        options=options,
+                        dense_limit=self.config.dense_candidate_limit,
+                        ranking_config=ranking_config,
+                    )
+                else:
+                    response = self.index.hybrid_search_with_summary(
+                        plan,
+                        limit=self.config.retrieval_limit,
+                        options=options,
+                        dense_limit=self.config.dense_candidate_limit,
+                        ranking_config=ranking_config,
+                        reranker=reranker,
+                        use_multivector=effective_profile == "hybrid_multivector",
+                        precomputed_only=effective_profile == "hybrid_multivector",
+                    )
+                    if effective_profile == "hybrid_rerank_expand":
+                        response = self.index.expand_context(
+                            response,
+                            options=options,
+                            neighbor_window=self.config.context_neighbor_window,
+                            parent_limit=self.config.context_parent_limit,
+                        )
             except SemanticBackendError as exc:
-                if self.config.strict_semantic:
+                if self.config.strict_semantic or _is_retrieval_lab_profile(
+                    self.config.retrieval_profile
+                ):
                     raise
                 if effective_profile == "hybrid_rerank":
                     self._effective_retrieval_profile = "hybrid"
@@ -453,12 +692,26 @@ class RagV2DevPipeline:
                         options=options,
                     )
         pack = build_evidence_pack(plan, response, config=evidence_config)
-        synthesis = synthesize_evidence(pack, answer_shape=plan.intent_category)
+        synthesis = (
+            synthesize_with_provider(
+                pack,
+                self.synthesis_provider,
+                answer_shape=plan.intent_category,
+            )
+            if self.synthesis_provider is not None
+            else synthesize_evidence(pack, answer_shape=plan.intent_category)
+        )
         return RagV2QueryResult(
             query_plan=plan,
             search_response=response,
             evidence_pack=pack,
             synthesis_result=synthesis,
+            route=(
+                synthesis.mode
+                if self.synthesis_provider is not None
+                else "local_retrieval_evidence"
+            ),
+            provider_used=synthesis.provider_used,
         )
 
     def inspect(self, sources: Iterable[SourceSpec] = ()) -> dict[str, Any]:
@@ -474,8 +727,17 @@ class RagV2DevPipeline:
             })
         semantic = self.index.embedding_status()
         requested_profile = self.config.retrieval_profile
-        effective_profile = self._effective_retrieval_profile
-        degraded = requested_profile != effective_profile
+        runtime_profile = self._effective_retrieval_profile
+        requested_runtime_profile = {
+            "lexical_baseline": "lexical",
+            "bge_m3_dense": "dense",
+            "bge_m3_hybrid": "hybrid",
+            "bge_m3_multivector": "hybrid_multivector",
+            "bge_m3_hybrid_rerank": "hybrid_rerank",
+            "bge_m3_hybrid_rerank_expand": "hybrid_rerank_expand",
+        }.get(requested_profile, requested_profile)
+        degraded = requested_runtime_profile != runtime_profile
+        effective_profile = requested_profile if not degraded else runtime_profile
         reranker_capability = (
             self.reranker_backend.capability.to_safe_dict()
             if self.reranker_backend is not None
@@ -488,13 +750,15 @@ class RagV2DevPipeline:
             }
         )
         return {
-            "mode": "local_only",
+            "mode": "provider_capable" if self.synthesis_provider is not None else "local_only",
             "provider_used": False,
+            "provider_configured": self.synthesis_provider is not None,
             "index_path": self.config.index_filename,
             "indexed_chunk_count": self.index.count(),
             "retrieval": {
                 "requested_profile": requested_profile,
                 "effective_profile": effective_profile,
+                "runtime_profile": runtime_profile,
                 "degraded": degraded,
                 "degraded_reason": self._degraded_reason if degraded else "",
                 "lexical_backend": self.index.retrieval_backend,
@@ -504,6 +768,7 @@ class RagV2DevPipeline:
                     "rrf_k": self.config.rrf_k,
                     "lexical_channel_weight": self.config.lexical_channel_weight,
                     "dense_channel_weight": self.config.dense_channel_weight,
+                    "sparse_channel_weight": self.config.sparse_channel_weight,
                     "dense_candidate_limit": self.config.dense_candidate_limit,
                     "rerank_limit": self.config.rerank_limit,
                 },

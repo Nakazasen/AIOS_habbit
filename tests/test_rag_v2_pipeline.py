@@ -55,6 +55,38 @@ def test_pipeline_ingests_queries_and_skips_unchanged_source(tmp_path):
     assert str(source_path) not in str(state)
 
 
+def test_pipeline_routes_cloud_safe_query_through_injected_validated_provider(tmp_path):
+    source_path = tmp_path / "release.txt"
+    source_path.write_text(
+        "The current release marker identifies the approved second version.",
+        encoding="utf-8",
+    )
+    source = SourceSpec(source_path, privacy_labels=("cloud_safe",))
+    requests = []
+
+    def provider(request):
+        requests.append(request)
+        return "- The current release marker identifies the approved second version [1]"
+
+    with RagV2DevPipeline(
+        _config(tmp_path),
+        synthesis_provider=provider,
+    ) as pipeline:
+        pipeline.ingest([source])
+        state = pipeline.inspect([source])
+        result = pipeline.query("current release marker", [source])
+
+    assert state["mode"] == "provider_capable"
+    assert state["provider_configured"] is True
+    assert state["provider_used"] is False
+    assert len(requests) == 1
+    assert requests[0].evidence_pack is result.evidence_pack
+    assert result.provider_used is True
+    assert result.route == "provider_validated"
+    assert result.synthesis_result.provider_used is True
+    assert result.synthesis_result.citation_ids == ("[1]",)
+
+
 def test_pipeline_reindex_atomically_removes_old_chunks(tmp_path):
     source_path = tmp_path / "notes.txt"
     source_path.write_text("obsolete marker from the first version", encoding="utf-8")
@@ -99,10 +131,29 @@ def test_pipeline_reports_disabled_missing_and_unsupported_sources_fail_soft(tmp
         blocked = pipeline.query("must not be indexed", sources)
 
     assert report.disabled_count == 1
-    assert report.failed_count == 2
+    assert report.failed_count == 1
+    assert report.unsupported_count == 1
+    assert report.empty_count == 0
     assert report.indexed_chunk_count == 0
-    assert [item.status for item in report.items] == ["disabled", "failed", "failed"]
+    assert [item.status for item in report.items] == ["disabled", "failed", "unsupported"]
+    assert report.items[-1].warning_codes == ("unsupported_file_type",)
     assert blocked.evidence_pack.item_count == 0
+
+
+def test_pipeline_classifies_empty_extraction_without_counting_it_usable(tmp_path):
+    empty_path = tmp_path / "empty.txt"
+    empty_path.write_text("", encoding="utf-8")
+
+    with RagV2DevPipeline(_config(tmp_path)) as pipeline:
+        report = pipeline.ingest([SourceSpec(empty_path)])
+
+    assert report.converted_count == 0
+    assert report.empty_count == 1
+    assert report.failed_count == 0
+    assert report.unsupported_count == 0
+    assert report.indexed_chunk_count == 0
+    assert report.items[0].status == "empty"
+    assert report.items[0].warning_codes == ("empty_extracted_content",)
 
 
 def test_pipeline_privacy_filter_is_applied_before_evidence(tmp_path):
@@ -315,3 +366,119 @@ def test_pipeline_runtime_reranker_failure_retries_hybrid_and_reports_degradatio
     assert state["retrieval"]["effective_profile"] == "hybrid"
     assert state["retrieval"]["degraded"] is True
     assert state["retrieval"]["degraded_reason"] == "synthetic reranker inference failure"
+
+
+def test_index_build_compatibility_excludes_query_time_and_reranker_tuning(tmp_path):
+    base = _config(
+        tmp_path,
+        retrieval_profile="bge_m3_hybrid_rerank",
+        bge_m3_model_path=tmp_path / "bge-m3",
+        bge_m3_model_revision="model-revision",
+        bge_m3_model_checksum="sha256:model",
+        retrieval_limit=10,
+        candidate_limit=100,
+        dense_candidate_limit=100,
+        rerank_limit=30,
+        reranker_model_id="reranker/a",
+        rrf_k=60,
+        context_neighbor_window=1,
+    )
+    tuned = _config(
+        tmp_path,
+        retrieval_profile="bge_m3_hybrid_rerank_expand",
+        bge_m3_model_path=tmp_path / "bge-m3",
+        bge_m3_model_revision="model-revision",
+        bge_m3_model_checksum="sha256:model",
+        retrieval_limit=25,
+        candidate_limit=250,
+        dense_candidate_limit=200,
+        rerank_limit=80,
+        reranker_model_id="reranker/b",
+        rrf_k=90,
+        lexical_channel_weight=2.0,
+        dense_channel_weight=1.5,
+        sparse_channel_weight=0.5,
+        context_neighbor_window=3,
+        context_parent_limit=4,
+    )
+
+    assert tuned.index_build_compatibility() == base.index_build_compatibility()
+
+
+def test_index_build_compatibility_invalidates_index_producing_changes(tmp_path):
+    common = {
+        "retrieval_profile": "bge_m3_hybrid",
+        "bge_m3_model_path": tmp_path / "bge-m3",
+        "bge_m3_model_revision": "model-revision",
+        "bge_m3_model_checksum": "sha256:model",
+    }
+    base = _config(tmp_path, **common).index_build_compatibility()
+    changed_chunking = _config(
+        tmp_path,
+        **{**common, "max_chunk_chars": 121},
+    ).index_build_compatibility()
+    changed_model = _config(
+        tmp_path,
+        **{**common, "bge_m3_model_revision": "other-revision"},
+    ).index_build_compatibility()
+    changed_privacy = _config(
+        tmp_path,
+        **{**common, "allowed_privacy_labels": ("public",)},
+    ).index_build_compatibility()
+    changed_sparse_requirement = _config(
+        tmp_path,
+        **{**common, "retrieval_profile": "bge_m3_dense"},
+    ).index_build_compatibility()
+
+    assert base["compatibility_hash"] == _config(
+        tmp_path,
+        **common,
+    ).index_build_compatibility()["compatibility_hash"]
+    assert changed_chunking["compatibility_hash"] != base["compatibility_hash"]
+    assert changed_model["compatibility_hash"] != base["compatibility_hash"]
+    assert changed_privacy["compatibility_hash"] != base["compatibility_hash"]
+    assert changed_sparse_requirement["compatibility_hash"] != base["compatibility_hash"]
+
+
+def test_pipeline_resumes_partial_semantic_index_without_reembedding_completed_source(tmp_path):
+    first_path = tmp_path / "first.txt"
+    second_path = tmp_path / "second.txt"
+    first_path.write_text("first semantic source", encoding="utf-8")
+    second_path.write_text("second semantic source", encoding="utf-8")
+    first_source = SourceSpec(first_path, document_id="doc-first")
+    second_source = SourceSpec(second_path, document_id="doc-second")
+    first_backend = DeterministicEmbeddingBackend(dimension=8)
+    config = _config(
+        tmp_path,
+        retrieval_profile="hybrid",
+        embedding_model_id=first_backend.descriptor.model_id,
+        embedding_dimension=first_backend.descriptor.dimension,
+        ensure_embeddings_on_open=False,
+    )
+
+    with RagV2DevPipeline(config, embedding_backend=first_backend) as pipeline:
+        interrupted = pipeline.ingest([first_source])
+
+    resumed_backend = DeterministicEmbeddingBackend(dimension=8)
+    with RagV2DevPipeline(config, embedding_backend=resumed_backend) as pipeline:
+        resumed = pipeline.ingest([first_source, second_source])
+        expected = {
+            item.document_id: item.source_fingerprint
+            for item in resumed.items
+            if item.chunk_count > 0
+        }
+        verification = pipeline.index.verify_index_coverage(
+            sparse_required=True,
+            expected_document_fingerprints=expected,
+        )
+
+    assert interrupted.converted_count == 1
+    assert first_backend.embedded_document_count == 1
+    assert resumed.skipped_count == 1
+    assert resumed.converted_count == 1
+    assert resumed.indexed_chunk_count == 2
+    assert resumed_backend.embedded_document_count == 1
+    assert verification["valid"] is True
+    assert verification["document_count"] == 2
+    assert verification["dense_embedding_count"] == 2
+    assert verification["sparse_embedding_count"] == 2

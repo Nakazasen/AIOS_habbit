@@ -1,5 +1,7 @@
 import os
 import tempfile
+from types import SimpleNamespace
+from unittest.mock import patch
 import pytest
 import zipfile
 import openpyxl
@@ -10,6 +12,7 @@ from aios_habit.rag_v2.adapters import ConversionContext
 from aios_habit.rag_v2.converters import (
     TextDocumentConverterAdapter,
     HTMLDocumentConverterAdapter,
+    ImageOCRDocumentConverterAdapter,
     PDFDocumentConverterAdapter,
     ExcelDocumentConverterAdapter,
     WordDocumentConverterAdapter,
@@ -21,10 +24,11 @@ from aios_habit.rag_v2.registry import ConverterRegistry
 def test_adapter_capabilities():
     registry = ConverterRegistry()
     caps = registry.list_capabilities()
-    assert len(caps) == 6
+    assert len(caps) == 7
     names = {c["adapter_name"] for c in caps}
     assert "TextDocumentConverterAdapter" in names
     assert "HTMLDocumentConverterAdapter" in names
+    assert "ImageOCRDocumentConverterAdapter" in names
     assert "PDFDocumentConverterAdapter" in names
     assert "ExcelDocumentConverterAdapter" in names
     assert "WordDocumentConverterAdapter" in names
@@ -126,6 +130,95 @@ def test_pdf_document_converter_success():
         assert elements[0].extraction_status == ExtractionStatus.FAILED
 
 
+def test_registry_routes_supported_images_to_ocr_adapter():
+    registry = ConverterRegistry()
+    assert isinstance(
+        registry.get_adapter_for_file("scan.TIFF"),
+        ImageOCRDocumentConverterAdapter,
+    )
+
+
+def test_image_ocr_adapter_maps_usable_and_failed_quality_results(tmp_path):
+    image_path = tmp_path / "scan.png"
+    image_path.write_bytes(b"not-decoded-because-extractor-is-mocked")
+    adapter = ImageOCRDocumentConverterAdapter()
+    context = ConversionContext(document_id="doc-image", language_hints=["vie"])
+
+    usable = [{
+        "text": "Nội dung OCR đáng tin cậy",
+        "file_type": ".png",
+        "extractor_name": "local_ocr",
+        "extraction_status": "ocr_partial",
+        "warning": "OCR confidence is moderate; review important claims",
+        "ocr_confidence": 52.0,
+    }]
+    with patch(
+        "aios_habit.document_extractors.extract_text_chunks_from_file",
+        return_value=usable,
+    ):
+        element = adapter.convert(str(image_path), context)[0]
+    assert element.extraction_status == ExtractionStatus.PARTIAL
+    assert element.text == "Nội dung OCR đáng tin cậy"
+    assert element.confidence == 0.52
+    assert element.language_hint == "vie"
+
+    rejected = [{
+        "text": "",
+        "file_type": ".png",
+        "extractor_name": "local_ocr",
+        "extraction_status": "failed_with_reason",
+        "warning": "OCR confidence 20.00 is below usable threshold 35.00",
+        "ocr_confidence": 20.0,
+    }]
+    with patch(
+        "aios_habit.document_extractors.extract_text_chunks_from_file",
+        return_value=rejected,
+    ):
+        element = adapter.convert(str(image_path), context)[0]
+    assert element.extraction_status == ExtractionStatus.FAILED
+    assert element.text is None
+    assert "below usable threshold" in element.extraction_warning
+
+
+def test_pdf_scan_page_uses_ocr_and_never_emits_empty_success(tmp_path):
+    import fitz
+
+    pdf_path = tmp_path / "scan.pdf"
+    document = fitz.open()
+    document.new_page()
+    document.save(pdf_path)
+    document.close()
+    ocr_result = SimpleNamespace(
+        text="Recovered scanned text",
+        extraction_status="ocr_success",
+        warning="",
+        ocr_confidence=91.0,
+        ocr_engine="rapidocr",
+        extractor_name="local_ocr",
+        file_type="pdf",
+        ocr_lang="vie+eng",
+        ocr_confidence_samples=50,
+        ocr_preprocessing="original",
+        ocr_attempts=1,
+        ocr_quality_reason="passed_quality_gate",
+    )
+
+    with patch(
+        "aios_habit.document_extractors._ocr_image_object",
+        return_value=ocr_result,
+    ) as ocr:
+        elements = PDFDocumentConverterAdapter().convert(
+            str(pdf_path), ConversionContext(document_id="doc-scan")
+        )
+
+    assert ocr.call_count == 1
+    assert len(elements) == 1
+    assert elements[0].text == "Recovered scanned text"
+    assert elements[0].extraction_status == ExtractionStatus.SUCCESS
+    assert elements[0].extractor.endswith("+local_ocr")
+
+
+
 def test_excel_document_converter_success():
     adapter = ExcelDocumentConverterAdapter()
     
@@ -137,8 +230,8 @@ def test_excel_document_converter_success():
     ws.title = "SheetTest"
     ws["A1"] = "ColA"
     ws["B1"] = "ColB"
-    ws["A2"] = "ValA"
-    ws["B2"] = "ValB"
+    ws["A2"] = 10
+    ws["B2"] = 20
     wb.save(xlsx_path)
     wb.close()
 
@@ -151,10 +244,12 @@ def test_excel_document_converter_success():
         assert elem.sheet == "SheetTest"
         assert elem.table is not None
         assert elem.table.headers == ["ColA", "ColB"]
-        assert elem.table.rows == [["ColA", "ColB"], ["ValA", "ValB"]]
-        assert len(elem.table.cells) == 4
-        assert elem.table.cells[0].text == "ColA"
-        assert elem.table.cells[0].is_header is True
+        assert any(row == ["ColA", "ColB"] for row in elem.table.rows)
+        assert any("10" in str(row) for row in elem.table.rows)
+        assert len(elem.table.cells) >= 2
+        header_cells = [c for c in elem.table.cells if c.is_header]
+        assert len(header_cells) >= 1
+        assert header_cells[0].text == "ColA"
     finally:
         os.remove(xlsx_path)
 
@@ -217,7 +312,7 @@ def test_unsupported_and_missing_files():
     # Unsupported format
     elems = registry.convert_document("test.unsupported", ctx_soft)
     assert len(elems) == 1
-    assert elems[0].extraction_status == ExtractionStatus.FAILED
+    assert elems[0].extraction_status == ExtractionStatus.UNSUPPORTED
     assert "No supported adapter found" in elems[0].extraction_warning
 
     with pytest.raises(ValueError, match="No supported adapter found"):

@@ -1,3 +1,5 @@
+import pytest
+
 from aios_habit.rag_v2 import DocumentElement, ElementType, ExtractionStatus
 from aios_habit.rag_v2.chunking import StructureAwareChunker
 from aios_habit.rag_v2.index import LocalChunkIndex
@@ -219,9 +221,26 @@ def test_multilingual_query_plan_fuses_variant_hits_and_reports_provenance(tmp_p
         response = index.search_with_summary(plan)
 
     assert [result.chunk_id for result in response.results] == ["japanese"]
-    assert response.results[0].matched_query_variants == ("生産 履歴 登録 システム 構成",)
-    assert "multi_variant_rrf" in response.results[0].ranking_signals
-    assert response.summary.query_variant_count == 2
+    result = response.results[0]
+    assert "生産 履歴 登録 システム 構成" in result.matched_query_variants
+    assert result.matched_query_variant_ids == (
+        "intent_components",
+        "intent_data_flow",
+        "expansion_1",
+    )
+    assert result.matched_query_facets == (
+        "components",
+        "data_flow",
+        "query",
+    )
+    assert "multi_variant_rrf" in result.ranking_signals
+    assert response.summary.query_variant_count == 5
+    assert response.summary.planned_facet_ids == (
+        "query",
+        "components",
+        "data_flow",
+        "interfaces",
+    )
     assert response.summary.expansion_status == "expanded"
 
 
@@ -473,3 +492,362 @@ def test_diagnosis_retrieval_exposes_stable_obligation_coverage(tmp_path):
     assert response.summary.covered_obligation_ids == ("problem", "check", "action")
     assert response.summary.missing_obligation_ids == ()
     assert all(result.matched_obligations for result in response.results)
+
+
+def test_context_only_parent_is_not_ranked_but_expands_without_changing_winner(tmp_path):
+    text = " ".join(
+        ["overview"] * 30
+        + ["unique retrieval needle"]
+        + ["supporting context"] * 30
+    )
+    element = DocumentElement(
+        element_id="hierarchy",
+        document_id="doc-parent",
+        source_path="/workspace/hierarchy.txt",
+        source_name="hierarchy.txt",
+        file_type="txt",
+        extractor="unit",
+        extraction_status=ExtractionStatus.SUCCESS,
+        element_type=ElementType.TEXT,
+        text=text,
+        privacy_labels=("allowed",),
+        source_fingerprint="parent-v1",
+    )
+    chunks = StructureAwareChunker(max_chars=120).chunk_elements([element])
+    children = [chunk for chunk in chunks if chunk.retrievable]
+    parent = next(chunk for chunk in chunks if not chunk.retrievable)
+
+    with LocalChunkIndex(tmp_path / "hierarchy.sqlite") as index:
+        assert index.upsert_chunks(chunks) == len(children)
+        assert index.count() == len(children)
+        assert index.document_state("doc-parent")["chunk_count"] == len(children)
+        assert index._conn.execute("SELECT COUNT(*) FROM chunks").fetchone()[0] == len(chunks)
+
+        response = index.search_with_summary("unique retrieval needle", limit=1)
+        winner = response.results[0]
+        expanded = index.expand_context(response, neighbor_window=0, parent_limit=1)
+
+    assert winner.chunk_id != parent.chunk_id
+    assert expanded.results[0].chunk_id == winner.chunk_id
+    assert expanded.results[0].score == winner.score
+    assert expanded.results[0].text != winner.text
+    expansion = expanded.results[0].metadata["context_expansion"]
+    assert expansion["winner_chunk_id"] == winner.chunk_id
+    assert parent.chunk_id in expansion["context_chunk_ids"]
+    assert any(
+        item["chunk_id"] == parent.chunk_id and item["relation"] == "parent"
+        for item in expansion["context_chunks"]
+    )
+    assert expanded.summary.ranked_pool == response.summary.ranked_pool
+
+
+def test_verify_index_coverage_accepts_complete_dense_and_sparse_index(tmp_path):
+    from aios_habit.rag_v2.semantic import DeterministicEmbeddingBackend
+
+    backend = DeterministicEmbeddingBackend(dimension=8)
+    with LocalChunkIndex(tmp_path / "complete.sqlite", embedding_backend=backend) as index:
+        index.upsert_chunks([make_chunk()])
+        report = index.verify_index_coverage(sparse_required=True)
+
+    assert report["valid"] is True
+    assert report["integrity_ok"] is True
+    assert report["retrievable_chunk_count"] == 1
+    assert report["dense_embedding_count"] == 1
+    assert report["sparse_embedding_count"] == 1
+    assert report["model_fingerprint"] == backend.descriptor.fingerprint
+
+
+def test_verify_index_coverage_rejects_missing_dense_or_sparse_rows(tmp_path):
+    from aios_habit.rag_v2.semantic import DeterministicEmbeddingBackend
+
+    dense_backend = DeterministicEmbeddingBackend(dimension=8)
+    with LocalChunkIndex(tmp_path / "missing-dense.sqlite", embedding_backend=dense_backend) as index:
+        index.upsert_chunks([make_chunk()])
+        index._conn.execute("DELETE FROM chunk_embeddings")
+        index._conn.commit()
+        dense_report = index.verify_index_coverage(sparse_required=True)
+
+    sparse_backend = DeterministicEmbeddingBackend(dimension=8)
+    with LocalChunkIndex(tmp_path / "missing-sparse.sqlite", embedding_backend=sparse_backend) as index:
+        index.upsert_chunks([make_chunk()])
+        index._conn.execute("DELETE FROM chunk_sparse_embeddings")
+        index._conn.commit()
+        sparse_report = index.verify_index_coverage(sparse_required=True)
+
+    assert dense_report["valid"] is False
+    assert dense_report["dense_complete"] is False
+    assert dense_report["sparse_complete"] is True
+    assert sparse_report["valid"] is False
+    assert sparse_report["dense_complete"] is True
+    assert sparse_report["sparse_complete"] is False
+
+
+def test_verify_index_coverage_rejects_wrong_model_fingerprint_without_backfill(tmp_path):
+    from aios_habit.rag_v2.semantic import DeterministicEmbeddingBackend
+
+    db_path = tmp_path / "wrong-model.sqlite"
+    first_backend = DeterministicEmbeddingBackend(dimension=8, model_id="test/model-a")
+    with LocalChunkIndex(db_path, embedding_backend=first_backend) as index:
+        index.upsert_chunks([make_chunk()])
+
+    requested_backend = DeterministicEmbeddingBackend(dimension=8, model_id="test/model-b")
+    with LocalChunkIndex(
+        db_path,
+        embedding_backend=requested_backend,
+        ensure_embeddings_on_open=False,
+    ) as index:
+        report = index.verify_index_coverage(sparse_required=True)
+
+    assert requested_backend.embedded_document_count == 0
+    assert report["valid"] is False
+    assert report["model_fingerprint"] == requested_backend.descriptor.fingerprint
+    assert report["dense_embedding_count"] == 0
+    assert report["sparse_embedding_count"] == 0
+    assert report["stale_dense_embedding_count"] == 1
+    assert report["stale_sparse_embedding_count"] == 1
+
+
+def test_verify_index_coverage_requires_exact_document_fingerprints(tmp_path):
+    from aios_habit.rag_v2.semantic import DeterministicEmbeddingBackend
+
+    backend = DeterministicEmbeddingBackend(dimension=8)
+    with LocalChunkIndex(tmp_path / "documents.sqlite", embedding_backend=backend) as index:
+        index.upsert_chunks([make_chunk()])
+        complete = index.verify_index_coverage(
+            expected_document_fingerprints={"doc1": "fp1"}
+        )
+        missing = index.verify_index_coverage(
+            expected_document_fingerprints={"doc1": "fp1", "doc2": "fp2"}
+        )
+        mismatched = index.verify_index_coverage(
+            expected_document_fingerprints={"doc1": "wrong-fingerprint"}
+        )
+        unexpected = index.verify_index_coverage(
+            expected_document_fingerprints={}
+        )
+
+    assert complete["valid"] is True
+    assert complete["documents_complete"] is True
+    assert missing["valid"] is False
+    assert missing["missing_document_ids"] == ("doc2",)
+    assert mismatched["valid"] is False
+    assert mismatched["fingerprint_mismatch_document_ids"] == ("doc1",)
+    assert unexpected["valid"] is False
+    assert unexpected["unexpected_document_ids"] == ("doc1",)
+
+
+def test_multivector_publication_rejects_incomplete_staging_atomically(tmp_path):
+    from aios_habit.rag_v2.semantic import (
+        DeterministicEmbeddingBackend,
+        MultiVectorDescriptor,
+        SemanticBackendError,
+        SemanticCapability,
+    )
+
+    class MultiVectorBackend(DeterministicEmbeddingBackend):
+        @property
+        def multivector_capability(self):
+            return SemanticCapability(
+                capability="multivector_embedding",
+                available=True,
+                backend="deterministic-test",
+                model=self.descriptor,
+            )
+
+        @property
+        def multivector_descriptor(self):
+            return MultiVectorDescriptor(
+                model_fingerprint=self.descriptor.fingerprint,
+                dimension=self.descriptor.dimension,
+                max_tokens=8,
+            )
+
+        def multivector_documents(self, texts):
+            return tuple((self._embed(text),) for text in texts)
+
+        def multivector_query(self, text):
+            return (self._embed(text),)
+
+    backend = MultiVectorBackend(dimension=8)
+    chunk = make_chunk()
+    db_path = tmp_path / "atomic-multivector.sqlite"
+    with LocalChunkIndex(db_path, embedding_backend=backend) as index:
+        with pytest.raises(SemanticBackendError, match="multi-vector coverage mismatch"):
+            index.replace_document_chunks_with_embeddings(
+                chunk.document_id,
+                [chunk],
+                {chunk.chunk_id: backend.embed_query(chunk.text)},
+                {chunk.chunk_id: backend.sparse_query(chunk.text)},
+                {},
+            )
+        report = index.verify_index_coverage(
+            sparse_required=True,
+            multivector_required=True,
+        )
+
+    assert report["retrievable_chunk_count"] == 0
+    assert report["dense_embedding_count"] == 0
+    assert report["sparse_embedding_count"] == 0
+    assert report["multivector_embedding_count"] == 0
+
+
+def test_warm_multivector_query_is_read_only_with_complete_persisted_coverage(tmp_path):
+    from aios_habit.rag_v2.semantic import (
+        DeterministicEmbeddingBackend,
+        MultiVectorDescriptor,
+        SemanticCapability,
+    )
+
+    class CountingMultiVectorBackend(DeterministicEmbeddingBackend):
+        def __init__(self):
+            super().__init__(dimension=8)
+            self.multivector_document_call_count = 0
+            self.multivector_query_call_count = 0
+
+        @property
+        def multivector_capability(self):
+            return SemanticCapability(
+                capability="multivector_embedding",
+                available=True,
+                backend="deterministic-test",
+                model=self.descriptor,
+            )
+
+        @property
+        def multivector_descriptor(self):
+            return MultiVectorDescriptor(
+                model_fingerprint=self.descriptor.fingerprint,
+                dimension=self.descriptor.dimension,
+                max_tokens=8,
+            )
+
+        def multivector_documents(self, texts):
+            self.multivector_document_call_count += 1
+            return tuple((self._embed(text),) for text in texts)
+
+        def multivector_query(self, text):
+            self.multivector_query_call_count += 1
+            return (self._embed(text),)
+
+    backend = CountingMultiVectorBackend()
+    db_path = tmp_path / "warm-multivector.sqlite"
+    with LocalChunkIndex(db_path, embedding_backend=backend) as index:
+        index.upsert_chunks([make_chunk("alpha production completion evidence")])
+        report = index.verify_index_coverage(
+            sparse_required=True,
+            multivector_required=True,
+        )
+
+    assert report["valid"] is True
+    assert report["dense_complete"] is True
+    assert report["sparse_complete"] is True
+    assert report["multivector_complete"] is True
+    assert report["multivector_embedding_count"] == 1
+    assert backend.document_call_count == 1
+    assert backend.multivector_document_call_count == 1
+
+    before = db_path.read_bytes()
+    document_calls_before = backend.document_call_count
+    multivector_document_calls_before = backend.multivector_document_call_count
+    with LocalChunkIndex(
+        db_path,
+        embedding_backend=backend,
+        read_only=True,
+    ) as index:
+        response = index.hybrid_search_with_summary(
+            "alpha production completion",
+            limit=1,
+            dense_limit=10,
+            use_multivector=True,
+            precomputed_only=True,
+        )
+    after = db_path.read_bytes()
+
+    assert response.results
+    assert response.summary.candidate_backend == "hybrid_rrf_multivector"
+    assert backend.document_call_count == document_calls_before
+    assert backend.multivector_document_call_count == multivector_document_calls_before
+    assert backend.query_call_count == 1
+    assert backend.multivector_query_call_count == 1
+    assert after == before
+
+
+def test_named_multilingual_aliases_survive_unavailable_provider_expansion():
+    from aios_habit.rag_v2.query_planning import build_query_plan
+
+    cases = {
+        "What are the steps to register production completion?": {
+            "着完工登録 完工 手順",
+            "生産完了 登録 完工",
+        },
+        "Create an actionable checklist for the manual RevUp procedure.": {
+            "手作業 方法",
+            "変更内容 操作",
+        },
+        "Identify the supply-instruction issue sheet and cell range.": {
+            "供給指示 問題 シート 行 セル範囲",
+            "供給指示 調査 Excel",
+        },
+    }
+
+    for question, expected_aliases in cases.items():
+        plan = build_query_plan(question, {"invalid": "provider payload"})
+        assert plan.expansion_status == "expansion_unavailable"
+        assert expected_aliases <= {variant.text for variant in plan.variants}
+        assert all(
+            variant.target_equivalent
+            for variant in plan.variants
+            if variant.origin == "named_query_equivalent"
+        )
+
+
+def test_named_alias_requires_two_anchors_for_target_provenance(tmp_path):
+    from aios_habit.rag_v2.query_planning import identity_query_plan
+
+    def fixture_chunk(chunk_id, text):
+        return make_ranked_chunk(
+            chunk_id,
+            chunk_id,
+            text,
+            source_name=f"{chunk_id}.txt",
+            source_path=f"/fixture/{chunk_id}.txt",
+        )
+
+    plan = identity_query_plan(
+        "Create an actionable checklist for the manual RevUp procedure."
+    )
+    with LocalChunkIndex(tmp_path / "index.sqlite") as index:
+        index.upsert_chunks([
+            fixture_chunk("generic", "generic manual procedure steps for a different system"),
+            fixture_chunk("primary", "手作業 方法 変更内容 操作 Modeling Rev IsROR Save"),
+        ])
+        results = index.search_with_summary(plan, limit=10).results
+
+    by_id = {item.chunk_id: item for item in results}
+    assert by_id["generic"].matched_target_equivalent_variant_ids == ()
+    assert by_id["primary"].matched_target_equivalent_variant_ids
+
+
+def test_named_procedure_returns_only_target_supported_evidence(tmp_path):
+    from aios_habit.rag_v2.query_planning import identity_query_plan
+
+    plan = identity_query_plan(
+        "Create an actionable checklist for the manual RevUp procedure."
+    )
+    with LocalChunkIndex(tmp_path / "index.sqlite") as index:
+        index.upsert_chunks([
+            make_ranked_chunk(
+                "generic",
+                "generic",
+                "manual procedure steps for a different system",
+            ),
+            make_ranked_chunk(
+                "primary",
+                "primary",
+                "手作業 方法 変更内容 操作 Modeling Rev IsROR Save",
+            ),
+        ])
+        results = index.search_with_summary(plan, limit=10).results
+
+    assert [item.chunk_id for item in results] == ["primary"]
+    assert results[0].matched_target_equivalent_variant_ids

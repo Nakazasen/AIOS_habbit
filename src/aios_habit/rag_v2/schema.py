@@ -20,6 +20,7 @@ class ElementType(str, Enum):
     HEADING = "heading"
     LIST_ITEM = "list_item"
     IMAGE = "image"
+    CHART = "chart"
     UNKNOWN = "unknown"
 
 @dataclass(frozen=True)
@@ -30,34 +31,46 @@ class TableCell:
     is_header: bool = False
     row_span: int = 1
     col_span: int = 1
+    coordinate: Optional[str] = None
+    merge_range: Optional[str] = None
 
     def to_dict(self) -> Dict[str, Any]:
         return asdict(self)
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "TableCell":
-        return cls(**data)
+        fields = cls.__dataclass_fields__
+        return cls(**{key: value for key, value in data.items() if key in fields})
 
 @dataclass
 class TableData:
     headers: List[str] = field(default_factory=list)
     rows: List[List[str]] = field(default_factory=list)
     cells: List[TableCell] = field(default_factory=list)
+    header_rows: List[List[str]] = field(default_factory=list)
+    merged_ranges: List[str] = field(default_factory=list)
+    region_id: Optional[str] = None
 
     def to_dict(self) -> Dict[str, Any]:
         return {
             "headers": self.headers,
             "rows": self.rows,
-            "cells": [c.to_dict() for c in self.cells]
+            "cells": [cell.to_dict() for cell in self.cells],
+            "header_rows": self.header_rows,
+            "merged_ranges": self.merged_ranges,
+            "region_id": self.region_id,
         }
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "TableData":
-        headers = data.get("headers", [])
-        rows = data.get("rows", [])
-        cells_data = data.get("cells", [])
-        cells = [TableCell.from_dict(c) for c in cells_data]
-        return cls(headers=headers, rows=rows, cells=cells)
+        return cls(
+            headers=data.get("headers", []),
+            rows=data.get("rows", []),
+            cells=[TableCell.from_dict(cell) for cell in data.get("cells", [])],
+            header_rows=data.get("header_rows", []),
+            merged_ranges=data.get("merged_ranges", []),
+            region_id=data.get("region_id"),
+        )
 
 @dataclass
 class DocumentElement:

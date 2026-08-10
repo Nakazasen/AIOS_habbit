@@ -25,6 +25,15 @@ PRIVACY_STRICTNESS_ORDER = [
 SAFE_SOURCE_TYPES = {"document", "text", "spreadsheet", "image", "unknown"}
 SAFE_SCOPES = {"notebook", "temporary", "unknown"}
 
+# Stable destinations used by the policy boundary.
+MOCK_ROUTER_DESTINATION = "mock_router"
+WORKSPACE_CHAT_EXTERNAL_ROUTER_DESTINATION = "workspace_chat_external_router"
+ALLOWED_EXTERNAL_DESTINATIONS = {
+    MOCK_ROUTER_DESTINATION,
+    WORKSPACE_CHAT_EXTERNAL_ROUTER_DESTINATION,
+}
+WORKSPACE_CHAT_ANSWER_PURPOSE = "workspace_chat_answer"
+
 # Reason codes
 LOCAL_ONLY_HARD_DENY = "LOCAL_ONLY_HARD_DENY"
 CONFIDENTIAL_HARD_DENY = "CONFIDENTIAL_HARD_DENY"
@@ -32,6 +41,9 @@ UNKNOWN_DEFAULT_DENY = "UNKNOWN_DEFAULT_DENY"
 MACHINE_ONLY_NEEDS_CONSENT = "MACHINE_ONLY_NEEDS_CONSENT"
 MIXED_STRICTEST_PRIVACY = "MIXED_STRICTEST_PRIVACY"
 ROUTER_DISABLED = "ROUTER_DISABLED"
+UNSUPPORTED_DESTINATION = "UNSUPPORTED_DESTINATION"
+CONSENT_SOURCE_SET_CHANGED = "CONSENT_SOURCE_SET_CHANGED"
+OUTBOUND_SOURCE_NOT_AUTHORIZED = "OUTBOUND_SOURCE_NOT_AUTHORIZED"
 ROUTER_ALLOWED_CLOUD_SAFE = "ROUTER_ALLOWED_CLOUD_SAFE"
 ROUTER_ALLOWED_PUBLIC = "ROUTER_ALLOWED_PUBLIC"
 ROUTER_ALLOWED_OWNER_CONSENT = "ROUTER_ALLOWED_OWNER_CONSENT"
@@ -45,10 +57,13 @@ NEXT_ACTIONS = {
     MACHINE_ONLY_NEEDS_CONSENT: "REQUEST_OWNER_CONSENT",
     MIXED_STRICTEST_PRIVACY: "USE_LOCAL_ONLY",
     ROUTER_DISABLED: "ENABLE_ROUTER_MOCK_FOR_TEST",
+    UNSUPPORTED_DESTINATION: "REVIEW_EXTERNAL_DESTINATION",
+    CONSENT_SOURCE_SET_CHANGED: "REVIEW_SOURCES_AND_CONFIRM",
+    OUTBOUND_SOURCE_NOT_AUTHORIZED: "REVIEW_SOURCES_AND_CONFIRM",
     SANITIZATION_FAILED: "USE_LOCAL_ONLY",
-    ROUTER_ALLOWED_CLOUD_SAFE: "CALL_MOCK_ROUTER",
-    ROUTER_ALLOWED_PUBLIC: "CALL_MOCK_ROUTER",
-    ROUTER_ALLOWED_OWNER_CONSENT: "CALL_MOCK_ROUTER"
+    ROUTER_ALLOWED_CLOUD_SAFE: "CALL_ROUTER",
+    ROUTER_ALLOWED_PUBLIC: "CALL_ROUTER",
+    ROUTER_ALLOWED_OWNER_CONSENT: "CALL_ROUTER"
 }
 
 @dataclass(frozen=True)
@@ -68,6 +83,7 @@ class OwnerConsent:
     timestamp: float
     one_shot: bool = True
     expiry: Optional[float] = None
+    source_keys: Tuple[Tuple[str, str], ...] = ()
 
     def is_valid_for(self, source_set_hash: str, destination: str, purpose: str, now: Optional[float] = None) -> bool:
         if now is None:
@@ -89,8 +105,9 @@ class BrainRequest:
     sources: Tuple[GatewaySource, ...]
     consent: Optional[OwnerConsent] = None
     router_enabled: bool = False
-    purpose: str = "workspace_chat_answer"
-    destination: str = "mock_router"
+    purpose: str = WORKSPACE_CHAT_ANSWER_PURPOSE
+    destination: str = MOCK_ROUTER_DESTINATION
+    outbound_sources: Optional[Tuple[GatewaySource, ...]] = None
 
 @dataclass(frozen=True)
 class SanitizedSourcePayload:
@@ -181,6 +198,14 @@ class BrainGateway:
                 message="AI Router đang bị tắt. Vui lòng kích hoạt trong cấu hình."
             )
 
+        if request.destination not in ALLOWED_EXTERNAL_DESTINATIONS:
+            return BrainDecision(
+                allowed=False,
+                reason_code=UNSUPPORTED_DESTINATION,
+                next_action=NEXT_ACTIONS[UNSUPPORTED_DESTINATION],
+                message="Đích nhận dữ liệu chưa được phê duyệt. Vui lòng kiểm tra lại cấu hình gửi AI."
+            )
+
         # Empty sources logic: UNKNOWN_DEFAULT_DENY
         if not request.sources:
             return BrainDecision(
@@ -203,6 +228,17 @@ class BrainGateway:
             )
 
         current_hash = calculate_source_set_hash(request.sources)
+
+        if request.consent and request.consent.source_keys:
+            current_keys = {(source.source_scope, source.source_id) for source in request.sources}
+            consent_keys = set(request.consent.source_keys)
+            if current_keys != consent_keys:
+                return BrainDecision(
+                    allowed=False,
+                    reason_code=CONSENT_SOURCE_SET_CHANGED,
+                    next_action=NEXT_ACTIONS[CONSENT_SOURCE_SET_CHANGED],
+                    message="Tập nguồn đang bật đã thay đổi sau khi xác nhận. Vui lòng kiểm tra lại và xác nhận lại trước khi gửi."
+                )
 
         # 2. Default deny for unknown
         if strictest == PRIVACY_UNKNOWN:
@@ -238,14 +274,38 @@ class BrainGateway:
                     message="Xác nhận đồng ý của Owner không hợp lệ hoặc đã hết hạn."
                 )
 
+        outbound_sources = request.outbound_sources if request.outbound_sources is not None else request.sources
+        authorized_sources = {
+            (source.source_scope, source.source_id, _normalize_privacy_label(source.privacy_label))
+            for source in request.sources
+        }
+        for source in outbound_sources:
+            source_key = (
+                source.source_scope,
+                source.source_id,
+                _normalize_privacy_label(source.privacy_label),
+            )
+            if source_key not in authorized_sources:
+                return BrainDecision(
+                    allowed=False,
+                    reason_code=OUTBOUND_SOURCE_NOT_AUTHORIZED,
+                    next_action=NEXT_ACTIONS[OUTBOUND_SOURCE_NOT_AUTHORIZED],
+                    message="Nguồn dùng để trả lời không khớp với tập nguồn đã được xác nhận. Vui lòng kiểm tra lại và xác nhận lại trước khi gửi."
+                )
+
         # Tiến hành làm sạch payload
         sanitized_question = sanitize_text(request.question)
         sanitized_sources: List[SanitizedSourcePayload] = []
 
-        # Kiểm tra xem có bất kỳ nguồn nào là machine_only hoặc unknown không
-        has_sensitive_source = any(_normalize_privacy_label(s.privacy_label) in {PRIVACY_MACHINE_ONLY, PRIVACY_UNKNOWN} for s in request.sources)
+        # Only sensitive outbound sources are redacted. Full enabled sources are
+        # still used above for the strictest-label and consent decisions.
+        has_sensitive_source = any(
+            _normalize_privacy_label(source.privacy_label)
+            in {PRIVACY_MACHINE_ONLY, PRIVACY_UNKNOWN}
+            for source in outbound_sources
+        )
 
-        for idx, s in enumerate(request.sources, 1):
+        for idx, s in enumerate(outbound_sources, 1):
             norm_label = _normalize_privacy_label(s.privacy_label)
             
             # Map scope bằng allow-list
@@ -312,10 +372,14 @@ class BrainGateway:
         else:
             rc = ROUTER_ALLOWED_OWNER_CONSENT
 
+        next_action = NEXT_ACTIONS[rc]
+        if request.destination == MOCK_ROUTER_DESTINATION:
+            next_action = "CALL_MOCK_ROUTER"
+
         return BrainDecision(
             allowed=True,
             reason_code=rc,
-            next_action=NEXT_ACTIONS[rc],
+            next_action=next_action,
             message="Yêu cầu được chấp nhận gửi tới AI Router.",
             sanitized_payload=payload
         )

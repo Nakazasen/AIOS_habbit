@@ -12,6 +12,55 @@ from typing import List, Optional, Dict, Any, Tuple
 from .schema import DocumentElement, ExtractionStatus, ElementType, TableData, TableCell
 from .adapters import DocumentConverterAdapter, BaseDocumentConverterAdapter, ConversionContext, AdapterCapabilities
 
+
+_OCR_USABLE_STATUSES = {"ocr_success", "ocr_partial"}
+
+
+def _ocr_status(status: str) -> ExtractionStatus:
+    if status == "ocr_success":
+        return ExtractionStatus.SUCCESS
+    if status == "ocr_partial":
+        return ExtractionStatus.PARTIAL
+    return ExtractionStatus.FAILED
+
+
+def _ocr_element(
+    *,
+    path: str,
+    context: ConversionContext,
+    path_hash: str,
+    index: int,
+    text: str,
+    status: str,
+    warning: str,
+    extractor: str,
+    file_type: str,
+    confidence: Optional[float] = None,
+    page: Optional[int] = None,
+) -> DocumentElement:
+    usable = status in _OCR_USABLE_STATUSES and bool(text.strip())
+    detail = warning.strip()
+    if not usable and not detail:
+        detail = f"OCR unusable: status={status or 'unknown'}"
+    return DocumentElement(
+        element_id=f"{context.document_id or f'doc_{path_hash}'}_ocr_{path_hash}_{index}",
+        document_id=context.document_id or f"doc_{path_hash}",
+        source_path=path,
+        source_name=os.path.basename(path),
+        file_type=file_type.lstrip("."),
+        extractor=extractor,
+        extraction_status=_ocr_status(status) if usable else ExtractionStatus.FAILED,
+        element_type=ElementType.TEXT if usable else ElementType.IMAGE,
+        extraction_warning=detail or None,
+        text=text.strip() if usable else None,
+        page=page,
+        confidence=(float(confidence) / 100.0 if confidence is not None else None),
+        language_hint=(context.language_hints[0] if context.language_hints else None),
+        privacy_labels=context.privacy_labels,
+        source_fingerprint=context.source_fingerprint,
+        created_at=datetime.datetime.now(datetime.timezone.utc).isoformat(),
+    )
+
 class TextDocumentConverterAdapter(BaseDocumentConverterAdapter):
     def supports(self, path: str, file_type: Optional[str] = None, mime: Optional[str] = None) -> bool:
         ext = os.path.splitext(path)[1].lower()
@@ -166,198 +215,278 @@ class HTMLDocumentConverterAdapter(BaseDocumentConverterAdapter):
         )
 
 
-class PDFDocumentConverterAdapter(BaseDocumentConverterAdapter):
+class ImageOCRDocumentConverterAdapter(BaseDocumentConverterAdapter):
     def supports(self, path: str, file_type: Optional[str] = None, mime: Optional[str] = None) -> bool:
-        ext = os.path.splitext(path)[1].lower()
-        return ext == ".pdf"
+        return os.path.splitext(path)[1].lower() in {
+            ".png", ".jpg", ".jpeg", ".bmp", ".tif", ".tiff"
+        }
 
     def convert(self, path: str, context: ConversionContext) -> List[DocumentElement]:
         if not self.supports(path):
             if context.fail_soft:
-                return [self._create_failed_element(path, f"Unsupported file: {path}", context, "PDFDocumentConverterAdapter")]
-            raise ValueError(f"Unsupported file: {path}")
-
+                return [self._create_failed_element(
+                    path, f"Unsupported image: {path}", context,
+                    "ImageOCRDocumentConverterAdapter",
+                )]
+            raise ValueError(f"Unsupported image: {path}")
         if not os.path.exists(path):
             if context.fail_soft:
-                return [self._create_failed_element(path, f"File not found: {path}", context, "PDFDocumentConverterAdapter")]
+                return [self._create_failed_element(
+                    path, f"File not found: {path}", context,
+                    "ImageOCRDocumentConverterAdapter",
+                )]
             raise FileNotFoundError(f"File not found: {path}")
 
-        # Check dependency
+        from aios_habit.document_extractors import extract_text_chunks_from_file
+
+        path_hash = hashlib.sha256(path.encode("utf-8")).hexdigest()[:12]
         try:
-            import fitz
-            has_fitz = True
-        except ImportError:
-            has_fitz = False
-
-        if not has_fitz:
-            msg = "Missing dependency: PyMuPDF (fitz)"
+            chunks = extract_text_chunks_from_file(path)
+        except Exception as exc:
             if context.fail_soft:
-                return [self._create_failed_element(path, msg, context, "PDFDocumentConverterAdapter")]
-            raise ImportError(msg)
+                return [self._create_failed_element(
+                    path, f"Image OCR failed: {exc}", context,
+                    "ImageOCRDocumentConverterAdapter",
+                )]
+            raise
+        return [
+            _ocr_element(
+                path=path,
+                context=context,
+                path_hash=path_hash,
+                index=index,
+                text=str(chunk.get("text") or ""),
+                status=str(chunk.get("extraction_status") or "failed_with_reason"),
+                warning=str(chunk.get("warning") or ""),
+                extractor=str(chunk.get("extractor_name") or "local_ocr"),
+                file_type=str(chunk.get("file_type") or os.path.splitext(path)[1]),
+                confidence=chunk.get("ocr_confidence"),
+            )
+            for index, chunk in enumerate(chunks)
+        ]
 
-        elements = []
+    def capabilities(self) -> AdapterCapabilities:
+        from aios_habit.document_extractors import local_capabilities
+
+        capability = local_capabilities()
+        return AdapterCapabilities(
+            adapter_name="ImageOCRDocumentConverterAdapter",
+            supported_file_types=[".png", ".jpg", ".jpeg", ".bmp", ".tif", ".tiff"],
+            supports_ocr=True,
+            supports_images=True,
+            supports_metadata=True,
+            requires_external_dependency=True,
+            dependency_status="ok" if capability["ocr_available"] else "missing",
+            privacy_notes="Local OCR only; cloud OCR is not used.",
+        )
+
+
+class PDFDocumentConverterAdapter(BaseDocumentConverterAdapter):
+    def supports(self, path: str, file_type: Optional[str] = None, mime: Optional[str] = None) -> bool:
+        return os.path.splitext(path)[1].lower() == ".pdf"
+
+    def convert(self, path: str, context: ConversionContext) -> List[DocumentElement]:
+        adapter_name = "PDFDocumentConverterAdapter"
+        if not self.supports(path):
+            if context.fail_soft:
+                return [self._create_failed_element(path, f"Unsupported file: {path}", context, adapter_name)]
+            raise ValueError(f"Unsupported file: {path}")
+        if not os.path.exists(path):
+            if context.fail_soft:
+                return [self._create_failed_element(path, f"File not found: {path}", context, adapter_name)]
+            raise FileNotFoundError(f"File not found: {path}")
+
+        from pathlib import Path
+        from aios_habit.document_extractors import _extract_pdf
+
         path_hash = hashlib.sha256(path.encode("utf-8")).hexdigest()[:12]
         doc_id = context.document_id or f"doc_{path_hash}"
-
         try:
-            doc = fitz.open(str(path))
-            for page_idx, page in enumerate(doc, start=1):
-                try:
-                    text = page.get_text("text") or ""
-                except Exception:
-                    text = ""
-                
-                paragraphs = [p.strip() for p in text.split("\n\n") if p.strip()]
-                if not paragraphs:
-                    paragraphs = [""]
-
-                for idx, para in enumerate(paragraphs):
-                    element_id = f"{doc_id}_pdf_{path_hash}_p{page_idx}_{idx}"
-                    elements.append(DocumentElement(
-                        element_id=element_id,
-                        document_id=doc_id,
-                        source_path=path,
-                        source_name=os.path.basename(path),
-                        file_type="pdf",
-                        extractor="PDFDocumentConverterAdapter",
-                        extraction_status=ExtractionStatus.SUCCESS,
-                        element_type=ElementType.TEXT,
-                        text=para,
-                        page=page_idx,
-                        privacy_labels=context.privacy_labels,
-                        source_fingerprint=context.source_fingerprint,
-                        created_at=datetime.datetime.now(datetime.timezone.utc).isoformat()
-                    ))
-            doc.close()
-        except Exception as e:
+            extracted = _extract_pdf(Path(path))
+        except Exception as exc:
             if context.fail_soft:
-                return [self._create_failed_element(path, f"PDF read failed: {e}", context, "PDFDocumentConverterAdapter")]
-            raise e
+                return [self._create_failed_element(path, f"PDF read failed: {exc}", context, adapter_name)]
+            raise
 
+        elements: List[DocumentElement] = []
+        for index, result in enumerate(extracted):
+            raw_page = getattr(result, "page", "")
+            page = int(raw_page) if str(raw_page).isdigit() else None
+            if str(result.extraction_status).startswith("ocr_") or result.element_type == "pdf_page_ocr":
+                elements.append(_ocr_element(
+                    path=path,
+                    context=context,
+                    path_hash=path_hash,
+                    index=index,
+                    text=str(result.text or ""),
+                    status=str(result.extraction_status or "failed_with_reason"),
+                    warning=str(result.warning or ""),
+                    extractor=f"{adapter_name}+local_ocr",
+                    file_type="pdf",
+                    confidence=result.ocr_confidence,
+                    page=page,
+                ))
+                continue
+
+            text = str(result.text or "").strip()
+            usable = result.extraction_status in {"extracted", "extracted_success", "success"} and bool(text)
+            elements.append(DocumentElement(
+                element_id=f"{doc_id}_pdf_{path_hash}_p{page or 0}_{index}",
+                document_id=doc_id,
+                source_path=path,
+                source_name=os.path.basename(path),
+                file_type="pdf",
+                extractor=f"{adapter_name}+{result.extractor_name}",
+                extraction_status=ExtractionStatus.SUCCESS if usable else ExtractionStatus.FAILED,
+                element_type=ElementType.TEXT if usable else ElementType.UNKNOWN,
+                extraction_warning=str(result.warning or "") or None,
+                text=text if usable else None,
+                page=page,
+                privacy_labels=context.privacy_labels,
+                source_fingerprint=context.source_fingerprint,
+                created_at=datetime.datetime.now(datetime.timezone.utc).isoformat(),
+            ))
         return elements
 
     def capabilities(self) -> AdapterCapabilities:
-        try:
-            import fitz
-            has_fitz = True
-        except ImportError:
-            has_fitz = False
+        from aios_habit.document_extractors import local_capabilities
+
+        capability = local_capabilities()
+        parser_available = bool(capability["pdf_inspector_available"])
+        render_available = bool(capability["pdf_render_available"])
         return AdapterCapabilities(
             adapter_name="PDFDocumentConverterAdapter",
             supported_file_types=[".pdf"],
-            supports_layout=True,
+            supports_tables=parser_available,
+            supports_layout=parser_available,
+            supports_ocr=True,
+            supports_images=render_available,
             supports_metadata=True,
             requires_external_dependency=True,
-            dependency_status="ok" if has_fitz else "missing"
+            dependency_status="ok" if (parser_available or render_available) else "missing",
+            privacy_notes="Local CPU parsing and OCR only; cloud services are not used.",
         )
 
 
 class ExcelDocumentConverterAdapter(BaseDocumentConverterAdapter):
     def supports(self, path: str, file_type: Optional[str] = None, mime: Optional[str] = None) -> bool:
-        ext = os.path.splitext(path)[1].lower()
-        return ext in {".xlsx", ".xlsm"}
+        return os.path.splitext(path)[1].lower() in {".xlsx", ".xlsm", ".xls"}
 
     def convert(self, path: str, context: ConversionContext) -> List[DocumentElement]:
+        from aios_habit.excel_extractors import extract_excel
+
         if not self.supports(path):
             if context.fail_soft:
                 return [self._create_failed_element(path, f"Unsupported file: {path}", context, "ExcelDocumentConverterAdapter")]
             raise ValueError(f"Unsupported file: {path}")
-
         if not os.path.exists(path):
             if context.fail_soft:
                 return [self._create_failed_element(path, f"File not found: {path}", context, "ExcelDocumentConverterAdapter")]
-            raise FileNotFoundError(f"File not found: {path}")
+            raise FileNotFoundError(path)
 
-        # Check dependency
-        try:
-            import openpyxl
-            has_openpyxl = True
-        except ImportError:
-            has_openpyxl = False
-
-        if not has_openpyxl:
-            msg = "Missing dependency: openpyxl"
+        extracted = extract_excel(path, include_images=True, include_charts=True)
+        if extracted.dependency_missing or extracted.error:
+            detail = extracted.error or f"Missing dependency: {extracted.dependency_missing}"
+            if os.path.splitext(path)[1].lower() == ".xls" and extracted.dependency_missing:
+                detail += "; convert to .xlsx or install rag-ingestion-xls"
             if context.fail_soft:
-                return [self._create_failed_element(path, msg, context, "ExcelDocumentConverterAdapter")]
-            raise ImportError(msg)
+                return [self._create_failed_element(path, detail, context, "ExcelDocumentConverterAdapter")]
+            raise ValueError(detail)
 
-        elements = []
         path_hash = hashlib.sha256(path.encode("utf-8")).hexdigest()[:12]
         doc_id = context.document_id or f"doc_{path_hash}"
+        file_type = os.path.splitext(path)[1].lower()[1:]
+        warning = "; ".join(dict.fromkeys([*extracted.warnings, *extracted.truncated_reasons])) or None
+        status = ExtractionStatus.PARTIAL if extracted.partial else ExtractionStatus.SUCCESS
+        now = datetime.datetime.now(datetime.timezone.utc).isoformat()
+        elements: List[DocumentElement] = []
 
-        try:
-            workbook = openpyxl.load_workbook(path, read_only=True, data_only=True, keep_vba=False)
-            for sheet_idx, sheet_name in enumerate(workbook.sheetnames[:10]):
-                sheet = workbook[sheet_name]
-                
-                rows_data: List[List[str]] = []
-                cells_data: List[TableCell] = []
-                headers: List[str] = []
+        for index, region in enumerate(extracted.regions):
+            table = TableData(
+                headers=list(region.headers),
+                rows=[list(row) for row in region.rows],
+                cells=[TableCell(
+                    row_index=cell.row - region.row_range[0],
+                    column_index=cell.column - region.column_range[0],
+                    text=cell.text,
+                    is_header=cell.is_header,
+                    row_span=cell.row_span,
+                    col_span=cell.col_span,
+                    coordinate=cell.coordinate,
+                    merge_range=cell.merge_range or None,
+                ) for cell in region.cells],
+                header_rows=[list(row) for row in region.header_rows],
+                merged_ranges=list(region.merged_ranges),
+                region_id=f"{region.sheet}!{region.cell_range}",
+            )
+            elements.append(DocumentElement(
+                element_id=f"{doc_id}_xls_{path_hash}_region_{index}", document_id=doc_id,
+                source_path=path, source_name=os.path.basename(path), file_type=file_type,
+                extractor="ExcelDocumentConverterAdapter", extraction_status=status,
+                extraction_warning=warning, element_type=ElementType.TABLE, table=table,
+                sheet=region.sheet, row_range=region.row_range,
+                column_range=region.column_range, cell_range=region.cell_range,
+                privacy_labels=context.privacy_labels, source_fingerprint=context.source_fingerprint,
+                created_at=now,
+            ))
 
-                max_r = min(sheet.max_row or 100, 100)
-                max_c = min(sheet.max_column or 20, 20)
+        for chart in extracted.charts:
+            elements.append(DocumentElement(
+                element_id=f"{doc_id}_xls_{path_hash}_chart_{chart.index}", document_id=doc_id,
+                source_path=path, source_name=os.path.basename(path), file_type=file_type,
+                extractor="ExcelDocumentConverterAdapter", extraction_status=status,
+                extraction_warning=warning, element_type=ElementType.CHART,
+                text=chart.as_text(), sheet=chart.sheet,
+                section_path=(f"chart {chart.index}", chart.anchor or "unknown anchor"),
+                privacy_labels=context.privacy_labels, source_fingerprint=context.source_fingerprint,
+                created_at=now,
+            ))
 
-                for r_idx, row in enumerate(sheet.iter_rows(max_row=max_r, max_col=max_c, values_only=True), start=1):
-                    row_vals = [str(val) if val is not None else "" for val in row]
-                    if any(val.strip() for val in row_vals):
-                        rows_data.append(row_vals)
-                        for c_idx, val in enumerate(row_vals, start=1):
-                            if val.strip():
-                                is_h = (r_idx == 1)
-                                cells_data.append(TableCell(
-                                    row_index=r_idx - 1,
-                                    column_index=c_idx - 1,
-                                    text=val,
-                                    is_header=is_h
-                                ))
+        if extracted.images:
+            from io import BytesIO
+            from PIL import Image
+            from aios_habit.document_extractors import _ocr_image_object
 
-                if rows_data:
-                    headers = rows_data[0] if len(rows_data) > 0 else []
-                    table_data = TableData(
-                        headers=headers,
-                        rows=rows_data,
-                        cells=cells_data
-                    )
-                    
-                    element_id = f"{doc_id}_xls_{path_hash}_{sheet_idx}"
+            for image_data in extracted.images:
+                try:
+                    with Image.open(BytesIO(image_data.data)) as image:
+                        image.load()
+                        ocr = _ocr_image_object(image, file_type=image_data.extension, page=f"{image_data.sheet}!{image_data.anchor}")
+                    usable = ocr.extraction_status in _OCR_USABLE_STATUSES and bool(ocr.text.strip())
                     elements.append(DocumentElement(
-                        element_id=element_id,
-                        document_id=doc_id,
-                        source_path=path,
-                        source_name=os.path.basename(path),
-                        file_type=os.path.splitext(path)[1].lower()[1:],
-                        extractor="ExcelDocumentConverterAdapter",
-                        extraction_status=ExtractionStatus.SUCCESS,
-                        element_type=ElementType.TABLE,
-                        table=table_data,
-                        sheet=sheet_name,
-                        row_range=(1, len(rows_data)),
-                        column_range=(1, len(headers)),
-                        privacy_labels=context.privacy_labels,
-                        source_fingerprint=context.source_fingerprint,
-                        created_at=datetime.datetime.now(datetime.timezone.utc).isoformat()
+                        element_id=f"{doc_id}_xls_{path_hash}_image_{image_data.index}", document_id=doc_id,
+                        source_path=path, source_name=os.path.basename(path), file_type=file_type,
+                        extractor=f"ExcelDocumentConverterAdapter+{ocr.extractor_name}",
+                        extraction_status=_ocr_status(ocr.extraction_status) if usable else ExtractionStatus.PARTIAL,
+                        extraction_warning="; ".join(item for item in (ocr.warning, warning) if item) or None,
+                        element_type=ElementType.TEXT if usable else ElementType.IMAGE,
+                        text=ocr.text.strip() if usable else None, sheet=image_data.sheet,
+                        confidence=(ocr.ocr_confidence / 100.0 if ocr.ocr_confidence is not None else None),
+                        section_path=(f"embedded image {image_data.index}", image_data.anchor or "unknown anchor"),
+                        privacy_labels=context.privacy_labels, source_fingerprint=context.source_fingerprint,
+                        created_at=now,
                     ))
-            workbook.close()
-        except Exception as e:
-            if context.fail_soft:
-                return [self._create_failed_element(path, f"Excel read failed: {e}", context, "ExcelDocumentConverterAdapter")]
-            raise e
-
+                except Exception as exc:
+                    elements.append(DocumentElement(
+                        element_id=f"{doc_id}_xls_{path_hash}_image_{image_data.index}", document_id=doc_id,
+                        source_path=path, source_name=os.path.basename(path), file_type=file_type,
+                        extractor="ExcelDocumentConverterAdapter", extraction_status=ExtractionStatus.PARTIAL,
+                        extraction_warning=f"embedded image OCR failed: {exc}", element_type=ElementType.IMAGE,
+                        sheet=image_data.sheet, privacy_labels=context.privacy_labels,
+                        source_fingerprint=context.source_fingerprint, created_at=now,
+                    ))
         return elements
 
     def capabilities(self) -> AdapterCapabilities:
-        try:
-            import openpyxl
-            has_openpyxl = True
-        except ImportError:
-            has_openpyxl = False
+        from aios_habit.excel_extractors import legacy_xls_available
+
         return AdapterCapabilities(
             adapter_name="ExcelDocumentConverterAdapter",
-            supported_file_types=[".xlsx", ".xlsm"],
-            supports_tables=True,
-            supports_metadata=True,
-            requires_external_dependency=True,
-            dependency_status="ok" if has_openpyxl else "missing"
+            supported_file_types=[".xlsx", ".xlsm", ".xls"],
+            supports_tables=True, supports_ocr=True, supports_images=True,
+            supports_metadata=True, requires_external_dependency=True,
+            dependency_status="ok; xls=available" if legacy_xls_available() else "ok; xls=optional-missing",
+            privacy_notes="Local parsing and OCR only; legacy .xls requires the optional xlrd extra.",
         )
 
 

@@ -81,11 +81,11 @@ local-first default.
 
 Security reporting contact, distribution/support, retention/RTO/RPO, named
 reviewers/CODEOWNERS handles and dependency advisory enforcement remain
-`OWNER_DECISION_REQUIRED`. The discovered real-provider/Gateway policy divergence
-is explicitly tracked as
-[AI-GW-REAL-ROUTE-POLICY-CONSOLIDATION](../backlog/AI-GW-REAL-ROUTE-POLICY-CONSOLIDATION.md)
-(`PLANNED`, P0 before an external-provider release claim). This documentation
-baseline does not implement that runtime control-flow change.
+`OWNER_DECISION_REQUIRED`. The completed
+[AI-GW-REAL-ROUTE-POLICY-CONSOLIDATION](AI-GW-REAL-ROUTE-POLICY-CONSOLIDATION.md)
+gate delivered the separate runtime control-flow change and its required
+route-specific verification before the stronger external-provider release claim
+can be considered.
 
 ## Verification
 

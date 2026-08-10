@@ -84,6 +84,8 @@ class BenchmarkResult:
     question: str
     expected_answer_type: str
     expected_target_defined: bool = False
+    exact_identifier_target_defined: bool = False
+    exact_identifier_hit: bool = False
     hit_expected_chunk: bool = False
     hit_expected_document: bool = False
     hit_expected_source: bool = False
@@ -132,8 +134,10 @@ class BenchmarkResult:
     secondary_error_classes: Tuple[str, ...] = ()
     lexical_latency_ms: float = 0.0
     dense_latency_ms: float = 0.0
+    sparse_latency_ms: float = 0.0
     fusion_latency_ms: float = 0.0
     rerank_latency_ms: float = 0.0
+    context_expansion_latency_ms: float = 0.0
     assembly_latency_ms: float = 0.0
     search_latency_ms: float = 0.0
     evidence_latency_ms: float = 0.0
@@ -160,6 +164,8 @@ class BenchmarkSummary:
     local_execution_pass_rate: float
     average_latency_ms: float
     pass_fail: str
+    exact_identifier_target_count: int = 0
+    exact_identifier_recall: float = 1.0
     lexical_candidate_recall: float = 1.0
     dense_candidate_recall: float = 1.0
     fused_candidate_recall: float = 1.0
@@ -171,8 +177,10 @@ class BenchmarkSummary:
     negative_control_false_support_rate: float = 0.0
     average_lexical_latency_ms: float = 0.0
     average_dense_latency_ms: float = 0.0
+    average_sparse_latency_ms: float = 0.0
     average_fusion_latency_ms: float = 0.0
     average_rerank_latency_ms: float = 0.0
+    average_context_expansion_latency_ms: float = 0.0
     average_assembly_latency_ms: float = 0.0
     average_search_latency_ms: float = 0.0
     average_evidence_latency_ms: float = 0.0
@@ -219,6 +227,33 @@ def _first_relevant_rank(
 ) -> int:
     return next(
         (rank for rank, identity in enumerate(identities, 1) if _identity_matches(question, identity)),
+        0,
+    )
+
+
+def _exact_identifier_matches(
+    question: BenchmarkQuestion,
+    identity: Sequence[str],
+) -> bool:
+    """Match an explicit document ID, or a source name when no document ID exists."""
+    _chunk_id, document_id, source_name = identity
+    if question.expected_document_ids:
+        return document_id in question.expected_document_ids
+    if question.expected_source_names:
+        return source_name in question.expected_source_names
+    return False
+
+
+def _exact_identifier_rank(
+    question: BenchmarkQuestion,
+    identities: Sequence[Sequence[str]],
+) -> int:
+    return next(
+        (
+            rank
+            for rank, identity in enumerate(identities, 1)
+            if _exact_identifier_matches(question, identity)
+        ),
         0,
     )
 
@@ -305,6 +340,10 @@ def score_question(
     fused_first_rank = _first_relevant_rank(question, summary.fused_pool)
     reranked_first_rank = _first_relevant_rank(question, summary.ranked_pool)
     final_first_rank = _first_relevant_rank(question, final_pool)
+    exact_identifier_rank = _exact_identifier_rank(question, final_pool)
+    exact_identifier_target_defined = bool(
+        question.expected_document_ids or question.expected_source_names
+    )
     fused_candidate_hit = fused_first_rank > 0
     reranked_candidate_hit = reranked_first_rank > 0
     assembly_rejected_hit = _first_relevant_rank(question, summary.assembly_rejected_pool) > 0
@@ -406,6 +445,10 @@ def score_question(
             or question.expected_document_ids
             or question.expected_source_names
         ),
+        exact_identifier_target_defined=exact_identifier_target_defined,
+        exact_identifier_hit=(
+            exact_identifier_target_defined and 0 < exact_identifier_rank <= 10
+        ),
         hit_expected_chunk=hit_chunk,
         hit_expected_document=hit_doc,
         hit_expected_source=hit_source,
@@ -438,14 +481,24 @@ def score_question(
         lexical_pool_count=len(summary.lexical_pool),
         dense_pool_count=len(summary.dense_pool),
         fused_pool_count=len(summary.fused_pool),
-        planned_facet_count=len(response.summary.planned_facet_ids),
-        covered_facet_count=len(response.summary.covered_facet_ids),
-        missing_facet_count=len(response.summary.missing_facet_ids),
+        planned_facet_count=len(pack.coverage_map),
+        covered_facet_count=sum(
+            facet.status == "covered" for facet in pack.coverage_map
+        ),
+        missing_facet_count=sum(
+            facet.status == "missing" for facet in pack.coverage_map
+        ),
         answer_mode=pack.answer_mode.value,
         final_evidence_term_coverage=pack.final_evidence_term_coverage,
-        planned_obligation_count=len(pack.retrieval_summary.planned_obligation_ids),
-        supported_obligation_count=len(pack.retrieval_summary.covered_obligation_ids),
-        missing_obligation_count=len(pack.retrieval_summary.missing_obligation_ids),
+        planned_obligation_count=len(pack.obligation_coverage_map),
+        supported_obligation_count=sum(
+            obligation.status == "covered"
+            for obligation in pack.obligation_coverage_map
+        ),
+        missing_obligation_count=sum(
+            obligation.status == "missing"
+            for obligation in pack.obligation_coverage_map
+        ),
         false_support=false_support,
         false_support_reason=false_support_reason,
         hard_insufficiency_reasons=pack.hard_insufficiency_reasons,
@@ -454,8 +507,10 @@ def score_question(
         secondary_error_classes=secondary_error_classes,
         lexical_latency_ms=summary.lexical_latency_ms,
         dense_latency_ms=summary.dense_latency_ms,
+        sparse_latency_ms=summary.sparse_latency_ms,
         fusion_latency_ms=summary.fusion_latency_ms,
         rerank_latency_ms=summary.rerank_latency_ms,
+        context_expansion_latency_ms=summary.context_expansion_latency_ms,
         assembly_latency_ms=summary.assembly_latency_ms,
         search_latency_ms=search_latency_ms,
         evidence_latency_ms=evidence_latency_ms,
@@ -529,6 +584,18 @@ def summarize_results(
         result for result in answerable if result.expected_target_defined
     ]
     target_count = len(target_answerable)
+    exact_identifier_answerable = [
+        result
+        for result in answerable
+        if result.exact_identifier_target_defined
+    ]
+    exact_identifier_target_count = len(exact_identifier_answerable)
+    exact_identifier_recall = (
+        sum(1 for result in exact_identifier_answerable if result.exact_identifier_hit)
+        / exact_identifier_target_count
+        if exact_identifier_target_count
+        else 1.0
+    )
     channel_rate = lambda attribute: (
         sum(1 for result in target_answerable if getattr(result, attribute)) / target_count
         if target_count else 1.0
@@ -641,6 +708,8 @@ def summarize_results(
         local_execution_pass_rate=local_execution_pass,
         average_latency_ms=avg_latency,
         pass_fail=pass_fail,
+        exact_identifier_target_count=exact_identifier_target_count,
+        exact_identifier_recall=exact_identifier_recall,
         lexical_candidate_recall=lexical_candidate_recall,
         dense_candidate_recall=dense_candidate_recall,
         fused_candidate_recall=fused_candidate_recall,
@@ -652,8 +721,10 @@ def summarize_results(
         negative_control_false_support_rate=false_support_rate,
         average_lexical_latency_ms=average("lexical_latency_ms"),
         average_dense_latency_ms=average("dense_latency_ms"),
+        average_sparse_latency_ms=average("sparse_latency_ms"),
         average_fusion_latency_ms=average("fusion_latency_ms"),
         average_rerank_latency_ms=average("rerank_latency_ms"),
+        average_context_expansion_latency_ms=average("context_expansion_latency_ms"),
         average_assembly_latency_ms=average("assembly_latency_ms"),
         average_search_latency_ms=average("search_latency_ms"),
         average_evidence_latency_ms=average("evidence_latency_ms"),

@@ -13,6 +13,7 @@ from aios_habit.workspace_chat_excel import (
     MAX_ZIP_UNCOMPRESSED_BYTES,
     TRUNCATED_MESSAGE,
     XLS_UNSUPPORTED_MESSAGE,
+    _normalize_cell_value,
     extract_xlsx_text,
 )
 from aios_habit.workspace_chat_models import (
@@ -105,6 +106,19 @@ def test_formula_text_preserved_not_recalculated():
     assert "C1==SUM(A1:B1)" in result.text
     assert "recalculate" not in result.text.lower()
     assert "tính lại" not in result.text.lower()
+
+
+def test_array_formula_normalization_is_process_stable():
+    from openpyxl.worksheet.formula import ArrayFormula
+
+    value = ArrayFormula(ref="B2:B2", text="=SUM(A1:A2)")
+
+    first = _normalize_cell_value(value)
+    second = _normalize_cell_value(value)
+
+    assert first == second
+    assert first == "ArrayFormula(ref=B2:B2, text==SUM(A1:A2))"
+    assert "0x" not in first
 
 
 def test_merged_cells_anchor_once_no_crash():

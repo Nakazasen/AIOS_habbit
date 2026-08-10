@@ -1,4 +1,4 @@
-﻿import pytest
+import pytest
 
 from aios_habit.rag_v2 import DocumentElement, ElementType, ExtractionStatus, TableCell, TableData
 from aios_habit.rag_v2.chunking import StructureAwareChunker
@@ -37,19 +37,25 @@ def test_text_element_chunks_with_metadata():
     assert chunk.section_path == ("Intro",)
 
 
-def test_long_element_splits_deterministically():
+def test_long_element_splits_into_deterministic_children_and_local_parent():
     text = " ".join(f"word{i}" for i in range(80))
     element = make_element(text=text)
     chunker = StructureAwareChunker(max_chars=100)
     first = chunker.chunk_elements([element])
     second = chunker.chunk_elements([element])
-    assert len(first) > 1
+    children = [chunk for chunk in first if chunk.retrievable]
+    parents = [chunk for chunk in first if not chunk.retrievable]
+
+    assert len(children) > 1
+    assert len(parents) == 1
     assert [chunk.chunk_id for chunk in first] == [chunk.chunk_id for chunk in second]
     assert [chunk.text for chunk in first] == [chunk.text for chunk in second]
-    assert all(len(chunk.text) <= 100 for chunk in first)
+    assert all(len(chunk.text) <= 100 for chunk in children)
+    assert parents[0].metadata["representation_role"] == "parent"
+    assert all(parents[0].element_ids[0] in chunk.parent_element_ids for chunk in children)
 
 
-def test_table_cell_metadata_preserved():
+def test_table_creates_schema_row_groups_and_local_parent_with_provenance():
     table = TableData(
         headers=["Name", "Value"],
         rows=[["A", "10"], ["B", "20"]],
@@ -65,13 +71,24 @@ def test_table_cell_metadata_preserved():
         column_range=(1, 2),
         cell_range="A1:B3",
     )
-    chunk = StructureAwareChunker(max_chars=120).chunk_elements([element])[0]
-    assert "Name | Value" in chunk.text
-    assert "A | 10" in chunk.text
-    assert chunk.sheet_names == ("Sheet1",)
-    assert chunk.row_range == (1, 3)
-    assert chunk.column_range == (1, 2)
-    assert chunk.cell_range == "A1:B3"
+    chunks = StructureAwareChunker(max_chars=120).chunk_elements([element])
+    by_role = {chunk.metadata["representation_role"]: chunk for chunk in chunks}
+    schema = by_role["table_schema"]
+    rows = by_role["table_rows"]
+    parent = by_role["table_parent"]
+
+    assert "Columns: Name | Value" in schema.text
+    assert "Row 2: A | 10" in rows.text
+    assert "Row 3: B | 20" in rows.text
+    assert rows.sheet_names == ("Sheet1",)
+    assert rows.row_range == (2, 3)
+    assert rows.column_range == (1, 2)
+    assert rows.cell_range == "A2:B3"
+    assert schema.row_range == (1, 1)
+    assert schema.cell_range == "A1:B1"
+    assert parent.retrievable is False
+    assert parent.element_ids[0] in schema.parent_element_ids
+    assert parent.element_ids[0] in rows.parent_element_ids
 
 
 @pytest.mark.parametrize(
@@ -100,3 +117,36 @@ def test_chunk_round_trip_keeps_tuple_fields():
     restored = type(chunk).from_dict(chunk.to_dict())
     assert restored == chunk
     assert restored.page_range == (1, 1)
+
+
+def test_oversized_table_row_splits_into_bounded_provenance_preserving_children():
+    long_cell = " ".join(f"value{i}" for i in range(80))
+    table = TableData(headers=["Details"], rows=[[long_cell]])
+    element = make_element(
+        element_type=ElementType.TABLE,
+        table=table,
+        text=None,
+        file_type="xlsx",
+        sheet="Data",
+        row_range=(1, 2),
+        column_range=(1, 1),
+        cell_range="A1:A2",
+    )
+    chunker = StructureAwareChunker(max_chars=120)
+    first = chunker.chunk_elements([element])
+    second = chunker.chunk_elements([element])
+    children = [
+        chunk for chunk in first
+        if chunk.retrievable and chunk.metadata["representation_role"] == "table_rows"
+    ]
+
+    assert len(children) > 1
+    assert all(len(chunk.text) <= 120 for chunk in children)
+    assert all(chunk.sheet_names == ("Data",) for chunk in children)
+    assert all(chunk.row_range == (2, 2) for chunk in children)
+    assert all(chunk.column_range == (1, 1) for chunk in children)
+    assert all(chunk.cell_range == "A2:A2" for chunk in children)
+    assert all("e1::table-parent" in chunk.parent_element_ids for chunk in children)
+    assert " ".join(chunk.text for chunk in children).endswith(long_cell)
+    assert [chunk.chunk_id for chunk in first] == [chunk.chunk_id for chunk in second]
+    assert [chunk.text for chunk in first] == [chunk.text for chunk in second]

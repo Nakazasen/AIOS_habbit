@@ -17,33 +17,30 @@ certification. It documents current behavior and owner decisions still required.
 | Workspace Chat notebooks, messages and sources | JSONL under ignored `local_cases/workspace_chat/` | None by default | Local use | Owner-managed filesystem data; no automatic retention/deletion engine proven |
 | RAG v2 chunks/index | Local SQLite path chosen by caller | None by default | Local retrieval | Rebuildable from available source/chunk input where caller preserves it |
 | `local_only` / `confidential` source text | Local only | Blocked | Gateway hard deny | Owner-managed |
-| `unknown` / `machine_only` source text | Local by default | Optional provider | Real Workspace Chat path requires cloud mode, allowed label and consent snapshot; Gateway mock/preflight path requires consent bound to source set, destination and purpose | Owner-managed; consent is request authorization, not retention policy |
-| `cloud_safe` / `public` source text | Local or optional provider | Configured provider | Router enabled + normal request flow | Provider terms/retention are external and must be reviewed by owner |
+| `unknown` / `machine_only` source text | Local by default | Optional provider | Gateway requires consent bound to full source set, destination and purpose; sensitive outbound text remains redacted | Owner-managed; consent is request authorization, not retention policy |
+| `cloud_safe` / `public` source text | Local or optional provider | Configured provider | Gateway approval + normal explicit request flow | Provider terms/retention are external and must be reviewed by owner |
 | API keys | Process environment for router integration | Provider authentication only | Explicit live route | Not stored by application contract; do not commit |
 | Logs/diagnostics | Local/operator controlled | None by default | Sanitized collection only | No formal automatic retention policy |
 
 ## Route-specific policy coverage
 
-`BrainGateway.preflight_check()` implements the following verified behavior for
-its router-enabled preflight/mock path:
+`BrainGateway.preflight_check()` implements the verified policy for both the
+router-enabled mock path and the real Workspace Chat provider path:
 
 1. router disabled or no sources → deny;
 2. `local_only` / `confidential` → hard deny external route;
-3. `unknown` / `machine_only` → deny until valid `OwnerConsent` matches source
-   set hash, destination and purpose;
-4. allowed payloads are sanitized; sensitive source titles/text are redacted and
+3. `unknown` / `machine_only` → deny until valid `OwnerConsent` matches the full
+   source-set hash, destination and purpose;
+4. retrieved outbound evidence must match a source in the full enabled snapshot;
+5. approved payloads are sanitized; sensitive source titles/text are redacted and
    metadata is allow-listed/opaque.
 
-The current real Workspace Chat router path has a separate verified guard: it
-requires cloud mode, blocks non-sendable labels, requires an explicit confirmation
-and rejects a changed enabled-source set. It currently constructs the provider
-prompt directly after that guard and is **not proven to call the Gateway
-sanitizer/preflight**. This is a P0 design-consistency gap, not an assertion that
-local-only data is currently sent; it is tracked in
-[AI-GW-REAL-ROUTE-POLICY-CONSOLIDATION](../roadmap/backlog/AI-GW-REAL-ROUTE-POLICY-CONSOLIDATION.md).
-
-The gateway remains the intended privacy/consent policy authority. The
-Nakazasen Router is a provider-routing dependency and must not be treated as a
+The real route uses destination `workspace_chat_external_router` and passes only
+`SanitizedRouterPayload` to the router adapter. The adapter builds provider
+messages itself, never from caller-provided raw prompts. The owner-facing
+external-sharing selection writes `cloud_safe`; existing `machine_only` and
+`cloud_allowed` records stay non-sendable until an owner explicitly reclassifies
+them. The Nakazasen Router remains a provider-routing dependency and is never a
 consent authority.
 
 ## Owner decisions required

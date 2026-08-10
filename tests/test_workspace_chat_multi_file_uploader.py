@@ -53,6 +53,7 @@ def test_process_workspace_upload_batch_success_and_fail(monkeypatch):
         }
 
     monkeypatch.setattr("aios_habit.workspace_chat_app.ingest_and_extract_bytes", mock_ingest)
+    monkeypatch.setattr("aios_habit.workspace_chat_source_ingest.ingest_and_extract_bytes", mock_ingest)
 
     files = [
         MockUploadedFile("success1.txt", b"content 1"),
@@ -100,6 +101,7 @@ def test_process_workspace_upload_batch_unique_ids(monkeypatch):
         }
 
     monkeypatch.setattr("aios_habit.workspace_chat_app.ingest_and_extract_bytes", mock_ingest)
+    monkeypatch.setattr("aios_habit.workspace_chat_source_ingest.ingest_and_extract_bytes", mock_ingest)
 
     # Upload two files with the exact same name
     files = [

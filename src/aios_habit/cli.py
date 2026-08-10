@@ -13,6 +13,8 @@ from .handover import build_handover
 from .models import DecisionPattern, EvidenceRecord, MemoryUnit, WorkflowCard, nid, sha_text
 from .phase_gate import phase_validate
 from .profiles import build_profile_text
+from .provider_catalog import get_provider_profile
+from .provider_model_discovery import check_provider_models
 from .storage import append_jsonl, read_jsonl, write_json
 
 REPO = Path.cwd()
@@ -25,6 +27,49 @@ EXPORT_DIR = REPO / "07_ai_export_packs"
 
 def print_json(obj) -> None:
     print(json.dumps(obj, ensure_ascii=True, indent=2, sort_keys=True))
+
+
+def cmd_provider_check(args):
+    """Read-only model availability check for environment-configured providers."""
+    from .ai_router import provider_configs_from_env
+
+    checks = []
+    for config in provider_configs_from_env():
+        profile = get_provider_profile(config.provider_id)
+        if profile is None:
+            continue
+        check = check_provider_models(
+            base_url=profile.default_base_url,
+            api_key=config.api_key,
+            configured_models=(config.model_name,),
+            replacement_models=profile.default_models,
+            timeout=args.timeout,
+        )
+        checks.append({
+            "provider_id": config.provider_id,
+            "provider_name": config.display_name_vi,
+            "configured_model": config.model_name,
+            "model_from": "catalog" if config.allow_model_auto_substitution else "environment_override",
+            "endpoint_checked": profile.default_base_url,
+            "status": check["status"],
+            "latency_ms": check["latency_ms"],
+            "valid_models": check["valid"],
+            "stale_models": check["stale"],
+            "suggested_model": check["suggestion"],
+            "available_model_count": len(check["available"]),
+            "error": check["error"],
+        })
+
+    statuses = {check["status"] for check in checks}
+    status = "PASS" if not checks or statuses == {"ok"} else "WARN"
+    print_json({
+        "status": status,
+        "read_only": True,
+        "configured_provider_count": len(checks),
+        "checks": checks,
+        "note_vi": "Không in API key, không gửi tài liệu nguồn, và không thay đổi cấu hình.",
+    })
+    return 0
 
 
 def record_phase_report(phase: str, status: str, errors: list[str]) -> None:
@@ -402,6 +447,10 @@ def main(argv=None) -> None:
     owner_workflow = subcommands.add_parser("owner-workflow", help="Print the safe owner-facing Phase 4 workflow guide")
     owner_workflow.add_argument("--fake-data", action="store_true", help="Use fake-data acceptance mode")
     owner_workflow.set_defaults(func=cmd_owner_workflow)
+
+    provider_check = subcommands.add_parser("provider-check", help="Read-only check for configured provider models")
+    provider_check.add_argument("--timeout", type=int, default=10, choices=range(1, 31), metavar="1-30")
+    provider_check.set_defaults(func=cmd_provider_check)
 
     compare = subcommands.add_parser("notebooklm-compare", help="Run AIOS vs NotebookLM MVP benchmark helpers")
     compare.add_argument("--config", help="Path to benchmark config JSON")

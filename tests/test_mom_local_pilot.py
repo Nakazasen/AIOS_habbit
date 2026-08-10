@@ -311,6 +311,118 @@ def test_mom_coverage_summary_no_unknown_unsupported(tmp_path, monkeypatch):
     assert summary.unknown_unsupported == 0
     assert summary.status_counts["extracted_success"] >= 1
     assert summary.privacy_level == "local_only"
+    assert summary.unresolved_files == 1
+    assert summary.strict_passed is False
+
+
+def test_ocr_image_object_records_confidence_and_preprocessing(monkeypatch):
+    pytest.importorskip("PIL")
+    from PIL import Image
+    from aios_habit import document_extractors
+
+    monkeypatch.setattr(document_extractors, "_tesseract_available", lambda: (True, "tesseract", "test"))
+    monkeypatch.setattr(document_extractors, "_ocr_preprocessing_attempts", lambda image: iter([
+        ("original", image, "--psm 3"),
+        ("grayscale_autocontrast_upscale", image, "--psm 6"),
+    ]))
+    responses = iter([
+        {"text": ["MOM", "rule"], "conf": ["40", "50"]},
+        {"text": ["MOM", "registration", "rule"], "conf": ["90", "80", "85"]},
+    ])
+    import pytesseract
+    monkeypatch.setattr(pytesseract, "image_to_data", lambda *args, **kwargs: next(responses))
+
+    result = document_extractors._ocr_image_object(Image.new("RGB", (100, 40)), file_type=".png")
+
+    assert result.extraction_status == "ocr_success"
+    assert result.ocr_confidence == 85.0
+    assert result.ocr_confidence_samples == 3
+    assert result.ocr_preprocessing == "grayscale_autocontrast_upscale"
+    assert result.ocr_attempts == 2
+    assert result.ocr_quality_reason == "passed_quality_gate"
+
+
+def test_ocr_image_object_rejects_below_confidence_threshold(monkeypatch):
+    pytest.importorskip("PIL")
+    from PIL import Image
+    from aios_habit import document_extractors
+
+    monkeypatch.setattr(document_extractors, "_tesseract_available", lambda: (True, "tesseract", "test"))
+    monkeypatch.setattr(
+        document_extractors,
+        "_ocr_preprocessing_attempts",
+        lambda image: iter([("original", image, "--psm 3")]),
+    )
+    import pytesseract
+    monkeypatch.setattr(
+        pytesseract,
+        "image_to_data",
+        lambda *args, **kwargs: {"text": ["MOM", "rule"], "conf": ["10", "20"]},
+    )
+
+    result = document_extractors._ocr_image_object(Image.new("RGB", (100, 40)), file_type=".png")
+
+    assert result.extraction_status == "failed_with_reason"
+    assert result.text == ""
+    assert result.ocr_confidence == 15.0
+    assert result.ocr_quality_reason == "confidence_below_usable_threshold"
+
+
+def test_ocr_image_object_ignores_high_confidence_nonmeaningful_candidate(monkeypatch):
+    pytest.importorskip("PIL")
+    from PIL import Image
+    from aios_habit import document_extractors
+
+    monkeypatch.setattr(document_extractors, "_tesseract_available", lambda: (True, "tesseract", "test"))
+    monkeypatch.setattr(document_extractors, "_ocr_preprocessing_attempts", lambda image: iter([
+        ("sparse", image, "--psm 3"),
+        ("layout_aware", image, "--psm 11"),
+    ]))
+    responses = iter([
+        {"text": ["ABC"], "conf": ["93"]},
+        {"text": ["MOM", "registration", "rule"], "conf": ["50", "45", "40"]},
+    ])
+    import pytesseract
+    monkeypatch.setattr(pytesseract, "image_to_data", lambda *args, **kwargs: next(responses))
+
+    result = document_extractors._ocr_image_object(Image.new("RGB", (100, 40)), file_type=".png")
+
+    assert result.extraction_status == "ocr_partial"
+    assert result.ocr_confidence == 45.0
+    assert result.ocr_confidence_samples == 3
+    assert result.ocr_preprocessing == "layout_aware"
+    assert result.ocr_attempts == 2
+
+
+def test_strict_corpus_audit_accepts_only_valid_owner_exclusion(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    from aios_habit.mom_coverage import summarize_mom_coverage
+
+    root = tmp_path / "docs"
+    root.mkdir()
+    (root / "usable.md").write_text("Production registration evidence", encoding="utf-8")
+    (root / "unrecoverable.bin").write_bytes(b"private-binary")
+    ledger = tmp_path / "dispositions.json"
+    ledger.write_text(json.dumps({
+        "schema_version": 1,
+        "dispositions": [{
+            "relative_path": "unrecoverable.bin",
+            "disposition": "approved_unrecoverable_exclusion",
+            "reason": "Canonical owner source is unavailable",
+            "approved_by": "corpus-owner",
+            "approved_at": "2026-07-29T00:00:00+00:00",
+        }],
+    }), encoding="utf-8")
+
+    summary = summarize_mom_coverage(root, dispositions_path=ledger)
+
+    assert summary.total_files == 2
+    assert summary.usable_files == 1
+    assert summary.approved_exclusions == 1
+    assert summary.unresolved_files == 0
+    assert summary.disposition_coverage_percent == 100.0
+    assert summary.strict_passed is True
+
 
 
 def test_benchmark_gate_blocks_50_when_score_below_90():

@@ -1,8 +1,9 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
 from aios_habit.safety_modes import SAFETY_MODE_COMPANY, SAFETY_MODE_NORMAL
+from aios_habit.shared_ai_provider_fabric import load_shared_provider_fabric
 
 GROUP_LOCAL_INTERNAL = "Nguồn dùng trong máy / nội bộ"
 GROUP_NORMAL_DOCS = "Nguồn AI cho tài liệu thường"
@@ -38,26 +39,52 @@ class AIProviderProfile:
         return STATUS_LABELS_VI.get(self.config_status, STATUS_LABELS_VI[STATUS_UNKNOWN])
 
 
+def _apply_shared_fabric_metadata(profiles: tuple[AIProviderProfile, ...]) -> tuple[AIProviderProfile, ...]:
+    """Keep UI copy local while sharing executable provider metadata across surfaces."""
+    try:
+        descriptors = {descriptor.provider_id: descriptor for descriptor in load_shared_provider_fabric()}
+    except ValueError:
+        return profiles
+    aligned = []
+    for profile in profiles:
+        descriptor = descriptors.get(profile.provider_id)
+        if descriptor is None:
+            aligned.append(profile)
+            continue
+        capabilities = tuple(dict.fromkeys((*profile.capabilities, *descriptor.capabilities)))
+        aligned.append(replace(
+            profile,
+            endpoint_kind=descriptor.endpoint_kind,
+            default_base_url=descriptor.default_base_url,
+            default_models=(descriptor.default_model,),
+            capabilities=capabilities,
+            safety_scope=descriptor.safety_scope,
+            enabled_by_default=descriptor.enabled_by_default,
+        ))
+    return tuple(aligned)
+
+
 def get_provider_catalog() -> tuple[AIProviderProfile, ...]:
-    return (
+    profiles = (
         AIProviderProfile("openai_compatible_local", "AI trong máy tương thích OpenAI", "Dùng endpoint AI chạy trong máy hoặc mạng nội bộ.", GROUP_LOCAL_INTERNAL, "local_openai_compatible", "http://localhost:1234/v1", ("local-model",), False, False, True, True, ("chat", "coding", "reasoning"), "company_safe_possible", False, notes_vi="Phù hợp cho tài liệu công ty/mật nếu endpoint thật sự nằm trong máy hoặc mạng nội bộ."),
         AIProviderProfile("ollama", "Ollama", "AI chạy cục bộ qua Ollama.", GROUP_LOCAL_INTERNAL, "local_openai_compatible", "http://localhost:11434/v1", ("llama3.1", "qwen2.5"), False, False, True, True, ("chat", "coding", "reasoning"), "company_safe_possible", False, notes_vi="Không gửi ra ngoài nếu Ollama chạy trên máy/nội bộ."),
         AIProviderProfile("lm_studio", "LM Studio", "AI chạy trong máy qua LM Studio server.", GROUP_LOCAL_INTERNAL, "local_openai_compatible", "http://localhost:1234/v1", ("local-model",), False, False, True, True, ("chat", "coding", "reasoning"), "company_safe_possible", False, notes_vi="Phù hợp khi người dùng bật server nội bộ của LM Studio."),
         AIProviderProfile("nvidia_nim_local", "NVIDIA NIM nội bộ", "NIM tự triển khai trong mạng nội bộ.", GROUP_LOCAL_INTERNAL, "local_openai_compatible", "http://localhost:8000/v1", ("nvidia/local-model",), False, False, True, True, ("chat", "fast", "coding", "reasoning"), "company_safe_possible", False, notes_vi="Chỉ xem là an toàn cho tài liệu mật khi NIM nằm trong hạ tầng nội bộ."),
         AIProviderProfile("gemini", "Gemini", "Nguồn AI cloud mạnh cho tài liệu thường.", GROUP_NORMAL_DOCS, "native_api", default_models=("gemini-1.5-flash", "gemini-1.5-pro"), supports_multiple_keys=True, supports_health_check=True, capabilities=("chat", "long_context", "fast", "reasoning", "vision"), notes_vi="Không dùng cho tài liệu công ty/mật."),
         AIProviderProfile("openrouter", "OpenRouter", "Cổng tổng hợp nhiều mô hình AI, có lựa chọn miễn phí/quota miễn phí.", GROUP_NORMAL_DOCS, "cloud_openai_compatible", "https://openrouter.ai/api/v1", ("meta-llama/llama-3.3-70b-instruct:free", "meta-llama/llama-3.2-3b-instruct:free"), True, True, True, True, ("chat", "cheap_free", "reasoning", "coding"), notes_vi="Không dùng cho tài liệu công ty/mật."),
-        AIProviderProfile("groq", "Groq", "AI cloud phản hồi nhanh, thường có quota miễn phí.", GROUP_NORMAL_DOCS, "cloud_openai_compatible", "https://api.groq.com/openai/v1", ("llama3-8b-8192", "gemma2-9b-it"), True, True, True, True, ("chat", "fast", "cheap_free"), notes_vi="Không dùng cho tài liệu công ty/mật."),
-        AIProviderProfile("cerebras", "Cerebras", "AI cloud tốc độ cao cho tài liệu thường.", GROUP_NORMAL_DOCS, "cloud_openai_compatible", "https://api.cerebras.ai/v1", ("llama3.1-8b", "llama3.1-70b"), True, True, True, False, ("chat", "fast", "cheap_free"), notes_vi="Không dùng cho tài liệu công ty/mật."),
+        AIProviderProfile("groq", "Groq", "AI cloud phản hồi nhanh, thường có quota miễn phí.", GROUP_NORMAL_DOCS, "cloud_openai_compatible", "https://api.groq.com/openai/v1", ("llama-3.3-70b-versatile", "llama-3.1-8b-instant", "gemma2-9b-it"), True, True, True, True, ("chat", "fast", "cheap_free"), notes_vi="Không dùng cho tài liệu công ty/mật."),
+        AIProviderProfile("cerebras", "Cerebras", "AI cloud tốc độ cao cho tài liệu thường.", GROUP_NORMAL_DOCS, "cloud_openai_compatible", "https://api.cerebras.ai/v1", ("llama-3.3-70b", "llama-3.1-8b"), True, True, True, False, ("chat", "fast", "cheap_free"), notes_vi="Không dùng cho tài liệu công ty/mật."),
         AIProviderProfile("mistral", "Mistral AI", "AI cloud cho hỏi đáp và lập luận tài liệu thường.", GROUP_NORMAL_DOCS, "cloud_openai_compatible", "https://api.mistral.ai/v1", ("mistral-small-latest", "mistral-tiny"), True, True, True, False, ("chat", "reasoning", "coding"), notes_vi="Không dùng cho tài liệu công ty/mật."),
         AIProviderProfile("sambanova", "SambaNova", "AI cloud cho mô hình lớn/quota thử nghiệm.", GROUP_NORMAL_DOCS, "cloud_openai_compatible", "https://api.sambanova.ai/v1", ("DeepSeek-V3.1", "Llama-4-Maverick-17B-128E-Instruct"), True, True, True, False, ("chat", "reasoning", "coding"), notes_vi="Không dùng cho tài liệu công ty/mật."),
         AIProviderProfile("cloudflare_workers_ai", "Cloudflare Workers AI", "AI cloud qua tài khoản Cloudflare.", GROUP_NORMAL_DOCS, "native_api", "https://api.cloudflare.com/client/v4/accounts/{account_id}/ai/run", ("@cf/meta/llama-3-8b-instruct",), True, False, True, False, ("chat", "cheap_free"), notes_vi="Không dùng cho tài liệu công ty/mật."),
         AIProviderProfile("huggingface", "Hugging Face", "Nguồn mô hình AI qua Hugging Face Inference.", GROUP_NORMAL_DOCS, "native_api", "https://api-inference.huggingface.co/models", ("meta-llama/Meta-Llama-3-8B-Instruct",), True, False, True, False, ("chat", "cheap_free"), notes_vi="Không dùng cho tài liệu công ty/mật."),
         AIProviderProfile("github_models", "GitHub Models", "AI cloud qua GitHub Models.", GROUP_NORMAL_DOCS, "cloud_openai_compatible", "https://models.inference.ai.azure.com", ("meta-llama-3-8b-instruct", "gpt-4o-mini"), True, False, True, False, ("chat", "coding", "cheap_free"), notes_vi="Không dùng cho tài liệu công ty/mật."),
         AIProviderProfile("ai21", "AI21 Studio", "AI cloud cho xử lý ngôn ngữ tài liệu thường.", GROUP_NORMAL_DOCS, "cloud_openai_compatible", "https://api.ai21.com/studio/v1", ("jamba-1.5-mini",), True, False, True, False, ("chat", "long_context", "reasoning"), notes_vi="Không dùng cho tài liệu công ty/mật."),
-        AIProviderProfile("deepseek", "DeepSeek", "AI cloud mạnh về lập luận/kỹ thuật cho tài liệu thường.", GROUP_NORMAL_DOCS, "cloud_openai_compatible", "https://api.deepseek.com/v1", ("deepseek-chat", "deepseek-reasoner"), True, False, True, False, ("chat", "reasoning", "coding"), notes_vi="Không dùng cho tài liệu công ty/mật."),
+        AIProviderProfile("deepseek", "DeepSeek", "AI cloud mạnh về lập luận/kỹ thuật cho tài liệu thường.", GROUP_NORMAL_DOCS, "cloud_openai_compatible", "https://api.deepseek.com", ("deepseek-v4-flash", "deepseek-v4-pro"), True, False, True, False, ("chat", "reasoning", "coding"), notes_vi="Không dùng cho tài liệu công ty/mật."),
         AIProviderProfile("chatanywhere", "ChatAnyWhere", "Nguồn OpenAI-compatible do người dùng tự đăng ký.", GROUP_NORMAL_DOCS, "cloud_openai_compatible", "https://api.chatanywhere.tech/v1", ("gpt-3.5-turbo",), True, True, True, False, ("chat", "cheap_free"), notes_vi="Không dùng cho tài liệu công ty/mật."),
         AIProviderProfile("custom_openai_compatible", "Nguồn OpenAI-compatible tự cấu hình", "Dành cho endpoint riêng của người dùng hoặc công ty.", GROUP_CUSTOM, "user_configured", requires_api_key=False, supports_multiple_keys=True, supports_health_check=True, capabilities=("chat", "coding", "reasoning", "long_context"), safety_scope="depends_on_endpoint", notes_vi="Chỉ dùng cho tài liệu công ty/mật khi endpoint được xác nhận là nội bộ/tin cậy."),
     )
+    return _apply_shared_fabric_metadata(profiles)
 
 
 def get_provider_profile(provider_id: str) -> AIProviderProfile | None:

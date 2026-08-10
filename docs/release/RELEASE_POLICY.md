@@ -36,8 +36,8 @@ Pre-release labels and release branch policy require owner approval.
 ## External-provider release boundary
 
 A release that enables or presents a real external-provider route must not claim
-its privacy enforcement is production-ready until
-[AI-GW-REAL-ROUTE-POLICY-CONSOLIDATION](../roadmap/backlog/AI-GW-REAL-ROUTE-POLICY-CONSOLIDATION.md)
+its privacy enforcement is production-ready unless
+[AI-GW-REAL-ROUTE-POLICY-CONSOLIDATION](../roadmap/completed/AI-GW-REAL-ROUTE-POLICY-CONSOLIDATION.md)
 is `DONE` with current route-specific tests and threat/privacy review. This does
 not remove current hard blocks; it prevents a stronger unsupported release claim.
 

@@ -456,7 +456,6 @@ def _generate_real_router_answer(
             destination=request.external_destination,
             purpose=WORKSPACE_CHAT_ANSWER_PURPOSE,
             timestamp=time.time(),
-            source_keys=tuple(sorted(request.consent_source_keys)),
         )
 
     source_candidates = (
@@ -589,6 +588,24 @@ def generate_workspace_ai_answer(
         )
 
     if request.real_router_enabled:
+        if request.cloud_consent_confirmed:
+            current_keys = {
+                (source.source_scope, source.source_id)
+                for source in request.context_sources
+            }
+            consent_keys = set(request.consent_source_keys)
+            if current_keys != consent_keys:
+                return WorkspaceAIAnswerResult(
+                    ok=False,
+                    answer_text="",
+                    included_source_titles=(),
+                    warnings=(),
+                    externally_sent=False,
+                    error_message=(
+                        "Tập nguồn đang bật đã thay đổi sau khi xác nhận. "
+                        "Vui lòng kiểm tra lại và xác nhận lại trước khi gửi."
+                    ),
+                )
         return _generate_real_router_answer(request)
 
     if request.privacy_mode == PRIVACY_MODE_LOCAL_PREVIEW_ONLY:

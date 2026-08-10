@@ -187,13 +187,13 @@ def test_app_integration_upload_flow_logic():
         source_type="txt",
         content_preview=result_txt["preview"],
         content_text=result_txt["text"],
-        owner_choice="machine_only",
+        owner_choice="Có thể gửi nội dung tới AI bên ngoài",
         enable_source=False,
     )
     
     assert ts1.id.startswith("SRC-")
     assert ts1.title == "hello.txt"
-    assert ts1.privacy_label == "machine_only"
+    assert ts1.privacy_label == "cloud_safe"
     
     # Check selection status (should not be enabled)
     selections = store.load_conversation_source_selections(conv_id)
@@ -207,7 +207,7 @@ def test_app_integration_upload_flow_logic():
         source_type="txt",
         content_preview=result_txt["preview"],
         content_text=result_txt["text"],
-        owner_choice="machine_only",
+        owner_choice="Có thể gửi nội dung tới AI bên ngoài",
         enable_source=True,
     )
     

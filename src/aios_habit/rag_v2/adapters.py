@@ -46,7 +46,14 @@ class DocumentConverterAdapter(Protocol):
 class BaseDocumentConverterAdapter:
     """Optional base class for common adapter patterns."""
 
-    def _create_failed_element(self, path: str, error_msg: str, context: ConversionContext, extractor_name: str) -> DocumentElement:
+    def _create_failed_element(
+        self,
+        path: str,
+        error_msg: str,
+        context: ConversionContext,
+        extractor_name: str,
+        extraction_status: ExtractionStatus = ExtractionStatus.FAILED,
+    ) -> DocumentElement:
         import hashlib
         path_hash = hashlib.sha256(path.encode("utf-8")).hexdigest()[:16]
         return DocumentElement(
@@ -56,7 +63,7 @@ class BaseDocumentConverterAdapter:
             source_name=path.split("/")[-1] if "/" in path else path.split("\\")[-1],
             file_type="unknown",
             extractor=extractor_name,
-            extraction_status=ExtractionStatus.FAILED,
+            extraction_status=extraction_status,
             element_type=ElementType.UNKNOWN,
             extraction_warning=error_msg,
             privacy_labels=context.privacy_labels,

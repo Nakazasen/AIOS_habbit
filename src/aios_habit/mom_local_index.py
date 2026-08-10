@@ -46,6 +46,13 @@ class MomChunk:
     extraction_status: str = "extracted_success"
     warning: str = ""
     ocr_engine: str = ""
+    ocr_lang: str = ""
+    ocr_confidence: float | None = None
+    ocr_confidence_samples: int = 0
+    ocr_preprocessing: str = ""
+    ocr_attempts: int = 0
+    ocr_quality_reason: str = ""
+    element_type: str = ""
     indexed_at: str = ""
 
 
@@ -116,6 +123,13 @@ def _chunk_text(text: str, base: dict[str, Any], max_chunks: int = MAX_CHUNKS_PE
             extraction_status=base.get("extraction_status", "extracted_success"),
             warning=base.get("warning", ""),
             ocr_engine=base.get("ocr_engine", ""),
+            ocr_lang=base.get("ocr_lang", ""),
+            ocr_confidence=base.get("ocr_confidence"),
+            ocr_confidence_samples=int(base.get("ocr_confidence_samples", 0) or 0),
+            ocr_preprocessing=base.get("ocr_preprocessing", ""),
+            ocr_attempts=int(base.get("ocr_attempts", 0) or 0),
+            ocr_quality_reason=base.get("ocr_quality_reason", ""),
+            element_type=base.get("element_type", ""),
             indexed_at=now,
         )
 
@@ -169,6 +183,13 @@ def _extractor_chunks(path: Path, base: dict[str, Any], root: Path) -> tuple[lis
                 "privacy_level": "local_only",
                 "extractor_name": item.get("extractor_name", "document_extractors"),
                 "extraction_status": status,
+                "ocr_engine": item.get("ocr_engine", ""),
+                "ocr_lang": item.get("ocr_lang", ""),
+                "ocr_confidence": item.get("ocr_confidence"),
+                "ocr_preprocessing": item.get("ocr_preprocessing", ""),
+                "ocr_quality_reason": item.get("ocr_quality_reason", ""),
+                "page": item.get("page", ""),
+                "element_type": item.get("element_type", ""),
             })
             continue
         chunk_base = dict(base)
@@ -182,6 +203,13 @@ def _extractor_chunks(path: Path, base: dict[str, Any], root: Path) -> tuple[lis
             "extraction_status": status,
             "warning": item.get("warning", ""),
             "ocr_engine": item.get("ocr_engine", ""),
+            "ocr_lang": item.get("ocr_lang", ""),
+            "ocr_confidence": item.get("ocr_confidence"),
+            "ocr_confidence_samples": item.get("ocr_confidence_samples", 0),
+            "ocr_preprocessing": item.get("ocr_preprocessing", ""),
+            "ocr_attempts": item.get("ocr_attempts", 0),
+            "ocr_quality_reason": item.get("ocr_quality_reason", ""),
+            "element_type": item.get("element_type", ""),
         })
         chunks.extend(list(_chunk_text(str(item.get("text") or ""), chunk_base, max_chunks=1)))
     return chunks, unsupported

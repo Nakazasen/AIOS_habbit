@@ -201,12 +201,11 @@ def test_delete_non_existent_source(temp_workspace):
     assert store.delete_temporary_source("NON_EXIST") is False
     assert store.delete_notebook_source("NON_EXIST") is False
 
-def test_search_title_case_insensitive(mock_st):
+def test_single_list_rendering(mock_st):
     notebook_sources = [
         NotebookSource(id="src_1", notebook_id="nb_1", title="Opcenter SOP", source_type="txt", content_preview=""),
         NotebookSource(id="src_2", notebook_id="nb_1", title="WMS Guidelines", source_type="txt", content_preview="")
     ]
-    mock_st.widget_states["wsc_search_conv_1"] = "opcenter"
 
     render_source_library(
         notebook_sources=notebook_sources,
@@ -216,89 +215,14 @@ def test_search_title_case_insensitive(mock_st):
         on_toggle_source=lambda *a: None,
         on_promote_temporary=lambda *a: None,
         on_privacy_save=lambda *a: None,
-        on_bulk_toggle=lambda *a: None,
         on_delete_source=lambda *a: None,
     )
-    all_text = " ".join([c[1] for c in mock_st.calls])
+    all_text = " ".join([c[1] for c in mock_st.calls if c[1] is not None])
     assert "Opcenter SOP" in all_text
-    assert "WMS Guidelines" not in all_text
-
-def test_enabled_only_filter(mock_st):
-    notebook_sources = [
-        NotebookSource(id="src_1", notebook_id="nb_1", title="SOP 1", source_type="txt", content_preview=""),
-        NotebookSource(id="src_2", notebook_id="nb_1", title="SOP 2", source_type="txt", content_preview="")
-    ]
-    selections_map = {("notebook", "src_1"): True, ("notebook", "src_2"): False}
-    mock_st.widget_states["wsc_filter_enabled_conv_1"] = True
-
-    render_source_library(
-        notebook_sources=notebook_sources,
-        temp_sources=[],
-        selections_map=selections_map,
-        conversation_id="conv_1",
-        on_toggle_source=lambda *a: None,
-        on_promote_temporary=lambda *a: None,
-        on_privacy_save=lambda *a: None,
-        on_bulk_toggle=lambda *a: None,
-        on_delete_source=lambda *a: None,
-    )
-    all_text = " ".join([c[1] for c in mock_st.calls])
-    assert "SOP 1" in all_text
-    assert "SOP 2" not in all_text
-
-def test_filtered_bulk_enable(mock_st):
-    notebook_sources = [
-        NotebookSource(id="src_1", notebook_id="nb_1", title="SOP 1", source_type="txt", content_preview=""),
-        NotebookSource(id="src_2", notebook_id="nb_1", title="SOP 2", source_type="txt", content_preview="")
-    ]
-    mock_st.widget_states["wsc_search_conv_1"] = "SOP 1"
-    mock_st.widget_states["wsc_bulk_enable_conv_1"] = True
-
-    bulk_toggled = []
-    def on_bulk_toggle(sources, enabled):
-        bulk_toggled.append((sources, enabled))
-
-    render_source_library(
-        notebook_sources=notebook_sources,
-        temp_sources=[],
-        selections_map={},
-        conversation_id="conv_1",
-        on_toggle_source=lambda *a: None,
-        on_promote_temporary=lambda *a: None,
-        on_privacy_save=lambda *a: None,
-        on_bulk_toggle=on_bulk_toggle,
-        on_delete_source=lambda *a: None,
-    )
-    assert len(bulk_toggled) == 1
-    assert bulk_toggled[0][0] == [("notebook", "src_1")]
-    assert bulk_toggled[0][1] is True
-
-def test_filtered_bulk_disable(mock_st):
-    notebook_sources = [
-        NotebookSource(id="src_1", notebook_id="nb_1", title="SOP 1", source_type="txt", content_preview=""),
-        NotebookSource(id="src_2", notebook_id="nb_1", title="SOP 2", source_type="txt", content_preview="")
-    ]
-    mock_st.widget_states["wsc_search_conv_1"] = "SOP 2"
-    mock_st.widget_states["wsc_bulk_disable_conv_1"] = True
-
-    bulk_toggled = []
-    def on_bulk_toggle(sources, enabled):
-        bulk_toggled.append((sources, enabled))
-
-    render_source_library(
-        notebook_sources=notebook_sources,
-        temp_sources=[],
-        selections_map={},
-        conversation_id="conv_1",
-        on_toggle_source=lambda *a: None,
-        on_promote_temporary=lambda *a: None,
-        on_privacy_save=lambda *a: None,
-        on_bulk_toggle=on_bulk_toggle,
-        on_delete_source=lambda *a: None,
-    )
-    assert len(bulk_toggled) == 1
-    assert bulk_toggled[0][0] == [("notebook", "src_2")]
-    assert bulk_toggled[0][1] is False
+    assert "WMS Guidelines" in all_text
+    # Ensure each title is rendered only once
+    assert all_text.count("Opcenter SOP") == 1
+    assert all_text.count("WMS Guidelines") == 1
 
 def test_individual_toggle_callback(mock_st):
     notebook_sources = [
@@ -318,7 +242,6 @@ def test_individual_toggle_callback(mock_st):
         on_toggle_source=on_toggle_source,
         on_promote_temporary=lambda *a: None,
         on_privacy_save=lambda *a: None,
-        on_bulk_toggle=lambda *a: None,
         on_delete_source=lambda *a: None,
     )
     

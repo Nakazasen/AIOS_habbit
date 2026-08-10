@@ -463,12 +463,6 @@ def test_phase2d_app_submit_builds_source_aware_placeholder_structure():
     assert "load_enabled_sources_for_conversation(active_conversation.id)" in source
     assert "current_notebook_sources = load_notebook_sources(active_nb_id)" in source
     assert "current_temp_sources = load_temporary_sources(active_conversation.id)" in source
-    assert "selection.source_scope == SOURCE_SCOPE_NOTEBOOK" in source
-    assert "selection.source_scope == SOURCE_SCOPE_TEMPORARY" in source
-    assert "resolved_source is None" in source
-    assert "WorkspaceTrialSourceInput(" in source
-    # Phase 2H: AI-first flow uses build_source_check_summary and pack_workspace_ai_context
-    assert "build_source_check_summary(check_source_inputs)" in source
     assert "pack_workspace_ai_context" in source
     assert "selected_source_ids" not in source
 
@@ -609,8 +603,7 @@ def test_safe_test_data_generation_uses_app_helper_without_real_store_writes(tmp
     monkeypatch.setattr(store, "SOURCE_SELECTIONS_FILE", test_dir / "conversation_source_selections.jsonl")
     store.init_chat_store()
 
-    sys.modules.pop("aios_habit.workspace_chat_app", None)
-    app = importlib.import_module("aios_habit.workspace_chat_app")
+    import aios_habit.workspace_chat_app as app
 
     source = app.create_safe_test_data("CONV-SAFE-TEST")
 
@@ -711,8 +704,7 @@ def test_save_case_placeholder_feedback_sets_state_and_reruns(monkeypatch):
     reruns = []
     monkeypatch.setattr(st, "rerun", lambda: reruns.append(True))
 
-    sys.modules.pop("aios_habit.workspace_chat_app", None)
-    app = importlib.import_module("aios_habit.workspace_chat_app")
+    import aios_habit.workspace_chat_app as app
     app.show_save_case_placeholder_feedback()
 
     assert session_state.wsc_show_save_placeholder is True
@@ -764,31 +756,16 @@ def test_save_case_placeholder_render_uses_info_not_success():
 # --- Phase 2H structural tests ---
 
 def test_phase2h_source_check_not_saved_as_assistant():
-    """Source check panel must never save a ChatMessage(role='assistant')."""
-    import ast
+    """Source check debug panel must not exist in production app."""
     app_source = Path("src/aios_habit/workspace_chat_app.py").read_text(encoding="utf-8")
-
-    # Find the source check block using the precise comment marker
-    check_start = app_source.index("# Phase 2H: Source check panel")
-    check_end = app_source.index("# Phase 2H: AI answer badge", check_start)
-    check_block = app_source[check_start:check_end]
-
-    assert "save_message" not in check_block
-    assert 'role="assistant"' not in check_block
-    assert "ChatMessage" not in check_block
+    assert "render_source_check_panel" not in app_source
+    assert "wsc_source_check_visible" not in app_source
 
 
 def test_phase2h_source_check_no_provider_call():
-    """Source check panel must never call provider or generate AI answer."""
+    """Source check expander must be removed from production UI."""
     app_source = Path("src/aios_habit/workspace_chat_app.py").read_text(encoding="utf-8")
-
-    check_start = app_source.index("# Phase 2H: Source check panel")
-    check_end = app_source.index("# Phase 2H: AI answer badge", check_start)
-    check_block = app_source[check_start:check_end]
-
-    assert "generate_workspace_ai_answer" not in check_block
-    assert "RealWorkspaceAIProviderClient" not in check_block
-    assert "pack_workspace_ai_context" not in check_block
+    assert "Kiểm tra nguồn nâng cao" not in app_source
 
 
 def test_phase2h_quick_paste_creates_one_source(mock_streamlit_app):
@@ -849,7 +826,7 @@ def test_phase2h_ask_button_explicit():
     app_source = Path("src/aios_habit/workspace_chat_app.py").read_text(encoding="utf-8")
     assert "wsc_ai_ask_form" in app_source
     assert "ask_submitted" in app_source
-    assert "check_submitted" in app_source
+    assert "check_submitted" not in app_source
     # st.chat_input auto-submit must not be used for AI calls
     assert "st.chat_input" not in app_source
 
@@ -879,11 +856,12 @@ def _assert_one_created_source(conv_id, expected_label, expected_source_type, ex
 
 def test_phase2i_owner_choice_mapping_helpers():
     from aios_habit.workspace_chat_ui import PRIVACY_CHOICE_SENDABLE, PRIVACY_CHOICE_LOCAL_ONLY, owner_choice_to_privacy_label, privacy_label_to_owner_choice, privacy_label_is_sendable
-    assert owner_choice_to_privacy_label(PRIVACY_CHOICE_SENDABLE) == "machine_only"
+    assert owner_choice_to_privacy_label(PRIVACY_CHOICE_SENDABLE) == "cloud_safe"
     assert owner_choice_to_privacy_label(PRIVACY_CHOICE_LOCAL_ONLY) == "local_only"
-    assert privacy_label_to_owner_choice("machine_only") == PRIVACY_CHOICE_SENDABLE
-    assert privacy_label_to_owner_choice("cloud_allowed") == PRIVACY_CHOICE_SENDABLE
-    for blocked in ["local_only", "confidential", "", "   ", None, "unknown"]:
+    for sendable in ["cloud_safe", "public"]:
+        assert privacy_label_to_owner_choice(sendable) == PRIVACY_CHOICE_SENDABLE
+        assert privacy_label_is_sendable(sendable) is True
+    for blocked in ["machine_only", "cloud_allowed", "local_only", "confidential", "", "   ", None, "unknown"]:
         assert privacy_label_to_owner_choice(blocked) == PRIVACY_CHOICE_LOCAL_ONLY
         assert privacy_label_is_sendable(blocked) is False
 
@@ -905,30 +883,27 @@ def test_phase2i_source_creation_forms_call_production_helpers_with_privacy_choi
 
 
 def test_phase2i_real_quick_paste_creation_path_executes_both_privacy_choices():
-    sys.modules.pop("aios_habit.workspace_chat_app", None)
-    app = importlib.import_module("aios_habit.workspace_chat_app")
+    import aios_habit.workspace_chat_app as app
     from aios_habit.workspace_chat_ui import PRIVACY_CHOICE_SENDABLE, PRIVACY_CHOICE_LOCAL_ONLY
-    for idx, (choice, expected_label) in enumerate([(PRIVACY_CHOICE_SENDABLE, "machine_only"), (PRIVACY_CHOICE_LOCAL_ONLY, "local_only")]):
+    for idx, (choice, expected_label) in enumerate([(PRIVACY_CHOICE_SENDABLE, "cloud_safe"), (PRIVACY_CHOICE_LOCAL_ONLY, "local_only")]):
         conv_id = f"conv_quick_real_{idx}"
         app.create_pasted_text_temporary_source(conv_id, "Quick paste title", "Quick paste text", choice)
         _assert_one_created_source(conv_id, expected_label, "pasted_text", "Quick paste text")
 
 
 def test_phase2i_real_long_text_creation_path_executes_both_privacy_choices():
-    sys.modules.pop("aios_habit.workspace_chat_app", None)
-    app = importlib.import_module("aios_habit.workspace_chat_app")
+    import aios_habit.workspace_chat_app as app
     from aios_habit.workspace_chat_ui import PRIVACY_CHOICE_SENDABLE, PRIVACY_CHOICE_LOCAL_ONLY
-    for idx, (choice, expected_label) in enumerate([(PRIVACY_CHOICE_SENDABLE, "machine_only"), (PRIVACY_CHOICE_LOCAL_ONLY, "local_only")]):
+    for idx, (choice, expected_label) in enumerate([(PRIVACY_CHOICE_SENDABLE, "cloud_safe"), (PRIVACY_CHOICE_LOCAL_ONLY, "local_only")]):
         conv_id = f"conv_long_real_{idx}"
         app.create_pasted_text_temporary_source(conv_id, "Long text title", "Long text body", choice)
         _assert_one_created_source(conv_id, expected_label, "pasted_text", "Long text body")
 
 
 def test_phase2i_real_excel_creation_path_uses_extracted_text_and_both_privacy_choices():
-    sys.modules.pop("aios_habit.workspace_chat_app", None)
-    app = importlib.import_module("aios_habit.workspace_chat_app")
+    import aios_habit.workspace_chat_app as app
     from aios_habit.workspace_chat_ui import PRIVACY_CHOICE_SENDABLE, PRIVACY_CHOICE_LOCAL_ONLY
-    for idx, (choice, expected_label) in enumerate([(PRIVACY_CHOICE_SENDABLE, "machine_only"), (PRIVACY_CHOICE_LOCAL_ONLY, "local_only")]):
+    for idx, (choice, expected_label) in enumerate([(PRIVACY_CHOICE_SENDABLE, "cloud_safe"), (PRIVACY_CHOICE_LOCAL_ONLY, "local_only")]):
         conv_id = f"conv_excel_real_{idx}"
         app.create_excel_temporary_source_from_extraction(conv_id, _Phase2IExtractionResult(), choice)
         saved = store.load_temporary_sources(conv_id)
@@ -938,8 +913,7 @@ def test_phase2i_real_excel_creation_path_uses_extracted_text_and_both_privacy_c
 
 
 def test_phase2i_actual_privacy_edit_helpers_two_way_and_scope_safe(monkeypatch):
-    sys.modules.pop("aios_habit.workspace_chat_app", None)
-    app = importlib.import_module("aios_habit.workspace_chat_app")
+    import aios_habit.workspace_chat_app as app
     from aios_habit.workspace_chat_ui import PRIVACY_CHOICE_SENDABLE, PRIVACY_CHOICE_LOCAL_ONLY
     nb = NotebookSource(id="nb_edit", notebook_id="nb_active", title="NB", source_type="pasted_text", privacy_label="machine_only")
     nb_cross = NotebookSource(id="nb_cross", notebook_id="nb_other", title="Cross", source_type="pasted_text", privacy_label="machine_only")
@@ -953,8 +927,8 @@ def test_phase2i_actual_privacy_edit_helpers_two_way_and_scope_safe(monkeypatch)
     assert store.load_temporary_sources("conv_active")[0].privacy_label == "local_only"
     assert app.update_notebook_source_privacy_for_active_notebook("nb_active", "nb_edit", PRIVACY_CHOICE_SENDABLE) is True
     assert app.update_temporary_source_privacy_for_active_conversation("conv_active", "ts_edit", PRIVACY_CHOICE_SENDABLE) is True
-    assert store.load_notebook_sources("nb_active")[0].privacy_label == "machine_only"
-    assert store.load_temporary_sources("conv_active")[0].privacy_label == "machine_only"
+    assert store.load_notebook_sources("nb_active")[0].privacy_label == "cloud_safe"
+    assert store.load_temporary_sources("conv_active")[0].privacy_label == "cloud_safe"
     assert app.update_notebook_source_privacy_for_active_notebook("nb_active", "missing", PRIVACY_CHOICE_LOCAL_ONLY) is False
     assert app.update_temporary_source_privacy_for_active_conversation("conv_active", "missing", PRIVACY_CHOICE_LOCAL_ONLY) is False
     assert app.update_notebook_source_privacy_for_active_notebook("nb_active", "nb_cross", PRIVACY_CHOICE_LOCAL_ONLY) is False
@@ -1103,8 +1077,7 @@ def test_app_hard_delete_behavioral_flows(mock_streamlit_app, monkeypatch):
     store.set_source_enabled("conv_unrelated", "notebook", "src_unrelated", True)
 
     # Import app module to invoke callbacks
-    sys.modules.pop("aios_habit.workspace_chat_app", None)
-    app = importlib.import_module("aios_habit.workspace_chat_app")
+    import aios_habit.workspace_chat_app as app
 
     # Setup spies
     delete_call_count = 0
@@ -1274,8 +1247,7 @@ def test_app_hard_delete_helper_failure_behavioral_flow(mock_streamlit_app, monk
     store.save_message(ChatMessage(id="msg_f2", conversation_id="conv_target_fail", role="assistant", content="hi there"))
 
     # Import app module
-    sys.modules.pop("aios_habit.workspace_chat_app", None)
-    app = importlib.import_module("aios_habit.workspace_chat_app")
+    import aios_habit.workspace_chat_app as app
 
     # Spy AI answer path to assert it is never called
     ai_called = False

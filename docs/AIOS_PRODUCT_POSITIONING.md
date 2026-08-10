@@ -85,7 +85,7 @@ Not allowed yet:
 - Phase 6 — Case Memory at Scale.
 - Phase 7 — Work Stream Map / Knowledge Graph.
 - Phase 8 — Senior Learning / Personal OS.
-- Phase 9 — Production Traceability Foundation.
+- Phase 9 — Production Traceability Foundation (see [Production Intelligence Vision](design/PRODUCTION_INTELLIGENCE_VISION.md); design reference only, not opened).
 - Phase 10 — P1.0 Production Readiness.
 
 ## Learning sources for future design research

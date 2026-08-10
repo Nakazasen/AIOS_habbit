@@ -13,25 +13,26 @@ and sanitized payloads.
 
 ## Decision
 
-`BrainGateway.preflight_check()` owns the canonical target contract for privacy
-classification enforcement, source-set hashing, consent validation and
-sanitization. Its router-enabled preflight/mock path hard-denies
-`local_only`/`confidential`, defaults unknown sources to deny, and requires valid
-consent for `unknown`/`machine_only` data before an external route is eligible.
+`BrainGateway.preflight_check()` owns the canonical privacy classification,
+source-set hashing, consent validation, outbound-evidence authorization and
+sanitization contract. Both the router-enabled mock path and the real Workspace
+Chat provider path now create a `BrainRequest` and invoke this contract before
+an adapter is eligible to run.
 
-The current real Workspace Chat provider path has separate controls for allowed
-labels, confirmation and source-set snapshot, but is not proven to invoke the
-Gateway sanitizer/preflight. It is therefore a `PARTIAL` realization of this ADR;
-[AI-GW-REAL-ROUTE-POLICY-CONSOLIDATION](../roadmap/backlog/AI-GW-REAL-ROUTE-POLICY-CONSOLIDATION.md)
-must unify/verify enforcement before an external-release claim.
+The real Workspace Chat route uses the stable destination
+`workspace_chat_external_router` and purpose `workspace_chat_answer`. It
+checks policy against the full enabled source snapshot even when local retrieval
+selects only a subset. The real adapter accepts only `SanitizedRouterPayload`,
+so provider messages cannot be supplied as independently built raw prompts.
 
 ## Consequences
 
-- Provider adapters should receive only a permitted/sanitized payload contract.
-- Existing real route divergence is a P0 security/architecture follow-up, not a
-  license to bypass the canonical policy boundary.
-- Label selection is still an owner responsibility and is tracked as residual
-  risk.
+- Provider adapters receive only a permitted/sanitized payload contract.
+- `local_only`/`confidential` are hard-denied; `unknown`/`machine_only` require
+  bound consent. The explicit owner sharing choice creates `cloud_safe`.
+- Legacy stored `machine_only`/`cloud_allowed` labels remain non-sendable until
+  the owner makes a new explicit sharing choice; there is no silent migration.
+- Label selection remains an owner responsibility and residual risk.
 
 ## Security and privacy impact
 

@@ -1,0 +1,38 @@
+﻿[
+  {
+    "id": "BLIND-01",
+    "question": "What information must an operator verify before registering production completion?",
+    "expected_type": "answerable",
+    "category": "procedure"
+  },
+  {
+    "id": "BLIND-02",
+    "question": "When a production registration fails, what should the operator check first and what recovery action is documented?",
+    "expected_type": "answerable",
+    "category": "diagnosis"
+  },
+  {
+    "id": "BLIND-03",
+    "question": "How does warehouse data flow into production processing, and where can the operator verify a failure?",
+    "expected_type": "answerable",
+    "category": "cross_source_synthesis"
+  },
+  {
+    "id": "BLIND-04",
+    "question": "Which spreadsheet sheet and row or cell range documents the supply-instruction issue?",
+    "expected_type": "answerable",
+    "category": "excel_native"
+  },
+  {
+    "id": "BLIND-05",
+    "question": "What quantum-computing production-control protocol is documented in the available sources?",
+    "expected_type": "insufficient",
+    "category": "abstention"
+  },
+  {
+    "id": "BLIND-06",
+    "question": "Compare the documented production-completion flow with the documented process-plan flow and identify supported differences.",
+    "expected_type": "answerable",
+    "category": "compare_change"
+  }
+]

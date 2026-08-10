@@ -1,3 +1,4 @@
+import aios_habit.ai_router as router_module
 from aios_habit.ai_router import *
 from aios_habit.provider_health import ProviderHealthStore, mask_key_id
 from aios_habit.safety_modes import SAFETY_MODE_AUTO, SAFETY_MODE_COMPANY, SAFETY_MODE_NORMAL
@@ -107,7 +108,28 @@ def test_provider_configs_from_env_uses_openai_compatible_without_printing_secre
     assert configs[0].api_key == "fake-secret-value"
     assert configs[0].endpoint_url.endswith("/chat/completions")
     assert configs[0].model_name == "llama-test"
+    assert configs[0].allow_model_auto_substitution is False
     assert configs[0].timeout_seconds == 30
+
+
+def test_provider_catalog_model_allows_auto_substitution():
+    configs = provider_configs_from_env({"DEEPSEEK_API_KEY": "fake-secret-value"})
+
+    assert len(configs) == 1
+    assert configs[0].model_name == "deepseek-v4-flash"
+    assert configs[0].allow_model_auto_substitution is True
+
+
+def test_model_discovery_uses_runtime_endpoint_base():
+    config = RouterProviderConfig(
+        "deepseek",
+        "DeepSeek",
+        "https://regional.example/v1/chat/completions",
+        "retired-model",
+    )
+
+    assert router_module._model_discovery_base_url(config, "https://catalog.example") == "https://regional.example/v1"
+    assert router_module._model_discovery_base_url(RouterProviderConfig("deepseek", "DeepSeek"), "https://catalog.example") == "https://catalog.example"
 
 
 def test_provider_env_presence_does_not_return_secret_values():
@@ -228,3 +250,157 @@ def test_company_cloud_block_happens_before_health_or_provider_call():
     assert calls == []
     assert store.get_provider_state("openrouter") == {}
     assert result.attempts[0].status == "blocked"
+
+
+def test_model_not_found_retries_with_discovered_model(monkeypatch):
+    config = RouterProviderConfig(
+        "deepseek",
+        "DeepSeek",
+        "https://api.deepseek.com/chat/completions",
+        "deepseek-chat",
+        "fake-secret-value",
+        True,
+    )
+    substitution = router_module.ModelSubstitution(
+        "deepseek",
+        "deepseek-chat",
+        "deepseek-v4-flash",
+        "Model tự thay cho kiểm thử.",
+    )
+    monkeypatch.setattr(router_module, "_try_model_substitution", lambda _cfg: substitution)
+    calls = []
+
+    def client(cfg, _request):
+        calls.append(cfg.model_name)
+        if cfg.model_name == "deepseek-chat":
+            raise RuntimeError("supported API model names are deepseek-v4-flash")
+        return "answer from discovered model"
+
+    result = route_answer(req(), [config], ProviderHealthStore(), client)
+
+    assert calls == ["deepseek-chat", "deepseek-v4-flash"]
+    assert result.answer_text == "answer from discovered model"
+    assert result.used_model == "deepseek-v4-flash"
+    assert result.attempts[0].error_type == "model_not_found"
+    assert result.attempts[-1].status == "success"
+    assert "Model tự thay" in result.attempts[-1].reason_vi
+
+
+def test_model_substitution_is_not_used_for_explicit_model_override(monkeypatch):
+    config = RouterProviderConfig(
+        "deepseek",
+        "DeepSeek",
+        "https://api.deepseek.com/chat/completions",
+        "owner-pinned-model",
+        "fake-secret-value",
+        True,
+        allow_model_auto_substitution=False,
+    )
+    monkeypatch.setattr(
+        router_module,
+        "_try_model_substitution",
+        lambda _cfg: (_ for _ in ()).throw(AssertionError("must not auto-substitute an explicit override")),
+    )
+
+    result = route_answer(
+        req(),
+        [config],
+        ProviderHealthStore(),
+        lambda _cfg, _request: (_ for _ in ()).throw(RuntimeError("model not found")),
+    )
+
+    assert result.used_fallback
+    assert result.attempts[-1].error_type == "model_not_found"
+
+
+def test_failed_substitution_records_retry_error_and_falls_back(monkeypatch):
+    config = RouterProviderConfig(
+        "deepseek",
+        "DeepSeek",
+        "https://api.deepseek.com/chat/completions",
+        "deepseek-chat",
+        "fake-secret-value",
+        True,
+    )
+    monkeypatch.setattr(
+        router_module,
+        "_try_model_substitution",
+        lambda _cfg: router_module.ModelSubstitution(
+            "deepseek", "deepseek-chat", "deepseek-v4-flash", "Model tự thay cho kiểm thử."
+        ),
+    )
+
+    def client(cfg, _request):
+        if cfg.model_name == "deepseek-chat":
+            raise RuntimeError("model not found")
+        raise RuntimeError("429 rate limit")
+
+    store = ProviderHealthStore()
+    result = route_answer(req(), [config], store, client)
+
+    state = store.get_provider_state("deepseek")[mask_key_id("fake-secret-value")]
+    assert result.used_fallback
+    assert [attempt.error_type for attempt in result.attempts] == ["model_not_found", "rate_limited"]
+    assert state.status == "cooldown"
+    assert state.last_error_type == "rate_limited"
+
+
+def test_provider_circuit_opens_without_disabling_key_and_fails_over():
+    store = ProviderHealthStore(circuit_failure_threshold=1)
+    primary = RouterProviderConfig("groq", "Groq", "http://example.test", "model", "first-key", True, priority=1)
+    secondary = RouterProviderConfig("deepseek", "DeepSeek", "http://example.test", "model", "second-key", True, priority=20)
+    calls = []
+
+    def client(config, _request):
+        calls.append(config.provider_id)
+        if config.provider_id == "groq":
+            raise RuntimeError("503 server error")
+        return "second provider answer"
+
+    result = route_answer(req(), [primary, secondary], store, client)
+
+    assert result.answer_text == "second provider answer"
+    assert calls == ["groq", "deepseek"]
+    assert store.get_circuit_state("groq").status == "open"
+    assert store.is_key_available("groq", mask_key_id("first-key"))
+    assert result.attempts[0].failure_scope == "provider"
+
+
+def test_bad_response_locks_only_current_model_not_key():
+    store = ProviderHealthStore()
+    config = RouterProviderConfig("groq", "Groq", "http://example.test", "model-a", "shared-key", True)
+    result = route_answer(req(), [config], store, lambda _config, _request: "")
+    key_id = mask_key_id("shared-key")
+
+    assert result.used_fallback
+    assert store.is_key_available("groq", key_id)
+    assert not store.is_model_available("groq", key_id, "model-a")
+    assert result.attempts[-1].failure_scope == "model"
+
+
+def test_retry_after_is_honored_for_rate_limited_key():
+    clock = [1000.0]
+    store = ProviderHealthStore(_clock=lambda: clock[0])
+    key_id = mask_key_id("rate-key")
+    store.record_failure("groq", key_id, "rate_limited", retry_after_seconds=37)
+
+    assert int(store.get_key_state("groq", key_id).cooldown_until - clock[0]) == 37
+
+
+def test_language_fit_selects_matching_provider_before_priority():
+    japanese = RouterProviderConfig(
+        "groq", "Groq", "http://example.test", "model", "jp-key", True,
+        priority=20, supported_languages=("ja",),
+    )
+    english = RouterProviderConfig(
+        "deepseek", "DeepSeek", "http://example.test", "model", "en-key", True,
+        priority=1, supported_languages=("en",),
+    )
+    request = RouterRequest("生産履歴の登録手順", "ctx", "fallback", safety_mode_label=SAFETY_MODE_NORMAL)
+    used = []
+    result = route_answer(request, [english, japanese], ProviderHealthStore(), lambda config, _request: used.append(config.provider_id) or "ok")
+
+    assert result.answer_text == "ok"
+    assert used == ["groq"]
+    assert result.attempts[-1].key_id_masked != "jp-key"
+    assert "jp-key" not in result.route_summary_vi

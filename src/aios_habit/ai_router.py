@@ -14,7 +14,22 @@ from aios_habit.provider_health import (
     cooldown_seconds_for_error,
     mask_key_id,
 )
+from aios_habit.provider_model_discovery import (
+    attempt_model_substitution,
+    ModelSubstitution,
+)
+from aios_habit.resilient_routing import (
+    candidate_score,
+    classify_failure_scope,
+    lkg_preference,
+    opaque_session_key,
+    record_lkg,
+    retry_after_from_error,
+)
+from aios_habit.rag_v2.query_planning import detect_query_language
 from aios_habit.safety_modes import SAFETY_MODE_AUTO, SAFETY_MODE_COMPANY, SAFETY_MODE_NORMAL
+
+_SESSION_AFFINITY: dict[str, dict[str, Any]] = {}
 
 @dataclass
 class RouterRequest:
@@ -26,6 +41,11 @@ class RouterRequest:
     notebook_name: str = ""
     max_attempts: int = 3
     allow_parallel: bool = False
+    query_language: str = ""
+    session_id: str = ""
+    task_type: str = "workspace_answer"
+    privacy_label: str = "cloud_safe"
+
 
 @dataclass
 class RouterProviderConfig:
@@ -39,6 +59,9 @@ class RouterProviderConfig:
     priority: int = 100
     timeout_seconds: int = 30
     api_keys: list[str] = field(default_factory=list)
+    allow_model_auto_substitution: bool = True
+    supported_languages: tuple[str, ...] = ("vi", "ja", "en")
+
 
 @dataclass
 class RouterAttempt:
@@ -49,6 +72,11 @@ class RouterAttempt:
     reason_vi: str = ""
     latency_ms: int = 0
     error_type: str = ""
+    key_id_masked: str = ""
+    failure_scope: str = "none"
+    candidate_score: float | None = None
+    retry_after_seconds: float | None = None
+
 
 @dataclass
 class RouterHealthState:
@@ -57,6 +85,7 @@ class RouterHealthState:
     failure_count: int = 0
     cooldown_until: float = 0.0
     last_error_type: str = ""
+
 
 @dataclass
 class RouterResult:
@@ -68,6 +97,8 @@ class RouterResult:
     attempts: list[RouterAttempt] = field(default_factory=list)
     route_summary_vi: str = ""
     source_refs: list[dict[str, Any]] = field(default_factory=list)
+    terminal_status: str = "local_renderer"
+
 
 ProviderClient = Callable[[RouterProviderConfig, RouterRequest], str]
 
@@ -75,6 +106,11 @@ AUTH_HINTS = ("401", "403", "invalid api key", "unauthorized", "forbidden")
 RATE_HINTS = ("429", "quota", "rate limit", "rate_limit")
 TIMEOUT_HINTS = ("timeout", "timed out")
 SERVER_HINTS = ("500", "502", "503", "504", "server error", "bad gateway")
+MODEL_HINTS = (
+    "model_not_found", "does not exist", "not supported",
+    "invalid model", "supported api model names are",
+    "model not found", "no such model",
+)
 
 
 def classify_provider_error(error: Exception | str) -> str:
@@ -82,7 +118,9 @@ def classify_provider_error(error: Exception | str) -> str:
     if any(h in text for h in AUTH_HINTS): return "auth_error"
     if any(h in text for h in RATE_HINTS): return "rate_limited"
     if any(h in text for h in TIMEOUT_HINTS): return "timeout"
+    if any(h in text for h in MODEL_HINTS): return "model_not_found"
     if any(h in text for h in SERVER_HINTS): return "server_error"
+    if "connection" in text or "dns" in text or "network" in text: return "network_error"
     if "empty answer" in text or "không trả về" in text: return "bad_response"
     return "unknown_error"
 
@@ -194,6 +232,33 @@ def _skip_reason_for_key(health_store: ProviderHealthStore, provider_id: str, ke
     return "skipped", "Nguồn AI chưa sẵn sàng."
 
 
+def _model_discovery_base_url(cfg: RouterProviderConfig, catalog_base_url: str) -> str:
+    """Return a configured API base for model discovery without following redirects."""
+    endpoint = str(cfg.endpoint_url or "").strip().rstrip("/")
+    suffix = "/chat/completions"
+    if endpoint.lower().endswith(suffix):
+        return endpoint[:-len(suffix)]
+    return endpoint or catalog_base_url
+
+
+def _try_model_substitution(cfg: RouterProviderConfig) -> ModelSubstitution | None:
+    """Attempt to discover a working model when the configured one is rejected."""
+    profile = get_provider_profile(cfg.provider_id)
+    if not profile:
+        return None
+
+    base_url = _model_discovery_base_url(cfg, profile.default_base_url)
+    if not base_url:
+        return None
+
+    return attempt_model_substitution(
+        provider_id=cfg.provider_id,
+        base_url=base_url,
+        configured_model=cfg.model_name,
+        default_models=profile.default_models,
+        api_key=cfg.api_key,
+    )
+
 def route_answer(
     request: RouterRequest,
     provider_configs: list[RouterProviderConfig],
@@ -206,33 +271,183 @@ def route_answer(
     if not candidates:
         reason = "Không gửi ra ngoài vì đây là tài liệu công ty/mật." if request.safety_mode_label == SAFETY_MODE_COMPANY else "Chưa có nguồn AI nào được cấu hình. AIOS đang trả lời bằng dữ liệu cục bộ."
         return fallback_to_deterministic(request, reason, attempts)
-    client = provider_client or call_openai_compatible_provider
-    for cfg in candidates[:max(1, request.max_attempts)]:
+
+    query_language = request.query_language or detect_query_language(request.question)
+    session_key = opaque_session_key(
+        request.session_id,
+        task_type=request.task_type,
+        query_language=query_language,
+        privacy_label=request.privacy_label,
+    )
+    preferred = lkg_preference(_SESSION_AFFINITY, session_key=session_key)
+    scored_candidates: list[tuple[RouterProviderConfig, float]] = []
+    for cfg in candidates:
         key_id_masked = mask_key_id(cfg.api_key)
         if not health_store.is_key_available(cfg.provider_id, key_id_masked):
             status, reason_vi = _skip_reason_for_key(health_store, cfg.provider_id, key_id_masked)
-            attempts.append(RouterAttempt(cfg.provider_id, cfg.display_name_vi, cfg.model_name, status, reason_vi, error_type=status))
+            attempts.append(RouterAttempt(
+                cfg.provider_id, cfg.display_name_vi, cfg.model_name, status, reason_vi,
+                error_type=status, key_id_masked=key_id_masked,
+            ))
             continue
+        if not health_store.is_model_available(cfg.provider_id, key_id_masked, cfg.model_name):
+            attempts.append(RouterAttempt(
+                cfg.provider_id, cfg.display_name_vi, cfg.model_name, "cooldown",
+                "Model AI đang tạm nghỉ sau lỗi riêng của model; AIOS thử lựa chọn khác.",
+                key_id_masked=key_id_masked, failure_scope="model",
+            ))
+            continue
+        score, _factors = candidate_score(
+            provider_id=cfg.provider_id,
+            key_id_masked=key_id_masked,
+            model_id=cfg.model_name,
+            priority=cfg.priority,
+            query_language=query_language,
+            supported_languages=cfg.supported_languages,
+            health_store=health_store,
+        )
+        if preferred and preferred.get("provider_id") == cfg.provider_id and preferred.get("model_id") == cfg.model_name:
+            score += 1.0
+        scored_candidates.append((cfg, score))
+    candidates = [cfg for cfg, _score in sorted(scored_candidates, key=lambda item: (-item[1], item[0].priority, item[0].provider_id))]
+
+    client = provider_client or call_openai_compatible_provider
+    for cfg in candidates[:max(1, request.max_attempts)]:
+        key_id_masked = mask_key_id(cfg.api_key)
+        score, _factors = candidate_score(
+            provider_id=cfg.provider_id,
+            key_id_masked=key_id_masked,
+            model_id=cfg.model_name,
+            priority=cfg.priority,
+            query_language=query_language,
+            supported_languages=cfg.supported_languages,
+            health_store=health_store,
+        )
+        if not health_store.is_key_available(cfg.provider_id, key_id_masked):
+            status, reason_vi = _skip_reason_for_key(health_store, cfg.provider_id, key_id_masked)
+            attempts.append(RouterAttempt(
+                cfg.provider_id, cfg.display_name_vi, cfg.model_name, status, reason_vi,
+                error_type=status, key_id_masked=key_id_masked, candidate_score=score,
+            ))
+            continue
+        if not health_store.is_model_available(cfg.provider_id, key_id_masked, cfg.model_name):
+            attempts.append(RouterAttempt(
+                cfg.provider_id, cfg.display_name_vi, cfg.model_name, "cooldown",
+                "Model AI đang tạm nghỉ sau lỗi riêng của model; AIOS thử lựa chọn khác.",
+                error_type="model_lockout", key_id_masked=key_id_masked,
+                failure_scope="model", candidate_score=score,
+            ))
+            continue
+        if not health_store.begin_provider_attempt(cfg.provider_id):
+            attempts.append(RouterAttempt(
+                cfg.provider_id, cfg.display_name_vi, cfg.model_name, "cooldown",
+                "Nguồn AI đang tạm nghỉ do lỗi hệ thống trước đó.",
+                error_type="provider_circuit_open", key_id_masked=key_id_masked,
+                failure_scope="provider", candidate_score=score,
+            ))
+            continue
+
         started = time.time()
         try:
             answer = client(cfg, request)
             if not str(answer).strip():
                 raise RuntimeError("empty answer")
-            health_store.record_success(cfg.provider_id, key_id_masked)
+            latency_ms = round((time.time() - started) * 1000)
+            health_store.record_success(cfg.provider_id, key_id_masked, model_id=cfg.model_name, latency_ms=latency_ms)
             _sync_legacy_health(legacy_state, cfg.provider_id, "success")
-            attempts.append(RouterAttempt(cfg.provider_id, cfg.display_name_vi, cfg.model_name, "success", "Đã dùng nguồn AI phù hợp cho tài liệu thường.", round((time.time()-started)*1000)))
-            result = RouterResult(answer, cfg.display_name_vi, cfg.model_name, False, "external_allowed_normal_docs", attempts, source_refs=request.source_refs)
+            record_lkg(
+                _SESSION_AFFINITY, session_key=session_key, provider_id=cfg.provider_id,
+                model_id=cfg.model_name,
+            )
+            attempts.append(RouterAttempt(
+                cfg.provider_id, cfg.display_name_vi, cfg.model_name, "success",
+                "Đã dùng nguồn AI phù hợp cho tài liệu thường.", latency_ms,
+                key_id_masked=key_id_masked, candidate_score=score,
+            ))
+            result = RouterResult(
+                answer, cfg.display_name_vi, cfg.model_name, False,
+                "external_allowed_normal_docs", attempts, source_refs=request.source_refs,
+                terminal_status="success",
+            )
             result.route_summary_vi = build_route_summary_vi(result, external_sent=_is_cloud(cfg.provider_id), reason_vi="Có, vì đây là tài liệu thường" if _is_cloud(cfg.provider_id) else "Không")
             return result
         except Exception as exc:
-            et = classify_provider_error(exc)
-            attempts.append(RouterAttempt(cfg.provider_id, cfg.display_name_vi, cfg.model_name, "failed", "Nguồn AI lỗi, AIOS thử nguồn tiếp theo.", round((time.time()-started)*1000), et))
-            key_state = health_store.record_failure(cfg.provider_id, key_id_masked, et)
-            _sync_legacy_health(legacy_state, cfg.provider_id, key_state.status, et, key_state.cooldown_until)
+            error_type = classify_provider_error(exc)
+            retry_after = retry_after_from_error(exc)
+            latency_ms = round((time.time() - started) * 1000)
+            attempts.append(RouterAttempt(
+                cfg.provider_id, cfg.display_name_vi, cfg.model_name, "failed",
+                "Nguồn AI lỗi, AIOS thử nguồn tiếp theo.", latency_ms, error_type,
+                key_id_masked,
+                classify_failure_scope(error_type),
+                score, retry_after,
+            ))
+
+            model_failure_recorded = False
+            if error_type in {"model_not_found", "bad_response"}:
+                health_store.record_failure(
+                    cfg.provider_id, key_id_masked, error_type, model_id=cfg.model_name,
+                    retry_after_seconds=retry_after,
+                )
+                model_failure_recorded = True
+            if error_type == "model_not_found" and cfg.allow_model_auto_substitution:
+                substitution = _try_model_substitution(cfg)
+                if substitution is not None:
+                    retry_cfg = replace(cfg, model_name=substitution.substituted_model)
+                    try:
+                        answer = client(retry_cfg, request)
+                        if not str(answer).strip():
+                            raise RuntimeError("empty answer")
+                        retry_latency_ms = round((time.time() - started) * 1000)
+                        health_store.record_success(cfg.provider_id, key_id_masked, model_id=retry_cfg.model_name, latency_ms=retry_latency_ms)
+                        _sync_legacy_health(legacy_state, cfg.provider_id, "success")
+                        record_lkg(
+                            _SESSION_AFFINITY, session_key=session_key, provider_id=cfg.provider_id,
+                            model_id=retry_cfg.model_name,
+                        )
+                        attempts.append(RouterAttempt(
+                            cfg.provider_id, cfg.display_name_vi, retry_cfg.model_name, "success",
+                            substitution.reason, retry_latency_ms, key_id_masked=key_id_masked,
+                            candidate_score=score,
+                        ))
+                        result = RouterResult(
+                            answer, cfg.display_name_vi, retry_cfg.model_name, False,
+                            "external_allowed_normal_docs", attempts, source_refs=request.source_refs,
+                            terminal_status="success",
+                        )
+                        result.route_summary_vi = build_route_summary_vi(result, external_sent=_is_cloud(cfg.provider_id), reason_vi="Có, vì đây là tài liệu thường" if _is_cloud(cfg.provider_id) else "Không")
+                        return result
+                    except Exception as retry_exc:
+                        error_type = classify_provider_error(retry_exc)
+                        retry_after = retry_after_from_error(retry_exc)
+                        model_failure_recorded = False
+                        attempts.append(RouterAttempt(
+                            cfg.provider_id, cfg.display_name_vi, retry_cfg.model_name, "failed",
+                            "Model tự thay cũng lỗi; AIOS thử nguồn tiếp theo.",
+                            round((time.time() - started) * 1000), error_type,
+                            key_id_masked, classify_failure_scope(error_type),
+                            score, retry_after,
+                        ))
+                        if error_type == "model_not_found":
+                            health_store.record_failure(
+                                cfg.provider_id, key_id_masked, error_type, model_id=retry_cfg.model_name,
+                                retry_after_seconds=retry_after,
+                            )
+                            model_failure_recorded = True
+
+            if model_failure_recorded:
+                key_state = health_store.get_key_state(cfg.provider_id, key_id_masked)
+            else:
+                key_state = health_store.record_failure(
+                    cfg.provider_id, key_id_masked, error_type,
+                    retry_after_seconds=retry_after,
+                )
+            _sync_legacy_health(legacy_state, cfg.provider_id, key_state.status, error_type, key_state.cooldown_until)
             if key_state.status == STATUS_DISABLED:
                 attempts[-1].reason_vi = "Lỗi xác thực khóa AI; khóa này bị tắt trong phiên hiện tại."
             elif key_state.status == STATUS_COOLDOWN:
                 attempts[-1].reason_vi = "Nguồn AI lỗi tạm thời; AIOS tạm nghỉ nguồn này và thử nguồn khác."
+
     return fallback_to_deterministic(request, "Tất cả nguồn AI đều lỗi. AIOS đang trả lời bằng dữ liệu cục bộ.", attempts)
 
 
@@ -313,7 +528,8 @@ def provider_configs_from_env(env: dict[str, Any] | None = None) -> list[RouterP
         profile = get_provider_profile(provider_id)
         if not profile or profile.endpoint_kind != "cloud_openai_compatible":
             continue
-        model = str(values.get(model_name_env) or (profile.default_models[0] if profile.default_models else "")).strip()
+        model_from_env = str(values.get(model_name_env) or "").strip()
+        model = model_from_env or (profile.default_models[0] if profile.default_models else "")
         if not model:
             continue
         configs.append(
@@ -327,12 +543,11 @@ def provider_configs_from_env(env: dict[str, Any] | None = None) -> list[RouterP
                 False,
                 priority,
                 cloud_timeout,
+                allow_model_auto_substitution=not bool(model_from_env),
             )
         )
         priority += 10
     return configs
-
-
 def provider_env_presence(env: dict[str, Any] | None = None) -> dict[str, bool]:
     """Return key presence only; never returns secret values."""
     import os

@@ -1,7 +1,13 @@
 import json
 
 from aios_habit.rag_v2.chunking import DocumentChunk
-from aios_habit.rag_v2.index import LocalChunkIndex
+from aios_habit.rag_v2.index import (
+    LocalChunkIndex,
+    SearchResponse,
+    SearchResult,
+    SearchSummary,
+)
+from aios_habit.rag_v2.evidence import EvidencePackConfig, build_evidence_pack
 from aios_habit.rag_v2.eval_harness import (
     BenchmarkConfig,
     BenchmarkQuestion,
@@ -9,6 +15,7 @@ from aios_habit.rag_v2.eval_harness import (
     benchmark_summary_to_dict,
     format_benchmark_summary,
     run_benchmark,
+    score_question,
     summarize_results,
     BenchmarkResult,
 )
@@ -125,6 +132,34 @@ def test_full_pipeline_pass(tmp_path):
     assert summary.local_execution_pass_rate == 1.0
     assert all(result.local_execution_ok for result in summary.results)
     assert summary.pass_fail in {"PASS", "FAIL", "PASS_WITH_WARNINGS"}
+
+
+def test_exact_identifier_recall_has_independent_document_denominator(tmp_path):
+    index = _build_index(tmp_path, _generic_chunks())
+    summary = run_benchmark(index, [
+        BenchmarkQuestion(
+            question_id="CHUNK_ONLY",
+            question="project launch timeline",
+            expected_answer_type="answerable",
+            expected_chunk_ids=("c-report-1",),
+        ),
+        BenchmarkQuestion(
+            question_id="EXPLICIT_DOC_MISS",
+            question="project launch timeline",
+            expected_answer_type="answerable",
+            expected_chunk_ids=("c-report-1",),
+            expected_document_ids=("wrong-document-id",),
+        ),
+    ])
+
+    chunk_only, explicit_miss = summary.results
+    assert chunk_only.exact_identifier_target_defined is False
+    assert chunk_only.exact_identifier_hit is False
+    assert explicit_miss.hit_expected_chunk is True
+    assert explicit_miss.exact_identifier_target_defined is True
+    assert explicit_miss.exact_identifier_hit is False
+    assert summary.exact_identifier_target_count == 1
+    assert summary.exact_identifier_recall == 0.0
 
 
 # --- Hit@k miss detection --------------------------------------------------
@@ -274,6 +309,71 @@ def test_summary_serialization(tmp_path):
     # Verify JSON roundtrip works
     json_str = json.dumps(d)
     assert "BMK-" in json_str
+
+
+def test_facet_metrics_measure_selected_evidence_not_retrieval_summary():
+    results = (
+        SearchResult(
+            chunk_id="facet-1",
+            score=10.0,
+            text="Alpha beta evidence.",
+            document_id="d1",
+            source_path="/workspace/d1.txt",
+            source_name="d1.txt",
+            file_type="txt",
+            metadata={},
+            privacy_labels=("cloud_safe",),
+            matched_terms=("alpha", "beta"),
+            term_coverage=1.0,
+            matched_query_facets=("facet_1",),
+        ),
+        SearchResult(
+            chunk_id="facet-2",
+            score=9.0,
+            text="Alpha beta secondary evidence.",
+            document_id="d2",
+            source_path="/workspace/d2.txt",
+            source_name="d2.txt",
+            file_type="txt",
+            metadata={},
+            privacy_labels=("cloud_safe",),
+            matched_terms=("alpha", "beta"),
+            term_coverage=1.0,
+            matched_query_facets=("facet_2",),
+        ),
+    )
+    response = SearchResponse(
+        results=results,
+        summary=SearchSummary(
+            query="alpha beta",
+            indexed_chunk_count=2,
+            eligible_chunk_count=2,
+            candidate_count=2,
+            returned_count=2,
+            planned_facet_ids=("facet_1", "facet_2"),
+            covered_facet_ids=("facet_1", "facet_2"),
+        ),
+    )
+    pack = build_evidence_pack(
+        "alpha beta",
+        response,
+        config=EvidencePackConfig(max_items=1),
+    )
+
+    result = score_question(
+        BenchmarkQuestion(
+            question_id="SELECTED_COVERAGE",
+            question="alpha beta",
+            expected_answer_type="answerable",
+        ),
+        response,
+        pack,
+        latency_ms=0.0,
+    )
+
+    assert result.planned_facet_count == 2
+    assert result.covered_facet_count == 1
+    assert result.missing_facet_count == 1
 
 
 # --- Config threshold FAIL --------------------------------------------------

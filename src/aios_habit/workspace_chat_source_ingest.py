@@ -62,8 +62,8 @@ def ingest_and_extract_bytes(
             "metadata": {"file_size_bytes": file_size, "extension": ext},
         }
 
-    # Handle XLSX using existing robust module workspace_chat_excel
-    if ext in {".xlsx", ".xlsm"}:
+    # Handle modern Excel and capability-gated legacy XLS.
+    if ext in {".xlsx", ".xlsm", ".xls"}:
         xlsx_res = extract_xlsx_text(file_bytes, safe_name)
         owner_msg = xlsx_res.owner_message
         # Sanitize Excel messages if they leak trace or generic English error
@@ -223,7 +223,7 @@ def ingest_and_extract_bytes(
 
             if status == "dependency_missing":
                 is_dependency_missing = True
-                missing_dep_msg = chunk.get("warning", "") or "pymupdf4llm/fitz missing"
+                missing_dep_msg = chunk.get("warning", "") or "pdf-inspector/PyMuPDF missing"
             elif status == "unsupported_no_local_ocr" or "local OCR unavailable" in (chunk.get("warning", "") or ""):
                 is_ocr_missing = True
 

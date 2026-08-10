@@ -1,0 +1,13 @@
+﻿{
+  "schema_version": 1,
+  "dispositions": [
+    {
+      "relative_path": "path/relative/to/corpus-root.png",
+      "disposition": "approved_unrecoverable_exclusion",
+      "reason": "Specific evidence-backed reason the source cannot be recovered locally",
+      "approved_by": "owner-name",
+      "approved_at": "2026-07-29T00:00:00+00:00",
+      "note": "Optional review note"
+    }
+  ]
+}

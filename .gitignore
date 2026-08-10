@@ -89,3 +89,8 @@ local_cases/
 # Real-data benchmark runtime outputs
 local_runs/
 config/real_benchmark.local.json
+config/workspace_chat_rag_v2.local.json
+
+tailieugoc/
+
+graphify-out/
