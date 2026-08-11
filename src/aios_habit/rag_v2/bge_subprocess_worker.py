@@ -23,6 +23,7 @@ from aios_habit.rag_v2.pipeline import (
 )
 from aios_habit.rag_v2.adapters import ConversionContext
 from aios_habit.rag_v2.schema import ExtractionStatus
+from aios_habit.rag_v2_synthesis_provider import create_synthesis_provider
 
 
 def _config_from_dict(payload: Mapping[str, Any]) -> RagV2DevConfig:
@@ -216,7 +217,11 @@ def main() -> None:
                     ):
                         raise RuntimeError("pinned_model_unavailable")
                     init_phase = "model_load"
-                    pipeline = RagV2DevPipeline(config)
+                    synthesis_provider = create_synthesis_provider()
+                    pipeline = RagV2DevPipeline(
+                        config,
+                        synthesis_provider=synthesis_provider,
+                    )
                     init_phase = "index_open"
                     # Force a harmless schema read now so index failures are
                     # attributed during readiness rather than the first query.
