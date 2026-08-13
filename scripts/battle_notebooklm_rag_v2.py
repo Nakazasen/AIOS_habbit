@@ -430,11 +430,15 @@ _PROMOTION_CANDIDATE_FILES = (
 )
 
 
-def _bound_production_identity(manifest_path: str) -> dict[str, Any]:
+def _bound_production_identity(
+    manifest_path: str,
+    *,
+    allow_unsealed_diagnostic: bool = False,
+) -> dict[str, Any]:
     try:
         deployment = load_workspace_chat_rag_v2_deployment(
-            Path(manifest_path),
-            require_activated=True,
+            Path(manifest_path), require_activated=True,
+            allow_unsealed_diagnostic=allow_unsealed_diagnostic,
         )
     except DeploymentManifestError as error:
         raise BenchmarkError(f"Production candidate identity rejected: {error}") from error
@@ -445,9 +449,11 @@ def _bound_production_identity(manifest_path: str) -> dict[str, Any]:
         identity["requested_profile"] != PRODUCTION_PROFILE
         or identity["model_revision"] != PRODUCTION_MODEL_REVISION
         or identity["model_checksum"].casefold() != PRODUCTION_MODEL_CHECKSUM.casefold()
-        or identity["benchmark_status"] != "PASS"
+        or (
+            identity["benchmark_status"] != "PASS"
+            and not allow_unsealed_diagnostic
+        )
         or identity["fail_closed"] is not True
-        or identity["lexical_fallback_enabled"] is not True
     ):
         raise BenchmarkError("Production candidate identity does not match the approved deployment")
     return identity
@@ -468,11 +474,13 @@ def workspace_production_adapter_config(
     manifest_path: str,
     *,
     benchmark_runtime_root: Path,
+    allow_unsealed_diagnostic: bool = False,
 ) -> Any:
     """Bind approved production settings to an isolated benchmark runtime."""
     try:
         deployment = load_workspace_chat_rag_v2_deployment(
-            Path(manifest_path), require_activated=True
+            Path(manifest_path), require_activated=True,
+            allow_unsealed_diagnostic=allow_unsealed_diagnostic,
         )
     except DeploymentManifestError as error:
         raise BenchmarkError(f"Production adapter deployment rejected: {error}") from error
@@ -515,7 +523,11 @@ def bind_production_model_identity(args: argparse.Namespace) -> None:
         return
     try:
         deployment = load_workspace_chat_rag_v2_deployment(
-            Path(manifest_path), require_activated=True
+            Path(manifest_path),
+            require_activated=True,
+            allow_unsealed_diagnostic=bool(
+                getattr(args, "allow_unsealed_diagnostic", False)
+            ),
         )
     except DeploymentManifestError as error:
         raise BenchmarkError(f"Production model deployment rejected: {error}") from error
@@ -541,7 +553,13 @@ def bind_production_model_identity(args: argparse.Namespace) -> None:
                 f"{option} conflicts with the activated production deployment"
             )
         setattr(args, field, approved)
-    setattr(args, "_bge_m3_model_identity_source", "activated_deployment_manifest")
+    setattr(
+        args,
+        "_bge_m3_model_identity_source",
+        "unsealed_diagnostic_manifest"
+        if bool(getattr(args, "allow_unsealed_diagnostic", False))
+        else "activated_deployment_manifest",
+    )
 
 
 def workspace_stage_source_fingerprints(sources: Sequence[Any]) -> list[str]:
@@ -654,7 +672,13 @@ def run_workspace_stage(args: argparse.Namespace, output_dir: Path) -> dict[str,
     if not manifest_path:
         raise BenchmarkError("--workspace-stage requires --production-deployment-manifest")
     local = build_local_manifest(Path(args.source_root).resolve(), allow_partial=getattr(args, "allow_partial", False))
-    production_identity = _bound_production_identity(manifest_path)
+    allow_unsealed_diagnostic = bool(
+        getattr(args, "allow_unsealed_diagnostic", False)
+    )
+    production_identity = _bound_production_identity(
+        manifest_path,
+        allow_unsealed_diagnostic=allow_unsealed_diagnostic,
+    )
     sources, coverage = ingest_workspace_sources(Path(args.source_root).resolve(), local, privacy_label=args.privacy_label)
     fingerprints = workspace_stage_source_fingerprints(sources)
     document_ids = workspace_stage_document_ids(sources)
@@ -687,7 +711,11 @@ def run_workspace_stage(args: argparse.Namespace, output_dir: Path) -> dict[str,
             completed_document_ids=completed_document_ids,
         ),
     )
-    config = workspace_production_adapter_config(manifest_path, benchmark_runtime_root=stage_root)
+    config = workspace_production_adapter_config(
+        manifest_path,
+        benchmark_runtime_root=stage_root,
+        allow_unsealed_diagnostic=allow_unsealed_diagnostic,
+    )
     try:
         with ProgressHeartbeat(output_dir / "workspace_stage_progress.json", stage="workspace_staging", total=len(sources)) as progress:
             progress.update(completed=0, current="worker_initialization")
@@ -828,6 +856,7 @@ def promotion_candidate_identity(
     *,
     router_provider: str,
     production_manifest: str = "",
+    allow_unsealed_diagnostic: bool = False,
 ) -> dict[str, Any]:
     """Fingerprint candidate behavior and effective config without source contents."""
     file_hashes = {
@@ -835,7 +864,10 @@ def promotion_candidate_identity(
         for relative_path in _PROMOTION_CANDIDATE_FILES
     }
     production_identity = (
-        _bound_production_identity(production_manifest)
+        _bound_production_identity(
+            production_manifest,
+            allow_unsealed_diagnostic=allow_unsealed_diagnostic,
+        )
         if production_manifest
         else None
     )
@@ -850,6 +882,7 @@ def promotion_candidate_identity(
         "production_identity_sha256": (
             production_identity["identity_sha256"] if production_identity else ""
         ),
+        "allow_unsealed_diagnostic": allow_unsealed_diagnostic,
     }
     return {
         "candidate_fingerprint": stable_hash(file_hashes),
@@ -3548,6 +3581,9 @@ def build_preflight(args: argparse.Namespace) -> dict[str, Any]:
             production_manifest=str(
                 getattr(args, "production_deployment_manifest", "") or ""
             ),
+            allow_unsealed_diagnostic=bool(
+                getattr(args, "allow_unsealed_diagnostic", False)
+            ),
         ),
         "config_hash": stable_hash({
             "privacy_label": args.privacy_label,
@@ -3700,6 +3736,9 @@ def run_dry_or_live(args: argparse.Namespace, preflight: Mapping[str, Any], *, l
         workspace_production_config = workspace_production_adapter_config(
             production_manifest,
             benchmark_runtime_root=stage["root"],
+            allow_unsealed_diagnostic=bool(
+                getattr(args, "allow_unsealed_diagnostic", False)
+            ),
         )
         workspace_preparation = {
             # Keep the two BGE runtimes out of the same address space. The
@@ -6778,6 +6817,7 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--privacy-label", default="cloud_safe", choices=("cloud_safe", "public", "local_only"))
     parser.add_argument("--rag-profile", default="lexical", choices=ABLATION_PROFILES, help="RAG retrieval profile for --run/--dry-run")
     parser.add_argument("--production-deployment-manifest", default="", help="Validated activated deployment manifest used to bind a live or provider-free dry-run answer-quality evaluation to the exact production candidate")
+    parser.add_argument("--allow-unsealed-diagnostic", action="store_true", help="Explicitly allow only local-only BQ01/BQ02 diagnostics when historical sealed artifacts are unavailable; never enables live synthesis")
     parser.add_argument("--workspace-stage-cache-dir", default=str(DEFAULT_WORKSPACE_STAGE_CACHE_DIR), help="Content-addressed root used only by --workspace-stage")
     parser.add_argument("--workspace-staging-manifest", default="", help="Verified immutable workspace staging manifest required by production-bound battles")
     parser.add_argument("--workspace-stage-init-timeout", type=float, default=600.0, help="Bounded cold-start seconds for --workspace-stage only")
@@ -6805,10 +6845,36 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     return parsed
 
 
+def validate_unsealed_diagnostic_args(args: argparse.Namespace) -> None:
+    """Keep the artifact override narrow, local-only, and diagnostic-only."""
+    if not bool(getattr(args, "allow_unsealed_diagnostic", False)):
+        return
+    if not str(getattr(args, "production_deployment_manifest", "") or "").strip():
+        raise BenchmarkError("Unsealed diagnostic requires --production-deployment-manifest")
+    if getattr(args, "privacy_label", "") != "local_only":
+        raise BenchmarkError("Unsealed diagnostic requires --privacy-label local_only")
+    if bool(getattr(args, "run", False)):
+        raise BenchmarkError("Unsealed diagnostic never enables live synthesis")
+    if not any(
+        bool(getattr(args, name, False))
+        for name in ("preflight", "workspace_stage", "dry_run")
+    ):
+        raise BenchmarkError("Unsealed diagnostic is limited to preflight, workspace stage, or dry-run")
+    if bool(getattr(args, "dry_run", False)):
+        question_ids = {
+            value.strip()
+            for value in str(getattr(args, "question_ids", "") or "").split(",")
+            if value.strip()
+        }
+        if question_ids != {"BQ01", "BQ02"}:
+            raise BenchmarkError("Unsealed dry-run requires exactly BQ01,BQ02")
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     args, output_dir = parse_args(argv), None
     try:
         output_dir = Path(args.output_dir)
+        validate_unsealed_diagnostic_args(args)
         if args.smoke:
             result = run_bge_m3_smoke(args, output_dir)
             print(json.dumps({

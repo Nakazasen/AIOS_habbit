@@ -34,3 +34,12 @@
 **Alternatives considered**:
 
 - Best-effort merge by matching some sources: rejected because the gate requires a frozen experiment identity.
+
+## Decision: Allow an explicit unsealed local diagnostic
+
+**Rationale**: The operator has authorized removal of the historical-artifact blocker. The override remains limited to BQ01/BQ02, local-only inputs, and provider-free execution, so it diagnoses the deployed retrieval path without claiming historical comparability.
+
+**Alternatives considered**:
+
+- Recreate historical evidence: rejected because it would misrepresent a new artifact as old evidence.
+- Permit arbitrary questions or live synthesis: rejected because it would exceed the authorized diagnostic scope.

@@ -50,6 +50,7 @@
 - [X] T015 Run `python -m compileall src scripts`, `git diff --check`, and `graphify update .` after implementation.
 - [X] T016 Review the diff; report sealed-artifact recovery status separately from code validation and do not run BQ01/BQ02 until artifacts are present.
 - [X] T017 Add a regression test for production Stage A adapter construction and remove unsupported lexical-fallback configuration from `scripts/battle_notebooklm_rag_v2.py`.
+- [X] T018 Add the explicit local-only BQ01/BQ02 unsealed-diagnostic contract in `src/aios_habit/workspace_chat_rag_v2_deployment.py`, `scripts/battle_notebooklm_rag_v2.py`, and focused tests.
 
 ## Dependencies & Execution Order
 

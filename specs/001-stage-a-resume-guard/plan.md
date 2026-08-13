@@ -6,7 +6,7 @@
 
 ## Summary
 
-Make the provider-free Workspace Chat Stage A flow durable at source boundaries. A content-addressed, identity-bound checkpoint records only opaque source progress. The adapter emits progress after each successful commit, accepts a verified completed-source set, and enforces a caller-provided per-source deadline. The benchmark runner resumes exactly matching incomplete stages, updates its heartbeat per source, and fails closed otherwise. This work never enables Stage B or fabricates missing sealed evidence.
+Make the provider-free Workspace Chat Stage A flow durable at source boundaries. A content-addressed, identity-bound checkpoint records only opaque source progress. The adapter emits progress after each successful commit, accepts a verified completed-source set, and enforces a caller-provided per-source deadline. The benchmark runner resumes exactly matching incomplete stages, updates its heartbeat per source, and fails closed otherwise. An explicit unsealed mode permits local BQ01/BQ02 diagnosis only; it never enables Stage B or fabricates sealed evidence.
 
 ## Technical Context
 
@@ -24,7 +24,7 @@ Make the provider-free Workspace Chat Stage A flow durable at source boundaries.
 
 **Performance Goals**: Persist one checkpoint per successful source and avoid repeat preparation calls for completed sources after interruption
 
-**Constraints**: Provider-free local-only Stage A; no source text, filename, credential or provider response in checkpoint; per-source deadline fails closed; Stage B locked
+**Constraints**: Provider-free local-only Stage A; unsealed mode restricted to BQ01/BQ02; no source text, filename, credential or provider response in checkpoint; per-source deadline fails closed; Stage B locked
 
 **Scale/Scope**: 70-source production corpus; compact synthetic fixtures for unit tests
 

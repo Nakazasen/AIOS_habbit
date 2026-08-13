@@ -169,10 +169,16 @@ def test_workspace_production_adapter_config_is_semantic_and_has_no_lexical_fall
         fail_closed=True,
         lexical_fallback_enabled=False,
     )
+    observed: dict[str, object] = {}
+
+    def load_deployment(*_args, **kwargs):
+        observed.update(kwargs)
+        return deployment
+
     monkeypatch.setattr(
         battle,
         "load_workspace_chat_rag_v2_deployment",
-        lambda *_args, **_kwargs: deployment,
+        load_deployment,
     )
 
     config = battle.workspace_production_adapter_config(
@@ -184,3 +190,25 @@ def test_workspace_production_adapter_config_is_semantic_and_has_no_lexical_fall
     assert config.requested_profile == "bge_m3_hybrid"
     assert config.fail_closed_on_error is True
     assert config.runtime_root == tmp_path / "stage-runtime"
+    assert observed["allow_unsealed_diagnostic"] is False
+
+
+def test_unsealed_diagnostic_is_limited_to_local_bq01_bq02_and_never_live(tmp_path):
+    args = _args(tmp_path)
+    args.allow_unsealed_diagnostic = True
+    args.dry_run = True
+    args.run = False
+    args.preflight = False
+    args.workspace_stage = False
+    args.question_ids = "BQ01,BQ02"
+
+    battle.validate_unsealed_diagnostic_args(args)
+
+    args.question_ids = "BQ01"
+    with pytest.raises(battle.BenchmarkError, match="exactly BQ01,BQ02"):
+        battle.validate_unsealed_diagnostic_args(args)
+
+    args.question_ids = "BQ01,BQ02"
+    args.run = True
+    with pytest.raises(battle.BenchmarkError, match="never enables live synthesis"):
+        battle.validate_unsealed_diagnostic_args(args)

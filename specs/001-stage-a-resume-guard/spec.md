@@ -40,17 +40,17 @@ An evaluation operator can see safe per-source progress and receives a determini
 
 ---
 
-### User Story 3 - Preserve diagnostic gate boundaries (Priority: P3)
+### User Story 3 - Preserve diagnostic boundaries without historical artifacts (Priority: P3)
 
-An evaluation operator can distinguish a recoverable runtime failure from a gate-valid BQ01/BQ02 diagnostic and cannot use Stage A to initialize a live provider route.
+An evaluation operator can run a narrowly scoped local BQ01/BQ02 diagnostic when historical artifacts are unavailable, while remaining unable to initialize a live provider route.
 
-**Why this priority**: Resumability must not weaken the frozen identity, local-only policy, or the Stage B authorization boundary.
+**Why this priority**: The historical artifacts must not block local runtime diagnosis, but their absence must not weaken the local-only policy or open Stage B.
 
 **Independent Test**: Run the preparation path with local-only inputs and verify it exposes no provider initialization, rejects missing or mismatched identity, and produces no ready stage after a timeout.
 
 **Acceptance Scenarios**:
 
-1. **Given** missing sealed production evidence or an immutable NotebookLM reference, **When** the diagnostic gate is evaluated, **Then** it remains invalid rather than fabricating or substituting an artifact.
+1. **Given** missing sealed production evidence or an immutable NotebookLM reference, **When** the operator explicitly selects the unsealed diagnostic, **Then** only BQ01/BQ02 may run locally and the result is labelled diagnostic-only rather than a historical comparison.
 2. **Given** local-only sources, **When** Stage A is resumed, **Then** it remains provider-free and Stage B is not invoked.
 
 ### Edge Cases
@@ -71,7 +71,8 @@ An evaluation operator can distinguish a recoverable runtime failure from a gate
 - **FR-005**: A failed or timed-out source MUST leave the stage unready and preserve the restart point for completed sources.
 - **FR-006**: Progress and failure evidence MUST use opaque source identities and MUST NOT persist source text, file names, credentials, or provider responses.
 - **FR-007**: Stage A MUST remain provider-free for local-only sources and MUST NOT initiate Stage B synthesis.
-- **FR-008**: Missing production evidence or immutable NotebookLM reference artifacts MUST remain a gate blocker; no generated replacement may be treated as sealed evidence.
+- **FR-008**: Missing production evidence or immutable NotebookLM reference artifacts MUST NOT block an explicitly selected local-only BQ01/BQ02 diagnostic; no generated replacement may be treated as sealed evidence or a historical comparison.
+- **FR-009**: The unsealed diagnostic MUST reject live synthesis, non-local privacy labels, and any question selection other than exactly BQ01 and BQ02.
 
 ### Key Entities
 
@@ -86,11 +87,11 @@ An evaluation operator can distinguish a recoverable runtime failure from a gate
 - **SC-001**: A simulated interruption after one of three sources resumes with zero repeat preparation calls for the completed source.
 - **SC-002**: A simulated timeout produces an unready stage and a checkpoint containing the last completed source within one execution attempt.
 - **SC-003**: All focused adapter and staging tests pass while proving no provider call is required for Stage A.
-- **SC-004**: A missing sealed artifact is reported as blocked and is never replaced by newly generated local data.
+- **SC-004**: A missing sealed artifact enables only an explicitly labelled local BQ01/BQ02 diagnostic and is never replaced by newly generated local data.
 
 ## Assumptions
 
 - The worker's per-source commit is idempotent for an unchanged source identity.
 - A bounded operator-configured per-source deadline is safer than allowing an unbounded local worker operation.
-- The original sealed artifacts may only be restored from an existing original copy supplied or located by the operator; regeneration is out of scope.
+- The original sealed artifacts may be restored later for historical comparison, but are not required for the explicit local BQ01/BQ02 diagnostic.
 - Stage B remains explicitly out of scope and locked.

@@ -191,11 +191,15 @@ def load_workspace_chat_rag_v2_deployment(
     *,
     env: Optional[Mapping[str, str]] = None,
     require_activated: bool = False,
+    allow_unsealed_diagnostic: bool = False,
 ) -> Optional[WorkspaceChatRagV2Deployment]:
     """Load and validate a local deployment manifest.
 
     Missing manifests return ``None``. Activated manifests are always validated
-    strictly; corrupt activation never silently enables retrieval.
+    strictly; corrupt activation never silently enables retrieval. The explicit
+    diagnostic escape hatch is for the benchmark CLI only: it retains approved
+    model/profile/fail-closed validation but does not require historical report
+    files that are unavailable on the current machine.
     """
     manifest_path = _manifest_path(path, env)
     if not manifest_path.is_file():
@@ -253,6 +257,14 @@ def load_workspace_chat_rag_v2_deployment(
         or policy.get("semantic_progressive") is not False
     ):
         raise DeploymentManifestError("deployment_bge_only_policy_required")
+
+    if allow_unsealed_diagnostic:
+        return WorkspaceChatRagV2Deployment(
+            **{
+                **deployment.__dict__,
+                "benchmark_status": "UNSEALED_DIAGNOSTIC",
+            }
+        )
 
     run_id = _validate_evidence(evidence)
     status = _validate_benchmark(benchmark, runtime_root=deployment.runtime_root)
