@@ -487,7 +487,6 @@ def workspace_production_adapter_config(
         enabled=True,
         requested_profile=deployment.requested_profile,
         runtime_root=isolated_root,
-        lexical_fallback_enabled=deployment.lexical_fallback_enabled,
         bge_m3_model_path=deployment.model_path,
         bge_m3_model_revision=deployment.model_revision,
         bge_m3_model_checksum=deployment.model_checksum,

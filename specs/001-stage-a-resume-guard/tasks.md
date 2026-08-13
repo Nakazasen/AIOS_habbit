@@ -49,6 +49,7 @@
 - [X] T014 Run focused tests and the full relevant test suite from `specs/001-stage-a-resume-guard/quickstart.md`.
 - [X] T015 Run `python -m compileall src scripts`, `git diff --check`, and `graphify update .` after implementation.
 - [X] T016 Review the diff; report sealed-artifact recovery status separately from code validation and do not run BQ01/BQ02 until artifacts are present.
+- [X] T017 Add a regression test for production Stage A adapter construction and remove unsupported lexical-fallback configuration from `scripts/battle_notebooklm_rag_v2.py`.
 
 ## Dependencies & Execution Order
 

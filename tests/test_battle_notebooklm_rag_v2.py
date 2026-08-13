@@ -4,6 +4,7 @@ from __future__ import annotations
 import argparse
 import json
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
@@ -155,3 +156,31 @@ def test_workspace_stage_rejects_checkpoint_with_different_frozen_identity(tmp_p
             identity={"stage_key": "new"},
             document_ids=document_ids,
         )
+
+
+def test_workspace_production_adapter_config_is_semantic_and_has_no_lexical_fallback(monkeypatch, tmp_path):
+    deployment = SimpleNamespace(
+        requested_profile="bge_m3_hybrid",
+        runtime_root=tmp_path / "activated-runtime",
+        model_path=tmp_path / "pinned-bge-m3",
+        model_revision="test-revision",
+        model_checksum="sha256:" + "a" * 64,
+        retrieval_device="cpu",
+        fail_closed=True,
+        lexical_fallback_enabled=False,
+    )
+    monkeypatch.setattr(
+        battle,
+        "load_workspace_chat_rag_v2_deployment",
+        lambda *_args, **_kwargs: deployment,
+    )
+
+    config = battle.workspace_production_adapter_config(
+        str(tmp_path / "activated.json"),
+        benchmark_runtime_root=tmp_path / "stage-runtime",
+    )
+
+    assert config.enabled is True
+    assert config.requested_profile == "bge_m3_hybrid"
+    assert config.fail_closed_on_error is True
+    assert config.runtime_root == tmp_path / "stage-runtime"
