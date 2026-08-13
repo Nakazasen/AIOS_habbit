@@ -6846,13 +6846,11 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
 
 
 def validate_unsealed_diagnostic_args(args: argparse.Namespace) -> None:
-    """Keep the artifact override narrow, local-only, and diagnostic-only."""
+    """Keep the artifact override narrow, provider-free, and diagnostic-only."""
     if not bool(getattr(args, "allow_unsealed_diagnostic", False)):
         return
     if not str(getattr(args, "production_deployment_manifest", "") or "").strip():
         raise BenchmarkError("Unsealed diagnostic requires --production-deployment-manifest")
-    if getattr(args, "privacy_label", "") != "local_only":
-        raise BenchmarkError("Unsealed diagnostic requires --privacy-label local_only")
     if bool(getattr(args, "run", False)):
         raise BenchmarkError("Unsealed diagnostic never enables live synthesis")
     if not any(

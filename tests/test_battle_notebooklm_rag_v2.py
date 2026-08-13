@@ -204,6 +204,12 @@ def test_unsealed_diagnostic_is_limited_to_local_bq01_bq02_and_never_live(tmp_pa
 
     battle.validate_unsealed_diagnostic_args(args)
 
+    args.privacy_label = "cloud_safe"
+    battle.validate_unsealed_diagnostic_args(args)
+
+    args.privacy_label = "public"
+    battle.validate_unsealed_diagnostic_args(args)
+
     args.question_ids = "BQ01"
     with pytest.raises(battle.BenchmarkError, match="exactly BQ01,BQ02"):
         battle.validate_unsealed_diagnostic_args(args)
