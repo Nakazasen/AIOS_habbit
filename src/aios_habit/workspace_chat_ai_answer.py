@@ -34,6 +34,8 @@ class WorkspaceAIContextSource:
     text: str
     included_chars: int
     truncated: bool
+    original_chars: int = 0
+    managed_path: str = ""
 
 @dataclass(frozen=True)
 class WorkspaceAIAnswerRequest:
@@ -181,7 +183,8 @@ def pack_workspace_ai_context(
             privacy_label=raw_label,
             text=raw_text,
             included_chars=len(raw_text),
-            truncated=False
+            truncated=False,
+            managed_path=getattr(s, "managed_path", ""),
         ))
 
     return question, tuple(context_sources), ()
@@ -240,7 +243,8 @@ def _cap_and_pack_sources(
                 privacy_label=s.privacy_label,
                 text="",
                 included_chars=0,
-                truncated=True
+                truncated=True,
+                managed_path=s.managed_path,
             ))
             continue
 
@@ -258,7 +262,8 @@ def _cap_and_pack_sources(
             privacy_label=s.privacy_label,
             text=src_text,
             included_chars=len(src_text),
-            truncated=src_truncated
+            truncated=src_truncated,
+            managed_path=s.managed_path,
         ))
 
     # Deduplicate warning messages

@@ -390,7 +390,8 @@ def promote_temporary_source_to_notebook(
         privacy_label=temp_src.privacy_label,
         content_preview=temp_src.content_preview,
         content_text=temp_src.content_text,
-        origin_temporary_source_id=temp_src.id
+        origin_temporary_source_id=temp_src.id,
+        managed_path=temp_src.managed_path,
     )
     save_notebook_source(nb_src)
 

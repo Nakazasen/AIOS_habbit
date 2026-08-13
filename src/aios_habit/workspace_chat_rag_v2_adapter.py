@@ -25,6 +25,12 @@ from aios_habit.rag_v2.semantic import (
     SemanticBackendError,
     SemanticBackendUnavailable,
 )
+from aios_habit.rag_v2.structured_query import (
+    StructuredQueryError,
+    execute_excel_query,
+    inspect_excel_schemas,
+    plan_excel_query,
+)
 from aios_habit.workspace_chat_ai_answer import WorkspaceAIContextSource
 from aios_habit.workspace_chat_rag_v2_deployment import (
     DeploymentManifestError,
@@ -923,6 +929,126 @@ def _quality_search_unavailable(reason: str) -> dict[str, Any]:
     }
 
 
+def _managed_workbook_path(source: WorkspaceAIContextSource) -> Path | None:
+    raw_path = str(getattr(source, "managed_path", "") or "").strip()
+    if not raw_path:
+        return None
+    extension = Path(raw_path).suffix.lower()
+    if extension not in {".xlsx", ".xlsm", ".xls"}:
+        return None
+    try:
+        from aios_habit.workspace_chat_source_ingest import MANAGED_WORKBOOK_ROOT
+        root = MANAGED_WORKBOOK_ROOT.resolve()
+        resolved = Path(raw_path).resolve()
+    except (OSError, RuntimeError):
+        return None
+    if root not in resolved.parents or not resolved.is_file():
+        return None
+    return resolved
+
+
+def _try_structured_excel_evidence(
+    question: str,
+    sources: Tuple[WorkspaceAIContextSource, ...],
+) -> dict[str, Any] | None:
+    """Use bounded SQL analytics only for deterministic, allow-listed plans."""
+    for source in sources:
+        path = _managed_workbook_path(source)
+        if path is None:
+            continue
+        document_id = _document_id(source)
+        schemas = inspect_excel_schemas(path, document_id=document_id)
+        planning = plan_excel_query(question, schemas)
+        if not planning.applied or planning.plan is None:
+            continue
+        try:
+            result = execute_excel_query(path, planning.plan, document_id=document_id)
+        except (StructuredQueryError, ValueError, OverflowError) as error:
+            LOGGER.warning("Structured Excel query unavailable: %s", _safe_reason(error))
+            continue
+        if not result.applied or not result.rendered_evidence.strip():
+            continue
+
+        title = sanitize_citation_title(source.title)
+        sheets = tuple(dict.fromkeys(p.sheet for p in result.provenance if p.sheet))
+        if len(sheets) > 1:
+            location = f"Sheets: {', '.join(sheets)}"
+        elif result.sheet:
+            location = f"Sheet: {result.sheet}"
+            if result.cell_range:
+                location += f", ô {result.cell_range}"
+        else:
+            location = "Excel"
+        text = result.rendered_evidence.strip()
+        evidence_id = hashlib.sha256(
+            f"structured:{document_id}:{result.sheet}:{result.cell_range}:{text}".encode("utf-8")
+        ).hexdigest()[:24]
+        evidence_item = {
+            "snippet_index": 1,
+            "source_id": source.source_id,
+            "source_scope": source.source_scope,
+            "source_type": source.source_type,
+            "title": title,
+            "text": text,
+            "location_info": location,
+            "score": 1.0,
+            "retrieval_score": 1.0,
+            "citation_id": evidence_id,
+            "evidence_id": evidence_id,
+            "retrieval_lane": "structured_excel_sql",
+        }
+        retrieved_source = WorkspaceAIContextSource(
+            source_id=source.source_id,
+            source_scope=source.source_scope,
+            source_type=source.source_type,
+            title=f"{title} ({location})",
+            privacy_label=source.privacy_label,
+            text=text,
+            original_chars=len(text),
+            included_chars=len(text),
+            truncated=result.truncated,
+            managed_path=str(path),
+        )
+        return {
+            "retrieval_applied": True,
+            "retrieval_available": True,
+            "status": "structured_excel_query",
+            "evidence_items": [evidence_item],
+            "retrieved_context_sources": (retrieved_source,),
+            "summary_count": 1,
+            "citations": [{
+                "title": title,
+                "snippet": f"{text[:150]}..." if len(text) > 150 else text,
+                "location": location,
+                "citation_id": evidence_id,
+            }],
+            "safe_owner_message": (
+                f"Đã truy vấn bảng Excel cục bộ và dùng {result.row_count} dòng kết quả có nguồn gốc."
+            ),
+            "eligible_source_count": 1,
+            "indexed_source_count": 1,
+            "indexed_chunk_count": 0,
+            "candidate_count": result.row_count,
+            "distinct_source_count": 1,
+            "per_source_result_counts": {source.source_id: 1},
+            "filtered_as_stale_count": 0,
+            "local_synthesis": {
+                "answer": "", "citation_ids": [evidence_id], "grounded": True,
+                "abstained": False, "answer_mode": "structured_excel_sql",
+                "limitation_reasons": [],
+            },
+            "rag_v2_canary": {
+                "canary_enabled": True,
+                "backend": "structured_excel_sqlite",
+                "requested_profile": "structured_excel_sql",
+                "effective_profile": "structured_excel_sql",
+                "fallback_applied": False,
+                "fallback_reason": "",
+            },
+        }
+    return None
+
+
 def retrieve_workspace_chat_evidence(
     question: str,
     context_sources: Iterable[WorkspaceAIContextSource],
@@ -941,6 +1067,10 @@ def retrieve_workspace_chat_evidence(
 
     if not resolved.enabled:
         return _quality_search_unavailable("feature_flag_disabled")
+
+    structured_result = _try_structured_excel_evidence(question, sources)
+    if structured_result is not None:
+        return structured_result
 
     schedule_workspace_chat_source_preparation(sources, config=resolved)
     semantic_status, semantic_reason = _semantic_readiness(sources, resolved)

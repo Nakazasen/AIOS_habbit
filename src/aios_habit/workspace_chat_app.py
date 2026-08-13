@@ -61,6 +61,7 @@ def create_temporary_source_with_privacy(
     content_preview: str,
     content_text: str,
     owner_choice: str,
+    managed_path: str = "",
 ) -> TemporaryConversationSource:
     ts = TemporaryConversationSource(
         id=f"SRC-{uuid.uuid4().hex[:8].upper()}",
@@ -70,6 +71,7 @@ def create_temporary_source_with_privacy(
         content_preview=content_preview,
         content_text=content_text,
         privacy_label=owner_choice_to_privacy_label(owner_choice),
+        managed_path=managed_path,
     )
     save_temporary_source(ts)
     set_source_enabled(conversation_id, SOURCE_SCOPE_TEMPORARY, ts.id, True)
@@ -111,6 +113,7 @@ def create_general_temporary_source(
     content_text: str,
     owner_choice: str,
     enable_source: bool = False,
+    managed_path: str = "",
 ) -> TemporaryConversationSource:
     ts = TemporaryConversationSource(
         id=f"SRC-{uuid.uuid4().hex[:8].upper()}",
@@ -120,6 +123,7 @@ def create_general_temporary_source(
         content_preview=content_preview,
         content_text=content_text,
         privacy_label=owner_choice_to_privacy_label(owner_choice),
+        managed_path=managed_path,
     )
     save_temporary_source(ts)
     if enable_source:
@@ -168,6 +172,7 @@ def process_workspace_upload_batch(
                 content_text=result.get("text", ""),
                 owner_choice=doc_privacy_choice,
                 enable_source=should_enable,
+                managed_path=result.get("metadata", {}).get("managed_path", ""),
             )
             success_count += 1
             success_files.append(filename)
@@ -250,6 +255,7 @@ def _workspace_context_sources(notebook_sources, temp_sources):
                 text=text,
                 included_chars=len(text),
                 truncated=bool(getattr(source, "truncated", False)),
+                managed_path=getattr(source, "managed_path", ""),
             )
         )
     for source in temp_sources:
@@ -267,6 +273,7 @@ def _workspace_context_sources(notebook_sources, temp_sources):
                 text=text,
                 included_chars=len(text),
                 truncated=bool(getattr(source, "truncated", False)),
+                managed_path=getattr(source, "managed_path", ""),
             )
         )
     return tuple(ctx_sources)

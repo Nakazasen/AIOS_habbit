@@ -44,10 +44,10 @@ def test_pipeline_ingests_queries_and_skips_unchanged_source(tmp_path):
     assert result.route == "local_retrieval_evidence"
     assert result.evidence_pack.items[0].source_name == "guide.txt"
     assert result.evidence_pack.confidence != EvidenceConfidence.INSUFFICIENT
-    assert result.synthesis_result.grounded is False
-    assert result.synthesis_result.abstained is True
-    assert result.synthesis_result.citation_ids == ()
-    assert "all_required_obligations_missing" in result.synthesis_result.abstention_reasons
+    assert result.synthesis_result.grounded is True
+    assert result.synthesis_result.abstained is False
+    assert result.synthesis_result.citation_ids == ("[1]",)
+    assert result.synthesis_result.abstention_reasons == ()
     assert result.synthesis_result.provider_used is False
     assert state["mode"] == "local_only"
     assert state["provider_used"] is False

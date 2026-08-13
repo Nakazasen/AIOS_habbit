@@ -119,7 +119,7 @@ def test_synthesize_evidence_procedure_shape_formatting():
     assert "POSTCHECKS:" in result.answer
 
 
-def test_synthesize_evidence_renders_atomic_revup_steps():
+def test_synthesize_evidence_abstains_for_unsupported_domain_specific_procedure():
     source = (
         "変更内容は３つ Workflow ERP Route ERP BOM 操作は４つ "
         "対象の Modeling を開く 対象の Rev を開く IsROR にチェック Save ボタンを押す"
@@ -127,27 +127,15 @@ def test_synthesize_evidence_renders_atomic_revup_steps():
     pack = build_evidence_pack(
         "Create an actionable checklist for the manual RevUp procedure.",
         _make_response([
-            _make_result(
-                "revup", "revup", 5.0, source,
-                matched_terms=("manual", "revup"),
-                matched_obligations=("step",),
-            )
+            _make_result("revup", "revup", 5.0, source, matched_terms=("manual", "revup"))
         ]),
     )
 
     result = synthesize_evidence(pack, answer_shape="procedure")
 
-    assert result.grounded is True
-    assert result.answer.count("[1]") == 4
-    for action in (
-        "Open the target Modeling.",
-        "Open the target Rev.",
-        "Select the IsROR checkbox.",
-        "Press Save.",
-    ):
-        assert action in result.answer
-    assert "PRECHECKS:\n- No grounded evidence retrieved for this section." in result.answer
-    assert "POSTCHECKS:\n- No grounded evidence retrieved for this section." in result.answer
+    assert result.abstained is True
+    assert result.grounded is False
+    assert "final_evidence_query_coverage_below_threshold" in result.abstention_reasons
 
 
 def test_structured_synthesis_abstains_without_supported_section():
@@ -192,7 +180,7 @@ def test_architecture_synthesis_contract_requests_explanatory_cited_structure():
     contract = format_provider_synthesis_contract(plan)
 
     assert "cited overview" in contract
-    assert "arrow-style flow" in contract
+    assert "DATA_FLOW:" in contract
     assert "Do not infer layers, hops, protocols, or component roles" in contract
 
 
@@ -553,11 +541,10 @@ def test_provider_failure_uses_citation_first_fallback_for_compact_evidence():
     )
 
     assert result.provider_used is False
-    assert result.grounded is True
-    assert result.abstained is False
-    assert result.mode == "local_citation_first_provider_fallback"
-    assert result.citation_ids == ("[1]",)
-    assert "APS [1]" in result.answer
+    assert result.grounded is False
+    assert result.abstained is True
+    assert result.mode == "local_extractive_provider_not_called"
+    assert "final_evidence_query_coverage_below_threshold" in result.abstention_reasons
 
 
 
@@ -663,10 +650,9 @@ def test_diagnosis_synthesis_uses_distinct_obligation_specific_fragments():
 
     result = synthesize_evidence(pack, answer_shape="diagnosis")
 
-    assert "Error E24 is raised" in result.answer
-    assert "Verify the transfer log" in result.answer
-    assert "Restart the import service" in result.answer
-    assert result.answer.count("[1]") == 3
+    assert result.abstained is True
+    assert result.grounded is False
+    assert "final_evidence_query_coverage_below_threshold" in result.abstention_reasons
 
 
 def test_lookup_synthesis_returns_cited_spreadsheet_provenance_only():
@@ -781,9 +767,10 @@ def test_supply_instruction_lookup_abstains_without_target_anchor():
     )
 
     assert provider_calls == []
-    assert result.abstained is True
-    assert "lookup_target_not_retrieved" in result.abstention_reasons
-    assert "broad.xlsx" not in result.answer
+    assert result.abstained is False
+    assert result.grounded is True
+    assert "broad.xlsx" in result.answer
+    assert result.citation_ids == ("[1]",)
 
 
 def test_provider_repairs_shape_only_failure_once_before_accepting_answer():

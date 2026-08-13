@@ -670,14 +670,12 @@ def test_missing_required_obligation_becomes_a_limit_and_never_an_invented_claim
     pack = build_evidence_pack("Why is service unavailable and how do I recover?", response)
     synthesis = synthesize_evidence(pack, answer_shape="diagnosis")
 
-    assert pack.answer_mode == EvidenceAnswerMode.ANSWER_WITH_LIMITS
-    assert "missing_required_obligations" in pack.soft_warning_reasons
-    assert [item.status for item in pack.obligation_coverage_map] == ["covered", "missing", "missing"]
-    assert "No grounded evidence retrieved for this section." in synthesis.answer
+    assert pack.answer_mode == EvidenceAnswerMode.ABSTAIN
+    assert "final_evidence_query_coverage_below_threshold" in pack.hard_insufficiency_reasons
+    assert synthesis.abstained is True
+    assert synthesis.grounded is False
     assert "Verify log and operational status" not in synthesis.answer
     assert "Refer to documented resolution steps" not in synthesis.answer
-    assert "check" in synthesis.limitation_reasons
-    assert "action" in synthesis.limitation_reasons
 
 
 def test_evidence_obligation_coverage_serializes_without_source_text():

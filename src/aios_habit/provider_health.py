@@ -279,6 +279,11 @@ class ProviderHealthStore:
         state.failure_count += 1
         state.last_error_type = error_type
         state.last_used_at = now
+        is_provider_failure = (
+            provider_scoped
+            if provider_scoped is not None
+            else error_type in _TRANSIENT_PROVIDER_ERRORS
+        )
 
         model_scoped = bool(model_id) and error_type in _MODEL_ERRORS | {"invalid_output"}
         if model_scoped:
@@ -295,21 +300,19 @@ class ProviderHealthStore:
         elif error_type == "auth_error":
             state.status = STATUS_DISABLED
             state.cooldown_until = 0.0
-        elif error_type == "rate_limited":
-            # Quota belongs to a credential allocation. Preserve all other keys.
+        elif error_type in {"rate_limited", "timeout"} or (
+            error_type == "network_error" and not is_provider_failure
+        ):
+            # A transient response is attributable to the credential attempt: pause
+            # this key briefly while the provider circuit independently tracks
+            # provider-wide health. Auth failures remain permanently disabled.
             cooldown = self._backoff_seconds(error_type, state.failure_count, retry_after_seconds)
             state.status = STATUS_COOLDOWN if cooldown else STATUS_UNKNOWN
             state.cooldown_until = now + cooldown if cooldown else 0.0
         else:
-            # Provider transport faults and unknown failures must not poison a key.
             state.status = STATUS_UNKNOWN
             state.cooldown_until = 0.0
 
-        is_provider_failure = (
-            provider_scoped
-            if provider_scoped is not None
-            else error_type in _TRANSIENT_PROVIDER_ERRORS
-        )
         if is_provider_failure:
             circuit = self.get_circuit_state(provider_id)
             circuit.failure_count += 1

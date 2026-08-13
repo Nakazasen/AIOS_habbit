@@ -12,15 +12,8 @@ from aios_habit.provider_health import (
 
 def cfg(value="demo-token-value"):
     return RouterProviderConfig(
-        "groq",
-        "Groq",
-        "https://api.groq.com/openai/v1/chat/completions",
-        "llama-test",
-        value,
-        True,
-        False,
-        10,
-        5,
+        "groq", "Groq", "https://api.groq.com/openai/v1/chat/completions",
+        "llama-test", value, True, False, 10, 5,
     )
 
 
@@ -47,14 +40,24 @@ def test_auth_error_disables_key_for_session():
     assert not store.is_key_available("groq", key_id)
 
 
-def test_rate_limit_timeout_and_server_error_trigger_cooldown():
-    for error_type in ["rate_limited", "timeout", "server_error"]:
+def test_rate_limit_and_timeout_trigger_key_cooldown():
+    for error_type in ["rate_limited", "timeout"]:
         store = ProviderHealthStore()
         key_id = mask_key_id(f"demo-token-value-{error_type}")
         state = store.record_failure("groq", key_id, error_type)
         assert state.status == STATUS_COOLDOWN
         assert state.cooldown_until > 0
         assert not store.is_key_available("groq", key_id)
+
+
+def test_server_error_opens_provider_circuit_without_cooling_key():
+    store = ProviderHealthStore(circuit_failure_threshold=1)
+    key_id = mask_key_id("demo-token-value-server-error")
+    state = store.record_failure("groq", key_id, "server_error")
+
+    assert state.status != STATUS_COOLDOWN
+    assert store.is_key_available("groq", key_id)
+    assert store.get_circuit_state("groq").status == "open"
 
 
 def test_choose_next_key_skips_disabled_or_cooldown_key():

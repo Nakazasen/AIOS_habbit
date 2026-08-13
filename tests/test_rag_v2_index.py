@@ -205,7 +205,7 @@ def test_hybrid_search_diversifies_and_is_deterministic(tmp_path):
 
 
 
-def test_multilingual_query_plan_fuses_variant_hits_and_reports_provenance(tmp_path):
+def test_external_multilingual_query_expansion_fuses_hits_and_reports_provenance(tmp_path):
     from aios_habit.rag_v2.query_planning import build_query_plan
 
     chunks = [
@@ -222,25 +222,11 @@ def test_multilingual_query_plan_fuses_variant_hits_and_reports_provenance(tmp_p
 
     assert [result.chunk_id for result in response.results] == ["japanese"]
     result = response.results[0]
-    assert "生産 履歴 登録 システム 構成" in result.matched_query_variants
-    assert result.matched_query_variant_ids == (
-        "intent_components",
-        "intent_data_flow",
-        "expansion_1",
-    )
-    assert result.matched_query_facets == (
-        "components",
-        "data_flow",
-        "query",
-    )
+    assert result.matched_query_variant_ids == ("expansion_1",)
+    assert result.matched_query_facets == ("query",)
     assert "multi_variant_rrf" in result.ranking_signals
-    assert response.summary.query_variant_count == 5
-    assert response.summary.planned_facet_ids == (
-        "query",
-        "components",
-        "data_flow",
-        "interfaces",
-    )
+    assert response.summary.query_variant_count == 2
+    assert response.summary.planned_facet_ids == ("query",)
     assert response.summary.expansion_status == "expanded"
 
 
@@ -423,75 +409,25 @@ def test_facet_aware_retrieval_preserves_coverage_with_tight_budget(tmp_path):
     assert response.results[1].matched_query_facets == ("query", "facet_2")
 
 
-def test_diagnosis_intent_penalizes_raw_dumps_and_promotes_actionable_guides(tmp_path):
+def test_generic_planning_does_not_apply_domain_diagnosis_ranking_playbooks(tmp_path):
     from aios_habit.rag_v2.query_planning import identity_query_plan
 
-    raw_dump_text = (
-        "process process process process process log dump bop bop bop bop bop bop "
-        "bop bop bop bop bop bop bop bop bop bop bop bop bop bop bop bop bop bop"
-    )
-    actionable_guide_text = (
-        "Process Error Handling Guide: When process failure or fault occurs, "
-        "check error code and execute resolution step."
-    )
     chunks = [
-        make_ranked_chunk("dump_chunk", "doc1", raw_dump_text),
-        make_ranked_chunk("action_chunk", "doc2", actionable_guide_text),
+        make_ranked_chunk("first", "d1", "process error handling " * 4),
+        make_ranked_chunk("second", "d2", "Process failure: check logs then restart the worker."),
     ]
-
-    plan = identity_query_plan("What errors occur in the process and how to handle them?")
-    assert plan.intent_category == "diagnosis"
-
+    plan = identity_query_plan("process error handling")
     with LocalChunkIndex(tmp_path / "index.sqlite") as index:
         index.upsert_chunks(chunks)
         response = index.search_with_summary(plan, limit=2)
 
-    assert [result.chunk_id for result in response.results] == ["action_chunk", "dump_chunk"]
-    assert "actionable_diagnosis_match" in response.results[0].ranking_signals
-    assert "repetitive_dump_penalty" in response.results[1].ranking_signals
-
-
-def test_diagnosis_dump_resistance_caps_repeated_query_terms(tmp_path):
-    from aios_habit.rag_v2.query_planning import identity_query_plan
-
-    chunks = [
-        make_ranked_chunk("dump", "d1", "process error handling " * 80),
-        make_ranked_chunk(
-            "guide",
-            "d2",
-            "Process failure: check the logs, then restart the worker to recover.",
-        ),
-    ]
-    with LocalChunkIndex(tmp_path / "index.sqlite") as index:
-        index.upsert_chunks(chunks)
-        response = index.search_with_summary(
-            identity_query_plan("process error handling"), limit=2
-        )
-
-    assert response.results[0].chunk_id == "guide"
-    assert "lexical_frequency_capped" in response.results[1].ranking_signals
-    assert "repetitive_dump_penalty" in response.results[1].ranking_signals
-
-
-def test_diagnosis_retrieval_exposes_stable_obligation_coverage(tmp_path):
-    from aios_habit.rag_v2.query_planning import identity_query_plan
-
-    chunks = [
-        make_ranked_chunk("problem", "d1", "A service outage causes an error."),
-        make_ranked_chunk("check", "d2", "Check the logs and verify service status."),
-        make_ranked_chunk("action", "d3", "Restart the worker to recover service."),
-    ]
-    with LocalChunkIndex(tmp_path / "index.sqlite") as index:
-        index.upsert_chunks(chunks)
-        response = index.search_with_summary(
-            identity_query_plan("Why is the service unavailable and how do I recover?"),
-            limit=3,
-        )
-
-    assert response.summary.planned_obligation_ids == ("problem", "check", "action")
-    assert response.summary.covered_obligation_ids == ("problem", "check", "action")
-    assert response.summary.missing_obligation_ids == ()
-    assert all(result.matched_obligations for result in response.results)
+    assert plan.intent_category == "general"
+    assert plan.required_obligations == ("query",)
+    assert response.summary.planned_obligation_ids == ()
+    assert response.summary.covered_obligation_ids == ()
+    assert all(result.matched_obligations == () for result in response.results)
+    assert all("actionable_diagnosis_match" not in result.ranking_signals for result in response.results)
+    assert all("repetitive_dump_penalty" not in result.ranking_signals for result in response.results)
 
 
 def test_context_only_parent_is_not_ranked_but_expands_without_changing_winner(tmp_path):
@@ -772,82 +708,33 @@ def test_warm_multivector_query_is_read_only_with_complete_persisted_coverage(tm
     assert after == before
 
 
-def test_named_multilingual_aliases_survive_unavailable_provider_expansion():
+def test_unavailable_expansion_falls_back_to_only_the_original_query():
     from aios_habit.rag_v2.query_planning import build_query_plan
 
-    cases = {
-        "What are the steps to register production completion?": {
-            "着完工登録 完工 手順",
-            "生産完了 登録 完工",
-        },
-        "Create an actionable checklist for the manual RevUp procedure.": {
-            "手作業 方法",
-            "変更内容 操作",
-        },
-        "Identify the supply-instruction issue sheet and cell range.": {
-            "供給指示 問題 シート 行 セル範囲",
-            "供給指示 調査 Excel",
-        },
-    }
+    plan = build_query_plan("Create an actionable checklist", {"invalid": "provider payload"})
 
-    for question, expected_aliases in cases.items():
-        plan = build_query_plan(question, {"invalid": "provider payload"})
-        assert plan.expansion_status == "expansion_unavailable"
-        assert expected_aliases <= {variant.text for variant in plan.variants}
-        assert all(
-            variant.target_equivalent
-            for variant in plan.variants
-            if variant.origin == "named_query_equivalent"
-        )
+    assert plan.expansion_status == "expansion_unavailable"
+    assert [variant.origin for variant in plan.variants] == ["original"]
+    assert all(not variant.target_equivalent for variant in plan.variants)
 
 
-def test_named_alias_requires_two_anchors_for_target_provenance(tmp_path):
-    from aios_habit.rag_v2.query_planning import identity_query_plan
+def test_target_equivalence_is_only_supplied_by_external_expansion(tmp_path):
+    from aios_habit.rag_v2.query_planning import build_query_plan
 
-    def fixture_chunk(chunk_id, text):
-        return make_ranked_chunk(
-            chunk_id,
-            chunk_id,
-            text,
-            source_name=f"{chunk_id}.txt",
-            source_path=f"/fixture/{chunk_id}.txt",
-        )
-
-    plan = identity_query_plan(
-        "Create an actionable checklist for the manual RevUp procedure."
+    plan = build_query_plan(
+        "Create an actionable checklist",
+        {"variants": [{"text": "手作業 方法 変更内容 操作", "origin": "translation", "target_equivalent": True}]},
     )
     with LocalChunkIndex(tmp_path / "index.sqlite") as index:
         index.upsert_chunks([
-            fixture_chunk("generic", "generic manual procedure steps for a different system"),
-            fixture_chunk("primary", "手作業 方法 変更内容 操作 Modeling Rev IsROR Save"),
+            make_ranked_chunk("generic", "generic", "generic manual procedure steps"),
+            make_ranked_chunk("translated", "translated", "手作業 方法 変更内容 操作 Modeling Rev Save"),
         ])
         results = index.search_with_summary(plan, limit=10).results
 
     by_id = {item.chunk_id: item for item in results}
-    assert by_id["generic"].matched_target_equivalent_variant_ids == ()
-    assert by_id["primary"].matched_target_equivalent_variant_ids
-
-
-def test_named_procedure_returns_only_target_supported_evidence(tmp_path):
-    from aios_habit.rag_v2.query_planning import identity_query_plan
-
-    plan = identity_query_plan(
-        "Create an actionable checklist for the manual RevUp procedure."
+    assert by_id["translated"].matched_target_equivalent_variant_ids == ("expansion_1",)
+    assert all(
+        item.matched_target_equivalent_variant_ids in {(), ("expansion_1",)}
+        for item in results
     )
-    with LocalChunkIndex(tmp_path / "index.sqlite") as index:
-        index.upsert_chunks([
-            make_ranked_chunk(
-                "generic",
-                "generic",
-                "manual procedure steps for a different system",
-            ),
-            make_ranked_chunk(
-                "primary",
-                "primary",
-                "手作業 方法 変更内容 操作 Modeling Rev IsROR Save",
-            ),
-        ])
-        results = index.search_with_summary(plan, limit=10).results
-
-    assert [item.chunk_id for item in results] == ["primary"]
-    assert results[0].matched_target_equivalent_variant_ids

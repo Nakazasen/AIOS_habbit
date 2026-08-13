@@ -1194,15 +1194,30 @@ def _compose_grounded_claims(
             coordinate_precision = int(bool(item.cell_range)) + int(item.row_range is not None)
             return query_overlap, coordinate_precision, -item.rank
 
+        def has_lookup_target_support(item: EvidenceItem) -> bool:
+            source_terms = set(extract_content_terms(item.snippet or item.text))
+            matched_terms = set(item.matched_terms)
+            # A coordinate needs more than a nearby one-word table match. Search
+            # can legitimately supply multi-term support across scripts, so honor
+            # that provenance when literal text is in a different language.
+            return (
+                len(source_terms & query_terms) >= 2
+                or len(matched_terms & query_terms) >= 2
+            )
+
         lookup_items = sorted(
             (
                 item
                 for item in pack.items
-                if item.sheet and (item.row_range is not None or item.cell_range)
+                if item.sheet
+                and (item.row_range is not None or item.cell_range)
+                and has_lookup_target_support(item)
             ),
             key=lookup_anchor_score,
             reverse=True,
         )
+        if not lookup_items:
+            return ()
         for item in lookup_items:
             include_values = value_requested and bool(_lookup_value_pairs(item))
             add(

@@ -60,6 +60,7 @@ class TemporaryConversationSource:
     privacy_label: str = "machine_only"
     long_term_saved: bool = False
     content_text: str = ""
+    managed_path: str = ""
 
 @dataclass
 class NotebookSource:
@@ -77,6 +78,7 @@ class NotebookSource:
     extraction_status: str = NOTEBOOK_SOURCE_STATUS_READY
     source_note: str = ""
     origin_temporary_source_id: Optional[str] = None
+    managed_path: str = ""
 
     def __post_init__(self):
         if self.content_preview and len(self.content_preview) > WORKSPACE_CHAT_SOURCE_PREVIEW_LIMIT:
@@ -95,7 +97,8 @@ class NotebookSource:
         valid_keys = {
             "id", "notebook_id", "title", "source_type", "filename", "file_type",
             "created_at", "updated_at", "privacy_label", "content_preview",
-            "content_text", "extraction_status", "source_note", "origin_temporary_source_id"
+            "content_text", "extraction_status", "source_note", "origin_temporary_source_id",
+            "managed_path",
         }
         filtered = {k: v for k, v in data.items() if k in valid_keys}
         return cls(**filtered)

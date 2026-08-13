@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import os
 import re
 import tempfile
@@ -15,6 +16,7 @@ from aios_habit.workspace_chat_excel import extract_xlsx_text
 from aios_habit.document_extractors import extract_text_chunks_from_file
 
 MAX_UPLOAD_BYTES = 10 * 1024 * 1024  # 10 MB
+MANAGED_WORKBOOK_ROOT = Path.cwd() / "local_cases" / "workspace_chat" / "managed_workbooks"
 
 def sanitize_filename(filename: str) -> str:
     """Sanitize the filename to prevent path traversal and clean unwanted characters."""
@@ -25,6 +27,26 @@ def sanitize_filename(filename: str) -> str:
     name = re.sub(r"\.+", ".", name)
     name = name.strip("_.")
     return name or "uploaded_file"
+
+
+def persist_managed_workbook(file_bytes: bytes, filename: str) -> Path:
+    """Atomically persist an accepted workbook under the application-owned root."""
+    safe_name = sanitize_filename(filename)
+    suffix = Path(safe_name).suffix.lower()
+    if suffix not in {".xlsx", ".xlsm", ".xls"}:
+        raise ValueError("managed workbook extension is not supported")
+    digest = hashlib.sha256(file_bytes).hexdigest()
+    MANAGED_WORKBOOK_ROOT.mkdir(parents=True, exist_ok=True)
+    target = MANAGED_WORKBOOK_ROOT / f"{digest}{suffix}"
+    root = MANAGED_WORKBOOK_ROOT.resolve()
+    resolved = target.resolve()
+    if root not in resolved.parents:
+        raise ValueError("managed workbook path escaped its root")
+    if not target.is_file() or target.stat().st_size != len(file_bytes):
+        temporary = target.with_suffix(f"{suffix}.tmp-{uuid.uuid4().hex}")
+        temporary.write_bytes(file_bytes)
+        os.replace(temporary, target)
+    return resolved
 
 def ingest_and_extract_bytes(
     file_bytes: bytes,
@@ -74,6 +96,21 @@ def ingest_and_extract_bytes(
         else:
             owner_msg = "Đã đọc và trích xuất thành công tài liệu."
 
+        managed_path = ""
+        if xlsx_res.ok:
+            try:
+                managed_path = str(persist_managed_workbook(file_bytes, safe_name))
+            except (OSError, ValueError):
+                return {
+                    "ok": False,
+                    "filename": xlsx_res.filename,
+                    "error_code": "managed_persistence_failed",
+                    "owner_message": "Không thể lưu bản Excel cục bộ để truy vấn an toàn.",
+                    "text": "",
+                    "preview": "",
+                    "metadata": {"file_size_bytes": file_size, "extension": ext},
+                }
+
         return {
             "ok": xlsx_res.ok,
             "filename": xlsx_res.filename,
@@ -86,6 +123,7 @@ def ingest_and_extract_bytes(
                 "extension": ext,
                 "sheet_names": xlsx_res.sheet_names,
                 "truncated": xlsx_res.truncated,
+                "managed_path": managed_path,
                 "raw_warning": xlsx_res.owner_message if not xlsx_res.ok else "",
             },
         }

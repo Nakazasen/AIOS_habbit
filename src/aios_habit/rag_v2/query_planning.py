@@ -16,6 +16,10 @@ _CJK_RE = re.compile(r"[\u3040-\u30ff\u3400-\u9fff]+")
 _JAPANESE_RE = re.compile(r"[\u3040-\u30ff]")
 _VIETNAMESE_DIACRITIC_RE = re.compile(r"[àáảãạăằắẳẵặâầấẩẫậèéẻẽẹêềếểễệìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵđ]", re.IGNORECASE)
 _DANGEROUS_QUERY_RE = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]")
+_UNSAFE_EXPANSION_RE = re.compile(
+    r"(?:^|[;\s])(?:select|insert|update|delete|drop|alter|create|pragma|attach|detach)\b",
+    re.IGNORECASE,
+)
 _FACET_SPLIT_RE = re.compile(r"(?:\r?\n|[;；]|\s+[•·]\s+)")
 _COMMON_STOPWORDS = frozenset({
     "a", "an", "and", "are", "as", "at", "be", "by", "for", "from",
@@ -144,7 +148,12 @@ def _clean_variant(value: Any) -> str:
     if not isinstance(value, str):
         return ""
     cleaned = " ".join(value.strip().split())
-    if not cleaned or len(cleaned) > _MAX_VARIANT_CHARS or _DANGEROUS_QUERY_RE.search(cleaned):
+    if (
+        not cleaned
+        or len(cleaned) > _MAX_VARIANT_CHARS
+        or _DANGEROUS_QUERY_RE.search(cleaned)
+        or _UNSAFE_EXPANSION_RE.search(cleaned)
+    ):
         return ""
     return cleaned
 

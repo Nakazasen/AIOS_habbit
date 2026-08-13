@@ -747,3 +747,95 @@ def test_worker_initialization_accepts_staging_specific_timeout(tmp_path, monkey
 
     assert result["status"] == "ok"
     assert observed["timeout_s"] == 601.0
+
+
+def test_structured_excel_query_routes_before_semantic_preparation(tmp_path, monkeypatch):
+    from openpyxl import Workbook
+    import aios_habit.workspace_chat_source_ingest as ingest
+
+    managed_root = tmp_path / "managed_workbooks"
+    managed_root.mkdir()
+    workbook_path = managed_root / "sales.xlsx"
+    workbook = Workbook()
+    sheet = workbook.active
+    sheet.title = "Sales"
+    sheet.append(["Region", "Revenue"])
+    sheet.append(["North", 10])
+    sheet.append(["North", 20])
+    sheet.append(["South", 5])
+    workbook.save(workbook_path)
+    monkeypatch.setattr(ingest, "MANAGED_WORKBOOK_ROOT", managed_root)
+    monkeypatch.setattr(
+        adapter,
+        "schedule_workspace_chat_source_preparation",
+        lambda *_args, **_kwargs: pytest.fail("semantic preparation should not run"),
+    )
+    source = WorkspaceAIContextSource(
+        source_id="excel-source",
+        source_scope="temporary",
+        source_type="xlsx",
+        title="sales.xlsx",
+        privacy_label="machine_only",
+        text="Region | Revenue",
+        included_chars=16,
+        truncated=False,
+        managed_path=str(workbook_path.resolve()),
+    )
+    config = adapter.WorkspaceChatRagV2CanaryConfig(enabled=True, runtime_root=tmp_path / "rag")
+
+    result = adapter.retrieve_workspace_chat_evidence(
+        "Tính tổng Revenue theo Region",
+        (source,),
+        config=config,
+    )
+
+    assert result["status"] == "structured_excel_query"
+    assert result["rag_v2_canary"]["backend"] == "structured_excel_sqlite"
+    assert result["summary_count"] == 1
+    assert "North | 30" in result["evidence_items"][0]["text"]
+    retrieved = result["retrieved_context_sources"][0]
+    assert (retrieved.source_id, retrieved.source_scope) == ("excel-source", "temporary")
+    assert retrieved.privacy_label == "machine_only"
+def test_structured_excel_query_cites_all_contributing_sheets(tmp_path, monkeypatch):
+    from openpyxl import Workbook
+    import aios_habit.workspace_chat_source_ingest as ingest
+
+    managed_root = tmp_path / "managed_workbooks"
+    managed_root.mkdir()
+    workbook_path = managed_root / "regional-sales.xlsx"
+    workbook = Workbook()
+    east = workbook.active
+    east.title = "East"
+    east.append(["Region", "Revenue"])
+    east.append(["North", 10])
+    west = workbook.create_sheet(title="West")
+    west.append(["Region", "Revenue"])
+    west.append(["South", 20])
+    workbook.save(workbook_path)
+    workbook.close()
+
+    monkeypatch.setattr(ingest, "MANAGED_WORKBOOK_ROOT", managed_root)
+    source = WorkspaceAIContextSource(
+        source_id="regional-excel-source",
+        source_scope="temporary",
+        source_type="xlsx",
+        title="regional-sales.xlsx",
+        privacy_label="machine_only",
+        text="Region | Revenue",
+        included_chars=16,
+        truncated=False,
+        managed_path=str(workbook_path.resolve()),
+    )
+    config = adapter.WorkspaceChatRagV2CanaryConfig(enabled=True, runtime_root=tmp_path / "rag")
+
+    result = adapter.retrieve_workspace_chat_evidence(
+        "Tính tổng Revenue trên tất cả các sheet",
+        (source,),
+        config=config,
+    )
+
+    evidence = result["evidence_items"][0]
+    assert result["status"] == "structured_excel_query"
+    assert evidence["location_info"] == "Sheets: East, West"
+    assert "Structured Excel result — multi-region (East, West)" in evidence["text"]
+    assert result["citations"][0]["location"] == "Sheets: East, West"

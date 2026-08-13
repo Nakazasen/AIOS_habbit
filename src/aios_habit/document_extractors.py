@@ -53,6 +53,7 @@ class ExtractionResult:
     ocr_attempts: int = 0
     ocr_quality_reason: str = ""
     element_type: str = ""
+    structured_elements: tuple[dict[str, Any], ...] = ()
 
 
 @dataclass(frozen=True)
@@ -66,6 +67,30 @@ class PDFPageRoute:
     warning: str = ""
     has_table: bool = False
     has_columns: bool = False
+
+
+
+def _pymupdf4llm_compatibility_route(
+    path: Path,
+    *,
+    reason: str,
+) -> list[PDFPageRoute] | None:
+    """Return legacy markdown output only when the optional adapter has usable text."""
+    try:
+        import pymupdf4llm
+
+        markdown = str(pymupdf4llm.to_markdown(str(path)) or "").strip()
+    except Exception:
+        return None
+    if not _has_meaningful_text(markdown):
+        return None
+    return [PDFPageRoute(
+        page=1,
+        text=markdown,
+        needs_ocr=False,
+        extractor="pymupdf4llm",
+        warning=f"pdf-inspector/native route unavailable; used pymupdf4llm compatibility fallback: {reason}",
+    )]
 
 
 def route_pdf_pages(path: str | Path) -> list[PDFPageRoute]:
@@ -125,13 +150,27 @@ def route_pdf_pages(path: str | Path) -> list[PDFPageRoute]:
 
     try:
         import fitz
-    except ImportError as exc:
+        if not callable(getattr(fitz, "open", None)):
+            raise ImportError("PyMuPDF does not provide an open function")
+    except ImportError:
+        # Compatibility-only bridge for callers that already provide the older
+        # markdown adapter. It is deliberately attempted after PDF Inspector and
+        # never masks an installed native PyMuPDF fallback.
+        legacy_routes = _pymupdf4llm_compatibility_route(pdf_path, reason=reason)
+        if legacy_routes:
+            return legacy_routes
         raise PDFDependencyMissingError(
             f"PDF extraction unavailable: pdf-inspector failed ({reason}); PyMuPDF is missing"
-        ) from exc
+        )
 
     routes = []
-    document = fitz.open(str(pdf_path))
+    try:
+        document = fitz.open(str(pdf_path))
+    except Exception:
+        legacy_routes = _pymupdf4llm_compatibility_route(pdf_path, reason=reason)
+        if legacy_routes:
+            return legacy_routes
+        raise
     try:
         for page_number, page in enumerate(document, start=1):
             try:
@@ -669,6 +708,7 @@ def _deep_pdf_result(path: Path, routes: list[PDFPageRoute]) -> ExtractionResult
         warning=parsed.warning, section="deep document parse",
         ocr_engine=parsed.parser, ocr_lang=_ocr_lang(),
         ocr_quality_reason="deep_parser_passed", element_type="pdf_deep_document",
+        structured_elements=parsed.structured_elements,
     )
 
 
@@ -683,7 +723,7 @@ def _extract_pdf(path: Path) -> list[ExtractionResult]:
         )]
 
     deep_result = _deep_pdf_result(path, routes)
-    if deep_result is not None and deep_result.text:
+    if deep_result is not None and (deep_result.text or deep_result.structured_elements):
         return [deep_result]
     deep_warning = deep_result.warning if deep_result is not None else ""
 

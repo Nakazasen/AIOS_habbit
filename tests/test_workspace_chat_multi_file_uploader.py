@@ -151,3 +151,60 @@ def test_image_ocr_missing_graceful_handling(monkeypatch):
     assert res["ok"] is False
     assert res["owner_message"] == "Chưa đọc được nội dung ảnh. Có thể máy chưa có OCR hoặc ảnh không có chữ rõ."
     assert "dependency_missing" in res["error_code"]
+
+
+def test_excel_upload_persists_managed_path(monkeypatch, tmp_path):
+    import aios_habit.workspace_chat_source_ingest as ingest
+
+    managed_root = tmp_path / "managed_workbooks"
+    monkeypatch.setattr(ingest, "MANAGED_WORKBOOK_ROOT", managed_root)
+    monkeypatch.setattr(
+        ingest,
+        "extract_xlsx_text",
+        lambda *_args, **_kwargs: type("Result", (), {
+            "ok": True,
+            "filename": "sales.xlsx",
+            "owner_message": "ok",
+            "text": "Region | Revenue\nNorth | 10",
+            "preview": "Region | Revenue",
+            "sheet_names": ["Sales"],
+            "truncated": False,
+        })(),
+    )
+
+    result = ingest.ingest_and_extract_bytes(b"workbook-bytes", "sales.xlsx")
+
+    assert result["ok"] is True
+    path = Path(result["metadata"]["managed_path"])
+    assert path.is_file()
+    assert path.parent == managed_root.resolve()
+    assert path.read_bytes() == b"workbook-bytes"
+
+
+def test_upload_batch_propagates_managed_path(monkeypatch, tmp_path):
+    managed = str((tmp_path / "book.xlsx").resolve())
+
+    def mock_ingest(file_bytes, filename, privacy_label):
+        return {
+            "ok": True,
+            "filename": filename,
+            "text": "Region | Revenue",
+            "preview": "Region | Revenue",
+            "metadata": {
+                "file_size_bytes": len(file_bytes),
+                "extension": ".xlsx",
+                "managed_path": managed,
+            },
+        }
+
+    monkeypatch.setattr("aios_habit.workspace_chat_app.ingest_and_extract_bytes", mock_ingest)
+    process_workspace_upload_batch(
+        [MockUploadedFile("sales.xlsx", b"content")],
+        "managed-path-conversation",
+        doc_privacy_choice="Chỉ dùng trên máy / không gửi AI",
+        enable_now=True,
+    )
+
+    saved = load_temporary_sources("managed-path-conversation")
+    assert len(saved) == 1
+    assert saved[0].managed_path == managed
