@@ -560,6 +560,17 @@ def workspace_stage_source_fingerprints(sources: Sequence[Any]) -> list[str]:
     return sorted(fingerprints)
 
 
+def workspace_stage_document_ids(sources: Sequence[Any]) -> tuple[str, ...]:
+    """Return ordered opaque document IDs without retaining source content."""
+    document_ids = []
+    for source in sources:
+        if not str(getattr(source, "text", "") or "").strip():
+            continue
+        identity = f"{getattr(source, 'source_scope', '')}:{getattr(source, 'source_id', '')}"
+        document_ids.append(f"wsc-{hashlib.sha256(identity.encode('utf-8')).hexdigest()[:24]}")
+    return tuple(document_ids)
+
+
 def workspace_stage_identity(
     local_manifest: Mapping[str, Any],
     production_identity: Mapping[str, Any],
@@ -574,6 +585,70 @@ def workspace_stage_identity(
     return {**payload, "stage_key": stable_hash(payload)}
 
 
+_WORKSPACE_STAGE_CHECKPOINT_SCHEMA_VERSION = 1
+
+
+def _workspace_stage_checkpoint(
+    *,
+    status: str,
+    identity: Mapping[str, Any],
+    document_ids: Sequence[str],
+    completed_document_ids: Sequence[str],
+    last_error: str = "",
+) -> dict[str, Any]:
+    return {
+        "schema_version": _WORKSPACE_STAGE_CHECKPOINT_SCHEMA_VERSION,
+        "status": status,
+        "identity": dict(identity),
+        "document_ids": list(document_ids),
+        "completed_document_ids": list(completed_document_ids),
+        "total_sources": len(document_ids),
+        "last_error": last_error,
+        "updated_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+    }
+
+
+def _load_workspace_stage_checkpoint(
+    path: Path,
+    *,
+    identity: Mapping[str, Any],
+    document_ids: Sequence[str],
+) -> list[str]:
+    """Load only a checkpoint bound exactly to the current frozen stage."""
+    if not path.is_file():
+        return []
+    try:
+        value = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise BenchmarkError("Workspace staging checkpoint is unreadable") from exc
+    if not isinstance(value, Mapping):
+        raise BenchmarkError("Workspace staging checkpoint is invalid")
+    completed = value.get("completed_document_ids")
+    if (
+        value.get("schema_version") != _WORKSPACE_STAGE_CHECKPOINT_SCHEMA_VERSION
+        or value.get("identity") != dict(identity)
+        or value.get("document_ids") != list(document_ids)
+        or value.get("total_sources") != len(document_ids)
+        or value.get("status") not in {"building", "failed"}
+        or not isinstance(completed, list)
+        or any(not isinstance(document_id, str) for document_id in completed)
+        or len(completed) != len(set(completed))
+        or not set(completed).issubset(set(document_ids))
+    ):
+        raise BenchmarkError("Workspace staging checkpoint is stale or identity-mismatched")
+    return list(completed)
+
+
+def _workspace_stage_failure_reason(error: BaseException) -> str:
+    """Retain a small safe category, never a path, filename, or source text."""
+    safe = _safe_text(error, limit=180).casefold()
+    if "source_deadline" in safe:
+        return "source_deadline_exceeded"
+    if "initialization" in safe:
+        return "worker_initialization_failed"
+    return "document_preparation_failed"
+
+
 def run_workspace_stage(args: argparse.Namespace, output_dir: Path) -> dict[str, Any]:
     """Build or reuse a durable workspace index before any battle query starts."""
     manifest_path = str(getattr(args, "production_deployment_manifest", "") or "")
@@ -583,9 +658,13 @@ def run_workspace_stage(args: argparse.Namespace, output_dir: Path) -> dict[str,
     production_identity = _bound_production_identity(manifest_path)
     sources, coverage = ingest_workspace_sources(Path(args.source_root).resolve(), local, privacy_label=args.privacy_label)
     fingerprints = workspace_stage_source_fingerprints(sources)
+    document_ids = workspace_stage_document_ids(sources)
+    if len(document_ids) != len(set(document_ids)):
+        raise BenchmarkError("Workspace staging source identities are not unique")
     identity = workspace_stage_identity(local, production_identity, fingerprints)
     stage_root = Path(str(getattr(args, "workspace_stage_cache_dir", "") or DEFAULT_WORKSPACE_STAGE_CACHE_DIR)).resolve() / identity["stage_key"]
     stage_manifest = stage_root / "workspace_stage_manifest.json"
+    checkpoint_path = stage_root / "workspace_stage_checkpoint.json"
     if stage_manifest.is_file():
         existing = load_checkpoint(stage_manifest)
         if isinstance(existing, Mapping) and existing.get("status") == "ready" and existing.get("identity") == identity:
@@ -594,6 +673,21 @@ def run_workspace_stage(args: argparse.Namespace, output_dir: Path) -> dict[str,
                 return {"status": "PASS", "cache_status": "reused", "stage_manifest": str(stage_manifest), "stage_root": str(stage_root), "identity": identity}
         raise BenchmarkError("Workspace staging manifest is stale, incomplete, or identity-mismatched")
     stage_root.mkdir(parents=True, exist_ok=True)
+    completed_document_ids = _load_workspace_stage_checkpoint(
+        checkpoint_path,
+        identity=identity,
+        document_ids=document_ids,
+    )
+    resumed = bool(completed_document_ids)
+    atomic_write_json(
+        checkpoint_path,
+        _workspace_stage_checkpoint(
+            status="building",
+            identity=identity,
+            document_ids=document_ids,
+            completed_document_ids=completed_document_ids,
+        ),
+    )
     config = workspace_production_adapter_config(manifest_path, benchmark_runtime_root=stage_root)
     try:
         with ProgressHeartbeat(output_dir / "workspace_stage_progress.json", stage="workspace_staging", total=len(sources)) as progress:
@@ -606,13 +700,81 @@ def run_workspace_stage(args: argparse.Namespace, output_dir: Path) -> dict[str,
                     )
                 )
             except Exception as error:
+                atomic_write_json(
+                    checkpoint_path,
+                    _workspace_stage_checkpoint(
+                        status="failed",
+                        identity=identity,
+                        document_ids=document_ids,
+                        completed_document_ids=completed_document_ids,
+                        last_error=_workspace_stage_failure_reason(error),
+                    ),
+                )
                 raise BenchmarkError("Workspace staging worker initialization failed") from error
-            progress.update(completed=0, current="document_preparation")
+            progress.update(completed=len(completed_document_ids), current="document_preparation")
+
+            def record_source_progress(event: Mapping[str, Any]) -> None:
+                document_id = event.get("document_id")
+                expected_completed = event.get("completed_count")
+                expected_total = event.get("total_sources")
+                if (
+                    not isinstance(document_id, str)
+                    or document_id not in document_ids
+                    or document_id in completed_document_ids
+                    or expected_completed != len(completed_document_ids) + 1
+                    or expected_total != len(document_ids)
+                ):
+                    raise BenchmarkError("Workspace staging progress callback is invalid")
+                completed_document_ids.append(document_id)
+                atomic_write_json(
+                    checkpoint_path,
+                    _workspace_stage_checkpoint(
+                        status="building",
+                        identity=identity,
+                        document_ids=document_ids,
+                        completed_document_ids=completed_document_ids,
+                    ),
+                )
+                progress.update(
+                    completed=len(completed_document_ids),
+                    current=f"document_{len(completed_document_ids)}_of_{len(document_ids)}",
+                )
+
             try:
-                preparation = _json_ready(prepare_workspace_chat_sources(sources, config=config))
+                preparation = _json_ready(
+                    prepare_workspace_chat_sources(
+                        sources,
+                        config=config,
+                        completed_document_ids=tuple(completed_document_ids),
+                        progress_callback=record_source_progress,
+                        source_timeout_s=float(
+                            getattr(args, "workspace_stage_source_timeout", 300.0)
+                        ),
+                    )
+                )
             except Exception as error:
+                atomic_write_json(
+                    checkpoint_path,
+                    _workspace_stage_checkpoint(
+                        status="failed",
+                        identity=identity,
+                        document_ids=document_ids,
+                        completed_document_ids=completed_document_ids,
+                        last_error=_workspace_stage_failure_reason(error),
+                    ),
+                )
                 raise BenchmarkError("Workspace staging document preparation failed") from error
             if preparation.get("status") != "ok":
+                atomic_write_json(
+                    checkpoint_path,
+                    _workspace_stage_checkpoint(
+                        status="failed",
+                        identity=identity,
+                        document_ids=document_ids,
+                        completed_document_ids=completed_document_ids,
+                        last_error="document_preparation_failed",
+                    ),
+                )
                 raise BenchmarkError("Workspace staging preparation did not complete")
             progress.update(completed=len(sources), current="manifest_seal")
             atomic_write_json(stage_manifest, {
@@ -626,9 +788,18 @@ def run_workspace_stage(args: argparse.Namespace, output_dir: Path) -> dict[str,
                 "index_path": str(stage_root / PRODUCTION_PROFILE / "workspace_chat.sqlite"),
                 "created_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
             })
+            atomic_write_json(
+                checkpoint_path,
+                _workspace_stage_checkpoint(
+                    status="ready",
+                    identity=identity,
+                    document_ids=document_ids,
+                    completed_document_ids=completed_document_ids,
+                ),
+            )
     finally:
         close_workspace_chat_rag_v2_runtimes()
-    return {"status": "PASS", "cache_status": "built", "stage_manifest": str(stage_manifest), "stage_root": str(stage_root), "identity": identity}
+    return {"status": "PASS", "cache_status": "resumed" if resumed else "built", "stage_manifest": str(stage_manifest), "stage_root": str(stage_root), "identity": identity}
 
 
 def load_verified_workspace_stage(
@@ -6611,6 +6782,7 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--workspace-stage-cache-dir", default=str(DEFAULT_WORKSPACE_STAGE_CACHE_DIR), help="Content-addressed root used only by --workspace-stage")
     parser.add_argument("--workspace-staging-manifest", default="", help="Verified immutable workspace staging manifest required by production-bound battles")
     parser.add_argument("--workspace-stage-init-timeout", type=float, default=600.0, help="Bounded cold-start seconds for --workspace-stage only")
+    parser.add_argument("--workspace-stage-source-timeout", type=float, default=300.0, help="Fail-closed whole-source seconds for local --workspace-stage preparation")
     parser.add_argument("--resume-ablation-dir", default="", help="Resume an exact interrupted local qualification after validating its immutable identity and arm checkpoints")
     parser.add_argument("--derivative-source-run", default="", help="Sealed selected-profile source run; never modified or resumed")
     parser.add_argument("--derivative-output-dir", default="", help="Parent directory for a new immutable derivative run")

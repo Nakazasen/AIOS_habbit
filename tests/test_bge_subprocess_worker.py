@@ -97,6 +97,38 @@ def test_prepare_requires_explicit_initialization() -> None:
             client.close()
 
 
+def test_staged_prepare_enforces_one_deadline_across_worker_calls(monkeypatch, tmp_path) -> None:
+    document = tmp_path / "source.txt"
+    document.write_text("deadline test", encoding="utf-8")
+    config = RagV2DevConfig(runtime_root=tmp_path / "runtime", retrieval_profile="lexical")
+    spec = SourceSpec(path=document, source_id="safe", document_id="safe-doc")
+    client = BgeSubprocessWorkerClient()
+
+    class AliveProcess:
+        def poll(self):
+            return None
+
+    client._process = AliveProcess()  # type: ignore[assignment]
+    client._active_config = config
+    clock = iter((10.0, 10.0, 11.1))
+    calls: list[tuple[str, float]] = []
+
+    def send(request, *, timeout_s, phase):
+        calls.append((phase, timeout_s))
+        if phase == "stage":
+            return {"status": "ok", "staged": {"status": "ready"}}
+        return {"status": "ok"}
+
+    monkeypatch.setattr(worker_client_module.time, "monotonic", lambda: next(clock))
+    monkeypatch.setattr(client, "_send_request", send)
+    monkeypatch.setattr(client, "_close_internal", lambda *args, **kwargs: None)
+
+    with pytest.raises(SemanticBackendError, match="bge_worker_source_deadline_exceeded"):
+        client.prepare_staged_source(spec, config, source_timeout_s=1.0)
+
+    assert calls[0] == ("stage", 1.0)
+
+
 def test_bge_subprocess_worker_crash_handling() -> None:
     with tempfile.TemporaryDirectory() as tmp_dir:
         tmp_path = Path(tmp_dir)

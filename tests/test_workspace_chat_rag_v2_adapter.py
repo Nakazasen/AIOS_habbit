@@ -629,7 +629,7 @@ def test_semantic_preparation_uses_bounded_incremental_batches(monkeypatch, tmp_
     assert set(adapter.get_workspace_chat_source_preparation_status(sources, config=config).values()) == {"ready"}
 
 
-def test_semantic_preparation_batch_failure_leaves_all_sources_not_ready(monkeypatch, tmp_path):
+def test_semantic_preparation_batch_failure_preserves_prior_commits(monkeypatch, tmp_path):
     config = _semantic_config(tmp_path)
     sources = _sources(5)
     calls = 0
@@ -662,11 +662,73 @@ def test_semantic_preparation_batch_failure_leaves_all_sources_not_ready(monkeyp
         adapter.prepare_workspace_chat_sources(sources, config=config)
 
     assert calls == 2
-    assert set(adapter.get_workspace_chat_source_preparation_status(sources, config=config).values()) == {"failed"}
-    for source in sources:
+    states = adapter.get_workspace_chat_source_preparation_status(sources, config=config)
+    assert states["temporary:source-0"] == "ready"
+    assert {states[f"temporary:source-{index}"] for index in range(1, 5)} == {"failed"}
+    for source in sources[1:]:
         entry = adapter._PREPARATION_REGISTRY[adapter._preparation_key(config, source)]
         assert entry["reason"] == "runtimeerror"
         assert "sensitive" not in str(entry)
+
+
+def test_semantic_preparation_resume_skips_completed_sources_and_emits_safe_progress(monkeypatch, tmp_path):
+    config = _semantic_config(tmp_path)
+    sources = _sources(3)
+    completed_document_id = adapter._document_id(sources[0])
+    staged_documents: list[str] = []
+    progress_events: list[dict[str, object]] = []
+
+    monkeypatch.setattr(
+        adapter._SUBPROCESS_CLIENT,
+        "initialize_worker",
+        lambda _config: {"status": "ok", "reused": True, "init_latency_ms": 0.0},
+    )
+
+    def prepare_staged_source(spec, _config, *, group_size, **kwargs):
+        assert group_size == 4
+        assert kwargs["source_timeout_s"] == 30.0
+        staged_documents.append(spec.document_id)
+        return {
+            "converted_count": 1, "skipped_count": 0,
+            "failed_count": 0, "indexed_chunk_count": len(staged_documents),
+        }
+
+    monkeypatch.setattr(adapter._SUBPROCESS_CLIENT, "prepare_staged_source", prepare_staged_source)
+
+    result = adapter.prepare_workspace_chat_sources(
+        sources,
+        config=config,
+        completed_document_ids=(completed_document_id,),
+        source_timeout_s=30.0,
+        progress_callback=progress_events.append,
+    )
+
+    assert staged_documents == [adapter._document_id(sources[1]), adapter._document_id(sources[2])]
+    assert result["prepared_count"] == 3
+    assert result["resumed_count"] == 1
+    assert progress_events == [
+        {"document_id": adapter._document_id(sources[1]), "completed_count": 2, "total_sources": 3},
+        {"document_id": adapter._document_id(sources[2]), "completed_count": 3, "total_sources": 3},
+    ]
+    assert all("source-" not in str(event) for event in progress_events)
+
+
+def test_semantic_preparation_rejects_unknown_resume_document(monkeypatch, tmp_path):
+    config = _semantic_config(tmp_path)
+    source = _sources(1)
+
+    monkeypatch.setattr(
+        adapter._SUBPROCESS_CLIENT,
+        "initialize_worker",
+        lambda _config: {"status": "ok", "reused": True, "init_latency_ms": 0.0},
+    )
+
+    with pytest.raises(ValueError, match="completed_document_ids_unknown"):
+        adapter.prepare_workspace_chat_sources(
+            source,
+            config=config,
+            completed_document_ids=("wsc-not-a-current-source",),
+        )
 
 
 def test_semantic_preparation_initialization_failure_is_phase_safe(monkeypatch, tmp_path):

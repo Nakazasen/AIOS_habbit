@@ -239,6 +239,7 @@ class BgeSubprocessWorkerClient:
         *,
         group_size: int = 4,
         timeout_s: float = _PREPARE_TIMEOUT_SECONDS,
+        source_timeout_s: float | None = None,
     ) -> dict[str, Any]:
         """Prepare one source through bounded worker-local embedding groups.
 
@@ -247,16 +248,32 @@ class BgeSubprocessWorkerClient:
         """
         if group_size < 1:
             raise ValueError("group_size must be positive")
+        if source_timeout_s is not None and float(source_timeout_s) <= 0:
+            raise ValueError("source_timeout_s must be positive")
         with self._lock:
             if self._process is None or self._process.poll() is not None:
                 raise SemanticBackendError("bge_worker_prepare_not_initialized")
             if self._active_config != config:
                 raise SemanticBackendError("bge_worker_prepare_configuration_mismatch")
             document_id = spec.document_id
+            deadline_at = (
+                time.monotonic() + float(source_timeout_s)
+                if source_timeout_s is not None
+                else None
+            )
+
+            def bounded_timeout() -> float:
+                if deadline_at is None:
+                    return timeout_s
+                remaining = deadline_at - time.monotonic()
+                if remaining <= 0:
+                    raise SemanticBackendError("bge_worker_source_deadline_exceeded")
+                return min(timeout_s, remaining)
+
             try:
                 staged = self._send_request(
                     {"command": "stage_source", "spec": _spec_to_dict(spec)},
-                    timeout_s=timeout_s,
+                    timeout_s=bounded_timeout(),
                     phase="stage",
                 )
                 if staged.get("status") != "ok" or not isinstance(staged.get("staged"), dict):
@@ -276,7 +293,7 @@ class BgeSubprocessWorkerClient:
                             "document_id": document_id,
                             "group_size": group_size,
                         },
-                        timeout_s=timeout_s,
+                        timeout_s=bounded_timeout(),
                         phase="prepare",
                     )
                     details = progress.get("progress")
@@ -286,7 +303,7 @@ class BgeSubprocessWorkerClient:
                         break
                 committed = self._send_request(
                     {"command": "commit_staged_source", "document_id": document_id},
-                    timeout_s=timeout_s,
+                    timeout_s=bounded_timeout(),
                     phase="commit",
                 )
                 report = committed.get("ingest_report")

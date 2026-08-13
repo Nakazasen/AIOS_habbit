@@ -420,12 +420,23 @@ def prepare_workspace_chat_sources(
     *,
     config: Optional[WorkspaceChatRagV2CanaryConfig] = None,
     pipeline_factory: Callable[[RagV2DevConfig], RagV2DevPipeline] = RagV2DevPipeline,
+    completed_document_ids: Iterable[str] = (),
+    progress_callback: Callable[[Mapping[str, int]], None] | None = None,
+    source_timeout_s: float | None = None,
 ) -> dict[str, Any]:
-    """Prepare sources outside the user-initiated query path."""
+    """Prepare sources outside the user-initiated query path.
+
+    ``completed_document_ids`` is deliberately an opaque, caller-verified
+    resume boundary.  It is used by the benchmark stager only; UI scheduling
+    retains its in-process behavior.  Progress is emitted after a source has
+    committed, never while source text is being materialized or embedded.
+    """
     resolved = config or WorkspaceChatRagV2CanaryConfig.from_env()
     sources = tuple(s for s in context_sources if (s.text or "").strip())
     if not sources:
         return {"status": "ok", "prepared_count": 0, "latency_ms": 0.0}
+    if source_timeout_s is not None and float(source_timeout_s) <= 0:
+        raise ValueError("source_timeout_s must be positive")
 
     profile = resolved.requested_profile
     pipe_config = _pipeline_config(resolved, profile)
@@ -443,22 +454,62 @@ def prepare_workspace_chat_sources(
         # memory-intensive. Injected pipeline factories own their lifecycle.
         if profile.startswith("bge_m3_") and pipeline_factory is RagV2DevPipeline:
             init_report = initialize_workspace_chat_rag_v2_worker(resolved)
-        specs, _ = _materialize_sources(sources, resolved.runtime_root)
+        specs, originals = _materialize_sources(sources, resolved.runtime_root)
         if not specs:
             return {"status": "ok", "prepared_count": 0, "latency_ms": 0.0}
+        completed_ids = {str(document_id) for document_id in completed_document_ids}
+        known_ids = set(originals)
+        if completed_ids - known_ids:
+            raise ValueError("completed_document_ids_unknown")
+        if completed_ids:
+            with _PREPARATION_LOCK:
+                for document_id in completed_ids:
+                    source = originals[document_id]
+                    _PREPARATION_REGISTRY[_preparation_key(resolved, source)] = (
+                        _preparation_entry(
+                            resolved,
+                            source,
+                            _PREPARATION_READY_STATE,
+                            resumed_from_verified_checkpoint=True,
+                        )
+                    )
         if profile.startswith("bge_m3_") and pipeline_factory is RagV2DevPipeline:
-            batches = _preparation_batches(specs)
+            pending_specs = tuple(spec for spec in specs if spec.document_id not in completed_ids)
+            batches = _preparation_batches(pending_specs)
             batch_reports = []
+            completed_count = len(completed_ids)
             for batch_ordinal, batch in enumerate(batches, start=1):
                 try:
                     for spec in batch:
-                        batch_reports.append(
-                            _SUBPROCESS_CLIENT.prepare_staged_source(
-                                spec,
-                                pipe_config,
-                                group_size=4,
-                            )
+                        kwargs: dict[str, float] = {}
+                        if source_timeout_s is not None:
+                            kwargs["source_timeout_s"] = float(source_timeout_s)
+                        source_report = _SUBPROCESS_CLIENT.prepare_staged_source(
+                            spec,
+                            pipe_config,
+                            group_size=4,
+                            **kwargs,
                         )
+                        batch_reports.append(source_report)
+                        completed_count += 1
+                        source = originals[spec.document_id]
+                        source_latency_ms = round((time.perf_counter() - started) * 1000.0, 3)
+                        with _PREPARATION_LOCK:
+                            _PREPARATION_REGISTRY[_preparation_key(resolved, source)] = (
+                                _preparation_entry(
+                                    resolved,
+                                    source,
+                                    _PREPARATION_READY_STATE,
+                                    latency_ms=source_latency_ms,
+                                    indexed_chunk_count=int(source_report.get("indexed_chunk_count", 0)),
+                                )
+                            )
+                        if progress_callback is not None:
+                            progress_callback({
+                                "document_id": spec.document_id,
+                                "completed_count": completed_count,
+                                "total_sources": len(specs),
+                            })
                 except Exception as exc:
                     raise RuntimeError(
                         _batch_failure_reason(batch_ordinal, batch, exc)
@@ -467,6 +518,8 @@ def prepare_workspace_chat_sources(
             report["batch_count"] = len(batches)
             report["batch_size"] = _PREPARATION_BATCH_SIZE
             report["initialization"] = init_report
+            if completed_ids:
+                report["resumed_count"] = len(completed_ids)
         else:
             entry = _get_runtime(resolved, profile, pipeline_factory)
             with entry.lock:
@@ -498,6 +551,7 @@ def prepare_workspace_chat_sources(
         return {
             "status": "ok",
             "prepared_count": len(sources),
+            "resumed_count": len(completed_ids),
             "latency_ms": latency_ms,
             "report": report,
         }
@@ -506,14 +560,16 @@ def prepare_workspace_chat_sources(
         latency_ms = round((time.perf_counter() - started) * 1000.0, 3)
         with _PREPARATION_LOCK:
             for source in sources:
-                _PREPARATION_REGISTRY[_preparation_key(resolved, source)] = (
-                    _preparation_entry(
-                        resolved,
-                        source,
-                        "failed",
-                        reason=reason,
-                        latency_ms=latency_ms,
-                    )
+                key = _preparation_key(resolved, source)
+                existing = _PREPARATION_REGISTRY.get(key)
+                if existing and existing.get("status") == _PREPARATION_READY_STATE:
+                    continue
+                _PREPARATION_REGISTRY[key] = _preparation_entry(
+                    resolved,
+                    source,
+                    "failed",
+                    reason=reason,
+                    latency_ms=latency_ms,
                 )
         LOGGER.warning(
             "Background preparation failed for %d sources: %s",
