@@ -1,8 +1,9 @@
 """Structure-aware chunk creation for generic RAG v2 elements."""
 from __future__ import annotations
 
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass, field, replace
 import hashlib
+import json
 import re
 from typing import Any, Dict, Iterable, List, Optional, Tuple
 
@@ -80,9 +81,11 @@ class StructureAwareChunker:
 
     def chunk_elements(self, elements: Iterable[DocumentElement]) -> List[DocumentChunk]:
         chunks: List[DocumentChunk] = []
+        usable_elements = []
         for element in elements:
             if element.extraction_status in {ExtractionStatus.FAILED, ExtractionStatus.UNSUPPORTED}:
                 continue
+            usable_elements.append(element)
             text = self._element_text(element)
             if not text:
                 continue
@@ -90,7 +93,195 @@ class StructureAwareChunker:
                 chunks.extend(self._chunk_table(element, text))
             else:
                 chunks.extend(self._chunk_text_element(element, text))
+
+        # Spreadsheet extractors preserve every visually separated table
+        # region.  Forms with blank spacer rows can therefore produce thousands
+        # of tiny repeated schema/row children.  Compact compatible adjacent
+        # children before embedding so CPU-only BGE does useful work on evidence
+        # packs rather than spending hours embedding 70-character fragments.
+        chunks = self._compact_short_excel_children(chunks)
+
+        # Build Document Summary Chunk if we have enough elements
+        if len(usable_elements) >= 3 and chunks:
+            summary_chunk = self._build_document_summary(usable_elements, chunks[0].document_id, chunks[0].source_path, chunks[0].source_name)
+            if summary_chunk:
+                chunks.append(summary_chunk)
+
         return chunks
+
+    @staticmethod
+    def _excel_child_signature(chunk: DocumentChunk) -> tuple[Any, ...]:
+        """Return the provenance boundary within which Excel children can merge."""
+        role = str(chunk.metadata.get("representation_role", ""))
+        return (
+            chunk.document_id,
+            chunk.source_path,
+            chunk.file_type.casefold(),
+            chunk.sheet_names,
+            role,
+            # Schemas describe labels.  Compact them sheet-wide even when a
+            # visual form uses different columns in neighboring regions.  Row
+            # values retain their column boundary to avoid mixing tables.
+            None if role == "table_schema" else chunk.column_range,
+            chunk.section_path,
+            chunk.privacy_labels,
+            chunk.source_fingerprint,
+        )
+
+    @staticmethod
+    def _ordered_unique(values: Iterable[str]) -> tuple[str, ...]:
+        return tuple(dict.fromkeys(value for value in values if value))
+
+    def _is_short_excel_child(self, chunk: DocumentChunk) -> bool:
+        role = str(chunk.metadata.get("representation_role", ""))
+        return bool(
+            chunk.retrievable
+            and chunk.file_type.casefold() in {"xlsx", "xlsm", "xls"}
+            and role in {"table_schema", "table_rows"}
+            and len(chunk.text) <= self.max_chars
+        )
+
+    def _compact_short_excel_children(
+        self,
+        chunks: List[DocumentChunk],
+    ) -> List[DocumentChunk]:
+        """Merge small same-sheet Excel regions without losing row provenance.
+
+        A table parent is deliberately retained for hierarchy expansion, but it
+        does not break a run of short retrievable children.  This handles forms
+        whose blank spacer rows cause the extractor to emit one tiny region per
+        visual row.
+        """
+        grouped: Dict[tuple[Any, ...], List[DocumentChunk]] = {}
+        for chunk in chunks:
+            if self._is_short_excel_child(chunk):
+                grouped.setdefault(self._excel_child_signature(chunk), []).append(chunk)
+
+        compacted_ids = {
+            chunk.chunk_id
+            for group in grouped.values()
+            if len(self._ordered_unique(
+                str(item.metadata.get("element_id", "")) for item in group
+            )) > 1
+            for chunk in group
+        }
+        output = [chunk for chunk in chunks if chunk.chunk_id not in compacted_ids]
+
+        for signature, group in grouped.items():
+            source_element_ids = self._ordered_unique(
+                str(item.metadata.get("element_id", "")) for item in group
+            )
+            if len(source_element_ids) <= 1:
+                continue
+
+            pending: List[DocumentChunk] = []
+            pending_size = 0
+
+            def flush() -> None:
+                nonlocal pending, pending_size
+                if not pending:
+                    return
+                first = pending[0]
+                text = "\n\n".join(item.text for item in pending)
+                checksum = hashlib.sha256(text.encode("utf-8")).hexdigest()
+                element_ids = self._ordered_unique(
+                    element_id for item in pending for element_id in item.element_ids
+                )
+                parent_ids = self._ordered_unique(
+                    parent_id for item in pending for parent_id in item.parent_element_ids
+                )
+                row_ranges = [item.row_range for item in pending if item.row_range is not None]
+                contiguous = bool(row_ranges) and all(
+                    right[0] <= left[1] + 1
+                    for left, right in zip(row_ranges, row_ranges[1:])
+                )
+                row_range = (
+                    (row_ranges[0][0], row_ranges[-1][1])
+                    if contiguous and row_ranges
+                    else None
+                )
+                cell_range = (
+                    self._cell_range(first.column_range, row_range)
+                    if row_range is not None
+                    else None
+                )
+                metadata = {
+                    **first.metadata,
+                    "representation_role": "table_region_compacted",
+                    "compacted_child_count": len(pending),
+                    "compacted_row_ranges": [list(value) for value in row_ranges],
+                }
+                raw = "|".join((
+                    first.document_id,
+                    first.source_path,
+                    "excel-region-compacted",
+                    ",".join(element_ids),
+                    checksum,
+                ))
+                output.append(replace(
+                    first,
+                    chunk_id=hashlib.sha256(raw.encode("utf-8")).hexdigest(),
+                    text=text,
+                    normalized_text=_clean_text(text).lower(),
+                    element_ids=element_ids,
+                    parent_element_ids=parent_ids,
+                    row_range=row_range,
+                    cell_range=cell_range,
+                    checksum=checksum,
+                    metadata=metadata,
+                ))
+                pending = []
+                pending_size = 0
+
+            for chunk in group:
+                next_size = pending_size + (2 if pending else 0) + len(chunk.text)
+                if pending and next_size > self.max_chars:
+                    flush()
+                pending.append(chunk)
+                pending_size += (2 if len(pending) > 1 else 0) + len(chunk.text)
+            flush()
+        return output
+
+    def _build_document_summary(self, elements: List[DocumentElement], document_id: str, source_path: str, source_name: str) -> Optional[DocumentChunk]:
+        headings = []
+        body_text = ""
+        for el in elements:
+            text = self._element_text(el)
+            if not text:
+                continue
+            if el.element_type == ElementType.HEADING:
+                headings.append(text)
+            elif len(body_text) < 1500 and el.element_type == ElementType.TEXT:
+                body_text += text + "\n"
+
+        if not headings and not body_text:
+            return None
+
+        summary_text = "[DOCUMENT ARCHITECTURE & SUMMARY]\n\n"
+        if headings:
+            summary_text += "## TABLE OF CONTENTS\n" + "\n".join(f"- {h}" for h in headings) + "\n\n"
+        if body_text:
+            summary_text += "## INTRODUCTION\n" + body_text[:1500]
+
+        summary_text = summary_text.strip()
+
+        metadata = {
+            "is_document_summary": True,
+            "heading_count": len(headings)
+        }
+
+        return DocumentChunk(
+            chunk_id=f"{document_id}-summary",
+            document_id=document_id,
+            source_path=source_path,
+            source_name=source_name,
+            file_type="document_summary",
+            text=summary_text,
+            normalized_text=summary_text.lower(),
+            element_ids=("summary-001",),
+            element_types=("text",),
+            metadata=metadata
+        )
 
     def _element_text(self, element: DocumentElement) -> str:
         if element.element_type == ElementType.TABLE and element.table is not None:

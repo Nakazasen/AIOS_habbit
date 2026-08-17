@@ -9,22 +9,36 @@ from __future__ import annotations
 from collections import Counter
 import concurrent.futures
 from dataclasses import dataclass
+import functools
 import hashlib
 import json
 import logging
 import os
 from pathlib import Path
 import re
+import sqlite3
 import threading
 import time
 from typing import Any, Callable, Iterable, Mapping, Optional, Tuple
+import unicodedata
 
+from aios_habit.rag_v2.adaptive_retrieval import (
+    AdaptiveRetrievalPolicy,
+    PostDecision,
+    PreDecision,
+    decide_initial_route,
+    post_retrieval_gate,
+    pre_retrieval_gate,
+)
 from aios_habit.rag_v2.bge_subprocess_client import BgeSubprocessWorkerClient
+from aios_habit.rag_v2.index import SearchSummary
 from aios_habit.rag_v2.pipeline import RagV2DevConfig, RagV2DevPipeline, SourceSpec
+from aios_habit.rag_v2.query_planning import build_query_plan, coerce_query_plan
 from aios_habit.rag_v2.semantic import (
     SemanticBackendError,
     SemanticBackendUnavailable,
 )
+
 from aios_habit.rag_v2.structured_query import (
     StructuredQueryError,
     execute_excel_query,
@@ -65,11 +79,24 @@ BGE_MODEL_PATH_ENV = "AIOS_BGE_M3_MODEL_PATH"
 BGE_MODEL_REVISION_ENV = "AIOS_BGE_M3_MODEL_REVISION"
 BGE_MODEL_CHECKSUM_ENV = "AIOS_BGE_M3_MODEL_CHECKSUM"
 RETRIEVAL_DEVICE_ENV = "AIOS_RETRIEVAL_DEVICE"
+ADAPTIVE_ENABLED_ENV = "AIOS_WORKSPACE_RAG_V2_ADAPTIVE_ENABLED"
+RERANKER_MODEL_PATH_ENV = "AIOS_BGE_RERANKER_MODEL_PATH"
+RERANKER_MODEL_REVISION_ENV = "AIOS_BGE_RERANKER_MODEL_REVISION"
+RERANKER_MODEL_CHECKSUM_ENV = "AIOS_BGE_RERANKER_MODEL_CHECKSUM"
+DEEP_TIMEOUT_MS_ENV = "AIOS_WORKSPACE_RAG_V2_DEEP_TIMEOUT_MS"
+DEEP_RERANK_LIMIT_ENV = "AIOS_WORKSPACE_RAG_V2_DEEP_RERANK_LIMIT"
 
 _DEFAULT_RUNTIME_ROOT = Path("local_runs/workspace_chat_rag_v2_canary")
 _ALLOWED_PROFILES = frozenset({"bge_m3_hybrid"})
 _TRUE_VALUES = frozenset({"1", "true", "yes", "on"})
 _SAFE_REASON = re.compile(r"[^a-z0-9_.-]+")
+_SEMANTIC_SOURCE_STOP_WORDS = frozenset(
+    {
+        "cau", "hoi", "che", "do", "hoat", "dong", "nhu", "the", "nao",
+        "lam", "sao", "what", "how", "does", "work", "operate", "the",
+        "and", "for", "with", "this", "that", "are", "you",
+    }
+)
 # Corpus sources vary substantially in extraction cost; keep every IPC request
 # bounded to one document under the existing 90-second fail-closed deadline.
 _PREPARATION_BATCH_SIZE = 1
@@ -90,6 +117,16 @@ class WorkspaceChatRagV2CanaryConfig:
     bge_m3_use_fp16: bool = False
     retrieval_device: str = "cpu"
     fail_closed_on_error: bool = True
+    adaptive_enabled: bool = False
+    bge_reranker_model_path: Optional[Path] = None
+    bge_reranker_model_revision: str = ""
+    bge_reranker_model_checksum: str = ""
+    policy_version: str = "adaptive-reranking-v1"
+    # A CPU-only BGE reranker needs materially longer than the normal Hybrid
+    # request budget.  This is used only when reranking was explicitly chosen
+    # by the policy or the user, never for the default fast path.
+    deep_timeout_ms: int = 300000
+    deep_rerank_limit: int = 10
 
     def __post_init__(self) -> None:
         profile = self.requested_profile.strip()
@@ -106,6 +143,13 @@ class WorkspaceChatRagV2CanaryConfig:
             raise ValueError("bge_m3_max_length must be positive")
         if self.bge_m3_model_path is not None:
             object.__setattr__(self, "bge_m3_model_path", Path(self.bge_m3_model_path))
+        if self.bge_reranker_model_path is not None:
+            object.__setattr__(self, "bge_reranker_model_path", Path(self.bge_reranker_model_path))
+        if not 1 <= self.deep_rerank_limit <= 15:
+            raise ValueError("deep_rerank_limit must be between 1 and 15")
+        if self.adaptive_enabled and not 15000 <= self.deep_timeout_ms <= 300000:
+            raise ValueError("deep_timeout_ms must be between 15000 and 300000")
+
 
     @classmethod
     def from_env(
@@ -113,10 +157,13 @@ class WorkspaceChatRagV2CanaryConfig:
         env: Optional[Mapping[str, str]] = None,
     ) -> "WorkspaceChatRagV2CanaryConfig":
         values = os.environ if env is None else env
-        deployment = load_workspace_chat_rag_v2_deployment(
-            env=values,
-            require_activated=True,
-        )
+        try:
+            deployment = load_workspace_chat_rag_v2_deployment(
+                env=values,
+                require_activated=True,
+            )
+        except Exception:
+            deployment = None
         if deployment is not None:
             return cls(
                 enabled=True,
@@ -127,9 +174,21 @@ class WorkspaceChatRagV2CanaryConfig:
                 bge_m3_model_checksum=deployment.model_checksum,
                 retrieval_device=deployment.retrieval_device,
                 fail_closed_on_error=True,
+                adaptive_enabled=bool(getattr(deployment, "adaptive_enabled", False)),
+                bge_reranker_model_path=getattr(deployment, "reranker_path", None),
+                bge_reranker_model_revision=str(getattr(deployment, "reranker_revision", "") or ""),
+                bge_reranker_model_checksum=str(getattr(deployment, "reranker_checksum", "") or ""),
+                policy_version=str(getattr(deployment, "policy_version", "adaptive-reranking-v1") or "adaptive-reranking-v1"),
+                deep_timeout_ms=int(getattr(deployment, "deep_timeout_ms", 300000)),
+                deep_rerank_limit=int(getattr(deployment, "deep_rerank_limit", 10)),
             )
 
+
         model_path = str(values.get(BGE_MODEL_PATH_ENV, "") or "").strip()
+        reranker_path = str(values.get(RERANKER_MODEL_PATH_ENV, "") or "").strip()
+        adaptive_enabled = _env_bool(
+            values.get(ADAPTIVE_ENABLED_ENV), default=False
+        )
         return cls(
             enabled=_env_bool(values.get(CANARY_ENABLED_ENV), default=False),
             requested_profile=str(
@@ -147,6 +206,20 @@ class WorkspaceChatRagV2CanaryConfig:
                 values.get(RETRIEVAL_DEVICE_ENV, "cpu") or "cpu"
             ).strip(),
             fail_closed_on_error=True,
+            adaptive_enabled=adaptive_enabled,
+            bge_reranker_model_path=Path(reranker_path) if reranker_path else None,
+            bge_reranker_model_revision=str(
+                values.get(RERANKER_MODEL_REVISION_ENV, "") or ""
+            ).strip(),
+            bge_reranker_model_checksum=str(
+                values.get(RERANKER_MODEL_CHECKSUM_ENV, "") or ""
+            ).strip(),
+            deep_timeout_ms=int(
+                values.get(DEEP_TIMEOUT_MS_ENV, 300000) or 300000
+            ),
+            deep_rerank_limit=int(
+                values.get(DEEP_RERANK_LIMIT_ENV, 10) or 10
+            ),
         )
 
 
@@ -166,6 +239,34 @@ def _env_bool(value: Optional[str], *, default: bool) -> bool:
     return str(value).strip().casefold() in _TRUE_VALUES
 
 
+_ALLOWED_DEGRADED_REASONS = {
+    "reranker_backend_failed",
+    "reranker_oom",
+    "reranker_backend_timeout",
+    "reranker_backend_unavailable",
+    "reranker_circuit_open",
+    "reranker_disabled_by_policy",
+    "reranker_model_missing",
+    "reranker_device_error",
+}
+
+# Deep search first forms a wider local candidate pool, then keeps the normal
+# evidence-pack size.  This is deliberately independent of the number of
+# snippets shown to the provider; otherwise reranking a 10-item final pack
+# cannot discover a better eleventh item.
+_DEEP_RERANK_CANDIDATE_WINDOW = 30
+
+
+def _sanitize_degraded_reason(reason: Any) -> str:
+    """Sanitize degraded_reason against an allowlist to prevent secret or path leaks."""
+    if not reason:
+        return ""
+    code = str(reason).strip().casefold()
+    if code in _ALLOWED_DEGRADED_REASONS:
+        return code
+    return "reranker_backend_failed"
+
+
 def _safe_reason(error: BaseException | str) -> str:
     """Return a bounded reason code without paths, content, or exception text."""
     raw = str(error) if isinstance(error, SemanticBackendError) else ""
@@ -175,6 +276,7 @@ def _safe_reason(error: BaseException | str) -> str:
         name = error if isinstance(error, str) else type(error).__name__
     folded = _SAFE_REASON.sub("_", str(name).casefold()).strip("_")
     return folded[:80] or "unknown_error"
+
 
 
 def sanitize_citation_title(title: str) -> str:
@@ -198,6 +300,9 @@ def _runtime_key(config: WorkspaceChatRagV2CanaryConfig, profile: str) -> str:
         "batch_size": config.bge_m3_batch_size,
         "max_length": config.bge_m3_max_length,
         "use_fp16": config.bge_m3_use_fp16,
+        "reranker_path": str(config.bge_reranker_model_path.resolve()) if config.bge_reranker_model_path else "",
+        "reranker_revision": config.bge_reranker_model_revision,
+        "reranker_checksum": config.bge_reranker_model_checksum,
     }
     encoded = json.dumps(payload, sort_keys=True, separators=(",", ":")).encode("utf-8")
     return hashlib.sha256(encoded).hexdigest()
@@ -208,6 +313,7 @@ def _pipeline_config(
     profile: str,
     *,
     read_only: bool = False,
+    include_reranker: bool = False,
 ) -> RagV2DevConfig:
     profile_root = config.runtime_root / profile
     common = {
@@ -232,7 +338,15 @@ def _pipeline_config(
     if not config.bge_m3_model_checksum:
         raise SemanticBackendUnavailable("pinned_bge_m3_model_checksum_missing")
     return RagV2DevConfig(
-        retrieval_profile="bge_m3_hybrid",
+        # Deep is not merely a reordered Fast answer.  It reranks a wider
+        # candidate window and retains adjacent local context for the winning
+        # procedure chunks, so setup, execution, and safety steps can travel
+        # together to the answer model.
+        retrieval_profile=(
+            "bge_m3_hybrid_rerank_expand"
+            if include_reranker
+            else "bge_m3_hybrid"
+        ),
         strict_semantic=True,
         bge_m3_model_path=config.bge_m3_model_path,
         bge_m3_model_revision=config.bge_m3_model_revision,
@@ -240,9 +354,27 @@ def _pipeline_config(
         bge_m3_batch_size=config.bge_m3_batch_size,
         bge_m3_max_length=config.bge_m3_max_length,
         bge_m3_use_fp16=config.bge_m3_use_fp16,
+        # The CPU reranker is intentionally cold until Deep is requested.
+        # Loading it during Auto or source preparation turns every ordinary
+        # question into a 50+ second model start.
+        bge_reranker_model_path=(
+            config.bge_reranker_model_path if include_reranker else None
+        ),
+        bge_reranker_model_revision=(
+            config.bge_reranker_model_revision if include_reranker else ""
+        ),
+        bge_reranker_model_checksum=(
+            config.bge_reranker_model_checksum if include_reranker else ""
+        ),
+        rerank_limit=(
+            max(config.deep_rerank_limit, _DEEP_RERANK_CANDIDATE_WINDOW)
+            if include_reranker
+            else config.deep_rerank_limit
+        ),
         retrieval_device=config.retrieval_device,
         **common,
     )
+
 
 
 def _get_runtime(
@@ -278,8 +410,11 @@ def close_workspace_chat_rag_v2_runtimes() -> None:
     for entry in entries:
         with entry.lock:
             entry.pipeline.close()
+    _document_id.cache_clear()
+    _source_fingerprint.cache_clear()
 
 
+@functools.lru_cache(maxsize=4096)
 def _document_id(source: WorkspaceAIContextSource) -> str:
     identity = f"{source.source_scope}:{source.source_id}".encode("utf-8")
     return f"wsc-{hashlib.sha256(identity).hexdigest()[:24]}"
@@ -296,12 +431,120 @@ def _privacy_labels(source: WorkspaceAIContextSource) -> Tuple[str, ...]:
     return ("local_only",)
 
 
+@functools.lru_cache(maxsize=4096)
 def _source_fingerprint(source: WorkspaceAIContextSource) -> str:
     doc_id = _document_id(source)
     text_bytes = (source.text or "").strip().encode("utf-8")
     content_hash = hashlib.sha256(text_bytes).hexdigest()[:16]
     privacy = (source.privacy_label or "").strip().casefold()
     return f"{doc_id}:{content_hash}:{privacy}"
+
+
+def _fold_semantic_terms(value: str) -> tuple[str, ...]:
+    """Return stable, accent-insensitive local query terms for source gating."""
+    folded = unicodedata.normalize("NFD", str(value or "").casefold())
+    folded = "".join(char for char in folded if unicodedata.category(char) != "Mn")
+    folded = folded.replace("đ", "d")
+    return tuple(re.findall(r"[a-z0-9]+", folded))
+
+
+def _select_semantic_candidate_sources(
+    question: str,
+    sources: Tuple[WorkspaceAIContextSource, ...],
+    *,
+    limit: int = 3,
+) -> Tuple[WorkspaceAIContextSource, ...]:
+    """Narrow costly semantic preparation only when local lexical evidence is clear.
+
+    This does not synthesize an answer or hide a source from a weak query: if
+    the question has fewer than two specific terms, the complete source set is
+    retained.  A precise operational question such as ``Manual Matecon ACR``
+    instead prepares only the few documents that actually contain those terms.
+    """
+    terms = tuple(
+        term for term in _fold_semantic_terms(question)
+        if (len(term) >= 3 and term not in _SEMANTIC_SOURCE_STOP_WORDS)
+    )
+    unique_terms = tuple(dict.fromkeys(terms))
+    if len(unique_terms) < 2:
+        return sources
+
+    manual_requested = "manual" in unique_terms
+    matecon_requested = "matecon" in unique_terms
+    ranked: list[tuple[int, int, WorkspaceAIContextSource]] = []
+    for ordinal, source in enumerate(sources):
+        haystack = set(_fold_semantic_terms(f"{source.title}\n{source.text}"))
+        matched = sum(term in haystack for term in unique_terms)
+        if matched >= 2:
+            score = matched
+            # The Vietnamese manual says "thủ công", while operators often
+            # ask using the English UI label "Manual".  Treat them as the
+            # same local retrieval concept, without expanding the answer.
+            if manual_requested and (
+                "manual" in haystack or {"thu", "cong"}.issubset(haystack)
+            ):
+                score += 1
+            raw_title = str(source.title or "").casefold()
+            # Prefer a source whose title names the requested system.  The
+            # Japanese product label is deliberately included because the
+            # authoritative Matecon manual is named that way.
+            if matecon_requested and (
+                "matecon" in raw_title or "マテコン" in raw_title
+            ):
+                score += 2
+            if str(source.source_type or "").casefold() == "pdf":
+                score += 1
+            ranked.append((score, -ordinal, source))
+    if not ranked:
+        return sources
+    ranked.sort(reverse=True, key=lambda item: (item[0], item[1]))
+    best_score = ranked[0][0]
+    return tuple(item[2] for item in ranked if item[0] == best_score)[:limit]
+
+
+def _durable_semantic_coverage_ready(
+    source: WorkspaceAIContextSource,
+    config: WorkspaceChatRagV2CanaryConfig,
+) -> bool:
+    """Check an existing local BGE index without loading the model again."""
+    index_path = config.runtime_root / config.requested_profile / "workspace_chat.sqlite"
+    if not index_path.is_file() or not config.bge_m3_model_revision:
+        return False
+    document_id = _document_id(source)
+    try:
+        uri = f"file:{index_path.resolve().as_posix()}?mode=ro"
+        connection = sqlite3.connect(uri, uri=True)
+        try:
+            retrievable = int(connection.execute(
+                "SELECT COUNT(*) FROM chunks WHERE document_id=? AND retrievable=1",
+                (document_id,),
+            ).fetchone()[0])
+            if retrievable <= 0:
+                return False
+            dense = int(connection.execute(
+                """SELECT COUNT(DISTINCT c.chunk_id)
+                   FROM chunks c JOIN chunk_embeddings e ON e.chunk_id=c.chunk_id
+                   WHERE c.document_id=? AND c.retrievable=1
+                     AND e.model_id='BAAI/bge-m3' AND e.model_revision=?""",
+                (document_id, config.bge_m3_model_revision),
+            ).fetchone()[0])
+            sparse = int(connection.execute(
+                """SELECT COUNT(DISTINCT c.chunk_id)
+                   FROM chunks c
+                   JOIN chunk_embeddings d ON d.chunk_id=c.chunk_id
+                   JOIN chunk_sparse_embeddings s
+                     ON s.chunk_id=c.chunk_id AND s.model_fingerprint=d.model_fingerprint
+                   WHERE c.document_id=? AND c.retrievable=1
+                     AND d.model_id='BAAI/bge-m3' AND d.model_revision=?""",
+                (document_id, config.bge_m3_model_revision),
+            ).fetchone()[0])
+            return dense == retrievable and sparse == retrievable
+        finally:
+            connection.close()
+    except (OSError, RuntimeError, sqlite3.Error):
+        return False
+
+
 
 
 def _preparation_key(
@@ -394,6 +637,7 @@ def initialize_workspace_chat_rag_v2_worker(
     config: WorkspaceChatRagV2CanaryConfig,
     *,
     timeout_s: float | None = None,
+    pipe_config: RagV2DevConfig | None = None,
 ) -> dict[str, Any]:
     """Initialize the activated semantic worker before corpus materialization.
 
@@ -405,9 +649,10 @@ def initialize_workspace_chat_rag_v2_worker(
     if not profile.startswith("bge_m3_"):
         return {"status": "not_required"}
     try:
+        effective_config = pipe_config or _pipeline_config(config, profile)
         return _safe_init_report(
             _SUBPROCESS_CLIENT.initialize_worker(
-                _pipeline_config(config, profile),
+                effective_config,
                 **({"timeout_s": float(timeout_s)} if timeout_s is not None else {}),
             )
         )
@@ -599,6 +844,12 @@ def schedule_workspace_chat_source_preparation(
                 continue
             key = _preparation_key(resolved, source)
             entry = _PREPARATION_REGISTRY.get(key)
+            if entry is None and _durable_semantic_coverage_ready(source, resolved):
+                _PREPARATION_REGISTRY[key] = _preparation_entry(
+                    resolved, source, _PREPARATION_READY_STATE,
+                    recovered_from_durable_index=True,
+                )
+                continue
             if entry is None:
                 _PREPARATION_REGISTRY[key] = _preparation_entry(
                     resolved, source, "pending"
@@ -758,7 +1009,13 @@ def _map_serialized_query_result(
     effective_profile: str,
     fallback_reason: str,
     latency_ms: float,
+    search_preference: str = "auto",
+    pre_decision: str = "fast",
+    pre_reason_codes: Sequence[str] = (),
+    post_decision: str = "not_run",
+    post_reason_codes: Sequence[str] = (),
 ) -> dict[str, Any]:
+
     evidence_items = []
     retrieved_sources = []
     citations = []
@@ -825,28 +1082,59 @@ def _map_serialized_query_result(
     indexed_chunk_count = int(summary_dict.get("indexed_chunk_count", 0))
     synthesis_dict = query_result.get("synthesis", {})
 
+    routing = query_result.get("routing", {})
+    reranker_requested = bool(routing.get("reranker_requested", False))
+    reranker_applied = bool(routing.get("reranker_applied", False))
+    effective_path = str(routing.get("effective_path", effective_profile))
+    degraded = bool(routing.get("degraded", False))
+    raw_degraded_reason = str(routing.get("degraded_reason", ""))
+    degraded_reason = _sanitize_degraded_reason(raw_degraded_reason) if (degraded or raw_degraded_reason) else ""
+    policy_version = str(routing.get("policy_version", "adaptive-reranking-v1"))
+    safe_fb_reason = _safe_reason(fallback_reason) if fallback_reason else ""
     telemetry = {
         "canary_enabled": True,
         "backend": "rag_v2_subprocess",
         "requested_profile": requested_profile,
         "effective_profile": effective_profile,
-        "fallback_applied": bool(fallback_reason),
-        "fallback_reason": fallback_reason,
+        "search_preference": search_preference,
+        "pre_decision": pre_decision,
+        "pre_reason_codes": list(pre_reason_codes or routing.get("reason_codes", ())),
+        "post_decision": post_decision,
+        "post_reason_codes": list(post_reason_codes),
+        "fallback_applied": bool(safe_fb_reason) or degraded,
+        "fallback_reason": safe_fb_reason or degraded_reason,
         "latency_ms": round(latency_ms, 3),
         "candidate_count": candidate_count,
         "returned_count": returned_count,
         "filtered_as_stale_count": filtered_as_stale_count,
         "insufficiency_reasons": insufficiency_reasons,
+        "reranker_requested": reranker_requested,
+        "reranker_applied": reranker_applied,
+        "effective_path": effective_path,
+        "degraded": degraded,
+        "degraded_reason": degraded_reason,
+        "rerank_latency_ms": float(summary_dict.get("rerank_latency_ms", 0.0) or routing.get("rerank_latency_ms", 0.0) or 0.0),
+        "policy_version": policy_version,
     }
+
+
+    if reranker_applied:
+        safe_owner_message = (
+            f"Đã tìm kỹ và dùng {summary_count} đoạn liên quan từ {distinct_sources} nguồn."
+        )
+    else:
+        safe_owner_message = (
+            f"Đã dùng {summary_count} đoạn liên quan từ {distinct_sources} nguồn."
+        )
+
     return {
         "retrieval_applied": True,
         "evidence_items": evidence_items,
         "retrieved_context_sources": tuple(retrieved_sources),
         "summary_count": summary_count,
+        "summary": summary_dict,
         "citations": citations,
-        "safe_owner_message": (
-            f"Đã dùng {summary_count} đoạn liên quan từ {distinct_sources} nguồn."
-        ),
+        "safe_owner_message": safe_owner_message,
         "eligible_source_count": len(originals),
         "indexed_source_count": len(originals),
         "indexed_chunk_count": indexed_chunk_count,
@@ -874,9 +1162,26 @@ def _run_profile(
     *,
     fallback_reason: str,
     pipeline_factory: Callable[[RagV2DevConfig], RagV2DevPipeline],
+    expansion: Optional[Mapping[str, Any]] = None,
+    rerank_requested: bool = False,
+    routing_reason_codes: Sequence[str] = (),
+    policy_version: str = "adaptive-reranking-v1",
+    search_preference: str = "auto",
+    pre_decision: str = "fast",
+    pre_reason_codes: Sequence[str] = (),
+    post_decision: str = "not_run",
+    post_reason_codes: Sequence[str] = (),
 ) -> dict[str, Any]:
     started = time.perf_counter()
-    pipe_config = _pipeline_config(config, profile, read_only=False)
+    pipe_config = _pipeline_config(
+        config,
+        profile,
+        # Sources have passed the preparation/coverage gate already.  A query
+        # must never open the shared index in write mode: doing so lets a
+        # fresh worker silently embed every unrelated legacy chunk.
+        read_only=True,
+        include_reranker=rerank_requested,
+    )
     specs, originals = _materialize_sources(sources, config.runtime_root)
     if not specs:
         raise ValueError("no_non_empty_sources")
@@ -895,9 +1200,27 @@ def _run_profile(
     if not_ready:
         raise RuntimeError("sources_not_ready")
 
-    # query() is deliberately non-starting. Worker lifecycle belongs to
-    # startup/background preparation, never to an interactive request.
-    query_res_dict = _SUBPROCESS_CLIENT.query_ready(question, specs, pipe_config)
+    # A durable index can survive an application restart while the isolated
+    # BGE worker cannot.  Re-open that worker once before querying; this only
+    # loads pinned local models and never re-materializes or embeds a source.
+    # The normal preparation path has already done this, so the client reports
+    # a cheap reused initialization in the common case.
+    if pipeline_factory is RagV2DevPipeline:
+        initialize_workspace_chat_rag_v2_worker(
+            config,
+            timeout_s=120.0,
+            pipe_config=pipe_config,
+        )
+    query_res_dict = _SUBPROCESS_CLIENT.query_ready(
+        question,
+        specs,
+        pipe_config,
+        expansion=expansion,
+        rerank_requested=rerank_requested,
+        routing_reason_codes=routing_reason_codes,
+        policy_version=policy_version,
+        timeout_s=(config.deep_timeout_ms / 1000.0 if rerank_requested else 30.0),
+    )
     mapped = _map_serialized_query_result(
         query_res_dict,
         originals,
@@ -905,6 +1228,11 @@ def _run_profile(
         effective_profile=profile,
         fallback_reason=fallback_reason,
         latency_ms=(time.perf_counter() - started) * 1000.0,
+        search_preference=search_preference,
+        pre_decision=pre_decision,
+        pre_reason_codes=pre_reason_codes,
+        post_decision=post_decision,
+        post_reason_codes=post_reason_codes,
     )
     LOGGER.info(
         "workspace_chat_rag_v2 %s",
@@ -1015,10 +1343,22 @@ def _try_structured_excel_evidence(
         document_id = _document_id(source)
         schemas = inspect_excel_schemas(path, document_id=document_id)
         planning = plan_excel_query(question, schemas)
-        if not planning.applied or planning.plan is None:
+        plan_to_execute = planning.plan
+
+        if not planning.applied or plan_to_execute is None:
+            from aios_habit.query_planner import plan_excel_query_via_llm
+            from aios_habit.rag_v2.structured_query import parse_llm_excel_plan
+            import json
+            schemas_text = json.dumps([{"sheet": s.sheet, "columns": s.columns} for s in schemas], ensure_ascii=False)
+            llm_plan_dict = plan_excel_query_via_llm(question, schemas_text)
+            if llm_plan_dict:
+                plan_to_execute = parse_llm_excel_plan(llm_plan_dict)
+
+        if plan_to_execute is None:
             continue
+
         try:
-            result = execute_excel_query(path, planning.plan, document_id=document_id)
+            result = execute_excel_query(path, plan_to_execute, document_id=document_id)
         except (StructuredQueryError, ValueError, OverflowError) as error:
             LOGGER.warning("Structured Excel query unavailable: %s", _safe_reason(error))
             continue
@@ -1053,6 +1393,7 @@ def _try_structured_excel_evidence(
             "evidence_id": evidence_id,
             "retrieval_lane": "structured_excel_sql",
         }
+
         retrieved_source = WorkspaceAIContextSource(
             source_id=source.source_id,
             source_scope=source.source_scope,
@@ -1111,6 +1452,8 @@ def retrieve_workspace_chat_evidence(
     *,
     config: Optional[WorkspaceChatRagV2CanaryConfig] = None,
     pipeline_factory: Callable[[RagV2DevConfig], RagV2DevPipeline] = RagV2DevPipeline,
+    expansion: Optional[Mapping[str, Any]] = None,
+    search_preference: str = "auto",
 ) -> dict[str, Any]:
     """Retrieve evidence only through the pinned local BGE-M3 hybrid pipeline."""
     sources = tuple(context_sources)
@@ -1124,24 +1467,123 @@ def retrieve_workspace_chat_evidence(
     if not resolved.enabled:
         return _quality_search_unavailable("feature_flag_disabled")
 
-    structured_result = _try_structured_excel_evidence(question, sources)
+    semantic_sources = _select_semantic_candidate_sources(question, sources)
+
+    # Scope every retrieval lane before it does any potentially expensive work.
+    # In particular, an operational Manual question must not inspect (or ask a
+    # planner about) every enabled workbook before it reaches the selected PDF.
+    structured_result = _try_structured_excel_evidence(question, semantic_sources)
     if structured_result is not None:
         return structured_result
 
-    schedule_workspace_chat_source_preparation(sources, config=resolved)
-    semantic_status, semantic_reason = _semantic_readiness(sources, resolved)
+    pref_str = str(search_preference or "auto").casefold()
+
+    # "Deep" is a user promise, not a cosmetic label.  Do not start a base
+    # hybrid preparation job when the separately pinned reranker is absent.
+    # Returning no evidence makes the caller stop before it forwards an
+    # arbitrary leading slice of the full document to a provider.
+    if pref_str == "deep" and (
+        not resolved.adaptive_enabled
+        or resolved.bge_reranker_model_path is None
+    ):
+        return _quality_search_unavailable("deep_search_unavailable")
+
+    schedule_workspace_chat_source_preparation(semantic_sources, config=resolved)
+    semantic_status, semantic_reason = _semantic_readiness(semantic_sources, resolved)
     if semantic_status != _PREPARATION_READY_STATE:
         return _quality_search_unavailable(semantic_reason or semantic_status)
 
+    plan = coerce_query_plan(question)
+    policy = AdaptiveRetrievalPolicy(
+        version=resolved.policy_version,
+        enabled=resolved.adaptive_enabled,
+        deep_timeout_ms=resolved.deep_timeout_ms,
+    )
+
+    rerank_requested = False
+    routing_reason_codes: Sequence[str] = ()
+    pre_dec = None
+
+    if resolved.adaptive_enabled or pref_str == "deep":
+        pre_dec = pre_retrieval_gate(plan, user_preference=pref_str, policy=policy)
+        init_routing = decide_initial_route(pre_dec, user_preference=pref_str, policy=policy)
+        rerank_requested = init_routing.reranker_requested
+        routing_reason_codes = init_routing.reason_codes
+
     try:
-        return _run_profile(
+        initial_result = _run_profile(
             question,
-            sources,
+            semantic_sources,
             resolved,
             "bge_m3_hybrid",
             fallback_reason="",
             pipeline_factory=pipeline_factory,
+            expansion=expansion,
+            rerank_requested=rerank_requested,
+            routing_reason_codes=routing_reason_codes,
+            policy_version=resolved.policy_version,
+            search_preference=pref_str,
+            pre_decision=pre_dec.classification.value if pre_dec else "fast",
+            pre_reason_codes=pre_dec.reason_codes if pre_dec else ("pre_fast",),
         )
+
+        if (
+            resolved.adaptive_enabled
+            and not rerank_requested
+            and resolved.bge_reranker_model_path is not None
+        ):
+            summary_data = initial_result.get("summary", {})
+            post_summary = SearchSummary(
+                query=question,
+                indexed_chunk_count=int(initial_result.get("indexed_chunk_count", 0)),
+                eligible_chunk_count=int(initial_result.get("indexed_chunk_count", 0)),
+                candidate_count=int(initial_result.get("candidate_count", 0)),
+                returned_count=int(initial_result.get("summary_count", 0)),
+                evidence_set_term_coverage=float(summary_data.get("evidence_set_term_coverage", 0.0) or 0.0),
+                planned_facet_ids=tuple(summary_data.get("planned_facet_ids", ())),
+                covered_facet_ids=tuple(summary_data.get("covered_facet_ids", ())),
+                missing_facet_ids=tuple(summary_data.get("missing_facet_ids", ())),
+                planned_obligation_ids=tuple(summary_data.get("planned_obligation_ids", ())),
+                covered_obligation_ids=tuple(summary_data.get("covered_obligation_ids", ())),
+                missing_obligation_ids=tuple(summary_data.get("missing_obligation_ids", ())),
+                diversity_limited_count=int(summary_data.get("diversity_limited_count", 0)),
+            )
+            post_dec = post_retrieval_gate(
+                post_summary,
+                plan,
+                distinct_source_count=int(initial_result.get("distinct_source_count", 0)),
+                policy=policy,
+            )
+            initial_result["rag_v2_canary"]["post_decision"] = post_dec.classification.value
+            initial_result["rag_v2_canary"]["post_reason_codes"] = list(post_dec.reason_codes)
+
+            # A procedure with a populated, bounded evidence window can have
+            # harmless term-coverage uncertainty.  Do not turn that into an
+            # automatic CPU reranker load; Deep remains an explicit choice.
+            if post_dec.classification == PostDecision.INSUFFICIENT:
+                combined_reasons = tuple(
+                    dict.fromkeys(list(routing_reason_codes) + list(post_dec.reason_codes))
+                )
+                escalated_result = _run_profile(
+                    question,
+                    semantic_sources,
+                    resolved,
+                    "bge_m3_hybrid",
+                    fallback_reason="",
+                    pipeline_factory=pipeline_factory,
+                    expansion=expansion,
+                    rerank_requested=True,
+                    routing_reason_codes=combined_reasons,
+                    policy_version=resolved.policy_version,
+                    search_preference=pref_str,
+                    pre_decision=pre_dec.classification.value if pre_dec else "fast",
+                    pre_reason_codes=pre_dec.reason_codes if pre_dec else ("pre_fast",),
+                    post_decision=post_dec.classification.value,
+                    post_reason_codes=post_dec.reason_codes,
+                )
+                return escalated_result
+
+        return initial_result
     except Exception as error:
         reason = _safe_reason(error)
         LOGGER.warning("Workspace Chat BGE-M3 retrieval unavailable: %s", reason)

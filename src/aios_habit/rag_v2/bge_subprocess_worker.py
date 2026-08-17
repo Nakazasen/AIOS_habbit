@@ -110,6 +110,15 @@ def _serialize_query_result(result: RagV2QueryResult) -> dict[str, Any]:
         },
         "insufficiency_reasons": list(result.evidence_pack.insufficiency_reasons),
         "items": items,
+        "routing": {
+            "reranker_requested": getattr(result, "reranker_requested", False),
+            "reranker_applied": getattr(result, "reranker_applied", False),
+            "effective_path": getattr(result, "effective_path", "hybrid"),
+            "degraded": getattr(result, "degraded", False),
+            "degraded_reason": getattr(result, "degraded_reason", ""),
+            "rerank_latency_ms": float(getattr(summary, "rerank_latency_ms", 0.0) or 0.0),
+            "policy_version": getattr(result, "policy_version", "adaptive-reranking-v1"),
+        },
         "synthesis": {
             "answer": synthesis.answer,
             "citation_ids": list(synthesis.citation_ids),
@@ -123,6 +132,7 @@ def _serialize_query_result(result: RagV2QueryResult) -> dict[str, Any]:
             "mode": synthesis.mode,
         },
     }
+
 
 
 def _safe_readiness(pipeline: RagV2DevPipeline) -> dict[str, Any]:
@@ -147,7 +157,21 @@ def _stage_source(pipeline: RagV2DevPipeline, source: SourceSpec) -> dict[str, A
     from aios_habit.rag_v2.pipeline import _file_fingerprint
     source_fingerprint = _file_fingerprint(source.path)
     if fingerprint and fingerprint == source_fingerprint:
-        return {"status": "unchanged", "chunk_count": 0}
+        coverage = pipeline.index.verify_selected_document_coverage(
+            (source.document_id,),
+            expected_document_fingerprints={source.document_id: source_fingerprint},
+            sparse_required=pipeline.config.retrieval_profile in {
+                "bge_m3_hybrid", "bge_m3_multivector",
+            },
+            multivector_required=(
+                pipeline.config.retrieval_profile == "bge_m3_multivector"
+            ),
+        )
+        if coverage["valid"]:
+            return {"status": "unchanged", "chunk_count": 0}
+        # Matching source bytes alone are not enough.  A prior lexical or
+        # interrupted preparation may have published chunks without BGE-M3
+        # vectors; rebuild this one document atomically below.
     context = ConversionContext(
         source_id=source.source_id,
         document_id=source.document_id,
@@ -376,12 +400,32 @@ def main() -> None:
                 question = str(request.get("question", ""))
                 specs_dict = request.get("specs", [])
                 specs = [_source_spec_from_dict(s) for s in specs_dict]
+                expansion = request.get("expansion")
+                routing = request.get("routing")
+                rerank_requested = False
+                routing_reason_codes = ()
+                policy_version = "adaptive-reranking-v1"
+                if isinstance(routing, dict):
+                    if routing.get("schema_version") != 1:
+                        raise RuntimeError("unsupported_routing_schema_version")
+                    rerank_requested = bool(routing.get("rerank_requested", False))
+                    routing_reason_codes = tuple(str(c) for c in routing.get("reason_codes", ()))
+                    policy_version = str(routing.get("policy_version", "adaptive-reranking-v1"))
 
-                query_res = pipeline.query(question, specs)
+                query_res = pipeline.query(
+                    question,
+                    specs,
+                    expansion=expansion,
+                    rerank_requested=rerank_requested,
+                    routing_reason_codes=routing_reason_codes,
+                    policy_version=policy_version,
+                )
                 if query_res.search_response.summary.filtered_as_stale_count:
                     raise RuntimeError("rag_v2_stale_index")
 
                 serialized = _serialize_query_result(query_res)
+                if isinstance(routing, dict):
+                    serialized["routing"]["policy_version"] = policy_version
                 response = {
                     "status": "ok",
                     "query_result": serialized,
@@ -393,16 +437,36 @@ def main() -> None:
                 question = str(request.get("question", ""))
                 specs_dict = request.get("specs", [])
                 specs = [_source_spec_from_dict(s) for s in specs_dict]
+                expansion = request.get("expansion")
+                routing = request.get("routing")
+                rerank_requested = False
+                routing_reason_codes = ()
+                policy_version = "adaptive-reranking-v1"
+                if isinstance(routing, dict):
+                    if routing.get("schema_version") != 1:
+                        raise RuntimeError("unsupported_routing_schema_version")
+                    rerank_requested = bool(routing.get("rerank_requested", False))
+                    routing_reason_codes = tuple(str(c) for c in routing.get("reason_codes", ()))
+                    policy_version = str(routing.get("policy_version", "adaptive-reranking-v1"))
 
                 report = pipeline.ingest(specs)
                 if report.failed_count or report.unsupported_count or report.empty_count:
                     raise RuntimeError("rag_v2_ingestion_incomplete")
 
-                query_res = pipeline.query(question, specs)
+                query_res = pipeline.query(
+                    question,
+                    specs,
+                    expansion=expansion,
+                    rerank_requested=rerank_requested,
+                    routing_reason_codes=routing_reason_codes,
+                    policy_version=policy_version,
+                )
                 if query_res.search_response.summary.filtered_as_stale_count:
                     raise RuntimeError("rag_v2_stale_index")
 
                 serialized = _serialize_query_result(query_res)
+                if isinstance(routing, dict):
+                    serialized["routing"]["policy_version"] = policy_version
                 response = {
                     "status": "ok",
                     "query_result": serialized,
@@ -413,6 +477,7 @@ def main() -> None:
                         "indexed_chunk_count": report.indexed_chunk_count,
                     },
                 }
+
 
             elif command == "close":
                 if pipeline is not None:

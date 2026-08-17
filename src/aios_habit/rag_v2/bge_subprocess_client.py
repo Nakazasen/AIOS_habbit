@@ -30,6 +30,36 @@ _PREPARE_TIMEOUT_SECONDS = 90.0
 _QUERY_TIMEOUT_SECONDS = 30.0
 _WORKER_PROTOCOL_VERSION = "1"
 
+ALLOWLISTED_ROUTING_REASON_CODES = {
+    "user_requested_deep",
+    "user_preference_auto",
+    "pre_fast",
+    "pre_deep",
+    "pre_uncertain",
+    "post_sufficient",
+    "post_insufficient",
+    "post_uncertain",
+    "multi_facet",
+    "cross_source_intent",
+    "comparison_intent",
+    "verification_requested",
+    "insufficient_structure_signal",
+    "missing_facets",
+    "missing_obligations",
+    "low_evidence_coverage",
+    "insufficient_source_diversity",
+    "insufficient_candidates",
+    "ranking_ambiguous",
+    "retrieval_report_incomplete",
+    "reranker_backend_unavailable",
+    "reranker_backend_timeout",
+    "reranker_backend_failed",
+    "circuit_breaker_open",
+    "structured_excel_handled",
+    "structured_excel_bypass",
+    "invalid_preference_fallback",
+}
+
 
 def _config_to_dict(config: RagV2DevConfig) -> dict[str, Any]:
     raw = asdict(config)
@@ -331,8 +361,20 @@ class BgeSubprocessWorkerClient:
         specs: Sequence[SourceSpec],
         config: RagV2DevConfig,
         timeout_s: float = _QUERY_TIMEOUT_SECONDS,
+        expansion: Optional[Mapping[str, Any]] = None,
+        rerank_requested: bool = False,
+        routing_reason_codes: Sequence[str] = (),
+        policy_version: str = "adaptive-reranking-v1",
     ) -> dict[str, Any]:
         """Query an already-ready worker; never spawn or load a model here."""
+        for code in routing_reason_codes:
+            if not isinstance(code, str) or code not in ALLOWLISTED_ROUTING_REASON_CODES or len(code) > 48:
+                raise SemanticBackendError("invalid_routing_reason_code")
+        if len(routing_reason_codes) > 8:
+            raise SemanticBackendError("invalid_routing_reason_code_count")
+        if len(policy_version) > 64:
+            raise SemanticBackendError("invalid_policy_version_length")
+
         with self._lock:
             if self._process is None:
                 self._last_failure_reason = "bge_worker_query_not_ready"
@@ -345,11 +387,19 @@ class BgeSubprocessWorkerClient:
                 self._last_failure_reason = "bge_worker_query_configuration_mismatch"
                 raise SemanticBackendError(self._last_failure_reason)
 
-            req = {
+            req: dict[str, Any] = {
                 "command": "query",
                 "question": question,
                 "specs": [_spec_to_dict(s) for s in specs],
+                "routing": {
+                    "schema_version": 1,
+                    "rerank_requested": bool(rerank_requested),
+                    "reason_codes": list(routing_reason_codes),
+                    "policy_version": str(policy_version),
+                },
             }
+            if expansion is not None:
+                req["expansion"] = expansion
             try:
                 res = self._send_request(req, timeout_s=timeout_s, phase="query")
             except Exception as exc:
@@ -373,9 +423,23 @@ class BgeSubprocessWorkerClient:
         specs: Sequence[SourceSpec],
         config: RagV2DevConfig,
         timeout_s: float = _QUERY_TIMEOUT_SECONDS,
+        expansion: Optional[Mapping[str, Any]] = None,
+        rerank_requested: bool = False,
+        routing_reason_codes: Sequence[str] = (),
+        policy_version: str = "adaptive-reranking-v1",
     ) -> dict[str, Any]:
         """Backward-compatible alias for the non-starting interactive query."""
-        return self.query_ready(question, specs, config, timeout_s)
+        return self.query_ready(
+            question,
+            specs,
+            config,
+            timeout_s=timeout_s,
+            expansion=expansion,
+            rerank_requested=rerank_requested,
+            routing_reason_codes=routing_reason_codes,
+            policy_version=policy_version,
+        )
+
 
     def ingest_and_query(
         self,
@@ -383,6 +447,7 @@ class BgeSubprocessWorkerClient:
         specs: Sequence[SourceSpec],
         config: RagV2DevConfig,
         timeout_s: float = 90.0,
+        expansion: Optional[Mapping[str, Any]] = None,
     ) -> dict[str, Any]:
         """Send ingest_and_query request to worker, auto-relaunching if worker died."""
         with self._lock:
@@ -394,6 +459,8 @@ class BgeSubprocessWorkerClient:
                 "question": question,
                 "specs": [_spec_to_dict(s) for s in specs],
             }
+            if expansion is not None:
+                req["expansion"] = expansion
             try:
                 res = self._send_request(req, timeout_s=timeout_s, phase="ingest")
             except Exception as exc:

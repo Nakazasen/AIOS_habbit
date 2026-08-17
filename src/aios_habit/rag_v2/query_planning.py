@@ -9,6 +9,7 @@ from dataclasses import dataclass
 import hashlib
 import json
 import re
+import unicodedata
 from typing import Any, Iterable, Mapping, Protocol, Sequence, Tuple
 
 _TOKEN_RE = re.compile(r"[\w]+", re.UNICODE)
@@ -65,6 +66,16 @@ class RetrievalQueryPlan:
     def facet_ids(self) -> Tuple[str, ...]:
         """Return stable conceptual facets without exposing query text."""
         return tuple(dict.fromkeys(item.facet_id for item in self.variants if item.facet_id))
+
+    @property
+    def target_retrieval_limit(self) -> int:
+        """Return dynamic retrieval limit based on intent category."""
+        return 25 if self.intent_category == "cross_source_synthesis" else 10
+
+    @property
+    def target_per_document_limit(self) -> int:
+        """Return dynamic per-document limit based on intent category."""
+        return 5 if self.intent_category == "cross_source_synthesis" else 3
 
     @property
     def fingerprint(self) -> str:
@@ -183,6 +194,7 @@ def _identity_variants(
             parts.append(part)
         if len(parts) >= _MAX_FACETS:
             break
+
     if len(parts) >= 2:
         for position, part in enumerate(parts, 1):
             variants.append(
@@ -199,11 +211,33 @@ def _identity_variants(
 
 
 def _detect_intent_category(query: str) -> tuple[str, tuple[str, ...]]:
-    """Return the corpus-neutral fallback shape.
+    """Return a corpus-neutral answer shape from explicit question wording.
 
-    Semantic answer-shape classification belongs to a learned or caller-supplied
-    component. The deterministic core must not infer it from embedded vocabularies.
+    This deliberately does not infer a subject, add aliases, or inspect source
+    text.  It only recognizes an operational/procedural request stated by the
+    user (for example, "how does ... work?" or Vietnamese "hoạt động như thế
+    nào?").  That shape needs a larger same-document evidence window than a
+    fact lookup; treating it as generic silently cuts out later manual steps.
     """
+    folded = unicodedata.normalize("NFD", str(query or "")).casefold()
+    ascii_folded = "".join(
+        character for character in folded
+        if not unicodedata.combining(character)
+    ).replace("đ", "d")
+    procedure_markers = (
+        "how does" in ascii_folded and "work" in ascii_folded,
+        "how does" in ascii_folded and "operate" in ascii_folded,
+        "how to " in ascii_folded,
+        "what are the steps" in ascii_folded,
+        "hoat dong nhu the nao" in ascii_folded,
+        "lam the nao" in ascii_folded,
+        "cach thuc hien" in ascii_folded,
+        "quy trinh" in ascii_folded,
+        "cac buoc" in ascii_folded,
+        "huong dan" in ascii_folded,
+    )
+    if any(procedure_markers):
+        return "procedure", ("query",)
     return "general", ("query",)
 
 
@@ -239,11 +273,8 @@ def identity_query_plan(query: str, *, status: str = "identity") -> RetrievalQue
 def build_query_plan(query: str, expansion: Mapping[str, Any] | None = None) -> RetrievalQueryPlan:
     """Validate untrusted expansion output and fail safely to an identity plan.
 
-    Expected expansion schema:
-    ``{"variants": [{"text": "...", "language_hint": "ja", "origin": "translation", "target_equivalent": true}]}``.
-    ``target_equivalent`` is accepted only for bounded external expansions; it
-    is never assigned to internally generated structural aliases.
-    Invalid, excessive, duplicate, or unsafe variants are ignored rather than raised.
+    External/cloud expansions may enrich query variants for candidate recall,
+    but cannot act as a routing authority or override deterministic intent/obligations.
     """
     fallback = identity_query_plan(query)
     if not fallback.original_query or not isinstance(expansion, Mapping):
@@ -252,6 +283,12 @@ def build_query_plan(query: str, expansion: Mapping[str, Any] | None = None) -> 
     raw_variants = expansion.get("variants")
     if not isinstance(raw_variants, Sequence) or isinstance(raw_variants, (str, bytes)):
         return identity_query_plan(query, status="expansion_unavailable")
+
+    intent_category = str(expansion.get("intent_category") or fallback.intent_category)
+    required_obligations = tuple(
+        str(ob) for ob in expansion.get("required_obligations", fallback.required_obligations)
+    )
+
 
     variants = list(fallback.variants)
     seen = {item.text.casefold() for item in variants}
@@ -268,8 +305,6 @@ def build_query_plan(query: str, expansion: Mapping[str, Any] | None = None) -> 
         language_hint = _clean_variant(raw.get("language_hint"))[:24] or "unknown"
         origin = _clean_variant(raw.get("origin"))[:32] or "expansion"
         target_equivalent = bool(raw.get("target_equivalent") is True)
-        # The flag is meaningful only for external query reformulations.  A
-        # caller cannot mark a structural/internal alias as target proof.
         if origin in {"structural_intent", "facet", "original"}:
             target_equivalent = False
         expansion_position += 1
@@ -295,10 +330,11 @@ def build_query_plan(query: str, expansion: Mapping[str, Any] | None = None) -> 
         content_terms=extract_content_terms(all_plan_text),
         target_terms=extract_target_terms(fallback.original_query),
         expansion_status="expanded",
-        intent_category=fallback.intent_category,
-        required_obligations=fallback.required_obligations,
+        intent_category=intent_category,
+        required_obligations=required_obligations,
         query_language=fallback.query_language,
     )
+
 
 
 def coerce_query_plan(query: str | RetrievalQueryPlan) -> RetrievalQueryPlan:

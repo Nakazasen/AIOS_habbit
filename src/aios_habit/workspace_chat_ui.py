@@ -139,13 +139,18 @@ def render_notebook_card(
                 st.error(NOTEBOOK_DELETE_WARNING)
                 confirm_title = st.text_input(
                     NOTEBOOK_DELETE_PROMPT,
+                    placeholder=f"Để trống hoặc nhập: {nb.title}",
                     key=f"delete_confirm_title_active_{nb.id}"
                 )
                 ack = st.checkbox(
                     NOTEBOOK_DELETE_ACK,
                     key=f"delete_confirm_ack_active_{nb.id}"
                 )
-                btn_disabled = not (confirm_title == nb.title and ack)
+                title_ok = (
+                    not confirm_title
+                    or confirm_title.strip().lower() == nb.title.strip().lower()
+                )
+                btn_disabled = not (title_ok and ack)
 
                 confirm_col, cancel_col = st.columns(2)
                 with confirm_col:
@@ -154,7 +159,8 @@ def render_notebook_card(
                         key=f"confirm_delete_nb_{nb.id}",
                         disabled=btn_disabled
                     ):
-                        on_delete_confirm(nb.id, confirm_title, ack)
+                        effective_title = confirm_title.strip() if confirm_title.strip() else nb.title
+                        on_delete_confirm(nb.id, effective_title, ack)
                 with cancel_col:
                     if st.button(
                         "Hủy",
@@ -192,13 +198,18 @@ def render_archived_notebook_card(
                 st.error(NOTEBOOK_DELETE_WARNING)
                 confirm_title = st.text_input(
                     NOTEBOOK_DELETE_PROMPT,
+                    placeholder=f"Để trống hoặc nhập: {nb.title}",
                     key=f"delete_confirm_title_archive_{nb.id}"
                 )
                 ack = st.checkbox(
                     NOTEBOOK_DELETE_ACK,
                     key=f"delete_confirm_ack_archive_{nb.id}"
                 )
-                btn_disabled = not (confirm_title == nb.title and ack)
+                title_ok = (
+                    not confirm_title
+                    or confirm_title.strip().lower() == nb.title.strip().lower()
+                )
+                btn_disabled = not (title_ok and ack)
 
                 confirm_col, cancel_col = st.columns(2)
                 with confirm_col:
@@ -207,7 +218,8 @@ def render_archived_notebook_card(
                         key=f"confirm_delete_nb_archive_{nb.id}",
                         disabled=btn_disabled
                     ):
-                        on_delete_confirm(nb.id, confirm_title, ack)
+                        effective_title = confirm_title.strip() if confirm_title.strip() else nb.title
+                        on_delete_confirm(nb.id, effective_title, ack)
                 with cancel_col:
                     if st.button(
                         "Hủy",
@@ -219,15 +231,21 @@ def render_archived_notebook_card(
                     on_delete_request(nb.id)
         st.write("---")
 
-def render_chat_bubble(msg: ChatMessage):
+def render_chat_bubble(msg: ChatMessage, is_latest: bool = False):
     if msg.role == "user":
         with st.chat_message("user"):
-            st.write(msg.content)
+            st.markdown(msg.content)
     elif msg.role == "assistant":
         with st.chat_message("assistant"):
-            st.write(msg.content)
+            if is_latest:
+                st.markdown(
+                    '<div style="display:inline-flex; align-items:center; gap:6px; background:rgba(14,165,233,0.15); border:1px solid rgba(14,165,233,0.4); color:#38bdf8; font-size:12px; font-weight:600; padding:2px 10px; border-radius:9999px; margin-bottom:10px;">✨ Câu trả lời mới nhất</div>',
+                    unsafe_allow_html=True,
+                )
+            st.markdown(msg.content)
     else:
         st.info(msg.content)
+
 
 def render_right_result_panel(
     answer_text: str,
@@ -240,10 +258,20 @@ def render_right_result_panel(
     labels = get_vietnamese_labels()
     st.subheader(f"💡 {labels['main_answer']}")
     if proven_sources:
-        for src in proven_sources:
-            st.write(f"- {src}")
+        if len(proven_sources) <= 6:
+            st.markdown("\n".join(f"- {src}" for src in proven_sources))
+        else:
+            items_html = "".join(f"<li style='margin-bottom:4px;'>{src}</li>" for src in proven_sources)
+            st.markdown(
+                f"<div style='max-height: 280px; overflow-y: auto; padding: 8px 12px; background: rgba(255,255,255,0.03); border-radius: 8px; border: 1px solid rgba(255,255,255,0.08); font-size: 13.5px; line-height: 1.5;'>"
+                f"<ul style='margin: 0; padding-left: 1.2rem;'>"
+                f"{items_html}"
+                f"</ul></div>",
+                unsafe_allow_html=True,
+            )
     else:
         st.write("Chưa có nguồn nào đang bật cho cuộc trò chuyện này.")
+
 
     with st.expander("⚙️ Tùy chọn", expanded=False):
         st.subheader(f"⚠️ {labels['to_check']}")
@@ -304,6 +332,20 @@ def _format_prep_status(prep_status: str, extraction_status: str = "") -> str:
         return "Chuẩn bị thất bại"
     return ""
 
+def get_source_icon(title: str, source_type: str = "") -> str:
+    title_lower = (title or "").lower()
+    type_lower = (source_type or "").lower()
+    if any(ext in title_lower for ext in [".xlsx", ".xls", ".csv"]) or "excel" in type_lower or "csv" in type_lower:
+        return "📊"
+    if ".pdf" in title_lower or "pdf" in type_lower:
+        return "📑"
+    if any(ext in title_lower for ext in [".docx", ".doc", ".pptx"]) or "doc" in type_lower:
+        return "📘"
+    if any(ext in title_lower for ext in [".txt", ".md", ".json", ".yaml", ".py"]) or "text" in type_lower:
+        return "📝"
+    return "📄"
+
+
 def render_source_library(
     notebook_sources: List[Any],
     temp_sources: List[Any],
@@ -319,7 +361,12 @@ def render_source_library(
 ):
     st.subheader("📚 Thư viện nguồn")
 
+    nb_count = len(notebook_sources)
+    tmp_count = len(temp_sources)
+    total_sources = nb_count + tmp_count
     enabled_count = sum(1 for val in selections_map.values() if val)
+
+    st.caption(f"📁 **Trong sổ:** {nb_count} tài liệu · ⏱️ **Tạm thời:** {tmp_count}")
     st.write(f"Đang bật {enabled_count} nguồn cho câu hỏi.")
 
     all_items = []
@@ -340,6 +387,16 @@ def render_source_library(
         st.write("Chưa có nguồn tài liệu.")
         return
 
+    col_all, col_none = st.columns(2)
+    with col_all:
+        if st.button("🔘 Bật tất cả", key=f"wsc_select_all_{conversation_id}", use_container_width=True):
+            for item in all_items:
+                on_toggle_source(item["scope"], item["source"].id, True)
+    with col_none:
+        if st.button("⚪ Tắt tất cả", key=f"wsc_deselect_all_{conversation_id}", use_container_width=True):
+            for item in all_items:
+                on_toggle_source(item["scope"], item["source"].id, False)
+
     prep_map = preparation_status_map or {}
 
     for item in all_items:
@@ -347,7 +404,8 @@ def render_source_library(
         scope = item["scope"]
         is_enabled = item["enabled"]
 
-        st.markdown(f"📄 **{s.title}**")
+        icon = get_source_icon(getattr(s, "title", ""), getattr(s, "source_type", ""))
+        st.markdown(f"{icon} **{s.title}**")
 
         scope_str = "Trong sổ" if scope == "notebook" else "Tạm trong cuộc trò chuyện"
         status_str = "Đã bật" if is_enabled else "Đã tắt"
@@ -360,11 +418,9 @@ def render_source_library(
         if prep_label:
             status_line += f" | {prep_label}"
         st.caption(status_line)
+
         if prep_st == "failed" and on_retry_preparation is not None:
-            if st.button(
-                "Thử chuẩn bị lại",
-                key=f"wsc_retry_prepare_{scope}_{conversation_id}_{s.id}",
-            ):
+            if st.button("Thử chuẩn bị lại", key=f"wsc_retry_prepare_{scope}_{conversation_id}_{s.id}"):
                 on_retry_preparation(scope, s.id)
 
         widget_key = f"wsc_toggle_{scope}_{conversation_id}_{s.id}"
@@ -375,11 +431,11 @@ def render_source_library(
             on_change=lambda sc=scope, sid=s.id, k=widget_key, default_val=is_enabled: on_toggle_source(sc, sid, st.session_state.get(k, default_val))
         )
 
-        privacy_label = getattr(s, "privacy_label", "")
-        if not privacy_label_is_sendable(privacy_label):
-            st.warning(PRIVACY_BLOCKED_STATUS)
-
         with st.expander("⚙️ Tùy chọn nguồn", expanded=False):
+            privacy_label = getattr(s, "privacy_label", "")
+            if not privacy_label_is_sendable(privacy_label):
+                st.warning(PRIVACY_BLOCKED_STATUS)
+
             st.markdown("**Nội dung đọc được:**")
             if getattr(s, "content_preview", None):
                 st.write(s.content_preview)
@@ -418,7 +474,7 @@ def render_source_library(
                     st.session_state[confirm_key] = True
                     __safe_rerun()
 
-        st.write("---")
+        st.markdown("<hr style='margin: 4px 0; border: 0.5px solid rgba(255,255,255,0.08);'/>", unsafe_allow_html=True)
 
 
 # --- Phase 2H: New render helpers ---
@@ -426,7 +482,10 @@ def render_source_library(
 def render_ai_source_context_summary(enabled_count: int):
     """Compact AI source context summary shown near the question area."""
     if enabled_count > 0:
-        st.info(f"AI sẽ dùng {enabled_count} nguồn đang bật.")
+        st.info(
+            f"Có {enabled_count} nguồn đang bật. Khi bạn hỏi, hệ thống chỉ chuẩn bị "
+            "và tìm trong các tài liệu liên quan đến câu hỏi."
+        )
     else:
         st.warning("Chưa có nguồn nào đang bật.")
 

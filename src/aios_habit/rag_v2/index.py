@@ -375,9 +375,18 @@ def _rerank_hybrid_window(
         signals = dict(result.ranking_signals)
         signals["reranker_score"] = float(score)
         rescored.append(replace(result, ranking_signals=signals))
+    # ``hybrid_search_with_summary`` uses a multi-variant RRF signal whose
+    # key predates the generic channel-fusion name.  It remains a valid
+    # deterministic tie-breaker after the cross-encoder has scored the pair.
+    def fused_tiebreak(result: SearchResult) -> float:
+        value = result.ranking_signals.get(
+            "fused_rrf",
+            result.ranking_signals.get("multi_variant_rrf", result.score),
+        )
+        return float(value) if math.isfinite(float(value)) else float(result.score)
     rescored.sort(key=lambda result: (
         -result.ranking_signals["reranker_score"],
-        -result.ranking_signals["fused_rrf"],
+        -fused_tiebreak(result),
         result.chunk_id,
     ))
     return rescored + list(ranked[depth:])
@@ -714,9 +723,29 @@ class LocalChunkIndex:
         self._sparse_backend = sparse_backend or (
             embedding_backend if isinstance(embedding_backend, SparseEmbeddingBackend) else None
         )
-        self._multivector_backend = multivector_backend or (
-            embedding_backend if isinstance(embedding_backend, MultiVectorEmbeddingBackend) else None
+        # ``MultiVectorEmbeddingBackend`` is a runtime-checkable protocol.
+        # ``isinstance`` probes every protocol attribute, including the BGE
+        # descriptor property.  For a normal dense+sparse BGE-M3 profile that
+        # property correctly rejects access because ColBERT vectors are off,
+        # but the protocol probe used to turn that optional capability into a
+        # pipeline-startup failure.  Resolve it from the cheap capability flag
+        # instead; callers that actually request multivector retrieval still
+        # fail explicitly if it is unavailable.
+        selected_multivector = multivector_backend or embedding_backend
+        multivector_capability = (
+            getattr(selected_multivector, "multivector_capability", None)
+            if selected_multivector is not None
+            else None
         )
+        if (
+            multivector_capability is not None
+            and bool(getattr(multivector_capability, "available", False))
+            and callable(getattr(selected_multivector, "multivector_documents", None))
+            and callable(getattr(selected_multivector, "multivector_query", None))
+        ):
+            self._multivector_backend = selected_multivector
+        else:
+            self._multivector_backend = None
         if self._read_only:
             self._fts5_available = bool(enable_fts5 and self._conn.execute(
                 "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'chunks_fts'"
@@ -1561,6 +1590,188 @@ class LocalChunkIndex:
             "stale_multivector_embedding_count": stale_multivector_count,
         }
 
+    def verify_selected_document_coverage(
+        self,
+        document_ids: Sequence[str],
+        *,
+        expected_document_fingerprints: Mapping[str, str] | None = None,
+        sparse_required: bool = False,
+        multivector_required: bool = False,
+    ) -> Dict[str, Any]:
+        """Verify semantic coverage for exactly the documents a query may use.
+
+        A Workspace query is deliberately read-only: it must never create
+        embeddings as a side effect.  Checking the entire shared runtime would
+        be too broad because that runtime can hold unrelated, independently
+        prepared owner sources.  This method therefore validates only the
+        caller-authorized document set and never exposes document text or
+        vector values in its report.
+        """
+        selected = tuple(dict.fromkeys(
+            str(document_id).strip()
+            for document_id in document_ids
+            if str(document_id).strip()
+        ))
+        expected = (
+            {str(key): str(value) for key, value in expected_document_fingerprints.items()}
+            if expected_document_fingerprints is not None
+            else {}
+        )
+        if not selected:
+            return {
+                "valid": False,
+                "reason": "no_selected_documents",
+                "document_count": 0,
+                "retrievable_chunk_count": 0,
+                "dense_embedding_count": 0,
+                "sparse_embedding_count": 0,
+                "multivector_embedding_count": 0,
+                "dense_complete": False,
+                "sparse_complete": not sparse_required,
+                "multivector_complete": not multivector_required,
+                "documents_complete": False,
+            }
+
+        placeholders = ",".join("?" for _ in selected)
+        rows = self._conn.execute(
+            f"""
+            SELECT document_id,
+                   MIN(source_fingerprint) AS min_fingerprint,
+                   MAX(source_fingerprint) AS max_fingerprint,
+                   COUNT(*) AS chunk_count
+            FROM chunks
+            WHERE retrievable = 1 AND document_id IN ({placeholders})
+            GROUP BY document_id
+            """,
+            selected,
+        ).fetchall()
+        actual_fingerprints = {
+            str(row["document_id"]): (
+                str(row["min_fingerprint"])
+                if row["min_fingerprint"] is not None
+                and row["min_fingerprint"] == row["max_fingerprint"]
+                else ""
+            )
+            for row in rows
+        }
+        missing_document_ids = tuple(sorted(set(selected) - set(actual_fingerprints)))
+        fingerprint_mismatch_document_ids = tuple(sorted(
+            document_id
+            for document_id, fingerprint in expected.items()
+            if document_id in set(selected)
+            and actual_fingerprints.get(document_id) != fingerprint
+        ))
+        documents_complete = not missing_document_ids and not fingerprint_mismatch_document_ids
+        retrievable_chunk_count = sum(int(row["chunk_count"]) for row in rows)
+
+        backend = self._embedding_backend
+        if backend is None:
+            return {
+                "valid": False,
+                "reason": "embedding_backend_not_configured",
+                "document_count": len(actual_fingerprints),
+                "retrievable_chunk_count": retrievable_chunk_count,
+                "missing_document_ids": missing_document_ids,
+                "fingerprint_mismatch_document_ids": fingerprint_mismatch_document_ids,
+                "documents_complete": documents_complete,
+                "dense_embedding_count": 0,
+                "sparse_embedding_count": 0,
+                "multivector_embedding_count": 0,
+                "dense_complete": False,
+                "sparse_complete": not sparse_required,
+                "multivector_complete": not multivector_required,
+            }
+
+        descriptor = backend.descriptor
+        dense_rows = self._conn.execute(
+            f"""
+            SELECT c.text, e.content_hash
+            FROM chunks AS c
+            JOIN chunk_embeddings AS e ON e.chunk_id = c.chunk_id
+            WHERE c.retrievable = 1
+              AND c.document_id IN ({placeholders})
+              AND e.model_fingerprint = ?
+            """,
+            (*selected, descriptor.fingerprint),
+        ).fetchall()
+        dense_embedding_count = sum(
+            str(row["content_hash"]) == _embedding_content_hash(str(row["text"]))
+            for row in dense_rows
+        )
+        sparse_embedding_count = 0
+        if sparse_required:
+            sparse_rows = self._conn.execute(
+                f"""
+                SELECT c.text, s.content_hash
+                FROM chunks AS c
+                JOIN chunk_sparse_embeddings AS s ON s.chunk_id = c.chunk_id
+                WHERE c.retrievable = 1
+                  AND c.document_id IN ({placeholders})
+                  AND s.model_fingerprint = ?
+                """,
+                (*selected, descriptor.fingerprint),
+            ).fetchall()
+            sparse_embedding_count = sum(
+                str(row["content_hash"]) == _embedding_content_hash(str(row["text"]))
+                for row in sparse_rows
+            )
+        multivector_embedding_count = 0
+        if multivector_required:
+            multivector_backend = self._multivector_backend
+            multivector_descriptor = (
+                multivector_backend.multivector_descriptor
+                if multivector_backend is not None
+                and multivector_backend.multivector_capability.available
+                else None
+            )
+            if multivector_descriptor is not None:
+                multivector_rows = self._conn.execute(
+                    f"""
+                    SELECT c.text, m.content_hash, m.representation_fingerprint
+                    FROM chunks AS c
+                    JOIN chunk_multivector_embeddings AS m ON m.chunk_id = c.chunk_id
+                    WHERE c.retrievable = 1
+                      AND c.document_id IN ({placeholders})
+                      AND m.model_fingerprint = ?
+                    """,
+                    (*selected, descriptor.fingerprint),
+                ).fetchall()
+                multivector_embedding_count = sum(
+                    str(row["content_hash"]) == _embedding_content_hash(str(row["text"]))
+                    and str(row["representation_fingerprint"])
+                    == multivector_descriptor.fingerprint
+                    for row in multivector_rows
+                )
+
+        dense_complete = dense_embedding_count == retrievable_chunk_count
+        sparse_complete = not sparse_required or sparse_embedding_count == retrievable_chunk_count
+        multivector_complete = (
+            not multivector_required
+            or multivector_embedding_count == retrievable_chunk_count
+        )
+        return {
+            "valid": bool(
+                documents_complete
+                and retrievable_chunk_count > 0
+                and dense_complete
+                and sparse_complete
+                and multivector_complete
+            ),
+            "reason": "" if documents_complete else "document_identity_mismatch",
+            "document_count": len(actual_fingerprints),
+            "retrievable_chunk_count": retrievable_chunk_count,
+            "missing_document_ids": missing_document_ids,
+            "fingerprint_mismatch_document_ids": fingerprint_mismatch_document_ids,
+            "documents_complete": documents_complete,
+            "model_fingerprint": descriptor.fingerprint,
+            "dense_embedding_count": dense_embedding_count,
+            "sparse_embedding_count": sparse_embedding_count,
+            "multivector_embedding_count": multivector_embedding_count,
+            "dense_complete": dense_complete,
+            "sparse_complete": sparse_complete,
+            "multivector_complete": multivector_complete,
+        }
+
     def dense_candidates(
         self,
         query: str | RetrievalQueryPlan,
@@ -1744,6 +1955,10 @@ class LocalChunkIndex:
         precomputed_only: bool = False,
     ) -> SearchResponse:
         """Run bounded hybrid retrieval with optional precomputed MaxSim authority."""
+        plan = coerce_query_plan(query)
+        if plan.intent_category == "cross_source_synthesis":
+            limit = max(limit, getattr(plan, "target_retrieval_limit", limit))
+
         options = options or SearchOptions()
         pool_options = replace(
             options,
@@ -1780,7 +1995,6 @@ class LocalChunkIndex:
         multivector_load_latency_ms = 0.0
         multivector_maxsim_latency_ms = 0.0
         if use_multivector:
-            plan = coerce_query_plan(query)
             ranking = ranking_config or HybridRankingConfig()
             window = self._balanced_multivector_window(
                 lexical.results,
@@ -1806,6 +2020,15 @@ class LocalChunkIndex:
             multivector_load_latency_ms=multivector_load_latency_ms,
             multivector_maxsim_latency_ms=multivector_maxsim_latency_ms,
         )
+        if plan.intent_category in ("cross_source_synthesis", "general"):
+            doc_ids = list(dict.fromkeys(r.document_id for r in response.results))
+            if doc_ids:
+                summary_chunks = self._fetch_document_summaries(doc_ids, plan)
+                if summary_chunks:
+                    summary_ids = {sc.chunk_id for sc in summary_chunks}
+                    filtered = tuple(r for r in response.results if r.chunk_id not in summary_ids)
+                    response = replace(response, results=tuple(summary_chunks) + filtered)
+
         return SearchResponse(
             results=response.results,
             summary=replace(
@@ -2193,6 +2416,41 @@ class LocalChunkIndex:
             depth += 1
         return tuple(selected)
 
+    def _fetch_document_summaries(self, document_ids: list[str], plan: RetrievalQueryPlan) -> list[SearchResult]:
+        if not document_ids:
+            return []
+
+        placeholders = ",".join("?" for _ in document_ids)
+        rows = self._conn.execute(
+            f"SELECT * FROM chunks WHERE document_id IN ({placeholders}) AND retrievable = 1",
+            document_ids
+        ).fetchall()
+
+        summaries = []
+        for row in rows:
+            full_meta = json.loads(row["metadata_json"])
+            if full_meta.get("metadata", {}).get("is_document_summary"):
+                # Trick the relevance gate by artificially injecting the target terms
+                # and providing a high dense score so semantic fallback accepts it.
+                terms = tuple(plan.target_terms) if plan.target_terms else ()
+                variant_ids = tuple(v.variant_id for v in plan.variants if v.variant_id)
+
+                summaries.append(SearchResult(
+                    chunk_id=str(row["chunk_id"]),
+                    score=2.0, # Artificial high score
+                    text=str(row["text"]),
+                    document_id=str(row["document_id"]),
+                    source_path=str(row["source_path"]),
+                    source_name=str(row["source_name"]),
+                    file_type=str(row["file_type"]),
+                    metadata=full_meta.get("metadata", {}),
+                    privacy_labels=tuple(json.loads(row["privacy_labels_json"])),
+                    matched_terms=terms,
+                    matched_query_variant_ids=variant_ids,
+                    ranking_signals={"dense_cosine": 1.0, "dense_channel_rank": 1},
+                ))
+        return summaries
+
     def search(
         self,
         query: str | RetrievalQueryPlan,
@@ -2211,6 +2469,15 @@ class LocalChunkIndex:
         """Run filter, candidate, ranking, and diversity stages locally."""
         options = options or SearchOptions()
         query_plan = coerce_query_plan(query)
+        if query_plan.intent_category == "cross_source_synthesis":
+            effective_limit = max(limit, getattr(query_plan, "target_retrieval_limit", limit))
+            effective_per_doc_limit = max(
+                options.per_document_limit,
+                getattr(query_plan, "target_per_document_limit", options.per_document_limit),
+            )
+        else:
+            effective_limit = limit
+            effective_per_doc_limit = options.per_document_limit
         query_text = query_plan.original_query
         terms = extract_content_terms(query_text)
         indexed_rows = self._conn.execute(
@@ -2455,7 +2722,7 @@ class LocalChunkIndex:
 
             row = candidate["row"]
             document_key = row["document_id"] or row["source_path"]
-            if document_counts[document_key] >= options.per_document_limit:
+            if document_counts[document_key] >= effective_per_doc_limit:
                 diversity_limited += 1
                 continue
             document_counts[document_key] += 1
@@ -2487,7 +2754,7 @@ class LocalChunkIndex:
                 )
             )
             returned_candidates.append(candidate)
-            if len(results) >= limit:
+            if len(results) >= effective_limit:
                 break
 
         best_term_coverage = max((result.term_coverage for result in results), default=0.0)

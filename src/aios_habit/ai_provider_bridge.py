@@ -294,13 +294,26 @@ def answer_with_provider(
             "Đã chặn gửi dữ liệu chỉ đọc cục bộ tới endpoint không cục bộ.",
             "blocked_local_only_cloud",
         )
-    if config.provider_type == "antigravity_if_available" and not config.endpoint_url:
-        return _fallback(
-            deterministic_answer,
-            config,
-            "Chưa phát hiện API/MCP runtime của Antigravity.",
-            "antigravity_runtime_unavailable",
+    if config.provider_type in ("antigravity_if_available", "antigravity_ide_brain"):
+        from aios_habit.antigravity_bridge import (
+            DEFAULT_ANTIGRAVITY_ENDPOINT,
+            is_antigravity_bridge_available,
         )
+        if not config.endpoint_url:
+            config.endpoint_url = DEFAULT_ANTIGRAVITY_ENDPOINT
+        if not config.model_name:
+            config.model_name = "antigravity-brain-pro"
+        health_url = (
+            config.endpoint_url.replace("/v1/chat/completions", "/health")
+            .replace("/chat/completions", "/health")
+        )
+        if not is_antigravity_bridge_available(health_url=health_url):
+            return _fallback(
+                deterministic_answer,
+                config,
+                "Chưa phát hiện API/Sidecar runtime của Antigravity IDE.",
+                "antigravity_runtime_unavailable",
+            )
     if not config.endpoint_url or not config.model_name:
         return _fallback(
             deterministic_answer,

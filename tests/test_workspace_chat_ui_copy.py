@@ -355,3 +355,14 @@ def test_workspace_chat_ui_copy_notebooklm_governance_harden():
         for val in user_facing_strings:
             # We allow words like "gate" if they are in technical variables, but not in user-facing literals.
             assert term not in val, f"Forbidden term '{term}' leaked in user-facing UI text: '{val}'"
+
+
+def test_adaptive_search_preference_copy_in_app():
+    app_source = Path("src/aios_habit/workspace_chat_app.py").read_text(encoding="utf-8")
+    assert "Tự động" in app_source
+    assert "Tìm kỹ hơn" in app_source
+    assert "Mức độ tìm kiếm" in app_source
+
+    forbidden_technical = ["bge_m3_hybrid_rerank", "cross_encoder", "bge_reranker_model_path"]
+    for term in forbidden_technical:
+        assert f'"{term}"' not in app_source

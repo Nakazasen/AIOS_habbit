@@ -365,7 +365,8 @@ def test_pipeline_runtime_reranker_failure_retries_hybrid_and_reports_degradatio
     assert result.search_response.summary.candidate_backend == "hybrid_rrf"
     assert state["retrieval"]["effective_profile"] == "hybrid"
     assert state["retrieval"]["degraded"] is True
-    assert state["retrieval"]["degraded_reason"] == "synthetic reranker inference failure"
+    assert state["retrieval"]["degraded_reason"] == "reranker_backend_failed"
+
 
 
 def test_index_build_compatibility_excludes_query_time_and_reranker_tuning(tmp_path):
@@ -482,3 +483,301 @@ def test_pipeline_resumes_partial_semantic_index_without_reembedding_completed_s
     assert verification["document_count"] == 2
     assert verification["dense_embedding_count"] == 2
     assert verification["sparse_embedding_count"] == 2
+
+
+def test_pipeline_initialization_with_optional_reranker_preserves_compatibility_hash(tmp_path):
+    base_config = RagV2DevConfig(
+        runtime_root=tmp_path / "runtime",
+        retrieval_profile="bge_m3_hybrid",
+        bge_m3_model_path=tmp_path / "bge_m3",
+        bge_m3_model_revision="5617a9f61b028005a4858fdac845db406aefb181",
+        bge_m3_model_checksum="sha256:f8faedab99c4c901e5c2f311ea3f32786b3395b5cbb0c10a60c2b83970d64405",
+    )
+    with_reranker_config = RagV2DevConfig(
+        runtime_root=tmp_path / "runtime",
+        retrieval_profile="bge_m3_hybrid",
+        bge_m3_model_path=tmp_path / "bge_m3",
+        bge_m3_model_revision="5617a9f61b028005a4858fdac845db406aefb181",
+        bge_m3_model_checksum="sha256:f8faedab99c4c901e5c2f311ea3f32786b3395b5cbb0c10a60c2b83970d64405",
+        bge_reranker_model_path=tmp_path / "reranker",
+        bge_reranker_model_revision="953dc6f6f85a1b2dbfca4c34a2796e7dde08d41e",
+        bge_reranker_model_checksum="sha256:66ee82666f78ee4c16efa73de43586a00b1338bf9d96cb5cf891b7b705c873c7",
+    )
+    assert (
+        base_config.index_build_compatibility()["compatibility_hash"]
+        == with_reranker_config.index_build_compatibility()["compatibility_hash"]
+    )
+
+
+def test_pipeline_per_query_rerank_selection_in_hybrid_pipeline(tmp_path):
+    source_path = tmp_path / "data.txt"
+    source_path.write_text("Chính sách nghỉ phép năm và quyền lợi nhân sự.", encoding="utf-8")
+    source = SourceSpec(source_path)
+    config = RagV2DevConfig(runtime_root=tmp_path / "runtime", retrieval_profile="hybrid")
+
+    emb_backend = DeterministicEmbeddingBackend(dimension=8)
+    rerank_backend = DeterministicRerankerBackend()
+
+    with RagV2DevPipeline(
+        config,
+        embedding_backend=emb_backend,
+        reranker_backend=rerank_backend,
+    ) as pipeline:
+        pipeline.ingest([source])
+
+        # Query 1: Fast (rerank_requested=False)
+        fast_res = pipeline.query("nghỉ phép", [source], rerank_requested=False)
+        assert fast_res.reranker_requested is False
+        assert fast_res.reranker_applied is False
+        assert fast_res.effective_path == "hybrid"
+        assert fast_res.degraded is False
+
+        # Query 2: Deep (rerank_requested=True)
+        deep_res = pipeline.query("nghỉ phép", [source], rerank_requested=True)
+        assert deep_res.reranker_requested is True
+        assert deep_res.reranker_applied is True
+        assert deep_res.effective_path == "hybrid_rerank"
+        assert deep_res.degraded is False
+
+
+def test_pipeline_reranker_not_called_when_rerank_requested_false(tmp_path):
+    class SpyReranker(DeterministicRerankerBackend):
+        def __init__(self):
+            super().__init__()
+            self.calls = 0
+
+        def score_pairs(self, pairs):
+            self.calls += 1
+            return super().score_pairs(pairs)
+
+    source_path = tmp_path / "guide.txt"
+    source_path.write_text("Hướng dẫn vận hành hệ thống RAG.", encoding="utf-8")
+    source = SourceSpec(source_path)
+    config = RagV2DevConfig(runtime_root=tmp_path / "runtime", retrieval_profile="hybrid")
+
+    emb = DeterministicEmbeddingBackend(dimension=8)
+    spy_reranker = SpyReranker()
+
+    with RagV2DevPipeline(
+        config,
+        embedding_backend=emb,
+        reranker_backend=spy_reranker,
+    ) as pipeline:
+        pipeline.ingest([source])
+        res = pipeline.query("vận hành", [source], rerank_requested=False)
+        assert spy_reranker.calls == 0
+        assert res.reranker_applied is False
+        assert res.effective_path == "hybrid"
+
+        deep_res = pipeline.query("vận hành", [source], rerank_requested=True)
+        assert spy_reranker.calls == 1
+        assert deep_res.reranker_applied is True
+        assert deep_res.effective_path == "hybrid_rerank"
+
+
+def test_deep_reranks_a_wider_window_than_the_final_evidence_pack(tmp_path):
+    class RecordingReranker(DeterministicRerankerBackend):
+        def __init__(self):
+            super().__init__()
+            self.pair_counts = []
+
+        def score_pairs(self, pairs):
+            self.pair_counts.append(len(pairs))
+            return super().score_pairs(pairs)
+
+    source_path = tmp_path / "manual.txt"
+    source_path.write_text(
+        "\n".join(
+            f"Manual Matecon ACR CTU procedure step {index}: verify the AGV and press START."
+            for index in range(1, 25)
+        ),
+        encoding="utf-8",
+    )
+    source = SourceSpec(source_path, document_id="matecon-manual")
+    config = RagV2DevConfig(
+        runtime_root=tmp_path / "runtime",
+        retrieval_profile="hybrid",
+        max_chunk_chars=90,
+        retrieval_limit=3,
+        candidate_limit=20,
+        dense_candidate_limit=20,
+        rerank_limit=12,
+    )
+    reranker = RecordingReranker()
+
+    with RagV2DevPipeline(
+        config,
+        embedding_backend=DeterministicEmbeddingBackend(dimension=8),
+        reranker_backend=reranker,
+    ) as pipeline:
+        pipeline.ingest([source])
+        result = pipeline.query(
+            "How does Manual Matecon ACR CTU procedure work?",
+            [source],
+            rerank_requested=True,
+        )
+
+    assert result.reranker_applied is True
+    assert len(result.evidence_pack.items) == 3
+    assert reranker.pair_counts == [12]
+
+
+def test_pipeline_reranker_timeout_degrades_to_hybrid(tmp_path):
+    class TimeoutReranker(DeterministicRerankerBackend):
+        def score_pairs(self, pairs):
+            raise TimeoutError("reranker request timed out after 5000ms")
+
+    source_path = tmp_path / "guide.txt"
+    source_path.write_text("Hướng dẫn vận hành hệ thống RAG an toàn.", encoding="utf-8")
+    source = SourceSpec(source_path)
+    config = RagV2DevConfig(runtime_root=tmp_path / "runtime", retrieval_profile="hybrid")
+
+    emb = DeterministicEmbeddingBackend(dimension=8)
+    failing_reranker = TimeoutReranker()
+
+    with RagV2DevPipeline(
+        config,
+        embedding_backend=emb,
+        reranker_backend=failing_reranker,
+    ) as pipeline:
+        pipeline.ingest([source])
+        res = pipeline.query("vận hành", [source], rerank_requested=True)
+
+        assert res.reranker_requested is True
+        assert res.reranker_applied is False
+        assert res.degraded is True
+        assert res.degraded_reason == "reranker_backend_timeout"
+        assert res.effective_path == "hybrid"
+        assert len(res.evidence_pack.items) > 0
+
+
+def test_pipeline_reranker_circuit_breaker(tmp_path):
+    class FailingReranker(DeterministicRerankerBackend):
+        def __init__(self):
+            super().__init__()
+            self.calls = 0
+
+        def score_pairs(self, pairs):
+            self.calls += 1
+            raise RuntimeError("CUDA out of memory / load shed")
+
+    source_path = tmp_path / "guide.txt"
+    source_path.write_text("Hướng dẫn vận hành hệ thống RAG an toàn.", encoding="utf-8")
+    source = SourceSpec(source_path)
+    config = RagV2DevConfig(runtime_root=tmp_path / "runtime", retrieval_profile="hybrid")
+
+    emb = DeterministicEmbeddingBackend(dimension=8)
+    failing_reranker = FailingReranker()
+
+    with RagV2DevPipeline(
+        config,
+        embedding_backend=emb,
+        reranker_backend=failing_reranker,
+    ) as pipeline:
+        pipeline.ingest([source])
+
+        # 3 failures trip circuit breaker
+        for _ in range(3):
+            res = pipeline.query("vận hành", [source], rerank_requested=True)
+            assert res.degraded is True
+            assert res.degraded_reason == "reranker_oom"
+        assert failing_reranker.calls == 3
+
+        # 4th query: circuit breaker is OPEN, backend is NOT called
+        res4 = pipeline.query("vận hành", [source], rerank_requested=True)
+        assert failing_reranker.calls == 3  # Not incremented!
+        assert res4.degraded is True
+        assert res4.degraded_reason == "circuit_breaker_open"
+        assert res4.effective_path == "hybrid"
+
+
+def test_production_profile_strict_semantic_fallback_when_reranker_fails(tmp_path):
+    class ExplodingReranker(DeterministicRerankerBackend):
+        def score_pairs(self, pairs):
+            raise RuntimeError("Secret leaked path: /var/secrets/company_credentials.key crashed")
+
+    source_path = tmp_path / "policy.txt"
+    source_path.write_text("Nội dung chính sách bảo mật thông tin nội bộ.", encoding="utf-8")
+    source = SourceSpec(source_path)
+    config = RagV2DevConfig(
+        runtime_root=tmp_path / "runtime",
+        retrieval_profile="bge_m3_hybrid",
+        strict_semantic=True,
+    )
+
+    emb = DeterministicEmbeddingBackend(dimension=8)
+    exploding_reranker = ExplodingReranker()
+
+    with RagV2DevPipeline(
+        config,
+        embedding_backend=emb,
+        reranker_backend=exploding_reranker,
+    ) as pipeline:
+        pipeline.ingest([source])
+        # Under strict_semantic=True, a reranker failure MUST NOT crash the request;
+        # it must safely fall back to base Hybrid retrieval with allowlisted degraded reason.
+        res = pipeline.query("chính sách", [source], rerank_requested=True)
+
+        assert res.reranker_requested is True
+        assert res.reranker_applied is False
+        assert res.degraded is True
+        assert res.degraded_reason == "reranker_backend_failed"
+        assert res.effective_path == "hybrid"
+        assert len(res.evidence_pack.items) > 0
+        # Privacy guarantee: no secret paths in degraded_reason
+        assert "/var/secrets" not in res.degraded_reason
+        assert "company_credentials" not in res.degraded_reason
+
+
+def test_strict_read_only_hybrid_rejects_missing_selected_semantic_vectors(tmp_path):
+    source_path = tmp_path / "manual.txt"
+    source_path.write_text("Manual Matecon uses ctrlMode one before startup.", encoding="utf-8")
+    source = SourceSpec(source_path, document_id="matecon-manual")
+    embedding = DeterministicEmbeddingBackend(dimension=8)
+    runtime_root = tmp_path / "runtime"
+    writable = RagV2DevConfig(
+        runtime_root=runtime_root,
+        retrieval_profile="bge_m3_hybrid",
+        strict_semantic=True,
+    )
+
+    with RagV2DevPipeline(writable, embedding_backend=embedding) as pipeline:
+        pipeline.ingest([source])
+        pipeline.index._conn.execute("DELETE FROM chunk_embeddings")
+        pipeline.index._conn.commit()
+
+    read_only = RagV2DevConfig(
+        runtime_root=runtime_root,
+        retrieval_profile="bge_m3_hybrid",
+        strict_semantic=True,
+        index_read_only=True,
+        ensure_embeddings_on_open=False,
+    )
+    with RagV2DevPipeline(read_only, embedding_backend=embedding) as pipeline:
+        with pytest.raises(SemanticBackendUnavailable, match="semantic_index_coverage_incomplete"):
+            pipeline.query("How does Manual Matecon work?", [source])
+
+
+def test_single_manual_procedure_keeps_bounded_full_evidence_window(tmp_path):
+    source_path = tmp_path / "manual.txt"
+    source_path.write_text(
+        "\n".join(
+            f"Manual Matecon mode works through documented step {index}: verify safety and continue."
+            for index in range(1, 13)
+        ),
+        encoding="utf-8",
+    )
+    source = SourceSpec(source_path, document_id="matecon-manual")
+    config = RagV2DevConfig(
+        runtime_root=tmp_path / "runtime",
+        retrieval_profile="hybrid",
+        max_chunk_chars=90,
+        retrieval_limit=10,
+    )
+
+    with RagV2DevPipeline(config, embedding_backend=DeterministicEmbeddingBackend(dimension=8)) as pipeline:
+        pipeline.ingest([source])
+        result = pipeline.query("How does Manual Matecon mode work?", [source])
+
+    assert result.query_plan.intent_category == "procedure"
+    assert len(result.evidence_pack.items) == 10

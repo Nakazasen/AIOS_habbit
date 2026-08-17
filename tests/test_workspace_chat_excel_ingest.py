@@ -157,6 +157,10 @@ def test_xls_unsupported_does_not_call_openpyxl(monkeypatch):
         raise AssertionError("openpyxl should not be called for .xls")
 
     monkeypatch.setattr(openpyxl, "load_workbook", fail_load)
+
+    from types import SimpleNamespace
+    monkeypatch.setattr("aios_habit.excel_extractors.extract_excel", lambda *args, **kwargs: SimpleNamespace(dependency_missing=True, error=False))
+
     result = extract_xlsx_text(b"legacy", "old.xls")
 
     assert result.ok is False

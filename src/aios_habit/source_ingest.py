@@ -4,8 +4,23 @@ from pathlib import Path
 from dataclasses import dataclass, field, asdict
 from datetime import datetime
 from typing import Dict, Any, List
-import pandas as pd
-from .case_ingest import safe_asset_filename
+import time
+import uuid
+
+def safe_asset_filename(original_name: str) -> str:
+    uniq = uuid.uuid4().hex[:6]
+    timestamp = f"{int(time.time() * 1000)}"
+    if not original_name:
+        return f"asset_{timestamp}_{uniq}"
+    name = original_name.replace("/", "_").replace("\\", "_")
+    p = Path(name)
+    stem = p.stem
+    ext = p.suffix
+    stem_clean = re.sub(r'[^A-Za-z0-9_-]', '_', stem) or "asset"
+    ext_clean = re.sub(r'[^A-Za-z0-9]', '', ext)
+    if ext_clean:
+        ext_clean = "." + ext_clean
+    return f"{timestamp}_{uniq}_{stem_clean}{ext_clean}"
 
 LOCAL_CASES_DIR = Path.cwd() / "local_cases"
 SOURCES_FILE = LOCAL_CASES_DIR / "sources.jsonl"
@@ -62,7 +77,7 @@ def save_source(src: SourceDocument):
             break
     if not found:
         sources.append(src)
-    
+
     with open(SOURCES_FILE, 'w', encoding='utf-8') as f:
         for s in sources:
             f.write(json.dumps(asdict(s), ensure_ascii=False) + '\n')
@@ -91,31 +106,31 @@ def ingest_source_document(
 ) -> SourceDocument:
     import uuid
     init_source_store()
-    
+
     source_id = f"SRC-{str(uuid.uuid4())[:8].upper()}"
     sanitized_name = safe_asset_filename(original_filename)
-    
+
     notebook_assets_dir = get_notebook_assets_dir(notebook_id).resolve()
     dest_path = (notebook_assets_dir / sanitized_name).resolve()
-    
+
     # Strict Path Containment Check
     if not dest_path.is_relative_to(notebook_assets_dir):
         raise ValueError("Invalid target path: directory traversal attempt detected.")
-        
+
     with open(dest_path, "wb") as f:
         f.write(file_bytes)
-        
+
     # Extract metadata and preview text
     ext = Path(original_filename).suffix.lower().replace(".", "")
     if not ext:
         ext = "txt"
-        
+
     preview_text = ""
     metadata = {
         "file_size_bytes": len(file_bytes),
         "extension": ext
     }
-    
+
     # Parse based on type
     if ext in ("txt", "md", "markdown"):
         try:
@@ -128,7 +143,7 @@ def ingest_source_document(
             lines = [line for line in csv_str.splitlines() if line.strip()]
             preview_text = "\n".join(lines[:10])
             metadata["row_count_preview"] = len(lines)
-            
+
             if lines:
                 cols = lines[0].split(",")
                 metadata["columns"] = [c.strip() for c in cols]
@@ -146,7 +161,7 @@ def ingest_source_document(
         preview_text = "Chưa có xem trước nội dung cho định dạng này ở M1.7."
 
     preview_text = preview_text[:MAX_PREVIEW_CHARS]
-        
+
     src_doc = SourceDocument(
         source_id=source_id,
         notebook_id=notebook_id,

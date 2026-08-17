@@ -2,7 +2,8 @@ import pytest
 
 from aios_habit.rag_v2 import DocumentElement, ElementType, ExtractionStatus
 from aios_habit.rag_v2.chunking import StructureAwareChunker
-from aios_habit.rag_v2.index import LocalChunkIndex
+from aios_habit.rag_v2.index import LocalChunkIndex, SearchResult, _rerank_hybrid_window
+from aios_habit.rag_v2.semantic import SemanticCapability
 
 
 def make_chunk(text="alpha beta beta", labels=("private",)):
@@ -62,6 +63,33 @@ def test_empty_query_is_safe(tmp_path):
         assert index.search("") == []
         assert index.search("   ") == []
         assert index.search("alpha", limit=0) == []
+
+
+def test_rerank_accepts_multi_variant_rrf_tiebreak_signal():
+    class StaticReranker:
+        capability = SemanticCapability(
+            capability="reranker", available=True, backend="test-reranker"
+        )
+
+        def score_pairs(self, pairs):
+            assert len(pairs) == 2
+            return (0.1, 0.9)
+
+    def result(chunk_id, score, rrf):
+        return SearchResult(
+            chunk_id=chunk_id, score=score, text=chunk_id,
+            document_id="doc", source_path="/tmp/doc", source_name="doc",
+            file_type="txt", metadata={}, privacy_labels=("allowed",),
+            ranking_signals={"multi_variant_rrf": rrf},
+        )
+
+    ranked = _rerank_hybrid_window(
+        "manual mode", (result("first", 0.8, 0.02), result("second", 0.7, 0.01)),
+        StaticReranker(), 2,
+    )
+
+    assert [item.chunk_id for item in ranked] == ["second", "first"]
+    assert ranked[0].ranking_signals["reranker_score"] == 0.9
 
 
 def test_clear_removes_chunks(tmp_path):
@@ -625,6 +653,41 @@ def test_multivector_publication_rejects_incomplete_staging_atomically(tmp_path)
     assert report["dense_embedding_count"] == 0
     assert report["sparse_embedding_count"] == 0
     assert report["multivector_embedding_count"] == 0
+
+
+def test_disabled_optional_multivector_does_not_block_hybrid_index_startup(tmp_path):
+    """Capability probing must not evaluate a descriptor that is intentionally off."""
+    from aios_habit.rag_v2.semantic import (
+        DeterministicEmbeddingBackend,
+        SemanticBackendUnavailable,
+        SemanticCapability,
+    )
+
+    class DisabledMultiVectorBackend(DeterministicEmbeddingBackend):
+        @property
+        def multivector_capability(self):
+            return SemanticCapability(
+                capability="multivector_embedding",
+                available=False,
+                backend="deterministic-test",
+                reason="multivector_not_enabled",
+            )
+
+        @property
+        def multivector_descriptor(self):
+            raise SemanticBackendUnavailable("multivector_not_enabled")
+
+        def multivector_documents(self, texts):
+            raise AssertionError("must not be called when capability is disabled")
+
+        def multivector_query(self, text):
+            raise AssertionError("must not be called when capability is disabled")
+
+    with LocalChunkIndex(
+        tmp_path / "hybrid-without-multivector.sqlite",
+        embedding_backend=DisabledMultiVectorBackend(dimension=8),
+    ) as index:
+        assert index._multivector_backend is None
 
 
 def test_warm_multivector_query_is_read_only_with_complete_persisted_coverage(tmp_path):

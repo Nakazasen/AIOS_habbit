@@ -227,6 +227,31 @@ def assess_fail_fast(
     }
 
 
+def should_abort_profile_for_fail_fast(
+    decision: Mapping[str, Any],
+    *,
+    selected_profile: str,
+    profile: str,
+) -> bool:
+    """Stop a candidate failure early, but always finish its lexical control arm.
+
+    The lexical baseline is deliberately present to quantify what BGE-M3 adds.
+    A weak baseline is not an infrastructure failure and must not prevent the
+    candidate from being evaluated against the complete question set.
+    """
+    if not bool(decision.get("should_stop", False)):
+        return False
+    # Only the expected quality-only failure is exempt for the control arm.
+    # False support and consecutive system errors remain safety/infrastructure
+    # failures for every arm, including the baseline.
+    reasons = {str(value) for value in decision.get("reasons", ())}
+    return not (
+        bool(selected_profile)
+        and profile == "lexical_baseline"
+        and reasons == {"unusable_answerable_rate_exceeded"}
+    )
+
+
 class ProgressHeartbeat:
     """Write content-free progress snapshots and emit at least one heartbeat per interval."""
 
@@ -264,7 +289,19 @@ class ProgressHeartbeat:
         self._stop.set()
         if self._thread is not None:
             self._thread.join(timeout=min(1.0, self.interval_seconds))
-        self._write("FAILED" if exc_type else self._terminal_status)
+        if exc_type:
+            final_status = "FAILED"
+        elif self._terminal_status != "COMPLETED":
+            final_status = self._terminal_status
+        elif self.completed < self.total:
+            # A profile arm can finish while the multi-arm qualification is
+            # still incomplete.  Never label that checkpoint COMPLETED: an
+            # interrupted BGE indexing phase used to leave a false green
+            # status such as 12/24 COMPLETED.
+            final_status = "INCOMPLETE"
+        else:
+            final_status = "COMPLETED"
+        self._write(final_status)
 
     def _loop(self) -> None:
         while not self._stop.wait(self.interval_seconds):
@@ -324,13 +361,13 @@ def write_stopped_early_report(
 
 
 
-# Qualification notebook containing the exact 70-source corpus.  The former
-# 48-source notebook remains sealed as historical evidence and must not be used
-# as the default reference for a 12-question run.
+# Qualification notebook containing the approved 73-source corpus snapshot.
+# The former 48- and 70-source snapshots remain historical evidence and must
+# not be used as the default reference for a current 12-question run.
 NOTEBOOK_ID = "91fd5e6a-3dcc-423d-8866-fe7cbf7b278c"
 NOTEBOOK_TITLE = "Production History Registration System and Process Specification Interface"
-EXPECTED_LOCAL_SOURCE_COUNT = 70
-EXPECTED_NOTEBOOK_SOURCE_COUNT = 70
+EXPECTED_LOCAL_SOURCE_COUNT = 73
+EXPECTED_NOTEBOOK_SOURCE_COUNT = 73
 EXPECTED_ROUTER_VERSION = "0.8.0"
 DEFAULT_OUTPUT_DIR = PROJECT_ROOT / "local_runs" / "battle_rag_v2"
 DEFAULT_INDEX_CACHE_DIR = PROJECT_ROOT / "local_runs" / "battle_rag_v2_index_cache"
@@ -465,7 +502,7 @@ def workspace_benchmark_adapter_config(benchmark_runtime_root: Path) -> Any:
 
     return WorkspaceChatRagV2CanaryConfig(
         enabled=False,
-        requested_profile="lexical_baseline",
+        requested_profile="bge_m3_hybrid",
         runtime_root=Path(benchmark_runtime_root).resolve(),
     )
 
@@ -3535,7 +3572,7 @@ def build_preflight(args: argparse.Namespace) -> dict[str, Any]:
     ]
     warnings = []
     if not dry_run_preflight and not notebook.get("count_ok"):
-        warnings.append("notebook_source_count_differs_from_expected_same_corpus_70_source_snapshot")
+        warnings.append("notebook_source_count_differs_from_expected_current_corpus_snapshot")
     if int(local.get("business_file_count", 0)) == 0:
         warnings.append("no_local_business_corpus_candidate_and_production_arms_not_applicable")
     if corpus_audit.get("ambiguous"):
@@ -3609,6 +3646,10 @@ def build_rag_v2_config(
         bge_m3_model_path=getattr(args, "bge_m3_model_path", "") or None,
         bge_m3_model_revision=getattr(args, "bge_m3_model_revision", ""),
         bge_m3_model_checksum=getattr(args, "bge_m3_model_checksum", ""),
+        # This is part of the immutable qualification identity.  It must reach
+        # the worker as well; otherwise a run labelled batch=4 silently embeds
+        # with the config default (batch=1) and its throughput evidence is false.
+        bge_m3_batch_size=int(getattr(args, "bge_m3_batch_size", 1)),
         bge_reranker_model_path=getattr(args, "bge_reranker_model_path", "") or None,
         bge_reranker_model_revision=getattr(args, "bge_reranker_model_revision", ""),
         bge_reranker_model_checksum=getattr(args, "bge_reranker_model_checksum", ""),
@@ -4274,8 +4315,12 @@ def _ablation_model_config(args: argparse.Namespace) -> dict[str, Any]:
             "Ablation semantic arms require pinned offline model arguments: "
             + ", ".join(sorted(missing))
         )
+    batch_size = int(getattr(args, "bge_m3_batch_size", 1))
+    if not 1 <= batch_size <= 4:
+        raise BenchmarkError("--bge-m3-batch-size must be between 1 and 4 for the CPU qualification contract")
     return {
         **required,
+        "bge_m3_batch_size": batch_size,
         "retrieval_device": str(getattr(args, "retrieval_device", "cpu") or "cpu"),
     }
 
@@ -5222,7 +5267,20 @@ def run_ablation(
             **model_config,
         )
         with RagV2DevPipeline(config) as pipeline:
-            ingestion_report = pipeline.ingest(rag_sources)
+            # BGE-M3 ingestion can take hours on a CPU-only host.  Keep the
+            # operator-visible heartbeat alive before the first query so a
+            # stopped process cannot leave the preceding lexical arm looking
+            # like the current phase or like a completed qualification.
+            with ProgressHeartbeat(
+                run_dir / "progress.json",
+                stage=f"ablation:{profile}:indexing",
+                total=len(profiles) * len(questions),
+            ) as ingestion_progress:
+                ingestion_progress.update(
+                    completed=len(all_rows),
+                    current=f"{profile}:indexing",
+                )
+                ingestion_report = pipeline.ingest(rag_sources)
             capability = pipeline.inspect(rag_sources)
             retrieval_state = capability["retrieval"]
             if retrieval_state["effective_profile"] != profile or retrieval_state["degraded"]:
@@ -5292,7 +5350,11 @@ def run_ablation(
                     all_rows.append(row)
                     progress.update(completed=len(all_rows), current=f"{profile}:{qid}")
                     stop_decision = assess_fail_fast(profile_rows)
-                    if stop_decision["should_stop"]:
+                    if should_abort_profile_for_fail_fast(
+                        stop_decision,
+                        selected_profile=selected_profile,
+                        profile=profile,
+                    ):
                         stop_decision = {**stop_decision, "profile": profile}
                         progress.mark_stopped_early()
                         return write_stopped_early_report(
@@ -6828,6 +6890,7 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--bge-m3-model-path", default=os.environ.get("AIOS_BGE_M3_MODEL_PATH", ""), help="Pinned local BGE-M3 model directory")
     parser.add_argument("--bge-m3-model-revision", default=os.environ.get("AIOS_BGE_M3_MODEL_REVISION", ""), help="Pinned BGE-M3 revision")
     parser.add_argument("--bge-m3-model-checksum", default=os.environ.get("AIOS_BGE_M3_MODEL_CHECKSUM", ""), help="BGE-M3 tree digest in sha256:<64 hex> form")
+    parser.add_argument("--bge-m3-batch-size", type=int, default=int(os.environ.get("AIOS_BGE_M3_BATCH_SIZE", "1")), help="BGE-M3 CPU embedding batch size for local qualification (1-4)")
     parser.add_argument("--bge-reranker-model-path", default=os.environ.get("AIOS_BGE_RERANKER_MODEL_PATH", ""), help="Pinned local BGE reranker model directory")
     parser.add_argument("--bge-reranker-model-revision", default=os.environ.get("AIOS_BGE_RERANKER_MODEL_REVISION", ""), help="Pinned BGE reranker revision")
     parser.add_argument("--bge-reranker-model-checksum", default=os.environ.get("AIOS_BGE_RERANKER_MODEL_CHECKSUM", ""), help="BGE reranker tree digest in sha256:<64 hex> form")

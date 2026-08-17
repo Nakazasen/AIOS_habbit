@@ -463,7 +463,21 @@ def _fallback_fragment(item: EvidenceItem, *, query_terms: set[str], selected: I
     if not raw or _is_near_duplicate_claim(raw, selected):
         return ""
     if len(raw) > _MAX_CLAIM_CHARS:
-        raw = raw[:_MAX_CLAIM_CHARS].rsplit(" ", 1)[0].rstrip(" ,;:")
+        allowed = raw[:_MAX_CLAIM_CHARS]
+        # Tìm dấu ngắt câu trong khoảng 50 ký tự cuối của phần được phép
+        search_window = allowed[-50:] if len(allowed) >= 50 else allowed
+        cut_point = -1
+        for punct in ".?!":
+            p_idx = search_window.rfind(punct)
+            if p_idx > cut_point:
+                cut_point = p_idx
+
+        if cut_point != -1:
+            # Cắt ngay sau dấu chấm câu
+            raw = allowed[:len(allowed) - len(search_window) + cut_point + 1].strip()
+        else:
+            # Nếu không có dấu câu, cắt ở khoảng trắng và thêm "..."
+            raw = allowed.rsplit(" ", 1)[0].rstrip(" ,;:") + "..."
     return raw
 
 
@@ -536,10 +550,20 @@ def _citation_first_fallback(
     elif obligation_sections:
         rendered = _format_structured_claims(tuple(claims), obligation_sections)
     else:
-        rendered = "\n".join(
-            f"- {claim.text} {' '.join(claim.citation_ids)}"
-            for claim in claims
-        )
+        grouped_claims: dict[str, list[str]] = {}
+        for claim in claims:
+            cids_str = " ".join(claim.citation_ids)
+            grouped_claims.setdefault(cids_str, []).append(claim.text)
+
+        lines = []
+        for cids_str, texts in grouped_claims.items():
+            if len(texts) > 1:
+                lines.append(f"- {cids_str}:")
+                for text in texts:
+                    lines.append(f"  * {text}")
+            else:
+                lines.append(f"- {texts[0]} {cids_str}")
+        rendered = "\n".join(lines)
 
     unscoped_claims = [
         claim for claim in claims
@@ -609,6 +633,7 @@ def synthesize_with_provider(
     if not pack.privacy_summary.cloud_allowed:
         return replace(
             fallback,
+            limitation_reasons=tuple(dict.fromkeys((*fallback.limitation_reasons, "cloud_privacy_blocked"))),
             mode=(
                 _PROVIDER_PRIVACY_BLOCKED_MODE
                 if not (local.abstained or citation_first_local)
@@ -631,6 +656,7 @@ def synthesize_with_provider(
     except Exception:
         return replace(
             fallback,
+            limitation_reasons=tuple(dict.fromkeys((*fallback.limitation_reasons, "provider_network_error"))),
             mode=(
                 _PROVIDER_FALLBACK_MODE
                 if not (local.abstained or citation_first_local)
@@ -667,6 +693,7 @@ def synthesize_with_provider(
     if not validation.valid:
         return replace(
             fallback,
+            limitation_reasons=tuple(dict.fromkeys((*fallback.limitation_reasons, "provider_validation_failed"))),
             mode=(
                 _PROVIDER_FALLBACK_MODE
                 if not (local.abstained or citation_first_local)

@@ -10,8 +10,10 @@ from __future__ import annotations
 
 import hashlib
 import json
+from pathlib import Path
 import time
 from dataclasses import asdict, dataclass, field
+
 from statistics import median
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 
@@ -878,3 +880,33 @@ def benchmark_summary_to_dict(summary: BenchmarkSummary) -> Dict[str, Any]:
         return obj
 
     return _listify(raw)
+
+
+def generate_adaptive_audit_report(
+    fixtures_path: Optional[str | Path] = None,
+    output_path: Optional[str | Path] = None,
+    policy_version: str = "adaptive-reranking-v1",
+) -> dict[str, Any]:
+    """Evaluate the 60-query adaptive retrieval benchmark and generate an audit report."""
+    from datetime import datetime, timezone
+    import hashlib
+    from aios_habit.rag_v2.adaptive_retrieval import (
+        AdaptiveRetrievalPolicy,
+        PostDecision,
+        PreDecision,
+        decide_final_route,
+        decide_initial_route,
+        post_retrieval_gate,
+        pre_retrieval_gate,
+    )
+
+    from aios_habit.rag_v2.index import SearchSummary
+    from aios_habit.rag_v2.query_planning import RetrievalQueryPlan, RetrievalQueryVariant
+
+    path = Path(fixtures_path or "tests/fixtures/adaptive_routing_cases.json")
+    from scripts.benchmark_adaptive_reranking import run_benchmark
+    return run_benchmark(
+        fixture_path=path,
+        output_path=Path(output_path) if output_path is not None else None,
+        policy_version=policy_version,
+    )

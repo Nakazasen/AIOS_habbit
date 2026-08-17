@@ -581,7 +581,7 @@ def docs_and_runbook(quality: dict[str, Any], workspace: dict[str, Any]) -> None
     )
     (GOAL / "PILOT_RUNBOOK.md").write_text(
         "# Controlled pilot runbook\n\n"
-        "1. Use the read-only production profile and preserve the 70-source corpus, question-set hash, and retrieval identity.\n"
+        "1. Use the read-only production profile and preserve the approved corpus snapshot, question-set hash, and retrieval identity.\n"
         "2. Require `privacy_label=cloud_safe` (or `public`) before cloud routing; never route company/private material to cloud providers.\n"
         "3. Route DeepSeek with at most two attempts and jitter/backoff, health-check local endpoints first, then fall back only to verified Groq/NVIDIA/Mistral. ChatAnyWhere is excluded.\n"
         "4. Emit sanitized telemetry: provider/model, status, latency, error class, fallback flag, and hashes only; never emit keys or raw sensitive content.\n"

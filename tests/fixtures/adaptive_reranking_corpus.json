@@ -1,0 +1,202 @@
+[
+  {
+    "id": "doc_leave_sop",
+    "title": "Quy trình xin nghỉ phép và chế độ phúc lợi",
+    "text": "Quy trình xin nghỉ phép theo quy định công ty: Nhân viên có nhu cầu nghỉ phép năm hoặc nghỉ việc riêng cần nộp đơn đề xuất qua portal nội bộ trước ít nhất 48 giờ đối với nghỉ từ 1 đến 3 ngày, và trước 1 tuần đối với nghỉ trên 3 ngày. Đơn cần được Quản lý trực tiếp phê duyệt và chuyển tiếp cho Bộ phận Nhân sự (HR) ghi nhận vào hệ thống chấm công tự động.",
+    "privacy_label": "cloud_safe",
+    "source_scope": "notebook",
+    "source_type": "text"
+  },
+  {
+    "id": "doc_admin_office",
+    "title": "Thông tin hành chính và địa chỉ văn phòng",
+    "text": "Địa chỉ văn phòng trụ sở chính công ty đặt tại Tầng 8, Tòa nhà Công nghệ ABC, Số 123 Đường Duy Tân, Quận Cầu Giấy, Hà Nội. Giờ làm việc buổi sáng của các phòng ban và bộ phận hỗ trợ khách hàng bắt đầu từ 08:00 đến 12:00, buổi chiều từ 13:30 đến 17:30, từ Thứ Hai đến Thứ Sáu. Quy trình đăng ký thẻ ra vào tòa nhà cho nhân sự mới do Lễ tân tiếp nhận tại sảnh chính.",
+    "privacy_label": "cloud_safe",
+    "source_scope": "notebook",
+    "source_type": "text"
+  },
+  {
+    "id": "doc_it_support",
+    "title": "Sổ tay hỗ trợ kỹ thuật IT và mạng nội bộ",
+    "text": "Đầu mối liên hệ kỹ thuật IT nội bộ khi gặp sự cố mất mạng hoặc lỗi phần mềm: Nhân viên liên hệ hotline nội bộ nhánh 102 hoặc gửi ticket qua hệ thống helpdesk.it@company.local. Bộ phận IT trực 24/7 đối với các sự cố hạ tầng máy chủ và từ 08:00 đến 18:00 đối với hỗ trợ người dùng cuối tại bàn làm việc.",
+    "privacy_label": "cloud_safe",
+    "source_scope": "notebook",
+    "source_type": "text"
+  },
+  {
+    "id": "doc_hr_salary",
+    "title": "Quy chế tiền lương, đồng phục và phụ cấp",
+    "text": "Thời gian chi trả lương hàng tháng theo hợp đồng lao động là vào ngày 05 của tháng tiếp theo qua tài khoản ngân hàng. Quy định về đồng phục công sở: Toàn thể cán bộ nhân viên mặc áo đồng phục công ty vào ngày Thứ Hai đầu tuần. Định mức phụ cấp gửi xe cho nhân viên chính thức là 150.000 VNĐ/tháng được cộng trực tiếp vào bảng lương hàng tháng.",
+    "privacy_label": "cloud_safe",
+    "source_scope": "notebook",
+    "source_type": "text"
+  },
+  {
+    "id": "doc_finance_forms",
+    "title": "Biểu mẫu thanh toán và tạm ứng tài chính",
+    "text": "Mẫu phiếu đề xuất tạm ứng chi phí công tác (Mẫu số 01-TC) áp dụng cho mọi chuyến công tác ngoại tỉnh. Nhân viên điền đầy đủ dự toán kinh phí, kèm thư mời/kế hoạch công tác và trình Kế toán trưởng ký duyệt trước ít nhất 3 ngày làm việc trước khi giải ngân.",
+    "privacy_label": "cloud_safe",
+    "source_scope": "notebook",
+    "source_type": "text"
+  },
+  {
+    "id": "doc_reporting_schedule",
+    "title": "Lịch nộp báo cáo định kỳ các phòng ban",
+    "text": "Quy định về thời hạn nộp báo cáo định kỳ: Báo cáo công việc tuần phải nộp trước 17:00 ngày Thứ Sáu hàng tuần qua hệ thống quản lý tác vụ nội bộ. Báo cáo tổng kết tháng gửi trước ngày 28 hàng tháng. Các trường hợp nộp chậm phải có văn bản giải trình lý do gửi Trưởng phòng.",
+    "privacy_label": "cloud_safe",
+    "source_scope": "notebook",
+    "source_type": "text"
+  },
+  {
+    "id": "doc_retrieval_architecture",
+    "title": "Phân tích kiến trúc Hybrid Retrieval và Dense Semantic Search",
+    "text": "Phân tích so sánh chi tiết giữa cơ chế hybrid retrieval và dense semantic search về độ trễ, tài nguyên RAM và độ chính xác: Hybrid retrieval kết hợp sparse BM25 và dense BGE-M3 thông qua thuật toán RRF (Reciprocal Rank Fusion) giúp bù đắp hạn chế về từ khóa chính xác của vector search thuần túy. Dense search yêu cầu nạp mô hình embedding 1024-dim tiêu tốn khoảng 1.2GB RAM, trong khi sparse lexical FTS5 chạy trực tiếp trên SQLite tiêu thụ dưới 50MB RAM. Về độ trễ, Hybrid search có p95 khoảng 25ms so với 40ms của dense đơn lẻ. Khi tích hợp reranker BGE-Reranker-v2-m3, chỉ số MRR tăng thêm 8-12% trên các tập truy vấn phức tạp (hard queries) nhưng làm tăng độ trễ p95 lên mức 80-120ms.",
+    "privacy_label": "cloud_safe",
+    "source_scope": "notebook",
+    "source_type": "text"
+  },
+  {
+    "id": "doc_contract_liability",
+    "title": "Điều khoản pháp lý và miễn trừ trách nhiệm hợp đồng",
+    "text": "Tổng hợp các điều khoản miễn trừ trách nhiệm và ngoại lệ bồi thường thiệt hại trong hợp đồng đối tác chiến lược: Bên cung cấp dịch vụ được miễn trừ toàn bộ trách nhiệm bồi thường trong các trường hợp bất khả kháng (thiên tai, dịch bệnh, sự cố đứt cáp quang biển diện rộng do bên thứ ba). Hạn mức bồi thường thiệt hại trực tiếp tối đa không vượt quá 100% tổng giá trị hợp đồng được thanh toán trong 12 tháng gần nhất, loại trừ mọi thiệt hại gián tiếp hoặc tổn thất lợi nhuận kỳ vọng.",
+    "privacy_label": "confidential",
+    "source_scope": "notebook",
+    "source_type": "text"
+  },
+  {
+    "id": "doc_db_migration_arch",
+    "title": "Đánh giá kiến trúc nâng cấp cơ sở dữ liệu vector",
+    "text": "Đánh giá tác động kiến trúc khi nâng cấp từ sqlite BM25 sang vector database phân tán đối với tính năng offline-first: SQLite BM25 cho phép hệ thống hoạt động hoàn toàn offline không phụ thuộc mạng, khởi động tức thì trong 5ms. Khi chuyển sang vector database phân tán (như Qdrant hoặc Milvus), độ phức tạp vận hành tăng cao, cần duy trì service background và đồng bộ dữ liệu hai chiều, có thể ảnh hưởng đến trải nghiệm người dùng cục bộ khi mất kết nối mạng.",
+    "privacy_label": "cloud_safe",
+    "source_scope": "notebook",
+    "source_type": "text"
+  },
+  {
+    "id": "doc_incident_sop",
+    "title": "Quy trình ứng phó khẩn cấp sự cố rò rỉ dữ liệu",
+    "text": "Quy trình phối hợp liên phòng ban khi xảy ra sự cố rò rỉ dữ liệu mức độ nghiêm trọng kèm phương án ứng phó khẩn cấp: Bước 1: Cô lập ngay lập tức các máy chủ bị ảnh hưởng khỏi mạng nội bộ trong vòng 15 phút. Bước 2: Kích hoạt Tổ phản ứng nhanh (Incident Response Team) gồm Trưởng ban An ninh mạng, Giám đốc Công nghệ, Pháp chế và Truyền thông. Bước 3: Đánh giá phạm vi dữ liệu bị lộ, mã hóa backup và báo cáo cơ quan chức năng trong vòng 72 giờ theo quy định.",
+    "privacy_label": "confidential",
+    "source_scope": "notebook",
+    "source_type": "text"
+  },
+  {
+    "id": "doc_pci_dss_security",
+    "title": "Tiêu chí nghiệm thu bảo mật thanh toán PCI-DSS",
+    "text": "Các tiêu chí nghiệm thu bảo mật và kiểm thử thâm nhập đối với hệ thống thanh toán điện tử theo chuẩn PCI-DSS: Hệ thống bắt buộc mã hóa toàn bộ dữ liệu thẻ tín dụng bằng chuẩn AES-256 ở trạng thái lưu trữ (data at rest) và TLS 1.3 khi truyền tải (data in transit). Kiểm thử thâm nhập (penetration testing) định kỳ 6 tháng một lần do tổ chức độc lập QSA thực hiện, không được tồn tại bất kỳ lỗ hổng mức High hoặc Critical nào.",
+    "privacy_label": "confidential",
+    "source_scope": "notebook",
+    "source_type": "text"
+  },
+  {
+    "id": "doc_pdf_io_optimization",
+    "title": "Báo cáo tối ưu hóa nghẽn cổ chai xử lý PDF batch",
+    "text": "Phân tích nguyên nhân gốc rễ và kế hoạch khắc phục sự cố nghẽn cổ chai I/O khi xử lý batch 10000 tài liệu PDF: Nguyên nhân gốc do việc đọc tuần tự từng file từ đĩa cứng kết hợp parser PDF đồng bộ gây nghẽn hàng đợi thread pool. Giải pháp: Chuyển sang đọc stream song song dùng memory-mapped file (mmap), batching embedding theo kích thước 32 items/batch và ghi kết quả vào SQLite bằng transaction gom nhóm (bulk insert).",
+    "privacy_label": "cloud_safe",
+    "source_scope": "notebook",
+    "source_type": "text"
+  },
+  {
+    "id": "doc_rbac_abac_comparison",
+    "title": "So sánh cơ chế phân quyền RBAC và ABAC",
+    "text": "So sánh cơ chế phân quyền RBAC và ABAC trong việc bảo vệ dữ liệu nhạy cảm cục bộ trên máy trạm của nhân viên: RBAC (Role-Based Access Control) phân quyền tĩnh theo chức danh công việc, dễ quản lý nhưng thiếu linh hoạt với các điều kiện động. ABAC (Attribute-Based Access Control) đánh giá ngữ cảnh đa thuộc tính (vị trí IP, trạng thái thiết bị, nhãn phân loại tài liệu) cho phép kiểm soát chi tiết zero trust ngay trên máy trạm.",
+    "privacy_label": "cloud_safe",
+    "source_scope": "notebook",
+    "source_type": "text"
+  },
+  {
+    "id": "doc_security_policy_diff",
+    "title": "Đối chiếu chính sách bảo mật thông tin v1 và v2",
+    "text": "Tổng hợp các điểm khác biệt giữa chính sách bảo mật v1 và chính sách bảo mật v2 liên quan đến dữ liệu đám mây: Chính sách v2 cấm tuyệt đối việc đồng bộ dữ liệu phân loại 'local_only' và 'confidential' lên các dịch vụ đám mây công cộng bên thứ ba. Bắt buộc kích hoạt xác thực đa yếu tố (MFA) phần cứng FIDO2 cho toàn bộ tài khoản quản trị hệ thống.",
+    "privacy_label": "confidential",
+    "source_scope": "notebook",
+    "source_type": "text"
+  },
+  {
+    "id": "doc_storage_tiering",
+    "title": "Chiến lược phân tầng lưu trữ và nén log tự động",
+    "text": "Chiến lược phân tầng lưu trữ dữ liệu nóng, ấm, lạnh và cơ chế tự động nén log lưu trữ trên hạ tầng on-premise: Dữ liệu nóng (dưới 30 ngày) lưu trên SSD NVMe tốc độ cao. Dữ liệu ấm (30 - 180 ngày) lưu trên SATA SSD có nén zstd level 3. Dữ liệu lạnh (trên 180 ngày) được đóng gói TAR.ZST và chuyển sang hệ thống NAS lưu trữ dài hạn.",
+    "privacy_label": "cloud_safe",
+    "source_scope": "notebook",
+    "source_type": "text"
+  },
+  {
+    "id": "doc_ai_cost_model",
+    "title": "Mô hình định giá chi phí suy luận AI cục bộ vs Cloud API",
+    "text": "Mô hình định giá chi phí vận hành AI inference giữa việc dùng GPU cục bộ và gọi API cloud theo quy mô tải: Với lưu lượng dưới 100.000 token/ngày, gọi Cloud API (Gemini/OpenAI) có chi phí tối ưu (~5$/tháng). Khi quy mô tải vượt 10.000.000 token/ngày kèm yêu cầu bảo mật cục bộ cao, đầu tư máy trạm GPU chuyên dụng (NVIDIA RTX 4090 / L40S) đạt điểm hòa vốn sau 4 tháng vận hành.",
+    "privacy_label": "cloud_safe",
+    "source_scope": "notebook",
+    "source_type": "text"
+  },
+  {
+    "id": "doc_overseas_insurance",
+    "title": "Quy định bảo hiểm bổ sung cho thân nhân nhân viên nước ngoài",
+    "text": "Quy định về bảo hiểm bổ sung cho thân nhân nhân viên làm việc tại chi nhánh nước ngoài: Thân nhân trực hệ (vợ/chồng, con dưới 18 tuổi) đi cùng nhân sự được công ty chi trả 80% phí bảo hiểm y tế quốc tế toàn cầu mức Premium, hạn mức chi trả tối đa 50.000 USD/năm/người.",
+    "privacy_label": "cloud_safe",
+    "source_scope": "notebook",
+    "source_type": "text"
+  },
+  {
+    "id": "doc_epidemic_permit",
+    "title": "Thủ tục xin cấp giấy phép di chuyển công tác đặc biệt",
+    "text": "Thủ tục xin cấp giấy phép đặc biệt khi công tác tại vùng kiểm soát dịch tễ nghiêm ngặt: Cần có công văn đề xuất khẩn cấp của Giám đốc khối, giấy chứng nhận tiêm chủng hoặc xét nghiệm âm tính trong 24 giờ và văn bản phê duyệt của Ban Giám đốc.",
+    "privacy_label": "cloud_safe",
+    "source_scope": "notebook",
+    "source_type": "text"
+  },
+  {
+    "id": "doc_cert_support",
+    "title": "Hỗ trợ tài chính thi chứng chỉ chuyên môn quốc tế",
+    "text": "Mức hỗ trợ tài chính cho nhân sự tham gia các kỳ thi chứng chỉ quốc tế ngoài danh mục: Công ty hỗ trợ 50% lệ phí thi cho các chứng chỉ công nghệ, an toàn thông tin hoặc quản trị dự án có liên quan trực tiếp đến định hướng phát triển của phòng ban, sau khi nhân sự thi đạt chứng chỉ.",
+    "privacy_label": "cloud_safe",
+    "source_scope": "notebook",
+    "source_type": "text"
+  },
+  {
+    "id": "doc_asset_disposal",
+    "title": "Quy chế thanh lý tài sản cố định nhỏ và hết khấu hao",
+    "text": "Quy trình thanh lý tài sản cố định có giá trị dưới 5 triệu đồng đã hết khấu hao: Bộ phận quản lý tài sản lập biên bản kiểm kê hiện trạng, trình Hội đồng thanh lý nội bộ phê duyệt và tổ chức bán thanh lý ưu tiên cho nhân viên nội bộ hoặc tiêu hủy theo quy chuẩn bảo vệ môi trường.",
+    "privacy_label": "cloud_safe",
+    "source_scope": "notebook",
+    "source_type": "text"
+  },
+  {
+    "id": "doc_innovation_reward",
+    "title": "Chính sách khen thưởng sáng kiến cải tiến nghiệp vụ",
+    "text": "Chính sách thưởng đột xuất cho cá nhân có sáng kiến cải tiến quy trình nghiệp vụ: Mức thưởng từ 5.000.000 VNĐ đến 20.000.000 VNĐ tùy theo giá trị làm lợi thực tế hoặc mức độ tiết giảm chi phí vận hành đo lường được sau 3 tháng áp dụng.",
+    "privacy_label": "cloud_safe",
+    "source_scope": "notebook",
+    "source_type": "text"
+  },
+  {
+    "id": "doc_remote_work_mother",
+    "title": "Quy chế làm việc từ xa hỗ trợ lao động nữ",
+    "text": "Quy chế làm việc từ xa dành riêng cho lao động nữ trong thời gian nuôi con nhỏ dưới 12 tháng tuổi: Được phép đăng ký làm việc tại nhà (remote) tối đa 2 ngày/tuần sau khi có sự thống nhất bằng văn bản với Quản lý trực tiếp.",
+    "privacy_label": "cloud_safe",
+    "source_scope": "notebook",
+    "source_type": "text"
+  },
+  {
+    "id": "doc_fleet_rates",
+    "title": "Biểu phí thuê xe và công tác phí dịp lễ tết",
+    "text": "Biểu phí thuê xe ngoài giờ phục vụ dự án khẩn cấp dịp lễ tết: Áp dụng hệ số 2.0 đối với định mức thuê xe ngày nghỉ lễ chính thức theo luật định và hệ số 1.5 đối với ngày nghỉ cuối tuần.",
+    "privacy_label": "cloud_safe",
+    "source_scope": "notebook",
+    "source_type": "text"
+  },
+  {
+    "id": "doc_rep_expense_limits",
+    "title": "Hạn mức chi tiêu tiếp khách của văn phòng đại diện",
+    "text": "Hạn mức chi tiêu tiếp khách của trưởng đại diện văn phòng xúc tiến thương mại: Tối đa 20.000.000 VNĐ/tháng, mọi khoản chi từ 5.000.000 VNĐ trên một hóa đơn phải có xác nhận tiếp khách đối tác cụ thể và đầy đủ chứng từ hóa đơn điện tử hợp lệ.",
+    "privacy_label": "cloud_safe",
+    "source_scope": "notebook",
+    "source_type": "text"
+  },
+  {
+    "id": "doc_cctv_network_spec",
+    "title": "Quy chuẩn kỹ thuật đấu nối camera giám sát mạng LAN",
+    "text": "Quy chuẩn kỹ thuật đấu nối camera giám sát vào mạng LAN nội bộ: Bắt buộc cấu hình camera vào VLAN an ninh riêng biệt (VLAN 40), kích hoạt giao thức HTTPS và tắt tính năng UPnP/P2P trên thiết bị camera để ngăn chặn xâm nhập mạng.",
+    "privacy_label": "cloud_safe",
+    "source_scope": "notebook",
+    "source_type": "text"
+  }
+]

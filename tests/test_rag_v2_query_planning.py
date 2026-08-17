@@ -32,6 +32,16 @@ def test_identity_plan_only_splits_facets_explicitly_present_in_query_structure(
     assert all(variant.origin == "facet" for variant in plan.variants[1:])
 
 
+def test_operational_how_it_works_question_uses_procedure_shape_without_aliases():
+    query = "Chế độ Manual Matecon ACR/CTU hoạt động như thế nào?"
+
+    plan = identity_query_plan(query)
+
+    assert plan.intent_category == "procedure"
+    assert plan.required_obligations == ("query",)
+    assert [variant.text for variant in plan.variants] == [query]
+
+
 def test_target_terms_are_literal_query_terms_without_semantic_rewriting():
     query = "Summarize the material-handling operation procedure."
     plan = identity_query_plan(query)

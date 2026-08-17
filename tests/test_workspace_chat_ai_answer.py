@@ -22,6 +22,10 @@ from aios_habit.workspace_chat_ai_answer import (
 )
 
 # Mock classes for NotebookSource and TemporaryConversationSource
+@pytest.fixture(autouse=True)
+def clear_router_cache(monkeypatch):
+    monkeypatch.setattr("aios_habit.workspace_chat_router_adapter._ROUTER", None)
+
 @dataclass
 class MockNotebookSource:
     id: str
@@ -1189,6 +1193,9 @@ def test_generate_answer_via_router_integration_mocked_outcome(monkeypatch):
         "sanitized_by": "aios_habit.brain_gateway",
         "contains_raw_evidence": False,
         "contains_confidential_files": False,
+        "query_language": "en",
+        "session_scope": "sanitized_workspace_chat",
+        "task_type": "workspace_chat"
     }
 
 
@@ -1312,3 +1319,31 @@ def test_real_router_result_exposes_limited_outcome_and_canonical_manifest_hash(
         separators=(",", ":"),
     )
     assert manifest_hash == hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+
+
+def test_router_prompt_requires_coverage_for_each_named_equipment_type():
+    from aios_habit.brain_gateway import SanitizedRouterPayload, SanitizedSourcePayload
+    from aios_habit.workspace_chat_router_adapter import _build_router_prompts
+
+    payload = SanitizedRouterPayload(
+        sanitized_question="How do ACR and CTU operate in Manual Mode?",
+        sanitized_sources=(
+            SanitizedSourcePayload(
+                source_id="manual",
+                source_scope="notebook",
+                source_type="pdf",
+                title="manual.pdf",
+                text="ACR and CTU instructions",
+                privacy_label="cloud_safe",
+            ),
+        ),
+        metadata={},
+    )
+
+    system_prompt, _user_prompt = _build_router_prompts(payload)
+
+    assert "multiple equipment types" in system_prompt
+    assert "separately labelled sections for each" in system_prompt
+    assert "details are insufficient" in system_prompt
+    assert "REQUIRED ANSWER COVERAGE:" in _user_prompt
+    assert "ACR; CTU" in _user_prompt

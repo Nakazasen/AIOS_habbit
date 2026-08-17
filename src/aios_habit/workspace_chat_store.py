@@ -1,11 +1,9 @@
-import json
-import os
-import shutil
+import logging
 import uuid
-from dataclasses import asdict
 from datetime import datetime
 from pathlib import Path
 from typing import List, Optional
+from aios_habit.local_jsonl import atomic_write_jsonl, atomic_write_jsonl_batch, load_jsonl_records
 from aios_habit.workspace_chat_models import (
     DocumentNotebook,
     WorkspaceConversation,
@@ -22,9 +20,11 @@ MESSAGES_FILE = LOCAL_CHAT_DIR / "messages.jsonl"
 TEMPORARY_SOURCES_FILE = LOCAL_CHAT_DIR / "temporary_sources.jsonl"
 NOTEBOOK_SOURCES_FILE = LOCAL_CHAT_DIR / "notebook_sources.jsonl"
 SOURCE_SELECTIONS_FILE = LOCAL_CHAT_DIR / "conversation_source_selections.jsonl"
+LOGGER = logging.getLogger(__name__)
 
 def init_chat_store():
     LOCAL_CHAT_DIR.mkdir(parents=True, exist_ok=True)
+    init_flag = LOCAL_CHAT_DIR / ".initialized"
 
     # Touch files
     for filepath in [
@@ -34,31 +34,43 @@ def init_chat_store():
         if not filepath.exists():
             filepath.touch()
 
-    # Auto-initialize default notebooks if empty
-    nbs = load_notebooks()
-    if not nbs:
-        defaults = [
-            DocumentNotebook(id="mom_opcenter", title="MOM / Opcenter", description="Sổ biên bản cuộc họp và thông tin vận hành Opcenter"),
-            DocumentNotebook(id="interstock_wms", title="InterStock / WMS", description="Sổ thông tin hệ thống kho InterStock và phần mềm WMS"),
-            DocumentNotebook(id="email_jp_vn", title="Email Nhật - Việt", description="Sổ lưu trữ trao đổi thư từ Nhật Bản và Việt Nam"),
-            DocumentNotebook(id="aios_project", title="AIOS Project", description="Sổ thông tin dự án AIOS và tài liệu hướng dẫn vận hành")
-        ]
-        for nb in defaults:
-            save_notebook(nb)
+    # Auto-initialize default notebooks only on very first setup
+    if not init_flag.exists():
+        nbs = load_notebooks()
+        if not nbs:
+            defaults = [
+                DocumentNotebook(id="mom_opcenter", title="MOM / Opcenter", description="Sổ biên bản cuộc họp và thông tin vận hành Opcenter"),
+                DocumentNotebook(id="interstock_wms", title="InterStock / WMS", description="Sổ thông tin hệ thống kho InterStock và phần mềm WMS"),
+                DocumentNotebook(id="email_jp_vn", title="Email Nhật - Việt", description="Sổ lưu trữ trao đổi thư từ Nhật Bản và Việt Nam"),
+                DocumentNotebook(id="aios_project", title="AIOS Project", description="Sổ thông tin dự án AIOS và tài liệu hướng dẫn vận hành")
+            ]
+            for nb in defaults:
+                save_notebook(nb)
+        try:
+            init_flag.touch()
+        except OSError:
+            LOGGER.exception("Could not mark Workspace Chat storage as initialized")
+
+def _deserialize_notebook(record: dict) -> DocumentNotebook:
+    return DocumentNotebook(**record)
+
+
+def _deserialize_conversation(record: dict) -> WorkspaceConversation:
+    return WorkspaceConversation(**record)
+
+
+def _deserialize_message(record: dict) -> ChatMessage:
+    return ChatMessage(**record)
+
+
+def _deserialize_temporary_source(record: dict) -> TemporaryConversationSource:
+    return TemporaryConversationSource(**record)
+
 
 def load_notebooks() -> List[DocumentNotebook]:
     if not NOTEBOOKS_FILE.exists():
         return []
-    notebooks = []
-    with open(NOTEBOOKS_FILE, 'r', encoding='utf-8') as f:
-        for line in f:
-            if line.strip():
-                try:
-                    data = json.loads(line)
-                    notebooks.append(DocumentNotebook(**data))
-                except Exception:
-                    pass
-    return notebooks
+    return load_jsonl_records(NOTEBOOKS_FILE, _deserialize_notebook)
 
 
 def notebook_is_archived(notebook: DocumentNotebook) -> bool:
@@ -112,23 +124,12 @@ def save_notebook(nb: DocumentNotebook):
     if not found:
         notebooks.append(nb)
 
-    with open(NOTEBOOKS_FILE, 'w', encoding='utf-8') as f:
-        for item in notebooks:
-            f.write(json.dumps(asdict(item), ensure_ascii=False) + '\n')
+    atomic_write_jsonl(NOTEBOOKS_FILE, notebooks)
 
 def load_all_conversations() -> List[WorkspaceConversation]:
     if not CONVERSATIONS_FILE.exists():
         return []
-    conversations = []
-    with open(CONVERSATIONS_FILE, 'r', encoding='utf-8') as f:
-        for line in f:
-            if line.strip():
-                try:
-                    data = json.loads(line)
-                    conversations.append(WorkspaceConversation(**data))
-                except Exception:
-                    pass
-    return conversations
+    return load_jsonl_records(CONVERSATIONS_FILE, _deserialize_conversation)
 
 def load_conversations(notebook_id: str) -> List[WorkspaceConversation]:
     return [c for c in load_all_conversations() if c.notebook_id == notebook_id]
@@ -150,9 +151,7 @@ def save_conversation(conv: WorkspaceConversation):
     if not found:
         conversations.append(conv)
 
-    with open(CONVERSATIONS_FILE, 'w', encoding='utf-8') as f:
-        for item in conversations:
-            f.write(json.dumps(asdict(item), ensure_ascii=False) + '\n')
+    atomic_write_jsonl(CONVERSATIONS_FILE, conversations)
 
 def rename_conversation(conv_id: str, new_title: str):
     conv = load_conversation(conv_id)
@@ -160,19 +159,38 @@ def rename_conversation(conv_id: str, new_title: str):
         conv.title = new_title
         save_conversation(conv)
 
+def update_conversation_search_preference(conv_id: str, search_preference: str) -> bool:
+    conv = load_conversation(conv_id)
+    if conv:
+        conv.search_preference = search_preference
+        conv.updated_at = datetime.now().isoformat()
+        save_conversation(conv)
+        return True
+    return False
+
+
+def delete_conversation(conv_id: str) -> bool:
+    conversations = load_all_conversations()
+    new_convs = [c for c in conversations if c.id != conv_id]
+    if len(new_convs) == len(conversations):
+        return False
+
+    messages = [m for m in load_all_messages() if m.conversation_id != conv_id]
+    temp_sources = [s for s in load_all_temporary_sources() if s.conversation_id != conv_id]
+    selections = [sel for sel in load_all_conversation_source_selections() if sel.conversation_id != conv_id]
+    atomic_write_jsonl_batch((
+        (CONVERSATIONS_FILE, new_convs),
+        (MESSAGES_FILE, messages),
+        (TEMPORARY_SOURCES_FILE, temp_sources),
+        (SOURCE_SELECTIONS_FILE, selections),
+    ))
+
+    return True
+
 def load_all_messages() -> List[ChatMessage]:
     if not MESSAGES_FILE.exists():
         return []
-    messages = []
-    with open(MESSAGES_FILE, 'r', encoding='utf-8') as f:
-        for line in f:
-            if line.strip():
-                try:
-                    data = json.loads(line)
-                    messages.append(ChatMessage(**data))
-                except Exception:
-                    pass
-    return messages
+    return load_jsonl_records(MESSAGES_FILE, _deserialize_message)
 
 def load_messages(conv_id: str) -> List[ChatMessage]:
     return [m for m in load_all_messages() if m.conversation_id == conv_id]
@@ -180,23 +198,12 @@ def load_messages(conv_id: str) -> List[ChatMessage]:
 def save_message(msg: ChatMessage):
     messages = load_all_messages()
     messages.append(msg)
-    with open(MESSAGES_FILE, 'w', encoding='utf-8') as f:
-        for item in messages:
-            f.write(json.dumps(asdict(item), ensure_ascii=False) + '\n')
+    atomic_write_jsonl(MESSAGES_FILE, messages)
 
 def load_all_temporary_sources() -> List[TemporaryConversationSource]:
     if not TEMPORARY_SOURCES_FILE.exists():
         return []
-    sources = []
-    with open(TEMPORARY_SOURCES_FILE, 'r', encoding='utf-8') as f:
-        for line in f:
-            if line.strip():
-                try:
-                    data = json.loads(line)
-                    sources.append(TemporaryConversationSource(**data))
-                except Exception:
-                    pass
-    return sources
+    return load_jsonl_records(TEMPORARY_SOURCES_FILE, _deserialize_temporary_source)
 
 def load_temporary_sources(conv_id: str) -> List[TemporaryConversationSource]:
     return [s for s in load_all_temporary_sources() if s.conversation_id == conv_id]
@@ -212,23 +219,12 @@ def save_temporary_source(src: TemporaryConversationSource):
     if not found:
         sources.append(src)
 
-    with open(TEMPORARY_SOURCES_FILE, 'w', encoding='utf-8') as f:
-        for item in sources:
-            f.write(json.dumps(asdict(item), ensure_ascii=False) + '\n')
+    atomic_write_jsonl(TEMPORARY_SOURCES_FILE, sources)
 
 def load_all_notebook_sources() -> List[NotebookSource]:
     if not NOTEBOOK_SOURCES_FILE.exists():
         return []
-    sources = []
-    with open(NOTEBOOK_SOURCES_FILE, 'r', encoding='utf-8') as f:
-        for line in f:
-            if line.strip():
-                try:
-                    data = json.loads(line)
-                    sources.append(NotebookSource.from_dict(data))
-                except Exception:
-                    pass
-    return sources
+    return load_jsonl_records(NOTEBOOK_SOURCES_FILE, NotebookSource.from_dict)
 
 def load_notebook_sources(notebook_id: str) -> List[NotebookSource]:
     return [s for s in load_all_notebook_sources() if s.notebook_id == notebook_id]
@@ -244,9 +240,7 @@ def save_notebook_source(source: NotebookSource) -> NotebookSource:
     if not found:
         sources.append(source)
 
-    with open(NOTEBOOK_SOURCES_FILE, 'w', encoding='utf-8') as f:
-        for item in sources:
-            f.write(json.dumps(item.to_dict(), ensure_ascii=False) + '\n')
+    atomic_write_jsonl(NOTEBOOK_SOURCES_FILE, sources)
     return source
 
 def get_notebook_source(source_id: str) -> Optional[NotebookSource]:
@@ -261,15 +255,9 @@ def delete_notebook_source(source_id: str) -> bool:
     sources = [s for s in sources if s.id != source_id]
     if len(sources) == initial_len:
         return False
-    with open(NOTEBOOK_SOURCES_FILE, 'w', encoding='utf-8') as f:
-        for item in sources:
-            f.write(json.dumps(item.to_dict(), ensure_ascii=False) + '\n')
-
     selections = load_all_conversation_source_selections()
     selections = [s for s in selections if not (s.source_id == source_id and s.source_scope == "notebook")]
-    with open(SOURCE_SELECTIONS_FILE, 'w', encoding='utf-8') as f:
-        for item in selections:
-            f.write(json.dumps(item.to_dict(), ensure_ascii=False) + '\n')
+    atomic_write_jsonl_batch(((NOTEBOOK_SOURCES_FILE, sources), (SOURCE_SELECTIONS_FILE, selections)))
 
     return True
 
@@ -279,31 +267,16 @@ def delete_temporary_source(source_id: str) -> bool:
     sources = [s for s in sources if s.id != source_id]
     if len(sources) == initial_len:
         return False
-    with open(TEMPORARY_SOURCES_FILE, 'w', encoding='utf-8') as f:
-        for item in sources:
-            f.write(json.dumps(asdict(item), ensure_ascii=False) + '\n')
-
     selections = load_all_conversation_source_selections()
     selections = [s for s in selections if not (s.source_id == source_id and s.source_scope == "temporary")]
-    with open(SOURCE_SELECTIONS_FILE, 'w', encoding='utf-8') as f:
-        for item in selections:
-            f.write(json.dumps(item.to_dict(), ensure_ascii=False) + '\n')
+    atomic_write_jsonl_batch(((TEMPORARY_SOURCES_FILE, sources), (SOURCE_SELECTIONS_FILE, selections)))
 
     return True
 
 def load_all_conversation_source_selections() -> List[ConversationSourceSelection]:
     if not SOURCE_SELECTIONS_FILE.exists():
         return []
-    selections = []
-    with open(SOURCE_SELECTIONS_FILE, 'r', encoding='utf-8') as f:
-        for line in f:
-            if line.strip():
-                try:
-                    data = json.loads(line)
-                    selections.append(ConversationSourceSelection.from_dict(data))
-                except Exception:
-                    pass
-    return selections
+    return load_jsonl_records(SOURCE_SELECTIONS_FILE, ConversationSourceSelection.from_dict)
 
 def load_conversation_source_selections(conversation_id: str) -> List[ConversationSourceSelection]:
     return [s for s in load_all_conversation_source_selections() if s.conversation_id == conversation_id]
@@ -319,9 +292,7 @@ def save_conversation_source_selection(selection: ConversationSourceSelection) -
     if not found:
         selections.append(selection)
 
-    with open(SOURCE_SELECTIONS_FILE, 'w', encoding='utf-8') as f:
-        for item in selections:
-            f.write(json.dumps(item.to_dict(), ensure_ascii=False) + '\n')
+    atomic_write_jsonl(SOURCE_SELECTIONS_FILE, selections)
     return selection
 
 def set_source_enabled(
@@ -425,94 +396,17 @@ def delete_notebook_permanently(notebook_id: str) -> bool:
     all_selections = [sel for sel in all_selections if sel.conversation_id not in conv_ids]
 
     targets = [
-        (NOTEBOOKS_FILE, notebooks, None),
-        (CONVERSATIONS_FILE, all_convs, None),
-        (MESSAGES_FILE, all_msgs, None),
-        (NOTEBOOK_SOURCES_FILE, all_nb_sources, lambda x: x.to_dict()),
-        (TEMPORARY_SOURCES_FILE, all_temp_sources, None),
-        (SOURCE_SELECTIONS_FILE, all_selections, lambda x: x.to_dict()),
+        (NOTEBOOKS_FILE, notebooks),
+        (CONVERSATIONS_FILE, all_convs),
+        (MESSAGES_FILE, all_msgs),
+        (NOTEBOOK_SOURCES_FILE, all_nb_sources),
+        (TEMPORARY_SOURCES_FILE, all_temp_sources),
+        (SOURCE_SELECTIONS_FILE, all_selections),
     ]
 
-    temp_files = []
-    backups = []
-    success_replaced = []
-
     try:
-        # Step A: Prepare and write all .tmp files first
-        for filepath, items, to_dict_func in targets:
-            temp_filepath = filepath.with_suffix(".tmp")
-            temp_files.append(temp_filepath)
-            with open(temp_filepath, 'w', encoding='utf-8') as f:
-                for item in items:
-                    if to_dict_func:
-                        d = to_dict_func(item)
-                    elif hasattr(item, "to_dict"):
-                        d = item.to_dict()
-                    else:
-                        d = asdict(item)
-                    f.write(json.dumps(d, ensure_ascii=False) + '\n')
-    except Exception:
-        # Cleanup temp files if write fails
-        for temp_filepath in temp_files:
-            if temp_filepath.exists():
-                try:
-                    temp_filepath.unlink()
-                except Exception:
-                    pass
+        atomic_write_jsonl_batch(targets)
+    except OSError:
+        LOGGER.exception("Could not delete notebook %s without losing related records", notebook_id)
         return False
-
-    # Step B: Perform per-file atomic replacements with best-effort rollback
-    replace_error = False
-    try:
-        for filepath, items, to_dict_func in targets:
-            temp_filepath = filepath.with_suffix(".tmp")
-            bak_filepath = filepath.with_suffix(".bak")
-            has_bak = False
-            if filepath.exists():
-                shutil.copy2(str(filepath), str(bak_filepath))
-                has_bak = True
-                backups.append((filepath, bak_filepath))
-
-            try:
-                os.replace(str(temp_filepath), str(filepath))
-                success_replaced.append((filepath, bak_filepath, has_bak))
-            except Exception as ex:
-                raise ex
-    except Exception:
-        replace_error = True
-
-    if replace_error:
-        # Rollback successfully replaced files
-        for filepath, bak_filepath, has_bak in success_replaced:
-            try:
-                if has_bak and bak_filepath.exists():
-                    os.replace(str(bak_filepath), str(filepath))
-                else:
-                    if filepath.exists():
-                        filepath.unlink()
-            except Exception:
-                pass
-        # Cleanup backups
-        for filepath, bak_filepath in backups:
-            if bak_filepath.exists():
-                try:
-                    bak_filepath.unlink()
-                except Exception:
-                    pass
-        # Cleanup remaining temp files
-        for temp_filepath in temp_files:
-            if temp_filepath.exists():
-                try:
-                    temp_filepath.unlink()
-                except Exception:
-                    pass
-        return False
-
-    # Step C: Success, cleanup backups
-    for _, bak_filepath in backups:
-        if bak_filepath.exists():
-            try:
-                bak_filepath.unlink()
-            except Exception:
-                pass
     return True

@@ -39,6 +39,15 @@ class WorkspaceConversation:
     selected_source_ids: List[str] = field(default_factory=list)
     temporary_source_ids: List[str] = field(default_factory=list)
     saved_case_id: Optional[str] = None
+    compressed_memory: str = ""
+    search_preference: str = "auto"
+
+    def __post_init__(self) -> None:
+        val = str(self.search_preference or "auto").strip().casefold()
+        if val not in {"auto", "deep"}:
+            val = "auto"
+        object.__setattr__(self, "search_preference", val)
+
 
 @dataclass
 class ChatMessage:
@@ -83,7 +92,7 @@ class NotebookSource:
     def __post_init__(self):
         if self.content_preview and len(self.content_preview) > WORKSPACE_CHAT_SOURCE_PREVIEW_LIMIT:
             self.content_preview = self.content_preview[:WORKSPACE_CHAT_SOURCE_PREVIEW_LIMIT]
-        
+
         if self.content_text:
             text_bytes = self.content_text.encode("utf-8")
             if len(text_bytes) > WORKSPACE_CHAT_SOURCE_TEXT_LIMIT_BYTES:
@@ -131,4 +140,3 @@ class ConversationSourceSelection:
         }
         filtered = {k: v for k, v in data.items() if k in valid_keys}
         return cls(**filtered)
-

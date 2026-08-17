@@ -368,8 +368,10 @@ def _simulate_excel_upload_submit(result):
     return calls, errors
 
 
-def test_excel_upload_xls_failure_does_not_save_enable_or_rerun():
+def test_excel_upload_xls_failure_does_not_save_enable_or_rerun(monkeypatch):
     from aios_habit.workspace_chat_excel import XLS_UNSUPPORTED_MESSAGE, extract_xlsx_text
+    from types import SimpleNamespace
+    monkeypatch.setattr("aios_habit.excel_extractors.extract_excel", lambda *args, **kwargs: SimpleNamespace(dependency_missing=True, error=False))
 
     result = extract_xlsx_text(b"legacy", "legacy.xls")
     calls, errors = _simulate_excel_upload_submit(result)
@@ -1323,7 +1325,9 @@ def test_app_submit_no_evidence_behavioral():
     app_source = Path("src/aios_habit/workspace_chat_app.py").read_text(encoding="utf-8")
 
     # Assert that retrieve_local_evidence is called
-    assert "retrieve_local_evidence(q_text, packed_sources)" in app_source
+    assert "retrieve_local_evidence(" in app_source
+    assert "packed_sources" in app_source
+
     # Assert check on summary_count == 0
     assert 'ret_res["summary_count"] == 0' in app_source
     # Assert that st.session_state.wsc_action_error is set in the true branch
@@ -1378,3 +1382,65 @@ def test_app_submit_no_evidence_behavioral():
     assert last_ai_badge is None
     assert provider_called == 0
     assert len(messages_saved) == 0
+
+
+def test_app_never_sends_full_sources_when_quality_retrieval_is_unavailable():
+    """A long document must not fall back to its leading pages/TOC at the provider."""
+    app_source = Path("src/aios_habit/workspace_chat_app.py").read_text(encoding="utf-8")
+    unavailable_idx = app_source.index('if ret_res.get("status") == "quality_search_unavailable":')
+    rerun_idx = app_source.index("safe_rerun()", unavailable_idx)
+    provider_idx = app_source.index("generate_workspace_ai_answer", unavailable_idx)
+    branch_end = app_source.index('elif ret_res["summary_count"] == 0:', unavailable_idx)
+
+    assert "Câu hỏi chưa được gửi tới AI" in app_source[unavailable_idx:branch_end]
+    assert "retrieval_applied = False" not in app_source[unavailable_idx:branch_end]
+    assert unavailable_idx < rerun_idx < provider_idx
+
+
+def test_app_preparation_gate_is_scoped_to_query_relevant_sources():
+    app_source = Path("src/aios_habit/workspace_chat_app.py").read_text(encoding="utf-8")
+    gate_idx = app_source.index("query_relevant_sources = _select_semantic_candidate_sources(")
+    status_idx = app_source.index(
+        "get_workspace_chat_source_preparation_status(\n                                    query_relevant_sources",
+        gate_idx,
+    )
+
+    assert "schedule_workspace_chat_source_preparation(query_relevant_sources)" in app_source[gate_idx:status_idx]
+    assert gate_idx < status_idx
+
+
+def test_app_skips_cloud_query_planning_for_precise_procedure_questions():
+    app_source = Path("src/aios_habit/workspace_chat_app.py").read_text(encoding="utf-8")
+    planning_idx = app_source.index("local_query_plan = coerce_query_plan(q_text)")
+    expansion_idx = app_source.index("expansion = generate_query_expansion(", planning_idx)
+
+    assert "local_query_plan.intent_category not in {" in app_source[planning_idx:expansion_idx]
+    assert '"procedure"' in app_source[planning_idx:expansion_idx]
+
+
+def test_conversation_search_preference_selector_flow(mock_streamlit_app):
+    session_state, reruns = mock_streamlit_app
+
+    # 1. Create two conversations
+    c1 = WorkspaceConversation(id="conv_pref_1", notebook_id="mom_opcenter", title="Conv 1", search_preference="auto")
+    c2 = WorkspaceConversation(id="conv_pref_2", notebook_id="mom_opcenter", title="Conv 2", search_preference="deep")
+    store.save_conversation(c1)
+    store.save_conversation(c2)
+
+    # 2. Verify active conv 1 loads as auto
+    loaded1 = store.load_conversation("conv_pref_1")
+    assert loaded1.search_preference == "auto"
+
+    # 3. Simulate user toggling selector in conv 1 to deep
+    store.update_conversation_search_preference("conv_pref_1", "deep")
+    reloaded1 = store.load_conversation("conv_pref_1")
+    assert reloaded1.search_preference == "deep"
+
+    # 4. Conv 2 remains deep independently
+    reloaded2 = store.load_conversation("conv_pref_2")
+    assert reloaded2.search_preference == "deep"
+
+    # 5. Switch conv 1 back to auto
+    store.update_conversation_search_preference("conv_pref_1", "auto")
+    assert store.load_conversation("conv_pref_1").search_preference == "auto"
+    assert store.load_conversation("conv_pref_2").search_preference == "deep"

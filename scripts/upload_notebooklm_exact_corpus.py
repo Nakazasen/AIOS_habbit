@@ -1,4 +1,4 @@
-"""Upload the deterministic 70-source NotebookLM corpus with UTF-8-safe paths."""
+"""Upload the deterministic current NotebookLM corpus with UTF-8-safe paths."""
 
 from __future__ import annotations
 

@@ -91,6 +91,41 @@ def test_table_creates_schema_row_groups_and_local_parent_with_provenance():
     assert parent.element_ids[0] in rows.parent_element_ids
 
 
+def test_short_excel_regions_are_compacted_without_dropping_table_parents():
+    elements = []
+    for index, start_row in enumerate((1, 4, 7), start=1):
+        elements.append(make_element(
+            element_id=f"excel-region-{index}",
+            element_type=ElementType.TABLE,
+            table=TableData(headers=["Name"], rows=[[f"row-{index}"]]),
+            text=None,
+            file_type="xlsx",
+            source_path="/tmp/form.xlsx",
+            source_name="form.xlsx",
+            sheet="Form",
+            row_range=(start_row, start_row + 1),
+            column_range=(1, 1),
+            cell_range=f"A{start_row}:A{start_row + 1}",
+        ))
+
+    chunks = StructureAwareChunker(max_chars=1000).chunk_elements(elements)
+    compacted = [
+        chunk for chunk in chunks
+        if chunk.metadata["representation_role"] == "table_region_compacted"
+    ]
+    parents = [
+        chunk for chunk in chunks
+        if chunk.metadata["representation_role"] == "table_parent"
+    ]
+
+    assert len(compacted) == 2  # schema and row values retain separate roles
+    assert sum(chunk.metadata["compacted_child_count"] for chunk in compacted) == 6
+    assert any("row-1" in chunk.text for chunk in compacted)
+    assert any("row-3" in chunk.text for chunk in compacted)
+    assert all(chunk.row_range is None for chunk in compacted)  # regions had gaps
+    assert len(parents) == 3
+
+
 @pytest.mark.parametrize(
     "overrides, expected",
     [

@@ -1,7 +1,7 @@
 """Dev-only orchestration for the independent, local-first RAG v2 pipeline."""
 from __future__ import annotations
 
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass, field, replace
 from datetime import datetime, timezone
 import hashlib
 import json
@@ -31,7 +31,9 @@ from .semantic import (
     unavailable_embedding_backend,
 )
 from .retrieval_backends import BgeM3Backend, CrossEncoderRerankBackend
+from .adaptive_retrieval import CircuitBreaker
 from .synthesis import (
+
     LocalSynthesisResult,
     ProviderSynthesisProvider,
     synthesize_evidence,
@@ -293,6 +295,12 @@ class RagV2QueryResult:
     synthesis_result: LocalSynthesisResult
     route: str = "local_retrieval_evidence"
     provider_used: bool = False
+    reranker_requested: bool = False
+    reranker_applied: bool = False
+    effective_path: str = "hybrid"
+    degraded: bool = False
+    degraded_reason: str = ""
+    policy_version: str = "adaptive-reranking-v1"
 
 
 def _is_retrieval_lab_profile(profile: str) -> bool:
@@ -357,15 +365,15 @@ def _resolve_reranker_backend(
         "bge_m3_hybrid_rerank",
         "bge_m3_hybrid_rerank_expand",
     }
-    if config.retrieval_profile not in rerank_profiles:
-        return None, ""
     if backend is not None:
         resolved = backend
     elif config.retrieval_profile in {
         "bge_m3_hybrid_rerank",
         "bge_m3_hybrid_rerank_expand",
-    }:
+    } or (config.retrieval_profile == "bge_m3_hybrid" and config.bge_reranker_model_path is not None):
         if config.bge_reranker_model_path is None:
+            if config.retrieval_profile == "bge_m3_hybrid":
+                return None, ""
             raise SemanticBackendUnavailable(
                 "BGE reranker profile requires bge_reranker_model_path"
             )
@@ -383,7 +391,7 @@ def _resolve_reranker_backend(
             artifact_checksum=config.bge_reranker_model_checksum,
             device=config.retrieval_device,
         )
-    else:
+    elif config.retrieval_profile in rerank_profiles:
         try:
             resolved = FastEmbedRerankerBackend(
                 model_id=config.reranker_model_id,
@@ -395,11 +403,14 @@ def _resolve_reranker_backend(
             if config.strict_semantic:
                 raise
             return None, str(exc)
+    else:
+        return None, ""
     if not resolved.capability.available:
         if config.strict_semantic or _is_retrieval_lab_profile(config.retrieval_profile):
             resolved.capability.require()
         return resolved, resolved.capability.reason or "reranker_backend_unavailable"
     return resolved, ""
+
 
 
 class RagV2DevPipeline:
@@ -480,8 +491,10 @@ class RagV2DevPipeline:
         elif not retrieval_lab and self.config.retrieval_profile == "hybrid_rerank" and reranker_reason:
             self._effective_retrieval_profile = "hybrid"
             self._degraded_reason = reranker_reason
+        self.circuit_breaker = CircuitBreaker()
 
     def ingest(self, sources: Iterable[SourceSpec]) -> RagV2IngestionReport:
+
         items = []
         for source in sources:
             if not source.enabled:
@@ -590,6 +603,9 @@ class RagV2DevPipeline:
         *,
         expansion: Optional[Mapping[str, Any]] = None,
         evidence_config: Optional[EvidencePackConfig] = None,
+        rerank_requested: bool = False,
+        routing_reason_codes: Tuple[str, ...] = (),
+        policy_version: str = "adaptive-reranking-v1",
     ) -> RagV2QueryResult:
         selected = tuple(source for source in sources if source.enabled)
         plan = question if isinstance(question, RetrievalQueryPlan) else (
@@ -604,13 +620,26 @@ class RagV2DevPipeline:
             expected[source.document_id] = (
                 _file_fingerprint(source.path) if source.path.is_file() else "__source_unavailable__"
             )
+        # Diversity limits are meaningful only across distinct source documents.
+        # For a user-selected single manual, a cap of three can suppress the
+        # procedure, prerequisite, and safety chunks needed to answer one
+        # operational question.  Preserve the configured cap for multi-source
+        # searches, but permit the normal retrieval window for one document.
+        effective_per_document_limit = (
+            self.config.retrieval_limit
+            if (
+                len(set(allowed_documents)) == 1
+                and plan.intent_category in {"procedure", "actionable_output", "diagnosis"}
+            )
+            else self.config.per_document_limit
+        )
         options = SearchOptions(
             allowed_privacy_labels=self.config.allowed_privacy_labels,
             allowed_document_ids=tuple(allowed_documents),
             allowed_source_paths=tuple(allowed_paths),
             expected_source_fingerprints=expected,
             candidate_limit=self.config.candidate_limit,
-            per_document_limit=self.config.per_document_limit,
+            per_document_limit=effective_per_document_limit,
         )
         ranking_config = HybridRankingConfig(
             rrf_k=self.config.rrf_k,
@@ -619,78 +648,213 @@ class RagV2DevPipeline:
             sparse_weight=self.config.sparse_channel_weight,
             rerank_limit=self.config.rerank_limit,
         )
+        if self.config.strict_semantic and self.config.index_read_only:
+            coverage = self.index.verify_selected_document_coverage(
+                allowed_documents,
+                expected_document_fingerprints=expected,
+                sparse_required=self.config.retrieval_profile in _BGE_SPARSE_PROFILES,
+                multivector_required=self.config.retrieval_profile == "bge_m3_multivector",
+            )
+            if not coverage["valid"]:
+                raise SemanticBackendUnavailable("semantic_index_coverage_incomplete")
+
+        def _safe_reranker_error_code(exc: BaseException) -> str:
+            """Map any exception to an allowlisted safe string without leaking paths or text."""
+            exc_type = type(exc).__name__.lower()
+            exc_msg = str(exc).lower()
+            if "timeout" in exc_type or "timeout" in exc_msg or "timed out" in exc_msg:
+                return "reranker_backend_timeout"
+            if "memoryerror" in exc_type or "oom" in exc_msg or "out of memory" in exc_msg:
+                return "reranker_oom"
+            if "unavailable" in exc_msg or "missing" in exc_msg or "not found" in exc_msg:
+                return "reranker_backend_unavailable"
+            return "reranker_backend_failed"
+
+
+
         effective_profile = self._effective_retrieval_profile
+        reranker_applied = False
+        degraded = False
+        degraded_reason = ""
+        effective_path = "hybrid"
+
         if effective_profile == "lexical":
             response = self.index.search_with_summary(
                 plan,
                 limit=self.config.retrieval_limit,
                 options=options,
             )
-        else:
-            reranker = (
-                self.reranker_backend
-                if effective_profile in {"hybrid_rerank", "hybrid_rerank_expand"}
-                else None
-            )
-            try:
-                if effective_profile == "dense":
-                    response = self.index.dense_search_with_summary(
-                        plan,
-                        limit=self.config.retrieval_limit,
-                        options=options,
-                        dense_limit=self.config.dense_candidate_limit,
-                        ranking_config=ranking_config,
-                    )
-                else:
-                    response = self.index.hybrid_search_with_summary(
-                        plan,
-                        limit=self.config.retrieval_limit,
-                        options=options,
-                        dense_limit=self.config.dense_candidate_limit,
-                        ranking_config=ranking_config,
-                        reranker=reranker,
-                        use_multivector=effective_profile == "hybrid_multivector",
-                        precomputed_only=effective_profile == "hybrid_multivector",
-                    )
-                    if effective_profile == "hybrid_rerank_expand":
-                        response = self.index.expand_context(
-                            response,
-                            options=options,
-                            neighbor_window=self.config.context_neighbor_window,
-                            parent_limit=self.config.context_parent_limit,
-                        )
-            except SemanticBackendError as exc:
-                if self.config.strict_semantic or _is_retrieval_lab_profile(
-                    self.config.retrieval_profile
+            effective_path = "lexical"
+            if rerank_requested:
+                reranker = self.reranker_backend
+                if self.circuit_breaker.is_open():
+                    degraded = True
+                    degraded_reason = "circuit_breaker_open"
+                elif (
+                    reranker is None
+                    or not getattr(reranker, "capability", None)
+                    or not reranker.capability.available
                 ):
-                    raise
-                if effective_profile == "hybrid_rerank":
-                    self._effective_retrieval_profile = "hybrid"
-                    self._degraded_reason = str(exc)
-                    try:
-                        response = self.index.hybrid_search_with_summary(
-                            plan,
-                            limit=self.config.retrieval_limit,
-                            options=options,
-                            dense_limit=self.config.dense_candidate_limit,
-                            ranking_config=ranking_config,
-                        )
-                    except SemanticBackendError as dense_exc:
-                        self._effective_retrieval_profile = "lexical"
-                        self._degraded_reason = str(dense_exc)
-                        response = self.index.search_with_summary(
-                            plan,
-                            limit=self.config.retrieval_limit,
-                            options=options,
-                        )
+                    degraded = True
+                    degraded_reason = "reranker_backend_unavailable"
                 else:
-                    self._effective_retrieval_profile = "lexical"
-                    self._degraded_reason = str(exc)
-                    response = self.index.search_with_summary(
-                        plan,
-                        limit=self.config.retrieval_limit,
-                        options=options,
-                    )
+                    try:
+                        if response.results:
+                            from .index import _rerank_hybrid_window, _select_hybrid_results
+                            reranked_candidates = _rerank_hybrid_window(
+                                plan.original_query,
+                                response.results,
+                                reranker,
+                                ranking_config.rerank_limit,
+                            )
+                            final_results, _rejected = _select_hybrid_results(
+                                reranked_candidates,
+                                plan,
+                                limit=self.config.retrieval_limit,
+                                per_document_limit=options.per_document_limit,
+                                near_duplicate_threshold=ranking_config.near_duplicate_threshold,
+                            )
+                            new_summary = replace(
+                                response.summary,
+                                candidate_backend="lexical_rerank",
+                                returned_count=len(final_results),
+                            )
+                            response = SearchResponse(results=tuple(final_results), summary=new_summary)
+                            reranker_applied = True
+                            effective_path = "lexical_rerank"
+                            self.circuit_breaker.record_success()
+                    except Exception as rerank_exc:
+                        self.circuit_breaker.record_failure()
+                        degraded = True
+                        degraded_reason = _safe_reranker_error_code(rerank_exc)
+                        reranker_applied = False
+                        effective_path = "lexical"
+        elif effective_profile == "dense":
+
+            response = self.index.dense_search_with_summary(
+                plan,
+                limit=self.config.retrieval_limit,
+                options=options,
+                dense_limit=self.config.dense_candidate_limit,
+                ranking_config=ranking_config,
+            )
+            effective_path = "dense"
+        else:
+            # Base hybrid retrieval first (without reranker)
+            # This strictly preserves fail-closed for base BGE semantic errors if strict_semantic=True
+            # A reranker can only improve ranking when it sees a wider candidate
+            # window than the final evidence pack.  Previously Deep reranked the
+            # already-truncated top-N result, which made it effectively the same
+            # retrieval as Fast whenever N equalled rerank_limit.
+            should_rerank = rerank_requested or (
+                effective_profile in {"hybrid_rerank", "hybrid_rerank_expand"}
+            )
+            pre_rerank_limit = self.config.retrieval_limit
+            if should_rerank:
+                pre_rerank_limit = min(
+                    self.config.candidate_limit,
+                    max(self.config.retrieval_limit, ranking_config.rerank_limit),
+                )
+            response = self.index.hybrid_search_with_summary(
+                plan,
+                limit=pre_rerank_limit,
+                options=options,
+                dense_limit=self.config.dense_candidate_limit,
+                ranking_config=ranking_config,
+                reranker=None,
+                use_multivector=effective_profile == "hybrid_multivector",
+                precomputed_only=effective_profile == "hybrid_multivector",
+            )
+            effective_path = "hybrid"
+
+            if should_rerank:
+                reranker = self.reranker_backend
+                if self.circuit_breaker.is_open():
+                    degraded = True
+                    degraded_reason = "circuit_breaker_open"
+                elif (
+                    reranker is None
+                    or not getattr(reranker, "capability", None)
+                    or not reranker.capability.available
+                ):
+                    degraded = True
+                    degraded_reason = "reranker_backend_unavailable"
+                else:
+                    try:
+                        if response.results:
+                            from .index import _rerank_hybrid_window, _select_hybrid_results
+                            reranked_candidates = _rerank_hybrid_window(
+                                plan.original_query,
+                                response.results,
+                                reranker,
+                                ranking_config.rerank_limit,
+                            )
+                            final_results, _rejected = _select_hybrid_results(
+                                reranked_candidates,
+                                plan,
+                                limit=self.config.retrieval_limit,
+                                per_document_limit=options.per_document_limit,
+                                near_duplicate_threshold=ranking_config.near_duplicate_threshold,
+                            )
+                            new_summary = replace(
+                                response.summary,
+                                candidate_backend="hybrid_rrf_rerank",
+                                returned_count=len(final_results),
+                            )
+                            response = SearchResponse(results=tuple(final_results), summary=new_summary)
+                            reranker_applied = True
+                            effective_path = "hybrid_rerank"
+                            self.circuit_breaker.record_success()
+                    except Exception as rerank_exc:
+                        self.circuit_breaker.record_failure()
+                        degraded = True
+                        degraded_reason = _safe_reranker_error_code(rerank_exc)
+                        reranker_applied = False
+                        effective_path = "hybrid"
+                        if self.config.retrieval_profile in {"hybrid_rerank", "hybrid_rerank_expand"}:
+                            self._effective_retrieval_profile = "hybrid"
+                            self._degraded_reason = degraded_reason
+
+
+            if effective_profile == "hybrid_rerank_expand":
+                response = self.index.expand_context(
+                    response,
+                    options=options,
+                    neighbor_window=self.config.context_neighbor_window,
+                    parent_limit=self.config.context_parent_limit,
+                )
+                effective_path = "hybrid_rerank_expand"
+
+
+
+        if evidence_config is None:
+            evidence_config = EvidencePackConfig()
+
+        if plan.intent_category in {"procedure", "actionable_output", "excel_native", "citation_provenance", "diagnosis", "compare_change", "precise_lookup"}:
+            evidence_config = replace(
+                evidence_config,
+                min_final_evidence_term_coverage=min(0.05, evidence_config.min_final_evidence_term_coverage),
+                min_semantic_support_score=min(0.1, evidence_config.min_semantic_support_score)
+            )
+        if (
+            plan.intent_category in {"procedure", "actionable_output", "diagnosis"}
+            and len(set(allowed_documents)) == 1
+        ):
+            # A complete operational answer commonly spans definition,
+            # prerequisites, execution, and safety within one manual.  The
+            # normal cross-document diversity cap of three would keep only the
+            # opening section and make the provider claim the later steps are
+            # absent.  The retrieval window remains bounded by the configured
+            # limit and still uses only the caller-selected document.
+            evidence_config = replace(
+                evidence_config,
+                max_items=max(evidence_config.max_items, self.config.retrieval_limit),
+                per_document_limit=max(
+                    evidence_config.per_document_limit,
+                    self.config.retrieval_limit,
+                ),
+            )
+
         pack = build_evidence_pack(plan, response, config=evidence_config)
         synthesis = (
             synthesize_with_provider(
@@ -712,7 +876,14 @@ class RagV2DevPipeline:
                 else "local_retrieval_evidence"
             ),
             provider_used=synthesis.provider_used,
+            reranker_requested=bool(rerank_requested),
+            reranker_applied=bool(reranker_applied),
+            effective_path=effective_path,
+            degraded=bool(degraded),
+            degraded_reason=degraded_reason,
+            policy_version=policy_version,
         )
+
 
     def inspect(self, sources: Iterable[SourceSpec] = ()) -> dict[str, Any]:
         states = []

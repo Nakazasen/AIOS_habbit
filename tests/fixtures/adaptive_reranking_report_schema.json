@@ -1,0 +1,216 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "AdaptiveRerankingBenchmarkReport",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "policy_version",
+    "dataset_checksum",
+    "overall_status",
+    "gates",
+    "confusion_matrix",
+    "performance",
+    "candidate_windows",
+    "selected_window"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "policy_version": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$"
+    },
+    "dataset_checksum": {
+      "type": "string",
+      "pattern": "^(sha256:)?[a-f0-9]{64}$"
+    },
+    "timestamp": {
+      "type": "string"
+    },
+    "overall_status": {
+      "type": "string",
+      "enum": ["PASS", "PARTIAL", "FAIL", "BLOCKED"]
+    },
+    "blocked_reasons": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "provenance": {
+      "type": "object"
+    },
+    "gates": {
+      "type": "object",
+      "required": [
+        "route_accuracy",
+        "explicit_deep_rate",
+        "uncertain_to_deep_rate",
+        "runtime_init_count",
+        "zero_privacy_leakage",
+        "degraded_fallback_safe",
+        "legacy_compatibility",
+        "rollback_verified"
+      ],
+      "properties": {
+        "route_accuracy": {
+          "type": "object",
+          "required": ["status"],
+          "properties": {
+            "status": { "type": "string", "enum": ["PASS", "PARTIAL", "FAIL", "BLOCKED"] },
+            "measured": { "type": ["number", "null"] },
+            "threshold": { "type": ["number", "null"] }
+          }
+        },
+        "explicit_deep_rate": {
+          "type": "object",
+          "required": ["status"],
+          "properties": {
+            "status": { "type": "string", "enum": ["PASS", "PARTIAL", "FAIL", "BLOCKED"] },
+            "measured": { "type": ["number", "null"] },
+            "threshold": { "type": ["number", "null"] }
+          }
+        },
+        "uncertain_to_deep_rate": {
+          "type": "object",
+          "required": ["status"],
+          "properties": {
+            "status": { "type": "string", "enum": ["PASS", "PARTIAL", "FAIL", "BLOCKED"] },
+            "measured": { "type": ["number", "null"] },
+            "threshold": { "type": ["number", "null"] }
+          }
+        },
+        "hard_mrr_gain": {
+          "type": "object",
+          "required": ["status"],
+          "properties": {
+            "status": { "type": "string", "enum": ["PASS", "PARTIAL", "FAIL", "BLOCKED"] },
+            "measured": { "type": ["number", "null"] },
+            "threshold": { "type": ["number", "null"] }
+          }
+        },
+        "recall_regression": {
+          "type": "object",
+          "required": ["status"],
+          "properties": {
+            "status": { "type": "string", "enum": ["PASS", "PARTIAL", "FAIL", "BLOCKED"] },
+            "measured": { "type": ["number", "null"] },
+            "threshold": { "type": ["number", "null"] }
+          }
+        },
+        "auto_fast_p95_regression": {
+          "type": "object",
+          "required": ["status"],
+          "properties": {
+            "status": { "type": "string", "enum": ["PASS", "PARTIAL", "FAIL", "BLOCKED"] },
+            "measured": { "type": ["number", "null"] },
+            "threshold": { "type": ["number", "null"] }
+          }
+        },
+        "deep_warm_p95": {
+          "type": "object",
+          "required": ["status"],
+          "properties": {
+            "status": { "type": "string", "enum": ["PASS", "PARTIAL", "FAIL", "BLOCKED"] },
+            "measured_ms": { "type": ["number", "null"] },
+            "threshold_ms": { "type": ["number", "null"] }
+          }
+        },
+        "runtime_init_count": {
+          "type": "object",
+          "required": ["status"],
+          "properties": {
+            "status": { "type": "string", "enum": ["PASS", "PARTIAL", "FAIL", "BLOCKED"] },
+            "measured": { "type": ["integer", "null"] },
+            "threshold": { "type": ["integer", "null"] }
+          }
+        },
+        "available_ram_mb": {
+          "type": "object",
+          "required": ["status"],
+          "properties": {
+            "status": { "type": "string", "enum": ["PASS", "PARTIAL", "FAIL", "BLOCKED"] },
+            "measured_mb": { "type": ["number", "null"] },
+            "threshold_mb": { "type": ["number", "null"] }
+          }
+        },
+        "zero_privacy_leakage": {
+          "type": "object",
+          "required": ["status"],
+          "properties": {
+            "status": { "type": "string", "enum": ["PASS", "FAIL", "BLOCKED"] },
+            "leaks_detected": { "type": ["integer", "null"] }
+          }
+        },
+        "degraded_fallback_safe": {
+          "type": "object",
+          "required": ["status"],
+          "properties": {
+            "status": { "type": "string", "enum": ["PASS", "FAIL", "BLOCKED"] }
+          }
+        },
+        "legacy_compatibility": {
+          "type": "object",
+          "required": ["status"],
+          "properties": {
+            "status": { "type": "string", "enum": ["PASS", "FAIL", "BLOCKED"] }
+          }
+        },
+        "rollback_verified": {
+          "type": "object",
+          "required": ["status"],
+          "properties": {
+            "status": { "type": "string", "enum": ["PASS", "FAIL", "BLOCKED"] }
+          }
+        }
+      }
+    },
+    "confusion_matrix": {
+      "type": "object",
+      "required": [
+        "total_queries",
+        "fast_true_positives",
+        "fast_false_positives",
+        "deep_true_positives",
+        "deep_false_positives",
+        "uncertain_escalations",
+        "explicit_deep_overrides"
+      ],
+      "properties": {
+        "total_queries": { "type": "integer" },
+        "fast_true_positives": { "type": "integer" },
+        "fast_false_positives": { "type": "integer" },
+        "deep_true_positives": { "type": "integer" },
+        "deep_false_positives": { "type": "integer" },
+        "uncertain_escalations": { "type": "integer" },
+        "explicit_deep_overrides": { "type": "integer" }
+      }
+    },
+    "performance": {
+      "type": "object",
+      "required": [
+        "auto_fast_p50_ms",
+        "auto_fast_p95_ms",
+        "deep_p50_ms",
+        "deep_p95_ms",
+        "peak_rss_mb",
+        "available_ram_gb"
+      ],
+      "properties": {
+        "auto_fast_p50_ms": { "type": ["number", "null"] },
+        "auto_fast_p95_ms": { "type": ["number", "null"] },
+        "deep_p50_ms": { "type": ["number", "null"] },
+        "deep_p95_ms": { "type": ["number", "null"] },
+        "peak_rss_mb": { "type": ["number", "null"] },
+        "available_ram_gb": { "type": ["number", "null"] }
+      }
+    },
+    "candidate_windows": {
+      "type": "object"
+    },
+    "selected_window": {
+      "type": "integer",
+      "enum": [10, 20, 30]
+    }
+  }
+}

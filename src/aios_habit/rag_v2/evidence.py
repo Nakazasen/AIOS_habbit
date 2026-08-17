@@ -40,6 +40,16 @@ class EvidencePackConfig:
     per_document_limit: int = 3
     high_score_threshold: float = 8.0
     medium_score_threshold: float = 3.0
+    soft_warning_codes: frozenset[str] = frozenset({
+        "incomplete_query_term_coverage",
+        "weak_query_term_coverage",
+        "top_score_below_threshold",
+        "too_few_evidence_items",
+        "weak_term_coverage",
+        "missing_required_obligations",
+        "expansion_unavailable",
+        "expansion_rejected",
+    })
 
     def __post_init__(self) -> None:
         if self.max_items < 1:
@@ -73,18 +83,7 @@ class EvidenceAnswerMode(str, Enum):
     ABSTAIN = "abstain"
 
 
-_SOFT_WARNING_REASON_CODES = frozenset({
-    "incomplete_query_term_coverage",
-    "weak_query_term_coverage",
-    "top_score_below_threshold",
-    "too_few_evidence_items",
-    "weak_term_coverage",
-    "missing_required_obligations",
-    "cross_lingual_structural_corroboration",
-    "cross_lingual_target_equivalent_corroboration",
-    "expansion_unavailable",
-    "expansion_rejected",
-})
+# Warning codes are now configured via EvidencePackConfig
 
 
 @dataclass(frozen=True)
@@ -170,14 +169,6 @@ class EvidenceRelevanceTelemetry:
     current_variant_item_count: int
     qualifying_semantic_item_count: int
     semantic_rejection_reasons: Tuple[str, ...]
-    cross_lingual_structural_supported: bool
-    cross_lingual_required_facet_count: int
-    cross_lingual_covered_facet_count: int
-    cross_lingual_document_count: int
-    cross_lingual_rejection_reasons: Tuple[str, ...]
-    cross_lingual_target_equivalent_supported: bool
-    cross_lingual_target_equivalent_item_count: int
-    cross_lingual_target_equivalent_rejection_reasons: Tuple[str, ...]
 
 
 @dataclass(frozen=True)
@@ -390,119 +381,6 @@ def _final_evidence_relevance(
     return len(matched_terms) / len(target_terms)
 
 
-def _cross_lingual_structural_support(
-    items: Sequence[EvidenceItem],
-    query_plan: RetrievalQueryPlan,
-    response: SearchResponse,
-) -> tuple[bool, int, int, int, Tuple[str, ...]]:
-    """Corroborate multilingual architecture/integration evidence without lowering lexical proof.
-
-    This bounded fallback is intentionally unavailable to procedures, lookups,
-    and general questions.  A structural alias only establishes recall; it is
-    accepted here only with original target support, complete planned structural
-    facets, and support spread over multiple documents.
-    """
-    if query_plan.intent_category not in {"architecture", "integration"}:
-        return False, 0, 0, 0, ("intent_not_eligible",)
-
-    required_facets = tuple(
-        facet_id
-        for facet_id in response.summary.planned_facet_ids
-        if facet_id != "query"
-    )
-    if not required_facets:
-        return False, 0, 0, 0, ("no_structural_facets_planned",)
-
-    target_terms = set(query_plan.target_terms)
-    valid_target_equivalent_ids = {
-        variant.variant_id
-        for variant in query_plan.variants
-        if variant.variant_id and variant.target_equivalent
-    }
-    target_supported = tuple(
-        item
-        for item in items
-        if (
-            item.ranking_signals.get("target_term_match_count", 0.0) > 0.0
-            or bool(target_terms.intersection(term.casefold() for term in item.matched_terms))
-            # A named query equivalent is a bounded translation/romanisation of
-            # the original subject. It can corroborate target relevance here only
-            # when its ID is still present in this exact query plan; generic
-            # structural aliases never enter this set.
-            or bool(
-                valid_target_equivalent_ids.intersection(
-                    item.matched_target_equivalent_variant_ids
-                )
-            )
-        )
-    )
-    covered_facets = {
-        facet_id
-        for item in items
-        for facet_id in item.matched_query_facets
-        if facet_id in required_facets
-    }
-    facet_documents = {
-        item.document_id
-        for item in items
-        if set(item.matched_query_facets).intersection(required_facets)
-    }
-    reasons: List[str] = []
-    if not target_supported:
-        reasons.append("missing_original_target_support")
-    if len(covered_facets) != len(required_facets):
-        reasons.append("incomplete_structural_facet_coverage")
-    if len(facet_documents) < 2:
-        reasons.append("insufficient_structural_document_diversity")
-    return (
-        not reasons,
-        len(required_facets),
-        len(covered_facets),
-        len(facet_documents),
-        tuple(reasons),
-    )
-
-
-def _cross_lingual_target_equivalent_support(
-    items: Sequence[EvidenceItem],
-    query_plan: RetrievalQueryPlan,
-) -> tuple[bool, int, Tuple[str, ...]]:
-    """Validate a query-only multilingual target equivalent for bounded intents.
-
-    A generic structural alias cannot enter this path: every accepted item must
-    carry an ID from a validated target-equivalent expansion in the current plan.
-    """
-    if query_plan.intent_category not in {"procedure", "diagnosis", "compare_change"}:
-        return False, 0, ("intent_not_eligible",)
-    valid_ids = {
-        variant.variant_id
-        for variant in query_plan.variants
-        if variant.variant_id and variant.target_equivalent
-    }
-    if not valid_ids:
-        return False, 0, ("no_validated_target_equivalent_variant",)
-    supported_items = tuple(
-        item for item in items
-        if valid_ids.intersection(item.matched_target_equivalent_variant_ids)
-    )
-    if not supported_items:
-        return False, 0, ("missing_target_equivalent_evidence",)
-    obligations = {
-        obligation
-        for item in supported_items
-        for obligation in item.matched_obligations
-    }
-    if query_plan.intent_category == "procedure":
-        required = {"step"}
-    elif query_plan.intent_category == "diagnosis":
-        required = {"problem", "action"}
-    else:
-        required = {"side_a", "side_b"}
-    if not required.issubset(obligations):
-        return False, len(supported_items), ("insufficient_target_equivalent_obligation_coverage",)
-    return True, len(supported_items), ()
-
-
 def _semantic_evidence_support(
     items: Sequence[EvidenceItem],
     query_plan: RetrievalQueryPlan,
@@ -511,17 +389,11 @@ def _semantic_evidence_support(
     lexical_coverage: float,
 ) -> EvidenceRelevanceTelemetry:
     """Return content-free channel diagnostics with strict provenance checks."""
-    structural_intent = query_plan.intent_category in {"architecture", "integration"}
     target_bearing_variant_ids = {
         variant.variant_id
         for variant in query_plan.variants
         if variant.variant_id
         and (variant.origin == "original" or variant.target_equivalent)
-    }
-    named_target_equivalent_ids = {
-        variant.variant_id
-        for variant in query_plan.variants
-        if variant.variant_id and variant.target_equivalent
     }
     dense_scores: List[float] = []
     dense_score_count = 0
@@ -539,16 +411,7 @@ def _semantic_evidence_support(
         # or a named, target-equivalent formulation validated in this plan.
         matched_variant_ids = set(item.matched_query_variant_ids)
         has_current_variant = bool(target_bearing_variant_ids.intersection(matched_variant_ids))
-        # Architecture/integration terms such as "protocol" and "interface"
-        # are especially generic. For those intents, cross-language dense support
-        # must be anchored by a query-only named subject equivalent. Without one,
-        # only lexical target proof can open the final relevance gate.
-        has_named_structural_subject = bool(
-            named_target_equivalent_ids.intersection(matched_variant_ids)
-        )
-        semantic_subject_eligible = has_current_variant and (
-            not structural_intent or has_named_structural_subject
-        )
+        semantic_subject_eligible = has_current_variant
         dense_score_count += int(has_dense_score)
         dense_channel_count += int(has_dense_channel)
         current_variant_count += int(semantic_subject_eligible)
@@ -586,20 +449,13 @@ def _semantic_evidence_support(
         current_variant_item_count=current_variant_count,
         qualifying_semantic_item_count=qualifying_count,
         semantic_rejection_reasons=tuple(rejection_reasons),
-        cross_lingual_structural_supported=False,
-        cross_lingual_required_facet_count=0,
-        cross_lingual_covered_facet_count=0,
-        cross_lingual_document_count=0,
-        cross_lingual_rejection_reasons=(),
-        cross_lingual_target_equivalent_supported=False,
-        cross_lingual_target_equivalent_item_count=0,
-        cross_lingual_target_equivalent_rejection_reasons=(),
     )
 
 
 def _classify_evidence_reasons(
     items: Sequence[EvidenceItem],
     reasons: Sequence[str],
+    config: EvidencePackConfig,
 ) -> Tuple[Tuple[str, ...], Tuple[str, ...], EvidenceAnswerMode]:
     """Split diagnostics into vetoes and warnings, failing closed on unknown codes."""
     ordered = tuple(dict.fromkeys(reasons))
@@ -607,8 +463,8 @@ def _classify_evidence_reasons(
         hard = tuple(dict.fromkeys((*ordered, "no_evidence_items")))
         return hard, (), EvidenceAnswerMode.ABSTAIN
 
-    soft = tuple(reason for reason in ordered if reason in _SOFT_WARNING_REASON_CODES)
-    hard = tuple(reason for reason in ordered if reason not in _SOFT_WARNING_REASON_CODES)
+    soft = tuple(reason for reason in ordered if reason in config.soft_warning_codes)
+    hard = tuple(reason for reason in ordered if reason not in config.soft_warning_codes)
     if hard:
         mode = EvidenceAnswerMode.ABSTAIN
     elif soft:
@@ -636,6 +492,19 @@ def build_evidence_pack(
     results = response.results
     pack_id = _stable_pack_id(query_text, results)
 
+    if query_plan.intent_category == "cross_source_synthesis":
+        effective_max_items = max(
+            config.max_items,
+            getattr(query_plan, "target_retrieval_limit", config.max_items),
+        )
+        effective_per_doc_limit = max(
+            config.per_document_limit,
+            getattr(query_plan, "target_per_document_limit", config.per_document_limit),
+        )
+    else:
+        effective_max_items = config.max_items
+        effective_per_doc_limit = config.per_document_limit
+
     # Maximize usable answer coverage within the bounded evidence budget.  The
     # selector is deterministic: total new coverage wins, then obligation gain,
     # facet gain, and finally the original retrieval rank.
@@ -647,7 +516,7 @@ def build_evidence_pack(
         if result.chunk_id in selected_chunk_ids:
             return False
         doc_count = doc_counts.get(result.document_id, 0)
-        if doc_count >= config.per_document_limit:
+        if doc_count >= effective_per_doc_limit:
             return False
         doc_counts[result.document_id] = doc_count + 1
         selected_chunk_ids.add(result.chunk_id)
@@ -677,7 +546,7 @@ def build_evidence_pack(
         for facet_id in response.summary.planned_facet_ids
         if facet_id != "query"
     }
-    while len(selected) < config.max_items and (
+    while len(selected) < effective_max_items and (
         uncovered_obligations or uncovered_facets
     ):
         best_result: Optional[SearchResult] = None
@@ -685,7 +554,7 @@ def build_evidence_pack(
         for rank_index, result in enumerate(selection_results):
             if result.chunk_id in selected_chunk_ids:
                 continue
-            if doc_counts.get(result.document_id, 0) >= config.per_document_limit:
+            if doc_counts.get(result.document_id, 0) >= effective_per_doc_limit:
                 continue
             obligation_gain = len(
                 uncovered_obligations.intersection(result.matched_obligations)
@@ -713,7 +582,7 @@ def build_evidence_pack(
     # Preserve retrieval rank for the non-coverage remainder, excluding unrelated
     # structural-only chunks whenever target-supported evidence is available.
     for result in selection_results:
-        if len(selected) >= config.max_items:
+        if len(selected) >= effective_max_items:
             break
         add_result(result)
 
@@ -821,54 +690,14 @@ def build_evidence_pack(
         and not relevance_telemetry.lexical_passed
         and relevance_telemetry.qualifying_semantic_item_count
     )
-    (
-        cross_lingual_structural_supported,
-        cross_lingual_required_facet_count,
-        cross_lingual_covered_facet_count,
-        cross_lingual_document_count,
-        cross_lingual_rejection_reasons,
-    ) = _cross_lingual_structural_support(items_tuple, query_plan, response)
-    (
-        target_equivalent_supported,
-        target_equivalent_item_count,
-        target_equivalent_rejection_reasons,
-    ) = _cross_lingual_target_equivalent_support(items_tuple, query_plan)
-    relevance_telemetry = EvidenceRelevanceTelemetry(
-        **{
-            **asdict(relevance_telemetry),
-            "cross_lingual_structural_supported": cross_lingual_structural_supported,
-            "cross_lingual_required_facet_count": cross_lingual_required_facet_count,
-            "cross_lingual_covered_facet_count": cross_lingual_covered_facet_count,
-            "cross_lingual_document_count": cross_lingual_document_count,
-            "cross_lingual_rejection_reasons": cross_lingual_rejection_reasons,
-            "cross_lingual_target_equivalent_supported": target_equivalent_supported,
-            "cross_lingual_target_equivalent_item_count": target_equivalent_item_count,
-            "cross_lingual_target_equivalent_rejection_reasons": target_equivalent_rejection_reasons,
-        }
-    )
-    target_equivalent_support_used = bool(
-        items_tuple
-        and not relevance_telemetry.lexical_passed
-        and not semantic_support_used
-        and target_equivalent_supported
-    )
-    cross_lingual_support_used = bool(
-        items_tuple
-        and not relevance_telemetry.lexical_passed
-        and not semantic_support_used
-        and not target_equivalent_support_used
-        and cross_lingual_structural_supported
-    )
+
     if final_evidence_coverage >= config.min_final_evidence_term_coverage:
         relevance_gate_basis = "lexical"
     elif semantic_support_used:
         relevance_gate_basis = "semantic_dense"
-    elif target_equivalent_support_used:
-        relevance_gate_basis = "cross_lingual_target_equivalent"
-    elif cross_lingual_support_used:
-        relevance_gate_basis = "cross_lingual_structural"
     else:
         relevance_gate_basis = "insufficient"
+
     supported_obligation_count = sum(
         item.status == "covered" for item in obligation_coverage_map
     )
@@ -877,11 +706,7 @@ def build_evidence_pack(
         items_tuple, response.summary, config
     )
     relevance_reasons: List[str] = []
-    if target_equivalent_support_used:
-        relevance_reasons.append("cross_lingual_target_equivalent_corroboration")
-    elif cross_lingual_support_used:
-        relevance_reasons.append("cross_lingual_structural_corroboration")
-    elif (
+    if (
         items_tuple
         and len(query_plan.target_terms) >= 2
         and not target_supported_results
@@ -914,7 +739,7 @@ def build_evidence_pack(
         # and misses every facet. Keep the missing-obligation warning visible,
         # but reserve the hard veto for evidence without an independent
         # relevance signal.
-        if semantic_support_used or target_equivalent_support_used or cross_lingual_support_used:
+        if semantic_support_used:
             relevance_reasons.append("missing_required_obligations")
         else:
             relevance_reasons.append("all_required_obligations_missing")
@@ -922,7 +747,7 @@ def build_evidence_pack(
         dict.fromkeys((*insufficiency_reasons, *relevance_reasons))
     )
     hard_reasons, soft_reasons, answer_mode = _classify_evidence_reasons(
-        items_tuple, insufficiency_reasons
+        items_tuple, insufficiency_reasons, config
     )
     privacy_summary = _compute_privacy_summary(items_tuple)
 

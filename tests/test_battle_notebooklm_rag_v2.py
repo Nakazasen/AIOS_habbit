@@ -218,3 +218,40 @@ def test_unsealed_diagnostic_is_limited_to_local_bq01_bq02_and_never_live(tmp_pa
     args.run = True
     with pytest.raises(battle.BenchmarkError, match="never enables live synthesis"):
         battle.validate_unsealed_diagnostic_args(args)
+
+
+def test_selected_profile_batch_size_is_bounded_and_part_of_model_config():
+    args = argparse.Namespace(
+        bge_m3_model_path="model",
+        bge_m3_model_revision="revision",
+        bge_m3_model_checksum="sha256:" + "a" * 64,
+        bge_reranker_model_path="reranker",
+        bge_reranker_model_revision="reranker-revision",
+        bge_reranker_model_checksum="sha256:" + "b" * 64,
+        bge_m3_batch_size=4,
+        retrieval_device="cpu",
+    )
+
+    assert battle._ablation_model_config(args)["bge_m3_batch_size"] == 4
+    args.bge_m3_batch_size = 5
+    with pytest.raises(battle.BenchmarkError, match="bge-m3-batch-size"):
+        battle._ablation_model_config(args)
+
+
+def test_rag_v2_config_passes_qualification_batch_size_to_bge_worker(tmp_path):
+    args = argparse.Namespace(
+        privacy_label="cloud_safe",
+        rag_profile="bge_m3_hybrid",
+        bge_m3_model_path="model",
+        bge_m3_model_revision="revision",
+        bge_m3_model_checksum="sha256:" + "a" * 64,
+        bge_m3_batch_size=4,
+        bge_reranker_model_path="reranker",
+        bge_reranker_model_revision="reranker-revision",
+        bge_reranker_model_checksum="sha256:" + "b" * 64,
+        retrieval_device="cpu",
+    )
+
+    config = battle.build_rag_v2_config(args, tmp_path / "runtime")
+
+    assert config.bge_m3_batch_size == 4

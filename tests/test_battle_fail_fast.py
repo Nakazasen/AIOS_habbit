@@ -10,7 +10,12 @@ SCRIPTS_ROOT = PROJECT_ROOT / "scripts"
 if str(SCRIPTS_ROOT) not in sys.path:
     sys.path.insert(0, str(SCRIPTS_ROOT))
 
-from battle_notebooklm_rag_v2 import ProgressHeartbeat, assess_fail_fast, write_stopped_early_report  # noqa: E402
+from battle_notebooklm_rag_v2 import (  # noqa: E402
+    ProgressHeartbeat,
+    assess_fail_fast,
+    should_abort_profile_for_fail_fast,
+    write_stopped_early_report,
+)
 
 
 def test_fail_fast_waits_for_minimum_sample_then_stops_on_unusable_rate() -> None:
@@ -26,6 +31,26 @@ def test_fail_fast_stops_immediately_on_false_support() -> None:
     decision = assess_fail_fast([{"question_id": "q-risk", "score": {"expected_answer_type": "insufficient", "false_support": True}}])
     assert decision["should_stop"] is True
     assert "false_support_detected" in decision["reasons"]
+
+
+def test_selected_profile_runs_full_lexical_control_but_stops_failed_candidate() -> None:
+    decision = {"should_stop": True, "reasons": ["unusable_answerable_rate_exceeded"]}
+
+    assert not should_abort_profile_for_fail_fast(
+        decision,
+        selected_profile="bge_m3_hybrid",
+        profile="lexical_baseline",
+    )
+    assert should_abort_profile_for_fail_fast(
+        decision,
+        selected_profile="bge_m3_hybrid",
+        profile="bge_m3_hybrid",
+    )
+    assert should_abort_profile_for_fail_fast(
+        {"should_stop": True, "reasons": ["false_support_detected"]},
+        selected_profile="bge_m3_hybrid",
+        profile="lexical_baseline",
+    )
 
 
 def test_stopped_early_report_and_progress_heartbeat(tmp_path: Path) -> None:
@@ -45,3 +70,14 @@ def test_stopped_early_report_and_progress_heartbeat(tmp_path: Path) -> None:
     assert report["remaining"] == 3
     assert report["analysis"]["safe_to_promote"] is False
     assert (tmp_path / "partial_results.jsonl").is_file()
+
+
+def test_progress_heartbeat_never_marks_partial_multi_arm_run_completed(tmp_path: Path) -> None:
+    progress_path = tmp_path / "progress.json"
+    with ProgressHeartbeat(progress_path, stage="unit_test", total=4, interval_seconds=0.05) as progress:
+        progress.update(completed=2, current="first_arm_finished")
+
+    final_snapshot = json.loads(progress_path.read_text(encoding="utf-8"))
+    assert final_snapshot["status"] == "INCOMPLETE"
+    assert final_snapshot["completed"] == 2
+    assert final_snapshot["total"] == 4

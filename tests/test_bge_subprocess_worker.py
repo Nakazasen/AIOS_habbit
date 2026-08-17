@@ -6,9 +6,10 @@ import tempfile
 import pytest
 
 from aios_habit.rag_v2 import bge_subprocess_client as worker_client_module
+from aios_habit.rag_v2 import bge_subprocess_worker as worker_module
 from aios_habit.rag_v2.bge_subprocess_client import BgeSubprocessWorkerClient
-from aios_habit.rag_v2.pipeline import RagV2DevConfig, SourceSpec
-from aios_habit.rag_v2.semantic import SemanticBackendError
+from aios_habit.rag_v2.pipeline import RagV2DevConfig, RagV2DevPipeline, SourceSpec
+from aios_habit.rag_v2.semantic import DeterministicEmbeddingBackend, SemanticBackendError
 
 
 
@@ -129,6 +130,29 @@ def test_staged_prepare_enforces_one_deadline_across_worker_calls(monkeypatch, t
     assert calls[0] == ("stage", 1.0)
 
 
+def test_staging_rebuilds_matching_source_when_semantic_vectors_are_missing(tmp_path) -> None:
+    document = tmp_path / "source.txt"
+    document.write_text("Manual Matecon requires ctrlMode one.", encoding="utf-8")
+    source = SourceSpec(path=document, source_id="matecon", document_id="matecon-doc")
+    config = RagV2DevConfig(
+        runtime_root=tmp_path / "runtime",
+        retrieval_profile="bge_m3_hybrid",
+        strict_semantic=True,
+    )
+    embedding = DeterministicEmbeddingBackend(dimension=8)
+
+    with RagV2DevPipeline(config, embedding_backend=embedding) as pipeline:
+        pipeline.ingest([source])
+        pipeline.index._conn.execute("DELETE FROM chunk_embeddings")
+        pipeline.index._conn.execute("DELETE FROM chunk_sparse_embeddings")
+        pipeline.index._conn.commit()
+
+        staged = worker_module._stage_source(pipeline, source)
+
+    assert staged["status"] == "converted"
+    assert staged["retrievable_count"] > 0
+
+
 def test_bge_subprocess_worker_crash_handling() -> None:
     with tempfile.TemporaryDirectory() as tmp_dir:
         tmp_path = Path(tmp_dir)
@@ -188,5 +212,63 @@ def test_query_never_starts_worker_and_reuses_explicit_worker(monkeypatch, tmp_p
         assert client.readiness(config)["pid"] == pid
         assert first["summary"]["returned_count"] >= 1
         assert second["summary"]["returned_count"] >= 1
+    finally:
+        client.close()
+
+
+def test_worker_query_with_routing_schema(tmp_path: Path) -> None:
+    doc_path = tmp_path / "worker_routing.txt"
+    doc_path.write_text("Worker routing schema test.", encoding="utf-8")
+    config = RagV2DevConfig(runtime_root=tmp_path / "runtime", retrieval_profile="lexical")
+    spec = SourceSpec(path=doc_path, source_id="src_route", document_id="doc_route")
+    client = BgeSubprocessWorkerClient()
+    try:
+        client.initialize_worker(config)
+        client.prepare_sources([spec], config)
+
+        res = client.query(
+            question="Worker routing?",
+            specs=[spec],
+            config=config,
+            rerank_requested=False,
+            routing_reason_codes=("pre_fast",),
+            policy_version="adaptive-reranking-v1",
+        )
+        assert "routing" in res
+        routing = res["routing"]
+        assert routing["reranker_requested"] is False
+        assert routing["reranker_applied"] is False
+        assert routing["degraded"] is False
+        assert "worker_routing.txt" not in str(routing)
+        assert "Worker routing?" not in str(routing)
+    finally:
+        client.close()
+
+
+def test_worker_query_with_degraded_reranker(tmp_path: Path) -> None:
+    doc_path = tmp_path / "worker_degraded.txt"
+    doc_path.write_text("Worker degraded reranker handling.", encoding="utf-8")
+    config = RagV2DevConfig(runtime_root=tmp_path / "runtime", retrieval_profile="lexical")
+    spec = SourceSpec(path=doc_path, source_id="src_deg", document_id="doc_deg")
+    client = BgeSubprocessWorkerClient()
+    try:
+        client.initialize_worker(config)
+        client.prepare_sources([spec], config)
+
+        res = client.query(
+            question="Worker degraded?",
+            specs=[spec],
+            config=config,
+            rerank_requested=True,
+            routing_reason_codes=("user_requested_deep",),
+            policy_version="adaptive-reranking-v1",
+        )
+        assert "routing" in res
+        routing = res["routing"]
+        assert routing["reranker_requested"] is True
+        assert routing["reranker_applied"] is False
+        assert routing["degraded"] is True
+        assert routing["policy_version"] == "adaptive-reranking-v1"
+        assert res["summary"]["returned_count"] >= 1
     finally:
         client.close()

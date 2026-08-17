@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 import hashlib
 import json
+import re
 import time
 import unicodedata
 from typing import Any, Dict, Optional, Protocol, Tuple
@@ -49,6 +50,7 @@ class WorkspaceAIAnswerRequest:
     retrieved_context_sources: Tuple[WorkspaceAIContextSource, ...] = ()
     router_enabled: bool = False
     real_router_enabled: bool = False
+    chat_history: Tuple[Dict[str, str], ...] = ()
     external_destination: str = WORKSPACE_CHAT_EXTERNAL_ROUTER_DESTINATION
 
 @dataclass(frozen=True)
@@ -163,6 +165,15 @@ def pack_workspace_ai_context(
 
     all_resolved = resolved_notebooks + resolved_temps
 
+    if question:
+        terms = [t.lower() for t in re.findall(r"[\w]+", question, re.UNICODE) if len(t) > 1]
+        if terms:
+            def _score(s):
+                title_l = (getattr(s, "title", "") or "").lower()
+                text_l = (getattr(s, "content_text", "") or getattr(s, "content_preview", "") or "").lower()
+                return sum((15.0 if t in title_l else 0.0) + min(text_l.count(t), 10) * 1.0 for t in terms)
+            all_resolved = sorted(all_resolved, key=_score, reverse=True)
+
     context_sources = []
     for s in all_resolved:
         scope = "notebook" if hasattr(s, "notebook_id") else "temporary"
@@ -276,7 +287,8 @@ def _cap_and_pack_sources(
 
 def build_workspace_ai_prompt(
     question: str,
-    context_sources: Tuple[WorkspaceAIContextSource, ...]
+    context_sources: Tuple[WorkspaceAIContextSource, ...],
+    chat_history: Tuple[Dict[str, str], ...] = ()
 ) -> Tuple[str, str]:
     system_prompt = (
         "Bạn là trợ lý AI trong Workspace Chat.\n"
@@ -290,7 +302,23 @@ def build_workspace_ai_prompt(
     )
 
     user_parts = []
-    user_parts.append("CÂU HỎI:")
+
+    if chat_history:
+        user_parts.append("--- LỊCH SỬ HỘI THOẠI GẦN ĐÂY ---")
+        for msg in chat_history:
+            role_val = msg.get("role")
+            if role_val == "user":
+                role_name = "Người dùng"
+            elif role_val == "system":
+                role_name = "Ngữ cảnh kế thừa"
+            else:
+                role_name = "Hệ thống/AI"
+            user_parts.append(f"[{role_name}]: {msg.get('content')}")
+        user_parts.append("")
+        user_parts.append("--- CÂU HỎI MỚI NHẤT ---")
+    else:
+        user_parts.append("CÂU HỎI:")
+
     user_parts.append(question)
     user_parts.append("")
 
@@ -790,7 +818,7 @@ def generate_workspace_ai_answer(
         )
 
     # Everything is valid for cloud call
-    system_prompt, user_prompt = build_workspace_ai_prompt(q_text, prompt_sources)
+    system_prompt, user_prompt = build_workspace_ai_prompt(q_text, prompt_sources, request.chat_history)
 
     try:
         ans = provider_client.generate(system_prompt=system_prompt, user_prompt=user_prompt)

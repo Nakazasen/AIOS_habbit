@@ -931,3 +931,45 @@ def test_abstention_explains_scope_and_required_evidence_without_facts():
     assert "KHÔNG ĐỦ BẰNG CHỨNG:" in result.answer
     assert "Cần nguồn trực tiếp" in result.answer
     assert "LIMITATIONS:" in result.answer
+
+def test_fallback_fragment_truncates_at_punctuation():
+    from aios_habit.rag_v2.synthesis import _fallback_fragment
+    pack = build_evidence_pack("query", _make_response([_make_result("c1", "d1", 5.0, "Word. " * 50 + "NoPunctuationHere" * 20)]))
+    fragment = _fallback_fragment(pack.items[0], query_terms=set(), selected=())
+    assert fragment.endswith("...")
+
+def test_citation_first_fallback_groups_claims():
+    from aios_habit.rag_v2.synthesis import _citation_first_fallback
+    # To get same citation ID, we mock their citation_ids after building pack
+    pack = build_evidence_pack(
+        "query",
+        _make_response([
+            _make_result("c1", "d1", 5.0, "Claim 1"),
+            _make_result("c2", "d1", 4.0, "Claim 2"),
+        ]),
+    )
+    for item in pack.items:
+        object.__setattr__(item, "citation_id", "[1]")
+        object.__setattr__(item, "citation_ids", ("[1]",))
+
+    result = _citation_first_fallback(pack, answer_shape="unknown", max_claims=5)
+    assert "- [1]:" in result.answer
+    assert "  * Claim 1" in result.answer
+    assert "  * Claim 2" in result.answer
+
+def test_provider_limitations_contain_accurate_reasons():
+    from aios_habit.rag_v2.evidence import PrivacySummary
+    from dataclasses import replace
+    pack = build_evidence_pack("query", _make_response([_make_result("c1", "d1", 5.0, "Claim 1", matched_terms=("query",))]))
+    pack_blocked = replace(pack, privacy_summary=PrivacySummary(overall_label="strict", local_only=True, cloud_allowed=False, labels_present=()))
+
+    def provider(req): return "Answer"
+
+    result_blocked = synthesize_with_provider(pack_blocked, provider)
+    assert "cloud_privacy_blocked" in result_blocked.limitation_reasons
+    assert result_blocked.mode == "local_citation_first_provider_fallback"
+
+    def fail_provider(req): raise ValueError("Network Error")
+    result_failed = synthesize_with_provider(pack, fail_provider)
+    assert "provider_network_error" in result_failed.limitation_reasons
+    assert result_failed.mode == "local_citation_first_provider_fallback"

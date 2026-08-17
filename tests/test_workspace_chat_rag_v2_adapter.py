@@ -47,6 +47,68 @@ def test_canary_config_defaults_off_and_requires_explicit_enablement(monkeypatch
     assert not hasattr(config, "semantic_progressive")
 
 
+def test_explicit_local_recovery_environment_can_enable_real_deep_search(monkeypatch, tmp_path):
+    """The documented local override must carry the complete reranker pin."""
+    monkeypatch.setattr(
+        adapter,
+        "load_workspace_chat_rag_v2_deployment",
+        lambda **_kwargs: None,
+    )
+    config = adapter.WorkspaceChatRagV2CanaryConfig.from_env(
+        {
+            adapter.CANARY_ENABLED_ENV: "1",
+            adapter.BGE_MODEL_PATH_ENV: str(tmp_path / "bge-m3"),
+            adapter.BGE_MODEL_REVISION_ENV: "bge-revision",
+            adapter.BGE_MODEL_CHECKSUM_ENV: "sha256:" + "a" * 64,
+            adapter.ADAPTIVE_ENABLED_ENV: "1",
+            adapter.RERANKER_MODEL_PATH_ENV: str(tmp_path / "reranker"),
+            adapter.RERANKER_MODEL_REVISION_ENV: "reranker-revision",
+            adapter.RERANKER_MODEL_CHECKSUM_ENV: "sha256:" + "b" * 64,
+            adapter.DEEP_TIMEOUT_MS_ENV: "120000",
+            adapter.DEEP_RERANK_LIMIT_ENV: "9",
+        }
+    )
+
+    assert config.enabled is True
+    assert config.adaptive_enabled is True
+    assert config.bge_reranker_model_path == tmp_path / "reranker"
+    assert config.bge_reranker_model_revision == "reranker-revision"
+    assert config.deep_timeout_ms == 120000
+    assert config.deep_rerank_limit == 9
+
+
+def test_precise_operational_question_prepares_only_matching_sources():
+    manual = WorkspaceAIContextSource(
+        source_id="manual", source_scope="notebook", source_type="txt",
+        title="Matecon manual", privacy_label="cloud_safe",
+        text="Manual Matecon controls ACR and CTU.", included_chars=37,
+        truncated=False,
+    )
+    unrelated = _source("Finance process and purchase planning notes.")
+
+    selected = adapter._select_semantic_candidate_sources(
+        "Chế độ Manual Matecon ACR/CTU hoạt động như thế nào?",
+        (manual, unrelated),
+    )
+
+    assert selected == (manual,)
+
+
+def test_existing_complete_semantic_index_is_ready_after_process_restart(monkeypatch, tmp_path):
+    config = _semantic_config(tmp_path)
+    source = _source("Already indexed BGE source.")
+    executor = _ImmediateExecutor()
+    monkeypatch.setattr(adapter, "_get_executor", lambda: executor)
+    monkeypatch.setattr(adapter, "_durable_semantic_coverage_ready", lambda *_args: True)
+
+    adapter.schedule_workspace_chat_source_preparation((source,), config=config)
+
+    assert executor.submissions == []
+    assert adapter.get_workspace_chat_source_preparation_status(
+        (source,), config=config
+    ) == {"temporary:source-1": "ready"}
+
+
 def test_feature_flag_off_returns_no_evidence(tmp_path: Path):
     source = _source("Nội dung chủ sở hữu chỉ xử lý cục bộ.")
     config = adapter.WorkspaceChatRagV2CanaryConfig(
@@ -64,6 +126,28 @@ def test_feature_flag_off_returns_no_evidence(tmp_path: Path):
     assert result["summary_count"] == 0
     assert result["evidence_items"] == []
     assert result["rag_v2_canary"]["backend"] == "unavailable"
+
+
+def test_explicit_deep_never_silently_degrades_to_hybrid(tmp_path: Path):
+    """The deep UI promise must not become a base-hybrid answer without reranking."""
+    source = _source("Manual mode uses ctrlMode=1 before Matecon startup.")
+    config = adapter.WorkspaceChatRagV2CanaryConfig(
+        enabled=True,
+        adaptive_enabled=False,
+        runtime_root=tmp_path / "rag",
+    )
+
+    result = adapter.retrieve_workspace_chat_evidence(
+        "How does Manual Matecon mode work?",
+        (source,),
+        config=config,
+        search_preference="deep",
+    )
+
+    assert result["status"] == "quality_search_unavailable"
+    assert result["retrieval_applied"] is False
+    assert result["summary_count"] == 0
+    assert result["rag_v2_canary"]["fallback_reason"] == "deep_search_unavailable"
 
 
 def test_missing_bge_pins_fail_closed_and_schedule_preparation(monkeypatch, tmp_path: Path):
@@ -182,10 +266,11 @@ def test_adapter_keeps_provider_and_consent_outside_retrieval_boundary():
     assert "BrainGateway" not in source
     assert "provider_client" not in source
     assert "retrieve_workspace_chat_evidence as retrieve_local_evidence" in app
-    assert "retrieve_local_evidence(q_text, packed_sources)" in app
-    assert app.index("retrieve_local_evidence(q_text, packed_sources)") < app.index(
+    assert "retrieve_local_evidence(" in app
+    assert app.index("retrieve_local_evidence(") < app.index(
         "generate_workspace_ai_answer(req, RealWorkspaceAIProviderClient())"
     )
+
 
 
 def test_activated_manifest_is_authoritative_over_legacy_environment(
@@ -288,6 +373,8 @@ def test_staged_manifest_is_inert_even_before_all_activation_fields_exist(
 
 
 def test_activated_manifest_seals_evidence_and_benchmark_files(tmp_path: Path):
+    evidence_run_id = deployment_module.SELECTED_EVIDENCE_RUN_PREFIX + "test-corpus"
+    corpus_fingerprint = "c" * 64
     model = tmp_path / "model"
     model.mkdir()
     (model / "model.bin").write_bytes(b"test model placeholder")
@@ -299,10 +386,11 @@ def test_activated_manifest_seals_evidence_and_benchmark_files(tmp_path: Path):
             {
                 "status": "PASS",
                 "qualification_passed": True,
-                "qualification_id": deployment_module.EXPECTED_EVIDENCE_RUN_ID,
+                "qualification_id": evidence_run_id,
                 "selected_profile": deployment_module.EXPECTED_PROFILE,
                 "decision": "ADVANCE_TO_CANARY",
                 "canary_allowed": True,
+                "corpus_fingerprint": corpus_fingerprint,
             }
         ),
         encoding="utf-8",
@@ -338,7 +426,8 @@ def test_activated_manifest_seals_evidence_and_benchmark_files(tmp_path: Path):
                     "fail_closed": True,
                 },
                 "evidence": {
-                    "run_id": deployment_module.EXPECTED_EVIDENCE_RUN_ID,
+                    "run_id": evidence_run_id,
+                    "corpus_fingerprint": corpus_fingerprint,
                     "report_path": str(evidence_report),
                     "report_sha256": deployment_module.sha256_file(evidence_report),
                 },
@@ -393,7 +482,7 @@ def test_production_identity_rejects_inactive_deployment(tmp_path: Path):
         model_checksum=deployment_module.EXPECTED_MODEL_CHECKSUM,
         retrieval_device="cpu",
         fail_closed=True,
-        evidence_run_id=deployment_module.EXPECTED_EVIDENCE_RUN_ID,
+        evidence_run_id=deployment_module.SELECTED_EVIDENCE_RUN_PREFIX + "test-corpus",
         benchmark_status="PASS",
     )
 
@@ -777,6 +866,13 @@ def test_query_config_is_read_only_and_uses_production_index(tmp_path):
     assert query.index_read_only is True
     assert query.ensure_embeddings_on_open is False
     assert query.index_path == preparation.index_path
+    assert query.rerank_limit == config.deep_rerank_limit
+
+    deep_query = adapter._pipeline_config(
+        config, "bge_m3_hybrid", read_only=True, include_reranker=True
+    )
+    assert deep_query.rerank_limit == 30
+    assert deep_query.retrieval_profile == "bge_m3_hybrid_rerank_expand"
 
 
 def test_seeded_preparation_enables_read_only_query_without_preparing(tmp_path):
@@ -901,3 +997,238 @@ def test_structured_excel_query_cites_all_contributing_sheets(tmp_path, monkeypa
     assert evidence["location_info"] == "Sheets: East, West"
     assert "Structured Excel result — multi-region (East, West)" in evidence["text"]
     assert result["citations"][0]["location"] == "Sheets: East, West"
+
+
+def test_structured_excel_retains_priority_over_deep_preference(tmp_path, monkeypatch):
+    from openpyxl import Workbook
+    import aios_habit.workspace_chat_source_ingest as ingest
+
+    managed_root = tmp_path / "managed_workbooks"
+    managed_root.mkdir()
+    workbook_path = managed_root / "metrics.xlsx"
+    workbook = Workbook()
+    ws = workbook.active
+    ws.title = "Summary"
+    ws.append(["Metric", "Value"])
+    ws.append(["Total", 100])
+    workbook.save(workbook_path)
+    workbook.close()
+
+    monkeypatch.setattr(ingest, "MANAGED_WORKBOOK_ROOT", managed_root)
+    source = WorkspaceAIContextSource(
+        source_id="excel-src",
+        source_scope="temporary",
+        source_type="xlsx",
+        title="metrics.xlsx",
+        privacy_label="machine_only",
+        text="Metric | Value",
+        included_chars=14,
+        truncated=False,
+        managed_path=str(workbook_path.resolve()),
+    )
+    config = adapter.WorkspaceChatRagV2CanaryConfig(
+        enabled=True,
+        adaptive_enabled=True,
+        runtime_root=tmp_path / "rag",
+    )
+
+    result = adapter.retrieve_workspace_chat_evidence(
+        "Tính tổng Value theo Metric",
+        (source,),
+        config=config,
+        search_preference="deep",
+    )
+
+    assert result["status"] == "structured_excel_query"
+    assert result["rag_v2_canary"]["backend"] == "structured_excel_sqlite"
+
+
+def test_search_preference_deep_overrides_fast_pre_gate(tmp_path, monkeypatch):
+    source = _source("Hướng dẫn chấm công nhân sự theo quy định.")
+    config = adapter.WorkspaceChatRagV2CanaryConfig(
+
+        enabled=True,
+        adaptive_enabled=True,
+        runtime_root=tmp_path / "rag",
+        bge_m3_model_path=tmp_path / "bge_m3",
+        bge_m3_model_revision="rev",
+        bge_m3_model_checksum="sha256:00",
+        bge_reranker_model_path=tmp_path / "reranker",
+        bge_reranker_model_revision="rerank-rev",
+        bge_reranker_model_checksum="sha256:11",
+    )
+
+    captured_requests = []
+    def mock_query_ready(question, specs, pipe_config, timeout_s=30.0, expansion=None, rerank_requested=False, routing_reason_codes=(), policy_version="adaptive-reranking-v1"):
+        captured_requests.append({
+            "rerank_requested": rerank_requested,
+            "routing_reason_codes": routing_reason_codes,
+            "timeout_s": timeout_s,
+        })
+        return {
+            "summary": {
+                "candidate_count": 5,
+                "returned_count": 1,
+                "filtered_as_stale_count": 0,
+                "indexed_chunk_count": 1,
+                "candidate_backend": "bge_m3_hybrid",
+                "evidence_set_term_coverage": 0.9,
+                "rerank_latency_ms": 5.0 if rerank_requested else 0.0,
+            },
+            "insufficiency_reasons": [],
+            "items": [
+                {
+                    "document_id": "doc1",
+                    "text": "Đoạn văn bản mẫu.",
+                    "score": 0.95,
+                    "citation_id": "c1",
+                    "evidence_id": "e1",
+                }
+            ],
+            "routing": {
+                "reranker_requested": rerank_requested,
+                "reranker_applied": rerank_requested,
+                "effective_path": "hybrid_rerank" if rerank_requested else "hybrid",
+                "degraded": False,
+                "degraded_reason": "",
+                "rerank_latency_ms": 5.0 if rerank_requested else 0.0,
+                "policy_version": policy_version,
+            },
+            "synthesis": {
+                "answer": "Câu trả lời.",
+                "citation_ids": ["c1"],
+                "claims": [],
+                "grounded": True,
+                "abstained": False,
+                "abstention_reasons": [],
+                "answer_mode": "local_evidence",
+                "limitation_reasons": [],
+                "provider_used": False,
+                "mode": "local_retrieval_evidence",
+            },
+        }
+
+    adapter.seed_workspace_chat_source_preparation(
+        (source,),
+        config=config,
+        expected_source_fingerprints=[adapter._source_fingerprint(source)],
+    )
+    monkeypatch.setattr(adapter._SUBPROCESS_CLIENT, "query_ready", mock_query_ready)
+    monkeypatch.setattr(
+        adapter, "initialize_workspace_chat_rag_v2_worker", lambda *_args, **_kwargs: {}
+    )
+    monkeypatch.setattr(adapter, "_semantic_readiness", lambda sources, config: (adapter._PREPARATION_READY_STATE, ""))
+
+
+    # Simple query (would be Fast in Auto), but user explicitly requested Deep
+    result = adapter.retrieve_workspace_chat_evidence(
+        "chấm công",
+        (source,),
+        config=config,
+        search_preference="deep",
+    )
+
+    assert len(captured_requests) == 1
+    assert captured_requests[0]["rerank_requested"] is True
+    assert captured_requests[0]["timeout_s"] == config.deep_timeout_ms / 1000.0
+    assert "user_requested_deep" in captured_requests[0]["routing_reason_codes"]
+    assert result["rag_v2_canary"]["reranker_requested"] is True
+    assert result["rag_v2_canary"]["reranker_applied"] is True
+    assert "Đã tìm kỹ" in result["safe_owner_message"]
+
+
+def test_adapter_degraded_reranker_telemetry_and_safe_owner_copy(tmp_path, monkeypatch):
+    source = _source("Quy trình chấm công và tính lương.")
+    config = adapter.WorkspaceChatRagV2CanaryConfig(
+        enabled=True,
+        adaptive_enabled=True,
+        runtime_root=tmp_path / "rag",
+        bge_m3_model_path=tmp_path / "bge_m3",
+        bge_m3_model_revision="rev",
+        bge_m3_model_checksum="sha256:00",
+        bge_reranker_model_path=tmp_path / "reranker",
+        bge_reranker_model_revision="rerank-rev",
+        bge_reranker_model_checksum="sha256:11",
+    )
+
+    doc_id = adapter._document_id(source)
+
+    def mock_query_ready(question, specs, pipe_config, timeout_s=30.0, expansion=None, rerank_requested=False, routing_reason_codes=(), policy_version="adaptive-reranking-v1"):
+        return {
+            "summary": {
+                "candidate_count": 5,
+                "returned_count": 2,
+                "filtered_as_stale_count": 0,
+                "indexed_chunk_count": 1,
+                "candidate_backend": "bge_m3_hybrid",
+                "evidence_set_term_coverage": 0.9,
+                "rerank_latency_ms": 0.0,
+            },
+            "insufficiency_reasons": [],
+            "items": [
+                {
+                    "document_id": doc_id,
+                    "text": "Đoạn 1",
+                    "score": 0.9,
+                    "citation_id": "c1",
+                    "evidence_id": "e1",
+                },
+                {
+                    "document_id": doc_id,
+                    "text": "Đoạn 2",
+                    "score": 0.8,
+                    "citation_id": "c2",
+                    "evidence_id": "e2",
+                }
+            ],
+
+
+            "routing": {
+                "reranker_requested": True,
+                "reranker_applied": False,
+                "effective_path": "hybrid",
+                "degraded": True,
+                "degraded_reason": "reranker_backend_timeout",
+                "rerank_latency_ms": 0.0,
+                "policy_version": policy_version,
+            },
+            "synthesis": {
+                "answer": "Câu trả lời.",
+                "citation_ids": ["c1", "c2"],
+                "claims": [],
+                "grounded": True,
+                "abstained": False,
+                "abstention_reasons": [],
+                "answer_mode": "local_evidence",
+                "limitation_reasons": [],
+                "provider_used": False,
+                "mode": "local_retrieval_evidence",
+            },
+        }
+
+    adapter.seed_workspace_chat_source_preparation(
+        (source,),
+        config=config,
+        expected_source_fingerprints=[adapter._source_fingerprint(source)],
+    )
+    monkeypatch.setattr(adapter._SUBPROCESS_CLIENT, "query_ready", mock_query_ready)
+    monkeypatch.setattr(
+        adapter, "initialize_workspace_chat_rag_v2_worker", lambda *_args, **_kwargs: {}
+    )
+    monkeypatch.setattr(adapter, "_semantic_readiness", lambda sources, config: (adapter._PREPARATION_READY_STATE, ""))
+
+    result = adapter.retrieve_workspace_chat_evidence(
+        "chấm công",
+        (source,),
+        config=config,
+        search_preference="deep",
+    )
+
+    telemetry = result["rag_v2_canary"]
+    assert telemetry["reranker_requested"] is True
+    assert telemetry["reranker_applied"] is False
+    assert telemetry["degraded"] is True
+    assert telemetry["degraded_reason"] == "reranker_backend_timeout"
+    assert telemetry["effective_profile"] == "bge_m3_hybrid"
+    assert "Đã tìm kỹ" not in result["safe_owner_message"]
+    assert "Đã dùng 2 đoạn liên quan từ 1 nguồn." == result["safe_owner_message"]

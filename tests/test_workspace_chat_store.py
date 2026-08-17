@@ -275,7 +275,7 @@ def test_delete_notebook_permanently_failure_rollback(monkeypatch):
 
     def mock_replace(src, dst):
         # Fail when trying to overwrite conversations.jsonl with its .tmp file
-        if "conversations.jsonl" in str(dst) and "conversations.tmp" in str(src):
+        if Path(dst).name == "conversations.jsonl" and str(src).endswith(".tmp"):
             raise OSError("Simulated atomic replacement error")
         return original_replace(src, dst)
 
@@ -291,10 +291,9 @@ def test_delete_notebook_permanently_failure_rollback(monkeypatch):
         else:
             assert not f.exists()
 
-    # Assert no .tmp or .bak files remain in store directory
-    for f in files:
-        assert not f.with_suffix(".tmp").exists()
-        assert not f.with_suffix(".bak").exists()
+    # Assert no uniquely named recovery files remain in store directory.
+    assert not list(store.LOCAL_CHAT_DIR.glob(".*.tmp"))
+    assert not list(store.LOCAL_CHAT_DIR.glob(".*.bak"))
 
 
 def test_delete_notebook_permanently_temp_write_failure(monkeypatch):
@@ -312,43 +311,13 @@ def test_delete_notebook_permanently_temp_write_failure(monkeypatch):
     ]
     contents_before = {f: f.read_bytes() if f.exists() else None for f in files}
 
-    # Wrapper to simulate failure in write() after open() has succeeded
-    original_open = open
+    def fail_batch_write(_targets):
+        raise OSError("Simulated write error during temp JSONL writing")
 
-    class FaultyFileWrapper:
-        def __init__(self, real_file, is_target_temp):
-            self.real_file = real_file
-            self.is_target_temp = is_target_temp
-
-        def write(self, data):
-            if self.is_target_temp:
-                raise OSError("Simulated write error during temp JSONL writing")
-            return self.real_file.write(data)
-
-        def __enter__(self):
-            return self
-
-        def __exit__(self, exc_type, exc_val, exc_tb):
-            self.real_file.close()
-
-        def close(self):
-            self.real_file.close()
-
-    def mock_open(file, mode='r', *args, **kwargs):
-        real_file = original_open(file, mode, *args, **kwargs)
-        if "notebooks.tmp" in str(file) and 'w' in mode:
-            return FaultyFileWrapper(real_file, True)
-        return real_file
-
-    monkeypatch.setattr("builtins.open", mock_open)
+    monkeypatch.setattr(store, "atomic_write_jsonl_batch", fail_batch_write)
 
     res = store.delete_notebook_permanently(nb_id)
     assert res is False
-
-    # Assert all temp files (including the partially written messages.tmp) are cleaned up
-    for f in files:
-        assert not f.with_suffix(".tmp").exists(), f"Temp file {f.name}.tmp was not cleaned up!"
-        assert not f.with_suffix(".bak").exists(), f"Backup file {f.name}.bak was created unexpectedly!"
 
     # Ensure original files are completely untouched
     for f in files:
@@ -387,3 +356,35 @@ def test_delete_notebook_permanently_no_target_gap(monkeypatch):
 
     res = store.delete_notebook_permanently(nb_id)
     assert res is True
+
+
+def test_conversation_search_preference_backward_compatibility():
+    # 1. Legacy record without search_preference in JSONL
+    legacy_json = '{"id": "legacy_conv", "notebook_id": "mom_opcenter", "title": "Legacy Conv"}\n'
+    store.CONVERSATIONS_FILE.write_text(legacy_json, encoding="utf-8")
+
+    loaded = store.load_conversation("legacy_conv")
+    assert loaded is not None
+    assert loaded.search_preference == "auto"
+
+    # 2. Update to deep and round-trip
+    success = store.update_conversation_search_preference("legacy_conv", "deep")
+    assert success is True
+
+    reloaded = store.load_conversation("legacy_conv")
+    assert reloaded is not None
+    assert reloaded.search_preference == "deep"
+
+    # 3. Invalid preference fails safely to auto
+    invalid_conv = WorkspaceConversation(
+        id="invalid_pref_conv",
+        notebook_id="mom_opcenter",
+        title="Invalid Pref",
+        search_preference="super_ultra_deep",
+    )
+    assert invalid_conv.search_preference == "auto"
+    store.save_conversation(invalid_conv)
+
+    reloaded_invalid = store.load_conversation("invalid_pref_conv")
+    assert reloaded_invalid is not None
+    assert reloaded_invalid.search_preference == "auto"

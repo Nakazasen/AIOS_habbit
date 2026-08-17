@@ -576,11 +576,15 @@ _SQL_LEXICON_MAP: tuple[tuple[str, tuple[str, ...]], ...] = (
     ("date", ("ngay", "thoi gian", "thoi diem", "date", "created_at", "ngay tao", "ngay lap")),
     ("month", ("thang", "month")),
     ("year", ("nam", "year")),
-    ("quantity", ("so luong", "san luong", "quantity", "qty", "amount")),
-    ("product", ("san pham", "mat hang", "hang hoa", "product", "item", "ten hang")),
-    ("cost", ("chi phi", "gia", "don gia", "price", "cost")),
-    ("customer", ("khach hang", "khach", "customer", "client")),
-    ("status", ("trang thai", "tinh trang", "status")),
+    ("quantity", ("so luong", "san luong", "quantity", "qty", "amount", "so_luong")),
+    ("product", ("san pham", "mat hang", "hang hoa", "product", "item", "ten hang", "ten_san_pham")),
+    ("cost", ("chi phi", "gia", "don gia", "price", "cost", "don_gia")),
+    ("customer", ("khach hang", "khach", "customer", "client", "khach_hang")),
+    ("status", ("trang thai", "tinh trang", "status", "trang_thai")),
+    ("inventory", ("ton kho", "ton", "inventory", "stock", "kho", "vi tri kho")),
+    ("lot", ("lo hang", "ma lo", "lo", "lot", "lot no", "batch", "ma_lo")),
+    ("defect", ("loi", "ma loi", "defect", "error", "nguyen nhan loi", "nguyen nhan", "ma_loi")),
+    ("station", ("tram", "may", "line", "chuyen", "station", "machine", "vi_tri")),
 )
 
 
@@ -930,3 +934,41 @@ def _extract_planned_filters(
 def _planned_number(value: str) -> int | float:
     number = float(value.replace(",", "."))
     return int(number) if number.is_integer() else number
+
+def parse_llm_excel_plan(data: dict) -> StructuredQueryPlan | None:
+    try:
+        filters = []
+        for f in data.get("filters", []):
+            filters.append(StructuredFilter(
+                column=f.get("column", ""),
+                operator=f.get("operator", "="),
+                value=f.get("value", "")
+            ))
+
+        aggregates = []
+        for a in data.get("aggregates", []):
+            aggregates.append(StructuredAggregate(
+                function=a.get("function", "count"),
+                column=a.get("column", "*"),
+                alias=a.get("alias", "")
+            ))
+
+        order_by = []
+        for o in data.get("order_by", []):
+            order_by.append(StructuredOrder(
+                column=o.get("column", ""),
+                direction=o.get("direction", "asc")
+            ))
+
+        return StructuredQueryPlan(
+            sheet=data.get("sheet", ""),
+            target_regions=tuple(data.get("target_regions", [])),
+            select_columns=tuple(data.get("select_columns", [])),
+            filters=tuple(filters),
+            group_by=tuple(data.get("group_by", [])),
+            aggregates=tuple(aggregates),
+            order_by=tuple(order_by),
+            limit=int(data.get("limit", 20))
+        )
+    except Exception:
+        return None

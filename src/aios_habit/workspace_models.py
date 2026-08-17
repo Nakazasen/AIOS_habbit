@@ -1,8 +1,8 @@
-import json
-from dataclasses import dataclass, field, asdict
+from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import List, Optional
+from typing import List
+from aios_habit.local_jsonl import atomic_write_jsonl, load_jsonl_records
 
 LOCAL_CASES_DIR = Path.cwd() / "local_cases"
 WORKSPACES_FILE = LOCAL_CASES_DIR / "workspaces.jsonl"
@@ -50,31 +50,13 @@ def load_workspaces() -> List[Workspace]:
     LOCAL_CASES_DIR.mkdir(parents=True, exist_ok=True)
     if not WORKSPACES_FILE.exists():
         return []
-    workspaces = []
-    with open(WORKSPACES_FILE, 'r', encoding='utf-8') as f:
-        for line in f:
-            if line.strip():
-                try:
-                    data = json.loads(line)
-                    workspaces.append(Workspace(**data))
-                except Exception:
-                    pass
-    return workspaces
+    return load_jsonl_records(WORKSPACES_FILE, lambda record: Workspace(**record))
 
 def load_notebooks() -> List[KnowledgeNotebook]:
     LOCAL_CASES_DIR.mkdir(parents=True, exist_ok=True)
     if not NOTEBOOKS_FILE.exists():
         return []
-    notebooks = []
-    with open(NOTEBOOKS_FILE, 'r', encoding='utf-8') as f:
-        for line in f:
-            if line.strip():
-                try:
-                    data = json.loads(line)
-                    notebooks.append(KnowledgeNotebook(**data))
-                except Exception:
-                    pass
-    return notebooks
+    return load_jsonl_records(NOTEBOOKS_FILE, lambda record: KnowledgeNotebook(**record))
 
 def save_workspace(ws: Workspace):
     LOCAL_CASES_DIR.mkdir(parents=True, exist_ok=True)
@@ -88,9 +70,7 @@ def save_workspace(ws: Workspace):
     if not found:
         workspaces.append(ws)
     
-    with open(WORKSPACES_FILE, 'w', encoding='utf-8') as f:
-        for w in workspaces:
-            f.write(json.dumps(asdict(w), ensure_ascii=False) + '\n')
+    atomic_write_jsonl(WORKSPACES_FILE, workspaces)
 
 def save_notebook(nb: KnowledgeNotebook):
     LOCAL_CASES_DIR.mkdir(parents=True, exist_ok=True)
@@ -104,6 +84,4 @@ def save_notebook(nb: KnowledgeNotebook):
     if not found:
         notebooks.append(nb)
     
-    with open(NOTEBOOKS_FILE, 'w', encoding='utf-8') as f:
-        for n in notebooks:
-            f.write(json.dumps(asdict(n), ensure_ascii=False) + '\n')
+    atomic_write_jsonl(NOTEBOOKS_FILE, notebooks)
