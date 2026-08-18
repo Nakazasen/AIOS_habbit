@@ -1,47 +1,47 @@
-# Implementation Plan: Resumable Stage A Preparation
+# Kế Hoạch Triển Khai: Chuẩn Bị Giai Đoạn A Có Khả Năng Tiếp Tục (Implementation Plan: Resumable Stage A Preparation)
 
-**Branch**: `001-stage-a-resume-guard` | **Date**: 2026-08-14 | **Spec**: [spec.md](spec.md)
+**Nhánh**: `001-stage-a-resume-guard` | **Ngày**: 2026-08-14 | **Đặc tả**: [spec.md](spec.md)
 
-**Input**: Feature specification from `/specs/001-stage-a-resume-guard/spec.md`
+**Đầu vào**: Đặc tả tính năng từ `/specs/001-stage-a-resume-guard/spec.md`
 
-## Summary
+## Tóm Tắt (Summary)
 
-Make the provider-free Workspace Chat Stage A flow durable at source boundaries. A content-addressed, identity-bound checkpoint records only opaque source progress. The adapter emits progress after each successful commit, accepts a verified completed-source set, and enforces a caller-provided per-source deadline. The benchmark runner resumes exactly matching incomplete stages, updates its heartbeat per source, and fails closed otherwise. An explicit unsealed mode permits local BQ01/BQ02 diagnosis only; it never enables Stage B or fabricates sealed evidence.
+Đảm bảo luồng Giai đoạn A không dùng provider của Workspace Chat có tính bền vững tại các ranh giới nguồn. Một checkpoint định địa chỉ theo nội dung và ràng buộc theo định danh chỉ ghi nhận tiến trình nguồn mờ. Adapter phát ra tiến trình sau mỗi lần commit thành công, chấp nhận tập nguồn đã hoàn thành được kiểm chứng và thực thi hạn chót cho từng nguồn do người gọi cung cấp. Trình chạy benchmark tiếp tục các giai đoạn chưa hoàn thành khớp chính xác, cập nhật nhịp tim (heartbeat) theo từng nguồn và áp dụng fail-closed trong các trường hợp khác. Chế độ mở niêm phong rõ ràng chỉ cho phép chẩn đoán BQ01/BQ02 cục bộ; tuyệt đối không bao giờ kích hoạt Giai đoạn B hoặc tạo bằng chứng niêm phong giả mạo.
 
-## Technical Context
+## Ngữ Cảnh Kỹ Thuật (Technical Context)
 
-**Language/Version**: Python 3.11
+**Ngôn ngữ/Phiên bản**: Python 3.11
 
-**Primary Dependencies**: Standard library and the existing RAG v2 subprocess adapter
+**Phụ thuộc chính**: Thư viện chuẩn và adapter tiến trình con RAG v2 hiện có
 
-**Storage**: Atomic JSON checkpoint under the ignored local staging cache; existing SQLite workspace index
+**Lưu trữ**: Checkpoint JSON nguyên tử trong cache staging cục bộ bị gitignore; chỉ mục SQLite workspace hiện có
 
-**Testing**: pytest
+**Kiểm thử**: pytest
 
-**Target Platform**: Local Windows operator workstation
+**Nền tảng mục tiêu**: Máy trạm của người vận hành Windows cục bộ
 
-**Project Type**: Single Python application and benchmark CLI
+**Loại dự án**: Ứng dụng Python đơn lẻ và CLI benchmark
 
-**Performance Goals**: Persist one checkpoint per successful source and avoid repeat preparation calls for completed sources after interruption
+**Mục tiêu hiệu năng**: Lưu một checkpoint cho mỗi nguồn thành công và tránh các lệnh gọi chuẩn bị lặp lại cho các nguồn đã hoàn thành sau khi bị gián đoạn
 
-**Constraints**: Provider-free local-only Stage A; unsealed mode restricted to BQ01/BQ02; no source text, filename, credential or provider response in checkpoint; per-source deadline fails closed; Stage B locked
+**Ràng buộc**: Giai đoạn A chỉ dùng cục bộ không có provider; chế độ mở niêm phong giới hạn ở BQ01/BQ02; không có văn bản nguồn, tên tệp, credential hoặc phản hồi của provider trong checkpoint; hạn chót cho từng nguồn áp dụng fail-closed; Giai đoạn B bị khóa
 
-**Scale/Scope**: 70-source production corpus; compact synthetic fixtures for unit tests
+**Quy mô/Phạm vi**: Ngữ liệu sản xuất 70 nguồn; các fixture giả lập gọn nhẹ cho kiểm thử đơn vị
 
-## Constitution Check
+## Kiểm Tra Hiến Pháp (Constitution Check)
 
-*GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
+*CỔNG: Phải đạt trước khi nghiên cứu Giai đoạn 0. Kiểm tra lại sau khi thiết kế Giai đoạn 1.*
 
-- Privacy is preserved: checkpoint metadata contains only content-derived opaque IDs, never source text, titles, paths, credentials or provider data.
-- Stage A remains local-only and provider-free. The design does not open a provider route or change corpus labels.
-- Existing public adapter behavior remains fail-closed for unprepared sources; focused regression tests are required.
-- The change is specified, planned, tasked, and will update the code graph after implementation as required by the project constitution.
+- Quyền riêng tư được bảo toàn: metadata của checkpoint chỉ chứa các ID mờ có nguồn gốc từ nội dung, tuyệt đối không chứa văn bản nguồn, tiêu đề, đường dẫn, credential hay dữ liệu provider.
+- Giai đoạn A vẫn chỉ dùng cục bộ và không có provider. Thiết kế không mở tuyến provider hay thay đổi nhãn ngữ liệu.
+- Hành vi adapter công khai hiện có giữ nguyên cơ chế fail-closed cho các nguồn chưa được chuẩn bị; yêu cầu các bài kiểm thử hồi quy tập trung.
+- Thay đổi được đặc tả, lập kế hoạch, phân chia nhiệm vụ và sẽ cập nhật biểu đồ mã nguồn sau khi triển khai theo yêu cầu của hiến pháp dự án.
 
-**Result: PASS.** Rechecked after design: PASS.
+**Kết quả: ĐẠT (PASS).** Đã kiểm tra lại sau thiết kế: ĐẠT (PASS).
 
-## Project Structure
+## Cấu Trúc Dự Án (Project Structure)
 
-### Documentation
+### Tài liệu
 
 ```text
 specs/001-stage-a-resume-guard/
@@ -54,7 +54,7 @@ specs/001-stage-a-resume-guard/
 └── tasks.md
 ```
 
-### Source Code
+### Mã nguồn
 
 ```text
 src/aios_habit/workspace_chat_rag_v2_adapter.py
@@ -63,8 +63,9 @@ tests/test_workspace_chat_rag_v2_adapter.py
 tests/test_battle_notebooklm_rag_v2.py
 ```
 
-**Structure Decision**: Extend the existing Workspace Chat adapter and existing benchmark CLI. Add focused regression tests beside current coverage; local run artifacts remain ignored.
+**Quyết định cấu trúc**: Mở rộng adapter Workspace Chat hiện có và CLI benchmark hiện có. Thêm các bài kiểm thử hồi quy tập trung bên cạnh phạm vi bao phủ hiện tại; các artifact chạy cục bộ vẫn ở trạng thái bị gitignore.
 
-## Complexity Tracking
+## Theo Dõi Độ Phức Tạp (Complexity Tracking)
 
-No constitution violations.
+Không có vi phạm hiến pháp nào.
+

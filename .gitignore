@@ -68,6 +68,7 @@ Thumbs.db
 *.tmp
 *.bak
 *.log
+pytest_goal_*/
 
 # Additional AIOS generated libraries
 06_workflow_library/**/*.jsonl

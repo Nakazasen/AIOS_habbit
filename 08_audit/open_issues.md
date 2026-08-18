@@ -1,5 +1,6 @@
-# Open Issues
+# Các Vấn Đề Đang Mở (Open Issues)
 
-| Issue ID | Date | Severity | Description | Owner | Status | Resolution |
+| Mã vấn đề (Issue ID) | Ngày (Date) | Mức độ nghiêm trọng (Severity) | Mô tả (Description) | Chủ sở hữu (Owner) | Trạng thái (Status) | Hướng giải quyết (Resolution) |
 |---|---|---|---|---|---|---|
-| ISS-0001 | 2026-06-20 | Medium | Phase 0 requires user review before closure | User / Orchestrator | OPEN | Pending review |
+| ISS-0001 | 2026-06-20 | Medium | Giai đoạn 0 yêu cầu người dùng đánh giá trước khi đóng | Người dùng / Orchestrator | OPEN | Chờ đánh giá |
+

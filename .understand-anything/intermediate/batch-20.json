@@ -1,0 +1,141 @@
+{
+  "nodes": [
+    {
+      "id": "file:08_audit/README.md",
+      "type": "file",
+      "name": "README.md",
+      "filePath": "08_audit/README.md",
+      "summary": "README for the audit section",
+      "tags": ["audit", "docs"]
+    },
+    {
+      "id": "file:08_audit/final_audit_report.md",
+      "type": "file",
+      "name": "final_audit_report.md",
+      "filePath": "08_audit/final_audit_report.md",
+      "summary": "Final audit report",
+      "tags": ["audit", "docs"]
+    },
+    {
+      "id": "file:08_audit/initial_public_audit.md",
+      "type": "file",
+      "name": "initial_public_audit.md",
+      "filePath": "08_audit/initial_public_audit.md",
+      "summary": "Initial public audit document",
+      "tags": ["audit", "docs"]
+    },
+    {
+      "id": "file:08_audit/open_issues.md",
+      "type": "file",
+      "name": "open_issues.md",
+      "filePath": "08_audit/open_issues.md",
+      "summary": "List of open issues found during audit",
+      "tags": ["audit", "docs"]
+    },
+    {
+      "id": "file:08_audit/phase_0_foundation_audit.md",
+      "type": "file",
+      "name": "phase_0_foundation_audit.md",
+      "filePath": "08_audit/phase_0_foundation_audit.md",
+      "summary": "Phase 0 foundation audit document",
+      "tags": ["audit", "docs"]
+    },
+    {
+      "id": "file:08_audit/phase_0_report.md",
+      "type": "file",
+      "name": "phase_0_report.md",
+      "filePath": "08_audit/phase_0_report.md",
+      "summary": "Phase 0 report",
+      "tags": ["audit", "docs"]
+    },
+    {
+      "id": "file:08_audit/phase_1_report.md",
+      "type": "file",
+      "name": "phase_1_report.md",
+      "filePath": "08_audit/phase_1_report.md",
+      "summary": "Phase 1 report",
+      "tags": ["audit", "docs"]
+    },
+    {
+      "id": "file:08_audit/phase_2_report.md",
+      "type": "file",
+      "name": "phase_2_report.md",
+      "filePath": "08_audit/phase_2_report.md",
+      "summary": "Phase 2 report",
+      "tags": ["audit", "docs"]
+    },
+    {
+      "id": "file:08_audit/phase_3_report.md",
+      "type": "file",
+      "name": "phase_3_report.md",
+      "filePath": "08_audit/phase_3_report.md",
+      "summary": "Phase 3 report",
+      "tags": ["audit", "docs"]
+    },
+    {
+      "id": "file:08_audit/phase_4_report.md",
+      "type": "file",
+      "name": "phase_4_report.md",
+      "filePath": "08_audit/phase_4_report.md",
+      "summary": "Phase 4 report",
+      "tags": ["audit", "docs"]
+    },
+    {
+      "id": "file:08_audit/phase_5_report.md",
+      "type": "file",
+      "name": "phase_5_report.md",
+      "filePath": "08_audit/phase_5_report.md",
+      "summary": "Phase 5 report",
+      "tags": ["audit", "docs"]
+    },
+    {
+      "id": "file:08_audit/phase_6_report.md",
+      "type": "file",
+      "name": "phase_6_report.md",
+      "filePath": "08_audit/phase_6_report.md",
+      "summary": "Phase 6 report",
+      "tags": ["audit", "docs"]
+    },
+    {
+      "id": "file:08_audit/phase_7_report.md",
+      "type": "file",
+      "name": "phase_7_report.md",
+      "filePath": "08_audit/phase_7_report.md",
+      "summary": "Phase 7 report",
+      "tags": ["audit", "docs"]
+    },
+    {
+      "id": "file:08_audit/phase_8_report.md",
+      "type": "file",
+      "name": "phase_8_report.md",
+      "filePath": "08_audit/phase_8_report.md",
+      "summary": "Phase 8 report",
+      "tags": ["audit", "docs"]
+    },
+    {
+      "id": "file:08_audit/phase_9_report.md",
+      "type": "file",
+      "name": "phase_9_report.md",
+      "filePath": "08_audit/phase_9_report.md",
+      "summary": "Phase 9 report",
+      "tags": ["audit", "docs"]
+    },
+    {
+      "id": "file:08_audit/rollback_log.md",
+      "type": "file",
+      "name": "rollback_log.md",
+      "filePath": "08_audit/rollback_log.md",
+      "summary": "Rollback log for auditing",
+      "tags": ["audit", "docs"]
+    },
+    {
+      "id": "file:08_audit/validation_log.md",
+      "type": "file",
+      "name": "validation_log.md",
+      "filePath": "08_audit/validation_log.md",
+      "summary": "Validation log for auditing",
+      "tags": ["audit", "docs"]
+    }
+  ],
+  "edges": []
+}

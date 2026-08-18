@@ -1,0 +1,35 @@
+{
+  "nodes": [
+    {
+      "id": "file:12_tools/README.md",
+      "type": "file",
+      "name": "README.md",
+      "filePath": "12_tools/README.md",
+      "summary": "Documentation for tools directory.",
+      "tags": ["markdown", "documentation"]
+    },
+    {
+      "id": "file:src/aios_habit/cli.py",
+      "type": "file",
+      "name": "cli.py",
+      "filePath": "src/aios_habit/cli.py",
+      "summary": "Command line interface for the aios_habit application.",
+      "tags": ["python", "cli"]
+    },
+    {
+      "id": "file:src/aios_habit/workspace_chat_app.py",
+      "type": "file",
+      "name": "workspace_chat_app.py",
+      "filePath": "src/aios_habit/workspace_chat_app.py",
+      "summary": "Main application file for workspace chat functionality.",
+      "tags": ["python", "app"]
+    }
+  ],
+  "edges": [
+    {
+      "source": "file:src/aios_habit/cli.py",
+      "target": "file:src/aios_habit/workspace_chat_app.py",
+      "type": "imports"
+    }
+  ]
+}

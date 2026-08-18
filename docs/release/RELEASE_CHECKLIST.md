@@ -1,47 +1,41 @@
-# Release Checklist
+# Danh Mục Kiểm Tra Phát Hành (Release Checklist)
 
 Status: `ACTIVE`
 Owner role: Release owner / reviewer
-Last reviewed: 2026-07-25
+Last reviewed: 2026-08-16
 Review cadence: Every intended release or hotfix
 
-## Scope and traceability
+## Phạm vi và Khả năng Truy xuất Nguồn gốc (Scope and Traceability)
 
-- [ ] Gate Card scope, non-goals and rollback are current.
-- [ ] Requirements/ADRs/contracts/risks reflect the change.
-- [ ] CHANGELOG and PROJECT_HANDOVER state are factual.
+- [ ] Phạm vi Gate Card, các phi mục tiêu (non-goals) và phương án hoàn tác (rollback) là hiện hành.
+- [ ] Các bản ghi yêu cầu / ADR / hợp đồng giao diện / rủi ro phản ánh đúng thay đổi.
+- [ ] Trạng thái trong CHANGELOG và PROJECT_HANDOVER là đúng sự thật thực tế.
 
-## Quality
+## Chất lượng (Quality)
 
-- [ ] `py -3 scripts/check_docs.py` passes.
-- [ ] `py -3 -m compileall src tests` passes.
-- [ ] `py -3 -m pytest -q` passes.
-- [ ] CLI audit passes with no errors/warnings.
-- [ ] Workspace Chat import passes.
-- [ ] `git diff --check` and `git diff --cached --check` pass.
-- [ ] Focused tests cover changed contracts.
+- [ ] `uv run --no-sync --group dev python scripts/check_docs.py` đạt (PASS).
+- [ ] `uv run --no-sync --group dev python -m compileall src tests` đạt (PASS).
+- [ ] `uv run --no-sync --group dev pytest -q` đạt (PASS).
+- [ ] Lệnh CLI audit đạt (PASS) không có lỗi / cảnh báo.
+- [ ] Import Workspace Chat đạt (PASS).
+- [ ] `git diff --check` và `git diff --cached --check` đạt (PASS).
+- [ ] Các bài kiểm thử trọng điểm bao phủ đầy đủ các hợp đồng đã thay đổi.
 
-## Privacy and security
+## Quyền riêng tư và Bảo mật (Privacy and Security)
 
-- [ ] No credential, private runtime file, raw document, screenshot or local
-      diagnostic artifact is staged/tracked.
-- [ ] Threat/privacy/dependency impact has been reviewed.
-- [ ] If the release enables or advertises a real external-provider route,
-      `AI-GW-REAL-ROUTE-POLICY-CONSOLIDATION` is `DONE` with current route-specific
-      threat/privacy and regression evidence.
-- [ ] Any provider live smoke was explicit, generic, sanitized and recorded
-      without a key or private source content.
-- [ ] Security disclosure and incident contact decisions are reviewed if release
-      is public.
+- [ ] Tuyệt đối không có secret, tệp runtime riêng tư, tài liệu thô, ảnh chụp màn hình hoặc artifact chẩn đoán cục bộ nào bị đưa vào stage/theo dõi trong Git.
+- [ ] Tác động đến mô hình mối đe dọa / quyền riêng tư / phụ thuộc đã được đánh giá.
+- [ ] Nếu bản phát hành kích hoạt hoặc quảng bá một tuyến provider bên ngoài thực tế, thẻ `AI-GW-REAL-ROUTE-POLICY-CONSOLIDATION` phải ở trạng thái `DONE` kèm theo bằng chứng kiểm thử hồi quy và đe dọa/quyền riêng tư cụ thể của tuyến.
+- [ ] Mọi bài kiểm thử live smoke với provider đều chạy tường minh, generic, đã làm sạch và được ghi lại mà không chứa API key hoặc nội dung nguồn riêng tư.
+- [ ] Các quyết định về kênh báo cáo bảo mật và liên hệ sự cố đã được xem xét nếu bản phát hành là công khai.
 
-## Delivery and rollback
+## Phân phối và Hoàn tác (Delivery and Rollback)
 
-- [ ] Supported environment has been selected/validated per policy.
-- [ ] Clean install/build and SBOM steps are performed if distribution is in
-      scope; otherwise release is labelled checkout-only.
-- [ ] Prior validated version/commit is named as rollback target.
-- [ ] Backup/migration impact is assessed before persistent-data change.
-- [ ] Synthetic backup/restore drill is current for changed JSONL/SQLite behavior;
-      do not claim RTO/RPO or cross-version recovery without separate evidence.
+- [ ] Môi trường được hỗ trợ đã được lựa chọn / kiểm chứng theo chính sách.
+- [ ] Các bước cài đặt / đóng gói sạch và tạo SBOM đã được thực hiện nếu việc phân phối nằm trong phạm vi; nếu không, bản phát hành phải được gắn nhãn chỉ dùng dạng checkout mã nguồn (checkout-only).
+- [ ] Phiên bản / commit đã kiểm chứng trước đó được chỉ định rõ ràng làm mục tiêu hoàn tác (rollback target).
+- [ ] Tác động sao lưu / di chuyển dữ liệu được đánh giá trước khi thay đổi dữ liệu lưu trữ bền vững.
+- [ ] Đợt diễn tập sao lưu / khôi phục tổng hợp là hiện hành cho các thay đổi hành vi JSONL/SQLite; tuyệt đối không tuyên bố RTO/RPO hoặc khôi phục đa phiên bản nếu thiếu bằng chứng độc lập.
 
-A checkbox is evidence, not a substitute for command logs/reviewer decision.
+Mỗi hộp kiểm (checkbox) là một bằng chứng, không phải là sự thay thế cho log lệnh hay quyết định của người review.
+

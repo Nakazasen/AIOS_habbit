@@ -1,37 +1,41 @@
-# Spec: Excel Structured Query Audit 3 Remediation
+# Đặc Tả: Khắc Phục Lỗi Kiểm Toán 3 Truy Vấn Có Cấu Trúc Excel (Spec: Excel Structured Query Audit 3 Remediation)
 
-## Objective
-Remediate the remaining correctness and coverage findings from Audit 3 without expanding the structured-query surface.
+## Mục Tiêu (Objective)
 
-## Requirements
+Khắc phục các phát hiện về độ chính xác và phạm vi bao phủ còn lại từ Đợt kiểm toán 3 mà không mở rộng bề mặt truy vấn có cấu trúc.
 
-### 1. Bounded all-sheets intent
-- `plan_excel_query()` MUST recognize all-sheets intent only when `all` is a standalone canonical token or canonical phrase `tat ca` is present.
-- It MUST NOT treat substrings in unrelated words (for example `smallest`) as all-sheets intent.
-- Ambiguous same-schema workbooks without a valid all-sheets intent or explicit sheet reference MUST continue to fail soft with `ambiguous_sheet_table`.
+## Yêu Cầu (Requirements)
 
-### 2. Lossless cross-sheet provenance
-- Internal aggregate provenance encoding MUST NOT use a delimiter which is legal in an Excel sheet name.
-- A sheet named `East,West` MUST round-trip as one provenance record, not two invented sheets.
-- A multi-sheet aggregate MUST still return one `StructuredProvenance` per contributing sheet or region.
+### 1. Ý định tất cả các trang tính có giới hạn (Bounded all-sheets intent)
+- `plan_excel_query()` BẮT BUỘC chỉ nhận diện ý định chọn tất cả các sheet khi `all` là một token chuẩn tắc độc lập hoặc cụm từ chuẩn tắc `tat ca` xuất hiện.
+- TUYỆT ĐỐI KHÔNG coi các chuỗi con trong các từ không liên quan (ví dụ `smallest`) là ý định chọn tất cả các sheet.
+- Các workbook có cùng lược đồ gây mơ hồ mà không có ý định chọn tất cả sheet hợp lệ hoặc tham chiếu sheet rõ ràng BẮT BUỘC tiếp tục fail-soft với lỗi `ambiguous_sheet_table`.
 
-### 3. Workspace Chat integration coverage
-- An integration test must exercise the managed-workbook route through `retrieve_workspace_chat_evidence()` with two sheets.
-- It MUST assert evidence header and citation `location_info` list the actual contributing sheets.
+### 2. Nguồn gốc xuyên sheet không mất mát (Lossless cross-sheet provenance)
+- Việc mã hóa nguồn gốc tổng hợp nội bộ TUYỆT ĐỐI KHÔNG sử dụng ký tự phân cách hợp lệ trong tên sheet của Excel.
+- Một sheet có tên `East,West` BẮT BUỘC phải chuyển đổi hai chiều (round-trip) thành một bản ghi nguồn gốc duy nhất, không được tách thành hai sheet tự bịa.
+- Một phép tổng hợp đa sheet BẮT BUỘC vẫn trả về một `StructuredProvenance` cho mỗi sheet hoặc vùng đóng góp.
 
-### 4. Quality and hygiene
-- Remove newly-added blank lines at EOF in affected test files.
-- Preserve SQL allow-list, bounded execution limits, and fail-soft behavior.
+### 3. Bao phủ tích hợp Workspace Chat (Workspace Chat integration coverage)
+- Bài kiểm thử tích hợp phải thực thi luồng workbook được quản lý thông qua `retrieve_workspace_chat_evidence()` với hai sheet.
+- BẮT BUỘC xác nhận header bằng chứng và `location_info` của trích dẫn liệt kê đúng các sheet đóng góp thực tế.
 
-## Acceptance Criteria
-- `smallest Revenue` never selects all sheets merely because it contains `all`.
-- A `East,West` sheet name is retained verbatim in aggregate provenance.
-- Multi-sheet Workspace Chat evidence cites `Sheets: East, West` for normal two-sheet names.
-- Targeted affected suite passes, `py_compile` passes, `git diff --check` is clean for touched test files, and graphify is updated after code changes.
+### 4. Chất lượng và vệ sinh mã nguồn (Quality and hygiene)
+- Loại bỏ các dòng trống mới thêm vào ở cuối tệp (EOF) trong các tệp kiểm thử bị ảnh hưởng.
+- Bảo toàn danh sách cho phép SQL, các giới hạn thực thi có chặn và hành vi fail-soft.
 
-## Remediation Closure
-- **Status:** Closed on 2026-08-13.
-- **Validation:** Full test suite passed: `1182 passed in 41.49s`.
-- **Structured-query scope:** Planner, bounded SQLite executor, and Workspace Chat adapter were audited with a realistic multi-sheet workbook containing Unicode, punctuation, dates, combined filters, aggregation, and cross-sheet provenance.
-- **Security and bounds:** SQL remains allow-listed and parameterized; workbook query limits remain `max_cells=100000` and `max_rows=50`; unsupported/ambiguous requests fail soft.
-- **Graph:** `graphify update .` completed after the code changes. Its scan skipped only inaccessible generated `pytest_goal_032` and `pytest_goal_033` directories.
+## Tiêu Chí Nghiệm Thu (Acceptance Criteria)
+
+- `smallest Revenue` không bao giờ chọn tất cả các sheet chỉ vì nó chứa `all`.
+- Tên sheet `East,West` được giữ nguyên vẹn trong nguồn gốc tổng hợp.
+- Bằng chứng Workspace Chat đa sheet trích dẫn `Sheets: East, West` cho các tên hai sheet bình thường.
+- Bộ kiểm thử bị ảnh hưởng mục tiêu đạt, `py_compile` đạt, `git diff --check` sạch sẽ cho các tệp kiểm thử đã chạm và graphify được cập nhật sau khi thay đổi mã.
+
+## Đóng Cổng Khắc Phục (Remediation Closure)
+
+- **Trạng thái:** Đã đóng vào ngày 2026-08-13.
+- **Xác thực:** Toàn bộ bộ kiểm thử đạt: `1182 passed in 41.49s`.
+- **Phạm vi truy vấn có cấu trúc:** Bộ lập kế hoạch, bộ thực thi SQLite có giới hạn và adapter Workspace Chat đã được kiểm toán với một workbook thực tế đa sheet chứa Unicode, dấu câu, ngày tháng, bộ lọc kết hợp, phép tổng hợp và nguồn gốc xuyên sheet.
+- **Bảo mật và giới hạn:** SQL vẫn nằm trong danh sách cho phép và được tham số hóa; giới hạn truy vấn workbook giữ ở mức `max_cells=100000` và `max_rows=50`; các yêu cầu không hỗ trợ / mơ hồ áp dụng fail-soft.
+- **Biểu đồ Graphify:** `graphify update .` hoàn thành sau các thay đổi mã. Quá trình quét chỉ bỏ qua các thư mục tự sinh không thể truy cập `pytest_goal_032` và `pytest_goal_033`.
+

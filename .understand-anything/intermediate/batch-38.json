@@ -1,0 +1,32 @@
+{
+  "nodes": [
+    {
+      "id": "file:docs/quality/QUALITY_GATES.md",
+      "type": "file",
+      "name": "QUALITY_GATES.md",
+      "filePath": "docs/quality/QUALITY_GATES.md",
+      "summary": "Quality gate standards and verification thresholds.",
+      "tags": ["quality", "quality-gates"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:docs/quality/TEST_STRATEGY.md",
+      "type": "file",
+      "name": "TEST_STRATEGY.md",
+      "filePath": "docs/quality/TEST_STRATEGY.md",
+      "summary": "Test strategy and testing pyramid guidelines.",
+      "tags": ["quality", "testing"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:docs/quality/UX_ACCESSIBILITY_ACCEPTANCE.md",
+      "type": "file",
+      "name": "UX_ACCESSIBILITY_ACCEPTANCE.md",
+      "filePath": "docs/quality/UX_ACCESSIBILITY_ACCEPTANCE.md",
+      "summary": "UX and accessibility acceptance criteria.",
+      "tags": ["quality", "accessibility"],
+      "complexity": "moderate"
+    }
+  ],
+  "edges": []
+}

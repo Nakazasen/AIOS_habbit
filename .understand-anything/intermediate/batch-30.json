@@ -1,0 +1,59 @@
+{
+  "nodes": [
+    {
+      "id": "file:docs/architecture/AI_ROUTING_RESILIENCE.md",
+      "type": "file",
+      "name": "AI_ROUTING_RESILIENCE.md",
+      "filePath": "docs/architecture/AI_ROUTING_RESILIENCE.md",
+      "summary": "Architectural resilience strategies for AI routing.",
+      "tags": ["architecture", "resilience"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:docs/architecture/COMPONENTS.md",
+      "type": "file",
+      "name": "COMPONENTS.md",
+      "filePath": "docs/architecture/COMPONENTS.md",
+      "summary": "Detailed breakdown of system architecture components.",
+      "tags": ["architecture", "components"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:docs/architecture/CONTAINERS.md",
+      "type": "file",
+      "name": "CONTAINERS.md",
+      "filePath": "docs/architecture/CONTAINERS.md",
+      "summary": "Container architecture and deployment topology.",
+      "tags": ["architecture", "containers"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:docs/architecture/CONTEXT.md",
+      "type": "file",
+      "name": "CONTEXT.md",
+      "filePath": "docs/architecture/CONTEXT.md",
+      "summary": "System context and boundary documentation.",
+      "tags": ["architecture", "context"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:docs/architecture/DEPLOYMENT.md",
+      "type": "file",
+      "name": "DEPLOYMENT.md",
+      "filePath": "docs/architecture/DEPLOYMENT.md",
+      "summary": "Deployment architecture and infrastructure setup.",
+      "tags": ["architecture", "deployment"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:docs/architecture/view_diagram.html",
+      "type": "file",
+      "name": "view_diagram.html",
+      "filePath": "docs/architecture/view_diagram.html",
+      "summary": "HTML viewer for interactive architecture diagrams.",
+      "tags": ["architecture", "visualization"],
+      "complexity": "moderate"
+    }
+  ],
+  "edges": []
+}

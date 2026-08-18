@@ -1,45 +1,35 @@
-﻿# RAG retrieval third-party provenance
+# Nguồn Gốc Bên Thứ Ba Của Truy Xuất RAG (RAG Retrieval Third-Party Provenance)
 
-This file records externally maintained packages and model families used by the optional
-Gate H retrieval laboratory. The default AIOS Habit installation does not install or load
-these components.
+Tệp này ghi lại các gói được duy trì bên ngoài và các dòng mô hình được sử dụng bởi phòng thí nghiệm truy xuất Cổng H (Gate H) tùy chọn. Bản cài đặt AIOS Habit mặc định không cài đặt hoặc tải các thành phần này.
 
 ## FlagEmbedding / BGE-M3
 
-- Upstream repository: https://github.com/FlagOpen/FlagEmbedding
-- Package: `FlagEmbedding==1.3.5`
-- License: MIT (verify the installed distribution and selected model card before promotion)
-- Integration: public `BGEM3FlagModel` API through
-  `src/aios_habit/rag_v2/retrieval_backends.py`
-- Behavior used: multilingual dense embeddings and learned sparse lexical weights
-- Locality policy: the configured model path must exist locally; the complete directory tree
-  is checked against the configured SHA-256 digest before model construction; network access
-  is disabled during construction and inference.
-- Model pin: runtime configuration must supply an explicit model revision and directory-tree
-  checksum. No model weights are committed to this repository.
+- Kho lưu trữ thượng nguồn (Upstream repository): https://github.com/FlagOpen/FlagEmbedding
+- Gói (Package): `FlagEmbedding==1.3.5`
+- Giấy phép (License): MIT (xác minh bản phân phối đã cài đặt và thẻ mô hình đã chọn trước khi thăng cấp)
+- Tích hợp: API công khai `BGEM3FlagModel` thông qua `src/aios_habit/rag_v2/retrieval_backends.py`
+- Hành vi được sử dụng: embedding dày đặc đa ngôn ngữ (dense embeddings) và trọng số từ vựng thưa thớt học được (sparse lexical weights)
+- Chính sách tính cục bộ: đường dẫn mô hình đã cấu hình phải tồn tại cục bộ; toàn bộ cây thư mục được kiểm tra đối chiếu với mã băm SHA-256 đã cấu hình trước khi khởi tạo mô hình; quyền truy cập mạng bị vô hiệu hóa trong quá trình khởi tạo và suy luận.
+- Khóa mô hình: cấu hình runtime phải cung cấp bản sửa đổi mô hình rõ ràng và checksum cây thư mục. Tuyệt đối không commit trọng số mô hình vào repository này.
 
 ## BGE reranker v2 M3
 
-- Model family: https://huggingface.co/BAAI/bge-reranker-v2-m3
-- Runtime package: `FlagEmbedding==1.3.5`
-- License: verify the selected model card before promotion
-- Integration: public `FlagReranker` API through
-  `src/aios_habit/rag_v2/retrieval_backends.py`
-- Behavior used: multilingual query-document cross-encoder scoring
-- Locality policy: identical fail-closed path, revision, checksum, and offline constraints as
-  BGE-M3.
+- Dòng mô hình: https://huggingface.co/BAAI/bge-reranker-v2-m3
+- Gói runtime: `FlagEmbedding==1.3.5`
+- Giấy phép: xác minh thẻ mô hình đã chọn trước khi thăng cấp
+- Tích hợp: API công khai `FlagReranker` thông qua `src/aios_habit/rag_v2/retrieval_backends.py`
+- Hành vi được sử dụng: chấm điểm tương tác chéo truy vấn - tài liệu (cross-encoder) đa ngôn ngữ
+- Chính sách tính cục bộ: các ràng buộc đường dẫn fail-closed, bản sửa đổi, checksum và offline giống hệt như BGE-M3.
 
-## Haystack and RAGFlow
+## Haystack và RAGFlow
 
-Haystack and RAGFlow informed the architectural review (separate retrievers, rank fusion,
-reranking, and stage provenance), but no source code from either repository is copied in the
-current Gate H implementation. If the stop-rule triggers and an adapter spike is implemented,
-record its exact repository commit, source files, license, and modifications here.
+Haystack và RAGFlow đã cung cấp thông tin cho việc đánh giá kiến trúc (các bộ truy xuất riêng biệt, kết hợp xếp hạng, xếp hạng lại và nguồn gốc giai đoạn), nhưng không có mã nguồn nào từ cả hai kho lưu trữ được sao chép trong quá trình triển khai Cổng H hiện tại. Nếu quy tắc dừng kích hoạt và một bản thử nghiệm adapter được thực hiện, hãy ghi lại commit repository, các tệp nguồn, giấy phép và các sửa đổi chính xác ở đây.
 
-## Verification requirements before promotion
+## Các Yêu Cầu Xác Thực Trước Khi Thăng Cấp (Verification requirements before promotion)
 
-1. Record the exact local model directory checksum in the tournament run metadata.
-2. Record package versions, device, model revision, dimension, and measured runtime latency.
-3. Run with network disabled after model acquisition is performed outside the benchmark.
-4. Confirm dense, sparse, fused, and reranked pools are non-empty for applicable arms.
-5. Preserve upstream notices if direct source is ever copied rather than called via public API.
+1. Ghi lại checksum thư mục mô hình cục bộ chính xác trong metadata của lượt chạy thi đấu.
+2. Ghi lại phiên bản gói, thiết bị, bản sửa đổi mô hình, số chiều và độ trễ runtime đo được.
+3. Chạy với mạng bị vô hiệu hóa sau khi việc tải mô hình được thực hiện bên ngoài benchmark.
+4. Xác nhận các tập hợp dense, sparse, kết hợp và xếp hạng lại không bị rỗng đối với các nhánh áp dụng.
+5. Giữ nguyên các thông báo của nhà phát triển thượng nguồn nếu mã nguồn trực tiếp từng được sao chép thay vì được gọi qua API công khai.
+

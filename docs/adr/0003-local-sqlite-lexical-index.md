@@ -1,49 +1,41 @@
-# ADR-0003: Local SQLite Lexical Index for RAG V2 Foundation
+# ADR-0003: Chỉ Mục Từ Vựng SQLite Cục Bộ Cho Nền Tảng RAG V2 (Local SQLite Lexical Index)
 
 Status: `ACCEPTED`
 Owner role: Project owner / RAG architecture reviewer
 Last reviewed: 2026-07-25
 Review cadence: Before changing retrieval storage, ranking or adding a vector service
 
-## Context
+## Bối cảnh (Context)
 
-RAG v2 needs generic, inspectable retrieval without cloud-default behavior or a
-new mandatory vector dependency. Current foundation implements a local SQLite
-chunk store with deterministic lexical scoring.
+RAG v2 cần khả năng truy xuất mang tính generic, có thể kiểm tra trực tiếp mà không cần mặc định đám mây hoặc thêm phụ thuộc bắt buộc vào cơ sở dữ liệu vector. Nền tảng hiện tại triển khai một kho lưu trữ chunk SQLite cục bộ với thuật toán chấm điểm từ vựng (lexical) tất định.
 
-## Options considered
+## Các phương án đã xem xét (Options Considered)
 
-1. Cloud/vector database as initial index.
-2. Local SQLite lexical index.
-3. Reuse domain-specific legacy MOM index as generic core.
+1. Cơ sở dữ liệu Vector/Cloud làm chỉ mục ban đầu.
+2. Chỉ mục từ vựng SQLite cục bộ (Local SQLite lexical index).
+3. Tái sử dụng chỉ mục MOM cũ (vốn chứa hard-code miền cụ thể) làm lõi generic.
 
-## Decision
+## Quyết định (Decision)
 
-Use local SQLite lexical indexing for the current generic foundation. The index
-stores chunk text and metadata at a caller-selected path. It is not currently a
-full FTS/BM25 implementation; the roadmap accurately records deterministic
-lexical behavior and bilingual-ranking limitations.
+Sử dụng chỉ mục từ vựng SQLite cục bộ cho nền tảng generic hiện tại. Chỉ mục lưu trữ văn bản chunk và metadata tại đường dẫn do caller chỉ định. Hiện tại đây chưa phải là triển khai FTS/BM25 đầy đủ; roadmap ghi nhận chính xác hành vi từ vựng tất định và các giới hạn xếp hạng song ngữ.
 
-## Consequences
+## Hệ quả (Consequences)
 
-- The index is inspectable and local but ranking is intentionally limited.
-- PNG OCR and semantic/vector retrieval are not current guarantees.
-- Callers must own index-path lifecycle, backup decision and rebuild input.
+- Chỉ mục có thể kiểm tra trực tiếp và nằm hoàn toàn cục bộ nhưng khả năng xếp hạng bị giới hạn có chủ đích.
+- Nhận diện OCR ảnh PNG và truy xuất ngữ nghĩa/vector hiện chưa phải là cam kết bảo đảm.
+- Caller tự quản lý vòng đời đường dẫn chỉ mục, quyết định sao lưu và dữ liệu đầu vào để tái tạo (rebuild).
 
-## Security and privacy impact
+## Tác động Bảo mật & Quyền riêng tư (Security and Privacy Impact)
 
-No source is sent to a provider merely by indexing. The local database can still
-contain sensitive material and must be protected/ignored as runtime data.
+Không có tài liệu nguồn nào bị gửi tới provider chỉ vì được lập chỉ mục. Cơ sở dữ liệu cục bộ vẫn có thể chứa tài liệu nhạy cảm và phải được bảo vệ/loại trừ khỏi Git dưới dạng dữ liệu runtime.
 
-## Migration and rollback
+## Di chuyển & Hoàn tác (Migration and Rollback)
 
-Index schema is created idempotently for the current chunk table. If an index is
-corrupt or incompatible, preserve evidence as appropriate and rebuild from
-available safe source/chunk input; do not claim lossless reconstruction without
-that input.
+Lược đồ chỉ mục được tạo có tính idempotent cho bảng chunk hiện tại. Nếu chỉ mục bị hỏng hoặc không tương thích, hãy lưu lại bằng chứng phù hợp và xây dựng lại từ dữ liệu nguồn/chunk an toàn sẵn có; tuyệt đối không tuyên bố tái tạo không mất dữ liệu nếu thiếu dữ liệu đầu vào đó.
 
-## Evidence
+## Bằng chứng Liên kết (Evidence)
 
-- [RAG v2 design](../rag_v2/RAG_V2_DESIGN.md)
-- [Persisted-data compatibility](../contracts/PERSISTED_DATA_COMPATIBILITY.md)
-- [Backup and restore](../operations/BACKUP_RESTORE.md)
+- [Thiết kế RAG v2 (RAG v2 design)](../rag_v2/RAG_V2_DESIGN.md)
+- [Khả năng tương thích dữ liệu lưu trữ (Persisted-data compatibility)](../contracts/PERSISTED_DATA_COMPATIBILITY.md)
+- [Sao lưu và phục hồi (Backup and restore)](../operations/BACKUP_RESTORE.md)
+

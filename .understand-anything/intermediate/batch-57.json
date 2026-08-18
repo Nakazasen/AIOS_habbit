@@ -1,0 +1,45 @@
+{
+  "nodes": [
+    {
+      "id": "file:src/aios_habit/owner_workflow_state.py",
+      "type": "file",
+      "name": "owner_workflow_state.py",
+      "filePath": "src/aios_habit/owner_workflow_state.py",
+      "summary": "Manages the state of the owner workflow in the habit system.",
+      "tags": ["python", "workflow"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:src/aios_habit/workflow.py",
+      "type": "file",
+      "name": "workflow.py",
+      "filePath": "src/aios_habit/workflow.py",
+      "summary": "Core definitions for workflow management.",
+      "tags": ["python", "workflow"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:src/aios_habit/models.py",
+      "type": "file",
+      "name": "models.py",
+      "filePath": "src/aios_habit/models.py",
+      "summary": "Data models for the habit application.",
+      "tags": ["python", "models"],
+      "complexity": "moderate"
+    }
+  ],
+  "edges": [
+    {
+      "source": "file:src/aios_habit/owner_workflow_state.py",
+      "target": "file:src/aios_habit/workflow.py",
+      "type": "imports",
+      "direction": "forward"
+    },
+    {
+      "source": "file:src/aios_habit/owner_workflow_state.py",
+      "target": "file:src/aios_habit/models.py",
+      "type": "imports",
+      "direction": "forward"
+    }
+  ]
+}

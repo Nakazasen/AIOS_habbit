@@ -1,0 +1,32 @@
+{
+  "nodes": [
+    {
+      "id": "file:config/mom_source_dispositions.example.json",
+      "type": "file",
+      "name": "mom_source_dispositions.example.json",
+      "filePath": "config/mom_source_dispositions.example.json",
+      "summary": "Configuration file defining source file dispositions for evidence-backed exclusions.",
+      "tags": ["config", "json"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:config/real_benchmark.example.json",
+      "type": "file",
+      "name": "real_benchmark.example.json",
+      "filePath": "config/real_benchmark.example.json",
+      "summary": "Example configuration for running benchmarks against local source roots.",
+      "tags": ["config", "benchmark", "json"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:config/shared_ai_provider_fabric.json",
+      "type": "file",
+      "name": "shared_ai_provider_fabric.json",
+      "filePath": "config/shared_ai_provider_fabric.json",
+      "summary": "Shared configuration for AI provider fabric defining endpoints keys and model capabilities.",
+      "tags": ["config", "ai-provider", "json"],
+      "complexity": "moderate"
+    }
+  ],
+  "edges": []
+}

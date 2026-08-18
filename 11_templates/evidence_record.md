@@ -1,35 +1,36 @@
-# Evidence Record
+# Bản Ghi Bằng Chứng (Evidence Record)
 
 ## Metadata
 
 - Evidence ID: `EVD-0000`
 - Source ID: `SRC-0000`
-- Source Type: `chat_transcript | markdown | audit_report | commit_history | roadmap | specification | project_folder | prompt_library | user_interview | other`
-- Created: `YYYY-MM-DD`
+- Loại nguồn (Source Type): `chat_transcript | markdown | audit_report | commit_history | roadmap | specification | project_folder | prompt_library | user_interview | other`
+- Ngày tạo (Created): `YYYY-MM-DD`
 
-## Source Reference
+## Tham Chiếu Nguồn (Source Reference)
 
-Local path, commit hash, artifact ID hoặc mô tả kiểm soát được.
+Đường dẫn cục bộ (Local path), commit hash, artifact ID hoặc mô tả kiểm soát được.
 
-## Summary
+## Tóm Tắt (Summary)
 
-Tóm tắt evidence bằng lời riêng. Không dán toàn bộ source.
+Tóm tắt bằng chứng bằng lời riêng. Tuyệt đối không dán toàn bộ nguồn (source).
 
-## Content Boundary
+## Ranh Giới Nội Dung (Content Boundary)
 
-Evidence này bao phủ phần nào của source?
+Bằng chứng này bao phủ phần nào của nguồn?
 
-## Permission and Retention
+## Quyền Hạn và Lưu Giữ (Permission and Retention)
 
-- Permission status: `user_provided | user_approved | local_only | excluded | unknown`
-- Retention policy: `metadata_only | summary_only | local_raw_allowed | do_not_store_raw | delete_after_extraction`
+- Trạng thái quyền hạn (Permission status): `user_provided | user_approved | local_only | excluded | unknown`
+- Chính sách lưu giữ (Retention policy): `metadata_only | summary_only | local_raw_allowed | do_not_store_raw | delete_after_extraction`
 
-## Linked Memory
+## Ký Ức Liên Kết (Linked Memory)
 
-| Memory ID | Relationship | Notes |
+| Mã ký ức (Memory ID) | Mối quan hệ (Relationship) | Ghi chú (Notes) |
 |---|---|---|
 | | supports/contradicts/updates | |
 
-## Notes
+## Ghi Chú (Notes)
 
 Ghi chú kiểm định.
+

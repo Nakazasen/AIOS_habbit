@@ -1,0 +1,218 @@
+{
+  "nodes": [
+    {
+      "id": "file:src/aios_habit/workspace_chat_store.py",
+      "type": "file",
+      "name": "workspace_chat_store.py",
+      "filePath": "src/aios_habit/workspace_chat_store.py",
+      "summary": "Handles storage and retrieval of chat session data.",
+      "tags": ["storage", "chat"]
+    },
+    {
+      "id": "file:src/aios_habit/workspace_chat_app.py",
+      "type": "file",
+      "name": "workspace_chat_app.py",
+      "filePath": "src/aios_habit/workspace_chat_app.py",
+      "summary": "Main entry point for workspace chat application.",
+      "tags": ["application", "chat"]
+    },
+    {
+      "id": "file:src/aios_habit/workspace_chat_ui.py",
+      "type": "file",
+      "name": "workspace_chat_ui.py",
+      "filePath": "src/aios_habit/workspace_chat_ui.py",
+      "summary": "Handles UI components for the chat application.",
+      "tags": ["ui", "chat"]
+    },
+    {
+      "id": "file:src/aios_habit/workspace_agent_orchestrator.py",
+      "type": "file",
+      "name": "workspace_agent_orchestrator.py",
+      "filePath": "src/aios_habit/workspace_agent_orchestrator.py",
+      "summary": "Orchestrates agents in the workspace.",
+      "tags": ["agent", "orchestration"]
+    },
+    {
+      "id": "file:src/aios_habit/agent_task_pack.py",
+      "type": "file",
+      "name": "agent_task_pack.py",
+      "filePath": "src/aios_habit/agent_task_pack.py",
+      "summary": "Defines agent task structures.",
+      "tags": ["agent", "task"]
+    },
+    {
+      "id": "file:src/aios_habit/ai_provider_bridge.py",
+      "type": "file",
+      "name": "ai_provider_bridge.py",
+      "filePath": "src/aios_habit/ai_provider_bridge.py",
+      "summary": "Bridges AI provider interactions.",
+      "tags": ["ai", "provider"]
+    },
+    {
+      "id": "file:src/aios_habit/ai_router.py",
+      "type": "file",
+      "name": "ai_router.py",
+      "filePath": "src/aios_habit/ai_router.py",
+      "summary": "Routes AI requests.",
+      "tags": ["ai", "router"]
+    },
+    {
+      "id": "file:src/aios_habit/workspace_models.py",
+      "type": "file",
+      "name": "workspace_models.py",
+      "filePath": "src/aios_habit/workspace_models.py",
+      "summary": "Data models for the workspace.",
+      "tags": ["models"]
+    },
+    {
+      "id": "file:src/aios_habit/storage.py",
+      "type": "file",
+      "name": "storage.py",
+      "filePath": "src/aios_habit/storage.py",
+      "summary": "General storage utilities.",
+      "tags": ["storage"]
+    },
+    {
+      "id": "file:src/aios_habit/workflow.py",
+      "type": "file",
+      "name": "workflow.py",
+      "filePath": "src/aios_habit/workflow.py",
+      "summary": "Workflow definitions.",
+      "tags": ["workflow"]
+    },
+    {
+      "id": "file:src/aios_habit/audit.py",
+      "type": "file",
+      "name": "audit.py",
+      "filePath": "src/aios_habit/audit.py",
+      "summary": "Provides audit logging capabilities.",
+      "tags": ["audit", "logging"]
+    },
+    {
+      "id": "file:src/aios_habit/models.py",
+      "type": "file",
+      "name": "models.py",
+      "filePath": "src/aios_habit/models.py",
+      "summary": "Base data models.",
+      "tags": ["models"]
+    },
+    {
+      "id": "file:src/aios_habit/memory.py",
+      "type": "file",
+      "name": "memory.py",
+      "filePath": "src/aios_habit/memory.py",
+      "summary": "Handles memory for agents.",
+      "tags": ["memory"]
+    },
+    {
+      "id": "file:src/aios_habit/extraction.py",
+      "type": "file",
+      "name": "extraction.py",
+      "filePath": "src/aios_habit/extraction.py",
+      "summary": "Handles data extraction.",
+      "tags": ["extraction"]
+    },
+    {
+      "id": "file:src/aios_habit/evidence.py",
+      "type": "file",
+      "name": "evidence.py",
+      "filePath": "src/aios_habit/evidence.py",
+      "summary": "Manages evidence data.",
+      "tags": ["evidence"]
+    },
+    {
+      "id": "file:src/aios_habit/cli.py",
+      "type": "file",
+      "name": "cli.py",
+      "filePath": "src/aios_habit/cli.py",
+      "summary": "CLI interface for the application.",
+      "tags": ["cli"]
+    },
+    {
+      "id": "file:src/aios_habit/core.py",
+      "type": "file",
+      "name": "core.py",
+      "filePath": "src/aios_habit/core.py",
+      "summary": "Core application functionality.",
+      "tags": ["core"]
+    },
+    {
+      "id": "file:src/aios_habit/handover.py",
+      "type": "file",
+      "name": "handover.py",
+      "filePath": "src/aios_habit/handover.py",
+      "summary": "Handles task handovers.",
+      "tags": ["workflow", "handoff"]
+    },
+    {
+      "id": "file:src/aios_habit/paths.py",
+      "type": "file",
+      "name": "paths.py",
+      "filePath": "src/aios_habit/paths.py",
+      "summary": "Path management utilities.",
+      "tags": ["utility"]
+    },
+    {
+      "id": "file:src/aios_habit/profiles.py",
+      "type": "file",
+      "name": "profiles.py",
+      "filePath": "src/aios_habit/profiles.py",
+      "summary": "Handles user/system profiles.",
+      "tags": ["profile"]
+    },
+    {
+      "id": "file:src/aios_habit/claim_guard.py",
+      "type": "file",
+      "name": "claim_guard.py",
+      "filePath": "src/aios_habit/claim_guard.py",
+      "summary": "Implements claim validation guard.",
+      "tags": ["safety", "validation"]
+    },
+    {
+      "id": "file:src/aios_habit/case_models.py",
+      "type": "file",
+      "name": "case_models.py",
+      "filePath": "src/aios_habit/case_models.py",
+      "summary": "Data models for cases.",
+      "tags": ["models", "case"]
+    },
+    {
+      "id": "file:src/aios_habit/case_store.py",
+      "type": "file",
+      "name": "case_store.py",
+      "filePath": "src/aios_habit/case_store.py",
+      "summary": "Storage for case data.",
+      "tags": ["storage", "case"]
+    },
+    {
+      "id": "file:src/aios_habit/citation_answer.py",
+      "type": "file",
+      "name": "citation_answer.py",
+      "filePath": "src/aios_habit/citation_answer.py",
+      "summary": "Handles citations in answers.",
+      "tags": ["rag", "citations"]
+    },
+    {
+      "id": "file:src/aios_habit/discovery.py",
+      "type": "file",
+      "name": "discovery.py",
+      "filePath": "src/aios_habit/discovery.py",
+      "summary": "Handles service/module discovery.",
+      "tags": ["utility", "discovery"]
+    }
+  ],
+  "edges": [
+    { "source": "file:src/aios_habit/workspace_chat_app.py", "target": "file:src/aios_habit/workspace_chat_store.py", "type": "uses" },
+    { "source": "file:src/aios_habit/workspace_chat_app.py", "target": "file:src/aios_habit/workspace_chat_ui.py", "type": "uses" },
+    { "source": "file:src/aios_habit/workspace_chat_app.py", "target": "file:src/aios_habit/workspace_agent_orchestrator.py", "type": "uses" },
+    { "source": "file:src/aios_habit/workspace_agent_orchestrator.py", "target": "file:src/aios_habit/agent_task_pack.py", "type": "uses" },
+    { "source": "file:src/aios_habit/workspace_agent_orchestrator.py", "target": "file:src/aios_habit/ai_provider_bridge.py", "type": "uses" },
+    { "source": "file:src/aios_habit/workspace_agent_orchestrator.py", "target": "file:src/aios_habit/ai_router.py", "type": "uses" },
+    { "source": "file:src/aios_habit/workspace_chat_store.py", "target": "file:src/aios_habit/workspace_models.py", "type": "imports" },
+    { "source": "file:src/aios_habit/workspace_chat_store.py", "target": "file:src/aios_habit/storage.py", "type": "imports" },
+    { "source": "file:src/aios_habit/workspace_agent_orchestrator.py", "target": "file:src/aios_habit/workspace_models.py", "type": "imports" },
+    { "source": "file:src/aios_habit/workspace_chat_app.py", "target": "file:src/aios_habit/core.py", "type": "uses" },
+    { "source": "file:src/aios_habit/core.py", "target": "file:src/aios_habit/models.py", "type": "imports" },
+    { "source": "file:src/aios_habit/workspace_chat_ui.py", "target": "file:src/aios_habit/cli.py", "type": "imports" }
+  ]
+}

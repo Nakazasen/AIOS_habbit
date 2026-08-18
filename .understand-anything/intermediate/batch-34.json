@@ -1,0 +1,157 @@
+{
+  "nodes": [
+    {
+      "id": "file:docs/archive/ux_records/AI_FILE_EMPTY_DIFF_METADATA_CLEANUP_AUDIT.md",
+      "type": "file",
+      "name": "AI_FILE_EMPTY_DIFF_METADATA_CLEANUP_AUDIT.md",
+      "filePath": "docs/archive/ux_records/AI_FILE_EMPTY_DIFF_METADATA_CLEANUP_AUDIT.md",
+      "summary": "Audit of metadata cleanup for empty diffs in AI file operations.",
+      "tags": ["docs", "ux_records", "audit"]
+    },
+    {
+      "id": "file:docs/archive/ux_records/VISUAL_MAP_EXPORT_HYGIENE_AUDIT.md",
+      "type": "file",
+      "name": "VISUAL_MAP_EXPORT_HYGIENE_AUDIT.md",
+      "filePath": "docs/archive/ux_records/VISUAL_MAP_EXPORT_HYGIENE_AUDIT.md",
+      "summary": "Audit of visual map export hygiene.",
+      "tags": ["docs", "ux_records", "audit"]
+    },
+    {
+      "id": "file:docs/archive/ux_records/WORKSPACE_CHAT_AFTER_PHASE2I_NEXT_ROADMAP_GATE.md",
+      "type": "file",
+      "name": "WORKSPACE_CHAT_AFTER_PHASE2I_NEXT_ROADMAP_GATE.md",
+      "filePath": "docs/archive/ux_records/WORKSPACE_CHAT_AFTER_PHASE2I_NEXT_ROADMAP_GATE.md",
+      "summary": "Roadmap gate assessment after Phase 2I.",
+      "tags": ["docs", "ux_records", "roadmap"]
+    },
+    {
+      "id": "file:docs/archive/ux_records/WORKSPACE_CHAT_AFTER_PHASE2I_OWNER_CORRECTION.md",
+      "type": "file",
+      "name": "WORKSPACE_CHAT_AFTER_PHASE2I_OWNER_CORRECTION.md",
+      "filePath": "docs/archive/ux_records/WORKSPACE_CHAT_AFTER_PHASE2I_OWNER_CORRECTION.md",
+      "summary": "Owner correction post Phase 2I.",
+      "tags": ["docs", "ux_records"]
+    },
+    {
+      "id": "file:docs/archive/ux_records/WORKSPACE_CHAT_NOTEBOOK_DELETE_DESIGN_GATE.md",
+      "type": "file",
+      "name": "WORKSPACE_CHAT_NOTEBOOK_DELETE_DESIGN_GATE.md",
+      "filePath": "docs/archive/ux_records/WORKSPACE_CHAT_NOTEBOOK_DELETE_DESIGN_GATE.md",
+      "summary": "Design gate for notebook deletion feature.",
+      "tags": ["docs", "ux_records", "design"]
+    },
+    {
+      "id": "file:docs/archive/ux_records/WORKSPACE_CHAT_NOTEBOOK_HARD_DELETE_IMPLEMENTATION_AUDIT.md",
+      "type": "file",
+      "name": "WORKSPACE_CHAT_NOTEBOOK_HARD_DELETE_IMPLEMENTATION_AUDIT.md",
+      "filePath": "docs/archive/ux_records/WORKSPACE_CHAT_NOTEBOOK_HARD_DELETE_IMPLEMENTATION_AUDIT.md",
+      "summary": "Implementation audit for notebook hard delete.",
+      "tags": ["docs", "ux_records", "audit"]
+    },
+    {
+      "id": "file:docs/archive/ux_records/WORKSPACE_CHAT_NOTEBOOK_HARD_DELETE_IMPLEMENTATION_DESIGN.md",
+      "type": "file",
+      "name": "WORKSPACE_CHAT_NOTEBOOK_HARD_DELETE_IMPLEMENTATION_DESIGN.md",
+      "filePath": "docs/archive/ux_records/WORKSPACE_CHAT_NOTEBOOK_HARD_DELETE_IMPLEMENTATION_DESIGN.md",
+      "summary": "Design document for notebook hard delete implementation.",
+      "tags": ["docs", "ux_records", "design"]
+    },
+    {
+      "id": "file:docs/archive/ux_records/WORKSPACE_CHAT_PHASE1_BLOCKER_FIX_REAUDIT.md",
+      "type": "file",
+      "name": "WORKSPACE_CHAT_PHASE1_BLOCKER_FIX_REAUDIT.md",
+      "filePath": "docs/archive/ux_records/WORKSPACE_CHAT_PHASE1_BLOCKER_FIX_REAUDIT.md",
+      "summary": "Re-audit of Phase 1 blocker fixes.",
+      "tags": ["docs", "ux_records", "audit"]
+    },
+    {
+      "id": "file:docs/archive/ux_records/WORKSPACE_CHAT_PHASE1_FINAL_COMMIT_READINESS_AUDIT.md",
+      "type": "file",
+      "name": "WORKSPACE_CHAT_PHASE1_FINAL_COMMIT_READINESS_AUDIT.md",
+      "filePath": "docs/archive/ux_records/WORKSPACE_CHAT_PHASE1_FINAL_COMMIT_READINESS_AUDIT.md",
+      "summary": "Readiness audit for Phase 1 final commit.",
+      "tags": ["docs", "ux_records", "audit"]
+    },
+    {
+      "id": "file:docs/archive/ux_records/WORKSPACE_CHAT_PHASE1_IMPLEMENTATION_AUDIT.md",
+      "type": "file",
+      "name": "WORKSPACE_CHAT_PHASE1_IMPLEMENTATION_AUDIT.md",
+      "filePath": "docs/archive/ux_records/WORKSPACE_CHAT_PHASE1_IMPLEMENTATION_AUDIT.md",
+      "summary": "Implementation audit for Phase 1.",
+      "tags": ["docs", "ux_records", "audit"]
+    },
+    {
+      "id": "file:docs/archive/ux_records/WORKSPACE_CHAT_PHASE1_SIDE_EFFECT_FIX_REAUDIT.md",
+      "type": "file",
+      "name": "WORKSPACE_CHAT_PHASE1_SIDE_EFFECT_FIX_REAUDIT.md",
+      "filePath": "docs/archive/ux_records/WORKSPACE_CHAT_PHASE1_SIDE_EFFECT_FIX_REAUDIT.md",
+      "summary": "Re-audit of Phase 1 side effect fixes.",
+      "tags": ["docs", "ux_records", "audit"]
+    },
+    {
+      "id": "file:docs/archive/ux_records/WORKSPACE_CHAT_PHASE2A_IMPLEMENTATION_AUDIT.md",
+      "type": "file",
+      "name": "WORKSPACE_CHAT_PHASE2A_IMPLEMENTATION_AUDIT.md",
+      "filePath": "docs/archive/ux_records/WORKSPACE_CHAT_PHASE2A_IMPLEMENTATION_AUDIT.md",
+      "summary": "Implementation audit for Phase 2A.",
+      "tags": ["docs", "ux_records", "audit"]
+    },
+    {
+      "id": "file:docs/archive/ux_records/WORKSPACE_CHAT_PHASE2B_IMPLEMENTATION_AUDIT.md",
+      "type": "file",
+      "name": "WORKSPACE_CHAT_PHASE2B_IMPLEMENTATION_AUDIT.md",
+      "filePath": "docs/archive/ux_records/WORKSPACE_CHAT_PHASE2B_IMPLEMENTATION_AUDIT.md",
+      "summary": "Implementation audit for Phase 2B.",
+      "tags": ["docs", "ux_records", "audit"]
+    },
+    {
+      "id": "file:docs/archive/ux_records/WORKSPACE_CHAT_PHASE2B_UI_DESIGN_GATE.md",
+      "type": "file",
+      "name": "WORKSPACE_CHAT_PHASE2B_UI_DESIGN_GATE.md",
+      "filePath": "docs/archive/ux_records/WORKSPACE_CHAT_PHASE2B_UI_DESIGN_GATE.md",
+      "summary": "UI design gate for Phase 2B.",
+      "tags": ["docs", "ux_records", "design"]
+    },
+    {
+      "id": "file:docs/archive/ux_records/WORKSPACE_CHAT_PHASE2C_IMPLEMENTATION_AUDIT.md",
+      "type": "file",
+      "name": "WORKSPACE_CHAT_PHASE2C_IMPLEMENTATION_AUDIT.md",
+      "filePath": "docs/archive/ux_records/WORKSPACE_CHAT_PHASE2C_IMPLEMENTATION_AUDIT.md",
+      "summary": "Implementation audit for Phase 2C.",
+      "tags": ["docs", "ux_records", "audit"]
+    },
+    {
+      "id": "file:docs/archive/ux_records/WORKSPACE_CHAT_PHASE2C_XLSX_INGEST_DESIGN_GATE.md",
+      "type": "file",
+      "name": "WORKSPACE_CHAT_PHASE2C_XLSX_INGEST_DESIGN_GATE.md",
+      "filePath": "docs/archive/ux_records/WORKSPACE_CHAT_PHASE2C_XLSX_INGEST_DESIGN_GATE.md",
+      "summary": "Design gate for XLSX ingestion in Phase 2C.",
+      "tags": ["docs", "ux_records", "design"]
+    },
+    {
+      "id": "file:docs/archive/ux_records/WORKSPACE_CHAT_PHASE2D_IMPLEMENTATION_AUDIT.md",
+      "type": "file",
+      "name": "WORKSPACE_CHAT_PHASE2D_IMPLEMENTATION_AUDIT.md",
+      "filePath": "docs/archive/ux_records/WORKSPACE_CHAT_PHASE2D_IMPLEMENTATION_AUDIT.md",
+      "summary": "Implementation audit for Phase 2D.",
+      "tags": ["docs", "ux_records", "audit"]
+    },
+    {
+      "id": "file:docs/archive/ux_records/WORKSPACE_CHAT_PHASE2D_SOURCE_AWARE_PLACEHOLDER_DESIGN_GATE.md",
+      "type": "file",
+      "name": "WORKSPACE_CHAT_PHASE2D_SOURCE_AWARE_PLACEHOLDER_DESIGN_GATE.md",
+      "filePath": "docs/archive/ux_records/WORKSPACE_CHAT_PHASE2D_SOURCE_AWARE_PLACEHOLDER_DESIGN_GATE.md",
+      "summary": "Design gate for source-aware placeholders in Phase 2D.",
+      "tags": ["docs", "ux_records", "design"]
+    },
+    {
+      "id": "file:docs/archive/ux_records/WORKSPACE_CHAT_PHASE2E_IMPLEMENTATION_AUDIT.md",
+      "type": "file",
+      "name": "WORKSPACE_CHAT_PHASE2E_IMPLEMENTATION_AUDIT.md",
+      "filePath": "docs/archive/ux_records/WORKSPACE_CHAT_PHASE2E_IMPLEMENTATION_AUDIT.md",
+      "summary": "Implementation audit for Phase 2E.",
+      "tags": ["docs", "ux_records", "audit"]
+    }
+  ],
+  "edges": []
+}

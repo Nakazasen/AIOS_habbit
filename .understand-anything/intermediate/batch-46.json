@@ -1,0 +1,59 @@
+{
+  "nodes": [
+    {
+      "id": "file:specs/001-stage-a-resume-guard/data-model.md",
+      "type": "file",
+      "name": "data-model.md",
+      "filePath": "specs/001-stage-a-resume-guard/data-model.md",
+      "summary": "Data model for Stage A resume guard feature.",
+      "tags": ["specs", "data-model"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:specs/001-stage-a-resume-guard/plan.md",
+      "type": "file",
+      "name": "plan.md",
+      "filePath": "specs/001-stage-a-resume-guard/plan.md",
+      "summary": "Implementation plan for Stage A resume guard.",
+      "tags": ["specs", "planning"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:specs/001-stage-a-resume-guard/quickstart.md",
+      "type": "file",
+      "name": "quickstart.md",
+      "filePath": "specs/001-stage-a-resume-guard/quickstart.md",
+      "summary": "Quickstart guide for Stage A resume guard.",
+      "tags": ["specs", "guide"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:specs/001-stage-a-resume-guard/research.md",
+      "type": "file",
+      "name": "research.md",
+      "filePath": "specs/001-stage-a-resume-guard/research.md",
+      "summary": "Research findings for Stage A resume guard.",
+      "tags": ["specs", "research"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:specs/001-stage-a-resume-guard/spec.md",
+      "type": "file",
+      "name": "spec.md",
+      "filePath": "specs/001-stage-a-resume-guard/spec.md",
+      "summary": "Feature specification for Stage A resume guard.",
+      "tags": ["specs", "specification"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:specs/001-stage-a-resume-guard/tasks.md",
+      "type": "file",
+      "name": "tasks.md",
+      "filePath": "specs/001-stage-a-resume-guard/tasks.md",
+      "summary": "Task breakdown for Stage A resume guard implementation.",
+      "tags": ["specs", "tasks"],
+      "complexity": "moderate"
+    }
+  ],
+  "edges": []
+}

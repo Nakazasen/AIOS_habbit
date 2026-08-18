@@ -1,47 +1,44 @@
-# DOCS-LEGACY-CLEANUP-RESET
+# Dọn Dẹp và Đặt Lại Tài Liệu Kế Thừa (DOCS-LEGACY-CLEANUP-RESET)
 
 Status: `DONE`
 
-## Goal
+## Mục Tiêu (Goal)
 
-Replace contradictory current-facing documentation, create a single roadmap
-source, and classify historical evidence without losing traceability.
+Thay thế các tài liệu hướng dẫn mâu thuẫn hiện tại, tạo một nguồn lộ trình canonical duy nhất và phân loại bằng chứng lịch sử mà không làm mất tính truy xuất nguồn gốc.
 
-## In scope
+## Trong Phạm Vi (In Scope)
 
 - `README.md`, `PROJECT_HANDOVER.md`, `WORKLENS_ARCHITECTURE.md`
-- install/operator/developer runbooks
-- canonical `ROADMAP.md`, retired master-roadmap redirect
-- Gate Card convention, archive policy and retirement manifest
-- archive legacy UX/design evidence without editing its historical claims
+- Các sổ tay runbook cài đặt / vận hành / phát triển
+- `ROADMAP.md` chuẩn tắc canonical, chuyển hướng từ lộ trình tổng cũ đã khai tử
+- Quy ước Thẻ Cổng (Gate Card), chính sách lưu trữ archive và manifest khai tử
+- Lưu trữ các bằng chứng thiết kế / UX cũ mà không chỉnh sửa các tuyên bố lịch sử của chúng
 
-## Non-goals
+## Các Phi Mục Tiêu (Non-goals)
 
-- No RAG runtime feature work.
-- No Case Cockpit monolith/service deletion.
-- No runtime/private data migration.
+- Không triển khai tính năng runtime RAG.
+- Không xóa service / monolith Case Cockpit.
+- Không di chuyển dữ liệu riêng tư / runtime.
 
-## Acceptance criteria
+## Tiêu Chí Nghiệm Thu (Acceptance Criteria)
 
-1. Normal user docs name Workspace Chat as the only supported UI.
-2. One canonical roadmap identifies active/planned/retired status.
-3. Gate Cards distinguish active work from historical audit evidence.
-4. Staged documentation with stale claims is preserved as archive, not committed
-   as current architecture/roadmap truth.
+1. Tài liệu người dùng thông thường chỉ định Workspace Chat là giao diện duy nhất được hỗ trợ.
+2. Một lộ trình canonical duy nhất xác định rõ trạng thái active / planned / retired.
+3. Các Gate Card phân biệt rõ ràng công việc đang hoạt động với bằng chứng kiểm toán lịch sử.
+4. Tài liệu được chuẩn bị chứa các tuyên bố cũ được bảo tồn dưới dạng lưu trữ archive, không commit dưới dạng sự thật kiến trúc / lộ trình hiện tại.
 
-## Verification evidence
+## Bằng Chứng Kiểm Chứng (Verification Evidence)
 
-Verified on 2026-07-25:
+Đã kiểm chứng vào ngày 2026-07-25:
 
-- Implementation commit: `9123caa` (`Clean legacy routes and reset project documentation`).
-- Compile: passed.
-- Full pytest: `892 passed`.
-- CLI audit: passed.
-- The intentional secret-pattern fixtures are constructed at runtime, preserving
-  detector coverage without storing complete fake credential literals in source.
-- `git diff --check`: passed before closure.
+- Commit triển khai: `9123caa` (`Clean legacy routes and reset project documentation`).
+- Biên dịch: passed.
+- Toàn bộ pytest: `892 passed`.
+- Kiểm toán CLI audit: passed.
+- Các fixture mẫu secret có chủ đích được xây dựng lúc runtime, bảo toàn độ bao phủ của bộ phát hiện mà không lưu trữ các chuỗi credential giả mạo hoàn chỉnh trong mã nguồn.
+- `git diff --check`: passed trước khi đóng cổng.
 
-## Rollback
+## Hoàn Tác (Rollback)
 
-All changes are documentation/path changes. Restore named files or archive moves
-from Git if a reference must be reinstated.
+Tất cả các thay đổi đều là thay đổi tài liệu / đường dẫn. Khôi phục các tệp được chỉ định hoặc di chuyển lưu trữ từ Git nếu cần khôi phục lại tham chiếu.
+

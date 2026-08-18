@@ -1,0 +1,426 @@
+[
+  {
+    "id": "file:.agents/ORIGINAL_REQUEST.md",
+    "type": "file",
+    "name": "ORIGINAL_REQUEST.md",
+    "filePath": ".agents/ORIGINAL_REQUEST.md",
+    "summary": "Tài liệu yêu cầu ban đầu và ngữ cảnh cho hệ thống Agent.",
+    "tags": [
+      "documentation",
+      "agents"
+    ],
+    "complexity": "moderate"
+  },
+  {
+    "id": "file:.agents/rules/graphify.md",
+    "type": "file",
+    "name": "graphify.md",
+    "filePath": ".agents/rules/graphify.md",
+    "summary": "Quy tắc và hướng dẫn duy trì knowledge graph Graphify.",
+    "tags": [
+      "documentation",
+      "rules",
+      "graphify"
+    ],
+    "complexity": "moderate"
+  },
+  {
+    "id": "file:.agents/sentinel/BRIEFING.md",
+    "type": "file",
+    "name": "BRIEFING.md",
+    "filePath": ".agents/sentinel/BRIEFING.md",
+    "summary": "Hướng dẫn định hướng (Briefing) và phạm vi hoạt động của Sentinel Audit Agent.",
+    "tags": [
+      "documentation",
+      "agents",
+      "sentinel"
+    ],
+    "complexity": "moderate"
+  },
+  {
+    "id": "file:.agents/sentinel/handoff.md",
+    "type": "file",
+    "name": "handoff.md",
+    "filePath": ".agents/sentinel/handoff.md",
+    "summary": "Tài liệu quy trình bàn giao (Handoff) cho Sentinel Agent.",
+    "tags": [
+      "documentation",
+      "agents",
+      "handoff"
+    ],
+    "complexity": "moderate"
+  },
+  {
+    "id": "file:.agents/teamwork_preview_implementer_1/BRIEFING.md",
+    "type": "file",
+    "name": "BRIEFING.md",
+    "filePath": ".agents/teamwork_preview_implementer_1/BRIEFING.md",
+    "summary": "Tài liệu định hướng (Briefing) cho Implementer Agent 1.",
+    "tags": [
+      "documentation",
+      "agent-config"
+    ],
+    "complexity": "moderate"
+  },
+  {
+    "id": "file:.agents/teamwork_preview_implementer_1/handoff.md",
+    "type": "file",
+    "name": "handoff.md",
+    "filePath": ".agents/teamwork_preview_implementer_1/handoff.md",
+    "summary": "Thông tin bàn giao (Handoff) cho Implementer Agent 1.",
+    "tags": [
+      "documentation",
+      "agent-config"
+    ],
+    "complexity": "moderate"
+  },
+  {
+    "id": "file:.agents/teamwork_preview_implementer_1/progress.md",
+    "type": "file",
+    "name": "progress.md",
+    "filePath": ".agents/teamwork_preview_implementer_1/progress.md",
+    "summary": "Thông tin theo dõi tiến độ cho Implementer Agent 1.",
+    "tags": [
+      "documentation",
+      "agent-config"
+    ],
+    "complexity": "moderate"
+  },
+  {
+    "id": "file:.agents/teamwork_preview_reviewer_1/BRIEFING.md",
+    "type": "file",
+    "name": "BRIEFING.md",
+    "filePath": ".agents/teamwork_preview_reviewer_1/BRIEFING.md",
+    "summary": "Tài liệu định hướng (Briefing) cho Reviewer Agent 1.",
+    "tags": [
+      "documentation",
+      "agent-config"
+    ],
+    "complexity": "moderate"
+  },
+  {
+    "id": "file:.agents/teamwork_preview_reviewer_1/handoff.md",
+    "type": "file",
+    "name": "handoff.md",
+    "filePath": ".agents/teamwork_preview_reviewer_1/handoff.md",
+    "summary": "Tài liệu bàn giao (Handoff) cho Reviewer Agent 1.",
+    "tags": [
+      "documentation",
+      "agent-config"
+    ],
+    "complexity": "moderate"
+  },
+  {
+    "id": "file:.agents/teamwork_preview_reviewer_1/progress.md",
+    "type": "file",
+    "name": "progress.md",
+    "filePath": ".agents/teamwork_preview_reviewer_1/progress.md",
+    "summary": "Tài liệu theo dõi tiến độ cho Reviewer Agent 1.",
+    "tags": [
+      "documentation",
+      "agent-config"
+    ],
+    "complexity": "moderate"
+  },
+  {
+    "id": "file:.agents/teamwork_preview_reviewer_2/BRIEFING.md",
+    "type": "file",
+    "name": "BRIEFING.md",
+    "filePath": ".agents/teamwork_preview_reviewer_2/BRIEFING.md",
+    "summary": "Tài liệu định hướng (Briefing) cho Reviewer Agent 2.",
+    "tags": [
+      "markdown",
+      "documentation"
+    ],
+    "complexity": "moderate"
+  },
+  {
+    "id": "file:.agents/teamwork_preview_reviewer_2/handoff.md",
+    "type": "file",
+    "name": "handoff.md",
+    "filePath": ".agents/teamwork_preview_reviewer_2/handoff.md",
+    "summary": "Hướng dẫn bàn giao (Handoff) cho Reviewer Agent 2.",
+    "tags": [
+      "markdown",
+      "documentation"
+    ],
+    "complexity": "moderate"
+  },
+  {
+    "id": "file:.agents/teamwork_preview_reviewer_2/plan.md",
+    "type": "file",
+    "name": "plan.md",
+    "filePath": ".agents/teamwork_preview_reviewer_2/plan.md",
+    "summary": "Kế hoạch dự án cho Reviewer Agent 2.",
+    "tags": [
+      "markdown",
+      "documentation"
+    ],
+    "complexity": "moderate"
+  },
+  {
+    "id": "file:.agents/teamwork_preview_reviewer_2/progress.md",
+    "type": "file",
+    "name": "progress.md",
+    "filePath": ".agents/teamwork_preview_reviewer_2/progress.md",
+    "summary": "Theo dõi tiến độ cho Reviewer Agent 2.",
+    "tags": [
+      "markdown",
+      "documentation"
+    ],
+    "complexity": "moderate"
+  },
+  {
+    "id": "file:.agents/teamwork_preview_reviewer_3/BRIEFING.md",
+    "type": "file",
+    "name": "BRIEFING.md",
+    "filePath": ".agents/teamwork_preview_reviewer_3/BRIEFING.md",
+    "summary": "Tài liệu định hướng (Briefing) cho Reviewer Agent 3.",
+    "tags": [
+      "agent",
+      "documentation"
+    ],
+    "complexity": "moderate"
+  },
+  {
+    "id": "file:.agents/teamwork_preview_reviewer_3/handoff.md",
+    "type": "file",
+    "name": "handoff.md",
+    "filePath": ".agents/teamwork_preview_reviewer_3/handoff.md",
+    "summary": "Hướng dẫn bàn giao (Handoff) cho Reviewer Agent 3.",
+    "tags": [
+      "agent",
+      "documentation"
+    ],
+    "complexity": "moderate"
+  },
+  {
+    "id": "file:.agents/teamwork_preview_reviewer_3/progress.md",
+    "type": "file",
+    "name": "progress.md",
+    "filePath": ".agents/teamwork_preview_reviewer_3/progress.md",
+    "summary": "Tài liệu theo dõi tiến độ cho Reviewer Agent 3.",
+    "tags": [
+      "agent",
+      "documentation"
+    ],
+    "complexity": "moderate"
+  },
+  {
+    "id": "file:.agents/teamwork_preview_swe_1/BRIEFING.md",
+    "type": "file",
+    "name": "BRIEFING.md",
+    "filePath": ".agents/teamwork_preview_swe_1/BRIEFING.md",
+    "summary": "Tài liệu định hướng (Briefing) cho Software Engineer Agent 1.",
+    "tags": [
+      "documentation",
+      "agent-config"
+    ],
+    "complexity": "moderate"
+  },
+  {
+    "id": "file:.agents/teamwork_preview_swe_1/DISPATCH.md",
+    "type": "file",
+    "name": "DISPATCH.md",
+    "filePath": ".agents/teamwork_preview_swe_1/DISPATCH.md",
+    "summary": "Hướng dẫn điều phối (Dispatch) cho Software Engineer Agent 1.",
+    "tags": [
+      "documentation",
+      "agent-config"
+    ],
+    "complexity": "moderate"
+  },
+  {
+    "id": "file:.agents/teamwork_preview_swe_1/handoff.md",
+    "type": "file",
+    "name": "handoff.md",
+    "filePath": ".agents/teamwork_preview_swe_1/handoff.md",
+    "summary": "Hướng dẫn bàn giao (Handoff) cho Software Engineer Agent 1.",
+    "tags": [
+      "documentation",
+      "agent-config"
+    ],
+    "complexity": "moderate"
+  },
+  {
+    "id": "file:.agents/teamwork_preview_swe_1/plan.md",
+    "type": "file",
+    "name": "plan.md",
+    "filePath": ".agents/teamwork_preview_swe_1/plan.md",
+    "summary": "Tài liệu kế hoạch cho Software Engineer Agent 1.",
+    "tags": [
+      "documentation",
+      "agent-config"
+    ],
+    "complexity": "moderate"
+  },
+  {
+    "id": "file:.agents/teamwork_preview_swe_1/progress.md",
+    "type": "file",
+    "name": "progress.md",
+    "filePath": ".agents/teamwork_preview_swe_1/progress.md",
+    "summary": "Tài liệu theo dõi tiến độ cho Software Engineer Agent 1.",
+    "tags": [
+      "documentation",
+      "agent-config"
+    ],
+    "complexity": "moderate"
+  },
+  {
+    "id": "file:.agents/teamwork_preview_victory_auditor_1/BRIEFING.md",
+    "type": "file",
+    "name": "BRIEFING.md",
+    "filePath": ".agents/teamwork_preview_victory_auditor_1/BRIEFING.md",
+    "summary": "Tài liệu định hướng (Briefing) cho Victory Auditor Agent 1.",
+    "tags": [
+      "documentation",
+      "agent"
+    ],
+    "complexity": "moderate"
+  },
+  {
+    "id": "file:.agents/teamwork_preview_victory_auditor_1/DISPATCH.md",
+    "type": "file",
+    "name": "DISPATCH.md",
+    "filePath": ".agents/teamwork_preview_victory_auditor_1/DISPATCH.md",
+    "summary": "Hướng dẫn điều phối (Dispatch) cho Victory Auditor Agent 1.",
+    "tags": [
+      "documentation",
+      "agent"
+    ],
+    "complexity": "moderate"
+  },
+  {
+    "id": "file:.agents/teamwork_preview_victory_auditor_1/audit_report.md",
+    "type": "file",
+    "name": "audit_report.md",
+    "filePath": ".agents/teamwork_preview_victory_auditor_1/audit_report.md",
+    "summary": "Báo cáo kiểm toán (Audit report) được tạo bởi Victory Auditor Agent 1.",
+    "tags": [
+      "report",
+      "audit"
+    ],
+    "complexity": "moderate"
+  },
+  {
+    "id": "file:.agents/teamwork_preview_victory_auditor_1/handoff.md",
+    "type": "file",
+    "name": "handoff.md",
+    "filePath": ".agents/teamwork_preview_victory_auditor_1/handoff.md",
+    "summary": "Tài liệu bàn giao (Handoff) cho Victory Auditor Agent 1.",
+    "tags": [
+      "documentation",
+      "handoff"
+    ],
+    "complexity": "moderate"
+  },
+  {
+    "id": "file:.agents/teamwork_preview_victory_auditor_1/progress.md",
+    "type": "file",
+    "name": "progress.md",
+    "filePath": ".agents/teamwork_preview_victory_auditor_1/progress.md",
+    "summary": "Theo dõi tiến độ cho Victory Auditor Agent 1.",
+    "tags": [
+      "documentation",
+      "tracking"
+    ],
+    "complexity": "moderate"
+  },
+  {
+    "id": "file:.agents/teamwork_preview_victory_auditor_sentinel/BRIEFING.md",
+    "type": "file",
+    "name": "BRIEFING.md",
+    "filePath": ".agents/teamwork_preview_victory_auditor_sentinel/BRIEFING.md",
+    "summary": "Tài liệu định hướng (Briefing) cho Victory Auditor Sentinel Agent.",
+    "tags": [
+      "markdown",
+      "agents"
+    ],
+    "complexity": "moderate"
+  },
+  {
+    "id": "file:.agents/teamwork_preview_victory_auditor_sentinel/DISPATCH.md",
+    "type": "file",
+    "name": "DISPATCH.md",
+    "filePath": ".agents/teamwork_preview_victory_auditor_sentinel/DISPATCH.md",
+    "summary": "Hướng dẫn điều phối (Dispatch) cho Victory Auditor Sentinel Agent.",
+    "tags": [
+      "markdown",
+      "agents"
+    ],
+    "complexity": "moderate"
+  },
+  {
+    "id": "file:.agents/teamwork_preview_victory_auditor_sentinel/audit_report.md",
+    "type": "file",
+    "name": "audit_report.md",
+    "filePath": ".agents/teamwork_preview_victory_auditor_sentinel/audit_report.md",
+    "summary": "Báo cáo kiểm toán (Audit report) được tạo bởi Victory Auditor Sentinel Agent.",
+    "tags": [
+      "markdown",
+      "agents"
+    ],
+    "complexity": "moderate"
+  },
+  {
+    "id": "file:.agents/teamwork_preview_victory_auditor_sentinel/handoff.md",
+    "type": "file",
+    "name": "handoff.md",
+    "filePath": ".agents/teamwork_preview_victory_auditor_sentinel/handoff.md",
+    "summary": "Giao thức bàn giao (Handoff protocol) cho Victory Auditor Sentinel Agent.",
+    "tags": [
+      "markdown",
+      "agents"
+    ],
+    "complexity": "moderate"
+  },
+  {
+    "id": "file:.agents/teamwork_preview_victory_auditor_sentinel/independent_test.ps1",
+    "type": "file",
+    "name": "independent_test.ps1",
+    "filePath": ".agents/teamwork_preview_victory_auditor_sentinel/independent_test.ps1",
+    "summary": "Kịch bản PowerShell để kiểm thử Victory Auditor Sentinel Agent.",
+    "tags": [
+      "powershell",
+      "agents"
+    ],
+    "complexity": "moderate"
+  },
+  {
+    "id": "file:.agents/teamwork_preview_victory_auditor_sentinel/progress.md",
+    "type": "file",
+    "name": "progress.md",
+    "filePath": ".agents/teamwork_preview_victory_auditor_sentinel/progress.md",
+    "summary": "Theo dõi tiến độ cho Victory Auditor Sentinel Agent.",
+    "tags": [
+      "markdown",
+      "agents"
+    ],
+    "complexity": "moderate"
+  },
+  {
+    "id": "file:.github/workflows/test.yml",
+    "type": "file",
+    "name": "test.yml",
+    "filePath": ".github/workflows/test.yml",
+    "summary": "Quy trình GitHub Actions workflow thiết lập các cổng chất lượng (quality gates) bao gồm kiểm thử, xác thực tài liệu và kiểm toán CLI.",
+    "tags": [
+      "ci",
+      "github-actions",
+      "workflow"
+    ],
+    "complexity": "moderate"
+  },
+  {
+    "id": "file:.specify/feature.json",
+    "type": "file",
+    "name": "feature.json",
+    "filePath": ".specify/feature.json",
+    "summary": "Tệp cấu hình định nghĩa các tính năng của dự án.",
+    "tags": [
+      "config",
+      "json"
+    ],
+    "complexity": "moderate"
+  }
+]

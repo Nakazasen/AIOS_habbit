@@ -1,0 +1,41 @@
+{
+  "nodes": [
+    {
+      "id": "file:docs/architecture/sequences/CLOUD_PREFLIGHT.md",
+      "type": "file",
+      "name": "CLOUD_PREFLIGHT.md",
+      "filePath": "docs/architecture/sequences/CLOUD_PREFLIGHT.md",
+      "summary": "Sequence diagram for cloud preflight checks.",
+      "tags": ["architecture", "sequences"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:docs/architecture/sequences/INGEST.md",
+      "type": "file",
+      "name": "INGEST.md",
+      "filePath": "docs/architecture/sequences/INGEST.md",
+      "summary": "Sequence diagram for document ingestion flow.",
+      "tags": ["architecture", "sequences"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:docs/architecture/sequences/RETRIEVAL.md",
+      "type": "file",
+      "name": "RETRIEVAL.md",
+      "filePath": "docs/architecture/sequences/RETRIEVAL.md",
+      "summary": "Sequence diagram for information retrieval flow.",
+      "tags": ["architecture", "sequences"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:docs/architecture/sequences/ROUTER_CALL.md",
+      "type": "file",
+      "name": "ROUTER_CALL.md",
+      "filePath": "docs/architecture/sequences/ROUTER_CALL.md",
+      "summary": "Sequence diagram for router invocation flow.",
+      "tags": ["architecture", "sequences"],
+      "complexity": "moderate"
+    }
+  ],
+  "edges": []
+}

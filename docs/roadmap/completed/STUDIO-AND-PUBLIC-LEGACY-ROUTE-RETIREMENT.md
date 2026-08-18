@@ -1,47 +1,46 @@
-# STUDIO-AND-PUBLIC-LEGACY-ROUTE-RETIREMENT
+# Khai Tử Tuyến Kế Thừa Công Khai và Studio (STUDIO-AND-PUBLIC-LEGACY-ROUTE-RETIREMENT)
 
 Status: `DONE`
 
-## Goal
+## Mục Tiêu (Goal)
 
-Remove public executable paths to legacy Studio/Case Cockpit and make Workspace
-Chat launcher naming truthful.
+Loại bỏ các đường dẫn thực thi công khai tới Studio / Case Cockpit cũ và đảm bảo tên gọi launcher của Workspace Chat là trung thực.
 
-## Scope
+## Phạm Vi (Scope)
 
-- Add `RUN_AIOS_WORKSPACE_CHAT.bat` and `scripts/run_workspace_chat.ps1`.
-- Remove package console routes for Studio and Case Cockpit.
-- Remove Studio source and Studio-only documentation/tests.
-- Remove direct Case Cockpit launch scripts and their route-only assertions.
-- Keep Case Cockpit source/shared services for the next audited retirement slice.
+- Bổ sung `RUN_AIOS_WORKSPACE_CHAT.bat` và `scripts/run_workspace_chat.ps1`.
+- Loại bỏ các tuyến console trong package cho Studio và Case Cockpit.
+- Loại bỏ mã nguồn Studio và các bài kiểm thử / tài liệu chỉ dành riêng cho Studio.
+- Loại bỏ các script khởi chạy trực tiếp Case Cockpit và các kiểm tra chỉ dành riêng cho tuyến đó.
+- Giữ lại mã nguồn Case Cockpit / các dịch vụ dùng chung cho lát cắt khai tử được kiểm toán tiếp theo.
 
-## Non-goals
+## Các Phi Mục Tiêu (Non-goals)
 
-- Do not delete `case_cockpit.py` in this gate.
-- Do not delete any `case_*`, map, handoff, router or MOM service only because it
-  was used by a legacy UI.
+- Không xóa `case_cockpit.py` trong cổng này.
+- Không xóa bất kỳ dịch vụ `case_*`, map, handoff, router hay MOM nào chỉ vì nó từng được sử dụng bởi một giao diện cũ.
 
-## Acceptance criteria
+## Tiêu Chí Nghiệm Thu (Acceptance Criteria)
 
-1. README/install/operator docs point only to Workspace Chat launchers.
-2. Package scripts expose no Studio/Cockpit command.
-3. No Studio module, old Studio launcher or direct Case Cockpit launcher remains.
-4. Workspace Chat boundary regression succeeds.
-5. Full test, compile and CLI audit pass; ignored runtime assets stay untouched.
+1. Tài liệu README / cài đặt / vận hành chỉ trỏ tới các launcher của Workspace Chat.
+2. Các script của package không để lộ bất kỳ lệnh Studio / Cockpit nào.
+3. Không còn module Studio, launcher Studio cũ hoặc launcher Case Cockpit trực tiếp nào tồn tại.
+4. Kiểm thử hồi quy ranh giới Workspace Chat thành công.
+5. Toàn bộ kiểm thử, biên dịch và kiểm toán CLI audit đều đạt; các tài sản runtime bị bỏ qua giữ nguyên vẹn.
 
-## Verification evidence
+## Bằng Chứng Kiểm Chứng (Verification Evidence)
 
-Verified on 2026-07-25:
+Đã kiểm chứng vào ngày 2026-07-25:
 
-- Implementation commit: `9123caa` (`Clean legacy routes and reset project documentation`).
-- Studio source, legacy launchers and package routes were removed.
-- Workspace Chat launcher and boundary regression are present.
-- Compile: passed.
-- Full pytest: `892 passed`.
-- CLI audit: passed.
-- Ignored runtime assets and Case Cockpit shared services remain untouched.
-- `git diff --check`: passed before closure.
+- Commit triển khai: `9123caa` (`Clean legacy routes and reset project documentation`).
+- Mã nguồn Studio, launcher cũ và các tuyến package đã bị loại bỏ.
+- Launcher Workspace Chat và kiểm thử hồi quy ranh giới đã sẵn sàng.
+- Biên dịch: passed.
+- Toàn bộ pytest: `892 passed`.
+- Kiểm toán CLI audit: passed.
+- Các tài sản runtime bị bỏ qua và các dịch vụ dùng chung của Case Cockpit vẫn giữ nguyên vẹn.
+- `git diff --check`: passed trước khi đóng cổng.
 
-## Rollback
+## Hoàn Tác (Rollback)
 
-Git can restore a removed launcher/module. No local runtime data is changed.
+Git có thể khôi phục lại module / launcher đã bị loại bỏ. Không có dữ liệu runtime cục bộ nào bị thay đổi.
+

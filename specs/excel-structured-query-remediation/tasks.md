@@ -1,11 +1,12 @@
-# Tasks: Excel Structured Query Audit 3 Remediation
+# Nhiệm Vụ: Khắc Phục Lỗi Kiểm Toán 3 Truy Vấn Có Cấu Trúc Excel (Tasks: Excel Structured Query Audit 3 Remediation)
 
-- [x] Task 1: Replace substring all-sheets detection with bounded canonical intent detection.
-- [x] Task 2: Replace comma-delimited aggregate provenance with a lossless internal record encoding and parser.
-- [x] Task 3: Add structured-query regressions for `smallest` and a comma-containing Excel sheet name.
-- [x] Task 4: Add Workspace Chat managed-workbook multi-sheet citation integration coverage.
-- [x] Task 5: Remove flagged EOF blank lines from affected test files.
-- [x] Task 6: Run compilation, targeted tests, `git diff --check`, target probes, Graphify update, and save final checkpoint.
-- [x] Task 7: Conduct Audit 4 on planner, executor, and adapter using a realistic multi-sheet workbook (Unicode, special characters, combined filters, dates, bounds, security).
-- [x] Task 8: Run full test suite, fix UI copyguard edge-case in workspace_chat_app.py, and finalize spec/plan/tasks documentation for remediation closure.
-- [x] Task 9: Reconcile full-suite RAG/PDF/provider-health regressions, rerun Graphify, and verify the final full suite (`1182 passed in 41.49s`).
+- [x] Nhiệm vụ 1: Thay thế việc phát hiện tất cả sheet qua chuỗi con bằng phát hiện ý định chuẩn tắc có giới hạn.
+- [x] Nhiệm vụ 2: Thay thế nguồn gốc tổng hợp phân tách bằng dấu phẩy bằng parser và mã hóa bản ghi nội bộ không mất mát.
+- [x] Nhiệm vụ 3: Thêm các kiểm thử hồi quy truy vấn có cấu trúc cho `smallest` và tên sheet Excel có chứa dấu phẩy.
+- [x] Nhiệm vụ 4: Thêm độ bao phủ tích hợp trích dẫn đa sheet cho workbook được quản lý của Workspace Chat.
+- [x] Nhiệm vụ 5: Loại bỏ các dòng EOF trống bị đánh dấu khỏi các tệp kiểm thử bị ảnh hưởng.
+- [x] Nhiệm vụ 6: Chạy biên dịch, các kiểm thử mục tiêu, `git diff --check`, các kiểm tra thử nghiệm, cập nhật Graphify và lưu checkpoint cuối cùng.
+- [x] Nhiệm vụ 7: Thực hiện Đợt kiểm toán 4 trên bộ lập kế hoạch, bộ thực thi và adapter bằng workbook đa sheet thực tế (Unicode, ký tự đặc biệt, bộ lọc kết hợp, ngày tháng, giới hạn, bảo mật).
+- [x] Nhiệm vụ 8: Chạy toàn bộ bộ kiểm thử, sửa lỗi biên copyguard UI trong workspace_chat_app.py và hoàn thiện tài liệu spec/plan/tasks để đóng cổng khắc phục.
+- [x] Nhiệm vụ 9: Đối soát các bài kiểm thử hồi quy RAG/PDF/provider-health của toàn bộ bộ kiểm thử, chạy lại Graphify và xác minh toàn bộ bộ kiểm thử cuối cùng (`1182 passed in 41.49s`).
+

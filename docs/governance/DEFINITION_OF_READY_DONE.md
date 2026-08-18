@@ -1,27 +1,25 @@
-# Definition of Ready and Done
+# Định Nghĩa Sẵn Sàng và Hoàn Thành (Definition of Ready and Done)
 
 Status: `ACTIVE`
 Owner role: Project owner / maintainer
 Last reviewed: 2026-07-25
 Review cadence: Every Gate Card opening and closure
 
-## Ready
+## Sẵn Sàng (Ready)
 
-Work is ready when it has a goal, non-goals, owner role, privacy classification,
-architecture/repository impact, acceptance criteria, verification commands,
-rollback concept and explicit dependencies/decisions. A known but unopened item
-stays `PLANNED`.
+Công việc ở trạng thái sẵn sàng (Ready) khi nó có: mục tiêu, các phi mục tiêu (non-goals), vai trò chủ sở hữu, phân loại quyền riêng tư, tác động kiến trúc/repository, tiêu chí nghiệm thu, các lệnh kiểm chứng, khái niệm hoàn tác (rollback) và các quyết định/phụ thuộc tường minh. Một hạng mục đã biết nhưng chưa mở gate thì phải giữ ở trạng thái `PLANNED`.
 
-## Done
+## Hoàn Thành (Done)
 
-Work is done only when:
+Công việc chỉ được coi là hoàn thành (Done) khi:
 
-1. scope allowlist is satisfied without unrelated cleanup;
-2. source/tests/docs are consistent and current;
-3. full quality gates pass with recorded evidence;
-4. privacy/security and private-data safety are reviewed;
-5. rollback and residual risk are explicit;
-6. roadmap, handover and changelog are updated;
-7. required reviewer/owner decision is recorded.
+1. Danh sách cho phép (allowlist) của phạm vi được đáp ứng đầy đủ mà không kéo theo dọn dẹp ngoài lề;
+2. Mã nguồn / kiểm thử / tài liệu đồng nhất và hiện hành;
+3. Toàn bộ các cổng chất lượng đạt (PASS) kèm bằng chứng được ghi nhận;
+4. Tính an toàn bảo mật / quyền riêng tư / dữ liệu riêng tư đã được xem xét;
+5. Phương án hoàn tác và rủi ro tồn dư được nêu rõ ràng;
+6. Roadmap, Handover và Changelog được cập nhật;
+7. Quyết định của reviewer / chủ sở hữu bắt buộc đã được ghi nhận.
 
-A test count, generated document or apparently working UI alone is not `DONE`.
+Chỉ số lượng bài test, tài liệu tự động sinh ra hoặc giao diện có vẻ chạy được đơn thuần không cấu thành trạng thái `DONE`.
+

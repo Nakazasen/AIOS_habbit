@@ -1,17 +1,18 @@
-# Phase Gate Log
+# Nhật Ký Cổng Giai Đoạn (Phase Gate Log)
 
-## Purpose
+## Mục Đích (Purpose)
 
-Ghi lại quyết định mở/đóng phase.
+Ghi lại các quyết định mở / đóng từng giai đoạn (phase).
 
-## Format
+## Định Dạng (Format)
 
-| Date | Phase | Gate | Decision | Evidence | Reviewer | Notes |
+| Ngày | Giai đoạn | Cổng kiểm soát | Quyết định | Bằng chứng | Người đánh giá | Ghi chú |
 |---|---|---|---|---|---|---|
-| 2026-06-20 | Phase 0 | Open | OPENED | Foundation package generated | AI Orchestrator | Waiting for user review |
+| 2026-06-20 | Phase 0 | Mở (Open) | OPENED | Gói nền tảng được tạo | AI Orchestrator | Chờ người dùng đánh giá |
 
-## Rules
+## Quy Tắc Cốt Lõi (Rules)
 
-- Không mở phase tiếp theo nếu phase hiện tại chưa PASS.
-- Mọi decision phải có evidence file.
-- Nếu rollback, ghi rõ rollback target và lý do.
+- Tuyệt đối không mở giai đoạn tiếp theo nếu giai đoạn hiện tại chưa đạt (PASS).
+- Mọi quyết định bắt buộc phải có tệp bằng chứng (evidence file) liên kết.
+- Nếu thực hiện hoàn tác (rollback), phải ghi rõ mục tiêu hoàn tác và lý do cụ thể.
+

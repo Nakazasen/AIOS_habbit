@@ -1,29 +1,29 @@
-# AIOS WorkLens North Star & Product Doctrine
+# Kim chỉ nam & Học thuyết Sản phẩm AIOS WorkLens (North Star & Product Doctrine)
 
-## 1. What AIOS WorkLens Is
-AIOS WorkLens is a **Personal Senior Work Intelligence System** (Hệ thống trí tuệ công việc cá nhân).
-It is designed to help users learn, work, investigate cases, accumulate experience, and grow like a senior expert. Rather than just storing notes or managing checklists, it transforms documents, Excel/CSV files, screenshots, logs, chat messages, emails, and AI outputs into evidence-backed case files and reusable work memories.
-
----
-
-## 2. What AIOS WorkLens Is NOT (What We Avoid)
-- **NOT a NotebookLM clone:** NotebookLM is for source-grounded document reading. WorkLens connects knowledge directly with live work incidents, actions, and handovers.
-- **NOT a Cursor / VS Code clone:** Cursor is for coding. WorkLens is for case investigations, reasoning, and operational decisions.
-- **NOT a generic Second Brain:** A second brain collects abstract knowledge. WorkLens drives action, evidence, and structured lessons from daily work events.
-- **NOT just a Streamlit case form:** Streamlit is merely our MVP presentation layer. The core is the underlying work intelligence model and experience vault.
-- **NOT just a simple RAG/OCR/ingest tool:** WorkLens does not just dump files into a vector store. It organizes information into cases, evidence nodes, reasoning maps, and verified learning cards.
-- **NO Fabricated Causes:** The system never guesses or concludes the "true cause" without evidence. Hypotheses remain hypotheses until verified.
-- **NO Uncontrolled Self-Learning:** The system accumulates learning patterns, but the user must verify and transition cards to `confirmed` before they are trusted.
-- **NO Data Leaks:** `local_only` raw data is strictly prevented from being exported to cloud services by default.
+## 1. AIOS WorkLens là gì
+AIOS WorkLens là một **Hệ thống Trí tuệ Công việc Chuyên gia Cá nhân** (Personal Senior Work Intelligence System).
+Hệ thống được thiết kế để hỗ trợ người dùng học hỏi, làm việc, điều tra xử lý sự vụ (case), tích lũy kinh nghiệm và trưởng thành như một chuyên gia cao cấp. Thay vì chỉ lưu trữ ghi chú thụ động hay quản lý danh sách việc cần làm thông thường, WorkLens chuyển hóa tài liệu, bảng tính Excel/CSV, ảnh chụp màn hình, log hệ thống, tin nhắn trao đổi, email và kết quả đầu ra của AI thành các hồ sơ sự vụ có bằng chứng xác thực cùng các thẻ ghi nhớ công việc có thể tái sử dụng lâu dài.
 
 ---
 
-## 3. Product Loop (Vòng Lặp Sản Phẩm)
+## 2. AIOS WorkLens KHÔNG PHẢI là gì (Những điều chúng ta tránh)
+- **KHÔNG PHẢI là bản sao của NotebookLM:** NotebookLM chỉ tập trung vào đọc hiểu tài liệu dựa trên nguồn. WorkLens kết nối trực tiếp tri thức với các sự vụ công việc thực tế, hành động cụ thể và quy trình bàn giao.
+- **KHÔNG PHẢI là bản sao của Cursor / VS Code:** Cursor tập trung vào viết mã lập trình. WorkLens tập trung vào điều tra sự vụ, lập luận logic và đưa ra quyết định vận hành.
+- **KHÔNG PHẢI là Second Brain chung chung:** Second Brain thông thường chỉ thu thập tri thức trừu tượng. WorkLens thúc đẩy hành động thực thi, bằng chứng xác thực và bài học kinh nghiệm có cấu trúc từ sự kiện công việc hàng ngày.
+- **KHÔNG CHỈ là biểu mẫu sự vụ Streamlit đơn thuần:** Streamlit chỉ là tầng giao diện hiển thị MVP ban đầu. Cốt lõi của hệ thống là mô hình trí tuệ công việc và kho lưu trữ kinh nghiệm bên dưới.
+- **KHÔNG CHỈ là công cụ RAG/OCR/ingest thông thường:** WorkLens không chỉ ném tài liệu vào cơ sở dữ liệu vector. Hệ thống tổ chức thông tin thành các hồ sơ sự vụ (case), các nút bằng chứng (evidence node), bản đồ lập luận suy luận (reasoning map) và các thẻ học việc đã được kiểm chứng (verified learning card).
+- **KHÔNG BỊA ĐẶT NGUYÊN NHÂN:** Hệ thống tuyệt đối không đoán mò hay tự tiện kết luận "nguyên nhân gốc rễ" khi chưa có đủ bằng chứng. Giả thuyết luôn chỉ là giả thuyết cho đến khi được kiểm chứng.
+- **KHÔNG TỰ HỌC THIẾU KIỂM SOÁT:** Hệ thống tích lũy các mẫu học việc, nhưng người dùng bắt buộc phải kiểm tra và xác nhận chuyển trạng thái thẻ sang `confirmed` trước khi được tin cậy đưa vào vận hành.
+- **KHÔNG RÒ RỈ DỮ LIỆU:** Dữ liệu thô gắn nhãn `local_only` bị nghiêm cấm gửi hoặc trích xuất ra các dịch vụ AI đám mây theo mặc định.
+
+---
+
+## 3. Vòng lặp Sản phẩm (Product Loop)
 ```
 Knowledge → Case → Evidence → Reasoning Map → Action / Communication → Outcome → Learning Memory → Better Work
 ```
 
-### Diễn giải tiếng Việt:
+### Diễn giải chi tiết:
 ```
 Tài liệu nền (Knowledge)
 → Sự việc hằng ngày (Case)
@@ -37,46 +37,47 @@ Tài liệu nền (Knowledge)
 
 ---
 
-## 4. Five Core Product Layers + Two Advanced Layers
+## 4. Năm Tầng Cốt Lõi + Hai Tầng Nâng Cao của Sản Phẩm
 
-### Layer 1: Workspace
-- Dedicated workspaces partitioned by domain/industry.
-- Examples: Manufacturing MOM, IT Support, Accounting, QA/Testing, Project Management, Translation.
-- Keeps cases and configurations isolated to avoid cross-contamination.
+### Tầng 1: Không gian làm việc (Workspace)
+- Phân chia các không gian làm việc chuyên biệt theo từng miền nghiệp vụ/ngành nghề.
+- Ví dụ: Biên bản sản xuất (Manufacturing MOM), Hỗ trợ CNTT (IT Support), Kế toán, QA/Kiểm thử, Quản lý dự án, Dịch thuật.
+- Giữ các hồ sơ sự vụ và cấu hình được cô lập hoàn toàn, tránh lây nhiễm chéo dữ liệu giữa các dự án.
 
-### Layer 2: Knowledge Notebook
-- Sổ tri thức to ingest background documentation, guidelines, and manuals.
-- Supports source notebook isolation so domains or clients do not mix.
-- Focuses on mapping existing knowledge to resolve active cases, not just generic Q&A.
+### Tầng 2: Sổ Tri thức (Knowledge Notebook)
+- Sổ tri thức dùng để nạp và xử lý các tài liệu nền tảng, hướng dẫn quy trình và cẩm nang vận hành.
+- Hỗ trợ cô lập sổ nguồn để các miền hoặc khách hàng khác nhau không bị lẫn lộn dữ liệu.
+- Tập trung vào việc đối chiếu tri thức sẵn có để giải quyết các sự vụ đang diễn ra, không chỉ dừng lại ở hỏi đáp thông thường.
 
-### Layer 3: Case Cockpit
-- Daily work incident cockpit.
-- Aggregates logs, screenshots, Excel sheets, chat, email, and manual notes.
-- Generates case maps, rule-based next actions, prompt packs, and secure handovers.
+### Tầng 3: Trung tâm Sự vụ (Case Cockpit)
+- Trung tâm theo dõi và điều tra sự việc phát sinh hàng ngày.
+- Tổng hợp log hệ thống, ảnh chụp màn hình, bảng tính Excel, tin nhắn chat, email và ghi chú thủ công.
+- Tự động tạo bản đồ sự vụ, gợi ý hành động tiếp theo theo quy tắc, gói prompt định hình và nội dung bàn giao an toàn.
 
-### Layer 4: Learning Memory
-- Lesson capture from daily work.
-- Creates a structured **Senior Learning Card** ("Thẻ học nghề") detailing symptoms, related systems, initial/rejected hypotheses, verified causes, actions, reusable lessons, applicability rules, keywords, and useful bilingual (VI/JA) replies.
-- Requires explicit user validation and review before status becomes `confirmed`.
+### Tầng 4: Bộ nhớ Học nghề (Learning Memory)
+- Đúc kết và lưu giữ các bài học kinh nghiệm từ công việc thực tế.
+- Tạo ra **Thẻ Học Nghề Cao Cấp** (Senior Learning Card) chi tiết gồm: triệu chứng, hệ thống liên quan, giả thuyết ban đầu/bị bác bỏ, nguyên nhân đã kiểm chứng, hành động xử lý, bài học tái sử dụng, quy tắc áp dụng, từ khóa nhận diện và mẫu câu phản hồi song ngữ (VI/JA) hữu ích.
+- Yêu cầu người dùng kiểm tra và xác nhận thủ công trước khi chuyển trạng thái sang `confirmed`.
 
-### Layer 5: Senior Coach / Work Intelligence
-- Guides the user like a patient senior colleague.
-- Advises what to check first, who to ask, how to reply to chat/emails, identifies gaps in evidence, and references similar past cases.
-- Progressively integrates with the knowledge notebook, case history, communication style, and pattern memories.
-
----
-
-### Layer 6: Visual Knowledge Graph (Advanced Layer)
-- Visualizes ingested knowledge, systems, databases, procedures, personnel, cases, and historical outcomes.
-- Implemented only after a solid local data foundation exists. No premature graph construction.
-
-### Layer 7: Field Intelligence / Alert (Advanced Layer)
-- Spotlights live operational errors from telemetry, logs, and process chain context.
-- Implemented only when schemas, historical cases, and validation rules are fully mature. No early predictive failures.
+### Tầng 5: Huấn luyện viên Chuyên gia / Trí tuệ Công việc (Senior Coach / Work Intelligence)
+- Hướng dẫn người dùng như một đồng nghiệp chuyên gia cao cấp tận tâm và dày dặn kinh nghiệm.
+- Đưa ra lời khuyên: cần kiểm tra điều gì trước, nên hỏi ai, cách soạn phản hồi tin nhắn/email, chỉ ra các lỗ hổng thiếu bằng chứng và tham chiếu đến các sự vụ tương tự trong quá khứ.
+- Từng bước tích hợp sâu với sổ tri thức, lịch sử sự vụ, phong cách giao tiếp và các mẫu kinh nghiệm đã tích lũy.
 
 ---
 
-## 5. Principles & Core Values
-- **Local-first Security:** Sensitive case and evidence details remain offline by default.
-- **Evidence-first Discipline:** No hypothesis becomes a confirmed cause without verification evidence.
-- **Bilingual Focus:** High-fidelity Japanese and Vietnamese support for industrial and operational teams.
+### Tầng 6: Bản đồ Tri thức Trực quan (Visual Knowledge Graph - Tầng Nâng cao)
+- Trực quan hóa tri thức đã nạp, hệ thống, cơ sở dữ liệu, quy trình, nhân sự, hồ sơ sự vụ và kết quả lịch sử.
+- Chỉ triển khai sau khi nền tảng dữ liệu cục bộ đã hoàn thiện vững chắc. Tuyệt đối không xây dựng đồ thị khi chưa có nền tảng.
+
+### Tầng 7: Trí tuệ Hiện trường & Cảnh báo (Field Intelligence / Alert - Tầng Nâng cao)
+- Nhận diện và làm nổi bật các lỗi vận hành trực tiếp từ dữ liệu đo lường từ xa, log và ngữ cảnh chuỗi quy trình.
+- Chỉ triển khai khi lược đồ dữ liệu, hồ sơ sự vụ lịch sử và các quy tắc kiểm thực đã hoàn toàn trưởng thành.
+
+---
+
+## 5. Các Nguyên Tắc & Giá Trị Cốt Lõi
+- **Bảo mật Ưu tiên Cục bộ (Local-first Security):** Toàn bộ dữ liệu sự vụ và bằng chứng nhạy cảm mặc định luôn lưu trữ ngoại tuyến.
+- **Kỷ luật Dựa trên Bằng chứng (Evidence-first Discipline):** Không một giả thuyết nào được coi là nguyên nhân xác thực nếu không có bằng chứng kiểm chứng kèm theo.
+- **Trọng tâm Song ngữ (Bilingual Focus):** Hỗ trợ chuẩn xác, độ trung thực cao cho Tiếng Việt và Tiếng Nhật phục vụ các đội ngũ công nghiệp và vận hành.
+

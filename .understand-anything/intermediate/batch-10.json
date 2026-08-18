@@ -1,0 +1,108 @@
+{
+  "nodes": [
+    {
+      "id": "file:.ai/EXTRACTION_CURRENT_STATE.md",
+      "type": "file",
+      "name": "EXTRACTION_CURRENT_STATE.md",
+      "filePath": ".ai/EXTRACTION_CURRENT_STATE.md",
+      "summary": "Report on the current state of data extraction processes.",
+      "tags": ["report", "extraction"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:.ai/AIOS_FINAL_ANSWER_4Q_RERUN_REPORT.md",
+      "type": "file",
+      "name": "AIOS_FINAL_ANSWER_4Q_RERUN_REPORT.md",
+      "filePath": ".ai/AIOS_FINAL_ANSWER_4Q_RERUN_REPORT.md",
+      "summary": "Report on the 4Q rerun of AIOS final answer process.",
+      "tags": ["report", "benchmark"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:.ai/AIOS_GENERAL_RAG_OVERFIT_AUDIT.md",
+      "type": "file",
+      "name": "AIOS_GENERAL_RAG_OVERFIT_AUDIT.md",
+      "filePath": ".ai/AIOS_GENERAL_RAG_OVERFIT_AUDIT.md",
+      "summary": "Audit report regarding potential RAG overfitting.",
+      "tags": ["audit", "RAG"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:.ai/AIOS_GENERAL_RAG_RESET_DECISION.md",
+      "type": "file",
+      "name": "AIOS_GENERAL_RAG_RESET_DECISION.md",
+      "filePath": ".ai/AIOS_GENERAL_RAG_RESET_DECISION.md",
+      "summary": "Decision documentation for RAG reset.",
+      "tags": ["decision", "RAG"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:.ai/AIOS_GENERIC_RAG_CORE_ARCHITECTURE.md",
+      "type": "file",
+      "name": "AIOS_GENERIC_RAG_CORE_ARCHITECTURE.md",
+      "filePath": ".ai/AIOS_GENERIC_RAG_CORE_ARCHITECTURE.md",
+      "summary": "Documentation of generic RAG core architecture.",
+      "tags": ["architecture", "RAG"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:.ai/AIOS_RAG_FAILURE_ANALYSIS.md",
+      "type": "file",
+      "name": "AIOS_RAG_FAILURE_ANALYSIS.md",
+      "filePath": ".ai/AIOS_RAG_FAILURE_ANALYSIS.md",
+      "summary": "Analysis of RAG process failures.",
+      "tags": ["analysis", "RAG"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:.ai/AIOS_SOURCE_ROUTER_AND_SYNTHESIZER_DESIGN.md",
+      "type": "file",
+      "name": "AIOS_SOURCE_ROUTER_AND_SYNTHESIZER_DESIGN.md",
+      "filePath": ".ai/AIOS_SOURCE_ROUTER_AND_SYNTHESIZER_DESIGN.md",
+      "summary": "Design documentation for Source Router and Synthesizer.",
+      "tags": ["design", "router", "synthesizer"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:.ai/AUDIT_REPORT.md",
+      "type": "file",
+      "name": "AUDIT_REPORT.md",
+      "filePath": ".ai/AUDIT_REPORT.md",
+      "summary": "General project audit report.",
+      "tags": ["audit", "report"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:.ai/DECISION_LOG.md",
+      "type": "file",
+      "name": "DECISION_LOG.md",
+      "filePath": ".ai/DECISION_LOG.md",
+      "summary": "Log of major project decisions.",
+      "tags": ["decision", "log"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:.ai/EXECUTION_REPORT.md",
+      "type": "file",
+      "name": "EXECUTION_REPORT.md",
+      "filePath": ".ai/EXECUTION_REPORT.md",
+      "summary": "Report on task execution.",
+      "tags": ["report", "execution"],
+      "complexity": "moderate"
+    }
+  ],
+  "edges": [
+    {
+      "source": "file:.ai/AIOS_GENERAL_RAG_OVERFIT_AUDIT.md",
+      "target": "file:.ai/AIOS_RAG_FAILURE_ANALYSIS.md",
+      "type": "references",
+      "direction": "forward"
+    },
+    {
+      "source": "file:.ai/AIOS_GENERIC_RAG_CORE_ARCHITECTURE.md",
+      "target": "file:.ai/AIOS_SOURCE_ROUTER_AND_SYNTHESIZER_DESIGN.md",
+      "type": "defines",
+      "direction": "forward"
+    }
+  ]
+}

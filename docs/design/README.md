@@ -1,6 +1,4 @@
-﻿# Design Records — Archive Redirect
+# Các Bản ghi Thiết kế — Chuyển hướng Lưu trữ (Design Records — Archive Redirect)
 
-Historical architecture designs, gate prompts and inventory snapshots moved to
-[docs/archive/design/](../archive/design/). Current architecture is
-[WORKLENS_ARCHITECTURE.md](../../WORKLENS_ARCHITECTURE.md); current planning is
-[ROADMAP.md](../../ROADMAP.md).
+Các bản thiết kế kiến trúc, prompt của gate và ảnh chụp kiểm kê lịch sử đã được chuyển sang [docs/archive/design/](../archive/design/). Kiến trúc hiện hành được quy định tại [WORKLENS_ARCHITECTURE.md](../../WORKLENS_ARCHITECTURE.md); kế hoạch hiện tại là [ROADMAP.md](../../ROADMAP.md).
+

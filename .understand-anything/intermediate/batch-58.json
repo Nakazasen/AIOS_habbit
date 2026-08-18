@@ -1,0 +1,45 @@
+{
+  "nodes": [
+    {
+      "id": "file:src/aios_habit/rag_v2/converters.py",
+      "type": "file",
+      "name": "converters.py",
+      "filePath": "src/aios_habit/rag_v2/converters.py",
+      "summary": "Implements various document converter adapters for RAG pipeline.",
+      "tags": ["rag", "converters", "aios_habit"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:src/aios_habit/rag_v2/schema.py",
+      "type": "file",
+      "name": "schema.py",
+      "filePath": "src/aios_habit/rag_v2/schema.py",
+      "summary": "Defines schemas for DocumentElement.",
+      "tags": ["rag", "schema"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:src/aios_habit/rag_v2/adapters.py",
+      "type": "file",
+      "name": "adapters.py",
+      "filePath": "src/aios_habit/rag_v2/adapters.py",
+      "summary": "Defines base classes for document converters.",
+      "tags": ["rag", "adapters"],
+      "complexity": "moderate"
+    }
+  ],
+  "edges": [
+    {
+      "source": "file:src/aios_habit/rag_v2/converters.py",
+      "target": "file:src/aios_habit/rag_v2/schema.py",
+      "type": "imports",
+      "direction": "forward"
+    },
+    {
+      "source": "file:src/aios_habit/rag_v2/converters.py",
+      "target": "file:src/aios_habit/rag_v2/adapters.py",
+      "type": "imports",
+      "direction": "forward"
+    }
+  ]
+}

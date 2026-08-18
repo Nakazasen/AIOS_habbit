@@ -1,49 +1,50 @@
-# Extraction Report
+# Báo Cáo Trích Xuất (Extraction Report)
 
 ## Metadata
 
 - Report ID: `EXT-0000`
-- Date:
+- Ngày (Date):
 - Source IDs:
-- Extractor:
+- Người trích xuất (Extractor):
 
-## Objective
+## Mục Tiêu (Objective)
 
 Trích xuất tri thức gì?
 
-## Sources Processed
+## Các Nguồn Đã Xử Lý (Sources Processed)
 
-| Source ID | Type | Status | Notes |
+| Mã nguồn (Source ID) | Loại (Type) | Trạng thái (Status) | Ghi chú (Notes) |
 |---|---|---|---|
 | | | | |
 
-## Candidate Memories Created
+## Ký Ức Ứng Viên Đã Tạo (Candidate Memories Created)
 
-| Memory ID | Type | Confidence | Evidence | Status |
+| Mã ký ức (Memory ID) | Loại (Type) | Độ tin cậy (Confidence) | Bằng chứng (Evidence) | Trạng thái (Status) |
 |---|---|---|---|---|
 | | | | | |
 
-## Rejected Candidates
+## Các Ứng Viên Bị Từ Chối (Rejected Candidates)
 
-| Candidate | Reason |
+| Ứng viên (Candidate) | Lý do (Reason) |
 |---|---|
 | | |
 
-## Conflicts Found
+## Xung Đột Được Phát Hiện (Conflicts Found)
 
-| Conflict | Memory | Evidence | Status |
+| Xung đột (Conflict) | Ký ức (Memory) | Bằng chứng (Evidence) | Trạng thái (Status) |
 |---|---|---|---|
 | | | | |
 
-## Validation Summary
+## Tóm Tắt Xác Thực (Validation Summary)
 
-- PASS:
-- FAIL:
-- PARTIAL:
-- BLOCKED:
+- ĐẠT (PASS):
+- KHÔNG ĐẠT (FAIL):
+- ĐẠT MỘT PHẦN (PARTIAL):
+- BỊ CHẶN (BLOCKED):
 
-## Handover
+## Bàn Giao (Handover)
 
-- Next step:
-- Risks:
-- Rollback:
+- Bước tiếp theo (Next step):
+- Rủi ro (Risks):
+- Hoàn tác (Rollback):
+

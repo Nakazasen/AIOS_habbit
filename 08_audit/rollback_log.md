@@ -1,5 +1,6 @@
-# Rollback Log
+# Nhật Ký Hoàn Tác (Rollback Log)
 
-| Date | Target | Reason | Rollback Action | Result | Notes |
+| Ngày (Date) | Đối tượng (Target) | Lý do (Reason) | Hành động hoàn tác (Rollback Action) | Kết quả (Result) | Ghi chú (Notes) |
 |---|---|---|---|---|---|
-| N/A | N/A | N/A | N/A | N/A | No rollback yet |
+| N/A | N/A | N/A | N/A | N/A | Chưa có hoàn tác nào |
+

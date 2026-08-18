@@ -1,0 +1,77 @@
+{
+  "nodes": [
+    {
+      "id": "file:docs/archive/design/AIOS_AGENT_RESULT_IMPORT_DESIGN.md",
+      "type": "file",
+      "name": "AIOS_AGENT_RESULT_IMPORT_DESIGN.md",
+      "filePath": "docs/archive/design/AIOS_AGENT_RESULT_IMPORT_DESIGN.md",
+      "summary": "Archived design for AIOS agent result import.",
+      "tags": ["archive", "design"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:docs/archive/design/AIOS_BRAIN_GATEWAY_DESIGN.md",
+      "type": "file",
+      "name": "AIOS_BRAIN_GATEWAY_DESIGN.md",
+      "filePath": "docs/archive/design/AIOS_BRAIN_GATEWAY_DESIGN.md",
+      "summary": "Archived design for AIOS brain gateway.",
+      "tags": ["archive", "design"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:docs/archive/design/AIOS_EXISTING_AI_INVENTORY.md",
+      "type": "file",
+      "name": "AIOS_EXISTING_AI_INVENTORY.md",
+      "filePath": "docs/archive/design/AIOS_EXISTING_AI_INVENTORY.md",
+      "summary": "Archived inventory of existing AI integrations.",
+      "tags": ["archive", "inventory"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:docs/archive/design/AIOS_GATE_A16_ROUTER_MOCK_INTEGRATION_PROMPT.md",
+      "type": "file",
+      "name": "AIOS_GATE_A16_ROUTER_MOCK_INTEGRATION_PROMPT.md",
+      "filePath": "docs/archive/design/AIOS_GATE_A16_ROUTER_MOCK_INTEGRATION_PROMPT.md",
+      "summary": "Archived prompt for Gate A16 router mock integration.",
+      "tags": ["archive", "prompt"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:docs/archive/design/AIOS_GATE_A17_IDE_AGENT_BRIDGE_PROMPT.md",
+      "type": "file",
+      "name": "AIOS_GATE_A17_IDE_AGENT_BRIDGE_PROMPT.md",
+      "filePath": "docs/archive/design/AIOS_GATE_A17_IDE_AGENT_BRIDGE_PROMPT.md",
+      "summary": "Archived prompt for Gate A17 IDE agent bridge.",
+      "tags": ["archive", "prompt"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:docs/archive/design/AIOS_GATE_A18_NOTEBOOKLM_COMPARISON_ARENA_PROMPT.md",
+      "type": "file",
+      "name": "AIOS_GATE_A18_NOTEBOOKLM_COMPARISON_ARENA_PROMPT.md",
+      "filePath": "docs/archive/design/AIOS_GATE_A18_NOTEBOOKLM_COMPARISON_ARENA_PROMPT.md",
+      "summary": "Archived prompt for Gate A18 NotebookLM comparison arena.",
+      "tags": ["archive", "prompt"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:docs/archive/design/AIOS_IDE_AGENT_BRIDGE_DESIGN.md",
+      "type": "file",
+      "name": "AIOS_IDE_AGENT_BRIDGE_DESIGN.md",
+      "filePath": "docs/archive/design/AIOS_IDE_AGENT_BRIDGE_DESIGN.md",
+      "summary": "Archived design for AIOS IDE agent bridge.",
+      "tags": ["archive", "design"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:docs/archive/design/AIOS_ROUTER_ADAPTER_DESIGN.md",
+      "type": "file",
+      "name": "AIOS_ROUTER_ADAPTER_DESIGN.md",
+      "filePath": "docs/archive/design/AIOS_ROUTER_ADAPTER_DESIGN.md",
+      "summary": "Archived design for AIOS router adapter.",
+      "tags": ["archive", "design"],
+      "complexity": "moderate"
+    }
+  ],
+  "edges": []
+}

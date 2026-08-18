@@ -1,0 +1,32 @@
+{
+  "nodes": [
+    {
+      "id": "file:specs/002-cross-source-synthesis-upgrade/plan.md",
+      "type": "file",
+      "name": "plan.md",
+      "filePath": "specs/002-cross-source-synthesis-upgrade/plan.md",
+      "summary": "Implementation plan for cross-source synthesis upgrade.",
+      "tags": ["specs", "planning"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:specs/002-cross-source-synthesis-upgrade/spec.md",
+      "type": "file",
+      "name": "spec.md",
+      "filePath": "specs/002-cross-source-synthesis-upgrade/spec.md",
+      "summary": "Feature specification for cross-source synthesis upgrade.",
+      "tags": ["specs", "specification"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:specs/002-cross-source-synthesis-upgrade/tasks.md",
+      "type": "file",
+      "name": "tasks.md",
+      "filePath": "specs/002-cross-source-synthesis-upgrade/tasks.md",
+      "summary": "Task breakdown for cross-source synthesis upgrade.",
+      "tags": ["specs", "tasks"],
+      "complexity": "moderate"
+    }
+  ],
+  "edges": []
+}

@@ -1,0 +1,11 @@
+[theme]
+base="dark"
+primaryColor="#3b82f6"
+
+[client]
+toolbarMode = "minimal"
+showSidebarNavigation = false
+showErrorDetails = false
+
+[server]
+runOnSave = true

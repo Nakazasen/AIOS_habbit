@@ -1,0 +1,14 @@
+{
+  "nodes": [
+    {
+      "id": "file:.github/workflows/test.yml",
+      "type": "file",
+      "name": "test.yml",
+      "filePath": ".github/workflows/test.yml",
+      "summary": "GitHub Actions workflow for quality gates including testing documentation validation and CLI auditing.",
+      "tags": ["ci", "github-actions", "workflow"],
+      "complexity": "moderate"
+    }
+  ],
+  "edges": []
+}

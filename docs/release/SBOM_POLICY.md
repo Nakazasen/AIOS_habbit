@@ -1,36 +1,29 @@
-# SBOM Policy
+# Chính Sách SBOM (Software Bill of Materials Policy)
 
 Status: `PROPOSED`
 Owner role: Release owner / security reviewer
 Last reviewed: 2026-07-25
 Review cadence: Each distributable release and dependency update
 
-## Purpose
+## Mục đích (Purpose)
 
-A software bill of materials (SBOM) records resolved package names/versions for
-an environment or release candidate. It improves supply-chain review; it does
-not prove the absence of vulnerabilities or provide signed provenance.
+Bản kê thành phần phần mềm (SBOM - Software Bill of Materials) ghi lại tên và phiên bản của các package đã được giải quyết (resolved) cho một môi trường hoặc bản ứng viên phát hành (release candidate). Nó giúp cải thiện việc kiểm toán chuỗi cung ứng; nó không chứng minh sự vắng mặt của các lỗ hổng bảo mật hay cung cấp nguồn gốc xuất xứ có chữ ký số.
 
-## Current procedure
+## Quy trình Hiện tại (Current Procedure)
 
-Use the repository stdlib tool:
+Sử dụng công cụ thư viện chuẩn (stdlib) có sẵn trong repository:
 
 ```powershell
 py -3 scripts/generate_sbom.py --output local_runs/sbom/aios-habit-sbom.json
 ```
 
-The default output is ignored runtime data. Inspect it before sharing; do not add
-private package indexes, credentials, local paths or environment variables.
+Đầu ra mặc định là dữ liệu runtime (được gitignore). Hãy kiểm tra kỹ trước khi chia sẻ; tuyệt đối không đưa vào chỉ mục package riêng tư, thông tin xác thực, đường dẫn cục bộ hoặc các biến môi trường.
 
-## Publication and enforcement
+## Xuất bản và Thực thi (Publication and Enforcement)
 
-SBOM publication, format requirements, vulnerability scanner, severity threshold,
-exception process and CI merge-blocking behavior are `OWNER_DECISION_REQUIRED`.
-Until approved, SBOM/advisory checks are review evidence rather than a required
-remote artifact.
+Việc xuất bản SBOM, yêu cầu định dạng, công cụ quét lỗ hổng bảo mật, ngưỡng mức độ nghiêm trọng, quy trình xử lý ngoại lệ và hành vi chặn merge trong CI ở trạng thái `OWNER_DECISION_REQUIRED` (Yêu cầu quyết định từ chủ sở hữu). Cho đến khi được phê duyệt, việc kiểm tra SBOM/cảnh báo chỉ là bằng chứng phục vụ xem xét thay vì là artifact từ xa bắt buộc.
 
-## Retention
+## Thời gian Lưu trữ (Retention)
 
-Keep release SBOMs according to owner release policy. Do not place them in Git by
-default unless the owner explicitly approves a sanitized, reproducible release
-artifact workflow.
+Lưu giữ SBOM của các bản phát hành theo chính sách phát hành của chủ sở hữu. Mặc định không đưa chúng vào Git trừ khi chủ sở hữu phê duyệt rõ ràng một quy trình artifact phát hành đã được làm sạch và có thể tái tạo.
+

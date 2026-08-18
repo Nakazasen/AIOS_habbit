@@ -1,394 +1,365 @@
-# RAG Agent Harness Research
+# Nghiên Cứu Khung Điều Phối AI Agent Cho RAG (RAG Agent Harness Research)
 
-Gate: AIOS-RAG-AGENT-HARNESS-0  
-Status: research/design only  
-Date: 2026-06-28
+Cổng: AIOS-RAG-AGENT-HARNESS-0  
+Trạng thái: Chỉ nghiên cứu / thiết kế  
+Ngày: 2026-06-28
 
-## Executive Summary
+## Tóm Tắt Tổng Quan (Executive Summary)
 
-AIOS should evolve from the current useful local notebook/Q&A flow into a local-first work memory RAG system. The next architecture should not start with a heavy vector database or graph database. It should first strengthen document parsing, chunk metadata, local hybrid retrieval, evidence packing, citations, privacy gating, and benchmark discipline.
+AIOS nên tiến hóa từ luồng sổ ghi chép / hỏi đáp cục bộ hữu ích hiện tại thành một hệ thống RAG trí nhớ công việc ưu tiên cục bộ (local-first). Kiến trúc tiếp theo không nên bắt đầu bằng một cơ sở dữ liệu vector hay đồ thị nặng nề. Trước hết, nó phải củng cố khả năng phân tích cú pháp tài liệu, metadata của chunk, truy xuất kết hợp cục bộ (hybrid retrieval), đóng gói bằng chứng, trích dẫn nguồn, chốt chặn quyền riêng tư và kỷ luật đo chuẩn benchmark.
 
-The main lesson from public RAG systems is that strong answers come from the full chain: parser, layout/table/OCR preservation, chunk identity, hybrid search, rerank, evidence packs, context compression, answer abstention, and audit logs. The model call is only one step.
+Bài học cốt lõi từ các hệ thống RAG công khai là câu trả lời chất lượng cao bắt nguồn từ toàn bộ chuỗi mắt xích: bộ phân tích cú pháp, bảo toàn bố cục/bảng biểu/OCR, định danh chunk, tìm kiếm kết hợp, xếp hạng lại, gói bằng chứng, nén ngữ cảnh, từ chối trả lời khi thiếu dữ liệu và nhật ký kiểm toán. Lệnh gọi mô hình AI chỉ là một bước duy nhất trong chuỗi.
 
-The main lesson from agent/IDE tools is that AIOS should begin with safe prompt export and paste-back answer storage. Tool/IDE automation can come later behind permission gates, explicit approval, audit logs, and rollback.
+Bài học cốt lõi từ các công cụ agent/IDE là AIOS nên bắt đầu bằng quy trình an toàn: xuất prompt thủ công và lưu trữ câu trả lời dán ngược lại. Việc tự động hóa công cụ/IDE có thể được đưa vào sau thông qua các cổng phân quyền, sự phê duyệt tường minh, nhật ký kiểm toán và cơ chế hoàn tác (rollback).
 
-## Current AIOS Retrieval and Harness Audit
+## Kiểm Toán Khung Điều Phối và Truy Xuất Hiện Tại Của AIOS
 
-### Ingest
+### Nạp Dữ Liệu (Ingest)
 
-Current implementation includes local document extraction helpers in `src/aios_habit/document_extractors.py` and notebook source/index flows in `source_ingest.py`, `notebook_index.py`, and MOM-specific local index code.
+Triển khai hiện tại bao gồm các hàm hỗ trợ trích xuất tài liệu cục bộ trong `src/aios_habit/document_extractors.py` và các luồng lập chỉ mục nguồn notebook trong `source_ingest.py`, `notebook_index.py`, cùng mã nguồn chỉ mục cục bộ đặc thù cho MOM.
 
-Current strengths:
+Điểm mạnh hiện tại:
+- Hỗ trợ nội dung nguồn dạng văn bản/markdown trong chỉ mục notebook.
+- Bộ trích xuất tài liệu có các hàm xử lý cục bộ cho HTML, PPTX, Excel qua `openpyxl`, hình ảnh, PDF/ảnh với OCR cục bộ có giới hạn qua Tesseract khi có sẵn, và phân tích dựa trên XML/ZIP cho các tài liệu Office.
+- Metadata của chunk đã bao gồm tệp nguồn, đường dẫn tương đối, loại tệp, phân đoạn, trang, trang chiếu, sheet, dải hàng, cấp độ bảo mật, tên bộ trích xuất, trạng thái trích xuất, engine OCR và ngôn ngữ OCR.
+- Mặc định bảo mật ưu tiên cục bộ cho các chunk được trích xuất.
 
-- Supports text/markdown-style source content in notebook index.
-- Document extractor has local handlers for HTML, PPTX, Excel via `openpyxl`, images, OCR-limited PDFs/images via local Tesseract where available, and ZIP/XML-based parsing for Office documents.
-- Chunk metadata already includes source file, relative path, file type, section, page, slide, sheet, row range, privacy level, extractor name, extraction status, OCR engine, and OCR language.
-- Privacy defaults are local-first for extracted chunks.
+Hạn chế:
+- Chỉ mục notebook hiện sử dụng các chunk cố định theo số ký tự và trích xuất từ khóa đơn giản.
+- Cấu trúc tài liệu chưa được chuẩn hóa thành một schema chunk xuyên định dạng ổn định duy nhất cho tất cả các luồng QA phía sau.
+- Xử lý Excel chỉ giới hạn ở mức xem trước và chưa mạnh mẽ cho việc truy xuất bảng đa sheet.
+- OCR được giới hạn có chủ đích ở cục bộ nhưng chưa phải là một đường ống xử lý tài liệu quét (scanned document) độ trung thực cao.
+- Ngữ nghĩa hình ảnh/sơ đồ chưa được hiểu sâu hơn ngoài các đánh dấu OCR/media.
+- Chưa đạt tới mức truy xuất nhận biết bố cục tương đương NotebookLM.
 
-Limitations:
+### Truy Xuất (Retrieval)
 
-- Notebook index currently uses fixed character chunks and simple keyword extraction.
-- Document structure is not yet normalized into one stable cross-format chunk schema for all downstream QA paths.
-- Excel handling is preview-limited and not yet robust for multi-sheet table retrieval.
-- OCR is intentionally bounded and local-only but not a high-fidelity scanned document pipeline.
-- Image/figure semantics are not yet understood beyond OCR/media markers.
-- Not NotebookLM-level layout-aware retrieval yet.
+Điểm mạnh hiện tại:
+- `notebook_index.py` cung cấp khả năng tải/xây dựng chunk cục bộ và tìm kiếm từ khóa.
+- Xếp hạng kết hợp cụm từ chính xác, tiêu đề, tên tệp và điểm tần suất token.
+- Đã có các module chỉ mục/benchmark MOM cho việc đánh giá tài liệu chỉ dùng cục bộ.
 
-### Retrieval
+Hạn chế:
+- Chưa có nền tảng SQLite FTS/BM25.
+- Chưa có chỉ mục vector.
+- Chưa có xếp hạng kết hợp (hybrid ranking), xếp hạng lại (reranking), viết lại truy vấn (query rewrite), mở rộng từ đồng nghĩa hay lập kế hoạch truy vấn đa ngôn ngữ.
+- Lọc metadata hạn chế và chưa có kiểm soát tính đa dạng của bằng chứng.
+- Nhãn trích dẫn dựa trên nguồn/chunk nhưng chưa đủ ổn định cho việc kiểm chứng câu trả lời có căn cứ nguồn theo phong cách NotebookLM.
+- Tìm kiếm nhiều tài liệu / nhiều vụ việc vẫn đang ở trạng thái `NOT_READY`.
 
-Current strengths:
+### Câu Trả Lời (Answer)
 
-- `notebook_index.py` provides local chunk loading/building and keyword search.
-- Ranking combines exact phrase, title, filename, and token frequency scores.
-- MOM benchmark/index modules exist for local-only document evaluation.
+Điểm mạnh hiện tại:
+- Tồn tại phương án dự phòng tất định cục bộ.
+- Có luồng trả lời qua provider qua `ai_router.py` và `ai_provider_bridge.py` cho tài liệu thường.
+- Nhật ký định tuyến bao gồm trạng thái provider/model/lượt thử và liệu nội dung có bị gửi ra ngoài hay không.
+- Luồng chuyển từ Hỏi đáp sang Vụ việc bảo tồn tóm tắt định tuyến và tham chiếu bằng chứng.
+- Xử lý bảo mật chặn nội dung công ty/mật khỏi các tuyến cloud.
 
-Limitations:
+Hạn chế:
+- Gói bằng chứng vẫn còn mang tính ngầm định; chưa có đối tượng gói bằng chứng hạng nhất với metadata về độ bao phủ / độ tin cậy / từ chối trả lời.
+- Bộ soạn thảo câu trả lời chưa tách bạch rõ ràng sự thật đã biết, suy luận, bằng chứng còn thiếu và bằng chứng được khuyến nghị tiếp theo.
+- Việc chấm điểm trích dẫn chưa tường minh.
 
-- No SQLite FTS/BM25 foundation yet.
-- No vector index yet.
-- No hybrid ranking, reranking, query rewrite, synonym expansion, or multilingual query planning.
-- Limited metadata filtering and no evidence diversity controls.
-- Citation labels are source/chunk based but not yet stable enough for NotebookLM-style source-grounded answer verification.
-- Many-document/many-case search is marked NOT_READY.
+### Cầu Nối Mô Hình / Agent (Agent / Model Bridge)
 
-### Answer
+Điểm mạnh hiện tại:
+- Đã có danh mục provider và router cho việc sử dụng provider có kiểm soát đối với tài liệu thường.
+- Tóm tắt định tuyến và các lượt thử provider được theo vết.
+- Thư mục gói xuất tồn tại dưới dạng artifact runtime bị bỏ qua, nhưng chưa có triển khai cầu nối IDE được commit.
 
-Current strengths:
+Còn thiếu:
+- Chưa có mô hình ID gói prompt.
+- Chưa có quy trình xuất prompt thủ công được commit.
+- Chưa có mô hình câu trả lời dán ngược lại với tên model/công cụ, ID prompt, tham chiếu bằng chứng, tóm tắt định tuyến, độ tin cậy và cảnh báo.
+- Chưa có tầng adapter công cụ / IDE.
+- Chưa có khung điều phối agent với trạng thái tác vụ, phân quyền, nén ngữ cảnh, ủy quyền tác vụ con, hoàn tác hay bàn giao.
 
-- Local deterministic fallback exists.
-- Provider route answer exists through `ai_router.py` and `ai_provider_bridge.py` for normal documents.
-- Route log includes provider/model/attempt status and whether content was sent outside.
-- Q&A to Case flow preserves route summary and evidence references.
-- Privacy handling blocks company/mật content from cloud routes.
+Vì sao model miễn phí / cấp thấp là chưa đủ:
+- Tài liệu công việc phức tạp sẽ thất bại khi bộ phân tích, chia chunk, truy xuất hoặc lựa chọn bằng chứng bị yếu.
+- Model miễn phí / cấp thấp hữu ích cho ghi chú công khai rủi ro thấp nhưng không thể bảo đảm phân tích có căn cứ cho bảng biểu, tài liệu scan, vụ việc đa bước (multi-hop) hay quy trình công ty/mật.
+- Model mạnh nên được sử dụng thông qua các gói prompt có căn cứ bằng chứng và nhận biết quyền riêng tư, không phải tải lên tài liệu thô.
 
-Limitations:
+## Ma Trận Mẫu Thiết Kế / Repository Bên Ngoài
 
-- Evidence packs are implicit; there is no first-class evidence pack object with coverage/confidence/abstention metadata.
-- Answer composer does not yet separate known facts, inference, missing evidence, and recommended next evidence.
-- Citation scoring is not yet explicit.
-
-### Agent / Model Bridge
-
-Current strengths:
-
-- Provider catalog and router exist for controlled normal-document provider use.
-- Route summary and provider attempts are tracked.
-- Export pack directories exist as ignored runtime artifacts, but no committed IDE bridge implementation exists.
-
-Missing:
-
-- No prompt pack ID model.
-- No committed manual prompt export workflow.
-- No paste-back answer model with model/tool name, prompt ID, evidence refs, route summary, confidence, and warnings.
-- No tool/IDE adapter layer.
-- No agent harness with task state, permissions, context compaction, subtask delegation, rollback, or handoff.
-
-Why free/low-tier model is not enough:
-
-- Complex work documents fail when parser, chunking, retrieval, or evidence selection are weak.
-- Free/low-tier models are useful for low-risk public notes but cannot guarantee grounded analysis of tables, scans, multi-hop cases, or company/mật workflows.
-- Strong models should be used through evidence-grounded, privacy-aware prompt packs, not raw document uploads.
-
-## External Repo / Pattern Matrix
-
-| Target | Purpose | Useful AIOS Ideas | Do Not Copy | Difficulty | Privacy Risk | Local-first Fit | Value |
+| Mục tiêu | Mục đích | Ý tưởng hữu ích cho AIOS | Không sao chép | Độ khó | Rủi ro quyền riêng tư | Độ phù hợp Cục bộ | Giá trị |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| RAGFlow | Deep document RAG with parsing, hybrid search, rerank, citations | Layout/table/OCR-first parsing, hybrid search, rerank, traceable citations | Do not copy source or deploy heavy stack blindly | HIGH | MEDIUM | MEDIUM | HIGH |
-| kotaemon | Local/private document QA UI/framework | Local deployment, hybrid retrieval, PDF citation UX, modular components | Do not copy UI or provider configs | MEDIUM | MEDIUM | HIGH | HIGH |
-| Microsoft GraphRAG | Graph-based global/local corpus reasoning | Community summaries, global vs local search, graph as later layer | Do not introduce graph DB now | HIGH | HIGH if LLM indexing is cloud | MEDIUM | MEDIUM-HIGH later |
-| LightRAG | Lightweight graph + vector retrieval | Dual-layer idea, entity relation retrieval | Do not add graph/vector before local FTS gate | MEDIUM | MEDIUM | MEDIUM | MEDIUM |
-| LlamaIndex | RAG/agent workflow framework | Query planning, retrievers, memory abstractions, workflows | Do not import broad framework without need | MEDIUM | MEDIUM | MEDIUM | HIGH as design reference |
-| Haystack | Production RAG pipeline components | Pipeline/component boundaries, evaluation discipline | Do not over-engineer early | MEDIUM | MEDIUM | HIGH with local components | HIGH |
-| Docling | Document conversion with layout/table/OCR | Unified document representation, layout/table/OCR pipeline | Do not add cloud OCR or heavy models by default | MEDIUM | LOW if local | HIGH | HIGH |
-| Unstructured | Data ingestion/partitioning pipeline | Partitioning into typed elements, metadata-rich chunks | Do not send sensitive docs to cloud services | MEDIUM | MEDIUM | HIGH if local | HIGH |
-| OpenHands | Autonomous coding agent platform | Isolated runtime, task logs, tool execution boundaries | Do not allow autonomous writes | HIGH | HIGH | MEDIUM | MEDIUM |
-| Aider | Git-native terminal pair programmer | Git-aware change loop, diff/commit discipline | Do not auto-commit user work without gate | LOW-MEDIUM | MEDIUM | HIGH | MEDIUM |
-| Cline | IDE agent with Plan/Act and permissions | Explicit approval for file edits, commands, browser actions | Do not bypass human approval | MEDIUM | MEDIUM-HIGH | HIGH | HIGH |
-| Continue | IDE-native assistant framework | Context providers, model routing, IDE integration | Do not leak sensitive files into context | MEDIUM | MEDIUM | HIGH | MEDIUM-HIGH |
-| Goose | Editor-agnostic agent | Task delegation, tool abstraction | Do not grant broad tool access | MEDIUM | HIGH | MEDIUM | MEDIUM |
-| OpenCode | Terminal/IDE coding agent patterns | CLI workflow and tool boundaries if relevant | Do not couple AIOS to one tool | MEDIUM | MEDIUM | MEDIUM | LOW-MEDIUM |
-| LangGraph | Stateful multi-actor agent graph | State machine, checkpointing, human approval nodes | Do not add complex graph runtime yet | MEDIUM | MEDIUM | HIGH if local | HIGH as design reference |
-| Semantic Kernel | Plugins, memory, planner abstractions | Plugin contracts and skills/tools boundary | Do not create cloud plugin path for company/mật | MEDIUM | MEDIUM | MEDIUM | MEDIUM |
-| Cognee | Memory-first graph/RAG | Cognify pipeline, graph memory ideas | Do not add graph DB before evidence need | HIGH | MEDIUM | MEDIUM | MEDIUM later |
-| Letta/MemGPT | Agent memory OS | Memory tiers and self-editing memory concepts | Do not let agents silently edit memory | HIGH | HIGH | MEDIUM | HIGH conceptually |
+| RAGFlow | RAG tài liệu chuyên sâu với parsing, hybrid search, rerank, citations | Parsing ưu tiên bố cục/bảng biểu/OCR, tìm kiếm kết hợp, xếp hạng lại, trích dẫn có thể theo vết | Không sao chép mã nguồn hay triển khai stack nặng nề một cách mù quáng | CAO | TRUNG BÌNH | TRUNG BÌNH | CAO |
+| kotaemon | UI/Framework QA tài liệu riêng tư / cục bộ | Triển khai cục bộ, truy xuất kết hợp, UX trích dẫn PDF, các thành phần module hóa | Không sao chép UI hay cấu hình provider | TRUNG BÌNH | TRUNG BÌNH | CAO | CAO |
+| Microsoft GraphRAG | Suy luận tập văn bản toàn cục / cục bộ dựa trên đồ thị | Tóm tắt cộng đồng, tìm kiếm toàn cục vs cục bộ, đồ thị như một tầng làm sau | Không đưa Graph DB vào lúc này | CAO | CAO nếu lập chỉ mục LLM bằng cloud | TRUNG BÌNH | TB-CAO sau này |
+| LightRAG | Truy xuất vector + đồ thị gọn nhẹ | Ý tưởng hai tầng, truy xuất quan hệ thực thể | Không thêm vector/graph trước cổng FTS cục bộ | TRUNG BÌNH | TRUNG BÌNH | TRUNG BÌNH | TRUNG BÌNH |
+| LlamaIndex | Framework quy trình RAG/Agent | Lập kế hoạch truy vấn, bộ truy xuất, trừu tượng bộ nhớ, workflows | Không import framework cồng kềnh khi chưa cần | TRUNG BÌNH | TRUNG BÌNH | TRUNG BÌNH | CAO (tham chiếu thiết kế) |
+| Haystack | Các thành phần pipeline RAG sản xuất | Ranh giới pipeline/component, kỷ luật đánh giá | Không thiết kế thừa quá sớm | TRUNG BÌNH | TRUNG BÌNH | CAO với thành phần cục bộ | CAO |
+| Docling | Chuyển đổi tài liệu với bố cục/bảng biểu/OCR | Biểu diễn tài liệu thống nhất, đường ống bố cục/bảng biểu/OCR | Không thêm cloud OCR hay model nặng theo mặc định | TRUNG BÌNH | THẤP nếu chạy cục bộ | CAO | CAO |
+| Unstructured | Đường ống nạp / phân vùng dữ liệu | Phân vùng thành các phần tử định kiểu, chunk giàu metadata | Không gửi tài liệu nhạy cảm lên dịch vụ cloud | TRUNG BÌNH | TRUNG BÌNH | CAO nếu chạy cục bộ | CAO |
+| OpenHands | Nền tảng coding agent tự hành | Runtime cô lập, task logs, ranh giới thực thi công cụ | Không cho phép ghi tự hành | CAO | CAO | TRUNG BÌNH | TRUNG BÌNH |
+| Aider | Trợ lý lập trình terminal bản địa Git | Vòng lặp thay đổi nhận biết Git, kỷ luật diff/commit | Không tự động commit việc của người dùng khi chưa có gate | THẤP-TB | TRUNG BÌNH | CAO | TRUNG BÌNH |
+| Cline | Agent IDE với Plan/Act và phân quyền | Phê duyệt rõ ràng cho chỉnh sửa tệp, lệnh, hành động trình duyệt | Không bỏ qua sự phê duyệt của con người | TRUNG BÌNH | TB-CAO | CAO | CAO |
+| Continue | Framework trợ lý tích hợp IDE | Bộ cung cấp ngữ cảnh, định tuyến model, tích hợp IDE | Không rò rỉ tệp nhạy cảm vào ngữ cảnh | TRUNG BÌNH | TRUNG BÌNH | CAO | TB-CAO |
+| Goose | Agent độc lập với trình biên tập | Ủy quyền tác vụ, trừu tượng hóa công cụ | Không cấp quyền công cụ quá rộng | TRUNG BÌNH | CAO | TRUNG BÌNH | TRUNG BÌNH |
+| OpenCode | Các mẫu coding agent terminal/IDE | Quy trình CLI và ranh giới công cụ nếu liên quan | Không ghép chặt AIOS vào một công cụ | TRUNG BÌNH | TRUNG BÌNH | TRUNG BÌNH | THẤP-TB |
+| LangGraph | Đồ thị agent đa tác nhân có trạng thái | State machine, checkpointing, các nút phê duyệt của con người | Chưa thêm runtime đồ thị phức tạp | TRUNG BÌNH | TRUNG BÌNH | CAO nếu chạy cục bộ | CAO (tham chiếu thiết kế) |
+| Semantic Kernel | Plugin, bộ nhớ, trừu tượng lập kế hoạch | Hợp đồng plugin và ranh giới kỹ năng/công cụ | Không tạo đường dẫn plugin cloud cho dữ liệu công ty/mật | TRUNG BÌNH | TRUNG BÌNH | TRUNG BÌNH | TRUNG BÌNH |
+| Cognee | Đồ thị / RAG ưu tiên bộ nhớ | Pipeline Cognify, ý tưởng bộ nhớ đồ thị | Không thêm Graph DB trước khi có nhu cầu bằng chứng | CAO | TRUNG BÌNH | TRUNG BÌNH | TRUNG BÌNH sau này |
+| Letta/MemGPT | Hệ điều hành bộ nhớ cho Agent | Các tầng bộ nhớ và khái niệm bộ nhớ tự chỉnh sửa | Không để agent tự ý sửa bộ nhớ trong âm thầm | CAO | CAO | TRUNG BÌNH | CAO về mặt khái niệm |
 
-## AIOS Retrieval Engine v2 Architecture
+## Kiến Trúc Công Cụ Truy Xuất AIOS v2 (Retrieval Engine v2)
 
-### 1. Document Parser Adapter
+### 1. Bộ Chuyển Đổi Phân Tích Tài Liệu (Document Parser Adapter)
 
-Goal: convert inputs into typed local elements while preserving structure.
+Mục tiêu: chuyển đổi đầu vào thành các phần tử cục bộ có định kiểu trong khi vẫn bảo tồn cấu trúc.
 
-Requirements:
+Yêu cầu:
+- Các đánh dấu: trang, phần, tiêu đề, đoạn văn, bảng, sheet, ô, trang chiếu, hình ảnh và OCR;
+- ID tài liệu và đường dẫn nguồn ổn định;
+- Các trường trạng thái bộ trích xuất và cảnh báo;
+- Mặc định chỉ dùng cục bộ cho dữ liệu công ty/mật;
+- Không dùng cloud OCR trừ khi được phê duyệt rõ ràng và không nhạy cảm.
 
-- page, section, heading, paragraph, table, sheet, cell, slide, image, and OCR markers;
-- stable document ID and source path;
-- extractor status and warning fields;
-- local-only default for company/mật;
-- no cloud OCR unless explicitly approved and non-sensitive.
+Bước đầu tiên khuyến nghị: điều chỉnh đầu ra hiện tại của `document_extractors.py` thành một schema phần tử chuẩn hóa mà không cần thay thế toàn bộ stack trích xuất.
 
-Recommended first step: adapt current `document_extractors.py` output into a normalized element schema without replacing the extractor stack.
+### 2. Bộ Xây Dựng Chunk & Metadata (Chunk & Metadata Builder)
 
-### 2. Chunk & Metadata Builder
+Metadata bắt buộc:
+- ID chunk ổn định;
+- ID tài liệu nguồn;
+- Tiêu đề nguồn và đường dẫn tương đối;
+- Dải trang / sheet / phân đoạn / trang chiếu / bảng / ô;
+- Cờ văn bản / bảng / hình ảnh / OCR;
+- Chế độ riêng tư (privacy mode);
+- Thời gian tạo;
+- Mã băm / checksum của nguồn;
+- Nhãn trích dẫn;
+- Bộ trích xuất và trạng thái;
+- ID chunk cha / lân cận để mở rộng phân đoạn.
 
-Required metadata:
+### 3. Chỉ Mục Kết Hợp Cục Bộ (Local Hybrid Index)
 
-- stable chunk ID;
-- source document ID;
-- source title and relative path;
-- page/sheet/section/slide/table/cell range;
-- text/table/image/OCR flags;
-- privacy mode;
-- created time;
-- source hash/checksum;
-- citation label;
-- extractor and status;
-- parent/neighbor chunk IDs for section expansion.
+Giai đoạn 4 nên bắt đầu với SQLite FTS/BM25 và các bảng metadata.
 
-### 3. Local Hybrid Index
+Thiết kế ban đầu:
+- Bảng `documents`;
+- Bảng `chunks`;
+- Bảng ảo `chunk_fts`;
+- Bảng `chunk_metadata` hoặc cột JSON;
+- Tái tạo cục bộ và cập nhật tăng dần theo mã băm nguồn;
+- Tuyệt đối không gửi embedding lên cloud cho dữ liệu công ty/mật.
 
-Phase 4 should start with SQLite FTS/BM25 and metadata tables.
+Tìm kiếm vector tùy chọn chỉ nên đưa vào sau khi đã đo lường được các khoảng cách của đo chuẩn benchmark FTS/BM25.
 
-Initial design:
+### 4. Bộ Lập Kế Hoạch Truy Vấn (Query Planner)
 
-- `documents` table;
-- `chunks` table;
-- `chunk_fts` virtual table;
-- `chunk_metadata` or JSON column;
-- local rebuild and incremental update by source hash;
-- no cloud embedding for company/mật.
+Trách nhiệm:
+- Chuẩn hóa các thuật ngữ Tiếng Việt / Tiếng Nhật / Tiếng Anh;
+- Mở rộng từ đồng nghĩa chuyên ngành cho MOM/WMS/Opcenter/InterStock;
+- Sinh ra nhiều biến thể truy vấn;
+- Quyết định xem câu hỏi thuộc dạng tra cứu, so sánh, quy trình, nguyên nhân gốc rễ, tóm tắt hay truy vấn thiếu bằng chứng;
+- Chọn bộ lọc metadata và giới hạn ứng viên.
 
-Optional vector search should come later only after FTS/BM25 benchmark gaps are measured.
+### 5. Bộ Truy Xuất + Bộ Xếp Hạng Lại (Retriever + Reranker)
 
-### 4. Query Planner
+Truy xuất ban đầu:
+- Tìm kiếm ứng viên bằng FTS/BM25;
+- Tăng điểm (boost) cho tên tệp / tiêu đề / nguồn;
+- Bộ lọc metadata;
+- Tăng điểm cho mã định danh chính xác;
+- Mở rộng phân đoạn;
+- Loại bỏ trùng lặp;
+- Đảm bảo tính đa dạng xuyên tài liệu / trang / sheet.
 
-Responsibilities:
+Xếp hạng lại sau này:
+- Bộ xếp hạng lại cục bộ dạng cross-encoder hoặc heuristic gọn nhẹ trước tiên;
+- Xếp hạng lại bằng provider tùy chọn chỉ dành cho tài liệu không nhạy cảm và có phê duyệt rõ ràng.
 
-- normalize Vietnamese/Japanese/English terms;
-- expand domain synonyms for MOM/WMS/Opcenter/InterStock;
-- generate multiple query variants;
-- decide if question is lookup, comparison, process, root-cause, summary, or missing-evidence query;
-- select metadata filters and candidate limits.
+### 6. Bộ Xây Dựng Gói Bằng Chứng (Evidence Pack Builder)
 
-### 5. Retriever + Reranker
+Các trường trong gói bằng chứng:
+- ID gói;
+- Câu truy vấn;
+- Các đoạn trích bằng chứng hàng đầu;
+- ID trích dẫn;
+- Tham chiếu nguồn;
+- Chi tiết điểm số;
+- Tóm tắt độ bao phủ;
+- Cảnh báo thiếu bằng chứng;
+- Cờ chưa đủ bằng chứng;
+- Chế độ riêng tư;
+- Tuyến trả lời được phép.
 
-Initial retrieval:
+Gói này trở thành đầu vào cho câu trả lời cục bộ, câu trả lời provider, xuất prompt và chuyển từ Hỏi đáp sang Vụ việc.
 
-- FTS/BM25 candidate search;
-- filename/title/source boosts;
-- metadata filters;
-- exact identifier boost;
-- section expansion;
-- duplicate removal;
-- diversity across documents/pages/sheets.
+### 7. Bộ Soạn Thảo Câu Trả Lời (Answer Composer)
 
-Later rerank:
+Định dạng câu trả lời:
+- Câu trả lời trực tiếp;
+- Sự thật có bằng chứng chứng minh;
+- Suy luận / giả thuyết được gắn nhãn rõ ràng;
+- Trích dẫn cho từng tuyên bố;
+- Mục bằng chứng còn thiếu / không thể trả lời;
+- Thông tin provider/model trong nhật ký định tuyến;
+- Tóm tắt đính kèm vào vụ việc.
 
-- local cross-encoder or lightweight heuristic reranker first;
-- optional provider rerank only for non-sensitive documents and explicit approval.
+Quy tắc:
+- Từ chối trả lời nếu chưa đủ bằng chứng;
+- Tuyệt đối không tuyên bố tương đương NotebookLM cho đến khi benchmark đạt;
+- Tuyệt đối không gửi bằng chứng công ty/mật ra bên ngoài.
 
-### 6. Evidence Pack Builder
+### 8. Khung Đo Chuẩn Benchmark (Benchmark Harness)
 
-Evidence pack fields:
+Các tầng đo chuẩn:
+- Smoke 20 câu hỏi;
+- Cổng 50 câu hỏi;
+- Hồi quy 100 câu hỏi.
 
-- pack ID;
-- query;
-- top evidence snippets;
-- citation IDs;
-- source refs;
-- score details;
-- coverage summary;
-- missing evidence warnings;
-- insufficient evidence flag;
-- privacy mode;
-- allowed answer route.
+Chỉ số đo lường:
+- Độ chính xác;
+- Độ chính xác của trích dẫn;
+- Tỷ lệ ảo giác (hallucination);
+- Độ bao phủ;
+- Khả năng phát hiện thiếu bằng chứng;
+- Hành vi bảo mật;
+- Độ trễ;
+- Tính hữu ích của câu trả lời.
 
-This pack becomes the input to local answer, provider answer, prompt export, and Q&A-to-Case.
+So sánh:
+- So sánh AIOS vs NotebookLM chỉ trên cùng tài liệu / câu hỏi công khai / không nhạy cảm;
+- Không đưa ra tuyên bố tương đương giả mạo.
 
-### 7. Answer Composer
+## Kiến Trúc Cầu Nối Câu Trả Lời IDE Của AIOS
 
-Answer format:
+### Chế Độ A — Xuất Prompt (Prompt Export)
 
-- direct answer;
-- evidence-backed facts;
-- inference/hypothesis clearly labeled;
-- citations per claim;
-- missing evidence / cannot answer section;
-- route log provider/model;
-- attach-to-case summary.
+AIOS tạo một gói prompt có căn cứ bằng chứng bao gồm:
+- Mục tiêu / câu hỏi;
+- Gói bằng chứng;
+- Tham chiếu nguồn;
+- Các hành động được phép;
+- Chế độ riêng tư;
+- Định dạng câu trả lời kỳ vọng;
+- Cảnh báo và các phi mục tiêu.
 
-Rules:
+Quyền riêng tư:
+- Công ty/mật: chỉ dùng cục bộ / model tin cậy; chặn xuất ra bên ngoài trừ khi người dùng đánh dấu an toàn tường minh;
+- Tài liệu thường: cho phép xuất prompt an toàn cho cloud.
 
-- abstain if evidence is insufficient;
-- never claim NotebookLM parity until benchmark passes;
-- never send company/mật evidence outside.
+### Chế Độ B — Dán Ngược Câu Trả Lời (Paste-back Answer)
 
-### 8. Benchmark Harness
+Người dùng dán kết quả đầu ra từ Codex/Gemini/Claude/GPT/Opus/IDE.
 
-Benchmark tiers:
+AIOS lưu trữ:
+- Tên model / công cụ;
+- ID gói prompt;
+- Câu trả lời;
+- Tham chiếu bằng chứng;
+- Tóm tắt định tuyến;
+- Đã dùng AI ngoài hay chưa (Có/Không);
+- Cảnh báo / Độ tin cậy;
+- Liên kết vụ việc;
+- Thời gian tạo.
 
-- 20-question smoke;
-- 50-question gate;
-- 100-question regression.
+### Chế Độ C — Adapter Công Cụ / IDE Sau Này
 
-Metrics:
+Các adapter có thể bao gồm:
+- Adapter CLI Codex;
+- Adapter API/CLI Gemini;
+- Adapter API/CLI Claude;
+- Adapter tương thích OpenAI;
+- Adapter chỉ dùng cục bộ.
 
-- correctness;
-- citation accuracy;
-- hallucination rate;
-- coverage;
-- insufficiency detection;
-- privacy behavior;
-- latency;
-- answer usefulness.
+Quy tắc:
+- Cổng phê duyệt trước khi chỉnh sửa tệp / hành động;
+- Không tự động ghi tệp khi chưa có sự phê duyệt của người dùng;
+- Không để lộ secret thô trong log;
+- Không gọi provider cho dữ liệu công ty/mật trừ khi thỏa mãn quy tắc tin cậy / cục bộ.
 
-Comparison:
+### Chế Độ D — Khung Điều Phối Agent (Agent Harness)
 
-- AIOS vs NotebookLM on the same public/non-sensitive docs/questions only;
-- no fake parity claim.
+Trạng thái khung điều phối:
+- Trạng thái tác vụ;
+- Trạng thái bằng chứng;
+- Quyền công cụ;
+- Nén ngữ cảnh;
+- Ủy quyền tác vụ con;
+- Nhật ký kiểm toán;
+- Hoàn tác / Bàn giao;
+- Danh mục kiểm tra nghiệm thu cuối cùng.
 
-## AIOS IDE Answer Bridge Architecture
+Nguyên tắc thiết kế: AIOS nên học hỏi từ các vòng lặp kiểu Claude-Code, cổng phê duyệt của Cline, kỷ luật Git của Aider, tính cô lập của OpenHands, trạng thái của LangGraph và các tầng bộ nhớ của Letta mà không sao chép mã nguồn hay đánh mất quyền kiểm soát ưu tiên cục bộ.
 
-### Mode A — Prompt Export
+## Mô Hình Quyền Riêng Tư (Privacy Model)
 
-AIOS creates an evidence-grounded prompt pack containing:
+Các chế độ riêng tư:
+- `local_only`: tuyệt đối không xuất lên cloud / provider;
+- `cloud_safe`: cho phép đối với tài liệu thường;
+- `trusted_internal`: chỉ cho phép đối với endpoint cục bộ / tin cậy được cấu hình rõ ràng;
+- `redacted_export`: chỉ các đoạn trích đã làm sạch mới được xuất.
 
-- goal/question;
-- evidence pack;
-- source refs;
-- allowed actions;
-- privacy mode;
-- expected answer format;
-- warnings and non-goals.
+Các chốt chặn bắt buộc:
+- Chế độ an toàn rõ ràng trên từng gói bằng chứng;
+- Kiểm tra xuất prompt;
+- Gắn nhãn câu trả lời dán ngược lại;
+- Nhật ký định tuyến ghi rõ việc gửi ra ngoài (Có/Không);
+- Không hiển thị API key;
+- Không lưu trữ payload provider thô trừ khi an toàn và được phê duyệt;
+- Các artifact runtime bị bỏ qua luôn nằm ngoài theo dõi của Git.
 
-Privacy:
-
-- company/mật: local-only/trusted-model only; external export blocked unless user explicitly marks safe;
-- tài liệu thường: cloud-safe prompt export allowed.
-
-### Mode B — Paste-back Answer
-
-User pastes output from Codex/Gemini/Claude/GPT/Opus/IDE.
-
-AIOS stores:
-
-- model/tool name;
-- prompt pack ID;
-- answer;
-- evidence refs;
-- route summary;
-- external AI used yes/no;
-- warnings/confidence;
-- case link;
-- created time.
-
-### Mode C — Tool/IDE Adapter Later
-
-Adapters can include:
-
-- Codex CLI adapter;
-- Gemini API/CLI adapter;
-- Claude API/CLI adapter;
-- OpenAI-compatible adapter;
-- local-only adapter.
-
-Rules:
-
-- approval gate before file edit/action;
-- no automatic agent writes without user approval;
-- no raw secrets in logs;
-- no provider calls for company/mật unless trusted/local rules are satisfied.
-
-### Mode D — Agent Harness
-
-Harness state:
-
-- task state;
-- evidence state;
-- tool permission;
-- context compaction;
-- subtask delegation;
-- audit log;
-- rollback/handoff;
-- final validation checklist.
-
-Design principle: AIOS should learn from Claude-Code-style loops, Cline approval gates, Aider git discipline, OpenHands isolation, LangGraph state, and Letta memory tiers without copying source or surrendering local-first control.
-
-## Privacy Model
-
-Privacy modes:
-
-- `local_only`: never exported to cloud/provider;
-- `cloud_safe`: allowed for normal documents;
-- `trusted_internal`: allowed only for explicitly configured local/trusted endpoint;
-- `redacted_export`: only redacted snippets exported.
-
-Required controls:
-
-- explicit safety mode on every evidence pack;
-- prompt export checks;
-- paste-back answer labeling;
-- route log with external sent yes/no;
-- no API key display;
-- no raw provider payload persisted unless safe and approved;
-- ignored runtime artifacts remain untracked.
-
-## Implementation Gates
+## Các Cổng Triển Khai (Implementation Gates)
 
 1. **AIOS-RAG-INGEST-1**
-   - Improve parser/chunk metadata only.
-   - No vector DB.
-   - No cloud OCR.
-   - Tests for PDF/Excel/PPTX/image/source refs.
+   - Chỉ cải thiện metadata bộ phân tích / chunk.
+   - Chưa dùng Vector DB.
+   - Chưa dùng Cloud OCR.
+   - Kiểm thử cho tham chiếu PDF/Excel/PPTX/ảnh/nguồn.
 
 2. **AIOS-RAG-SEARCH-1**
-   - SQLite FTS/BM25 local hybrid foundation.
-   - Metadata filters.
-   - Ranking tests.
-   - No external model dependency.
+   - Nền tảng kết hợp cục bộ SQLite FTS/BM25.
+   - Bộ lọc metadata.
+   - Kiểm thử xếp hạng.
+   - Không phụ thuộc model bên ngoài.
 
 3. **AIOS-RAG-EVIDENCE-PACK-1**
-   - Evidence pack builder.
-   - Source scoring.
-   - Insufficient evidence handling.
-   - Attach pack to answer/case.
+   - Bộ tạo gói bằng chứng.
+   - Chấm điểm nguồn.
+   - Xử lý khi chưa đủ bằng chứng.
+   - Đính kèm gói vào câu trả lời / vụ việc.
 
 4. **AIOS-IDE-BRIDGE-1**
-   - Manual prompt export.
-   - Paste-back answer.
-   - Model/tool/evidence/route summary saved.
-   - No API automation yet.
+   - Xuất prompt thủ công.
+   - Dán ngược câu trả lời.
+   - Lưu tóm tắt model/công cụ/bằng chứng/tuyến.
+   - Chưa tự động hóa API.
 
 5. **AIOS-RAG-BENCHMARK-1**
-   - Compare AIOS vs NotebookLM on same non-sensitive docs/questions.
-   - No fake parity.
+   - So sánh AIOS vs NotebookLM trên cùng tài liệu / câu hỏi không nhạy cảm.
+   - Không tuyên bố tương đương giả mạo.
 
-Later:
-
+Sau này:
 - AIOS-RAG-RERANK-1;
 - AIOS-CASE-SCALE-1;
 - AIOS-WORKSTREAM-MAP-1;
 - AIOS-P1-READINESS-CHECKLIST.
 
-## Risks
+## Rủi Ro (Risks)
 
-- Overbuilding a graph/vector stack before the local FTS baseline is measured.
-- Losing local-first safety by adding cloud OCR/embedding/rerank too early.
-- Fake parity claims versus NotebookLM before benchmark evidence exists.
-- Prompt exports accidentally including company/mật evidence.
-- Agent automation editing files or running tools without approval.
-- Runtime artifacts or secrets becoming tracked.
+- Xây dựng thừa thãi stack đồ thị / vector trước khi đo lường đường cơ sở FTS cục bộ.
+- Đánh mất tính an toàn ưu tiên cục bộ do đưa cloud OCR / embedding / rerank vào quá sớm.
+- Tuyên bố tương đương giả mạo so với NotebookLM trước khi có bằng chứng benchmark.
+- Xuất prompt vô tình làm lộ bằng chứng công ty/mật.
+- Tự động hóa agent tự ý chỉnh sửa tệp hoặc chạy công cụ mà không có sự phê duyệt.
+- Các artifact runtime hoặc secret bị vô tình theo dõi trong Git.
 
-## Explicit Non-goals
+## Các Phi Mục Tiêu Rõ Ràng (Explicit Non-goals)
 
-- No implementation in this gate.
-- No vector DB or graph DB added now.
-- No provider/cloud call.
-- No API key read or printed.
-- No P1.0 opened.
-- No NotebookLM parity claim.
-- No leaked/proprietary source copying.
-- No ML/prediction engine.
+- Không triển khai mã nguồn trong cổng này.
+- Chưa thêm Vector DB hay Graph DB lúc này.
+- Không gọi provider / cloud.
+- Không đọc hay in API key.
+- Không mở P1.0.
+- Không tuyên bố tương đương NotebookLM.
+- Không sao chép mã nguồn độc quyền / rò rỉ.
+- Không dùng công cụ ML / dự đoán.
 
-## Recommendation
+## Khuyến Nghị (Recommendation)
 
-Proceed with `AIOS-RAG-INGEST-1` first. The highest-leverage next move is to normalize parser output and chunk metadata so every later feature can rely on stable document/chunk IDs, citations, privacy flags, and source structure. Then add SQLite FTS/BM25 search, evidence packs, manual IDE bridge, and only then benchmark against NotebookLM.
+Tiến hành với `AIOS-RAG-INGEST-1` trước tiên. Bước đi có đòn bẩy cao nhất tiếp theo là chuẩn hóa đầu ra của parser và metadata của chunk để mọi tính năng sau này đều có thể dựa vào ID tài liệu/chunk ổn định, trích dẫn, cờ bảo mật và cấu trúc nguồn. Sau đó thêm tìm kiếm SQLite FTS/BM25, gói bằng chứng, cầu nối IDE thủ công, và chỉ sau đó mới thực hiện đo chuẩn benchmark so với NotebookLM.
+

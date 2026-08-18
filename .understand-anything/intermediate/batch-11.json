@@ -1,0 +1,191 @@
+{
+  "nodes": [
+    {
+      "id": "file:.ai/NOTEBOOKLM_12Q_FULL_ANSWER_EXPORT_REPORT.md",
+      "type": "file",
+      "name": "NOTEBOOKLM_12Q_FULL_ANSWER_EXPORT_REPORT.md",
+      "filePath": ".ai/NOTEBOOKLM_12Q_FULL_ANSWER_EXPORT_REPORT.md",
+      "summary": "Report on the export process of 12Q answers from NotebookLM.",
+      "tags": ["report", "notebooklm", "12q"]
+    },
+    {
+      "id": "file:.ai/NOTEBOOKLM_12Q_BENCHMARK_PLAN.md",
+      "type": "file",
+      "name": "NOTEBOOKLM_12Q_BENCHMARK_PLAN.md",
+      "filePath": ".ai/NOTEBOOKLM_12Q_BENCHMARK_PLAN.md",
+      "summary": "Benchmark plan for NotebookLM 12Q.",
+      "tags": ["plan", "notebooklm", "12q"]
+    },
+    {
+      "id": "file:.ai/NOTEBOOKLM_12Q_HUMAN_REVIEW_VERDICT.md",
+      "type": "file",
+      "name": "NOTEBOOKLM_12Q_HUMAN_REVIEW_VERDICT.md",
+      "filePath": ".ai/NOTEBOOKLM_12Q_HUMAN_REVIEW_VERDICT.md",
+      "summary": "Human review verdict for NotebookLM 12Q results.",
+      "tags": ["review", "notebooklm", "12q"]
+    },
+    {
+      "id": "file:.ai/NOTEBOOKLM_12Q_AFTER_COMPOSER_REPORT.md",
+      "type": "file",
+      "name": "NOTEBOOKLM_12Q_AFTER_COMPOSER_REPORT.md",
+      "filePath": ".ai/NOTEBOOKLM_12Q_AFTER_COMPOSER_REPORT.md",
+      "summary": "Report on NotebookLM 12Q results after composer intervention.",
+      "tags": ["report", "notebooklm", "12q"]
+    },
+    {
+      "id": "file:.ai/NOTEBOOKLM_12Q_AFTER_COMPOSER_MCP_FAILURE_AUDIT.md",
+      "type": "file",
+      "name": "NOTEBOOKLM_12Q_AFTER_COMPOSER_MCP_FAILURE_AUDIT.md",
+      "filePath": ".ai/NOTEBOOKLM_12Q_AFTER_COMPOSER_MCP_FAILURE_AUDIT.md",
+      "summary": "Audit of MCP failures after composer intervention in 12Q workflow.",
+      "tags": ["audit", "notebooklm", "12q", "mcp"]
+    },
+    {
+      "id": "file:.ai/NOTEBOOKLM_12Q_AFTER_FINAL_ANSWER_COMPOSER_REPORT.md",
+      "type": "file",
+      "name": "NOTEBOOKLM_12Q_AFTER_FINAL_ANSWER_COMPOSER_REPORT.md",
+      "filePath": ".ai/NOTEBOOKLM_12Q_AFTER_FINAL_ANSWER_COMPOSER_REPORT.md",
+      "summary": "Report on 12Q after final answer composer integration.",
+      "tags": ["report", "notebooklm", "12q"]
+    },
+    {
+      "id": "file:.ai/NOTEBOOKLM_2Q_RERUN_AFTER_CITATION_FIX_REPORT.md",
+      "type": "file",
+      "name": "NOTEBOOKLM_2Q_RERUN_AFTER_CITATION_FIX_REPORT.md",
+      "filePath": ".ai/NOTEBOOKLM_2Q_RERUN_AFTER_CITATION_FIX_REPORT.md",
+      "summary": "Report on 2Q rerun after fixing citations.",
+      "tags": ["report", "notebooklm", "2q", "citation"]
+    },
+    {
+      "id": "file:.ai/NOTEBOOKLM_COLLECTION_STATUS_AFTER_EXCEL.md",
+      "type": "file",
+      "name": "NOTEBOOKLM_COLLECTION_STATUS_AFTER_EXCEL.md",
+      "filePath": ".ai/NOTEBOOKLM_COLLECTION_STATUS_AFTER_EXCEL.md",
+      "summary": "Status of NotebookLM collection post-Excel processing.",
+      "tags": ["status", "notebooklm", "excel"]
+    },
+    {
+      "id": "file:.ai/NOTEBOOKLM_COMPARE_SUMMARY.md",
+      "type": "file",
+      "name": "NOTEBOOKLM_COMPARE_SUMMARY.md",
+      "filePath": ".ai/NOTEBOOKLM_COMPARE_SUMMARY.md",
+      "summary": "Summary of NotebookLM comparative analysis.",
+      "tags": ["summary", "notebooklm", "comparison"]
+    },
+    {
+      "id": "file:.ai/NOTEBOOKLM_COMPARE_V2_DIAGNOSIS.md",
+      "type": "file",
+      "name": "NOTEBOOKLM_COMPARE_V2_DIAGNOSIS.md",
+      "filePath": ".ai/NOTEBOOKLM_COMPARE_V2_DIAGNOSIS.md",
+      "summary": "Diagnosis of v2 comparative analysis.",
+      "tags": ["diagnosis", "notebooklm", "comparison"]
+    },
+    {
+      "id": "file:.ai/NOTEBOOKLM_FAIR_COMPARE_V2_REPORT.md",
+      "type": "file",
+      "name": "NOTEBOOKLM_FAIR_COMPARE_V2_REPORT.md",
+      "filePath": ".ai/NOTEBOOKLM_FAIR_COMPARE_V2_REPORT.md",
+      "summary": "Fair compare v2 report for NotebookLM.",
+      "tags": ["report", "notebooklm", "comparison"]
+    },
+    {
+      "id": "file:.ai/NOTEBOOKLM_MCP_12Q_BENCHMARK_REPORT.md",
+      "type": "file",
+      "name": "NOTEBOOKLM_MCP_12Q_BENCHMARK_REPORT.md",
+      "filePath": ".ai/NOTEBOOKLM_MCP_12Q_BENCHMARK_REPORT.md",
+      "summary": "Benchmark report for NotebookLM MCP 12Q.",
+      "tags": ["report", "notebooklm", "mcp", "12q"]
+    },
+    {
+      "id": "file:.ai/NOTEBOOKLM_MCP_VS_AIOS_2Q_COMPARE_REPORT.md",
+      "type": "file",
+      "name": "NOTEBOOKLM_MCP_VS_AIOS_2Q_COMPARE_REPORT.md",
+      "filePath": ".ai/NOTEBOOKLM_MCP_VS_AIOS_2Q_COMPARE_REPORT.md",
+      "summary": "Comparative report between NotebookLM MCP and AIOS 2Q.",
+      "tags": ["report", "notebooklm", "aios", "comparison"]
+    },
+    {
+      "id": "file:.ai/NOTEBOOKLM_REAL_COMPARE_REPORT.md",
+      "type": "file",
+      "name": "NOTEBOOKLM_REAL_COMPARE_REPORT.md",
+      "filePath": ".ai/NOTEBOOKLM_REAL_COMPARE_REPORT.md",
+      "summary": "Real comparison report involving NotebookLM.",
+      "tags": ["report", "notebooklm", "comparison"]
+    },
+    {
+      "id": "file:.ai/AIOS_NOTEBOOKLM_12Q_ROUTER_SYNTH_SIDE_BY_SIDE_REVIEW.md",
+      "type": "file",
+      "name": "AIOS_NOTEBOOKLM_12Q_ROUTER_SYNTH_SIDE_BY_SIDE_REVIEW.md",
+      "filePath": ".ai/AIOS_NOTEBOOKLM_12Q_ROUTER_SYNTH_SIDE_BY_SIDE_REVIEW.md",
+      "summary": "Review of NotebookLM 12Q router synthesizer side-by-side results.",
+      "tags": ["review", "notebooklm", "aios", "12q", "router"]
+    },
+    {
+      "id": "file:.ai/NON_EXCEL_NOTEBOOKLM_VS_AIOS_2Q_REPORT.md",
+      "type": "file",
+      "name": "NON_EXCEL_NOTEBOOKLM_VS_AIOS_2Q_REPORT.md",
+      "filePath": ".ai/NON_EXCEL_NOTEBOOKLM_VS_AIOS_2Q_REPORT.md",
+      "summary": "Report comparing non-Excel NotebookLM and AIOS 2Q.",
+      "tags": ["report", "notebooklm", "aios", "comparison", "excel"]
+    },
+    {
+      "id": "file:.ai/NEXT_NOTEBOOKLM_REAL_RUN.md",
+      "type": "file",
+      "name": "NEXT_NOTEBOOKLM_REAL_RUN.md",
+      "filePath": ".ai/NEXT_NOTEBOOKLM_REAL_RUN.md",
+      "summary": "Plan for the next real NotebookLM run.",
+      "tags": ["plan", "notebooklm"]
+    },
+    {
+      "id": "file:.ai/FIX_AIOS_GAPS_FROM_NOTEBOOKLM_COMPARE_DESIGN.md",
+      "type": "file",
+      "name": "FIX_AIOS_GAPS_FROM_NOTEBOOKLM_COMPARE_DESIGN.md",
+      "filePath": ".ai/FIX_AIOS_GAPS_FROM_NOTEBOOKLM_COMPARE_DESIGN.md",
+      "summary": "Design document for fixing AIOS gaps identified from NotebookLM comparisons.",
+      "tags": ["design", "aios", "notebooklm", "gap-fix"]
+    },
+    {
+      "id": "file:.ai/AIOS_ROUTER_SYNTH_12Q_FAILED_RERUN_AUDIT.md",
+      "type": "file",
+      "name": "AIOS_ROUTER_SYNTH_12Q_FAILED_RERUN_AUDIT.md",
+      "filePath": ".ai/AIOS_ROUTER_SYNTH_12Q_FAILED_RERUN_AUDIT.md",
+      "summary": "Audit of failed rerun for router synthesizer 12Q.",
+      "tags": ["audit", "aios", "12q", "router"]
+    },
+    {
+      "id": "file:.ai/NOTEBOOKLM_12Q_VALID_AFTER_COMPOSER_REPORT.md",
+      "type": "file",
+      "name": "NOTEBOOKLM_12Q_VALID_AFTER_COMPOSER_REPORT.md",
+      "filePath": ".ai/NOTEBOOKLM_12Q_VALID_AFTER_COMPOSER_REPORT.md",
+      "summary": "Report on valid NotebookLM 12Q results post-composer.",
+      "tags": ["report", "notebooklm", "12q"]
+    }
+  ],
+  "edges": [
+    {
+      "source": "file:.ai/NOTEBOOKLM_12Q_BENCHMARK_PLAN.md",
+      "target": "file:.ai/NOTEBOOKLM_12Q_FULL_ANSWER_EXPORT_REPORT.md",
+      "type": "precedes"
+    },
+    {
+      "source": "file:.ai/FIX_AIOS_GAPS_FROM_NOTEBOOKLM_COMPARE_DESIGN.md",
+      "target": "file:.ai/NOTEBOOKLM_COMPARE_SUMMARY.md",
+      "type": "relates_to"
+    },
+    {
+      "source": "file:.ai/NOTEBOOKLM_MCP_VS_AIOS_2Q_COMPARE_REPORT.md",
+      "target": "file:.ai/NOTEBOOKLM_COMPARE_SUMMARY.md",
+      "type": "relates_to"
+    },
+    {
+      "source": "file:.ai/NOTEBOOKLM_12Q_AFTER_COMPOSER_MCP_FAILURE_AUDIT.md",
+      "target": "file:.ai/NOTEBOOKLM_12Q_AFTER_COMPOSER_REPORT.md",
+      "type": "analyzes"
+    },
+    {
+      "source": "file:.ai/NOTEBOOKLM_FAIR_COMPARE_V2_REPORT.md",
+      "target": "file:.ai/NOTEBOOKLM_COMPARE_V2_DIAGNOSIS.md",
+      "type": "relates_to"
+    }
+  ]
+}

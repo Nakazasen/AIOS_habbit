@@ -1,41 +1,38 @@
-# Professionalization Index
+# Chỉ Mục Chuyên Nghiệp Hóa (Professionalization Index)
 
 Status: `ACTIVE`
 Owner role: Project owner / maintainer
 Last reviewed: 2026-07-25
 Review cadence: Each Gate Card closure and release candidate
 
-## Purpose
+## Mục Đích (Purpose)
 
-This index is the navigation map for professional engineering records. Current
-project delivery state remains canonical in `ROADMAP.md`; this file does not
-replace it.
+Chỉ mục này là bản đồ điều hướng cho các bản ghi kỹ thuật chuyên nghiệp. Trạng thái chuyển giao hiện tại của dự án vẫn là nguồn chân lý canonical trong `ROADMAP.md`; tệp này không thay thế tệp đó.
 
-| Domain | Canonical record | Status focus |
+| Lĩnh vực | Bản ghi Canonical | Trọng tâm trạng thái |
 |---|---|---|
-| Documentation control | [Documentation governance](DOCUMENTATION_GOVERNANCE.md) | Canonical source and review rules |
-| Security | [Security policy](../SECURITY.md), [threat model](security/THREAT_MODEL.md) | Reporting channel and residual risks need owner review |
-| Privacy/data | [Privacy impact assessment](security/PRIVACY_IMPACT_ASSESSMENT.md), [data policy](../00_governance/DATA_POLICY.md) | Legal basis/retention/provider decisions pending |
-| Dependencies | [Dependency policy](security/DEPENDENCY_POLICY.md), [SBOM policy](release/SBOM_POLICY.md) | Advisory enforcement pending |
-| Architecture | [Context](architecture/CONTEXT.md), [containers](architecture/CONTAINERS.md), [components](architecture/COMPONENTS.md), [deployment](architecture/DEPLOYMENT.md) | Runtime/container views current |
-| Decisions | [ADR index](adr/README.md) | New material decisions require ADR |
-| Requirements | [Product](requirements/PRODUCT_REQUIREMENTS.md), [NFR](requirements/NON_FUNCTIONAL_REQUIREMENTS.md), [traceability](requirements/TRACEABILITY_MATRIX.md) | Targets marked TBD remain unapproved |
-| Interfaces/data | [Runtime interfaces](contracts/RUNTIME_INTERFACES.md), [persisted compatibility](contracts/PERSISTED_DATA_COMPATIBILITY.md) | Formal migration framework not implemented |
-| Quality | [Test strategy](quality/TEST_STRATEGY.md), [quality gates](quality/QUALITY_GATES.md), [UX/accessibility](quality/UX_ACCESSIBILITY_ACCEPTANCE.md) | Accessibility manual review pending |
-| Operations | [Backup/restore](operations/BACKUP_RESTORE.md), [incident response](operations/INCIDENT_RESPONSE.md), [troubleshooting](operations/TROUBLESHOOTING.md), [observability](operations/OBSERVABILITY.md) | Synthetic restore drill passed; RTO/RPO remain owner decisions |
-| Release | [Release policy](release/RELEASE_POLICY.md), [checklist](release/RELEASE_CHECKLIST.md), [supported versions](release/SUPPORTED_VERSIONS.md) | Distribution/support window pending |
-| Governance | [Risk register](governance/RISK_REGISTER.md), [ownership](governance/OWNERSHIP_AND_REVIEW.md), [DoR/DoD](governance/DEFINITION_OF_READY_DONE.md) | Named ownership pending |
-| Productization | [User guide](user/WORKSPACE_CHAT_USER_GUIDE.md), [onboarding](onboarding/MAINTAINER_ONBOARDING.md), [migration](operations/DATA_MIGRATION_COMPATIBILITY.md) | Manual reviews and policy decisions pending |
-| Production Vision | [Production intelligence vision](design/PRODUCTION_INTELLIGENCE_VISION.md) | Long-term design reference; no delivery gate opened |
+| Kiểm soát tài liệu | [Quản trị tài liệu](DOCUMENTATION_GOVERNANCE.md) | Nguồn canonical và quy tắc đánh giá |
+| Bảo mật | [Chính sách bảo mật](../SECURITY.md), [mô hình mối đe dọa](security/THREAT_MODEL.md) | Kênh báo cáo và rủi ro tồn dư cần chủ sở hữu xem xét |
+| Quyền riêng tư/Dữ liệu | [Đánh giá tác động quyền riêng tư](security/PRIVACY_IMPACT_ASSESSMENT.md), [chính sách dữ liệu](../00_governance/DATA_POLICY.md) | Quyết định cơ sở pháp lý/lưu trữ/provider đang chờ |
+| Phụ thuộc | [Chính sách phụ thuộc](security/DEPENDENCY_POLICY.md), [chính sách SBOM](release/SBOM_POLICY.md) | Thực thi cảnh báo đang chờ |
+| Kiến trúc | [Ngữ cảnh](architecture/CONTEXT.md), [container](architecture/CONTAINERS.md), [thành phần](architecture/COMPONENTS.md), [triển khai](architecture/DEPLOYMENT.md) | Các khung nhìn runtime/container hiện hành |
+| Quyết định | [Chỉ mục ADR](adr/README.md) | Các quyết định trọng yếu mới bắt buộc phải có ADR |
+| Yêu cầu | [Sản phẩm](requirements/PRODUCT_REQUIREMENTS.md), [NFR](requirements/NON_FUNCTIONAL_REQUIREMENTS.md), [truy xuất nguồn gốc](requirements/TRACEABILITY_MATRIX.md) | Các mục tiêu đánh dấu TBD vẫn chưa được phê duyệt |
+| Giao diện/Dữ liệu | [Giao diện runtime](contracts/RUNTIME_INTERFACES.md), [tương thích dữ liệu lưu trữ](contracts/PERSISTED_DATA_COMPATIBILITY.md) | Khung di chuyển chính thức chưa được triển khai |
+| Chất lượng | [Chiến lược kiểm thử](quality/TEST_STRATEGY.md), [cổng chất lượng](quality/QUALITY_GATES.md), [UX/tiếp cận](quality/UX_ACCESSIBILITY_ACCEPTANCE.md) | Đánh giá thủ công khả năng tiếp cận đang chờ |
+| Vận hành | [Sao lưu/phục hồi](operations/BACKUP_RESTORE.md), [ứng phó sự cố](operations/INCIDENT_RESPONSE.md), [xử lý sự cố](operations/TROUBLESHOOTING.md), [quan sát](operations/OBSERVABILITY.md) | Diễn tập phục hồi tổng hợp đã đạt; RTO/RPO vẫn là quyết định của chủ sở hữu |
+| Phát hành | [Chính sách phát hành](release/RELEASE_POLICY.md), [checklist](release/RELEASE_CHECKLIST.md), [phiên bản hỗ trợ](release/SUPPORTED_VERSIONS.md) | Kênh phân phối / cửa sổ hỗ trợ đang chờ |
+| Quản trị | [Sổ rủi ro](governance/RISK_REGISTER.md), [sở hữu](governance/OWNERSHIP_AND_REVIEW.md), [DoR/DoD](governance/DEFINITION_OF_READY_DONE.md) | Chỉ định sở hữu bằng tên đang chờ |
+| Sản phẩm hóa | [Hướng dẫn người dùng](user/WORKSPACE_CHAT_USER_GUIDE.md), [onboarding](onboarding/MAINTAINER_ONBOARDING.md), [di chuyển](operations/DATA_MIGRATION_COMPATIBILITY.md) | Đánh giá thủ công và quyết định chính sách đang chờ |
+| Tầm nhìn sản phẩm | [Tầm nhìn trí tuệ sản phẩm](design/PRODUCTION_INTELLIGENCE_VISION.md) | Tham chiếu thiết kế dài hạn; chưa mở gate chuyển giao |
 
+## Các Quyết Định Bắt Buộc Của Chủ Sở Hữu (Required Owner Decisions)
 
-## Required owner decisions
+1. Kênh báo cáo bảo mật riêng tư và quy trình công bố lỗ hổng.
+2. Kênh phân phối phát hành và cửa sổ phiên bản được hỗ trợ.
+3. Chính sách lưu trữ/xóa dữ liệu và các mục tiêu khôi phục (RTO/RPO).
+4. Danh tính người đánh giá / chủ sở hữu dự phòng và tên tài khoản trong CODEOWNERS của repository.
+5. Công cụ quét cảnh báo SBOM/lỗ hổng, ngưỡng mức độ và trạng thái thực thi.
 
-1. Private security reporting channel and disclosure process.
-2. Release distribution channel and supported-version window.
-3. Retention/deletion policy and recovery objectives.
-4. Named reviewers/backup owner and repository CODEOWNERS handles.
-5. SBOM/vulnerability advisory tool, threshold and enforcement status.
+Cho đến khi các quyết định trên được ghi nhận, các chính sách tương ứng vẫn ở trạng thái `PROPOSED` hoặc `OWNER_DECISION_REQUIRED`, không phải là các bảo đảm phát hành.
 
-Until those decisions are recorded, corresponding policies remain `PROPOSED` or
-`OWNER_DECISION_REQUIRED`, not release guarantees.

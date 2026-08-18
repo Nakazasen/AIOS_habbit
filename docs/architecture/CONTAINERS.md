@@ -1,4 +1,4 @@
-# Architecture Containers
+# Các Container Kiến trúc (Architecture Containers)
 
 Status: `ACTIVE`
 Owner role: Project owner / architecture reviewer
@@ -7,15 +7,15 @@ Review cadence: Before adding a process, durable store or provider boundary
 
 ```mermaid
 flowchart TB
-    UI["Streamlit Workspace Chat process"]
+    UI["Tiến trình Streamlit Workspace Chat"]
     Store["Workspace Chat JSONL\nlocal_cases/workspace_chat"]
-    Ingest["Local source ingest/extraction"]
+    Ingest["Nạp / trích xuất nguồn cục bộ"]
     RAG["RAG v2 elements/chunks/index"]
-    Gate["BrainGateway preflight/mock policy"]
-    Direct["Real Workspace Chat consent/label guard"]
-    Adapter["Workspace Chat Router Adapter"]
+    Gate["Chính sách preflight/mock BrainGateway"]
+    Direct["Bảo vệ nhãn/sự đồng ý Workspace Chat thực tế"]
+    Adapter["Bộ chuyển đổi Router Workspace Chat"]
     Router["Nakazasen AI Router"]
-    Provider["Optional external provider"]
+    Provider["Nhà cung cấp ngoài tùy chọn"]
 
     UI --> Store
     UI --> Ingest
@@ -28,26 +28,23 @@ flowchart TB
     Router --> Provider
 ```
 
-The two route shapes are a documented P0 convergence gap: the Gateway path
-includes sanitized payload policy, while the current real provider path has its
-own label/consent guard. See [ADR-0004](../adr/0004-brain-gateway-privacy-ownership.md).
+Hai hình thái tuyến ở trên là một khoảng cách hội tụ P0 đã được ghi nhận: tuyến Gateway bao gồm chính sách payload đã làm sạch, trong khi tuyến provider thực tế hiện tại có chốt chặn nhãn/sự đồng ý riêng. Xem [ADR-0004](../adr/0004-brain-gateway-privacy-ownership.md).
 
-| Container | Responsibility | Persistent data | Boundary |
+| Container | Trách nhiệm | Dữ liệu bền vững | Ranh giới |
 |---|---|---|---|
-| Workspace Chat | Owner interaction, local notebook/conversation lifecycle | Ignored JSONL | Supported UI |
-| Ingest/retrieval | Extract source bytes and build local evidence/retrieval views | Caller/feature-selected local data | Local default |
-| RAG v2 index | Chunk storage and deterministic lexical search | Caller-selected SQLite path | Local only |
-| Brain Gateway | Privacy labels, consent and sanitized route eligibility | Request-scoped contract | Policy authority |
-| Router adapter/router | Provider request/outcome integration | Environment keys only at execution | Optional external boundary |
+| Workspace Chat | Tương tác của chủ sở hữu, vòng đời sổ ghi chép/cuộc trò chuyện cục bộ | JSONL (được gitignore) | Giao diện hỗ trợ |
+| Nạp/truy xuất (Ingest/retrieval) | Trích xuất byte nguồn và xây dựng các khung nhìn bằng chứng/truy xuất cục bộ | Dữ liệu cục bộ do caller/tính năng chọn | Mặc định cục bộ |
+| Chỉ mục RAG v2 | Lưu trữ chunk và tìm kiếm từ vựng (lexical) tất định | Đường dẫn SQLite do caller chọn | Chỉ cục bộ |
+| Brain Gateway | Nhãn bảo mật, sự đồng ý (consent) và tính hợp lệ của tuyến làm sạch | Hợp đồng phạm vi theo request | Thẩm quyền chính sách |
+| Router adapter / Router | Tích hợp yêu cầu/kết quả từ nhà cung cấp | Key môi trường chỉ đọc tại thời điểm thực thi | Ranh giới ngoài tùy chọn |
 
-## Failure posture
+## Tư thế Ứng phó Sự cố (Failure Posture)
 
-Local work remains available when a provider is disabled/unavailable. Provider
-failure returns a safe user message; it is not evidence that local data was
-transmitted or lost.
+Công việc cục bộ vẫn khả dụng bình thường khi provider bị vô hiệu hóa hoặc không thể truy cập. Lỗi từ phía provider sẽ trả về thông điệp an toàn cho người dùng; đó không phải là bằng chứng cho thấy dữ liệu cục bộ bị truyền đi hoặc bị mất mát.
 
-## Related records
+## Các Bản ghi Liên quan (Related Records)
 
-- [Components](COMPONENTS.md)
-- [Cloud preflight sequence](sequences/CLOUD_PREFLIGHT.md)
-- [Runtime interfaces](../contracts/RUNTIME_INTERFACES.md)
+- [Các thành phần kiến trúc (Components)](COMPONENTS.md)
+- [Trình tự kiểm tra trước đám mây (Cloud preflight sequence)](sequences/CLOUD_PREFLIGHT.md)
+- [Hợp đồng giao diện runtime (Runtime interfaces)](../contracts/RUNTIME_INTERFACES.md)
+

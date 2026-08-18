@@ -1,0 +1,59 @@
+{
+  "nodes": [
+    {
+      "id": "file:docs/operations/BACKUP_RESTORE.md",
+      "type": "file",
+      "name": "BACKUP_RESTORE.md",
+      "filePath": "docs/operations/BACKUP_RESTORE.md",
+      "summary": "Operations guide for backup and restore procedures.",
+      "tags": ["operations", "backup"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:docs/operations/DATA_MIGRATION_COMPATIBILITY.md",
+      "type": "file",
+      "name": "DATA_MIGRATION_COMPATIBILITY.md",
+      "filePath": "docs/operations/DATA_MIGRATION_COMPATIBILITY.md",
+      "summary": "Data migration and backwards compatibility guide.",
+      "tags": ["operations", "migration"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:docs/operations/INCIDENT_RESPONSE.md",
+      "type": "file",
+      "name": "INCIDENT_RESPONSE.md",
+      "filePath": "docs/operations/INCIDENT_RESPONSE.md",
+      "summary": "Incident response plan and severity matrix.",
+      "tags": ["operations", "incident-response"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:docs/operations/OBSERVABILITY.md",
+      "type": "file",
+      "name": "OBSERVABILITY.md",
+      "filePath": "docs/operations/OBSERVABILITY.md",
+      "summary": "Observability, metrics, and monitoring setup.",
+      "tags": ["operations", "observability"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:docs/operations/PERFORMANCE_CAPACITY_BASELINE.md",
+      "type": "file",
+      "name": "PERFORMANCE_CAPACITY_BASELINE.md",
+      "filePath": "docs/operations/PERFORMANCE_CAPACITY_BASELINE.md",
+      "summary": "Performance benchmarks and capacity planning baseline.",
+      "tags": ["operations", "performance"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:docs/operations/TROUBLESHOOTING.md",
+      "type": "file",
+      "name": "TROUBLESHOOTING.md",
+      "filePath": "docs/operations/TROUBLESHOOTING.md",
+      "summary": "Operations troubleshooting guide and FAQ.",
+      "tags": ["operations", "troubleshooting"],
+      "complexity": "moderate"
+    }
+  ],
+  "edges": []
+}

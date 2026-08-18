@@ -1,14 +1,15 @@
-﻿# Phase 0 Foundation Audit
+# Kiểm Toán Nền Tảng Giai Đoạn 0 (Phase 0 Foundation Audit)
 
 Status: `PASS`
 
-## Checks
-- Required foundation docs exist: PASS
-- Governance docs exist: PASS
-- JSON schemas parse with `py -3`: PASS
-- Raw transcript direct-memory policy exists: PASS
-- Phase gate roadmap exists: PASS
-- User `/goal` request recorded as execution approval evidence: PASS
+## Các Hạng Mục Kiểm Tra (Checks)
+- Các tài liệu nền tảng bắt buộc tồn tại: PASS
+- Các tài liệu quản trị tồn tại: PASS
+- Các JSON schema phân tích cú pháp hợp lệ với `py -3`: PASS
+- Chính sách không nạp trực tiếp transcript thô vào memory tồn tại: PASS
+- Lộ trình các cổng giai đoạn tồn tại: PASS
+- Yêu cầu `/goal` của người dùng được ghi nhận làm bằng chứng phê duyệt thực thi: PASS
 
-## Folder Structure Note
-Existing numbered foundation structure was preserved. Compatibility folders requested by the user were added without destructive renames.
+## Ghi Chú Cấu Trúc Thư Mục (Folder Structure Note)
+Cấu trúc nền tảng đánh số hiện có được giữ nguyên. Các thư mục tương thích do người dùng yêu cầu đã được thêm vào mà không đổi tên gây phá hủy.
+

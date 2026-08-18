@@ -1,61 +1,53 @@
-# Documentation Governance
+# Quản Trị Tài Liệu (Documentation Governance)
 
 Status: `ACTIVE`
 Owner role: Project owner
 Last reviewed: 2026-07-25
 Review cadence: Each release candidate and every material architecture change
 
-## Purpose
+## Mục Đích (Purpose)
 
-Keep documentation useful, traceable and non-contradictory. Documentation is a
-product artifact: a control is not considered documented merely because a file
-exists.
+Giữ cho tài liệu luôn hữu ích, có thể truy xuất nguồn gốc và không mâu thuẫn. Tài liệu là một artifact của sản phẩm: một chốt chặn kiểm soát không được coi là đã được ghi nhận chỉ vì tệp đó tồn tại.
 
-## Canonical sources
+## Các Nguồn Chân Lý Canonical (Canonical Sources)
 
-| Topic | Canonical source |
+| Chủ đề | Nguồn chân lý Canonical |
 |---|---|
-| Current delivery state | `ROADMAP.md` |
-| Current handover and residual risk | `PROJECT_HANDOVER.md` |
-| Historical change evidence | `CHANGELOG.md` |
-| Product principles | `CONSTITUTION.md` |
-| Logical data/memory architecture | `ARCHITECTURE.md` |
-| Runtime and trust-boundary views | `docs/architecture/` |
-| Security and privacy posture | `SECURITY.md`, `docs/security/` |
-| Quality and verification | `docs/quality/` |
-| Operational procedures | `docs/operations/` |
-| Release and dependency control | `docs/release/` |
+| Trạng thái chuyển giao hiện tại | `ROADMAP.md` |
+| Bàn giao hiện tại và rủi ro tồn dư | `PROJECT_HANDOVER.md` |
+| Bằng chứng thay đổi lịch sử | `CHANGELOG.md` |
+| Nguyên tắc sản phẩm | `CONSTITUTION.md` |
+| Kiến trúc dữ liệu / bộ nhớ logic | `ARCHITECTURE.md` |
+| Khung nhìn runtime và ranh giới tin cậy | `docs/architecture/` |
+| Hiện trạng bảo mật và quyền riêng tư | `SECURITY.md`, `docs/security/` |
+| Chất lượng và kiểm chứng | `docs/quality/` |
+| Quy trình vận hành | `docs/operations/` |
+| Kiểm soát phát hành và phụ thuộc | `docs/release/` |
 
-Historical evidence in `docs/archive/` is not an operational source of truth.
+Các bằng chứng lịch sử trong `docs/archive/` không phải là nguồn chân lý vận hành.
 
-## Required metadata
+## Metadata Bắt Buộc (Required Metadata)
 
-Professional-control documents must expose: `Status`, `Owner role`, `Last
-reviewed`, and `Review cadence` near the title. A document may state
-`OWNER_DECISION_REQUIRED`; that status is honest and does not imply approval.
+Các tài liệu quản trị kiểm soát chuyên nghiệp bắt buộc phải hiển thị: `Status`, `Owner role`, `Last reviewed`, và `Review cadence` ngay bên dưới tiêu đề H1. Một tài liệu có thể nêu trạng thái `OWNER_DECISION_REQUIRED`; trạng thái đó là trung thực và không đồng nghĩa với việc đã được phê duyệt.
 
-## Status vocabulary
+## Bộ Từ Vựng Trạng Thái (Status Vocabulary)
 
-- `ACTIVE`: maintained current policy or reference.
-- `PROPOSED`: drafted control requiring owner approval.
-- `PARTIAL`: some implementation exists; limitations are named.
-- `PLANNED`: known work that is not implemented.
-- `RETIRED`: historical only; replacement is linked.
+- `ACTIVE`: chính sách hoặc tài liệu tham chiếu hiện hành đang được duy trì.
+- `PROPOSED`: chốt chặn được dự thảo cần sự phê duyệt của chủ sở hữu.
+- `PARTIAL`: đã triển khai một phần; các hạn chế được nêu rõ.
+- `PLANNED`: công việc đã biết nhưng chưa được triển khai.
+- `RETIRED`: chỉ dùng cho mục đích lịch sử; liên kết thay thế được cung cấp.
 
-## Change and review rules
+## Quy Tắc Thay Đổi và Đánh Giá (Change and Review Rules)
 
-1. Update canonical docs in the same change as a material behavior change.
-2. Link claims to source, tests, Gate Card or runbook evidence where practical.
-3. Do not include secrets, private document contents, screenshots, local paths or
-   runtime records in tracked documentation.
-4. Keep links relative inside the repository so clone/branch navigation works.
-5. Use `docs/PROFESSIONALIZATION_INDEX.md` as the navigation map; do not create
-   competing indexes.
-6. Run `py -3 scripts/check_docs.py` before marking a documentation gate done.
+1. Cập nhật tài liệu canonical trong cùng lượt thay đổi đối với một thay đổi hành vi trọng yếu.
+2. Dẫn link các tuyên bố tới mã nguồn, kiểm thử, Gate Card hoặc bằng chứng runbook khi khả thi.
+3. Tuyệt đối không đưa secret, nội dung tài liệu riêng tư, ảnh chụp màn hình, đường dẫn cục bộ hoặc bản ghi runtime vào tài liệu được theo dõi.
+4. Sử dụng đường dẫn tương đối (relative links) bên trong repository để đảm bảo hoạt động khi clone/chuyển nhánh.
+5. Sử dụng `docs/PROFESSIONALIZATION_INDEX.md` làm bản đồ điều hướng; không tạo các chỉ mục cạnh tranh.
+6. Chạy `py -3 scripts/check_docs.py` trước khi đánh dấu gate tài liệu hoàn thành.
 
-## Stale-document handling
+## Xử Lý Tài Liệu Lỗi Thời (Stale-document Handling)
 
-When a claim becomes obsolete: update the canonical source, leave historical
-records intact, add a replacement link, and archive long historical material
-rather than rewriting history. A broken or ambiguous control is logged as a risk
-until corrected.
+Khi một tuyên bố trở nên lỗi thời: cập nhật nguồn canonical, giữ nguyên các bản ghi lịch sử, thêm liên kết thay thế và lưu trữ (archive) các tài liệu lịch sử dài thay vì viết lại lịch sử. Một chốt chặn bị hỏng hoặc mơ hồ phải được ghi nhận vào sổ rủi ro cho đến khi được sửa chữa.
+

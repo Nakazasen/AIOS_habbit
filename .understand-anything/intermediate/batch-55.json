@@ -1,0 +1,36 @@
+{
+  "nodes": [
+    { "id": "file:src/aios_habit/agent_result_import.py", "type": "file", "name": "agent_result_import.py", "filePath": "src/aios_habit/agent_result_import.py", "summary": "Handles importing of agent results", "tags": ["agent", "import"] },
+    { "id": "file:src/aios_habit/agent_learning.py", "type": "file", "name": "agent_learning.py", "filePath": "src/aios_habit/agent_learning.py", "summary": "Agent learning logic", "tags": ["agent", "learning"] },
+    { "id": "file:src/aios_habit/agent_task_pack.py", "type": "file", "name": "agent_task_pack.py", "filePath": "src/aios_habit/agent_task_pack.py", "summary": "Manages agent task packs", "tags": ["agent", "task"] },
+    { "id": "file:src/aios_habit/ai_provider_bridge.py", "type": "file", "name": "ai_provider_bridge.py", "filePath": "src/aios_habit/ai_provider_bridge.py", "summary": "Bridge to AI providers", "tags": ["ai", "bridge"] },
+    { "id": "file:src/aios_habit/ai_router.py", "type": "file", "name": "ai_router.py", "filePath": "src/aios_habit/ai_router.py", "summary": "AI routing logic", "tags": ["ai", "router"] },
+    { "id": "file:src/aios_habit/antigravity_bridge.py", "type": "file", "name": "antigravity_bridge.py", "filePath": "src/aios_habit/antigravity_bridge.py", "summary": "Antigravity bridge integration", "tags": ["bridge"] },
+    { "id": "file:src/aios_habit/audit.py", "type": "file", "name": "audit.py", "filePath": "src/aios_habit/audit.py", "summary": "System auditing utilities", "tags": ["audit"] },
+    { "id": "file:src/aios_habit/benchmark_reference_acquisition.py", "type": "file", "name": "benchmark_reference_acquisition.py", "filePath": "src/aios_habit/benchmark_reference_acquisition.py", "summary": "Benchmark reference acquisition", "tags": ["benchmark"] },
+    { "id": "file:src/aios_habit/benchmark_reference_registry.py", "type": "file", "name": "benchmark_reference_registry.py", "filePath": "src/aios_habit/benchmark_reference_registry.py", "summary": "Benchmark reference registry", "tags": ["benchmark"] },
+    { "id": "file:src/aios_habit/brain_gateway.py", "type": "file", "name": "brain_gateway.py", "filePath": "src/aios_habit/brain_gateway.py", "summary": "Brain gateway service", "tags": ["core"] },
+    { "id": "file:src/aios_habit/case_audit.py", "type": "file", "name": "case_audit.py", "filePath": "src/aios_habit/case_audit.py", "summary": "Case auditing logic", "tags": ["case", "audit"] },
+    { "id": "file:src/aios_habit/case_models.py", "type": "file", "name": "case_models.py", "filePath": "src/aios_habit/case_models.py", "summary": "Data models for cases", "tags": ["case", "models"] },
+    { "id": "file:src/aios_habit/case_prompt.py", "type": "file", "name": "case_prompt.py", "filePath": "src/aios_habit/case_prompt.py", "summary": "Case prompting logic", "tags": ["case", "prompt"] },
+    { "id": "file:src/aios_habit/case_store.py", "type": "file", "name": "case_store.py", "filePath": "src/aios_habit/case_store.py", "summary": "Storage for cases", "tags": ["case", "store"] },
+    { "id": "file:src/aios_habit/citation_answer.py", "type": "file", "name": "citation_answer.py", "filePath": "src/aios_habit/citation_answer.py", "summary": "Handles citation in answers", "tags": ["rag"] },
+    { "id": "file:src/aios_habit/claim_guard.py", "type": "file", "name": "claim_guard.py", "filePath": "src/aios_habit/claim_guard.py", "summary": "Guards against claims", "tags": ["safety"] },
+    { "id": "file:src/aios_habit/cli.py", "type": "file", "name": "cli.py", "filePath": "src/aios_habit/cli.py", "summary": "CLI interface", "tags": ["cli"] },
+    { "id": "file:src/aios_habit/core.py", "type": "file", "name": "core.py", "filePath": "src/aios_habit/core.py", "summary": "Core system logic", "tags": ["core"] },
+    { "id": "file:src/aios_habit/daily_next_actions.py", "type": "file", "name": "daily_next_actions.py", "filePath": "src/aios_habit/daily_next_actions.py", "summary": "Manages daily next actions", "tags": ["workflow"] },
+    { "id": "file:src/aios_habit/deep_document_parsers.py", "type": "file", "name": "deep_document_parsers.py", "filePath": "src/aios_habit/deep_document_parsers.py", "summary": "Deep document parsing", "tags": ["parsing"] },
+    { "id": "file:src/aios_habit/discovery.py", "type": "file", "name": "discovery.py", "filePath": "src/aios_habit/discovery.py", "summary": "System discovery utility", "tags": ["utils"] },
+    { "id": "file:src/aios_habit/document_extractors.py", "type": "file", "name": "document_extractors.py", "filePath": "src/aios_habit/document_extractors.py", "summary": "Extractors for documents", "tags": ["extraction"] },
+    { "id": "file:src/aios_habit/domain_playbooks.py", "type": "file", "name": "domain_playbooks.py", "filePath": "src/aios_habit/domain_playbooks.py", "summary": "Domain specific playbooks", "tags": ["workflow"] },
+    { "id": "file:src/aios_habit/evidence.py", "type": "file", "name": "evidence.py", "filePath": "src/aios_habit/evidence.py", "summary": "Evidence handling", "tags": ["rag"] },
+    { "id": "file:src/aios_habit/excel_extractors.py", "type": "file", "name": "excel_extractors.py", "filePath": "src/aios_habit/excel_extractors.py", "summary": "Excel specific extractors", "tags": ["extraction"] }
+  ],
+  "edges": [
+    { "source": "file:src/aios_habit/agent_result_import.py", "target": "file:src/aios_habit/core.py", "type": "imports" },
+    { "source": "file:src/aios_habit/ai_router.py", "target": "file:src/aios_habit/ai_provider_bridge.py", "type": "imports" },
+    { "source": "file:src/aios_habit/benchmark_reference_acquisition.py", "target": "file:src/aios_habit/benchmark_reference_registry.py", "type": "imports" },
+    { "source": "file:src/aios_habit/case_audit.py", "target": "file:src/aios_habit/case_models.py", "type": "imports" },
+    { "source": "file:src/aios_habit/document_extractors.py", "target": "file:src/aios_habit/deep_document_parsers.py", "type": "imports" }
+  ]
+}

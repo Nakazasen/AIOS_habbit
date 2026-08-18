@@ -1,38 +1,39 @@
-# P1 Opening Plan Draft
+# Dự Thảo Kế Hoạch Mở Cổng P1 (P1 Opening Plan Draft)
 
-This is a draft plan only. It does not open P1.0.
+Đây chỉ là bản dự thảo kế hoạch. Nó không tự ý mở cổng P1.0.
 
-## Current status
+## Trạng Thái Hiện Tại (Current Status)
 
-- P1.0: CLOSED
-- NotebookLM parity: NOT_CLAIMED
-- Real owner acceptance: BLOCKED_NEEDS_OWNER_ACCEPTANCE
-- Push gate: PENDING_PUSH_GATE
+- P1.0: ĐÃ ĐÓNG (CLOSED)
+- Tương đương NotebookLM (NotebookLM parity): KHÔNG TUYÊN BỐ (NOT_CLAIMED)
+- Nghiệm thu thực tế của chủ sở hữu: BỊ CHẶN, CẦN NGHIỆM THU (BLOCKED_NEEDS_OWNER_ACCEPTANCE)
+- Cổng đẩy lên Git (Push gate): ĐANG CHỜ CỔNG ĐẨY (PENDING_PUSH_GATE)
 
-## Required before P1.0 can open
+## Yêu Cầu Bắt Buộc Trước Khi Có Thể Mở P1.0
 
-1. Human owner completes `docs/P1_OWNER_ACCEPTANCE_RUNBOOK.md`.
-2. Owner reports PASS with acceptable manual-step burden.
-3. Full pytest passes.
-4. CLI audit passes.
-5. Secret/runtime/generated artifact scans pass.
-6. Privacy rules are rechecked for `local_only` and `cloud_safe` paths.
-7. RAG benchmark passes using agreed criteria.
-8. Documentation avoids NotebookLM parity or replacement claims.
+1. Chủ sở hữu là con người hoàn thành [Sổ tay nghiệm thu của chủ sở hữu cho P1](P1_OWNER_ACCEPTANCE_RUNBOOK.md).
+2. Chủ sở hữu báo cáo ĐẠT (PASS) với gánh nặng thao tác thủ công ở mức chấp nhận được.
+3. Toàn bộ bài kiểm thử pytest chạy đạt (PASS).
+4. Kiểm toán CLI audit chạy đạt (PASS).
+5. Quét secret / runtime / artifact tự sinh chạy đạt (PASS).
+6. Các quy tắc bảo mật được kiểm tra lại cho cả hai tuyến `local_only` và `cloud_safe`.
+7. Đo chuẩn RAG benchmark đạt theo các tiêu chí đã thống nhất.
+8. Tài liệu không đưa ra các tuyên bố tương đương hay thay thế NotebookLM.
 
-## Optional improvements before P1.0
+## Các Cải Tiến Tùy Chọn Trước P1.0
 
-- Use the deterministic local answer composer for local cited drafts.
-- Use the deterministic local reranker only as an opt-in benchmark/search quality improvement.
-- Add owner-facing screenshots only with fake data.
+- Sử dụng bộ soạn thảo câu trả lời tất định cục bộ cho các bản thảo có trích dẫn cục bộ.
+- Chỉ sử dụng bộ xếp hạng lại (reranker) tất định cục bộ như một cải tiến chất lượng tìm kiếm / benchmark dạng opt-in.
+- Chỉ bổ sung ảnh chụp màn hình hướng tới chủ sở hữu bằng dữ liệu giả lập (synthetic data).
 
-## Explicit non-goals for P1 opening
+## Các Phi Mục Tiêu Rõ Ràng Cho Việc Mở P1
 
-- No Vector DB unless benchmark evidence proves it is required.
-- No Graph DB unless cross-case graph queries become P1-critical.
-- No provider/cloud automation for company or sensitive content.
-- No NotebookLM parity claim.
+- Không đưa vào Vector DB trừ khi bằng chứng đo chuẩn benchmark chứng minh điều đó là bắt buộc.
+- Không đưa vào Graph DB trừ khi các truy vấn đồ thị quan hệ xuyên vụ việc trở nên bắt buộc đối với P1.
+- Không tự động hóa gọi provider / cloud đối với nội dung công ty hoặc nhạy cảm.
+- Không tuyên bố tương đương năng lực với NotebookLM.
 
-## Opening decision
+## Quyết Định Mở Cổng (Opening Decision)
 
-P1.0 may be opened only after the owner acceptance run is complete and all validation gates pass.
+P1.0 chỉ có thể được mở sau khi lượt chạy nghiệm thu của chủ sở hữu hoàn tất và tất cả các cổng kiểm chứng đều đạt (PASS).
+

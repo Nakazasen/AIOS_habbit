@@ -1,0 +1,63 @@
+{
+  "nodes": [
+    {
+      "id": "file:docs/requirements/NON_FUNCTIONAL_REQUIREMENTS.md",
+      "type": "file",
+      "name": "NON_FUNCTIONAL_REQUIREMENTS.md",
+      "filePath": "docs/requirements/NON_FUNCTIONAL_REQUIREMENTS.md",
+      "summary": "Baseline for non-functional requirements including privacy security and reliability.",
+      "tags": ["requirements", "documentation"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:docs/requirements/PRODUCT_REQUIREMENTS.md",
+      "type": "file",
+      "name": "PRODUCT_REQUIREMENTS.md",
+      "filePath": "docs/requirements/PRODUCT_REQUIREMENTS.md",
+      "summary": "Baseline for product features and scope.",
+      "tags": ["requirements", "documentation"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:docs/requirements/TRACEABILITY_MATRIX.md",
+      "type": "file",
+      "name": "TRACEABILITY_MATRIX.md",
+      "filePath": "docs/requirements/TRACEABILITY_MATRIX.md",
+      "summary": "Traceability matrix linking requirements to design components and evidence.",
+      "tags": ["requirements", "documentation"],
+      "complexity": "moderate"
+    }
+  ],
+  "edges": [
+    {
+      "source": "file:docs/requirements/NON_FUNCTIONAL_REQUIREMENTS.md",
+      "target": "file:docs/requirements/PRODUCT_REQUIREMENTS.md",
+      "type": "related",
+      "direction": "forward"
+    },
+    {
+      "source": "file:docs/requirements/PRODUCT_REQUIREMENTS.md",
+      "target": "file:docs/requirements/NON_FUNCTIONAL_REQUIREMENTS.md",
+      "type": "related",
+      "direction": "forward"
+    },
+    {
+      "source": "file:docs/requirements/TRACEABILITY_MATRIX.md",
+      "target": "file:docs/requirements/NON_FUNCTIONAL_REQUIREMENTS.md",
+      "type": "references",
+      "direction": "forward"
+    },
+    {
+      "source": "file:docs/requirements/TRACEABILITY_MATRIX.md",
+      "target": "file:docs/requirements/PRODUCT_REQUIREMENTS.md",
+      "type": "references",
+      "direction": "forward"
+    },
+    {
+      "source": "file:docs/requirements/PRODUCT_REQUIREMENTS.md",
+      "target": "file:docs/requirements/TRACEABILITY_MATRIX.md",
+      "type": "references",
+      "direction": "forward"
+    }
+  ]
+}

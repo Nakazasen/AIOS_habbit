@@ -1,74 +1,59 @@
-# RAG V2 Design
+# Thiết Kế RAG v2 (RAG V2 Design)
 
-Status: `ACTIVE_ARCHITECTURE_REFERENCE`
+Trạng thái: `ACTIVE_ARCHITECTURE_REFERENCE` (Tài liệu tham chiếu kiến trúc đang hoạt động)
 
-Last reviewed: 2026-07-26
+Lần xem xét gần nhất: 2026-07-26
 
-Current Dev implementation completed: element schema/adapters, document converter
-adapters, structure-aware chunking, persistent local SQLite FTS5/BM25 retrieval
-with deterministic fallback, set-level evidence packaging, provider-independent
-synthesis planning/validation, a local-only evaluation harness, and an independent
-Dev orchestration/CLI. The closed capability benchmark and non-parity decision
-remain recorded in
-[NOTEBOOKLM-BATTLE-RERUN-RAG-V2](../roadmap/completed/NOTEBOOKLM-BATTLE-RERUN-RAG-V2.md).
-The Dev convergence closure is recorded in
-[RAG-V2-DEV-QUALITY-CONVERGENCE](../roadmap/completed/RAG-V2-DEV-QUALITY-CONVERGENCE.md)
-with verdict `DEV_READY_WITH_LIMITATIONS` / `NOT_READY_FOR_PRIMARY_UI`.
+Triển khai Dev hiện tại đã hoàn thành: element schema/adapters, document converter adapters, structure-aware chunking, truy xuất SQLite FTS5/BM25 cục bộ bền vững với cơ chế dự phòng tất định, đóng gói bằng chứng cấp tập hợp (set-level), lập kế hoạch/xác thực tổng hợp độc lập với nhà cung cấp (provider-independent), khung đánh giá chỉ chạy cục bộ và CLI/điều phối Dev độc lập. Đợt đo chuẩn năng lực khép kín và quyết định không tuyên bố tương đương được ghi nhận trong [NOTEBOOKLM-BATTLE-RERUN-RAG-V2](../roadmap/completed/NOTEBOOKLM-BATTLE-RERUN-RAG-V2.md). Việc đóng cổng hội tụ chất lượng Dev được ghi nhận trong [RAG-V2-DEV-QUALITY-CONVERGENCE](../roadmap/completed/RAG-V2-DEV-QUALITY-CONVERGENCE.md) với kết luận `DEV_READY_WITH_LIMITATIONS` / `NOT_READY_FOR_PRIMARY_UI`.
 
-Fail-closed corpus remediation completed 2026-07-26: `resolve_benchmark_source_root`
-now rejects workspace root fallback; `build_local_manifest` validates exact 70-file
-count; gold obligation fields added to eval harness. Live benchmark
-`BATTLE-RAGv2-1785003571-e33e5670` on clean 70-file corpus: NotebookLM **4.27/5**,
-RAG v2 **3.15/5**, Workspace Chat **2.68/5**. NotebookLM won 11/11 shared rows.
-Verdict: **HOLD**. Gap: -1.12 points (26% deficit).
+Khắc phục tập ngữ liệu theo nguyên tắc fail-closed hoàn tất ngày 2026-07-26: `resolve_benchmark_source_root` hiện từ chối phương án dự phòng dùng thư mục gốc workspace; `build_local_manifest` xác thực chính xác số lượng 70 tệp; các trường nghĩa vụ chuẩn (gold obligations) được bổ sung vào khung đánh giá. Đợt đo chuẩn trực tiếp `BATTLE-RAGv2-1785003571-e33e5670` trên tập 70 tệp sạch: NotebookLM **4.27/5**, RAG v2 **3.15/5**, Workspace Chat **2.68/5**. NotebookLM thắng 11/11 câu hỏi so sánh. Kết luận: **HOLD** (TẠM DỪNG). Khoảng cách: -1.12 điểm (thâm hụt 26%).
 
-Scope: architecture reference. This document does not itself open A18/P1.0,
-change UI, add dependencies or authorize a cloud/default-network path.
+Phạm vi: Tài liệu tham chiếu kiến trúc. Tài liệu này không tự ý mở cổng A18/P1.0, không thay đổi UI, không thêm dependency và không cấp quyền cho tuyến mạng mặc định/cloud.
 
-## 1. Goals
+## 1. Mục Tiêu (Goals)
 
-RAG v2 is the generic WorkLens retrieval and answer foundation. It must be:
+RAG v2 là nền tảng truy xuất và trả lời tổng quát cho WorkLens. Hệ thống phải đảm bảo:
 
-- **Generic:** works across manufacturing, accounting, IT/logs, legal/work documents, translation/multilingual docs, Excel-heavy workflows, images, and logs.
-- **Local-first:** conversion, indexing, retrieval, and evidence packaging default to local execution.
-- **Element-first:** documents are converted into typed elements before chunking or indexing.
-- **Privacy-first:** privacy labels flow through elements, chunks, index entries, evidence packs, and synthesis.
-- **Evidence-grounded:** every answer claim must be backed by source evidence or marked insufficient.
-- **Side-by-side with legacy MOM:** current `mom_*` pilot code remains available while RAG v2 matures.
-- **Workspace Chat safe:** no normal UI disruption, no new technical panels/tabs, and no extra complexity for the owner.
-- **NotebookLM-simple:** the owner flow remains add/select sources, ask naturally, and receive grounded answers.
+- **Tổng quát (Generic):** Hoạt động tốt trên nhiều lĩnh vực như sản xuất, kế toán, nhật ký IT, tài liệu pháp lý/công việc, tài liệu dịch thuật/đa ngôn ngữ, quy trình nặng về Excel, hình ảnh và log.
+- **Ưu tiên cục bộ (Local-first):** Chuyển đổi, lập chỉ mục, truy xuất và đóng gói bằng chứng mặc định thực thi cục bộ.
+- **Ưu tiên phần tử (Element-first):** Tài liệu được chuyển đổi thành các phần tử có định kiểu (typed elements) trước khi chia chunk hoặc lập chỉ mục.
+- **Ưu tiên quyền riêng tư (Privacy-first):** Nhãn bảo mật xuyên suốt từ phần tử, chunk, mục chỉ mục, gói bằng chứng đến khâu tổng hợp.
+- **Có căn cứ bằng chứng (Evidence-grounded):** Mọi tuyên bố trong câu trả lời phải được hỗ trợ bởi bằng chứng nguồn hoặc được gắn nhãn chưa đủ bằng chứng.
+- **Chạy song song với MOM cũ:** Mã thử nghiệm `mom_*` hiện tại vẫn khả dụng trong khi RAG v2 hoàn thiện.
+- **An toàn cho Workspace Chat:** Không làm xáo trộn giao diện thông thường, không thêm các tab/bảng điều khiển kỹ thuật phức tạp cho chủ sở hữu.
+- **Đơn giản như NotebookLM:** Quy trình của chủ sở hữu vẫn giữ nguyên: thêm/chọn nguồn dữ liệu, hỏi đáp tự nhiên và nhận câu trả lời có căn cứ.
 
-## 2. Non-goals
+## 2. Các Phi Mục Tiêu (Non-goals)
 
-RAG v2 design explicitly does **not** include:
+Thiết kế RAG v2 rõ ràng **không** bao gồm:
 
-- Hard-coded MOM/WMS business logic in core RAG.
-- Router Server work.
-- Cloud LLM by default.
-- Vector DB as the first mandatory index.
-- Big-bang rewrite of Workspace Chat or MOM pilot.
-- P1.0 opening.
-- A18 opening.
-- IDE bridge opening.
-- New normal-user UI, technical tabs, panels, or workflow complexity.
-- Dependency additions in this design gate.
+- Gắn cứng (hard-code) logic nghiệp vụ MOM/WMS vào lõi RAG.
+- Công việc của Router Server.
+- Mặc định dùng Cloud LLM.
+- Cơ sở dữ liệu Vector là chỉ mục bắt buộc đầu tiên.
+- Viết lại toàn bộ (big-bang) Workspace Chat hoặc bản thử nghiệm MOM.
+- Mở cổng P1.0.
+- Mở cổng A18.
+- Mở cổng cầu nối IDE.
+- Giao diện người dùng mới, các tab kỹ thuật, hoặc gây phức tạp quy trình.
+- Thêm dependency trong cổng thiết kế này.
 
-## 3. Current legacy assessment
+## 3. Đánh Giá Hiện Trạng Kế Thừa (Current Legacy Assessment)
 
-Current relevant legacy modules:
+Các module kế thừa liên quan hiện tại:
 
 - `src/aios_habit/mom_local_index.py`
 - `src/aios_habit/document_extractors.py`
 - `src/aios_habit/mom_benchmark.py`
 
-Assessment:
+Đánh giá:
 
-- `mom_local_index.py` is a legacy MOM pilot index. It is useful evidence that local indexing can work, but it is not generic RAG core.
-- `document_extractors.py` has useful file extractors and fail-soft behavior, but the output is chunk-first rather than element-first.
-- `search_mom_index` contains domain-tuned boosts for the MOM pilot. That is acceptable during legacy transition, but the pattern must not be copied into RAG v2 core.
-- `generate_mom_grounded_answer` is privacy-safe and source-grounded, but it primarily lists snippets/source refs. It is not a strong generic evidence synthesizer.
+- `mom_local_index.py` là chỉ mục thử nghiệm MOM cũ. Nó là bằng chứng hữu ích cho thấy việc lập chỉ mục cục bộ có thể hoạt động, nhưng nó không phải là lõi RAG tổng quát.
+- `document_extractors.py` có các bộ trích xuất tệp hữu ích và hành vi dự phòng mềm (fail-soft), nhưng đầu ra ưu tiên chunk thay vì ưu tiên phần tử (element).
+- `search_mom_index` chứa các trọng số boost được tinh chỉnh riêng cho đợt thử nghiệm MOM. Điều đó chấp nhận được trong giai đoạn chuyển đổi, nhưng không được sao chép vào lõi RAG v2.
+- `generate_mom_grounded_answer` an toàn về bảo mật và có căn cứ nguồn, nhưng chủ yếu liệt kê trích dẫn/tham chiếu nguồn. Nó chưa phải là một bộ tổng hợp bằng chứng tổng quát mạnh mẽ.
 
-## 4. Target architecture
+## 4. Kiến Trúc Mục Tiêu (Target Architecture)
 
 ```mermaid
 flowchart TD
@@ -92,59 +77,59 @@ flowchart TD
     P --> I
 ```
 
-Layer responsibilities:
+Trách nhiệm của từng tầng:
 
-1. **Source Selection:** receives enabled sources from Workspace Chat or benchmark runner.
-2. **Privacy Gate:** blocks disabled sources and enforces local-only defaults.
-3. **Document Loader / Converter:** detects file type and dispatches to adapters.
-4. **Unified Document Elements:** stable typed representation for all supported formats.
-5. **Structure-aware Chunker:** creates chunks using document structure where available.
-6. **Local Index Store:** stores searchable text plus metadata locally.
-7. **Generic Retrieval:** retrieves without business-specific terms.
-8. **Evidence Pack Builder:** normalizes ranked evidence, citations, scores, and gaps.
-9. **Generic Evidence Synthesizer:** answers from evidence only.
-10. **Evaluation Harness:** measures retrieval, citation, faithfulness, and insufficiency behavior.
+1. **Source Selection (Chọn nguồn):** Tiếp nhận các nguồn được kích hoạt từ Workspace Chat hoặc runner đo chuẩn benchmark.
+2. **Privacy Gate (Cổng bảo mật):** Chặn các nguồn bị vô hiệu hóa và thực thi mặc định chỉ dùng cục bộ.
+3. **Document Loader / Converter (Nạp / Chuyển đổi tài liệu):** Phát hiện loại tệp và điều phối đến adapter phù hợp.
+4. **Unified Document Elements (Phần tử tài liệu thống nhất):** Biểu diễn định kiểu ổn định cho tất cả các định dạng hỗ trợ.
+5. **Structure-aware Chunker (Chia chunk nhận biết cấu trúc):** Tạo các chunk dựa trên cấu trúc tài liệu khi có sẵn.
+6. **Local Index Store (Kho chỉ mục cục bộ):** Lưu trữ văn bản có thể tìm kiếm cùng metadata tại máy cục bộ.
+7. **Generic Retrieval (Truy xuất tổng quát):** Truy xuất mà không dùng các thuật ngữ đặc thù ngành.
+8. **Evidence Pack Builder (Tạo gói bằng chứng):** Chuẩn hóa bằng chứng đã xếp hạng, trích dẫn, điểm số và các thiếu sót.
+9. **Generic Evidence Synthesizer (Tổng hợp bằng chứng tổng quát):** Trả lời chỉ dựa trên bằng chứng.
+10. **Evaluation Harness (Khung đánh giá):** Đo lường truy xuất, trích dẫn, độ trung thực và hành vi xử lý khi thiếu dữ liệu.
 
-## 5. DocumentElement schema
+## 5. Lược Đồ DocumentElement (DocumentElement Schema)
 
-RAG v2 should introduce a generic `DocumentElement` concept with at least:
+RAG v2 giới thiệu khái niệm `DocumentElement` tổng quát với tối thiểu các trường sau:
 
-| Field | Purpose |
+| Trường | Mục đích |
 |---|---|
-| `element_id` | Stable element identifier. |
-| `document_id` | Stable document identifier. |
-| `source_path` | Local relative or safe source path. |
-| `source_name` | Display-safe file/source name. |
-| `file_type` | Normalized extension or MIME-like type. |
-| `extractor` | Converter/adapter name and version if available. |
-| `extraction_status` | Success, partial, unsupported, dependency missing, or failed. |
-| `extraction_warning` | Safe warning without raw secrets or stack traces. |
-| `page` | Page number/range for PDFs/images. |
-| `slide` | Slide number/range for PPTX. |
-| `sheet` | Sheet name for spreadsheets. |
-| `row_range` | Spreadsheet/table row range. |
-| `column_range` | Spreadsheet/table column range. |
-| `cell_range` | Spreadsheet cell range, e.g. A1:D20. |
-| `bbox` | Optional layout coordinates for PDF/image regions. |
+| `element_id` | Định danh phần tử ổn định. |
+| `document_id` | Định danh tài liệu ổn định. |
+| `source_path` | Đường dẫn nguồn cục bộ tương đối hoặc an toàn. |
+| `source_name` | Tên tệp/nguồn an toàn để hiển thị. |
+| `file_type` | Phần mở rộng đã chuẩn hóa hoặc kiểu MIME. |
+| `extractor` | Tên bộ chuyển đổi/adapter và phiên bản nếu có. |
+| `extraction_status` | Thành công, một phần, không hỗ trợ, thiếu dependency, hoặc thất bại. |
+| `extraction_warning` | Cảnh báo an toàn, không chứa secret hay stack trace thô. |
+| `page` | Số trang / dải trang cho PDF/ảnh. |
+| `slide` | Số slide / dải slide cho PPTX. |
+| `sheet` | Tên sheet cho bảng tính. |
+| `row_range` | Dải hàng của bảng tính/bảng biểu. |
+| `column_range` | Dải cột của bảng tính/bảng biểu. |
+| `cell_range` | Dải ô bảng tính, ví dụ A1:D20. |
+| `bbox` | Tọa độ bố cục tùy chọn cho vùng PDF/ảnh. |
 | `element_type` | `title`, `heading`, `text`, `table`, `list`, `image`, `ocr`, `log`, `metadata`. |
-| `text` | Raw extracted text for the element. |
-| `normalized_text` | Retrieval-normalized text preserving Vietnamese/Japanese/English. |
-| `table.headers` | Optional table headers. |
-| `table.rows` | Optional table row values. |
-| `table.cells` | Optional cell-level records with row/column/value. |
-| `language_hint` | Best-effort language hint. |
-| `confidence` | Extraction/OCR/layout confidence if known. |
-| `privacy_labels` | Labels such as local-only, machine-only, public/test, or owner-approved. |
-| `checksum` | Element checksum. |
-| `source_fingerprint` | Source file fingerprint for stale checks. |
-| `parent_element_id` | Parent heading/page/table relation. |
-| `section_path` | Hierarchical section path. |
-| `created_at` | Source record creation time if known. |
-| `indexed_at` | Local indexing timestamp. |
+| `text` | Văn bản thô được trích xuất cho phần tử. |
+| `normalized_text` | Văn bản chuẩn hóa cho truy xuất, bảo toàn Tiếng Việt / Tiếng Nhật / Tiếng Anh. |
+| `table.headers` | Tiêu đề bảng tùy chọn. |
+| `table.rows` | Giá trị hàng của bảng tùy chọn. |
+| `table.cells` | Bản ghi cấp ô với hàng/cột/giá trị tùy chọn. |
+| `language_hint` | Gợi ý ngôn ngữ dự đoán tốt nhất. |
+| `confidence` | Độ tin cậy của trích xuất/OCR/bố cục nếu biết. |
+| `privacy_labels` | Các nhãn: local-only, machine-only, public/test, hoặc owner-approved. |
+| `checksum` | Mã kiểm tra checksum của phần tử. |
+| `source_fingerprint` | Dấu vân tay tệp nguồn để kiểm tra độ cũ/mới (stale). |
+| `parent_element_id` | Quan hệ với tiêu đề/trang/bảng cha. |
+| `section_path` | Đường dẫn phân cấp mục. |
+| `created_at` | Thời gian tạo bản ghi nguồn nếu biết. |
+| `indexed_at` | Dấu thời gian lập chỉ mục cục bộ. |
 
-## 6. Converter adapter interface
+## 6. Giao Diện Adapter Chuyển Đổi (Converter Adapter Interface)
 
-Python-like interface:
+Giao diện dạng Python:
 
 ```python
 class DocumentConverterAdapter:
@@ -158,145 +143,130 @@ class DocumentConverterAdapter:
         """Return supported file types, table/layout/OCR capability, dependency status, and privacy notes."""
 ```
 
-Initial adapters:
+Các adapter ban đầu:
 
 - `ExistingExtractorAdapter`
-  - Wraps the current extractor behavior to preserve existing capabilities.
-  - Emits `DocumentElement` records instead of immediate chunks.
+  - Bọc hành vi trích xuất hiện tại để bảo toàn các khả năng sẵn có.
+  - Sinh ra các bản ghi `DocumentElement` thay vì tạo chunk ngay lập tức.
 - `OpenPyxlTableAdapter`
-  - Handles XLSX/XLSM more structurally.
-  - Preserves sheet, row, column, and cell range metadata.
+  - Xử lý XLSX/XLSM theo cấu trúc tốt hơn.
+  - Bảo toàn metadata về sheet, hàng, cột và dải ô.
 - `PyMuPDF4LLMAdapter`
-  - Handles local PDF text-layer extraction.
-  - Does not treat Markdown text as sufficient for all layout/table use cases.
+  - Xử lý trích xuất tầng văn bản PDF cục bộ.
+  - Không xem văn bản Markdown là đủ cho mọi trường hợp sử dụng bố cục/bảng biểu.
 
-Optional/future adapters:
+Các adapter tùy chọn / tương lai:
 
 - `DoclingAdapter`
-  - For richer document conversion, layout, tables, reading order, and OCR mindset.
+  - Chuyển đổi tài liệu phong phú hơn về bố cục, bảng biểu, thứ tự đọc và tư duy OCR.
 - `UnstructuredAdapter`
-  - For typed element partitioning and metadata-rich extraction.
+  - Phân vùng phần tử định kiểu và trích xuất giàu metadata.
 - `TikaAdapter`
-  - For broad file type detection/extraction fallback if operationally acceptable.
+  - Dự phòng phát hiện/trích xuất nhiều định dạng tệp nếu chấp nhận được về mặt vận hành.
 
-## 7. File format strategy
+## 7. Chiến Lược Cho Từng Định Dạng Tệp (File Format Strategy)
 
-| Format | Extraction target | Metadata to keep | Fail-soft behavior | Privacy concern | Test fixture |
+| Định dạng | Mục tiêu trích xuất | Metadata cần giữ | Hành vi Fail-soft | Mối quan ngại bảo mật | Fixture kiểm thử |
 |---|---|---|---|---|---|
-| PDF | Page/section text, headings where possible, tables where possible, OCR blocks later. | page, bbox, extractor, status, source fingerprint. | Return partial text or dependency-missing element. | PDFs often contain confidential business docs; local-only default. | Synthetic PDF or monkeypatched extractor output. |
-| DOCX | Paragraphs, headings, lists, tables. | section path, table structure, source fingerprint. | Return text-only partial if table extraction fails. | May contain contracts/internal docs. | Minimal generated DOCX fixture. |
-| PPTX | Slide text, notes, embedded image markers. | slide number, notes flag, media count. | Return extracted text or unsupported if no readable XML payload. | Slides may include screenshots/customer data. | Synthetic PPTX zip fixture. |
-| XLSX/XLSM | Sheets, tables, headers, row/cell values. | sheet, row/column/cell ranges, formulas/data-only mode note. | Return partial sheets and warnings for unreadable sheets. | Excel is high-risk for company data; no cloud by default. | Small workbook with headers/cells. |
-| CSV | Rows, headers, delimiter-aware text/table. | row range, column names, encoding warning. | Return partial rows with warning on bad encoding. | Could contain exports from production/accounting. | Small CSV fixture. |
-| TXT/log | Paragraphs or log blocks. | line range, timestamp pattern if detected. | Return text chunks; preserve line ranges. | Logs may include paths/tokens; sanitize outputs. | Synthetic logs with timestamps. |
-| HTML | Visible text, headings, lists, tables. | heading path, element type, table markers. | Strip script/style; return visible text or failed reason. | May contain exported internal pages. | Minimal HTML fixture. |
-| PNG/JPG/image OCR | OCR text blocks and image metadata. | image dimensions, OCR engine/lang/confidence, page/bbox. | If OCR unavailable, return safe unsupported element. | Screenshots may expose secrets or company UI. | Image with simple text; OCR-unavailable fail-soft test. |
+| PDF | Văn bản trang/mục, tiêu đề khi có thể, bảng biểu khi có thể, khối OCR sau này. | page, bbox, extractor, status, source fingerprint. | Trả về văn bản một phần hoặc phần tử thiếu dependency. | PDF thường chứa tài liệu kinh doanh mật; mặc định local-only. | PDF giả lập hoặc output extractor được mock. |
+| DOCX | Đoạn văn, tiêu đề, danh sách, bảng biểu. | section path, table structure, source fingerprint. | Trả về văn bản một phần nếu trích xuất bảng thất bại. | Có thể chứa hợp đồng / tài liệu nội bộ. | Fixture DOCX tối thiểu tự sinh. |
+| PPTX | Văn bản slide, ghi chú, đánh dấu ảnh nhúng. | slide number, notes flag, media count. | Trả về văn bản trích xuất hoặc unsupported nếu không có XML đọc được. | Slide có thể chứa ảnh chụp màn hình / dữ liệu khách hàng. | Fixture zip PPTX giả lập. |
+| XLSX/XLSM | Sheet, bảng, tiêu đề, giá trị hàng/ô. | sheet, dải hàng/cột/ô, ghi chú chế độ công thức/chỉ dữ liệu. | Trả về các sheet đọc được kèm cảnh báo cho sheet không đọc được. | Excel có rủi ro rất cao về dữ liệu công ty; không đưa lên cloud theo mặc định. | Bảng tính nhỏ với tiêu đề/ô. |
+| CSV | Hàng, tiêu đề, văn bản/bảng nhận biết dấu phân cách. | row range, column names, encoding warning. | Trả về các hàng đọc được kèm cảnh báo lỗi mã hóa encoding. | Có thể chứa dữ liệu xuất từ sản xuất/kế toán. | Fixture CSV nhỏ. |
+| TXT/log | Đoạn văn hoặc khối log. | line range, mẫu timestamp nếu phát hiện được. | Trả về chunk văn bản; bảo toàn dải dòng. | Log có thể chứa đường dẫn/token; làm sạch đầu ra. | Log giả lập có timestamp. |
+| HTML | Văn bản hiển thị, tiêu đề, danh sách, bảng. | heading path, element type, table markers. | Loại bỏ script/style; trả về văn bản hiển thị hoặc lý do thất bại. | Có thể chứa các trang nội bộ được xuất ra. | Fixture HTML tối thiểu. |
+| PNG/JPG/Ảnh OCR | Khối văn bản OCR và metadata ảnh. | kích thước ảnh, engine/ngôn ngữ/độ tin cậy OCR, page/bbox. | Nếu OCR không khả dụng, trả về phần tử unsupported an toàn. | Ảnh chụp màn hình có thể lộ secret hoặc UI công ty. | Ảnh có văn bản đơn giản; test fail-soft khi không có OCR. |
 
-## 8. Structure-aware chunking
+## 8. Chia Chunk Nhận Biết Cấu Trúc (Structure-aware Chunking)
 
-Chunking must prefer structure over blind character slicing:
+Việc chia chunk phải ưu tiên cấu trúc hơn là cắt ký tự mù quáng:
 
-- **heading/section:** group text under headings and preserve section path.
-- **page:** chunk PDFs/images by page or page region when available.
-- **slide:** chunk PPTX by slide and notes.
-- **sheet/table:** chunk spreadsheet tables by sheet, table, row groups, and header context.
-- **row/cell range:** preserve precise spreadsheet coordinates for citations.
-- **log block:** group logs by timestamp/session/error block.
-- **OCR image block:** group OCR blocks by image/page/region and confidence.
+- **Tiêu đề / Phân đoạn (heading/section):** Nhóm văn bản dưới các tiêu đề và giữ nguyên đường dẫn phân cấp mục.
+- **Trang (page):** Chia chunk PDF/ảnh theo trang hoặc vùng trang khi có sẵn.
+- **Trang chiếu (slide):** Chia chunk PPTX theo slide và ghi chú đi kèm.
+- **Sheet / Bảng (sheet/table):** Chia chunk bảng tính theo sheet, bảng, nhóm hàng và ngữ cảnh tiêu đề.
+- **Dải hàng / ô (row/cell range):** Bảo toàn tọa độ bảng tính chính xác cho việc trích dẫn.
+- **Khối log (log block):** Nhóm log theo timestamp / phiên làm việc / khối lỗi.
+- **Khối ảnh OCR (OCR image block):** Nhóm khối OCR theo ảnh / trang / vùng và độ tin cậy.
 
-Fallback character chunking remains allowed only when no better structure exists. Fallback chunks must record that they are fallback chunks.
+Chia chunk dự phòng theo số ký tự chỉ được phép khi không còn cấu trúc nào tốt hơn. Các chunk dự phòng phải ghi rõ chúng là chunk fallback.
 
-## 9. Local index strategy
+## 9. Chiến Lược Chỉ Mục Cục Bộ (Local Index Strategy)
 
-MVP should use:
+Bản MVP nên sử dụng:
 
-- SQLite FTS/BM25 as the primary local searchable store.
-- JSONL debug/export for transparency and recovery.
-- Optional vector index later, after local lexical baseline and privacy review.
-- No cloud index by default.
+- SQLite FTS/BM25 làm kho lưu trữ tìm kiếm cục bộ chính.
+- JSONL để debug / xuất dữ liệu phục vụ tính minh bạch và phục hồi.
+- Chỉ mục vector tùy chọn sau này, sau khi đã có đường cơ sở từ vựng cục bộ và đánh giá bảo mật.
+- Không dùng chỉ mục cloud theo mặc định.
 
-Index schema concept:
+Khái niệm lược đồ chỉ mục:
 
-- `documents`
-  - `document_id`, `source_name`, `source_path`, `file_type`, `source_fingerprint`, `privacy_labels`, `indexed_at`, `enabled_snapshot`.
-- `elements`
-  - `element_id`, `document_id`, `element_type`, `text`, `normalized_text`, structure metadata, confidence, checksum.
-- `chunks`
-  - `chunk_id`, `document_id`, `element_ids`, `chunk_text`, citation metadata, privacy labels, source fingerprint.
-- `chunks_fts`
-  - FTS/BM25 searchable text.
+- `documents`: `document_id`, `source_name`, `source_path`, `file_type`, `source_fingerprint`, `privacy_labels`, `indexed_at`, `enabled_snapshot`.
+- `elements`: `element_id`, `document_id`, `element_type`, `text`, `normalized_text`, structure metadata, confidence, checksum.
+- `chunks`: `chunk_id`, `document_id`, `element_ids`, `chunk_text`, citation metadata, privacy labels, source fingerprint.
+- `chunks_fts`: Văn bản có thể tìm kiếm bằng FTS/BM25.
 
-Required filters:
+Các bộ lọc bắt buộc:
 
-- metadata filter by file type, source, element type, page/sheet/slide.
-- privacy filter by labels and consent status.
-- source filter by enabled source set.
-- disabled source exclusion.
-- stale fingerprint protection: if source fingerprint differs from the indexed snapshot, require reindex or mark stale.
+- Bộ lọc metadata theo loại tệp, nguồn, loại phần tử, trang/sheet/slide.
+- Bộ lọc bảo mật theo nhãn và trạng thái đồng ý (consent).
+- Bộ lọc nguồn theo tập nguồn được kích hoạt.
+- Loại trừ các nguồn bị vô hiệu hóa.
+- Bảo vệ dấu vân tay cũ (stale fingerprint): nếu fingerprint nguồn khác với snapshot đã lập chỉ mục, yêu cầu lập chỉ mục lại hoặc đánh dấu là cũ.
 
-## 10. Generic retrieval/rerank design
+## 10. Thiết Kế Truy Xuất / Xếp Hạng Lại Tổng Quát (Generic Retrieval/Rerank)
 
-Core retrieval must not hard-code business terms. It can use generic signals:
+Truy xuất cốt lõi không được gắn cứng các thuật ngữ nghiệp vụ. Nó có thể sử dụng các tín hiệu tổng quát:
 
-- lexical/BM25 score.
-- exact phrase match.
-- filename/title/source path match.
-- element type match.
-- table header/cell match.
-- source diversity.
-- extraction confidence.
-- recency/index freshness when useful.
-- privacy allowed/blocked state.
-- weak/negative evidence handling.
+- Điểm số lexical/BM25.
+- Khớp cụm từ chính xác.
+- Khớp tên tệp / tiêu đề / đường dẫn nguồn.
+- Khớp loại phần tử.
+- Khớp tiêu đề bảng / ô.
+- Tính đa dạng của nguồn.
+- Độ tin cậy trích xuất.
+- Độ mới của chỉ mục khi hữu ích.
+- Trạng thái bảo mật được phép / bị chặn.
+- Xử lý bằng chứng yếu / phủ định.
 
-Generic query understanding may detect only answer shapes:
+Hiểu truy vấn tổng quát chỉ nên nhận diện hình thái câu trả lời (answer shapes):
 
-- comparison.
-- list/enumeration.
-- summarize.
-- explain flow.
-- field mapping.
-- find evidence.
-- troubleshoot/root cause.
+- So sánh (comparison).
+- Danh sách / Liệt kê (list/enumeration).
+- Tóm tắt (summarize).
+- Giải thích luồng (explain flow).
+- Ánh xạ trường (field mapping).
+- Tìm bằng chứng (find evidence).
+- Xử lý sự cố / Nguyên nhân gốc rễ (troubleshoot/root cause).
 
-Core retrieval must not detect or special-case MOM/WMS intent.
+Truy xuất cốt lõi tuyệt đối không nhận diện hay xử lý trường hợp đặc biệt cho ý định MOM/WMS.
 
-Rerank concept:
+Khái niệm xếp hạng lại (Rerank):
 
-1. Retrieve broad lexical candidates with metadata filters.
-2. Apply exact phrase and title/path boosts generically.
-3. Apply table-aware boosts for header/cell matches.
-4. Diversify by source and element type.
-5. Penalize stale, low-confidence, or privacy-disallowed evidence.
-6. Return insufficient-evidence reasons when scores are weak or coverage is incomplete.
+1. Truy xuất các ứng viên từ vựng rộng với bộ lọc metadata.
+2. Áp dụng tăng điểm (boost) cho cụm từ chính xác và tiêu đề/đường dẫn một cách tổng quát.
+3. Áp dụng tăng điểm nhận biết bảng cho các khớp tiêu đề/ô.
+4. Đa dạng hóa theo nguồn và loại phần tử.
+5. Giảm điểm bằng chứng cũ, độ tin cậy thấp hoặc vi phạm quyền riêng tư.
+6. Trả về lý do chưa đủ bằng chứng khi điểm số yếu hoặc độ bao phủ không hoàn chỉnh.
 
-### 10.1 Bounded multilingual query planning
+### 10.1 Lập Kế Hoạch Truy Vấn Đa Ngôn Ngữ Có Giới Hạn (Bounded Multilingual Query Planning)
 
-`RetrievalQueryPlan` preserves the original question and may include a small set of
-validated equivalent retrieval variants. The local default is an identity plan, so
-normal RAG v2 calls remain offline and backward compatible.
+`RetrievalQueryPlan` giữ nguyên câu hỏi gốc và có thể bao gồm một tập nhỏ các biến thể truy vấn tương đương đã được xác thực. Mặc định cục bộ là kế hoạch đồng nhất (identity plan), giúp các lệnh gọi RAG v2 thông thường giữ tính ngoại tuyến và tương thích ngược.
 
-- Variants are query-only inputs; the planner and optional expander never receive
-  chunk text, source titles, paths, manifests, or evidence.
-- Validation bounds count, length, total size and unsafe/operator-like text; invalid
-  expansion falls back to the original query.
-- Filters for enabled sources, privacy labels and stale fingerprints execute before
-  every variant is scored; expansion cannot bypass them.
-- `LocalChunkIndex` fuses per-variant rankings deterministically by reciprocal rank,
-  deduplicates by chunk ID and exposes variant/fusion provenance in result metadata.
-- A translated query match is not evidence: citations and confidence still derive
-  only from the returned local chunk text.
-- Content-term coverage excludes common English function words so a query's answer
-  sufficiency is not penalized merely by terms such as `what`, `is`, or `the`.
+- Các biến thể chỉ là đầu vào truy vấn; bộ lập kế hoạch và bộ mở rộng không bao giờ nhận văn bản chunk, tiêu đề nguồn, đường dẫn, manifest hay bằng chứng.
+- Xác thực giới hạn số lượng, độ dài, tổng kích thước và loại bỏ văn bản không an toàn; mở rộng không hợp lệ sẽ quay về câu truy vấn gốc.
+- Các bộ lọc nguồn được bật, nhãn bảo mật và fingerprint cũ được thực thi trước khi chấm điểm từng biến thể; việc mở rộng không thể vượt qua các bộ lọc này.
+- `LocalChunkIndex` kết hợp thứ hạng từng biến thể một cách tất định theo reciprocal rank, loại bỏ trùng lặp theo ID chunk và công khai nguồn gốc biến thể trong metadata kết quả.
+- Khớp truy vấn đã dịch không phải là bằng chứng: trích dẫn và độ tin cậy chỉ bắt nguồn từ văn bản chunk cục bộ được trả về.
+- Độ bao phủ thuật ngữ nội dung loại trừ các từ chức năng tiếng Anh phổ biến để câu hỏi không bị trừ điểm chỉ vì các từ như `what`, `is`, hoặc `the`.
 
-The optional battle-only cloud adapter may ask a configured provider to produce a
-schema-constrained plan only when the owner has selected `cloud_safe` or `public`.
-It sends the question alone, caches only the validated plan in the private run
-folder, and fails safely to identity retrieval when unavailable.
+Adapter cloud tùy chọn chỉ hỏi provider đã cấu hình để sinh kế hoạch theo schema khi chủ sở hữu đã chọn `cloud_safe` hoặc `public`. Nó chỉ gửi duy nhất câu hỏi, chỉ lưu cache kế hoạch đã xác thực vào thư mục chạy riêng tư, và an toàn chuyển sang truy xuất đồng nhất (identity retrieval) khi không khả dụng.
 
-## 11. Evidence pack format
+## 11. Định Dạng Gói Bằng Chứng (Evidence Pack Format)
 
-Evidence pack fields:
+Các trường trong gói bằng chứng:
 
 ```yaml
 query: string
@@ -336,43 +306,40 @@ privacy_summary:
   cloud_allowed: false
 ```
 
-## 12. Generic response synthesis discipline
+## 12. Kỷ Luật Tổng Hợp Câu Trả Lời Tổng Quát (Generic Response Synthesis Discipline)
 
-The synthesizer core knows generic answer formats only:
+Lõi tổng hợp chỉ nhận biết các định dạng câu trả lời tổng quát:
+- So sánh.
+- Bảng biểu.
+- Danh sách gạch đầu dòng.
+- Luồng quy trình.
+- Ánh xạ trường.
+- Tóm tắt.
+- Hỏi đáp (Q&A).
 
-- comparison.
-- table.
-- bullet list.
-- flow.
-- field mapping.
-- summary.
-- Q&A.
+Quy tắc:
+- Mọi tuyên bố phải có căn cứ từ bằng chứng.
+- Mọi tuyên bố quan trọng phải trích dẫn tham chiếu nguồn.
+- Các điểm được yêu cầu nhưng không tìm thấy trong bằng chứng phải được đưa vào mục chưa đủ bằng chứng.
+- Không bịa đặt (hallucinate) các trường, quy trình, giá trị hay nguyên nhân còn thiếu.
+- Không sử dụng template đặc thù ngành trong lõi.
+- Chỉ dùng cục bộ là mặc định.
+- Tổng hợp qua cloud (nếu bổ sung sau) phải đi qua các cổng: sự đồng ý của chủ sở hữu, snapshot nguồn, nhãn bảo mật và nhật ký định tuyến.
 
-Rules:
+## 13. Thiết Kế Khung Đánh Giá (Eval Harness Design)
 
-- Every claim must be grounded in evidence.
-- Every material claim must cite source refs.
-- Requested points not found in evidence go to insufficient evidence.
-- Do not hallucinate missing fields, procedures, values, or causes.
-- Do not use domain-specific templates in core.
-- Local-only is the default.
-- Cloud synthesis, if added later, must go through existing owner consent, source snapshot, privacy label, and route log gates.
+Đánh giá phải bao gồm:
+- Fixture giả lập tổng quát.
+- Kiểm thử theo từng loại tệp.
+- Tỷ lệ trúng hit@k của truy xuất.
+- Tính chính xác của trích dẫn.
+- Độ trung thực của câu trả lời.
+- Kỷ luật xử lý khi chưa đủ bằng chứng.
+- Schema cấu hình đo chuẩn benchmark.
+- Công cụ so sánh NotebookLM chỉ đóng vai trò đối chiếu, không phải chân lý tuyệt đối.
+- Tập dữ liệu 52 tệp và 68 tệp MOM/WMS chỉ dùng làm benchmark cục bộ riêng tư; dữ liệu thô tuyệt đối không được commit.
 
-## 13. Eval harness design
-
-Evaluation must include:
-
-- generic synthetic fixtures.
-- per-file-type tests.
-- retrieval hit@k.
-- citation correctness.
-- answer faithfulness.
-- insufficient-evidence discipline.
-- benchmark config schema.
-- NotebookLM comparator only, not ground truth.
-- MOM/WMS 52-file and 68-file datasets as private local benchmarks only; raw data must not be committed.
-
-Benchmark config concept:
+Khái niệm cấu hình benchmark:
 
 ```yaml
 benchmark_id: string
@@ -392,10 +359,9 @@ metrics:
   - insufficient_evidence_discipline
 ```
 
-## 14. Hard-code prevention policy
+## 14. Chính Sách Ngăn Chặn Gắn Cứng Mã Nguồn (Hard-code Prevention Policy)
 
-Forbidden in core RAG v2 modules:
-
+Nghiêm cấm trong các module lõi RAG v2:
 - MES
 - MOM
 - ManualShipping
@@ -403,109 +369,104 @@ Forbidden in core RAG v2 modules:
 - C31
 - C32
 - kdcRenameShipChangeQty
-- domain-specific Japanese function names
-- customer/project-specific table names
-- benchmark-only expected answers
+- Tên hàm tiếng Nhật đặc thù ngành
+- Tên bảng đặc thù của khách hàng/dự án
+- Câu trả lời kỳ vọng chỉ dành cho benchmark
 
-Allowed only in:
+Chỉ được phép trong:
+- Prompt đo chuẩn benchmark.
+- Fixture giả lập.
+- Cấu hình đánh giá cục bộ riêng tư không commit.
+- Tài liệu mô tả lịch sử thử nghiệm MOM.
+- Các module `mom_*` cũ trong giai đoạn chuyển đổi.
 
-- benchmark prompts.
-- synthetic fixtures.
-- private local eval configs not committed.
-- docs describing historical MOM pilot.
-- legacy `mom_*` modules during migration.
+Kiểm tra khi review:
+- Quét các module nguồn `rag_v2*` để tìm các thuật ngữ nghiệp vụ bị cấm.
+- Kiểm chứng các bài test truy xuất không phụ thuộc vào quy tắc chấm điểm đặc thù nghiệp vụ.
+- Đảm bảo tinh chỉnh nghiệp vụ chỉ nằm ở cấu hình/đánh giá bên ngoài, không nằm trong logic lõi.
 
-Review checks:
+## 15. Các Cổng Bảo Mật (Privacy Gates)
 
-- Scan `rag_v2*` source modules for forbidden business terms.
-- Verify retrieval tests do not depend on business-specific scoring rules.
-- Ensure domain tuning is external config/eval only, not core logic.
+Luồng bảo mật:
 
-## 15. Privacy gates
+1. Chọn nguồn chỉ bao gồm các nguồn được kích hoạt.
+2. Các nguồn bị tắt được loại trừ trước khi chuyển đổi/truy xuất.
+3. Mọi phần tử đều nhận nhãn bảo mật.
+4. Mọi chunk kế thừa và chỉ có thể thắt chặt nhãn bảo mật.
+5. Mọi mục chỉ mục đều lưu trữ nhãn bảo mật.
+6. Mọi gói bằng chứng đều bao gồm tóm tắt bảo mật.
+7. Toàn bộ kho dữ liệu không bao giờ bị gửi tới bất kỳ mô hình/công cụ nào.
+8. Mặc định luôn là chỉ dùng cục bộ.
+9. Tổng hợp qua cloud tùy chọn bắt buộc phải vượt qua:
+   - Sự đồng ý của chủ sở hữu.
+   - Kiểm tra snapshot nguồn.
+   - Kiểm tra nhãn bảo mật.
+   - Kiểm tra tập nguồn.
+   - Ghi nhật ký định tuyến.
+10. Không bao giờ ghi log API key thô, prompt, hay toàn bộ nguồn dữ liệu.
 
-Privacy flow:
+## 16. Kế Hoạch Chuyển Đổi (Migration Plan)
 
-1. Source selection includes only enabled sources.
-2. Disabled sources are excluded before conversion/retrieval.
-3. Every element receives privacy labels.
-4. Every chunk inherits and can only restrict privacy labels.
-5. Every index entry stores privacy labels.
-6. Every evidence pack includes privacy summary.
-7. Whole store is never sent to any model/tool.
-8. Local-only is the default.
-9. Optional cloud synthesis must pass:
-   - owner consent.
-   - source snapshot check.
-   - privacy label check.
-   - source set check.
-   - route logging.
-10. No raw API key, prompt, or full source logging.
+Chuyển đổi phải thực hiện song song (side-by-side):
+- Không làm hỏng chỉ mục MOM cũ.
+- Không thay đổi giao diện thông thường của Workspace Chat.
+- Không thay đổi quy trình thông thường của chủ sở hữu.
+- Không viết lại toàn bộ theo kiểu big-bang.
+- Đầu ra runtime giữ dưới các đường dẫn cục bộ bị gitignore.
 
-## 16. Migration plan
-
-Migration must be side-by-side:
-
-- Do not break MOM legacy index.
-- Do not change Workspace Chat normal UI.
-- Do not change owner's normal flow.
-- Do not do a big-bang rewrite.
-- Runtime outputs stay under ignored local paths.
-
-Proposed gates:
+Các cổng đề xuất:
 
 1. `RAG-V2-ELEMENT-SCHEMA-AND-ADAPTER-INTERFACE`
-   - Add generic schema and adapter protocol.
+   - Bổ sung schema tổng quát và giao thức adapter.
 2. `RAG-V2-DOC-CONVERTER-ADAPTERS-MIN`
-   - Wrap current extractors and add richer Excel/PDF adapters.
+   - Bọc các bộ trích xuất hiện tại và thêm adapter Excel/PDF phong phú hơn.
 3. `RAG-V2-STRUCTURE-AWARE-CHUNKING-AND-LOCAL-INDEX-MIN`
-   - Add structure-aware chunks and local SQLite FTS/BM25.
+   - Bổ sung chunk nhận biết cấu trúc và SQLite FTS/BM25 cục bộ.
 4. `RAG-V2-HYBRID-RETRIEVAL-MIN`
-   - Add generic retrieval/rerank without business terms.
+   - Bổ sung truy xuất/xếp hạng lại tổng quát không chứa thuật ngữ nghiệp vụ.
 5. `RAG-V2-GENERIC-EVIDENCE-SYNTHESIS-MIN`
-   - Add generic source-grounded answer synthesis.
+   - Bổ sung tổng hợp câu trả lời có căn cứ nguồn tổng quát.
 6. `RAG-V2-EVAL-HARNESS-MOM-WMS-AND-GENERIC-DOCS`
-   - Add generic and private benchmark harness.
+   - Bổ sung khung đo chuẩn benchmark tổng quát và riêng tư.
 7. `NOTEBOOKLM-BATTLE-RERUN-RAG-V2`
-   - Rerun comparison after RAG v2 benchmark evidence exists.
+   - Chạy lại so sánh sau khi đã có bằng chứng benchmark RAG v2.
 8. `RAG-V2-DEV-QUALITY-CONVERGENCE`
-   - Integrate the independent Dev pipeline, FTS5/BM25 retrieval, evidence and
-     synthesis contracts, continuous local evaluation, and private offline replay.
-   - Closed `DEV_READY_WITH_LIMITATIONS`; no primary-UI migration or parity claim.
+   - Tích hợp pipeline Dev độc lập, truy xuất FTS5/BM25, hợp đồng bằng chứng và tổng hợp, đánh giá cục bộ liên tục và phát lại ngoại tuyến riêng tư.
+   - Đóng cổng ở mức `DEV_READY_WITH_LIMITATIONS`; không chuyển đổi UI chính và không tuyên bố tương đương.
 
-Roadmap/changelog changes require an owner-approved execution plan.
+Mọi thay đổi lộ trình/changelog đều yêu cầu kế hoạch thực thi được chủ sở hữu phê duyệt.
 
-## 17. Test plan
+## 17. Kế Hoạch Kiểm Thử (Test Plan)
 
-Required tests:
+Các bài kiểm thử bắt buộc:
+- Tuần tự hóa schema và giá trị mặc định metadata an toàn tương thích ngược.
+- Hành vi fail-soft của adapter khi thiếu dependency và tệp không đọc được.
+- Trích xuất văn bản PDF với đầu ra converter được mock.
+- Bảo toàn metadata bảng/ô Excel.
+- Trích xuất slide PPTX và ghi chú.
+- Trích xuất HTML/TXT/CSV/log.
+- Hành vi fail-soft khi OCR ảnh không khả dụng.
+- Chia chunk theo tiêu đề, trang, slide, sheet, bảng, dải hàng/ô, khối log và khối OCR.
+- Truy xuất không chứa mã cứng nghiệp vụ trong các module lõi.
+- Nhãn bảo mật truyền từ nguồn sang phần tử, chunk, chỉ mục, gói bằng chứng và tổng hợp.
+- Kỷ luật trích dẫn tổng hợp và xử lý khi chưa đủ bằng chứng.
+- Fixture tổng quát trên các tài liệu sản xuất, kế toán, IT/log, pháp lý, dịch thuật và tài liệu nặng về Excel.
 
-- schema serialization and backwards-safe metadata defaults.
-- adapter fail-soft behavior for missing dependencies and unreadable files.
-- PDF text extraction with mocked converter output.
-- Excel table/cell metadata preservation.
-- PPTX slide and notes extraction.
-- HTML/TXT/CSV/log extraction.
-- image OCR unavailable fail-soft behavior.
-- chunking by heading, page, slide, sheet, table, row/cell range, log block, and OCR block.
-- retrieval has no business hard-code in core modules.
-- privacy labels flow from source to element, chunk, index, evidence pack, and synthesis.
-- synthesis citation and insufficient-evidence discipline.
-- generic fixtures across manufacturing, accounting, IT/log, legal, translation, and Excel-heavy documents.
+## 18. Kế Hoạch Hoàn Tác (Rollback Plan)
 
-## 18. Rollback plan
+- RAG v2 chạy song song và có thể tắt bằng feature flag / cấu hình.
+- Chỉ mục MOM cũ vẫn luôn khả dụng.
+- Giao diện Workspace Chat không thay đổi.
+- Đầu ra runtime chỉ lưu dưới các đường dẫn cục bộ bị gitignore.
+- Nếu truy xuất/tổng hợp RAG v2 không đạt benchmark, chuyển về luồng cũ mà không cần di chuyển dữ liệu.
+- Không bắt buộc bất kỳ dependency mới nào cho đến khi được phê duyệt riêng.
 
-- RAG v2 runs side-by-side and can be disabled by feature flag/config.
-- MOM legacy index remains available.
-- Workspace Chat UI remains unchanged.
-- Runtime outputs stay under ignored local paths only.
-- If RAG v2 retrieval/synthesis fails benchmark, revert to legacy path without data migration.
-- No new dependency is mandatory until separately approved.
+## 19. Các Điểm Chủ Sở Hữu Cần Xem Xét (Owner Review Points)
 
-## 19. Owner review points
+Các quyết định cần chủ sở hữu phê duyệt:
 
-Owner decisions required:
-
-1. Approve RAG v2 generic, element-first, local-first direction.
-2. Approve stopping MOM-specific composer implementation.
-3. Approve proposed design gate order.
-4. Approve a separate docs-only sync gate after this design is accepted.
-5. Approve keeping Workspace Chat UI simple with no new technical complexity.
+1. Phê duyệt định hướng RAG v2 tổng quát, ưu tiên phần tử, ưu tiên cục bộ.
+2. Phê duyệt việc dừng triển khai bộ soạn thảo đặc thù cho MOM.
+3. Phê duyệt thứ tự các cổng thiết kế đề xuất.
+4. Phê duyệt cổng đồng bộ tài liệu riêng biệt sau khi thiết kế này được chấp thuận.
+5. Phê duyệt việc giữ giao diện Workspace Chat đơn giản, không thêm sự phức tạp kỹ thuật.

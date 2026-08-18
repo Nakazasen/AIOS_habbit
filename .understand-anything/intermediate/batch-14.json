@@ -1,0 +1,32 @@
+{
+  "nodes": [
+    {
+      "id": "file:.specify/feature.json",
+      "type": "file",
+      "name": "feature.json",
+      "filePath": ".specify/feature.json",
+      "summary": "Configuration file defining project features.",
+      "tags": ["config", "json"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:.specify/init-options.json",
+      "type": "file",
+      "name": "init-options.json",
+      "filePath": ".specify/init-options.json",
+      "summary": "Configuration file defining initialization options.",
+      "tags": ["config", "json"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:.specify/integration.json",
+      "type": "file",
+      "name": "integration.json",
+      "filePath": ".specify/integration.json",
+      "summary": "Configuration file defining integration settings.",
+      "tags": ["config", "json"],
+      "complexity": "moderate"
+    }
+  ],
+  "edges": []
+}

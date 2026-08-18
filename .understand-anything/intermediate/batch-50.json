@@ -1,0 +1,32 @@
+{
+  "nodes": [
+    {
+      "id": "file:tests/fixtures/adaptive_reranking_corpus.json",
+      "type": "file",
+      "name": "adaptive_reranking_corpus.json",
+      "filePath": "tests/fixtures/adaptive_reranking_corpus.json",
+      "summary": "JSON fixture file containing a corpus for testing adaptive reranking.",
+      "tags": ["test", "fixture", "json"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:tests/fixtures/adaptive_reranking_report_schema.json",
+      "type": "file",
+      "name": "adaptive_reranking_report_schema.json",
+      "filePath": "tests/fixtures/adaptive_reranking_report_schema.json",
+      "summary": "JSON schema file for validating adaptive reranking reports.",
+      "tags": ["test", "fixture", "json", "schema"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:tests/fixtures/adaptive_routing_cases.json",
+      "type": "file",
+      "name": "adaptive_routing_cases.json",
+      "filePath": "tests/fixtures/adaptive_routing_cases.json",
+      "summary": "JSON fixture file containing cases for testing adaptive routing.",
+      "tags": ["test", "fixture", "json"],
+      "complexity": "moderate"
+    }
+  ],
+  "edges": []
+}

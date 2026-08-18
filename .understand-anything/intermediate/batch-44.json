@@ -1,0 +1,41 @@
+{
+  "nodes": [
+    {
+      "id": "file:docs/runbooks/MATECON_MANUAL_RETRIEVAL_OPERATIONS.md",
+      "type": "file",
+      "name": "MATECON_MANUAL_RETRIEVAL_OPERATIONS.md",
+      "filePath": "docs/runbooks/MATECON_MANUAL_RETRIEVAL_OPERATIONS.md",
+      "summary": "Runbook for manual retrieval operations in MATECON.",
+      "tags": ["docs", "runbook", "matecon"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:docs/runbooks/OCR_PRODUCTION.md",
+      "type": "file",
+      "name": "OCR_PRODUCTION.md",
+      "filePath": "docs/runbooks/OCR_PRODUCTION.md",
+      "summary": "Runbook for OCR production operations.",
+      "tags": ["docs", "runbook", "ocr"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:docs/runbooks/developer.md",
+      "type": "file",
+      "name": "developer.md",
+      "filePath": "docs/runbooks/developer.md",
+      "summary": "Developer documentation for the AIOS system.",
+      "tags": ["docs", "developer"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:docs/runbooks/operator.md",
+      "type": "file",
+      "name": "operator.md",
+      "filePath": "docs/runbooks/operator.md",
+      "summary": "Operator documentation for the AIOS system.",
+      "tags": ["docs", "operator"],
+      "complexity": "moderate"
+    }
+  ],
+  "edges": []
+}

@@ -1,66 +1,67 @@
-# Audit Report
+# Báo Cáo Kiểm Toán (Audit Report)
 
 ## Metadata
 
 - Audit ID: `AUD-0000`
-- Date:
-- Target:
-- Auditor:
+- Ngày (Date):
+- Đối tượng (Target):
+- Người kiểm toán (Auditor):
 
-## Objective
+## Mục Tiêu (Objective)
 
 Audit nhằm kiểm tra điều gì?
 
-## Scope
+## Phạm Vi (Scope)
 
-In scope:
-
-- 
-
-Out of scope:
+Trong phạm vi (In scope):
 
 - 
 
-## Observations
+Ngoài phạm vi (Out of scope):
 
-| Observation | Evidence | Severity | Notes |
+- 
+
+## Quan Sát (Observations)
+
+| Quan sát (Observation) | Bằng chứng (Evidence) | Mức độ nghiêm trọng (Severity) | Ghi chú (Notes) |
 |---|---|---|---|
 | | | | |
 
-## Findings
+## Kết Quả Phát Hiện (Findings)
 
-### PASS
-
-- 
-
-### FAIL
+### ĐẠT (PASS)
 
 - 
 
-### PARTIAL
+### KHÔNG ĐẠT (FAIL)
 
 - 
 
-### BLOCKED
+### ĐẠT MỘT PHẦN (PARTIAL)
 
 - 
 
-## Root Cause Analysis
+### BỊ CHẶN (BLOCKED)
 
-- Symptom:
-- Immediate cause:
-- Root cause:
-- Contributing factors:
-- Prevention:
+- 
 
-## Recommendations
+## Phân Tích Nguyên Nhân Gốc Rễ (Root Cause Analysis)
+
+- Triệu chứng (Symptom):
+- Nguyên nhân trực tiếp (Immediate cause):
+- Nguyên nhân gốc rễ (Root cause):
+- Các yếu tố góp phần (Contributing factors):
+- Phòng ngừa (Prevention):
+
+## Khuyến Nghị (Recommendations)
 
 1. 
 
-## Rollback
+## Hoàn Tác (Rollback)
 
 - 
 
-## Handover
+## Bàn Giao (Handover)
 
--
+- 
+

@@ -1,4 +1,4 @@
-# Production Intelligence Vision
+# Tầm Nhìn Trí Tuệ Sản Xuất (Production Intelligence Vision)
 
 Status: `PLANNED — future design reference; no delivery gate opened`
 
@@ -6,226 +6,184 @@ Owner role: Project owner / product architect
 Last reviewed: 2026-08-08  
 Review cadence: Before opening any production-traceability, alerting, prediction, or prevention Gate Card
 
-## Purpose
+## Mục đích (Purpose)
 
-AIOS WorkLens may evolve from local-first work intelligence into a
-**local-first production-quality decision-support capability**. It will help a
-human investigate and prevent manufacturing quality problems by retaining a
-reviewable chain from a component lot to the observed manufacturing outcome.
+AIOS WorkLens có thể phát triển từ hệ thống trí tuệ công việc ưu tiên cục bộ (local-first) thành **năng lực hỗ trợ ra quyết định chất lượng sản xuất ưu tiên cục bộ (local-first production-quality decision-support)**. Nó sẽ hỗ trợ con người điều tra và ngăn ngừa các vấn đề chất lượng sản xuất thông qua việc duy trì một chuỗi truy xuất nguồn gốc có thể kiểm toán từ lô linh kiện (component lot) đến kết quả sản xuất quan sát được.
 
-This is a future design direction, not a claim that AIOS currently predicts
-production failures. It does not open Phase 9, P1.0, a dependency change, or any
-runtime behavior.
+Đây là định hướng thiết kế trong tương lai, không phải là tuyên bố rằng AIOS hiện tại đã dự đoán được lỗi sản xuất. Tài liệu này không mở Giai đoạn 9 (Phase 9), P1.0, thay đổi phụ thuộc hay bất kỳ hành vi runtime nào.
 
-## North-star outcome
+## Kết quả Kim chỉ nam (North-star Outcome)
 
-When a new production lot is assessed, an authorized user should eventually be
-able to receive a bounded, evidence-backed result such as:
+Khi một lô sản xuất mới được đánh giá, người dùng được ủy quyền cuối cùng sẽ có thể nhận được một kết quả có giới hạn, có bằng chứng xác thực như:
 
 ```text
-Risk: medium, not a release/block decision.
-Why: similar historical lots, measurements, line conditions, and jig outcomes.
-Evidence: linked lot, Unit, test, defect, and investigation records.
-Uncertainty: what is missing, conflicting, or not yet confirmed.
-Suggested next check: a human-approved containment or verification step.
+Rủi ro: trung bình, không phải là quyết định xuất hàng/chặn hàng.
+Lý do: các lô tương tự trong lịch sử, số đo thực nghiệm, điều kiện dây chuyền và kết quả trên jig kiểm tra.
+Bằng chứng: các bản ghi liên kết về lô, Unit, kiểm thử, lỗi hỏng và hồ sơ điều tra sự vụ.
+Độ không chắc chắn: những thông tin còn thiếu, xung đột hoặc chưa được xác nhận.
+Gợi ý kiểm tra tiếp theo: một bước ngăn chặn cách ly hoặc xác minh đã được con người phê duyệt.
 ```
 
-The system must never silently decide that a lot is good/bad, block production,
-release product, or state a root cause as confirmed without the required human
-and evidence controls.
+Hệ thống tuyệt đối không bao giờ được tự ý quyết định một lô hàng là tốt/xấu, tự ý chặn sản xuất, tự ý xuất hàng, hoặc tuyên bố một nguyên nhân gốc rễ đã được xác nhận khi chưa có sự kiểm soát từ con người và bằng chứng bắt buộc.
 
-## Traceability chain
+## Chuỗi Truy xuất Nguồn gốc (Traceability Chain)
 
-The desired minimum chain is:
+Chuỗi tối thiểu mong muốn là:
 
 ```text
-Supplier / Component / Component Lot
+Nhà cung cấp / Linh kiện / Lô linh kiện (Supplier / Component / Lot)
               ↓
-Incoming inspection and raw measurements
+Kiểm tra đầu vào và các phép đo thô (Incoming inspection & raw measurements)
               ↓
-BOM relation and Unit serial number
+Mối quan hệ BOM và số serial của Unit
               ↓
-Process run: line, station, machine, shift, time, controlled conditions
+Lượt chạy quy trình: chuyền, công đoạn, máy, ca, thời gian, điều kiện kiểm soát
               ↓
-Jig/test step, raw measurement, pass/fail, error code
+Bước kiểm tra/Jig, số đo thô, đạt/không đạt (pass/fail), mã lỗi
               ↓
-Defect, repair, disposition and final quality result
+Lỗi hỏng, sửa chữa, xử lý và kết quả chất lượng cuối cùng
               ↓
-Investigation: suspected cause, confirmed cause, false alarm, containment result
+Điều tra sự vụ: nguyên nhân nghi ngờ, nguyên nhân xác nhận, cảnh báo giả, kết quả ngăn chặn
 ```
 
-Each link needs stable identifiers, timestamps, source pointers, classification,
-and provenance. Missing links must remain visibly missing—not invented from
-similar names or an LLM assumption.
+Mỗi liên kết cần định danh ổn định, dấu thời gian, con trỏ nguồn, phân loại và nguồn gốc (provenance). Các liên kết bị thiếu phải hiển thị rõ ràng là đang thiếu — không được tự tiện suy đoán từ các tên tương tự hoặc giả định của mô hình LLM.
 
-## Product maturity stages
+## Các Giai đoạn Trưởng thành của Sản phẩm (Product Maturity Stages)
 
-### Stage 0 — trustworthy document intelligence (current prerequisite)
+### Giai đoạn 0 — Trí tuệ tài liệu đáng tin cậy (Tiền đề tiên quyết hiện tại)
 
-- Read local documents, tables, logs and reports.
-- Retrieve evidence and provide citations.
-- Abstain when evidence is insufficient.
-- Measure answer quality without weakening privacy or provenance.
+- Đọc hiểu tài liệu cục bộ, bảng biểu, log hệ thống và báo cáo.
+- Truy xuất bằng chứng và cung cấp trích dẫn nguồn (citations).
+- Từ chối trả lời (abstain) khi chưa có đủ bằng chứng.
+- Đo lường chất lượng câu trả lời mà không làm suy yếu quyền riêng tư hoặc nguồn gốc dữ liệu.
 
-This is the current RAG v2 quality focus. It must mature before production
-intelligence claims are made.
+Đây là trọng tâm chất lượng RAG v2 hiện tại. Nó bắt buộc phải trưởng thành trước khi đưa ra các tuyên bố về trí tuệ sản xuất.
 
-### Stage 1 — historical traceability and investigation
+### Giai đoạn 1 — Truy xuất nguồn gốc và điều tra lịch sử
 
-- Ingest structured, local production records with a published schema.
-- Answer traceability questions, for example: which lots are shared by Units
-  with a particular jig failure?
-- Link operating records with applicable work instructions, repair notes and
-  investigation reports.
-- Show the chain and source records, including gaps and contradictory records.
+- Nạp các bản ghi sản xuất cục bộ có cấu trúc với schema đã được công bố.
+- Trả lời các câu hỏi truy xuất nguồn gốc, ví dụ: những lô nào được dùng chung bởi các Unit bị lỗi jig kiểm tra cụ thể?
+- Liên kết các bản ghi vận hành với hướng dẫn công việc áp dụng, ghi chú sửa chữa và báo cáo điều tra sự vụ.
+- Hiển thị chuỗi liên kết và bản ghi nguồn, bao gồm cả các lỗ hổng thiếu dữ liệu và các bản ghi mâu thuẫn.
 
-No forecasting claim is allowed at this stage.
+Giai đoạn này nghiêm cấm đưa ra bất kỳ tuyên bố nào về dự báo.
 
-### Stage 2 — transparent alerts
+### Giai đoạn 2 — Cảnh báo minh bạch
 
-- Evaluate reviewed rules and local statistical control signals.
-- Flag unusual defect rates, test measurements, yield shifts or lot associations.
-- Explain the specific rule/signal, comparison window and supporting records.
-- Require an operator to acknowledge, investigate, dismiss or label the alert.
+- Đánh giá các quy tắc đã được review và tín hiệu kiểm soát thống kê cục bộ.
+- Đánh dấu tỷ lệ phế phẩm bất thường, số đo kiểm thử, sự dịch chuyển hiệu suất (yield) hoặc liên kết lô.
+- Giải thích rõ ràng quy tắc/tín hiệu cụ thể, cửa sổ thời gian so sánh và các bản ghi hỗ trợ.
+- Yêu cầu người vận hành xác nhận, điều tra, bác bỏ hoặc gắn nhãn cảnh báo.
 
-Alerts are investigation prompts. They are not automatic production controls.
+Cảnh báo chỉ là gợi ý để điều tra sự vụ. Chúng không phải là cơ chế kiểm soát sản xuất tự động.
 
-### Stage 3 — human-reviewed risk prediction
+### Giai đoạn 3 — Dự đoán rủi ro có sự đánh giá của con người
 
-- Train/evaluate a versioned local model only on a governed dataset with known
-  outcomes and leakage controls.
-- Return risk, calibration/uncertainty, influential factors and comparable
-  historical evidence.
-- Preserve the prediction version, feature schema, dataset identity and review
-  decision.
-- Require human review before any operational consequence.
+- Huấn luyện/đánh giá mô hình cục bộ có phiên bản CHỈ trên tập dữ liệu được quản trị với kết quả đã biết và có kiểm soát rò rỉ dữ liệu.
+- Trả về mức rủi ro, độ chuẩn hóa/độ không chắc chắn (uncertainty), các yếu tố ảnh hưởng và bằng chứng lịch sử tương đương.
+- Lưu giữ phiên bản dự đoán, feature schema, định danh tập dữ liệu và quyết định review.
+- Bắt buộc có con người đánh giá trước bất kỳ hệ quả vận hành nào.
 
-A prediction must not be represented as causal proof.
+Dự đoán tuyệt đối không được biểu diễn như bằng chứng xác thực nguyên nhân.
 
-### Stage 4 — evidence-backed prevention support
+### Giai đoạn 4 — Hỗ trợ phòng ngừa dựa trên bằng chứng
 
-- Recommend verified containment, inspection, sampling or escalation actions.
-- Explain which historical cases support the recommendation and where the
-  evidence remains uncertain.
-- Record the human decision and the later outcome so the system can learn from
-  validated practice rather than copied chat language.
+- Đề xuất các hành động ngăn ngừa, kiểm tra, lấy mẫu hoặc leo thang đã được kiểm chứng.
+- Giải thích những trường hợp lịch sử nào hỗ trợ cho khuyến nghị và những điểm nào bằng chứng vẫn chưa chắc chắn.
+- Ghi lại quyết định của con người và kết quả thực tế sau đó để hệ thống học hỏi từ thực tiễn đã kiểm chứng thay vì sao chép văn phong trò chuyện.
 
-## Data and learning contract
+## Hợp đồng Dữ liệu & Học tập (Data and Learning Contract)
 
-### Minimum governed records
+### Các Bản ghi Quản trị Tối thiểu
 
-| Record | Required examples |
+| Bản ghi | Ví dụ bắt buộc |
 |---|---|
-| Component and lot | `part_id`, `supplier_id`, `lot_id`, receipt/inspection time |
-| Unit/BOM relation | `unit_serial`, assembly time, component `lot_id`, quantity/position where available |
-| Process run | line, station, machine, shift, operator pseudonym where approved, controlled conditions |
-| Jig/test | test ID/version, step, raw value/unit, limit/version, pass/fail, error code, timestamp |
-| Quality outcome | defect code, repair/rework, final disposition, yield denominator |
-| Investigation | suspected vs confirmed cause, evidence IDs, owner decision, containment and effectiveness |
+| Linh kiện và Lô | `part_id`, `supplier_id`, `lot_id`, thời gian tiếp nhận/kiểm tra |
+| Quan hệ Unit / BOM | `unit_serial`, thời gian lắp ráp, `lot_id` linh kiện, số lượng/vị trí khi có sẵn |
+| Lượt chạy quy trình | chuyền, công đoạn, máy, ca, định danh người thao tác (khi được phép), điều kiện kiểm soát |
+| Jig / Kiểm thử | test ID/phiên bản, bước, giá trị thô/đơn vị, giới hạn/phiên bản, đạt/không đạt, mã lỗi, dấu thời gian |
+| Kết quả chất lượng | mã lỗi, sửa chữa/làm lại, xử lý cuối cùng, mẫu số tính yield |
+| Điều tra sự vụ | nguyên nhân nghi ngờ vs nguyên nhân xác nhận, ID bằng chứng, quyết định chủ sở hữu, ngăn chặn và hiệu quả |
 
-### Data-quality rules
+### Quy tắc Chất lượng Dữ liệu
 
-- Preserve raw measurements and their units; never retain only a rounded label.
-- Keep test limit/version, jig/firmware/process revision and time so changes are
-  not mistaken for material or supplier effects.
-- Use stable IDs and explicit mapping records; names alone are not joins.
-- Timestamp every event and distinguish event time from data-arrival time.
-- Keep source hash/pointer and local privacy classification for each import.
-- Separate facts, hypotheses, confirmed causes and recommendations.
-- Record unknown/missing fields; do not silently replace them with defaults.
+- Bảo toàn các phép đo thô và đơn vị của chúng; không bao giờ chỉ giữ lại nhãn làm tròn.
+- Giữ lại giới hạn/phiên bản test, bản sửa đổi jig/firmware/quy trình và thời gian để không nhầm lẫn thay đổi kỹ thuật với biến động vật liệu hoặc nhà cung cấp.
+- Sử dụng ID ổn định và bản ghi ánh xạ rõ ràng; tên gọi đơn thuần không thể dùng làm khóa kết nối (join).
+- Gắn dấu thời gian cho mọi sự kiện và phân biệt rõ thời gian xảy ra sự kiện với thời gian dữ liệu cập bến.
+- Giữ mã băm nguồn/con trỏ và phân loại bảo mật cục bộ cho mỗi lần nạp dữ liệu.
+- Tách biệt rõ ràng sự thật (facts), giả thuyết (hypotheses), nguyên nhân đã xác nhận (confirmed causes) và khuyến nghị (recommendations).
+- Ghi nhận các trường chưa rõ/thiếu; không âm thầm thay thế chúng bằng giá trị mặc định.
 
-### Learning labels
+### Các Nhãn Học tập (Learning Labels)
 
-The system may learn only from outcome labels that distinguish at least:
+Hệ thống chỉ có thể học từ các nhãn kết quả phân biệt tối thiểu:
 
-- `suspected`: a lead requiring investigation;
-- `confirmed`: human-reviewed cause/outcome with retained evidence;
-- `false_alarm`: signal was investigated and not confirmed;
-- `unknown`: insufficient evidence to classify;
-- `effective` / `ineffective`: reviewed outcome of a containment or corrective
-  action.
+- `suspected`: manh mối cần điều tra;
+- `confirmed`: nguyên nhân/kết quả đã được con người đánh giá kèm bằng chứng lưu giữ;
+- `false_alarm`: tín hiệu đã điều tra và không được xác nhận;
+- `unknown`: không đủ bằng chứng để phân loại;
+- `effective` / `ineffective`: kết quả đã đánh giá của hành động ngăn ngừa hoặc khắc phục.
 
-Training/evaluation must prevent outcome leakage—for example, a final repair
-code must not be used to predict a risk at lot-receipt time. Data splits must
-respect time and relevant lot/supplier/Unit grouping so the test result is not a
-copy of an already-seen production chain.
+Quá trình huấn luyện/đánh giá bắt buộc phải ngăn chặn rò rỉ kết quả (outcome leakage) — ví dụ: mã sửa chữa cuối cùng không được dùng để dự đoán rủi ro tại thời điểm tiếp nhận lô hàng. Việc phân chia dữ liệu (train/test splits) phải tôn trọng dòng thời gian và nhóm lô/nhà cung cấp/Unit liên quan.
 
-## Safety, privacy and operational boundaries
+## Ranh giới An toàn, Quyền riêng tư & Vận hành
 
-1. **Human authority:** output supports an authorized human decision; it never
-   auto-blocks, auto-releases, auto-reworks, or changes process parameters.
-2. **Evidence first:** every alert, prediction and recommendation identifies its
-   evidence, rules/model version and known uncertainty.
-3. **Local first:** production data remains `local_only` unless an explicit,
-   approved policy and consent boundary authorizes a narrower external route.
-4. **No domain hard-code in RAG v2 core:** production-specific schema, rules and
-   adapters remain outside generic RAG/evidence contracts.
-5. **Conflict visible:** conflicting limits, dates, test versions or outcomes
-   are presented as a conflict requiring review, not silently merged.
-6. **Rollback:** imports, rules, models and recommendations must be versioned,
-   disableable and traceable to a recovery path.
-7. **No causal overclaim:** correlation, similarity and risk scores are distinct
-   from a confirmed root cause.
+1. **Thẩm quyền của con người (Human authority):** Kết quả đầu ra chỉ hỗ trợ quyết định của con người được ủy quyền; tuyệt đối không tự động chặn, tự động xuất hàng, tự động làm lại hoặc thay đổi thông số quy trình.
+2. **Ưu tiên bằng chứng (Evidence first):** Mọi cảnh báo, dự đoán và khuyến nghị đều phải xác định rõ bằng chứng, phiên bản quy tắc/mô hình và độ không chắc chắn đã biết.
+3. **Ưu tiên cục bộ (Local first):** Dữ liệu sản xuất luôn là `local_only` trừ khi có chính sách và sự đồng ý tường minh cho phép một tuyến gửi ra ngoài hẹp hơn.
+4. **Không nhúng cứng mã miền vào lõi RAG v2:** Schema, quy tắc và adapter đặc thù sản xuất phải nằm ngoài các hợp đồng RAG/bằng chứng generic.
+5. **Hiển thị xung đột minh bạch:** Các giới hạn, ngày tháng, phiên bản test hoặc kết quả mâu thuẫn nhau phải được hiển thị dưới dạng xung đột cần xem xét, không được âm thầm gộp lại.
+6. **Khả năng hoàn tác (Rollback):** Dữ liệu nạp, quy tắc, mô hình và khuyến nghị phải có phiên bản, có thể vô hiệu hóa và có đường dẫn khôi phục rõ ràng.
+7. **Không tuyên bố quá mức về quan hệ nhân quả:** Tương quan (correlation), độ tương đồng và điểm rủi ro hoàn toàn khác biệt với nguyên nhân gốc rễ đã được xác nhận.
 
-## Architecture direction
+## Định hướng Kiến trúc
 
-The future capability is a layered extension, not a replacement for RAG v2:
+Năng lực tương lai là phần mở rộng phân tầng, không phải là sự thay thế cho RAG v2:
 
 ```text
-Structured production imports and source documents
+Nạp dữ liệu sản xuất có cấu trúc và tài liệu nguồn
        ↓
-Traceability records + provenance links
+Bản ghi truy xuất nguồn gốc + liên kết xuất xứ (provenance)
        ↓
-Rule/statistical alert engine and, later, governed risk models
+Bộ máy cảnh báo quy tắc/thống kê và, sau này, các mô hình rủi ro có quản trị
        ↓
-Evidence selection, cited explanation and Workspace Chat
+Lựa chọn bằng chứng, giải thích có trích dẫn và Workspace Chat
        ↓
-Human review, decision record and validated outcome feedback
+Con người xem xét, lưu bản ghi quyết định và phản hồi kết quả đã kiểm chứng
 ```
 
-RAG v2 remains responsible for retrieving documentary evidence and explaining a
-result in clear Vietnamese. Structured traceability, alerts and prediction must
-be independently auditable; an LLM is not the calculator of record for a
-threshold, a yield denominator, or a production release decision.
+RAG v2 tiếp tục chịu trách nhiệm truy xuất bằng chứng tài liệu và giải thích kết quả bằng Tiếng Việt rõ ràng. Việc truy xuất nguồn gốc có cấu trúc, cảnh báo và dự đoán phải có thể kiểm toán độc lập; mô hình LLM không phải là máy tính ghi nhận ngưỡng, mẫu số tính yield hay quyết định phát hành sản xuất.
 
-## Selective Semantica-inspired practices
+## Thực hành Chọn lọc Lấy Cảm hứng từ Semantica
 
-Future work may adapt these concepts in lightweight, local implementations:
+Các công việc tương lai có thể tiếp thu các khái niệm này dưới dạng các triển khai cục bộ gọn nhẹ:
 
-- typed relations between lot, Unit, test, defect and action;
-- provenance/lineage attached to facts and decisions;
-- explicit conflict states rather than forced merging;
-- temporal validity of measurements, limits and process revisions;
-- graph traversal only as an additional candidate-retrieval channel;
-- decision records that link a recommendation to the human decision and outcome.
+- Quan hệ có định kiểu (typed relations) giữa lô, Unit, kiểm thử, lỗi và hành động;
+- Xuất xứ/nguồn gốc (provenance/lineage) gắn liền với sự thật và quyết định;
+- Trạng thái xung đột tường minh thay vì ép buộc gộp dữ liệu;
+- Hiệu lực theo thời gian của phép đo, giới hạn và bản sửa đổi quy trình;
+- Duyệt đồ thị (graph traversal) chỉ như một kênh truy xuất ứng viên bổ sung;
+- Bản ghi quyết định liên kết một khuyến nghị với quyết định của con người và kết quả thực tế.
 
-AIOS must not adopt the full Semantica framework by default. It introduces a
-large, overlapping runtime and a second potential source of truth before any
-answer-level or operational benefit is proven.
+AIOS tuyệt đối không áp dụng toàn bộ framework Semantica theo mặc định, nhằm tránh tạo ra một runtime cồng kềnh, chồng chéo và nguồn chân lý thứ hai tiềm ẩn khi chưa chứng minh được lợi ích vận hành cụ thể.
 
-## Gate-opening evidence
+## Bằng chứng Mở Gate (Gate-opening Evidence)
 
-No Stage 1–4 delivery Gate Card should open without the relevant evidence:
+Không có Gate Card triển khai nào cho Giai đoạn 1–4 được phép mở nếu thiếu các bằng chứng liên quan:
 
-| Stage | Minimum evidence before opening implementation |
+| Giai đoạn | Bằng chứng tối thiểu trước khi mở triển khai |
 |---|---|
-| 1: Traceability | Owner-approved data dictionary; sample records with stable joins; privacy classification; query acceptance set; import rollback plan |
-| 2: Alerts | Baseline/control-window definition; reviewed thresholds; alert acknowledgement workflow; false-positive measurement plan; safe disable switch |
-| 3: Prediction | Sufficient confirmed/negative outcomes; temporal/group leakage review; frozen evaluation protocol; calibration and bias review; owner approval for decision use |
-| 4: Prevention | Reviewed corrective-action library; effectiveness evidence; human approval workflow; rollback/escalation policy; post-action outcome capture |
+| 1: Truy xuất nguồn gốc | Từ điển dữ liệu được chủ sở hữu phê duyệt; bản ghi mẫu với các khóa join ổn định; phân loại bảo mật; bộ câu hỏi truy vấn nghiệm thu; kế hoạch hoàn tác nạp dữ liệu |
+| 2: Cảnh báo | Định nghĩa đường cơ sở/cửa sổ kiểm soát; các ngưỡng đã review; quy trình xác nhận cảnh báo; kế hoạch đo lường dương tính giả; công tắc tắt an toàn |
+| 3: Dự đoán | Đủ kết quả xác nhận/tiêu cực; đánh giá chống rò rỉ dữ liệu theo thời gian/nhóm; giao thức đánh giá đóng băng; đánh giá độ chuẩn hóa và sai lệch; sự phê duyệt của chủ sở hữu cho việc ra quyết định |
+| 4: Phòng ngừa | Thư viện hành động khắc phục đã review; bằng chứng về tính hiệu quả; quy trình con người phê duyệt; chính sách hoàn tác/leo thang; cơ chế thu thập kết quả sau hành động |
 
-Each prospective gate must define its own success measures, false-alarm cost,
-missed-detection risk, privacy boundary and full validation plan. A good average
-score cannot override data leakage, missing lineage, unreviewed automatic action,
-or a privacy violation.
+Mỗi gate tiềm năng bắt buộc phải xác định các thước đo thành công, chi phí cảnh báo giả, rủi ro bỏ sót phát hiện, ranh giới quyền riêng tư và kế hoạch kiểm chứng toàn diện. Điểm trung bình tốt không thể bù đắp cho việc rò rỉ dữ liệu, thiếu nguồn gốc xuất xứ, hành động tự động chưa được xem xét hoặc vi phạm quyền riêng tư.
 
-## Relationship to current roadmap
+## Quan hệ với Roadmap Hiện tại
 
-- The canonical current state remains [ROADMAP.md](../../ROADMAP.md).
-- The active RAG v2 answer-quality gate is unchanged and must remain frozen
-  during its blinded evaluation.
-- This vision elaborates the existing long-term **Phase 9 — Production
-  Traceability Foundation** positioning; it is not the Phase 9 implementation
-  plan.
-- Future planning must start with a dedicated specification and Gate Card rather
-  than treating this vision as pre-approved code scope.
+- Nguồn trạng thái canonical hiện tại vẫn là [ROADMAP.md](../../ROADMAP.md).
+- Gate chất lượng câu trả lời RAG v2 đang hoạt động không thay đổi và phải được giữ đóng băng trong suốt quá trình đánh giá mù.
+- Tầm nhìn này chi tiết hóa định vị dài hạn của **Giai đoạn 9 — Nền tảng Truy xuất Nguồn gốc Sản xuất**; đây không phải là kế hoạch triển khai của Giai đoạn 9.
+- Mọi kế hoạch trong tương lai bắt buộc phải bắt đầu bằng một bản đặc tả (spec) và Gate Card chuyên dụng thay vì coi tầm nhìn này như phạm vi mã nguồn đã được phê duyệt trước.

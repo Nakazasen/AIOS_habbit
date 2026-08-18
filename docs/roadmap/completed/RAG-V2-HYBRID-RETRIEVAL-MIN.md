@@ -1,63 +1,50 @@
-# RAG-V2-HYBRID-RETRIEVAL-MIN
+# Truy Xuất Kết Hợp Tối Thiểu Cho RAG v2 (RAG-V2-HYBRID-RETRIEVAL-MIN)
 
 Status: `DONE`
 
-## Goal
+## Mục Tiêu (Goal)
 
-Improve generic local RAG v2 retrieval over the current deterministic lexical
-index without UI, cloud, dependency or domain-tuning drift.
+Cải thiện khả năng truy xuất RAG v2 tổng quát cục bộ vượt lên trên chỉ mục từ vựng tất định hiện tại mà không làm trôi dạt UI, cloud, dependency hay tinh chỉnh đặc thù ngành.
 
-## Preconditions
+## Điều Kiện Tiên Quyết (Preconditions)
 
-- Documentation/legacy public-route cleanup is closed and validated.
-- RAG v2 schema/converter/chunker/index foundations remain green.
-- P0 AI Gateway real-route policy consolidation is `DONE`.
+- Dọn dẹp tuyến công khai kế thừa / tài liệu đã đóng và được kiểm chứng.
+- Nền tảng schema / converter / chunker / index của RAG v2 vẫn đạt màu xanh.
+- Hợp nhất chính sách tuyến thực tế AI Gateway P0 ở trạng thái `DONE`.
 
-## Implemented scope
+## Phạm Vi Đã Triển Khai (Implemented Scope)
 
-- Generic lexical candidate retrieval with Unicode tokenization.
-- Deterministic metadata/exact-match boosts: exact text phrase, source
-  name/path, section/sheet structure, table element type, optional generic
-  confidence/freshness metadata.
-- Pre-ranking privacy label filter, selected document/source path filter, and
-  source fingerprint freshness check.
-- Per-document source diversity cap (default: two chunks per document).
-- Deterministic tie-breaking: score descending, then document ID / source path /
-  chunk ID ascending.
-- Transparent `SearchSummary` with indexed/eligible/candidate/result counts,
-  filter breakdown, diversity-limited count, query coverage, and safe
-  insufficiency reasons.
-- New public types: `SearchOptions`, `SearchResult` (extended), `SearchSummary`,
-  `SearchResponse`.
-- Backward-compatible `search(query, limit=...)` list API preserved.
-- Focused tests: 18 passed covering phrase ranking, metadata signals, table
-  signal, privacy/source/stale filtering, diversity, determinism, and tokenless
-  query handling.
+- Truy xuất ứng viên từ vựng tổng quát với tách từ Unicode tokenization.
+- Tăng điểm khớp chính xác / metadata tất định: cụm từ văn bản chính xác, tên/đường dẫn nguồn, cấu trúc phần/sheet, loại phần tử bảng, metadata độ mới/độ tin cậy tổng quát tùy chọn.
+- Bộ lọc nhãn bảo mật trước khi xếp hạng, bộ lọc đường dẫn tài liệu/nguồn được chọn, và kiểm tra độ mới của dấu vân tay nguồn.
+- Giới hạn độ đa dạng nguồn trên mỗi tài liệu (mặc định: tối đa 2 chunk mỗi tài liệu).
+- Phân định hòa điểm tất định: điểm giảm dần, sau đó theo ID tài liệu / đường dẫn nguồn / ID chunk tăng dần.
+- `SearchSummary` minh bạch với số lượng đã lập chỉ mục / đủ điều kiện / ứng viên / kết quả, phân tích bộ lọc, số lượng bị giới hạn đa dạng, độ bao phủ truy vấn và lý do thiếu dữ liệu an toàn.
+- Các kiểu dữ liệu công khai mới: `SearchOptions`, `SearchResult` (mở rộng), `SearchSummary`, `SearchResponse`.
+- Bảo toàn API danh sách tương thích ngược `search(query, limit=...)`.
+- Kiểm thử tập trung: 18 passed bao gồm xếp hạng cụm từ, tín hiệu metadata, tín hiệu bảng, lọc bảo mật/nguồn/cũ, tính đa dạng, tính tất định và xử lý truy vấn không có token.
 
-## Acceptance evidence
+## Bằng Chứng Nghiệm Thu (Acceptance Evidence)
 
-- Focused RAG v2 index/chunking/hard-code tests: **18 passed** in 0.55s.
-- Documentation contract: PASS.
-- Compile (`py -3 -m compileall src tests`): PASS.
-- Full test suite: **907 passed** in 12.94s.
-- CLI audit (`py -3 -m aios_habit.cli audit`): PASS, no errors or warnings.
-- Workspace Chat import: PASS (expected Streamlit bare-mode warnings only).
-- `git diff --check` and `git diff --cached --check`: PASS.
-- Hard-code guard (`test_rag_v2_hardcode_guard.py`): PASS; no protected terms
-  in RAG v2 source or comments.
+- Kiểm thử tập trung chỉ mục / chia chunk / chốt chặn mã cứng RAG v2: **18 passed** in 0.55s.
+- Hợp đồng tài liệu: PASS.
+- Biên dịch (`py -3 -m compileall src tests`): PASS.
+- Toàn bộ bộ kiểm thử: **907 passed** in 12.94s.
+- Kiểm toán CLI audit (`py -3 -m aios_habit.cli audit`): PASS, không có lỗi hay cảnh báo.
+- Import Workspace Chat: PASS (chỉ có cảnh báo bare-mode của Streamlit như kỳ vọng).
+- `git diff --check` và `git diff --cached --check`: PASS.
+- Chốt chặn mã cứng (`test_rag_v2_hardcode_guard.py`): PASS; không có thuật ngữ được bảo vệ nào trong mã nguồn hoặc chú thích của RAG v2.
 
-## Explicitly excluded
+## Các Loại Trừ Rõ Ràng (Explicitly Excluded)
 
-- No vector database, embedding, or cloud/provider/network call.
-- No new dependency added.
-- No Workspace Chat UI or runtime migration; legacy `rag_search.py` path
-  remains the active Workspace Chat retrieval.
-- No project-specific routing, intent, or domain hard-code in RAG v2.
-- No roadmap/changelog status change within this implementation gate; status
-  sync is a separate docs-only operation.
+- Không có cơ sở dữ liệu vector, embedding hay lệnh gọi cloud/provider/mạng nào.
+- Không thêm dependency mới nào.
+- Không thay đổi UI Workspace Chat hay di chuyển runtime; đường dẫn cũ `rag_search.py` vẫn là bộ truy xuất hoạt động của Workspace Chat.
+- Không có định tuyến đặc thù dự án, ý định hay mã cứng đặc thù ngành trong RAG v2.
+- Không thay đổi trạng thái roadmap/changelog trong cổng triển khai này; đồng bộ trạng thái là thao tác chỉ dành cho tài liệu riêng biệt.
 
-## References
+## Tài Liệu Tham Khảo (References)
 
-- Architecture: `docs/rag_v2/RAG_V2_DESIGN.md`
-- External patterns consulted: Haystack `DocumentJoiner`, LlamaIndex
-  `QueryFusionRetriever`, Vespa hybrid-search tutorial, SQLite FTS5.
+- Kiến trúc: `docs/rag_v2/RAG_V2_DESIGN.md`
+- Các mẫu bên ngoài đã tham khảo: Haystack `DocumentJoiner`, LlamaIndex `QueryFusionRetriever`, tài liệu hướng dẫn tìm kiếm kết hợp Vespa, SQLite FTS5.
+

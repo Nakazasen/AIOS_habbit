@@ -1,147 +1,59 @@
-# Project Handover
+# Biên bản Bàn giao Dự án (Project Handover)
 
-## Mục đích
+Cập nhật: 2026-08-16
+Nguồn trạng thái chuẩn: [ROADMAP.md](ROADMAP.md) là nguồn trạng thái chuẩn duy nhất cho vòng đời các Gate; tệp này là ảnh chụp nhanh (snapshot) vận hành và không được tự ý chuyển các tuyên bố lịch sử thành tuyên bố phát hành hiện tại.
 
-Tài liệu này là handover vận hành ngắn cho repository AIOS WorkLens. Trạng thái
-Git, test và remote phải luôn được kiểm tra lại tại thời điểm nhận việc; không
-coi một claim lịch sử là trạng thái runtime hiện tại.
+## Ảnh chụp trạng thái hiện tại (Current Snapshot)
 
-## Trạng thái verified gần nhất
+- **Giao diện chính (Primary UI):** Workspace Chat. Các tệp giao diện công khai của Case Cockpit cũ đang được cho dừng (retired), tuy nhiên các dịch vụ dùng chung dựa trên `case_store` vẫn có các luồng gọi trực tiếp và tuyệt đối không được xóa nếu chưa có kế hoạch di chuyển tách biệt.
+- **Git:** Nhánh `main...origin/main` hiện có một cây làm việc chưa commit đáng kể, bao gồm RAG, Workspace Chat, Antigravity, tài liệu và các bài kiểm thử. Cần bảo toàn các thay đổi hiện có; phân tách và đánh giá kỹ lưỡng trước khi đưa ra bất kỳ tuyên bố phát hành hoặc chạy benchmark nào.
+- **Dữ liệu riêng tư:** `local_cases/`, `local_runs/`, tài liệu nguồn gốc, bộ nhớ đệm mô hình (cache), thông tin xác thực (credentials) và câu trả lời benchmark luôn được Git bỏ qua. Tuyệt đối không đưa chúng vào Git để làm cho báo cáo bàn giao trông có vẻ "đầy đủ".
+- **Cấu hình kiểm thử:** `pytest` hiện nằm trong nhóm phụ thuộc `dev` và đã ghi nhận trong lockfile. Lệnh `uv lock --check` đã vượt qua. Môi trường `.venv` hiện tại gặp lỗi từ chối quyền truy cập (access denied) của Windows đối với metadata cũ của `aios_habit` khi chạy `uv sync`; không tự ý xóa hoặc thay đổi quyền sở hữu môi trường đó mà chưa có sự chấp thuận của chủ sở hữu.
 
-- **Primary UI:** Workspace Chat.
-- **RAG v2 foundation:** element schema/adapters, converter adapters,
-  structure-aware chunking và local SQLite lexical index đã hoàn thành.
-- **Cleanup/legacy routes:** `DONE`. Phần triển khai nằm trong `9123caa`;
-  compile, `892` tests và CLI audit đều đạt ngày 2026-07-25.
-- **Nakazasen AI Router:** đã nâng lên `v0.5.1`.
-  Public imports, focused regressions, live provider smoke và live call qua
-  Workspace Chat adapter đều đạt. Router có bounded stale-model recovery: probe
-  metadata tối đa một lần và retry một lần với model cùng family đã được duyệt;
-  explicit owner model override vẫn được giữ nguyên. Focused provider/router
-  regressions: `57 passed`; full repository regression sau integration: `957 passed`.
-  Live smoke dùng Gemini và dừng sau lần thành công đầu tiên.
-- **Professionalization Baseline:** `DONE`. Bổ sung security/privacy, ADR,
-  architecture/runtime views, quality/CI parity, recovery/release/risk và
-  onboarding records; không thay đổi runtime, UI hay cloud-default behavior.
-  Docs contract, compile, CLI audit (không errors/warnings), Workspace Chat import
-  và full suite `896 passed` đã đạt; synthetic JSONL/SQLite restore drill đã PASS.
-- **P0 AI Gateway:** `DONE`. Real Workspace Chat provider requests now enter
-  `BrainGateway` before the router; consent is bound to the full selected-source
-  set, `workspace_chat_external_router` and `workspace_chat_answer`. The router
-  receives only a sanitized typed payload. `local_only`/`confidential` stay
-  hard-blocked; legacy `machine_only`/`cloud_allowed` records remain non-sendable
-  until an owner explicitly reclassifies them to `cloud_safe`. Focused policy
-  regressions: `155 passed`; full gate: docs PASS, compile PASS, `903 passed`,
-  CLI audit PASS with no errors/warnings, Workspace Chat import PASS (expected
-  Streamlit bare-mode warnings only), and Git whitespace checks PASS on
-  2026-07-25.
-- **Owner decisions còn chờ:** kênh báo security riêng tư, kênh phân phối/release,
-  support matrix, retention/RTO-RPO, named reviewer/CODEOWNERS và dependency
-  advisory enforcement.
-- **Case Cockpit:** public routes đã gỡ; shared services vẫn được giữ lại để
-  audit dependency riêng.
-- **RAG v2 hybrid retrieval:** `DONE`. Local-only staged retrieval with
-  transparent multi-signal ranking, pre-ranking privacy/source/fingerprint
-  filters, per-document diversity cap, and safe insufficiency reasons. Focused
-  tests: `18 passed`; full suite: `907 passed`.
-- **RAG v2 evidence synthesis:** `DONE`. Generic evidence pack builder with
-  numbered citations, configurable confidence assessment, insufficiency
-  handling, strictest-wins privacy summary, and prompt-ready text format.
-  Independent of legacy modules. Focused tests: `15 passed`; full suite:
-  `921 passed`; docs/compile/audit/UI import all PASS on 2026-07-25.
-- **RAG v2 eval harness:** `DONE`. Local-only benchmark runner with retrieval
-  hit rates, citation source checks, insufficiency detection, privacy
-  compliance, latency metrics, and PASS/FAIL verdict. Focused tests:
-  `11 passed`; full suite: `931 passed`; docs/compile/audit/UI import
-  all PASS on 2026-07-25.
-- **RAG v2 capability benchmark:** `DONE`. Full three-arm run completed 12/12
-  RAG v2 workflows, 12/12 Workspace Chat workflows, and 11/11 applicable
-  NotebookLM workflows; Excel-native `BQ09` was correctly `not_applicable` for
-  NotebookLM. Independent blind review imported 11 shared rows: NotebookLM won
-  8, RAG v2 won 2, Workspace Chat won 1. Mean rubric score: NotebookLM 3.807/5,
-  RAG v2 2.898/5, Workspace Chat 2.841/5. Conclusion: RAG v2 is a viable
-  independent candidate but is not NotebookLM-equivalent and is not yet the
-  active Workspace Chat retrieval path. Final validation: 977 tests, compile,
-  docs contract, and CLI audit all PASS on 2026-07-25.
-- **RAG v2 fail-closed corpus remediation and live rerun:** `DONE`.
-  `resolve_benchmark_source_root()` now fail-closed (rejects workspace root
-  fallback). `EXPECTED_SOURCE_COUNT` updated 48 → 70.
-  `build_local_manifest()` validates exact 70-file count. Gold obligation
-  fields (`required_sources`, `required_spans`, `required_facets`) added to
-  eval harness. Live benchmark `BATTLE-RAGv2-1785003571-e33e5670` completed
-  on clean 70-file corpus: NotebookLM **4.27/5**, RAG v2 **3.15/5**,
-  Workspace Chat **2.68/5**. NotebookLM won 11/11 shared rows.
-  Verdict: **HOLD** — RAG v2 remains `NOT_READY_FOR_PRIMARY_UI`.
-  Gap to NotebookLM: -1.12 points (26% deficit).
-- **Known limitation:** RAG v2 retrieval occasionally returns irrelevant content
-  (BQ04: raw BOP dumps instead of error handling procedures). Synthesis depth
-  and cross-source synthesis lag NotebookLM by ~1.5 points. Generated-answer
-  parity, multilingual semantic retrieval, and PNG OCR remain unresolved.
-- **AI Gateway:** A15 design, A16 và A17A–A17D đã hoàn thành; A18 chưa mở;
-  P1.0 vẫn locked.
+## Bằng chứng đã xác minh ngày 2026-08-16 (Verified Evidence)
 
-## Điều cần kiểm tra trước khi tiếp tục
+| Hạng mục | Bằng chứng hiện tại | Phạm vi ranh giới |
+|---|---|---|
+| Lưu trữ JSONL cục bộ | 33 bài kiểm thử trọng điểm ĐẠT; bao gồm ghi nguyên tử (atomic write), khôi phục (rollback) và ghi log an toàn dòng lỗi | Chưa phải kết quả toàn bộ suite |
+| Workspace Chat / Giao diện bàn giao | 59 bài kiểm thử trọng điểm ĐẠT | Chưa phải smoke test trên trình duyệt hoặc trực tiếp với provider |
+| Cầu nối Antigravity, bàn giao & RAG đa nguồn | 43 bài kiểm thử trọng điểm ĐẠT | Chưa kiểm chứng trực tiếp sidecar/provider thực tế |
+| Adaptive Reranking UX (Feature 003) | 154 bài kiểm thử trọng điểm ĐẠT, 1.175 test toàn bộ ĐẠT, schema v3 và circuit breaker hoàn tất | `IMPLEMENTED_PENDING_REAL_BENCHMARK`; canary/production activation `BLOCKED` cho đến khi chạy benchmark thật trên model/corpus |
 
-```powershell
-git status --short --branch
-git log -1 --oneline
-git diff --check
-git diff --cached --check
-py -3 scripts/check_docs.py
-py -3 -m compileall src tests
-py -3 -m pytest -q
-$env:PYTHONPATH="src"; py -3 -m aios_habit.cli audit
-$env:PYTHONPATH="src"; py -3 -c "import aios_habit.workspace_chat_app"
-```
+| Thu thập kiểm thử repository | `pytest --collect-only -q`: đã thu thập 1,143 bài kiểm thử | Thu thập không tương đương với chạy kiểm thử thành công |
 
-- Không reset, stage, commit hoặc discard thay đổi không do gate hiện tại tạo ra.
-- Đặc biệt xem xét lại staged documentation trước khi đưa vào lịch sử chính thức.
-- Giữ `local_cases/`, `local_runs/`, dữ liệu gốc, secrets và runtime artifacts
-  ngoài Git.
+| Vệ sinh mã nguồn | `compileall`, `uv lock --check`, và `git diff --check` ĐẠT | Cây làm việc vẫn ở trạng thái chưa commit |
 
-## Bước tiếp theo
+Các Gate Card đã hoàn thành hiện có trong cây làm việc là tài liệu ghi nhận kết quả triển khai. Chúng được đánh dấu là đang chờ xác minh toàn bộ test suite cho đến khi toàn bộ quality gate bắt buộc được chạy thành công trên diff cuối cùng.
 
-1. Owner xem xét các policy `OWNER_DECISION_REQUIRED` còn mở: security disclosure,
-   distribution/support, retention/RTO-RPO, named reviewer/CODEOWNERS và advisory
-   enforcement.
-2. P0
-   [AI-GW-REAL-ROUTE-POLICY-CONSOLIDATION.md](docs/roadmap/completed/AI-GW-REAL-ROUTE-POLICY-CONSOLIDATION.md)
-   is `DONE`; keep its privacy contract intact for every provider-route change.
-3. `RAG-V2-HYBRID-RETRIEVAL-MIN` is `DONE`;
-   [completed gate card](docs/roadmap/completed/RAG-V2-HYBRID-RETRIEVAL-MIN.md)
-   records scope and evidence.
-4. `RAG-V2-GENERIC-EVIDENCE-SYNTHESIS-MIN` is `DONE`;
-   [completed gate card](docs/roadmap/completed/RAG-V2-GENERIC-EVIDENCE-SYNTHESIS-MIN.md)
-   records scope and evidence.
-5. `RAG-V2-EVAL-HARNESS-GENERIC-AND-PRIVATE` is `DONE`;
-   [completed gate card](docs/roadmap/completed/RAG-V2-EVAL-HARNESS-GENERIC-AND-PRIVATE.md)
-   records scope and evidence.
-6. `NOTEBOOKLM-BATTLE-RERUN-RAG-V2` is `DONE`;
-   [completed gate card](docs/roadmap/completed/NOTEBOOKLM-BATTLE-RERUN-RAG-V2.md)
-   records the full blinded evidence and explicit non-parity decision.
-7. `RAG-V2-DEV-QUALITY-CONVERGENCE` is `DONE`;
-   [completed gate card](docs/roadmap/completed/RAG-V2-DEV-QUALITY-CONVERGENCE.md)
-   records the private local replay, full validation, and the explicit
-   `DEV_READY_WITH_LIMITATIONS` / `NOT_READY_FOR_PRIMARY_UI` decision. Do not plan
-   primary-UI migration or claim parity without a later owner-approved live blind
-   rerun that satisfies the promotion criteria.
-8. Case Cockpit dependency retirement remains backlog; do not delete shared
-   services before dependency/capability matrix approval.
+## Quy trình Tiếp tục An toàn (Safe Continuation)
 
-## Phiên làm việc tiếp theo (2026-07-26 sáng)
+1. Kiểm tra cây làm việc hiện có trước khi đưa ra bất kỳ quyết định benchmark, dọn dẹp hoặc commit nào:
 
-Kết quả benchmark mới nhất cho thấy RAG v2 thua NotebookLM ở 3 điểm chính:
+   ```powershell
+   git status --short --branch
+   git diff --check
+   git diff --cached --check
+   ```
 
-1. **Retrieval quality** — BQ04 trả lời sai hoàn toàn (dump raw BOP thay vì
-   error handling). Cần xem lại ranking/rerank logic và query understanding.
-2. **Synthesis depth** — câu trả lời ngắn hơn và ít cấu trúc hơn NotebookLM.
-   Cần cải thiện synthesis prompt hoặc evidence selection.
-3. **Cross-source synthesis** — kém 1.46 điểm. Cần cải thiện khả năng kết
-   hợp thông tin từ nhiều tài liệu khác nhau.
+2. Trên một môi trường ổn định, cài đặt và chạy chuỗi công cụ phát triển có thể tái lập:
 
-Điểm số chính thức:
-- NotebookLM: **4.27/5** (trước: 3.807)
-- RAG v2: **3.15/5** (trước: 2.898)
-- Gap: **-1.12 điểm** (26%)
+   ```powershell
+   uv sync --group dev
+   uv run --no-sync --group dev python scripts/check_docs.py
+   uv run --no-sync --group dev python -m compileall src tests
+   uv run --no-sync --group dev pytest -q
+   uv run --no-sync --group dev python -m aios_habit.cli audit
+   ```
 
-Run reference: `BATTLE-RAGv2-1785003571-e33e5670` trong `local_runs/battle_rag_v2/`.
+3. Tuyệt đối không coi một bộ kiểm thử trọng điểm vượt qua hoặc số lượng test thu thập được là sự cho phép để đánh dấu Gate Card thành `DONE`, công bố báo cáo 12 câu hỏi, hoặc chạy benchmark provider trực tiếp. Phải ghi lại chính xác câu lệnh, mã thoát (exit code) và phạm vi kiểm thử.
+
+4. Đối với luồng benchmark RAG, phải bảo toàn định danh/checkpoint đóng băng. Chẩn đoán cục bộ chưa đóng dấu chỉ được giới hạn ở preflight không dùng provider, Stage A hoặc chạy thử nghiệm (dry-run) với đúng `BQ01,BQ02`; bắt buộc phải từ chối `--run`.
+
+5. Trước khi commit, cần tách biệt mã sản phẩm/tài liệu khỏi các tùy biến cục bộ và dữ liệu runtime bị bỏ qua. Chỉ cập nhật roadmap, changelog và biên bản bàn giao này dựa trên bằng chứng từ diff cuối cùng.
+
+## Rủi ro Vận hành Cần Chuyển giao Tiếp theo (Operational Risks)
+
+- Các dòng JSONL không hợp lệ hiện chỉ được hiển thị trong log cục bộ theo tên tệp/số dòng. Giữ lại tệp cục bộ gốc để phục hồi; tuyệt đối không sao chép nội dung bản ghi vào issue hoặc kênh chat.
+- Lệnh `uv sync --group dev` có thể thất bại trên môi trường Windows `.venv` hiện tại do thư mục metadata cũ bị khóa quyền. Hãy dừng lại, xác định các tiến trình đang chạy và xin phê duyệt trước khi tạo lại môi trường.
+- Toàn bộ bộ kiểm thử chưa được chạy lại đầy đủ trong đợt bàn giao này. Số lượng kiểm thử dự kiến thu thập là 1,143, nhưng chỉ lượt chạy hoàn chỉnh với mã thoát 0 mới được tính là ĐẠT.
+- Tài liệu này không ngụ ý bất kỳ trạng thái worker benchmark/BGE nào đang hoạt động; hãy kiểm tra danh sách tiến trình và các artifact runtime bị bỏ qua ngay trước khi khởi chạy lại.

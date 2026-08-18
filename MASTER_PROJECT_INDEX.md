@@ -1,42 +1,42 @@
-﻿# Master Project Index
+# Chỉ mục Dự án Tổng thể (Master Project Index)
 
-## Purpose
+## Mục đích
 
-Lưu danh mục project đã biết, trạng thái, vai trò trong hệ tri thức và quan hệ giữa các project.
+Lưu danh mục dự án đã biết, trạng thái, vai trò trong hệ tri thức và quan hệ giữa các dự án.
 
-## Critical Rule
+## Quy tắc Cốt lõi (Critical Rule)
 
-Danh sách dưới đây là seed list ban đầu, **không được coi là đầy đủ**. Phase 1 phải tự khám phá project mới.
+Danh sách dưới đây là seed list ban đầu, **không được coi là đầy đủ**. Giai đoạn 1 (Phase 1) phải tự khám phá dự án mới.
 
-## Known Seed Projects
+## Các Dự án Hạt giống Đã biết (Known Seed Projects)
 
-| Project | Path | Status | Role | Evidence Status | Notes |
+| Dự án | Đường dẫn | Trạng thái | Vai trò | Trạng thái Bằng chứng | Ghi chú |
 |---|---|---|---|---|---|
-| AIOS_habbit | `[LOCAL_WORKSPACE]\AIOS_habbit` | active | Main project | candidate | Repository mục tiêu của nền tảng memory |
-| MP2027 | `<LOCAL_PROJECT_PATH>` | unknown | Related project | candidate | Cần Phase 1 inventory |
-| Master Knowledge Manager System (MKMS) | `<LOCAL_PROJECT_PATH>` | unknown | Related knowledge system | candidate | Có thể liên quan trực tiếp đến AIOS Habit |
-| ABW_NVIDIA_FUSION_CONTROL | `<LOCAL_PROJECT_PATH>` | unknown | Related project | candidate | Cần inventory |
-| Nvidia | `<LOCAL_PROJECT_PATH>` | unknown | Related project | candidate | Cần inventory |
-| skill-Anti-brain-wiki_note | `[LOCAL_WORKSPACE]\skill-Anti-brain-wiki_note` | unknown | Related skill/project | candidate | Cần inventory |
+| AIOS_habbit | `[LOCAL_WORKSPACE]\AIOS_habbit` | active | Dự án chính | candidate | Repository mục tiêu của nền tảng memory |
+| MP2027 | `<LOCAL_PROJECT_PATH>` | unknown | Dự án liên quan | candidate | Cần Phase 1 inventory |
+| Master Knowledge Manager System (MKMS) | `<LOCAL_PROJECT_PATH>` | unknown | Hệ thống tri thức liên quan | candidate | Có thể liên quan trực tiếp đến AIOS Habit |
+| ABW_NVIDIA_FUSION_CONTROL | `<LOCAL_PROJECT_PATH>` | unknown | Dự án liên quan | candidate | Cần inventory |
+| Nvidia | `<LOCAL_PROJECT_PATH>` | unknown | Dự án liên quan | candidate | Cần inventory |
+| skill-Anti-brain-wiki_note | `[LOCAL_WORKSPACE]\skill-Anti-brain-wiki_note` | unknown | Kỹ năng/dự án liên quan | candidate | Cần inventory |
 
-## Project Card Requirements
+## Yêu cầu Thẻ Dự án (Project Card Requirements)
 
-Mỗi project sau Phase 1 phải có:
+Mỗi dự án sau Phase 1 phải có:
 
-- Project name.
-- Local path.
-- Purpose.
-- Status.
-- Owner/role.
-- Key files.
-- Memory relevance.
-- Evidence records.
-- Open risks.
-- Handover link.
+- Tên dự án (Project name).
+- Đường dẫn cục bộ (Local path).
+- Mục đích (Purpose).
+- Trạng thái (Status).
+- Chủ sở hữu / vai trò (Owner/role).
+- Các tệp quan trọng (Key files).
+- Mức độ liên quan bộ nhớ (Memory relevance).
+- Hồ sơ bằng chứng (Evidence records).
+- Rủi ro chưa xử lý (Open risks).
+- Liên kết bàn giao (Handover link).
 
-## Discovery Strategy
+## Chiến lược Khám phá (Discovery Strategy)
 
-Phase 1 phải scan các root được người dùng cho phép, tìm marker:
+Phase 1 phải quét các root được người dùng cho phép, tìm các dấu hiệu nhận diện:
 
 - `.git/`
 - `README.md`
@@ -50,21 +50,22 @@ Phase 1 phải scan các root được người dùng cho phép, tìm marker:
 - `pyproject.toml`
 - `package.json`
 
-## Project Relationship Types
+## Các Loại Quan hệ Dự án (Project Relationship Types)
 
-- `parent`
-- `child`
-- `dependency`
-- `knowledge-source`
-- `execution-target`
-- `archive`
-- `unknown`
+- `parent` (cha)
+- `child` (con)
+- `dependency` (phụ thuộc)
+- `knowledge-source` (nguồn tri thức)
+- `execution-target` (mục tiêu thực thi)
+- `archive` (lưu trữ)
+- `unknown` (chưa xác định)
 
-## Open Tasks for Phase 1
+## Nhiệm vụ Mở cho Phase 1
 
-- Validate all seed project paths.
-- Discover additional projects under allowed roots.
-- Create project cards.
-- Separate active, archived, experimental and unknown projects.
+- Xác thực tất cả các đường dẫn dự án hạt giống.
+- Khám phá các dự án bổ sung trong các thư mục gốc được cho phép.
+- Tạo các thẻ dự án (project cards).
+- Phân tách rõ ràng các dự án đang hoạt động, đã lưu trữ, thử nghiệm và chưa xác định.
+
 
 

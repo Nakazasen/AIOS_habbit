@@ -1,4 +1,4 @@
-# Sequence: Workspace Chat External Preflight
+# Trình tự: Kiểm tra Trước khi Gửi Ra Ngoài Workspace Chat (External Preflight)
 
 Status: `ACTIVE`
 Owner role: Project owner / privacy reviewer
@@ -9,37 +9,36 @@ Review cadence: Before changing labels, consent or external destinations
 sequenceDiagram
     participant UI as Workspace Chat
     participant G as BrainGateway
-    participant O as Owner consent
-    participant A as Router adapter
-    participant P as Optional provider
-    UI->>G: BrainRequest(full sources, retrieved evidence, destination, purpose)
-    G->>G: Verify full source set and strictest privacy label
-    alt local_only or confidential
-        G-->>UI: Deny: use local-only path
-    else unknown or machine_only
-        G->>O: Validate source-set/destination/purpose consent
-        alt invalid or missing consent
-            G-->>UI: Deny: request classification or consent
-        else valid
-            G->>G: Authorize evidence against full source set
-            G->>G: Sanitize payload
+    participant O as Sự đồng ý chủ sở hữu (Consent)
+    participant A as Bộ chuyển đổi Router
+    participant P as Provider tùy chọn
+    UI->>G: BrainRequest(toàn bộ nguồn, bằng chứng truy xuất, đích đến, mục đích)
+    G->>G: Xác minh tập nguồn đầy đủ & nhãn bảo mật nghiêm ngặt nhất
+    alt local_only hoặc confidential
+        G-->>UI: Từ chối: bắt buộc dùng tuyến chỉ cục bộ (local-only)
+    else unknown hoặc machine_only
+        G->>O: Xác thực sự đồng ý theo tập nguồn/đích đến/mục đích
+        alt Sự đồng ý không hợp lệ hoặc bị thiếu
+            G-->>UI: Từ chối: yêu cầu phân loại hoặc xác nhận đồng ý
+        else Hợp lệ
+            G->>G: Ủy quyền bằng chứng đối chiếu với toàn bộ tập nguồn
+            G->>G: Làm sạch dữ liệu (Sanitize payload)
             G-->>A: SanitizedRouterPayload
         end
-    else cloud_safe or public
-        G->>G: Authorize evidence and sanitize payload
+    else cloud_safe hoặc public
+        G->>G: Ủy quyền bằng chứng & làm sạch payload
         G-->>A: SanitizedRouterPayload
     end
-    A->>A: Build provider messages from sanitized payload only
-    A->>P: Optional provider request
-    P-->>A: Result or safe failure
-    A-->>UI: Vietnamese-safe response
+    A->>A: Xây dựng thông điệp provider CHỈ từ payload đã làm sạch
+    A->>P: Gửi yêu cầu tới provider tùy chọn
+    P-->>A: Kết quả hoặc thông báo lỗi an toàn
+    A-->>UI: Phản hồi an toàn bằng Tiếng Việt
 ```
 
-This sequence documents the implemented optional route; it does not enable any
-provider by default. The route remains blocked when router configuration is
-unavailable, policy denies, or retrieval yields no eligible evidence.
+Trình tự này tài liệu hóa tuyến tùy chọn đã được triển khai; nó không kích hoạt bất kỳ provider nào theo mặc định. Tuyến này luôn bị chặn khi cấu hình router không khả dụng, chính sách từ chối, hoặc truy xuất không mang lại bằng chứng đủ điều kiện.
 
-## Related records
+## Các Bản ghi Liên quan (Related Records)
 
 - [ADR-0004](../../adr/0004-brain-gateway-privacy-ownership.md)
-- [Privacy impact assessment](../../security/PRIVACY_IMPACT_ASSESSMENT.md)
+- [Đánh giá tác động quyền riêng tư (Privacy impact assessment)](../../security/PRIVACY_IMPACT_ASSESSMENT.md)
+

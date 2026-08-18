@@ -1,0 +1,125 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1350 640" width="100%" height="100%" style="background:#0f172a; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+  <defs>
+    <linearGradient id="gradST" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#0284c7"/><stop offset="100%" stop-color="#0369a1"/></linearGradient>
+    <linearGradient id="gradLine" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#ea580c"/><stop offset="100%" stop-color="#c2410c"/></linearGradient>
+    <linearGradient id="gradCO" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#16a34a"/><stop offset="100%" stop-color="#15803d"/></linearGradient>
+    <linearGradient id="gradSys" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#7c3aed"/><stop offset="100%" stop-color="#6d28d9"/></linearGradient>
+    <filter id="shadow" x="-5%" y="-5%" width="110%" height="115%"><feDropShadow dx="0" dy="4" stdDeviation="6" flood-color="#000" flood-opacity="0.4"/></filter>
+    <marker id="arrow" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 1 L 10 5 L 0 9 z" fill="#94a3b8"/>
+    </marker>
+  </defs>
+
+  <!-- TITLE -->
+  <text x="675" y="45" fill="#38bdf8" font-size="24" font-weight="bold" text-anchor="middle">SƠ ĐỒ LUỒNG ĐĂNG KÝ ST-CO (着完工登録システム)</text>
+  <text x="675" y="70" fill="#94a3b8" font-size="14" text-anchor="middle">Quy trình Quét mã ST (Bắt đầu) ➔ Chuyền sản xuất AGV ➔ Quét mã CO (Hoàn thành) ➔ Đồng bộ MOM / 統括PLC</text>
+
+  <!-- COLUMN 1: ST -->
+  <g transform="translate(30, 95)">
+    <rect width="290" height="510" rx="12" fill="#1e293b" stroke="#0284c7" stroke-width="2" filter="url(#shadow)"/>
+    <rect width="290" height="45" rx="12" fill="url(#gradST)"/>
+    <text x="145" y="28" fill="#ffffff" font-size="15" font-weight="bold" text-anchor="middle">1. ST (BẮT ĐẦU - 着手)</text>
+
+    <!-- Item 1 -->
+    <rect x="15" y="60" width="260" height="95" rx="8" fill="#0f172a" stroke="#334155" stroke-width="1"/>
+    <text x="25" y="85" fill="#38bdf8" font-size="14" font-weight="bold">📱 Quét Barcode bằng HT</text>
+    <text x="25" y="108" fill="#cbd5e1" font-size="12">• Quét Serial Number (SN)</text>
+    <text x="25" y="128" fill="#cbd5e1" font-size="12">• Quét Chỉ thị sản xuất (指図)</text>
+
+    <!-- Item 2 -->
+    <rect x="15" y="170" width="260" height="95" rx="8" fill="#0f172a" stroke="#334155" stroke-width="1"/>
+    <text x="25" y="195" fill="#38bdf8" font-size="14" font-weight="bold">🏭 Công đoạn đầu (先頭 C-1)</text>
+    <text x="25" y="218" fill="#cbd5e1" font-size="12">• Ghi nhận ST Timestamp</text>
+    <text x="25" y="238" fill="#cbd5e1" font-size="12">• Khởi tạo Unit/Assy trên Line</text>
+
+    <!-- Item 3 -->
+    <rect x="15" y="280" width="260" height="95" rx="8" fill="#0f172a" stroke="#334155" stroke-width="1"/>
+    <text x="25" y="305" fill="#38bdf8" font-size="14" font-weight="bold">⚡ Gửi Tín Hiệu ST</text>
+    <text x="25" y="328" fill="#cbd5e1" font-size="12">• Truyền SN + Thời gian ST</text>
+    <text x="25" y="348" fill="#cbd5e1" font-size="12">• Gửi sang 統括PLC quản lý</text>
+  </g>
+
+  <!-- ARROW 1 -> 2 -->
+  <path d="M 330 350 L 360 350" stroke="#64748b" stroke-width="3" fill="none" marker-end="url(#arrow)"/>
+
+  <!-- COLUMN 2: LINE & AGV -->
+  <g transform="translate(370, 95)">
+    <rect width="290" height="510" rx="12" fill="#1e293b" stroke="#ea580c" stroke-width="2" filter="url(#shadow)"/>
+    <rect width="290" height="45" rx="12" fill="url(#gradLine)"/>
+    <text x="145" y="28" fill="#ffffff" font-size="15" font-weight="bold" text-anchor="middle">2. LINE SẢN XUẤT &amp; AGV</text>
+
+    <!-- Item 1 -->
+    <rect x="15" y="60" width="260" height="95" rx="8" fill="#0f172a" stroke="#334155" stroke-width="1"/>
+    <text x="25" y="85" fill="#fb923c" font-size="14" font-weight="bold">⚙️ Các trạm C-2 ➔ C-9</text>
+    <text x="25" y="108" fill="#cbd5e1" font-size="12">• Lắp ráp linh kiện chi tiết</text>
+    <text x="25" y="128" fill="#cbd5e1" font-size="12">• Kiểm tra / hiệu chỉnh thông số</text>
+
+    <!-- Item 2 -->
+    <rect x="15" y="170" width="260" height="95" rx="8" fill="#0f172a" stroke="#334155" stroke-width="1"/>
+    <text x="25" y="195" fill="#fb923c" font-size="14" font-weight="bold">🔘 Nút công đoạn (工程ボタン)</text>
+    <text x="25" y="218" fill="#cbd5e1" font-size="12">• Trigger gọi AGV chuyển hàng</text>
+    <text x="25" y="238" fill="#cbd5e1" font-size="12">• Báo dừng chuyền khi có sự cố</text>
+
+    <!-- Item 3 -->
+    <rect x="15" y="280" width="260" height="95" rx="8" fill="#0f172a" stroke="#334155" stroke-width="1"/>
+    <text x="25" y="305" fill="#fb923c" font-size="14" font-weight="bold">🤖 Robot AGV Di Chuyển</text>
+    <text x="25" y="328" fill="#cbd5e1" font-size="12">• Nhận lệnh tự động từ 統括PLC</text>
+    <text x="25" y="348" fill="#cbd5e1" font-size="12">• Chuyển phôi sang trạm tiếp theo</text>
+  </g>
+
+  <!-- ARROW 2 -> 3 -->
+  <path d="M 670 350 L 700 350" stroke="#64748b" stroke-width="3" fill="none" marker-end="url(#arrow)"/>
+
+  <!-- COLUMN 3: CO -->
+  <g transform="translate(710, 95)">
+    <rect width="290" height="510" rx="12" fill="#1e293b" stroke="#16a34a" stroke-width="2" filter="url(#shadow)"/>
+    <rect width="290" height="45" rx="12" fill="url(#gradCO)"/>
+    <text x="145" y="28" fill="#ffffff" font-size="15" font-weight="bold" text-anchor="middle">3. CO (HOÀN THÀNH - 完工)</text>
+
+    <!-- Item 1 -->
+    <rect x="15" y="60" width="260" height="95" rx="8" fill="#0f172a" stroke="#334155" stroke-width="1"/>
+    <text x="25" y="85" fill="#4ade80" font-size="14" font-weight="bold">📱 Quét Hoàn Thành bằng HT</text>
+    <text x="25" y="108" fill="#cbd5e1" font-size="12">• Quét mã SN tại trạm cuối</text>
+    <text x="25" y="128" fill="#cbd5e1" font-size="12">• Xác nhận đóng gói sản phẩm</text>
+
+    <!-- Item 2 -->
+    <rect x="15" y="170" width="260" height="95" rx="8" fill="#0f172a" stroke="#334155" stroke-width="1"/>
+    <text x="25" y="195" fill="#4ade80" font-size="14" font-weight="bold">🏁 Trạm cuối (最終 C-10)</text>
+    <text x="25" y="218" fill="#cbd5e1" font-size="12">• Ghi nhận CO Timestamp</text>
+    <text x="25" y="238" fill="#cbd5e1" font-size="12">• Chốt thời gian chu kỳ (Cycle Time)</text>
+
+    <!-- Item 3 -->
+    <rect x="15" y="280" width="260" height="95" rx="8" fill="#0f172a" stroke="#334155" stroke-width="1"/>
+    <text x="25" y="305" fill="#4ade80" font-size="14" font-weight="bold">📤 Gửi Dữ Liệu CO</text>
+    <text x="25" y="328" fill="#cbd5e1" font-size="12">• Đẩy dữ liệu hoàn thành lên PLC</text>
+    <text x="25" y="348" fill="#cbd5e1" font-size="12">• Đánh dấu sản phẩm sẵn sàng</text>
+  </g>
+
+  <!-- ARROW 3 -> 4 -->
+  <path d="M 1010 350 L 1040 350" stroke="#64748b" stroke-width="3" fill="none" marker-end="url(#arrow)"/>
+
+  <!-- COLUMN 4: SYSTEM INTEGRATION -->
+  <g transform="translate(1050, 95)">
+    <rect width="270" height="510" rx="12" fill="#1e293b" stroke="#7c3aed" stroke-width="2" filter="url(#shadow)"/>
+    <rect width="270" height="45" rx="12" fill="url(#gradSys)"/>
+    <text x="135" y="28" fill="#ffffff" font-size="15" font-weight="bold" text-anchor="middle">4. TÍCH HỢP HỆ THỐNG</text>
+
+    <!-- Item 1 -->
+    <rect x="15" y="60" width="240" height="95" rx="8" fill="#0f172a" stroke="#334155" stroke-width="1"/>
+    <text x="25" y="85" fill="#c084fc" font-size="14" font-weight="bold">🎛️ 統括PLC (Control PLC)</text>
+    <text x="25" y="108" fill="#cbd5e1" font-size="12">• Quản lý tiến độ toàn line</text>
+    <text x="25" y="128" fill="#cbd5e1" font-size="12">• Điều phối tín hiệu trạm &amp; AGV</text>
+
+    <!-- Item 2 -->
+    <rect x="15" y="170" width="240" height="95" rx="8" fill="#0f172a" stroke="#334155" stroke-width="1"/>
+    <text x="25" y="195" fill="#c084fc" font-size="14" font-weight="bold">🏢 MOM / MateCon</text>
+    <text x="25" y="218" fill="#cbd5e1" font-size="12">• Tính toán cấp linh kiện realtime</text>
+    <text x="25" y="238" fill="#cbd5e1" font-size="12">• Đồng bộ kế hoạch sang WMS</text>
+
+    <!-- Item 3 -->
+    <rect x="15" y="280" width="240" height="95" rx="8" fill="#0f172a" stroke="#334155" stroke-width="1"/>
+    <text x="25" y="305" fill="#c084fc" font-size="14" font-weight="bold">📊 Báo Cáo Lịch Sử</text>
+    <text x="25" y="328" fill="#cbd5e1" font-size="12">• Lưu lịch sử sản xuất (SN)</text>
+    <text x="25" y="348" fill="#cbd5e1" font-size="12">• Phân tích Line Stop / Downtime</text>
+  </g>
+</svg>

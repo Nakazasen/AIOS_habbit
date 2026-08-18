@@ -1,0 +1,205 @@
+{
+  "nodes": [
+    {
+      "id": "file:tests/test_phase4_owner_pilot.py",
+      "type": "file",
+      "name": "test_phase4_owner_pilot.py",
+      "filePath": "tests/test_phase4_owner_pilot.py",
+      "summary": "Tests for the phase 4 owner pilot functionality.",
+      "tags": ["test", "pilot"]
+    },
+    {
+      "id": "file:tests/test_provider_catalog.py",
+      "type": "file",
+      "name": "test_provider_catalog.py",
+      "filePath": "tests/test_provider_catalog.py",
+      "summary": "Tests for the provider catalog system.",
+      "tags": ["test", "provider"]
+    },
+    {
+      "id": "file:tests/test_provider_health.py",
+      "type": "file",
+      "name": "test_provider_health.py",
+      "filePath": "tests/test_provider_health.py",
+      "summary": "Tests for provider health monitoring.",
+      "tags": ["test", "provider"]
+    },
+    {
+      "id": "file:tests/test_provider_model_discovery.py",
+      "type": "file",
+      "name": "test_provider_model_discovery.py",
+      "filePath": "tests/test_provider_model_discovery.py",
+      "summary": "Tests for provider model discovery mechanisms.",
+      "tags": ["test", "provider"]
+    },
+    {
+      "id": "file:tests/test_provider_safety.py",
+      "type": "file",
+      "name": "test_provider_safety.py",
+      "filePath": "tests/test_provider_safety.py",
+      "summary": "Tests for provider safety protocols.",
+      "tags": ["test", "provider"]
+    },
+    {
+      "id": "file:tests/test_qa_case_workflow.py",
+      "type": "file",
+      "name": "test_qa_case_workflow.py",
+      "filePath": "tests/test_qa_case_workflow.py",
+      "summary": "Tests for the QA case workflow process.",
+      "tags": ["test", "workflow"]
+    },
+    {
+      "id": "file:tests/test_quick_intake.py",
+      "type": "file",
+      "name": "test_quick_intake.py",
+      "filePath": "tests/test_quick_intake.py",
+      "summary": "Tests for quick intake functionality.",
+      "tags": ["test", "intake"]
+    },
+    {
+      "id": "file:tests/test_rag_answer_composer.py",
+      "type": "file",
+      "name": "test_rag_answer_composer.py",
+      "filePath": "tests/test_rag_answer_composer.py",
+      "summary": "Tests for RAG answer composition.",
+      "tags": ["test", "rag"]
+    },
+    {
+      "id": "file:tests/test_rag_benchmark.py",
+      "type": "file",
+      "name": "test_rag_benchmark.py",
+      "filePath": "tests/test_rag_benchmark.py",
+      "summary": "Benchmarks for RAG systems.",
+      "tags": ["test", "rag", "benchmark"]
+    },
+    {
+      "id": "file:tests/test_rag_evaluator.py",
+      "type": "file",
+      "name": "test_rag_evaluator.py",
+      "filePath": "tests/test_rag_evaluator.py",
+      "summary": "Tests for the RAG evaluator module.",
+      "tags": ["test", "rag", "evaluator"]
+    },
+    {
+      "id": "file:tests/test_rag_evidence.py",
+      "type": "file",
+      "name": "test_rag_evidence.py",
+      "filePath": "tests/test_rag_evidence.py",
+      "summary": "Tests for RAG evidence collection.",
+      "tags": ["test", "rag"]
+    },
+    {
+      "id": "file:tests/test_rag_ingest.py",
+      "type": "file",
+      "name": "test_rag_ingest.py",
+      "filePath": "tests/test_rag_ingest.py",
+      "summary": "Tests for RAG data ingestion.",
+      "tags": ["test", "rag", "ingestion"]
+    },
+    {
+      "id": "file:tests/test_rag_rerank.py",
+      "type": "file",
+      "name": "test_rag_rerank.py",
+      "filePath": "tests/test_rag_rerank.py",
+      "summary": "Tests for RAG reranking mechanisms.",
+      "tags": ["test", "rag"]
+    },
+    {
+      "id": "file:tests/test_rag_search.py",
+      "type": "file",
+      "name": "test_rag_search.py",
+      "filePath": "tests/test_rag_search.py",
+      "summary": "Tests for RAG search functionality.",
+      "tags": ["test", "rag"]
+    },
+    {
+      "id": "file:tests/test_rag_v2_adapters.py",
+      "type": "file",
+      "name": "test_rag_v2_adapters.py",
+      "filePath": "tests/test_rag_v2_adapters.py",
+      "summary": "Tests for RAG v2 adapters.",
+      "tags": ["test", "rag"]
+    },
+    {
+      "id": "file:tests/test_rag_v2_chunking.py",
+      "type": "file",
+      "name": "test_rag_v2_chunking.py",
+      "filePath": "tests/test_rag_v2_chunking.py",
+      "summary": "Tests for RAG v2 chunking strategies.",
+      "tags": ["test", "rag"]
+    },
+    {
+      "id": "file:tests/test_rag_v2_converters.py",
+      "type": "file",
+      "name": "test_rag_v2_converters.py",
+      "filePath": "tests/test_rag_v2_converters.py",
+      "summary": "Tests for RAG v2 data converters.",
+      "tags": ["test", "rag"]
+    },
+    {
+      "id": "file:tests/test_rag_v2_cross_source_upgrade.py",
+      "type": "file",
+      "name": "test_rag_v2_cross_source_upgrade.py",
+      "filePath": "tests/test_rag_v2_cross_source_upgrade.py",
+      "summary": "Tests for RAG v2 cross-source upgrades.",
+      "tags": ["test", "rag"]
+    },
+    {
+      "id": "file:tests/test_rag_v2_dev_cli.py",
+      "type": "file",
+      "name": "test_rag_v2_dev_cli.py",
+      "filePath": "tests/test_rag_v2_dev_cli.py",
+      "summary": "Tests for the RAG v2 developer CLI.",
+      "tags": ["test", "rag", "cli"]
+    },
+    {
+      "id": "file:tests/test_rag_v2_eval_harness.py",
+      "type": "file",
+      "name": "test_rag_v2_eval_harness.py",
+      "filePath": "tests/test_rag_v2_eval_harness.py",
+      "summary": "Tests for the RAG v2 evaluation harness.",
+      "tags": ["test", "rag", "evaluator"]
+    },
+    {
+      "id": "file:tests/test_rag_v2_evidence.py",
+      "type": "file",
+      "name": "test_rag_v2_evidence.py",
+      "filePath": "tests/test_rag_v2_evidence.py",
+      "summary": "Tests for RAG v2 evidence handling.",
+      "tags": ["test", "rag"]
+    },
+    {
+      "id": "file:tests/test_rag_v2_hardcode_guard.py",
+      "type": "file",
+      "name": "test_rag_v2_hardcode_guard.py",
+      "filePath": "tests/test_rag_v2_hardcode_guard.py",
+      "summary": "Tests for RAG v2 hardcode guard.",
+      "tags": ["test", "rag"]
+    },
+    {
+      "id": "file:tests/test_rag_v2_index.py",
+      "type": "file",
+      "name": "test_rag_v2_index.py",
+      "filePath": "tests/test_rag_v2_index.py",
+      "summary": "Tests for RAG v2 indexing.",
+      "tags": ["test", "rag"]
+    },
+    {
+      "id": "file:tests/test_rag_v2_index_bundle.py",
+      "type": "file",
+      "name": "test_rag_v2_index_bundle.py",
+      "filePath": "tests/test_rag_v2_index_bundle.py",
+      "summary": "Tests for RAG v2 index bundling.",
+      "tags": ["test", "rag"]
+    },
+    {
+      "id": "file:tests/test_rag_v2_ingestion_jobs.py",
+      "type": "file",
+      "name": "test_rag_v2_ingestion_jobs.py",
+      "filePath": "tests/test_rag_v2_ingestion_jobs.py",
+      "summary": "Tests for RAG v2 ingestion jobs.",
+      "tags": ["test", "rag", "ingestion"]
+    }
+  ],
+  "edges": []
+}

@@ -1,19 +1,14 @@
-﻿# UI Language Policy
+# Chính Sách Ngôn Ngữ Giao Diện (UI Language Policy)
 
-## Purpose
+## Mục Đích (Purpose)
 
-Normal owner-facing UI is Vietnamese-first. Developer identifiers, command names
-and file paths remain verbatim so they are runnable and searchable.
+Giao diện người dùng hướng tới chủ sở hữu thông thường mặc định ưu tiên Tiếng Việt (Vietnamese-first). Các định danh của lập trình viên, tên lệnh và đường dẫn tệp được giữ nguyên văn để có thể chạy và tìm kiếm chính xác.
 
-## Rules
+## Quy Tắc (Rules)
 
-1. Use Vietnamese for labels, actions, warnings, empty states and user-facing
-   errors.
-2. Explain necessary technical terms beside the UI copy; do not make users learn
-   RAG, provider, bridge, hash or gate concepts for daily work.
-3. Never expose raw traceback, filesystem paths, secrets or unredacted local
-   content through a normal UI error.
-4. Keep runnable technical examples literal, for example `pytest`, `compileall`,
-   `RUN_AIOS_WORKSPACE_CHAT.bat` and `src/aios_habit/workspace_chat_app.py`.
-5. Regression checks may inspect source code, but do not treat a historical
-   legacy UI as a supported user interface.
+1. Sử dụng Tiếng Việt cho các nhãn, hành động, cảnh báo, trạng thái trống và thông báo lỗi hiển thị cho người dùng.
+2. Giải thích các thuật ngữ kỹ thuật cần thiết ngay bên cạnh văn bản giao diện; không bắt người dùng phải học các khái niệm RAG, provider, bridge, hash hay gate để phục vụ công việc hằng ngày.
+3. Tuyệt đối không làm lộ traceback thô, đường dẫn hệ thống tệp, thông tin bí mật hoặc nội dung cục bộ chưa được làm sạch qua thông báo lỗi thông thường trên UI.
+4. Giữ nguyên văn các ví dụ kỹ thuật có thể thực thi, chẳng hạn như `pytest`, `compileall`, `RUN_AIOS_WORKSPACE_CHAT.bat` và `src/aios_habit/workspace_chat_app.py`.
+5. Các bài kiểm tra hồi quy có thể kiểm tra mã nguồn, nhưng tuyệt đối không coi giao diện cũ trong lịch sử là giao diện người dùng được hỗ trợ.
+

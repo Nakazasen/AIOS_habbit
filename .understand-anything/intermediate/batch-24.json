@@ -1,0 +1,165 @@
+{
+  "nodes": [
+    {
+      "id": "file:AGENT_RULES.md",
+      "type": "file",
+      "name": "AGENT_RULES.md",
+      "filePath": "AGENT_RULES.md",
+      "summary": "Defines behavioral rules and guidelines for agents in the project.",
+      "tags": ["documentation", "rules"]
+    },
+    {
+      "id": "file:ARCHITECTURE.md",
+      "type": "file",
+      "name": "ARCHITECTURE.md",
+      "filePath": "ARCHITECTURE.md",
+      "summary": "Describes the system architecture and component interactions.",
+      "tags": ["documentation", "architecture"]
+    },
+    {
+      "id": "file:CASE_COCKPIT_ACCEPTANCE_CRITERIA.md",
+      "type": "file",
+      "name": "CASE_COCKPIT_ACCEPTANCE_CRITERIA.md",
+      "filePath": "CASE_COCKPIT_ACCEPTANCE_CRITERIA.md",
+      "summary": "Lists acceptance criteria for the Case Cockpit module.",
+      "tags": ["documentation", "testing"]
+    },
+    {
+      "id": "file:CHANGELOG.md",
+      "type": "file",
+      "name": "CHANGELOG.md",
+      "filePath": "CHANGELOG.md",
+      "summary": "Records project changes and version history.",
+      "tags": ["documentation", "changelog"]
+    },
+    {
+      "id": "file:CONSTITUTION.md",
+      "type": "file",
+      "name": "CONSTITUTION.md",
+      "filePath": "CONSTITUTION.md",
+      "summary": "Defines the governing principles of the project.",
+      "tags": ["documentation", "governance"]
+    },
+    {
+      "id": "file:CONTRIBUTING.md",
+      "type": "file",
+      "name": "CONTRIBUTING.md",
+      "filePath": "CONTRIBUTING.md",
+      "summary": "Guidelines for contributing to the project.",
+      "tags": ["documentation", "contributing"]
+    },
+    {
+      "id": "file:DEPRECATION_PAUSE_LIST.md",
+      "type": "file",
+      "name": "DEPRECATION_PAUSE_LIST.md",
+      "filePath": "DEPRECATION_PAUSE_LIST.md",
+      "summary": "Lists components or features that are deprecated or paused.",
+      "tags": ["documentation", "maintenance"]
+    },
+    {
+      "id": "file:HARVEST_BACKLOG.md",
+      "type": "file",
+      "name": "HARVEST_BACKLOG.md",
+      "filePath": "HARVEST_BACKLOG.md",
+      "summary": "Backlog for harvest-related tasks.",
+      "tags": ["documentation", "backlog"]
+    },
+    {
+      "id": "file:INTEGRATION_DECISION_LOG.md",
+      "type": "file",
+      "name": "INTEGRATION_DECISION_LOG.md",
+      "filePath": "INTEGRATION_DECISION_LOG.md",
+      "summary": "Documents decisions regarding system integrations.",
+      "tags": ["documentation", "decisions"]
+    },
+    {
+      "id": "file:MANIFEST.md",
+      "type": "file",
+      "name": "MANIFEST.md",
+      "filePath": "MANIFEST.md",
+      "summary": "Lists project components and files.",
+      "tags": ["documentation", "manifest"]
+    },
+    {
+      "id": "file:MASTER_BEHAVIOR_PROFILE.md",
+      "type": "file",
+      "name": "MASTER_BEHAVIOR_PROFILE.md",
+      "filePath": "MASTER_BEHAVIOR_PROFILE.md",
+      "summary": "Defines the master behavior profile for agents.",
+      "tags": ["documentation", "behavior"]
+    },
+    {
+      "id": "file:MASTER_IDENTITY.md",
+      "type": "file",
+      "name": "MASTER_IDENTITY.md",
+      "filePath": "MASTER_IDENTITY.md",
+      "summary": "Defines the identity of the AIOS project.",
+      "tags": ["documentation", "identity"]
+    },
+    {
+      "id": "file:MASTER_LANGUAGE_PROFILE.md",
+      "type": "file",
+      "name": "MASTER_LANGUAGE_PROFILE.md",
+      "filePath": "MASTER_LANGUAGE_PROFILE.md",
+      "summary": "Defines language-related profiles.",
+      "tags": ["documentation", "language"]
+    },
+    {
+      "id": "file:MASTER_PROJECT_INDEX.md",
+      "type": "file",
+      "name": "MASTER_PROJECT_INDEX.md",
+      "filePath": "MASTER_PROJECT_INDEX.md",
+      "summary": "Index of the entire project structure.",
+      "tags": ["documentation", "index"]
+    },
+    {
+      "id": "file:MASTER_WORKFLOW_PROFILE.md",
+      "type": "file",
+      "name": "MASTER_WORKFLOW_PROFILE.md",
+      "filePath": "MASTER_WORKFLOW_PROFILE.md",
+      "summary": "Defines the master workflow profile.",
+      "tags": ["documentation", "workflow"]
+    },
+    {
+      "id": "file:MIGRATION_POLICY.md",
+      "type": "file",
+      "name": "MIGRATION_POLICY.md",
+      "filePath": "MIGRATION_POLICY.md",
+      "summary": "Defines policies for data or system migration.",
+      "tags": ["documentation", "policy"]
+    },
+    {
+      "id": "file:MONDAY_PILOT_CHECKLIST.md",
+      "type": "file",
+      "name": "MONDAY_PILOT_CHECKLIST.md",
+      "filePath": "MONDAY_PILOT_CHECKLIST.md",
+      "summary": "Checklist for the Monday pilot project.",
+      "tags": ["documentation", "checklist"]
+    },
+    {
+      "id": "file:PRODUCT_NORTH_STAR.md",
+      "type": "file",
+      "name": "PRODUCT_NORTH_STAR.md",
+      "filePath": "PRODUCT_NORTH_STAR.md",
+      "summary": "Defines the product vision and goal (North Star).",
+      "tags": ["documentation", "vision"]
+    },
+    {
+      "id": "file:PROJECT_HANDOVER.md",
+      "type": "file",
+      "name": "PROJECT_HANDOVER.md",
+      "filePath": "PROJECT_HANDOVER.md",
+      "summary": "Instructions for project handover processes.",
+      "tags": ["documentation", "process"]
+    },
+    {
+      "id": "file:README.md",
+      "type": "file",
+      "name": "README.md",
+      "filePath": "README.md",
+      "summary": "Primary README file for the project.",
+      "tags": ["documentation"]
+    }
+  ],
+  "edges": []
+}

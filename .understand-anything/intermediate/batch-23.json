@@ -1,0 +1,77 @@
+{
+  "nodes": [
+    {
+      "id": "file:11_templates/audit_report.md",
+      "type": "file",
+      "name": "audit_report.md",
+      "filePath": "11_templates/audit_report.md",
+      "summary": "Template for audit reports.",
+      "tags": ["template", "audit"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:11_templates/decision_record.md",
+      "type": "file",
+      "name": "decision_record.md",
+      "filePath": "11_templates/decision_record.md",
+      "summary": "Template for decision records.",
+      "tags": ["template", "decisions"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:11_templates/evidence_record.md",
+      "type": "file",
+      "name": "evidence_record.md",
+      "filePath": "11_templates/evidence_record.md",
+      "summary": "Template for evidence records.",
+      "tags": ["template", "evidence"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:11_templates/extraction_report.md",
+      "type": "file",
+      "name": "extraction_report.md",
+      "filePath": "11_templates/extraction_report.md",
+      "summary": "Template for extraction reports.",
+      "tags": ["template", "extraction"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:11_templates/handover.md",
+      "type": "file",
+      "name": "handover.md",
+      "filePath": "11_templates/handover.md",
+      "summary": "Template for project handovers.",
+      "tags": ["template", "handover"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:11_templates/memory_card.md",
+      "type": "file",
+      "name": "memory_card.md",
+      "filePath": "11_templates/memory_card.md",
+      "summary": "Template for memory cards.",
+      "tags": ["template", "memory"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:11_templates/project_card.md",
+      "type": "file",
+      "name": "project_card.md",
+      "filePath": "11_templates/project_card.md",
+      "summary": "Template for project cards.",
+      "tags": ["template", "project"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:11_templates/workflow_card.md",
+      "type": "file",
+      "name": "workflow_card.md",
+      "filePath": "11_templates/workflow_card.md",
+      "summary": "Template for workflow cards.",
+      "tags": ["template", "workflow"],
+      "complexity": "moderate"
+    }
+  ],
+  "edges": []
+}

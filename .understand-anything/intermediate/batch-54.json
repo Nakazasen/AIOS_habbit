@@ -1,0 +1,60 @@
+{
+  "nodes": [
+    {
+      "id": "file:scripts/battle_notebooklm_rag_v2.py",
+      "type": "file",
+      "name": "battle_notebooklm_rag_v2.py",
+      "filePath": "scripts/battle_notebooklm_rag_v2.py",
+      "summary": "Main script for benchmarking and battling NotebookLM RAG configurations.",
+      "tags": ["script", "rag", "notebooklm"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:scripts/prepare_notebooklm_exact_corpus.py",
+      "type": "file",
+      "name": "prepare_notebooklm_exact_corpus.py",
+      "filePath": "scripts/prepare_notebooklm_exact_corpus.py",
+      "summary": "Prepares corpus data specifically for NotebookLM RAG workflows.",
+      "tags": ["script", "corpus"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:scripts/upload_notebooklm_exact_corpus.py",
+      "type": "file",
+      "name": "upload_notebooklm_exact_corpus.py",
+      "filePath": "scripts/upload_notebooklm_exact_corpus.py",
+      "summary": "Handles uploading prepared corpora to NotebookLM.",
+      "tags": ["script", "upload", "notebooklm"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:scripts/reconcile_notebooklm_source_titles.py",
+      "type": "file",
+      "name": "reconcile_notebooklm_source_titles.py",
+      "filePath": "scripts/reconcile_notebooklm_source_titles.py",
+      "summary": "Reconciles source titles between local workspace and NotebookLM.",
+      "tags": ["script", "utility"],
+      "complexity": "moderate"
+    }
+  ],
+  "edges": [
+    {
+      "source": "file:scripts/battle_notebooklm_rag_v2.py",
+      "target": "file:scripts/prepare_notebooklm_exact_corpus.py",
+      "type": "imports",
+      "direction": "forward"
+    },
+    {
+      "source": "file:scripts/battle_notebooklm_rag_v2.py",
+      "target": "file:scripts/upload_notebooklm_exact_corpus.py",
+      "type": "imports",
+      "direction": "forward"
+    },
+    {
+      "source": "file:scripts/battle_notebooklm_rag_v2.py",
+      "target": "file:scripts/reconcile_notebooklm_source_titles.py",
+      "type": "imports",
+      "direction": "forward"
+    }
+  ]
+}

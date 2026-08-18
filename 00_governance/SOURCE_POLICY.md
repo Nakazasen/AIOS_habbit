@@ -1,65 +1,66 @@
-# Source Policy
+# Chính Sách Nguồn Dữ Liệu (Source Policy)
 
-## Purpose
+## Mục Đích (Purpose)
 
-Quy định nguồn nào được dùng để trích xuất memory và cách xử lý.
+Quy định những loại nguồn dữ liệu nào được phép dùng để trích xuất bộ nhớ (memory) và quy trình xử lý tương ứng.
 
-## Allowed Source Types
+## Các Loại Nguồn Được Phép (Allowed Source Types)
 
-- Markdown notes.
-- Roadmaps.
-- Architecture docs.
-- Audit reports.
-- Commit history.
-- Project specifications.
-- Prompt libraries.
-- User-approved chat transcript.
-- User interviews.
+- Ghi chú Markdown.
+- Lộ trình phát triển (Roadmaps).
+- Tài liệu kiến trúc (Architecture docs).
+- Báo cáo kiểm toán (Audit reports).
+- Lịch sử commit.
+- Đặc tả dự án (Project specifications).
+- Thư viện prompt.
+- Bản ghi chat được người dùng phê duyệt.
+- Phỏng vấn người dùng.
 
-## Source Processing Rule
-
-```text
-Source -> Source Inventory -> Evidence Record -> Candidate Memory -> Validation -> Memory Vault
-```
-
-Không được đi thẳng:
+## Quy Tắc Xử Lý Nguồn (Source Processing Rule)
 
 ```text
-Source -> Memory Vault
+Nguồn (Source) -> Kiểm kê nguồn -> Bản ghi bằng chứng -> Bộ nhớ ứng viên -> Xác thực -> Kho bộ nhớ (Memory Vault)
 ```
 
-## Raw Chat Rule
+Tuyệt đối không được đi tắt trực tiếp:
 
-Chat transcript không được lưu như memory. Chỉ được dùng để trích xuất:
+```text
+Nguồn (Source) -> Kho bộ nhớ (Memory Vault)
+```
 
-- Behavior pattern.
-- Workflow pattern.
-- Decision pattern.
-- Project knowledge.
-- Lessons learned.
+## Quy Tắc Chat Thô (Raw Chat Rule)
 
-## Exclusion Criteria
+Bản ghi chép chat (chat transcript) tuyệt đối không được lưu trữ trực tiếp dưới dạng bộ nhớ. Chúng chỉ được dùng để trích xuất:
 
-Loại trừ hoặc local-only nếu source chứa:
+- Mẫu hành vi (Behavior pattern).
+- Mẫu quy trình (Workflow pattern).
+- Mẫu quyết định (Decision pattern).
+- Tri thức dự án (Project knowledge).
+- Bài học kinh nghiệm (Lessons learned).
 
-- Secrets.
-- Credential.
-- Private personal data không liên quan.
+## Tiêu Chí Loại Trừ (Exclusion Criteria)
+
+Bắt buộc loại trừ hoặc chỉ giữ ở chế độ cục bộ (local-only) nếu nguồn chứa:
+
+- Thông tin bí mật (Secrets).
+- Thông tin xác thực (Credentials).
+- Dữ liệu cá nhân riêng tư không liên quan.
 - Nội dung không được phép xử lý.
-- Raw data quá dài chưa phân loại.
+- Dữ liệu thô quá dài chưa được phân loại.
 
-## Evidence Requirements
+## Yêu Cầu Đối Với Bản Ghi Bằng Chứng (Evidence Requirements)
 
-Mỗi evidence record cần:
+Mỗi bản ghi bằng chứng (evidence record) bắt buộc phải có:
 
-- Source type.
-- Source location hoặc reference.
-- Hash nếu có thể.
-- Summary.
-- Boundary.
-- Permission status.
-- Retention status.
+- Loại nguồn (Source type).
+- Vị trí nguồn hoặc tham chiếu.
+- Mã băm (Hash) nếu có thể.
+- Tóm tắt nội dung (Summary).
+- Ranh giới áp dụng (Boundary).
+- Trạng thái cấp phép (Permission status).
+- Trạng thái thời gian lưu trữ (Retention status).
 
-## Discovery Rule
+## Quy Tắc Khám Phá (Discovery Rule)
 
-Không giả định danh sách project/source là đầy đủ. Phase 1 phải có inventory và exclusion report.
+Không được tự giả định danh sách dự án / nguồn là đã đầy đủ. Giai đoạn 1 bắt buộc phải có báo cáo kiểm kê và báo cáo loại trừ.
+

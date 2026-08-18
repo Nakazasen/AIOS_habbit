@@ -1,0 +1,45 @@
+{
+  "nodes": [
+    {
+      "id": "file:src/aios_habit/source_ingest.py",
+      "type": "file",
+      "name": "source_ingest.py",
+      "filePath": "src/aios_habit/source_ingest.py",
+      "summary": "Handles ingestion of various data sources for the habit tracking system.",
+      "tags": ["python", "ingest"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:src/aios_habit/rag_ingest.py",
+      "type": "file",
+      "name": "rag_ingest.py",
+      "filePath": "src/aios_habit/rag_ingest.py",
+      "summary": "Handles RAG-based ingestion.",
+      "tags": ["python", "rag"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:src/aios_habit/workspace_chat_source_ingest.py",
+      "type": "file",
+      "name": "workspace_chat_source_ingest.py",
+      "filePath": "src/aios_habit/workspace_chat_source_ingest.py",
+      "summary": "Handles workspace-specific chat source ingestion.",
+      "tags": ["python", "ingest"],
+      "complexity": "moderate"
+    }
+  ],
+  "edges": [
+    {
+      "source": "file:src/aios_habit/source_ingest.py",
+      "target": "file:src/aios_habit/rag_ingest.py",
+      "type": "imports",
+      "direction": "forward"
+    },
+    {
+      "source": "file:src/aios_habit/workspace_chat_source_ingest.py",
+      "target": "file:src/aios_habit/source_ingest.py",
+      "type": "imports",
+      "direction": "forward"
+    }
+  ]
+}

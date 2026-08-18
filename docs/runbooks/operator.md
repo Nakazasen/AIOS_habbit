@@ -1,4 +1,4 @@
-﻿# Operator Runbook
+# Sổ Tay Vận Hành Dành Cho Người Vận Hành (Operator Runbook)
 
-Use [OPERATOR_RUNBOOK.md](../OPERATOR_RUNBOOK.md). This compatibility entry keeps
-canonical operator instructions discoverable under `docs/runbooks/`.
+Sử dụng [OPERATOR_RUNBOOK.md](../OPERATOR_RUNBOOK.md). Mục tương thích này giúp các hướng dẫn vận hành chuẩn tắc có thể khám phá được trong `docs/runbooks/`.
+

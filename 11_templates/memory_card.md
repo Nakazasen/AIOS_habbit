@@ -1,39 +1,40 @@
-# Memory Card
+# Thẻ Ký Ức (Memory Card)
 
 ## Metadata
 
 - Memory ID: `MEM-____-0000`
-- Type: `identity | behavior | language | workflow | project_knowledge | lessons_learned | decision_patterns`
-- Status: `candidate | validated | deprecated | conflicted | rejected`
-- Confidence: `low | medium | high | verified`
-- Created: `YYYY-MM-DD`
-- Updated: `YYYY-MM-DD`
+- Loại (Type): `identity | behavior | language | workflow | project_knowledge | lessons_learned | decision_patterns`
+- Trạng thái (Status): `candidate | validated | deprecated | conflicted | rejected`
+- Độ tin cậy (Confidence): `low | medium | high | verified`
+- Ngày tạo (Created): `YYYY-MM-DD`
+- Cập nhật (Updated): `YYYY-MM-DD`
 
-## Statement
+## Tuyên Bố Ký Ức (Statement)
 
-Viết một câu ngắn mô tả pattern/knowledge. Không dán raw chat dài.
+Viết một câu ngắn mô tả pattern / knowledge. Tuyệt đối không dán đoạn chat thô dài.
 
-## Scope
+## Phạm Vi (Scope)
 
-Memory này áp dụng trong trường hợp nào?
+Ký ức này áp dụng trong trường hợp nào?
 
-## Non-Scope
+## Ngoài Phạm Vi (Non-Scope)
 
-Memory này không nên áp dụng trong trường hợp nào?
+Ký ức này không nên áp dụng trong trường hợp nào?
 
-## Evidence
+## Bằng Chứng (Evidence)
 
-| Evidence ID | Support Level | Notes |
+| Mã bằng chứng (Evidence ID) | Mức độ hỗ trợ (Support Level) | Ghi chú (Notes) |
 |---|---|---|
 | EVD-0000 | weak/moderate/strong | |
 
-## Validation
+## Xác Thực (Validation)
 
-- Review status:
-- Reviewer:
-- Review date:
-- Result: `PASS | FAIL | PARTIAL | BLOCKED`
+- Trạng thái đánh giá (Review status):
+- Người đánh giá (Reviewer):
+- Ngày đánh giá (Review date):
+- Kết quả (Result): `PASS | FAIL | PARTIAL | BLOCKED`
 
-## Rollback / Deprecation
+## Hoàn Tác / Khai Tử (Rollback / Deprecation)
 
 Nếu memory sai hoặc cũ, xử lý thế nào?
+

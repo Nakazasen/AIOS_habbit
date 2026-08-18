@@ -1,0 +1,50 @@
+{
+  "nodes": [
+    {
+      "id": "file:docs/governance/DEFINITION_OF_READY_DONE.md",
+      "type": "file",
+      "name": "DEFINITION_OF_READY_DONE.md",
+      "filePath": "docs/governance/DEFINITION_OF_READY_DONE.md",
+      "summary": "Definition of ready and done for tasks.",
+      "tags": ["governance", "standards"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:docs/governance/LOCALIZATION_GLOSSARY.md",
+      "type": "file",
+      "name": "LOCALIZATION_GLOSSARY.md",
+      "filePath": "docs/governance/LOCALIZATION_GLOSSARY.md",
+      "summary": "Localization glossary and translation standards.",
+      "tags": ["governance", "localization"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:docs/governance/MAINTENANCE_DEPRECATION_POLICY.md",
+      "type": "file",
+      "name": "MAINTENANCE_DEPRECATION_POLICY.md",
+      "filePath": "docs/governance/MAINTENANCE_DEPRECATION_POLICY.md",
+      "summary": "Policy for maintenance and component deprecation.",
+      "tags": ["governance", "maintenance"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:docs/governance/OWNERSHIP_AND_REVIEW.md",
+      "type": "file",
+      "name": "OWNERSHIP_AND_REVIEW.md",
+      "filePath": "docs/governance/OWNERSHIP_AND_REVIEW.md",
+      "summary": "Ownership roles and code review policies.",
+      "tags": ["governance", "ownership"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:docs/governance/RISK_REGISTER.md",
+      "type": "file",
+      "name": "RISK_REGISTER.md",
+      "filePath": "docs/governance/RISK_REGISTER.md",
+      "summary": "Project risk register and mitigation plans.",
+      "tags": ["governance", "risk"],
+      "complexity": "moderate"
+    }
+  ],
+  "edges": []
+}

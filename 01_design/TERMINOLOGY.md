@@ -1,29 +1,30 @@
-# Terminology
+# Thuật Ngữ (Terminology)
 
-## Source
+## Nguồn (Source)
 
-Artifact gốc có thể chứa tri thức: file, transcript, commit, roadmap, spec.
+Artifact gốc có thể chứa tri thức: tệp (file), bản ghi chép (transcript), commit, roadmap, spec.
 
-## Evidence Record
+## Bản Ghi Bằng Chứng (Evidence Record)
 
-Bản ghi chứng cứ mô tả source và phần tri thức được dùng, không nhất thiết chứa toàn bộ source.
+Bản ghi chứng cứ mô tả nguồn dữ liệu và phần tri thức được trích xuất/sử dụng, không nhất thiết chứa toàn bộ nguồn thô.
 
-## Candidate Memory
+## Bộ Nhớ Ứng Viên (Candidate Memory)
 
-Memory mới trích xuất, chưa được xác nhận.
+Bộ nhớ mới được trích xuất, chưa qua đánh giá hoặc xác nhận chính thức.
 
-## Validated Memory
+## Bộ Nhớ Đã Xác Thực (Validated Memory)
 
-Memory đã qua kiểm định và có thể dùng trong master profile.
+Bộ nhớ đã qua kiểm định của con người/AI và đủ điều kiện đưa vào hồ sơ tổng thể (master profile).
 
-## Master Profile
+## Hồ Sơ Tổng Thể (Master Profile)
 
-File tổng hợp identity, behavior, language, project, workflow để AI khác dùng.
+Tài liệu tổng hợp danh tính (identity), hành vi (behavior), ngôn ngữ (language), dự án (project), quy trình (workflow) để các hệ thống AI khác sử dụng.
 
-## Export Pack
+## Gói Xuất (Export Pack)
 
-Bản chuyển đổi master profile cho từng AI cụ thể.
+Bản chuyển đổi hồ sơ tổng thể được đóng gói định dạng riêng cho từng hệ thống AI cụ thể.
 
-## Phase Gate
+## Cổng Kiểm Soát Giai Đoạn (Phase Gate)
 
-Điểm kiểm soát cho phép hoặc không cho phép chuyển phase.
+Điểm kiểm soát chất lượng bắt buộc cho phép hoặc không cho phép chuyển giao sang giai đoạn tiếp theo.
+

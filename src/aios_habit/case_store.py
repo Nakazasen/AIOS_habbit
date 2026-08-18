@@ -65,7 +65,7 @@ def save_case(case: Case):
             break
     if not found:
         cases.append(case)
-        
+
     with open(CASES_FILE, 'w', encoding='utf-8') as f:
         for c in cases:
             f.write(json.dumps(asdict(c), ensure_ascii=False) + '\n')
@@ -81,7 +81,7 @@ def save_evidence(evidence: EvidenceItem):
             break
     if not found:
         items.append(evidence)
-        
+
     with open(EVIDENCE_FILE, 'w', encoding='utf-8') as f:
         for e in items:
             f.write(json.dumps(asdict(e), ensure_ascii=False) + '\n')
@@ -106,9 +106,30 @@ def create_quick_case_with_evidence(
 ) -> dict:
     import uuid
     from datetime import datetime
+    import pandas as pd
     from .case_models import Case, EvidenceItem
-    from .case_ingest import ingest_csv, ingest_excel
-    
+
+    def _ingest_excel(file_path: str, case_id: str, evidence_id: str, original_name: str) -> EvidenceItem:
+        try:
+            xls = pd.ExcelFile(file_path)
+            sheets = xls.sheet_names
+            summary = f"Excel Workbook: {original_name}\nSheets: {', '.join(sheets)}\n"
+            for sheet in sheets:
+                df = pd.read_excel(xls, sheet_name=sheet, nrows=5)
+                summary += f"\nSheet '{sheet}' Preview (cols={len(df.columns)}):\n"
+                summary += df.to_string(index=False) + "\n"
+            return EvidenceItem(evidence_id=evidence_id, case_id=case_id, source_type="excel", source_path=file_path, title=f"Excel Data: {original_name}", structured_summary=summary, extracted_text=summary)
+        except Exception as e:
+            return EvidenceItem(evidence_id=evidence_id, case_id=case_id, source_type="excel", source_path=file_path, title=f"Excel Data: {original_name}", extracted_text=f"Error reading Excel: {e}", structured_summary="Failed to parse.")
+
+    def _ingest_csv(file_path: str, case_id: str, evidence_id: str, original_name: str) -> EvidenceItem:
+        try:
+            df = pd.read_csv(file_path, nrows=5)
+            summary = f"CSV File: {original_name}\nCols: {len(df.columns)}\nPreview:\n" + df.to_string(index=False)
+            return EvidenceItem(evidence_id=evidence_id, case_id=case_id, source_type="csv", source_path=file_path, title=f"CSV Data: {original_name}", structured_summary=summary, extracted_text=summary)
+        except Exception as e:
+            return EvidenceItem(evidence_id=evidence_id, case_id=case_id, source_type="csv", source_path=file_path, title=f"CSV Data: {original_name}", extracted_text=f"Error reading CSV: {e}", structured_summary="Failed to parse.")
+
     # 1. Create and save case
     case_id = f"CASE-{str(uuid.uuid4())[:8].upper()}"
     case = Case(
@@ -123,9 +144,9 @@ def create_quick_case_with_evidence(
         verification_status="draft"
     )
     save_case(case)
-    
+
     evidences_added = 0
-    
+
     # 2. Add Chat/Log evidence
     if chat_log.strip():
         ev_id = f"EVD-{str(uuid.uuid4())[:8].upper()}"
@@ -143,7 +164,7 @@ def create_quick_case_with_evidence(
         save_evidence(ev)
         case.timeline_events.append({"date": datetime.now().isoformat(), "event": "Đã thêm nhật ký từ nhập nhanh."})
         evidences_added += 1
-        
+
     # 3. Add Manual Notes
     if notes.strip():
         ev_id = f"EVD-{str(uuid.uuid4())[:8].upper()}"
@@ -160,36 +181,36 @@ def create_quick_case_with_evidence(
         )
         save_evidence(ev)
         evidences_added += 1
-        
+
     # 4. Add Excel/CSV
     if excel_csv_file_name and excel_csv_content_bytes:
         ev_id = f"EVD-{str(uuid.uuid4())[:8].upper()}"
         case_assets_dir = get_case_assets_dir(case_id)
-        from .case_ingest import safe_asset_filename
+        from .source_ingest import safe_asset_filename
         safe_name = safe_asset_filename(excel_csv_file_name)
         target_path = case_assets_dir / safe_name
         target_path.write_bytes(excel_csv_content_bytes)
-        
+
         path_str = str(target_path)
         if excel_csv_file_name.lower().endswith(".csv"):
-            ev = ingest_csv(path_str, case_id, ev_id, excel_csv_file_name)
+            ev = _ingest_csv(path_str, case_id, ev_id, excel_csv_file_name)
         else:
-            ev = ingest_excel(path_str, case_id, ev_id, excel_csv_file_name)
+            ev = _ingest_excel(path_str, case_id, ev_id, excel_csv_file_name)
         ev.privacy_level = privacy
         ev.source_origin = "manual"
         ev.verification_status = "draft"
         save_evidence(ev)
         evidences_added += 1
-        
+
     # 5. Add Image
     if img_file_name and img_content_bytes:
         ev_id = f"EVD-{str(uuid.uuid4())[:8].upper()}"
         case_assets_dir = get_case_assets_dir(case_id)
-        from .case_ingest import safe_asset_filename
+        from .source_ingest import safe_asset_filename
         safe_name = safe_asset_filename(img_file_name)
         target_path = case_assets_dir / safe_name
         target_path.write_bytes(img_content_bytes)
-        
+
         path_str = str(target_path)
         ev = EvidenceItem(
             evidence_id=ev_id,
@@ -204,13 +225,12 @@ def create_quick_case_with_evidence(
         )
         save_evidence(ev)
         evidences_added += 1
-        
+
     if len(case.timeline_events) > 0:
         save_case(case)
-        
+
     return {
         "case_id": case_id,
         "case": case,
         "evidences_count": evidences_added
     }
-

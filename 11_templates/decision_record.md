@@ -1,35 +1,36 @@
-# Decision Record
+# Bản Ghi Quyết Định (Decision Record)
 
 ## Metadata
 
 - Decision ID: `DEC-0000`
-- Date:
-- Status: `candidate | validated | deprecated | conflicted`
+- Ngày (Date):
+- Trạng thái (Status): `candidate | validated | deprecated | conflicted`
 
-## Context
+## Bối Cảnh (Context)
 
 Bối cảnh ra quyết định.
 
-## Decision Rule
+## Quy Tắc Quyết Định (Decision Rule)
 
 Người dùng thường quyết định thế nào trong bối cảnh này?
 
-## Tradeoffs
+## Đánh Đổi (Tradeoffs)
 
 - 
 
-## Boundary
+## Ranh Giới (Boundary)
 
 Quy tắc này không áp dụng khi nào?
 
-## Evidence
+## Bằng Chứng (Evidence)
 
-| Evidence ID | Notes |
+| Mã bằng chứng (Evidence ID) | Ghi chú (Notes) |
 |---|---|
 | | |
 
-## Validation
+## Xác Thực (Validation)
 
-- Result:
-- Reviewer:
-- Notes:
+- Kết quả (Result):
+- Người đánh giá (Reviewer):
+- Ghi chú (Notes):
+

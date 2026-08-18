@@ -1,50 +1,51 @@
-# AIOS WorkLens Development & Agent Rules
+# Quy tắc Phát triển & Tác tử AIOS WorkLens (Agent Rules)
 
-This document specifies the locked rules that all future AI models, development agents, and code editors **MUST** follow without exception when working on the `AIOS_habbit` repository.
-
----
-
-## 1. Locked Model Roles
-
-To prevent regression, incomplete executions, or "fake PASS" verifications, development tasks are strictly partitioned by model/agent specialties:
-
-### A. Audit Specialist
-- **Primary Role:** Code quality audit, security review, anti-fake PASS checks, and architectural reasoning.
-- **Constraints:**
-  - Must inspect all modified files and run independent checks.
-  - Must highlight potential prompt leaks, UX overload, and missing validation evidence.
-  - Does not commit or write feature code unless requested for minor edits.
-- **Current Recommended Model:** Codex GPT-5.5 or equivalent.
-
-### B. Execution Specialist
-- **Primary Role:** Implementing features, fixing bugs, refactoring, and writing unit tests.
-- **Constraints:**
-  - Must strictly adhere to the implementation plans approved by the user.
-  - Must not skip writing unit tests or validating commands.
-- **Current Recommended Models:** Gemini Flash 3.5 High / Gemini Pro 3.1 or equivalent.
+Tài liệu này quy định các điều luật bị khóa cứng mà toàn bộ các mô hình AI, tác tử phát triển (development agents) và người chỉnh sửa mã nguồn **BẮT BUỘC** phải tuân thủ nghiêm ngặt không có ngoại lệ khi làm việc trên repository `AIOS_habbit`.
 
 ---
 
-## 2. Mandatory Verification & Validation Rules
+## 1. Phân định Vai trò Mô hình bị Khóa (Locked Model Roles)
 
-No pull request or code change is allowed to be merged or pushed without satisfying the following:
+Để ngăn chặn suy thoái mã nguồn (regression), thực thi chắp vá hoặc các xác minh "PASS giả tạo" (fake PASS), các nhiệm vụ phát triển được phân chia nghiêm ngặt theo thế mạnh chuyên môn của mô hình/tác tử:
 
-1. **Compilation Check:** Code must compile cleanly using `py -3 -m compileall src tests`.
-2. **Pytest Coverage:** All existing unit tests and any newly added tests must pass with `py -3 -m pytest -q`.
-3. **Local CLI Audit Check:** Running `$env:PYTHONPATH="src"; py -3 -m aios_habit.cli audit` must return `"status": "PASS"` with no errors.
-4. **Primary UI Import Check:** Running `$env:PYTHONPATH="src"; py -3 -c "import aios_habit.workspace_chat_app"` must run without errors.
-5. **Legacy Boundary Check:** Supported Workspace Chat modules must not import `studio` or `case_cockpit`; retiring a legacy slice must also remove its supported launch path and stale test expectation.
+### A. Chuyên gia Kiểm toán & Đánh giá (Audit Specialist)
+- **Vai trò chính:** Kiểm toán chất lượng mã nguồn, đánh giá bảo mật, kiểm tra chống PASS giả tạo và lập luận phân tích kiến trúc.
+- **Ràng buộc:**
+  - Bắt buộc phải kiểm tra tất cả các tệp đã sửa đổi và chạy các lệnh kiểm tra độc lập.
+  - Phải chỉ ra các nguy cơ rò rỉ prompt, quá tải trải nghiệm người dùng (UX overload) và sự thiếu hụt bằng chứng xác thực.
+  - Không tự tiện commit hoặc viết mã tính năng trừ khi được yêu cầu các chỉnh sửa nhỏ.
+- **Mô hình khuyến nghị hiện tại:** Codex GPT-5.5 hoặc tương đương.
+
+### B. Chuyên gia Thực thi (Execution Specialist)
+- **Vai trò chính:** Triển khai tính năng, sửa lỗi (bug fixes), tái cấu trúc mã nguồn (refactor) và viết unit test.
+- **Ràng buộc:**
+  - Phải tuân thủ nghiêm ngặt theo các bản kế hoạch triển khai (implementation plans) đã được người dùng phê duyệt.
+  - Không được bỏ qua việc viết unit test hoặc chạy xác minh lệnh thực tế.
+- **Mô hình khuyến nghị hiện tại:** Gemini Flash 3.5 High / Gemini Pro 3.1 hoặc tương đương.
 
 ---
 
-## 3. Core Privacy & Security Rules (Non-Negotiable)
-- **No Leaks to Cloud:** `local_only` evidence items, raw text extracted from local logs/spreadsheets, and unconfirmed/draft learning cards must **never** be included in external cloud target prompts (`gemini`, `gpt`, `copilot`, `notebooklm_safe`) or cloud_safe handovers.
-- **Local AI Target Only:** Such data can only be included in `local_ai` prompts if `include_local_only=True` is explicitly specified by the user.
-- **Git-Ignore Rule:** Under no circumstances should local case data (`local_cases/`), actual pilot screenshots, real database files, or private `.env` files be added to Git tracking.
+## 2. Quy tắc Xác minh & Kiểm thực Bắt buộc (Mandatory Verification)
+
+Không một pull request hay thay đổi mã nguồn nào được phép merge hoặc push nếu không đáp ứng đầy đủ các tiêu chuẩn sau:
+
+1. **Kiểm tra Biên dịch (Compilation Check):** Mã nguồn phải biên dịch sạch sẽ khi chạy `py -3 -m compileall src tests`.
+2. **Độ bao phủ Pytest:** Toàn bộ unit test hiện có và bất kỳ bài test mới nào được thêm vào đều phải vượt qua với `py -3 -m pytest -q`.
+3. **Kiểm tra CLI Audit Cục bộ:** Chạy `$env:PYTHONPATH="src"; py -3 -m aios_habit.cli audit` bắt buộc phải trả về `"status": "PASS"` không có lỗi.
+4. **Kiểm tra Import Giao diện Chính:** Chạy `$env:PYTHONPATH="src"; py -3 -c "import aios_habit.workspace_chat_app"` phải chạy thành công không có lỗi.
+5. **Kiểm tra Ranh giới Hệ thống Cũ (Legacy Boundary Check):** Các module Workspace Chat được hỗ trợ tuyệt đối không được import `studio` hoặc `case_cockpit`; khi cho dừng một phần cũ phải gỡ bỏ cả đường dẫn khởi chạy lẫn kỳ vọng test lỗi thời.
 
 ---
 
-## 4. UI Language & Localization Policy
-- **Vietnamese First:** The user interface must remain 100% localized in Vietnamese.
-- **Explain Technical Terms:** Essential English technical constants (like `local_only`, `redacted_export`, `cloud_allowed`) must have inline Vietnamese explanations immediately adjacent to them.
-- **No Code Warnings Leaked:** Raw traceback messages or unhandled Python errors must be captured and presented to the user in a clean, localized warning block.
+## 3. Quy tắc Bảo mật & Quyền riêng tư Cốt lõi (Bất khả xâm phạm)
+- **Tuyệt đối không rò rỉ lên Cloud:** Các mục bằng chứng gắn nhãn `local_only`, văn bản thô trích xuất từ log/bảng tính cục bộ và các thẻ học việc bản nháp/chưa xác nhận **tuyệt đối không bao giờ** được đưa vào prompt gửi ra các dịch vụ cloud bên ngoài (`gemini`, `gpt`, `copilot`, `notebooklm_safe`) hoặc các gói bàn giao cloud_safe.
+- **Chỉ dành cho AI Cục bộ:** Dữ liệu nhạy cảm chỉ có thể được đưa vào prompt của `local_ai` nếu người dùng chỉ định rõ ràng `include_local_only=True`.
+- **Quy tắc Git-Ignore:** Trong mọi tình huống, dữ liệu hồ sơ sự vụ cục bộ (`local_cases/`), ảnh chụp màn hình thực tế, tệp cơ sở dữ liệu thật hoặc tệp cấu hình `.env` riêng tư không bao giờ được đưa vào theo dõi của Git.
+
+---
+
+## 4. Chính sách Ngôn ngữ & Bản địa hóa Giao diện
+- **Ưu tiên Tiếng Việt (Vietnamese First):** Giao diện người dùng phải được bản địa hóa 100% bằng Tiếng Việt.
+- **Giải thích Thuật ngữ Kỹ thuật:** Các hằng số kỹ thuật tiếng Anh bắt buộc (như `local_only`, `redacted_export`, `cloud_allowed`) phải có giải thích ngắn gọn bằng Tiếng Việt đi kèm ngay bên cạnh.
+- **Không để lộ cảnh báo mã nguồn thô:** Các thông điệp traceback thô hoặc lỗi Python chưa xử lý phải được bắt giữ và hiển thị cho người dùng dưới dạng khối cảnh báo đã được bản địa hóa sạch sẽ.
+

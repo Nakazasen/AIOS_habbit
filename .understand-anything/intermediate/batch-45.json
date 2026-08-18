@@ -1,0 +1,45 @@
+{
+  "nodes": [
+    {
+      "id": "file:docs/security/DEPENDENCY_POLICY.md",
+      "type": "file",
+      "name": "DEPENDENCY_POLICY.md",
+      "filePath": "docs/security/DEPENDENCY_POLICY.md",
+      "summary": "Policy for managing external dependencies and supply-chain security.",
+      "tags": ["security", "documentation", "dependency"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:docs/security/PRIVACY_IMPACT_ASSESSMENT.md",
+      "type": "file",
+      "name": "PRIVACY_IMPACT_ASSESSMENT.md",
+      "filePath": "docs/security/PRIVACY_IMPACT_ASSESSMENT.md",
+      "summary": "Assessment of privacy impacts data handling and owner-specific privacy decisions.",
+      "tags": ["security", "documentation", "privacy"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:docs/security/THREAT_MODEL.md",
+      "type": "file",
+      "name": "THREAT_MODEL.md",
+      "filePath": "docs/security/THREAT_MODEL.md",
+      "summary": "Threat model for the local-first Workspace Chat and RAG platform using STRIDE methodology.",
+      "tags": ["security", "documentation", "threat-model"],
+      "complexity": "moderate"
+    }
+  ],
+  "edges": [
+    {
+      "source": "file:docs/security/PRIVACY_IMPACT_ASSESSMENT.md",
+      "target": "file:docs/security/THREAT_MODEL.md",
+      "type": "references",
+      "direction": "forward"
+    },
+    {
+      "source": "file:docs/security/THREAT_MODEL.md",
+      "target": "file:docs/security/PRIVACY_IMPACT_ASSESSMENT.md",
+      "type": "references",
+      "direction": "forward"
+    }
+  ]
+}

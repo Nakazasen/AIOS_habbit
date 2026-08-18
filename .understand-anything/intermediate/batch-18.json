@@ -1,0 +1,32 @@
+{
+  "nodes": [
+    {
+      "id": "file:01_design/DATA_FLOW.md",
+      "type": "file",
+      "name": "DATA_FLOW.md",
+      "filePath": "01_design/DATA_FLOW.md",
+      "summary": "Data flow architecture and pipeline design.",
+      "tags": ["design", "architecture"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:01_design/SYSTEM_CONTEXT.md",
+      "type": "file",
+      "name": "SYSTEM_CONTEXT.md",
+      "filePath": "01_design/SYSTEM_CONTEXT.md",
+      "summary": "System context diagram and boundary definitions.",
+      "tags": ["design", "architecture"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:01_design/TERMINOLOGY.md",
+      "type": "file",
+      "name": "TERMINOLOGY.md",
+      "filePath": "01_design/TERMINOLOGY.md",
+      "summary": "Standard terminology and definitions for AIOS.",
+      "tags": ["design", "glossary"],
+      "complexity": "moderate"
+    }
+  ],
+  "edges": []
+}

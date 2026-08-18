@@ -1,65 +1,73 @@
-# AIOS Extraction Adapter Strategy
+# Chiến Lược Bộ Chuyển Đổi Trích Xuất AIOS (AIOS Extraction Adapter Strategy)
 
-## Extractor Adapter Interface
-An AIOS Extractor Adapter provides a consistent interface to third-party libraries while shielding the rest of the application from dependency-specific imports.
-Each adapter must:
-1. Accept a `Path` and a `root` directory.
-2. Return a list of `ExtractionResult` objects.
-3. Not crash if an optional dependency is missing; instead, it must return a failure or unsupported result.
-4. Support gracefully failing to the next adapter in the chain.
+## Giao Diện Bộ Chuyển Đổi Trích Xuất (Extractor Adapter Interface)
 
-## Common Element Schema
-All extraction results are normalized via `build_elements_from_extracted_payload` into the `RAGDocumentElement` schema, which includes:
+Một Bộ chuyển đổi Trích xuất (Extractor Adapter) của AIOS cung cấp giao diện nhất quán cho các thư viện bên thứ ba trong khi vẫn bảo vệ phần còn lại của ứng dụng khỏi các lệnh import phụ thuộc cụ thể.
+Mỗi adapter bắt buộc phải:
+1. Nhận một đường dẫn `Path` và một thư mục gốc `root`.
+2. Trả về một danh sách các đối tượng `ExtractionResult`.
+3. Không làm sập ứng dụng nếu thiếu phụ thuộc tùy chọn; thay vào đó, nó phải trả về kết quả lỗi hoặc không hỗ trợ.
+4. Hỗ trợ chuyển tiếp an toàn (gracefully failover) sang adapter tiếp theo trong chuỗi fallback.
+
+## Schema Phần Tử Chung (Common Element Schema)
+
+Mọi kết quả trích xuất đều được chuẩn hóa thông qua `build_elements_from_extracted_payload` vào schema `RAGDocumentElement`, bao gồm:
 - `element_id`, `document_id`, `text`
 - `source_title`, `source_path`, `relative_path`, `file_type`
 - `privacy_mode`
 - `extractor_name`, `extraction_status`, `warnings`
 - `metadata`
 
-## Fallback Chain by File Type
+## Chuỗi Dự Phòng Theo Loại Tệp (Fallback Chain by File Type)
+
 ### Excel (.xlsx, .xlsm)
-1. Existing `openpyxl` cell/table extraction.
-2. Add standard library `zipfile` parsing to extract text from shapes/textboxes in `xl/drawings/drawing*.xml`.
-3. (Optional) Pandas table view if enabled.
-4. Fallback: Metadata-only if extraction fails.
+1. Trích xuất ô / bảng hiện có bằng `openpyxl`.
+2. Bổ sung phân tích cú pháp `zipfile` của thư viện chuẩn để trích xuất văn bản từ hình vẽ / hộp văn bản (shapes/textboxes) trong `xl/drawings/drawing*.xml`.
+3. (Tùy chọn) Khung nhìn bảng Pandas nếu được kích hoạt.
+4. Dự phòng (Fallback): Chỉ trích xuất metadata nếu trích xuất nội dung thất bại.
 
 ### PDF (.pdf)
-1. `PyMuPDF4LLM` (if installed, optional).
-2. Existing `PyMuPDF` (`fitz`) text layer extraction.
-3. Existing `PyMuPDF` + `pytesseract` OCR extraction.
-4. (Optional) `Docling`.
-5. Fallback: Metadata-only.
+1. `PyMuPDF4LLM` (nếu đã cài đặt, tùy chọn).
+2. Trích xuất lớp văn bản hiện có bằng `PyMuPDF` (`fitz`).
+3. Trích xuất OCR hiện có bằng `PyMuPDF` + `pytesseract`.
+4. (Tùy chọn) `Docling`.
+5. Dự phòng: Chỉ trích xuất metadata.
 
 ### PPTX (.pptx)
-1. Existing `python-pptx` (via XML parsing) which extracts slide and note text.
-2. (Optional) `Docling` or `MarkItDown`.
-3. Fallback: Metadata-only.
+1. Sử dụng `python-pptx` hiện có (thông qua parse XML) để trích xuất văn bản trang chiếu và ghi chú.
+2. (Tùy chọn) `Docling` hoặc `MarkItDown`.
+3. Dự phòng: Chỉ trích xuất metadata.
 
-### Image (.png, .jpg, etc.)
-1. Existing OCR via `pytesseract` + `PIL`.
-2. Fallback: Metadata-only.
+### Hình ảnh (.png, .jpg, v.v.)
+1. OCR hiện có qua `pytesseract` + `PIL`.
+2. Dự phòng: Chỉ trích xuất metadata.
 
-## Preserving Citation Metadata
-To retain strict traceability to the origin, the `ExtractionResult` captures context that maps to `RAGDocumentElement` attributes:
-- **page**: Set `ExtractionResult.page` -> maps to `page_number` in `metadata`.
-- **sheet**: Set `ExtractionResult.sheet` -> maps to `sheet_name`.
-- **row_range / cell_range**: Set `ExtractionResult.row_range` -> maps to `metadata['row_range']`.
-- **slide**: Set `ExtractionResult.slide` -> maps to `metadata['slide']`.
-- **shape_id / image_id**: Included in `metadata`.
-- **extractor_name**: Directly maps to `extractor_name`.
+## Bảo Tồn Metadata Trích Dẫn (Preserving Citation Metadata)
 
-## Marking Extraction Confidence
-Extraction status should be explicit:
-- **High**: `extracted_success`
-- **Medium/Partial**: `extracted_partial`, `ocr_partial`
-- **Low/Failed**: `failed_with_reason`, `unsupported_no_local_tool`
-- **Metadata Only**: Returns empty text but sets `extraction_status = "metadata_only"` (or similar handled natively in `notebooklm_compare.py` fallback).
+Để duy trì khả năng truy xuất nguồn gốc nghiêm ngặt, `ExtractionResult` thu thập ngữ cảnh ánh xạ vào các thuộc tính `RAGDocumentElement`:
+- **page**: Đặt `ExtractionResult.page` -> ánh xạ tới `page_number` trong `metadata`.
+- **sheet**: Đặt `ExtractionResult.sheet` -> ánh xạ tới `sheet_name`.
+- **row_range / cell_range**: Đặt `ExtractionResult.row_range` -> ánh xạ tới `metadata['row_range']`.
+- **slide**: Đặt `ExtractionResult.slide` -> ánh xạ tới `metadata['slide']`.
+- **shape_id / image_id**: Đưa vào `metadata`.
+- **extractor_name**: Ánh xạ trực tiếp tới `extractor_name`.
 
-## Avoiding Breaking Existing Tests
-- Do not remove or change the signature of existing functions (`extract_text_chunks_from_file`, `_extract_excel`, etc.).
-- Augment existing results. For Excel, we will simply append the `ExtractionResult` from the drawing XML parsing to the list returned by `_extract_excel`.
-- Return empty strings or handle errors gracefully within the adapters so the indexer doesn't crash.
+## Đánh Dấu Độ Tin Cậy Trích Xuất (Marking Extraction Confidence)
 
-## Keeping Heavy Dependencies Optional
-- Do not add heavy dependencies (like `docling` or `unstructured`) to `pyproject.toml` or `requirements.txt` yet.
-- Use `importlib.util.find_spec` or try/except blocks when importing optional adapters.
+Trạng thái trích xuất phải rõ ràng:
+- **Cao (High)**: `extracted_success`
+- **Trung bình / Một phần (Medium/Partial)**: `extracted_partial`, `ocr_partial`
+- **Thấp / Thất bại (Low/Failed)**: `failed_with_reason`, `unsupported_no_local_tool`
+- **Chỉ Metadata (Metadata Only)**: Trả về văn bản trống nhưng đặt `extraction_status = "metadata_only"` (hoặc xử lý tương tự trong luồng fallback của `notebooklm_compare.py`).
+
+## Tránh Làm Hỏng Các Bài Kiểm Thử Hiện Có
+
+- Không xóa hoặc thay đổi chữ ký hàm của các hàm hiện có (`extract_text_chunks_from_file`, `_extract_excel`, v.v.).
+- Bổ sung vào kết quả hiện có. Đối với Excel, chỉ cần nối `ExtractionResult` từ việc phân tích XML bản vẽ vào danh sách trả về bởi `_extract_excel`.
+- Trả về chuỗi rỗng hoặc xử lý lỗi một cách an toàn bên trong adapter để bộ lập chỉ mục không bị sập.
+
+## Giữ Các Phụ Thuộc Nặng Ở Trạng Thái Tùy Chọn
+
+- Tuyệt đối chưa thêm các phụ thuộc nặng (như `docling` hoặc `unstructured`) vào `pyproject.toml` hoặc `requirements.txt`.
+- Sử dụng `importlib.util.find_spec` hoặc khối `try/except` khi import các adapter tùy chọn.
+

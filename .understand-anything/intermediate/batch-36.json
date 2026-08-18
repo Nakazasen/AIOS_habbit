@@ -1,0 +1,41 @@
+{
+  "nodes": [
+    {
+      "id": "file:docs/inheritance_audit/ABW_NVIDIA_FUSION_CONTROL_AUDIT.md",
+      "type": "file",
+      "name": "ABW_NVIDIA_FUSION_CONTROL_AUDIT.md",
+      "filePath": "docs/inheritance_audit/ABW_NVIDIA_FUSION_CONTROL_AUDIT.md",
+      "summary": "Audit report for ABW NVIDIA fusion control.",
+      "tags": ["audit", "inheritance"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:docs/inheritance_audit/INHERITANCE_SUMMARY.md",
+      "type": "file",
+      "name": "INHERITANCE_SUMMARY.md",
+      "filePath": "docs/inheritance_audit/INHERITANCE_SUMMARY.md",
+      "summary": "Summary of repository inheritance and heritage.",
+      "tags": ["audit", "inheritance"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:docs/inheritance_audit/Nvidia_AUDIT.md",
+      "type": "file",
+      "name": "Nvidia_AUDIT.md",
+      "filePath": "docs/inheritance_audit/Nvidia_AUDIT.md",
+      "summary": "Audit of NVIDIA NIM integration and tooling.",
+      "tags": ["audit", "nvidia"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:docs/inheritance_audit/skill_Anti_brain_wiki_note_AUDIT.md",
+      "type": "file",
+      "name": "skill_Anti_brain_wiki_note_AUDIT.md",
+      "filePath": "docs/inheritance_audit/skill_Anti_brain_wiki_note_AUDIT.md",
+      "summary": "Audit of anti-brain wiki note skill inheritance.",
+      "tags": ["audit", "skills"],
+      "complexity": "moderate"
+    }
+  ],
+  "edges": []
+}

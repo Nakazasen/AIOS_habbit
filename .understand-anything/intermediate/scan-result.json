@@ -1,0 +1,4394 @@
+{
+  "scriptCompleted": true,
+  "files": [
+    {
+      "path": ".agents/ORIGINAL_REQUEST.md",
+      "language": "markdown",
+      "sizeLines": 18,
+      "fileCategory": "docs"
+    },
+    {
+      "path": ".agents/rules/graphify.md",
+      "language": "markdown",
+      "sizeLines": 14,
+      "fileCategory": "docs"
+    },
+    {
+      "path": ".agents/sentinel/BRIEFING.md",
+      "language": "markdown",
+      "sizeLines": 39,
+      "fileCategory": "docs"
+    },
+    {
+      "path": ".agents/sentinel/handoff.md",
+      "language": "markdown",
+      "sizeLines": 28,
+      "fileCategory": "docs"
+    },
+    {
+      "path": ".agents/skills/speckit-analyze/SKILL.md",
+      "language": "markdown",
+      "sizeLines": 259,
+      "fileCategory": "docs"
+    },
+    {
+      "path": ".agents/skills/speckit-checklist/SKILL.md",
+      "language": "markdown",
+      "sizeLines": 373,
+      "fileCategory": "docs"
+    },
+    {
+      "path": ".agents/skills/speckit-clarify/SKILL.md",
+      "language": "markdown",
+      "sizeLines": 291,
+      "fileCategory": "docs"
+    },
+    {
+      "path": ".agents/skills/speckit-constitution/SKILL.md",
+      "language": "markdown",
+      "sizeLines": 168,
+      "fileCategory": "docs"
+    },
+    {
+      "path": ".agents/skills/speckit-converge/SKILL.md",
+      "language": "markdown",
+      "sizeLines": 277,
+      "fileCategory": "docs"
+    },
+    {
+      "path": ".agents/skills/speckit-implement/SKILL.md",
+      "language": "markdown",
+      "sizeLines": 223,
+      "fileCategory": "docs"
+    },
+    {
+      "path": ".agents/skills/speckit-plan/SKILL.md",
+      "language": "markdown",
+      "sizeLines": 166,
+      "fileCategory": "docs"
+    },
+    {
+      "path": ".agents/skills/speckit-specify/SKILL.md",
+      "language": "markdown",
+      "sizeLines": 345,
+      "fileCategory": "docs"
+    },
+    {
+      "path": ".agents/skills/speckit-tasks/SKILL.md",
+      "language": "markdown",
+      "sizeLines": 214,
+      "fileCategory": "docs"
+    },
+    {
+      "path": ".agents/skills/speckit-taskstoissues/SKILL.md",
+      "language": "markdown",
+      "sizeLines": 109,
+      "fileCategory": "docs"
+    },
+    {
+      "path": ".agents/teamwork_preview_implementer_1/BRIEFING.md",
+      "language": "markdown",
+      "sizeLines": 33,
+      "fileCategory": "docs"
+    },
+    {
+      "path": ".agents/teamwork_preview_implementer_1/handoff.md",
+      "language": "markdown",
+      "sizeLines": 67,
+      "fileCategory": "docs"
+    },
+    {
+      "path": ".agents/teamwork_preview_implementer_1/progress.md",
+      "language": "markdown",
+      "sizeLines": 14,
+      "fileCategory": "docs"
+    },
+    {
+      "path": ".agents/teamwork_preview_reviewer_1/BRIEFING.md",
+      "language": "markdown",
+      "sizeLines": 19,
+      "fileCategory": "docs"
+    },
+    {
+      "path": ".agents/teamwork_preview_reviewer_1/handoff.md",
+      "language": "markdown",
+      "sizeLines": 53,
+      "fileCategory": "docs"
+    },
+    {
+      "path": ".agents/teamwork_preview_reviewer_1/progress.md",
+      "language": "markdown",
+      "sizeLines": 26,
+      "fileCategory": "docs"
+    },
+    {
+      "path": ".agents/teamwork_preview_reviewer_2/BRIEFING.md",
+      "language": "markdown",
+      "sizeLines": 24,
+      "fileCategory": "docs"
+    },
+    {
+      "path": ".agents/teamwork_preview_reviewer_2/handoff.md",
+      "language": "markdown",
+      "sizeLines": 61,
+      "fileCategory": "docs"
+    },
+    {
+      "path": ".agents/teamwork_preview_reviewer_2/plan.md",
+      "language": "markdown",
+      "sizeLines": 39,
+      "fileCategory": "docs"
+    },
+    {
+      "path": ".agents/teamwork_preview_reviewer_2/progress.md",
+      "language": "markdown",
+      "sizeLines": 12,
+      "fileCategory": "docs"
+    },
+    {
+      "path": ".agents/teamwork_preview_reviewer_3/BRIEFING.md",
+      "language": "markdown",
+      "sizeLines": 15,
+      "fileCategory": "docs"
+    },
+    {
+      "path": ".agents/teamwork_preview_reviewer_3/handoff.md",
+      "language": "markdown",
+      "sizeLines": 56,
+      "fileCategory": "docs"
+    },
+    {
+      "path": ".agents/teamwork_preview_reviewer_3/progress.md",
+      "language": "markdown",
+      "sizeLines": 12,
+      "fileCategory": "docs"
+    },
+    {
+      "path": ".agents/teamwork_preview_swe_1/BRIEFING.md",
+      "language": "markdown",
+      "sizeLines": 86,
+      "fileCategory": "docs"
+    },
+    {
+      "path": ".agents/teamwork_preview_swe_1/DISPATCH.md",
+      "language": "markdown",
+      "sizeLines": 16,
+      "fileCategory": "docs"
+    },
+    {
+      "path": ".agents/teamwork_preview_swe_1/handoff.md",
+      "language": "markdown",
+      "sizeLines": 57,
+      "fileCategory": "docs"
+    },
+    {
+      "path": ".agents/teamwork_preview_swe_1/plan.md",
+      "language": "markdown",
+      "sizeLines": 24,
+      "fileCategory": "docs"
+    },
+    {
+      "path": ".agents/teamwork_preview_swe_1/progress.md",
+      "language": "markdown",
+      "sizeLines": 27,
+      "fileCategory": "docs"
+    },
+    {
+      "path": ".agents/teamwork_preview_victory_auditor_1/audit_report.md",
+      "language": "markdown",
+      "sizeLines": 41,
+      "fileCategory": "docs"
+    },
+    {
+      "path": ".agents/teamwork_preview_victory_auditor_1/BRIEFING.md",
+      "language": "markdown",
+      "sizeLines": 58,
+      "fileCategory": "docs"
+    },
+    {
+      "path": ".agents/teamwork_preview_victory_auditor_1/DISPATCH.md",
+      "language": "markdown",
+      "sizeLines": 27,
+      "fileCategory": "docs"
+    },
+    {
+      "path": ".agents/teamwork_preview_victory_auditor_1/handoff.md",
+      "language": "markdown",
+      "sizeLines": 54,
+      "fileCategory": "docs"
+    },
+    {
+      "path": ".agents/teamwork_preview_victory_auditor_1/progress.md",
+      "language": "markdown",
+      "sizeLines": 12,
+      "fileCategory": "docs"
+    },
+    {
+      "path": ".agents/teamwork_preview_victory_auditor_sentinel/audit_report.md",
+      "language": "markdown",
+      "sizeLines": 31,
+      "fileCategory": "docs"
+    },
+    {
+      "path": ".agents/teamwork_preview_victory_auditor_sentinel/BRIEFING.md",
+      "language": "markdown",
+      "sizeLines": 55,
+      "fileCategory": "docs"
+    },
+    {
+      "path": ".agents/teamwork_preview_victory_auditor_sentinel/DISPATCH.md",
+      "language": "markdown",
+      "sizeLines": 14,
+      "fileCategory": "docs"
+    },
+    {
+      "path": ".agents/teamwork_preview_victory_auditor_sentinel/handoff.md",
+      "language": "markdown",
+      "sizeLines": 53,
+      "fileCategory": "docs"
+    },
+    {
+      "path": ".agents/teamwork_preview_victory_auditor_sentinel/independent_test.ps1",
+      "language": "powershell",
+      "sizeLines": 70,
+      "fileCategory": "script"
+    },
+    {
+      "path": ".agents/teamwork_preview_victory_auditor_sentinel/progress.md",
+      "language": "markdown",
+      "sizeLines": 10,
+      "fileCategory": "docs"
+    },
+    {
+      "path": ".agents/workflows/graphify.md",
+      "language": "markdown",
+      "sizeLines": 10,
+      "fileCategory": "docs"
+    },
+    {
+      "path": ".ai/AIOS_12Q_ANSWERS_REDACTED_FULL.txt",
+      "language": "txt",
+      "sizeLines": 896,
+      "fileCategory": "docs"
+    },
+    {
+      "path": ".ai/AIOS_12Q_FINAL_OWNER_ANSWERS_REDACTED_FULL.txt",
+      "language": "txt",
+      "sizeLines": 779,
+      "fileCategory": "docs"
+    },
+    {
+      "path": ".ai/AIOS_12Q_FINAL_OWNER_ANSWERS_VALID_NLM_RERUN_REDACTED_FULL.txt",
+      "language": "txt",
+      "sizeLines": 779,
+      "fileCategory": "docs"
+    },
+    {
+      "path": ".ai/AIOS_12Q_ROUTER_SYNTH_ANSWERS_REDACTED_FULL.txt",
+      "language": "txt",
+      "sizeLines": 1105,
+      "fileCategory": "docs"
+    },
+    {
+      "path": ".ai/AIOS_FINAL_ANSWER_4Q_RERUN_REPORT.md",
+      "language": "markdown",
+      "sizeLines": 31,
+      "fileCategory": "docs"
+    },
+    {
+      "path": ".ai/AIOS_GENERAL_RAG_OVERFIT_AUDIT.md",
+      "language": "markdown",
+      "sizeLines": 146,
+      "fileCategory": "docs"
+    },
+    {
+      "path": ".ai/AIOS_GENERAL_RAG_RESET_DECISION.md",
+      "language": "markdown",
+      "sizeLines": 49,
+      "fileCategory": "docs"
+    },
+    {
+      "path": ".ai/AIOS_GENERIC_RAG_CORE_ARCHITECTURE.md",
+      "language": "markdown",
+      "sizeLines": 109,
+      "fileCategory": "docs"
+    },
+    {
+      "path": ".ai/AIOS_NOTEBOOKLM_12Q_ROUTER_SYNTH_SIDE_BY_SIDE_REVIEW.md",
+      "language": "markdown",
+      "sizeLines": 205,
+      "fileCategory": "docs"
+    },
+    {
+      "path": ".ai/AIOS_RAG_FAILURE_ANALYSIS.md",
+      "language": "markdown",
+      "sizeLines": 15,
+      "fileCategory": "docs"
+    },
+    {
+      "path": ".ai/AIOS_ROUTER_SYNTH_12Q_FAILED_RERUN_AUDIT.md",
+      "language": "markdown",
+      "sizeLines": 19,
+      "fileCategory": "docs"
+    },
+    {
+      "path": ".ai/AIOS_ROUTER_SYNTHESIZER_4Q_RERUN_REPORT.md",
+      "language": "markdown",
+      "sizeLines": 101,
+      "fileCategory": "docs"
+    },
+    {
+      "path": ".ai/AIOS_ROUTER_SYNTHESIZER_PATCH_AUDIT_REPORT.md",
+      "language": "markdown",
+      "sizeLines": 149,
+      "fileCategory": "docs"
+    },
+    {
+      "path": ".ai/AIOS_SOURCE_ROUTER_AND_SYNTHESIZER_DESIGN.md",
+      "language": "markdown",
+      "sizeLines": 45,
+      "fileCategory": "docs"
+    },
+    {
+      "path": ".ai/AUDIT_REPORT.md",
+      "language": "markdown",
+      "sizeLines": 32,
+      "fileCategory": "docs"
+    },
+    {
+      "path": ".ai/BRIDGE_MANUAL_STEP_REDUCTION_AUDIT_REPORT.md",
+      "language": "markdown",
+      "sizeLines": 49,
+      "fileCategory": "docs"
+    },
+    {
+      "path": ".ai/BRIDGE_MANUAL_STEP_REDUCTION_REPORT.md",
+      "language": "markdown",
+      "sizeLines": 32,
+      "fileCategory": "docs"
+    },
+    {
+      "path": ".ai/COMMERCIAL_OWNER_UI_REDESIGN_REPORT.md",
+      "language": "markdown",
+      "sizeLines": 11,
+      "fileCategory": "docs"
+    },
+    {
+      "path": ".ai/DECISION_LOG.md",
+      "language": "markdown",
+      "sizeLines": 6,
+      "fileCategory": "docs"
+    },
+    {
+      "path": ".ai/EXECUTION_REPORT.md",
+      "language": "markdown",
+      "sizeLines": 44,
+      "fileCategory": "docs"
+    },
+    {
+      "path": ".ai/EXTRACTION_CURRENT_STATE.md",
+      "language": "markdown",
+      "sizeLines": 27,
+      "fileCategory": "docs"
+    },
+    {
+      "path": ".ai/EXTRACTION_LIBRARY_MATRIX.md",
+      "language": "markdown",
+      "sizeLines": 19,
+      "fileCategory": "docs"
+    },
+    {
+      "path": ".ai/EXTRACTION_UPGRADE_REPORT.md",
+      "language": "markdown",
+      "sizeLines": 21,
+      "fileCategory": "docs"
+    },
+    {
+      "path": ".ai/FAIR_COMPARE_AFTER_EXCEL_EXTRACTION_FINAL.md",
+      "language": "markdown",
+      "sizeLines": 20,
+      "fileCategory": "docs"
+    },
+    {
+      "path": ".ai/FAIR_COMPARE_AFTER_EXCEL_EXTRACTION.md",
+      "language": "markdown",
+      "sizeLines": 27,
+      "fileCategory": "docs"
+    },
+    {
+      "path": ".ai/FIX_AIOS_GAPS_FROM_COMPARE_AUDIT_REPORT.md",
+      "language": "markdown",
+      "sizeLines": 65,
+      "fileCategory": "docs"
+    },
+    {
+      "path": ".ai/FIX_AIOS_GAPS_FROM_NOTEBOOKLM_COMPARE_DESIGN.md",
+      "language": "markdown",
+      "sizeLines": 48,
+      "fileCategory": "docs"
+    },
+    {
+      "path": ".ai/FULL_BUNDLE_ANTIGRAVITY_ROUNDTRIP_REPORT.md",
+      "language": "markdown",
+      "sizeLines": 56,
+      "fileCategory": "docs"
+    },
+    {
+      "path": ".ai/FULL_BUNDLE_IDE_HANDOFF_DESIGN.md",
+      "language": "markdown",
+      "sizeLines": 56,
+      "fileCategory": "docs"
+    },
+    {
+      "path": ".ai/FULL_BUNDLE_IDE_HANDOFF_REPORT.md",
+      "language": "markdown",
+      "sizeLines": 44,
+      "fileCategory": "docs"
+    },
+    {
+      "path": ".ai/HUMAN_REVIEW_FAIR_COMPARE_AFTER_EXCEL.md",
+      "language": "markdown",
+      "sizeLines": 157,
+      "fileCategory": "docs"
+    },
+    {
+      "path": ".ai/LOOP_STATE.md",
+      "language": "markdown",
+      "sizeLines": 42,
+      "fileCategory": "docs"
+    },
+    {
+      "path": ".ai/NEXT_ACTION.md",
+      "language": "markdown",
+      "sizeLines": 23,
+      "fileCategory": "docs"
+    },
+    {
+      "path": ".ai/NEXT_NOTEBOOKLM_REAL_RUN.md",
+      "language": "markdown",
+      "sizeLines": 51,
+      "fileCategory": "docs"
+    },
+    {
+      "path": ".ai/NON_EXCEL_NOTEBOOKLM_VS_AIOS_2Q_REPORT.md",
+      "language": "markdown",
+      "sizeLines": 108,
+      "fileCategory": "docs"
+    },
+    {
+      "path": ".ai/NOTEBOOKLM_12Q_AFTER_COMPOSER_ANSWERS_REDACTED_FULL.txt",
+      "language": "txt",
+      "sizeLines": 363,
+      "fileCategory": "docs"
+    },
+    {
+      "path": ".ai/NOTEBOOKLM_12Q_AFTER_COMPOSER_MCP_FAILURE_AUDIT.md",
+      "language": "markdown",
+      "sizeLines": 17,
+      "fileCategory": "docs"
+    },
+    {
+      "path": ".ai/NOTEBOOKLM_12Q_AFTER_FINAL_ANSWER_COMPOSER_REPORT.md",
+      "language": "markdown",
+      "sizeLines": 27,
+      "fileCategory": "docs"
+    },
+    {
+      "path": ".ai/NOTEBOOKLM_12Q_ANSWERS_REDACTED_FULL.txt",
+      "language": "txt",
+      "sizeLines": 307,
+      "fileCategory": "docs"
+    },
+    {
+      "path": ".ai/NOTEBOOKLM_12Q_BENCHMARK_PLAN.md",
+      "language": "markdown",
+      "sizeLines": 72,
+      "fileCategory": "docs"
+    },
+    {
+      "path": ".ai/NOTEBOOKLM_12Q_FULL_ANSWER_EXPORT_REPORT.md",
+      "language": "markdown",
+      "sizeLines": 17,
+      "fileCategory": "docs"
+    },
+    {
+      "path": ".ai/NOTEBOOKLM_12Q_HUMAN_REVIEW_VERDICT.md",
+      "language": "markdown",
+      "sizeLines": 13,
+      "fileCategory": "docs"
+    },
+    {
+      "path": ".ai/NOTEBOOKLM_12Q_ROUTER_SYNTH_ANSWERS_REDACTED_FULL.txt",
+      "language": "txt",
+      "sizeLines": 1190,
+      "fileCategory": "docs"
+    },
+    {
+      "path": ".ai/NOTEBOOKLM_12Q_VALID_AFTER_COMPOSER_ANSWERS_REDACTED_FULL.txt",
+      "language": "txt",
+      "sizeLines": 1191,
+      "fileCategory": "docs"
+    },
+    {
+      "path": ".ai/NOTEBOOKLM_12Q_VALID_AFTER_COMPOSER_REPORT.md",
+      "language": "markdown",
+      "sizeLines": 26,
+      "fileCategory": "docs"
+    },
+    {
+      "path": ".ai/NOTEBOOKLM_2Q_RERUN_AFTER_CITATION_FIX_REPORT.md",
+      "language": "markdown",
+      "sizeLines": 44,
+      "fileCategory": "docs"
+    },
+    {
+      "path": ".ai/NOTEBOOKLM_COLLECTION_STATUS_AFTER_EXCEL.md",
+      "language": "markdown",
+      "sizeLines": 6,
+      "fileCategory": "docs"
+    },
+    {
+      "path": ".ai/NOTEBOOKLM_COMPARE_SUMMARY.md",
+      "language": "markdown",
+      "sizeLines": 8,
+      "fileCategory": "docs"
+    },
+    {
+      "path": ".ai/NOTEBOOKLM_COMPARE_V2_DIAGNOSIS.md",
+      "language": "markdown",
+      "sizeLines": 20,
+      "fileCategory": "docs"
+    },
+    {
+      "path": ".ai/NOTEBOOKLM_FAIR_COMPARE_V2_REPORT.md",
+      "language": "markdown",
+      "sizeLines": 108,
+      "fileCategory": "docs"
+    },
+    {
+      "path": ".ai/NOTEBOOKLM_MCP_12Q_BENCHMARK_REPORT.md",
+      "language": "markdown",
+      "sizeLines": 40,
+      "fileCategory": "docs"
+    },
+    {
+      "path": ".ai/NOTEBOOKLM_MCP_VS_AIOS_2Q_COMPARE_REPORT.md",
+      "language": "markdown",
+      "sizeLines": 43,
+      "fileCategory": "docs"
+    },
+    {
+      "path": ".ai/NOTEBOOKLM_REAL_COMPARE_REPORT.md",
+      "language": "markdown",
+      "sizeLines": 34,
+      "fileCategory": "docs"
+    },
+    {
+      "path": ".ai/OWNER_ACCEPTANCE_AFTER_RAG_HARDENING_REPORT.md",
+      "language": "markdown",
+      "sizeLines": 60,
+      "fileCategory": "docs"
+    },
+    {
+      "path": ".ai/OWNER_ACCEPTANCE_PACKET.md",
+      "language": "markdown",
+      "sizeLines": 83,
+      "fileCategory": "docs"
+    },
+    {
+      "path": ".ai/OWNER_RETRIAL_SAME_CASE_REPORT.md",
+      "language": "markdown",
+      "sizeLines": 88,
+      "fileCategory": "docs"
+    },
+    {
+      "path": ".ai/OWNER_TRIAL_FIX_TOP_PAIN_POINTS_REPORT.md",
+      "language": "markdown",
+      "sizeLines": 57,
+      "fileCategory": "docs"
+    },
+    {
+      "path": ".ai/OWNER_TRIAL_ONE_REAL_CASE_REPORT.md",
+      "language": "markdown",
+      "sizeLines": 57,
+      "fileCategory": "docs"
+    },
+    {
+      "path": ".ai/OWNER_VISUAL_UI_SMOKE_TEST_REPORT.md",
+      "language": "markdown",
+      "sizeLines": 43,
+      "fileCategory": "docs"
+    },
+    {
+      "path": ".ai/P1_PROGRESS_LEDGER.md",
+      "language": "markdown",
+      "sizeLines": 32,
+      "fileCategory": "docs"
+    },
+    {
+      "path": ".ai/P1_READINESS_REVIEW_REPORT.md",
+      "language": "markdown",
+      "sizeLines": 76,
+      "fileCategory": "docs"
+    },
+    {
+      "path": ".ai/PDF_EXTRACTION_ADAPTER_RESEARCH.md",
+      "language": "markdown",
+      "sizeLines": 31,
+      "fileCategory": "docs"
+    },
+    {
+      "path": ".ai/PDF_EXTRACTION_MOM_3Q_RETEST_REPORT.md",
+      "language": "markdown",
+      "sizeLines": 82,
+      "fileCategory": "docs"
+    },
+    {
+      "path": ".ai/RAG_ANSWER_HONESTY_AUDIT.md",
+      "language": "markdown",
+      "sizeLines": 30,
+      "fileCategory": "docs"
+    },
+    {
+      "path": ".ai/RAG_ARCHITECTURE_PATTERN_STUDY.md",
+      "language": "markdown",
+      "sizeLines": 30,
+      "fileCategory": "docs"
+    },
+    {
+      "path": ".ai/RAG_HARDENING_LIBRARY_STUDY.md",
+      "language": "markdown",
+      "sizeLines": 62,
+      "fileCategory": "docs"
+    },
+    {
+      "path": ".ai/RAG_HARDENING_SWEEP_REPORT.md",
+      "language": "markdown",
+      "sizeLines": 44,
+      "fileCategory": "docs"
+    },
+    {
+      "path": ".ai/RAG_WEAK_FORMAT_AUDIT_REPORT.md",
+      "language": "markdown",
+      "sizeLines": 28,
+      "fileCategory": "docs"
+    },
+    {
+      "path": ".ai/REAL_BENCHMARK_CLEANUP_PLAN.md",
+      "language": "markdown",
+      "sizeLines": 23,
+      "fileCategory": "docs"
+    },
+    {
+      "path": ".ai/RELEASE_REPORT.md",
+      "language": "markdown",
+      "sizeLines": 22,
+      "fileCategory": "docs"
+    },
+    {
+      "path": ".ai/SINGLE_SCREEN_OWNER_WORKFLOW_AUDIT_REPORT.md",
+      "language": "markdown",
+      "sizeLines": 125,
+      "fileCategory": "docs"
+    },
+    {
+      "path": ".ai/SINGLE_SCREEN_OWNER_WORKFLOW_DESIGN.md",
+      "language": "markdown",
+      "sizeLines": 40,
+      "fileCategory": "docs"
+    },
+    {
+      "path": ".ai/SOURCE_AWARE_MOM_3Q_RETEST_REPORT.md",
+      "language": "markdown",
+      "sizeLines": 40,
+      "fileCategory": "docs"
+    },
+    {
+      "path": ".ai/SOURCE_AWARE_RETRIEVAL_DESIGN.md",
+      "language": "markdown",
+      "sizeLines": 30,
+      "fileCategory": "docs"
+    },
+    {
+      "path": ".ai/STRONG_MODEL_ANSWER_BRIDGE_DESIGN.md",
+      "language": "markdown",
+      "sizeLines": 29,
+      "fileCategory": "docs"
+    },
+    {
+      "path": ".ai/STRONG_MODEL_ANSWER_BRIDGE_REPORT.md",
+      "language": "markdown",
+      "sizeLines": 37,
+      "fileCategory": "docs"
+    },
+    {
+      "path": ".ai/STRONG_MODEL_MOM_3Q_TEST_REPORT.md",
+      "language": "markdown",
+      "sizeLines": 104,
+      "fileCategory": "docs"
+    },
+    {
+      "path": ".ai/TASK_QUEUE.md",
+      "language": "markdown",
+      "sizeLines": 13,
+      "fileCategory": "docs"
+    },
+    {
+      "path": ".ai/UI_STRONG_ANSWER_BUTTON_REPORT.md",
+      "language": "markdown",
+      "sizeLines": 29,
+      "fileCategory": "docs"
+    },
+    {
+      "path": ".ai/UI_STRONG_ANSWER_IMPLEMENTATION_DESIGN.md",
+      "language": "markdown",
+      "sizeLines": 31,
+      "fileCategory": "docs"
+    },
+    {
+      "path": ".ai/UI_STRONG_ANSWER_NOTE.md",
+      "language": "markdown",
+      "sizeLines": 12,
+      "fileCategory": "docs"
+    },
+    {
+      "path": ".ai/VISUAL_KNOWLEDGE_MAP_90_AUDIT_REPORT.md",
+      "language": "markdown",
+      "sizeLines": 127,
+      "fileCategory": "docs"
+    },
+    {
+      "path": ".ai/VISUAL_KNOWLEDGE_MAP_90_DESIGN.md",
+      "language": "markdown",
+      "sizeLines": 53,
+      "fileCategory": "docs"
+    },
+    {
+      "path": ".ai/VISUAL_KNOWLEDGE_MAP_90_REPORT.md",
+      "language": "markdown",
+      "sizeLines": 26,
+      "fileCategory": "docs"
+    },
+    {
+      "path": ".ai/VISUAL_KNOWLEDGE_MAP_MVP_CORE_AUDIT_REPORT.md",
+      "language": "markdown",
+      "sizeLines": 90,
+      "fileCategory": "docs"
+    },
+    {
+      "path": ".ai/VISUAL_KNOWLEDGE_MAP_MVP_DECISION.md",
+      "language": "markdown",
+      "sizeLines": 66,
+      "fileCategory": "docs"
+    },
+    {
+      "path": ".ai/VISUAL_KNOWLEDGE_MAP_MVP_DESIGN.md",
+      "language": "markdown",
+      "sizeLines": 452,
+      "fileCategory": "docs"
+    },
+    {
+      "path": ".ai/VISUAL_KNOWLEDGE_MAP_MVP_IMPLEMENTATION_REPORT.md",
+      "language": "markdown",
+      "sizeLines": 27,
+      "fileCategory": "docs"
+    },
+    {
+      "path": ".ai/VISUAL_KNOWLEDGE_MAP_PATTERN_STUDY.md",
+      "language": "markdown",
+      "sizeLines": 49,
+      "fileCategory": "docs"
+    },
+    {
+      "path": ".ai/VISUAL_MAP_UI_INTERACTION_DECISION.md",
+      "language": "markdown",
+      "sizeLines": 107,
+      "fileCategory": "docs"
+    },
+    {
+      "path": ".ai/VISUAL_MAP_UI_INTERACTION_TABLE_FIRST_REPORT.md",
+      "language": "markdown",
+      "sizeLines": 46,
+      "fileCategory": "docs"
+    },
+    {
+      "path": ".ai/VISUAL_MAP_UI_REFERENCE_STUDY.md",
+      "language": "markdown",
+      "sizeLines": 201,
+      "fileCategory": "docs"
+    },
+    {
+      "path": ".antigravityrules",
+      "language": "unknown",
+      "sizeLines": 1,
+      "fileCategory": "code"
+    },
+    {
+      "path": ".github/CODEOWNERS",
+      "language": "unknown",
+      "sizeLines": 2,
+      "fileCategory": "code"
+    },
+    {
+      "path": ".github/ISSUE_TEMPLATE/bug_report.yml",
+      "language": "yaml",
+      "sizeLines": 38,
+      "fileCategory": "config"
+    },
+    {
+      "path": ".github/pull_request_template.md",
+      "language": "markdown",
+      "sizeLines": 18,
+      "fileCategory": "docs"
+    },
+    {
+      "path": ".github/workflows/test.yml",
+      "language": "yaml",
+      "sizeLines": 37,
+      "fileCategory": "infra"
+    },
+    {
+      "path": ".specify/feature.json",
+      "language": "json",
+      "sizeLines": 3,
+      "fileCategory": "config"
+    },
+    {
+      "path": ".specify/init-options.json",
+      "language": "json",
+      "sizeLines": 9,
+      "fileCategory": "config"
+    },
+    {
+      "path": ".specify/integration.json",
+      "language": "json",
+      "sizeLines": 15,
+      "fileCategory": "config"
+    },
+    {
+      "path": ".specify/integrations/agy.manifest.json",
+      "language": "json",
+      "sizeLines": 17,
+      "fileCategory": "config"
+    },
+    {
+      "path": ".specify/integrations/speckit.manifest.json",
+      "language": "json",
+      "sizeLines": 17,
+      "fileCategory": "config"
+    },
+    {
+      "path": ".specify/memory/.constitution-template.json",
+      "language": "json",
+      "sizeLines": 4,
+      "fileCategory": "config"
+    },
+    {
+      "path": ".specify/memory/constitution.md",
+      "language": "markdown",
+      "sizeLines": 101,
+      "fileCategory": "docs"
+    },
+    {
+      "path": ".specify/scripts/powershell/check-prerequisites.ps1",
+      "language": "powershell",
+      "sizeLines": 153,
+      "fileCategory": "script"
+    },
+    {
+      "path": ".specify/scripts/powershell/common.ps1",
+      "language": "powershell",
+      "sizeLines": 639,
+      "fileCategory": "script"
+    },
+    {
+      "path": ".specify/scripts/powershell/create-new-feature.ps1",
+      "language": "powershell",
+      "sizeLines": 316,
+      "fileCategory": "script"
+    },
+    {
+      "path": ".specify/scripts/powershell/setup-plan.ps1",
+      "language": "powershell",
+      "sizeLines": 85,
+      "fileCategory": "script"
+    },
+    {
+      "path": ".specify/scripts/powershell/setup-tasks.ps1",
+      "language": "powershell",
+      "sizeLines": 82,
+      "fileCategory": "script"
+    },
+    {
+      "path": ".specify/templates/checklist-template.md",
+      "language": "markdown",
+      "sizeLines": 40,
+      "fileCategory": "docs"
+    },
+    {
+      "path": ".specify/templates/constitution-template.md",
+      "language": "markdown",
+      "sizeLines": 50,
+      "fileCategory": "docs"
+    },
+    {
+      "path": ".specify/templates/plan-template.md",
+      "language": "markdown",
+      "sizeLines": 113,
+      "fileCategory": "docs"
+    },
+    {
+      "path": ".specify/templates/spec-template.md",
+      "language": "markdown",
+      "sizeLines": 131,
+      "fileCategory": "docs"
+    },
+    {
+      "path": ".specify/templates/tasks-template.md",
+      "language": "markdown",
+      "sizeLines": 252,
+      "fileCategory": "docs"
+    },
+    {
+      "path": ".specify/workflows/speckit/workflow.yml",
+      "language": "yaml",
+      "sizeLines": 78,
+      "fileCategory": "config"
+    },
+    {
+      "path": ".specify/workflows/workflow-registry.json",
+      "language": "json",
+      "sizeLines": 12,
+      "fileCategory": "config"
+    },
+    {
+      "path": ".streamlit/config.toml",
+      "language": "toml",
+      "sizeLines": 11,
+      "fileCategory": "config"
+    },
+    {
+      "path": ".understand-anything/.understandignore",
+      "language": "unknown",
+      "sizeLines": 90,
+      "fileCategory": "code"
+    },
+    {
+      "path": "00_governance/DATA_POLICY.md",
+      "language": "markdown",
+      "sizeLines": 45,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "00_governance/PHASE_0_EXIT_CHECKLIST.md",
+      "language": "markdown",
+      "sizeLines": 29,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "00_governance/PHASE_GATE_LOG.md",
+      "language": "markdown",
+      "sizeLines": 18,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "00_governance/SOURCE_POLICY.md",
+      "language": "markdown",
+      "sizeLines": 66,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "00_governance/VALIDATION_RULES.md",
+      "language": "markdown",
+      "sizeLines": 59,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "01_design/DATA_FLOW.md",
+      "language": "markdown",
+      "sizeLines": 36,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "01_design/SYSTEM_CONTEXT.md",
+      "language": "markdown",
+      "sizeLines": 32,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "01_design/TERMINOLOGY.md",
+      "language": "markdown",
+      "sizeLines": 30,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "02_sources/excluded_sources.md",
+      "language": "markdown",
+      "sizeLines": 6,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "02_sources/README.md",
+      "language": "markdown",
+      "sizeLines": 13,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "02_sources/source_inventory.md",
+      "language": "markdown",
+      "sizeLines": 134,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "03_evidence_registry/evidence_index.md",
+      "language": "markdown",
+      "sizeLines": 6,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "03_evidence_registry/README.md",
+      "language": "markdown",
+      "sizeLines": 5,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "03_evidence_registry/records/.gitkeep",
+      "language": "unknown",
+      "sizeLines": 0,
+      "fileCategory": "code"
+    },
+    {
+      "path": "04_extraction_workspace/candidate_memory/.gitkeep",
+      "language": "unknown",
+      "sizeLines": 0,
+      "fileCategory": "code"
+    },
+    {
+      "path": "04_extraction_workspace/conflict_log.md",
+      "language": "markdown",
+      "sizeLines": 6,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "04_extraction_workspace/extraction_reports/.gitkeep",
+      "language": "unknown",
+      "sizeLines": 0,
+      "fileCategory": "code"
+    },
+    {
+      "path": "04_extraction_workspace/README.md",
+      "language": "markdown",
+      "sizeLines": 7,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "05_memory_vault/behavior/.gitkeep",
+      "language": "unknown",
+      "sizeLines": 0,
+      "fileCategory": "code"
+    },
+    {
+      "path": "05_memory_vault/decision_patterns/.gitkeep",
+      "language": "unknown",
+      "sizeLines": 0,
+      "fileCategory": "code"
+    },
+    {
+      "path": "05_memory_vault/identity/.gitkeep",
+      "language": "unknown",
+      "sizeLines": 0,
+      "fileCategory": "code"
+    },
+    {
+      "path": "05_memory_vault/language/.gitkeep",
+      "language": "unknown",
+      "sizeLines": 0,
+      "fileCategory": "code"
+    },
+    {
+      "path": "05_memory_vault/lessons_learned/.gitkeep",
+      "language": "unknown",
+      "sizeLines": 0,
+      "fileCategory": "code"
+    },
+    {
+      "path": "05_memory_vault/project_knowledge/.gitkeep",
+      "language": "unknown",
+      "sizeLines": 0,
+      "fileCategory": "code"
+    },
+    {
+      "path": "05_memory_vault/README.md",
+      "language": "markdown",
+      "sizeLines": 17,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "05_memory_vault/workflow/.gitkeep",
+      "language": "unknown",
+      "sizeLines": 0,
+      "fileCategory": "code"
+    },
+    {
+      "path": "06_workflow_library/README.md",
+      "language": "markdown",
+      "sizeLines": 6,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "06_workflow_library/workflows/.gitkeep",
+      "language": "unknown",
+      "sizeLines": 0,
+      "fileCategory": "code"
+    },
+    {
+      "path": "07_ai_export_packs/claude/.gitkeep",
+      "language": "unknown",
+      "sizeLines": 0,
+      "fileCategory": "code"
+    },
+    {
+      "path": "07_ai_export_packs/future_ai/.gitkeep",
+      "language": "unknown",
+      "sizeLines": 0,
+      "fileCategory": "code"
+    },
+    {
+      "path": "07_ai_export_packs/gemini/.gitkeep",
+      "language": "unknown",
+      "sizeLines": 0,
+      "fileCategory": "code"
+    },
+    {
+      "path": "07_ai_export_packs/gpt/.gitkeep",
+      "language": "unknown",
+      "sizeLines": 0,
+      "fileCategory": "code"
+    },
+    {
+      "path": "07_ai_export_packs/grok/.gitkeep",
+      "language": "unknown",
+      "sizeLines": 0,
+      "fileCategory": "code"
+    },
+    {
+      "path": "07_ai_export_packs/README.md",
+      "language": "markdown",
+      "sizeLines": 23,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "08_audit/initial_public_audit.md",
+      "language": "markdown",
+      "sizeLines": 6,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "08_audit/open_issues.md",
+      "language": "markdown",
+      "sizeLines": 6,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "08_audit/phase_0_foundation_audit.md",
+      "language": "markdown",
+      "sizeLines": 15,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "08_audit/phase_0_report.md",
+      "language": "markdown",
+      "sizeLines": 4,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "08_audit/phase_1_report.md",
+      "language": "markdown",
+      "sizeLines": 4,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "08_audit/phase_2_report.md",
+      "language": "markdown",
+      "sizeLines": 4,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "08_audit/phase_3_report.md",
+      "language": "markdown",
+      "sizeLines": 4,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "08_audit/phase_4_report.md",
+      "language": "markdown",
+      "sizeLines": 4,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "08_audit/phase_5_report.md",
+      "language": "markdown",
+      "sizeLines": 4,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "08_audit/phase_6_report.md",
+      "language": "markdown",
+      "sizeLines": 4,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "08_audit/phase_7_report.md",
+      "language": "markdown",
+      "sizeLines": 4,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "08_audit/phase_8_report.md",
+      "language": "markdown",
+      "sizeLines": 4,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "08_audit/phase_9_report.md",
+      "language": "markdown",
+      "sizeLines": 4,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "08_audit/README.md",
+      "language": "markdown",
+      "sizeLines": 5,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "08_audit/rollback_log.md",
+      "language": "markdown",
+      "sizeLines": 6,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "08_audit/validation_log.md",
+      "language": "markdown",
+      "sizeLines": 6,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "09_handover/matecon_manual_retrieval_handover.md",
+      "language": "markdown",
+      "sizeLines": 58,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "09_handover/phase_0_handover.md",
+      "language": "markdown",
+      "sizeLines": 46,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "09_handover/README.md",
+      "language": "markdown",
+      "sizeLines": 14,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "10_schemas/decision_pattern.schema.json",
+      "language": "json",
+      "sizeLines": 53,
+      "fileCategory": "config"
+    },
+    {
+      "path": "10_schemas/evidence_record.schema.json",
+      "language": "json",
+      "sizeLines": 88,
+      "fileCategory": "config"
+    },
+    {
+      "path": "10_schemas/memory_unit.schema.json",
+      "language": "json",
+      "sizeLines": 150,
+      "fileCategory": "config"
+    },
+    {
+      "path": "10_schemas/phase_record.schema.json",
+      "language": "json",
+      "sizeLines": 83,
+      "fileCategory": "config"
+    },
+    {
+      "path": "10_schemas/project_card.schema.json",
+      "language": "json",
+      "sizeLines": 76,
+      "fileCategory": "config"
+    },
+    {
+      "path": "10_schemas/workflow_card.schema.json",
+      "language": "json",
+      "sizeLines": 98,
+      "fileCategory": "config"
+    },
+    {
+      "path": "11_templates/audit_report.md",
+      "language": "markdown",
+      "sizeLines": 67,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "11_templates/decision_record.md",
+      "language": "markdown",
+      "sizeLines": 36,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "11_templates/evidence_record.md",
+      "language": "markdown",
+      "sizeLines": 36,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "11_templates/extraction_report.md",
+      "language": "markdown",
+      "sizeLines": 50,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "11_templates/handover.md",
+      "language": "markdown",
+      "sizeLines": 51,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "11_templates/memory_card.md",
+      "language": "markdown",
+      "sizeLines": 40,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "11_templates/project_card.md",
+      "language": "markdown",
+      "sizeLines": 47,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "11_templates/workflow_card.md",
+      "language": "markdown",
+      "sizeLines": 60,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "12_tools/README.md",
+      "language": "markdown",
+      "sizeLines": 14,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "AGENT_RULES.md",
+      "language": "markdown",
+      "sizeLines": 51,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "ARCHITECTURE.md",
+      "language": "markdown",
+      "sizeLines": 428,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "CASE_COCKPIT_ACCEPTANCE_CRITERIA.md",
+      "language": "markdown",
+      "sizeLines": 20,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "CHANGELOG.md",
+      "language": "markdown",
+      "sizeLines": 1154,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "config/mom_source_dispositions.example.json",
+      "language": "json",
+      "sizeLines": 13,
+      "fileCategory": "config"
+    },
+    {
+      "path": "config/real_benchmark.example.json",
+      "language": "json",
+      "sizeLines": 8,
+      "fileCategory": "config"
+    },
+    {
+      "path": "config/shared_ai_provider_fabric.json",
+      "language": "json",
+      "sizeLines": 9,
+      "fileCategory": "config"
+    },
+    {
+      "path": "CONSTITUTION.md",
+      "language": "markdown",
+      "sizeLines": 98,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "CONTRIBUTING.md",
+      "language": "markdown",
+      "sizeLines": 33,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "DEPRECATION_PAUSE_LIST.md",
+      "language": "markdown",
+      "sizeLines": 12,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "docs/adr/0001-local-first-filesystem-ownership.md",
+      "language": "markdown",
+      "sizeLines": 45,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "docs/adr/0002-workspace-chat-supported-ui.md",
+      "language": "markdown",
+      "sizeLines": 41,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "docs/adr/0003-local-sqlite-lexical-index.md",
+      "language": "markdown",
+      "sizeLines": 41,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "docs/adr/0004-brain-gateway-privacy-ownership.md",
+      "language": "markdown",
+      "sizeLines": 38,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "docs/adr/0005-router-provider-routing-boundary.md",
+      "language": "markdown",
+      "sizeLines": 35,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "docs/adr/0006-private-runtime-data-outside-git.md",
+      "language": "markdown",
+      "sizeLines": 35,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "docs/adr/README.md",
+      "language": "markdown",
+      "sizeLines": 29,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "docs/AI_EXECUTOR_PROMPTS.md",
+      "language": "markdown",
+      "sizeLines": 4,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "docs/AIOS_EXTRACTION_ADAPTER_STRATEGY.md",
+      "language": "markdown",
+      "sizeLines": 73,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "docs/AIOS_PRODUCT_POSITIONING.md",
+      "language": "markdown",
+      "sizeLines": 128,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "docs/AIOS_ROUTER_SOURCE_AUDIT.md",
+      "language": "markdown",
+      "sizeLines": 393,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "docs/architecture/AI_ROUTING_RESILIENCE.md",
+      "language": "markdown",
+      "sizeLines": 54,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "docs/architecture/COMPONENTS.md",
+      "language": "markdown",
+      "sizeLines": 36,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "docs/architecture/CONTAINERS.md",
+      "language": "markdown",
+      "sizeLines": 50,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "docs/architecture/CONTEXT.md",
+      "language": "markdown",
+      "sizeLines": 40,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "docs/architecture/DEPLOYMENT.md",
+      "language": "markdown",
+      "sizeLines": 35,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "docs/architecture/sequences/CLOUD_PREFLIGHT.md",
+      "language": "markdown",
+      "sizeLines": 44,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "docs/architecture/sequences/INGEST.md",
+      "language": "markdown",
+      "sizeLines": 31,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "docs/architecture/sequences/RETRIEVAL.md",
+      "language": "markdown",
+      "sizeLines": 41,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "docs/architecture/sequences/ROUTER_CALL.md",
+      "language": "markdown",
+      "sizeLines": 33,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "docs/architecture/st_co_registration_flow.excalidraw",
+      "language": "excalidraw",
+      "sizeLines": 1219,
+      "fileCategory": "code"
+    },
+    {
+      "path": "docs/architecture/view_diagram.html",
+      "language": "html",
+      "sizeLines": 117,
+      "fileCategory": "markup"
+    },
+    {
+      "path": "docs/architecture/workspace_chat_bge_m3_architecture.excalidraw",
+      "language": "excalidraw",
+      "sizeLines": 980,
+      "fileCategory": "code"
+    },
+    {
+      "path": "docs/archive/design/AIOS_AGENT_RESULT_IMPORT_DESIGN.md",
+      "language": "markdown",
+      "sizeLines": 198,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "docs/archive/design/AIOS_BRAIN_GATEWAY_DESIGN.md",
+      "language": "markdown",
+      "sizeLines": 197,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "docs/archive/design/AIOS_EXISTING_AI_INVENTORY.md",
+      "language": "markdown",
+      "sizeLines": 82,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "docs/archive/design/AIOS_GATE_A16_ROUTER_MOCK_INTEGRATION_PROMPT.md",
+      "language": "markdown",
+      "sizeLines": 106,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "docs/archive/design/AIOS_GATE_A17_IDE_AGENT_BRIDGE_PROMPT.md",
+      "language": "markdown",
+      "sizeLines": 135,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "docs/archive/design/AIOS_GATE_A18_NOTEBOOKLM_COMPARISON_ARENA_PROMPT.md",
+      "language": "markdown",
+      "sizeLines": 106,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "docs/archive/design/AIOS_IDE_AGENT_BRIDGE_DESIGN.md",
+      "language": "markdown",
+      "sizeLines": 201,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "docs/archive/design/AIOS_ROUTER_ADAPTER_DESIGN.md",
+      "language": "markdown",
+      "sizeLines": 161,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "docs/archive/README.md",
+      "language": "markdown",
+      "sizeLines": 11,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "docs/archive/ux_records/AI_FILE_EMPTY_DIFF_METADATA_CLEANUP_AUDIT.md",
+      "language": "markdown",
+      "sizeLines": 167,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "docs/archive/ux_records/VISUAL_MAP_EXPORT_HYGIENE_AUDIT.md",
+      "language": "markdown",
+      "sizeLines": 125,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "docs/archive/ux_records/WORKSPACE_CHAT_AFTER_PHASE2I_NEXT_ROADMAP_GATE.md",
+      "language": "markdown",
+      "sizeLines": 355,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "docs/archive/ux_records/WORKSPACE_CHAT_AFTER_PHASE2I_OWNER_CORRECTION.md",
+      "language": "markdown",
+      "sizeLines": 41,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "docs/archive/ux_records/WORKSPACE_CHAT_NOTEBOOK_DELETE_DESIGN_GATE.md",
+      "language": "markdown",
+      "sizeLines": 85,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "docs/archive/ux_records/WORKSPACE_CHAT_NOTEBOOK_HARD_DELETE_IMPLEMENTATION_AUDIT.md",
+      "language": "markdown",
+      "sizeLines": 122,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "docs/archive/ux_records/WORKSPACE_CHAT_NOTEBOOK_HARD_DELETE_IMPLEMENTATION_DESIGN.md",
+      "language": "markdown",
+      "sizeLines": 247,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "docs/archive/ux_records/WORKSPACE_CHAT_PHASE_1_5_CLEANUP_PLAN.md",
+      "language": "markdown",
+      "sizeLines": 35,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "docs/archive/ux_records/WORKSPACE_CHAT_PHASE1_BLOCKER_FIX_REAUDIT.md",
+      "language": "markdown",
+      "sizeLines": 325,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "docs/archive/ux_records/WORKSPACE_CHAT_PHASE1_FINAL_COMMIT_READINESS_AUDIT.md",
+      "language": "markdown",
+      "sizeLines": 363,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "docs/archive/ux_records/WORKSPACE_CHAT_PHASE1_IMPLEMENTATION_AUDIT.md",
+      "language": "markdown",
+      "sizeLines": 278,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "docs/archive/ux_records/WORKSPACE_CHAT_PHASE1_SIDE_EFFECT_FIX_REAUDIT.md",
+      "language": "markdown",
+      "sizeLines": 326,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "docs/archive/ux_records/WORKSPACE_CHAT_PHASE2_RESEARCH_FIRST_DESIGN_AUDIT.md",
+      "language": "markdown",
+      "sizeLines": 307,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "docs/archive/ux_records/WORKSPACE_CHAT_PHASE2A_IMPLEMENTATION_AUDIT.md",
+      "language": "markdown",
+      "sizeLines": 338,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "docs/archive/ux_records/WORKSPACE_CHAT_PHASE2B_IMPLEMENTATION_AUDIT.md",
+      "language": "markdown",
+      "sizeLines": 166,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "docs/archive/ux_records/WORKSPACE_CHAT_PHASE2B_UI_DESIGN_GATE.md",
+      "language": "markdown",
+      "sizeLines": 526,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "docs/archive/ux_records/WORKSPACE_CHAT_PHASE2C_IMPLEMENTATION_AUDIT.md",
+      "language": "markdown",
+      "sizeLines": 277,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "docs/archive/ux_records/WORKSPACE_CHAT_PHASE2C_XLSX_INGEST_DESIGN_GATE.md",
+      "language": "markdown",
+      "sizeLines": 623,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "docs/archive/ux_records/WORKSPACE_CHAT_PHASE2D_IMPLEMENTATION_AUDIT.md",
+      "language": "markdown",
+      "sizeLines": 435,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "docs/archive/ux_records/WORKSPACE_CHAT_PHASE2D_SOURCE_AWARE_PLACEHOLDER_DESIGN_GATE.md",
+      "language": "markdown",
+      "sizeLines": 442,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "docs/archive/ux_records/WORKSPACE_CHAT_PHASE2E_IMPLEMENTATION_AUDIT.md",
+      "language": "markdown",
+      "sizeLines": 788,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "docs/archive/ux_records/WORKSPACE_CHAT_PHASE2E_SAFE_AI_ANSWER_DESIGN_GATE.md",
+      "language": "markdown",
+      "sizeLines": 771,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "docs/archive/ux_records/WORKSPACE_CHAT_PHASE2F_IMPLEMENTATION_AUDIT.md",
+      "language": "markdown",
+      "sizeLines": 274,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "docs/archive/ux_records/WORKSPACE_CHAT_PHASE2F_OWNER_FACING_PILOT_POLISH_DESIGN_GATE.md",
+      "language": "markdown",
+      "sizeLines": 515,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "docs/archive/ux_records/WORKSPACE_CHAT_PHASE2G_FIX_IMPLEMENTATION_AUDIT.md",
+      "language": "markdown",
+      "sizeLines": 233,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "docs/archive/ux_records/WORKSPACE_CHAT_PHASE2G_FIX_OWNER_USABILITY_DESIGN_GATE.md",
+      "language": "markdown",
+      "sizeLines": 383,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "docs/archive/ux_records/WORKSPACE_CHAT_PHASE2G_OWNER_PILOT_CHECKLIST.md",
+      "language": "markdown",
+      "sizeLines": 150,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "docs/archive/ux_records/WORKSPACE_CHAT_PHASE2G_REAL_WORK_PILOT_READINESS_GATE.md",
+      "language": "markdown",
+      "sizeLines": 489,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "docs/archive/ux_records/WORKSPACE_CHAT_PHASE2G_SAVE_FEEDBACK_AUDIT.md",
+      "language": "markdown",
+      "sizeLines": 228,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "docs/archive/ux_records/WORKSPACE_CHAT_PHASE2G_SAVE_FEEDBACK_IMPLEMENTATION_AUDIT.md",
+      "language": "markdown",
+      "sizeLines": 234,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "docs/archive/ux_records/WORKSPACE_CHAT_PHASE2H_ANSWER_CLARITY_AND_SIMPLE_AI_UX_DESIGN_GATE.md",
+      "language": "markdown",
+      "sizeLines": 571,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "docs/archive/ux_records/WORKSPACE_CHAT_PHASE2H_ANSWER_CLARITY_IMPLEMENTATION_AUDIT.md",
+      "language": "markdown",
+      "sizeLines": 152,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "docs/archive/ux_records/WORKSPACE_CHAT_PHASE2H_OWNER_SMOKE_GAP_TRIAGE.md",
+      "language": "markdown",
+      "sizeLines": 209,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "docs/archive/ux_records/WORKSPACE_CHAT_PHASE2I_NOTEBOOK_LIFECYCLE_DESIGN_GATE.md",
+      "language": "markdown",
+      "sizeLines": 501,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "docs/archive/ux_records/WORKSPACE_CHAT_PHASE2I_NOTEBOOK_LIFECYCLE_IMPLEMENTATION_AUDIT.md",
+      "language": "markdown",
+      "sizeLines": 126,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "docs/archive/ux_records/WORKSPACE_CHAT_PHASE2I_NOTEBOOK_LIFECYCLE_OWNER_SMOKE_RESULT.md",
+      "language": "markdown",
+      "sizeLines": 126,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "docs/archive/ux_records/WORKSPACE_CHAT_PHASE2I_PRIVACY_SOURCE_CONTROL_DESIGN_GATE.md",
+      "language": "markdown",
+      "sizeLines": 476,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "docs/archive/ux_records/WORKSPACE_CHAT_PHASE2I_PRIVACY_SOURCE_CONTROL_IMPLEMENTATION_AUDIT.md",
+      "language": "markdown",
+      "sizeLines": 90,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "docs/archive/ux_records/WORKSPACE_CHAT_UX_REDESIGN_AUDIT.md",
+      "language": "markdown",
+      "sizeLines": 646,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "docs/CLI_REFERENCE.md",
+      "language": "markdown",
+      "sizeLines": 18,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "docs/contracts/PERSISTED_DATA_COMPATIBILITY.md",
+      "language": "markdown",
+      "sizeLines": 32,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "docs/contracts/RUNTIME_INTERFACES.md",
+      "language": "markdown",
+      "sizeLines": 48,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "docs/DATA_MODEL.md",
+      "language": "markdown",
+      "sizeLines": 19,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "docs/design/PRODUCTION_INTELLIGENCE_VISION.md",
+      "language": "markdown",
+      "sizeLines": 189,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "docs/design/README.md",
+      "language": "markdown",
+      "sizeLines": 4,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "docs/DOCUMENTATION_GOVERNANCE.md",
+      "language": "markdown",
+      "sizeLines": 53,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "docs/governance/DEFINITION_OF_READY_DONE.md",
+      "language": "markdown",
+      "sizeLines": 25,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "docs/governance/LOCALIZATION_GLOSSARY.md",
+      "language": "markdown",
+      "sizeLines": 29,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "docs/governance/MAINTENANCE_DEPRECATION_POLICY.md",
+      "language": "markdown",
+      "sizeLines": 27,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "docs/governance/OWNERSHIP_AND_REVIEW.md",
+      "language": "markdown",
+      "sizeLines": 34,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "docs/governance/RISK_REGISTER.md",
+      "language": "markdown",
+      "sizeLines": 24,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "docs/GRAPH_RENDERER_OPTIONS.md",
+      "language": "markdown",
+      "sizeLines": 18,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "docs/inheritance_audit/ABW_NVIDIA_FUSION_CONTROL_AUDIT.md",
+      "language": "markdown",
+      "sizeLines": 50,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "docs/inheritance_audit/INHERITANCE_SUMMARY.md",
+      "language": "markdown",
+      "sizeLines": 30,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "docs/inheritance_audit/Nvidia_AUDIT.md",
+      "language": "markdown",
+      "sizeLines": 52,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "docs/inheritance_audit/skill_Anti_brain_wiki_note_AUDIT.md",
+      "language": "markdown",
+      "sizeLines": 52,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "docs/INSTALL.md",
+      "language": "markdown",
+      "sizeLines": 34,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "docs/KNOWLEDGE_NOTEBOOK.md",
+      "language": "markdown",
+      "sizeLines": 78,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "docs/legacy/RETIREMENT_MANIFEST.md",
+      "language": "markdown",
+      "sizeLines": 29,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "docs/MOM_NOTEBOOKLM_COMPARISON_MVP.md",
+      "language": "markdown",
+      "sizeLines": 50,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "docs/NOTEBOOKLM_MANUAL_COLLECTION_RUNBOOK.md",
+      "language": "markdown",
+      "sizeLines": 13,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "docs/onboarding/MAINTAINER_ONBOARDING.md",
+      "language": "markdown",
+      "sizeLines": 33,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "docs/operations/BACKUP_RESTORE.md",
+      "language": "markdown",
+      "sizeLines": 59,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "docs/operations/DATA_MIGRATION_COMPATIBILITY.md",
+      "language": "markdown",
+      "sizeLines": 39,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "docs/operations/INCIDENT_RESPONSE.md",
+      "language": "markdown",
+      "sizeLines": 45,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "docs/operations/OBSERVABILITY.md",
+      "language": "markdown",
+      "sizeLines": 40,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "docs/operations/PERFORMANCE_CAPACITY_BASELINE.md",
+      "language": "markdown",
+      "sizeLines": 44,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "docs/operations/TROUBLESHOOTING.md",
+      "language": "markdown",
+      "sizeLines": 43,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "docs/OPERATOR_RUNBOOK.md",
+      "language": "markdown",
+      "sizeLines": 31,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "docs/P1_ADVANCED_RETRIEVAL_DECISION.md",
+      "language": "markdown",
+      "sizeLines": 52,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "docs/P1_OPENING_PLAN_DRAFT.md",
+      "language": "markdown",
+      "sizeLines": 39,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "docs/P1_OWNER_ACCEPTANCE_RUNBOOK.md",
+      "language": "markdown",
+      "sizeLines": 89,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "docs/P1_READINESS_CHECKLIST.md",
+      "language": "markdown",
+      "sizeLines": 53,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "docs/PHASE_GATE_PROCESS.md",
+      "language": "markdown",
+      "sizeLines": 4,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "docs/PRIVACY_MODEL.md",
+      "language": "markdown",
+      "sizeLines": 19,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "docs/PROFESSIONALIZATION_INDEX.md",
+      "language": "markdown",
+      "sizeLines": 38,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "docs/quality/QUALITY_GATES.md",
+      "language": "markdown",
+      "sizeLines": 42,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "docs/quality/TEST_STRATEGY.md",
+      "language": "markdown",
+      "sizeLines": 44,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "docs/quality/UX_ACCESSIBILITY_ACCEPTANCE.md",
+      "language": "markdown",
+      "sizeLines": 33,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "docs/RAG_AGENT_HARNESS_RESEARCH.md",
+      "language": "markdown",
+      "sizeLines": 365,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "docs/rag_v2/AUTOMATED_INGESTION_OPERATIONS.md",
+      "language": "markdown",
+      "sizeLines": 57,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "docs/rag_v2/benchmark_gold_identity.schema.json",
+      "language": "json",
+      "sizeLines": 42,
+      "fileCategory": "config"
+    },
+    {
+      "path": "docs/rag_v2/BLIND_RERUN_QUESTIONS_DRAFT.json",
+      "language": "json",
+      "sizeLines": 38,
+      "fileCategory": "config"
+    },
+    {
+      "path": "docs/rag_v2/RAG_V2_DESIGN.md",
+      "language": "markdown",
+      "sizeLines": 472,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "docs/rag_v2/SAME_PROTOCOL_ANSWER_QUALITY_PROTOCOL.md",
+      "language": "markdown",
+      "sizeLines": 92,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "docs/RECOVERY_GUIDE.md",
+      "language": "markdown",
+      "sizeLines": 10,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "docs/release/RELEASE_CHECKLIST.md",
+      "language": "markdown",
+      "sizeLines": 41,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "docs/release/RELEASE_POLICY.md",
+      "language": "markdown",
+      "sizeLines": 45,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "docs/release/SBOM_POLICY.md",
+      "language": "markdown",
+      "sizeLines": 29,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "docs/release/SUPPORTED_VERSIONS.md",
+      "language": "markdown",
+      "sizeLines": 26,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "docs/reports/workspace_chat_full_12_questions_polished_report.md",
+      "language": "markdown",
+      "sizeLines": 353,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "docs/reports/workspace_chat_full_12_questions_report.md",
+      "language": "markdown",
+      "sizeLines": 318,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "docs/reports/workspace_chat_full_12_questions.json",
+      "language": "json",
+      "sizeLines": 254,
+      "fileCategory": "config"
+    },
+    {
+      "path": "docs/requirements/NON_FUNCTIONAL_REQUIREMENTS.md",
+      "language": "markdown",
+      "sizeLines": 29,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "docs/requirements/PRODUCT_REQUIREMENTS.md",
+      "language": "markdown",
+      "sizeLines": 32,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "docs/requirements/TRACEABILITY_MATRIX.md",
+      "language": "markdown",
+      "sizeLines": 22,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "docs/roadmap/completed/AI-GW-REAL-ROUTE-POLICY-CONSOLIDATION.md",
+      "language": "markdown",
+      "sizeLines": 67,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "docs/roadmap/completed/ANTIGRAVITY-IDE-AI-BRAIN-BRIDGE.md",
+      "language": "markdown",
+      "sizeLines": 35,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "docs/roadmap/completed/CASE-COCKPIT-DEPENDENCY-MIGRATION-AND-RETIREMENT.md",
+      "language": "markdown",
+      "sizeLines": 22,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "docs/roadmap/completed/DOCS-LEGACY-CLEANUP-RESET.md",
+      "language": "markdown",
+      "sizeLines": 44,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "docs/roadmap/completed/NOTEBOOKLM-BATTLE-RERUN-RAG-V2.md",
+      "language": "markdown",
+      "sizeLines": 64,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "docs/roadmap/completed/PROFESSIONALIZATION-BASELINE.md",
+      "language": "markdown",
+      "sizeLines": 87,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "docs/roadmap/completed/RAG-V2-CORPUS-OCR-AND-SOURCE-RECOVERY.md",
+      "language": "markdown",
+      "sizeLines": 55,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "docs/roadmap/completed/RAG-V2-DEV-QUALITY-CONVERGENCE.md",
+      "language": "markdown",
+      "sizeLines": 138,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "docs/roadmap/completed/RAG-V2-EVAL-HARNESS-GENERIC-AND-PRIVATE.md",
+      "language": "markdown",
+      "sizeLines": 49,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "docs/roadmap/completed/RAG-V2-GATE-H-HYBRID-CANARY.md",
+      "language": "markdown",
+      "sizeLines": 57,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "docs/roadmap/completed/RAG-V2-GENERIC-EVIDENCE-SYNTHESIS-MIN.md",
+      "language": "markdown",
+      "sizeLines": 47,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "docs/roadmap/completed/RAG-V2-HYBRID-PRODUCTION-ACTIVATION.md",
+      "language": "markdown",
+      "sizeLines": 70,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "docs/roadmap/completed/RAG-V2-HYBRID-RETRIEVAL-MIN.md",
+      "language": "markdown",
+      "sizeLines": 50,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "docs/roadmap/completed/RAG-V2-SAME-PROTOCOL-BLINDED-ANSWER-QUALITY.md",
+      "language": "markdown",
+      "sizeLines": 95,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "docs/roadmap/completed/STUDIO-AND-PUBLIC-LEGACY-ROUTE-RETIREMENT.md",
+      "language": "markdown",
+      "sizeLines": 46,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "docs/roadmap/RAG-V2-INTENT-RETRIEVAL-SYNTHESIS-TUNING.md",
+      "language": "markdown",
+      "sizeLines": 50,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "docs/roadmap/README.md",
+      "language": "markdown",
+      "sizeLines": 27,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "docs/runbooks/developer.md",
+      "language": "markdown",
+      "sizeLines": 40,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "docs/runbooks/MATECON_MANUAL_RETRIEVAL_OPERATIONS.md",
+      "language": "markdown",
+      "sizeLines": 85,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "docs/runbooks/OCR_PRODUCTION.md",
+      "language": "markdown",
+      "sizeLines": 78,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "docs/runbooks/operator.md",
+      "language": "markdown",
+      "sizeLines": 4,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "docs/security/DEPENDENCY_POLICY.md",
+      "language": "markdown",
+      "sizeLines": 36,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "docs/security/PRIVACY_IMPACT_ASSESSMENT.md",
+      "language": "markdown",
+      "sizeLines": 57,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "docs/security/THREAT_MODEL.md",
+      "language": "markdown",
+      "sizeLines": 63,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "docs/third_party/RAG_RETRIEVAL_PROVENANCE.md",
+      "language": "markdown",
+      "sizeLines": 35,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "docs/UI_LANGUAGE_POLICY.md",
+      "language": "markdown",
+      "sizeLines": 14,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "docs/user/WORKSPACE_CHAT_USER_GUIDE.md",
+      "language": "markdown",
+      "sizeLines": 40,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "HARVEST_BACKLOG.md",
+      "language": "markdown",
+      "sizeLines": 16,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "INTEGRATION_DECISION_LOG.md",
+      "language": "markdown",
+      "sizeLines": 11,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "MANIFEST.md",
+      "language": "markdown",
+      "sizeLines": 71,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "MASTER_BEHAVIOR_PROFILE.md",
+      "language": "markdown",
+      "sizeLines": 6,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "MASTER_IDENTITY.md",
+      "language": "markdown",
+      "sizeLines": 7,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "MASTER_LANGUAGE_PROFILE.md",
+      "language": "markdown",
+      "sizeLines": 7,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "MASTER_PROJECT_INDEX.md",
+      "language": "markdown",
+      "sizeLines": 71,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "MASTER_WORKFLOW_PROFILE.md",
+      "language": "markdown",
+      "sizeLines": 7,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "MIGRATION_POLICY.md",
+      "language": "markdown",
+      "sizeLines": 10,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "MONDAY_PILOT_CHECKLIST.md",
+      "language": "markdown",
+      "sizeLines": 6,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "PRODUCT_NORTH_STAR.md",
+      "language": "markdown",
+      "sizeLines": 83,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "PROJECT_HANDOVER.md",
+      "language": "markdown",
+      "sizeLines": 59,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "prompts/notebooklm_compare_self_judge.md",
+      "language": "markdown",
+      "sizeLines": 14,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "pyproject.toml",
+      "language": "toml",
+      "sizeLines": 66,
+      "fileCategory": "config"
+    },
+    {
+      "path": "README.md",
+      "language": "markdown",
+      "sizeLines": 63,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "REPO_INHERITANCE_MAP.md",
+      "language": "markdown",
+      "sizeLines": 12,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "ROADMAP.md",
+      "language": "markdown",
+      "sizeLines": 107,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "RUN_AIOS_WORKSPACE_CHAT.bat",
+      "language": "batch",
+      "sizeLines": 19,
+      "fileCategory": "script"
+    },
+    {
+      "path": "scratch/check_chunks.py",
+      "language": "python",
+      "sizeLines": 15,
+      "fileCategory": "code"
+    },
+    {
+      "path": "scratch/check_db.py",
+      "language": "python",
+      "sizeLines": 15,
+      "fileCategory": "code"
+    },
+    {
+      "path": "scratch/test_direct_index.py",
+      "language": "python",
+      "sizeLines": 38,
+      "fileCategory": "code"
+    },
+    {
+      "path": "scratch/test_fast_open.py",
+      "language": "python",
+      "sizeLines": 41,
+      "fileCategory": "code"
+    },
+    {
+      "path": "scratch/test_single_query.py",
+      "language": "python",
+      "sizeLines": 61,
+      "fileCategory": "code"
+    },
+    {
+      "path": "scripts/__init__.py",
+      "language": "python",
+      "sizeLines": 1,
+      "fileCategory": "code"
+    },
+    {
+      "path": "scripts/antigravity_sidecar_daemon.py",
+      "language": "python",
+      "sizeLines": 191,
+      "fileCategory": "code"
+    },
+    {
+      "path": "scripts/audit_mom_corpus.py",
+      "language": "python",
+      "sizeLines": 55,
+      "fileCategory": "code"
+    },
+    {
+      "path": "scripts/audit_rag_quality_plateau.py",
+      "language": "python",
+      "sizeLines": 215,
+      "fileCategory": "code"
+    },
+    {
+      "path": "scripts/autonomous_rag_quality.py",
+      "language": "python",
+      "sizeLines": 685,
+      "fileCategory": "code"
+    },
+    {
+      "path": "scripts/battle_notebooklm_rag_v2.py",
+      "language": "python",
+      "sizeLines": 7115,
+      "fileCategory": "code"
+    },
+    {
+      "path": "scripts/benchmark_adaptive_reranking.py",
+      "language": "python",
+      "sizeLines": 1157,
+      "fileCategory": "code"
+    },
+    {
+      "path": "scripts/benchmark_ocr_engines.py",
+      "language": "python",
+      "sizeLines": 92,
+      "fileCategory": "code"
+    },
+    {
+      "path": "scripts/benchmark_workspace_chat_rag_v2.py",
+      "language": "python",
+      "sizeLines": 318,
+      "fileCategory": "code"
+    },
+    {
+      "path": "scripts/check_docs.py",
+      "language": "python",
+      "sizeLines": 130,
+      "fileCategory": "code"
+    },
+    {
+      "path": "scripts/diagnose_matecon_manual_retrieval.py",
+      "language": "python",
+      "sizeLines": 285,
+      "fileCategory": "code"
+    },
+    {
+      "path": "scripts/generate_ai_grounded_report.py",
+      "language": "python",
+      "sizeLines": 301,
+      "fileCategory": "code"
+    },
+    {
+      "path": "scripts/generate_sbom.py",
+      "language": "python",
+      "sizeLines": 64,
+      "fileCategory": "code"
+    },
+    {
+      "path": "scripts/prepare_notebooklm_exact_corpus.py",
+      "language": "python",
+      "sizeLines": 197,
+      "fileCategory": "code"
+    },
+    {
+      "path": "scripts/rag_v2_dev.py",
+      "language": "python",
+      "sizeLines": 226,
+      "fileCategory": "code"
+    },
+    {
+      "path": "scripts/reconcile_notebooklm_source_titles.py",
+      "language": "python",
+      "sizeLines": 136,
+      "fileCategory": "code"
+    },
+    {
+      "path": "scripts/reference_registry.py",
+      "language": "python",
+      "sizeLines": 104,
+      "fileCategory": "code"
+    },
+    {
+      "path": "scripts/resume_workspace_battle_from_checkpoints.py",
+      "language": "python",
+      "sizeLines": 214,
+      "fileCategory": "code"
+    },
+    {
+      "path": "scripts/run_bq01_reference_candidate.py",
+      "language": "python",
+      "sizeLines": 0,
+      "fileCategory": "code"
+    },
+    {
+      "path": "scripts/run_workspace_chat_12_questions.py",
+      "language": "python",
+      "sizeLines": 194,
+      "fileCategory": "code"
+    },
+    {
+      "path": "scripts/run_workspace_chat.ps1",
+      "language": "powershell",
+      "sizeLines": 12,
+      "fileCategory": "script"
+    },
+    {
+      "path": "scripts/upload_notebooklm_exact_corpus.py",
+      "language": "python",
+      "sizeLines": 97,
+      "fileCategory": "code"
+    },
+    {
+      "path": "scripts/workspace_chat_rag_v2_activation.py",
+      "language": "python",
+      "sizeLines": 482,
+      "fileCategory": "code"
+    },
+    {
+      "path": "SECURITY.md",
+      "language": "markdown",
+      "sizeLines": 38,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "specs/001-stage-a-resume-guard/checklists/requirements.md",
+      "language": "markdown",
+      "sizeLines": 37,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "specs/001-stage-a-resume-guard/contracts/stage-a-checkpoint.md",
+      "language": "markdown",
+      "sizeLines": 13,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "specs/001-stage-a-resume-guard/data-model.md",
+      "language": "markdown",
+      "sizeLines": 23,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "specs/001-stage-a-resume-guard/plan.md",
+      "language": "markdown",
+      "sizeLines": 71,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "specs/001-stage-a-resume-guard/quickstart.md",
+      "language": "markdown",
+      "sizeLines": 14,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "specs/001-stage-a-resume-guard/research.md",
+      "language": "markdown",
+      "sizeLines": 41,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "specs/001-stage-a-resume-guard/spec.md",
+      "language": "markdown",
+      "sizeLines": 98,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "specs/001-stage-a-resume-guard/tasks.md",
+      "language": "markdown",
+      "sizeLines": 66,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "specs/002-cross-source-synthesis-upgrade/plan.md",
+      "language": "markdown",
+      "sizeLines": 8,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "specs/002-cross-source-synthesis-upgrade/spec.md",
+      "language": "markdown",
+      "sizeLines": 21,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "specs/002-cross-source-synthesis-upgrade/tasks.md",
+      "language": "markdown",
+      "sizeLines": 8,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "specs/003-adaptive-reranking-ux/audit_report.json",
+      "language": "json",
+      "sizeLines": 96,
+      "fileCategory": "config"
+    },
+    {
+      "path": "specs/003-adaptive-reranking-ux/audit-plan.md",
+      "language": "markdown",
+      "sizeLines": 125,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "specs/003-adaptive-reranking-ux/baseline-summary.md",
+      "language": "markdown",
+      "sizeLines": 26,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "specs/003-adaptive-reranking-ux/benchmark-decision.md",
+      "language": "markdown",
+      "sizeLines": 38,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "specs/003-adaptive-reranking-ux/checklists/audit-requirements.md",
+      "language": "markdown",
+      "sizeLines": 71,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "specs/003-adaptive-reranking-ux/checklists/requirements.md",
+      "language": "markdown",
+      "sizeLines": 36,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "specs/003-adaptive-reranking-ux/contracts/adaptive-retrieval-routing.md",
+      "language": "markdown",
+      "sizeLines": 141,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "specs/003-adaptive-reranking-ux/data-model.md",
+      "language": "markdown",
+      "sizeLines": 126,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "specs/003-adaptive-reranking-ux/GEMINI_IMPLEMENTATION_PROMPT.md",
+      "language": "markdown",
+      "sizeLines": 158,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "specs/003-adaptive-reranking-ux/implementation-evidence.md",
+      "language": "markdown",
+      "sizeLines": 150,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "specs/003-adaptive-reranking-ux/implementation-log.md",
+      "language": "markdown",
+      "sizeLines": 98,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "specs/003-adaptive-reranking-ux/operations-guide.md",
+      "language": "markdown",
+      "sizeLines": 103,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "specs/003-adaptive-reranking-ux/plan.md",
+      "language": "markdown",
+      "sizeLines": 297,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "specs/003-adaptive-reranking-ux/quickstart.md",
+      "language": "markdown",
+      "sizeLines": 85,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "specs/003-adaptive-reranking-ux/research.md",
+      "language": "markdown",
+      "sizeLines": 99,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "specs/003-adaptive-reranking-ux/spec.md",
+      "language": "markdown",
+      "sizeLines": 143,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "specs/003-adaptive-reranking-ux/tasks.md",
+      "language": "markdown",
+      "sizeLines": 220,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "specs/003-adaptive-reranking-ux/TERRA_AUDIT_PROMPT.md",
+      "language": "markdown",
+      "sizeLines": 165,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "specs/excel-structured-query-remediation/plan.md",
+      "language": "markdown",
+      "sizeLines": 54,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "specs/excel-structured-query-remediation/spec.md",
+      "language": "markdown",
+      "sizeLines": 41,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "specs/excel-structured-query-remediation/tasks.md",
+      "language": "markdown",
+      "sizeLines": 12,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "src/aios_habit/__init__.py",
+      "language": "python",
+      "sizeLines": 2,
+      "fileCategory": "code"
+    },
+    {
+      "path": "src/aios_habit/agent_learning.py",
+      "language": "python",
+      "sizeLines": 164,
+      "fileCategory": "code"
+    },
+    {
+      "path": "src/aios_habit/agent_result_import.py",
+      "language": "python",
+      "sizeLines": 818,
+      "fileCategory": "code"
+    },
+    {
+      "path": "src/aios_habit/agent_task_pack.py",
+      "language": "python",
+      "sizeLines": 488,
+      "fileCategory": "code"
+    },
+    {
+      "path": "src/aios_habit/ai_provider_bridge.py",
+      "language": "python",
+      "sizeLines": 462,
+      "fileCategory": "code"
+    },
+    {
+      "path": "src/aios_habit/ai_router.py",
+      "language": "python",
+      "sizeLines": 574,
+      "fileCategory": "code"
+    },
+    {
+      "path": "src/aios_habit/antigravity_bridge.py",
+      "language": "python",
+      "sizeLines": 217,
+      "fileCategory": "code"
+    },
+    {
+      "path": "src/aios_habit/audit.py",
+      "language": "python",
+      "sizeLines": 50,
+      "fileCategory": "code"
+    },
+    {
+      "path": "src/aios_habit/benchmark_reference_acquisition.py",
+      "language": "python",
+      "sizeLines": 658,
+      "fileCategory": "code"
+    },
+    {
+      "path": "src/aios_habit/benchmark_reference_registry.py",
+      "language": "python",
+      "sizeLines": 561,
+      "fileCategory": "code"
+    },
+    {
+      "path": "src/aios_habit/brain_gateway.py",
+      "language": "python",
+      "sizeLines": 385,
+      "fileCategory": "code"
+    },
+    {
+      "path": "src/aios_habit/case_audit.py",
+      "language": "python",
+      "sizeLines": 172,
+      "fileCategory": "code"
+    },
+    {
+      "path": "src/aios_habit/case_models.py",
+      "language": "python",
+      "sizeLines": 43,
+      "fileCategory": "code"
+    },
+    {
+      "path": "src/aios_habit/case_prompt.py",
+      "language": "python",
+      "sizeLines": 204,
+      "fileCategory": "code"
+    },
+    {
+      "path": "src/aios_habit/case_store.py",
+      "language": "python",
+      "sizeLines": 236,
+      "fileCategory": "code"
+    },
+    {
+      "path": "src/aios_habit/citation_answer.py",
+      "language": "python",
+      "sizeLines": 145,
+      "fileCategory": "code"
+    },
+    {
+      "path": "src/aios_habit/claim_guard.py",
+      "language": "python",
+      "sizeLines": 80,
+      "fileCategory": "code"
+    },
+    {
+      "path": "src/aios_habit/cli.py",
+      "language": "python",
+      "sizeLines": 599,
+      "fileCategory": "code"
+    },
+    {
+      "path": "src/aios_habit/core.py",
+      "language": "python",
+      "sizeLines": 187,
+      "fileCategory": "code"
+    },
+    {
+      "path": "src/aios_habit/daily_next_actions.py",
+      "language": "python",
+      "sizeLines": 46,
+      "fileCategory": "code"
+    },
+    {
+      "path": "src/aios_habit/deep_document_parsers.py",
+      "language": "python",
+      "sizeLines": 154,
+      "fileCategory": "code"
+    },
+    {
+      "path": "src/aios_habit/discovery.py",
+      "language": "python",
+      "sizeLines": 64,
+      "fileCategory": "code"
+    },
+    {
+      "path": "src/aios_habit/document_extractors.py",
+      "language": "python",
+      "sizeLines": 921,
+      "fileCategory": "code"
+    },
+    {
+      "path": "src/aios_habit/domain_playbooks.py",
+      "language": "python",
+      "sizeLines": 104,
+      "fileCategory": "code"
+    },
+    {
+      "path": "src/aios_habit/evidence.py",
+      "language": "python",
+      "sizeLines": 38,
+      "fileCategory": "code"
+    },
+    {
+      "path": "src/aios_habit/excel_extractors.py",
+      "language": "python",
+      "sizeLines": 443,
+      "fileCategory": "code"
+    },
+    {
+      "path": "src/aios_habit/export_pack.py",
+      "language": "python",
+      "sizeLines": 16,
+      "fileCategory": "code"
+    },
+    {
+      "path": "src/aios_habit/extraction.py",
+      "language": "python",
+      "sizeLines": 26,
+      "fileCategory": "code"
+    },
+    {
+      "path": "src/aios_habit/extractor_registry.py",
+      "language": "python",
+      "sizeLines": 88,
+      "fileCategory": "code"
+    },
+    {
+      "path": "src/aios_habit/final_answer_composer.py",
+      "language": "python",
+      "sizeLines": 307,
+      "fileCategory": "code"
+    },
+    {
+      "path": "src/aios_habit/handover.py",
+      "language": "python",
+      "sizeLines": 19,
+      "fileCategory": "code"
+    },
+    {
+      "path": "src/aios_habit/ide_bridge.py",
+      "language": "python",
+      "sizeLines": 182,
+      "fileCategory": "code"
+    },
+    {
+      "path": "src/aios_habit/ide_handoff_bridge.py",
+      "language": "python",
+      "sizeLines": 379,
+      "fileCategory": "code"
+    },
+    {
+      "path": "src/aios_habit/knowledge_map_html.py",
+      "language": "python",
+      "sizeLines": 461,
+      "fileCategory": "code"
+    },
+    {
+      "path": "src/aios_habit/knowledge_map_view.py",
+      "language": "python",
+      "sizeLines": 139,
+      "fileCategory": "code"
+    },
+    {
+      "path": "src/aios_habit/learning_models.py",
+      "language": "python",
+      "sizeLines": 96,
+      "fileCategory": "code"
+    },
+    {
+      "path": "src/aios_habit/llm_client.py",
+      "language": "python",
+      "sizeLines": 107,
+      "fileCategory": "code"
+    },
+    {
+      "path": "src/aios_habit/local_jsonl.py",
+      "language": "python",
+      "sizeLines": 128,
+      "fileCategory": "code"
+    },
+    {
+      "path": "src/aios_habit/memory.py",
+      "language": "python",
+      "sizeLines": 17,
+      "fileCategory": "code"
+    },
+    {
+      "path": "src/aios_habit/models.py",
+      "language": "python",
+      "sizeLines": 14,
+      "fileCategory": "code"
+    },
+    {
+      "path": "src/aios_habit/mom_benchmark_gate.py",
+      "language": "python",
+      "sizeLines": 114,
+      "fileCategory": "code"
+    },
+    {
+      "path": "src/aios_habit/mom_benchmark.py",
+      "language": "python",
+      "sizeLines": 338,
+      "fileCategory": "code"
+    },
+    {
+      "path": "src/aios_habit/mom_coverage.py",
+      "language": "python",
+      "sizeLines": 172,
+      "fileCategory": "code"
+    },
+    {
+      "path": "src/aios_habit/mom_local_index.py",
+      "language": "python",
+      "sizeLines": 536,
+      "fileCategory": "code"
+    },
+    {
+      "path": "src/aios_habit/notebook_bridge.py",
+      "language": "python",
+      "sizeLines": 254,
+      "fileCategory": "code"
+    },
+    {
+      "path": "src/aios_habit/notebook_case_actions.py",
+      "language": "python",
+      "sizeLines": 228,
+      "fileCategory": "code"
+    },
+    {
+      "path": "src/aios_habit/notebook_graph.py",
+      "language": "python",
+      "sizeLines": 259,
+      "fileCategory": "code"
+    },
+    {
+      "path": "src/aios_habit/notebook_import_store.py",
+      "language": "python",
+      "sizeLines": 85,
+      "fileCategory": "code"
+    },
+    {
+      "path": "src/aios_habit/notebook_index.py",
+      "language": "python",
+      "sizeLines": 245,
+      "fileCategory": "code"
+    },
+    {
+      "path": "src/aios_habit/notebook_qa.py",
+      "language": "python",
+      "sizeLines": 348,
+      "fileCategory": "code"
+    },
+    {
+      "path": "src/aios_habit/notebooklm_compare.py",
+      "language": "python",
+      "sizeLines": 519,
+      "fileCategory": "code"
+    },
+    {
+      "path": "src/aios_habit/ocr_engines.py",
+      "language": "python",
+      "sizeLines": 262,
+      "fileCategory": "code"
+    },
+    {
+      "path": "src/aios_habit/owner_workflow_state.py",
+      "language": "python",
+      "sizeLines": 94,
+      "fileCategory": "code"
+    },
+    {
+      "path": "src/aios_habit/paths.py",
+      "language": "python",
+      "sizeLines": 19,
+      "fileCategory": "code"
+    },
+    {
+      "path": "src/aios_habit/phase_gate.py",
+      "language": "python",
+      "sizeLines": 156,
+      "fileCategory": "code"
+    },
+    {
+      "path": "src/aios_habit/profiles.py",
+      "language": "python",
+      "sizeLines": 11,
+      "fileCategory": "code"
+    },
+    {
+      "path": "src/aios_habit/provider_catalog.py",
+      "language": "python",
+      "sizeLines": 137,
+      "fileCategory": "code"
+    },
+    {
+      "path": "src/aios_habit/provider_health.py",
+      "language": "python",
+      "sizeLines": 532,
+      "fileCategory": "code"
+    },
+    {
+      "path": "src/aios_habit/provider_model_discovery.py",
+      "language": "python",
+      "sizeLines": 321,
+      "fileCategory": "code"
+    },
+    {
+      "path": "src/aios_habit/provider_safety.py",
+      "language": "python",
+      "sizeLines": 31,
+      "fileCategory": "code"
+    },
+    {
+      "path": "src/aios_habit/query_intent.py",
+      "language": "python",
+      "sizeLines": 70,
+      "fileCategory": "code"
+    },
+    {
+      "path": "src/aios_habit/query_planner.py",
+      "language": "python",
+      "sizeLines": 183,
+      "fileCategory": "code"
+    },
+    {
+      "path": "src/aios_habit/rag_answer_composer.py",
+      "language": "python",
+      "sizeLines": 215,
+      "fileCategory": "code"
+    },
+    {
+      "path": "src/aios_habit/rag_benchmark.py",
+      "language": "python",
+      "sizeLines": 230,
+      "fileCategory": "code"
+    },
+    {
+      "path": "src/aios_habit/rag_core_profiles.py",
+      "language": "python",
+      "sizeLines": 125,
+      "fileCategory": "code"
+    },
+    {
+      "path": "src/aios_habit/rag_evaluator.py",
+      "language": "python",
+      "sizeLines": 56,
+      "fileCategory": "code"
+    },
+    {
+      "path": "src/aios_habit/rag_evidence.py",
+      "language": "python",
+      "sizeLines": 298,
+      "fileCategory": "code"
+    },
+    {
+      "path": "src/aios_habit/rag_ingest.py",
+      "language": "python",
+      "sizeLines": 181,
+      "fileCategory": "code"
+    },
+    {
+      "path": "src/aios_habit/rag_rerank.py",
+      "language": "python",
+      "sizeLines": 76,
+      "fileCategory": "code"
+    },
+    {
+      "path": "src/aios_habit/rag_search.py",
+      "language": "python",
+      "sizeLines": 400,
+      "fileCategory": "code"
+    },
+    {
+      "path": "src/aios_habit/rag_v2_synthesis_provider.py",
+      "language": "python",
+      "sizeLines": 209,
+      "fileCategory": "code"
+    },
+    {
+      "path": "src/aios_habit/rag_v2/__init__.py",
+      "language": "python",
+      "sizeLines": 165,
+      "fileCategory": "code"
+    },
+    {
+      "path": "src/aios_habit/rag_v2/adapters.py",
+      "language": "python",
+      "sizeLines": 72,
+      "fileCategory": "code"
+    },
+    {
+      "path": "src/aios_habit/rag_v2/adaptive_retrieval.py",
+      "language": "python",
+      "sizeLines": 495,
+      "fileCategory": "code"
+    },
+    {
+      "path": "src/aios_habit/rag_v2/bge_subprocess_client.py",
+      "language": "python",
+      "sizeLines": 571,
+      "fileCategory": "code"
+    },
+    {
+      "path": "src/aios_habit/rag_v2/bge_subprocess_worker.py",
+      "language": "python",
+      "sizeLines": 514,
+      "fileCategory": "code"
+    },
+    {
+      "path": "src/aios_habit/rag_v2/chunking.py",
+      "language": "python",
+      "sizeLines": 589,
+      "fileCategory": "code"
+    },
+    {
+      "path": "src/aios_habit/rag_v2/converters.py",
+      "language": "python",
+      "sizeLines": 642,
+      "fileCategory": "code"
+    },
+    {
+      "path": "src/aios_habit/rag_v2/eval_harness.py",
+      "language": "python",
+      "sizeLines": 912,
+      "fileCategory": "code"
+    },
+    {
+      "path": "src/aios_habit/rag_v2/evidence.py",
+      "language": "python",
+      "sizeLines": 863,
+      "fileCategory": "code"
+    },
+    {
+      "path": "src/aios_habit/rag_v2/index_bundle.py",
+      "language": "python",
+      "sizeLines": 59,
+      "fileCategory": "code"
+    },
+    {
+      "path": "src/aios_habit/rag_v2/index_registry.py",
+      "language": "python",
+      "sizeLines": 28,
+      "fileCategory": "code"
+    },
+    {
+      "path": "src/aios_habit/rag_v2/index.py",
+      "language": "python",
+      "sizeLines": 3136,
+      "fileCategory": "code"
+    },
+    {
+      "path": "src/aios_habit/rag_v2/ingestion_jobs.py",
+      "language": "python",
+      "sizeLines": 144,
+      "fileCategory": "code"
+    },
+    {
+      "path": "src/aios_habit/rag_v2/ingestion_service.py",
+      "language": "python",
+      "sizeLines": 65,
+      "fileCategory": "code"
+    },
+    {
+      "path": "src/aios_habit/rag_v2/ingestion_workers.py",
+      "language": "python",
+      "sizeLines": 52,
+      "fileCategory": "code"
+    },
+    {
+      "path": "src/aios_habit/rag_v2/pipeline.py",
+      "language": "python",
+      "sizeLines": 958,
+      "fileCategory": "code"
+    },
+    {
+      "path": "src/aios_habit/rag_v2/query_planning.py",
+      "language": "python",
+      "sizeLines": 342,
+      "fileCategory": "code"
+    },
+    {
+      "path": "src/aios_habit/rag_v2/registry.py",
+      "language": "python",
+      "sizeLines": 73,
+      "fileCategory": "code"
+    },
+    {
+      "path": "src/aios_habit/rag_v2/remote_ingestion_client.py",
+      "language": "python",
+      "sizeLines": 44,
+      "fileCategory": "code"
+    },
+    {
+      "path": "src/aios_habit/rag_v2/retrieval_backends.py",
+      "language": "python",
+      "sizeLines": 362,
+      "fileCategory": "code"
+    },
+    {
+      "path": "src/aios_habit/rag_v2/schema.py",
+      "language": "python",
+      "sizeLines": 182,
+      "fileCategory": "code"
+    },
+    {
+      "path": "src/aios_habit/rag_v2/semantic.py",
+      "language": "python",
+      "sizeLines": 685,
+      "fileCategory": "code"
+    },
+    {
+      "path": "src/aios_habit/rag_v2/structured_query.py",
+      "language": "python",
+      "sizeLines": 974,
+      "fileCategory": "code"
+    },
+    {
+      "path": "src/aios_habit/rag_v2/synthesis.py",
+      "language": "python",
+      "sizeLines": 1397,
+      "fileCategory": "code"
+    },
+    {
+      "path": "src/aios_habit/real_doc_inventory.py",
+      "language": "python",
+      "sizeLines": 174,
+      "fileCategory": "code"
+    },
+    {
+      "path": "src/aios_habit/resilient_routing.py",
+      "language": "python",
+      "sizeLines": 212,
+      "fileCategory": "code"
+    },
+    {
+      "path": "src/aios_habit/route_log_ui.py",
+      "language": "python",
+      "sizeLines": 119,
+      "fileCategory": "code"
+    },
+    {
+      "path": "src/aios_habit/router_adapter.py",
+      "language": "python",
+      "sizeLines": 126,
+      "fileCategory": "code"
+    },
+    {
+      "path": "src/aios_habit/router_synth_redaction.py",
+      "language": "python",
+      "sizeLines": 26,
+      "fileCategory": "code"
+    },
+    {
+      "path": "src/aios_habit/safety_modes.py",
+      "language": "python",
+      "sizeLines": 98,
+      "fileCategory": "code"
+    },
+    {
+      "path": "src/aios_habit/shared_ai_provider_fabric.py",
+      "language": "python",
+      "sizeLines": 70,
+      "fileCategory": "code"
+    },
+    {
+      "path": "src/aios_habit/source_ingest.py",
+      "language": "python",
+      "sizeLines": 180,
+      "fileCategory": "code"
+    },
+    {
+      "path": "src/aios_habit/source_router.py",
+      "language": "python",
+      "sizeLines": 106,
+      "fileCategory": "code"
+    },
+    {
+      "path": "src/aios_habit/storage.py",
+      "language": "python",
+      "sizeLines": 23,
+      "fileCategory": "code"
+    },
+    {
+      "path": "src/aios_habit/strong_answer_ui.py",
+      "language": "python",
+      "sizeLines": 174,
+      "fileCategory": "code"
+    },
+    {
+      "path": "src/aios_habit/study_store.py",
+      "language": "python",
+      "sizeLines": 177,
+      "fileCategory": "code"
+    },
+    {
+      "path": "src/aios_habit/visual_knowledge_map.py",
+      "language": "python",
+      "sizeLines": 136,
+      "fileCategory": "code"
+    },
+    {
+      "path": "src/aios_habit/visual_map_builder.py",
+      "language": "python",
+      "sizeLines": 465,
+      "fileCategory": "code"
+    },
+    {
+      "path": "src/aios_habit/visual_map_export.py",
+      "language": "python",
+      "sizeLines": 119,
+      "fileCategory": "code"
+    },
+    {
+      "path": "src/aios_habit/visual_map_models.py",
+      "language": "python",
+      "sizeLines": 130,
+      "fileCategory": "code"
+    },
+    {
+      "path": "src/aios_habit/visual_map_ui.py",
+      "language": "python",
+      "sizeLines": 121,
+      "fileCategory": "code"
+    },
+    {
+      "path": "src/aios_habit/workflow.py",
+      "language": "python",
+      "sizeLines": 9,
+      "fileCategory": "code"
+    },
+    {
+      "path": "src/aios_habit/worklens_semantic_map.py",
+      "language": "python",
+      "sizeLines": 454,
+      "fileCategory": "code"
+    },
+    {
+      "path": "src/aios_habit/workspace_agent_bridge_client.py",
+      "language": "python",
+      "sizeLines": 78,
+      "fileCategory": "code"
+    },
+    {
+      "path": "src/aios_habit/workspace_agent_models.py",
+      "language": "python",
+      "sizeLines": 60,
+      "fileCategory": "code"
+    },
+    {
+      "path": "src/aios_habit/workspace_agent_orchestrator.py",
+      "language": "python",
+      "sizeLines": 217,
+      "fileCategory": "code"
+    },
+    {
+      "path": "src/aios_habit/workspace_agent_policy.py",
+      "language": "python",
+      "sizeLines": 64,
+      "fileCategory": "code"
+    },
+    {
+      "path": "src/aios_habit/workspace_chat_ai_answer.py",
+      "language": "python",
+      "sizeLines": 879,
+      "fileCategory": "code"
+    },
+    {
+      "path": "src/aios_habit/workspace_chat_answer_preview.py",
+      "language": "python",
+      "sizeLines": 135,
+      "fileCategory": "code"
+    },
+    {
+      "path": "src/aios_habit/workspace_chat_app.py",
+      "language": "python",
+      "sizeLines": 1651,
+      "fileCategory": "code"
+    },
+    {
+      "path": "src/aios_habit/workspace_chat_excel.py",
+      "language": "python",
+      "sizeLines": 225,
+      "fileCategory": "code"
+    },
+    {
+      "path": "src/aios_habit/workspace_chat_models.py",
+      "language": "python",
+      "sizeLines": 142,
+      "fileCategory": "code"
+    },
+    {
+      "path": "src/aios_habit/workspace_chat_rag_v2_adapter.py",
+      "language": "python",
+      "sizeLines": 1590,
+      "fileCategory": "code"
+    },
+    {
+      "path": "src/aios_habit/workspace_chat_rag_v2_deployment.py",
+      "language": "python",
+      "sizeLines": 522,
+      "fileCategory": "code"
+    },
+    {
+      "path": "src/aios_habit/workspace_chat_router_adapter.py",
+      "language": "python",
+      "sizeLines": 179,
+      "fileCategory": "code"
+    },
+    {
+      "path": "src/aios_habit/workspace_chat_source_ingest.py",
+      "language": "python",
+      "sizeLines": 375,
+      "fileCategory": "code"
+    },
+    {
+      "path": "src/aios_habit/workspace_chat_store.py",
+      "language": "python",
+      "sizeLines": 412,
+      "fileCategory": "code"
+    },
+    {
+      "path": "src/aios_habit/workspace_chat_ui.py",
+      "language": "python",
+      "sizeLines": 517,
+      "fileCategory": "code"
+    },
+    {
+      "path": "src/aios_habit/workspace_models.py",
+      "language": "python",
+      "sizeLines": 87,
+      "fileCategory": "code"
+    },
+    {
+      "path": "src/aios_habit/workspace_paths.py",
+      "language": "python",
+      "sizeLines": 14,
+      "fileCategory": "code"
+    },
+    {
+      "path": "start_antigravity_bridge.bat",
+      "language": "batch",
+      "sizeLines": 6,
+      "fileCategory": "script"
+    },
+    {
+      "path": "tests/fixtures/adaptive_reranking_corpus.json",
+      "language": "json",
+      "sizeLines": 202,
+      "fileCategory": "config"
+    },
+    {
+      "path": "tests/fixtures/adaptive_reranking_report_schema.json",
+      "language": "json",
+      "sizeLines": 216,
+      "fileCategory": "config"
+    },
+    {
+      "path": "tests/fixtures/adaptive_routing_cases.json",
+      "language": "json",
+      "sizeLines": 67,
+      "fileCategory": "config"
+    },
+    {
+      "path": "tests/test_adaptive_retrieval_evidence.py",
+      "language": "python",
+      "sizeLines": 87,
+      "fileCategory": "code"
+    },
+    {
+      "path": "tests/test_adaptive_retrieval.py",
+      "language": "python",
+      "sizeLines": 272,
+      "fileCategory": "code"
+    },
+    {
+      "path": "tests/test_agent_result_import.py",
+      "language": "python",
+      "sizeLines": 620,
+      "fileCategory": "code"
+    },
+    {
+      "path": "tests/test_agent_task_pack.py",
+      "language": "python",
+      "sizeLines": 303,
+      "fileCategory": "code"
+    },
+    {
+      "path": "tests/test_ai_provider_bridge.py",
+      "language": "python",
+      "sizeLines": 207,
+      "fileCategory": "code"
+    },
+    {
+      "path": "tests/test_ai_router.py",
+      "language": "python",
+      "sizeLines": 406,
+      "fileCategory": "code"
+    },
+    {
+      "path": "tests/test_aios_habit.py",
+      "language": "python",
+      "sizeLines": 146,
+      "fileCategory": "code"
+    },
+    {
+      "path": "tests/test_antigravity_bridge.py",
+      "language": "python",
+      "sizeLines": 163,
+      "fileCategory": "code"
+    },
+    {
+      "path": "tests/test_antigravity_handoff_ui_flow.py",
+      "language": "python",
+      "sizeLines": 99,
+      "fileCategory": "code"
+    },
+    {
+      "path": "tests/test_battle_fail_fast.py",
+      "language": "python",
+      "sizeLines": 83,
+      "fileCategory": "code"
+    },
+    {
+      "path": "tests/test_battle_notebooklm_rag_v2.py",
+      "language": "python",
+      "sizeLines": 257,
+      "fileCategory": "code"
+    },
+    {
+      "path": "tests/test_benchmark_reference_acquisition.py",
+      "language": "python",
+      "sizeLines": 255,
+      "fileCategory": "code"
+    },
+    {
+      "path": "tests/test_benchmark_reference_registry.py",
+      "language": "python",
+      "sizeLines": 174,
+      "fileCategory": "code"
+    },
+    {
+      "path": "tests/test_bge_subprocess_client.py",
+      "language": "python",
+      "sizeLines": 88,
+      "fileCategory": "code"
+    },
+    {
+      "path": "tests/test_bge_subprocess_worker.py",
+      "language": "python",
+      "sizeLines": 274,
+      "fileCategory": "code"
+    },
+    {
+      "path": "tests/test_brain_gateway_privacy_policy.py",
+      "language": "python",
+      "sizeLines": 259,
+      "fileCategory": "code"
+    },
+    {
+      "path": "tests/test_brain_gateway_router_mock.py",
+      "language": "python",
+      "sizeLines": 385,
+      "fileCategory": "code"
+    },
+    {
+      "path": "tests/test_citation_answer.py",
+      "language": "python",
+      "sizeLines": 83,
+      "fileCategory": "code"
+    },
+    {
+      "path": "tests/test_claim_guard.py",
+      "language": "python",
+      "sizeLines": 108,
+      "fileCategory": "code"
+    },
+    {
+      "path": "tests/test_context_sufficiency.py",
+      "language": "python",
+      "sizeLines": 99,
+      "fileCategory": "code"
+    },
+    {
+      "path": "tests/test_daily_next_actions.py",
+      "language": "python",
+      "sizeLines": 102,
+      "fileCategory": "code"
+    },
+    {
+      "path": "tests/test_document_extractors.py",
+      "language": "python",
+      "sizeLines": 335,
+      "fileCategory": "code"
+    },
+    {
+      "path": "tests/test_documentation_contract.py",
+      "language": "python",
+      "sizeLines": 42,
+      "fileCategory": "code"
+    },
+    {
+      "path": "tests/test_domain_playbooks.py",
+      "language": "python",
+      "sizeLines": 94,
+      "fileCategory": "code"
+    },
+    {
+      "path": "tests/test_final_answer_composer.py",
+      "language": "python",
+      "sizeLines": 109,
+      "fileCategory": "code"
+    },
+    {
+      "path": "tests/test_general_rag_profiles.py",
+      "language": "python",
+      "sizeLines": 47,
+      "fileCategory": "code"
+    },
+    {
+      "path": "tests/test_generate_sbom.py",
+      "language": "python",
+      "sizeLines": 26,
+      "fileCategory": "code"
+    },
+    {
+      "path": "tests/test_ide_bridge.py",
+      "language": "python",
+      "sizeLines": 166,
+      "fileCategory": "code"
+    },
+    {
+      "path": "tests/test_ide_handoff_bridge.py",
+      "language": "python",
+      "sizeLines": 115,
+      "fileCategory": "code"
+    },
+    {
+      "path": "tests/test_ide_handoff_markdown_import.py",
+      "language": "python",
+      "sizeLines": 61,
+      "fileCategory": "code"
+    },
+    {
+      "path": "tests/test_ide_handoff_pending_requests.py",
+      "language": "python",
+      "sizeLines": 46,
+      "fileCategory": "code"
+    },
+    {
+      "path": "tests/test_knowledge_map_html.py",
+      "language": "python",
+      "sizeLines": 289,
+      "fileCategory": "code"
+    },
+    {
+      "path": "tests/test_knowledge_map_view.py",
+      "language": "python",
+      "sizeLines": 106,
+      "fileCategory": "code"
+    },
+    {
+      "path": "tests/test_learning_memory.py",
+      "language": "python",
+      "sizeLines": 152,
+      "fileCategory": "code"
+    },
+    {
+      "path": "tests/test_llm_client.py",
+      "language": "python",
+      "sizeLines": 113,
+      "fileCategory": "code"
+    },
+    {
+      "path": "tests/test_local_jsonl.py",
+      "language": "python",
+      "sizeLines": 54,
+      "fileCategory": "code"
+    },
+    {
+      "path": "tests/test_mom_local_pilot.py",
+      "language": "python",
+      "sizeLines": 639,
+      "fileCategory": "code"
+    },
+    {
+      "path": "tests/test_mom_pdf_ingestion_retrieval.py",
+      "language": "python",
+      "sizeLines": 206,
+      "fileCategory": "code"
+    },
+    {
+      "path": "tests/test_notebook_bridge.py",
+      "language": "python",
+      "sizeLines": 70,
+      "fileCategory": "code"
+    },
+    {
+      "path": "tests/test_notebook_case_actions.py",
+      "language": "python",
+      "sizeLines": 96,
+      "fileCategory": "code"
+    },
+    {
+      "path": "tests/test_notebook_import_store.py",
+      "language": "python",
+      "sizeLines": 179,
+      "fileCategory": "code"
+    },
+    {
+      "path": "tests/test_notebook_in_app_qa.py",
+      "language": "python",
+      "sizeLines": 159,
+      "fileCategory": "code"
+    },
+    {
+      "path": "tests/test_notebook_intelligence.py",
+      "language": "python",
+      "sizeLines": 181,
+      "fileCategory": "code"
+    },
+    {
+      "path": "tests/test_notebooklm_compare.py",
+      "language": "python",
+      "sizeLines": 309,
+      "fileCategory": "code"
+    },
+    {
+      "path": "tests/test_owner_workflow_cli.py",
+      "language": "python",
+      "sizeLines": 97,
+      "fileCategory": "code"
+    },
+    {
+      "path": "tests/test_owner_workflow_state.py",
+      "language": "python",
+      "sizeLines": 51,
+      "fileCategory": "code"
+    },
+    {
+      "path": "tests/test_phase4_owner_pilot.py",
+      "language": "python",
+      "sizeLines": 112,
+      "fileCategory": "code"
+    },
+    {
+      "path": "tests/test_provider_catalog.py",
+      "language": "python",
+      "sizeLines": 71,
+      "fileCategory": "code"
+    },
+    {
+      "path": "tests/test_provider_health.py",
+      "language": "python",
+      "sizeLines": 90,
+      "fileCategory": "code"
+    },
+    {
+      "path": "tests/test_provider_model_discovery.py",
+      "language": "python",
+      "sizeLines": 230,
+      "fileCategory": "code"
+    },
+    {
+      "path": "tests/test_provider_safety.py",
+      "language": "python",
+      "sizeLines": 50,
+      "fileCategory": "code"
+    },
+    {
+      "path": "tests/test_qa_case_workflow.py",
+      "language": "python",
+      "sizeLines": 177,
+      "fileCategory": "code"
+    },
+    {
+      "path": "tests/test_quick_intake.py",
+      "language": "python",
+      "sizeLines": 78,
+      "fileCategory": "code"
+    },
+    {
+      "path": "tests/test_rag_answer_composer.py",
+      "language": "python",
+      "sizeLines": 146,
+      "fileCategory": "code"
+    },
+    {
+      "path": "tests/test_rag_benchmark.py",
+      "language": "python",
+      "sizeLines": 315,
+      "fileCategory": "code"
+    },
+    {
+      "path": "tests/test_rag_evaluator.py",
+      "language": "python",
+      "sizeLines": 33,
+      "fileCategory": "code"
+    },
+    {
+      "path": "tests/test_rag_evidence.py",
+      "language": "python",
+      "sizeLines": 138,
+      "fileCategory": "code"
+    },
+    {
+      "path": "tests/test_rag_ingest.py",
+      "language": "python",
+      "sizeLines": 215,
+      "fileCategory": "code"
+    },
+    {
+      "path": "tests/test_rag_rerank.py",
+      "language": "python",
+      "sizeLines": 40,
+      "fileCategory": "code"
+    },
+    {
+      "path": "tests/test_rag_search.py",
+      "language": "python",
+      "sizeLines": 315,
+      "fileCategory": "code"
+    },
+    {
+      "path": "tests/test_rag_v2_adapters.py",
+      "language": "python",
+      "sizeLines": 81,
+      "fileCategory": "code"
+    },
+    {
+      "path": "tests/test_rag_v2_chunking.py",
+      "language": "python",
+      "sizeLines": 187,
+      "fileCategory": "code"
+    },
+    {
+      "path": "tests/test_rag_v2_converters.py",
+      "language": "python",
+      "sizeLines": 360,
+      "fileCategory": "code"
+    },
+    {
+      "path": "tests/test_rag_v2_cross_source_upgrade.py",
+      "language": "python",
+      "sizeLines": 42,
+      "fileCategory": "code"
+    },
+    {
+      "path": "tests/test_rag_v2_dev_cli.py",
+      "language": "python",
+      "sizeLines": 109,
+      "fileCategory": "code"
+    },
+    {
+      "path": "tests/test_rag_v2_eval_harness.py",
+      "language": "python",
+      "sizeLines": 456,
+      "fileCategory": "code"
+    },
+    {
+      "path": "tests/test_rag_v2_evidence.py",
+      "language": "python",
+      "sizeLines": 710,
+      "fileCategory": "code"
+    },
+    {
+      "path": "tests/test_rag_v2_hardcode_guard.py",
+      "language": "python",
+      "sizeLines": 98,
+      "fileCategory": "code"
+    },
+    {
+      "path": "tests/test_rag_v2_index_bundle.py",
+      "language": "python",
+      "sizeLines": 31,
+      "fileCategory": "code"
+    },
+    {
+      "path": "tests/test_rag_v2_index.py",
+      "language": "python",
+      "sizeLines": 803,
+      "fileCategory": "code"
+    },
+    {
+      "path": "tests/test_rag_v2_ingestion_jobs.py",
+      "language": "python",
+      "sizeLines": 55,
+      "fileCategory": "code"
+    },
+    {
+      "path": "tests/test_rag_v2_ingestion_service.py",
+      "language": "python",
+      "sizeLines": 13,
+      "fileCategory": "code"
+    },
+    {
+      "path": "tests/test_rag_v2_ingestion_workers.py",
+      "language": "python",
+      "sizeLines": 23,
+      "fileCategory": "code"
+    },
+    {
+      "path": "tests/test_rag_v2_pipeline.py",
+      "language": "python",
+      "sizeLines": 783,
+      "fileCategory": "code"
+    },
+    {
+      "path": "tests/test_rag_v2_query_planning.py",
+      "language": "python",
+      "sizeLines": 124,
+      "fileCategory": "code"
+    },
+    {
+      "path": "tests/test_rag_v2_remote_ingestion_client.py",
+      "language": "python",
+      "sizeLines": 28,
+      "fileCategory": "code"
+    },
+    {
+      "path": "tests/test_rag_v2_schema.py",
+      "language": "python",
+      "sizeLines": 93,
+      "fileCategory": "code"
+    },
+    {
+      "path": "tests/test_rag_v2_semantic.py",
+      "language": "python",
+      "sizeLines": 511,
+      "fileCategory": "code"
+    },
+    {
+      "path": "tests/test_rag_v2_structured_query.py",
+      "language": "python",
+      "sizeLines": 349,
+      "fileCategory": "code"
+    },
+    {
+      "path": "tests/test_rag_v2_synthesis_provider.py",
+      "language": "python",
+      "sizeLines": 249,
+      "fileCategory": "code"
+    },
+    {
+      "path": "tests/test_rag_v2_synthesis.py",
+      "language": "python",
+      "sizeLines": 975,
+      "fileCategory": "code"
+    },
+    {
+      "path": "tests/test_route_log_ui.py",
+      "language": "python",
+      "sizeLines": 61,
+      "fileCategory": "code"
+    },
+    {
+      "path": "tests/test_router_synth_export.py",
+      "language": "python",
+      "sizeLines": 71,
+      "fileCategory": "code"
+    },
+    {
+      "path": "tests/test_safety_modes.py",
+      "language": "python",
+      "sizeLines": 45,
+      "fileCategory": "code"
+    },
+    {
+      "path": "tests/test_shared_ai_provider_fabric.py",
+      "language": "python",
+      "sizeLines": 24,
+      "fileCategory": "code"
+    },
+    {
+      "path": "tests/test_source_router.py",
+      "language": "python",
+      "sizeLines": 53,
+      "fileCategory": "code"
+    },
+    {
+      "path": "tests/test_strong_answer_ui.py",
+      "language": "python",
+      "sizeLines": 82,
+      "fileCategory": "code"
+    },
+    {
+      "path": "tests/test_study_store.py",
+      "language": "python",
+      "sizeLines": 131,
+      "fileCategory": "code"
+    },
+    {
+      "path": "tests/test_visual_knowledge_map.py",
+      "language": "python",
+      "sizeLines": 55,
+      "fileCategory": "code"
+    },
+    {
+      "path": "tests/test_visual_map_builder.py",
+      "language": "python",
+      "sizeLines": 93,
+      "fileCategory": "code"
+    },
+    {
+      "path": "tests/test_visual_map_export.py",
+      "language": "python",
+      "sizeLines": 94,
+      "fileCategory": "code"
+    },
+    {
+      "path": "tests/test_visual_map_models.py",
+      "language": "python",
+      "sizeLines": 76,
+      "fileCategory": "code"
+    },
+    {
+      "path": "tests/test_visual_map_multidomain.py",
+      "language": "python",
+      "sizeLines": 57,
+      "fileCategory": "code"
+    },
+    {
+      "path": "tests/test_visual_map_ui.py",
+      "language": "python",
+      "sizeLines": 128,
+      "fileCategory": "code"
+    },
+    {
+      "path": "tests/test_worklens_semantic_map.py",
+      "language": "python",
+      "sizeLines": 458,
+      "fileCategory": "code"
+    },
+    {
+      "path": "tests/test_workspace_agent_orchestrator.py",
+      "language": "python",
+      "sizeLines": 30,
+      "fileCategory": "code"
+    },
+    {
+      "path": "tests/test_workspace_agent_policy.py",
+      "language": "python",
+      "sizeLines": 13,
+      "fileCategory": "code"
+    },
+    {
+      "path": "tests/test_workspace_chat_ai_answer.py",
+      "language": "python",
+      "sizeLines": 1349,
+      "fileCategory": "code"
+    },
+    {
+      "path": "tests/test_workspace_chat_answer_preview.py",
+      "language": "python",
+      "sizeLines": 167,
+      "fileCategory": "code"
+    },
+    {
+      "path": "tests/test_workspace_chat_architecture_boundary.py",
+      "language": "python",
+      "sizeLines": 30,
+      "fileCategory": "code"
+    },
+    {
+      "path": "tests/test_workspace_chat_excel_ingest.py",
+      "language": "python",
+      "sizeLines": 366,
+      "fileCategory": "code"
+    },
+    {
+      "path": "tests/test_workspace_chat_models.py",
+      "language": "python",
+      "sizeLines": 58,
+      "fileCategory": "code"
+    },
+    {
+      "path": "tests/test_workspace_chat_multi_file_uploader.py",
+      "language": "python",
+      "sizeLines": 210,
+      "fileCategory": "code"
+    },
+    {
+      "path": "tests/test_workspace_chat_owner_flow.py",
+      "language": "python",
+      "sizeLines": 105,
+      "fileCategory": "code"
+    },
+    {
+      "path": "tests/test_workspace_chat_rag_v2_adapter.py",
+      "language": "python",
+      "sizeLines": 1234,
+      "fileCategory": "code"
+    },
+    {
+      "path": "tests/test_workspace_chat_rag_v2_deployment.py",
+      "language": "python",
+      "sizeLines": 886,
+      "fileCategory": "code"
+    },
+    {
+      "path": "tests/test_workspace_chat_source_ingest.py",
+      "language": "python",
+      "sizeLines": 374,
+      "fileCategory": "code"
+    },
+    {
+      "path": "tests/test_workspace_chat_source_library.py",
+      "language": "python",
+      "sizeLines": 256,
+      "fileCategory": "code"
+    },
+    {
+      "path": "tests/test_workspace_chat_source_selection_owner_flow.py",
+      "language": "python",
+      "sizeLines": 1446,
+      "fileCategory": "code"
+    },
+    {
+      "path": "tests/test_workspace_chat_source_selection_ui_copy.py",
+      "language": "python",
+      "sizeLines": 306,
+      "fileCategory": "code"
+    },
+    {
+      "path": "tests/test_workspace_chat_sources_models.py",
+      "language": "python",
+      "sizeLines": 179,
+      "fileCategory": "code"
+    },
+    {
+      "path": "tests/test_workspace_chat_sources_store.py",
+      "language": "python",
+      "sizeLines": 200,
+      "fileCategory": "code"
+    },
+    {
+      "path": "tests/test_workspace_chat_store.py",
+      "language": "python",
+      "sizeLines": 390,
+      "fileCategory": "code"
+    },
+    {
+      "path": "tests/test_workspace_chat_ui_copy.py",
+      "language": "python",
+      "sizeLines": 368,
+      "fileCategory": "code"
+    },
+    {
+      "path": "tests/test_workspace_notebook.py",
+      "language": "python",
+      "sizeLines": 177,
+      "fileCategory": "code"
+    },
+    {
+      "path": "tests/test_workspace_paths.py",
+      "language": "python",
+      "sizeLines": 15,
+      "fileCategory": "code"
+    },
+    {
+      "path": "WORKLENS_ARCHITECTURE.md",
+      "language": "markdown",
+      "sizeLines": 68,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "WORKLENS_MASTER_ROADMAP.md",
+      "language": "markdown",
+      "sizeLines": 8,
+      "fileCategory": "docs"
+    }
+  ],
+  "totalFiles": 727,
+  "filteredByIgnore": 0,
+  "estimatedComplexity": "very-large",
+  "stats": {
+    "filesScanned": 727,
+    "byCategory": {
+      "docs": 394,
+      "script": 9,
+      "code": 295,
+      "config": 27,
+      "infra": 1,
+      "markup": 1
+    },
+    "byLanguage": {
+      "markdown": 386,
+      "powershell": 7,
+      "txt": 8,
+      "unknown": 19,
+      "yaml": 3,
+      "json": 23,
+      "toml": 2,
+      "excalidraw": 2,
+      "html": 1,
+      "batch": 2,
+      "python": 274
+    }
+  }
+}

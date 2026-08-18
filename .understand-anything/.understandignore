@@ -1,0 +1,90 @@
+# .understandignore — patterns for files/dirs to exclude from analysis
+# Syntax: same as .gitignore (globs, # comments, ! negation, trailing / for dirs)
+# Lines below are suggestions — uncomment to activate.
+# Use ! prefix to force-include something excluded by defaults.
+#
+# Built-in defaults (always excluded unless negated):
+#   node_modules/, .git/, dist/, build/, obj/, *.lock, *.min.js, etc.
+#
+# --- From .gitignore (uncomment to exclude) ---
+
+# **/__pycache__/
+# *.pyc
+# .pytest_cache/
+# *.egg-info/
+# .env
+# *.env
+# .env.*
+# API Key.txt
+# API*.txt
+# provider_config*.json
+# provider_config*.yaml
+# provider_config*.yml
+# credentials*
+# token*
+# tokens*
+# api_key*
+# api_keys*
+# *.secret.*
+# *.local.*
+# *.pem
+# *.key
+# *.p12
+# *.pfx
+# raw/
+# inbox_local_only/
+# **/inbox_local_only/**
+# cache/
+# .local/
+# private/
+# secrets/
+# *.chatlog
+# *.transcript
+# *.har
+# raw_*.txt
+# raw_*.md
+# chatgpt_export*/
+# claude_export*/
+# gemini_export*/
+# 02_sources/project_inventory.json
+# 03_evidence_registry/records/*.jsonl
+# 04_extraction_workspace/candidate_memory/*.json
+# 04_extraction_workspace/review_queue.md
+# 05_memory_vault/*.jsonl
+# 06_ai_export_packs/*/*_export_pack.md
+# 07_ai_export_packs/*/*_export_pack.md
+# 08_audit/final_audit_report.md
+# 09_handover/final_handover.md
+# .DS_Store
+# Thumbs.db
+# *.tmp
+# *.bak
+# pytest_goal_*/
+# 06_workflow_library/**/*.jsonl
+# local_cases/
+# *.xlsx
+# *.xls
+# *.csv
+# !examples/**/*.xlsx
+# !examples/**/*.xls
+# !examples/**/*.csv
+# !examples/**/*.png
+# !examples/**/*.jpg
+# !examples/**/*.jpeg
+# local_runs/
+# config/real_benchmark.local.json
+# config/workspace_chat_rag_v2.local.json
+# tailieugoc/
+# graphify-out/
+
+# --- Detected directories (uncomment to exclude) ---
+
+# tests/
+# docs/
+# scripts/
+
+# --- Test file patterns (uncomment to exclude) ---
+
+# *.test.*
+# *.spec.*
+# *.snap

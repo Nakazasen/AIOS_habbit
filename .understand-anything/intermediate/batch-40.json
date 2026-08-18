@@ -1,0 +1,41 @@
+{
+  "nodes": [
+    {
+      "id": "file:docs/release/RELEASE_CHECKLIST.md",
+      "type": "file",
+      "name": "RELEASE_CHECKLIST.md",
+      "filePath": "docs/release/RELEASE_CHECKLIST.md",
+      "summary": "Checklist for preparing and deploying releases.",
+      "tags": ["release", "checklist"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:docs/release/RELEASE_POLICY.md",
+      "type": "file",
+      "name": "RELEASE_POLICY.md",
+      "filePath": "docs/release/RELEASE_POLICY.md",
+      "summary": "Release policy and versioning standards.",
+      "tags": ["release", "policy"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:docs/release/SBOM_POLICY.md",
+      "type": "file",
+      "name": "SBOM_POLICY.md",
+      "filePath": "docs/release/SBOM_POLICY.md",
+      "summary": "Software Bill of Materials (SBOM) generation policy.",
+      "tags": ["release", "sbom"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:docs/release/SUPPORTED_VERSIONS.md",
+      "type": "file",
+      "name": "SUPPORTED_VERSIONS.md",
+      "filePath": "docs/release/SUPPORTED_VERSIONS.md",
+      "summary": "Documentation of supported version lifecycles.",
+      "tags": ["release", "versions"],
+      "complexity": "moderate"
+    }
+  ],
+  "edges": []
+}

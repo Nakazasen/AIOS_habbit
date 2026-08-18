@@ -1,0 +1,45 @@
+{
+  "nodes": [
+    {
+      "id": "file:specs/excel-structured-query-remediation/plan.md",
+      "type": "file",
+      "name": "plan.md",
+      "filePath": "specs/excel-structured-query-remediation/plan.md",
+      "summary": "Implementation plan for remediating Excel structured query audit findings.",
+      "tags": ["specification", "plan"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:specs/excel-structured-query-remediation/spec.md",
+      "type": "file",
+      "name": "spec.md",
+      "filePath": "specs/excel-structured-query-remediation/spec.md",
+      "summary": "Specifications for remediating Excel structured query audit findings.",
+      "tags": ["specification", "requirements"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:specs/excel-structured-query-remediation/tasks.md",
+      "type": "file",
+      "name": "tasks.md",
+      "filePath": "specs/excel-structured-query-remediation/tasks.md",
+      "summary": "Task checklist for remediating Excel structured query audit findings.",
+      "tags": ["specification", "tasks"],
+      "complexity": "moderate"
+    }
+  ],
+  "edges": [
+    {
+      "source": "file:specs/excel-structured-query-remediation/plan.md",
+      "target": "file:specs/excel-structured-query-remediation/spec.md",
+      "type": "implements",
+      "direction": "forward"
+    },
+    {
+      "source": "file:specs/excel-structured-query-remediation/tasks.md",
+      "target": "file:specs/excel-structured-query-remediation/plan.md",
+      "type": "tracks",
+      "direction": "forward"
+    }
+  ]
+}

@@ -1,46 +1,47 @@
-# Project Card
+# Thẻ Dự Án (Project Card)
 
 ## Metadata
 
 - Project ID: `PRJ-0000`
-- Name:
-- Path:
-- Status: `active | paused | archived | unknown | candidate`
-- Created:
-- Updated:
+- Tên (Name):
+- Đường dẫn (Path):
+- Trạng thái (Status): `active | paused | archived | unknown | candidate`
+- Ngày tạo (Created):
+- Cập nhật (Updated):
 
-## Purpose
+## Mục Đích (Purpose)
 
-Project này dùng để làm gì?
+Dự án này dùng để làm gì?
 
-## Memory Relevance
+## Mối Liên Hệ Với Ký Ức (Memory Relevance)
 
-Project này liên quan thế nào đến AIOS Habit?
+Dự án này liên quan thế nào đến AIOS Habit?
 
-## Key Files
+## Các Tệp Then Chốt (Key Files)
 
-| File | Role | Notes |
+| Tệp (File) | Vai trò (Role) | Ghi chú (Notes) |
 |---|---|---|
-| README.md | overview | |
+| README.md | tổng quan (overview) | |
 
-## Relationships
+## Mối Quan Hệ (Relationships)
 
-| Type | Target Project | Notes |
+| Loại (Type) | Dự án đích (Target Project) | Ghi chú (Notes) |
 |---|---|---|
 | parent/child/dependency/knowledge-source/execution-target/archive/unknown | | |
 
-## Evidence
+## Bằng Chứng (Evidence)
 
-| Evidence ID | Notes |
+| Mã bằng chứng (Evidence ID) | Ghi chú (Notes) |
 |---|---|
 | | |
 
-## Risks / Open Questions
+## Rủi Ro / Câu Hỏi Mở (Risks / Open Questions)
 
 - 
 
-## Handover
+## Bàn Giao (Handover)
 
-- Current state:
-- Next step:
-- Blockers:
+- Trạng thái hiện tại (Current state):
+- Bước tiếp theo (Next step):
+- Trở ngại (Blockers):
+

@@ -1,7 +1,6 @@
-﻿# Monday Pilot Checklist — Retired
+# Checklist Thử Nghiệm Thứ Hai (Monday Pilot Checklist) — Đã dừng (Retired)
 
-Status: `RETIRED`
+Trạng thái: `RETIRED`
 
-The old checklist targeted Case Cockpit. Use the supported Workspace Chat daily
-flow in [docs/OPERATOR_RUNBOOK.md](docs/OPERATOR_RUNBOOK.md). Historical pilot
-evidence remains available through Git history and `docs/archive/`.
+Checklist cũ này nhắm vào Case Cockpit. Hãy sử dụng luồng hàng ngày của Workspace Chat được hỗ trợ trong [docs/OPERATOR_RUNBOOK.md](docs/OPERATOR_RUNBOOK.md). Bằng chứng thử nghiệm lịch sử vẫn có thể truy cập thông qua lịch sử Git và `docs/archive/`.
+

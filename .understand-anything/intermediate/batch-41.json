@@ -1,0 +1,45 @@
+{
+  "nodes": [
+    {
+      "id": "file:docs/reports/workspace_chat_full_12_questions.json",
+      "type": "file",
+      "name": "workspace_chat_full_12_questions.json",
+      "filePath": "docs/reports/workspace_chat_full_12_questions.json",
+      "summary": "JSON file containing workspace chat data for 12 questions",
+      "tags": ["json", "data"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:docs/reports/workspace_chat_full_12_questions_polished_report.md",
+      "type": "file",
+      "name": "workspace_chat_full_12_questions_polished_report.md",
+      "filePath": "docs/reports/workspace_chat_full_12_questions_polished_report.md",
+      "summary": "Polished markdown report based on workspace chat questions",
+      "tags": ["markdown", "report"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:docs/reports/workspace_chat_full_12_questions_report.md",
+      "type": "file",
+      "name": "workspace_chat_full_12_questions_report.md",
+      "filePath": "docs/reports/workspace_chat_full_12_questions_report.md",
+      "summary": "Initial markdown report based on workspace chat questions",
+      "tags": ["markdown", "report"],
+      "complexity": "moderate"
+    }
+  ],
+  "edges": [
+    {
+      "source": "file:docs/reports/workspace_chat_full_12_questions_polished_report.md",
+      "target": "file:docs/reports/workspace_chat_full_12_questions.json",
+      "type": "references",
+      "direction": "forward"
+    },
+    {
+      "source": "file:docs/reports/workspace_chat_full_12_questions_report.md",
+      "target": "file:docs/reports/workspace_chat_full_12_questions.json",
+      "type": "references",
+      "direction": "forward"
+    }
+  ]
+}

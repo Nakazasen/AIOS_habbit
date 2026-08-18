@@ -1,0 +1,90 @@
+{
+  "nodes": [
+    {
+      "id": "file:REPO_INHERITANCE_MAP.md",
+      "type": "file",
+      "name": "REPO_INHERITANCE_MAP.md",
+      "filePath": "REPO_INHERITANCE_MAP.md",
+      "summary": "Documentation of repository inheritance structure",
+      "tags": ["markdown", "documentation"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:ROADMAP.md",
+      "type": "file",
+      "name": "ROADMAP.md",
+      "filePath": "ROADMAP.md",
+      "summary": "Project development roadmap",
+      "tags": ["markdown", "documentation"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:RUN_AIOS_WORKSPACE_CHAT.bat",
+      "type": "file",
+      "name": "RUN_AIOS_WORKSPACE_CHAT.bat",
+      "filePath": "RUN_AIOS_WORKSPACE_CHAT.bat",
+      "summary": "Batch script to launch AIOS workspace chat",
+      "tags": ["bat", "script"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:SECURITY.md",
+      "type": "file",
+      "name": "SECURITY.md",
+      "filePath": "SECURITY.md",
+      "summary": "Security policies and information",
+      "tags": ["markdown", "security"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:WORKLENS_ARCHITECTURE.md",
+      "type": "file",
+      "name": "WORKLENS_ARCHITECTURE.md",
+      "filePath": "WORKLENS_ARCHITECTURE.md",
+      "summary": "Worklens architecture documentation",
+      "tags": ["markdown", "documentation"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:WORKLENS_MASTER_ROADMAP.md",
+      "type": "file",
+      "name": "WORKLENS_MASTER_ROADMAP.md",
+      "filePath": "WORKLENS_MASTER_ROADMAP.md",
+      "summary": "Master roadmap for Worklens component",
+      "tags": ["markdown", "documentation"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:pyproject.toml",
+      "type": "file",
+      "name": "pyproject.toml",
+      "filePath": "pyproject.toml",
+      "summary": "Python project configuration",
+      "tags": ["toml", "config"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:start_antigravity_bridge.bat",
+      "type": "file",
+      "name": "start_antigravity_bridge.bat",
+      "filePath": "start_antigravity_bridge.bat",
+      "summary": "Batch script to start the antigravity bridge",
+      "tags": ["bat", "script"],
+      "complexity": "moderate"
+    }
+  ],
+  "edges": [
+    {
+      "source": "file:WORKLENS_MASTER_ROADMAP.md",
+      "target": "file:WORKLENS_ARCHITECTURE.md",
+      "type": "references",
+      "direction": "forward"
+    },
+    {
+      "source": "file:ROADMAP.md",
+      "target": "file:REPO_INHERITANCE_MAP.md",
+      "type": "references",
+      "direction": "forward"
+    }
+  ]
+}

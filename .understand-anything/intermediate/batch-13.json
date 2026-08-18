@@ -1,0 +1,117 @@
+{
+  "nodes": [
+    {
+      "id": "file:.ai/UI_STRONG_ANSWER_NOTE.md",
+      "type": "file",
+      "name": "UI_STRONG_ANSWER_NOTE.md",
+      "filePath": ".ai/UI_STRONG_ANSWER_NOTE.md",
+      "summary": "Design note for UI strong answer implementation",
+      "tags": ["documentation", "ui"]
+    },
+    {
+      "id": "file:.ai/UI_STRONG_ANSWER_BUTTON_REPORT.md",
+      "type": "file",
+      "name": "UI_STRONG_ANSWER_BUTTON_REPORT.md",
+      "filePath": ".ai/UI_STRONG_ANSWER_BUTTON_REPORT.md",
+      "summary": "Report on UI strong answer button",
+      "tags": ["documentation", "report"]
+    },
+    {
+      "id": "file:.ai/UI_STRONG_ANSWER_IMPLEMENTATION_DESIGN.md",
+      "type": "file",
+      "name": "UI_STRONG_ANSWER_IMPLEMENTATION_DESIGN.md",
+      "filePath": ".ai/UI_STRONG_ANSWER_IMPLEMENTATION_DESIGN.md",
+      "summary": "Design document for UI strong answer implementation",
+      "tags": ["documentation", "design"]
+    },
+    {
+      "id": "file:.ai/STRONG_MODEL_ANSWER_BRIDGE_DESIGN.md",
+      "type": "file",
+      "name": "STRONG_MODEL_ANSWER_BRIDGE_DESIGN.md",
+      "filePath": ".ai/STRONG_MODEL_ANSWER_BRIDGE_DESIGN.md",
+      "summary": "Design for strong model answer bridge",
+      "tags": ["documentation", "design"]
+    },
+    {
+      "id": "file:.ai/STRONG_MODEL_ANSWER_BRIDGE_REPORT.md",
+      "type": "file",
+      "name": "STRONG_MODEL_ANSWER_BRIDGE_REPORT.md",
+      "filePath": ".ai/STRONG_MODEL_ANSWER_BRIDGE_REPORT.md",
+      "summary": "Report on strong model answer bridge",
+      "tags": ["documentation", "report"]
+    },
+    {
+      "id": "file:.ai/STRONG_MODEL_MOM_3Q_TEST_REPORT.md",
+      "type": "file",
+      "name": "STRONG_MODEL_MOM_3Q_TEST_REPORT.md",
+      "filePath": ".ai/STRONG_MODEL_MOM_3Q_TEST_REPORT.md",
+      "summary": "Test report for strong model mom 3q",
+      "tags": ["documentation", "test"]
+    },
+    {
+      "id": "file:.ai/AIOS_GENERIC_RAG_CORE_ARCHITECTURE.md",
+      "type": "file",
+      "name": "AIOS_GENERIC_RAG_CORE_ARCHITECTURE.md",
+      "filePath": ".ai/AIOS_GENERIC_RAG_CORE_ARCHITECTURE.md",
+      "summary": "Architecture document for generic RAG",
+      "tags": ["documentation", "architecture"]
+    },
+    {
+      "id": "file:.ai/AIOS_SOURCE_ROUTER_AND_SYNTHESIZER_DESIGN.md",
+      "type": "file",
+      "name": "AIOS_SOURCE_ROUTER_AND_SYNTHESIZER_DESIGN.md",
+      "filePath": ".ai/AIOS_SOURCE_ROUTER_AND_SYNTHESIZER_DESIGN.md",
+      "summary": "Design document for router and synthesizer",
+      "tags": ["documentation", "design"]
+    },
+    {
+      "id": "file:.ai/AIOS_RAG_FAILURE_ANALYSIS.md",
+      "type": "file",
+      "name": "AIOS_RAG_FAILURE_ANALYSIS.md",
+      "filePath": ".ai/AIOS_RAG_FAILURE_ANALYSIS.md",
+      "summary": "Analysis of RAG failures",
+      "tags": ["documentation", "analysis"]
+    },
+    {
+      "id": "file:.ai/AIOS_GENERAL_RAG_OVERFIT_AUDIT.md",
+      "type": "file",
+      "name": "AIOS_GENERAL_RAG_OVERFIT_AUDIT.md",
+      "filePath": ".ai/AIOS_GENERAL_RAG_OVERFIT_AUDIT.md",
+      "summary": "Audit of RAG overfit",
+      "tags": ["documentation", "audit"]
+    },
+    {
+      "id": "file:.ai/AIOS_GENERAL_RAG_RESET_DECISION.md",
+      "type": "file",
+      "name": "AIOS_GENERAL_RAG_RESET_DECISION.md",
+      "filePath": ".ai/AIOS_GENERAL_RAG_RESET_DECISION.md",
+      "summary": "Decision on RAG reset",
+      "tags": ["documentation", "decision"]
+    },
+    {
+      "id": "file:.ai/AIOS_FINAL_ANSWER_4Q_RERUN_REPORT.md",
+      "type": "file",
+      "name": "AIOS_FINAL_ANSWER_4Q_RERUN_REPORT.md",
+      "filePath": ".ai/AIOS_FINAL_ANSWER_4Q_RERUN_REPORT.md",
+      "summary": "Report on 4Q final answer rerun",
+      "tags": ["documentation", "report"]
+    }
+  ],
+  "edges": [
+    {
+      "source": "file:.ai/UI_STRONG_ANSWER_NOTE.md",
+      "target": "file:.ai/UI_STRONG_ANSWER_IMPLEMENTATION_DESIGN.md",
+      "type": "refers_to"
+    },
+    {
+      "source": "file:.ai/UI_STRONG_ANSWER_BUTTON_REPORT.md",
+      "target": "file:.ai/UI_STRONG_ANSWER_IMPLEMENTATION_DESIGN.md",
+      "type": "refers_to"
+    },
+    {
+      "source": "file:.ai/STRONG_MODEL_ANSWER_BRIDGE_REPORT.md",
+      "target": "file:.ai/STRONG_MODEL_ANSWER_BRIDGE_DESIGN.md",
+      "type": "refers_to"
+    }
+  ]
+}

@@ -1,0 +1,15 @@
+{
+  "fixedSectionOk": true,
+  "nodesRecovered": 374,
+  "edgesRestored": 48,
+  "crossBatchEdgesAdded": 20,
+  "typesRemapped": 0,
+  "complexityRemapped": 0,
+  "notes": [
+    "Identified and repaired 28 batch JSON files (batches 1-8, 10, 14, 19, 21, 25, 26, 28, 39, 41-45, 49, 50, 54, 57-59, 63) that had unquoted/escaped keys and failed Python json.loads() in Phase 2 merger.",
+    "Repaired 19 auto-recovered batches (batches 16-18, 22-23, 27, 29-32, 35-38, 40, 46-47, 52, 56) by providing rich summaries and replacing empty tags arrays with domain-specific tags, satisfying validation schema.",
+    "Recovered all 374 previously missing nodes, bringing total indexed project files to 727 nodes across all 64 batches.",
+    "Restored and verified 68 edges across all batches with 0 dangling references and valid direction attributes.",
+    "All node IDs, file paths, complexities, and tag arrays strictly conform to understand-anything and ua-inline-validate.cjs schemas."
+  ]
+}

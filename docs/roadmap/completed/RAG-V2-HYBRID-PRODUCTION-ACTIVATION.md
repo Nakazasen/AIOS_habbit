@@ -1,69 +1,70 @@
-# RAG-V2-HYBRID-PRODUCTION-ACTIVATION
+# Kích Hoạt Sản Xuất Truy Xuất Kết Hợp RAG v2 (RAG-V2-HYBRID-PRODUCTION-ACTIVATION)
 
 Status: `COMPLETED — 2026-07-29`
 
-## Goal
+## Mục Tiêu (Goal)
 
-Make the strongest verified local retriever the normal Workspace Chat behavior on a 16 GB CPU office laptop while keeping the experience simple and answer quality stable.
+Đưa bộ truy xuất cục bộ đã kiểm chứng mạnh nhất thành hành vi mặc định của Workspace Chat trên laptop văn phòng CPU 16 GB trong khi vẫn duy trì trải nghiệm đơn giản và chất lượng câu trả lời ổn định.
 
-## Product contract
+## Hợp Đồng Sản Phẩm (Product Contract)
 
-The normal user sees no hybrid/lexical/legacy switch and does not need to understand feature flags. Workspace Chat automatically uses the best ready retrieval mode.
+Người dùng thông thường không nhìn thấy công tắc chuyển đổi hybrid / từ vựng / cũ và không cần hiểu các cờ tính năng (feature flags). Workspace Chat tự động sử dụng chế độ truy xuất sẵn sàng tốt nhất.
 
-If high-quality retrieval is unavailable, the product must not silently present a materially weaker answer as equivalent. It must either recover automatically, keep the last ready runtime, or show a short nontechnical message such as: "High-quality document search is temporarily unavailable; please retry."
+Nếu truy xuất chất lượng cao không khả dụng, sản phẩm tuyệt đối không được âm thầm đưa ra câu trả lời yếu hơn rõ rệt dưới dạng tương đương. Hệ thống phải tự động phục hồi, duy trì runtime sẵn sàng gần nhất, hoặc hiển thị thông báo ngắn gọn phi kỹ thuật như: "Tính năng tìm kiếm tài liệu chất lượng cao tạm thời chưa khả dụng; vui lòng thử lại."
 
-Technical mode names, model paths, checksums, and fallback telemetry remain in owner/operator diagnostics only.
+Tên chế độ kỹ thuật, đường dẫn mô hình, mã checksum và viễn trắc dự phòng chỉ xuất hiện trong giao diện chẩn đoán của chủ sở hữu / vận hành viên.
 
-## Scope
+## Phạm Vi (Scope)
 
-- Install or reference the verified local BGE-M3 artifact through stable deployment configuration.
-- Reuse the materialized index and keep the model warm instead of rebuilding/reloading per question.
-- Measure cold start, warm retrieval, peak RAM, index size, CPU load, and end-to-end answer latency on the target 16 GB CPU laptop class.
-- Run a limited owner canary using real Workspace Chat tasks and compare answer stability against the current path.
-- Define an automatic health/recovery policy that avoids unexplained quality drops.
-- After owner acceptance, make best-ready hybrid retrieval the default internal behavior without adding a normal-user setting.
+- Cài đặt hoặc tham chiếu artifact BGE-M3 cục bộ đã kiểm chứng thông qua cấu hình triển khai ổn định.
+- Tái sử dụng chỉ mục đã hiện thực hóa và giữ mô hình ở trạng thái ấm thay vì tải lại / xây dựng lại cho mỗi câu hỏi.
+- Đo lường khởi động lạnh, truy xuất ấm, mức RAM đỉnh, kích thước chỉ mục, tải CPU và độ trễ câu trả lời đầu cuối trên dòng laptop CPU 16 GB mục tiêu.
+- Chạy một đợt canary giới hạn cho chủ sở hữu bằng các tác vụ Workspace Chat thực tế và so sánh độ ổn định câu trả lời với luồng hiện tại.
+- Xác định chính sách sức khỏe / phục hồi tự động giúp tránh sự suy giảm chất lượng không rõ nguyên nhân.
+- Sau khi chủ sở hữu nghiệm thu, đặt truy xuất hybrid sẵn sàng tốt nhất làm hành vi nội bộ mặc định mà không cần thêm cài đặt cho người dùng thông thường.
 
-## Baseline sizing
+## Định Quy Mô Đường Cơ Sở (Baseline Sizing)
 
-- Verified BGE-M3 model artifact: approximately **2.3 GB on disk**.
-- Measured warm CPU retrieval p95 in Gate H: approximately **1.8 seconds** per query.
-- Reranker profiles are excluded from this gate because measured latency was approximately 174–186 seconds p95 and provided no Recall@10 gain.
-- End-to-end answer time also includes the separate answer-model/provider latency.
+- Artifact mô hình BGE-M3 đã kiểm chứng: xấp xỉ **2.3 GB trên ổ đĩa**.
+- Độ trễ truy xuất p95 đo được trên CPU ấm trong Gate H: xấp xỉ **1.8 giây** mỗi truy vấn.
+- Cấu hình Reranker bị loại trừ khỏi cổng này vì độ trễ đo được lên tới ~174–186 giây p95 và không mang lại cải thiện Recall@10 nào.
+- Thời gian câu trả lời đầu cuối cũng bao gồm độ trễ riêng của provider / mô hình sinh câu trả lời.
 
-## Acceptance criteria
+## Tiêu Chí Nghiệm Thu (Acceptance Criteria)
 
-- The exact model path, revision, and checksum pass readiness checks after a clean restart.
-- Peak process and system memory remain safe on a 16 GB machine without sustained paging or destabilizing other office applications.
-- Cold start is measured and communicated; warm retrieval meets an owner-approved target, initially p95 ≤ 3 seconds.
-- Index/model initialization is not repeated for every question.
-- No silent quality downgrade occurs across normal reruns, model errors, stale indexes, or source changes.
-- Representative owner tasks and citations pass browser E2E.
-- Privacy/gateway regressions are zero, full tests pass, and owner explicitly approves default activation.
+- Đường dẫn mô hình, phiên bản revision và mã checksum chính xác vượt qua các kiểm tra sẵn sàng sau khi khởi động lại sạch.
+- Bộ nhớ hệ thống và tiến trình ở mức đỉnh vẫn an toàn trên máy 16 GB mà không bị phân trang liên tục hoặc làm mất ổn định các ứng dụng văn phòng khác.
+- Khởi động lạnh được đo lường và thông báo; truy xuất ấm đạt mục tiêu được chủ sở hữu phê duyệt, ban đầu là p95 ≤ 3 giây.
+- Khởi tạo chỉ mục / mô hình không bị lặp lại cho mỗi câu hỏi.
+- Không có sự suy giảm chất lượng âm thầm nào xảy ra xuyên suốt các lần chạy lại bình thường, lỗi mô hình, chỉ mục cũ hoặc thay đổi nguồn.
+- Các tác vụ và trích dẫn đại diện của chủ sở hữu đạt kiểm thử E2E trên trình duyệt.
+- Hồi quy bảo mật / gateway bằng 0, toàn bộ kiểm thử đạt và chủ sở hữu phê duyệt rõ ràng việc kích hoạt mặc định.
 
-## Non-goals
+## Các Phi Mục Tiêu (Non-goals)
 
-- No heavy multilingual reranker activation on the target CPU laptop.
-- No normal-user technical settings or three-mode selector.
-- No NotebookLM parity claim without a later same-protocol blinded answer-quality gate.
+- Không kích hoạt mô hình reranker đa ngôn ngữ nặng nề trên laptop CPU mục tiêu.
+- Không thêm cài đặt kỹ thuật cho người dùng thông thường hay bộ chọn 3 chế độ.
+- Không tuyên bố tương đương với NotebookLM mà không có cổng chất lượng câu trả lời mù cùng giao thức sau này.
 
-## Rollback
+## Hoàn Tác (Rollback)
 
-One internal configuration change returns Workspace Chat to the prior stable retrieval runtime. Preserve sources, indexes, model files, and evidence for diagnosis; do not expose rollback controls to normal users.
+Một thay đổi cấu hình nội bộ duy nhất sẽ đưa Workspace Chat trở lại runtime truy xuất ổn định trước đó. Bảo tồn các nguồn, chỉ mục, tệp mô hình và bằng chứng để chẩn đoán; không để lộ các kiểm soát hoàn tác cho người dùng thông thường.
 
-## Verification
+## Kiểm Chứng (Verification)
 
-- Clean-start and warm-query benchmark on the target laptop.
-- Peak RAM/CPU/pagefile capture during indexing and repeated queries.
-- Browser E2E over representative owner workflows and forced recovery paths.
-- Focused adapter/runtime tests, full repository regression, docs checks, CLI audit, import check, and Git whitespace checks.
+- Đo chuẩn truy vấn ấm và khởi động sạch trên laptop mục tiêu.
+- Thu thập RAM đỉnh / CPU / pagefile trong quá trình lập chỉ mục và truy vấn lặp lại.
+- Kiểm thử trình duyệt E2E trên các quy trình đại diện của chủ sở hữu và các luồng phục hồi bắt buộc.
+- Kiểm thử adapter / runtime tập trung, hồi quy toàn bộ repository, kiểm tra tài liệu, kiểm toán CLI, kiểm tra import và kiểm tra khoảng trắng Git.
 
-## Completion evidence
+## Bằng Chứng Hoàn Thành (Completion Evidence)
 
-- Production benchmark status: `PASS` with the exact `bge_m3_hybrid` profile and no fallback.
-- Measured warm retrieval: mean `712.345 ms`, p95 `814.25 ms` against the `3,000 ms` limit.
-- Runtime initialized once across eight warm queries; preparation and query are separate worker commands.
-- Measured cold preparation (`35,627.179 ms`) is scheduled before the ready state and is not treated as query latency.
-- Memory gate passed on the target 16 GB machine; network and provider synthesis remained disabled.
-- Workspace Chat fails closed while preparation is incomplete and exposes no normal-user technical mode selector.
-- Browser acceptance confirmed the simplified source flow and production UI cleanup.
-- Focused UI regression passed `74/74`; full repository regression passed `1,104/1,104`.
+- Trạng thái đo chuẩn sản xuất: `PASS` với đúng cấu hình `bge_m3_hybrid` và không có dự phòng suy giảm nào.
+- Truy xuất ấm đo được: trung bình `712.345 ms`, p95 `814.25 ms` so với giới hạn `3,000 ms`.
+- Runtime được khởi tạo một lần duy nhất xuyên suốt 8 truy vấn ấm; chuẩn bị và truy vấn là các lệnh worker tách biệt.
+- Khởi động lạnh đo được (`35,627.179 ms`) được lập lịch trước trạng thái sẵn sàng và không bị tính vào độ trễ truy vấn.
+- Cổng bộ nhớ đạt trên máy 16 GB mục tiêu; tổng hợp mạng và provider giữ trạng thái bị vô hiệu hóa.
+- Workspace Chat áp dụng fail-closed trong khi việc chuẩn bị chưa hoàn tất và không để lộ bộ chọn chế độ kỹ thuật cho người dùng thông thường.
+- Nghiệm thu trên trình duyệt xác nhận luồng chọn nguồn đơn giản hóa và giao diện sản xuất sạch sẽ.
+- Hồi quy UI tập trung đạt `74/74`; toàn bộ hồi quy repository đạt `1,104/1,104`.
+

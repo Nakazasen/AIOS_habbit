@@ -1,0 +1,32 @@
+{
+  "nodes": [
+    {
+      "id": "file:02_sources/README.md",
+      "type": "file",
+      "name": "README.md",
+      "filePath": "02_sources/README.md",
+      "summary": "README file for the sources directory",
+      "tags": ["markdown", "documentation"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:02_sources/excluded_sources.md",
+      "type": "file",
+      "name": "excluded_sources.md",
+      "filePath": "02_sources/excluded_sources.md",
+      "summary": "Documentation of excluded sources",
+      "tags": ["markdown", "documentation"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:02_sources/source_inventory.md",
+      "type": "file",
+      "name": "source_inventory.md",
+      "filePath": "02_sources/source_inventory.md",
+      "summary": "Inventory of sources",
+      "tags": ["markdown", "documentation"],
+      "complexity": "moderate"
+    }
+  ],
+  "edges": []
+}

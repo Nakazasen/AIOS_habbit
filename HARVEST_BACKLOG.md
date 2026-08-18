@@ -1,15 +1,16 @@
-# Harvest Backlog
+# Danh sách Hạng mục Thu hoạch Kế thừa (Harvest Backlog)
 
-All legacy repo candidates start as `NEEDS_AUDIT`. Nothing is READY until evidence, tests, complexity, and WorkLens loop fit are verified.
+Tất cả các ứng viên từ repository cũ đều bắt đầu ở trạng thái `NEEDS_AUDIT`. Không có mục nào ở trạng thái SẴN SÀNG (READY) cho đến khi bằng chứng, bài kiểm thử, độ phức tạp và mức độ phù hợp với vòng lặp WorkLens được xác minh đầy đủ.
 
-| Candidate | Source Repo | Status | Loop Fit | Tests Known | Complexity Risk | Notes |
+| Ứng viên (Candidate) | Repo Nguồn | Trạng thái | Độ khớp Vòng lặp | Kiểm thử Đã biết | Rủi ro Phức tạp | Ghi chú |
 |---|---|---|---|---|---|---|
-| Governance runtime status scripts | ABW_NVIDIA_FUSION_CONTROL | NEEDS_AUDIT | Governance supports Action/Learning safety | Unknown | Medium | May become WorkLens audit checklist, not direct port. |
-| Bridge architecture pattern | ABW_NVIDIA_FUSION_CONTROL | NEEDS_AUDIT | Agent Bridge after Prompt Pack | Unknown | Medium | Wrap concept first; no code copy. |
-| `.brain` knowledge layout | skill-Anti-brain-wiki_note | NEEDS_AUDIT | Learning and reusable memory | Likely | Medium | Needs simplification for case outcomes. |
-| Wiki ingest/query workflow | skill-Anti-brain-wiki_note | NEEDS_AUDIT | Evidence → Learning | Likely | High | Do not clone full ABW workflow surface. |
-| Audit/eval/no-fake-success discipline | skill-Anti-brain-wiki_note | NEEDS_AUDIT | Governance across loop | Likely | Low-Medium | Best candidate for policy adoption. |
-| Provider abstraction | Nvidia | NEEDS_AUDIT | Agent Bridge | Yes, per package scripts | High | Later only; current prompt packs suffice. |
-| Command job manager | Nvidia | NEEDS_AUDIT | Action execution | Yes, per package scripts | High | Dangerous if premature. |
-| Browser smoke / UI proof harness | Nvidia | NEEDS_AUDIT | Validation | Yes | Medium | Useful for future UI smoke checks. |
-| Electron desktop shell | Nvidia | NEEDS_AUDIT | App delivery | Unknown | High | PAUSE until Streamlit pilot proves need. |
+| Script trạng thái runtime quản trị | ABW_NVIDIA_FUSION_CONTROL | NEEDS_AUDIT | Quản trị hỗ trợ an toàn Hành động/Bài học | Chưa rõ | Trung bình | Có thể trở thành checklist audit WorkLens, không port trực tiếp. |
+| Mẫu kiến trúc cầu nối (Bridge pattern) | ABW_NVIDIA_FUSION_CONTROL | NEEDS_AUDIT | Cầu nối Agent sau Gói Prompt | Chưa rõ | Trung bình | Bọc khái niệm trước; không sao chép mã nguồn. |
+| Bố cục tri thức `.brain` | skill-Anti-brain-wiki_note | NEEDS_AUDIT | Bộ nhớ học nghề và tái sử dụng | Có khả năng | Trung bình | Cần đơn giản hóa cho kết quả sự vụ. |
+| Quy trình nạp/truy vấn Wiki | skill-Anti-brain-wiki_note | NEEDS_AUDIT | Bằng chứng → Bài học | Có khả năng | Cao | Không sao chép toàn bộ diện tích quy trình ABW. |
+| Kỷ luật audit/đánh giá/chống thành công giả | skill-Anti-brain-wiki_note | NEEDS_AUDIT | Quản trị xuyên suốt vòng lặp | Có khả năng | Thấp-Trung bình | Ứng viên tốt nhất để áp dụng vào chính sách. |
+| Trừu tượng hóa nhà cung cấp (Provider) | Nvidia | NEEDS_AUDIT | Cầu nối Agent | Có, theo package scripts | Cao | Để sau; các gói prompt hiện tại là đủ. |
+| Trình quản lý tác vụ lệnh (Command job) | Nvidia | NEEDS_AUDIT | Thực thi hành động | Có, theo package scripts | Cao | Nguy hiểm nếu triển khai sớm. |
+| Khung kiểm thử giao diện / trình duyệt | Nvidia | NEEDS_AUDIT | Xác thực kiểm chứng | Có | Trung bình | Hữu ích cho các kiểm tra smoke UI trong tương lai. |
+| Vỏ ứng dụng Desktop Electron | Nvidia | NEEDS_AUDIT | Phân phối ứng dụng | Chưa rõ | Cao | TẠM DỪNG (PAUSE) cho đến khi thử nghiệm pilot chứng minh nhu cầu. |
+

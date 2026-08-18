@@ -15,7 +15,7 @@ nhiên và nhận câu trả lời có ngữ cảnh nguồn.
 2. Tại thư mục repository, cài môi trường local:
 
    ```powershell
-   py -3 -m pip install -e .
+   uv sync --group dev
    ```
 
 3. Mở [RUN_AIOS_WORKSPACE_CHAT.bat](RUN_AIOS_WORKSPACE_CHAT.bat).
@@ -48,9 +48,9 @@ nhiên và nhận câu trả lời có ngữ cảnh nguồn.
 ## Kiểm thử và audit
 
 ```powershell
-py -3 -m compileall src tests
-py -3 -m pytest -q
-$env:PYTHONPATH="src"; py -3 -m aios_habit.cli audit
+uv run --no-sync --group dev python -m compileall src tests
+uv run --no-sync --group dev pytest -q
+uv run --no-sync --group dev python -m aios_habit.cli audit
 git diff --check
 git status --short --ignored
 ```

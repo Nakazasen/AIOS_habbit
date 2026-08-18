@@ -1,0 +1,427 @@
+[
+  {
+    "id": "file:11_templates/audit_report.md",
+    "type": "file",
+    "name": "audit_report.md",
+    "filePath": "11_templates/audit_report.md",
+    "summary": "Biểu mẫu template cho báo cáo kiểm toán (audit reports).",
+    "tags": [
+      "template",
+      "audit"
+    ],
+    "complexity": "moderate"
+  },
+  {
+    "id": "file:11_templates/decision_record.md",
+    "type": "file",
+    "name": "decision_record.md",
+    "filePath": "11_templates/decision_record.md",
+    "summary": "Biểu mẫu template cho các bản ghi quyết định kiến trúc và kỹ thuật (decision records).",
+    "tags": [
+      "template",
+      "decisions"
+    ],
+    "complexity": "moderate"
+  },
+  {
+    "id": "file:11_templates/evidence_record.md",
+    "type": "file",
+    "name": "evidence_record.md",
+    "filePath": "11_templates/evidence_record.md",
+    "summary": "Biểu mẫu template cho các bản ghi bằng chứng (Evidence Records).",
+    "tags": [
+      "template",
+      "evidence"
+    ],
+    "complexity": "moderate"
+  },
+  {
+    "id": "file:11_templates/extraction_report.md",
+    "type": "file",
+    "name": "extraction_report.md",
+    "filePath": "11_templates/extraction_report.md",
+    "summary": "Biểu mẫu template cho các báo cáo trích xuất dữ liệu (extraction reports).",
+    "tags": [
+      "template",
+      "extraction"
+    ],
+    "complexity": "moderate"
+  },
+  {
+    "id": "file:11_templates/handover.md",
+    "type": "file",
+    "name": "handover.md",
+    "filePath": "11_templates/handover.md",
+    "summary": "Biểu mẫu template cho tài liệu bàn giao dự án (handovers).",
+    "tags": [
+      "template",
+      "handover"
+    ],
+    "complexity": "moderate"
+  },
+  {
+    "id": "file:11_templates/memory_card.md",
+    "type": "file",
+    "name": "memory_card.md",
+    "filePath": "11_templates/memory_card.md",
+    "summary": "Biểu mẫu template cho các thẻ bộ nhớ (Memory Cards).",
+    "tags": [
+      "template",
+      "memory"
+    ],
+    "complexity": "moderate"
+  },
+  {
+    "id": "file:11_templates/project_card.md",
+    "type": "file",
+    "name": "project_card.md",
+    "filePath": "11_templates/project_card.md",
+    "summary": "Biểu mẫu template cho các thẻ thông tin dự án (Project Cards).",
+    "tags": [
+      "template",
+      "project"
+    ],
+    "complexity": "moderate"
+  },
+  {
+    "id": "file:11_templates/workflow_card.md",
+    "type": "file",
+    "name": "workflow_card.md",
+    "filePath": "11_templates/workflow_card.md",
+    "summary": "Biểu mẫu template cho các thẻ quy trình làm việc (Workflow Cards).",
+    "tags": [
+      "template",
+      "workflow"
+    ],
+    "complexity": "moderate"
+  },
+  {
+    "id": "file:12_tools/README.md",
+    "type": "file",
+    "name": "README.md",
+    "filePath": "12_tools/README.md",
+    "summary": "Tài liệu hướng dẫn cho thư mục công cụ (tools directory).",
+    "tags": [
+      "markdown",
+      "documentation"
+    ],
+    "complexity": "moderate"
+  },
+  {
+    "id": "file:REPO_INHERITANCE_MAP.md",
+    "type": "file",
+    "name": "REPO_INHERITANCE_MAP.md",
+    "filePath": "REPO_INHERITANCE_MAP.md",
+    "summary": "Tài liệu mô tả cấu trúc kế thừa của kho lưu trữ (repository inheritance structure).",
+    "tags": [
+      "markdown",
+      "documentation"
+    ],
+    "complexity": "moderate"
+  },
+  {
+    "id": "file:ROADMAP.md",
+    "type": "file",
+    "name": "ROADMAP.md",
+    "filePath": "ROADMAP.md",
+    "summary": "Lộ trình phát triển dự án (Project development roadmap).",
+    "tags": [
+      "markdown",
+      "documentation"
+    ],
+    "complexity": "moderate"
+  },
+  {
+    "id": "file:RUN_AIOS_WORKSPACE_CHAT.bat",
+    "type": "file",
+    "name": "RUN_AIOS_WORKSPACE_CHAT.bat",
+    "filePath": "RUN_AIOS_WORKSPACE_CHAT.bat",
+    "summary": "Tập lệnh Batch script để khởi chạy ứng dụng AIOS Workspace Chat.",
+    "tags": [
+      "bat",
+      "script"
+    ],
+    "complexity": "moderate"
+  },
+  {
+    "id": "file:SECURITY.md",
+    "type": "file",
+    "name": "SECURITY.md",
+    "filePath": "SECURITY.md",
+    "summary": "Chính sách và thông tin an toàn bảo mật (Security policies).",
+    "tags": [
+      "markdown",
+      "security"
+    ],
+    "complexity": "moderate"
+  },
+  {
+    "id": "file:WORKLENS_ARCHITECTURE.md",
+    "type": "file",
+    "name": "WORKLENS_ARCHITECTURE.md",
+    "filePath": "WORKLENS_ARCHITECTURE.md",
+    "summary": "Tài liệu kiến trúc hệ thống Worklens (Worklens architecture documentation).",
+    "tags": [
+      "markdown",
+      "documentation"
+    ],
+    "complexity": "moderate"
+  },
+  {
+    "id": "file:WORKLENS_MASTER_ROADMAP.md",
+    "type": "file",
+    "name": "WORKLENS_MASTER_ROADMAP.md",
+    "filePath": "WORKLENS_MASTER_ROADMAP.md",
+    "summary": "Lộ trình tổng thể (Master roadmap) cho thành phần Worklens.",
+    "tags": [
+      "markdown",
+      "documentation"
+    ],
+    "complexity": "moderate"
+  },
+  {
+    "id": "file:pyproject.toml",
+    "type": "file",
+    "name": "pyproject.toml",
+    "filePath": "pyproject.toml",
+    "summary": "Tệp cấu hình dự án Python (pyproject.toml).",
+    "tags": [
+      "toml",
+      "config"
+    ],
+    "complexity": "moderate"
+  },
+  {
+    "id": "file:start_antigravity_bridge.bat",
+    "type": "file",
+    "name": "start_antigravity_bridge.bat",
+    "filePath": "start_antigravity_bridge.bat",
+    "summary": "Tập lệnh Batch script để khởi động cầu nối Antigravity Bridge.",
+    "tags": [
+      "bat",
+      "script"
+    ],
+    "complexity": "moderate"
+  },
+  {
+    "id": "file:config/mom_source_dispositions.example.json",
+    "type": "file",
+    "name": "mom_source_dispositions.example.json",
+    "filePath": "config/mom_source_dispositions.example.json",
+    "summary": "Tệp cấu hình định nghĩa cách xử lý tệp nguồn cho các trường hợp loại trừ dựa trên bằng chứng (evidence-backed exclusions).",
+    "tags": [
+      "config",
+      "json"
+    ],
+    "complexity": "moderate"
+  },
+  {
+    "id": "file:config/real_benchmark.example.json",
+    "type": "file",
+    "name": "real_benchmark.example.json",
+    "filePath": "config/real_benchmark.example.json",
+    "summary": "Cấu hình mẫu để chạy các bài đánh giá chuẩn (benchmarks) trên các thư mục nguồn cục bộ (local source roots).",
+    "tags": [
+      "config",
+      "benchmark",
+      "json"
+    ],
+    "complexity": "moderate"
+  },
+  {
+    "id": "file:config/shared_ai_provider_fabric.json",
+    "type": "file",
+    "name": "shared_ai_provider_fabric.json",
+    "filePath": "config/shared_ai_provider_fabric.json",
+    "summary": "Cấu hình dùng chung cho mạng lưới cung cấp AI (AI provider fabric), định nghĩa các endpoint, API key và năng lực mô hình.",
+    "tags": [
+      "config",
+      "ai-provider",
+      "json"
+    ],
+    "complexity": "moderate"
+  },
+  {
+    "id": "file:docs/RAG_AGENT_HARNESS_RESEARCH.md",
+    "type": "file",
+    "name": "RAG_AGENT_HARNESS_RESEARCH.md",
+    "filePath": "docs/RAG_AGENT_HARNESS_RESEARCH.md",
+    "summary": "Tài liệu nghiên cứu về việc triển khai khung kiểm thử khai thác RAG Agent (RAG agent harness).",
+    "tags": [
+      "docs",
+      "research"
+    ],
+    "complexity": "moderate"
+  },
+  {
+    "id": "file:docs/RECOVERY_GUIDE.md",
+    "type": "file",
+    "name": "RECOVERY_GUIDE.md",
+    "filePath": "docs/RECOVERY_GUIDE.md",
+    "summary": "Tài liệu hướng dẫn các quy trình khôi phục hệ thống (system recovery processes).",
+    "tags": [
+      "docs",
+      "guide"
+    ],
+    "complexity": "moderate"
+  },
+  {
+    "id": "file:docs/UI_LANGUAGE_POLICY.md",
+    "type": "file",
+    "name": "UI_LANGUAGE_POLICY.md",
+    "filePath": "docs/UI_LANGUAGE_POLICY.md",
+    "summary": "Tài liệu chính sách về các tiêu chuẩn ngôn ngữ giao diện người dùng (UI language standards).",
+    "tags": [
+      "docs",
+      "policy"
+    ],
+    "complexity": "moderate"
+  },
+  {
+    "id": "file:docs/rag_v2/AUTOMATED_INGESTION_OPERATIONS.md",
+    "type": "file",
+    "name": "AUTOMATED_INGESTION_OPERATIONS.md",
+    "filePath": "docs/rag_v2/AUTOMATED_INGESTION_OPERATIONS.md",
+    "summary": "Mô tả các quy trình tiếp nhận dữ liệu tự động (automated ingestion processes) cho hệ thống RAG.",
+    "tags": [
+      "docs",
+      "rag_v2"
+    ],
+    "complexity": "moderate"
+  },
+  {
+    "id": "file:docs/rag_v2/BLIND_RERUN_QUESTIONS_DRAFT.json",
+    "type": "file",
+    "name": "BLIND_RERUN_QUESTIONS_DRAFT.json",
+    "filePath": "docs/rag_v2/BLIND_RERUN_QUESTIONS_DRAFT.json",
+    "summary": "Bản thảo các câu hỏi chạy lại mù (blind reruns) phục vụ đánh giá chất lượng RAG.",
+    "tags": [
+      "docs",
+      "rag_v2",
+      "json"
+    ],
+    "complexity": "moderate"
+  },
+  {
+    "id": "file:docs/rag_v2/RAG_V2_DESIGN.md",
+    "type": "file",
+    "name": "RAG_V2_DESIGN.md",
+    "filePath": "docs/rag_v2/RAG_V2_DESIGN.md",
+    "summary": "Tài liệu thiết kế kiến trúc RAG Version 2 (RAG v2).",
+    "tags": [
+      "docs",
+      "rag_v2"
+    ],
+    "complexity": "moderate"
+  },
+  {
+    "id": "file:docs/rag_v2/SAME_PROTOCOL_ANSWER_QUALITY_PROTOCOL.md",
+    "type": "file",
+    "name": "SAME_PROTOCOL_ANSWER_QUALITY_PROTOCOL.md",
+    "filePath": "docs/rag_v2/SAME_PROTOCOL_ANSWER_QUALITY_PROTOCOL.md",
+    "summary": "Giao thức đánh giá chất lượng câu trả lời trong các hệ thống RAG.",
+    "tags": [
+      "docs",
+      "rag_v2"
+    ],
+    "complexity": "moderate"
+  },
+  {
+    "id": "file:docs/rag_v2/benchmark_gold_identity.schema.json",
+    "type": "file",
+    "name": "benchmark_gold_identity.schema.json",
+    "filePath": "docs/rag_v2/benchmark_gold_identity.schema.json",
+    "summary": "JSON Schema cho tập dữ liệu đối sánh chuẩn (Gold Identity) phục vụ benchmark RAG.",
+    "tags": [
+      "docs",
+      "rag_v2",
+      "json"
+    ],
+    "complexity": "moderate"
+  },
+  {
+    "id": "file:docs/reports/workspace_chat_full_12_questions.json",
+    "type": "file",
+    "name": "workspace_chat_full_12_questions.json",
+    "filePath": "docs/reports/workspace_chat_full_12_questions.json",
+    "summary": "Tệp JSON chứa dữ liệu hội thoại Workspace Chat cho bộ 12 câu hỏi đánh giá.",
+    "tags": [
+      "json",
+      "data"
+    ],
+    "complexity": "moderate"
+  },
+  {
+    "id": "file:docs/reports/workspace_chat_full_12_questions_polished_report.md",
+    "type": "file",
+    "name": "workspace_chat_full_12_questions_polished_report.md",
+    "filePath": "docs/reports/workspace_chat_full_12_questions_polished_report.md",
+    "summary": "Báo cáo Markdown hoàn chỉnh dựa trên các câu hỏi đối chuẩn của Workspace Chat.",
+    "tags": [
+      "markdown",
+      "report"
+    ],
+    "complexity": "moderate"
+  },
+  {
+    "id": "file:docs/reports/workspace_chat_full_12_questions_report.md",
+    "type": "file",
+    "name": "workspace_chat_full_12_questions_report.md",
+    "filePath": "docs/reports/workspace_chat_full_12_questions_report.md",
+    "summary": "Báo cáo Markdown sơ bộ dựa trên các câu hỏi đối chuẩn của Workspace Chat.",
+    "tags": [
+      "markdown",
+      "report"
+    ],
+    "complexity": "moderate"
+  },
+  {
+    "id": "file:docs/requirements/NON_FUNCTIONAL_REQUIREMENTS.md",
+    "type": "file",
+    "name": "NON_FUNCTIONAL_REQUIREMENTS.md",
+    "filePath": "docs/requirements/NON_FUNCTIONAL_REQUIREMENTS.md",
+    "summary": "Đường cơ sở (baseline) cho các yêu cầu phi chức năng bao gồm quyền riêng tư, an toàn bảo mật và độ tin cậy.",
+    "tags": [
+      "requirements",
+      "documentation"
+    ],
+    "complexity": "moderate"
+  },
+  {
+    "id": "file:docs/requirements/PRODUCT_REQUIREMENTS.md",
+    "type": "file",
+    "name": "PRODUCT_REQUIREMENTS.md",
+    "filePath": "docs/requirements/PRODUCT_REQUIREMENTS.md",
+    "summary": "Đường cơ sở (baseline) cho các tính năng sản phẩm và phạm vi dự án.",
+    "tags": [
+      "requirements",
+      "documentation"
+    ],
+    "complexity": "moderate"
+  },
+  {
+    "id": "file:docs/requirements/TRACEABILITY_MATRIX.md",
+    "type": "file",
+    "name": "TRACEABILITY_MATRIX.md",
+    "filePath": "docs/requirements/TRACEABILITY_MATRIX.md",
+    "summary": "Ma trận truy vết (Traceability Matrix) liên kết các yêu cầu với các thành phần thiết kế và bằng chứng (evidence).",
+    "tags": [
+      "requirements",
+      "documentation"
+    ],
+    "complexity": "moderate"
+  },
+  {
+    "id": "file:docs/security/DEPENDENCY_POLICY.md",
+    "type": "file",
+    "name": "DEPENDENCY_POLICY.md",
+    "filePath": "docs/security/DEPENDENCY_POLICY.md",
+    "summary": "Chính sách quản lý các phần phụ thuộc bên ngoài (external dependencies) và an ninh chuỗi cung ứng (supply-chain security).",
+    "tags": [
+      "security",
+      "documentation",
+      "dependency"
+    ],
+    "complexity": "moderate"
+  }
+]

@@ -1,67 +1,57 @@
-# Privacy Impact Assessment
+# Đánh Giá Tác Động Quyền Riêng Tư (Privacy Impact Assessment)
 
 Status: `PARTIAL`
 Owner role: Project owner / privacy decision maker
 Last reviewed: 2026-07-25
 Review cadence: Before any new external recipient, data class or cloud route
 
-## Purpose and limits
+## Mục Đích và Giới Hạn (Purpose and Limits)
 
-This is an engineering privacy assessment, not legal advice or a compliance
-certification. It documents current behavior and owner decisions still required.
+Đây là bản đánh giá kỹ thuật về quyền riêng tư (engineering privacy assessment), không phải lời khuyên pháp lý hay chứng nhận tuân thủ. Nó ghi nhận hành vi hiện tại của hệ thống và các quyết định còn thiếu của chủ sở hữu.
 
-## Processing inventory
+## Kiểm Kê Xử Lý Dữ Liệu (Processing Inventory)
 
-| Data class | Local handling | External recipient | Condition | Retention reality |
+| Phân loại dữ liệu | Xử lý cục bộ | Bên nhận bên ngoài | Điều kiện | Thực tế lưu trữ |
 |---|---|---|---|---|
-| Workspace Chat notebooks, messages and sources | JSONL under ignored `local_cases/workspace_chat/` | None by default | Local use | Owner-managed filesystem data; no automatic retention/deletion engine proven |
-| RAG v2 chunks/index | Local SQLite path chosen by caller | None by default | Local retrieval | Rebuildable from available source/chunk input where caller preserves it |
-| `local_only` / `confidential` source text | Local only | Blocked | Gateway hard deny | Owner-managed |
-| `unknown` / `machine_only` source text | Local by default | Optional provider | Gateway requires consent bound to full source set, destination and purpose; sensitive outbound text remains redacted | Owner-managed; consent is request authorization, not retention policy |
-| `cloud_safe` / `public` source text | Local or optional provider | Configured provider | Gateway approval + normal explicit request flow | Provider terms/retention are external and must be reviewed by owner |
-| API keys | Process environment for router integration | Provider authentication only | Explicit live route | Not stored by application contract; do not commit |
-| Logs/diagnostics | Local/operator controlled | None by default | Sanitized collection only | No formal automatic retention policy |
+| Sổ ghi chép, tin nhắn và nguồn Workspace Chat | JSONL dưới `local_cases/workspace_chat/` (được gitignore) | Mặc định không có | Dùng cục bộ | Dữ liệu hệ thống tệp do chủ sở hữu tự quản lý; chưa có bộ máy xóa/lưu tự động được kiểm chứng |
+| Chunk / Chỉ mục RAG v2 | Đường dẫn SQLite cục bộ do caller chọn | Mặc định không có | Truy xuất cục bộ | Có thể tái tạo từ đầu vào nguồn/chunk có sẵn nơi caller lưu giữ |
+| Văn bản nguồn `local_only` / `confidential` | Chỉ dùng cục bộ | Bị chặn | Gateway từ chối cứng (hard deny) | Do chủ sở hữu tự quản lý |
+| Văn bản nguồn `unknown` / `machine_only` | Mặc định cục bộ | Provider tùy chọn | Gateway yêu cầu sự đồng ý ràng buộc với toàn bộ tập nguồn, đích đến và mục đích; văn bản nhạy cảm gửi ra ngoài vẫn bị làm sạch | Do chủ sở hữu tự quản lý; sự đồng ý là ủy quyền yêu cầu, không phải chính sách lưu trữ |
+| Văn bản nguồn `cloud_safe` / `public` | Cục bộ hoặc provider tùy chọn | Provider đã cấu hình | Phê duyệt từ Gateway + luồng yêu cầu tường minh thông thường | Điều khoản / lưu trữ của provider là bên ngoài và bắt buộc phải được chủ sở hữu xem xét |
+| API key | Biến môi trường tiến trình cho tích hợp router | Chỉ dùng xác thực provider | Tuyến live tường minh | Không lưu trữ theo hợp đồng ứng dụng; tuyệt đối không commit |
+| Log / Chẩn đoán | Cục bộ / do người vận hành kiểm soát | Mặc định không có | Chỉ thu thập bản đã làm sạch | Chưa có chính sách lưu trữ tự động chính thức |
 
-## Route-specific policy coverage
+## Độ Bao Phủ Chính Sách Theo Tuyến (Route-specific Policy Coverage)
 
-`BrainGateway.preflight_check()` implements the verified policy for both the
-router-enabled mock path and the real Workspace Chat provider path:
+Hàm `BrainGateway.preflight_check()` triển khai chính sách đã được kiểm chứng cho cả luồng mock router và luồng provider Workspace Chat thực tế:
 
-1. router disabled or no sources → deny;
-2. `local_only` / `confidential` → hard deny external route;
-3. `unknown` / `machine_only` → deny until valid `OwnerConsent` matches the full
-   source-set hash, destination and purpose;
-4. retrieved outbound evidence must match a source in the full enabled snapshot;
-5. approved payloads are sanitized; sensitive source titles/text are redacted and
-   metadata is allow-listed/opaque.
+1. router bị tắt hoặc không có nguồn → từ chối;
+2. `local_only` / `confidential` → từ chối cứng tuyến gửi ra bên ngoài;
+3. `unknown` / `machine_only` → từ chối cho đến khi có `OwnerConsent` hợp lệ khớp với mã băm toàn bộ tập nguồn, đích đến và mục đích;
+4. bằng chứng gửi ra ngoài được truy xuất phải khớp với một nguồn trong ảnh chụp nhanh toàn bộ nguồn đang kích hoạt;
+5. payload được phê duyệt phải được làm sạch; tiêu đề/văn bản nguồn nhạy cảm bị ẩn đi và metadata nằm trong allowlist/dạng mờ đục.
 
-The real route uses destination `workspace_chat_external_router` and passes only
-`SanitizedRouterPayload` to the router adapter. The adapter builds provider
-messages itself, never from caller-provided raw prompts. The owner-facing
-external-sharing selection writes `cloud_safe`; existing `machine_only` and
-`cloud_allowed` records stay non-sendable until an owner explicitly reclassifies
-them. The Nakazasen Router remains a provider-routing dependency and is never a
-consent authority.
+Tuyến thực tế sử dụng đích đến `workspace_chat_external_router` và chỉ truyền `SanitizedRouterPayload` cho router adapter. Adapter tự xây dựng các thông điệp gửi tới provider, tuyệt đối không dùng prompt thô do caller cung cấp. Lựa chọn chia sẻ bên ngoài phía người dùng sẽ ghi nhãn `cloud_safe`; các bản ghi `machine_only` và `cloud_allowed` cũ vẫn ở trạng thái không thể gửi cho đến khi chủ sở hữu phân loại lại tường minh. Nakazasen Router vẫn là phụ thuộc định tuyến provider và không bao giờ là thẩm quyền quyết định sự đồng ý.
 
-## Owner decisions required
+## Quyết Định Bắt Buộc Của Chủ Sở Hữu (Owner Decisions Required)
 
-| Decision | Status |
+| Quyết định | Trạng thái |
 |---|---|
-| Legal basis and jurisdiction-specific privacy obligations | `OWNER_DECISION_REQUIRED` |
-| Named external providers and their terms/subprocessors | `OWNER_DECISION_REQUIRED` |
-| Retention duration / deletion schedule | `OWNER_DECISION_REQUIRED` |
-| Security disclosure contact and incident communications | `OWNER_DECISION_REQUIRED` |
-| Whether external routing is enabled for normal users | `OWNER_DECISION_REQUIRED` |
+| Cơ sở pháp lý và nghĩa vụ quyền riêng tư theo khu vực tài phán cụ thể | `OWNER_DECISION_REQUIRED` |
+| Danh sách provider bên ngoài và các điều khoản / bên xử lý phụ của họ | `OWNER_DECISION_REQUIRED` |
+| Thời hạn lưu trữ / lịch trình xóa dữ liệu | `OWNER_DECISION_REQUIRED` |
+| Đầu mối liên hệ công bố bảo mật và truyền thông sự cố | `OWNER_DECISION_REQUIRED` |
+| Quyết định có kích hoạt định tuyến ra bên ngoài cho người dùng thông thường hay không | `OWNER_DECISION_REQUIRED` |
 
-## Privacy test expectations
+## Kỳ Vọng Kiểm Thử Quyền Riêng Tư (Privacy Test Expectations)
 
-- Tests cover hard deny, default deny, source-set-bound consent and sanitization.
-- CI uses only synthetic fixtures and has no provider credential.
-- Live provider smoke is opt-in and uses a generic prompt without project/source
-  context. Evidence records status/model only, never a key or raw request.
+- Các bài kiểm thử bao phủ: từ chối cứng (hard deny), từ chối mặc định (default deny), sự đồng ý ràng buộc tập nguồn và làm sạch dữ liệu.
+- CI chỉ sử dụng fixture dữ liệu tổng hợp và không có thông tin xác thực provider.
+- Live smoke với provider là tùy chọn opt-in và sử dụng prompt generic không chứa ngữ cảnh dự án / nguồn. Bằng chứng chỉ ghi trạng thái / model, tuyệt đối không ghi API key hoặc yêu cầu thô.
 
-## Related controls
+## Các Chốt Chặn Liên Quan (Related Controls)
 
-- [Data policy](../../00_governance/DATA_POLICY.md)
-- [Threat model](THREAT_MODEL.md)
-- [Operations and incidents](../operations/INCIDENT_RESPONSE.md)
+- [Chính sách dữ liệu (Data policy)](../../00_governance/DATA_POLICY.md)
+- [Mô hình mối đe dọa (Threat model)](THREAT_MODEL.md)
+- [Vận hành và sự cố (Operations and incidents)](../operations/INCIDENT_RESPONSE.md)
+

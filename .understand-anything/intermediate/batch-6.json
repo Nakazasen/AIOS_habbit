@@ -1,0 +1,50 @@
+{
+  "nodes": [
+    {
+      "id": "file:.agents/teamwork_preview_swe_1/BRIEFING.md",
+      "type": "file",
+      "name": "BRIEFING.md",
+      "filePath": ".agents/teamwork_preview_swe_1/BRIEFING.md",
+      "summary": "Briefing document for the teamwork_preview_swe_1 agent.",
+      "tags": ["documentation", "agent-config"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:.agents/teamwork_preview_swe_1/DISPATCH.md",
+      "type": "file",
+      "name": "DISPATCH.md",
+      "filePath": ".agents/teamwork_preview_swe_1/DISPATCH.md",
+      "summary": "Dispatch instructions for the teamwork_preview_swe_1 agent.",
+      "tags": ["documentation", "agent-config"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:.agents/teamwork_preview_swe_1/handoff.md",
+      "type": "file",
+      "name": "handoff.md",
+      "filePath": ".agents/teamwork_preview_swe_1/handoff.md",
+      "summary": "Handoff instructions for the teamwork_preview_swe_1 agent.",
+      "tags": ["documentation", "agent-config"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:.agents/teamwork_preview_swe_1/plan.md",
+      "type": "file",
+      "name": "plan.md",
+      "filePath": ".agents/teamwork_preview_swe_1/plan.md",
+      "summary": "Plan document for the teamwork_preview_swe_1 agent.",
+      "tags": ["documentation", "agent-config"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:.agents/teamwork_preview_swe_1/progress.md",
+      "type": "file",
+      "name": "progress.md",
+      "filePath": ".agents/teamwork_preview_swe_1/progress.md",
+      "summary": "Progress tracking document for the teamwork_preview_swe_1 agent.",
+      "tags": ["documentation", "agent-config"],
+      "complexity": "moderate"
+    }
+  ],
+  "edges": []
+}

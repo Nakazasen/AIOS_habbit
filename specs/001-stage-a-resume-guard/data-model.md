@@ -1,22 +1,23 @@
-# Data Model: Resumable Stage A Preparation
+# Mô Hình Dữ Liệu: Chuẩn Bị Giai Đoạn A Có Khả Năng Tiếp Tục (Data Model: Resumable Stage A Preparation)
 
-## Preparation checkpoint
+## Điểm Kiểm Tra Chuẩn Bị (Preparation checkpoint)
 
-| Field | Meaning | Validation |
+| Trường (Field) | Ý nghĩa (Meaning) | Xác thực (Validation) |
 |---|---|---|
-| `schema_version` | Checkpoint format revision | exact supported integer |
-| `status` | `building`, `failed`, or `ready` | `ready` is written only after full preparation |
-| `identity` | Frozen content-addressed stage identity | exact equality required for resume |
-| `completed_document_ids` | Ordered opaque committed document IDs | subset of current materialized document IDs, no duplicates |
-| `total_sources` | Number of text-bearing sources | equals current staging source count |
-| `last_error` | Safe failure category | no raw exception detail |
-| `updated_at` | UTC checkpoint update time | written atomically |
+| `schema_version` | Phiên bản định dạng checkpoint | số nguyên được hỗ trợ chính xác |
+| `status` | `building`, `failed`, hoặc `ready` | `ready` chỉ được ghi sau khi hoàn tất toàn bộ chuẩn bị |
+| `identity` | Định danh giai đoạn định địa chỉ theo nội dung đóng băng | yêu cầu khớp chính xác tuyệt đối để tiếp tục |
+| `completed_document_ids` | Danh sách có thứ tự các ID tài liệu đã commit mờ (opaque) | tập con của các ID tài liệu hiện thực hóa hiện tại, không trùng lặp |
+| `total_sources` | Số lượng nguồn có chứa văn bản | bằng với số lượng nguồn staging hiện tại |
+| `last_error` | Danh mục lỗi an toàn | không chứa chi tiết ngoại lệ thô |
+| `updated_at` | Thời gian cập nhật checkpoint UTC | ghi nguyên tử (atomically) |
 
-## State transitions
+## Chuyển Đổi Trạng Thái (State Transitions)
 
 ```text
 missing -> building -> ready
-                  -> failed -> building (only with exact identity)
+                  -> failed -> building (chỉ khi đúng định danh chính xác)
 ```
 
-A `failed` checkpoint never qualifies as a staging manifest. A changed identity is rejected rather than transitioned.
+Một checkpoint ở trạng thái `failed` không bao giờ đủ điều kiện làm manifest staging. Một định danh bị thay đổi sẽ bị từ chối thay vì chuyển đổi trạng thái.
+

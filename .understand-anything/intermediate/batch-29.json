@@ -1,0 +1,68 @@
+{
+  "nodes": [
+    {
+      "id": "file:docs/adr/0001-local-first-filesystem-ownership.md",
+      "type": "file",
+      "name": "0001-local-first-filesystem-ownership.md",
+      "filePath": "docs/adr/0001-local-first-filesystem-ownership.md",
+      "summary": "ADR 1: Local-first filesystem ownership",
+      "tags": ["adr", "architecture"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:docs/adr/0002-workspace-chat-supported-ui.md",
+      "type": "file",
+      "name": "0002-workspace-chat-supported-ui.md",
+      "filePath": "docs/adr/0002-workspace-chat-supported-ui.md",
+      "summary": "ADR 2: Workspace chat supported UI architecture",
+      "tags": ["adr", "ui"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:docs/adr/0003-local-sqlite-lexical-index.md",
+      "type": "file",
+      "name": "0003-local-sqlite-lexical-index.md",
+      "filePath": "docs/adr/0003-local-sqlite-lexical-index.md",
+      "summary": "ADR 3: Local SQLite lexical index design",
+      "tags": ["adr", "storage"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:docs/adr/0004-brain-gateway-privacy-ownership.md",
+      "type": "file",
+      "name": "0004-brain-gateway-privacy-ownership.md",
+      "filePath": "docs/adr/0004-brain-gateway-privacy-ownership.md",
+      "summary": "ADR 4: Brain gateway privacy and ownership boundary",
+      "tags": ["adr", "privacy"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:docs/adr/0005-router-provider-routing-boundary.md",
+      "type": "file",
+      "name": "0005-router-provider-routing-boundary.md",
+      "filePath": "docs/adr/0005-router-provider-routing-boundary.md",
+      "summary": "ADR 5: Router provider routing boundary",
+      "tags": ["adr", "routing"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:docs/adr/0006-private-runtime-data-outside-git.md",
+      "type": "file",
+      "name": "0006-private-runtime-data-outside-git.md",
+      "filePath": "docs/adr/0006-private-runtime-data-outside-git.md",
+      "summary": "ADR 6: Storing private runtime data outside git",
+      "tags": ["adr", "security"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:docs/adr/README.md",
+      "type": "file",
+      "name": "README.md",
+      "filePath": "docs/adr/README.md",
+      "summary": "Overview of Architecture Decision Records (ADRs)",
+      "tags": ["adr", "docs"],
+      "complexity": "moderate"
+    }
+  ],
+  "edges": []
+}

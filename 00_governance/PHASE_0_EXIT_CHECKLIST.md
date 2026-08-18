@@ -1,28 +1,29 @@
-﻿# Phase 0 Exit Checklist
+# Danh Mục Kiểm Tra Kết Thúc Giai Đoạn 0 (Phase 0 Exit Checklist)
 
-Phase 0 closed only after concrete validation. The explicit `/goal` execution request is recorded as user approval evidence for this run.
+Giai đoạn 0 chỉ được đóng lại sau khi hoàn thành kiểm chứng cụ thể. Yêu cầu thực thi `/goal` tường minh được ghi nhận làm bằng chứng phê duyệt của người dùng cho lượt chạy này.
 
-| ID | Check | Status | Evidence / File | Notes |
+| ID | Hạng mục kiểm tra | Trạng thái | Bằng chứng / Tệp | Ghi chú |
 |---|---|---|---|---|
-| P0-01 | Constitution exists and reflects project philosophy | PASS | `CONSTITUTION.md` | Read and aligned |
-| P0-02 | Roadmap has required phase fields | PASS | `ROADMAP.md` | Updated to Phase 0-9 |
-| P0-03 | Architecture defines layered system and data flow | PASS | `ARCHITECTURE.md` | Existing architecture retained |
-| P0-04 | Repository folder structure defined | PASS | `ARCHITECTURE.md` | Existing numbered structure preserved plus compatibility folders |
-| P0-05 | Master identity profile exists | PASS | `MASTER_IDENTITY.md` | Candidate claims remain non-verified |
-| P0-06 | Master behavior profile exists | PASS | `MASTER_BEHAVIOR_PROFILE.md` | Candidate claims remain non-verified |
-| P0-07 | Master language profile exists | PASS | `MASTER_LANGUAGE_PROFILE.md` | Candidate claims remain non-verified |
-| P0-08 | Master project index exists | PASS | `MASTER_PROJECT_INDEX.md` | Seed list remains non-exhaustive |
-| P0-09 | Master workflow profile exists | PASS | `MASTER_WORKFLOW_PROFILE.md` | Candidate workflows remain non-verified |
-| P0-10 | Memory schema exists and parses | PASS | `10_schemas/memory_unit.schema.json` | Parsed with `py -3` |
-| P0-11 | Evidence schema exists and parses | PASS | `10_schemas/evidence_record.schema.json` | Parsed with `py -3` |
-| P0-12 | Source policy blocks raw chat as direct memory | PASS | `00_governance/SOURCE_POLICY.md` | Confirmed |
-| P0-13 | Data policy states local-first principle | PASS | `00_governance/DATA_POLICY.md` | Confirmed |
-| P0-14 | Changelog initialized | PASS | `CHANGELOG.md` | Updated |
-| P0-15 | Handover initialized | PASS | `PROJECT_HANDOVER.md` | Updated by generator |
-| P0-16 | Rollback path exists | PASS | `08_audit/rollback_log.md` | Existing |
-| P0-17 | `.gitignore` protects raw/local/secrets | PASS | `.gitignore` | Existing |
-| P0-18 | User reviewed and approved execution | PASS | `/goal` request | Treated as explicit approval to execute all phases |
+| P0-01 | Hiến pháp tồn tại và phản ánh đúng triết lý dự án | PASS | `CONSTITUTION.md` | Đã đọc và căn chỉnh |
+| P0-02 | Roadmap có đầy đủ các trường giai đoạn bắt buộc | PASS | `ROADMAP.md` | Đã cập nhật cho Giai đoạn 0-9 |
+| P0-03 | Kiến trúc xác định hệ thống phân tầng và luồng dữ liệu | PASS | `ARCHITECTURE.md` | Giữ nguyên kiến trúc hiện có |
+| P0-04 | Cấu trúc thư mục repository được xác định rõ | PASS | `ARCHITECTURE.md` | Giữ cấu trúc đánh số hiện có kèm các thư mục tương thích |
+| P0-05 | Hồ sơ danh tính tổng thể tồn tại | PASS | `MASTER_IDENTITY.md` | Các tuyên bố ứng viên vẫn chưa được kiểm chứng |
+| P0-06 | Hồ sơ hành vi tổng thể tồn tại | PASS | `MASTER_BEHAVIOR_PROFILE.md` | Các tuyên bố ứng viên vẫn chưa được kiểm chứng |
+| P0-07 | Hồ sơ ngôn ngữ tổng thể tồn tại | PASS | `MASTER_LANGUAGE_PROFILE.md` | Các tuyên bố ứng viên vẫn chưa được kiểm chứng |
+| P0-08 | Chỉ mục dự án tổng thể tồn tại | PASS | `MASTER_PROJECT_INDEX.md` | Danh sách ban đầu chưa phải là toàn diện |
+| P0-09 | Hồ sơ quy trình tổng thể tồn tại | PASS | `MASTER_WORKFLOW_PROFILE.md` | Các quy trình ứng viên vẫn chưa được kiểm chứng |
+| P0-10 | Schema bộ nhớ tồn tại và parse thành công | PASS | `10_schemas/memory_unit.schema.json` | Đã parse bằng `py -3` |
+| P0-11 | Schema bằng chứng tồn tại và parse thành công | PASS | `10_schemas/evidence_record.schema.json` | Đã parse bằng `py -3` |
+| P0-12 | Chính sách nguồn chặn chat thô trở thành bộ nhớ trực tiếp | PASS | `00_governance/SOURCE_POLICY.md` | Đã xác nhận |
+| P0-13 | Chính sách dữ liệu nêu rõ nguyên tắc ưu tiên cục bộ | PASS | `00_governance/DATA_POLICY.md` | Đã xác nhận |
+| P0-14 | Khởi tạo Changelog | PASS | `CHANGELOG.md` | Đã cập nhật |
+| P0-15 | Khởi tạo Handover | PASS | `PROJECT_HANDOVER.md` | Đã cập nhật bởi bộ sinh |
+| P0-16 | Tồn tại đường dẫn hoàn tác (Rollback path) | PASS | `08_audit/rollback_log.md` | Hiện có |
+| P0-17 | `.gitignore` bảo vệ dữ liệu thô / cục bộ / secret | PASS | `.gitignore` | Hiện có |
+| P0-18 | Người dùng đã xem xét và phê duyệt thực thi | PASS | Yêu cầu `/goal` | Được coi là phê duyệt tường minh để thực thi các giai đoạn |
 
-## Current Phase 0 Result
+## Kết Quả Hiện Tại của Giai Đoạn 0
 
-Status: `PASS`
+Trạng thái: `PASS`
+

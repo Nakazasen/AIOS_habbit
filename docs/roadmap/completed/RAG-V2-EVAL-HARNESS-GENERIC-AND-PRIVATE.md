@@ -1,53 +1,49 @@
-# RAG-V2-EVAL-HARNESS-GENERIC-AND-PRIVATE
+# Khung Đánh Giá RAG v2 Tổng Quát và Riêng Tư (RAG-V2-EVAL-HARNESS-GENERIC-AND-PRIVATE)
 
 Status: `DONE`
 
-## Goal
+## Mục Tiêu (Goal)
 
-Build a local-only, generic evaluation harness inside RAG v2 to measure
-retrieval and evidence quality with concrete metrics.
+Xây dựng một khung đánh giá tổng quát, chỉ chạy cục bộ bên trong RAG v2 nhằm đo lường chất lượng truy xuất và bằng chứng với các chỉ số cụ thể.
 
-## Prerequisite
+## Điều Kiện Tiên Quyết (Prerequisite)
 
-- `RAG-V2-HYBRID-RETRIEVAL-MIN` must be validated — `DONE`.
-- `RAG-V2-GENERIC-EVIDENCE-SYNTHESIS-MIN` must be validated — `DONE`.
+- `RAG-V2-HYBRID-RETRIEVAL-MIN` phải được kiểm chứng — `DONE`.
+- `RAG-V2-GENERIC-EVIDENCE-SYNTHESIS-MIN` phải được kiểm chứng — `DONE`.
 
-## Implemented scope
+## Phạm Vi Đã Triển Khai (Implemented Scope)
 
-- New `rag_v2/eval_harness.py` module, independent of legacy `rag_benchmark.py`,
-  `rag_evaluator.py`, `rag_search.py`, and `query_intent.py`.
-- Generic data types: `BenchmarkConfig`, `BenchmarkQuestion`,
-  `BenchmarkResult`, `BenchmarkSummary`.
-- `run_benchmark(index, questions, config)`: full pipeline runner exercising
-  `LocalChunkIndex.search_with_summary()` → `build_evidence_pack()` → score.
-- Metrics: retrieval hit rate, document hit rate, citation source hit rate,
-  insufficiency detection rate, privacy pass rate, average latency.
-- Forbidden term check in evidence snippets.
-- Stable reproducible benchmark ID from hash of questions + config.
-- `format_benchmark_summary(summary)`: human-readable text report.
-- `benchmark_summary_to_dict(summary)`: JSON-compatible serialization.
-- PASS / FAIL / PASS_WITH_WARNINGS verdict from configurable thresholds.
+- Module mới `rag_v2/eval_harness.py`, độc lập hoàn toàn khỏi các module cũ `rag_benchmark.py`, `rag_evaluator.py`, `rag_search.py`, và `query_intent.py`.
+- Các kiểu dữ liệu tổng quát: `BenchmarkConfig`, `BenchmarkQuestion`, `BenchmarkResult`, `BenchmarkSummary`.
+- `run_benchmark(index, questions, config)`: runner toàn bộ đường ống thực thi `LocalChunkIndex.search_with_summary()` → `build_evidence_pack()` → chấm điểm.
+- Các chỉ số: tỷ lệ trúng truy xuất, tỷ lệ trúng tài liệu, tỷ lệ trúng nguồn trích dẫn, tỷ lệ phát hiện thiếu dữ liệu, tỷ lệ đạt bảo mật, độ trễ trung bình.
+- Kiểm tra các thuật ngữ bị cấm trong các đoạn trích bằng chứng.
+- ID benchmark ổn định, có tính tái lập từ mã băm của bộ câu hỏi + cấu hình.
+- `format_benchmark_summary(summary)`: báo cáo văn bản thân thiện với con người.
+- `benchmark_summary_to_dict(summary)`: tuần tự hóa tương thích JSON.
+- Kết luận PASS / FAIL / PASS_WITH_WARNINGS từ các ngưỡng có thể cấu hình.
 
-## Acceptance evidence
+## Bằng Chứng Nghiệm Thu (Acceptance Evidence)
 
-- Focused eval + hard-code guard tests: **11 passed** in 0.37s.
-- Documentation contract: PASS.
-- Compile: PASS.
-- Full test suite: **931 passed** in 25.45s.
-- CLI audit: PASS, no errors or warnings.
-- Workspace Chat import: PASS (expected Streamlit bare-mode warnings only).
-- Hard-code guard (`test_rag_v2_hardcode_guard.py`): PASS; no protected terms.
+- Kiểm thử đánh giá tập trung + chốt chặn mã cứng: **11 passed** in 0.37s.
+- Hợp đồng tài liệu: PASS.
+- Biên dịch: PASS.
+- Toàn bộ bộ kiểm thử: **931 passed** in 25.45s.
+- Kiểm toán CLI audit: PASS, không có lỗi hay cảnh báo.
+- Import Workspace Chat: PASS (chỉ có cảnh báo bare-mode của Streamlit như kỳ vọng).
+- Chốt chặn mã cứng (`test_rag_v2_hardcode_guard.py`): PASS; không có thuật ngữ được bảo vệ nào bị vi phạm.
 
-## Explicitly excluded
+## Các Loại Trừ Rõ Ràng (Explicitly Excluded)
 
-- No Workspace Chat UI or runtime migration.
-- No cloud/provider/LLM call, credential, or new dependency.
-- No import from legacy benchmark/evaluator/search/intent modules.
-- No domain-specific terms in source or comments.
-- No private dataset committed to Git.
-- Answer faithfulness metric deferred (requires LLM judge — future gate).
+- Không thay đổi UI Workspace Chat hay di chuyển runtime.
+- Không có lệnh gọi cloud/provider/LLM, credential, hay dependency mới.
+- Không import từ các module benchmark/evaluator/search/intent cũ.
+- Không có thuật ngữ đặc thù ngành trong mã nguồn hay chú thích.
+- Không commit tập dữ liệu riêng tư vào Git.
+- Chỉ số độ trung thực câu trả lời được tạm hoãn (yêu cầu giám khảo LLM — cổng tương lai).
 
-## References
+## Tài Liệu Tham Khảo (References)
 
-- Architecture: `docs/rag_v2/RAG_V2_DESIGN.md` section 13.
-- Legacy pattern: `rag_benchmark.py` (consulted, not imported).
+- Kiến trúc: `docs/rag_v2/RAG_V2_DESIGN.md` phần 13.
+- Mẫu kế thừa: `rag_benchmark.py` (tham khảo, không import trực tiếp).
+

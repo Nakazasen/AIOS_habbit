@@ -1,0 +1,59 @@
+{
+  "nodes": [
+    {
+      "id": "file:10_schemas/decision_pattern.schema.json",
+      "type": "file",
+      "name": "decision_pattern.schema.json",
+      "filePath": "10_schemas/decision_pattern.schema.json",
+      "summary": "JSON schema for decision pattern definitions.",
+      "tags": ["schema", "json"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:10_schemas/evidence_record.schema.json",
+      "type": "file",
+      "name": "evidence_record.schema.json",
+      "filePath": "10_schemas/evidence_record.schema.json",
+      "summary": "JSON schema for evidence records.",
+      "tags": ["schema", "json"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:10_schemas/memory_unit.schema.json",
+      "type": "file",
+      "name": "memory_unit.schema.json",
+      "filePath": "10_schemas/memory_unit.schema.json",
+      "summary": "JSON schema for memory unit structures.",
+      "tags": ["schema", "json"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:10_schemas/phase_record.schema.json",
+      "type": "file",
+      "name": "phase_record.schema.json",
+      "filePath": "10_schemas/phase_record.schema.json",
+      "summary": "JSON schema for phase record tracking.",
+      "tags": ["schema", "json"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:10_schemas/project_card.schema.json",
+      "type": "file",
+      "name": "project_card.schema.json",
+      "filePath": "10_schemas/project_card.schema.json",
+      "summary": "JSON schema for project card definitions.",
+      "tags": ["schema", "json"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:10_schemas/workflow_card.schema.json",
+      "type": "file",
+      "name": "workflow_card.schema.json",
+      "filePath": "10_schemas/workflow_card.schema.json",
+      "summary": "JSON schema for workflow card configurations.",
+      "tags": ["schema", "json"],
+      "complexity": "moderate"
+    }
+  ],
+  "edges": []
+}

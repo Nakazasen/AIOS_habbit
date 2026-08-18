@@ -1,53 +1,52 @@
-# P1 Advanced Retrieval Decision
+# Quyết Định Về Truy Xuất Nâng Cao Cho P1 (P1 Advanced Retrieval Decision)
 
-## Decision summary
+## Tóm Tắt Quyết Định (Decision Summary)
 
-- Vector DB before P1.0: `DEFERRED_NOT_P1_BLOCKER`
-- Graph DB before P1.0: `DEFERRED_NOT_P1_BLOCKER`
-- NotebookLM parity: `NOT_CLAIMED`
+- Cơ sở dữ liệu Vector (Vector DB) trước P1.0: `DEFERRED_NOT_P1_BLOCKER` (TẠM HOÃN, KHÔNG CHẶN P1).
+- Cơ sở dữ liệu Đồ thị (Graph DB) trước P1.0: `DEFERRED_NOT_P1_BLOCKER` (TẠM HOÃN, KHÔNG CHẶN P1).
+- Tương đương năng lực với NotebookLM: `NOT_CLAIMED` (KHÔNG TUYÊN BỐ).
 
-## Is Vector DB required before P1.0?
+## Cơ Sở Dữ Liệu Vector Có Bắt Buộc Trước P1.0 Không?
 
-No current evidence proves that a vector DB is required before P1.0. The existing local SQLite FTS/BM25 foundation, evidence pack, and benchmark harness are enough to continue owner workflow validation.
+Chưa có bằng chứng hiện tại nào chứng minh rằng Vector DB là bắt buộc trước P1.0. Nền tảng SQLite FTS/BM25 cục bộ hiện có, gói bằng chứng và khung đo chuẩn benchmark đã đủ để tiếp tục kiểm chứng quy trình làm việc của chủ sở hữu.
 
-A vector DB should be reconsidered only if a benchmark shows that keyword/BM25 retrieval cannot find relevant evidence for owner-critical tasks that are phrased differently from the source text.
+Vector DB chỉ nên được xem xét lại nếu một đợt đo chuẩn benchmark chứng minh rằng việc truy xuất từ khóa / BM25 không thể tìm thấy bằng chứng liên quan cho các tác vụ quan trọng của chủ sở hữu được diễn đạt khác với văn bản gốc.
 
-## Is Graph DB required before P1.0?
+## Cơ Sở Dữ Liệu Đồ Thị Có Bắt Buộc Trước P1.0 Không?
 
-No current evidence proves that a graph DB is required before P1.0. P1.0 should first prove the daily Case → Evidence → Action workflow.
+Chưa có bằng chứng hiện tại nào chứng minh rằng Graph DB là bắt buộc trước P1.0. P1.0 trước hết cần chứng minh quy trình làm việc hằng ngày: Vụ việc (Case) → Bằng chứng (Evidence) → Hành động (Action).
 
-A graph DB should be reconsidered only if cross-case relationship queries become P1-critical and cannot be represented with lightweight local metadata.
+Graph DB chỉ nên được xem xét lại nếu các truy vấn quan hệ xuyên vụ việc trở nên bắt buộc đối với P1 và không thể biểu diễn bằng metadata cục bộ gọn nhẹ.
 
-## What failure would justify advanced retrieval?
+## Thất Bại Nào Sẽ Biện Minh Cho Việc Cần Truy Xuất Nâng Cao?
 
-- Repeated benchmark misses on semantically equivalent questions.
-- Owner cannot find known evidence through reasonable Vietnamese/English queries.
-- Evidence packs include too many irrelevant chunks for daily use.
-- Cross-case relation questions become required for P1.0 decisions.
+- Liên tục bỏ sót trong các đợt đo chuẩn benchmark đối với các câu hỏi tương đương về mặt ngữ nghĩa.
+- Chủ sở hữu không thể tìm thấy bằng chứng đã biết thông qua các truy vấn Tiếng Việt / Tiếng Anh hợp lý.
+- Gói bằng chứng chứa quá nhiều chunk không liên quan cho việc sử dụng hằng ngày.
+- Các câu hỏi quan hệ xuyên vụ việc trở thành bắt buộc đối với các quyết định của P1.0.
 
-## Benchmark needed to prove need
+## Yêu Cầu Đối Với Đợt Đo Chuẩn Benchmark
 
-- Fake-data and real-local-only question sets.
-- Expected chunks, documents, and citation labels.
-- Insufficient-evidence questions.
-- Privacy pass-rate checks.
-- Before/after comparison against current BM25 baseline.
+- Bộ câu hỏi dữ liệu giả (synthetic) và chỉ chạy cục bộ với dữ liệu thực.
+- Các chunk, tài liệu và nhãn trích dẫn kỳ vọng.
+- Các câu hỏi thuộc dạng chưa đủ bằng chứng (insufficient-evidence).
+- Kiểm tra tỷ lệ đạt về quyền riêng tư.
+- So sánh trước / sau với đường cơ sở BM25 hiện tại.
 
-## NotebookLM wording policy
+## Chính Sách Dùng Từ Ngữ Về NotebookLM
 
-Allowed wording:
+Cách dùng từ được phép:
+- "Gói xuất an toàn cho NotebookLM (NotebookLM-safe export)"
+- "Quy trình bằng chứng cục bộ (local evidence workflow)"
+- "Đo chuẩn truy xuất có giới hạn (limited retrieval benchmark)"
+- "Tiêu chí đo chuẩn theo phong cách NotebookLM (NotebookLM-style benchmark criteria)"
 
-- "NotebookLM-safe export"
-- "local evidence workflow"
-- "limited retrieval benchmark"
-- "NotebookLM-style benchmark criteria"
+Cách dùng từ nghiêm cấm tuyệt đối trừ khi được chứng minh bằng benchmark và sự nghiệm thu của chủ sở hữu:
+- "Tương đương NotebookLM (NotebookLM parity)"
+- "Thay thế NotebookLM (NotebookLM replacement)"
+- "Tốt hơn NotebookLM (better than NotebookLM)"
 
-Forbidden wording unless proven by benchmark and owner acceptance:
+## Vì Sao Tạm Hoãn Lại Là Quyết Định An Toàn
 
-- "NotebookLM parity"
-- "NotebookLM replacement"
-- "better than NotebookLM"
+Việc tạm hoãn Vector DB và Graph DB giúp P1 tập trung cao độ vào tính khả dụng cho chủ sở hữu, quyền riêng tư, khả năng truy xuất nguồn gốc bằng chứng và kiểm chứng thực tế. Việc thêm các cơ sở dữ liệu lưu trữ nâng cao trước khi có sự nghiệm thu của chủ sở hữu sẽ làm phình to phạm vi và rủi ro mà không chứng minh được nó giải quyết được nút thắt hiện tại.
 
-## Why deferring is safe
-
-Deferring Vector DB and Graph DB keeps P1 focused on owner usability, privacy, evidence traceability, and validation. Adding advanced storage before owner acceptance would increase scope and risk without proving that it solves the current blocker.

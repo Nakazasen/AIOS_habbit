@@ -1,45 +1,46 @@
-# Phase 0 Handover
+# Bàn Giao Giai Đoạn 0 (Phase 0 Handover)
 
-## Phase
+## Giai Đoạn (Phase)
 
-Phase 0 - Foundation
+Giai đoạn 0 - Nền tảng (Phase 0 - Foundation)
 
-## Status
+## Trạng Thái (Status)
 
 `OPEN / PARTIAL`
 
-## Completed
+## Đã Hoàn Thành (Completed)
 
-- Foundation documents generated.
-- Repository structure generated.
-- Schemas generated.
-- Templates generated.
-- Governance policy generated.
+- Đã tạo các tài liệu nền tảng.
+- Đã tạo cấu trúc repository.
+- Đã tạo các schema.
+- Đã tạo các template.
+- Đã tạo chính sách quản trị.
 
-## Not Completed
+## Chưa Hoàn Thành (Not Completed)
 
-- User review.
-- Phase 0 final PASS.
-- Phase gate closure.
+- Người dùng đánh giá.
+- PASS cuối cùng cho Giai đoạn 0.
+- Đóng cổng giai đoạn.
 
-## Key Decisions
+## Các Quyết Định Then Chốt (Key Decisions)
 
-- AIOS Habit is not a chat backup tool.
-- Raw chat is not memory.
-- Evidence-first extraction is mandatory.
-- Local-first storage is default.
-- AI export packs are derived artifacts, not source of truth.
+- AIOS Habit không phải là công cụ sao lưu đoạn chat.
+- Chat thô không phải là ký ức.
+- Bắt buộc trích xuất dựa trên bằng chứng trước tiên (evidence-first).
+- Lưu trữ ưu tiên cục bộ (local-first) là mặc định.
+- Các gói xuất AI là các artifact phái sinh, không phải là nguồn sự thật (source of truth).
 
-## Risks
+## Rủi Ro (Risks)
 
-- User may want a different folder structure.
-- Current profiles are candidate, not validated.
-- Project seed list may be incomplete.
+- Người dùng có thể muốn cấu trúc thư mục khác.
+- Các hồ sơ hiện tại là ứng viên, chưa được xác thực.
+- Danh sách hạt giống dự án có thể chưa đầy đủ.
 
-## Next Step
+## Bước Tiếp Theo (Next Step)
 
-Run Phase 0 exit checklist with user review.
+Chạy danh mục kiểm tra rời Giai đoạn 0 cùng với sự đánh giá của người dùng.
 
-## Rollback
+## Hoàn Tác (Rollback)
 
-Use initial package snapshot, record issue, then update governance docs before downstream files.
+Sử dụng snapshot gói ban đầu, ghi lại vấn đề, sau đó cập nhật tài liệu quản trị trước các tệp phía hạ nguồn.
+

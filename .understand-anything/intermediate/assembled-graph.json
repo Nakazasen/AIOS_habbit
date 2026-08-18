@@ -1,0 +1,1632 @@
+{
+  "nodes": [
+    {
+      "id": "file:.agents/ORIGINAL_REQUEST.md",
+      "type": "file",
+      "name": "ORIGINAL_REQUEST.md",
+      "filePath": ".agents/ORIGINAL_REQUEST.md",
+      "summary": "Original request and context documentation for the agent system.",
+      "tags": ["documentation", "agents"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:.agents/rules/graphify.md",
+      "type": "file",
+      "name": "graphify.md",
+      "filePath": ".agents/rules/graphify.md",
+      "summary": "Rules and guidelines for maintaining the Graphify knowledge graph.",
+      "tags": ["documentation", "rules", "graphify"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:.agents/sentinel/BRIEFING.md",
+      "type": "file",
+      "name": "BRIEFING.md",
+      "filePath": ".agents/sentinel/BRIEFING.md",
+      "summary": "Briefing instructions and scope for sentinel audit agent.",
+      "tags": ["documentation", "agents", "sentinel"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:.agents/sentinel/handoff.md",
+      "type": "file",
+      "name": "handoff.md",
+      "filePath": ".agents/sentinel/handoff.md",
+      "summary": "Handoff procedure documentation for sentinel agent.",
+      "tags": ["documentation", "agents", "handoff"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:.agents/teamwork_preview_implementer_1/BRIEFING.md",
+      "type": "file",
+      "name": "BRIEFING.md",
+      "filePath": ".agents/teamwork_preview_implementer_1/BRIEFING.md",
+      "summary": "Briefing documentation for implementer agent 1.",
+      "tags": ["documentation", "agent-config"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:.agents/teamwork_preview_implementer_1/handoff.md",
+      "type": "file",
+      "name": "handoff.md",
+      "filePath": ".agents/teamwork_preview_implementer_1/handoff.md",
+      "summary": "Handoff information for implementer agent 1.",
+      "tags": ["documentation", "agent-config"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:.agents/teamwork_preview_implementer_1/progress.md",
+      "type": "file",
+      "name": "progress.md",
+      "filePath": ".agents/teamwork_preview_implementer_1/progress.md",
+      "summary": "Progress tracking information for implementer agent 1.",
+      "tags": ["documentation", "agent-config"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:.agents/teamwork_preview_reviewer_1/BRIEFING.md",
+      "type": "file",
+      "name": "BRIEFING.md",
+      "filePath": ".agents/teamwork_preview_reviewer_1/BRIEFING.md",
+      "summary": "Briefing document for reviewer agent 1.",
+      "tags": ["documentation", "agent-config"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:.agents/teamwork_preview_reviewer_1/handoff.md",
+      "type": "file",
+      "name": "handoff.md",
+      "filePath": ".agents/teamwork_preview_reviewer_1/handoff.md",
+      "summary": "Handoff documentation for reviewer agent 1.",
+      "tags": ["documentation", "agent-config"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:.agents/teamwork_preview_reviewer_1/progress.md",
+      "type": "file",
+      "name": "progress.md",
+      "filePath": ".agents/teamwork_preview_reviewer_1/progress.md",
+      "summary": "Progress tracking documentation for reviewer agent 1.",
+      "tags": ["documentation", "agent-config"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:.agents/teamwork_preview_reviewer_2/BRIEFING.md",
+      "type": "file",
+      "name": "BRIEFING.md",
+      "filePath": ".agents/teamwork_preview_reviewer_2/BRIEFING.md",
+      "summary": "Briefing document for reviewer agent 2.",
+      "tags": ["markdown", "documentation"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:.agents/teamwork_preview_reviewer_2/handoff.md",
+      "type": "file",
+      "name": "handoff.md",
+      "filePath": ".agents/teamwork_preview_reviewer_2/handoff.md",
+      "summary": "Handoff instructions for reviewer agent 2.",
+      "tags": ["markdown", "documentation"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:.agents/teamwork_preview_reviewer_2/plan.md",
+      "type": "file",
+      "name": "plan.md",
+      "filePath": ".agents/teamwork_preview_reviewer_2/plan.md",
+      "summary": "Project plan for reviewer agent 2.",
+      "tags": ["markdown", "documentation"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:.agents/teamwork_preview_reviewer_2/progress.md",
+      "type": "file",
+      "name": "progress.md",
+      "filePath": ".agents/teamwork_preview_reviewer_2/progress.md",
+      "summary": "Progress tracking for reviewer agent 2.",
+      "tags": ["markdown", "documentation"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:.agents/teamwork_preview_reviewer_3/BRIEFING.md",
+      "type": "file",
+      "name": "BRIEFING.md",
+      "filePath": ".agents/teamwork_preview_reviewer_3/BRIEFING.md",
+      "summary": "Briefing document for reviewer agent 3.",
+      "tags": ["agent", "documentation"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:.agents/teamwork_preview_reviewer_3/handoff.md",
+      "type": "file",
+      "name": "handoff.md",
+      "filePath": ".agents/teamwork_preview_reviewer_3/handoff.md",
+      "summary": "Handoff instructions for reviewer agent 3.",
+      "tags": ["agent", "documentation"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:.agents/teamwork_preview_reviewer_3/progress.md",
+      "type": "file",
+      "name": "progress.md",
+      "filePath": ".agents/teamwork_preview_reviewer_3/progress.md",
+      "summary": "Progress tracking document for reviewer agent 3.",
+      "tags": ["agent", "documentation"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:.agents/teamwork_preview_swe_1/BRIEFING.md",
+      "type": "file",
+      "name": "BRIEFING.md",
+      "filePath": ".agents/teamwork_preview_swe_1/BRIEFING.md",
+      "summary": "Briefing document for software engineer agent 1.",
+      "tags": ["documentation", "agent-config"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:.agents/teamwork_preview_swe_1/DISPATCH.md",
+      "type": "file",
+      "name": "DISPATCH.md",
+      "filePath": ".agents/teamwork_preview_swe_1/DISPATCH.md",
+      "summary": "Dispatch instructions for software engineer agent 1.",
+      "tags": ["documentation", "agent-config"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:.agents/teamwork_preview_swe_1/handoff.md",
+      "type": "file",
+      "name": "handoff.md",
+      "filePath": ".agents/teamwork_preview_swe_1/handoff.md",
+      "summary": "Handoff instructions for software engineer agent 1.",
+      "tags": ["documentation", "agent-config"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:.agents/teamwork_preview_swe_1/plan.md",
+      "type": "file",
+      "name": "plan.md",
+      "filePath": ".agents/teamwork_preview_swe_1/plan.md",
+      "summary": "Plan document for software engineer agent 1.",
+      "tags": ["documentation", "agent-config"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:.agents/teamwork_preview_swe_1/progress.md",
+      "type": "file",
+      "name": "progress.md",
+      "filePath": ".agents/teamwork_preview_swe_1/progress.md",
+      "summary": "Progress tracking document for software engineer agent 1.",
+      "tags": ["documentation", "agent-config"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:.agents/teamwork_preview_victory_auditor_1/BRIEFING.md",
+      "type": "file",
+      "name": "BRIEFING.md",
+      "filePath": ".agents/teamwork_preview_victory_auditor_1/BRIEFING.md",
+      "summary": "Briefing document for victory auditor agent 1.",
+      "tags": ["documentation", "agent"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:.agents/teamwork_preview_victory_auditor_1/DISPATCH.md",
+      "type": "file",
+      "name": "DISPATCH.md",
+      "filePath": ".agents/teamwork_preview_victory_auditor_1/DISPATCH.md",
+      "summary": "Dispatch instructions for victory auditor agent 1.",
+      "tags": ["documentation", "agent"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:.agents/teamwork_preview_victory_auditor_1/audit_report.md",
+      "type": "file",
+      "name": "audit_report.md",
+      "filePath": ".agents/teamwork_preview_victory_auditor_1/audit_report.md",
+      "summary": "Audit report generated by victory auditor agent 1.",
+      "tags": ["report", "audit"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:.agents/teamwork_preview_victory_auditor_1/handoff.md",
+      "type": "file",
+      "name": "handoff.md",
+      "filePath": ".agents/teamwork_preview_victory_auditor_1/handoff.md",
+      "summary": "Handoff documentation for victory auditor agent 1.",
+      "tags": ["documentation", "handoff"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:.agents/teamwork_preview_victory_auditor_1/progress.md",
+      "type": "file",
+      "name": "progress.md",
+      "filePath": ".agents/teamwork_preview_victory_auditor_1/progress.md",
+      "summary": "Progress tracking for victory auditor agent 1.",
+      "tags": ["documentation", "tracking"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:.agents/teamwork_preview_victory_auditor_sentinel/BRIEFING.md",
+      "type": "file",
+      "name": "BRIEFING.md",
+      "filePath": ".agents/teamwork_preview_victory_auditor_sentinel/BRIEFING.md",
+      "summary": "Briefing document for victory auditor sentinel agent.",
+      "tags": ["markdown", "agents"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:.agents/teamwork_preview_victory_auditor_sentinel/DISPATCH.md",
+      "type": "file",
+      "name": "DISPATCH.md",
+      "filePath": ".agents/teamwork_preview_victory_auditor_sentinel/DISPATCH.md",
+      "summary": "Dispatch instructions for victory auditor sentinel agent.",
+      "tags": ["markdown", "agents"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:.agents/teamwork_preview_victory_auditor_sentinel/audit_report.md",
+      "type": "file",
+      "name": "audit_report.md",
+      "filePath": ".agents/teamwork_preview_victory_auditor_sentinel/audit_report.md",
+      "summary": "Audit report generated by victory auditor sentinel agent.",
+      "tags": ["markdown", "agents"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:.agents/teamwork_preview_victory_auditor_sentinel/handoff.md",
+      "type": "file",
+      "name": "handoff.md",
+      "filePath": ".agents/teamwork_preview_victory_auditor_sentinel/handoff.md",
+      "summary": "Handoff protocol for victory auditor sentinel agent.",
+      "tags": ["markdown", "agents"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:.agents/teamwork_preview_victory_auditor_sentinel/independent_test.ps1",
+      "type": "file",
+      "name": "independent_test.ps1",
+      "filePath": ".agents/teamwork_preview_victory_auditor_sentinel/independent_test.ps1",
+      "summary": "PowerShell script for testing victory auditor sentinel agent.",
+      "tags": ["powershell", "agents"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:.agents/teamwork_preview_victory_auditor_sentinel/progress.md",
+      "type": "file",
+      "name": "progress.md",
+      "filePath": ".agents/teamwork_preview_victory_auditor_sentinel/progress.md",
+      "summary": "Progress tracking for victory auditor sentinel agent.",
+      "tags": ["markdown", "agents"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:.github/workflows/test.yml",
+      "type": "file",
+      "name": "test.yml",
+      "filePath": ".github/workflows/test.yml",
+      "summary": "GitHub Actions workflow for quality gates including testing documentation validation and CLI auditing.",
+      "tags": ["ci", "github-actions", "workflow"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:.specify/feature.json",
+      "type": "file",
+      "name": "feature.json",
+      "filePath": ".specify/feature.json",
+      "summary": "Configuration file defining project features.",
+      "tags": ["config", "json"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:.specify/init-options.json",
+      "type": "file",
+      "name": "init-options.json",
+      "filePath": ".specify/init-options.json",
+      "summary": "Configuration file defining initialization options.",
+      "tags": ["config", "json"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:.specify/integration.json",
+      "type": "file",
+      "name": "integration.json",
+      "filePath": ".specify/integration.json",
+      "summary": "Configuration file defining integration settings.",
+      "tags": ["config", "json"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:.specify/scripts/powershell/check-prerequisites.ps1",
+      "type": "file",
+      "name": "check-prerequisites.ps1",
+      "filePath": ".specify/scripts/powershell/check-prerequisites.ps1",
+      "summary": "PowerShell script for checking environment prerequisites.",
+      "tags": ["powershell", "setup"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:.specify/scripts/powershell/common.ps1",
+      "type": "file",
+      "name": "common.ps1",
+      "filePath": ".specify/scripts/powershell/common.ps1",
+      "summary": "Common PowerShell functions and utilities.",
+      "tags": ["powershell", "utility"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:.specify/scripts/powershell/create-new-feature.ps1",
+      "type": "file",
+      "name": "create-new-feature.ps1",
+      "filePath": ".specify/scripts/powershell/create-new-feature.ps1",
+      "summary": "PowerShell script for creating a new feature branch and directory.",
+      "tags": ["powershell", "feature"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:.specify/scripts/powershell/setup-plan.ps1",
+      "type": "file",
+      "name": "setup-plan.ps1",
+      "filePath": ".specify/scripts/powershell/setup-plan.ps1",
+      "summary": "PowerShell script for initializing a feature plan.",
+      "tags": ["powershell", "planning"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:.specify/scripts/powershell/setup-tasks.ps1",
+      "type": "file",
+      "name": "setup-tasks.ps1",
+      "filePath": ".specify/scripts/powershell/setup-tasks.ps1",
+      "summary": "PowerShell script for generating and setting up tasks.",
+      "tags": ["powershell", "tasks"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:.specify/templates/checklist-template.md",
+      "type": "file",
+      "name": "checklist-template.md",
+      "filePath": ".specify/templates/checklist-template.md",
+      "summary": "Template for creating feature checklists.",
+      "tags": ["template", "specification"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:.specify/templates/constitution-template.md",
+      "type": "file",
+      "name": "constitution-template.md",
+      "filePath": ".specify/templates/constitution-template.md",
+      "summary": "Template for creating project constitutions.",
+      "tags": ["template", "governance"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:.specify/templates/plan-template.md",
+      "type": "file",
+      "name": "plan-template.md",
+      "filePath": ".specify/templates/plan-template.md",
+      "summary": "Template for creating feature implementation plans.",
+      "tags": ["template", "planning"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:.specify/templates/spec-template.md",
+      "type": "file",
+      "name": "spec-template.md",
+      "filePath": ".specify/templates/spec-template.md",
+      "summary": "Template for creating feature specifications.",
+      "tags": ["template", "specification"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:.specify/templates/tasks-template.md",
+      "type": "file",
+      "name": "tasks-template.md",
+      "filePath": ".specify/templates/tasks-template.md",
+      "summary": "Template for creating feature task lists.",
+      "tags": ["template", "tasks"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:.streamlit/config.toml",
+      "type": "file",
+      "name": "config.toml",
+      "filePath": ".streamlit/config.toml",
+      "summary": "Streamlit UI configuration file.",
+      "tags": ["config", "streamlit"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:.understand-anything/.understandignore",
+      "type": "file",
+      "name": ".understandignore",
+      "filePath": ".understand-anything/.understandignore",
+      "summary": "Ignore patterns for understand-anything knowledge graph indexing.",
+      "tags": ["config", "tooling"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:00_governance/DATA_POLICY.md",
+      "type": "file",
+      "name": "DATA_POLICY.md",
+      "filePath": "00_governance/DATA_POLICY.md",
+      "summary": "Governance policy for data management and integrity.",
+      "tags": ["governance", "policy"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:00_governance/PHASE_0_EXIT_CHECKLIST.md",
+      "type": "file",
+      "name": "PHASE_0_EXIT_CHECKLIST.md",
+      "filePath": "00_governance/PHASE_0_EXIT_CHECKLIST.md",
+      "summary": "Exit checklist for Phase 0 governance gate.",
+      "tags": ["governance", "checklist"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:00_governance/PHASE_GATE_LOG.md",
+      "type": "file",
+      "name": "PHASE_GATE_LOG.md",
+      "filePath": "00_governance/PHASE_GATE_LOG.md",
+      "summary": "Log tracking phase gate decisions and transitions.",
+      "tags": ["governance", "log"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:00_governance/SOURCE_POLICY.md",
+      "type": "file",
+      "name": "SOURCE_POLICY.md",
+      "filePath": "00_governance/SOURCE_POLICY.md",
+      "summary": "Policy governing source document ingestion and tracking.",
+      "tags": ["governance", "policy"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:00_governance/VALIDATION_RULES.md",
+      "type": "file",
+      "name": "VALIDATION_RULES.md",
+      "filePath": "00_governance/VALIDATION_RULES.md",
+      "summary": "Validation rules for data and governance compliance.",
+      "tags": ["governance", "validation"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:01_design/DATA_FLOW.md",
+      "type": "file",
+      "name": "DATA_FLOW.md",
+      "filePath": "01_design/DATA_FLOW.md",
+      "summary": "Data flow architecture and pipeline design.",
+      "tags": ["design", "architecture"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:01_design/SYSTEM_CONTEXT.md",
+      "type": "file",
+      "name": "SYSTEM_CONTEXT.md",
+      "filePath": "01_design/SYSTEM_CONTEXT.md",
+      "summary": "System context diagram and boundary definitions.",
+      "tags": ["design", "architecture"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:01_design/TERMINOLOGY.md",
+      "type": "file",
+      "name": "TERMINOLOGY.md",
+      "filePath": "01_design/TERMINOLOGY.md",
+      "summary": "Standard terminology and definitions for AIOS.",
+      "tags": ["design", "glossary"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:02_sources/README.md",
+      "type": "file",
+      "name": "README.md",
+      "filePath": "02_sources/README.md",
+      "summary": "README file for the sources directory.",
+      "tags": ["markdown", "documentation"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:02_sources/excluded_sources.md",
+      "type": "file",
+      "name": "excluded_sources.md",
+      "filePath": "02_sources/excluded_sources.md",
+      "summary": "Documentation of excluded sources.",
+      "tags": ["markdown", "documentation"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:02_sources/source_inventory.md",
+      "type": "file",
+      "name": "source_inventory.md",
+      "filePath": "02_sources/source_inventory.md",
+      "summary": "Inventory of sources.",
+      "tags": ["markdown", "documentation"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:03_evidence_registry/evidence_index.md",
+      "type": "file",
+      "name": "evidence_index.md",
+      "filePath": "03_evidence_registry/evidence_index.md",
+      "summary": "Index of evidence records in the evidence registry.",
+      "tags": ["evidence", "index"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:03_evidence_registry/README.md",
+      "type": "file",
+      "name": "README.md",
+      "filePath": "03_evidence_registry/README.md",
+      "summary": "Overview of evidence registry repository directory.",
+      "tags": ["evidence", "docs"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:09_handover/README.md",
+      "type": "file",
+      "name": "README.md",
+      "filePath": "09_handover/README.md",
+      "summary": "Main entry point for handover documentation.",
+      "tags": ["documentation", "handover"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:09_handover/matecon_manual_retrieval_handover.md",
+      "type": "file",
+      "name": "matecon_manual_retrieval_handover.md",
+      "filePath": "09_handover/matecon_manual_retrieval_handover.md",
+      "summary": "Documentation regarding the manual retrieval handover process for Matecon.",
+      "tags": ["documentation", "handover", "matecon"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:09_handover/phase_0_handover.md",
+      "type": "file",
+      "name": "phase_0_handover.md",
+      "filePath": "09_handover/phase_0_handover.md",
+      "summary": "Documentation detailing the handover procedures for Phase 0.",
+      "tags": ["documentation", "handover", "phase-0"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:10_schemas/decision_pattern.schema.json",
+      "type": "file",
+      "name": "decision_pattern.schema.json",
+      "filePath": "10_schemas/decision_pattern.schema.json",
+      "summary": "JSON schema for decision pattern definitions.",
+      "tags": ["schema", "json"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:10_schemas/evidence_record.schema.json",
+      "type": "file",
+      "name": "evidence_record.schema.json",
+      "filePath": "10_schemas/evidence_record.schema.json",
+      "summary": "JSON schema for evidence records.",
+      "tags": ["schema", "json"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:10_schemas/memory_unit.schema.json",
+      "type": "file",
+      "name": "memory_unit.schema.json",
+      "filePath": "10_schemas/memory_unit.schema.json",
+      "summary": "JSON schema for memory unit structures.",
+      "tags": ["schema", "json"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:10_schemas/phase_record.schema.json",
+      "type": "file",
+      "name": "phase_record.schema.json",
+      "filePath": "10_schemas/phase_record.schema.json",
+      "summary": "JSON schema for phase record tracking.",
+      "tags": ["schema", "json"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:10_schemas/project_card.schema.json",
+      "type": "file",
+      "name": "project_card.schema.json",
+      "filePath": "10_schemas/project_card.schema.json",
+      "summary": "JSON schema for project card definitions.",
+      "tags": ["schema", "json"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:10_schemas/workflow_card.schema.json",
+      "type": "file",
+      "name": "workflow_card.schema.json",
+      "filePath": "10_schemas/workflow_card.schema.json",
+      "summary": "JSON schema for workflow card configurations.",
+      "tags": ["schema", "json"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:11_templates/audit_report.md",
+      "type": "file",
+      "name": "audit_report.md",
+      "filePath": "11_templates/audit_report.md",
+      "summary": "Template for audit reports.",
+      "tags": ["template", "audit"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:11_templates/decision_record.md",
+      "type": "file",
+      "name": "decision_record.md",
+      "filePath": "11_templates/decision_record.md",
+      "summary": "Template for decision records.",
+      "tags": ["template", "decisions"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:11_templates/evidence_record.md",
+      "type": "file",
+      "name": "evidence_record.md",
+      "filePath": "11_templates/evidence_record.md",
+      "summary": "Template for evidence records.",
+      "tags": ["template", "evidence"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:11_templates/extraction_report.md",
+      "type": "file",
+      "name": "extraction_report.md",
+      "filePath": "11_templates/extraction_report.md",
+      "summary": "Template for extraction reports.",
+      "tags": ["template", "extraction"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:11_templates/handover.md",
+      "type": "file",
+      "name": "handover.md",
+      "filePath": "11_templates/handover.md",
+      "summary": "Template for project handovers.",
+      "tags": ["template", "handover"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:11_templates/memory_card.md",
+      "type": "file",
+      "name": "memory_card.md",
+      "filePath": "11_templates/memory_card.md",
+      "summary": "Template for memory cards.",
+      "tags": ["template", "memory"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:11_templates/project_card.md",
+      "type": "file",
+      "name": "project_card.md",
+      "filePath": "11_templates/project_card.md",
+      "summary": "Template for project cards.",
+      "tags": ["template", "project"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:11_templates/workflow_card.md",
+      "type": "file",
+      "name": "workflow_card.md",
+      "filePath": "11_templates/workflow_card.md",
+      "summary": "Template for workflow cards.",
+      "tags": ["template", "workflow"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:12_tools/README.md",
+      "type": "file",
+      "name": "README.md",
+      "filePath": "12_tools/README.md",
+      "summary": "Documentation for tools directory.",
+      "tags": ["markdown", "documentation"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:REPO_INHERITANCE_MAP.md",
+      "type": "file",
+      "name": "REPO_INHERITANCE_MAP.md",
+      "filePath": "REPO_INHERITANCE_MAP.md",
+      "summary": "Documentation of repository inheritance structure.",
+      "tags": ["markdown", "documentation"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:ROADMAP.md",
+      "type": "file",
+      "name": "ROADMAP.md",
+      "filePath": "ROADMAP.md",
+      "summary": "Project development roadmap.",
+      "tags": ["markdown", "documentation"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:RUN_AIOS_WORKSPACE_CHAT.bat",
+      "type": "file",
+      "name": "RUN_AIOS_WORKSPACE_CHAT.bat",
+      "filePath": "RUN_AIOS_WORKSPACE_CHAT.bat",
+      "summary": "Batch script to launch AIOS workspace chat.",
+      "tags": ["bat", "script"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:SECURITY.md",
+      "type": "file",
+      "name": "SECURITY.md",
+      "filePath": "SECURITY.md",
+      "summary": "Security policies and information.",
+      "tags": ["markdown", "security"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:WORKLENS_ARCHITECTURE.md",
+      "type": "file",
+      "name": "WORKLENS_ARCHITECTURE.md",
+      "filePath": "WORKLENS_ARCHITECTURE.md",
+      "summary": "Worklens architecture documentation.",
+      "tags": ["markdown", "documentation"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:WORKLENS_MASTER_ROADMAP.md",
+      "type": "file",
+      "name": "WORKLENS_MASTER_ROADMAP.md",
+      "filePath": "WORKLENS_MASTER_ROADMAP.md",
+      "summary": "Master roadmap for Worklens component.",
+      "tags": ["markdown", "documentation"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:pyproject.toml",
+      "type": "file",
+      "name": "pyproject.toml",
+      "filePath": "pyproject.toml",
+      "summary": "Python project configuration.",
+      "tags": ["toml", "config"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:start_antigravity_bridge.bat",
+      "type": "file",
+      "name": "start_antigravity_bridge.bat",
+      "filePath": "start_antigravity_bridge.bat",
+      "summary": "Batch script to start the antigravity bridge.",
+      "tags": ["bat", "script"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:config/mom_source_dispositions.example.json",
+      "type": "file",
+      "name": "mom_source_dispositions.example.json",
+      "filePath": "config/mom_source_dispositions.example.json",
+      "summary": "Configuration file defining source file dispositions for evidence-backed exclusions.",
+      "tags": ["config", "json"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:config/real_benchmark.example.json",
+      "type": "file",
+      "name": "real_benchmark.example.json",
+      "filePath": "config/real_benchmark.example.json",
+      "summary": "Example configuration for running benchmarks against local source roots.",
+      "tags": ["config", "benchmark", "json"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:config/shared_ai_provider_fabric.json",
+      "type": "file",
+      "name": "shared_ai_provider_fabric.json",
+      "filePath": "config/shared_ai_provider_fabric.json",
+      "summary": "Shared configuration for AI provider fabric defining endpoints keys and model capabilities.",
+      "tags": ["config", "ai-provider", "json"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:docs/RAG_AGENT_HARNESS_RESEARCH.md",
+      "type": "file",
+      "name": "RAG_AGENT_HARNESS_RESEARCH.md",
+      "filePath": "docs/RAG_AGENT_HARNESS_RESEARCH.md",
+      "summary": "Research document regarding RAG agent harness implementation.",
+      "tags": ["docs", "research"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:docs/RECOVERY_GUIDE.md",
+      "type": "file",
+      "name": "RECOVERY_GUIDE.md",
+      "filePath": "docs/RECOVERY_GUIDE.md",
+      "summary": "Guide for system recovery processes.",
+      "tags": ["docs", "guide"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:docs/UI_LANGUAGE_POLICY.md",
+      "type": "file",
+      "name": "UI_LANGUAGE_POLICY.md",
+      "filePath": "docs/UI_LANGUAGE_POLICY.md",
+      "summary": "Policy documentation regarding UI language standards.",
+      "tags": ["docs", "policy"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:docs/rag_v2/AUTOMATED_INGESTION_OPERATIONS.md",
+      "type": "file",
+      "name": "AUTOMATED_INGESTION_OPERATIONS.md",
+      "filePath": "docs/rag_v2/AUTOMATED_INGESTION_OPERATIONS.md",
+      "summary": "Describes automated RAG ingestion processes.",
+      "tags": ["docs", "rag_v2"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:docs/rag_v2/BLIND_RERUN_QUESTIONS_DRAFT.json",
+      "type": "file",
+      "name": "BLIND_RERUN_QUESTIONS_DRAFT.json",
+      "filePath": "docs/rag_v2/BLIND_RERUN_QUESTIONS_DRAFT.json",
+      "summary": "Draft questions for blind reruns in RAG evaluation.",
+      "tags": ["docs", "rag_v2", "json"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:docs/rag_v2/RAG_V2_DESIGN.md",
+      "type": "file",
+      "name": "RAG_V2_DESIGN.md",
+      "filePath": "docs/rag_v2/RAG_V2_DESIGN.md",
+      "summary": "Design documentation for RAG Version 2 architecture.",
+      "tags": ["docs", "rag_v2"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:docs/rag_v2/SAME_PROTOCOL_ANSWER_QUALITY_PROTOCOL.md",
+      "type": "file",
+      "name": "SAME_PROTOCOL_ANSWER_QUALITY_PROTOCOL.md",
+      "filePath": "docs/rag_v2/SAME_PROTOCOL_ANSWER_QUALITY_PROTOCOL.md",
+      "summary": "Protocol for assessing answer quality in RAG systems.",
+      "tags": ["docs", "rag_v2"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:docs/rag_v2/benchmark_gold_identity.schema.json",
+      "type": "file",
+      "name": "benchmark_gold_identity.schema.json",
+      "filePath": "docs/rag_v2/benchmark_gold_identity.schema.json",
+      "summary": "JSON schema for RAG benchmark gold identity.",
+      "tags": ["docs", "rag_v2", "json"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:docs/reports/workspace_chat_full_12_questions.json",
+      "type": "file",
+      "name": "workspace_chat_full_12_questions.json",
+      "filePath": "docs/reports/workspace_chat_full_12_questions.json",
+      "summary": "JSON file containing workspace chat data for 12 questions.",
+      "tags": ["json", "data"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:docs/reports/workspace_chat_full_12_questions_polished_report.md",
+      "type": "file",
+      "name": "workspace_chat_full_12_questions_polished_report.md",
+      "filePath": "docs/reports/workspace_chat_full_12_questions_polished_report.md",
+      "summary": "Polished markdown report based on workspace chat questions.",
+      "tags": ["markdown", "report"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:docs/reports/workspace_chat_full_12_questions_report.md",
+      "type": "file",
+      "name": "workspace_chat_full_12_questions_report.md",
+      "filePath": "docs/reports/workspace_chat_full_12_questions_report.md",
+      "summary": "Initial markdown report based on workspace chat questions.",
+      "tags": ["markdown", "report"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:docs/requirements/NON_FUNCTIONAL_REQUIREMENTS.md",
+      "type": "file",
+      "name": "NON_FUNCTIONAL_REQUIREMENTS.md",
+      "filePath": "docs/requirements/NON_FUNCTIONAL_REQUIREMENTS.md",
+      "summary": "Baseline for non-functional requirements including privacy security and reliability.",
+      "tags": ["requirements", "documentation"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:docs/requirements/PRODUCT_REQUIREMENTS.md",
+      "type": "file",
+      "name": "PRODUCT_REQUIREMENTS.md",
+      "filePath": "docs/requirements/PRODUCT_REQUIREMENTS.md",
+      "summary": "Baseline for product features and scope.",
+      "tags": ["requirements", "documentation"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:docs/requirements/TRACEABILITY_MATRIX.md",
+      "type": "file",
+      "name": "TRACEABILITY_MATRIX.md",
+      "filePath": "docs/requirements/TRACEABILITY_MATRIX.md",
+      "summary": "Traceability matrix linking requirements to design components and evidence.",
+      "tags": ["requirements", "documentation"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:docs/security/DEPENDENCY_POLICY.md",
+      "type": "file",
+      "name": "DEPENDENCY_POLICY.md",
+      "filePath": "docs/security/DEPENDENCY_POLICY.md",
+      "summary": "Policy for managing external dependencies and supply-chain security.",
+      "tags": ["security", "documentation", "dependency"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:docs/security/PRIVACY_IMPACT_ASSESSMENT.md",
+      "type": "file",
+      "name": "PRIVACY_IMPACT_ASSESSMENT.md",
+      "filePath": "docs/security/PRIVACY_IMPACT_ASSESSMENT.md",
+      "summary": "Assessment of privacy impacts data handling and owner-specific privacy decisions.",
+      "tags": ["security", "documentation", "privacy"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:docs/security/THREAT_MODEL.md",
+      "type": "file",
+      "name": "THREAT_MODEL.md",
+      "filePath": "docs/security/THREAT_MODEL.md",
+      "summary": "Threat model for the local-first Workspace Chat and RAG platform using STRIDE methodology.",
+      "tags": ["security", "documentation", "threat-model"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:specs/excel-structured-query-remediation/plan.md",
+      "type": "file",
+      "name": "plan.md",
+      "filePath": "specs/excel-structured-query-remediation/plan.md",
+      "summary": "Implementation plan for remediating Excel structured query audit findings.",
+      "tags": ["specification", "plan"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:specs/excel-structured-query-remediation/spec.md",
+      "type": "file",
+      "name": "spec.md",
+      "filePath": "specs/excel-structured-query-remediation/spec.md",
+      "summary": "Specifications for remediating Excel structured query audit findings.",
+      "tags": ["specification", "requirements"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:specs/excel-structured-query-remediation/tasks.md",
+      "type": "file",
+      "name": "tasks.md",
+      "filePath": "specs/excel-structured-query-remediation/tasks.md",
+      "summary": "Task checklist for remediating Excel structured query audit findings.",
+      "tags": ["specification", "tasks"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:tests/fixtures/adaptive_reranking_corpus.json",
+      "type": "file",
+      "name": "adaptive_reranking_corpus.json",
+      "filePath": "tests/fixtures/adaptive_reranking_corpus.json",
+      "summary": "JSON fixture file containing a corpus for testing adaptive reranking.",
+      "tags": ["test", "fixture", "json"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:tests/fixtures/adaptive_reranking_report_schema.json",
+      "type": "file",
+      "name": "adaptive_reranking_report_schema.json",
+      "filePath": "tests/fixtures/adaptive_reranking_report_schema.json",
+      "summary": "JSON schema file for validating adaptive reranking reports.",
+      "tags": ["test", "fixture", "json", "schema"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:tests/fixtures/adaptive_routing_cases.json",
+      "type": "file",
+      "name": "adaptive_routing_cases.json",
+      "filePath": "tests/fixtures/adaptive_routing_cases.json",
+      "summary": "JSON fixture file containing cases for testing adaptive routing.",
+      "tags": ["test", "fixture", "json"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:scripts/battle_notebooklm_rag_v2.py",
+      "type": "file",
+      "name": "battle_notebooklm_rag_v2.py",
+      "filePath": "scripts/battle_notebooklm_rag_v2.py",
+      "summary": "Main script for benchmarking and battling NotebookLM RAG configurations.",
+      "tags": ["script", "rag", "notebooklm"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:scripts/prepare_notebooklm_exact_corpus.py",
+      "type": "file",
+      "name": "prepare_notebooklm_exact_corpus.py",
+      "filePath": "scripts/prepare_notebooklm_exact_corpus.py",
+      "summary": "Prepares corpus data specifically for NotebookLM RAG workflows.",
+      "tags": ["script", "corpus"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:scripts/upload_notebooklm_exact_corpus.py",
+      "type": "file",
+      "name": "upload_notebooklm_exact_corpus.py",
+      "filePath": "scripts/upload_notebooklm_exact_corpus.py",
+      "summary": "Handles uploading prepared corpora to NotebookLM.",
+      "tags": ["script", "upload", "notebooklm"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:scripts/reconcile_notebooklm_source_titles.py",
+      "type": "file",
+      "name": "reconcile_notebooklm_source_titles.py",
+      "filePath": "scripts/reconcile_notebooklm_source_titles.py",
+      "summary": "Reconciles source titles between local workspace and NotebookLM.",
+      "tags": ["script", "utility"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:src/aios_habit/owner_workflow_state.py",
+      "type": "file",
+      "name": "owner_workflow_state.py",
+      "filePath": "src/aios_habit/owner_workflow_state.py",
+      "summary": "Manages the state of the owner workflow in the habit system.",
+      "tags": ["python", "workflow"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:src/aios_habit/workflow.py",
+      "type": "file",
+      "name": "workflow.py",
+      "filePath": "src/aios_habit/workflow.py",
+      "summary": "Core definitions for workflow management.",
+      "tags": ["python", "workflow"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:src/aios_habit/models.py",
+      "type": "file",
+      "name": "models.py",
+      "filePath": "src/aios_habit/models.py",
+      "summary": "Data models for the habit application.",
+      "tags": ["python", "models"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:src/aios_habit/rag_v2/converters.py",
+      "type": "file",
+      "name": "converters.py",
+      "filePath": "src/aios_habit/rag_v2/converters.py",
+      "summary": "Implements various document converter adapters for RAG pipeline.",
+      "tags": ["rag", "converters", "aios_habit"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:src/aios_habit/rag_v2/schema.py",
+      "type": "file",
+      "name": "schema.py",
+      "filePath": "src/aios_habit/rag_v2/schema.py",
+      "summary": "Defines schemas for DocumentElement.",
+      "tags": ["rag", "schema"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:src/aios_habit/rag_v2/adapters.py",
+      "type": "file",
+      "name": "adapters.py",
+      "filePath": "src/aios_habit/rag_v2/adapters.py",
+      "summary": "Defines base classes for document converters.",
+      "tags": ["rag", "adapters"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:src/aios_habit/source_ingest.py",
+      "type": "file",
+      "name": "source_ingest.py",
+      "filePath": "src/aios_habit/source_ingest.py",
+      "summary": "Handles ingestion of various data sources for the habit tracking system.",
+      "tags": ["python", "ingest"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:src/aios_habit/rag_ingest.py",
+      "type": "file",
+      "name": "rag_ingest.py",
+      "filePath": "src/aios_habit/rag_ingest.py",
+      "summary": "Handles RAG-based ingestion.",
+      "tags": ["python", "rag"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:src/aios_habit/workspace_chat_source_ingest.py",
+      "type": "file",
+      "name": "workspace_chat_source_ingest.py",
+      "filePath": "src/aios_habit/workspace_chat_source_ingest.py",
+      "summary": "Handles workspace-specific chat source ingestion.",
+      "tags": ["python", "ingest"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:tests/test_rag_v2_ingestion_service.py",
+      "type": "file",
+      "name": "test_rag_v2_ingestion_service.py",
+      "filePath": "tests/test_rag_v2_ingestion_service.py",
+      "summary": "Tests for RAG v2 ingestion service functionality.",
+      "tags": ["test", "rag_v2"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:src/aios_habit/rag_v2/ingestion_service.py",
+      "type": "file",
+      "name": "ingestion_service.py",
+      "filePath": "src/aios_habit/rag_v2/ingestion_service.py",
+      "summary": "RAG v2 ingestion service implementation.",
+      "tags": ["rag_v2", "core"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:src/aios_habit/rag_v2/ingestion_workers.py",
+      "type": "file",
+      "name": "ingestion_workers.py",
+      "filePath": "src/aios_habit/rag_v2/ingestion_workers.py",
+      "summary": "RAG v2 ingestion workers for asynchronous processing.",
+      "tags": ["rag_v2", "worker"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:src/aios_habit/rag_v2/pipeline.py",
+      "type": "file",
+      "name": "pipeline.py",
+      "filePath": "src/aios_habit/rag_v2/pipeline.py",
+      "summary": "RAG v2 pipeline orchestration.",
+      "tags": ["rag_v2", "orchestrator"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:src/aios_habit/cli.py",
+      "type": "file",
+      "name": "cli.py",
+      "filePath": "src/aios_habit/cli.py",
+      "summary": "Command line interface for the aios_habit application.",
+      "tags": ["python", "cli"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:src/aios_habit/workspace_chat_app.py",
+      "type": "file",
+      "name": "workspace_chat_app.py",
+      "filePath": "src/aios_habit/workspace_chat_app.py",
+      "summary": "Main application file for workspace chat functionality.",
+      "tags": ["python", "app"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:src/aios_habit/workspace_chat_store.py",
+      "type": "file",
+      "name": "workspace_chat_store.py",
+      "filePath": "src/aios_habit/workspace_chat_store.py",
+      "summary": "Handles storage and retrieval of chat session data.",
+      "tags": ["storage", "chat"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:src/aios_habit/workspace_chat_ui.py",
+      "type": "file",
+      "name": "workspace_chat_ui.py",
+      "filePath": "src/aios_habit/workspace_chat_ui.py",
+      "summary": "Handles UI components for the chat application.",
+      "tags": ["ui", "chat"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:src/aios_habit/workspace_agent_orchestrator.py",
+      "type": "file",
+      "name": "workspace_agent_orchestrator.py",
+      "filePath": "src/aios_habit/workspace_agent_orchestrator.py",
+      "summary": "Orchestrates agents in the workspace.",
+      "tags": ["agent", "orchestration"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:src/aios_habit/agent_task_pack.py",
+      "type": "file",
+      "name": "agent_task_pack.py",
+      "filePath": "src/aios_habit/agent_task_pack.py",
+      "summary": "Defines agent task structures.",
+      "tags": ["agent", "task"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:src/aios_habit/ai_provider_bridge.py",
+      "type": "file",
+      "name": "ai_provider_bridge.py",
+      "filePath": "src/aios_habit/ai_provider_bridge.py",
+      "summary": "Bridges AI provider interactions.",
+      "tags": ["ai", "provider"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:src/aios_habit/ai_router.py",
+      "type": "file",
+      "name": "ai_router.py",
+      "filePath": "src/aios_habit/ai_router.py",
+      "summary": "Routes AI requests.",
+      "tags": ["ai", "router"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:src/aios_habit/workspace_models.py",
+      "type": "file",
+      "name": "workspace_models.py",
+      "filePath": "src/aios_habit/workspace_models.py",
+      "summary": "Defines data models for workspace chat.",
+      "tags": ["models", "chat"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:src/aios_habit/storage.py",
+      "type": "file",
+      "name": "storage.py",
+      "filePath": "src/aios_habit/storage.py",
+      "summary": "Base storage interfaces and local file operations.",
+      "tags": ["storage", "persistence"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:src/aios_habit/core.py",
+      "type": "file",
+      "name": "core.py",
+      "filePath": "src/aios_habit/core.py",
+      "summary": "Core application state and habit tracking engine.",
+      "tags": ["python", "core"],
+      "complexity": "moderate"
+    }
+  ],
+  "edges": [
+    {
+      "source": "file:.agents/sentinel/handoff.md",
+      "target": "file:.agents/sentinel/BRIEFING.md",
+      "type": "references",
+      "direction": "forward"
+    },
+    {
+      "source": "file:.agents/teamwork_preview_reviewer_1/BRIEFING.md",
+      "target": "file:.agents/teamwork_preview_reviewer_1/handoff.md",
+      "type": "related",
+      "direction": "forward"
+    },
+    {
+      "source": "file:.agents/teamwork_preview_reviewer_1/handoff.md",
+      "target": "file:.agents/teamwork_preview_reviewer_1/progress.md",
+      "type": "related",
+      "direction": "forward"
+    },
+    {
+      "source": "file:.agents/teamwork_preview_reviewer_2/BRIEFING.md",
+      "target": "file:.agents/teamwork_preview_reviewer_2/plan.md",
+      "type": "references",
+      "direction": "forward"
+    },
+    {
+      "source": "file:.agents/teamwork_preview_reviewer_2/plan.md",
+      "target": "file:.agents/teamwork_preview_reviewer_2/progress.md",
+      "type": "updates",
+      "direction": "forward"
+    },
+    {
+      "source": "file:.agents/teamwork_preview_reviewer_2/handoff.md",
+      "target": "file:.agents/teamwork_preview_reviewer_2/progress.md",
+      "type": "references",
+      "direction": "forward"
+    },
+    {
+      "source": "file:.agents/teamwork_preview_reviewer_3/BRIEFING.md",
+      "target": "file:.agents/teamwork_preview_reviewer_3/handoff.md",
+      "type": "related",
+      "direction": "forward"
+    },
+    {
+      "source": "file:.agents/teamwork_preview_reviewer_3/BRIEFING.md",
+      "target": "file:.agents/teamwork_preview_reviewer_3/progress.md",
+      "type": "related",
+      "direction": "forward"
+    },
+    {
+      "source": "file:.agents/teamwork_preview_reviewer_3/handoff.md",
+      "target": "file:.agents/teamwork_preview_reviewer_3/progress.md",
+      "type": "related",
+      "direction": "forward"
+    },
+    {
+      "source": "file:.agents/teamwork_preview_victory_auditor_sentinel/independent_test.ps1",
+      "target": "file:.agents/teamwork_preview_victory_auditor_sentinel/audit_report.md",
+      "type": "references",
+      "direction": "forward"
+    },
+    {
+      "source": "file:.agents/teamwork_preview_victory_auditor_sentinel/independent_test.ps1",
+      "target": "file:.agents/teamwork_preview_victory_auditor_sentinel/progress.md",
+      "type": "references",
+      "direction": "forward"
+    },
+    {
+      "source": "file:.specify/scripts/powershell/check-prerequisites.ps1",
+      "target": "file:.specify/scripts/powershell/common.ps1",
+      "type": "references",
+      "direction": "forward"
+    },
+    {
+      "source": "file:.specify/scripts/powershell/create-new-feature.ps1",
+      "target": "file:.specify/scripts/powershell/common.ps1",
+      "type": "references",
+      "direction": "forward"
+    },
+    {
+      "source": "file:.specify/scripts/powershell/setup-plan.ps1",
+      "target": "file:.specify/scripts/powershell/common.ps1",
+      "type": "references",
+      "direction": "forward"
+    },
+    {
+      "source": "file:.specify/scripts/powershell/setup-tasks.ps1",
+      "target": "file:.specify/scripts/powershell/common.ps1",
+      "type": "references",
+      "direction": "forward"
+    },
+    {
+      "source": "file:09_handover/README.md",
+      "target": "file:09_handover/matecon_manual_retrieval_handover.md",
+      "type": "references",
+      "direction": "forward"
+    },
+    {
+      "source": "file:09_handover/README.md",
+      "target": "file:09_handover/phase_0_handover.md",
+      "type": "references",
+      "direction": "forward"
+    },
+    {
+      "source": "file:WORKLENS_MASTER_ROADMAP.md",
+      "target": "file:WORKLENS_ARCHITECTURE.md",
+      "type": "references",
+      "direction": "forward"
+    },
+    {
+      "source": "file:ROADMAP.md",
+      "target": "file:REPO_INHERITANCE_MAP.md",
+      "type": "references",
+      "direction": "forward"
+    },
+    {
+      "source": "file:docs/rag_v2/AUTOMATED_INGESTION_OPERATIONS.md",
+      "target": "file:docs/rag_v2/RAG_V2_DESIGN.md",
+      "type": "refers_to",
+      "direction": "forward"
+    },
+    {
+      "source": "file:docs/rag_v2/SAME_PROTOCOL_ANSWER_QUALITY_PROTOCOL.md",
+      "target": "file:docs/rag_v2/RAG_V2_DESIGN.md",
+      "type": "refers_to",
+      "direction": "forward"
+    },
+    {
+      "source": "file:docs/rag_v2/BLIND_RERUN_QUESTIONS_DRAFT.json",
+      "target": "file:docs/rag_v2/benchmark_gold_identity.schema.json",
+      "type": "follows_schema",
+      "direction": "forward"
+    },
+    {
+      "source": "file:docs/reports/workspace_chat_full_12_questions_polished_report.md",
+      "target": "file:docs/reports/workspace_chat_full_12_questions.json",
+      "type": "references",
+      "direction": "forward"
+    },
+    {
+      "source": "file:docs/reports/workspace_chat_full_12_questions_report.md",
+      "target": "file:docs/reports/workspace_chat_full_12_questions.json",
+      "type": "references",
+      "direction": "forward"
+    },
+    {
+      "source": "file:docs/requirements/NON_FUNCTIONAL_REQUIREMENTS.md",
+      "target": "file:docs/requirements/PRODUCT_REQUIREMENTS.md",
+      "type": "related",
+      "direction": "forward"
+    },
+    {
+      "source": "file:docs/requirements/PRODUCT_REQUIREMENTS.md",
+      "target": "file:docs/requirements/NON_FUNCTIONAL_REQUIREMENTS.md",
+      "type": "related",
+      "direction": "forward"
+    },
+    {
+      "source": "file:docs/requirements/TRACEABILITY_MATRIX.md",
+      "target": "file:docs/requirements/NON_FUNCTIONAL_REQUIREMENTS.md",
+      "type": "references",
+      "direction": "forward"
+    },
+    {
+      "source": "file:docs/requirements/TRACEABILITY_MATRIX.md",
+      "target": "file:docs/requirements/PRODUCT_REQUIREMENTS.md",
+      "type": "references",
+      "direction": "forward"
+    },
+    {
+      "source": "file:docs/requirements/PRODUCT_REQUIREMENTS.md",
+      "target": "file:docs/requirements/TRACEABILITY_MATRIX.md",
+      "type": "references",
+      "direction": "forward"
+    },
+    {
+      "source": "file:docs/security/PRIVACY_IMPACT_ASSESSMENT.md",
+      "target": "file:docs/security/THREAT_MODEL.md",
+      "type": "references",
+      "direction": "forward"
+    },
+    {
+      "source": "file:docs/security/THREAT_MODEL.md",
+      "target": "file:docs/security/PRIVACY_IMPACT_ASSESSMENT.md",
+      "type": "references",
+      "direction": "forward"
+    },
+    {
+      "source": "file:specs/excel-structured-query-remediation/plan.md",
+      "target": "file:specs/excel-structured-query-remediation/spec.md",
+      "type": "implements",
+      "direction": "forward"
+    },
+    {
+      "source": "file:specs/excel-structured-query-remediation/tasks.md",
+      "target": "file:specs/excel-structured-query-remediation/plan.md",
+      "type": "tracks",
+      "direction": "forward"
+    },
+    {
+      "source": "file:scripts/battle_notebooklm_rag_v2.py",
+      "target": "file:scripts/prepare_notebooklm_exact_corpus.py",
+      "type": "imports",
+      "direction": "forward"
+    },
+    {
+      "source": "file:scripts/battle_notebooklm_rag_v2.py",
+      "target": "file:scripts/upload_notebooklm_exact_corpus.py",
+      "type": "imports",
+      "direction": "forward"
+    },
+    {
+      "source": "file:scripts/battle_notebooklm_rag_v2.py",
+      "target": "file:scripts/reconcile_notebooklm_source_titles.py",
+      "type": "imports",
+      "direction": "forward"
+    },
+    {
+      "source": "file:src/aios_habit/cli.py",
+      "target": "file:src/aios_habit/workspace_chat_app.py",
+      "type": "imports",
+      "direction": "forward"
+    },
+    {
+      "source": "file:src/aios_habit/workspace_chat_app.py",
+      "target": "file:src/aios_habit/workspace_chat_store.py",
+      "type": "uses",
+      "direction": "forward"
+    },
+    {
+      "source": "file:src/aios_habit/workspace_chat_app.py",
+      "target": "file:src/aios_habit/workspace_chat_ui.py",
+      "type": "uses",
+      "direction": "forward"
+    },
+    {
+      "source": "file:src/aios_habit/workspace_chat_app.py",
+      "target": "file:src/aios_habit/workspace_agent_orchestrator.py",
+      "type": "uses",
+      "direction": "forward"
+    },
+    {
+      "source": "file:src/aios_habit/workspace_agent_orchestrator.py",
+      "target": "file:src/aios_habit/agent_task_pack.py",
+      "type": "uses",
+      "direction": "forward"
+    },
+    {
+      "source": "file:src/aios_habit/workspace_agent_orchestrator.py",
+      "target": "file:src/aios_habit/ai_provider_bridge.py",
+      "type": "uses",
+      "direction": "forward"
+    },
+    {
+      "source": "file:src/aios_habit/workspace_agent_orchestrator.py",
+      "target": "file:src/aios_habit/ai_router.py",
+      "type": "uses",
+      "direction": "forward"
+    },
+    {
+      "source": "file:src/aios_habit/workspace_chat_store.py",
+      "target": "file:src/aios_habit/workspace_models.py",
+      "type": "imports",
+      "direction": "forward"
+    },
+    {
+      "source": "file:src/aios_habit/workspace_chat_store.py",
+      "target": "file:src/aios_habit/storage.py",
+      "type": "imports",
+      "direction": "forward"
+    },
+    {
+      "source": "file:src/aios_habit/workspace_agent_orchestrator.py",
+      "target": "file:src/aios_habit/workspace_models.py",
+      "type": "imports",
+      "direction": "forward"
+    },
+    {
+      "source": "file:src/aios_habit/workspace_chat_app.py",
+      "target": "file:src/aios_habit/core.py",
+      "type": "uses",
+      "direction": "forward"
+    },
+    {
+      "source": "file:src/aios_habit/core.py",
+      "target": "file:src/aios_habit/models.py",
+      "type": "imports",
+      "direction": "forward"
+    },
+    {
+      "source": "file:src/aios_habit/workspace_chat_ui.py",
+      "target": "file:src/aios_habit/cli.py",
+      "type": "imports",
+      "direction": "forward"
+    },
+    {
+      "source": "file:src/aios_habit/owner_workflow_state.py",
+      "target": "file:src/aios_habit/workflow.py",
+      "type": "imports",
+      "direction": "forward"
+    },
+    {
+      "source": "file:src/aios_habit/owner_workflow_state.py",
+      "target": "file:src/aios_habit/models.py",
+      "type": "imports",
+      "direction": "forward"
+    },
+    {
+      "source": "file:src/aios_habit/rag_v2/converters.py",
+      "target": "file:src/aios_habit/rag_v2/schema.py",
+      "type": "imports",
+      "direction": "forward"
+    },
+    {
+      "source": "file:src/aios_habit/rag_v2/converters.py",
+      "target": "file:src/aios_habit/rag_v2/adapters.py",
+      "type": "imports",
+      "direction": "forward"
+    },
+    {
+      "source": "file:src/aios_habit/source_ingest.py",
+      "target": "file:src/aios_habit/rag_ingest.py",
+      "type": "imports",
+      "direction": "forward"
+    },
+    {
+      "source": "file:src/aios_habit/workspace_chat_source_ingest.py",
+      "target": "file:src/aios_habit/source_ingest.py",
+      "type": "imports",
+      "direction": "forward"
+    },
+    {
+      "source": "file:tests/test_rag_v2_ingestion_service.py",
+      "target": "file:src/aios_habit/rag_v2/ingestion_service.py",
+      "type": "tests",
+      "direction": "forward"
+    },
+    {
+      "source": "file:src/aios_habit/rag_v2/ingestion_service.py",
+      "target": "file:src/aios_habit/rag_v2/ingestion_workers.py",
+      "type": "uses",
+      "direction": "forward"
+    },
+    {
+      "source": "file:src/aios_habit/rag_v2/ingestion_service.py",
+      "target": "file:src/aios_habit/rag_v2/pipeline.py",
+      "type": "uses",
+      "direction": "forward"
+    }
+  ]
+}

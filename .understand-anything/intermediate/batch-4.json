@@ -1,0 +1,60 @@
+{
+  "nodes": [
+    {
+      "id": "file:.agents/teamwork_preview_reviewer_2/BRIEFING.md",
+      "type": "file",
+      "name": "BRIEFING.md",
+      "filePath": ".agents/teamwork_preview_reviewer_2/BRIEFING.md",
+      "summary": "Briefing document for the teamwork preview reviewer agent.",
+      "tags": ["markdown", "documentation"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:.agents/teamwork_preview_reviewer_2/handoff.md",
+      "type": "file",
+      "name": "handoff.md",
+      "filePath": ".agents/teamwork_preview_reviewer_2/handoff.md",
+      "summary": "Handoff instructions for the teamwork preview reviewer agent.",
+      "tags": ["markdown", "documentation"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:.agents/teamwork_preview_reviewer_2/plan.md",
+      "type": "file",
+      "name": "plan.md",
+      "filePath": ".agents/teamwork_preview_reviewer_2/plan.md",
+      "summary": "Project plan for the teamwork preview reviewer agent.",
+      "tags": ["markdown", "documentation"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:.agents/teamwork_preview_reviewer_2/progress.md",
+      "type": "file",
+      "name": "progress.md",
+      "filePath": ".agents/teamwork_preview_reviewer_2/progress.md",
+      "summary": "Progress tracking for the teamwork preview reviewer agent.",
+      "tags": ["markdown", "documentation"],
+      "complexity": "moderate"
+    }
+  ],
+  "edges": [
+    {
+      "source": "file:.agents/teamwork_preview_reviewer_2/BRIEFING.md",
+      "target": "file:.agents/teamwork_preview_reviewer_2/plan.md",
+      "type": "references",
+      "direction": "forward"
+    },
+    {
+      "source": "file:.agents/teamwork_preview_reviewer_2/plan.md",
+      "target": "file:.agents/teamwork_preview_reviewer_2/progress.md",
+      "type": "updates",
+      "direction": "forward"
+    },
+    {
+      "source": "file:.agents/teamwork_preview_reviewer_2/handoff.md",
+      "target": "file:.agents/teamwork_preview_reviewer_2/progress.md",
+      "type": "references",
+      "direction": "forward"
+    }
+  ]
+}

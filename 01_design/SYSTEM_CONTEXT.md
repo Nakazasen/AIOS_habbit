@@ -1,31 +1,32 @@
-# System Context
+# Bối Cảnh Hệ Thống (System Context)
 
-AIOS Habit nằm giữa người dùng, project local và nhiều hệ AI khác nhau.
+AIOS Habit nằm giữa người dùng, các dự án cục bộ và nhiều hệ thống AI khác nhau.
 
 ```text
-User
+Người dùng (User)
  |
- | provides approved sources / feedback / validation
+ | cung cấp nguồn đã phê duyệt / phản hồi / xác thực
  v
-AIOS Habit Local Repository
+Repository Cục Bộ AIOS Habit
  |
- +--> Memory Vault
- +--> Project Index
- +--> Workflow Library
- +--> AI Export Packs
+ +--> Kho Bộ Nhớ (Memory Vault)
+ +--> Chỉ Mục Dự Án (Project Index)
+ +--> Thư Viện Quy Trình (Workflow Library)
+ +--> Gói Xuất Cho AI (AI Export Packs)
  |
  v
-External AI Systems: GPT / Gemini / Claude / Grok / Future AI
+Các Hệ Thống AI Bên Ngoài: GPT / Gemini / Claude / Grok / AI Tương Lai
 ```
 
-## External Systems
+## Các Hệ Thống Bên Ngoài (External Systems)
 
-- Local filesystem.
-- Git repositories.
-- AI chat transcripts if user approved.
-- Markdown knowledge bases.
-- Future AI tools.
+- Hệ thống tệp cục bộ (Local filesystem).
+- Các kho mã nguồn Git (Git repositories).
+- Bản ghi chép AI chat nếu được người dùng phê duyệt.
+- Các cơ sở tri thức Markdown.
+- Các công cụ AI trong tương lai.
 
-## Boundary
+## Ranh Giới (Boundary)
 
-AIOS Habit là source of truth cục bộ. External AI chỉ là execution environment.
+AIOS Habit là nguồn chân lý (source of truth) cục bộ. External AI chỉ là môi trường thực thi bên ngoài.
+

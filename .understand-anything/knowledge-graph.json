@@ -1,0 +1,2721 @@
+{
+  "version": "1.0.0",
+  "project": {
+    "name": "aios-habit",
+    "languages": [
+      "python",
+      "markdown",
+      "json"
+    ],
+    "frameworks": [
+      "streamlit",
+      "pydantic"
+    ],
+    "description": "Nền tảng bộ nhớ cá nhân ưu tiên cục bộ (local-first) dựa trên bằng chứng",
+    "analyzedAt": "2026-08-18T23:08:53.818Z",
+    "gitCommitHash": "HEAD"
+  },
+  "nodes": [
+    {
+      "id": "file:.agents/ORIGINAL_REQUEST.md",
+      "type": "file",
+      "name": "ORIGINAL_REQUEST.md",
+      "filePath": ".agents/ORIGINAL_REQUEST.md",
+      "summary": "Tài liệu yêu cầu ban đầu và ngữ cảnh cho hệ thống Agent.",
+      "tags": [
+        "documentation",
+        "agents"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:.agents/rules/graphify.md",
+      "type": "file",
+      "name": "graphify.md",
+      "filePath": ".agents/rules/graphify.md",
+      "summary": "Quy tắc và hướng dẫn duy trì knowledge graph Graphify.",
+      "tags": [
+        "documentation",
+        "rules",
+        "graphify"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:.agents/sentinel/BRIEFING.md",
+      "type": "file",
+      "name": "BRIEFING.md",
+      "filePath": ".agents/sentinel/BRIEFING.md",
+      "summary": "Hướng dẫn định hướng (Briefing) và phạm vi hoạt động của Sentinel Audit Agent.",
+      "tags": [
+        "documentation",
+        "agents",
+        "sentinel"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:.agents/sentinel/handoff.md",
+      "type": "file",
+      "name": "handoff.md",
+      "filePath": ".agents/sentinel/handoff.md",
+      "summary": "Tài liệu quy trình bàn giao (Handoff) cho Sentinel Agent.",
+      "tags": [
+        "documentation",
+        "agents",
+        "handoff"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:.agents/teamwork_preview_implementer_1/BRIEFING.md",
+      "type": "file",
+      "name": "BRIEFING.md",
+      "filePath": ".agents/teamwork_preview_implementer_1/BRIEFING.md",
+      "summary": "Tài liệu định hướng (Briefing) cho Implementer Agent 1.",
+      "tags": [
+        "documentation",
+        "agent-config"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:.agents/teamwork_preview_implementer_1/handoff.md",
+      "type": "file",
+      "name": "handoff.md",
+      "filePath": ".agents/teamwork_preview_implementer_1/handoff.md",
+      "summary": "Thông tin bàn giao (Handoff) cho Implementer Agent 1.",
+      "tags": [
+        "documentation",
+        "agent-config"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:.agents/teamwork_preview_implementer_1/progress.md",
+      "type": "file",
+      "name": "progress.md",
+      "filePath": ".agents/teamwork_preview_implementer_1/progress.md",
+      "summary": "Thông tin theo dõi tiến độ cho Implementer Agent 1.",
+      "tags": [
+        "documentation",
+        "agent-config"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:.agents/teamwork_preview_reviewer_1/BRIEFING.md",
+      "type": "file",
+      "name": "BRIEFING.md",
+      "filePath": ".agents/teamwork_preview_reviewer_1/BRIEFING.md",
+      "summary": "Tài liệu định hướng (Briefing) cho Reviewer Agent 1.",
+      "tags": [
+        "documentation",
+        "agent-config"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:.agents/teamwork_preview_reviewer_1/handoff.md",
+      "type": "file",
+      "name": "handoff.md",
+      "filePath": ".agents/teamwork_preview_reviewer_1/handoff.md",
+      "summary": "Tài liệu bàn giao (Handoff) cho Reviewer Agent 1.",
+      "tags": [
+        "documentation",
+        "agent-config"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:.agents/teamwork_preview_reviewer_1/progress.md",
+      "type": "file",
+      "name": "progress.md",
+      "filePath": ".agents/teamwork_preview_reviewer_1/progress.md",
+      "summary": "Tài liệu theo dõi tiến độ cho Reviewer Agent 1.",
+      "tags": [
+        "documentation",
+        "agent-config"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:.agents/teamwork_preview_reviewer_2/BRIEFING.md",
+      "type": "file",
+      "name": "BRIEFING.md",
+      "filePath": ".agents/teamwork_preview_reviewer_2/BRIEFING.md",
+      "summary": "Tài liệu định hướng (Briefing) cho Reviewer Agent 2.",
+      "tags": [
+        "markdown",
+        "documentation"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:.agents/teamwork_preview_reviewer_2/handoff.md",
+      "type": "file",
+      "name": "handoff.md",
+      "filePath": ".agents/teamwork_preview_reviewer_2/handoff.md",
+      "summary": "Hướng dẫn bàn giao (Handoff) cho Reviewer Agent 2.",
+      "tags": [
+        "markdown",
+        "documentation"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:.agents/teamwork_preview_reviewer_2/plan.md",
+      "type": "file",
+      "name": "plan.md",
+      "filePath": ".agents/teamwork_preview_reviewer_2/plan.md",
+      "summary": "Kế hoạch dự án cho Reviewer Agent 2.",
+      "tags": [
+        "markdown",
+        "documentation"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:.agents/teamwork_preview_reviewer_2/progress.md",
+      "type": "file",
+      "name": "progress.md",
+      "filePath": ".agents/teamwork_preview_reviewer_2/progress.md",
+      "summary": "Theo dõi tiến độ cho Reviewer Agent 2.",
+      "tags": [
+        "markdown",
+        "documentation"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:.agents/teamwork_preview_reviewer_3/BRIEFING.md",
+      "type": "file",
+      "name": "BRIEFING.md",
+      "filePath": ".agents/teamwork_preview_reviewer_3/BRIEFING.md",
+      "summary": "Tài liệu định hướng (Briefing) cho Reviewer Agent 3.",
+      "tags": [
+        "agent",
+        "documentation"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:.agents/teamwork_preview_reviewer_3/handoff.md",
+      "type": "file",
+      "name": "handoff.md",
+      "filePath": ".agents/teamwork_preview_reviewer_3/handoff.md",
+      "summary": "Hướng dẫn bàn giao (Handoff) cho Reviewer Agent 3.",
+      "tags": [
+        "agent",
+        "documentation"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:.agents/teamwork_preview_reviewer_3/progress.md",
+      "type": "file",
+      "name": "progress.md",
+      "filePath": ".agents/teamwork_preview_reviewer_3/progress.md",
+      "summary": "Tài liệu theo dõi tiến độ cho Reviewer Agent 3.",
+      "tags": [
+        "agent",
+        "documentation"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:.agents/teamwork_preview_swe_1/BRIEFING.md",
+      "type": "file",
+      "name": "BRIEFING.md",
+      "filePath": ".agents/teamwork_preview_swe_1/BRIEFING.md",
+      "summary": "Tài liệu định hướng (Briefing) cho Software Engineer Agent 1.",
+      "tags": [
+        "documentation",
+        "agent-config"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:.agents/teamwork_preview_swe_1/DISPATCH.md",
+      "type": "file",
+      "name": "DISPATCH.md",
+      "filePath": ".agents/teamwork_preview_swe_1/DISPATCH.md",
+      "summary": "Hướng dẫn điều phối (Dispatch) cho Software Engineer Agent 1.",
+      "tags": [
+        "documentation",
+        "agent-config"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:.agents/teamwork_preview_swe_1/handoff.md",
+      "type": "file",
+      "name": "handoff.md",
+      "filePath": ".agents/teamwork_preview_swe_1/handoff.md",
+      "summary": "Hướng dẫn bàn giao (Handoff) cho Software Engineer Agent 1.",
+      "tags": [
+        "documentation",
+        "agent-config"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:.agents/teamwork_preview_swe_1/plan.md",
+      "type": "file",
+      "name": "plan.md",
+      "filePath": ".agents/teamwork_preview_swe_1/plan.md",
+      "summary": "Tài liệu kế hoạch cho Software Engineer Agent 1.",
+      "tags": [
+        "documentation",
+        "agent-config"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:.agents/teamwork_preview_swe_1/progress.md",
+      "type": "file",
+      "name": "progress.md",
+      "filePath": ".agents/teamwork_preview_swe_1/progress.md",
+      "summary": "Tài liệu theo dõi tiến độ cho Software Engineer Agent 1.",
+      "tags": [
+        "documentation",
+        "agent-config"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:.agents/teamwork_preview_victory_auditor_1/BRIEFING.md",
+      "type": "file",
+      "name": "BRIEFING.md",
+      "filePath": ".agents/teamwork_preview_victory_auditor_1/BRIEFING.md",
+      "summary": "Tài liệu định hướng (Briefing) cho Victory Auditor Agent 1.",
+      "tags": [
+        "documentation",
+        "agent"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:.agents/teamwork_preview_victory_auditor_1/DISPATCH.md",
+      "type": "file",
+      "name": "DISPATCH.md",
+      "filePath": ".agents/teamwork_preview_victory_auditor_1/DISPATCH.md",
+      "summary": "Hướng dẫn điều phối (Dispatch) cho Victory Auditor Agent 1.",
+      "tags": [
+        "documentation",
+        "agent"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:.agents/teamwork_preview_victory_auditor_1/audit_report.md",
+      "type": "file",
+      "name": "audit_report.md",
+      "filePath": ".agents/teamwork_preview_victory_auditor_1/audit_report.md",
+      "summary": "Báo cáo kiểm toán (Audit report) được tạo bởi Victory Auditor Agent 1.",
+      "tags": [
+        "report",
+        "audit"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:.agents/teamwork_preview_victory_auditor_1/handoff.md",
+      "type": "file",
+      "name": "handoff.md",
+      "filePath": ".agents/teamwork_preview_victory_auditor_1/handoff.md",
+      "summary": "Tài liệu bàn giao (Handoff) cho Victory Auditor Agent 1.",
+      "tags": [
+        "documentation",
+        "handoff"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:.agents/teamwork_preview_victory_auditor_1/progress.md",
+      "type": "file",
+      "name": "progress.md",
+      "filePath": ".agents/teamwork_preview_victory_auditor_1/progress.md",
+      "summary": "Theo dõi tiến độ cho Victory Auditor Agent 1.",
+      "tags": [
+        "documentation",
+        "tracking"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:.agents/teamwork_preview_victory_auditor_sentinel/BRIEFING.md",
+      "type": "file",
+      "name": "BRIEFING.md",
+      "filePath": ".agents/teamwork_preview_victory_auditor_sentinel/BRIEFING.md",
+      "summary": "Tài liệu định hướng (Briefing) cho Victory Auditor Sentinel Agent.",
+      "tags": [
+        "markdown",
+        "agents"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:.agents/teamwork_preview_victory_auditor_sentinel/DISPATCH.md",
+      "type": "file",
+      "name": "DISPATCH.md",
+      "filePath": ".agents/teamwork_preview_victory_auditor_sentinel/DISPATCH.md",
+      "summary": "Hướng dẫn điều phối (Dispatch) cho Victory Auditor Sentinel Agent.",
+      "tags": [
+        "markdown",
+        "agents"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:.agents/teamwork_preview_victory_auditor_sentinel/audit_report.md",
+      "type": "file",
+      "name": "audit_report.md",
+      "filePath": ".agents/teamwork_preview_victory_auditor_sentinel/audit_report.md",
+      "summary": "Báo cáo kiểm toán (Audit report) được tạo bởi Victory Auditor Sentinel Agent.",
+      "tags": [
+        "markdown",
+        "agents"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:.agents/teamwork_preview_victory_auditor_sentinel/handoff.md",
+      "type": "file",
+      "name": "handoff.md",
+      "filePath": ".agents/teamwork_preview_victory_auditor_sentinel/handoff.md",
+      "summary": "Giao thức bàn giao (Handoff protocol) cho Victory Auditor Sentinel Agent.",
+      "tags": [
+        "markdown",
+        "agents"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:.agents/teamwork_preview_victory_auditor_sentinel/independent_test.ps1",
+      "type": "file",
+      "name": "independent_test.ps1",
+      "filePath": ".agents/teamwork_preview_victory_auditor_sentinel/independent_test.ps1",
+      "summary": "Kịch bản PowerShell để kiểm thử Victory Auditor Sentinel Agent.",
+      "tags": [
+        "powershell",
+        "agents"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:.agents/teamwork_preview_victory_auditor_sentinel/progress.md",
+      "type": "file",
+      "name": "progress.md",
+      "filePath": ".agents/teamwork_preview_victory_auditor_sentinel/progress.md",
+      "summary": "Theo dõi tiến độ cho Victory Auditor Sentinel Agent.",
+      "tags": [
+        "markdown",
+        "agents"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:.github/workflows/test.yml",
+      "type": "file",
+      "name": "test.yml",
+      "filePath": ".github/workflows/test.yml",
+      "summary": "Quy trình GitHub Actions workflow thiết lập các cổng chất lượng (quality gates) bao gồm kiểm thử, xác thực tài liệu và kiểm toán CLI.",
+      "tags": [
+        "ci",
+        "github-actions",
+        "workflow"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:.specify/feature.json",
+      "type": "file",
+      "name": "feature.json",
+      "filePath": ".specify/feature.json",
+      "summary": "Tệp cấu hình định nghĩa các tính năng của dự án.",
+      "tags": [
+        "config",
+        "json"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:.specify/init-options.json",
+      "type": "file",
+      "name": "init-options.json",
+      "filePath": ".specify/init-options.json",
+      "summary": "Tệp cấu hình định nghĩa các tùy chọn khởi tạo.",
+      "tags": [
+        "config",
+        "json"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:.specify/integration.json",
+      "type": "file",
+      "name": "integration.json",
+      "filePath": ".specify/integration.json",
+      "summary": "Tệp cấu hình định nghĩa các thiết lập tích hợp.",
+      "tags": [
+        "config",
+        "json"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:.specify/scripts/powershell/check-prerequisites.ps1",
+      "type": "file",
+      "name": "check-prerequisites.ps1",
+      "filePath": ".specify/scripts/powershell/check-prerequisites.ps1",
+      "summary": "Kịch bản PowerShell để kiểm tra các điều kiện tiên quyết của môi trường.",
+      "tags": [
+        "powershell",
+        "setup"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:.specify/scripts/powershell/common.ps1",
+      "type": "file",
+      "name": "common.ps1",
+      "filePath": ".specify/scripts/powershell/common.ps1",
+      "summary": "Các hàm và tiện ích PowerShell dùng chung.",
+      "tags": [
+        "powershell",
+        "utility"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:.specify/scripts/powershell/create-new-feature.ps1",
+      "type": "file",
+      "name": "create-new-feature.ps1",
+      "filePath": ".specify/scripts/powershell/create-new-feature.ps1",
+      "summary": "Kịch bản PowerShell để tạo nhánh tính năng và thư mục mới.",
+      "tags": [
+        "powershell",
+        "feature"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:.specify/scripts/powershell/setup-plan.ps1",
+      "type": "file",
+      "name": "setup-plan.ps1",
+      "filePath": ".specify/scripts/powershell/setup-plan.ps1",
+      "summary": "Kịch bản PowerShell để khởi tạo kế hoạch phát triển tính năng (plan).",
+      "tags": [
+        "powershell",
+        "planning"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:.specify/scripts/powershell/setup-tasks.ps1",
+      "type": "file",
+      "name": "setup-tasks.ps1",
+      "filePath": ".specify/scripts/powershell/setup-tasks.ps1",
+      "summary": "Kịch bản PowerShell để tạo và thiết lập danh sách tác vụ (tasks).",
+      "tags": [
+        "powershell",
+        "tasks"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:.specify/templates/checklist-template.md",
+      "type": "file",
+      "name": "checklist-template.md",
+      "filePath": ".specify/templates/checklist-template.md",
+      "summary": "Template để tạo danh sách kiểm tra (checklist) cho tính năng.",
+      "tags": [
+        "template",
+        "specification"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:.specify/templates/constitution-template.md",
+      "type": "file",
+      "name": "constitution-template.md",
+      "filePath": ".specify/templates/constitution-template.md",
+      "summary": "Template để tạo quy chuẩn nguyên tắc (constitution) của dự án.",
+      "tags": [
+        "template",
+        "governance"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:.specify/templates/plan-template.md",
+      "type": "file",
+      "name": "plan-template.md",
+      "filePath": ".specify/templates/plan-template.md",
+      "summary": "Template để tạo kế hoạch triển khai tính năng (plan).",
+      "tags": [
+        "template",
+        "planning"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:.specify/templates/spec-template.md",
+      "type": "file",
+      "name": "spec-template.md",
+      "filePath": ".specify/templates/spec-template.md",
+      "summary": "Template để tạo đặc tả kỹ thuật tính năng (spec).",
+      "tags": [
+        "template",
+        "specification"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:.specify/templates/tasks-template.md",
+      "type": "file",
+      "name": "tasks-template.md",
+      "filePath": ".specify/templates/tasks-template.md",
+      "summary": "Template để tạo danh sách tác vụ triển khai (tasks).",
+      "tags": [
+        "template",
+        "tasks"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:.streamlit/config.toml",
+      "type": "file",
+      "name": "config.toml",
+      "filePath": ".streamlit/config.toml",
+      "summary": "Tệp cấu hình giao diện UI Streamlit.",
+      "tags": [
+        "config",
+        "streamlit"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:.understand-anything/.understandignore",
+      "type": "file",
+      "name": ".understandignore",
+      "filePath": ".understand-anything/.understandignore",
+      "summary": "Mẫu loại trừ tệp khi lập chỉ mục đồ thị tri thức (knowledge graph) understand-anything.",
+      "tags": [
+        "config",
+        "tooling"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:00_governance/DATA_POLICY.md",
+      "type": "file",
+      "name": "DATA_POLICY.md",
+      "filePath": "00_governance/DATA_POLICY.md",
+      "summary": "Chính sách quản trị (governance) cho việc quản lý và tính toàn vẹn dữ liệu.",
+      "tags": [
+        "governance",
+        "policy"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:00_governance/PHASE_0_EXIT_CHECKLIST.md",
+      "type": "file",
+      "name": "PHASE_0_EXIT_CHECKLIST.md",
+      "filePath": "00_governance/PHASE_0_EXIT_CHECKLIST.md",
+      "summary": "Danh sách kiểm tra hoàn thành (exit checklist) cho cổng kiểm soát (Phase Gate) Giai đoạn 0.",
+      "tags": [
+        "governance",
+        "checklist"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:00_governance/PHASE_GATE_LOG.md",
+      "type": "file",
+      "name": "PHASE_GATE_LOG.md",
+      "filePath": "00_governance/PHASE_GATE_LOG.md",
+      "summary": "Nhật ký theo dõi các quyết định và chuyển đổi cổng kiểm soát Phase Gate.",
+      "tags": [
+        "governance",
+        "log"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:00_governance/SOURCE_POLICY.md",
+      "type": "file",
+      "name": "SOURCE_POLICY.md",
+      "filePath": "00_governance/SOURCE_POLICY.md",
+      "summary": "Chính sách quản trị việc tiếp nhận (ingestion) và theo dõi tài liệu nguồn.",
+      "tags": [
+        "governance",
+        "policy"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:00_governance/VALIDATION_RULES.md",
+      "type": "file",
+      "name": "VALIDATION_RULES.md",
+      "filePath": "00_governance/VALIDATION_RULES.md",
+      "summary": "Các quy tắc xác thực tuân thủ dữ liệu và quản trị hệ thống.",
+      "tags": [
+        "governance",
+        "validation"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:01_design/DATA_FLOW.md",
+      "type": "file",
+      "name": "DATA_FLOW.md",
+      "filePath": "01_design/DATA_FLOW.md",
+      "summary": "Kiến trúc luồng dữ liệu (Data Flow) và thiết kế Pipeline xử lý.",
+      "tags": [
+        "design",
+        "architecture"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:01_design/SYSTEM_CONTEXT.md",
+      "type": "file",
+      "name": "SYSTEM_CONTEXT.md",
+      "filePath": "01_design/SYSTEM_CONTEXT.md",
+      "summary": "Sơ đồ ngữ cảnh hệ thống (System Context) và định nghĩa ranh giới hệ thống.",
+      "tags": [
+        "design",
+        "architecture"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:01_design/TERMINOLOGY.md",
+      "type": "file",
+      "name": "TERMINOLOGY.md",
+      "filePath": "01_design/TERMINOLOGY.md",
+      "summary": "Bảng thuật ngữ chuẩn hóa và định nghĩa cho AIOS.",
+      "tags": [
+        "design",
+        "glossary"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:02_sources/README.md",
+      "type": "file",
+      "name": "README.md",
+      "filePath": "02_sources/README.md",
+      "summary": "Tệp README giới thiệu thư mục nguồn dữ liệu (sources).",
+      "tags": [
+        "markdown",
+        "documentation"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:02_sources/excluded_sources.md",
+      "type": "file",
+      "name": "excluded_sources.md",
+      "filePath": "02_sources/excluded_sources.md",
+      "summary": "Tài liệu ghi nhận các nguồn dữ liệu bị loại trừ.",
+      "tags": [
+        "markdown",
+        "documentation"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:02_sources/source_inventory.md",
+      "type": "file",
+      "name": "source_inventory.md",
+      "filePath": "02_sources/source_inventory.md",
+      "summary": "Danh mục kiểm kê toàn bộ các nguồn dữ liệu.",
+      "tags": [
+        "markdown",
+        "documentation"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:03_evidence_registry/evidence_index.md",
+      "type": "file",
+      "name": "evidence_index.md",
+      "filePath": "03_evidence_registry/evidence_index.md",
+      "summary": "Chỉ mục các bản ghi bằng chứng (Evidence Record) trong sổ đăng ký bằng chứng.",
+      "tags": [
+        "evidence",
+        "index"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:03_evidence_registry/README.md",
+      "type": "file",
+      "name": "README.md",
+      "filePath": "03_evidence_registry/README.md",
+      "summary": "Tổng quan về thư mục sổ đăng ký bản ghi bằng chứng (Evidence Registry).",
+      "tags": [
+        "evidence",
+        "docs"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:09_handover/README.md",
+      "type": "file",
+      "name": "README.md",
+      "filePath": "09_handover/README.md",
+      "summary": "Điểm điều hướng chính cho tài liệu bàn giao (handover).",
+      "tags": [
+        "documentation",
+        "handover"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:09_handover/matecon_manual_retrieval_handover.md",
+      "type": "file",
+      "name": "matecon_manual_retrieval_handover.md",
+      "filePath": "09_handover/matecon_manual_retrieval_handover.md",
+      "summary": "Tài liệu chi tiết quy trình bàn giao truy xuất thủ công cho Matecon.",
+      "tags": [
+        "documentation",
+        "handover",
+        "matecon"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:09_handover/phase_0_handover.md",
+      "type": "file",
+      "name": "phase_0_handover.md",
+      "filePath": "09_handover/phase_0_handover.md",
+      "summary": "Tài liệu chi tiết các quy trình bàn giao cho Giai đoạn 0 (Phase 0).",
+      "tags": [
+        "documentation",
+        "handover",
+        "phase-0"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:10_schemas/decision_pattern.schema.json",
+      "type": "file",
+      "name": "decision_pattern.schema.json",
+      "filePath": "10_schemas/decision_pattern.schema.json",
+      "summary": "JSON Schema định nghĩa mẫu quyết định (decision pattern).",
+      "tags": [
+        "schema",
+        "json"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:10_schemas/evidence_record.schema.json",
+      "type": "file",
+      "name": "evidence_record.schema.json",
+      "filePath": "10_schemas/evidence_record.schema.json",
+      "summary": "JSON Schema cho các bản ghi bằng chứng (Evidence Record).",
+      "tags": [
+        "schema",
+        "json"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:10_schemas/memory_unit.schema.json",
+      "type": "file",
+      "name": "memory_unit.schema.json",
+      "filePath": "10_schemas/memory_unit.schema.json",
+      "summary": "JSON Schema cho cấu trúc đơn vị bộ nhớ (Memory Unit).",
+      "tags": [
+        "schema",
+        "json"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:10_schemas/phase_record.schema.json",
+      "type": "file",
+      "name": "phase_record.schema.json",
+      "filePath": "10_schemas/phase_record.schema.json",
+      "summary": "JSON Schema để theo dõi hồ sơ giai đoạn (Phase Record).",
+      "tags": [
+        "schema",
+        "json"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:10_schemas/project_card.schema.json",
+      "type": "file",
+      "name": "project_card.schema.json",
+      "filePath": "10_schemas/project_card.schema.json",
+      "summary": "JSON Schema định nghĩa thẻ dự án (project card).",
+      "tags": [
+        "schema",
+        "json"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:10_schemas/workflow_card.schema.json",
+      "type": "file",
+      "name": "workflow_card.schema.json",
+      "filePath": "10_schemas/workflow_card.schema.json",
+      "summary": "JSON Schema cho các cấu hình thẻ quy trình làm việc (workflow card).",
+      "tags": [
+        "schema",
+        "json"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:11_templates/audit_report.md",
+      "type": "file",
+      "name": "audit_report.md",
+      "filePath": "11_templates/audit_report.md",
+      "summary": "Biểu mẫu template cho báo cáo kiểm toán (audit reports).",
+      "tags": [
+        "template",
+        "audit"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:11_templates/decision_record.md",
+      "type": "file",
+      "name": "decision_record.md",
+      "filePath": "11_templates/decision_record.md",
+      "summary": "Biểu mẫu template cho các bản ghi quyết định kiến trúc và kỹ thuật (decision records).",
+      "tags": [
+        "template",
+        "decisions"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:11_templates/evidence_record.md",
+      "type": "file",
+      "name": "evidence_record.md",
+      "filePath": "11_templates/evidence_record.md",
+      "summary": "Biểu mẫu template cho các bản ghi bằng chứng (Evidence Records).",
+      "tags": [
+        "template",
+        "evidence"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:11_templates/extraction_report.md",
+      "type": "file",
+      "name": "extraction_report.md",
+      "filePath": "11_templates/extraction_report.md",
+      "summary": "Biểu mẫu template cho các báo cáo trích xuất dữ liệu (extraction reports).",
+      "tags": [
+        "template",
+        "extraction"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:11_templates/handover.md",
+      "type": "file",
+      "name": "handover.md",
+      "filePath": "11_templates/handover.md",
+      "summary": "Biểu mẫu template cho tài liệu bàn giao dự án (handovers).",
+      "tags": [
+        "template",
+        "handover"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:11_templates/memory_card.md",
+      "type": "file",
+      "name": "memory_card.md",
+      "filePath": "11_templates/memory_card.md",
+      "summary": "Biểu mẫu template cho các thẻ bộ nhớ (Memory Cards).",
+      "tags": [
+        "template",
+        "memory"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:11_templates/project_card.md",
+      "type": "file",
+      "name": "project_card.md",
+      "filePath": "11_templates/project_card.md",
+      "summary": "Biểu mẫu template cho các thẻ thông tin dự án (Project Cards).",
+      "tags": [
+        "template",
+        "project"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:11_templates/workflow_card.md",
+      "type": "file",
+      "name": "workflow_card.md",
+      "filePath": "11_templates/workflow_card.md",
+      "summary": "Biểu mẫu template cho các thẻ quy trình làm việc (Workflow Cards).",
+      "tags": [
+        "template",
+        "workflow"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:12_tools/README.md",
+      "type": "file",
+      "name": "README.md",
+      "filePath": "12_tools/README.md",
+      "summary": "Tài liệu hướng dẫn cho thư mục công cụ (tools directory).",
+      "tags": [
+        "markdown",
+        "documentation"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:REPO_INHERITANCE_MAP.md",
+      "type": "file",
+      "name": "REPO_INHERITANCE_MAP.md",
+      "filePath": "REPO_INHERITANCE_MAP.md",
+      "summary": "Tài liệu mô tả cấu trúc kế thừa của kho lưu trữ (repository inheritance structure).",
+      "tags": [
+        "markdown",
+        "documentation"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:ROADMAP.md",
+      "type": "file",
+      "name": "ROADMAP.md",
+      "filePath": "ROADMAP.md",
+      "summary": "Lộ trình phát triển dự án (Project development roadmap).",
+      "tags": [
+        "markdown",
+        "documentation"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:RUN_AIOS_WORKSPACE_CHAT.bat",
+      "type": "file",
+      "name": "RUN_AIOS_WORKSPACE_CHAT.bat",
+      "filePath": "RUN_AIOS_WORKSPACE_CHAT.bat",
+      "summary": "Tập lệnh Batch script để khởi chạy ứng dụng AIOS Workspace Chat.",
+      "tags": [
+        "bat",
+        "script"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:SECURITY.md",
+      "type": "file",
+      "name": "SECURITY.md",
+      "filePath": "SECURITY.md",
+      "summary": "Chính sách và thông tin an toàn bảo mật (Security policies).",
+      "tags": [
+        "markdown",
+        "security"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:WORKLENS_ARCHITECTURE.md",
+      "type": "file",
+      "name": "WORKLENS_ARCHITECTURE.md",
+      "filePath": "WORKLENS_ARCHITECTURE.md",
+      "summary": "Tài liệu kiến trúc hệ thống Worklens (Worklens architecture documentation).",
+      "tags": [
+        "markdown",
+        "documentation"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:WORKLENS_MASTER_ROADMAP.md",
+      "type": "file",
+      "name": "WORKLENS_MASTER_ROADMAP.md",
+      "filePath": "WORKLENS_MASTER_ROADMAP.md",
+      "summary": "Lộ trình tổng thể (Master roadmap) cho thành phần Worklens.",
+      "tags": [
+        "markdown",
+        "documentation"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:pyproject.toml",
+      "type": "file",
+      "name": "pyproject.toml",
+      "filePath": "pyproject.toml",
+      "summary": "Tệp cấu hình dự án Python (pyproject.toml).",
+      "tags": [
+        "toml",
+        "config"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:start_antigravity_bridge.bat",
+      "type": "file",
+      "name": "start_antigravity_bridge.bat",
+      "filePath": "start_antigravity_bridge.bat",
+      "summary": "Tập lệnh Batch script để khởi động cầu nối Antigravity Bridge.",
+      "tags": [
+        "bat",
+        "script"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:config/mom_source_dispositions.example.json",
+      "type": "file",
+      "name": "mom_source_dispositions.example.json",
+      "filePath": "config/mom_source_dispositions.example.json",
+      "summary": "Tệp cấu hình định nghĩa cách xử lý tệp nguồn cho các trường hợp loại trừ dựa trên bằng chứng (evidence-backed exclusions).",
+      "tags": [
+        "config",
+        "json"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:config/real_benchmark.example.json",
+      "type": "file",
+      "name": "real_benchmark.example.json",
+      "filePath": "config/real_benchmark.example.json",
+      "summary": "Cấu hình mẫu để chạy các bài đánh giá chuẩn (benchmarks) trên các thư mục nguồn cục bộ (local source roots).",
+      "tags": [
+        "config",
+        "benchmark",
+        "json"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:config/shared_ai_provider_fabric.json",
+      "type": "file",
+      "name": "shared_ai_provider_fabric.json",
+      "filePath": "config/shared_ai_provider_fabric.json",
+      "summary": "Cấu hình dùng chung cho mạng lưới cung cấp AI (AI provider fabric), định nghĩa các endpoint, API key và năng lực mô hình.",
+      "tags": [
+        "config",
+        "ai-provider",
+        "json"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:docs/RAG_AGENT_HARNESS_RESEARCH.md",
+      "type": "file",
+      "name": "RAG_AGENT_HARNESS_RESEARCH.md",
+      "filePath": "docs/RAG_AGENT_HARNESS_RESEARCH.md",
+      "summary": "Tài liệu nghiên cứu về việc triển khai khung kiểm thử khai thác RAG Agent (RAG agent harness).",
+      "tags": [
+        "docs",
+        "research"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:docs/RECOVERY_GUIDE.md",
+      "type": "file",
+      "name": "RECOVERY_GUIDE.md",
+      "filePath": "docs/RECOVERY_GUIDE.md",
+      "summary": "Tài liệu hướng dẫn các quy trình khôi phục hệ thống (system recovery processes).",
+      "tags": [
+        "docs",
+        "guide"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:docs/UI_LANGUAGE_POLICY.md",
+      "type": "file",
+      "name": "UI_LANGUAGE_POLICY.md",
+      "filePath": "docs/UI_LANGUAGE_POLICY.md",
+      "summary": "Tài liệu chính sách về các tiêu chuẩn ngôn ngữ giao diện người dùng (UI language standards).",
+      "tags": [
+        "docs",
+        "policy"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:docs/rag_v2/AUTOMATED_INGESTION_OPERATIONS.md",
+      "type": "file",
+      "name": "AUTOMATED_INGESTION_OPERATIONS.md",
+      "filePath": "docs/rag_v2/AUTOMATED_INGESTION_OPERATIONS.md",
+      "summary": "Mô tả các quy trình tiếp nhận dữ liệu tự động (automated ingestion processes) cho hệ thống RAG.",
+      "tags": [
+        "docs",
+        "rag_v2"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:docs/rag_v2/BLIND_RERUN_QUESTIONS_DRAFT.json",
+      "type": "file",
+      "name": "BLIND_RERUN_QUESTIONS_DRAFT.json",
+      "filePath": "docs/rag_v2/BLIND_RERUN_QUESTIONS_DRAFT.json",
+      "summary": "Bản thảo các câu hỏi chạy lại mù (blind reruns) phục vụ đánh giá chất lượng RAG.",
+      "tags": [
+        "docs",
+        "rag_v2",
+        "json"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:docs/rag_v2/RAG_V2_DESIGN.md",
+      "type": "file",
+      "name": "RAG_V2_DESIGN.md",
+      "filePath": "docs/rag_v2/RAG_V2_DESIGN.md",
+      "summary": "Tài liệu thiết kế kiến trúc RAG Version 2 (RAG v2).",
+      "tags": [
+        "docs",
+        "rag_v2"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:docs/rag_v2/SAME_PROTOCOL_ANSWER_QUALITY_PROTOCOL.md",
+      "type": "file",
+      "name": "SAME_PROTOCOL_ANSWER_QUALITY_PROTOCOL.md",
+      "filePath": "docs/rag_v2/SAME_PROTOCOL_ANSWER_QUALITY_PROTOCOL.md",
+      "summary": "Giao thức đánh giá chất lượng câu trả lời trong các hệ thống RAG.",
+      "tags": [
+        "docs",
+        "rag_v2"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:docs/rag_v2/benchmark_gold_identity.schema.json",
+      "type": "file",
+      "name": "benchmark_gold_identity.schema.json",
+      "filePath": "docs/rag_v2/benchmark_gold_identity.schema.json",
+      "summary": "JSON Schema cho tập dữ liệu đối sánh chuẩn (Gold Identity) phục vụ benchmark RAG.",
+      "tags": [
+        "docs",
+        "rag_v2",
+        "json"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:docs/reports/workspace_chat_full_12_questions.json",
+      "type": "file",
+      "name": "workspace_chat_full_12_questions.json",
+      "filePath": "docs/reports/workspace_chat_full_12_questions.json",
+      "summary": "Tệp JSON chứa dữ liệu hội thoại Workspace Chat cho bộ 12 câu hỏi đánh giá.",
+      "tags": [
+        "json",
+        "data"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:docs/reports/workspace_chat_full_12_questions_polished_report.md",
+      "type": "file",
+      "name": "workspace_chat_full_12_questions_polished_report.md",
+      "filePath": "docs/reports/workspace_chat_full_12_questions_polished_report.md",
+      "summary": "Báo cáo Markdown hoàn chỉnh dựa trên các câu hỏi đối chuẩn của Workspace Chat.",
+      "tags": [
+        "markdown",
+        "report"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:docs/reports/workspace_chat_full_12_questions_report.md",
+      "type": "file",
+      "name": "workspace_chat_full_12_questions_report.md",
+      "filePath": "docs/reports/workspace_chat_full_12_questions_report.md",
+      "summary": "Báo cáo Markdown sơ bộ dựa trên các câu hỏi đối chuẩn của Workspace Chat.",
+      "tags": [
+        "markdown",
+        "report"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:docs/requirements/NON_FUNCTIONAL_REQUIREMENTS.md",
+      "type": "file",
+      "name": "NON_FUNCTIONAL_REQUIREMENTS.md",
+      "filePath": "docs/requirements/NON_FUNCTIONAL_REQUIREMENTS.md",
+      "summary": "Đường cơ sở (baseline) cho các yêu cầu phi chức năng bao gồm quyền riêng tư, an toàn bảo mật và độ tin cậy.",
+      "tags": [
+        "requirements",
+        "documentation"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:docs/requirements/PRODUCT_REQUIREMENTS.md",
+      "type": "file",
+      "name": "PRODUCT_REQUIREMENTS.md",
+      "filePath": "docs/requirements/PRODUCT_REQUIREMENTS.md",
+      "summary": "Đường cơ sở (baseline) cho các tính năng sản phẩm và phạm vi dự án.",
+      "tags": [
+        "requirements",
+        "documentation"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:docs/requirements/TRACEABILITY_MATRIX.md",
+      "type": "file",
+      "name": "TRACEABILITY_MATRIX.md",
+      "filePath": "docs/requirements/TRACEABILITY_MATRIX.md",
+      "summary": "Ma trận truy vết (Traceability Matrix) liên kết các yêu cầu với các thành phần thiết kế và bằng chứng (evidence).",
+      "tags": [
+        "requirements",
+        "documentation"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:docs/security/DEPENDENCY_POLICY.md",
+      "type": "file",
+      "name": "DEPENDENCY_POLICY.md",
+      "filePath": "docs/security/DEPENDENCY_POLICY.md",
+      "summary": "Chính sách quản lý các phần phụ thuộc bên ngoài (external dependencies) và an ninh chuỗi cung ứng (supply-chain security).",
+      "tags": [
+        "security",
+        "documentation",
+        "dependency"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:docs/security/PRIVACY_IMPACT_ASSESSMENT.md",
+      "type": "file",
+      "name": "PRIVACY_IMPACT_ASSESSMENT.md",
+      "filePath": "docs/security/PRIVACY_IMPACT_ASSESSMENT.md",
+      "summary": "Đánh giá các tác động về quyền riêng tư, xử lý dữ liệu và các quyết định bảo mật riêng của chủ sở hữu.",
+      "tags": [
+        "security",
+        "documentation",
+        "privacy"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:docs/security/THREAT_MODEL.md",
+      "type": "file",
+      "name": "THREAT_MODEL.md",
+      "filePath": "docs/security/THREAT_MODEL.md",
+      "summary": "Mô hình mối đe dọa cho nền tảng Workspace Chat và RAG ưu tiên cục bộ (local-first) sử dụng phương pháp luận STRIDE.",
+      "tags": [
+        "security",
+        "documentation",
+        "threat-model"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:specs/excel-structured-query-remediation/plan.md",
+      "type": "file",
+      "name": "plan.md",
+      "filePath": "specs/excel-structured-query-remediation/plan.md",
+      "summary": "Kế hoạch triển khai nhằm khắc phục các phát hiện kiểm toán truy vấn có cấu trúc Excel.",
+      "tags": [
+        "specification",
+        "plan"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:specs/excel-structured-query-remediation/spec.md",
+      "type": "file",
+      "name": "spec.md",
+      "filePath": "specs/excel-structured-query-remediation/spec.md",
+      "summary": "Đặc tả kỹ thuật để khắc phục các phát hiện kiểm toán truy vấn có cấu trúc Excel.",
+      "tags": [
+        "specification",
+        "requirements"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:specs/excel-structured-query-remediation/tasks.md",
+      "type": "file",
+      "name": "tasks.md",
+      "filePath": "specs/excel-structured-query-remediation/tasks.md",
+      "summary": "Danh sách công việc (task checklist) để khắc phục các phát hiện kiểm toán truy vấn có cấu trúc Excel.",
+      "tags": [
+        "specification",
+        "tasks"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:tests/fixtures/adaptive_reranking_corpus.json",
+      "type": "file",
+      "name": "adaptive_reranking_corpus.json",
+      "filePath": "tests/fixtures/adaptive_reranking_corpus.json",
+      "summary": "Tệp fixture JSON chứa tập ngữ liệu (corpus) dùng để kiểm thử tính năng tái xếp hạng thích ứng (adaptive reranking).",
+      "tags": [
+        "test",
+        "fixture",
+        "json"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:tests/fixtures/adaptive_reranking_report_schema.json",
+      "type": "file",
+      "name": "adaptive_reranking_report_schema.json",
+      "filePath": "tests/fixtures/adaptive_reranking_report_schema.json",
+      "summary": "Tệp JSON Schema dùng để xác thực các báo cáo tái xếp hạng thích ứng (adaptive reranking).",
+      "tags": [
+        "test",
+        "fixture",
+        "json",
+        "schema"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:tests/fixtures/adaptive_routing_cases.json",
+      "type": "file",
+      "name": "adaptive_routing_cases.json",
+      "filePath": "tests/fixtures/adaptive_routing_cases.json",
+      "summary": "Tệp fixture JSON chứa các trường hợp thử nghiệm để kiểm thử định tuyến thích ứng (adaptive routing).",
+      "tags": [
+        "test",
+        "fixture",
+        "json"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:scripts/battle_notebooklm_rag_v2.py",
+      "type": "file",
+      "name": "battle_notebooklm_rag_v2.py",
+      "filePath": "scripts/battle_notebooklm_rag_v2.py",
+      "summary": "Kịch bản (script) chính để đánh giá chuẩn đối sánh (benchmark) và so sánh đối đầu cấu hình RAG với NotebookLM.",
+      "tags": [
+        "script",
+        "rag",
+        "notebooklm"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:scripts/prepare_notebooklm_exact_corpus.py",
+      "type": "file",
+      "name": "prepare_notebooklm_exact_corpus.py",
+      "filePath": "scripts/prepare_notebooklm_exact_corpus.py",
+      "summary": "Chuẩn bị dữ liệu ngữ liệu (corpus) dành riêng cho các luồng công việc RAG của NotebookLM.",
+      "tags": [
+        "script",
+        "corpus"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:scripts/upload_notebooklm_exact_corpus.py",
+      "type": "file",
+      "name": "upload_notebooklm_exact_corpus.py",
+      "filePath": "scripts/upload_notebooklm_exact_corpus.py",
+      "summary": "Xử lý việc tải lên các tập ngữ liệu đã chuẩn bị sẵn lên NotebookLM.",
+      "tags": [
+        "script",
+        "upload",
+        "notebooklm"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:scripts/reconcile_notebooklm_source_titles.py",
+      "type": "file",
+      "name": "reconcile_notebooklm_source_titles.py",
+      "filePath": "scripts/reconcile_notebooklm_source_titles.py",
+      "summary": "Đối soát và đồng bộ tiêu đề nguồn giữa không gian làm việc cục bộ (local workspace) và NotebookLM.",
+      "tags": [
+        "script",
+        "utility"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:src/aios_habit/owner_workflow_state.py",
+      "type": "file",
+      "name": "owner_workflow_state.py",
+      "filePath": "src/aios_habit/owner_workflow_state.py",
+      "summary": "Quản lý trạng thái luồng công việc của chủ sở hữu trong hệ thống thói quen.",
+      "tags": [
+        "python",
+        "workflow"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:src/aios_habit/workflow.py",
+      "type": "file",
+      "name": "workflow.py",
+      "filePath": "src/aios_habit/workflow.py",
+      "summary": "Các định nghĩa cốt lõi phục vụ quản lý luồng công việc (workflow management).",
+      "tags": [
+        "python",
+        "workflow"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:src/aios_habit/models.py",
+      "type": "file",
+      "name": "models.py",
+      "filePath": "src/aios_habit/models.py",
+      "summary": "Các mô hình dữ liệu (data models) cho ứng dụng thói quen.",
+      "tags": [
+        "python",
+        "models"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:src/aios_habit/rag_v2/converters.py",
+      "type": "file",
+      "name": "converters.py",
+      "filePath": "src/aios_habit/rag_v2/converters.py",
+      "summary": "Triển khai các bộ điều hợp chuyển đổi tài liệu (converter adapters) cho pipeline RAG.",
+      "tags": [
+        "rag",
+        "converters",
+        "aios_habit"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:src/aios_habit/rag_v2/schema.py",
+      "type": "file",
+      "name": "schema.py",
+      "filePath": "src/aios_habit/rag_v2/schema.py",
+      "summary": "Định nghĩa các cấu trúc Schema cho DocumentElement.",
+      "tags": [
+        "rag",
+        "schema"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:src/aios_habit/rag_v2/adapters.py",
+      "type": "file",
+      "name": "adapters.py",
+      "filePath": "src/aios_habit/rag_v2/adapters.py",
+      "summary": "Định nghĩa các lớp cơ sở cho các bộ chuyển đổi tài liệu (document converters).",
+      "tags": [
+        "rag",
+        "adapters"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:src/aios_habit/source_ingest.py",
+      "type": "file",
+      "name": "source_ingest.py",
+      "filePath": "src/aios_habit/source_ingest.py",
+      "summary": "Xử lý việc tiếp nhận dữ liệu (ingestion) từ nhiều nguồn dữ liệu khác nhau cho hệ thống theo dõi thói quen.",
+      "tags": [
+        "python",
+        "ingest"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:src/aios_habit/rag_ingest.py",
+      "type": "file",
+      "name": "rag_ingest.py",
+      "filePath": "src/aios_habit/rag_ingest.py",
+      "summary": "Xử lý việc tiếp nhận dữ liệu (ingestion) dựa trên cơ chế RAG.",
+      "tags": [
+        "python",
+        "rag"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:src/aios_habit/workspace_chat_source_ingest.py",
+      "type": "file",
+      "name": "workspace_chat_source_ingest.py",
+      "filePath": "src/aios_habit/workspace_chat_source_ingest.py",
+      "summary": "Xử lý việc tiếp nhận các nguồn dữ liệu trò chuyện đặc thù của Workspace Chat.",
+      "tags": [
+        "python",
+        "ingest"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:tests/test_rag_v2_ingestion_service.py",
+      "type": "file",
+      "name": "test_rag_v2_ingestion_service.py",
+      "filePath": "tests/test_rag_v2_ingestion_service.py",
+      "summary": "Các bài kiểm thử chức năng cho dịch vụ tiếp nhận dữ liệu RAG v2 (ingestion service).",
+      "tags": [
+        "test",
+        "rag_v2"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:src/aios_habit/rag_v2/ingestion_service.py",
+      "type": "file",
+      "name": "ingestion_service.py",
+      "filePath": "src/aios_habit/rag_v2/ingestion_service.py",
+      "summary": "Triển khai dịch vụ tiếp nhận dữ liệu (ingestion service) của RAG v2.",
+      "tags": [
+        "rag_v2",
+        "core"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:src/aios_habit/rag_v2/ingestion_workers.py",
+      "type": "file",
+      "name": "ingestion_workers.py",
+      "filePath": "src/aios_habit/rag_v2/ingestion_workers.py",
+      "summary": "Các worker tiếp nhận dữ liệu RAG v2 phục vụ xử lý bất đồng bộ (asynchronous processing).",
+      "tags": [
+        "rag_v2",
+        "worker"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:src/aios_habit/rag_v2/pipeline.py",
+      "type": "file",
+      "name": "pipeline.py",
+      "filePath": "src/aios_habit/rag_v2/pipeline.py",
+      "summary": "Điều phối (orchestration) pipeline RAG v2.",
+      "tags": [
+        "rag_v2",
+        "orchestrator"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:src/aios_habit/cli.py",
+      "type": "file",
+      "name": "cli.py",
+      "filePath": "src/aios_habit/cli.py",
+      "summary": "Giao diện dòng lệnh (CLI) cho ứng dụng aios_habit.",
+      "tags": [
+        "python",
+        "cli"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:src/aios_habit/workspace_chat_app.py",
+      "type": "file",
+      "name": "workspace_chat_app.py",
+      "filePath": "src/aios_habit/workspace_chat_app.py",
+      "summary": "Tệp ứng dụng chính cung cấp chức năng Workspace Chat.",
+      "tags": [
+        "python",
+        "app"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:src/aios_habit/workspace_chat_store.py",
+      "type": "file",
+      "name": "workspace_chat_store.py",
+      "filePath": "src/aios_habit/workspace_chat_store.py",
+      "summary": "Xử lý việc lưu trữ và truy xuất dữ liệu phiên trò chuyện (chat session data).",
+      "tags": [
+        "storage",
+        "chat"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:src/aios_habit/workspace_chat_ui.py",
+      "type": "file",
+      "name": "workspace_chat_ui.py",
+      "filePath": "src/aios_habit/workspace_chat_ui.py",
+      "summary": "Xử lý các thành phần giao diện người dùng (UI components) cho ứng dụng chat.",
+      "tags": [
+        "ui",
+        "chat"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:src/aios_habit/workspace_agent_orchestrator.py",
+      "type": "file",
+      "name": "workspace_agent_orchestrator.py",
+      "filePath": "src/aios_habit/workspace_agent_orchestrator.py",
+      "summary": "Điều phối các Agent trong không gian làm việc (workspace).",
+      "tags": [
+        "agent",
+        "orchestration"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:src/aios_habit/agent_task_pack.py",
+      "type": "file",
+      "name": "agent_task_pack.py",
+      "filePath": "src/aios_habit/agent_task_pack.py",
+      "summary": "Định nghĩa cấu trúc các gói nhiệm vụ của Agent (agent task structures).",
+      "tags": [
+        "agent",
+        "task"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:src/aios_habit/ai_provider_bridge.py",
+      "type": "file",
+      "name": "ai_provider_bridge.py",
+      "filePath": "src/aios_habit/ai_provider_bridge.py",
+      "summary": "Cầu nối tương tác với các nhà cung cấp AI (AI provider interactions).",
+      "tags": [
+        "ai",
+        "provider"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:src/aios_habit/ai_router.py",
+      "type": "file",
+      "name": "ai_router.py",
+      "filePath": "src/aios_habit/ai_router.py",
+      "summary": "Định tuyến các yêu cầu AI (AI requests).",
+      "tags": [
+        "ai",
+        "router"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:src/aios_habit/workspace_models.py",
+      "type": "file",
+      "name": "workspace_models.py",
+      "filePath": "src/aios_habit/workspace_models.py",
+      "summary": "Định nghĩa các mô hình dữ liệu (data models) cho Workspace Chat.",
+      "tags": [
+        "models",
+        "chat"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:src/aios_habit/storage.py",
+      "type": "file",
+      "name": "storage.py",
+      "filePath": "src/aios_habit/storage.py",
+      "summary": "Các giao diện lưu trữ cơ sở (base storage interfaces) và các thao tác tệp tin cục bộ.",
+      "tags": [
+        "storage",
+        "persistence"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:src/aios_habit/core.py",
+      "type": "file",
+      "name": "core.py",
+      "filePath": "src/aios_habit/core.py",
+      "summary": "Trạng thái ứng dụng cốt lõi và công cụ theo dõi thói quen (habit tracking engine).",
+      "tags": [
+        "python",
+        "core"
+      ],
+      "complexity": "moderate"
+    }
+  ],
+  "edges": [
+    {
+      "source": "file:.agents/sentinel/handoff.md",
+      "target": "file:.agents/sentinel/BRIEFING.md",
+      "type": "references",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "file:.agents/teamwork_preview_reviewer_1/BRIEFING.md",
+      "target": "file:.agents/teamwork_preview_reviewer_1/handoff.md",
+      "type": "related",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "file:.agents/teamwork_preview_reviewer_1/handoff.md",
+      "target": "file:.agents/teamwork_preview_reviewer_1/progress.md",
+      "type": "related",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "file:.agents/teamwork_preview_reviewer_2/BRIEFING.md",
+      "target": "file:.agents/teamwork_preview_reviewer_2/plan.md",
+      "type": "references",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "file:.agents/teamwork_preview_reviewer_2/plan.md",
+      "target": "file:.agents/teamwork_preview_reviewer_2/progress.md",
+      "type": "documents",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "file:.agents/teamwork_preview_reviewer_2/handoff.md",
+      "target": "file:.agents/teamwork_preview_reviewer_2/progress.md",
+      "type": "references",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "file:.agents/teamwork_preview_reviewer_3/BRIEFING.md",
+      "target": "file:.agents/teamwork_preview_reviewer_3/handoff.md",
+      "type": "related",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "file:.agents/teamwork_preview_reviewer_3/BRIEFING.md",
+      "target": "file:.agents/teamwork_preview_reviewer_3/progress.md",
+      "type": "related",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "file:.agents/teamwork_preview_reviewer_3/handoff.md",
+      "target": "file:.agents/teamwork_preview_reviewer_3/progress.md",
+      "type": "related",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "file:.agents/teamwork_preview_victory_auditor_sentinel/independent_test.ps1",
+      "target": "file:.agents/teamwork_preview_victory_auditor_sentinel/audit_report.md",
+      "type": "references",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "file:.agents/teamwork_preview_victory_auditor_sentinel/independent_test.ps1",
+      "target": "file:.agents/teamwork_preview_victory_auditor_sentinel/progress.md",
+      "type": "references",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "file:.specify/scripts/powershell/check-prerequisites.ps1",
+      "target": "file:.specify/scripts/powershell/common.ps1",
+      "type": "references",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "file:.specify/scripts/powershell/create-new-feature.ps1",
+      "target": "file:.specify/scripts/powershell/common.ps1",
+      "type": "references",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "file:.specify/scripts/powershell/setup-plan.ps1",
+      "target": "file:.specify/scripts/powershell/common.ps1",
+      "type": "references",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "file:.specify/scripts/powershell/setup-tasks.ps1",
+      "target": "file:.specify/scripts/powershell/common.ps1",
+      "type": "references",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "file:09_handover/README.md",
+      "target": "file:09_handover/matecon_manual_retrieval_handover.md",
+      "type": "references",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "file:09_handover/README.md",
+      "target": "file:09_handover/phase_0_handover.md",
+      "type": "references",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "file:WORKLENS_MASTER_ROADMAP.md",
+      "target": "file:WORKLENS_ARCHITECTURE.md",
+      "type": "references",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "file:ROADMAP.md",
+      "target": "file:REPO_INHERITANCE_MAP.md",
+      "type": "references",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "file:docs/rag_v2/AUTOMATED_INGESTION_OPERATIONS.md",
+      "target": "file:docs/rag_v2/RAG_V2_DESIGN.md",
+      "type": "references",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "file:docs/rag_v2/SAME_PROTOCOL_ANSWER_QUALITY_PROTOCOL.md",
+      "target": "file:docs/rag_v2/RAG_V2_DESIGN.md",
+      "type": "references",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "file:docs/rag_v2/BLIND_RERUN_QUESTIONS_DRAFT.json",
+      "target": "file:docs/rag_v2/benchmark_gold_identity.schema.json",
+      "type": "defines_schema",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "file:docs/reports/workspace_chat_full_12_questions_polished_report.md",
+      "target": "file:docs/reports/workspace_chat_full_12_questions.json",
+      "type": "references",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "file:docs/reports/workspace_chat_full_12_questions_report.md",
+      "target": "file:docs/reports/workspace_chat_full_12_questions.json",
+      "type": "references",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "file:docs/requirements/NON_FUNCTIONAL_REQUIREMENTS.md",
+      "target": "file:docs/requirements/PRODUCT_REQUIREMENTS.md",
+      "type": "related",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "file:docs/requirements/PRODUCT_REQUIREMENTS.md",
+      "target": "file:docs/requirements/NON_FUNCTIONAL_REQUIREMENTS.md",
+      "type": "related",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "file:docs/requirements/TRACEABILITY_MATRIX.md",
+      "target": "file:docs/requirements/NON_FUNCTIONAL_REQUIREMENTS.md",
+      "type": "references",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "file:docs/requirements/TRACEABILITY_MATRIX.md",
+      "target": "file:docs/requirements/PRODUCT_REQUIREMENTS.md",
+      "type": "references",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "file:docs/requirements/PRODUCT_REQUIREMENTS.md",
+      "target": "file:docs/requirements/TRACEABILITY_MATRIX.md",
+      "type": "references",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "file:docs/security/PRIVACY_IMPACT_ASSESSMENT.md",
+      "target": "file:docs/security/THREAT_MODEL.md",
+      "type": "references",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "file:docs/security/THREAT_MODEL.md",
+      "target": "file:docs/security/PRIVACY_IMPACT_ASSESSMENT.md",
+      "type": "references",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "file:specs/excel-structured-query-remediation/plan.md",
+      "target": "file:specs/excel-structured-query-remediation/spec.md",
+      "type": "implements",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "file:specs/excel-structured-query-remediation/tasks.md",
+      "target": "file:specs/excel-structured-query-remediation/plan.md",
+      "type": "documents",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "file:scripts/battle_notebooklm_rag_v2.py",
+      "target": "file:scripts/prepare_notebooklm_exact_corpus.py",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "file:scripts/battle_notebooklm_rag_v2.py",
+      "target": "file:scripts/upload_notebooklm_exact_corpus.py",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "file:scripts/battle_notebooklm_rag_v2.py",
+      "target": "file:scripts/reconcile_notebooklm_source_titles.py",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "file:src/aios_habit/cli.py",
+      "target": "file:src/aios_habit/workspace_chat_app.py",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "file:src/aios_habit/workspace_chat_app.py",
+      "target": "file:src/aios_habit/workspace_chat_store.py",
+      "type": "uses",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "file:src/aios_habit/workspace_chat_app.py",
+      "target": "file:src/aios_habit/workspace_chat_ui.py",
+      "type": "uses",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "file:src/aios_habit/workspace_chat_app.py",
+      "target": "file:src/aios_habit/workspace_agent_orchestrator.py",
+      "type": "uses",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "file:src/aios_habit/workspace_agent_orchestrator.py",
+      "target": "file:src/aios_habit/agent_task_pack.py",
+      "type": "uses",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "file:src/aios_habit/workspace_agent_orchestrator.py",
+      "target": "file:src/aios_habit/ai_provider_bridge.py",
+      "type": "uses",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "file:src/aios_habit/workspace_agent_orchestrator.py",
+      "target": "file:src/aios_habit/ai_router.py",
+      "type": "uses",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "file:src/aios_habit/workspace_chat_store.py",
+      "target": "file:src/aios_habit/workspace_models.py",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "file:src/aios_habit/workspace_chat_store.py",
+      "target": "file:src/aios_habit/storage.py",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "file:src/aios_habit/workspace_agent_orchestrator.py",
+      "target": "file:src/aios_habit/workspace_models.py",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "file:src/aios_habit/workspace_chat_app.py",
+      "target": "file:src/aios_habit/core.py",
+      "type": "uses",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "file:src/aios_habit/core.py",
+      "target": "file:src/aios_habit/models.py",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "file:src/aios_habit/workspace_chat_ui.py",
+      "target": "file:src/aios_habit/cli.py",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "file:src/aios_habit/owner_workflow_state.py",
+      "target": "file:src/aios_habit/workflow.py",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "file:src/aios_habit/owner_workflow_state.py",
+      "target": "file:src/aios_habit/models.py",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "file:src/aios_habit/rag_v2/converters.py",
+      "target": "file:src/aios_habit/rag_v2/schema.py",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "file:src/aios_habit/rag_v2/converters.py",
+      "target": "file:src/aios_habit/rag_v2/adapters.py",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "file:src/aios_habit/source_ingest.py",
+      "target": "file:src/aios_habit/rag_ingest.py",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "file:src/aios_habit/workspace_chat_source_ingest.py",
+      "target": "file:src/aios_habit/source_ingest.py",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "file:tests/test_rag_v2_ingestion_service.py",
+      "target": "file:src/aios_habit/rag_v2/ingestion_service.py",
+      "type": "tested_by",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "file:src/aios_habit/rag_v2/ingestion_service.py",
+      "target": "file:src/aios_habit/rag_v2/ingestion_workers.py",
+      "type": "uses",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "file:src/aios_habit/rag_v2/ingestion_service.py",
+      "target": "file:src/aios_habit/rag_v2/pipeline.py",
+      "type": "uses",
+      "direction": "forward",
+      "weight": 0.5
+    }
+  ],
+  "layers": [
+    {
+      "id": "layer:presentation-ui",
+      "name": "Tầng Trình diễn & Giao diện người dùng (Presentation & UI)",
+      "description": "Giao diện người dùng, các thành phần ứng dụng web Streamlit, điểm vào CLI, và các dashboard hiển thị đồ họa trực quan.",
+      "nodeIds": [
+        "file:.streamlit/config.toml",
+        "file:docs/architecture/view_diagram.html",
+        "file:src/aios_habit/cli.py",
+        "file:src/aios_habit/knowledge_map_html.py",
+        "file:src/aios_habit/knowledge_map_view.py",
+        "file:src/aios_habit/workspace_chat_app.py",
+        "file:src/aios_habit/workspace_chat_ui.py"
+      ]
+    },
+    {
+      "id": "layer:orchestration-agents",
+      "name": "Tầng Điều phối Orchestration & Phối hợp Agent",
+      "description": "Điều phối Multi-agent (đa agent), cầu nối tích hợp IDE, phân phối gói tác vụ (task pack), bàn giao (handover), học liên tục cho agent, và các workflow tự động.",
+      "nodeIds": [
+        "file:src/aios_habit/agent_learning.py",
+        "file:src/aios_habit/agent_result_import.py",
+        "file:src/aios_habit/agent_task_pack.py",
+        "file:src/aios_habit/antigravity_bridge.py",
+        "file:src/aios_habit/daily_next_actions.py",
+        "file:src/aios_habit/discovery.py",
+        "file:src/aios_habit/domain_playbooks.py",
+        "file:src/aios_habit/handover.py",
+        "file:src/aios_habit/ide_bridge.py",
+        "file:src/aios_habit/ide_handoff_bridge.py",
+        "file:src/aios_habit/workflow.py",
+        "file:src/aios_habit/workspace_agent_orchestrator.py"
+      ]
+    },
+    {
+      "id": "layer:intelligence-routing",
+      "name": "Tầng Trí tuệ & Định tuyến AI (Intelligence & AI Routing)",
+      "description": "Định tuyến AI provider, trừu tượng hóa LLM client, bảo vệ quyền riêng tư qua Brain Gateway, tổng hợp câu trả lời, đối chiếu trích dẫn (citation grounding), kiểm chứng khẳng định (claim verification), và so sánh benchmark.",
+      "nodeIds": [
+        "file:src/aios_habit/ai_provider_bridge.py",
+        "file:src/aios_habit/ai_router.py",
+        "file:src/aios_habit/brain_gateway.py",
+        "file:src/aios_habit/case_prompt.py",
+        "file:src/aios_habit/citation_answer.py",
+        "file:src/aios_habit/claim_guard.py",
+        "file:src/aios_habit/final_answer_composer.py",
+        "file:src/aios_habit/llm_client.py",
+        "file:src/aios_habit/notebook_qa.py",
+        "file:src/aios_habit/notebooklm_compare.py"
+      ]
+    },
+    {
+      "id": "layer:knowledge-retrieval",
+      "name": "Tầng Tri thức, Truy xuất & Thu nạp Dữ liệu (Knowledge, Retrieval & Ingestion)",
+      "description": "Bộ máy trích xuất bằng chứng, trình phân tích tài liệu/Excel chuyên sâu, OCR, chỉ mục từ vựng và đồ thị (graph index), lập chỉ mục cục bộ MoM, và thu thập tài liệu tham chiếu.",
+      "nodeIds": [
+        "file:src/aios_habit/benchmark_reference_acquisition.py",
+        "file:src/aios_habit/benchmark_reference_registry.py",
+        "file:src/aios_habit/deep_document_parsers.py",
+        "file:src/aios_habit/document_extractors.py",
+        "file:src/aios_habit/excel_extractors.py",
+        "file:src/aios_habit/extraction.py",
+        "file:src/aios_habit/extractor_registry.py",
+        "file:src/aios_habit/mom_benchmark.py",
+        "file:src/aios_habit/mom_benchmark_gate.py",
+        "file:src/aios_habit/mom_coverage.py",
+        "file:src/aios_habit/mom_local_index.py",
+        "file:src/aios_habit/notebook_bridge.py",
+        "file:src/aios_habit/notebook_graph.py",
+        "file:src/aios_habit/notebook_index.py",
+        "file:src/aios_habit/ocr_engines.py"
+      ]
+    },
+    {
+      "id": "layer:data-storage",
+      "name": "Tầng Dữ liệu & Lưu trữ Bền vững (Data & Persistence)",
+      "description": "Các data model cốt lõi, công cụ Local Storage định dạng JSONL và SQLite, các đơn vị kho bộ nhớ (memory vault), sổ đăng ký bằng chứng (evidence registry), kho lưu trữ ca xử lý (case store), quản lý hồ sơ profile, và định nghĩa JSON schema.",
+      "nodeIds": [
+        "file:03_evidence_registry/README.md",
+        "file:03_evidence_registry/evidence_index.md",
+        "file:03_evidence_registry/records/.gitkeep",
+        "file:04_extraction_workspace/README.md",
+        "file:04_extraction_workspace/candidate_memory/.gitkeep",
+        "file:04_extraction_workspace/conflict_log.md",
+        "file:04_extraction_workspace/extraction_reports/.gitkeep",
+        "file:05_memory_vault/README.md",
+        "file:05_memory_vault/behavior/.gitkeep",
+        "file:05_memory_vault/decision_patterns/.gitkeep",
+        "file:05_memory_vault/identity/.gitkeep",
+        "file:05_memory_vault/language/.gitkeep",
+        "file:05_memory_vault/lessons_learned/.gitkeep",
+        "file:05_memory_vault/project_knowledge/.gitkeep",
+        "file:05_memory_vault/workflow/.gitkeep",
+        "file:06_workflow_library/README.md",
+        "file:06_workflow_library/workflows/.gitkeep",
+        "file:07_ai_export_packs/README.md",
+        "file:07_ai_export_packs/claude/.gitkeep",
+        "file:07_ai_export_packs/future_ai/.gitkeep",
+        "file:07_ai_export_packs/gemini/.gitkeep",
+        "file:07_ai_export_packs/gpt/.gitkeep",
+        "file:07_ai_export_packs/grok/.gitkeep",
+        "file:10_schemas/decision_pattern.schema.json",
+        "file:10_schemas/evidence_record.schema.json",
+        "file:10_schemas/memory_unit.schema.json",
+        "file:10_schemas/phase_record.schema.json",
+        "file:10_schemas/project_card.schema.json",
+        "file:10_schemas/workflow_card.schema.json",
+        "file:src/aios_habit/audit.py",
+        "file:src/aios_habit/case_audit.py",
+        "file:src/aios_habit/case_models.py",
+        "file:src/aios_habit/case_store.py",
+        "file:src/aios_habit/core.py",
+        "file:src/aios_habit/evidence.py",
+        "file:src/aios_habit/learning_models.py",
+        "file:src/aios_habit/local_jsonl.py",
+        "file:src/aios_habit/memory.py",
+        "file:src/aios_habit/models.py",
+        "file:src/aios_habit/notebook_case_actions.py",
+        "file:src/aios_habit/notebook_import_store.py",
+        "file:src/aios_habit/paths.py",
+        "file:src/aios_habit/profiles.py",
+        "file:src/aios_habit/storage.py",
+        "file:src/aios_habit/workspace_chat_store.py",
+        "file:src/aios_habit/workspace_models.py"
+      ]
+    },
+    {
+      "id": "layer:testing-quality",
+      "name": "Tầng Kiểm thử & Đảm bảo Chất lượng (Testing & Quality Assurance)",
+      "description": "Kiểm thử đơn vị tự động (unit tests), bộ kiểm thử tích hợp (integration tests), khung đánh giá (evaluation harness), bộ kiểm thử benchmark RAG, và các chốt chặn chống thoái lui (regression guards).",
+      "nodeIds": [
+        "file:tests/test_document_extractors.py",
+        "file:tests/test_documentation_contract.py",
+        "file:tests/test_domain_playbooks.py",
+        "file:tests/test_final_answer_composer.py",
+        "file:tests/test_general_rag_profiles.py",
+        "file:tests/test_generate_sbom.py",
+        "file:tests/test_ide_bridge.py",
+        "file:tests/test_ide_handoff_bridge.py",
+        "file:tests/test_ide_handoff_markdown_import.py",
+        "file:tests/test_ide_handoff_pending_requests.py",
+        "file:tests/test_knowledge_map_html.py",
+        "file:tests/test_knowledge_map_view.py",
+        "file:tests/test_learning_memory.py",
+        "file:tests/test_llm_client.py",
+        "file:tests/test_local_jsonl.py",
+        "file:tests/test_mom_local_pilot.py",
+        "file:tests/test_mom_pdf_ingestion_retrieval.py",
+        "file:tests/test_notebook_bridge.py",
+        "file:tests/test_notebook_case_actions.py",
+        "file:tests/test_notebook_import_store.py",
+        "file:tests/test_notebook_in_app_qa.py",
+        "file:tests/test_notebook_intelligence.py",
+        "file:tests/test_notebooklm_compare.py",
+        "file:tests/test_owner_workflow_cli.py",
+        "file:tests/test_owner_workflow_state.py",
+        "file:tests/test_phase4_owner_pilot.py",
+        "file:tests/test_provider_catalog.py",
+        "file:tests/test_provider_health.py",
+        "file:tests/test_provider_model_discovery.py",
+        "file:tests/test_provider_safety.py",
+        "file:tests/test_qa_case_workflow.py",
+        "file:tests/test_quick_intake.py",
+        "file:tests/test_rag_answer_composer.py",
+        "file:tests/test_rag_benchmark.py",
+        "file:tests/test_rag_evaluator.py",
+        "file:tests/test_rag_evidence.py",
+        "file:tests/test_rag_ingest.py",
+        "file:tests/test_rag_rerank.py",
+        "file:tests/test_rag_search.py",
+        "file:tests/test_rag_v2_adapters.py",
+        "file:tests/test_rag_v2_chunking.py",
+        "file:tests/test_rag_v2_converters.py",
+        "file:tests/test_rag_v2_cross_source_upgrade.py",
+        "file:tests/test_rag_v2_dev_cli.py",
+        "file:tests/test_rag_v2_eval_harness.py",
+        "file:tests/test_rag_v2_evidence.py",
+        "file:tests/test_rag_v2_hardcode_guard.py",
+        "file:tests/test_rag_v2_index.py",
+        "file:tests/test_rag_v2_index_bundle.py",
+        "file:tests/test_rag_v2_ingestion_jobs.py",
+        "file:tests/test_workspace_agent_orchestrator.py",
+        "file:tests/test_workspace_agent_policy.py",
+        "file:tests/test_workspace_chat_ai_answer.py",
+        "file:tests/test_workspace_chat_answer_preview.py",
+        "file:tests/test_workspace_chat_architecture_boundary.py",
+        "file:tests/test_workspace_chat_excel_ingest.py",
+        "file:tests/test_workspace_chat_models.py",
+        "file:tests/test_workspace_chat_multi_file_uploader.py",
+        "file:tests/test_workspace_chat_owner_flow.py",
+        "file:tests/test_workspace_chat_rag_v2_adapter.py",
+        "file:tests/test_workspace_chat_rag_v2_deployment.py",
+        "file:tests/test_workspace_chat_source_ingest.py",
+        "file:tests/test_workspace_chat_source_library.py",
+        "file:tests/test_workspace_chat_source_selection_owner_flow.py",
+        "file:tests/test_workspace_chat_source_selection_ui_copy.py",
+        "file:tests/test_workspace_chat_sources_models.py",
+        "file:tests/test_workspace_chat_sources_store.py",
+        "file:tests/test_workspace_chat_store.py",
+        "file:tests/test_workspace_chat_ui_copy.py",
+        "file:tests/test_workspace_notebook.py"
+      ]
+    },
+    {
+      "id": "layer:specifications-tooling",
+      "name": "Tầng Đặc tả Yêu cầu & Công cụ Phát triển (Specifications & Tooling)",
+      "description": "Đặc tả tính năng (feature specifications), script tự động hóa phát triển Spec-Kit, biểu mẫu artifact Markdown, và siêu dữ liệu công cụ phát triển.",
+      "nodeIds": [
+        "file:.specify/scripts/powershell/check-prerequisites.ps1",
+        "file:.specify/scripts/powershell/common.ps1",
+        "file:.specify/scripts/powershell/create-new-feature.ps1",
+        "file:.specify/scripts/powershell/setup-plan.ps1",
+        "file:.specify/scripts/powershell/setup-tasks.ps1",
+        "file:.specify/templates/checklist-template.md",
+        "file:.specify/templates/constitution-template.md",
+        "file:.specify/templates/plan-template.md",
+        "file:.specify/templates/spec-template.md",
+        "file:.specify/templates/tasks-template.md",
+        "file:.understand-anything/.understandignore",
+        "file:11_templates/audit_report.md",
+        "file:11_templates/decision_record.md",
+        "file:11_templates/evidence_record.md",
+        "file:11_templates/extraction_report.md",
+        "file:11_templates/handover.md",
+        "file:11_templates/memory_card.md",
+        "file:11_templates/project_card.md",
+        "file:11_templates/workflow_card.md",
+        "file:12_tools/README.md",
+        "file:specs/001-stage-a-resume-guard/data-model.md",
+        "file:specs/001-stage-a-resume-guard/plan.md",
+        "file:specs/001-stage-a-resume-guard/quickstart.md",
+        "file:specs/001-stage-a-resume-guard/research.md",
+        "file:specs/001-stage-a-resume-guard/spec.md",
+        "file:specs/001-stage-a-resume-guard/tasks.md",
+        "file:specs/002-cross-source-synthesis-upgrade/plan.md",
+        "file:specs/002-cross-source-synthesis-upgrade/spec.md",
+        "file:specs/002-cross-source-synthesis-upgrade/tasks.md",
+        "file:specs/003-adaptive-reranking-ux/GEMINI_IMPLEMENTATION_PROMPT.md",
+        "file:specs/003-adaptive-reranking-ux/TERRA_AUDIT_PROMPT.md",
+        "file:specs/003-adaptive-reranking-ux/audit-plan.md",
+        "file:specs/003-adaptive-reranking-ux/audit_report.json",
+        "file:specs/003-adaptive-reranking-ux/baseline-summary.md",
+        "file:specs/003-adaptive-reranking-ux/benchmark-decision.md",
+        "file:specs/003-adaptive-reranking-ux/data-model.md",
+        "file:specs/003-adaptive-reranking-ux/implementation-evidence.md",
+        "file:specs/003-adaptive-reranking-ux/implementation-log.md",
+        "file:specs/003-adaptive-reranking-ux/operations-guide.md",
+        "file:specs/003-adaptive-reranking-ux/plan.md",
+        "file:specs/003-adaptive-reranking-ux/quickstart.md",
+        "file:specs/003-adaptive-reranking-ux/research.md",
+        "file:specs/003-adaptive-reranking-ux/spec.md",
+        "file:specs/003-adaptive-reranking-ux/tasks.md"
+      ]
+    },
+    {
+      "id": "layer:governance-documentation",
+      "name": "Tầng Quản trị, Kiến trúc & Hồ sơ Vận hành (Governance, Architecture & Operational Records)",
+      "description": "Hiến pháp dự án (constitution), tiêu chuẩn quản trị, hồ sơ quyết định kiến trúc (ADRs), kiểm toán cổng giai đoạn (phase gate audits), cẩm nang vận hành (runbooks), nhật ký tương tác agent, và các nghiên cứu benchmark.",
+      "nodeIds": [
+        "file:.agents/ORIGINAL_REQUEST.md",
+        "file:.agents/sentinel/BRIEFING.md",
+        "file:.agents/sentinel/handoff.md",
+        "file:.agents/teamwork_preview_implementer_1/BRIEFING.md",
+        "file:.agents/teamwork_preview_implementer_1/handoff.md",
+        "file:.agents/teamwork_preview_implementer_1/progress.md",
+        "file:.agents/teamwork_preview_reviewer_1/BRIEFING.md",
+        "file:.agents/teamwork_preview_reviewer_1/handoff.md",
+        "file:.agents/teamwork_preview_reviewer_1/progress.md",
+        "file:.ai/AIOS_12Q_ANSWERS_REDACTED_FULL.txt",
+        "file:.ai/AIOS_12Q_FINAL_OWNER_ANSWERS_REDACTED_FULL.txt",
+        "file:.ai/AIOS_12Q_FINAL_OWNER_ANSWERS_VALID_NLM_RERUN_REDACTED_FULL.txt",
+        "file:.ai/AIOS_12Q_ROUTER_SYNTH_ANSWERS_REDACTED_FULL.txt",
+        "file:.ai/AIOS_FINAL_ANSWER_4Q_RERUN_REPORT.md",
+        "file:.ai/AIOS_GENERAL_RAG_OVERFIT_AUDIT.md",
+        "file:.ai/AIOS_GENERAL_RAG_RESET_DECISION.md",
+        "file:.ai/AIOS_GENERIC_RAG_CORE_ARCHITECTURE.md",
+        "file:.ai/AIOS_NOTEBOOKLM_12Q_ROUTER_SYNTH_SIDE_BY_SIDE_REVIEW.md",
+        "file:.ai/AIOS_RAG_FAILURE_ANALYSIS.md",
+        "file:.ai/AIOS_ROUTER_SYNTHESIZER_4Q_RERUN_REPORT.md",
+        "file:.ai/AIOS_ROUTER_SYNTHESIZER_PATCH_AUDIT_REPORT.md",
+        "file:.ai/AIOS_ROUTER_SYNTH_12Q_FAILED_RERUN_AUDIT.md",
+        "file:.ai/AIOS_SOURCE_ROUTER_AND_SYNTHESIZER_DESIGN.md",
+        "file:.ai/AUDIT_REPORT.md",
+        "file:.ai/BRIDGE_MANUAL_STEP_REDUCTION_AUDIT_REPORT.md",
+        "file:.ai/BRIDGE_MANUAL_STEP_REDUCTION_REPORT.md",
+        "file:.ai/COMMERCIAL_OWNER_UI_REDESIGN_REPORT.md",
+        "file:.ai/DECISION_LOG.md",
+        "file:.ai/EXECUTION_REPORT.md",
+        "file:.ai/FIX_AIOS_GAPS_FROM_NOTEBOOKLM_COMPARE_DESIGN.md",
+        "file:.ai/LOOP_STATE.md",
+        "file:.ai/NEXT_ACTION.md",
+        "file:.ai/NEXT_NOTEBOOKLM_REAL_RUN.md",
+        "file:.ai/NON_EXCEL_NOTEBOOKLM_VS_AIOS_2Q_REPORT.md",
+        "file:.ai/NOTEBOOKLM_12Q_AFTER_COMPOSER_MCP_FAILURE_AUDIT.md",
+        "file:.ai/NOTEBOOKLM_12Q_AFTER_COMPOSER_REPORT.md",
+        "file:.ai/NOTEBOOKLM_12Q_AFTER_FINAL_ANSWER_COMPOSER_REPORT.md",
+        "file:.ai/NOTEBOOKLM_12Q_BENCHMARK_PLAN.md",
+        "file:.ai/NOTEBOOKLM_12Q_FULL_ANSWER_EXPORT_REPORT.md",
+        "file:.ai/NOTEBOOKLM_12Q_HUMAN_REVIEW_VERDICT.md",
+        "file:.ai/NOTEBOOKLM_12Q_VALID_AFTER_COMPOSER_REPORT.md",
+        "file:.ai/NOTEBOOKLM_2Q_RERUN_AFTER_CITATION_FIX_REPORT.md",
+        "file:.ai/NOTEBOOKLM_COLLECTION_STATUS_AFTER_EXCEL.md",
+        "file:.ai/NOTEBOOKLM_COMPARE_SUMMARY.md",
+        "file:.ai/NOTEBOOKLM_COMPARE_V2_DIAGNOSIS.md",
+        "file:.ai/NOTEBOOKLM_FAIR_COMPARE_V2_REPORT.md",
+        "file:.ai/NOTEBOOKLM_MCP_12Q_BENCHMARK_REPORT.md",
+        "file:.ai/NOTEBOOKLM_MCP_VS_AIOS_2Q_COMPARE_REPORT.md",
+        "file:.ai/NOTEBOOKLM_REAL_COMPARE_REPORT.md",
+        "file:.ai/P1_PROGRESS_LEDGER.md",
+        "file:.ai/P1_READINESS_REVIEW_REPORT.md",
+        "file:.ai/RAG_ANSWER_HONESTY_AUDIT.md",
+        "file:.ai/RAG_ARCHITECTURE_PATTERN_STUDY.md",
+        "file:.ai/RAG_HARDENING_LIBRARY_STUDY.md",
+        "file:.ai/RAG_HARDENING_SWEEP_REPORT.md",
+        "file:.ai/RAG_WEAK_FORMAT_AUDIT_REPORT.md",
+        "file:.ai/RELEASE_REPORT.md",
+        "file:.ai/STRONG_MODEL_ANSWER_BRIDGE_DESIGN.md",
+        "file:.ai/STRONG_MODEL_ANSWER_BRIDGE_REPORT.md",
+        "file:.ai/STRONG_MODEL_MOM_3Q_TEST_REPORT.md",
+        "file:.ai/TASK_QUEUE.md",
+        "file:.ai/UI_STRONG_ANSWER_BUTTON_REPORT.md",
+        "file:.ai/UI_STRONG_ANSWER_IMPLEMENTATION_DESIGN.md",
+        "file:.ai/UI_STRONG_ANSWER_NOTE.md",
+        "file:00_governance/DATA_POLICY.md",
+        "file:00_governance/PHASE_0_EXIT_CHECKLIST.md",
+        "file:00_governance/PHASE_GATE_LOG.md",
+        "file:00_governance/SOURCE_POLICY.md",
+        "file:00_governance/VALIDATION_RULES.md",
+        "file:01_design/DATA_FLOW.md",
+        "file:01_design/SYSTEM_CONTEXT.md",
+        "file:01_design/TERMINOLOGY.md",
+        "file:08_audit/README.md",
+        "file:08_audit/final_audit_report.md",
+        "file:08_audit/initial_public_audit.md",
+        "file:08_audit/open_issues.md",
+        "file:08_audit/phase_0_foundation_audit.md",
+        "file:08_audit/phase_0_report.md",
+        "file:08_audit/phase_1_report.md",
+        "file:08_audit/phase_2_report.md",
+        "file:08_audit/phase_3_report.md",
+        "file:08_audit/phase_4_report.md",
+        "file:08_audit/phase_5_report.md",
+        "file:08_audit/phase_6_report.md",
+        "file:08_audit/phase_7_report.md",
+        "file:08_audit/phase_8_report.md",
+        "file:08_audit/phase_9_report.md",
+        "file:08_audit/rollback_log.md",
+        "file:08_audit/validation_log.md",
+        "file:AGENT_RULES.md",
+        "file:ARCHITECTURE.md",
+        "file:CASE_COCKPIT_ACCEPTANCE_CRITERIA.md",
+        "file:CHANGELOG.md",
+        "file:CONSTITUTION.md",
+        "file:CONTRIBUTING.md",
+        "file:DEPRECATION_PAUSE_LIST.md",
+        "file:HARVEST_BACKLOG.md",
+        "file:INTEGRATION_DECISION_LOG.md",
+        "file:MANIFEST.md",
+        "file:MASTER_BEHAVIOR_PROFILE.md",
+        "file:MASTER_IDENTITY.md",
+        "file:MASTER_LANGUAGE_PROFILE.md",
+        "file:MASTER_PROJECT_INDEX.md",
+        "file:MASTER_WORKFLOW_PROFILE.md",
+        "file:MIGRATION_POLICY.md",
+        "file:MONDAY_PILOT_CHECKLIST.md",
+        "file:PRODUCT_NORTH_STAR.md",
+        "file:PROJECT_HANDOVER.md",
+        "file:README.md",
+        "file:docs/AIOS_EXTRACTION_ADAPTER_STRATEGY.md",
+        "file:docs/AIOS_PRODUCT_POSITIONING.md",
+        "file:docs/AIOS_ROUTER_SOURCE_AUDIT.md",
+        "file:docs/AI_EXECUTOR_PROMPTS.md",
+        "file:docs/CLI_REFERENCE.md",
+        "file:docs/DATA_MODEL.md",
+        "file:docs/DOCUMENTATION_GOVERNANCE.md",
+        "file:docs/GRAPH_RENDERER_OPTIONS.md",
+        "file:docs/INSTALL.md",
+        "file:docs/KNOWLEDGE_NOTEBOOK.md",
+        "file:docs/MOM_NOTEBOOKLM_COMPARISON_MVP.md",
+        "file:docs/NOTEBOOKLM_MANUAL_COLLECTION_RUNBOOK.md",
+        "file:docs/OPERATOR_RUNBOOK.md",
+        "file:docs/P1_ADVANCED_RETRIEVAL_DECISION.md",
+        "file:docs/P1_OPENING_PLAN_DRAFT.md",
+        "file:docs/P1_OWNER_ACCEPTANCE_RUNBOOK.md",
+        "file:docs/P1_READINESS_CHECKLIST.md",
+        "file:docs/PHASE_GATE_PROCESS.md",
+        "file:docs/PRIVACY_MODEL.md",
+        "file:docs/PROFESSIONALIZATION_INDEX.md",
+        "file:docs/adr/0001-local-first-filesystem-ownership.md",
+        "file:docs/adr/0002-workspace-chat-supported-ui.md",
+        "file:docs/adr/0003-local-sqlite-lexical-index.md",
+        "file:docs/adr/0004-brain-gateway-privacy-ownership.md",
+        "file:docs/adr/0005-router-provider-routing-boundary.md",
+        "file:docs/adr/0006-private-runtime-data-outside-git.md",
+        "file:docs/adr/README.md",
+        "file:docs/architecture/AI_ROUTING_RESILIENCE.md",
+        "file:docs/architecture/COMPONENTS.md",
+        "file:docs/architecture/CONTAINERS.md",
+        "file:docs/architecture/CONTEXT.md",
+        "file:docs/architecture/DEPLOYMENT.md",
+        "file:docs/architecture/sequences/CLOUD_PREFLIGHT.md",
+        "file:docs/architecture/sequences/INGEST.md",
+        "file:docs/architecture/sequences/RETRIEVAL.md",
+        "file:docs/architecture/sequences/ROUTER_CALL.md",
+        "file:docs/archive/design/AIOS_AGENT_RESULT_IMPORT_DESIGN.md",
+        "file:docs/archive/design/AIOS_BRAIN_GATEWAY_DESIGN.md",
+        "file:docs/archive/design/AIOS_EXISTING_AI_INVENTORY.md",
+        "file:docs/archive/design/AIOS_GATE_A16_ROUTER_MOCK_INTEGRATION_PROMPT.md",
+        "file:docs/archive/design/AIOS_GATE_A17_IDE_AGENT_BRIDGE_PROMPT.md",
+        "file:docs/archive/design/AIOS_GATE_A18_NOTEBOOKLM_COMPARISON_ARENA_PROMPT.md",
+        "file:docs/archive/design/AIOS_IDE_AGENT_BRIDGE_DESIGN.md",
+        "file:docs/archive/design/AIOS_ROUTER_ADAPTER_DESIGN.md",
+        "file:docs/archive/ux_records/AI_FILE_EMPTY_DIFF_METADATA_CLEANUP_AUDIT.md",
+        "file:docs/archive/ux_records/VISUAL_MAP_EXPORT_HYGIENE_AUDIT.md",
+        "file:docs/archive/ux_records/WORKSPACE_CHAT_AFTER_PHASE2I_NEXT_ROADMAP_GATE.md",
+        "file:docs/archive/ux_records/WORKSPACE_CHAT_AFTER_PHASE2I_OWNER_CORRECTION.md",
+        "file:docs/archive/ux_records/WORKSPACE_CHAT_NOTEBOOK_DELETE_DESIGN_GATE.md",
+        "file:docs/archive/ux_records/WORKSPACE_CHAT_NOTEBOOK_HARD_DELETE_IMPLEMENTATION_AUDIT.md",
+        "file:docs/archive/ux_records/WORKSPACE_CHAT_NOTEBOOK_HARD_DELETE_IMPLEMENTATION_DESIGN.md",
+        "file:docs/archive/ux_records/WORKSPACE_CHAT_PHASE1_BLOCKER_FIX_REAUDIT.md",
+        "file:docs/archive/ux_records/WORKSPACE_CHAT_PHASE1_FINAL_COMMIT_READINESS_AUDIT.md",
+        "file:docs/archive/ux_records/WORKSPACE_CHAT_PHASE1_IMPLEMENTATION_AUDIT.md",
+        "file:docs/archive/ux_records/WORKSPACE_CHAT_PHASE1_SIDE_EFFECT_FIX_REAUDIT.md",
+        "file:docs/archive/ux_records/WORKSPACE_CHAT_PHASE2A_IMPLEMENTATION_AUDIT.md",
+        "file:docs/archive/ux_records/WORKSPACE_CHAT_PHASE2B_IMPLEMENTATION_AUDIT.md",
+        "file:docs/archive/ux_records/WORKSPACE_CHAT_PHASE2B_UI_DESIGN_GATE.md",
+        "file:docs/archive/ux_records/WORKSPACE_CHAT_PHASE2C_IMPLEMENTATION_AUDIT.md",
+        "file:docs/archive/ux_records/WORKSPACE_CHAT_PHASE2C_XLSX_INGEST_DESIGN_GATE.md",
+        "file:docs/archive/ux_records/WORKSPACE_CHAT_PHASE2D_IMPLEMENTATION_AUDIT.md",
+        "file:docs/archive/ux_records/WORKSPACE_CHAT_PHASE2D_SOURCE_AWARE_PLACEHOLDER_DESIGN_GATE.md",
+        "file:docs/archive/ux_records/WORKSPACE_CHAT_PHASE2E_IMPLEMENTATION_AUDIT.md",
+        "file:docs/archive/ux_records/WORKSPACE_CHAT_PHASE2E_SAFE_AI_ANSWER_DESIGN_GATE.md",
+        "file:docs/governance/DEFINITION_OF_READY_DONE.md",
+        "file:docs/governance/LOCALIZATION_GLOSSARY.md",
+        "file:docs/governance/MAINTENANCE_DEPRECATION_POLICY.md",
+        "file:docs/governance/OWNERSHIP_AND_REVIEW.md",
+        "file:docs/governance/RISK_REGISTER.md",
+        "file:docs/inheritance_audit/ABW_NVIDIA_FUSION_CONTROL_AUDIT.md",
+        "file:docs/inheritance_audit/INHERITANCE_SUMMARY.md",
+        "file:docs/inheritance_audit/Nvidia_AUDIT.md",
+        "file:docs/inheritance_audit/skill_Anti_brain_wiki_note_AUDIT.md",
+        "file:docs/operations/BACKUP_RESTORE.md",
+        "file:docs/operations/DATA_MIGRATION_COMPATIBILITY.md",
+        "file:docs/operations/INCIDENT_RESPONSE.md",
+        "file:docs/operations/OBSERVABILITY.md",
+        "file:docs/operations/PERFORMANCE_CAPACITY_BASELINE.md",
+        "file:docs/operations/TROUBLESHOOTING.md",
+        "file:docs/quality/QUALITY_GATES.md",
+        "file:docs/quality/TEST_STRATEGY.md",
+        "file:docs/quality/UX_ACCESSIBILITY_ACCEPTANCE.md",
+        "file:docs/release/RELEASE_CHECKLIST.md",
+        "file:docs/release/RELEASE_POLICY.md",
+        "file:docs/release/SBOM_POLICY.md",
+        "file:docs/release/SUPPORTED_VERSIONS.md"
+      ]
+    }
+  ],
+  "tour": [
+    {
+      "order": 1,
+      "title": "Tổng quan Hệ thống, Quản trị & Kiến trúc",
+      "description": "Bắt đầu với tài liệu dự án để hiểu sứ mệnh cốt lõi của AIOS_habbit như một nền tảng bộ nhớ cá nhân ưu tiên cục bộ (local-first) dựa trên bằng chứng thực tế. Khám phá hiến pháp kiến trúc, các quy tắc quản trị dữ liệu cục bộ nghiêm ngặt, và các Hồ sơ Quyết định Kiến trúc (ADRs) cốt lõi nhằm đảm bảo không rò rỉ dữ liệu và lưu trữ bộ nhớ không bị ảo giác (un-hallucinated).",
+      "nodeIds": [
+        "file:README.md",
+        "file:CONSTITUTION.md",
+        "file:ARCHITECTURE.md",
+        "file:00_governance/DATA_POLICY.md",
+        "file:docs/adr/0001-local-first-filesystem-ownership.md"
+      ]
+    },
+    {
+      "order": 2,
+      "title": "Mô hình Dữ liệu Cốt lõi & Local Storage",
+      "description": "Xem xét các schema dữ liệu nền tảng và công cụ lưu trữ bền vững. Tìm hiểu cách các Bản ghi Bằng chứng (đoạn trích nguồn, độ tin cậy, nguồn gốc) và Đơn vị Bộ nhớ (hành vi, danh tính, quyết định, bài học kinh nghiệm) được cấu trúc trong Pydantic models và lưu trữ an toàn trong các bản ghi JSONL cục bộ cùng các kho bộ nhớ (memory vault) mô-đun.",
+      "nodeIds": [
+        "file:src/aios_habit/models.py",
+        "file:src/aios_habit/evidence.py",
+        "file:src/aios_habit/memory.py",
+        "file:src/aios_habit/local_jsonl.py",
+        "file:src/aios_habit/storage.py",
+        "file:src/aios_habit/case_models.py",
+        "file:src/aios_habit/case_store.py"
+      ]
+    },
+    {
+      "order": 3,
+      "title": "Thu nạp Tài liệu & Trích xuất Đa Định dạng",
+      "description": "Khám phá cách tài liệu thô của người dùng được thu nạp qua nhiều định dạng (PDF, DOCX, XLSX, TXT, hình ảnh OCR). Bộ máy trích xuất làm sạch, cấu trúc hóa và trích xuất dữ liệu dạng bảng cũng như văn bản tự sự với vị trí offset xác định và bảo toàn siêu dữ liệu (metadata).",
+      "nodeIds": [
+        "file:src/aios_habit/extraction.py",
+        "file:src/aios_habit/document_extractors.py",
+        "file:src/aios_habit/excel_extractors.py",
+        "file:src/aios_habit/deep_document_parsers.py",
+        "file:src/aios_habit/extractor_registry.py"
+      ]
+    },
+    {
+      "order": 4,
+      "title": "Lập Chỉ mục Cục bộ, Tìm kiếm & Truy xuất Đồ thị (RAG v2)",
+      "description": "Theo dõi quy trình truy xuất cục bộ. Tri thức đã thu nạp được lập chỉ mục qua tìm kiếm toàn văn SQLite (BM25), adapter phân mảnh (chunking), đồ thị tri thức (knowledge graph), và xếp hạng lại thích ứng (adaptive re-ranking) nhằm cung cấp khả năng tra cứu bằng chứng độ chính xác cao mà không phụ thuộc vào đám mây.",
+      "nodeIds": [
+        "file:src/aios_habit/mom_local_index.py",
+        "file:src/aios_habit/notebook_index.py",
+        "file:src/aios_habit/notebook_graph.py",
+        "file:src/aios_habit/notebook_bridge.py"
+      ]
+    },
+    {
+      "order": 5,
+      "title": "Định tuyến Trí tuệ AI & Brain Gateway",
+      "description": "Khám phá bộ điều phối trí tuệ đa mô hình. Tìm hiểu cách các truy vấn được định tuyến thông minh giữa các mô hình cục bộ (Ollama/LMStudio) và nhà cung cấp LLM bên ngoài, trong đó Brain Gateway làm sạch và bảo vệ ngữ cảnh nhạy cảm của người dùng.",
+      "nodeIds": [
+        "file:src/aios_habit/ai_router.py",
+        "file:src/aios_habit/ai_provider_bridge.py",
+        "file:src/aios_habit/llm_client.py",
+        "file:src/aios_habit/brain_gateway.py",
+        "file:docs/adr/0004-brain-gateway-privacy-ownership.md"
+      ]
+    },
+    {
+      "order": 6,
+      "title": "Đối chiếu Trích dẫn & Claim Guard (Kiểm chứng Khẳng định)",
+      "description": "Xem cách AIOS_habbit đảm bảo tính chân thực (truthfulness). Final Answer Composer tổng hợp các câu trả lời chứa trích dẫn nguyên văn nghiêm ngặt, trong khi Claim Guard xác minh các khẳng định được chứng minh trực tiếp bởi các đoạn bằng chứng và so sánh benchmark với Google NotebookLM.",
+      "nodeIds": [
+        "file:src/aios_habit/citation_answer.py",
+        "file:src/aios_habit/final_answer_composer.py",
+        "file:src/aios_habit/claim_guard.py",
+        "file:src/aios_habit/notebook_qa.py",
+        "file:src/aios_habit/notebooklm_compare.py"
+      ]
+    },
+    {
+      "order": 7,
+      "title": "Điều phối Agent & Cầu nối IDE",
+      "description": "Hiểu quy trình làm việc của lập trình viên và sự cộng tác giữa các agent. AIOS_habbit kết nối trực tiếp vào các môi trường IDE (Antigravity, Cursor, VS Code), đóng gói ngữ cảnh tác vụ (task pack), quản lý bàn giao (handover), và liên tục học hỏi từ kết quả thực thi của agent.",
+      "nodeIds": [
+        "file:src/aios_habit/workspace_agent_orchestrator.py",
+        "file:src/aios_habit/antigravity_bridge.py",
+        "file:src/aios_habit/ide_bridge.py",
+        "file:src/aios_habit/ide_handoff_bridge.py",
+        "file:src/aios_habit/agent_task_pack.py",
+        "file:src/aios_habit/agent_learning.py"
+      ]
+    },
+    {
+      "order": 8,
+      "title": "Giao diện Trình diễn UI & Bản đồ Tri thức Tương tác",
+      "description": "Khám phá tầng giao diện người dùng: ứng dụng Workspace Chat dựa trên Streamlit với tính năng quản lý thư viện nguồn dữ liệu, sổ tay ghi chú (notebooks), giao diện dòng lệnh CLI, và trình kết xuất đồ thị trực quan HTML tương tác.",
+      "nodeIds": [
+        "file:src/aios_habit/workspace_chat_app.py",
+        "file:src/aios_habit/workspace_chat_ui.py",
+        "file:src/aios_habit/cli.py",
+        "file:src/aios_habit/knowledge_map_view.py",
+        "file:src/aios_habit/knowledge_map_html.py"
+      ]
+    },
+    {
+      "order": 9,
+      "title": "Đặc tả Kỹ thuật, Benchmarking & Đảm bảo Chất lượng",
+      "description": "Kiểm tra cách các tính năng được đặc tả và xác minh. Các đặc tả Spec-Kit định hướng các giai đoạn triển khai, trong khi các khung đánh giá (evaluation harness), bộ kiểm thử benchmark và kiểm thử chống thoái lui (regression tests) thực thi nghiêm ngặt các giao ước về bằng chứng và giao diện UI.",
+      "nodeIds": [
+        "file:specs/001-stage-a-resume-guard/spec.md",
+        "file:specs/003-adaptive-reranking-ux/spec.md",
+        "file:tests/test_rag_benchmark.py",
+        "file:tests/test_workspace_chat_owner_flow.py",
+        "file:tests/test_final_answer_composer.py"
+      ]
+    }
+  ]
+}

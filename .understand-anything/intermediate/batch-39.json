@@ -1,0 +1,69 @@
+{
+  "nodes": [
+    {
+      "id": "file:docs/rag_v2/AUTOMATED_INGESTION_OPERATIONS.md",
+      "type": "file",
+      "name": "AUTOMATED_INGESTION_OPERATIONS.md",
+      "filePath": "docs/rag_v2/AUTOMATED_INGESTION_OPERATIONS.md",
+      "summary": "Describes automated RAG ingestion processes.",
+      "tags": ["docs", "rag_v2"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:docs/rag_v2/BLIND_RERUN_QUESTIONS_DRAFT.json",
+      "type": "file",
+      "name": "BLIND_RERUN_QUESTIONS_DRAFT.json",
+      "filePath": "docs/rag_v2/BLIND_RERUN_QUESTIONS_DRAFT.json",
+      "summary": "Draft questions for blind reruns in RAG evaluation.",
+      "tags": ["docs", "rag_v2", "json"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:docs/rag_v2/RAG_V2_DESIGN.md",
+      "type": "file",
+      "name": "RAG_V2_DESIGN.md",
+      "filePath": "docs/rag_v2/RAG_V2_DESIGN.md",
+      "summary": "Design documentation for RAG Version 2 architecture.",
+      "tags": ["docs", "rag_v2"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:docs/rag_v2/SAME_PROTOCOL_ANSWER_QUALITY_PROTOCOL.md",
+      "type": "file",
+      "name": "SAME_PROTOCOL_ANSWER_QUALITY_PROTOCOL.md",
+      "filePath": "docs/rag_v2/SAME_PROTOCOL_ANSWER_QUALITY_PROTOCOL.md",
+      "summary": "Protocol for assessing answer quality in RAG systems.",
+      "tags": ["docs", "rag_v2"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:docs/rag_v2/benchmark_gold_identity.schema.json",
+      "type": "file",
+      "name": "benchmark_gold_identity.schema.json",
+      "filePath": "docs/rag_v2/benchmark_gold_identity.schema.json",
+      "summary": "JSON schema for RAG benchmark gold identity.",
+      "tags": ["docs", "rag_v2", "json"],
+      "complexity": "moderate"
+    }
+  ],
+  "edges": [
+    {
+      "source": "file:docs/rag_v2/AUTOMATED_INGESTION_OPERATIONS.md",
+      "target": "file:docs/rag_v2/RAG_V2_DESIGN.md",
+      "type": "refers_to",
+      "direction": "forward"
+    },
+    {
+      "source": "file:docs/rag_v2/SAME_PROTOCOL_ANSWER_QUALITY_PROTOCOL.md",
+      "target": "file:docs/rag_v2/RAG_V2_DESIGN.md",
+      "type": "refers_to",
+      "direction": "forward"
+    },
+    {
+      "source": "file:docs/rag_v2/BLIND_RERUN_QUESTIONS_DRAFT.json",
+      "target": "file:docs/rag_v2/benchmark_gold_identity.schema.json",
+      "type": "follows_schema",
+      "direction": "forward"
+    }
+  ]
+}

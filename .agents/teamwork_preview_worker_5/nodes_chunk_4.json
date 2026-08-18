@@ -1,0 +1,443 @@
+[
+  {
+    "id": "file:docs/security/PRIVACY_IMPACT_ASSESSMENT.md",
+    "type": "file",
+    "name": "PRIVACY_IMPACT_ASSESSMENT.md",
+    "filePath": "docs/security/PRIVACY_IMPACT_ASSESSMENT.md",
+    "summary": "Đánh giá các tác động về quyền riêng tư, xử lý dữ liệu và các quyết định bảo mật riêng của chủ sở hữu.",
+    "tags": [
+      "security",
+      "documentation",
+      "privacy"
+    ],
+    "complexity": "moderate"
+  },
+  {
+    "id": "file:docs/security/THREAT_MODEL.md",
+    "type": "file",
+    "name": "THREAT_MODEL.md",
+    "filePath": "docs/security/THREAT_MODEL.md",
+    "summary": "Mô hình mối đe dọa cho nền tảng Workspace Chat và RAG ưu tiên cục bộ (local-first) sử dụng phương pháp luận STRIDE.",
+    "tags": [
+      "security",
+      "documentation",
+      "threat-model"
+    ],
+    "complexity": "moderate"
+  },
+  {
+    "id": "file:specs/excel-structured-query-remediation/plan.md",
+    "type": "file",
+    "name": "plan.md",
+    "filePath": "specs/excel-structured-query-remediation/plan.md",
+    "summary": "Kế hoạch triển khai nhằm khắc phục các phát hiện kiểm toán truy vấn có cấu trúc Excel.",
+    "tags": [
+      "specification",
+      "plan"
+    ],
+    "complexity": "moderate"
+  },
+  {
+    "id": "file:specs/excel-structured-query-remediation/spec.md",
+    "type": "file",
+    "name": "spec.md",
+    "filePath": "specs/excel-structured-query-remediation/spec.md",
+    "summary": "Đặc tả kỹ thuật để khắc phục các phát hiện kiểm toán truy vấn có cấu trúc Excel.",
+    "tags": [
+      "specification",
+      "requirements"
+    ],
+    "complexity": "moderate"
+  },
+  {
+    "id": "file:specs/excel-structured-query-remediation/tasks.md",
+    "type": "file",
+    "name": "tasks.md",
+    "filePath": "specs/excel-structured-query-remediation/tasks.md",
+    "summary": "Danh sách công việc (task checklist) để khắc phục các phát hiện kiểm toán truy vấn có cấu trúc Excel.",
+    "tags": [
+      "specification",
+      "tasks"
+    ],
+    "complexity": "moderate"
+  },
+  {
+    "id": "file:tests/fixtures/adaptive_reranking_corpus.json",
+    "type": "file",
+    "name": "adaptive_reranking_corpus.json",
+    "filePath": "tests/fixtures/adaptive_reranking_corpus.json",
+    "summary": "Tệp fixture JSON chứa tập ngữ liệu (corpus) dùng để kiểm thử tính năng tái xếp hạng thích ứng (adaptive reranking).",
+    "tags": [
+      "test",
+      "fixture",
+      "json"
+    ],
+    "complexity": "moderate"
+  },
+  {
+    "id": "file:tests/fixtures/adaptive_reranking_report_schema.json",
+    "type": "file",
+    "name": "adaptive_reranking_report_schema.json",
+    "filePath": "tests/fixtures/adaptive_reranking_report_schema.json",
+    "summary": "Tệp JSON Schema dùng để xác thực các báo cáo tái xếp hạng thích ứng (adaptive reranking).",
+    "tags": [
+      "test",
+      "fixture",
+      "json",
+      "schema"
+    ],
+    "complexity": "moderate"
+  },
+  {
+    "id": "file:tests/fixtures/adaptive_routing_cases.json",
+    "type": "file",
+    "name": "adaptive_routing_cases.json",
+    "filePath": "tests/fixtures/adaptive_routing_cases.json",
+    "summary": "Tệp fixture JSON chứa các trường hợp thử nghiệm để kiểm thử định tuyến thích ứng (adaptive routing).",
+    "tags": [
+      "test",
+      "fixture",
+      "json"
+    ],
+    "complexity": "moderate"
+  },
+  {
+    "id": "file:scripts/battle_notebooklm_rag_v2.py",
+    "type": "file",
+    "name": "battle_notebooklm_rag_v2.py",
+    "filePath": "scripts/battle_notebooklm_rag_v2.py",
+    "summary": "Kịch bản (script) chính để đánh giá chuẩn đối sánh (benchmark) và so sánh đối đầu cấu hình RAG với NotebookLM.",
+    "tags": [
+      "script",
+      "rag",
+      "notebooklm"
+    ],
+    "complexity": "moderate"
+  },
+  {
+    "id": "file:scripts/prepare_notebooklm_exact_corpus.py",
+    "type": "file",
+    "name": "prepare_notebooklm_exact_corpus.py",
+    "filePath": "scripts/prepare_notebooklm_exact_corpus.py",
+    "summary": "Chuẩn bị dữ liệu ngữ liệu (corpus) dành riêng cho các luồng công việc RAG của NotebookLM.",
+    "tags": [
+      "script",
+      "corpus"
+    ],
+    "complexity": "moderate"
+  },
+  {
+    "id": "file:scripts/upload_notebooklm_exact_corpus.py",
+    "type": "file",
+    "name": "upload_notebooklm_exact_corpus.py",
+    "filePath": "scripts/upload_notebooklm_exact_corpus.py",
+    "summary": "Xử lý việc tải lên các tập ngữ liệu đã chuẩn bị sẵn lên NotebookLM.",
+    "tags": [
+      "script",
+      "upload",
+      "notebooklm"
+    ],
+    "complexity": "moderate"
+  },
+  {
+    "id": "file:scripts/reconcile_notebooklm_source_titles.py",
+    "type": "file",
+    "name": "reconcile_notebooklm_source_titles.py",
+    "filePath": "scripts/reconcile_notebooklm_source_titles.py",
+    "summary": "Đối soát và đồng bộ tiêu đề nguồn giữa không gian làm việc cục bộ (local workspace) và NotebookLM.",
+    "tags": [
+      "script",
+      "utility"
+    ],
+    "complexity": "moderate"
+  },
+  {
+    "id": "file:src/aios_habit/owner_workflow_state.py",
+    "type": "file",
+    "name": "owner_workflow_state.py",
+    "filePath": "src/aios_habit/owner_workflow_state.py",
+    "summary": "Quản lý trạng thái luồng công việc của chủ sở hữu trong hệ thống thói quen.",
+    "tags": [
+      "python",
+      "workflow"
+    ],
+    "complexity": "moderate"
+  },
+  {
+    "id": "file:src/aios_habit/workflow.py",
+    "type": "file",
+    "name": "workflow.py",
+    "filePath": "src/aios_habit/workflow.py",
+    "summary": "Các định nghĩa cốt lõi phục vụ quản lý luồng công việc (workflow management).",
+    "tags": [
+      "python",
+      "workflow"
+    ],
+    "complexity": "moderate"
+  },
+  {
+    "id": "file:src/aios_habit/models.py",
+    "type": "file",
+    "name": "models.py",
+    "filePath": "src/aios_habit/models.py",
+    "summary": "Các mô hình dữ liệu (data models) cho ứng dụng thói quen.",
+    "tags": [
+      "python",
+      "models"
+    ],
+    "complexity": "moderate"
+  },
+  {
+    "id": "file:src/aios_habit/rag_v2/converters.py",
+    "type": "file",
+    "name": "converters.py",
+    "filePath": "src/aios_habit/rag_v2/converters.py",
+    "summary": "Triển khai các bộ điều hợp chuyển đổi tài liệu (converter adapters) cho pipeline RAG.",
+    "tags": [
+      "rag",
+      "converters",
+      "aios_habit"
+    ],
+    "complexity": "moderate"
+  },
+  {
+    "id": "file:src/aios_habit/rag_v2/schema.py",
+    "type": "file",
+    "name": "schema.py",
+    "filePath": "src/aios_habit/rag_v2/schema.py",
+    "summary": "Định nghĩa các cấu trúc Schema cho DocumentElement.",
+    "tags": [
+      "rag",
+      "schema"
+    ],
+    "complexity": "moderate"
+  },
+  {
+    "id": "file:src/aios_habit/rag_v2/adapters.py",
+    "type": "file",
+    "name": "adapters.py",
+    "filePath": "src/aios_habit/rag_v2/adapters.py",
+    "summary": "Định nghĩa các lớp cơ sở cho các bộ chuyển đổi tài liệu (document converters).",
+    "tags": [
+      "rag",
+      "adapters"
+    ],
+    "complexity": "moderate"
+  },
+  {
+    "id": "file:src/aios_habit/source_ingest.py",
+    "type": "file",
+    "name": "source_ingest.py",
+    "filePath": "src/aios_habit/source_ingest.py",
+    "summary": "Xử lý việc tiếp nhận dữ liệu (ingestion) từ nhiều nguồn dữ liệu khác nhau cho hệ thống theo dõi thói quen.",
+    "tags": [
+      "python",
+      "ingest"
+    ],
+    "complexity": "moderate"
+  },
+  {
+    "id": "file:src/aios_habit/rag_ingest.py",
+    "type": "file",
+    "name": "rag_ingest.py",
+    "filePath": "src/aios_habit/rag_ingest.py",
+    "summary": "Xử lý việc tiếp nhận dữ liệu (ingestion) dựa trên cơ chế RAG.",
+    "tags": [
+      "python",
+      "rag"
+    ],
+    "complexity": "moderate"
+  },
+  {
+    "id": "file:src/aios_habit/workspace_chat_source_ingest.py",
+    "type": "file",
+    "name": "workspace_chat_source_ingest.py",
+    "filePath": "src/aios_habit/workspace_chat_source_ingest.py",
+    "summary": "Xử lý việc tiếp nhận các nguồn dữ liệu trò chuyện đặc thù của Workspace Chat.",
+    "tags": [
+      "python",
+      "ingest"
+    ],
+    "complexity": "moderate"
+  },
+  {
+    "id": "file:tests/test_rag_v2_ingestion_service.py",
+    "type": "file",
+    "name": "test_rag_v2_ingestion_service.py",
+    "filePath": "tests/test_rag_v2_ingestion_service.py",
+    "summary": "Các bài kiểm thử chức năng cho dịch vụ tiếp nhận dữ liệu RAG v2 (ingestion service).",
+    "tags": [
+      "test",
+      "rag_v2"
+    ],
+    "complexity": "moderate"
+  },
+  {
+    "id": "file:src/aios_habit/rag_v2/ingestion_service.py",
+    "type": "file",
+    "name": "ingestion_service.py",
+    "filePath": "src/aios_habit/rag_v2/ingestion_service.py",
+    "summary": "Triển khai dịch vụ tiếp nhận dữ liệu (ingestion service) của RAG v2.",
+    "tags": [
+      "rag_v2",
+      "core"
+    ],
+    "complexity": "moderate"
+  },
+  {
+    "id": "file:src/aios_habit/rag_v2/ingestion_workers.py",
+    "type": "file",
+    "name": "ingestion_workers.py",
+    "filePath": "src/aios_habit/rag_v2/ingestion_workers.py",
+    "summary": "Các worker tiếp nhận dữ liệu RAG v2 phục vụ xử lý bất đồng bộ (asynchronous processing).",
+    "tags": [
+      "rag_v2",
+      "worker"
+    ],
+    "complexity": "moderate"
+  },
+  {
+    "id": "file:src/aios_habit/rag_v2/pipeline.py",
+    "type": "file",
+    "name": "pipeline.py",
+    "filePath": "src/aios_habit/rag_v2/pipeline.py",
+    "summary": "Điều phối (orchestration) pipeline RAG v2.",
+    "tags": [
+      "rag_v2",
+      "orchestrator"
+    ],
+    "complexity": "moderate"
+  },
+  {
+    "id": "file:src/aios_habit/cli.py",
+    "type": "file",
+    "name": "cli.py",
+    "filePath": "src/aios_habit/cli.py",
+    "summary": "Giao diện dòng lệnh (CLI) cho ứng dụng aios_habit.",
+    "tags": [
+      "python",
+      "cli"
+    ],
+    "complexity": "moderate"
+  },
+  {
+    "id": "file:src/aios_habit/workspace_chat_app.py",
+    "type": "file",
+    "name": "workspace_chat_app.py",
+    "filePath": "src/aios_habit/workspace_chat_app.py",
+    "summary": "Tệp ứng dụng chính cung cấp chức năng Workspace Chat.",
+    "tags": [
+      "python",
+      "app"
+    ],
+    "complexity": "moderate"
+  },
+  {
+    "id": "file:src/aios_habit/workspace_chat_store.py",
+    "type": "file",
+    "name": "workspace_chat_store.py",
+    "filePath": "src/aios_habit/workspace_chat_store.py",
+    "summary": "Xử lý việc lưu trữ và truy xuất dữ liệu phiên trò chuyện (chat session data).",
+    "tags": [
+      "storage",
+      "chat"
+    ],
+    "complexity": "moderate"
+  },
+  {
+    "id": "file:src/aios_habit/workspace_chat_ui.py",
+    "type": "file",
+    "name": "workspace_chat_ui.py",
+    "filePath": "src/aios_habit/workspace_chat_ui.py",
+    "summary": "Xử lý các thành phần giao diện người dùng (UI components) cho ứng dụng chat.",
+    "tags": [
+      "ui",
+      "chat"
+    ],
+    "complexity": "moderate"
+  },
+  {
+    "id": "file:src/aios_habit/workspace_agent_orchestrator.py",
+    "type": "file",
+    "name": "workspace_agent_orchestrator.py",
+    "filePath": "src/aios_habit/workspace_agent_orchestrator.py",
+    "summary": "Điều phối các Agent trong không gian làm việc (workspace).",
+    "tags": [
+      "agent",
+      "orchestration"
+    ],
+    "complexity": "moderate"
+  },
+  {
+    "id": "file:src/aios_habit/agent_task_pack.py",
+    "type": "file",
+    "name": "agent_task_pack.py",
+    "filePath": "src/aios_habit/agent_task_pack.py",
+    "summary": "Định nghĩa cấu trúc các gói nhiệm vụ của Agent (agent task structures).",
+    "tags": [
+      "agent",
+      "task"
+    ],
+    "complexity": "moderate"
+  },
+  {
+    "id": "file:src/aios_habit/ai_provider_bridge.py",
+    "type": "file",
+    "name": "ai_provider_bridge.py",
+    "filePath": "src/aios_habit/ai_provider_bridge.py",
+    "summary": "Cầu nối tương tác với các nhà cung cấp AI (AI provider interactions).",
+    "tags": [
+      "ai",
+      "provider"
+    ],
+    "complexity": "moderate"
+  },
+  {
+    "id": "file:src/aios_habit/ai_router.py",
+    "type": "file",
+    "name": "ai_router.py",
+    "filePath": "src/aios_habit/ai_router.py",
+    "summary": "Định tuyến các yêu cầu AI (AI requests).",
+    "tags": [
+      "ai",
+      "router"
+    ],
+    "complexity": "moderate"
+  },
+  {
+    "id": "file:src/aios_habit/workspace_models.py",
+    "type": "file",
+    "name": "workspace_models.py",
+    "filePath": "src/aios_habit/workspace_models.py",
+    "summary": "Định nghĩa các mô hình dữ liệu (data models) cho Workspace Chat.",
+    "tags": [
+      "models",
+      "chat"
+    ],
+    "complexity": "moderate"
+  },
+  {
+    "id": "file:src/aios_habit/storage.py",
+    "type": "file",
+    "name": "storage.py",
+    "filePath": "src/aios_habit/storage.py",
+    "summary": "Các giao diện lưu trữ cơ sở (base storage interfaces) và các thao tác tệp tin cục bộ.",
+    "tags": [
+      "storage",
+      "persistence"
+    ],
+    "complexity": "moderate"
+  },
+  {
+    "id": "file:src/aios_habit/core.py",
+    "type": "file",
+    "name": "core.py",
+    "filePath": "src/aios_habit/core.py",
+    "summary": "Trạng thái ứng dụng cốt lõi và công cụ theo dõi thói quen (habit tracking engine).",
+    "tags": [
+      "python",
+      "core"
+    ],
+    "complexity": "moderate"
+  }
+]

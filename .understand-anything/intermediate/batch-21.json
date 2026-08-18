@@ -1,0 +1,45 @@
+{
+  "nodes": [
+    {
+      "id": "file:09_handover/README.md",
+      "type": "file",
+      "name": "README.md",
+      "filePath": "09_handover/README.md",
+      "summary": "Main entry point for the handover documentation providing an overview of handover processes.",
+      "tags": ["documentation", "handover"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:09_handover/matecon_manual_retrieval_handover.md",
+      "type": "file",
+      "name": "matecon_manual_retrieval_handover.md",
+      "filePath": "09_handover/matecon_manual_retrieval_handover.md",
+      "summary": "Documentation regarding the manual retrieval handover process for Matecon.",
+      "tags": ["documentation", "handover", "matecon"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:09_handover/phase_0_handover.md",
+      "type": "file",
+      "name": "phase_0_handover.md",
+      "filePath": "09_handover/phase_0_handover.md",
+      "summary": "Documentation detailing the handover procedures for Phase 0.",
+      "tags": ["documentation", "handover", "phase-0"],
+      "complexity": "moderate"
+    }
+  ],
+  "edges": [
+    {
+      "source": "file:09_handover/README.md",
+      "target": "file:09_handover/matecon_manual_retrieval_handover.md",
+      "type": "references",
+      "direction": "forward"
+    },
+    {
+      "source": "file:09_handover/README.md",
+      "target": "file:09_handover/phase_0_handover.md",
+      "type": "references",
+      "direction": "forward"
+    }
+  ]
+}

@@ -1,37 +1,32 @@
-# Persisted Data Compatibility
+# Khả Năng Tương Thích Dữ Liệu Lưu Trữ (Persisted Data Compatibility)
 
 Status: `PARTIAL`
 Owner role: Project owner / storage reviewer
 Last reviewed: 2026-07-25
 Review cadence: Before changing persisted models, JSONL fields or SQLite schema
 
-## Current persistent forms
+## Các hình thức lưu trữ hiện tại (Current Persistent Forms)
 
-| Store | Location / form | Compatibility statement |
+| Kho lưu trữ | Vị trí / Định dạng | Tuyên bố tương thích |
 |---|---|---|
-| Workspace Chat state | Ignored JSONL under `local_cases/workspace_chat/` | Model-backed local implementation; no published stable external API/version marker yet |
-| RAG v2 index | Caller-selected SQLite `chunks` table | Schema creation is idempotent for current fields; no explicit schema-version migration framework |
-| Evidence/memory runtime | Ignored JSONL paths | Governed by schemas; local owner data remains outside Git |
-| Build/release metadata | `pyproject.toml` and tracked docs | Version is package metadata, not runtime-data migration version |
+| Trạng thái Workspace Chat | JSONL (được gitignore) dưới `local_cases/workspace_chat/` | Triển khai cục bộ dựa trên model; hiện chưa công bố API/phiên bản ổn định ra bên ngoài |
+| Chỉ mục RAG v2 | Bảng `chunks` trong SQLite tại đường dẫn do caller chọn | Tạo schema có tính idempotent cho các trường hiện tại; chưa có framework di chuyển phiên bản schema tường minh |
+| Runtime Bằng chứng / Bộ nhớ | Các đường dẫn JSONL (được gitignore) | Quản trị bởi các schema; dữ liệu cục bộ của chủ sở hữu luôn nằm ngoài Git |
+| Metadata Build / Phát hành | `pyproject.toml` và tài liệu được theo dõi | Version là metadata của package, không phải phiên bản di chuyển dữ liệu runtime |
 
-## Compatibility rules
+## Quy tắc Tương thích (Compatibility Rules)
 
-1. Additive field changes require defaults and tests for old/unknown data where
-   models support it.
-2. Destructive rename/removal needs backup, migration plan, rollback and release
-   note before implementation.
-3. SQLite changes need migration detection/versioning before claiming in-place
-   compatibility.
-4. Store corruption must be handled as an operational recovery event, not hidden
-   by silently deleting owner data.
+1. Các thay đổi thêm trường mới (additive) bắt buộc phải có giá trị mặc định (default) và bài test cho dữ liệu cũ/chưa biết khi các model hỗ trợ.
+2. Việc đổi tên/xóa bỏ mang tính phá hủy (destructive) cần có quy trình sao lưu, kế hoạch di chuyển, phương án hoàn tác và ghi chú phát hành trước khi triển khai.
+3. Các thay đổi trong SQLite cần cơ chế phát hiện/đánh số phiên bản di chuyển trước khi tuyên bố tương thích tại chỗ (in-place compatibility).
+4. Sự cố hỏng kho dữ liệu phải được xử lý như một sự kiện khôi phục vận hành, tuyệt đối không giấu lỗi bằng cách âm thầm xóa dữ liệu của chủ sở hữu.
 
-## Current limits
+## Các Giới hạn Hiện tại (Current Limits)
 
-Automatic schema migration, cross-device sync and formal backward compatibility
-are not implemented claims. See
-[Data migration compatibility](../operations/DATA_MIGRATION_COMPATIBILITY.md).
+Tự động di chuyển schema, đồng bộ đa thiết bị và khả năng tương thích ngược chính thức hiện chưa phải là các tuyên bố đã triển khai. Xem [Khả năng tương thích di chuyển dữ liệu (Data migration compatibility)](../operations/DATA_MIGRATION_COMPATIBILITY.md).
 
-## Related records
+## Các Bản ghi Liên quan (Related Records)
 
 - [ADR-0003](../adr/0003-local-sqlite-lexical-index.md)
-- [Backup and restore](../operations/BACKUP_RESTORE.md)
+- [Sao lưu và phục hồi (Backup and restore)](../operations/BACKUP_RESTORE.md)
+

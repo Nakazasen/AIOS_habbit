@@ -1,0 +1,32 @@
+{
+  "nodes": [
+    {
+      "id": "file:docs/RAG_AGENT_HARNESS_RESEARCH.md",
+      "type": "file",
+      "name": "RAG_AGENT_HARNESS_RESEARCH.md",
+      "filePath": "docs/RAG_AGENT_HARNESS_RESEARCH.md",
+      "summary": "Research document regarding RAG agent harness implementation.",
+      "tags": ["docs", "research"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:docs/RECOVERY_GUIDE.md",
+      "type": "file",
+      "name": "RECOVERY_GUIDE.md",
+      "filePath": "docs/RECOVERY_GUIDE.md",
+      "summary": "Guide for system recovery processes.",
+      "tags": ["docs", "guide"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:docs/UI_LANGUAGE_POLICY.md",
+      "type": "file",
+      "name": "UI_LANGUAGE_POLICY.md",
+      "filePath": "docs/UI_LANGUAGE_POLICY.md",
+      "summary": "Policy documentation regarding UI language standards.",
+      "tags": ["docs", "policy"],
+      "complexity": "moderate"
+    }
+  ],
+  "edges": []
+}

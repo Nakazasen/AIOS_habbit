@@ -1,0 +1,66 @@
+{
+  "nodes": [
+    {
+      "id": "file:.specify/scripts/powershell/check-prerequisites.ps1",
+      "type": "file",
+      "name": "check-prerequisites.ps1",
+      "filePath": ".specify/scripts/powershell/check-prerequisites.ps1",
+      "summary": "Consolidated prerequisite checking script for Spec-Driven Development workflow.",
+      "tags": ["powershell", "dev-tool"]
+    },
+    {
+      "id": "file:.specify/scripts/powershell/common.ps1",
+      "type": "file",
+      "name": "common.ps1",
+      "filePath": ".specify/scripts/powershell/common.ps1",
+      "summary": "Shared utility functions for repository root resolution, feature path management, and template resolution.",
+      "tags": ["powershell", "shared-lib"]
+    },
+    {
+      "id": "file:.specify/scripts/powershell/create-new-feature.ps1",
+      "type": "file",
+      "name": "create-new-feature.ps1",
+      "filePath": ".specify/scripts/powershell/create-new-feature.ps1",
+      "summary": "Script to initialize a new feature directory structure and spec file.",
+      "tags": ["powershell", "dev-tool"]
+    },
+    {
+      "id": "file:.specify/scripts/powershell/setup-plan.ps1",
+      "type": "file",
+      "name": "setup-plan.ps1",
+      "filePath": ".specify/scripts/powershell/setup-plan.ps1",
+      "summary": "Script to initialize the implementation plan (plan.md) for a feature.",
+      "tags": ["powershell", "dev-tool"]
+    },
+    {
+      "id": "file:.specify/scripts/powershell/setup-tasks.ps1",
+      "type": "file",
+      "name": "setup-tasks.ps1",
+      "filePath": ".specify/scripts/powershell/setup-tasks.ps1",
+      "summary": "Script to validate environment and resolve tasks-template for task list generation.",
+      "tags": ["powershell", "dev-tool"]
+    }
+  ],
+  "edges": [
+    {
+      "source": "file:.specify/scripts/powershell/check-prerequisites.ps1",
+      "target": "file:.specify/scripts/powershell/common.ps1",
+      "type": "imports"
+    },
+    {
+      "source": "file:.specify/scripts/powershell/create-new-feature.ps1",
+      "target": "file:.specify/scripts/powershell/common.ps1",
+      "type": "imports"
+    },
+    {
+      "source": "file:.specify/scripts/powershell/setup-plan.ps1",
+      "target": "file:.specify/scripts/powershell/common.ps1",
+      "type": "imports"
+    },
+    {
+      "source": "file:.specify/scripts/powershell/setup-tasks.ps1",
+      "target": "file:.specify/scripts/powershell/common.ps1",
+      "type": "imports"
+    }
+  ]
+}

@@ -1,65 +1,47 @@
-# RAG-V2-GENERIC-EVIDENCE-SYNTHESIS-MIN
+# Tổng Hợp Bằng Chứng Tổng Quát Tối Thiểu Cho RAG v2 (RAG-V2-GENERIC-EVIDENCE-SYNTHESIS-MIN)
 
 Status: `DONE`
 
-## Goal
+## Mục Tiêu (Goal)
 
-Add generic evidence-grounded answer composition with citations and
-insufficiency handling inside RAG v2, without creating a normal-user technical
-UI or cloud-default path.
+Bổ sung khả năng xây dựng câu trả lời dựa trên bằng chứng tổng quát có trích dẫn và xử lý trường hợp thiếu dữ liệu bên trong RAG v2, mà không tạo ra giao diện kỹ thuật phức tạp cho người dùng thông thường hay luồng mặc định qua cloud.
 
-## Prerequisite
+## Điều Kiện Tiên Quyết (Prerequisite)
 
-- `RAG-V2-HYBRID-RETRIEVAL-MIN` must be validated — `DONE`.
+- `RAG-V2-HYBRID-RETRIEVAL-MIN` phải được kiểm chứng — `DONE`.
 
-## Implemented scope
+## Phạm Vi Đã Triển Khai (Implemented Scope)
 
-- New `rag_v2/evidence.py` module, independent of legacy `rag_evidence.py`,
-  `rag_search.py`, and `query_intent.py`.
-- Generic data types: `EvidencePackConfig`, `EvidenceConfidence` (enum),
-  `EvidenceItem`, `PrivacySummary`, `EvidencePack`.
-- `build_evidence_pack(query, response, config)`: converts `SearchResponse`
-  into an `EvidencePack` with numbered citations `[1]`, `[2]`..., snippet
-  clipping, configurable confidence assessment, per-document limits, and
-  strictest-wins privacy summary.
-- `format_evidence_for_prompt(pack)`: plain-text block with citations, source
-  names/locations, scores, snippets, insufficient-evidence warnings, and
-  privacy notice. Language-neutral (English) for generic core.
-- `evidence_pack_to_dict(pack)`: JSON-compatible serialization with recursive
-  tuple-to-list conversion.
-- Confidence computed from retrieval `SearchSummary` insufficiency reasons
-  plus configurable score/coverage thresholds (default: high ≥ 8.0,
-  medium ≥ 3.0).
-- Insufficiency reasons propagated from retrieval summary and augmented with
-  evidence-level checks: `no_evidence_items`, `top_score_below_threshold`,
-  `too_few_evidence_items`, `weak_term_coverage`.
-- Privacy: strictest-wins across all items; `local_only`/`confidential` in any
-  item makes the whole pack `local_only`.
+- Module mới `rag_v2/evidence.py`, hoàn toàn độc lập khỏi các module cũ `rag_evidence.py`, `rag_search.py`, và `query_intent.py`.
+- Các kiểu dữ liệu tổng quát: `EvidencePackConfig`, `EvidenceConfidence` (enum), `EvidenceItem`, `PrivacySummary`, `EvidencePack`.
+- `build_evidence_pack(query, response, config)`: chuyển đổi `SearchResponse` thành `EvidencePack` với các trích dẫn được đánh số `[1]`, `[2]`..., cắt tỉa đoạn trích, đánh giá độ tin cậy có thể cấu hình, giới hạn theo từng tài liệu và tóm tắt bảo mật theo quy tắc nghiêm ngặt nhất (strictest-wins).
+- `format_evidence_for_prompt(pack)`: khối văn bản thuần với trích dẫn, tên/vị trí nguồn, điểm số, đoạn trích, cảnh báo thiếu bằng chứng và thông báo bảo mật. Sử dụng ngôn ngữ trung lập (tiếng Anh) cho phần lõi tổng quát.
+- `evidence_pack_to_dict(pack)`: tuần tự hóa tương thích JSON với chuyển đổi đệ quy từ tuple sang list.
+- Độ tin cậy được tính toán từ các lý do thiếu dữ liệu của `SearchSummary` truy xuất cộng với các ngưỡng điểm số / độ bao phủ có thể cấu hình (mặc định: cao ≥ 8.0, trung bình ≥ 3.0).
+- Các lý do thiếu bằng chứng được truyền từ tóm tắt truy xuất và bổ sung các kiểm tra cấp bằng chứng: `no_evidence_items`, `top_score_below_threshold`, `too_few_evidence_items`, `weak_term_coverage`.
+- Bảo mật: quy tắc nghiêm ngặt nhất áp dụng trên toàn bộ các mục; chỉ cần một mục là `local_only`/`confidential` sẽ biến toàn bộ gói bằng chứng thành `local_only`.
 
-## Acceptance evidence
+## Bằng Chứng Nghiệm Thu (Acceptance Evidence)
 
-- Focused evidence + hard-code guard tests: **15 passed** in 0.19s.
-- Documentation contract: PASS.
-- Compile: PASS.
-- Full test suite: **921 passed** in 45.98s.
-- CLI audit: PASS, no errors or warnings.
-- Workspace Chat import: PASS (expected Streamlit bare-mode warnings only).
-- `git diff --check`: PASS (LF→CRLF warnings only, expected on Windows).
-- Hard-code guard (`test_rag_v2_hardcode_guard.py`): PASS; no protected terms
-  in RAG v2 source or comments.
+- Kiểm thử bằng chứng tập trung + chốt chặn mã cứng: **15 passed** in 0.19s.
+- Hợp đồng tài liệu: PASS.
+- Biên dịch: PASS.
+- Toàn bộ bộ kiểm thử: **921 passed** in 45.98s.
+- Kiểm toán CLI audit: PASS, không có lỗi hay cảnh báo.
+- Import Workspace Chat: PASS (chỉ có cảnh báo bare-mode của Streamlit như kỳ vọng).
+- `git diff --check`: PASS.
+- Chốt chặn mã cứng (`test_rag_v2_hardcode_guard.py`): PASS; không có thuật ngữ được bảo vệ nào trong mã nguồn hoặc chú thích của RAG v2.
 
-## Explicitly excluded
+## Các Loại Trừ Rõ Ràng (Explicitly Excluded)
 
-- No Workspace Chat UI or runtime migration.
-- No cloud/provider/network call, credential, or new dependency.
-- No import from legacy `rag_evidence.py`, `rag_search.py`, or
-  `query_intent.py`.
-- No domain-specific terms in source or comments.
-- No answer composer / response generator — this gate produces evidence packs
-  only.
+- Không thay đổi UI Workspace Chat hay di chuyển runtime.
+- Không có lệnh gọi mạng/cloud/provider, credential, hay dependency mới.
+- Không import từ các module cũ `rag_evidence.py`, `rag_search.py`, hay `query_intent.py`.
+- Không có thuật ngữ đặc thù ngành trong mã nguồn hay chú thích.
+- Không có bộ tạo câu trả lời (answer composer / response generator) — cổng này chỉ tạo các gói bằng chứng (evidence pack).
 
-## References
+## Tài Liệu Tham Khảo (References)
 
-- Architecture: `docs/rag_v2/RAG_V2_DESIGN.md` sections 11–12.
-- Design patterns: Haystack `DocumentJoiner`, LlamaIndex
-  `QueryFusionRetriever`, legacy `rag_evidence.py` (consulted, not imported).
+- Kiến trúc: `docs/rag_v2/RAG_V2_DESIGN.md` phần 11–12.
+- Mẫu thiết kế: Haystack `DocumentJoiner`, LlamaIndex `QueryFusionRetriever`, module kế thừa `rag_evidence.py` (tham khảo, không import).
+

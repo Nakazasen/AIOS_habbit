@@ -1,0 +1,185 @@
+{
+  "nodes": [
+    {
+      "id": "file:docs/AIOS_EXTRACTION_ADAPTER_STRATEGY.md",
+      "type": "file",
+      "name": "AIOS_EXTRACTION_ADAPTER_STRATEGY.md",
+      "filePath": "docs/AIOS_EXTRACTION_ADAPTER_STRATEGY.md",
+      "summary": "Strategy document for AIOS extraction adapters.",
+      "tags": ["docs", "extraction"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:docs/AIOS_PRODUCT_POSITIONING.md",
+      "type": "file",
+      "name": "AIOS_PRODUCT_POSITIONING.md",
+      "filePath": "docs/AIOS_PRODUCT_POSITIONING.md",
+      "summary": "Product positioning and value proposition for AIOS.",
+      "tags": ["docs", "product"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:docs/AIOS_ROUTER_SOURCE_AUDIT.md",
+      "type": "file",
+      "name": "AIOS_ROUTER_SOURCE_AUDIT.md",
+      "filePath": "docs/AIOS_ROUTER_SOURCE_AUDIT.md",
+      "summary": "Source audit report for AIOS router.",
+      "tags": ["docs", "audit", "router"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:docs/AI_EXECUTOR_PROMPTS.md",
+      "type": "file",
+      "name": "AI_EXECUTOR_PROMPTS.md",
+      "filePath": "docs/AI_EXECUTOR_PROMPTS.md",
+      "summary": "Prompts and instructions for AI executors.",
+      "tags": ["docs", "prompts"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:docs/CLI_REFERENCE.md",
+      "type": "file",
+      "name": "CLI_REFERENCE.md",
+      "filePath": "docs/CLI_REFERENCE.md",
+      "summary": "Command-line interface reference guide.",
+      "tags": ["docs", "cli"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:docs/DATA_MODEL.md",
+      "type": "file",
+      "name": "DATA_MODEL.md",
+      "filePath": "docs/DATA_MODEL.md",
+      "summary": "Data model specification for AIOS.",
+      "tags": ["docs", "data-model"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:docs/DOCUMENTATION_GOVERNANCE.md",
+      "type": "file",
+      "name": "DOCUMENTATION_GOVERNANCE.md",
+      "filePath": "docs/DOCUMENTATION_GOVERNANCE.md",
+      "summary": "Governance guidelines for project documentation.",
+      "tags": ["docs", "governance"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:docs/GRAPH_RENDERER_OPTIONS.md",
+      "type": "file",
+      "name": "GRAPH_RENDERER_OPTIONS.md",
+      "filePath": "docs/GRAPH_RENDERER_OPTIONS.md",
+      "summary": "Evaluation of graph renderer options.",
+      "tags": ["docs", "graph"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:docs/INSTALL.md",
+      "type": "file",
+      "name": "INSTALL.md",
+      "filePath": "docs/INSTALL.md",
+      "summary": "Installation and setup instructions.",
+      "tags": ["docs", "install"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:docs/KNOWLEDGE_NOTEBOOK.md",
+      "type": "file",
+      "name": "KNOWLEDGE_NOTEBOOK.md",
+      "filePath": "docs/KNOWLEDGE_NOTEBOOK.md",
+      "summary": "Design and usage guide for knowledge notebook.",
+      "tags": ["docs", "notebook"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:docs/MOM_NOTEBOOKLM_COMPARISON_MVP.md",
+      "type": "file",
+      "name": "MOM_NOTEBOOKLM_COMPARISON_MVP.md",
+      "filePath": "docs/MOM_NOTEBOOKLM_COMPARISON_MVP.md",
+      "summary": "Comparison MVP for MOM and NotebookLM.",
+      "tags": ["docs", "benchmark"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:docs/NOTEBOOKLM_MANUAL_COLLECTION_RUNBOOK.md",
+      "type": "file",
+      "name": "NOTEBOOKLM_MANUAL_COLLECTION_RUNBOOK.md",
+      "filePath": "docs/NOTEBOOKLM_MANUAL_COLLECTION_RUNBOOK.md",
+      "summary": "Runbook for manual collection in NotebookLM.",
+      "tags": ["docs", "runbook"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:docs/OPERATOR_RUNBOOK.md",
+      "type": "file",
+      "name": "OPERATOR_RUNBOOK.md",
+      "filePath": "docs/OPERATOR_RUNBOOK.md",
+      "summary": "Runbook for system operators.",
+      "tags": ["docs", "runbook"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:docs/P1_ADVANCED_RETRIEVAL_DECISION.md",
+      "type": "file",
+      "name": "P1_ADVANCED_RETRIEVAL_DECISION.md",
+      "filePath": "docs/P1_ADVANCED_RETRIEVAL_DECISION.md",
+      "summary": "Architectural decision on advanced retrieval for P1.",
+      "tags": ["docs", "decision"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:docs/P1_OPENING_PLAN_DRAFT.md",
+      "type": "file",
+      "name": "P1_OPENING_PLAN_DRAFT.md",
+      "filePath": "docs/P1_OPENING_PLAN_DRAFT.md",
+      "summary": "Opening plan draft for Phase 1.",
+      "tags": ["docs", "planning"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:docs/P1_OWNER_ACCEPTANCE_RUNBOOK.md",
+      "type": "file",
+      "name": "P1_OWNER_ACCEPTANCE_RUNBOOK.md",
+      "filePath": "docs/P1_OWNER_ACCEPTANCE_RUNBOOK.md",
+      "summary": "Owner acceptance runbook for Phase 1.",
+      "tags": ["docs", "runbook"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:docs/P1_READINESS_CHECKLIST.md",
+      "type": "file",
+      "name": "P1_READINESS_CHECKLIST.md",
+      "filePath": "docs/P1_READINESS_CHECKLIST.md",
+      "summary": "Readiness checklist for Phase 1 transition.",
+      "tags": ["docs", "checklist"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:docs/PHASE_GATE_PROCESS.md",
+      "type": "file",
+      "name": "PHASE_GATE_PROCESS.md",
+      "filePath": "docs/PHASE_GATE_PROCESS.md",
+      "summary": "Definition of the phase gate evaluation process.",
+      "tags": ["docs", "process"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:docs/PRIVACY_MODEL.md",
+      "type": "file",
+      "name": "PRIVACY_MODEL.md",
+      "filePath": "docs/PRIVACY_MODEL.md",
+      "summary": "Privacy model and data boundaries for AIOS.",
+      "tags": ["docs", "privacy"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:docs/PROFESSIONALIZATION_INDEX.md",
+      "type": "file",
+      "name": "PROFESSIONALIZATION_INDEX.md",
+      "filePath": "docs/PROFESSIONALIZATION_INDEX.md",
+      "summary": "Index of professionalization tasks and standards.",
+      "tags": ["docs", "standards"],
+      "complexity": "moderate"
+    }
+  ],
+  "edges": []
+}

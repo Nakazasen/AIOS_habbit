@@ -1,0 +1,156 @@
+{
+  "nodes": [
+    {
+      "id": "file:specs/003-adaptive-reranking-ux/GEMINI_IMPLEMENTATION_PROMPT.md",
+      "type": "file",
+      "name": "GEMINI_IMPLEMENTATION_PROMPT.md",
+      "filePath": "specs/003-adaptive-reranking-ux/GEMINI_IMPLEMENTATION_PROMPT.md",
+      "summary": "Implementation prompt for Gemini regarding adaptive reranking UX.",
+      "tags": ["documentation", "prompt"]
+    },
+    {
+      "id": "file:specs/003-adaptive-reranking-ux/TERRA_AUDIT_PROMPT.md",
+      "type": "file",
+      "name": "TERRA_AUDIT_PROMPT.md",
+      "filePath": "specs/003-adaptive-reranking-ux/TERRA_AUDIT_PROMPT.md",
+      "summary": "Audit prompt for Terra regarding adaptive reranking UX.",
+      "tags": ["documentation", "prompt"]
+    },
+    {
+      "id": "file:specs/003-adaptive-reranking-ux/audit-plan.md",
+      "type": "file",
+      "name": "audit-plan.md",
+      "filePath": "specs/003-adaptive-reranking-ux/audit-plan.md",
+      "summary": "Plan for auditing adaptive reranking UX implementation.",
+      "tags": ["documentation", "planning"]
+    },
+    {
+      "id": "file:specs/003-adaptive-reranking-ux/audit_report.json",
+      "type": "file",
+      "name": "audit_report.json",
+      "filePath": "specs/003-adaptive-reranking-ux/audit_report.json",
+      "summary": "JSON report of the audit results.",
+      "tags": ["data", "report"]
+    },
+    {
+      "id": "file:specs/003-adaptive-reranking-ux/baseline-summary.md",
+      "type": "file",
+      "name": "baseline-summary.md",
+      "filePath": "specs/003-adaptive-reranking-ux/baseline-summary.md",
+      "summary": "Summary of the baseline state for adaptive reranking.",
+      "tags": ["documentation", "summary"]
+    },
+    {
+      "id": "file:specs/003-adaptive-reranking-ux/benchmark-decision.md",
+      "type": "file",
+      "name": "benchmark-decision.md",
+      "filePath": "specs/003-adaptive-reranking-ux/benchmark-decision.md",
+      "summary": "Decision document regarding benchmarks.",
+      "tags": ["documentation", "decision"]
+    },
+    {
+      "id": "file:specs/003-adaptive-reranking-ux/data-model.md",
+      "type": "file",
+      "name": "data-model.md",
+      "filePath": "specs/003-adaptive-reranking-ux/data-model.md",
+      "summary": "Data model specifications for adaptive reranking.",
+      "tags": ["documentation", "data-model"]
+    },
+    {
+      "id": "file:specs/003-adaptive-reranking-ux/implementation-evidence.md",
+      "type": "file",
+      "name": "implementation-evidence.md",
+      "filePath": "specs/003-adaptive-reranking-ux/implementation-evidence.md",
+      "summary": "Evidence gathered during implementation.",
+      "tags": ["documentation", "evidence"]
+    },
+    {
+      "id": "file:specs/003-adaptive-reranking-ux/implementation-log.md",
+      "type": "file",
+      "name": "implementation-log.md",
+      "filePath": "specs/003-adaptive-reranking-ux/implementation-log.md",
+      "summary": "Log of implementation progress.",
+      "tags": ["documentation", "log"]
+    },
+    {
+      "id": "file:specs/003-adaptive-reranking-ux/operations-guide.md",
+      "type": "file",
+      "name": "operations-guide.md",
+      "filePath": "specs/003-adaptive-reranking-ux/operations-guide.md",
+      "summary": "Operations guide for adaptive reranking.",
+      "tags": ["documentation", "operations"]
+    },
+    {
+      "id": "file:specs/003-adaptive-reranking-ux/plan.md",
+      "type": "file",
+      "name": "plan.md",
+      "filePath": "specs/003-adaptive-reranking-ux/plan.md",
+      "summary": "Overall implementation plan.",
+      "tags": ["documentation", "planning"]
+    },
+    {
+      "id": "file:specs/003-adaptive-reranking-ux/quickstart.md",
+      "type": "file",
+      "name": "quickstart.md",
+      "filePath": "specs/003-adaptive-reranking-ux/quickstart.md",
+      "summary": "Quickstart guide for adaptive reranking.",
+      "tags": ["documentation", "guide"]
+    },
+    {
+      "id": "file:specs/003-adaptive-reranking-ux/research.md",
+      "type": "file",
+      "name": "research.md",
+      "filePath": "specs/003-adaptive-reranking-ux/research.md",
+      "summary": "Research findings for adaptive reranking.",
+      "tags": ["documentation", "research"]
+    },
+    {
+      "id": "file:specs/003-adaptive-reranking-ux/spec.md",
+      "type": "file",
+      "name": "spec.md",
+      "filePath": "specs/003-adaptive-reranking-ux/spec.md",
+      "summary": "Primary specification document for adaptive reranking.",
+      "tags": ["documentation", "spec"]
+    },
+    {
+      "id": "file:specs/003-adaptive-reranking-ux/tasks.md",
+      "type": "file",
+      "name": "tasks.md",
+      "filePath": "specs/003-adaptive-reranking-ux/tasks.md",
+      "summary": "Task tracking for adaptive reranking.",
+      "tags": ["documentation", "tasks"]
+    }
+  ],
+  "edges": [
+    {
+      "source": "file:specs/003-adaptive-reranking-ux/GEMINI_IMPLEMENTATION_PROMPT.md",
+      "target": "file:specs/003-adaptive-reranking-ux/spec.md",
+      "type": "references"
+    },
+    {
+      "source": "file:specs/003-adaptive-reranking-ux/TERRA_AUDIT_PROMPT.md",
+      "target": "file:specs/003-adaptive-reranking-ux/spec.md",
+      "type": "references"
+    },
+    {
+      "source": "file:specs/003-adaptive-reranking-ux/audit-plan.md",
+      "target": "file:specs/003-adaptive-reranking-ux/spec.md",
+      "type": "references"
+    },
+    {
+      "source": "file:specs/003-adaptive-reranking-ux/audit_report.json",
+      "target": "file:specs/003-adaptive-reranking-ux/audit-plan.md",
+      "type": "reports-on"
+    },
+    {
+      "source": "file:specs/003-adaptive-reranking-ux/plan.md",
+      "target": "file:specs/003-adaptive-reranking-ux/spec.md",
+      "type": "implements"
+    },
+    {
+      "source": "file:specs/003-adaptive-reranking-ux/tasks.md",
+      "target": "file:specs/003-adaptive-reranking-ux/plan.md",
+      "type": "details"
+    }
+  ]
+}

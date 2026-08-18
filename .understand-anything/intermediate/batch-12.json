@@ -1,0 +1,186 @@
+{
+  "nodes": [
+    {
+      "id": "file:.ai/P1_READINESS_REVIEW_REPORT.md",
+      "type": "file",
+      "name": "P1_READINESS_REVIEW_REPORT.md",
+      "filePath": ".ai/P1_READINESS_REVIEW_REPORT.md",
+      "summary": "Readiness review report for project phase 1.",
+      "tags": ["report", "ai"]
+    },
+    {
+      "id": "file:.ai/P1_PROGRESS_LEDGER.md",
+      "type": "file",
+      "name": "P1_PROGRESS_LEDGER.md",
+      "filePath": ".ai/P1_PROGRESS_LEDGER.md",
+      "summary": "Progress tracking ledger for project phase 1.",
+      "tags": ["report", "ai"]
+    },
+    {
+      "id": "file:.ai/DECISION_LOG.md",
+      "type": "file",
+      "name": "DECISION_LOG.md",
+      "filePath": ".ai/DECISION_LOG.md",
+      "summary": "Log of key project decisions.",
+      "tags": ["log", "ai"]
+    },
+    {
+      "id": "file:.ai/TASK_QUEUE.md",
+      "type": "file",
+      "name": "TASK_QUEUE.md",
+      "filePath": ".ai/TASK_QUEUE.md",
+      "summary": "Queue of pending tasks.",
+      "tags": ["task", "ai"]
+    },
+    {
+      "id": "file:.ai/AUDIT_REPORT.md",
+      "type": "file",
+      "name": "AUDIT_REPORT.md",
+      "filePath": ".ai/AUDIT_REPORT.md",
+      "summary": "General audit report.",
+      "tags": ["report", "ai"]
+    },
+    {
+      "id": "file:.ai/EXECUTION_REPORT.md",
+      "type": "file",
+      "name": "EXECUTION_REPORT.md",
+      "filePath": ".ai/EXECUTION_REPORT.md",
+      "summary": "Report on project execution.",
+      "tags": ["report", "ai"]
+    },
+    {
+      "id": "file:.ai/LOOP_STATE.md",
+      "type": "file",
+      "name": "LOOP_STATE.md",
+      "filePath": ".ai/LOOP_STATE.md",
+      "summary": "State tracking for the project loop.",
+      "tags": ["log", "ai"]
+    },
+    {
+      "id": "file:.ai/NEXT_ACTION.md",
+      "type": "file",
+      "name": "NEXT_ACTION.md",
+      "filePath": ".ai/NEXT_ACTION.md",
+      "summary": "Record of next actions.",
+      "tags": ["task", "ai"]
+    },
+    {
+      "id": "file:.ai/RELEASE_REPORT.md",
+      "type": "file",
+      "name": "RELEASE_REPORT.md",
+      "filePath": ".ai/RELEASE_REPORT.md",
+      "summary": "Report concerning project releases.",
+      "tags": ["report", "ai"]
+    },
+    {
+      "id": "file:.ai/RAG_ANSWER_HONESTY_AUDIT.md",
+      "type": "file",
+      "name": "RAG_ANSWER_HONESTY_AUDIT.md",
+      "filePath": ".ai/RAG_ANSWER_HONESTY_AUDIT.md",
+      "summary": "Audit of RAG answer honesty.",
+      "tags": ["report", "ai", "rag"]
+    },
+    {
+      "id": "file:.ai/RAG_ARCHITECTURE_PATTERN_STUDY.md",
+      "type": "file",
+      "name": "RAG_ARCHITECTURE_PATTERN_STUDY.md",
+      "filePath": ".ai/RAG_ARCHITECTURE_PATTERN_STUDY.md",
+      "summary": "Study of RAG architecture patterns.",
+      "tags": ["study", "ai", "rag"]
+    },
+    {
+      "id": "file:.ai/RAG_HARDENING_LIBRARY_STUDY.md",
+      "type": "file",
+      "name": "RAG_HARDENING_LIBRARY_STUDY.md",
+      "filePath": ".ai/RAG_HARDENING_LIBRARY_STUDY.md",
+      "summary": "Study of RAG hardening libraries.",
+      "tags": ["study", "ai", "rag"]
+    },
+    {
+      "id": "file:.ai/RAG_HARDENING_SWEEP_REPORT.md",
+      "type": "file",
+      "name": "RAG_HARDENING_SWEEP_REPORT.md",
+      "filePath": ".ai/RAG_HARDENING_SWEEP_REPORT.md",
+      "summary": "Report on RAG hardening sweep.",
+      "tags": ["report", "ai", "rag"]
+    },
+    {
+      "id": "file:.ai/RAG_WEAK_FORMAT_AUDIT_REPORT.md",
+      "type": "file",
+      "name": "RAG_WEAK_FORMAT_AUDIT_REPORT.md",
+      "filePath": ".ai/RAG_WEAK_FORMAT_AUDIT_REPORT.md",
+      "summary": "Audit report on RAG weak format.",
+      "tags": ["report", "ai", "rag"]
+    },
+    {
+      "id": "file:.ai/AIOS_RAG_FAILURE_ANALYSIS.md",
+      "type": "file",
+      "name": "AIOS_RAG_FAILURE_ANALYSIS.md",
+      "filePath": ".ai/AIOS_RAG_FAILURE_ANALYSIS.md",
+      "summary": "Analysis of RAG failures.",
+      "tags": ["report", "ai", "rag"]
+    },
+    {
+      "id": "file:.ai/AIOS_GENERAL_RAG_OVERFIT_AUDIT.md",
+      "type": "file",
+      "name": "AIOS_GENERAL_RAG_OVERFIT_AUDIT.md",
+      "filePath": ".ai/AIOS_GENERAL_RAG_OVERFIT_AUDIT.md",
+      "summary": "Audit for RAG overfitting.",
+      "tags": ["report", "ai", "rag"]
+    },
+    {
+      "id": "file:.ai/AIOS_GENERAL_RAG_RESET_DECISION.md",
+      "type": "file",
+      "name": "AIOS_GENERAL_RAG_RESET_DECISION.md",
+      "filePath": ".ai/AIOS_GENERAL_RAG_RESET_DECISION.md",
+      "summary": "Decision regarding RAG reset.",
+      "tags": ["decision", "ai", "rag"]
+    },
+    {
+      "id": "file:.ai/AIOS_GENERIC_RAG_CORE_ARCHITECTURE.md",
+      "type": "file",
+      "name": "AIOS_GENERIC_RAG_CORE_ARCHITECTURE.md",
+      "filePath": ".ai/AIOS_GENERIC_RAG_CORE_ARCHITECTURE.md",
+      "summary": "Core architecture documentation for generic RAG.",
+      "tags": ["architecture", "ai", "rag"]
+    },
+    {
+      "id": "file:.ai/AIOS_SOURCE_ROUTER_AND_SYNTHESIZER_DESIGN.md",
+      "type": "file",
+      "name": "AIOS_SOURCE_ROUTER_AND_SYNTHESIZER_DESIGN.md",
+      "filePath": ".ai/AIOS_SOURCE_ROUTER_AND_SYNTHESIZER_DESIGN.md",
+      "summary": "Design documentation for source router and synthesizer.",
+      "tags": ["design", "ai", "rag"]
+    },
+    {
+      "id": "file:.ai/AIOS_ROUTER_SYNTHESIZER_4Q_RERUN_REPORT.md",
+      "type": "file",
+      "name": "AIOS_ROUTER_SYNTHESIZER_4Q_RERUN_REPORT.md",
+      "filePath": ".ai/AIOS_ROUTER_SYNTHESIZER_4Q_RERUN_REPORT.md",
+      "summary": "Report on router synthesizer 4Q rerun.",
+      "tags": ["report", "ai", "rag"]
+    }
+  ],
+  "edges": [
+    {
+      "source": "file:.ai/P1_READINESS_REVIEW_REPORT.md",
+      "target": "file:.ai/P1_PROGRESS_LEDGER.md",
+      "type": "references"
+    },
+    {
+      "source": "file:.ai/P1_READINESS_REVIEW_REPORT.md",
+      "target": "file:.ai/DECISION_LOG.md",
+      "type": "references"
+    },
+    {
+      "source": "file:.ai/RAG_HARDENING_SWEEP_REPORT.md",
+      "target": "file:.ai/RAG_HARDENING_LIBRARY_STUDY.md",
+      "type": "references"
+    },
+    {
+      "source": "file:.ai/AIOS_SOURCE_ROUTER_AND_SYNTHESIZER_DESIGN.md",
+      "target": "file:.ai/AIOS_GENERIC_RAG_CORE_ARCHITECTURE.md",
+      "type": "references"
+    }
+  ]
+}

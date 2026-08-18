@@ -1,47 +1,38 @@
-# Security Policy
+# Chính sách Bảo mật (Security Policy)
 
 Status: `PROPOSED`
 Owner role: Project owner / designated security contact
 Last reviewed: 2026-07-25
 Review cadence: Each release candidate and after a security-relevant change
 
-## Scope
+## Phạm vi (Scope)
 
-AIOS WorkLens is a local-first application. Security scope includes the tracked
-source code, release artifacts, dependency configuration, local data boundaries
-and optional external AI-provider integration. Private local documents, runtime
-JSONL/SQLite files and credentials must never be attached to public reports.
+AIOS WorkLens là một ứng dụng ưu tiên cục bộ (local-first). Phạm vi bảo mật bao gồm mã nguồn được theo dõi, các artifact phát hành, cấu hình phụ thuộc, ranh giới dữ liệu cục bộ và tích hợp nhà cung cấp AI bên ngoài tùy chọn. Các tài liệu riêng tư cục bộ, tệp JSONL/SQLite runtime và thông tin xác thực (credentials) tuyệt đối không được đính kèm vào các báo cáo công khai.
 
-## Supported versions
+## Các phiên bản được hỗ trợ (Supported versions)
 
-| Version line | Status |
+| Dòng phiên bản | Trạng thái |
 |---|---|
-| Current `main` / next release candidate | Supported for security fixes |
-| Historical releases | `OWNER_DECISION_REQUIRED` |
+| Nhánh `main` hiện tại / ứng viên phát hành (RC) tiếp theo | Được hỗ trợ các bản sửa lỗi bảo mật |
+| Các bản phát hành lịch sử | `OWNER_DECISION_REQUIRED` |
 
-A formal supported-version window will be defined in
+Khung phiên bản được hỗ trợ chính thức sẽ được định nghĩa chi tiết tại
 [docs/release/SUPPORTED_VERSIONS.md](docs/release/SUPPORTED_VERSIONS.md).
 
-## Reporting a vulnerability
+## Báo cáo lỗ hổng bảo mật (Reporting a vulnerability)
 
-**OWNER_DECISION_REQUIRED:** configure a private reporting channel before any
-public release. Until that decision exists, do not open a public issue containing
-exploit steps, API keys, local paths, private documents or sensitive logs.
+**OWNER_DECISION_REQUIRED:** Cần cấu hình một kênh báo cáo riêng tư trước bất kỳ đợt phát hành công khai nào. Cho đến khi có quyết định đó, không mở issue công khai chứa các bước khai thác, API key, đường dẫn tệp cục bộ, tài liệu riêng tư hoặc log nhạy cảm.
 
-A safe report contains: affected version/commit, minimal synthetic reproduction,
-impact, attack preconditions and suggested remediation. It must not contain a
-live credential or customer/owner data.
+Một báo cáo an toàn bao gồm: phiên bản/commit bị ảnh hưởng, trường hợp tái lập tối thiểu bằng dữ liệu tổng hợp (synthetic), mức độ tác động, điều kiện tiên quyết tấn công và giải pháp khắc phục đề xuất. Báo cáo không được chứa thông tin xác thực thực tế hoặc dữ liệu của khách hàng/chủ sở hữu.
 
-## Triage and disclosure
+## Phân loại & Công bố (Triage and disclosure)
 
-The proposed lifecycle is acknowledge → reproduce with synthetic data → contain
-→ fix and test → publish a sanitized advisory/release note. Response targets and
-embargo/disclosure windows remain `OWNER_DECISION_REQUIRED`; this document does
-not promise an SLA.
+Vòng đời xử lý đề xuất: Tiếp nhận (acknowledge) → Tái lập bằng dữ liệu tổng hợp → Khoanh vùng cách ly (contain) → Khắc phục và kiểm thử → Công bố khuyến cáo/ghi chú phát hành đã làm sạch (sanitized). Mục tiêu thời gian phản hồi và khung thời gian cấm tiết lộ/công bố vẫn ở trạng thái `OWNER_DECISION_REQUIRED`; tài liệu này không cam kết SLA cố định.
 
-## Security design references
+## Tài liệu tham khảo thiết kế bảo mật (Security design references)
 
-- [Threat model](docs/security/THREAT_MODEL.md)
-- [Privacy impact assessment](docs/security/PRIVACY_IMPACT_ASSESSMENT.md)
-- [Dependency policy](docs/security/DEPENDENCY_POLICY.md)
-- [Incident response](docs/operations/INCIDENT_RESPONSE.md)
+- [Mô hình mối đe dọa (Threat model)](docs/security/THREAT_MODEL.md)
+- [Đánh giá tác động quyền riêng tư (Privacy impact assessment)](docs/security/PRIVACY_IMPACT_ASSESSMENT.md)
+- [Chính sách phụ thuộc (Dependency policy)](docs/security/DEPENDENCY_POLICY.md)
+- [Quy trình phản ứng sự cố (Incident response)](docs/operations/INCIDENT_RESPONSE.md)
+

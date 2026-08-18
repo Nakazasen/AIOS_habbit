@@ -1,0 +1,436 @@
+[
+  {
+    "id": "file:.specify/init-options.json",
+    "type": "file",
+    "name": "init-options.json",
+    "filePath": ".specify/init-options.json",
+    "summary": "Tệp cấu hình định nghĩa các tùy chọn khởi tạo.",
+    "tags": [
+      "config",
+      "json"
+    ],
+    "complexity": "moderate"
+  },
+  {
+    "id": "file:.specify/integration.json",
+    "type": "file",
+    "name": "integration.json",
+    "filePath": ".specify/integration.json",
+    "summary": "Tệp cấu hình định nghĩa các thiết lập tích hợp.",
+    "tags": [
+      "config",
+      "json"
+    ],
+    "complexity": "moderate"
+  },
+  {
+    "id": "file:.specify/scripts/powershell/check-prerequisites.ps1",
+    "type": "file",
+    "name": "check-prerequisites.ps1",
+    "filePath": ".specify/scripts/powershell/check-prerequisites.ps1",
+    "summary": "Kịch bản PowerShell để kiểm tra các điều kiện tiên quyết của môi trường.",
+    "tags": [
+      "powershell",
+      "setup"
+    ],
+    "complexity": "moderate"
+  },
+  {
+    "id": "file:.specify/scripts/powershell/common.ps1",
+    "type": "file",
+    "name": "common.ps1",
+    "filePath": ".specify/scripts/powershell/common.ps1",
+    "summary": "Các hàm và tiện ích PowerShell dùng chung.",
+    "tags": [
+      "powershell",
+      "utility"
+    ],
+    "complexity": "moderate"
+  },
+  {
+    "id": "file:.specify/scripts/powershell/create-new-feature.ps1",
+    "type": "file",
+    "name": "create-new-feature.ps1",
+    "filePath": ".specify/scripts/powershell/create-new-feature.ps1",
+    "summary": "Kịch bản PowerShell để tạo nhánh tính năng và thư mục mới.",
+    "tags": [
+      "powershell",
+      "feature"
+    ],
+    "complexity": "moderate"
+  },
+  {
+    "id": "file:.specify/scripts/powershell/setup-plan.ps1",
+    "type": "file",
+    "name": "setup-plan.ps1",
+    "filePath": ".specify/scripts/powershell/setup-plan.ps1",
+    "summary": "Kịch bản PowerShell để khởi tạo kế hoạch phát triển tính năng (plan).",
+    "tags": [
+      "powershell",
+      "planning"
+    ],
+    "complexity": "moderate"
+  },
+  {
+    "id": "file:.specify/scripts/powershell/setup-tasks.ps1",
+    "type": "file",
+    "name": "setup-tasks.ps1",
+    "filePath": ".specify/scripts/powershell/setup-tasks.ps1",
+    "summary": "Kịch bản PowerShell để tạo và thiết lập danh sách tác vụ (tasks).",
+    "tags": [
+      "powershell",
+      "tasks"
+    ],
+    "complexity": "moderate"
+  },
+  {
+    "id": "file:.specify/templates/checklist-template.md",
+    "type": "file",
+    "name": "checklist-template.md",
+    "filePath": ".specify/templates/checklist-template.md",
+    "summary": "Template để tạo danh sách kiểm tra (checklist) cho tính năng.",
+    "tags": [
+      "template",
+      "specification"
+    ],
+    "complexity": "moderate"
+  },
+  {
+    "id": "file:.specify/templates/constitution-template.md",
+    "type": "file",
+    "name": "constitution-template.md",
+    "filePath": ".specify/templates/constitution-template.md",
+    "summary": "Template để tạo quy chuẩn nguyên tắc (constitution) của dự án.",
+    "tags": [
+      "template",
+      "governance"
+    ],
+    "complexity": "moderate"
+  },
+  {
+    "id": "file:.specify/templates/plan-template.md",
+    "type": "file",
+    "name": "plan-template.md",
+    "filePath": ".specify/templates/plan-template.md",
+    "summary": "Template để tạo kế hoạch triển khai tính năng (plan).",
+    "tags": [
+      "template",
+      "planning"
+    ],
+    "complexity": "moderate"
+  },
+  {
+    "id": "file:.specify/templates/spec-template.md",
+    "type": "file",
+    "name": "spec-template.md",
+    "filePath": ".specify/templates/spec-template.md",
+    "summary": "Template để tạo đặc tả kỹ thuật tính năng (spec).",
+    "tags": [
+      "template",
+      "specification"
+    ],
+    "complexity": "moderate"
+  },
+  {
+    "id": "file:.specify/templates/tasks-template.md",
+    "type": "file",
+    "name": "tasks-template.md",
+    "filePath": ".specify/templates/tasks-template.md",
+    "summary": "Template để tạo danh sách tác vụ triển khai (tasks).",
+    "tags": [
+      "template",
+      "tasks"
+    ],
+    "complexity": "moderate"
+  },
+  {
+    "id": "file:.streamlit/config.toml",
+    "type": "file",
+    "name": "config.toml",
+    "filePath": ".streamlit/config.toml",
+    "summary": "Tệp cấu hình giao diện UI Streamlit.",
+    "tags": [
+      "config",
+      "streamlit"
+    ],
+    "complexity": "moderate"
+  },
+  {
+    "id": "file:.understand-anything/.understandignore",
+    "type": "file",
+    "name": ".understandignore",
+    "filePath": ".understand-anything/.understandignore",
+    "summary": "Mẫu loại trừ tệp khi lập chỉ mục đồ thị tri thức (knowledge graph) understand-anything.",
+    "tags": [
+      "config",
+      "tooling"
+    ],
+    "complexity": "moderate"
+  },
+  {
+    "id": "file:00_governance/DATA_POLICY.md",
+    "type": "file",
+    "name": "DATA_POLICY.md",
+    "filePath": "00_governance/DATA_POLICY.md",
+    "summary": "Chính sách quản trị (governance) cho việc quản lý và tính toàn vẹn dữ liệu.",
+    "tags": [
+      "governance",
+      "policy"
+    ],
+    "complexity": "moderate"
+  },
+  {
+    "id": "file:00_governance/PHASE_0_EXIT_CHECKLIST.md",
+    "type": "file",
+    "name": "PHASE_0_EXIT_CHECKLIST.md",
+    "filePath": "00_governance/PHASE_0_EXIT_CHECKLIST.md",
+    "summary": "Danh sách kiểm tra hoàn thành (exit checklist) cho cổng kiểm soát (Phase Gate) Giai đoạn 0.",
+    "tags": [
+      "governance",
+      "checklist"
+    ],
+    "complexity": "moderate"
+  },
+  {
+    "id": "file:00_governance/PHASE_GATE_LOG.md",
+    "type": "file",
+    "name": "PHASE_GATE_LOG.md",
+    "filePath": "00_governance/PHASE_GATE_LOG.md",
+    "summary": "Nhật ký theo dõi các quyết định và chuyển đổi cổng kiểm soát Phase Gate.",
+    "tags": [
+      "governance",
+      "log"
+    ],
+    "complexity": "moderate"
+  },
+  {
+    "id": "file:00_governance/SOURCE_POLICY.md",
+    "type": "file",
+    "name": "SOURCE_POLICY.md",
+    "filePath": "00_governance/SOURCE_POLICY.md",
+    "summary": "Chính sách quản trị việc tiếp nhận (ingestion) và theo dõi tài liệu nguồn.",
+    "tags": [
+      "governance",
+      "policy"
+    ],
+    "complexity": "moderate"
+  },
+  {
+    "id": "file:00_governance/VALIDATION_RULES.md",
+    "type": "file",
+    "name": "VALIDATION_RULES.md",
+    "filePath": "00_governance/VALIDATION_RULES.md",
+    "summary": "Các quy tắc xác thực tuân thủ dữ liệu và quản trị hệ thống.",
+    "tags": [
+      "governance",
+      "validation"
+    ],
+    "complexity": "moderate"
+  },
+  {
+    "id": "file:01_design/DATA_FLOW.md",
+    "type": "file",
+    "name": "DATA_FLOW.md",
+    "filePath": "01_design/DATA_FLOW.md",
+    "summary": "Kiến trúc luồng dữ liệu (Data Flow) và thiết kế Pipeline xử lý.",
+    "tags": [
+      "design",
+      "architecture"
+    ],
+    "complexity": "moderate"
+  },
+  {
+    "id": "file:01_design/SYSTEM_CONTEXT.md",
+    "type": "file",
+    "name": "SYSTEM_CONTEXT.md",
+    "filePath": "01_design/SYSTEM_CONTEXT.md",
+    "summary": "Sơ đồ ngữ cảnh hệ thống (System Context) và định nghĩa ranh giới hệ thống.",
+    "tags": [
+      "design",
+      "architecture"
+    ],
+    "complexity": "moderate"
+  },
+  {
+    "id": "file:01_design/TERMINOLOGY.md",
+    "type": "file",
+    "name": "TERMINOLOGY.md",
+    "filePath": "01_design/TERMINOLOGY.md",
+    "summary": "Bảng thuật ngữ chuẩn hóa và định nghĩa cho AIOS.",
+    "tags": [
+      "design",
+      "glossary"
+    ],
+    "complexity": "moderate"
+  },
+  {
+    "id": "file:02_sources/README.md",
+    "type": "file",
+    "name": "README.md",
+    "filePath": "02_sources/README.md",
+    "summary": "Tệp README giới thiệu thư mục nguồn dữ liệu (sources).",
+    "tags": [
+      "markdown",
+      "documentation"
+    ],
+    "complexity": "moderate"
+  },
+  {
+    "id": "file:02_sources/excluded_sources.md",
+    "type": "file",
+    "name": "excluded_sources.md",
+    "filePath": "02_sources/excluded_sources.md",
+    "summary": "Tài liệu ghi nhận các nguồn dữ liệu bị loại trừ.",
+    "tags": [
+      "markdown",
+      "documentation"
+    ],
+    "complexity": "moderate"
+  },
+  {
+    "id": "file:02_sources/source_inventory.md",
+    "type": "file",
+    "name": "source_inventory.md",
+    "filePath": "02_sources/source_inventory.md",
+    "summary": "Danh mục kiểm kê toàn bộ các nguồn dữ liệu.",
+    "tags": [
+      "markdown",
+      "documentation"
+    ],
+    "complexity": "moderate"
+  },
+  {
+    "id": "file:03_evidence_registry/evidence_index.md",
+    "type": "file",
+    "name": "evidence_index.md",
+    "filePath": "03_evidence_registry/evidence_index.md",
+    "summary": "Chỉ mục các bản ghi bằng chứng (Evidence Record) trong sổ đăng ký bằng chứng.",
+    "tags": [
+      "evidence",
+      "index"
+    ],
+    "complexity": "moderate"
+  },
+  {
+    "id": "file:03_evidence_registry/README.md",
+    "type": "file",
+    "name": "README.md",
+    "filePath": "03_evidence_registry/README.md",
+    "summary": "Tổng quan về thư mục sổ đăng ký bản ghi bằng chứng (Evidence Registry).",
+    "tags": [
+      "evidence",
+      "docs"
+    ],
+    "complexity": "moderate"
+  },
+  {
+    "id": "file:09_handover/README.md",
+    "type": "file",
+    "name": "README.md",
+    "filePath": "09_handover/README.md",
+    "summary": "Điểm điều hướng chính cho tài liệu bàn giao (handover).",
+    "tags": [
+      "documentation",
+      "handover"
+    ],
+    "complexity": "moderate"
+  },
+  {
+    "id": "file:09_handover/matecon_manual_retrieval_handover.md",
+    "type": "file",
+    "name": "matecon_manual_retrieval_handover.md",
+    "filePath": "09_handover/matecon_manual_retrieval_handover.md",
+    "summary": "Tài liệu chi tiết quy trình bàn giao truy xuất thủ công cho Matecon.",
+    "tags": [
+      "documentation",
+      "handover",
+      "matecon"
+    ],
+    "complexity": "moderate"
+  },
+  {
+    "id": "file:09_handover/phase_0_handover.md",
+    "type": "file",
+    "name": "phase_0_handover.md",
+    "filePath": "09_handover/phase_0_handover.md",
+    "summary": "Tài liệu chi tiết các quy trình bàn giao cho Giai đoạn 0 (Phase 0).",
+    "tags": [
+      "documentation",
+      "handover",
+      "phase-0"
+    ],
+    "complexity": "moderate"
+  },
+  {
+    "id": "file:10_schemas/decision_pattern.schema.json",
+    "type": "file",
+    "name": "decision_pattern.schema.json",
+    "filePath": "10_schemas/decision_pattern.schema.json",
+    "summary": "JSON Schema định nghĩa mẫu quyết định (decision pattern).",
+    "tags": [
+      "schema",
+      "json"
+    ],
+    "complexity": "moderate"
+  },
+  {
+    "id": "file:10_schemas/evidence_record.schema.json",
+    "type": "file",
+    "name": "evidence_record.schema.json",
+    "filePath": "10_schemas/evidence_record.schema.json",
+    "summary": "JSON Schema cho các bản ghi bằng chứng (Evidence Record).",
+    "tags": [
+      "schema",
+      "json"
+    ],
+    "complexity": "moderate"
+  },
+  {
+    "id": "file:10_schemas/memory_unit.schema.json",
+    "type": "file",
+    "name": "memory_unit.schema.json",
+    "filePath": "10_schemas/memory_unit.schema.json",
+    "summary": "JSON Schema cho cấu trúc đơn vị bộ nhớ (Memory Unit).",
+    "tags": [
+      "schema",
+      "json"
+    ],
+    "complexity": "moderate"
+  },
+  {
+    "id": "file:10_schemas/phase_record.schema.json",
+    "type": "file",
+    "name": "phase_record.schema.json",
+    "filePath": "10_schemas/phase_record.schema.json",
+    "summary": "JSON Schema để theo dõi hồ sơ giai đoạn (Phase Record).",
+    "tags": [
+      "schema",
+      "json"
+    ],
+    "complexity": "moderate"
+  },
+  {
+    "id": "file:10_schemas/project_card.schema.json",
+    "type": "file",
+    "name": "project_card.schema.json",
+    "filePath": "10_schemas/project_card.schema.json",
+    "summary": "JSON Schema định nghĩa thẻ dự án (project card).",
+    "tags": [
+      "schema",
+      "json"
+    ],
+    "complexity": "moderate"
+  },
+  {
+    "id": "file:10_schemas/workflow_card.schema.json",
+    "type": "file",
+    "name": "workflow_card.schema.json",
+    "filePath": "10_schemas/workflow_card.schema.json",
+    "summary": "JSON Schema cho các cấu hình thẻ quy trình làm việc (workflow card).",
+    "tags": [
+      "schema",
+      "json"
+    ],
+    "complexity": "moderate"
+  }
+]

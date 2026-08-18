@@ -1,0 +1,165 @@
+{
+  "nodes": [
+    {
+      "id": "file:.ai/AIOS_12Q_ANSWERS_REDACTED_FULL.txt",
+      "type": "file",
+      "name": "AIOS_12Q_ANSWERS_REDACTED_FULL.txt",
+      "filePath": ".ai/AIOS_12Q_ANSWERS_REDACTED_FULL.txt",
+      "summary": "Redacted answers for 12 questions in AIOS.",
+      "tags": ["ai", "answers", "redacted"]
+    },
+    {
+      "id": "file:.ai/AIOS_12Q_FINAL_OWNER_ANSWERS_REDACTED_FULL.txt",
+      "type": "file",
+      "name": "AIOS_12Q_FINAL_OWNER_ANSWERS_REDACTED_FULL.txt",
+      "filePath": ".ai/AIOS_12Q_FINAL_OWNER_ANSWERS_REDACTED_FULL.txt",
+      "summary": "Final redacted answers for 12 questions from the owner perspective.",
+      "tags": ["ai", "answers", "owner"]
+    },
+    {
+      "id": "file:.ai/AIOS_12Q_FINAL_OWNER_ANSWERS_VALID_NLM_RERUN_REDACTED_FULL.txt",
+      "type": "file",
+      "name": "AIOS_12Q_FINAL_OWNER_ANSWERS_VALID_NLM_RERUN_REDACTED_FULL.txt",
+      "filePath": ".ai/AIOS_12Q_FINAL_OWNER_ANSWERS_VALID_NLM_RERUN_REDACTED_FULL.txt",
+      "summary": "Validated NotebookLM rerun answers for 12 questions, owner perspective.",
+      "tags": ["ai", "answers", "validation", "notebooklm"]
+    },
+    {
+      "id": "file:.ai/AIOS_12Q_ROUTER_SYNTH_ANSWERS_REDACTED_FULL.txt",
+      "type": "file",
+      "name": "AIOS_12Q_ROUTER_SYNTH_ANSWERS_REDACTED_FULL.txt",
+      "filePath": ".ai/AIOS_12Q_ROUTER_SYNTH_ANSWERS_REDACTED_FULL.txt",
+      "summary": "Router synthesizer answers for 12 questions, redacted.",
+      "tags": ["ai", "router", "synthesizer"]
+    },
+    {
+      "id": "file:.ai/AIOS_FINAL_ANSWER_4Q_RERUN_REPORT.md",
+      "type": "file",
+      "name": "AIOS_FINAL_ANSWER_4Q_RERUN_REPORT.md",
+      "filePath": ".ai/AIOS_FINAL_ANSWER_4Q_RERUN_REPORT.md",
+      "summary": "Report on the 4-question rerun final answers.",
+      "tags": ["report", "ai", "4q"]
+    },
+    {
+      "id": "file:.ai/AIOS_GENERAL_RAG_OVERFIT_AUDIT.md",
+      "type": "file",
+      "name": "AIOS_GENERAL_RAG_OVERFIT_AUDIT.md",
+      "filePath": ".ai/AIOS_GENERAL_RAG_OVERFIT_AUDIT.md",
+      "summary": "Audit of RAG overfit issues.",
+      "tags": ["rag", "audit", "overfit"]
+    },
+    {
+      "id": "file:.ai/AIOS_GENERAL_RAG_RESET_DECISION.md",
+      "type": "file",
+      "name": "AIOS_GENERAL_RAG_RESET_DECISION.md",
+      "filePath": ".ai/AIOS_GENERAL_RAG_RESET_DECISION.md",
+      "summary": "Decision document regarding RAG reset.",
+      "tags": ["rag", "decision", "reset"]
+    },
+    {
+      "id": "file:.ai/AIOS_GENERIC_RAG_CORE_ARCHITECTURE.md",
+      "type": "file",
+      "name": "AIOS_GENERIC_RAG_CORE_ARCHITECTURE.md",
+      "filePath": ".ai/AIOS_GENERIC_RAG_CORE_ARCHITECTURE.md",
+      "summary": "Core architecture description for generic RAG.",
+      "tags": ["rag", "architecture", "core"]
+    },
+    {
+      "id": "file:.ai/AIOS_NOTEBOOKLM_12Q_ROUTER_SYNTH_SIDE_BY_SIDE_REVIEW.md",
+      "type": "file",
+      "name": "AIOS_NOTEBOOKLM_12Q_ROUTER_SYNTH_SIDE_BY_SIDE_REVIEW.md",
+      "filePath": ".ai/AIOS_NOTEBOOKLM_12Q_ROUTER_SYNTH_SIDE_BY_SIDE_REVIEW.md",
+      "summary": "Side-by-side review of NotebookLM and Router Synthesizer for 12 questions.",
+      "tags": ["review", "notebooklm", "router", "synthesizer"]
+    },
+    {
+      "id": "file:.ai/AIOS_RAG_FAILURE_ANALYSIS.md",
+      "type": "file",
+      "name": "AIOS_RAG_FAILURE_ANALYSIS.md",
+      "filePath": ".ai/AIOS_RAG_FAILURE_ANALYSIS.md",
+      "summary": "Analysis of RAG failure scenarios.",
+      "tags": ["rag", "failure", "analysis"]
+    },
+    {
+      "id": "file:.ai/AIOS_ROUTER_SYNTHESIZER_4Q_RERUN_REPORT.md",
+      "type": "file",
+      "name": "AIOS_ROUTER_SYNTHESIZER_4Q_RERUN_REPORT.md",
+      "filePath": ".ai/AIOS_ROUTER_SYNTHESIZER_4Q_RERUN_REPORT.md",
+      "summary": "Report on the router synthesizer 4-question rerun.",
+      "tags": ["report", "router", "synthesizer", "4q"]
+    },
+    {
+      "id": "file:.ai/AIOS_ROUTER_SYNTHESIZER_PATCH_AUDIT_REPORT.md",
+      "type": "file",
+      "name": "AIOS_ROUTER_SYNTHESIZER_PATCH_AUDIT_REPORT.md",
+      "filePath": ".ai/AIOS_ROUTER_SYNTHESIZER_PATCH_AUDIT_REPORT.md",
+      "summary": "Audit report for router synthesizer patch.",
+      "tags": ["report", "router", "synthesizer", "patch", "audit"]
+    },
+    {
+      "id": "file:.ai/AIOS_ROUTER_SYNTH_12Q_FAILED_RERUN_AUDIT.md",
+      "type": "file",
+      "name": "AIOS_ROUTER_SYNTH_12Q_FAILED_RERUN_AUDIT.md",
+      "filePath": ".ai/AIOS_ROUTER_SYNTH_12Q_FAILED_RERUN_AUDIT.md",
+      "summary": "Audit of the failed 12-question rerun for router synthesizer.",
+      "tags": ["report", "router", "synthesizer", "12q", "audit"]
+    },
+    {
+      "id": "file:.ai/AIOS_SOURCE_ROUTER_AND_SYNTHESIZER_DESIGN.md",
+      "type": "file",
+      "name": "AIOS_SOURCE_ROUTER_AND_SYNTHESIZER_DESIGN.md",
+      "filePath": ".ai/AIOS_SOURCE_ROUTER_AND_SYNTHESIZER_DESIGN.md",
+      "summary": "Design document for source router and synthesizer.",
+      "tags": ["design", "router", "synthesizer", "source"]
+    },
+    {
+      "id": "file:.ai/AUDIT_REPORT.md",
+      "type": "file",
+      "name": "AUDIT_REPORT.md",
+      "filePath": ".ai/AUDIT_REPORT.md",
+      "summary": "General audit report.",
+      "tags": ["audit", "report"]
+    },
+    {
+      "id": "file:.ai/BRIDGE_MANUAL_STEP_REDUCTION_AUDIT_REPORT.md",
+      "type": "file",
+      "name": "BRIDGE_MANUAL_STEP_REDUCTION_AUDIT_REPORT.md",
+      "filePath": ".ai/BRIDGE_MANUAL_STEP_REDUCTION_AUDIT_REPORT.md",
+      "summary": "Audit report for manual step reduction in the bridge.",
+      "tags": ["audit", "bridge", "manual-reduction"]
+    },
+    {
+      "id": "file:.ai/BRIDGE_MANUAL_STEP_REDUCTION_REPORT.md",
+      "type": "file",
+      "name": "BRIDGE_MANUAL_STEP_REDUCTION_REPORT.md",
+      "filePath": ".ai/BRIDGE_MANUAL_STEP_REDUCTION_REPORT.md",
+      "summary": "Report for manual step reduction in the bridge.",
+      "tags": ["report", "bridge", "manual-reduction"]
+    },
+    {
+      "id": "file:.ai/COMMERCIAL_OWNER_UI_REDESIGN_REPORT.md",
+      "type": "file",
+      "name": "COMMERCIAL_OWNER_UI_REDESIGN_REPORT.md",
+      "filePath": ".ai/COMMERCIAL_OWNER_UI_REDESIGN_REPORT.md",
+      "summary": "Report on commercial owner UI redesign.",
+      "tags": ["report", "ui", "redesign", "owner"]
+    },
+    {
+      "id": "file:.ai/DECISION_LOG.md",
+      "type": "file",
+      "name": "DECISION_LOG.md",
+      "filePath": ".ai/DECISION_LOG.md",
+      "summary": "Log of key project decisions.",
+      "tags": ["decision", "log"]
+    },
+    {
+      "id": "file:.ai/EXECUTION_REPORT.md",
+      "type": "file",
+      "name": "EXECUTION_REPORT.md",
+      "filePath": ".ai/EXECUTION_REPORT.md",
+      "summary": "General execution report.",
+      "tags": ["report", "execution"]
+    }
+  ],
+  "edges": []
+}

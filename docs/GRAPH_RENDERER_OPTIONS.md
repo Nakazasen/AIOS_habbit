@@ -1,17 +1,18 @@
-# Graph Renderer Options in AIOS Case Cockpit
+# Các Tùy Chọn Trình Kết Xuất Đồ Thị trong AIOS Case Cockpit (Graph Renderer Options)
 
-AIOS Case Cockpit provides multiple visualization modes for the Knowledge Map (Bản đồ tri thức) under Tab 5 (Bản đồ). These options can be toggled using the **Kiểu hiển thị** (Display Mode) dropdown.
+AIOS Case Cockpit cung cấp nhiều chế độ trực quan hóa cho Bản đồ tri thức dưới Tab 5 (Bản đồ). Các tùy chọn này có thể được chuyển đổi qua menu thả xuống **Kiểu hiển thị**.
 
-## 1. HTML Card Map (Bản đồ thẻ HTML)
-- **Goal**: Provide a clean, readable, column-based lane board of nodes grouped by entity types (`system`, `process`, `setting`, etc.) with relationship chips.
-- **Constraints**: 
-  - Pure HTML and inline CSS.
-  - Zero heavy external libraries (no React Flow, Cytoscape, or d3).
-  - No CDNs or remote dependencies.
-  - Strictly no external Javascript (`<script>`) or remote connections (`http://`, `https://`) for data safety.
-  - Fully HTML-escaped node and relation properties to prevent any XSS.
-- **Truncation**: Warnings are displayed if nodes exceed 50 or relations exceed 100 to ensure performance.
+## 1. Bản Đồ Thẻ HTML (HTML Card Map)
+- **Mục tiêu**: Cung cấp một bảng phân làn theo cột rõ ràng, dễ đọc cho các nút (nodes) được nhóm theo loại thực thể (`system`, `process`, `setting`, v.v.) kèm các thẻ chip quan hệ.
+- **Ràng buộc**:
+  - HTML thuần túy và CSS nội dòng (inline).
+  - Hoàn toàn không dùng thư viện ngoài nặng nề (không React Flow, Cytoscape, hay d3).
+  - Không dùng CDN hay bất kỳ phụ thuộc từ xa nào.
+  - Nghiêm cấm hoàn toàn mã JavaScript ngoài (`<script>`) hoặc kết nối mạng từ xa (`http://`, `https://`) để bảo đảm an toàn dữ liệu.
+  - Escape HTML toàn bộ thuộc tính của nút và quan hệ để ngăn chặn lỗ hổng XSS.
+- **Cắt giảm dữ liệu (Truncation)**: Cảnh báo sẽ hiển thị nếu số lượng nút vượt quá 50 hoặc số quan hệ vượt quá 100 nhằm bảo đảm hiệu năng hiển thị.
 
-## 2. Table + Mermaid (Bảng + Mermaid)
-- **Goal**: Offer a standard text-based diagram (Mermaid) and tabular views of nodes and edges for copying or structural review.
-- **Fallback**: Works completely local via Streamlit's built-in table viewer and raw code markdown.
+## 2. Bảng + Mermaid (Table + Mermaid)
+- **Mục tiêu**: Cung cấp sơ đồ dựa trên văn bản chuẩn (Mermaid) và các bảng xem chi tiết cho nút cùng cạnh nối để sao chép hoặc đánh giá cấu trúc.
+- **Dự phòng (Fallback)**: Hoạt động hoàn toàn cục bộ thông qua trình xem bảng tích hợp sẵn của Streamlit và Markdown mã thô.
+

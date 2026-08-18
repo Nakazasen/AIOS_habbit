@@ -1,59 +1,60 @@
-# Workflow Card
+# Thẻ Quy Trình (Workflow Card)
 
 ## Metadata
 
 - Workflow ID: `WFL-0000`
-- Name:
-- Status: `draft | candidate | validated | deprecated`
-- Created:
-- Updated:
+- Tên (Name):
+- Trạng thái (Status): `draft | candidate | validated | deprecated`
+- Ngày tạo (Created):
+- Cập nhật (Updated):
 
-## Trigger
+## Kích Hoạt (Trigger)
 
 Khi nào workflow này được kích hoạt?
 
-## Inputs
+## Đầu Vào (Inputs)
 
 - 
 
-## Pre-check
+## Kiểm Tra Tiền Điều Kiện (Pre-check)
 
 - 
 
-## Steps
+## Các Bước Thực Hiện (Steps)
 
 1. 
 2. 
 3. 
 
-## Outputs
+## Đầu Ra (Outputs)
 
 - 
 
-## Validation
+## Xác Thực (Validation)
 
-### PASS Criteria
-
-- 
-
-### FAIL Criteria
+### Tiêu Chí ĐẠT (PASS Criteria)
 
 - 
 
-## Risks
+### Tiêu Chí KHÔNG ĐẠT (FAIL Criteria)
 
 - 
 
-## Rollback
+## Rủi Ro (Risks)
+
+- 
+
+## Hoàn Tác (Rollback)
 
 Nếu workflow sai hoặc gây lỗi, quay lại thế nào?
 
-## Handover
+## Bàn Giao (Handover)
 
 Cần bàn giao gì sau khi chạy workflow?
 
-## Evidence
+## Bằng Chứng (Evidence)
 
-| Evidence ID | Notes |
+| Mã bằng chứng (Evidence ID) | Ghi chú (Notes) |
 |---|---|
 | | |
+

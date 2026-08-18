@@ -1,52 +1,51 @@
-# OCR Production Runbook
+# Sổ Tay Vận Hành Sản Xuất OCR (OCR Production Runbook)
 
 ## Pipeline
 
 ```text
-PDF Inspector → PyMuPDF native rescue → RapidOCR
-                                      → PaddleOCR (optional)
-                                      → Tesseract (emergency only)
+PDF Inspector → Cứu hộ PyMuPDF gốc (native rescue) → RapidOCR
+                                                   → PaddleOCR (tùy chọn)
+                                                   → Tesseract (chỉ dùng khẩn cấp)
 
 deep / auto_deep → Docling CPU
 offline_max       → Marker CPU → Docling fallback
 ```
 
-BGE-M3 Hybrid retrieval is unchanged. Every OCR/deep parser is local-only.
-Models are loaded lazily and engines run sequentially to avoid 16 GB RAM exhaustion.
+Truy xuất kết hợp BGE-M3 Hybrid không thay đổi. Mọi bộ phân tích OCR/deep parser đều chỉ dùng cục bộ (local-only).
+Các mô hình được tải lười (lazily) và các engine chạy tuần tự để tránh làm cạn kiệt RAM 16 GB.
 
-## Install tiers
+## Các Tầng Cài Đặt (Install tiers)
 
 ```powershell
-# Recommended laptop profile: PDF Inspector + RapidOCR/ONNX CPU
+# Cấu hình laptop khuyến nghị: PDF Inspector + RapidOCR/ONNX CPU
 .\.venv\Scripts\python.exe -m pip install -e ".[rag-ingestion-cpu]"
 
-# Optional PaddleOCR fallback (large)
+# Dự phòng PaddleOCR tùy chọn (dung lượng lớn)
 .\.venv\Scripts\python.exe -m pip install -e ".[ocr-paddle-cpu]"
 
-# Optional Docling deep parser
+# Bộ phân tích sâu Docling tùy chọn
 .\.venv\Scripts\python.exe -m pip install -e ".[document-deep-cpu]"
 
-# Optional Marker + Docling maximum offline profile (largest)
+# Cấu hình offline tối đa Marker + Docling tùy chọn (lớn nhất)
 .\.venv\Scripts\python.exe -m pip install -e ".[document-offline-max]"
 ```
 
-Do not install PaddleOCR or Marker on the default laptop profile unless benchmark data
-shows that RapidOCR is insufficient.
+Không cài đặt PaddleOCR hoặc Marker trên cấu hình laptop mặc định trừ khi dữ liệu đo chuẩn (benchmark) cho thấy RapidOCR là chưa đủ.
 
-## Runtime modes
+## Các Chế Độ Runtime (Runtime modes)
 
-Set `AIOS_OCR_MODE` before ingestion:
+Thiết lập `AIOS_OCR_MODE` trước khi nạp dữ liệu:
 
-| Mode | Behavior | Laptop recommendation |
+| Chế độ (Mode) | Hành vi (Behavior) | Khuyến nghị cho laptop |
 |---|---|---|
-| `fast` | RapidOCR only | Lowest latency/RAM |
-| `balanced` | RapidOCR → PaddleOCR → Tesseract | **Default** |
-| `auto_deep` | Docling only for table/column PDFs; otherwise balanced | Structured corpora |
-| `deep` | Docling for every PDF; lightweight fallback on failure | Manual opt-in |
-| `offline_max` | Marker → Docling | Workstation/batch only |
-| `legacy` | Tesseract only | Emergency rollback |
+| `fast` | Chỉ RapidOCR | Độ trễ/RAM thấp nhất |
+| `balanced` | RapidOCR → PaddleOCR → Tesseract | **Mặc định** |
+| `auto_deep` | Docling chỉ cho PDF dạng bảng/cột; còn lại dùng balanced | Tập ngữ liệu có cấu trúc |
+| `deep` | Docling cho mọi PDF; dự phòng nhẹ khi thất bại | Tùy chọn thủ công |
+| `offline_max` | Marker → Docling | Chỉ dùng cho máy trạm/xử lý theo lô |
+| `legacy` | Chỉ Tesseract | Hoàn tác khẩn cấp |
 
-PowerShell example:
+Ví dụ PowerShell:
 
 ```powershell
 $env:AIOS_OCR_MODE = "balanced"
@@ -55,29 +54,25 @@ $env:AIOS_MAX_PDF_OCR_PAGES = "3"
 $env:AIOS_DEEP_PARSE_TIMEOUT_SECONDS = "300"
 ```
 
-`AIOS_OCR_ENGINE_ORDER` can override the balanced order, for example
-`rapidocr,tesseract`. Invalid names are ignored.
+`AIOS_OCR_ENGINE_ORDER` có thể ghi đè thứ tự balanced, ví dụ `rapidocr,tesseract`. Các tên không hợp lệ sẽ bị bỏ qua.
 
-## Benchmark gate
+## Cổng Đo Chuẩn (Benchmark gate)
 
-Render representative PDF pages to images, including native Vietnamese, scans,
-rotations, tables and low-resolution pages. Then run engines sequentially:
+Render các trang PDF tiêu biểu thành hình ảnh, bao gồm tiếng Việt gốc, bản scan, góc xoay, bảng biểu và các trang độ phân giải thấp. Sau đó chạy các engine tuần tự:
 
 ```powershell
 .\.venv\Scripts\python.exe .\scripts\benchmark_ocr_engines.py .\benchmark-pages `
   --engines rapidocr,paddleocr --threads 4 --output .\ocr_benchmark.jsonl
 ```
 
-Review exact text accuracy against human ground truth in addition to confidence and
-latency. Promote PaddleOCR only if its measured accuracy gain justifies installation
-size and memory use. Never benchmark multiple engines concurrently on a 16 GB laptop.
+Đánh giá độ chính xác văn bản tuyệt đối so với sự thật thực tế (ground truth) của con người bên cạnh độ tin cậy (confidence) và độ trễ. Chỉ thăng cấp PaddleOCR nếu mức cải thiện độ chính xác đo được bù đắp được dung lượng cài đặt và mức sử dụng bộ nhớ. Tuyệt đối không bao giờ đo chuẩn nhiều engine đồng thời trên laptop 16 GB.
 
-## Failure behavior
+## Hành Vi Khi Thất Bại (Failure behavior)
 
-- Missing optional engines never crash ingestion.
-- Failed deep parsing falls back to PDF Inspector/PyMuPDF/RapidOCR.
-- OCR text below the existing confidence gate is rejected.
-- Only the configured maximum number of scanned pages is OCR'd per PDF.
-- Provenance records the actual engine (`rapidocr`, `paddleocr`, `tesseract`,
-  `docling-cpu`, or `marker-cpu`).
+- Thiếu các engine tùy chọn không bao giờ làm crash quá trình nạp.
+- Phân tích cú pháp sâu (deep parse) thất bại sẽ tự động dự phòng về PDF Inspector/PyMuPDF/RapidOCR.
+- Văn bản OCR dưới ngưỡng tin cậy hiện có sẽ bị từ chối.
+- Chỉ số lượng trang scan tối đa đã cấu hình mới được OCR trên mỗi PDF.
+- Provenance ghi lại engine thực tế đã dùng (`rapidocr`, `paddleocr`, `tesseract`, `docling-cpu`, hoặc `marker-cpu`).
+
 

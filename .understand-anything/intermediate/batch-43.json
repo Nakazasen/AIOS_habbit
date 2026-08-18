@@ -1,0 +1,140 @@
+{
+  "nodes": [
+    {
+      "id": "file:docs/roadmap/completed/AI-GW-REAL-ROUTE-POLICY-CONSOLIDATION.md",
+      "type": "file",
+      "name": "AI-GW-REAL-ROUTE-POLICY-CONSOLIDATION.md",
+      "filePath": "docs/roadmap/completed/AI-GW-REAL-ROUTE-POLICY-CONSOLIDATION.md",
+      "summary": "Completed roadmap entry for AI Gateway real route policy consolidation.",
+      "tags": ["roadmap", "completed"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:docs/roadmap/completed/ANTIGRAVITY-IDE-AI-BRAIN-BRIDGE.md",
+      "type": "file",
+      "name": "ANTIGRAVITY-IDE-AI-BRAIN-BRIDGE.md",
+      "filePath": "docs/roadmap/completed/ANTIGRAVITY-IDE-AI-BRAIN-BRIDGE.md",
+      "summary": "Completed roadmap entry for Antigravity IDE AI brain bridge integration.",
+      "tags": ["roadmap", "completed"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:docs/roadmap/completed/CASE-COCKPIT-DEPENDENCY-MIGRATION-AND-RETIREMENT.md",
+      "type": "file",
+      "name": "CASE-COCKPIT-DEPENDENCY-MIGRATION-AND-RETIREMENT.md",
+      "filePath": "docs/roadmap/completed/CASE-COCKPIT-DEPENDENCY-MIGRATION-AND-RETIREMENT.md",
+      "summary": "Completed roadmap entry for Case Cockpit dependency migration.",
+      "tags": ["roadmap", "completed"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:docs/roadmap/completed/DOCS-LEGACY-CLEANUP-RESET.md",
+      "type": "file",
+      "name": "DOCS-LEGACY-CLEANUP-RESET.md",
+      "filePath": "docs/roadmap/completed/DOCS-LEGACY-CLEANUP-RESET.md",
+      "summary": "Completed roadmap entry for documentation legacy cleanup.",
+      "tags": ["roadmap", "completed"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:docs/roadmap/completed/NOTEBOOKLM-BATTLE-RERUN-RAG-V2.md",
+      "type": "file",
+      "name": "NOTEBOOKLM-BATTLE-RERUN-RAG-V2.md",
+      "filePath": "docs/roadmap/completed/NOTEBOOKLM-BATTLE-RERUN-RAG-V2.md",
+      "summary": "Completed roadmap entry for NotebookLM RAG V2 experimentation.",
+      "tags": ["roadmap", "completed"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:docs/roadmap/completed/PROFESSIONALIZATION-BASELINE.md",
+      "type": "file",
+      "name": "PROFESSIONALIZATION-BASELINE.md",
+      "filePath": "docs/roadmap/completed/PROFESSIONALIZATION-BASELINE.md",
+      "summary": "Completed roadmap entry for professionalization baseline standards.",
+      "tags": ["roadmap", "completed"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:docs/roadmap/completed/RAG-V2-CORPUS-OCR-AND-SOURCE-RECOVERY.md",
+      "type": "file",
+      "name": "RAG-V2-CORPUS-OCR-AND-SOURCE-RECOVERY.md",
+      "filePath": "docs/roadmap/completed/RAG-V2-CORPUS-OCR-AND-SOURCE-RECOVERY.md",
+      "summary": "Completed roadmap entry for RAG V2 corpus OCR and recovery.",
+      "tags": ["roadmap", "completed"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:docs/roadmap/completed/RAG-V2-DEV-QUALITY-CONVERGENCE.md",
+      "type": "file",
+      "name": "RAG-V2-DEV-QUALITY-CONVERGENCE.md",
+      "filePath": "docs/roadmap/completed/RAG-V2-DEV-QUALITY-CONVERGENCE.md",
+      "summary": "Completed roadmap entry for RAG V2 dev quality convergence.",
+      "tags": ["roadmap", "completed"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:docs/roadmap/completed/RAG-V2-EVAL-HARNESS-GENERIC-AND-PRIVATE.md",
+      "type": "file",
+      "name": "RAG-V2-EVAL-HARNESS-GENERIC-AND-PRIVATE.md",
+      "filePath": "docs/roadmap/completed/RAG-V2-EVAL-HARNESS-GENERIC-AND-PRIVATE.md",
+      "summary": "Completed roadmap entry for RAG V2 evaluation harness.",
+      "tags": ["roadmap", "completed"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:docs/roadmap/completed/RAG-V2-GATE-H-HYBRID-CANARY.md",
+      "type": "file",
+      "name": "RAG-V2-GATE-H-HYBRID-CANARY.md",
+      "filePath": "docs/roadmap/completed/RAG-V2-GATE-H-HYBRID-CANARY.md",
+      "summary": "Completed roadmap entry for RAG V2 hybrid canary gateway.",
+      "tags": ["roadmap", "completed"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:docs/roadmap/completed/RAG-V2-GENERIC-EVIDENCE-SYNTHESIS-MIN.md",
+      "type": "file",
+      "name": "RAG-V2-GENERIC-EVIDENCE-SYNTHESIS-MIN.md",
+      "filePath": "docs/roadmap/completed/RAG-V2-GENERIC-EVIDENCE-SYNTHESIS-MIN.md",
+      "summary": "Completed roadmap entry for RAG V2 evidence synthesis.",
+      "tags": ["roadmap", "completed"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:docs/roadmap/completed/RAG-V2-HYBRID-PRODUCTION-ACTIVATION.md",
+      "type": "file",
+      "name": "RAG-V2-HYBRID-PRODUCTION-ACTIVATION.md",
+      "filePath": "docs/roadmap/completed/RAG-V2-HYBRID-PRODUCTION-ACTIVATION.md",
+      "summary": "Completed roadmap entry for RAG V2 hybrid production activation.",
+      "tags": ["roadmap", "completed"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:docs/roadmap/completed/RAG-V2-HYBRID-RETRIEVAL-MIN.md",
+      "type": "file",
+      "name": "RAG-V2-HYBRID-RETRIEVAL-MIN.md",
+      "filePath": "docs/roadmap/completed/RAG-V2-HYBRID-RETRIEVAL-MIN.md",
+      "summary": "Completed roadmap entry for RAG V2 hybrid retrieval.",
+      "tags": ["roadmap", "completed"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:docs/roadmap/completed/RAG-V2-SAME-PROTOCOL-BLINDED-ANSWER-QUALITY.md",
+      "type": "file",
+      "name": "RAG-V2-SAME-PROTOCOL-BLINDED-ANSWER-QUALITY.md",
+      "filePath": "docs/roadmap/completed/RAG-V2-SAME-PROTOCOL-BLINDED-ANSWER-QUALITY.md",
+      "summary": "Completed roadmap entry for RAG V2 blinded answer quality assessment.",
+      "tags": ["roadmap", "completed"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:docs/roadmap/completed/STUDIO-AND-PUBLIC-LEGACY-ROUTE-RETIREMENT.md",
+      "type": "file",
+      "name": "STUDIO-AND-PUBLIC-LEGACY-ROUTE-RETIREMENT.md",
+      "filePath": "docs/roadmap/completed/STUDIO-AND-PUBLIC-LEGACY-ROUTE-RETIREMENT.md",
+      "summary": "Completed roadmap entry for legacy route retirement.",
+      "tags": ["roadmap", "completed"],
+      "complexity": "moderate"
+    }
+  ],
+  "edges": []
+}

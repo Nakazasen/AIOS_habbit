@@ -1,0 +1,230 @@
+{
+  "nodes": [
+    {
+      "id": "file:src/aios_habit/extraction.py",
+      "type": "file",
+      "name": "extraction.py",
+      "filePath": "src/aios_habit/extraction.py",
+      "summary": "Data extraction pipeline and orchestrator for external sources.",
+      "tags": ["python", "extraction"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:src/aios_habit/extractor_registry.py",
+      "type": "file",
+      "name": "extractor_registry.py",
+      "filePath": "src/aios_habit/extractor_registry.py",
+      "summary": "Registry for registering and discovering source extractors.",
+      "tags": ["python", "extraction", "registry"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:src/aios_habit/final_answer_composer.py",
+      "type": "file",
+      "name": "final_answer_composer.py",
+      "filePath": "src/aios_habit/final_answer_composer.py",
+      "summary": "Composes final grounded answers from evidence and citations.",
+      "tags": ["python", "rag", "composer"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:src/aios_habit/handover.py",
+      "type": "file",
+      "name": "handover.py",
+      "filePath": "src/aios_habit/handover.py",
+      "summary": "Handles handover packaging and verification between phases.",
+      "tags": ["python", "handover"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:src/aios_habit/ide_bridge.py",
+      "type": "file",
+      "name": "ide_bridge.py",
+      "filePath": "src/aios_habit/ide_bridge.py",
+      "summary": "Bridge service communicating with IDE sidecar daemon.",
+      "tags": ["python", "bridge", "ide"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:src/aios_habit/ide_handoff_bridge.py",
+      "type": "file",
+      "name": "ide_handoff_bridge.py",
+      "filePath": "src/aios_habit/ide_handoff_bridge.py",
+      "summary": "Bridge service for handling IDE agent handoffs.",
+      "tags": ["python", "bridge", "handoff"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:src/aios_habit/knowledge_map_html.py",
+      "type": "file",
+      "name": "knowledge_map_html.py",
+      "filePath": "src/aios_habit/knowledge_map_html.py",
+      "summary": "HTML generation utilities for knowledge map rendering.",
+      "tags": ["python", "visualization"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:src/aios_habit/knowledge_map_view.py",
+      "type": "file",
+      "name": "knowledge_map_view.py",
+      "filePath": "src/aios_habit/knowledge_map_view.py",
+      "summary": "View controller and interactive graph logic for knowledge maps.",
+      "tags": ["python", "visualization"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:src/aios_habit/learning_models.py",
+      "type": "file",
+      "name": "learning_models.py",
+      "filePath": "src/aios_habit/learning_models.py",
+      "summary": "Data models for agent learning and lesson retention.",
+      "tags": ["python", "models", "learning"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:src/aios_habit/llm_client.py",
+      "type": "file",
+      "name": "llm_client.py",
+      "filePath": "src/aios_habit/llm_client.py",
+      "summary": "Unified client interface for LLM provider API communication.",
+      "tags": ["python", "llm", "client"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:src/aios_habit/local_jsonl.py",
+      "type": "file",
+      "name": "local_jsonl.py",
+      "filePath": "src/aios_habit/local_jsonl.py",
+      "summary": "JSON Lines local file storage and streaming reader/writer.",
+      "tags": ["python", "storage", "jsonl"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:src/aios_habit/memory.py",
+      "type": "file",
+      "name": "memory.py",
+      "filePath": "src/aios_habit/memory.py",
+      "summary": "Agent memory storage and context management system.",
+      "tags": ["python", "memory"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:src/aios_habit/models.py",
+      "type": "file",
+      "name": "models.py",
+      "filePath": "src/aios_habit/models.py",
+      "summary": "Core domain data models for AIOS habit system.",
+      "tags": ["python", "models"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:src/aios_habit/mom_benchmark_gate.py",
+      "type": "file",
+      "name": "mom_benchmark_gate.py",
+      "filePath": "src/aios_habit/mom_benchmark_gate.py",
+      "summary": "Quality gate and validation logic for MOM benchmarks.",
+      "tags": ["python", "benchmark", "quality-gate"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:src/aios_habit/mom_benchmark.py",
+      "type": "file",
+      "name": "mom_benchmark.py",
+      "filePath": "src/aios_habit/mom_benchmark.py",
+      "summary": "Benchmarking harness comparing MOM retrieval against baselines.",
+      "tags": ["python", "benchmark"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:src/aios_habit/mom_coverage.py",
+      "type": "file",
+      "name": "mom_coverage.py",
+      "filePath": "src/aios_habit/mom_coverage.py",
+      "summary": "Coverage tracking and reporting for MOM test cases.",
+      "tags": ["python", "coverage"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:src/aios_habit/mom_local_index.py",
+      "type": "file",
+      "name": "mom_local_index.py",
+      "filePath": "src/aios_habit/mom_local_index.py",
+      "summary": "Local SQLite lexical index for fast MOM source retrieval.",
+      "tags": ["python", "search", "index"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:src/aios_habit/notebook_bridge.py",
+      "type": "file",
+      "name": "notebook_bridge.py",
+      "filePath": "src/aios_habit/notebook_bridge.py",
+      "summary": "Bridge adapter connecting workspace to notebook execution.",
+      "tags": ["python", "notebook", "bridge"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:src/aios_habit/notebook_case_actions.py",
+      "type": "file",
+      "name": "notebook_case_actions.py",
+      "filePath": "src/aios_habit/notebook_case_actions.py",
+      "summary": "Case actions and interactive test triggers for notebooks.",
+      "tags": ["python", "notebook", "actions"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:src/aios_habit/notebook_graph.py",
+      "type": "file",
+      "name": "notebook_graph.py",
+      "filePath": "src/aios_habit/notebook_graph.py",
+      "summary": "Graph model and dependency tracker for notebook entities.",
+      "tags": ["python", "notebook", "graph"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:src/aios_habit/notebook_import_store.py",
+      "type": "file",
+      "name": "notebook_import_store.py",
+      "filePath": "src/aios_habit/notebook_import_store.py",
+      "summary": "Storage layer for imported notebook artifacts and cases.",
+      "tags": ["python", "notebook", "storage"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:src/aios_habit/notebook_index.py",
+      "type": "file",
+      "name": "notebook_index.py",
+      "filePath": "src/aios_habit/notebook_index.py",
+      "summary": "Indexing engine for notebook content and search.",
+      "tags": ["python", "notebook", "index"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:src/aios_habit/notebook_qa.py",
+      "type": "file",
+      "name": "notebook_qa.py",
+      "filePath": "src/aios_habit/notebook_qa.py",
+      "summary": "Interactive Q&A answering engine against notebook context.",
+      "tags": ["python", "notebook", "qa"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:src/aios_habit/notebooklm_compare.py",
+      "type": "file",
+      "name": "notebooklm_compare.py",
+      "filePath": "src/aios_habit/notebooklm_compare.py",
+      "summary": "Side-by-side comparison harness between AIOS and NotebookLM.",
+      "tags": ["python", "benchmark", "comparison"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:src/aios_habit/ocr_engines.py",
+      "type": "file",
+      "name": "ocr_engines.py",
+      "filePath": "src/aios_habit/ocr_engines.py",
+      "summary": "OCR engine adapters and extraction utilities for images/PDFs.",
+      "tags": ["python", "ocr"],
+      "complexity": "moderate"
+    }
+  ],
+  "edges": []
+}

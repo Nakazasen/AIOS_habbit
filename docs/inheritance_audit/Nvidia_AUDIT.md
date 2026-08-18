@@ -1,51 +1,52 @@
-﻿# Nvidia Inheritance Audit
+# Kiểm Toán Kế Thừa Nvidia (Nvidia Inheritance Audit)
 
-## Status
-KEEP_AS_REFERENCE / PAUSE for heavy runtime. No code copied.
+## Trạng Thái (Status)
+KEEP_AS_REFERENCE / PAUSE đối với runtime nặng. Không sao chép mã nguồn nào.
 
-## Read Materials
+## Tài Liệu Đã Đọc (Read Materials)
 - `README.md`
 - `package.json`
-- top-level structure
+- Cấu trúc cấp cao nhất
 
-## Folder Structure
+## Cấu Trúc Thư Mục (Folder Structure)
 - `tools`, `tests`, `skills`, `flowkit`, `docs`, `proof`, `node_modules`, `.nvidia-agent`
 
-## Entrypoints
+## Điểm Đầu Vào (Entrypoints)
 - `npm start` / `tools/nvidia-server.mjs`
-- CLI and agent scripts under `tools`
-- Electron desktop via `electron-main.js`
+- Các tập lệnh CLI và agent trong `tools`
+- Electron desktop qua `electron-main.js`
 
-## Tests / Scripts
-`package.json` lists many tests: provider routing, bridge preflight, browser smoke, pending edits, file operations, reliability, port collisions.
+## Kiểm Thử / Tập Lệnh (Tests / Scripts)
+`package.json` liệt kê nhiều bài kiểm thử: điều tuyến provider, kiểm tra trước cầu nối, kiểm thử khói trình duyệt, các chỉnh sửa đang chờ xử lý, thao tác tệp, độ tin cậy, xung đột cổng.
 
-## Features Observed
-- Provider abstraction and tool calling.
-- MCP server/tool patterns.
-- Command jobs and pending edits.
-- Browser smoke and UI proof harness.
-- Electron desktop shell.
+## Các Tính Năng Đã Quan Sát (Features Observed)
+- Trừu tượng hóa provider và gọi công cụ (tool calling).
+- Các mô hình công cụ / MCP server.
+- Các công việc lệnh (command jobs) và các chỉnh sửa đang chờ xử lý.
+- Bộ kiểm thử khói trình duyệt và bằng chứng UI.
+- Vỏ ứng dụng desktop Electron.
 
-## Reusable Modules / Concepts
-- Provider abstraction may inform future Agent Bridge.
-- Browser smoke tests may help validate WorkLens UI later.
-- Command job safety may inform future action execution.
+## Các Module / Khái Niệm Tái Sử Dụng Được (Reusable Modules / Concepts)
+- Trừu tượng hóa provider có thể cung cấp thông tin cho Agent Bridge tương lai.
+- Kiểm thử khói trình duyệt có thể giúp xác thực giao diện người dùng WorkLens sau này.
+- An toàn cho công việc lệnh có thể định hướng việc thực thi hành động trong tương lai.
 
-## Dead / Unclear Modules
-None declared dead. Electron/IDE/runtime shell is out of scope for v0.1 and likely PAUSED.
+## Module Bị Bỏ / Chưa Rõ Ràng (Dead / Unclear Modules)
+Không có module nào bị tuyên bố là đã chết. Vỏ runtime/IDE/Electron nằm ngoài phạm vi của v0.1 và có thể TẠM DỪNG (PAUSED).
 
-## Risks
-- Contains `.env`, `node_modules`, logs, and runtime state; never copy data.
-- High complexity and provider concerns could derail Case Cockpit.
-- Product identity differs from WorkLens.
+## Rủi Ro (Risks)
+- Chứa `.env`, `node_modules`, log và trạng thái runtime; tuyệt đối không sao chép dữ liệu.
+- Độ phức tạp cao và các vấn đề về provider có thể làm chệch hướng Case Cockpit.
+- Bản sắc sản phẩm khác với WorkLens.
 
-## Harvest Candidates
-| Candidate | Status | Loop Fit | Tests | Portability | Complexity |
+## Ứng Viên Thu Hoạch (Harvest Candidates)
+| Ứng viên (Candidate) | Trạng thái (Status) | Độ khớp vòng lặp (Loop Fit) | Kiểm thử (Tests) | Khả năng chuyển đổi (Portability) | Độ phức tạp (Complexity) |
 |---|---|---|---|---|---|
-| Provider abstraction | NEEDS_AUDIT | Agent Bridge | Yes | Low-Medium | High |
-| Browser smoke harness | NEEDS_AUDIT | Validation | Yes | Medium | Medium |
-| Command job model | NEEDS_AUDIT | Action | Yes | Medium | High |
-| Electron shell | PAUSE | Delivery only | Unknown | Low | High |
+| Trừu tượng hóa provider | NEEDS_AUDIT | Agent Bridge | Có | Thấp-Trung bình | Cao |
+| Bộ kiểm thử khói trình duyệt | NEEDS_AUDIT | Xác thực | Có | Trung bình | Trung bình |
+| Mô hình công việc lệnh | NEEDS_AUDIT | Hành động | Có | Trung bình | Cao |
+| Vỏ Electron | PAUSE | Chỉ phân phối | Chưa rõ | Thấp | Cao |
 
-## Recommendation
-Do not port runtime. Keep prompt packs as bridge v0.1. Revisit after pilot.
+## Khuyến Nghị (Recommendation)
+Không chuyển đổi runtime. Giữ các gói prompt làm cầu nối v0.1. Xem xét lại sau khi thử nghiệm.
+

@@ -1,51 +1,52 @@
-﻿# skill-Anti-brain-wiki_note Inheritance Audit
+# Kiểm Toán Kế Thừa skill-Anti-brain-wiki_note (skill-Anti-brain-wiki_note Inheritance Audit)
 
-## Status
-KEEP_AS_REFERENCE / WRAP_LATER / PORT_LATER after audit. No code copied.
+## Trạng Thái (Status)
+KEEP_AS_REFERENCE / WRAP_LATER / PORT_LATER sau khi kiểm toán. Không sao chép mã nguồn nào.
 
-## Read Materials
+## Tài Liệu Đã Đọc (Read Materials)
 - `README.md`
 - `pyproject.toml`
-- top-level structure
+- Cấu trúc cấp cao nhất
 
-## Folder Structure
+## Cấu Trúc Thư Mục (Folder Structure)
 - `.brain`, `raw`, `processed`, `wiki`, `workflows`, `skills`, `templates`, `schemas`, `scripts`, `src`, `tests`, `ui`, `notebooks`, `examples`
 
-## Entrypoints
+## Điểm Đầu Vào (Entrypoints)
 - `abw.bat`
-- Python package from `pyproject.toml`
-- install scripts
+- Gói Python từ `pyproject.toml`
+- Các tập lệnh cài đặt
 
-## Tests / Scripts
-Tests and CI-like assets exist. Not executed in this phase.
+## Kiểm Thử / Tập Lệnh (Tests / Scripts)
+Các bài kiểm thử và tài sản kiểu CI tồn tại. Không được thực thi trong giai đoạn này.
 
-## Features Observed
-- Knowledge ingestion pipeline.
-- Raw/processed/wiki separation.
-- Workflow and skill registry.
-- Audit/eval/continuation style discipline.
-- Packaging and export-oriented docs.
+## Các Tính Năng Đã Quan Sát (Features Observed)
+- Pipeline nạp tri thức (knowledge ingestion pipeline).
+- Tách biệt raw/processed/wiki.
+- Sổ đăng ký quy trình làm việc và kỹ năng (workflow & skill registry).
+- Kỷ luật phong cách audit/eval/tiếp tục.
+- Tài liệu định hướng đóng gói và xuất khẩu.
 
-## Reusable Modules / Concepts
-- Grounded knowledge workflow can inform WorkLens case learning.
-- No-fake-success and continuation gates align with evidence-first case handling.
-- Wiki packaging can inform later case memory export.
+## Các Module / Khái Niệm Tái Sử Dụng Được (Reusable Modules / Concepts)
+- Quy trình tri thức có căn cứ (grounded knowledge workflow) có thể cung cấp thông tin cho việc học hỏi ca làm việc của WorkLens.
+- Các cổng không ngụy tạo thành công (no-fake-success) và cổng tiếp tục phù hợp với việc xử lý ca làm việc ưu tiên bằng chứng.
+- Đóng gói Wiki có thể định hướng việc xuất ký ức ca làm việc sau này.
 
-## Dead / Unclear Modules
-None declared dead. Large ABW surface is likely too broad for WorkLens v0.1.
+## Module Bị Bỏ / Chưa Rõ Ràng (Dead / Unclear Modules)
+Không có module nào bị tuyên bố là đã chết. Bề mặt ABW lớn có khả năng quá rộng đối với WorkLens v0.1.
 
-## Risks
-- Full ABW workflow surface could turn WorkLens into a framework instead of a daily case tool.
-- Raw/processed directories may contain private data; never copy blindly.
-- Many workflows require pruning before user-facing product integration.
+## Rủi Ro (Risks)
+- Toàn bộ bề mặt quy trình ABW có thể biến WorkLens thành một framework thay vì một công cụ ca làm việc hàng ngày.
+- Các thư mục raw/processed có thể chứa dữ liệu riêng tư; tuyệt đối không sao chép mù quáng.
+- Nhiều quy trình làm việc cần được tinh giản trước khi tích hợp vào sản phẩm hướng tới người dùng.
 
-## Harvest Candidates
-| Candidate | Status | Loop Fit | Tests | Portability | Complexity |
+## Ứng Viên Thu Hoạch (Harvest Candidates)
+| Ứng viên (Candidate) | Trạng thái (Status) | Độ khớp vòng lặp (Loop Fit) | Kiểm thử (Tests) | Khả năng chuyển đổi (Portability) | Độ phức tạp (Complexity) |
 |---|---|---|---|---|---|
-| `.brain` durable learning pattern | NEEDS_AUDIT | Learning | Unknown | Medium | Medium |
-| Raw/processed/wiki separation | NEEDS_AUDIT | Evidence/Learning | Unknown | High | Medium |
-| Audit/eval gates | NEEDS_AUDIT | Governance | Unknown | High | Low-Medium |
-| Query workflow | NEEDS_AUDIT | Evidence review | Unknown | Medium | High |
+| Mô hình học hỏi bền vững `.brain` | NEEDS_AUDIT | Học hỏi | Chưa rõ | Trung bình | Trung bình |
+| Tách biệt raw/processed/wiki | NEEDS_AUDIT | Bằng chứng/Học hỏi | Chưa rõ | Cao | Trung bình |
+| Cổng audit/eval | NEEDS_AUDIT | Quản trị | Chưa rõ | Cao | Thấp-Trung bình |
+| Quy trình truy vấn | NEEDS_AUDIT | Đánh giá bằng chứng | Chưa rõ | Trung bình | Cao |
 
-## Recommendation
-Wrap concepts first. Port only small governance and learning patterns after Case Cockpit pilot.
+## Khuyến Nghị (Recommendation)
+Đóng gói các khái niệm trước. Chỉ chuyển đổi các mô hình học hỏi và quản trị nhỏ sau khi thử nghiệm Case Cockpit.
+

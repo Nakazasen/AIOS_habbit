@@ -1,0 +1,50 @@
+{
+  "nodes": [
+    {
+      "id": "file:00_governance/DATA_POLICY.md",
+      "type": "file",
+      "name": "DATA_POLICY.md",
+      "filePath": "00_governance/DATA_POLICY.md",
+      "summary": "Governance policy for data management and integrity.",
+      "tags": ["governance", "policy"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:00_governance/PHASE_0_EXIT_CHECKLIST.md",
+      "type": "file",
+      "name": "PHASE_0_EXIT_CHECKLIST.md",
+      "filePath": "00_governance/PHASE_0_EXIT_CHECKLIST.md",
+      "summary": "Exit checklist for Phase 0 governance gate.",
+      "tags": ["governance", "checklist"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:00_governance/PHASE_GATE_LOG.md",
+      "type": "file",
+      "name": "PHASE_GATE_LOG.md",
+      "filePath": "00_governance/PHASE_GATE_LOG.md",
+      "summary": "Log tracking phase gate decisions and transitions.",
+      "tags": ["governance", "log"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:00_governance/SOURCE_POLICY.md",
+      "type": "file",
+      "name": "SOURCE_POLICY.md",
+      "filePath": "00_governance/SOURCE_POLICY.md",
+      "summary": "Policy governing source document ingestion and tracking.",
+      "tags": ["governance", "policy"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:00_governance/VALIDATION_RULES.md",
+      "type": "file",
+      "name": "VALIDATION_RULES.md",
+      "filePath": "00_governance/VALIDATION_RULES.md",
+      "summary": "Validation rules for data and governance compliance.",
+      "tags": ["governance", "validation"],
+      "complexity": "moderate"
+    }
+  ],
+  "edges": []
+}

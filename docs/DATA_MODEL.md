@@ -1,18 +1,19 @@
-﻿# Data Model
+# Mô Hình Dữ Liệu (Data Model)
 
-## EvidenceRecord
-Fields: evidence_id, title, source_type, source_path, source_pointer, captured_at, classification, summary, hash, risk_level, allowed_for_export, notes.
+## Bản Ghi Bằng Chứng (EvidenceRecord)
+Các trường: `evidence_id`, `title`, `source_type`, `source_path`, `source_pointer`, `captured_at`, `classification`, `summary`, `hash`, `risk_level`, `allowed_for_export`, `notes`.
 
-## MemoryUnit
-Fields: memory_id, category, title, statement, evidence_ids, confidence, status, created_at, updated_at, tags, export_allowed, review_notes.
+## Đơn Vị Bộ Nhớ (MemoryUnit)
+Các trường: `memory_id`, `category`, `title`, `statement`, `evidence_ids`, `confidence`, `status`, `created_at`, `updated_at`, `tags`, `export_allowed`, `review_notes`.
 
-Verified memory requires at least one evidence id. Export-allowed memory must be verified.
+Bộ nhớ đã xác thực (Verified memory) bắt buộc phải có ít nhất một ID bằng chứng. Bộ nhớ cho phép xuất (Export-allowed memory) bắt buộc phải ở trạng thái đã xác thực.
 
-## ProjectCard
-Fields: project_id, name, path, status, description, detected_signals, evidence_ids, risks, last_seen_at, tags.
+## Thẻ Dự Án (ProjectCard)
+Các trường: `project_id`, `name`, `path`, `status`, `description`, `detected_signals`, `evidence_ids`, `risks`, `last_seen_at`, `tags`.
 
-## WorkflowCard
-Fields: workflow_id, title, trigger, context, steps, output, failure_modes, evidence_ids, status, tags.
+## Thẻ Quy Trình (WorkflowCard)
+Các trường: `workflow_id`, `title`, `trigger`, `context`, `steps`, `output`, `failure_modes`, `evidence_ids`, `status`, `tags`.
 
-## DecisionPattern
-Fields: decision_id, title, context, criteria, tradeoffs, preferred_action, anti_patterns, evidence_ids, status, tags.
+## Mẫu Quyết Định (DecisionPattern)
+Các trường: `decision_id`, `title`, `context`, `criteria`, `tradeoffs`, `preferred_action`, `anti_patterns`, `evidence_ids`, `status`, `tags`.
+

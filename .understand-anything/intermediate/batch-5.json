@@ -1,0 +1,51 @@
+{
+  "nodes": [
+    {
+      "id": "file:.agents/teamwork_preview_reviewer_3/BRIEFING.md",
+      "type": "file",
+      "name": "BRIEFING.md",
+      "filePath": ".agents/teamwork_preview_reviewer_3/BRIEFING.md",
+      "summary": "Briefing document for the teamwork_preview_reviewer_3 agent.",
+      "tags": ["agent", "documentation"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:.agents/teamwork_preview_reviewer_3/handoff.md",
+      "type": "file",
+      "name": "handoff.md",
+      "filePath": ".agents/teamwork_preview_reviewer_3/handoff.md",
+      "summary": "Handoff instructions/notes for the teamwork_preview_reviewer_3 agent.",
+      "tags": ["agent", "documentation"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:.agents/teamwork_preview_reviewer_3/progress.md",
+      "type": "file",
+      "name": "progress.md",
+      "filePath": ".agents/teamwork_preview_reviewer_3/progress.md",
+      "summary": "Progress tracking document for the teamwork_preview_reviewer_3 agent.",
+      "tags": ["agent", "documentation"],
+      "complexity": "moderate"
+    }
+  ],
+  "edges": [
+    {
+      "source": "file:.agents/teamwork_preview_reviewer_3/BRIEFING.md",
+      "target": "file:.agents/teamwork_preview_reviewer_3/handoff.md",
+      "type": "related",
+      "direction": "forward"
+    },
+    {
+      "source": "file:.agents/teamwork_preview_reviewer_3/BRIEFING.md",
+      "target": "file:.agents/teamwork_preview_reviewer_3/progress.md",
+      "type": "related",
+      "direction": "forward"
+    },
+    {
+      "source": "file:.agents/teamwork_preview_reviewer_3/handoff.md",
+      "target": "file:.agents/teamwork_preview_reviewer_3/progress.md",
+      "type": "related",
+      "direction": "forward"
+    }
+  ]
+}

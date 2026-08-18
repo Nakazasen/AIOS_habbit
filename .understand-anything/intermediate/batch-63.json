@@ -1,0 +1,60 @@
+{
+  "nodes": [
+    {
+      "id": "file:tests/test_rag_v2_ingestion_service.py",
+      "type": "file",
+      "name": "test_rag_v2_ingestion_service.py",
+      "filePath": "tests/test_rag_v2_ingestion_service.py",
+      "summary": "Tests for RAG v2 ingestion service functionality.",
+      "tags": ["test", "rag_v2"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:src/aios_habit/rag_v2/ingestion_service.py",
+      "type": "file",
+      "name": "ingestion_service.py",
+      "filePath": "src/aios_habit/rag_v2/ingestion_service.py",
+      "summary": "RAG v2 ingestion service implementation.",
+      "tags": ["rag_v2", "core"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:src/aios_habit/rag_v2/ingestion_workers.py",
+      "type": "file",
+      "name": "ingestion_workers.py",
+      "filePath": "src/aios_habit/rag_v2/ingestion_workers.py",
+      "summary": "RAG v2 ingestion workers for asynchronous processing.",
+      "tags": ["rag_v2", "worker"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:src/aios_habit/rag_v2/pipeline.py",
+      "type": "file",
+      "name": "pipeline.py",
+      "filePath": "src/aios_habit/rag_v2/pipeline.py",
+      "summary": "RAG v2 pipeline orchestration.",
+      "tags": ["rag_v2", "orchestrator"],
+      "complexity": "moderate"
+    }
+  ],
+  "edges": [
+    {
+      "source": "file:tests/test_rag_v2_ingestion_service.py",
+      "target": "file:src/aios_habit/rag_v2/ingestion_service.py",
+      "type": "tests",
+      "direction": "forward"
+    },
+    {
+      "source": "file:src/aios_habit/rag_v2/ingestion_service.py",
+      "target": "file:src/aios_habit/rag_v2/ingestion_workers.py",
+      "type": "uses",
+      "direction": "forward"
+    },
+    {
+      "source": "file:src/aios_habit/rag_v2/ingestion_service.py",
+      "target": "file:src/aios_habit/rag_v2/pipeline.py",
+      "type": "uses",
+      "direction": "forward"
+    }
+  ]
+}

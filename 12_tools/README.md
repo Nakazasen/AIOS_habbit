@@ -1,13 +1,14 @@
-# Tools
+# Công Cụ (Tools)
 
-Phase 0 intentionally contains no executable tooling.
+Giai đoạn 0 chủ đích không chứa bất kỳ công cụ thực thi nào.
 
-Future Phase 5 may add:
+Giai đoạn 5 tương lai có thể bổ sung:
 
-- Schema validator.
-- Project scanner.
-- Evidence record generator.
-- Candidate memory extractor.
-- Export pack generator.
+- Bộ xác thực schema (Schema validator).
+- Bộ quét dự án (Project scanner).
+- Trình tạo bản ghi bằng chứng (Evidence record generator).
+- Bộ trích xuất ký ức ứng viên (Candidate memory extractor).
+- Trình tạo gói xuất khẩu (Export pack generator).
 
-Rule: tooling must never promote memory directly to validated status without review.
+Quy tắc: công cụ tuyệt đối không bao giờ được tự động thăng cấp ký ức trực tiếp lên trạng thái đã xác thực mà không qua đánh giá.
+

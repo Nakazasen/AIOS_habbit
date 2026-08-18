@@ -1,0 +1,165 @@
+{
+  "nodes": [
+    {
+      "id": "file:tests/test_workspace_agent_policy.py",
+      "type": "file",
+      "name": "test_workspace_agent_policy.py",
+      "filePath": "tests/test_workspace_agent_policy.py",
+      "summary": "Tests for workspace agent policy",
+      "tags": ["test", "agent"]
+    },
+    {
+      "id": "file:tests/test_workspace_agent_orchestrator.py",
+      "type": "file",
+      "name": "test_workspace_agent_orchestrator.py",
+      "filePath": "tests/test_workspace_agent_orchestrator.py",
+      "summary": "Tests for workspace agent orchestrator",
+      "tags": ["test", "agent"]
+    },
+    {
+      "id": "file:tests/test_workspace_chat_ai_answer.py",
+      "type": "file",
+      "name": "test_workspace_chat_ai_answer.py",
+      "filePath": "tests/test_workspace_chat_ai_answer.py",
+      "summary": "Tests for workspace chat AI answer",
+      "tags": ["test", "chat"]
+    },
+    {
+      "id": "file:tests/test_workspace_chat_answer_preview.py",
+      "type": "file",
+      "name": "test_workspace_chat_answer_preview.py",
+      "filePath": "tests/test_workspace_chat_answer_preview.py",
+      "summary": "Tests for workspace chat answer preview",
+      "tags": ["test", "chat"]
+    },
+    {
+      "id": "file:tests/test_workspace_chat_architecture_boundary.py",
+      "type": "file",
+      "name": "test_workspace_chat_architecture_boundary.py",
+      "filePath": "tests/test_workspace_chat_architecture_boundary.py",
+      "summary": "Tests for workspace chat architecture boundary",
+      "tags": ["test", "chat"]
+    },
+    {
+      "id": "file:tests/test_workspace_chat_excel_ingest.py",
+      "type": "file",
+      "name": "test_workspace_chat_excel_ingest.py",
+      "filePath": "tests/test_workspace_chat_excel_ingest.py",
+      "summary": "Tests for workspace chat excel ingest",
+      "tags": ["test", "chat"]
+    },
+    {
+      "id": "file:tests/test_workspace_chat_models.py",
+      "type": "file",
+      "name": "test_workspace_chat_models.py",
+      "filePath": "tests/test_workspace_chat_models.py",
+      "summary": "Tests for workspace chat models",
+      "tags": ["test", "chat"]
+    },
+    {
+      "id": "file:tests/test_workspace_chat_multi_file_uploader.py",
+      "type": "file",
+      "name": "test_workspace_chat_multi_file_uploader.py",
+      "filePath": "tests/test_workspace_chat_multi_file_uploader.py",
+      "summary": "Tests for workspace chat multi-file uploader",
+      "tags": ["test", "chat"]
+    },
+    {
+      "id": "file:tests/test_workspace_chat_owner_flow.py",
+      "type": "file",
+      "name": "test_workspace_chat_owner_flow.py",
+      "filePath": "tests/test_workspace_chat_owner_flow.py",
+      "summary": "Tests for workspace chat owner flow",
+      "tags": ["test", "chat"]
+    },
+    {
+      "id": "file:tests/test_workspace_chat_rag_v2_adapter.py",
+      "type": "file",
+      "name": "test_workspace_chat_rag_v2_adapter.py",
+      "filePath": "tests/test_workspace_chat_rag_v2_adapter.py",
+      "summary": "Tests for workspace chat RAG v2 adapter",
+      "tags": ["test", "chat", "rag"]
+    },
+    {
+      "id": "file:tests/test_workspace_chat_rag_v2_deployment.py",
+      "type": "file",
+      "name": "test_workspace_chat_rag_v2_deployment.py",
+      "filePath": "tests/test_workspace_chat_rag_v2_deployment.py",
+      "summary": "Tests for workspace chat RAG v2 deployment",
+      "tags": ["test", "chat", "rag"]
+    },
+    {
+      "id": "file:tests/test_workspace_chat_source_ingest.py",
+      "type": "file",
+      "name": "test_workspace_chat_source_ingest.py",
+      "filePath": "tests/test_workspace_chat_source_ingest.py",
+      "summary": "Tests for workspace chat source ingest",
+      "tags": ["test", "chat"]
+    },
+    {
+      "id": "file:tests/test_workspace_chat_source_library.py",
+      "type": "file",
+      "name": "test_workspace_chat_source_library.py",
+      "filePath": "tests/test_workspace_chat_source_library.py",
+      "summary": "Tests for workspace chat source library",
+      "tags": ["test", "chat"]
+    },
+    {
+      "id": "file:tests/test_workspace_chat_source_selection_owner_flow.py",
+      "type": "file",
+      "name": "test_workspace_chat_source_selection_owner_flow.py",
+      "filePath": "tests/test_workspace_chat_source_selection_owner_flow.py",
+      "summary": "Tests for workspace chat source selection owner flow",
+      "tags": ["test", "chat"]
+    },
+    {
+      "id": "file:tests/test_workspace_chat_source_selection_ui_copy.py",
+      "type": "file",
+      "name": "test_workspace_chat_source_selection_ui_copy.py",
+      "filePath": "tests/test_workspace_chat_source_selection_ui_copy.py",
+      "summary": "Tests for workspace chat source selection UI copy",
+      "tags": ["test", "chat"]
+    },
+    {
+      "id": "file:tests/test_workspace_chat_sources_models.py",
+      "type": "file",
+      "name": "test_workspace_chat_sources_models.py",
+      "filePath": "tests/test_workspace_chat_sources_models.py",
+      "summary": "Tests for workspace chat source models",
+      "tags": ["test", "chat"]
+    },
+    {
+      "id": "file:tests/test_workspace_chat_sources_store.py",
+      "type": "file",
+      "name": "test_workspace_chat_sources_store.py",
+      "filePath": "tests/test_workspace_chat_sources_store.py",
+      "summary": "Tests for workspace chat source store",
+      "tags": ["test", "chat"]
+    },
+    {
+      "id": "file:tests/test_workspace_chat_store.py",
+      "type": "file",
+      "name": "test_workspace_chat_store.py",
+      "filePath": "tests/test_workspace_chat_store.py",
+      "summary": "Tests for workspace chat store",
+      "tags": ["test", "chat"]
+    },
+    {
+      "id": "file:tests/test_workspace_chat_ui_copy.py",
+      "type": "file",
+      "name": "test_workspace_chat_ui_copy.py",
+      "filePath": "tests/test_workspace_chat_ui_copy.py",
+      "summary": "Tests for workspace chat UI copy",
+      "tags": ["test", "chat"]
+    },
+    {
+      "id": "file:tests/test_workspace_notebook.py",
+      "type": "file",
+      "name": "test_workspace_notebook.py",
+      "filePath": "tests/test_workspace_notebook.py",
+      "summary": "Tests for workspace notebook",
+      "tags": ["test", "notebook"]
+    }
+  ],
+  "edges": []
+}

@@ -1,0 +1,97 @@
+{
+  "schema_version": 1,
+  "policy_version": "adaptive-reranking-v1",
+  "dataset_checksum": "sha256:86c2fcb0fef6887bd5ebd6b890f7d43a207a8175739f0280c2f7b626910333fc",
+  "timestamp": "2026-08-16T11:11:50.396106+00:00",
+  "overall_status": "BLOCKED",
+  "blocked_reasons": [
+    "bge_reranker_model_directory_missing: None",
+    "missing_backend_dependency: FlagEmbedding not installed in Python environment"
+  ],
+  "provenance": {
+    "git_sha": "4fb37498f3715e28abd2292a7b5811947ad81842",
+    "command": "scripts\\benchmark_adaptive_reranking.py --json",
+    "runtime_root": "D:\\Sandbox\\AIOS_habbit\\local_runs\\workspace_chat_rag_v2_production",
+    "dataset_checksum": "sha256:86c2fcb0fef6887bd5ebd6b890f7d43a207a8175739f0280c2f7b626910333fc",
+    "manifest_path": "D:\\Sandbox\\AIOS_habbit\\config\\workspace_chat_rag_v2.local.json"
+  },
+  "gates": {
+    "route_accuracy": {
+      "status": "BLOCKED",
+      "measured": null,
+      "threshold": 0.9
+    },
+    "explicit_deep_rate": {
+      "status": "BLOCKED",
+      "measured": null,
+      "threshold": 1.0
+    },
+    "uncertain_to_deep_rate": {
+      "status": "BLOCKED",
+      "measured": null,
+      "threshold": 1.0
+    },
+    "hard_mrr_gain": {
+      "status": "BLOCKED",
+      "measured": null,
+      "threshold": 0.05
+    },
+    "recall_regression": {
+      "status": "BLOCKED",
+      "measured": null,
+      "threshold": 0.0
+    },
+    "auto_fast_p95_regression": {
+      "status": "BLOCKED",
+      "measured": null,
+      "threshold": 0.1
+    },
+    "deep_warm_p95": {
+      "status": "BLOCKED",
+      "measured_ms": null,
+      "threshold_ms": 3000.0
+    },
+    "available_ram_mb": {
+      "status": "BLOCKED",
+      "measured_mb": null,
+      "threshold_mb": 2048.0
+    },
+    "runtime_init_count": {
+      "status": "BLOCKED",
+      "measured": null,
+      "threshold": 1
+    },
+    "zero_privacy_leakage": {
+      "status": "BLOCKED",
+      "leaks_detected": null
+    },
+    "degraded_fallback_safe": {
+      "status": "BLOCKED"
+    },
+    "legacy_compatibility": {
+      "status": "BLOCKED"
+    },
+    "rollback_verified": {
+      "status": "BLOCKED"
+    }
+  },
+  "confusion_matrix": {
+    "total_queries": 0,
+    "fast_true_positives": 0,
+    "fast_false_positives": 0,
+    "deep_true_positives": 0,
+    "deep_false_positives": 0,
+    "uncertain_escalations": 0,
+    "explicit_deep_overrides": 0
+  },
+  "performance": {
+    "auto_fast_p50_ms": null,
+    "auto_fast_p95_ms": null,
+    "deep_p50_ms": null,
+    "deep_p95_ms": null,
+    "peak_rss_mb": 193.24,
+    "available_ram_gb": 5.74
+  },
+  "candidate_windows": {},
+  "selected_window": 30
+}

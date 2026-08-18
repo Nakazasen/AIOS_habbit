@@ -1,45 +1,44 @@
-# Test Strategy
+# Chiến Lược Kiểm Thử (Test Strategy)
 
 Status: `ACTIVE`
 Owner role: Maintainer / quality reviewer
-Last reviewed: 2026-07-25
+Last reviewed: 2026-08-16
 Review cadence: Each new runtime boundary, provider route or release candidate
 
-## Objectives
+## Mục Tiêu (Objectives)
 
-Prove the local-first, evidence-grounded contract without requiring private data
-or live provider credentials in normal development/CI.
+Chứng minh hợp đồng ưu tiên cục bộ (local-first) và có bằng chứng xác thực mà không yêu cầu dữ liệu riêng tư hoặc thông tin xác thực provider trực tiếp trong quy trình phát triển / CI thông thường.
 
-## Test layers
+## Các Tầng Kiểm Thử (Test Layers)
 
-| Layer | Purpose | Network/data rule |
+| Tầng | Mục đích | Quy tắc mạng / Dữ liệu |
 |---|---|---|
-| Unit | Pure parsing, schemas, privacy decisions, ranking and error mapping | Synthetic data; network prohibited |
-| Integration | Store, converter, index, gateway and adapter contracts | Temp paths/synthetic fixtures; network prohibited |
-| System/import | Workspace Chat and CLI boot boundaries | No credentials; network prohibited |
-| Manual live smoke | Verify explicitly approved provider wiring | Generic prompt only; temporary in-memory key; no source context/logged key |
-| Private local evaluation | Assess owner datasets/RAG quality | Local-only, ignored output, never CI artifact |
+| Đơn vị (Unit) | Parse thuần túy, schema, quyết định quyền riêng tư, xếp hạng và ánh xạ lỗi | Dữ liệu tổng hợp (synthetic); nghiêm cấm kết nối mạng |
+| Tích hợp (Integration) | Hợp đồng lưu trữ, bộ chuyển đổi, chỉ mục, Gateway và adapter | Đường dẫn tạm / fixture tổng hợp; nghiêm cấm kết nối mạng |
+| Hệ thống / Import | Ranh giới khởi động Workspace Chat và CLI | Không chứa thông tin xác thực; nghiêm cấm kết nối mạng |
+| Live Smoke thủ công | Kiểm tra hệ thống dây kết nối provider đã được phê duyệt rõ ràng | Chỉ dùng prompt generic; key tạm thời trong bộ nhớ; không có ngữ cảnh nguồn / không ghi log key |
+| Đánh giá cục bộ riêng tư | Đánh giá tập dữ liệu của chủ sở hữu / chất lượng RAG | Chỉ chạy cục bộ, đầu ra bị gitignore, không bao giờ là artifact CI |
 
-## Fixture policy
+## Độ Bao Phủ Lưu Trữ Bền Vững Cục Bộ (Local Persistence Coverage)
 
-- Fixtures are synthetic, minimal and safe for Git.
-- Do not commit raw owner documents, screenshots, local logs, tokens or real
-  provider responses.
-- Secret-pattern tests construct fake values at runtime where source scanning
-  would otherwise mistake a complete fake literal for a tracked secret.
+- Các kho lưu trữ JSONL bắt buộc phải sử dụng cơ chế thay thế nguyên tử (atomic replacement) cho các thao tác ghi đơn tệp và hoàn tác (rollback) cho các thay đổi đa tệp liên quan.
+- Một hàng dữ liệu cục bộ bị lỗi định dạng có thể được bỏ qua để duy trì tính khả dụng của ứng dụng, nhưng log hệ thống chỉ được xác định tên tệp kho lưu trữ và số dòng, tuyệt đối không ghi lại nội dung của bản ghi.
+- Các bài kiểm thử hồi quy bắt buộc phải bao phủ: lưu trữ thành công, khả năng hiển thị hàng lỗi định dạng và hoàn tác sau khi thay thế thất bại.
 
-## AI and RAG behavior
+## Chính Sách Dữ Liệu Mẫu (Fixture Policy)
 
-- Treat provider text as nondeterministic; assert contract/status/citation and
-  failure behavior rather than exact prose unless a deterministic fake is used.
-- Retrieval evaluation measures hit@k, citation correctness, faithfulness and
-  insufficient-evidence behavior as defined by RAG v2 design.
-- Bilingual rank quality and PNG/OCR support remain known limitations, not hidden
-  success criteria.
+- Các fixture dữ liệu phải mang tính tổng hợp (synthetic), tối giản và an toàn khi đưa vào Git.
+- Tuyệt đối không commit tài liệu thô của chủ sở hữu, ảnh chụp màn hình, log cục bộ, token hoặc phản hồi provider thực tế.
+- Các bài kiểm thử mẫu secret phải tự tạo giá trị giả mạo lúc runtime khi trình quét mã nguồn có thể nhầm một giá trị giả hoàn chỉnh thành một secret thật được theo dõi.
 
-## Exit criteria
+## Hành Vi AI và RAG
 
-Every behavior change supplies focused regression evidence, passes all quality
-gates, preserves privacy boundary tests and documents manual live evidence only
-when a live route changed. Flaky tests are owned by the maintainer who introduces
-or observes them and must not be silently retried as proof of success.
+- Xử lý văn bản từ provider như một yếu tố bất định (nondeterministic); kiểm tra xác nhận hợp đồng / trạng thái / trích dẫn và hành vi lỗi thay vì so khớp chính xác từng từ ngữ trừ khi sử dụng bản giả lập tất định (deterministic fake).
+- Đánh giá khả năng truy xuất đo lường hit@k, độ chính xác của trích dẫn, tính trung thực (faithfulness) và hành vi khi chưa đủ bằng chứng (insufficient evidence) như được định nghĩa trong thiết kế RAG v2.
+- Kiểm thử Adaptive Reranking: Ma trận 60 ca truy vấn chuẩn hóa (`adaptive_routing_cases.json`) với đầy đủ các nhóm Fast, Hard, Ambiguous, Weak Evidence, Multi-Source và User Override Deep. Bắt buộc kiểm thử cơ chế Circuit Breaker (tự ngắt sau 3 lỗi), hạ cấp an toàn về Hybrid và cấm hiển thị "Đã tìm kỹ" sai sự thật.
+
+## Tiêu Chí Hoàn Tất (Exit Criteria)
+
+Mọi thay đổi hành vi đều phải cung cấp bằng chứng kiểm thử hồi quy trọng điểm, vượt qua tất cả các cổng chất lượng, bảo toàn các bài kiểm thử ranh giới quyền riêng tư và chỉ ghi nhận bằng chứng kiểm thử live thủ công khi một tuyến trực tiếp có sự thay đổi. Các bài kiểm thử chập chờn (flaky tests) thuộc trách nhiệm của người duy trì phát hiện/tạo ra và tuyệt đối không được tự động thử lại trong âm thầm như bằng chứng thành công.
+
+

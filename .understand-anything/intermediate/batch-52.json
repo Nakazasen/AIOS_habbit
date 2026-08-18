@@ -1,0 +1,230 @@
+{
+  "nodes": [
+    {
+      "id": "file:.streamlit/config.toml",
+      "type": "file",
+      "name": "config.toml",
+      "filePath": ".streamlit/config.toml",
+      "summary": "Streamlit UI configuration file.",
+      "tags": ["config", "streamlit"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:.understand-anything/.understandignore",
+      "type": "file",
+      "name": ".understandignore",
+      "filePath": ".understand-anything/.understandignore",
+      "summary": "Ignore patterns for understand-anything knowledge graph indexing.",
+      "tags": ["config", "tooling"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:03_evidence_registry/evidence_index.md",
+      "type": "file",
+      "name": "evidence_index.md",
+      "filePath": "03_evidence_registry/evidence_index.md",
+      "summary": "Index of evidence records in the evidence registry.",
+      "tags": ["evidence", "index"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:03_evidence_registry/README.md",
+      "type": "file",
+      "name": "README.md",
+      "filePath": "03_evidence_registry/README.md",
+      "summary": "Overview of evidence registry repository directory.",
+      "tags": ["evidence", "docs"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:03_evidence_registry/records/.gitkeep",
+      "type": "file",
+      "name": ".gitkeep",
+      "filePath": "03_evidence_registry/records/.gitkeep",
+      "summary": "Keep file for evidence records directory.",
+      "tags": ["infrastructure", "gitkeep"],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:04_extraction_workspace/candidate_memory/.gitkeep",
+      "type": "file",
+      "name": ".gitkeep",
+      "filePath": "04_extraction_workspace/candidate_memory/.gitkeep",
+      "summary": "Keep file for candidate memory workspace.",
+      "tags": ["infrastructure", "gitkeep"],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:04_extraction_workspace/conflict_log.md",
+      "type": "file",
+      "name": "conflict_log.md",
+      "filePath": "04_extraction_workspace/conflict_log.md",
+      "summary": "Conflict resolution log for extraction workspace.",
+      "tags": ["extraction", "log"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:04_extraction_workspace/extraction_reports/.gitkeep",
+      "type": "file",
+      "name": ".gitkeep",
+      "filePath": "04_extraction_workspace/extraction_reports/.gitkeep",
+      "summary": "Keep file for extraction reports directory.",
+      "tags": ["infrastructure", "gitkeep"],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:04_extraction_workspace/README.md",
+      "type": "file",
+      "name": "README.md",
+      "filePath": "04_extraction_workspace/README.md",
+      "summary": "Overview of extraction workspace directory.",
+      "tags": ["extraction", "docs"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:05_memory_vault/behavior/.gitkeep",
+      "type": "file",
+      "name": ".gitkeep",
+      "filePath": "05_memory_vault/behavior/.gitkeep",
+      "summary": "Keep file for behavior memory vault.",
+      "tags": ["infrastructure", "gitkeep"],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:05_memory_vault/decision_patterns/.gitkeep",
+      "type": "file",
+      "name": ".gitkeep",
+      "filePath": "05_memory_vault/decision_patterns/.gitkeep",
+      "summary": "Keep file for decision patterns vault.",
+      "tags": ["infrastructure", "gitkeep"],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:05_memory_vault/identity/.gitkeep",
+      "type": "file",
+      "name": ".gitkeep",
+      "filePath": "05_memory_vault/identity/.gitkeep",
+      "summary": "Keep file for identity vault.",
+      "tags": ["infrastructure", "gitkeep"],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:05_memory_vault/language/.gitkeep",
+      "type": "file",
+      "name": ".gitkeep",
+      "filePath": "05_memory_vault/language/.gitkeep",
+      "summary": "Keep file for language vault.",
+      "tags": ["infrastructure", "gitkeep"],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:05_memory_vault/lessons_learned/.gitkeep",
+      "type": "file",
+      "name": ".gitkeep",
+      "filePath": "05_memory_vault/lessons_learned/.gitkeep",
+      "summary": "Keep file for lessons learned vault.",
+      "tags": ["infrastructure", "gitkeep"],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:05_memory_vault/project_knowledge/.gitkeep",
+      "type": "file",
+      "name": ".gitkeep",
+      "filePath": "05_memory_vault/project_knowledge/.gitkeep",
+      "summary": "Keep file for project knowledge vault.",
+      "tags": ["infrastructure", "gitkeep"],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:05_memory_vault/README.md",
+      "type": "file",
+      "name": "README.md",
+      "filePath": "05_memory_vault/README.md",
+      "summary": "Overview of persistent memory vault directory.",
+      "tags": ["memory", "docs"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:05_memory_vault/workflow/.gitkeep",
+      "type": "file",
+      "name": ".gitkeep",
+      "filePath": "05_memory_vault/workflow/.gitkeep",
+      "summary": "Keep file for workflow memory vault.",
+      "tags": ["infrastructure", "gitkeep"],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:06_workflow_library/README.md",
+      "type": "file",
+      "name": "README.md",
+      "filePath": "06_workflow_library/README.md",
+      "summary": "Overview of reusable workflow library.",
+      "tags": ["workflow", "docs"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:06_workflow_library/workflows/.gitkeep",
+      "type": "file",
+      "name": ".gitkeep",
+      "filePath": "06_workflow_library/workflows/.gitkeep",
+      "summary": "Keep file for workflows directory.",
+      "tags": ["infrastructure", "gitkeep"],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:07_ai_export_packs/claude/.gitkeep",
+      "type": "file",
+      "name": ".gitkeep",
+      "filePath": "07_ai_export_packs/claude/.gitkeep",
+      "summary": "Keep file for Claude export packs.",
+      "tags": ["infrastructure", "gitkeep"],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:07_ai_export_packs/future_ai/.gitkeep",
+      "type": "file",
+      "name": ".gitkeep",
+      "filePath": "07_ai_export_packs/future_ai/.gitkeep",
+      "summary": "Keep file for future AI export packs.",
+      "tags": ["infrastructure", "gitkeep"],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:07_ai_export_packs/gemini/.gitkeep",
+      "type": "file",
+      "name": ".gitkeep",
+      "filePath": "07_ai_export_packs/gemini/.gitkeep",
+      "summary": "Keep file for Gemini export packs.",
+      "tags": ["infrastructure", "gitkeep"],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:07_ai_export_packs/gpt/.gitkeep",
+      "type": "file",
+      "name": ".gitkeep",
+      "filePath": "07_ai_export_packs/gpt/.gitkeep",
+      "summary": "Keep file for GPT export packs.",
+      "tags": ["infrastructure", "gitkeep"],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:07_ai_export_packs/grok/.gitkeep",
+      "type": "file",
+      "name": ".gitkeep",
+      "filePath": "07_ai_export_packs/grok/.gitkeep",
+      "summary": "Keep file for Grok export packs.",
+      "tags": ["infrastructure", "gitkeep"],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:07_ai_export_packs/README.md",
+      "type": "file",
+      "name": "README.md",
+      "filePath": "07_ai_export_packs/README.md",
+      "summary": "Overview of AI model export packs directory.",
+      "tags": ["export", "docs"],
+      "complexity": "moderate"
+    }
+  ],
+  "edges": []
+}

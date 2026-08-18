@@ -1,5 +1,27 @@
 # Changelog
 
+## Unreleased - 2026-08-16 - Persistence hardening and status synchronization
+
+### Changed
+
+- Added a shared local JSONL persistence helper with atomic replacement,
+  rollback for related files and content-safe malformed-record warnings.
+- Added the reproducible `dev` dependency group with `pytest`; developer,
+  quality and troubleshooting instructions now use the locked `uv` workflow.
+- Replaced the hard-coded Workspace Chat agent root with the optional
+  `AIOS_AGENT_WORKSPACE_ROOT` setting and a repository-relative default.
+- Refreshed the canonical roadmap, operational documentation and project
+  handover. Current focused evidence and test collection are explicitly kept
+  separate from a full-suite or release claim.
+
+### Evidence
+
+- Local persistence/configuration tests: `33 passed`.
+- Workspace Chat/handoff tests: `59 passed`.
+- Antigravity/cross-source RAG tests: `43 passed`.
+- Test collection: `1,143 collected`; full repository pytest remains pending.
+- `compileall`, `uv lock --check` and `git diff --check`: pass.
+
 ## 2026-07-26 - RAG v2 Fail-Closed Corpus Remediation and Live Benchmark Rerun
 
 ### Changed

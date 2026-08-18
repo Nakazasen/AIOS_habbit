@@ -1,70 +1,68 @@
-﻿# AIOS ROUTER SOURCE AUDIT REPORT
+# BÁO CÁO KIỂM TOÁN NGUỒN AIOS ROUTER (AIOS ROUTER SOURCE AUDIT REPORT)
 
-Gate: AIOS-Router-0 — Source Audit + Vietnamese Auto Policy Plan
+Cổng: AIOS-Router-0 — Kiểm toán nguồn + Kế hoạch chính sách tự động Tiếng Việt
 
-## AIOS baseline
+## Đường Cơ Sở AIOS (AIOS Baseline)
 
 - HEAD: `8db94bb Add local AI provider bridge`
-- Current expected HEAD: matches `8db94bb`
-- tests: `py -3 -m pytest` => `197 passed in 8.01s`
-- package import: `package import ok`
-- CLI audit: `{"errors": [], "status": "PASS", "warnings": []}`
-- clean status:
-  - tracked worktree before this audit doc: clean
-  - ignored runtime/cache data present: `.pytest_cache/`, `local_cases/`, `src/aios_habit.egg-info/`, `__pycache__/`, and generated AIOS output folders
+- HEAD kỳ vọng hiện tại: khớp `8db94bb`
+- Kiểm thử: `py -3 -m pytest` => `197 passed in 8.01s`
+- Import package: `package import ok`
+- Kiểm toán CLI audit: `{"errors": [], "status": "PASS", "warnings": []}`
+- Trạng thái sạch:
+  - Cây làm việc được theo dõi trước tài liệu này: sạch (clean)
+  - Dữ liệu runtime/cache bị bỏ qua hiện diện: `.pytest_cache/`, `local_cases/`, `src/aios_habit.egg-info/`, `__pycache__/`, và các thư mục đầu ra tự sinh của AIOS
 
-## Repo availability
+## Tính Khả Dụng Của Các Repository Nguồn (Repo Availability)
 
 ### translation_app
 
-- local path: `[LOCAL_WORKSPACE]\translation_app`
-- exists: yes
-- remote: `https://github.com/Nakazasen/translation_app.git`
-- branch: `wip/phase-5n-f-ocr-benchmark`
+- Đường dẫn cục bộ: `[LOCAL_WORKSPACE]\translation_app`
+- Tồn tại: Có
+- Remote: `https://github.com/Nakazasen/translation_app.git`
+- Nhánh: `wip/phase-5n-f-ocr-benchmark`
 - HEAD: `f105ffb3ac84b9ec38f03e882656826b2001d341`
-- status: only untracked `.vscode/`
-- important files: `core/provider_router.py`, `core/providers/`, `core/provider_health_checker.py`, `core/ai_service.py`, router/provider tests
+- Trạng thái: Chỉ có `.vscode/` không được theo dõi
+- Các tệp quan trọng: `core/provider_router.py`, `core/providers/`, `core/provider_health_checker.py`, `core/ai_service.py`, router/provider tests
 
 ### nvidia-server
 
-- local path: `[LOCAL_WORKSPACE]\Nvidia`
-- exists: yes
-- remote: `https://github.com/Nakazasen/nvidia-server`
-- branch: `main`
+- Đường dẫn cục bộ: `[LOCAL_WORKSPACE]\Nvidia`
+- Tồn tại: Có
+- Remote: `https://github.com/Nakazasen/nvidia-server`
+- Nhánh: `main`
 - HEAD: `77e45e44e8589d24618c5ea59ec1dd31945dcf89`
-- status: no tracked/untracked changes reported by `git status --short`
-- important files: `tools/agent-core.mjs`, `electron-main.js`, `nvidia_playground.html`, `package.json`, `README.md`, `docs/`, `tests/`
+- Trạng thái: Không có thay đổi nào được báo cáo bởi `git status --short`
+- Các tệp quan trọng: `tools/agent-core.mjs`, `electron-main.js`, `nvidia_playground.html`, `package.json`, `README.md`, `docs/`, `tests/`
 
 ### mat-the-website
 
-- local path before audit: missing
-- action: cloned from `https://github.com/Nakazasen/mat-the-website`
-- exists after clone: yes
-- remote: `https://github.com/Nakazasen/mat-the-website`
-- branch: `main`
+- Đường dẫn cục bộ trước kiểm toán: Chưa có
+- Hành động: Đã clone từ `https://github.com/Nakazasen/mat-the-website`
+- Tồn tại sau khi clone: Có
+- Remote: `https://github.com/Nakazasen/mat-the-website`
+- Nhánh: `main`
 - HEAD: `e393bd4b9e6b64cbc60f9abcf4970adf622ae636`
-- status: clean after clone
-- important files: `backend/ai_providers/router.py`, `backend/ai_providers/`, `backend/rate_limit.py`, `backend/security_utils.py`, `backend/main.py`
+- Trạng thái: Sạch sau khi clone
+- Các tệp quan trọng: `backend/ai_providers/router.py`, `backend/ai_providers/`, `backend/rate_limit.py`, `backend/security_utils.py`, `backend/main.py`
 
-## translation_app findings
+## Phát Hiện Từ translation_app
 
-### provider router
+### Bộ Định Tuyến Provider (Provider Router)
 
-- `core/provider_router.py` is the strongest router source found.
-- It implements provider registration, candidate iteration, provider/model/key state, retry/fallback, dynamic ordering, cooldown, circuit breaker behavior, and attempt tracing.
-- It is synchronous and translation-specific, so AIOS should port concepts, not copy the module directly.
+- `core/provider_router.py` là nguồn router mạnh mẽ nhất được tìm thấy.
+- Nó triển khai: đăng ký provider, lặp ứng viên (candidate iteration), trạng thái provider/model/key, thử lại/dự phòng (retry/fallback), sắp xếp thứ tự động, thời gian hồi (cooldown), hành vi ngắt mạch (circuit breaker) và theo vết lượt thử (attempt tracing).
+- Nó chạy đồng bộ và đặc thù cho dịch thuật, do đó AIOS nên kế thừa các khái niệm thay vì sao chép trực tiếp module.
 
-Classification:
+Phân loại:
+- `PORT_NOW` (Kế thừa ngay): Mô hình trạng thái provider, ý tưởng phân loại lỗi, hành vi cooldown, hình thái ảnh chụp sức khỏe, mô hình theo vết lượt thử, khái niệm xoay vòng ứng viên key/model.
+- `PORT_LATER` (Kế thừa sau): Ghim chặt provider/model nghiêm ngặt, hành vi cứu cánh cuối cùng của Google Translate chỉ khi AIOS có trường hợp sử dụng phù hợp.
+- `NEEDS_REWRITE` (Cần viết lại): `TranslationRequest` / `TranslationResult` thành các kiểu yêu cầu / kết quả vụ việc và hỏi đáp của AIOS, và loại bỏ phụ thuộc trực tiếp vào `translation_app.core.ai_service`.
+- `DO_NOT_PORT` (Không kế thừa): Xây dựng prompt chỉ dành riêng cho dịch thuật và văn bản UI làm lộ các nhãn router kỹ thuật.
 
-- PORT_NOW: provider state model, error classification ideas, cooldown behavior, health snapshot shape, attempt trace model, key/model candidate rotation concept.
-- PORT_LATER: strict provider/model pinning, Google Translate last-resort behavior only if AIOS has a matching use case.
-- NEEDS_REWRITE: `TranslationRequest` / `TranslationResult` into AIOS Q&A/case request/result types, and direct dependency on `translation_app.core.ai_service`.
-- DO_NOT_PORT: translation-only prompt building and UI text that exposes technical router labels.
+### Các Nhà Cung Cấp (Providers)
 
-### providers
-
-Provider support is broad and 9router-like:
-
+Hỗ trợ provider rất rộng rãi theo phong cách router:
 - Gemini
 - Google Translate fallback
 - ChatAnyWhere
@@ -81,71 +79,66 @@ Provider support is broad and 9router-like:
 - GitHub Models
 - AI21 Studio
 
-The key reusable provider catalog is `core/providers/profiles.py`.
+Danh mục provider tái sử dụng then chốt nằm tại `core/providers/profiles.py`.
 
-Classification:
+Phân loại:
+- `PORT_NOW`: Chuẩn hóa danh mục provider, khung nhìn cấu hình provider công khai đã làm sạch, tên hiển thị, base URL / model mặc định.
+- `PORT_LATER`: Các adapter tùy biến cho Cloudflare và HuggingFace.
+- `NEEDS_REWRITE`: Hợp đồng yêu cầu provider cho WorkLens và hỏi đáp có căn cứ của AIOS.
+- `DO_NOT_PORT`: Tên provider đặc thù dịch thuật trong giao diện AIOS.
 
-- PORT_NOW: provider catalog normalization, public redacted provider config view, display names, base URL/model defaults.
-- PORT_LATER: Cloudflare and HuggingFace custom adapters.
-- NEEDS_REWRITE: provider request contract for AIOS grounded Q&A and WorkLens.
-- DO_NOT_PORT: translation-specific provider names in AIOS UX.
+### Cơ Chế Dự Phòng (Fallback)
 
-### fallback
+- Router thử các provider theo thứ tự đã giải quyết.
+- Các lượt thử thất bại được ghi nhận và ứng viên / provider tiếp theo sẽ được thử.
+- Lỗi cuối cùng bao gồm lượt thử cuối và thông báo cạn kiệt nguồn.
 
-- Router tries providers in resolved order.
-- Failed attempts are recorded and the next candidate/provider is tried.
-- Final error includes the last attempt and an exhausted message.
+Phân loại: `PORT_NOW` sau khi điều chỉnh theo schema kết quả của AIOS.
 
-Classification: PORT_NOW after adapting to AIOS result schema.
+### Thời Gian Hồi (Cooldown)
 
-### cooldown
+- Lỗi hạn ngạch / giới hạn tốc độ và lỗi tạm thời sẽ kích hoạt cooldown.
+- Có hỗ trợ tiêu đề `Retry-After`.
+- Một số provider có khoảng thời gian tối thiểu giữa các yêu cầu.
 
-- Quota/rate-limit and transient errors trigger cooldown.
-- `Retry-After` support is present.
-- Some providers have minimum inter-request intervals.
+Phân loại: `PORT_NOW`.
 
-Classification: PORT_NOW.
+### Bộ Ngắt Mạch (Circuit Breaker)
 
-### circuit breaker
+- Lỗi xác thực sẽ đánh dấu provider là không khả dụng.
+- Router cố gắng vô hiệu hóa bền vững các provider không hợp lệ thông qua trình quản lý cấu hình.
+- Trạng thái sức khỏe có thể chuyển thành: `dead`, `cooldown`, `degraded`, hoặc `healthy`.
 
-- Authentication errors mark a provider unavailable.
-- The router attempts to persistently disable invalid providers via config manager.
-- Health status can become `dead`, `cooldown`, `degraded`, or `healthy`.
+Phân loại:
+- `PORT_NOW`: Hành vi ngắt mạch trong lúc runtime.
+- `PORT_LATER`: Tự động vô hiệu hóa bền vững, chỉ sau khi AIOS có giao diện cài đặt an toàn.
 
-Classification:
+### Xoay Vòng Key / Thông Tin Bí Mật
 
-- PORT_NOW: runtime circuit breaker behavior.
-- PORT_LATER: persistent auto-disable, only after AIOS has a safe settings UI.
+- `ProviderProfile` hỗ trợ nhiều API key.
+- `OpenAICompatibleProvider.iter_candidates()` mở rộng ứng viên theo tích model x key.
+- `mark_success()` và `mark_failure()` thực hiện xoay vòng key/model.
+- Key được che giấu qua phần đuôi (`****1234`) khi hiển thị trạng thái công khai.
+- `AIConfigManager` tách biệt cấu hình và secret, hỗ trợ tải sao lưu và phủ lớp bí mật.
 
-### key rotation/secrets
+Phân loại:
+- `PORT_NOW`: ID key đã che giấu trong log định tuyến, xoay vòng ứng viên key, khái niệm tách biệt cấu hình và secret.
+- `PORT_LATER`: Di chuyển hoàn chỉnh sang kho lưu trữ secret.
+- `DO_NOT_PORT`: Bất kỳ API key thật nào hoặc tệp cấu hình cục bộ tự sinh.
 
-- `ProviderProfile` supports multiple API keys.
-- `OpenAICompatibleProvider.iter_candidates()` expands model x key candidates.
-- `mark_success()` and `mark_failure()` rotate keys/models.
-- Keys are masked via suffix (`****1234`) for public status.
-- `AIConfigManager` separates config and secrets, supports backup loading and secret overlay.
+### Kiểm Tra Sức Khỏe (Health)
 
-Classification:
+- `core/provider_health_checker.py` kiểm tra khả năng phản hồi của provider/model.
+- Nó ánh xạ các lỗi cấp thấp thành thông điệp Tiếng Việt và gợi ý hành động cho người dùng.
+- Nó cập nhật sức khỏe router khi có thể.
 
-- PORT_NOW: masked key id in route logs, key candidate rotation, config-vs-secret separation concept.
-- PORT_LATER: full secret store migration.
-- DO_NOT_PORT: any real keys or generated local config files.
+Phân loại:
+- `PORT_NOW`: Khái niệm hiển thị trạng thái sức khỏe và thông điệp sức khỏe Tiếng Việt được viết lại theo thuật ngữ AIOS.
+- `PORT_LATER`: Thăm dò provider live, vì quá trình kiểm toán này tuyệt đối không gọi các provider có key thật.
 
-### health
+### Kiểm Thử (Tests)
 
-- `core/provider_health_checker.py` checks provider/model responsiveness.
-- It maps low-level errors to Vietnamese user messages and suggestions.
-- It updates router health where possible.
-
-Classification:
-
-- PORT_NOW: health status display concept and Vietnamese health messages rewritten for AIOS terms.
-- PORT_LATER: live provider probing, because this audit must not call real keyed providers.
-
-### tests
-
-Strong router-related test coverage exists:
-
+Bộ kiểm thử mạnh mẽ liên quan đến router hiện có:
 - `tests/test_provider_router.py`
 - `tests/test_free_llm_pool.py`
 - `tests/test_provider_health_checker.py`
@@ -154,146 +147,139 @@ Strong router-related test coverage exists:
 - `tests/test_provider_priority_ui.py`
 - `tests/test_specific_provider_fallback.py`
 
-Classification: PORT_NOW as test design references, not direct copied source.
+Phân loại: `PORT_NOW` dưới dạng tham chiếu thiết kế kiểm thử, không sao chép trực tiếp mã nguồn.
 
-### reusable components
+### Các Thành Phần Tái Sử Dụng
 
-1. Provider catalog with normalized profiles.
-2. OpenAI-compatible adapter pattern.
-3. Candidate expansion across model pool and key pool.
-4. Cooldown and circuit breaker error classification.
-5. Health snapshot and attempts trace.
-6. Vietnamese status/suggestion style for non-technical users.
-7. Tests for fallback, quota, health, and priority behavior.
+1. Danh mục provider với các hồ sơ đã chuẩn hóa.
+2. Mẫu adapter tương thích OpenAI.
+3. Mở rộng ứng viên qua bể model và bể key.
+4. Phân loại lỗi cho cooldown và circuit breaker.
+5. Ảnh chụp nhanh sức khỏe và theo vết các lượt thử.
+6. Phong cách hiển thị trạng thái / gợi ý bằng Tiếng Việt cho người dùng phi kỹ thuật.
+7. Các bài kiểm thử cho hành vi fallback, hạn ngạch, sức khỏe và độ ưu tiên.
 
-## nvidia-server findings
+## Phát Hiện Từ nvidia-server
 
-### provider abstraction
+### Trừu Tượng Hóa Provider
 
-- No mature multi-provider pool comparable to `translation_app` was found.
-- The strongest code is not provider routing but agent workspace/runtime infrastructure.
-- `tools/agent-core.mjs` uses an offline lexical provider for semantic index fallback, not a full AI provider router.
+- Không tìm thấy bể provider đa dạng hoàn chỉnh tương đương như `translation_app`.
+- Mã nguồn mạnh nhất không phải là định tuyến provider mà là hạ tầng runtime / workspace cho AI agent.
+- `tools/agent-core.mjs` sử dụng provider từ vựng ngoại tuyến cho dự phòng chỉ mục ngữ nghĩa, không phải bộ định tuyến provider AI đầy đủ.
 
-Classification:
+Phân loại:
+- Sử dụng ngay cho router: Không
+- Sử dụng sau cho AIOS Agent Runtime: Có
 
-- use now for router: no
-- use later for AIOS Agent Runtime: yes
+### Runtime MCP/CLI
 
-### MCP/CLI runtime
+`tools/agent-core.mjs` cung cấp các công cụ tệp, tìm kiếm, lập chỉ mục, công cụ git, các chỉnh sửa đang chờ (pending edits), thực thi lệnh, các tiến trình lệnh nền, trạng thái tiến trình và hủy bỏ tiến trình.
 
-`tools/agent-core.mjs` provides file tools, search, indexing, git tools, pending edits, command execution, background command jobs, job status, and cancellation.
+Phân loại: `PORT_LATER` cho `AIOS-Agent-Later`, không thuộc AIOS-Router-1.
 
-Classification: PORT_LATER for `AIOS-Agent-Later`, not AIOS-Router-1.
+### Bộ Chọn Ngữ Cảnh (Context Picker)
 
-### context picker
+- Xây dựng cache chỉ mục với metadata tệp và các chunk dòng.
+- Bỏ qua các thư mục nặng/không an toàn như `.git`, `.brain`, `.nvidia-agent`, `node_modules`, `.venv`, cache, thư mục build.
+- Hỗ trợ tìm kiếm từ vựng trên các chunk và ưu tiên các tệp vừa thay đổi / gần đây.
+- Làm sạch (redact) secret khi lập chỉ mục / trả về nội dung.
 
-- Builds an index cache with file metadata and line chunks.
-- Skips unsafe/heavy folders such as `.git`, `.brain`, `.nvidia-agent`, `node_modules`, `.venv`, caches, build outputs.
-- Supports lexical search over chunks and boosts changed/recent files.
-- Redacts secrets when indexing/returning content.
+Phân loại: `PORT_LATER` cho bộ chọn ngữ cảnh WorkLens và agent runtime.
 
-Classification: PORT_LATER for WorkLens context picker and agent runtime.
+### Quản Lý Tiến Trình (Job Manager)
 
-### job manager
+- `startCommandJobTool`, `commandJobStatusTool`, và `cancelCommandJobTool` quản lý các tiến trình shell chạy dài.
+- Các tiến trình lưu giữ stdout/stderr và hỗ trợ phân trang theo offset.
 
-- `startCommandJobTool`, `commandJobStatusTool`, and `cancelCommandJobTool` manage long-running shell jobs.
-- Jobs retain stdout/stderr and support chunked offsets.
+Phân loại: `PORT_LATER` cho các tiến trình AI agent và dấu vết kiểm toán của AIOS.
 
-Classification: PORT_LATER for AIOS agent jobs and audit trails.
+### An Toàn và Kiểm Toán (Safety/Audit)
 
-### safety/audit
+Các mẫu hữu ích:
+- Cổng tin cậy workspace (workspace trust gate) trước các thao tác ghi / thực thi lệnh
+- Kiểm tra bao bọc đường dẫn (path containment checks)
+- Xác nhận các hành động có tính phá hủy (destructive actions)
+- Hàng đợi chỉnh sửa chờ duyệt (pending edits) trước khi ghi
+- Làm sạch secret cho đầu ra / log
+- Định nghĩa quyền hạn với các mức độ rủi ro và yêu cầu phê duyệt
 
-Useful patterns:
+Phân loại: `PORT_LATER` cho AIOS Agent Runtime.
 
-- workspace trust gate before write/command operations
-- path containment checks
-- destructive action confirmation
-- pending edits before writes
-- secret redaction for outputs/logs
-- permission definitions with risk levels and approval requirements
+### Các Khái Niệm Tái Sử Dụng
 
-Classification: PORT_LATER for AIOS Agent Runtime.
+1. Tin cậy workspace (Workspace trust).
+2. Hàng đợi chỉnh sửa chờ duyệt (Pending edit queue).
+3. Trình quản lý tiến trình lệnh (Command job manager).
+4. Bảng quyền công cụ (Tool permission table).
+5. Làm sạch secret (Secret redaction).
+6. Lập chỉ mục và truy xuất ngữ cảnh (Context indexing and retrieval).
 
-### reusable concepts
+## Phát Hiện Từ mat-the-website
 
-1. Workspace trust.
-2. Pending edit queue.
-3. Command job manager.
-4. Tool permission table.
-5. Secret redaction.
-6. Context indexing and retrieval.
+### AI Router
 
-## mat-the-website findings
+- Trái với dự đoán ban đầu, repo này có chứa mã nguồn AI router.
+- `backend/ai_providers/router.py` nêu rõ rằng nó được chuyển đổi từ `translation_app.core.provider_router.ProviderRouter` sang dạng bất đồng bộ (async) cho FastAPI.
+- Nó hỗ trợ fallback dạng thác nước (waterfall fallback), `ai_pool_auto`, trạng thái sức khỏe provider, cooldown, các lượt thử ứng viên key/model và theo vết lượt thử.
+- Nó hữu ích như một tài liệu tham khảo về chuyển đổi sang async, nhưng ít toàn diện hơn router gốc của `translation_app`.
 
-### AI router
+Phân loại:
+- Liên quan đến AI router: Có, dưới dạng dẫn xuất bất đồng bộ.
+- `PORT_LATER`: Mẫu API định tuyến async nếu AIOS sau này mở router qua backend web.
+- `NEEDS_REWRITE`: Phụ thuộc và đặc thù lĩnh vực dịch truyện web.
 
-- Contrary to the initial expectation, this repo does contain AI router code.
-- `backend/ai_providers/router.py` explicitly says it was ported from `translation_app.core.provider_router.ProviderRouter` and converted to async for FastAPI.
-- It supports waterfall fallback, `ai_pool_auto`, provider health state, cooldown, key/model candidate attempts, and attempt trace.
-- It is useful as an async adaptation reference, but less authoritative than the original `translation_app` router.
+### Các Thành Phần Backend / Bảo Mật
 
-Classification:
-
-- AI router relevant: yes, as an async derivative.
-- PORT_LATER: async route API patterns if AIOS later exposes router over web backend.
-- NEEDS_REWRITE: dependencies and web-novel translation domain specifics.
-
-### backend/security pieces
-
-Relevant backend patterns:
-
+Các mẫu backend liên quan:
 - `backend/rate_limit.py`
 - `backend/security_utils.py`
 - `backend/ai_providers/error_classifier.py`
 - `backend/ai_providers/health.py`
-- `backend/main.py` integration examples
+- Ví dụ tích hợp trong `backend/main.py`
 
-Classification: backend pattern only; not primary router source.
+Phân loại: Chỉ là mẫu backend; không phải nguồn router chính.
 
-### recommendation
+### Khuyến Nghị (Recommendation)
 
-- Do not use `mat-the-website` as the source of truth for the router.
-- Use it to learn how the router was adapted to async FastAPI and backend route integration.
-- Keep AIOS-Router-0 focused on `translation_app` for router maturity.
+- Không sử dụng `mat-the-website` làm nguồn chân lý chính cho router.
+- Sử dụng nó để học cách chuyển đổi router sang async FastAPI và tích hợp tuyến backend.
+- Giữ AIOS-Router-0 tập trung vào `translation_app` về độ hoàn thiện của router.
 
-## Ranking
+## Xếp Hạng Đánh Giá (Ranking)
 
-1. `translation_app` — best provider router source.
-2. `mat-the-website` — useful async/backend derivative.
-3. `nvidia-server` — best agent runtime source, not router source.
+1. `translation_app` — nguồn tốt nhất cho AI provider router.
+2. `mat-the-website` — dẫn xuất async / backend hữu ích.
+3. `nvidia-server` — nguồn tốt nhất cho agent runtime, không phải nguồn router.
 
-## Comparative matrix
+## Ma Trận So Sánh (Comparative Matrix)
 
-| Criterion | translation_app | nvidia-server | mat-the-website |
+| Tiêu chí | translation_app | nvidia-server | mat-the-website |
 |---|---:|---:|---:|
-| AI provider router maturity | High | Low | Medium |
-| Number of providers supported | High | Low | Medium |
-| Fallback/cooldown/circuit breaker | High | Low | Medium-High |
-| Key/security handling | High | Medium-High for runtime redaction | Medium |
-| Tests | High | Medium | Medium |
-| Ease of porting to AIOS | Medium | Low for router, Medium for agent runtime | Medium |
-| Relevance to AIOS WorkLens router | High | Low now, High later for agent runtime | Medium |
+| Độ hoàn thiện AI provider router | Cao | Thấp | Trung bình |
+| Số lượng provider được hỗ trợ | Cao | Thấp | Trung bình |
+| Fallback / Cooldown / Circuit breaker | Cao | Thấp | TB-Cao |
+| Xử lý key / Bảo mật | Cao | TB-Cao cho làm sạch runtime | Trung bình |
+| Kiểm thử | Cao | Trung bình | Trung bình |
+| Dễ chuyển đổi sang AIOS | Trung bình | Thấp cho router, TB cho agent runtime | Trung bình |
+| Tính liên quan đến AIOS WorkLens router | Cao | Thấp hiện tại, Cao sau này cho agent | Trung bình |
 
-## Vietnamese UX policy
+## Chính Sách Giao Diện Người Dùng Tiếng Việt (Vietnamese UX Policy)
 
-The UI must use only these Vietnamese user-facing modes and explanations. It must not expose raw implementation terms.
+Giao diện người dùng bắt buộc chỉ sử dụng các chế độ và giải thích bằng Tiếng Việt hướng tới người dùng này. Tuyệt đối không làm lộ các thuật ngữ triển khai kỹ thuật thô.
 
-### Tự động
-
+### Tự Động
 - AIOS tự đoán mức an toàn của tài liệu.
 - Đường dẫn hoặc nội dung liên quan MOM, WMS, ERP, nhà máy, công ty, nội bộ, hợp đồng, nhân sự, tài chính, khách hàng mặc định được xử lý theo chế độ an toàn cho công ty.
 - Nếu AIOS không chắc, hỏi người dùng: “Đây có phải tài liệu công ty hoặc tài liệu mật không?”
 - Người dùng không cần hiểu nhà cung cấp AI, tuyến xử lý, endpoint, hay nhãn kỹ thuật.
 
-### Tài liệu công ty / tài liệu mật
-
-- Không gửi ra ngoài.
+### Tài Liệu Công Ty / Tài Liệu Mật
+- Tuyệt đối không gửi ra ngoài.
 - Chỉ dùng dữ liệu cục bộ, AI nội bộ, hoặc điểm kết nối đã được tin cậy.
 - Nếu chưa có AI nội bộ, AIOS vẫn trả lời bằng dữ liệu cục bộ và nói rõ phần nào chưa đủ bằng chứng.
 - Không âm thầm chuyển sang AI bên ngoài.
 
-### Tài liệu thường
-
+### Tài Liệu Thường
 - Dùng toàn bộ nguồn AI đã cấu hình.
 - Tự chọn nguồn AI tốt nhất.
 - Tự đổi nguồn khi lỗi, hết lượt, quá tải, hoặc phản hồi chậm.
@@ -302,19 +288,17 @@ The UI must use only these Vietnamese user-facing modes and explanations. It mus
 - Ghi “Nhật ký AI đã dùng” để người dùng biết AIOS đã dùng nguồn nào.
 - Không hạn chế giả tạo ngoài giới hạn thật về lượt dùng, chi phí, tốc độ, và cấu hình của người dùng.
 
-### terms removed from UI
+### Các Thuật Ngữ Bị Loại Bỏ Khỏi Giao Diện Người Dùng
 
-The following raw terms must not appear in user-facing UX for this roadmap:
-
+Các thuật ngữ kỹ thuật thô sau tuyệt đối không xuất hiện trên UX người dùng:
 - `cloud_allowed`
 - `local_only`
 - `provider policy`
 - `route policy`
-- raw enum names
-- raw provider routing jargon where a Vietnamese non-technical phrase is available
+- Tên enum thô
+- Các thuật ngữ định tuyến provider thô khi đã có cụm từ Tiếng Việt phi kỹ thuật thay thế
 
-Acceptable Vietnamese replacements:
-
+Các cụm từ Tiếng Việt thay thế được chấp nhận:
 - “Tự động”
 - “Tài liệu công ty / tài liệu mật”
 - “Tài liệu thường”
@@ -323,97 +307,87 @@ Acceptable Vietnamese replacements:
 - “Nhật ký AI đã dùng”
 - “Tự đổi nguồn khi lỗi/hết lượt/quá tải”
 
-## Integration roadmap
+## Lộ Trình Tích Hợp (Integration Roadmap)
 
-### AIOS-Router-1: Vietnamese Safety Mode UX
+### AIOS-Router-1: UX Chế Độ An Toàn Tiếng Việt
+- Bổ sung các chế độ hiển thị rõ ràng bằng Tiếng Việt: “Tự động”, “Tài liệu công ty / tài liệu mật”, “Tài liệu thường”.
+- Ẩn toàn bộ các nhãn định tuyến kỹ thuật thô khỏi giao diện người dùng.
+- Bổ sung phần giải thích phân loại tự động bằng Tiếng Việt dễ hiểu.
+- Nếu không chắc chắn, hỏi: “Đây có phải tài liệu công ty hoặc tài liệu mật không?”
 
-- Add visible Vietnamese modes: “Tự động”, “Tài liệu công ty / tài liệu mật”, “Tài liệu thường”.
-- Hide all raw technical routing labels from user-facing UI.
-- Add automatic classification explanation in plain Vietnamese.
-- If uncertain, ask: “Đây có phải tài liệu công ty hoặc tài liệu mật không?”
+### AIOS-Router-2: Danh Mục Provider Từ translation_app
+- Bổ sung danh mục provider AIOS dựa trên các khái niệm của `translation_app`.
+- Hỗ trợ danh sách nguồn đã cấu hình và trạng thái sức khỏe.
+- Giữ thông tin bí mật ngoài cấu hình được commit.
+- Chỉ hiển thị đuôi key đã che giấu trong trạng thái người dùng có thể thấy.
+- Không sao chép trực tiếp mã nguồn; viết lại cho các kiểu yêu cầu / phản hồi của AIOS.
 
-### AIOS-Router-2: Provider catalog from translation_app
+### AIOS-Router-3: Router Tự Động Cho “Tài Liệu Thường”
+- Sử dụng bể provider cho tài liệu thường.
+- Bổ sung hành vi thử lại, dự phòng, xoay vòng key, cooldown và circuit breaker.
+- Bảo tồn luồng dự phòng tất định / cục bộ nếu không có provider nào hoạt động.
 
-- Add AIOS provider catalog based on `translation_app` concepts.
-- Support configured source list and health status.
-- Keep secrets out of committed config.
-- Show only masked key suffixes in user-visible status.
-- Do not copy source directly; rewrite for AIOS request/response types.
+### AIOS-Router-4: Giao Diện Nhật Ký Định Tuyến
+- Bổ sung “Nhật ký AI đã dùng”.
+- Hiển thị tên hiển thị provider, tên hiển thị model, đuôi key đã che giấu, trạng thái, độ trễ và lý do bằng Tiếng Việt.
+- Tuyệt đối không bao giờ hiển thị API key thô.
 
-### AIOS-Router-3: automatic router for “Tài liệu thường”
+### AIOS-Router-5: Đua Song Song Tùy Chọn (Parallel Race)
+- Bổ sung tùy chọn “Hỏi nhiều AI cùng lúc để lấy câu nhanh/tốt hơn”.
+- Chỉ áp dụng cho “Tài liệu thường”.
+- Tôn trọng hạn ngạch / chi phí / giới hạn tốc độ đã cấu hình.
 
-- Use provider pool for normal documents.
-- Add retry, fallback, key rotation, cooldown, and circuit breaker behavior.
-- Preserve deterministic/local fallback if no provider works.
+### AIOS-Router-6: Kiểm Toán Quyền Riêng Tư (Privacy Audit)
+- Chứng minh tài liệu công ty / mật không bao giờ bị gửi tới AI bên ngoài.
+- Chứng minh tài liệu thường có thể sử dụng bể provider.
+- Chứng minh các secret đã được che giấu.
+- Chứng minh theo vết định tuyến là chính xác.
 
-### AIOS-Router-4: route log UI
-
-- Add “Nhật ký AI đã dùng”.
-- Show provider display name, model display name, masked key suffix, status, latency, and reason in Vietnamese.
-- Never show raw API keys.
-
-### AIOS-Router-5: optional parallel race
-
-- Add optional “Hỏi nhiều AI cùng lúc để lấy câu nhanh/tốt hơn”.
-- Only for “Tài liệu thường”.
-- Respect configured quotas/cost/rate limits.
-
-### AIOS-Router-6: privacy audit
-
-- Prove company/confidential documents do not go to external AI.
-- Prove normal documents can use provider pool.
-- Prove secrets are masked.
-- Prove route trace is correct.
-
-### AIOS-Router-7: DOM/unit audit
-
-- Prove user never sees raw technical route labels.
-- Prove automatic mode works.
-- Prove normal docs use provider pool.
-- Prove company docs block external AI.
-- Prove route log is visible.
+### AIOS-Router-7: Kiểm Toán DOM / Đơn Vị (DOM/Unit Audit)
+- Chứng minh người dùng không bao giờ thấy các nhãn kỹ thuật thô.
+- Chứng minh chế độ tự động hoạt động chính xác.
+- Chứng minh tài liệu thường sử dụng bể provider.
+- Chứng minh tài liệu công ty chặn AI bên ngoài.
+- Chứng minh nhật ký định tuyến hiển thị rõ ràng.
 
 ### AIOS-Agent-Later
+Học hỏi từ `nvidia-server`:
+- Bộ chọn ngữ cảnh (Context picker)
+- Ý tưởng cầu nối MCP/CLI
+- Trình quản lý tiến trình (Job manager)
+- Phê duyệt công cụ (Tool approval)
+- Chỉnh sửa chờ duyệt (Pending edits)
+- Tin cậy workspace (Workspace trust)
+- Dấu vết kiểm toán (Audit trail)
+- Làm sạch secret (Secret redaction)
 
-Learn from `nvidia-server`:
+Phần này được xác định rõ ràng là làm sau và tuyệt đối không mở P1.0.
 
-- context picker
-- MCP/CLI bridge ideas
-- job manager
-- tool approval
-- pending edits
-- workspace trust
-- audit trail
-- secret redaction
+## An Toàn (Safety)
 
-This is explicitly later and must not open P1.0.
+- Không commit secret: ĐẠT (PASS). Tài liệu kiểm toán này không chứa API key hay secret nào.
+- Không dùng cloud cho tài liệu công ty/mật: Bắt buộc theo roadmap. Không có lệnh gọi provider thật nào được thực hiện trong đợt kiểm toán này.
+- Cloud / bể miễn phí cho tài liệu thường: Chỉ lên kế hoạch sau khi đã có UX an toàn Tiếng Việt cho người dùng.
+- Không mở P1.0: ĐẠT (PASS). Đợt kiểm toán này không mở P1.0.
+- Không sao chép mã nguồn bên thứ ba vào AIOS: ĐẠT (PASS). Tài liệu này chỉ tóm tắt các phát hiện.
+- Không tải tài liệu MOM/công ty lên: ĐẠT (PASS). Không có tài liệu công ty nào bị gửi lên cloud.
+- Không giả mạo cầu nối Antigravity: ĐẠT (PASS). Kết quả hiện có của AIOS vẫn xác nhận API trực tiếp của Antigravity không có runtime HTTP/MCP/CLI có thể gọi cho ứng dụng này.
 
-## Safety
+## Kết Luận Chung (Overall Verdict)
 
-- no secret commit: PASS. This audit doc contains no API keys or secrets.
-- no cloud for company/mật: required by roadmap. No real provider calls were made in this audit.
-- cloud/free pool for tài liệu thường: planned only after user-visible Vietnamese safety UX exists.
-- no P1.0: PASS. This audit did not open P1.0.
-- no copied third-party source into AIOS: PASS. This document summarizes findings only.
-- no MOM/company document upload: PASS. No company documents were sent to cloud.
-- no fake Antigravity bridge: PASS. Existing AIOS result remains that Antigravity direct API has no callable HTTP/MCP/CLI runtime for this app.
+`TRANSLATION_APP_ROUTER_BEST_SOURCE` (translation_app là nguồn tốt nhất cho router).
 
-## Overall verdict
+Các kết luận đã được kiểm chứng bổ sung:
+- `NVIDIA_RUNTIME_BEST_SOURCE` (nvidia-server là nguồn tốt nhất cho agent runtime).
+- Nhận định ban đầu `MAT_WEBSITE_NOT_RELEVANT_FOR_ROUTER` không hoàn toàn đúng sau kiểm toán; nó có chứa router phái sinh, nhưng không phải nguồn tốt nhất.
 
-TRANSLATION_APP_ROUTER_BEST_SOURCE
+## Khuyến Nghị Bước Tiếp Theo
 
-Additional verified verdicts:
+1. Triển khai AIOS-Router-1 UX Chế Độ An Toàn Tiếng Việt.
 
-- NVIDIA_RUNTIME_BEST_SOURCE
-- MAT_WEBSITE_NOT_RELEVANT_FOR_ROUTER is not fully true after audit; it has a derivative router, but it is not the best source.
+Lý do:
+- AIOS trước hết phải bảo vệ người dùng khỏi các khái niệm định tuyến kỹ thuật phức tạp.
+- Phải đảm bảo tài liệu công ty / mật được xử lý an toàn trước khi kích hoạt bể provider rộng lớn cho tài liệu thường.
+- Điều này tạo nền tảng an toàn và trải nghiệm người dùng chuẩn xác cho AIOS-Router-2 và AIOS-Router-3.
 
-## Recommended next
-
-1. Implement AIOS-Router-1 Vietnamese Safety Mode UX
-
-Reason:
-
-- AIOS must first protect users from technical routing concepts.
-- It must ensure company/confidential documents are safely handled before enabling the broad provider pool for normal documents.
-- This creates the correct UX and safety foundation for AIOS-Router-2 and AIOS-Router-3.
 

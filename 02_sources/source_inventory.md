@@ -1,6 +1,7 @@
-# Source Discovery Inventory
+# Danh Mục Khám Phá Nguồn (Source Discovery Inventory)
 
-Risk rule: metadata-only discovery; raw content is not ingested.
+Quy tắc rủi ro: khám phá chỉ dựa trên metadata; tuyệt đối không nạp nội dung thô.
+
 
 ## abw-smoke-test
 - Path: `[LOCAL_WORKSPACE]\abw-smoke-test`

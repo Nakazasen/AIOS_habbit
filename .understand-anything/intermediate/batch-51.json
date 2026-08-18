@@ -1,0 +1,93 @@
+{
+  "nodes": [
+    {
+      "id": "file:.agents/ORIGINAL_REQUEST.md",
+      "type": "file",
+      "name": "ORIGINAL_REQUEST.md",
+      "filePath": ".agents/ORIGINAL_REQUEST.md",
+      "summary": "The original project request documentation.",
+      "tags": ["documentation"]
+    },
+    {
+      "id": "file:.agents/sentinel/BRIEFING.md",
+      "type": "file",
+      "name": "BRIEFING.md",
+      "filePath": ".agents/sentinel/BRIEFING.md",
+      "summary": "Briefing document for the sentinel agent.",
+      "tags": ["documentation"]
+    },
+    {
+      "id": "file:.agents/sentinel/handoff.md",
+      "type": "file",
+      "name": "handoff.md",
+      "filePath": ".agents/sentinel/handoff.md",
+      "summary": "Handoff procedure documentation for the sentinel agent.",
+      "tags": ["documentation"]
+    },
+    {
+      "id": "file:.agents/teamwork_preview_implementer_1/BRIEFING.md",
+      "type": "file",
+      "name": "BRIEFING.md",
+      "filePath": ".agents/teamwork_preview_implementer_1/BRIEFING.md",
+      "summary": "Briefing document for the teamwork_preview_implementer_1 agent.",
+      "tags": ["documentation"]
+    },
+    {
+      "id": "file:.agents/teamwork_preview_implementer_1/handoff.md",
+      "type": "file",
+      "name": "handoff.md",
+      "filePath": ".agents/teamwork_preview_implementer_1/handoff.md",
+      "summary": "Handoff procedure documentation for the teamwork_preview_implementer_1 agent.",
+      "tags": ["documentation"]
+    },
+    {
+      "id": "file:.agents/teamwork_preview_implementer_1/progress.md",
+      "type": "file",
+      "name": "progress.md",
+      "filePath": ".agents/teamwork_preview_implementer_1/progress.md",
+      "summary": "Progress tracking for the teamwork_preview_implementer_1 agent.",
+      "tags": ["documentation"]
+    },
+    {
+      "id": "file:.agents/teamwork_preview_reviewer_1/BRIEFING.md",
+      "type": "file",
+      "name": "BRIEFING.md",
+      "filePath": ".agents/teamwork_preview_reviewer_1/BRIEFING.md",
+      "summary": "Briefing document for the teamwork_preview_reviewer_1 agent.",
+      "tags": ["documentation"]
+    },
+    {
+      "id": "file:.agents/teamwork_preview_reviewer_1/handoff.md",
+      "type": "file",
+      "name": "handoff.md",
+      "filePath": ".agents/teamwork_preview_reviewer_1/handoff.md",
+      "summary": "Handoff procedure documentation for the teamwork_preview_reviewer_1 agent.",
+      "tags": ["documentation"]
+    },
+    {
+      "id": "file:.agents/teamwork_preview_reviewer_1/progress.md",
+      "type": "file",
+      "name": "progress.md",
+      "filePath": ".agents/teamwork_preview_reviewer_1/progress.md",
+      "summary": "Progress tracking for the teamwork_preview_reviewer_1 agent.",
+      "tags": ["documentation"]
+    }
+  ],
+  "edges": [
+    {
+      "source": "file:.agents/sentinel/handoff.md",
+      "target": "file:.agents/sentinel/BRIEFING.md",
+      "type": "references"
+    },
+    {
+      "source": "file:.agents/teamwork_preview_implementer_1/handoff.md",
+      "target": "file:.agents/teamwork_preview_implementer_1/BRIEFING.md",
+      "type": "references"
+    },
+    {
+      "source": "file:.agents/teamwork_preview_reviewer_1/handoff.md",
+      "target": "file:.agents/teamwork_preview_reviewer_1/BRIEFING.md",
+      "type": "references"
+    }
+  ]
+}
