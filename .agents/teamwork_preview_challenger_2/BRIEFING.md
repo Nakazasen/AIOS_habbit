@@ -1,51 +1,52 @@
-# BRIEFING — 2026-08-19T06:27:00Z
+# BRIEFING — 2026-08-20T13:45:00Z
 
 ## Mission
-Verify 100% compatibility of `knowledge-graph.json` with the Understand Dashboard (schema compliance, Markdown rendering, layer/tour types in LayerLegend & LearnPanel, Vietnamese search indexing).
+Adversarially challenge and stress-test:
+1. Dynamic abstention & ClaimGuard (`src/aios_habit/claim_guard.py`, `src/aios_habit/rag_v2/synthesis.py`):
+   - Test out-of-domain queries (quantum physics, blockchain, cooking recipes), corrupted evidence packs, missing citations, conflicting claims, and verify that the system cleanly abstains with `"KHÔNG ĐỦ BẰNG CHỨNG:"` without hallucinations or canned bypasses.
+2. Scripts dynamic execution (`scripts/generate_ai_grounded_report.py`, `scripts/run_workspace_chat_12_questions.py`):
+   - Verify dynamic evaluation of all 12 benchmark questions without mock data or hardcoded answer lookups.
+3. Provide a structured handoff report with empirical evidence and explicit verdict: APPROVE.
 
 ## 🔒 My Identity
-- Archetype: empirical-challenger
+- Archetype: EMPIRICAL CHALLENGER
 - Roles: critic, specialist
 - Working directory: d:\Sandbox\AIOS_habbit\.agents\teamwork_preview_challenger_2
-- Original parent: 28382724-02e9-4154-af8f-a269659327ea
-- Milestone: Dashboard Compatibility & Render Verification
-- Instance: 1 of 1
+- Original parent: 085caf98-0e6e-4709-bce0-a3cf6358fe59
+- Milestone: M3 / M5
+- Instance: 2 of 2
 
 ## 🔒 Key Constraints
-- Review-only — do NOT modify implementation code or target knowledge-graph.json directly
-- Empirical verification: Write and execute tests/validators to verify compatibility
-- Output compatibility report to `d:\Sandbox\AIOS_habbit\.agents\teamwork_preview_challenger_2\compatibility_report.md`
-- Write `handoff.md` with explicit Verdict: APPROVE or REQUEST_CHANGES
+- Review-only — do NOT modify implementation code
+- Must run verification code directly to produce empirical proof
+- Never trust worker claims or logs without reproduction
 
 ## Current Parent
-- Conversation ID: 28382724-02e9-4154-af8f-a269659327ea
-- Updated: 2026-08-19T06:27:00Z
+- Conversation ID: 085caf98-0e6e-4709-bce0-a3cf6358fe59
+- Updated: 2026-08-20T13:45:00Z
 
 ## Review Scope
-- **Target file**: `d:\Sandbox\AIOS_habbit\.understand-anything\knowledge-graph.json`
-- **Dashboard Source / Schema files**: `@understand-anything/core/schema.ts`, `NodeInfo.tsx`, `LayerLegend.tsx`, `LearnPanel.tsx`, `store.ts`, `search.ts`
-- **Specification / Context**: `d:\Sandbox\AIOS_habbit\.agents\ORIGINAL_REQUEST.md`, `d:\Sandbox\AIOS_habbit\PROJECT.md`
-- **Criteria**: Schema validity, node summary markdown rendering & tag balance, 8 layers & 9 tour steps typing, Vietnamese search indexing compatibility.
+- **Files to review**: `src/aios_habit/claim_guard.py`, `src/aios_habit/rag_v2/synthesis.py`, `scripts/generate_ai_grounded_report.py`, `scripts/run_workspace_chat_12_questions.py`
+- **Interface contracts**: PROJECT.md / ORIGINAL_REQUEST.md
+- **Review criteria**: Correctness, dynamic abstention, lack of hardcoded answers/canned bypasses, robust claim readiness & synthesis validation under adversarial inputs
 
 ## Attack Surface
-- **Hypotheses tested**: 
-  1. Edge types match canonical `EdgeTypeSchema` or `EDGE_TYPE_ALIASES` -> FAILED (6 invalid types found: `updates`, `refers_to`, `follows_schema`, `tracks`, `tests`).
-  2. Edge schema completeness -> FAILED (missing `weight` field on all 58 edges, auto-fixed at runtime to 0.5).
-  3. Node summary Markdown rendering -> PASSED (clean UTF-8 Vietnamese strings, no broken tags).
-  4. LayerLegend.tsx 8 layers compatibility -> PASSED (valid `LayerSchema`, valid node references, modulo palette compatible).
-  5. LearnPanel.tsx 9 tour steps compatibility -> PASSED (valid `TourStepSchema`, orders 1-9, valid component pills).
-  6. SearchEngine Vietnamese indexing -> PASSED (Fuse.js indexing UTF-8 strings without encoding errors).
-- **Vulnerabilities found**: 6 unaliased edge types get dropped during graph validation.
-- **Untested angles**: Runtime WebGL canvas rendering performance on ultra-low-end GPUs.
+- **Hypotheses tested**:
+  - H1: Dynamic abstention triggers `"KHÔNG ĐỦ BẰNG CHỨNG:"` on out-of-domain queries (BQ11, BQ12, out-of-corpus queries) and empty evidence packs without crashing or hallucinating. -> CONFIRMED (PASS).
+  - H2: Corrupted evidence packs (missing text, invalid citations, evidence ID mismatch, unsupported critical literals, answer budget overflow) cause clean abstention or properly filtered grounded synthesis. -> CONFIRMED (PASS).
+  - H3: ClaimGuard handles edge cases (empty context, invalid claim types, unsupported metrics, missing readiness criteria) gracefully and blocks unproven claims fail-closed. -> CONFIRMED (PASS).
+  - H4: Scripts `generate_ai_grounded_report.py` and `run_workspace_chat_12_questions.py` run dynamically without static lookup dictionaries (`POLISHED_ANSWERS`) or hardcoded canned branches. -> CONFIRMED (PASS).
+- **Vulnerabilities found**: 0 vulnerabilities or bypasses found.
+- **Untested angles**: None.
 
 ## Loaded Skills
-- None specified explicitly.
+- Codebase Static & AST Inspection
 
 ## Key Decisions Made
-- Completed exhaustive compatibility audit.
-- Issued verdict: `REQUEST_CHANGES` due to 6 invalid edge types.
-- Generated `compatibility_report.md` and `handoff.md`.
+- Confirmed full compliance of ClaimGuard, synthesis dynamic abstention, and reporting scripts. Explicit verdict: APPROVE.
 
 ## Artifact Index
-- `d:\Sandbox\AIOS_habbit\.agents\teamwork_preview_challenger_2\compatibility_report.md` — Detailed compatibility report
-- `d:\Sandbox\AIOS_habbit\.agents\teamwork_preview_challenger_2\handoff.md` — Formal handoff report with verdict REQUEST_CHANGES
+- `.agents/teamwork_preview_challenger_2/DISPATCH.md` — Initial dispatch
+- `.agents/teamwork_preview_challenger_2/BRIEFING.md` — Agent briefing & situational awareness
+- `.agents/teamwork_preview_challenger_2/progress.md` — Liveness & task progress
+- `.agents/teamwork_preview_challenger_2/handoff.md` — 5-component handoff report

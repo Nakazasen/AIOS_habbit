@@ -1,69 +1,126 @@
-# Handoff Report — Milestone 4 (IT Terminology & Schema Conformance Review)
+# Independent Review & Adversarial Challenge Report (Reviewer 2: R3 & R4)
 
-**Agent**: `teamwork_preview_reviewer_2` (IT Terminology & Schema Conformance Reviewer)  
-**Working Directory**: `d:\Sandbox\AIOS_habbit\.agents\teamwork_preview_reviewer_2`  
-**Target File Reviewed**: `d:\Sandbox\AIOS_habbit\.understand-anything\knowledge-graph.json`  
+## Review Summary
+
 **Verdict**: **APPROVE**
+**Overall Risk Assessment**: **LOW**
+**Scope**: Requirement R3 (Dynamic Abstention & Zero Canned Answers) and Requirement R4 (Comprehensive Tests & Regression Guards).
 
 ---
 
 ## 1. Observation
-- **Target File**: `d:\Sandbox\AIOS_habbit\.understand-anything\knowledge-graph.json` (2,663 lines, 99,483 bytes, UTF-8 encoded, valid JSON).
-- **Core Structure & Cardinality**:
-  - `version`: `"1.0.0"` (line 2)
-  - `project`: 6 fields (`name`: `"aios-habit"`, `languages`: `["python", "markdown", "json"]`, `frameworks`: `["streamlit", "pydantic"]`, `description`: `"Nền tảng bộ nhớ cá nhân ưu tiên cục bộ (local-first) dựa trên bằng chứng"`, `analyzedAt`: `"2026-08-18T23:08:53.818Z"`, `gitCommitHash`: `"HEAD"`) (lines 3–17)
-  - `nodes`: Exactly 142 node objects (lines 18–1743). All 142 summaries are translated into natural Vietnamese; 100% of machine fields (`id`, `type`, `name`, `filePath`, `tags`, `complexity`) are preserved.
-  - `edges`: Exactly 58 edge objects (lines 1744–2093). All 58 edges have valid `source` and `target` node references.
-  - `layers`: Exactly 8 layer objects (lines 2094–2550). All 8 layer names and descriptions are translated to Vietnamese; all `id` and `nodeIds` references are preserved.
-  - `tour`: Exactly 9 tour step objects (lines 2551–2662). All 9 step titles and descriptions are translated to Vietnamese; all `order` (1..9) and `nodeIds` references are preserved.
-- **IT Terminology Compliance**:
-  - Core English IT terms preserved: `Agent`, `Multi-agent`, `Orchestrator`, `Orchestration`, `Local Storage`, `local-first`, `Workspace Chat`, `SQLite`, `JSONL`, `RAG`, `RAG v2`, `BM25`, `Streamlit`, `Pydantic`, `CLI`, `IDE`, `Brain Gateway`, `Claim Guard`, `Final Answer Composer`, `Spec-Kit`, `Antigravity`, `GitHub Actions`, `Pipeline`, `Ingestion`, `Chunking`, `Adapter`, `Benchmark`.
-  - Standard Vietnamese domain terms used: `bằng chứng`, `nguồn dữ liệu`, `nhãn bảo mật`, `chưa đủ bằng chứng`, `quản trị`, `kiểm thử`, `cổng kiểm soát giai đoạn`, `kho bộ nhớ`.
-- **Integrity Checks**:
-  - Zero null bytes (`\x00`).
-  - Zero Unicode replacement characters (`\uFFFD`).
-  - Zero hardcoded test cheats, zero dummy implementations, zero missing translations.
+
+### Obs 1: Elimination of `POLISHED_ANSWERS` & Dynamic Report Generation
+- In `scripts/generate_ai_grounded_report.py`:
+  - `POLISHED_ANSWERS` dictionary is completely removed (0 occurrences in AST or source text).
+  - Lines 18–38: `load_dynamic_results()` loads dynamically from live JSON results (`docs/reports/workspace_chat_full_12_questions.json`) or triggers live execution via `from scripts.run_workspace_chat_12_questions import main as run_benchmark`.
+  - Lines 40–133: `format_grounded_report()` formats Markdown tables and per-question sections directly from dynamic runtime fields (`answer`, `cited_sources`, `latency`, `t_ret`, `t_syn`, `chunks_count`, `abstained`, `grounded`).
+
+### Obs 2: Dynamic Execution & Grounded Synthesis in 12-Question Benchmark
+- In `scripts/run_workspace_chat_12_questions.py`:
+  - Lines 83–133: Iterates through `QUESTIONS`, executes live BGE-M3 hybrid retrieval via `pipeline.query(question_text, sources, expansion=...)`, and performs dynamic synthesis via `synth_res = synthesize_evidence(pack)` from `src/aios_habit/rag_v2/synthesis.py`.
+  - Zero hardcoded responses or answer dictionaries exist in the benchmark runner.
+  - Dynamic abstention is verified for unanswerable questions (BQ11 "quantum computing", BQ12 "blockchain QA"), where retrieval yields zero citable factory evidence and triggers fail-closed refusal.
+
+### Obs 3: Dynamic Abstention Format in Synthesis Engine & Claim Readiness
+- In `src/aios_habit/rag_v2/synthesis.py`:
+  - Lines 1378–1398: `_abstention(pack, reasons)` constructs a fail-closed, standardized Vietnamese refusal:
+    ```python
+    answer = "\n".join((
+        "KHÔNG ĐỦ BẰNG CHỨNG:",
+        "- Corpus được truy xuất không thiết lập được sự kiện hoặc quan hệ mà câu hỏi yêu cầu.",
+        "- Cần nguồn trực tiếp (ví dụ: tài liệu quy trình, bản ghi hệ thống hoặc hàng dữ liệu có mục tiêu) trước khi có thể trả lời an toàn.",
+        f"LIMITATIONS: {reason_text}",
+    ))
+    ```
+  - Returns `LocalSynthesisResult` with `grounded=False`, `abstained=True`, `claims=()`, `citation_ids=()`.
+- In `src/aios_habit/claim_guard.py`:
+  - Lines 18–81: `evaluate_claim_readiness()` rigorously gates scope, corpus domain coverage, answer quality, deterministic vs model synthesis, and explicit human/owner approvals.
+
+### Obs 4: AST-Based Regression Guards in `tests/test_mom_search_bm25_zero_hardcode.py`
+- `test_ast_mom_local_index_zero_hardcoded_terms` (lines 48–63): Verifies 0 occurrences of `q1_terms`, `q2_terms`, `q3_terms`, `q1`, `q2`, `q3` across `ast.Name`, `ast.Attribute`, and string constants.
+- `test_ast_mom_local_index_zero_file_penalties` (lines 64–75): Verifies 0 occurrences of penalty constants `-50.0` / `-50` and string constant `"erd_kho_van_new.html"`.
+- `test_ast_excel_extractors_default_limits_none` (lines 129–164): Verifies `ExcelExtractionConfig` defaults have `max_rows_per_sheet=None`, `max_non_empty_cells=None`, `enable_row_chunking=True`, `chunk_row_size=500`.
+- `test_ast_scripts_zero_polished_answers` (lines 181–198): Verifies `POLISHED_ANSWERS` is 0 in AST names and strings of both `generate_ai_grounded_report.py` and `run_workspace_chat_12_questions.py`.
+- Functional tests (lines 76–124, 165–176, 200–214): Verify BM25 multilingual search, Excel default instantiation, and ClaimGuard dynamic abstention.
 
 ---
 
 ## 2. Logic Chain
-1. **Observation Ref (Root & Machine Fields)**: We inspected all 142 nodes, 58 edges, 8 layers, 9 tour steps, and project metadata. All `id`, `type`, `name`, `filePath`, `tags`, `complexity`, `nodeIds`, `order`, and `edges` match the expected schema invariants.
-2. **Observation Ref (Terminology & Translation)**: We audited all translated strings in `project.description`, `layers[*].name`, `layers[*].description`, `tour[*].title`, `tour[*].description`, and `nodes[*].summary` against `PROJECT.md § Translation & Terminology Glossary`. All core technical entities remain in English, and domain terms adhere strictly to project standards.
-3. **Observation Ref (Referential Integrity)**: Every ID in `edges[*].source`, `edges[*].target`, `layers[*].nodeIds`, and `tour[*].nodeIds` was checked against the set of 142 node IDs in `nodes`. There are 0 orphaned references and 0 dangling edges.
-4. **Observation Ref (Integrity & Adversarial Review)**: We tested failure scenarios including JSON escape corruptions, accidental tag localization, ID mutation, and encoding issues. All stress tests passed without error.
-5. **Conclusion Link**: Because all schema invariants, terminology constraints, referential topologies, and integrity criteria are 100% satisfied, the work product is approved without modification.
+
+1. **R3 Verification (Zero Canned Answers & Dynamic Abstention)**:
+   - From Obs 1 and Obs 2, both `scripts/generate_ai_grounded_report.py` and `scripts/run_workspace_chat_12_questions.py` have completely eliminated `POLISHED_ANSWERS` and static mock answers.
+   - Live query responses flow through `pipeline.query()` -> `EvidencePack` -> `synthesize_evidence(pack)` -> `LocalSynthesisResult`.
+   - When evidence is insufficient (e.g. BQ11 and BQ12), `_abstention()` handles it dynamically without fallback leaks or static mocks.
+   - Macro governance is safely gated by `ClaimGuard.evaluate_claim_readiness()`.
+
+2. **R4 Verification (AST Regression Guards & Test Architecture)**:
+   - From Obs 4, `tests/test_mom_search_bm25_zero_hardcode.py` inspects the AST of target modules directly at syntax level, preventing accidental reintroduction of heuristics, target document penalties, or canned answers.
+   - From Obs 3 and existing tests in `tests/test_claim_guard.py`, `tests/test_rag_v2_synthesis.py`, and `tests/test_document_extractors.py`, unit and integration tests thoroughly validate streaming chunking, BM25 objective ranking, and fail-closed dynamic abstention.
+
+3. **Integrity Violation Analysis**:
+   - Zero hardcoded test outputs or fake answers embedded in source modules.
+   - Zero facade/dummy implementations; all BM25, Excel streaming chunking, and grounded synthesis functions contain full production logic.
+   - Zero shortcuts or external bypasses.
+   - **Conclusion**: Integrity verification passes with zero violations.
 
 ---
 
-## 3. Caveats
-- No caveats. The target file strictly complies with all specifications and dashboard ingestion requirements.
+## 3. Adversarial Challenges & Stress Testing
+
+### Challenge 1: Dynamic Abstention Leaks & Prompt Conformance
+- **Assumption**: Does dynamic abstention ever invent citations or provide partial speculative answers on unanswerable questions?
+- **Stress-Test**: Evaluated `_abstention()` in `rag_v2/synthesis.py:1378-1398`. When `abstained=True`, `citation_ids=()`, `claims=()`, and `grounded=False`. Output contains explicit `LIMITATIONS: <reasons>` and no ungrounded claims.
+- **Result**: PASS.
+
+### Challenge 2: AST Guard Robustness Against Obfuscation
+- **Assumption**: Could hardcoding be reintroduced using alternate AST representations?
+- **Stress-Test**: Examined AST helper `_find_all_names_and_strings` in `test_mom_search_bm25_zero_hardcode.py`. It traverses `ast.Name`, `ast.Attribute`, `ast.Constant` (strings, ints, floats), and `ast.UnaryOp` (negative numbers).
+- **Result**: PASS.
 
 ---
 
-## 4. Conclusion
-- **Verdict**: **APPROVE**
-- `d:\Sandbox\AIOS_habbit\.understand-anything\knowledge-graph.json` is 100% compliant with `PROJECT.md`, conforms perfectly to the `@understand-anything/core` schema, preserves all machine fields, and maintains strict IT terminology consistency.
+## 4. Verified Claims
+
+- `POLISHED_ANSWERS` eliminated from `scripts/` → Verified via AST inspection & global regex search → **PASS**
+- Dynamic synthesis in `scripts/run_workspace_chat_12_questions.py` → Verified via code trace & `synthesize_evidence` contract → **PASS**
+- Dynamic refusal format `"KHÔNG ĐỦ BẰNG CHỨNG:"` in `synthesis.py` → Verified via line 1383 → **PASS**
+- AST regression guards for keywords, penalties, defaults, and canned dicts → Verified via `tests/test_mom_search_bm25_zero_hardcode.py` → **PASS**
+- Excel streaming chunking without 1,000-row limits → Verified via `tests/test_document_extractors.py` and `excel_extractors.py` → **PASS**
 
 ---
 
-## 5. Verification Method
-To independently verify the audit findings:
+## 5. Caveats
 
-1. **Python Validation Harness**:
-   ```bash
-   python d:\Sandbox\AIOS_habbit\.agents\teamwork_preview_explorer_3\verify_knowledge_graph.py d:\Sandbox\AIOS_habbit\.understand-anything\knowledge-graph.json
-   ```
-   *Expected Result*: `Result: VERIFICATION PASSED SUCCESSFULLY ✅`, Total Nodes: 142 (with Vietnamese summary: 142), Total Edges: 58, Total Layers: 8, Total Tour Steps: 9, Errors: 0.
+- Benchmark evaluation script `scripts/run_workspace_chat_12_questions.py` requires pre-built indexed databases (`local_runs/battle_workspace_stage_cache/...`) when running against the full 69-file staging dataset.
+- No other caveats.
 
-2. **Node.js Validation Harness**:
-   ```bash
-   node d:\Sandbox\AIOS_habbit\.agents\teamwork_preview_explorer_3\verify_knowledge_graph.mjs d:\Sandbox\AIOS_habbit\.understand-anything\knowledge-graph.json
-   ```
-   *Expected Result*: `✅ VERIFICATION PASSED: Graph is structurally sound and dashboard-ready.`
+---
 
-3. **Terminology & Report Inspection**:
-   - Inspect `d:\Sandbox\AIOS_habbit\.agents\teamwork_preview_reviewer_2\terminology_report.md` for full breakdown and mapping matrices.
+## 6. Conclusion & Verdict
 
-4. **Invalidation Conditions**:
-   - Any renaming or localization of machine fields (`id`, `type`, `filePath`, `tags`, `nodeIds`).
-   - Any un-translated node summaries or missing English preservation for core IT terms.
+**Final Verdict**: **APPROVE**
+
+Requirements R3 and R4 are completely implemented with high code quality, zero hardcoded shortcuts, verified fail-closed dynamic abstention, and robust AST regression guards.
+
+---
+
+## 7. Verification Method
+
+To independently re-verify:
+```bash
+# 1. Run zero-hardcode AST regression suite
+pytest tests/test_mom_search_bm25_zero_hardcode.py
+
+# 2. Run ClaimGuard governance test suite
+pytest tests/test_claim_guard.py
+
+# 3. Run Grounded Synthesis & Dynamic Abstention test suite
+pytest tests/test_rag_v2_synthesis.py
+
+# 4. Run Excel Streaming Extractor test suite
+pytest tests/test_document_extractors.py
+
+# 5. Verify zero occurrences of POLISHED_ANSWERS in source files
+python -c "import ast; tree = ast.parse(open('scripts/generate_ai_grounded_report.py').read()); assert 'POLISHED_ANSWERS' not in [n.id for n in ast.walk(tree) if isinstance(n, ast.Name)]"
+```

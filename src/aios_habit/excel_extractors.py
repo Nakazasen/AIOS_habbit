@@ -12,11 +12,11 @@ from typing import Any, BinaryIO
 
 @dataclass(frozen=True)
 class ExcelExtractionConfig:
-    max_file_bytes: int = 10 * 1024 * 1024
-    max_uncompressed_bytes: int = 50 * 1024 * 1024
-    max_sheets: int = 12
-    max_rows_per_sheet: int = 1000
-    max_non_empty_cells: int = 20_000
+    max_file_bytes: int = 50 * 1024 * 1024
+    max_uncompressed_bytes: int = 200 * 1024 * 1024
+    max_sheets: int = 30
+    max_rows_per_sheet: int | None = None
+    max_non_empty_cells: int | None = None
     max_columns_per_region: int = 256
     max_images: int = 24
     max_image_bytes: int = 8 * 1024 * 1024
@@ -24,6 +24,9 @@ class ExcelExtractionConfig:
     max_image_pixels: int = 24_000_000
     max_charts: int = 48
     max_header_rows: int = 3
+    chunk_row_size: int = 500
+    enable_row_chunking: bool = True
+    repeat_headers_in_chunks: bool = True
 
 
 @dataclass(frozen=True)
@@ -49,6 +52,8 @@ class ExcelTableRegion:
     header_rows: tuple[tuple[str, ...], ...] = ()
     headers: tuple[str, ...] = ()
     merged_ranges: tuple[str, ...] = ()
+    chunk_index: int = 0
+    total_chunks: int = 1
 
 
 @dataclass(frozen=True)
@@ -214,30 +219,60 @@ def _regions(sheet: str, rows: list[tuple[int, dict[int, str]]], merges: list[An
             selected = [(number, values) for number, values in selected if values]
             if not selected:
                 continue
-            start_row, end_row = selected[0][0], selected[-1][0]
+            table_start_row, table_end_row = selected[0][0], selected[-1][0]
             depth = _header_depth(selected, first, last, merges, config.max_header_rows)
-            header_rows = tuple(tuple(values.get(column, "") for column in range(first, last + 1)) for _, values in selected[:depth])
-            relevant = [item for item in merges if not (item.max_row < start_row or item.min_row > end_row or item.max_col < first or item.min_col > last)]
-            merge_anchors = {(item.min_row, item.min_col): item for item in relevant}
-            cells: list[ExcelCell] = []
-            matrix: list[tuple[str, ...]] = []
-            for row_number, values in selected:
-                matrix.append(tuple(values.get(column, "") for column in range(first, last + 1)))
-                for column, text in values.items():
-                    merged = merge_anchors.get((row_number, column))
-                    cells.append(ExcelCell(
-                        row_number, column, _coordinate(row_number, column), text,
-                        row_number < start_row + depth,
-                        merged.max_row - merged.min_row + 1 if merged else 1,
-                        merged.max_col - merged.min_col + 1 if merged else 1,
-                        str(merged) if merged else "",
-                    ))
+            header_selected = selected[:depth]
+            data_selected = selected[depth:]
             width = last - first + 1
-            output.append(ExcelTableRegion(
-                sheet, f"{_coordinate(start_row, first)}:{_coordinate(end_row, last)}",
-                (start_row, end_row), (first, last), tuple(matrix), tuple(cells),
-                header_rows, _headers(header_rows, width) if depth else (), tuple(map(str, relevant)),
-            ))
+            header_rows = tuple(tuple(values.get(column, "") for column in range(first, last + 1)) for _, values in header_selected)
+            headers = _headers(header_rows, width) if depth else ()
+            relevant = [item for item in merges if not (item.max_row < table_start_row or item.min_row > table_end_row or item.max_col < first or item.min_col > last)]
+            merge_anchors = {(item.min_row, item.min_col): item for item in relevant}
+
+            chunk_size = config.chunk_row_size if (config.chunk_row_size is not None and config.chunk_row_size > 0) else (len(data_selected) or 1)
+            if config.enable_row_chunking and data_selected and len(data_selected) > chunk_size:
+                chunk_slices = [data_selected[i:i + chunk_size] for i in range(0, len(data_selected), chunk_size)]
+            else:
+                chunk_slices = [data_selected]
+
+            total_chunks = len(chunk_slices)
+            for chunk_index, chunk_data in enumerate(chunk_slices):
+                if chunk_index == 0:
+                    chunk_start_row = table_start_row
+                    chunk_end_row = chunk_data[-1][0] if chunk_data else table_end_row
+                else:
+                    chunk_start_row = chunk_data[0][0]
+                    chunk_end_row = chunk_data[-1][0]
+
+                chunk_relevant = [item for item in relevant if not (item.max_row < chunk_start_row or item.min_row > chunk_end_row or item.max_col < first or item.min_col > last)]
+
+                if config.repeat_headers_in_chunks and depth > 0:
+                    rows_for_chunk = header_selected + chunk_data
+                else:
+                    rows_for_chunk = (header_selected if chunk_index == 0 else []) + chunk_data
+
+                cells: list[ExcelCell] = []
+                matrix: list[tuple[str, ...]] = []
+                for row_number, values in rows_for_chunk:
+                    matrix.append(tuple(values.get(column, "") for column in range(first, last + 1)))
+                    is_hdr = (row_number < table_start_row + depth)
+                    if chunk_index == 0 or not is_hdr:
+                        for column, text in values.items():
+                            merged = merge_anchors.get((row_number, column))
+                            cells.append(ExcelCell(
+                                row_number, column, _coordinate(row_number, column), text,
+                                is_hdr,
+                                merged.max_row - merged.min_row + 1 if merged else 1,
+                                merged.max_col - merged.min_col + 1 if merged else 1,
+                                str(merged) if merged else "",
+                            ))
+
+                output.append(ExcelTableRegion(
+                    sheet, f"{_coordinate(chunk_start_row, first)}:{_coordinate(chunk_end_row, last)}",
+                    (chunk_start_row, chunk_end_row), (first, last), tuple(matrix), tuple(cells),
+                    header_rows, headers, tuple(map(str, chunk_relevant)),
+                    chunk_index=chunk_index, total_chunks=total_chunks,
+                ))
     return output
 
 
@@ -321,14 +356,14 @@ def _extract_openpyxl(data: bytes, suffix: str, config: ExcelExtractionConfig, i
         result.sheet_names = tuple(workbook.sheetnames)
         cell_count = image_bytes = 0
         for sheet_index, sheet_name in enumerate(workbook.sheetnames):
-            if sheet_index >= config.max_sheets:
+            if config.max_sheets is not None and sheet_index >= config.max_sheets:
                 result.truncated_reasons.append(f"sheet limit: {config.max_sheets}")
                 break
             sheet = workbook[sheet_name]
             rows: list[tuple[int, dict[int, str]]] = []
             stop = False
             for row_number, row in enumerate(sheet.iter_rows(), 1):
-                if row_number > config.max_rows_per_sheet:
+                if config.max_rows_per_sheet is not None and row_number > config.max_rows_per_sheet:
                     result.truncated_reasons.append(f"row limit on {sheet_name}: {config.max_rows_per_sheet}")
                     break
                 values: dict[int, str] = {}
@@ -337,7 +372,7 @@ def _extract_openpyxl(data: bytes, suffix: str, config: ExcelExtractionConfig, i
                     if not text:
                         continue
                     cell_count += 1
-                    if cell_count > config.max_non_empty_cells:
+                    if config.max_non_empty_cells is not None and cell_count > config.max_non_empty_cells:
                         result.truncated_reasons.append(f"cell limit: {config.max_non_empty_cells}")
                         stop = True
                         break
@@ -349,18 +384,18 @@ def _extract_openpyxl(data: bytes, suffix: str, config: ExcelExtractionConfig, i
             result.regions.extend(_regions(sheet_name, rows, list(sheet.merged_cells.ranges), config))
             if include_charts:
                 for chart in getattr(sheet, "_charts", ()):
-                    if len(result.charts) >= config.max_charts:
+                    if config.max_charts is not None and len(result.charts) >= config.max_charts:
                         result.truncated_reasons.append(f"chart limit: {config.max_charts}")
                         break
                     names, references = _chart_series(chart)
                     result.charts.append(ExcelChartMetadata(sheet_name, _anchor(chart.anchor), len(result.charts) + 1, type(chart).__name__, _chart_title(chart), names, references))
             if include_images:
                 for image in getattr(sheet, "_images", ()):
-                    if len(result.images) >= config.max_images:
+                    if config.max_images is not None and len(result.images) >= config.max_images:
                         result.truncated_reasons.append(f"image limit: {config.max_images}")
                         break
                     width, height = int(getattr(image, "width", 0) or 0), int(getattr(image, "height", 0) or 0)
-                    if width and height and width * height > config.max_image_pixels:
+                    if width and height and config.max_image_pixels is not None and width * height > config.max_image_pixels:
                         result.warnings.append(f"skipped oversized image on {sheet_name}: {width}x{height}")
                         continue
                     try:
@@ -368,7 +403,7 @@ def _extract_openpyxl(data: bytes, suffix: str, config: ExcelExtractionConfig, i
                     except Exception as exc:
                         result.warnings.append(f"image read failed on {sheet_name}: {exc}")
                         continue
-                    if len(payload) > config.max_image_bytes or image_bytes + len(payload) > config.max_total_image_bytes:
+                    if (config.max_image_bytes is not None and len(payload) > config.max_image_bytes) or (config.max_total_image_bytes is not None and image_bytes + len(payload) > config.max_total_image_bytes):
                         result.truncated_reasons.append("embedded image byte guard")
                         continue
                     image_bytes += len(payload)
@@ -411,26 +446,29 @@ def _extract_xls(data: bytes, config: ExcelExtractionConfig) -> ExcelExtraction:
         workbook = xlrd.open_workbook(file_contents=data, on_demand=True, formatting_info=True)
         result.sheet_names = tuple(workbook.sheet_names())
         cell_count = 0
-        for sheet_index in range(min(workbook.nsheets, config.max_sheets)):
+        sheet_count = workbook.nsheets if config.max_sheets is None else min(workbook.nsheets, config.max_sheets)
+        for sheet_index in range(sheet_count):
             sheet = workbook.sheet_by_index(sheet_index)
             rows: list[tuple[int, dict[int, str]]] = []
-            for row_index in range(min(sheet.nrows, config.max_rows_per_sheet)):
+            row_limit = sheet.nrows if config.max_rows_per_sheet is None else min(sheet.nrows, config.max_rows_per_sheet)
+            for row_index in range(row_limit):
                 values: dict[int, str] = {}
-                for column_index in range(min(sheet.ncols, config.max_columns_per_region)):
+                col_limit = sheet.ncols if config.max_columns_per_region is None else min(sheet.ncols, config.max_columns_per_region)
+                for column_index in range(col_limit):
                     text = normalize_cell_value(sheet.cell_value(row_index, column_index))
                     if text:
                         cell_count += 1
-                        if cell_count > config.max_non_empty_cells:
+                        if config.max_non_empty_cells is not None and cell_count > config.max_non_empty_cells:
                             result.truncated_reasons.append(f"cell limit: {config.max_non_empty_cells}")
                             break
                         values[column_index + 1] = text
                 if values:
                     rows.append((row_index + 1, values))
-                if cell_count > config.max_non_empty_cells:
+                if config.max_non_empty_cells is not None and cell_count > config.max_non_empty_cells:
                     break
             merges = [_LegacyMerge(rlo + 1, rhi, clo + 1, chi) for rlo, rhi, clo, chi in getattr(sheet, "merged_cells", ())]
             result.regions.extend(_regions(sheet.name, rows, merges, config))
-        if workbook.nsheets > config.max_sheets:
+        if config.max_sheets is not None and workbook.nsheets > config.max_sheets:
             result.truncated_reasons.append(f"sheet limit: {config.max_sheets}")
     except Exception as exc:
         result.error = f"legacy Excel read failed: {exc}"

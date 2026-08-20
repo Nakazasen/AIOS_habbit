@@ -381,21 +381,26 @@ def _extract_excel(path: Path) -> list[ExtractionResult]:
     status = "extracted_partial" if extracted.partial else "extracted_success"
     results: list[ExtractionResult] = []
     for region in extracted.regions:
+        chunk_indicator = f" (Chunk {region.chunk_index + 1}/{region.total_chunks})" if region.total_chunks > 1 else ""
         lines = [
             f"Excel sheet: {region.sheet}",
-            f"Table range: {region.cell_range}",
+            f"Table range: {region.cell_range}{chunk_indicator}",
         ]
         if region.headers:
             lines.append("Columns: " + " | ".join(region.headers))
-        data_offset = len(region.header_rows)
-        for offset, row in enumerate(region.rows[data_offset:], start=region.row_range[0] + data_offset):
+        has_repeated_headers = bool(region.header_rows and region.rows[:len(region.header_rows)] == region.header_rows)
+        data_rows = region.rows[len(region.header_rows):] if has_repeated_headers else region.rows
+        data_offset = len(region.header_rows) if region.chunk_index == 0 else 0
+        start_row = region.row_range[0] + data_offset
+        for offset, row in enumerate(data_rows, start=start_row):
             lines.append(f"Row {offset}: " + " | ".join(row))
-        if not region.rows[data_offset:] and region.rows:
+        if not data_rows and region.rows:
             lines.extend(" | ".join(row) for row in region.rows)
+        section_name = f"table {region.cell_range} (chunk {region.chunk_index + 1}/{region.total_chunks})" if region.total_chunks > 1 else f"table {region.cell_range}"
         results.append(ExtractionResult(
             "\n".join(lines), file_type, "excel_structured", status,
             warning=common_warning,
-            section=f"table {region.cell_range}",
+            section=section_name,
             sheet=region.sheet,
             row_range=f"{region.row_range[0]}-{region.row_range[1]}",
             element_type="excel_table_region",

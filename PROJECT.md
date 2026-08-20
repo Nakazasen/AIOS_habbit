@@ -1,44 +1,57 @@
-# Project: Vietnamese Localization of Understand Knowledge Graph (`knowledge-graph.json`)
+# Project: AIOS_habbit MOM System Upgrade & Standardization
 
-## Architecture & System Overview
-The target artifact is `.understand-anything/knowledge-graph.json` in the `AIOS_habbit` repository.
-This file is ingested by:
-- The Understand Vite dev server (`packages/dashboard/vite.config.ts`)
-- React frontend components (`App.tsx`, `store.ts`, `GraphView.tsx`, `NodeInfo.tsx`, `LayerLegend.tsx`, `LearnPanel.tsx`)
-- Assistant skills (`/understand-chat`, `/understand-explain`, `/understand-onboard`)
-
-### Structural Analysis
-- **Root Keys**: `"version"`, `"project"`, `"nodes"`, `"edges"`, `"layers"`, `"tour"`
-- **Nodes**: Exactly 142 file nodes. All `summary` fields localized into Vietnamese with preserved IT terms.
-- **Edges**: 58 edges. Canonical edge types aligned with `@understand-anything/core/schema.ts` and explicit `weight: 0.5`.
-- **Layers**: 8 layer objects. Names and descriptions localized into Vietnamese.
-- **Tour**: 9 tour step objects. Titles and descriptions localized into Vietnamese.
-- **Project Metadata**: `project.description` localized into Vietnamese.
+## Architecture
+AIOS_habbit is an enterprise AI assistant and knowledge retrieval system for factory and operations management (MOM / MES / WMS).
+The architecture comprises:
+- **MOM Search & Retrieval Engine** (`src/aios_habit/mom_local_index.py`, `src/aios_habit/mom_coverage.py`): In-memory indexing and BM25 / TF-IDF ranking over local operational documents (PDFs, HTML ERDs, Excel specifications).
+- **Multi-Format Extraction Pipeline** (`src/aios_habit/excel_extractors.py`, `src/aios_habit/document_extractors.py`): Deep tabular and document extractors supporting streaming row-chunking, multi-level headers, and OCR/image extraction.
+- **Dynamic Evidence & Synthesis Subsystem** (`src/aios_habit/rag_v2/evidence.py`, `src/aios_habit/rag_v2/synthesis.py`, `src/aios_habit/claim_guard.py`): Fail-closed dynamic evidence evaluation and abstention without fact leakage or canned templates.
+- **Reporting & Evaluation Workflows** (`scripts/generate_ai_grounded_report.py`, `scripts/run_workspace_chat_12_questions.py`): Live benchmark evaluation over 12 standard operational queries.
 
 ## Feature Inventory
-| # | Feature | Description | Milestone | Source | Status |
-|---|---------|-------------|-----------|--------|--------|
-| F1 | Layers & Tour Translation | Translate 8 layers (`name`, `description`) and 9 tour steps (`title`, `description`) + `project.description` into natural Vietnamese while preserving core IT terms. | M1 | Survey (Explorer 1) | DONE |
-| F2 | Node Summaries Chunk 1 | Translate summaries of nodes 1–35 (`.agents/`, `.github/`, `.specify/feature.json`) into Vietnamese. | M2.1 | Survey (Explorer 2) | DONE |
-| F3 | Node Summaries Chunk 2 | Translate summaries of nodes 36–71 (`.specify/`, `00_governance/`, `01_design/`, `02_sources/`, `03_evidence_registry/`, `09_handover/`, `10_schemas/`). | M2.2 | Survey (Explorer 2) | DONE |
-| F4 | Node Summaries Chunk 3 | Translate summaries of nodes 72–106 (`11_templates/`, root docs/scripts, `config/`, `docs/rag_v2/`, `docs/reports/`, `docs/requirements/`). | M2.3 | Survey (Explorer 2) | DONE |
-| F5 | Node Summaries Chunk 4 | Translate summaries of nodes 107–142 (`docs/security/`, `specs/`, `tests/fixtures/`, `scripts/`, `src/aios_habit/` Python modules). | M2.4 | Survey (Explorer 2) | DONE |
-| F6 | Master Assembly & Verification | Merge all translated chunks, overwrite `.understand-anything/knowledge-graph.json`, run automated verification harness (`verify_knowledge_graph.py` & `.mjs`), check JSON syntax, encoding, schema, and referential integrity. | M3 | Survey (Explorer 3) | DONE |
-| F7 | Multi-Reviewer, Adversarial & Forensic Audit Gate | Independent linguistic review, IT terminology compliance review, adversarial challenger check, and forensic audit verification. | M4 | Project Quality Standard | DONE |
+| # | Feature | Description | Milestone | Source |
+|---|---|---|---|---|
+| F1 | MOM Search Hardcode Removal | Remove `q1_terms`, `q2_terms`, `q3_terms`, artificial query boosts, and `-50.0` score penalty on `erd_kho_van_new.html` | M1 | ORIGINAL_REQUEST §R1 |
+| F2 | BM25 / TF-IDF Hybrid Search | Implement objective in-memory BM25 ranker with CJK sub-tokenization, document length normalization, and exact phrase bonus | M1 | ORIGINAL_REQUEST §R1 |
+| F3 | Excel Hard Limit Removal | Remove `max_rows_per_sheet = 1000` and `max_non_empty_cells = 20_000` hard caps in `ExcelExtractionConfig` | M2 | ORIGINAL_REQUEST §R2 |
+| F4 | Streaming Row-Chunking | Implement table partitioning into 500-row chunks with repeated hierarchical headers, `chunk_index`, and exact `row_range` | M2 | ORIGINAL_REQUEST §R2 |
+| F5 | Remove Canned Answer Dictionaries | Remove `POLISHED_ANSWERS`, static scores, and latencies from `scripts/generate_ai_grounded_report.py` | M3 | ORIGINAL_REQUEST §R3 |
+| F6 | Dynamic Abstention Integration | Replace canned refusal strings and query overrides in `scripts/run_workspace_chat_12_questions.py` with dynamic `synthesize_evidence()` abstention | M3 | ORIGINAL_REQUEST §R3 |
+| F7 | MOM Search Integrity Tests | Test MOM search without hardcoded heuristics and verify objective ranking across queries | M4 | ORIGINAL_REQUEST §R4 |
+| F8 | Large Excel Chunking Tests | Automated tests verifying >1,500 row Excel spreadsheets are extracted across chunks with repeated headers and zero data loss | M4 | ORIGINAL_REQUEST §R4 |
+| F9 | Dynamic Abstention Verification Tests | Automated tests verifying dynamic refusal generation and lack of static `POLISHED_ANSWERS` | M4 | ORIGINAL_REQUEST §R4 |
+| F10 | 100% Pytest Pass Rate | Verify zero failures and zero errors across the entire repository test suite | M4 | ORIGINAL_REQUEST §R4 |
 
 ## Milestones
 | # | Name | Scope | Dependencies | Status |
-|---|------|-------|-------------|--------|
-| M1 | Layers & Tour Localization | Translate 8 layers and 9 tour steps + project description | None | DONE |
-| M2.1 | Nodes Chunk 1 (1–35) | Translate summaries for nodes 1–35 | None | DONE |
-| M2.2 | Nodes Chunk 2 (36–71) | Translate summaries for nodes 36–71 | None | DONE |
-| M2.3 | Nodes Chunk 3 (72–106) | Translate summaries for nodes 72–106 | None | DONE |
-| M2.4 | Nodes Chunk 4 (107–142) | Translate summaries for nodes 107–142 | None | DONE |
-| M3 | Assembly & Harness Execution | Merge translated chunks into `.understand-anything/knowledge-graph.json` and run verification scripts | M1, M2.1, M2.2, M2.3, M2.4 | DONE |
-| M4 | Comprehensive Verification Gate | Reviewer 1 (Language), Reviewer 2 (IT Terms), Challenger 1 (Parity), Challenger 2 (Dashboard), Auditor (Integrity) | M3 | DONE |
+|---|---|---|---|---|
+| 1 | M1: MOM Search Standardization | Refactor `src/aios_habit/mom_local_index.py` to remove hardcodes and implement objective BM25 | none | PLANNED |
+| 2 | M2: Excel Streaming Row-Chunking | Refactor `src/aios_habit/excel_extractors.py` and `src/aios_habit/document_extractors.py` | none | PLANNED |
+| 3 | M3: Dynamic Abstention & Script Cleanup | Refactor `scripts/generate_ai_grounded_report.py` and `scripts/run_workspace_chat_12_questions.py` | none | PLANNED |
+| 4 | M4: Comprehensive E2E & Regression Suite | Add new unit/integration tests in `tests/` and verify full suite passes 100% | M1, M2, M3 | PLANNED |
 
-## Automated Verification Results
-- `verify_knowledge_graph.py`: 100% PASS (0 syntax errors, 0 orphaned references, UTF-8 clean).
-- `verify_knowledge_graph.mjs`: 100% PASS (Node.js JSON.parse valid, schema matched).
-- Forensic Audit Verdict: CLEAN (Zero integrity violations, zero mock/dummy strings).
-- Reviewer Verdicts: 100% APPROVE.
+## Interface Contracts
+### `mom_local_index.py` ↔ Callers (`mom_coverage.py`, `mom_benchmark.py`, `tests/`)
+- Function: `search_mom_index(query: str, limit: int = 5, index_path: str | Path = INDEX_FILE) -> list[MomSearchHit]`
+- Structure: `MomSearchHit(score: float, matched_terms: list[str], chunk: MomChunk)`
+- Scoring semantics: Non-negative BM25 / TF-IDF score based strictly on query term overlap, term frequency, inverse document frequency, and exact phrase bonus.
+
+### `excel_extractors.py` ↔ Callers (`document_extractors.py`, `rag_v2/converters.py`)
+- Dataclass: `ExcelTableRegion(sheet: str, cell_range: str, headers: list[str], header_rows: list[list[str]], row_range: tuple[int, int], rows: list[list[Any]], chunk_index: int = 0, total_chunks: int = 1)`
+- Dataclass: `ExcelExtractionConfig(..., max_rows_per_sheet: int | None = None, max_non_empty_cells: int | None = None, chunk_row_size: int = 500, enable_row_chunking: bool = True, repeat_headers_in_chunks: bool = True)`
+
+### `run_workspace_chat_12_questions.py` & `generate_ai_grounded_report.py` ↔ `rag_v2`
+- Function: `synthesize_evidence(pack: EvidencePack) -> LocalSynthesisResult`
+- Behavior: Queries with insufficient ground truth produce `LocalSynthesisResult(abstained=True, grounded=False)` with structured `"KHÔNG ĐỦ BẰNG CHỨNG:"` output.
+
+## Code Layout
+- `src/aios_habit/mom_local_index.py`: In-memory MOM document indexing and BM25 search.
+- `src/aios_habit/excel_extractors.py`: Excel workbook extractor with streaming row-chunking.
+- `src/aios_habit/document_extractors.py`: Unified multi-modal document extraction adapter.
+- `scripts/generate_ai_grounded_report.py`: Grounded benchmark report generator.
+- `scripts/run_workspace_chat_12_questions.py`: End-to-end evaluation runner.
+- `tests/test_mom_local_pilot.py`: MOM local index pilot tests.
+- `tests/test_mom_pdf_ingestion_retrieval.py`: MOM retrieval ingestion tests.
+- `tests/test_document_extractors.py`: Document & Excel extractor unit tests.
+- `tests/test_workspace_chat_excel_ingest.py`: Workspace chat excel ingestion tests.
+- `tests/test_mom_upgrade_acceptance.py`: Comprehensive acceptance test suite for R1–R4.

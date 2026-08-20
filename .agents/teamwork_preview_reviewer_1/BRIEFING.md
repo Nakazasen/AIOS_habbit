@@ -1,45 +1,65 @@
-# BRIEFING — 2026-08-19T06:25:00+07:00
+# BRIEFING — 2026-08-20T13:42:00Z
 
 ## Mission
-Conduct an in-depth linguistic review of all Vietnamese translations in knowledge-graph.json (project description, 8 layers, 9 tour steps, 142 node summaries).
+Independently review Requirement R1 (MOM Search BM25) and Requirement R2 (Excel Streaming Row-Chunking) objectively and adversarially, verifying correctness, integrity, and test coverage.
 
 ## 🔒 My Identity
-- Archetype: reviewer / critic
-- Roles: reviewer, critic (Linguistic Quality & Phrasing Reviewer)
+- Archetype: reviewer_and_critic
+- Roles: reviewer, critic
 - Working directory: d:\Sandbox\AIOS_habbit\.agents\teamwork_preview_reviewer_1
-- Original parent: 28382724-02e9-4154-af8f-a269659327ea
-- Milestone: preview_linguistic_review
+- Original parent: 085caf98-0e6e-4709-bce0-a3cf6358fe59
+- Milestone: M1 Review (R1 & R2)
 - Instance: 1 of 1
 
 ## 🔒 Key Constraints
 - Review-only — do NOT modify implementation code
-- Check project.description, 8 layers, 9 tour steps, 142 node summaries for grammar, tone, natural phrasing, untranslated English, and encoding issues
-- Issue verdict APPROVE or REQUEST_CHANGES in handoff.md
+- Actively check for integrity violations (hardcoded test results, facade implementations, bypassed tasks, fabricated logs)
+- Evidence-based findings only
+- Issue an explicit verdict: APPROVE or REQUEST_CHANGES
 
 ## Current Parent
-- Conversation ID: 28382724-02e9-4154-af8f-a269659327ea
-- Updated: not yet
+- Conversation ID: 085caf98-0e6e-4709-bce0-a3cf6358fe59
+- Updated: 2026-08-20T13:42:00Z
 
 ## Review Scope
-- **Files to review**: d:\Sandbox\AIOS_habbit\.understand-anything\knowledge-graph.json
-- **Interface contracts**: d:\Sandbox\AIOS_habbit\PROJECT.md, d:\Sandbox\AIOS_habbit\.agents\ORIGINAL_REQUEST.md
-- **Review criteria**: Vietnamese linguistic quality, grammar, natural phrasing, technical term consistency, absence of untranslated placeholders, absence of mojibake/corrupted UTF-8.
+- **Files reviewed**:
+  - `src/aios_habit/mom_local_index.py`
+  - `src/aios_habit/excel_extractors.py`
+  - `src/aios_habit/document_extractors.py`
+  - `src/aios_habit/rag_v2/converters.py`
+  - `src/aios_habit/workspace_chat_excel.py`
+  - `tests/test_mom_search_bm25_zero_hardcode.py`
+  - `tests/test_mom_local_pilot.py`
+  - `tests/test_document_extractors.py`
+  - `tests/test_mom_pdf_ingestion_retrieval.py`
+  - `tests/test_workspace_chat_excel_ingest.py`
+- **Interface contracts / Requirements**:
+  - `d:\Sandbox\AIOS_habbit\.agents\ORIGINAL_REQUEST.md` (R1, R2)
+  - `C:\Users\Admin\.gemini\antigravity\brain\085caf98-0e6e-4709-bce0-a3cf6358fe59\PROJECT.md`
+- **Review criteria**:
+  - Complete removal of `q1_terms`, `q2_terms`, `q3_terms`, artificial multipliers, `-50.0` penalties
+  - BM25 mathematical correctness ($k_1=1.5, b=0.75$), CJK n-gram & underscore tokenization
+  - Excel streaming row-chunking (`chunk_row_size=500`), repeated headers, default limits `None`
+  - Anti-cheating & integrity verification
 
 ## Review Checklist
-- **Items reviewed**: project.description, 8 layers, 9 tour steps, 142 node summaries in `.understand-anything/knowledge-graph.json`
+- **Items reviewed**: R1 (MOM Search BM25), R2 (Excel Streaming Extractor), Test Suites
 - **Verdict**: APPROVE
 - **Unverified claims**: None
 
 ## Attack Surface
-- **Hypotheses tested**: Untranslated placeholders, machine translation artifacts, broken UTF-8/mojibake, integrity bypasses
-- **Vulnerabilities found**: None
-- **Untested angles**: Structural UI rendering (handled by sibling reviewer/auditor)
+- **Hypotheses tested**:
+  - Residual hardcoded identifiers/penalties: Passed (AST & regex verified 0 occurrences)
+  - Division by zero / negative score in BM25: Passed (safe bounds & non-negative clamping verified)
+  - CJK multilingual & underscore tokenization accuracy: Passed (character n-grams 1..4 & underscore splitting verified)
+  - Empty or boundary Excel sheets with streaming chunking: Passed (slice bounds & coordinate ranges verified)
+  - Disconnected tables and multi-row headers: Passed (hierarchical headers & region metadata verified)
+- **Vulnerabilities found**: 0 critical, 0 integrity violations
+- **Untested angles**: Opt-in legacy xlrd with corrupted binary formats (handled gracefully with fail-soft dependency missing status)
 
 ## Key Decisions Made
-- Confirmed complete translation coverage across all 142 nodes, 8 layers, 9 tour steps, and project description.
-- Evaluated phrasing against Vietnamese technical documentation standards and project glossary.
-- Issued verdict `APPROVE` in `handoff.md` and detailed findings in `review_report.md`.
+- Confirmed full compliance of R1 and R2 with acceptance criteria. Issued verdict APPROVE.
 
 ## Artifact Index
-- d:\Sandbox\AIOS_habbit\.agents\teamwork_preview_reviewer_1\review_report.md — Detailed linguistic review findings
-- d:\Sandbox\AIOS_habbit\.agents\teamwork_preview_reviewer_1\handoff.md — 5-component handoff report
+- `d:\Sandbox\AIOS_habbit\.agents\teamwork_preview_reviewer_1\handoff.md` — Final handoff report
+- `d:\Sandbox\AIOS_habbit\.agents\teamwork_preview_reviewer_1\progress.md` — Progress tracker

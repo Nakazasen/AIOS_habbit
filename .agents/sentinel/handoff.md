@@ -1,37 +1,35 @@
-# Sentinel Handoff Report
+# Sentinel Handoff Report: AIOS_habbit MOM System Comprehensive Upgrade
 
 ## Observation
-- User requested translating the entire contents of `.understand-anything/knowledge-graph.json` (layers, tour steps, and all node summaries) for the AIOS_habbit project from English into natural Vietnamese while strictly preserving core IT terminology (e.g. Agent, Local Storage, Orchestration, Framework, Dashboard).
-- Request was recorded verbatim in `d:\Sandbox\AIOS_habbit\.agents\ORIGINAL_REQUEST.md`.
-- Task was routed to `teamwork_preview_orchestrator` (General Orchestration) to manage a large-scale swarm for parallel processing and strict quality gating.
-- Swarm deployed Explorers (1–3), Workers (1–7), Reviewers (1–2), Challengers (1–2), and Forensic Auditor.
-- The resulting `.understand-anything/knowledge-graph.json` contains:
-  - 8 localized architecture layers.
-  - 9 localized tour steps with rich markdown descriptions.
-  - 142 localized node file summaries.
-  - 58 schema-compliant canonical edges.
-- Sentinel-level independent Victory Audit was conducted by `teamwork_preview_victory_auditor_2` and returned an unequivocal verdict of **VICTORY CONFIRMED**.
+- The user requested a comprehensive modification and hardening package for the MOM system in `AIOS_habbit` covering 4 key requirements:
+  1. R1: Total elimination of search heuristics and hardcoded lists (`q1_terms`, `q2_terms`, `q3_terms`, artificial score multipliers, `-50.0` penalties) in `src/aios_habit/mom_local_index.py`, standardized to objective BM25.
+  2. R2: Upgrade Excel extractor in `src/aios_habit/excel_extractors.py` to unbounded streaming row-chunking (>1000 rows, repeated headers).
+  3. R3: Standardization of dynamic abstention and removal of canned answers (`POLISHED_ANSWERS`) in `scripts/generate_ai_grounded_report.py` and `scripts/run_workspace_chat_12_questions.py`.
+  4. R4: Comprehensive zero-regression testing with 100% pass across test suite.
+- Swarm orchestration was executed by `teamwork_preview_orchestrator` managing explorers, workers, reviewers, and challengers.
+- Independent Victory Auditor conducted a 3-phase audit and confirmed victory (`VICTORY CONFIRMED`).
 
 ## Logic Chain
-1. **Routing & Dispatch**: The task required comprehensive multi-agent partitioning and validation for large-scale JSON translation. Dispatched `teamwork_preview_orchestrator`.
-2. **Sentinel Supervision**: Established background monitoring crons for 8-minute progress reporting and 10-minute liveness checking.
-3. **Execution & Parallel Workers**:
-   - M1: Layers & Tour localized by Worker 1.
-   - M2.1–M2.4: 142 Nodes partitioned and translated in parallel by Workers 2–5 with strict adherence to the project IT glossary (`PROJECT.md`).
-   - M3: Worker 6 cleanly merged all chunks and ran validation harnesses.
-   - M4: Linguistic Reviewer, IT Terminology Reviewer, Data Challenger, and Dashboard Challenger performed verification. Worker 7 remediated non-canonical edge types.
-4. **Independent Victory Audit**: Following orchestrator victory claim, Sentinel spawned independent Victory Auditor (`teamwork_preview_victory_auditor_2`) to perform the blocking 3-phase audit (Timeline, Integrity & Mock Detection, Independent Schema/Syntax/Linguistic Deep Scan). 100% PASS with 0 anomalies.
-5. **Teardown**: Killed all monitoring background tasks and retired all subagents cleanly per protocol.
+1. User request captured verbatim in `.agents/ORIGINAL_REQUEST.md`.
+2. Evaluated routing -> General path -> Dispatched `teamwork_preview_orchestrator` (`085caf98-0e6e-4709-bce0-a3cf6358fe59`).
+3. Swarm implemented all four milestones:
+   - R1: Refactored `mom_local_index.py` to pure Robertson BM25 ($k_1=1.5, b=0.75$) with CJK n-gram sub-tokenization; 0 hardcoded queries or penalties.
+   - R2: Refactored `excel_extractors.py` to streaming row-chunking (`chunk_row_size=500`), removed default 1,000-row and 20,000-cell limits, repeated table headers across chunks.
+   - R3: Deleted `POLISHED_ANSWERS` across repository; wired dynamic evidence synthesis to `ClaimGuard` and RAG v2.
+   - R4: Added permanent AST syntax-tree regression guards (`tests/test_mom_search_bm25_zero_hardcode.py`) and adversarial stress tests (`tests/test_adversarial_mom_bm25_and_excel.py`).
+4. Multi-agent review gate (Reviewers 1 & 2, Challengers 1 & 2, Forensic Auditor) approved all deliverables.
+5. Orchestrator claimed project completion.
+6. Sentinel dispatched independent Victory Auditor (`teamwork_preview_victory_auditor`, `e1f910a6-3b63-4944-8fb9-efb4e915ded2`).
+7. Victory Auditor performed independent timeline check, AST forensics, and independent pytest test suite execution, issuing **`VICTORY CONFIRMED`**.
 
 ## Caveats
-- When regenerating the knowledge graph in the future using automated tools (e.g., `understand` tool re-scan), ensure a merge or translation step is preserved to maintain Vietnamese localization.
+- Production deployments processing ultra-large spreadsheets (>100,000 rows) should monitor memory utilization if batching multiple concurrent extraction jobs.
+- BM25 indexing in MOM local index remains memory-efficient and deterministic; for semantic embedding enhancements, RAG v2 Hybrid pipeline is available.
 
 ## Conclusion
-The Vietnamese localization of `.understand-anything/knowledge-graph.json` is fully completed, structurally and linguistically verified, 100% schema-compliant with the Understand Dashboard, and independently confirmed by the Victory Auditor.
+- All requirements R1, R2, R3, and R4 have been genuinely implemented, verified, and audited.
+- 100% of the test suite passes with zero regressions.
+- Victory audit confirmed. Project successfully completed.
 
 ## Verification Method
-- Independent structural and schema verification:
-  - Validated with standard `JSON.parse` / `json.loads` without syntax errors.
-  - Validated edge types against canonical enum definitions in `@understand-anything/core/schema.ts`.
-  - Verified presence of diacritics and preservation of core English IT terms across all layers, tours, and node summaries.
-- Independent Victory Audit Report: `d:\Sandbox\AIOS_habbit\.agents\teamwork_preview_victory_auditor_2\audit_report.md` (VICTORY CONFIRMED).
+- Independent 3-phase Victory Audit by `teamwork_preview_victory_auditor` with AST inspection and independent execution of `pytest tests/`.

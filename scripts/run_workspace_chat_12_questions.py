@@ -87,18 +87,6 @@ def main():
         print(f"[{idx}/{total_q}] [{qid}] ({cat}) -> {question_text}", flush=True)
 
         variants = []
-        if qid == "BQ02":
-            variants = [
-                {"text": "warehouse management WMS system architecture", "origin": "expansion", "target_equivalent": False},
-                {"text": "production management MES integration", "origin": "expansion", "target_equivalent": False},
-                {"text": "WMS to MES data connection interface", "origin": "expansion", "target_equivalent": False},
-            ]
-        elif qid == "BQ07":
-            variants = [
-                {"text": "MOM data flow connected systems", "origin": "expansion", "target_equivalent": False},
-                {"text": "operator verification failures MOM", "origin": "expansion", "target_equivalent": False},
-                {"text": "system architecture error handling flow", "origin": "expansion", "target_equivalent": False},
-            ]
 
         t0 = time.time()
         query_res = pipeline.query(
@@ -115,22 +103,12 @@ def main():
             safe_preview = it.text[:90].replace("\n", " ").strip()
             print(f"    - [{it.source_name}] ({it.citation_label}): {safe_preview}...", flush=True)
 
-        # Synthesis
+        # Dynamic Evidence Synthesis via ClaimGuard / RAG v2 Engine
         t1 = time.time()
-        is_abstention_q = cat == "abstention"
-
-        if is_abstention_q:
-            answer_text = (
-                "Based on the provided factory operations, MOM/WMS architecture, and production manuals, "
-                "there is no information or protocol regarding this topic in the company documentation. "
-                "The factory system does not utilize quantum computing or blockchain technology."
-            )
-        else:
-            synth_res = synthesize_evidence(pack)
-            answer_text = synth_res.answer
-
+        synth_res = synthesize_evidence(pack)
+        answer_text = synth_res.answer
         t_synth = time.time() - t1
-        print(f"  Synthesis: {t_synth:.2f}s", flush=True)
+        print(f"  Synthesis: {t_synth:.2f}s (abstained={synth_res.abstained}, grounded={synth_res.grounded})", flush=True)
         safe_ans_preview = answer_text[:140].replace("\n", " ").strip()
         print(f"  Answer: {safe_ans_preview}...\n", flush=True)
 
@@ -142,6 +120,12 @@ def main():
             "synthesis_time_sec": round(t_synth, 2),
             "chunks_count": len(pack.items),
             "cited_sources": unique_docs,
+            "citation_ids": list(synth_res.citation_ids),
+            "abstained": synth_res.abstained,
+            "grounded": synth_res.grounded,
+            "abstention_reasons": list(synth_res.abstention_reasons),
+            "limitation_reasons": list(synth_res.limitation_reasons),
+            "answer_mode": synth_res.answer_mode,
             "backend": "bge_m3_hybrid",
             "profile": "bge_m3_hybrid",
             "answer": answer_text,
@@ -167,9 +151,9 @@ def main():
         f.write("| ID | Phân loại | Thời gian Retrieval | Thời gian Synthesis | Số Chunks | Số Tài liệu trích dẫn | Trạng thái |\n")
         f.write("|---|---|---|---|---|---|---|\n")
         for r in results:
-            if r['category'] == 'abstention':
-                status = "🛡️ Correct Abstention"
-            elif "KHÔNG ĐỦ BẰNG CHỨNG:" in r.get('answer_text', ''):
+            if r.get('abstained'):
+                status = "🛡️ Dynamic Abstention (Zero Hallucination)"
+            elif not r.get('grounded', True) or "KHÔNG ĐỦ BẰNG CHỨNG:" in r.get('answer_text', ''):
                 status = "❌ Insufficient"
             else:
                 status = "✅ Grounded"

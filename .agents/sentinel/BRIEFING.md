@@ -1,28 +1,27 @@
-# BRIEFING — 2026-08-18T23:09:43Z
+# BRIEFING — 2026-08-20T20:29:30+07:00
 
 ## Mission
-Coordinate and monitor the translation of `.understand-anything/knowledge-graph.json` (layers, tour, and 727 node summaries) from English to Vietnamese with technical IT terms preserved in English, routed to General Orchestrator (teamwork_preview_orchestrator).
+Monitor and route the MOM system upgrade project in AIOS_habbit, ensuring rigorous verification via Victory Auditor before reporting completion.
 
 ## 🔒 My Identity
 - Archetype: sentinel
 - Working directory: d:\Sandbox\AIOS_habbit\.agents\sentinel
-- Orchestrator: 28382724-02e9-4154-af8f-a269659327ea
-- Victory Auditor: caf61cb9-1b1f-4c9f-bac7-d59dcde6ffea
+- Orchestrator: 085caf98-0e6e-4709-bce0-a3cf6358fe59
+- Victory Auditor: e1f910a6-3b63-4944-8fb9-efb4e915ded2
 
 ## 🔒 Key Constraints
 - No technical decisions — relay only
 - Victory Audit is MANDATORY before reporting completion
-- Do not write code directly
-- Monitor orchestrator progress and liveness via cron
+- Keep context ultra-light
+- Do not write code or make technical decisions
 
 ## User Context
-- **Last user request**: Translate knowledge-graph.json (layers, tour, 727 node summaries) to Vietnamese while preserving IT terminology, using a large-scale team/plan.
+- **Last user request**: Continue MOM system upgrade from checkpoint mem_mt0r1m76_ab623e4a6f0f (R1 hardcode removal, R2 Excel streaming chunking, R3 dynamic abstention & remove POLISHED_ANSWERS, R4 100% pytest pass) with Full Engineering Swarm and independent Victory Audit.
 - **Pending clarifications**: none
-- **Delivered results**: Complete localization of `.understand-anything/knowledge-graph.json` to Vietnamese (8 layers, 9 tour steps, 142 node summaries, 58 canonical edges) with 100% IT term preservation and verified Understand Dashboard compatibility.
+- **Delivered results**: none
 
 ## Project Status
 - **Phase**: complete
-- **Routing Decision**: teamwork_preview_orchestrator (General)
 
 ## Victory Audit Status
 - **Triggered**: yes
@@ -30,10 +29,5 @@ Coordinate and monitor the translation of `.understand-anything/knowledge-graph.
 - **Retry count**: 0
 
 ## Artifact Index
-- d:\Sandbox\AIOS_habbit\.agents\ORIGINAL_REQUEST.md — Verbatim user request record
-- d:\Sandbox\AIOS_habbit\.understand-anything\knowledge-graph.json — Localized Vietnamese knowledge graph
-- d:\Sandbox\AIOS_habbit\PROJECT.md — Master project specification and IT terminology glossary
-- d:\Sandbox\AIOS_habbit\.agents\teamwork_preview_orchestrator_1\GATE_STATUS.md — Gate validation matrix
-- d:\Sandbox\AIOS_habbit\.agents\teamwork_preview_orchestrator_1\handoff.md — Swarm handoff report
-- d:\Sandbox\AIOS_habbit\.agents\teamwork_preview_victory_auditor_2\audit_report.md — Independent Victory Audit report (VICTORY CONFIRMED)
-- d:\Sandbox\AIOS_habbit\.agents\sentinel\handoff.md — Sentinel handoff report
+- d:\Sandbox\AIOS_habbit\.agents\ORIGINAL_REQUEST.md — Authoritative record of user requirements
+- d:\Sandbox\AIOS_habbit\.agents\orchestrator_1/ — Orchestrator workspace

@@ -3,6 +3,7 @@ from __future__ import annotations
 import csv
 import hashlib
 import json
+import math
 import re
 import uuid
 from dataclasses import asdict, dataclass
@@ -88,8 +89,36 @@ def _sha256_short(path: Path, max_bytes: int = 1024 * 1024) -> str:
     return h.hexdigest()[:16]
 
 
+_WORD_RE = re.compile(r"[a-zA-Z0-9_À-ỹ]+", re.UNICODE)
+_CJK_RE = re.compile(r"[\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff]+")
+
+
 def _tokens(text: str) -> list[str]:
-    return [t for t in re.findall(r"[a-zA-Z0-9_À-ỹ\u4e00-\u9faf\u3040-\u30ff]+", text.lower()) if len(t) >= 1]
+    """Tokenize text into lower-case alphanumeric words, underscore subterms, and CJK n-grams."""
+    if not text:
+        return []
+    text_lower = text.lower()
+    tokens: list[str] = []
+    for match in _WORD_RE.finditer(text_lower):
+        word = match.group(0)
+        tokens.append(word)
+        if "_" in word:
+            for part in word.split("_"):
+                if part and part != word:
+                    tokens.append(part)
+    for match in _CJK_RE.finditer(text_lower):
+        cjk_str = match.group(0)
+        for ch in cjk_str:
+            tokens.append(ch)
+        if len(cjk_str) >= 2:
+            for i in range(len(cjk_str) - 1):
+                tokens.append(cjk_str[i : i + 2])
+        if len(cjk_str) >= 3:
+            for i in range(len(cjk_str) - 2):
+                tokens.append(cjk_str[i : i + 3])
+        if len(cjk_str) >= 4:
+            tokens.append(cjk_str)
+    return tokens
 
 
 def _safe_preview(text: str, limit: int = PREVIEW_CHARS) -> str:
@@ -295,76 +324,121 @@ def load_mom_chunks(index_path: str | Path = INDEX_FILE) -> list[MomChunk]:
 
 
 def search_mom_index(query: str, limit: int = 5, index_path: str | Path = INDEX_FILE) -> list[MomSearchHit]:
+    """Search MOM local index using an objective in-memory BM25 ranking algorithm.
+
+    Features:
+    - CJK n-gram sub-tokenization and standard alphanumeric word tokenization.
+    - Standard BM25 IDF: log(1 + (N - df + 0.5) / (df + 0.5)).
+    - Document length normalization: tf / (tf + k1 * (1 - b + b * (doc_len / avg_doc_len))) (k1=1.5, b=0.75).
+    - Domain-neutral exact phrase boost and metadata / title weighting.
+    - Strictly non-negative score calculation.
+    """
     q = query.strip().lower()
     if not q:
         return []
     query_terms = _tokens(q)
+    if not query_terms:
+        return []
+
+    chunks = load_mom_chunks(index_path)
+    if not chunks:
+        return []
+
+    query_term_set = set(query_terms)
+    n_docs = len(chunks)
+
+    # Pre-tokenize all chunks and collect document frequencies (df)
+    doc_data: list[dict[str, Any]] = []
+    df: dict[str, int] = {}
+    total_doc_len = 0
+
+    for chunk in chunks:
+        body_text = f"{chunk.text} {chunk.preview}"
+        meta_text = f"{chunk.source_file} {chunk.relative_path} {chunk.sheet} {chunk.section}"
+        haystack = f"{meta_text}\n{body_text}".lower()
+
+        body_tokens = _tokens(body_text)
+        meta_tokens = _tokens(meta_text)
+
+        body_tf: dict[str, int] = {}
+        for token in body_tokens:
+            body_tf[token] = body_tf.get(token, 0) + 1
+
+        meta_tf: dict[str, int] = {}
+        for token in meta_tokens:
+            meta_tf[token] = meta_tf.get(token, 0) + 1
+
+        doc_len = len(body_tokens) + 2 * len(meta_tokens)
+        total_doc_len += doc_len
+
+        all_doc_terms = set(body_tf.keys()) | set(meta_tf.keys())
+        for term in query_term_set:
+            if term in all_doc_terms:
+                df[term] = df.get(term, 0) + 1
+
+        doc_data.append({
+            "chunk": chunk,
+            "body_tf": body_tf,
+            "meta_tf": meta_tf,
+            "doc_len": doc_len,
+            "haystack": haystack,
+        })
+
+    avg_doc_len = max(1.0, total_doc_len / max(1, n_docs))
+    k1 = 1.5
+    b = 0.75
+
+    # Standard BM25 IDF
+    idf: dict[str, float] = {}
+    for term in query_term_set:
+        doc_freq = df.get(term, 0)
+        idf[term] = math.log(1.0 + (n_docs - doc_freq + 0.5) / (doc_freq + 0.5))
+
     hits: list[MomSearchHit] = []
 
-    # Q1 target terms (MES/MOM comparison)
-    q1_terms = ["mes", "mom", "mes_mom", "momデータ連携", "実行", "製造", "traceability", "scheduling", "quality", "inventory"]
-    # Q2 target terms (Production History system)
-    q2_terms = ["生産履歴", "着完工", "ラインアウト", "復帰登録", "修理内容入力", "部品供給停止", "再開登録", "工程在庫修正", "戻入", "分割入庫", "製造人員登録"]
-    # Q3 target terms (Manual Shipping Excel metadata)
-    q3_terms = ["manualshipping_existinglineauto_inbounddownload", "item_code", "item_rev", "sup_line", "process_id", "oricon_id", "containername", "kdcrenameshipchangeqty"]
+    for item in doc_data:
+        chunk: MomChunk = item["chunk"]
+        body_tf: dict[str, int] = item["body_tf"]
+        meta_tf: dict[str, int] = item["meta_tf"]
+        doc_len: int = item["doc_len"]
+        haystack: str = item["haystack"]
 
-    # Detect query intents
-    query_has_q1 = any(t in q for t in q1_terms)
-    query_has_q2 = any(t in q for t in q2_terms)
-    query_has_q3 = any(t in q for t in q3_terms)
-
-    for chunk in load_mom_chunks(index_path):
-        haystack = " ".join([chunk.text, chunk.relative_path, chunk.source_file, chunk.sheet]).lower()
         score = 0.0
         matched: list[str] = []
-        if q in haystack:
-            score += 12.0
-            matched.append(q)
-        for term in query_terms:
-            count = haystack.count(term)
-            if count:
+        matched_distinct_terms = 0
+
+        for term in query_term_set:
+            tf_b = body_tf.get(term, 0)
+            tf_m = meta_tf.get(term, 0)
+            tf_eff = tf_b + 2.5 * tf_m
+            if tf_eff > 0:
                 matched.append(term)
-                score += min(count, 8) * 1.0
-                if term in chunk.relative_path.lower() or term in chunk.source_file.lower() or term in chunk.sheet.lower():
-                    score += 3.0
+                matched_distinct_terms += 1
+                tf_norm = (tf_eff * (k1 + 1.0)) / (tf_eff + k1 * (1.0 - b + b * (doc_len / avg_doc_len)))
+                term_score = (1.0 + idf[term]) * tf_norm
+                score += term_score
 
-        if score > 0:
-            # Q1 Retrieval Enhancements: Boost MES/MOM PDF sources and matching terms
-            if query_has_q1:
-                matched_q1 = [term for term in q1_terms if term in haystack]
-                if matched_q1:
-                    score += 15.0 * len(matched_q1)
-                if chunk.file_type == ".pdf":
-                    score += 10.0
-                if any(k in chunk.source_file.lower() for k in ["mes", "mom"]):
-                    score += 15.0
+        # Domain-neutral exact phrase boost
+        if q in haystack and len(q) >= 2:
+            score += 10.0
+            matched.append(q)
 
-            # Q2 Retrieval Enhancements: Boost Production History PDF specs and Japanese terms
-            if query_has_q2:
-                matched_q2 = [term for term in q2_terms if term in haystack]
-                if matched_q2:
-                    score += 15.0 * len(matched_q2)
-                if chunk.file_type == ".pdf":
-                    score += 10.0
-                if any(k in chunk.source_file.lower() for k in ["生産履歴", "着完工", "仕様"]):
-                    score += 15.0
+        # Multi-word phrase matching for sub-phrases
+        words = [w for w in q.split() if len(w) >= 2]
+        if len(words) >= 2:
+            for i in range(len(words) - 1):
+                two_word = f"{words[i]} {words[i+1]}"
+                if two_word in haystack:
+                    score += 2.0
+                    matched.append(two_word)
 
-                # Targeted Penalty for ERD_Kho_Van_NEW.html on Q2 queries
-                if "erd_kho_van_new.html" in chunk.relative_path.lower():
-                    has_exact_q2_terms = any(term in haystack for term in q2_terms)
-                    if not has_exact_q2_terms:
-                        score -= 50.0
+        # Term coverage weighting
+        if query_term_set:
+            coverage = matched_distinct_terms / len(query_term_set)
+            score *= (0.5 + 0.5 * coverage)
 
-            # Q3 Retrieval Enhancements: Boost specific Excel metadata columns and manual shipping sheets
-            if query_has_q3:
-                matched_q3 = [term for term in q3_terms if term in haystack]
-                if matched_q3:
-                    score += 20.0 * len(matched_q3)
-                if chunk.file_type in {".xlsx", ".xlsm"}:
-                    score += 10.0
-                if any(k in chunk.source_file.lower() or k in chunk.sheet.lower() for k in ["manual", "ship"]):
-                    score += 15.0
-
+        score = max(0.0, round(score, 4))
+        if score > 0.0:
             hits.append(MomSearchHit(chunk=chunk, score=score, matched_terms=sorted(set(matched))))
 
     hits.sort(key=lambda h: h.score, reverse=True)

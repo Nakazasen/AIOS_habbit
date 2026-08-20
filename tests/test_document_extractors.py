@@ -333,3 +333,146 @@ def test_deep_pdf_mode_is_opt_in(monkeypatch, tmp_path):
     monkeypatch.setenv("AIOS_OCR_MODE", "balanced")
     result = _deep_pdf_result(tmp_path / "not-opened.pdf", [PDFPageRoute(page=1, has_table=True)])
     assert result is None
+
+
+def test_excel_streaming_row_chunking_2000_rows(tmp_path):
+    from aios_habit.excel_extractors import extract_excel
+
+    file_path = tmp_path / "large_production_bom.xlsx"
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "BOM_Master"
+
+    headers = ["Part_ID", "Part_Name", "Quantity", "Unit_Cost", "Total_Value", "Status"]
+    ws.append(headers)
+
+    for i in range(1, 2001):
+        ws.append([f"P-{i:04d}", f"Part Item {i}", i * 2, i * 1.5, i * 3.0, "ACTIVE" if i % 2 == 0 else "PENDING"])
+
+    wb.save(file_path)
+    wb.close()
+
+    result = extract_excel(file_path)
+    assert result.succeeded is True
+    assert result.error == ""
+    assert len(result.truncated_reasons) == 0
+    assert len(result.regions) == 4
+
+    expected_headers = tuple(headers)
+    for index, region in enumerate(result.regions):
+        assert region.headers == expected_headers
+        assert region.chunk_index == index
+        assert region.total_chunks == 4
+        assert region.sheet == "BOM_Master"
+        assert region.header_rows == (expected_headers,)
+        assert region.rows[0] == expected_headers
+
+    assert result.regions[0].row_range == (1, 501)
+    assert result.regions[0].cell_range == "A1:F501"
+    assert result.regions[0].rows[1][0] == "P-0001"
+    assert result.regions[0].rows[-1][0] == "P-0500"
+
+    assert result.regions[1].row_range == (502, 1001)
+    assert result.regions[1].cell_range == "A502:F1001"
+    assert result.regions[1].rows[1][0] == "P-0501"
+    assert result.regions[1].rows[-1][0] == "P-1000"
+
+    assert result.regions[2].row_range == (1002, 1501)
+    assert result.regions[2].cell_range == "A1002:F1501"
+    assert result.regions[2].rows[1][0] == "P-1001"
+    assert result.regions[2].rows[-1][0] == "P-1500"
+
+    assert result.regions[3].row_range == (1502, 2001)
+    assert result.regions[3].cell_range == "A1502:F2001"
+    assert result.regions[3].rows[1][0] == "P-1501"
+    assert result.regions[3].rows[-1][0] == "P-2000"
+
+
+def test_excel_no_cell_count_truncation_30k_cells(tmp_path):
+    from aios_habit.excel_extractors import extract_excel
+
+    file_path = tmp_path / "wide_30k_cells.xlsx"
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "WideData"
+
+    cols = [f"Col_{c}" for c in range(1, 31)]
+    ws.append(cols)
+
+    for r in range(1, 1001):
+        ws.append([f"R{r}C{c}" for c in range(1, 31)])
+
+    wb.save(file_path)
+    wb.close()
+
+    result = extract_excel(file_path)
+    assert result.succeeded is True
+    assert not any("cell limit" in r for r in result.truncated_reasons)
+    assert len(result.regions) == 2
+    assert result.regions[0].total_chunks == 2
+    assert result.regions[1].total_chunks == 2
+
+
+def test_document_extractors_excel_streaming_integration(tmp_path):
+    file_path = tmp_path / "orders_1200.xlsx"
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Orders"
+
+    ws.append(["Order_ID", "Customer", "Amount", "Status"])
+    for i in range(1, 1201):
+        ws.append([f"ORD-{i:04d}", f"Cust_{i}", i * 100, "COMPLETED"])
+
+    wb.save(file_path)
+    wb.close()
+
+    results = _extract_excel(file_path)
+    assert len(results) == 3
+
+    assert results[0].section == "table A1:D501 (chunk 1/3)"
+    assert results[0].row_range == "1-501"
+    assert "Table range: A1:D501 (Chunk 1/3)" in results[0].text
+    assert "Columns: Order_ID | Customer | Amount | Status" in results[0].text
+    assert "Row 2: ORD-0001 | Cust_1 | 100 | COMPLETED" in results[0].text
+    assert "Row 501: ORD-0500 | Cust_500 | 50000 | COMPLETED" in results[0].text
+
+    assert results[1].section == "table A502:D1001 (chunk 2/3)"
+    assert results[1].row_range == "502-1001"
+    assert "Table range: A502:D1001 (Chunk 2/3)" in results[1].text
+    assert "Columns: Order_ID | Customer | Amount | Status" in results[1].text
+    assert "Row 502: ORD-0501 | Cust_501 | 50100 | COMPLETED" in results[1].text
+    assert "Row 1001: ORD-1000 | Cust_1000 | 100000 | COMPLETED" in results[1].text
+
+    assert results[2].section == "table A1002:D1201 (chunk 3/3)"
+    assert results[2].row_range == "1002-1201"
+    assert "Table range: A1002:D1201 (Chunk 3/3)" in results[2].text
+    assert "Columns: Order_ID | Customer | Amount | Status" in results[2].text
+    assert "Row 1002: ORD-1001 | Cust_1001 | 10100 | COMPLETED" in results[2].text
+    assert "Row 1201: ORD-1200 | Cust_1200 | 120000 | COMPLETED" in results[2].text
+
+
+def test_excel_extraction_config_custom_chunk_size(tmp_path):
+    from aios_habit.excel_extractors import ExcelExtractionConfig, extract_excel
+
+    file_path = tmp_path / "custom_chunks.xlsx"
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Custom"
+    ws.append(["ID", "Name"])
+    for i in range(1, 251):
+        ws.append([i, f"Name_{i}"])
+    wb.save(file_path)
+    wb.close()
+
+    cfg = ExcelExtractionConfig(chunk_row_size=100)
+    result = extract_excel(file_path, config=cfg)
+    assert len(result.regions) == 3
+    assert result.regions[0].row_range == (1, 101)
+    assert result.regions[0].chunk_index == 0
+    assert result.regions[0].total_chunks == 3
+    assert result.regions[1].row_range == (102, 201)
+    assert result.regions[1].chunk_index == 1
+    assert result.regions[1].total_chunks == 3
+    assert result.regions[2].row_range == (202, 251)
+    assert result.regions[2].chunk_index == 2
+    assert result.regions[2].total_chunks == 3

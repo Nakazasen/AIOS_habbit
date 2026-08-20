@@ -1,48 +1,59 @@
-# BRIEFING — 2026-08-19T06:26:15+07:00
+# BRIEFING — 2026-08-20T13:43:00Z
 
 ## Mission
-Conduct a rigorous check of IT terminology compliance and non-text machine field schema conformance in `knowledge-graph.json` against `PROJECT.md`, produce `terminology_report.md` and `handoff.md` with explicit Verdict.
+Review Requirement R3 (Dynamic Abstention & Zero Canned Answers) and Requirement R4 (Comprehensive Tests & Regression Guards), evaluate code integrity and regression tests, stress-test dynamic synthesis/AST guards, and produce a formal review & challenge verdict.
 
 ## 🔒 My Identity
 - Archetype: reviewer_critic
 - Roles: reviewer, critic
 - Working directory: d:\Sandbox\AIOS_habbit\.agents\teamwork_preview_reviewer_2
-- Original parent: 28382724-02e9-4154-af8f-a269659327ea
-- Milestone: M4 (Comprehensive Verification Gate)
-- Instance: 1 of 1
+- Original parent: 085caf98-0e6e-4709-bce0-a3cf6358fe59
+- Milestone: Review R3 & R4
+- Instance: 2 of 2
 
 ## 🔒 Key Constraints
-- Review-only — do NOT modify implementation code or target file directly unless requested
-- Verify integrity: Check for hardcoded test results, facade implementations, bypassed tasks, fabricated outputs
-- Strictly verify English preservation of core IT terms and standardized Vietnamese domain phrasing
-- Strictly verify non-text machine fields (id, type, name, filePath, tags, complexity, nodeIds, order, edges)
+- Review-only — do NOT modify implementation code
+- Evidence-based review with integrity checks (no hardcoding, no canned answers, true dynamic synthesis)
+- Verify AST regression tests and dynamic abstention logic
 
 ## Current Parent
-- Conversation ID: 28382724-02e9-4154-af8f-a269659327ea
-- Updated: 2026-08-19T06:26:15+07:00
+- Conversation ID: 085caf98-0e6e-4709-bce0-a3cf6358fe59
+- Updated: 2026-08-20T13:43:00Z
 
 ## Review Scope
-- **Files to review**: `d:\Sandbox\AIOS_habbit\.understand-anything\knowledge-graph.json`
-- **Interface contracts**: `d:\Sandbox\AIOS_habbit\PROJECT.md`, `d:\Sandbox\AIOS_habbit\.agents\ORIGINAL_REQUEST.md`, `docs/governance/LOCALIZATION_GLOSSARY.md`
-- **Review criteria**: IT terminology compliance, Vietnamese domain term consistency, non-text schema invariance, integrity check
+- **Files to review**:
+  - `scripts/generate_ai_grounded_report.py`
+  - `scripts/run_workspace_chat_12_questions.py`
+  - `tests/test_mom_search_bm25_zero_hardcode.py`
+  - All test files in `tests/`
+- **Interface contracts**: `d:\Sandbox\AIOS_habbit\.agents\ORIGINAL_REQUEST.md`, `PROJECT.md`
+- **Review criteria**: correctness, dynamic abstention, zero canned answers, AST regression test validity, integrity, edge case robustness
 
 ## Review Checklist
-- **Items reviewed**: 142 node summaries, 8 layers (name & description), 9 tour steps (title & description), project description, machine fields (id, type, name, filePath, tags, complexity, nodeIds, order, edges).
+- **Items reviewed**:
+  - `scripts/generate_ai_grounded_report.py` (checked dynamic loading & Markdown generation, 0 POLISHED_ANSWERS)
+  - `scripts/run_workspace_chat_12_questions.py` (checked live pipeline execution with BGE-M3 hybrid + synthesis)
+  - `src/aios_habit/claim_guard.py` (checked `evaluate_claim_readiness`)
+  - `src/aios_habit/rag_v2/synthesis.py` (checked `synthesize_evidence`, `_abstention`, fail-closed gating)
+  - `tests/test_mom_search_bm25_zero_hardcode.py` (checked AST regression tests for keywords, penalties, defaults, canned answers)
+  - `tests/test_claim_guard.py`, `tests/test_rag_v2_synthesis.py`, `tests/test_document_extractors.py`
 - **Verdict**: APPROVE
-- **Unverified claims**: None. Full deep verification completed.
+- **Unverified claims**: None (all checked against source and AST).
 
 ## Attack Surface
-- **Hypotheses tested**: JSON escape syntax corruption, accidental localization of machine tags/types, ID renaming divergence, literal over-translation of core entities, byte-level encoding breakdown.
-- **Vulnerabilities found**: 0 vulnerabilities.
-- **Untested angles**: None.
+- **Hypotheses tested**:
+  - H1: Is `POLISHED_ANSWERS` or any hardcoded response dictionary secretly referenced in `scripts/` or `src/`? (Falsified: 0 occurrences confirmed by full AST and grep scan)
+  - H2: Does dynamic abstention leak facts or fail open on unanswerable questions? (Falsified: fail-closed Vietnamese template with limitation strings)
+  - H3: Are the AST regression tests superficial or easily bypassed? (Falsified: walks all AST nodes, covers names, attributes, strings, unary ops, constants)
+- **Vulnerabilities found**: None.
+- **Untested angles**: Hardware GPU-specific acceleration (tested on CPU fallback).
 
 ## Key Decisions Made
-- Confirmed 100% IT terminology compliance against `PROJECT.md`.
-- Confirmed 100% schema invariance for all non-text machine fields.
-- Issued explicit verdict: **APPROVE**.
+- Confirmed complete removal of canned answers and verified robust AST-based regression guards.
+- Issued verdict: APPROVE.
 
 ## Artifact Index
-- `d:\Sandbox\AIOS_habbit\.agents\teamwork_preview_reviewer_2\terminology_report.md` — Detailed IT terminology compliance and schema conformance review report
-- `d:\Sandbox\AIOS_habbit\.agents\teamwork_preview_reviewer_2\handoff.md` — 5-component handoff report with explicit Verdict (APPROVE)
-- `d:\Sandbox\AIOS_habbit\.agents\teamwork_preview_reviewer_2\progress.md` — Liveness heartbeat and completed checklist
-- `d:\Sandbox\AIOS_habbit\.agents\teamwork_preview_reviewer_2\DISPATCH.md` — Recorded dispatch request
+- `.agents/teamwork_preview_reviewer_2/DISPATCH.md` — Dispatch record
+- `.agents/teamwork_preview_reviewer_2/progress.md` — Progress tracker
+- `.agents/teamwork_preview_reviewer_2/BRIEFING.md` — Agent briefing & memory
+- `.agents/teamwork_preview_reviewer_2/handoff.md` — Final review handoff report

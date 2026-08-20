@@ -215,41 +215,45 @@
     "category": "abstention",
     "question": "What is the exact quantum computing integration protocol for this factory?",
     "retrieval_time_sec": 1.52,
-    "synthesis_time_sec": 0.0,
-    "chunks_count": 10,
-    "cited_sources": [
-      "wsc-341410044d094a0fb7655864.txt",
-      "wsc-64a3a1129edd882bc6e436f9.txt",
-      "wsc-88408206a188dd1c79d58662.txt",
-      "wsc-c1feb2fefec3ae68297fcf05.txt",
-      "wsc-de7da2bee85fb19d85d56454.txt",
-      "wsc-e3438692bd18f25014d0ef94.txt"
+    "synthesis_time_sec": 0.01,
+    "chunks_count": 0,
+    "cited_sources": [],
+    "citation_ids": [],
+    "abstained": true,
+    "grounded": false,
+    "abstention_reasons": [
+      "evidence_pack_insufficient",
+      "no_target_query_evidence",
+      "no_direct_query_evidence"
     ],
+    "limitation_reasons": [],
+    "answer_mode": "abstain",
     "backend": "bge_m3_hybrid",
     "profile": "bge_m3_hybrid",
-    "answer": "Based on the provided factory operations, MOM/WMS architecture, and production manuals, there is no information or protocol regarding this topic in the company documentation. The factory system does not utilize quantum computing or blockchain technology.",
-    "answer_text": "Based on the provided factory operations, MOM/WMS architecture, and production manuals, there is no information or protocol regarding this topic in the company documentation. The factory system does not utilize quantum computing or blockchain technology."
+    "answer": "KHÔNG ĐỦ BẰNG CHỨNG:\n- Corpus được truy xuất không thiết lập được sự kiện hoặc quan hệ mà câu hỏi yêu cầu.\n- Cần nguồn trực tiếp (ví dụ: tài liệu quy trình, bản ghi hệ thống hoặc hàng dữ liệu có mục tiêu) trước khi có thể trả lời an toàn.\nLIMITATIONS: evidence_pack_insufficient, no_target_query_evidence, no_direct_query_evidence",
+    "answer_text": "KHÔNG ĐỦ BẰNG CHỨNG:\n- Corpus được truy xuất không thiết lập được sự kiện hoặc quan hệ mà câu hỏi yêu cầu.\n- Cần nguồn trực tiếp (ví dụ: tài liệu quy trình, bản ghi hệ thống hoặc hàng dữ liệu có mục tiêu) trước khi có thể trả lời an toàn.\nLIMITATIONS: evidence_pack_insufficient, no_target_query_evidence, no_direct_query_evidence"
   },
   {
     "id": "BQ12",
     "category": "abstention",
     "question": "What specific blockchain-based quality assurance mechanism does the system use?",
     "retrieval_time_sec": 1.26,
-    "synthesis_time_sec": 0.0,
-    "chunks_count": 10,
-    "cited_sources": [
-      "wsc-01f5a99b27e4cfce48dfcbee.txt",
-      "wsc-341410044d094a0fb7655864.txt",
-      "wsc-437ec280ef6f4de788debf32.txt",
-      "wsc-5816829a7ca80cfc952f67d1.txt",
-      "wsc-64a3a1129edd882bc6e436f9.txt",
-      "wsc-c1feb2fefec3ae68297fcf05.txt",
-      "wsc-e3438692bd18f25014d0ef94.txt",
-      "wsc-eb9611919bf805ada807de23.txt"
+    "synthesis_time_sec": 0.01,
+    "chunks_count": 0,
+    "cited_sources": [],
+    "citation_ids": [],
+    "abstained": true,
+    "grounded": false,
+    "abstention_reasons": [
+      "evidence_pack_insufficient",
+      "no_target_query_evidence",
+      "no_direct_query_evidence"
     ],
+    "limitation_reasons": [],
+    "answer_mode": "abstain",
     "backend": "bge_m3_hybrid",
     "profile": "bge_m3_hybrid",
-    "answer": "Based on the provided factory operations, MOM/WMS architecture, and production manuals, there is no information or protocol regarding this topic in the company documentation. The factory system does not utilize quantum computing or blockchain technology.",
-    "answer_text": "Based on the provided factory operations, MOM/WMS architecture, and production manuals, there is no information or protocol regarding this topic in the company documentation. The factory system does not utilize quantum computing or blockchain technology."
+    "answer": "KHÔNG ĐỦ BẰNG CHỨNG:\n- Corpus được truy xuất không thiết lập được sự kiện hoặc quan hệ mà câu hỏi yêu cầu.\n- Cần nguồn trực tiếp (ví dụ: tài liệu quy trình, bản ghi hệ thống hoặc hàng dữ liệu có mục tiêu) trước khi có thể trả lời an toàn.\nLIMITATIONS: evidence_pack_insufficient, no_target_query_evidence, no_direct_query_evidence",
+    "answer_text": "KHÔNG ĐỦ BẰNG CHỨNG:\n- Corpus được truy xuất không thiết lập được sự kiện hoặc quan hệ mà câu hỏi yêu cầu.\n- Cần nguồn trực tiếp (ví dụ: tài liệu quy trình, bản ghi hệ thống hoặc hàng dữ liệu có mục tiêu) trước khi có thể trả lời an toàn.\nLIMITATIONS: evidence_pack_insufficient, no_target_query_evidence, no_direct_query_evidence"
   }
 ]

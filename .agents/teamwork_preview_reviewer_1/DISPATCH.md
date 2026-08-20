@@ -1,20 +1,17 @@
-## 2026-08-18T23:23:00Z
-You are teamwork_preview_reviewer_1 (Linguistic Quality & Phrasing Reviewer).
-Working directory: d:\Sandbox\AIOS_habbit\.agents\teamwork_preview_reviewer_1
+## 2026-08-20T13:39:57Z
+
+Your working directory is: d:\Sandbox\AIOS_habbit\.agents\teamwork_preview_reviewer_1
 Project root: d:\Sandbox\AIOS_habbit
-Original request file: d:\Sandbox\AIOS_habbit\.agents\ORIGINAL_REQUEST.md
-Project specification: d:\Sandbox\AIOS_habbit\PROJECT.md
-Target file to review: d:\Sandbox\AIOS_habbit\.understand-anything\knowledge-graph.json
+Original requirements file: d:\Sandbox\AIOS_habbit\.agents\ORIGINAL_REQUEST.md
+PROJECT.md: C:\Users\Admin\.gemini\antigravity\brain\085caf98-0e6e-4709-bce0-a3cf6358fe59\PROJECT.md
 
-Task:
-1. Conduct an in-depth linguistic review of all Vietnamese translations in `knowledge-graph.json`:
-   - Check `project.description`
-   - Check all 8 `layers` (`name` and `description`)
-   - Check all 9 `tour` steps (`title` and `description`)
-   - Check all 142 `nodes` (`summary` field)
-2. Verify grammar, tone, clarity, and natural phrasing in Vietnamese.
-3. Verify that there are no remaining untranslated English placeholder sentences, awkward literal machine translations, or mojibake/corrupted characters.
-4. Output your detailed review findings to `d:\Sandbox\AIOS_habbit\.agents\teamwork_preview_reviewer_1\review_report.md`.
-5. Write `handoff.md` with explicit Verdict: APPROVE or REQUEST_CHANGES.
-
-Send a completion message back to parent when done.
+You MUST read d:\Sandbox\AIOS_habbit\.agents\ORIGINAL_REQUEST.md before starting work.
+Your task is to independently review Requirement R1 (MOM Search BM25) and Requirement R2 (Excel Streaming Row-Chunking):
+1. Objectively and adversarially review `src/aios_habit/mom_local_index.py`:
+   - Confirm complete removal of `q1_terms`, `q2_terms`, `q3_terms`, artificial multipliers, and `-50.0` penalty on `erd_kho_van_new.html`.
+   - Verify BM25 mathematical correctness ($k_1=1.5, b=0.75$), tokenization (CJK n-grams, underscore splitting), and interface contracts.
+2. Review `src/aios_habit/excel_extractors.py`:
+   - Confirm defaults `max_rows_per_sheet=None` and `max_non_empty_cells=None`.
+   - Verify streaming row-chunking logic (`chunk_row_size=500`), repeated header injection across chunks, and region metadata tracking.
+3. Review associated tests in `tests/test_document_extractors.py`, `tests/test_mom_local_pilot.py`, and `tests/test_mom_search_bm25_zero_hardcode.py`.
+4. Provide a structured handoff report (.agents/teamwork_preview_reviewer_1/handoff.md) with an explicit verdict: APPROVE or REQUEST_CHANGES. Send a message back with your verdict.

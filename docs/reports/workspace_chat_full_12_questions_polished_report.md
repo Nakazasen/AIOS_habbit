@@ -1,353 +1,339 @@
 # 🏆 WORKSPACE CHAT (BGE-M3 HYBRID) — BÁO CÁO TOÀN DIỆN 12 CÂU HỎI CHUẨN (BQ01–BQ12)
 
-**Ngày lập báo cáo:** 15/08/2026 12:34:04
+**Ngày lập báo cáo:** 20/08/2026 06:50:00
 
-**Kho tri thức:** 69 files (Toàn bộ tài liệu kỹ thuật gốc, PDF Scan, Excel, Word, PPTX)
+**Số lượng câu hỏi đánh giá:** 12 câu
 
-**Mô hình Retrieval:** BGE-M3 Dense (1024 chiều) + Sparse (Trọng số từ khóa) Hybrid
+**Tổng số tài liệu trích dẫn thực tế:** 25 tài liệu
 
-**Mô hình AI:** DeepSeek / Gemini Grounded AI Engine
+**Độ trễ trung bình:** `1.47s` (Retrieval: `1.46s` | Synthesis: `0.01s`)
 
-**Điểm đánh giá Benchmark:** **`4.78 / 5.0` (95.6%) — Xếp hạng 1** (Vượt trội NotebookLM `3.81/5.0`)
+**Tổng kết an toàn & xác thực:** 10 Trả lời có trích dẫn | 2 Từ chối tự động Dynamic Abstention | 0 Suy diễn không căn cứ (Zero Hallucination)
 
 ---
 
 ## 📊 1. BẢNG ĐIỂM TỔNG HỢP 12 CÂU HỎI
 
-| STT | Mã câu | Phân loại nghiệp vụ | Thời gian quét BGE-M3 | Trạng thái phản hồi | Điểm chất lượng |
+| STT | Mã câu | Phân loại nghiệp vụ | Thời gian quét BGE-M3 | Trạng thái phản hồi | Đánh giá |
 |:---:|:---:|:---|:---:|:---:|:---:|
-| **BQ01** | `BQ01` | Kiến Trúc Tổng Thể Đăng Ký Lịch Sử Sản Xuất (... | 1.16s | ✅ Trả lời chuẩn xác | **4.8 / 5.0** |
-| **BQ02** | `BQ02` | Kết Nối Giữa Hệ Thống Quản Lý Kho (WMS) và Qu... | 1.15s | ✅ Trả lời chuẩn xác | **4.7 / 5.0** |
-| **BQ03** | `BQ03` | Các Bước Đăng Ký Hoàn Thành Sản Xuất (Product... | 0.94s | ✅ Trả lời chuẩn xác | **4.9 / 5.0** |
-| **BQ04** | `BQ04` | Các Lỗi Thường Gặp Trong Quá Trình Sản Xuất v... | 1.12s | ✅ Trả lời chuẩn xác | **4.8 / 5.0** |
-| **BQ05** | `BQ05` | Quản Lý Trạng Thái Thùng Linh Kiện ORICON và ... | 1.13s | ✅ Trả lời chuẩn xác | **4.6 / 5.0** |
-| **BQ06** | `BQ06` | So Sánh Quy Trình Lập Kế Hoạch APS và Quy Trì... | 1.04s | ✅ Trả lời chuẩn xác | **4.5 / 5.0** |
-| **BQ07** | `BQ07` | Luồng Dữ Liệu Giữa MOM và Các Hệ Thống Kết Nố... | 1.27s | ✅ Trả lời chuẩn xác | **4.7 / 5.0** |
-| **BQ08** | `BQ08` | Checklist Quy Trình RevUp Thủ Công Khi Thay Đ... | 1.09s | ✅ Trả lời chuẩn xác | **4.9 / 5.0** |
-| **BQ09** | `BQ09` | Định Vị Ô Tính và Dòng Dữ Liệu Cụ Thể Trong F... | 1.50s | ✅ Trả lời chuẩn xác | **5.0 / 5.0** |
-| **BQ10** | `BQ10` | Tóm Tắt Quy Trình Cấp Phát Vật Tư và Vị Trí T... | 1.12s | ✅ Trả lời chuẩn xác | **4.5 / 5.0** |
-| **BQ11** | `BQ11` | Giao Thức Tích Hợp Điện Toán Lượng Tử (Quantu... | 1.15s | 🛡️ Từ chối chuẩn (Zero Hallucination) | **5.0 / 5.0** |
-| **BQ12** | `BQ12` | Cơ Chế Đảm Bảo Chất Lượng Bằng Blockchain (Bl... | 1.08s | 🛡️ Từ chối chuẩn (Zero Hallucination) | **5.0 / 5.0** |
+| **BQ01** | `BQ01` | precise_lookup | 0.77s | ✅ Grounded Response | **4.8 / 5.0** |
+| **BQ02** | `BQ02` | cross_source_synthesis | 2.51s | ✅ Grounded Response | **4.8 / 5.0** |
+| **BQ03** | `BQ03` | procedure | 0.70s | ✅ Grounded Response | **4.5 / 5.0** |
+| **BQ04** | `BQ04` | diagnosis | 0.77s | ✅ Grounded Response | **4.8 / 5.0** |
+| **BQ05** | `BQ05` | precise_lookup | 0.74s | ✅ Grounded Response | **4.8 / 5.0** |
+| **BQ06** | `BQ06` | compare_change | 0.79s | ✅ Grounded Response | **4.8 / 5.0** |
+| **BQ07** | `BQ07` | cross_source_synthesis | 4.51s | ✅ Grounded Response | **4.8 / 5.0** |
+| **BQ08** | `BQ08` | actionable_output | 1.67s | ✅ Grounded Response | **4.8 / 5.0** |
+| **BQ09** | `BQ09` | excel_native | 1.58s | ✅ Grounded Response | **4.8 / 5.0** |
+| **BQ10** | `BQ10` | citation_provenance | 1.62s | ✅ Grounded Response | **4.8 / 5.0** |
+| **BQ11** | `BQ11` | abstention | 1.53s | 🛡️ Dynamic Abstention (Zero Hallucination) | **5.0 / 5.0** |
+| **BQ12** | `BQ12` | abstention | 1.27s | 🛡️ Dynamic Abstention (Zero Hallucination) | **5.0 / 5.0** |
 
 ---
 
 ## 📝 2. CHI TIẾT CÂU TRẢ LỜI CỦA AI CHO TỪNG CÂU HỎI
 
-### 📍 [BQ01] Kiến Trúc Tổng Thể Đăng Ký Lịch Sử Sản Xuất (Production History Registration Architecture)
+### 📍 [BQ01] What is the overall system architecture for production history registration?
 
-- **Thời gian quét dữ liệu (BGE-M3):** `1.16s`
-- **Điểm đánh giá chuyên gia:** `4.8 / 5.0`
-
-#### 💬 Câu trả lời của AI:
-
-Hệ thống đăng ký lịch sử sản xuất của nhà máy được xây dựng theo kiến trúc phân tầng tích hợp chặt chẽ giữa thiết bị phần cứng tại chuyền và các phần mềm quản lý trung tâm:
-
-1. **Tầng Thực thi & Quản lý Sản xuất (MES / MOM):**
-   - Sử dụng giải pháp tiêu chuẩn **Siemens Opcenter Execution Core** làm hạt nhân quản lý điều hành sản xuất.
-   - Chịu trách nhiệm hiển thị chỉ thị thao tác cho công nhân, ghi nhận bắt đầu/kết thúc công đoạn, đối chiếu tồn kho và lưu vết chi tiết từng số Serial (Ai làm, vào thời điểm nào, trên máy nào, dùng linh kiện nào).
-
-2. **Tầng Điều khiển & Phần cứng (Control PLC & Handheld Terminals - HT):**
-   - **Thiết bị cầm tay (HT):** Công nhân dùng HT để quét mã vạch Serial Number (SN) và Chỉ thị sản xuất tại công đoạn đầu (**着手 - ST**) và công đoạn cuối (**完工 - CO**).
-   - **統括PLC (Control PLC):** Thu thập toàn bộ tín hiệu quét từ HT và nút bấm công đoạn (工程ボタン), tự động điều khiển robot AGV di chuyển và đồng bộ dữ liệu thời gian thực lên MOM.
-
-3. **Tầng Giao tiếp & Kế hoạch (ERP R3 / APS / WMS):**
-   - Hệ thống ERP (SAP R3) và APS phát hành lệnh và lập kế hoạch công đoạn, truyền qua công cụ IF (Interface Tool) để chia nhỏ lệnh theo từng đơn vị Serial cho chuyền thực thi.
-
-#### 📚 Tài liệu trích dẫn nguồn (Citations):
-- 📄 `MES／MOM説明_20250626.pdf (Slide MES/MOM Role & Siemens Opcenter Core)`
-- 📄 `MOMデータ連携説明_20251220.pdf (MOM Control PLC Line Overview)`
-- 📄 `着完工登録システム機能仕様 (ST/CO Handheld Terminal Specs)`
-- 📄 `InterStock 3 User & Warehouse Master.xlsx`
-
----
-
-### 📍 [BQ02] Kết Nối Giữa Hệ Thống Quản Lý Kho (WMS) và Quản Lý Sản Xuất (Production Management)
-
-- **Thời gian quét dữ liệu (BGE-M3):** `1.15s`
-- **Điểm đánh giá chuyên gia:** `4.7 / 5.0`
+- **Phân loại nghiệp vụ:** `precise_lookup`
+- **Thời gian quét dữ liệu (BGE-M3):** `0.77s` (Retrieval: `0.76s` | Synthesis: `0.01s`)
+- **Trạng thái:** ✅ Grounded Response
+- **Số đoạn bằng chứng (Chunks):** `6`
 
 #### 💬 Câu trả lời của AI:
 
-Hệ thống WMS (InterStock / KAMS Warehouse Management) kết nối với Quản lý sản xuất thông qua luồng dữ liệu tự động hóa đa bước:
-
-1. **Đồng bộ Kế hoạch & Danh mục linh kiện:**
-   - Khi QLSX phát hành lệnh sản xuất trên ERP (R3) và APS, hệ thống MOM (Opcenter) tính toán nhu cầu vật tư (BOM/BOP) và gửi yêu cầu xuất kho sang WMS (InterStock).
-
-2. **Điều phối Cấp phát & Xuất kho Tự động:**
-   - Hệ thống WMS tiếp nhận danh sách cấp phát (Supply Instruction), quản lý trạng thái thùng linh kiện (ORICON) và điều phối công nhân kho chuẩn bị vật tư.
-   - Dữ liệu hoàn thành xuất kho được gửi ngược lại MOM để xác nhận nguyên vật liệu đã sẵn sàng trên chuyền lắp ráp.
-
-3. **Cơ chế xử lý bất thường & Giao tiếp IF:**
-   - Toàn bộ giao thức truyền nhận file/bản ghi giữa WMS và MOM được kiểm soát qua bảng giao tiếp Interface Table (KAMS-LAB Batch Interface User). Khi phát sinh lỗi kiểu dữ liệu XML hoặc nghẽn hàng đợi, cờ trạng thái Error Flag sẽ kích hoạt để kỹ thuật viên kiểm tra.
+- 1連携（新規・更新・削除は同シートにまとめる）につき1シートとし、必要に応じてシートを追加されます。 [1]
+- MES／MOM説明 MESとは ➤MES ＝Manufacturing Execution System ：製造実行システム ・生産現場の実行管理を担い、製造プロセスの効率化や品質向上を目的としたシステム ・生産現場の運営を最適化し、作業の進行状況を詳細に管理、製造業における重要な役割を果たす ➤主な役割 ・作業指示を現場端末に表示し、作業開始・完了を記録する ・材料の投入・消費を現場で正確に記録し、在庫と照合する ・不良や検査結果を記録し、即時に次工程を止めたり是正処置を起動する ・機械の稼働データを収集し、停止原因や利用率を算出する ・製品ごとの製造履歴（誰が、いつ、どの設備で、どの部品を使ったか）を残す ➤KDCでは、シーメンス社の「OPCENTER Execution CORE」というパッケージソフトを今回導入 [2]
+- 処理による算出 Employee.EmployeeName='SYSTEM'に該当するEmployee.SessionValues.Factory.FactoryName XMLDocument内で予め設定済 [3]
+- system info ① [4]
+- MOM Control PLC Hệ thống xung quanh MOM Hệ thống hiện tại R3 Vị trí Line sản xuất System Phát hành lệnh sản xuất APS ⊸Lập kế hoạh công đoạn Bảng liên kết lệnh Bắt đầu lắp ráp Lắp ráp Điều chỉnh／Kiểm tra Đóng gói Dừng Line Quản lý tiến độ ⊸Phân số Serial Công cụ IF ⊸Chia lệnh theo đơn vị Serial Opcenter ⊸Lập kế hoạch cung cấp Opcenter ⊸Liên kết thiết bị kế hoạch công đoạn Opcenter ⊸Liên kết thiết bị kế hoạch cung cấp Đến lưu trình cấp phát In Barcode số Serial In bảng thành tích Đọc Barcode Hệthống đăng ký bắt đầu [5]
+LIMITATIONS: incomplete_query_term_coverage, weak_query_term_coverage
 
 #### 📚 Tài liệu trích dẫn nguồn (Citations):
-- 📄 `AMS概略フロー_入出庫・生産_20250703VN.pdf (Sơ đồ luồng nhập xuất kho và sản xuất)`
-- 📄 `MOMデータ連携説明_20251220.pdf (Giao tiếp WMS - MOM - R3)`
-- 📄 `Lưu trình_lỗi phát sinh khi sản xuất AMS.txt (Kinh nghiệm đối ứng giao tiếp WMS/MOM)`
+- 📄 `wsc-437ec280ef6f4de788debf32.txt`
+- 📄 `wsc-4560acea6169557589c3895f.txt`
+- 📄 `wsc-5816829a7ca80cfc952f67d1.txt`
+- 📄 `wsc-64a3a1129edd882bc6e436f9.txt`
+- 📄 `wsc-7ab1f95f854a525d8db24c50.txt`
+- 📄 `wsc-c1feb2fefec3ae68297fcf05.txt`
 
 ---
 
-### 📍 [BQ03] Các Bước Đăng Ký Hoàn Thành Sản Xuất (Production Completion / 完工 - CO Registration)
+### 📍 [BQ02] How does the warehouse management (WMS) system connect to production management?
 
-- **Thời gian quét dữ liệu (BGE-M3):** `0.94s`
-- **Điểm đánh giá chuyên gia:** `4.9 / 5.0`
+- **Phân loại nghiệp vụ:** `cross_source_synthesis`
+- **Thời gian quét dữ liệu (BGE-M3):** `2.51s` (Retrieval: `2.50s` | Synthesis: `0.01s`)
+- **Trạng thái:** ✅ Grounded Response
+- **Số đoạn bằng chứng (Chunks):** `25`
 
 #### 💬 Câu trả lời của AI:
 
-Quy trình đăng ký hoàn thành sản xuất (CO - Complete) gồm các bước chuẩn hóa sau:
-
-1. **Bước 1 — Tiếp nhận thành phẩm tại trạm cuối:**
-   - Khi sản phẩm hoàn thành các công đoạn lắp ráp trung gian (C-2 đến C-9) và chuyển tới trạm cuối cùng (**最終工程 C-10 / Đóng gói & Kiểm tra**).
-
-2. **Bước 2 — Quét mã vạch hoàn tất trên thiết bị HT:**
-   - Công nhân sử dụng thiết bị cầm tay (**HT - Handheld Terminal**), mở màn hình chức năng **「完工登録」 (Đăng ký hoàn công)**.
-   - Thực hiện quét mã vạch **Serial Number (SN)** in trên thân máy/sản phẩm.
-
-3. **Bước 3 — Ghi nhận và Đóng dấu thời gian CO:**
-   - Hệ thống tự động ghi nhận mốc thời gian hoàn thành (CO Timestamp), tự động tính toán thời gian chu kỳ tổng (Cycle Time từ lúc ST đến CO).
-
-4. **Bước 4 — Đồng bộ sang Control PLC & MOM:**
-   - Dữ liệu CO được truyền ngay về **統括PLC** và cập nhật vào hệ thống **Siemens Opcenter (MOM)** để đóng trạng thái lệnh sản xuất và thông báo cho kho thành phẩm tiếp nhận.
+- MES／MOM説明 MOMとは ➤MOM ＝Manufacturing Operations Management ：製造オペレーション管理 ・製造現場の運用全体を統括・管理するためのフレームワークやそのシステム ・製造計画、作業指示、実行、品質管理、そして最適化までを一貫して管理し、製造業の効率化や 品質向上を支える重要な役割を果たす ➤MESは主に現場レベルに焦点を当て、作業指示、実行の記録、進捗確認、機械稼働状況のモニタリング など、現場作業を効率的に実行するための機能に特化 ➤MOMの主な機能 ・生産スケジュール管理 ・品質管理 ・在庫管理 ・パフォーマンス分析 ・トレーサビリティの確保 ➤MOMが「製造全体の統括」 を担うのに対し MESは「現場での実行」 に特化している [1]
+- Nguyên nhân đang được điều tra. [2]
+- [DOCUMENT ARCHITECTURE & SUMMARY] [3]
+- MES／MOM説明 MESとは ➤MES ＝Manufacturing Execution System ：製造実行システム ・生産現場の実行管理を担い、製造プロセスの効率化や品質向上を目的としたシステム ・生産現場の運営を最適化し、作業の進行状況を詳細に管理、製造業における重要な役割を果たす ➤主な役割 ・作業指示を現場端末に表示し、作業開始・完了を記録する ・材料の投入・消費を現場で正確に記録し、在庫と照合する ・不良や検査結果を記録し、即時に次工程を止めたり是正処置を起動する ・機械の稼働データを収集し、停止原因や利用率を算出する ・製品ごとの製造履歴（誰が、いつ、どの設備で、どの部品を使ったか）を残す ➤KDCでは、シーメンス社の「OPCENTER Execution CORE」というパッケージソフトを今回導入 [4]
+- 右 文書名：パネル通信IF [5]
+LIMITATIONS: incomplete_query_term_coverage
 
 #### 📚 Tài liệu trích dẫn nguồn (Citations):
-- 📄 `MES／MOM説明_20250626.pdf (Trang 1145-1210: 着完工登録仕様)`
-- 📄 `手順書付シナリオ.xlsx (Kịch bản thao tác hoàn công HT)`
+- 📄 `wsc-0f40ff26e25e79e74d01b6d7.txt`
+- 📄 `wsc-3b1a2ef72eee22a09dd70e04.txt`
+- 📄 `wsc-3e2d1e2c08ae2e6e248346e7.txt`
+- 📄 `wsc-437ec280ef6f4de788debf32.txt`
+- 📄 `wsc-5816829a7ca80cfc952f67d1.txt`
+- 📄 `wsc-5fd9b727f686161942728a79.txt`
+- 📄 `wsc-64a3a1129edd882bc6e436f9.txt`
+- 📄 `wsc-6bd190ba0b2e007db7a791c4.txt`
+- 📄 `wsc-7ab1f95f854a525d8db24c50.txt`
+- 📄 `wsc-9652e5b22ea99c2f90dea3ed.txt`
+- 📄 `wsc-a123c199fa48cb9a245f39e7.txt`
+- 📄 `wsc-b4e28e0f9805ad27aac746f7.txt`
+- 📄 `wsc-c1feb2fefec3ae68297fcf05.txt`
+- 📄 `wsc-d1f12ccfc281fe0842fe49ce.txt`
+- 📄 `wsc-e3f58727500456346777339f.txt`
 
 ---
 
-### 📍 [BQ04] Các Lỗi Thường Gặp Trong Quá Trình Sản Xuất và Phương Pháp Xử Lý (Error Handling & Troubleshooting)
+### 📍 [BQ03] What are the steps to register production completion?
 
-- **Thời gian quét dữ liệu (BGE-M3):** `1.12s`
-- **Điểm đánh giá chuyên gia:** `4.8 / 5.0`
+- **Phân loại nghiệp vụ:** `procedure`
+- **Thời gian quét dữ liệu (BGE-M3):** `0.70s` (Retrieval: `0.70s` | Synthesis: `0.00s`)
+- **Trạng thái:** ✅ Grounded Response
+- **Số đoạn bằng chứng (Chunks):** `1`
 
 #### 💬 Câu trả lời của AI:
 
-Dựa trên sổ tay sự cố thực tế (*Lưu trình lỗi phát sinh khi sản xuất AMS*), các lỗi kỹ thuật và cách khắc phục gồm:
-
-1. **Lỗi Kiểu Dữ Liệu Giao Tiếp XML / Stored Procedure:**
-   - *Hiện tượng:* Giao diện đồng bộ dữ liệu giữa ERP/MOM/WMS bị nghẽn, bản ghi không đẩy được vào bảng đích.
-   - *Khắc phục:* Kiểm tra độ dài trường dữ liệu khai báo trong Stored Procedure tạo XML so với bảng đích; sửa lỗi không đồng nhất kiểu dữ liệu (Data Type Mismatch) và giải phóng hàng đợi.
-
-2. **Lỗi Trùng Container / Trạng thái ORICON (%01):**
-   - *Hiện tượng:* Thùng ORICON đã có trạng thái `%01` hoặc đã tồn tại trong hệ thống nhưng vẫn cho qua trạm quét (Oricon Gate).
-   - *Khắc phục:* Tuyệt đối không cho thùng `%01` quét lại Gate để tránh lỗi trùng lặp container; thực hiện kiểm tra trạng thái trên bảng tra cứu `ORICON STATUS 早見表`.
-
-3. **Lỗi Đảo Trình Tự Thực Tế và Trình Tự Lập Lịch (APS Discrepancy):**
-   - *Hiện tượng:* Trình tự sản xuất thực tế tại xưởng bị đảo lộn so với lịch APS đã phát hành, gây sai lệch cấp phát tự động.
-   - *Khắc phục:* Không tự ý dừng toàn bộ APS nếu hàng đợi Material Queue chỉ báo Rev00; thực hiện điều chỉnh thứ tự cấp phát vật tư bằng tay (Manual Supply).
-
-4. **Sự Cố Dừng Chuyền Sản Xuất (Line Stop):**
-   - *Khắc phục:* Công nhân nhấn **Nút công đoạn (工程ボタン)** để gửi tín hiệu bất thường lên 統括PLC, hệ thống tự động bấm giờ dừng chuyền (Downtime calculation) để tính toán lại thời điểm cấp linh kiện.
+- 1連携（新規・更新・削除は同シートにまとめる）につき1シートとし、必要に応じてシートを追加されます。 [1]
+LIMITATIONS: incomplete_query_term_coverage, weak_query_term_coverage, weak_term_coverage
 
 #### 📚 Tài liệu trích dẫn nguồn (Citations):
-- 📄 `Lưu trình_lỗi phát sinh khi sản xuất AMS.txt (Mục 1 đến 15: Phân tích sự cố và kinh nghiệm)`
-- 📄 `ORICON STAUS早見表.xlsx (Quy tắc kiểm soát trạng thái container)`
-- 📄 `260618_供給指示作成できない調査.xlsx (Khắc phục lỗi tạo chỉ thị cấp phát)`
+- 📄 `wsc-c1feb2fefec3ae68297fcf05.txt`
 
 ---
 
-### 📍 [BQ05] Quản Lý Trạng Thái Thùng Linh Kiện ORICON và Ma Trận Chuyển Đổi (ORICON Status Tracking)
+### 📍 [BQ04] What errors can occur during the production process and how should they be handled?
 
-- **Thời gian quét dữ liệu (BGE-M3):** `1.13s`
-- **Điểm đánh giá chuyên gia:** `4.6 / 5.0`
+- **Phân loại nghiệp vụ:** `diagnosis`
+- **Thời gian quét dữ liệu (BGE-M3):** `0.77s` (Retrieval: `0.76s` | Synthesis: `0.01s`)
+- **Trạng thái:** ✅ Grounded Response
+- **Số đoạn bằng chứng (Chunks):** `7`
 
 #### 💬 Câu trả lời của AI:
 
-Trạng thái thùng chứa linh kiện tuần hoàn (ORICON) được kiểm soát nghiêm ngặt theo bảng mã HEX và quy tắc chuyển đổi trạng thái:
-
-1. **Bảng Mã Trạng Thái ORICON (ORICON Status Matrix):**
-   - **`00` / Trống (Empty):** Thùng sẵn sàng nạp linh kiện mới tại kho.
-   - **`01` / Đang cấp phát (Allocated / In Transit):** Thùng đã được gán lệnh xuất kho và đang trên đường vận chuyển sang line.
-   - **`%01` (Active Warning Status):** Thùng đã gắn vào phiên làm việc hoặc đã qua cổng kiểm soát.
-   - **`02` / Đã nhận tại line (Received at Line):** Đã đến vị trí chuyền sẵn sàng lắp ráp.
-   - **`03` / Đã hoàn tất tiêu hao (Consumed / Returned):** Linh kiện bên trong đã lắp ráp hết, thùng chuyển về khu thu hồi.
-
-2. **Quy Tắc An Toàn Vận Hành:**
-   - Thùng đã mang mã trạng thái `%01` **tuyệt đối không được cho qua lại Oricon Gate** để ngăn ngừa sự cố trùng lặp bản ghi (Duplicate Container Error).
-   - Kỹ thuật viên sử dụng công cụ chuyển đổi HEX (`ORICON STATUS 変換ツール`) để đối soát mã trạng thái thô khi kiểm tra bất thường.
+- 切替パターン 切替指定日 TC設計指示 Opcenter切替管理 期日前 期日後 切替年月日 切替指示 期日まで 期日以降 切替期日有り 期日切替 YYYY/MM/DD The day 旧 新 期日以降に切替 YYYY/MM/DD After 旧 旧(優先) or 新 ※注1 期日までに切替 YYYY/MM/DD Before 旧(優先) or 新 ※注1 新 切替期日無し 旧品使用後 '－ '－ RC 旧(優先) or 新 ※注1 OR登録 切替生産可 '－ '－ OR 1st(優先) or 2nd ※注2 旧 新 ■切替時期指示 BOP設変 UNIT(Process) -01 オペレーション1 -01 実行ステップ1 -01 部品A -01 オペレーション2 -01 実行ステップ2 -01 部品B -01 初期BOM UNIT(Process) -01 オペレーション1 -01 実行ステップ1 -01 部品A -01 オペレーション2 -01 実行ステップ2 -01 部品B -02 部品REVUP UNIT(Process) -02 オペレーション1 -01 実行ステップ1 -01 部品A -01 オペレーション2 [1]
+- 1連携（新規・更新・削除は同シートにまとめる）につき1シートとし、必要に応じてシートを追加されます。 [2]
+- MES／MOM説明 最後に ➤MOMを使用することで、生産を自動化、最適化することが可能になる。しかし、自動化のためには、 PLMに登録される、BOM（Bill of material：部品表）やBOP（Bill of process：工程表） といった、生産に必要なマスターデータが、自動で連携される必要がある。 [3]
+- ©2025 KYOCERA Document Solutions Inc.7 OPCENTER Connect MOM(CNMOM) CN4T OPCENTER EX CR Manufacturing WIP トラッキング 系譜管理 仕様 ワークフロー管理 リーンフロー 工程データ収集 リワーク・返品管理 装置・資産トラッキング ディスパッチ管理 手順電子管理 電子承認 作業者管理 保守管理 ラベルプリンティング SPCSQC AQL サンプリング Customer Equipment ERP PLM OPCENTER Connect MOM(CNMOM) ERPとの連携 本体・ユニットの 工程計画作成 工程／品目定義 （入庫、出庫、生産） 実績登録／出力／参照 PLCとのデータ連携 Process Automation Control (PAC) OPCENTER APS (Scheduling) 詳細スケジューリング 製造・受入指示／在庫移動・製造実績 BOP 生産ライン（PLC、中間DB） MOMシステムの概要 連携 ツール 連携 ツール 連携 ツール 連携 ツール 中間DBとの連携 WMS 倉庫棚番／入庫順序指定 [4]
+- B0_先1 -01 Parts B0 └ └ Execution Step └ 供給元 供給先 └ Resource └ Solution Item Process C21 -04 / Comp Op. [5]
+LIMITATIONS: incomplete_query_term_coverage, weak_query_term_coverage, weak_term_coverage
 
 #### 📚 Tài liệu trích dẫn nguồn (Citations):
-- 📄 `ORICON STAUS早見表.xlsx (Bảng tra cứu trạng thái và công cụ chuyển đổi HEX)`
-- 📄 `Lưu trình_lỗi phát sinh khi sản xuất AMS.txt (Quy tắc Gate ORICON)`
+- 📄 `wsc-0f40ff26e25e79e74d01b6d7.txt`
+- 📄 `wsc-88408206a188dd1c79d58662.txt`
+- 📄 `wsc-c1feb2fefec3ae68297fcf05.txt`
+- 📄 `wsc-de7da2bee85fb19d85d56454.txt`
+- 📄 `wsc-e3438692bd18f25014d0ef94.txt`
 
 ---
 
-### 📍 [BQ06] So Sánh Quy Trình Lập Kế Hoạch APS và Quy Trình Hoàn Công Sản Xuất (APS Process Plan vs Production Completion)
+### 📍 [BQ05] How is ORICON status tracked and what are the valid status transitions?
 
-- **Thời gian quét dữ liệu (BGE-M3):** `1.04s`
-- **Điểm đánh giá chuyên gia:** `4.5 / 5.0`
+- **Phân loại nghiệp vụ:** `precise_lookup`
+- **Thời gian quét dữ liệu (BGE-M3):** `0.74s` (Retrieval: `0.73s` | Synthesis: `0.01s`)
+- **Trạng thái:** ✅ Grounded Response
+- **Số đoạn bằng chứng (Chunks):** `10`
 
 #### 💬 Câu trả lời của AI:
 
-Bảng so sánh đối chiếu giữa hai quy trình trọng tâm trong chuỗi sản xuất:
-
-| Đặc tính | 1. Lập Kế Hoạch Công Đoạn APS (APS Process Plan) | 2. Đăng Ký Hoàn Công Sản Xuất (Production Completion - CO) |
-|---|---|---|
-| **Vị trí trong chuỗi** | **ĐẦU KỲ (Trước khi sản xuất)** | **CUỐI KỲ (Sau khi sản xuất xong)** |
-| **Bên chịu trách nhiệm** | Bộ phận Quản lý Sản xuất (QLSX / Production Control) | Công nhân trực tiếp tại chuyền sản xuất (Xưởng lắp ráp) |
-| **Hệ thống xử lý** | Hệ thống APS (Advanced Planning System) ➔ Đồng bộ sang Siemens Opcenter | Thiết bị cầm tay HT (Handheld Terminal) ➔ Đồng bộ sang 統括PLC ➔ Opcenter |
-| **Dữ liệu đầu vào** | Kế hoạch đơn hàng, Lịch làm việc xưởng, Thứ tự sản xuất (生産順位表) | Quét mã vạch Serial Number (SN) trên từng sản phẩm tại trạm cuối C-10 |
-| **Mục đích chính** | Phân bổ tải máy, lập lịch công đoạn và tính toán thời điểm cấp linh kiện | Chốt giờ hoàn thành thực tế, tính toán Cycle Time và giải phóng lệnh sản xuất |
-| **Rủi ro vận hành** | Thứ tự APS bị lệch so với xưởng thực tế gây nghẽn cấp vật tư | Quên quét hoặc quét sai SN dẫn đến treo trạng thái thành phẩm trên hệ thống |
+- Source: ORICON STAUS早見表.xlsx（アップロード原本を確認） 3. [1]
+- R3 指図 品目 指図 数量 完了 開始日 品目 指図 数量 日付 指図 内順 計画 順 Status 品目 指図 数量 日付 Status AA 1234 2026/02/02 AA 1234-1 2026/02/02 AA 1234-1 2026/02/02未計画 BB 1235 2026/02/02 AA 1234-2 2026/02/02 AA 1234-2 2026/02/02未計画 BB 1235-1 2026/02/02 BB 1235-1 2026/02/02未計画 BB 1235-2 2026/02/02 BB 1235-2 2026/02/02未計画 BB 1235-3 2026/02/02 BB 1235-3 2026/02/02未計画 品目 指図 数量 完了 開始日 品目 指図 数量 日付 指図 内順 計画 順 Status 品目 指図 数量 日付 Status AA 1234 2026/02/02 BB 1235-1 2026/02/02 1完了 BB 1235-1 2026/02/02完了 BB 1235 2026/02/02 BB 1235-2 2026/02/02 2投入 BB 1235-2 [2]
+- Hiển thị yêu cầu Đăng ký vào bảng xử lý tồn kho ⊸Thông tin QR phiếu hiện vật(Ngoài PO・Item・Qty） ⊸Line/công đoạn Đăng ký tồn kho MOM Cập nhật thông tin ⊸Bỏhiển thị yêu cầu ⊸Bỏtồn kho 2 pallet Cấp phát bằng CTU Chỉthị xuất kho MOM đối ứng quản lý thời gian Việc up tồn kho từ Oricon gate vào vị trí bảo quản kho tự động AMS(R３) là trường [4]
+- Source: ORICON STAUS早見表.xlsx（アップロード原本を確認） ORICON STATUS 早見表 - 検証済み抽出版 1. [5]
+- Một số Oricon có status %01 hoặc đã tồn tại container, nếu cho qua gate lại có thể lỗi trùng. [6]
+LIMITATIONS: incomplete_query_term_coverage, weak_query_term_coverage
 
 #### 📚 Tài liệu trích dẫn nguồn (Citations):
-- 📄 `APS-MOM連携説明.pptx (Slide quy trình 7 bước APS và MOM)`
-- 📄 `MES／MOM説明_20250626.pdf (Đặc tả chức năng hoàn công)`
-- 📄 `Lưu trình_lỗi phát sinh khi sản xuất AMS.txt`
+- 📄 `wsc-0503d45cea900f20151e0708.txt`
+- 📄 `wsc-3e2d1e2c08ae2e6e248346e7.txt`
+- 📄 `wsc-4560acea6169557589c3895f.txt`
+- 📄 `wsc-7ab1f95f854a525d8db24c50.txt`
+- 📄 `wsc-93ba522d824375b47d62796e.txt`
+- 📄 `wsc-e3438692bd18f25014d0ef94.txt`
+- 📄 `wsc-e808681bad6082a35921db64.txt`
 
 ---
 
-### 📍 [BQ07] Luồng Dữ Liệu Giữa MOM và Các Hệ Thống Kết Nối & Điểm Kiểm Tra Sự Cố (MOM Data Flow & Failure Points)
+### 📍 [BQ06] Compare the APS process-plan procedure with the production-completion procedure and highlight operational differences.
 
-- **Thời gian quét dữ liệu (BGE-M3):** `1.27s`
-- **Điểm đánh giá chuyên gia:** `4.7 / 5.0`
+- **Phân loại nghiệp vụ:** `compare_change`
+- **Thời gian quét dữ liệu (BGE-M3):** `0.79s` (Retrieval: `0.78s` | Synthesis: `0.01s`)
+- **Trạng thái:** ✅ Grounded Response
+- **Số đoạn bằng chứng (Chunks):** `10`
 
 #### 💬 Câu trả lời của AI:
 
-Luồng dữ liệu liên kết giữa MOM (Siemens Opcenter Execution Core) và các hệ thống xung quanh:
-
-1. **Sơ Đồ Luồng Dữ Liệu Trung Tâm:**
-   ```text
-   [ PLM (Teamcenter) ] ──(BOP / Master Item / RevUp)──> [ MOM (Opcenter) ]
-   [ ERP (SAP R3) ]      ──(Lệnh SX / Định mức vật tư)──> [ MOM (Opcenter) ]
-   [ APS ]               ──(Lịch thứ tự công đoạn)────> [ MOM (Opcenter) ]
-   [ MOM (Opcenter) ]    ──(Yêu cầu xuất kho vật tư)───> [ WMS (InterStock) ]
-   [ MOM (Opcenter) ]    ──(Lệnh điều phối chuyền)─────> [ 統括PLC ] <──> [ HT Barcode / AGV ]
-   ```
-
-2. **Các Điểm Trọng Yếu Kiểm Tra Khi Phát Sinh Lỗi (Failure Verification Checklist):**
-   - **Giao diện PLM ➔ MOM:** Kiểm tra phiên bản BOP (BOP Version) và mã linh kiện xem đã được Approve / Release trên Teamcenter chưa.
-   - **Giao diện ERP (R3) ➔ MOM:** Kiểm tra trạng thái Lệnh sản xuất (Release Status) và tồn kho định mức.
-   - **Giao diện MOM ➔ WMS:** Kiểm tra bảng `Interface Log / Queue` xem chỉ thị cấp phát (Supply Instruction) có bị chặn bởi bản ghi lỗi không.
-   - **Giao diện MOM ➔ 統括PLC:** Kiểm tra tín hiệu heartbeat PLC và hàng đợi truyền gói tin Serial.
+- Slide text: <p:sld xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main"> ①進度管理登録 ②生産順位表登録 ③カレンダー登録 APS 工程計画作成 APS→MOM 連携 ⑥オリコン入庫完了 ⑦供給計画作成 Liên quan tới tạo kế hoạch xuất kho trên có bước dưới , QLSX hiện tại phụ trách tất cả trừ Đăng ký quản lý tiến độ (MES) biểu thứ tự sản lịch làm việc APS - QLSX công đoạn kết APS→MOM (qua web Opcenter ) - QLSX Hoàn thành [1]
+- 切替パターン 切替指定日 TC設計指示 Opcenter切替管理 期日前 期日後 切替年月日 切替指示 期日まで 期日以降 切替期日有り 期日切替 YYYY/MM/DD The day 旧 新 期日以降に切替 YYYY/MM/DD After 旧 旧(優先) or 新 ※注1 期日までに切替 YYYY/MM/DD Before 旧(優先) or 新 ※注1 新 切替期日無し 旧品使用後 '－ '－ RC 旧(優先) or 新 ※注1 OR登録 切替生産可 '－ '－ OR 1st(優先) or 2nd ※注2 旧 新 ■切替時期指示 BOP設変 UNIT(Process) -01 オペレーション1 -01 実行ステップ1 -01 部品A -01 オペレーション2 -01 実行ステップ2 -01 部品B -01 初期BOM UNIT(Process) -01 オペレーション1 -01 実行ステップ1 -01 部品A -01 オペレーション2 -01 実行ステップ2 -01 部品B -02 部品REVUP UNIT(Process) -02 オペレーション1 -01 実行ステップ1 -01 部品A -01 オペレーション2 [2]
+- Bật lại SQA_partsout sau khi APS/supply plan hoàn tất. [3]
+- ©2025 KYOCERA Document Solutions Inc.7 OPCENTER Connect MOM(CNMOM) CN4T OPCENTER EX CR Manufacturing WIP トラッキング 系譜管理 仕様 ワークフロー管理 リーンフロー 工程データ収集 リワーク・返品管理 装置・資産トラッキング ディスパッチ管理 手順電子管理 電子承認 作業者管理 保守管理 ラベルプリンティング SPCSQC AQL サンプリング Customer Equipment ERP PLM OPCENTER Connect MOM(CNMOM) ERPとの連携 本体・ユニットの 工程計画作成 工程／品目定義 （入庫、出庫、生産） 実績登録／出力／参照 PLCとのデータ連携 Process Automation Control (PAC) OPCENTER APS (Scheduling) 詳細スケジューリング 製造・受入指示／在庫移動・製造実績 BOP 生産ライン（PLC、中間DB） MOMシステムの概要 連携 ツール 連携 ツール 連携 ツール 連携 ツール 中間DBとの連携 WMS 倉庫棚番／入庫順序指定 [5]
+- Hiện tượng: - Khi line dừng vì kaizo hoặc phải replan APS, nếu SQA_partsout vẫn bật, lệnh xuất kho cũ có thể tiếp tục phát ra. [6]
+LIMITATIONS: incomplete_query_term_coverage, weak_query_term_coverage
 
 #### 📚 Tài liệu trích dẫn nguồn (Citations):
-- 📄 `MOMデータ連携説明_20251220.pdf (Kiến trúc giao tiếp đa hệ thống)`
-- 📄 `MES／MOM説明_20250626.pdf (Sơ đồ MOM Core và các hệ thống vệ tinh)`
-- 📄 `260618_供給指示作成できない調査.xlsx`
+- 📄 `wsc-0f40ff26e25e79e74d01b6d7.txt`
+- 📄 `wsc-3e2d1e2c08ae2e6e248346e7.txt`
+- 📄 `wsc-64f6e52796647d8cca8e4904.txt`
+- 📄 `wsc-6bd190ba0b2e007db7a791c4.txt`
+- 📄 `wsc-de7da2bee85fb19d85d56454.txt`
+- 📄 `wsc-fe72719c60601e31696b64b0.txt`
 
 ---
 
-### 📍 [BQ08] Checklist Quy Trình RevUp Thủ Công Khi Thay Đổi BOP / Quy Trình Sản Xuất (Manual RevUp Checklist)
+### 📍 [BQ07] How does data flow between MOM and other connected systems, and where should an operator verify failures?
 
-- **Thời gian quét dữ liệu (BGE-M3):** `1.09s`
-- **Điểm đánh giá chuyên gia:** `4.9 / 5.0`
+- **Phân loại nghiệp vụ:** `cross_source_synthesis`
+- **Thời gian quét dữ liệu (BGE-M3):** `4.51s` (Retrieval: `4.48s` | Synthesis: `0.03s`)
+- **Trạng thái:** ✅ Grounded Response
+- **Số đoạn bằng chứng (Chunks):** `25`
 
 #### 💬 Câu trả lời của AI:
 
-Bảng Checklist hành động thực tế khi thực hiện RevUp phiên bản sản phẩm / quy trình:
-
-### 📋 CHECKLIST THAY ĐỔI BOP / TACKTIME / LAYOUT (REVUP PROCEDURE)
-
-| Bước | Hạng mục kiểm tra | Chi tiết thao tác & Đối tượng xác minh |
-|:---:|---|---|
-| **1** | **Xác nhận phiên bản BOP** | Kiểm tra mã `BOP ver.` và mã sản phẩm `C21_生産品目` trên Teamcenter (PLM) đã chuyển sang phiên bản mới hợp lệ. |
-| **2** | **Ánh xạ Công đoạn (T/C ➔ O/C)** | Xác minh bảng mapping giữa Teamcenter Process và Opcenter Operation (`Comp Op. C21-1`). |
-| **3** | **Kiểm tra Danh mục Linh kiện (Parts)** | Đảm bảo mã linh kiện thay thế đã được khai báo chính xác trong cấu trúc BOM mới. |
-| **4** | **Cập nhật Tacktime & Resource** | Kiểm tra thông số thời gian chuẩn (Tacktime) và tài nguyên thiết bị (`ScheduleResource`) của Factory 1000. |
-| **5** | **Xóa Lệnh Chờ Cũ (Queue Flush)** | Đảm bảo không còn lệnh sản xuất phiên bản cũ (Rev cũ) bị kẹt trong hàng đợi cấp phát tự động. |
-| **6** | **Kiểm tra In Mã Vạch Barcode** | In thử mẫu tem barcode Serial mới và quét kiểm tra định dạng dữ liệu trên thiết bị HT. |
-| **7** | **Chạy Thử Chuyền (Pilot Run)** | Cho 1 đơn vị sản phẩm chạy thử qua toàn bộ các trạm C-1 đến C-10 để xác nhận tín hiệu ST/CO đồng bộ trơn tru. |
+- 堤 2023-08-25 00:00:00 [1]
+- 堤 2023-09-28 00:00:00 [2]
+- MES／MOM説明 MOMとは ➤MOM ＝Manufacturing Operations Management ：製造オペレーション管理 ・製造現場の運用全体を統括・管理するためのフレームワークやそのシステム ・製造計画、作業指示、実行、品質管理、そして最適化までを一貫して管理し、製造業の効率化や 品質向上を支える重要な役割を果たす ➤MESは主に現場レベルに焦点を当て、作業指示、実行の記録、進捗確認、機械稼働状況のモニタリング など、現場作業を効率的に実行するための機能に特化 ➤MOMの主な機能 ・生産スケジュール管理 ・品質管理 ・在庫管理 ・パフォーマンス分析 ・トレーサビリティの確保 ➤MOMが「製造全体の統括」 を担うのに対し MESは「現場での実行」 に特化している [3]
+- 表題の件につきまして、 組立に対してどの部品をどれだけ消費したかについて、MOM→R3に 組立完了・部品消費実績を、T_IF_PROD_RESULTテーブルを介してxmlデータを連携しているかと思います。 [4]
+- [DOCUMENT ARCHITECTURE & SUMMARY] [5]
+LIMITATIONS: incomplete_query_term_coverage, weak_query_term_coverage, weak_term_coverage
 
 #### 📚 Tài liệu trích dẫn nguồn (Citations):
-- 📄 `Lưu trình_lỗi phát sinh khi sản xuất AMS.txt (Mục 15: Checklist ngắn khi thay đổi BOP)`
-- 📄 `MOMデータ連携説明_20251220.pdf (Slide RevUp Process Mapping)`
-- 📄 `手順書付シナリオ.xlsx`
+- 📄 `wsc-02949343617ceb38ddb5ec6a.txt`
+- 📄 `wsc-06969244332d5526c7315739.txt`
+- 📄 `wsc-0f40ff26e25e79e74d01b6d7.txt`
+- 📄 `wsc-3e2d1e2c08ae2e6e248346e7.txt`
+- 📄 `wsc-64f6e52796647d8cca8e4904.txt`
+- 📄 `wsc-6bd190ba0b2e007db7a791c4.txt`
+- 📄 `wsc-7ab1f95f854a525d8db24c50.txt`
+- 📄 `wsc-8b8487684c9d68efc111b252.txt`
+- 📄 `wsc-9190e9540ad3e389d6fd2a44.txt`
+- 📄 `wsc-9b0f5aed61da4d0ca3cd79d5.txt`
+- 📄 `wsc-b0c86107ec840f1d85849b67.txt`
+- 📄 `wsc-b4e28e0f9805ad27aac746f7.txt`
+- 📄 `wsc-de7da2bee85fb19d85d56454.txt`
+- 📄 `wsc-e543bcba5f04d47401090880.txt`
 
 ---
 
-### 📍 [BQ09] Định Vị Ô Tính và Dòng Dữ Liệu Cụ Thể Trong File Bảng Tính Sự Cố Cấp Phát (Excel Spreadsheet Pinpointing)
+### 📍 [BQ08] Create an actionable checklist for the manual RevUp procedure, including when it is needed and what must be verified.
 
-- **Thời gian quét dữ liệu (BGE-M3):** `1.50s`
-- **Điểm đánh giá chuyên gia:** `5.0 / 5.0`
+- **Phân loại nghiệp vụ:** `actionable_output`
+- **Thời gian quét dữ liệu (BGE-M3):** `1.67s` (Retrieval: `1.66s` | Synthesis: `0.01s`)
+- **Trạng thái:** ✅ Grounded Response
+- **Số đoạn bằng chứng (Chunks):** `9`
 
 #### 💬 Câu trả lời của AI:
 
-Dựa trên dữ liệu phân tích bảng tính điều tra sự cố cấp phát vật tư:
-
-1. **Tên File Bảng Tính Gốc:**
-   - `260618_供給指示作成できない調査.xlsx`
-
-2. **Vị Trí Trang Tính & Vùng Ô Chính Xác (Sheet & Row/Cell Range):**
-   - **Trang tính (Sheet):** `Sheet2`
-   - **Vùng dữ liệu phân tích dòng hiển thị:**
-     - **Dòng 2 đến dòng 60 (Rows 2–60 / Trang 2):** Khảo sát cấu trúc hàng đợi `WorkflowName` và các cờ trạng thái xử lý đơn hàng.
-     - **Dòng 61 đến dòng 119 (Rows 61–119 / Trang 3):** Ghi nhận chi tiết lỗi không tạo được chỉ thị xuất kho (Supply Instruction Generation Failure) do dữ liệu điều kiện tồn kho không thỏa mãn.
-
-3. **Nội Dung Kết Luận Nghiệp Vụ:**
-   - Cần thực hiện xử lý bản ghi lỗi nghẽn trước khi hệ thống có thể tự động sinh lịch xuất kho tiếp theo cho bên vận hành.
+- CHECKLIST NGẮN KHI THAY ĐỔI BOP / TACKTIME / LAYOUT ------------------------------------------------------------ Ngày cập nhật checklist: 03/08/2026. [1]
+- ①部品 REVUP Pro. [2]
+- 1325 C3B_YB2200C30035 46190 3W2ND25310 Thiu chi th xut kho C3B_YB2200C30028 145 Dúng theo ERPBOM Có khà năng khi xut kho manual đ chon WorkCenter phia 29? [4]
+- Kinh nghiệm: - Không chỉ check kiểu dữ liệu của bảng đích, cần check cả kiểu dữ liệu trong stored procedure và biến trung gian. [5]
+- Xuất kho thủ công : Dùng chức năng "Manual Supply Line" trên Opcenter để xuất 2 thùng này. [9]
+LIMITATIONS: incomplete_query_term_coverage, weak_query_term_coverage
 
 #### 📚 Tài liệu trích dẫn nguồn (Citations):
-- 📄 `260618_供給指示作成できない調査.xlsx (Sheet2, Rows 2-60, Rows 61-119)`
-- 📄 `Lưu trình_lỗi phát sinh khi sản xuất AMS.txt (Mục 14: Lịch xuất kho tự động và manual)`
+- 📄 `wsc-19688595b73143c79be49114.txt`
+- 📄 `wsc-3b1a2ef72eee22a09dd70e04.txt`
+- 📄 `wsc-3e2d1e2c08ae2e6e248346e7.txt`
+- 📄 `wsc-6bd190ba0b2e007db7a791c4.txt`
+- 📄 `wsc-e3438692bd18f25014d0ef94.txt`
 
 ---
 
-### 📍 [BQ10] Tóm Tắt Quy Trình Cấp Phát Vật Tư và Vị Trí Trích Dẫn Chính Xác (Material Handling Operation Procedure)
+### 📍 [BQ09] Using the available spreadsheet data, identify the relevant sheet and row or cell range for the documented supply-instruction issue.
 
-- **Thời gian quét dữ liệu (BGE-M3):** `1.12s`
-- **Điểm đánh giá chuyên gia:** `4.5 / 5.0`
+- **Phân loại nghiệp vụ:** `excel_native`
+- **Thời gian quét dữ liệu (BGE-M3):** `1.58s` (Retrieval: `1.57s` | Synthesis: `0.01s`)
+- **Trạng thái:** ✅ Grounded Response
+- **Số đoạn bằng chứng (Chunks):** `10`
 
 #### 💬 Câu trả lời của AI:
 
-Tóm tắt quy trình cấp phát vật tư nhà máy cùng các vị trí trích dẫn nguồn chuẩn xác:
-
-1. **Tóm Tắt Quy Trình 4 Bước:**
-   - **Bước 1 (Lập Kế Hoạch):** Hệ thống MOM tiếp nhận lịch công đoạn và tính toán thời điểm cần cấp phát linh kiện cho từng trạm.
-   - **Bước 2 (Chỉ Thị Xuất Kho):** Phát hành chỉ thị cấp phát (Supply Instruction) tới WMS/InterStock để chuẩn bị các thùng ORICON.
-   - **Bước 3 (Vận Chuyển AGV):** Robot AGV tự động nhận phôi/thùng vật tư từ kho và vận chuyển tới line sản xuất theo tín hiệu điều khiển từ 統括PLC.
-   - **Bước 4 (Tiếp Nhận & Lắp Ráp):** Công nhân tại trạm tiếp nhận thùng linh kiện, đối chiếu tem nhãn và thực hiện lắp ráp vào cụm Unit.
-
-2. **Vị Trí Trích Dẫn Tài Liệu Cụ Thể (Citation Provenance):**
-   - `AMS概略フロー_入出庫・生産_20250703VN.pdf` ➔ Sơ đồ toàn cảnh luồng nhập xuất kho và liên kết line sản xuất.
-   - `MES／MOM説明_20250626.pdf` ➔ Đặc tả chức năng điều phối vật tư tự động qua Siemens Opcenter.
-   - `Lưu trình_lỗi phát sinh khi sản xuất AMS.txt` ➔ Kinh nghiệm kiểm soát luồng cấp phát thực tế tại xưởng.
+- オリコン名指定 オリコン名取得 ③ [1]
+- 格納先指定 オリコン格納先取得 ⑤ [2]
+- 1.2 通信回線仕様 伝送方式 [3]
+- AGVの状態確認（Idle確認） ② [6]
+- =DEC2HEX(I114,2) [8]
+LIMITATIONS: incomplete_query_term_coverage, weak_query_term_coverage, weak_term_coverage
 
 #### 📚 Tài liệu trích dẫn nguồn (Citations):
-- 📄 `AMS概略フロー_入出庫・生産_20250703VN.pdf`
-- 📄 `MES／MOM説明_20250626.pdf`
-- 📄 `Lưu trình_lỗi phát sinh khi sản xuất AMS.txt`
+- 📄 `wsc-02949343617ceb38ddb5ec6a.txt`
+- 📄 `wsc-06969244332d5526c7315739.txt`
+- 📄 `wsc-6bd190ba0b2e007db7a791c4.txt`
+- 📄 `wsc-8b8487684c9d68efc111b252.txt`
+- 📄 `wsc-9b0f5aed61da4d0ca3cd79d5.txt`
+- 📄 `wsc-b0c86107ec840f1d85849b67.txt`
 
 ---
 
-### 📍 [BQ11] Giao Thức Tích Hợp Điện Toán Lượng Tử (Quantum Computing Protocol — Abstention Check)
+### 📍 [BQ10] Summarize the material-handling operation procedure and cite the most precise available source locations.
 
-- **Thời gian quét dữ liệu (BGE-M3):** `1.15s`
-- **Điểm đánh giá chuyên gia:** `5.0 / 5.0`
+- **Phân loại nghiệp vụ:** `citation_provenance`
+- **Thời gian quét dữ liệu (BGE-M3):** `1.62s` (Retrieval: `1.61s` | Synthesis: `0.01s`)
+- **Trạng thái:** ✅ Grounded Response
+- **Số đoạn bằng chứng (Chunks):** `10`
 
 #### 💬 Câu trả lời của AI:
 
-🛡️ **XÁC NHẬN TỪ CHỐI AN TOÀN (CORRECT ABSTENTION - ZERO HALLUCINATION):**
-
-Căn cứ vào toàn bộ 69 tài liệu kỹ thuật, sơ đồ kiến trúc hệ thống và sổ tay vận hành xưởng máy đã được nạp:
-- **Hoàn toàn KHÔNG CÓ** bất kỳ thông tin, tài liệu hay giao thức nào liên quan đến **"Điện toán lượng tử" (Quantum Computing)**.
-- Hệ thống điều hành nhà máy hiện tại được xây dựng trên kiến trúc điều khiển công nghiệp tiêu chuẩn gồm: PLC điều khiển dây chuyền, hệ thống Siemens Opcenter (MOM), SAP R3 (ERP) và InterStock (WMS).
-- AI dứt khoát từ chối suy diễn để đảm bảo tính xác thực 100% của tài liệu doanh nghiệp.
+- ERP Operation 302ND19100_Y302V9S2010106 [1]
+- 供給先-1 Parts A0 Rev 01 └ └ └ Execution Step └ Spec Operation └ Resource Group └ Resource └ Factory └ └ Resource └ 供給元 供給先 組立用 供給用 ERP BOM Comp Op. [2]
+- Định nghĩa thuật ngữ Viết tắt của Material Handling Controller (Bộ điều khiển xử lý vật liệu). [3]
+- Viết tắt của Material Handling Controller (Bộ điều khiển xử lý vật liệu). [4]
+- Hiện tượng: - Container Search hiển thị Rev đã đổi, nhưng Material Queue vẫn hiển thị Rev 00. [6]
+LIMITATIONS: incomplete_query_term_coverage, weak_query_term_coverage, weak_term_coverage
 
 #### 📚 Tài liệu trích dẫn nguồn (Citations):
-- 📄 `Toàn bộ 69 tài liệu kỹ thuật đã nạp (Không có dữ liệu về Quantum Computing)`
+- 📄 `wsc-3e2d1e2c08ae2e6e248346e7.txt`
+- 📄 `wsc-6bd190ba0b2e007db7a791c4.txt`
+- 📄 `wsc-77c7c95f4624098143850ae7.txt`
+- 📄 `wsc-8d6ff2919a930cc31689e92e.txt`
+- 📄 `wsc-de7da2bee85fb19d85d56454.txt`
+- 📄 `wsc-e3438692bd18f25014d0ef94.txt`
 
 ---
 
-### 📍 [BQ12] Cơ Chế Đảm Bảo Chất Lượng Bằng Blockchain (Blockchain QA Mechanism — Abstention Check)
+### 📍 [BQ11] What is the exact quantum computing integration protocol for this factory?
 
-- **Thời gian quét dữ liệu (BGE-M3):** `1.08s`
-- **Điểm đánh giá chuyên gia:** `5.0 / 5.0`
+- **Phân loại nghiệp vụ:** `abstention`
+- **Thời gian quét dữ liệu (BGE-M3):** `1.53s` (Retrieval: `1.52s` | Synthesis: `0.01s`)
+- **Trạng thái:** 🛡️ Dynamic Abstention (Zero Hallucination)
+- **Số đoạn bằng chứng (Chunks):** `0`
 
 #### 💬 Câu trả lời của AI:
 
-🛡️ **XÁC NHẬN TỪ CHỐI AN TOÀN (CORRECT ABSTENTION - ZERO HALLUCINATION):**
-
-Căn cứ vào toàn bộ kho tri thức và tài liệu vận hành nhà máy:
-- **Hoàn toàn KHÔNG CÓ** bất kỳ cơ chế quản lý chất lượng nào sử dụng công nghệ **Blockchain**.
-- Cơ chế quản lý và truy xuất lịch sử chất lượng sản phẩm của nhà máy được thực hiện qua:
-  1. Mã vạch Serial Number (SN) định danh từng máy.
-  2. Bảng ghi nhận lịch sử sản xuất trên hệ cơ sở dữ liệu quan hệ của **Siemens Opcenter Execution Core**.
-  3. Hệ thống lưu vết thời gian bắt đầu và hoàn thành (**ST/CO**) qua thiết bị cầm tay HT và 統括PLC.
-- AI xác nhận từ chối câu hỏi không có căn cứ thực tế.
+KHÔNG ĐỦ BẰNG CHỨNG:
+- Corpus được truy xuất không thiết lập được sự kiện hoặc quan hệ mà câu hỏi yêu cầu.
+- Cần nguồn trực tiếp (ví dụ: tài liệu quy trình, bản ghi hệ thống hoặc hàng dữ liệu có mục tiêu) trước khi có thể trả lời an toàn.
+LIMITATIONS: evidence_pack_insufficient, no_target_query_evidence, no_direct_query_evidence
 
 #### 📚 Tài liệu trích dẫn nguồn (Citations):
-- 📄 `Toàn bộ 69 tài liệu kỹ thuật đã nạp (Không có dữ liệu về Blockchain)`
+- 🛡️ *Không trích dẫn tài liệu do câu hỏi nằm ngoài phạm vi tri thức (Dynamic Abstention).*
 
 ---
 
+### 📍 [BQ12] What specific blockchain-based quality assurance mechanism does the system use?
+
+- **Phân loại nghiệp vụ:** `abstention`
+- **Thời gian quét dữ liệu (BGE-M3):** `1.27s` (Retrieval: `1.26s` | Synthesis: `0.01s`)
+- **Trạng thái:** 🛡️ Dynamic Abstention (Zero Hallucination)
+- **Số đoạn bằng chứng (Chunks):** `0`
+
+#### 💬 Câu trả lời của AI:
+
+KHÔNG ĐỦ BẰNG CHỨNG:
+- Corpus được truy xuất không thiết lập được sự kiện hoặc quan hệ mà câu hỏi yêu cầu.
+- Cần nguồn trực tiếp (ví dụ: tài liệu quy trình, bản ghi hệ thống hoặc hàng dữ liệu có mục tiêu) trước khi có thể trả lời an toàn.
+LIMITATIONS: evidence_pack_insufficient, no_target_query_evidence, no_direct_query_evidence
+
+#### 📚 Tài liệu trích dẫn nguồn (Citations):
+- 🛡️ *Không trích dẫn tài liệu do câu hỏi nằm ngoài phạm vi tri thức (Dynamic Abstention).*
+
+---

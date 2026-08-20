@@ -1,18 +1,14 @@
-## 2026-08-18T23:22:53Z
-
-You are teamwork_preview_reviewer_2 (IT Terminology & Schema Conformance Reviewer).
+## 2026-08-20T13:39:57Z
 Working directory: d:\Sandbox\AIOS_habbit\.agents\teamwork_preview_reviewer_2
 Project root: d:\Sandbox\AIOS_habbit
-Original request file: d:\Sandbox\AIOS_habbit\.agents\ORIGINAL_REQUEST.md
-Project specification: d:\Sandbox\AIOS_habbit\PROJECT.md
-Target file to review: d:\Sandbox\AIOS_habbit\.understand-anything\knowledge-graph.json
+Original requirements file: d:\Sandbox\AIOS_habbit\.agents\ORIGINAL_REQUEST.md
+PROJECT.md: C:\Users\Admin\.gemini\antigravity\brain\085caf98-0e6e-4709-bce0-a3cf6358fe59\PROJECT.md
 
-Task:
-1. Conduct a rigorous check of IT terminology compliance in `knowledge-graph.json` against `PROJECT.md § Translation & Terminology Glossary`:
-   - Verify that core IT terms (Agent, Local Storage, Orchestration, Framework, Dashboard, RAG, Streamlit, Pydantic, JSONL, SQLite, CLI, Brain Gateway, Claim Guard, etc.) are kept in English as requested.
-   - Verify that domain terms (bằng chứng, nguồn dữ liệu, nhãn bảo mật, etc.) follow the standardized glossary.
-2. Verify that non-text machine fields (`id`, `type`, `name`, `filePath`, `tags`, `complexity`, `nodeIds`, `order`, `edges`) are 100% untouched and valid.
-3. Output your findings to `d:\Sandbox\AIOS_habbit\.agents\teamwork_preview_reviewer_2\terminology_report.md`.
-4. Write `handoff.md` with explicit Verdict: APPROVE or REQUEST_CHANGES.
-
-Send a completion message back to parent when done.
+Task: Independently review Requirement R3 (Dynamic Abstention & Zero Canned Answers) and Requirement R4 (Comprehensive Tests & Regression Guards):
+1. Review `scripts/generate_ai_grounded_report.py` and `scripts/run_workspace_chat_12_questions.py`:
+   - Confirm complete removal of `POLISHED_ANSWERS` dictionary and any static canned fallback responses.
+   - Verify dynamic synthesis flow via `synthesize_evidence(pack)` and `ClaimGuard.evaluate_claim_readiness()`.
+2. Review `tests/test_mom_search_bm25_zero_hardcode.py` and the overall test architecture in `tests/`:
+   - Verify AST-based regression guards for hardcoded keywords, file penalties, Excel limit defaults, and canned answers.
+   - Verify claim validation and dynamic abstention tests.
+3. Provide a structured handoff report (.agents/teamwork_preview_reviewer_2/handoff.md) with an explicit verdict: APPROVE or REQUEST_CHANGES. Send a message back with your verdict.

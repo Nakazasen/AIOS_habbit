@@ -1,0 +1,689 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Excali-Flow Architecture Visualizer</title>
+  
+  <!-- Google Fonts: Hand-drawn & Modern UI -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@600;700&family=Inter:wght@400;500;600;700&family=Shantell+Sans:ital,wght@0,400..700;1,400..700&family=Virgil&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+  
+  <!-- Mermaid.js v11 with Rough.js Hand-drawn Engine -->
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+  <!-- Panzoom for smooth canvas zooming and panning (v4.5.1) -->
+  <script src="https://cdn.jsdelivr.net/npm/@panzoom/panzoom@4.5.1/dist/panzoom.min.js"></script>
+
+  <style>
+    :root {
+      --bg-canvas: #f8f9fa;
+      --bg-panel: #ffffff;
+      --border-color: #e2e8f0;
+      --text-main: #1e293b;
+      --text-muted: #64748b;
+      --primary: #4f46e5;
+      --primary-hover: #4338ca;
+      --accent: #f59e0b;
+      --font-hand: 'Shantell Sans', 'Caveat', 'Virgil', cursive, sans-serif;
+      --font-ui: 'Inter', system-ui, -apple-system, sans-serif;
+      --font-code: 'Fira Code', monospace;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: var(--font-ui);
+      background-color: var(--bg-canvas);
+      color: var(--text-main);
+      display: flex;
+      height: 100vh;
+      width: 100vw;
+      overflow: hidden;
+    }
+
+    #sidebar {
+      width: 460px;
+      min-width: 460px;
+      max-width: 460px;
+      background: var(--bg-panel);
+      border-right: 2px solid var(--border-color);
+      display: flex;
+      flex-direction: column;
+      box-shadow: 4px 0 15px rgba(0,0,0,0.03);
+      z-index: 10;
+      margin-left: 0;
+      opacity: 1;
+      pointer-events: auto;
+      transition: margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease;
+    }
+
+    #sidebar.collapsed {
+      margin-left: -460px;
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .header-bar {
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: #fafafa;
+    }
+
+    .header-title {
+      font-family: var(--font-hand);
+      font-size: 1.4rem;
+      font-weight: 700;
+      color: #0f172a;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .badge {
+      font-family: var(--font-ui);
+      font-size: 0.7rem;
+      font-weight: 600;
+      background: #e0e7ff;
+      color: #3730a3;
+      padding: 2px 8px;
+      border-radius: 12px;
+      text-transform: uppercase;
+    }
+
+    .icon-btn {
+      width: 32px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: transparent;
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.9rem;
+      color: var(--text-muted);
+      transition: all 0.15s ease;
+    }
+
+    .icon-btn:hover {
+      background: #e2e8f0;
+      color: var(--text-main);
+    }
+
+    .tabs-nav {
+      display: flex;
+      padding: 8px 12px 0 12px;
+      gap: 6px;
+      border-bottom: 1px solid var(--border-color);
+      background: #f8fafc;
+      overflow-x: auto;
+    }
+
+    .tab-btn {
+      padding: 8px 14px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      background: transparent;
+      border: 1px solid transparent;
+      border-bottom: none;
+      border-radius: 8px 8px 0 0;
+      color: var(--text-muted);
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.2s;
+    }
+
+    .tab-btn:hover {
+      color: var(--text-main);
+      background: #e2e8f0;
+    }
+
+    .tab-btn.active {
+      background: var(--bg-panel);
+      color: var(--primary);
+      border-color: var(--border-color);
+      border-bottom: 1px solid var(--bg-panel);
+      margin-bottom: -1px;
+    }
+
+    .editor-section {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      padding: 16px;
+      gap: 10px;
+      min-height: 0;
+    }
+
+    .editor-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .editor-desc {
+      font-size: 0.82rem;
+      color: var(--text-muted);
+      line-height: 1.4;
+    }
+
+    #mermaid-code {
+      flex: 1;
+      width: 100%;
+      font-family: var(--font-code);
+      font-size: 0.82rem;
+      line-height: 1.45;
+      padding: 12px;
+      border-radius: 8px;
+      border: 1px solid var(--border-color);
+      background: #0f172a;
+      color: #f8fafc;
+      resize: none;
+      outline: none;
+    }
+
+    #mermaid-code:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.15);
+    }
+
+    .btn-row {
+      display: flex;
+      gap: 8px;
+    }
+
+    .btn {
+      padding: 9px 14px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      border-radius: 6px;
+      cursor: pointer;
+      border: 1px solid var(--border-color);
+      background: #ffffff;
+      color: var(--text-main);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      transition: all 0.15s ease;
+    }
+
+    .btn:hover {
+      background: #f1f5f9;
+      border-color: #cbd5e1;
+    }
+
+    .btn-primary {
+      background: var(--primary);
+      color: #ffffff;
+      border-color: var(--primary);
+    }
+
+    .btn-primary:hover {
+      background: var(--primary-hover);
+    }
+
+    #viewport {
+      flex: 1;
+      position: relative;
+      background: 
+        radial-gradient(circle, #cbd5e1 1px, transparent 1px);
+      background-size: 24px 24px;
+      background-color: #fdfbf7; /* Warm Excalidraw paper */
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.3s ease;
+      min-width: 0;
+    }
+
+    #panzoom-container {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: grab;
+      overflow: hidden;
+    }
+
+    #panzoom-container:active {
+      cursor: grabbing;
+    }
+
+    #diagram-output {
+      padding: 40px;
+      display: inline-block;
+      user-select: none;
+      transform-origin: center center;
+    }
+
+    .floating-toolbar {
+      position: absolute;
+      bottom: 24px;
+      right: 24px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background: #ffffff;
+      padding: 6px 12px;
+      border-radius: 12px;
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+      border: 1px solid var(--border-color);
+      z-index: 20;
+    }
+
+    .tool-btn {
+      width: 36px;
+      height: 36px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: transparent;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 1.05rem;
+      color: var(--text-main);
+      transition: background 0.15s;
+    }
+
+    .tool-btn:hover {
+      background: #f1f5f9;
+    }
+
+    .zoom-badge {
+      font-family: var(--font-ui);
+      font-size: 0.78rem;
+      font-weight: 700;
+      color: var(--text-muted);
+      background: #f1f5f9;
+      padding: 4px 8px;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 48px;
+      user-select: none;
+    }
+
+    /* Toggle Button CSS - Chỉ hiển thị khi Sidebar bị thu gọn */
+    .toggle-sidebar-btn {
+      position: absolute;
+      top: 16px;
+      left: 16px;
+      z-index: 30;
+      background: #ffffff;
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 8px 14px;
+      font-size: 0.88rem;
+      font-weight: 600;
+      cursor: pointer;
+      box-shadow: 0 4px 8px -1px rgba(0,0,0,0.08);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      color: var(--text-main);
+    }
+
+    .toggle-sidebar-btn:hover {
+      background: #f8fafc;
+      box-shadow: 0 6px 12px -2px rgba(0,0,0,0.12);
+    }
+
+    /* Ẩn nút toggle khi Sidebar đang mở để tránh đè lên tiêu đề header */
+    #sidebar:not(.collapsed) + #toggle-sidebar {
+      opacity: 0;
+      pointer-events: none;
+      transform: translateX(-20px);
+    }
+
+    #sidebar.collapsed + #toggle-sidebar {
+      opacity: 1;
+      pointer-events: auto;
+      transform: translateX(0);
+    }
+
+    .mermaid text {
+      font-family: var(--font-hand) !important;
+      font-size: 15px !important;
+      letter-spacing: 0.2px;
+    }
+
+    .error-box {
+      background: #fee2e2;
+      border: 1px solid #ef4444;
+      color: #991b1b;
+      padding: 12px;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      display: none;
+    }
+  </style>
+</head>
+<body>
+
+  <aside id="sidebar">
+    <div class="header-bar">
+      <div class="header-title">
+        <span>🎨 Excali-Flow</span>
+        <span class="badge">Hand-Drawn</span>
+      </div>
+      <button id="btn-collapse-sidebar" class="icon-btn" title="Thu gọn Sidebar (Ctrl+B)">◀</button>
+    </div>
+
+    <nav class="tabs-nav" id="tabs-container"></nav>
+
+    <div class="editor-section">
+      <div class="editor-header">
+        <div class="editor-desc" id="tab-desc">Mô tả sơ đồ</div>
+      </div>
+
+      <textarea id="mermaid-code" spellcheck="false" placeholder="Nhập mã Mermaid tại đây..."></textarea>
+      
+      <div id="error-msg" class="error-box"></div>
+
+      <div class="btn-row">
+        <button id="btn-render" class="btn btn-primary" style="flex: 2;">
+          <span>⚡ Cập Nhật Sơ Đồ</span>
+        </button>
+        <button id="btn-copy" class="btn" style="flex: 1;">
+          <span>📋 Sao Chép</span>
+        </button>
+      </div>
+    </div>
+  </aside>
+
+  <button id="toggle-sidebar" class="toggle-sidebar-btn" title="Mở bảng điều khiển (Ctrl+B)">
+    <span>✏️</span> <span>Mở Bảng Điều Khiển</span>
+  </button>
+
+  <main id="viewport">
+    <div id="panzoom-container">
+      <div id="diagram-output" class="mermaid"></div>
+    </div>
+
+    <div class="floating-toolbar">
+      <button id="zoom-in" class="tool-btn" title="Phóng to (Zoom In)">➕</button>
+      <button id="zoom-out" class="tool-btn" title="Thu nhỏ (Zoom Out)">➖</button>
+      <button id="zoom-reset" class="tool-btn" title="Về mặc định (Reset)">🎯</button>
+      <button id="zoom-fit" class="tool-btn" title="Vừa khung hình (Fit to Screen)">📐</button>
+      <span id="zoom-badge" class="zoom-badge">100%</span>
+      <div style="width: 1px; height: 24px; background: var(--border-color); margin: 0 4px;"></div>
+      <button id="export-svg" class="tool-btn" title="Tải file Vector SVG">🖼️ SVG</button>
+      <button id="export-png" class="tool-btn" title="Tải ảnh PNG độ nét cao">📷 PNG</button>
+    </div>
+  </main>
+
+  <script>
+    const diagrams = {
+  "graphify_arch": {
+    "title": "🧠 Kiến Trúc Tri Thức & Cộng Đồng (Graphify Knowledge Architecture)",
+    "desc": "Đồ thị cộng đồng kiến trúc và các mô-đun chức năng được trích xuất từ Graphify cho AIOS_habbit",
+    "code": "%%{init: {'theme': 'base', 'themeVariables': { 'primaryColor': '#e0f2fe', 'primaryBorderColor': '#0284c7', 'primaryTextColor': '#0f172a', 'secondaryColor': '#fef3c7', 'secondaryBorderColor': '#d97706', 'secondaryTextColor': '#0f172a', 'tertiaryColor': '#f3e8ff', 'tertiaryBorderColor': '#9333ea', 'tertiaryTextColor': '#0f172a', 'lineColor': '#334155', 'fontSize': '14px' }, 'look': 'handDrawn'}}%%\nflowchart TD\n    subgraph COMM_0[\"📦 Workspace Chat Phase 2 Evolution\"]\n        docs_archive_ux_records_workspace_chat_phase2c_xlsx_ingest_design_gate[\"📑 Workspace Chat Phase 2C XLSX Ingest Design Gate\"]\n        docs_archive_ux_records_workspace_chat_phase2d_source_aware_placeholder_design_gate[\"📑 Workspace Chat Phase 2D Source Aware Placeholder Design Gate\"]\n        docs_archive_ux_records_workspace_chat_phase2e_safe_ai_answer_design_gate[\"📑 Workspace Chat Phase 2E Safe AI Answer Design Gate\"]\n        docs_archive_ux_records_workspace_chat_phase2f_owner_facing_pilot_polish_design_gate[\"📑 Workspace Chat Phase 2F Owner Facing Pilot Polish Design Gate\"]\n        docs_archive_ux_records_workspace_chat_phase2g_fix_owner_usability_design_gate[\"📑 Workspace Chat Phase 2G Fix Owner Usability Design Gate\"]\n        docs_archive_ux_records_workspace_chat_phase2h_answer_clarity_and_simple_ai_ux_design_gate[\"📑 Workspace Chat Phase 2H Answer Clarity and Simple AI UX Design Gate\"]\n    end\n    subgraph COMM_1[\"📦 AIOS Data Transformation Lifecycle\"]\n        architecture_source_layer[\"📑 Source Layer (Layer 1)\"]\n        architecture_evidence_registry_layer[\"📑 Evidence Registry Layer (Layer 2)\"]\n        architecture_extraction_workspace[\"📑 Extraction Workspace (Layer 3)\"]\n        architecture_memory_vault[\"📑 Memory Vault (Layer 4)\"]\n        architecture_master_profile_layer[\"📑 Master Profile Layer (Layer 5)\"]\n    end\n    subgraph COMM_2[\"📦 AIOS Core Data Flow\"]\n        architecture_source_layer[\"📑 Source Layer (Layer 1)\"]\n        architecture_evidence_registry_layer[\"📑 Evidence Registry Layer (Layer 2)\"]\n        architecture_extraction_workspace[\"📑 Extraction Workspace (Layer 3)\"]\n        architecture_memory_vault[\"📑 Memory Vault (Layer 4)\"]\n        architecture_master_profile_layer[\"📑 Master Profile Layer (Layer 5)\"]\n    end\n    subgraph COMM_3[\"📦 P1 Readiness and Acceptance\"]\n        docs_p1_opening_plan_draft[\"📑 P1 Opening Plan Draft\"]\n        docs_p1_owner_acceptance_runbook[\"📑 P1 Owner Acceptance Runbook\"]\n        docs_p1_readiness_checklist[\"📑 P1 Readiness Checklist\"]\n        docs_p1_advanced_retrieval_decision[\"📑 P1 Advanced Retrieval Decision\"]\n    end\n    subgraph COMM_4[\"📦 NotebookLM Integration and Benchmarking\"]\n        docs_knowledge_notebook[\"📑 Knowledge Notebook Guide\"]\n        docs_mom_notebooklm_comparison_mvp[\"📑 AIOS vs NotebookLM MVP Benchmark\"]\n        docs_notebooklm_manual_collection_runbook[\"📑 NotebookLM Manual Collection Runbook\"]\n        notebooklm_bridge[\"📑 NotebookLM Bridge\"]\n    end\n    subgraph COMM_5[\"📦 AIOS Brain Architecture\"]\n        local_brain[\"📑 Local Brain\"]\n        router_brain[\"📑 Router Brain\"]\n        ide_agent_brain[\"📑 IDE Agent Brain\"]\n        brain_gateway[\"📑 Brain Gateway\"]\n    end\n    subgraph COMM_6[\"📦 Workspace Chat Implementation Phases\"]\n        docs_archive_ux_records_workspace_chat_phase1_implementation_audit[\"📑 Workspace Chat Phase 1 Implementation Audit\"]\n        docs_archive_ux_records_workspace_chat_phase2a_implementation_audit[\"📑 Workspace Chat Phase 2A Implementation Audit\"]\n        docs_archive_ux_records_workspace_chat_phase2b_implementation_audit[\"📑 Workspace Chat Phase 2B Implementation Audit\"]\n        docs_archive_ux_records_workspace_chat_phase2c_implementation_audit[\"📑 Workspace Chat Phase 2C Implementation Audit\"]\n    end\n    subgraph COMM_7[\"📦 Workspace Chat Phase Evolution\"]\n        docs_archive_ux_records_workspace_chat_phase2c_xlsx_ingest_design_gate[\"📑 Workspace Chat Phase 2C XLSX Ingest Design Gate\"]\n        docs_archive_ux_records_workspace_chat_phase2d_source_aware_placeholder_design_gate[\"📑 Workspace Chat Phase 2D Source Aware Placeholder Design Gate\"]\n        docs_archive_ux_records_workspace_chat_phase2d_implementation_audit[\"📑 Workspace Chat Phase 2D Implementation Audit\"]\n        docs_archive_ux_records_workspace_chat_phase2e_implementation_audit[\"📑 Workspace Chat Phase 2E Implementation Audit\"]\n    end\n    architecture_source_layer -->|shares_data_with| architecture_evidence_registry_layer\n    architecture_evidence_registry_layer -->|shares_data_with| architecture_extraction_workspace\n    architecture_extraction_workspace -->|shares_data_with| architecture_memory_vault\n    architecture_memory_vault -->|shares_data_with| architecture_master_profile_layer\n    brain_gateway -->|calls| ide_agent_brain\n    brain_gateway -->|calls| local_brain\n    brain_gateway -->|calls| router_brain\n    docs_archive_ux_records_workspace_chat_phase2d_implementation_audit -->|cites| docs_archive_ux_records_workspace_chat_phase2d_source_aware_placeholder_design_gate\n    docs_archive_ux_records_workspace_chat_phase2e_implementation_audit -->|cites| docs_archive_ux_records_workspace_chat_phase2e_safe_ai_answer_design_gate\n    docs_knowledge_notebook -->|references| notebooklm_bridge\n    docs_mom_notebooklm_comparison_mvp -->|references| docs_notebooklm_manual_collection_runbook\n    docs_p1_opening_plan_draft -->|references| docs_p1_owner_acceptance_runbook"
+  },
+  "graphify_deps": {
+    "title": "🔗 Mạng Lưới Phụ Thuộc & Quan Hệ Mô-Đun (Dependency Graph)",
+    "desc": "Các nút trung tâm (God nodes) và liên kết phụ thuộc, luồng gọi hàm giữa các thành phần cốt lõi",
+    "code": "%%{init: {'theme': 'base', 'themeVariables': { 'primaryColor': '#ede9fe', 'primaryBorderColor': '#7c3aed', 'primaryTextColor': '#0f172a', 'secondaryColor': '#dcfce7', 'secondaryBorderColor': '#16a34a', 'secondaryTextColor': '#0f172a', 'lineColor': '#334155', 'fontSize': '14px' }, 'look': 'handDrawn'}}%%\nflowchart LR\n    src_aios_habit_rag_v2_index[\"⚙️ <b>index.py</b>\"]\n    src_aios_habit_workspace_chat_ai_answer_workspaceaicontextsource[\"⚙️ <b>WorkspaceAIContextSource</b>\"]\n    src_aios_habit_workspace_chat_app[\"⚙️ <b>workspace_chat_app.py</b>\"]\n    src_aios_habit_workspace_chat_store[\"⚙️ <b>workspace_chat_store.py</b>\"]\n    src_aios_habit_rag_v2_adapters_conversioncontext[\"⚙️ <b>ConversionContext</b>\"]\n    src_aios_habit_rag_v2_evidence_build_evidence_pack[\"⚙️ <b>build_evidence_pack()</b>\"]\n    src_aios_habit_rag_v2_pipeline_ragv2devpipeline[\"⚙️ <b>RagV2DevPipeline</b>\"]\n    src_aios_habit_rag_v2_index_localchunkindex[\"⚙️ <b>LocalChunkIndex</b>\"]\n    scripts_battle_notebooklm_rag_v2_benchmarkerror[\"⚙️ <b>BenchmarkError</b>\"]\n    scripts_battle_notebooklm_rag_v2_providersafetyceilingclient_get[\"⚙️ <b>.get()</b>\"]\n    src_aios_habit_rag_v2_pipeline_ragv2devconfig[\"⚙️ <b>RagV2DevConfig</b>\"]\n    src_aios_habit_rag_v2_pipeline[\"⚙️ <b>pipeline.py</b>\"]\n    src_aios_habit_workspace_chat_ai_answer_generate_workspace_ai_answer[\"⚙️ <b>generate_workspace_ai_answer()</b>\"]\n    valueerror[\"⚙️ <b>ValueError</b>\"]\n    src_aios_habit_rag_v2_init[\"⚙️ <b>__init__.py</b>\"]\n    src_aios_habit_rag_v2_semantic_semanticbackenderror[\"⚙️ <b>SemanticBackendError</b>\"]\n    scripts_battle_notebooklm_rag_v2[\"⚙️ <b>battle_notebooklm_rag_v2.py</b>\"]\n    src_aios_habit_workspace_chat_rag_v2_adapter[\"⚙️ <b>workspace_chat_rag_v2_adapter.py</b>\"]\n    scripts_battle_notebooklm_rag_v2_py_path[\"⚙️ <b>Path</b>\"]\n    src_aios_habit_rag_v2_schema_documentelement[\"⚙️ <b>DocumentElement</b>\"]\n    src_aios_habit_cli[\"⚙️ <b>cli.py</b>\"]\n    scripts_battle_notebooklm_rag_v2_py_any[\"⚙️ <b>Any</b>\"]\n    src_aios_habit_rag_v2_query_planning_retrievalqueryplan[\"⚙️ <b>RetrievalQueryPlan</b>\"]\n    src_aios_habit_rag_v2_pipeline_sourcespec[\"⚙️ <b>SourceSpec</b>\"]\n    tests_test_workspace_chat_ai_answer[\"⚙️ <b>test_workspace_chat_ai_answer.py</b>\"]\n    scripts_battle_notebooklm_rag_v2 -->|imports_from| src_aios_habit_rag_v2_pipeline\n    scripts_battle_notebooklm_rag_v2 -->|imports_from| src_aios_habit_rag_v2_index\n    scripts_battle_notebooklm_rag_v2 -->|imports_from| src_aios_habit_workspace_chat_rag_v2_adapter\n    scripts_battle_notebooklm_rag_v2 -->|contains| scripts_battle_notebooklm_rag_v2_benchmarkerror\n    scripts_battle_notebooklm_rag_v2_providersafetyceilingclient_get -->|references| scripts_battle_notebooklm_rag_v2_py_any\n    src_aios_habit_rag_v2_init -->|imports_from| src_aios_habit_rag_v2_index\n    src_aios_habit_rag_v2_init -->|imports_from| src_aios_habit_rag_v2_pipeline\n    src_aios_habit_rag_v2_evidence_build_evidence_pack -->|references| src_aios_habit_rag_v2_query_planning_retrievalqueryplan\n    src_aios_habit_rag_v2_index -->|contains| src_aios_habit_rag_v2_index_localchunkindex\n    src_aios_habit_rag_v2_pipeline -->|imports_from| src_aios_habit_rag_v2_index\n    src_aios_habit_rag_v2_pipeline -->|contains| src_aios_habit_rag_v2_pipeline_ragv2devconfig\n    src_aios_habit_rag_v2_pipeline -->|contains| src_aios_habit_rag_v2_pipeline_sourcespec\n    src_aios_habit_rag_v2_pipeline -->|contains| src_aios_habit_rag_v2_pipeline_ragv2devpipeline\n    src_aios_habit_workspace_chat_app -->|imports_from| src_aios_habit_workspace_chat_store\n    src_aios_habit_workspace_chat_app -->|imports_from| src_aios_habit_workspace_chat_rag_v2_adapter\n    src_aios_habit_workspace_chat_rag_v2_adapter -->|imports_from| src_aios_habit_rag_v2_index\n    src_aios_habit_workspace_chat_rag_v2_adapter -->|imports_from| src_aios_habit_rag_v2_pipeline\n    src_aios_habit_rag_v2_init -->|imports| src_aios_habit_rag_v2_schema_documentelement\n    src_aios_habit_rag_v2_init -->|imports| src_aios_habit_rag_v2_adapters_conversioncontext\n    src_aios_habit_rag_v2_init -->|imports| src_aios_habit_rag_v2_index_localchunkindex\n    src_aios_habit_rag_v2_init -->|imports| src_aios_habit_rag_v2_query_planning_retrievalqueryplan\n    src_aios_habit_rag_v2_init -->|imports| src_aios_habit_rag_v2_evidence_build_evidence_pack\n    src_aios_habit_rag_v2_init -->|imports| src_aios_habit_rag_v2_semantic_semanticbackenderror\n    src_aios_habit_rag_v2_init -->|imports| src_aios_habit_rag_v2_pipeline_ragv2devconfig\n    src_aios_habit_rag_v2_init -->|imports| src_aios_habit_rag_v2_pipeline_ragv2devpipeline\n    src_aios_habit_rag_v2_init -->|imports| src_aios_habit_rag_v2_pipeline_sourcespec\n    src_aios_habit_rag_v2_index -->|imports| src_aios_habit_rag_v2_query_planning_retrievalqueryplan\n    src_aios_habit_rag_v2_index -->|imports| src_aios_habit_rag_v2_semantic_semanticbackenderror\n    src_aios_habit_rag_v2_pipeline -->|imports| src_aios_habit_rag_v2_adapters_conversioncontext\n    src_aios_habit_rag_v2_pipeline -->|imports| src_aios_habit_rag_v2_evidence_build_evidence_pack"
+  },
+  "pipeline": {
+    "title": "🔄 Luồng Dữ Liệu & Xử Lý (Data Pipeline)",
+    "desc": "Mô tả chu trình tiếp nhận dữ liệu đầu vào, xử lý qua các tầng và xuất kết quả",
+    "code": "%%{init: {'theme': 'base', 'themeVariables': { 'primaryColor': '#dcfce7', 'primaryBorderColor': '#16a34a', 'primaryTextColor': '#0f172a', 'secondaryColor': '#fef9c3', 'secondaryBorderColor': '#ca8a04', 'secondaryTextColor': '#0f172a', 'tertiaryColor': '#fee2e2', 'tertiaryBorderColor': '#dc2626', 'tertiaryTextColor': '#0f172a', 'lineColor': '#334155', 'fontSize': '15px' }, 'look': 'handDrawn'}}%%\nflowchart LR\n    INPUT[\"📥 Dữ liệu đầu vào<br/>(Sources / Evidence)\"] --> AUTH{\"🔐 Kiểm tra & Xác thực\"}\n    \n    AUTH -->|Hợp lệ| PROCESS[\"⚙️ Xử lý Logic & Trích xuất<br/>(Extraction Engine)\"]\n    AUTH -->|Không hợp lệ| ERR[\"❌ Báo lỗi & Ghi log\"]\n\n    PROCESS --> VAULT[(\"💾 Lưu trữ Bằng chứng & Bộ nhớ<br/>(Evidence Vault / Knowledge Graph)\")]\n    VAULT --> SYNTH[\"✨ Tổng hợp & Điều phối Agent\"]\n    SYNTH --> OUTPUT[\"📤 Xuất kết quả & Phản hồi<br/>(Workspace Output / Insights)\"]\n"
+  },
+  "sequence": {
+    "title": "⏱️ Sơ Đồ Tuần Tự (Sequence Diagram)",
+    "desc": "Luồng tương tác tuần tự giữa Người dùng, Giao diện, Bộ định tuyến và Tầng lưu trữ",
+    "code": "%%{init: {'theme': 'base', 'themeVariables': { 'primaryColor': '#fee2e2', 'primaryBorderColor': '#dc2626', 'primaryTextColor': '#0f172a', 'secondaryColor': '#e0f2fe', 'secondaryBorderColor': '#0284c7', 'lineColor': '#334155', 'fontSize': '14px' }, 'look': 'handDrawn'}}%%\nsequenceDiagram\n    autonumber\n    actor User as 👤 Người Dùng (User)\n    participant UI as 🖥️ Giao Diện (Workspace UI)\n    participant Router as 🧭 Bộ Định Tuyến (Router / Gateway)\n    participant Agent as 🤖 Tác Vụ Agent (Orchestrator)\n    participant Vault as 💾 Lưu Trữ (Memory Vault / DB)\n\n    User->>UI: 1. Gửi yêu cầu / Thao tác tương tác\n    UI->>Router: 2. Chuyển tiếp Request và Context\n    Router->>Vault: 3. Truy vấn Bằng chứng & Tri thức\n    Vault-->>Router: 4. Trả về đồ thị ngữ cảnh liên quan\n    Router->>Agent: 5. Kích hoạt Agent xử lý chuyên sâu\n    Agent->>Agent: 6. Thực thi thuật toán & biến đổi\n    Agent->>Vault: 7. Ghi nhận Checkpoint & Bằng chứng mới\n    Agent-->>UI: 8. Cập nhật kết quả hoàn thành\n    UI-->>User: 9. Hiển thị thông báo và đồ họa trực quan\n"
+  }
+};
+
+    let currentTab = Object.keys(diagrams)[0];
+    let panzoomInstance = null;
+
+    mermaid.initialize({
+      startOnLoad: false,
+      look: 'handDrawn',
+      theme: 'base',
+      fontFamily: '"Shantell Sans", "Caveat", "Virgil", cursive, sans-serif',
+      themeVariables: {
+        fontFamily: '"Shantell Sans", "Caveat", "Virgil", cursive, sans-serif',
+        fontSize: '15px',
+        primaryColor: '#e0f2fe',
+        primaryBorderColor: '#0284c7',
+        primaryTextColor: '#0f172a',
+        secondaryColor: '#fef3c7',
+        secondaryBorderColor: '#d97706',
+        secondaryTextColor: '#0f172a',
+        tertiaryColor: '#f3e8ff',
+        tertiaryBorderColor: '#9333ea',
+        tertiaryTextColor: '#0f172a',
+        lineColor: '#334155',
+        edgeLabelBackground: '#ffffff'
+      }
+    });
+
+    const codeArea = document.getElementById('mermaid-code');
+    const descArea = document.getElementById('tab-desc');
+    const tabsContainer = document.getElementById('tabs-container');
+    const diagramOutput = document.getElementById('diagram-output');
+    const panzoomContainer = document.getElementById('panzoom-container');
+    const zoomBadge = document.getElementById('zoom-badge');
+    const errorBox = document.getElementById('error-msg');
+
+    function setupTabs() {
+      tabsContainer.innerHTML = '';
+      Object.keys(diagrams).forEach(key => {
+        const btn = document.createElement('button');
+        btn.className = `tab-btn ${key === currentTab ? 'active' : ''}`;
+        btn.textContent = diagrams[key].title.split('(')[0].trim();
+        btn.onclick = () => selectTab(key);
+        tabsContainer.appendChild(btn);
+      });
+    }
+
+    function selectTab(key) {
+      currentTab = key;
+      setupTabs();
+      descArea.textContent = diagrams[key].desc;
+      codeArea.value = diagrams[key].code.trim();
+      renderDiagram();
+    }
+
+    function updateZoomBadge(scale) {
+      if (zoomBadge) {
+        zoomBadge.textContent = `${Math.round((scale || 1) * 100)}%`;
+      }
+    }
+
+    function fitToScreen() {
+      if (!panzoomInstance) return;
+      const svg = diagramOutput.querySelector('svg');
+      if (!svg) {
+        panzoomInstance.reset();
+        updateZoomBadge(panzoomInstance.getScale());
+        return;
+      }
+
+      const containerRect = panzoomContainer.getBoundingClientRect();
+      const svgRect = svg.getBoundingClientRect();
+
+      const svgWidth = svg.viewBox?.baseVal?.width || svgRect.width || 800;
+      const svgHeight = svg.viewBox?.baseVal?.height || svgRect.height || 600;
+
+      const padding = 80;
+      const availableWidth = Math.max(containerRect.width - padding * 2, 200);
+      const availableHeight = Math.max(containerRect.height - padding * 2, 200);
+
+      const scaleX = availableWidth / svgWidth;
+      const scaleY = availableHeight / svgHeight;
+      let targetScale = Math.min(scaleX, scaleY, 1.2);
+      if (targetScale < 0.2) targetScale = 0.2;
+
+      panzoomInstance.zoom(targetScale, { animate: true });
+      panzoomInstance.pan(0, 0, { animate: true });
+      updateZoomBadge(targetScale);
+    }
+
+    // Attach wheel event on container once to avoid memory leaks
+    panzoomContainer.addEventListener('wheel', (event) => {
+      if (!panzoomInstance) return;
+      panzoomInstance.zoomWithWheel(event);
+    }, { passive: false });
+
+    // Gắn panzoomchange trên diagramOutput một lần duy nhất tránh tích lũy listener
+    diagramOutput.addEventListener('panzoomchange', (event) => {
+      updateZoomBadge(event.detail.scale);
+    });
+
+    async function renderDiagram() {
+      const code = codeArea.value.trim();
+      errorBox.style.display = 'none';
+      diagramOutput.innerHTML = '<div style="font-family: var(--font-hand); font-size: 1.2rem; color: #64748b;">⏳ Đang vẽ sơ đồ phác thảo...</div>';
+
+      try {
+        const id = 'render-' + Date.now();
+        const { svg } = await mermaid.render(id, code);
+        diagramOutput.innerHTML = svg;
+
+        if (panzoomInstance) {
+          try { panzoomInstance.destroy(); } catch (e) {}
+          panzoomInstance = null;
+        }
+
+        panzoomInstance = Panzoom(diagramOutput, {
+          maxScale: 6,
+          minScale: 0.1,
+          step: 0.2,
+          canvas: true
+        });
+
+        fitToScreen();
+      } catch (err) {
+        console.error(err);
+        errorBox.style.display = 'block';
+        errorBox.textContent = '❌ Lỗi cú pháp Mermaid: ' + (err.message || err);
+      }
+    }
+
+    function toggleSidebar() {
+      const sidebar = document.getElementById('sidebar');
+      sidebar.classList.toggle('collapsed');
+    }
+
+    document.getElementById('btn-render').onclick = renderDiagram;
+    
+    document.getElementById('btn-copy').onclick = () => {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(codeArea.value).then(() => {
+          alert('Đã sao chép mã Mermaid vào clipboard!');
+        }).catch(() => {
+          fallbackCopyText(codeArea.value);
+        });
+      } else {
+        fallbackCopyText(codeArea.value);
+      }
+    };
+
+    function fallbackCopyText(text) {
+      codeArea.select();
+      document.execCommand('copy');
+      alert('Đã sao chép mã Mermaid vào clipboard!');
+    }
+
+    document.getElementById('toggle-sidebar').onclick = toggleSidebar;
+    
+    const btnCollapse = document.getElementById('btn-collapse-sidebar');
+    if (btnCollapse) {
+      btnCollapse.onclick = toggleSidebar;
+    }
+
+    window.addEventListener('keydown', (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'b') {
+        e.preventDefault();
+        toggleSidebar();
+      }
+    });
+
+    document.getElementById('zoom-in').onclick = () => panzoomInstance && panzoomInstance.zoomIn();
+    document.getElementById('zoom-out').onclick = () => panzoomInstance && panzoomInstance.zoomOut();
+    document.getElementById('zoom-reset').onclick = () => {
+      if (panzoomInstance) {
+        panzoomInstance.reset();
+        updateZoomBadge(panzoomInstance.getScale());
+      }
+    };
+    document.getElementById('zoom-fit').onclick = fitToScreen;
+
+    document.getElementById('export-svg').onclick = () => {
+      const svgElement = diagramOutput.querySelector('svg');
+      if (!svgElement) return alert('Chưa có sơ đồ để xuất!');
+      
+      const svgData = new XMLSerializer().serializeToString(svgElement);
+      const blob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `architecture-${currentTab}.svg`;
+      a.click();
+      URL.revokeObjectURL(url);
+    };
+
+    document.getElementById('export-png').onclick = () => {
+      const svgElement = diagramOutput.querySelector('svg');
+      if (!svgElement) return alert('Chưa có sơ đồ để xuất!');
+
+      const svgData = new XMLSerializer().serializeToString(svgElement);
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      const img = new Image();
+
+      const svgBlob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' });
+      const url = URL.createObjectURL(svgBlob);
+
+      img.onload = () => {
+        const scale = 2;
+        const box = svgElement.viewBox?.baseVal;
+        const w = (box && box.width) ? box.width : (svgElement.clientWidth || 1200);
+        const h = (box && box.height) ? box.height : (svgElement.clientHeight || 800);
+        
+        canvas.width = w * scale;
+        canvas.height = h * scale;
+        
+        ctx.fillStyle = '#fdfbf7';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+        const pngUrl = canvas.toDataURL('image/png');
+        const a = document.createElement('a');
+        a.href = pngUrl;
+        a.download = `architecture-${currentTab}.png`;
+        a.click();
+        URL.revokeObjectURL(url);
+      };
+      img.onerror = () => {
+        URL.revokeObjectURL(url);
+        alert('Không thể xuất ảnh PNG từ SVG!');
+      };
+      img.src = url;
+    };
+
+    window.addEventListener('DOMContentLoaded', () => {
+      selectTab(currentTab);
+    });
+  </script>
+</body>
+</html>

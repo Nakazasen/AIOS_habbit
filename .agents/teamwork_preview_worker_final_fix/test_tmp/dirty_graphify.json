@@ -1,0 +1,1 @@
+{"nodes": [{"id": "node_a", "label": "Node A"}, {"id": "node_b", "label": "Node B"}], "edges": ["bad_edge_str", 12345, null, {"source": "node_a", "target": "node_b", "relation": "calls"}]}

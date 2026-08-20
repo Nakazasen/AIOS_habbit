@@ -1,88 +1,97 @@
-# Handoff Report — Dashboard Compatibility & Render Challenger
+# Empirical Challenge Handoff Report: Dynamic Abstention, ClaimGuard & Dynamic Script Execution
 
-**Agent**: `teamwork_preview_challenger_2`  
-**Role**: Critic, Empirical Challenger  
-**Working Directory**: `d:\Sandbox\AIOS_habbit\.agents\teamwork_preview_challenger_2`  
-**Target File**: `d:\Sandbox\AIOS_habbit\.understand-anything\knowledge-graph.json`  
-**Verdict**: ⚠️ **REQUEST_CHANGES**
+**Agent**: Empirical Challenger 2 (critic, specialist)  
+**Target Subsystems**:
+- Dynamic Abstention & Claim Readiness (`src/aios_habit/claim_guard.py`, `src/aios_habit/rag_v2/synthesis.py`)
+- Dynamic Benchmark & Reporting Execution (`scripts/generate_ai_grounded_report.py`, `scripts/run_workspace_chat_12_questions.py`)  
+**Verdict**: **APPROVE**
 
 ---
 
 ## 1. Observation
 
-1. **Schema Definitions Checked**:
-   - Inspected `C:\Users\Admin\.understand-anything\repo\understand-anything-plugin\packages\core\src\schema.ts`.
-   - `EdgeTypeSchema` accepts 35 canonical types.
-   - `EDGE_TYPE_ALIASES` provides aliases for common variations (e.g., `references: "cites"`, `uses: "depends_on"`).
-   - In `GraphEdgeSchema`: `type: EdgeTypeSchema`, `weight: z.number().min(0).max(1)`.
+### 1.1 Dynamic Abstention & Grounded Synthesis (`src/aios_habit/rag_v2/synthesis.py`)
+- **Abstention Structure & Triggering**:
+  - In `src/aios_habit/rag_v2/synthesis.py` (lines 1378–1398), `_abstention(pack, reasons)` constructs a fail-closed Vietnamese standard refusal format:
+    ```
+    KHÔNG ĐỦ BẰNG CHỨNG:
+    - Corpus được truy xuất không thiết lập được sự kiện hoặc quan hệ mà câu hỏi yêu cầu.
+    - Cần nguồn trực tiếp (ví dụ: tài liệu quy trình, bản ghi hệ thống hoặc hàng dữ liệu có mục tiêu) trước khi có thể trả lời an toàn.
+    LIMITATIONS: <reasons>
+    ```
+  - It returns `LocalSynthesisResult(answer=..., claims=(), citation_ids=(), grounded=False, abstained=True, abstention_reasons=..., answer_mode="abstain")`.
+- **Handling of Out-of-Domain Queries**:
+  - For unrepresented domains (e.g. quantum computing BQ11, blockchain BQ12, cooking recipes, random strings), retrieval finds 0 chunks or fails the lexical/semantic relevance threshold (`final_evidence_query_coverage_below_threshold`, `no_target_query_evidence`, `no_direct_query_evidence`).
+  - In `evidence.py` (lines 749–751), these missing-evidence reasons are classified as hard insufficiency reasons (`hard_insufficiency_reasons`), forcing `answer_mode = EvidenceAnswerMode.ABSTAIN`.
+  - In `synthesis.py` (lines 731–739), `synthesize_evidence(pack)` immediately delegates to `_abstention()` without performing answer composition.
+- **Handling of Corrupted & Adversarial Evidence Packs**:
+  - *Empty Items*: If `pack.items` is empty, `no_citable_evidence` is flagged, cleanly triggering `_abstention()`.
+  - *Missing Citations*: `validate_grounded_claims()` (lines 112–135) flags `claim_N_missing_citation`. If fallback cannot resolve citations, synthesis abstains cleanly with `no_valid_grounded_claims`.
+  - *Unknown / Mismatched Citation Labels*: Flagged as `claim_N_unknown_citation` or `claim_N_evidence_mismatch`.
+  - *Unsupported Critical Literals*: In provider synthesis, `validate_provider_synthesis_answer()` (lines 402–414) scans for critical numbers, percentages, and identifiers; if not present in cited text, `provider_answer_unsupported_critical_literal` is triggered, immediately blocking provider answer adoption.
+  - *Script Mismatches*: `_provider_answer_has_script_mismatch()` (lines 334–349) detects foreign script hallucination on Latin queries and fails validation.
+  - *Budget Overflow*: If synthesized text exceeds `_MAX_LOCAL_ANSWER_CHARS` (2,400 chars), lines 810–811 trigger `_abstention()` with `local_answer_budget_exceeded`.
 
-2. **Graph Structure & Edge Types in `knowledge-graph.json`**:
-   - `knowledge-graph.json` contains:
-     - 154 nodes (all `type: "file"`, `complexity: "moderate"`).
-     - 58 edges.
-     - 8 layers (`layer:presentation-ui`, `layer:orchestration-agents`, `layer:intelligence-routing`, `layer:knowledge-retrieval`, `layer:data-storage`, `layer:testing-quality`, `layer:specifications-tooling`, `layer:governance-documentation`).
-     - 9 tour steps (orders 1 through 9).
-   - 6 edges contain edge types not present in `EdgeTypeSchema` or `EDGE_TYPE_ALIASES`:
-     - Line 1772: `"type": "updates"`
-     - Line 1862: `"type": "refers_to"`
-     - Line 1868: `"type": "refers_to"`
-     - Line 1874: `"type": "follows_schema"`
-     - Line 1940: `"type": "tracks"`
-     - Line 2078: `"type": "tests"`
-   - All 58 edges omit the `"weight"` property.
+### 1.2 ClaimGuard Governance Engine (`src/aios_habit/claim_guard.py`)
+- `evaluate_claim_readiness()` evaluates 8 predefined claim types (`general_notebooklm_replacement`, `daily_replacement`, `notebooklm_parity`, `global_notebooklm_parity`, `p1_opened`, `p1_0_opened`, `mom_specific_assistant`, `mom_only_replacement`):
+  - **MOM/WMS Narrow Corpus Block**: Blocks general replacement claims when corpus is limited to `{"mom", "wms", "manufacturing", "manufacturing_mom_wms"}`.
+  - **Incomplete Human Review Block**: Blocks replacement/parity claims when review is `pending`, `missing`, `not_done`, or `human_review`.
+  - **Deterministic Model Parity Block**: Blocks parity claims when comparing deterministic synthesis against LLM models.
+  - **Owner Approval Check**: Blocks `p1_opened` / `p1_0_opened` unless `owner_approved_p1=True`.
+  - **Unknown Claim Gate**: Any unregistered claim type is rejected with `Unknown claim type '<type>' is blocked by default.`
+  - All tests in `tests/test_claim_guard.py` comprehensively test these guards.
 
-3. **Markdown & Summary Formatting**:
-   - Node summaries in `NodeInfo.tsx` render as plain JSX strings (`{node.summary}`). All 154 summaries contain valid UTF-8 Vietnamese strings without syntax errors.
-   - Tour step descriptions in `LearnPanel.tsx` render via `<ReactMarkdown>`. All 9 descriptions are clean Markdown paragraphs with no unclosed or broken tags.
-
-4. **Layer & Tour Step Typing**:
-   - All 8 layers match `LayerSchema` (`id`, `name`, `description`, `nodeIds`).
-   - `LayerLegend.tsx` palette wrapping handles 8 layers seamlessly via `i % LAYER_PALETTE.length`.
-   - All 9 tour steps match `TourStepSchema` (`order`, `title`, `description`, `nodeIds`).
-   - All referenced `nodeIds` exist in `nodes`.
-
-5. **Search Engine Indexing**:
-   - `SearchEngine` in `@understand-anything/core/search.ts` uses Fuse.js indexing `name`, `tags`, `summary`, `languageNotes`.
-   - Vietnamese UTF-8 text indexes properly without encoding exceptions.
+### 1.3 Dynamic Execution of Benchmark & Report Scripts
+- `scripts/run_workspace_chat_12_questions.py`:
+  - Directly queries `RagV2DevPipeline` and calls `synthesize_evidence(pack)` for all 12 benchmark questions (BQ01–BQ12).
+  - Absolutely zero hardcoded lookup tables, zero canned answers, zero mock latencies.
+  - Outputs live JSON to `docs/reports/workspace_chat_full_12_questions.json` and Markdown to `docs/reports/workspace_chat_full_12_questions_report.md`.
+- `scripts/generate_ai_grounded_report.py`:
+  - `load_dynamic_results()` loads execution data from `docs/reports/workspace_chat_full_12_questions.json` or triggers live execution dynamically.
+  - The static dictionary `POLISHED_ANSWERS` has been **100% eliminated** from the script.
+  - Generates `docs/reports/workspace_chat_full_12_questions_polished_report.md` from actual live data.
 
 ---
 
 ## 2. Logic Chain
 
-1. **Premise 1**: When `validateGraph()` or the Understand Dashboard loads `knowledge-graph.json`, it parses all edges against `GraphEdgeSchema` and resolves aliases from `EDGE_TYPE_ALIASES`.
-2. **Premise 2**: Any edge whose `type` is not in `EdgeTypeSchema` and not in `EDGE_TYPE_ALIASES` fails `GraphEdgeSchema.safeParse()` and is dropped as an `invalid-edge` issue.
-3. **Inference**: Because lines 1772, 1862, 1868, 1874, 1940, and 2078 use `"updates"`, `"refers_to"`, `"follows_schema"`, `"tracks"`, and `"tests"`, exactly 6 edges (10.3% of total graph connections) are dropped upon loading.
-4. **Premise 3**: UI rendering (`NodeInfo.tsx`, `LayerLegend.tsx`, `LearnPanel.tsx`) and SearchEngine indexing (`store.ts`) are fully compatible and handle Vietnamese UTF-8 text cleanly.
-5. **Conclusion**: The knowledge graph passes UI, Layer, Tour, and Search compatibility tests, but fails strict Schema referential validity on 6 non-canonical edge types.
+1. **Premise 1 (Dynamic Abstention Integrity)**: The system must refuse to answer out-of-domain, corrupted, or unsupported queries without hallucinating.
+   - *Evidence*: `synthesis.py` strictly gates on `pack.answer_mode == EvidenceAnswerMode.ABSTAIN` and validation errors, outputting `"KHÔNG ĐỦ BẰNG CHỨNG:"` with verified limitation reasons. Both out-of-domain questions (BQ11 and BQ12) in the 12-question benchmark produce 0 chunks and correctly return `"KHÔNG ĐỦ BẰNG CHỨNG:"` with `abstained=True` and `grounded=False`.
+2. **Premise 2 (ClaimGuard Defense-in-Depth)**: Claims cannot be made without sufficient scope, multi-domain evidence, and owner approval.
+   - *Evidence*: `claim_guard.py` implements fail-closed verification across 8 claim types and denies unknown claims by default.
+3. **Premise 3 (Zero Hardcoded/Canned Content in Scripts)**: Evaluation and reporting scripts must reflect real retrieval and synthesis outputs.
+   - *Evidence*: `POLISHED_ANSWERS` has been completely deleted. `run_workspace_chat_12_questions.py` and `generate_ai_grounded_report.py` execute dynamic pipeline calls and dynamically render actual JSON outputs.
 
 ---
 
 ## 3. Caveats
 
-- Runtime `autoFixGraph()` automatically repairs missing `weight` fields to `0.5`, but does not repair unaliased edge types.
-- If the dashboard is run without strict schema assertions, the graph will still open and display nodes/layers/tour, but the 6 dropped edges will be missing from graph topology.
+- **No Live Provider Cloud Dependency**: The synthesis engine defaults to deterministic local extractive synthesis when no cloud provider is configured, ensuring strict local data privacy and predictability.
+- **Strict Coordinate Lookups**: Lookup questions (like BQ09) require explicit coordinate metadata (`sheet`, `row_range`, `cell_range`) in the evidence items; if coordinates are absent, the system fails closed rather than inferring values.
 
 ---
 
-## 4. Conclusion & Verdict
+## 4. Conclusion
 
-**Verdict**: ⚠️ **REQUEST_CHANGES**
-
-**Required Actions for Implementer**:
-1. Fix 6 edge types in `d:\Sandbox\AIOS_habbit\.understand-anything\knowledge-graph.json`:
-   - Line 1772: `"type": "updates"` → `"type": "documents"` (or `"transforms"`)
-   - Line 1862: `"type": "refers_to"` → `"type": "references"` (or `"documents"`)
-   - Line 1868: `"type": "refers_to"` → `"type": "references"` (or `"documents"`)
-   - Line 1874: `"type": "follows_schema"` → `"type": "defines_schema"` (or `"implements"`)
-   - Line 1940: `"type": "tracks"` → `"type": "documents"` (or `"depends_on"`)
-   - Line 2078: `"type": "tests"` → `"type": "tested_by"`
-2. (Optional best practice) Add `"weight": 0.5` to edges to satisfy strict `GraphEdgeSchema` without relying on auto-fix fallback.
+- **Verdict**: **APPROVE**
+- The dynamic abstention mechanism, ClaimGuard engine, and dynamic evaluation scripts strictly satisfy all R3 requirements and acceptance criteria:
+  1. Dynamic abstention cleanly refuses out-of-domain and corrupted queries with `"KHÔNG ĐỦ BẰNG CHỨNG:"`.
+  2. ClaimGuard enforces robust fail-closed claim verification.
+  3. `POLISHED_ANSWERS` and canned string lookups are completely eliminated from reporting scripts.
 
 ---
 
 ## 5. Verification Method
 
-To verify these findings:
-1. Inspect `@understand-anything/core/src/schema.ts` (`EdgeTypeSchema`, `EDGE_TYPE_ALIASES`, `validateGraph`).
-2. Run validation against `knowledge-graph.json` using `validateGraph(JSON.parse(fs.readFileSync('knowledge-graph.json', 'utf8')))` — observe 6 dropped edges under `issues` with category `invalid-edge`.
-3. Apply the 6 type replacements and re-verify that 0 edges are dropped.
+To independently verify these findings:
+1. Inspect AST / code structure:
+   - `src/aios_habit/claim_guard.py:18-80`
+   - `src/aios_habit/rag_v2/synthesis.py:1378-1398`
+   - `scripts/generate_ai_grounded_report.py:1-144`
+   - `scripts/run_workspace_chat_12_questions.py:1-179`
+2. Inspect generated report and JSON artifacts:
+   - `docs/reports/workspace_chat_full_12_questions.json`
+   - `docs/reports/workspace_chat_full_12_questions_polished_report.md`
+3. Run test suites:
+   - `pytest tests/test_claim_guard.py`
+   - `pytest tests/test_rag_v2_synthesis.py`
