@@ -14,7 +14,7 @@ import subprocess
 import sys
 import threading
 import time
-from typing import Any, Sequence
+from typing import Any, Mapping, Optional, Sequence
 
 from aios_habit.rag_v2.pipeline import RagV2DevConfig, SourceSpec
 from aios_habit.rag_v2.semantic import SemanticBackendError

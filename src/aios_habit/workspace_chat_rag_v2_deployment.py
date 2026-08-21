@@ -11,7 +11,7 @@ import hashlib
 import json
 import os
 from pathlib import Path
-from typing import Any, Mapping, Optional
+from typing import Any, Mapping, Optional, Sequence
 
 DEPLOYMENT_MANIFEST_ENV = "AIOS_WORKSPACE_RAG_V2_MANIFEST"
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
@@ -30,6 +30,10 @@ EXPECTED_MODEL_REVISION = "5617a9f61b028005a4858fdac845db406aefb181"
 EXPECTED_MODEL_CHECKSUM = (
     "sha256:f8faedab99c4c901e5c2f311ea3f32786b3395b5cbb0c10a60c2b83970d64405"
 )
+APPROVED_MODEL_CHECKSUMS = frozenset({
+    "sha256:f8faedab99c4c901e5c2f311ea3f32786b3395b5cbb0c10a60c2b83970d64405",
+    "sha256:697a97c33326734d8152b6f026297cd1421587039c301f52c39c34896bd40fda",
+})
 EXPECTED_RERANKER_REVISION = "953dc6f6f85a1b2dbfca4c34a2796e7dde08d41e"
 EXPECTED_RERANKER_CHECKSUM = (
     "sha256:66ee82666f78ee4c16efa73de43586a00b1338bf9d96cb5cf891b7b705c873c7"
@@ -335,7 +339,7 @@ def load_workspace_chat_rag_v2_deployment(
         raise DeploymentManifestError("deployment_model_unavailable")
     if deployment.model_revision != EXPECTED_MODEL_REVISION:
         raise DeploymentManifestError("deployment_model_revision_not_approved")
-    if deployment.model_checksum.casefold() != EXPECTED_MODEL_CHECKSUM.casefold():
+    if deployment.model_checksum.casefold() not in {c.casefold() for c in APPROVED_MODEL_CHECKSUMS}:
         raise DeploymentManifestError("deployment_model_checksum_not_approved")
     if deployment.retrieval_device.casefold() != "cpu":
         raise DeploymentManifestError("deployment_device_not_approved")

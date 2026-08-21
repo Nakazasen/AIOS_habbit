@@ -118,6 +118,11 @@ from aios_habit.workspace_chat_models import (
 from aios_habit.workspace_chat_excel import extract_xlsx_text
 from aios_habit.workspace_chat_answer_preview import WorkspaceTrialSourceInput, build_trial_answer_preview, build_source_check_summary
 from aios_habit.workspace_chat_source_ingest import ingest_and_extract_bytes
+from aios_habit.workspace_chat_folder_import import (
+    scan_local_directory,
+    ingest_scanned_files_batch,
+    format_size_bytes,
+)
 
 def create_safe_test_data(conversation_id: str) -> TemporaryConversationSource:
     ts = TemporaryConversationSource(
@@ -1243,11 +1248,12 @@ else:
                 # Phase 2H: Dán nhanh nhiều nguồn (quick multi-source paste)
                 st.write(" ")
                 with st.expander("➕ Thêm nguồn", expanded=False):
-                    tab_quick, tab_paste, tab_image, tab_upload = st.tabs([
+                    tab_quick, tab_paste, tab_image, tab_upload, tab_folder = st.tabs([
                         "📋 Dán nhanh",
                         "📝 Dán văn bản dài",
                         "🖼️ Ảnh chụp màn hình",
                         "📁 Thêm tài liệu",
+                        "📁 Nhập từ thư mục",
                     ])
 
                     with tab_quick:
@@ -1371,6 +1377,130 @@ else:
                                         else:
                                             st.session_state.wsc_action_message = f"Đã thêm {success_count} tài liệu {dest}."
                                     safe_rerun()
+
+                    with tab_folder:
+                        st.write("Nhập đường dẫn thư mục trên máy để quét và nhập tất cả tài liệu hỗ trợ vào sổ.")
+                        st.caption("Hỗ trợ: PDF, Word (.docx), Excel (.xlsx, .xls), PowerPoint (.pptx), TXT, Markdown, CSV, ảnh (.png, .jpg...)")
+
+                        scan_key = f"wsc_folder_scan_{active_conversation.id}"
+                        path_key = f"wsc_folder_path_input_{active_conversation.id}"
+                        rec_key = f"wsc_folder_rec_{active_conversation.id}"
+
+                        col_path, col_btn = st.columns([3, 1])
+                        with col_path:
+                            folder_path_input = st.text_input(
+                                "Đường dẫn thư mục",
+                                placeholder="Ví dụ: D:\\TaiLieu\\DuAn hoặc /home/user/documents",
+                                key=path_key,
+                                label_visibility="collapsed",
+                            )
+                        with col_btn:
+                            folder_recursive = st.checkbox("Quét thư mục con", value=True, key=rec_key)
+                            btn_scan = st.button("🔍 Quét thư mục", key=f"btn_scan_{active_conversation.id}", use_container_width=True)
+
+                        if btn_scan:
+                            if not folder_path_input or not folder_path_input.strip():
+                                st.session_state.pop(scan_key, None)
+                                st.error("Vui lòng nhập đường dẫn thư mục trước khi quét.")
+                            else:
+                                scan_res = scan_local_directory(folder_path_input.strip(), recursive=folder_recursive)
+                                st.session_state[scan_key] = scan_res
+
+                        current_scan = st.session_state.get(scan_key)
+                        if current_scan is not None:
+                            if not current_scan.ok:
+                                st.error(current_scan.error_message)
+                            else:
+                                mcol1, mcol2, mcol3 = st.columns(3)
+                                with mcol1:
+                                    st.metric("Tổng số tập tin", current_scan.total_files)
+                                with mcol2:
+                                    st.metric(
+                                        "Tài liệu hỗ trợ",
+                                        f"{len(current_scan.supported_files)} ({current_scan.formatted_supported_size()})",
+                                    )
+                                with mcol3:
+                                    st.metric("Không hỗ trợ / Bỏ qua", len(current_scan.unsupported_files))
+
+                                if current_scan.supported_files:
+                                    st.markdown("##### 📄 Danh sách tài liệu tìm thấy:")
+                                    table_data = [
+                                        {
+                                            "Tên tập tin": f.filename,
+                                            "Thư mục con / Đường dẫn": f.relative_path,
+                                            "Định dạng": f.extension.upper(),
+                                            "Dung lượng": format_size_bytes(f.size_bytes),
+                                        }
+                                        for f in current_scan.supported_files[:100]
+                                    ]
+                                    st.dataframe(table_data, use_container_width=True)
+                                    if len(current_scan.supported_files) > 100:
+                                        st.caption(f"(Đang hiển thị 100 / {len(current_scan.supported_files)} tài liệu)")
+
+                                    st.divider()
+                                    folder_privacy_choice = render_privacy_choice(f"wsc_folder_privacy_{active_conversation.id}")
+                                    folder_enable_now = st.checkbox(
+                                        "Dùng các tài liệu này trong câu trả lời",
+                                        value=False,
+                                        key=f"folder_enable_{active_conversation.id}",
+                                    )
+                                    folder_save_to_notebook = st.checkbox(
+                                        "Lưu vĩnh viễn vào Sổ tài liệu",
+                                        value=True,
+                                        key=f"folder_save_{active_conversation.id}",
+                                    )
+
+                                    if st.button("📥 Nhập tất cả tài liệu vào sổ", type="primary", key=f"btn_ingest_{active_conversation.id}", use_container_width=True):
+                                        prog_bar = st.progress(0, text="Bắt đầu nhập tài liệu...")
+                                        status_text = st.empty()
+
+                                        def update_progress(current_idx: int, total_count: int, filename: str):
+                                            pct = current_idx / max(total_count, 1)
+                                            prog_bar.progress(pct, text=f"Đang xử lý ({current_idx}/{total_count}): {filename}")
+                                            status_text.caption(f"Đang đọc: {filename}")
+
+                                        batch_summary = ingest_scanned_files_batch(
+                                            files=current_scan.supported_files,
+                                            conversation_id=active_conversation.id,
+                                            privacy_choice=folder_privacy_choice,
+                                            enable_now=folder_enable_now,
+                                            save_to_notebook=folder_save_to_notebook,
+                                            notebook_id=active_nb_id,
+                                            progress_callback=update_progress,
+                                        )
+
+                                        prog_bar.empty()
+                                        status_text.empty()
+
+                                        dest = "vào Sổ tài liệu" if folder_save_to_notebook else "như nguồn tạm"
+                                        if batch_summary.success_count > 0:
+                                            st.session_state.wsc_upload_version += 1
+                                            msg = f"Đã nhập thành công {batch_summary.success_count}/{batch_summary.total_files} tài liệu {dest}."
+                                            if folder_enable_now:
+                                                msg += " Nguồn mới đã được bật cho câu trả lời."
+                                            st.session_state.wsc_action_message = msg
+
+                                        if batch_summary.fail_count > 0:
+                                            st.session_state.wsc_action_error = f"Có {batch_summary.fail_count} tài liệu gặp lỗi khi trích xuất."
+
+                                        st.session_state.pop(scan_key, None)
+                                        safe_rerun()
+
+                                else:
+                                    st.info("Không tìm thấy tài liệu phù hợp trong thư mục đã chọn.")
+
+                                if current_scan.unsupported_files:
+                                    with st.expander(f"Tập tin không hỗ trợ ({len(current_scan.unsupported_files)})", expanded=False):
+                                        unsupported_table = [
+                                            {
+                                                "Tên tập tin": f.filename,
+                                                "Đường dẫn": f.relative_path,
+                                                "Định dạng": f.extension or "(không có đuôi)",
+                                                "Lý do": f.unsupported_reason,
+                                            }
+                                            for f in current_scan.unsupported_files[:50]
+                                        ]
+                                        st.dataframe(unsupported_table, use_container_width=True)
 
             def _render_workspace_results_and_evidence():
                 last_assistant_msg = next((m for m in reversed(messages) if m.role == "assistant"), None)

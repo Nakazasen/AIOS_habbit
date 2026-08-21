@@ -229,8 +229,12 @@ def run_ocr_router(
         if engine_name == "tesseract":
             if tesseract_fallback is None:
                 continue
-            attempted += 1
-            result = tesseract_fallback(image)
+            fallback_res = tesseract_fallback(image)
+            if fallback_res is None or (isinstance(fallback_res, OCREngineResult) and (fallback_res.engine == "none" or "unavailable" in fallback_res.failure_reason.lower())):
+                result = fallback_res if isinstance(fallback_res, OCREngineResult) else OCREngineResult(engine="none", failure_reason="tesseract_unavailable")
+            else:
+                attempted += 1
+                result = fallback_res if isinstance(fallback_res, OCREngineResult) else OCREngineResult(engine="tesseract")
         elif not available.get(engine_name, False):
             failures.append(f"{engine_name}_unavailable")
             continue

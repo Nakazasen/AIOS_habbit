@@ -1,19 +1,39 @@
 @echo off
+setlocal
 cd /d "%~dp0"
+chcp 65001 >nul
 
-echo Checking dependencies...
-py -3 -m pip show streamlit >nul 2>&1
-if %errorlevel% neq 0 (
-    echo Streamlit not found. Installing dependencies...
-    py -3 -m pip install -e .
-    if %errorlevel% neq 0 (
-        echo Khong the cai dat cac goi phu thuoc. Vui long kiem tra lai.
-        pause
-        exit /b 1
-    )
+echo ======================================================================
+echo  Starting AIOS WorkLens Workspace Chat (CPU-optimized mode)
+echo ======================================================================
+
+set PYTHONPATH=src
+
+where uv >nul 2>&1
+if %errorlevel% equ 0 (
+    echo [Launcher] Running via uv in project virtual environment...
+    uv run --no-sync streamlit run src\aios_habit\workspace_chat_app.py
+    goto :launcher_exit
 )
 
-echo Starting AIOS WorkLens Workspace Chat...
-set PYTHONPATH=src
-py -3 -m streamlit run src\aios_habit\workspace_chat_app.py
-pause
+if exist ".venv\Scripts\streamlit.exe" (
+    echo [Launcher] Running via .venv\Scripts\streamlit.exe...
+    ".venv\Scripts\streamlit.exe" run src\aios_habit\workspace_chat_app.py
+    goto :launcher_exit
+)
+
+if exist ".venv\Scripts\python.exe" (
+    echo [Launcher] Running via .venv\Scripts\python.exe...
+    ".venv\Scripts\python.exe" -m streamlit run src\aios_habit\workspace_chat_app.py
+    goto :launcher_exit
+)
+
+echo [Launcher] Virtual environment not found in .venv. Trying Python 3.12...
+py -3.12 -m streamlit run src\aios_habit\workspace_chat_app.py
+
+:launcher_exit
+if %errorlevel% neq 0 (
+    echo.
+    echo [Launcher] Workspace Chat exited with error code %errorlevel%.
+    pause
+)

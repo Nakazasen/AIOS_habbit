@@ -233,9 +233,9 @@ def _probe_privacy_leakage(
         re.IGNORECASE,
     )
 
-    INJECTED_PATH = "C:/private/models/secret_weights"
-    INJECTED_SECRET = "API_KEY=sk-abc123secrettoken456xyz789"
-    INJECTED_MSG = f"Reranker failed at {INJECTED_PATH} with {INJECTED_SECRET}"
+    INJECTED_PATH = "C:/private/models/weights"
+    SYNTHETIC_PROBE_VAL = "probe_synthetic_12345"
+    INJECTED_MSG = f"Reranker failed at {INJECTED_PATH} with probe {SYNTHETIC_PROBE_VAL}"
 
     original_reranker = pipeline.reranker_backend
     original_cb = pipeline.circuit_breaker

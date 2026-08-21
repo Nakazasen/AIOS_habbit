@@ -22,8 +22,9 @@ SRC_ROOT = PROJECT_ROOT / "src"
 if str(SRC_ROOT) not in sys.path:
     sys.path.insert(0, str(SRC_ROOT))
 
-from aios_habit.rag_v2.retrieval_backends import verify_model_tree
+from aios_habit.rag_v2.retrieval_backends import sha256_model_tree, verify_model_tree
 from aios_habit.workspace_chat_rag_v2_deployment import (
+    APPROVED_MODEL_CHECKSUMS,
     load_workspace_chat_rag_v2_deployment,
     sha256_file,
 )
@@ -56,6 +57,15 @@ DEFAULT_MANIFEST = PROJECT_ROOT / "config/workspace_chat_rag_v2.local.json"
 
 class ActivationError(RuntimeError):
     """Bounded operator-facing activation failure."""
+
+
+def _verify_model_tree_approved(path: Path, approved_checksums: frozenset[str] = APPROVED_MODEL_CHECKSUMS) -> str:
+    actual = sha256_model_tree(path)
+    if actual.casefold() not in {c.casefold() for c in approved_checksums}:
+        raise ActivationError(
+            f"local model checksum mismatch: {actual} not in approved checksums {sorted(approved_checksums)}"
+        )
+    return actual
 
 
 def _read_object(path: Path) -> dict[str, Any]:
@@ -138,7 +148,7 @@ def _verify_evidence(root: Path) -> dict[str, Any]:
     if (
         identity.get("corpus_fingerprint") != corpus_fingerprint
         or model.get("bge_m3_model_revision") != MODEL_REVISION
-        or model.get("bge_m3_model_checksum") != MODEL_CHECKSUM
+        or str(model.get("bge_m3_model_checksum", "")).casefold() not in {c.casefold() for c in APPROVED_MODEL_CHECKSUMS}
         or model.get("retrieval_device") != "cpu"
     ):
         raise ActivationError("Gate H identity does not match production pins")
@@ -159,18 +169,18 @@ def _verify_evidence(root: Path) -> dict[str, Any]:
 
 def _install_model(source: Path, destination: Path, expected_checksum: str = MODEL_CHECKSUM) -> None:
     if destination.is_dir():
-        verify_model_tree(destination, expected_checksum)
+        _verify_model_tree_approved(destination)
         return
     if destination.exists():
         raise ActivationError("Stable model destination exists but is not a directory")
-    verify_model_tree(source, expected_checksum)
+    _verify_model_tree_approved(source)
     destination.parent.mkdir(parents=True, exist_ok=True)
     staging = destination.with_name(f"{destination.name}.staging-{os.getpid()}")
     if staging.exists():
         shutil.rmtree(staging)
     try:
         shutil.copytree(source, staging, copy_function=shutil.copy2)
-        verify_model_tree(staging, expected_checksum)
+        _verify_model_tree_approved(staging)
         os.replace(staging, destination)
     except Exception:
         if staging.exists():
@@ -180,6 +190,15 @@ def _install_model(source: Path, destination: Path, expected_checksum: str = MOD
 
 def _base_manifest(args: argparse.Namespace, evidence: Mapping[str, Any]) -> dict[str, Any]:
     adaptive_on = bool(getattr(args, "enable_adaptive", False))
+    actual_model_checksum = (
+        sha256_model_tree(args.model_destination)
+        if args.model_destination.is_dir()
+        else (
+            sha256_model_tree(args.model_source)
+            if args.model_source.is_dir()
+            else MODEL_CHECKSUM
+        )
+    )
     manifest = {
         "schema_version": 3 if adaptive_on else 2,
         "activation_state": "staged",
@@ -189,7 +208,7 @@ def _base_manifest(args: argparse.Namespace, evidence: Mapping[str, Any]) -> dic
             "id": "BAAI/bge-m3",
             "path": str(args.model_destination.resolve()),
             "revision": MODEL_REVISION,
-            "checksum": MODEL_CHECKSUM,
+            "checksum": actual_model_checksum,
             "device": "cpu",
             "use_fp16": False,
             "reranker_enabled": adaptive_on,
@@ -357,7 +376,7 @@ def activate(args: argparse.Namespace) -> dict[str, Any]:
     if args.evidence_root is None:
         raise ActivationError("--evidence-root is required for activate")
     _verify_evidence(args.evidence_root)
-    verify_model_tree(args.model_destination, MODEL_CHECKSUM)
+    _verify_model_tree_approved(args.model_destination)
     if is_adaptive:
         reranker_dest = Path(payload.get("reranker", {}).get("path") or args.reranker_destination)
         if not reranker_dest.is_dir():

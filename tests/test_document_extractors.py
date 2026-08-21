@@ -447,7 +447,7 @@ def test_document_extractors_excel_streaming_integration(tmp_path):
     assert results[2].row_range == "1002-1201"
     assert "Table range: A1002:D1201 (Chunk 3/3)" in results[2].text
     assert "Columns: Order_ID | Customer | Amount | Status" in results[2].text
-    assert "Row 1002: ORD-1001 | Cust_1001 | 10100 | COMPLETED" in results[2].text
+    assert "Row 1002: ORD-1001 | Cust_1001 | 100100 | COMPLETED" in results[2].text
     assert "Row 1201: ORD-1200 | Cust_1200 | 120000 | COMPLETED" in results[2].text
 
 

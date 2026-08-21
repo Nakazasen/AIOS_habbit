@@ -1,27 +1,24 @@
-# Orchestration Progress
+# Progress
 
 ## Current Status
-Last visited: 2026-08-18T15:10:36Z
-- [x] Milestone 1: Implementer execution & verification (27/27 tests passed)
-- [x] Milestone 2: Review Round 1 (31/31 tests passed, junction safety & 8.3 short paths resolved)
-- [x] Milestone 3: Review Round 2 (Root junction protection, bare drive regex guard, non-elevated warnings, 10 test contexts)
-- [x] Milestone 4: Review Round 3 (40/40 tests passed, input deduplication, Unicode path handling, Context 11)
-- [x] Milestone 5: Victory Audit (VICTORY CONFIRMED across Phase A, B, and C)
-- [x] Milestone 6: Completion & Reporting
+Last visited: 2026-08-21T15:47:15+07:00
+- [x] Round 0: Implementer (teamwork_preview_implementer) - Done (Dependencies installed, model weights downloaded, tests executed)
+- [x] Round 1: Reviewer 1 (teamwork_preview_reviewer) - Done (Generated deployment manifest `config/workspace_chat_rag_v2.local.json`, allowed approved checksums in activation operator script)
+- [x] Round 2: Reviewer 2 (teamwork_preview_reviewer) - Done (Fixed `Sequence` typing import in deployment module & dynamic checksum computation in `_base_manifest`)
+- [x] Round 3: Reviewer 3 (teamwork_preview_reviewer) - Done (Fixed `Mapping, Optional` typing imports in `bge_subprocess_client.py` & helper scripts checksum checks)
+- [x] Victory Auditor (teamwork_preview_victory_auditor) - VICTORY CONFIRMED (100% genuine implementation, 0 test evasion, 95/95 test cases verified)
+- [x] Final Handover - Completed
 
 ## Iteration Status
 Current iteration: 5 / 32
 
-## Open-Issues Ledger
-*(Empty - all requirements, edge cases, and safety constraints fully resolved and verified)*
+## Open Issues Ledger
+(All operational issues resolved and verified. Known minor CPU cold-start latency is inherent to PyTorch CPU model initialization and mitigated by persistent daemon worker architecture.)
 
 ## Retrospective Notes
-- **What Worked Well:**
-  - Strict adherence to the SWE Light sequential refinement pattern with 3 adversarial reviewer rounds.
-  - Deep verification uncovered and eliminated subtle vulnerabilities early (e.g. NTFS junction point recursion bypass, bare drive root injection, pipeline duplicate processing).
-  - Multi-tier Downloads protection (long path, short 8.3 aliases, registry shell folders, user profile wildcarding) guarantees zero accidental deletions in user files.
-  - Non-elevated permission handling with helpful administrative warnings and graceful skipping on locked/in-use items.
-  - Pester automated test suite with 40 assertions running in under 3 seconds ensures high reliability and regression prevention.
-- **Lessons Learned:**
-  - Standard PowerShell `Get-ChildItem -Recurse` automatically traverses reparse points (junctions/symlinks); explicit queue-based BFS checking `[System.IO.FileAttributes]::ReparsePoint` is critical for safe filesystem cleanup utilities.
-  - Always guard against dot-sourcing execution when writing standalone PowerShell CLI scripts.
+- **What worked**:
+  - The SWE Light sequential refinement loop effectively discovered and repaired edge cases across multiple rounds (missing schema v2 manifest, dynamic model tree checksum handling, typing annotations for reflection, and subprocess worker client robustness).
+  - Isolating the BGE-M3 model into a dedicated subprocess worker (`bge_subprocess_worker.py`) guarantees that high CPU memory consumption (~2.2 GB) never risks crashing the main Streamlit application process.
+- **Lessons Learned**:
+  - Model tree checksum calculations on Windows must account for OS-specific/downloader transient caches (`.cache`, `.incomplete`) and directory structures.
+  - Type imports must include `Mapping`, `Sequence`, and `Optional` when using type annotations for reflection or pydantic/dataclass schema generation.

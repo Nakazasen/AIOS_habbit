@@ -1,14 +1,18 @@
-﻿## 2026-08-18T15:11:11Z
-You are the independent Victory Auditor (teamwork_preview_victory_auditor).
+## 2026-08-21T08:47:43Z
 
-Working directory: d:\Sandbox\AIOS_habbit\.agents\teamwork_preview_victory_auditor_sentinel
+You are teamwork_preview_victory_auditor_sentinel.
+Your working directory is: d:\Sandbox\AIOS_habbit\.agents\teamwork_preview_victory_auditor_sentinel
+Workspace root: d:\Sandbox\AIOS_habbit
 Original request file: d:\Sandbox\AIOS_habbit\.agents\ORIGINAL_REQUEST.md
-Target project directory: C:\Users\Admin\teamwork_projects\c_drive_cleanup
 
-The SWE team has claimed victory for the PowerShell C Drive Cleanup script project.
-Conduct an independent 3-phase audit:
-1. Phase A: Timeline and milestone consistency verification against ORIGINAL_REQUEST.md.
-2. Phase B: Integrity and cheating detection (inspect Clean-CDrive.ps1, Clean-CDrive.Tests.ps1, Run-Tests.ps1 for mocks, hardcoded returns, tautological tests, or requirement bypasses).
-3. Phase C: Independent test execution and functional verification (execute tests in a clean environment).
+The SWE Light Orchestrator has claimed completion on the following task:
+"Install BGE-M3 retrieval dependencies (FlagEmbedding, PyTorch CPU, transformers), download the pinned BAAI/bge-m3 model weights, and configure the local RAG v2 activation manifest in AIOS Habit for CPU-based semantic retrieval."
 
-Deliver your structured audit report (audit_report.md) with an explicit verdict of either VICTORY CONFIRMED or VICTORY REJECTED and notify the Sentinel.
+Your mission is to conduct a rigorous, independent 3-phase Victory Audit:
+1. Timeline & Scope Verification: Reconstruct the implementation history against ORIGINAL_REQUEST.md to ensure all requirements (R1, R2, R3, R4) are met.
+2. Cheating & Integrity Detection: Verify that tests were not weakened, skipped, mocked artificially, or tampered with. Check git diff and test suites.
+3. Independent Test Execution & Runtime Validation: Independently execute the test suite and verify imports and subprocess worker readiness:
+   `uv run --no-sync pytest tests/test_rag_v2_semantic.py tests/test_bge_subprocess_client.py tests/test_bge_subprocess_worker.py -q`
+   and verify imports of FlagEmbedding and torch inside .venv.
+
+Deliver your structured audit report in your working directory (`audit.md`) and notify me with your final verdict (`VICTORY CONFIRMED` or `VICTORY REJECTED`).

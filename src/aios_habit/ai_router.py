@@ -471,6 +471,7 @@ def build_route_summary_vi(result: RouterResult, external_sent: bool | None = No
 
 
 ENV_PROVIDER_MAP = (
+    ("gemini", "GEMINI_API_KEY", "AIOS_GEMINI_MODEL"),
     ("openrouter", "OPENROUTER_API_KEY", "AIOS_OPENROUTER_MODEL"),
     ("groq", "GROQ_API_KEY", "AIOS_GROQ_MODEL"),
     ("deepseek", "DEEPSEEK_API_KEY", "AIOS_DEEPSEEK_MODEL"),
@@ -479,6 +480,7 @@ ENV_PROVIDER_MAP = (
     ("sambanova", "SAMBANOVA_API_KEY", "AIOS_SAMBANOVA_MODEL"),
     ("github_models", "GITHUB_TOKEN", "AIOS_GITHUB_MODELS_MODEL"),
     ("ai21", "AI21_API_KEY", "AIOS_AI21_MODEL"),
+    ("chatanywhere", "CHATANYWHERE_API_KEY", "AIOS_CHATANYWHERE_MODEL"),
 )
 
 
@@ -523,6 +525,10 @@ def provider_configs_from_env(env: dict[str, Any] | None = None) -> list[RouterP
     priority = 100
     for provider_id, key_name, model_name_env in ENV_PROVIDER_MAP:
         api_key = str(values.get(key_name) or "").strip()
+        if not api_key and key_name == "GEMINI_API_KEY":
+            api_key = str(values.get("GOOGLE_API_KEY") or "").strip()
+        if not api_key and key_name == "GITHUB_TOKEN":
+            api_key = str(values.get("GITHUB_API_KEY") or "").strip()
         if not api_key:
             continue
         profile = get_provider_profile(provider_id)
@@ -548,6 +554,8 @@ def provider_configs_from_env(env: dict[str, Any] | None = None) -> list[RouterP
         )
         priority += 10
     return configs
+
+
 def provider_env_presence(env: dict[str, Any] | None = None) -> dict[str, bool]:
     """Return key presence only; never returns secret values."""
     import os
@@ -555,6 +563,7 @@ def provider_env_presence(env: dict[str, Any] | None = None) -> dict[str, bool]:
     names = [item[1] for item in ENV_PROVIDER_MAP] + [
         "GEMINI_API_KEY",
         "GOOGLE_API_KEY",
+        "GITHUB_API_KEY",
         "HF_TOKEN",
         "AIOS_LOCAL_AI_ENDPOINT",
         "AIOS_LOCAL_AI_MODEL",
@@ -564,6 +573,7 @@ def provider_env_presence(env: dict[str, Any] | None = None) -> dict[str, bool]:
     names = sorted(set(names))
     return {name: bool(values.get(name)) for name in names}
 
+
 def providers_from_env_or_session(catalog=None, session_state: dict[str, Any] | None = None) -> list[RouterProviderConfig]:
     session_state = session_state or {}
     endpoint = str(session_state.get("local_ai_endpoint", "")).strip()
@@ -572,3 +582,4 @@ def providers_from_env_or_session(catalog=None, session_state: dict[str, Any] | 
     if endpoint and model:
         configs.append(RouterProviderConfig("openai_compatible_local", "AI trong máy tương thích OpenAI", endpoint, model, str(session_state.get("local_ai_api_key", "")), True, True, 10, int(session_state.get("local_ai_timeout", 30))))
     return configs
+

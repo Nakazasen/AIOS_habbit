@@ -165,6 +165,31 @@ def test_normal_docs_env_config_can_use_mock_provider():
     assert "fake-secret-value" not in result.route_summary_vi
 
 
+def test_provider_configs_from_env_loads_gemini_and_google_key_alias():
+    configs = provider_configs_from_env({"GEMINI_API_KEY": "fake-gemini-key"})
+    assert len(configs) == 1
+    assert configs[0].provider_id == "gemini"
+    assert configs[0].api_key == "fake-gemini-key"
+    assert configs[0].endpoint_url.startswith("https://generativelanguage.googleapis.com")
+
+    configs_alias = provider_configs_from_env({"GOOGLE_API_KEY": "fake-google-key"})
+    assert len(configs_alias) == 1
+    assert configs_alias[0].provider_id == "gemini"
+    assert configs_alias[0].api_key == "fake-google-key"
+
+
+def test_provider_configs_from_env_loads_github_token_and_api_key_alias():
+    configs = provider_configs_from_env({"GITHUB_TOKEN": "fake-gh-token"})
+    assert len(configs) == 1
+    assert configs[0].provider_id == "github_models"
+    assert configs[0].api_key == "fake-gh-token"
+
+    configs_alias = provider_configs_from_env({"GITHUB_API_KEY": "fake-gh-key"})
+    assert len(configs_alias) == 1
+    assert configs_alias[0].provider_id == "github_models"
+    assert configs_alias[0].api_key == "fake-gh-key"
+
+
 def test_route_log_does_not_include_secret_like_provider_errors():
     configs = provider_configs_from_env({"OPENROUTER_API_KEY": "fake-secret-value"})
     result = route_answer(

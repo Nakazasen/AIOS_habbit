@@ -137,10 +137,14 @@ def load_provider_config_from_env_or_session(
         or os.getenv("AIOS_LOCAL_AI_LOCALITY", "local")
     ).lower()
     enabled_default = bool(endpoint and model)
-    enabled = _as_bool(
-        session.get("local_ai_enabled", os.getenv("AIOS_LOCAL_AI_ENABLED")),
-        enabled_default,
-    )
+    if "local_ai_enabled" in session:
+        enabled = _as_bool(session["local_ai_enabled"], enabled_default)
+    elif session.get("local_ai_endpoint") and session.get("local_ai_model"):
+        enabled = enabled_default
+    elif os.getenv("AIOS_LOCAL_AI_ENABLED") is not None:
+        enabled = _as_bool(os.getenv("AIOS_LOCAL_AI_ENABLED"), enabled_default)
+    else:
+        enabled = enabled_default
     timeout = _as_int(
         session.get("local_ai_timeout", os.getenv("AIOS_LOCAL_AI_TIMEOUT_SECONDS")),
         DEFAULT_TIMEOUT_SECONDS,

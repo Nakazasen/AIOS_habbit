@@ -568,7 +568,7 @@ def _run_tesseract_engine(image):
 
     available, engine, detail = _tesseract_available()
     if not available:
-        return OCREngineResult(engine="tesseract", failure_reason=detail)
+        return OCREngineResult(engine="none", failure_reason=detail)
     lang = _ocr_lang()
     try:
         import pytesseract
@@ -784,7 +784,7 @@ def _extract_pdf(path: Path) -> list[ExtractionResult]:
             ocr_result.element_type = "pdf_page_ocr"
             if (
                 not ocr_result.text
-                and ocr_result.ocr_quality_reason == "no_meaningful_text"
+                and ocr_result.ocr_quality_reason in {"no_meaningful_text", "ocr_engine_unavailable"}
                 and not page.get_images(full=True)
             ):
                 ocr_result.extraction_status = "empty_text"
