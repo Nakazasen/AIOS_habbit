@@ -236,6 +236,36 @@ def test_explicit_deep_never_silently_degrades_to_hybrid(tmp_path: Path):
     assert result["rag_v2_canary"]["fallback_reason"] == "deep_search_unavailable"
 
 
+def test_deep_search_availability_distinguishes_disabled_reranking_from_source_readiness(tmp_path: Path):
+    config = adapter.WorkspaceChatRagV2CanaryConfig(
+        enabled=True,
+        adaptive_enabled=False,
+        runtime_root=tmp_path / "rag",
+    )
+
+    availability = adapter.get_workspace_chat_deep_search_availability(config=config)
+
+    assert availability.available is False
+    assert availability.reason == "deep_disabled"
+
+
+def test_deep_search_availability_requires_a_pinned_local_reranker(tmp_path: Path):
+    reranker = tmp_path / "reranker"
+    reranker.mkdir()
+    config = adapter.WorkspaceChatRagV2CanaryConfig(
+        enabled=True,
+        adaptive_enabled=True,
+        runtime_root=tmp_path / "rag",
+        bge_reranker_model_path=reranker,
+        bge_reranker_model_revision="reranker-revision",
+        bge_reranker_model_checksum="sha256:" + "b" * 64,
+    )
+
+    availability = adapter.get_workspace_chat_deep_search_availability(config=config)
+
+    assert availability.available is True
+
+
 def test_missing_bge_pins_fail_closed_and_schedule_preparation(monkeypatch, tmp_path: Path):
     source = _source("ORCHID-731 là mã duy nhất của hồ sơ này.")
     executor = _ImmediateExecutor()

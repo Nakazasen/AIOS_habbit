@@ -491,6 +491,9 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
         "send_question_prompt": "Hãy gửi câu hỏi để nhận phản hồi từ AIOS.",
         "check_source_docs_expander": "Kiểm tra lại tài liệu nguồn",
         "metric_supported_files": "Tài liệu hỗ trợ",
+        "deep_search_unavailable": "Tìm kỹ hơn chưa được bật. BGE-M3 vẫn sẵn sàng tìm kiếm ở chế độ Tự động.",
+        "search_sources_preparing": "Tìm kiếm tài liệu chưa sẵn sàng. Vui lòng thử lại sau khi các nguồn hoàn tất chuẩn bị.",
+        "search_runtime_unavailable": "BGE-M3 không khởi động được ở lần này. Chỉ mục có thể vẫn còn trên máy; hãy làm mới kết nối hoặc khởi động lại AIOS.",
     },
     "ja": {
         # General & App Navigation
@@ -918,6 +921,9 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
         "send_question_prompt": "質問を送信してAIOSからの応答を受け取ります。",
         "check_source_docs_expander": "ソースドキュメントを再確認",
         "metric_supported_files": "対応ドキュメント",
+        "deep_search_unavailable": "詳細検索はまだ有効になっていません。BGE-M3 の通常検索は利用できます。",
+        "search_sources_preparing": "文書検索の準備中です。ソースの準備完了後にもう一度お試しください。",
+        "search_runtime_unavailable": "今回は BGE-M3 を起動できませんでした。索引はローカルに残っている場合があります。接続を更新するか、AIOS を再起動してください。",
     },
     "zh-CN": {
         # General & App Navigation
@@ -1345,6 +1351,9 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
         "send_question_prompt": "请发送问题以接收来自AIOS的回复。",
         "check_source_docs_expander": "核对来源文档",
         "metric_supported_files": "支持的文档",
+        "deep_search_unavailable": "深度搜索尚未启用。BGE-M3 的普通搜索仍可使用。",
+        "search_sources_preparing": "文档搜索尚未就绪。请在来源准备完成后重试。",
+        "search_runtime_unavailable": "本次无法启动 BGE-M3。索引可能仍保留在本机；请刷新连接或重启 AIOS。",
 
 
 

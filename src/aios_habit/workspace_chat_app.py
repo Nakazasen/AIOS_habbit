@@ -330,6 +330,7 @@ from aios_habit.workspace_chat_rag_v2_adapter import (
     retry_workspace_chat_source_preparation,
     get_workspace_chat_source_preparation_status,
     get_workspace_chat_preparation_summary,
+    get_workspace_chat_deep_search_availability,
     reconcile_and_enqueue_workspace_chat_sources,
     promote_workspace_chat_source_priority,
     forget_workspace_chat_sources,
@@ -1066,7 +1067,14 @@ else:
                 st.markdown("---")
                 # Mức độ tìm kiếm: Tự động / Tìm kỹ hơn
                 pref_val = getattr(target_conv, "search_preference", "auto")
-                pref_options = ["auto", "deep"]
+                deep_search = get_workspace_chat_deep_search_availability()
+                pref_options = ["auto", "deep"] if deep_search.available else ["auto"]
+                if pref_val == "deep" and not deep_search.available:
+                    update_conversation_search_preference(target_conv.id, "auto")
+                    target_conv.search_preference = "auto"
+                    if active_conversation and active_conversation.id == target_conv.id:
+                        active_conversation.search_preference = "auto"
+                    pref_val = "auto"
                 pref_labels = {
                     "auto": f"{t('search_pref_auto', locale=current_ui_locale)} (Tự động)",
                     "deep": f"{t('search_pref_deep', locale=current_ui_locale)} (Tìm kỹ hơn)",
@@ -1084,6 +1092,8 @@ else:
                     if active_conversation and active_conversation.id == target_conv.id:
                         active_conversation.search_preference = new_pref
                     safe_rerun()
+                if not deep_search.available:
+                    st.caption(t("deep_search_unavailable", locale=current_ui_locale))
 
                 st.markdown("---")
                 def _handle_conv_lang_change(new_ui_loc: str, new_ans_lang: str):
@@ -1792,7 +1802,12 @@ else:
                         help=t("attach_screenshot_help", locale=current_ui_locale),
                     )
                     current_pref = getattr(active_conversation, "search_preference", "auto")
-                    pref_options = ["auto", "deep"]
+                    deep_search = get_workspace_chat_deep_search_availability()
+                    pref_options = ["auto", "deep"] if deep_search.available else ["auto"]
+                    if current_pref == "deep" and not deep_search.available:
+                        update_conversation_search_preference(active_conversation.id, "auto")
+                        active_conversation.search_preference = "auto"
+                        current_pref = "auto"
                     pref_labels = {
                         "auto": t("search_preference_auto", locale=current_ui_locale),
                         "deep": t("search_preference_deep", locale=current_ui_locale),
@@ -1810,6 +1825,8 @@ else:
                     if chosen_pref != current_pref:
                         update_conversation_search_preference(active_conversation.id, chosen_pref)
                         active_conversation.search_preference = chosen_pref
+                    if not deep_search.available:
+                        st.caption(t("deep_search_unavailable", locale=current_ui_locale))
 
                     ask_submitted = st.form_submit_button(labels["ai_action"], use_container_width=True)
 
@@ -1988,11 +2005,27 @@ else:
                                         )
 
                                         if ret_res.get("status") == "quality_search_unavailable":
+                                            unavailable_reason = str(
+                                                ret_res.get("rag_v2_canary", {}).get("fallback_reason", "")
+                                            )
+                                            if unavailable_reason == "deep_search_unavailable":
+                                                st.session_state.wsc_action_error = t(
+                                                    "deep_search_unavailable",
+                                                    locale=current_ui_locale,
+                                                )
+                                                st.session_state.wsc_last_ai_badge = None
+                                                safe_rerun()
+                                            if unavailable_reason == "runtimeerror":
+                                                st.session_state.wsc_action_error = t(
+                                                    "search_runtime_unavailable",
+                                                    locale=current_ui_locale,
+                                                )
+                                                st.session_state.wsc_last_ai_badge = None
+                                                safe_rerun()
                                             st.error(t("no_evidence_found_error", locale=current_ui_locale))
-                                            st.session_state.wsc_action_error = (
-                                                "Tìm kiếm tài liệu chưa sẵn sàng. Vui lòng thử lại sau khi "
-                                                "nguồn hoàn tất chuẩn bị; chế độ Tìm kỹ hơn chỉ hoạt động khi "
-                                                "bộ kiểm tra chuyên sâu sẵn sàng."
+                                            st.session_state.wsc_action_error = t(
+                                                "search_sources_preparing",
+                                                locale=current_ui_locale,
                                             )
                                             st.session_state.wsc_last_ai_badge = None
                                             safe_rerun()

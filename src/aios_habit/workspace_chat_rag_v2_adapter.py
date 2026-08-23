@@ -292,6 +292,44 @@ class WorkspaceChatRagV2CanaryConfig:
 
 
 @dataclass(frozen=True)
+class WorkspaceChatDeepSearchAvailability:
+    """Truthful availability state for the optional local reranking lane."""
+
+    available: bool
+    reason: str = ""
+
+
+def get_workspace_chat_deep_search_availability(
+    *,
+    config: Optional[WorkspaceChatRagV2CanaryConfig] = None,
+) -> WorkspaceChatDeepSearchAvailability:
+    """Report whether the user-selectable deep-search promise can be honoured.
+
+    Source embedding readiness is intentionally not part of this check: a
+    source can be fully indexed for normal BGE-M3 hybrid search while the
+    separately pinned reranker is disabled or unavailable.  The UI must not
+    blame document preparation for that configuration state.
+    """
+    try:
+        resolved = config or WorkspaceChatRagV2CanaryConfig.from_env()
+    except (DeploymentManifestError, ValueError):
+        return WorkspaceChatDeepSearchAvailability(False, "retrieval_unavailable")
+
+    if not resolved.enabled:
+        return WorkspaceChatDeepSearchAvailability(False, "retrieval_disabled")
+    if not resolved.adaptive_enabled:
+        return WorkspaceChatDeepSearchAvailability(False, "deep_disabled")
+    reranker_path = resolved.bge_reranker_model_path
+    if reranker_path is None:
+        return WorkspaceChatDeepSearchAvailability(False, "reranker_not_configured")
+    if not reranker_path.is_dir():
+        return WorkspaceChatDeepSearchAvailability(False, "reranker_missing")
+    if not resolved.bge_reranker_model_revision or not resolved.bge_reranker_model_checksum:
+        return WorkspaceChatDeepSearchAvailability(False, "reranker_pin_missing")
+    return WorkspaceChatDeepSearchAvailability(True)
+
+
+@dataclass(frozen=True)
 class _RuntimeEntry:
     pipeline: RagV2DevPipeline
     lock: threading.RLock
