@@ -20,6 +20,7 @@ def run_cli(*args):
         capture_output=True,
         text=True,
         env=env,
+        timeout=30.0,
     )
 
 

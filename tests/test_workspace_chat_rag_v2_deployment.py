@@ -389,6 +389,7 @@ def test_adaptive_benchmark_raw_hex_checksum_canonicalization_and_rejection(tmp_
 def test_end_to_end_prepare_activate_load_adaptive_deployment(tmp_path):
     """End-to-end contract integration: prepare adaptive -> activate with valid report -> load deployment."""
     import argparse
+    import json
     from aios_habit.workspace_chat_rag_v2_deployment import (
         EXPECTED_MODEL_CHECKSUM,
         EXPECTED_RERANKER_CHECKSUM,
@@ -504,8 +505,13 @@ def test_end_to_end_prepare_activate_load_adaptive_deployment(tmp_path):
     # Monkeypatch verify_model_tree and _verify_evidence to accept our test directories
     import scripts.workspace_chat_rag_v2_activation as activation_module
     orig_verify = activation_module.verify_model_tree
+    orig_verify_approved = getattr(activation_module, "_verify_model_tree_approved", None)
+    orig_sha256_model_tree = getattr(activation_module, "sha256_model_tree", None)
     orig_verify_ev = activation_module._verify_evidence
     activation_module.verify_model_tree = lambda path, checksum: None
+    activation_module._verify_model_tree_approved = lambda path, approved_checksums=None: EXPECTED_MODEL_CHECKSUM
+    if orig_sha256_model_tree is not None:
+        activation_module.sha256_model_tree = lambda path: EXPECTED_MODEL_CHECKSUM
     activation_module._verify_evidence = lambda root: {
         "run_id": evidence_run_id,
         "report_path": str(qualification_path.resolve()),
@@ -550,6 +556,10 @@ def test_end_to_end_prepare_activate_load_adaptive_deployment(tmp_path):
         assert deployment.policy_version == "adaptive-reranking-v1"
     finally:
         activation_module.verify_model_tree = orig_verify
+        if orig_verify_approved is not None:
+            activation_module._verify_model_tree_approved = orig_verify_approved
+        if orig_sha256_model_tree is not None:
+            activation_module.sha256_model_tree = orig_sha256_model_tree
         activation_module._verify_evidence = orig_verify_ev
 
 

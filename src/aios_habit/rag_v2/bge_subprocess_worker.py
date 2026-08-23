@@ -374,6 +374,22 @@ def main() -> None:
                 staged.pop(document_id, None)
                 response = {"status": "ok"}
 
+            elif command == "delete_documents":
+                if pipeline is None:
+                    raise RuntimeError("worker_not_initialized")
+                document_ids = [
+                    str(document_id).strip()
+                    for document_id in request.get("document_ids", [])
+                    if str(document_id).strip()
+                ]
+                removed_chunk_count = sum(
+                    pipeline.index.delete_document(document_id)
+                    for document_id in document_ids
+                )
+                for document_id in document_ids:
+                    staged.pop(document_id, None)
+                response = {"status": "ok", "removed_chunk_count": removed_chunk_count}
+
             elif command == "prepare_sources":
                 if pipeline is None:
                     raise RuntimeError("worker_not_initialized")

@@ -1,8 +1,9 @@
 import logging
 import uuid
+from dataclasses import asdict
 from datetime import datetime
 from pathlib import Path
-from typing import List, Optional
+from typing import Any, Iterable, List, Optional
 from aios_habit.local_jsonl import atomic_write_jsonl, atomic_write_jsonl_batch, load_jsonl_records
 from aios_habit.workspace_chat_models import (
     DocumentNotebook,
@@ -140,6 +141,14 @@ def load_conversation(conv_id: str) -> Optional[WorkspaceConversation]:
             return c
     return None
 
+
+def resolve_conversation_id(notebook_id: str, requested_conversation_id: Optional[str]) -> Optional[str]:
+    """Return a valid conversation ID for a notebook, or None when it is empty."""
+    conversations = load_conversations(notebook_id)
+    if requested_conversation_id and any(c.id == requested_conversation_id for c in conversations):
+        return requested_conversation_id
+    return conversations[0].id if conversations else None
+
 def save_conversation(conv: WorkspaceConversation):
     conversations = load_all_conversations()
     found = False
@@ -157,6 +166,7 @@ def rename_conversation(conv_id: str, new_title: str):
     conv = load_conversation(conv_id)
     if conv:
         conv.title = new_title
+        conv.updated_at = datetime.now().isoformat()
         save_conversation(conv)
 
 def update_conversation_search_preference(conv_id: str, search_preference: str) -> bool:
@@ -250,28 +260,128 @@ def get_notebook_source(source_id: str) -> Optional[NotebookSource]:
     return None
 
 def delete_notebook_source(source_id: str) -> bool:
-    sources = load_all_notebook_sources()
-    initial_len = len(sources)
-    sources = [s for s in sources if s.id != source_id]
-    if len(sources) == initial_len:
-        return False
-    selections = load_all_conversation_source_selections()
-    selections = [s for s in selections if not (s.source_id == source_id and s.source_scope == "notebook")]
-    atomic_write_jsonl_batch(((NOTEBOOK_SOURCES_FILE, sources), (SOURCE_SELECTIONS_FILE, selections)))
-
-    return True
+    return bool(delete_sources("notebook", [source_id]).get("sources"))
 
 def delete_temporary_source(source_id: str) -> bool:
-    sources = load_all_temporary_sources()
-    initial_len = len(sources)
-    sources = [s for s in sources if s.id != source_id]
-    if len(sources) == initial_len:
-        return False
-    selections = load_all_conversation_source_selections()
-    selections = [s for s in selections if not (s.source_id == source_id and s.source_scope == "temporary")]
-    atomic_write_jsonl_batch(((TEMPORARY_SOURCES_FILE, sources), (SOURCE_SELECTIONS_FILE, selections)))
+    return bool(delete_sources("temporary", [source_id]).get("sources"))
 
-    return True
+
+def _source_records_for_scope(scope: str) -> list[Any]:
+    if scope == "notebook":
+        return load_all_notebook_sources()
+    if scope == "temporary":
+        return load_all_temporary_sources()
+    raise ValueError(f"Unsupported source scope: {scope}")
+
+
+def find_source_ids_by_title(scope: str, owner_id: str, title: str) -> list[str]:
+    """Find sources with the same visible title within one chat or notebook."""
+    normalized_title = str(title or "").strip().casefold()
+    if not normalized_title:
+        return []
+    if scope == "notebook":
+        return [
+            source.id for source in load_notebook_sources(owner_id)
+            if source.title.strip().casefold() == normalized_title
+        ]
+    if scope == "temporary":
+        return [
+            source.id for source in load_temporary_sources(owner_id)
+            if source.title.strip().casefold() == normalized_title
+        ]
+    raise ValueError(f"Unsupported source scope: {scope}")
+
+
+def snapshot_sources(scope: str, source_ids: Iterable[str]) -> dict[str, Any]:
+    """Capture sources and their selections so a UI action can be undone safely."""
+    requested_ids = {str(source_id) for source_id in source_ids}
+    sources = [source for source in _source_records_for_scope(scope) if source.id in requested_ids]
+    source_id_set = {source.id for source in sources}
+    selections = [
+        selection for selection in load_all_conversation_source_selections()
+        if selection.source_scope == scope and selection.source_id in source_id_set
+    ]
+    return {
+        "scope": scope,
+        "sources": [asdict(source) for source in sources],
+        "selections": [asdict(selection) for selection in selections],
+    }
+
+
+def delete_sources(scope: str, source_ids: Iterable[str]) -> dict[str, Any]:
+    """Delete one or more sources in one scope and return an undo snapshot."""
+    snapshot = snapshot_sources(scope, source_ids)
+    source_id_set = {record["id"] for record in snapshot["sources"]}
+    if not source_id_set:
+        return snapshot
+
+    remaining_sources = [
+        source for source in _source_records_for_scope(scope)
+        if source.id not in source_id_set
+    ]
+    remaining_selections = [
+        selection for selection in load_all_conversation_source_selections()
+        if not (selection.source_scope == scope and selection.source_id in source_id_set)
+    ]
+    source_file = NOTEBOOK_SOURCES_FILE if scope == "notebook" else TEMPORARY_SOURCES_FILE
+    atomic_write_jsonl_batch(((source_file, remaining_sources), (SOURCE_SELECTIONS_FILE, remaining_selections)))
+    return snapshot
+
+
+def restore_source_snapshot(snapshot: dict[str, Any]) -> int:
+    """Restore a snapshot made by ``delete_sources`` without overwriting newer data."""
+    scope = str(snapshot.get("scope") or "")
+    records = list(snapshot.get("sources") or [])
+    if scope not in {"notebook", "temporary"} or not records:
+        return 0
+
+    source_type = NotebookSource if scope == "notebook" else TemporaryConversationSource
+    current_sources = _source_records_for_scope(scope)
+    known_ids = {source.id for source in current_sources}
+    restored_sources = [source_type(**record) for record in records if record.get("id") not in known_ids]
+    if not restored_sources:
+        return 0
+
+    current_selections = load_all_conversation_source_selections()
+    known_selection_ids = {selection.id for selection in current_selections}
+    restored_selections = [
+        ConversationSourceSelection(**record)
+        for record in snapshot.get("selections") or []
+        if record.get("id") not in known_selection_ids
+    ]
+    source_file = NOTEBOOK_SOURCES_FILE if scope == "notebook" else TEMPORARY_SOURCES_FILE
+    atomic_write_jsonl_batch(((source_file, [*current_sources, *restored_sources]), (SOURCE_SELECTIONS_FILE, [*current_selections, *restored_selections])))
+    return len(restored_sources)
+
+
+def purge_unreferenced_managed_files(snapshot: dict[str, Any]) -> int:
+    """Remove only app-owned workbook copies after an undo window has elapsed."""
+    try:
+        from aios_habit.workspace_chat_source_ingest import MANAGED_WORKBOOK_ROOT
+    except ImportError:
+        return 0
+
+    managed_root = MANAGED_WORKBOOK_ROOT.resolve()
+    live_paths = {
+        str(Path(source.managed_path).resolve())
+        for source in [*load_all_notebook_sources(), *load_all_temporary_sources()]
+        if getattr(source, "managed_path", "")
+    }
+    removed = 0
+    for record in snapshot.get("sources") or []:
+        managed_path = str(record.get("managed_path") or "")
+        if not managed_path:
+            continue
+        try:
+            candidate = Path(managed_path).resolve()
+            if managed_root not in candidate.parents or str(candidate) in live_paths:
+                continue
+            if candidate.is_file():
+                candidate.unlink()
+                removed += 1
+        except OSError:
+            LOGGER.warning("Could not remove managed source file", exc_info=True)
+    return removed
 
 def load_all_conversation_source_selections() -> List[ConversationSourceSelection]:
     if not SOURCE_SELECTIONS_FILE.exists():

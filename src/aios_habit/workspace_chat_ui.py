@@ -1,4 +1,5 @@
 import streamlit as st
+import time
 from typing import List, Dict, Any, Callable, Optional
 from aios_habit.workspace_chat_models import DocumentNotebook, WorkspaceConversation, ChatMessage, TemporaryConversationSource
 
@@ -301,6 +302,8 @@ def render_right_result_panel(
 def render_source_status(status: str) -> str:
     if status == "ready":
         return "Sẵn sàng"
+    if status == "unavailable":
+        return "BGE-M3 chưa sẵn sàng"
     if status == "preview_only":
         return "Chỉ xem trước"
     if status == "failed":
@@ -328,6 +331,8 @@ def _format_prep_status(prep_status: str, extraction_status: str = "") -> str:
         return "Đang chuẩn bị..."
     if prep_status == "ready":
         return "Sẵn sàng"
+    if prep_status == "unavailable":
+        return "BGE-M3 chưa sẵn sàng"
     if prep_status == "failed":
         return "Chuẩn bị thất bại"
     return ""
@@ -477,6 +482,211 @@ def render_source_library(
         st.markdown("<hr style='margin: 4px 0; border: 0.5px solid rgba(255,255,255,0.08);'/>", unsafe_allow_html=True)
 
 
+def render_source_library_summary(notebook_count: int, temporary_count: int, enabled_count: int) -> None:
+    """Keep the sidebar informative without hiding source-management actions in it."""
+    st.subheader("📚 Tóm tắt tài liệu")
+    st.caption(f"Trong sổ: {notebook_count} · Chỉ chat này: {temporary_count}")
+    st.caption(f"Đang bật cho câu hỏi: {enabled_count}")
+    st.info("Quản lý, thay thế hoặc xóa tài liệu ở khu vực **Tài liệu đang dùng** trong màn chat.")
+
+
+def render_preparation_progress_bar(
+    summary: Optional[Dict[str, Any]],
+    on_retry_all_failed: Optional[Callable[[], None]] = None,
+) -> None:
+    """Renders compact single-line BGE-M3 preparation progress banner."""
+    if not summary or summary.get("total", 0) <= 0:
+        return
+    text = summary.get("summary_text", "")
+    if not text:
+        return
+    failed = summary.get("failed", 0)
+    processing = summary.get("processing", 0)
+    pending = summary.get("pending", 0)
+
+    if failed > 0:
+        col_txt, col_btn = st.columns([3, 1])
+        with col_txt:
+            st.warning(f"📊 **Tiến độ BGE-M3:** {text}")
+        with col_btn:
+            if on_retry_all_failed is not None:
+                if st.button("🔄 Thử lại các lỗi", key="wsc_retry_all_failed_sources", use_container_width=True):
+                    on_retry_all_failed()
+    elif processing > 0 or pending > 0:
+        st.info(f"📊 **Tiến độ BGE-M3:** {text}")
+    else:
+        st.success(f"📊 **Tiến độ BGE-M3:** {text}")
+
+
+def render_document_manager(
+    notebook_sources: List[Any],
+    temporary_sources: List[Any],
+    selections_map: Dict[tuple, bool],
+    conversation_id: str,
+    on_toggle_source: Callable[[str, str, bool], None],
+    on_delete_source: Callable[[str, str], None],
+    on_delete_sources: Callable[[str, List[str]], None],
+    on_promote_temporary: Callable[[str], None],
+    on_privacy_save: Callable[[str, str, str], None],
+    undo_expires_at: float = 0,
+    on_undo_delete: Optional[Callable[[], None]] = None,
+    preparation_summary: Optional[Dict[str, Any]] = None,
+    on_retry_source: Optional[Callable[[str, str], None]] = None,
+    on_retry_all_failed: Optional[Callable[[], None]] = None,
+) -> None:
+    """Render the owner-facing document manager in the chat column."""
+    st.subheader("📚 Tài liệu đang dùng")
+    st.caption("Bật/tắt nguồn cho câu hỏi, xem nội dung, thay thế hoặc xóa tài liệu ở đây.")
+    st.info("Muốn thay thế một tài liệu: mở **➕ Thêm nguồn** phía trên, tải bản cùng tên và chọn **Thay thế bản cũ**. Bản cũ chỉ bị xóa khi bản mới đọc thành công.")
+
+    if preparation_summary:
+        render_preparation_progress_bar(preparation_summary, on_retry_all_failed=on_retry_all_failed)
+
+    def render_undo_control() -> None:
+        seconds_remaining = max(0, int(undo_expires_at - time.time()))
+        if seconds_remaining <= 0 or on_undo_delete is None:
+            return
+        undo_col, _ = st.columns(2)
+        with undo_col:
+            st.warning(f"Đã xóa tài liệu. Bạn có thể khôi phục trong {seconds_remaining} giây.")
+            if st.button("↩️ Khôi phục", key=f"wsc_source_undo_{conversation_id}", use_container_width=True):
+                on_undo_delete()
+
+    if undo_expires_at > time.time() and on_undo_delete is not None:
+        if hasattr(st, "fragment"):
+            st.fragment(run_every=1.0)(render_undo_control)()
+        else:
+            render_undo_control()
+
+    def render_group(scope: str, heading: str, explanation: str, sources: List[Any]) -> None:
+        st.markdown(f"#### {heading}")
+        st.caption(explanation)
+        if not sources:
+            st.info("Chưa có tài liệu trong nhóm này.")
+            return
+
+        group_label = "tài liệu của sổ" if scope == "notebook" else "nguồn tạm của cuộc trò chuyện"
+        enable_col, disable_col = st.columns(2)
+        with enable_col:
+            if st.button(
+                f"Bật toàn bộ {len(sources)} {group_label}",
+                key=f"wsc_document_enable_all_{scope}_{conversation_id}",
+                use_container_width=True,
+            ):
+                for source in sources:
+                    on_toggle_source(scope, source.id, True)
+                    st.session_state[f"wsc_document_toggle_{scope}_{conversation_id}_{source.id}"] = True
+                st.session_state.wsc_action_message = f"Đã bật {len(sources)} {group_label}."
+                __safe_rerun()
+        with disable_col:
+            if st.button(
+                f"Tắt toàn bộ {len(sources)} {group_label}",
+                key=f"wsc_document_disable_all_{scope}_{conversation_id}",
+                use_container_width=True,
+            ):
+                for source in sources:
+                    on_toggle_source(scope, source.id, False)
+                    st.session_state[f"wsc_document_toggle_{scope}_{conversation_id}_{source.id}"] = False
+                st.session_state.wsc_action_message = f"Đã tắt {len(sources)} {group_label}."
+                __safe_rerun()
+
+        confirm_key = f"wsc_bulk_delete_confirm_{scope}_{conversation_id}"
+        if st.session_state.get(confirm_key, False):
+            st.warning(
+                f"Xác nhận xóa {len(sources)} tài liệu? "
+                + ("Thao tác này ảnh hưởng mọi cuộc trò chuyện trong sổ." if scope == "notebook" else "Chỉ cuộc trò chuyện hiện tại bị ảnh hưởng.")
+            )
+            cancel_col, execute_col = st.columns(2)
+            with cancel_col:
+                if st.button("Hủy", key=f"wsc_bulk_delete_cancel_{scope}_{conversation_id}"):
+                    st.session_state[confirm_key] = False
+                    __safe_rerun()
+            with execute_col:
+                if st.button("Xác nhận xóa", key=f"wsc_bulk_delete_execute_{scope}_{conversation_id}", type="primary"):
+                    st.session_state[confirm_key] = False
+                    on_delete_sources(scope, [source.id for source in sources])
+        else:
+            label = "🗑️ Xóa tài liệu của cả sổ" if scope == "notebook" else "🗑️ Xóa nguồn tạm của cuộc trò chuyện"
+            if st.button(label, key=f"wsc_bulk_delete_request_{scope}_{conversation_id}", use_container_width=True):
+                st.session_state[confirm_key] = True
+                __safe_rerun()
+
+        for source in sources:
+            enabled = selections_map.get((scope, source.id), False)
+            icon = get_source_icon(getattr(source, "title", ""), getattr(source, "source_type", ""))
+            status_map = preparation_summary.get("statuses", {}) if preparation_summary else {}
+            error_map = preparation_summary.get("errors", {}) if preparation_summary else {}
+            item_status = status_map.get(f"{scope}:{source.id}", "ready")
+            item_error = error_map.get(f"{scope}:{source.id}", "")
+
+            left_col, action_col = st.columns([3, 2])
+            with left_col:
+                st.markdown(f"{icon} **{source.title}**")
+                state = "Đang bật" if enabled else "Đang tắt"
+                location = "Trong sổ tài liệu" if scope == "notebook" else "Chỉ trong cuộc trò chuyện này"
+                st.caption(f"{location} · {state}")
+
+                # BGE-M3 readiness status badge
+                if item_status == "ready":
+                    st.caption("🟢 **BGE-M3:** Sẵn sàng")
+                elif item_status == "processing":
+                    st.caption("⏳ **BGE-M3:** Đang đọc nội dung…")
+                elif item_status == "pending":
+                    st.caption("⏱️ **BGE-M3:** Đang chờ trong hàng đợi")
+                elif item_status == "failed":
+                    err_info = f" ({item_error})" if item_error else ""
+                    st.caption(f"🔴 **BGE-M3:** Lỗi đọc tài liệu{err_info}")
+                elif item_status == "unavailable":
+                    st.caption("⚪ **BGE-M3:** Chưa khả dụng")
+
+            with action_col:
+                if item_status == "failed" and on_retry_source is not None:
+                    if st.button("🔄 Thử lại", key=f"wsc_retry_src_{scope}_{conversation_id}_{source.id}", use_container_width=True):
+                        on_retry_source(scope, source.id)
+
+                individual_confirm_key = f"wsc_document_delete_confirm_{scope}_{source.id}"
+                if st.session_state.get(individual_confirm_key, False):
+                    if st.button("Xác nhận xóa", key=f"wsc_document_delete_execute_{scope}_{source.id}", type="primary", use_container_width=True):
+                        st.session_state[individual_confirm_key] = False
+                        on_delete_source(scope, source.id)
+                    if st.button("Hủy", key=f"wsc_document_delete_cancel_{scope}_{source.id}", use_container_width=True):
+                        st.session_state[individual_confirm_key] = False
+                        __safe_rerun()
+                elif st.button("🗑️ Xóa", key=f"wsc_document_delete_request_{scope}_{source.id}", use_container_width=True):
+                    st.session_state[individual_confirm_key] = True
+                    __safe_rerun()
+
+            toggle_key = f"wsc_document_toggle_{scope}_{conversation_id}_{source.id}"
+            st.checkbox(
+                "Dùng tài liệu này khi trả lời",
+                value=enabled,
+                key=toggle_key,
+                on_change=lambda sc=scope, sid=source.id, key=toggle_key, default=enabled: on_toggle_source(sc, sid, st.session_state.get(key, default)),
+            )
+            with st.expander("Xem nội dung và tùy chọn", expanded=False):
+                st.write(getattr(source, "content_preview", "") or "Chưa có nội dung xem trước.")
+                choice = render_privacy_choice(f"wsc_document_privacy_{scope}_{conversation_id}_{source.id}", getattr(source, "privacy_label", ""))
+                if st.button(PRIVACY_SAVE_BUTTON, key=f"wsc_document_privacy_save_{scope}_{conversation_id}_{source.id}"):
+                    on_privacy_save(scope, source.id, choice)
+                if scope == "temporary" and not getattr(source, "long_term_saved", False):
+                    if st.button("Lưu vào Sổ tài liệu", key=f"wsc_document_promote_{conversation_id}_{source.id}"):
+                        on_promote_temporary(source.id)
+            st.divider()
+
+    render_group(
+        "temporary",
+        "Nguồn tạm của cuộc trò chuyện này",
+        "Chỉ dùng trong chat đang mở. Xóa ở đây không ảnh hưởng các chat khác hay lịch sử tin nhắn.",
+        temporary_sources,
+    )
+    render_group(
+        "notebook",
+        "Tài liệu của sổ",
+        "Dùng được trong mọi cuộc trò chuyện của sổ. Xóa ở đây sẽ gỡ tài liệu khỏi tất cả các chat trong sổ.",
+        notebook_sources,
+    )
+
+
 # --- Phase 2H: New render helpers ---
 
 def render_ai_source_context_summary(enabled_count: int):
@@ -490,15 +700,135 @@ def render_ai_source_context_summary(enabled_count: int):
         st.warning("Chưa có nguồn nào đang bật.")
 
 
-def render_ai_answer_header(source_count: int, source_titles: List[str]):
-    """Renders 'AI đã trả lời' badge and source summary above the answer."""
-    st.success("✅ **AI đã trả lời**")
-    st.write(f"Nguồn gửi cùng câu hỏi: {source_count}")
+def render_bridge_header_status(health: Any):
+    """Renders truthful bridge status badge in the app header."""
+    status = getattr(health, "status", "unavailable") if health else "unavailable"
+    mode = getattr(health, "mode", "none") if health else "none"
+    reason = getattr(health, "reason", "") if health else ""
+
+    if status == "direct_ready":
+        st.info("🟢 **Cầu nối sẵn sàng** (Trực tiếp)")
+    elif status in ("handoff_ready", "completed"):
+        st.info("🟢 **Cầu nối sẵn sàng** (Chuyển giao)")
+    elif status == "handoff_pending":
+        st.warning("🟡 **Đang chờ Antigravity IDE xử lý** (Chuyển giao)")
+    elif status == "failed":
+        sanitized = reason or "Lỗi kết nối"
+        st.error(f"🔴 **Cầu nối lỗi**: {sanitized}")
+    else:
+        st.info("⚪ **Cầu nối chưa kết nối**")
+
+
+def render_ai_answer_header(
+    source_count: int,
+    source_titles: List[str],
+    ai_source: str = "",
+    model_tool_name: str = "",
+    operational_mode: str = "",
+    provider_name: str = "",
+):
+    """Renders truthful provenance badges separating Bridge, Provider, and Model."""
+    mode_vn = "Chuyển giao" if operational_mode == "handoff" else "Trực tiếp" if operational_mode == "direct" else operational_mode
+    mode_suffix = f" ({mode_vn})" if mode_vn else ""
+
+    if ai_source and ("antigravity" in str(ai_source).lower() or str(ai_source) == "Antigravity IDE"):
+        bridge_label = f"Sidecar{mode_suffix}"
+        provider_label = provider_name or "Gemini Web (Nặc danh)"
+        st.success(f"✅ **AI đã trả lời** · 🌉 **Cầu nối:** `{bridge_label}` · 🌐 **Nhà cung cấp:** `{provider_label}`")
+    elif ai_source and ("smart_router" in str(ai_source).lower() or str(ai_source) == "Smart Router"):
+        st.info("✅ **AI đã trả lời** · 🌐 **Nguồn AI:** `Smart Router (Tự động)`")
+    else:
+        st.success("✅ **AI đã trả lời**")
+
+    # Group source titles to avoid repetitive headers
+    title_counts: dict[str, int] = {}
     if source_titles:
+        for t in source_titles:
+            clean_t = str(t).strip()
+            if clean_t:
+                title_counts[clean_t] = title_counts.get(clean_t, 0) + 1
+
+    distinct_doc_count = len(title_counts) if title_counts else source_count
+    if title_counts and source_count > distinct_doc_count:
+        st.write(f"Nguồn gửi cùng câu hỏi: {distinct_doc_count} tài liệu ({source_count} đoạn trích)")
+    else:
+        st.write(f"Nguồn gửi cùng câu hỏi: {source_count}")
+
+    # Truthful Model Identity
+    clean_model = model_tool_name.strip() if model_tool_name else ""
+    if clean_model and clean_model not in ("antigravity-brain-pro", "gemini-pro", "antigravity", "auto", "gemini-3.6-flash", "gemini-3.7-flash", "gemini-3.5-flash", "gemini-flash-lite"):
+        st.caption(f"Mô hình: `{clean_model}`")
+    elif operational_mode in ("direct", "handoff"):
+        st.caption("Mô hình: `Gemini Web Stream (Chưa xác minh định danh)`")
+
+    if title_counts:
         with st.expander("Xem nguồn gửi cùng câu hỏi", expanded=False):
-            for title in source_titles:
-                st.write(f"- {title}")
+            for title, count in title_counts.items():
+                if count > 1:
+                    st.write(f"- {title} · *({count} đoạn trích)*")
+                else:
+                    st.write(f"- {title}")
     st.caption("Đây là câu trả lời do AI tạo. Hãy kiểm tra lại trước khi dùng.")
+
+
+def render_grouped_evidence_items(evidence_items: List[Dict[str, Any]], conversation_id: str) -> None:
+    """Group multiple retrieved excerpts by source title/id to avoid redundant headers."""
+    if not evidence_items:
+        return
+    grouped: dict[str, list[dict[str, Any]]] = {}
+    for item in evidence_items:
+        title = item.get("title", "Tài liệu không tên")
+        grouped.setdefault(title, []).append(item)
+
+    with st.expander(f"🔍 Chi tiết các đoạn trích sử dụng ({len(evidence_items)} đoạn từ {len(grouped)} tài liệu)"):
+        for title, items in grouped.items():
+            count_label = f"{len(items)} đoạn trích" if len(items) > 1 else "1 đoạn trích"
+            st.markdown(f"📄 **{title}** · *{count_label}*")
+            for idx, item in enumerate(items, 1):
+                loc = item.get("location_info", "")
+                loc_str = f" ({loc})" if loc else ""
+                snippet_text = item.get("text", item.get("snippet", ""))
+                st.caption(f"Đoạn {idx}{loc_str}:")
+                st.text_area(
+                    f"Đoạn {idx} từ {title}",
+                    value=snippet_text,
+                    height=80,
+                    disabled=True,
+                    key=f"wsc_evd_{conversation_id}_{item.get('evidence_id', idx)}_{idx}",
+                    label_visibility="collapsed",
+                )
+
+
+def render_handoff_pending_banner(
+    request_id: str,
+    outbox_dir: str = "",
+    inbox_path: str = "",
+    privacy_mode: str = "",
+    on_check_inbox: Optional[Callable[[str], None]] = None,
+    on_cancel_request: Optional[Callable[[str], None]] = None,
+):
+    """Renders active pending banner when waiting for Antigravity IDE outbox/inbox processing."""
+    with st.container():
+        st.warning(f"⏳ **Đang chờ Antigravity IDE xử lý** (Mã yêu cầu: `{request_id}`)")
+        guidance_text = "Gói yêu cầu đã được tạo và gửi vào hàng đợi xử lý.\n\n"
+        if outbox_dir:
+            guidance_text += f"- **Thư mục gửi đi (Outbox)**: `{outbox_dir}`\n"
+        if inbox_path:
+            guidance_text += f"- **Đường dẫn nhận kết quả (Inbox)**: `{inbox_path}`\n"
+        guidance_text += "Vui lòng mở **Antigravity IDE**, xử lý yêu cầu và lưu kết quả phản hồi."
+        st.markdown(guidance_text)
+
+        if privacy_mode == "local_only":
+            st.caption("🔒 **Bảo mật**: Dữ liệu chỉ dùng trên máy không được gửi ra ngoài.")
+
+        if on_check_inbox is not None:
+            col1, col2 = st.columns(2)
+            with col1:
+                if st.button("🔄 Kiểm tra kết quả phản hồi", key=f"wsc_check_inbox_{request_id}", use_container_width=True):
+                    on_check_inbox(request_id)
+            with col2:
+                if on_cancel_request is not None and st.button("❌ Hủy yêu cầu", key=f"wsc_cancel_handoff_{request_id}", use_container_width=True):
+                    on_cancel_request(request_id)
 
 
 def render_insufficient_context(reason: str = "no_sources"):

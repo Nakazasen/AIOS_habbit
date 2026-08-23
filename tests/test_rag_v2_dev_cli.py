@@ -1,4 +1,4 @@
-﻿import json
+import json
 from pathlib import Path
 import subprocess
 import sys
@@ -18,6 +18,7 @@ def _run(*args):
         text=True,
         encoding="utf-8",
         check=False,
+        timeout=30.0,
     )
 
 

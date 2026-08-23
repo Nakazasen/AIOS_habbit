@@ -55,12 +55,57 @@ LOGGER = logging.getLogger(__name__)
 
 _SUBPROCESS_CLIENT = BgeSubprocessWorkerClient()
 
+PREPARATION_LEDGER_TABLE = "source_preparation_ledger"
+PREPARATION_LEDGER_SCHEMA_VERSION = "1.0.0"
+
+PREP_STATE_PENDING = "pending"
+PREP_STATE_PROCESSING = "processing"
+PREP_STATE_READY = "ready"
+PREP_STATE_FAILED = "failed"
+PREP_STATE_CANCELLED = "cancelled"
+
+PREP_PRIORITY_INTERACTIVE = "interactive"
+PREP_PRIORITY_NORMAL = "normal"
+PREP_PRIORITY_BACKFILL = "backfill"
+
+PREP_ACTIVE_STATES = frozenset({PREP_STATE_PENDING, PREP_STATE_PROCESSING})
+PREP_ALL_STATES = frozenset({
+    PREP_STATE_PENDING,
+    PREP_STATE_PROCESSING,
+    PREP_STATE_READY,
+    PREP_STATE_FAILED,
+    PREP_STATE_CANCELLED,
+})
+
+_PREPARATION_ACTIVE_STATES = PREP_ACTIVE_STATES
+_PREPARATION_READY_STATE = PREP_STATE_READY
+
+
+@dataclass(frozen=True)
+class SourcePreparationLedgerRow:
+    """Persistent ledger record for document preparation and embedding readiness."""
+
+    source_scope: str
+    source_id: str
+    source_fingerprint: str
+    model_id: str
+    model_revision: str
+    state: str
+    priority: str = PREP_PRIORITY_NORMAL
+    attempt_count: int = 0
+    last_error: str = ""
+    document_id: str = ""
+    created_at: float = 0.0
+    updated_at: float = 0.0
+
+
 _PREPARATION_REGISTRY: dict[str, dict[str, Any]] = {}
 _PREPARATION_LOCK = threading.RLock()
 _PREPARATION_EXECUTOR: concurrent.futures.ThreadPoolExecutor | None = None
-
-_PREPARATION_ACTIVE_STATES = frozenset({"pending", "processing"})
-_PREPARATION_READY_STATE = "ready"
+_DRAIN_RUNNING_LOCK = threading.Lock()
+_DRAIN_IS_RUNNING = False
+_SOURCE_CACHE_LOCK = threading.Lock()
+_SOURCE_CACHE: dict[tuple[str, str], WorkspaceAIContextSource] = {}
 
 
 def _get_executor() -> concurrent.futures.ThreadPoolExecutor:
@@ -73,6 +118,7 @@ def _get_executor() -> concurrent.futures.ThreadPoolExecutor:
         return _PREPARATION_EXECUTOR
 
 CANARY_ENABLED_ENV = "AIOS_WORKSPACE_RAG_V2_CANARY_ENABLED"
+LOCAL_PILOT_ENABLED_ENV = "AIOS_WORKSPACE_RAG_V2_LOCAL_PILOT_ENABLED"
 PROFILE_ENV = "AIOS_WORKSPACE_RAG_V2_PROFILE"
 RUNTIME_ROOT_ENV = "AIOS_WORKSPACE_RAG_V2_RUNTIME_ROOT"
 BGE_MODEL_PATH_ENV = "AIOS_BGE_M3_MODEL_PATH"
@@ -93,6 +139,7 @@ _SAFE_REASON = re.compile(r"[^a-z0-9_.-]+")
 _SEMANTIC_SOURCE_STOP_WORDS = frozenset(
     {
         "cau", "hoi", "che", "do", "hoat", "dong", "nhu", "the", "nao",
+        "giai", "thich", "giup", "toi",
         "lam", "sao", "what", "how", "does", "work", "operate", "the",
         "and", "for", "with", "this", "that", "are", "you",
     }
@@ -100,6 +147,15 @@ _SEMANTIC_SOURCE_STOP_WORDS = frozenset(
 # Corpus sources vary substantially in extraction cost; keep every IPC request
 # bounded to one document under the existing 90-second fail-closed deadline.
 _PREPARATION_BATCH_SIZE = 1
+
+
+@dataclass(frozen=True)
+class WorkspaceChatSourceScope:
+    """A query-scoped source set that is safe to prepare in the background."""
+
+    sources: Tuple[WorkspaceAIContextSource, ...]
+    bounded: bool
+    reason: str
 
 
 @dataclass(frozen=True)
@@ -156,13 +212,25 @@ class WorkspaceChatRagV2CanaryConfig:
         cls,
         env: Optional[Mapping[str, str]] = None,
     ) -> "WorkspaceChatRagV2CanaryConfig":
+        if env is None:
+            try:
+                from aios_habit.workspace_paths import load_env_file
+                load_env_file()
+            except Exception:
+                pass
         values = os.environ if env is None else env
         try:
             deployment = load_workspace_chat_rag_v2_deployment(
                 env=values,
                 require_activated=True,
             )
-        except Exception:
+        except DeploymentManifestError:
+            # An invalid activated manifest must never silently become a
+            # production deployment.  The only permitted recovery is an
+            # owner-enabled local pilot, which is intentionally separate from
+            # the historical canary flag and visibly remains unqualified.
+            if not _env_bool(values.get(LOCAL_PILOT_ENABLED_ENV), default=False):
+                raise
             deployment = None
         if deployment is not None:
             return cls(
@@ -502,6 +570,35 @@ def _select_semantic_candidate_sources(
     return tuple(item[2] for item in ranked if item[0] == best_score)[:limit]
 
 
+def select_workspace_chat_preparation_scope(
+    question: str,
+    sources: Tuple[WorkspaceAIContextSource, ...],
+    *,
+    limit: int = 3,
+) -> WorkspaceChatSourceScope:
+    """Select a small source set or explicitly refuse broad auto-preparation.
+
+    Retrieval can safely inspect all already-ready sources.  Background
+    embedding is different: silently scheduling a whole notebook from a vague
+    question makes a normal chat action unexpectedly expensive.  The UI uses
+    this contract to request a narrower question instead.
+    """
+    source_tuple = tuple(sources)
+    selected = _select_semantic_candidate_sources(question, source_tuple, limit=limit)
+    if len(source_tuple) <= limit:
+        return WorkspaceChatSourceScope(selected, True, "small_source_set")
+
+    terms = tuple(
+        term for term in _fold_semantic_terms(question)
+        if len(term) >= 3 and term not in _SEMANTIC_SOURCE_STOP_WORDS
+    )
+    if len(tuple(dict.fromkeys(terms))) < 2:
+        return WorkspaceChatSourceScope((), False, "question_too_broad")
+    if len(selected) > limit or len(selected) == len(source_tuple):
+        return WorkspaceChatSourceScope((), False, "no_narrow_source_match")
+    return WorkspaceChatSourceScope(selected, True, "matched_sources")
+
+
 def _durable_semantic_coverage_ready(
     source: WorkspaceAIContextSource,
     config: WorkspaceChatRagV2CanaryConfig,
@@ -543,6 +640,51 @@ def _durable_semantic_coverage_ready(
             connection.close()
     except (OSError, RuntimeError, sqlite3.Error):
         return False
+
+
+def _semantic_readiness(
+    sources: Sequence[WorkspaceAIContextSource],
+    config: WorkspaceChatRagV2CanaryConfig,
+) -> tuple[str, str]:
+    """Check readiness of sources for semantic retrieval."""
+    if not config.enabled:
+        return "unavailable", "bge_m3_not_enabled"
+
+    db_path = _get_ledger_db_path(config)
+    ledger_rows = _load_all_ledger_rows(db_path) if db_path.is_file() else {}
+
+    with _PREPARATION_LOCK:
+        for source in sources:
+            if not (source.text or "").strip():
+                continue
+            key = _preparation_key(config, source)
+            entry = _PREPARATION_REGISTRY.get(key)
+            if entry is not None and entry.get("status") == _PREPARATION_READY_STATE:
+                continue
+
+            row = ledger_rows.get((source.source_scope, source.source_id))
+            if (
+                row is not None
+                and row.state == PREP_STATE_READY
+                and row.source_fingerprint == _source_fingerprint(source)
+                and row.model_revision == config.bge_m3_model_revision
+                and _durable_semantic_coverage_ready(source, config)
+            ):
+                _PREPARATION_REGISTRY[key] = _preparation_entry(config, source, _PREPARATION_READY_STATE)
+                continue
+
+            if _durable_semantic_coverage_ready(source, config):
+                _PREPARATION_REGISTRY[key] = _preparation_entry(config, source, _PREPARATION_READY_STATE)
+                continue
+
+            if entry is not None:
+                st = entry.get("status", "pending")
+                return st, entry.get("reason", "")
+            if row is not None:
+                return row.state, row.last_error
+            return "pending", ""
+
+    return _PREPARATION_READY_STATE, ""
 
 
 
@@ -824,12 +966,526 @@ def prepare_workspace_chat_sources(
         raise
 
 
-def schedule_workspace_chat_source_preparation(
+def _get_ledger_db_path(config: WorkspaceChatRagV2CanaryConfig) -> Path:
+    config.runtime_root.mkdir(parents=True, exist_ok=True)
+    return config.runtime_root / "workspace_chat.sqlite"
+
+
+def _init_preparation_ledger_db(db_path: Path) -> None:
+    db_path.parent.mkdir(parents=True, exist_ok=True)
+    conn = sqlite3.connect(db_path, timeout=10.0)
+    try:
+        with conn:
+            conn.execute(
+                f"""CREATE TABLE IF NOT EXISTS {PREPARATION_LEDGER_TABLE} (
+                    source_scope TEXT NOT NULL,
+                    source_id TEXT NOT NULL,
+                    source_fingerprint TEXT NOT NULL,
+                    model_id TEXT NOT NULL,
+                    model_revision TEXT NOT NULL,
+                    state TEXT NOT NULL,
+                    priority TEXT NOT NULL DEFAULT '{PREP_PRIORITY_NORMAL}',
+                    attempt_count INTEGER NOT NULL DEFAULT 0,
+                    last_error TEXT NOT NULL DEFAULT '',
+                    document_id TEXT NOT NULL DEFAULT '',
+                    created_at REAL NOT NULL,
+                    updated_at REAL NOT NULL,
+                    PRIMARY KEY (source_scope, source_id)
+                )"""
+            )
+            conn.execute(
+                f"""CREATE INDEX IF NOT EXISTS idx_prep_ledger_state_priority
+                    ON {PREPARATION_LEDGER_TABLE} (state, priority, updated_at)"""
+            )
+            # Stale processing recovery on startup / init
+            now = time.time()
+            conn.execute(
+                f"""UPDATE {PREPARATION_LEDGER_TABLE}
+                    SET state = '{PREP_STATE_PENDING}', updated_at = ?
+                    WHERE state = '{PREP_STATE_PROCESSING}'""",
+                (now,),
+            )
+    finally:
+        conn.close()
+
+
+def _load_ledger_row(db_path: Path, source_scope: str, source_id: str) -> SourcePreparationLedgerRow | None:
+    if not db_path.is_file():
+        return None
+    conn = sqlite3.connect(db_path, timeout=5.0)
+    try:
+        cur = conn.execute(
+            f"""SELECT source_scope, source_id, source_fingerprint, model_id, model_revision,
+                       state, priority, attempt_count, last_error, document_id, created_at, updated_at
+                FROM {PREPARATION_LEDGER_TABLE}
+                WHERE source_scope = ? AND source_id = ?""",
+            (source_scope, source_id),
+        )
+        row = cur.fetchone()
+        if not row:
+            return None
+        return SourcePreparationLedgerRow(*row)
+    except sqlite3.Error:
+        return None
+    finally:
+        conn.close()
+
+
+def _load_all_ledger_rows(db_path: Path) -> dict[tuple[str, str], SourcePreparationLedgerRow]:
+    if not db_path.is_file():
+        return {}
+    conn = sqlite3.connect(db_path, timeout=5.0)
+    try:
+        cur = conn.execute(
+            f"""SELECT source_scope, source_id, source_fingerprint, model_id, model_revision,
+                       state, priority, attempt_count, last_error, document_id, created_at, updated_at
+                FROM {PREPARATION_LEDGER_TABLE}"""
+        )
+        rows = {}
+        for r in cur.fetchall():
+            row_obj = SourcePreparationLedgerRow(*r)
+            rows[(row_obj.source_scope, row_obj.source_id)] = row_obj
+        return rows
+    except sqlite3.Error:
+        return {}
+    finally:
+        conn.close()
+
+
+def _upsert_ledger_row(db_path: Path, row: SourcePreparationLedgerRow) -> None:
+    _init_preparation_ledger_db(db_path)
+    conn = sqlite3.connect(db_path, timeout=10.0)
+    try:
+        with conn:
+            conn.execute(
+                f"""INSERT INTO {PREPARATION_LEDGER_TABLE} (
+                    source_scope, source_id, source_fingerprint, model_id, model_revision,
+                    state, priority, attempt_count, last_error, document_id, created_at, updated_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(source_scope, source_id) DO UPDATE SET
+                    source_fingerprint=excluded.source_fingerprint,
+                    model_id=excluded.model_id,
+                    model_revision=excluded.model_revision,
+                    state=excluded.state,
+                    priority=excluded.priority,
+                    attempt_count=excluded.attempt_count,
+                    last_error=excluded.last_error,
+                    document_id=excluded.document_id,
+                    updated_at=excluded.updated_at""",
+                (
+                    row.source_scope,
+                    row.source_id,
+                    row.source_fingerprint,
+                    row.model_id,
+                    row.model_revision,
+                    row.state,
+                    row.priority,
+                    row.attempt_count,
+                    row.last_error,
+                    row.document_id,
+                    row.created_at,
+                    row.updated_at,
+                ),
+            )
+    finally:
+        conn.close()
+
+
+def _claim_next_preparation_item(db_path: Path, model_id: str, model_revision: str) -> SourcePreparationLedgerRow | None:
+    if not db_path.is_file():
+        return None
+    conn = sqlite3.connect(db_path, timeout=10.0)
+    try:
+        with conn:
+            # Check if there is already a processing item (strict single CPU worker)
+            cur = conn.execute(
+                f"""SELECT source_scope, source_id, source_fingerprint, model_id, model_revision,
+                           state, priority, attempt_count, last_error, document_id, created_at, updated_at
+                    FROM {PREPARATION_LEDGER_TABLE}
+                    WHERE state = '{PREP_STATE_PROCESSING}'
+                    LIMIT 1"""
+            )
+            existing_proc = cur.fetchone()
+            if existing_proc:
+                return SourcePreparationLedgerRow(*existing_proc)
+
+            cur = conn.execute(
+                f"""SELECT source_scope, source_id, source_fingerprint, model_id, model_revision,
+                           state, priority, attempt_count, last_error, document_id, created_at, updated_at
+                    FROM {PREPARATION_LEDGER_TABLE}
+                    WHERE state = '{PREP_STATE_PENDING}' AND model_id = ? AND model_revision = ?
+                    ORDER BY CASE priority
+                        WHEN '{PREP_PRIORITY_INTERACTIVE}' THEN 0
+                        WHEN '{PREP_PRIORITY_NORMAL}' THEN 1
+                        WHEN '{PREP_PRIORITY_BACKFILL}' THEN 2
+                        ELSE 3 END ASC,
+                        updated_at ASC
+                    LIMIT 1""",
+                (model_id, model_revision),
+            )
+            row = cur.fetchone()
+            if not row:
+                return None
+
+            now = time.time()
+            source_scope, source_id = row[0], row[1]
+            cur_upd = conn.execute(
+                f"""UPDATE {PREPARATION_LEDGER_TABLE}
+                    SET state = '{PREP_STATE_PROCESSING}',
+                        attempt_count = attempt_count + 1,
+                        updated_at = ?
+                    WHERE source_scope = ? AND source_id = ? AND state = '{PREP_STATE_PENDING}'""",
+                (now, source_scope, source_id),
+            )
+            if cur_upd.rowcount == 1:
+                return SourcePreparationLedgerRow(
+                    source_scope=row[0],
+                    source_id=row[1],
+                    source_fingerprint=row[2],
+                    model_id=row[3],
+                    model_revision=row[4],
+                    state=PREP_STATE_PROCESSING,
+                    priority=row[6],
+                    attempt_count=row[7] + 1,
+                    last_error=row[8],
+                    document_id=row[9],
+                    created_at=row[10],
+                    updated_at=now,
+                )
+            return None
+    except sqlite3.Error:
+        return None
+    finally:
+        conn.close()
+
+
+def _commit_preparation_result(
+    db_path: Path,
+    source_scope: str,
+    source_id: str,
+    state: str,
+    error_reason: str = "",
+) -> None:
+    if not db_path.is_file():
+        return
+    now = time.time()
+    conn = sqlite3.connect(db_path, timeout=10.0)
+    try:
+        with conn:
+            conn.execute(
+                f"""UPDATE {PREPARATION_LEDGER_TABLE}
+                    SET state = ?, last_error = ?, updated_at = ?
+                    WHERE source_scope = ? AND source_id = ?""",
+                (state, error_reason, now, source_scope, source_id),
+            )
+    except sqlite3.Error:
+        pass
+    finally:
+        conn.close()
+
+
+def _delete_ledger_rows(db_path: Path, source_keys: Iterable[tuple[str, str]]) -> int:
+    if not db_path.is_file():
+        return 0
+    keys = tuple(source_keys)
+    if not keys:
+        return 0
+    conn = sqlite3.connect(db_path, timeout=10.0)
+    try:
+        with conn:
+            deleted = 0
+            for scope, sid in keys:
+                cur = conn.execute(
+                    f"DELETE FROM {PREPARATION_LEDGER_TABLE} WHERE source_scope = ? AND source_id = ?",
+                    (scope, sid),
+                )
+                deleted += cur.rowcount
+            return deleted
+    except sqlite3.Error:
+        return 0
+    finally:
+        conn.close()
+
+
+def get_workspace_chat_preparation_summary(
     context_sources: Iterable[WorkspaceAIContextSource],
     *,
     config: Optional[WorkspaceChatRagV2CanaryConfig] = None,
+) -> dict[str, Any]:
+    """Return compact aggregate progress and per-source readiness for UI."""
+    try:
+        resolved = config or WorkspaceChatRagV2CanaryConfig.from_env()
+    except Exception:
+        resolved = None
+
+    sources = tuple(s for s in context_sources if (s.text or "").strip())
+    total_count = len(sources)
+    if resolved is None or not resolved.enabled:
+        statuses = {
+            f"{s.source_scope}:{s.source_id}": "unavailable"
+            for s in context_sources
+        }
+        return {
+            "total": total_count,
+            "ready": 0,
+            "processing": 0,
+            "pending": 0,
+            "failed": 0,
+            "current_source_title": None,
+            "statuses": statuses,
+            "errors": {},
+            "bge_available": False,
+            "summary_text": "BGE-M3 chưa khả dụng",
+        }
+
+    db_path = _get_ledger_db_path(resolved)
+    _init_preparation_ledger_db(db_path)
+    ledger_rows = _load_all_ledger_rows(db_path)
+
+    statuses: dict[str, str] = {}
+    errors: dict[str, str] = {}
+    ready_count = 0
+    processing_count = 0
+    pending_count = 0
+    failed_count = 0
+    current_source_title: str | None = None
+
+    for source in sources:
+        key = (source.source_scope, source.source_id)
+        identity = f"{source.source_scope}:{source.source_id}"
+        row = ledger_rows.get(key)
+
+        with _PREPARATION_LOCK:
+            mem_entry = _PREPARATION_REGISTRY.get(_preparation_key(resolved, source))
+            mem_status = str(mem_entry.get("status", "")) if mem_entry else ""
+
+        if row is not None:
+            state = row.state
+            if row.source_fingerprint != _source_fingerprint(source):
+                state = PREP_STATE_PENDING
+            elif row.model_revision != resolved.bge_m3_model_revision:
+                state = PREP_STATE_PENDING
+        elif _durable_semantic_coverage_ready(source, resolved):
+            state = PREP_STATE_READY
+        else:
+            state = "not_prepared"
+
+        if mem_status in PREP_ALL_STATES:
+            state = mem_status
+
+        statuses[identity] = state
+        if row and row.last_error:
+            errors[identity] = row.last_error
+        elif mem_entry and mem_entry.get("reason"):
+            errors[identity] = mem_entry["reason"]
+
+        if state == PREP_STATE_READY:
+            ready_count += 1
+        elif state == PREP_STATE_PROCESSING:
+            processing_count += 1
+            if current_source_title is None:
+                current_source_title = source.title
+        elif state == PREP_STATE_PENDING:
+            pending_count += 1
+        elif state == PREP_STATE_FAILED:
+            failed_count += 1
+
+    # Format Vietnamese summary text
+    parts = [f"BGE-M3: {ready_count}/{total_count} sẵn sàng"]
+    if current_source_title:
+        parts.append(f"đang đọc {current_source_title}")
+    elif pending_count > 0:
+        parts.append(f"{pending_count} đang chờ")
+    if failed_count > 0:
+        parts.append(f"{failed_count} lỗi")
+
+    summary_text = " · ".join(parts)
+
+    return {
+        "total": total_count,
+        "ready": ready_count,
+        "processing": processing_count,
+        "pending": pending_count,
+        "failed": failed_count,
+        "current_source_title": current_source_title,
+        "statuses": statuses,
+        "errors": errors,
+        "bge_available": True,
+        "summary_text": summary_text,
+    }
+
+
+def reconcile_and_enqueue_workspace_chat_sources(
+    context_sources: Iterable[WorkspaceAIContextSource],
+    *,
+    config: Optional[WorkspaceChatRagV2CanaryConfig] = None,
+    priority: str = PREP_PRIORITY_NORMAL,
+) -> int:
+    """Reconcile and queue eligible sources without re-embedding matching ready fingerprints."""
+    try:
+        resolved = config or WorkspaceChatRagV2CanaryConfig.from_env()
+    except Exception:
+        return 0
+    if not resolved.enabled:
+        return 0
+
+    sources = tuple(s for s in context_sources if (s.text or "").strip())
+    if not sources:
+        return 0
+
+    db_path = _get_ledger_db_path(resolved)
+    _init_preparation_ledger_db(db_path)
+    existing_rows = _load_all_ledger_rows(db_path)
+
+    enqueued_count = 0
+    now = time.time()
+
+    with _SOURCE_CACHE_LOCK:
+        for s in sources:
+            _SOURCE_CACHE[(s.source_scope, s.source_id)] = s
+
+    for source in sources:
+        key = (source.source_scope, source.source_id)
+        current_fp = _source_fingerprint(source)
+        doc_id = _document_id(source)
+        row = existing_rows.get(key)
+
+        with _PREPARATION_LOCK:
+            mem_entry = _PREPARATION_REGISTRY.get(_preparation_key(resolved, source))
+            if mem_entry and mem_entry.get("status") == PREP_STATE_READY:
+                continue
+
+        if (
+            row is not None
+            and row.state == PREP_STATE_READY
+            and row.source_fingerprint == current_fp
+            and row.model_revision == resolved.bge_m3_model_revision
+        ):
+            with _PREPARATION_LOCK:
+                _PREPARATION_REGISTRY[_preparation_key(resolved, source)] = (
+                    _preparation_entry(resolved, source, PREP_STATE_READY)
+                )
+            continue
+
+        if _durable_semantic_coverage_ready(source, resolved):
+            with _PREPARATION_LOCK:
+                _PREPARATION_REGISTRY[_preparation_key(resolved, source)] = (
+                    _preparation_entry(resolved, source, PREP_STATE_READY)
+                )
+            ready_row = SourcePreparationLedgerRow(
+                source_scope=source.source_scope,
+                source_id=source.source_id,
+                source_fingerprint=current_fp,
+                model_id="BAAI/bge-m3",
+                model_revision=resolved.bge_m3_model_revision,
+                state=PREP_STATE_READY,
+                priority=priority,
+                attempt_count=0,
+                last_error="",
+                document_id=doc_id,
+                created_at=now,
+                updated_at=now,
+            )
+            _upsert_ledger_row(db_path, ready_row)
+            continue
+
+        if (
+            row is not None
+            and row.state == PREP_STATE_FAILED
+            and row.source_fingerprint == current_fp
+            and priority != PREP_PRIORITY_INTERACTIVE
+        ):
+            continue
+
+        if row is not None and row.state in (PREP_STATE_PENDING, PREP_STATE_PROCESSING):
+            if priority == PREP_PRIORITY_INTERACTIVE and row.priority != PREP_PRIORITY_INTERACTIVE:
+                upd_row = SourcePreparationLedgerRow(
+                    source_scope=source.source_scope,
+                    source_id=source.source_id,
+                    source_fingerprint=current_fp,
+                    model_id="BAAI/bge-m3",
+                    model_revision=resolved.bge_m3_model_revision,
+                    state=row.state,
+                    priority=PREP_PRIORITY_INTERACTIVE,
+                    attempt_count=row.attempt_count,
+                    last_error=row.last_error,
+                    document_id=doc_id,
+                    created_at=row.created_at,
+                    updated_at=now,
+                )
+                _upsert_ledger_row(db_path, upd_row)
+            enqueued_count += 1
+            continue
+
+        new_row = SourcePreparationLedgerRow(
+            source_scope=source.source_scope,
+            source_id=source.source_id,
+            source_fingerprint=current_fp,
+            model_id="BAAI/bge-m3",
+            model_revision=resolved.bge_m3_model_revision,
+            state=PREP_STATE_PENDING,
+            priority=priority,
+            attempt_count=0,
+            last_error="",
+            document_id=doc_id,
+            created_at=now,
+            updated_at=now,
+        )
+        _upsert_ledger_row(db_path, new_row)
+        with _PREPARATION_LOCK:
+            _PREPARATION_REGISTRY[_preparation_key(resolved, source)] = (
+                _preparation_entry(resolved, source, PREP_STATE_PENDING)
+            )
+        enqueued_count += 1
+
+    if enqueued_count > 0:
+        start_workspace_chat_background_drain(resolved, sources)
+    return enqueued_count
+
+
+def promote_workspace_chat_source_priority(
+    source_scope: str,
+    source_id: str,
+    priority: str = PREP_PRIORITY_INTERACTIVE,
+    *,
+    config: Optional[WorkspaceChatRagV2CanaryConfig] = None,
+) -> bool:
+    """Elevate priority of an existing pending source."""
+    try:
+        resolved = config or WorkspaceChatRagV2CanaryConfig.from_env()
+    except Exception:
+        return False
+    if not resolved.enabled:
+        return False
+    db_path = _get_ledger_db_path(resolved)
+    row = _load_ledger_row(db_path, source_scope, source_id)
+    if not row or row.state not in (PREP_STATE_PENDING, PREP_STATE_PROCESSING):
+        return False
+    now = time.time()
+    upd_row = SourcePreparationLedgerRow(
+        source_scope=row.source_scope,
+        source_id=row.source_id,
+        source_fingerprint=row.source_fingerprint,
+        model_id=row.model_id,
+        model_revision=row.model_revision,
+        state=row.state,
+        priority=priority,
+        attempt_count=row.attempt_count,
+        last_error=row.last_error,
+        document_id=row.document_id,
+        created_at=row.created_at,
+        updated_at=now,
+    )
+    _upsert_ledger_row(db_path, upd_row)
+    start_workspace_chat_background_drain(resolved)
+    return True
+
+
+def start_workspace_chat_background_drain(
+    config: Optional[WorkspaceChatRagV2CanaryConfig] = None,
+    sources: Iterable[WorkspaceAIContextSource] | None = None,
 ) -> None:
-    """Schedule preparation once without blocking a Streamlit rerun."""
+    """Trigger background queue drain if not already running."""
     try:
         resolved = config or WorkspaceChatRagV2CanaryConfig.from_env()
     except Exception:
@@ -837,31 +1493,96 @@ def schedule_workspace_chat_source_preparation(
     if not resolved.enabled:
         return
 
-    needed: list[WorkspaceAIContextSource] = []
-    with _PREPARATION_LOCK:
-        for source in context_sources:
-            if not (source.text or "").strip():
-                continue
-            key = _preparation_key(resolved, source)
-            entry = _PREPARATION_REGISTRY.get(key)
-            if entry is None and _durable_semantic_coverage_ready(source, resolved):
-                _PREPARATION_REGISTRY[key] = _preparation_entry(
-                    resolved, source, _PREPARATION_READY_STATE,
-                    recovered_from_durable_index=True,
-                )
-                continue
-            if entry is None:
-                _PREPARATION_REGISTRY[key] = _preparation_entry(
-                    resolved, source, "pending"
-                )
-                needed.append(source)
+    if sources:
+        with _SOURCE_CACHE_LOCK:
+            for s in sources:
+                if (s.text or "").strip():
+                    _SOURCE_CACHE[(s.source_scope, s.source_id)] = s
 
-    if needed:
-        _get_executor().submit(
-            prepare_workspace_chat_sources,
-            context_sources=tuple(needed),
-            config=resolved,
-        )
+    global _DRAIN_IS_RUNNING
+    with _DRAIN_RUNNING_LOCK:
+        if not _DRAIN_IS_RUNNING:
+            _DRAIN_IS_RUNNING = True
+            _get_executor().submit(_drain_preparation_queue, config=resolved)
+
+
+def _drain_preparation_queue(config: WorkspaceChatRagV2CanaryConfig) -> None:
+    global _DRAIN_IS_RUNNING
+    db_path = _get_ledger_db_path(config)
+    try:
+        while True:
+            item = _claim_next_preparation_item(
+                db_path,
+                model_id="BAAI/bge-m3",
+                model_revision=config.bge_m3_model_revision,
+            )
+            if item is None:
+                # Under the running lock, double-check if any new items were enqueued just now
+                with _DRAIN_RUNNING_LOCK:
+                    item = _claim_next_preparation_item(
+                        db_path,
+                        model_id="BAAI/bge-m3",
+                        model_revision=config.bge_m3_model_revision,
+                    )
+                    if item is None:
+                        _DRAIN_IS_RUNNING = False
+                        break
+
+            source_key = (item.source_scope, item.source_id)
+            with _SOURCE_CACHE_LOCK:
+                source = _SOURCE_CACHE.get(source_key)
+
+            if source is None or not (source.text or "").strip():
+                _commit_preparation_result(
+                    db_path,
+                    item.source_scope,
+                    item.source_id,
+                    PREP_STATE_FAILED,
+                    error_reason="source_text_unavailable",
+                )
+                continue
+
+            with _PREPARATION_LOCK:
+                _PREPARATION_REGISTRY[_preparation_key(config, source)] = (
+                    _preparation_entry(config, source, PREP_STATE_PROCESSING)
+                )
+
+            try:
+                prepare_workspace_chat_sources(
+                    [source],
+                    config=config,
+                )
+                _commit_preparation_result(
+                    db_path,
+                    item.source_scope,
+                    item.source_id,
+                    PREP_STATE_READY,
+                )
+            except Exception as exc:
+                err_reason = _safe_reason(exc)
+                _commit_preparation_result(
+                    db_path,
+                    item.source_scope,
+                    item.source_id,
+                    PREP_STATE_FAILED,
+                    error_reason=err_reason,
+                )
+    finally:
+        with _DRAIN_RUNNING_LOCK:
+            _DRAIN_IS_RUNNING = False
+
+
+def schedule_workspace_chat_source_preparation(
+    context_sources: Iterable[WorkspaceAIContextSource],
+    *,
+    config: Optional[WorkspaceChatRagV2CanaryConfig] = None,
+) -> None:
+    """Schedule preparation once without blocking a Streamlit rerun."""
+    reconcile_and_enqueue_workspace_chat_sources(
+        context_sources,
+        config=config,
+        priority=PREP_PRIORITY_NORMAL,
+    )
 
 
 def retry_workspace_chat_source_preparation(
@@ -878,7 +1599,73 @@ def retry_workspace_chat_source_preparation(
     with _PREPARATION_LOCK:
         for source in sources:
             _PREPARATION_REGISTRY.pop(_preparation_key(resolved, source), None)
-    schedule_workspace_chat_source_preparation(sources, config=resolved)
+
+    db_path = _get_ledger_db_path(resolved)
+    _delete_ledger_rows(db_path, [(s.source_scope, s.source_id) for s in sources])
+    global _DRAIN_IS_RUNNING
+    with _DRAIN_RUNNING_LOCK:
+        _DRAIN_IS_RUNNING = False
+    reconcile_and_enqueue_workspace_chat_sources(
+        sources,
+        config=resolved,
+        priority=PREP_PRIORITY_INTERACTIVE,
+    )
+
+
+def forget_workspace_chat_sources(
+    context_sources: Iterable[WorkspaceAIContextSource],
+    *,
+    config: Optional[WorkspaceChatRagV2CanaryConfig] = None,
+) -> int:
+    """Remove deleted source text, readiness state, and local retrieval chunks.
+
+    Deletion is best-effort for a stopped semantic worker, but it is always
+    fail-closed at the application layer because the source record and its
+    selection are removed before a future query can be built.
+    """
+    sources = tuple(context_sources)
+    if not sources:
+        return 0
+    document_ids = {_document_id(source) for source in sources}
+    with _PREPARATION_LOCK:
+        stale_keys = [
+            key for key, entry in _PREPARATION_REGISTRY.items()
+            if entry.get("document_id") in document_ids
+        ]
+        for key in stale_keys:
+            _PREPARATION_REGISTRY.pop(key, None)
+
+    try:
+        resolved = config or WorkspaceChatRagV2CanaryConfig.from_env()
+    except Exception:
+        return 0
+
+    db_path = _get_ledger_db_path(resolved)
+    _delete_ledger_rows(db_path, [(s.source_scope, s.source_id) for s in sources])
+
+    removed_chunks = 0
+    materialized_root = resolved.runtime_root / "materialized_sources"
+    for document_id in document_ids:
+        try:
+            (materialized_root / f"{document_id}.txt").unlink(missing_ok=True)
+        except OSError:
+            LOGGER.warning("Could not remove materialized Workspace Chat source", exc_info=True)
+
+    with _RUNTIME_CACHE_LOCK:
+        runtime_entries = tuple(_RUNTIME_CACHE.values())
+    for entry in runtime_entries:
+        with entry.lock:
+            for document_id in document_ids:
+                try:
+                    removed_chunks += entry.pipeline.index.delete_document(document_id)
+                except Exception:
+                    LOGGER.warning("Could not remove source from in-process retrieval index", exc_info=True)
+
+    try:
+        removed_chunks += _SUBPROCESS_CLIENT.delete_documents(tuple(document_ids))
+    except Exception:
+        LOGGER.warning("Could not remove source from subprocess retrieval index", exc_info=True)
+    return removed_chunks
 
 
 def get_workspace_chat_source_preparation_status(
@@ -887,34 +1674,8 @@ def get_workspace_chat_source_preparation_status(
     config: Optional[WorkspaceChatRagV2CanaryConfig] = None,
 ) -> dict[str, str]:
     """Return bounded readiness states for owner-facing UI gates."""
-    try:
-        resolved = config or WorkspaceChatRagV2CanaryConfig.from_env()
-    except Exception:
-        return {
-            f"{source.source_scope}:{source.source_id}": "failed"
-            for source in context_sources
-            if (source.text or "").strip()
-        }
-    if not resolved.enabled:
-        return {
-            f"{source.source_scope}:{source.source_id}": "ready"
-            for source in context_sources
-        }
-
-    statuses: dict[str, str] = {}
-    with _PREPARATION_LOCK:
-        for source in context_sources:
-            identity = f"{source.source_scope}:{source.source_id}"
-            if not (source.text or "").strip():
-                statuses[identity] = "ready"
-                continue
-            entry = _PREPARATION_REGISTRY.get(_preparation_key(resolved, source))
-            statuses[identity] = (
-                str(entry.get("status", "not_prepared"))
-                if entry is not None
-                else "not_prepared"
-            )
-    return statuses
+    summary = get_workspace_chat_preparation_summary(context_sources, config=config)
+    return summary["statuses"]
 
 
 def seed_workspace_chat_source_preparation(
@@ -1186,19 +1947,9 @@ def _run_profile(
     if not specs:
         raise ValueError("no_non_empty_sources")
 
-    not_ready = []
-    with _PREPARATION_LOCK:
-        for source in sources:
-            if not (source.text or "").strip():
-                continue
-            state = _PREPARATION_REGISTRY.get(
-                _preparation_key(config, source), {}
-            ).get("status")
-            if state != _PREPARATION_READY_STATE:
-                not_ready.append(source.source_id)
-
-    if not_ready:
-        raise RuntimeError("sources_not_ready")
+    sem_state, sem_reason = _semantic_readiness(sources, config)
+    if sem_state != _PREPARATION_READY_STATE:
+        raise RuntimeError(sem_reason or "sources_not_ready")
 
     # A durable index can survive an application restart while the isolated
     # BGE worker cannot.  Re-open that worker once before querying; this only
@@ -1586,5 +2337,32 @@ def retrieve_workspace_chat_evidence(
         return initial_result
     except Exception as error:
         reason = _safe_reason(error)
-        LOGGER.warning("Workspace Chat BGE-M3 retrieval unavailable: %s", reason)
+        LOGGER.warning("Workspace Chat BGE-M3 retrieval unavailable: %s", reason, exc_info=True)
         return _quality_search_unavailable(reason)
+
+
+def close_workspace_chat_rag_v2_runtimes(*, timeout_s: float | None = 10.0) -> None:
+    """Close and evict cached in-process and background preparation runtimes."""
+    global _PREPARATION_EXECUTOR, _DRAIN_IS_RUNNING
+    with _PREPARATION_LOCK:
+        if _PREPARATION_EXECUTOR is not None:
+            try:
+                _PREPARATION_EXECUTOR.shutdown(wait=True)
+            except Exception:
+                pass
+            _PREPARATION_EXECUTOR = None
+        _PREPARATION_REGISTRY.clear()
+
+    with _DRAIN_RUNNING_LOCK:
+        _DRAIN_IS_RUNNING = False
+
+    with _SOURCE_CACHE_LOCK:
+        _SOURCE_CACHE.clear()
+
+    with _RUNTIME_CACHE_LOCK:
+        for entry in _RUNTIME_CACHE.values():
+            try:
+                entry.pipeline.close()
+            except Exception:
+                pass
+        _RUNTIME_CACHE.clear()

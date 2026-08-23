@@ -6,6 +6,7 @@ error handling for out-of-process BGE-M3 execution.
 from __future__ import annotations
 
 from dataclasses import asdict
+import importlib.util
 import json
 import logging
 import os
@@ -29,6 +30,41 @@ _INIT_TIMEOUT_SECONDS = 300.0
 _PREPARE_TIMEOUT_SECONDS = 90.0
 _QUERY_TIMEOUT_SECONDS = 30.0
 _WORKER_PROTOCOL_VERSION = "1"
+
+
+def _current_interpreter_supports_bge_runtime() -> bool:
+    """Return whether the interpreter running this client can load BGE's runtime.
+
+    Streamlit can re-exec an application through a lightweight ``uv`` Python.
+    That interpreter is sufficient for the UI, but it does not necessarily own
+    the project's PyTorch/FlagEmbedding installation.  A worker spawned via
+    ``sys.executable`` in that case fails before it can report useful BGE
+    readiness.
+    """
+    return all(
+        importlib.util.find_spec(package) is not None
+        for package in ("torch", "FlagEmbedding")
+    )
+
+
+def _project_virtualenv_python() -> Path | None:
+    """Find this checkout's Windows virtual-environment interpreter, if any."""
+    project_root = Path(__file__).resolve().parents[3]
+    candidate = project_root / ".venv" / "Scripts" / "python.exe"
+    return candidate if candidate.is_file() else None
+
+
+def _default_worker_python_executable() -> str:
+    """Choose an interpreter that can actually load the local BGE runtime."""
+    if _current_interpreter_supports_bge_runtime():
+        return sys.executable
+    project_python = _project_virtualenv_python()
+    if project_python is not None:
+        LOGGER.info(
+            "BGE worker is using the project virtual environment because the UI interpreter lacks the BGE runtime"
+        )
+        return str(project_python)
+    return sys.executable
 
 ALLOWLISTED_ROUTING_REASON_CODES = {
     "user_requested_deep",
@@ -87,7 +123,7 @@ class BgeSubprocessWorkerClient:
     """Thread-safe client managing an isolated BGE-M3 worker process."""
 
     def __init__(self, python_executable: str | None = None) -> None:
-        self._python_executable = python_executable or sys.executable
+        self._python_executable = python_executable or _default_worker_python_executable()
         self._process: subprocess.Popen[str] | None = None
         self._lock = threading.RLock()
         self._active_config: RagV2DevConfig | None = None
@@ -354,6 +390,28 @@ class BgeSubprocessWorkerClient:
                 if isinstance(exc, SemanticBackendError):
                     raise
                 raise SemanticBackendError("bge_worker_staged_prepare_exception") from exc
+
+    def delete_documents(
+        self,
+        document_ids: Sequence[str],
+        *,
+        timeout_s: float = _QUERY_TIMEOUT_SECONDS,
+    ) -> int:
+        """Remove indexed chunks for deleted Workspace Chat documents."""
+        normalized_ids = [str(document_id).strip() for document_id in document_ids if str(document_id).strip()]
+        if not normalized_ids:
+            return 0
+        with self._lock:
+            if self._process is None or self._process.poll() is not None:
+                return 0
+            response = self._send_request(
+                {"command": "delete_documents", "document_ids": normalized_ids},
+                timeout_s=timeout_s,
+                phase="delete",
+            )
+        if response.get("status") != "ok":
+            raise SemanticBackendError("bge_worker_delete_failed")
+        return int(response.get("removed_chunk_count", 0))
 
     def query_ready(
         self,

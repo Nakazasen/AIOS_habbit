@@ -175,13 +175,13 @@ def test_rerun_restores_from_store_source_of_truth(mock_streamlit_app):
     # Check that reload gets current selection state
     assert selections_map.get((SOURCE_SCOPE_NOTEBOOK, "src_direct")) is True
 
-def test_source_selection_helpers_called_inside_sidebar_context():
+def test_source_summary_stays_in_sidebar_and_manager_moves_to_main_chat():
     import ast
     app_path = Path("src/aios_habit/workspace_chat_app.py")
     source = app_path.read_text(encoding="utf-8")
     tree = ast.parse(source)
 
-    target_helpers = {"render_source_library"}
+    target_helpers = {"render_source_library_summary"}
     found_calls = {helper: False for helper in target_helpers}
 
     class SidebarCallChecker(ast.NodeVisitor):
@@ -214,6 +214,7 @@ def test_source_selection_helpers_called_inside_sidebar_context():
 
     for helper, found in found_calls.items():
         assert found, f"Expected call to {helper} not found in workspace_chat_app.py"
+    assert "render_document_manager(" in source
 
 def test_conversation_isolation_selection_keys():
     conv_id = "conv_abc"
@@ -811,7 +812,7 @@ def test_phase2h_quick_paste_empty_rejected():
 
     assert "quick_content.strip()" in quick_block
     assert 'Nội dung không được để trống.' in quick_block
-    assert "create_pasted_text_temporary_source" in quick_block
+    assert "_submit_pasted_source" in quick_block
 
 
 def test_phase2h_no_radio_no_consent_checkbox_in_sidebar():
@@ -872,12 +873,12 @@ def test_phase2i_source_creation_forms_call_production_helpers_with_privacy_choi
     app_source = Path("src/aios_habit/workspace_chat_app.py").read_text(encoding="utf-8")
     quick_block = app_source[app_source.index("quick_paste_form"):app_source.index("# Khung dán nhật ký", app_source.index("quick_paste_form"))]
     assert "quick_privacy_choice = render_privacy_choice" in quick_block
-    assert "create_pasted_text_temporary_source" in quick_block
-    assert "owner_choice=quick_privacy_choice" in quick_block
+    assert "_submit_pasted_source" in quick_block
+    assert "quick_privacy_choice" in quick_block
     paste_block = app_source[app_source.index("paste_log_form"):app_source.index("Tạo dữ liệu test không mật", app_source.index("paste_log_form"))]
     assert "paste_privacy_choice = render_privacy_choice" in paste_block
-    assert "create_pasted_text_temporary_source" in paste_block
-    assert "owner_choice=paste_privacy_choice" in paste_block
+    assert "_submit_pasted_source" in paste_block
+    assert "paste_privacy_choice" in paste_block
     excel_block = app_source[app_source.index("excel_upload_form"):]
     assert "excel_privacy_choice = render_privacy_choice" in excel_block
     assert "create_excel_temporary_source_from_extraction" in excel_block
@@ -1399,14 +1400,49 @@ def test_app_never_sends_full_sources_when_quality_retrieval_is_unavailable():
 
 def test_app_preparation_gate_is_scoped_to_query_relevant_sources():
     app_source = Path("src/aios_habit/workspace_chat_app.py").read_text(encoding="utf-8")
-    gate_idx = app_source.index("query_relevant_sources = _select_semantic_candidate_sources(")
+    gate_idx = app_source.index("source_scope = select_workspace_chat_preparation_scope(")
     status_idx = app_source.index(
         "get_workspace_chat_source_preparation_status(\n                                    query_relevant_sources",
         gate_idx,
     )
 
     assert "schedule_workspace_chat_source_preparation(query_relevant_sources)" in app_source[gate_idx:status_idx]
+    assert "Câu hỏi này còn quá rộng" in app_source[gate_idx:status_idx]
     assert gate_idx < status_idx
+
+
+def test_app_retrieval_uses_the_exact_scope_that_preparation_checked():
+    """A released pending question must not re-select from the full source library."""
+    app_source = Path("src/aios_habit/workspace_chat_app.py").read_text(encoding="utf-8")
+    gate_idx = app_source.index("source_scope = select_workspace_chat_preparation_scope(")
+    retrieval_idx = app_source.index("ret_res = retrieve_local_evidence(", gate_idx)
+    retrieval_call = app_source[retrieval_idx:retrieval_idx + 220]
+
+    assert "limit=1" in app_source[gate_idx:retrieval_idx]
+    assert "tuple(query_relevant_sources)" in retrieval_call
+    assert "packed_sources," not in retrieval_call
+
+
+def test_app_keeps_a_pending_question_and_continues_it_once_sources_are_ready():
+    app_source = Path("src/aios_habit/workspace_chat_app.py").read_text(encoding="utf-8")
+
+    assert "_PENDING_SOURCE_SUBMISSION_KEY" in app_source
+    assert "_new_pending_source_submission(" in app_source
+    assert 'if pending_state == "ready":' in app_source
+    assert "pending_auto_question =" in app_source
+    assert "AIOS đang tiếp tục câu hỏi của bạn" in app_source
+    assert "st.session_state.pop(_PENDING_SOURCE_SUBMISSION_KEY, None)" in app_source
+    assert '"required_source_count": len(required_sources)' in app_source
+    assert "Hủy câu hỏi đang chờ" in app_source
+
+
+def test_app_schedules_newly_uploaded_sources_without_bypassing_bge_gate():
+    app_source = Path("src/aios_habit/workspace_chat_app.py").read_text(encoding="utf-8")
+    upload_idx = app_source.index("created_context_sources = tuple(")
+    schedule_idx = app_source.index("schedule_workspace_chat_source_preparation(created_context_sources)", upload_idx)
+
+    assert upload_idx < schedule_idx
+    assert "fail-closed retrieval is disabled" in app_source[upload_idx - 900:upload_idx]
 
 
 def test_app_skips_cloud_query_planning_for_precise_procedure_questions():
@@ -1444,3 +1480,78 @@ def test_conversation_search_preference_selector_flow(mock_streamlit_app):
     store.update_conversation_search_preference("conv_pref_1", "auto")
     assert store.load_conversation("conv_pref_1").search_preference == "auto"
     assert store.load_conversation("conv_pref_2").search_preference == "deep"
+
+
+def test_e2e_sandbox_upload_new_source_transitions_from_pending_to_ready(tmp_path: Path, monkeypatch):
+    """End-to-end sandbox test: newly uploaded file is scheduled, transitions from pending to ready in ledger and UI."""
+    import aios_habit.workspace_chat_rag_v2_adapter as adapter
+    from aios_habit.workspace_chat_app import _workspace_context_sources
+    from aios_habit.workspace_chat_ui import render_preparation_progress_bar
+
+    canary_dir = tmp_path / "canary_runtime"
+    config = adapter.WorkspaceChatRagV2CanaryConfig(
+        enabled=True,
+        runtime_root=canary_dir,
+        bge_m3_model_revision="test-rev-123",
+    )
+    db_path = adapter._get_ledger_db_path(config)
+    adapter._init_preparation_ledger_db(db_path)
+    with adapter._PREPARATION_LOCK:
+        adapter._PREPARATION_REGISTRY.clear()
+    with adapter._SOURCE_CACHE_LOCK:
+        adapter._SOURCE_CACHE.clear()
+
+    # 1. Simulate new uploaded temporary source
+    new_src = TemporaryConversationSource(
+        id="upload_e2e_src_1",
+        conversation_id="conv_e2e",
+        source_type="txt",
+        title="tai_lieu_moi_upload.txt",
+        content_preview="Nội dung quy trình vận hành mới upload 2026.",
+        content_text="Nội dung quy trình vận hành mới upload 2026.",
+    )
+    store.save_temporary_source(new_src)
+
+    ctx_sources = _workspace_context_sources([], [new_src])
+    assert len(ctx_sources) == 1
+
+    # Mock BGE prepare to simulate successful embedding
+    prepared_items = []
+    def fake_prepare(sources, *, config=None):
+        for s in sources:
+            prepared_items.append(s.source_id)
+            key = adapter._preparation_key(config, s)
+            adapter._PREPARATION_REGISTRY[key] = adapter._preparation_entry(config, s, adapter.PREP_STATE_READY)
+        return len(sources)
+
+    monkeypatch.setattr(adapter, "prepare_workspace_chat_sources", fake_prepare)
+    monkeypatch.setattr(adapter, "_durable_semantic_coverage_ready", lambda *a, **kw: False)
+
+    # 2. Schedule source preparation (which triggers real background drain thread)
+    adapter.schedule_workspace_chat_source_preparation(ctx_sources, config=config)
+
+    # 3. Poll for background thread completion without calling internal drain manually
+    import time
+    deadline = time.time() + 5.0
+    final_summary = None
+    while time.time() < deadline:
+        summary = adapter.get_workspace_chat_preparation_summary(ctx_sources, config=config)
+        if summary["ready"] == 1:
+            final_summary = summary
+            break
+        time.sleep(0.05)
+
+    assert final_summary is not None, "Background worker did not complete preparation within deadline"
+    assert final_summary["total"] == 1
+    assert final_summary["ready"] == 1
+    assert final_summary["pending"] == 0
+    assert final_summary["failed"] == 0
+    assert final_summary["statuses"].get("temporary:upload_e2e_src_1") == "ready"
+    assert "1/1 sẵn sàng" in final_summary["summary_text"]
+
+    # 4. Verify SQLite ledger record
+    row = adapter._load_ledger_row(db_path, "temporary", "upload_e2e_src_1")
+    assert row is not None
+    assert row.state == adapter.PREP_STATE_READY
+    assert row.source_id == "upload_e2e_src_1"
+    assert row.source_scope == "temporary"

@@ -126,3 +126,11 @@ def atomic_write_jsonl_batch(targets: Iterable[tuple[Path, Iterable[Any]]]) -> N
             temporary.unlink(missing_ok=True)
         for _, backup in backups:
             backup.unlink(missing_ok=True)
+        for path, _ in prepared:
+            try:
+                resolved_p = path.resolve()
+                stale_keys = [k for k in _JSONL_CACHE if k[0] == resolved_p]
+                for k in stale_keys:
+                    _JSONL_CACHE.pop(k, None)
+            except Exception:
+                pass

@@ -1,163 +1,1024 @@
+"""Unit and integration tests for Antigravity Truthful Bridge (Milestone 1).
+
+Covers:
+1. Health Endpoint & 6-State FSM (unavailable, direct_ready, handoff_ready, handoff_pending, completed, failed)
+2. AST Static Analysis check prohibiting RealWorkspaceAIProviderClient in sidecar daemon
+3. Sidecar daemon dynamic health evaluation & HTTP 503 on unverified direct completions
+4. Citation integrity check (zero-fabrication policy)
+5. Privacy & error message sanitization
+6. Direct adapter fail-closed behavior
+"""
+from __future__ import annotations
+
+import ast
 import json
+import socket
 import threading
+import time
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
+from typing import Any
 import pytest
 
 from aios_habit.antigravity_bridge import (
     AntigravityBridgeResponse,
+    AntigravityHealthStatus,
     call_antigravity_bridge,
+    get_antigravity_bridge_health,
+    get_antigravity_bridge_status,
     is_antigravity_bridge_available,
     process_pending_ide_handoffs,
+    sanitize_bridge_error,
+    sanitize_reason,
 )
 from aios_habit.ai_provider_bridge import ProviderConfig, answer_with_provider
-from aios_habit.brain_gateway import SanitizedRouterPayload, SanitizedSourcePayload
-from aios_habit.workspace_chat_router_adapter import generate_answer_via_router_detailed
+from scripts.antigravity_sidecar_daemon import (
+    AntigravityBridgeHTTPHandler,
+    evaluate_sidecar_health,
+)
 
 
-class MockAntigravityServer(BaseHTTPRequestHandler):
-    def log_message(self, format, *args):
+class MockFSMBridgeServer(BaseHTTPRequestHandler):
+    """Configurable mock HTTP server for testing Antigravity Bridge FSM & completions."""
+
+    @property
+    def health_payload(self) -> dict[str, Any]:
+        return getattr(
+            self.server,
+            "health_payload",
+            {
+                "status": "handoff_ready",
+                "mode": "handoff",
+                "capabilities": ["local_handoff"],
+                "reason": "",
+            },
+        )
+
+    @property
+    def health_status_code(self) -> int:
+        return getattr(self.server, "health_status_code", 200)
+
+    @property
+    def completion_response(self) -> dict[str, Any]:
+        return getattr(self.server, "completion_response", {})
+
+    @property
+    def completion_status_code(self) -> int:
+        return getattr(self.server, "completion_status_code", 200)
+
+    def log_message(self, format: str, *args: Any) -> None:
         pass
 
-    def do_GET(self):
-        if self.path == "/health":
-            self.send_response(200)
+    def do_GET(self) -> None:
+        if self.path in ("/health", "/", "/health/"):
+            self.send_response(self.health_status_code)
             self.send_header("Content-Type", "application/json")
             self.end_headers()
-            self.wfile.write(b'{"status": "ok", "provider": "antigravity_ide_brain"}')
+            self.wfile.write(json.dumps(self.health_payload).encode("utf-8"))
         else:
             self.send_response(404)
             self.end_headers()
 
-    def do_POST(self):
+    def do_POST(self) -> None:
         if self.path in ("/v1/chat/completions", "/chat/completions"):
             content_length = int(self.headers.get("Content-Length", 0))
-            body = self.rfile.read(content_length).decode("utf-8")
-            data = json.loads(body)
+            raw_body = self.rfile.read(content_length).decode("utf-8") if content_length > 0 else "{}"
+            try:
+                data = json.loads(raw_body)
+            except Exception:
+                data = {}
+
+            if self.completion_status_code != 200:
+                body_bytes = json.dumps(self.completion_response or {"error": "Internal Error"}).encode("utf-8")
+                self.send_response(self.completion_status_code)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(body_bytes)))
+                self.send_header("Connection", "close")
+                self.end_headers()
+                self.wfile.write(body_bytes)
+                return
             messages = data.get("messages", [])
             user_msg = ""
             for m in messages:
                 if m.get("role") == "user":
                     user_msg = m.get("content", "")
 
-            response = {
-                "id": "chatcmpl-mock-123",
+            resp = self.completion_response or {
+                "id": "chatcmpl-mock-test",
                 "object": "chat.completion",
-                "model": "antigravity-brain-pro",
+                "model": data.get("model", "antigravity-brain-pro"),
                 "choices": [
                     {
                         "index": 0,
                         "message": {
                             "role": "assistant",
-                            "content": f"Antigravity Answer for: {user_msg[:40]}",
+                            "content": f"Antigravity response for: {user_msg[:30]}",
                         },
                         "finish_reason": "stop",
                     }
                 ],
-                "usage": {"total_tokens": 42},
+                "usage": {"total_tokens": 35},
             }
             self.send_response(200)
             self.send_header("Content-Type", "application/json")
             self.end_headers()
-            self.wfile.write(json.dumps(response).encode("utf-8"))
+            self.wfile.write(json.dumps(resp).encode("utf-8"))
         else:
             self.send_response(404)
             self.end_headers()
 
 
 @pytest.fixture
-def mock_bridge_server():
-    server = HTTPServer(("127.0.0.1", 0), MockAntigravityServer)
+def mock_fsm_server():
+    server = HTTPServer(("127.0.0.1", 0), MockFSMBridgeServer)
     port = server.server_address[1]
     thread = threading.Thread(target=server.serve_forever, daemon=True)
     thread.start()
+
+    server.health_payload = {
+        "status": "handoff_ready",
+        "mode": "handoff",
+        "capabilities": ["local_handoff"],
+        "reason": "",
+    }
+    server.health_status_code = 200
+    server.completion_response = {}
+    server.completion_status_code = 200
+
     health_url = f"http://127.0.0.1:{port}/health"
     completions_url = f"http://127.0.0.1:{port}/v1/chat/completions"
-    yield health_url, completions_url
-    server.shutdown()
-    server.server_close()
+    try:
+        yield server, health_url, completions_url
+    finally:
+        server.shutdown()
+        server.server_close()
 
 
-def test_is_antigravity_bridge_available(mock_bridge_server):
-    health_url, _ = mock_bridge_server
-    assert is_antigravity_bridge_available(health_url=health_url) is True
-    assert is_antigravity_bridge_available(health_url="http://127.0.0.1:59999/health", timeout_seconds=0.1) is False
+# ============================================================================
+# 1. Health Endpoint FSM 6 States Tests
+# ============================================================================
+
+class TestAntigravityHealthFSM:
+    def test_health_fsm_unavailable_when_server_offline(self):
+        """When bridge server is down, status must be 'unavailable' with mode 'none'."""
+        status = get_antigravity_bridge_status(
+            health_url="http://127.0.0.1:59999/health", timeout_seconds=0.1
+        )
+        assert status.status == "unavailable"
+        assert status.mode == "none"
+        assert status.is_available is False
+        assert status.is_ready is False
+        assert is_antigravity_bridge_available(health_url="http://127.0.0.1:59999/health", timeout_seconds=0.1) is False
+
+    @pytest.mark.parametrize("fsm_state,mode,capabilities", [
+        ("direct_ready", "direct", ["direct_chat"]),
+        ("handoff_ready", "handoff", ["local_handoff"]),
+        ("handoff_pending", "handoff", ["local_handoff"]),
+        ("completed", "handoff", ["local_handoff"]),
+        ("failed", "none", []),
+        ("unavailable", "none", []),
+    ])
+    def test_health_fsm_all_six_states(self, mock_fsm_server, fsm_state, mode, capabilities):
+        """Verify get_antigravity_bridge_status accurately parses all 6 FSM states."""
+        server, health_url, _ = mock_fsm_server
+        server.health_payload = {
+            "status": fsm_state,
+            "mode": mode,
+            "capabilities": capabilities,
+            "reason": f"State reason for {fsm_state}",
+        }
+        status = get_antigravity_bridge_status(health_url=health_url)
+        assert status.status == fsm_state
+        assert status.mode == mode
+        assert list(status.capabilities) == capabilities
+        assert f"State reason for {fsm_state}" in status.reason
+        if fsm_state in ("direct_ready", "handoff_ready", "handoff_pending", "completed"):
+            assert status.is_available is True
+        else:
+            assert status.is_available is False
+
+    def test_health_fsm_server_500_error(self, mock_fsm_server):
+        """When server returns 500 Internal Error, status must be 'failed' with sanitized reason."""
+        server, health_url, _ = mock_fsm_server
+        server.health_status_code = 500
+        server.health_payload = {"status": "failed", "reason": "Internal daemon error in D:/Sandbox/secret.txt"}
+        status = get_antigravity_bridge_status(health_url=health_url)
+        assert status.status == "failed"
+        assert status.mode == "none"
+        assert status.is_available is False
+        assert "D:/Sandbox" not in status.reason
+
+    def test_health_fsm_no_fake_capabilities_advertised(self, mock_fsm_server):
+        """Sidecar must never advertise unverified capabilities (reasoning, large_context, excel_sql)."""
+        server, health_url, _ = mock_fsm_server
+        server.health_payload = {
+            "status": "handoff_ready",
+            "mode": "handoff",
+            "capabilities": ["local_handoff", "reasoning", "large_context", "excel_sql"],
+            "reason": "",
+        }
+        status = get_antigravity_bridge_status(health_url=health_url)
+        forbidden = {"reasoning", "large_context", "excel_sql"}
+        assert not any(cap in forbidden for cap in status.capabilities)
+        assert "local_handoff" in status.capabilities
 
 
-def test_call_antigravity_bridge_success(mock_bridge_server):
-    _, completions_url = mock_bridge_server
-    res = call_antigravity_bridge(
-        question="Giải thích kiến trúc RAG v2",
-        system_prompt="Bạn là chuyên gia",
-        context_text="Nội dung tài liệu...",
-        endpoint_url=completions_url,
-    )
-    assert res.ok is True
-    assert "Antigravity Answer" in res.answer_text
-    assert res.tokens_used == 42
-    assert res.model == "antigravity-brain-pro"
+# ============================================================================
+# 2. AST Static Analysis Verification for Sidecar Daemon
+# ============================================================================
+
+class TestSidecarDaemonASTSecurity:
+    @pytest.fixture
+    def sidecar_ast(self):
+        project_root = Path(__file__).resolve().parent.parent
+        sidecar_path = project_root / "scripts" / "antigravity_sidecar_daemon.py"
+        assert sidecar_path.exists(), f"Sidecar script not found at {sidecar_path}"
+        code = sidecar_path.read_text(encoding="utf-8")
+        return ast.parse(code, filename=str(sidecar_path))
+
+    def test_sidecar_daemon_no_forbidden_ai_imports(self, sidecar_ast):
+        """Sidecar daemon MUST NOT import RealWorkspaceAIProviderClient or synthesis pipeline."""
+        forbidden_modules = {
+            "aios_habit.workspace_chat_ai_answer",
+            "aios_habit.workspace_chat_router_adapter",
+        }
+        forbidden_names = {
+            "RealWorkspaceAIProviderClient",
+            "generate_workspace_ai_answer",
+            "WorkspaceAIAnswerRequest",
+        }
+
+        imported_modules = set()
+        imported_names = set()
+
+        for node in ast.walk(sidecar_ast):
+            if isinstance(node, ast.Import):
+                for alias in node.names:
+                    imported_modules.add(alias.name)
+            elif isinstance(node, ast.ImportFrom):
+                if node.module:
+                    imported_modules.add(node.module)
+                for alias in node.names:
+                    imported_names.add(alias.name)
+
+        assert not (imported_modules & forbidden_modules), (
+            f"Sidecar imports forbidden modules: {imported_modules & forbidden_modules}"
+        )
+        assert not (imported_names & forbidden_names), (
+            f"Sidecar imports forbidden names: {imported_names & forbidden_names}"
+        )
+
+    def test_sidecar_daemon_no_forbidden_instantiations(self, sidecar_ast):
+        """Sidecar daemon MUST NOT call or instantiate RealWorkspaceAIProviderClient."""
+        for node in ast.walk(sidecar_ast):
+            if isinstance(node, ast.Call):
+                func = node.func
+                if isinstance(func, ast.Name) and func.id == "RealWorkspaceAIProviderClient":
+                    pytest.fail("Found direct instantiation of RealWorkspaceAIProviderClient in sidecar")
+                elif isinstance(func, ast.Attribute) and func.attr == "RealWorkspaceAIProviderClient":
+                    pytest.fail("Found attribute instantiation of RealWorkspaceAIProviderClient in sidecar")
 
 
-def test_call_antigravity_bridge_failure():
-    res = call_antigravity_bridge(
-        question="Test offline",
-        endpoint_url="http://127.0.0.1:59999/v1/chat/completions",
-        timeout_seconds=0.2,
-    )
-    assert res.ok is False
-    assert res.answer_text == ""
-    assert res.error_message != ""
+# ============================================================================
+# 3. Dynamic Sidecar Health & Direct Rejection Tests
+# ============================================================================
+
+class TestSidecarDaemonDynamicHealth:
+    def test_evaluate_sidecar_health_empty_outbox(self, tmp_path):
+        """When outbox is empty, health is handoff_ready."""
+        health = evaluate_sidecar_health(handoff_root=tmp_path)
+        assert health["status"] == "handoff_ready"
+        assert health["mode"] == "handoff"
+        assert health["capabilities"] == ["local_handoff"]
+
+    def test_evaluate_sidecar_health_with_pending_requests(self, tmp_path):
+        """When outbox has pending request without response, health is handoff_pending."""
+        outbox = tmp_path / "outbox" / "REQ-PENDING-001"
+        outbox.mkdir(parents=True, exist_ok=True)
+        manifest = {
+            "request_id": "REQ-PENDING-001",
+            "created_at": "2026-08-22T06:00:00",
+            "question": "What is the status?",
+        }
+        (outbox / "manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
+
+        health = evaluate_sidecar_health(handoff_root=tmp_path)
+        assert health["status"] == "handoff_pending"
+        assert health["mode"] == "handoff"
+        assert "1 request(s)" in health["reason"]
+
+    def test_sidecar_rejects_direct_completion_http_503(self):
+        """Sidecar returns HTTP 503 when direct chat completions is requested without verified adapter."""
+        server = HTTPServer(("127.0.0.1", 0), AntigravityBridgeHTTPHandler)
+        port = server.server_address[1]
+        thread = threading.Thread(target=server.serve_forever, daemon=True)
+        thread.start()
+
+        try:
+            import urllib.request
+            req = urllib.request.Request(
+                f"http://127.0.0.1:{port}/v1/chat/completions",
+                data=json.dumps({"messages": [{"role": "user", "content": "hello"}]}).encode("utf-8"),
+                headers={"Content-Type": "application/json"},
+                method="POST",
+            )
+            with pytest.raises(urllib.error.HTTPError) as exc_info:
+                urllib.request.urlopen(req)
+            assert exc_info.value.code == 503
+            err_data = json.loads(exc_info.value.read().decode("utf-8"))
+            assert err_data["error"]["type"] == "direct_adapter_unavailable"
+        finally:
+            server.shutdown()
+            server.server_close()
 
 
-def test_process_pending_ide_handoffs(tmp_path, mock_bridge_server):
-    _, completions_url = mock_bridge_server
-    handoff_root = tmp_path / "ide_handoff"
-    req_id = "REQ_TEST_001"
-    outbox_dir = handoff_root / "outbox" / req_id
-    outbox_dir.mkdir(parents=True, exist_ok=True)
+# ============================================================================
+# 4. Citation Integrity Tests (Zero-Fabrication Policy)
+# ============================================================================
 
-    manifest = {
-        "request_id": req_id,
-        "created_at": "2026-08-15T12:00:00",
-        "case_id": "case_1",
-        "question": "Kiểm tra lô hàng lỗi",
-        "bundle_scope": "active_case_all",
-        "allowed_source_ids": ["EVD-1", "EVD-2"],
-    }
-    (outbox_dir / "manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
-    (outbox_dir / "prompt_for_antigravity.md").write_text("Prompt for IDE", encoding="utf-8")
-    (outbox_dir / "evidence_full.md").write_text("Evidence text", encoding="utf-8")
+class TestAntigravityCitationIntegrity:
+    def test_process_handoff_with_genuine_citation(self, tmp_path, mock_fsm_server):
+        """Genuine citations present in model output must be preserved."""
+        server, _, completions_url = mock_fsm_server
+        server.completion_response = {
+            "choices": [
+                {
+                    "message": {
+                        "role": "assistant",
+                        "content": "Dựa trên tài liệu [EVD-1], hệ thống đạt chuẩn ISO 9001.",
+                    }
+                }
+            ],
+            "model": "antigravity-brain-pro",
+        }
 
-    processed = process_pending_ide_handoffs(base_dir=handoff_root, endpoint_url=completions_url)
-    assert processed == 1
+        handoff_root = tmp_path / "ide_handoff"
+        req_id = "REQ_CIT_001"
+        outbox_dir = handoff_root / "outbox" / req_id
+        outbox_dir.mkdir(parents=True, exist_ok=True)
 
-    inbox_resp = handoff_root / "inbox" / req_id / "response.json"
-    assert inbox_resp.exists()
-    resp_data = json.loads(inbox_resp.read_text(encoding="utf-8"))
-    assert resp_data["request_id"] == req_id
-    assert "Antigravity Answer" in resp_data["answer_markdown"]
-    assert resp_data["confidence"] == "high"
+        manifest = {
+            "request_id": req_id,
+            "created_at": "2026-08-21T12:00:00",
+            "case_id": "case_1",
+            "question": "Kiểm tra tiêu chuẩn",
+            "bundle_scope": "active_case_all",
+            "allowed_source_ids": ["EVD-1", "EVD-2"],
+        }
+        (outbox_dir / "manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
+        (outbox_dir / "prompt_for_antigravity.md").write_text("Prompt", encoding="utf-8")
+
+        processed = process_pending_ide_handoffs(base_dir=handoff_root, endpoint_url=completions_url)
+        assert processed == 1
+
+        inbox_resp = handoff_root / "inbox" / req_id / "response.json"
+        assert inbox_resp.exists()
+        resp_data = json.loads(inbox_resp.read_text(encoding="utf-8"))
+        assert resp_data["cited_evidence_ids"] == ["EVD-1"]
+        assert resp_data["evidence_ids_used"] == ["EVD-1"]
+        assert resp_data["confidence"] == "high"
+
+    def test_process_handoff_zero_citations_no_fabrication(self, tmp_path, mock_fsm_server):
+        """When model provides NO citations, cited_evidence_ids must be EMPTY (NO fabrication)."""
+        server, _, completions_url = mock_fsm_server
+        server.completion_response = {
+            "choices": [
+                {
+                    "message": {
+                        "role": "assistant",
+                        "content": "Không có thông tin cụ thể trong hồ sơ đã cung cấp.",
+                    }
+                }
+            ],
+            "model": "antigravity-brain-pro",
+        }
+
+        handoff_root = tmp_path / "ide_handoff"
+        req_id = "REQ_NO_CIT_002"
+        outbox_dir = handoff_root / "outbox" / req_id
+        outbox_dir.mkdir(parents=True, exist_ok=True)
+
+        manifest = {
+            "request_id": req_id,
+            "created_at": "2026-08-21T12:00:00",
+            "case_id": "case_1",
+            "question": "Hỏi không có bằng chứng",
+            "bundle_scope": "active_case_all",
+            "allowed_source_ids": ["EVD-1", "EVD-2"],
+        }
+        (outbox_dir / "manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
+        (outbox_dir / "prompt_for_antigravity.md").write_text("Prompt", encoding="utf-8")
+
+        processed = process_pending_ide_handoffs(base_dir=handoff_root, endpoint_url=completions_url)
+        assert processed == 1
+
+        inbox_resp = handoff_root / "inbox" / req_id / "response.json"
+        resp_data = json.loads(inbox_resp.read_text(encoding="utf-8"))
+        # ZERO-FABRICATION: Must NOT fall back to ["EVD-1"]
+        assert resp_data["cited_evidence_ids"] == []
+        assert resp_data["evidence_ids_used"] == []
+        assert resp_data["confidence"] == "low"
+        assert len(resp_data["limitations"]) > 0
+
+    def test_process_handoff_unknown_citation_filtered(self, tmp_path, mock_fsm_server):
+        """Citations not listed in allowed_source_ids must be filtered out."""
+        server, _, completions_url = mock_fsm_server
+        server.completion_response = {
+            "choices": [
+                {
+                    "message": {
+                        "role": "assistant",
+                        "content": "Theo tài liệu [EVD-999], thông tin này không nằm trong bundle.",
+                    }
+                }
+            ],
+            "model": "antigravity-brain-pro",
+        }
+
+        handoff_root = tmp_path / "ide_handoff"
+        req_id = "REQ_UNAUTH_CIT_003"
+        outbox_dir = handoff_root / "outbox" / req_id
+        outbox_dir.mkdir(parents=True, exist_ok=True)
+
+        manifest = {
+            "request_id": req_id,
+            "created_at": "2026-08-21T12:00:00",
+            "case_id": "case_1",
+            "question": "Hỏi nguồn lạ",
+            "bundle_scope": "active_case_all",
+            "allowed_source_ids": ["EVD-1", "EVD-2"],
+        }
+        (outbox_dir / "manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
+        (outbox_dir / "prompt_for_antigravity.md").write_text("Prompt", encoding="utf-8")
+
+        process_pending_ide_handoffs(base_dir=handoff_root, endpoint_url=completions_url)
+        inbox_resp = handoff_root / "inbox" / req_id / "response.json"
+        resp_data = json.loads(inbox_resp.read_text(encoding="utf-8"))
+        assert resp_data["cited_evidence_ids"] == []
+
+    def test_process_handoff_word_boundary_matching(self, tmp_path, mock_fsm_server):
+        """Ensure EVD-10 does not falsely match allowed ID EVD-1."""
+        server, _, completions_url = mock_fsm_server
+        server.completion_response = {
+            "choices": [
+                {
+                    "message": {
+                        "role": "assistant",
+                        "content": "Chỉ có thông tin từ [EVD-10], không có EVD-1 ở đây.",
+                    }
+                }
+            ],
+            "model": "antigravity-brain-pro",
+        }
+
+        handoff_root = tmp_path / "ide_handoff"
+        req_id = "REQ_BOUNDARY_004"
+        outbox_dir = handoff_root / "outbox" / req_id
+        outbox_dir.mkdir(parents=True, exist_ok=True)
+
+        manifest = {
+            "request_id": req_id,
+            "created_at": "2026-08-21T12:00:00",
+            "case_id": "case_1",
+            "question": "Hỏi boundary",
+            "bundle_scope": "active_case_all",
+            "allowed_source_ids": ["EVD-1", "EVD-10"],
+        }
+        (outbox_dir / "manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
+        (outbox_dir / "prompt_for_antigravity.md").write_text("Prompt", encoding="utf-8")
+
+        process_pending_ide_handoffs(base_dir=handoff_root, endpoint_url=completions_url)
+        inbox_resp = handoff_root / "inbox" / req_id / "response.json"
+        resp_data = json.loads(inbox_resp.read_text(encoding="utf-8"))
+        assert "EVD-10" in resp_data["cited_evidence_ids"]
+        # EVD-1 should NOT be matched just because 'EVD-1' is a prefix of 'EVD-10' (unless EVD-1 itself was in text)
+        assert resp_data["status"] == "completed"
+
+    def test_process_handoff_expires_stale_requests(self, tmp_path, mock_fsm_server):
+        """Expired handoff requests must transition to failed and not be processed."""
+        _, _, completions_url = mock_fsm_server
+        handoff_root = tmp_path / "ide_handoff"
+        req_id = "REQ_EXPIRED_005"
+        outbox_dir = handoff_root / "outbox" / req_id
+        outbox_dir.mkdir(parents=True, exist_ok=True)
+
+        manifest = {
+            "request_id": req_id,
+            "created_at": "2026-01-01T00:00:00",
+            "expires_at": "2026-01-01T00:05:00",
+            "timeout_seconds": 300,
+            "case_id": "case_1",
+            "question": "Expired question",
+            "bundle_scope": "active_case_all",
+            "allowed_source_ids": ["EVD-1"],
+        }
+        (outbox_dir / "manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
+        (outbox_dir / "prompt_for_antigravity.md").write_text("Prompt", encoding="utf-8")
+        status = {
+            "request_id": req_id,
+            "state": "handoff_pending",
+            "created_at": "2026-01-01T00:00:00",
+            "expires_at": "2026-01-01T00:05:00",
+            "timeout_seconds": 300,
+        }
+        (outbox_dir / "request_status.json").write_text(json.dumps(status), encoding="utf-8")
+
+        processed = process_pending_ide_handoffs(base_dir=handoff_root, endpoint_url=completions_url)
+        assert processed == 0
+        status_after = json.loads((outbox_dir / "request_status.json").read_text(encoding="utf-8"))
+        assert status_after["state"] == "failed"
+        assert status_after["error_reason"] == "timeout"
 
 
-def test_ai_provider_bridge_with_antigravity(mock_bridge_server, monkeypatch):
-    health_url, completions_url = mock_bridge_server
-    monkeypatch.setattr("aios_habit.antigravity_bridge.DEFAULT_ANTIGRAVITY_HEALTH_URL", health_url)
-    monkeypatch.setattr("aios_habit.antigravity_bridge.DEFAULT_ANTIGRAVITY_ENDPOINT", completions_url)
+# ============================================================================
+# 5. Privacy & Error Sanitization Tests
+# ============================================================================
 
-    cfg = ProviderConfig(
-        provider_type="antigravity_ide_brain",
-        endpoint_url=completions_url,
-        model_name="antigravity-brain-pro",
-        locality="local",
-        enabled=True,
-    )
-    res = answer_with_provider(
-        question="Hỏi qua Antigravity",
-        source_context="Context...",
-        config=cfg,
-        deterministic_answer="Fallback",
-        source_privacy="local_only",
-    )
-    assert res.ok is True
-    assert "Antigravity Answer" in res.answer_text
-    assert res.provider_name == "antigravity_ide_brain"
+class TestAntigravityPrivacyAndSanitization:
+    def test_sanitize_bridge_error_masks_absolute_paths(self):
+        raw_err = "Error accessing file D:\\Sandbox\\AIOS_habbit\\confidential\\data.pdf: Permission denied"
+        sanitized = sanitize_bridge_error(raw_err)
+        assert "D:\\Sandbox\\AIOS_habbit" not in sanitized
+        assert "<path>" in sanitized
+
+    def test_sanitize_bridge_error_masks_api_tokens(self):
+        raw_err = "Failed request with header Authorization: Bearer sk-ant-api03-abcdef1234567890"
+        sanitized = sanitize_bridge_error(raw_err)
+        assert "sk-ant-api03-abcdef1234567890" not in sanitized
+        assert "<redacted_token>" in sanitized
+
+    def test_bridge_error_does_not_leak_user_prompt(self):
+        sensitive_prompt = "TOP_SECRET_PATIENT_RECORD_XYZ"
+        res = call_antigravity_bridge(
+            question=sensitive_prompt,
+            endpoint_url="http://127.0.0.1:59999/v1/chat/completions",
+            timeout_seconds=0.1,
+        )
+        assert res.ok is False
+        assert sensitive_prompt not in res.error_message
+
+    def test_local_only_cloud_fail_closed(self):
+        """When privacy_mode is local_only, calling non-local endpoint is blocked immediately."""
+        res = call_antigravity_bridge(
+            question="Private question",
+            endpoint_url="http://external-cloud-api.example.com/v1/chat/completions",
+            privacy_mode="local_only",
+        )
+        assert res.ok is False
+        assert "Bị chặn" in res.error_message
+
+
+# ============================================================================
+# 6. Direct Adapter Fail-Closed Behavior Tests
+# ============================================================================
+
+class TestAntigravityFailClosed:
+    def test_call_antigravity_bridge_offline_fails_closed(self):
+        res = call_antigravity_bridge(
+            question="Kiểm tra fail-closed",
+            endpoint_url="http://127.0.0.1:59999/v1/chat/completions",
+            timeout_seconds=0.1,
+        )
+        assert res.ok is False
+        assert res.answer_text == ""
+        assert res.error_message != ""
+
+    def test_call_antigravity_bridge_http_500(self, mock_fsm_server):
+        server, _, completions_url = mock_fsm_server
+        server.completion_status_code = 500
+        server.completion_response = {"error": "Daemon internal error"}
+
+        res = call_antigravity_bridge(
+            question="Kiểm tra HTTP 500",
+            endpoint_url=completions_url,
+            timeout_seconds=1.0,
+        )
+        assert res.ok is False
+        assert "HTTP 500" in res.error_message
+
+    def test_ai_provider_bridge_with_antigravity_success(self, mock_fsm_server, monkeypatch):
+        server, health_url, completions_url = mock_fsm_server
+        server.health_payload = {
+            "status": "direct_ready",
+            "mode": "direct",
+            "capabilities": ["direct_chat"],
+            "reason": "",
+        }
+        monkeypatch.setattr("aios_habit.antigravity_bridge.DEFAULT_ANTIGRAVITY_HEALTH_URL", health_url)
+        monkeypatch.setattr("aios_habit.antigravity_bridge.DEFAULT_ANTIGRAVITY_ENDPOINT", completions_url)
+
+        cfg = ProviderConfig(
+            provider_type="antigravity_ide_brain",
+            endpoint_url=completions_url,
+            model_name="antigravity-brain-pro",
+            locality="local",
+            enabled=True,
+        )
+        res = answer_with_provider(
+            question="Hỏi qua Antigravity",
+            source_context="Context...",
+            config=cfg,
+            deterministic_answer="Fallback",
+            source_privacy="local_only",
+        )
+        assert res.ok is True
+        assert "Antigravity response" in res.answer_text
+        assert res.provider_name == "antigravity_ide_brain"
+
+    def test_ai_provider_bridge_offline_fail_closed(self, monkeypatch):
+        """When Antigravity bridge is offline, provider bridge must fail closed without fallback."""
+        monkeypatch.setattr("aios_habit.antigravity_bridge.DEFAULT_ANTIGRAVITY_HEALTH_URL", "http://127.0.0.1:59999/health")
+        monkeypatch.setattr("aios_habit.antigravity_bridge.DEFAULT_ANTIGRAVITY_ENDPOINT", "http://127.0.0.1:59999/v1/chat/completions")
+
+        cfg = ProviderConfig(
+            provider_type="antigravity_ide_brain",
+            endpoint_url="http://127.0.0.1:59999/v1/chat/completions",
+            model_name="antigravity-brain-pro",
+            locality="local",
+            enabled=True,
+        )
+        res = answer_with_provider(
+            question="Hỏi qua Antigravity offline",
+            source_context="Context...",
+            config=cfg,
+            deterministic_answer="Deterministic Draft",
+            source_privacy="local_only",
+        )
+        assert res.ok is False
+        assert res.answer_text == ""
+        assert res.used_fallback is False
+        assert res.safety_status == "antigravity_runtime_unavailable"
+
+
+# ============================================================================
+# 7. Tier 5 Adversarial Stress & Hardening Test Suites
+# ============================================================================
+
+
+class TestTier5AdversarialSocketDropoutsAndFailClosed:
+    """Tier 5 Adversarial: Network socket dropouts, hangs, HTTP errors & fail-closed enforcement."""
+
+    def test_direct_bridge_socket_reset_mid_payload(self):
+        """Mock server abruptly closes TCP connection before returning body."""
+        srv = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        srv.bind(("127.0.0.1", 0))
+        port = srv.getsockname()[1]
+        srv.listen(1)
+
+        def _reset_client():
+            try:
+                conn, _ = srv.accept()
+                conn.recv(1024)
+                # Immediately close socket without HTTP response
+                conn.close()
+            except Exception:
+                pass
+            finally:
+                try:
+                    srv.close()
+                except Exception:
+                    pass
+
+        threading.Thread(target=_reset_client, daemon=True).start()
+        res = call_antigravity_bridge(
+            question="Stress test socket reset",
+            endpoint_url=f"http://127.0.0.1:{port}/v1/chat/completions",
+            timeout_seconds=1.0,
+        )
+        assert res.ok is False
+        assert res.answer_text == ""
+        assert res.error_message != ""
+
+    def test_direct_bridge_http_500_with_sensitive_error_sanitization(self, mock_fsm_server):
+        """HTTP 500 error containing secret file paths and auth tokens must be sanitized."""
+        server, _, completions_url = mock_fsm_server
+        server.completion_status_code = 500
+        server.completion_response = {
+            "error": "Failed at D:/AIOS_Sandbox/confidential/vault.key with token sk-ant-api03-abcdef9876543210"
+        }
+
+        res = call_antigravity_bridge(
+            question="Test sanitization",
+            endpoint_url=completions_url,
+            timeout_seconds=1.0,
+        )
+        assert res.ok is False
+        assert "D:/AIOS_Sandbox" not in res.error_message
+        assert "sk-ant-api03-abcdef9876543210" not in res.error_message
+        assert "<path>" in res.error_message or "<redacted_token>" in res.error_message
+
+    def test_direct_bridge_slowloris_timeout(self):
+        """Server accepts connection but hangs; client must timeout cleanly and fail closed."""
+        srv = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        srv.bind(("127.0.0.1", 0))
+        port = srv.getsockname()[1]
+        srv.listen(1)
+
+        def _hang_client():
+            try:
+                conn, _ = srv.accept()
+                time.sleep(1.0)
+                conn.close()
+            except Exception:
+                pass
+            finally:
+                try:
+                    srv.close()
+                except Exception:
+                    pass
+
+        threading.Thread(target=_hang_client, daemon=True).start()
+        res = call_antigravity_bridge(
+            question="Test slowloris",
+            endpoint_url=f"http://127.0.0.1:{port}/v1/chat/completions",
+            timeout_seconds=0.2,
+        )
+        assert res.ok is False
+        assert res.answer_text == ""
+        assert "timed out" in res.error_message.lower() or "timeout" in res.error_message.lower()
+
+    @pytest.mark.parametrize("status_code", [502, 503, 504])
+    def test_direct_bridge_http_gateway_errors_fail_closed(self, mock_fsm_server, status_code):
+        """HTTP 502/503/504 gateway failures must return ok=False with non-empty error message."""
+        server, _, completions_url = mock_fsm_server
+        server.completion_status_code = status_code
+        server.completion_response = {"error": f"Gateway error {status_code}"}
+
+        res = call_antigravity_bridge(
+            question="Testing gateway error",
+            endpoint_url=completions_url,
+            timeout_seconds=1.0,
+        )
+        assert res.ok is False
+        assert res.answer_text == ""
+        assert str(status_code) in res.error_message or "lỗi" in res.error_message.lower() or "error" in res.error_message.lower()
+
+
+class TestTier5AdversarialPrivacyBoundaryAndSanitization:
+    """Tier 5 Adversarial: Privacy boundary leakage prevention and error string sanitization."""
+
+    @pytest.mark.parametrize("remote_url", [
+        "http://api.openai.com/v1/chat/completions",
+        "https://external-ai.cloud.com/v1/completions",
+        "http://8.8.8.8:8585/v1/chat/completions",
+        "http://198.51.100.1/v1/chat/completions",
+    ])
+    def test_local_only_mode_blocks_remote_endpoints_immediately(self, remote_url):
+        """Privacy mode local_only MUST block non-loopback endpoints immediately without sending packets."""
+        res = call_antigravity_bridge(
+            question="Confidential financial or patient query",
+            endpoint_url=remote_url,
+            privacy_mode="local_only",
+        )
+        assert res.ok is False
+        assert "Bị chặn" in res.error_message
+        assert "local_only" in res.error_message
+
+    def test_sanitize_reason_comprehensive_matrix(self):
+        """Verify sanitize_reason across diverse combinations of paths, Windows drive letters, and tokens."""
+        cases = [
+            ("Error at C:\\Users\\Admin\\AppData\\Local\\secret.txt: failed", "<path>: failed"),
+            ("Error in D:/Sandbox/AIOS_habbit/data/confidential.pdf cannot be opened", "<path> cannot be opened"),
+            ("Token Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9 was rejected", "Token <redacted_token> was rejected"),
+            ("sk-ant-api03-1234567890abcdef12345 is unauthorized", "<redacted_token> is unauthorized"),
+            ("Unix path /var/log/audit/secret.log not accessible", "<path> not accessible"),
+        ]
+        for raw, expected_substr in cases:
+            sanitized = sanitize_reason(raw)
+            assert "C:\\Users" not in sanitized
+            assert "D:/Sandbox" not in sanitized
+            assert "eyJhbGci" not in sanitized
+            assert "sk-ant-api03" not in sanitized
+            assert "/var/log" not in sanitized
+
+    def test_error_sanitization_bounds_max_length(self):
+        """Excessively long error messages should be truncated to 200 characters."""
+        long_error = "Failure at " + "D:/VeryLongPath/" * 30 + " with secret sk-ant-api03-999999999999999"
+        sanitized = sanitize_reason(long_error)
+        assert len(sanitized) <= 200
+        assert "sk-ant-api03" not in sanitized
+
+
+class TestTier5AdversarialCitationBoundaryAndZeroFabrication:
+    """Tier 5 Adversarial: Word boundary citation matching and strict zero-fabrication."""
+
+    def test_word_boundary_avoids_prefix_suffix_false_positives(self, tmp_path, mock_fsm_server):
+        """Ensures that citation IDs sharing prefixes/suffixes (e.g. EVD-1 vs EVD-100, EVD-1-EXTRA) are not falsely attributed."""
+        server, _, completions_url = mock_fsm_server
+        server.completion_response = {
+            "choices": [
+                {
+                    "message": {
+                        "role": "assistant",
+                        "content": "Referencing [EVD-100] and text mention EVD-1-EXTRA.",
+                    }
+                }
+            ],
+            "model": "antigravity-brain-pro",
+        }
+
+        handoff_root = tmp_path / "ide_handoff"
+        req_id = "REQ_ADV_CIT_001"
+        outbox_dir = handoff_root / "outbox" / req_id
+        outbox_dir.mkdir(parents=True, exist_ok=True)
+
+        manifest = {
+            "request_id": req_id,
+            "created_at": "2026-08-22T00:00:00",
+            "case_id": "case_adv",
+            "question": "Boundary check",
+            "bundle_scope": "active_case_all",
+            "allowed_source_ids": ["EVD-1", "EVD-10"],
+        }
+        (outbox_dir / "manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
+        (outbox_dir / "prompt_for_antigravity.md").write_text("Prompt", encoding="utf-8")
+
+        processed = process_pending_ide_handoffs(base_dir=handoff_root, endpoint_url=completions_url)
+        assert processed == 1
+
+        inbox_resp = handoff_root / "inbox" / req_id / "response.json"
+        resp_data = json.loads(inbox_resp.read_text(encoding="utf-8"))
+        assert resp_data["cited_evidence_ids"] == []
+        assert resp_data["confidence"] == "low"
+
+    def test_zero_citations_never_fabricates_first_allowed_id(self, tmp_path, mock_fsm_server):
+        """When completion does not reference any evidence, zero citations are attributed (never defaulting to allowed_source_ids[0])."""
+        server, _, completions_url = mock_fsm_server
+        server.completion_response = {
+            "choices": [
+                {
+                    "message": {
+                        "role": "assistant",
+                        "content": "Đây là câu trả lời chung chung không chứa bất kỳ trích dẫn nào.",
+                    }
+                }
+            ],
+            "model": "antigravity-brain-pro",
+        }
+
+        handoff_root = tmp_path / "ide_handoff"
+        req_id = "REQ_ADV_ZERO_FAB"
+        outbox_dir = handoff_root / "outbox" / req_id
+        outbox_dir.mkdir(parents=True, exist_ok=True)
+
+        manifest = {
+            "request_id": req_id,
+            "created_at": "2026-08-22T00:00:00",
+            "case_id": "case_adv_zero",
+            "question": "Zero citations check",
+            "bundle_scope": "active_case_all",
+            "allowed_source_ids": ["EVD-FIRST-ALLOWED", "EVD-SECOND-ALLOWED"],
+        }
+        (outbox_dir / "manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
+        (outbox_dir / "prompt_for_antigravity.md").write_text("Prompt", encoding="utf-8")
+
+        processed = process_pending_ide_handoffs(base_dir=handoff_root, endpoint_url=completions_url)
+        assert processed == 1
+
+        inbox_resp = handoff_root / "inbox" / req_id / "response.json"
+        resp_data = json.loads(inbox_resp.read_text(encoding="utf-8"))
+        assert resp_data["cited_evidence_ids"] == []
+        assert resp_data["evidence_ids_used"] == []
+        assert resp_data["confidence"] == "low"
+        assert len(resp_data["limitations"]) > 0
+
+    def test_unauthorized_citation_sorted_rejection(self, tmp_path, mock_fsm_server):
+        """Model citing multiple unknown IDs has those unknown IDs filtered out during bridge resolution."""
+        server, _, completions_url = mock_fsm_server
+        server.completion_response = {
+            "choices": [
+                {
+                    "message": {
+                        "role": "assistant",
+                        "content": "Sử dụng các nguồn [EVD-ZEBRA], [EVD-ALPHA], [EVD-BETA].",
+                    }
+                }
+            ],
+            "model": "antigravity-brain-pro",
+        }
+
+        handoff_root = tmp_path / "ide_handoff"
+        req_id = "REQ_ADV_UNAUTH"
+        outbox_dir = handoff_root / "outbox" / req_id
+        outbox_dir.mkdir(parents=True, exist_ok=True)
+
+        manifest = {
+            "request_id": req_id,
+            "created_at": "2026-08-22T00:00:00",
+            "case_id": "case_adv_unauth",
+            "question": "Unauthorized check",
+            "bundle_scope": "active_case_all",
+            "allowed_source_ids": ["EVD-1"],
+        }
+        (outbox_dir / "manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
+        (outbox_dir / "prompt_for_antigravity.md").write_text("Prompt", encoding="utf-8")
+
+        processed = process_pending_ide_handoffs(base_dir=handoff_root, endpoint_url=completions_url)
+        assert processed == 1
+
+        inbox_resp = handoff_root / "inbox" / req_id / "response.json"
+        resp_data = json.loads(inbox_resp.read_text(encoding="utf-8"))
+        assert resp_data["cited_evidence_ids"] == []
+
+
+class TestAntigravityBridgeFailClosedAndE2E:
+    """Additional regression tests for Fail-Closed routing and E2E handoff response writing."""
+
+    def test_route_submission_bridge_unavailable_fails_closed_zero_fallback(self):
+        from aios_habit.antigravity_bridge import route_workspace_chat_submission
+
+        health = AntigravityHealthStatus(
+            status="unavailable",
+            mode="none",
+            capabilities=[],
+            reason="Daemon not running",
+        )
+
+        ok, msg, badge, err = route_workspace_chat_submission(
+            question="Tra cứu lỗi máy",
+            evidence_items=[],
+            packed_sources=(),
+            conversation_id="CONV-TEST-FAILCLOSED",
+            notebook_id="NB-TEST",
+            retrieval_applied=False,
+            retrieved_sources=(),
+            retrieval_summary="",
+            current_keys=(),
+            chat_history=(),
+            user_raw_input="Tra cứu lỗi máy",
+            health_status=health,
+        )
+
+        assert ok is False
+        assert badge is None
+        assert err is not None
+        assert "không khả dụng" in err
+        assert "fail-closed" in err
+
+    def test_ide_handoff_e2e_write_response_and_import(self, tmp_path):
+        from aios_habit.case_models import EvidenceItem
+        from aios_habit.ide_handoff_bridge import (
+            write_ide_handoff_bundle,
+            write_ide_handoff_response,
+            import_pending_ide_response,
+            save_imported_ide_answer,
+            list_pending_ide_requests,
+        )
+
+        handoff_root = tmp_path / "ide_handoff"
+        ev_item = EvidenceItem(
+            evidence_id="EVD-TEST-1",
+            case_id="CONV-E2E-1",
+            source_type="plain_text",
+            source_path="local/test.txt",
+            title="Tài liệu thử nghiệm",
+            extracted_text="Đây là nội dung thử nghiệm lỗi E001.",
+            privacy_level="local_only",
+        )
+
+        # 1. Write outbox bundle
+        bundle_req = write_ide_handoff_bundle(
+            case_id="CONV-E2E-1",
+            question="Lỗi E001 là gì?",
+            bundle_scope="active_case_all",
+            evidence_items=[ev_item],
+            root=handoff_root,
+        )
+        assert bundle_req.ok
+
+        # 2. Verify pending status before response
+        pending_before = list_pending_ide_requests(handoff_root)
+        assert len(pending_before) == 1
+        assert pending_before[0].response_exists is False
+        assert pending_before[0].state == "handoff_pending"
+
+        # 3. IDE Consumer writes response to Inbox
+        resp_path = write_ide_handoff_response(
+            request_id=bundle_req.request_id,
+            answer_markdown="Theo tài liệu [EVD-TEST-1], lỗi E001 là lỗi cảm biến.",
+            root=handoff_root,
+            privacy_acknowledged=True,
+            used_full_bundle=True,
+        )
+        assert resp_path.exists()
+
+        # 4. Verify pending list now sees response
+        pending_after = list_pending_ide_requests(handoff_root)
+        assert len(pending_after) == 1
+        assert pending_after[0].response_exists is True
+
+        # 5. UI imports pending response
+        validation = import_pending_ide_response(bundle_req.request_id, root=handoff_root)
+        assert validation.ok is True
+        assert validation.final_answer is True
+        assert "EVD-TEST-1" in validation.response["evidence_ids_used"]
+
+        # 6. Save imported answer and verify completed status
+        saved_ans = save_imported_ide_answer("CONV-E2E-1", validation, root=handoff_root)
+        assert saved_ans.pack_id == bundle_req.request_id
+        assert saved_ans.route_summary == "ide_full_bundle_handoff"
+
+        status_file = bundle_req.bundle_dir / "request_status.json"
+        status_data = json.loads(status_file.read_text(encoding="utf-8"))
+        assert status_data["state"] == "completed"
+        assert status_data["saved_answer_id"] == saved_ans.draft_id

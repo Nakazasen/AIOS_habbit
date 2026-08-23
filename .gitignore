@@ -95,3 +95,7 @@ config/workspace_chat_rag_v2.local.json
 tailieugoc/
 
 graphify-out/
+
+# Ephemeral multi-agent workspaces and local scratch investigations
+/.agents/*/
+/scratch/

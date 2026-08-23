@@ -2,6 +2,7 @@ import pytest
 import os
 import tempfile
 import json
+import time
 from unittest.mock import patch, MagicMock
 from pathlib import Path
 import streamlit as st
@@ -17,7 +18,7 @@ from aios_habit.workspace_chat_models import (
     SOURCE_SCOPE_NOTEBOOK
 )
 import aios_habit.workspace_chat_store as store
-from aios_habit.workspace_chat_ui import render_source_library
+from aios_habit.workspace_chat_ui import render_source_library, render_document_manager
 
 @pytest.fixture
 def temp_workspace(monkeypatch):
@@ -100,10 +101,17 @@ class MockStreamlit:
         class MockColumn:
             def __enter__(self): return self
             def __exit__(self, exc_type, exc_val, exc_tb): pass
-        return [MockColumn() for _ in range(spec)]
+        count = len(spec) if isinstance(spec, (list, tuple)) else int(spec)
+        return [MockColumn() for _ in range(count)]
 
     def warning(self, text, *args, **kwargs):
         self.calls.append(("warning", str(text)))
+
+    def divider(self, *args, **kwargs):
+        self.calls.append(("divider", ""))
+
+    def fragment(self, *args, **kwargs):
+        return lambda render_function: render_function
 
 @pytest.fixture
 def mock_st(monkeypatch):
@@ -120,6 +128,8 @@ def mock_st(monkeypatch):
     monkeypatch.setattr(st, "text_input", mock.text_input)
     monkeypatch.setattr(st, "columns", mock.columns)
     monkeypatch.setattr(st, "warning", mock.warning)
+    monkeypatch.setattr(st, "divider", mock.divider)
+    monkeypatch.setattr(st, "fragment", mock.fragment)
     monkeypatch.setattr(st, "session_state", mock.session_state)
     return mock
 
@@ -130,7 +140,7 @@ def test_delete_temporary_source(temp_workspace):
     store.save_temporary_source(ts2)
     store.set_source_enabled("C1", SOURCE_SCOPE_TEMPORARY, "TS1", True)
     store.set_source_enabled("C1", SOURCE_SCOPE_TEMPORARY, "TS2", True)
-    
+
     assert store.delete_temporary_source("TS1") is True
     sources = store.load_all_temporary_sources()
     assert len(sources) == 1
@@ -146,7 +156,7 @@ def test_delete_notebook_source(temp_workspace):
     store.save_notebook_source(ns2)
     store.set_source_enabled("C1", SOURCE_SCOPE_NOTEBOOK, "NS1", True)
     store.set_source_enabled("C1", SOURCE_SCOPE_NOTEBOOK, "NS2", True)
-    
+
     assert store.delete_notebook_source("NS1") is True
     sources = store.load_all_notebook_sources()
     assert len(sources) == 1
@@ -169,7 +179,7 @@ def test_delete_temporary_source_preserves_parent_data(temp_workspace):
     store.save_temporary_source(ts2)
 
     assert store.delete_temporary_source("TS1") is True
-    
+
     assert len(store.load_notebooks()) > 0
     assert len(store.load_all_conversations()) == 1
     assert len(store.load_messages("C1")) == 1
@@ -233,7 +243,7 @@ def test_individual_toggle_callback(mock_st):
         toggled.append((scope, source_id, enabled))
 
     mock_st.widget_states["wsc_toggle_notebook_conv_1_src_1"] = True
-    
+
     render_source_library(
         notebook_sources=notebook_sources,
         temp_sources=[],
@@ -244,13 +254,81 @@ def test_individual_toggle_callback(mock_st):
         on_privacy_save=lambda *a: None,
         on_delete_source=lambda *a: None,
     )
-    
+
     checkbox_calls = [c for c in mock_st.calls if c[0] == "checkbox" and c[3] == "wsc_toggle_notebook_conv_1_src_1"]
     assert len(checkbox_calls) == 1
     on_change_cb = checkbox_calls[0][4]
-    
+
     mock_st.session_state["wsc_toggle_notebook_conv_1_src_1"] = True
     on_change_cb()
-    
+
     assert len(toggled) == 1
     assert toggled[0] == ("notebook", "src_1", True)
+
+
+def test_document_manager_shows_two_scopes_and_bulk_actions(mock_st):
+    notebook_sources = [NotebookSource(id="nb-src", notebook_id="nb-1", title="Quy trình", source_type="pdf", content_preview="Nội dung")]
+    temp_sources = [TemporaryConversationSource(id="temp-src", conversation_id="conv-1", title="Ảnh lỗi", source_type="png", content_preview="Ảnh chụp")]
+
+    render_document_manager(
+        notebook_sources=notebook_sources,
+        temporary_sources=temp_sources,
+        selections_map={("notebook", "nb-src"): True, ("temporary", "temp-src"): False},
+        conversation_id="conv-1",
+        on_toggle_source=lambda *args: None,
+        on_delete_source=lambda *args: None,
+        on_delete_sources=lambda *args: None,
+        on_promote_temporary=lambda *args: None,
+        on_privacy_save=lambda *args: None,
+    )
+
+    rendered = " ".join(call[1] for call in mock_st.calls if len(call) > 1)
+    assert "Nguồn tạm của cuộc trò chuyện này" in rendered
+    assert "Tài liệu của sổ" in rendered
+    assert "Xóa nguồn tạm của cuộc trò chuyện" in rendered
+    assert "Xóa tài liệu của cả sổ" in rendered
+    assert "Ảnh lỗi" in rendered
+    assert "Quy trình" in rendered
+
+
+def test_document_manager_bulk_enable_updates_every_source(mock_st):
+    notebook_sources = [
+        NotebookSource(id="nb-1", notebook_id="nb", title="SOP 1", source_type="pdf", content_preview=""),
+        NotebookSource(id="nb-2", notebook_id="nb", title="SOP 2", source_type="pdf", content_preview=""),
+    ]
+    toggled = []
+    mock_st.widget_states["wsc_document_enable_all_notebook_conv-1"] = True
+
+    render_document_manager(
+        notebook_sources=notebook_sources,
+        temporary_sources=[],
+        selections_map={},
+        conversation_id="conv-1",
+        on_toggle_source=lambda scope, source_id, enabled: toggled.append((scope, source_id, enabled)),
+        on_delete_source=lambda *args: None,
+        on_delete_sources=lambda *args: None,
+        on_promote_temporary=lambda *args: None,
+        on_privacy_save=lambda *args: None,
+    )
+
+    assert toggled == [("notebook", "nb-1", True), ("notebook", "nb-2", True)]
+    assert mock_st.session_state["wsc_document_toggle_notebook_conv-1_nb-1"] is True
+    assert mock_st.session_state["wsc_document_toggle_notebook_conv-1_nb-2"] is True
+
+
+def test_document_manager_hides_expired_undo_control(mock_st):
+    render_document_manager(
+        notebook_sources=[],
+        temporary_sources=[],
+        selections_map={},
+        conversation_id="conv-1",
+        on_toggle_source=lambda *args: None,
+        on_delete_source=lambda *args: None,
+        on_delete_sources=lambda *args: None,
+        on_promote_temporary=lambda *args: None,
+        on_privacy_save=lambda *args: None,
+        undo_expires_at=time.time() - 1,
+        on_undo_delete=lambda: None,
+    )
+
+    assert not any(call[0] == "button" and call[1] == "↩️ Khôi phục" for call in mock_st.calls)

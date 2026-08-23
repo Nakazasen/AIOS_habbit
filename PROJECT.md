@@ -1,57 +1,58 @@
-# Project: AIOS_habbit MOM System Upgrade & Standardization
+# Project: Antigravity Truthful Bridge
 
 ## Architecture
-AIOS_habbit is an enterprise AI assistant and knowledge retrieval system for factory and operations management (MOM / MES / WMS).
-The architecture comprises:
-- **MOM Search & Retrieval Engine** (`src/aios_habit/mom_local_index.py`, `src/aios_habit/mom_coverage.py`): In-memory indexing and BM25 / TF-IDF ranking over local operational documents (PDFs, HTML ERDs, Excel specifications).
-- **Multi-Format Extraction Pipeline** (`src/aios_habit/excel_extractors.py`, `src/aios_habit/document_extractors.py`): Deep tabular and document extractors supporting streaming row-chunking, multi-level headers, and OCR/image extraction.
-- **Dynamic Evidence & Synthesis Subsystem** (`src/aios_habit/rag_v2/evidence.py`, `src/aios_habit/rag_v2/synthesis.py`, `src/aios_habit/claim_guard.py`): Fail-closed dynamic evidence evaluation and abstention without fact leakage or canned templates.
-- **Reporting & Evaluation Workflows** (`scripts/generate_ai_grounded_report.py`, `scripts/run_workspace_chat_12_questions.py`): Live benchmark evaluation over 12 standard operational queries.
+The Antigravity Truthful Bridge provides an honest, non-facade integration between AIOS Habit Workspace Chat and the Antigravity IDE environment on the local machine. It implements a dual-mode strategy:
+1. **Direct Adapter Mode**: Active only when a genuine, locally verified Antigravity IDE protocol endpoint is confirmed (`direct_ready`). If no verified protocol exists, it reports `unavailable` (never simulated).
+2. **Asynchronous Handoff Mode**: Outbox/Inbox file-based bundle protocol (`handoff_ready`, `handoff_pending`, `completed`, `failed`) using `local_runs/ide_handoff/` with strict schema validation (`ide_handoff_response_v1`), SHA-256 bundle verification, and citation bounds checking.
+3. **Finite State Machine (FSM)**: 6 distinct states (`unavailable`, `direct_ready`, `handoff_ready`, `handoff_pending`, `completed`, `failed`).
+4. **Strict Fail-Closed Policy**: If Antigravity is chosen and fails or times out, the system reports the error directly to the user. It NEVER silently delegates to `RealWorkspaceAIProviderClient` or Smart Router.
+5. **Privacy & Security**: Zero transmission of `local_only` context to cloud endpoints; zero leakage of prompts, documents, tokens, or private paths into log streams.
+
+## Code Layout
+- `scripts/antigravity_sidecar_daemon.py`: Sidecar daemon providing local `/health` and truthful endpoint handling without fake loopbacks.
+- `src/aios_habit/antigravity_bridge.py`: Bridge client, FSM health parsing, status polling, and truthful citation management.
+- `src/aios_habit/ide_handoff_bridge.py`: Outbox/Inbox bundle generation, SHA-256 hashing, schema validation, and lifecycle transition tracking.
+- `src/aios_habit/ai_provider_bridge.py`: AI provider routing ensuring strict fail-closed behavior for Antigravity provider.
+- `src/aios_habit/workspace_chat_app.py` & `src/aios_habit/workspace_chat_ui.py`: UI status display, honest attribution ("Nguồn AI: Antigravity IDE"), handoff pending state display ("Đang chờ Antigravity IDE xử lý"), and refresh handling.
+- `tests/test_antigravity_bridge.py`: Unit and integration tests for bridge health, FSM, direct mode, Tier 5 hardening, and fail-closed logic.
+- `tests/test_antigravity_handoff_ui_flow.py`: Tests for handoff lifecycle, UI state transitions, outbox/inbox flow, and Tier 5 adversarial stress tests.
+- `specs/antigravity-truthful-bridge/`: Spec Kit artifacts (`spec.md`, `plan.md`, `tasks.md`).
 
 ## Feature Inventory
 | # | Feature | Description | Milestone | Source |
 |---|---|---|---|---|
-| F1 | MOM Search Hardcode Removal | Remove `q1_terms`, `q2_terms`, `q3_terms`, artificial query boosts, and `-50.0` score penalty on `erd_kho_van_new.html` | M1 | ORIGINAL_REQUEST §R1 |
-| F2 | BM25 / TF-IDF Hybrid Search | Implement objective in-memory BM25 ranker with CJK sub-tokenization, document length normalization, and exact phrase bonus | M1 | ORIGINAL_REQUEST §R1 |
-| F3 | Excel Hard Limit Removal | Remove `max_rows_per_sheet = 1000` and `max_non_empty_cells = 20_000` hard caps in `ExcelExtractionConfig` | M2 | ORIGINAL_REQUEST §R2 |
-| F4 | Streaming Row-Chunking | Implement table partitioning into 500-row chunks with repeated hierarchical headers, `chunk_index`, and exact `row_range` | M2 | ORIGINAL_REQUEST §R2 |
-| F5 | Remove Canned Answer Dictionaries | Remove `POLISHED_ANSWERS`, static scores, and latencies from `scripts/generate_ai_grounded_report.py` | M3 | ORIGINAL_REQUEST §R3 |
-| F6 | Dynamic Abstention Integration | Replace canned refusal strings and query overrides in `scripts/run_workspace_chat_12_questions.py` with dynamic `synthesize_evidence()` abstention | M3 | ORIGINAL_REQUEST §R3 |
-| F7 | MOM Search Integrity Tests | Test MOM search without hardcoded heuristics and verify objective ranking across queries | M4 | ORIGINAL_REQUEST §R4 |
-| F8 | Large Excel Chunking Tests | Automated tests verifying >1,500 row Excel spreadsheets are extracted across chunks with repeated headers and zero data loss | M4 | ORIGINAL_REQUEST §R4 |
-| F9 | Dynamic Abstention Verification Tests | Automated tests verifying dynamic refusal generation and lack of static `POLISHED_ANSWERS` | M4 | ORIGINAL_REQUEST §R4 |
-| F10 | 100% Pytest Pass Rate | Verify zero failures and zero errors across the entire repository test suite | M4 | ORIGINAL_REQUEST §R4 |
+| 1 | Honest Health & FSM | 6-state FSM (`unavailable`, `direct_ready`, `handoff_ready`, `handoff_pending`, `completed`, `failed`), sanitized failure reasons, no fake capabilities | M1 | R1 |
+| 2 | Sidecar Loopback Purge | Eliminate `RealWorkspaceAIProviderClient` and fake mock responses from sidecar daemon | M1 | R1 |
+| 3 | Citation Integrity | Remove automatic citation fabrication (`allowed_source_ids[0]`), enforce genuine evidence citations | M1, M2 | R1, R2 |
+| 4 | Outbox/Inbox Lifecycle | File-based bundle creation with unique ID, SHA-256 hash, timeout tracking, state transitions | M2 | R2 |
+| 5 | Schema Validation | Strict validation of `RESPONSE_SCHEMA_VERSION = "ide_handoff_response_v1"`, privacy flag, and citation scope | M2 | R2 |
+| 6 | Workspace Chat Submission Flow | Route chat query to direct adapter (if `direct_ready`) or create handoff bundle (`handoff_pending`), displaying "Đang chờ Antigravity IDE xử lý" | M3 | R3 |
+| 7 | Strict Fail-Closed Enforcement | On bridge error or timeout, return explicit error to user; 0 calls to Smart Router / `RealWorkspaceAIProviderClient` | M3 | R3 |
+| 8 | Honest UI Attribution & Refresh | Display "Nguồn AI: Antigravity IDE" only on genuine Antigravity responses; global status "Cầu nối sẵn sàng" with mode; accurate UI refresh | M3 | R3 |
+| 9 | RAG vs Bridge Separation | Clear boundary between notebook document selection warnings vs AI provider bridge status | M3 | R3 |
+| 10 | Security, Privacy & Sanitization | Block `local_only` cloud dispatch; sanitize logs (no prompt/doc/token/private path leakage) | M1, M2, M3 | R4 |
+| 11 | Spec Kit & Governance | Spec Kit artifacts (`spec.md`, `plan.md`, `tasks.md`), `.antigravityrules` compliance, graphify update | M4 | R5 |
+| 12 | Comprehensive Test Suite & Hardening | Pass 100% pytest suite, adversarial coverage audit, forensic integrity verification | M5 | Verification |
 
 ## Milestones
 | # | Name | Scope | Dependencies | Status |
 |---|---|---|---|---|
-| 1 | M1: MOM Search Standardization | Refactor `src/aios_habit/mom_local_index.py` to remove hardcodes and implement objective BM25 | none | PLANNED |
-| 2 | M2: Excel Streaming Row-Chunking | Refactor `src/aios_habit/excel_extractors.py` and `src/aios_habit/document_extractors.py` | none | PLANNED |
-| 3 | M3: Dynamic Abstention & Script Cleanup | Refactor `scripts/generate_ai_grounded_report.py` and `scripts/run_workspace_chat_12_questions.py` | none | PLANNED |
-| 4 | M4: Comprehensive E2E & Regression Suite | Add new unit/integration tests in `tests/` and verify full suite passes 100% | M1, M2, M3 | PLANNED |
+| M1 | Protocol Verification, Health FSM & Sidecar Cleanup | Clean sidecar daemon, FSM `/health`, eliminate fake capabilities & loopbacks, privacy sanitization | none | **DONE** |
+| M2 | Asynchronous Handoff Lifecycle & Schema Validation | Outbox/Inbox bundle generation, lifecycle transitions, timeout handling, schema & citation validation | M1 | **DONE** |
+| M3 | Workspace Chat Integration & Strict Fail-Closed Policy | UI submission wiring, pending status, fail-closed enforcement, honest attribution, RAG separation | M1, M2 | **DONE** |
+| M4 | Spec Kit Artifacts & Repository Governance | Create `specs/antigravity-truthful-bridge/` (`spec.md`, `plan.md`, `tasks.md`), run graphify updates | M1, M2, M3 | **DONE** |
+| M5 | Final Milestone: E2E Verification & Hardening | 100% pytest pass rate, adversarial challenger hardening (Tier 5), forensic integrity audit | M1, M2, M3, M4 | **DONE** |
 
 ## Interface Contracts
-### `mom_local_index.py` ↔ Callers (`mom_coverage.py`, `mom_benchmark.py`, `tests/`)
-- Function: `search_mom_index(query: str, limit: int = 5, index_path: str | Path = INDEX_FILE) -> list[MomSearchHit]`
-- Structure: `MomSearchHit(score: float, matched_terms: list[str], chunk: MomChunk)`
-- Scoring semantics: Non-negative BM25 / TF-IDF score based strictly on query term overlap, term frequency, inverse document frequency, and exact phrase bonus.
+### Sidecar ↔ Bridge Client
+- Endpoint `/health`:
+  - Request: `GET /health`
+  - Response JSON: `{"status": "<fsm_status>", "mode": "<direct|handoff|none>", "capabilities": [...], "reason": "<sanitized_reason_or_empty>"}`
+  - Allowed status values: `unavailable`, `direct_ready`, `handoff_ready`, `handoff_pending`, `completed`, `failed`.
 
-### `excel_extractors.py` ↔ Callers (`document_extractors.py`, `rag_v2/converters.py`)
-- Dataclass: `ExcelTableRegion(sheet: str, cell_range: str, headers: list[str], header_rows: list[list[str]], row_range: tuple[int, int], rows: list[list[Any]], chunk_index: int = 0, total_chunks: int = 1)`
-- Dataclass: `ExcelExtractionConfig(..., max_rows_per_sheet: int | None = None, max_non_empty_cells: int | None = None, chunk_row_size: int = 500, enable_row_chunking: bool = True, repeat_headers_in_chunks: bool = True)`
-
-### `run_workspace_chat_12_questions.py` & `generate_ai_grounded_report.py` ↔ `rag_v2`
-- Function: `synthesize_evidence(pack: EvidencePack) -> LocalSynthesisResult`
-- Behavior: Queries with insufficient ground truth produce `LocalSynthesisResult(abstained=True, grounded=False)` with structured `"KHÔNG ĐỦ BẰNG CHỨNG:"` output.
-
-## Code Layout
-- `src/aios_habit/mom_local_index.py`: In-memory MOM document indexing and BM25 search.
-- `src/aios_habit/excel_extractors.py`: Excel workbook extractor with streaming row-chunking.
-- `src/aios_habit/document_extractors.py`: Unified multi-modal document extraction adapter.
-- `scripts/generate_ai_grounded_report.py`: Grounded benchmark report generator.
-- `scripts/run_workspace_chat_12_questions.py`: End-to-end evaluation runner.
-- `tests/test_mom_local_pilot.py`: MOM local index pilot tests.
-- `tests/test_mom_pdf_ingestion_retrieval.py`: MOM retrieval ingestion tests.
-- `tests/test_document_extractors.py`: Document & Excel extractor unit tests.
-- `tests/test_workspace_chat_excel_ingest.py`: Workspace chat excel ingestion tests.
-- `tests/test_mom_upgrade_acceptance.py`: Comprehensive acceptance test suite for R1–R4.
+### Handoff Bundle Contract
+- Request Bundle (`local_runs/ide_handoff/outbox/<request_id>/`):
+  - `manifest.json`, `question.md`, `prompt.md`, `prompt_for_antigravity.md`, `evidence_full.jsonl`, `evidence_full.md`, `source_manifest.json`, `completeness.json`, `request_status.json`.
+- Response File (`local_runs/ide_handoff/inbox/<request_id>/response.json`):
+  - Schema version: `ide_handoff_response_v1`
+  - Fields: `request_id`, `schema_version`, `status` ("completed"|"failed"), `answer_markdown`, `answer_text`, `model_tool_name`, `privacy_acknowledged`, `evidence_ids_used`, `used_full_bundle`.

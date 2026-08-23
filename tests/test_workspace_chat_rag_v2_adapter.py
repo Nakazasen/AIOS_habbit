@@ -47,6 +47,28 @@ def test_canary_config_defaults_off_and_requires_explicit_enablement(monkeypatch
     assert not hasattr(config, "semantic_progressive")
 
 
+def test_forget_deleted_source_removes_materialized_text_and_readiness(tmp_path, monkeypatch):
+    config = adapter.WorkspaceChatRagV2CanaryConfig(enabled=False, runtime_root=tmp_path / "rag")
+    source = _source("Nội dung cần xóa")
+    document_id = adapter._document_id(source)
+    materialized = config.runtime_root / "materialized_sources" / f"{document_id}.txt"
+    materialized.parent.mkdir(parents=True)
+    materialized.write_text(source.text, encoding="utf-8")
+    key = adapter._preparation_key(config, source)
+    adapter._PREPARATION_REGISTRY[key] = adapter._preparation_entry(config, source, "ready")
+    deleted_document_ids = []
+    monkeypatch.setattr(
+        adapter._SUBPROCESS_CLIENT,
+        "delete_documents",
+        lambda document_ids: deleted_document_ids.extend(document_ids) or 3,
+    )
+
+    assert adapter.forget_workspace_chat_sources([source], config=config) == 3
+    assert not materialized.exists()
+    assert key not in adapter._PREPARATION_REGISTRY
+    assert deleted_document_ids == [document_id]
+
+
 def test_explicit_local_recovery_environment_can_enable_real_deep_search(monkeypatch, tmp_path):
     """The documented local override must carry the complete reranker pin."""
     monkeypatch.setattr(
@@ -94,6 +116,67 @@ def test_precise_operational_question_prepares_only_matching_sources():
     assert selected == (manual,)
 
 
+def test_preparation_scope_refuses_broad_question_for_large_source_set():
+    sources = tuple(
+        WorkspaceAIContextSource(
+            source_id=f"source-{index}", source_scope="notebook", source_type="txt",
+            title=f"Document {index}", privacy_label="local_only",
+            text=f"Operational content {index}.", included_chars=22, truncated=False,
+        )
+        for index in range(4)
+    )
+
+    scope = adapter.select_workspace_chat_preparation_scope("Giải thích giúp tôi", sources)
+
+    assert scope.bounded is False
+    assert scope.sources == ()
+    assert scope.reason == "question_too_broad"
+
+
+def test_preparation_scope_keeps_precise_question_bounded():
+    manual = WorkspaceAIContextSource(
+        source_id="manual", source_scope="notebook", source_type="txt",
+        title="Matecon manual", privacy_label="local_only",
+        text="Manual Matecon controls ACR and CTU.", included_chars=37, truncated=False,
+    )
+    sources = (manual,) + tuple(
+        WorkspaceAIContextSource(
+            source_id=f"source-{index}", source_scope="notebook", source_type="txt",
+            title=f"Other document {index}", privacy_label="local_only",
+            text=f"Unrelated finance procedure {index}.", included_chars=30, truncated=False,
+        )
+        for index in range(3)
+    )
+
+    scope = adapter.select_workspace_chat_preparation_scope(
+        "Chế độ Manual Matecon ACR/CTU hoạt động như thế nào?", sources,
+    )
+
+    assert scope.bounded is True
+    assert scope.sources == (manual,)
+    assert scope.reason == "matched_sources"
+
+
+def test_preparation_scope_can_limit_interactive_preparation_to_one_source():
+    primary = WorkspaceAIContextSource(
+        source_id="primary", source_scope="notebook", source_type="pdf",
+        title="Matecon network connection", privacy_label="local_only",
+        text="Matecon network connection configuration.", included_chars=40, truncated=False,
+    )
+    secondary = WorkspaceAIContextSource(
+        source_id="secondary", source_scope="notebook", source_type="pdf",
+        title="Matecon network guide", privacy_label="local_only",
+        text="Matecon network connection guide.", included_chars=32, truncated=False,
+    )
+
+    scope = adapter.select_workspace_chat_preparation_scope(
+        "Matecon network connection", (primary, secondary), limit=1
+    )
+
+    assert scope.bounded is True
+    assert len(scope.sources) == 1
+
+
 def test_existing_complete_semantic_index_is_ready_after_process_restart(monkeypatch, tmp_path):
     config = _semantic_config(tmp_path)
     source = _source("Already indexed BGE source.")
@@ -126,6 +209,9 @@ def test_feature_flag_off_returns_no_evidence(tmp_path: Path):
     assert result["summary_count"] == 0
     assert result["evidence_items"] == []
     assert result["rag_v2_canary"]["backend"] == "unavailable"
+    assert adapter.get_workspace_chat_source_preparation_status(
+        (source,), config=config
+    ) == {"temporary:source-1": "unavailable"}
 
 
 def test_explicit_deep_never_silently_degrades_to_hybrid(tmp_path: Path):
@@ -311,6 +397,8 @@ def test_activated_manifest_is_authoritative_over_legacy_environment(
 def test_invalid_activated_manifest_returns_no_evidence_without_legacy(
     monkeypatch,
 ):
+    monkeypatch.setenv(adapter.LOCAL_PILOT_ENABLED_ENV, "0")
+
     def fail_manifest(**_kwargs):
         raise adapter.DeploymentManifestError(
             r"checksum mismatch at C:\private\owner\model"
@@ -327,6 +415,32 @@ def test_invalid_activated_manifest_returns_no_evidence_without_legacy(
     assert result["rag_v2_canary"]["backend"] == "unavailable"
     assert result["rag_v2_canary"]["fallback_applied"] is False
     assert "private" not in str(result["rag_v2_canary"])
+
+
+def test_explicit_local_pilot_can_recover_when_historical_manifest_is_invalid(
+    monkeypatch,
+    tmp_path: Path,
+):
+    monkeypatch.setattr(
+        adapter,
+        "load_workspace_chat_rag_v2_deployment",
+        lambda **_kwargs: (_ for _ in ()).throw(
+            adapter.DeploymentManifestError("deployment_evidence_report_unavailable")
+        ),
+    )
+
+    config = adapter.WorkspaceChatRagV2CanaryConfig.from_env(
+        {
+            adapter.LOCAL_PILOT_ENABLED_ENV: "1",
+            adapter.CANARY_ENABLED_ENV: "1",
+            adapter.BGE_MODEL_PATH_ENV: str(tmp_path / "bge-m3"),
+            adapter.BGE_MODEL_REVISION_ENV: "test-revision",
+            adapter.BGE_MODEL_CHECKSUM_ENV: "sha256:" + "a" * 64,
+        }
+    )
+
+    assert config.enabled is True
+    assert config.bge_m3_model_path == tmp_path / "bge-m3"
 
 
 def test_activated_runtime_failure_never_falls_back(tmp_path: Path):
@@ -1232,3 +1346,555 @@ def test_adapter_degraded_reranker_telemetry_and_safe_owner_copy(tmp_path, monke
     assert telemetry["effective_profile"] == "bge_m3_hybrid"
     assert "Đã tìm kỹ" not in result["safe_owner_message"]
     assert "Đã dùng 2 đoạn liên quan từ 1 nguồn." == result["safe_owner_message"]
+
+
+def test_sqlite_preparation_ledger_crud_and_schema(tmp_path: Path):
+    config = _enabled_config(tmp_path)
+    db_path = adapter._get_ledger_db_path(config)
+    adapter._init_preparation_ledger_db(db_path)
+
+    row = adapter.SourcePreparationLedgerRow(
+        source_scope="temporary",
+        source_id="src-101",
+        source_fingerprint="fp-101",
+        model_id="BAAI/bge-m3",
+        model_revision=config.bge_m3_model_revision,
+        state=adapter.PREP_STATE_PENDING,
+        priority=adapter.PREP_PRIORITY_NORMAL,
+        document_id="doc-101",
+        created_at=100.0,
+        updated_at=100.0,
+    )
+    adapter._upsert_ledger_row(db_path, row)
+
+    loaded = adapter._load_ledger_row(db_path, "temporary", "src-101")
+    assert loaded is not None
+    assert loaded.source_id == "src-101"
+    assert loaded.state == adapter.PREP_STATE_PENDING
+    assert loaded.priority == adapter.PREP_PRIORITY_NORMAL
+
+
+def test_sqlite_stale_processing_recovery_on_startup(tmp_path: Path):
+    config = _enabled_config(tmp_path)
+    db_path = adapter._get_ledger_db_path(config)
+
+    # Insert row directly in processing state
+    adapter._init_preparation_ledger_db(db_path)
+    row = adapter.SourcePreparationLedgerRow(
+        source_scope="temporary",
+        source_id="src-stale",
+        source_fingerprint="fp-stale",
+        model_id="BAAI/bge-m3",
+        model_revision=config.bge_m3_model_revision,
+        state=adapter.PREP_STATE_PROCESSING,
+        priority=adapter.PREP_PRIORITY_NORMAL,
+        document_id="doc-stale",
+        created_at=50.0,
+        updated_at=50.0,
+    )
+    adapter._upsert_ledger_row(db_path, row)
+
+    # Re-init simulates process restart
+    adapter._init_preparation_ledger_db(db_path)
+    recovered = adapter._load_ledger_row(db_path, "temporary", "src-stale")
+    assert recovered is not None
+    assert recovered.state == adapter.PREP_STATE_PENDING
+
+
+def test_sqlite_preparation_priority_ordering_and_atomic_claim(tmp_path: Path):
+    config = _enabled_config(tmp_path)
+    db_path = adapter._get_ledger_db_path(config)
+    adapter._init_preparation_ledger_db(db_path)
+
+    # Insert normal, backfill, interactive items
+    for sid, prio, ts in [
+        ("src-normal", adapter.PREP_PRIORITY_NORMAL, 10.0),
+        ("src-backfill", adapter.PREP_PRIORITY_BACKFILL, 5.0),
+        ("src-interactive", adapter.PREP_PRIORITY_INTERACTIVE, 20.0),
+    ]:
+        adapter._upsert_ledger_row(
+            db_path,
+            adapter.SourcePreparationLedgerRow(
+                source_scope="temporary",
+                source_id=sid,
+                source_fingerprint=f"fp-{sid}",
+                model_id="BAAI/bge-m3",
+                model_revision=config.bge_m3_model_revision,
+                state=adapter.PREP_STATE_PENDING,
+                priority=prio,
+                document_id=f"doc-{sid}",
+                created_at=ts,
+                updated_at=ts,
+            ),
+        )
+
+    # First claim should get interactive
+    item1 = adapter._claim_next_preparation_item(
+        db_path, "BAAI/bge-m3", config.bge_m3_model_revision
+    )
+    assert item1 is not None
+    assert item1.source_id == "src-interactive"
+    assert item1.state == adapter.PREP_STATE_PROCESSING
+
+    # While item1 is processing, next claim returns the same active item (single worker lock)
+    item_dup = adapter._claim_next_preparation_item(
+        db_path, "BAAI/bge-m3", config.bge_m3_model_revision
+    )
+    assert item_dup is not None
+    assert item_dup.source_id == "src-interactive"
+
+    # Commit item1 as ready
+    adapter._commit_preparation_result(
+        db_path, "temporary", "src-interactive", adapter.PREP_STATE_READY
+    )
+
+    # Next claim gets normal
+    item2 = adapter._claim_next_preparation_item(
+        db_path, "BAAI/bge-m3", config.bge_m3_model_revision
+    )
+    assert item2 is not None
+    assert item2.source_id == "src-normal"
+    adapter._commit_preparation_result(
+        db_path, "temporary", "src-normal", adapter.PREP_STATE_READY
+    )
+
+    # Next claim gets backfill
+    item3 = adapter._claim_next_preparation_item(
+        db_path, "BAAI/bge-m3", config.bge_m3_model_revision
+    )
+    assert item3 is not None
+    assert item3.source_id == "src-backfill"
+    adapter._commit_preparation_result(
+        db_path, "temporary", "src-backfill", adapter.PREP_STATE_READY
+    )
+
+    # Queue empty
+    item4 = adapter._claim_next_preparation_item(
+        db_path, "BAAI/bge-m3", config.bge_m3_model_revision
+    )
+    assert item4 is None
+
+
+def test_reconcile_and_enqueue_preserves_ready_and_deduplicates(tmp_path: Path, monkeypatch):
+    config = _enabled_config(tmp_path)
+    executor = _ImmediateExecutor()
+    monkeypatch.setattr(adapter, "_get_executor", lambda: executor)
+    source_ready = _source("Ready source content", privacy_label="local_only")
+    source_new = _source("New unread source content", privacy_label="local_only")
+    source_new = adapter.WorkspaceAIContextSource(
+        source_id="src-new",
+        source_scope="temporary",
+        source_type="pasted_text",
+        title="new.txt",
+        privacy_label="local_only",
+        text="New unread source content",
+        included_chars=24,
+        truncated=False,
+    )
+
+    db_path = adapter._get_ledger_db_path(config)
+    adapter._init_preparation_ledger_db(db_path)
+    # Seed source_ready in ledger as ready
+    adapter._upsert_ledger_row(
+        db_path,
+        adapter.SourcePreparationLedgerRow(
+            source_scope=source_ready.source_scope,
+            source_id=source_ready.source_id,
+            source_fingerprint=adapter._source_fingerprint(source_ready),
+            model_id="BAAI/bge-m3",
+            model_revision=config.bge_m3_model_revision,
+            state=adapter.PREP_STATE_READY,
+            priority=adapter.PREP_PRIORITY_NORMAL,
+            document_id=adapter._document_id(source_ready),
+            created_at=10.0,
+            updated_at=10.0,
+        ),
+    )
+
+    # Reconcile both sources
+    count = adapter.reconcile_and_enqueue_workspace_chat_sources(
+        (source_ready, source_new),
+        config=config,
+    )
+    # Only source_new needed enqueue
+    assert count == 1
+
+
+def test_promote_priority_to_interactive(tmp_path: Path):
+    config = _enabled_config(tmp_path)
+    db_path = adapter._get_ledger_db_path(config)
+    adapter._init_preparation_ledger_db(db_path)
+
+    adapter._upsert_ledger_row(
+        db_path,
+        adapter.SourcePreparationLedgerRow(
+            source_scope="temporary",
+            source_id="src-pending",
+            source_fingerprint="fp-pending",
+            model_id="BAAI/bge-m3",
+            model_revision=config.bge_m3_model_revision,
+            state=adapter.PREP_STATE_PENDING,
+            priority=adapter.PREP_PRIORITY_NORMAL,
+            document_id="doc-pending",
+            created_at=10.0,
+            updated_at=10.0,
+        ),
+    )
+
+    promoted = adapter.promote_workspace_chat_source_priority(
+        "temporary", "src-pending", adapter.PREP_PRIORITY_INTERACTIVE, config=config
+    )
+    assert promoted is True
+
+    row = adapter._load_ledger_row(db_path, "temporary", "src-pending")
+    assert row is not None
+    assert row.priority == adapter.PREP_PRIORITY_INTERACTIVE
+
+
+def test_get_workspace_chat_preparation_summary_aggregate(tmp_path: Path):
+    config = _enabled_config(tmp_path)
+    db_path = adapter._get_ledger_db_path(config)
+    adapter._init_preparation_ledger_db(db_path)
+
+    src1 = _source("Content 1")
+    src2 = adapter.WorkspaceAIContextSource(
+        source_id="src-2",
+        source_scope="temporary",
+        source_type="pasted_text",
+        title="doc2.txt",
+        privacy_label="local_only",
+        text="Content 2",
+        included_chars=9,
+        truncated=False,
+    )
+    src3 = adapter.WorkspaceAIContextSource(
+        source_id="src-3",
+        source_scope="temporary",
+        source_type="pasted_text",
+        title="doc3.txt",
+        privacy_label="local_only",
+        text="Content 3",
+        included_chars=9,
+        truncated=False,
+    )
+
+    adapter._upsert_ledger_row(
+        db_path,
+        adapter.SourcePreparationLedgerRow(
+            source_scope=src1.source_scope,
+            source_id=src1.source_id,
+            source_fingerprint=adapter._source_fingerprint(src1),
+            model_id="BAAI/bge-m3",
+            model_revision=config.bge_m3_model_revision,
+            state=adapter.PREP_STATE_READY,
+            priority=adapter.PREP_PRIORITY_NORMAL,
+            document_id=adapter._document_id(src1),
+            created_at=10.0,
+            updated_at=10.0,
+        ),
+    )
+    adapter._upsert_ledger_row(
+        db_path,
+        adapter.SourcePreparationLedgerRow(
+            source_scope=src2.source_scope,
+            source_id=src2.source_id,
+            source_fingerprint=adapter._source_fingerprint(src2),
+            model_id="BAAI/bge-m3",
+            model_revision=config.bge_m3_model_revision,
+            state=adapter.PREP_STATE_PENDING,
+            priority=adapter.PREP_PRIORITY_NORMAL,
+            document_id=adapter._document_id(src2),
+            created_at=10.0,
+            updated_at=10.0,
+        ),
+    )
+    adapter._PREPARATION_REGISTRY[adapter._preparation_key(config, src2)] = (
+        adapter._preparation_entry(config, src2, adapter.PREP_STATE_PROCESSING)
+    )
+    adapter._upsert_ledger_row(
+        db_path,
+        adapter.SourcePreparationLedgerRow(
+            source_scope=src3.source_scope,
+            source_id=src3.source_id,
+            source_fingerprint=adapter._source_fingerprint(src3),
+            model_id="BAAI/bge-m3",
+            model_revision=config.bge_m3_model_revision,
+            state=adapter.PREP_STATE_FAILED,
+            priority=adapter.PREP_PRIORITY_NORMAL,
+            last_error="backend_timeout",
+            document_id=adapter._document_id(src3),
+            created_at=10.0,
+            updated_at=10.0,
+        ),
+    )
+
+    summary = adapter.get_workspace_chat_preparation_summary(
+        (src1, src2, src3), config=config
+    )
+    assert summary["total"] == 3
+    assert summary["ready"] == 1
+    assert summary["processing"] == 1
+    assert summary["failed"] == 1
+    assert summary["bge_available"] is True
+    assert "BGE-M3: 1/3 sẵn sàng" in summary["summary_text"]
+    assert "đang đọc doc2.txt" in summary["summary_text"]
+    assert "1 lỗi" in summary["summary_text"]
+
+
+def test_forget_sources_deletes_ledger_rows(tmp_path: Path):
+    config = _enabled_config(tmp_path)
+    db_path = adapter._get_ledger_db_path(config)
+    adapter._init_preparation_ledger_db(db_path)
+
+    src = _source("To be deleted")
+    adapter._upsert_ledger_row(
+        db_path,
+        adapter.SourcePreparationLedgerRow(
+            source_scope=src.source_scope,
+            source_id=src.source_id,
+            source_fingerprint=adapter._source_fingerprint(src),
+            model_id="BAAI/bge-m3",
+            model_revision=config.bge_m3_model_revision,
+            state=adapter.PREP_STATE_READY,
+            priority=adapter.PREP_PRIORITY_NORMAL,
+            document_id=adapter._document_id(src),
+            created_at=10.0,
+            updated_at=10.0,
+        ),
+    )
+
+    assert adapter._load_ledger_row(db_path, src.source_scope, src.source_id) is not None
+    adapter.forget_workspace_chat_sources((src,), config=config)
+    assert adapter._load_ledger_row(db_path, src.source_scope, src.source_id) is None
+
+
+def test_background_drain_queue_three_sources_sequential(tmp_path: Path, monkeypatch):
+    config = _enabled_config(tmp_path)
+    db_path = adapter._get_ledger_db_path(config)
+    adapter._init_preparation_ledger_db(db_path)
+
+    prepared_sources = []
+    def fake_prepare(sources, *, config=None):
+        for s in sources:
+            prepared_sources.append(s.source_id)
+            key = adapter._preparation_key(config, s)
+            adapter._PREPARATION_REGISTRY[key] = adapter._preparation_entry(config, s, adapter.PREP_STATE_READY)
+        return len(sources)
+
+    monkeypatch.setattr(adapter, "prepare_workspace_chat_sources", fake_prepare)
+    monkeypatch.setattr(adapter, "start_workspace_chat_background_drain", lambda *a, **kw: None)
+
+    src1 = adapter.WorkspaceAIContextSource(
+        source_id="src-1", source_scope="temporary", source_type="pasted_text",
+        title="doc1.txt", privacy_label="local_only", text="Content 1", included_chars=9, truncated=False
+    )
+    src2 = adapter.WorkspaceAIContextSource(
+        source_id="src-2", source_scope="temporary", source_type="pasted_text",
+        title="doc2.txt", privacy_label="local_only", text="Content 2", included_chars=9, truncated=False
+    )
+    src3 = adapter.WorkspaceAIContextSource(
+        source_id="src-3", source_scope="temporary", source_type="pasted_text",
+        title="doc3.txt", privacy_label="local_only", text="Content 3", included_chars=9, truncated=False
+    )
+
+    enqueued = adapter.reconcile_and_enqueue_workspace_chat_sources(
+        (src1, src2, src3), config=config, priority=adapter.PREP_PRIORITY_NORMAL
+    )
+    assert enqueued == 3
+
+    adapter._drain_preparation_queue(config)
+
+    assert len(prepared_sources) == 3
+    for s in (src1, src2, src3):
+        row = adapter._load_ledger_row(db_path, s.source_scope, s.source_id)
+        assert row is not None
+        assert row.state == adapter.PREP_STATE_READY
+
+
+def test_background_drain_queue_upload_race_condition(tmp_path: Path, monkeypatch):
+    config = _enabled_config(tmp_path)
+    db_path = adapter._get_ledger_db_path(config)
+    adapter._init_preparation_ledger_db(db_path)
+
+    prepared_sources = []
+    def fake_prepare(sources, *, config=None):
+        for s in sources:
+            prepared_sources.append(s.source_id)
+            key = adapter._preparation_key(config, s)
+            adapter._PREPARATION_REGISTRY[key] = adapter._preparation_entry(config, s, adapter.PREP_STATE_READY)
+        return len(sources)
+
+    monkeypatch.setattr(adapter, "prepare_workspace_chat_sources", fake_prepare)
+    monkeypatch.setattr(adapter, "start_workspace_chat_background_drain", lambda *a, **kw: None)
+
+    src1 = adapter.WorkspaceAIContextSource(
+        source_id="src-1", source_scope="temporary", source_type="pasted_text",
+        title="doc1.txt", privacy_label="local_only", text="Content 1", included_chars=9, truncated=False
+    )
+    src2 = adapter.WorkspaceAIContextSource(
+        source_id="src-2", source_scope="temporary", source_type="pasted_text",
+        title="doc2.txt", privacy_label="local_only", text="Content 2", included_chars=9, truncated=False
+    )
+
+    adapter.reconcile_and_enqueue_workspace_chat_sources((src1, src2), config=config)
+    adapter._drain_preparation_queue(config)
+    assert len(prepared_sources) == 2
+
+    src3 = adapter.WorkspaceAIContextSource(
+        source_id="src-3", source_scope="temporary", source_type="pasted_text",
+        title="doc3.txt", privacy_label="local_only", text="Content 3", included_chars=9, truncated=False
+    )
+    adapter.reconcile_and_enqueue_workspace_chat_sources((src3,), config=config)
+    adapter._drain_preparation_queue(config)
+
+    assert len(prepared_sources) == 3
+    row3 = adapter._load_ledger_row(db_path, src3.source_scope, src3.source_id)
+    assert row3 is not None
+    assert row3.state == adapter.PREP_STATE_READY
+
+
+def test_background_drain_true_concurrency_race_condition(tmp_path: Path, monkeypatch):
+    """Test true concurrent multi-threaded enqueueing while background worker is draining."""
+    import threading
+    import time
+
+    config = _enabled_config(tmp_path)
+    db_path = adapter._get_ledger_db_path(config)
+    adapter._init_preparation_ledger_db(db_path)
+
+    prepared_sources = []
+    prep_lock = threading.Lock()
+
+    def fake_prepare(sources, *, config=None):
+        time.sleep(0.01)  # simulated preparation delay
+        with prep_lock:
+            for s in sources:
+                prepared_sources.append(s.source_id)
+                key = adapter._preparation_key(config, s)
+                adapter._PREPARATION_REGISTRY[key] = adapter._preparation_entry(config, s, adapter.PREP_STATE_READY)
+        return len(sources)
+
+    monkeypatch.setattr(adapter, "prepare_workspace_chat_sources", fake_prepare)
+
+    sources = [
+        adapter.WorkspaceAIContextSource(
+            source_id=f"concurrent-src-{i}",
+            source_scope="temporary",
+            source_type="pasted_text",
+            title=f"doc_{i}.txt",
+            privacy_label="local_only",
+            text=f"Content for doc {i}",
+            included_chars=20,
+            truncated=False,
+        )
+        for i in range(10)
+    ]
+
+    def worker_producer(sub_sources):
+        for s in sub_sources:
+            time.sleep(0.005)
+            adapter.reconcile_and_enqueue_workspace_chat_sources((s,), config=config)
+
+    t1 = threading.Thread(target=worker_producer, args=(sources[:5],))
+    t2 = threading.Thread(target=worker_producer, args=(sources[5:],))
+
+    t1.start()
+    t2.start()
+    t1.join()
+    t2.join()
+
+    deadline = time.time() + 5.0
+    while time.time() < deadline:
+        with prep_lock:
+            if len(prepared_sources) == 10:
+                break
+        time.sleep(0.05)
+
+    with prep_lock:
+        assert len(prepared_sources) == 10, f"Expected 10 prepared sources, got {len(prepared_sources)}"
+
+    for s in sources:
+        row = adapter._load_ledger_row(db_path, s.source_scope, s.source_id)
+        assert row is not None
+        assert row.state == adapter.PREP_STATE_READY
+
+
+def test_drain_worker_double_check_lock_prevents_lost_enqueue_race(tmp_path: Path, monkeypatch):
+    """Deterministically exercise the double-check race condition window."""
+    import threading
+    import time
+
+    config = _enabled_config(tmp_path)
+    db_path = adapter._get_ledger_db_path(config)
+    adapter._init_preparation_ledger_db(db_path)
+
+    prepared_sources = []
+    def fake_prepare(sources, *, config=None):
+        for s in sources:
+            prepared_sources.append(s.source_id)
+            key = adapter._preparation_key(config, s)
+            adapter._PREPARATION_REGISTRY[key] = adapter._preparation_entry(config, s, adapter.PREP_STATE_READY)
+        return len(sources)
+
+    monkeypatch.setattr(adapter, "prepare_workspace_chat_sources", fake_prepare)
+
+    src1 = adapter.WorkspaceAIContextSource(
+        source_id="race-doc-1",
+        source_scope="temporary",
+        source_type="pasted_text",
+        title="doc_1.txt",
+        privacy_label="local_only",
+        text="Content 1",
+        included_chars=10,
+        truncated=False,
+    )
+    src2 = adapter.WorkspaceAIContextSource(
+        source_id="race-doc-2",
+        source_scope="temporary",
+        source_type="pasted_text",
+        title="doc_2.txt",
+        privacy_label="local_only",
+        text="Content 2",
+        included_chars=10,
+        truncated=False,
+    )
+
+    orig_claim = adapter._claim_next_preparation_item
+    first_empty_seen = threading.Event()
+    second_item_enqueued = threading.Event()
+
+    def instrumented_claim(p_db_path, model_id, model_revision):
+        res = orig_claim(p_db_path, model_id, model_revision)
+        if res is None and not first_empty_seen.is_set():
+            first_empty_seen.set()
+            second_item_enqueued.wait(timeout=2.0)
+        return res
+
+    monkeypatch.setattr(adapter, "_claim_next_preparation_item", instrumented_claim)
+
+    def producer_thread():
+        first_empty_seen.wait(timeout=2.0)
+        adapter.reconcile_and_enqueue_workspace_chat_sources((src2,), config=config)
+        second_item_enqueued.set()
+
+    t_prod = threading.Thread(target=producer_thread, daemon=True)
+    t_prod.start()
+
+    adapter.reconcile_and_enqueue_workspace_chat_sources((src1,), config=config)
+
+    t_prod.join(timeout=3.0)
+
+    deadline = time.time() + 5.0
+    while time.time() < deadline:
+        if len(prepared_sources) == 2:
+            break
+        time.sleep(0.05)
+
+    assert "race-doc-1" in prepared_sources
+    assert "race-doc-2" in prepared_sources
+    assert len(prepared_sources) == 2
+
+    row1 = adapter._load_ledger_row(db_path, src1.source_scope, src1.source_id)
+    row2 = adapter._load_ledger_row(db_path, src2.source_scope, src2.source_id)
+    assert row1 is not None and row1.state == adapter.PREP_STATE_READY
+    assert row2 is not None and row2.state == adapter.PREP_STATE_READY

@@ -14,6 +14,7 @@ def test_owner_workflow_cli_fake_data_is_read_only():
         check=True,
         capture_output=True,
         text=True,
+        timeout=30.0,
     )
     payload = json.loads(result.stdout)
     assert payload["status"] == "PASS"
@@ -36,6 +37,7 @@ def test_owner_workflow_cli_default_real_data_local_only_mode():
         check=True,
         capture_output=True,
         text=True,
+        timeout=30.0,
     )
     payload = json.loads(result.stdout)
     assert payload["mode"] == "real_data_local_only"

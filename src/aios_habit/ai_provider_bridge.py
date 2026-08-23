@@ -301,22 +301,24 @@ def answer_with_provider(
     if config.provider_type in ("antigravity_if_available", "antigravity_ide_brain"):
         from aios_habit.antigravity_bridge import (
             DEFAULT_ANTIGRAVITY_ENDPOINT,
-            is_antigravity_bridge_available,
+            get_antigravity_bridge_health,
         )
         if not config.endpoint_url:
             config.endpoint_url = DEFAULT_ANTIGRAVITY_ENDPOINT
-        if not config.model_name:
-            config.model_name = "antigravity-brain-pro"
         health_url = (
             config.endpoint_url.replace("/v1/chat/completions", "/health")
             .replace("/chat/completions", "/health")
         )
-        if not is_antigravity_bridge_available(health_url=health_url):
-            return _fallback(
-                deterministic_answer,
-                config,
-                "Chưa phát hiện API/Sidecar runtime của Antigravity IDE.",
-                "antigravity_runtime_unavailable",
+        health = get_antigravity_bridge_health(health_url=health_url)
+        if not health.is_available:
+            return ProviderResult(
+                ok=False,
+                answer_text="",
+                provider_name=config.provider_type,
+                model_name=config.model_name,
+                error_message=f"Antigravity Bridge không khả dụng ({health.status}): {health.reason}",
+                used_fallback=False,
+                safety_status="antigravity_runtime_unavailable",
             )
     if not config.endpoint_url or not config.model_name:
         return _fallback(
@@ -353,6 +355,16 @@ def answer_with_provider(
         error_detail = type(exc).__name__
         if isinstance(exc, urllib.error.HTTPError):
             error_detail = f"HTTP {exc.code}"
+        if config.provider_type in ("antigravity_if_available", "antigravity_ide_brain"):
+            return ProviderResult(
+                ok=False,
+                answer_text="",
+                provider_name=config.provider_type,
+                model_name=config.model_name,
+                error_message=f"Nguồn AI không phản hồi: {error_detail}.",
+                used_fallback=False,
+                safety_status="fallback_provider_error",
+            )
         return _fallback(
             deterministic_answer,
             config,
@@ -366,6 +378,31 @@ def test_provider_connection(config: ProviderConfig) -> ProviderResult:
         return _fallback("", config, "Thiếu endpoint cục bộ hoặc tên mô hình.", "fallback_missing_config")
     if config.locality != "local" or not is_local_endpoint(config.endpoint_url):
         return _fallback("", config, "Chỉ cho phép kiểm tra endpoint cục bộ/private.", "blocked_non_local_endpoint")
+    if config.provider_type in ("antigravity_if_available", "antigravity_ide_brain"):
+        from aios_habit.antigravity_bridge import get_antigravity_bridge_health
+
+        health_url = (
+            config.endpoint_url.replace("/v1/chat/completions", "/health")
+            .replace("/chat/completions", "/health")
+        )
+        health = get_antigravity_bridge_health(health_url=health_url)
+        if health.is_available:
+            return ProviderResult(
+                ok=True,
+                answer_text="OK",
+                provider_name=config.provider_type,
+                model_name=config.model_name,
+                safety_status="local_provider_ok",
+            )
+        return ProviderResult(
+            ok=False,
+            answer_text="",
+            provider_name=config.provider_type,
+            model_name=config.model_name,
+            error_message=f"Antigravity Bridge không khả dụng ({health.status}): {health.reason}",
+            used_fallback=False,
+            safety_status="antigravity_runtime_unavailable",
+        )
     try:
         answer = _post_chat(
             config,
@@ -432,7 +469,7 @@ class RealStrongProvider:
             if "_focus_note" in item.metadata:
                 focus_note = item.metadata["_focus_note"]
                 break
-                
+
         prompt = build_grounded_prompt(
             question=question,
             source_refs=source_refs,

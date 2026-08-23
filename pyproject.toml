@@ -64,3 +64,4 @@ where = ["src"]
 [tool.pytest.ini_options]
 pythonpath = ["src", "."]
 testpaths = ["tests"]
+faulthandler_timeout = 30

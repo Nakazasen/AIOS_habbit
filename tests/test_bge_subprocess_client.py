@@ -5,9 +5,31 @@ import tempfile
 from pathlib import Path
 import pytest
 
+from aios_habit.rag_v2 import bge_subprocess_client as client_module
 from aios_habit.rag_v2.bge_subprocess_client import BgeSubprocessWorkerClient
 from aios_habit.rag_v2.pipeline import RagV2DevConfig, SourceSpec
 from aios_habit.rag_v2.semantic import SemanticBackendError
+
+
+def test_client_uses_project_venv_when_ui_interpreter_lacks_bge_runtime(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    project_python = tmp_path / ".venv" / "Scripts" / "python.exe"
+    project_python.parent.mkdir(parents=True)
+    project_python.touch()
+    monkeypatch.setattr(client_module, "_current_interpreter_supports_bge_runtime", lambda: False)
+    monkeypatch.setattr(client_module, "_project_virtualenv_python", lambda: project_python)
+
+    client = BgeSubprocessWorkerClient()
+
+    assert client._python_executable == str(project_python)
+
+
+def test_explicit_worker_interpreter_is_never_overridden() -> None:
+    client = BgeSubprocessWorkerClient(python_executable="C:/custom/python.exe")
+
+    assert client._python_executable == "C:/custom/python.exe"
 
 
 def test_client_query_with_valid_routing_metadata(tmp_path: Path) -> None:

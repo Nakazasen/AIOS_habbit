@@ -1,29 +1,42 @@
-# E2E Test Infra: AIOS_habbit MOM System Upgrade
+# E2E Test Infra: Antigravity Truthful Bridge
 
 ## Test Philosophy
-- Opaque-box, requirement-driven, zero-regression.
-- Tiered testing strategy:
-  - **Tier 1: Feature Coverage** (MOM BM25 Search, Excel streaming chunking, Dynamic Abstention, Script live execution).
-  - **Tier 2: Boundary & Corner Cases** (>1,500 rows spreadsheets, empty sheets, single-row tables, multilingual Japanese/Vietnamese CJK queries, zero-match out-of-domain questions).
-  - **Tier 3: Cross-Feature Combinations** (Excel extraction -> RAG v2 converter -> Evidence packaging -> Dynamic synthesis).
-  - **Tier 4: Real-World Workload Scenarios** (12 benchmark questions execution, MOM pilot end-to-end question answering).
+- Opaque-box, requirement-driven testing covering all aspects of ORIGINAL_REQUEST.md.
+- Strict fail-closed verification: verifying that under failure conditions, zero calls to cloud LLMs or Smart Router occur.
+- Non-facade verification: verifying AST and runtime to ensure `RealWorkspaceAIProviderClient` is never invoked by the bridge or sidecar.
 
-## Feature Inventory Mapping
-| # | Feature | Source | Tier 1 | Tier 2 | Tier 3 | Tier 4 |
+## Feature Inventory & Test Mapping
+| # | Feature | Source | Tier 1 (Feature) | Tier 2 (Boundary) | Tier 3 (Cross) | Tier 4 (Scenario) |
 |---|---|---|:---:|:---:|:---:|:---:|
-| 1 | MOM BM25 Search without Hardcodes | ORIGINAL_REQUEST §R1 | ✓ | ✓ | ✓ | ✓ |
-| 2 | Excel Streaming Row-Chunking (>1500 rows) | ORIGINAL_REQUEST §R2 | ✓ | ✓ | ✓ | ✓ |
-| 3 | Dynamic Abstention & Canned Answers Removal | ORIGINAL_REQUEST §R3 | ✓ | ✓ | ✓ | ✓ |
-| 4 | 100% Pytest Pass Rate (Zero Regression) | ORIGINAL_REQUEST §R4 | ✓ | ✓ | ✓ | ✓ |
+| 1 | Health FSM States | R1 | 6 | 4 | 2 | 2 |
+| 2 | Sidecar Loopback Purge | R1 | 2 | 2 | 2 | 1 |
+| 3 | Citation Integrity | R1, R2 | 2 | 3 | 2 | 2 |
+| 4 | Outbox/Inbox Lifecycle | R2 | 4 | 4 | 3 | 3 |
+| 5 | Schema Validation | R2 | 3 | 4 | 2 | 2 |
+| 6 | Workspace Chat Routing | R3 | 3 | 3 | 3 | 3 |
+| 7 | Strict Fail-Closed Policy | R3 | 3 | 3 | 2 | 2 |
+| 8 | Honest UI Attribution | R3 | 3 | 2 | 2 | 2 |
+| 9 | Privacy & Sanitization | R4 | 3 | 3 | 2 | 2 |
+| 10 | Governance & Spec Kit | R5 | 2 | 1 | 1 | 1 |
 
 ## Test Architecture
-- Framework: `pytest`
-- Execution: `pytest tests/ -v`
-- New Dedicated Acceptance Test File: `tests/test_mom_upgrade_acceptance.py`
-  - `test_r1_mom_search_no_hardcoded_heuristics()`
-  - `test_r1_mom_search_objective_ranking_and_cjk_support()`
-  - `test_r2_excel_streaming_chunking_over_1500_rows()`
-  - `test_r2_excel_repeated_headers_on_all_chunks()`
-  - `test_r3_no_canned_answers_in_generate_ai_grounded_report()`
-  - `test_r3_dynamic_abstention_on_unanswerable_queries()`
-  - `test_r4_full_regression_suite_integrity()`
+- Test Runner: `.venv\Scripts\python.exe -m pytest`
+- Test Files:
+  - `tests/test_antigravity_bridge.py`: Health FSM, direct mode adapter, sidecar loopback check, privacy sanitization.
+  - `tests/test_antigravity_handoff_ui_flow.py`: Handoff bundle creation, schema v1 validation, timeout handling, UI state transitions, fail-closed assertions.
+  - `tests/test_ai_provider_bridge.py` & `tests/test_ide_handoff_bridge.py`: Outbox/Inbox IO, citations, and provider routing.
+
+## Test Tier Definitions
+- **Tier 1 (Feature Coverage)**: Basic happy-path tests for each FSM state, handoff bundle creation, schema check, UI attribution, log redaction.
+- **Tier 2 (Boundary & Corner Cases)**: Malformed JSON, corrupted bundle, invalid citations, zero allowed sources, timeout expiration, invalid schema versions.
+- **Tier 3 (Cross-Feature Combinations)**: Direct unavailable transitioning to Outbox handoff; pending handoff transition to completed on response import; fail-closed under sidecar crash.
+- **Tier 4 (Real-World Application Scenarios)**: End-to-end user chat query in Workspace Chat with `local_only` notebook documents routed through Antigravity handoff, completed response rendered with "Nguồn AI: Antigravity IDE", and 0 leakage of private data.
+- **Tier 5 (Adversarial Coverage Hardening)**: White-box challenger stress tests to probe all unexercised branch conditions.
+
+## Coverage Thresholds
+- Tier 1: ≥30 tests
+- Tier 2: ≥25 tests
+- Tier 3: ≥15 tests
+- Tier 4: ≥5 scenarios
+- Total: ≥75 assertions across test suites
+- Target: 100% pytest pass rate

@@ -1,5 +1,19 @@
 # AIOS Habit Architecture
 
+## Workspace Chat: chuẩn bị nguồn tăng dần (2026-08-22)
+
+- Mỗi nguồn mới chỉ được đưa vào hàng đợi lập chỉ mục riêng sau khi đọc file thành công;
+  không đọc lại cả thư viện khi người dùng thêm một tài liệu.
+- Nếu người dùng hỏi trong lúc tài liệu liên quan đang chuẩn bị, hệ thống chỉ chọn một tài
+  liệu khớp nhất. Câu hỏi và lựa chọn nguồn được giữ tối đa 5 phút, có thể hủy, rồi tự tiếp
+  tục đúng một lần khi chính tài liệu đó sẵn sàng.
+- Độ sẵn sàng được kiểm tra và tìm kiếm bằng cùng một tập nguồn. Không được chọn lại từ toàn
+  bộ thư viện sau khi báo câu hỏi đã sẵn sàng, vì điều đó tạo lỗi chờ rồi thất bại mâu thuẫn.
+- Câu hỏi quá rộng không được phép kích hoạt lập chỉ mục hàng loạt. Người dùng phải nêu tên
+  hệ thống/tài liệu hoặc chọn rõ nguồn, trừ khi toàn bộ nguồn đã sẵn sàng từ trước.
+- Khi BGE-M3 chưa được triển khai hợp lệ, nguồn hiển thị `BGE-M3 chưa sẵn sàng`; ứng dụng
+  không tạo hàng đợi giả hoặc treo chờ vô hạn. Quy tắc fail-closed của truy xuất vẫn giữ nguyên.
+
 ## 1. Architectural Intent
 
 AIOS Habit được thiết kế như một **local-first, evidence-based, AI-independent personal memory platform**.

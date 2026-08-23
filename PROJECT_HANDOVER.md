@@ -1,9 +1,20 @@
 # Biên bản Bàn giao Dự án (Project Handover)
 
-Cập nhật: 2026-08-16
+Cập nhật: 2026-08-22
 Nguồn trạng thái chuẩn: [ROADMAP.md](ROADMAP.md) là nguồn trạng thái chuẩn duy nhất cho vòng đời các Gate; tệp này là ảnh chụp nhanh (snapshot) vận hành và không được tự ý chuyển các tuyên bố lịch sử thành tuyên bố phát hành hiện tại.
 
 ## Ảnh chụp trạng thái hiện tại (Current Snapshot)
+
+- **Chuẩn bị nguồn tăng dần (005):** Mã đã triển khai và 101 bài kiểm tra liên quan đã PASS:
+  nguồn mới được chuẩn bị riêng, câu hỏi chờ tự tiếp tục một lần sau khi nguồn sẵn sàng, và
+  câu hỏi quá rộng không kích hoạt đọc lại toàn bộ thư viện. Khi BGE-M3 không có deployment
+  hợp lệ, giao diện phải hiện rõ `BGE-M3 chưa sẵn sàng`, không được báo sẵn sàng giả.
+
+- **Sửa lỗi phạm vi câu hỏi chờ (005 follow-up):** Sau khi BGE-M3 được kích hoạt, lỗi thực tế
+  được xác định là UI chuẩn bị một phạm vi hẹp nhưng retrieval chọn lại từ toàn bộ nguồn bật.
+  Mã hiện dùng đúng một phạm vi (tối đa một tài liệu) từ chuẩn bị đến truy xuất, hiển thị số
+  lượng đang chuẩn bị và cho phép hủy câu hỏi chờ. 103 test liên quan PASS; browser smoke với
+  tài liệu thật vẫn là bước xác nhận còn lại.
 
 - **Giao diện chính (Primary UI):** Workspace Chat. Các tệp giao diện công khai của Case Cockpit cũ đang được cho dừng (retired), tuy nhiên các dịch vụ dùng chung dựa trên `case_store` vẫn có các luồng gọi trực tiếp và tuyệt đối không được xóa nếu chưa có kế hoạch di chuyển tách biệt.
 - **Git:** Nhánh `main...origin/main` hiện có một cây làm việc chưa commit đáng kể, bao gồm RAG, Workspace Chat, Antigravity, tài liệu và các bài kiểm thử. Cần bảo toàn các thay đổi hiện có; phân tách và đánh giá kỹ lưỡng trước khi đưa ra bất kỳ tuyên bố phát hành hoặc chạy benchmark nào.

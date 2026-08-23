@@ -1,5 +1,7 @@
 # AIOS WorkLens Roadmap
 
+| Chuẩn bị nguồn tăng dần cho Workspace Chat (005) | `IMPLEMENTED_PENDING_BROWSER_SMOKE` — chuẩn bị tối đa một nguồn khớp nhất cho câu hỏi mới; readiness và retrieval dùng cùng phạm vi; câu hỏi chờ có số lượng/hủy được; 103 test liên quan PASS. Browser smoke trên câu hỏi tài liệu thật còn cần xác nhận. |
+
 `ROADMAP.md` là **nguồn trạng thái canonical duy nhất** cho công việc hiện tại.
 Historical design/audit evidence nằm trong `docs/archive/`; không đọc nó như
 hướng dẫn vận hành hoặc status runtime.

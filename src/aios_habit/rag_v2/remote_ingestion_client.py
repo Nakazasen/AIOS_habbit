@@ -1,4 +1,4 @@
-﻿"""Resumable, checksum-verified transport for managed ingestion workers."""
+"""Resumable, checksum-verified transport for managed ingestion workers."""
 from __future__ import annotations
 import hashlib, json
 from pathlib import Path
@@ -9,7 +9,7 @@ class RemoteCapacityUnavailable(RemoteIngestionError): pass
 class RemoteIngestionClient:
     def __init__(self,base_url:str,token_provider:Callable[[],str],*,timeout_seconds:float=30.0,chunk_size:int=8*1024*1024): self.base_url=base_url.rstrip("/"); self.token_provider=token_provider; self.timeout_seconds=timeout_seconds; self.chunk_size=chunk_size
     def _json(self,method:str,path:str,payload:Mapping[str,Any]|None=None)->dict[str,Any]:
-        data=None if payload is None else json.dumps(dict(payload),separators=(",",":"),sort_keys=True).encode(); request=urllib.request.Request(self.base_url+path,data=data,method=method,headers={"Authorization":f"Bearer {self.token_provider()}","Content-Type":"application/json"})
+        data=None if payload is None else json.dumps(dict(payload),separators=(",",":"),sort_keys=True).encode(); request=urllib.request.Request(self.base_url+path,data=data,method=method,headers={"Authorization":f"Bearer {self.token_provider()}","Content-Type":"application/json","Connection":"close"})
         try:
             with urllib.request.urlopen(request,timeout=self.timeout_seconds) as response: return json.loads(response.read().decode())
         except urllib.error.HTTPError as exc:
@@ -24,7 +24,7 @@ class RemoteIngestionClient:
         with source.open("rb") as stream:
             stream.seek(offset)
             while block:=stream.read(self.chunk_size):
-                digest=hashlib.sha256(block).hexdigest(); request=urllib.request.Request(self.base_url+f"/v1/jobs/{job_id}/source",data=block,method="PATCH",headers={"Authorization":f"Bearer {self.token_provider()}","Content-Type":"application/octet-stream","Upload-Offset":str(offset),"Chunk-SHA256":digest})
+                digest=hashlib.sha256(block).hexdigest(); request=urllib.request.Request(self.base_url+f"/v1/jobs/{job_id}/source",data=block,method="PATCH",headers={"Authorization":f"Bearer {self.token_provider()}","Content-Type":"application/octet-stream","Upload-Offset":str(offset),"Chunk-SHA256":digest,"Connection":"close"})
                 try:
                     with urllib.request.urlopen(request,timeout=self.timeout_seconds) as response: acknowledged=int(response.headers.get("Upload-Offset",offset+len(block)))
                 except (urllib.error.URLError,TimeoutError) as exc: raise RemoteCapacityUnavailable("upload_interrupted") from exc
@@ -32,7 +32,7 @@ class RemoteIngestionClient:
                 offset=acknowledged
         return offset
     def download_bundle(self,job_id:str,destination:str|Path,*,expected_sha256:str)->Path:
-        destination=Path(destination); destination.parent.mkdir(parents=True,exist_ok=True); offset=destination.stat().st_size if destination.exists() else 0; request=urllib.request.Request(self.base_url+f"/v1/jobs/{job_id}/bundle",method="GET",headers={"Authorization":f"Bearer {self.token_provider()}","Range":f"bytes={offset}-"})
+        destination=Path(destination); destination.parent.mkdir(parents=True,exist_ok=True); offset=destination.stat().st_size if destination.exists() else 0; request=urllib.request.Request(self.base_url+f"/v1/jobs/{job_id}/bundle",method="GET",headers={"Authorization":f"Bearer {self.token_provider()}","Range":f"bytes={offset}-","Connection":"close"})
         try:
             with urllib.request.urlopen(request,timeout=self.timeout_seconds) as response,destination.open("ab") as stream:
                 while block:=response.read(self.chunk_size): stream.write(block)
