@@ -1497,6 +1497,15 @@ def test_app_hides_unavailable_deep_search_and_reports_the_real_reason():
     assert 'elif unavailable_reason == "runtimeerror"' in app_source
 
 
+def test_app_exposes_a_machine_local_deep_search_control():
+    app_source = Path("src/aios_habit/workspace_chat_app.py").read_text(encoding="utf-8")
+
+    assert "get_workspace_chat_deep_search_enabled_preference" in app_source
+    assert "set_workspace_chat_deep_search_enabled" in app_source
+    assert "wsc_deep_search_machine_setting" in app_source
+    assert "deep_search_machine_help" in app_source
+
+
 def test_e2e_sandbox_upload_new_source_transitions_from_pending_to_ready(tmp_path: Path, monkeypatch):
     """End-to-end sandbox test: newly uploaded file is scheduled, transitions from pending to ready in ledger and UI."""
     import aios_habit.workspace_chat_rag_v2_adapter as adapter

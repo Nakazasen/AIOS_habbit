@@ -132,6 +132,13 @@ RERANKER_MODEL_CHECKSUM_ENV = "AIOS_BGE_RERANKER_MODEL_CHECKSUM"
 DEEP_TIMEOUT_MS_ENV = "AIOS_WORKSPACE_RAG_V2_DEEP_TIMEOUT_MS"
 DEEP_RERANK_LIMIT_ENV = "AIOS_WORKSPACE_RAG_V2_DEEP_RERANK_LIMIT"
 
+# This preference deliberately lives next to the local Workspace Chat data,
+# not in .env. It lets an owner enable or disable the optional CPU reranker
+# from the UI without ever reading, exposing, or editing provider secrets.
+DEEP_SEARCH_LOCAL_SETTINGS_FILENAME = "rag_v2_local_settings.json"
+DEEP_SEARCH_LOCAL_SETTINGS_SCHEMA_VERSION = "1"
+DEEP_SEARCH_LOCAL_SETTINGS_KEY = "deep_search_enabled"
+
 _DEFAULT_RUNTIME_ROOT = Path("local_runs/workspace_chat_rag_v2_canary")
 _ALLOWED_PROFILES = frozenset({"bge_m3_hybrid"})
 _TRUE_VALUES = frozenset({"1", "true", "yes", "on"})
@@ -147,6 +154,59 @@ _SEMANTIC_SOURCE_STOP_WORDS = frozenset(
 # Corpus sources vary substantially in extraction cost; keep every IPC request
 # bounded to one document under the existing 90-second fail-closed deadline.
 _PREPARATION_BATCH_SIZE = 1
+
+
+def _deep_search_local_settings_path() -> Path:
+    """Return the ignored local settings file used by the Workspace Chat UI."""
+    # Import lazily so this adapter remains independent of chat persistence at
+    # module import time and in isolated RAG tests.
+    from aios_habit.workspace_chat_store import LOCAL_CHAT_DIR
+
+    return Path(LOCAL_CHAT_DIR) / DEEP_SEARCH_LOCAL_SETTINGS_FILENAME
+
+
+def _load_local_deep_search_override() -> Optional[bool]:
+    """Read a user-owned local override, if one has been saved from the UI."""
+    settings_path = _deep_search_local_settings_path()
+    try:
+        payload = json.loads(settings_path.read_text(encoding="utf-8"))
+    except (OSError, ValueError, TypeError):
+        return None
+    if not isinstance(payload, Mapping):
+        return None
+    enabled = payload.get(DEEP_SEARCH_LOCAL_SETTINGS_KEY)
+    return enabled if isinstance(enabled, bool) else None
+
+
+def get_workspace_chat_deep_search_enabled_preference() -> bool:
+    """Return the effective machine-local deep-search preference for the UI."""
+    saved_override = _load_local_deep_search_override()
+    if saved_override is not None:
+        return saved_override
+    try:
+        return WorkspaceChatRagV2CanaryConfig.from_env().adaptive_enabled
+    except (DeploymentManifestError, ValueError):
+        return False
+
+
+def set_workspace_chat_deep_search_enabled(enabled: bool) -> None:
+    """Persist a non-secret, machine-local UI preference atomically.
+
+    ``local_cases/`` is ignored by Git, so this records only the user's
+    choice on this computer and never changes the repository or .env.
+    """
+    settings_path = _deep_search_local_settings_path()
+    settings_path.parent.mkdir(parents=True, exist_ok=True)
+    payload = {
+        "schema_version": DEEP_SEARCH_LOCAL_SETTINGS_SCHEMA_VERSION,
+        DEEP_SEARCH_LOCAL_SETTINGS_KEY: bool(enabled),
+    }
+    temporary_path = settings_path.with_suffix(f"{settings_path.suffix}.tmp")
+    temporary_path.write_text(
+        json.dumps(payload, ensure_ascii=False, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+    os.replace(temporary_path, settings_path)
 
 
 @dataclass(frozen=True)
@@ -219,6 +279,12 @@ class WorkspaceChatRagV2CanaryConfig:
             except Exception:
                 pass
         values = os.environ if env is None else env
+        # Explicit env mappings are used by tests and diagnostic tools, so
+        # they must remain deterministic. Only the live application honours
+        # a preference explicitly saved through its local UI.
+        local_deep_search_override = (
+            _load_local_deep_search_override() if env is None else None
+        )
         try:
             deployment = load_workspace_chat_rag_v2_deployment(
                 env=values,
@@ -242,7 +308,11 @@ class WorkspaceChatRagV2CanaryConfig:
                 bge_m3_model_checksum=deployment.model_checksum,
                 retrieval_device=deployment.retrieval_device,
                 fail_closed_on_error=True,
-                adaptive_enabled=bool(getattr(deployment, "adaptive_enabled", False)),
+                adaptive_enabled=(
+                    local_deep_search_override
+                    if local_deep_search_override is not None
+                    else bool(getattr(deployment, "adaptive_enabled", False))
+                ),
                 bge_reranker_model_path=getattr(deployment, "reranker_path", None),
                 bge_reranker_model_revision=str(getattr(deployment, "reranker_revision", "") or ""),
                 bge_reranker_model_checksum=str(getattr(deployment, "reranker_checksum", "") or ""),
@@ -254,8 +324,10 @@ class WorkspaceChatRagV2CanaryConfig:
 
         model_path = str(values.get(BGE_MODEL_PATH_ENV, "") or "").strip()
         reranker_path = str(values.get(RERANKER_MODEL_PATH_ENV, "") or "").strip()
-        adaptive_enabled = _env_bool(
-            values.get(ADAPTIVE_ENABLED_ENV), default=False
+        adaptive_enabled = (
+            local_deep_search_override
+            if local_deep_search_override is not None
+            else _env_bool(values.get(ADAPTIVE_ENABLED_ENV), default=False)
         )
         return cls(
             enabled=_env_bool(values.get(CANARY_ENABLED_ENV), default=False),

@@ -266,6 +266,40 @@ def test_deep_search_availability_requires_a_pinned_local_reranker(tmp_path: Pat
     assert availability.available is True
 
 
+def test_local_deep_search_preference_overrides_env_without_editing_env(tmp_path: Path, monkeypatch):
+    """The UI setting is local, non-secret, and takes precedence at runtime."""
+    settings_path = tmp_path / "workspace_chat" / "rag_v2_local_settings.json"
+    monkeypatch.setattr(adapter, "_deep_search_local_settings_path", lambda: settings_path)
+    monkeypatch.setattr(adapter, "load_workspace_chat_rag_v2_deployment", lambda **_kwargs: None)
+    monkeypatch.setenv(adapter.CANARY_ENABLED_ENV, "1")
+    monkeypatch.setenv(adapter.ADAPTIVE_ENABLED_ENV, "1")
+
+    adapter.set_workspace_chat_deep_search_enabled(False)
+
+    assert settings_path.is_file()
+    assert json.loads(settings_path.read_text(encoding="utf-8")) == {
+        "deep_search_enabled": False,
+        "schema_version": "1",
+    }
+    assert adapter.get_workspace_chat_deep_search_enabled_preference() is False
+    assert adapter.WorkspaceChatRagV2CanaryConfig.from_env().adaptive_enabled is False
+
+
+def test_explicit_env_is_not_affected_by_local_deep_search_preference(tmp_path: Path, monkeypatch):
+    """Tests and diagnostic commands retain their explicit configuration."""
+    settings_path = tmp_path / "workspace_chat" / "rag_v2_local_settings.json"
+    monkeypatch.setattr(adapter, "_deep_search_local_settings_path", lambda: settings_path)
+    monkeypatch.setattr(adapter, "load_workspace_chat_rag_v2_deployment", lambda **_kwargs: None)
+    adapter.set_workspace_chat_deep_search_enabled(False)
+
+    explicit = adapter.WorkspaceChatRagV2CanaryConfig.from_env({
+        adapter.CANARY_ENABLED_ENV: "1",
+        adapter.ADAPTIVE_ENABLED_ENV: "1",
+    })
+
+    assert explicit.adaptive_enabled is True
+
+
 def test_missing_bge_pins_fail_closed_and_schedule_preparation(monkeypatch, tmp_path: Path):
     source = _source("ORCHID-731 là mã duy nhất của hồ sơ này.")
     executor = _ImmediateExecutor()

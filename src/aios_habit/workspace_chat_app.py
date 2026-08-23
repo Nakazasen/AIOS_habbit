@@ -331,6 +331,8 @@ from aios_habit.workspace_chat_rag_v2_adapter import (
     get_workspace_chat_source_preparation_status,
     get_workspace_chat_preparation_summary,
     get_workspace_chat_deep_search_availability,
+    get_workspace_chat_deep_search_enabled_preference,
+    set_workspace_chat_deep_search_enabled,
     reconcile_and_enqueue_workspace_chat_sources,
     promote_workspace_chat_source_priority,
     forget_workspace_chat_sources,
@@ -1024,6 +1026,28 @@ else:
     st.sidebar.subheader(f"💬 {t('conversations', locale=current_ui_locale)}")
 
     conversations = load_conversations(active_nb_id)
+
+    with st.sidebar.expander(
+        f"⚙️ {t('deep_search_machine_settings', locale=current_ui_locale)}",
+        expanded=False,
+    ):
+        current_deep_search_setting = get_workspace_chat_deep_search_enabled_preference()
+        requested_deep_search_setting = st.checkbox(
+            t('deep_search_machine_toggle', locale=current_ui_locale),
+            value=current_deep_search_setting,
+            key="wsc_deep_search_machine_setting",
+            help=t('deep_search_machine_help', locale=current_ui_locale),
+        )
+        st.caption(t('deep_search_machine_help', locale=current_ui_locale))
+        if requested_deep_search_setting != current_deep_search_setting:
+            set_workspace_chat_deep_search_enabled(requested_deep_search_setting)
+            st.session_state.wsc_action_message = t(
+                'deep_search_machine_enabled'
+                if requested_deep_search_setting
+                else 'deep_search_machine_disabled',
+                locale=current_ui_locale,
+            )
+            safe_rerun()
 
     if st.sidebar.button(f"➕ {t('create_conversation', locale=current_ui_locale)}", key="btn_create_conv", use_container_width=True):
         create_conversation_callback(active_nb_id, ui_locale=current_ui_locale, answer_language=current_answer_language)
