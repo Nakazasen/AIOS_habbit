@@ -1,7 +1,7 @@
 # Specification Quality Checklist: Evidence-Based Chunking Evaluation
 
-**Purpose**: Validate specification completeness and quality before planning  
-**Created**: 2026-08-24  
+**Purpose**: Validate specification completeness and quality before planning
+**Created**: 2026-08-24
 **Feature**: [spec.md](../spec.md)
 
 ## Content Quality
