@@ -430,14 +430,18 @@ def test_excel_upload_passive_rerun_does_not_extract_or_persist():
             self.extracts_outside_submit = 0
 
         def visit_If(self, node):
-            is_submit_if = (
+            is_submit_if = False
+            if (
                 isinstance(node.test, ast.Call)
                 and isinstance(node.test.func, ast.Attribute)
                 and node.test.func.attr == "form_submit_button"
-                and node.test.args
-                and isinstance(node.test.args[0], ast.Constant)
-                and node.test.args[0].value == "Đọc và thêm vào nguồn tạm"
-            )
+                and len(node.test.args) >= 1
+            ):
+                first_arg = node.test.args[0]
+                if isinstance(first_arg, ast.Call) and getattr(first_arg.func, "id", "") == "t":
+                    if first_arg.args and isinstance(first_arg.args[0], ast.Constant) and first_arg.args[0].value == "btn_read_add_temp_source":
+                        is_submit_if = True
+
             if is_submit_if:
                 self.submit_depth += 1
             self.generic_visit(node)
@@ -629,7 +633,7 @@ def test_safe_test_data_generation_uses_app_helper_without_real_store_writes(tmp
     assert selections[0].enabled is True
 
     app_source = Path("src/aios_habit/workspace_chat_app.py").read_text(encoding="utf-8")
-    assert "Tạo dữ liệu test không mật" in app_source
+    assert "demo_create_test_data" in app_source
     assert "create_safe_test_data(active_conversation.id)" in app_source
 
     assert not (tmp_path / ".ai").exists()
@@ -811,7 +815,7 @@ def test_phase2h_quick_paste_empty_rejected():
     quick_block = app_source[quick_start:quick_end]
 
     assert "quick_content.strip()" in quick_block
-    assert 'Nội dung không được để trống.' in quick_block
+    assert 'content_cannot_be_empty' in quick_block
     assert "_submit_pasted_source" in quick_block
 
 
@@ -875,7 +879,7 @@ def test_phase2i_source_creation_forms_call_production_helpers_with_privacy_choi
     assert "quick_privacy_choice = render_privacy_choice" in quick_block
     assert "_submit_pasted_source" in quick_block
     assert "quick_privacy_choice" in quick_block
-    paste_block = app_source[app_source.index("paste_log_form"):app_source.index("Tạo dữ liệu test không mật", app_source.index("paste_log_form"))]
+    paste_block = app_source[app_source.index("paste_log_form"):app_source.index("tab_image", app_source.index("paste_log_form"))]
     assert "paste_privacy_choice = render_privacy_choice" in paste_block
     assert "_submit_pasted_source" in paste_block
     assert "paste_privacy_choice" in paste_block
@@ -1393,7 +1397,7 @@ def test_app_never_sends_full_sources_when_quality_retrieval_is_unavailable():
     provider_idx = app_source.index("generate_workspace_ai_answer", unavailable_idx)
     branch_end = app_source.index('elif ret_res["summary_count"] == 0:', unavailable_idx)
 
-    assert "Câu hỏi chưa được gửi tới AI" in app_source[unavailable_idx:branch_end]
+    assert "no_evidence_found_error" in app_source[unavailable_idx:branch_end]
     assert "retrieval_applied = False" not in app_source[unavailable_idx:branch_end]
     assert unavailable_idx < rerun_idx < provider_idx
 
@@ -1407,7 +1411,7 @@ def test_app_preparation_gate_is_scoped_to_query_relevant_sources():
     )
 
     assert "schedule_workspace_chat_source_preparation(query_relevant_sources)" in app_source[gate_idx:status_idx]
-    assert "Câu hỏi này còn quá rộng" in app_source[gate_idx:status_idx]
+    assert "broad_query_unready_error" in app_source[gate_idx:status_idx]
     assert gate_idx < status_idx
 
 
@@ -1430,10 +1434,10 @@ def test_app_keeps_a_pending_question_and_continues_it_once_sources_are_ready():
     assert "_new_pending_source_submission(" in app_source
     assert 'if pending_state == "ready":' in app_source
     assert "pending_auto_question =" in app_source
-    assert "AIOS đang tiếp tục câu hỏi của bạn" in app_source
+    assert "resumed_pending_question" in app_source
     assert "st.session_state.pop(_PENDING_SOURCE_SUBMISSION_KEY, None)" in app_source
     assert '"required_source_count": len(required_sources)' in app_source
-    assert "Hủy câu hỏi đang chờ" in app_source
+    assert "cancel_pending_question" in app_source
 
 
 def test_app_schedules_newly_uploaded_sources_without_bypassing_bge_gate():
@@ -1486,7 +1490,10 @@ def test_e2e_sandbox_upload_new_source_transitions_from_pending_to_ready(tmp_pat
     """End-to-end sandbox test: newly uploaded file is scheduled, transitions from pending to ready in ledger and UI."""
     import aios_habit.workspace_chat_rag_v2_adapter as adapter
     from aios_habit.workspace_chat_app import _workspace_context_sources
-    from aios_habit.workspace_chat_ui import render_preparation_progress_bar
+    from aios_habit.workspace_chat_ui import (
+        render_preparation_progress_bar,
+        format_preparation_summary_text,
+    )
 
     canary_dir = tmp_path / "canary_runtime"
     config = adapter.WorkspaceChatRagV2CanaryConfig(
@@ -1515,13 +1522,11 @@ def test_e2e_sandbox_upload_new_source_transitions_from_pending_to_ready(tmp_pat
     ctx_sources = _workspace_context_sources([], [new_src])
     assert len(ctx_sources) == 1
 
-    # Mock BGE prepare to simulate successful embedding
+    # Mock BGE prepare to simulate successful embedding execution
     prepared_items = []
     def fake_prepare(sources, *, config=None):
         for s in sources:
             prepared_items.append(s.source_id)
-            key = adapter._preparation_key(config, s)
-            adapter._PREPARATION_REGISTRY[key] = adapter._preparation_entry(config, s, adapter.PREP_STATE_READY)
         return len(sources)
 
     monkeypatch.setattr(adapter, "prepare_workspace_chat_sources", fake_prepare)
@@ -1547,7 +1552,8 @@ def test_e2e_sandbox_upload_new_source_transitions_from_pending_to_ready(tmp_pat
     assert final_summary["pending"] == 0
     assert final_summary["failed"] == 0
     assert final_summary["statuses"].get("temporary:upload_e2e_src_1") == "ready"
-    assert "1/1 sẵn sàng" in final_summary["summary_text"]
+    summary_text = format_preparation_summary_text(final_summary, locale="vi")
+    assert "1/1 sẵn sàng" in summary_text
 
     # 4. Verify SQLite ledger record
     row = adapter._load_ledger_row(db_path, "temporary", "upload_e2e_src_1")

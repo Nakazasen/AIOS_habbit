@@ -1631,14 +1631,16 @@ def test_get_workspace_chat_preparation_summary_aggregate(tmp_path: Path):
     summary = adapter.get_workspace_chat_preparation_summary(
         (src1, src2, src3), config=config
     )
+    from aios_habit.workspace_chat_ui import format_preparation_summary_text
+    summary_text = format_preparation_summary_text(summary, locale="vi")
     assert summary["total"] == 3
     assert summary["ready"] == 1
     assert summary["processing"] == 1
     assert summary["failed"] == 1
     assert summary["bge_available"] is True
-    assert "BGE-M3: 1/3 sẵn sàng" in summary["summary_text"]
-    assert "đang đọc doc2.txt" in summary["summary_text"]
-    assert "1 lỗi" in summary["summary_text"]
+    assert "BGE-M3: 1/3 sẵn sàng" in summary_text
+    assert "đang đọc doc2.txt" in summary_text
+    assert "1 lỗi" in summary_text
 
 
 def test_forget_sources_deletes_ledger_rows(tmp_path: Path):

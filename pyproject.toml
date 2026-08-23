@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "aios-habit"
 version = "0.1.0"
 description = "Local-first evidence-based personal memory platform"
-requires-python = ">=3.11, <3.13"
+requires-python = ">=3.11, <3.12"
 dependencies = [
     "streamlit>=1.30.0",
     "pandas>=2.0.0",
@@ -14,9 +14,14 @@ dependencies = [
     "pymupdf4llm>=1.28.0",
     "Pillow>=10.0.0",
     "pytesseract>=0.3.13",
-    "nakazasen-ai-router @ git+https://github.com/Nakazasen/nakazasen-ai-router.git@v0.8.0",
-    "graphifyy>=0.9.32",
+    "nakazasen-ai-router==0.8.0",
+    "graphifyy==0.9.32",
+    "excaliflow==0.1.1",
 ]
+
+[tool.uv.sources]
+nakazasen-ai-router = { path = "vendor/wheels/nakazasen_ai_router-0.8.0-py3-none-any.whl" }
+excaliflow = { path = "vendor/wheels/excaliflow-0.1.1-py3-none-any.whl" }
 
 [project.optional-dependencies]
 rag-semantic = [
@@ -47,12 +52,13 @@ document-deep-cpu = [
 ]
 document-offline-max = [
     "docling>=2.70.0,<3.0.0",
-    "marker-pdf>=1.10.0,<2.0.0",
+    "marker-pdf>=0.2.14,<0.3.0",
 ]
 
 [dependency-groups]
 dev = [
     "pytest>=8.0,<9.0",
+    "pyinstaller>=6.0.0",
 ]
 
 [project.scripts]
@@ -64,4 +70,7 @@ where = ["src"]
 [tool.pytest.ini_options]
 pythonpath = ["src", "."]
 testpaths = ["tests"]
-faulthandler_timeout = 30
+faulthandler_timeout = 900
+markers = [
+    "slow: marks tests as slow",
+]

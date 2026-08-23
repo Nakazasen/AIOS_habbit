@@ -409,11 +409,89 @@ def cmd_notebooklm_compare(args):
     return 2
 
 
+def launch_workspace_chat(port: int = 8501, host: str = "127.0.0.1", browser: bool = True) -> int:
+    """Launch the Workspace Chat Streamlit web application."""
+    import os
+    os.environ["STREAMLIT_GLOBAL_DEVELOPMENT_MODE"] = "false"
+    os.environ["STREAMLIT_SERVER_PORT"] = str(port)
+    os.environ["STREAMLIT_SERVER_ADDRESS"] = host
+    os.environ["STREAMLIT_SERVER_HEADLESS"] = "true" if not browser else "false"
+    os.environ["STREAMLIT_BROWSER_GATHER_USAGE_STATS"] = "false"
+
+    import aios_habit
+    if hasattr(sys, "_MEIPASS"):
+        base_dir = Path(sys._MEIPASS)
+        app_script = base_dir / "aios_habit" / "workspace_chat_app.py"
+    else:
+        app_script = Path(aios_habit.__file__).parent / "workspace_chat_app.py"
+
+    if not app_script.exists():
+        print(f"Error: Workspace chat app script not found at {app_script}", file=sys.stderr)
+        return 1
+
+    # Discover and verify BGE-M3 model pack
+    try:
+        from aios_habit.model_pack import resolve_bge_m3_model_path
+        model_path, model_status = resolve_bge_m3_model_path(auto_configure_env=True)
+        if model_path:
+            print(f"[AIOS WorkLens] BGE-M3 Model Pack verified: {model_path} ({model_status.get('checksum', '')})")
+        else:
+            print(f"[AIOS WorkLens] BGE-M3 Model Pack not active: {model_status.get('reason', 'unavailable')}. Status will report 'status_bge_unavailable'.")
+    except Exception as exc:
+        print(f"[AIOS WorkLens] Model resolution check note: {exc}")
+
+    try:
+        from streamlit.web.cli import main as streamlit_cli_main
+        args = [
+            "streamlit",
+            "run",
+            str(app_script),
+            "--global.developmentMode",
+            "false",
+            "--server.port",
+            str(port),
+            "--server.address",
+            host,
+            "--server.headless",
+            "true" if not browser else "false",
+            "--browser.gatherUsageStats",
+            "false",
+        ]
+        sys.argv = args
+        streamlit_cli_main()
+        return 0
+    except SystemExit as exc:
+        return exc.code if isinstance(exc.code, int) else 0
+    except Exception as exc:
+        print(f"Failed to launch Workspace Chat UI: {exc}", file=sys.stderr)
+        return 1
+
+
+def cmd_chat(args) -> int:
+    """CLI command handler for launching Workspace Chat."""
+    port = getattr(args, "port", 8501)
+    host = getattr(args, "host", "127.0.0.1")
+    no_browser = getattr(args, "no_browser", False)
+    return launch_workspace_chat(port=port, host=host, browser=not no_browser)
+
+
 def main(argv=None) -> None:
     parser = argparse.ArgumentParser(prog="aios-habit", description="Local-first evidence-based personal memory platform")
     subcommands = parser.add_subparsers(dest="cmd", required=True)
 
     subcommands.add_parser("status", help="Show repository status").set_defaults(func=cmd_status)
+
+    chat_p = subcommands.add_parser("chat", help="Launch Workspace Chat web interface")
+    chat_p.add_argument("--port", type=int, default=8501, help="Port to bind (default: 8501)")
+    chat_p.add_argument("--host", default="127.0.0.1", help="Host address (default: 127.0.0.1)")
+    chat_p.add_argument("--no-browser", action="store_true", help="Do not automatically open browser")
+    chat_p.set_defaults(func=cmd_chat)
+
+    desktop_p = subcommands.add_parser("desktop", help="Launch AIOS WorkLens Desktop GUI (alias for chat)")
+    desktop_p.add_argument("--port", type=int, default=8501, help="Port to bind (default: 8501)")
+    desktop_p.add_argument("--host", default="127.0.0.1", help="Host address (default: 127.0.0.1)")
+    desktop_p.add_argument("--no-browser", action="store_true", help="Do not automatically open browser")
+    desktop_p.set_defaults(func=cmd_chat)
 
     discover = subcommands.add_parser("discover", help="Discover project folders without raw ingestion")
     discover.add_argument("--root", default=str(REPO))

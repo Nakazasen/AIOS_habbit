@@ -98,4 +98,13 @@ graphify-out/
 
 # Ephemeral multi-agent workspaces and local scratch investigations
 /.agents/*/
+/.excaliflow/
 /scratch/
+.tmp_smoke/
+
+# Generated local visualizations and agent handoff reports
+/architecture_viewer.html
+/architecture_viewer.excalidraw
+/wardley_aios_*
+/ORIGINAL_REQUEST.md
+/TEST_READY.md

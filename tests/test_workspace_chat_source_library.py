@@ -19,6 +19,7 @@ from aios_habit.workspace_chat_models import (
 )
 import aios_habit.workspace_chat_store as store
 from aios_habit.workspace_chat_ui import render_source_library, render_document_manager
+from aios_habit.i18n import t
 
 @pytest.fixture
 def temp_workspace(monkeypatch):
@@ -283,10 +284,9 @@ def test_document_manager_shows_two_scopes_and_bulk_actions(mock_st):
     )
 
     rendered = " ".join(call[1] for call in mock_st.calls if len(call) > 1)
-    assert "Nguồn tạm của cuộc trò chuyện này" in rendered
-    assert "Tài liệu của sổ" in rendered
-    assert "Xóa nguồn tạm của cuộc trò chuyện" in rendered
-    assert "Xóa tài liệu của cả sổ" in rendered
+    assert t("temp_sources", locale="vi") in rendered
+    assert t("notebook_sources", locale="vi") in rendered
+    assert t("delete_source", locale="vi") in rendered
     assert "Ảnh lỗi" in rendered
     assert "Quy trình" in rendered
 
@@ -331,4 +331,4 @@ def test_document_manager_hides_expired_undo_control(mock_st):
         on_undo_delete=lambda: None,
     )
 
-    assert not any(call[0] == "button" and call[1] == "↩️ Khôi phục" for call in mock_st.calls)
+    assert not any(call[0] == "button" and t("undo_delete", locale="vi") in call[1] for call in mock_st.calls)

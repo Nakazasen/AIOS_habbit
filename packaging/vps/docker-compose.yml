@@ -1,0 +1,40 @@
+version: "3.8"
+
+services:
+  aios-worklens:
+    build:
+      context: ../..
+      dockerfile: packaging/vps/Dockerfile
+    image: aios-worklens:0.1.0
+    container_name: aios-worklens-vps
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8501:8501"
+    volumes:
+      # Single-tenant isolated volume for local traces and memory
+      - aios_local_data:/app/local_cases
+      # Read-only mount for verified BGE-M3 model pack
+      - ${AIOS_BGE_M3_HOST_MODEL_DIR:-../../local_runs/retrieval_models/bge-m3-5617a9f}:/opt/aios/models/bge-m3-5617a9f:ro
+    environment:
+      - STREAMLIT_SERVER_PORT=8501
+      - STREAMLIT_SERVER_ADDRESS=0.0.0.0
+      - STREAMLIT_SERVER_HEADLESS=true
+      - STREAMLIT_BROWSER_GATHER_USAGE_STATS=false
+      - AIOS_WORKSPACE_RAG_V2_CANARY_ENABLED=1
+      - AIOS_WORKSPACE_RAG_V2_LOCAL_PILOT_ENABLED=1
+      - AIOS_WORKSPACE_RAG_V2_PROFILE=bge_m3_hybrid
+      - AIOS_BGE_M3_MODEL_PATH=/opt/aios/models/bge-m3-5617a9f
+      - AIOS_BGE_M3_MODEL_REVISION=5617a9f61b028005a4858fdac845db406aefb181
+      - AIOS_BGE_M3_MODEL_CHECKSUM=sha256:b1d887e03f13547609b4c6498ce8f357242edb5079a448c62d31d4caac320b61
+      - AIOS_RETRIEVAL_DEVICE=cpu
+      - TRANSFORMERS_OFFLINE=1
+      - HF_HUB_OFFLINE=1
+    security_opt:
+      - no-new-privileges:true
+    read_only: false
+    mem_limit: 4g
+    cpus: 2.0
+
+volumes:
+  aios_local_data:
+    driver: local

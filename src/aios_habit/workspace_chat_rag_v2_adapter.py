@@ -1235,7 +1235,6 @@ def get_workspace_chat_preparation_summary(
             "statuses": statuses,
             "errors": {},
             "bge_available": False,
-            "summary_text": "BGE-M3 chưa khả dụng",
         }
 
     db_path = _get_ledger_db_path(resolved)
@@ -1259,19 +1258,31 @@ def get_workspace_chat_preparation_summary(
             mem_entry = _PREPARATION_REGISTRY.get(_preparation_key(resolved, source))
             mem_status = str(mem_entry.get("status", "")) if mem_entry else ""
 
+        # Authority for ready: SQLite ledger when a ledger row exists.
+        # If a ledger row exists in pending/processing, in-memory registry ready MUST NOT preempt uncommitted ledger.
+        # If no ledger row exists, in-memory registry or durable coverage applies.
         if row is not None:
-            state = row.state
-            if row.source_fingerprint != _source_fingerprint(source):
-                state = PREP_STATE_PENDING
-            elif row.model_revision != resolved.bge_m3_model_revision:
-                state = PREP_STATE_PENDING
+            if row.state == PREP_STATE_READY and row.source_fingerprint == _source_fingerprint(source) and row.model_revision == resolved.bge_m3_model_revision:
+                state = PREP_STATE_READY
+            elif row.state == PREP_STATE_FAILED:
+                state = PREP_STATE_FAILED
+            elif row.state == PREP_STATE_PROCESSING:
+                state = PREP_STATE_PROCESSING
+            else:
+                # Ledger is pending or stale fingerprint/revision
+                if mem_status == PREP_STATE_PROCESSING:
+                    state = PREP_STATE_PROCESSING
+                elif mem_status == PREP_STATE_FAILED:
+                    state = PREP_STATE_FAILED
+                else:
+                    state = PREP_STATE_PENDING
         elif _durable_semantic_coverage_ready(source, resolved):
             state = PREP_STATE_READY
         else:
-            state = "not_prepared"
-
-        if mem_status in PREP_ALL_STATES:
-            state = mem_status
+            if mem_status in PREP_ALL_STATES:
+                state = mem_status
+            else:
+                state = "not_prepared"
 
         statuses[identity] = state
         if row and row.last_error:
@@ -1290,17 +1301,6 @@ def get_workspace_chat_preparation_summary(
         elif state == PREP_STATE_FAILED:
             failed_count += 1
 
-    # Format Vietnamese summary text
-    parts = [f"BGE-M3: {ready_count}/{total_count} sẵn sàng"]
-    if current_source_title:
-        parts.append(f"đang đọc {current_source_title}")
-    elif pending_count > 0:
-        parts.append(f"{pending_count} đang chờ")
-    if failed_count > 0:
-        parts.append(f"{failed_count} lỗi")
-
-    summary_text = " · ".join(parts)
-
     return {
         "total": total_count,
         "ready": ready_count,
@@ -1311,7 +1311,6 @@ def get_workspace_chat_preparation_summary(
         "statuses": statuses,
         "errors": errors,
         "bge_available": True,
-        "summary_text": summary_text,
     }
 
 
