@@ -1,0 +1,131 @@
+[
+  {
+    "case_id": "vi-001",
+    "question": "Quy trình kiểm tra chất lượng sản phẩm được thực hiện như thế nào?",
+    "language": "vi",
+    "source_ids": ["src-quality-process"],
+    "expected_chunk_hints": {
+      "contains_term": "kiểm tra chất lượng",
+      "min_relevant_chunks": 1
+    },
+    "challenge_labels": ["boundary"]
+  },
+  {
+    "case_id": "vi-002",
+    "question": "Bảng tiêu chuẩn nguyên liệu nhập kho gồm những mục nào?",
+    "language": "vi",
+    "source_ids": ["src-material-standards"],
+    "expected_chunk_hints": {
+      "contains_term": "nguyên liệu",
+      "document_type": "table"
+    },
+    "challenge_labels": ["table"]
+  },
+  {
+    "case_id": "vi-003",
+    "question": "So sánh chi phí vận hành giữa hai phương án lắp đặt",
+    "language": "vi",
+    "source_ids": ["src-cost-analysis-a", "src-cost-analysis-b"],
+    "expected_chunk_hints": {
+      "contains_term": "chi phí",
+      "cross_source": true
+    },
+    "challenge_labels": ["cross-source"]
+  },
+  {
+    "case_id": "vi-004",
+    "question": "Hướng dẫn xử lý sự cố khi hệ thống báo lỗi cảm biến nhiệt độ",
+    "language": "vi",
+    "source_ids": ["src-troubleshooting"],
+    "expected_chunk_hints": {
+      "contains_term": "cảm biến nhiệt độ"
+    },
+    "challenge_labels": ["boundary"]
+  },
+  {
+    "case_id": "ja-001",
+    "question": "製造ラインの品質管理手順はどのようになっていますか？",
+    "language": "ja",
+    "source_ids": ["src-manufacturing-qa"],
+    "expected_chunk_hints": {
+      "contains_term": "品質管理",
+      "min_relevant_chunks": 1
+    },
+    "challenge_labels": ["cjk-punctuation", "boundary"]
+  },
+  {
+    "case_id": "ja-002",
+    "question": "設備メンテナンススケジュールの一覧表を確認したい",
+    "language": "ja",
+    "source_ids": ["src-maintenance-schedule"],
+    "expected_chunk_hints": {
+      "contains_term": "メンテナンス",
+      "document_type": "table"
+    },
+    "challenge_labels": ["table", "cjk-punctuation"]
+  },
+  {
+    "case_id": "ja-003",
+    "question": "安全規則と作業手順書の関連する部分を示してください",
+    "language": "ja",
+    "source_ids": ["src-safety-rules", "src-work-procedures"],
+    "expected_chunk_hints": {
+      "contains_term": "安全規則",
+      "cross_source": true
+    },
+    "challenge_labels": ["cross-source", "cjk-punctuation"]
+  },
+  {
+    "case_id": "ja-004",
+    "question": "温度異常が発生した場合のトラブルシューティング手順",
+    "language": "ja",
+    "source_ids": ["src-troubleshooting-ja"],
+    "expected_chunk_hints": {
+      "contains_term": "温度異常"
+    },
+    "challenge_labels": ["cjk-punctuation", "boundary"]
+  },
+  {
+    "case_id": "zh-001",
+    "question": "生产线质量检查的标准流程是什么？",
+    "language": "zh-CN",
+    "source_ids": ["src-production-qa-zh"],
+    "expected_chunk_hints": {
+      "contains_term": "质量检查",
+      "min_relevant_chunks": 1
+    },
+    "challenge_labels": ["cjk-punctuation", "boundary"]
+  },
+  {
+    "case_id": "zh-002",
+    "question": "原材料入库检验标准表包含哪些项目？",
+    "language": "zh-CN",
+    "source_ids": ["src-material-inspection-zh"],
+    "expected_chunk_hints": {
+      "contains_term": "原材料",
+      "document_type": "table"
+    },
+    "challenge_labels": ["table", "cjk-punctuation"]
+  },
+  {
+    "case_id": "zh-003",
+    "question": "对比两种安装方案的运行成本和维护费用",
+    "language": "zh-CN",
+    "source_ids": ["src-cost-plan-a-zh", "src-cost-plan-b-zh"],
+    "expected_chunk_hints": {
+      "contains_term": "运行成本",
+      "cross_source": true
+    },
+    "challenge_labels": ["cross-source"]
+  },
+  {
+    "case_id": "zh-004",
+    "question": "当系统温度传感器报错时应该如何排查？",
+    "language": "zh-CN",
+    "source_ids": ["src-troubleshooting-zh"],
+    "expected_chunk_hints": {
+      "contains_term": "温度传感器"
+    },
+    "challenge_labels": ["cjk-punctuation", "boundary"]
+  }
+]

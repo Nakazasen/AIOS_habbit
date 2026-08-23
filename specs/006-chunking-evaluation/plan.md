@@ -22,7 +22,6 @@ index.
 
 ## Technical Context
 
-
 **Language/Version**: Python 3.11
 
 **Primary Dependencies**: Existing RAG v2 chunker, local SQLite index, BGE-M3
@@ -56,7 +55,7 @@ Workspace Chat corpus before promotion
 *GATE: Pass before Phase 0 research; re-checked after Phase 1 design.*
 
 | Principle | Plan response | Status |
-|---|---|---|
+| --- | --- | --- |
 | Evidence Before Assertion | Every comparison emits a reproducible local run record. A strategy is rejected by default when no measurable gain is demonstrated. | Pass |
 | Local-First Privacy and Consent | Evaluation corpus, index, logs, and reports remain local. Reports use source IDs and local paths only; raw `local_only` text never leaves the workspace. | Pass |
 | Portable, Pattern-Based Knowledge | Evaluation cases and reports use versioned UTF-8 JSON/Markdown contracts and are not tied to an answer provider. | Pass |
@@ -107,6 +106,46 @@ specs/006-chunking-evaluation/
 **Structure Decision**: Keep evaluation beside RAG v2, but isolate its runtime,
 fixtures, and reports from Workspace Chat's active indexes. Existing chunking
 and retrieval modules remain the only production-path touchpoints.
+
+## E1 Prerequisite Gate
+
+**Status**: CLEARED — 2026-08-24
+**Commit D Verdict**: Pass with condition (confirmed by owner)
+
+This gate was cleared based on the following recorded evidence:
+
+- **26/27 Commit D tests passed** on two independent runs (focused: 781s,
+  full suite: 974 passed / 876s).
+- **Excluded test**: `test_clean_machine_full_isolated_venv_installation` —
+  `TimeoutExpired` after 600s. Root cause: offline pip install of ~1.5GB ML
+  wheels (torch, transformers, onnxruntime, FlagEmbedding) into a temp venv
+  exceeds I/O capacity within the timeout on this machine. Not a code defect;
+  does not affect AI answers, BGE-M3, index integrity, or runtime functionality.
+- **Fast-mode smoke test passed**: verifies wheel checksums, in-process imports,
+  BGE-M3 model pack, multilingual trace rendering, and full E2E RAG pipeline.
+- **Alternative verification**: Manual `python scripts/desktop_smoke_test.py`
+  without pytest timeout constraint.
+
+**Housekeeping backlog** (separate from chunking evaluation):
+- Increase `test_clean_machine_full_isolated_venv_installation` timeout to match
+  actual package size, or mark with `@pytest.mark.slow` and a documented skip
+  policy. This is a packaging/install optimization item, not a chunking blocker.
+
+**What is now permitted**:
+- Generate `tasks.md` for E1 via `/speckit-tasks`
+- Write E1 baseline measurement code (evaluation harness, fixtures, runner)
+- Create dedicated local evaluation indexes
+
+**What remains prohibited**:
+- Modifying `StructureAwareChunker`, retrieval defaults, document summaries, or
+  legacy chunkers (prohibited until E1 measurement results justify a change)
+- Changing default chunking behavior (prohibited until E4 acceptance)
+
+**E1 execution status**: **BLOCKED — baseline scaffold only**. The committed
+scaffold is not yet allowed to claim an E1 baseline: it needs an ignored local
+manifest mapping approved real documents and questions to their expected source
+identities, and it must execute the same BGE-M3 hybrid retrieval path used by
+Workspace Chat. Synthetic fixtures remain unit-test input only.
 
 ## Complexity Tracking
 

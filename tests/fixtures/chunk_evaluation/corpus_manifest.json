@@ -1,0 +1,127 @@
+{
+  "manifest_version": "1.0",
+  "description": "Evaluation corpus manifest for chunk evaluation E1 baseline. References source identities and types without embedding raw text.",
+  "privacy_note": "No raw local_only text is stored in this manifest. Documents are referenced by identity and path only.",
+  "sources": [
+    {
+      "source_id": "src-quality-process",
+      "language": "vi",
+      "document_type": "markdown",
+      "description": "Vietnamese quality control process documentation",
+      "has_tables": false,
+      "estimated_chars": 5000
+    },
+    {
+      "source_id": "src-material-standards",
+      "language": "vi",
+      "document_type": "spreadsheet",
+      "description": "Vietnamese material standards table (Excel)",
+      "has_tables": true,
+      "estimated_chars": 3000
+    },
+    {
+      "source_id": "src-cost-analysis-a",
+      "language": "vi",
+      "document_type": "markdown",
+      "description": "Vietnamese cost analysis for installation plan A",
+      "has_tables": true,
+      "estimated_chars": 2500
+    },
+    {
+      "source_id": "src-cost-analysis-b",
+      "language": "vi",
+      "document_type": "markdown",
+      "description": "Vietnamese cost analysis for installation plan B",
+      "has_tables": true,
+      "estimated_chars": 2500
+    },
+    {
+      "source_id": "src-troubleshooting",
+      "language": "vi",
+      "document_type": "markdown",
+      "description": "Vietnamese troubleshooting guide for temperature sensor errors",
+      "has_tables": false,
+      "estimated_chars": 4000
+    },
+    {
+      "source_id": "src-manufacturing-qa",
+      "language": "ja",
+      "document_type": "markdown",
+      "description": "Japanese manufacturing quality assurance procedures",
+      "has_tables": false,
+      "estimated_chars": 6000
+    },
+    {
+      "source_id": "src-maintenance-schedule",
+      "language": "ja",
+      "document_type": "spreadsheet",
+      "description": "Japanese equipment maintenance schedule table",
+      "has_tables": true,
+      "estimated_chars": 3500
+    },
+    {
+      "source_id": "src-safety-rules",
+      "language": "ja",
+      "document_type": "markdown",
+      "description": "Japanese safety rules documentation",
+      "has_tables": false,
+      "estimated_chars": 4000
+    },
+    {
+      "source_id": "src-work-procedures",
+      "language": "ja",
+      "document_type": "markdown",
+      "description": "Japanese work procedures documentation",
+      "has_tables": false,
+      "estimated_chars": 5000
+    },
+    {
+      "source_id": "src-troubleshooting-ja",
+      "language": "ja",
+      "document_type": "markdown",
+      "description": "Japanese troubleshooting guide for temperature anomalies",
+      "has_tables": false,
+      "estimated_chars": 4000
+    },
+    {
+      "source_id": "src-production-qa-zh",
+      "language": "zh-CN",
+      "document_type": "markdown",
+      "description": "Simplified Chinese production quality inspection procedures",
+      "has_tables": false,
+      "estimated_chars": 5500
+    },
+    {
+      "source_id": "src-material-inspection-zh",
+      "language": "zh-CN",
+      "document_type": "spreadsheet",
+      "description": "Simplified Chinese material inspection standards table",
+      "has_tables": true,
+      "estimated_chars": 3000
+    },
+    {
+      "source_id": "src-cost-plan-a-zh",
+      "language": "zh-CN",
+      "document_type": "markdown",
+      "description": "Simplified Chinese cost plan A analysis",
+      "has_tables": true,
+      "estimated_chars": 2500
+    },
+    {
+      "source_id": "src-cost-plan-b-zh",
+      "language": "zh-CN",
+      "document_type": "markdown",
+      "description": "Simplified Chinese cost plan B analysis",
+      "has_tables": true,
+      "estimated_chars": 2500
+    },
+    {
+      "source_id": "src-troubleshooting-zh",
+      "language": "zh-CN",
+      "document_type": "markdown",
+      "description": "Simplified Chinese troubleshooting guide for temperature sensors",
+      "has_tables": false,
+      "estimated_chars": 4000
+    }
+  ]
+}
