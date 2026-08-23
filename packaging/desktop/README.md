@@ -1,7 +1,10 @@
 # AIOS WorkLens Desktop Packaging Guide
 
 ## Overview
-AIOS WorkLens Desktop is packaged as a 100% offline, self-contained bundle. It includes:
+
+AIOS WorkLens Desktop has an offline build path. The wheelhouse is versioned
+through Git LFS, while the BGE-M3 model artifact is supplied separately and
+verified before it is copied into a desktop bundle. The build includes:
 - Python runtime (>=3.11, <3.12)
 - Graphify in-process engine (`graphifyy==0.9.32`)
 - ExcaliFlow Studio in-process visual engine (`vendor/wheels/excaliflow-0.1.1-py3-none-any.whl`)
@@ -9,14 +12,21 @@ AIOS WorkLens Desktop is packaged as a 100% offline, self-contained bundle. It i
 - CJK multi-locale font stack (Vietnamese, Japanese, Simplified Chinese)
 
 ## Clean-Machine Offline Installation
-No internet access or GitHub downloads are required during installation.
+
+Pull the repository's LFS artifacts once. Afterwards the installation below
+uses only the local wheelhouse and does not download packages from PyPI or
+GitHub.
 
 ```bash
-# 1. Create a clean virtualenv
+# 1. Fetch the repository's offline wheelhouse
+git lfs install
+git lfs pull
+
+# 2. Create a clean virtualenv
 python -m venv .venv
 .\.venv\Scripts\activate
 
-# 2. Install from local wheels directory
+# 3. Install from local wheels directory
 pip install --no-index --find-links=vendor/wheels aios-habit
 ```
 
@@ -24,3 +34,7 @@ pip install --no-index --find-links=vendor/wheels aios-habit
 ```bash
 python packaging/desktop/desktop_build.py
 ```
+
+The build is fail-closed: it stops if the BGE-M3 model pack is missing,
+corrupted, or does not match the pinned manifest. The model is not fetched by
+this command and is not stored in Git LFS.

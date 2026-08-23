@@ -1,63 +1,90 @@
 # AIOS WorkLens
 
-AIOS WorkLens là môi trường tri thức công việc **local-first**. Luồng sử dụng
-chính là: mở Workspace Chat, thêm hoặc chọn nguồn cục bộ, hỏi bằng ngôn ngữ tự
-nhiên và nhận câu trả lời có ngữ cảnh nguồn.
+[Tiếng Việt](README_VI.md)
 
-> [!IMPORTANT]
-> **Workspace Chat là giao diện duy nhất dành cho người dùng thông thường.**
-> Case Cockpit và Habit Studio cũ đang được retirement; chúng không còn là một
-> phần của quick start hay runbook vận hành.
+AIOS WorkLens is a local-first Workspace Chat for querying working documents with
+retrievable evidence. It is designed to keep document preparation, search, chat
+state, and evidence records under the operator's control.
 
-## Bắt đầu nhanh trên Windows
+## Current capabilities
 
-1. Cài Python 3.11 trở lên.
-2. Tại thư mục repository, cài môi trường local:
+- Workspace Chat with notebook and conversation-scoped sources.
+- Local BGE-M3 hybrid retrieval when a verified local model pack is available.
+- Vietnamese, Japanese, and Simplified Chinese UI/answer language support.
+- `rag-trace/v1` evidence records linked to chat messages.
+- An on-demand Evidence Graph for answers that contain valid evidence citations.
+- Desktop and VPS packaging sources, including pinned Graphify and ExcaliFlow
+  dependencies.
 
-   ```powershell
-   uv sync --group dev
-   ```
+The Evidence Graph is an aid to inspect an answer's cited evidence. It does not
+turn an answer without valid citations into verified knowledge.
 
-3. Mở [RUN_AIOS_WORKSPACE_CHAT.bat](RUN_AIOS_WORKSPACE_CHAT.bat).
+## Status and boundaries
 
-   Hoặc chạy PowerShell:
+- `Workspace Chat` is the supported user-facing interface. The retired Case
+  Cockpit and Habit Studio are not part of the normal workflow.
+- The offline Windows/Linux wheelhouses are stored through Git LFS. They must
+  be pulled before an offline build or installation.
+- The BGE-M3 model pack is deliberately not stored in this Git repository. A
+  desktop build checks its revision and checksum and stops if the verified model
+  artifact is missing or corrupted.
+- Desktop/VPS packaging is source and test verified in this repository. Validate
+  the final package on the target machine before treating it as a production
+  deployment.
 
-   ```powershell
-   .\scripts\run_workspace_chat.ps1
-   ```
+## Quick start on Windows
 
-4. Trong Workspace Chat: tạo/chọn workspace, thêm/chọn tài liệu, rồi đặt câu
-   hỏi. Không cần nhớ thuật ngữ RAG, bridge, provider hoặc gate.
+Requirements: Git, Git LFS, Python **3.11**, and `uv`.
 
-## Tài liệu chính thức
+```powershell
+git clone https://github.com/Nakazasen/AIOS_habbit.git
+cd AIOS_habbit
+git lfs install
+git lfs pull
+uv sync --group dev
+```
 
-- [ROADMAP.md](ROADMAP.md) — roadmap/index canonical và gate đang mở.
-- [PROJECT_HANDOVER.md](PROJECT_HANDOVER.md) — trạng thái bàn giao ngắn, rủi ro
-  và bước kế tiếp.
-- [WORKLENS_ARCHITECTURE.md](WORKLENS_ARCHITECTURE.md) — ranh giới kiến trúc
-  hiện hành.
-- [docs/PROFESSIONALIZATION_INDEX.md](docs/PROFESSIONALIZATION_INDEX.md) —
-  security, privacy, ADR, quality, operations, release và onboarding records.
-- [docs/roadmap/README.md](docs/roadmap/README.md) — quy ước Gate Card.
-- [docs/runbooks/operator.md](docs/runbooks/operator.md) — quy trình dùng app.
-- [docs/runbooks/developer.md](docs/runbooks/developer.md) — setup, validation
-  và quy tắc release cho developer.
-- [docs/legacy/RETIREMENT_MANIFEST.md](docs/legacy/RETIREMENT_MANIFEST.md) —
-  inventory legacy và trạng thái dọn dẹp.
+Start Workspace Chat:
 
-## Kiểm thử và audit
+```powershell
+.\RUN_AIOS_WORKSPACE_CHAT.bat
+```
+
+Or:
+
+```powershell
+.\scripts\run_workspace_chat.ps1
+```
+
+If BGE-M3 is unavailable, follow the model-pack and retrieval runbooks before
+expecting document retrieval to work. The application reports that condition
+instead of silently pretending search is available.
+
+## Development checks
 
 ```powershell
 uv run --no-sync --group dev python -m compileall src tests
 uv run --no-sync --group dev pytest -q
 uv run --no-sync --group dev python -m aios_habit.cli audit
 git diff --check
-git status --short --ignored
+git status --short
 ```
 
-## An toàn dữ liệu local
+## Documentation
 
-Không commit dữ liệu runtime hoặc dữ liệu riêng tư: `local_cases/`,
-`local_runs/`, JSONL evidence/memory, tài liệu gốc, ảnh/screenshot, `.env`,
-tokens, credentials và cache. Cloud/NotebookLM không phải điều kiện để dùng
-Workspace Chat local.
+- [Vietnamese README](README_VI.md)
+- [Roadmap and canonical delivery state](ROADMAP.md)
+- [Project handover](PROJECT_HANDOVER.md)
+- [Workspace architecture](WORKLENS_ARCHITECTURE.md)
+- [Desktop packaging guide](packaging/desktop/README.md)
+- [VPS deployment guide](packaging/vps/README.md)
+- [Operator runbook](docs/runbooks/operator.md)
+- [Developer runbook](docs/runbooks/developer.md)
+
+## Local-data safety
+
+Do not commit runtime data or private sources: `local_cases/`, `local_runs/`,
+JSONL evidence and memory, uploaded documents, screenshots, `.env` files,
+credentials, tokens, or caches. The provider and bridge configuration must be
+reviewed before any organisation-specific or confidential source is sent beyond
+the local machine.

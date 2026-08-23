@@ -2,9 +2,9 @@
 
 ## 1. Scope & Isolation Guarantees
 - **Single-Tenant Isolation**: Each VPS instance operates in its own isolated container and data volume (`aios_local_data` mounted at `/app/local_cases`).
-- **Runtime Offline (Zero Cloud Egress)**: Evidence traces, documents, and chat sessions are stored purely in local files under `/app/local_cases/workspace_chat/`. No telemetry or data is synced to external servers at runtime.
-- **Dedicated Linux Wheelhouse (`vendor/wheels_linux/`)**: Contains all 87 Python wheels compiled for Linux x86_64 / `manylinux` and verified with `checksums.json`, allowing 100% offline Docker container builds without Internet access.
-- **Build Distinction**: Standard container build utilizes the base `python:3.11-slim` and system font packages; all runtime operations and Python packages are 100% self-contained and offline.
+- **Local data boundary**: Evidence traces, documents, and chat sessions are stored under `/app/local_cases/workspace_chat/`. Provider or bridge traffic depends on the selected runtime configuration and must be reviewed separately for confidential data.
+- **Dedicated Linux Wheelhouse (`vendor/wheels_linux/`)**: A versioned, checksum-verified Linux wheelhouse supports offline Python dependency installation. Pull Git LFS artifacts before building the image.
+- **Model boundary**: The BGE-M3 model pack is a separately managed, checksum-verified artifact. The image or its mounted volume must provide it; Git LFS does not store the model.
 
 ## 2. Deployment Instructions
 
