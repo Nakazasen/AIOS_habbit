@@ -17,6 +17,9 @@ from aios_habit.i18n import (
     DEFAULT_LOCALE,
     TRANSLATIONS,
 )
+from aios_habit.workspace_chat_store import load_evidence_trace
+from aios_habit.evidence_graph_viewer import render_evidence_graph_streamlit
+from aios_habit.evidence_trace_schema import EvidenceTrace
 
 
 def get_vietnamese_labels() -> Dict[str, str]:
@@ -338,7 +341,12 @@ def render_archived_notebook_card(
         st.write("---")
 
 
-def render_chat_bubble(msg: ChatMessage, is_latest: bool = False, locale: str = "vi"):
+def render_chat_bubble(
+    msg: ChatMessage,
+    is_latest: bool = False,
+    locale: str = "vi",
+    trace_loader: Optional[Callable[[str], Optional[EvidenceTrace]]] = None,
+):
     if msg.role == "user":
         with st.chat_message("user"):
             st.markdown(msg.content)
@@ -351,6 +359,52 @@ def render_chat_bubble(msg: ChatMessage, is_latest: bool = False, locale: str = 
                     unsafe_allow_html=True,
                 )
             st.markdown(msg.content)
+
+            # On-demand Evidence Graph Action (Commit C)
+            if msg.trace_id and str(msg.trace_id).strip():
+                trace_id_str = str(msg.trace_id).strip()
+                msg_key_id = msg.id or trace_id_str
+                state_key = f"wsc_show_graph_{msg_key_id}"
+
+                # Check session state for open/closed status
+                session_state = getattr(st, "session_state", {})
+                is_open = bool(session_state.get(state_key, False))
+
+                if not is_open:
+                    btn_view_label = t("btn_view_evidence_graph", locale=locale)
+                    if st.button(btn_view_label, key=f"btn_view_graph_{msg_key_id}"):
+                        if hasattr(st, "session_state"):
+                            st.session_state[state_key] = True
+                        loader = trace_loader or load_evidence_trace
+                        trace = None
+                        try:
+                            trace = loader(trace_id_str)
+                        except Exception:
+                            trace = None
+
+                        if trace is not None:
+                            render_evidence_graph_streamlit(trace, locale=locale)
+                        else:
+                            st.warning(t("evidence_trace_not_found", locale=locale))
+                else:
+                    btn_hide_label = t("btn_hide_evidence_graph", locale=locale)
+                    if st.button(btn_hide_label, key=f"btn_hide_graph_{msg_key_id}"):
+                        if hasattr(st, "session_state"):
+                            st.session_state[state_key] = False
+                        if hasattr(st, "rerun"):
+                            st.rerun()
+                    else:
+                        loader = trace_loader or load_evidence_trace
+                        trace = None
+                        try:
+                            trace = loader(trace_id_str)
+                        except Exception:
+                            trace = None
+
+                        if trace is not None:
+                            render_evidence_graph_streamlit(trace, locale=locale)
+                        else:
+                            st.warning(t("evidence_trace_not_found", locale=locale))
     else:
         st.info(msg.content)
 
@@ -603,6 +657,31 @@ def render_source_library_summary(notebook_count: int, temporary_count: int, ena
     st.info(f"{t('sources_in_use', locale=locale)}: {t('sources_in_use_desc', locale=locale)}")
 
 
+def format_preparation_summary_text(summary: Optional[Dict[str, Any]], locale: str = "vi") -> str:
+    """Format neutral preparation summary data into localized user-facing text."""
+    if not summary or summary.get("total", 0) <= 0:
+        return ""
+    if not summary.get("bge_available", True):
+        return t("bge_unavailable", locale=locale)
+
+    total = summary.get("total", 0)
+    ready = summary.get("ready", 0)
+    processing = summary.get("processing", 0)
+    pending = summary.get("pending", 0)
+    failed = summary.get("failed", 0)
+    current_title = summary.get("current_source_title")
+
+    parts = [t("bge_ready_ratio", locale=locale, ready=ready, total=total)]
+    if current_title:
+        parts.append(t("bge_reading_source", locale=locale, title=current_title))
+    elif pending > 0:
+        parts.append(t("bge_pending_count", locale=locale, count=pending))
+    if failed > 0:
+        parts.append(t("bge_failed_count", locale=locale, count=failed))
+
+    return " · ".join(parts)
+
+
 def render_preparation_progress_bar(
     summary: Optional[Dict[str, Any]],
     on_retry_all_failed: Optional[Callable[[], None]] = None,
@@ -611,7 +690,7 @@ def render_preparation_progress_bar(
     """Renders compact single-line BGE-M3 preparation progress banner."""
     if not summary or summary.get("total", 0) <= 0:
         return
-    text = summary.get("summary_text", "")
+    text = format_preparation_summary_text(summary, locale=locale)
     if not text:
         return
     failed = summary.get("failed", 0)
@@ -845,7 +924,12 @@ def render_ai_answer_header(
 
     if ai_source and ("antigravity" in str(ai_source).lower() or str(ai_source) == "Antigravity IDE"):
         bridge_label = mode_label
-        provider_label = provider_name or t("gemini_web_stream", locale=locale)
+        if provider_name in ("Gemini Web (Nặc danh)", "Gemini Web (Ẩn danh)", "Gemini Web (匿名)", "Gemini Web（匿名）"):
+            provider_label = t("gemini_web_anonymous", locale=locale)
+        elif provider_name in ("Gemini Web Stream (Nặc danh)", "Gemini Web Stream (Ẩn danh)", "Gemini Web Stream (匿名)", "Gemini Web Stream（匿名）"):
+            provider_label = t("gemini_web_stream", locale=locale)
+        else:
+            provider_label = provider_name or t("gemini_web_stream", locale=locale)
         st.success(f"✅ **{ai_answered_text}** · 🌉 `{bridge_label}` · 🌐 `{provider_label}`")
     elif ai_source and ("smart_router" in str(ai_source).lower() or str(ai_source) == "Smart Router"):
         st.info(f"✅ **{ai_answered_text}** · 🌐 `{t('smart_router_auto', locale=locale)}`")
@@ -870,8 +954,8 @@ def render_ai_answer_header(
     clean_model = model_tool_name.strip() if model_tool_name else ""
     if clean_model and clean_model not in ("antigravity-brain-pro", "gemini-pro", "antigravity", "auto", "gemini-3.6-flash", "gemini-3.7-flash", "gemini-3.5-flash", "gemini-flash-lite"):
         st.caption(f"`{clean_model}`")
-    elif operational_mode in ("direct", "handoff"):
-        st.caption(f"`{t('gemini_web_stream', locale=locale)}`")
+    else:
+        st.caption(f"`{t('model_unverified', locale=locale)}`")
 
     if title_counts:
         with st.expander(f"{sources_sent_text}", expanded=False):

@@ -16,6 +16,7 @@ import tempfile
 from pathlib import Path
 from typing import Generator
 import pytest
+import streamlit as st
 from streamlit.testing.v1 import AppTest
 
 import aios_habit.workspace_chat_store as store_mod
@@ -50,7 +51,17 @@ def sandboxed_chat_store() -> Generator[Path, None, None]:
             store_mod.NOTEBOOK_SOURCES_FILE = tmp_path / "notebook_sources.jsonl"
             store_mod.SOURCE_SELECTIONS_FILE = tmp_path / "conversation_source_selections.jsonl"
             store_mod.init_chat_store()
+            st.session_state.clear()
+            if hasattr(st, "_main") and hasattr(st._main, "_form_data"):
+                st._main._form_data = None
+            if hasattr(st, "sidebar") and hasattr(st.sidebar, "_form_data"):
+                st.sidebar._form_data = None
             yield tmp_path
+            st.session_state.clear()
+            if hasattr(st, "_main") and hasattr(st._main, "_form_data"):
+                st._main._form_data = None
+            if hasattr(st, "sidebar") and hasattr(st.sidebar, "_form_data"):
+                st.sidebar._form_data = None
         finally:
             for k, v in orig_paths.items():
                 setattr(store_mod, k, v)
