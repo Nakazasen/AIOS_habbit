@@ -69,6 +69,8 @@ def test_commit_c_translation_keys_parity_100_percent() -> None:
         "evidence_graph_legend",
         "evidence_graph_source_nodes",
         "evidence_graph_citation_nodes",
+        "btn_open_evidence_atlas",
+        "evidence_atlas_details_hint",
         "node_type_citation",
         "edge_extracted_from",
     ]
@@ -416,6 +418,23 @@ def test_streamlit_graph_uses_isolated_responsive_component(sample_valid_trace: 
     assert mock_component.call_args.kwargs["height"] >= 520
     assert mock_component.call_args.kwargs["scrolling"] is True
     mock_markdown.assert_not_called()
+
+
+def test_streamlit_graph_opens_atlas_only_after_explicit_action(sample_valid_trace: EvidenceTrace) -> None:
+    """Atlas remains available, but must not render until the user asks for it."""
+    session_state: Dict[str, Any] = {}
+    atlas_html = "<!doctype html><html><body>atlas detail</body></html>"
+    with patch("streamlit.session_state", session_state), \
+         patch("streamlit.button", return_value=True), \
+         patch("streamlit.components.v1.html") as mock_component, \
+         patch("aios_habit.excaliflow_adapter.ExcaliFlowAdapter") as mock_adapter:
+        mock_adapter.return_value.is_available.return_value = True
+        mock_adapter.return_value.render_evidence_atlas_html.return_value = atlas_html
+        render_evidence_graph_streamlit(sample_valid_trace, locale="vi")
+
+    assert mock_component.call_count == 2
+    assert mock_component.call_args_list[1].args[0] == atlas_html
+    assert mock_component.call_args_list[1].kwargs == {"height": 820, "scrolling": True}
 
 
 # ==============================================================================

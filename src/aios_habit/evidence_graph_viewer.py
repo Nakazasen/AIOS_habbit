@@ -717,9 +717,9 @@ def render_evidence_graph_streamlit(
 
     Renders one readable, responsive graph in an isolated component.
 
-    The detailed ExcaliFlow Atlas remains available through the adapter API,
-    but is not embedded by default: its fixed wide canvas makes the normal
-    chat view hard to read and forces horizontal scrolling.
+    The detailed ExcaliFlow Atlas is an explicit secondary action. It is not
+    embedded by default because its fixed wide canvas makes the normal chat
+    view hard to read and forces horizontal scrolling.
     """
     loc = normalize_locale(locale)
 
@@ -747,6 +747,30 @@ def render_evidence_graph_streamlit(
             height=_evidence_graph_component_height(view_model),
             scrolling=True,
         )
+
+        atlas_state_key = f"wsc_show_evidence_atlas_{trace.trace_id}_{content_hash[:12]}"
+        atlas_open = bool(st.session_state.get(atlas_state_key, False))
+        if not atlas_open:
+            if st.button(
+                t("btn_open_evidence_atlas", locale=loc),
+                key=f"btn_open_evidence_atlas_{trace.trace_id}",
+            ):
+                st.session_state[atlas_state_key] = True
+                atlas_open = True
+
+        if atlas_open:
+            st.caption(t("evidence_atlas_details_hint", locale=loc))
+            try:
+                from aios_habit.excaliflow_adapter import ExcaliFlowAdapter
+
+                adapter = ExcaliFlowAdapter()
+                if not adapter.is_available():
+                    raise RuntimeError("evidence_atlas_unavailable")
+                atlas_html = adapter.render_evidence_atlas_html(trace, locale=loc)
+                components.html(atlas_html, height=820, scrolling=True)
+            except Exception as exc:
+                LOGGER.exception("Atlas renderer error: %s", exc)
+                st.error(f"❌ {t('evidence_graph_render_error', locale=loc)}")
 
     except Exception as exc:
         LOGGER.exception("Failed in render_evidence_graph_streamlit: %s", exc)
