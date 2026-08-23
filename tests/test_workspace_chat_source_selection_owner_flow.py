@@ -1494,6 +1494,7 @@ def test_app_hides_unavailable_deep_search_and_reports_the_real_reason():
     assert 'unavailable_reason == "deep_search_unavailable"' in app_source
     assert 'unavailable_reason == "runtimeerror"' in app_source
     assert 't("deep_search_unavailable", locale=current_ui_locale)' in app_source
+    assert 'elif unavailable_reason == "runtimeerror"' in app_source
 
 
 def test_e2e_sandbox_upload_new_source_transitions_from_pending_to_ready(tmp_path: Path, monkeypatch):

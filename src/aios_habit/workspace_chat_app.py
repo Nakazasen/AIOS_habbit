@@ -2013,20 +2013,17 @@ else:
                                                     "deep_search_unavailable",
                                                     locale=current_ui_locale,
                                                 )
-                                                st.session_state.wsc_last_ai_badge = None
-                                                safe_rerun()
-                                            if unavailable_reason == "runtimeerror":
+                                            elif unavailable_reason == "runtimeerror":
                                                 st.session_state.wsc_action_error = t(
                                                     "search_runtime_unavailable",
                                                     locale=current_ui_locale,
                                                 )
-                                                st.session_state.wsc_last_ai_badge = None
-                                                safe_rerun()
-                                            st.error(t("no_evidence_found_error", locale=current_ui_locale))
-                                            st.session_state.wsc_action_error = t(
-                                                "search_sources_preparing",
-                                                locale=current_ui_locale,
-                                            )
+                                            else:
+                                                st.error(t("no_evidence_found_error", locale=current_ui_locale))
+                                                st.session_state.wsc_action_error = t(
+                                                    "search_sources_preparing",
+                                                    locale=current_ui_locale,
+                                                )
                                             st.session_state.wsc_last_ai_badge = None
                                             safe_rerun()
                                         elif ret_res["summary_count"] == 0:
