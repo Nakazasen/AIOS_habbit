@@ -376,6 +376,7 @@ from aios_habit.workspace_chat_ui import (
 )
 from aios_habit.antigravity_bridge import (
     get_antigravity_bridge_health,
+    ensure_antigravity_bridge_running,
     call_antigravity_bridge,
     sanitize_reason,
 )
@@ -1543,8 +1544,17 @@ else:
             safe_rerun()
 
         bridge_health = get_antigravity_bridge_health()
-        if st.button(f"🔄 {t('refresh', locale=current_ui_locale)}", key="wsc_refresh_bridge_btn", help=t("bridge_refresh_help", locale=current_ui_locale), use_container_width=True):
+        if st.button(t("bridge_connect_refresh", locale=current_ui_locale), key="wsc_refresh_bridge_btn", help=t("bridge_connect_refresh_help", locale=current_ui_locale), use_container_width=True):
+            startup = ensure_antigravity_bridge_running()
             check_handoff_request_timeouts()
+            if startup.ok:
+                st.session_state.wsc_action_message = t("bridge_connect_success", locale=current_ui_locale)
+            else:
+                st.session_state.wsc_action_error = t(
+                    "bridge_connect_failed",
+                    locale=current_ui_locale,
+                    reason=startup.reason or startup.health.reason or "unknown_error",
+                )
             safe_rerun()
 
     with top_col2:

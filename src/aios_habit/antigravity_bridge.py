@@ -10,6 +10,9 @@ import json
 import logging
 import os
 import re
+import subprocess
+import sys
+import threading
 import time
 import urllib.error
 import urllib.parse
@@ -36,6 +39,9 @@ DEFAULT_ANTIGRAVITY_HEALTH_URL = os.environ.get(
     "AIOS_ANTIGRAVITY_HEALTH_URL", "http://127.0.0.1:8585/health"
 )
 DEFAULT_TIMEOUT_SECONDS = 60
+DEFAULT_SIDECAR_STARTUP_TIMEOUT_SECONDS = 8.0
+SIDECAR_DAEMON_PATH = Path(__file__).resolve().parents[2] / "scripts" / "antigravity_sidecar_daemon.py"
+_SIDECAR_START_LOCK = threading.Lock()
 
 # 6-State FSM Constants
 FSM_UNAVAILABLE = "unavailable"
@@ -140,6 +146,16 @@ class AntigravityBridgeResponse:
     metadata: Mapping[str, Any] = field(default_factory=dict)
 
 
+@dataclass(frozen=True)
+class AntigravityBridgeStartResult:
+    """Result of an explicit local-sidecar startup attempt."""
+
+    ok: bool
+    started: bool
+    health: AntigravityHealthStatus
+    reason: str = ""
+
+
 def get_antigravity_bridge_health(
     health_url: str = DEFAULT_ANTIGRAVITY_HEALTH_URL,
     timeout_seconds: float = 0.8,
@@ -213,6 +229,104 @@ def get_antigravity_bridge_health(
 # Compatibility aliases
 get_antigravity_bridge_status = get_antigravity_bridge_health
 get_antigravity_health = get_antigravity_bridge_health
+
+
+def ensure_antigravity_bridge_running(
+    health_url: str = DEFAULT_ANTIGRAVITY_HEALTH_URL,
+    *,
+    startup_timeout_seconds: float = DEFAULT_SIDECAR_STARTUP_TIMEOUT_SECONDS,
+) -> AntigravityBridgeStartResult:
+    """Start the local direct sidecar only when no healthy bridge is listening.
+
+    This is intentionally limited to loopback/private health URLs. It never
+    starts a process for a remote endpoint and it does not send a user question
+    or silently fall back to another provider.
+    """
+    initial_health = get_antigravity_bridge_health(health_url=health_url)
+    if initial_health.is_available:
+        return AntigravityBridgeStartResult(ok=True, started=False, health=initial_health)
+
+    if not is_local_endpoint(health_url):
+        return AntigravityBridgeStartResult(
+            ok=False,
+            started=False,
+            health=initial_health,
+            reason="bridge_start_requires_local_health_url",
+        )
+
+    parsed = urllib.parse.urlparse(health_url)
+    try:
+        port = parsed.port or 8585
+    except ValueError:
+        return AntigravityBridgeStartResult(
+            ok=False,
+            started=False,
+            health=initial_health,
+            reason="bridge_start_invalid_health_url",
+        )
+    if parsed.hostname not in {"127.0.0.1", "localhost", "::1"}:
+        return AntigravityBridgeStartResult(
+            ok=False,
+            started=False,
+            health=initial_health,
+            reason="bridge_start_requires_loopback_host",
+        )
+    if not SIDECAR_DAEMON_PATH.is_file():
+        return AntigravityBridgeStartResult(
+            ok=False,
+            started=False,
+            health=initial_health,
+            reason="sidecar_launcher_missing",
+        )
+
+    with _SIDECAR_START_LOCK:
+        # Another Streamlit rerun may have started it while this click waited.
+        current_health = get_antigravity_bridge_health(health_url=health_url)
+        if current_health.is_available:
+            return AntigravityBridgeStartResult(ok=True, started=False, health=current_health)
+
+        popen_kwargs: dict[str, Any] = {
+            "cwd": str(SIDECAR_DAEMON_PATH.parent.parent),
+            "stdout": subprocess.DEVNULL,
+            "stderr": subprocess.DEVNULL,
+        }
+        if os.name == "nt":
+            popen_kwargs["creationflags"] = getattr(subprocess, "CREATE_NO_WINDOW", 0)
+
+        try:
+            process = subprocess.Popen(
+                [sys.executable, str(SIDECAR_DAEMON_PATH), "--port", str(port), "--mode", "direct"],
+                **popen_kwargs,
+            )
+        except OSError as exc:
+            return AntigravityBridgeStartResult(
+                ok=False,
+                started=False,
+                health=current_health,
+                reason=sanitize_reason(f"sidecar_start_failed: {exc}"),
+            )
+
+        deadline = time.monotonic() + max(0.1, startup_timeout_seconds)
+        last_health = current_health
+        while time.monotonic() < deadline:
+            last_health = get_antigravity_bridge_health(health_url=health_url, timeout_seconds=0.8)
+            if last_health.is_available:
+                return AntigravityBridgeStartResult(ok=True, started=True, health=last_health)
+            if process.poll() is not None:
+                return AntigravityBridgeStartResult(
+                    ok=False,
+                    started=True,
+                    health=last_health,
+                    reason="sidecar_exited_before_healthcheck",
+                )
+            time.sleep(0.2)
+
+        return AntigravityBridgeStartResult(
+            ok=False,
+            started=True,
+            health=last_health,
+            reason=last_health.reason or "sidecar_startup_timed_out",
+        )
 
 
 def is_antigravity_bridge_available(

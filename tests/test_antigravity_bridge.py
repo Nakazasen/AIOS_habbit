@@ -20,10 +20,12 @@ from pathlib import Path
 from typing import Any
 import pytest
 
+import aios_habit.antigravity_bridge as bridge_module
 from aios_habit.antigravity_bridge import (
     AntigravityBridgeResponse,
     AntigravityHealthStatus,
     call_antigravity_bridge,
+    ensure_antigravity_bridge_running,
     get_antigravity_bridge_health,
     get_antigravity_bridge_status,
     is_antigravity_bridge_available,
@@ -221,6 +223,76 @@ class TestAntigravityHealthFSM:
         forbidden = {"reasoning", "large_context", "excel_sql"}
         assert not any(cap in forbidden for cap in status.capabilities)
         assert "local_handoff" in status.capabilities
+
+
+class TestLocalSidecarStartup:
+    """The UI may start only a local direct sidecar, never a remote provider."""
+
+    @staticmethod
+    def _unavailable() -> AntigravityHealthStatus:
+        return AntigravityHealthStatus(status="unavailable", reason="not listening")
+
+    @staticmethod
+    def _direct_ready() -> AntigravityHealthStatus:
+        return AntigravityHealthStatus(
+            status="direct_ready",
+            mode="direct",
+            capabilities=["direct_chat"],
+        )
+
+    def test_does_not_start_process_when_bridge_is_already_ready(self, monkeypatch):
+        monkeypatch.setattr(bridge_module, "get_antigravity_bridge_health", lambda **_: self._direct_ready())
+
+        def unexpected_start(*args, **kwargs):
+            raise AssertionError("a ready bridge must not be started again")
+
+        monkeypatch.setattr(bridge_module.subprocess, "Popen", unexpected_start)
+        result = ensure_antigravity_bridge_running()
+
+        assert result.ok is True
+        assert result.started is False
+        assert result.health.is_direct_ready is True
+
+    def test_starts_local_direct_sidecar_and_waits_for_health(self, monkeypatch, tmp_path):
+        launcher = tmp_path / "antigravity_sidecar_daemon.py"
+        launcher.touch()
+        checks = iter([self._unavailable(), self._unavailable(), self._direct_ready()])
+        command: list[str] = []
+
+        class RunningProcess:
+            def poll(self):
+                return None
+
+        def fake_popen(args, **kwargs):
+            command.extend(args)
+            assert kwargs["cwd"]
+            return RunningProcess()
+
+        monkeypatch.setattr(bridge_module, "SIDECAR_DAEMON_PATH", launcher)
+        monkeypatch.setattr(bridge_module, "get_antigravity_bridge_health", lambda **_: next(checks))
+        monkeypatch.setattr(bridge_module.subprocess, "Popen", fake_popen)
+        monkeypatch.setattr(bridge_module.time, "sleep", lambda _: None)
+
+        result = ensure_antigravity_bridge_running(startup_timeout_seconds=0.5)
+
+        assert result.ok is True
+        assert result.started is True
+        assert result.health.is_direct_ready is True
+        assert command[1] == str(launcher)
+        assert command[-4:] == ["--port", "8585", "--mode", "direct"]
+
+    def test_refuses_to_start_a_process_for_remote_health_url(self, monkeypatch):
+        monkeypatch.setattr(bridge_module, "get_antigravity_bridge_health", lambda **_: self._unavailable())
+
+        def unexpected_start(*args, **kwargs):
+            raise AssertionError("remote endpoint must never start a local sidecar")
+
+        monkeypatch.setattr(bridge_module.subprocess, "Popen", unexpected_start)
+        result = ensure_antigravity_bridge_running("https://example.com/health")
+
+        assert result.ok is False
+        assert result.started is False
+        assert result.reason == "bridge_start_requires_local_health_url"
 
 
 # ============================================================================
