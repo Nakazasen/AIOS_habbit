@@ -508,7 +508,7 @@ def build_full_bundle_request(
 
 
 def build_ide_prompt_markdown(manifest: dict[str, Any], answer_language: str = "vi") -> str:
-    lang = manifest.get("answer_language", answer_language)
+    lang = answer_language if answer_language != "vi" or "answer_language" not in manifest else manifest.get("answer_language", "vi")
     lang_instruction = get_ai_language_instruction(lang)
     inbox_path = HANDOFF_ROOT / "inbox" / manifest["request_id"] / "response.json"
     schema = {

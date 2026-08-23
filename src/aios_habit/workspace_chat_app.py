@@ -79,8 +79,8 @@ from aios_habit.workspace_chat_store import (
     update_conversation_search_preference,
     update_conversation_language_settings,
     load_messages,
-
     save_message,
+    save_evidence_trace,
     load_temporary_sources,
     save_temporary_source,
     load_notebook_sources,
@@ -97,6 +97,7 @@ from aios_habit.workspace_chat_store import (
     delete_conversation,
     resolve_conversation_id,
 )
+from aios_habit.evidence_trace import build_evidence_trace_from_citations
 from aios_habit.workspace_chat_models import (
     DocumentNotebook,
     WorkspaceConversation,
@@ -1560,11 +1561,53 @@ else:
                     res = import_pending_ide_response(req_info.request_id)
                     if res.ok:
                         save_imported_ide_answer(active_conversation.id, res)
+
+                        conv_msgs = load_messages(active_conversation.id)
+                        user_msgs = [m for m in conv_msgs if m.role == "user"]
+                        user_msg_id = user_msgs[-1].id if user_msgs else ""
+
+                        assistant_msg_id = f"MSG-{uuid.uuid4().hex[:8].upper()}"
+
+                        manifest = res.manifest or {}
+                        q_text = manifest.get("question", "")
+                        manifest_evidence = manifest.get("evidence_items") or []
+                        allowed_source_ids = manifest.get("allowed_source_ids")
+
+                        ans_text = (
+                            res.answer_markdown
+                            or res.answer_text
+                            or (res.response.get("answer_markdown") if isinstance(res.response, dict) else "")
+                            or (res.response.get("answer_text") if isinstance(res.response, dict) else "")
+                            or ""
+                        )
+
+                        provenance = {
+                            "operational_mode": "handoff",
+                            "provider_name": "Gemini Web",
+                            "model_name": "verified_antigravity_ide",
+                        }
+
+                        trace = build_evidence_trace_from_citations(
+                            query=q_text,
+                            answer_text=ans_text,
+                            evidence_items=manifest_evidence,
+                            allowed_source_ids=allowed_source_ids,
+                            notebook_id=active_conversation.notebook_id or active_nb_id,
+                            conversation_id=active_conversation.id,
+                            user_message_id=user_msg_id,
+                            assistant_message_id=assistant_msg_id,
+                            ui_locale=current_ui_locale,
+                            answer_language=getattr(active_conversation, "answer_language", current_ui_locale) or current_ui_locale,
+                            provenance=provenance,
+                        )
+                        save_evidence_trace(trace)
+
                         imported_assistant_msg = ChatMessage(
-                            id=f"MSG-{uuid.uuid4().hex[:8].upper()}",
+                            id=assistant_msg_id,
                             conversation_id=active_conversation.id,
                             role="assistant",
-                            content=res.answer_markdown or res.answer_text,
+                            content=ans_text,
+                            trace_id=trace.trace_id,
                         )
                         save_message(imported_assistant_msg)
                         handoff_model = getattr(res, "model_tool_name", "") or ""
@@ -1574,15 +1617,16 @@ else:
                             "conversation_id": active_conversation.id,
                             "type": "ai_answered",
                             "source_count": len(res.cited_evidence_ids or []),
-                            "source_titles": [f"Nguồn {eid}" for eid in (res.cited_evidence_ids or [])],
+                            "source_titles": [t("source_item_label", locale=current_ui_locale, id=eid) for eid in (res.cited_evidence_ids or [])],
                             "ai_source": "Antigravity IDE",
-                            "bridge": "Sidecar (Chuyển giao)",
-                            "provider": "Gemini Web (Nặc danh)",
+                            "bridge": t("sidecar_handoff", locale=current_ui_locale),
+                            "provider": t("gemini_web_anonymous", locale=current_ui_locale),
                             "model_tool_name": handoff_model,
                             "verified_model": handoff_model,
                             "operational_mode": "handoff",
+                            "trace_id": trace.trace_id,
                         }
-                        st.session_state.wsc_action_message = f"Đã tự động nhận câu trả lời từ Antigravity IDE (Mã: {req_info.request_id})."
+                        st.session_state.wsc_action_message = t("auto_received_ide_answer", locale=current_ui_locale, id=req_info.request_id)
                         safe_rerun()
 
             # Thêm tài liệu rồi hỏi tự nhiên; AIOS sẽ tự kiểm tra nguồn và cảnh báo nếu thiếu.
@@ -1698,7 +1742,7 @@ else:
                     if pending_state == "ready":
                         pending_auto_question = str(pending_submission.get("question", "")).strip()
                         st.session_state.pop(_PENDING_SOURCE_SUBMISSION_KEY, None)
-                        st.session_state.wsc_action_message = "Tài liệu đã sẵn sàng. AIOS đang tiếp tục câu hỏi của bạn."
+                        st.session_state.wsc_action_message = t("resumed_pending_question", locale=current_ui_locale)
                     elif pending_state == "waiting":
                         required_count = int(
                             pending_submission.get("required_source_count", 0)
@@ -1710,9 +1754,7 @@ else:
                         with cancel_col:
                             if st.button(t("cancel_pending_question", locale=current_ui_locale), key=f"wsc_cancel_pending_question_{active_conversation.id}", use_container_width=True):
                                 st.session_state.pop(_PENDING_SOURCE_SUBMISSION_KEY, None)
-                                st.session_state.wsc_action_message = (
-                                    "Đã hủy câu hỏi đang chờ. AIOS vẫn có thể hoàn tất việc chuẩn bị ở nền."
-                                )
+                                st.session_state.wsc_action_message = t("cancelled_pending_question_notice", locale=current_ui_locale)
                                 safe_rerun()
                         _poll_pending_source_submission()
                     else:
@@ -1830,21 +1872,16 @@ else:
                                     broad_states = get_workspace_chat_source_preparation_status(
                                         tuple(non_empty_sources)
                                     )
+                                    if any(state == "unavailable" for state in broad_states.values()):
+                                        st.session_state.wsc_action_error = t("bge_search_unavailable", locale=current_ui_locale)
+                                        st.session_state.wsc_last_ai_badge = None
+                                        safe_rerun()
                                     broad_waiting = [
                                         identity for identity, state in broad_states.items()
                                         if state != "ready"
                                     ]
-                                    if any(state == "unavailable" for state in broad_states.values()):
-                                        st.session_state.wsc_action_error = (
-                                            "Tìm kiếm tài liệu BGE-M3 chưa sẵn sàng. Hãy khôi phục BGE-M3 rồi hỏi lại."
-                                        )
-                                        st.session_state.wsc_last_ai_badge = None
-                                        safe_rerun()
                                     if broad_waiting:
-                                        st.session_state.wsc_action_error = (
-                                            "Câu hỏi này còn quá rộng trong khi có tài liệu chưa sẵn sàng. "
-                                            "Hãy nêu tên hệ thống/tài liệu hoặc bật riêng nguồn cần hỏi để AIOS chỉ chuẩn bị phần liên quan."
-                                        )
+                                        st.session_state.wsc_action_error = t("broad_query_unready_error", locale=current_ui_locale)
                                         st.session_state.wsc_last_ai_badge = None
                                         safe_rerun()
                                     # All enabled sources are already ready, so a broad

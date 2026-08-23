@@ -66,7 +66,7 @@ def sanitize_reason(reason: str) -> str:
     # Mask paths
     text = re.sub(r"([A-Za-z]:)?/[a-zA-Z0-9_\-\./]+", "<path>", text)
     # Mask API tokens
-    text = re.sub(r"(sk-[a-zA-Z0-9_\-]+|Bearer\s+[a-zA-Z0-9_\-]+)", "<redacted_token>", text)
+    text = re.sub(r"(sk-[a-zA-Z0-9_\-]+|ant-[a-zA-Z0-9_\-]+|AIzaSy[a-zA-Z0-9_\-]+|Bearer\s+[a-zA-Z0-9_\-]+)", "<redacted_token>", text)
     return text[:200].strip()
 
 
@@ -522,8 +522,12 @@ def route_workspace_chat_submission(
     if health.is_direct_ready:
         context_blocks = []
         for idx, ev in enumerate(evidence_items, start=1):
-            title_ev = ev.get("title", f"Nguồn {idx}")
-            snip_ev = ev.get("text", ev.get("snippet", ""))
+            if isinstance(ev, dict):
+                title_ev = ev.get("title", f"Nguồn {idx}")
+                snip_ev = ev.get("text", ev.get("snippet", ""))
+            else:
+                title_ev = getattr(ev, "title", f"Nguồn {idx}")
+                snip_ev = getattr(ev, "extracted_text", None) or getattr(ev, "snippet", None) or getattr(ev, "text", "")
             context_blocks.append(f"[{idx}] {title_ev}:\n{snip_ev}")
         direct_context_text = "\n\n".join(context_blocks)
 
@@ -547,15 +551,59 @@ def route_workspace_chat_submission(
                     content=user_raw_input,
                 )
                 save_message(user_msg)
+
+                assistant_msg_id = f"MSG-{uuid.uuid4().hex[:8].upper()}"
+
+                from aios_habit.workspace_chat_store import (
+                    load_conversation,
+                    load_conversation_source_selections,
+                    save_evidence_trace,
+                )
+                from aios_habit.evidence_trace import build_evidence_trace_from_citations
+
+                all_selections = load_conversation_source_selections(conversation_id)
+                if all_selections:
+                    allowed_source_ids = [s.source_id for s in all_selections if s.enabled]
+                else:
+                    allowed_source_ids = None
+
+                conv = load_conversation(conversation_id)
+                ui_locale = getattr(conv, "ui_locale", "vi") if conv else "vi"
+
+                provenance = {
+                    "operational_mode": "direct",
+                    "provider_name": "Gemini Web Stream",
+                    "model_name": "verified_gemini_stream",
+                }
+
+                trace = build_evidence_trace_from_citations(
+                    query=question,
+                    answer_text=direct_res.answer_text,
+                    evidence_items=evidence_items,
+                    allowed_source_ids=allowed_source_ids,
+                    notebook_id=notebook_id,
+                    conversation_id=conversation_id,
+                    user_message_id=user_msg.id,
+                    assistant_message_id=assistant_msg_id,
+                    ui_locale=ui_locale,
+                    answer_language=answer_language,
+                    provenance=provenance,
+                )
+                save_evidence_trace(trace)
+
                 assistant_msg = ChatMessage(
-                    id=f"MSG-{uuid.uuid4().hex[:8].upper()}",
+                    id=assistant_msg_id,
                     conversation_id=conversation_id,
                     role="assistant",
                     content=direct_res.answer_text,
+                    trace_id=trace.trace_id,
                 )
                 save_message(assistant_msg)
 
-                source_titles = [ev.get("title", "") for ev in evidence_items]
+                source_titles = [
+                    (ev.get("title", "") if isinstance(ev, dict) else getattr(ev, "title", ""))
+                    for ev in evidence_items
+                ]
                 verified_model_str = (
                     direct_res.model
                     if direct_res.model and direct_res.model not in ("antigravity-brain-pro", "antigravity", "gemini-pro")
@@ -574,6 +622,7 @@ def route_workspace_chat_submission(
                     "operational_mode": "direct",
                     "retrieval_summary": retrieval_summary,
                     "evidence_items": evidence_items,
+                    "trace_id": trace.trace_id,
                 }
                 return (True, "Đã nhận câu trả lời từ Antigravity IDE (Direct) thành công.", badge, None)
             else:

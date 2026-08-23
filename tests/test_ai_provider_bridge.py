@@ -185,7 +185,7 @@ def test_grounded_prompt_has_rules_refs_and_bounded_context():
     assert "source.txt" in prompt
     assert "CHUNK-1" in prompt
     assert "chưa đủ bằng chứng" in prompt
-    assert "Trả lời bằng tiếng Việt" in prompt
+    assert "Trả lời hoàn toàn bằng Tiếng Việt" in prompt
     assert "[ĐÃ GIỚI HẠN NGỮ CẢNH CỤC BỘ]" in prompt
 
 

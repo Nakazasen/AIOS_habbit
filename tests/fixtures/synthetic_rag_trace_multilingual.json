@@ -1,0 +1,120 @@
+{
+  "schema_version": "rag-trace/v1",
+  "trace_id": "trc_commit_d_smoke_multilingual_002",
+  "ui_locale": "ja",
+  "answer_language": "ja",
+  "source_language": "ja",
+  "created_at": "2026-08-23T10:36:17Z",
+  "query": "ハンディターミナルでの在庫同期エラー ERR_KHO_SYNC_0x80040111 の復旧手順を教えてください。",
+  "answer_text": "在庫同期エラー ERR_KHO_SYNC_0x80040111 [1] が発生した場合は、端末の通信状態を確認し、品質管理マニュアル [2] に従って再同期を実行してください。",
+  "nodes": [
+    {
+      "id": "n_q_ja",
+      "node_type": "question",
+      "title": "ユーザーの質問",
+      "snippet": "ハンディターミナルでの在庫同期エラー ERR_KHO_SYNC_0x80040111 の復旧手順を教えてください。",
+      "source_path": "",
+      "citation_id": "",
+      "confidence": null,
+      "privacy_label": "local_only",
+      "metadata": {}
+    },
+    {
+      "id": "n_a_ja",
+      "node_type": "answer",
+      "title": "AIアシスタントの回答",
+      "snippet": "在庫同期エラー ERR_KHO_SYNC_0x80040111 [1] が発生した場合は、端末の通信状態を確認し、品質管理マニュアル [2] に従って再同期を実行してください。",
+      "source_path": "",
+      "citation_id": "",
+      "confidence": null,
+      "privacy_label": "local_only",
+      "metadata": {}
+    },
+    {
+      "id": "n_c1_ja",
+      "node_type": "citation",
+      "title": "引用 [1]",
+      "snippet": "エラー ERR_KHO_SYNC_0x80040111: ハンディターミナルと基幹サーバー間のデータ同期タイムアウト時に記録されます。",
+      "source_path": "D:/local_cases/docs/在庫管理マニュアル_v2.0.pdf",
+      "citation_id": "[1]",
+      "confidence": 0.96,
+      "privacy_label": "local_only",
+      "metadata": {
+        "source_id": "src_doc_ja_1"
+      }
+    },
+    {
+      "id": "n_c2_ja",
+      "node_type": "citation",
+      "title": "引用 [2]",
+      "snippet": "端末再起動およびWi-Fi 5GHz帯域の再接続手順が品質管理規定第4条に定義されています。",
+      "source_path": "D:/local_cases/docs/品質管理マニュアル_2026.docx",
+      "citation_id": "[2]",
+      "confidence": 0.91,
+      "privacy_label": "local_only",
+      "metadata": {
+        "source_id": "src_doc_ja_2"
+      }
+    },
+    {
+      "id": "src_doc_ja_1",
+      "node_type": "source",
+      "title": "在庫管理マニュアル_v2.0.pdf",
+      "snippet": "倉庫業務およびハンディ端末運用の標準作業手順書（SOP）。",
+      "source_path": "D:/local_cases/docs/在庫管理マニュアル_v2.0.pdf",
+      "citation_id": "",
+      "confidence": null,
+      "privacy_label": "local_only",
+      "metadata": {}
+    },
+    {
+      "id": "src_doc_ja_2",
+      "node_type": "source",
+      "title": "品質管理マニュアル_2026.docx",
+      "snippet": "入出庫検品およびエラー時エスカレーション規定。",
+      "source_path": "D:/local_cases/docs/品質管理マニュアル_2026.docx",
+      "citation_id": "",
+      "confidence": null,
+      "privacy_label": "local_only",
+      "metadata": {}
+    }
+  ],
+  "edges": [
+    {
+      "source_id": "n_q_ja",
+      "target_id": "n_a_ja",
+      "relation": "derives_from",
+      "metadata": {}
+    },
+    {
+      "source_id": "n_c1_ja",
+      "target_id": "n_a_ja",
+      "relation": "supports",
+      "metadata": {}
+    },
+    {
+      "source_id": "n_c2_ja",
+      "target_id": "n_a_ja",
+      "relation": "supports",
+      "metadata": {}
+    },
+    {
+      "source_id": "src_doc_ja_1",
+      "target_id": "n_c1_ja",
+      "relation": "extracted_from",
+      "metadata": {}
+    },
+    {
+      "source_id": "src_doc_ja_2",
+      "target_id": "n_c2_ja",
+      "relation": "extracted_from",
+      "metadata": {}
+    }
+  ],
+  "metadata": {
+    "status": "completed",
+    "total_sources": 2,
+    "total_citations": 2,
+    "model": "mock-ai-model-ja"
+  }
+}

@@ -76,6 +76,19 @@ class ChatMessage:
     role: str  # user/assistant/system
     content: str
     created_at: str = field(default_factory=lambda: datetime.now().isoformat())
+    trace_id: Optional[str] = None
+
+    def to_dict(self) -> dict:
+        return asdict(self)
+
+    @classmethod
+    def from_dict(cls, data: dict) -> 'ChatMessage':
+        valid_keys = {
+            "id", "conversation_id", "role", "content", "created_at", "trace_id"
+        }
+        filtered = {k: v for k, v in data.items() if k in valid_keys}
+        return cls(**filtered)
+
 
 @dataclass
 class TemporaryConversationSource:

@@ -1023,6 +1023,114 @@ class TestAntigravityBridgeFailClosedAndE2E:
         assert status_data["state"] == "completed"
         assert status_data["saved_answer_id"] == saved_ans.draft_id
 
+    def test_ide_handoff_import_creates_and_links_evidence_trace(self, tmp_path, monkeypatch):
+        """Verify importing handoff response creates EvidenceTrace with handoff provenance and links trace_id."""
+        import aios_habit.workspace_chat_store as store_mod
+        from aios_habit.case_models import EvidenceItem
+        from aios_habit.evidence_trace import build_evidence_trace_from_citations
+        from aios_habit.ide_handoff_bridge import (
+            write_ide_handoff_bundle,
+            write_ide_handoff_response,
+            import_pending_ide_response,
+            save_imported_ide_answer,
+        )
+        from aios_habit.workspace_chat_models import ChatMessage
+
+        # Sandbox chat store
+        monkeypatch.setattr(store_mod, "LOCAL_CHAT_DIR", tmp_path)
+        monkeypatch.setattr(store_mod, "MESSAGES_FILE", tmp_path / "messages.jsonl")
+        monkeypatch.setattr(store_mod, "TRACES_FILE", tmp_path / "traces.jsonl")
+        store_mod.init_chat_store()
+
+        handoff_root = tmp_path / "ide_handoff"
+        conv_id = "CONV-HANDOFF-TRACE"
+        nb_id = "NB-HANDOFF-TRACE"
+
+        # Save user message
+        user_msg = ChatMessage(
+            id="MSG-USER-1",
+            conversation_id=conv_id,
+            role="user",
+            content="Quy trình xuất kho?",
+        )
+        store_mod.save_message(user_msg)
+
+        ev_item = EvidenceItem(
+            evidence_id="EVD-HANDOFF-1",
+            case_id=conv_id,
+            source_type="plain_text",
+            source_path="local/sop.txt",
+            title="Quy trình xuất kho",
+            extracted_text="Bước 1: Quét mã phiếu xuất kho trên hệ thống.",
+            privacy_level="local_only",
+        )
+
+        bundle_req = write_ide_handoff_bundle(
+            case_id=conv_id,
+            question="Quy trình xuất kho?",
+            bundle_scope="active_case_all",
+            evidence_items=[ev_item],
+            root=handoff_root,
+        )
+
+        resp_path = write_ide_handoff_response(
+            request_id=bundle_req.request_id,
+            answer_markdown="Theo tài liệu [EVD-HANDOFF-1], bước đầu tiên là quét mã phiếu xuất kho.",
+            root=handoff_root,
+            privacy_acknowledged=True,
+            used_full_bundle=True,
+        )
+
+        # Execute import logic matching workspace_chat_app
+        validation = import_pending_ide_response(bundle_req.request_id, root=handoff_root)
+        assert validation.ok is True
+
+        manifest = validation.manifest or {}
+        ans_text = validation.response.get("answer_markdown", "")
+        assistant_msg_id = "MSG-AST-1"
+
+        provenance = {
+            "operational_mode": "handoff",
+            "provider_name": "Gemini Web",
+            "model_name": "verified_antigravity_ide",
+        }
+
+        trace = build_evidence_trace_from_citations(
+            query=manifest.get("question", ""),
+            answer_text=ans_text,
+            evidence_items=manifest.get("evidence_items") or [ev_item],
+            allowed_source_ids=manifest.get("allowed_source_ids"),
+            notebook_id=nb_id,
+            conversation_id=conv_id,
+            user_message_id=user_msg.id,
+            assistant_message_id=assistant_msg_id,
+            ui_locale="vi",
+            answer_language="vi",
+            provenance=provenance,
+        )
+        store_mod.save_evidence_trace(trace)
+
+        ast_msg = ChatMessage(
+            id=assistant_msg_id,
+            conversation_id=conv_id,
+            role="assistant",
+            content=ans_text,
+            trace_id=trace.trace_id,
+        )
+        store_mod.save_message(ast_msg)
+
+        # Verify saved message and trace
+        loaded_msgs = store_mod.load_messages(conv_id)
+        loaded_ast = [m for m in loaded_msgs if m.role == "assistant"][0]
+        assert loaded_ast.trace_id == trace.trace_id
+
+        loaded_trace = store_mod.load_evidence_trace(trace.trace_id)
+        assert loaded_trace is not None
+        assert loaded_trace.provenance["operational_mode"] == "handoff"
+        assert loaded_trace.provenance["provider_name"] == "Gemini Web"
+        assert loaded_trace.provenance["model_name"] == "verified_antigravity_ide"
+        assert loaded_trace.metadata["status"] == "valid"
+
 
 # ============================================================================
 # 8. Handoff Bundle Multilingual & Verbatim Evidence Preservation E2E Tests (R1)
@@ -1311,3 +1419,339 @@ class TestAntigravityHandoffMultilingualE2E:
             answer_language="unknown_locale",
         )
         assert manifest_vi["answer_language"] == "vi"
+
+    def test_route_submission_direct_mode_creates_and_links_evidence_trace(self, mock_fsm_server, monkeypatch, tmp_path):
+        """Verify direct mode builds EvidenceTrace, saves it, and attaches trace_id to assistant message."""
+        import aios_habit.workspace_chat_store as store_mod
+        from aios_habit.antigravity_bridge import route_workspace_chat_submission
+
+        # Sandbox chat store
+        monkeypatch.setattr(store_mod, "LOCAL_CHAT_DIR", tmp_path)
+        monkeypatch.setattr(store_mod, "MESSAGES_FILE", tmp_path / "messages.jsonl")
+        monkeypatch.setattr(store_mod, "TRACES_FILE", tmp_path / "traces.jsonl")
+        monkeypatch.setattr(store_mod, "SOURCE_SELECTIONS_FILE", tmp_path / "conversation_source_selections.jsonl")
+        monkeypatch.setattr(store_mod, "CONVERSATIONS_FILE", tmp_path / "conversations.jsonl")
+        store_mod.init_chat_store()
+
+        server, health_url, completions_url = mock_fsm_server
+        server.completion_response = {
+            "choices": [
+                {
+                    "message": {
+                        "role": "assistant",
+                        "content": "Theo tài liệu [1], cổng kết nối là COM3.",
+                    }
+                }
+            ],
+            "model": "gemini-2.5-flash",
+        }
+
+        health = AntigravityHealthStatus(
+            status="direct_ready",
+            mode="direct",
+            capabilities=["direct_chat"],
+        )
+
+        evidence = [
+            {
+                "id": "src_com_doc",
+                "title": "Cấu hình thiết bị",
+                "snippet": "Cổng kết nối COM3 được sử dụng cho máy quét.",
+                "source_path": "config.txt",
+                "citation_label": "[1]",
+            }
+        ]
+
+        ok, msg, badge, err = route_workspace_chat_submission(
+            question="Cổng kết nối là gì?",
+            evidence_items=evidence,
+            packed_sources=(),
+            conversation_id="CONV-DIR-TRACE",
+            notebook_id="NB-DIR-TRACE",
+            retrieval_applied=True,
+            retrieved_sources=(),
+            retrieval_summary="1 source retrieved",
+            current_keys=(),
+            chat_history=(),
+            user_raw_input="Cổng kết nối là gì?",
+            health_status=health,
+            endpoint_url=completions_url,
+            answer_language="vi",
+        )
+
+        assert ok is True
+        assert err is None
+        assert badge is not None
+        assert "trace_id" in badge
+        trace_id = badge["trace_id"]
+        assert trace_id.startswith("trc_")
+
+        # Verify assistant message has trace_id
+        msgs = store_mod.load_messages("CONV-DIR-TRACE")
+        assert len(msgs) == 2
+        ast_msg = [m for m in msgs if m.role == "assistant"][0]
+        assert ast_msg.trace_id == trace_id
+
+        # Verify trace was saved and has genuine provenance
+        trace = store_mod.load_evidence_trace(trace_id)
+        assert trace is not None
+        assert trace.trace_id == trace_id
+        assert trace.notebook_id == "NB-DIR-TRACE"
+        assert trace.conversation_id == "CONV-DIR-TRACE"
+        assert trace.provenance["operational_mode"] == "direct"
+        assert trace.provenance["provider_name"] == "Gemini Web Stream"
+        assert trace.provenance["model_name"] == "verified_gemini_stream"
+        assert trace.metadata["status"] == "valid"
+        assert trace.metadata["insufficient_evidence"] is False
+        assert len(trace.nodes) >= 3  # question, answer, source, citation
+
+    def test_route_submission_direct_mode_missing_citations_insufficient_evidence(self, mock_fsm_server, monkeypatch, tmp_path):
+        """Verify direct mode with zero citations marks trace as insufficient_evidence."""
+        import aios_habit.workspace_chat_store as store_mod
+        from aios_habit.antigravity_bridge import route_workspace_chat_submission
+
+        monkeypatch.setattr(store_mod, "LOCAL_CHAT_DIR", tmp_path)
+        monkeypatch.setattr(store_mod, "MESSAGES_FILE", tmp_path / "messages.jsonl")
+        monkeypatch.setattr(store_mod, "TRACES_FILE", tmp_path / "traces.jsonl")
+        monkeypatch.setattr(store_mod, "SOURCE_SELECTIONS_FILE", tmp_path / "conversation_source_selections.jsonl")
+        monkeypatch.setattr(store_mod, "CONVERSATIONS_FILE", tmp_path / "conversations.jsonl")
+        store_mod.init_chat_store()
+
+        server, health_url, completions_url = mock_fsm_server
+        server.completion_response = {
+            "choices": [
+                {
+                    "message": {
+                        "role": "assistant",
+                        "content": "Đây là câu trả lời chung chung không trích dẫn tài liệu.",
+                    }
+                }
+            ],
+            "model": "gemini-2.5-flash",
+        }
+
+        health = AntigravityHealthStatus(
+            status="direct_ready",
+            mode="direct",
+            capabilities=["direct_chat"],
+        )
+
+        ok, msg, badge, err = route_workspace_chat_submission(
+            question="Chào bạn?",
+            evidence_items=[],
+            packed_sources=(),
+            conversation_id="CONV-DIR-NOCIT",
+            notebook_id="NB-DIR-NOCIT",
+            retrieval_applied=False,
+            retrieved_sources=(),
+            retrieval_summary="",
+            current_keys=(),
+            chat_history=(),
+            user_raw_input="Chào bạn?",
+            health_status=health,
+            endpoint_url=completions_url,
+            answer_language="vi",
+        )
+
+        assert ok is True
+        trace_id = badge["trace_id"]
+        trace = store_mod.load_evidence_trace(trace_id)
+        assert trace is not None
+        assert trace.metadata["status"] == "insufficient_evidence"
+        assert trace.metadata["insufficient_evidence"] is True
+
+    @pytest.mark.parametrize("citation_format", ["[EVD-001]", "[1]"])
+    def test_route_submission_direct_mode_rag_evidence_real_source_id_enabled(
+        self, mock_fsm_server, monkeypatch, tmp_path, citation_format
+    ):
+        """Regression E2E test: Conversation with enabled selection source_id=SRC-001
+
+        Verifies retrieval evidence dict with source_id=SRC-001, evidence_id=EVD-001 produces
+        a valid trace with source and citation nodes when replied using [EVD-001] or [1].
+        """
+        import aios_habit.workspace_chat_store as store_mod
+        from aios_habit.antigravity_bridge import route_workspace_chat_submission
+        from aios_habit.workspace_chat_models import ConversationSourceSelection
+
+        monkeypatch.setattr(store_mod, "LOCAL_CHAT_DIR", tmp_path)
+        monkeypatch.setattr(store_mod, "MESSAGES_FILE", tmp_path / "messages.jsonl")
+        monkeypatch.setattr(store_mod, "TRACES_FILE", tmp_path / "traces.jsonl")
+        monkeypatch.setattr(store_mod, "SOURCE_SELECTIONS_FILE", tmp_path / "conversation_source_selections.jsonl")
+        monkeypatch.setattr(store_mod, "CONVERSATIONS_FILE", tmp_path / "conversations.jsonl")
+        store_mod.init_chat_store()
+
+        conv_id = f"CONV-REG-SRC-{citation_format.strip('[]')}"
+        nb_id = "NB-REG-01"
+
+        # Enabled selection for SRC-001
+        store_mod.save_conversation_source_selection(
+            ConversationSourceSelection(
+                id=f"sel-enabled-{citation_format.strip('[]')}",
+                conversation_id=conv_id,
+                source_id="SRC-001",
+                source_scope="notebook",
+                enabled=True,
+            )
+        )
+
+        server, health_url, completions_url = mock_fsm_server
+        server.completion_response = {
+            "choices": [
+                {
+                    "message": {
+                        "role": "assistant",
+                        "content": f"Theo tài liệu {citation_format}, bước 1 là khởi động máy kiểm đếm.",
+                    }
+                }
+            ],
+            "model": "gemini-2.5-flash",
+        }
+
+        health = AntigravityHealthStatus(
+            status="direct_ready",
+            mode="direct",
+            capabilities=["direct_chat"],
+        )
+
+        evidence = [
+            {
+                "source_id": "SRC-001",
+                "evidence_id": "EVD-001",
+                "citation_id": "EVD-001",
+                "title": "Quy trình vận hành máy",
+                "snippet": "Bước 1 là khởi động máy kiểm đếm trước ca làm việc.",
+                "source_path": "manual.txt",
+                "citation_label": "[1]",
+            }
+        ]
+
+        ok, msg, badge, err = route_workspace_chat_submission(
+            question="Bước 1 là gì?",
+            evidence_items=evidence,
+            packed_sources=(),
+            conversation_id=conv_id,
+            notebook_id=nb_id,
+            retrieval_applied=True,
+            retrieved_sources=(),
+            retrieval_summary="1 source retrieved",
+            current_keys=(),
+            chat_history=(),
+            user_raw_input="Bước 1 là gì?",
+            health_status=health,
+            endpoint_url=completions_url,
+            answer_language="vi",
+        )
+
+        assert ok is True
+        assert err is None
+        assert badge is not None
+        trace_id = badge["trace_id"]
+        assert trace_id.startswith("trc_")
+
+        # Verify assistant message has trace_id
+        msgs = store_mod.load_messages(conv_id)
+        assert len(msgs) == 2
+        ast_msg = [m for m in msgs if m.role == "assistant"][0]
+        assert ast_msg.trace_id == trace_id
+
+        # Verify trace is valid and properly linked
+        trace = store_mod.load_evidence_trace(trace_id)
+        assert trace is not None
+        assert trace.metadata["status"] == "valid"
+        assert trace.metadata.get("insufficient_evidence") is not True
+
+        node_types = {n.node_type for n in trace.nodes}
+        assert "source" in node_types
+        assert "citation" in node_types
+        assert "answer" in node_types
+        assert "question" in node_types
+
+    def test_route_submission_direct_mode_rag_evidence_real_source_id_disabled_insufficient_evidence(
+        self, mock_fsm_server, monkeypatch, tmp_path
+    ):
+        """Regression E2E test: Same data but source_id=SRC-001 is disabled in conversation selections.
+
+        Must result in insufficient_evidence trace, and citation must not be accepted into trace.
+        """
+        import aios_habit.workspace_chat_store as store_mod
+        from aios_habit.antigravity_bridge import route_workspace_chat_submission
+        from aios_habit.workspace_chat_models import ConversationSourceSelection
+
+        monkeypatch.setattr(store_mod, "LOCAL_CHAT_DIR", tmp_path)
+        monkeypatch.setattr(store_mod, "MESSAGES_FILE", tmp_path / "messages.jsonl")
+        monkeypatch.setattr(store_mod, "TRACES_FILE", tmp_path / "traces.jsonl")
+        monkeypatch.setattr(store_mod, "SOURCE_SELECTIONS_FILE", tmp_path / "conversation_source_selections.jsonl")
+        monkeypatch.setattr(store_mod, "CONVERSATIONS_FILE", tmp_path / "conversations.jsonl")
+        store_mod.init_chat_store()
+
+        conv_id = "CONV-REG-DISABLED"
+        nb_id = "NB-REG-01"
+
+        # Disabled selection for SRC-001
+        store_mod.save_conversation_source_selection(
+            ConversationSourceSelection(
+                id="sel-disabled-01",
+                conversation_id=conv_id,
+                source_id="SRC-001",
+                source_scope="notebook",
+                enabled=False,
+            )
+        )
+
+        server, health_url, completions_url = mock_fsm_server
+        server.completion_response = {
+            "choices": [
+                {
+                    "message": {
+                        "role": "assistant",
+                        "content": "Theo tài liệu [EVD-001], bước 1 là khởi động máy kiểm đếm.",
+                    }
+                }
+            ],
+            "model": "gemini-2.5-flash",
+        }
+
+        health = AntigravityHealthStatus(
+            status="direct_ready",
+            mode="direct",
+            capabilities=["direct_chat"],
+        )
+
+        evidence = [
+            {
+                "source_id": "SRC-001",
+                "evidence_id": "EVD-001",
+                "citation_id": "EVD-001",
+                "title": "Quy trình vận hành máy",
+                "snippet": "Bước 1 là khởi động máy kiểm đếm trước ca làm việc.",
+                "source_path": "manual.txt",
+                "citation_label": "[1]",
+            }
+        ]
+
+        ok, msg, badge, err = route_workspace_chat_submission(
+            question="Bước 1 là gì?",
+            evidence_items=evidence,
+            packed_sources=(),
+            conversation_id=conv_id,
+            notebook_id=nb_id,
+            retrieval_applied=True,
+            retrieved_sources=(),
+            retrieval_summary="1 source retrieved",
+            current_keys=(),
+            chat_history=(),
+            user_raw_input="Bước 1 là gì?",
+            health_status=health,
+            endpoint_url=completions_url,
+            answer_language="vi",
+        )
+
+        assert ok is True
+        trace_id = badge["trace_id"]
+        trace = store_mod.load_evidence_trace(trace_id)
+        assert trace is not None
+        assert trace.metadata["status"] == "insufficient_evidence"
+        assert trace.metadata["insufficient_evidence"] is True
+        # Source from disabled selection must not be in trace nodes
+        source_nodes = [n for n in trace.nodes if n.node_type == "source"]
+        assert len(source_nodes) == 0

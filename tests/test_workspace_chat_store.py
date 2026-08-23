@@ -2,6 +2,12 @@ import os
 import pytest
 from pathlib import Path
 import aios_habit.workspace_chat_store as store
+from aios_habit.evidence_trace_schema import (
+    EvidenceEdge,
+    EvidenceNode,
+    EvidenceTrace,
+)
+from aios_habit.local_jsonl import clear_jsonl_cache
 from aios_habit.workspace_chat_models import (
     DocumentNotebook,
     WorkspaceConversation,
@@ -21,7 +27,12 @@ def setup_test_store(tmp_path, monkeypatch):
     monkeypatch.setattr(store, "TEMPORARY_SOURCES_FILE", test_dir / "temporary_sources.jsonl")
     monkeypatch.setattr(store, "NOTEBOOK_SOURCES_FILE", test_dir / "notebook_sources.jsonl")
     monkeypatch.setattr(store, "SOURCE_SELECTIONS_FILE", test_dir / "conversation_source_selections.jsonl")
+    monkeypatch.setattr(store, "TRACES_FILE", test_dir / "traces.jsonl")
+    clear_jsonl_cache()
     store.init_chat_store()
+    yield
+    clear_jsonl_cache()
+
 
 def test_init_chat_store_defaults():
     nbs = store.load_notebooks()
@@ -281,14 +292,15 @@ def test_delete_notebook_permanently_cascade():
 
 
 def test_delete_notebook_permanently_missing():
-    # Store contents of all 6 files before call
+    # Store contents of all 7 files before call
     files = [
         store.NOTEBOOKS_FILE,
         store.CONVERSATIONS_FILE,
         store.MESSAGES_FILE,
         store.NOTEBOOK_SOURCES_FILE,
         store.TEMPORARY_SOURCES_FILE,
-        store.SOURCE_SELECTIONS_FILE
+        store.SOURCE_SELECTIONS_FILE,
+        store.TRACES_FILE,
     ]
     contents_before = {}
     for f in files:
@@ -340,7 +352,8 @@ def test_delete_notebook_permanently_failure_rollback(monkeypatch):
         store.MESSAGES_FILE,
         store.NOTEBOOK_SOURCES_FILE,
         store.TEMPORARY_SOURCES_FILE,
-        store.SOURCE_SELECTIONS_FILE
+        store.SOURCE_SELECTIONS_FILE,
+        store.TRACES_FILE,
     ]
     contents_before = {}
     for f in files:
@@ -385,7 +398,8 @@ def test_delete_notebook_permanently_temp_write_failure(monkeypatch):
         store.MESSAGES_FILE,
         store.NOTEBOOK_SOURCES_FILE,
         store.TEMPORARY_SOURCES_FILE,
-        store.SOURCE_SELECTIONS_FILE
+        store.SOURCE_SELECTIONS_FILE,
+        store.TRACES_FILE,
     ]
     contents_before = {f: f.read_bytes() if f.exists() else None for f in files}
 
@@ -423,7 +437,8 @@ def test_delete_notebook_permanently_no_target_gap(monkeypatch):
         store.MESSAGES_FILE,
         store.NOTEBOOK_SOURCES_FILE,
         store.TEMPORARY_SOURCES_FILE,
-        store.SOURCE_SELECTIONS_FILE
+        store.SOURCE_SELECTIONS_FILE,
+        store.TRACES_FILE,
     }
     def mock_unlink(self, *args, **kwargs):
         if self in protected_files:
@@ -527,3 +542,244 @@ def test_rename_conversation_changes_only_named_target_and_refreshes_timestamp()
     assert renamed.updated_at >= target.updated_at
     assert unchanged is not None
     assert unchanged.title == "Same title"
+
+
+def _make_sample_trace(
+    trace_id: str,
+    conversation_id: str = "conv_unit_1",
+    assistant_message_id: str = "ast_unit_1",
+    user_message_id: str = "usr_unit_1",
+    notebook_id: str = "mom_opcenter",
+    query: str = "Định dạng cấu hình hệ thống?",
+    answer_text: str = "Hệ thống cấu hình theo tài liệu [1].",
+) -> EvidenceTrace:
+    nodes = [
+        EvidenceNode(
+            id=f"{trace_id}_src",
+            node_type="source",
+            title="Tài liệu cấu hình",
+            snippet="Hướng dẫn cài đặt hệ thống.",
+            source_id="docs/config.md",
+        ),
+        EvidenceNode(
+            id=f"{trace_id}_cit",
+            node_type="citation",
+            title="[1]",
+            snippet="Trích dẫn [1]",
+            source_id=f"{trace_id}_src",
+            citation_id="[1]",
+        ),
+        EvidenceNode(
+            id=f"{trace_id}_ans",
+            node_type="answer",
+            title="Câu trả lời",
+            snippet=answer_text,
+        ),
+    ]
+    edges = [
+        EvidenceEdge(
+            source_id=f"{trace_id}_cit",
+            target_id=f"{trace_id}_src",
+            relation_type="extracted_from",
+        ),
+        EvidenceEdge(
+            source_id=f"{trace_id}_ans",
+            target_id=f"{trace_id}_cit",
+            relation_type="cites",
+        ),
+    ]
+    return EvidenceTrace(
+        schema_version="rag-trace/v1",
+        trace_id=trace_id,
+        notebook_id=notebook_id,
+        conversation_id=conversation_id,
+        user_message_id=user_message_id,
+        assistant_message_id=assistant_message_id,
+        query=query,
+        answer_text=answer_text,
+        ui_locale="vi",
+        answer_language="vi",
+        source_language="vi",
+        nodes=nodes,
+        edges=edges,
+        metadata={
+            "provenance": {
+                "operational_mode": "direct",
+                "provider_name": "Gemini Web Stream",
+                "model_name": "gemini-2.5-flash",
+            },
+            "status": "valid",
+        },
+    )
+
+
+def test_evidence_trace_save_and_load_by_id():
+    trace = _make_sample_trace("trc_unit_001")
+    saved = store.save_evidence_trace(trace)
+    assert saved.trace_id == "trc_unit_001"
+
+    loaded = store.load_evidence_trace("trc_unit_001")
+    assert loaded is not None
+    assert loaded.trace_id == "trc_unit_001"
+    assert loaded.query == trace.query
+    assert loaded.answer_text == trace.answer_text
+    assert loaded.assistant_message_id == "ast_unit_1"
+    assert len(loaded.nodes) == 3
+    assert len(loaded.edges) == 2
+
+    # Non-existent
+    assert store.load_evidence_trace("non_existent_trace") is None
+    assert store.load_evidence_trace("") is None
+
+
+def test_evidence_trace_load_conversation_traces():
+    t1 = _make_sample_trace("trc_c1_a", conversation_id="conv_alpha", assistant_message_id="ast_a")
+    t2 = _make_sample_trace("trc_c1_b", conversation_id="conv_alpha", assistant_message_id="ast_b")
+    t3 = _make_sample_trace("trc_c2_a", conversation_id="conv_beta", assistant_message_id="ast_c")
+
+    store.save_evidence_trace(t1)
+    store.save_evidence_trace(t2)
+    store.save_evidence_trace(t3)
+
+    alpha_traces = store.load_conversation_traces("conv_alpha")
+    assert len(alpha_traces) == 2
+    assert {t.trace_id for t in alpha_traces} == {"trc_c1_a", "trc_c1_b"}
+
+    beta_traces = store.load_conversation_traces("conv_beta")
+    assert len(beta_traces) == 1
+    assert beta_traces[0].trace_id == "trc_c2_a"
+
+    assert store.load_conversation_traces("non_existent") == []
+    assert store.load_conversation_traces("") == []
+
+
+def test_evidence_trace_load_message_trace():
+    trace = _make_sample_trace(
+        "trc_msg_test",
+        user_message_id="usr_target_msg",
+        assistant_message_id="ast_target_msg",
+    )
+    store.save_evidence_trace(trace)
+
+    by_ast = store.load_message_trace("ast_target_msg")
+    assert by_ast is not None
+    assert by_ast.trace_id == "trc_msg_test"
+
+    by_usr = store.load_message_trace("usr_target_msg")
+    assert by_usr is not None
+    assert by_usr.trace_id == "trc_msg_test"
+
+    assert store.load_message_trace("unknown_msg") is None
+    assert store.load_message_trace("") is None
+
+
+def test_evidence_trace_idempotency_on_duplicate_save():
+    t_v1 = _make_sample_trace(
+        "trc_idemp_v1",
+        assistant_message_id="ast_repeat_1",
+        query="Initial question",
+        answer_text="Initial answer",
+    )
+    store.save_evidence_trace(t_v1)
+
+    t_v2 = _make_sample_trace(
+        "trc_idemp_v2",
+        assistant_message_id="ast_repeat_1",
+        query="Refined question",
+        answer_text="Refined answer",
+    )
+    store.save_evidence_trace(t_v2)
+
+    # Verify only 1 line in traces.jsonl
+    traces = store.load_all_evidence_traces()
+    assert len(traces) == 1
+    assert traces[0].trace_id == "trc_idemp_v2"
+    assert traces[0].answer_text == "Refined answer"
+
+
+def test_evidence_trace_restart_and_reload():
+    orig_trace = _make_sample_trace(
+        "trc_restart_unit",
+        conversation_id="conv_restart",
+        assistant_message_id="ast_restart",
+    )
+    store.save_evidence_trace(orig_trace)
+
+    # Simulate restart by clearing cache and creating fresh store wrapper
+    clear_jsonl_cache()
+    fresh_store = store.WorkspaceChatStore()
+    fresh_store.init_store()
+
+    recovered = fresh_store.load_evidence_trace("trc_restart_unit")
+    assert recovered is not None
+    assert recovered.trace_id == "trc_restart_unit"
+    assert recovered.metadata["provenance"]["model_name"] == "gemini-2.5-flash"
+    assert len(recovered.nodes) == len(orig_trace.nodes)
+    assert len(recovered.edges) == len(orig_trace.edges)
+
+
+def test_evidence_trace_cascade_delete_conversation():
+    conv_del = WorkspaceConversation(id="conv_del", notebook_id="mom_opcenter", title="Delete Me")
+    conv_keep = WorkspaceConversation(id="conv_keep", notebook_id="mom_opcenter", title="Keep Me")
+    store.save_conversation(conv_del)
+    store.save_conversation(conv_keep)
+
+    t_del = _make_sample_trace("trc_to_del", conversation_id="conv_del", assistant_message_id="ast_del")
+    t_keep = _make_sample_trace("trc_to_keep", conversation_id="conv_keep", assistant_message_id="ast_keep")
+    store.save_evidence_trace(t_del)
+    store.save_evidence_trace(t_keep)
+
+    assert store.load_evidence_trace("trc_to_del") is not None
+    assert store.load_evidence_trace("trc_to_keep") is not None
+
+    deleted = store.delete_conversation("conv_del")
+    assert deleted is True
+
+    assert store.load_evidence_trace("trc_to_del") is None
+    assert store.load_conversation_traces("conv_del") == []
+    assert store.load_evidence_trace("trc_to_keep") is not None
+    assert len(store.load_conversation_traces("conv_keep")) == 1
+
+
+def test_evidence_trace_cascade_delete_notebook_permanently():
+    nb_del = DocumentNotebook(id="nb_purge", title="Purge Notebook")
+    nb_keep = DocumentNotebook(id="nb_preserve", title="Preserve Notebook")
+    store.save_notebook(nb_del)
+    store.save_notebook(nb_keep)
+
+    conv_del = WorkspaceConversation(id="conv_in_purge", notebook_id="nb_purge", title="Purge Conv")
+    conv_keep = WorkspaceConversation(id="conv_in_preserve", notebook_id="nb_preserve", title="Preserve Conv")
+    store.save_conversation(conv_del)
+    store.save_conversation(conv_keep)
+
+    t_del = _make_sample_trace("trc_nb_del", notebook_id="nb_purge", conversation_id="conv_in_purge", assistant_message_id="ast_nb_del")
+    t_keep = _make_sample_trace("trc_nb_keep", notebook_id="nb_preserve", conversation_id="conv_in_preserve", assistant_message_id="ast_nb_keep")
+    store.save_evidence_trace(t_del)
+    store.save_evidence_trace(t_keep)
+
+    assert store.load_evidence_trace("trc_nb_del") is not None
+    assert store.load_evidence_trace("trc_nb_keep") is not None
+
+    deleted = store.delete_notebook_permanently("nb_purge")
+    assert deleted is True
+
+    assert store.load_evidence_trace("trc_nb_del") is None
+    assert store.load_evidence_trace("trc_nb_keep") is not None
+
+
+def test_workspace_chat_store_class_wrapper_trace_methods():
+    ws_store = store.WorkspaceChatStore()
+    trace = _make_sample_trace(
+        "trc_wrapper_01",
+        conversation_id="conv_wrapper",
+        assistant_message_id="ast_wrapper",
+        user_message_id="usr_wrapper",
+    )
+    saved = ws_store.save_evidence_trace(trace)
+    assert saved.trace_id == "trc_wrapper_01"
+
+    assert ws_store.load_evidence_trace("trc_wrapper_01") is not None
+    assert len(ws_store.load_conversation_traces("conv_wrapper")) == 1
+    assert ws_store.load_message_trace("ast_wrapper") is not None
+    assert ws_store.load_message_trace("usr_wrapper") is not None
+    assert len(ws_store.load_all_evidence_traces()) >= 1

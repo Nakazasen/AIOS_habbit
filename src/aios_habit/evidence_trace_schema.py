@@ -16,7 +16,12 @@ from aios_habit.i18n import DEFAULT_LOCALE, SUPPORTED_LOCALES, normalize_locale
 
 SCHEMA_VERSION_1_0_0 = "1.0.0"
 SCHEMA_VERSION_V1 = "evidence_trace_v1"
-SUPPORTED_SCHEMA_VERSIONS = frozenset({SCHEMA_VERSION_1_0_0, SCHEMA_VERSION_V1})
+SCHEMA_VERSION_RAG_TRACE_V1 = "rag-trace/v1"
+SUPPORTED_SCHEMA_VERSIONS = frozenset({
+    SCHEMA_VERSION_1_0_0,
+    SCHEMA_VERSION_V1,
+    SCHEMA_VERSION_RAG_TRACE_V1,
+})
 
 ALLOWED_NODE_TYPES = frozenset({
     "source",
@@ -159,6 +164,11 @@ class EvidenceEdge:
     edge_id: Optional[str] = None
 
     @property
+    def relation(self) -> str:
+        """Alias for relation_type."""
+        return self.relation_type
+
+    @property
     def source_node_id(self) -> str:
         """Alias for source_id."""
         return self.source_id
@@ -181,6 +191,7 @@ class EvidenceEdge:
             "target_id": self.target_id,
             "target_node_id": self.target_id,
             "relation_type": self.relation_type,
+            "relation": self.relation_type,
             "label": self.label,
             "weight": float(self.weight),
             "confidence": float(self.weight),
@@ -195,7 +206,7 @@ class EvidenceEdge:
         """Construct EvidenceEdge from dictionary, supporting field aliases."""
         source_id = str(data.get("source_id") or data.get("source_node_id") or "")
         target_id = str(data.get("target_id") or data.get("target_node_id") or "")
-        relation_type = str(data.get("relation_type", "supports"))
+        relation_type = str(data.get("relation_type") or data.get("relation") or "supports")
         label = str(data.get("label", ""))
 
         weight_val = data.get("weight")
@@ -223,45 +234,71 @@ class EvidenceEdge:
 @dataclass
 class EvidenceTrace:
     """Complete Evidence Trace structure capturing question, answer, and evidence graph."""
-    schema_version: str = SCHEMA_VERSION_1_0_0
     trace_id: str = ""
+    schema_version: str = SCHEMA_VERSION_RAG_TRACE_V1
+    notebook_id: str = ""
+    conversation_id: str = ""
+    user_message_id: str = ""
+    assistant_message_id: str = ""
     query: str = ""
     answer_text: str = ""
     ui_locale: str = DEFAULT_LOCALE
     answer_language: str = DEFAULT_LOCALE
-    source_language: str = DEFAULT_LOCALE
+    source_language: str = "auto"
     created_at: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+    provenance: Dict[str, Any] = field(default_factory=dict)
     nodes: List[EvidenceNode] = field(default_factory=list)
     edges: List[EvidenceEdge] = field(default_factory=list)
     metadata: Dict[str, Any] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
+        if self.nodes is None:
+            self.nodes = []
+        if self.edges is None:
+            self.edges = []
+        if self.metadata is None:
+            self.metadata = {}
         if not self.created_at:
             self.created_at = datetime.now(timezone.utc).isoformat()
         if not self.schema_version:
-            self.schema_version = SCHEMA_VERSION_1_0_0
-        self.ui_locale = normalize_locale(self.ui_locale)
-        self.answer_language = normalize_locale(self.answer_language)
-        if self.source_language not in ("auto", *SUPPORTED_LOCALES):
+            self.schema_version = SCHEMA_VERSION_RAG_TRACE_V1
+        self.ui_locale = normalize_locale(self.ui_locale or "vi")
+        self.answer_language = normalize_locale(self.answer_language or "vi")
+        if self.source_language and self.source_language != "auto" and self.source_language not in SUPPORTED_LOCALES:
             self.source_language = normalize_locale(self.source_language)
+        if self.provenance and "provenance" not in self.metadata:
+            self.metadata["provenance"] = dict(self.provenance)
+        elif self.metadata and "provenance" in self.metadata and not self.provenance:
+            self.provenance = dict(self.metadata["provenance"]) if isinstance(self.metadata.get("provenance"), dict) else {}
 
     @property
     def answer(self) -> str:
         """Alias for answer_text."""
         return self.answer_text
 
+    @property
+    def question(self) -> str:
+        """Alias for query."""
+        return self.query
+
     def to_dict(self) -> Dict[str, Any]:
         """Convert trace to a JSON-serializable dictionary."""
         return {
             "schema_version": self.schema_version,
             "trace_id": self.trace_id,
+            "notebook_id": self.notebook_id,
+            "conversation_id": self.conversation_id,
+            "user_message_id": self.user_message_id,
+            "assistant_message_id": self.assistant_message_id,
             "query": self.query,
+            "question": self.query,
             "answer_text": self.answer_text,
             "answer": self.answer_text,
             "ui_locale": self.ui_locale,
             "answer_language": self.answer_language,
             "source_language": self.source_language,
             "created_at": self.created_at,
+            "provenance": dict(self.provenance),
             "nodes": [n.to_dict() for n in self.nodes],
             "edges": [e.to_dict() for e in self.edges],
             "metadata": dict(self.metadata),
@@ -274,20 +311,27 @@ class EvidenceTrace:
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> EvidenceTrace:
         """Construct EvidenceTrace from dictionary."""
-        nodes = [EvidenceNode.from_dict(n) for n in data.get("nodes", [])]
-        edges = [EvidenceEdge.from_dict(e) for e in data.get("edges", [])]
+        raw_nodes = data.get("nodes") or []
+        raw_edges = data.get("edges") or []
+        nodes = [EvidenceNode.from_dict(n) if isinstance(n, dict) else n for n in raw_nodes]
+        edges = [EvidenceEdge.from_dict(e) if isinstance(e, dict) else e for e in raw_edges]
         return cls(
-            schema_version=str(data.get("schema_version", SCHEMA_VERSION_1_0_0)),
-            trace_id=str(data.get("trace_id", "")),
-            query=str(data.get("query", "")),
+            trace_id=str(data.get("trace_id") or ""),
+            schema_version=str(data.get("schema_version") or SCHEMA_VERSION_RAG_TRACE_V1),
+            notebook_id=str(data.get("notebook_id") or ""),
+            conversation_id=str(data.get("conversation_id") or ""),
+            user_message_id=str(data.get("user_message_id") or ""),
+            assistant_message_id=str(data.get("assistant_message_id") or ""),
+            query=str(data.get("query") or data.get("question") or ""),
             answer_text=str(data.get("answer_text") or data.get("answer") or ""),
-            ui_locale=str(data.get("ui_locale", DEFAULT_LOCALE)),
-            answer_language=str(data.get("answer_language", DEFAULT_LOCALE)),
-            source_language=str(data.get("source_language", DEFAULT_LOCALE)),
-            created_at=str(data.get("created_at", "")),
+            ui_locale=str(data.get("ui_locale") or DEFAULT_LOCALE),
+            answer_language=str(data.get("answer_language") or DEFAULT_LOCALE),
+            source_language=str(data.get("source_language") or "auto"),
+            created_at=str(data.get("created_at") or ""),
+            provenance=dict(data.get("provenance") or {}),
             nodes=nodes,
             edges=edges,
-            metadata=dict(data.get("metadata", {})),
+            metadata=dict(data.get("metadata") or {}),
         )
 
     @classmethod
@@ -311,7 +355,10 @@ class EvidenceTraceContract:
         # Validate schema version
         if not trace.schema_version or not trace.schema_version.strip():
             errors.append("Missing required field: schema_version")
-        elif trace.schema_version not in cls.SCHEMA_VERSIONS and not trace.schema_version.startswith("1."):
+        elif (
+            trace.schema_version not in cls.SCHEMA_VERSIONS
+            and not (trace.schema_version.startswith("1.") and len(trace.schema_version.split(".")) == 3)
+        ):
             errors.append(f"Invalid schema_version: '{trace.schema_version}', supported: {sorted(cls.SCHEMA_VERSIONS)}")
 
         # Validate locales
@@ -320,6 +367,10 @@ class EvidenceTraceContract:
 
         if trace.answer_language not in cls.SUPPORTED_LOCALES:
             errors.append(f"Invalid answer_language: '{trace.answer_language}', supported: {sorted(cls.SUPPORTED_LOCALES)}")
+
+        # Validate source_language if specified
+        if trace.source_language and trace.source_language != "auto" and trace.source_language not in cls.SUPPORTED_LOCALES:
+            errors.append(f"Invalid source_language: '{trace.source_language}', supported: {sorted(cls.SUPPORTED_LOCALES)} or 'auto'")
 
         # Validate created_at timestamp
         if trace.created_at:

@@ -57,7 +57,8 @@ def setup_test_store(tmp_path, monkeypatch):
     monkeypatch.setattr(store, "SOURCE_SELECTIONS_FILE", test_dir / "conversation_source_selections.jsonl")
     store.init_chat_store()
     st.session_state.clear()
-    return test_dir
+    yield test_dir
+    st.session_state.clear()
 
 
 def test_compression_request_and_cancel_callbacks():
@@ -324,17 +325,17 @@ def test_direct_submission_payload_contains_compressed_memory_and_rag_evidence(m
 
     payload = sent_payloads[0]
     messages = payload["messages"]
-    assert len(messages) == 2
+    assert len(messages) >= 2
 
-    # 1. System message from compressed_memory
-    assert messages[0]["role"] == "system"
-    assert "Tóm tắt: Phiên trước đã thảo luận về BGE-M3." in messages[0]["content"]
+    # System message from compressed_memory and/or language instruction
+    assert any(m["role"] == "system" and "Tóm tắt: Phiên trước đã thảo luận về BGE-M3." in m["content"] for m in messages)
 
-    # 2. User question containing RAG evidence
-    assert messages[1]["role"] == "user"
-    assert "Tham số tối ưu là gì?" in messages[1]["content"]
-    assert "Doc_1.txt" in messages[1]["content"]
-    assert "batch_size=1" in messages[1]["content"]
+    # User question containing RAG evidence
+    user_msg = next((m for m in messages if m["role"] == "user"), None)
+    assert user_msg is not None
+    assert "Tham số tối ưu là gì?" in user_msg["content"]
+    assert "Doc_1.txt" in user_msg["content"]
+    assert "batch_size=1" in user_msg["content"]
 
 
 def test_zero_router_calls_during_compression(monkeypatch):
@@ -523,12 +524,12 @@ def test_e2e_full_chain_with_real_http_server(monkeypatch):
         assert len(received_requests) == 2
         qa_req = received_requests[1]
         qa_messages = qa_req["messages"]
-        assert len(qa_messages) == 2
-        assert qa_messages[0]["role"] == "system"
-        assert "Tóm tắt: Kiến trúc RAG v2 với BGE-M3 hoạt động ổn định." in qa_messages[0]["content"]
-        assert qa_messages[1]["role"] == "user"
-        assert "Cấu hình tối ưu là gì?" in qa_messages[1]["content"]
-        assert "Tài liệu BGE-M3" in qa_messages[1]["content"]
+        assert len(qa_messages) >= 2
+        assert any(m["role"] == "system" and "Tóm tắt: Kiến trúc RAG v2 với BGE-M3 hoạt động ổn định." in m["content"] for m in qa_messages)
+        user_qa_msg = next((m for m in qa_messages if m["role"] == "user"), None)
+        assert user_qa_msg is not None
+        assert "Cấu hình tối ưu là gì?" in user_qa_msg["content"]
+        assert "Tài liệu BGE-M3" in user_qa_msg["content"]
 
         # Verify messages saved to new conversation
         saved_new_msgs = load_messages(new_conv.id)

@@ -10,6 +10,9 @@ from aios_habit.ide_handoff_bridge import (
     REQ_STATE_FAILED,
     REQ_STATE_PENDING,
     RESPONSE_SCHEMA_VERSION,
+    build_full_bundle_request,
+    build_ide_prompt_markdown,
+    build_prompt_md,
     check_handoff_request_timeouts,
     import_ide_response,
     is_request_expired,
@@ -337,3 +340,110 @@ def test_size_guard_stops_without_omission(tmp_path):
         assert "size guard" in str(exc)
     else:
         raise AssertionError("expected size guard")
+
+
+def test_build_full_bundle_request_answer_language_normalization():
+    """Verify build_full_bundle_request normalizes answer_language into manifest."""
+    # Default 'vi'
+    manifest_vi, _, _, _ = build_full_bundle_request("CASE-1", "Câu hỏi kiểm tra", "active_case_all", fake_items())
+    assert manifest_vi["answer_language"] == "vi"
+
+    # Japanese variations
+    manifest_ja, _, _, _ = build_full_bundle_request("CASE-1", "質問です", "active_case_all", fake_items(), answer_language="ja-JP")
+    assert manifest_ja["answer_language"] == "ja"
+
+    manifest_ja2, _, _, _ = build_full_bundle_request("CASE-1", "質問です", "active_case_all", fake_items(), answer_language="japanese")
+    assert manifest_ja2["answer_language"] == "ja"
+
+    # Chinese variations
+    manifest_zh, _, _, _ = build_full_bundle_request("CASE-1", "测试问题", "active_case_all", fake_items(), answer_language="zh-Hans-CN")
+    assert manifest_zh["answer_language"] == "zh-CN"
+
+    manifest_zh2, _, _, _ = build_full_bundle_request("CASE-1", "测试问题", "active_case_all", fake_items(), answer_language="chinese")
+    assert manifest_zh2["answer_language"] == "zh-CN"
+
+    # Vietnamese variations
+    manifest_vi2, _, _, _ = build_full_bundle_request("CASE-1", "Câu hỏi", "active_case_all", fake_items(), answer_language="vi_VN")
+    assert manifest_vi2["answer_language"] == "vi"
+
+
+def test_build_ide_prompt_markdown_and_alias_verbatim_instructions():
+    """Verify prompt markdown generation injects exact language directives and verbatim rules across locales."""
+    # Verify alias parity
+    assert build_prompt_md is build_ide_prompt_markdown
+
+    manifest = {"request_id": "REQ-I18N-1", "question": "Multilingual inquiry"}
+
+    # 1. Vietnamese prompt
+    prompt_vi = build_ide_prompt_markdown(manifest, answer_language="vi")
+    assert "Yêu cầu ngôn ngữ: Trả lời hoàn toàn bằng Tiếng Việt." in prompt_vi
+    assert "[1]" in prompt_vi
+    assert "[E1]" in prompt_vi
+    assert "EVD-001" in prompt_vi
+    assert "document.pdf" in prompt_vi
+    assert "Giữ nguyên vẹn 100%" in prompt_vi
+    assert "Tuyệt đối không dịch hoặc làm thay đổi các mã định danh và trích dẫn bằng chứng." in prompt_vi
+
+    # 2. Japanese prompt
+    prompt_ja = build_ide_prompt_markdown(manifest, answer_language="ja")
+    assert "言語指示: 回答はすべて日本語で記述してください。" in prompt_ja
+    assert "[1]" in prompt_ja
+    assert "[E1]" in prompt_ja
+    assert "EVD-001" in prompt_ja
+    assert "document.pdf" in prompt_ja
+    assert "原文のまま100%保持してください。" in prompt_ja
+    assert "識別子や証拠引用を翻訳または改変することは固く禁じます。" in prompt_ja
+
+    # 3. Simplified Chinese prompt
+    prompt_zh = build_ide_prompt_markdown(manifest, answer_language="zh-CN")
+    assert "语言指示: 请完全使用简体中文回答。" in prompt_zh
+    assert "[1]" in prompt_zh
+    assert "[E1]" in prompt_zh
+    assert "EVD-001" in prompt_zh
+    assert "document.pdf" in prompt_zh
+    assert "请100%完整保留所有引用ID" in prompt_zh
+    assert "严禁翻译或篡改任何标识符和证据引用。" in prompt_zh
+
+
+@pytest.mark.parametrize("locale_code,expected_instr", [
+    ("vi", "Yêu cầu ngôn ngữ: Trả lời hoàn toàn bằng Tiếng Việt."),
+    ("ja", "言語指示: 回答はすべて日本語で記述してください。"),
+    ("zh-CN", "语言指示: 请完全使用简体中文回答。"),
+])
+def test_write_ide_handoff_bundle_stores_answer_language_in_manifest(tmp_path, locale_code, expected_instr):
+    """Verify write_ide_handoff_bundle creates bundle with answer_language in manifest and prompt."""
+    multilingual_items = [
+        EvidenceItem("EVD-VI-1", "CASE-VI", "note", "manual", "Hướng dẫn sử dụng kho", "Nội dung tiếng Việt có dấu: ắ, ằ, ẳ, ẵ, ặ", privacy_level="local_only"),
+        EvidenceItem("EVD-JA-2", "CASE-JA", "pdf", "製造手順.pdf", "品質管理規定_第3版", "原材料投入時に二次元コードを確認すること。", privacy_level="local_only"),
+        EvidenceItem("EVD-ZH-3", "CASE-ZH", "xlsx", "调度规范.xlsx", "生产调度与仓库集成", "比对WMS库存货位状态，冻结批次严禁生成拣货任务。", privacy_level="local_only"),
+    ]
+    req = write_ide_handoff_bundle(
+        "CASE-MULTI",
+        "Truy vấn đa ngôn ngữ / 多言語問い合わせ / 多语言查询",
+        "active_case_all",
+        multilingual_items,
+        root=tmp_path,
+        answer_language=locale_code,
+        request_id=f"REQ-{locale_code.replace('-', '_')}",
+    )
+
+    # 1. Manifest verification
+    manifest_path = req.bundle_dir / "manifest.json"
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    assert manifest["answer_language"] == locale_code
+
+    # 2. Prompt verification
+    prompt_path = req.bundle_dir / "prompt.md"
+    prompt_text = prompt_path.read_text(encoding="utf-8")
+    assert expected_instr in prompt_text
+    assert "EVD-001" in prompt_text
+
+    # 3. Prompt for Antigravity verification
+    prompt_anti_path = req.bundle_dir / "prompt_for_antigravity.md"
+    prompt_anti_text = prompt_anti_path.read_text(encoding="utf-8")
+    assert expected_instr in prompt_anti_text
+
+    # 4. Integrity check on multilingual bundle
+    ok, errors = verify_bundle_integrity(req.bundle_dir)
+    assert ok is True
+    assert len(errors) == 0

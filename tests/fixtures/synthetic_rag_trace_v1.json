@@ -1,0 +1,120 @@
+{
+  "schema_version": "rag-trace/v1",
+  "trace_id": "trc_commit_d_smoke_001",
+  "ui_locale": "vi",
+  "answer_language": "vi",
+  "source_language": "vi",
+  "created_at": "2026-08-23T10:36:17Z",
+  "query": "Làm thế nào để xử lý lỗi đồng bộ dữ liệu kho ERR_KHO_SYNC_0x80040111 theo quy trình chuẩn?",
+  "answer_text": "Để xử lý lỗi ERR_KHO_SYNC_0x80040111 [1], cần kiểm tra kết nối thiết bị quét [2] và thực hiện đồng bộ lại kho vận.",
+  "nodes": [
+    {
+      "id": "n_q",
+      "node_type": "question",
+      "title": "Câu hỏi của người dùng",
+      "snippet": "Làm thế nào để xử lý lỗi đồng bộ dữ liệu kho ERR_KHO_SYNC_0x80040111 theo quy trình chuẩn?",
+      "source_path": "",
+      "citation_id": "",
+      "confidence": null,
+      "privacy_label": "local_only",
+      "metadata": {}
+    },
+    {
+      "id": "n_a",
+      "node_type": "answer",
+      "title": "Câu trả lời của trợ lý AI",
+      "snippet": "Để xử lý lỗi ERR_KHO_SYNC_0x80040111 [1], cần kiểm tra kết nối thiết bị quét [2] và thực hiện đồng bộ lại kho vận.",
+      "source_path": "",
+      "citation_id": "",
+      "confidence": null,
+      "privacy_label": "local_only",
+      "metadata": {}
+    },
+    {
+      "id": "n_c1",
+      "node_type": "citation",
+      "title": "Trích dẫn [1]",
+      "snippet": "Lỗi ERR_KHO_SYNC_0x80040111 xảy ra khi phiên làm việc bị ngắt đột ngột trong quá trình ghi sổ kho.",
+      "source_path": "D:/local_cases/docs/Báo_cáo_tài_chính_và_kho_vận_Q3_2026.xlsx",
+      "citation_id": "[1]",
+      "confidence": 0.95,
+      "privacy_label": "local_only",
+      "metadata": {
+        "source_id": "src_doc_1"
+      }
+    },
+    {
+      "id": "n_c2",
+      "node_type": "citation",
+      "title": "Trích dẫn [2]",
+      "snippet": "Thiết bị quét mã vạch và máy tính bảng kiểm kho cần kết nối Wi-Fi 5GHz ổn định.",
+      "source_path": "D:/local_cases/docs/Quy_trình_kiểm_kê_kho_hàng_v3.docx",
+      "citation_id": "[2]",
+      "confidence": 0.92,
+      "privacy_label": "local_only",
+      "metadata": {
+        "source_id": "src_doc_2"
+      }
+    },
+    {
+      "id": "src_doc_1",
+      "node_type": "source",
+      "title": "Báo_cáo_tài_chính_và_kho_vận_Q3_2026.xlsx",
+      "snippet": "Tài liệu tổng hợp số liệu kế toán và vận hành kho bãi quý 3 năm 2026.",
+      "source_path": "D:/local_cases/docs/Báo_cáo_tài_chính_và_kho_vận_Q3_2026.xlsx",
+      "citation_id": "",
+      "confidence": null,
+      "privacy_label": "local_only",
+      "metadata": {}
+    },
+    {
+      "id": "src_doc_2",
+      "node_type": "source",
+      "title": "Quy_trình_kiểm_kê_kho_hàng_v3.docx",
+      "snippet": "Hướng dẫn chi tiết quy trình kiểm đếm, đối soát và xử lý sai lệch hàng tồn.",
+      "source_path": "D:/local_cases/docs/Quy_trình_kiểm_kê_kho_hàng_v3.docx",
+      "citation_id": "",
+      "confidence": null,
+      "privacy_label": "local_only",
+      "metadata": {}
+    }
+  ],
+  "edges": [
+    {
+      "source_id": "n_q",
+      "target_id": "n_a",
+      "relation": "derives_from",
+      "metadata": {}
+    },
+    {
+      "source_id": "n_c1",
+      "target_id": "n_a",
+      "relation": "supports",
+      "metadata": {}
+    },
+    {
+      "source_id": "n_c2",
+      "target_id": "n_a",
+      "relation": "supports",
+      "metadata": {}
+    },
+    {
+      "source_id": "src_doc_1",
+      "target_id": "n_c1",
+      "relation": "extracted_from",
+      "metadata": {}
+    },
+    {
+      "source_id": "src_doc_2",
+      "target_id": "n_c2",
+      "relation": "extracted_from",
+      "metadata": {}
+    }
+  ],
+  "metadata": {
+    "status": "completed",
+    "total_sources": 2,
+    "total_citations": 2,
+    "model": "mock-ai-model"
+  }
+}

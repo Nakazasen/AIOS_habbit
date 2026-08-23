@@ -1,10 +1,12 @@
 import logging
+import threading
 import uuid
 from dataclasses import asdict
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Iterable, List, Optional
-from aios_habit.local_jsonl import atomic_write_jsonl, atomic_write_jsonl_batch, load_jsonl_records
+from aios_habit.evidence_trace_schema import EvidenceTrace
+from aios_habit.local_jsonl import atomic_write_jsonl, atomic_write_jsonl_batch, clear_jsonl_cache, load_jsonl_records
 from aios_habit.workspace_chat_models import (
     DocumentNotebook,
     WorkspaceConversation,
@@ -21,7 +23,9 @@ MESSAGES_FILE = LOCAL_CHAT_DIR / "messages.jsonl"
 TEMPORARY_SOURCES_FILE = LOCAL_CHAT_DIR / "temporary_sources.jsonl"
 NOTEBOOK_SOURCES_FILE = LOCAL_CHAT_DIR / "notebook_sources.jsonl"
 SOURCE_SELECTIONS_FILE = LOCAL_CHAT_DIR / "conversation_source_selections.jsonl"
+TRACES_FILE = LOCAL_CHAT_DIR / "traces.jsonl"
 LOGGER = logging.getLogger(__name__)
+_STORE_LOCK = threading.RLock()
 
 def init_chat_store():
     LOCAL_CHAT_DIR.mkdir(parents=True, exist_ok=True)
@@ -30,7 +34,7 @@ def init_chat_store():
     # Touch files
     for filepath in [
         NOTEBOOKS_FILE, CONVERSATIONS_FILE, MESSAGES_FILE, TEMPORARY_SOURCES_FILE,
-        NOTEBOOK_SOURCES_FILE, SOURCE_SELECTIONS_FILE
+        NOTEBOOK_SOURCES_FILE, SOURCE_SELECTIONS_FILE, TRACES_FILE
     ]:
         if not filepath.exists():
             filepath.touch()
@@ -67,6 +71,95 @@ def _deserialize_message(record: dict) -> ChatMessage:
 
 def _deserialize_temporary_source(record: dict) -> TemporaryConversationSource:
     return TemporaryConversationSource(**record)
+
+
+def _deserialize_evidence_trace(record: dict) -> EvidenceTrace:
+    return EvidenceTrace.from_dict(record)
+
+
+def _trace_ast_id(t: EvidenceTrace) -> str:
+    return str(getattr(t, "assistant_message_id", "") or (t.metadata.get("assistant_message_id") if isinstance(getattr(t, "metadata", None), dict) else "") or "")
+
+
+def _trace_id(t: EvidenceTrace) -> str:
+    return str(getattr(t, "trace_id", "") or (t.metadata.get("trace_id") if isinstance(getattr(t, "metadata", None), dict) else "") or "")
+
+
+def _trace_conv_id(t: EvidenceTrace) -> str:
+    return str(getattr(t, "conversation_id", "") or (t.metadata.get("conversation_id") if isinstance(getattr(t, "metadata", None), dict) else "") or "")
+
+
+def _trace_usr_id(t: EvidenceTrace) -> str:
+    return str(getattr(t, "user_message_id", "") or (t.metadata.get("user_message_id") if isinstance(getattr(t, "metadata", None), dict) else "") or "")
+
+
+def _trace_nb_id(t: EvidenceTrace) -> str:
+    return str(getattr(t, "notebook_id", "") or (t.metadata.get("notebook_id") if isinstance(getattr(t, "metadata", None), dict) else "") or "")
+
+
+def load_all_evidence_traces(traces_file: Optional[Path] = None) -> List[EvidenceTrace]:
+    target_file = traces_file if traces_file is not None else TRACES_FILE
+    with _STORE_LOCK:
+        if not target_file.exists():
+            return []
+        return load_jsonl_records(target_file, _deserialize_evidence_trace)
+
+
+def load_evidence_trace(trace_id: str, traces_file: Optional[Path] = None) -> Optional[EvidenceTrace]:
+    if not trace_id:
+        return None
+    with _STORE_LOCK:
+        for t in load_all_evidence_traces(traces_file=traces_file):
+            if _trace_id(t) == trace_id:
+                return t
+        return None
+
+
+def load_conversation_traces(conversation_id: str, traces_file: Optional[Path] = None) -> List[EvidenceTrace]:
+    if not conversation_id:
+        return []
+    with _STORE_LOCK:
+        return [t for t in load_all_evidence_traces(traces_file=traces_file) if _trace_conv_id(t) == conversation_id]
+
+
+def load_message_trace(message_id: str, traces_file: Optional[Path] = None) -> Optional[EvidenceTrace]:
+    if not message_id:
+        return None
+    with _STORE_LOCK:
+        for t in load_all_evidence_traces(traces_file=traces_file):
+            if _trace_ast_id(t) == message_id or _trace_usr_id(t) == message_id:
+                return t
+        return None
+
+
+def save_evidence_trace(trace: EvidenceTrace, traces_file: Optional[Path] = None) -> EvidenceTrace:
+    target_file = traces_file if traces_file is not None else TRACES_FILE
+    with _STORE_LOCK:
+        clear_jsonl_cache()
+        traces = load_all_evidence_traces(traces_file=target_file)
+
+        curr_ast_id = _trace_ast_id(trace)
+        curr_tid = _trace_id(trace)
+
+        found_idx = -1
+        for i, item in enumerate(traces):
+            item_ast_id = _trace_ast_id(item)
+            item_tid = _trace_id(item)
+            if curr_ast_id and item_ast_id and curr_ast_id == item_ast_id:
+                found_idx = i
+                break
+            if curr_tid and item_tid and curr_tid == item_tid:
+                found_idx = i
+                break
+
+        if found_idx >= 0:
+            traces[found_idx] = trace
+        else:
+            traces.append(trace)
+
+        atomic_write_jsonl(target_file, traces)
+        clear_jsonl_cache()
+        return trace
 
 
 def load_notebooks() -> List[DocumentNotebook]:
@@ -219,11 +312,13 @@ def delete_conversation(conv_id: str) -> bool:
     messages = [m for m in load_all_messages() if m.conversation_id != conv_id]
     temp_sources = [s for s in load_all_temporary_sources() if s.conversation_id != conv_id]
     selections = [sel for sel in load_all_conversation_source_selections() if sel.conversation_id != conv_id]
+    remaining_traces = [t for t in load_all_evidence_traces() if _trace_conv_id(t) != conv_id]
     atomic_write_jsonl_batch((
         (CONVERSATIONS_FILE, new_convs),
         (MESSAGES_FILE, messages),
         (TEMPORARY_SOURCES_FILE, temp_sources),
         (SOURCE_SELECTIONS_FILE, selections),
+        (TRACES_FILE, remaining_traces),
     ))
 
     return True
@@ -536,6 +631,15 @@ def delete_notebook_permanently(notebook_id: str) -> bool:
     all_selections = load_all_conversation_source_selections()
     all_selections = [sel for sel in all_selections if sel.conversation_id not in conv_ids]
 
+    all_traces = load_all_evidence_traces()
+    remaining_traces = [
+        t for t in all_traces
+        if (
+            _trace_nb_id(t) != notebook_id
+            and _trace_conv_id(t) not in conv_ids
+        )
+    ]
+
     targets = [
         (NOTEBOOKS_FILE, notebooks),
         (CONVERSATIONS_FILE, all_convs),
@@ -543,6 +647,7 @@ def delete_notebook_permanently(notebook_id: str) -> bool:
         (NOTEBOOK_SOURCES_FILE, all_nb_sources),
         (TEMPORARY_SOURCES_FILE, all_temp_sources),
         (SOURCE_SELECTIONS_FILE, all_selections),
+        (TRACES_FILE, remaining_traces),
     ]
 
     try:
@@ -556,11 +661,28 @@ def delete_notebook_permanently(notebook_id: str) -> bool:
 class WorkspaceChatStore:
     """Class wrapper providing object-oriented and static access to Workspace Chat storage."""
 
-    def __init__(self, chat_dir: Optional[Path] = None):
-        if chat_dir is not None:
-            self.chat_dir = Path(chat_dir)
+    def __init__(self, chat_dir: Optional[Path] = None, base_dir: Optional[Path] = None):
+        target_dir = chat_dir if chat_dir is not None else base_dir
+        if target_dir is not None:
+            self.chat_dir = Path(target_dir)
         else:
             self.chat_dir = LOCAL_CHAT_DIR
+        try:
+            self.chat_dir.mkdir(parents=True, exist_ok=True)
+        except OSError:
+            pass
+
+    @property
+    def base_dir(self) -> Path:
+        return self.chat_dir
+
+    @base_dir.setter
+    def base_dir(self, value: Path) -> None:
+        self.chat_dir = Path(value)
+
+    @property
+    def traces_file(self) -> Path:
+        return TRACES_FILE if self.chat_dir == LOCAL_CHAT_DIR else self.chat_dir / "traces.jsonl"
 
     def init_store(self) -> None:
         init_chat_store()
@@ -606,3 +728,35 @@ class WorkspaceChatStore:
 
     def save_notebook(self, nb: DocumentNotebook) -> None:
         save_notebook(nb)
+
+    def save_evidence_trace(self, trace: EvidenceTrace, traces_file: Optional[Path] = None) -> EvidenceTrace:
+        target = traces_file if traces_file is not None else self.traces_file
+        return save_evidence_trace(trace, traces_file=target)
+
+    def save_trace(self, trace: EvidenceTrace, traces_file: Optional[Path] = None) -> EvidenceTrace:
+        """Alias for save_evidence_trace."""
+        return self.save_evidence_trace(trace, traces_file=traces_file)
+
+    def load_all_evidence_traces(self, traces_file: Optional[Path] = None) -> List[EvidenceTrace]:
+        target = traces_file if traces_file is not None else self.traces_file
+        return load_all_evidence_traces(traces_file=target)
+
+    def load_evidence_trace(self, trace_id: str, traces_file: Optional[Path] = None) -> Optional[EvidenceTrace]:
+        target = traces_file if traces_file is not None else self.traces_file
+        return load_evidence_trace(trace_id, traces_file=target)
+
+    def get_trace(self, trace_id: str, traces_file: Optional[Path] = None) -> Optional[EvidenceTrace]:
+        """Alias for load_evidence_trace."""
+        return self.load_evidence_trace(trace_id, traces_file=traces_file)
+
+    def load_trace(self, trace_id: str, traces_file: Optional[Path] = None) -> Optional[EvidenceTrace]:
+        """Alias for load_evidence_trace."""
+        return self.load_evidence_trace(trace_id, traces_file=traces_file)
+
+    def load_conversation_traces(self, conversation_id: str, traces_file: Optional[Path] = None) -> List[EvidenceTrace]:
+        target = traces_file if traces_file is not None else self.traces_file
+        return load_conversation_traces(conversation_id, traces_file=target)
+
+    def load_message_trace(self, message_id: str, traces_file: Optional[Path] = None) -> Optional[EvidenceTrace]:
+        target = traces_file if traces_file is not None else self.traces_file
+        return load_message_trace(message_id, traces_file=target)
