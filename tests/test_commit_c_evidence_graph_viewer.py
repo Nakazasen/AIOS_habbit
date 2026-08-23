@@ -399,6 +399,25 @@ def test_renders_normally_when_both_source_and_citation_present(sample_valid_tra
     assert "egv-insufficient" not in html_out
 
 
+def test_streamlit_graph_uses_isolated_responsive_component(sample_valid_trace: EvidenceTrace) -> None:
+    """Complex graph HTML must never be fed through Streamlit Markdown.
+
+    The component iframe prevents literal HTML being shown in the chat and
+    isolates its styles from the surrounding answer.
+    """
+    with patch("streamlit.components.v1.html") as mock_component, patch("streamlit.markdown") as mock_markdown:
+        render_evidence_graph_streamlit(sample_valid_trace, locale="vi")
+
+    mock_component.assert_called_once()
+    component_html = mock_component.call_args.args[0]
+    assert component_html.startswith("<!doctype html>")
+    assert '<meta name="viewport"' in component_html
+    assert "egv-container" in component_html
+    assert mock_component.call_args.kwargs["height"] >= 520
+    assert mock_component.call_args.kwargs["scrolling"] is True
+    mock_markdown.assert_not_called()
+
+
 # ==============================================================================
 # Tier 4: UTF-8 Anti-Mojibake & Verbatim Text Preservation
 # ==============================================================================

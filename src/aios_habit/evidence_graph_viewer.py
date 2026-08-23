@@ -670,14 +670,56 @@ def render_evidence_graph_html(
 """
 
 
+def _wrap_evidence_graph_for_component(graph_html: str) -> str:
+    """Put the graph fragment in an isolated, responsive HTML document.
+
+    Streamlit's Markdown renderer is intentionally permissive but is not a
+    reliable host for a complex, nested visualisation.  A component iframe
+    keeps graph markup from leaking into the chat as literal ``<div>`` text
+    and prevents graph CSS from changing the surrounding conversation.
+    """
+    return f"""<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+html, body {{ margin:0; padding:0; width:100%; background:#0b1220; overflow-x:hidden; }}
+body {{ font-family:{CJK_MULTI_LOCALE_FONT_STACK}; }}
+.egv-container {{ box-sizing:border-box; min-width:0 !important; margin:0 !important; border-radius:0 !important; }}
+.egv-node-card {{ min-width:0; }}
+@media (max-width: 720px) {{
+  .egv-container {{ padding:14px !important; }}
+  .egv-full > div {{ min-width:0 !important; width:100%; }}
+}}
+</style>
+</head>
+<body>{graph_html}</body>
+</html>"""
+
+
+def _evidence_graph_component_height(view_model: EvidenceGraphViewModel) -> int:
+    """Choose a usable iframe height without making ordinary chats enormous."""
+    column_sizes = (
+        sum(1 for node in view_model.nodes if node["node_type"] in {"question", "answer"}),
+        sum(1 for node in view_model.nodes if node["node_type"] == "citation"),
+        sum(1 for node in view_model.nodes if node["node_type"] == "source"),
+    )
+    tallest_column = max(column_sizes, default=1)
+    return min(960, max(520, 260 + (tallest_column * 140)))
+
+
 def render_evidence_graph_streamlit(
     trace_or_dict: Union[EvidenceTrace, Dict[str, Any]],
     locale: str = DEFAULT_LOCALE,
 ) -> None:
     """Render the Evidence Graph Viewer component in Streamlit.
 
-    Uses ExcaliFlow Studio Evidence Atlas when available, and includes topological graph view.
-    Enforces fail-safe execution: Never crashes chat UI if renderer encounters an error.
+    Renders one readable, responsive graph in an isolated component.
+
+    The detailed ExcaliFlow Atlas remains available through the adapter API,
+    but is not embedded by default: its fixed wide canvas makes the normal
+    chat view hard to read and forces horizontal scrolling.
     """
     loc = normalize_locale(locale)
 
@@ -691,42 +733,20 @@ def render_evidence_graph_streamlit(
         trace = _coerce_to_trace(trace_or_dict)
         content_hash = compute_trace_content_hash(trace)
 
-        if is_insufficient_evidence(trace):
+        view_model = build_evidence_graph_view_model(trace, locale=loc)
+        if view_model.is_insufficient:
             st.warning(f"⚠️ {t('evidence_graph_insufficient', locale=loc)}")
             st.caption(t("evidence_graph_insufficient_desc", locale=loc))
             return
 
-        # Check for ExcaliFlow adapter availability
-        excaliflow_adapter = None
-        try:
-            from aios_habit.excaliflow_adapter import ExcaliFlowAdapter
-            adapter = ExcaliFlowAdapter()
-            if adapter.is_available():
-                excaliflow_adapter = adapter
-        except Exception:
-            excaliflow_adapter = None
-
-        if excaliflow_adapter is not None:
-            tab_atlas, tab_topo = st.tabs([
-                t("evidence_graph_tab_atlas", locale=loc),
-                t("evidence_graph_tab_topology", locale=loc),
-            ])
-            with tab_atlas:
-                try:
-                    atlas_html = excaliflow_adapter.render_evidence_atlas_html(trace, locale=loc)
-                    import streamlit.components.v1 as components  # type: ignore
-                    components.html(atlas_html, height=520, scrolling=True)
-                except Exception as exc:
-                    LOGGER.exception("Atlas renderer error: %s", exc)
-                    st.error(f"❌ {t('evidence_graph_render_error', locale=loc)}")
-
-            with tab_topo:
-                graph_html = render_evidence_graph_html(trace, locale=loc, use_cache=True)
-                st.markdown(graph_html, unsafe_allow_html=True)
-        else:
-            # Fallback to topology graph HTML
-            graph_html = render_evidence_graph_html(trace, locale=loc, use_cache=True)
-            st.markdown(graph_html, unsafe_allow_html=True)
+        graph_html = render_evidence_graph_html(trace, locale=loc, use_cache=True)
+        component_html = _wrap_evidence_graph_for_component(graph_html)
+        import streamlit.components.v1 as components  # type: ignore
+        components.html(
+            component_html,
+            height=_evidence_graph_component_height(view_model),
+            scrolling=True,
+        )
 
     except Exception as exc:
         LOGGER.exception("Failed in render_evidence_graph_streamlit: %s", exc)
