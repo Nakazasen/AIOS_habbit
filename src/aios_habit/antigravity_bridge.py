@@ -234,6 +234,7 @@ def call_antigravity_bridge(
     model: str = "",
     timeout_seconds: int = DEFAULT_TIMEOUT_SECONDS,
     privacy_mode: str = "local_only",
+    answer_language: str = "vi",
 ) -> AntigravityBridgeResponse:
     """Send a chat completion request to the direct Antigravity Bridge Daemon."""
     start_time = time.time()
@@ -247,15 +248,27 @@ def call_antigravity_bridge(
             latency_ms=0.0,
         )
 
+    from aios_habit.i18n import get_ai_language_instruction, normalize_locale
+    norm_lang = normalize_locale(answer_language)
+    lang_instr = get_ai_language_instruction(norm_lang)
+
+    effective_sys_prompt = system_prompt
+    if effective_sys_prompt:
+        if "Yêu cầu ngôn ngữ:" not in effective_sys_prompt and "言語指示:" not in effective_sys_prompt and "语言指示:" not in effective_sys_prompt:
+            effective_sys_prompt = f"{effective_sys_prompt}\n\n{lang_instr}"
+    else:
+        effective_sys_prompt = lang_instr
+
     messages = []
-    if system_prompt:
-        messages.append({"role": "system", "content": system_prompt})
+    if effective_sys_prompt:
+        messages.append({"role": "system", "content": effective_sys_prompt})
 
     for msg in chat_history:
         role = msg.get("role", "user")
         content = msg.get("content", "")
         if content:
             messages.append({"role": role, "content": content})
+
 
     user_content = question
     if context_text:
@@ -492,6 +505,7 @@ def route_workspace_chat_submission(
     health_status: AntigravityHealthStatus | None = None,
     handoff_root: Path | None = None,
     endpoint_url: str | None = None,
+    answer_language: str = "vi",
 ) -> tuple[bool, str, dict[str, Any] | None, str | None]:
     """Route workspace chat submission to Direct, Handoff, or Smart Router with strict fail-closed policy.
 
@@ -519,10 +533,12 @@ def route_workspace_chat_submission(
                 "context_text": direct_context_text,
                 "chat_history": chat_history,
                 "privacy_mode": PRIVACY_MODE_CLOUD_ALLOWED,
+                "answer_language": answer_language,
             }
             if endpoint_url:
                 call_kwargs["endpoint_url"] = endpoint_url
             direct_res = call_antigravity_bridge(**call_kwargs)
+
             if direct_res.ok:
                 user_msg = ChatMessage(
                     id=f"MSG-{uuid.uuid4().hex[:8].upper()}",
@@ -610,6 +626,7 @@ def route_workspace_chat_submission(
                 owner_note=f"Sổ: {notebook_id} | Hội thoại: {conversation_id}",
                 target_model_tool_name="Antigravity IDE AI",
                 root=handoff_root,
+                answer_language=answer_language,
             )
             if getattr(write_res, "ok", True):
                 outbox_path = getattr(write_res, "outbox_dir", getattr(write_res, "bundle_dir", None))

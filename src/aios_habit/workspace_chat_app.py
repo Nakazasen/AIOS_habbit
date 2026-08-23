@@ -24,7 +24,7 @@ st.markdown('''
             z-index: 1000 !important;
         }
 
-        /* Mở rộng tối đa không gian đọc, giảm lãng phí padding */
+        /* Expand main block container */
         .main .block-container {
             max-width: 96% !important;
             padding-top: 1rem !important;
@@ -33,7 +33,7 @@ st.markdown('''
             padding-right: 1.5rem !important;
         }
 
-        /* Chat bubbles cao cấp, thoáng đãng, sắc nét */
+        /* Chat bubble typography */
         [data-testid="stChatMessage"] {
             padding: 1.2rem 1.6rem !important;
             border-radius: 12px !important;
@@ -44,7 +44,7 @@ st.markdown('''
             box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15) !important;
         }
 
-        /* Danh sách và bảng biểu bên trong chat bubble */
+        /* List and table formatting inside chat message */
         [data-testid="stChatMessage"] ul, [data-testid="stChatMessage"] ol {
             margin-top: 0.6rem !important;
             margin-bottom: 0.6rem !important;
@@ -59,23 +59,6 @@ st.markdown('''
             scroll-behavior: smooth;
         }
 
-        /* Dịch file uploader */
-        [data-testid="stFileUploadDropzone"] > div > div > span {
-            display: none;
-        }
-        [data-testid="stFileUploadDropzone"] > div > div::before {
-            content: "Kéo thả tài liệu vào đây";
-            display: block;
-            margin-bottom: 5px;
-        }
-        [data-testid="stFileUploadDropzone"] small {
-            display: none;
-        }
-        [data-testid="stFileUploadDropzone"]::after {
-            content: "Giới hạn 200MB/file";
-            font-size: 0.8rem;
-            color: rgba(250, 250, 250, 0.6);
-        }
     </style>
 ''', unsafe_allow_html=True)
 
@@ -94,6 +77,7 @@ from aios_habit.workspace_chat_store import (
     save_conversation,
     rename_conversation,
     update_conversation_search_preference,
+    update_conversation_language_settings,
     load_messages,
 
     save_message,
@@ -349,8 +333,16 @@ from aios_habit.workspace_chat_rag_v2_adapter import (
     promote_workspace_chat_source_priority,
     forget_workspace_chat_sources,
 )
+from aios_habit.i18n import (
+    t,
+    normalize_locale,
+    get_supported_locales,
+    LOCALE_NAMES,
+)
 from aios_habit.workspace_chat_ui import (
     get_vietnamese_labels,
+    get_localized_labels,
+    render_language_selector,
     render_notebook_header,
     render_notebook_card,
     render_archived_notebook_card,
@@ -508,7 +500,7 @@ def _poll_pending_source_submission() -> None:
     """Ask Streamlit to re-run while a bounded source preparation job is active."""
     @st.fragment(run_every=2.0)
     def _poll() -> None:
-        st.caption("Đang chuẩn bị tài liệu và sẽ tự trả lời khi hoàn tất…")
+        st.caption(t("preparing_sources_background", locale=st.session_state.get("wsc_global_ui_locale", "vi")))
         st.rerun(scope="app")
 
     _poll()
@@ -594,6 +586,10 @@ if "wsc_agent_last_result" not in st.session_state:
     st.session_state.wsc_agent_last_result = None
 if "wsc_agent_pending_action" not in st.session_state:
     st.session_state.wsc_agent_pending_action = None
+if "wsc_global_ui_locale" not in st.session_state:
+    st.session_state.wsc_global_ui_locale = "vi"
+if "wsc_global_answer_language" not in st.session_state:
+    st.session_state.wsc_global_answer_language = "vi"
 
 def safe_rerun():
     try:
@@ -612,12 +608,20 @@ def set_active_conversation_callback(notebook_id: str, conversation_id: Optional
     return resolved_id
 
 
-def create_conversation_callback(notebook_id: str) -> WorkspaceConversation:
+def create_conversation_callback(
+    notebook_id: str,
+    ui_locale: Optional[str] = None,
+    answer_language: Optional[str] = None,
+) -> WorkspaceConversation:
+    eff_ui = normalize_locale(ui_locale or st.session_state.get("wsc_global_ui_locale", "vi"))
+    eff_ans = normalize_locale(answer_language or st.session_state.get("wsc_global_answer_language", "vi"))
     title = f"Cuộc trò chuyện {datetime.now().strftime('%d/%m %H:%M')}"
     conv = WorkspaceConversation(
         id=f"CONV-{uuid.uuid4().hex[:8].upper()}",
         notebook_id=notebook_id,
         title=title,
+        ui_locale=eff_ui,
+        answer_language=eff_ans,
     )
     save_conversation(conv)
     st.session_state.wsc_active_conversation_id = conv.id
@@ -737,7 +741,7 @@ def confirm_compress_conversation_callback(
         safe_rerun()
         return False
 
-    # Create new conversation with compressed memory and inherited search_preference
+    # Create new conversation with compressed memory and inherited search_preference & language settings
     new_conv_id = f"CONV-{uuid.uuid4().hex[:8].upper()}"
     new_conv = WorkspaceConversation(
         id=new_conv_id,
@@ -745,6 +749,8 @@ def confirm_compress_conversation_callback(
         title=f"Tiếp tục: {conv.title}",
         compressed_memory=compressed_summary.strip(),
         search_preference=getattr(conv, "search_preference", "auto"),
+        ui_locale=getattr(conv, "ui_locale", "vi"),
+        answer_language=getattr(conv, "answer_language", "vi"),
     )
     save_conversation(new_conv)
 
@@ -899,13 +905,28 @@ def update_temporary_source_privacy_for_active_conversation(conversation_id: str
     return True
 
 active_nb_id = st.session_state.wsc_active_notebook_id
-
 if active_nb_id is None:
+    current_ui_locale = st.session_state.get("wsc_global_ui_locale", "vi")
+    current_answer_language = st.session_state.get("wsc_global_answer_language", "vi")
     # MÀN HÌNH 1: Sổ tài liệu của tôi
-    st.sidebar.markdown("## 📚 Không gian làm việc")
-    st.sidebar.info("Vui lòng chọn hoặc tạo một sổ tài liệu bên phải để bắt đầu làm việc.")
+    st.sidebar.markdown(f"## 📚 {t('workspace_title', locale=current_ui_locale)}")
+    st.sidebar.info(t("workspace_select_prompt", locale=current_ui_locale))
 
-    render_notebook_header()
+    with st.sidebar.expander(f"🌐 {t('language_selector', locale=current_ui_locale)}", expanded=False):
+        def _handle_home_lang_change(new_ui_loc: str, new_ans_lang: str):
+            st.session_state.wsc_global_ui_locale = new_ui_loc
+            st.session_state.wsc_global_answer_language = new_ans_lang
+            safe_rerun()
+
+        render_language_selector(
+            current_ui_locale=current_ui_locale,
+            current_answer_language=current_answer_language,
+            on_change=_handle_home_lang_change,
+            key_prefix="wsc_home_lang",
+            locale=current_ui_locale,
+        )
+
+    render_notebook_header(locale=current_ui_locale)
 
     if "wsc_action_message" in st.session_state and st.session_state.wsc_action_message:
         st.success(st.session_state.wsc_action_message)
@@ -914,11 +935,11 @@ if active_nb_id is None:
         st.error(st.session_state.wsc_action_error)
         st.session_state.wsc_action_error = None
 
-    with st.expander("Tạo sổ tài liệu mới", expanded=False):
+    with st.expander(t("create_notebook", locale=current_ui_locale), expanded=False):
         with st.form("create_notebook_form", clear_on_submit=True):
-            new_nb_title = st.text_input("Tên sổ", placeholder="Nhập tên sổ tài liệu...")
-            new_nb_desc = st.text_input("Mô tả ngắn", placeholder="Nhập mô tả ngắn...")
-            if st.form_submit_button("Tạo sổ tài liệu"):
+            new_nb_title = st.text_input(t("notebook_title_label", locale=current_ui_locale), placeholder=t("notebook_title_label", locale=current_ui_locale))
+            new_nb_desc = st.text_input(t("notebook_desc_label", locale=current_ui_locale), placeholder=t("notebook_desc_label", locale=current_ui_locale))
+            if st.form_submit_button(t("btn_create_notebook", locale=current_ui_locale)):
                 if not new_nb_title.strip():
                     st.session_state.wsc_action_error = "Vui lòng nhập tên sổ tài liệu."
                 else:
@@ -947,11 +968,12 @@ if active_nb_id is None:
             confirm_delete_notebook_callback,
             cancel_delete_notebook_callback,
             st.session_state.wsc_delete_confirm_notebook_id == nb.id,
+            locale=current_ui_locale,
         )
 
-    with st.expander("Sổ đã lưu trữ", expanded=False):
+    with st.expander(t("archived_notebooks", locale=current_ui_locale), expanded=False):
         if not archived_notebooks:
-            st.write("Chưa có sổ đã lưu trữ.")
+            st.write(t("no_archived_notebooks", locale=current_ui_locale))
         for nb in archived_notebooks:
             conv_count = len(load_conversations(nb.id))
             render_archived_notebook_card(
@@ -962,6 +984,7 @@ if active_nb_id is None:
                 confirm_delete_notebook_callback,
                 cancel_delete_notebook_callback,
                 st.session_state.wsc_delete_confirm_notebook_id == nb.id,
+                locale=current_ui_locale,
             )
 else:
     # MÀN HÌNH 2: Chat trong sổ (NotebookLM / Gemini Notebook Layout)
@@ -973,24 +996,6 @@ else:
         safe_rerun()
         st.stop()
 
-    labels = get_vietnamese_labels()
-
-    # --- SIDEBAR: QUẢN LÝ SỔ, HỘI THOẠI & THƯ VIỆN NGUỒN ---
-    st.sidebar.markdown(f"## 📂 {notebook.title}")
-    if st.sidebar.button("⬅️ Quay lại danh sách sổ", key="back_to_nbs", use_container_width=True):
-        st.session_state.wsc_active_notebook_id = None
-        st.session_state.wsc_active_conversation_id = None
-        set_query_params(nb=None, conv=None)
-        safe_rerun()
-
-    st.sidebar.write("---")
-    st.sidebar.subheader("💬 Cuộc trò chuyện")
-
-    conversations = load_conversations(active_nb_id)
-
-    if st.sidebar.button("➕ Tạo cuộc trò chuyện mới", key="btn_create_conv", use_container_width=True):
-        create_conversation_callback(active_nb_id)
-
     active_conv_id = st.session_state.get("wsc_active_conversation_id")
     active_conv_id = resolve_conversation_id(active_nb_id, active_conv_id)
     st.session_state.wsc_active_conversation_id = active_conv_id
@@ -999,6 +1004,26 @@ else:
     active_conversation = None
     if active_conv_id:
         active_conversation = load_conversation(active_conv_id)
+
+    current_ui_locale = getattr(active_conversation, "ui_locale", "vi") if active_conversation else st.session_state.get("wsc_global_ui_locale", "vi")
+    current_answer_language = getattr(active_conversation, "answer_language", "vi") if active_conversation else st.session_state.get("wsc_global_answer_language", "vi")
+    labels = get_localized_labels(current_ui_locale)
+
+    # --- SIDEBAR: QUẢN LÝ SỔ, HỘI THOẠI & THƯ VIỆN NGUỒN ---
+    st.sidebar.markdown(f"## 📂 {notebook.title}")
+    if st.sidebar.button(f"⬅️ {t('back_to_notebooks', locale=current_ui_locale)}", key="back_to_nbs", use_container_width=True):
+        st.session_state.wsc_active_notebook_id = None
+        st.session_state.wsc_active_conversation_id = None
+        set_query_params(nb=None, conv=None)
+        safe_rerun()
+
+    st.sidebar.write("---")
+    st.sidebar.subheader(f"💬 {t('conversations', locale=current_ui_locale)}")
+
+    conversations = load_conversations(active_nb_id)
+
+    if st.sidebar.button(f"➕ {t('create_conversation', locale=current_ui_locale)}", key="btn_create_conv", use_container_width=True):
+        create_conversation_callback(active_nb_id, ui_locale=current_ui_locale, answer_language=current_answer_language)
 
     for c in conversations:
         is_active = (c.id == active_conv_id)
@@ -1011,14 +1036,14 @@ else:
 
     if conversations:
         st.sidebar.write("---")
-        with st.sidebar.expander("⚙️ Tùy chỉnh cuộc trò chuyện", expanded=False):
+        with st.sidebar.expander(f"⚙️ {t('conversation_customization', locale=current_ui_locale)}", expanded=False):
             conv_options = [c.id for c in conversations]
             manage_conv_id = st.session_state.get("wsc_manage_conversation_id")
             if manage_conv_id not in conv_options:
                 manage_conv_id = active_conv_id if active_conv_id in conv_options else conv_options[0]
 
             selected_manage_id = st.selectbox(
-                "Chọn cuộc trò chuyện:",
+                f"{t('conversations', locale=current_ui_locale)}:",
                 options=conv_options,
                 format_func=lambda cid: next((c.title for c in conversations if c.id == cid), cid),
                 index=conv_options.index(manage_conv_id) if manage_conv_id in conv_options else 0,
@@ -1029,48 +1054,114 @@ else:
 
             if target_conv:
                 with st.form(f"rename_form_{target_conv.id}"):
-                    new_title = st.text_input("Đổi tên cuộc trò chuyện", value=target_conv.title)
-                    if st.form_submit_button("Cập nhật tên"):
+                    new_title = st.text_input(t("rename_conversation", locale=current_ui_locale), value=target_conv.title)
+                    if st.form_submit_button(t("update_name", locale=current_ui_locale)):
                         if new_title.strip():
                             rename_conversation(target_conv.id, new_title.strip())
                             st.session_state.wsc_action_message = f"Đã đổi tên thành: {new_title.strip()}."
                             safe_rerun()
 
                 st.markdown("---")
+                # Mức độ tìm kiếm: Tự động / Tìm kỹ hơn
+                pref_val = getattr(target_conv, "search_preference", "auto")
+                pref_options = ["auto", "deep"]
+                pref_labels = {
+                    "auto": f"{t('search_pref_auto', locale=current_ui_locale)} (Tự động)",
+                    "deep": f"{t('search_pref_deep', locale=current_ui_locale)} (Tìm kỹ hơn)",
+                }
+                new_pref = st.selectbox(
+                    f"🔍 {t('search_level', locale=current_ui_locale)}:",
+                    options=pref_options,
+                    format_func=lambda opt: pref_labels.get(opt, opt),
+                    index=pref_options.index(pref_val) if pref_val in pref_options else 0,
+                    key=f"wsc_sidebar_search_pref_{target_conv.id}",
+                )
+                if new_pref != pref_val:
+                    update_conversation_search_preference(target_conv.id, new_pref)
+                    target_conv.search_preference = new_pref
+                    if active_conversation and active_conversation.id == target_conv.id:
+                        active_conversation.search_preference = new_pref
+                    safe_rerun()
+
+                st.markdown("---")
+                def _handle_conv_lang_change(new_ui_loc: str, new_ans_lang: str):
+                    update_conversation_language_settings(
+                        target_conv.id,
+                        ui_locale=new_ui_loc,
+                        answer_language=new_ans_lang,
+                    )
+                    target_conv.ui_locale = new_ui_loc
+                    target_conv.answer_language = new_ans_lang
+                    if active_conversation and active_conversation.id == target_conv.id:
+                        active_conversation.ui_locale = new_ui_loc
+                        active_conversation.answer_language = new_ans_lang
+                    st.session_state.wsc_global_ui_locale = new_ui_loc
+                    st.session_state.wsc_global_answer_language = new_ans_lang
+                    safe_rerun()
+
+                render_language_selector(
+                    current_ui_locale=getattr(target_conv, "ui_locale", "vi"),
+                    current_answer_language=getattr(target_conv, "answer_language", "vi"),
+                    on_change=_handle_conv_lang_change,
+                    key_prefix=f"wsc_conv_lang_{target_conv.id}",
+                    locale=current_ui_locale,
+                )
+
+                st.markdown("---")
                 pending_del_id = st.session_state.get("wsc_pending_conversation_delete_id")
                 if pending_del_id == target_conv.id:
-                    st.warning(f"Xác nhận xóa cuộc trò chuyện **{target_conv.title}**? Toàn bộ tin nhắn và nguồn tạm trong cuộc trò chuyện này sẽ bị xóa vĩnh viễn.")
+                    st.warning(f"⚠️ {t('confirm_delete_conv_warning', locale=current_ui_locale)}: **{target_conv.title}**")
                     cdol1, cdol2 = st.columns(2)
                     with cdol1:
-                        if st.button("Hủy", key=f"cancel_del_conv_{target_conv.id}"):
+                        if st.button(t("cancel", locale=current_ui_locale), key=f"cancel_del_conv_{target_conv.id}"):
                             cancel_delete_conversation_callback(target_conv.id)
                     with cdol2:
-                        if st.button("Xác nhận xóa", key=f"exec_del_conv_{target_conv.id}", type="primary"):
+                        if st.button(t("confirm_delete", locale=current_ui_locale), key=f"exec_del_conv_{target_conv.id}", type="primary"):
                             confirm_delete_conversation_callback(active_nb_id, target_conv.id)
                 else:
-                    if st.button("🗑️ Xóa cuộc trò chuyện", key=f"req_del_conv_{target_conv.id}", use_container_width=True):
+                    if st.button(f"🗑️ {t('delete_conversation', locale=current_ui_locale)}", key=f"req_del_conv_{target_conv.id}", use_container_width=True):
                         request_delete_conversation_callback(active_nb_id, target_conv.id)
 
     if active_conversation:
+        with st.sidebar.expander(f"🌐 {t('language_selector', locale=current_ui_locale)}", expanded=False):
+            def _handle_active_lang_change(new_ui_loc: str, new_ans_lang: str):
+                if active_conversation:
+                    update_conversation_language_settings(
+                        active_conversation.id,
+                        ui_locale=new_ui_loc,
+                        answer_language=new_ans_lang,
+                    )
+                    active_conversation.ui_locale = new_ui_loc
+                    active_conversation.answer_language = new_ans_lang
+                st.session_state.wsc_global_ui_locale = new_ui_loc
+                st.session_state.wsc_global_answer_language = new_ans_lang
+                safe_rerun()
+
+            render_language_selector(
+                current_ui_locale=current_ui_locale,
+                current_answer_language=current_answer_language,
+                on_change=_handle_active_lang_change,
+                key_prefix=f"wsc_sidebar_lang_{active_conversation.id}",
+                locale=current_ui_locale,
+            )
         # Nén Ngữ Cảnh & Kế Thừa
         messages = load_messages(active_conversation.id)
         if len(messages) > 0:
             pending_compress_id = st.session_state.get("wsc_pending_compress_conversation_id")
             if pending_compress_id == active_conversation.id:
                 st.sidebar.warning(
-                    f"Xác nhận nén {len(messages)} tin nhắn của cuộc trò chuyện **{active_conversation.title}** "
-                    "sang Antigravity Direct để tạo tóm tắt và bắt đầu phiên mới?"
+                    f"{t('confirm_compress_conv', locale=current_ui_locale)}?"
                 )
                 ccol1, ccol2 = st.sidebar.columns(2)
                 with ccol1:
-                    if st.sidebar.button("Hủy", key=f"cancel_compress_conv_{active_conversation.id}", use_container_width=True):
+                    if st.sidebar.button(t("cancel", locale=current_ui_locale), key=f"cancel_compress_conv_{active_conversation.id}", use_container_width=True):
                         cancel_compress_conversation_callback(active_conversation.id)
                 with ccol2:
-                    if st.sidebar.button("Nén & tạo chat mới", key=f"exec_compress_conv_{active_conversation.id}", type="primary", use_container_width=True):
-                        with st.spinner("Đang nén ngữ cảnh qua Antigravity Direct..."):
+                    if st.sidebar.button(t("confirm_compress_conv", locale=current_ui_locale), key=f"exec_compress_conv_{active_conversation.id}", type="primary", use_container_width=True):
+                        with st.spinner(t("compressing_spinner", locale=current_ui_locale)):
                             confirm_compress_conversation_callback(active_nb_id, active_conversation.id)
             else:
-                if st.sidebar.button("🧠 Nén & Kế thừa ngữ cảnh", key=f"req_compress_conv_{active_conversation.id}", help="Tóm tắt phiên này qua Antigravity Direct và tạo phiên mới mang theo ngữ cảnh", use_container_width=True):
+                if st.sidebar.button(f"🧠 {t('compress_conversation', locale=current_ui_locale)}", key=f"req_compress_conv_{active_conversation.id}", help=t("compress_help", locale=current_ui_locale), use_container_width=True):
                     request_compress_conversation_callback(active_conversation.id)
 
         # Load sources & selections
@@ -1428,6 +1519,7 @@ else:
                 notebook_count=len(notebook_sources),
                 temporary_count=len(temp_sources),
                 enabled_count=enabled_notebook_count + enabled_temp_count,
+                locale=current_ui_locale,
             )
 
     else:
@@ -1441,25 +1533,25 @@ else:
 
     top_col1, top_col2, top_col3 = st.columns([2.5, 1.3, 1.2])
     with top_col1:
-        st.subheader(f"💬 Đang chat trong sổ: {notebook.title}")
+        st.subheader(f"💬 {t('chat_in_notebook', locale=current_ui_locale)}: {notebook.title}")
     with top_col3:
         curr_layout = st.session_state.get("wsc_layout_mode", "full")
-        toggle_label = "📑 Xem chia 2 cột" if curr_layout == "full" else "📖 Mở rộng 100%"
-        if st.button(toggle_label, key="wsc_toggle_layout_btn", help="Chuyển đổi giữa chế độ đọc rộng 100% và đối chiếu 2 cột", use_container_width=True):
+        toggle_label = f"📑 {t('layout_split', locale=current_ui_locale)}" if curr_layout == "full" else f"📖 {t('layout_full', locale=current_ui_locale)}"
+        if st.button(toggle_label, key="wsc_toggle_layout_btn", help=t("layout_toggle_help", locale=current_ui_locale), use_container_width=True):
             st.session_state.wsc_layout_mode = "split" if curr_layout == "full" else "full"
             safe_rerun()
 
         bridge_health = get_antigravity_bridge_health()
-        if st.button("🔄 Làm mới", key="wsc_refresh_bridge_btn", help="Kiểm tra kết nối và cập nhật phản hồi mới từ Antigravity IDE", use_container_width=True):
+        if st.button(f"🔄 {t('refresh', locale=current_ui_locale)}", key="wsc_refresh_bridge_btn", help=t("bridge_refresh_help", locale=current_ui_locale), use_container_width=True):
             check_handoff_request_timeouts()
             safe_rerun()
 
     with top_col2:
-        render_bridge_header_status(bridge_health)
+        render_bridge_header_status(bridge_health, locale=current_ui_locale)
 
     if not active_conversation:
-        st.info("Sổ tài liệu này hiện chưa có cuộc trò chuyện nào. Hãy tạo cuộc trò chuyện mới để bắt đầu.")
-        if st.button("➕ Tạo cuộc trò chuyện mới ngay", key="btn_create_empty_conv", type="primary"):
+        st.info(t("no_conversations_in_notebook", locale=current_ui_locale))
+        if st.button(t("create_first_conversation_now", locale=current_ui_locale), key="btn_create_empty_conv", type="primary"):
             create_conversation_callback(active_nb_id)
     else:
             active_pending = list_pending_ide_requests(active_conversation.id)
@@ -1493,16 +1585,17 @@ else:
                         st.session_state.wsc_action_message = f"Đã tự động nhận câu trả lời từ Antigravity IDE (Mã: {req_info.request_id})."
                         safe_rerun()
 
-            st.info("Thêm tài liệu rồi hỏi tự nhiên; AIOS sẽ tự kiểm tra nguồn và cảnh báo nếu thiếu.")
+            # Thêm tài liệu rồi hỏi tự nhiên; AIOS sẽ tự kiểm tra nguồn và cảnh báo nếu thiếu.
+            st.info(t("input_help_instruction", locale=current_ui_locale))
 
             if st.session_state.wsc_show_save_placeholder:
                 st.info(f"ℹ️ {SAVE_CASE_PLACEHOLDER_MESSAGE}")
-                if st.button("Đóng thông báo lưu"):
+                if st.button(t("close_save_notification", locale=current_ui_locale)):
                     st.session_state.wsc_show_save_placeholder = False
                     safe_rerun()
             if st.session_state.wsc_show_explain_placeholder:
-                st.info("🔍 AIOS chưa nối AI thật ở bước này. Danh sách này cho biết nguồn đang bật và đoạn xem trước sẽ dùng nếu bạn hỏi AI. Đây chưa phải phần phân tích hoặc kết luận cuối cùng.")
-                if st.button("Đóng thông báo"):
+                st.info(t("explain_conclusion", locale=current_ui_locale))
+                if st.button(t("close_notification", locale=current_ui_locale)):
                     st.session_state.wsc_show_explain_placeholder = False
                     safe_rerun()
 
@@ -1517,22 +1610,23 @@ else:
                             outbox_dir=str(getattr(req_info, "outbox_dir", "") or ""),
                             inbox_path=str(getattr(req_info, "inbox_path", "") or ""),
                             privacy_mode=req_info.privacy_mode,
+                            locale=current_ui_locale,
                         )
 
                 if len(messages) >= 4:
                     st.markdown(
-                        '<div style="text-align:right; margin-bottom:8px;"><a href="#latest-ai-anchor" style="font-size:13px; color:#38bdf8; text-decoration:none; padding:4px 10px; background:rgba(14,165,233,0.1); border-radius:6px; border:1px solid rgba(14,165,233,0.2);">⬇️ Xuống câu trả lời mới nhất</a></div>',
+                        f'<div style="text-align:right; margin-bottom:8px;"><a href="#latest-ai-anchor" style="font-size:13px; color:#38bdf8; text-decoration:none; padding:4px 10px; background:rgba(14,165,233,0.1); border-radius:6px; border:1px solid rgba(14,165,233,0.2);">⬇️ {t("jump_to_latest", locale=current_ui_locale)}</a></div>',
                         unsafe_allow_html=True
                     )
 
                 chat_container = st.container()
                 with chat_container:
                     if not messages:
-                        st.write("Hãy bắt đầu cuộc trò chuyện bằng cách đặt câu hỏi ở dưới.")
+                        st.write(t("chat_start_prompt", locale=current_ui_locale))
                     last_assistant_idx = max((i for i, m in enumerate(messages) if m.role == "assistant"), default=-1)
                     for i, m in enumerate(messages):
                         is_latest_ans = (i == last_assistant_idx and i == len(messages) - 1)
-                        render_chat_bubble(m, is_latest=is_latest_ans)
+                        render_chat_bubble(m, is_latest=is_latest_ans, locale=current_ui_locale)
 
                 st.markdown(
                     """
@@ -1559,28 +1653,29 @@ else:
                             model_tool_name=badge_data.get("model_tool_name", "") or badge_data.get("verified_model", ""),
                             operational_mode=badge_data.get("operational_mode", ""),
                             provider_name=badge_data.get("provider", "") or badge_data.get("provider_name", ""),
+                            locale=current_ui_locale,
                         )
 
                         if badge_data.get("retrieval_summary"):
                             st.info(badge_data["retrieval_summary"])
-                        st.caption("Đây là câu trả lời do AI tạo. Hãy kiểm tra lại trước khi dùng.")
+                        st.caption(t("ai_disclaimer", locale=current_ui_locale))
                         if "evidence_items" in badge_data and badge_data["evidence_items"]:
-                            render_grouped_evidence_items(badge_data["evidence_items"], active_conversation.id)
+                            render_grouped_evidence_items(badge_data["evidence_items"], active_conversation.id, locale=current_ui_locale)
                     elif badge_data.get("type") == "handoff_pending":
-                        st.info(f"⏳ **Đang chờ Antigravity IDE xử lý** (Mã yêu cầu: `{badge_data.get('request_id')}`) — Vui lòng giữ hoặc bấm 'Làm mới' để kiểm tra kết quả.")
+                        st.info(t("waiting_antigravity_banner", locale=current_ui_locale, req_id=badge_data.get("request_id")))
                     elif badge_data.get("type") == "insufficient_context":
-                        render_insufficient_context(badge_data.get("reason", "no_sources"))
+                        render_insufficient_context(badge_data.get("reason", "no_sources"), locale=current_ui_locale)
                     elif badge_data.get("type") == "privacy_block":
-                        render_privacy_block_message()
+                        render_privacy_block_message(locale=current_ui_locale)
                     elif badge_data.get("type") == "source_changed":
-                        render_source_changed_message()
+                        render_source_changed_message(locale=current_ui_locale)
 
                 st.write("---")
                 total_enabled = enabled_notebook_count + enabled_temp_count
-                render_ai_source_context_summary(total_enabled)
+                render_ai_source_context_summary(total_enabled, locale=current_ui_locale)
 
                 if len(messages) >= 50:
-                    st.warning("⚠️ Cuộc trò chuyện này đã khá dài. Để đảm bảo tốc độ và chất lượng AI, bạn nên dùng tính năng 'Nén Ngữ Cảnh & Kế Thừa' ở thanh bên trái.")
+                    st.warning(t("conversation_long_warning", locale=current_ui_locale))
 
                 pending_auto_question = None
                 pending_submission = st.session_state.get(_PENDING_SOURCE_SUBMISSION_KEY)
@@ -1611,16 +1706,9 @@ else:
                         )
                         wait_col, cancel_col = st.columns((3, 1))
                         with wait_col:
-                            st.info(
-                                f"⏳ Câu hỏi của bạn đã được giữ lại. AIOS đang chuẩn bị {required_count} "
-                                "tài liệu khớp nhất; việc này chỉ cần làm một lần cho tài liệu đó."
-                            )
+                            st.info(t("question_held_preparing_sources", locale=current_ui_locale))
                         with cancel_col:
-                            if st.button(
-                                "Hủy câu hỏi đang chờ",
-                                key=f"wsc_cancel_pending_question_{active_conversation.id}",
-                                use_container_width=True,
-                            ):
+                            if st.button(t("cancel_pending_question", locale=current_ui_locale), key=f"wsc_cancel_pending_question_{active_conversation.id}", use_container_width=True):
                                 st.session_state.pop(_PENDING_SOURCE_SUBMISSION_KEY, None)
                                 st.session_state.wsc_action_message = (
                                     "Đã hủy câu hỏi đang chờ. AIOS vẫn có thể hoàn tất việc chuẩn bị ở nền."
@@ -1641,31 +1729,31 @@ else:
                 with st.form(f"wsc_ai_ask_form_{active_conversation.id}"):
                     user_input = st.text_area(
                         labels["question_placeholder"],
-                        placeholder="Ví dụ: Tóm tắt các điểm chính từ các tài liệu đã chọn...",
+                        placeholder=t("question_placeholder", locale=current_ui_locale),
                         height=100,
                         key=f"wsc_question_input_{active_conversation.id}"
                     )
                     user_attached_image = st.file_uploader(
-                        "📷 Đính kèm ảnh chụp màn hình / tài liệu ảnh (Kéo thả, dán file hoặc duyệt ảnh)",
+                        t("attach_screenshot_label", locale=current_ui_locale),
                         type=["png", "jpg", "jpeg", "webp", "bmp"],
                         key=f"wsc_chat_img_{active_conversation.id}_{st.session_state.wsc_upload_version}",
-                        help="Hỗ trợ tải lên hoặc kéo thả ảnh chụp màn hình nhanh để AI đọc và phân tích."
+                        help=t("attach_screenshot_help", locale=current_ui_locale),
                     )
                     current_pref = getattr(active_conversation, "search_preference", "auto")
                     pref_options = ["auto", "deep"]
                     pref_labels = {
-                        "auto": "Tự động",
-                        "deep": "Tìm kỹ hơn (có thể chậm hơn)",
+                        "auto": t("search_preference_auto", locale=current_ui_locale),
+                        "deep": t("search_preference_deep", locale=current_ui_locale),
                     }
                     selected_pref_idx = 1 if current_pref == "deep" else 0
                     chosen_pref_key = f"wsc_search_pref_{active_conversation.id}"
                     chosen_pref = st.selectbox(
-                        "Mức độ tìm kiếm",
+                        t("search_level", locale=current_ui_locale),
                         options=pref_options,
                         index=selected_pref_idx,
                         format_func=lambda x: pref_labels.get(x, x),
                         key=chosen_pref_key,
-                        help="Tự động tối ưu giữa tốc độ và độ kỹ, hoặc chủ động chọn Tìm kỹ hơn để tăng độ sâu rà soát tài liệu.",
+                        help=t("search_level_help", locale=current_ui_locale),
                     )
                     if chosen_pref != current_pref:
                         update_conversation_search_preference(active_conversation.id, chosen_pref)
@@ -1686,7 +1774,7 @@ else:
                 if ask_submitted:
                     q_text = user_input.strip()
                     if not q_text and not user_attached_image:
-                        st.error("Vui lòng nhập câu hỏi hoặc đính kèm ảnh chụp màn hình.")
+                        st.error(t("question_placeholder", locale=current_ui_locale))
                     else:
                         if user_attached_image is not None:
                             img_batch = process_workspace_upload_batch(
@@ -1817,8 +1905,8 @@ else:
                                         for s in packed_sources
                                     )
 
-                                    with st.spinner("🤖 AIOS đang phân tích và tìm kiếm câu trả lời..."):
-                                        st.toast("🔍 Bước 1/3: Kiểm tra nguồn tài liệu & phân tích câu hỏi...")
+                                    with st.spinner(t("ai_analysis_spinner", locale=current_ui_locale)):
+                                        st.toast(t("step1_checking_sources_toast", locale=current_ui_locale))
                                         expansion = None
                                         from aios_habit.rag_v2.query_planning import coerce_query_plan
                                         local_query_plan = coerce_query_plan(q_text)
@@ -1853,10 +1941,7 @@ else:
                                         )
 
                                         if ret_res.get("status") == "quality_search_unavailable":
-                                            st.error(
-                                                "Chưa thể tìm được bằng chứng đủ tin cậy trong tài liệu. "
-                                                "Câu hỏi chưa được gửi tới AI để tránh trả lời thiếu hoặc sai."
-                                            )
+                                            st.error(t("no_evidence_found_error", locale=current_ui_locale))
                                             st.session_state.wsc_action_error = (
                                                 "Tìm kiếm tài liệu chưa sẵn sàng. Vui lòng thử lại sau khi "
                                                 "nguồn hoàn tất chuẩn bị; chế độ Tìm kỹ hơn chỉ hoạt động khi "
@@ -1865,7 +1950,7 @@ else:
                                             st.session_state.wsc_last_ai_badge = None
                                             safe_rerun()
                                         elif ret_res["summary_count"] == 0:
-                                            st.error("⚠️ Chưa tìm thấy đoạn phù hợp trong nguồn đang bật.")
+                                            st.error(t("no_matched_segments_error", locale=current_ui_locale))
                                             st.session_state.wsc_action_error = "Chưa tìm thấy đoạn phù hợp trong nguồn đang bật."
                                             st.session_state.wsc_last_ai_badge = None
                                             safe_rerun()
@@ -1875,7 +1960,7 @@ else:
                                             evidence_items = ret_res.get("evidence_items", [])
                                             retrieval_summary = ret_res.get("safe_owner_message", "")
 
-                                        st.toast("✍️ Bước 3/3: AI đang soạn thảo câu trả lời và dẫn nguồn...")
+                                        st.toast(t("step3_composing_answer_toast", locale=current_ui_locale))
                                         # Static AST assertion compatibility:
                                         # generate_workspace_ai_answer(req, RealWorkspaceAIProviderClient())
                                         # save_message(user_msg)
@@ -1893,6 +1978,7 @@ else:
                                             current_keys=current_keys,
                                             chat_history=chat_history,
                                             user_raw_input=user_input,
+                                            answer_language=getattr(active_conversation, "answer_language", "vi"),
                                         )
                                         if ok:
                                             if succ_msg:
@@ -1907,90 +1993,90 @@ else:
 
                 # Phase 2H: Dán nhanh nhiều nguồn (quick multi-source paste)
                 st.write(" ")
-                with st.expander("➕ Thêm nguồn", expanded=False):
+                with st.expander(f"➕ {t('add_sources_expander', locale=current_ui_locale)}", expanded=False):
                     pending_duplicate_upload = st.session_state.get("wsc_pending_duplicate_upload")
                     if pending_duplicate_upload:
                         duplicate_names = ", ".join(pending_duplicate_upload["duplicates"].keys())
                         scope_copy = "sổ tài liệu này" if pending_duplicate_upload["target_scope"] == SOURCE_SCOPE_NOTEBOOK else "cuộc trò chuyện này"
-                        st.warning(f"Đã có tài liệu cùng tên trong {scope_copy}: {duplicate_names}.")
-                        st.caption("Bạn có thể giữ cả hai bản, hoặc thay thế bản cũ. Bản cũ chỉ bị xóa sau khi bản mới đã đọc thành công.")
+                        st.warning(f"{t('duplicate_source_title_warning', locale=current_ui_locale)}: {duplicate_names}.")
+                        st.caption(t("duplicate_source_help", locale=current_ui_locale))
                         keep_col, replace_col, cancel_col = st.columns(3)
                         with keep_col:
-                            if st.button("Giữ cả hai bản", key=f"wsc_duplicate_keep_{active_conversation.id}", use_container_width=True):
+                            if st.button(t("keep_both_versions", locale=current_ui_locale), key=f"wsc_duplicate_keep_{active_conversation.id}", use_container_width=True):
                                 _complete_pending_workspace_upload(pending_duplicate_upload, replace_existing=False)
                         with replace_col:
-                            if st.button("Thay thế bản cũ", key=f"wsc_duplicate_replace_{active_conversation.id}", type="primary", use_container_width=True):
+                            if st.button(t("replace_old_version", locale=current_ui_locale), key=f"wsc_duplicate_replace_{active_conversation.id}", type="primary", use_container_width=True):
                                 _complete_pending_workspace_upload(pending_duplicate_upload, replace_existing=True)
                         with cancel_col:
-                            if st.button("Hủy tải lên", key=f"wsc_duplicate_cancel_{active_conversation.id}", use_container_width=True):
+                            if st.button(t("cancel_upload", locale=current_ui_locale), key=f"wsc_duplicate_cancel_{active_conversation.id}", use_container_width=True):
                                 st.session_state.pop("wsc_pending_duplicate_upload", None)
                                 safe_rerun()
 
                     tab_quick, tab_paste, tab_image, tab_upload, tab_folder = st.tabs([
-                        "📋 Dán nhanh",
-                        "📝 Dán văn bản dài",
-                        "🖼️ Ảnh chụp màn hình",
-                        "📁 Thêm tài liệu",
-                        "📁 Nhập từ thư mục",
+                        t("tab_quick_paste", locale=current_ui_locale),
+                        t("tab_long_text", locale=current_ui_locale),
+                        t("tab_screenshot", locale=current_ui_locale),
+                        t("tab_upload_file", locale=current_ui_locale),
+                        t("tab_folder_import", locale=current_ui_locale),
                     ])
 
                     with tab_quick:
                         with st.form("quick_paste_form", clear_on_submit=True):
-                            quick_title = st.text_input("Tên nhóm nguồn (tuỳ chọn)", placeholder="Ví dụ: Log sáng 3/7, Email lỗi...")
-                            quick_content = st.text_area("Dán nội dung vào đây", placeholder="Dán nội dung vào đây...", height=120)
+                            quick_title = st.text_input(t("group_name_optional", locale=current_ui_locale), placeholder=t("group_name_optional", locale=current_ui_locale))
+                            quick_content = st.text_area(t("paste_content_here", locale=current_ui_locale), placeholder=t("paste_content_here", locale=current_ui_locale), height=120)
                             quick_privacy_choice = render_privacy_choice(f"wsc_quick_privacy_{active_conversation.id}")
-                            quick_save_to_notebook = st.checkbox("Lưu vĩnh viễn vào Sổ tài liệu", value=True)
+                            quick_save_to_notebook = st.checkbox(t("save_permanently_to_notebook", locale=current_ui_locale), value=True)
                             if st.form_submit_button(labels["quick_paste_add"]):
-                                if quick_content.strip():
-                                    final_title = quick_title.strip() or f"Nguồn dán nhanh {datetime.now().strftime('%d/%m %H:%M')}"
-                                    _submit_pasted_source(
-                                        final_title,
-                                        quick_content,
-                                        quick_privacy_choice,
-                                        enable_now=False,
-                                        save_to_notebook=quick_save_to_notebook,
-                                    )
-                                else:
-                                    st.error("Nội dung không được để trống.")
+                                 if quick_content.strip():
+                                     final_title = quick_title.strip() or f"{t('tab_quick_paste', locale=current_ui_locale)} {datetime.now().strftime('%d/%m %H:%M')}"
+                                     _submit_pasted_source(
+                                         final_title,
+                                         quick_content,
+                                         quick_privacy_choice,
+                                         enable_now=False,
+                                         save_to_notebook=quick_save_to_notebook,
+                                     )
+                                 else:
+                                     st.error(t("content_cannot_be_empty", locale=current_ui_locale))
 
                     # Khung dán nhật ký/email/đoạn chat dài
                     with tab_paste:
                         with st.form("paste_log_form"):
-                            paste_title = st.text_input("Tiêu đề nguồn tạm", placeholder="Ví dụ: Email lỗi Opcenter, Nhật ký log hệ thống...")
-                            paste_content = st.text_area("Nội dung văn bản dài", placeholder="Dán nội dung vào đây...", height=120)
+                            paste_title = st.text_input(t("temp_source_title", locale=current_ui_locale), placeholder=t("temp_source_title", locale=current_ui_locale))
+                            paste_content = st.text_area(t("long_text_content", locale=current_ui_locale), placeholder=t("paste_content_here", locale=current_ui_locale), height=120)
                             paste_privacy_choice = render_privacy_choice(f"wsc_paste_privacy_{active_conversation.id}")
-                            paste_enable_now = st.checkbox("Dùng nội dung này trong câu trả lời", value=False)
-                            paste_save_to_notebook = st.checkbox("Lưu vĩnh viễn vào Sổ tài liệu", value=True, key=f"paste_save_{active_conversation.id}")
-                            if st.form_submit_button("Thêm vào nguồn tạm"):
+                            paste_enable_now = st.checkbox(t("use_content_in_answer", locale=current_ui_locale), value=False)
+                            paste_save_to_notebook = st.checkbox(t("save_permanently_to_notebook", locale=current_ui_locale), value=True, key=f"paste_save_{active_conversation.id}")
+                            if st.form_submit_button(t("btn_add_to_temp_source", locale=current_ui_locale)):
                                 if not paste_content.strip():
-                                    st.error("Nội dung không được để trống.")
+                                    st.error(t("content_cannot_be_empty", locale=current_ui_locale))
                                 else:
-                                    final_title = paste_title.strip() if paste_title.strip() else f"Đoạn dán lúc {datetime.now().strftime('%H:%M:%S')}"
+                                    final_title = paste_title.strip() if paste_title.strip() else f"{t('tab_long_text', locale=current_ui_locale)} {datetime.now().strftime('%H:%M:%S')}"
                                     _submit_pasted_source(
-                                        final_title,
-                                        paste_content,
-                                        paste_privacy_choice,
-                                        enable_now=paste_enable_now,
-                                        save_to_notebook=paste_save_to_notebook,
-                                    )
+                                         final_title,
+                                         paste_content,
+                                         paste_privacy_choice,
+                                         enable_now=paste_enable_now,
+                                         save_to_notebook=paste_save_to_notebook,
+                                     )
 
 
                     # Tab đính kèm ảnh chụp màn hình / hình ảnh cắt nhanh
                     with tab_image:
-                        st.write("Đính kèm ảnh chụp màn hình, sơ đồ, bảng dữ liệu chụp từ hệ thống.")
+                        st.write(t("attach_screenshot_help", locale=current_ui_locale))
                         with st.form(f"wsc_img_upload_form_{active_conversation.id}"):
                             img_files = st.file_uploader(
-                                "Chọn hoặc dán ảnh chụp màn hình",
+                                t("select_or_paste_images", locale=current_ui_locale),
                                 type=["png", "jpg", "jpeg", "webp", "bmp"],
                                 key=f"wsc_img_upload_{active_conversation.id}_{st.session_state.wsc_upload_version}",
                                 accept_multiple_files=True,
                             )
                             img_privacy_choice = render_privacy_choice(f"wsc_img_tab_privacy_{active_conversation.id}")
-                            img_enable_now = st.checkbox("Bật ngay các ảnh này cho câu hỏi", value=True, key=f"img_tab_enable_{active_conversation.id}")
-                            img_save_to_notebook = st.checkbox("Lưu vĩnh viễn vào Sổ tài liệu", value=True, key=f"img_tab_save_{active_conversation.id}")
-                            if st.form_submit_button("🖼️ Đọc và thêm ảnh vào nguồn"):
+                            img_enable_now = st.checkbox(t("enable_images_for_question", locale=current_ui_locale), value=True, key=f"img_tab_enable_{active_conversation.id}")
+                            img_save_to_notebook = st.checkbox(t("save_permanently_to_notebook", locale=current_ui_locale), value=True, key=f"img_tab_save_{active_conversation.id}")
+                            if st.form_submit_button(t("btn_read_add_images", locale=current_ui_locale)):
                                 if not img_files:
-                                    st.error("Vui lòng chọn hoặc kéo thả ít nhất 1 ảnh.")
+                                    st.error(t("select_at_least_one_image", locale=current_ui_locale))
                                 else:
                                     _submit_workspace_upload(
                                         img_files,
@@ -2000,22 +2086,22 @@ else:
                                     )
 
                     with tab_upload:
-                        st.write("Tải lên tài liệu để dùng làm nguồn cho cuộc trò chuyện.")
-                        st.write("Có thể chọn hoặc kéo thả nhiều tài liệu cùng lúc.")
-                        st.write("Hỗ trợ: TXT, MD, CSV, Excel, Word, PowerPoint, PDF và ảnh nếu máy có bộ đọc phù hợp.")
+                        st.write(t("upload_docs_help", locale=current_ui_locale))
+                        st.write(t("upload_multi_docs_help", locale=current_ui_locale))
+                        st.write(t("upload_supported_formats", locale=current_ui_locale))
                         with st.form(f"wsc_doc_upload_form_{active_conversation.id}"):
                             uploaded_files = st.file_uploader(
-                                "Chọn tài liệu cho cuộc trò chuyện này",
+                                t("select_docs_for_conv", locale=current_ui_locale),
                                 type=["txt", "md", "markdown", "csv", "xlsx", "xls", "docx", "pptx", "pdf", "png", "jpg", "jpeg", "webp", "bmp", "tif", "tiff"],
                                 key=f"wsc_doc_upload_{active_conversation.id}_{st.session_state.wsc_upload_version}",
                                 accept_multiple_files=True,
                             )
                             doc_privacy_choice = render_privacy_choice(f"wsc_doc_privacy_{active_conversation.id}")
-                            enable_now = st.checkbox("Dùng các tài liệu này trong câu trả lời", value=False)
-                            upload_save_to_notebook = st.checkbox("Lưu vĩnh viễn vào Sổ tài liệu", value=True, key=f"upload_save_{active_conversation.id}")
-                            if st.form_submit_button("Đọc và thêm vào nguồn tạm"):
+                            enable_now = st.checkbox(t("use_docs_in_answer", locale=current_ui_locale), value=False)
+                            upload_save_to_notebook = st.checkbox(t("save_permanently_to_notebook", locale=current_ui_locale), value=True, key=f"upload_save_{active_conversation.id}")
+                            if st.form_submit_button(t("btn_read_add_temp_source", locale=current_ui_locale)):
                                 if not uploaded_files:
-                                    st.error("Vui lòng chọn tập tin trước khi thêm.")
+                                    st.error(t("select_file_before_adding", locale=current_ui_locale))
                                 else:
                                     _submit_workspace_upload(
                                         uploaded_files,
@@ -2025,8 +2111,8 @@ else:
                                     )
 
                     with tab_folder:
-                        st.write("Nhập đường dẫn thư mục trên máy để quét và nhập tất cả tài liệu hỗ trợ vào sổ.")
-                        st.caption("Hỗ trợ: PDF, Word (.docx), Excel (.xlsx, .xls), PowerPoint (.pptx), TXT, Markdown, CSV, ảnh (.png, .jpg...)")
+                        st.write(t("folder_path_help", locale=current_ui_locale))
+                        st.caption(t("folder_supported_formats", locale=current_ui_locale))
 
                         scan_key = f"wsc_folder_scan_{active_conversation.id}"
                         path_key = f"wsc_folder_path_input_{active_conversation.id}"
@@ -2034,20 +2120,15 @@ else:
 
                         col_path, col_btn = st.columns([3, 1])
                         with col_path:
-                            folder_path_input = st.text_input(
-                                "Đường dẫn thư mục",
-                                placeholder="Ví dụ: D:\\TaiLieu\\DuAn hoặc /home/user/documents",
-                                key=path_key,
-                                label_visibility="collapsed",
-                            )
+                            folder_path_input = st.text_input(t("folder_path_input", locale=current_ui_locale), placeholder="D:\\TaiLieu\\DuAn", key=path_key, label_visibility="collapsed")
                         with col_btn:
-                            folder_recursive = st.checkbox("Quét thư mục con", value=True, key=rec_key)
-                            btn_scan = st.button("🔍 Quét thư mục", key=f"btn_scan_{active_conversation.id}", use_container_width=True)
+                            folder_recursive = st.checkbox(t("scan_subfolders", locale=current_ui_locale), value=True, key=rec_key)
+                            btn_scan = st.button(t("scan_folder_button", locale=current_ui_locale), key=f"btn_scan_{active_conversation.id}", use_container_width=True)
 
                         if btn_scan:
                             if not folder_path_input or not folder_path_input.strip():
                                 st.session_state.pop(scan_key, None)
-                                st.error("Vui lòng nhập đường dẫn thư mục trước khi quét.")
+                                st.error(t("enter_folder_path_before_scan", locale=current_ui_locale))
                             else:
                                 scan_res = scan_local_directory(folder_path_input.strip(), recursive=folder_recursive)
                                 st.session_state[scan_key] = scan_res
@@ -2059,17 +2140,17 @@ else:
                             else:
                                 mcol1, mcol2, mcol3 = st.columns(3)
                                 with mcol1:
-                                    st.metric("Tổng số tập tin", current_scan.total_files)
+                                    st.metric(t("metric_total_files", locale=current_ui_locale), current_scan.total_files)
                                 with mcol2:
                                     st.metric(
-                                        "Tài liệu hỗ trợ",
+                                        t("metric_supported_files", locale=current_ui_locale),
                                         f"{len(current_scan.supported_files)} ({current_scan.formatted_supported_size()})",
                                     )
                                 with mcol3:
-                                    st.metric("Không hỗ trợ / Bỏ qua", len(current_scan.unsupported_files))
+                                    st.metric(t("metric_unsupported_skipped", locale=current_ui_locale), len(current_scan.unsupported_files))
 
                                 if current_scan.supported_files:
-                                    st.markdown("##### 📄 Danh sách tài liệu tìm thấy:")
+                                    st.markdown(t("scanned_files_header", locale=current_ui_locale))
                                     table_data = [
                                         {
                                             "Tên tập tin": f.filename,
@@ -2081,29 +2162,21 @@ else:
                                     ]
                                     st.dataframe(table_data, use_container_width=True)
                                     if len(current_scan.supported_files) > 100:
-                                        st.caption(f"(Đang hiển thị 100 / {len(current_scan.supported_files)} tài liệu)")
+                                        st.caption(f"({t('showing_top_docs', locale=current_ui_locale, count=100, total=len(current_scan.supported_files))})")
 
                                     st.divider()
                                     folder_privacy_choice = render_privacy_choice(f"wsc_folder_privacy_{active_conversation.id}")
-                                    folder_enable_now = st.checkbox(
-                                        "Dùng các tài liệu này trong câu trả lời",
-                                        value=False,
-                                        key=f"folder_enable_{active_conversation.id}",
-                                    )
-                                    folder_save_to_notebook = st.checkbox(
-                                        "Lưu vĩnh viễn vào Sổ tài liệu",
-                                        value=True,
-                                        key=f"folder_save_{active_conversation.id}",
-                                    )
+                                    folder_enable_now = st.checkbox(t("use_docs_in_answer", locale=current_ui_locale), value=False, key=f"folder_enable_{active_conversation.id}")
+                                    folder_save_to_notebook = st.checkbox(t("save_permanently_to_notebook", locale=current_ui_locale), value=True, key=f"folder_save_{active_conversation.id}")
 
-                                    if st.button("📥 Nhập tất cả tài liệu vào sổ", type="primary", key=f"btn_ingest_{active_conversation.id}", use_container_width=True):
-                                        prog_bar = st.progress(0, text="Bắt đầu nhập tài liệu...")
+                                    if st.button(t("import_all_to_notebook", locale=current_ui_locale), type="primary", key=f"btn_ingest_{active_conversation.id}", use_container_width=True):
+                                        prog_bar = st.progress(0, text=t("start_ingesting_progress", locale=current_ui_locale))
                                         status_text = st.empty()
 
                                         def update_progress(current_idx: int, total_count: int, filename: str):
                                             pct = current_idx / max(total_count, 1)
                                             prog_bar.progress(pct, text=f"Đang xử lý ({current_idx}/{total_count}): {filename}")
-                                            status_text.caption(f"Đang đọc: {filename}")
+                                            status_text.caption(f"{t('loading', locale=current_ui_locale)}: {filename}")
 
                                         batch_summary = ingest_scanned_files_batch(
                                             files=current_scan.supported_files,
@@ -2133,10 +2206,10 @@ else:
                                         safe_rerun()
 
                                 else:
-                                    st.info("Không tìm thấy tài liệu phù hợp trong thư mục đã chọn.")
+                                    st.info(t("no_matching_docs_in_folder", locale=current_ui_locale))
 
                                 if current_scan.unsupported_files:
-                                    with st.expander(f"Tập tin không hỗ trợ ({len(current_scan.unsupported_files)})", expanded=False):
+                                    with st.expander(t("unsupported_files_expander", locale=current_ui_locale, count=len(current_scan.unsupported_files)), expanded=False):
                                         unsupported_table = [
                                             {
                                                 "Tên tập tin": f.filename,
@@ -2178,10 +2251,10 @@ else:
                         safe_rerun()
 
                 # Always-visible single-line preparation progress banner outside expander
-                render_preparation_progress_bar(prep_summary, on_retry_all_failed=on_retry_all_failed_sources)
+                render_preparation_progress_bar(prep_summary, on_retry_all_failed=on_retry_all_failed_sources, locale=current_ui_locale)
 
                 with st.expander(
-                    f"⚙️ Quản lý tài liệu · {document_total} tài liệu · {enabled_total} đang bật",
+                    t("managing_sources_expander", locale=current_ui_locale, total=document_total, enabled=enabled_total),
                     expanded=bool(current_undo_state),
                 ):
                     render_document_manager(
@@ -2199,11 +2272,12 @@ else:
                         preparation_summary=prep_summary,
                         on_retry_source=on_retry_single_source,
                         on_retry_all_failed=on_retry_all_failed_sources,
+                        locale=current_ui_locale,
                     )
 
             def _render_workspace_results_and_evidence():
                 last_assistant_msg = next((m for m in reversed(messages) if m.role == "assistant"), None)
-                answer_text = last_assistant_msg.content if last_assistant_msg else "Hãy gửi câu hỏi để nhận phản hồi từ AIOS."
+                answer_text = last_assistant_msg.content if last_assistant_msg else t("send_question_prompt", locale=current_ui_locale)
 
                 enabled_selections = [sel for sel in selections if sel.enabled]
                 notebook_source_by_id = {s.id: s for s in notebook_sources}
@@ -2214,10 +2288,10 @@ else:
                 for selection in enabled_selections:
                     if selection.source_scope == SOURCE_SCOPE_NOTEBOOK:
                         resolved = notebook_source_by_id.get(selection.source_id)
-                        prefix = "Nguồn trong sổ"
+                        prefix = t("notebook_sources", locale=current_ui_locale)
                     elif selection.source_scope == SOURCE_SCOPE_TEMPORARY:
                         resolved = temp_source_by_id.get(selection.source_id)
-                        prefix = "Nguồn tạm"
+                        prefix = t("temp_sources", locale=current_ui_locale)
                     else:
                         resolved = None
 
@@ -2228,15 +2302,16 @@ else:
                     if stype == "xlsx":
                         friendly_type = "Excel"
                     elif stype in {"text", "pasted_text", "plain_text"}:
-                        friendly_type = "Văn bản"
+                        friendly_type = t("tab_long_text", locale=current_ui_locale)
                     else:
-                        friendly_type = "Nguồn"
+                        friendly_type = t("sources", locale=current_ui_locale)
 
                     proven_sources.append(f"{prefix}: {resolved.title} ({friendly_type})")
 
+                # Đây là câu trả lời do AI tạo, cần kiểm tra lại trước khi dùng.
                 if last_assistant_msg:
-                    to_check = ["Đây là câu trả lời do AI tạo, cần kiểm tra lại trước khi dùng."]
-                    next_actions = ["Kiểm tra lại tài liệu nguồn"]
+                    to_check = [t("ai_disclaimer", locale=current_ui_locale)]
+                    next_actions = [t("check_source_docs_expander", locale=current_ui_locale)]
                 else:
                     to_check = []
                     next_actions = []
@@ -2253,12 +2328,14 @@ else:
                     to_check_items=to_check,
                     next_actions=next_actions,
                     on_save_case=on_save_case_cb,
-                    on_explain=on_explain_cb
+                    on_explain=on_explain_cb,
+                    locale=current_ui_locale,
                 )
 
                 # Studio Notes & Citations
                 if badge_data and badge_data.get("conversation_id") == active_conversation.id and badge_data.get("evidence_items"):
-                    st.markdown("#### 🔍 Trích dẫn từ tài liệu")
+                    doc_refs_title = t("citations_from_docs", locale=current_ui_locale)
+                    st.markdown(f"#### {doc_refs_title}")
                     for item in badge_data["evidence_items"]:
                         with st.expander(f"📌 {item['title']}", expanded=True):
                             if item.get("location_info"):
@@ -2269,46 +2346,31 @@ else:
             SHOW_AGENT_IDE_DEV_TOOLS = False
 
             def _render_agent_ide_developer_tools():
-                with st.expander("🤖 Agent IDE (Dành cho Lập trình viên)", expanded=False):
-                    st.caption("Workspace Agent IDE chỉ đọc code mặc định. Không tự sửa tệp hoặc chạy lệnh.")
-                    agent_mode = st.selectbox(
-                        "Chế độ Agent IDE",
-                        options=["analyze", "debug", "plan", "implement"],
-                        format_func=lambda value: {
-                            "analyze": "Phân tích codebase", "debug": "Tìm nguyên nhân lỗi",
-                            "plan": "Lập kế hoạch thay đổi", "implement": "Chuẩn bị thay đổi (chưa ghi tệp)",
-                        }[value],
-                        key=f"wsc_agent_mode_{active_conversation.id}",
-                    )
-                    workspace_root = st.text_input(
-                        "Thư mục code workspace", value=st.session_state.wsc_agent_workspace_root,
-                        key=f"wsc_agent_workspace_{active_conversation.id}",
-                    )
+                with st.expander(t("agent_ide_title", locale=current_ui_locale), expanded=False):
+                    st.caption(t("agent_ide_desc", locale=current_ui_locale))
+                    agent_mode = st.selectbox(t("agent_ide_mode", locale=current_ui_locale), options=["analyze", "debug", "plan", "implement"], key=f"wsc_agent_mode_{active_conversation.id}")
+                    workspace_root = st.text_input(t("agent_ide_workspace_path", locale=current_ui_locale), value=st.session_state.wsc_agent_workspace_root, key=f"wsc_agent_workspace_{active_conversation.id}")
                     st.session_state.wsc_agent_workspace_root = workspace_root
-                    scope_confirmed = st.checkbox(
-                        "Tôi xác nhận Agent IDE có thể đọc code trong workspace này.",
-                        value=st.session_state.wsc_agent_scope_confirmed,
-                        key=f"wsc_agent_scope_{active_conversation.id}",
-                    )
+                    scope_confirmed = st.checkbox(t("agent_ide_confirm_scope", locale=current_ui_locale), value=st.session_state.wsc_agent_scope_confirmed, key=f"wsc_agent_scope_{active_conversation.id}")
                     st.session_state.wsc_agent_scope_confirmed = scope_confirmed
                     trust_col, status_col = st.columns([1, 2])
                     with trust_col:
-                        if st.button("Tin cậy workspace này", key=f"wsc_agent_trust_{active_conversation.id}"):
+                        if st.button(t("agent_ide_trust_btn", locale=current_ui_locale), key=f"wsc_agent_trust_{active_conversation.id}"):
                             if not scope_confirmed:
-                                st.warning("Hãy xác nhận phạm vi code workspace trước khi đặt mức tin cậy.")
+                                st.warning(t("agent_ide_confirm_scope_first", locale=current_ui_locale))
                             else:
                                 try:
                                     client = WorkspaceAgentBridgeClient(workspace_root)
                                     trust = client.trust_workspace()
                                     client.close()
-                                    st.success(f"Đã tin cậy workspace cục bộ: {trust.get('workspace', workspace_root)}")
+                                    st.success(t("agent_trust_success", locale=current_ui_locale, ws=trust.get("workspace", workspace_root)))
                                 except Exception as error:
-                                    st.error(f"Không thể đặt mức tin cậy cho Agent IDE: {error}")
+                                    st.error(t("agent_trust_error", locale=current_ui_locale, err=error))
                     with status_col:
-                        st.caption("Lệnh, áp diff và mọi sửa đổi tệp sẽ luôn yêu cầu một phê duyệt riêng ở bước sau.")
+                        st.caption(t("agent_ide_approval_help", locale=current_ui_locale))
                     with st.form(f"wsc_agent_ask_form_{active_conversation.id}", clear_on_submit=True):
-                        agent_instruction = st.text_area("Yêu cầu cho Agent IDE", placeholder="Ví dụ: Tìm luồng xử lý dữ liệu và các điểm có thể lỗi.", height=90)
-                        agent_submitted = st.form_submit_button("Khảo sát workspace", use_container_width=True)
+                        agent_instruction = st.text_area(t("agent_ide_prompt_label", locale=current_ui_locale), placeholder=t("agent_ide_prompt_placeholder", locale=current_ui_locale), height=90)
+                        agent_submitted = st.form_submit_button(t("btn_survey_workspace", locale=current_ui_locale), use_container_width=True)
                     if agent_submitted:
                         result = WorkspaceAgentOrchestrator().run(WorkspaceAgentRequest(
                             conversation_id=active_conversation.id,
@@ -2323,26 +2385,26 @@ else:
                                 id=f"MSG-{uuid.uuid4().hex[:8].upper()}", conversation_id=active_conversation.id,
                                 role="assistant", content=result.answer_text,
                             ))
-                            st.success("Agent IDE đã hoàn tất khảo sát chỉ-đọc.")
+                            st.success(t("agent_ide_readonly_done", locale=current_ui_locale))
                             safe_rerun()
                         else:
-                            st.error(result.error_message or "Agent IDE chưa thể hoàn tất yêu cầu.")
+                            st.error(result.error_message or t("agent_ide_incomplete_error", locale=current_ui_locale))
                     agent_result = st.session_state.wsc_agent_last_result
                     if agent_result and agent_result.session_id:
-                        with st.expander("Dấu vết công cụ Agent IDE", expanded=False):
+                        with st.expander(t("agent_ide_tool_trace", locale=current_ui_locale), expanded=False):
                             for event in agent_result.events:
                                 icon = "✅" if event.ok else "⚠️"
                                 st.write(f"{icon} `{event.tool}` · {event.elapsed_ms}ms · {event.summary}")
 
-                    st.markdown("#### Tạo proposal có kiểm soát")
-                    proposal_tab, command_tab = st.tabs(["Đề xuất patch", "Đề xuất lệnh"])
+                    st.markdown(t("agent_ide_controlled_proposal", locale=current_ui_locale))
+                    proposal_tab, command_tab = st.tabs([t("tab_patch_proposal", locale=current_ui_locale), t("tab_command_proposal", locale=current_ui_locale)])
                     with proposal_tab:
                         with st.form(f"wsc_agent_patch_form_{active_conversation.id}", clear_on_submit=True):
-                            patch_path = st.text_input("Tệp cần đề xuất sửa", placeholder="src/aios_habit/rag_v2/chunking.py")
-                            patch_find = st.text_area("Đoạn hiện tại (phải khớp chính xác)", height=100)
-                            patch_replace = st.text_area("Đoạn thay thế", height=100)
-                            patch_reason = st.text_input("Lý do thay đổi", placeholder="Ví dụ: bổ sung xử lý file rỗng")
-                            patch_submit = st.form_submit_button("Tạo diff để review", use_container_width=True)
+                            patch_path = st.text_input(t("agent_ide_target_file", locale=current_ui_locale), placeholder="src/aios_habit/rag_v2/chunking.py")
+                            patch_find = st.text_area(t("agent_ide_current_chunk", locale=current_ui_locale), height=100)
+                            patch_replace = st.text_area(t("agent_ide_replacement_chunk", locale=current_ui_locale), height=100)
+                            patch_reason = st.text_input(t("agent_ide_change_reason", locale=current_ui_locale), placeholder=t("agent_ide_change_reason", locale=current_ui_locale))
+                            patch_submit = st.form_submit_button(t("btn_create_diff_review", locale=current_ui_locale), use_container_width=True)
                         if patch_submit:
                             patch_result = WorkspaceAgentOrchestrator().propose_patch(
                                 workspace_root=workspace_root, file_path=patch_path, find=patch_find,
@@ -2354,14 +2416,14 @@ else:
                                     "proposal_session_id": patch_result.session_id,
                                     "action": patch_result.pending_action,
                                 }
-                                st.success("Đã tạo diff. Hãy review phần phê duyệt phía dưới; chưa có thay đổi nào được ghi.")
+                                st.success(t("agent_ide_diff_created", locale=current_ui_locale))
                             else:
-                                st.error(patch_result.error_message or "Không thể tạo proposal patch.")
+                                st.error(patch_result.error_message or t("agent_patch_proposal_error", locale=current_ui_locale))
                     with command_tab:
                         with st.form(f"wsc_agent_command_form_{active_conversation.id}", clear_on_submit=True):
-                            proposed_command = st.text_area("Lệnh sẽ chạy trong workspace", placeholder="py -m pytest tests/test_data_processing.py -q", height=80)
-                            command_reason = st.text_input("Mục đích chạy lệnh", placeholder="Ví dụ: kiểm chứng thay đổi processing")
-                            command_submit = st.form_submit_button("Tạo proposal lệnh", use_container_width=True)
+                            proposed_command = st.text_area(t("agent_ide_cmd_to_run", locale=current_ui_locale), placeholder="py -m pytest tests/test_data_processing.py -q", height=80)
+                            command_reason = st.text_input(t("agent_ide_cmd_purpose", locale=current_ui_locale), placeholder=t("agent_ide_cmd_purpose", locale=current_ui_locale))
+                            command_submit = st.form_submit_button(t("btn_create_cmd_proposal", locale=current_ui_locale), use_container_width=True)
                         if command_submit:
                             command_result = WorkspaceAgentOrchestrator().propose_command(
                                 workspace_root=workspace_root, command=proposed_command,
@@ -2373,38 +2435,39 @@ else:
                                     "proposal_session_id": command_result.session_id,
                                     "action": command_result.pending_action,
                                 }
-                                st.success("Đã tạo proposal lệnh. Lệnh chưa được chạy.")
+                                st.success(t("agent_ide_cmd_proposed", locale=current_ui_locale))
                             else:
-                                st.error(command_result.error_message or "Không thể tạo proposal lệnh.")
+                                st.error(command_result.error_message or t("agent_cmd_proposal_error", locale=current_ui_locale))
 
                     pending = st.session_state.wsc_agent_pending_action
                     if pending:
                         action = pending["action"]
-                        st.markdown("#### ⚠️ Cổng phê duyệt bắt buộc")
+                        approval_header = t("agent_ide_approval_gate", locale=current_ui_locale)
+                        st.markdown(approval_header)
                         if action.kind == "edit":
                             payload = action.payload
-                            st.write(f"**Tệp:** `{payload.get('relPath', 'unknown')}`")
-                            st.code(payload.get("diff", "Không có diff để hiển thị."), language="diff")
-                            if st.button("Phê duyệt và áp dụng patch", type="primary", key="wsc_agent_apply_btn"):
+                            st.write(f"**{t('file_label', locale=current_ui_locale)}:** `{payload.get('relPath', 'unknown')}`")
+                            st.code(payload.get("diff", t("no_diff_to_display", locale=current_ui_locale)), language="diff")
+                            if st.button(t("agent_ide_approve_patch", locale=current_ui_locale), type="primary", key="wsc_agent_apply_btn"):
                                 result = WorkspaceAgentOrchestrator().approve_edit(
                                     proposal_session_id=pending["proposal_session_id"], pending_edit_id=payload["id"],
                                     workspace_root=workspace_root, scope_confirmed=scope_confirmed,
                                 )
                                 st.session_state.wsc_agent_pending_action = None
-                                st.success(result.answer_text if result.state == "completed" else "Lỗi.")
+                                st.success(result.answer_text if result.state == "completed" else t("agent_general_error", locale=current_ui_locale))
                                 safe_rerun()
                         else:
                             command = action.payload.get("command", "")
                             st.code(command, language="powershell")
-                            if st.button("Phê duyệt và chạy lệnh", type="primary", key="wsc_agent_exec_btn"):
+                            if st.button(t("agent_ide_approve_cmd", locale=current_ui_locale), type="primary", key="wsc_agent_exec_btn"):
                                 result = WorkspaceAgentOrchestrator().approve_command(
                                     workspace_root=action.payload.get("workspace_root", workspace_root), command=command,
                                     scope_confirmed=scope_confirmed,
                                 )
                                 st.session_state.wsc_agent_pending_action = None
-                                st.success(result.answer_text if result.state == "completed" else "Lỗi.")
+                                st.success(result.answer_text if result.state == "completed" else t("agent_general_error", locale=current_ui_locale))
                                 safe_rerun()
-                        if st.button("Từ chối", key="wsc_agent_discard_btn"):
+                        if st.button(t("agent_ide_reject", locale=current_ui_locale), key="wsc_agent_discard_btn"):
                             st.session_state.wsc_agent_pending_action = None
                             safe_rerun()
 
@@ -2421,7 +2484,7 @@ else:
                 with st.container():
                     _render_chat_main_column()
                 st.write(" ")
-                with st.expander("📌 Kết quả & bằng chứng", expanded=False):
+                with st.expander(f"📌 {t('results_and_evidence', locale=current_ui_locale)}", expanded=False):
                     _render_workspace_results_and_evidence()
                     if SHOW_AGENT_IDE_DEV_TOOLS:
                         _render_agent_ide_developer_tools()
@@ -2455,17 +2518,17 @@ def _legacy_excel_uploader_compatibility_dont_call(active_conversation=None, exc
     # "safe_rerun()"
     if False:
         create_safe_test_data(active_conversation.id)
-        st.button("Tạo dữ liệu test không mật")
-        st.info("Hiện tại màn hình này hỗ trợ dán văn bản dài, thêm Excel .xlsx và tạo dữ liệu test không mật. Ô hỏi chỉ hỗ trợ nhập chữ; chưa hỗ trợ dán ảnh hoặc thêm PDF/Word trực tiếp. Các định dạng này sẽ được xem xét ở giai đoạn mở rộng nguồn dữ liệu.")
-        with st.expander("📊 Thêm file Excel .xlsx"):
+        st.button(t("demo_create_test_data", locale=current_ui_locale))
+        st.info(t("demo_supported_sources_info", locale=current_ui_locale))
+        with st.expander(t("demo_excel_expander", locale=current_ui_locale)):
             with st.form(f"excel_upload_form_{active_conversation.id}"):
                 uploaded_excel = st.file_uploader(
-                    "Chọn file Excel cho cuộc trò chuyện này",
+                    t("select_excel_for_conv", locale=current_ui_locale),
                     type=["xlsx", "xls"],
                     key=f"wsc_excel_upload_{active_conversation.id}",
                 )
                 excel_privacy_choice = render_privacy_choice(f"wsc_excel_privacy_{active_conversation.id}")
-                if st.form_submit_button("Đọc và thêm vào nguồn tạm"):
+                if st.form_submit_button(t("btn_read_add_temp_source", locale=current_ui_locale)):
                     result = extract_xlsx_text(uploaded_excel.getvalue(), uploaded_excel.name)
                     if result.ok:
                         temporary_source = create_excel_temporary_source_from_extraction(

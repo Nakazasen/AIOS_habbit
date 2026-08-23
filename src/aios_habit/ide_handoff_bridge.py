@@ -14,6 +14,7 @@ from typing import Any, Iterable
 
 from aios_habit.case_models import EvidenceItem
 from aios_habit.case_store import save_evidence
+from aios_habit.i18n import get_ai_language_instruction, normalize_locale
 from aios_habit.rag_answer_composer import PastedStrongModelAnswer
 
 LOGGER = logging.getLogger(__name__)
@@ -432,6 +433,7 @@ def build_full_bundle_request(
     max_total_text_chars: int = 2_000_000,
     request_id: str | None = None,
     timeout_seconds: int = DEFAULT_HANDOFF_TIMEOUT_SECONDS,
+    answer_language: str = "vi",
 ) -> tuple[dict[str, Any], list[dict[str, Any]], dict[str, Any], str]:
     if not question.strip():
         raise ValueError("question is required")
@@ -443,6 +445,7 @@ def build_full_bundle_request(
     if total_chars > max_total_text_chars:
         raise ValueError("full bundle size guard triggered; export stopped without omission")
     rid = request_id or _now_id()
+    norm_lang = normalize_locale(answer_language)
     privacy = _privacy_mode(items)
     source_files = sorted({item.source_path or item.title for item in items})
     extraction_formats = sorted({item.source_type for item in items})
@@ -462,6 +465,7 @@ def build_full_bundle_request(
         "case_id": case_id,
         "question": question,
         "bundle_scope": bundle_scope,
+        "answer_language": norm_lang,
         "privacy_mode": privacy,
         "privacy_level": privacy,
         "local_only": privacy == "local_only",
@@ -503,7 +507,9 @@ def build_full_bundle_request(
     return manifest, records, source_manifest, instruction
 
 
-def build_prompt_md(manifest: dict[str, Any]) -> str:
+def build_ide_prompt_markdown(manifest: dict[str, Any], answer_language: str = "vi") -> str:
+    lang = manifest.get("answer_language", answer_language)
+    lang_instruction = get_ai_language_instruction(lang)
     inbox_path = HANDOFF_ROOT / "inbox" / manifest["request_id"] / "response.json"
     schema = {
         "schema_version": RESPONSE_SCHEMA_VERSION,
@@ -524,6 +530,8 @@ def build_prompt_md(manifest: dict[str, Any]) -> str:
         "# Antigravity Local Handoff Task",
         "",
         f"Question: {manifest['question']}",
+        "",
+        f"LANGUAGE & CITATION INSTRUCTION:\n{lang_instruction}",
         "",
         "1. Read every file in this bundle. Start with evidence_bundle.json in this folder.",
         "2. Use only evidence in this bundle. Do not invent sources or use external web unless explicitly allowed.",
@@ -546,12 +554,17 @@ def build_prompt_md(manifest: dict[str, Any]) -> str:
     ])
 
 
+build_prompt_md = build_ide_prompt_markdown
+
+
 def build_evidence_markdown(records: list[dict[str, Any]]) -> str:
     lines = ["# Full Evidence Bundle", ""]
     for record in records:
+        source_path = record.get("source_path") or ""
         lines += [
             f"## {record['evidence_id']} - {record['title']}",
             f"- source_type: `{record['source_type']}`",
+            *( [f"- source_path: `{source_path}`"] if source_path else [] ),
             f"- metadata_only: `{record['metadata_only']}`",
             "",
             "```text",
@@ -574,6 +587,7 @@ def write_ide_handoff_bundle(
     max_total_text_chars: int = 2_000_000,
     request_id: str | None = None,
     timeout_seconds: int = DEFAULT_HANDOFF_TIMEOUT_SECONDS,
+    answer_language: str = "vi",
 ) -> FullBundleRequest:
     root = Path(root)
     manifest, records, source_manifest, instruction = build_full_bundle_request(
@@ -586,6 +600,7 @@ def write_ide_handoff_bundle(
         max_total_text_chars=max_total_text_chars,
         request_id=request_id,
         timeout_seconds=timeout_seconds,
+        answer_language=answer_language,
     )
     bundle_dir = root / "outbox" / manifest["request_id"]
     bundle_dir.mkdir(parents=True, exist_ok=True)
@@ -620,7 +635,7 @@ def write_ide_handoff_bundle(
         encoding="utf-8",
     )
     (bundle_dir / "question.md").write_text(f"# Question\n\n{question}\n", encoding="utf-8")
-    prompt_md = build_prompt_md(manifest)
+    prompt_md = build_ide_prompt_markdown(manifest, answer_language=answer_language)
     (bundle_dir / "prompt.md").write_text(prompt_md, encoding="utf-8")
     (bundle_dir / "prompt_for_antigravity.md").write_text(prompt_md, encoding="utf-8")
     (bundle_dir / "evidence_full.jsonl").write_text(

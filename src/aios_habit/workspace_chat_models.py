@@ -41,12 +41,32 @@ class WorkspaceConversation:
     saved_case_id: Optional[str] = None
     compressed_memory: str = ""
     search_preference: str = "auto"
+    ui_locale: str = "vi"
+    answer_language: str = "vi"
 
     def __post_init__(self) -> None:
         val = str(self.search_preference or "auto").strip().casefold()
         if val not in {"auto", "deep"}:
             val = "auto"
         object.__setattr__(self, "search_preference", val)
+
+        from aios_habit.i18n import normalize_locale
+        object.__setattr__(self, "ui_locale", normalize_locale(getattr(self, "ui_locale", "vi")))
+        object.__setattr__(self, "answer_language", normalize_locale(getattr(self, "answer_language", "vi")))
+
+    def to_dict(self) -> dict:
+        return asdict(self)
+
+    @classmethod
+    def from_dict(cls, data: dict) -> 'WorkspaceConversation':
+        valid_keys = {
+            "id", "notebook_id", "title", "created_at", "updated_at",
+            "selected_source_ids", "temporary_source_ids", "saved_case_id",
+            "compressed_memory", "search_preference", "ui_locale", "answer_language"
+        }
+        filtered = {k: v for k, v in data.items() if k in valid_keys}
+        return cls(**filtered)
+
 
 
 @dataclass

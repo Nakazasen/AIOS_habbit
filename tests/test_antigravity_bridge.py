@@ -1022,3 +1022,292 @@ class TestAntigravityBridgeFailClosedAndE2E:
         status_data = json.loads(status_file.read_text(encoding="utf-8"))
         assert status_data["state"] == "completed"
         assert status_data["saved_answer_id"] == saved_ans.draft_id
+
+
+# ============================================================================
+# 8. Handoff Bundle Multilingual & Verbatim Evidence Preservation E2E Tests (R1)
+# ============================================================================
+
+
+class TestAntigravityHandoffMultilingualE2E:
+    """E2E test suite verifying multilingual bundle generation, prompt injection, and verbatim evidence rules."""
+
+    @pytest.fixture
+    def sample_evidence(self):
+        from aios_habit.case_models import EvidenceItem
+
+        return [
+            EvidenceItem(
+                evidence_id="[E1]",
+                case_id="CONV-LANG-001",
+                source_type="plain_text",
+                source_path="local/spec_doc.pdf",
+                title="Specification Doc",
+                extracted_text="Error code ERR_TIMEOUT_404 observed at line 42.",
+                privacy_level="local_only",
+            ),
+            EvidenceItem(
+                evidence_id="EVD-001",
+                case_id="CONV-LANG-001",
+                source_type="plain_text",
+                source_path="local/inventory_2026.xlsx",
+                title="Inventory Spreadsheet",
+                extracted_text="Stock quantity: 150 units remaining.",
+                privacy_level="cloud_allowed",
+            ),
+        ]
+
+    def test_handoff_bundle_multilingual_ja_e2e(self, tmp_path, sample_evidence):
+        """Verify Japanese bundle has answer_language in manifest, Japanese prompt instruction, and verbatim rules."""
+        from aios_habit.ide_handoff_bridge import (
+            write_ide_handoff_bundle,
+            validate_handoff_bundle,
+            verify_bundle_integrity,
+        )
+
+        bundle_req = write_ide_handoff_bundle(
+            case_id="CONV-JA-001",
+            question="在庫とエラー状況はどうなっていますか？",
+            bundle_scope="active_case_all",
+            evidence_items=sample_evidence,
+            root=tmp_path,
+            answer_language="ja",
+        )
+        assert bundle_req.ok
+
+        # 1. Check manifest.json
+        manifest_path = bundle_req.bundle_dir / "manifest.json"
+        assert manifest_path.exists()
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        assert manifest["answer_language"] == "ja"
+
+        # 2. Check prompt_for_antigravity.md and prompt.md
+        prompt_antigravity_path = bundle_req.bundle_dir / "prompt_for_antigravity.md"
+        assert prompt_antigravity_path.exists()
+        prompt_text = prompt_antigravity_path.read_text(encoding="utf-8")
+
+        prompt_md_path = bundle_req.bundle_dir / "prompt.md"
+        assert prompt_md_path.exists()
+        assert prompt_md_path.read_text(encoding="utf-8") == prompt_text
+
+        # Japanese instruction check
+        assert "言語指示: 回答はすべて日本語で記述してください。" in prompt_text
+        # Verbatim preservation rules check
+        assert "引用ID（例: [1]、[E1]、EVD-001）" in prompt_text
+        assert "ファイル名（例: document.pdf）" in prompt_text
+        assert "ファイルパス、エラーコード、および引用スニペットは翻訳せず、原文のまま100%保持してください。" in prompt_text
+        assert "識別子や証拠引用を翻訳または改変することは固く禁じます。" in prompt_text
+
+        # 3. Validation & Cryptographic integrity
+        val = validate_handoff_bundle(bundle_req.bundle_dir)
+        assert val["ok"] is True
+        assert val["missing"] == []
+
+        int_ok, int_errs = verify_bundle_integrity(bundle_req.bundle_dir)
+        assert int_ok is True
+        assert int_errs == []
+
+    def test_handoff_bundle_multilingual_zh_cn_e2e(self, tmp_path, sample_evidence):
+        """Verify Simplified Chinese bundle has answer_language in manifest, Chinese prompt instruction, and verbatim rules."""
+        from aios_habit.ide_handoff_bridge import (
+            write_ide_handoff_bundle,
+            validate_handoff_bundle,
+            verify_bundle_integrity,
+        )
+
+        bundle_req = write_ide_handoff_bundle(
+            case_id="CONV-ZH-001",
+            question="请汇报库存和错误情况？",
+            bundle_scope="active_case_all",
+            evidence_items=sample_evidence,
+            root=tmp_path,
+            answer_language="zh-CN",
+        )
+        assert bundle_req.ok
+
+        # 1. Check manifest.json
+        manifest_path = bundle_req.bundle_dir / "manifest.json"
+        assert manifest_path.exists()
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        assert manifest["answer_language"] == "zh-CN"
+
+        # 2. Check prompt_for_antigravity.md and prompt.md
+        prompt_antigravity_path = bundle_req.bundle_dir / "prompt_for_antigravity.md"
+        assert prompt_antigravity_path.exists()
+        prompt_text = prompt_antigravity_path.read_text(encoding="utf-8")
+
+        prompt_md_path = bundle_req.bundle_dir / "prompt.md"
+        assert prompt_md_path.exists()
+        assert prompt_md_path.read_text(encoding="utf-8") == prompt_text
+
+        # Chinese instruction check
+        assert "语言指示: 请完全使用简体中文回答。" in prompt_text
+        # Verbatim preservation rules check
+        assert "请100%完整保留所有引用ID（例如 [1]、[E1]、EVD-001）" in prompt_text
+        assert "文件名（例如 document.pdf）、文件路径、技术错误代码和原文摘录片段。" in prompt_text
+        assert "严禁翻译或篡改任何标识符和证据引用。" in prompt_text
+
+        # 3. Validation & Cryptographic integrity
+        val = validate_handoff_bundle(bundle_req.bundle_dir)
+        assert val["ok"] is True
+        assert val["missing"] == []
+
+        int_ok, int_errs = verify_bundle_integrity(bundle_req.bundle_dir)
+        assert int_ok is True
+        assert int_errs == []
+
+    def test_handoff_bundle_multilingual_vi_default_e2e(self, tmp_path, sample_evidence):
+        """Verify Vietnamese default bundle has answer_language='vi' and Vietnamese prompt instruction with verbatim rules."""
+        from aios_habit.ide_handoff_bridge import (
+            write_ide_handoff_bundle,
+            validate_handoff_bundle,
+            verify_bundle_integrity,
+        )
+
+        bundle_req = write_ide_handoff_bundle(
+            case_id="CONV-VI-001",
+            question="Kiểm tra tình trạng kho và lỗi?",
+            bundle_scope="active_case_all",
+            evidence_items=sample_evidence,
+            root=tmp_path,
+        )
+        assert bundle_req.ok
+
+        # 1. Check manifest.json
+        manifest_path = bundle_req.bundle_dir / "manifest.json"
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        assert manifest["answer_language"] == "vi"
+
+        # 2. Check prompt_for_antigravity.md
+        prompt_antigravity_path = bundle_req.bundle_dir / "prompt_for_antigravity.md"
+        prompt_text = prompt_antigravity_path.read_text(encoding="utf-8")
+
+        assert "Yêu cầu ngôn ngữ: Trả lời hoàn toàn bằng Tiếng Việt." in prompt_text
+        assert "Giữ nguyên vẹn 100% tất cả các mã trích dẫn (ví dụ [1], [E1], EVD-001)" in prompt_text
+        assert "tên tệp (ví dụ document.pdf), đường dẫn tệp, mã lỗi kỹ thuật và các đoạn trích dẫn nguồn gốc." in prompt_text
+        assert "Tuyệt đối không dịch hoặc làm thay đổi các mã định danh và trích dẫn bằng chứng." in prompt_text
+
+        val = validate_handoff_bundle(bundle_req.bundle_dir)
+        assert val["ok"] is True
+
+        int_ok, int_errs = verify_bundle_integrity(bundle_req.bundle_dir)
+        assert int_ok is True
+        assert int_errs == []
+
+    def test_route_workspace_chat_submission_handoff_multilingual_propagation(self, tmp_path):
+        """Verify route_workspace_chat_submission correctly propagates answer_language to the handoff bundle."""
+        from aios_habit.antigravity_bridge import route_workspace_chat_submission
+
+        health = AntigravityHealthStatus(
+            status="handoff_ready",
+            mode="handoff",
+            capabilities=["local_handoff"],
+            reason="Handoff ready",
+        )
+
+        evidence = [
+            {
+                "evidence_id": "EVD-PROP-1",
+                "title": "Tài liệu kỹ thuật",
+                "snippet": "Nội dung chi tiết về mã lỗi 404.",
+                "source_type": "plain_text",
+                "source_path": "doc.txt",
+                "privacy_level": "local_only",
+            }
+        ]
+
+        # Test Japanese propagation
+        ok_ja, msg_ja, badge_ja, err_ja = route_workspace_chat_submission(
+            question="日本語の質問",
+            evidence_items=evidence,
+            packed_sources=(),
+            conversation_id="CONV-ROUTE-JA",
+            notebook_id="NB-ROUTING",
+            retrieval_applied=True,
+            retrieved_sources=(),
+            retrieval_summary="",
+            current_keys=(),
+            chat_history=(),
+            user_raw_input="日本語の質問",
+            health_status=health,
+            handoff_root=tmp_path,
+            answer_language="ja",
+        )
+        assert ok_ja is True
+        assert err_ja is None
+        assert badge_ja is not None
+        req_id_ja = badge_ja["request_id"]
+        manifest_ja_path = tmp_path / "outbox" / req_id_ja / "manifest.json"
+        assert manifest_ja_path.exists()
+        manifest_ja = json.loads(manifest_ja_path.read_text(encoding="utf-8"))
+        assert manifest_ja["answer_language"] == "ja"
+
+        prompt_ja_path = tmp_path / "outbox" / req_id_ja / "prompt_for_antigravity.md"
+        assert prompt_ja_path.exists()
+        prompt_ja_text = prompt_ja_path.read_text(encoding="utf-8")
+        assert "言語指示: 回答はすべて日本語で記述してください。" in prompt_ja_text
+
+        # Test Chinese propagation
+        ok_zh, msg_zh, badge_zh, err_zh = route_workspace_chat_submission(
+            question="中文问题",
+            evidence_items=evidence,
+            packed_sources=(),
+            conversation_id="CONV-ROUTE-ZH",
+            notebook_id="NB-ROUTING",
+            retrieval_applied=True,
+            retrieved_sources=(),
+            retrieval_summary="",
+            current_keys=(),
+            chat_history=(),
+            user_raw_input="中文问题",
+            health_status=health,
+            handoff_root=tmp_path,
+            answer_language="zh-CN",
+        )
+        assert ok_zh is True
+        assert err_zh is None
+        assert badge_zh is not None
+        req_id_zh = badge_zh["request_id"]
+        manifest_zh_path = tmp_path / "outbox" / req_id_zh / "manifest.json"
+        assert manifest_zh_path.exists()
+        manifest_zh = json.loads(manifest_zh_path.read_text(encoding="utf-8"))
+        assert manifest_zh["answer_language"] == "zh-CN"
+
+        prompt_zh_path = tmp_path / "outbox" / req_id_zh / "prompt_for_antigravity.md"
+        assert prompt_zh_path.exists()
+        prompt_zh_text = prompt_zh_path.read_text(encoding="utf-8")
+        assert "语言指示: 请完全使用简体中文回答。" in prompt_zh_text
+
+    def test_build_full_bundle_request_locale_normalization(self, sample_evidence):
+        """Verify build_full_bundle_request normalizes locale variations correctly."""
+        from aios_habit.ide_handoff_bridge import build_full_bundle_request
+
+        # 'ja-JP' or uppercase 'JA' -> 'ja'
+        manifest_ja, _, _, _ = build_full_bundle_request(
+            case_id="CASE-NORM-JA",
+            question="Question?",
+            bundle_scope="active_case_all",
+            evidence_items=sample_evidence,
+            answer_language="JA",
+        )
+        assert manifest_ja["answer_language"] == "ja"
+
+        # 'zh_CN' or 'zh' -> 'zh-CN'
+        manifest_zh, _, _, _ = build_full_bundle_request(
+            case_id="CASE-NORM-ZH",
+            question="Question?",
+            bundle_scope="active_case_all",
+            evidence_items=sample_evidence,
+            answer_language="zh_cn",
+        )
+        assert manifest_zh["answer_language"] == "zh-CN"
+
+        # Unknown / None / invalid -> 'vi'
+        manifest_vi, _, _, _ = build_full_bundle_request(
+            case_id="CASE-NORM-VI",
+            question="Question?",
+            bundle_scope="active_case_all",
+            evidence_items=sample_evidence,
+            answer_language="unknown_locale",
+        )
+        assert manifest_vi["answer_language"] == "vi"

@@ -197,7 +197,12 @@ def build_grounded_prompt(
     source_context: str = "",
     max_context_chars: int = DEFAULT_MAX_CONTEXT_CHARS,
     focus_note: str = "",
+    answer_language: str = "vi",
 ) -> str:
+    from aios_habit.i18n import get_ai_language_instruction, normalize_locale
+    norm_lang = normalize_locale(answer_language)
+    lang_instruction = get_ai_language_instruction(norm_lang)
+
     refs = []
     for index, ref in enumerate((source_refs or [])[:MAX_SOURCE_REFS], 1):
         path = str(ref.get("relative_path") or ref.get("source_file") or "Nguồn chưa đặt tên")
@@ -216,7 +221,7 @@ def build_grounded_prompt(
         "Bản nháp deterministic của AIOS:\n"
         f"{bounded_draft}\n\n"
         "Yêu cầu trả lời:\n"
-        "- Trả lời bằng tiếng Việt, rõ ràng và hữu ích cho người vận hành.\n"
+        f"- {lang_instruction}\n"
         "- Cảnh báo bảo mật: Chỉ kết luận từ nguồn đã cung cấp; tuyệt đối không suy đoán ngoài nguồn.\n"
         "- Nếu thiếu bằng chứng, hoặc bằng chứng chỉ có tiêu đề (metadata-only) mà không có nội dung, phải nói rõ 'chưa đủ bằng chứng'.\n"
         "- Giữ mục 'Nguồn đã dùng' và dẫn lại số nguồn tương ứng, nhưng không làm lộ đường dẫn gốc nếu nó là tuyệt mật.\n"
@@ -225,6 +230,7 @@ def build_grounded_prompt(
     if focus_note:
         base_prompt += f"\n\nLƯU Ý TRỌNG TÂM: {focus_note}"
     return base_prompt
+
 
 
 def _fallback(
@@ -283,6 +289,7 @@ def answer_with_provider(
     deterministic_answer: str,
     source_refs: Optional[list[dict[str, Any]]] = None,
     source_privacy: str = "local_only",
+    answer_language: str = "vi",
 ) -> ProviderResult:
     if config is None or not config.enabled or config.provider_type == "deterministic":
         return _fallback(
@@ -340,7 +347,9 @@ def answer_with_provider(
         deterministic_answer=deterministic_answer,
         source_context=source_context,
         max_context_chars=config.max_context_chars,
+        answer_language=answer_language,
     )
+
     try:
         answer_text = _post_chat(config, prompt)
         return ProviderResult(

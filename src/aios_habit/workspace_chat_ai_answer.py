@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 from dataclasses import dataclass
 import hashlib
 import json
@@ -6,6 +7,7 @@ import time
 import unicodedata
 from typing import Any, Dict, Optional, Protocol, Tuple
 
+from aios_habit.i18n import get_ai_language_instruction, normalize_locale
 from aios_habit.brain_gateway import (
     BrainGateway,
     BrainRequest,
@@ -52,6 +54,9 @@ class WorkspaceAIAnswerRequest:
     real_router_enabled: bool = False
     chat_history: Tuple[Dict[str, str], ...] = ()
     external_destination: str = WORKSPACE_CHAT_EXTERNAL_ROUTER_DESTINATION
+    ui_locale: str = "vi"
+    answer_language: str = "vi"
+
 
 @dataclass(frozen=True)
 class WorkspaceAIAnswerResult:
@@ -73,6 +78,7 @@ class WorkspaceAIAnswerResult:
 
 
 _LIMITATION_MARKERS = (
+    # Vietnamese (folded / unaccented)
     "chua du thong tin",
     "khong du thong tin",
     "khong tim thay du thong tin",
@@ -85,6 +91,14 @@ _LIMITATION_MARKERS = (
     "nguon khong de cap",
     "tai lieu khong de cap",
     "du lieu khong de cap",
+    "dua tren bang chung hien co",
+    "dua tren thong tin hien co",
+    "trong pham vi thong tin",
+    "thieu bang chung",
+    "thieu thong tin",
+    "chua du chung cu",
+    "khong du chung cu",
+    # English
     "cannot determine from",
     "cannot be determined from",
     "not enough information",
@@ -94,15 +108,73 @@ _LIMITATION_MARKERS = (
     "not found in the provided",
     "sources do not mention",
     "documents do not mention",
+    "based on available evidence",
+    "based on the provided information",
+    "within the scope of provided",
+    # Japanese
+    "十分な証拠がありません",
+    "証拠が不十分",
+    "証拠不十分",
+    "十分な情報がありません",
+    "情報が不足",
+    "情報不十分",
+    "利用可能な証拠に基づく",
+    "提供された証拠に基づく",
+    "提供された情報に基づく",
+    "記載されていません",
+    "見つかりません",
+    "言及されていません",
+    "証拠不足",
+    "根拠不足",
+    "情報不足",
+    # Simplified Chinese
+    "证据不足",
+    "没有足够的证据",
+    "信息不足",
+    "没有足够的信息",
+    "根据现有证据",
+    "基于现有证据",
+    "基于可用证据",
+    "根据提供的信息",
+    "未找到相关信息",
+    "来源未提及",
+    "文档未提及",
+    "无法确定",
 )
 _LIMITATION_NEGATIONS = (
+    # Vietnamese
     "khong phai la khong du",
     "khong con thieu thong tin",
     "khong thieu thong tin",
     "thong tin khong thieu",
+    "khong thieu bang chung",
+    "bang chung khong thieu",
+    # English
     "not insufficient",
     "not lacking information",
+    "not lacking evidence",
+    "evidence is not insufficient",
+    # Japanese
+    "十分な証拠がないわけではない",
+    "情報が不足しているわけではない",
+    "証拠が不十分なわけではない",
+    # Simplified Chinese
+    "并非证据不足",
+    "并非信息不足",
+    "信息充足",
+    "证据充足",
 )
+
+
+def _get_ai_disclaimer(answer_language: Optional[str] = "vi") -> str:
+    """Return the localized AI-generated answer disclaimer banner."""
+    norm = normalize_locale(answer_language)
+    if norm == "ja":
+        return "\n\nこれはAIによって生成された回答です。使用前に確認してください。"
+    if norm == "zh-CN":
+        return "\n\n这是由AI生成的回答，使用前请核对。"
+    return "\n\nĐây là câu trả lời do AI tạo, cần kiểm tra lại trước khi dùng."
+
 
 
 def _fold_for_outcome_classification(value: str) -> str:
@@ -112,9 +184,10 @@ def _fold_for_outcome_classification(value: str) -> str:
     )
     folded = "".join(
         char for char in normalized
-        if not unicodedata.combining(char)
+        if not unicodedata.combining(char) or char in {"\u3099", "\u309a"}
     )
-    return " ".join(folded.split())
+    recomposed = unicodedata.normalize("NFC", folded)
+    return " ".join(recomposed.split())
 
 
 def classify_workspace_ai_outcome(
@@ -131,9 +204,12 @@ def classify_workspace_ai_outcome(
     folded = _fold_for_outcome_classification(answer_text)
     without_negations = folded
     for phrase in _LIMITATION_NEGATIONS:
-        without_negations = without_negations.replace(phrase, "")
-    if any(marker in without_negations for marker in _LIMITATION_MARKERS):
-        return "answer_with_limits", "explicit_answer_limitation"
+        folded_negation = _fold_for_outcome_classification(phrase)
+        without_negations = without_negations.replace(folded_negation, "")
+    for marker in _LIMITATION_MARKERS:
+        folded_marker = _fold_for_outcome_classification(marker)
+        if folded_marker in without_negations:
+            return "answer_with_limits", "explicit_answer_limitation"
     return "success", "evidence_supplied_unverified"
 
 
@@ -288,8 +364,12 @@ def _cap_and_pack_sources(
 def build_workspace_ai_prompt(
     question: str,
     context_sources: Tuple[WorkspaceAIContextSource, ...],
-    chat_history: Tuple[Dict[str, str], ...] = ()
+    chat_history: Tuple[Dict[str, str], ...] = (),
+    answer_language: str = "vi",
 ) -> Tuple[str, str]:
+    norm_lang = normalize_locale(answer_language)
+    lang_instruction = get_ai_language_instruction(norm_lang)
+
     system_prompt = (
         "Bạn là trợ lý AI trong Workspace Chat.\n"
         "Chỉ dùng câu hỏi và nội dung nguồn được cung cấp trong request này.\n"
@@ -298,49 +378,91 @@ def build_workspace_ai_prompt(
         "Nếu nguồn không đủ, hãy nói rõ chưa đủ thông tin.\n"
         "Không tuyên bố đã chứng minh, xác minh hoặc tạo trích dẫn.\n"
         "Không bịa dữ kiện, source title hoặc nội dung đã bị cắt.\n"
-        "Trả lời bằng tiếng Việt rõ ràng và nhắc owner kiểm tra lại trước khi sử dụng."
+        "Nhắc owner kiểm tra lại trước khi sử dụng.\n\n"
+        f"{lang_instruction}"
     )
 
     user_parts = []
 
     if chat_history:
-        user_parts.append("--- LỊCH SỬ HỘI THOẠI GẦN ĐÂY ---")
-        for msg in chat_history:
-            role_val = msg.get("role")
-            if role_val == "user":
-                role_name = "Người dùng"
-            elif role_val == "system":
-                role_name = "Ngữ cảnh kế thừa"
-            else:
-                role_name = "Hệ thống/AI"
-            user_parts.append(f"[{role_name}]: {msg.get('content')}")
-        user_parts.append("")
-        user_parts.append("--- CÂU HỎI MỚI NHẤT ---")
+        if norm_lang == "ja":
+            user_parts.append("--- 最近の会話履歴 ---")
+            for msg in chat_history:
+                role_val = msg.get("role")
+                if role_val == "user":
+                    role_name = "ユーザー"
+                elif role_val == "system":
+                    role_name = "継承コンテキスト"
+                else:
+                    role_name = "システム/AI"
+                user_parts.append(f"[{role_name}]: {msg.get('content')}")
+            user_parts.append("")
+            user_parts.append("--- 最新の質問 ---")
+        elif norm_lang == "zh-CN":
+            user_parts.append("--- 最近对话历史 ---")
+            for msg in chat_history:
+                role_val = msg.get("role")
+                if role_val == "user":
+                    role_name = "用户"
+                elif role_val == "system":
+                    role_name = "继承上下文"
+                else:
+                    role_name = "系统/AI"
+                user_parts.append(f"[{role_name}]: {msg.get('content')}")
+            user_parts.append("")
+            user_parts.append("--- 最新问题 ---")
+        else:
+            user_parts.append("--- LỊCH SỬ HỘI THOẠI GẦN ĐÂY ---")
+            for msg in chat_history:
+                role_val = msg.get("role")
+                if role_val == "user":
+                    role_name = "Người dùng"
+                elif role_val == "system":
+                    role_name = "Ngữ cảnh kế thừa"
+                else:
+                    role_name = "Hệ thống/AI"
+                user_parts.append(f"[{role_name}]: {msg.get('content')}")
+            user_parts.append("")
+            user_parts.append("--- CÂU HỎI MỚI NHẤT ---")
     else:
-        user_parts.append("CÂU HỎI:")
+        if norm_lang == "ja":
+            user_parts.append("質問:")
+        elif norm_lang == "zh-CN":
+            user_parts.append("问题:")
+        else:
+            user_parts.append("CÂU HỎI:")
 
     user_parts.append(question)
     user_parts.append("")
 
     for i, src in enumerate(context_sources, 1):
         stype = (src.source_type or "").strip().lower()
-        if stype == "xlsx":
-            friendly_type = "Excel"
-        elif stype in {"text", "pasted_text", "plain_text"}:
-            friendly_type = "Văn bản"
+        if norm_lang == "ja":
+            friendly_type = "Excel" if stype == "xlsx" else ("テキスト" if stype in {"text", "pasted_text", "plain_text"} else "ソース")
+            user_parts.append(f"ソース {i}")
+            user_parts.append(f"タイトル: {src.title}")
+            user_parts.append(f"種別: {friendly_type}")
+            user_parts.append("内容:")
+        elif norm_lang == "zh-CN":
+            friendly_type = "Excel" if stype == "xlsx" else ("文本" if stype in {"text", "pasted_text", "plain_text"} else "来源")
+            user_parts.append(f"来源 {i}")
+            user_parts.append(f"标题: {src.title}")
+            user_parts.append(f"类型: {friendly_type}")
+            user_parts.append("内容:")
         else:
-            friendly_type = "Nguồn"
+            friendly_type = "Excel" if stype == "xlsx" else ("Văn bản" if stype in {"text", "pasted_text", "plain_text"} else "Nguồn")
+            user_parts.append(f"NGUỒN {i}")
+            user_parts.append(f"Tiêu đề: {src.title}")
+            user_parts.append(f"Loại: {friendly_type}")
+            user_parts.append("Nội dung:")
 
-        user_parts.append(f"NGUỒN {i}")
-        user_parts.append(f"Tiêu đề: {src.title}")
-        user_parts.append(f"Loại: {friendly_type}")
-        user_parts.append("Nội dung:")
         user_parts.append("<<<SOURCE_CONTENT")
         user_parts.append(src.text)
         user_parts.append("SOURCE_CONTENT")
         user_parts.append("")
 
     return system_prompt, "\n".join(user_parts)
+
 
 
 def _to_gateway_sources(
@@ -557,13 +679,14 @@ def _generate_real_router_answer(
         source.title for source in decision.sanitized_payload.sanitized_sources
     )
     if ok:
-        disclaimer = "\n\nĐây là câu trả lời do AI tạo, cần kiểm tra lại trước khi dùng."
+        disclaimer = _get_ai_disclaimer(getattr(request, "answer_language", "vi"))
         answer_text = response_text.strip() + disclaimer
         outcome_status, grounding_status = classify_workspace_ai_outcome(
             answer_text,
             provider_success=True,
             evidence_supplied=bool(outbound_sources),
         )
+
         return WorkspaceAIAnswerResult(
             ok=True,
             answer_text=answer_text,
@@ -723,10 +846,12 @@ def generate_workspace_ai_answer(
         try:
             router_res = adapter.send_payload(decision.sanitized_payload)
             if router_res["ok"]:
+                disclaimer = _get_ai_disclaimer(getattr(request, "answer_language", "vi"))
                 return WorkspaceAIAnswerResult(
                     ok=True,
-                    answer_text=router_res["response_text"] + "\n\nĐây là câu trả lời do AI tạo, cần kiểm tra lại trước khi dùng.",
+                    answer_text=router_res["response_text"] + disclaimer,
                     included_source_titles=tuple(src.title for src in decision.sanitized_payload.sanitized_sources),
+
                     warnings=(),
                     externally_sent=False, # mock only, no real external send
                     reason_code=decision.reason_code,
@@ -818,7 +943,12 @@ def generate_workspace_ai_answer(
         )
 
     # Everything is valid for cloud call
-    system_prompt, user_prompt = build_workspace_ai_prompt(q_text, prompt_sources, request.chat_history)
+    system_prompt, user_prompt = build_workspace_ai_prompt(
+        q_text,
+        prompt_sources,
+        request.chat_history,
+        answer_language=getattr(request, "answer_language", "vi"),
+    )
 
     try:
         ans = provider_client.generate(system_prompt=system_prompt, user_prompt=user_prompt)
@@ -835,7 +965,7 @@ def generate_workspace_ai_answer(
                 outcome_status="provider_error",
             )
 
-        disclaimer = "\n\nĐây là câu trả lời do AI tạo, cần kiểm tra lại trước khi dùng."
+        disclaimer = _get_ai_disclaimer(getattr(request, "answer_language", "vi"))
         answer_text = ans.strip() + disclaimer
         outcome_status, grounding_status = classify_workspace_ai_outcome(
             answer_text,
@@ -853,6 +983,7 @@ def generate_workspace_ai_answer(
             grounding_status=grounding_status,
             outcome_status=outcome_status,
         )
+
     except Exception as e:
         msg = str(e)
         if "chưa được cấu hình" in msg or "chưa được cấu hình" in msg.lower():

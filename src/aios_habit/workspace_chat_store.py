@@ -57,7 +57,8 @@ def _deserialize_notebook(record: dict) -> DocumentNotebook:
 
 
 def _deserialize_conversation(record: dict) -> WorkspaceConversation:
-    return WorkspaceConversation(**record)
+    return WorkspaceConversation.from_dict(record)
+
 
 
 def _deserialize_message(record: dict) -> ChatMessage:
@@ -177,6 +178,36 @@ def update_conversation_search_preference(conv_id: str, search_preference: str) 
         save_conversation(conv)
         return True
     return False
+
+
+def update_conversation_language_settings(
+    conversation_id: str,
+    ui_locale: Optional[str] = None,
+    answer_language: Optional[str] = None,
+) -> Optional[WorkspaceConversation]:
+    """Update UI locale and/or AI answer language settings for a conversation."""
+    conv = load_conversation(conversation_id)
+    if conv is None:
+        return None
+
+    from aios_habit.i18n import normalize_locale
+    changed = False
+    if ui_locale is not None:
+        norm_ui = normalize_locale(ui_locale)
+        if getattr(conv, "ui_locale", "vi") != norm_ui:
+            conv.ui_locale = norm_ui
+            changed = True
+    if answer_language is not None:
+        norm_ans = normalize_locale(answer_language)
+        if getattr(conv, "answer_language", "vi") != norm_ans:
+            conv.answer_language = norm_ans
+            changed = True
+
+    if changed:
+        conv.updated_at = datetime.now().isoformat()
+        save_conversation(conv)
+    return conv
+
 
 
 def delete_conversation(conv_id: str) -> bool:
@@ -520,3 +551,58 @@ def delete_notebook_permanently(notebook_id: str) -> bool:
         LOGGER.exception("Could not delete notebook %s without losing related records", notebook_id)
         return False
     return True
+
+
+class WorkspaceChatStore:
+    """Class wrapper providing object-oriented and static access to Workspace Chat storage."""
+
+    def __init__(self, chat_dir: Optional[Path] = None):
+        if chat_dir is not None:
+            self.chat_dir = Path(chat_dir)
+        else:
+            self.chat_dir = LOCAL_CHAT_DIR
+
+    def init_store(self) -> None:
+        init_chat_store()
+
+    def load_all_conversations(self) -> List[WorkspaceConversation]:
+        return load_all_conversations()
+
+    def load_conversations(self, notebook_id: str) -> List[WorkspaceConversation]:
+        return load_conversations(notebook_id)
+
+    def load_conversation(self, conv_id: str) -> Optional[WorkspaceConversation]:
+        return load_conversation(conv_id)
+
+    def save_conversation(self, conv: WorkspaceConversation) -> None:
+        save_conversation(conv)
+
+    def rename_conversation(self, conv_id: str, new_title: str) -> None:
+        rename_conversation(conv_id, new_title)
+
+    def update_conversation_search_preference(self, conv_id: str, search_preference: str) -> bool:
+        return update_conversation_search_preference(conv_id, search_preference)
+
+    def update_conversation_language_settings(
+        self,
+        conversation_id: str,
+        ui_locale: Optional[str] = None,
+        answer_language: Optional[str] = None,
+    ) -> Optional[WorkspaceConversation]:
+        return update_conversation_language_settings(
+            conversation_id=conversation_id,
+            ui_locale=ui_locale,
+            answer_language=answer_language,
+        )
+
+    def delete_conversation(self, conv_id: str) -> bool:
+        return delete_conversation(conv_id)
+
+    def load_notebooks(self) -> List[DocumentNotebook]:
+        return load_notebooks()
+
+    def load_notebook(self, notebook_id: str) -> Optional[DocumentNotebook]:
+        return load_notebook(notebook_id)
+
+    def save_notebook(self, nb: DocumentNotebook) -> None:
+        save_notebook(nb)
