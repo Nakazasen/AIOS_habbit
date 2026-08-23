@@ -205,6 +205,19 @@ def test_export_excalidraw_scene_valid(sample_valid_trace: EvidenceTrace) -> Non
     assert "arrow" in types
 
 
+def test_render_excalidraw_scene_html_is_local_and_interactive(sample_valid_trace: EvidenceTrace) -> None:
+    """The default Evidence Graph renderer is a readable Excalidraw-scene viewer."""
+    adapter = ExcaliFlowAdapter()
+    html_out = adapter.render_excalidraw_scene_html(sample_valid_trace, locale="vi")
+
+    assert html_out.startswith("<!doctype html>")
+    assert "data-excalidraw-elements" in html_out
+    assert "scene-board" in html_out
+    assert "EXCALIDRAW_SCENE" in html_out
+    assert "QuyTrinhKho_2026.docx" in html_out
+    assert "https://" not in html_out
+
+
 def test_export_excalidraw_scene_insufficient() -> None:
     """Verify export_excalidraw_scene handles insufficient evidence trace gracefully."""
     insuf_trace = EvidenceTrace(

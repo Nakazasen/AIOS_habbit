@@ -71,6 +71,8 @@ def test_commit_c_translation_keys_parity_100_percent() -> None:
         "evidence_graph_citation_nodes",
         "btn_open_evidence_atlas",
         "evidence_atlas_details_hint",
+        "excalidraw_scene_select_node",
+        "excalidraw_scene_select_node_desc",
         "node_type_citation",
         "edge_extracted_from",
     ]
@@ -401,12 +403,8 @@ def test_renders_normally_when_both_source_and_citation_present(sample_valid_tra
     assert "egv-insufficient" not in html_out
 
 
-def test_streamlit_graph_uses_isolated_responsive_component(sample_valid_trace: EvidenceTrace) -> None:
-    """Complex graph HTML must never be fed through Streamlit Markdown.
-
-    The component iframe prevents literal HTML being shown in the chat and
-    isolates its styles from the surrounding answer.
-    """
+def test_streamlit_graph_uses_excalidraw_scene_component(sample_valid_trace: EvidenceTrace) -> None:
+    """The primary UI must render the real exported scene, not HTML cards."""
     with patch("streamlit.components.v1.html") as mock_component, patch("streamlit.markdown") as mock_markdown:
         render_evidence_graph_streamlit(sample_valid_trace, locale="vi")
 
@@ -414,7 +412,8 @@ def test_streamlit_graph_uses_isolated_responsive_component(sample_valid_trace: 
     component_html = mock_component.call_args.args[0]
     assert component_html.startswith("<!doctype html>")
     assert '<meta name="viewport"' in component_html
-    assert "egv-container" in component_html
+    assert "data-excalidraw-elements" in component_html
+    assert "scene-board" in component_html
     assert mock_component.call_args.kwargs["height"] >= 520
     assert mock_component.call_args.kwargs["scrolling"] is True
     mock_markdown.assert_not_called()

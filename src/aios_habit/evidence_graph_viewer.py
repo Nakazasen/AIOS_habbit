@@ -739,12 +739,16 @@ def render_evidence_graph_streamlit(
             st.caption(t("evidence_graph_insufficient_desc", locale=loc))
             return
 
-        graph_html = render_evidence_graph_html(trace, locale=loc, use_cache=True)
-        component_html = _wrap_evidence_graph_for_component(graph_html)
         import streamlit.components.v1 as components  # type: ignore
+        from aios_habit.excaliflow_adapter import ExcaliFlowAdapter
+
+        adapter = ExcaliFlowAdapter()
+        if not adapter.is_available():
+            raise RuntimeError("excalidraw_scene_renderer_unavailable")
+        scene_html = adapter.render_excalidraw_scene_html(trace, locale=loc)
         components.html(
-            component_html,
-            height=_evidence_graph_component_height(view_model),
+            scene_html,
+            height=min(880, max(620, _evidence_graph_component_height(view_model))),
             scrolling=True,
         )
 
@@ -761,11 +765,6 @@ def render_evidence_graph_streamlit(
         if atlas_open:
             st.caption(t("evidence_atlas_details_hint", locale=loc))
             try:
-                from aios_habit.excaliflow_adapter import ExcaliFlowAdapter
-
-                adapter = ExcaliFlowAdapter()
-                if not adapter.is_available():
-                    raise RuntimeError("evidence_atlas_unavailable")
                 atlas_html = adapter.render_evidence_atlas_html(trace, locale=loc)
                 components.html(atlas_html, height=820, scrolling=True)
             except Exception as exc:

@@ -11,6 +11,7 @@ Key Guarantees:
 """
 from __future__ import annotations
 
+from collections import defaultdict
 from dataclasses import asdict, dataclass, field
 from enum import Enum
 import html
@@ -39,6 +40,93 @@ CJK_MONOSPACE_FONT_STACK = (
     'ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", '
     '"Noto Sans Mono CJK SC", "Noto Sans Mono CJK JP", monospace'
 )
+
+
+def _compact_scene_text(value: Any, limit: int = 96) -> str:
+    """Keep the map scannable; full evidence remains available on node click."""
+    text = " ".join(str(value or "").split())
+    return text if len(text) <= limit else f"{text[:limit - 1].rstrip()}…"
+
+
+def _scene_text_lines(value: str, line_size: int, max_lines: int) -> List[str]:
+    """Split Latin and CJK labels predictably without depending on browser wrap."""
+    text = _compact_scene_text(value, line_size * max_lines)
+    return [text[index:index + line_size] for index in range(0, len(text), line_size)][:max_lines] or ["—"]
+
+
+def _build_evidence_scene_layout(view_model: EvidenceGraphViewModel) -> tuple[List[Dict[str, Any]], List[Dict[str, Any]], int, int]:
+    """Create a compact, evidence-faithful layout for a hand-drawn scene.
+
+    Source cards are grouped only by their existing ``source_id``. This does
+    not create new evidence: it prevents the same document from being drawn
+    repeatedly when several cited passages come from it.
+    """
+    cards: List[Dict[str, Any]] = []
+    source_card_by_node_id: Dict[str, str] = {}
+    source_groups: Dict[str, List[Dict[str, Any]]] = defaultdict(list)
+
+    for node in view_model.nodes:
+        if node["node_type"] == "source":
+            source_groups[str(node.get("source_id") or node["title"])].append(node)
+
+    def append_card(node: Dict[str, Any], *, x: int, y: int, card_id: Optional[str] = None, detail: Optional[str] = None, badge: str = "") -> None:
+        cards.append({
+            "id": card_id or str(node["id"]),
+            "node_type": node["node_type"],
+            "kind": str(node.get("type_label") or node["node_type"]),
+            "title": str(node.get("title") or node["id"]),
+            "summary": _compact_scene_text(node.get("snippet") or node.get("title")),
+            "detail": detail if detail is not None else str(node.get("snippet") or node.get("title") or ""),
+            "badge": badge or str(node.get("citation_id") or ""),
+            "x": x,
+            "y": y,
+            "width": 250,
+            "height": 108,
+        })
+
+    for index, node in enumerate(n for n in view_model.nodes if n["node_type"] == "question"):
+        append_card(node, x=55, y=70 + index * 128)
+    for index, node in enumerate(n for n in view_model.nodes if n["node_type"] == "answer"):
+        append_card(node, x=355, y=70 + index * 128)
+    for index, node in enumerate(n for n in view_model.nodes if n["node_type"] == "citation"):
+        append_card(node, x=670 + (index % 2) * 255, y=70 + (index // 2) * 128)
+
+    for index, (source_key, nodes) in enumerate(source_groups.items()):
+        first = nodes[0]
+        group_id = f"document:{source_key}"
+        citation_ids = [str(node.get("citation_id") or "") for node in nodes if node.get("citation_id")]
+        grouped_detail = "\n\n".join(
+            f"{node.get('citation_id') or node['id']}: {node.get('snippet') or ''}" for node in nodes
+        )
+        append_card(
+            first,
+            x=1190,
+            y=70 + index * 132,
+            card_id=group_id,
+            detail=grouped_detail or str(first.get("snippet") or ""),
+            badge=" ".join(citation_ids),
+        )
+        for node in nodes:
+            source_card_by_node_id[str(node["id"])] = group_id
+
+    card_ids = {str(card["id"]) for card in cards}
+    edges: List[Dict[str, Any]] = []
+    seen_edges: set[tuple[str, str]] = set()
+    for edge in view_model.edges:
+        source_id = str(edge["source_id"])
+        target_id = str(edge["target_id"])
+        relation = str(edge.get("display_label") or edge.get("label") or edge.get("relation") or "")
+        if str(edge.get("relation_type")) == "derives_from":
+            source_id, target_id = target_id, source_id
+        source_id = source_card_by_node_id.get(source_id, source_id)
+        target_id = source_card_by_node_id.get(target_id, target_id)
+        pair = (source_id, target_id)
+        if source_id in card_ids and target_id in card_ids and source_id != target_id and pair not in seen_edges:
+            edges.append({"source_id": source_id, "target_id": target_id, "label": relation})
+            seen_edges.add(pair)
+
+    highest_bottom = max((int(card["y"]) + int(card["height"]) for card in cards), default=420)
+    return cards, edges, 1500, max(480, highest_bottom + 70)
 
 
 class CapabilityStatus(str, Enum):
@@ -493,6 +581,95 @@ class ExcaliFlowAdapter:
             },
             "files": {},
         }
+
+    def render_excalidraw_scene_html(
+        self,
+        trace_or_dict: Union[EvidenceTrace, Dict[str, Any]],
+        locale: str = DEFAULT_LOCALE,
+    ) -> str:
+        """Render the exported Excalidraw evidence scene as an offline viewer.
+
+        The package provides the scene contract but intentionally carries no
+        bundled browser editor. This viewer renders that scene locally with
+        the same warm-paper, hand-drawn visual language and retains the scene
+        JSON in the page for export/audit. It never contacts a CDN or service.
+        """
+        norm_loc = normalize_locale(locale)
+        caps = self.check_capabilities()
+        if not caps.is_available or caps.status == CapabilityStatus.UNAVAILABLE:
+            raise RuntimeError("excalidraw_scene_renderer_unavailable")
+
+        view_model = build_evidence_graph_view_model(trace_or_dict, locale=norm_loc)
+        if view_model.is_insufficient:
+            notice = view_model.notice or t("evidence_graph_insufficient", locale=norm_loc)
+            return (
+                '<div class="excalidraw-evidence-error">'
+                f'{html.escape(notice)}</div>'
+            )
+
+        scene = self.export_excalidraw_scene(trace_or_dict, locale=norm_loc)
+        cards, edges, scene_width, scene_height = _build_evidence_scene_layout(view_model)
+        card_by_id = {str(card["id"]): card for card in cards}
+        colors = {
+            "question": ("#e7f0ff", "#3b82f6"),
+            "answer": ("#fff0e8", "#e8753a"),
+            "citation": ("#fff7d8", "#c28a10"),
+            "source": ("#f2ebff", "#7c5bb8"),
+        }
+
+        edge_svg: List[str] = []
+        for edge in edges:
+            source = card_by_id[edge["source_id"]]
+            target = card_by_id[edge["target_id"]]
+            x1 = int(source["x"]) + int(source["width"])
+            y1 = int(source["y"]) + int(source["height"]) // 2
+            x2 = int(target["x"])
+            y2 = int(target["y"]) + int(target["height"]) // 2
+            edge_svg.append(
+                f'<path class="scene-edge" d="M{x1},{y1} C{x1 + 35},{y1} {x2 - 35},{y2} {x2},{y2}" />'
+            )
+
+        card_svg: List[str] = []
+        for card in cards:
+            fill, stroke = colors.get(str(card["node_type"]), ("#ffffff", "#64748b"))
+            x, y = int(card["x"]), int(card["y"])
+            card_id = html.escape(str(card["id"]), quote=True)
+            title_lines = _scene_text_lines(str(card["title"]), 29, 2)
+            summary_lines = _scene_text_lines(str(card["summary"]), 38, 2)
+            title_svg = "".join(
+                f'<text class="scene-title" x="{x + 14}" y="{y + 44 + line_index * 17}">{html.escape(line)}</text>'
+                for line_index, line in enumerate(title_lines)
+            )
+            summary_y = y + 79
+            summary_svg = "".join(
+                f'<text class="scene-summary" x="{x + 14}" y="{summary_y + line_index * 14}">{html.escape(line)}</text>'
+                for line_index, line in enumerate(summary_lines)
+            )
+            badge = html.escape(str(card.get("badge") or ""))
+            badge_svg = (
+                f'<text class="scene-badge" x="{x + 14}" y="{y + 23}">{badge}</text>' if badge else ""
+            )
+            kind = html.escape(str(card["kind"]))
+            card_svg.append(
+                f'<g class="scene-node {html.escape(str(card["node_type"]), quote=True)}" tabindex="0" '
+                f'role="button" data-node="{card_id}">'
+                f'<rect class="scene-shadow" x="{x + 2}" y="{y + 2}" width="{card["width"]}" height="{card["height"]}" rx="10" />'
+                f'<rect class="scene-card" x="{x}" y="{y}" width="{card["width"]}" height="{card["height"]}" '
+                f'rx="10" fill="{fill}" stroke="{stroke}" />'
+                f'<text class="scene-kind" x="{x + 14}" y="{y + 23}">{kind}</text>{badge_svg}{title_svg}{summary_svg}</g>'
+            )
+
+        payload = json.dumps(cards, ensure_ascii=False).replace("</", "<\\/")
+        scene_payload = json.dumps(scene, ensure_ascii=False).replace("</", "<\\/")
+        initial_detail_title = t("excalidraw_scene_select_node", locale=norm_loc)
+        initial_detail_hint = t("excalidraw_scene_select_node_desc", locale=norm_loc)
+        initial_detail_title_js = json.dumps(initial_detail_title, ensure_ascii=False)
+        return f"""<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+:root{{--paper:#fdfbf7;--ink:#23262b;--line:#d7d1c6}}*{{box-sizing:border-box}}html,body{{margin:0;background:var(--paper);color:var(--ink);font-family:{CJK_MULTI_LOCALE_FONT_STACK}}}
+.scene-shell{{padding:14px;background:var(--paper)}}.scene-head{{display:flex;justify-content:space-between;gap:12px;align-items:center;margin:0 4px 10px;flex-wrap:wrap}}.scene-head strong{{font-size:16px}}.scene-head span{{font-size:12px;color:#5f6670}}.scene-board{{overflow:auto;border:1px solid var(--line);border-radius:14px;background-image:radial-gradient(#d9d2c7 .8px,transparent .8px);background-size:18px 18px;box-shadow:0 3px 12px rgba(52,45,34,.12)}}svg{{display:block;min-width:1100px;width:100%;height:auto}}.scene-edge{{fill:none;stroke:#697586;stroke-width:2.3;stroke-linecap:round;stroke-dasharray:8 5;marker-end:url(#scene-arrow)}}.scene-node{{cursor:pointer;outline:none}}.scene-shadow{{fill:none;stroke:#9b9488;stroke-width:1;opacity:.45;transform:rotate(.25deg);transform-origin:center}}.scene-card{{stroke-width:2.2;stroke-linejoin:round;stroke-dasharray:1 0.7}}.scene-node:hover .scene-card,.scene-node:focus .scene-card{{stroke-width:4;filter:brightness(.98)}}.scene-kind{{font-size:10px;font-weight:800;letter-spacing:1px;fill:#5d6670}}.scene-title{{font-size:14px;font-weight:700;fill:#22252a}}.scene-summary{{font-size:11px;fill:#4d5560}}.scene-badge{{font-size:10px;font-weight:800;fill:#9c6511}}.scene-detail{{margin:12px 4px 2px;padding:12px 14px;border:1px solid var(--line);border-radius:10px;background:#fffdfa;white-space:pre-wrap;line-height:1.5;font-size:13px;max-height:170px;overflow:auto}}.scene-detail strong{{display:block;margin-bottom:5px}}.excalidraw-evidence-error{{padding:16px;border:1px solid #c28a10;border-radius:10px;background:#fff7d8;color:#6c4a00}}
+</style></head><body><main class="scene-shell" data-excalidraw-elements="{len(scene.get('elements', []))}"><div class="scene-head"><strong>✏️ {html.escape(t('evidence_graph_title', locale=norm_loc))}</strong><span>{html.escape(view_model.stats_label)}</span></div><section class="scene-board"><svg viewBox="0 0 {scene_width} {scene_height}" role="img" aria-label="Evidence graph in Excalidraw style"><defs><marker id="scene-arrow" markerWidth="10" markerHeight="8" refX="8" refY="4" orient="auto"><path d="M0,0 L9,4 L0,8" fill="none" stroke="#697586" stroke-width="1.5"/></marker></defs>{''.join(edge_svg)}{''.join(card_svg)}</svg></section><section class="scene-detail" aria-live="polite"><strong id="scene-detail-title">{html.escape(initial_detail_title)}</strong><div id="scene-detail-content">{html.escape(initial_detail_hint)}</div></section></main><script>const EXCALIDRAW_SCENE={scene_payload};const INITIAL_DETAIL_TITLE={initial_detail_title_js};const NODES={payload};const byId=Object.fromEntries(NODES.map(node=>[node.id,node]));function showNode(id){{const node=byId[id];if(!node)return;document.getElementById('scene-detail-title').textContent=node.title;document.getElementById('scene-detail-content').textContent=node.detail||node.summary;document.querySelectorAll('.scene-node').forEach(item=>item.classList.toggle('active',item.dataset.node===id));}}document.querySelectorAll('.scene-node').forEach(item=>{{item.addEventListener('click',()=>showNode(item.dataset.node));item.addEventListener('keydown',event=>{{if(event.key==='Enter'||event.key===' '){{event.preventDefault();showNode(item.dataset.node);}}}});}});</script></body></html>"""
 
     def render_trace_svg(
         self,
