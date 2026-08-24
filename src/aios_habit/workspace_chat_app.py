@@ -115,6 +115,7 @@ from aios_habit.workspace_chat_folder_import import (
     ingest_scanned_files_batch,
     format_size_bytes,
 )
+from aios_habit.local_folder_picker import choose_local_folder
 
 def create_safe_test_data(conversation_id: str) -> TemporaryConversationSource:
     ts = TemporaryConversationSource(
@@ -1577,15 +1578,15 @@ else:
     bridge_health = get_antigravity_bridge_health()
     with top_col2:
         selected_ai_backend = st.selectbox(
-            "Cầu nối AI",
+            t("ai_connector_label", locale=current_ui_locale),
             options=("gemini_web", "cagent_api", "nakazasen_router"),
             format_func=lambda value: {
-                "gemini_web": "1. Cầu nối Gemini Web",
-                "cagent_api": "2. C-AGENT API",
-                "nakazasen_router": "3. Nakazasen Router",
+                "gemini_web": t("ai_connector_gemini", locale=current_ui_locale),
+                "cagent_api": t("ai_connector_cagent", locale=current_ui_locale),
+                "nakazasen_router": t("ai_connector_router", locale=current_ui_locale),
             }[value],
             key=f"wsc_ai_backend_{active_conversation_id}",
-            help="Mỗi câu hỏi chỉ gửi qua một cầu nối bạn chọn.",
+            help=t("ai_connector_help", locale=current_ui_locale),
         )
         cagent_endpoint = ""
         if selected_ai_backend == "cagent_api":
@@ -1598,7 +1599,7 @@ else:
                 value=configured_cagent_endpoint,
                 placeholder="https://.../api/v1/prediction/<AgentFlow-ID>",
                 key=cagent_endpoint_key,
-                help="AIOS không cần và không lưu LiteLLM API key; credential nằm trong C-AGENT.",
+                help=t("cagent_endpoint_help", locale=current_ui_locale),
             ).strip()
             # Streamlit session state is per browser tab. Keep the user-entered
             # endpoint in this local app process as well so another AIOS tab
@@ -1606,9 +1607,9 @@ else:
             if cagent_endpoint:
                 os.environ["AIOS_CAGENT_API_URL"] = cagent_endpoint
         if selected_ai_backend == "cagent_api":
-            st.caption("🟣 Đang dùng C-AGENT API")
+            st.caption(t("cagent_selected_status", locale=current_ui_locale))
         elif selected_ai_backend == "nakazasen_router":
-            st.caption("🟠 Đang dùng Nakazasen Router")
+            st.caption(t("router_selected_status", locale=current_ui_locale))
         else:
             render_bridge_header_status(bridge_health, locale=current_ui_locale)
 
@@ -1632,9 +1633,9 @@ else:
             elif connector_status.get("state") == "error":
                 st.error(message)
         elif selected_ai_backend == "cagent_api":
-            st.caption("Chưa kiểm tra kết nối trong phiên này.")
+            st.caption(t("cagent_not_checked", locale=current_ui_locale))
         elif selected_ai_backend == "nakazasen_router":
-            st.caption("Chưa kiểm tra cấu hình trong phiên này.")
+            st.caption(t("router_not_checked", locale=current_ui_locale))
 
     # Names used by the question submission below.
     ai_backend = selected_ai_backend
@@ -1648,9 +1649,9 @@ else:
 
         if selected_ai_backend == "cagent_api":
             if st.button(
-                "🔌 Kiểm tra C-AGENT API",
+                t("check_cagent_button", locale=current_ui_locale),
                 key="wsc_check_cagent_btn",
-                help="Gửi một yêu cầu kiểm tra ngắn tới AgentFlow C-AGENT; không gửi tài liệu nguồn.",
+                help=t("check_cagent_help", locale=current_ui_locale),
                 use_container_width=True,
             ):
                 if not cagent_endpoint:
@@ -1690,9 +1691,9 @@ else:
                 safe_rerun()
         elif selected_ai_backend == "nakazasen_router":
             if st.button(
-                "🔌 Kiểm tra cấu hình Nakazasen Router",
+                t("check_router_button", locale=current_ui_locale),
                 key="wsc_check_router_btn",
-                help="Kiểm tra Router đã có cấu hình trên máy; không gửi câu hỏi hay tài liệu ra ngoài.",
+                help=t("check_router_help", locale=current_ui_locale),
                 use_container_width=True,
             ):
                 try:
@@ -2354,7 +2355,18 @@ else:
                         path_key = f"wsc_folder_path_input_{active_conversation.id}"
                         rec_key = f"wsc_folder_rec_{active_conversation.id}"
 
-                        col_path, col_btn = st.columns([3, 1])
+                        col_path, col_picker, col_btn = st.columns([3, 1.2, 1])
+                        # Run the picker before creating the text field so its
+                        # chosen path can safely populate Streamlit state.
+                        with col_picker:
+                            if st.button(t("choose_folder", locale=current_ui_locale), key=f"btn_pick_folder_{active_conversation.id}", use_container_width=True):
+                                chosen_folder, picker_error = choose_local_folder()
+                                if picker_error:
+                                    st.session_state.wsc_action_error = picker_error
+                                elif chosen_folder:
+                                    st.session_state[path_key] = chosen_folder
+                                    st.session_state.pop(scan_key, None)
+                                safe_rerun()
                         with col_path:
                             folder_path_input = st.text_input(t("folder_path_input", locale=current_ui_locale), placeholder="D:\\TaiLieu\\DuAn", key=path_key, label_visibility="collapsed")
                         with col_btn:
