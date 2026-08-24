@@ -620,8 +620,10 @@ def route_workspace_chat_submission(
     handoff_root: Path | None = None,
     endpoint_url: str | None = None,
     answer_language: str = "vi",
+    backend: str = "gemini_web",
+    cagent_endpoint_url: str = "",
 ) -> tuple[bool, str, dict[str, Any] | None, str | None]:
-    """Route workspace chat submission to Direct, Handoff, or Smart Router with strict fail-closed policy.
+    """Route a submission through the explicitly selected Workspace Chat backend.
 
     Returns:
         (ok, success_message, badge_data, error_message)
@@ -629,7 +631,107 @@ def route_workspace_chat_submission(
     from aios_habit.workspace_chat_store import save_message
     from aios_habit.workspace_chat_models import ChatMessage
     from aios_habit.ide_handoff_bridge import write_ide_handoff_bundle
-    from aios_habit.workspace_chat_ai_answer import PRIVACY_MODE_CLOUD_ALLOWED
+    from aios_habit.workspace_chat_ai_answer import (
+        PRIVACY_MODE_CLOUD_ALLOWED,
+        WorkspaceAIAnswerRequest,
+        generate_workspace_ai_answer,
+    )
+
+    if backend not in {"gemini_web", "cagent_api", "nakazasen_router"}:
+        return (False, "", None, "Lựa chọn cầu nối AI không hợp lệ.")
+
+    if backend in {"cagent_api", "nakazasen_router"}:
+        if backend == "cagent_api" and not cagent_endpoint_url.strip():
+            return (False, "", None, "Hãy nhập URL API của AgentFlow C-AGENT trước khi Hỏi.")
+
+        request = WorkspaceAIAnswerRequest(
+            conversation_id=conversation_id,
+            question=question,
+            context_sources=packed_sources,
+            privacy_mode=PRIVACY_MODE_CLOUD_ALLOWED,
+            cloud_consent_confirmed=False,
+            consent_source_keys=tuple(current_keys),
+            retrieval_applied=retrieval_applied,
+            retrieved_context_sources=retrieved_sources,
+            real_router_enabled=(backend == "nakazasen_router"),
+            router_enabled=(backend == "cagent_api"),
+            chat_history=chat_history,
+            answer_language=answer_language,
+        )
+        provider_client: Any = object()
+        if backend == "cagent_api":
+            from aios_habit.cagent_api import CAgentWorkspaceProviderClient
+            provider_client = CAgentWorkspaceProviderClient(cagent_endpoint_url)
+
+        result = generate_workspace_ai_answer(request, provider_client)
+        if not result.ok:
+            return (False, "", None, result.error_message or "Cầu nối AI không trả về câu trả lời.")
+
+        user_msg = ChatMessage(
+            id=f"MSG-{uuid.uuid4().hex[:8].upper()}",
+            conversation_id=conversation_id,
+            role="user",
+            content=user_raw_input,
+        )
+        save_message(user_msg)
+        assistant_msg_id = f"MSG-{uuid.uuid4().hex[:8].upper()}"
+        from aios_habit.workspace_chat_store import (
+            load_conversation,
+            load_conversation_source_selections,
+            save_evidence_trace,
+        )
+        from aios_habit.evidence_trace import build_evidence_trace_from_citations
+
+        selections = load_conversation_source_selections(conversation_id)
+        allowed_source_ids = [item.source_id for item in selections if item.enabled] if selections else None
+        conversation = load_conversation(conversation_id)
+        ui_locale = getattr(conversation, "ui_locale", "vi") if conversation else "vi"
+        provider_name = "C-AGENT API" if backend == "cagent_api" else "Nakazasen Router"
+        trace = build_evidence_trace_from_citations(
+            query=question,
+            answer_text=result.answer_text,
+            evidence_items=evidence_items,
+            allowed_source_ids=allowed_source_ids,
+            notebook_id=notebook_id,
+            conversation_id=conversation_id,
+            user_message_id=user_msg.id,
+            assistant_message_id=assistant_msg_id,
+            ui_locale=ui_locale,
+            answer_language=answer_language,
+            provenance={
+                "operational_mode": "external_api",
+                "provider_name": provider_name,
+                "model_name": "configured_by_provider",
+            },
+        )
+        save_evidence_trace(trace)
+        save_message(ChatMessage(
+            id=assistant_msg_id,
+            conversation_id=conversation_id,
+            role="assistant",
+            content=result.answer_text,
+            trace_id=trace.trace_id,
+        ))
+        source_titles = [
+            (item.get("title", "") if isinstance(item, dict) else getattr(item, "title", ""))
+            for item in evidence_items
+        ]
+        badge = {
+            "conversation_id": conversation_id,
+            "type": "ai_answered",
+            "source_count": len(source_titles),
+            "source_titles": source_titles,
+            "ai_source": provider_name,
+            "bridge": provider_name,
+            "provider": provider_name,
+            "model_tool_name": "",
+            "verified_model": "",
+            "operational_mode": "external_api",
+            "retrieval_summary": retrieval_summary,
+            "evidence_items": evidence_items,
+            "trace_id": trace.trace_id,
+        }
+        return (True, f"Đã nhận câu trả lời từ {provider_name}.", badge, None)
 
     health = health_status or get_antigravity_bridge_health()
 

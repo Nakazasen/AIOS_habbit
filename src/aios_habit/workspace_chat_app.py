@@ -1,6 +1,7 @@
 import streamlit as st
 import uuid
 import time
+import os
 from datetime import datetime
 from typing import Optional, List, Dict, Any, Tuple, Mapping
 from aios_habit.workspace_paths import default_agent_workspace_root
@@ -1570,6 +1571,74 @@ else:
     top_col1, top_col2, top_col3 = st.columns([2.5, 1.3, 1.2])
     with top_col1:
         st.subheader(f"💬 {t('chat_in_notebook', locale=current_ui_locale)}: {notebook.title}")
+
+    active_conversation_id = active_conversation.id if active_conversation else "new"
+    connector_status_key = f"wsc_connector_check_status_{active_conversation_id}"
+    bridge_health = get_antigravity_bridge_health()
+    with top_col2:
+        selected_ai_backend = st.selectbox(
+            "Cầu nối AI",
+            options=("gemini_web", "cagent_api", "nakazasen_router"),
+            format_func=lambda value: {
+                "gemini_web": "1. Cầu nối Gemini Web",
+                "cagent_api": "2. C-AGENT API",
+                "nakazasen_router": "3. Nakazasen Router",
+            }[value],
+            key=f"wsc_ai_backend_{active_conversation_id}",
+            help="Mỗi câu hỏi chỉ gửi qua một cầu nối bạn chọn.",
+        )
+        cagent_endpoint = ""
+        if selected_ai_backend == "cagent_api":
+            cagent_endpoint_key = f"wsc_cagent_endpoint_{active_conversation_id}"
+            configured_cagent_endpoint = os.environ.get("AIOS_CAGENT_API_URL", "").strip()
+            if not str(st.session_state.get(cagent_endpoint_key, "")).strip() and configured_cagent_endpoint:
+                st.session_state[cagent_endpoint_key] = configured_cagent_endpoint
+            cagent_endpoint = st.text_input(
+                "URL API AgentFlow C-AGENT",
+                value=configured_cagent_endpoint,
+                placeholder="https://.../api/v1/prediction/<AgentFlow-ID>",
+                key=cagent_endpoint_key,
+                help="AIOS không cần và không lưu LiteLLM API key; credential nằm trong C-AGENT.",
+            ).strip()
+            # Streamlit session state is per browser tab. Keep the user-entered
+            # endpoint in this local app process as well so another AIOS tab
+            # does not misleadingly start with an empty C-AGENT field.
+            if cagent_endpoint:
+                os.environ["AIOS_CAGENT_API_URL"] = cagent_endpoint
+        if selected_ai_backend == "cagent_api":
+            st.caption("🟣 Đang dùng C-AGENT API")
+        elif selected_ai_backend == "nakazasen_router":
+            st.caption("🟠 Đang dùng Nakazasen Router")
+        else:
+            render_bridge_header_status(bridge_health, locale=current_ui_locale)
+
+        connector_status = st.session_state.get(connector_status_key)
+        status_matches_current_endpoint = (
+            selected_ai_backend != "cagent_api"
+            or connector_status.get("endpoint") == cagent_endpoint
+        ) if isinstance(connector_status, dict) else False
+        if (
+            isinstance(connector_status, dict)
+            and connector_status.get("backend") == selected_ai_backend
+            and status_matches_current_endpoint
+        ):
+            checked_at = connector_status.get("checked_at", "")
+            detail = connector_status.get("detail", "")
+            message = f"Kiểm tra lúc {checked_at}: {detail}" if checked_at else detail
+            if connector_status.get("state") == "ok":
+                st.success(message)
+            elif connector_status.get("state") == "configured":
+                st.info(message)
+            elif connector_status.get("state") == "error":
+                st.error(message)
+        elif selected_ai_backend == "cagent_api":
+            st.caption("Chưa kiểm tra kết nối trong phiên này.")
+        elif selected_ai_backend == "nakazasen_router":
+            st.caption("Chưa kiểm tra cấu hình trong phiên này.")
+
+    # Names used by the question submission below.
+    ai_backend = selected_ai_backend
+    cagent_endpoint_url = cagent_endpoint
     with top_col3:
         curr_layout = st.session_state.get("wsc_layout_mode", "full")
         toggle_label = f"📑 {t('layout_split', locale=current_ui_locale)}" if curr_layout == "full" else f"📖 {t('layout_full', locale=current_ui_locale)}"
@@ -1577,8 +1646,75 @@ else:
             st.session_state.wsc_layout_mode = "split" if curr_layout == "full" else "full"
             safe_rerun()
 
-        bridge_health = get_antigravity_bridge_health()
-        if st.button(t("bridge_connect_refresh", locale=current_ui_locale), key="wsc_refresh_bridge_btn", help=t("bridge_connect_refresh_help", locale=current_ui_locale), use_container_width=True):
+        if selected_ai_backend == "cagent_api":
+            if st.button(
+                "🔌 Kiểm tra C-AGENT API",
+                key="wsc_check_cagent_btn",
+                help="Gửi một yêu cầu kiểm tra ngắn tới AgentFlow C-AGENT; không gửi tài liệu nguồn.",
+                use_container_width=True,
+            ):
+                if not cagent_endpoint:
+                    st.session_state.wsc_action_error = "Hãy nhập URL API AgentFlow C-AGENT trước khi kiểm tra."
+                    st.session_state[connector_status_key] = {
+                        "backend": "cagent_api",
+                        "state": "error",
+                        "checked_at": datetime.now().strftime("%H:%M:%S"),
+                        "detail": "Chưa có URL AgentFlow C-AGENT.",
+                        "endpoint": cagent_endpoint,
+                    }
+                else:
+                    from aios_habit.cagent_api import call_cagent_prediction
+                    check = call_cagent_prediction(
+                        cagent_endpoint,
+                        system_prompt="Bạn là kiểm tra kết nối AIOS.",
+                        user_prompt="Trả lời ngắn: OK",
+                    )
+                    if check.ok:
+                        st.session_state.wsc_action_message = "C-AGENT API đã kết nối và phản hồi thành công."
+                        st.session_state[connector_status_key] = {
+                            "backend": "cagent_api",
+                            "state": "ok",
+                            "checked_at": datetime.now().strftime("%H:%M:%S"),
+                            "detail": "C-AGENT API đã phản hồi yêu cầu kiểm tra.",
+                            "endpoint": cagent_endpoint,
+                        }
+                    else:
+                        st.session_state.wsc_action_error = check.error_message
+                        st.session_state[connector_status_key] = {
+                            "backend": "cagent_api",
+                            "state": "error",
+                            "checked_at": datetime.now().strftime("%H:%M:%S"),
+                            "detail": check.error_message,
+                            "endpoint": cagent_endpoint,
+                        }
+                safe_rerun()
+        elif selected_ai_backend == "nakazasen_router":
+            if st.button(
+                "🔌 Kiểm tra cấu hình Nakazasen Router",
+                key="wsc_check_router_btn",
+                help="Kiểm tra Router đã có cấu hình trên máy; không gửi câu hỏi hay tài liệu ra ngoài.",
+                use_container_width=True,
+            ):
+                try:
+                    from aios_habit.workspace_chat_router_adapter import _get_router
+                    _get_router()
+                    st.session_state.wsc_action_message = "Nakazasen Router đã có cấu hình và sẵn sàng dùng."
+                    st.session_state[connector_status_key] = {
+                        "backend": "nakazasen_router",
+                        "state": "configured",
+                        "checked_at": datetime.now().strftime("%H:%M:%S"),
+                        "detail": "Cấu hình Router đã được nạp; chưa gửi yêu cầu tới nhà cung cấp AI.",
+                    }
+                except Exception:
+                    st.session_state.wsc_action_error = "Nakazasen Router chưa sẵn sàng. Hãy kiểm tra cấu hình API trên máy."
+                    st.session_state[connector_status_key] = {
+                        "backend": "nakazasen_router",
+                        "state": "error",
+                        "checked_at": datetime.now().strftime("%H:%M:%S"),
+                        "detail": "Không thể nạp cấu hình Nakazasen Router.",
+                    }
+                safe_rerun()
+        elif st.button(t("bridge_connect_refresh", locale=current_ui_locale), key="wsc_refresh_bridge_btn", help=t("bridge_connect_refresh_help", locale=current_ui_locale), use_container_width=True):
             startup = ensure_antigravity_bridge_running()
             check_handoff_request_timeouts()
             if startup.ok:
@@ -1590,9 +1726,6 @@ else:
                     reason=startup.reason or startup.health.reason or "unknown_error",
                 )
             safe_rerun()
-
-    with top_col2:
-        render_bridge_header_status(bridge_health, locale=current_ui_locale)
 
     if not active_conversation:
         st.info(t("no_conversations_in_notebook", locale=current_ui_locale))
@@ -2080,6 +2213,8 @@ else:
                                             chat_history=chat_history,
                                             user_raw_input=user_input,
                                             answer_language=getattr(active_conversation, "answer_language", "vi"),
+                                            backend=ai_backend,
+                                            cagent_endpoint_url=cagent_endpoint_url,
                                         )
                                         if ok:
                                             if succ_msg:
