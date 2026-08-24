@@ -622,6 +622,7 @@ def route_workspace_chat_submission(
     answer_language: str = "vi",
     backend: str = "gemini_web",
     cagent_endpoint_url: str = "",
+    cancellation_event: Any | None = None,
 ) -> tuple[bool, str, dict[str, Any] | None, str | None]:
     """Route a submission through the explicitly selected Workspace Chat backend.
 
@@ -636,6 +637,12 @@ def route_workspace_chat_submission(
         WorkspaceAIAnswerRequest,
         generate_workspace_ai_answer,
     )
+
+    def was_cancelled() -> bool:
+        return bool(cancellation_event is not None and cancellation_event.is_set())
+
+    if was_cancelled():
+        return (False, "", None, "Đã dừng yêu cầu AI.")
 
     if backend not in {"gemini_web", "cagent_api", "nakazasen_router"}:
         return (False, "", None, "Lựa chọn cầu nối AI không hợp lệ.")
@@ -664,6 +671,8 @@ def route_workspace_chat_submission(
             provider_client = CAgentWorkspaceProviderClient(cagent_endpoint_url)
 
         result = generate_workspace_ai_answer(request, provider_client)
+        if was_cancelled():
+            return (False, "", None, "Đã dừng yêu cầu AI.")
         if not result.ok:
             return (False, "", None, result.error_message or "Cầu nối AI không trả về câu trả lời.")
 
@@ -759,6 +768,9 @@ def route_workspace_chat_submission(
                 call_kwargs["endpoint_url"] = endpoint_url
             direct_res = call_antigravity_bridge(**call_kwargs)
 
+            if was_cancelled():
+                return (False, "", None, "Đã dừng yêu cầu AI.")
+
             if direct_res.ok:
                 user_msg = ChatMessage(
                     id=f"MSG-{uuid.uuid4().hex[:8].upper()}",
@@ -849,6 +861,8 @@ def route_workspace_chat_submission(
             return (False, "", None, f"Lỗi cầu nối Antigravity IDE: {sanitize_reason(str(exc))}")
 
     elif health.is_handoff_ready or health.is_available:
+        if was_cancelled():
+            return (False, "", None, "Đã dừng yêu cầu AI.")
         user_msg = ChatMessage(
             id=f"MSG-{uuid.uuid4().hex[:8].upper()}",
             conversation_id=conversation_id,
@@ -883,6 +897,8 @@ def route_workspace_chat_submission(
                 )
 
         try:
+            if was_cancelled():
+                return (False, "", None, "Đã dừng yêu cầu AI.")
             write_res = write_ide_handoff_bundle(
                 case_id=conversation_id,
                 question=question,

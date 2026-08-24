@@ -107,9 +107,9 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
 
         # Search Preferences
         "search_preference": "Chế độ tìm kiếm",
-        "search_preference_auto": "Tự động",
+        "search_preference_auto": "Tìm nhanh",
         "search_preference_deep": "Tìm kỹ hơn",
-        "search_pref_auto": "Tự động",
+        "search_pref_auto": "Tìm nhanh",
         "search_pref_deep": "Tìm kỹ hơn",
         "search_level": "Mức độ tìm kiếm",
 
@@ -150,7 +150,7 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
         "tab_quick_paste": "Dán nhanh",
         "tab_long_text": "Dán văn bản dài",
         "tab_screenshot": "Ảnh chụp màn hình",
-        "tab_upload_file": "Thêm tài liệu",
+        "tab_upload_file": "Thêm tài liệu / ảnh",
         "tab_folder_import": "Nhập từ thư mục",
         "file_upload_dropzone": "Kéo thả tài liệu vào đây",
         "file_size_limit": "Giới hạn 200MB/file",
@@ -365,7 +365,8 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
         "refresh": "Làm mới",
         "layout_split": "Xem chia 2 cột",
         "layout_full": "Mở rộng 100%",
-        "add_sources_expander": "Thêm nguồn",
+        "add_sources_expander": "Thêm tài liệu/ảnh để AI tham khảo",
+        "add_sources_explainer": "Thêm tài liệu, ảnh hoặc văn bản làm căn cứ trả lời. Bạn có thể lưu vào sổ để dùng lại, hoặc chỉ dùng tạm cho cuộc trò chuyện này.",
         "results_and_evidence": "Kết quả & bằng chứng",
         "search_level_help": "Tự động tối ưu giữa tốc độ và độ kỹ, hoặc chủ động chọn Tìm kỹ hơn để tăng độ sâu rà soát tài liệu.",
 
@@ -483,6 +484,8 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
         "agent_ide_prompt_placeholder": "Nhập yêu cầu phân tích hoặc kiểm tra...",
 
         "attach_screenshot_label": "📷 Đính kèm ảnh chụp màn hình / tài liệu ảnh",
+        "clipboard_image_unavailable": "Chức năng dán ảnh cần được cài cùng ứng dụng.",
+        "remove_attached_image": "Bỏ ảnh",
         "select_or_paste_images": "Chọn hoặc dán ảnh chụp màn hình",
         "select_docs_for_conv": "Chọn tài liệu cho cuộc trò chuyện này",
         "select_excel_for_conv": "Chọn file Excel cho cuộc trò chuyện này",
@@ -557,9 +560,9 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
 
         # Search Preferences
         "search_preference": "検索モード",
-        "search_preference_auto": "自動",
+        "search_preference_auto": "クイック検索",
         "search_preference_deep": "詳細検索",
-        "search_pref_auto": "自動",
+        "search_pref_auto": "クイック検索",
         "search_pref_deep": "詳細検索",
         "search_level": "検索深度",
 
@@ -600,7 +603,7 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
         "tab_quick_paste": "クイック貼付",
         "tab_long_text": "長文テキスト貼付",
         "tab_screenshot": "スクリーンショット",
-        "tab_upload_file": "ファイル追加",
+        "tab_upload_file": "文書・画像を追加",
         "tab_folder_import": "フォルダからインポート",
         "file_upload_dropzone": "ここにファイルをドラッグ＆ドロップ",
         "file_size_limit": "上限 200MB/ファイル",
@@ -815,7 +818,8 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
         "refresh": "更新",
         "layout_split": "2カラム表示",
         "layout_full": "全幅表示",
-        "add_sources_expander": "ソースを追加",
+        "add_sources_expander": "AI参照用の文書・画像を追加",
+        "add_sources_explainer": "回答の根拠として文書、画像、テキストを追加します。ノートブックに保存して再利用することも、この会話だけで一時的に使うこともできます。",
         "results_and_evidence": "結果と証拠",
         "search_level_help": "速度と精度のバランスを自動調整、または詳細検索を選択して検索深度を深めます。",
 
@@ -933,6 +937,8 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
         "agent_ide_prompt_placeholder": "分析または検証のリクエストを入力...",
 
         "attach_screenshot_label": "📷 スクリーンショット/画像ドキュメントを添付",
+        "clipboard_image_unavailable": "画像の貼り付け機能はアプリと一緒にインストールする必要があります。",
+        "remove_attached_image": "画像を外す",
         "select_or_paste_images": "スクリーンショットを選択または貼り付け",
         "select_docs_for_conv": "この会話のドキュメントを選択",
         "select_excel_for_conv": "この会話のExcelファイルを選択",
@@ -1007,9 +1013,9 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
 
         # Search Preferences
         "search_preference": "搜索偏好",
-        "search_preference_auto": "自动",
+        "search_preference_auto": "快速搜索",
         "search_preference_deep": "深度搜索",
-        "search_pref_auto": "自动",
+        "search_pref_auto": "快速搜索",
         "search_pref_deep": "深度搜索",
         "search_level": "搜索层级",
 
@@ -1050,7 +1056,7 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
         "tab_quick_paste": "快速粘贴",
         "tab_long_text": "粘贴长文本",
         "tab_screenshot": "屏幕截图",
-        "tab_upload_file": "添加文档",
+        "tab_upload_file": "添加文档 / 图片",
         "tab_folder_import": "从文件夹导入",
         "file_upload_dropzone": "拖放文件到此处",
         "file_size_limit": "限制 200MB/文件",
@@ -1265,7 +1271,8 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
         "refresh": "刷新",
         "layout_split": "双栏对照",
         "layout_full": "全宽显示",
-        "add_sources_expander": "添加来源",
+        "add_sources_expander": "添加供 AI 参考的文档/图片",
+        "add_sources_explainer": "添加文档、图片或文本作为回答依据。您可以保存到笔记本以重复使用，或仅在当前对话中临时使用。",
         "results_and_evidence": "结果与证据",
         "search_level_help": "在速度与准确度之间自动优化，或主动选择深度搜索以增加检索深度。",
 
@@ -1383,6 +1390,8 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
         "agent_ide_prompt_placeholder": "输入分析或验证请求...",
 
         "attach_screenshot_label": "📷 附加屏幕截图 / 图像文档",
+        "clipboard_image_unavailable": "粘贴图片功能需要随应用一起安装。",
+        "remove_attached_image": "移除图片",
         "select_or_paste_images": "选择或粘贴屏幕截图",
         "select_docs_for_conv": "为此对话选择文档",
         "select_excel_for_conv": "为此对话选择Excel文件",

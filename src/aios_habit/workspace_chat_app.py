@@ -2,9 +2,20 @@ import streamlit as st
 import uuid
 import time
 import os
+from concurrent.futures import ThreadPoolExecutor
+from threading import Event
+from io import BytesIO
 from datetime import datetime
 from typing import Optional, List, Dict, Any, Tuple, Mapping
 from aios_habit.workspace_paths import default_agent_workspace_root
+
+
+# Provider calls can take minutes. Keep them off Streamlit's UI run so the
+# composer can present a genuine stop action while a response is in flight.
+_WORKSPACE_AI_REQUEST_EXECUTOR = ThreadPoolExecutor(
+    max_workers=2,
+    thread_name_prefix="workspace-ai-request",
+)
 
 st.set_page_config(
     page_title="AIOS Habit Workspace Chat",
@@ -23,6 +34,34 @@ st.markdown('''
             visibility: visible !important;
             display: flex !important;
             z-index: 1000 !important;
+        }
+
+        /* Keep the layout/evidence switch beside the reading surface, rather
+           than stranding it above a long conversation. */
+        [class*="st-key-wsc-layout-rail-toggle"] {
+            position: fixed !important;
+            top: 50% !important;
+            right: 0 !important;
+            z-index: 1001 !important;
+            width: 42px !important;
+            transform: translateY(-50%) !important;
+        }
+        [class*="st-key-wsc-layout-rail-toggle"] [data-testid="stButton"] button {
+            width: 42px !important;
+            min-width: 42px !important;
+            height: 68px !important;
+            min-height: 68px !important;
+            padding: 0 !important;
+            border-radius: 14px 0 0 14px !important;
+            border-right: 0 !important;
+            background: rgba(30, 41, 59, 0.95) !important;
+            box-shadow: -4px 6px 18px rgba(0, 0, 0, 0.26) !important;
+        }
+        [class*="st-key-wsc-layout-rail-toggle"] [data-testid="stButton"] button:hover {
+            background: rgba(59, 130, 246, 0.9) !important;
+        }
+        [class*="st-key-wsc-layout-rail-toggle"] [data-testid="stButton"] button p {
+            display: none !important;
         }
 
         /* Expand main block container */
@@ -58,6 +97,174 @@ st.markdown('''
         /* Auto smooth scroll */
         html {
             scroll-behavior: smooth;
+        }
+
+        /* Compact, current-generation AI composer. The marker keeps these
+           styles confined to the Workspace Chat question form. */
+        [data-testid="stForm"]:has(.wsc-composer) {
+            border: 1px solid rgba(148, 163, 184, 0.28) !important;
+            border-radius: 22px !important;
+            background: rgba(15, 23, 42, 0.62) !important;
+            box-shadow: 0 14px 36px rgba(0, 0, 0, 0.16) !important;
+            padding: 0.7rem !important;
+        }
+        [data-testid="stForm"]:has(.wsc-composer) [data-testid="stTextArea"] textarea {
+            min-height: 72px !important;
+            border: 0 !important;
+            border-radius: 16px !important;
+            background: rgba(30, 41, 59, 0.72) !important;
+            box-shadow: none !important;
+            padding: 0.85rem 1rem !important;
+        }
+        [data-testid="stForm"]:has(.wsc-composer) [data-testid="stTextArea"] textarea:focus {
+            box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.75) !important;
+        }
+        [data-testid="stForm"]:has(.wsc-composer) .wsc-composer__send button {
+            min-height: 72px !important;
+            border-radius: 18px !important;
+            font-weight: 700 !important;
+        }
+        [data-testid="stForm"]:has(.wsc-composer) details {
+            border: 0 !important;
+            background: transparent !important;
+        }
+        [data-testid="stForm"]:has(.wsc-composer) summary {
+            color: rgba(226, 232, 240, 0.92) !important;
+            font-weight: 600 !important;
+        }
+        @media (max-width: 360px) {
+            [data-testid="stForm"]:has(.wsc-composer) {
+                border-radius: 16px !important;
+                padding: 0.5rem !important;
+            }
+            [data-testid="stForm"]:has(.wsc-composer) .wsc-composer__row {
+                gap: 0.35rem !important;
+            }
+            [data-testid="stForm"]:has(.wsc-composer) .wsc-composer__send button {
+                min-height: 56px !important;
+                font-size: 0.78rem !important;
+            }
+        }
+
+        /* AI-IDE style composer: attachment preview, toolbar, model picker. */
+        [class*="st-key-wsc-composer-"] {
+            position: relative !important;
+            border-radius: 22px !important;
+            background: rgba(15, 23, 42, 0.72) !important;
+            border-color: rgba(148, 163, 184, 0.32) !important;
+            box-shadow: 0 16px 42px rgba(0, 0, 0, 0.18) !important;
+            padding: 0.7rem 0.85rem !important;
+        }
+        [class*="st-key-wsc-composer-"][data-testid="stVerticalBlock"] {
+            gap: 4px !important;
+            padding: 0.5rem 0.7rem !important;
+        }
+        [class*="st-key-wsc-composer-"] [data-testid="stVerticalBlock"] {
+            gap: 0.45rem !important;
+        }
+        [class*="st-key-wsc-composer-"] [data-testid="stVerticalBlockBorderWrapper"] {
+            padding: 0.55rem 0.7rem !important;
+        }
+        [class*="st-key-wsc-composer-"] [data-testid="stHorizontalBlock"] {
+            margin-top: 0 !important;
+            margin-bottom: 0 !important;
+        }
+        [class*="st-key-wsc-composer-"] [data-testid="stTextArea"],
+        [class*="st-key-wsc-composer-"] [data-testid="stTextArea"] > div,
+        [class*="st-key-wsc-composer-"] [data-testid="stTextArea"] [data-baseweb="textarea"] {
+            height: 72px !important;
+            min-height: 72px !important;
+            margin: 0 !important;
+        }
+        [class*="st-key-wsc-composer-"] [data-testid="stTextArea"] textarea {
+            height: 62px !important;
+            min-height: 62px !important;
+            max-height: 62px !important;
+            border: 0 !important;
+            border-radius: 15px !important;
+            background: transparent !important;
+            box-shadow: none !important;
+            padding: 0.45rem 0.35rem !important;
+        }
+        [class*="st-key-wsc-composer-"] [data-testid="stTextArea"] > div,
+        [class*="st-key-wsc-composer-"] [data-testid="stTextArea"] [data-baseweb="textarea"] {
+            background: transparent !important;
+            border: 0 !important;
+            box-shadow: none !important;
+        }
+        [class*="st-key-wsc-composer-"] [data-testid="stTextArea"] textarea:focus {
+            box-shadow: none !important;
+        }
+        [class*="st-key-wsc-composer-"] > [data-testid="stElementContainer"]:has([data-testid="stHtml"]) {
+            position: absolute !important;
+            width: 0 !important;
+            height: 0 !important;
+            overflow: hidden !important;
+        }
+        [class*="st-key-wsc-composer-"] [data-testid="stPopover"] button,
+        [class*="st-key-wsc-composer-"] [data-testid="stSelectbox"] button {
+            border-radius: 10px !important;
+        }
+        [class*="st-key-wsc-composer-"] [data-testid="stButton"] button[kind="primary"] {
+            width: 42px !important;
+            min-width: 42px !important;
+            height: 42px !important;
+            min-height: 42px !important;
+            padding: 0 !important;
+            border-radius: 12px !important;
+            font-weight: 700 !important;
+        }
+        [class*="st-key-wsc-action-"] {
+            display: flex !important;
+            justify-content: flex-end !important;
+            align-items: flex-end !important;
+        }
+        [class*="st-key-wsc-shortcut-hint-"] {
+            display: flex !important;
+            justify-content: flex-end !important;
+            align-items: center !important;
+            color: rgba(148, 163, 184, 0.92) !important;
+        }
+        [class*="st-key-wsc-shortcut-hint-"] [data-testid="stCaptionContainer"] {
+            white-space: nowrap !important;
+        }
+        [class*="st-key-wsc-action-"] [data-testid="stButton"] button p {
+            display: none !important;
+        }
+        [class*="st-key-wsc-action-"] [data-testid="stButton"] button svg {
+            width: 1.15rem !important;
+            height: 1.15rem !important;
+        }
+        [class*="st-key-wsc-attachment-"] [data-testid="stPopover"] button p {
+            display: none !important;
+        }
+        [class*="st-key-wsc-attachment-"] [data-testid="stPopover"] button {
+            width: 42px !important;
+            min-width: 42px !important;
+            height: 42px !important;
+            min-height: 42px !important;
+            padding: 0 !important;
+            gap: 0 !important;
+            justify-content: center !important;
+        }
+        [class*="st-key-wsc-attachment-"] [data-testid="stPopover"] button > svg:last-child {
+            display: none !important;
+        }
+        [class*="st-key-wsc-composer-"] [data-testid="stImage"] img {
+            border-radius: 10px !important;
+            border: 1px solid rgba(148, 163, 184, 0.38) !important;
+        }
+        @media (max-width: 360px) {
+            [class*="st-key-wsc-composer-"] {
+                border-radius: 16px !important;
+            }
+            [class*="st-key-wsc-composer-"] [data-testid="stButton"] button[kind="primary"] {
+                min-width: 40px !important;
+                min-height: 40px !important;
+            }
+            [class*="st-key-wsc-shortcut-hint-"] {
+                display: none !important;
+            }
         }
 
     </style>
@@ -116,6 +323,11 @@ from aios_habit.workspace_chat_folder_import import (
     format_size_bytes,
 )
 from aios_habit.local_folder_picker import choose_local_folder
+
+try:
+    from streamlit_paste_button import paste_image_button
+except ImportError:  # pragma: no cover - surfaced as an in-app fallback
+    paste_image_button = None
 
 def create_safe_test_data(conversation_id: str) -> TemporaryConversationSource:
     ts = TemporaryConversationSource(
@@ -1569,6 +1781,7 @@ else:
                 st.error(st.session_state.wsc_action_error)
                 st.session_state.wsc_action_error = None
 
+    _legacy_connector_panel = """Legacy header bridge panel relocated into the composer toolbar.
     top_col1, top_col2, top_col3 = st.columns([2.5, 1.3, 1.2])
     with top_col1:
         st.subheader(f"💬 {t('chat_in_notebook', locale=current_ui_locale)}: {notebook.title}")
@@ -1643,7 +1856,7 @@ else:
     with top_col3:
         curr_layout = st.session_state.get("wsc_layout_mode", "full")
         toggle_label = f"📑 {t('layout_split', locale=current_ui_locale)}" if curr_layout == "full" else f"📖 {t('layout_full', locale=current_ui_locale)}"
-        if st.button(toggle_label, key="wsc_toggle_layout_btn", help=t("layout_toggle_help", locale=current_ui_locale), use_container_width=True):
+        if st.button(toggle_label, key="wsc_legacy_toggle_layout_btn", help=t("layout_toggle_help", locale=current_ui_locale), use_container_width=True):
             st.session_state.wsc_layout_mode = "split" if curr_layout == "full" else "full"
             safe_rerun()
 
@@ -1727,6 +1940,24 @@ else:
                     reason=startup.reason or startup.health.reason or "unknown_error",
                 )
             safe_rerun()
+
+    """
+    st.subheader(f"💬 {t('chat_in_notebook', locale=current_ui_locale)}: {notebook.title}")
+    curr_layout = st.session_state.get("wsc_layout_mode", "full")
+    layout_icon = ":material/chevron_left:" if curr_layout == "full" else ":material/chevron_right:"
+    layout_help = (
+        t("layout_split", locale=current_ui_locale)
+        if curr_layout == "full"
+        else t("layout_full", locale=current_ui_locale)
+    )
+    if st.button(
+        t("layout_toggle_help", locale=current_ui_locale),
+        icon=layout_icon,
+        key="wsc-layout-rail-toggle",
+        help=layout_help,
+    ):
+        st.session_state.wsc_layout_mode = "split" if curr_layout == "full" else "full"
+        safe_rerun()
 
     if not active_conversation:
         st.info(t("no_conversations_in_notebook", locale=current_ui_locale))
@@ -1835,12 +2066,6 @@ else:
                             locale=current_ui_locale,
                         )
 
-                if len(messages) >= 4:
-                    st.markdown(
-                        f'<div style="text-align:right; margin-bottom:8px;"><a href="#latest-ai-anchor" style="font-size:13px; color:#38bdf8; text-decoration:none; padding:4px 10px; background:rgba(14,165,233,0.1); border-radius:6px; border:1px solid rgba(14,165,233,0.2);">⬇️ {t("jump_to_latest", locale=current_ui_locale)}</a></div>',
-                        unsafe_allow_html=True
-                    )
-
                 chat_container = st.container()
                 with chat_container:
                     if not messages:
@@ -1849,21 +2074,6 @@ else:
                     for i, m in enumerate(messages):
                         is_latest_ans = (i == last_assistant_idx and i == len(messages) - 1)
                         render_chat_bubble(m, is_latest=is_latest_ans, locale=current_ui_locale)
-
-                st.markdown(
-                    """
-                    <div id="latest-ai-anchor"></div>
-                    <script>
-                        setTimeout(function() {
-                            var anchor = document.getElementById("latest-ai-anchor");
-                            if (anchor) {
-                                anchor.scrollIntoView({behavior: "smooth", block: "end"});
-                            }
-                        }, 80);
-                    </script>
-                    """,
-                    unsafe_allow_html=True,
-                )
 
                 # AI Answer Badge
                 if badge_data and badge_data.get("conversation_id") == active_conversation.id:
@@ -1922,18 +2132,9 @@ else:
                         st.session_state.pop(_PENDING_SOURCE_SUBMISSION_KEY, None)
                         st.session_state.wsc_action_message = t("resumed_pending_question", locale=current_ui_locale)
                     elif pending_state == "waiting":
-                        required_count = int(
-                            pending_submission.get("required_source_count", 0)
-                            or len(pending_submission.get("required_source_keys", ()))
-                        )
-                        wait_col, cancel_col = st.columns((3, 1))
-                        with wait_col:
-                            st.info(t("question_held_preparing_sources", locale=current_ui_locale))
-                        with cancel_col:
-                            if st.button(t("cancel_pending_question", locale=current_ui_locale), key=f"wsc_cancel_pending_question_{active_conversation.id}", use_container_width=True):
-                                st.session_state.pop(_PENDING_SOURCE_SUBMISSION_KEY, None)
-                                st.session_state.wsc_action_message = t("cancelled_pending_question_notice", locale=current_ui_locale)
-                                safe_rerun()
+                        # The composer action changes to a square Stop button below.
+                        # Keep this status compact instead of adding a second large action.
+                        st.caption(t("question_held_preparing_sources", locale=current_ui_locale))
                         _poll_pending_source_submission()
                     else:
                         st.session_state.pop(_PENDING_SOURCE_SUBMISSION_KEY, None)
@@ -1945,20 +2146,119 @@ else:
                         }
                         st.session_state.wsc_action_error = pending_messages.get(pending_state, "Không thể tiếp tục câu hỏi đang chờ.")
 
-                # Question Form with explicit Ask Button
-                with st.form(f"wsc_ai_ask_form_{active_conversation.id}"):
+                ai_request_key = f"wsc_ai_request_{active_conversation.id}"
+                active_ai_request = st.session_state.get(ai_request_key)
+                is_answering = False
+                if active_ai_request:
+                    request_future = active_ai_request.get("future")
+                    cancellation_event = active_ai_request.get("cancellation_event")
+                    if request_future is not None and request_future.done():
+                        st.session_state.pop(ai_request_key, None)
+                        if cancellation_event is not None and cancellation_event.is_set():
+                            st.session_state.wsc_action_message = "Đã dừng yêu cầu AI."
+                        else:
+                            try:
+                                ok, succ_msg, badge, err_msg = request_future.result()
+                            except Exception as exc:
+                                ok, succ_msg, badge, err_msg = (False, "", None, f"Lỗi khi nhận phản hồi AI: {exc}")
+                            if ok:
+                                if succ_msg:
+                                    st.session_state.wsc_action_message = succ_msg
+                                if badge:
+                                    st.session_state.wsc_last_ai_badge = badge
+                            else:
+                                if err_msg:
+                                    st.session_state.wsc_action_error = err_msg
+                                st.session_state.wsc_last_ai_badge = badge
+                        safe_rerun()
+                    elif request_future is not None:
+                        is_answering = True
+
+                        @st.fragment(run_every=0.8)
+                        def _refresh_completed_ai_request() -> None:
+                            if request_future.done():
+                                st.rerun()
+
+                        _refresh_completed_ai_request()
+
+                # AI-IDE style composer. Normal widgets are used instead of a
+                # form so an attachment thumbnail and model picker update in
+                # place before the user sends the question.
+                backend_key = f"wsc_ai_backend_{active_conversation.id}"
+                backend_labels = {
+                    "gemini_web": t("ai_connector_gemini", locale=current_ui_locale),
+                    "cagent_api": t("ai_connector_cagent", locale=current_ui_locale),
+                    "nakazasen_router": t("ai_connector_router", locale=current_ui_locale),
+                }
+                pasted_image_key = f"wsc_pasted_image_{active_conversation.id}"
+                upload_key = f"wsc_chat_img_{active_conversation.id}_{st.session_state.wsc_upload_version}"
+                with st.container(border=True, key=f"wsc-composer-{active_conversation.id}"):
+                    uploaded_image = None
                     user_input = st.text_area(
                         labels["question_placeholder"],
                         placeholder=t("question_placeholder", locale=current_ui_locale),
-                        height=100,
-                        key=f"wsc_question_input_{active_conversation.id}"
+                        height=76,
+                        key=f"wsc_question_input_{active_conversation.id}",
+                        label_visibility="collapsed",
                     )
-                    user_attached_image = st.file_uploader(
-                        t("attach_screenshot_label", locale=current_ui_locale),
-                        type=["png", "jpg", "jpeg", "webp", "bmp"],
-                        key=f"wsc_chat_img_{active_conversation.id}_{st.session_state.wsc_upload_version}",
-                        help=t("attach_screenshot_help", locale=current_ui_locale),
+
+                    toolbar_attach_col, toolbar_model_col, toolbar_search_col, _toolbar_spacer, toolbar_hint_col, toolbar_action_col = st.columns([0.7, 3.5, 1.8, 5.5, 1.2, 0.8])
+                    with toolbar_attach_col:
+                        with st.container(key=f"wsc-attachment-{active_conversation.id}"):
+                            with st.popover("Đính kèm", help=t("attach_screenshot_help", locale=current_ui_locale), icon=":material/add:"):
+                                uploaded_image = st.file_uploader(
+                                    t("attach_screenshot_label", locale=current_ui_locale),
+                                    type=["png", "jpg", "jpeg", "webp", "bmp"],
+                                    key=upload_key,
+                                    help=t("attach_screenshot_help", locale=current_ui_locale),
+                                    label_visibility="collapsed",
+                                )
+                                if paste_image_button is None:
+                                    st.info(t("clipboard_image_unavailable", locale=current_ui_locale))
+                                else:
+                                    paste_result = paste_image_button(
+                                        "📋 Dán ảnh đã copy",
+                                        key=f"wsc_paste_image_{active_conversation.id}",
+                                        background_color="#334155",
+                                        hover_background_color="#475569",
+                                        errors="raise",
+                                    )
+                                    if paste_result.image_data is not None:
+                                        image_buffer = BytesIO()
+                                        paste_result.image_data.save(image_buffer, format="PNG")
+                                        st.session_state[pasted_image_key] = BufferedWorkspaceUpload(
+                                            "clipboard-image.png", image_buffer.getvalue()
+                                        )
+                                        safe_rerun()
+                    with toolbar_model_col:
+                        selected_ai_backend = st.selectbox(
+                            t("ai_connector_label", locale=current_ui_locale),
+                            options=("gemini_web", "cagent_api", "nakazasen_router"),
+                            format_func=lambda value: backend_labels[value],
+                            key=backend_key,
+                            help=t("ai_connector_help", locale=current_ui_locale),
+                            label_visibility="collapsed",
+                        )
+                        if selected_ai_backend == "cagent_api":
+                            with st.popover("Cấu hình C-AGENT", icon=":material/settings:"):
+                                cagent_endpoint_key = f"wsc_cagent_endpoint_{active_conversation.id}"
+                                configured_cagent_endpoint = os.environ.get("AIOS_CAGENT_API_URL", "").strip()
+                                cagent_endpoint = st.text_input(
+                                    "URL API AgentFlow C-AGENT",
+                                    value=configured_cagent_endpoint,
+                                    placeholder="https://.../api/v1/prediction/<AgentFlow-ID>",
+                                    key=cagent_endpoint_key,
+                                    help=t("cagent_endpoint_help", locale=current_ui_locale),
+                                ).strip()
+                                if cagent_endpoint:
+                                    os.environ["AIOS_CAGENT_API_URL"] = cagent_endpoint
+                    selected_ai_backend = st.session_state.get(backend_key, "gemini_web")
+                    cagent_endpoint_url = (
+                        str(st.session_state.get(f"wsc_cagent_endpoint_{active_conversation.id}", "")).strip()
+                        if selected_ai_backend == "cagent_api" else ""
                     )
+                    ai_backend = selected_ai_backend
+
                     current_pref = getattr(active_conversation, "search_preference", "auto")
                     deep_search = get_workspace_chat_deep_search_availability()
                     pref_options = ["auto", "deep"] if deep_search.available else ["auto"]
@@ -1970,23 +2270,92 @@ else:
                         "auto": t("search_preference_auto", locale=current_ui_locale),
                         "deep": t("search_preference_deep", locale=current_ui_locale),
                     }
-                    selected_pref_idx = 1 if current_pref == "deep" else 0
-                    chosen_pref_key = f"wsc_search_pref_{active_conversation.id}"
-                    chosen_pref = st.selectbox(
-                        t("search_level", locale=current_ui_locale),
-                        options=pref_options,
-                        index=selected_pref_idx,
-                        format_func=lambda x: pref_labels.get(x, x),
-                        key=chosen_pref_key,
-                        help=t("search_level_help", locale=current_ui_locale),
-                    )
+                    with toolbar_search_col:
+                        chosen_pref = st.selectbox(
+                            t("search_level", locale=current_ui_locale),
+                            options=pref_options,
+                            index=1 if current_pref == "deep" else 0,
+                            format_func=lambda value: pref_labels.get(value, value),
+                            key=f"wsc_search_pref_{active_conversation.id}",
+                            help=t("search_level_help", locale=current_ui_locale),
+                            label_visibility="collapsed",
+                        )
                     if chosen_pref != current_pref:
                         update_conversation_search_preference(active_conversation.id, chosen_pref)
                         active_conversation.search_preference = chosen_pref
+                    with toolbar_hint_col:
+                        with st.container(key=f"wsc-shortcut-hint-{active_conversation.id}"):
+                            st.caption("Ctrl+↵")
+                    is_waiting_for_sources = bool(
+                        pending_submission
+                        and pending_submission.get("conversation_id") == active_conversation.id
+                        and pending_state == "waiting"
+                    )
+                    with toolbar_action_col:
+                        with st.container(key=f"wsc-action-{active_conversation.id}"):
+                            if is_answering or is_waiting_for_sources:
+                                stop_requested = st.button(
+                                    t("cancel_pending_question", locale=current_ui_locale),
+                                    key=f"wsc_stop_ai_request_{active_conversation.id}",
+                                    icon=":material/stop:",
+                                    type="primary",
+                                    help=t("cancel_pending_question", locale=current_ui_locale),
+                                )
+                                ask_submitted = False
+                                if stop_requested:
+                                    if is_answering:
+                                        active_ai_request["cancellation_event"].set()
+                                        st.session_state.wsc_action_message = "Đang dừng yêu cầu AI…"
+                                    else:
+                                        st.session_state.pop(_PENDING_SOURCE_SUBMISSION_KEY, None)
+                                        st.session_state.wsc_action_message = t(
+                                            "cancelled_pending_question_notice",
+                                            locale=current_ui_locale,
+                                        )
+                                    safe_rerun()
+                            else:
+                                ask_submitted = st.button(
+                                    labels["ai_action"],
+                                    key=f"wsc_ask_{active_conversation.id}",
+                                    icon=":material/arrow_upward:",
+                                    type="primary",
+                                    help=labels["ai_action"],
+                                )
+                    st.html(
+                        """
+                        <script>
+                        if (!window.parent.__wscComposerShortcutBound) {
+                          window.parent.__wscComposerShortcutBound = true;
+                          window.parent.document.addEventListener("keydown", function(event) {
+                            if ((event.ctrlKey || event.metaKey) && event.key === "Enter") {
+                              const sendButton = window.parent.document.querySelector(
+                                '[class*="st-key-wsc-action-"] button'
+                              );
+                              if (sendButton && sendButton.textContent.includes("arrow_upward") && !sendButton.disabled) {
+                                event.preventDefault();
+                                sendButton.click();
+                              }
+                            }
+                          }, true);
+                        }
+                        </script>
+                        """,
+                        unsafe_allow_javascript=True,
+                    )
+                    user_attached_image = uploaded_image or st.session_state.get(pasted_image_key)
+                    if user_attached_image is not None:
+                        preview_col, preview_text_col, preview_remove_col = st.columns([1, 8, 2])
+                        with preview_col:
+                            st.image(user_attached_image.getvalue(), width=78)
+                        with preview_text_col:
+                            st.caption(f"📎 {user_attached_image.name}")
+                        with preview_remove_col:
+                            if st.button(t("remove_attached_image", locale=current_ui_locale), key=f"wsc_remove_image_{active_conversation.id}", type="tertiary"):
+                                st.session_state.pop(pasted_image_key, None)
+                                st.session_state.wsc_upload_version += 1
+                                safe_rerun()
                     if not deep_search.available:
                         st.caption(t("deep_search_unavailable", locale=current_ui_locale))
-
-                    ask_submitted = st.form_submit_button(labels["ai_action"], use_container_width=True)
 
                 if ask_submitted and pending_submission:
                     # A fresh submit intentionally replaces an older waiting
@@ -2201,7 +2570,9 @@ else:
                                         # save_message(user_msg)
                                         # save_message(assistant_msg)
                                         from aios_habit.antigravity_bridge import route_workspace_chat_submission
-                                        ok, succ_msg, badge, err_msg = route_workspace_chat_submission(
+                                        cancellation_event = Event()
+                                        request_future = _WORKSPACE_AI_REQUEST_EXECUTOR.submit(
+                                            route_workspace_chat_submission,
                                             question=q_text,
                                             evidence_items=evidence_items,
                                             packed_sources=packed_sources,
@@ -2216,21 +2587,18 @@ else:
                                             answer_language=getattr(active_conversation, "answer_language", "vi"),
                                             backend=ai_backend,
                                             cagent_endpoint_url=cagent_endpoint_url,
+                                            cancellation_event=cancellation_event,
                                         )
-                                        if ok:
-                                            if succ_msg:
-                                                st.session_state.wsc_action_message = succ_msg
-                                            if badge:
-                                                st.session_state.wsc_last_ai_badge = badge
-                                        else:
-                                            if err_msg:
-                                                st.session_state.wsc_action_error = err_msg
-                                            st.session_state.wsc_last_ai_badge = badge
+                                        st.session_state[ai_request_key] = {
+                                            "future": request_future,
+                                            "cancellation_event": cancellation_event,
+                                        }
                                         safe_rerun()
 
                 # Phase 2H: Dán nhanh nhiều nguồn (quick multi-source paste)
                 st.write(" ")
                 with st.expander(f"➕ {t('add_sources_expander', locale=current_ui_locale)}", expanded=False):
+                    st.caption(t("add_sources_explainer", locale=current_ui_locale))
                     pending_duplicate_upload = st.session_state.get("wsc_pending_duplicate_upload")
                     if pending_duplicate_upload:
                         duplicate_names = ", ".join(pending_duplicate_upload["duplicates"].keys())
@@ -2249,10 +2617,9 @@ else:
                                 st.session_state.pop("wsc_pending_duplicate_upload", None)
                                 safe_rerun()
 
-                    tab_quick, tab_paste, tab_image, tab_upload, tab_folder = st.tabs([
+                    tab_quick, tab_paste, tab_upload, tab_folder = st.tabs([
                         t("tab_quick_paste", locale=current_ui_locale),
                         t("tab_long_text", locale=current_ui_locale),
-                        t("tab_screenshot", locale=current_ui_locale),
                         t("tab_upload_file", locale=current_ui_locale),
                         t("tab_folder_import", locale=current_ui_locale),
                     ])
@@ -2297,30 +2664,6 @@ else:
                                          save_to_notebook=paste_save_to_notebook,
                                      )
 
-
-                    # Tab đính kèm ảnh chụp màn hình / hình ảnh cắt nhanh
-                    with tab_image:
-                        st.write(t("attach_screenshot_help", locale=current_ui_locale))
-                        with st.form(f"wsc_img_upload_form_{active_conversation.id}"):
-                            img_files = st.file_uploader(
-                                t("select_or_paste_images", locale=current_ui_locale),
-                                type=["png", "jpg", "jpeg", "webp", "bmp"],
-                                key=f"wsc_img_upload_{active_conversation.id}_{st.session_state.wsc_upload_version}",
-                                accept_multiple_files=True,
-                            )
-                            img_privacy_choice = render_privacy_choice(f"wsc_img_tab_privacy_{active_conversation.id}")
-                            img_enable_now = st.checkbox(t("enable_images_for_question", locale=current_ui_locale), value=True, key=f"img_tab_enable_{active_conversation.id}")
-                            img_save_to_notebook = st.checkbox(t("save_permanently_to_notebook", locale=current_ui_locale), value=True, key=f"img_tab_save_{active_conversation.id}")
-                            if st.form_submit_button(t("btn_read_add_images", locale=current_ui_locale)):
-                                if not img_files:
-                                    st.error(t("select_at_least_one_image", locale=current_ui_locale))
-                                else:
-                                    _submit_workspace_upload(
-                                        img_files,
-                                        img_privacy_choice,
-                                        img_enable_now,
-                                        img_save_to_notebook,
-                                    )
 
                     with tab_upload:
                         st.write(t("upload_docs_help", locale=current_ui_locale))
@@ -2522,6 +2865,120 @@ else:
                         on_retry_all_failed=on_retry_all_failed_sources,
                         locale=current_ui_locale,
                     )
+
+                # Follow a new answer to the bottom like modern chat products,
+                # but do not pull a reader away from older history on later reruns.
+                latest_answer = next((m for m in reversed(messages) if m.role == "assistant"), None)
+                # Version this key whenever the scroll host changes, so an
+                # already-open browser retries the corrected behaviour once.
+                auto_scroll_key = f"wsc_auto_scrolled_answer_v3_{active_conversation.id}"
+                if latest_answer and st.session_state.get(auto_scroll_key) != latest_answer.id:
+                    st.session_state[auto_scroll_key] = latest_answer.id
+                    st.html(
+                        """
+                        <script>
+                        (function () {
+                          // st.html can run in a child document.  The browser's
+                          // visible scrollbar belongs to Streamlit's parent page.
+                          const hostWindow = window.parent && window.parent !== window
+                            ? window.parent
+                            : window;
+                          const hostDocument = hostWindow.document;
+                          const scrollToLatest = function () {
+                            // Streamlit's visible conversation scrollbar is on
+                            // section.stMain, not document.scrollingElement.
+                            const mainPane = hostDocument.querySelector('section.stMain');
+                            const page = hostDocument.scrollingElement || hostDocument.documentElement;
+                            const target = mainPane && mainPane.scrollHeight > mainPane.clientHeight
+                              ? mainPane
+                              : page;
+                            target.scrollTo({ top: target.scrollHeight, behavior: "smooth" });
+                          };
+                          hostWindow.requestAnimationFrame(function () {
+                            scrollToLatest();
+                            // Wait for images/expanders to finish sizing before
+                            // the final scroll, matching modern chat behaviour.
+                            hostWindow.setTimeout(scrollToLatest, 280);
+                          });
+                        }());
+                        </script>
+                        """,
+                        unsafe_allow_javascript=True,
+                    )
+
+                # A modern chat affordance: when the reader scrolls away from
+                # the latest response, offer a compact, immediate jump back.
+                # It is client-side only, so clicking it never reruns the app.
+                jump_latest_label = t("jump_to_latest", locale=current_ui_locale)
+                st.html(
+                    f"""
+                    <style>
+                    #wsc-jump-latest {{
+                        position: fixed;
+                        right: 1.25rem;
+                        bottom: 1.25rem;
+                        z-index: 1002;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        width: 52px;
+                        height: 52px;
+                        padding: 0;
+                        color: #f8fafc;
+                        background: rgba(30, 41, 59, 0.96);
+                        border: 1px solid rgba(148, 163, 184, 0.52);
+                        border-radius: 16px;
+                        box-shadow: 0 10px 26px rgba(0, 0, 0, 0.32);
+                        cursor: pointer;
+                        transition: transform 140ms ease, background 140ms ease;
+                    }}
+                    #wsc-jump-latest:hover {{
+                        background: #2563eb;
+                        transform: translateY(-2px);
+                    }}
+                    #wsc-jump-latest span {{
+                        font-size: 31px;
+                        font-weight: 700;
+                        line-height: 1;
+                        transform: translateY(-2px);
+                    }}
+                    </style>
+                    <button id="wsc-jump-latest" type="button" title="{jump_latest_label}" aria-label="{jump_latest_label}">
+                      <span aria-hidden="true">⇣</span>
+                    </button>
+                    <script>
+                    (function () {{
+                      const hostWindow = window.parent && window.parent !== window ? window.parent : window;
+                      const hostDocument = hostWindow.document;
+                      const button = hostDocument.getElementById('wsc-jump-latest');
+                      const getScroller = function () {{
+                        return hostDocument.querySelector('section.stMain') || hostDocument.scrollingElement;
+                      }};
+                      const updateVisibility = function () {{
+                        const scroller = getScroller();
+                        if (!button || !scroller) return;
+                        const remaining = scroller.scrollHeight - scroller.clientHeight - scroller.scrollTop;
+                        button.hidden = remaining < 72;
+                      }};
+                      const scrollToLatest = function () {{
+                        const scroller = getScroller();
+                        if (!scroller) return;
+                        scroller.scrollTo({{ top: scroller.scrollHeight, behavior: 'smooth' }});
+                        hostWindow.setTimeout(updateVisibility, 320);
+                      }};
+                      if (!button) return;
+                      button.onclick = scrollToLatest;
+                      const scroller = getScroller();
+                      if (scroller && hostWindow.__wscJumpLatestScrollHost !== scroller) {{
+                        hostWindow.__wscJumpLatestScrollHost = scroller;
+                        scroller.addEventListener('scroll', updateVisibility, {{ passive: true }});
+                      }}
+                      updateVisibility();
+                    }}());
+                    </script>
+                    """,
+                    unsafe_allow_javascript=True,
+                )
 
             def _render_workspace_results_and_evidence():
                 last_assistant_msg = next((m for m in reversed(messages) if m.role == "assistant"), None)

@@ -366,45 +366,96 @@ def render_chat_bubble(
                 msg_key_id = msg.id or trace_id_str
                 state_key = f"wsc_show_graph_{msg_key_id}"
 
-                # Check session state for open/closed status
-                session_state = getattr(st, "session_state", {})
-                is_open = bool(session_state.get(state_key, False))
+                # Keep this expensive canvas out of the page-wide rerun path.
+                # A fragment reruns only the graph controls, so closing does
+                # not rebuild the whole conversation and source library.
+                trace_cache_key = f"wsc_evidence_trace_{trace_id_str}"
 
-                if not is_open:
-                    btn_view_label = t("btn_view_evidence_graph", locale=locale)
-                    if st.button(btn_view_label, key=f"btn_view_graph_{msg_key_id}"):
-                        if hasattr(st, "session_state"):
-                            st.session_state[state_key] = True
-                        loader = trace_loader or load_evidence_trace
+                def _load_trace_once() -> Optional[EvidenceTrace]:
+                    session_state = getattr(st, "session_state", {})
+                    cached_trace = session_state.get(trace_cache_key)
+                    if cached_trace is not None:
+                        return cached_trace
+                    loader = trace_loader or load_evidence_trace
+                    try:
+                        trace = loader(trace_id_str)
+                    except Exception:
                         trace = None
-                        try:
-                            trace = loader(trace_id_str)
-                        except Exception:
-                            trace = None
+                    if trace is not None and hasattr(st, "session_state"):
+                        st.session_state[trace_cache_key] = trace
+                    return trace
 
-                        if trace is not None:
-                            render_evidence_graph_streamlit(trace, locale=locale)
-                        else:
-                            st.warning(t("evidence_trace_not_found", locale=locale))
-                else:
-                    btn_hide_label = t("btn_hide_evidence_graph", locale=locale)
-                    if st.button(btn_hide_label, key=f"btn_hide_graph_{msg_key_id}"):
+                def _install_instant_graph_close_hook() -> None:
+                    """Remove the rendered iframe at pointer-down, before Streamlit updates."""
+                    if not hasattr(st, "html"):
+                        return
+                    st.html(
+                        f"""
+                        <script>
+                        (function () {{
+                          const hostWindow = window.parent && window.parent !== window ? window.parent : window;
+                          const hostDocument = hostWindow.document;
+                          const button = hostDocument.querySelector(
+                            '[class*="st-key-btn_hide_graph_{msg_key_id}"] button'
+                          );
+                          if (!button || button.dataset.wscInstantGraphClose === 'true') return;
+                          button.dataset.wscInstantGraphClose = 'true';
+                          button.addEventListener('pointerdown', function () {{
+                            const bubble = button.closest('[data-testid="stChatMessage"]');
+                            if (!bubble) return;
+                            bubble.querySelectorAll('iframe').forEach(function (frame) {{
+                              const slot = frame.closest('[data-testid="stElementContainer"]') || frame.parentElement;
+                              // React owns this element. Hide it instantly;
+                              // Streamlit will remove it safely on rerun.
+                              if (slot) slot.style.display = 'none';
+                            }});
+                          }}, {{ passive: true }});
+                        }}());
+                        </script>
+                        """,
+                        unsafe_allow_javascript=True,
+                    )
+
+                def _render_graph_control() -> None:
+                    session_state = getattr(st, "session_state", {})
+                    is_open = bool(session_state.get(state_key, False))
+                    if not is_open:
+                        if st.button(
+                            t("btn_view_evidence_graph", locale=locale),
+                            key=f"btn_view_graph_{msg_key_id}",
+                        ):
+                            if hasattr(st, "session_state"):
+                                st.session_state[state_key] = True
+                            # Keep the established bare-mode contract for
+                            # unit tests; a real Streamlit session reruns to
+                            # replace the opener with the close control.
+                            if isinstance(getattr(st, "session_state", None), dict):
+                                trace = _load_trace_once()
+                                if trace is not None:
+                                    render_evidence_graph_streamlit(trace, locale=locale)
+                                else:
+                                    st.warning(t("evidence_trace_not_found", locale=locale))
+                            else:
+                                st.rerun()
+                        return
+
+                    if st.button(
+                        t("btn_hide_evidence_graph", locale=locale),
+                        key=f"btn_hide_graph_{msg_key_id}",
+                    ):
                         if hasattr(st, "session_state"):
                             st.session_state[state_key] = False
-                        if hasattr(st, "rerun"):
-                            st.rerun()
-                    else:
-                        loader = trace_loader or load_evidence_trace
-                        trace = None
-                        try:
-                            trace = loader(trace_id_str)
-                        except Exception:
-                            trace = None
+                        st.rerun()
+                        return
 
-                        if trace is not None:
-                            render_evidence_graph_streamlit(trace, locale=locale)
-                        else:
-                            st.warning(t("evidence_trace_not_found", locale=locale))
+                    trace = _load_trace_once()
+                    if trace is not None:
+                        render_evidence_graph_streamlit(trace, locale=locale)
+                        _install_instant_graph_close_hook()
+                    else:
+                        st.warning(t("evidence_trace_not_found", locale=locale))
+
+                _render_graph_control()
     else:
         st.info(msg.content)
 

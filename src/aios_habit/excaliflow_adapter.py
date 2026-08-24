@@ -17,6 +17,7 @@ from enum import Enum
 import html
 import json
 import logging
+import re
 from typing import Any, Dict, List, Optional, Union
 
 from aios_habit.evidence_graph_viewer import (
@@ -52,6 +53,159 @@ def _scene_text_lines(value: str, line_size: int, max_lines: int) -> List[str]:
     """Split Latin and CJK labels predictably without depending on browser wrap."""
     text = _compact_scene_text(value, line_size * max_lines)
     return [text[index:index + line_size] for index in range(0, len(text), line_size)][:max_lines] or ["—"]
+
+
+def _atlas_label_lines(value: Any) -> List[str]:
+    """Fit one Atlas node label inside its card, including CJK filenames."""
+    text = " ".join(str(value or "").split()) or "-"
+    contains_wide_chars = any(ord(char) >= 0x2E80 for char in text)
+    line_limit = 18 if contains_wide_chars else 30
+    lines: List[str] = []
+    remaining = text
+    while remaining and len(lines) < 2:
+        if len(remaining) <= line_limit:
+            lines.append(remaining)
+            remaining = ""
+            break
+        split_at = remaining.rfind(" ", 0, line_limit + 1)
+        if split_at < max(5, line_limit // 2):
+            split_at = line_limit
+        lines.append(remaining[:split_at].rstrip())
+        remaining = remaining[split_at:].lstrip()
+    if remaining:
+        lines[-1] = f"{lines[-1][:max(1, line_limit - 3)].rstrip()}..."
+    return lines or ["-"]
+
+
+def _atlas_relation_label(relation: Any) -> str:
+    labels = {
+        "supports": "dẫn chứng cho",
+        "cites": "trích từ",
+        "extracted_from": "trích từ",
+        "derived_from": "suy ra từ",
+        "mentions": "liên quan tới",
+    }
+    raw = str(relation or "liên kết")
+    return labels.get(raw, raw.replace("_", " "))
+
+
+def _atlas_positions(graph: Dict[str, Any]) -> Dict[str, tuple[int, int]]:
+    """Mirror the upstream Atlas grid so edge labels stay aligned with cards."""
+    groups: Dict[str, List[Dict[str, Any]]] = defaultdict(list)
+    for node in graph.get("nodes", []):
+        groups[str(node.get("type", ""))].append(node)
+    positions: Dict[str, tuple[int, int]] = {}
+    y = 75
+    for node_type in ("answer", "claim", "entity", "code", "chunk", "document", "case"):
+        items = groups[node_type]
+        if not items:
+            continue
+        columns = min(3, len(items))
+        for index, node in enumerate(items):
+            positions[str(node["id"])] = (70 + (index % columns) * 335, y + (index // columns) * 140)
+        y += ((len(items) + columns - 1) // columns) * 140 + 55
+    return positions
+
+
+def _polish_evidence_atlas_html(atlas_html: str, graph: Dict[str, Any]) -> str:
+    """Repair interaction and readability shortcomings in upstream Atlas HTML."""
+    def replace_label(match: re.Match[str]) -> str:
+        x, y = match.group("x"), match.group("y")
+        lines = _atlas_label_lines(html.unescape(match.group("label")))
+        tspans = "".join(
+            f'<tspan x="{x}" dy="{0 if index == 0 else 17}">{html.escape(line)}</tspan>'
+            for index, line in enumerate(lines)
+        )
+        return f'{match.group("open")}{tspans}</text>'
+
+    atlas_html = re.sub(
+        r'(?P<open><text class="node-label" x="(?P<x>[^"]+)" y="(?P<y>[^"]+)">)(?P<label>.*?)</text>',
+        replace_label,
+        atlas_html,
+    )
+    atlas_html = atlas_html.replace('<line class="edge', '<line marker-end="url(#atlas-arrow)" class="edge')
+    atlas_html = re.sub(
+        r'(<svg\b[^>]*>)',
+        r'\1<defs><marker id="atlas-arrow" markerWidth="9" markerHeight="7" refX="8" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7" fill="none" stroke="#6e7b86" stroke-width="1.4"/></marker></defs>',
+        atlas_html,
+        count=1,
+    )
+    positions = _atlas_positions(graph)
+    edge_labels = []
+    for edge in graph.get("edges", []):
+        start, end = positions.get(str(edge.get("from"))), positions.get(str(edge.get("to")))
+        if not start or not end:
+            continue
+        label = html.escape(_atlas_relation_label(edge.get("relation")))
+        x = (start[0] + end[0]) // 2 + 130
+        y = (start[1] + end[1]) // 2 + 42
+        width = min(136, max(74, 14 + len(label) * 6))
+        edge_labels.append(
+            f'<g class="edge-label"><rect x="{x - width // 2}" y="{y - 11}" width="{width}" height="20" rx="8"/>'
+            f'<text x="{x}" y="{y + 3}" text-anchor="middle">{label}</text></g>'
+        )
+    atlas_html = atlas_html.replace("</svg>", "".join(edge_labels) + "</svg>", 1)
+    atlas_html = atlas_html.replace(
+        ".edge{stroke:#a6afb5;stroke-width:2;opacity:.34}",
+        ".edge{stroke:#6e7b86;stroke-width:2.2;opacity:.62}.edge-label rect{fill:#fffdf9;stroke:#c8d0d5;stroke-width:1}.edge-label text{font-size:10px;font-weight:700;fill:#53616d}",
+    )
+    atlas_html = atlas_html.replace("document.querySelectorAll('[data-view]')", "document.querySelectorAll('button[data-view]')")
+    atlas_html = atlas_html.replace(
+        "<span class=\"legend\">Bấm một khối hoặc đường nối để xem biên lai bằng chứng.</span>",
+        '<span id="atlas-view-status" class="legend" aria-live="polite">Đang xem: Câu trả lời &amp; nguồn</span>',
+    )
+    atlas_html = atlas_html.replace(
+        "document.body.dataset.view=button.dataset.view;document.querySelectorAll('button[data-view]').forEach(item=>item.classList.toggle('active',item===button));",
+        "document.body.dataset.view=button.dataset.view;document.querySelectorAll('button[data-view]').forEach(item=>item.classList.toggle('active',item===button));document.getElementById('atlas-view-status').textContent=button.dataset.view==='full'?'Đang xem: Toàn bộ knowledge graph':'Đang xem: Câu trả lời & nguồn';",
+    )
+    # The upstream page currently emits literal line breaks inside JS
+    # single-quoted strings, making its entire interaction script invalid.
+    # Install an independent, syntax-safe controller after that script.
+    payload = json.dumps(graph, ensure_ascii=False).replace("</", "<\\/")
+    controller = f"""
+<script>
+(() => {{
+  const DATA = {payload};
+  const nodeById = Object.fromEntries(DATA.nodes.map(node => [node.id, node]));
+  const edgeById = Object.fromEntries(DATA.edges.map(edge => [edge.id, edge]));
+  const status = document.getElementById('atlas-view-status');
+  const detailTitle = document.getElementById('detail-title');
+  const detail = document.getElementById('detail');
+  const setView = (view) => {{
+    document.body.dataset.view = view;
+    document.querySelectorAll('button[data-view]').forEach(button => {{
+      button.classList.toggle('active', button.dataset.view === view);
+    }});
+    if (status) status.textContent = view === 'full'
+      ? 'Đang xem: Toàn bộ knowledge graph'
+      : 'Đang xem: Câu trả lời & nguồn';
+  }};
+  document.querySelectorAll('button[data-view]').forEach(button => {{
+    button.addEventListener('click', () => setView(button.dataset.view));
+  }});
+  document.querySelectorAll('[data-node]').forEach(element => {{
+    element.addEventListener('click', () => {{
+      const node = nodeById[element.dataset.node];
+      if (!node || !detailTitle || !detail) return;
+      detailTitle.textContent = node.label;
+      detail.textContent = `Loại: ${{node.type}}\n\n${{node.properties?.location || node.properties?.source_id || 'Bấm các đường nối để xem quan hệ và nguồn.'}}`;
+    }});
+  }});
+  document.querySelectorAll('[data-edge]').forEach(element => {{
+    element.addEventListener('click', () => {{
+      const edge = edgeById[element.dataset.edge];
+      if (!edge || !detailTitle || !detail) return;
+      detailTitle.textContent = edge.relation.replaceAll('_', ' ');
+      const source = nodeById[edge.from]?.label || edge.from;
+      const target = nodeById[edge.to]?.label || edge.to;
+      const locations = (edge.receipts || []).map(item => item.location).filter(Boolean).join(', ');
+      detail.textContent = `${{source}} -> ${{target}}${{locations ? `\n\nVị trí: ${{locations}}` : ''}}`;
+    }});
+  }});
+}})();
+</script>"""
+    atlas_html = atlas_html.replace("</body>", controller + "</body>", 1)
+    return atlas_html
 
 
 def _build_evidence_scene_layout(view_model: EvidenceGraphViewModel) -> tuple[List[Dict[str, Any]], List[Dict[str, Any]], int, int]:
@@ -338,7 +492,7 @@ class ExcaliFlowAdapter:
 
         canonical = self.to_canonical_excaliflow_trace(trace_or_dict)
         graph = ek.graph_from_rag_trace(canonical)
-        return ea.build_evidence_atlas_html(graph)
+        return _polish_evidence_atlas_html(ea.build_evidence_atlas_html(graph), graph)
 
     def render_trace_html(
         self,

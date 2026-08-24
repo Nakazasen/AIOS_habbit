@@ -831,9 +831,9 @@ def test_phase2h_no_radio_no_consent_checkbox_in_sidebar():
 def test_phase2h_ask_button_explicit():
     """Phase 2H requires explicit button for AI action."""
     app_source = Path("src/aios_habit/workspace_chat_app.py").read_text(encoding="utf-8")
-    assert "wsc_ai_ask_form" in app_source
     assert "ask_submitted" in app_source
-    assert "check_submitted" not in app_source
+    assert 'key=f"wsc_ask_{active_conversation.id}"' in app_source
+    assert "__wscComposerShortcutBound" in app_source
     # st.chat_input auto-submit must not be used for AI calls
     assert "st.chat_input" not in app_source
 
@@ -879,7 +879,7 @@ def test_phase2i_source_creation_forms_call_production_helpers_with_privacy_choi
     assert "quick_privacy_choice = render_privacy_choice" in quick_block
     assert "_submit_pasted_source" in quick_block
     assert "quick_privacy_choice" in quick_block
-    paste_block = app_source[app_source.index("paste_log_form"):app_source.index("tab_image", app_source.index("paste_log_form"))]
+    paste_block = app_source[app_source.index("paste_log_form"):app_source.index("with tab_upload:", app_source.index("paste_log_form"))]
     assert "paste_privacy_choice = render_privacy_choice" in paste_block
     assert "_submit_pasted_source" in paste_block
     assert "paste_privacy_choice" in paste_block

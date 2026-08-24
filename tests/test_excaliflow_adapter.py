@@ -218,6 +218,19 @@ def test_render_excalidraw_scene_html_is_local_and_interactive(sample_valid_trac
     assert "https://" not in html_out
 
 
+def test_evidence_atlas_has_working_view_tabs_wrapped_labels_and_edge_meaning(
+    sample_valid_trace: EvidenceTrace,
+) -> None:
+    adapter = ExcaliFlowAdapter()
+    html_out = adapter.render_evidence_atlas_html(sample_valid_trace, locale="vi")
+
+    assert "button[data-view]" in html_out
+    assert "atlas-view-status" in html_out
+    assert "marker-end=\"url(#atlas-arrow)\"" in html_out
+    assert 'class="edge-label"' in html_out
+    assert '<tspan x="' in html_out
+
+
 def test_export_excalidraw_scene_insufficient() -> None:
     """Verify export_excalidraw_scene handles insufficient evidence trace gracefully."""
     insuf_trace = EvidenceTrace(

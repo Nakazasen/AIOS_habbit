@@ -8,7 +8,8 @@ version = "0.1.0"
 description = "Local-first evidence-based personal memory platform"
 requires-python = ">=3.11, <3.12"
 dependencies = [
-    "streamlit>=1.30.0",
+    "streamlit>=1.60.0",
+    "streamlit-paste-button==0.1.2",
     "pandas>=2.0.0",
     "openpyxl>=3.1.0",
     "pymupdf4llm>=1.28.0",
