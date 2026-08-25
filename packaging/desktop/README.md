@@ -7,7 +7,7 @@ through Git LFS, while the BGE-M3 model artifact is supplied separately and
 verified before it is copied into a desktop bundle. The build includes:
 - Python runtime (>=3.11, <3.12)
 - Graphify in-process engine (`graphifyy==0.9.32`)
-- ExcaliFlow Studio in-process visual engine (`vendor/wheels/excaliflow-0.1.1-py3-none-any.whl`)
+- ExcaliFlow Studio in-process visual engine (`vendor/wheels/excaliflow-0.1.3-py3-none-any.whl`)
 - Nakazasen AI Router (`vendor/wheels/nakazasen_ai_router-0.8.0-py3-none-any.whl`)
 - CJK multi-locale font stack (Vietnamese, Japanese, Simplified Chinese)
 

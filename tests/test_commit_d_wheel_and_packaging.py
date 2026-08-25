@@ -36,17 +36,17 @@ class TestVendoredWheelsAndChecksums:
         assert manifest_file.exists(), "Missing vendor/wheels/checksums.json"
 
         data = json.loads(manifest_file.read_text(encoding="utf-8"))
-        assert "excaliflow-0.1.1-py3-none-any.whl" in data
+        assert "excaliflow-0.1.3-py3-none-any.whl" in data
         assert "nakazasen_ai_router-0.8.0-py3-none-any.whl" in data
 
     def test_excaliflow_wheel_checksum_matches(self) -> None:
         """Verify excaliflow wheel SHA-256 matches manifest."""
         manifest = json.loads((VENDOR_WHEELS_DIR / "checksums.json").read_text(encoding="utf-8"))
-        whl_path = VENDOR_WHEELS_DIR / "excaliflow-0.1.1-py3-none-any.whl"
+        whl_path = VENDOR_WHEELS_DIR / "excaliflow-0.1.3-py3-none-any.whl"
         assert whl_path.exists(), "Missing excaliflow wheel file"
 
         actual_sha = hashlib.sha256(whl_path.read_bytes()).hexdigest()
-        assert actual_sha == manifest["excaliflow-0.1.1-py3-none-any.whl"]["sha256"]
+        assert actual_sha == manifest["excaliflow-0.1.3-py3-none-any.whl"]["sha256"]
 
     def test_nakazasen_ai_router_wheel_checksum_matches(self) -> None:
         """Verify nakazasen_ai_router wheel SHA-256 matches manifest."""
@@ -70,7 +70,7 @@ class TestVendoredWheelsAndChecksums:
 
                 assert "launch_workspace_chat" in cli_content
                 assert "cmd_chat" in cli_content
-                assert "evidence_graph_tab_atlas" in viewer_content
+                assert "render_evidence_graph_streamlit" in viewer_content
                 assert "render_evidence_atlas_html" in viewer_content
                 assert "render_evidence_atlas_html" in adapter_content
 
@@ -132,7 +132,7 @@ class TestInProcessExcaliFlowIntegration:
     def test_excaliflow_module_imports_cleanly(self) -> None:
         """Verify import excaliflow succeeds and has correct version."""
         import excaliflow
-        assert getattr(excaliflow, "__version__", None) == "0.1.1"
+        assert getattr(excaliflow, "__version__", None) == "0.1.3"
 
     def test_excaliflow_submodules_available(self) -> None:
         """Verify excaliflow submodules (atlas, evidence_atlas, knowledge, explorer) import."""
@@ -153,9 +153,9 @@ class TestInProcessExcaliFlowIntegration:
         adapter = ExcaliFlowAdapter()
         caps = adapter.check_capabilities()
         assert caps.is_available is True
-        assert caps.renderer_version == "0.1.1"
+        assert caps.renderer_version == "0.1.3"
         assert caps.details.get("excaliflow_package_installed") is True
-        assert caps.details.get("excaliflow_version") == "0.1.1"
+        assert caps.details.get("excaliflow_version") == "0.1.3"
 
     def test_excaliflow_adapter_get_module(self) -> None:
         """Verify ExcaliFlowAdapter.get_excaliflow_module returns real module."""
@@ -163,7 +163,7 @@ class TestInProcessExcaliFlowIntegration:
 
         mod = ExcaliFlowAdapter.get_excaliflow_module()
         assert mod is not None
-        assert getattr(mod, "__version__", None) == "0.1.1"
+        assert getattr(mod, "__version__", None) == "0.1.3"
 
 
 class TestDependencyManifestLockIntegrity:
@@ -175,7 +175,7 @@ class TestDependencyManifestLockIntegrity:
         assert "git+https://" not in content, "git+https URLs must not be present in pyproject.toml"
         assert "git+http://" not in content
         assert "nakazasen-ai-router==0.8.0" in content
-        assert "excaliflow==0.1.1" in content
+        assert "excaliflow==0.1.3" in content
         assert "graphifyy==0.9.32" in content
 
     def test_uv_sources_configured_for_offline_wheels(self) -> None:
@@ -183,7 +183,7 @@ class TestDependencyManifestLockIntegrity:
         content = PYPROJECT_PATH.read_text(encoding="utf-8")
         assert "[tool.uv.sources]" in content
         assert "vendor/wheels/nakazasen_ai_router-0.8.0-py3-none-any.whl" in content
-        assert "vendor/wheels/excaliflow-0.1.1-py3-none-any.whl" in content
+        assert "vendor/wheels/excaliflow-0.1.3-py3-none-any.whl" in content
 
     def test_uv_lock_check_succeeds(self) -> None:
         """Verify uv lock --check passes with code 0."""

@@ -2,7 +2,7 @@
 """Build internal offline wheels for ExcaliFlow Studio and nakazasen-ai-router.
 
 Produces:
-  - vendor/wheels/excaliflow-0.1.1-py3-none-any.whl
+  - vendor/wheels/excaliflow-0.1.3-py3-none-any.whl
   - vendor/wheels/nakazasen_ai_router-0.8.0-py3-none-any.whl
   - vendor/wheels/checksums.json
 """
@@ -10,10 +10,12 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import shutil
 import zipfile
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 VENDOR_WHEELS_DIR = REPO_ROOT / "vendor" / "wheels"
+VENDOR_WHEELS_LINUX_DIR = REPO_ROOT / "vendor" / "wheels_linux"
 EXCALIFLOW_SRC_DIR = REPO_ROOT / ".agents" / "skills" / "excaliflow" / "src" / "excaliflow"
 SITE_PACKAGES_DIR = REPO_ROOT / ".venv" / "Lib" / "site-packages"
 
@@ -83,16 +85,28 @@ def make_wheel(
 def build_all() -> None:
     VENDOR_WHEELS_DIR.mkdir(parents=True, exist_ok=True)
 
-    # 1. Build excaliflow wheel
-    excaliflow_whl = VENDOR_WHEELS_DIR / "excaliflow-0.1.1-py3-none-any.whl"
+    # Clean old excaliflow 0.1.1 wheels
+    for old_whl in [
+        VENDOR_WHEELS_DIR / "excaliflow-0.1.1-py3-none-any.whl",
+        VENDOR_WHEELS_LINUX_DIR / "excaliflow-0.1.1-py3-none-any.whl",
+    ]:
+        if old_whl.exists():
+            old_whl.unlink()
+
+    # 1. Build excaliflow wheel v0.1.3
+    excaliflow_whl = VENDOR_WHEELS_DIR / "excaliflow-0.1.3-py3-none-any.whl"
     print(f"Building {excaliflow_whl.name}...")
     make_wheel(
         wheel_path=excaliflow_whl,
         dist_name="excaliflow",
-        version="0.1.1",
+        version="0.1.3",
         package_dirs={"excaliflow": EXCALIFLOW_SRC_DIR},
         summary="ExcaliFlow Studio in-process diagram and knowledge atlas package",
     )
+
+    # Sync to vendor/wheels_linux
+    if VENDOR_WHEELS_LINUX_DIR.exists():
+        shutil.copy2(excaliflow_whl, VENDOR_WHEELS_LINUX_DIR / excaliflow_whl.name)
 
     # 2. Build nakazasen-ai-router wheel
     router_src = SITE_PACKAGES_DIR / "nakazasen_ai_router"
@@ -106,23 +120,26 @@ def build_all() -> None:
         summary="AI Model routing and provider arbitration engine",
     )
 
-    # 3. Generate checksums.json
-    checksums: dict[str, dict] = {}
-    for whl in sorted(VENDOR_WHEELS_DIR.glob("*.whl")):
-        data = whl.read_bytes()
-        sha256 = hashlib.sha256(data).hexdigest()
-        sha512 = hashlib.sha512(data).hexdigest()
-        checksums[whl.name] = {
-            "filename": whl.name,
-            "size_bytes": len(data),
-            "sha256": sha256,
-            "sha512": sha512,
-            "built_for": "AIOS_habbit Commit D Offline Packaging",
-        }
+    # 3. Generate checksums.json for vendor/wheels
+    for target_dir in [VENDOR_WHEELS_DIR, VENDOR_WHEELS_LINUX_DIR]:
+        if not target_dir.exists():
+            continue
+        checksums: dict[str, dict] = {}
+        for whl in sorted(target_dir.glob("*.whl")):
+            data = whl.read_bytes()
+            sha256 = hashlib.sha256(data).hexdigest()
+            sha512 = hashlib.sha512(data).hexdigest()
+            checksums[whl.name] = {
+                "filename": whl.name,
+                "size_bytes": len(data),
+                "sha256": sha256,
+                "sha512": sha512,
+                "built_for": "AIOS_habbit Commit D Offline Packaging",
+            }
 
-    manifest_file = VENDOR_WHEELS_DIR / "checksums.json"
-    manifest_file.write_text(json.dumps(checksums, indent=2, ensure_ascii=False), encoding="utf-8")
-    print(f"Generated {manifest_file} with {len(checksums)} entries.")
+        manifest_file = target_dir / "checksums.json"
+        manifest_file.write_text(json.dumps(checksums, indent=2, ensure_ascii=False), encoding="utf-8")
+        print(f"Generated {manifest_file} with {len(checksums)} entries.")
 
 
 if __name__ == "__main__":
