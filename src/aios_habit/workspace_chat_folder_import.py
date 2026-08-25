@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import os
 import re
+import hashlib
+import json
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
@@ -16,6 +18,7 @@ from aios_habit.workspace_chat_source_ingest import (
     ingest_and_extract_bytes,
 )
 from aios_habit.workspace_chat_store import (
+    LOCAL_CHAT_DIR,
     promote_temporary_source_to_notebook,
     save_temporary_source,
     set_source_enabled,
@@ -32,7 +35,9 @@ SUPPORTED_DOCUMENT_EXTENSIONS: set[str] = {
     ".xlsx",
     ".xls",
     ".xlsm",
+    ".ppt",
     ".pptx",
+    ".msg",
     ".txt",
     ".md",
     ".markdown",
@@ -68,6 +73,78 @@ IGNORED_DIR_NAMES: set[str] = {
 
 MAX_FOLDER_SCAN_FILES: int = 10000
 MAX_BATCH_FILE_SIZE_BYTES: int = MAX_UPLOAD_BYTES  # 10 MB default
+FOLDER_IMPORT_PROGRESS_FILE = Path(LOCAL_CHAT_DIR) / "folder_import_progress.json"
+
+
+def _folder_file_key_from_parts(path: Union[Path, str], size_bytes: int, modified_time_ns: int) -> str:
+    # ``Path.resolve`` can issue a costly network lookup for every file on a
+    # UNC share.  The scanner already supplies absolute paths, so a normalized
+    # lexical path is stable enough here and keeps resume responsive on shares.
+    normalized_path = os.path.normcase(os.path.abspath(os.fspath(path)))
+    raw = f"{normalized_path}|{size_bytes}|{modified_time_ns}".encode("utf-8", "surrogatepass")
+    return hashlib.sha256(raw).hexdigest()
+
+
+def _folder_file_key(path: Path) -> str:
+    stat = path.stat()
+    return _folder_file_key_from_parts(path, stat.st_size, stat.st_mtime_ns)
+
+
+def _scanned_file_key(item: "ScannedFileInfo") -> str:
+    """Build a resume key from data already gathered during the directory scan."""
+    return _folder_file_key_from_parts(item.path, item.size_bytes, item.modified_time_ns)
+
+
+def _load_completed_folder_files() -> set[str]:
+    try:
+        value = json.loads(FOLDER_IMPORT_PROGRESS_FILE.read_text(encoding="utf-8"))
+        return set(value.get("completed", [])) if isinstance(value, dict) else set()
+    except (OSError, ValueError, TypeError):
+        return set()
+
+
+def _save_completed_folder_files(completed: set[str]) -> None:
+    FOLDER_IMPORT_PROGRESS_FILE.parent.mkdir(parents=True, exist_ok=True)
+    temporary = FOLDER_IMPORT_PROGRESS_FILE.with_suffix(".tmp")
+    temporary.write_text(json.dumps({"completed": sorted(completed)}, ensure_ascii=False), encoding="utf-8")
+    os.replace(temporary, FOLDER_IMPORT_PROGRESS_FILE)
+
+
+def count_completed_folder_files(files: Sequence[Union[ScannedFileInfo, Path, str]]) -> int:
+    completed = _load_completed_folder_files()
+    total = 0
+    for item in files:
+        try:
+            key = _scanned_file_key(item) if isinstance(item, ScannedFileInfo) else _folder_file_key(Path(item))
+            total += key in completed
+        except OSError:
+            pass
+    return total
+
+
+def seed_completed_folder_files_from_titles(
+    files: Sequence[ScannedFileInfo], existing_titles: Sequence[str],
+) -> int:
+    """Migrate pre-resume imports without guessing when a filename is duplicated."""
+    completed = _load_completed_folder_files()
+    titles = {str(title).strip().casefold() for title in existing_titles if str(title).strip()}
+    by_name: dict[str, list[ScannedFileInfo]] = {}
+    for item in files:
+        by_name.setdefault(item.filename.casefold(), []).append(item)
+    added = 0
+    for filename, matches in by_name.items():
+        if filename not in titles or len(matches) != 1:
+            continue
+        try:
+            key = _scanned_file_key(matches[0])
+        except OSError:
+            continue
+        if key not in completed:
+            completed.add(key)
+            added += 1
+    if added:
+        _save_completed_folder_files(completed)
+    return added
 
 
 def format_size_bytes(size_bytes: int) -> str:
@@ -149,6 +226,7 @@ class ScannedFileInfo:
     size_bytes: int
     modified_time: str
     is_supported: bool
+    modified_time_ns: int = 0
     unsupported_reason: str = ""
 
 
@@ -251,11 +329,13 @@ def scan_local_directory(
                 ext = file_full_path.suffix.lower()
                 size_bytes = 0
                 mtime_iso = ""
+                mtime_ns = 0
 
                 try:
                     st = file_full_path.stat()
                     size_bytes = st.st_size
                     mtime_iso = datetime.fromtimestamp(st.st_mtime).isoformat()
+                    mtime_ns = st.st_mtime_ns
                 except (OSError, PermissionError) as e:
                     unsupported_files.append(
                         ScannedFileInfo(
@@ -282,6 +362,7 @@ def scan_local_directory(
                         extension=ext,
                         size_bytes=size_bytes,
                         modified_time=mtime_iso,
+                        modified_time_ns=mtime_ns,
                         is_supported=True,
                         unsupported_reason="",
                     )
@@ -295,6 +376,7 @@ def scan_local_directory(
                         extension=ext,
                         size_bytes=size_bytes,
                         modified_time=mtime_iso,
+                        modified_time_ns=mtime_ns,
                         is_supported=False,
                         unsupported_reason="Định dạng chưa được hỗ trợ",
                     )
@@ -336,11 +418,13 @@ def scan_local_directory(
             ext = file_full_path.suffix.lower()
             size_bytes = 0
             mtime_iso = ""
+            mtime_ns = 0
 
             try:
                 st = file_full_path.stat()
                 size_bytes = st.st_size
                 mtime_iso = datetime.fromtimestamp(st.st_mtime).isoformat()
+                mtime_ns = st.st_mtime_ns
             except (OSError, PermissionError) as e:
                 unsupported_files.append(
                     ScannedFileInfo(
@@ -350,6 +434,7 @@ def scan_local_directory(
                         extension=ext,
                         size_bytes=0,
                         modified_time="",
+                        modified_time_ns=0,
                         is_supported=False,
                         unsupported_reason=f"Không thể đọc thông tin tập tin: {e}",
                     )
@@ -367,6 +452,7 @@ def scan_local_directory(
                     extension=ext,
                     size_bytes=size_bytes,
                     modified_time=mtime_iso,
+                    modified_time_ns=mtime_ns,
                     is_supported=True,
                     unsupported_reason="",
                 )
@@ -379,7 +465,8 @@ def scan_local_directory(
                     filename=fname,
                     extension=ext,
                     size_bytes=size_bytes,
-                    modified_time=mtime_iso,
+                        modified_time=mtime_iso,
+                        modified_time_ns=mtime_ns,
                     is_supported=False,
                     unsupported_reason="Định dạng chưa được hỗ trợ",
                 )
@@ -481,6 +568,7 @@ def ingest_scanned_files_batch(
     errors_by_file: Dict[str, str] = {}
     item_results: List[BatchIngestItemResult] = []
     has_truncated = False
+    completed = _load_completed_folder_files()
 
     for idx, item in enumerate(files):
         if isinstance(item, ScannedFileInfo):
@@ -497,6 +585,14 @@ def ingest_scanned_files_batch(
             relative_path = file_path.name
 
         display_name = relative_path if relative_path and relative_path != filename else filename
+        try:
+            file_key = _scanned_file_key(item) if isinstance(item, ScannedFileInfo) else _folder_file_key(file_path)
+        except OSError:
+            file_key = ""
+        if file_key and file_key in completed:
+            skipped_count += 1
+            item_results.append(BatchIngestItemResult(path=str(file_path), filename=filename, relative_path=relative_path, ok=True, error_code="already_imported", owner_message="Đã nhập trước đó, bỏ qua."))
+            continue
 
         if progress_callback:
             try:
@@ -648,6 +744,9 @@ def ingest_scanned_files_batch(
                     pass
 
             success_count += 1
+            if file_key:
+                completed.add(file_key)
+                _save_completed_folder_files(completed)
             success_files.append(display_name)
             if extract_res.get("metadata", {}).get("truncated"):
                 has_truncated = True

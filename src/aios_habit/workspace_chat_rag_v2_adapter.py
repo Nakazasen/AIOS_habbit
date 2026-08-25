@@ -1721,6 +1721,28 @@ def retry_workspace_chat_source_preparation(
     )
 
 
+def resume_workspace_chat_source_preparation(
+    context_sources: Iterable[WorkspaceAIContextSource],
+    *,
+    config: Optional[WorkspaceChatRagV2CanaryConfig] = None,
+) -> None:
+    """Wake a durable pending queue after an interrupted UI/session run."""
+    try:
+        resolved = config or WorkspaceChatRagV2CanaryConfig.from_env()
+    except Exception:
+        return
+    sources = tuple(source for source in context_sources if (source.text or "").strip())
+    reconcile_and_enqueue_workspace_chat_sources(sources, config=resolved)
+    if sources:
+        with _SOURCE_CACHE_LOCK:
+            for source in sources:
+                _SOURCE_CACHE[(source.source_scope, source.source_id)] = source
+        global _DRAIN_IS_RUNNING
+        with _DRAIN_RUNNING_LOCK:
+            _DRAIN_IS_RUNNING = False
+        schedule_workspace_chat_source_preparation(sources, config=resolved)
+
+
 def forget_workspace_chat_sources(
     context_sources: Iterable[WorkspaceAIContextSource],
     *,

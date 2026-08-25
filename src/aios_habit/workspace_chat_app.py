@@ -321,6 +321,8 @@ from aios_habit.workspace_chat_folder_import import (
     scan_local_directory,
     ingest_scanned_files_batch,
     format_size_bytes,
+    count_completed_folder_files,
+    seed_completed_folder_files_from_titles,
 )
 from aios_habit.local_folder_picker import choose_local_folder
 
@@ -542,6 +544,7 @@ from aios_habit.workspace_chat_rag_v2_adapter import (
     select_workspace_chat_preparation_scope,
     schedule_workspace_chat_source_preparation,
     retry_workspace_chat_source_preparation,
+    resume_workspace_chat_source_preparation,
     get_workspace_chat_source_preparation_status,
     get_workspace_chat_preparation_summary,
     get_workspace_chat_deep_search_availability,
@@ -2741,6 +2744,13 @@ else:
                                     st.metric(t("metric_unsupported_skipped", locale=current_ui_locale), len(current_scan.unsupported_files))
 
                                 if current_scan.supported_files:
+                                    existing_titles = [source.title for source in notebook_sources] + [source.title for source in temp_sources]
+                                    migrated_count = seed_completed_folder_files_from_titles(current_scan.supported_files, existing_titles)
+                                    already_imported = count_completed_folder_files(current_scan.supported_files)
+                                    if migrated_count:
+                                        st.info(f"Đã nhận diện {migrated_count} file nhập từ phiên bản trước và sẽ bỏ qua chúng.")
+                                    if already_imported:
+                                        st.info(f"Đã nhập {already_imported} file trước đó. AIOS sẽ tự bỏ qua chúng khi tiếp tục.")
                                     st.markdown(t("scanned_files_header", locale=current_ui_locale))
                                     table_data = [
                                         {
@@ -2760,7 +2770,8 @@ else:
                                     folder_enable_now = st.checkbox(t("use_docs_in_answer", locale=current_ui_locale), value=False, key=f"folder_enable_{active_conversation.id}")
                                     folder_save_to_notebook = st.checkbox(t("save_permanently_to_notebook", locale=current_ui_locale), value=True, key=f"folder_save_{active_conversation.id}")
 
-                                    if st.button(t("import_all_to_notebook", locale=current_ui_locale), type="primary", key=f"btn_ingest_{active_conversation.id}", use_container_width=True):
+                                    import_label = "▶ Tiếp tục nhập các file còn lại" if already_imported else t("import_all_to_notebook", locale=current_ui_locale)
+                                    if st.button(import_label, type="primary", key=f"btn_ingest_{active_conversation.id}", use_container_width=True):
                                         prog_bar = st.progress(0, text=t("start_ingesting_progress", locale=current_ui_locale))
                                         status_text = st.empty()
 
@@ -2789,6 +2800,8 @@ else:
                                             if folder_enable_now:
                                                 msg += " Nguồn mới đã được bật cho câu trả lời."
                                             st.session_state.wsc_action_message = msg
+                                        if batch_summary.skipped_count > 0:
+                                            st.session_state.wsc_action_message = (st.session_state.get("wsc_action_message", "") + f" Đã bỏ qua {batch_summary.skipped_count} file đã nhập.").strip()
 
                                         if batch_summary.fail_count > 0:
                                             st.session_state.wsc_action_error = f"Có {batch_summary.fail_count} tài liệu gặp lỗi khi trích xuất."
@@ -2843,6 +2856,11 @@ else:
 
                 # Always-visible single-line preparation progress banner outside expander
                 render_preparation_progress_bar(prep_summary, on_retry_all_failed=on_retry_all_failed_sources, locale=current_ui_locale)
+                if prep_summary.get("pending", 0) or prep_summary.get("processing", 0):
+                    if st.button("▶ Tiếp tục lập chỉ mục đang chờ", key="wsc_resume_pending_preparation", use_container_width=True):
+                        resume_workspace_chat_source_preparation(ctx_all_sources)
+                        st.session_state.wsc_action_message = "Đã khởi động lại hàng đợi lập chỉ mục cục bộ."
+                        safe_rerun()
 
                 with st.expander(
                     t("managing_sources_expander", locale=current_ui_locale, total=document_total, enabled=enabled_total),

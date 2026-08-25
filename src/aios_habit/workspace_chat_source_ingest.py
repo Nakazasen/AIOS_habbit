@@ -14,6 +14,7 @@ from aios_habit.workspace_chat_models import (
 )
 from aios_habit.workspace_chat_excel import extract_xlsx_text
 from aios_habit.document_extractors import extract_text_chunks_from_file
+from aios_habit.workspace_chat_legacy_extractors import extract_legacy_ppt, extract_outlook_msg
 
 MAX_UPLOAD_BYTES = 10 * 1024 * 1024  # 10 MB
 MANAGED_WORKBOOK_ROOT = Path.cwd() / "local_cases" / "workspace_chat" / "managed_workbooks"
@@ -214,7 +215,7 @@ def ingest_and_extract_bytes(
             }
 
     # Allowed complex document formats parsed via document_extractors
-    supported_complex_exts = {".pdf", ".docx", ".pptx", ".html", ".htm", ".png", ".jpg", ".jpeg", ".webp", ".bmp", ".tif", ".tiff"}
+    supported_complex_exts = {".pdf", ".docx", ".ppt", ".pptx", ".msg", ".html", ".htm", ".png", ".jpg", ".jpeg", ".webp", ".bmp", ".tif", ".tiff"}
     if ext not in supported_complex_exts:
         return {
             "ok": False,
@@ -238,6 +239,21 @@ def ingest_and_extract_bytes(
     try:
         with open(temp_path, "wb") as tmp:
             tmp.write(file_bytes)
+
+        if ext in {".ppt", ".msg"}:
+            text, error = extract_legacy_ppt(temp_path) if ext == ".ppt" else extract_outlook_msg(temp_path)
+            if not text:
+                return {
+                    "ok": False, "filename": safe_name, "error_code": "malformed",
+                    "owner_message": error, "text": "", "preview": "",
+                    "metadata": {"file_size_bytes": file_size, "extension": ext},
+                }
+            return {
+                "ok": True, "filename": safe_name, "error_code": None,
+                "owner_message": "Đã đọc và trích xuất thành công tài liệu.",
+                "text": text, "preview": text[:WORKSPACE_CHAT_SOURCE_PREVIEW_LIMIT],
+                "metadata": {"file_size_bytes": file_size, "extension": ext},
+            }
 
         # Call the existing document_extractors module
         chunks = extract_text_chunks_from_file(temp_path)
