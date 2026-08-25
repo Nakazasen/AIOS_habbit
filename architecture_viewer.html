@@ -3420,7 +3420,7 @@ globalThis["mermaid"] = globalThis.__esbuild_esm_mermaid_nm["mermaid"].default;
   "graphify_deps": {
     "title": "🔗 Mạng Lưới Phụ Thuộc & Quan Hệ Mô-Đun (Dependency Graph)",
     "desc": "Các nút trung tâm (God nodes) và liên kết phụ thuộc, luồng gọi hàm giữa các thành phần cốt lõi",
-    "code": "%%{init: {'theme': 'base', 'themeVariables': { 'primaryColor': '#ede9fe', 'primaryBorderColor': '#7c3aed', 'primaryTextColor': '#0f172a', 'secondaryColor': '#dcfce7', 'secondaryBorderColor': '#16a34a', 'secondaryTextColor': '#0f172a', 'lineColor': '#334155', 'fontSize': '14px' }, 'look': 'handDrawn'}}%%\nflowchart LR\n    src_aios_habit_workspace_chat_ai_answer_workspaceaicontextsource[\"⚙️ <b>WorkspaceAIContextSource</b>\"]\n    tests_test_workspace_chat_source_selection_owner_flow[\"⚙️ <b>test_workspace_chat_source_selection_owner_flow.py</b>\"]\n    src_aios_habit_workspace_chat_rag_v2_adapter[\"⚙️ <b>workspace_chat_rag_v2_adapter.py</b>\"]\n    scripts_battle_notebooklm_rag_v2_py_any[\"⚙️ <b>Any</b>\"]\n    src_aios_habit_rag_v2_evidence_build_evidence_pack[\"⚙️ <b>build_evidence_pack()</b>\"]\n    src_aios_habit_workspace_chat_ai_answer_generate_workspace_ai_answer[\"⚙️ <b>generate_workspace_ai_answer()</b>\"]\n    src_aios_habit_workspace_chat_app[\"⚙️ <b>workspace_chat_app.py</b>\"]\n    src_aios_habit_rag_v2_pipeline_ragv2devconfig[\"⚙️ <b>RagV2DevConfig</b>\"]\n    src_aios_habit_rag_v2_index_localchunkindex[\"⚙️ <b>LocalChunkIndex</b>\"]\n    src_aios_habit_workspace_chat_store[\"⚙️ <b>workspace_chat_store.py</b>\"]\n    scripts_battle_notebooklm_rag_v2_py_path[\"⚙️ <b>Path</b>\"]\n    src_aios_habit_rag_v2_pipeline_sourcespec[\"⚙️ <b>SourceSpec</b>\"]\n    src_aios_habit_workspace_chat_models_workspaceconversation[\"⚙️ <b>WorkspaceConversation</b>\"]\n    src_aios_habit_evidence_trace_schema_evidencetrace[\"⚙️ <b>EvidenceTrace</b>\"]\n    src_aios_habit_rag_v2_init[\"⚙️ <b>rag_v2/__init__.py</b>\"]\n    src_aios_habit_evidence_trace_schema_evidencenode[\"⚙️ <b>EvidenceNode</b>\"]\n    tests_test_workspace_chat_rag_v2_adapter[\"⚙️ <b>test_workspace_chat_rag_v2_adapter.py</b>\"]\n    scripts_battle_notebooklm_rag_v2_benchmarkerror[\"⚙️ <b>BenchmarkError</b>\"]\n    src_aios_habit_rag_v2_pipeline_ragv2devpipeline[\"⚙️ <b>RagV2DevPipeline</b>\"]\n    tests_test_workspace_chat_ai_answer[\"⚙️ <b>test_workspace_chat_ai_answer.py</b>\"]\n    src_aios_habit_excaliflow_adapter_excaliflowadapter[\"⚙️ <b>ExcaliFlowAdapter</b>\"]\n    scripts_battle_notebooklm_rag_v2[\"⚙️ <b>battle_notebooklm_rag_v2.py</b>\"]\n    src_aios_habit_ide_handoff_bridge_write_ide_handoff_bundle[\"⚙️ <b>write_ide_handoff_bundle()</b>\"]\n    src_aios_habit_i18n_t[\"⚙️ <b>t()</b>\"]\n    src_aios_habit_evidence_trace_schema_evidenceedge[\"⚙️ <b>EvidenceEdge</b>\"]\n    src_aios_habit_rag_v2_init -->|imports| src_aios_habit_rag_v2_index_localchunkindex\n    src_aios_habit_rag_v2_init -->|imports| src_aios_habit_rag_v2_evidence_build_evidence_pack\n    src_aios_habit_rag_v2_init -->|imports| src_aios_habit_rag_v2_pipeline_ragv2devconfig\n    src_aios_habit_rag_v2_init -->|imports| src_aios_habit_rag_v2_pipeline_ragv2devpipeline\n    src_aios_habit_rag_v2_init -->|imports| src_aios_habit_rag_v2_pipeline_sourcespec\n    src_aios_habit_workspace_chat_app -->|imports| src_aios_habit_workspace_chat_models_workspaceconversation\n    src_aios_habit_workspace_chat_app -->|imports| src_aios_habit_workspace_chat_ai_answer_generate_workspace_ai_answer\n    src_aios_habit_workspace_chat_app -->|imports| src_aios_habit_workspace_chat_ai_answer_workspaceaicontextsource\n    src_aios_habit_workspace_chat_app -->|imports| src_aios_habit_i18n_t\n    src_aios_habit_workspace_chat_app -->|imports| src_aios_habit_ide_handoff_bridge_write_ide_handoff_bundle\n    src_aios_habit_workspace_chat_rag_v2_adapter -->|imports| src_aios_habit_rag_v2_pipeline_ragv2devconfig\n    src_aios_habit_workspace_chat_rag_v2_adapter -->|imports| src_aios_habit_rag_v2_pipeline_ragv2devpipeline\n    src_aios_habit_workspace_chat_rag_v2_adapter -->|imports| src_aios_habit_rag_v2_pipeline_sourcespec\n    src_aios_habit_workspace_chat_rag_v2_adapter -->|imports| src_aios_habit_workspace_chat_ai_answer_workspaceaicontextsource\n    src_aios_habit_workspace_chat_store -->|imports| src_aios_habit_workspace_chat_models_workspaceconversation\n    src_aios_habit_workspace_chat_store -->|imports| src_aios_habit_evidence_trace_schema_evidencetrace\n    tests_test_workspace_chat_rag_v2_adapter -->|imports| src_aios_habit_workspace_chat_rag_v2_adapter\n    tests_test_workspace_chat_source_selection_owner_flow -->|imports| src_aios_habit_workspace_chat_store\n    scripts_battle_notebooklm_rag_v2 -->|imports_from| src_aios_habit_workspace_chat_rag_v2_adapter\n    src_aios_habit_workspace_chat_app -->|imports_from| src_aios_habit_workspace_chat_store\n    src_aios_habit_workspace_chat_app -->|imports_from| src_aios_habit_workspace_chat_rag_v2_adapter\n    scripts_battle_notebooklm_rag_v2 -->|contains| scripts_battle_notebooklm_rag_v2_benchmarkerror\n    src_aios_habit_excaliflow_adapter_excaliflowadapter -->|uses| src_aios_habit_evidence_trace_schema_evidencetrace\n    src_aios_habit_rag_v2_pipeline_ragv2devpipeline -->|uses| src_aios_habit_rag_v2_index_localchunkindex"
+    "code": "%%{init: {'theme': 'base', 'themeVariables': { 'primaryColor': '#ede9fe', 'primaryBorderColor': '#7c3aed', 'primaryTextColor': '#0f172a', 'secondaryColor': '#dcfce7', 'secondaryBorderColor': '#16a34a', 'secondaryTextColor': '#0f172a', 'lineColor': '#334155', 'fontSize': '14px' }, 'look': 'handDrawn'}}%%\nflowchart LR\n    src_aios_habit_rag_v2_init[\"⚙️ <b>rag_v2/__init__.py</b>\"]\n    scripts_battle_notebooklm_rag_v2_py_any[\"⚙️ <b>Any</b>\"]\n    src_aios_habit_rag_v2_pipeline_ragv2devpipeline[\"⚙️ <b>RagV2DevPipeline</b>\"]\n    scripts_battle_notebooklm_rag_v2_benchmarkerror[\"⚙️ <b>BenchmarkError</b>\"]\n    src_aios_habit_workspace_chat_models_workspaceconversation[\"⚙️ <b>WorkspaceConversation</b>\"]\n    src_aios_habit_workspace_chat_rag_v2_adapter[\"⚙️ <b>workspace_chat_rag_v2_adapter.py</b>\"]\n    src_aios_habit_rag_v2_pipeline_sourcespec[\"⚙️ <b>SourceSpec</b>\"]\n    src_aios_habit_workspace_chat_app[\"⚙️ <b>workspace_chat_app.py</b>\"]\n    src_aios_habit_workspace_chat_ai_answer_generate_workspace_ai_answer[\"⚙️ <b>generate_workspace_ai_answer()</b>\"]\n    src_aios_habit_i18n_t[\"⚙️ <b>t()</b>\"]\n    src_aios_habit_evidence_trace_schema_evidenceedge[\"⚙️ <b>EvidenceEdge</b>\"]\n    tests_test_workspace_chat_ai_answer[\"⚙️ <b>test_workspace_chat_ai_answer.py</b>\"]\n    scripts_battle_notebooklm_rag_v2[\"⚙️ <b>battle_notebooklm_rag_v2.py</b>\"]\n    src_aios_habit_workspace_chat_store[\"⚙️ <b>workspace_chat_store.py</b>\"]\n    src_aios_habit_excaliflow_adapter_excaliflowadapter[\"⚙️ <b>ExcaliFlowAdapter</b>\"]\n    src_aios_habit_evidence_trace_schema_evidencetrace[\"⚙️ <b>EvidenceTrace</b>\"]\n    src_aios_habit_rag_v2_evidence_build_evidence_pack[\"⚙️ <b>build_evidence_pack()</b>\"]\n    src_aios_habit_rag_v2_index_localchunkindex[\"⚙️ <b>LocalChunkIndex</b>\"]\n    src_aios_habit_ide_handoff_bridge_write_ide_handoff_bundle[\"⚙️ <b>write_ide_handoff_bundle()</b>\"]\n    tests_test_workspace_chat_source_selection_owner_flow[\"⚙️ <b>test_workspace_chat_source_selection_owner_flow.py</b>\"]\n    src_aios_habit_workspace_chat_ai_answer_workspaceaicontextsource[\"⚙️ <b>WorkspaceAIContextSource</b>\"]\n    src_aios_habit_rag_v2_pipeline_ragv2devconfig[\"⚙️ <b>RagV2DevConfig</b>\"]\n    tests_test_workspace_chat_rag_v2_adapter[\"⚙️ <b>test_workspace_chat_rag_v2_adapter.py</b>\"]\n    scripts_battle_notebooklm_rag_v2_py_path[\"⚙️ <b>Path</b>\"]\n    src_aios_habit_evidence_trace_schema_evidencenode[\"⚙️ <b>EvidenceNode</b>\"]\n    src_aios_habit_rag_v2_init -->|imports| src_aios_habit_rag_v2_index_localchunkindex\n    src_aios_habit_rag_v2_init -->|imports| src_aios_habit_rag_v2_evidence_build_evidence_pack\n    src_aios_habit_rag_v2_init -->|imports| src_aios_habit_rag_v2_pipeline_ragv2devconfig\n    src_aios_habit_rag_v2_init -->|imports| src_aios_habit_rag_v2_pipeline_ragv2devpipeline\n    src_aios_habit_rag_v2_init -->|imports| src_aios_habit_rag_v2_pipeline_sourcespec\n    src_aios_habit_workspace_chat_app -->|imports| src_aios_habit_workspace_chat_models_workspaceconversation\n    src_aios_habit_workspace_chat_app -->|imports| src_aios_habit_workspace_chat_ai_answer_generate_workspace_ai_answer\n    src_aios_habit_workspace_chat_app -->|imports| src_aios_habit_workspace_chat_ai_answer_workspaceaicontextsource\n    src_aios_habit_workspace_chat_app -->|imports| src_aios_habit_i18n_t\n    src_aios_habit_workspace_chat_app -->|imports| src_aios_habit_ide_handoff_bridge_write_ide_handoff_bundle\n    src_aios_habit_workspace_chat_rag_v2_adapter -->|imports| src_aios_habit_rag_v2_pipeline_ragv2devconfig\n    src_aios_habit_workspace_chat_rag_v2_adapter -->|imports| src_aios_habit_rag_v2_pipeline_ragv2devpipeline\n    src_aios_habit_workspace_chat_rag_v2_adapter -->|imports| src_aios_habit_rag_v2_pipeline_sourcespec\n    src_aios_habit_workspace_chat_rag_v2_adapter -->|imports| src_aios_habit_workspace_chat_ai_answer_workspaceaicontextsource\n    src_aios_habit_workspace_chat_store -->|imports| src_aios_habit_workspace_chat_models_workspaceconversation\n    src_aios_habit_workspace_chat_store -->|imports| src_aios_habit_evidence_trace_schema_evidencetrace\n    tests_test_workspace_chat_rag_v2_adapter -->|imports| src_aios_habit_workspace_chat_rag_v2_adapter\n    tests_test_workspace_chat_source_selection_owner_flow -->|imports| src_aios_habit_workspace_chat_store\n    scripts_battle_notebooklm_rag_v2 -->|imports_from| src_aios_habit_workspace_chat_rag_v2_adapter\n    src_aios_habit_workspace_chat_app -->|imports_from| src_aios_habit_workspace_chat_store\n    src_aios_habit_workspace_chat_app -->|imports_from| src_aios_habit_workspace_chat_rag_v2_adapter\n    scripts_battle_notebooklm_rag_v2 -->|contains| scripts_battle_notebooklm_rag_v2_benchmarkerror\n    src_aios_habit_excaliflow_adapter_excaliflowadapter -->|uses| src_aios_habit_evidence_trace_schema_evidencetrace\n    src_aios_habit_rag_v2_pipeline_ragv2devpipeline -->|uses| src_aios_habit_rag_v2_index_localchunkindex"
   },
   "pipeline": {
     "title": "🔄 Luồng Dữ Liệu & Xử Lý (Data Pipeline)",
@@ -3590,11 +3590,27 @@ globalThis["mermaid"] = globalThis.__esbuild_esm_mermaid_nm["mermaid"].default;
       const nodes = diagramOutput.querySelectorAll('.node, g[id*="flowchart-"]');
       nodes.forEach(n => {
         n.classList.remove('reach-focused', 'reach-upstream', 'reach-downstream', 'reach-dimmed');
+        n.style.opacity = '1';
+        n.style.transform = '';
+        n.querySelectorAll('path, rect, circle, polygon').forEach(shape => {
+          shape.style.stroke = '';
+          shape.style.strokeWidth = '';
+          shape.style.fill = '';
+        });
+        n.querySelectorAll('.nodeLabel, text, span, div').forEach(txt => {
+          txt.style.color = '';
+          txt.style.fontWeight = '';
+        });
       });
 
       const edgePaths = diagramOutput.querySelectorAll('.edgePath, .edgePaths > g, path.flowchart-link, g[class*="edge"], .edgeLabel');
       edgePaths.forEach(e => {
         e.classList.remove('reach-highlight-up', 'reach-highlight-down', 'reach-dimmed');
+        e.style.opacity = '1';
+        e.querySelectorAll('path').forEach(p => {
+          p.style.stroke = '';
+          p.style.strokeWidth = '';
+        });
       });
     }
 
@@ -3622,7 +3638,6 @@ globalThis["mermaid"] = globalThis.__esbuild_esm_mermaid_nm["mermaid"].default;
         const trimmed = line.trim();
         if (!trimmed || trimmed.startsWith('%%') || trimmed.startsWith('subgraph') || trimmed.startsWith('flowchart') || trimmed.startsWith('graph')) return;
 
-        // Matches: A --> B, A -->|label| B, A -.-> B, A ==> B, A["label"] --> B["label"], A -- label --> B
         const m = trimmed.match(/^([A-Za-z0-9_]+)(?:\[.*?\]|\(.*?\)|\{.*?\}|\>.*?\])?\s*(?:-->|-.->|==>|---|-->\s*\|[^|]+\||-\.->\s*\|[^|]+\||==>\s*\|[^|]+\||--\s*\|[^|]+\|\s*-->|--\s*[^-\n\r|]+\s*-->)\s*([A-Za-z0-9_]+)/);
         if (m) {
           const u = normalizeId(m[1]);
@@ -3742,7 +3757,7 @@ globalThis["mermaid"] = globalThis.__esbuild_esm_mermaid_nm["mermaid"].default;
           });
         }
 
-        // Apply Node styling
+        // Apply Direct Inline Node Styling (100% Reliable across all browsers)
         nodes.forEach(n => {
           let nId = normalizeId(n.id || n.textContent?.trim().split(/\s+/)[0] || '');
           n.classList.remove('reach-focused', 'reach-upstream', 'reach-downstream', 'reach-dimmed');
@@ -3753,16 +3768,56 @@ globalThis["mermaid"] = globalThis.__esbuild_esm_mermaid_nm["mermaid"].default;
 
           if (isFocus) {
             n.classList.add('reach-focused');
+            n.style.opacity = '1';
+            n.style.transform = 'scale(1.06)';
+            n.querySelectorAll('path, rect, circle, polygon').forEach(shape => {
+              shape.style.stroke = '#f59e0b';
+              shape.style.strokeWidth = '4px';
+              shape.style.fill = '#fef3c7';
+            });
+            n.querySelectorAll('.nodeLabel, text, span, div').forEach(txt => {
+              txt.style.color = '#78350f';
+              txt.style.fontWeight = 'bold';
+            });
           } else if (isUp) {
             n.classList.add('reach-upstream');
+            n.style.opacity = '1';
+            n.style.transform = 'scale(1.02)';
+            n.querySelectorAll('path, rect, circle, polygon').forEach(shape => {
+              shape.style.stroke = '#0284c7';
+              shape.style.strokeWidth = '3.5px';
+              shape.style.fill = '#e0f2fe';
+            });
+            n.querySelectorAll('.nodeLabel, text, span, div').forEach(txt => {
+              txt.style.color = '#0369a1';
+              txt.style.fontWeight = 'bold';
+            });
           } else if (isDown) {
             n.classList.add('reach-downstream');
+            n.style.opacity = '1';
+            n.style.transform = 'scale(1.02)';
+            n.querySelectorAll('path, rect, circle, polygon').forEach(shape => {
+              shape.style.stroke = '#16a34a';
+              shape.style.strokeWidth = '3.5px';
+              shape.style.fill = '#dcfce7';
+            });
+            n.querySelectorAll('.nodeLabel, text, span, div').forEach(txt => {
+              txt.style.color = '#14532d';
+              txt.style.fontWeight = 'bold';
+            });
           } else {
             n.classList.add('reach-dimmed');
+            n.style.opacity = '0.12';
+            n.style.transform = 'none';
+            n.querySelectorAll('path, rect, circle, polygon').forEach(shape => {
+              shape.style.stroke = '';
+              shape.style.strokeWidth = '';
+              shape.style.fill = '';
+            });
           }
         });
 
-        // Apply Edge styling
+        // Apply Direct Inline Edge Styling
         edgeEntries.forEach(entry => {
           entry.elem.classList.remove('reach-highlight-up', 'reach-highlight-down', 'reach-dimmed');
           const u = entry.u;
@@ -3778,13 +3833,29 @@ globalThis["mermaid"] = globalThis.__esbuild_esm_mermaid_nm["mermaid"].default;
 
             if ((uUp || uFocus) && (vUp || vFocus) && (uUp || vUp)) {
               entry.elem.classList.add('reach-highlight-up');
+              entry.elem.style.opacity = '1';
+              entry.elem.querySelectorAll('path').forEach(p => {
+                p.style.stroke = '#0284c7';
+                p.style.strokeWidth = '4px';
+              });
             } else if ((uDown || uFocus) && (vDown || vFocus) && (uDown || vDown)) {
               entry.elem.classList.add('reach-highlight-down');
+              entry.elem.style.opacity = '1';
+              entry.elem.querySelectorAll('path').forEach(p => {
+                p.style.stroke = '#16a34a';
+                p.style.strokeWidth = '4px';
+              });
             } else {
               entry.elem.classList.add('reach-dimmed');
+              entry.elem.style.opacity = '0.06';
+              entry.elem.querySelectorAll('path').forEach(p => {
+                p.style.stroke = '';
+                p.style.strokeWidth = '';
+              });
             }
           } else {
             entry.elem.classList.add('reach-dimmed');
+            entry.elem.style.opacity = '0.06';
           }
         });
 
@@ -3802,12 +3873,32 @@ globalThis["mermaid"] = globalThis.__esbuild_esm_mermaid_nm["mermaid"].default;
         }
       }
 
-      // Delegate click on svgElement
-      svgElement.addEventListener('click', (e) => {
-        const targetNode = findClosestNode(e.target);
-        if (targetNode) {
+      // Attach direct click & pointer handlers on all nodes
+      nodes.forEach(node => {
+        node.style.cursor = 'pointer';
+        node.onclick = (e) => {
           e.stopPropagation();
-          handleNodeClick(targetNode);
+          handleNodeClick(node);
+        };
+      });
+
+      // Global delegation on SVG with distance tracking to distinguish drag vs tap
+      let ptX = 0, ptY = 0, ptT = 0;
+      svgElement.addEventListener('pointerdown', (e) => {
+        ptX = e.clientX;
+        ptY = e.clientY;
+        ptT = Date.now();
+      }, { passive: true });
+
+      svgElement.addEventListener('pointerup', (e) => {
+        const dist = Math.hypot(e.clientX - ptX, e.clientY - ptY);
+        const dt = Date.now() - ptT;
+        if (dist < 10 && dt < 500) {
+          const targetNode = findClosestNode(e.target);
+          if (targetNode) {
+            e.stopPropagation();
+            handleNodeClick(targetNode);
+          }
         }
       });
     }
@@ -3848,91 +3939,63 @@ globalThis["mermaid"] = globalThis.__esbuild_esm_mermaid_nm["mermaid"].default;
         const svgElement = diagramOutput.querySelector('svg');
         if (!svgElement) return alert('Chưa có sơ đồ để xuất Share Card!');
 
-        const canvas = document.createElement('canvas');
-        canvas.width = 1200;
-        canvas.height = 630;
-        const ctx = canvas.getContext('2d');
+        const box = svgElement.viewBox?.baseVal;
+        const svgW = (box && box.width) ? box.width : (svgElement.clientWidth || 800);
+        const svgH = (box && box.height) ? box.height : (svgElement.clientHeight || 600);
 
-        // Draw Premium Dark Gradient Background
-        const grad = ctx.createLinearGradient(0, 0, 1200, 630);
-        grad.addColorStop(0, '#0f172a');
-        grad.addColorStop(0.5, '#1e1b4b');
-        grad.addColorStop(1, '#090d16');
-        ctx.fillStyle = grad;
-        ctx.fillRect(0, 0, 1200, 630);
+        const cardW = 1200;
+        const cardH = 630;
+        const cardBoxX = 60;
+        const cardBoxY = 160;
+        const cardBoxW = 1080;
+        const cardBoxH = 410;
 
-        // Header Title
-        ctx.fillStyle = '#818cf8';
-        ctx.font = 'bold 14px Inter, sans-serif';
-        ctx.fillText('EXCALIFLOW STUDIO • ARCHITECTURE MAP', 60, 60);
+        const maxW = cardBoxW - 40;
+        const maxH = cardBoxH - 50;
+        const scale = Math.min(maxW / svgW, maxH / svgH, 1.2);
+        const drawW = svgW * scale;
+        const drawH = svgH * scale;
+        const drawX = cardBoxX + (cardBoxW - drawW) / 2;
+        const drawY = cardBoxY + 36 + (cardBoxH - 36 - drawH) / 2;
 
-        ctx.fillStyle = '#ffffff';
-        ctx.font = 'bold 36px "Shantell Sans", Georgia, sans-serif';
+        const innerSvgContent = svgElement.innerHTML;
         const projectTitle = document.title || 'Codebase Architecture';
-        ctx.fillText(projectTitle, 60, 105);
 
-        ctx.fillStyle = '#94a3b8';
-        ctx.font = '16px Inter, sans-serif';
-        ctx.fillText('Local-First & Air-Gapped Codebase Intelligence Engine', 60, 135);
+        const fullCardSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${cardW} ${cardH}" width="${cardW}" height="${cardH}">
+  <defs>
+    <linearGradient id="cardGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0f172a" />
+      <stop offset="50%" stop-color="#1e1b4b" />
+      <stop offset="100%" stop-color="#090d16" />
+    </linearGradient>
+  </defs>
+  <rect width="${cardW}" height="${cardH}" fill="url(#cardGrad)" rx="16" />
+  <text x="60" y="60" fill="#818cf8" font-family="Inter, system-ui, sans-serif" font-size="14" font-weight="bold" letter-spacing="1.5">EXCALIFLOW STUDIO • ARCHITECTURE MAP</text>
+  <text x="60" y="105" fill="#ffffff" font-family="'Shantell Sans', Georgia, sans-serif" font-size="34" font-weight="bold">${htmlEscape(projectTitle)}</text>
+  <text x="60" y="135" fill="#94a3b8" font-family="Inter, system-ui, sans-serif" font-size="16">Local-First &amp; Air-Gapped Codebase Intelligence Engine</text>
 
-        // Render SVG into card
-        const svgData = new XMLSerializer().serializeToString(svgElement);
-        const svgBlob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' });
-        const url = URL.createObjectURL(svgBlob);
-        const img = new Image();
+  <!-- Window Frame -->
+  <rect x="${cardBoxX}" y="${cardBoxY}" width="${cardBoxW}" height="${cardBoxH}" rx="12" fill="#0b1120" stroke="#3b82f6" stroke-width="1.5" />
+  <circle cx="${cardBoxX + 24}" cy="${cardBoxY + 20}" r="5" fill="#ef4444" />
+  <circle cx="${cardBoxX + 40}" cy="${cardBoxY + 20}" r="5" fill="#f59e0b" />
+  <circle cx="${cardBoxX + 56}" cy="${cardBoxY + 20}" r="5" fill="#10b981" />
 
-        img.onload = () => {
-          const cardBoxX = 60;
-          const cardBoxY = 160;
-          const cardBoxW = 1080;
-          const cardBoxH = 410;
+  <!-- Embedded Architecture Diagram -->
+  <g transform="translate(${drawX}, ${drawY}) scale(${scale})">
+    ${innerSvgContent}
+  </g>
 
-          // Mock window container
-          ctx.fillStyle = '#0b1120';
-          ctx.strokeStyle = '#3b82f6';
-          ctx.lineWidth = 1.5;
-          ctx.beginPath();
-          ctx.roundRect(cardBoxX, cardBoxY, cardBoxW, cardBoxH, 12);
-          ctx.fill();
-          ctx.stroke();
+  <text x="60" y="600" fill="#64748b" font-family="Inter, system-ui, sans-serif" font-size="12">Generated by ExcaliFlow Studio • 100% Offline • github.com/Nakazasen/ExcaliFlow-Studio</text>
+</svg>`;
 
-          // Window header dots
-          ctx.fillStyle = '#ef4444'; ctx.beginPath(); ctx.arc(cardBoxX + 24, cardBoxY + 20, 5, 0, Math.PI * 2); ctx.fill();
-          ctx.fillStyle = '#f59e0b'; ctx.beginPath(); ctx.arc(cardBoxX + 40, cardBoxY + 20, 5, 0, Math.PI * 2); ctx.fill();
-          ctx.fillStyle = '#10b981'; ctx.beginPath(); ctx.arc(cardBoxX + 56, cardBoxY + 20, 5, 0, Math.PI * 2); ctx.fill();
-
-          // Calculate aspect scale for diagram
-          const box = svgElement.viewBox?.baseVal;
-          const svgW = (box && box.width) ? box.width : (svgElement.clientWidth || 800);
-          const svgH = (box && box.height) ? box.height : (svgElement.clientHeight || 600);
-
-          const maxW = cardBoxW - 40;
-          const maxH = cardBoxH - 50;
-          const scale = Math.min(maxW / svgW, maxH / svgH, 1.2);
-          const drawW = svgW * scale;
-          const drawH = svgH * scale;
-          const drawX = cardBoxX + (cardBoxW - drawW) / 2;
-          const drawY = cardBoxY + 36 + (cardBoxH - 36 - drawH) / 2;
-
-          ctx.drawImage(img, drawX, drawY, drawW, drawH);
-
-          // Footer
-          ctx.fillStyle = '#64748b';
-          ctx.font = '12px Inter, sans-serif';
-          ctx.fillText('Generated by ExcaliFlow Studio • 100% Offline • github.com/Nakazasen/ExcaliFlow-Studio', 60, 600);
-
-          const pngUrl = canvas.toDataURL('image/png');
-          const a = document.createElement('a');
-          a.href = pngUrl;
-          a.download = `architecture-share-card.png`;
-          a.click();
-          URL.revokeObjectURL(url);
-        };
-        img.onerror = () => {
-          URL.revokeObjectURL(url);
-          alert('Không thể tạo Share Card từ sơ đồ hiện tại!');
-        };
-        img.src = url;
+        // Download High-Resolution Vector Share Card SVG directly
+        const svgBlob = new Blob([fullCardSvg], { type: 'image/svg+xml;charset=utf-8' });
+        const svgUrl = URL.createObjectURL(svgBlob);
+        const a = document.createElement('a');
+        a.href = svgUrl;
+        a.download = `architecture-share-card.svg`;
+        a.click();
+        setTimeout(() => URL.revokeObjectURL(svgUrl), 2000);
       };
     }
 
