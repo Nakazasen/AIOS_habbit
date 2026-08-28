@@ -96,6 +96,14 @@ class TestVendoredWheelsAndChecksums:
         flag_wheels = [f for f in manifest if "flagembedding" in f.lower()]
         assert len(flag_wheels) >= 1, "Missing FlagEmbedding wheel in Linux wheelhouse"
 
+        for required_wheel in (
+            "extract_msg-0.54.1-py3-none-any.whl",
+            "red_black_tree_mod-1.22-py3-none-any.whl",
+            "cryptography-50.0.1-cp311-abi3-manylinux_2_28_x86_64.whl",
+            "omegaconf-2.3.0-py3-none-any.whl",
+        ):
+            assert required_wheel in manifest, f"Missing offline dependency wheel: {required_wheel}"
+
         # Verify manylinux compatibility for python:3.11-slim (Debian 12 Bookworm, glibc 2.36)
         pandas_wheels = [f for f in manifest if "pandas" in f and "manylinux" in f]
         assert len(pandas_wheels) >= 1, "Missing manylinux pandas wheel"

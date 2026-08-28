@@ -23,8 +23,8 @@
   "aios_habit-0.1.0-py3-none-any.whl": {
     "filename": "aios_habit-0.1.0-py3-none-any.whl",
     "size_bytes": 571852,
-    "sha256": "eeaabf11dfe517ea899b4f76c6d1f250a1473b20e740fcebb8b3b4c5e0399064",
-    "sha512": "14a99fdab7e61f5e21b9e17b45ba8675d9fcc9a31514e0c3fbcbc38a58f27314729fb2b1e8ca202d1c64a8482cdcb1d2e671db7fc1ffcde3970e89d8c0ba5f7c",
+    "sha256": "efdde59c95988c5d29af346643cde356a54e0be5fa6488a26bd586cff4bfcafb",
+    "sha512": "5aa594402c99fcc4af85d4488ab58d0b53b9104e2a8b50951378feaa4f17a18d4aa39d6e3bc2c0927b3d4926151d0d24420af3fda1fd7b7244a0faed4e67acc1",
     "built_for": "AIOS_habbit Commit D Offline Packaging"
   },
   "aiosignal-1.4.0-py3-none-any.whl": {
@@ -69,6 +69,13 @@
     "sha512": "afb51c7417d3382edcc91c0dfeb30dd6758ea560d73ea11594ce5167954479f0b830312ebe4b6035399f6a768b58230c224b0fe6340ff4d98d5dc8356ca8ece0",
     "built_for": "AIOS_habbit Commit D Offline Packaging"
   },
+  "beautifulsoup4-4.13.5-py3-none-any.whl": {
+    "filename": "beautifulsoup4-4.13.5-py3-none-any.whl",
+    "size_bytes": 105113,
+    "sha256": "642085eaa22233aceadff9c69651bc51e8bf3f874fb6d7104ece2beb24b47c4a",
+    "sha512": "23b5ea3d41efd67b4266860274735ed72224010432dd10558c1e79eeb2d374047ecce3d5e06393ce1240d02f8f54298a5f2150e80e847f43faff66294d1a5795",
+    "built_for": "AIOS_habbit Commit D Offline Packaging"
+  },
   "blinker-1.9.0-py3-none-any.whl": {
     "filename": "blinker-1.9.0-py3-none-any.whl",
     "size_bytes": 8458,
@@ -81,6 +88,13 @@
     "size_bytes": 136983,
     "sha256": "62f22742b58a1a33014a2b6b706588a8d7e2a88ae7bd1a6ebe8c992928483775",
     "sha512": "bf67ddcd715b99106d66a1d07b8442cb76bf619ca3ff2aa8a9e759035c3ce0a4411d66113674fe0e666097852d266cf9effd3f13287a8fd645487aaf493433e5",
+    "built_for": "AIOS_habbit Commit D Offline Packaging"
+  },
+  "cffi-2.1.1-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.whl": {
+    "filename": "cffi-2.1.1-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.whl",
+    "size_bytes": 217807,
+    "sha256": "34e261f78cb6ceaaa36f42f2613f4380d94d9c759a9c73c769ee6e0247364632",
+    "sha512": "68061fef801f08668959f56a3473ce74cd4cd92fb097014eb916cccb5373dde820f07afc954ce0fd801b83faf66659acc644014ec01c9434d6fdcb1d614bc38b",
     "built_for": "AIOS_habbit Commit D Offline Packaging"
   },
   "charset_normalizer-3.5.1-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl": {
@@ -104,11 +118,32 @@
     "sha512": "a5301fe83709a4632969bf32e0e5564679bac01fcb2068a57781c0fbd04ad48f90f14b6439c27155a9ed1ef6567a70f509b0d27d9661fa1dc56abd32bcc599dd",
     "built_for": "AIOS_habbit Commit D Offline Packaging"
   },
+  "colorclass-2.2.2-py2.py3-none-any.whl": {
+    "filename": "colorclass-2.2.2-py2.py3-none-any.whl",
+    "size_bytes": 18995,
+    "sha256": "6f10c273a0ef7a1150b1120b6095cbdd68e5cf36dfd5d0fc957a2500bbf99a55",
+    "sha512": "a3c1095814663425cd6816d3feb37e12578a741e87e421cfa1a1142dc7054288f9ee32f0470b30d160f4360fe3b1c30f65e2d0d60db3cfb2a70765d92497b087",
+    "built_for": "AIOS_habbit Commit D Offline Packaging"
+  },
   "colorlog-6.12.0-py3-none-any.whl": {
     "filename": "colorlog-6.12.0-py3-none-any.whl",
     "size_bytes": 12239,
     "sha256": "30d392604e9110045a2c2aeefc27d7a017abbab63f3a8aee594eac0801df784e",
     "sha512": "102984cadf86dc436e1ae88b902911af3a54b3f50f4fddb378485eeff0c8d61797bc8d50bea12e7b1907424f1231eb75dd09d6a3080e836a3b3c673dfdfe80fa",
+    "built_for": "AIOS_habbit Commit D Offline Packaging"
+  },
+  "compressed_rtf-1.0.7-py3-none-any.whl": {
+    "filename": "compressed_rtf-1.0.7-py3-none-any.whl",
+    "size_bytes": 7968,
+    "sha256": "b7904921d78c67a0a4b7fff9fb361a00ae2b447b6edca010ce321cd98fa0fcc0",
+    "sha512": "3d65f71de03fe3e96f006516f5b42c1fd68dca48157114db37d3a68310b86ad743db71d2d1f8dc9364338292728af88b3e5fee2c1c19a6a19797af9495e8e5ac",
+    "built_for": "AIOS_habbit Commit D Offline Packaging"
+  },
+  "cryptography-50.0.1-cp311-abi3-manylinux_2_28_x86_64.whl": {
+    "filename": "cryptography-50.0.1-cp311-abi3-manylinux_2_28_x86_64.whl",
+    "size_bytes": 4746720,
+    "sha256": "51593d180cf6d179bde5c5d065bed81386b1f381656ae7d042b7ffc87a9895ad",
+    "sha512": "b183c6a1a087cf328bad1e89b96dcc714c0c61f2785061c5504af926f96aebdb5df3d6f543c54ffe844d19d7a9284b1847606b8c7e1d34fbbf4bf22f387cea8e",
     "built_for": "AIOS_habbit Commit D Offline Packaging"
   },
   "datasets-5.0.1-py3-none-any.whl": {
@@ -125,6 +160,20 @@
     "sha512": "1d8d249041c0e4dd4947a39f43307fa9f48e8319dec777d48b29614e86c1853cb14cdf8e0651773322ec5c1114bb80860fda0084ad096a2b6420c5d6f1d0140f",
     "built_for": "AIOS_habbit Commit D Offline Packaging"
   },
+  "easygui-0.98.3-py2.py3-none-any.whl": {
+    "filename": "easygui-0.98.3-py2.py3-none-any.whl",
+    "size_bytes": 92655,
+    "sha256": "33498710c68b5376b459cd3fc48d1d1f33822139eb3ed01defbc0528326da3ba",
+    "sha512": "05b3cbe623387a24049e8339b636123ce3f9f075cca3d06b8fc4977a336e8ab36136d0a936534b177f03bf070f90822b176e002699b27f7499ca81075927e430",
+    "built_for": "AIOS_habbit Commit D Offline Packaging"
+  },
+  "ebcdic-1.1.1-py2.py3-none-any.whl": {
+    "filename": "ebcdic-1.1.1-py2.py3-none-any.whl",
+    "size_bytes": 128537,
+    "sha256": "33b4cb729bc2d0bf46cc1847b0e5946897cb8d3f53520c5b9aa5fa98d7e735f1",
+    "sha512": "c8c21c04020b57382f89b886e4243d16f6e3b0f2c18926050ac729b8174a4cdaf0474fdcab07b87e224466e7214711c2c5ebbbacc639e056521990efb23c0bdf",
+    "built_for": "AIOS_habbit Commit D Offline Packaging"
+  },
   "et_xmlfile-2.0.0-py3-none-any.whl": {
     "filename": "et_xmlfile-2.0.0-py3-none-any.whl",
     "size_bytes": 18059,
@@ -135,8 +184,15 @@
   "excaliflow-0.1.5-py3-none-any.whl": {
     "filename": "excaliflow-0.1.5-py3-none-any.whl",
     "size_bytes": 836312,
-    "sha256": "40d236c91f3564f4a3f447339c23ffae5354cc2296567cc910d949190843377e",
-    "sha512": "a3be663c15213dee0438a4b390bc7615cc1b89bf541a9d2f9d7ac152318ae0116fa4d035ebeeb49190d5f53001d3d19436aa475717b79a75af97a7194d26a7a1",
+    "sha256": "1a7e6d83fc9ee8397452349220bd847d792d6c822f1adadc0d20934430305e43",
+    "sha512": "2f6f989a15007590073cac7050bfd868977079b8b11559865739d8fa92a4d00599ba38fce97581ec1280cf584d9e540134692607022cb30cae7eecf2ee9fb617",
+    "built_for": "AIOS_habbit Commit D Offline Packaging"
+  },
+  "extract_msg-0.54.1-py3-none-any.whl": {
+    "filename": "extract_msg-0.54.1-py3-none-any.whl",
+    "size_bytes": 335984,
+    "sha256": "9064f54d519429becdc05c64bb2135c89f5886f706a4aebf38bfb6901deacdc4",
+    "sha512": "d9e5e7989fe5962cfd6b388ebf09b7e2ac21351e687bd7adf64f5c26cd0c5c8b0643a30fb97b3e5d37b5a7edd51451092d5514d5ae11699e1c14ad75f4e3624a",
     "built_for": "AIOS_habbit Commit D Offline Packaging"
   },
   "fastembed-0.8.0-py3-none-any.whl": {
@@ -293,6 +349,13 @@
     "sha512": "1eb2061de0842905f967532365176bd5eab4d8210ee91061cfbd6a1ac0dc41404d57a047a1ca7f0bfd5aea855a0ea78575c4b4f2ba8a851bffb10504e84d5eab",
     "built_for": "AIOS_habbit Commit D Offline Packaging"
   },
+  "lark-1.3.1-py3-none-any.whl": {
+    "filename": "lark-1.3.1-py3-none-any.whl",
+    "size_bytes": 113151,
+    "sha256": "c629b661023a014c37da873b4ff58a817398d12635d3bbb2c5a03be7fe5d1e12",
+    "sha512": "7c4d2ed5707596f202416c0dc10a751437ab16ee83fe0967207c23d098febc9af381c20aaf45f9ceaf6ed6280f4e58be2fab15b8d61c087f3c66ffff0083ef4d",
+    "built_for": "AIOS_habbit Commit D Offline Packaging"
+  },
   "loguru-0.7.3-py3-none-any.whl": {
     "filename": "loguru-0.7.3-py3-none-any.whl",
     "size_bytes": 61595,
@@ -333,6 +396,13 @@
     "size_bytes": 536198,
     "sha256": "a0b2b9fe80bbcd81a6647ff13108738cfb482d481d826cc0e02f5b35e5c88d2c",
     "sha512": "6abaadaf28d6befc1f7e94eb8b001b61e2af67659bf2be7ca3c74c9ef7e2e0284a250909ea72b77f60597c7185a3316d840a812c65f15efa924495dc621e4ea7",
+    "built_for": "AIOS_habbit Commit D Offline Packaging"
+  },
+  "msoffcrypto_tool-6.0.0-py3-none-any.whl": {
+    "filename": "msoffcrypto_tool-6.0.0-py3-none-any.whl",
+    "size_bytes": 48791,
+    "sha256": "46c394ed5d9641e802fc79bf3fb0666a53748b23fa8c4aa634ae9d30d46fe397",
+    "sha512": "04ec02071c1cf99c46d747d4fab3b25891a5134ec034a3fd2c9e631f84053f664d9cd29df2948bce535b88ea93093bbe19dc53e42e109b478e2b723af1a98de8",
     "built_for": "AIOS_habbit Commit D Offline Packaging"
   },
   "multidict-6.7.1-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl": {
@@ -377,11 +447,25 @@
     "sha512": "098167066caf7609821aa1b9b893ac829084ac68654eea2e59f3a71ad8901c9fda5466b1ac0c07e37469051afe1efe9ce03ec11b9ea361112ab2397777aac751",
     "built_for": "AIOS_habbit Commit D Offline Packaging"
   },
-  "omegaconf-2.0.6-py3-none-any.whl": {
-    "filename": "omegaconf-2.0.6-py3-none-any.whl",
-    "size_bytes": 36834,
-    "sha256": "9e349fd76819b95b47aa628edea1ff83fed5b25108608abdd6c7fdca188e302a",
-    "sha512": "6633205add935bc8b329a3f8e67691d3a5948b264308520a32aacfcf79dd58b86e1e03bf1b346721dd51a0bfc8619b0619e1ae7f5205e65801f683a9faeb100f",
+  "olefile-0.47-py2.py3-none-any.whl": {
+    "filename": "olefile-0.47-py2.py3-none-any.whl",
+    "size_bytes": 114565,
+    "sha256": "543c7da2a7adadf21214938bb79c83ea12b473a4b6ee4ad4bf854e7715e13d1f",
+    "sha512": "7e083ca7b74f70ec80ff39c6b5c5882e9e3b27ce83b648044dde4820499e9efb2bd91ec246bb282174494180384fe061cd9710a8a1f3168c88e4cb37f8e98f3b",
+    "built_for": "AIOS_habbit Commit D Offline Packaging"
+  },
+  "oletools-0.60.2-py2.py3-none-any.whl": {
+    "filename": "oletools-0.60.2-py2.py3-none-any.whl",
+    "size_bytes": 989449,
+    "sha256": "72ad8bd748fd0c4e7b5b4733af770d11543ebb2bf2697455f99f975fcd50cc96",
+    "sha512": "b10cdd2ece4520cde0733a7d872aaf200dca200aacaf3c367137502e711263d5c9eaad442f6d208dd8fb891b29cc0f2a6b44ab8cc8a3b771e7dfd8aeb9464143",
+    "built_for": "AIOS_habbit Commit D Offline Packaging"
+  },
+  "omegaconf-2.3.0-py3-none-any.whl": {
+    "filename": "omegaconf-2.3.0-py3-none-any.whl",
+    "size_bytes": 79500,
+    "sha256": "7b4df175cdb08ba400f45cae3bdcae7ba8365db4d165fc65fd04b050ab63b46b",
+    "sha512": "e258f9362099eae49ef8ad54ceaed164392270fa2a9a974502aa508c7c2ef099b4c51dff13f1826e72c555753d336d00b3a2d2d4619006ef9e125e8ae0b01df2",
     "built_for": "AIOS_habbit Commit D Offline Packaging"
   },
   "onnxruntime-1.29.0-cp311-cp311-manylinux_2_28_x86_64.whl": {
@@ -417,6 +501,13 @@
     "size_bytes": 11323634,
     "sha256": "2c0cf1dd9b55a22d105fc46c1b489af3bd42264fcba7c66297bf47a9a1d9c78a",
     "sha512": "f37d0fc896cd81683a140a0cc772d6c4c7145ce66d74730df79f29936d53fc27645babf0210355cdc4b43a98b9b84d3c5f6b885216ac519f2ac7ef843475c656",
+    "built_for": "AIOS_habbit Commit D Offline Packaging"
+  },
+  "pcodedmp-1.2.6-py2.py3-none-any.whl": {
+    "filename": "pcodedmp-1.2.6-py2.py3-none-any.whl",
+    "size_bytes": 30939,
+    "sha256": "4441f7c0ab4cbda27bd4668db3b14f36261d86e5059ce06c0828602cbe1c4278",
+    "sha512": "50eb0b89d4a3454a52cb3f28b035106fe165a0b4818931fbb24b09a86d411ea5684d461a7811d778054be31cc9a418a91079ddbe31ef7169a85385cb86d465fb",
     "built_for": "AIOS_habbit Commit D Offline Packaging"
   },
   "pdf_inspector-1.17.0-cp38-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.whl": {
@@ -503,6 +594,13 @@
     "sha512": "1fe99b9044482fb2d72a27088a6bd1d97799dfaabe29938f3e8826e0aa6260855c5d7d95423280edc77cb9fbef842a567c0fa44f5e39820b0ec160aa29fb82df",
     "built_for": "AIOS_habbit Commit D Offline Packaging"
   },
+  "pycparser-3.0-py3-none-any.whl": {
+    "filename": "pycparser-3.0-py3-none-any.whl",
+    "size_bytes": 48172,
+    "sha256": "b727414169a36b7d524c1c3e31839a521725078d7b2ff038656844266160a992",
+    "sha512": "0d4db91143b4be85ff467eb5b622fafe9a4904ab4afcfeff9cc2e9a7a08919e68b6d0503a8e548ec3c4f358c025469765ffe6475792034eaae338bc0492bc62b",
+    "built_for": "AIOS_habbit Commit D Offline Packaging"
+  },
   "pydeck-0.9.3-py2.py3-none-any.whl": {
     "filename": "pydeck-0.9.3-py2.py3-none-any.whl",
     "size_bytes": 11428091,
@@ -536,6 +634,13 @@
     "size_bytes": 42939266,
     "sha256": "4b44a1d8ebf897b0e862ee2d73e7df73099f1c047fc024d2dd24ef0632d2cb5f",
     "sha512": "aa38f43ca99790ca7c6a96366f581da448d933647204bf778bd8e8417582995e402223a257b663f548b10ff3c84d2f37401b695c92c27042d6b6c3a4faf37951",
+    "built_for": "AIOS_habbit Commit D Offline Packaging"
+  },
+  "pyparsing-3.3.2-py3-none-any.whl": {
+    "filename": "pyparsing-3.3.2-py3-none-any.whl",
+    "size_bytes": 122781,
+    "sha256": "850ba148bd908d7e2411587e247a1e4f0327839c40e2e5e6d05a007ecc69911d",
+    "sha512": "21a3b0e8949cf48613bbd31e8c42d7cdbd6fc6e51d3215f84223141b87cbd67668bbb7a6873366628b411cb295d4da6ced835e3b1df5db21f2bf8a3a111f4c67",
     "built_for": "AIOS_habbit Commit D Offline Packaging"
   },
   "pytesseract-0.3.13-py3-none-any.whl": {
@@ -601,6 +706,13 @@
     "sha512": "87d693dabc017e0e4b0fd4aa954a9e7343283da12172795dec7f19c410731d8232b46202cfae02a684ec28f8a039def0addaa50ece4edaef77f777fc78c322e8",
     "built_for": "AIOS_habbit Commit D Offline Packaging"
   },
+  "red_black_tree_mod-1.22-py3-none-any.whl": {
+    "filename": "red_black_tree_mod-1.22-py3-none-any.whl",
+    "size_bytes": 19325,
+    "sha256": "13e55d5655a2e3a8cbc6d3ae7fb7a080d6a955fc888c879f97407fcf73395d97",
+    "sha512": "ae428edabead71acd53b796bb6fcccabc6bbf3cbaa87351ba677603be27ba01197431556a3b4a6c40783768b289f64b0c5dcc26778eb7c81aa1d6cd6ae1f08ad",
+    "built_for": "AIOS_habbit Commit D Offline Packaging"
+  },
   "referencing-0.37.0-py3-none-any.whl": {
     "filename": "referencing-0.37.0-py3-none-any.whl",
     "size_bytes": 26766,
@@ -627,6 +739,13 @@
     "size_bytes": 371315,
     "sha256": "9c1255b302953c86a486b81d330d5ee1d5bd937691ce271b6be0ef0e299eaab7",
     "sha512": "76fe42e2674427aae900fcfcaa17e782958381048787bfd73d40fd629200f39ceb6cd099a4261edb2a85643b1dda9e8c9dc3d46722f363dd3236df9891aefcea",
+    "built_for": "AIOS_habbit Commit D Offline Packaging"
+  },
+  "rtfde-0.1.2.2-py3-none-any.whl": {
+    "filename": "rtfde-0.1.2.2-py3-none-any.whl",
+    "size_bytes": 36713,
+    "sha256": "d43868c74f21ae9ea5acbfd4176d5de1f2cfae0ff7f267698471c606287c04ec",
+    "sha512": "f662a0fdb4fdeb49a78cb4e9224ab38a14e5fd56763df1dc3f75a86941bf57471cb24ef3f079a8088bcd6d21b53c5a32f584e4d9ed49bad6c73980c3164c205a",
     "built_for": "AIOS_habbit Commit D Offline Packaging"
   },
   "safetensors-0.8.0-cp310-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.whl": {
@@ -683,6 +802,13 @@
     "size_bytes": 11050,
     "sha256": "4721f391ed90541fddacab5acf947aa0d3dc7d27b2e1e8eda2be8970586c3274",
     "sha512": "2796b93aaac73193faeb5c93a85d23c2ae9fc4a7e57df88dc34b704a36fa62cd0b1fb5d1a74b961a23eff2467be94eb14f5f10874dfa733dc4ab59715280bbf3",
+    "built_for": "AIOS_habbit Commit D Offline Packaging"
+  },
+  "soupsieve-2.9.2-py3-none-any.whl": {
+    "filename": "soupsieve-2.9.2-py3-none-any.whl",
+    "size_bytes": 37370,
+    "sha256": "8089a26fd974ca7a1f30276d3d8492ab266ab15af581642dfe8aa162e0c1c823",
+    "sha512": "786238607c0fdcc71be730a7898ee2df0726ac36e7938c94f2f4e00b0f54909cbb77bc5ec4d0bb6ca3798dec5a04c288e6aa60f29fffab183562558ea7cb9ed2",
     "built_for": "AIOS_habbit Commit D Offline Packaging"
   },
   "starlette-1.6.0-py3-none-any.whl": {
@@ -972,6 +1098,13 @@
     "sha512": "996fa2bf093b3b86a43b2592bba8d5c2aead0f8a43b1423a6a88a52acca967c8f2859b451cf98cfc96a85a0dba52cd946f78368039339e9ac6da297fc9a6cc40",
     "built_for": "AIOS_habbit Commit D Offline Packaging"
   },
+  "tzlocal-5.4.4-py3-none-any.whl": {
+    "filename": "tzlocal-5.4.4-py3-none-any.whl",
+    "size_bytes": 18115,
+    "sha256": "aae09f0126a8a86fa736be266eb4a471380d26a0de3bc14844e7821fee3e2a15",
+    "sha512": "ae0ccad5e49056158a1f75ca51bfcf9d8619ecbab4472802babebe9aab41ea091228c847949829bce303ad36354c25377e02ea63ab8e466a036a6ce0c1b22b78",
+    "built_for": "AIOS_habbit Commit D Offline Packaging"
+  },
   "urllib3-2.7.0-py3-none-any.whl": {
     "filename": "urllib3-2.7.0-py3-none-any.whl",
     "size_bytes": 131087,
@@ -1012,6 +1145,13 @@
     "size_bytes": 4083,
     "sha256": "95d644c4e708aba81dc3704a116d8cbc974d70b3bdb8be1d150e36be6e9d1390",
     "sha512": "65189487dfc48b5f2d5679f0b87d12140ff28ef9ee1f36c1d5a981025c53e7a6e78d69079992877a099fb470e75f0bd8300034cb8fb6113ecc867d811d5750b3",
+    "built_for": "AIOS_habbit Commit D Offline Packaging"
+  },
+  "win_unicode_console-0.5-py3-none-any.whl": {
+    "filename": "win_unicode_console-0.5-py3-none-any.whl",
+    "size_bytes": 20242,
+    "sha256": "2c9aeb6d5fe47eaffac698b6285fb023b5503db6431e9c89c2c5e2e65b5282dd",
+    "sha512": "821c62a9318f082d396597e69b740d0d20cb36caa09cd9341d7323cb32f5e68dc08c5232b704de63dbfae5815a7d31ed86f9b5afe635cb4c942d3f8e8edf58a3",
     "built_for": "AIOS_habbit Commit D Offline Packaging"
   },
   "xlrd-2.0.2-py2.py3-none-any.whl": {
