@@ -597,7 +597,223 @@ Câu hỏi bất thường        → Statistical/anomaly engine
 Câu hỏi tổng hợp          → hợp nhất bằng chứng rồi LLM diễn giải
 ```
 
-## 13. Roadmap nâng cấp RAG cho LSU
+## 13. LightRAG như một hướng nâng cấp thuật toán có kiểm chứng
+
+### 13.1. Nguồn tham khảo và trạng thái khi đối chiếu
+
+Repo chính thức:
+
+- <https://github.com/HKUDS/LightRAG>
+- README được đối chiếu tại commit HEAD `d403abc88f47153ec54ee1a07d30e237a8b5a9ab`.
+- License: MIT.
+
+LightRAG tự mô tả là một framework RAG dựa trên Knowledge Graph, kết hợp graph và vector embedding. Giá trị đáng nghiên cứu đối với AIOS không nằm ở việc “có graph” đơn thuần, mà ở cách nó tổ chức nhiều đường truy xuất:
+
+- **local:** tập trung vào entity cụ thể và các thuộc tính/quan hệ trực tiếp.
+- **global:** tìm chủ đề lớn và chuỗi quan hệ xuyên nhiều tài liệu.
+- **hybrid:** hợp nhất local và global.
+- **naive:** truy xuất chunk truyền thống, không dùng graph.
+- **mix:** hợp nhất local, global và naive để tăng độ bao phủ.
+
+LightRAG còn hỗ trợ cập nhật tài liệu gia tăng, xóa chọn lọc, lưu vector cho chunk/entity/relation và reranking. README hiện khuyến nghị reranker local như `BAAI/bge-reranker-v2-m3`, trùng với hướng reranker mà AIOS đã có adapter.
+
+### 13.2. LightRAG bổ trợ AIOS ở đâu?
+
+RAG hiện tại của AIOS mạnh ở truy xuất chunk bằng dense+sparse+lexical nhưng yếu khi một câu trả lời cần nối nhiều mảnh nằm ở các tài liệu khác nhau. LightRAG có thể trở thành một **graph retrieval challenger** song song:
+
+```text
+                         [Query Planner]
+                                │
+             ┌──────────────────┼───────────────────┐
+             ▼                  ▼                   ▼
+     [BGE-M3 Hybrid]     [LightRAG Graph]    [Structured Log]
+     đoạn văn chính xác   entity/relationship   SQL/time-series
+             │                  │                   │
+             └──────────────────┼───────────────────┘
+                                ▼
+                    [Evidence Fusion + Rerank]
+                                ▼
+                 [Claim/Citation Sufficiency Gate]
+```
+
+Các use case LSU phù hợp:
+
+1. Từ `Beam H Yellow` tìm entity JIG, camera, màu, NanoScan, tài liệu bất thường và các quan hệ trực tiếp.
+2. Từ một serial tìm chuỗi lot linh kiện → công đoạn → JIG → retest → kết quả.
+3. Tìm quan hệ xuyên tài liệu giữa một trường log, tiêu chuẩn, báo cáo bất thường và phản hồi chuyên gia.
+4. Tìm các case có cấu trúc quan hệ tương tự dù câu chữ không giống nhau.
+5. Cập nhật graph khi có tài liệu hoặc claim chuyên gia mới mà không xây lại toàn bộ kho từ đầu.
+
+### Diễn giải non-tech
+
+BGE-M3 hiện giống người tìm các trang giấy có nội dung gần câu hỏi. LightRAG bổ sung vai trò giống người lập sơ đồ: trên trang này có linh kiện A, trang kia nói A liên quan phép đo B, báo cáo khác ghi B từng bất thường trên JIG 1035. Hai cách phải hỗ trợ nhau; sơ đồ không thay thế tờ giấy gốc.
+
+### 13.3. Những gì LightRAG không tự giải quyết
+
+Không được coi entity/relation do LLM trích xuất là Golden Knowledge. LightRAG không tự chứng minh:
+
+- Quan hệ là nhân quả thay vì tương quan.
+- JIG có đang calibration đúng hay không.
+- `9999.9` là sentinel hay giá trị vật lý.
+- Câu trả lời chuyên gia có đủ thẩm quyền và căn cứ.
+- Một ngưỡng trong log là spec chính thức.
+- Dự đoán lỗi đã pass backtest và shadow live.
+
+LightRAG sử dụng LLM để trích xuất entity–relation từ từng chunk. Nếu chunk sai, schema thiếu hoặc model hiểu nhầm thuật ngữ LSU, graph có thể chứa cạnh nghe hợp lý nhưng không có thật. Vì vậy mọi cạnh phải có provenance và trạng thái:
+
+```text
+extracted_candidate
+observed_correlation
+expert_asserted
+documented
+experimentally_verified
+deprecated
+```
+
+### 13.4. Không thay BGE-M3 ngay lập tức
+
+Đề xuất không phải:
+
+```text
+Bỏ RAG v2 → thay bằng LightRAG
+```
+
+Mà là:
+
+```text
+Giữ BGE-M3 hybrid làm baseline
+          │
+          ├── LightRAG chạy challenger
+          ├── cùng LSU judged corpus
+          ├── cùng privacy/provenance contract
+          └── chỉ promote phần có gain được đo
+```
+
+Lý do:
+
+- BGE-M3 vẫn cần để tìm đoạn bằng chứng chi tiết và mã kỹ thuật.
+- Graph retrieval có thể tăng cross-document recall nhưng cũng tăng chi phí indexing và nguy cơ cạnh sai.
+- LightRAG phụ thuộc chất lượng LLM extraction; dữ liệu công ty đòi hỏi local-only hoặc một chính sách redaction được phê duyệt.
+- Đổi embedding model sau khi index graph/vector có thể buộc re-embed toàn bộ; README LightRAG cũng cảnh báo điểm này.
+- AIOS đã có evidence, privacy và deployment contract; không nên bỏ các cổng kiểm chứng này để chạy theo framework mới.
+
+### 13.5. Thiết kế pilot LightRAG cho LSU
+
+#### Bước L0 — Threat model và dữ liệu thử
+
+- Chỉ dùng một evidence pack nội bộ nhỏ đã được phép.
+- Không gửi raw log/tài liệu công ty ra cloud.
+- Chốt model extraction local, embedding BGE-M3 và reranker local.
+- Lưu fingerprint của source, model, prompt và schema.
+
+#### Bước L1 — Domain ontology tối thiểu
+
+Định nghĩa trước entity types:
+
+```text
+LSU_SERIAL, COMPONENT, COMPONENT_PARAMETER, LOT,
+JIG, JIG_SOFTWARE, MEASUREMENT, LOG_FIELD,
+SPEC_LIMIT, DEFECT, LOCATION, COLOR,
+EXPERIMENT, DOCUMENT, EXPERT_CLAIM
+```
+
+Định nghĩa relation types được phép, ví dụ:
+
+```text
+MEASURED_BY, HAS_MEASUREMENT, USES_COMPONENT,
+FROM_LOT, RETEST_OF, CONFIGURED_LIMIT,
+OBSERVED_WITH, CONTRADICTS, SUPPORTED_BY,
+SUSPECTED_CAUSE_OF, VERIFIED_CAUSE_OF
+```
+
+LLM không được tự tạo relation type mới vào Golden Graph. Loại mới phải vào quarantine để review.
+
+#### Bước L2 — Graph extraction có bằng chứng
+
+Mỗi node/edge phải giữ:
+
+- Source file và fingerprint.
+- Page/slide/sheet/row/cell hoặc log coordinates.
+- Đoạn evidence chi tiết.
+- Extraction model/version.
+- Confidence của extraction.
+- Epistemic status.
+- Thời điểm và phạm vi hiệu lực.
+
+Không có evidence coordinate thì cạnh không được dùng làm bằng chứng kết luận.
+
+#### Bước L3 — So sánh năm chế độ retrieval
+
+Trên cùng LSU judged set, đo:
+
+| Candidate | Mục đích |
+|---|---|
+| AIOS BGE-M3 hybrid | Baseline hiện tại |
+| LightRAG naive | Kiểm tra khác biệt do pipeline/chunk |
+| LightRAG local | Entity/detail lookup |
+| LightRAG global/hybrid | Cross-document relation |
+| LightRAG mix + rerank | Độ bao phủ tối đa với chi phí cao hơn |
+| AIOS fusion | BGE-M3 + graph + structured log |
+
+Các metric bắt buộc:
+
+- Expected evidence recall@K theo từng subquestion.
+- Entity recall và relation recall.
+- Unsupported-edge rate.
+- False-sufficiency rate.
+- Citation-coordinate validity.
+- Latency, RAM, index time và index size.
+- Incremental-update correctness.
+- Deletion correctness: xóa tài liệu phải loại được evidence phụ thuộc.
+
+#### Bước L4 — Human review pilot
+
+ExcaliFlow hiển thị graph candidate cho chuyên gia:
+
+- Cạnh xanh: documented/verified.
+- Cạnh vàng: candidate/expert asserted chưa kiểm chứng.
+- Cạnh đỏ: conflicting.
+- Cạnh xám: thiếu bằng chứng hoặc hết hạn.
+
+Chuyên gia có thể approve, reject, narrow scope hoặc yêu cầu thử nghiệm. Phản hồi không ghi thẳng vào Golden Graph.
+
+#### Bước L5 — Controlled promotion
+
+Chỉ tích hợp LightRAG vào đường mặc định nếu:
+
+- Tăng recall trên các câu cross-document có ý nghĩa.
+- Không giảm precision/citation validity của câu hỏi chi tiết.
+- Unsupported-edge rate nằm dưới ngưỡng đã duyệt.
+- Pass privacy, deletion và incremental-update tests.
+- Có rollback về BGE-M3 baseline.
+
+### 13.6. LightRAG và vòng học hỏi chuyên gia
+
+LightRAG có thể giúp tìm và biểu diễn quan hệ, nhưng lifecycle tri thức vẫn phải do AIOS quản trị:
+
+```text
+LightRAG extracted edge
+          ↓
+Candidate Evidence Graph
+          ↓
+Expert interrogation / document check / DOE
+          ↓
+Validated Knowledge Graph
+          ↓
+Golden Knowledge
+```
+
+Điều này giống tư tưởng `/deep-dev` ở điểm: hệ thống tích lũy bài học và dùng lại trong lần sau. Nhưng bài toán LSU nghiêm ngặt hơn vì một quan hệ sai có thể ảnh hưởng quyết định chất lượng sản phẩm. Do đó cần provenance, thẩm quyền chuyên gia, phạm vi áp dụng, phản chứng và version hóa; không chỉ cần “test pass” như trong phát triển phần mềm.
+
+### 13.7. Phán quyết về LightRAG
+
+LightRAG là ứng viên đáng thử cho phần Knowledge Graph retrieval và cross-document reasoning của AIOS_habbit. Nó không phải phép thay thế tự động cho BGE-M3, cũng không phải causal engine hay hệ dự đoán lỗi hoàn chỉnh.
+
+Vai trò hợp lý nhất:
+
+> LightRAG làm lớp graph retrieval challenger; BGE-M3 tiếp tục cung cấp passage retrieval; structured engine xử lý log định lượng; AIOS Evidence/Expert Governance quyết định tri thức nào được phép dùng.
+
+## 14. Roadmap nâng cấp RAG cho LSU
 
 ### R1 — LSU Retrieval Audit Set
 
@@ -637,7 +853,7 @@ So sánh hybrid, hybrid+reranker và hybrid+reranker+context expansion trên cù
 
 Thêm structured log, time-series, Knowledge Graph và expert knowledge retrieval; BGE-M3 là một engine, không phải toàn bộ hệ thống.
 
-## 14. Lộ trình triển khai sản phẩm
+## 15. Lộ trình triển khai sản phẩm
 
 ### Giai đoạn 1 — LSU Evidence Case
 
@@ -684,7 +900,7 @@ Thêm structured log, time-series, Knowledge Graph và expert knowledge retrieva
 - Observability, drift, rollback và SLA.
 - Human approval và fail-safe.
 
-## 15. Tiêu chuẩn để tuyên bố đã đạt cấp độ cao
+## 16. Tiêu chuẩn để tuyên bố đã đạt cấp độ cao
 
 | Năng lực | Điều kiện tối thiểu |
 |---|---|
@@ -693,7 +909,7 @@ Thêm structured log, time-series, Knowledge Graph và expert knowledge retrieva
 | Golden Knowledge | Provenance, scope, review, phản chứng, version và quyền phê duyệt |
 | Theo dõi 24/7 | Ingestion bền vững, fail-safe, incident workflow, observability và drift monitoring |
 
-## 16. Kết luận chung của cuộc thảo luận
+## 17. Kết luận chung của cuộc thảo luận
 
 Ý tưởng của người dùng có giá trị thực tế và không phải bánh vẽ nếu triển khai theo lát cắt nhỏ, có bằng chứng và có cổng chặn.
 
