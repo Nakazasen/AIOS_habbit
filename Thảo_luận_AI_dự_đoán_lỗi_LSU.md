@@ -932,3 +932,129 @@ LSU judged audit set
 Nguyên tắc xuyên suốt:
 
 > Hệ thống phải biết điều gì đã biết, điều gì chỉ là tương quan hoặc giả thuyết, điều gì chưa biết và cần bằng chứng nào để biết thêm. Mỗi ca mới vừa là đối tượng cần chẩn đoán, vừa là cơ hội kiểm chứng và nâng cấp tri thức có kiểm soát.
+
+## 18. Hướng mở rộng: LSU là lát cắt đầu tiên, không phải sản phẩm bị khóa cứng theo LSU
+
+Mục tiêu dài hạn không phải một ứng dụng chỉ chẩn đoán LSU. AIOS phải vẫn giữ năng lực hỏi đáp tài liệu nội bộ, đồng thời có thể điều tra và dự đoán lỗi cho nhiều unit như LSU, drum, DLP, DP và cuối cùng là toàn bộ máy.
+
+Vì vậy không nên thiết kế theo chuỗi bị khóa cứng:
+
+```text
+LSU RAG → LSU Graph → LSU Prediction
+```
+
+Thiết kế đúng là một platform trung lập với từng unit, trên đó LSU là vertical slice đầu tiên để kiểm chứng bằng dữ liệu công nghiệp thật:
+
+```text
+AIOS Diagnostic Platform
+├─ Evidence RAG: BGE-M3 hybrid, citation, provenance
+├─ Query planner: intent, entity, subquestion, required source type
+├─ Case + EvidencePack: hồ sơ điều tra chung
+├─ Typed evidence graph: candidate / verified / conflicting / unknown
+├─ Expert review + Golden Knowledge lifecycle
+├─ Structured log + time-series analysis
+├─ Evaluation, shadow prediction, drift và rollback
+└─ Machine topology: Machine → Unit → Subsystem → Component
+
+Domain packs
+├─ LSU pack
+├─ Drum pack
+├─ DLP pack
+└─ DP pack
+```
+
+Mỗi domain pack mang phần đặc thù: schema log, defect taxonomy, JIG/instrument, giới hạn kỹ thuật, rule và KPI đánh giá. Core chỉ giữ các abstraction có thể tái dùng giữa nhiều unit.
+
+### 18.1. Contract dữ liệu dùng chung
+
+Machine topology cần mô tả được:
+
+```text
+Machine
+└─ Unit: LSU | Drum | DLP | DP
+   └─ Subsystem
+      └─ Component
+         └─ Parameter / lot / firmware / configuration
+```
+
+Mọi bằng chứng/sự kiện dùng contract chung:
+
+```text
+Measurement | LogEvent | Alarm | Maintenance | Retest
+| ConfigurationChange | OperatorObservation | Experiment
+```
+
+Mỗi record bắt buộc có phạm vi asset, thời gian, nguồn, evidence coordinate, chất lượng dữ liệu và trạng thái tri thức. Ví dụ JIG-specific threshold thuộc LSU pack, nhưng khái niệm chung `measurement + spec limit + instrument/configuration + retest` thuộc core.
+
+Nguyên tắc tổng quát hóa:
+
+> Chỉ đưa vào core khi khái niệm đã xuất hiện ở ít nhất hai unit, hoặc chắc chắn thuộc cấu trúc vật lý chung của máy.
+
+### 18.2. Contract dự đoán dùng chung
+
+Model cho LSU và drum có thể khác nhau hoàn toàn; không nên ép dùng chung một model. Nhưng đầu ra và governance phải thống nhất:
+
+```text
+risk_of: defect/failure mode
+asset_scope: machine / unit / component
+horizon: thời gian hoặc số cycle
+confidence + calibration
+supporting evidence
+known unknowns
+recommended verification action
+```
+
+Nhờ đó ingestion, evidence, graph, expert review, shadow mode, drift monitoring và UI được tái sử dụng; khi thêm unit mới chủ yếu là thêm domain pack và model/feature pipeline riêng, không phải viết lại AIOS.
+
+## 19. AIOS phải giữ đồng thời RAG nội bộ, điều tra kỹ thuật và Agent tools
+
+Sản phẩm đích là một AI workspace duy nhất, không phải lựa chọn giữa RAG, industrial diagnosis và coding agent:
+
+```text
+Một UI / một chat
+├─ Hỏi đáp tài liệu nội bộ (RAG)
+├─ Điều tra kỹ thuật, case và dự đoán lỗi máy
+└─ Agent gọi tool để thực hiện tác vụ có kiểm soát
+```
+
+RAG vẫn là lớp nền knowledge. Nó phục vụ các câu hỏi như quy trình bảo trì, SOP của drum/DLP, lịch sử incident hoặc tài liệu kỹ thuật; không bị thay bởi LSU engine. Điều tra LSU chỉ là một loại query có thêm structured data, time-series, graph và domain rules.
+
+### 19.1. Ba mặt phẳng quyền
+
+Không được để Agent có thể suy luận từ RAG rồi tự ý thực hiện hành động bất kỳ. Cần tách ba mặt phẳng:
+
+| Mặt phẳng | Năng lực | Quyền mặc định |
+|---|---|---|
+| Knowledge | hỏi/đáp tài liệu, retrieval và citation | chỉ đọc |
+| Investigation | phân tích case, graph, log, dự báo và đề xuất | chỉ đọc, tạo đề xuất |
+| Action | tạo/sửa/xóa file, chạy lệnh, gọi hệ thống | chặn hoặc yêu cầu duyệt |
+
+Luồng chuẩn:
+
+```text
+Người dùng hỏi hoặc mở case
+→ RAG/structured engines lấy evidence
+→ Investigation tạo giả thuyết và mức tin cậy
+→ Agent tạo action proposal có scope rõ ràng
+→ Policy kiểm tra quyền, rủi ro và target boundary
+→ người dùng phê duyệt khi cần
+→ tool thực thi trong sandbox/worktree
+→ audit log và evidence cập nhật lại case
+```
+
+### 19.2. Agent giống IDE nhưng không có quyền vô hạn
+
+Agent có thể đọc/tìm file, tạo report, sinh patch, sửa file hoặc chạy tool như các IDE hiện đại. Tuy nhiên quyền cần theo cấp:
+
+| Cấp | Hành động | Chính sách |
+|---|---|---|
+| 0 | đọc file, search, RAG | tự động |
+| 1 | tạo draft/report/patch trong sandbox | tự động hoặc thông báo |
+| 2 | sửa file trong workspace/worktree | yêu cầu duyệt hoặc policy rõ ràng |
+| 3 | xóa file, lệnh nguy hiểm, deploy, thao tác ngoài workspace | xác nhận rõ ràng và audit bắt buộc |
+
+`/deep-dev` là ví dụ cho action cấp 2: tạo patch có boundary, kiểm thử trong worktree cách ly và trả evidence; không tự sửa main worktree. Cách này cho phép AIOS trở thành agent workspace mạnh mà vẫn giữ được provenance, khả năng rollback và trách nhiệm giải trình cần thiết cho dữ liệu nội bộ lẫn môi trường sản xuất.
+
+## 20. Hệ quả cho lộ trình
+
+LSU Evidence Case vẫn là bước thực thi đầu tiên vì nó buộc platform chứng minh các abstraction cốt lõi. Nhưng mọi schema, API và UI mới phải được review theo câu hỏi: đây là `AIOS Core` hay chỉ là `LSU pack`? Chỉ phần core mới được dùng chung; phần còn lại phải nằm trong pack/version riêng để không làm hỏng hoặc bắt viết lại hệ RAG và các unit khác trong tương lai.
