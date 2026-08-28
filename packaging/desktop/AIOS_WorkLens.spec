@@ -14,7 +14,6 @@ REPO_ROOT = Path(SPECPATH).resolve().parent.parent
 added_files = [
     (str(REPO_ROOT / "src" / "aios_habit"), "aios_habit"),
     (str(REPO_ROOT / "vendor" / "wheels"), "vendor/wheels"),
-    (str(REPO_ROOT / ".agents" / "skills" / "excaliflow" / "assets"), "excaliflow/assets"),
     (str(REPO_ROOT / "packaging" / "models"), "packaging/models"),
 ]
 
@@ -48,6 +47,7 @@ for pkg in [
 
 all_datas += collect_data_files("streamlit")
 all_datas += collect_data_files("altair")
+all_datas += collect_data_files("excaliflow")
 
 hidden_imports = [
     "streamlit",

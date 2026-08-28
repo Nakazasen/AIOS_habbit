@@ -6,7 +6,7 @@ Authoritative Reference: ORIGINAL_REQUEST.md (§ 2026-08-23T10:36:17Z)
 
 Test Suite Structure:
 - Tier 1: Feature Coverage (>=5 tests per feature)
-  * Manifest Pinning Validation (graphifyy==0.9.32 in pyproject.toml)
+  * Manifest Pinning Validation (graphifyy==0.9.50 in pyproject.toml)
   * In-Process GraphifyAdapter Resolution and Methods
   * In-Process ExcaliFlowAdapter Resolution and Methods
   * Capability Detection check_capabilities() returning CapabilityStatus
@@ -201,7 +201,7 @@ class TestTier1ManifestPinning:
         assert "dependencies" in data["project"], "[project] must contain 'dependencies'"
 
     def test_manifest_graphify_exact_version_pinning(self) -> None:
-        """Verify graphifyy is pinned to exact version ==0.9.32 (Commit D R1)."""
+        """Verify graphifyy is pinned to exact version ==0.9.50 (Commit D R1)."""
         pyproject_path = REPO_ROOT / "pyproject.toml"
         content = pyproject_path.read_text(encoding="utf-8")
 
@@ -215,8 +215,8 @@ class TestTier1ManifestPinning:
         dependencies = data["project"]["dependencies"]
         graphify_dep = [dep for dep in dependencies if dep.startswith("graphifyy")]
         assert len(graphify_dep) == 1, f"Expected exactly one graphifyy dependency entry, found: {graphify_dep}"
-        assert graphify_dep[0] == "graphifyy==0.9.32", (
-            f"graphifyy must be strictly pinned to 'graphifyy==0.9.32', got '{graphify_dep[0]}'"
+        assert graphify_dep[0] == "graphifyy==0.9.50", (
+            f"graphifyy must be strictly pinned to 'graphifyy==0.9.50', got '{graphify_dep[0]}'"
         )
 
     def test_manifest_no_loose_graphify_ranges(self) -> None:

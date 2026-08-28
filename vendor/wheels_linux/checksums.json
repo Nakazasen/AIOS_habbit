@@ -22,9 +22,9 @@
   },
   "aios_habit-0.1.0-py3-none-any.whl": {
     "filename": "aios_habit-0.1.0-py3-none-any.whl",
-    "size_bytes": 568638,
-    "sha256": "caff8d99ab5b09ef0ac2f0da936afa773e4ebffa1bbe71b6208494f5ae720eb1",
-    "sha512": "7341e395c02019c0c96bab9180f4c8e80c20d44823dfe2ac8d82f0b513a6da26eaf0d159681da633074b53b1299be7a6b2427c30b5f056144824543e48869eb1",
+    "size_bytes": 571852,
+    "sha256": "eeaabf11dfe517ea899b4f76c6d1f250a1473b20e740fcebb8b3b4c5e0399064",
+    "sha512": "14a99fdab7e61f5e21b9e17b45ba8675d9fcc9a31514e0c3fbcbc38a58f27314729fb2b1e8ca202d1c64a8482cdcb1d2e671db7fc1ffcde3970e89d8c0ba5f7c",
     "built_for": "AIOS_habbit Commit D Offline Packaging"
   },
   "aiosignal-1.4.0-py3-none-any.whl": {
@@ -132,11 +132,11 @@
     "sha512": "be413653b838b2f8017813463b3b79b9a4a3aeba80a21d96d6f1564f6ae3766235edad2f7eb4e1353e93ae2f4ea21a860a12ba9a871badb9e85cde334b7a9c07",
     "built_for": "AIOS_habbit Commit D Offline Packaging"
   },
-  "excaliflow-0.1.3-py3-none-any.whl": {
-    "filename": "excaliflow-0.1.3-py3-none-any.whl",
-    "size_bytes": 37201,
-    "sha256": "f34f40fe60a7066740a8ecfddaaebea8c370c7bd8475b6d55997a759d188e253",
-    "sha512": "7a4c2be521450fa02eb74d510f3a37b4fad97fc7907bba5c213e75aa023de7e42db68c97bb21b4a18bd7f3333300c4a61011943ddcf9bdeaff790362f0f2bb17",
+  "excaliflow-0.1.5-py3-none-any.whl": {
+    "filename": "excaliflow-0.1.5-py3-none-any.whl",
+    "size_bytes": 836312,
+    "sha256": "40d236c91f3564f4a3f447339c23ffae5354cc2296567cc910d949190843377e",
+    "sha512": "a3be663c15213dee0438a4b390bc7615cc1b89bf541a9d2f9d7ac152318ae0116fa4d035ebeeb49190d5f53001d3d19436aa475717b79a75af97a7194d26a7a1",
     "built_for": "AIOS_habbit Commit D Offline Packaging"
   },
   "fastembed-0.8.0-py3-none-any.whl": {
@@ -188,11 +188,11 @@
     "sha512": "856d6529688dd0e952125360eabd212f8c5a93a6d354e0862d4684637867448d9ea0d4ead699fdb1f489793f71b3f7c6d371f04c2bb6cf4ead9112f72e3fd5fa",
     "built_for": "AIOS_habbit Commit D Offline Packaging"
   },
-  "graphifyy-0.9.32-py3-none-any.whl": {
-    "filename": "graphifyy-0.9.32-py3-none-any.whl",
-    "size_bytes": 1223103,
-    "sha256": "7df67ab3bdd472a51243e61d3b0455ddd8f1c3c5a6f7945c33c7b291ed31a280",
-    "sha512": "63f932a36c114e966e78c30cf596020173cf600a0ba292de8cf4b20f15837cd3bb9bd63dd4179d296f98ee06bf583f429dec61368739dd8ee5beb729eee7c2f9",
+  "graphifyy-0.9.50-py3-none-any.whl": {
+    "filename": "graphifyy-0.9.50-py3-none-any.whl",
+    "size_bytes": 1355076,
+    "sha256": "2eff8219a8759fcbb7390b6604114090d5c2ca0a06a0dec07324183e63c38aa4",
+    "sha512": "fd9291f003f2223655b7005417a9ff4d7690f32c32d22541382b938e64dea06f0de4563d1e40aeacf501d92089f45a767898deaba946df0dde1020a1e26cce4d",
     "built_for": "AIOS_habbit Commit D Offline Packaging"
   },
   "h11-0.16.0-py3-none-any.whl": {

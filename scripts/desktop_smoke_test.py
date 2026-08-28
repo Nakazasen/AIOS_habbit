@@ -44,7 +44,7 @@ def test_in_process_imports() -> None:
 
     assert graphify is not None
     assert excaliflow is not None
-    assert getattr(excaliflow, "__version__", None) == "0.1.3"
+    assert getattr(excaliflow, "__version__", None) == "0.1.5"
     assert nakazasen_ai_router is not None
 
     g_adapter = GraphifyAdapter()

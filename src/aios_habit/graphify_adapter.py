@@ -68,7 +68,7 @@ class GraphifyAdapter:
             try:
                 version = importlib.metadata.version("graphifyy")
             except Exception:
-                version = "0.9.32"
+                version = "0.9.50"
 
         graph_file = self.workspace_dir / "graphify-out" / "graph.json"
         has_graph = graph_file.exists()
@@ -101,7 +101,7 @@ class GraphifyAdapter:
         """Ensure graphify is available or raise RuntimeError."""
         if not self.is_available():
             raise RuntimeError(
-                "Graphify package ('graphifyy==0.9.32') is not available in the current runtime environment. "
+                "Graphify package ('graphifyy==0.9.50') is not available in the current runtime environment. "
                 "Please verify virtual environment installation."
             )
 

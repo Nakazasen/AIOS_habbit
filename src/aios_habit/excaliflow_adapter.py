@@ -376,7 +376,7 @@ class ExcaliFlowAdapter:
             if importlib.util.find_spec("excaliflow") is not None:
                 import excaliflow
                 excaliflow_pkg_available = True
-                excaliflow_version = getattr(excaliflow, "__version__", "0.1.3")
+                excaliflow_version = getattr(excaliflow, "__version__", "0.1.5")
         except Exception:
             pass
 

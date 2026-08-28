@@ -5,7 +5,7 @@ Enforces:
 1. Zero Subprocess Invocations: No `subprocess` module imports or execution calls.
 2. Zero PATH Search: No `shutil.which` or CLI resolution.
 3. Pure In-Process Resolution: `graphify_adapter.py` and `excaliflow_adapter.py` must use pure in-process APIs.
-4. Manifest Pinning: `pyproject.toml` strictly pins `"graphifyy==0.9.32"`.
+4. Manifest Pinning: `pyproject.toml` strictly pins `"graphifyy==0.9.50"`.
 """
 from __future__ import annotations
 
@@ -21,13 +21,13 @@ ADAPTER_FILES = [
 
 
 def test_manifest_pins_exact_graphifyy_version() -> None:
-    """Verify pyproject.toml line contains exact pin 'graphifyy==0.9.32'."""
+    """Verify pyproject.toml line contains exact pin 'graphifyy==0.9.50'."""
     repo_root = Path(__file__).resolve().parent.parent
     pyproject_path = repo_root / "pyproject.toml"
     assert pyproject_path.exists(), "pyproject.toml must exist"
 
     content = pyproject_path.read_text(encoding="utf-8")
-    assert '"graphifyy==0.9.32"' in content or "'graphifyy==0.9.32'" in content
+    assert '"graphifyy==0.9.50"' in content or "'graphifyy==0.9.50'" in content
     assert '"graphifyy>=' not in content and "'graphifyy>=" not in content
 
 

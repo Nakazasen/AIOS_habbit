@@ -1,9 +1,10 @@
 # -*- coding: utf-8 -*-
-"""Build internal offline wheels for ExcaliFlow Studio and nakazasen-ai-router.
+"""Build the AIOS application and internal offline wheels.
 
 Produces:
-  - vendor/wheels/excaliflow-0.1.3-py3-none-any.whl
+  - vendor/wheels/excaliflow-0.1.5-py3-none-any.whl
   - vendor/wheels/nakazasen_ai_router-0.8.0-py3-none-any.whl
+  - vendor/wheels/aios_habit-0.1.0-py3-none-any.whl
   - vendor/wheels/checksums.json
 """
 import hashlib
@@ -11,12 +12,16 @@ import json
 import os
 from pathlib import Path
 import shutil
+import subprocess
+import tempfile
 import zipfile
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 VENDOR_WHEELS_DIR = REPO_ROOT / "vendor" / "wheels"
 VENDOR_WHEELS_LINUX_DIR = REPO_ROOT / "vendor" / "wheels_linux"
 EXCALIFLOW_SRC_DIR = REPO_ROOT / ".agents" / "skills" / "excaliflow" / "src" / "excaliflow"
+EXCALIFLOW_ASSETS_DIR = REPO_ROOT / ".agents" / "skills" / "excaliflow" / "assets"
+EXCALIFLOW_VERSION = "0.1.5"
 SITE_PACKAGES_DIR = REPO_ROOT / ".venv" / "Lib" / "site-packages"
 
 
@@ -26,6 +31,7 @@ def make_wheel(
     version: str,
     package_dirs: dict[str, Path],
     summary: str,
+    data_dirs: dict[str, Path] | None = None,
 ) -> None:
     """Create a standard pure Python wheel archive."""
     dist_info_name = f"{dist_name}-{version}.dist-info"
@@ -41,6 +47,17 @@ def make_wheel(
                     src_file = Path(root) / f
                     rel_to_src = src_file.relative_to(src_dir)
                     arcname = f"{pkg_name}/{rel_to_src.as_posix()}"
+                    data = src_file.read_bytes()
+                    zf.writestr(arcname, data)
+                    sha = hashlib.sha256(data).hexdigest()
+                    record_entries.append(f"{arcname},sha256={sha},{len(data)}")
+
+        for archive_root, src_dir in (data_dirs or {}).items():
+            for root, _, files in os.walk(src_dir):
+                for filename in files:
+                    src_file = Path(root) / filename
+                    relative = src_file.relative_to(src_dir)
+                    arcname = f"{archive_root}/{relative.as_posix()}"
                     data = src_file.read_bytes()
                     zf.writestr(arcname, data)
                     sha = hashlib.sha256(data).hexdigest()
@@ -85,23 +102,23 @@ def make_wheel(
 def build_all() -> None:
     VENDOR_WHEELS_DIR.mkdir(parents=True, exist_ok=True)
 
-    # Clean old excaliflow 0.1.1 wheels
-    for old_whl in [
-        VENDOR_WHEELS_DIR / "excaliflow-0.1.1-py3-none-any.whl",
-        VENDOR_WHEELS_LINUX_DIR / "excaliflow-0.1.1-py3-none-any.whl",
-    ]:
-        if old_whl.exists():
-            old_whl.unlink()
+    if not EXCALIFLOW_SRC_DIR.is_dir() or not EXCALIFLOW_ASSETS_DIR.is_dir():
+        raise FileNotFoundError("Install the project ExcaliFlow skill before regenerating wheels: excaliflow install --host agy --workspace <repo>")
+    for target_dir in (VENDOR_WHEELS_DIR, VENDOR_WHEELS_LINUX_DIR):
+        if target_dir.exists():
+            for old_whl in target_dir.glob("excaliflow-*.whl"):
+                old_whl.unlink()
 
-    # 1. Build excaliflow wheel v0.1.3
-    excaliflow_whl = VENDOR_WHEELS_DIR / "excaliflow-0.1.3-py3-none-any.whl"
+    # 1. Build the pinned ExcaliFlow wheel with its offline browser assets.
+    excaliflow_whl = VENDOR_WHEELS_DIR / f"excaliflow-{EXCALIFLOW_VERSION}-py3-none-any.whl"
     print(f"Building {excaliflow_whl.name}...")
     make_wheel(
         wheel_path=excaliflow_whl,
         dist_name="excaliflow",
-        version="0.1.3",
+        version=EXCALIFLOW_VERSION,
         package_dirs={"excaliflow": EXCALIFLOW_SRC_DIR},
         summary="ExcaliFlow Studio in-process diagram and knowledge atlas package",
+        data_dirs={"excaliflow/assets": EXCALIFLOW_ASSETS_DIR},
     )
 
     # Sync to vendor/wheels_linux
@@ -120,7 +137,27 @@ def build_all() -> None:
         summary="AI Model routing and provider arbitration engine",
     )
 
-    # 3. Generate checksums.json for vendor/wheels
+    # 3. Rebuild the application wheel so its dependency metadata always
+    # matches pyproject.toml (notably the pinned Graphify/ExcaliFlow versions).
+    uv_executable = shutil.which("uv")
+    if uv_executable is None:
+        raise FileNotFoundError("uv is required to rebuild the AIOS application wheel")
+    for target_dir in (VENDOR_WHEELS_DIR, VENDOR_WHEELS_LINUX_DIR):
+        for old_whl in target_dir.glob("aios_habit-*.whl"):
+            old_whl.unlink()
+    with tempfile.TemporaryDirectory(prefix="aios-wheel-build-") as temp_dir:
+        subprocess.run(
+            [uv_executable, "build", "--wheel", "--out-dir", temp_dir],
+            cwd=REPO_ROOT,
+            check=True,
+        )
+        application_wheels = list(Path(temp_dir).glob("aios_habit-*.whl"))
+        if len(application_wheels) != 1:
+            raise RuntimeError(f"Expected one AIOS wheel, found {len(application_wheels)}")
+        for target_dir in (VENDOR_WHEELS_DIR, VENDOR_WHEELS_LINUX_DIR):
+            shutil.copy2(application_wheels[0], target_dir / application_wheels[0].name)
+
+    # 4. Generate checksums.json for both offline wheelhouses.
     for target_dir in [VENDOR_WHEELS_DIR, VENDOR_WHEELS_LINUX_DIR]:
         if not target_dir.exists():
             continue

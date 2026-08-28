@@ -38,7 +38,6 @@ ENV PATH="/opt/venv/bin:$PATH"
 # Copy application source, packaging manifests and assets
 COPY src/ /app/src/
 COPY packaging/ /app/packaging/
-COPY .agents/skills/excaliflow/assets/ /app/excaliflow/assets/
 COPY pyproject.toml /app/
 
 # Create and isolate single-tenant storage volume and read-only model mount point
