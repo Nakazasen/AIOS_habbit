@@ -1058,3 +1058,79 @@ Agent có thể đọc/tìm file, tạo report, sinh patch, sửa file hoặc ch
 ## 20. Hệ quả cho lộ trình
 
 LSU Evidence Case vẫn là bước thực thi đầu tiên vì nó buộc platform chứng minh các abstraction cốt lõi. Nhưng mọi schema, API và UI mới phải được review theo câu hỏi: đây là `AIOS Core` hay chỉ là `LSU pack`? Chỉ phần core mới được dùng chung; phần còn lại phải nằm trong pack/version riêng để không làm hỏng hoặc bắt viết lại hệ RAG và các unit khác trong tương lai.
+
+## 21. Agent tools: nối kiến thức, điều tra và hành động thành một vòng có kiểm soát
+
+Agent tools là “tay chân” của AIOS. RAG là trí nhớ có evidence; diagnostic/prediction engines là bộ phân tích định lượng; tool adapter là khả năng quan sát và thực hiện tác vụ. Không thành phần nào nên tự thay thế hai thành phần còn lại.
+
+```text
+Người dùng / kỹ sư
+        ↓
+AIOS Agent Orchestrator
+        ├─ RAG: SOP, manual, incident, tài liệu nội bộ
+        ├─ Tools: log, MES/QMS/PLC, ảnh, ticket, report
+        ├─ Diagnosis: rule, correlation, graph, time-series
+        ├─ Prediction: risk, horizon, calibration
+        └─ Action policy: đề xuất / xin duyệt / thực thi có audit
+        ↓
+Case + EvidencePack + Audit trail chung
+```
+
+### 21.1. Giá trị cho điều tra lỗi line máy in
+
+Ví dụ kỹ sư hỏi: “LSU-03 đang fail ở JIG 1035, kiểm tra giúp.” Agent có thể:
+
+1. Gọi tool chỉ đọc để lấy serial, lot linh kiện, firmware, cấu hình JIG, log gần nhất, lịch sử retest và maintenance.
+2. Dùng RAG tìm SOP, spec limit, tài liệu vendor và case tương tự.
+3. Gọi engine phân tích để so sánh 1004/1035, kiểm tra drift và khác biệt theo lot/ca/operator.
+4. Tạo hoặc cập nhật Case với từng kết luận được gắn trạng thái `verified`, `suspected`, `conflicting` hoặc `unknown`.
+5. Đưa kết luận có điều kiện cùng evidence: ví dụ nghi ngờ JIG/configuration nhưng chưa đủ bằng chứng để kết luận component lỗi.
+6. Tạo action proposal: report, ticket kỹ sư, yêu cầu re-test theo SOP hoặc một experiment/DOE được phê duyệt.
+
+Kết quả không chỉ là câu trả lời ngôn ngữ tự nhiên mà là một hồ sơ điều tra có thể audit, tiếp tục bởi ca khác và dùng lại trong lần sau.
+
+### 21.2. Giá trị cho dự đoán lỗi unit
+
+Ví dụ: “Unit nào có rủi ro lỗi cao trong 24 giờ tới?” Agent lấy telemetry/time-series qua adapter, gọi prediction engine để chấm risk, dùng RAG để bổ sung bối cảnh kỹ thuật rồi trả về:
+
+```text
+rủi ro / failure mode
+asset scope
+horizon
+confidence và calibration
+evidence hỗ trợ
+known unknowns
+hành động kiểm tra đề xuất
+```
+
+Prediction không được tự biến thành kết luận nguyên nhân. Nó chỉ xếp ưu tiên kiểm tra; causal conclusion vẫn đòi hỏi evidence, chuyên gia và khi cần là đối chứng/DOE.
+
+### 21.3. Giá trị cho hỏi đáp tài liệu nội bộ
+
+Với câu hỏi như “Quy trình thay drum và lỗi thường gặp là gì?”, AIOS chỉ cần RAG và citation. Khi người dùng yêu cầu “tạo checklist bảo trì từ SOP”, Agent có thể sinh draft trong sandbox. Khi yêu cầu ghi vào CMMS/ticketing system hoặc thao tác lên thiết bị, Agent chuyển sang action proposal và áp dụng quyền/approval tương ứng.
+
+Do đó RAG không bị hy sinh khi thêm industrial diagnosis hay Agent IDE; nó vẫn là lớp knowledge chung, còn mỗi task chỉ bật các engine/tool phù hợp.
+
+### 21.4. Một contract vận hành chung
+
+Ba năng lực cần hội tụ vào cùng một object thay vì ba lịch sử rời rạc:
+
+```text
+Case
+├─ Asset scope: Machine / Unit / Component
+├─ Question hoặc task
+├─ Evidence: document, log, measurement, image, history
+├─ Hypotheses + confidence
+├─ Prediction (nếu có)
+├─ Action proposals
+├─ Human approvals
+└─ Audit events
+```
+
+Mọi tool phải trả dữ liệu/evidence về Case hoặc EvidencePack; mọi câu trả lời phải liên kết evidence; mọi thao tác ghi, xóa, gửi ticket hoặc gọi hệ thống phải thành ActionProposal có scope, policy decision và audit event. Đây là điểm gộp thật sự của RAG, industrial AI và IDE agent.
+
+### 21.5. Ranh giới an toàn cho tool trong môi trường sản xuất
+
+Đọc dữ liệu máy và hệ thống có thể tự động theo quyền đọc. Các hành động thay đổi trạng thái — reset máy, đổi cấu hình JIG, dừng line, xóa log, gửi lệnh PLC, deploy hoặc thao tác ngoài workspace — phải ở cấp quyền cao, yêu cầu xác nhận của người được ủy quyền, audit bắt buộc và có fail-safe độc lập. Không cho phép một câu trả lời RAG trở thành lệnh trực tiếp điều khiển line.
+
+Kết luận: AIOS nên là một **case-operating system**. RAG cung cấp tri thức, tools cung cấp quan sát/hành động, diagnosis/prediction cung cấp suy luận; policy, approval và audit bảo đảm hệ thống mạnh nhưng không nguy hiểm.
