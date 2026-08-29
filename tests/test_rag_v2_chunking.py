@@ -1,7 +1,11 @@
 import pytest
 
 from aios_habit.rag_v2 import DocumentElement, ElementType, ExtractionStatus, TableCell, TableData
-from aios_habit.rag_v2.chunking import StructureAwareChunker
+from aios_habit.rag_v2.chunking import (
+    BOUNDARY_POLICY_LEGACY,
+    BOUNDARY_POLICY_SENTENCE_PUNCTUATION,
+    StructureAwareChunker,
+)
 
 
 def make_element(**overrides):
@@ -185,3 +189,66 @@ def test_oversized_table_row_splits_into_bounded_provenance_preserving_children(
     assert " ".join(chunk.text for chunk in children).endswith(long_cell)
     assert [chunk.chunk_id for chunk in first] == [chunk.chunk_id for chunk in second]
     assert [chunk.text for chunk in first] == [chunk.text for chunk in second]
+
+
+def test_default_chunker_uses_sentence_punctuation_policy():
+    assert StructureAwareChunker().boundary_policy == BOUNDARY_POLICY_SENTENCE_PUNCTUATION
+
+
+def test_legacy_policy_hard_cuts_cjk_without_spaces():
+    text = ("品質管理手順を確認する。" * 8)
+    parts = StructureAwareChunker(
+        max_chars=80,
+        boundary_policy=BOUNDARY_POLICY_LEGACY,
+    )._split_text(text, 80)
+    assert len(parts) > 1
+    assert any(not part.endswith("。") for part in parts[:-1])
+    assert all(len(part) <= 80 for part in parts)
+
+
+def test_sentence_policy_splits_at_cjk_period_inside_window():
+    text = ("品質管理手順を確認する。" * 8)
+    chunker = StructureAwareChunker(
+        max_chars=80,
+        boundary_policy=BOUNDARY_POLICY_SENTENCE_PUNCTUATION,
+    )
+    parts = chunker._split_text(text, 80)
+    assert len(parts) > 1
+    assert all(part.endswith("。") for part in parts)
+    assert all(len(part) <= 80 for part in parts)
+
+
+def test_sentence_policy_splits_at_fullwidth_question_and_exclamation():
+    text = ("温度は正常範囲ですか？" * 6) + ("直ちに停止せよ！" * 6)
+    chunker = StructureAwareChunker(
+        max_chars=90,
+        boundary_policy=BOUNDARY_POLICY_SENTENCE_PUNCTUATION,
+    )
+    parts = chunker._split_text(text, 90)
+    assert len(parts) > 1
+    assert all(part[-1] in "？！" for part in parts)
+    assert all(len(part) <= 90 for part in parts)
+
+
+def test_sentence_policy_falls_back_when_no_punctuation():
+    text = "あ" * 200
+    chunker = StructureAwareChunker(
+        max_chars=80,
+        boundary_policy=BOUNDARY_POLICY_SENTENCE_PUNCTUATION,
+    )
+    parts = chunker._split_text(text, 80)
+    assert len(parts) > 1
+    assert all(len(part) <= 80 for part in parts)
+    assert any(not part.endswith("。") for part in parts)
+
+
+def test_sentence_policy_does_not_split_on_decimal_dot():
+    prefix = "Giá trị đo 12.5 rồi 13.8 rồi 14.2 rồi kết thúc câu này bằng chấm. "
+    text = prefix + ("x" * 40)
+    chunker = StructureAwareChunker(
+        max_chars=90,
+        boundary_policy=BOUNDARY_POLICY_SENTENCE_PUNCTUATION,
+    )
+    parts = chunker._split_text(text, 90)
+    assert parts
+    assert "12.5" in parts[0]

@@ -1,5 +1,7 @@
 # Extraction Workspace
 
+> First-read: skip. Phase 0 vault. Lối vào: `AGENTS.md`.
+
 Khu vực xử lý tạm thời để tạo candidate memory từ evidence.
 
 ## Rule

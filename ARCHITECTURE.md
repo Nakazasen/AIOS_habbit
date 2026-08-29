@@ -1,5 +1,9 @@
 # AIOS Habit Architecture
 
+Đọc lần đầu: `AGENTS.md` (L0) rồi `CONSTITUTION.md`. File này là canonical kiến trúc. Cây thư mục `00_governance/` … `12_tools/` bên dưới là **bố cục Phase 0 (memory vault)** — không nuốt cả cây khi làm Workspace Chat / RAG v2. Runtime hiện tại: Workspace Chat + `src/aios_habit/rag_v2/`. Khung nhìn container: `docs/architecture/`.
+
+`WORKLENS_ARCHITECTURE.md` là stub chuyển hướng về file này.
+
 ## Workspace Chat: chuẩn bị nguồn tăng dần (2026-08-22)
 
 - Mỗi nguồn mới chỉ được đưa vào hàng đợi lập chỉ mục riêng sau khi đọc file thành công;
@@ -14,7 +18,7 @@
 - Khi BGE-M3 chưa được triển khai hợp lệ, nguồn hiển thị `BGE-M3 chưa sẵn sàng`; ứng dụng
   không tạo hàng đợi giả hoặc treo chờ vô hạn. Quy tắc fail-closed của truy xuất vẫn giữ nguyên.
 
-## 1. Architectural Intent
+## 1. Ý định kiến trúc
 
 AIOS Habit được thiết kế như một **local-first, evidence-based, AI-independent personal memory platform**.
 
@@ -26,7 +30,7 @@ Mục tiêu kiến trúc:
 - Có thể thay GPT bằng Gemini, Claude, Grok hoặc AI tương lai mà không mất tri thức.
 - Có thể audit, rollback, handover và mở rộng trong nhiều năm.
 
-## 2. Core Data Flow
+## 2. Luồng dữ liệu cốt lõi
 
 ```text
 [Source Artifacts]
@@ -58,9 +62,9 @@ Mục tiêu kiến trúc:
         +--> [AI Export Packs]
 ```
 
-## 3. Layered Architecture
+## 3. Kiến trúc phân lớp
 
-### Layer 0: Governance Layer
+### Lớp 0: Quản trị
 
 Chứa constitution, roadmap, phase gate, changelog, handover và policy.
 
@@ -77,7 +81,7 @@ Trách nhiệm:
 - Định nghĩa PASS/FAIL.
 - Quản lý rủi ro, rollback và handover.
 
-### Layer 1: Source Layer
+### Lớp 1: Nguồn
 
 Chứa thông tin về nguồn tri thức được phép xử lý.
 
@@ -101,7 +105,7 @@ Nguồn có thể gồm:
 
 Raw source không phải memory.
 
-### Layer 2: Evidence Registry Layer
+### Lớp 2: Sổ bằng chứng
 
 Chứa evidence record đại diện cho nguồn đã được kiểm tra.
 
@@ -121,7 +125,7 @@ Evidence record không nên chứa toàn bộ nội dung thô. Nó chứa:
 - Permission/retention rule.
 - Memory liên kết.
 
-### Layer 3: Extraction Workspace
+### Lớp 3: Không gian trích xuất
 
 Nơi xử lý tạm thời để chuyển evidence thành candidate memory.
 
@@ -137,7 +141,7 @@ Quy tắc:
 - Candidate phải có evidence.
 - Candidate phải được review trước khi vào memory vault.
 
-### Layer 4: Memory Vault
+### Lớp 4: Kho bộ nhớ
 
 Kho memory đã phân loại.
 
@@ -157,7 +161,7 @@ Phân loại chính:
 - `lessons_learned/`
 - `decision_patterns/`
 
-### Layer 5: Master Profile Layer
+### Lớp 5: Hồ sơ tổng thể
 
 Các file master ở root là bản tổng hợp có thể dùng cho AI khác.
 
@@ -169,7 +173,7 @@ Files:
 - `MASTER_PROJECT_INDEX.md`
 - `MASTER_WORKFLOW_PROFILE.md`
 
-### Layer 6: AI Portability Layer
+### Lớp 6: Khả năng chuyển AI
 
 Chuyển memory trung lập thành prompt/profile phù hợp từng AI.
 
@@ -189,7 +193,7 @@ Adapters:
 
 Không adapter nào được trở thành nguồn sự thật. Source of truth vẫn là memory vault và master profile.
 
-### Layer 7: Audit & Operations Layer
+### Lớp 7: Kiểm toán và vận hành
 
 Folder:
 
@@ -206,7 +210,7 @@ Trách nhiệm:
 - Ghi phase handover.
 - Hỗ trợ rollback.
 
-## 4. Repository Structure
+## 4. Cấu trúc kho mã
 
 ```text
 AIOS_habbit/
@@ -309,7 +313,7 @@ AIOS_habbit/
     └── README.md
 ```
 
-## 5. Memory Object Model
+## 5. Mô hình đối tượng bộ nhớ
 
 ```text
 Evidence Record
@@ -320,7 +324,7 @@ Validated Memory
     -> feeds Master Profiles and AI Export Packs
 ```
 
-### Memory Unit fields
+### Trường của đơn vị bộ nhớ
 
 - `memory_id`
 - `memory_type`
@@ -336,7 +340,7 @@ Validated Memory
 - `validation`
 - `rollback`
 
-## 6. Evidence Policy
+## 6. Chính sách bằng chứng
 
 Evidence phải trả lời được:
 
@@ -347,7 +351,7 @@ Evidence phải trả lời được:
 5. Có bị suy đoán không?
 6. Nếu sai thì rollback thế nào?
 
-## 7. Confidence Model
+## 7. Mô hình độ tin cậy
 
 | Level | Meaning | Allowed Use |
 |---|---|---|
@@ -356,7 +360,7 @@ Evidence phải trả lời được:
 | `high` | Có nhiều evidence hoặc xác nhận trực tiếp | Dùng trong master profile |
 | `verified` | Đã được người dùng hoặc reviewer xác nhận | Dùng làm canonical memory |
 
-## 8. Status Model
+## 8. Mô hình trạng thái
 
 | Status | Meaning |
 |---|---|
@@ -366,7 +370,7 @@ Evidence phải trả lời được:
 | `conflicted` | Có evidence mâu thuẫn |
 | `rejected` | Bị loại, không dùng |
 
-## 9. Project Discovery Strategy
+## 9. Chiến lược phát hiện dự án
 
 Không giả định danh sách project hiện tại là đầy đủ.
 
@@ -391,7 +395,7 @@ Project markers gồm:
 - `prompts/`
 - `specs/`
 
-## 10. AI Portability Design
+## 10. Thiết kế khả năng chuyển AI
 
 Master memory được viết trung lập. Export pack chỉ là bản chuyển đổi.
 
@@ -401,7 +405,7 @@ Memory Vault -> Master Profile -> AI Adapter -> AI-Specific Prompt Pack
 
 Không chỉnh sửa memory lõi để phù hợp một AI. Nếu adapter cần đặc thù, ghi rõ trong adapter.
 
-## 11. Security and Privacy Defaults
+## 11. Mặc định bảo mật và quyền riêng tư
 
 - Không commit raw transcripts.
 - Không commit token, cookie, API key.
@@ -410,7 +414,7 @@ Không chỉnh sửa memory lõi để phù hợp một AI. Nếu adapter cần 
 - Local first.
 - Evidence record nên dùng summary và hash thay vì full raw content.
 
-## 12. Initial Non-Code Implementation Boundary
+## 12. Ranh giới triển khai ban đầu (không phải mã)
 
 Phase 0 là design và documentation phase.
 
@@ -424,7 +428,7 @@ Không thực hiện:
 
 Chỉ tạo nền móng để Phase 1 có thể audit và triển khai an toàn.
 
-## 13. Current Implementation and Control References
+## 13. Triển khai hiện tại và tham chiếu kiểm soát
 
 Tài liệu này giữ vai trò kiến trúc logic/data-memory lịch sử. Runtime/container,
 trust-boundary, sequence, decision và control hiện hành nằm trong:

@@ -1,4 +1,4 @@
-# AIOS Habit Constitution
+# Hiến chương AIOS Habit
 
 ## 1. Sứ mệnh
 
@@ -25,25 +25,29 @@ AIOS Habit **không phải**:
 
 ## 3. Nguyên tắc tối cao
 
-### Principle 1: Không lưu hội thoại, lưu tri thức
+### Nguyên tắc 1: Không lưu hội thoại, lưu tri thức
 
-Raw conversation chỉ là nguồn tạm để trích xuất. Memory cuối cùng phải là tri thức đã được phân loại, tóm tắt và gắn evidence.
+Hội thoại thô chỉ là nguồn tạm để trích xuất. Bộ nhớ cuối cùng phải là tri thức đã được phân loại, tóm tắt và gắn bằng chứng.
 
-### Principle 2: Không lưu câu chữ, lưu pattern
+### Nguyên tắc 2: Không lưu câu chữ, lưu quy luật
 
-Hệ thống không tối ưu cho việc nhớ từng câu. Hệ thống tối ưu cho việc nhớ quy luật, sở thích, hành vi, workflow và tiêu chuẩn đánh giá.
+Hệ thống không tối ưu cho việc nhớ từng câu. Hệ thống tối ưu cho việc nhớ quy luật, sở thích, hành vi, quy trình và tiêu chuẩn đánh giá.
 
-### Principle 3: Không lưu suy đoán, chỉ lưu evidence
+### Nguyên tắc 3: Không lưu suy đoán, chỉ lưu bằng chứng
 
-Mọi memory phải có ít nhất một evidence record. Nếu chưa có evidence, memory phải ở trạng thái `candidate` và không được dùng như sự thật.
+Mọi đơn vị bộ nhớ phải có ít nhất một bản ghi bằng chứng. Nếu chưa có bằng chứng, trạng thái phải là `candidate` và không được dùng như sự thật.
 
-### Principle 4: AI phải thay được, tri thức không được mất
+### Nguyên tắc 4: AI phải thay được, tri thức không được mất
 
-Không định dạng dữ liệu theo riêng một AI. Mọi memory lõi phải dùng Markdown, JSON hoặc YAML mở, có schema rõ ràng.
+Không định dạng dữ liệu theo riêng một AI. Mọi bộ nhớ lõi phải dùng Markdown, JSON hoặc YAML mở, có schema rõ ràng.
 
-### Principle 5: Local First
+### Nguyên tắc 5: Ưu tiên cục bộ (local-first)
 
-Dữ liệu gốc thuộc người dùng. Mặc định lưu cục bộ. Không đồng bộ ra cloud nếu chưa có chính sách rõ ràng.
+Dữ liệu gốc thuộc người dùng. Mặc định lưu cục bộ. Không đồng bộ ra mây nếu chưa có chính sách rõ ràng.
+
+### Nguyên tắc 6: Tài liệu người đọc phải tiếng Việt
+
+Mọi câu văn trong tài liệu sản phẩm (README, hiến chương, quy tắc agent, kiến trúc, roadmap, spec đang mở, sổ thảo luận) viết tiếng Việt. Cấm tiêu đề và đoạn văn tiếng Anh. Chỉ được giữ token tiếng Anh khi là đường dẫn, lệnh, tên mã, nhãn máy (`Status:`, `PASS`) hoặc hằng (`local_only`) — và phải giải thích tiếng Việt bên cạnh. Luật chi tiết: `AGENT_RULES.md` mục 4.
 
 ## 4. Quy tắc bắt buộc khi phát triển
 
@@ -53,9 +57,9 @@ Dữ liệu gốc thuộc người dùng. Mặc định lưu cục bộ. Không 
 4. Mọi thay đổi kiến trúc phải cập nhật `ARCHITECTURE.md`.
 5. Mọi thay đổi roadmap phải cập nhật `ROADMAP.md`.
 6. Mọi thay đổi hành vi hệ thống phải cập nhật `PROJECT_HANDOVER.md`.
-7. Mọi memory mới phải có evidence hoặc được đánh dấu `candidate`.
-8. Không merge dữ liệu raw chưa được phân loại vào memory vault.
-9. Không dùng AI output như evidence nếu không có nguồn gốc kèm theo.
+7. Mọi bộ nhớ mới phải có bằng chứng hoặc được đánh dấu `candidate`.
+8. Không gộp dữ liệu thô chưa phân loại vào kho bộ nhớ.
+9. Không dùng đầu ra AI như bằng chứng nếu không có nguồn gốc kèm theo.
 10. Không tự ý kết luận khi chưa đủ dữ liệu.
 
 ## 5. Định nghĩa PASS/FAIL
@@ -69,30 +73,39 @@ Một hạng mục chỉ được đánh dấu `PASS` khi:
 
 Nếu thiếu một trong các điều trên, trạng thái phải là `FAIL`, `BLOCKED` hoặc `PARTIAL`, không được ghi `PASS`.
 
-## 6. Chính sách raw data
+## 6. Chính sách dữ liệu thô
 
-Raw chat transcript, email, log cá nhân, tài liệu nhạy cảm không được đưa vào memory vault trực tiếp.
+Bản ghi chat thô, email, log cá nhân, tài liệu nhạy cảm không được đưa thẳng vào kho bộ nhớ.
 
 Quy trình đúng:
 
 ```text
-Raw Source -> Evidence Record -> Extracted Pattern -> Validated Memory -> Export Profile
+Nguồn thô → Bản ghi bằng chứng → Quy luật đã trích → Bộ nhớ đã xác thực → Gói xuất
 ```
 
-## 7. Chính sách chống lock-in AI
+## 7. Chính sách chống khóa nhà cung cấp AI
 
-Mọi output dài hạn phải tồn tại được ngoài ChatGPT, Gemini, Claude, Grok. Không được phụ thuộc vào:
+Mọi đầu ra dài hạn phải tồn tại được ngoài ChatGPT, Gemini, Claude, Grok. Không được phụ thuộc vào:
 
-- Internal memory của một AI.
-- Proprietary prompt format không có bản Markdown tương đương.
-- Conversation history không export được.
+- Bộ nhớ nội bộ của một AI.
+- Định dạng prompt độc quyền không có bản Markdown tương đương.
+- Lịch sử hội thoại không xuất được.
 
 ## 8. Thứ tự ưu tiên khi xung đột
 
 1. An toàn dữ liệu người dùng.
-2. Evidence và tính đúng đắn.
+2. Bằng chứng và tính đúng đắn.
 3. Khả năng kế thừa dài hạn.
 4. Tính mở rộng.
 5. Tốc độ triển khai.
 
-Tốc độ không được vượt lên trên evidence hoặc an toàn dữ liệu.
+Tốc độ không được vượt lên trên bằng chứng hoặc an toàn dữ liệu.
+
+## 9. Tài liệu liên quan (không thay file này)
+
+- Lối vào agent (L0): `AGENTS.md`
+- Định vị sản phẩm / giai đoạn / “AIOS không phải”: `docs/AIOS_PRODUCT_POSITIONING.md`
+- Phân loại dữ liệu local-first: `00_governance/DATA_POLICY.md`
+- Kiến trúc: `ARCHITECTURE.md`
+- Trạng thái chuyển giao: `ROADMAP.md`, `PROJECT_HANDOVER.md`
+

@@ -1,5 +1,7 @@
 # Manifest
 
+Danh sách inventory Giai đoạn 0. **Không** dùng file này làm luật sản phẩm hay lối vào agent. Đọc `AGENTS.md` rồi `CONSTITUTION.md`. Cây `00_`–`12_` đã gắn biển first-read skip; `00_governance/DATA_POLICY.md` vẫn canonical về phân loại dữ liệu.
+
 - `.gitignore`
 - `00_governance/DATA_POLICY.md`
 - `00_governance/PHASE_0_EXIT_CHECKLIST.md`

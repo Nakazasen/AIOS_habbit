@@ -1,40 +1,37 @@
 # AIOS WorkLens
 
-[Tiếng Việt](README_VI.md)
+AIOS WorkLens là Workspace Chat ưu tiên cục bộ: người dùng nạp tài liệu công việc,
+hỏi bằng ngôn ngữ tự nhiên và kiểm tra bằng chứng đã dùng trong câu trả lời.
 
-AIOS WorkLens is a local-first Workspace Chat for querying working documents with
-retrievable evidence. It is designed to keep document preparation, search, chat
-state, and evidence records under the operator's control.
+Tài liệu sản phẩm viết **tiếng Việt**. Tên file, lệnh và hằng kỹ thuật giữ nguyên
+tiếng Anh. Lối vào cho agent: [`AGENTS.md`](AGENTS.md).
 
-## Current capabilities
+## Chức năng hiện có
 
-- Workspace Chat with notebook and conversation-scoped sources.
-- Local BGE-M3 hybrid retrieval when a verified local model pack is available.
-- Vietnamese, Japanese, and Simplified Chinese UI/answer language support.
-- `rag-trace/v1` evidence records linked to chat messages.
-- An on-demand Evidence Graph for answers that contain valid evidence citations.
-- Desktop and VPS packaging sources, including pinned Graphify and ExcaliFlow
-  dependencies.
+- Workspace Chat quản lý nguồn theo sổ tài liệu và từng cuộc trò chuyện.
+- Tìm kiếm hybrid BGE-M3 cục bộ khi máy có gói model đã được xác thực.
+- Giao diện và ngôn ngữ trả lời: Tiếng Việt, 日本語, 简体中文.
+- Lưu vết bằng chứng `rag-trace/v1` gắn với tin nhắn trả lời.
+- Nút xem đồ thị bằng chứng khi câu trả lời có trích dẫn hợp lệ.
+- Mã đóng gói Desktop/VPS với Graphify và ExcaliFlow được ghim phiên bản.
 
-The Evidence Graph is an aid to inspect an answer's cited evidence. It does not
-turn an answer without valid citations into verified knowledge.
+Đồ thị bằng chứng giúp xem AI đã dựa vào những đoạn nào. Nó không biến một câu
+trả lời không có trích dẫn thành câu đã được kiểm chứng.
 
-## Status and boundaries
+## Trạng thái và giới hạn
 
-- `Workspace Chat` is the supported user-facing interface. The retired Case
-  Cockpit and Habit Studio are not part of the normal workflow.
-- The offline Windows/Linux wheelhouses are stored through Git LFS. They must
-  be pulled before an offline build or installation.
-- The BGE-M3 model pack is deliberately not stored in this Git repository. A
-  desktop build checks its revision and checksum and stops if the verified model
-  artifact is missing or corrupted.
-- Desktop/VPS packaging is source and test verified in this repository. Validate
-  the final package on the target machine before treating it as a production
-  deployment.
+- `Workspace Chat` là giao diện dành cho người dùng. Case Cockpit và Habit Studio
+  cũ không còn thuộc luồng thông thường.
+- Bộ wheel offline Windows/Linux lưu qua Git LFS. Cần `git lfs pull` trước khi
+  cài hoặc build offline.
+- Model BGE-M3 không nằm trong Git. Khi build Desktop, chương trình kiểm tra
+  revision và checksum; thiếu hoặc hỏng thì dừng rõ, không giả vờ đã tìm được tài liệu.
+- Mã và test đóng gói đã có trong repo. Trước khi dùng production, kiểm tra gói
+  cuối trên đúng máy/VPS đích.
 
-## Quick start on Windows
+## Bắt đầu nhanh trên Windows
 
-Requirements: Git, Git LFS, Python **3.11**, and `uv`.
+Cần Git, Git LFS, Python **3.11** và `uv`.
 
 ```powershell
 git clone https://github.com/Nakazasen/AIOS_habbit.git
@@ -44,23 +41,22 @@ git lfs pull
 uv sync --group dev
 ```
 
-Start Workspace Chat:
+Mở Workspace Chat:
 
 ```powershell
 .\RUN_AIOS_WORKSPACE_CHAT.bat
 ```
 
-Or:
+Hoặc:
 
 ```powershell
 .\scripts\run_workspace_chat.ps1
 ```
 
-If BGE-M3 is unavailable, follow the model-pack and retrieval runbooks before
-expecting document retrieval to work. The application reports that condition
-instead of silently pretending search is available.
+Nếu BGE-M3 chưa sẵn sàng, làm theo runbook model pack trước khi kỳ vọng tìm được
+câu trả lời từ tài liệu. Ứng dụng phải báo tình trạng này, không âm thầm giả vờ đã tìm.
 
-## Development checks
+## Kiểm tra dành cho developer
 
 ```powershell
 uv run --no-sync --group dev python -m compileall src tests
@@ -70,21 +66,22 @@ git diff --check
 git status --short
 ```
 
-## Documentation
+## Tài liệu
 
-- [Vietnamese README](README_VI.md)
-- [Roadmap and canonical delivery state](ROADMAP.md)
-- [Project handover](PROJECT_HANDOVER.md)
-- [Workspace architecture](WORKLENS_ARCHITECTURE.md)
-- [Desktop packaging guide](packaging/desktop/README.md)
-- [VPS deployment guide](packaging/vps/README.md)
-- [Operator runbook](docs/runbooks/operator.md)
-- [Developer runbook](docs/runbooks/developer.md)
+- [Hiến chương](CONSTITUTION.md)
+- [Lối vào agent](AGENTS.md)
+- [Roadmap](ROADMAP.md)
+- [Bàn giao](PROJECT_HANDOVER.md)
+- [Kiến trúc](ARCHITECTURE.md)
+- [Bản đồ tài liệu](docs/PROFESSIONALIZATION_INDEX.md)
+- [Đóng gói Desktop](packaging/desktop/README.md)
+- [Triển khai VPS](packaging/vps/README.md)
+- [Runbook vận hành](docs/runbooks/operator.md)
+- [Runbook developer](docs/runbooks/developer.md)
 
-## Local-data safety
+## An toàn dữ liệu cục bộ
 
-Do not commit runtime data or private sources: `local_cases/`, `local_runs/`,
-JSONL evidence and memory, uploaded documents, screenshots, `.env` files,
-credentials, tokens, or caches. The provider and bridge configuration must be
-reviewed before any organisation-specific or confidential source is sent beyond
-the local machine.
+Không commit dữ liệu runtime hoặc nguồn riêng tư: `local_cases/`, `local_runs/`,
+JSONL bằng chứng/bộ nhớ, tài liệu đã tải lên, ảnh chụp, `.env`, credentials,
+tokens hoặc cache. Trước khi gửi tài liệu nội bộ ra ngoài máy, phải kiểm tra cấu
+hình nhà cung cấp AI và cầu nối đang chọn.

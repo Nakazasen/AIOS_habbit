@@ -1,5 +1,7 @@
 # Memory Vault
 
+> First-read: skip. Phase 0 vault. Lối vào: `AGENTS.md`. Luật memory: `CONSTITUTION.md`.
+
 Kho memory đã validate hoặc được quản lý theo trạng thái rõ ràng.
 
 ## Categories

@@ -1,5 +1,7 @@
 # Chỉ mục Dự án Tổng thể (Master Project Index)
 
+> Không phải luật sản phẩm. Lối vào: `AGENTS.md`. Bản đồ tài liệu: `docs/PROFESSIONALIZATION_INDEX.md`.
+
 ## Mục đích
 
 Lưu danh mục dự án đã biết, trạng thái, vai trò trong hệ tri thức và quan hệ giữa các dự án.

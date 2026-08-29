@@ -7,7 +7,7 @@ Review cadence: Each release candidate and contributor workflow change
 
 ## Trước khi thay đổi mã nguồn hoặc tài liệu
 
-1. Đọc kỹ `CONSTITUTION.md`, `ROADMAP.md`, `PROJECT_HANDOVER.md` và Gate Card liên quan.
+1. Agent: `AGENTS.md` (L0) rồi `CONSTITUTION.md` và `AGENT_RULES.md`. Người: `CONSTITUTION.md`, `ROADMAP.md`, `PROJECT_HANDOVER.md` và Gate Card / `specs/<id>/` liên quan. Không đọc cả cây `00_`–`12_` hay `docs/archive/` trừ khi truy vết.
 2. Đọc các bản ghi ADR, yêu cầu, hợp đồng (contract), mô hình mối đe dọa/quyền riêng tư và kiểm thử liên kết.
 3. Giữ các thay đổi nằm trong danh sách cho phép (allowlist) của gate. Không bắt đầu một tính năng mới khi chưa có quyết định phê duyệt phạm vi rõ ràng.
 

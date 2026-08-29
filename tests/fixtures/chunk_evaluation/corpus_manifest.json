@@ -1,6 +1,8 @@
 {
   "manifest_version": "1.0",
-  "description": "Evaluation corpus manifest for chunk evaluation E1 baseline. References source identities and types without embedding raw text.",
+  "corpus_kind": "synthetic_identities",
+  "synthetic": true,
+  "description": "Identity-only fixture for unit tests. Must never be labelled baseline.",
   "privacy_note": "No raw local_only text is stored in this manifest. Documents are referenced by identity and path only.",
   "sources": [
     {

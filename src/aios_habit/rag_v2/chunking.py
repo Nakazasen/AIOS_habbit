@@ -9,9 +9,39 @@ from typing import Any, Dict, Iterable, List, Optional, Tuple
 
 from .schema import DocumentElement, ElementType, ExtractionStatus
 
+BOUNDARY_POLICY_LEGACY = "legacy"
+BOUNDARY_POLICY_SENTENCE_PUNCTUATION = "sentence_punctuation_v1"
+SENTENCE_END_CHARS = frozenset("。！？．.!?")
+
 
 def _clean_text(value: Optional[str]) -> str:
     return re.sub(r"\s+", " ", value or "").strip()
+
+
+def _is_decimal_dot(text: str, index: int) -> bool:
+    if index < 0 or index >= len(text) or text[index] != ".":
+        return False
+    left = index > 0 and text[index - 1].isdigit()
+    right = index + 1 < len(text) and text[index + 1].isdigit()
+    return left and right
+
+
+def last_sentence_end(text: str, start: int, end: int, *, min_pos: int) -> int:
+    """Return index after the last sentence-ending char in ``[min_pos, end)``.
+
+    ``-1`` when no recognised punctuation sits in the permitted window.
+    """
+    best = -1
+    lo = max(start, min_pos)
+    hi = min(end, len(text))
+    for index in range(lo, hi):
+        char = text[index]
+        if char not in SENTENCE_END_CHARS:
+            continue
+        if _is_decimal_dot(text, index):
+            continue
+        best = index + 1
+    return best
 
 
 @dataclass(frozen=True)
@@ -58,7 +88,12 @@ class DocumentChunk:
 
 
 class StructureAwareChunker:
-    """Create retrieval children plus local-only parent context views."""
+    """Create retrieval children plus local-only parent context views.
+
+    Default ``boundary_policy`` is ``sentence_punctuation_v1`` after the E2 v2
+    public-eval gate (CJK sentence endings before character fallback). The
+    evaluation baseline strategy still constructs a legacy splitter explicitly.
+    """
 
     def __init__(
         self,
@@ -66,6 +101,7 @@ class StructureAwareChunker:
         *,
         parent_max_chars: int = 6000,
         table_rows_per_chunk: int = 4,
+        boundary_policy: str = BOUNDARY_POLICY_SENTENCE_PUNCTUATION,
     ) -> None:
         if max_chars < 80:
             raise ValueError("max_chars must be at least 80")
@@ -73,11 +109,17 @@ class StructureAwareChunker:
             raise ValueError("parent_max_chars must be at least max_chars")
         if table_rows_per_chunk < 1:
             raise ValueError("table_rows_per_chunk must be positive")
+        if boundary_policy not in {
+            BOUNDARY_POLICY_LEGACY,
+            BOUNDARY_POLICY_SENTENCE_PUNCTUATION,
+        }:
+            raise ValueError(f"unknown boundary_policy: {boundary_policy!r}")
         # Child representations intentionally stay inside the 600-1,000 character
         # retrieval target even when an older caller still passes the former 1,200 default.
         self.max_chars = min(max_chars, 1000)
         self.parent_max_chars = min(max(parent_max_chars, 3000), 8000)
         self.table_rows_per_chunk = table_rows_per_chunk
+        self.boundary_policy = boundary_policy
 
     def chunk_elements(self, elements: Iterable[DocumentElement]) -> List[DocumentChunk]:
         chunks: List[DocumentChunk] = []
@@ -499,18 +541,28 @@ class StructureAwareChunker:
         while start < len(text):
             end = min(start + max_chars, len(text))
             if end < len(text):
-                boundary = max(
-                    text.rfind(". ", start, end),
-                    text.rfind("\n", start, end),
-                    text.rfind(" ", start, end),
-                )
-                if boundary > start + max(40, max_chars // 3):
-                    end = boundary + 1
+                end = self._choose_split_end(text, start, end, max_chars)
             part = text[start:end].strip()
             if part:
                 parts.append(part)
             start = end
         return parts
+
+    def _choose_split_end(self, text: str, start: int, end: int, max_chars: int) -> int:
+        """Pick a split index in ``(start, end]``. Hard-cut at ``end`` if needed."""
+        min_pos = start + max(40, max_chars // 3)
+        if self.boundary_policy == BOUNDARY_POLICY_SENTENCE_PUNCTUATION:
+            sentence_end = last_sentence_end(text, start, end, min_pos=min_pos)
+            if sentence_end > start:
+                return sentence_end
+        boundary = max(
+            text.rfind(". ", start, end),
+            text.rfind("\n", start, end),
+            text.rfind(" ", start, end),
+        )
+        if boundary > min_pos:
+            return boundary + 1
+        return end
 
     def _build_chunk(
         self,

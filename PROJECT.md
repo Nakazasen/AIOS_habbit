@@ -1,5 +1,7 @@
 # Project: Antigravity Truthful Bridge
 
+> Không phải luật sản phẩm. Đặc tả cầu nối Antigravity. Lối vào: `AGENTS.md`. Spec: `specs/antigravity-truthful-bridge/`.
+
 ## Architecture
 The Antigravity Truthful Bridge provides an honest, non-facade integration between AIOS Habit Workspace Chat and the Antigravity IDE environment on the local machine. It implements a dual-mode strategy:
 1. **Direct Adapter Mode**: Active only when a genuine, locally verified Antigravity IDE protocol endpoint is confirmed (`direct_ready`). If no verified protocol exists, it reports `unavailable` (never simulated).

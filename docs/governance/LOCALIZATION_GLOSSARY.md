@@ -7,7 +7,7 @@ Review cadence: Before new supported UI terminology or provider-facing copy
 
 ## Chính Sách (Policy)
 
-Giao diện người dùng thông thường được hỗ trợ mặc định ưu tiên Tiếng Việt (Vietnamese-first). Các hằng số kỹ thuật thiết yếu có thể giữ nguyên Tiếng Anh khi chúng được giải thích ngay lập tức bằng Tiếng Việt. Traceback thô và chi tiết lỗi nội bộ tuyệt đối không được hiển thị cho chủ sở hữu.
+Giao diện và **tài liệu người đọc** mặc định tiếng Việt. Luật khóa: `AGENT_RULES.md` mục 4. Hằng kỹ thuật có thể giữ nguyên khi được giải thích ngay bằng tiếng Việt. Traceback thô không được hiện cho chủ sở hữu.
 
 | Thuật ngữ | Tiếng Việt chuẩn hóa | Ghi chú sử dụng |
 |---|---|---|

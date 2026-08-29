@@ -1,3 +1,5 @@
+> Không phải luật sản phẩm. Lối vào: `AGENTS.md`.
+
 # Hồ sơ Hành vi Tổng thể (Master Behavior Profile)
 
 Được tạo bởi `aios-habit profile build`. Các tuyên bố chưa được kiểm chứng giữ trạng thái UNKNOWN.

@@ -5,19 +5,18 @@ Composes with the existing eval_harness.py to add chunking-strategy
 comparison, multilingual boundary analysis, chunk-length distribution,
 and the chunk-evaluation/v1 local report contract.
 
-This module NEVER modifies StructureAwareChunker, retrieval defaults,
-document summaries, or the active Workspace Chat index.
+Default Workspace Chat chunking is unchanged. E2 may evaluate an opt-in
+sentence-punctuation candidate on a dedicated index; it never writes the
+active Workspace Chat index.
 """
 from __future__ import annotations
 
 import hashlib
 import json
-import os
 import time
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
-from statistics import median
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 # ---------------------------------------------------------------------------
@@ -108,7 +107,9 @@ class ChunkingStrategy:
         return asdict(self)
 
 
-# The default baseline strategy representing the current StructureAwareChunker
+# Frozen E1 comparison splitter (legacy `. `/newline/space). Production default
+# StructureAwareChunker after E2 v2 uses sentence_punctuation_v1; eval baseline
+# still constructs BOUNDARY_POLICY_LEGACY explicitly.
 BASELINE_STRATEGY = ChunkingStrategy(
     strategy_id="baseline-structure-aware-v1",
     boundary_policy="existing: max_chars=900, table_rows_per_chunk=4, no overlap",
@@ -116,6 +117,106 @@ BASELINE_STRATEGY = ChunkingStrategy(
     summary_policy="existing: document summary as navigation aid",
     provenance_policy="existing: page/sheet/row/section/privacy preserved",
 )
+
+CJK_SENTENCE_STRATEGY = ChunkingStrategy(
+    strategy_id="cjk-sentence-punctuation-v1",
+    baseline_of="baseline-structure-aware-v1",
+    boundary_policy="sentence_punctuation_v1: CJK/VI sentence endings before char fallback, no overlap",
+    context_policy="existing: parent_max_chars=6000, local parent/neighbor expansion",
+    summary_policy="existing: document summary as navigation aid",
+    provenance_policy="existing: page/sheet/row/section/privacy preserved",
+)
+
+STRATEGIES = {
+    "baseline": BASELINE_STRATEGY,
+    BASELINE_STRATEGY.strategy_id: BASELINE_STRATEGY,
+    CJK_SENTENCE_STRATEGY.strategy_id: CJK_SENTENCE_STRATEGY,
+}
+
+# Confirmed E1 CJK text-boundary failures (not table/cross-source-only cases).
+CJK_BOUNDARY_CASE_IDS = frozenset({"ja-001", "ja-004", "zh-001", "zh-004"})
+MAX_LATENCY_RATIO = 1.25
+MAX_INDEX_RATIO = 1.25
+MIN_RECALL_GAIN = 0.05
+
+
+def resolve_strategy(name: str) -> ChunkingStrategy:
+    strategy = STRATEGIES.get(name)
+    if strategy is None:
+        raise ValueError(f"unknown chunking strategy: {name!r}")
+    return strategy
+
+
+def chunker_for_strategy(strategy: ChunkingStrategy, *, max_chars: int = 900) -> Any:
+    from .chunking import (
+        BOUNDARY_POLICY_LEGACY,
+        BOUNDARY_POLICY_SENTENCE_PUNCTUATION,
+        StructureAwareChunker,
+    )
+
+    if strategy.strategy_id == CJK_SENTENCE_STRATEGY.strategy_id:
+        return StructureAwareChunker(
+            max_chars,
+            boundary_policy=BOUNDARY_POLICY_SENTENCE_PUNCTUATION,
+        )
+    return StructureAwareChunker(max_chars, boundary_policy=BOUNDARY_POLICY_LEGACY)
+
+
+def classify_candidate_decision(
+    candidate: Dict[str, Any],
+    baseline: Dict[str, Any],
+) -> Tuple[str, str]:
+    """Return ``(decision, reason)`` for an E2 candidate vs a frozen E1 report."""
+    for key in ("corpus_fingerprint", "question_set_fingerprint"):
+        if candidate.get(key) != baseline.get(key):
+            return "blocked", f"fingerprint_mismatch:{key}"
+    if candidate.get("model_identity") != baseline.get("model_identity"):
+        return "blocked", "model_identity_mismatch"
+
+    cand_metrics = candidate.get("metrics") or {}
+    base_metrics = baseline.get("metrics") or {}
+    cand_recall = float(cand_metrics.get("expected_evidence_recall_at_k") or 0.0)
+    base_recall = float(base_metrics.get("expected_evidence_recall_at_k") or 0.0)
+    if cand_recall + 1e-12 < base_recall:
+        return "rejected", "recall_regressed"
+
+    base_found = {
+        row["case_id"]
+        for row in baseline.get("case_outcomes") or []
+        if row.get("expected_evidence_found")
+    }
+    cand_found = {
+        row["case_id"]
+        for row in candidate.get("case_outcomes") or []
+        if row.get("expected_evidence_found")
+    }
+    lost = sorted(base_found - cand_found)
+    if lost:
+        return "rejected", "lost_evidence:" + ",".join(lost)
+
+    base_p95 = float(base_metrics.get("warm_query_p95_ms") or 0.0) or 1.0
+    cand_p95 = float(cand_metrics.get("warm_query_p95_ms") or 0.0)
+    if cand_p95 / base_p95 > MAX_LATENCY_RATIO:
+        return "rejected", "warm_p95_over_budget"
+    base_index = float(base_metrics.get("index_size_bytes") or 0.0) or 1.0
+    cand_index = float(cand_metrics.get("index_size_bytes") or 0.0)
+    if cand_index / base_index > MAX_INDEX_RATIO:
+        return "rejected", "index_size_over_budget"
+
+    cand_outcomes = {
+        row.get("case_id"): row for row in candidate.get("case_outcomes") or []
+    }
+    cjk_fixed = all(
+        bool((cand_outcomes.get(case_id) or {}).get("split_at_sentence_punctuation"))
+        for case_id in CJK_BOUNDARY_CASE_IDS
+    )
+    recall_gain = (cand_recall - base_recall) >= MIN_RECALL_GAIN
+    if cjk_fixed or recall_gain:
+        reason = "cjk_boundary_fixed" if cjk_fixed else "recall_gain"
+        if cjk_fixed and recall_gain:
+            reason = "cjk_boundary_fixed_and_recall_gain"
+        return "improved", reason
+    return "neutral", "no_sc003_gain"
 
 
 @dataclass
@@ -492,13 +593,255 @@ def validate_report_privacy(
 
 
 # ---------------------------------------------------------------------------
-# Case loading utility
+# Case / corpus loading
 # ---------------------------------------------------------------------------
+
+DETERMINISTIC_MODEL_IDENTITY = "deterministic-eval"
+SYNTHETIC_CORPUS_KIND = "synthetic_identities"
+PUBLIC_CORPUS_KIND = "public_evaluation"
+OWNER_CORPUS_KIND = "owner_local"
+
+
+@dataclass
+class CorpusSource:
+    """One source row from a chunk-evaluation corpus manifest."""
+
+    source_id: str
+    language: str
+    document_type: str
+    description: str = ""
+    has_tables: bool = False
+    path: Optional[Path] = None
+    sha256: str = ""
+
+
+@dataclass
+class CorpusManifest:
+    """Loaded corpus identity. Missing files keep the corpus synthetic."""
+
+    path: Path
+    kind: str
+    sources: List[CorpusSource]
+    synthetic: bool
+    raw_local_only_text_exported: bool = False
+
+
+def file_sha256(path: Path) -> str:
+    return f"sha256:{hashlib.sha256(path.read_bytes()).hexdigest()}"
+
 
 def load_cases(cases_path: str | Path) -> List[EvaluationCase]:
     """Load evaluation cases from a JSON file."""
     raw = json.loads(Path(cases_path).read_text(encoding="utf-8"))
+    if not isinstance(raw, list) or not raw:
+        raise ValueError("evaluation cases file must contain a non-empty list")
     return [EvaluationCase.from_dict(item) for item in raw]
+
+
+def load_corpus_manifest(manifest_path: str | Path) -> CorpusManifest:
+    """Load a corpus manifest and classify it as synthetic or file-backed."""
+    path = Path(manifest_path).resolve()
+    raw = json.loads(path.read_text(encoding="utf-8"))
+    rows = raw.get("sources")
+    if not isinstance(rows, list) or not rows:
+        raise ValueError("corpus manifest must contain a non-empty sources list")
+    sources: List[CorpusSource] = []
+    missing_files = False
+    for item in rows:
+        relative = str(item.get("path") or "").strip()
+        resolved = (path.parent / relative).resolve() if relative else None
+        source = CorpusSource(
+            source_id=str(item.get("source_id") or "").strip(),
+            language=str(item.get("language") or "").strip(),
+            document_type=str(item.get("document_type") or "").strip(),
+            description=str(item.get("description") or ""),
+            has_tables=bool(item.get("has_tables")),
+            path=resolved,
+            sha256=str(item.get("sha256") or "").strip(),
+        )
+        if not source.source_id:
+            raise ValueError("corpus source_id must be non-empty")
+        if source.path is None or not source.path.is_file():
+            missing_files = True
+        sources.append(source)
+    declared_kind = str(raw.get("corpus_kind") or "").strip()
+    synthetic_flag = bool(raw.get("synthetic", missing_files or declared_kind == SYNTHETIC_CORPUS_KIND))
+    if missing_files or synthetic_flag or declared_kind == SYNTHETIC_CORPUS_KIND:
+        kind = SYNTHETIC_CORPUS_KIND
+        synthetic = True
+    elif declared_kind == OWNER_CORPUS_KIND:
+        kind = OWNER_CORPUS_KIND
+        synthetic = False
+    else:
+        kind = declared_kind or PUBLIC_CORPUS_KIND
+        synthetic = False
+    return CorpusManifest(
+        path=path,
+        kind=kind,
+        sources=sources,
+        synthetic=synthetic,
+        raw_local_only_text_exported=bool(raw.get("raw_local_only_text_exported", False)),
+    )
+
+
+def source_id_matches(retrieved: str, expected_id: str) -> bool:
+    """Match opaque source identities without requiring basename equality."""
+    if not retrieved or not expected_id:
+        return False
+    if expected_id == retrieved or expected_id in retrieved:
+        return True
+    stem = Path(retrieved).stem
+    return expected_id == stem or expected_id in stem
+
+
+def inspect_summary_role(results: Sequence[Any], expected_found: bool) -> str:
+    """Classify whether a document summary crowded out detailed evidence."""
+    if not results:
+        return "not_used"
+    summary_hits = 0
+    detailed_hits = 0
+    for result in results:
+        metadata = getattr(result, "metadata", {}) or {}
+        file_type = str(getattr(result, "file_type", "") or "")
+        is_summary = bool(metadata.get("is_document_summary")) or file_type == "document_summary"
+        if is_summary:
+            summary_hits += 1
+        else:
+            detailed_hits += 1
+    if summary_hits and not detailed_hits:
+        return "displaced_evidence" if expected_found else "navigation_only"
+    if summary_hits and detailed_hits:
+        return "supplementary"
+    return "not_used"
+
+
+def analyze_source_chunk_boundaries(
+    chunks: Sequence[Any],
+    *,
+    language: str,
+    source_ids: Sequence[str],
+) -> Dict[str, Any]:
+    """Measure whether retrievable children end at sentence punctuation."""
+    relevant = []
+    for chunk in chunks:
+        source_name = str(getattr(chunk, "source_name", "") or "")
+        source_path = str(getattr(chunk, "source_path", "") or "")
+        document_id = str(getattr(chunk, "document_id", "") or "")
+        if not any(
+            source_id_matches(source_name, sid)
+            or source_id_matches(source_path, sid)
+            or source_id_matches(document_id, sid)
+            for sid in source_ids
+        ):
+            continue
+        metadata = getattr(chunk, "metadata", {}) or {}
+        if metadata.get("is_document_summary"):
+            continue
+        if metadata.get("representation_role") == "parent":
+            continue
+        if not getattr(chunk, "retrievable", True):
+            continue
+        relevant.append(chunk)
+    if not relevant:
+        return {
+            "split_at_sentence_punctuation": None,
+            "fallback_boundary_used": False,
+            "boundary_char_position": None,
+        }
+    fallback = False
+    split_at = True
+    position = None
+    true_mid_sentence = False
+    for chunk in relevant:
+        text = getattr(chunk, "text", "") or ""
+        analysis = analyze_chunk_boundary(text, language=language)
+        if position is None:
+            position = analysis["boundary_char_position"]
+        if analysis["split_at_sentence_punctuation"]:
+            continue
+        if language not in {"ja", "zh-CN"}:
+            continue
+        stripped = text.rstrip()
+        body = stripped[:-1] if stripped else ""
+        punct_available = any(
+            char in CJK_SENTENCE_ENDINGS or char in ".!?" for char in body
+        )
+        fallback = True
+        position = analysis["boundary_char_position"]
+        if punct_available:
+            true_mid_sentence = True
+    if true_mid_sentence:
+        split_at = False
+    elif fallback:
+        # Hard-cut recorded, but no recognised punctuation sat in the window.
+        split_at = True
+    return {
+        "split_at_sentence_punctuation": split_at,
+        "fallback_boundary_used": fallback,
+        "boundary_char_position": position,
+    }
+
+
+def materialize_table_source(source: CorpusSource, dest_dir: Path) -> Path:
+    """Turn a committed JSON table into a local .xlsx for spreadsheet cases."""
+    if source.path is None:
+        raise ValueError(f"table source {source.source_id} has no path")
+    payload = json.loads(source.path.read_text(encoding="utf-8"))
+    headers = list(payload.get("headers") or [])
+    rows = list(payload.get("rows") or [])
+    if not headers or not rows:
+        raise ValueError(f"table source {source.source_id} is empty")
+    from openpyxl import Workbook
+
+    dest_dir.mkdir(parents=True, exist_ok=True)
+    xlsx_path = dest_dir / f"{source.source_id}.xlsx"
+    workbook = Workbook()
+    sheet = workbook.active
+    raw_title = str(payload.get("sheet") or "inspection").strip() or "inspection"
+    for banned in (":", "\\", "/", "?", "*", "[", "]"):
+        raw_title = raw_title.replace(banned, " ")
+    sheet.title = raw_title[:31]
+    sheet.append(headers)
+    for row in rows:
+        sheet.append(list(row))
+    workbook.save(xlsx_path)
+    return xlsx_path
+
+
+_EVAL_PROJECT_ROOT = Path(__file__).resolve().parents[3]
+DEFAULT_EVAL_DEPLOYMENT_MANIFEST = (
+    _EVAL_PROJECT_ROOT / "config" / "workspace_chat_rag_v2.local.json"
+)
+
+
+def load_bge_eval_identity(manifest_path: Optional[str | Path] = None) -> Dict[str, Any]:
+    """Read pinned BGE-M3 identity from the local JSON manifest.
+
+    Evaluation stays inside ``rag_v2``: it does not import Workspace Chat
+    deployment loaders and does not require ``activation_state == activated``.
+    """
+    payload_path = Path(manifest_path) if manifest_path else DEFAULT_EVAL_DEPLOYMENT_MANIFEST
+    if not payload_path.is_file():
+        raise FileNotFoundError("bge_deployment_manifest_missing")
+    payload = json.loads(payload_path.read_text(encoding="utf-8"))
+    model = payload.get("model") or {}
+    model_path = Path(str(model.get("path") or ""))
+    revision = str(model.get("revision") or "")
+    checksum = str(model.get("checksum") or "")
+    device = str(model.get("device") or "cpu")
+    use_fp16 = bool(model.get("use_fp16", False))
+    if not model_path.is_dir():
+        raise FileNotFoundError("bge_m3_model_path_missing")
+    if not revision or not checksum:
+        raise ValueError("bge_m3_model_identity_incomplete")
+    return {
+        "model_path": model_path,
+        "revision": revision,
+        "checksum": checksum,
+        "device": device or "cpu",
+        "use_fp16": use_fp16,
+        "identity": f"bge-m3:{revision[:12]}:{checksum.split(':')[-1][:16]}",
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -508,15 +851,10 @@ def load_cases(cases_path: str | Path) -> List[EvaluationCase]:
 class BaselineRunner:
     """Run current StructureAwareChunker against frozen cases and produce a report.
 
-    This runner:
-    - Creates a DEDICATED local SQLite index (never mutates active Workspace Chat index)
-    - Uses the current StructureAwareChunker without modification
-    - Executes each case's question via search_with_summary
-    - Records CaseOutcome with boundary analysis
-    - Computes StrategyMetrics
-    - Emits a chunk-evaluation/v1 JSON report
-
-    T016 (supported-path trace): Records which chunker class was used.
+    Dedicated evaluation indexes never mutate the active Workspace Chat index.
+    A report may be labelled ``baseline`` only when file-backed sources were
+    ingested through StructureAwareChunker and BGE-M3 hybrid retrieval. Synthetic
+    identities and deterministic embeddings always finish as ``blocked``.
     """
 
     def __init__(
@@ -527,7 +865,10 @@ class BaselineRunner:
         index_dir: str | Path,
         strategy: Optional[ChunkingStrategy] = None,
         embedding_backend: Optional[Any] = None,
-        model_identity: str = "deterministic-eval",
+        model_identity: str = DETERMINISTIC_MODEL_IDENTITY,
+        require_bge_hybrid: bool = False,
+        deployment_manifest: Optional[str | Path] = None,
+        baseline_report: Optional[Dict[str, Any]] = None,
     ) -> None:
         self.corpus_manifest_path = Path(corpus_manifest_path)
         self.cases_path = Path(cases_path)
@@ -535,160 +876,471 @@ class BaselineRunner:
         self.strategy = strategy or BASELINE_STRATEGY
         self.embedding_backend = embedding_backend
         self.model_identity = model_identity
+        self.require_bge_hybrid = require_bge_hybrid
+        self.deployment_manifest = deployment_manifest
+        self.baseline_report = baseline_report
+
+    def _is_baseline_strategy(self) -> bool:
+        return self.strategy.strategy_id == BASELINE_STRATEGY.strategy_id
+
+    def _make_chunker(self) -> Any:
+        return chunker_for_strategy(self.strategy)
+
+    def _blocked_run(
+        self,
+        *,
+        run_id: str,
+        started_at: str,
+        reason: str,
+        cases: Sequence[EvaluationCase],
+        outcomes: Optional[Sequence[CaseOutcome]] = None,
+        metrics: Optional[StrategyMetrics] = None,
+        supported_path: str = "",
+        model_identity: Optional[str] = None,
+        extra: Optional[Dict[str, Any]] = None,
+    ) -> EvaluationRun:
+        completed_at = datetime.now(timezone.utc).isoformat()
+        recorded = list(outcomes or [
+            CaseOutcome(case_id=case.case_id) for case in cases
+        ])
+        run = EvaluationRun(
+            run_id=run_id,
+            corpus_fingerprint=corpus_fingerprint(self.corpus_manifest_path),
+            question_set_fingerprint=question_set_fingerprint(self.cases_path),
+            strategy_id=self.strategy.strategy_id,
+            model_identity=model_identity or self.model_identity,
+            started_at=started_at,
+            completed_at=completed_at,
+            decision="blocked",
+            metrics=metrics or StrategyMetrics.compute(recorded, cases, []),
+            case_outcomes=recorded,
+            supported_path=supported_path,
+            legacy_chunkers_active=False,
+        )
+        report = run.to_report_dict()
+        report["blocked_reason"] = reason
+        report["corpus_kind"] = extra.get("corpus_kind") if extra else SYNTHETIC_CORPUS_KIND
+        if extra:
+            report.update(extra)
+        run._report_overlay = report  # type: ignore[attr-defined]
+        return run
 
     def run(
         self,
         documents: Optional[Sequence["DocumentElement"]] = None,
         chunks: Optional[Sequence["DocumentChunk"]] = None,
     ) -> EvaluationRun:
-        """Execute the evaluation and return a complete EvaluationRun.
-
-        Provide either:
-        - documents: raw DocumentElements to be chunked by StructureAwareChunker
-        - chunks: pre-built DocumentChunks to ingest directly
-
-        At least one must be provided.
-        """
-        from .chunking import DocumentChunk, StructureAwareChunker
+        """Execute the evaluation and return a complete EvaluationRun."""
+        from .chunking import DocumentChunk
         from .index import LocalChunkIndex, SearchOptions
+        from .pipeline import RagV2DevConfig, RagV2DevPipeline, SourceSpec
         from .semantic import DeterministicEmbeddingBackend
 
         started_at = datetime.now(timezone.utc).isoformat()
-        run_id = f"eval-{int(time.time())}"
-
-        # Fingerprints
-        corp_fp = corpus_fingerprint(self.corpus_manifest_path)
-        case_fp = question_set_fingerprint(self.cases_path)
-
-        # Create dedicated index
+        run_id = f"chunk-eval-{int(time.time())}"
+        cases = load_cases(self.cases_path)
+        corpus = load_corpus_manifest(self.corpus_manifest_path)
         self.index_dir.mkdir(parents=True, exist_ok=True)
-        eval_db = self.index_dir / f"{run_id}.db"
+
+        if documents is None and chunks is None and corpus.synthetic:
+            return self._blocked_run(
+                run_id=run_id,
+                started_at=started_at,
+                reason="synthetic_identities_cannot_be_baseline",
+                cases=cases,
+                extra={"corpus_kind": corpus.kind},
+            )
+
+        if self.require_bge_hybrid or (
+            documents is None and chunks is None and not corpus.synthetic
+        ):
+            return self._run_bge_hybrid(run_id, started_at, cases, corpus)
+
         backend = self.embedding_backend or DeterministicEmbeddingBackend()
+        eval_db = self.index_dir / f"{run_id}.db"
         index = LocalChunkIndex(
             eval_db,
             embedding_backend=backend,
             sqlite_check_same_thread=False,
         )
-
-        # Chunk and ingest
         prep_start = time.perf_counter()
         all_chunks: List[DocumentChunk] = []
         chunker_class_name = "unknown"
+        try:
+            if chunks is not None:
+                all_chunks = list(chunks)
+                chunker_class_name = "pre-chunked"
+            elif documents is not None:
+                chunker = self._make_chunker()
+                chunker_class_name = chunker.__class__.__name__
+                all_chunks = chunker.chunk_elements(documents)
+            else:
+                raise ValueError("file-backed corpus requires BGE-M3 hybrid retrieval")
+            index.upsert_chunks(all_chunks)
+            prep_ms = (time.perf_counter() - prep_start) * 1000.0
+            index_size = eval_db.stat().st_size if eval_db.exists() else 0
+            retrievable_count = sum(1 for chunk in all_chunks if chunk.retrievable)
+            chunk_lengths = [len(chunk.text) for chunk in all_chunks]
+            search_options = SearchOptions(candidate_limit=10, per_document_limit=2)
+            index.search_with_summary(cases[0].question, limit=10, options=search_options)
+            outcomes = self._search_cases(
+                cases,
+                lambda question: index.search_with_summary(
+                    question, limit=10, options=search_options,
+                ),
+                all_chunks,
+            )
+            metrics = StrategyMetrics.compute(
+                outcomes, cases, chunk_lengths,
+                preparation_duration_ms=prep_ms,
+                index_size_bytes=index_size,
+                retrievable_chunk_count=retrievable_count,
+            )
+            self._fill_language_chunk_lengths(metrics, cases, all_chunks)
+        finally:
+            index.close()
 
-        if chunks is not None:
-            all_chunks = list(chunks)
-            chunker_class_name = "pre-chunked"
-        elif documents is not None:
-            chunker = StructureAwareChunker()
-            chunker_class_name = chunker.__class__.__name__
-            all_chunks = chunker.chunk_elements(documents)
-        else:
-            raise ValueError("Either documents or chunks must be provided")
-
-        index.upsert_chunks(all_chunks)
-        prep_ms = (time.perf_counter() - prep_start) * 1000.0
-
-        # Index stats
-        index_size = eval_db.stat().st_size if eval_db.exists() else 0
-        retrievable_count = sum(1 for c in all_chunks if c.retrievable)
-        chunk_lengths = [len(c.text) for c in all_chunks]
-
-        # Load cases
-        cases = load_cases(self.cases_path)
-        case_map = {c.case_id: c for c in cases}
-
-        # Execute each case
-        outcomes: List[CaseOutcome] = []
-        search_options = SearchOptions(candidate_limit=10, per_document_limit=2)
-
-        for case in cases:
-            t0 = time.perf_counter()
-            try:
-                response = index.search_with_summary(
-                    case.question, limit=10, options=search_options,
-                )
-                latency_ms = (time.perf_counter() - t0) * 1000.0
-
-                retrieved_sources = tuple(
-                    r.source_name for r in response.results
-                )
-                # Check if expected sources are in retrieved results
-                found = any(
-                    sid in retrieved_sources or
-                    any(sid in rs for rs in retrieved_sources)
-                    for sid in case.source_ids
-                )
-                # Check detailed evidence
-                has_detail = len(response.results) > 0 and found
-
-                # Boundary analysis for boundary-challenge cases
-                boundary_result: Dict[str, Any] = {}
-                if "boundary" in case.challenge_labels or "cjk-punctuation" in case.challenge_labels:
-                    # Analyze chunks that matched this case's sources
-                    relevant_chunks = [
-                        c for c in all_chunks
-                        if any(sid in (c.source_name, c.source_path) for sid in case.source_ids)
-                    ]
-                    if relevant_chunks:
-                        # Analyze the last chunk boundary (most likely to be mid-sentence)
-                        boundary_result = analyze_chunk_boundary(
-                            relevant_chunks[-1].text, language=case.language,
-                        )
-
-                outcome = CaseOutcome(
-                    case_id=case.case_id,
-                    retrieved_source_ids=retrieved_sources,
-                    expected_evidence_found=found,
-                    detailed_evidence_present=has_detail,
-                    summary_used="not_used",
-                    latency_ms=latency_ms,
-                    fallback_boundary_used=boundary_result.get("fallback_boundary_used", False),
-                    split_at_sentence_punctuation=boundary_result.get("split_at_sentence_punctuation"),
-                    boundary_char_position=boundary_result.get("boundary_char_position"),
-                )
-            except Exception as exc:
-                latency_ms = (time.perf_counter() - t0) * 1000.0
-                outcome = CaseOutcome(
-                    case_id=case.case_id,
-                    expected_evidence_found=False,
-                    detailed_evidence_present=False,
-                    latency_ms=latency_ms,
-                )
-            outcomes.append(outcome)
-
-        # Compute metrics
-        metrics = StrategyMetrics.compute(
-            outcomes, cases, chunk_lengths,
-            preparation_duration_ms=prep_ms,
-            index_size_bytes=index_size,
-            retrievable_chunk_count=retrievable_count,
+        identity = self.model_identity
+        hybrid_ready = (
+            chunker_class_name == "StructureAwareChunker"
+            and not identity.startswith("deterministic")
+            and not corpus.synthetic
         )
-
-        completed_at = datetime.now(timezone.utc).isoformat()
-
-        # Build run
+        decision = "baseline" if hybrid_ready else "blocked"
         run = EvaluationRun(
             run_id=run_id,
-            corpus_fingerprint=corp_fp,
-            question_set_fingerprint=case_fp,
+            corpus_fingerprint=corpus_fingerprint(self.corpus_manifest_path),
+            question_set_fingerprint=question_set_fingerprint(self.cases_path),
             strategy_id=self.strategy.strategy_id,
-            model_identity=self.model_identity,
+            model_identity=identity,
             started_at=started_at,
-            completed_at=completed_at,
-            decision="baseline",
+            completed_at=datetime.now(timezone.utc).isoformat(),
+            decision=decision,
             metrics=metrics,
             case_outcomes=outcomes,
             supported_path=chunker_class_name,
             legacy_chunkers_active=False,
         )
-
-        # Cleanup eval DB
-        try:
-            index._conn.close()
-        except Exception:
-            pass
-
+        overlay = run.to_report_dict()
+        overlay["corpus_kind"] = corpus.kind
+        overlay["retrieval_path"] = "lexical_or_deterministic"
+        if decision == "blocked":
+            overlay["blocked_reason"] = "synthetic_or_non_hybrid_backend"
+        run._report_overlay = overlay  # type: ignore[attr-defined]
         return run
+
+    def _run_bge_hybrid(
+        self,
+        run_id: str,
+        started_at: str,
+        cases: Sequence[EvaluationCase],
+        corpus: CorpusManifest,
+    ) -> EvaluationRun:
+        from .pipeline import RagV2DevConfig, RagV2DevPipeline, SourceSpec
+
+        if corpus.synthetic:
+            return self._blocked_run(
+                run_id=run_id,
+                started_at=started_at,
+                reason="synthetic_identities_cannot_be_baseline",
+                cases=cases,
+                extra={"corpus_kind": corpus.kind},
+            )
+
+        materialized_dir = self.index_dir / "materialized"
+        source_specs: List[SourceSpec] = []
+        source_samples: List[str] = []
+        checksum_errors: List[str] = []
+        for source in corpus.sources:
+            if source.path is None or not source.path.is_file():
+                checksum_errors.append(source.source_id)
+                continue
+            digest = file_sha256(source.path)
+            if source.sha256 and source.sha256 != digest:
+                checksum_errors.append(source.source_id)
+                continue
+            sample = source.path.read_text(encoding="utf-8", errors="ignore")[:400]
+            if len(sample) >= 40:
+                source_samples.append(sample)
+            if source.document_type == "spreadsheet" or source.path.name.endswith(".table.json"):
+                live_path = materialize_table_source(source, materialized_dir)
+            else:
+                live_path = source.path
+            source_specs.append(SourceSpec(
+                path=live_path,
+                source_id=source.source_id,
+                document_id=source.source_id,
+                privacy_labels=("public",),
+                language_hints=(source.language,),
+            ))
+        if checksum_errors or len(source_specs) != len(corpus.sources):
+            return self._blocked_run(
+                run_id=run_id,
+                started_at=started_at,
+                reason="corpus_file_or_checksum_invalid",
+                cases=cases,
+                extra={"corpus_kind": corpus.kind, "invalid_sources": checksum_errors},
+            )
+        try:
+            bge = load_bge_eval_identity(self.deployment_manifest)
+        except Exception as exc:
+            return self._blocked_run(
+                run_id=run_id,
+                started_at=started_at,
+                reason=f"bge_identity_unavailable:{type(exc).__name__}",
+                cases=cases,
+                extra={"corpus_kind": corpus.kind},
+            )
+
+        runtime_root = self.index_dir / run_id
+        config = RagV2DevConfig(
+            runtime_root=runtime_root,
+            index_filename="chunk_eval.sqlite",
+            max_chunk_chars=900,
+            retrieval_profile="bge_m3_hybrid",
+            bge_m3_model_path=bge["model_path"],
+            bge_m3_model_revision=bge["revision"],
+            bge_m3_model_checksum=bge["checksum"],
+            retrieval_device=bge["device"],
+            bge_m3_use_fp16=bge["use_fp16"],
+            bge_m3_batch_size=1,
+            strict_semantic=True,
+            sqlite_check_same_thread=False,
+            allowed_privacy_labels=("public", "cloud_safe", "local_only", "confidential"),
+        )
+        try:
+            pipeline = RagV2DevPipeline(config, chunker=self._make_chunker())
+        except Exception as exc:
+            return self._blocked_run(
+                run_id=run_id,
+                started_at=started_at,
+                reason=f"bge_backend_unavailable:{type(exc).__name__}",
+                cases=cases,
+                extra={"corpus_kind": corpus.kind},
+            )
+        chunker_name = pipeline.chunker.__class__.__name__
+        try:
+            prep_start = time.perf_counter()
+            report = pipeline.ingest(source_specs)
+            if report.failed_count or report.unsupported_count or report.converted_count == 0:
+                return self._blocked_run(
+                    run_id=run_id,
+                    started_at=started_at,
+                    reason="ingestion_failed",
+                    cases=cases,
+                    supported_path=chunker_name,
+                    model_identity=bge["identity"],
+                    extra={"corpus_kind": corpus.kind},
+                )
+            prep_ms = (time.perf_counter() - prep_start) * 1000.0
+            pipeline.query(cases[0].question, source_specs)
+            all_chunks = list(pipeline.index.iter_chunks()) if hasattr(pipeline.index, "iter_chunks") else []
+            if not all_chunks:
+                all_chunks = self._load_chunks_from_index(pipeline)
+            outcomes: List[CaseOutcome] = []
+            query_failures = 0
+            for case in cases:
+                t0 = time.perf_counter()
+                try:
+                    result = pipeline.query(case.question, source_specs)
+                    latency_ms = (time.perf_counter() - t0) * 1000.0
+                    if result.effective_path != "hybrid" or result.degraded:
+                        query_failures += 1
+                    outcomes.append(self._outcome_from_search(
+                        case,
+                        result.search_response,
+                        all_chunks,
+                        latency_ms,
+                    ))
+                except Exception:
+                    query_failures += 1
+                    outcomes.append(CaseOutcome(
+                        case_id=case.case_id,
+                        latency_ms=(time.perf_counter() - t0) * 1000.0,
+                    ))
+            index_path = config.index_path
+            index_size = index_path.stat().st_size if index_path.is_file() else 0
+            retrievable_count = sum(1 for chunk in all_chunks if getattr(chunk, "retrievable", True))
+            chunk_lengths = [len(getattr(chunk, "text", "") or "") for chunk in all_chunks]
+            metrics = StrategyMetrics.compute(
+                outcomes, cases, chunk_lengths,
+                preparation_duration_ms=prep_ms,
+                index_size_bytes=index_size,
+                retrievable_chunk_count=retrievable_count,
+            )
+            self._fill_language_chunk_lengths(metrics, cases, all_chunks)
+        finally:
+            pipeline.close()
+
+        decision = "blocked" if query_failures else self._decision_for_successful_run()
+        run = EvaluationRun(
+            run_id=run_id,
+            corpus_fingerprint=corpus_fingerprint(self.corpus_manifest_path),
+            question_set_fingerprint=question_set_fingerprint(self.cases_path),
+            strategy_id=self.strategy.strategy_id,
+            model_identity=bge["identity"],
+            started_at=started_at,
+            completed_at=datetime.now(timezone.utc).isoformat(),
+            decision=decision,
+            metrics=metrics,
+            case_outcomes=outcomes,
+            supported_path=chunker_name,
+            legacy_chunkers_active=chunker_name != "StructureAwareChunker",
+        )
+        overlay = run.to_report_dict()
+        overlay["corpus_kind"] = corpus.kind
+        overlay["retrieval_path"] = "hybrid"
+        overlay["legacy_chunkers_active"] = run.legacy_chunkers_active
+        if decision == "blocked":
+            overlay["blocked_reason"] = "hybrid_query_failure"
+        privacy_ok, privacy_violations = validate_report_privacy(
+            json.dumps(overlay, ensure_ascii=False),
+            source_samples=source_samples,
+        )
+        overlay["privacy"] = {
+            "raw_local_only_text_exported": not privacy_ok,
+            "violations": privacy_violations,
+        }
+        if not privacy_ok:
+            run.decision = "blocked"
+            overlay["decision"] = "blocked"
+            overlay["blocked_reason"] = "raw_local_only_text_exported"
+        elif (
+            not query_failures
+            and not self._is_baseline_strategy()
+            and self.baseline_report is not None
+        ):
+            decision, reason = classify_candidate_decision(overlay, self.baseline_report)
+            run.decision = decision
+            overlay["decision"] = decision
+            overlay["comparison_reason"] = reason
+            if decision == "blocked":
+                overlay["blocked_reason"] = reason
+        elif not query_failures and not self._is_baseline_strategy() and self.baseline_report is None:
+            run.decision = "blocked"
+            overlay["decision"] = "blocked"
+            overlay["blocked_reason"] = "missing_baseline_comparison"
+        overlay["boundary_policy"] = self.strategy.boundary_policy
+        run._report_overlay = overlay  # type: ignore[attr-defined]
+        return run
+
+    def _decision_for_successful_run(self) -> str:
+        if self._is_baseline_strategy():
+            return "baseline"
+        if self.baseline_report is None:
+            return "blocked"
+        return "neutral"
+
+    def _load_chunks_from_index(self, pipeline: Any) -> List[Any]:
+        rows = pipeline.index._conn.execute(
+            "SELECT chunk_id, document_id, source_path, source_name, file_type, "
+            "text, retrievable, metadata_json FROM chunks"
+        ).fetchall()
+        from .chunking import DocumentChunk
+
+        chunks = []
+        for row in rows:
+            metadata = json.loads(row["metadata_json"] or "{}")
+            chunks.append(DocumentChunk(
+                chunk_id=row["chunk_id"],
+                document_id=row["document_id"],
+                source_path=row["source_path"],
+                source_name=row["source_name"],
+                file_type=row["file_type"],
+                text=row["text"],
+                normalized_text=(row["text"] or "").lower(),
+                element_ids=tuple(metadata.get("element_ids") or ()),
+                element_types=tuple(metadata.get("element_types") or ()),
+                retrievable=bool(row["retrievable"]),
+                metadata=metadata,
+            ))
+        return chunks
+
+    def _search_cases(
+        self,
+        cases: Sequence[EvaluationCase],
+        search_fn: Any,
+        all_chunks: Sequence[Any],
+    ) -> List[CaseOutcome]:
+        outcomes: List[CaseOutcome] = []
+        for case in cases:
+            t0 = time.perf_counter()
+            response = search_fn(case.question)
+            latency_ms = (time.perf_counter() - t0) * 1000.0
+            outcomes.append(self._outcome_from_search(case, response, all_chunks, latency_ms))
+        return outcomes
+
+    def _outcome_from_search(
+        self,
+        case: EvaluationCase,
+        response: Any,
+        all_chunks: Sequence[Any],
+        latency_ms: float,
+    ) -> CaseOutcome:
+        results = getattr(response, "results", ())
+        retrieved_sources = tuple(dict.fromkeys(
+            str(getattr(item, "source_name", "") or "")
+            for item in results
+            if getattr(item, "source_name", "")
+        ))
+        found = any(
+            any(source_id_matches(retrieved, expected) for retrieved in retrieved_sources)
+            or any(
+                source_id_matches(str(getattr(item, "document_id", "")), expected)
+                or source_id_matches(str(getattr(item, "source_path", "")), expected)
+                for item in results
+            )
+            for expected in case.source_ids
+        )
+        detailed = found and any(
+            not (
+                (getattr(item, "metadata", {}) or {}).get("is_document_summary")
+                or str(getattr(item, "file_type", "") or "") == "document_summary"
+            )
+            for item in results
+        )
+        boundary = {}
+        if "boundary" in case.challenge_labels or "cjk-punctuation" in case.challenge_labels:
+            boundary = analyze_source_chunk_boundaries(
+                all_chunks, language=case.language, source_ids=case.source_ids,
+            )
+        return CaseOutcome(
+            case_id=case.case_id,
+            retrieved_source_ids=retrieved_sources,
+            expected_evidence_found=found,
+            detailed_evidence_present=bool(detailed),
+            summary_used=inspect_summary_role(results, found),
+            latency_ms=latency_ms,
+            fallback_boundary_used=bool(boundary.get("fallback_boundary_used", False)),
+            split_at_sentence_punctuation=boundary.get("split_at_sentence_punctuation"),
+            boundary_char_position=boundary.get("boundary_char_position"),
+        )
+
+    @staticmethod
+    def _fill_language_chunk_lengths(
+        metrics: StrategyMetrics,
+        cases: Sequence[EvaluationCase],
+        chunks: Sequence[Any],
+    ) -> None:
+        source_lang = {}
+        for case in cases:
+            for source_id in case.source_ids:
+                source_lang.setdefault(source_id, case.language)
+        lengths: Dict[str, List[int]] = {}
+        for chunk in chunks:
+            language = None
+            for source_id, lang in source_lang.items():
+                if source_id_matches(str(getattr(chunk, "source_name", "")), source_id) or (
+                    source_id_matches(str(getattr(chunk, "source_path", "")), source_id)
+                ):
+                    language = lang
+                    break
+            if language:
+                lengths.setdefault(language, []).append(len(getattr(chunk, "text", "") or ""))
+        for lang, values in lengths.items():
+            breakdown = metrics.language_breakdown.get(lang)
+            if breakdown is not None and values:
+                breakdown.average_chunk_length = sum(values) / len(values)
 
     def run_and_save(
         self,
@@ -704,12 +1356,16 @@ class BaselineRunner:
         out = Path(output_dir)
         out.mkdir(parents=True, exist_ok=True)
 
-        report = run.to_report_dict()
+        report = getattr(run, "_report_overlay", None) or run.to_report_dict()
 
-        # Validate before writing
         valid, errors = validate_report(report)
         if not valid:
             raise ValueError(f"Report validation failed: {errors}")
+        privacy_ok, privacy_violations = validate_report_privacy(
+            json.dumps(report, ensure_ascii=False),
+        )
+        if not privacy_ok:
+            raise ValueError(f"Report privacy validation failed: {privacy_violations}")
 
         json_path = out / f"{run.run_id}_report.json"
         json_path.write_text(
@@ -719,7 +1375,7 @@ class BaselineRunner:
 
         md_path = out / f"{run.run_id}_summary.md"
         md_path.write_text(
-            format_evaluation_summary(run),
+            format_evaluation_summary(run, extra=report),
             encoding="utf-8",
         )
 
@@ -730,9 +1386,13 @@ class BaselineRunner:
 # Markdown summary formatter
 # ---------------------------------------------------------------------------
 
-def format_evaluation_summary(run: EvaluationRun) -> str:
+def format_evaluation_summary(
+    run: EvaluationRun,
+    extra: Optional[Dict[str, Any]] = None,
+) -> str:
     """Generate human-readable Markdown summary of an evaluation run."""
     m = run.metrics or StrategyMetrics()
+    extra = extra or {}
     lines = [
         f"# Chunk Evaluation Report: {run.run_id}",
         "",
@@ -741,7 +1401,15 @@ def format_evaluation_summary(run: EvaluationRun) -> str:
         f"**Model**: {run.model_identity}",
         f"**Active Chunker**: {run.supported_path}",
         f"**Legacy Active**: {run.legacy_chunkers_active}",
+        f"**Corpus kind**: {extra.get('corpus_kind', '')}",
+        f"**Retrieval path**: {extra.get('retrieval_path', '')}",
         "",
+    ]
+    if extra.get("blocked_reason"):
+        lines.extend([f"**Blocked reason**: `{extra['blocked_reason']}`", ""])
+    if extra.get("comparison_reason"):
+        lines.extend([f"**Comparison**: `{extra['comparison_reason']}`", ""])
+    lines.extend([
         "## Fingerprints",
         f"- Corpus: `{run.corpus_fingerprint}`",
         f"- Question Set: `{run.question_set_fingerprint}`",
@@ -756,7 +1424,7 @@ def format_evaluation_summary(run: EvaluationRun) -> str:
         f"- Short Chunk Warnings (≤50 chars): {m.short_chunk_warnings}",
         "",
         "## Chunk Length Distribution",
-    ]
+    ])
     for band, count in m.length_distribution.items():
         lines.append(f"- {band}: {count}")
 

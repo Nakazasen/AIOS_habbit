@@ -1,51 +1,78 @@
-# Quy tắc Phát triển & Tác tử AIOS WorkLens (Agent Rules)
+# Quy tắc phát triển và tác tử AIOS WorkLens
 
-Tài liệu này quy định các điều luật bị khóa cứng mà toàn bộ các mô hình AI, tác tử phát triển (development agents) và người chỉnh sửa mã nguồn **BẮT BUỘC** phải tuân thủ nghiêm ngặt không có ngoại lệ khi làm việc trên repository `AIOS_habbit`.
+Tài liệu này quy định các điều luật bị khóa cứng mà toàn bộ mô hình AI, tác tử phát triển và người chỉnh sửa mã nguồn **bắt buộc** tuân thủ, không có ngoại lệ, khi làm việc trên kho `AIOS_habbit`.
 
 ---
 
-## 1. Phân định Vai trò Mô hình bị Khóa (Locked Model Roles)
+## 1. Phân định vai trò mô hình bị khóa
 
-Để ngăn chặn suy thoái mã nguồn (regression), thực thi chắp vá hoặc các xác minh "PASS giả tạo" (fake PASS), các nhiệm vụ phát triển được phân chia nghiêm ngặt theo thế mạnh chuyên môn của mô hình/tác tử:
+Để ngăn chặn suy thoái mã nguồn, thực thi chắp vá hoặc xác minh PASS giả, nhiệm vụ phát triển được chia theo thế mạnh chuyên môn:
 
-### A. Chuyên gia Kiểm toán & Đánh giá (Audit Specialist)
-- **Vai trò chính:** Kiểm toán chất lượng mã nguồn, đánh giá bảo mật, kiểm tra chống PASS giả tạo và lập luận phân tích kiến trúc.
+### A. Chuyên gia kiểm toán và đánh giá
+- **Vai trò chính:** Kiểm toán chất lượng mã nguồn, đánh giá bảo mật, kiểm tra chống PASS giả và lập luận phân tích kiến trúc.
 - **Ràng buộc:**
   - Bắt buộc phải kiểm tra tất cả các tệp đã sửa đổi và chạy các lệnh kiểm tra độc lập.
-  - Phải chỉ ra các nguy cơ rò rỉ prompt, quá tải trải nghiệm người dùng (UX overload) và sự thiếu hụt bằng chứng xác thực.
+  - Phải chỉ ra các nguy cơ rò rỉ prompt, quá tải giao diện và sự thiếu hụt bằng chứng xác thực.
   - Không tự tiện commit hoặc viết mã tính năng trừ khi được yêu cầu các chỉnh sửa nhỏ.
 - **Mô hình khuyến nghị hiện tại:** Codex GPT-5.5 hoặc tương đương.
 
-### B. Chuyên gia Thực thi (Execution Specialist)
-- **Vai trò chính:** Triển khai tính năng, sửa lỗi (bug fixes), tái cấu trúc mã nguồn (refactor) và viết unit test.
+### B. Chuyên gia thực thi
+- **Vai trò chính:** Triển khai tính năng, sửa lỗi, tái cấu trúc mã nguồn và viết kiểm thử đơn vị.
 - **Ràng buộc:**
-  - Phải tuân thủ nghiêm ngặt theo các bản kế hoạch triển khai (implementation plans) đã được người dùng phê duyệt.
-  - Không được bỏ qua việc viết unit test hoặc chạy xác minh lệnh thực tế.
+  - Phải tuân thủ nghiêm ngặt theo bản kế hoạch triển khai đã được người dùng phê duyệt.
+  - Không được bỏ qua viết kiểm thử hoặc chạy xác minh lệnh thực tế.
 - **Mô hình khuyến nghị hiện tại:** Gemini Flash 3.5 High / Gemini Pro 3.1 hoặc tương đương.
 
 ---
 
-## 2. Quy tắc Xác minh & Kiểm thực Bắt buộc (Mandatory Verification)
+## 2. Quy tắc xác minh bắt buộc
 
-Không một pull request hay thay đổi mã nguồn nào được phép merge hoặc push nếu không đáp ứng đầy đủ các tiêu chuẩn sau:
+Không một pull request hay thay đổi mã nguồn nào được phép gộp hoặc đẩy nếu không đáp ứng đầy đủ:
 
-1. **Kiểm tra Biên dịch (Compilation Check):** Mã nguồn phải biên dịch sạch sẽ khi chạy `py -3 -m compileall src tests`.
-2. **Độ bao phủ Pytest:** Toàn bộ unit test hiện có và bất kỳ bài test mới nào được thêm vào đều phải vượt qua với `py -3 -m pytest -q`.
-3. **Kiểm tra CLI Audit Cục bộ:** Chạy `$env:PYTHONPATH="src"; py -3 -m aios_habit.cli audit` bắt buộc phải trả về `"status": "PASS"` không có lỗi.
-4. **Kiểm tra Import Giao diện Chính:** Chạy `$env:PYTHONPATH="src"; py -3 -c "import aios_habit.workspace_chat_app"` phải chạy thành công không có lỗi.
-5. **Kiểm tra Ranh giới Hệ thống Cũ (Legacy Boundary Check):** Các module Workspace Chat được hỗ trợ tuyệt đối không được import `studio` hoặc `case_cockpit`; khi cho dừng một phần cũ phải gỡ bỏ cả đường dẫn khởi chạy lẫn kỳ vọng test lỗi thời.
-
----
-
-## 3. Quy tắc Bảo mật & Quyền riêng tư Cốt lõi (Bất khả xâm phạm)
-- **Tuyệt đối không rò rỉ lên Cloud:** Các mục bằng chứng gắn nhãn `local_only`, văn bản thô trích xuất từ log/bảng tính cục bộ và các thẻ học việc bản nháp/chưa xác nhận **tuyệt đối không bao giờ** được đưa vào prompt gửi ra các dịch vụ cloud bên ngoài (`gemini`, `gpt`, `copilot`, `notebooklm_safe`) hoặc các gói bàn giao cloud_safe.
-- **Chỉ dành cho AI Cục bộ:** Dữ liệu nhạy cảm chỉ có thể được đưa vào prompt của `local_ai` nếu người dùng chỉ định rõ ràng `include_local_only=True`.
-- **Quy tắc Git-Ignore:** Trong mọi tình huống, dữ liệu hồ sơ sự vụ cục bộ (`local_cases/`), ảnh chụp màn hình thực tế, tệp cơ sở dữ liệu thật hoặc tệp cấu hình `.env` riêng tư không bao giờ được đưa vào theo dõi của Git.
+1. **Kiểm tra biên dịch:** mã phải biên dịch sạch khi chạy `py -3 -m compileall src tests`.
+2. **Kiểm thử:** toàn bộ bài kiểm tra hiện có và bài mới phải vượt `py -3 -m pytest -q`.
+3. **Kiểm tra audit cục bộ:** `$env:PYTHONPATH="src"; py -3 -m aios_habit.cli audit` phải trả `"status": "PASS"`.
+4. **Kiểm tra import giao diện chính:** `$env:PYTHONPATH="src"; py -3 -c "import aios_habit.workspace_chat_app"` phải thành công.
+5. **Ranh giới hệ thống cũ:** module Workspace Chat được hỗ trợ không được import `studio` hoặc `case_cockpit`; khi dừng phần cũ phải gỡ đường khởi chạy và kỳ vọng kiểm thử lỗi thời.
 
 ---
 
-## 4. Chính sách Ngôn ngữ & Bản địa hóa Giao diện
-- **Ưu tiên Tiếng Việt (Vietnamese First):** Giao diện người dùng phải được bản địa hóa 100% bằng Tiếng Việt.
-- **Giải thích Thuật ngữ Kỹ thuật:** Các hằng số kỹ thuật tiếng Anh bắt buộc (như `local_only`, `redacted_export`, `cloud_allowed`) phải có giải thích ngắn gọn bằng Tiếng Việt đi kèm ngay bên cạnh.
-- **Không để lộ cảnh báo mã nguồn thô:** Các thông điệp traceback thô hoặc lỗi Python chưa xử lý phải được bắt giữ và hiển thị cho người dùng dưới dạng khối cảnh báo đã được bản địa hóa sạch sẽ.
+## 3. Quy tắc bảo mật và quyền riêng tư (bất khả xâm phạm)
+- **Không rò lên mây:** bằng chứng gắn nhãn `local_only` (chỉ dùng cục bộ), văn bản thô từ log/bảng tính cục bộ, thẻ học việc chưa xác nhận **không bao giờ** đưa vào prompt gửi dịch vụ mây (`gemini`, `gpt`, `copilot`, `notebooklm_safe`) hoặc gói bàn giao `cloud_safe`.
+- **Chỉ AI cục bộ:** dữ liệu nhạy cảm chỉ được đưa vào `local_ai` khi người dùng chỉ định rõ `include_local_only=True`.
+- **Không đưa vào Git:** `local_cases/`, ảnh chụp thật, cơ sở dữ liệu thật, `.env` riêng tư.
+
+Chi tiết phân loại dữ liệu: `00_governance/DATA_POLICY.md`. Đánh giá tác động quyền riêng tư: `docs/security/PRIVACY_IMPACT_ASSESSMENT.md`. Không sao chép toàn bộ chính sách dữ liệu vào file này.
+
+---
+
+## 4. Luật ngôn ngữ (giao diện và tài liệu) — bất khả xâm phạm
+
+Áp dụng cho mọi người và mọi agent. Không có ngoại lệ “viết nhanh bằng tiếng Anh rồi dịch sau”.
+
+### 4.1 Giao diện người dùng
+- Nhãn, hành động, cảnh báo, trạng thái trống, lỗi hiển thị cho người dùng: **100% tiếng Việt**.
+- Hằng kỹ thuật bắt buộc giữ nguyên (`local_only`, `redacted_export`, `cloud_allowed`) phải có giải thích tiếng Việt ngay bên cạnh.
+- Không lộ traceback thô, đường dẫn hệ thống, secret, hay nội dung `local_only` trên giao diện thường.
+
+### 4.2 Tài liệu sản phẩm (mọi file `.md` thuộc repo, trừ mục 4.4)
+- **Câu văn, tiêu đề mục, mô tả, bảng giải thích: tiếng Việt.** Cấm viết đoạn văn hay tiêu đề bằng tiếng Anh.
+- Cấm tài liệu song ngữ kiểu “Compilation Check”, “Core Rules”, “Definition of Done” trong tiêu đề.
+- Tài liệu **mới** hoặc **đang sửa** không được thêm câu tiếng Anh.
+- Khi sửa file cũ còn tiếng Anh: **dịch phần đụng tới** trong cùng lượt, không để nguyên đoạn Anh và không thêm Anh mới.
+- Sổ thảo luận sống (`Thảo_luận_AI_dự_đoán_lỗi_LSU.md`), README, spec đang mở, ADR, runbook: cùng luật.
+
+### 4.3 Được giữ nguyên (không phải câu văn)
+Chỉ các **token** sau được để tiếng Anh, và phải có nghĩa tiếng Việt gần đó nếu người đọc không phải lập trình viên:
+- Đường dẫn file, tên module/lớp/hàm, lệnh chạy (`pytest`, `compileall`).
+- Nhãn máy mà công cụ đọc được: `Status:`, `PASS` / `FAIL`, hằng `local_only`.
+- Tên sản phẩm đã khóa: Workspace Chat, BGE-M3.
+
+### 4.4 Không bắt buộc dịch lại trong một lượt
+`docs/archive/`, `CHANGELOG.md` (lịch sử), báo cáo cổng đã đóng trong `08_audit/`: bằng chứng cũ. **Không viết thêm tiếng Anh.** Không xóa lịch sử. Khi mở file đó để sửa nội dung vận hành, dịch phần đưa ra vận hành.
+
+### 4.5 Mã nguồn
+Tên định danh, comment kỹ thuật, commit message: tiếng Anh (không phải tài liệu người đọc).
+
+Chi tiết kiểm soát tài liệu: `docs/DOCUMENTATION_GOVERNANCE.md`. Chi tiết UI: `docs/UI_LANGUAGE_POLICY.md`.
 

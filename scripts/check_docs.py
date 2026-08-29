@@ -7,7 +7,13 @@ import re
 from pathlib import Path
 from typing import Iterable, Sequence
 
-METADATA_FIELDS = ("Status:", "Owner role:", "Last reviewed:", "Review cadence:")
+# English machine keys or Vietnamese labels both satisfy the contract.
+METADATA_FIELDS = (
+    ("Status:", "Trạng thái:"),
+    ("Owner role:", "Vai trò chủ sở hữu:"),
+    ("Last reviewed:", "Xem xét lần cuối:"),
+    ("Review cadence:", "Chu kỳ xem xét:"),
+)
 PROFESSIONAL_DIRECTORIES = (
     "docs/adr",
     "docs/architecture",
@@ -87,9 +93,11 @@ def check_document(path: Path, root: Path) -> list[str]:
     text = path.read_text(encoding="utf-8")
     if not text.startswith("# "):
         errors.append(f"{path.relative_to(root)}: missing H1 title")
-    for field in METADATA_FIELDS:
-        if field not in text:
-            errors.append(f"{path.relative_to(root)}: missing metadata {field}")
+    for fields in METADATA_FIELDS:
+        if not any(field in text for field in fields):
+            errors.append(
+                f"{path.relative_to(root)}: missing metadata {' / '.join(fields)}"
+            )
     for match in _LINK_RE.finditer(text):
         raw_target = match.group(1).strip().split(maxsplit=1)[0].strip("<>")
         target = raw_target.split("#", 1)[0]

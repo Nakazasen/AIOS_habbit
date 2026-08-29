@@ -26,6 +26,19 @@ Giữ cho tài liệu luôn hữu ích, có thể truy xuất nguồn gốc và 
 
 Các bằng chứng lịch sử trong `docs/archive/` không phải là nguồn chân lý vận hành.
 
+## Lớp đọc cho agent và người kế thừa
+
+Nuốt hết `.md` ở gốc, `00_`–`12_`, `docs/archive/` và toàn bộ `specs/` lần đầu sẽ làm lệch tư tưởng. Thứ tự bắt buộc:
+
+| Lớp | File |
+|---|---|
+| L0 | `AGENTS.md` |
+| L1 | `CONSTITUTION.md`, `AGENT_RULES.md` |
+| L2 | `ARCHITECTURE.md`, `ROADMAP.md`, `docs/adr/`, chỉ mục này |
+| L3 | Một `specs/<id>/` của hạng mục đang làm |
+
+Sứ mệnh sản phẩm: `CONSTITUTION.md` + `docs/AIOS_PRODUCT_POSITIONING.md`. Phân loại dữ liệu: `00_governance/DATA_POLICY.md` (file này vẫn canonical; **cây** `00_`–`12_` không phải luật lần đầu). Stub chuyển hướng: `PRODUCT_NORTH_STAR.md`, `WORKLENS_ARCHITECTURE.md`, `WORKLENS_MASTER_ROADMAP.md`.
+
 ## Metadata Bắt Buộc (Required Metadata)
 
 Các tài liệu quản trị kiểm soát chuyên nghiệp bắt buộc phải hiển thị: `Status`, `Owner role`, `Last reviewed`, và `Review cadence` ngay bên dưới tiêu đề H1. Một tài liệu có thể nêu trạng thái `OWNER_DECISION_REQUIRED`; trạng thái đó là trung thực và không đồng nghĩa với việc đã được phê duyệt.
@@ -37,6 +50,17 @@ Các tài liệu quản trị kiểm soát chuyên nghiệp bắt buộc phải 
 - `PARTIAL`: đã triển khai một phần; các hạn chế được nêu rõ.
 - `PLANNED`: công việc đã biết nhưng chưa được triển khai.
 - `RETIRED`: chỉ dùng cho mục đích lịch sử; liên kết thay thế được cung cấp.
+
+## Luật ngôn ngữ tài liệu (bắt buộc)
+
+Đây là luật sản phẩm, không phải gợi ý. Nguồn khóa: `AGENT_RULES.md` mục 4 và `CONSTITUTION.md` nguyên tắc 6.
+
+1. **Câu văn = tiếng Việt.** Tiêu đề mục, mô tả, bảng, README, spec đang mở, ADR, runbook, sổ thảo luận: không viết đoạn tiếng Anh.
+2. **Cấm** thêm tài liệu song ngữ (ngoặc tiếng Anh trong tiêu đề, “Definition of Done”, v.v.).
+3. **Token được giữ:** đường dẫn, lệnh, tên mã, nhãn máy (`Status:`, `PASS`/`FAIL`), hằng `local_only`. Phải có tiếng Việt bên cạnh nếu người đọc không phải lập trình viên.
+4. **File mới hoặc lượt sửa:** không thêm câu tiếng Anh; dịch phần tiếng Anh đang đụng tới trong cùng lượt.
+5. **`docs/archive/`, changelog lịch sử, `08_audit/` cổng đã đóng:** không viết thêm tiếng Anh; không bắt buộc dịch hết một lượt; không xóa lịch sử.
+6. **Mã nguồn** (không phải tài liệu người đọc): định danh, comment kỹ thuật, commit message bằng tiếng Anh.
 
 ## Quy Tắc Thay Đổi và Đánh Giá (Change and Review Rules)
 

@@ -1,5 +1,23 @@
 # Thảo luận xây dựng AI dự đoán và phòng ngừa lỗi LSU
 
+**File này là sổ thảo luận sống.** Ý mới về LSU, RAG nền, chia kho SQL, Agent IDE, điều tra line ghi **vào cuối file này** (mục mới, ghi ngày). Không tạo thêm `PLAN_*.md` / `Thảo_luận_*.md` song song.
+
+## Việc tiếp theo khi mở máy (đừng quên)
+
+1. **Thiết kế rồi làm collection = một SQLite** (sổ chat chỉ là con trỏ) + **index nhóm chỉ đọc**. Loại CSV log khỏi thư viện hỏi–đáp. Đây là thay đổi kiến trúc: đề xuất phương án, chờ xác nhận, rồi mới code.
+2. Không mở E3, không rebuild index Workspace Chat, không bật production RAG (`rolled_back`).
+3. Đợt 3 gầy specs đã đóng — sau collection.
+4. Lối vào agent: `AGENTS.md` (L0). Chi tiết hàng đợi: mục 22.6 và 24 bên dưới.
+
+Đọc vận hành sản phẩm vẫn theo canonical, không thay bằng file này:
+
+| Việc | File |
+|---|---|
+| Luật cứng, PASS/FAIL, local-first | `CONSTITUTION.md`, `AGENT_RULES.md` |
+| Kiến trúc / lộ trình sản phẩm | `ARCHITECTURE.md`, `ROADMAP.md`, `PROJECT_HANDOVER.md` |
+| Đo chunking RAG | `specs/006-chunking-evaluation/` |
+| Tầm nhìn sản xuất (chưa mở cổng) | `docs/design/PRODUCTION_INTELLIGENCE_VISION.md` |
+
 ## 1. Mục đích của tài liệu
 
 Tài liệu này ghi lại đầy đủ mạch trao đổi giữa người dùng và AI về hướng nâng cấp AIOS_habbit thành một hệ thống hỗ trợ phân tích, dự đoán và phòng ngừa lỗi LSU. Nội dung giữ đồng thời hai cách trình bày:
@@ -1134,3 +1152,115 @@ Mọi tool phải trả dữ liệu/evidence về Case hoặc EvidencePack; mọ
 Đọc dữ liệu máy và hệ thống có thể tự động theo quyền đọc. Các hành động thay đổi trạng thái — reset máy, đổi cấu hình JIG, dừng line, xóa log, gửi lệnh PLC, deploy hoặc thao tác ngoài workspace — phải ở cấp quyền cao, yêu cầu xác nhận của người được ủy quyền, audit bắt buộc và có fail-safe độc lập. Không cho phép một câu trả lời RAG trở thành lệnh trực tiếp điều khiển line.
 
 Kết luận: AIOS nên là một **case-operating system**. RAG cung cấp tri thức, tools cung cấp quan sát/hành động, diagnosis/prediction cung cấp suy luận; policy, approval và audit bảo đảm hệ thống mạnh nhưng không nguy hiểm.
+
+## 22. Phiên 2026-08-29 — Nền RAG, chia kho, ingest, Agent IDE
+
+Phiên này chốt **nền tảng** trước khi mở dự đoán. Không mở cổng Phase 9 / P1.0. Không tạo file kế hoạch mới.
+
+### 22.1. Việc RAG đã đo (corpus công khai bịa, không phải `local_only`)
+
+- E1 baseline trên corpus công khai → E2 cắt câu CJK (`sentence_punctuation_v1`) đo **`improved`** trên corpus v2 (đoạn Nhật/Trung >900 ký tự). Mặc định chunker **ingest mới** dùng chính sách đó; **không** rebuild index Workspace Chat; production RAG vẫn `rolled_back`.
+- `vi-002` (bảng Việt) trượt vì fixture ASCII (`nguyen lieu`) vs câu hỏi có dấu. Sửa bảng + `corpus_public_v3.json` → Recall@K **12/12**. Không mở E3 (overlap/summary): không có bằng chứng tóm tắt đẩy mất đoạn chi tiết.
+- E2 v3 từng `rejected` vì p95 (một câu `vi-003` ~1006 ms, jitter CPU). Không đảo mặc định cắt câu vì một nhịp. Fingerprint v1/v2/v3 **không so được** với nhau.
+
+Eval: `local_runs/chunk_evaluation/` (gitignored). Chi tiết task: `specs/006-chunking-evaluation/tasks.md`.
+
+### 22.2. Vì sao ingest chậm — và chia sẻ index
+
+BGE-M3 chạy CPU, `batch_size` mặc định 1, dense+sparse từng chunk. Hỏi sau khi có index ~0,7–1 s; phần chậm là **embed lần đầu**.
+
+Quy mô thư mục (chỉ đếm metadata, không đọc nội dung vào git):
+
+- MOM `tailieugoc/`: khoảng 73 file, ~95 MB.
+- LSU + log `Tài liệu của tất cả dòng máy/`: khoảng 888 file, ~1,15 GB, trong đó **~783 CSV**.
+
+Hiện Workspace Chat **không** tạo SQL riêng theo sổ. Sổ chat = JSONL trong `local_cases/workspace_chat/`. Index RAG thường **một** `workspace_chat.sqlite` / máy / profile. Nhiều người cùng ingest một thư mục sẽ khóa SQLite (một writer).
+
+Hướng đúng: **một máy ingest thư viện đã lọc → niêm (checksum + model + chunker) → máy khác mở chỉ đọc**. Sản phẩm chưa có nút xuất thư viện. Query path đã `index_read_only`.
+
+### 22.3. CSV log không nhét vào RAG — không làm dự đoán LSU bị cắt
+
+Hai việc khác nhau:
+
+| Việc | Dữ liệu | Kho |
+|---|---|---|
+| Hỏi–đáp / tra cứu | MOM, SOP, ISO, Excel chuẩn, slide | Index RAG (đoạn văn) |
+| Theo dõi / dự đoán LSU | Log JIG, serial, OK/NG, time-series | **Bảng có schema**, không cắt 900 ký tự rồi embed |
+
+Nhét 783 CSV vào cùng index với MOM làm retrieval nhiễu và ingest hàng giờ. Đó **không** phải “vứt log”: log vẫn cần cho LSU, nhưng là engine số liệu. RAG giải thích spec/field; bảng log trả lời “serial X có drift không”.
+
+Sản phẩm hiện tại **chưa** là công cụ dự đoán vận hành (`docs/AIOS_PRODUCT_POSITIONING.md`, `DEPRECATION_PAUSE_LIST.md`). Giai đoạn 0 = trí tuệ tài liệu đáng tin.
+
+### 22.4. Sổ ≠ SQL — đơn vị tách là thư viện (collection)
+
+Tạo sổ MOM **không** ra file SQL riêng.
+
+Đơn vị đúng:
+
+```text
+Kernel RAG (converter, chunker, BGE-M3, FTS, evidence, citation)
+    ├── sqlite_knowledge     MOM / ISO / tri thức kiểm chứng   ← chia sẻ được
+    ├── sqlite_unit_docs     tài liệu LSU / Drum / DLP
+    ├── sqlite_lsu_metrics   đo lường / log JIG (bảng)
+    └── sqlite_line_dc       điều tra line / điều chỉnh
+                             (tham chiếu project phantichphanmemdc)
+```
+
+Sổ chat chỉ **trỏ** vào thư viện. Không: một SQL khổng lồ. Không: mỗi sổ một SQL.
+
+Ba nhánh cùng kernel, khác kho:
+
+1. AI dự đoán / phòng ngừa lỗi LSU → sau này Drum, DLP… (bảng số + RAG giải thích).
+2. AI điều tra lỗi line (máy, điều chỉnh) — `D:\Sandbox\phantichphanmemdc`.
+3. AI tra cứu tri thức nội bộ đã kiểm chứng = RAG.
+
+Bước hiện tại: **nâng nền RAG + chia kho**, vì còn yếu và lưu trữ đang lẫn.
+
+### 22.5. Agent IDE / nvidia-server — nối được, là lớp hành động
+
+Runtime NVIDIA là repo kế thừa (`nvidia-server`), cầu nối mặc định `workspace_agent_bridge_client` → `...\Nvidia\tools\workspace-agent-bridge.mjs`. Policy trong `workspace_agent_policy.py`:
+
+- Cho phép đọc: `list_dir`, `read_file`, search, git status/diff/log, `index_search`…
+- Sửa **phải duyệt**: `write_file`, `apply_patch`, `execute_command`
+- **Cấm**: `delete_file`, `move_file`, `git_commit`, `git_push`
+- Tối đa 8 bước tool / lượt. Giai đoạn 5 IDE bridge chưa mở full; cấm AI tự sửa không duyệt.
+
+Vòng: Bằng chứng (RAG/bảng) → đề xuất → người duyệt → tool → audit → bài học. Không để câu trả lời RAG thành lệnh PLC/đổi spec.
+
+Tự học = phiếu chuyên gia / case eval local, promote tường minh (`agent_learning.py` chỉ hash, không nhúng `local_only`). Không train âm thầm từ một click.
+
+### 22.6. Thứ tự làm (một hàng đợi)
+
+1. Nền RAG + **collection = một SQLite** (sổ là con trỏ). Loại CSV log khỏi thư viện hỏi–đáp.
+2. Index nhóm chỉ đọc (một ingest, nhiều người hỏi) trên MOM + tài liệu dòng máy (không CSV).
+3. Hoàn thiện Agent IDE có duyệt: báo cáo lỗi, patch, spawn có ngân sách — không swarm vô hạn.
+4. Pilot line điều tra (`phantichphanmemdc`) rồi pilot vài serial LSU **có schema**.
+5. Cảnh báo / shadow prediction — sau khi Giai đoạn 0–1 đủ bằng chứng. Không mở E3 khi chưa có lỗi overlap đo được. Không reranker mặc định (latency CPU). Không GPU như phụ thuộc sản phẩm.
+
+### 22.7. Quản lý file — đã dọn rác gì, không dọn gì
+
+Dọn (rác runtime / debug, không phải tài liệu canonical):
+
+- `tmp_run_out.log`, `tmp_run_out2.log`, `tmp_run_out3.log`, `tmp_run_out4.log` (đã có trong `.gitignore` `*.log`).
+- `scratch/*.py` (script debug index một lần; `/scratch/` đã gitignore nhưng từng bị commit).
+- `.antigravityrules` (file rỗng).
+
+**Không** xóa: `CONSTITUTION.md`, `ARCHITECTURE.md`, `ROADMAP.md`, `specs/`, `docs/adr/`, `docs/archive/` (lịch sử), thư mục `tailieugoc/` và `Tài liệu của tất cả dòng máy/` (dữ liệu chủ sở hữu), `architecture_viewer.html` (artifact lớn, hỏi chủ sở hữu trước khi gỡ khỏi git).
+
+Không tạo file kế hoạch mới cho các ý trong mục 22. Cập nhật hành vi sản phẩm thì sửa canonical trong **cùng lượt code**, theo `docs/DOCUMENTATION_GOVERNANCE.md`.
+
+## 23. Phiên 2026-08-29 — Tài liệu phình / phân tán (chờ chủ sở hữu chọn đợt)
+
+Khoảng **320** file `.md` (không kể `.venv` / `local_*` / tài liệu nhà máy). Gốc repo **32** file luật/tư tưởng. `docs/` **149**. `specs/` **68**. `docs/archive/` **48** (đúng là lịch sử). Không tạo chỉ mục cạnh tranh với `docs/PROFESSIONALIZATION_INDEX.md`.
+
+Nguyên nhân AI đọc lần đầu bị lẫn: nhiều file **cùng chủ đề, khác lời** (`CONSTITUTION` vs `PRODUCT_NORTH_STAR` vs `docs/AIOS_PRODUCT_POSITIONING.md`; `ARCHITECTURE.md` vs `WORKLENS_ARCHITECTURE.md`; `AGENT_RULES.md` vs `AGENTS.md` vs `00_governance/`; folder `00_`–`12_` song song `docs/`).
+
+Cách làm (không big-bang): **lớp đọc L0→L3** + archive stub, không xóa lịch sử.
+
+**Đã thực thi đợt 1+2 (cùng ngày):** `AGENTS.md` L0–L3 và danh sách không đọc lần đầu; stub `WORKLENS_ARCHITECTURE.md`, `PRODUCT_NORTH_STAR.md`; `CONSTITUTION.md` §9; `AGENT_RULES.md` dẫn `DATA_POLICY.md`; biển RETIRED trên cây `00_`–`12_`; cập nhật `docs/DOCUMENTATION_GOVERNANCE.md` và `docs/PROFESSIONALIZATION_INDEX.md`. Đợt 3 (gầy specs đã đóng) **chưa** làm.
+
+## 24. Việc tiếp theo và ngôn ngữ tài liệu (2026-08-29)
+
+**Bước sản phẩm tiếp theo (sau nền RAG + gộp lối vào tài liệu):** thiết kế rồi làm **collection = một SQLite** (sổ chat chỉ là con trỏ) và **index nhóm chỉ đọc** — ingest một lần, nhiều người hỏi. Loại CSV log khỏi thư viện hỏi–đáp. Không mở E3. Không rebuild index Workspace Chat cho đến khi có collection. Không kích hoạt production RAG (`rolled_back`).
+
+**Ngôn ngữ (luật khóa, 2026-08-29):** câu văn tài liệu sản phẩm **phải tiếng Việt**. Nguồn: `CONSTITUTION.md` nguyên tắc 6, `AGENT_RULES.md` mục 4, `docs/DOCUMENTATION_GOVERNANCE.md`. Cấm tiêu đề/đoạn văn tiếng Anh; cấm thêm Anh khi sửa file. Token được giữ: đường dẫn, lệnh, tên mã, `Status:`/`PASS`, hằng `local_only`. Không bắt buộc dịch hết `docs/archive/` một lượt; không viết thêm tiếng Anh vào đó.

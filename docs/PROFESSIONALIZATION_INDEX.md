@@ -2,12 +2,14 @@
 
 Status: `ACTIVE`
 Owner role: Project owner / maintainer
-Last reviewed: 2026-07-25
+Last reviewed: 2026-08-29
 Review cadence: Each Gate Card closure and release candidate
 
 ## Mục Đích (Purpose)
 
 Chỉ mục này là bản đồ điều hướng cho các bản ghi kỹ thuật chuyên nghiệp. Trạng thái chuyển giao hiện tại của dự án vẫn là nguồn chân lý canonical trong `ROADMAP.md`; tệp này không thay thế tệp đó.
+
+Agent và người kế thừa **không đọc chỉ mục này trước** `AGENTS.md`. Lớp đọc: L0 `AGENTS.md` → L1 `CONSTITUTION.md` + `AGENT_RULES.md` → L2 kiến trúc/roadmap/ADR → L3 đúng một spec. Cây `00_`–`12_` và `docs/archive/` không phải lối vào.
 
 | Lĩnh vực | Bản ghi Canonical | Trọng tâm trạng thái |
 |---|---|---|
@@ -24,7 +26,8 @@ Chỉ mục này là bản đồ điều hướng cho các bản ghi kỹ thuậ
 | Phát hành | [Chính sách phát hành](release/RELEASE_POLICY.md), [checklist](release/RELEASE_CHECKLIST.md), [phiên bản hỗ trợ](release/SUPPORTED_VERSIONS.md) | Kênh phân phối / cửa sổ hỗ trợ đang chờ |
 | Quản trị | [Sổ rủi ro](governance/RISK_REGISTER.md), [sở hữu](governance/OWNERSHIP_AND_REVIEW.md), [DoR/DoD](governance/DEFINITION_OF_READY_DONE.md) | Chỉ định sở hữu bằng tên đang chờ |
 | Sản phẩm hóa | [Hướng dẫn người dùng](user/WORKSPACE_CHAT_USER_GUIDE.md), [onboarding](onboarding/MAINTAINER_ONBOARDING.md), [di chuyển](operations/DATA_MIGRATION_COMPATIBILITY.md) | Đánh giá thủ công và quyết định chính sách đang chờ |
-| Tầm nhìn sản phẩm | [Tầm nhìn trí tuệ sản phẩm](design/PRODUCTION_INTELLIGENCE_VISION.md) | Tham chiếu thiết kế dài hạn; chưa mở gate chuyển giao |
+| Tầm nhìn sản phẩm | [Định vị sản phẩm](AIOS_PRODUCT_POSITIONING.md), [tầm nhìn trí tuệ sản xuất](design/PRODUCTION_INTELLIGENCE_VISION.md) | Định vị = canonical sứ mệnh/giai đoạn; trí tuệ sản xuất = thiết kế dài hạn, chưa mở gate |
+| Stub (đừng đọc nội dung cũ) | `PRODUCT_NORTH_STAR.md`, `WORKLENS_ARCHITECTURE.md`, `WORKLENS_MASTER_ROADMAP.md` | Chỉ chuyển hướng |
 
 ## Các Quyết Định Bắt Buộc Của Chủ Sở Hữu (Required Owner Decisions)
 

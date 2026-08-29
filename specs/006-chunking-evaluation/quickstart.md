@@ -36,3 +36,8 @@ chunks or appears more sophisticated.
 2. Run affected unit/integration tests plus selected real-document checks.
 3. Verify rollback restores the prior baseline index/strategy identity.
 4. Update handover/roadmap records only after the evidence is retained.
+
+E2 v2 (public corpus) measured `improved` on CJK sentence boundaries. The
+default `StructureAwareChunker` policy for **new** ingest is
+`sentence_punctuation_v1`. The active Workspace Chat index was **not** rebuilt
+in that step; production RAG remains `rolled_back` until a later index rebuild.

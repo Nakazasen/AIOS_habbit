@@ -1,5 +1,7 @@
 # Các Gói Xuất Cho AI (AI Export Packs)
 
+> First-read: skip. Phase 0 vault. Lối vào: `AGENTS.md`. Nguồn chân lý không phải gói xuất.
+
 Thư mục này chứa bản chuyển đổi hồ sơ / bộ nhớ (profile/memory) cho từng hệ thống AI cụ thể.
 
 ## Quy Tắc Cốt Lõi (Rule)

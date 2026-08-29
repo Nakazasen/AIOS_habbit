@@ -1,5 +1,7 @@
 # Công Cụ (Tools)
 
+> First-read: skip. Phase 0 vault. Tool agent hiện tại: `src/aios_habit/workspace_agent_policy.py` và `AGENTS.md`.
+
 Giai đoạn 0 chủ đích không chứa bất kỳ công cụ thực thi nào.
 
 Giai đoạn 5 tương lai có thể bổ sung:

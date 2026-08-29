@@ -1,5 +1,7 @@
 # Sources
 
+> First-read: skip. Phase 0 vault. Luật nguồn/privacy: `00_governance/DATA_POLICY.md` và `AGENT_RULES.md`. Lối vào: `AGENTS.md`.
+
 Thư mục này quản lý inventory nguồn tri thức.
 
 ## Important

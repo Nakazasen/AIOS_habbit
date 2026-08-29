@@ -1,0 +1,128 @@
+{
+  "manifest_version": "1.0",
+  "corpus_kind": "public_evaluation",
+  "synthetic": false,
+  "privacy_note": "Invented public evaluation documents. No local_only factory text.",
+  "sources": [
+    {
+      "source_id": "src-quality-process",
+      "language": "vi",
+      "document_type": "markdown",
+      "has_tables": false,
+      "path": "docs/src-quality-process.md",
+      "sha256": "sha256:0f52cd10a021150f65404934345343dffc979cdafa5b8d1daa686952773dc3cf"
+    },
+    {
+      "source_id": "src-material-standards",
+      "language": "vi",
+      "document_type": "spreadsheet",
+      "has_tables": true,
+      "path": "tables/src-material-standards.table.json",
+      "sha256": "sha256:6b018c866c4cdaf72dc479b8f187eac57332de044b470c92f3462ade65e7c422"
+    },
+    {
+      "source_id": "src-cost-analysis-a",
+      "language": "vi",
+      "document_type": "markdown",
+      "has_tables": true,
+      "path": "docs/src-cost-analysis-a.md",
+      "sha256": "sha256:c6cf4631b49ff5dffadb26e7692c9ad404852b479ed5922ac7b234b5a6bc0545"
+    },
+    {
+      "source_id": "src-cost-analysis-b",
+      "language": "vi",
+      "document_type": "markdown",
+      "has_tables": true,
+      "path": "docs/src-cost-analysis-b.md",
+      "sha256": "sha256:6f2fb72bf47000967b11a50c9b90042354e0ebab22b0cf14becbd59a0cc20117"
+    },
+    {
+      "source_id": "src-troubleshooting",
+      "language": "vi",
+      "document_type": "markdown",
+      "has_tables": false,
+      "path": "docs/src-troubleshooting.md",
+      "sha256": "sha256:91e93d9403cc02b38495a4d9bc0c21b686ea47d632455763aa603b0c5d640d89"
+    },
+    {
+      "source_id": "src-manufacturing-qa",
+      "language": "ja",
+      "document_type": "markdown",
+      "has_tables": false,
+      "path": "docs/src-manufacturing-qa.md",
+      "sha256": "sha256:938729a6efc168c85e3c807f92fde1f35740160d765407684675122631c7ea1a"
+    },
+    {
+      "source_id": "src-maintenance-schedule",
+      "language": "ja",
+      "document_type": "spreadsheet",
+      "has_tables": true,
+      "path": "tables/src-maintenance-schedule.table.json",
+      "sha256": "sha256:d7644a5ccc3cd1a03b93e0c26520a4c15db37d906480377af70b6e64009b51b2"
+    },
+    {
+      "source_id": "src-safety-rules",
+      "language": "ja",
+      "document_type": "markdown",
+      "has_tables": false,
+      "path": "docs/src-safety-rules.md",
+      "sha256": "sha256:d47499bbcfdff3928d03560c023368092cbc6db510d5166cac056855e638e770"
+    },
+    {
+      "source_id": "src-work-procedures",
+      "language": "ja",
+      "document_type": "markdown",
+      "has_tables": false,
+      "path": "docs/src-work-procedures.md",
+      "sha256": "sha256:f64b7d4c786e28a3509542c03588ee4bf31e5c27a01d466e8b4a3adaaaae5a3c"
+    },
+    {
+      "source_id": "src-troubleshooting-ja",
+      "language": "ja",
+      "document_type": "markdown",
+      "has_tables": false,
+      "path": "docs/src-troubleshooting-ja.md",
+      "sha256": "sha256:32c842bebb89e6abcdf74984898955ed57d8dd04fdd2bbd1374d457927639e8b"
+    },
+    {
+      "source_id": "src-production-qa-zh",
+      "language": "zh-CN",
+      "document_type": "markdown",
+      "has_tables": false,
+      "path": "docs/src-production-qa-zh.md",
+      "sha256": "sha256:f5c39e3250dbb0296880069779e0f98fc319de417a0ad05475d5781c8307f969"
+    },
+    {
+      "source_id": "src-material-inspection-zh",
+      "language": "zh-CN",
+      "document_type": "spreadsheet",
+      "has_tables": true,
+      "path": "tables/src-material-inspection-zh.table.json",
+      "sha256": "sha256:6f6199698746035ee1f47e4a0aba85cc6cb8f79b27232daaebc864208d1a8aa6"
+    },
+    {
+      "source_id": "src-cost-plan-a-zh",
+      "language": "zh-CN",
+      "document_type": "markdown",
+      "has_tables": true,
+      "path": "docs/src-cost-plan-a-zh.md",
+      "sha256": "sha256:61792332dd57a42df056ef84cfd575ac73f26b53cc0301b1842a5c3cd509baff"
+    },
+    {
+      "source_id": "src-cost-plan-b-zh",
+      "language": "zh-CN",
+      "document_type": "markdown",
+      "has_tables": true,
+      "path": "docs/src-cost-plan-b-zh.md",
+      "sha256": "sha256:04bf66999572198628cc9dc8601339da3cd42bdc96493bc8620d28100aa7e8da"
+    },
+    {
+      "source_id": "src-troubleshooting-zh",
+      "language": "zh-CN",
+      "document_type": "markdown",
+      "has_tables": false,
+      "path": "docs/src-troubleshooting-zh.md",
+      "sha256": "sha256:da85e2a5c859aab50d4e4b490db4effe3e3f7b9f1e8821a9d602683e6cfd5cb4"
+    }
+  ]
+}

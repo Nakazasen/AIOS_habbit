@@ -1,0 +1,35 @@
+{
+  "headers": [
+    "Mã",
+    "Tên nguyên liệu",
+    "Tiêu chuẩn nhập kho",
+    "Đơn vị"
+  ],
+  "rows": [
+    [
+      "NL-01",
+      "Thép tấm",
+      "Độ dày 1.2mm +/-0.05",
+      "tấm"
+    ],
+    [
+      "NL-02",
+      "Sơn lót",
+      "Độ dày 20um",
+      "thùng"
+    ],
+    [
+      "NL-03",
+      "Bu lông M8",
+      "Cấp 8.8",
+      "hộp"
+    ],
+    [
+      "NL-04",
+      "Gioăng",
+      "Chịu nhiệt 120C",
+      "bộ"
+    ]
+  ],
+  "sheet": "NL nhập kho"
+}

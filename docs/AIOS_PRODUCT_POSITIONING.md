@@ -1,5 +1,7 @@
 # Định Vị Sản Phẩm AIOS (AIOS Product Positioning)
 
+Canonical cho định vị / giai đoạn / “AIOS không phải”. Nguyên tắc tối cao và PASS/FAIL: `CONSTITUTION.md`. Lối vào agent: `AGENTS.md`. `PRODUCT_NORTH_STAR.md` chỉ là stub về đây.
+
 ## Sứ Mệnh (Mission)
 
 AIOS WorkLens / AIOS_habbit là một **hệ điều hành trí nhớ công việc cá nhân, ưu tiên cục bộ (local-first)**. Mục tiêu là biến bằng chứng công việc hằng ngày thành tri thức có thể tái sử dụng:
