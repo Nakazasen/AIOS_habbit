@@ -9,7 +9,10 @@ from aios_habit.evidence_trace_schema import (
 )
 from aios_habit.local_jsonl import clear_jsonl_cache
 from aios_habit.workspace_chat_models import (
+    DEFAULT_COLLECTION_ID,
     DocumentNotebook,
+    KnowledgeCollection,
+    LEGACY_INDEX_FILENAME,
     WorkspaceConversation,
     ChatMessage,
     TemporaryConversationSource,
@@ -22,6 +25,7 @@ def setup_test_store(tmp_path, monkeypatch):
     test_dir = tmp_path / "workspace_chat"
     monkeypatch.setattr(store, "LOCAL_CHAT_DIR", test_dir)
     monkeypatch.setattr(store, "NOTEBOOKS_FILE", test_dir / "notebooks.jsonl")
+    monkeypatch.setattr(store, "COLLECTIONS_FILE", test_dir / "collections.jsonl")
     monkeypatch.setattr(store, "CONVERSATIONS_FILE", test_dir / "conversations.jsonl")
     monkeypatch.setattr(store, "MESSAGES_FILE", test_dir / "messages.jsonl")
     monkeypatch.setattr(store, "TEMPORARY_SOURCES_FILE", test_dir / "temporary_sources.jsonl")
@@ -42,6 +46,392 @@ def test_init_chat_store_defaults():
     assert "interstock_wms" in ids
     assert "email_jp_vn" in ids
     assert "aios_project" in ids
+
+def test_default_collection_uses_dedicated_folder():
+    collection = store.ensure_default_collection()
+    assert collection.id == DEFAULT_COLLECTION_ID
+    assert collection.storage_root == ""
+    profile = Path("local_runs/profile")
+    root, name = store.collection_runtime_layout(None, profile)
+    assert root == profile
+    assert name == LEGACY_INDEX_FILENAME
+    root, name = store.collection_runtime_layout(DEFAULT_COLLECTION_ID, profile)
+    assert root == profile / "collections" / DEFAULT_COLLECTION_ID
+    assert name == store.COLLECTION_INDEX_BASENAME
+
+
+def test_shared_storage_root_puts_index_beside_owner_folder(tmp_path):
+    shared = tmp_path / "thu_vien_chung"
+    store.ensure_default_collection()
+    store.set_collection_storage_root(DEFAULT_COLLECTION_ID, str(shared))
+    loaded = store.load_collection(DEFAULT_COLLECTION_ID)
+    assert loaded is not None
+    assert loaded.storage_root == str(shared)
+    root, name = store.collection_runtime_layout(DEFAULT_COLLECTION_ID, Path("unused"))
+    assert root == shared / store.COLLECTION_RUNTIME_DIRNAME
+    assert name == "library.sqlite"
+    assert root.is_dir()
+
+
+def _write_sqlite(path: Path, values: list[str], *, wal: bool = False) -> None:
+    import sqlite3
+
+    path.parent.mkdir(parents=True, exist_ok=True)
+    conn = sqlite3.connect(str(path))
+    try:
+        if wal:
+            conn.execute("PRAGMA journal_mode=WAL")
+        conn.execute("CREATE TABLE IF NOT EXISTS t (id INTEGER PRIMARY KEY, v TEXT)")
+        conn.executemany("INSERT INTO t(v) VALUES (?)", [(value,) for value in values])
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def _sqlite_values(path: Path) -> list[str]:
+    import sqlite3
+
+    conn = sqlite3.connect(str(path))
+    try:
+        rows = conn.execute("SELECT v FROM t ORDER BY id").fetchall()
+        return [str(row[0]) for row in rows]
+    finally:
+        conn.close()
+
+
+def test_relocate_copies_existing_library_and_keeps_old(tmp_path):
+    local_root = tmp_path / "local_profile"
+    first = tmp_path / "first"
+    second = tmp_path / "second"
+    store.ensure_default_collection()
+    store.set_collection_storage_root(DEFAULT_COLLECTION_ID, str(first))
+    source = first / store.COLLECTION_RUNTIME_DIRNAME / store.COLLECTION_INDEX_BASENAME
+    _write_sqlite(source, ["alpha"])
+    store.relocate_collection_storage(
+        DEFAULT_COLLECTION_ID,
+        str(second),
+        local_fallback_root=local_root,
+    )
+    dest = second / store.COLLECTION_RUNTIME_DIRNAME / store.COLLECTION_INDEX_BASENAME
+    assert _sqlite_values(dest) == ["alpha"]
+    assert _sqlite_values(source) == ["alpha"]
+    loaded = store.load_collection(DEFAULT_COLLECTION_ID)
+    assert loaded is not None
+    assert loaded.storage_root == str(second)
+    assert not dest.with_name(dest.name + "-shm").exists()
+
+
+def test_relocate_keeps_wal_committed_rows(tmp_path):
+    import sqlite3
+
+    first = tmp_path / "first"
+    second = tmp_path / "second"
+    store.ensure_default_collection()
+    store.set_collection_storage_root(DEFAULT_COLLECTION_ID, str(first))
+    source = first / store.COLLECTION_RUNTIME_DIRNAME / store.COLLECTION_INDEX_BASENAME
+    source.parent.mkdir(parents=True, exist_ok=True)
+    live = sqlite3.connect(str(source))
+    try:
+        live.execute("PRAGMA journal_mode=WAL")
+        live.execute("CREATE TABLE t (id INTEGER PRIMARY KEY, v TEXT)")
+        live.execute("INSERT INTO t(v) VALUES ('one')")
+        live.commit()
+        live.execute("INSERT INTO t(v) VALUES ('wal-only')")
+        live.commit()
+        store.relocate_collection_storage(
+            DEFAULT_COLLECTION_ID,
+            str(second),
+            local_fallback_root=tmp_path / "local",
+        )
+    finally:
+        live.close()
+    dest = second / store.COLLECTION_RUNTIME_DIRNAME / store.COLLECTION_INDEX_BASENAME
+    assert _sqlite_values(dest) == ["one", "wal-only"]
+    assert not dest.with_name(dest.name + "-shm").exists()
+
+
+def test_relocate_refuses_different_library_at_destination(tmp_path):
+    first = tmp_path / "first"
+    second = tmp_path / "second"
+    store.ensure_default_collection()
+    store.set_collection_storage_root(DEFAULT_COLLECTION_ID, str(first))
+    _write_sqlite(first / store.COLLECTION_RUNTIME_DIRNAME / store.COLLECTION_INDEX_BASENAME, ["aaa"])
+    _write_sqlite(second / store.COLLECTION_RUNTIME_DIRNAME / store.COLLECTION_INDEX_BASENAME, ["bbb"])
+    try:
+        store.relocate_collection_storage(
+            DEFAULT_COLLECTION_ID,
+            str(second),
+            local_fallback_root=tmp_path / "unused",
+        )
+        raise AssertionError("expected conflict")
+    except ValueError as exc:
+        assert str(exc) == "storage_root_conflict"
+    loaded = store.load_collection(DEFAULT_COLLECTION_ID)
+    assert loaded is not None
+    assert loaded.storage_root == str(first)
+    assert _sqlite_values(second / store.COLLECTION_RUNTIME_DIRNAME / store.COLLECTION_INDEX_BASENAME) == ["bbb"]
+
+
+def test_join_existing_valid_sqlite_without_source_index(tmp_path):
+    shared = tmp_path / "shared"
+    store.ensure_default_collection()
+    dest = shared / store.COLLECTION_RUNTIME_DIRNAME / store.COLLECTION_INDEX_BASENAME
+    _write_sqlite(dest, ["shared-row"])
+    store.relocate_collection_storage(
+        DEFAULT_COLLECTION_ID,
+        str(shared),
+        local_fallback_root=tmp_path / "empty-local",
+    )
+    loaded = store.load_collection(DEFAULT_COLLECTION_ID)
+    assert loaded is not None
+    assert loaded.storage_root == str(shared)
+    assert _sqlite_values(dest) == ["shared-row"]
+
+
+def _relocate_pair(tmp_path):
+    first = tmp_path / "first"
+    second = tmp_path / "second"
+    store.ensure_default_collection()
+    store.set_collection_storage_root(DEFAULT_COLLECTION_ID, str(first))
+    _write_sqlite(first / store.COLLECTION_RUNTIME_DIRNAME / store.COLLECTION_INDEX_BASENAME, ["keep"])
+    return first, second
+
+
+def _assert_pointer_unchanged(first: Path, second: Path) -> None:
+    loaded = store.load_collection(DEFAULT_COLLECTION_ID)
+    assert loaded is not None
+    assert loaded.storage_root == str(first)
+    dest = second / store.COLLECTION_RUNTIME_DIRNAME / store.COLLECTION_INDEX_BASENAME
+    assert not dest.exists()
+
+
+def test_relocate_io_error_keeps_pointer(tmp_path, monkeypatch):
+    first, second = _relocate_pair(tmp_path)
+
+    def _boom(*_args, **_kwargs):
+        raise OSError("disk full")
+
+    monkeypatch.setattr(store, "_backup_sqlite", _boom)
+    try:
+        store.relocate_collection_storage(
+            DEFAULT_COLLECTION_ID,
+            str(second),
+            local_fallback_root=tmp_path / "local",
+        )
+        raise AssertionError("expected io error")
+    except OSError as exc:
+        assert "library_io_error" in str(exc)
+    _assert_pointer_unchanged(first, second)
+
+
+def test_relocate_staging_verify_failure_keeps_pointer(tmp_path, monkeypatch):
+    first, second = _relocate_pair(tmp_path)
+    original = store.sqlite_quick_check
+
+    def _check(path):
+        if Path(path).name.startswith(f".{store.COLLECTION_INDEX_BASENAME}.") and Path(path).suffix == ".tmp":
+            return False
+        return original(path)
+
+    monkeypatch.setattr(store, "sqlite_quick_check", _check)
+    try:
+        store.relocate_collection_storage(
+            DEFAULT_COLLECTION_ID,
+            str(second),
+            local_fallback_root=tmp_path / "local",
+        )
+        raise AssertionError("expected invalid library")
+    except ValueError as exc:
+        assert str(exc) == "library_invalid"
+    _assert_pointer_unchanged(first, second)
+
+
+def test_relocate_replace_failure_keeps_pointer(tmp_path, monkeypatch):
+    first, second = _relocate_pair(tmp_path)
+
+    def _boom(_src, _dst):
+        raise OSError("replace failed")
+
+    monkeypatch.setattr(store.os, "replace", _boom)
+    try:
+        store.relocate_collection_storage(
+            DEFAULT_COLLECTION_ID,
+            str(second),
+            local_fallback_root=tmp_path / "local",
+        )
+        raise AssertionError("expected io error")
+    except OSError as exc:
+        assert "library_io_error" in str(exc)
+    _assert_pointer_unchanged(first, second)
+
+
+def test_relocate_post_publish_verify_failure_keeps_pointer(tmp_path, monkeypatch):
+    first, second = _relocate_pair(tmp_path)
+    dest = second / store.COLLECTION_RUNTIME_DIRNAME / store.COLLECTION_INDEX_BASENAME
+    original = store.sqlite_quick_check
+
+    def _check(path):
+        if Path(path) == dest:
+            return False
+        return original(path)
+
+    monkeypatch.setattr(store, "sqlite_quick_check", _check)
+    try:
+        store.relocate_collection_storage(
+            DEFAULT_COLLECTION_ID,
+            str(second),
+            local_fallback_root=tmp_path / "local",
+        )
+        raise AssertionError("expected invalid library")
+    except ValueError as exc:
+        assert str(exc) == "library_invalid"
+    _assert_pointer_unchanged(first, second)
+
+
+def test_clear_path_moves_to_local_after_backup(tmp_path):
+    shared = tmp_path / "shared"
+    local_root = tmp_path / "local_profile"
+    store.ensure_default_collection()
+    store.set_collection_storage_root(DEFAULT_COLLECTION_ID, str(shared))
+    _write_sqlite(shared / store.COLLECTION_RUNTIME_DIRNAME / store.COLLECTION_INDEX_BASENAME, ["home"])
+    store.relocate_collection_storage(
+        DEFAULT_COLLECTION_ID,
+        "",
+        local_fallback_root=local_root,
+    )
+    loaded = store.load_collection(DEFAULT_COLLECTION_ID)
+    assert loaded is not None
+    assert loaded.storage_root == ""
+    local_db = local_root / "collections" / DEFAULT_COLLECTION_ID / store.COLLECTION_INDEX_BASENAME
+    assert _sqlite_values(local_db) == ["home"]
+
+
+def test_writer_lease_blocks_relocate(tmp_path):
+    first = tmp_path / "first"
+    second = tmp_path / "second"
+    store.ensure_default_collection()
+    store.set_collection_storage_root(DEFAULT_COLLECTION_ID, str(first))
+    _write_sqlite(first / store.COLLECTION_RUNTIME_DIRNAME / store.COLLECTION_INDEX_BASENAME, ["locked"])
+    lease = store.LibraryWriterLease(first / store.COLLECTION_RUNTIME_DIRNAME)
+    assert lease.acquire() is True
+    try:
+        try:
+            store.relocate_collection_storage(
+                DEFAULT_COLLECTION_ID,
+                str(second),
+                local_fallback_root=tmp_path / "local",
+            )
+            raise AssertionError("expected busy")
+        except ValueError as exc:
+            assert str(exc) == "library_writer_busy"
+    finally:
+        lease.release()
+    loaded = store.load_collection(DEFAULT_COLLECTION_ID)
+    assert loaded is not None
+    assert loaded.storage_root == str(first)
+
+
+def test_second_writer_lease_fails_closed(tmp_path):
+    runtime = tmp_path / "runtime"
+    first = store.LibraryWriterLease(runtime)
+    second = store.LibraryWriterLease(runtime)
+    assert first.acquire() is True
+    try:
+        assert second.acquire() is False
+    finally:
+        first.release()
+    assert second.acquire() is True
+    second.release()
+
+
+def test_remote_wal_is_rejected(tmp_path, monkeypatch):
+    shared = tmp_path / "share"
+    store.ensure_default_collection()
+    db = shared / store.COLLECTION_RUNTIME_DIRNAME / store.COLLECTION_INDEX_BASENAME
+    _write_sqlite(db, ["wal-row"], wal=True)
+    monkeypatch.setattr(store, "is_remote_filesystem_path", lambda _path: True)
+    try:
+        store.relocate_collection_storage(
+            DEFAULT_COLLECTION_ID,
+            str(shared),
+            local_fallback_root=tmp_path / "local",
+        )
+        raise AssertionError("expected remote wal reject")
+    except ValueError as exc:
+        assert str(exc) == "shared_library_remote_wal_unsupported"
+
+
+def test_remote_empty_dest_rejects_local_wal_source(tmp_path, monkeypatch):
+    first = tmp_path / "first"
+    second = tmp_path / "second"
+    store.ensure_default_collection()
+    store.set_collection_storage_root(DEFAULT_COLLECTION_ID, str(first))
+    source = first / store.COLLECTION_RUNTIME_DIRNAME / store.COLLECTION_INDEX_BASENAME
+    _write_sqlite(source, ["wal-row"], wal=True)
+    dest_prefix = str(second)
+    monkeypatch.setattr(
+        store,
+        "is_remote_filesystem_path",
+        lambda path: str(Path(path)).startswith(dest_prefix),
+    )
+    try:
+        store.relocate_collection_storage(
+            DEFAULT_COLLECTION_ID,
+            str(second),
+            local_fallback_root=tmp_path / "local",
+        )
+        raise AssertionError("expected remote wal reject")
+    except ValueError as exc:
+        assert str(exc) == "shared_library_remote_wal_unsupported"
+    loaded = store.load_collection(DEFAULT_COLLECTION_ID)
+    assert loaded is not None
+    assert loaded.storage_root == str(first)
+    dest = second / store.COLLECTION_RUNTIME_DIRNAME / store.COLLECTION_INDEX_BASENAME
+    assert not dest.exists()
+
+
+def test_relocate_does_not_copy_chat_jsonl(tmp_path):
+    first = tmp_path / "first"
+    second = tmp_path / "second"
+    store.ensure_default_collection()
+    store.set_collection_storage_root(DEFAULT_COLLECTION_ID, str(first))
+    _write_sqlite(first / store.COLLECTION_RUNTIME_DIRNAME / store.COLLECTION_INDEX_BASENAME, ["keep"])
+    (first / "notebooks.jsonl").write_text("{}\n", encoding="utf-8")
+    store.relocate_collection_storage(
+        DEFAULT_COLLECTION_ID,
+        str(second),
+        local_fallback_root=tmp_path / "local",
+    )
+    dest_dir = second / store.COLLECTION_RUNTIME_DIRNAME
+    assert list(dest_dir.glob("*.jsonl")) == []
+    assert not (second / "notebooks.jsonl").exists()
+
+
+def test_joined_collection_routes_without_notebook_sources(tmp_path):
+    from aios_habit.workspace_chat_rag_v2_adapter import _collection_id_for_sources
+
+    store.ensure_default_collection()
+    store.set_collection_storage_root(DEFAULT_COLLECTION_ID, str(tmp_path / "share"))
+    assert _collection_id_for_sources([]) == DEFAULT_COLLECTION_ID
+
+
+def test_lease_released_after_holder_exception(tmp_path):
+    runtime = tmp_path / "runtime"
+    lease = store.LibraryWriterLease(runtime)
+    assert lease.acquire() is True
+    try:
+        raise RuntimeError("worker failed")
+    except RuntimeError:
+        lease.release()
+    other = store.LibraryWriterLease(runtime)
+    assert other.acquire() is True
+    other.release()
+
+
+def test_old_notebook_record_defaults_to_tri_thuc():
+    nb = store._deserialize_notebook({"id": "old", "title": "Sổ cũ"})
+    assert nb.collection_id == DEFAULT_COLLECTION_ID
+
 
 def test_notebook_persistence():
     nb = DocumentNotebook(id="custom_nb", title="My Custom Notebook", description="Custom desc")

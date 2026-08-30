@@ -32,6 +32,26 @@ def _close_canary_runtimes():
     adapter.close_workspace_chat_rag_v2_runtimes()
 
 
+@pytest.fixture(autouse=True)
+def _isolate_collection_store(tmp_path, monkeypatch):
+    import aios_habit.workspace_chat_store as store
+    from aios_habit.local_jsonl import clear_jsonl_cache
+
+    chat_dir = tmp_path / "isolated_workspace_chat"
+    monkeypatch.setattr(store, "LOCAL_CHAT_DIR", chat_dir)
+    monkeypatch.setattr(store, "NOTEBOOKS_FILE", chat_dir / "notebooks.jsonl")
+    monkeypatch.setattr(store, "COLLECTIONS_FILE", chat_dir / "collections.jsonl")
+    monkeypatch.setattr(store, "CONVERSATIONS_FILE", chat_dir / "conversations.jsonl")
+    monkeypatch.setattr(store, "MESSAGES_FILE", chat_dir / "messages.jsonl")
+    monkeypatch.setattr(store, "TEMPORARY_SOURCES_FILE", chat_dir / "temporary_sources.jsonl")
+    monkeypatch.setattr(store, "NOTEBOOK_SOURCES_FILE", chat_dir / "notebook_sources.jsonl")
+    monkeypatch.setattr(store, "SOURCE_SELECTIONS_FILE", chat_dir / "conversation_source_selections.jsonl")
+    monkeypatch.setattr(store, "TRACES_FILE", chat_dir / "traces.jsonl")
+    clear_jsonl_cache()
+    yield
+    clear_jsonl_cache()
+
+
 def test_canary_config_defaults_off_and_requires_explicit_enablement(monkeypatch):
     monkeypatch.setattr(
         adapter,
@@ -996,6 +1016,244 @@ def test_semantic_preparation_rejects_unknown_resume_document(monkeypatch, tmp_p
             config=config,
             completed_document_ids=("wsc-not-a-current-source",),
         )
+
+
+def test_writer_lease_blocks_second_prepare_worker(monkeypatch, tmp_path):
+    import aios_habit.workspace_chat_store as store
+
+    config = _semantic_config(tmp_path)
+    sources = _sources(1)
+    staged: list[str] = []
+    monkeypatch.setattr(
+        adapter._SUBPROCESS_CLIENT,
+        "initialize_worker",
+        lambda _config: {"status": "ok", "reused": True, "init_latency_ms": 0.0},
+    )
+    monkeypatch.setattr(
+        adapter._SUBPROCESS_CLIENT,
+        "prepare_staged_source",
+        lambda spec, _config, *, group_size, **kwargs: staged.append(spec.document_id)
+        or {"converted_count": 1, "skipped_count": 0, "failed_count": 0, "indexed_chunk_count": 1},
+    )
+    runtime = tmp_path / config.requested_profile
+    lease = store.LibraryWriterLease(runtime)
+    assert lease.acquire() is True
+    try:
+        with pytest.raises(RuntimeError, match="library_writer_busy"):
+            adapter.prepare_workspace_chat_sources(sources, config=config)
+    finally:
+        lease.release()
+    assert staged == []
+    states = adapter.get_workspace_chat_source_preparation_status(sources, config=config)
+    assert set(states.values()) == {"pending"}
+
+
+def test_writer_lease_released_after_prepare_exception(monkeypatch, tmp_path):
+    import aios_habit.workspace_chat_store as store
+
+    config = _semantic_config(tmp_path)
+    sources = _sources(1)
+    monkeypatch.setattr(
+        adapter._SUBPROCESS_CLIENT,
+        "initialize_worker",
+        lambda _config: {"status": "ok", "reused": True, "init_latency_ms": 0.0},
+    )
+
+    def prepare_staged_source(_spec, _config, *, group_size, **kwargs):
+        raise RuntimeError("worker exploded")
+
+    monkeypatch.setattr(adapter._SUBPROCESS_CLIENT, "prepare_staged_source", prepare_staged_source)
+    with pytest.raises(RuntimeError):
+        adapter.prepare_workspace_chat_sources(sources, config=config)
+    other = store.LibraryWriterLease(tmp_path / config.requested_profile)
+    assert other.acquire() is True
+    other.release()
+
+
+def _write_coverage_index(path: Path, document_id: str, revision: str) -> None:
+    import sqlite3
+
+    path.parent.mkdir(parents=True, exist_ok=True)
+    conn = sqlite3.connect(str(path))
+    try:
+        conn.executescript(
+            """
+            CREATE TABLE chunks (
+                chunk_id TEXT PRIMARY KEY,
+                document_id TEXT NOT NULL,
+                source_path TEXT NOT NULL DEFAULT '',
+                source_name TEXT NOT NULL DEFAULT '',
+                file_type TEXT NOT NULL DEFAULT 'txt',
+                text TEXT NOT NULL DEFAULT '',
+                normalized_text TEXT NOT NULL DEFAULT '',
+                metadata_json TEXT NOT NULL DEFAULT '{}',
+                privacy_labels_json TEXT NOT NULL DEFAULT '[]',
+                retrievable INTEGER NOT NULL DEFAULT 1
+            );
+            CREATE TABLE chunk_embeddings (
+                chunk_id TEXT NOT NULL,
+                model_fingerprint TEXT NOT NULL,
+                content_hash TEXT NOT NULL DEFAULT '',
+                model_id TEXT NOT NULL,
+                model_revision TEXT NOT NULL,
+                runtime TEXT NOT NULL DEFAULT 'cpu',
+                runtime_version TEXT NOT NULL DEFAULT '1',
+                dimension INTEGER NOT NULL DEFAULT 1,
+                dtype TEXT NOT NULL DEFAULT 'float32-le',
+                normalized INTEGER NOT NULL DEFAULT 1,
+                vector_blob BLOB NOT NULL,
+                created_at TEXT NOT NULL DEFAULT '',
+                PRIMARY KEY (chunk_id, model_fingerprint)
+            );
+            CREATE TABLE chunk_sparse_embeddings (
+                chunk_id TEXT NOT NULL,
+                model_fingerprint TEXT NOT NULL,
+                content_hash TEXT NOT NULL DEFAULT '',
+                PRIMARY KEY (chunk_id, model_fingerprint)
+            );
+            """
+        )
+        conn.execute(
+            "INSERT INTO chunks (chunk_id, document_id, retrievable) VALUES ('c1', ?, 1)",
+            (document_id,),
+        )
+        conn.execute(
+            """INSERT INTO chunk_embeddings
+               (chunk_id, model_fingerprint, model_id, model_revision, vector_blob)
+               VALUES ('c1', 'fp', 'BAAI/bge-m3', ?, x'00')""",
+            (revision,),
+        )
+        conn.execute(
+            "INSERT INTO chunk_sparse_embeddings (chunk_id, model_fingerprint) VALUES ('c1', 'fp')"
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def test_document_id_follows_content_not_source_id_or_title():
+    body = "Quy trình kiểm tra line C đã xác nhận."
+    first = WorkspaceAIContextSource(
+        source_id="machine-a-src",
+        source_scope="notebook",
+        source_type="txt",
+        title="quy-trinh.txt",
+        privacy_label="local_only",
+        text=body,
+        included_chars=len(body),
+        truncated=False,
+    )
+    second = WorkspaceAIContextSource(
+        source_id="machine-b-src",
+        source_scope="notebook",
+        source_type="txt",
+        title="copy-khac-ten.txt",
+        privacy_label="local_only",
+        text=body,
+        included_chars=len(body),
+        truncated=False,
+    )
+    other = WorkspaceAIContextSource(
+        source_id="machine-b-src",
+        source_scope="notebook",
+        source_type="txt",
+        title="quy-trinh.txt",
+        privacy_label="local_only",
+        text="Nội dung khác hẳn, không được ghép.",
+        included_chars=32,
+        truncated=False,
+    )
+    empty_a = WorkspaceAIContextSource(
+        source_id="empty-a",
+        source_scope="temporary",
+        source_type="txt",
+        title="a.txt",
+        privacy_label="local_only",
+        text="   ",
+        included_chars=0,
+        truncated=False,
+    )
+    empty_b = WorkspaceAIContextSource(
+        source_id="empty-b",
+        source_scope="temporary",
+        source_type="txt",
+        title="b.txt",
+        privacy_label="local_only",
+        text="",
+        included_chars=0,
+        truncated=False,
+    )
+    assert adapter._document_id(first) == adapter._document_id(second)
+    assert adapter._document_id(first) != adapter._document_id(other)
+    assert adapter._document_id(empty_a) != adapter._document_id(empty_b)
+
+
+def test_shared_library_matching_source_skips_embed_worker(monkeypatch, tmp_path):
+    import aios_habit.workspace_chat_store as store
+    from aios_habit.workspace_chat_models import DEFAULT_COLLECTION_ID
+
+    store.init_chat_store()
+    shared = tmp_path / "share"
+    store.set_collection_storage_root(DEFAULT_COLLECTION_ID, str(shared))
+    config = _semantic_config(tmp_path)
+    source = _sources(1)[0]
+    document_id = adapter._document_id(source)
+    index = shared / store.COLLECTION_RUNTIME_DIRNAME / store.COLLECTION_INDEX_BASENAME
+    _write_coverage_index(index, document_id, config.bge_m3_model_revision)
+    staged: list[str] = []
+    monkeypatch.setattr(
+        adapter._SUBPROCESS_CLIENT,
+        "prepare_staged_source",
+        lambda spec, _config, *, group_size, **kwargs: staged.append(spec.document_id),
+    )
+    enqueued = adapter.reconcile_and_enqueue_workspace_chat_sources((source,), config=config)
+    assert enqueued == 0
+    assert staged == []
+    assert adapter._durable_semantic_coverage_ready(source, config) is True
+
+
+def test_shared_library_same_content_different_source_id_skips_embed(monkeypatch, tmp_path):
+    import aios_habit.workspace_chat_store as store
+    from aios_habit.workspace_chat_models import DEFAULT_COLLECTION_ID
+
+    store.init_chat_store()
+    shared = tmp_path / "share"
+    store.set_collection_storage_root(DEFAULT_COLLECTION_ID, str(shared))
+    config = _semantic_config(tmp_path)
+    body = "Tài liệu dùng chung đã lập chỉ mục trên máy A."
+    machine_a = WorkspaceAIContextSource(
+        source_id="src-machine-a",
+        source_scope="notebook",
+        source_type="txt",
+        title="tai-lieu.txt",
+        privacy_label="local_only",
+        text=body,
+        included_chars=len(body),
+        truncated=False,
+    )
+    machine_b = WorkspaceAIContextSource(
+        source_id="src-machine-b",
+        source_scope="notebook",
+        source_type="txt",
+        title="tai-lieu-may-2.txt",
+        privacy_label="local_only",
+        text=body,
+        included_chars=len(body),
+        truncated=False,
+    )
+    index = shared / store.COLLECTION_RUNTIME_DIRNAME / store.COLLECTION_INDEX_BASENAME
+    _write_coverage_index(index, adapter._document_id(machine_a), config.bge_m3_model_revision)
+    staged: list[str] = []
+    monkeypatch.setattr(
+        adapter._SUBPROCESS_CLIENT,
+        "prepare_staged_source",
+        lambda spec, _config, *, group_size, **kwargs: staged.append(spec.document_id),
+    )
+    enqueued = adapter.reconcile_and_enqueue_workspace_chat_sources((machine_b,), config=config)
+    assert enqueued == 0
+    assert staged == []
+    assert adapter._document_id(machine_a) == adapter._document_id(machine_b)
+    assert adapter._durable_semantic_coverage_ready(machine_b, config) is True
 
 
 def test_semantic_preparation_initialization_failure_is_phase_safe(monkeypatch, tmp_path):

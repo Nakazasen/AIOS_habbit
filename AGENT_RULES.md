@@ -38,9 +38,11 @@ Không một pull request hay thay đổi mã nguồn nào được phép gộp 
 ---
 
 ## 3. Quy tắc bảo mật và quyền riêng tư (bất khả xâm phạm)
-- **Không rò lên mây:** bằng chứng gắn nhãn `local_only` (chỉ dùng cục bộ), văn bản thô từ log/bảng tính cục bộ, thẻ học việc chưa xác nhận **không bao giờ** đưa vào prompt gửi dịch vụ mây (`gemini`, `gpt`, `copilot`, `notebooklm_safe`) hoặc gói bàn giao `cloud_safe`.
-- **Chỉ AI cục bộ:** dữ liệu nhạy cảm chỉ được đưa vào `local_ai` khi người dùng chỉ định rõ `include_local_only=True`.
+- **Không rò lên mây trái phép:** bằng chứng `local_only`, log/bảng tính thô, thẻ học việc chưa xác nhận **không** đưa vào Gemini Web, Nakazasen Router, `gpt`/`copilot`/`notebooklm_safe`, hay gói `cloud_safe`.
+- **C-AGENT (Sonnet 4 công ty):** đường được công ty mua và cam kết bảo mật. Khi người dùng **chọn đúng** cầu nối `cagent_api`, được gửi bản vẽ, sơ đồ mạch, log, gói điều tra. Không tự chuyển gói đó sang Gemini/Router.
+- **Chỉ AI cục bộ khác:** `local_ai` chỉ khi người dùng chỉ định `include_local_only=True`.
 - **Không đưa vào Git:** `local_cases/`, ảnh chụp thật, cơ sở dữ liệu thật, `.env` riêng tư.
+- Caption UI chưa đủ: chưa có hard guard chặn file ảnh khi backend là Gemini/Router — đó là việc phải làm, không được coi caption là chặn.
 
 Chi tiết phân loại dữ liệu: `00_governance/DATA_POLICY.md`. Đánh giá tác động quyền riêng tư: `docs/security/PRIVACY_IMPACT_ASSESSMENT.md`. Không sao chép toàn bộ chính sách dữ liệu vào file này.
 

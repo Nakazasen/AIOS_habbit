@@ -6,12 +6,46 @@ from typing import List, Optional
 SOURCE_SCOPE_NOTEBOOK = "notebook"
 SOURCE_SCOPE_TEMPORARY = "temporary"
 
+DEFAULT_COLLECTION_ID = "tri_thuc"
+COLLECTION_KIND_KNOWLEDGE = "knowledge"
+COLLECTION_KIND_STRUCTURED = "structured"
+LEGACY_INDEX_FILENAME = "workspace_chat.sqlite"
+
 NOTEBOOK_SOURCE_STATUS_READY = "ready"
 NOTEBOOK_SOURCE_STATUS_PREVIEW_ONLY = "preview_only"
 NOTEBOOK_SOURCE_STATUS_FAILED = "failed"
 
 WORKSPACE_CHAT_SOURCE_PREVIEW_LIMIT = 2000
 WORKSPACE_CHAT_SOURCE_TEXT_LIMIT_BYTES = 200 * 1024
+
+@dataclass
+class KnowledgeCollection:
+    """A shareable document library. Notebooks point here; they are not the index."""
+
+    id: str
+    title: str
+    description: str = ""
+    kind: str = COLLECTION_KIND_KNOWLEDGE
+    storage_root: str = ""
+    created_at: str = field(default_factory=lambda: datetime.now().isoformat())
+    updated_at: str = field(default_factory=lambda: datetime.now().isoformat())
+
+    def to_dict(self) -> dict:
+        return asdict(self)
+
+    @classmethod
+    def from_dict(cls, data: dict) -> "KnowledgeCollection":
+        valid_keys = {
+            "id", "title", "description", "kind", "storage_root",
+            "created_at", "updated_at",
+        }
+        filtered = {k: v for k, v in data.items() if k in valid_keys}
+        kind = str(filtered.get("kind") or COLLECTION_KIND_KNOWLEDGE)
+        if kind not in {COLLECTION_KIND_KNOWLEDGE, COLLECTION_KIND_STRUCTURED}:
+            kind = COLLECTION_KIND_KNOWLEDGE
+        filtered["kind"] = kind
+        return cls(**filtered)
+
 
 @dataclass
 class DocumentNotebook:
@@ -21,6 +55,7 @@ class DocumentNotebook:
     created_at: str = field(default_factory=lambda: datetime.now().isoformat())
     updated_at: str = field(default_factory=lambda: datetime.now().isoformat())
     archived_at: Optional[str] = None
+    collection_id: str = DEFAULT_COLLECTION_ID
 
     def is_archived(self) -> bool:
         if self.archived_at is None:

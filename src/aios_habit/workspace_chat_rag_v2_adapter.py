@@ -492,11 +492,17 @@ def _pipeline_config(
     *,
     read_only: bool = False,
     include_reranker: bool = False,
+    collection_id: str | None = None,
 ) -> RagV2DevConfig:
+    from aios_habit.workspace_chat_store import collection_runtime_layout
+
     profile_root = config.runtime_root / profile
+    collection_root, index_filename = collection_runtime_layout(collection_id, profile_root)
+    if not read_only:
+        collection_root.mkdir(parents=True, exist_ok=True)
     common = {
-        "runtime_root": profile_root,
-        "index_filename": "workspace_chat.sqlite",
+        "runtime_root": collection_root,
+        "index_filename": index_filename,
         "index_read_only": read_only,
         "ensure_embeddings_on_open": not read_only,
         "allowed_privacy_labels": (
@@ -594,6 +600,14 @@ def close_workspace_chat_rag_v2_runtimes() -> None:
 
 @functools.lru_cache(maxsize=4096)
 def _document_id(source: WorkspaceAIContextSource) -> str:
+    """Identify a library document by extracted text, not per-machine source id.
+
+    Empty text cannot be matched across machines, so it stays local to
+    ``source_scope:source_id``. Filename is never part of the identity.
+    """
+    text_bytes = (source.text or "").strip().encode("utf-8")
+    if text_bytes:
+        return f"wsc-{hashlib.sha256(text_bytes).hexdigest()[:24]}"
     identity = f"{source.source_scope}:{source.source_id}".encode("utf-8")
     return f"wsc-{hashlib.sha256(identity).hexdigest()[:24]}"
 
@@ -714,7 +728,12 @@ def _durable_semantic_coverage_ready(
     config: WorkspaceChatRagV2CanaryConfig,
 ) -> bool:
     """Check an existing local BGE index without loading the model again."""
-    index_path = config.runtime_root / config.requested_profile / "workspace_chat.sqlite"
+    from aios_habit.workspace_chat_store import collection_runtime_layout
+
+    collection_id = _collection_id_for_sources((source,))
+    profile_root = config.runtime_root / config.requested_profile
+    collection_root, index_filename = collection_runtime_layout(collection_id, profile_root)
+    index_path = collection_root / index_filename
     if not index_path.is_file() or not config.bge_m3_model_revision:
         return False
     document_id = _document_id(source)
@@ -912,6 +931,23 @@ def initialize_workspace_chat_rag_v2_worker(
         raise RuntimeError(f"preparation_init_{_safe_reason(exc)}") from exc
 
 
+def _collection_id_for_sources(context_sources: Iterable[WorkspaceAIContextSource]) -> str | None:
+    from aios_habit.workspace_chat_models import DEFAULT_COLLECTION_ID, SOURCE_SCOPE_NOTEBOOK
+    from aios_habit.workspace_chat_store import (
+        load_collection,
+        resolve_collection_id_from_notebook_source_id,
+    )
+
+    for source in context_sources:
+        if getattr(source, "source_scope", "") != SOURCE_SCOPE_NOTEBOOK:
+            continue
+        return resolve_collection_id_from_notebook_source_id(source.source_id)
+    default = load_collection(DEFAULT_COLLECTION_ID)
+    if default is not None and str(default.storage_root or "").strip():
+        return DEFAULT_COLLECTION_ID
+    return None
+
+
 def prepare_workspace_chat_sources(
     context_sources: Iterable[WorkspaceAIContextSource],
     *,
@@ -936,7 +972,11 @@ def prepare_workspace_chat_sources(
         raise ValueError("source_timeout_s must be positive")
 
     profile = resolved.requested_profile
-    pipe_config = _pipeline_config(resolved, profile)
+    pipe_config = _pipeline_config(
+        resolved,
+        profile,
+        collection_id=_collection_id_for_sources(sources),
+    )
     started = time.perf_counter()
     with _PREPARATION_LOCK:
         for source in sources:
@@ -944,13 +984,25 @@ def prepare_workspace_chat_sources(
                 _preparation_entry(resolved, source, "processing")
             )
 
+    writer_lease = None
     try:
         init_report: dict[str, Any] | None = None
+        use_semantic_worker = (
+            profile.startswith("bge_m3_") and pipeline_factory is RagV2DevPipeline
+        )
         # Establish the production semantic worker while the parent only holds
         # caller-provided references; extraction/materialization can be slow and
         # memory-intensive. Injected pipeline factories own their lifecycle.
-        if profile.startswith("bge_m3_") and pipeline_factory is RagV2DevPipeline:
-            init_report = initialize_workspace_chat_rag_v2_worker(resolved)
+        if use_semantic_worker:
+            from aios_habit.workspace_chat_store import LibraryWriterLease
+
+            writer_lease = LibraryWriterLease(Path(pipe_config.runtime_root))
+            if not writer_lease.acquire():
+                raise RuntimeError("library_writer_busy")
+            init_report = initialize_workspace_chat_rag_v2_worker(
+                resolved,
+                pipe_config=pipe_config,
+            )
         specs, originals = _materialize_sources(sources, resolved.runtime_root)
         if not specs:
             return {"status": "ok", "prepared_count": 0, "latency_ms": 0.0}
@@ -970,7 +1022,7 @@ def prepare_workspace_chat_sources(
                             resumed_from_verified_checkpoint=True,
                         )
                     )
-        if profile.startswith("bge_m3_") and pipeline_factory is RagV2DevPipeline:
+        if use_semantic_worker:
             pending_specs = tuple(spec for spec in specs if spec.document_id not in completed_ids)
             batches = _preparation_batches(pending_specs)
             batch_reports = []
@@ -998,7 +1050,9 @@ def prepare_workspace_chat_sources(
                                     source,
                                     _PREPARATION_READY_STATE,
                                     latency_ms=source_latency_ms,
-                                    indexed_chunk_count=int(source_report.get("indexed_chunk_count", 0)),
+                                    indexed_chunk_count=int(
+                                        source_report.get("indexed_chunk_count", 0)
+                                    ),
                                 )
                             )
                         if progress_callback is not None:
@@ -1053,7 +1107,9 @@ def prepare_workspace_chat_sources(
             "report": report,
         }
     except Exception as exc:
-        reason = _safe_reason(exc)
+        busy = str(exc) == "library_writer_busy"
+        reason = "library_writer_busy" if busy else _safe_reason(exc)
+        status = "pending" if busy else "failed"
         latency_ms = round((time.perf_counter() - started) * 1000.0, 3)
         with _PREPARATION_LOCK:
             for source in sources:
@@ -1064,7 +1120,7 @@ def prepare_workspace_chat_sources(
                 _PREPARATION_REGISTRY[key] = _preparation_entry(
                     resolved,
                     source,
-                    "failed",
+                    status,
                     reason=reason,
                     latency_ms=latency_ms,
                 )
@@ -1074,6 +1130,9 @@ def prepare_workspace_chat_sources(
             reason,
         )
         raise
+    finally:
+        if writer_lease is not None:
+            writer_lease.release()
 
 
 def _get_ledger_db_path(config: WorkspaceChatRagV2CanaryConfig) -> Path:
@@ -1668,6 +1727,15 @@ def _drain_preparation_queue(config: WorkspaceChatRagV2CanaryConfig) -> None:
                     PREP_STATE_READY,
                 )
             except Exception as exc:
+                if str(exc) == "library_writer_busy":
+                    _commit_preparation_result(
+                        db_path,
+                        item.source_scope,
+                        item.source_id,
+                        PREP_STATE_PENDING,
+                        error_reason="library_writer_busy",
+                    )
+                    continue
                 err_reason = _safe_reason(exc)
                 _commit_preparation_result(
                     db_path,
@@ -2073,6 +2141,7 @@ def _run_profile(
         # fresh worker silently embed every unrelated legacy chunk.
         read_only=True,
         include_reranker=rerank_requested,
+        collection_id=_collection_id_for_sources(sources),
     )
     specs, originals = _materialize_sources(sources, config.runtime_root)
     if not specs:

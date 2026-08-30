@@ -4,6 +4,12 @@
 
 `WORKLENS_ARCHITECTURE.md` là stub chuyển hướng về file này.
 
+### Thư viện (collection) và sổ chat
+
+Sổ tài liệu **không** phải file tìm kiếm. Mỗi **thư viện** có kho SQLite riêng (`library.sqlite`). Sổ chỉ trỏ `collection_id`.
+
+Chủ sở hữu chọn **thư mục dùng chung**. Kho nằm trong `aios_thu_vien/library.sqlite`. Đổi chỗ: snapshot SQLite (Online Backup + `PRAGMA quick_check`) rồi mới đổi `storage_root`; kho cũ giữ. Lỗi I/O không đổi pointer. Một writer (file lease); writer thứ hai fail-closed. Máy mới gia nhập kho có sẵn khi máy đó chưa có index. Tài liệu trong kho nhận diện theo nội dung chữ đã lấy ra, không theo mã nguồn trên từng máy và không theo tên file. Chat/JSONL vẫn local — index dùng chung không mang lịch sử trò chuyện. WAL trên ổ mạng nhiều máy: fail-closed, không tuyên bố an toàn. CSV log không thuộc thư viện hỏi–đáp.
+
 ## Workspace Chat: chuẩn bị nguồn tăng dần (2026-08-22)
 
 - Mỗi nguồn mới chỉ được đưa vào hàng đợi lập chỉ mục riêng sau khi đọc file thành công;

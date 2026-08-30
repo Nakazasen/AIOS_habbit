@@ -22,7 +22,7 @@ def test_composer_default_state_uses_compact_primary_controls() -> None:
 def test_composer_attachment_is_progressively_disclosed_with_existing_constraints() -> None:
     source = _app_source()
 
-    assert 'with st.popover("Đính kèm"' in source
+    assert 'with st.popover(t("attach_popover"' in source
     assert 'key=f"wsc-attachment-{active_conversation.id}"' in source
     assert "justify-content: center !important" in source
     assert "button > svg:last-child" in source

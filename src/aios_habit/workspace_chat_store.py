@@ -1,4 +1,5 @@
 import logging
+import os
 import threading
 import uuid
 from dataclasses import asdict
@@ -8,7 +9,11 @@ from typing import Any, Iterable, List, Optional
 from aios_habit.evidence_trace_schema import EvidenceTrace
 from aios_habit.local_jsonl import atomic_write_jsonl, atomic_write_jsonl_batch, clear_jsonl_cache, load_jsonl_records
 from aios_habit.workspace_chat_models import (
+    COLLECTION_KIND_KNOWLEDGE,
+    DEFAULT_COLLECTION_ID,
     DocumentNotebook,
+    KnowledgeCollection,
+    LEGACY_INDEX_FILENAME,
     WorkspaceConversation,
     ChatMessage,
     TemporaryConversationSource,
@@ -18,6 +23,7 @@ from aios_habit.workspace_chat_models import (
 
 LOCAL_CHAT_DIR = Path.cwd() / "local_cases" / "workspace_chat"
 NOTEBOOKS_FILE = LOCAL_CHAT_DIR / "notebooks.jsonl"
+COLLECTIONS_FILE = LOCAL_CHAT_DIR / "collections.jsonl"
 CONVERSATIONS_FILE = LOCAL_CHAT_DIR / "conversations.jsonl"
 MESSAGES_FILE = LOCAL_CHAT_DIR / "messages.jsonl"
 TEMPORARY_SOURCES_FILE = LOCAL_CHAT_DIR / "temporary_sources.jsonl"
@@ -33,12 +39,13 @@ def init_chat_store():
 
     # Touch files
     for filepath in [
-        NOTEBOOKS_FILE, CONVERSATIONS_FILE, MESSAGES_FILE, TEMPORARY_SOURCES_FILE,
-        NOTEBOOK_SOURCES_FILE, SOURCE_SELECTIONS_FILE, TRACES_FILE
+        NOTEBOOKS_FILE, COLLECTIONS_FILE, CONVERSATIONS_FILE, MESSAGES_FILE,
+        TEMPORARY_SOURCES_FILE, NOTEBOOK_SOURCES_FILE, SOURCE_SELECTIONS_FILE, TRACES_FILE
     ]:
         if not filepath.exists():
             filepath.touch()
 
+    ensure_default_collection()
     # Auto-initialize default notebooks only on very first setup
     if not init_flag.exists():
         nbs = load_notebooks()
@@ -57,7 +64,373 @@ def init_chat_store():
             LOGGER.exception("Could not mark Workspace Chat storage as initialized")
 
 def _deserialize_notebook(record: dict) -> DocumentNotebook:
-    return DocumentNotebook(**record)
+    valid_keys = {
+        "id", "title", "description", "created_at", "updated_at",
+        "archived_at", "collection_id",
+    }
+    filtered = {k: v for k, v in record.items() if k in valid_keys}
+    if not str(filtered.get("collection_id") or "").strip():
+        filtered["collection_id"] = DEFAULT_COLLECTION_ID
+    return DocumentNotebook(**filtered)
+
+
+def ensure_default_collection() -> KnowledgeCollection:
+    existing = load_collection(DEFAULT_COLLECTION_ID)
+    if existing is not None:
+        return existing
+    collection = KnowledgeCollection(
+        id=DEFAULT_COLLECTION_ID,
+        title="Tri thức",
+        description="Thư viện hỏi–đáp tài liệu (MOM, ISO, hướng dẫn). Chọn thư mục dùng chung rồi nạp một lần.",
+        kind=COLLECTION_KIND_KNOWLEDGE,
+        storage_root="",
+    )
+    save_collection(collection)
+    return collection
+
+
+def load_collections() -> List[KnowledgeCollection]:
+    if not COLLECTIONS_FILE.exists():
+        return []
+    return load_jsonl_records(COLLECTIONS_FILE, KnowledgeCollection.from_dict)
+
+
+def load_collection(collection_id: str) -> Optional[KnowledgeCollection]:
+    wanted = str(collection_id or "").strip()
+    if not wanted:
+        return None
+    for item in load_collections():
+        if item.id == wanted:
+            return item
+    return None
+
+
+def save_collection(collection: KnowledgeCollection) -> KnowledgeCollection:
+    items = load_collections()
+    found = False
+    for index, item in enumerate(items):
+        if item.id == collection.id:
+            items[index] = collection
+            found = True
+            break
+    if not found:
+        items.append(collection)
+    atomic_write_jsonl(COLLECTIONS_FILE, items)
+    return collection
+
+
+COLLECTION_INDEX_BASENAME = "library.sqlite"
+COLLECTION_RUNTIME_DIRNAME = "aios_thu_vien"
+WRITER_LOCK_NAME = ".aios-library-writer.lock"
+
+
+class LibraryWriterLease:
+    """Cross-process exclusive lease for one collection runtime directory."""
+
+    def __init__(self, runtime_dir: Path) -> None:
+        self.path = Path(runtime_dir) / WRITER_LOCK_NAME
+        self._handle: Any = None
+
+    def acquire(self) -> bool:
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+        handle = open(self.path, "a+b")
+        try:
+            handle.seek(0, 2)
+            if handle.tell() < 1:
+                handle.write(b"\0")
+                handle.flush()
+            if os.name == "nt":
+                import msvcrt
+
+                handle.seek(0)
+                msvcrt.locking(handle.fileno(), msvcrt.LK_NBLCK, 1)
+            else:
+                import fcntl
+
+                fcntl.flock(handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except OSError:
+            handle.close()
+            return False
+        self._handle = handle
+        return True
+
+    def release(self) -> None:
+        handle = self._handle
+        if handle is None:
+            return
+        try:
+            if os.name == "nt":
+                import msvcrt
+
+                handle.seek(0)
+                msvcrt.locking(handle.fileno(), msvcrt.LK_UNLCK, 1)
+            else:
+                import fcntl
+
+                fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
+        except OSError:
+            LOGGER.debug("writer lease unlock failed", exc_info=True)
+        finally:
+            handle.close()
+            self._handle = None
+
+
+def is_remote_filesystem_path(path: Path) -> bool:
+    text = str(path)
+    if text.startswith("\\\\") or text.startswith("//"):
+        return True
+    try:
+        import ctypes
+        import os
+
+        if os.name != "nt":
+            return False
+        drive, _rest = os.path.splitdrive(str(Path(path)))
+        if not drive:
+            return False
+        drive_type = ctypes.windll.kernel32.GetDriveTypeW(f"{drive}\\")
+        return int(drive_type) == 4
+    except Exception:
+        return False
+
+
+def _index_file(runtime_dir: Path) -> Path:
+    return Path(runtime_dir) / COLLECTION_INDEX_BASENAME
+
+
+def _sqlite_pragma(path: Path, pragma: str, *, readonly: bool = True) -> str:
+    import sqlite3
+
+    conn = sqlite3.connect(str(path))
+    try:
+        row = conn.execute(f"PRAGMA {pragma}").fetchone()
+        return "" if row is None else str(row[0])
+    finally:
+        conn.close()
+
+
+def sqlite_quick_check(path: Path) -> bool:
+    try:
+        return _sqlite_pragma(path, "quick_check").lower() == "ok"
+    except Exception:
+        return False
+
+
+def sqlite_journal_mode(path: Path) -> str:
+    try:
+        return _sqlite_pragma(path, "journal_mode").lower()
+    except Exception:
+        return ""
+
+
+def _reject_remote_wal(runtime_dir: Path) -> None:
+    index = _index_file(runtime_dir)
+    if not index.exists():
+        return
+    if is_remote_filesystem_path(runtime_dir) and sqlite_journal_mode(index) == "wal":
+        raise ValueError("shared_library_remote_wal_unsupported")
+
+
+def _backup_sqlite(source: Path, dest: Path) -> None:
+    import sqlite3
+
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    source_conn = sqlite3.connect(str(source))
+    try:
+        dest_conn = sqlite3.connect(str(dest))
+        try:
+            source_conn.backup(dest_conn)
+            dest_conn.commit()
+        finally:
+            dest_conn.close()
+    finally:
+        source_conn.close()
+
+
+def _fingerprint_sqlite(source: Path, scratch_dir: Path) -> str:
+    import hashlib
+
+    scratch_dir.mkdir(parents=True, exist_ok=True)
+    temp = scratch_dir / f".fp-{uuid.uuid4().hex}.sqlite"
+    try:
+        _backup_sqlite(source, temp)
+        return hashlib.sha256(temp.read_bytes()).hexdigest()
+    finally:
+        temp.unlink(missing_ok=True)
+
+
+def _publish_sqlite_snapshot(source: Path, dest_dir: Path) -> Path:
+    dest_dir.mkdir(parents=True, exist_ok=True)
+    published = _index_file(dest_dir)
+    staging = dest_dir / f".{COLLECTION_INDEX_BASENAME}.{uuid.uuid4().hex}.tmp"
+    try:
+        _backup_sqlite(source, staging)
+        if not sqlite_quick_check(staging):
+            raise ValueError("library_invalid")
+        if is_remote_filesystem_path(dest_dir) and sqlite_journal_mode(staging) == "wal":
+            raise ValueError("shared_library_remote_wal_unsupported")
+        os.replace(staging, published)
+    except OSError as exc:
+        staging.unlink(missing_ok=True)
+        raise OSError("library_io_error") from exc
+    except Exception:
+        staging.unlink(missing_ok=True)
+        raise
+    if not sqlite_quick_check(published):
+        published.unlink(missing_ok=True)
+        raise ValueError("library_invalid")
+    return published
+
+
+def collection_runtime_layout(
+    collection_id: Optional[str],
+    profile_root: Path,
+) -> tuple[Path, str]:
+    """Return ``(runtime_root, index filename)`` for a collection.
+
+    No collection id keeps the profile sqlite (tests and queries without a sổ).
+    A named collection uses a dedicated folder so the index can live on a
+    shared disk. ``index_filename`` is always a bare name (RAG config rule).
+    """
+    profile = Path(profile_root)
+    wanted = str(collection_id or "").strip()
+    if not wanted:
+        return profile, LEGACY_INDEX_FILENAME
+    collection = load_collection(wanted)
+    storage = ""
+    collection_key = wanted
+    if collection is not None:
+        storage = str(collection.storage_root or "").strip()
+        collection_key = collection.id
+    if storage:
+        return Path(storage) / COLLECTION_RUNTIME_DIRNAME, COLLECTION_INDEX_BASENAME
+    return profile / "collections" / collection_key, COLLECTION_INDEX_BASENAME
+
+
+def _acquire_runtime_leases(*runtime_dirs: Path) -> list[LibraryWriterLease]:
+    unique: list[Path] = []
+    seen: set[str] = set()
+    for runtime_dir in runtime_dirs:
+        key = str(Path(runtime_dir).resolve()) if Path(runtime_dir).exists() else str(Path(runtime_dir))
+        if key in seen:
+            continue
+        seen.add(key)
+        unique.append(Path(runtime_dir))
+    unique.sort(key=lambda item: str(item).lower())
+    held: list[LibraryWriterLease] = []
+    try:
+        for runtime_dir in unique:
+            lease = LibraryWriterLease(runtime_dir)
+            if not lease.acquire():
+                raise ValueError("library_writer_busy")
+            held.append(lease)
+        return held
+    except Exception:
+        for lease in reversed(held):
+            lease.release()
+        raise
+
+
+def relocate_collection_storage(
+    collection_id: str,
+    new_storage_root: str,
+    *,
+    local_fallback_root: Path,
+) -> KnowledgeCollection:
+    """Snapshot the search store, then move the collection pointer.
+
+    Old files are kept. A different ``library.sqlite`` at the destination is
+    fail-closed. Pointer changes only after backup + ``PRAGMA quick_check``.
+    """
+    collection = load_collection(collection_id) or ensure_default_collection()
+    if collection.id != collection_id and collection_id != DEFAULT_COLLECTION_ID:
+        raise ValueError("unknown_collection")
+    old_root, _name = collection_runtime_layout(collection.id, local_fallback_root)
+    raw = str(new_storage_root or "").strip()
+    if raw:
+        if not Path(raw).is_absolute():
+            raise ValueError("storage_root_must_be_absolute")
+        new_root = Path(raw) / COLLECTION_RUNTIME_DIRNAME
+    else:
+        new_root = Path(local_fallback_root) / "collections" / collection.id
+    try:
+        if old_root.resolve() == new_root.resolve():
+            return collection
+    except OSError:
+        pass
+
+    leases = _acquire_runtime_leases(old_root, new_root)
+    try:
+        _reject_remote_wal(old_root)
+        _reject_remote_wal(new_root)
+        source_index = _index_file(old_root)
+        dest_index = _index_file(new_root)
+        source_exists = source_index.exists()
+        dest_exists = dest_index.exists()
+        if source_exists and not sqlite_quick_check(source_index):
+            raise ValueError("library_invalid")
+        if dest_exists and not sqlite_quick_check(dest_index):
+            raise ValueError("library_invalid")
+        if source_exists and dest_exists:
+            try:
+                same = source_index.resolve() == dest_index.resolve()
+            except OSError:
+                same = False
+            if not same:
+                source_fp = _fingerprint_sqlite(source_index, new_root)
+                dest_fp = _fingerprint_sqlite(dest_index, new_root)
+                if source_fp != dest_fp:
+                    raise ValueError("storage_root_conflict")
+        elif source_exists and not dest_exists:
+            if (
+                is_remote_filesystem_path(new_root)
+                and sqlite_journal_mode(source_index) == "wal"
+            ):
+                raise ValueError("shared_library_remote_wal_unsupported")
+            _publish_sqlite_snapshot(source_index, new_root)
+        elif not source_exists and dest_exists:
+            pass
+        else:
+            new_root.mkdir(parents=True, exist_ok=True)
+        return set_collection_storage_root(collection.id, new_storage_root)
+    except OSError as exc:
+        raise OSError("library_io_error") from exc
+    finally:
+        for lease in reversed(leases):
+            lease.release()
+
+
+def set_collection_storage_root(collection_id: str, storage_root: str) -> KnowledgeCollection:
+    """Point a collection at an owner-chosen local folder."""
+    collection = load_collection(collection_id) or ensure_default_collection()
+    if collection.id != collection_id and collection_id != DEFAULT_COLLECTION_ID:
+        raise ValueError("unknown_collection")
+    raw = str(storage_root or "").strip()
+    if not raw:
+        collection.storage_root = ""
+        collection.updated_at = datetime.now().isoformat()
+        return save_collection(collection)
+    path = Path(raw)
+    if not path.is_absolute():
+        raise ValueError("storage_root_must_be_absolute")
+    path.mkdir(parents=True, exist_ok=True)
+    if not path.is_dir():
+        raise ValueError("storage_root_not_a_directory")
+    library_dir = path / COLLECTION_RUNTIME_DIRNAME
+    library_dir.mkdir(parents=True, exist_ok=True)
+    collection.storage_root = str(path)
+    collection.updated_at = datetime.now().isoformat()
+    return save_collection(collection)
+
+
+def resolve_collection_id_from_notebook_source_id(source_id: str) -> str:
+    for source in load_all_notebook_sources():
+        if source.id == source_id:
+            notebook = load_notebook(source.notebook_id)
+            if notebook is not None:
+                return str(notebook.collection_id or DEFAULT_COLLECTION_ID)
+            break
+    return DEFAULT_COLLECTION_ID
 
 
 def _deserialize_conversation(record: dict) -> WorkspaceConversation:

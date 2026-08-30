@@ -6,6 +6,7 @@ from concurrent.futures import ThreadPoolExecutor
 from threading import Event
 from io import BytesIO
 from datetime import datetime
+from pathlib import Path
 from typing import Optional, List, Dict, Any, Tuple, Mapping
 from aios_habit.workspace_paths import default_agent_workspace_root
 
@@ -273,6 +274,13 @@ st.markdown('''
 
 from aios_habit.workspace_chat_store import (
     init_chat_store,
+    COLLECTION_RUNTIME_DIRNAME,
+    DEFAULT_COLLECTION_ID,
+    ensure_default_collection,
+    load_collection,
+    load_collections,
+    relocate_collection_storage,
+    set_collection_storage_root,
     load_notebook,
     load_notebooks,
     load_active_notebooks,
@@ -1157,10 +1165,113 @@ if active_nb_id is None:
         st.error(st.session_state.wsc_action_error)
         st.session_state.wsc_action_error = None
 
+    with st.expander(t("shared_library_expander", locale=current_ui_locale), expanded=True):
+        st.write(t("shared_library_help", locale=current_ui_locale))
+        ensure_default_collection()
+        shared_collection = load_collection(DEFAULT_COLLECTION_ID)
+        path_key = "wsc_shared_library_path"
+        if path_key not in st.session_state:
+            st.session_state[path_key] = (
+                shared_collection.storage_root if shared_collection is not None else ""
+            )
+        pick_col, _spacer = st.columns([1, 2])
+        with pick_col:
+            if st.button(
+                t("shared_library_choose", locale=current_ui_locale),
+                key="btn_pick_shared_library",
+                use_container_width=True,
+            ):
+                chosen_folder, picker_error = choose_local_folder(
+                    title=t("shared_library_choose", locale=current_ui_locale),
+                )
+                if picker_error:
+                    st.session_state.wsc_action_error = picker_error
+                elif chosen_folder:
+                    st.session_state[path_key] = chosen_folder
+                safe_rerun()
+        st.text_input(
+            t("shared_library_path_label", locale=current_ui_locale),
+            placeholder=t("shared_library_path_placeholder", locale=current_ui_locale),
+            key=path_key,
+        )
+        if st.button(t("shared_library_save", locale=current_ui_locale), key="btn_save_shared_library"):
+            raw_path = str(st.session_state.get(path_key) or "").strip()
+            try:
+                from aios_habit.workspace_chat_rag_v2_adapter import (
+                    WorkspaceChatRagV2CanaryConfig,
+                )
+                from aios_habit.workspace_chat_store import collection_runtime_layout
+                rag_config = WorkspaceChatRagV2CanaryConfig.from_env()
+                fallback_root = rag_config.runtime_root / rag_config.requested_profile
+                old_root, _old_name = collection_runtime_layout(
+                    DEFAULT_COLLECTION_ID, fallback_root
+                )
+                source_had_index = (old_root / "library.sqlite").exists()
+                dest_had_index = False
+                if raw_path:
+                    dest_had_index = (
+                        Path(raw_path) / COLLECTION_RUNTIME_DIRNAME / "library.sqlite"
+                    ).exists()
+                relocate_collection_storage(
+                    DEFAULT_COLLECTION_ID,
+                    raw_path,
+                    local_fallback_root=fallback_root,
+                )
+                if raw_path and dest_had_index and not source_had_index:
+                    st.session_state.wsc_action_message = t(
+                        "shared_library_joined", locale=current_ui_locale
+                    )
+                elif raw_path:
+                    st.session_state.wsc_action_message = t(
+                        "shared_library_moved", locale=current_ui_locale
+                    )
+                else:
+                    st.session_state.wsc_action_message = t(
+                        "shared_library_cleared", locale=current_ui_locale
+                    )
+            except ValueError as exc:
+                reason = str(exc)
+                error_keys = {
+                    "storage_root_conflict": "shared_library_conflict",
+                    "library_writer_busy": "shared_library_busy",
+                    "library_invalid": "shared_library_invalid",
+                    "shared_library_remote_wal_unsupported": (
+                        "shared_library_remote_wal_unsupported"
+                    ),
+                    "library_io_error": "shared_library_io_error",
+                }
+                st.session_state.wsc_action_error = t(
+                    error_keys.get(reason, "shared_library_bad_path"),
+                    locale=current_ui_locale,
+                )
+            except OSError:
+                st.session_state.wsc_action_error = t(
+                    "shared_library_io_error", locale=current_ui_locale
+                )
+            safe_rerun()
+        saved = load_collection(DEFAULT_COLLECTION_ID)
+        if saved is not None and str(saved.storage_root or "").strip():
+            library_file = (
+                Path(saved.storage_root) / COLLECTION_RUNTIME_DIRNAME / "library.sqlite"
+            )
+            st.caption(
+                t("shared_library_current", locale=current_ui_locale, path=str(library_file))
+            )
+
     with st.expander(t("create_notebook", locale=current_ui_locale), expanded=False):
         with st.form("create_notebook_form", clear_on_submit=True):
             new_nb_title = st.text_input(t("notebook_title_label", locale=current_ui_locale), placeholder=t("notebook_title_label", locale=current_ui_locale))
             new_nb_desc = st.text_input(t("notebook_desc_label", locale=current_ui_locale), placeholder=t("notebook_desc_label", locale=current_ui_locale))
+            ensure_default_collection()
+            collections = load_collections()
+            collection_labels = {item.id: item.title for item in collections}
+            collection_ids = [item.id for item in collections] or [DEFAULT_COLLECTION_ID]
+            new_nb_collection = st.selectbox(
+                t("collection_label", locale=current_ui_locale),
+                options=collection_ids,
+                format_func=lambda cid: collection_labels.get(cid, cid),
+                help=t("collection_help", locale=current_ui_locale),
+            )
             if st.form_submit_button(t("btn_create_notebook", locale=current_ui_locale)):
                 if not new_nb_title.strip():
                     st.session_state.wsc_action_error = "Vui lòng nhập tên sổ tài liệu."
@@ -1168,7 +1279,8 @@ if active_nb_id is None:
                     new_nb = DocumentNotebook(
                         id=f"NB-{uuid.uuid4().hex[:8].upper()}",
                         title=new_nb_title.strip(),
-                        description=new_nb_desc.strip()
+                        description=new_nb_desc.strip(),
+                        collection_id=str(new_nb_collection or DEFAULT_COLLECTION_ID),
                     )
                     save_notebook(new_nb)
                     st.session_state.wsc_action_message = "Đã tạo sổ tài liệu mới."
@@ -1827,6 +1939,7 @@ else:
         elif selected_ai_backend == "nakazasen_router":
             st.caption(t("router_selected_status", locale=current_ui_locale))
         else:
+            st.caption(t("gemini_selected_no_drawings", locale=current_ui_locale))
             render_bridge_header_status(bridge_health, locale=current_ui_locale)
 
         connector_status = st.session_state.get(connector_status_key)
@@ -2208,7 +2321,7 @@ else:
                     toolbar_attach_col, toolbar_model_col, toolbar_search_col, _toolbar_spacer, toolbar_hint_col, toolbar_action_col = st.columns([0.7, 3.5, 1.8, 5.5, 1.2, 0.8])
                     with toolbar_attach_col:
                         with st.container(key=f"wsc-attachment-{active_conversation.id}"):
-                            with st.popover("Đính kèm", help=t("attach_screenshot_help", locale=current_ui_locale), icon=":material/add:"):
+                            with st.popover(t("attach_popover", locale=current_ui_locale), help=t("attach_screenshot_help", locale=current_ui_locale), icon=":material/add:"):
                                 uploaded_image = st.file_uploader(
                                     t("attach_screenshot_label", locale=current_ui_locale),
                                     type=["png", "jpg", "jpeg", "webp", "bmp"],
@@ -2243,11 +2356,11 @@ else:
                             label_visibility="collapsed",
                         )
                         if selected_ai_backend == "cagent_api":
-                            with st.popover("Cấu hình C-AGENT", icon=":material/settings:"):
+                            with st.popover(t("cagent_config_popover", locale=current_ui_locale), icon=":material/settings:"):
                                 cagent_endpoint_key = f"wsc_cagent_endpoint_{active_conversation.id}"
                                 configured_cagent_endpoint = os.environ.get("AIOS_CAGENT_API_URL", "").strip()
                                 cagent_endpoint = st.text_input(
-                                    "URL API AgentFlow C-AGENT",
+                                    t("cagent_endpoint_label", locale=current_ui_locale),
                                     value=configured_cagent_endpoint,
                                     placeholder="https://.../api/v1/prediction/<AgentFlow-ID>",
                                     key=cagent_endpoint_key,
@@ -2748,9 +2861,9 @@ else:
                                     migrated_count = seed_completed_folder_files_from_titles(current_scan.supported_files, existing_titles)
                                     already_imported = count_completed_folder_files(current_scan.supported_files)
                                     if migrated_count:
-                                        st.info(f"Đã nhận diện {migrated_count} file nhập từ phiên bản trước và sẽ bỏ qua chúng.")
+                                        st.info(t("folder_migrated_legacy_files", locale=current_ui_locale, count=migrated_count))
                                     if already_imported:
-                                        st.info(f"Đã nhập {already_imported} file trước đó. AIOS sẽ tự bỏ qua chúng khi tiếp tục.")
+                                        st.info(t("folder_already_imported", locale=current_ui_locale, count=already_imported))
                                     st.markdown(t("scanned_files_header", locale=current_ui_locale))
                                     table_data = [
                                         {
@@ -2770,14 +2883,23 @@ else:
                                     folder_enable_now = st.checkbox(t("use_docs_in_answer", locale=current_ui_locale), value=False, key=f"folder_enable_{active_conversation.id}")
                                     folder_save_to_notebook = st.checkbox(t("save_permanently_to_notebook", locale=current_ui_locale), value=True, key=f"folder_save_{active_conversation.id}")
 
-                                    import_label = "▶ Tiếp tục nhập các file còn lại" if already_imported else t("import_all_to_notebook", locale=current_ui_locale)
+                                    import_label = t("import_remaining_files", locale=current_ui_locale) if already_imported else t("import_all_to_notebook", locale=current_ui_locale)
                                     if st.button(import_label, type="primary", key=f"btn_ingest_{active_conversation.id}", use_container_width=True):
                                         prog_bar = st.progress(0, text=t("start_ingesting_progress", locale=current_ui_locale))
                                         status_text = st.empty()
 
                                         def update_progress(current_idx: int, total_count: int, filename: str):
                                             pct = current_idx / max(total_count, 1)
-                                            prog_bar.progress(pct, text=f"Đang xử lý ({current_idx}/{total_count}): {filename}")
+                                            prog_bar.progress(
+                                                pct,
+                                                text=t(
+                                                    "ingest_processing_progress",
+                                                    locale=current_ui_locale,
+                                                    current=current_idx,
+                                                    total=total_count,
+                                                    filename=filename,
+                                                ),
+                                            )
                                             status_text.caption(f"{t('loading', locale=current_ui_locale)}: {filename}")
 
                                         batch_summary = ingest_scanned_files_batch(
@@ -2857,7 +2979,7 @@ else:
                 # Always-visible single-line preparation progress banner outside expander
                 render_preparation_progress_bar(prep_summary, on_retry_all_failed=on_retry_all_failed_sources, locale=current_ui_locale)
                 if prep_summary.get("pending", 0) or prep_summary.get("processing", 0):
-                    if st.button("▶ Tiếp tục lập chỉ mục đang chờ", key="wsc_resume_pending_preparation", use_container_width=True):
+                    if st.button(t("resume_pending_preparation", locale=current_ui_locale), key="wsc_resume_pending_preparation", use_container_width=True):
                         resume_workspace_chat_source_preparation(ctx_all_sources)
                         st.session_state.wsc_action_message = "Đã khởi động lại hàng đợi lập chỉ mục cục bộ."
                         safe_rerun()

@@ -102,6 +102,7 @@ def setup_isolated_chat_store(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -
     test_dir = tmp_path / "workspace_chat_test"
     monkeypatch.setattr(chat_store, "LOCAL_CHAT_DIR", test_dir)
     monkeypatch.setattr(chat_store, "NOTEBOOKS_FILE", test_dir / "notebooks.jsonl")
+    monkeypatch.setattr(chat_store, "COLLECTIONS_FILE", test_dir / "collections.jsonl")
     monkeypatch.setattr(chat_store, "CONVERSATIONS_FILE", test_dir / "conversations.jsonl")
     monkeypatch.setattr(chat_store, "MESSAGES_FILE", test_dir / "messages.jsonl")
     monkeypatch.setattr(chat_store, "TEMPORARY_SOURCES_FILE", test_dir / "temporary_sources.jsonl")
@@ -1091,6 +1092,27 @@ class TestWorkspaceChatUIAntiHardcode:
             "scan_folder_button",
             "scanned_files_header",
             "import_all_to_notebook",
+            "import_remaining_files",
+            "folder_migrated_legacy_files",
+            "folder_already_imported",
+            "resume_pending_preparation",
+            "ingest_processing_progress",
+            "attach_popover",
+            "cagent_config_popover",
+            "cagent_endpoint_label",
+            "shared_library_expander",
+            "shared_library_help",
+            "shared_library_path_label",
+            "shared_library_choose",
+            "shared_library_save",
+            "shared_library_cleared",
+            "shared_library_moved",
+            "shared_library_joined",
+            "shared_library_busy",
+            "shared_library_io_error",
+            "shared_library_invalid",
+            "shared_library_remote_wal_unsupported",
+            "shared_library_conflict",
             "no_matching_docs_in_folder",
             "content_cannot_be_empty",
             "select_at_least_one_image",

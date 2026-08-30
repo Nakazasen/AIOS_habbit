@@ -225,6 +225,16 @@ def render_notebook_card(
         st.markdown(f"### 📂 {nb.title}")
         st.write(nb.description or t("no_notebook_description", locale=locale))
         st.write(t("conv_count_label", locale=locale, count=conv_count))
+        collection_title = ""
+        try:
+            from aios_habit.workspace_chat_store import load_collection
+            collection = load_collection(getattr(nb, "collection_id", "") or "")
+            if collection is not None:
+                collection_title = collection.title
+        except Exception:
+            collection_title = ""
+        if collection_title:
+            st.caption(t("collection_card_label", locale=locale, name=collection_title))
         if st.button(f"{t('open_notebook', locale=locale)} {nb.title}", key=f"open_nb_{nb.id}"):
             on_open(nb.id)
         if on_archive_request is not None:

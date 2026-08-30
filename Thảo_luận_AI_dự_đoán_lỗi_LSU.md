@@ -1,22 +1,61 @@
-# Thảo luận xây dựng AI dự đoán và phòng ngừa lỗi LSU
+# Thảo luận: một hệ AIOS (tri thức → điều tra line → dự đoán unit → agent)
 
-**File này là sổ thảo luận sống.** Ý mới về LSU, RAG nền, chia kho SQL, Agent IDE, điều tra line ghi **vào cuối file này** (mục mới, ghi ngày). Không tạo thêm `PLAN_*.md` / `Thảo_luận_*.md` song song.
+**Đọc mục “Một hệ thống” dưới đây.** Mục 1–29 phía sau là **nhật ký**; nhiều đoạn đã bị thay. Không tạo file kế hoạch mới. Ý mới: **sửa bản đồ này**, không thêm mục 30, 31, 32…
 
-## Việc tiếp theo khi mở máy (đừng quên)
+Luật sản phẩm vẫn: `AGENTS.md` → `CONSTITUTION.md` / `AGENT_RULES.md` → `ARCHITECTURE.md`.
 
-1. **Thiết kế rồi làm collection = một SQLite** (sổ chat chỉ là con trỏ) + **index nhóm chỉ đọc**. Loại CSV log khỏi thư viện hỏi–đáp. Đây là thay đổi kiến trúc: đề xuất phương án, chờ xác nhận, rồi mới code.
-2. Không mở E3, không rebuild index Workspace Chat, không bật production RAG (`rolled_back`).
-3. Đợt 3 gầy specs đã đóng — sau collection.
-4. Lối vào agent: `AGENTS.md` (L0). Chi tiết hàng đợi: mục 22.6 và 24 bên dưới.
+## Một hệ thống (còn hiệu lực — 2026-08-30)
 
-Đọc vận hành sản phẩm vẫn theo canonical, không thay bằng file này:
+Bốn việc **không rời**: cùng vòng *vụ việc → bằng chứng → đề xuất → người duyệt → bài học*. Khác **tủ dữ liệu** và **cầu nối AI**.
 
-| Việc | File |
+```text
+                    ┌─ Thư viện chữ + mô tả ảnh (SOP, MOM, ISO, mã lỗi, báo cáo đã duyệt)
+  Câu hỏi / vụ      ┤
+                    ├─ Bảng số / log có cột (Jam, Engine, JIG, serial) — không embed từng dòng
+                    └─ Hồ sơ vụ (ảnh lỗi, đã thử gì)
+                              │
+                    Kernel RAG + parser log + gói bằng chứng
+                              │
+              ┌───────────────┼───────────────┐
+              ▼               ▼               ▼
+     (1) Hỏi–đáp nội bộ  (3) Điều tra line  (2) Dự đoán unit
+         chống mất tri thức   C/Jam pilot      LSU → Drum/DLP
+                              │
+                              ▼
+                    (4) Agent = tay (báo cáo, SOP nháp, lệnh)
+                         phải duyệt; không xóa file nhà máy
+```
+
+**Cầu nối:** Router / Gemini Web = chữ, không bản vẽ. C-AGENT Sonnet 4 công ty = được gửi sơ đồ/log (luật `AGENT_RULES.md`). Caption UI **chưa** chặn file — chưa được coi là đã an toàn.
+
+**Kho:** sổ trỏ thư viện. Snapshot SQLite xong mới đổi con trỏ. Chỗ mới có kho khác thì chặn. Một writer (lease). WAL ổ mạng nhiều máy: chưa hỗ trợ.
+
+### Việc đang làm (một hàng đợi)
+
+1. **Gate A thư viện chung — đã commit, Sol `PARTIAL`.** Identity theo nội dung chữ. Chủ repo test hai máy/NAS sau. Không tự PASS.
+2. **Gate B — nạp tài liệu chữ vào thư viện chung** (không CSV). RAG production vẫn `rolled_back`.
+3. **Gate C — hard guard cầu nối:** chặn ảnh/bản vẽ khi backend là Gemini Web hoặc Nakazasen Router; C-AGENT được gửi gói đủ.
+4. Pilot **một** parser C *hoặc* Jam: ứng viên, không phải chẩn đoán.
+5. Agent IDE / SOP / dự đoán LSU: sau evidence pack. Không nhét vào 2 ngày nếu chưa xong B+C.
+
+Không: bốn nhánh song song; E3; LightRAG tuần này; “vài serial là shadow prediction”.
+
+## Nhật ký — cái nào còn, cái nào bỏ
+
+| Mục | Trạng thái |
 |---|---|
-| Luật cứng, PASS/FAIL, local-first | `CONSTITUTION.md`, `AGENT_RULES.md` |
-| Kiến trúc / lộ trình sản phẩm | `ARCHITECTURE.md`, `ROADMAP.md`, `PROJECT_HANDOVER.md` |
-| Đo chunking RAG | `specs/006-chunking-evaluation/` |
-| Tầm nhìn sản xuất (chưa mở cổng) | `docs/design/PRODUCTION_INTELLIGENCE_VISION.md` |
+| 1–11, 15–16 | **Nền LSU / nhân quả / Golden Knowledge** — còn hướng, chưa triển khai |
+| 12 | RAG audit — còn (BGE-M3, không thay LightRAG ngay) |
+| 13–14 LightRAG, R1–R5 | **Challenger sau** — không làm lúc này |
+| 17 kết luận cũ | Bị **28 + bản đồ trên** thay |
+| 18–21 | Còn: LSU không khóa sản phẩm; RAG + điều tra + agent một vòng |
+| 22.1 đo E1/E2 | Còn (số đo lịch sử) |
+| 22.6 hàng đợi cũ | **Hết** — dùng hàng đợi trong bản đồ trên |
+| 23–24 docs tiếng Việt | Còn (luật ngôn ngữ) |
+| 25 giữ sqlite cũ | **Hết** — đại tu mục 26 |
+| 26–27 chỗ lưu / đổi chỗ | Còn |
+| 28 bốn nhánh | Còn, đọc cùng bản đồ trên |
+| 29 Drive cấm tuyệt đối | **Hết** — thay bằng 3 cầu nối (C-AGENT được gửi bản vẽ) |
 
 ## 1. Mục đích của tài liệu
 
@@ -1264,3 +1303,143 @@ Cách làm (không big-bang): **lớp đọc L0→L3** + archive stub, không x�
 **Bước sản phẩm tiếp theo (sau nền RAG + gộp lối vào tài liệu):** thiết kế rồi làm **collection = một SQLite** (sổ chat chỉ là con trỏ) và **index nhóm chỉ đọc** — ingest một lần, nhiều người hỏi. Loại CSV log khỏi thư viện hỏi–đáp. Không mở E3. Không rebuild index Workspace Chat cho đến khi có collection. Không kích hoạt production RAG (`rolled_back`).
 
 **Ngôn ngữ (luật khóa, 2026-08-29):** câu văn tài liệu sản phẩm **phải tiếng Việt**. Nguồn: `CONSTITUTION.md` nguyên tắc 6, `AGENT_RULES.md` mục 4, `docs/DOCUMENTATION_GOVERNANCE.md`. Cấm tiêu đề/đoạn văn tiếng Anh; cấm thêm Anh khi sửa file. Token được giữ: đường dẫn, lệnh, tên mã, `Status:`/`PASS`, hằng `local_only`. Không bắt buộc dịch hết `docs/archive/` một lượt; không viết thêm tiếng Anh vào đó.
+
+## 25. Lát đầu collection (2026-08-30)
+
+Sổ chat trỏ `collection_id`. Thư viện mặc định `tri_thuc` = kho `workspace_chat.sqlite` cũ (không rebuild, không bắt ingest lại). Thư viện mới = `collections/<id>/library.sqlite`. Hỏi/nạp nguồn đi theo thư viện của sổ. CSV log vẫn ngoài RAG. Chưa làm nút xuất USB; chưa bảng đo LSU.
+
+## 26. Đại tu vị trí thư viện chung (2026-08-30)
+
+Việc đúng làm trước: **chọn chỗ để tủ**, không giữ kho cũ trộn lẫn và không lấy “xuất file” làm bước 1.
+
+- Bỏ mặc định `workspace_chat.sqlite`. Thư viện có thư mục riêng; `index_filename` chỉ là `library.sqlite`.
+- Nút **Vị trí thư viện chung**: chọn/dán thư mục (ổ D, ổ mạng). Kho nằm tại `<thư mục>/aios_thu_vien/library.sqlite`.
+- Một máy nạp; máy khác chọn **cùng đường dẫn** rồi hỏi. Xuất USB vẫn hữu ích khi không có ổ mạng — làm sau.
+- CSV log vẫn ngoài thư viện hỏi–đáp. Phải nạp lại tài liệu vào thư viện mới (đại tu).
+
+## 27. Đổi chỗ lưu, các case kho, ảnh/bản vẽ, điều tra line (2026-08-30)
+
+Đổi vị trí thư viện: **có**. Lưu chỗ mới thì **copy** `aios_thu_vien` sang; bản cũ giữ. Chỗ mới đã có kho khác → từ chối (không trộn). Máy đồng nghiệp phải chọn đường dẫn mới.
+
+Các case lưu: (1) chỉ máy này, (2) thư mục dùng chung, (3) đổi chỗ = copy, (4) chỗ mới đã có kho khác = chặn, (5) USB/offline = xuất sau, (6) CSV log = kho số liệu riêng, không phải thư viện hỏi–đáp.
+
+Ảnh/sơ đồ/scan: thiếu chữ thì RAG ảo giác. Hướng đúng = lớp đọc ảnh **trước** khi hỏi (OCR/mô tả có cấu trúc đã có mầm trong converter) và **đối chiếu bằng chứng sau**. Không train model riêng. Không gửi bản vẽ `local_only` lên mây. Chữ viết tay/scan kém = người xác nhận.
+
+Điều tra lỗi line (máy in): không “train AI” kiểu nhồi hết file. Tách (a) tài liệu tra cứu: nguyên lý, triển khai, SOP, mã lỗi, báo cáo sự vụ đã duyệt; (b) log có schema; (c) ảnh/bản vẽ → text có cấu trúc rồi mới vào thư viện. `phantichphanmemdc` là lớp điều tra, không nhét chung MOM.
+
+## 28. Bản đồ case tương lai (thời điểm thảo luận 2026-08-30)
+
+Đây là **hình dạng nếu thành hình**, không phải cam kết đã làm xong. Một kernel: thư viện + bằng chứng + người duyệt. Không một SQLite cho tất cả. Không train âm thầm. Không tự chặn xuất hàng.
+
+### 0. Nền dùng chung (mọi nhánh đều cần)
+
+| Case | Việc người dùng | Hệ thống làm |
+|---|---|---|
+| Thư viện chung | Chọn chỗ lưu (ổ D / mạng) | Kho `aios_thu_vien/library.sqlite` |
+| Đổi chỗ lưu | Chọn thư mục mới | Copy kho; bản cũ giữ; chỗ mới đã có kho khác thì chặn |
+| Máy khác hỏi | Cùng đường dẫn | Chỉ đọc, không embed lại |
+| USB / không chung ổ | (sau) xuất bản sao | Photocopy có niêm checksum |
+| Ảnh / scan / bản vẽ | Nạp file | OCR/mô tả có cấu trúc **trước** khi hỏi; đối chiếu bằng chứng **sau**; chữ viết tay người xác nhận |
+| CSV / log máy | Không nhét vào hỏi–đáp | Kho số liệu có cột (schema) |
+| Người duyệt | Chốt bài học / spec / OK-NG | Mới thành tri thức; một click không train |
+
+---
+
+### 1. Hỏi–đáp tài liệu nội bộ (chống mất tri thức khi người cũ nghỉ)
+
+Mục đích: hỏi được SOP, MOM, ISO, hướng dẫn dòng máy **có trích dẫn**, không phụ thuộc “anh ấy nhớ”.
+
+| Case | Ví dụ |
+|---|---|
+| Tra cứu quy trình | “Hạng mục nhập kho gồm những mục nào?” |
+| Tra cứu spec / ISO | Giới hạn đã ban hành, không đoán |
+| Bảng Excel chuẩn | Tiêu chuẩn nguyên liệu, checklist |
+| MOM / họp | Quyết định đã ghi, không tin trí nhớ miệng |
+| Đa ngôn ngữ | Việt / Nhật / Trung — cắt đúng câu |
+| Người mới | Hỏi như người cũ; hệ thống chỉ trả lời có nguồn |
+| Chống trôi | File đổi fingerprint → nạp lại đoạn đó, không mất cả thư viện |
+| Ảo giác vì thiếu ảnh | Sơ đồ/scan chưa đọc → không bịa; thiếu thì nói thiếu |
+
+**Chưa phải:** chatbot tán gẫu; NotebookLM trên mây; nhét 783 CSV vào cùng tủ.
+
+---
+
+### 2. Dự đoán / phòng chống lỗi unit (LSU, sau này Drum, DLP…)
+
+Mục đích: cảnh báo **có căn cứ** (drift JIG, lô giống lần NG), người quyết. Không phải AI tự dừng chuyền.
+
+| Case | Ví dụ |
+|---|---|
+| Hồ sơ serial | Thông số ↔ log JIG ↔ OK/NG |
+| Cảnh báo sớm | Drift, lô nghi ngờ — mức rủi ro, không phán xuất hàng |
+| Phòng ngừa | Gợi ý kiểm tra đã được người duyệt |
+| Unit mới | Drum, DLP = **thư viện + bảng số mới**, không fork RAG |
+| Thiếu dữ liệu | Nói thiếu; không bịa nguyên nhân gốc |
+
+**Cần trước:** schema log, vài serial có nhãn, thư viện spec. **Cấm:** tự chặn hàng; train từ một click.
+
+---
+
+### 3. Điều tra lỗi phát sinh trên line (máy in, điều chỉnh…)
+
+Mục đích: cùng kỹ sư lần vết — mã lỗi, công đoạn, log, bản vẽ — ra **báo cáo sự vụ có bằng chứng**. Tham chiếu hướng `phantichphanmemdc`.
+
+| Case | Tài liệu / dữ liệu |
+|---|---|
+| Tra cứu khi dừng máy | SOP, mã lỗi, nguyên lý, tài liệu triển khai (nếu được phép) |
+| Log máy / điều chỉnh | CSV có cột, serial, thời điểm — **không** embed từng dòng |
+| Ảnh lỗi / bản vẽ scan | OCR + người rà chữ viết tay |
+| Hồ sơ vụ | Việc đang làm: đã thử gì, ảnh, serial |
+| Báo cáo | Agent soạn phiếu; người ký |
+| Bài học | Chỉ báo cáo đã duyệt mới vào thư viện |
+
+**Không:** nhồi mọi log để “train AI điều tra”.
+
+---
+
+### 4. Agent kiểu IDE (tay làm việc, không thay thư viện)
+
+Mục đích: sau khi có bằng chứng, **đề xuất hành động** — báo cáo, SOP nháp, biểu đồ, lệnh — **người duyệt**. NVIDIA/tool đã có mầm; xóa/sửa file nhà máy **cấm** không duyệt.
+
+| Case | Agent được / không |
+|---|---|
+| Đọc / tìm file, git status | Được |
+| Sửa file, chạy lệnh | Phải duyệt |
+| Xóa / đổi tên / git push | Cấm |
+| Xuất log, vẽ biểu đồ | Đọc bảng số liệu; không nhét CSV vào RAG |
+| Báo cáo lỗi / SOP nháp | Soạn từ evidence pack; người ban hành |
+| Spawn agent | Có ngân sách bước; không swarm vô hạn |
+| Tự học | Phiếu chuyên gia / case eval; không train âm thầm |
+
+---
+
+### Thứ tự nếu thành hình
+
+1. Thư viện hỏi–đáp + chỗ lưu chung + nạp tài liệu (không CSV).
+2. Ảnh/scan có kiểm chứng.
+3. Agent soạn báo cáo / SOP có duyệt.
+4. Log có schema + điều tra line.
+5. Cảnh báo / shadow dự đoán LSU → Drum/DLP.
+
+Cùng kernel, khác tủ. Sản phẩm hiện tại **chưa** là công cụ dự đoán vận hành; RAG production vẫn `rolled_back`.
+
+## 29. Phân tích khả thi ý tưởng điều tra line (file idea.md, 2026-08-30)
+
+Nguồn: trao đổi Vinh–Hải, thí điểm C call / Jam call. Kết luận: **pilot hỗ trợ điều tra làm được** nếu đi đúng cầu nối AI của công ty.
+
+### Ba nguồn AI trong chương trình (chốt 2026-08-30)
+
+Công ty đã mua C-AGENT (Việt Nam), cam kết bảo mật. Không cấm gửi tài liệu kỹ thuật theo kiểu “không được lên mây”; **cấm sai cầu nối**.
+
+| Cầu nối | Gửi gì |
+|---|---|
+| **1. Nakazasen Router** | Văn bản / hỏi đáp thường. **Không** gửi bản vẽ, sơ đồ mạch, scan bản vẽ. |
+| **2. Gemini Web** | Văn bản / hỏi đáp thường. **Không** gửi bản vẽ, sơ đồ mạch. |
+| **3. C-AGENT — Sonnet 4 công ty** | **Được gửi đủ:** sơ đồ mạch, log, báo cáo lỗi, tool mô tả, ảnh VPS, Excel IQC. Đây là đường cho gói điều tra line. |
+
+Sao lưu log (K-Box 30 ngày xóa): Drive **nội bộ công ty** hoặc thư viện chung trên ổ D đều được — miễn gói đầy đủ khi hỏi AI thì mở **C-AGENT / Sonnet 4**, không dán bản vẽ vào Router hay Gemini Web.
+
+- **Làm được (hỗ trợ, không thay kỹ sư):** gợi ý hướng điều tra + chuỗi nhân quả *ứng viên* từ log đã parse + mã lỗi + báo cáo cũ; khoanh vùng sơ đồ *nếu có bảng ánh xạ* sensor/mã → vị trí bản vẽ; cứu “mất hiện trạng khi tháo máy” nếu đã lưu log trước khi tháo.
+- **Không hứa:** chỉ đúng từng sensor; đọc chữ viết tay IQC (vẫn gõ Excel hoặc bỏ); Jam log “luôn đúng” (Hải đã nói độ tin chưa cao).
+- Soft bản mạch / controller phía Thiết kế không cấp: **không bắt buộc** cho pilot. Phân giải **định dạng log + tool đang dùng nội bộ** (so output tool với parser) thì đủ để bắt đầu nhánh C hoặc Jam.
+- Thứ tự: (1) Hải tập hợp gói tài liệu, (2) parser Jam hoặc C, (3) thư viện SOP/mã lỗi/báo cáo đã duyệt, (4) bảng ánh xạ sơ đồ, (5) overlay có người xác nhận. Hỏi có bản vẽ → chọn **C-AGENT**. Không nhét log thô vào RAG chữ.

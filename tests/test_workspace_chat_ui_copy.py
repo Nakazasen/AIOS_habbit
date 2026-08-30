@@ -1,4 +1,5 @@
 from pathlib import Path
+import ast
 import re
 
 FORBIDDEN_WORDS = [
@@ -16,29 +17,107 @@ FORBIDDEN_WORDS = [
     "prompt pack"
 ]
 
-def extract_strings_from_code(code: str) -> list[str]:
-    # Extract string literals from python code using a simple regex
-    pattern = r'"""(.*?)"""|\'\'\'(.*?)\'\'\'|"([^"\\]*(?:\\.[^"\\]*)*)"|\'([^\'\\]*(?:\\.[^\'\\]*)*)\''
-    matches = re.findall(pattern, code, re.DOTALL)
-    strings = []
-    for m in matches:
-        for val in m:
-            if val:
-                strings.append(val)
-    return strings
+STREAMLIT_DISPLAY_FUNCTIONS = {
+    "write", "markdown", "caption", "button", "info", "warning", "error",
+    "success", "title", "header", "subheader", "text_input", "text_area",
+    "selectbox", "radio", "checkbox", "expander", "progress", "toast",
+    "file_uploader", "metric", "spinner", "dataframe", "popover", "form",
+    "tabs", "help",
+}
 
-def is_technical_identifier(s: str) -> bool:
-    # Check if a string is a technical identifier/key rather than UI display copy
-    if not s.strip():
-        return True
-    # If it contains no whitespaces and has underscores, or is one of the code keywords
-    if " " not in s:
-        if "_" in s or s.islower() or s in {
-            "retrieval", "citation", "claim", "chunk", "node", "edge", "RAG", "vector", "embedding",
-            "retrieval_summary", "retrieval_applied", "retrieved_context_sources", "evidence_items"
-        }:
+
+def _literal_text(node: ast.AST) -> str | None:
+    if isinstance(node, ast.Constant) and isinstance(node.value, str):
+        return node.value
+    if isinstance(node, ast.JoinedStr):
+        parts: list[str] = []
+        for value in node.values:
+            if isinstance(value, ast.Constant) and isinstance(value.value, str):
+                parts.append(value.value)
+        return "".join(parts) if parts else None
+    if isinstance(node, ast.BinOp) and isinstance(node.op, ast.Add):
+        left = _literal_text(node.left)
+        right = _literal_text(node.right)
+        if left is not None and right is not None:
+            return left + right
+    return None
+
+
+def _is_streamlit_display_call(func: ast.AST) -> bool:
+    if isinstance(func, ast.Attribute) and func.attr in STREAMLIT_DISPLAY_FUNCTIONS:
+        root = func.value
+        if isinstance(root, ast.Name) and root.id == "st":
+            return True
+        if isinstance(root, ast.Attribute) and root.attr == "sidebar":
             return True
     return False
+
+
+class _DisplayCopyVisitor(ast.NodeVisitor):
+    """Collect string literals passed to Streamlit display calls."""
+
+    def __init__(self) -> None:
+        self.strings: list[str] = []
+
+    def visit_Call(self, node: ast.Call) -> None:
+        if _is_streamlit_display_call(node.func):
+            for arg in node.args:
+                text = _literal_text(arg)
+                if text:
+                    self.strings.append(text)
+            for keyword in node.keywords:
+                text = _literal_text(keyword.value)
+                if text:
+                    self.strings.append(text)
+        self.generic_visit(node)
+
+
+def iter_display_ui_strings(code: str) -> list[str]:
+    """Return UI copy at Streamlit call sites, including multiline captions."""
+    tree = ast.parse(code)
+    visitor = _DisplayCopyVisitor()
+    visitor.visit(tree)
+    return visitor.strings
+
+
+def extract_strings_from_code(code: str) -> list[str]:
+    return iter_display_ui_strings(code)
+
+
+def is_technical_identifier(s: str) -> bool:
+    # Widget/i18n keys, not captions. Display copy is scanned even when multiline.
+    if not s.strip():
+        return True
+    if " " not in s and "\n" not in s and "_" in s:
+        return True
+    return False
+
+
+def test_multiline_display_copy_with_forbidden_word_is_detected() -> None:
+    sample = '''
+import streamlit as st
+st.markdown("""Dòng một
+Dòng hai
+RAG hiển thị cho người dùng
+Dòng bốn""")
+'''
+    strings = iter_display_ui_strings(sample)
+    assert any("RAG" in item for item in strings)
+    scanned = [item for item in strings if not is_technical_identifier(item)]
+    assert any("rag" in item.lower() for item in scanned)
+
+
+def test_nondisplay_code_identifier_is_not_scanned_as_ui_copy() -> None:
+    sample = '''
+from aios_habit.workspace_chat_store import (
+    relocate_collection_storage,
+    set_collection_storage_root,
+)
+HELP = "internal relocate_collection_storage note"
+'''
+    strings = iter_display_ui_strings(sample)
+    assert strings == []
+
 
 def test_workspace_chat_ui_copy_no_forbidden_words():
     # Read files
