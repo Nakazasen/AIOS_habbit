@@ -314,6 +314,8 @@ from aios_habit.workspace_chat_store import (
     resolve_conversation_id,
 )
 from aios_habit.evidence_trace import build_evidence_trace_from_citations
+from aios_habit.workspace_case_service import CaseValidationError, WorkspaceCaseService
+from aios_habit.workspace_case_repository import WorkspaceCaseRepositoryError
 from aios_habit.workspace_chat_models import (
     DocumentNotebook,
     WorkspaceConversation,
@@ -801,6 +803,7 @@ elif query_conv and st.session_state.wsc_active_conversation_id != query_conv:
     st.session_state.wsc_active_conversation_id = query_conv
 
 if "wsc_show_save_placeholder" not in st.session_state:
+    # Kept inert for backward-compatible session restoration; no UI reads it.
     st.session_state.wsc_show_save_placeholder = False
 if "wsc_show_explain_placeholder" not in st.session_state:
     st.session_state.wsc_show_explain_placeholder = False
@@ -1013,12 +1016,43 @@ def confirm_compress_conversation_callback(
     return True
 
 
-SAVE_CASE_PLACEHOLDER_MESSAGE = "Chưa lưu dữ liệu. Tính năng ‘Lưu vào hồ sơ’ hiện đang ở chế độ mô phỏng."
+def save_current_answer_to_case(
+    conversation_id: str,
+    badge_data: Mapping[str, Any] | None,
+    *,
+    service: WorkspaceCaseService | None = None,
+) -> bool:
+    """Save local case metadata from an existing evidence trace only."""
+    if not badge_data or badge_data.get("conversation_id") != conversation_id:
+        st.session_state.wsc_action_error = "Chưa thể lưu hồ sơ vì câu trả lời hiện tại không còn hợp lệ."
+        safe_rerun()
+        return False
+    if badge_data.get("type") != "ai_answered":
+        st.session_state.wsc_action_error = "Chỉ có thể lưu hồ sơ từ câu trả lời đã hoàn tất."
+        safe_rerun()
+        return False
+    trace_id = str(badge_data.get("trace_id") or "").strip()
+    if not trace_id:
+        st.session_state.wsc_action_error = "Chưa thể lưu hồ sơ vì thiếu dấu vết bằng chứng."
+        safe_rerun()
+        return False
 
+    try:
+        result = (service or WorkspaceCaseService()).create_case_from_trace_id(
+            trace_id,
+            expected_conversation_id=conversation_id,
+        )
+    except (CaseValidationError, WorkspaceCaseRepositoryError) as error:
+        st.session_state.wsc_action_error = str(error)
+        safe_rerun()
+        return False
 
-def show_save_case_placeholder_feedback():
-    st.session_state.wsc_show_save_placeholder = True
+    st.session_state.wsc_action_message = (
+        f"Đã lưu hồ sơ cục bộ {result.case_id} với {result.evidence_count} tham chiếu bằng chứng. "
+        "Hồ sơ chỉ giữ liên kết bằng chứng; câu hỏi, câu trả lời và đoạn trích gốc không được sao chép."
+    )
     safe_rerun()
+    return True
 
 def open_notebook_callback(notebook_id: str):
     notebook = next((nb for nb in load_active_notebooks() if nb.id == notebook_id), None)
@@ -2165,11 +2199,6 @@ else:
             # Thêm tài liệu rồi hỏi tự nhiên; AIOS sẽ tự kiểm tra nguồn và cảnh báo nếu thiếu.
             st.info(t("input_help_instruction", locale=current_ui_locale))
 
-            if st.session_state.wsc_show_save_placeholder:
-                st.info(f"ℹ️ {SAVE_CASE_PLACEHOLDER_MESSAGE}")
-                if st.button(t("close_save_notification", locale=current_ui_locale)):
-                    st.session_state.wsc_show_save_placeholder = False
-                    safe_rerun()
             if st.session_state.wsc_show_explain_placeholder:
                 st.info(t("explain_conclusion", locale=current_ui_locale))
                 if st.button(t("close_notification", locale=current_ui_locale)):
@@ -3286,7 +3315,7 @@ else:
                     next_actions = []
 
                 def on_save_case_cb():
-                    show_save_case_placeholder_feedback()
+                    save_current_answer_to_case(active_conversation.id, badge_data)
 
                 def on_explain_cb():
                     st.session_state.wsc_show_explain_placeholder = True

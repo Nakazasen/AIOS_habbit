@@ -210,17 +210,15 @@ def test_phase2e_forbidden_copy_absent():
             assert word.lower() not in val.lower(), f"Forbidden word '{word}' found in UI UI text: '{val}'"
 
 
-def test_phase2g_save_feedback_placeholder_truthful_copy():
+def test_case_save_copy_describes_only_local_metadata_and_evidence_references():
     app_source = Path("src/aios_habit/workspace_chat_app.py").read_text(encoding="utf-8")
-    assert "Chưa lưu dữ liệu. Tính năng ‘Lưu vào hồ sơ’ hiện đang ở chế độ mô phỏng." in app_source
-    assert "st.info(f\"ℹ️ {SAVE_CASE_PLACEHOLDER_MESSAGE}\")" in app_source
-    forbidden_success_claims = [
-        "Đã kích hoạt lưu",
-        "hồ sơ sự việc mới thành công",
-        "hồ sơ đã được tạo",
-    ]
-    for phrase in forbidden_success_claims:
-        assert phrase not in app_source
+    start = app_source.index("def save_current_answer_to_case(")
+    end = app_source.index("def open_notebook_callback", start)
+    block = app_source[start:end]
+    assert "Đã lưu hồ sơ cục bộ" in block
+    assert "Hồ sơ chỉ giữ liên kết bằng chứng" in block
+    assert "câu hỏi, câu trả lời và đoạn trích gốc không được sao chép" in block
+    assert "chế độ mô phỏng" not in block
 
 
 def test_phase2h_no_mode_radio_in_app():

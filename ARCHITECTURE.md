@@ -10,6 +10,10 @@ Sổ tài liệu **không** phải file tìm kiếm. Mỗi **thư viện** có k
 
 Chủ sở hữu chọn **thư mục dùng chung**. Kho nằm trong `aios_thu_vien/library.sqlite`. Đổi chỗ: snapshot SQLite (Online Backup + `PRAGMA quick_check`) rồi mới đổi `storage_root`; kho cũ giữ. Lỗi I/O không đổi pointer. Một writer (file lease); writer thứ hai fail-closed. Máy mới gia nhập kho có sẵn khi máy đó chưa có index. Tài liệu trong kho nhận diện theo nội dung chữ đã lấy ra, không theo mã nguồn trên từng máy và không theo tên file. Chat/JSONL vẫn local — index dùng chung không mang lịch sử trò chuyện. WAL trên ổ mạng nhiều máy: fail-closed, không tuyên bố an toàn. CSV log không thuộc thư viện hỏi–đáp; parser log Jam/C-call ghi `line_events.sqlite` (sự kiện nghi ngờ), không embed. Cắt đoạn chữ có chồng lấn ~15% (chuẩn Azure/Chonkie); cửa sổ retrieval/citation rộng hơn; ingest BGE gom lô 8–16, không dùng LLM để embed. Khi hỏi điều tra, gói bằng chứng có thể kèm sự kiện `line_events.sqlite` (nghi ngờ), không nhét CSV vào RAG. Gemini Web / Nakazasen Router không được gửi file ảnh hay bản vẽ; C-AGENT thì được.
 
+### Hồ sơ vụ cục bộ từ Workspace Chat
+
+Nút “Lưu vào hồ sơ” chỉ lưu metadata cục bộ vào `local_cases/workspace_cases.sqlite`: mã cuộc trò chuyện, mã tin nhắn trả lời, mã `trace` bằng chứng và các tham chiếu nguồn/digest. Kho này tách hoàn toàn khỏi `library.sqlite` và `line_events.sqlite`, không đồng bộ nhiều máy. Transaction SQLite ghi hồ sơ, tham chiếu và audit event cùng lúc; lỗi giữa chừng không tạo hồ sơ nửa vời. Hồ sơ không copy câu hỏi, câu trả lời hay đoạn trích nguồn thô; người dùng xem lại chúng trong Workspace Chat qua `trace` gốc. Đây mới là cổng lưu hồ sơ, chưa bao gồm xác nhận chuyên gia, promotion bài học hay quyền agent thực thi.
+
 ## Workspace Chat: chuẩn bị nguồn tăng dần (2026-08-22)
 
 - Mỗi nguồn mới chỉ được đưa vào hàng đợi lập chỉ mục riêng sau khi đọc file thành công;

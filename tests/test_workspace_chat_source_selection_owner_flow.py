@@ -703,24 +703,44 @@ def test_notebook_creation_flow(tmp_path, monkeypatch):
     assert not (tmp_path / "local_cases").exists()
 
 
-def test_save_case_placeholder_feedback_sets_state_and_reruns(monkeypatch):
+def test_save_case_callback_creates_case_from_existing_trace_and_reruns(monkeypatch):
     session_state = MockSessionState()
-    session_state.wsc_show_save_placeholder = False
     monkeypatch.setattr(st, "session_state", session_state)
 
     reruns = []
     monkeypatch.setattr(st, "rerun", lambda: reruns.append(True))
 
     import aios_habit.workspace_chat_app as app
-    app.show_save_case_placeholder_feedback()
 
-    assert session_state.wsc_show_save_placeholder is True
+    class FakeResult:
+        case_id = "CASE-LOCAL-1"
+        evidence_count = 2
+
+    class FakeService:
+        def __init__(self):
+            self.received = None
+
+        def create_case_from_trace_id(self, trace_id, *, expected_conversation_id):
+            self.received = (trace_id, expected_conversation_id)
+            return FakeResult()
+
+    service = FakeService()
+    result = app.save_current_answer_to_case(
+        "CONV-1",
+        {"conversation_id": "CONV-1", "type": "ai_answered", "trace_id": "trc-1"},
+        service=service,
+    )
+
+    assert result is True
+    assert service.received == ("trc-1", "CONV-1")
+    assert "CASE-LOCAL-1" in session_state.wsc_action_message
+    assert "không được sao chép" in session_state.wsc_action_message
     assert reruns == [True]
 
 
-def test_save_case_placeholder_path_does_not_call_persistence_or_provider():
+def test_save_case_callback_uses_only_the_existing_trace_and_no_provider():
     app_source = Path("src/aios_habit/workspace_chat_app.py").read_text(encoding="utf-8")
-    helper_start = app_source.index("def show_save_case_placeholder_feedback():")
+    helper_start = app_source.index("def save_current_answer_to_case(")
     helper_end = app_source.index("def open_notebook_callback", helper_start)
     helper_block = app_source[helper_start:helper_end]
     callback_start = app_source.index("def on_save_case_cb():")
@@ -745,19 +765,38 @@ def test_save_case_placeholder_path_does_not_call_persistence_or_provider():
     ]
     for token in forbidden_calls:
         assert token not in save_path
-    assert "wsc_show_save_placeholder = True" in save_path
+    assert "create_case_from_trace_id(" in save_path
+    assert "trace_id" in save_path
     assert "safe_rerun()" in save_path
 
 
-def test_save_case_placeholder_render_uses_info_not_success():
+def test_save_case_callback_rejects_missing_or_mismatched_trace(monkeypatch):
+    session_state = MockSessionState()
+    monkeypatch.setattr(st, "session_state", session_state)
+    reruns = []
+    monkeypatch.setattr(st, "rerun", lambda: reruns.append(True))
+
+    import aios_habit.workspace_chat_app as app
+
+    result = app.save_current_answer_to_case(
+        "CONV-1",
+        {"conversation_id": "CONV-OTHER", "type": "ai_answered", "trace_id": "trc-1"},
+    )
+
+    assert result is False
+    assert "không còn hợp lệ" in session_state.wsc_action_error
+    assert reruns == [True]
+
+
+def test_save_case_callback_has_no_placeholder_or_optimistic_success_copy():
     app_source = Path("src/aios_habit/workspace_chat_app.py").read_text(encoding="utf-8")
-    start = app_source.index("if st.session_state.wsc_show_save_placeholder:")
-    end = app_source.index("if st.session_state.wsc_show_explain_placeholder:", start)
+    start = app_source.index("def save_current_answer_to_case(")
+    end = app_source.index("def open_notebook_callback", start)
     block = app_source[start:end]
 
-    assert "st.info" in block
-    assert "st.success" not in block
-    assert "SAVE_CASE_PLACEHOLDER_MESSAGE" in block
+    assert "chế độ mô phỏng" not in block
+    assert "Đã lưu hồ sơ cục bộ" in block
+    assert "không được sao chép" in block
 
 
 # --- Phase 2H structural tests ---
