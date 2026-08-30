@@ -29,6 +29,9 @@ from aios_habit.workspace_chat_ui import (
     owner_choice_to_privacy_label,
 )
 
+LINE_LOG_EXTENSIONS: set[str] = {".csv"}
+LINE_LOG_SCAN_REASON = "csv_line_log"
+
 SUPPORTED_DOCUMENT_EXTENSIONS: set[str] = {
     ".pdf",
     ".docx",
@@ -377,7 +380,11 @@ def scan_local_directory(
                         modified_time=mtime_iso,
                         modified_time_ns=mtime_ns,
                         is_supported=False,
-                        unsupported_reason="Định dạng chưa được hỗ trợ",
+                        unsupported_reason=(
+                            LINE_LOG_SCAN_REASON
+                            if ext in LINE_LOG_EXTENSIONS
+                            else "Định dạng chưa được hỗ trợ"
+                        ),
                     )
                     unsupported_files.append(info)
 
@@ -467,7 +474,11 @@ def scan_local_directory(
                         modified_time=mtime_iso,
                         modified_time_ns=mtime_ns,
                     is_supported=False,
-                    unsupported_reason="Định dạng chưa được hỗ trợ",
+                    unsupported_reason=(
+                        LINE_LOG_SCAN_REASON
+                        if ext in LINE_LOG_EXTENSIONS
+                        else "Định dạng chưa được hỗ trợ"
+                    ),
                 )
                 unsupported_files.append(info)
 

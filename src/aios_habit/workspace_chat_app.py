@@ -331,6 +331,7 @@ from aios_habit.workspace_chat_folder_import import (
     format_size_bytes,
     count_completed_folder_files,
     seed_completed_folder_files_from_titles,
+    LINE_LOG_SCAN_REASON,
 )
 from aios_habit.local_folder_picker import choose_local_folder
 
@@ -2939,6 +2940,34 @@ else:
 
                                 else:
                                     st.info(t("no_matching_docs_in_folder", locale=current_ui_locale))
+
+                                log_files = [
+                                    item for item in current_scan.unsupported_files
+                                    if item.unsupported_reason == LINE_LOG_SCAN_REASON
+                                ]
+                                if log_files:
+                                    st.caption(t("line_logs_help", locale=current_ui_locale))
+                                    if st.button(
+                                        t("ingest_line_logs_button", locale=current_ui_locale),
+                                        key=f"wsc_ingest_line_logs_{active_conversation.id}",
+                                    ):
+                                        from aios_habit.line_log_parser import ingest_line_log_files
+                                        from aios_habit.workspace_chat_models import DEFAULT_COLLECTION_ID
+                                        from aios_habit.workspace_chat_store import load_notebook
+
+                                        notebook = load_notebook(active_nb_id)
+                                        collection_id = (
+                                            getattr(notebook, "collection_id", "") or DEFAULT_COLLECTION_ID
+                                        )
+                                        summary = ingest_line_log_files(
+                                            [item.path for item in log_files],
+                                            collection_id=collection_id,
+                                        )
+                                        if summary.ok:
+                                            st.session_state.wsc_action_message = summary.owner_message
+                                        else:
+                                            st.session_state.wsc_action_error = summary.owner_message
+                                        safe_rerun()
 
                                 if current_scan.unsupported_files:
                                     with st.expander(t("unsupported_files_expander", locale=current_ui_locale, count=len(current_scan.unsupported_files)), expanded=False):

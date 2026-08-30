@@ -1091,6 +1091,8 @@ class TestWorkspaceChatUIAntiHardcode:
             "folder_supported_formats",
             "scan_subfolders",
             "scan_folder_button",
+            "ingest_line_logs_button",
+            "line_logs_help",
             "scanned_files_header",
             "import_all_to_notebook",
             "import_remaining_files",

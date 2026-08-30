@@ -200,7 +200,8 @@ class TestDirectoryScanner:
         assert "note.txt" in supported_names
         assert "report.md" in supported_names
         assert "data.csv" not in supported_names
-        assert "data.csv" in {f.filename for f in res.unsupported_files}
+        csv_info = next(item for item in res.unsupported_files if item.filename == "data.csv")
+        assert csv_info.unsupported_reason == "csv_line_log"
         assert "image.png" in supported_names
         assert "photo.jpg" in supported_names
         assert "doc.pdf" in supported_names
