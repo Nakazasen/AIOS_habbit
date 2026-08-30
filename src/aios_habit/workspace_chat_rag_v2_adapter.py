@@ -2111,6 +2111,7 @@ def _map_serialized_query_result(
             "limitation_reasons": list(synthesis_dict.get("limitation_reasons", ())),
         },
         "rag_v2_canary": telemetry,
+        "line_log_attached": False,
     }
 
 
@@ -2397,6 +2398,73 @@ def _try_structured_excel_evidence(
     return None
 
 
+def _attach_line_log_evidence(
+    question: str,
+    result: dict[str, Any],
+    collection_id: str | None,
+) -> dict[str, Any]:
+    """Merge a bounded suspected log slice into retrieval evidence."""
+    from aios_habit.line_log_parser import match_line_events_for_question
+
+    matched = match_line_events_for_question(question, collection_id)
+    events = matched.get("events") or ()
+    text = str(matched.get("owner_text") or "").strip()
+    if not events or not text:
+        result.setdefault("line_log_attached", False)
+        return result
+    payload = dict(result)
+    items = list(payload.get("evidence_items") or [])
+    citations = list(payload.get("citations") or [])
+    sources = list(payload.get("retrieved_context_sources") or ())
+    evidence_id = "line-log-suspected"
+    title = "Log điều tra (nghi ngờ, chưa chẩn đoán)"
+    items.append(
+        {
+            "snippet_index": len(items) + 1,
+            "source_id": "line-events",
+            "source_scope": "collection",
+            "source_type": "line_log",
+            "title": title,
+            "text": text,
+            "location_info": "line_events.sqlite",
+            "score": 0.0,
+            "retrieval_score": 0.0,
+            "citation_id": evidence_id,
+            "evidence_id": evidence_id,
+        }
+    )
+    citations.append(
+        {
+            "title": title,
+            "snippet": text[:150] + ("..." if len(text) > 150 else ""),
+            "location": "kho log",
+            "citation_id": evidence_id,
+        }
+    )
+    sources.append(
+        WorkspaceAIContextSource(
+            source_id="line-events",
+            source_scope="collection",
+            source_type="line_log",
+            title=title,
+            privacy_label="local_only",
+            text=text,
+            included_chars=len(text),
+            truncated=False,
+        )
+    )
+    payload["evidence_items"] = items
+    payload["citations"] = citations
+    payload["retrieved_context_sources"] = tuple(sources)
+    payload["summary_count"] = len(items)
+    payload["line_log_attached"] = True
+    payload["retrieval_applied"] = True
+    message = str(payload.get("safe_owner_message") or "").strip()
+    extra = "Đã kèm sự kiện log nghi ngờ, chưa phải chẩn đoán."
+    payload["safe_owner_message"] = f"{message} {extra}".strip() if message else extra
+    return payload
+
+
 def retrieve_workspace_chat_evidence(
     question: str,
     context_sources: Iterable[WorkspaceAIContextSource],
@@ -2408,15 +2476,20 @@ def retrieve_workspace_chat_evidence(
 ) -> dict[str, Any]:
     """Retrieve evidence only through the pinned local BGE-M3 hybrid pipeline."""
     sources = tuple(context_sources)
+    collection_id = _collection_id_for_sources(sources)
+
+    def _finish(payload: dict[str, Any]) -> dict[str, Any]:
+        return _attach_line_log_evidence(question, payload, collection_id)
+
     try:
         resolved = config or WorkspaceChatRagV2CanaryConfig.from_env()
     except (DeploymentManifestError, ValueError) as error:
         reason = _safe_reason(error)
         LOGGER.error("Workspace Chat BGE-M3 deployment unavailable: %s", reason)
-        return _quality_search_unavailable(reason)
+        return _finish(_quality_search_unavailable(reason))
 
     if not resolved.enabled:
-        return _quality_search_unavailable("feature_flag_disabled")
+        return _finish(_quality_search_unavailable("feature_flag_disabled"))
 
     semantic_sources = _select_semantic_candidate_sources(question, sources)
 
@@ -2425,7 +2498,7 @@ def retrieve_workspace_chat_evidence(
     # planner about) every enabled workbook before it reaches the selected PDF.
     structured_result = _try_structured_excel_evidence(question, semantic_sources)
     if structured_result is not None:
-        return structured_result
+        return _finish(structured_result)
 
     pref_str = str(search_preference or "auto").casefold()
 
@@ -2437,12 +2510,12 @@ def retrieve_workspace_chat_evidence(
         not resolved.adaptive_enabled
         or resolved.bge_reranker_model_path is None
     ):
-        return _quality_search_unavailable("deep_search_unavailable")
+        return _finish(_quality_search_unavailable("deep_search_unavailable"))
 
     schedule_workspace_chat_source_preparation(semantic_sources, config=resolved)
     semantic_status, semantic_reason = _semantic_readiness(semantic_sources, resolved)
     if semantic_status != _PREPARATION_READY_STATE:
-        return _quality_search_unavailable(semantic_reason or semantic_status)
+        return _finish(_quality_search_unavailable(semantic_reason or semantic_status))
 
     plan = coerce_query_plan(question)
     policy = AdaptiveRetrievalPolicy(
@@ -2532,13 +2605,13 @@ def retrieve_workspace_chat_evidence(
                     post_decision=post_dec.classification.value,
                     post_reason_codes=post_dec.reason_codes,
                 )
-                return escalated_result
+                return _finish(escalated_result)
 
-        return initial_result
+        return _finish(initial_result)
     except Exception as error:
         reason = _safe_reason(error)
         LOGGER.warning("Workspace Chat BGE-M3 retrieval unavailable: %s", reason, exc_info=True)
-        return _quality_search_unavailable(reason)
+        return _finish(_quality_search_unavailable(reason))
 
 
 def close_workspace_chat_rag_v2_runtimes(*, timeout_s: float | None = 10.0) -> None:

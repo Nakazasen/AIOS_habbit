@@ -5,6 +5,7 @@ from __future__ import annotations
 import csv
 import hashlib
 import io
+import re
 import sqlite3
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -28,10 +29,12 @@ _TIME_ALIASES = frozenset({
 })
 _STATION_ALIASES = frozenset({
     "station", "line", "machine", "eqp", "equipment", "tram", "vi_tri",
+    "cam_id", "cam", "jig",
 })
 _CODE_ALIASES = frozenset({
     "jam", "jam_code", "jamcode", "alarm", "alarm_code", "error", "error_code",
     "ma_loi", "code", "c_call", "ccall", "c-call", "call_code",
+    "err_num", "errnum", "error_no", "errorno", "cam_error",
 })
 _SERIAL_ALIASES = frozenset({"serial", "sn", "lot", "barcode", "unit"})
 _DURATION_ALIASES = frozenset({
@@ -360,6 +363,119 @@ def ingest_line_log_files(
         owner_message=f"Đã ghi {total} sự kiện log ({dialect}), nghi ngờ — chưa chẩn đoán.{extra}",
         top_codes=last_ok.top_codes,
     )
+
+
+_TOKEN_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9_\-]{1,31}")
+_INVESTIGATION_HINTS = frozenset({
+    "jam", "jig", "alarm", "serial", "station", "ccall", "c-call", "c_call",
+    "loi", "lỗi", "dung", "dừng", "may", "máy", "line", "log",
+})
+
+
+def _question_tokens(question: str) -> tuple[str, ...]:
+    folded = (question or "").casefold()
+    tokens = [item.casefold() for item in _TOKEN_RE.findall(question or "")]
+    extra = [hint for hint in _INVESTIGATION_HINTS if hint in folded]
+    return tuple(dict.fromkeys([*tokens, *extra]))
+
+
+def _looks_like_investigation(question: str) -> bool:
+    folded = (question or "").casefold()
+    return any(hint in folded for hint in _INVESTIGATION_HINTS)
+
+
+def match_line_events_for_question(
+    question: str,
+    collection_id: str | None = None,
+    *,
+    limit: int = 8,
+) -> dict[str, Any]:
+    """Return a bounded suspected-event slice for an investigation question."""
+    db_path = line_events_db_path(collection_id)
+    empty = {"events": (), "mode": "none", "count": 0, "owner_text": ""}
+    if not db_path.is_file():
+        return empty
+    tokens = _question_tokens(question)
+    cap = max(1, min(int(limit), 12))
+    conn = sqlite3.connect(str(db_path))
+    conn.row_factory = sqlite3.Row
+    try:
+        total = int(conn.execute("SELECT COUNT(*) FROM line_events").fetchone()[0])
+        if total <= 0:
+            return empty
+        rows: list[sqlite3.Row] = []
+        for token in tokens:
+            if len(token) < 2:
+                continue
+            found = conn.execute(
+                """
+                SELECT event_id, source_name, dialect, occurred_at, station, code,
+                       serial, duration_s, provenance
+                FROM line_events
+                WHERE lower(code) = ? OR lower(station) = ?
+                   OR instr(lower(code), ?) > 0 OR instr(lower(station), ?) > 0
+                ORDER BY occurred_at DESC
+                LIMIT ?
+                """,
+                (token, token, token, token, cap),
+            ).fetchall()
+            rows.extend(found)
+            if len(rows) >= cap:
+                break
+        mode = "matched"
+        if not rows and _looks_like_investigation(question):
+            rows = conn.execute(
+                """
+                SELECT event_id, source_name, dialect, occurred_at, station, code,
+                       serial, duration_s, provenance
+                FROM line_events
+                ORDER BY occurred_at DESC
+                LIMIT ?
+                """,
+                (min(5, cap),),
+            ).fetchall()
+            mode = "recent"
+        if not rows:
+            return empty
+        seen: set[str] = set()
+        events: list[LineLogEvent] = []
+        for row in rows:
+            event_id = str(row["event_id"])
+            if event_id in seen:
+                continue
+            seen.add(event_id)
+            events.append(
+                LineLogEvent(
+                    event_id=event_id,
+                    source_name=str(row["source_name"] or ""),
+                    dialect=str(row["dialect"] or "unknown"),
+                    occurred_at=str(row["occurred_at"] or ""),
+                    station=str(row["station"] or ""),
+                    code=str(row["code"] or ""),
+                    serial=str(row["serial"] or ""),
+                    duration_s=row["duration_s"],
+                    provenance=str(row["provenance"] or PROVENANCE_SUSPECTED),
+                )
+            )
+            if len(events) >= cap:
+                break
+    finally:
+        conn.close()
+    lines = [
+        "Sự kiện log (nghi ngờ, chưa phải chẩn đoán):",
+    ]
+    for event in events:
+        lines.append(
+            f"- {event.occurred_at or '?'} | {event.dialect} | "
+            f"mã {event.code or '?'} | trạm {event.station or '?'} | "
+            f"trạng thái {event.provenance}"
+        )
+    return {
+        "events": tuple(events),
+        "mode": mode,
+        "count": len(events),
+        "owner_text": "\n".join(lines),
+    }
 
 
 def summarize_line_events(

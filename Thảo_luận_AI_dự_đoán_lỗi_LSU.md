@@ -37,7 +37,9 @@ Bốn việc **không rời**: cùng vòng *vụ việc → bằng chứng → �
 3. **Gate C — Sol `PASS`.** Gemini/Router không gửi ảnh/bản vẽ; C-AGENT được. Caption không thay thế chặn.
 4. **Parser log Jam/C-call — Sol `PASS`.** CSV vào `line_events.sqlite`, không embed, provenance `suspected`.
 5. **RAG chữ:** overlap cắt đoạn ~15%, cửa sổ retrieval/citation rộng hơn, ingest BGE gom lô 8–16. Không dùng LLM để embed. Index cũ không tự rebuild.
-5. Agent IDE / SOP / dự đoán LSU: sau evidence pack.
+6. **Gói bằng chứng chữ + log — đã lắp:** hỏi điều tra kèm sự kiện `line_events` (nghi ngờ). Agent/LSU prediction vẫn sau.
+
+**Bàn giao GPT (deadline):** xong glue evidence. Còn: nạp thêm SOP PDF lớn + CSV CamError khác qua UI (BGE ingest chậm CPU); rebuild index overlap cho file cũ; Gate A NAS; không overlay/Agent/LSU. Không commit `tailieugoc` / `Tài liệu của tất cả dòng máy`.
 
 Không: bốn nhánh song song; E3; LightRAG tuần này; “vài serial là shadow prediction”.
 

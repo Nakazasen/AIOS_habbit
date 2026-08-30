@@ -71,3 +71,39 @@ def test_ingest_line_log_writes_sqlite_not_library(tmp_path, monkeypatch):
     rolled = summarize_line_events("tri_thuc")
     assert rolled["count"] == 2
     assert rolled["top_codes"][0][0] in {"JAM-01", "JAM-02"}
+
+
+def test_match_line_events_for_question_attaches_suspected_jam(tmp_path, monkeypatch):
+    import aios_habit.line_log_parser as parser
+    import aios_habit.workspace_chat_store as store
+    from aios_habit.local_jsonl import clear_jsonl_cache
+    from aios_habit.workspace_chat_rag_v2_adapter import _attach_line_log_evidence
+
+    chat_dir = tmp_path / "chat"
+    monkeypatch.setattr(store, "LOCAL_CHAT_DIR", chat_dir)
+    monkeypatch.setattr(parser, "LOCAL_CHAT_DIR", chat_dir)
+    clear_jsonl_cache()
+    store.init_chat_store()
+    ingest_line_log_bytes(
+        b"timestamp,station,jam_code\n2026-08-30 08:01,C1,JAM-01\n",
+        "jam.csv",
+        collection_id="tri_thuc",
+    )
+    matched = parser.match_line_events_for_question("Máy C1 bị JAM-01", "tri_thuc")
+    assert matched["count"] == 1
+    assert matched["events"][0].code == "JAM-01"
+    assert "chẩn đoán" in matched["owner_text"]
+    attached = _attach_line_log_evidence(
+        "Máy C1 bị JAM-01",
+        {
+            "evidence_items": [],
+            "citations": [],
+            "retrieved_context_sources": (),
+            "summary_count": 0,
+            "safe_owner_message": "Đã dùng 0 đoạn.",
+        },
+        "tri_thuc",
+    )
+    assert attached["line_log_attached"] is True
+    assert attached["evidence_items"][0]["source_type"] == "line_log"
+    assert "JAM-01" in attached["evidence_items"][0]["text"]
