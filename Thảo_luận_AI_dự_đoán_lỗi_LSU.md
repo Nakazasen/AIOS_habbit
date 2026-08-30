@@ -32,11 +32,11 @@ Bốn việc **không rời**: cùng vòng *vụ việc → bằng chứng → �
 
 ### Việc đang làm (một hàng đợi)
 
-1. **Gate A thư viện chung — đã commit, Sol `PARTIAL`.** Identity theo nội dung chữ. Chủ repo test hai máy/NAS sau. Không tự PASS.
-2. **Gate B — nạp chữ, từ chối CSV.** Chờ Sol audit gọn. RAG production vẫn `rolled_back` (máy này chạy BGE nhờ cờ pilot/canary local, chưa đóng dấu activated).
-3. **Gate C — hard guard ảnh Gemini/Router.** C-AGENT được gửi ảnh. Chờ Sol audit gọn.
-4. Pilot **một** parser C *hoặc* Jam: ứng viên, không phải chẩn đoán.
-5. Agent IDE / SOP / dự đoán LSU: sau evidence pack. Không nhét vào 2 ngày nếu chưa xong B+C.
+1. **Gate A thư viện chung — Sol `PARTIAL`.** Identity theo nội dung chữ. Chủ repo test hai máy/NAS sau. Không tự PASS.
+2. **Gate B — Sol `PASS`.** Thư viện chữ từ chối CSV; Excel SOP vẫn nạp được.
+3. **Gate C — Sol `PASS`.** Gemini/Router không gửi ảnh/bản vẽ; C-AGENT được. Caption không thay thế chặn.
+4. **Tiếp theo:** pilot **một** parser C *hoặc* Jam (ứng viên, không chẩn đoán). RAG production vẫn `rolled_back`.
+5. Agent IDE / SOP / dự đoán LSU: sau evidence pack.
 
 Không: bốn nhánh song song; E3; LightRAG tuần này; “vài serial là shadow prediction”.
 
