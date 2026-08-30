@@ -1084,6 +1084,7 @@ class TestWorkspaceChatUIAntiHardcode:
             "upload_docs_help",
             "upload_multi_docs_help",
             "upload_supported_formats",
+            "connector_blocks_images",
             "use_docs_in_answer",
             "folder_path_input",
             "folder_path_help",

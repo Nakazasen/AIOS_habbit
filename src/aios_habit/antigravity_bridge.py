@@ -647,6 +647,12 @@ def route_workspace_chat_submission(
     if backend not in {"gemini_web", "cagent_api", "nakazasen_router"}:
         return (False, "", None, "Lựa chọn cầu nối AI không hợp lệ.")
 
+    from aios_habit.workspace_chat_connector_guard import image_files_blocked_message
+
+    blocked_images = image_files_blocked_message(backend, packed_sources)
+    if blocked_images:
+        return (False, "", None, blocked_images)
+
     if backend in {"cagent_api", "nakazasen_router"}:
         if backend == "cagent_api" and not cagent_endpoint_url.strip():
             return (False, "", None, "Hãy nhập URL API của AgentFlow C-AGENT trước khi Hỏi.")

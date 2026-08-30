@@ -33,8 +33,8 @@ Bốn việc **không rời**: cùng vòng *vụ việc → bằng chứng → �
 ### Việc đang làm (một hàng đợi)
 
 1. **Gate A thư viện chung — đã commit, Sol `PARTIAL`.** Identity theo nội dung chữ. Chủ repo test hai máy/NAS sau. Không tự PASS.
-2. **Gate B — nạp tài liệu chữ vào thư viện chung** (không CSV). RAG production vẫn `rolled_back`.
-3. **Gate C — hard guard cầu nối:** chặn ảnh/bản vẽ khi backend là Gemini Web hoặc Nakazasen Router; C-AGENT được gửi gói đủ.
+2. **Gate B — nạp chữ, từ chối CSV.** Chờ Sol audit gọn. RAG production vẫn `rolled_back` (máy này chạy BGE nhờ cờ pilot/canary local, chưa đóng dấu activated).
+3. **Gate C — hard guard ảnh Gemini/Router.** C-AGENT được gửi ảnh. Chờ Sol audit gọn.
 4. Pilot **một** parser C *hoặc* Jam: ứng viên, không phải chẩn đoán.
 5. Agent IDE / SOP / dự đoán LSU: sau evidence pack. Không nhét vào 2 ngày nếu chưa xong B+C.
 

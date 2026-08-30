@@ -2459,6 +2459,9 @@ else:
                         unsafe_allow_javascript=True,
                     )
                     user_attached_image = uploaded_image or st.session_state.get(pasted_image_key)
+                    from aios_habit.workspace_chat_connector_guard import connector_blocks_image_files
+                    if user_attached_image is not None and connector_blocks_image_files(selected_ai_backend):
+                        st.warning(t("connector_blocks_images", locale=current_ui_locale))
                     if user_attached_image is not None:
                         preview_col, preview_text_col, preview_remove_col = st.columns([1, 8, 2])
                         with preview_col:
@@ -2488,7 +2491,10 @@ else:
                     if not q_text and not user_attached_image:
                         st.error(t("question_placeholder", locale=current_ui_locale))
                     else:
-                        if user_attached_image is not None:
+                        if user_attached_image is not None and connector_blocks_image_files(ai_backend):
+                            st.session_state.wsc_action_error = t("connector_blocks_images", locale=current_ui_locale)
+                            safe_rerun()
+                        elif user_attached_image is not None:
                             img_batch = process_workspace_upload_batch(
                                 [user_attached_image],
                                 active_conversation.id,
@@ -2788,7 +2794,7 @@ else:
                         with st.form(f"wsc_doc_upload_form_{active_conversation.id}"):
                             uploaded_files = st.file_uploader(
                                 t("select_docs_for_conv", locale=current_ui_locale),
-                                type=["txt", "md", "markdown", "csv", "xlsx", "xls", "docx", "pptx", "pdf", "png", "jpg", "jpeg", "webp", "bmp", "tif", "tiff"],
+                                type=["txt", "md", "markdown", "xlsx", "xls", "docx", "pptx", "pdf", "png", "jpg", "jpeg", "webp", "bmp", "tif", "tiff"],
                                 key=f"wsc_doc_upload_{active_conversation.id}_{st.session_state.wsc_upload_version}",
                                 accept_multiple_files=True,
                             )

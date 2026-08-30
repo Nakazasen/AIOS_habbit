@@ -42,7 +42,7 @@ Không một pull request hay thay đổi mã nguồn nào được phép gộp 
 - **C-AGENT (Sonnet 4 công ty):** đường được công ty mua và cam kết bảo mật. Khi người dùng **chọn đúng** cầu nối `cagent_api`, được gửi bản vẽ, sơ đồ mạch, log, gói điều tra. Không tự chuyển gói đó sang Gemini/Router.
 - **Chỉ AI cục bộ khác:** `local_ai` chỉ khi người dùng chỉ định `include_local_only=True`.
 - **Không đưa vào Git:** `local_cases/`, ảnh chụp thật, cơ sở dữ liệu thật, `.env` riêng tư.
-- Caption UI chưa đủ: chưa có hard guard chặn file ảnh khi backend là Gemini/Router — đó là việc phải làm, không được coi caption là chặn.
+- Hard guard cầu nối: Gemini Web và Nakazasen Router không được gửi file ảnh/bản vẽ; C-AGENT thì được. Caption UI không thay thế chặn này.
 
 Chi tiết phân loại dữ liệu: `00_governance/DATA_POLICY.md`. Đánh giá tác động quyền riêng tư: `docs/security/PRIVACY_IMPACT_ASSESSMENT.md`. Không sao chép toàn bộ chính sách dữ liệu vào file này.
 

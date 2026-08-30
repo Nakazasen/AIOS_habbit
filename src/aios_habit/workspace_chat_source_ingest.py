@@ -168,51 +168,16 @@ def ingest_and_extract_bytes(
                 "metadata": {"file_size_bytes": file_size, "extension": ext, "raw_error": str(e)},
             }
 
-    # Handle CSV
     if ext == ".csv":
-        try:
-            csv_str = file_bytes.decode("utf-8", errors="replace").strip()
-            lines = [line.strip() for line in csv_str.splitlines() if line.strip()]
-            if not lines:
-                return {
-                    "ok": False,
-                    "filename": safe_name,
-                    "error_code": "empty",
-                    "owner_message": "Tập tin rỗng hoặc không có nội dung đọc được.",
-                    "text": "",
-                    "preview": "",
-                    "metadata": {"file_size_bytes": file_size, "extension": ext},
-                }
-            # Form a table-like readable preview and full text
-            text = "\n".join(lines)
-            if len(text.encode("utf-8")) > WORKSPACE_CHAT_SOURCE_TEXT_LIMIT_BYTES:
-                text = text.encode("utf-8")[:WORKSPACE_CHAT_SOURCE_TEXT_LIMIT_BYTES].decode("utf-8", errors="ignore")
-                text += "\n[Nội dung CSV đã bị cắt bớt do quá dài]"
-            preview_lines = lines[:15]
-            preview = "\n".join(preview_lines)
-            return {
-                "ok": True,
-                "filename": safe_name,
-                "error_code": None,
-                "owner_message": "Đã đọc và trích xuất thành công tài liệu.",
-                "text": text,
-                "preview": preview,
-                "metadata": {
-                    "file_size_bytes": file_size,
-                    "extension": ext,
-                    "row_count": len(lines),
-                },
-            }
-        except Exception as e:
-            return {
-                "ok": False,
-                "filename": safe_name,
-                "error_code": "malformed",
-                "owner_message": "Không thể đọc tập tin này. Vui lòng kiểm tra lại tập tin hoặc thử định dạng khác.",
-                "text": "",
-                "preview": "",
-                "metadata": {"file_size_bytes": file_size, "extension": ext, "raw_error": str(e)},
-            }
+        return {
+            "ok": False,
+            "filename": safe_name,
+            "error_code": "csv_not_in_knowledge_library",
+            "owner_message": "File CSV không thuộc thư viện hỏi–đáp. Đừng nạp log bảng tính vào kho chữ.",
+            "text": "",
+            "preview": "",
+            "metadata": {"file_size_bytes": file_size, "extension": ext},
+        }
 
     # Allowed complex document formats parsed via document_extractors
     supported_complex_exts = {".pdf", ".docx", ".ppt", ".pptx", ".msg", ".html", ".htm", ".png", ".jpg", ".jpeg", ".webp", ".bmp", ".tif", ".tiff"}

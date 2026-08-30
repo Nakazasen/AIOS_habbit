@@ -57,13 +57,12 @@ def test_ingest_txt_md_csv_success():
     assert res_md["ok"] is True
     assert res_md["text"] == "# Heading\nSome markdown *content* here."
 
-    # CSV Success
     csv_bytes = b"Name,Age,Role\nAlice,30,Dev\nBob,25,Tester"
     res_csv = ingest_and_extract_bytes(csv_bytes, "employees.csv")
-    assert res_csv["ok"] is True
-    assert "tài liệu" in res_csv["owner_message"]
-    assert "Alice,30,Dev" in res_csv["text"]
-    assert res_csv["metadata"]["row_count"] == 3
+    assert res_csv["ok"] is False
+    assert res_csv["error_code"] == "csv_not_in_knowledge_library"
+    assert "CSV" in res_csv["owner_message"]
+    assert res_csv["text"] == ""
 
 def test_ingest_xlsx_preserved():
     # XLSX should delegate to workspace_chat_excel

@@ -190,8 +190,8 @@ class TestDirectoryScanner:
         res = scan_local_directory(doc_dir, recursive=False)
         assert res.ok
         assert res.total_files == 16
-        assert res.supported_count() == 12
-        assert res.unsupported_count() == 4
+        assert res.supported_count() == 11
+        assert res.unsupported_count() == 5
         assert res.total_supported_size_bytes > 0
         assert ".txt" in res.extension_counts
         assert ".exe" in res.extension_counts
@@ -199,7 +199,8 @@ class TestDirectoryScanner:
         supported_names = {f.filename for f in res.supported_files}
         assert "note.txt" in supported_names
         assert "report.md" in supported_names
-        assert "data.csv" in supported_names
+        assert "data.csv" not in supported_names
+        assert "data.csv" in {f.filename for f in res.unsupported_files}
         assert "image.png" in supported_names
         assert "photo.jpg" in supported_names
         assert "doc.pdf" in supported_names

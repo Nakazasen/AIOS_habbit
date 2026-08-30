@@ -41,7 +41,6 @@ SUPPORTED_DOCUMENT_EXTENSIONS: set[str] = {
     ".txt",
     ".md",
     ".markdown",
-    ".csv",
     ".png",
     ".jpg",
     ".jpeg",
