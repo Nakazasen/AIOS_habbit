@@ -619,6 +619,13 @@ from aios_habit.ide_handoff_bridge import (
 from aios_habit.workspace_agent_bridge_client import WorkspaceAgentBridgeClient
 from aios_habit.workspace_agent_models import WorkspaceAgentRequest
 from aios_habit.workspace_agent_orchestrator import WorkspaceAgentOrchestrator
+from aios_habit.agent_draft_sop import (
+    DRAFT_STATUS_APPROVED,
+    DRAFT_STATUS_DRAFT,
+    FactoryFileProtectionError,
+    approve_draft_document,
+    compose_draft_from_evidence,
+)
 
 
 def _workspace_context_sources(notebook_sources, temp_sources):
@@ -3155,6 +3162,88 @@ else:
                     unsafe_allow_javascript=True,
                 )
 
+            def _render_agent_draft_from_evidence():
+                evidence_items = badge_data.get("evidence_items") if badge_data else None
+                if not evidence_items:
+                    return
+
+                draft_key = f"wsc_agent_draft_document_{active_conversation.id}"
+                with st.expander(t("agent_draft_sop_title", locale=current_ui_locale), expanded=False):
+                    st.caption(t("agent_draft_evidence_help", locale=current_ui_locale))
+                    doc_type = st.selectbox(
+                        t("agent_draft_document_type", locale=current_ui_locale),
+                        options=("sop", "report"),
+                        format_func=lambda value: t(
+                            "agent_draft_type_sop" if value == "sop" else "agent_draft_type_report",
+                            locale=current_ui_locale,
+                        ),
+                        key=f"wsc_agent_draft_type_{active_conversation.id}",
+                    )
+                    title = st.text_input(
+                        t("agent_draft_title_label", locale=current_ui_locale),
+                        value=t("agent_draft_sop_title", locale=current_ui_locale),
+                        key=f"wsc_agent_draft_title_{active_conversation.id}",
+                    )
+                    if st.button(
+                        t("agent_draft_compose_btn", locale=current_ui_locale),
+                        key=f"wsc_agent_draft_compose_{active_conversation.id}",
+                    ):
+                        st.session_state[draft_key] = compose_draft_from_evidence(
+                            evidence_pack=badge_data,
+                            doc_type=doc_type,
+                            title=title,
+                        )
+                        st.success(t("agent_draft_composed", locale=current_ui_locale))
+
+                    document = st.session_state.get(draft_key)
+                    if document is None:
+                        return
+
+                    status_label = t(
+                        "agent_draft_status_approved"
+                        if document.status == DRAFT_STATUS_APPROVED
+                        else "agent_draft_status_draft",
+                        locale=current_ui_locale,
+                    )
+                    st.caption(t("agent_draft_status_label", locale=current_ui_locale, status=status_label))
+                    st.warning(t("agent_draft_factory_protect_warn", locale=current_ui_locale))
+                    st.markdown(document.content_markdown)
+
+                    if document.status == DRAFT_STATUS_DRAFT:
+                        approver = st.text_input(
+                            t("agent_draft_approver_label", locale=current_ui_locale),
+                            key=f"wsc_agent_draft_approver_{active_conversation.id}",
+                        )
+                        notes = st.text_area(
+                            t("agent_draft_approval_notes_label", locale=current_ui_locale),
+                            key=f"wsc_agent_draft_notes_{active_conversation.id}",
+                        )
+                        st.caption(t("agent_draft_approval_help", locale=current_ui_locale))
+                        if st.button(
+                            t("agent_draft_approve_btn", locale=current_ui_locale),
+                            type="primary",
+                            key=f"wsc_agent_draft_approve_{active_conversation.id}",
+                        ):
+                            try:
+                                st.session_state[draft_key] = approve_draft_document(
+                                    document,
+                                    approver=approver,
+                                    notes=notes,
+                                )
+                                st.success(t("agent_draft_approved", locale=current_ui_locale))
+                                safe_rerun()
+                            except (FactoryFileProtectionError, ValueError) as error:
+                                st.error(str(error))
+                    else:
+                        st.success(t("agent_draft_approved", locale=current_ui_locale))
+                        st.download_button(
+                            t("agent_draft_download_btn", locale=current_ui_locale),
+                            data=document.content_markdown.encode("utf-8"),
+                            file_name=f"{document.draft_id}.md",
+                            mime="text/markdown",
+                            key=f"wsc_agent_draft_download_{active_conversation.id}",
+                        )
+
             def _render_workspace_results_and_evidence():
                 last_assistant_msg = next((m for m in reversed(messages) if m.role == "assistant"), None)
                 answer_text = last_assistant_msg.content if last_assistant_msg else t("send_question_prompt", locale=current_ui_locale)
@@ -3221,6 +3310,7 @@ else:
                             if item.get("location_info"):
                                 st.caption(f"📍 {item['location_info']}")
                             st.info(item["text"])
+                    _render_agent_draft_from_evidence()
 
             # Agent IDE / Developer Tools (Tạm thời ẩn theo yêu cầu)
             SHOW_AGENT_IDE_DEV_TOOLS = False

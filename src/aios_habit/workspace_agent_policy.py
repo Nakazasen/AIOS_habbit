@@ -53,7 +53,9 @@ def validate_request(*, workspace_root: str, instruction: str, scope_confirmed: 
 
 
 def authorize_tool(tool: str, args: dict[str, Any], *, approved: bool) -> PolicyDecision:
-    if tool in DISALLOWED_TOOLS or tool not in READ_TOOLS | APPROVAL_TOOLS:
+    if tool in {'delete_file', 'move_file'} or tool in DISALLOWED_TOOLS:
+        raise AgentPolicyError('Thao tác xóa hoặc di chuyển file nhà máy bị cấm tuyệt đối.')
+    if tool not in READ_TOOLS | APPROVAL_TOOLS:
         raise AgentPolicyError('Thao tác này chưa được Workspace Chat Agent IDE hỗ trợ.')
     if tool in APPROVAL_TOOLS and not approved:
         raise AgentPolicyError('Thao tác này cần phê duyệt rõ ràng trước khi thực hiện.')
