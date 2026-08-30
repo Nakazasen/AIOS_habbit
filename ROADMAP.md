@@ -38,6 +38,7 @@ Tài liệu tham khảo tầm nhìn dài hạn tương lai: [Production Intellig
 | Gate H hybrid canary | `DONE`: `RAG-V2-GATE-H-HYBRID-CANARY` — `ADVANCE_TO_CANARY_WITH_LIMITATIONS`; 87 test trọng điểm, 1094 test toàn bộ |
 | OCR tập dữ liệu & phục hồi nguồn RAG v2 | `DONE`: 70/70 nguồn sử dụng tốt, kiểm tra cục bộ nghiêm ngặt ĐẠT, 49 test trọng điểm và 1108 test toàn bộ |
 | Adaptive Reranking UX (003) | `IMPLEMENTED_PENDING_REAL_BENCHMARK` — 154 test trọng điểm ĐẠT, 1.175 test toàn bộ ĐẠT, schema v3, circuit breaker, fail-closed benchmark CLI; canary/production activation `BLOCKED` cho đến khi chạy benchmark trên model/corpus thật |
+| Vòng hồ sơ có bằng chứng (008), Gate 1A + US1 | `IMPLEMENTED_PENDING_CURRENT_FULL_SUITE` — migration/version/rollback, role-scope, activity hash-chain và màn hình danh sách/chi tiết case đã có; test trọng điểm đạt. Full suite Python 3.11 còn 2 lỗi đóng gói/VPS ngoài phạm vi nên chưa đóng Gate. |
 
 | A18 | `DONE` — Đã xác minh Chính sách Router thông minh & Sàn so sánh (Comparison Arena) |
 

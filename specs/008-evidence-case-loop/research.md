@@ -1,82 +1,147 @@
-# Nghiên cứu cho vòng hồ sơ–chuyên gia–bài học
+# Nghiên cứu và quyết định cho chương trình vòng vụ việc có bằng chứng
 
-## Quyết định 1: Tách hồ sơ cục bộ khỏi thư viện chữ dùng chung
+## 1. Nguồn và phương pháp kiểm chứng
 
-**Quyết định đề xuất**: tạo kho metadata hồ sơ cục bộ, transactional, dưới `local_cases/`; hồ sơ chỉ giữ tham chiếu evidence bất biến, digest và dữ liệu hiển thị đã scrub. Không dùng `library.sqlite` cho hồ sơ, chat history, CSV hay raw factory data.
+Quyết định trong tài liệu này dựa trên ba lớp bằng chứng:
 
-**Bằng chứng hiện trạng**:
+1. Checkout hiện tại tại commit `2bb7a5f` trên nhánh `gate1-local-case-sqlite`.
+2. Truy vấn Graphify với các node `Workspace`, `Case`, `evidence`, `learning_models.py`, `line_log_parser.py`, `call_cagent_prediction()` và các module Agent.
+3. Kiểm tra source/test trực tiếp; riêng Cổng 1 đã chạy 80 bài test tập trung và đều đạt.
 
-- `workspace_chat_app.py:1016-1021` và `:3288-3300` cho thấy “Lưu vào hồ sơ” còn là placeholder, không có persistence.
-- `notebook_case_actions.py:71-159` đã biết chuyển Q&A thành `Case` và pointers evidence không chứa excerpt nguồn; đây là logic có thể tái dùng sau khi validate đầu vào.
-- `case_store.py:57-87` rewrite JSONL theo read–mutate–truncate; `:27-54` nuốt lỗi đọc. Nó không đủ cho audit trail có trách nhiệm hay thao tác nguyên tử.
+Graphify đang dùng package `0.9.32` trong khi skill là `0.9.50`, nên graph chỉ dùng để định vị; kết luận trạng thái phải được xác nhận bằng source/test hiện tại.
 
-**Các phương án đã xét**:
+## 2. Quyết định 1: Dùng Workspace Chat làm một cửa vào duy nhất
 
-1. Vá `case_store.py` JSONL bằng write-then-replace: ít thay đổi nhưng không tự nhiên cho quan hệ case/review/lesson, recovery và nhiều thao tác trạng thái.
-2. Một `workspace_case_repository.py` dùng SQLite cục bộ và transaction: rõ ràng cho quan hệ, trạng thái và atomic commit; đổi lại phải có migration/test kỹ.
+**Quyết định**: thêm mục “Hồ sơ vụ việc” ngay trong Workspace Chat, không khôi phục Case Cockpit hay Studio.
 
-Chọn phương án 2, vì kho này cục bộ một máy và không phải `KnowledgeCollection` dùng chung. Không thêm NAS, sync đa máy hay một kiến trúc RAG khác.
+**Lý do**: ADR-0002 khóa Workspace Chat là giao diện được hỗ trợ. Người khác phải mở danh sách case, không hỏi lại RAG để dò case cũ.
 
-## Quyết định 2: Chuyên gia là cổng quyền, không phải prompt
+**Phương án đã xét**:
 
-**Quyết định đề xuất**: phản hồi chuyên gia là record append-only gắn case/evidence digest. AI chỉ được tạo câu hỏi hoặc draft; chỉ reviewer có role/scope đã cấu hình mới chuyển nhận định sang `confirmed` hoặc `rejected`.
+- Khôi phục Case Cockpit: có màn hình cũ nhưng phá ranh giới legacy và tạo hai tuyến sản phẩm.
+- Chỉ cho tìm case bằng chat: ít UI hơn nhưng không quản lý được trạng thái, assignment, review và timeline.
+- Mục “Hồ sơ vụ việc” trong Workspace Chat: giữ một tuyến, hiển thị vòng công việc rõ; đây là phương án chọn.
 
-**Bằng chứng hiện trạng**:
+## 3. Quyết định 2: Giữ kho hồ sơ riêng và bổ sung migration có version
 
-- Không có model/UI/route dedicated cho expert Q&A, identity, scope hay transition trong Workspace Chat.
-- `learning_models.py:11-96` có `SeniorLearningCard` và trạng thái `draft/reviewed/confirmed`, nhưng chỉ là JSONL detached; không có UI integration.
-- `agent_learning.py:31-164` có candidate hash và promotion guard nhưng dựa vào evidence registry khác, không phải case pipeline hiện tại.
+**Quyết định**: tiếp tục dùng `local_cases/workspace_cases.sqlite`, tách khỏi `library.sqlite` và `line_events.sqlite`; trước khi thêm bảng/trường phải có `schema_migrations`, online backup, kiểm tra toàn vẹn và rollback.
 
-**Hệ quả**: không nối thẳng hai module learning cũ vào UI. Tạo adapter/migration rõ ràng, giữ provenance của record cũ nếu import sau này được duyệt. Không AI nào tự set `confirmed`.
+**Lý do**: Cổng 1 đã có transaction tốt nhưng schema hiện được tạo bằng `CREATE TABLE IF NOT EXISTS`, chưa đủ cho tương thích dài hạn. `docs/contracts/PERSISTED_DATA_COMPATIBILITY.md` yêu cầu version migration trước khi tuyên bố tương thích tại chỗ.
 
-## Quyết định 3: “Học hỏi” là promotion có kiểm soát, không phải tự train
+**Phương án đã xét**:
 
-**Quyết định đề xuất**: bài học chỉ được tạo sau phản hồi `confirmed`, có reviewer, lý do, case/evidence digest. Promotion không tự re-embed, không thay `library.sqlite`, không gửi cloud và không đổi mô hình.
+- Tiếp tục thêm cột khi khởi động: nhanh nhưng khó rollback và dễ lệch schema.
+- Chuyển toàn bộ sang JSONL: không phù hợp quan hệ case/review/lesson/prediction và transaction nhiều bảng.
+- Migration SQLite tuần tự, backup trước đổi schema: thêm công việc nhưng kiểm toán và phục hồi rõ; đây là phương án chọn.
 
-**Bằng chứng hiện trạng**: `agent_learning.py` đã tách candidate/promotion nhưng chưa được Workspace Chat gọi; test `test_learning_memory.py` chỉ chứng minh persistence/model, không phải vòng end-to-end.
+## 4. Quyết định 3: Case là bộ điều phối công việc, không phải kho chat
 
-**Hệ quả**: đo “học được” bằng khả năng tra cứu provenance của bài học, không đo bằng tuyên bố tăng độ chính xác mô hình.
+**Quyết định**: case lưu metadata, state, assignment, digest và con trỏ; câu hỏi/câu trả lời/đoạn trích gốc vẫn nằm ở store tương ứng và được phân giải qua `trace_id`.
 
-## Quyết định 4: Pilot line là event nghi vấn trong hồ sơ
+**Lý do**: chính sách dữ liệu ưu tiên mã băm/tham chiếu thay vì lưu toàn văn. Nếu trace mất, UI phải nói thiếu bằng chứng thay vì copy hoặc tái tạo bằng AI.
 
-**Quyết định đề xuất**: nhận event qua parser riêng, chụp provenance bất biến trước khi đưa vào case, giữ mọi output `suspected`; chuyên gia phải xác nhận relevance trước khi nó thành nhận định hay bài học.
+**Phương án đã xét**:
 
-**Bằng chứng hiện trạng**:
+- Copy toàn bộ chat vào case: dễ xem nhưng nhân đôi dữ liệu nhạy cảm và lệch chính sách.
+- Chỉ lưu case ID: quá ít để vận hành.
+- Lưu metadata + con trỏ + digest + timeline: cân bằng khả năng dùng và quyền riêng tư; đây là phương án chọn.
 
-- `line_log_parser.py:22-24,196-219,259-320` tách CSV vào `line_events.sqlite`, nhận Jam/C-call/LSU camera và đặt `suspected`.
-- `workspace_chat_rag_v2_adapter.py:2401-2492` gắn evidence line local-only cả khi RAG không sẵn.
-- `line_log_parser.py:430-441` fallback 5 event mới nhất khi không match; nếu không có expert check, có thể đưa evidence không liên quan vào hồ sơ.
-- `line_log_parser.py:237-247` chỉ có `source_name`, chưa có source digest/version/collector đầy đủ.
+## 5. Quyết định 4: Phản hồi chuyên gia là record quyền hạn append-only
 
-**Hệ quả**: cổng pilot phải thêm contract provenance và relevance review trước, không mở overlay. CSV vào parser vẫn không được đi library RAG.
+**Quyết định**: tạo `ExpertRequest` và `ExpertReview` gắn role/scope cấu hình cục bộ. AI chỉ tạo draft/request; service mới có quyền transition sau khi kiểm role, scope, reason và evidence digest.
 
-## Quyết định 5: LSU prediction chỉ là readiness rồi shadow, không phải feature code đơn lẻ
+**Lý do**: `learning_models.py` và `agent_learning.py` có mầm candidate/review nhưng chưa nối vào case/UI. Boolean `approved` từ caller không đủ làm thẩm quyền.
 
-**Quyết định đề xuất**: cổng LSU trước hết persist một readiness manifest có owner, nguồn lịch sử, nhãn outcome, split/replay, tiêu chí quality và shadow reviewer. Nếu thiếu một mục, trạng thái là `blocked`; không có model run, production alert hoặc control.
+**Phương án đã xét**:
 
-**Bằng chứng hiện trạng**:
+- Tin trạng thái UI: đơn giản nhưng dễ giả quyền.
+- Dùng prompt yêu cầu AI tự xác nhận vai trò: không phải bảo mật.
+- Role/scope registry cục bộ + service guard + audit append-only: đây là phương án chọn.
 
-- `cagent_api.py:42-96` chỉ là HTTP client tên `call_cagent_prediction`; nó không có train/evaluate, label hay shadow run.
-- Parser LSU camera là dữ liệu input có thể có, không phải nhãn lỗi hay chứng minh dự đoán.
+## 6. Quyết định 5: Vòng học là case-memory retrieval riêng, không phải tự huấn luyện
 
-**Hệ quả**: thực hiện code readiness chỉ sau khi owner chọn schema/nguồn data. Bất kỳ model/shadow runtime nào phải là gate follow-up, được review riêng.
+**Quyết định**: bài học `promoted` được lập chỉ mục trong kho case-memory riêng và truy xuất có citation đến case/review/evidence. Không ghi vào `library.sqlite`, không tự fine-tune, không dùng candidate như sự thật.
 
-## Quyết định 6: Agent tự trị chỉ tự thu thập/đề xuất, không tự thực thi
+**Lý do**: nếu chỉ lưu thẻ mà Workspace Chat không tìm lại được thì chưa có vòng học. Nếu trộn bài học với SOP chuẩn thì người dùng dễ nhầm kinh nghiệm case với tài liệu quy chuẩn.
 
-**Quyết định đề xuất**: sau case→expert→lesson, agent chỉ tạo `ActionProposal` và document draft có case/evidence digest. Approval tạo output mới trong allowlisted output root; không gọi command/bridge, không write factory/source/PLC, không delete/overwrite.
+**Phương án đã xét**:
 
-**Bằng chứng hiện trạng**:
+- Ghi thẳng vào thư viện RAG: dễ reuse nhưng làm lẫn thẩm quyền.
+- Chỉ có màn hình danh sách bài học: an toàn nhưng không hỗ trợ case mới.
+- Retriever riêng, nhãn “Bài học đã xác nhận”, provenance đầy đủ: đây là phương án chọn.
 
-- `agent_draft_sop.py:127-328` có draft, approved và chặn write chưa approved/overwrite; UI `workspace_chat_app.py:3165-3245` chỉ download sau người duyệt nhập tên.
-- `agent_draft_sop.py:141-144` vẫn nhận evidence rỗng ở API; chưa đủ để gọi là evidence-bound.
-- `workspace_agent_policy.py:55-66` tin boolean `approved` từ caller; `workspace_agent_orchestrator.py:188-203` có thể chuyển command tùy ý đến bridge. Đây không thể dùng cho nghiệp vụ nhà máy.
-- Agent IDE bị disable tại `workspace_chat_app.py:3315-3316`; `workspace_agent_bridge_client.py:18-72` là bridge developer/local code, không phải tooling nhà máy.
+## 7. Quyết định 6: Điều tra line là trợ lý chủ động, không phải bộ chẩn đoán
 
-**Hệ quả**: không bật flag, không tái dùng bridge/command. Feature chỉ mở proposal/export, thêm policy binding durable và kiểm no-evidence fail-closed.
+**Quyết định**: xây timeline, nhóm lặp, gap checklist và câu hỏi chuyên gia từ log/tài liệu; mọi event giữ `suspected` cho đến khi con người review relevance. Mapping sơ đồ là adapter có version và phê duyệt riêng.
 
-## Regression bắt buộc
+**Lý do**: `line_log_parser.py` đã có parser/kho log nhưng fallback event gần nhất có thể tạo liên quan giả. Pilot phải chứng minh từ case thật đến báo cáo đã duyệt.
 
-- Gate B: CSV không vào `library.sqlite`.
-- Gate C: Gemini Web/Nakazasen Router không nhận ảnh/bản vẽ; C-AGENT là route duy nhất được policy hiện hữu cho phép nhận chúng.
-- Parser line giữ `suspected`, không chẩn đoán.
-- `bge_m3_hybrid` và `activation_state` không thay đổi; không tuyên bố RAG production-qualified từ các test này.
+**Phương án đã xét**:
+
+- Cho LLM kết luận nguyên nhân: không có bằng chứng và nguy hiểm.
+- Chỉ hiển thị log thô: không tạo giá trị hơn công cụ xem log.
+- Gom manh mối, hỏi phần thiếu, hỗ trợ review và báo cáo: tạo giá trị công việc mà vẫn giữ con người làm thẩm quyền; đây là phương án chọn.
+
+## 8. Quyết định 7: Tách Agent thành hai miền quyền
+
+**Quyết định**:
+
+1. **Agent artifact theo case**: tạo báo cáo, SOP, hồ sơ thiết kế công đoạn, bảng tính và sơ đồ mới trong output root có version; không sửa nguồn nhà máy.
+2. **Agent kỹ thuật phần mềm**: dùng task pack, workspace code riêng, proposal diff/command và observed test; có thể áp dụng patch sau phê duyệt nhưng không được truy cập dữ liệu nhà máy mặc định.
+
+**Lý do**: repo đã có `agent_draft_sop.py`, `agent_task_pack.py`, `agent_result_import.py` và nền Workspace Agent proposal/approval. Gộp hai miền sẽ biến quyền sửa code thành đường tắt chạm dữ liệu/line.
+
+**Phương án đã xét**:
+
+- Chỉ cho Agent viết Markdown: an toàn nhưng không đạt ý đồ trợ lý công việc.
+- Một Agent có toàn quyền: mạnh nhưng không kiểm toán và không phù hợp nhà máy.
+- Capability registry theo loại artifact/risk tier/verifier/approver, hai workspace tách biệt: đây là phương án chọn.
+
+## 9. Quyết định 8: Dự đoán dùng lát cắt LSU/Iris trước, lõi adapter dùng lại
+
+**Quyết định**: xây hợp đồng domain-neutral cho asset, measurement, outcome, dataset, feature, model, prediction; triển khai adapter LSU/Iris và đóng pilot trước khi thêm Drum/DLP.
+
+**Lý do**: làm ba miền đồng thời sẽ che lỗi join/nhãn và không tạo được bằng chứng end-to-end. Adapter chung tránh hard-code LSU trong lõi nhưng không giả định dữ liệu ba miền giống nhau.
+
+**Phương án đã xét**:
+
+- Một model chung cho LSU/Drum/DLP ngay từ đầu: không có cơ sở dữ liệu.
+- Ba pipeline hoàn toàn riêng: nhanh lúc đầu nhưng nhân ba audit/migration.
+- Lõi quản trị chung + adapter miền + LSU/Iris làm vertical slice: đây là phương án chọn.
+
+## 10. Quyết định 9: Baseline thống kê trước, model có giám sát sau
+
+**Quyết định**: so sánh ít nhất ba nhóm theo cùng giao thức đóng băng:
+
+1. Baseline hiện tại/không cảnh báo.
+2. Rule/SPC đã được kỹ sư review, ưu tiên EWMA/CUSUM cho drift nhỏ khi giả định dữ liệu phù hợp.
+3. Model có giám sát đơn giản, giải thích được; chỉ thêm dependency `scikit-learn` trong extra riêng sau khi data gate đạt.
+
+**Lý do**: NIST mô tả EWMA/CUSUM là kỹ thuật theo dõi drift từ dữ liệu lịch sử đại diện; scikit-learn cảnh báo dữ liệu time-ordered phải chia theo thời gian để tránh train bằng tương lai. Probability cần được kiểm calibration trên tập tách biệt, không chỉ đo accuracy.
+
+**Nguồn chính thức**:
+
+- [NIST về kỹ thuật kiểm soát quá trình](https://www.itl.nist.gov/div898/handbook/pmc/section1/pmc12.htm)
+- [NIST về EWMA](https://www.itl.nist.gov/div898/handbook/pmc/section3/pmc324.htm)
+- [scikit-learn về `TimeSeriesSplit`](https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.TimeSeriesSplit.html)
+- [scikit-learn về calibration xác suất](https://scikit-learn.org/stable/modules/calibration.html)
+- [scikit-learn về permutation importance](https://scikit-learn.org/stable/modules/permutation_importance)
+
+Không khóa model thắng trước khi có dataset profile. Model được chọn bằng chi phí vận hành của false alarm/missed detection, lead time, calibration và độ ổn định theo thời gian/máy.
+
+## 11. Quyết định 10: Shadow tự mở case, không tự cảnh báo nhà máy
+
+**Quyết định**: một `RiskAssessment` vượt threshold đã duyệt chỉ tạo/cập nhật case `prediction` trong queue cục bộ, có dedup/cooldown. Nó không gọi PLC, không gửi production alert và không tự tạo nguyên nhân.
+
+**Lý do**: case prediction cần outcome thật để biết cảnh báo đúng/sai và tạo dữ liệu học tiếp theo. Tạo case là hành động tổ chức công việc có thể rollback; điều khiển line thì không.
+
+## 12. Quyết định 11: Các cổng theo phụ thuộc, không dùng một blocker để dừng toàn chương trình
+
+**Quyết định**: hoàn tất tuần tự trong từng track; các track độc lập có thể chuẩn bị tài liệu/test song song nhưng không đóng gate sau nếu gate phụ thuộc chưa đạt.
+
+- Case UI → chuyên gia → learning → line pilot.
+- Capability registry → artifact Agent → coding Agent.
+- Data contract → LSU dataset → model evaluation → shadow → alert có duyệt → Drum/DLP.
+- Gate A NAS chạy độc lập và chỉ ảnh hưởng tuyên bố vận hành thư viện chung.
+
+Thiếu dữ liệu thật có thể chặn prediction/pilot nhưng không chặn việc hoàn thiện case UI, migration hoặc policy Agent.

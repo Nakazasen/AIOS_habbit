@@ -179,6 +179,7 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
         "to_check": "Cần kiểm tra lại",
         "next_actions": "Việc nên làm tiếp",
         "save_to_case": "Lưu vào hồ sơ",
+        "case_workspace": "Hồ sơ vụ việc",
         "explain_conclusion": "Xem đoạn xem trước sẽ dùng ở bước sau",
         "ai_answered": "AI đã trả lời",
         "ai_not_answered": "AI chưa trả lời",
@@ -188,7 +189,6 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
         "sources_sent": "Nguồn gửi cùng câu hỏi",
         "evidence_snippets_detail": "Chi tiết trích đoạn bằng chứng",
         "source_changed_warning": "Nguồn đang bật đã thay đổi. Hãy xem lại danh sách rồi bấm Hỏi AI lần nữa.",
-        "save_case_placeholder": "Chưa lưu dữ liệu. Tính năng ‘Lưu vào hồ sơ’ hiện đang ở chế độ mô phỏng.",
 
         # Bridge & Status Labels
         "bridge_direct_ready": "Cầu nối sẵn sàng (Trực tiếp)",
@@ -683,6 +683,7 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
         "to_check": "要確認事項",
         "next_actions": "推奨アクション",
         "save_to_case": "ケースに保存",
+        "case_workspace": "Hồ sơ vụ việc",
         "explain_conclusion": "プレビューを確認",
         "ai_answered": "AI回答済み",
         "ai_not_answered": "AI未回答",
@@ -692,7 +693,6 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
         "sources_sent": "質問と共に送信されたソース",
         "evidence_snippets_detail": "根拠スニペット詳細",
         "source_changed_warning": "有効なソースが変更されました。確認の上、再度質問してください。",
-        "save_case_placeholder": "データは保存されていません。「ケースに保存」はシミュレーションモードです。",
 
         # Bridge & Status Labels
         "bridge_direct_ready": "ブリッジ準備完了（直接）",
@@ -1187,6 +1187,7 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
         "to_check": "待核对项",
         "next_actions": "后续建议行动",
         "save_to_case": "保存至案件库",
+        "case_workspace": "Hồ sơ vụ việc",
         "explain_conclusion": "查看后续使用的预览片段",
         "ai_answered": "AI已回答",
         "ai_not_answered": "AI未回答",
@@ -1196,7 +1197,6 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
         "sources_sent": "随问题附带的来源",
         "evidence_snippets_detail": "证据摘录详情",
         "source_changed_warning": "已启用的来源发生变动。请核对列表后重新提问。",
-        "save_case_placeholder": "数据未保存。“保存至案件库”当前为模拟模式。",
 
         # Bridge & Status Labels
         "bridge_direct_ready": "桥接就绪（直连）",

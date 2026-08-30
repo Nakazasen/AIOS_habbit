@@ -26,4 +26,4 @@ Các ADR mới nhận số thứ tự tăng dần (có đệm số 0) và bắt 
 4. [ADR-0004: Brain Gateway sở hữu các quyết định quyền riêng tư (Brain Gateway owns privacy decisions)](0004-brain-gateway-privacy-ownership.md)
 5. [ADR-0005: Router là phụ thuộc định tuyến nhà cung cấp (Router is a provider-routing dependency)](0005-router-provider-routing-boundary.md)
 6. [ADR-0006: Dữ liệu runtime riêng tư luôn nằm ngoài Git (Private runtime data stays outside Git)](0006-private-runtime-data-outside-git.md)
-
+7. [ADR-0007: Ranh giới vòng hồ sơ có bằng chứng](0007-evidence-case-loop-boundaries.md)

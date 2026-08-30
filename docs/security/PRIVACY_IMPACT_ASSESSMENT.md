@@ -15,6 +15,9 @@ Review cadence: Before any new external recipient, data class or cloud route
 |---|---|---|---|---|
 | Sổ ghi chép, tin nhắn và nguồn Workspace Chat | JSONL dưới `local_cases/workspace_chat/` (được gitignore) | Mặc định không có | Dùng cục bộ | Dữ liệu hệ thống tệp do chủ sở hữu tự quản lý; chưa có bộ máy xóa/lưu tự động được kiểm chứng |
 | Chunk / Chỉ mục RAG v2 | Đường dẫn SQLite cục bộ do caller chọn | Mặc định không có | Truy xuất cục bộ | Có thể tái tạo từ đầu vào nguồn/chunk có sẵn nơi caller lưu giữ |
+| Hồ sơ vụ việc, review và bài học | SQLite dưới `local_cases/` | Mặc định không có | Chỉ metadata, role/scope, digest và locator đã làm sạch | Không lưu chat/excerpt/raw log; retention tự động chưa được kiểm chứng |
+| Dữ liệu/model dự đoán và shadow outcome | SQLite/artifact cục bộ do chủ sở hữu quản lý | Mặc định không có | Chỉ mở sau Data Gate và phê duyệt shadow | Không có connector điều khiển nhà máy; dataset/model thật không vào Git |
+| Artifact Agent | Proposal, version, approval và output cục bộ | Mặc định không có | AI chỉ tạo nháp; con người có role/scope duyệt | Không ghi đè nguồn; output root phải allowlist |
 | Văn bản nguồn `local_only` / `confidential` | Chỉ dùng cục bộ | Bị chặn | Gateway từ chối cứng (hard deny) | Do chủ sở hữu tự quản lý |
 | Văn bản nguồn `unknown` / `machine_only` | Mặc định cục bộ | Provider tùy chọn | Gateway yêu cầu sự đồng ý ràng buộc với toàn bộ tập nguồn, đích đến và mục đích; văn bản nhạy cảm gửi ra ngoài vẫn bị làm sạch | Do chủ sở hữu tự quản lý; sự đồng ý là ủy quyền yêu cầu, không phải chính sách lưu trữ |
 | Văn bản nguồn `cloud_safe` / `public` | Cục bộ hoặc provider tùy chọn | Provider đã cấu hình | Phê duyệt từ Gateway + luồng yêu cầu tường minh thông thường | Điều khoản / lưu trữ của provider là bên ngoài và bắt buộc phải được chủ sở hữu xem xét |
@@ -54,4 +57,3 @@ Tuyến thực tế sử dụng đích đến `workspace_chat_external_router` v
 - [Chính sách dữ liệu (Data policy)](../../00_governance/DATA_POLICY.md)
 - [Mô hình mối đe dọa (Threat model)](THREAT_MODEL.md)
 - [Vận hành và sự cố (Operations and incidents)](../operations/INCIDENT_RESPONSE.md)
-

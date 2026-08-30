@@ -324,10 +324,14 @@ def test_app_wiring_structure():
     assert preview_idx != -1
     assert text_idx != -1
 
-    # Phase 2C: failure path reports result.owner_message and does not save/enable/rerun.
+    # Phase 2C: failure path sanitizes result.owner_message and does not save/enable/rerun.
     failure_idx = source.find("else:", rerun_xlsx_idx)
-    error_idx = source.find("st.error(result.owner_message)", rerun_xlsx_idx)
+    error_idx = source.find('"Không thể đọc bảng tính đã chọn."', rerun_xlsx_idx)
     assert error_idx != -1
+    sanitizer_idx = source.rfind("safe_vietnamese_ui_message(", rerun_xlsx_idx, error_idx)
+    owner_message_idx = source.rfind("result.owner_message", rerun_xlsx_idx, error_idx)
+    assert sanitizer_idx != -1
+    assert owner_message_idx != -1
     assert source.find("save_temporary_source", error_idx, error_idx + 120) == -1
     assert source.find("set_source_enabled", error_idx, error_idx + 120) == -1
     assert source.find("safe_rerun", error_idx, error_idx + 120) == -1

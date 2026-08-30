@@ -85,6 +85,50 @@ def test_audit_fails_on_secret_pattern(tmp_path):
     assert errors
 
 
+def test_audit_skips_private_runtime_and_company_document_roots(tmp_path):
+    for filename in [
+        "CONSTITUTION.md",
+        "ROADMAP.md",
+        "ARCHITECTURE.md",
+        "PROJECT_HANDOVER.md",
+        "CHANGELOG.md",
+        "README.md",
+        "pyproject.toml",
+    ]:
+        (tmp_path / filename).write_text("x", encoding="utf-8")
+    for private_root in ("local_cases", "local_runs", "Tài liệu của tất cả dòng máy"):
+        path = tmp_path / private_root / "private.md"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text("api_key` = private-value", encoding="utf-8")
+
+    errors, _warnings = audit_repo(tmp_path)
+
+    assert errors == []
+
+
+def test_audit_fails_closed_when_git_repo_cannot_be_enumerated(tmp_path, monkeypatch):
+    for filename in [
+        "CONSTITUTION.md",
+        "ROADMAP.md",
+        "ARCHITECTURE.md",
+        "PROJECT_HANDOVER.md",
+        "CHANGELOG.md",
+        "README.md",
+        "pyproject.toml",
+    ]:
+        (tmp_path / filename).write_text("x", encoding="utf-8")
+    (tmp_path / ".git").mkdir()
+
+    def fail_git(*_args, **_kwargs):
+        raise FileNotFoundError
+
+    monkeypatch.setattr("aios_habit.audit.subprocess.run", fail_git)
+
+    errors, _warnings = audit_repo(tmp_path)
+
+    assert errors == ["không thể liệt kê đầy đủ tệp thuộc phạm vi kiểm toán"]
+
+
 def test_audit_fails_on_missing_evidence(tmp_path):
     for filename in [
         "CONSTITUTION.md",

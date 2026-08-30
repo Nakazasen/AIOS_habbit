@@ -12,7 +12,9 @@ Chủ sở hữu chọn **thư mục dùng chung**. Kho nằm trong `aios_thu_vi
 
 ### Hồ sơ vụ cục bộ từ Workspace Chat
 
-Nút “Lưu vào hồ sơ” chỉ lưu metadata cục bộ vào `local_cases/workspace_cases.sqlite`: mã cuộc trò chuyện, mã tin nhắn trả lời, mã `trace` bằng chứng và các tham chiếu nguồn/digest. Kho này tách hoàn toàn khỏi `library.sqlite` và `line_events.sqlite`, không đồng bộ nhiều máy. Transaction SQLite ghi hồ sơ, tham chiếu và audit event cùng lúc; lỗi giữa chừng không tạo hồ sơ nửa vời. Hồ sơ không copy câu hỏi, câu trả lời hay đoạn trích nguồn thô; người dùng xem lại chúng trong Workspace Chat qua `trace` gốc. Đây mới là cổng lưu hồ sơ, chưa bao gồm xác nhận chuyên gia, promotion bài học hay quyền agent thực thi.
+Nút “Lưu vào hồ sơ” chỉ lưu thông tin mô tả cục bộ vào `local_cases/workspace_cases.sqlite`: mã cuộc trò chuyện, mã tin nhắn trả lời, mã `trace` bằng chứng và các tham chiếu nguồn/digest. Kho này tách hoàn toàn khỏi `library.sqlite` và `line_events.sqlite`, không đồng bộ nhiều máy. Schema có version, lịch sử migration, Online Backup, `quick_check` và rollback khi lỗi. Transaction SQLite ghi hồ sơ, tham chiếu, activity có chuỗi digest và đầu chuỗi đáng tin cậy cùng lúc; lỗi giữa chừng không tạo hồ sơ nửa vời.
+
+Workspace Chat có mục “Hồ sơ vụ việc” để lọc, xem chi tiết, dòng thời gian, checklist, người phụ trách, chuyển trạng thái và gắn thêm tham chiếu bằng chứng. Actor cục bộ do ứng dụng kiểm soát; bản một người dùng dùng `local_admin` với grant điều tra/chuyên gia tường minh trong scope `general`, không coi `admin` là wildcard. Hồ sơ không sao chép câu hỏi, câu trả lời, đoạn trích, ảnh, log thô hoặc đường dẫn hệ thống; `trace` chỉ được phân giải lúc đọc và khi mất phải hiển thị là thiếu. Phần này chưa bao gồm luồng thẩm định chuyên gia, promotion bài học, pilot line, dự đoán hoặc quyền Agent thực thi.
 
 ## Workspace Chat: chuẩn bị nguồn tăng dần (2026-08-22)
 

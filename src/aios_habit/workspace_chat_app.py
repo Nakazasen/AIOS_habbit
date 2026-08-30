@@ -316,6 +316,8 @@ from aios_habit.workspace_chat_store import (
 from aios_habit.evidence_trace import build_evidence_trace_from_citations
 from aios_habit.workspace_case_service import CaseValidationError, WorkspaceCaseService
 from aios_habit.workspace_case_repository import WorkspaceCaseRepositoryError
+from aios_habit.workspace_case_ui import render_case_workspace, safe_case_error_message
+from aios_habit.ui_safety import safe_vietnamese_ui_message
 from aios_habit.workspace_chat_models import (
     DocumentNotebook,
     WorkspaceConversation,
@@ -831,6 +833,8 @@ if "wsc_global_ui_locale" not in st.session_state:
     st.session_state.wsc_global_ui_locale = "vi"
 if "wsc_global_answer_language" not in st.session_state:
     st.session_state.wsc_global_answer_language = "vi"
+if "wsc_show_case_workspace" not in st.session_state:
+    st.session_state.wsc_show_case_workspace = False
 
 def safe_rerun():
     try:
@@ -1043,7 +1047,7 @@ def save_current_answer_to_case(
             expected_conversation_id=conversation_id,
         )
     except (CaseValidationError, WorkspaceCaseRepositoryError) as error:
-        st.session_state.wsc_action_error = str(error)
+        st.session_state.wsc_action_error = safe_case_error_message(error)
         safe_rerun()
         return False
 
@@ -1177,6 +1181,41 @@ def update_temporary_source_privacy_for_active_conversation(conversation_id: str
     return True
 
 active_nb_id = st.session_state.wsc_active_notebook_id
+if st.sidebar.button(f"🗂️ {t('case_workspace', locale=st.session_state.get('wsc_global_ui_locale', 'vi'))}", key="wsc_open_case_workspace", use_container_width=True):
+    st.session_state.wsc_show_case_workspace = True
+    safe_rerun()
+
+if st.session_state.wsc_show_case_workspace:
+    def _close_case_workspace() -> None:
+        st.session_state.wsc_show_case_workspace = False
+        set_query_params(case=None)
+        safe_rerun()
+
+    def _open_case_trace(resolution) -> None:
+        trace = resolution.trace
+        if trace is None:
+            st.session_state.wsc_action_error = "Dấu vết bằng chứng gốc không còn tồn tại."
+            safe_rerun()
+            return
+        conversation_id = str(getattr(trace, "conversation_id", "") or "")
+        notebook_id = str(getattr(trace, "notebook_id", "") or active_nb_id or "")
+        if not conversation_id or not notebook_id:
+            st.session_state.wsc_action_error = "Dấu vết gốc thiếu định danh sổ hoặc cuộc trò chuyện."
+            safe_rerun()
+            return
+        st.session_state.wsc_active_notebook_id = notebook_id
+        st.session_state.wsc_active_conversation_id = conversation_id
+        st.session_state.wsc_show_case_workspace = False
+        set_query_params(nb=notebook_id, conv=conversation_id, case=None)
+        safe_rerun()
+
+    render_case_workspace(
+        WorkspaceCaseService(),
+        on_close=_close_case_workspace,
+        on_open_trace=_open_case_trace,
+    )
+    st.stop()
+
 if active_nb_id is None:
     current_ui_locale = st.session_state.get("wsc_global_ui_locale", "vi")
     current_answer_language = st.session_state.get("wsc_global_answer_language", "vi")
@@ -1201,10 +1240,10 @@ if active_nb_id is None:
     render_notebook_header(locale=current_ui_locale)
 
     if "wsc_action_message" in st.session_state and st.session_state.wsc_action_message:
-        st.success(st.session_state.wsc_action_message)
+        st.success(safe_vietnamese_ui_message(st.session_state.wsc_action_message, "Đã hoàn tất thao tác."))
         st.session_state.wsc_action_message = None
     if "wsc_action_error" in st.session_state and st.session_state.wsc_action_error:
-        st.error(st.session_state.wsc_action_error)
+        st.error(safe_vietnamese_ui_message(st.session_state.wsc_action_error, "Không thể hoàn tất thao tác lúc này."))
         st.session_state.wsc_action_error = None
 
     with st.expander(t("shared_library_expander", locale=current_ui_locale), expanded=True):
@@ -1227,7 +1266,9 @@ if active_nb_id is None:
                     title=t("shared_library_choose", locale=current_ui_locale),
                 )
                 if picker_error:
-                    st.session_state.wsc_action_error = picker_error
+                    st.session_state.wsc_action_error = safe_vietnamese_ui_message(
+                        picker_error, "Không thể mở thư mục đã chọn."
+                    )
                 elif chosen_folder:
                     st.session_state[path_key] = chosen_folder
                 safe_rerun()
@@ -1886,10 +1927,10 @@ else:
 
         with st.sidebar:
             if "wsc_action_message" in st.session_state and st.session_state.wsc_action_message:
-                st.success(st.session_state.wsc_action_message)
+                st.success(safe_vietnamese_ui_message(st.session_state.wsc_action_message, "Đã hoàn tất thao tác."))
                 st.session_state.wsc_action_message = None
             if "wsc_action_error" in st.session_state and st.session_state.wsc_action_error:
-                st.error(st.session_state.wsc_action_error)
+                st.error(safe_vietnamese_ui_message(st.session_state.wsc_action_error, "Không thể hoàn tất thao tác lúc này."))
                 st.session_state.wsc_action_error = None
 
             def on_toggle_source(scope: str, source_id: str, enabled: bool):
@@ -1932,10 +1973,10 @@ else:
     else:
         with st.sidebar:
             if "wsc_action_message" in st.session_state and st.session_state.wsc_action_message:
-                st.success(st.session_state.wsc_action_message)
+                st.success(safe_vietnamese_ui_message(st.session_state.wsc_action_message, "Đã hoàn tất thao tác."))
                 st.session_state.wsc_action_message = None
             if "wsc_action_error" in st.session_state and st.session_state.wsc_action_error:
-                st.error(st.session_state.wsc_action_error)
+                st.error(safe_vietnamese_ui_message(st.session_state.wsc_action_error, "Không thể hoàn tất thao tác lúc này."))
                 st.session_state.wsc_action_error = None
 
     _legacy_connector_panel = """Legacy header bridge panel relocated into the composer toolbar.
@@ -1995,7 +2036,10 @@ else:
             and status_matches_current_endpoint
         ):
             checked_at = connector_status.get("checked_at", "")
-            detail = connector_status.get("detail", "")
+            detail = safe_vietnamese_ui_message(
+                connector_status.get("detail", ""),
+                "Không thể hiển thị chi tiết kiểm tra kết nối một cách an toàn.",
+            )
             message = f"Kiểm tra lúc {checked_at}: {detail}" if checked_at else detail
             if connector_status.get("state") == "ok":
                 st.success(message)
@@ -2051,12 +2095,17 @@ else:
                             "endpoint": cagent_endpoint,
                         }
                     else:
-                        st.session_state.wsc_action_error = check.error_message
+                        st.session_state.wsc_action_error = safe_vietnamese_ui_message(
+                            check.error_message, "Không thể xác minh gói đầu ra đã chọn."
+                        )
                         st.session_state[connector_status_key] = {
                             "backend": "cagent_api",
                             "state": "error",
                             "checked_at": datetime.now().strftime("%H:%M:%S"),
-                            "detail": check.error_message,
+                            "detail": safe_vietnamese_ui_message(
+                                check.error_message,
+                                "Không thể kết nối tới dịch vụ đã chọn.",
+                            ),
                             "endpoint": cagent_endpoint,
                         }
                 safe_rerun()
@@ -2321,7 +2370,9 @@ else:
                                     st.session_state.wsc_last_ai_badge = badge
                             else:
                                 if err_msg:
-                                    st.session_state.wsc_action_error = err_msg
+                                    st.session_state.wsc_action_error = safe_vietnamese_ui_message(
+                                        err_msg, "Không thể hoàn tất yêu cầu AI lúc này."
+                                    )
                                 st.session_state.wsc_last_ai_badge = badge
                         safe_rerun()
                     elif request_future is not None:
@@ -2864,7 +2915,9 @@ else:
                             if st.button(t("choose_folder", locale=current_ui_locale), key=f"btn_pick_folder_{active_conversation.id}", use_container_width=True):
                                 chosen_folder, picker_error = choose_local_folder()
                                 if picker_error:
-                                    st.session_state.wsc_action_error = picker_error
+                                    st.session_state.wsc_action_error = safe_vietnamese_ui_message(
+                                        picker_error, "Không thể mở thư mục đã chọn."
+                                    )
                                 elif chosen_folder:
                                     st.session_state[path_key] = chosen_folder
                                     st.session_state.pop(scan_key, None)
@@ -2886,7 +2939,12 @@ else:
                         current_scan = st.session_state.get(scan_key)
                         if current_scan is not None:
                             if not current_scan.ok:
-                                st.error(current_scan.error_message)
+                                st.error(
+                                    safe_vietnamese_ui_message(
+                                        current_scan.error_message,
+                                        "Không thể quét thư mục đã chọn.",
+                                    )
+                                )
                             else:
                                 mcol1, mcol2, mcol3 = st.columns(3)
                                 with mcol1:
@@ -3262,7 +3320,11 @@ else:
                                 st.success(t("agent_draft_approved", locale=current_ui_locale))
                                 safe_rerun()
                             except (FactoryFileProtectionError, ValueError) as error:
-                                st.error(str(error))
+                                st.error(
+                                    safe_vietnamese_ui_message(
+                                        error, "Không thể phê duyệt bản nháp một cách an toàn."
+                                    )
+                                )
                     else:
                         st.success(t("agent_draft_approved", locale=current_ui_locale))
                         st.download_button(
@@ -3364,7 +3426,11 @@ else:
                                     client.close()
                                     st.success(t("agent_trust_success", locale=current_ui_locale, ws=trust.get("workspace", workspace_root)))
                                 except Exception as error:
-                                    st.error(t("agent_trust_error", locale=current_ui_locale, err=error))
+                                    st.error(
+                                        safe_vietnamese_ui_message(
+                                            error, "Không thể xác nhận vùng làm việc đã chọn."
+                                        )
+                                    )
                     with status_col:
                         st.caption(t("agent_ide_approval_help", locale=current_ui_locale))
                     with st.form(f"wsc_agent_ask_form_{active_conversation.id}", clear_on_submit=True):
@@ -3387,7 +3453,12 @@ else:
                             st.success(t("agent_ide_readonly_done", locale=current_ui_locale))
                             safe_rerun()
                         else:
-                            st.error(result.error_message or t("agent_ide_incomplete_error", locale=current_ui_locale))
+                            st.error(
+                                safe_vietnamese_ui_message(
+                                    result.error_message,
+                                    t("agent_ide_incomplete_error", locale=current_ui_locale),
+                                )
+                            )
                     agent_result = st.session_state.wsc_agent_last_result
                     if agent_result and agent_result.session_id:
                         with st.expander(t("agent_ide_tool_trace", locale=current_ui_locale), expanded=False):
@@ -3417,7 +3488,12 @@ else:
                                 }
                                 st.success(t("agent_ide_diff_created", locale=current_ui_locale))
                             else:
-                                st.error(patch_result.error_message or t("agent_patch_proposal_error", locale=current_ui_locale))
+                                st.error(
+                                    safe_vietnamese_ui_message(
+                                        patch_result.error_message,
+                                        t("agent_patch_proposal_error", locale=current_ui_locale),
+                                    )
+                                )
                     with command_tab:
                         with st.form(f"wsc_agent_command_form_{active_conversation.id}", clear_on_submit=True):
                             proposed_command = st.text_area(t("agent_ide_cmd_to_run", locale=current_ui_locale), placeholder="py -m pytest tests/test_data_processing.py -q", height=80)
@@ -3436,7 +3512,12 @@ else:
                                 }
                                 st.success(t("agent_ide_cmd_proposed", locale=current_ui_locale))
                             else:
-                                st.error(command_result.error_message or t("agent_cmd_proposal_error", locale=current_ui_locale))
+                                st.error(
+                                    safe_vietnamese_ui_message(
+                                        command_result.error_message,
+                                        t("agent_cmd_proposal_error", locale=current_ui_locale),
+                                    )
+                                )
 
                     pending = st.session_state.wsc_agent_pending_action
                     if pending:
@@ -3539,4 +3620,9 @@ def _legacy_excel_uploader_compatibility_dont_call(active_conversation=None, exc
                         set_source_enabled(conversation_id, SOURCE_SCOPE_TEMPORARY, ts.id, True)
                         safe_rerun()
                     else:
-                        st.error(result.owner_message)
+                        st.error(
+                            safe_vietnamese_ui_message(
+                                result.owner_message,
+                                "Không thể đọc bảng tính đã chọn.",
+                            )
+                        )

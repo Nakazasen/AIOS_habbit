@@ -1,0 +1,48 @@
+# Ví dụ quyết định chủ sở hữu; không chứa tên người thật hoặc đường dẫn dữ liệu thật.
+version: 1
+roles:
+  default_case_worker:
+    grants: [investigator, expert]
+    rule: "Người được giao việc vừa điều tra vừa xác nhận trong đúng công đoạn."
+  process_follower:
+    grants: [expert]
+    rule: "Chỉ tách riêng khi có người theo dõi công đoạn đặc biệt."
+  learning_approver:
+    grants: [quality_manager]
+    allowed_titles: [assistant_manager, manager, deputy_manager]
+  artifact_approver:
+    grants: [artifact_approver]
+    allowed_titles: [department_head, assistant_manager, manager, deputy_manager]
+  shadow_approver:
+    rule: "system_owner AND (managerial_approver OR process_expert)"
+  ai:
+    grants: []
+    rule: "Chỉ tạo nháp, không phê duyệt."
+owners:
+  library: admin
+  line_pilot: [admin, managerial_approver]
+  lsu_data: [admin, managerial_approver]
+  lsu_label_review: [admin, managerial_approver]
+runtime_evidence:
+  company_documents_available: true
+  real_ingest_started: false
+  shared_storage_path_selected: true
+  multi_reader_single_writer_tested: false
+  backup_restore_tested: false
+  authorized_line_samples_available: true
+  jam_and_ccall_samples_pending_collection: true
+  lsu_sample_available_locally: true
+  log_timezone: Asia/Ho_Chi_Minh
+  error_catalog_available: true
+  sop_available: true
+  equipment_mapping_available: true
+prediction_readiness:
+  asset_identity_available: true
+  measurement_time_available: true
+  value_and_unit_available: true
+  jig_or_process_version_available: true
+  final_ok_ng_available: true
+  failure_code_available: true
+  retest_or_repair_outcome_available: true
+  risk_priority: missed_detection_over_false_alarm
+  risk_priority_status: owner_confirmation_pending_before_prediction_gate

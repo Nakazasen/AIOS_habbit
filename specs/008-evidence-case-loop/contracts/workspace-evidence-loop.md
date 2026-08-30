@@ -1,96 +1,202 @@
-# Hợp đồng an toàn: Quy chuẩn vận hành Vòng khép kín có bằng chứng
+# Hợp đồng an toàn cho vòng vụ việc, Agent và dự đoán
 
-Tài liệu này định nghĩa các **Hợp đồng an toàn (Safety Contracts)** và quy tắc kỹ thuật bắt buộc giữa các thành phần trong hệ thống. Mọi hàm lập trình đều phải tuân thủ nghiêm ngặt các điều kiện tiên quyết dưới đây để đảm bảo an toàn tuyệt đối cho dữ liệu và dây chuyền sản xuất của nhà máy.
+## 1. Bất biến toàn hệ thống
 
----
+1. Thiếu evidence, role, scope, digest, migration hoặc owner decision thì fail-closed.
+2. `local_only` không đi Gemini Web/Nakazasen Router; C-AGENT chỉ theo policy và consent hiện có.
+3. Không có API nào trong phạm vi này được điều khiển PLC, dừng line, chặn/xuất hàng, xóa hoặc ghi đè nguồn nhà máy.
+4. AI output không tự trở thành `confirmed`, outcome label, bài học hoặc PASS.
+5. Workspace Chat không import `studio` hoặc `case_cockpit`.
+6. Mọi lỗi UI được đổi thành thông báo tiếng Việt an toàn, không traceback/secret/system path.
 
-## 1. Hợp đồng Lưu hồ sơ sự vụ
-**Tên hàm nghiệp vụ**: `create_case_from_trace_id(trace_id) -> CaseRecord`
+## 2. Hợp đồng migration
 
-### 📋 Điều kiện đầu vào:
-- Mã phiên, mã câu trả lời của hệ thống, mã trace và danh sách các tham chiếu căn cứ trích dẫn đã có (`EvidenceReference[]`).
+```text
+migrate_store(database_path, target_version) -> MigrationResult
+```
 
-### 🛡 Rào chắn an toàn (Tự động từ chối nếu vi phạm):
-- Từ chối lưu nếu căn cứ trích dẫn không có vị trí tài liệu rõ ràng hoặc không có mã băm kiểm chứng nội dung.
-- Từ chối lưu nếu trace hoặc nguồn trích dẫn không mang nhãn `local_only`, hoặc nếu đầu vào thiếu mã phiên hay mã câu trả lời của hệ thống.
+### Điều kiện trước
 
-### ✅ Kết quả thực thi:
-- Ghi nhận trọn vẹn trong một lần thực thi: Tạo hồ sơ sự vụ + lưu danh sách tham chiếu căn cứ trích dẫn + ghi nhật ký kiểm toán. Không sao chép câu hỏi, câu trả lời hay đoạn trích nguồn vào kho này.
-- Nếu xảy ra lỗi giữa chừng, toàn bộ thao tác bị hủy bỏ ngay lập tức, không bao giờ để lại hồ sơ lỗi dở dang.
+- Path nằm trong local runtime root được phép.
+- Migration chain liên tục, checksum đúng, không có version lạ.
+- Online backup thành công và `quick_check` của bản nguồn đạt.
 
----
+### Kết quả
 
-## 2. Hợp đồng Thẩm định của Chuyên gia
-**Tên hàm nghiệp vụ**: `record_expert_review(case_id, review) -> ExpertReview`
+- Tất cả migration hoặc không migration nào được commit.
+- `schema_migrations` và `PRAGMA user_version` khớp.
+- `quick_check` sau migration đạt; nếu lỗi, restore snapshot và trả error code an toàn.
 
-### 📋 Điều kiện thẩm định:
-- Khi ý kiến thẩm định mới ở mức **Dự thảo (`candidate`)** (do người dùng hoặc AI tạo ra), nó không được phép kích hoạt bất kỳ hành động xuất văn bản hay nâng cấp thành bài học nào.
-- Khi chuyên gia bấm **Xác nhận đúng (`confirmed`)** hoặc **Bác bỏ (`rejected`)**:
-  - Bắt buộc phải có: Mã chuyên gia, chức danh/vai trò, phạm vi phụ trách, mức độ tin cậy và lý do phê duyệt chi tiết.
-  - Mã băm của tập tài liệu trích dẫn phải trùng khớp tuyệt đối với hồ sơ sự vụ gốc.
+## 3. Hợp đồng tạo và đọc case
 
-### 🛡 Rào chắn an toàn:
-- Mọi ý kiến đánh giá được ghi nối tiếp vào cơ sở dữ liệu (append-only), không cho phép chỉnh sửa đè lên ý kiến cũ. Muốn sửa đổi thì chuyên gia phải tạo một lượt đánh giá mới kèm lý do giải thích.
+```text
+create_case_from_trace_id(trace_id, expected_conversation_id) -> CaseRecord
+list_cases(filter, actor) -> CaseSummary[]
+get_case_detail(case_id, actor) -> CaseDetail
+transition_case(case_id, expected_version, transition, actor, rationale) -> CaseRecord
+attach_evidence_reference(case_id, expected_version, source_store, source_id, source_version, locator, content_digest, provenance_status, actor) -> EvidenceReference
+```
 
----
+### Chốt chặn
 
-## 3. Hợp đồng Đúc kết Bài học kinh nghiệm
-**Tên hàm nghiệp vụ**: `promote_learning(review_id, actor, rationale) -> LearningRecord`
+- Tạo từ trace cần citation/source locator/digest/`local_only`; không copy raw Q&A/excerpt.
+- `list_cases` chỉ trả metadata đã scrub và case actor được phép xem.
+- `get_case_detail` phân giải trace gốc ở read time; trace mất trả `missing`, không tái sinh nội dung.
+- Transition kiểm state machine, role/scope, optimistic version và ghi `CaseActivity` cùng transaction.
+- Gắn thêm evidence chỉ nhận locator đã làm sạch, digest và provenance từ kho nguồn được phép; không nhận raw bytes/raw excerpt và phải ghi activity cùng transaction.
+- Actor được lấy từ local actor context đáng tin cậy do ứng dụng cấu hình, không nhận ID tự khai từ form UI. Case luôn có scope để đối chiếu grant; thiếu actor/grant/scope thì fail-closed.
+- Mỗi activity có `event_digest`; case giữ `activity_head_digest` và service phải kiểm toàn chuỗi trước thao tác ghi.
 
-### 📋 Điều kiện phê duyệt:
-- Chỉ tiếp nhận các lượt thẩm định đã được chuyên gia bấm **Xác nhận đúng (`confirmed`)** và mã băm bằng chứng vẫn còn nguyên vẹn.
-- Bắt buộc phải ghi nhận: Tên Quản lý chất lượng phê duyệt, thời điểm phê duyệt và lý do đưa vào sổ tay bài học.
+## 4. Hợp đồng chuyên gia
 
-### 🛡 Rào chắn an toàn:
-- Quá trình này **hoàn toàn không can thiệp** vào thư viện tài liệu quy chuẩn (`library.sqlite`), không tự động huấn luyện lại mô hình AI và không làm thay đổi các tài liệu hướng dẫn gốc.
+```text
+request_expert_review(case_id, claim_digest, question, assignee, scope, actor) -> ExpertRequest
+record_expert_review(request_id, decision, rationale, confidence, actor) -> ExpertReview
+resolve_review_conflict(case_id, review_ids, decision, rationale, actor) -> ExpertReview
+```
 
----
+### Chốt chặn
 
-## 4. Hợp đồng Đính kèm Dữ liệu Log máy (Thử nghiệm điều tra)
-**Tên hàm nghiệp vụ**: `attach_line_events(case_id, events) -> EvidenceReference[]`
+- Assignee/actor phải có `RoleGrant` còn hiệu lực và scope khớp.
+- `confirmed`/`rejected` cần rationale không rỗng và evidence digest vẫn khớp case.
+- Review append-only; sửa tạo record mới với `supersedes_review_id`.
+- Hai review trái chiều chuyển case sang trạng thái xung đột; AI không chọn bên thắng.
 
-### 📋 Điều kiện đính kèm:
-- Chỉ tiếp nhận các sự kiện được trích xuất từ ngăn kéo log máy `line_events.sqlite`, mang nhãn xuất xứ rõ ràng là **"Nghi vấn (`suspected`)"**.
-- Nếu sự kiện log không khớp với hiện tượng đang điều tra hoặc chưa được chuyên gia đối chứng xác nhận: Tuyệt đối không đưa ra kết luận lỗi, không tạo bài học và không vẽ sơ đồ cảm biến hỏng.
+## 5. Hợp đồng bài học
 
-### 🛡 Rào chắn an toàn:
-- Tệp bảng tính CSV thô của log máy chỉ dùng để tra cứu sự kiện, tuyệt đối không nạp vào thư viện tri thức đọc hiểu RAG.
+```text
+create_learning_candidate(review_id, learning_text, actor) -> LearningRecord
+promote_learning(learning_id, actor, rationale) -> LearningRecord
+withdraw_learning(learning_id, actor, rationale) -> LearningRecord
+search_promoted_learning(query, case_scope, actor) -> LearningHit[]
+```
 
----
+### Chốt chặn
 
-## 5. Hợp đồng Đánh giá độ sẵn sàng cho Dự đoán lỗi LSU
-**Tên hàm nghiệp vụ**: `evaluate_lsu_readiness(manifest) -> LsuReadinessManifest`
+- Candidate chỉ từ review `confirmed` có provenance đầy đủ.
+- Promotion cần role `quality_manager`, digest không đổi và rationale.
+- Search chỉ trả `promoted`, luôn kèm case/review/evidence refs và nhãn “Bài học đã xác nhận”.
+- Không ghi `library.sqlite`, không train/re-embed tự động vào RAG library.
 
-### 📋 Bảng kiểm tra 6 tiêu chí bắt buộc:
-1. *Dữ liệu lịch sử đo đạc của cụm LSU có đầy đủ không?*
-2. *Định nghĩa các nhãn lỗi có rõ ràng, chính xác không?*
-3. *Có Trưởng nhóm kỹ thuật dữ liệu và Quản lý chất lượng ký tên chịu trách nhiệm không?*
-4. *Có tiêu chí đánh giá chất lượng và kịch bản thử nghiệm lại (replay) không?*
-5. *Có kỹ sư giám sát thử nghiệm bóng song song (shadow) không?*
+## 6. Hợp đồng điều tra line
 
-### 🛡 Kết luận an toàn:
-- Nếu thiếu bất kỳ tiêu chí nào trong 5 mục trên $\rightarrow$ Kết luận là **"Bị chặn (`blocked`)"** và liệt kê cụ thể các mục còn thiếu.
-- Nếu đáp ứng đủ 5 tiêu chí $\rightarrow$ Kết luận là **"Sẵn sàng chạy thử nghiệm bóng song song (`ready_for_shadow`)"**.
-- **Điều khoản khóa cứng**: Hợp đồng này tuyệt đối không có trạng thái đưa vào sản xuất thực tế (`production`), không tự động gọi AI dự đoán và không can thiệp vào máy móc của nhà máy.
+```text
+attach_line_events(case_id, event_ids, actor) -> EvidenceReference[]
+build_investigation_timeline(case_id, actor) -> Timeline
+propose_missing_evidence(case_id, actor) -> CaseChecklistItem[]
+review_event_relevance(case_id, evidence_ref_id, decision, actor) -> EvidenceReference
+```
 
----
+### Chốt chặn
 
-## 6. Hợp đồng Soạn nháp và Phê duyệt văn bản do AI đề xuất
-**Tên hàm nghiệp vụ**: `create_action_proposal(case_id, kind, evidence_digest) -> ActionProposal`
+- Event phải tồn tại trong `line_events.sqlite`, có source digest/version và trạng thái `suspected`.
+- Không match thì trả rỗng; cấm fallback năm event gần nhất.
+- Timeline phân biệt fact, hypothesis và missing data.
+- Mapping overlay chỉ dùng manifest có version/approver/scope khớp.
+- CSV thô không đi `library.sqlite` hoặc external route.
 
-### 📋 Điều kiện tạo bản nháp:
-- AI chỉ được phép soạn thảo bản nháp Quy trình thao tác chuẩn (SOP) hoặc Báo cáo điều tra kỹ thuật từ các hồ sơ sự vụ đã có bằng chứng xác thực.
-- Nếu hồ sơ chưa được chuyên gia thẩm định hoặc bằng chứng bị rỗng: Hệ thống tự động từ chối tạo nháp.
+## 7. Hợp đồng Agent artifact
 
-### 🛡 Rào chắn an toàn khi xuất văn bản:
-- Tuyệt đối không cung cấp các lệnh chạy mã độc hại, lệnh can thiệp hệ điều hành, lệnh sửa PLC/bộ điều khiển máy, hoặc lệnh xóa tệp.
-- Chữ ký phê duyệt được gắn chặt với mã bản nháp, chức danh người duyệt và mã băm tài liệu gốc.
-- Khi người dùng bấm duyệt trên màn hình tiếng Việt, hệ thống chỉ xuất ra một **tệp mới** trong thư mục được cấp phép, tuyệt đối không ghi đè lên tệp cũ.
+```text
+create_artifact_proposal(case_id, capability_id, instruction, actor) -> ArtifactProposal
+generate_artifact_version(proposal_id, actor) -> ArtifactVersion
+verify_artifact(artifact_version_id, verifier_id) -> VerificationResult
+review_artifact(artifact_version_id, decision, actor, rationale) -> ApprovalRecord
+export_approved_artifact(artifact_version_id, output_root, actor) -> ExportResult
+```
 
----
+### Chốt chặn
 
-## 7. Các chốt chặn bảo mật không thương lượng (Fail-Closed Invariants)
+- Capability phải enabled, risk tier/inputs/outputs/template/verifier/approver đầy đủ.
+- Case/evidence digest rỗng hoặc review chưa đạt theo capability thì từ chối.
+- Mọi output là path tương đối nằm trong allowlisted root; file tồn tại thì tạo version/path mới.
+- Chỉnh artifact sau approval làm approval cũ không còn hiệu lực.
+- `process_design` không đồng nghĩa cho phép sửa file CAD/PLC gốc; adapter cụ thể phải có contract riêng.
 
-1. **Bảo mật hình ảnh**: Các cổng kết nối Gemini Web và Nakazasen Router ngoài tuyệt đối từ chối tiếp nhận hình ảnh và bản vẽ kỹ thuật mật trước khi gửi đi.
-2. **Đường truyền C-AGENT của công ty**: Chỉ được tiếp nhận dữ liệu kỹ thuật theo đúng chính sách bảo mật nội bộ đã cam kết, không dùng để chứng minh kết quả dự đoán khi chưa đủ điều kiện.
-3. **Phân định ranh giới dữ liệu**: Dữ liệu CSV thô bị từ chối khỏi thư viện tri thức đọc hiểu `library.sqlite`; dữ liệu log máy chỉ nằm trong ngăn kéo tra cứu riêng với nhãn "Nghi vấn".
+## 8. Hợp đồng Agent lập trình
+
+```text
+create_code_task_case(task_pack, workspace, actor) -> CaseRecord
+propose_code_change(case_id, proposal, actor) -> ArtifactVersion
+approve_code_change(case_id, proposal_digest, actor) -> ApprovalRecord
+run_approved_command(case_id, command_digest, actor) -> AgentExecutionRecord
+record_observed_tests(case_id, evidence, auditor) -> AgentExecutionRecord
+```
+
+### Chốt chặn
+
+- Workspace code đã xác nhận, nằm ngoài factory/local runtime data roots.
+- Task pack xác định allowed/forbidden files, commands, tests, branch/head.
+- `local_cases`, `.env`, factory source và system paths bị deny mặc định.
+- Patch/command proposal bất biến; approval gắn đúng digest/version.
+- Báo cáo PASS cần observed evidence do runner/auditor thu, không tin self-report.
+- Không tự merge/push/commit nếu capability và approval riêng chưa được cấp.
+
+## 9. Hợp đồng Data Gate dự đoán
+
+```text
+register_dataset_snapshot(manifest, actor) -> DatasetVersion
+evaluate_prediction_readiness(dataset_id, protocol_id, actor) -> ReadinessResult
+```
+
+### Sáu điều kiện bắt buộc
+
+1. Stable join keys và data dictionary được duyệt.
+2. Measurement có unit, event time, ingest time, jig/process version.
+3. Outcome labels có reviewer/evidence và đủ positive/negative theo protocol.
+4. Data owner và quality owner được chỉ định.
+5. Temporal/group split, replay và leakage checks đã định nghĩa.
+6. Shadow reviewer, acceptance thresholds và rollback owner đã ký duyệt.
+
+Thiếu bất kỳ điều kiện nào trả `blocked` cùng danh sách thiếu; không train model.
+
+## 10. Hợp đồng huấn luyện và đánh giá
+
+```text
+build_feature_snapshot(dataset_id, as_of_time, feature_schema) -> FeatureSnapshot
+train_candidate(dataset_id, protocol_id, algorithm_config) -> ModelVersion
+evaluate_candidate(model_id, holdout_id, protocol_id) -> EvaluationReport
+approve_model_for_shadow(model_id, actor, rationale) -> ModelVersion
+```
+
+### Chốt chặn
+
+- Feature chỉ dùng event có thời gian không vượt `as_of_time`.
+- Dataset/protocol/code/feature schema digest phải đóng băng.
+- Evaluation bắt buộc có false alarm, missed detection, lead time, precision, recall, calibration và slice stability.
+- Model không được tự chọn threshold; owner phê duyệt cost matrix/threshold.
+- Chỉ status `approved_for_shadow`; không có production control state.
+
+## 11. Hợp đồng shadow và case dự đoán
+
+```text
+run_shadow(model_id, input_window) -> PredictionRun
+enqueue_prediction_case(risk_assessment, dedup_policy) -> PredictionCaseDispatch
+reconcile_prediction_cases(limit, actor) -> ReconciliationResult
+record_shadow_outcome(assessment_id, decision, observed_outcome, actor) -> ShadowOutcome
+```
+
+### Chốt chặn
+
+- Model, feature schema và threshold version phải active/approved.
+- Risk assessment có feature snapshot, horizon, uncertainty và factor digest.
+- Dedup/cooldown ngăn tạo bão case.
+- Ghi `RiskAssessment` và outbox dispatch trong cùng transaction của kho dự đoán; worker gọi case service bằng idempotency key rồi mới đánh dấu dispatched.
+- Restart/lỗi nửa chừng phải reconcile được; không dựa vào transaction phân tán giữa `production_prediction.sqlite` và `workspace_cases.sqlite`.
+- Shadow chỉ ghi DB/queue local; không gửi alert ngoài, không plant action.
+- Outcome `true_positive`, `false_alarm`, `missed_detection`, `unknown` cần reviewer/evidence.
+
+## 12. Hợp đồng cảnh báo có duyệt
+
+```text
+enable_in_app_alert_policy(policy, actor) -> AlertPolicy
+create_preventive_action_proposal(case_id, action_id, actor) -> ArtifactProposal
+record_action_outcome(proposal_id, outcome, actor, evidence) -> ActionOutcome
+```
+
+### Chốt chặn
+
+- Chỉ mở sau shadow gate có owner approval, kill switch và rollback.
+- Alert chỉ trong Workspace Chat cho role được phép.
+- Hành động từ thư viện versioned, có evidence và human approval.
+- Không có connector PLC/line control trong contract này.

@@ -1,124 +1,234 @@
-# Mô hình dữ liệu: Vòng khép kín từ Hồ sơ sự vụ – Thẩm định chuyên gia – Bài học thực tế
+# Mô hình dữ liệu: Vòng vụ việc, Agent và dự đoán có kiểm soát
 
-Toàn bộ các bảng dữ liệu mới trong đợt phát triển này được lưu trữ cục bộ tại tệp cơ sở dữ liệu riêng:
-```text
-local_cases/workspace_cases.sqlite
-```
-Đây là ngăn kéo dữ liệu riêng biệt của từng máy tính làm việc, hoàn toàn tách rời khỏi thư viện tri thức chung (`library.sqlite`), không tự tiện đồng bộ dữ liệu chat riêng tư lên mạng nội bộ. Mọi thao tác ghi nhận dữ liệu đều được thực hiện trọn vẹn (hoặc thành công 100% hoặc hủy bỏ hoàn toàn, không lưu dở dang), và toàn bộ lịch sử chỉnh sửa được ghi nối tiếp để phục vụ kiểm toán sau này.
+## 1. Nguyên tắc phân kho
 
----
-
-## 1. Bảng `CaseRecord` (Hồ sơ sự vụ)
-Lưu các mã định danh và dấu vết kiểm toán cho một ca hỏi đáp hoặc một phiên điều tra lỗi kỹ thuật. Nội dung câu hỏi, câu trả lời và đoạn trích nguồn không thuộc bảng này.
-
-| Tên trường kỹ thuật | Tên gọi dễ hiểu | Ý nghĩa thực tế & Ràng buộc an toàn |
+| Kho | Mục đích | Nội dung bị cấm |
 |---|---|---|
-| `case_id` | **Mã hồ sơ sự vụ** | Mã định danh duy nhất (ví dụ `CASE-A1B2C3D4`), được sinh tự động và không bao giờ thay đổi. |
-| `created_at` | **Thời điểm tạo** | Ngày, giờ, phút, giây tạo hồ sơ theo chuẩn quốc tế UTC. |
-| `conversation_id` | **Mã phiên hỏi đáp** | Mã tham chiếu đến phiên có câu hỏi; không lưu nội dung câu hỏi. |
-| `assistant_message_id` | **Mã câu trả lời** | Mã tham chiếu đến câu trả lời của hệ thống; không lưu nội dung câu trả lời. |
-| `trace_id` | **Mã dấu vết bằng chứng** | Mã tham chiếu đến trace đã có tại thời điểm lưu hồ sơ. |
-| `status` | **Trạng thái hồ sơ** | Vòng đời của hồ sơ: `draft` (Nháp) $\rightarrow$ `under_review` (Đang chờ chuyên gia thẩm định) $\rightarrow$ `resolved` (Đã xử lý xong) / `rejected` (Bác bỏ) / `archived` (Lưu trữ). |
-| `created_by` | **Người tạo hồ sơ** | Tên hoặc tài khoản của kỹ sư bấm lưu hồ sơ trên màn hình chat. |
-| `evidence_digest` | **Mã băm tập bằng chứng** | Chuỗi mã băm đại diện cho toàn bộ các tài liệu và dòng log được trích dẫn làm căn cứ. |
+| `library.sqlite` | Chunk/citation của tài liệu quy chuẩn | Case, CSV log, model prediction, chat history |
+| `line_events.sqlite` | Event Jam/C-call/LSU ở mức `suspected` | Bài học đã duyệt, model, nội dung RAG |
+| `local_cases/workspace_cases.sqlite` | Case, activity, expert, learning, artifact và approval | Bản copy chat/excerpt thô, model binary |
+| `local_cases/production_prediction.sqlite` | Dataset/model/prediction/shadow metadata | Tài liệu RAG, chat, plant-control command |
 
----
+Liên kết giữa kho chỉ dùng ID/digest bất biến. Không join bằng tên file, câu chữ AI sinh hoặc đường dẫn tuyệt đối hiển thị cho người dùng.
 
-## 2. Bảng `EvidenceReference` (Căn cứ trích dẫn tài liệu & Log)
-Lưu trữ danh sách các đoạn văn bản trong quy trình SOP hoặc các sự kiện trong log máy được dùng làm bằng chứng đối chiếu.
+## 2. Migration và tương thích
 
-| Tên trường kỹ thuật | Tên gọi dễ hiểu | Ý nghĩa thực tế & Ràng buộc an toàn |
-|---|---|---|
-| `evidence_ref_id` | **Mã căn cứ trích dẫn** | Mã định danh duy nhất của từng đoạn bằng chứng. |
-| `case_id` | **Thuộc hồ sơ sự vụ** | Mã hồ sơ sự vụ cha mà bằng chứng này gắn liền vào (bắt buộc phải tồn tại). |
-| `source_type` | **Loại nguồn dữ liệu** | Phân loại nguồn gốc: `library` (Tài liệu quy chuẩn SOP), `line_log` (Log sự kiện máy), `approved_report` (Báo cáo kỹ thuật đã duyệt). |
-| `locator` | **Vị trí trong tài liệu** | Vị trí cụ thể của đoạn trích dẫn (ví dụ: Tên tệp SOP, số trang, số dòng log). Tuyệt đối không lưu các đoạn văn bản chứa bí mật công nghệ chưa phân loại. |
-| `content_digest` | **Mã băm nội dung trích dẫn** | Mã băm kiểm chứng rằng đoạn văn bản trích dẫn không bị sửa đổi nội dung. |
-| `provenance_status` | **Xuất xứ & Độ tin cậy** | Trạng thái nguồn: `suspected` (Nghi vấn / Cần đối chứng), `approved` (Đã được duyệt chính thức), `unknown` (Chưa rõ). Dữ liệu log máy luôn bắt đầu ở mức `suspected`. |
-| `privacy_label` | **Nhãn phân loại bảo mật** | Nhãn an toàn dữ liệu: Dữ liệu gắn nhãn `local_only` (Chỉ dùng nội bộ) tuyệt đối không được gửi lên các dịch vụ AI công cộng. |
+Mỗi SQLite store mới hoặc đang mở rộng phải có:
 
----
+- `schema_migrations(version, name, applied_at, checksum)`.
+- `PRAGMA user_version` đồng bộ với migration cuối.
+- Online backup trước migration và `PRAGMA quick_check` sau migration.
+- Migration chỉ tiến, transaction được; rollback bằng restore snapshot khi migration thất bại.
+- Fixture schema Cổng 1 để chứng minh dữ liệu cũ đọc được sau upgrade.
 
-## 3. Bảng `ExpertReview` (Ý kiến thẩm định của Chuyên gia)
-Lưu lại nhận xét, đánh giá và chữ ký phê duyệt của kỹ sư trưởng hoặc chuyên gia phụ trách công đoạn.
+Không được dùng `CREATE TABLE IF NOT EXISTS` như cơ chế migration duy nhất.
 
-| Tên trường kỹ thuật | Tên gọi dễ hiểu | Ý nghĩa thực tế & Ràng buộc an toàn |
-|---|---|---|
-| `review_id` | **Mã thẩm định** | Mã định danh duy nhất của lượt đánh giá. |
-| `case_id` | **Thuộc hồ sơ sự vụ** | Hồ sơ sự vụ đang được chuyên gia đọc và đánh giá. |
-| `claim_digest` | **Mã nhận định được đánh giá** | Đoạn kết luận cụ thể mà chuyên gia đang thẩm định tính đúng sai. |
-| `decision` | **Quyết định thẩm định** | Kết quả đánh giá: `candidate` (Bản ý kiến dự thảo), `confirmed` (Xác nhận đúng 100%), `rejected` (Bác bỏ kết luận), `needs_more_evidence` (Yêu cầu bổ sung thêm tài liệu/log). AI chỉ được phép tạo ở mức `candidate`. |
-| `reviewer_id` | **Mã chuyên gia** | Tên hoặc mã nhân viên của chuyên gia bấm duyệt. |
-| `reviewer_role` | **Chức danh / Vai trò** | Vị trí chuyên môn (ví dụ: Kỹ sư trưởng công đoạn, Quản lý chất lượng xưởng). |
-| `scope` | **Phạm vi thẩm quyền** | Khu vực hoặc dòng máy chuyên gia chịu trách nhiệm (ví dụ: `LSU_Optical_Alignment`). |
-| `confidence` | **Mức độ tin cậy** | Đánh giá mức độ chắc chắn của nhận định (ví dụ: `Cao / Tuyệt đối`). |
-| `rationale` | **Lý do & Căn cứ phê duyệt** | Giải thích chi tiết tại sao đồng ý hoặc tại sao từ chối (bắt buộc phải nhập, không được để trống). |
-| `reviewed_at` | **Thời điểm phê duyệt** | Ngày giờ chính xác khi chuyên gia bấm nút ký duyệt trên màn hình. |
+## 3. Kho hồ sơ vụ việc
 
----
+### 3.1. `CaseRecord`
 
-## 4. Bảng `LearningRecord` (Bài học kinh nghiệm đúc kết)
-Lưu lại tri thức xử lý lỗi đã được chứng minh hiệu quả, dùng để đào tạo hoặc tra cứu cho các ca làm việc tương lai.
+| Trường | Ràng buộc |
+|---|---|
+| `case_id` | ID bất biến, khóa chính |
+| `case_type` | `investigation`, `prediction`, `agent_work` |
+| `title` | Tiêu đề đã làm sạch, không chứa secret/excerpt thô |
+| `status` | Theo state machine ở mục 3.9 |
+| `priority` | `low`, `normal`, `high`, `urgent`; không tự suy ra từ LLM |
+| `conversation_id`, `assistant_message_id`, `trace_id` | Con trỏ về Workspace Chat; có thể null với prediction tự mở |
+| `evidence_digest` | Digest toàn tập evidence tại version hiện tại |
+| `owner_id`, `assignee_id` | ID cục bộ; assignee phải có role hợp lệ |
+| `created_by`, `created_at`, `updated_at` | Audit metadata |
+| `version` | Optimistic concurrency; tăng khi transition hợp lệ |
+| `activity_head_digest` | Digest đầu chuỗi activity hiện hành; phát hiện sửa/xóa event cuối |
 
-| Tên trường kỹ thuật | Tên gọi dễ hiểu | Ý nghĩa thực tế & Ràng buộc an toàn |
-|---|---|---|
-| `learning_id` | **Mã bài học kinh nghiệm** | Mã định danh duy nhất của bài học. |
-| `source_review_id` | **Căn cứ từ thẩm định nào** | Phải bắt nguồn từ một thẩm định đã được chuyên gia bấm `confirmed` (bắt buộc). |
-| `case_id`, `evidence_digest` | **Truy vết nguồn gốc** | Liên kết chặt chẽ về đúng hồ sơ sự vụ gốc và tài liệu chứng minh. |
-| `promotion_status` | **Trạng thái bài học** | `candidate` (Đề xuất bài học) $\rightarrow$ `promoted` (Đã được Quản lý phê duyệt thành bài học chính thức) $\rightarrow$ `withdrawn` (Thu hồi bài học nếu quy trình nhà máy thay đổi). |
-| `promoted_by`, `promoted_at` | **Người duyệt & Thời điểm** | Tên Quản lý chất lượng phê duyệt đưa vào sổ tay và thời gian duyệt. |
-| `learning_text` | **Tóm tắt bài học kinh nghiệm** | Văn bản hướng dẫn xử lý ngắn gọn, dễ hiểu, đã làm sạch thông tin nhạy cảm. Bài học này dùng cho con người đọc, không dùng để tự động huấn luyện lại mô hình AI. |
+### 3.2. `EvidenceReference`
 
----
+| Trường | Ràng buộc |
+|---|---|
+| `evidence_ref_id`, `case_id` | ID và khóa ngoại |
+| `source_store` | `workspace_trace`, `library`, `line_events`, `prediction`, `approved_artifact` |
+| `source_id`, `source_version`, `locator` | Con trỏ bất biến/phiên bản; locator được làm sạch |
+| `content_digest` | Bắt buộc |
+| `provenance_status` | `suspected`, `approved`, `unknown`, `missing` |
+| `privacy_label` | Mặc định `local_only` |
+| `relevance_status` | `unreviewed`, `relevant`, `not_relevant`, `conflicted` |
+| `added_by`, `added_at` | Audit metadata |
 
-## 5. Bảng `LsuReadinessManifest` (Bảng kiểm tra độ sẵn sàng cho Dự đoán lỗi LSU)
-Bảng kiểm tra 6 tiêu chí bắt buộc trước khi cho phép chạy thử nghiệm dự đoán lỗi cho cụm máy LSU.
+Tham chiếu có thể được tạo cùng case hoặc gắn thêm sau đó. Mọi lần gắn thêm phải qua service, kiểm tra optimistic version và tạo `CaseActivity`; không lưu nội dung ảnh, SOP, log hoặc đoạn trích thô trong kho case.
 
-| Tên trường kỹ thuật | Tên gọi dễ hiểu | Ý nghĩa thực tế & Ràng buộc an toàn |
-|---|---|---|
-| `manifest_id` | **Mã bảng kiểm tra** | Mã định danh duy nhất của đợt đánh giá độ sẵn sàng. |
-| `dataset_digest` | **Mã băm dữ liệu đo đạc** | Kiểm tra dữ liệu lịch sử máy quét laser đã được nạp đủ và toàn vẹn chưa. |
-| `label_definition` | **Quy chuẩn nhãn lỗi** | Định nghĩa rõ ràng thế nào là lỗi quang học, thế nào là lệch góc Bow/Skew. |
-| `data_owner`, `quality_owner` | **Người chịu trách nhiệm** | Tên Kỹ sư phụ trách dữ liệu và Quản lý phụ trách chất lượng ký tên chịu trách nhiệm. |
-| `replay_protocol` | **Quy trình thử nghiệm lại** | Kịch bản kiểm tra lại mô hình trên dữ liệu quá khứ để đo độ chính xác. |
-| `shadow_reviewer` | **Người giám sát thử nghiệm bóng** | Kỹ sư được phân công theo dõi mô hình chạy ngầm song song với dây chuyền. |
-| `status` | **Kết luận độ sẵn sàng** | `blocked` (Bị chặn do còn thiếu điều kiện) $\rightarrow$ `ready_for_shadow` (Đủ điều kiện chạy thử nghiệm bóng song song) $\rightarrow$ `shadow_reviewed` (Đã hoàn tất đánh giá thử nghiệm bóng). **Tuyệt đối không có trạng thái tự động đưa vào sản xuất (`production`)**. |
-| `missing_requirements` | **Danh sách các mục còn thiếu** | Ghi rõ cụ thể đang thiếu dữ liệu gì, thiếu chữ ký của ai (nếu bị `blocked`). |
+### 3.3. `CaseActivity`
 
----
+Nhật ký append-only cho create, assignment, evidence added, status transition, expert request/review, learning promotion, artifact approval, prediction outcome và rollback. Mỗi activity có `event_id`, `case_id`, `event_type`, `actor_id`, `occurred_at`, `payload_digest`, `previous_event_digest`, `event_digest`. `CaseRecord.activity_head_digest` phải bằng digest event cuối để phát hiện cả việc sửa/xóa event cuối.
 
-## 6. Bảng `ActionProposal` (Dự thảo Quy trình / Báo cáo do AI đề xuất)
-Quản lý các văn bản dự thảo báo cáo hoặc quy trình xử lý lỗi do trợ lý AI soạn thảo từ bằng chứng đã được duyệt.
+### 3.4. `CaseChecklistItem`
 
-| Tên trường kỹ thuật | Tên gọi dễ hiểu | Ý nghĩa thực tế & Ràng buộc an toàn |
-|---|---|---|
-| `proposal_id` | **Mã dự thảo đề xuất** | Mã định danh duy nhất của bản dự thảo. |
-| `case_id`, `evidence_digest` | **Căn cứ nguồn gốc** | Dự thảo bắt buộc phải sinh ra từ một hồ sơ sự vụ có thật và có bằng chứng đối chứng. |
-| `kind` | **Loại dự thảo** | `sop_draft` (Dự thảo Quy trình thao tác chuẩn), `report_draft` (Dự thảo Báo cáo điều tra kỹ thuật), `export_instruction` (Chỉ dẫn xuất văn bản). Tuyệt đối không có lệnh điều khiển máy hay lệnh xóa tệp. |
-| `status` | **Trạng thái phê duyệt** | `proposed` (Mới đề xuất) $\rightarrow$ `reviewed` (Đã xem xét) $\rightarrow$ `approved` (Đã được con người bấm duyệt) / `rejected` (Từ chối) / `expired` (Hết hạn). |
-| `approver_id`, `approver_role` | **Người duyệt văn bản** | Tên và chức danh của kỹ sư bấm nút duyệt trên màn hình tiếng Việt. |
-| `approved_at`, `notes` | **Thời điểm & Ghi chú** | Ngày giờ bấm duyệt và nhận xét của người duyệt. |
-| `output_locator` | **Vị trí tệp xuất ra** | Đường dẫn tệp mới được lưu trên đĩa (chỉ tạo tệp mới, không bao giờ ghi đè tệp cũ). |
+Biểu diễn phần còn thiếu mà hệ thống hoặc người dùng phát hiện: serial, ảnh, thời gian, SOP, log, retest. Trường chính gồm `item_id`, `case_id`, `kind`, `prompt_text`, `status`, `requested_from`, `resolved_by`, `resolution_evidence_ref_id`.
 
----
+AI được tạo item `open`; chỉ evidence/human action hợp lệ mới chuyển `resolved`.
 
-## 7. Mối quan hệ và Nguyên tắc chuyển đổi trạng thái
+### 3.5. `RoleGrant`
+
+| Trường | Ràng buộc |
+|---|---|
+| `actor_id` | ID người dùng cục bộ |
+| `role` | `investigator`, `expert`, `quality_manager`, `artifact_approver`, `shadow_reviewer`, `admin` |
+| `scope` | Miền/công đoạn/asset được phép; không dùng wildcard mặc định |
+| `valid_from`, `valid_until`, `revoked_at` | Hiệu lực theo thời gian |
+| `granted_by`, `reason` | Bắt buộc |
+
+### 3.6. `ExpertRequest`
+
+`request_id`, `case_id`, `claim_digest`, `question_text`, `requested_expert_id`, `required_scope`, `status`, `due_at`, `created_by`, `created_at`. Trạng thái: `open`, `answered`, `cancelled`, `expired`.
+
+### 3.7. `ExpertReview`
+
+`review_id`, `request_id`, `case_id`, `claim_digest`, `evidence_digest`, `decision`, `reviewer_id`, `reviewer_role`, `scope`, `rationale`, `confidence`, `supersedes_review_id`, `reviewed_at`.
+
+`decision` chỉ gồm `confirmed`, `rejected`, `needs_more_evidence`, `conflicted`. Record append-only; không update nội dung cũ.
+
+### 3.8. `LearningRecord`
+
+| Trường | Ràng buộc |
+|---|---|
+| `learning_id` | ID bất biến |
+| `source_review_id`, `case_id`, `evidence_digest` | Bắt buộc và truy vết được |
+| `learning_text` | Văn bản đã scrub, dùng cho con người và retrieval |
+| `status` | `candidate`, `promoted`, `withdrawn` |
+| `promoted_by`, `promoted_at`, `promotion_reason` | Bắt buộc khi promoted |
+| `withdrawn_by`, `withdrawn_at`, `withdrawal_reason` | Bắt buộc khi withdrawn |
+| `search_document` | Bản chuẩn hóa để lập chỉ mục case-memory, không chứa excerpt thô |
+
+### 3.9. State machine của case
 
 ```text
-    [ Hồ sơ sự vụ (CaseRecord) ] ── (Có chứa) ──> [ Căn cứ trích dẫn (EvidenceReference) ]
-                 │
-                 ├── (Được thẩm định bởi) ──> [ Ý kiến chuyên gia (ExpertReview) ]
-                 │                                            │
-                 │                                    (Nếu được "Xác nhận đúng")
-                 │                                            ↓
-                 │                                [ Bài học kinh nghiệm (LearningRecord) ]
-                 │
-                 └── (Trợ lý AI soạn nháp) ──> [ Dự thảo Đề xuất (ActionProposal) ]
-                                                              │
-                                                      (Người dùng bấm duyệt)
-                                                              ↓
-                                                  [ Xuất tệp văn bản mới an toàn ]
+draft → triage → in_progress → awaiting_expert → resolved → archived
+                    │              │
+                    ├──────────────┴→ blocked
+                    └───────────────→ rejected
 ```
 
-* **Nguyên tắc bảo vệ kép**: Bất kỳ hành động nâng cấp thành bài học (`promotion`) hay xuất tệp chính thức (`approval`) đều phải kiểm tra lại mã băm của tài liệu gốc trong cùng một lần ghi dữ liệu.
-* **Tôn trọng ý kiến đa chiều**: Nếu 2 chuyên gia có ý kiến trái chiều về cùng một nhận định, hệ thống lưu giữ nguyên văn cả 2 ý kiến, không tự ý chọn bên nào đúng cho đến khi Quản lý phân xử.
+- `prediction` bắt đầu ở `triage` khi signal hợp lệ.
+- `resolved` cần outcome/review phù hợp loại case.
+- `archived` không xóa record.
+- Chỉ service được transition sau kiểm role, version và evidence digest.
+
+## 4. Artifact và Agent
+
+### 4.1. `ArtifactProposal`
+
+`proposal_id`, `case_id`, `capability_id`, `artifact_type`, `risk_tier`, `evidence_digest`, `instruction_digest`, `status`, `created_by`, `created_at`.
+
+Loại đầu ra ban đầu: `investigation_report`, `sop_draft`, `process_design`, `spreadsheet`, `diagram`, `code_change`.
+
+### 4.2. `ArtifactVersion`
+
+`artifact_version_id`, `proposal_id`, `version`, `content_digest`, `relative_output_path`, `mime_type`, `generator`, `template_version`, `verifier_result_digest`, `created_at`.
+
+Mỗi version tạo file mới; `relative_output_path` phải nằm trong allowlisted output root.
+
+### 4.3. `ApprovalRecord`
+
+`approval_id`, `proposal_id`, `artifact_version_id`, `decision`, `approver_id`, `role`, `scope`, `rationale`, `approved_at`, `evidence_digest`.
+
+`decision`: `approved`, `rejected`, `changes_requested`, `expired`. Approval gắn đúng version; chỉnh nội dung làm approval cũ hết hiệu lực.
+
+### 4.4. `CapabilityDefinition`
+
+`capability_id`, `artifact_type`, `risk_tier`, `allowed_inputs`, `allowed_outputs`, `template_id`, `verifier_id`, `required_role`, `allowed_commands`, `forbidden_paths`, `enabled`.
+
+Capability được cấu hình, versioned và fail-closed; không tin loại task do prompt tự khai.
+
+### 4.5. `AgentExecutionRecord`
+
+Cho coding Agent: `execution_id`, `case_id`, `task_pack_digest`, `workspace_root_digest`, `proposal_digest`, `declared_commands_digest`, `observed_test_digest`, `result_status`, `rollback_ref`, `created_at`.
+
+Không lưu secret, raw command output nhạy cảm hoặc đường dẫn hệ thống trong UI.
+
+## 5. Kho dữ liệu dự đoán
+
+### 5.1. `AssetRecord`
+
+`asset_id`, `asset_type`, `line_id`, `station_id`, `effective_from`, `effective_to`, `source_digest`. `asset_type` hỗ trợ adapter `lsu_iris`, `drum`, `dlp` nhưng lõi không hard-code feature.
+
+### 5.2. `MeasurementRecord`
+
+`measurement_id`, `asset_id`, `unit_serial`, `event_time`, `ingested_at`, `metric_name`, `value`, `unit`, `jig_version`, `process_version`, `source_digest`, `privacy_label`.
+
+Không làm tròn bỏ giá trị thô; thời gian sự kiện và ingest tách riêng.
+
+### 5.3. `OutcomeLabel`
+
+`outcome_id`, `asset_id`, `unit_serial`, `case_id`, `target_label`, `review_state`, `action_effectiveness`, `effective_time`, `confirmed_by`, `review_id`, `evidence_digest`, `created_at`.
+
+- `target_label` biểu diễn sự thật cần học như `ok`, `ng` hoặc một failure class đã được data dictionary duyệt.
+- `review_state` biểu diễn trạng thái thẩm định `confirmed`, `rejected`, `unknown`; không được dùng thay cho nhãn mục tiêu.
+- `action_effectiveness` là `not_applicable`, `effective`, `ineffective` và chỉ dùng cho outcome hành động phòng ngừa.
+
+Chỉ target label có review `confirmed` và provenance đầy đủ mới được dùng khi train/evaluate. `false_alarm` và `missed_detection` là kết quả đánh giá shadow, không phải target label nguồn.
+
+### 5.4. `DatasetVersion`
+
+`dataset_id`, `domain_adapter`, `schema_version`, `snapshot_started_at`, `snapshot_ended_at`, `row_count`, `positive_count`, `negative_count`, `unknown_count`, `source_digest`, `label_policy_digest`, `quality_report_digest`, `created_by`, `created_at`.
+
+### 5.5. `FeatureSnapshot`
+
+`feature_snapshot_id`, `dataset_id`, `asset_id`, `as_of_time`, `feature_schema_version`, `feature_values_digest`, `source_window_digest`, `created_at`.
+
+Snapshot chỉ dùng dữ liệu có `event_time <= as_of_time`; đây là chốt chống outcome leakage.
+
+### 5.6. `EvaluationProtocol`
+
+`protocol_id`, `split_strategy`, `time_boundaries`, `group_keys`, `gap`, `metrics`, `cost_matrix`, `calibration_method`, `acceptance_thresholds`, `owner_approval_digest`.
+
+### 5.7. `ModelVersion`
+
+`model_id`, `algorithm`, `hyperparameters_digest`, `dataset_id`, `protocol_id`, `feature_schema_version`, `code_commit`, `artifact_digest`, `model_card_path`, `status`, `created_at`.
+
+`status`: `candidate`, `evaluated`, `approved_for_shadow`, `retired`, `rejected`. Không có `production_control`.
+
+### 5.8. `PredictionRun`
+
+`run_id`, `model_id`, `started_at`, `ended_at`, `input_snapshot_digest`, `status`, `error_code`, `created_case_count`. Error lưu mã an toàn, không traceback thô.
+
+### 5.9. `RiskAssessment`
+
+`assessment_id`, `run_id`, `asset_id`, `feature_snapshot_id`, `horizon`, `risk_score`, `calibrated_probability`, `uncertainty`, `threshold_version`, `top_factor_digest`, `case_id`, `created_at`.
+
+Không lưu câu “chắc chắn hỏng”; UI hiển thị đây là rủi ro cần kiểm tra.
+
+### 5.10. `ShadowOutcome`
+
+`shadow_outcome_id`, `assessment_id`, `case_id`, `decision`, `reviewer_id`, `review_id`, `observed_outcome_id`, `rationale`, `reviewed_at`.
+
+`decision`: `true_positive`, `false_alarm`, `missed_detection`, `unknown`. Missed detection có thể được tạo từ outcome thực không có assessment trước đó.
+
+### 5.11. `PredictionCaseDispatch`
+
+`dispatch_id`, `assessment_id`, `idempotency_key`, `target_case_id`, `status`, `attempt_count`, `last_error_code`, `created_at`, `updated_at`.
+
+Record outbox này nằm trong kho dự đoán và có unique key theo `assessment_id` cùng phiên bản policy. Worker chỉ gọi case service bằng idempotency key; sau lỗi hoặc restart có thể reconcile mà không tạo case trùng. Không có transaction phân tán trực tiếp giữa hai SQLite.
+
+## 6. Quan hệ chính
+
+```text
+CaseRecord
+ ├─ EvidenceReference
+ ├─ CaseActivity
+ ├─ CaseChecklistItem
+ ├─ ExpertRequest ──> ExpertReview ──> LearningRecord
+ ├─ ArtifactProposal ──> ArtifactVersion ──> ApprovalRecord
+ └─ RiskAssessment ──> ShadowOutcome
+
+DatasetVersion ──> FeatureSnapshot ──> ModelVersion
+ModelVersion ──> PredictionRun ──> RiskAssessment ──> CaseRecord(prediction)
+                                      └─ PredictionCaseDispatch ──> CaseRecord(prediction)
+OutcomeLabel ───────────────────────────────────────> ShadowOutcome
+```
+
+## 7. Quy tắc xóa, thu hồi và rollback
+
+- Không hard-delete case/review/approval/prediction audit record qua UI thông thường.
+- Thu hồi bài học/model/artifact bằng trạng thái và activity mới.
+- Xóa dữ liệu thật chỉ theo retention policy do chủ sở hữu phê duyệt và phải có audit/backup boundary.
+- Model rollback chuyển threshold/model active pointer về version trước; không xóa model card/evaluation cũ.
+- Artifact rollback tạo version thay thế, không ghi đè version đã phát hành.

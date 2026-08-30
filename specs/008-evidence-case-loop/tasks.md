@@ -1,112 +1,230 @@
-# Bảng danh mục công việc: Vòng khép kín từ Hồ sơ sự vụ – Thẩm định chuyên gia – Bài học thực tế
+# Danh mục công việc: Trợ lý công việc khép kín từ vụ việc đến phòng ngừa lỗi
 
-**Tài liệu căn cứ**: `spec.md`, `plan.md`, `data-model.md`, `contracts/workspace-evidence-loop.md`.
+**Đầu vào**: `spec.md`, `plan.md`, `research.md`, `data-model.md`, `contracts/workspace-evidence-loop.md`, `quickstart.md`.
 
-**Quy tắc thực hiện nghiêm ngặt**:
-- Tuyệt đối không làm song song giữa các Cổng kiểm soát. Cổng trước phải được nghiệm thu và chạy kiểm thử xanh 100% thì mới được bắt đầu Cổng sau.
-- Toàn bộ mã nguồn phải được phát triển trên nhánh riêng, không commit trực tiếp vào nhánh `main`. Tiêu đề commit viết bằng tiếng Anh ngắn gọn, chuẩn xác.
-- Tuyệt đối không commit các thư mục dữ liệu nhạy cảm của nhà máy: `local_cases/`, dữ liệu thô, `tailieugoc`, `Tài liệu của tất cả dòng máy`, tệp cấu hình `.env` chứa mật khẩu.
+**Baseline không làm lại**: commit `2bb7a5f` đã triển khai lưu case metadata từ Workspace Chat; 80 test tập trung đạt trong lượt lập kế hoạch. Các task dưới đây chỉ bao phủ việc còn thiếu hoặc kiểm toán/khóa nền này.
 
----
+## Định dạng
 
-## 🚪 Cổng 0: Xác nhận các điều kiện thực tế từ Chủ sở hữu (Ngoài phạm vi code)
+- `[P]`: có thể chuẩn bị song song vì khác file và không phụ thuộc task chưa xong.
+- `[USn]`: liên kết tới câu chuyện người dùng trong `spec.md`.
+- Mỗi gate chỉ được đóng sau focused tests, full gate phù hợp và kiểm toán độc lập.
 
-- [ ] **T001**: Chủ sở hữu hệ thống cung cấp bằng chứng nghiệm thu cho Gói 1 (nạp tài liệu thật không nhạy cảm) và Gói 2 (chế độ một người ghi / nhiều người đọc trên ổ đĩa mạng thật); ghi nhận kết quả và rủi ro vào `PROJECT_HANDOVER.md`.
-- [ ] **T002**: Chủ sở hữu chốt danh sách chức danh chuyên gia thẩm định (ai duyệt công đoạn nào, ai có quyền phê duyệt bài học kinh nghiệm, ai có quyền phát hành quy trình SOP); lưu tệp cấu hình mẫu không chứa bí mật công nghệ trước khi lập trình Cổng 2.
-- [ ] **T003**: Chủ sở hữu cung cấp tệp dữ liệu log máy mẫu của dây chuyền (kèm định dạng cột, múi giờ, danh mục mã lỗi); nếu muốn thử nghiệm dự đoán lỗi LSU thì cung cấp thêm bộ dữ liệu mẫu có nhãn lỗi và người giám sát thử nghiệm bóng. Nếu chưa có thì ghi nhận trạng thái `BLOCKED`, tuyệt đối không tự bịa dữ liệu giả để qua cổng.
+## Giai đoạn 1 — Khóa baseline và quyết định kiến trúc
 
-*👉 Điểm kiểm tra an toàn*: Thiếu T001 thì không tuyên bố hệ thống đa máy sẵn sàng; thiếu T002 thì dừng ở cổng chuyên gia; thiếu T003 thì tạm dừng Cổng 4 và Cổng 5 nhưng vẫn cho phép làm Cổng 1.
+- [X] T001 Ghi audit độc lập cho commit `2bb7a5f`, đối chiếu FR-002/FR-004/FR-016/FR-018 và lưu bằng chứng đã scrub trong `PROJECT_HANDOVER.md`
+- [X] T002 [P] Soạn ADR cho ranh giới bốn kho, ba loại case và hai miền Agent trong `docs/adr/0007-evidence-case-loop-boundaries.md`
+- [X] T003 [P] Bổ sung phân loại case/review/learning/prediction/artifact vào `00_governance/DATA_POLICY.md` và `docs/security/PRIVACY_IMPACT_ASSESSMENT.md`
+- [X] T004 [P] Bổ sung contract migration/retention của hai SQLite mới vào `docs/contracts/PERSISTED_DATA_COMPATIBILITY.md`
+- [X] T005 Chốt vai trò/phạm vi, thời hạn lưu, dữ liệu thử nghiệm, đầu ra đầu tiên và điều kiện chạy ngầm trong `specs/008-evidence-case-loop/owner-decisions.example.yaml`
 
----
+## Giai đoạn 2 — Nền tảng chặn mọi câu chuyện
 
-## 🚪 Cổng 1: Xây dựng tính năng Lưu trữ Hồ sơ sự vụ cục bộ thật (US1)
+- [X] T006 [P] Viết test upgrade/rollback/fault injection từ schema Cổng 1 trong `tests/test_workspace_case_migrations.py`
+- [X] T007 Triển khai migration version, online backup và `quick_check` trong `src/aios_habit/workspace_case_migrations.py`
+- [X] T008 [P] Viết test role/scope/expiry/revocation fail-closed trong `tests/test_workspace_case_authorization.py`
+- [X] T009 Triển khai `RoleGrant` registry và authorization service trong `src/aios_habit/workspace_case_authorization.py`
+- [X] T010 Mở rộng model nền `CaseActivity`, `CaseChecklistItem` và optimistic version trong `src/aios_habit/workspace_case_models.py`
+- [X] T011 Migrate repository Cổng 1 sang schema versioned và transaction activity chain trong `src/aios_habit/workspace_case_repository.py`
+- [X] T012 Bổ sung safe error codes, audit payload digest và cấm raw chat/excerpt trong `src/aios_habit/workspace_case_service.py`
+- [ ] T013 Chạy Gate 1A theo `specs/008-evidence-case-loop/quickstart.md` và ghi kết quả vào `PROJECT_HANDOVER.md`
 
-**Mục tiêu**: Thay thế nút bấm mô phỏng "Lưu vào hồ sơ" trước đây bằng chức năng lưu trữ cơ sở dữ liệu thật trên máy tính, không để lộ dữ liệu nhạy cảm.
+## Giai đoạn 3 — US1: Xem và quản lý hồ sơ trong Workspace Chat
 
-- [X] **T004 [US1]**: Viết các bài kiểm thử cơ sở dữ liệu trong `tests/test_workspace_case_store.py`: Kiểm tra lưu hồ sơ kèm tham chiếu bằng chứng trọn vẹn trong một lần ghi, tự động hủy bỏ nếu có lỗi ghi đĩa, tắt mở lại ứng dụng vẫn đọc đúng dữ liệu, ghi nhật ký kiểm toán nối tiếp.
-- [X] **T005 [US1]**: Viết bài kiểm thử dịch vụ và giao diện trong `tests/test_workspace_case_service.py`: Tự động từ chối nếu bằng chứng thiếu nguồn trích dẫn, không lưu thông tin mật cá nhân/CSV thô, nút bấm trên màn hình chỉ tạo đúng 1 hồ sơ duy nhất.
-- [X] **T006 [US1]**: Xây dựng cấu trúc dữ liệu `src/aios_habit/workspace_case_models.py` theo đúng bảng `CaseRecord` và `EvidenceReference`.
-- [X] **T007 [US1]**: Xây dựng tầng lưu trữ cơ sở dữ liệu `src/aios_habit/workspace_case_repository.py` sử dụng SQLite cục bộ, đảm bảo tính toàn vẹn và không làm ảnh hưởng đến thư viện tri thức chung `library.sqlite`.
-- [X] **T008 [US1]**: Xây dựng tầng xử lý nghiệp vụ `src/aios_habit/workspace_case_service.py`, chỉ giữ mã phiên, mã câu trả lời, mã trace và tham chiếu bằng chứng đã có; từ chối lưu hồ sơ nếu thiếu nguồn trích dẫn.
-- [X] **T009 [US1]**: Cập nhật nút bấm và thông báo trên giao diện `src/aios_habit/workspace_chat_app.py` sang lưu và mở hồ sơ thật bằng tiếng Việt rõ ràng, không hiển thị lỗi mã nguồn phức tạp.
-- [X] **T010 [US1]**: Cập nhật lại các bài kiểm thử giao diện trong `tests/test_workspace_chat_ui_copy.py`, không xóa bớt điều kiện kiểm tra để lấy kết quả đạt giả tạo.
-- [X] **T011 [US1]**: Chạy kiểm tra biên dịch (`compileall`), chạy toàn bộ test Cổng 1, kiểm tra import ứng dụng và kiểm tra không có xung đột mã nguồn trước khi đóng Cổng 1.
+**Mục tiêu**: người dùng mở danh sách/chi tiết case mà không hỏi lại RAG.
 
-*👉 Điểm kiểm tra an toàn*: Tạo và mở lại hồ sơ sự vụ thành công 100%; thiếu bằng chứng hoặc lỗi đĩa không sinh ra hồ sơ lỗi dở dang; thư viện tri thức chung `library.sqlite` giữ nguyên 100%.
+**Kiểm thử độc lập**: lưu case, mở mục “Hồ sơ vụ việc” trong tối đa ba thao tác, xem timeline/evidence, restart/readback và xử lý trace bị thiếu.
 
----
+- [X] T014 [P] [US1] Viết contract test list/detail/filter/state transition và gắn thêm evidence trong `tests/test_workspace_case_service.py`
+- [X] T015 [P] [US1] Viết test hành trình UI danh sách→chi tiết→mở trace, gắn thêm evidence và trace missing trong `tests/test_workspace_case_ui.py`
+- [X] T016 [US1] Mở rộng `CaseRecord` với type/status/priority/owner/assignee/version trong `src/aios_habit/workspace_case_models.py`
+- [X] T017 [US1] Thêm query list/detail/filter và optimistic transition trong `src/aios_habit/workspace_case_repository.py`
+- [X] T018 [US1] Thêm use case triage/assign/checklist/open-trace và gắn thêm evidence đã làm sạch trong `src/aios_habit/workspace_case_service.py`
+- [X] T019 [US1] Tạo renderer tiếng Việt cho list/detail/timeline và form gắn evidence trong `src/aios_habit/workspace_case_ui.py`
+- [X] T020 [US1] Gắn mục “Hồ sơ vụ việc” vào `src/aios_habit/workspace_chat_app.py` và loại bỏ placeholder mô phỏng còn sót trong `src/aios_habit/i18n.py`
+- [ ] T021 [US1] Chạy focused tests, restart/readback, import boundary và audit Gate 2 theo `specs/008-evidence-case-loop/quickstart.md`
 
-## 🚪 Cổng 2: Màn hình Chuyên gia thẩm định & Ký duyệt kết luận (US2)
+## Giai đoạn 4 — US2: Giao và nhận thẩm định chuyên gia
 
-**Mục tiêu**: Mọi ý kiến do AI hoặc người dùng dự thảo chỉ ở mức ứng viên; chỉ khi chuyên gia có thẩm quyền ký duyệt kèm lý do thì kết luận mới có giá trị.
+**Mục tiêu**: có inbox chuyên gia, request/review append-only và phân xử xung đột.
 
-- [ ] **T012 [US2]**: Viết bài kiểm thử `tests/test_workspace_case_expert_review.py`: Ý kiến dự thảo không tự động biến thành đã xác nhận; nếu thiếu tên chuyên gia, chức danh, lý do hoặc mã bằng chứng bị sai lệch thì hệ thống từ chối ngay lập tức; khi có 2 ý kiến trái chiều thì lưu giữ cả hai; tắt mở lại ứng dụng vẫn giữ nguyên nhật ký đánh giá.
-- [ ] **T013 [US2]**: Mở rộng cấu trúc dữ liệu `src/aios_habit/workspace_case_models.py` với bảng `ExpertReview` và bảng quy tắc chuyển trạng thái tự động khóa an toàn (fail-closed).
-- [ ] **T014 [US2]**: Mở rộng tầng lưu trữ và dịch vụ (`workspace_case_repository.py`, `workspace_case_service.py`) để lưu nhật ký đánh giá nối tiếp (append-only) và kiểm tra lại mã băm của tài liệu trích dẫn trong cùng một lần ghi.
-- [ ] **T015 [US2]**: Bổ sung giao diện tiếng Việt cho màn hình thẩm định trong `src/aios_habit/workspace_chat_app.py`, chỉ tiếp nhận danh sách chức danh chuyên gia do Cổng 0 cung cấp; tuyệt đối không để AI tự động bấm duyệt thay con người.
-- [ ] **T016 [US2]**: Chạy kiểm tra biên dịch, chạy bộ test Cổng 1 + Cổng 2, kiểm tra import ứng dụng và kiểm tra không có xung đột mã nguồn trước khi đóng Cổng 2.
+**Kiểm thử độc lập**: sai role/scope/reason/digest bị từ chối; hai review trái chiều được giữ và case chuyển xung đột.
 
-*👉 Điểm kiểm tra an toàn*: Ý kiến chuyên gia truy vết được về đúng hồ sơ sự vụ và tài liệu trích dẫn; người không có thẩm quyền không thể mở khóa bài học hay đề xuất hành động.
+- [ ] T022 [P] [US2] Viết state/authorization/append-only tests trong `tests/test_workspace_case_expert_review.py`
+- [ ] T023 [P] [US2] Viết UI inbox/request/response tests trong `tests/test_workspace_expert_ui.py`
+- [ ] T024 [US2] Thêm model `ExpertRequest` và `ExpertReview` trong `src/aios_habit/workspace_case_models.py`
+- [ ] T025 [US2] Thêm bảng/query expert append-only trong `src/aios_habit/workspace_case_repository.py`
+- [ ] T026 [US2] Triển khai request/review/conflict service với role/scope/digest guard trong `src/aios_habit/workspace_expert_service.py`
+- [ ] T027 [US2] Tạo inbox và form thẩm định tiếng Việt trong `src/aios_habit/workspace_expert_ui.py`
+- [ ] T028 [US2] Gắn expert inbox/detail vào `src/aios_habit/workspace_chat_app.py` và chạy Gate 3 theo `specs/008-evidence-case-loop/quickstart.md`
 
----
+## Giai đoạn 5 — US3: Học từ phản hồi và dùng lại có truy vết
 
-## 🚪 Cổng 3: Cơ chế Đúc kết Bài học kinh nghiệm vào Sổ tay (US3)
+**Mục tiêu**: promotion bài học có quyền và case-memory retrieval riêng.
 
-**Mục tiêu**: Chuyển các thẩm định đã được chuyên gia xác nhận thành bài học kinh nghiệm chính thức, có nguồn gốc rõ ràng, không tự ý huấn luyện lại mô hình AI.
+**Kiểm thử độc lập**: candidate không được search như sự thật; promoted có provenance; withdrawn biến mất khỏi search chuẩn; `library.sqlite` không đổi.
 
-- [ ] **T017 [US3]**: Viết bài kiểm thử `tests/test_workspace_case_learning.py`: Ý kiến chưa duyệt hoặc bị từ chối thì không thể nâng cấp thành bài học; bài học đã duyệt đọc lại đầy đủ thông tin nguồn gốc; thư viện tri thức `library.sqlite` hoàn toàn không bị xáo trộn.
-- [ ] **T018 [US3]**: Xây dựng cầu nối tương thích với các định dạng thẻ học cũ nếu có, chỉ đọc dữ liệu cũ khi có yêu cầu rõ ràng, không tự tiện gộp dữ liệu bừa bãi.
-- [ ] **T019 [US3]**: Mở rộng cấu trúc dữ liệu và dịch vụ cho bảng `LearningRecord` và thao tác phê duyệt bài học; tuyệt đối không gọi các lệnh huấn luyện mô hình hay thay đổi tài liệu gốc.
-- [ ] **T020 [US3]**: Bổ sung giao diện tiếng Việt trong `workspace_chat_app.py` để Quản lý chất lượng xem xét nguồn gốc và bấm nút duyệt đưa vào sổ tay bài học (bắt buộc nhập lý do).
-- [ ] **T021 [US3]**: Chạy kiểm tra biên dịch, chạy bộ test Cổng 1 $\rightarrow$ Cổng 3, kiểm tra các bài test nạp tài liệu Gate B, kiểm tra import ứng dụng và kiểm tra không có xung đột mã nguồn trước khi đóng Cổng 3.
+- [ ] T029 [P] [US3] Viết promotion/withdrawal/provenance tests trong `tests/test_workspace_case_learning.py`
+- [ ] T030 [P] [US3] Viết search isolation/ranking/citation tests trong `tests/test_case_memory_search.py`
+- [ ] T031 [US3] Thêm `LearningRecord` và migration tương thích thẻ cũ trong `src/aios_habit/workspace_case_models.py`
+- [ ] T032 [US3] Triển khai promotion/withdrawal và adapter import opt-in trong `src/aios_habit/workspace_learning_service.py`
+- [ ] T033 [US3] Triển khai chỉ mục/truy xuất case-memory riêng trong `src/aios_habit/case_memory_search.py`
+- [ ] T034 [US3] Hiển thị bài học promoted có citation trong `src/aios_habit/workspace_case_ui.py` và `src/aios_habit/workspace_chat_app.py`
+- [ ] T035 [US3] Chạy Gate 4, regression learning cũ và chứng minh `library.sqlite` bất biến theo `specs/008-evidence-case-loop/quickstart.md`
 
-*👉 Điểm kiểm tra an toàn*: Mỗi bài học đều truy vết được về đúng nhận định của chuyên gia, đúng hồ sơ sự vụ và đúng tài liệu tiêu chuẩn ban đầu.
+## Giai đoạn 6 — US4: Trợ lý điều tra line chủ động
 
----
+**Mục tiêu**: timeline, nhóm lặp, gap questions, relevance review và pilot thật.
 
-## 🚪 Cổng 4: Ghép nối Dữ liệu Log máy vào Hồ sơ điều tra (US4)
+**Kiểm thử độc lập**: không match trả rỗng; event giữ `suspected`; mapping cần manifest duyệt; một case thật đi đến báo cáo/outcome.
 
-**Điều kiện tiên quyết**: Đã có tệp dữ liệu log mẫu và quy chuẩn cột do Cổng 0 cung cấp. Nếu chưa có, ghi nhận trạng thái `BLOCKED` và không lập trình phỏng đoán.
+- [ ] T036 [P] [US4] Viết provenance/timezone/no-fallback tests trong `tests/test_line_log_parser.py`
+- [ ] T037 [P] [US4] Viết timeline/repeat/gap/relevance tests trong `tests/test_workspace_case_line_pilot.py`
+- [ ] T038 [US4] Thêm source digest, collector version, timezone và bỏ fallback event gần nhất trong `src/aios_habit/line_log_parser.py`
+- [ ] T039 [US4] Triển khai timeline/grouping/gap checklist tất định trong `src/aios_habit/line_investigation_service.py`
+- [ ] T040 [US4] Triển khai mapping manifest có version/approval guard trong `src/aios_habit/line_mapping_service.py`
+- [ ] T041 [US4] Thêm UI timeline/manh mối/câu hỏi thiếu/mapping đã duyệt trong `src/aios_habit/workspace_case_ui.py`
+- [ ] T042 [US4] Chạy Gate B/C privacy regression và focused tests theo `specs/008-evidence-case-loop/quickstart.md`
+- [ ] T043 [US4] Chạy một pilot line thật được phép và ghi SOP/mã lỗi/report/reviewer/outcome đã scrub trong `PROJECT_HANDOVER.md`
 
-- [ ] **T022 [US4]**: Viết bài kiểm thử `tests/test_workspace_case_line_pilot.py`: Chỉ đính kèm các sự kiện log từ `line_events.sqlite` mang nhãn "Nghi vấn (`suspected`)"; nếu không tìm thấy sự kiện khớp thì không được tự tiện lấy bừa 5 sự kiện gần nhất; không xuất hiện bất kỳ câu chữ khẳng định chẩn đoán nào; tệp CSV không bị nạp vào thư viện tri thức đọc hiểu.
-- [ ] **T023 [US4]**: Bổ sung mã băm kiểm chứng nguồn và phiên bản thu thập trong `src/aios_habit/line_log_parser.py`, giữ nguyên khả năng phân tích các định dạng log Jam/C-call/LSU hiện có.
-- [ ] **T024 [US4]**: Mở rộng dịch vụ và giao diện để cho phép đính kèm sự kiện log vào hồ sơ và yêu cầu chuyên gia kiểm tra tính liên quan; toàn bộ câu chữ trên màn hình dùng từ "Nghi vấn / Cần đối chứng".
-- [ ] **T025 [US4]**: Viết và chạy các bài kiểm tra bảo mật dữ liệu (`test_workspace_chat_connector_guard.py`, `test_line_log_parser.py`), đảm bảo dữ liệu log nội bộ không bị gửi ra ngoài qua các kết nối Gemini/Router.
-- [ ] **T026 [US4]**: Chạy kiểm tra biên dịch, chạy bộ test Cổng 1 $\rightarrow$ Cổng 4, kiểm tra các bài test bảo mật Gate B/C, kiểm tra import ứng dụng trước khi đóng Cổng 4.
+## Giai đoạn 7 — US5: Agent tạo đầu ra công việc có kiểm soát
 
-*👉 Điểm kiểm tra an toàn*: Sự kiện log chỉ đóng vai trò là dữ liệu nghi vấn phục vụ điều tra, không tự ý vẽ sơ đồ phán đoán hay kết luận hỏng cảm biến.
+**Mục tiêu**: capability registry và artifact versioned cho báo cáo/SOP rồi mở rộng thiết kế công đoạn.
 
----
+**Kiểm thử độc lập**: evidence rỗng, capability tắt, approver sai, overwrite/protected path đều bị chặn; artifact approved truy vết đủ.
 
-## 🚪 Cổng 5: Kiểm tra độ sẵn sàng cho Dự đoán lỗi LSU (US5)
+- [ ] T044 [P] [US5] Viết capability/risk/verifier/approver contract tests trong `tests/test_agent_artifact_capabilities.py`
+- [ ] T045 [P] [US5] Viết version/export/path/approval invalidation tests trong `tests/test_workspace_artifact_service.py`
+- [ ] T046 [US5] Thêm `CapabilityDefinition`, `ArtifactProposal`, `ArtifactVersion`, `ApprovalRecord` trong `src/aios_habit/workspace_case_models.py`
+- [ ] T047 [US5] Triển khai capability registry fail-closed trong `src/aios_habit/agent_artifact_capabilities.py`
+- [ ] T048 [US5] Tổng quát hóa SOP/report thành artifact pipeline có version trong `src/aios_habit/workspace_artifact_service.py`
+- [ ] T049 [US5] Tạo preview/diff/verify/approve UI trong `src/aios_habit/workspace_artifact_ui.py`
+- [ ] T050 [US5] Thêm adapter format thiết kế công đoạn đầu tiên theo owner decision trong `src/aios_habit/artifact_adapters/`
+- [ ] T051 [US5] Chạy Gate 6, protected-path/privacy regression và artifact readback theo `specs/008-evidence-case-loop/quickstart.md`
 
-**Điều kiện tiên quyết**: Đã có bộ dữ liệu mẫu, quy chuẩn nhãn lỗi và người chịu trách nhiệm do Cổng 0 cung cấp. Nếu thiếu, hệ thống chỉ kiểm tra trạng thái `blocked` và không lập trình mô hình dự đoán.
+## Giai đoạn 8 — US6: Agent hỗ trợ lập trình trong workspace tách biệt
 
-- [ ] **T027 [US5]**: Viết bài kiểm thử `tests/test_lsu_readiness.py`: Thiếu bất kỳ điều kiện nào đều trả về `blocked` kèm danh sách mục còn thiếu; đủ điều kiện chỉ trả về `ready_for_shadow` (chạy thử nghiệm ngầm); tuyệt đối không có kết quả đưa vào sản xuất thật hay lệnh can thiệp máy móc.
-- [ ] **T028 [US5]**: Mở rộng cấu trúc dữ liệu và dịch vụ với bảng `LsuReadinessManifest` và logic kiểm tra 6 tiêu chí an toàn.
-- [ ] **T029 [US5]**: Bổ sung màn hình tiếng Việt hiển thị bảng kiểm tra độ sẵn sàng và danh sách các mục còn thiếu cho người quản lý xem; không thêm bất kỳ nút bấm kích hoạt mô hình dự đoán production nào.
-- [ ] **T030 [US5]**: Chạy kiểm tra biên dịch, chạy bộ test Cổng 1 $\rightarrow$ Cổng 5, kiểm tra các bài test Gate B/C trước khi đóng Cổng 5.
+**Mục tiêu**: case `agent_work` nối task pack, proposal, command, observed test và audit.
 
-*👉 Điểm kiểm tra an toàn*: Khi thiếu dữ liệu thì báo cáo trung thực là `BLOCKED`; trạng thái "Sẵn sàng chạy thử nghiệm bóng (`ready_for_shadow`)" không đồng nghĩa với việc đã hoàn thành mô hình hay đưa vào sản xuất.
+**Kiểm thử độc lập**: deny runtime/factory data; proposal digest-bound; self-report PASS không observed evidence bị từ chối; không tự merge/push.
 
----
+- [ ] T052 [P] [US6] Viết workspace separation và forbidden-path tests trong `tests/test_workspace_code_agent_policy.py`
+- [ ] T053 [P] [US6] Viết task-pack→proposal→approval→observed-test flow trong `tests/test_workspace_code_agent_case.py`
+- [ ] T054 [US6] Mở rộng policy để bind approval với proposal/command digest trong `src/aios_habit/workspace_agent_policy.py`
+- [ ] T055 [US6] Tạo integration service cho case `agent_work` và task pack trong `src/aios_habit/workspace_code_agent_service.py`
+- [ ] T056 [US6] Nối observed evidence/result import và rollback ref trong `src/aios_habit/agent_result_import.py`
+- [ ] T057 [US6] Thêm UI proposal/diff/command/test/approve tiếng Việt trong `src/aios_habit/workspace_code_agent_ui.py`
+- [ ] T058 [US6] Chạy Gate 7 và toàn bộ test Agent IDE/task pack/result import theo `specs/008-evidence-case-loop/quickstart.md`
 
-## 🚪 Cổng 6: Trợ lý AI Soạn nháp Quy trình & Báo cáo (Con người bấm duyệt) (US6)
+## Giai đoạn 9 — US7: Nền dữ liệu dự đoán LSU/Drum/DLP
 
-**Mục tiêu**: Trợ lý AI hỗ trợ soạn thảo nhanh văn bản từ bằng chứng đã được chuyên gia duyệt, quyền lưu tệp chính thức hoàn toàn do con người bấm duyệt trên màn hình.
+**Mục tiêu**: store/version/schema/domain adapter với LSU/Iris là lát cắt đầu tiên.
 
-- [ ] **T031 [US6]**: Viết bài kiểm thử `tests/test_workspace_action_proposal.py` và bổ sung `tests/test_agent_draft_sop.py`: Hồ sơ chưa có bằng chứng hoặc chưa được chuyên gia xác nhận thì từ chối tạo nháp; nút duyệt trên màn hình gắn chặt với mã hồ sơ và chức danh người duyệt; tắt mở lại ứng dụng vẫn đọc đúng dữ liệu; cấm hoàn toàn các lệnh chạy mã độc hại, cấm sửa PLC, cấm xóa hoặc ghi đè tệp nhà máy.
-- [ ] **T032 [US6]**: Mở rộng cấu trúc dữ liệu và dịch vụ với bảng `ActionProposal`, ghi nhật ký nối tiếp.
-- [ ] **T033 [US6]**: Khóa chặt API trong `src/aios_habit/agent_draft_sop.py` theo nguyên tắc tự động khóa an toàn (fail-closed): Chỉ cho phép xuất tệp mới vào thư mục được chỉ định khi người dùng bấm duyệt, giữ nguyên luồng xem dự thảo tiếng Việt.
-- [ ] **T034 [US6]**: Hoàn thiện giao diện tiếng Việt để kỹ sư đọc bản dự thảo và bấm nút "Duyệt bản nháp" trên màn hình `workspace_chat_app.py`; tuyệt đối không mở các công cụ can thiệp dòng lệnh hay sửa mã nguồn trực tiếp.
-- [ ] **T035 [US6]**: Chạy kiểm tra biên dịch, chạy toàn bộ test Cổng 1 $\rightarrow$ Cổng 6, chạy các bài test chính sách an toàn của Agent IDE, kiểm tra import ứng dụng và kiểm tra không có xung đột mã nguồn trước khi đóng Cổng 6.
+**Kiểm thử độc lập**: stable keys/unit/time/version/labels được kiểm; thiếu một điều kiện readiness trả `blocked`; chưa train model.
 
-*👉 Điểm kiểm tra an toàn*: AI chỉ dừng lại ở vai trò soạn thảo văn bản nháp; mọi hành động áp dụng vào thực tế đều do con người thực hiện sau khi đã đọc và ký duyệt văn bản.
+- [ ] T059 [P] [US7] Viết prediction store migration/backup/rollback tests trong `tests/test_prediction_store_migrations.py`
+- [ ] T060 [P] [US7] Viết data contract/readiness/leakage validation tests trong `tests/test_prediction_data_gate.py`
+- [ ] T061 [US7] Tạo package và model lõi trong `src/aios_habit/production_prediction/models.py`
+- [ ] T062 [US7] Triển khai SQLite repository/migrations trong `src/aios_habit/production_prediction/repository.py`
+- [ ] T063 [US7] Triển khai snapshot ingest, quality report và six-condition readiness trong `src/aios_habit/production_prediction/data_gate.py`
+- [ ] T064 [US7] Triển khai adapter LSU/Iris từ data dictionary đã duyệt trong `src/aios_habit/production_prediction/adapters/lsu_iris.py`
+- [ ] T065 [US7] Tạo CLI local-only cho validate/snapshot/readiness trong `src/aios_habit/production_prediction/cli.py`
+- [ ] T066 [US7] Chạy Gate 8 trên dataset được phép hoặc ghi `BLOCKED` có danh sách thiếu trong `PROJECT_HANDOVER.md`
 
----
+## Giai đoạn 10 — US8: Huấn luyện và đánh giá model có trách nhiệm
 
-## 🏁 Bàn giao và Cập nhật tài liệu chính thức
+**Mục tiêu**: protocol đóng băng, baseline công bằng, model card và threshold owner-approved.
 
-- [ ] **T036**: Cập nhật tài liệu kiến trúc `ARCHITECTURE.md` và tài liệu bàn giao `PROJECT_HANDOVER.md`, nêu rõ những hạng mục đã hoàn tất và những hạng mục còn đang chờ dữ liệu thực tế từ nhà máy; cập nhật mục "Việc đang làm" trong `Thảo_luận_AI_dự_đoán_lỗi_LSU.md`.
-- [ ] **T037**: Chạy toàn bộ các lệnh nghiệm thu theo đúng phạm vi, ghi lại kết quả thực tế từ terminal, kiểm tra `git status` và `git diff --check` sạch hoàn toàn.
-- [ ] **T038**: Chuyên gia kiểm toán độc lập kiểm tra lại từng commit của Cổng 1 $\rightarrow$ Cổng 6; chỉ lập trình viên sửa các điểm phát hiện có bằng chứng thực tế; chỉ đẩy mã nguồn lên kho chung khi kiểm toán đạt PASS và Chủ sở hữu đồng ý với các hạng mục còn ở trạng thái `BLOCKED`.
+**Kiểm thử độc lập**: future leakage bị chặn; report đủ metric/digest; model không tự lên shadow.
+
+- [ ] T067 [P] [US8] Viết temporal/group split và `as_of_time` leakage tests trong `tests/test_prediction_feature_snapshots.py`
+- [ ] T068 [P] [US8] Viết metrics/calibration/stability/model-card tests trong `tests/test_prediction_evaluation.py`
+- [ ] T069 [US8] Triển khai feature snapshot versioned trong `src/aios_habit/production_prediction/features.py`
+- [ ] T070 [US8] Triển khai baseline no-alert và EWMA/CUSUM trong `src/aios_habit/production_prediction/baselines.py`
+- [ ] T071 [US8] Thêm optional dependency group prediction sau Data Gate trong `pyproject.toml` và `uv.lock`
+- [ ] T072 [US8] Triển khai candidate training/temporal evaluation/calibration trong `src/aios_habit/production_prediction/evaluation.py`
+- [ ] T073 [US8] Sinh model card và approval manifest trong `src/aios_habit/production_prediction/model_registry.py`
+- [ ] T074 [US8] Chạy Gate 9 với protocol đóng băng và ghi model/dataset/code/threshold digests trong `PROJECT_HANDOVER.md`
+
+## Giai đoạn 11 — US9: Shadow prediction tạo hồ sơ dự đoán
+
+**Mục tiêu**: replay/scheduler local tạo risk assessment và case có dedup/cooldown, thu outcome thật.
+
+**Kiểm thử độc lập**: signal tạo case một lần; feature snapshot đầy đủ; outcome đúng/sai/unknown; không alert/control.
+
+- [ ] T075 [P] [US9] Viết shadow run/dedup/cooldown tests trong `tests/test_prediction_shadow_runtime.py`
+- [ ] T076 [P] [US9] Viết prediction-case/outcome/missed-detection tests trong `tests/test_prediction_case_loop.py`
+- [ ] T077 [US9] Triển khai shadow runner và risk assessment trong `src/aios_habit/production_prediction/shadow.py`
+- [ ] T078 [US9] Triển khai outbox/reconciliation/idempotent upsert case `prediction` qua service guard trong `src/aios_habit/prediction_case_service.py`
+- [ ] T079 [US9] Thêm dashboard shadow/outcome review tiếng Việt trong `src/aios_habit/prediction_shadow_ui.py`
+- [ ] T080 [US9] Chạy shadow replay và regression cấm external alert/PLC theo `specs/008-evidence-case-loop/quickstart.md`
+- [ ] T081 [US9] Thu đủ số case/thời gian theo owner decision và ghi shadow gate report trong `PROJECT_HANDOVER.md`
+
+## Giai đoạn 12 — US10: Cảnh báo có duyệt và đề xuất phòng ngừa
+
+**Mục tiêu**: chỉ mở in-app alert sau shadow; action library có version/human approval/outcome.
+
+**Kiểm thử độc lập**: thiếu owner approval/kill switch bị chặn; role đúng thấy alert; action không plant control.
+
+- [ ] T082 [P] [US10] Viết alert-policy/kill-switch/escalation tests trong `tests/test_prediction_alert_policy.py`
+- [ ] T083 [P] [US10] Viết preventive-action/outcome tests trong `tests/test_preventive_action_service.py`
+- [ ] T084 [US10] Triển khai in-app alert policy và kill switch trong `src/aios_habit/production_prediction/alert_policy.py`
+- [ ] T085 [US10] Triển khai action library versioned và outcome trong `src/aios_habit/preventive_action_service.py`
+- [ ] T086 [US10] Gắn alert/action proposal vào Workspace Chat trong `src/aios_habit/prediction_shadow_ui.py`
+- [ ] T087 [US10] Chạy Gate 11 và chứng minh không connector plant-control theo `specs/008-evidence-case-loop/quickstart.md`
+
+## Giai đoạn 13 — US11: NAS, pilot tổ chức và phần mở rộng US7 cho Drum/DLP
+
+**Mục tiêu**: runtime evidence thật cho thư viện chung, bàn giao liên ca và mở rộng miền sau LSU.
+
+**Kiểm thử độc lập**: NAS one-writer/multi-reader + restore thật; hai vai trò mở cùng case; Drum/DLP có Data Gate riêng.
+
+- [ ] T088 [P] [US11] Soạn runbook NAS/pilot không chứa dữ liệu thật trong `docs/operations/WORKSPACE_LIBRARY_AND_CASE_PILOT.md`
+- [ ] T089 [US11] Chạy NAS one-writer/multi-reader, backup/restore/`quick_check` thật và cập nhật Gate A trong `PROJECT_HANDOVER.md`
+- [ ] T090 [US11] Chạy pilot bàn giao một case giữa ít nhất hai vai trò/ca và ghi acceptance đã scrub trong `PROJECT_HANDOVER.md`
+- [ ] T091 [US7] Triển khai Data Gate adapter Drum trong `src/aios_habit/production_prediction/adapters/drum.py`
+- [ ] T092 [US7] Triển khai Data Gate adapter DLP trong `src/aios_habit/production_prediction/adapters/dlp.py`
+- [ ] T093 [US7] Chạy readiness/evaluation/shadow gate độc lập cho Drum và DLP hoặc ghi từng miền `BLOCKED` trong `PROJECT_HANDOVER.md`
+
+## Giai đoạn 14 — Hội tụ, tài liệu và bàn giao
+
+- [ ] T094 [P] Cập nhật kiến trúc bốn kho, case loop, Agent boundary và prediction pipeline trong `ARCHITECTURE.md`
+- [ ] T095 [P] Cập nhật trạng thái từng gate bằng evidence thật trong `ROADMAP.md` và `Thảo_luận_AI_dự_đoán_lỗi_LSU.md`
+- [ ] T096 [P] Cập nhật UI guide, retention/backup, PIA và migration runbook trong `docs/user/WORKSPACE_CHAT_USER_GUIDE.md` và `docs/operations/`
+- [ ] T097 Chạy `py -3 -m compileall src tests`, focused suites và `py -3 -m pytest -q`, ghi exit code/test count trong `PROJECT_HANDOVER.md`
+- [ ] T098 Chạy `$env:PYTHONPATH="src"; py -3 -m aios_habit.cli audit`, import Workspace Chat, docs check, `git diff --check` và `git diff --cached --check`
+- [ ] T099 Chạy restore drill, privacy regression, no-legacy-import và no-plant-control audit theo `specs/008-evidence-case-loop/quickstart.md`
+- [ ] T100 Thực hiện kiểm toán độc lập từng gate/commit và chỉ đánh dấu `DONE` cho yêu cầu có runtime evidence trong `PROJECT_HANDOVER.md`
+
+## Phụ thuộc và thứ tự
+
+```text
+Giai đoạn 1 → Giai đoạn 2
+Giai đoạn 2 → US1 → US2 → US3 → US4
+Giai đoạn 2 → US5 → US6
+Giai đoạn 2 → US7 → US8 → US9 → US10
+US4 + US9 + quyết định owner → US11
+Các story mong muốn hoàn tất → Giai đoạn 14
+```
+
+- US1–US4 phải tuần tự vì expert/learning/pilot cần case UI và state machine.
+- US5–US6 có thể bắt đầu sau nền tảng nhưng Gate 6 phải đóng trước Gate 7.
+- US7–US10 phải tuần tự; thiếu dataset/owner giữ track prediction `BLOCKED` mà không chặn US1–US6.
+- US11 chỉ mở adapter Drum/DLP sau vertical slice LSU/Iris đạt shadow gate; NAS evidence chạy độc lập.
+
+## Cơ hội chuẩn bị song song
+
+- Sau Giai đoạn 2, nhóm case UI, capability Agent và data contract prediction có thể chuẩn bị ở các file tách biệt; mỗi gate vẫn cần audit riêng.
+- Test contract `[P]` có thể được viết song song trước implementation trong cùng story.
+- T094–T096 có thể chuẩn bị song song sau khi hành vi tương ứng đã đóng gate; không được viết trạng thái DONE trước evidence.
+
+## Phạm vi MVP đề xuất
+
+MVP tiếp theo không phải toàn chương trình mà là **Gate 1A + US1**: migration an toàn và mục “Hồ sơ vụ việc” dùng được. Sau demo/acceptance, tiếp tục US2–US3 để khép vòng chuyên gia–bài học. Prediction không được rút gọn thành model giả chỉ để có demo.
+
+## Quy tắc thực thi
+
+- Viết test trước cho contract/state/policy quan trọng và xác minh test fail đúng lý do trước implementation.
+- Mỗi gate có commit nhỏ, allowlist rõ, rollback và reviewer độc lập với implementer.
+- Không commit `local_cases/`, `local_runs/`, raw log, dataset/model thật, ảnh/sơ đồ mật hoặc `.env`.
+- Không tự mở code implementation cho đến khi chủ sở hữu phê duyệt kế hoạch và quyết định gate liên quan.
