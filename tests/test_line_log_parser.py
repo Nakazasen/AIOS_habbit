@@ -19,7 +19,31 @@ def test_jam_csv_is_not_ingested_into_knowledge_library():
 def test_detect_jam_and_c_call_dialects():
     assert detect_line_log_dialect(["Time", "Station", "jam_code"]) == "jam"
     assert detect_line_log_dialect(["datetime", "c_call", "line"]) == "c_call"
+    assert detect_line_log_dialect(["DATE", "TIME", "CAM_ID", "ERR_NUM"]) == "lsu_cam"
     assert detect_line_log_dialect(["foo", "bar"]) == "unknown"
+
+
+def test_parse_lsu_cam_log_csv():
+    payload = (
+        b"DATE,TIME,CAM_ID,ERR_NUM,BARCODE,TACT_TIME\n"
+        b"2026-08-30,08:15:22,CAM_01,E102,SN_LSU_001,12.5\n"
+    )
+    lsu = parse_line_log_bytes(
+        payload,
+        "LSU_CamError.csv",
+    )
+    assert lsu.ok is True
+    assert lsu.dialect == "lsu_cam"
+    assert len(lsu.events) == 1
+    assert lsu.events[0].station == "CAM_01"
+    assert lsu.events[0].code == "E102"
+    assert lsu.events[0].serial == "SN_LSU_001"
+    assert lsu.events[0].duration_s == 12.5
+    assert lsu.events[0].provenance == "suspected"
+
+    knowledge = ingest_and_extract_bytes(payload, "LSU_CamError.csv")
+    assert knowledge["ok"] is False
+    assert knowledge["error_code"] == "csv_not_in_knowledge_library"
 
 
 def test_parse_jam_and_c_call_csv():

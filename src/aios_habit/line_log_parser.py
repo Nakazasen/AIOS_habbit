@@ -39,9 +39,11 @@ _CODE_ALIASES = frozenset({
 _SERIAL_ALIASES = frozenset({"serial", "sn", "lot", "barcode", "unit"})
 _DURATION_ALIASES = frozenset({
     "duration", "duration_s", "time_ms", "cycle", "hold_time",
+    "tact_time",
 })
 _JAM_HINTS = frozenset({"jam", "jam_code", "jamcode"})
 _CCALL_HINTS = frozenset({"c_call", "ccall", "c-call", "call_code"})
+_LSU_HINTS = frozenset({"cam_id", "err_num", "errnum", "cam_error", "jig"})
 
 
 @dataclass(frozen=True)
@@ -89,6 +91,8 @@ def detect_line_log_dialect(headers: Sequence[str]) -> str:
         return "jam"
     if names & _CCALL_HINTS:
         return "c_call"
+    if names & _LSU_HINTS:
+        return "lsu_cam"
     return "unknown"
 
 
