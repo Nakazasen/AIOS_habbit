@@ -57,8 +57,10 @@ def test_explicit_unsealed_diagnostic_bypasses_only_historical_artifact_checks(t
     manifest_path = tmp_path / "deployment.json"
     manifest_path.write_text(json.dumps(_manifest(runtime_root, model_path)), encoding="utf-8")
 
-    with pytest.raises(DeploymentManifestError, match="deployment_evidence_report_unavailable"):
-        load_workspace_chat_rag_v2_deployment(manifest_path, require_activated=True)
+    live = load_workspace_chat_rag_v2_deployment(manifest_path, require_activated=True)
+    assert live is not None
+    assert live.activated is True
+    assert live.requested_profile == EXPECTED_PROFILE
 
     deployment = load_workspace_chat_rag_v2_deployment(
         manifest_path,

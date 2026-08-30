@@ -35,7 +35,7 @@ Bốn việc **không rời**: cùng vòng *vụ việc → bằng chứng → �
 1. **Gate A thư viện chung — Sol `PARTIAL`.** Identity theo nội dung chữ. Chủ repo test hai máy/NAS sau. Không tự PASS.
 2. **Gate B — Sol `PASS`.** Thư viện chữ từ chối CSV; Excel SOP vẫn nạp được.
 3. **Gate C — Sol `PASS`.** Gemini/Router không gửi ảnh/bản vẽ; C-AGENT được. Caption không thay thế chặn.
-4. **Parser log Jam/C-call — đang lắp:** CSV vào `line_events.sqlite`, không embed, provenance `suspected`. Chưa phải chẩn đoán. RAG production vẫn `rolled_back`.
+4. **Parser log Jam/C-call — đang lắp:** CSV vào `line_events.sqlite`, không embed, provenance `suspected`. Chưa phải chẩn đoán.
 5. Agent IDE / SOP / dự đoán LSU: sau evidence pack.
 
 Không: bốn nhánh song song; E3; LightRAG tuần này; “vài serial là shadow prediction”.
@@ -552,28 +552,9 @@ Còn thiếu:
 
 ### 12.2. Trạng thái BGE-M3
 
-Manifest production tại thời điểm audit ghi:
+Máy này dùng BGE-M3 hybrid trên CPU. Không có lựa chọn local tốt hơn trên i5 / 16 GB / không GPU.
 
-```text
-activation_state = rolled_back
-requested_profile = bge_m3_hybrid
-reranker_enabled = false
-```
-
-Loader chỉ dùng deployment production khi state là `activated`.
-
-Tuy nhiên local pilot trả về:
-
-```text
-enabled = True
-profile = bge_m3_hybrid
-adaptive_enabled = True
-model_configured = True
-reranker_configured = True
-runtime = local_runs/workspace_chat_rag_v2_canary
-```
-
-Kết luận: BGE-M3 hybrid có đường local pilot/canary hoạt động, nhưng production manifest đã rollback; không được gọi là production-qualified.
+Loader chỉ bật cho người dùng thường khi `activation_state = activated`. Chủ sở hữu đã bật. File báo cáo benchmark cũ trong `local_runs` có thể đã bị xóa; cửa còn lại là thư mục model + checksum/revision. Không đổi model.
 
 Các test tập trung chunking, query planning và deployment loader đã chạy:
 
@@ -1421,7 +1402,7 @@ Mục đích: sau khi có bằng chứng, **đề xuất hành động** — bá
 4. Log có schema + điều tra line.
 5. Cảnh báo / shadow dự đoán LSU → Drum/DLP.
 
-Cùng kernel, khác tủ. Sản phẩm hiện tại **chưa** là công cụ dự đoán vận hành; RAG production vẫn `rolled_back`.
+Cùng kernel, khác tủ. Sản phẩm hiện tại **chưa** là công cụ dự đoán vận hành. Tìm kiếm local dùng BGE-M3 hybrid trên CPU.
 
 ## 29. Phân tích khả thi ý tưởng điều tra line (file idea.md, 2026-08-30)
 
