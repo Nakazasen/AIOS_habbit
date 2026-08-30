@@ -30,14 +30,14 @@ from .query_planning import (
 class EvidencePackConfig:
     """Tunable thresholds for evidence pack construction."""
 
-    max_items: int = 15
+    max_items: int = 20
     min_items_for_sufficient: int = 1
     min_top_score: float = 0.1
     min_term_coverage: float = 0.3
     min_final_evidence_term_coverage: float = 0.6
     min_semantic_support_score: float = 0.55
     max_snippet_chars: int = 1500
-    per_document_limit: int = 3
+    per_document_limit: int = 5
     high_score_threshold: float = 8.0
     medium_score_threshold: float = 3.0
     soft_warning_codes: frozenset[str] = frozenset({

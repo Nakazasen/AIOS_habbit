@@ -70,12 +70,12 @@ class RetrievalQueryPlan:
     @property
     def target_retrieval_limit(self) -> int:
         """Return dynamic retrieval limit based on intent category."""
-        return 25 if self.intent_category == "cross_source_synthesis" else 10
+        return 25 if self.intent_category == "cross_source_synthesis" else 15
 
     @property
     def target_per_document_limit(self) -> int:
         """Return dynamic per-document limit based on intent category."""
-        return 5 if self.intent_category == "cross_source_synthesis" else 3
+        return 5
 
     @property
     def fingerprint(self) -> str:

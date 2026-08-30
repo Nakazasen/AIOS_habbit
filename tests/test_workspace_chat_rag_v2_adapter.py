@@ -877,7 +877,7 @@ def test_semantic_preparation_uses_bounded_incremental_batches(monkeypatch, tmp_
 
     def prepare_staged_source(spec, _config, *, group_size):
         staged_documents.append(spec.document_id)
-        assert group_size == 4
+        assert group_size == 16
         return {
             "converted_count": 1, "skipped_count": 0,
             "failed_count": 0, "indexed_chunk_count": len(staged_documents) * 10,
@@ -923,7 +923,7 @@ def test_semantic_preparation_batch_failure_preserves_prior_commits(monkeypatch,
 
     def prepare_staged_source(_spec, _config, *, group_size):
         nonlocal calls
-        assert group_size == 4
+        assert group_size == 16
         calls += 1
         if calls == 2:
             raise RuntimeError("sensitive source details must stay private")
@@ -972,7 +972,7 @@ def test_semantic_preparation_resume_skips_completed_sources_and_emits_safe_prog
     )
 
     def prepare_staged_source(spec, _config, *, group_size, **kwargs):
-        assert group_size == 4
+        assert group_size == 16
         assert kwargs["source_timeout_s"] == 30.0
         staged_documents.append(spec.document_id)
         return {

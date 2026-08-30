@@ -35,7 +35,8 @@ Bốn việc **không rời**: cùng vòng *vụ việc → bằng chứng → �
 1. **Gate A thư viện chung — Sol `PARTIAL`.** Identity theo nội dung chữ. Chủ repo test hai máy/NAS sau. Không tự PASS.
 2. **Gate B — Sol `PASS`.** Thư viện chữ từ chối CSV; Excel SOP vẫn nạp được.
 3. **Gate C — Sol `PASS`.** Gemini/Router không gửi ảnh/bản vẽ; C-AGENT được. Caption không thay thế chặn.
-4. **Parser log Jam/C-call — đang lắp:** CSV vào `line_events.sqlite`, không embed, provenance `suspected`. Chưa phải chẩn đoán.
+4. **Parser log Jam/C-call — Sol `PASS`.** CSV vào `line_events.sqlite`, không embed, provenance `suspected`.
+5. **RAG chữ:** overlap cắt đoạn ~15%, cửa sổ retrieval/citation rộng hơn, ingest BGE gom lô 8–16. Không dùng LLM để embed. Index cũ không tự rebuild.
 5. Agent IDE / SOP / dự đoán LSU: sau evidence pack.
 
 Không: bốn nhánh song song; E3; LightRAG tuần này; “vài serial là shadow prediction”.

@@ -92,10 +92,10 @@ class RagV2DevConfig:
     runtime_root: Path | str = Path("local_runs/rag_v2_dev")
     index_filename: str = "rag_v2_dev.sqlite"
     max_chunk_chars: int = 1200
-    retrieval_limit: int = 10
+    retrieval_limit: int = 15
     candidate_limit: int = 100
     dense_candidate_limit: int = 100
-    per_document_limit: int = 3
+    per_document_limit: int = 5
     retrieval_profile: str = "lexical"
     embedding_model_id: str = "BAAI/bge-small-en-v1.5"
     embedding_model_revision: str = ""
@@ -108,14 +108,14 @@ class RagV2DevConfig:
     dense_channel_weight: float = 1.0
     sparse_channel_weight: float = 1.0
     rerank_limit: int = 30
-    context_neighbor_window: int = 1
+    context_neighbor_window: int = 2
     context_parent_limit: int = 1
     strict_semantic: bool = False
     bge_m3_model_path: Path | str | None = None
     bge_m3_model_revision: str = ""
     bge_m3_model_checksum: str = ""
     bge_m3_dimension: int = 1024
-    bge_m3_batch_size: int = 1
+    bge_m3_batch_size: int = 8
     bge_m3_max_length: int = 2048
     bge_m3_use_fp16: bool = False
     bge_reranker_model_path: Path | str | None = None
@@ -816,14 +816,20 @@ class RagV2DevPipeline:
                             self._degraded_reason = degraded_reason
 
 
-            if effective_profile == "hybrid_rerank_expand":
+            if effective_profile in {
+                "hybrid_rerank_expand",
+                "bge_m3_hybrid",
+                "bge_m3_hybrid_rerank",
+                "bge_m3_hybrid_rerank_expand",
+            }:
                 response = self.index.expand_context(
                     response,
                     options=options,
                     neighbor_window=self.config.context_neighbor_window,
                     parent_limit=self.config.context_parent_limit,
                 )
-                effective_path = "hybrid_rerank_expand"
+                if effective_profile == "hybrid_rerank_expand":
+                    effective_path = "hybrid_rerank_expand"
 
 
 

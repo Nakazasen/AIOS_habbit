@@ -102,6 +102,7 @@ class StructureAwareChunker:
         parent_max_chars: int = 6000,
         table_rows_per_chunk: int = 4,
         boundary_policy: str = BOUNDARY_POLICY_SENTENCE_PUNCTUATION,
+        overlap_chars: int | None = None,
     ) -> None:
         if max_chars < 80:
             raise ValueError("max_chars must be at least 80")
@@ -120,6 +121,12 @@ class StructureAwareChunker:
         self.parent_max_chars = min(max(parent_max_chars, 3000), 8000)
         self.table_rows_per_chunk = table_rows_per_chunk
         self.boundary_policy = boundary_policy
+        # Azure / Chonkie default: 10–20% overlap so facts on a boundary stay retrievable.
+        if overlap_chars is None:
+            overlap_chars = max(0, self.max_chars // 6)
+        if overlap_chars < 0:
+            raise ValueError("overlap_chars must be non-negative")
+        self.overlap_chars = min(overlap_chars, max(0, self.max_chars // 3))
 
     def chunk_elements(self, elements: Iterable[DocumentElement]) -> List[DocumentChunk]:
         chunks: List[DocumentChunk] = []
@@ -422,7 +429,7 @@ class StructureAwareChunker:
             representation_role: str,
         ) -> None:
             nonlocal child_index
-            for part in self._split_text(text, self.max_chars):
+            for part in self._split_text(text, self.max_chars, overlap=False):
                 chunks.append(self._build_chunk(
                     element,
                     part,
@@ -531,11 +538,20 @@ class StructureAwareChunker:
             f"{self._column_name(column_range[1])}{row_range[1]}"
         )
 
-    def _split_text(self, text: str, limit: Optional[int] = None) -> List[str]:
+    def _split_text(
+        self,
+        text: str,
+        limit: Optional[int] = None,
+        *,
+        overlap: bool | None = None,
+    ) -> List[str]:
         text = text.strip()
         max_chars = limit or self.max_chars
         if len(text) <= max_chars:
             return [text]
+        use_overlap = self.overlap_chars > 0 if overlap is None else overlap
+        if overlap is None:
+            use_overlap = use_overlap and (limit is None or limit == self.max_chars)
         parts: List[str] = []
         start = 0
         while start < len(text):
@@ -545,7 +561,12 @@ class StructureAwareChunker:
             part = text[start:end].strip()
             if part:
                 parts.append(part)
-            start = end
+            consumed = max(1, end - start)
+            step_overlap = min(self.overlap_chars, consumed // 3) if use_overlap else 0
+            if step_overlap and end < len(text):
+                start = end - step_overlap
+            else:
+                start = end
         return parts
 
     def _choose_split_end(self, text: str, start: int, end: int, max_chars: int) -> int:

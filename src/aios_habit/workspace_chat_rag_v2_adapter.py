@@ -228,7 +228,7 @@ class WorkspaceChatRagV2CanaryConfig:
     bge_m3_model_path: Optional[Path] = None
     bge_m3_model_revision: str = ""
     bge_m3_model_checksum: str = ""
-    bge_m3_batch_size: int = 1
+    bge_m3_batch_size: int = 8
     bge_m3_max_length: int = 2048
     bge_m3_use_fp16: bool = False
     retrieval_device: str = "cpu"
@@ -1036,7 +1036,7 @@ def prepare_workspace_chat_sources(
                         source_report = _SUBPROCESS_CLIENT.prepare_staged_source(
                             spec,
                             pipe_config,
-                            group_size=4,
+                            group_size=16,
                             **kwargs,
                         )
                         batch_reports.append(source_report)

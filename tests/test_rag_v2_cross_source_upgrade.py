@@ -38,5 +38,5 @@ def test_standard_identity_plan_defaults():
     q = "Check status"
     plan = identity_query_plan(q)
     assert plan.intent_category == "general"
-    assert plan.target_retrieval_limit == 10
-    assert plan.target_per_document_limit == 3
+    assert plan.target_retrieval_limit == 15
+    assert plan.target_per_document_limit == 5

@@ -242,6 +242,15 @@ def test_sentence_policy_falls_back_when_no_punctuation():
     assert any(not part.endswith("。") for part in parts)
 
 
+def test_child_splits_keep_boundary_overlap():
+    text = ("Alpha sentence one. " * 8) + ("Beta sentence two. " * 8)
+    chunker = StructureAwareChunker(max_chars=80, overlap_chars=16)
+    parts = chunker._split_text(text, 80)
+    assert len(parts) >= 2
+    shared = parts[0][-12:]
+    assert shared in parts[1]
+
+
 def test_sentence_policy_does_not_split_on_decimal_dot():
     prefix = "Giá trị đo 12.5 rồi 13.8 rồi 14.2 rồi kết thúc câu này bằng chấm. "
     text = prefix + ("x" * 40)
