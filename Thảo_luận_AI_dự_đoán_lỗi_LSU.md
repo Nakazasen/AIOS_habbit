@@ -26,7 +26,7 @@ Bốn việc **không rời**: cùng vòng *vụ việc → bằng chứng → �
                          phải duyệt; không xóa file nhà máy
 ```
 
-**Cầu nối:** Router / Gemini Web = chữ, không bản vẽ. C-AGENT Sonnet 4 công ty = được gửi sơ đồ/log (luật `AGENT_RULES.md`). Caption UI **chưa** chặn file — chưa được coi là đã an toàn.
+**Cầu nối:** Router / Gemini Web = chữ, không bản vẽ. C-AGENT Sonnet 4 công ty = được gửi sơ đồ/log (luật `AGENT_RULES.md`). Gate C đã chặn file ảnh ở UI và route; caption không thay thế chặn.
 
 **Kho:** sổ trỏ thư viện. Snapshot SQLite xong mới đổi con trỏ. Chỗ mới có kho khác thì chặn. Một writer (lease). WAL ổ mạng nhiều máy: chưa hỗ trợ.
 
@@ -39,7 +39,7 @@ Bốn việc **không rời**: cùng vòng *vụ việc → bằng chứng → �
 5. **RAG chữ:** overlap cắt đoạn ~15%, cửa sổ retrieval/citation rộng hơn, ingest BGE gom lô 8–16. Không dùng LLM để embed. Index cũ không tự rebuild.
 6. **Gói bằng chứng chữ + log — đã lắp:** hỏi điều tra kèm sự kiện `line_events` (nghi ngờ). Agent/LSU prediction vẫn sau.
 
-**Bàn giao GPT (deadline):** xong glue evidence. Còn: nạp thêm SOP PDF lớn + CSV CamError khác qua UI (BGE ingest chậm CPU); rebuild index overlap cho file cũ; Gate A NAS; không overlay/Agent/LSU. Không commit `tailieugoc` / `Tài liệu của tất cả dòng máy`.
+**Lệnh làm hết (Gemini Flash + Codex):** `D:\Kế hoạch AIOS_habbit\Gemini-Codex_lam_het_he_thong.md`
 
 Không: bốn nhánh song song; E3; LightRAG tuần này; “vài serial là shadow prediction”.
 
