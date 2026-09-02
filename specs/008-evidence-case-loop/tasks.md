@@ -10,6 +10,19 @@
 - `[USn]`: liên kết tới câu chuyện người dùng trong `spec.md`.
 - Mỗi gate chỉ được đóng sau focused tests, full gate phù hợp và kiểm toán độc lập.
 
+## Cách giao từng việc cho Gemini Flash
+
+Kế hoạch dùng cách chia cuốn chiếu để tránh thiết kế thừa: chỉ chi tiết hóa US sắp làm; US sau được chi tiết hóa khi gate trước đã có bằng chứng. Mỗi lượt giao cho Gemini Flash chỉ giao **một mã công việc** và yêu cầu giữ nguyên các ranh giới sau:
+
+1. Đọc mục story tương ứng trong `spec.md`, phần contract tương ứng trong `contracts/workspace-evidence-loop.md` và đúng các file được nêu trong task; không quét hoặc sửa toàn repo.
+2. Viết hoặc cập nhật test trước đối với state, quyền, migration và dữ liệu append-only; chạy test tập trung để thấy lỗi đúng nguyên nhân trước khi sửa implementation.
+3. Không thêm bộ khung, cơ sở dữ liệu, dịch vụ hoặc lớp trừu tượng mới nếu hợp đồng hiện có không yêu cầu.
+4. Không sửa ngoài file của công việc, trừ import tối thiểu hoặc fixture dùng chung đã được nêu rõ; nếu cần mở rộng phạm vi thì dừng và báo lý do.
+5. UI, lỗi và cảnh báo phải là tiếng Việt; không lộ traceback, đường dẫn hệ thống, nội dung `local_only` hoặc tên mô hình nội bộ.
+6. Kết thúc bằng danh sách file đã đổi, lệnh test đã chạy, số test đạt/trượt và phần chưa xác minh. Không tự commit, push hoặc đánh dấu gate `PASS`.
+
+Một công việc được xem là hoàn tất thi công khi test tập trung của công việc đạt, `py -3 -m compileall` đạt cho các file liên quan, `git diff --check` sạch và không có thay đổi ngoài phạm vi. Việc đóng gate vẫn do lượt kiểm toán độc lập thực hiện.
+
 ## Giai đoạn 1 — Khóa baseline và quyết định kiến trúc
 
 - [X] T001 Ghi audit độc lập cho commit `2bb7a5f`, đối chiếu FR-002/FR-004/FR-016/FR-018 và lưu bằng chứng đã scrub trong `PROJECT_HANDOVER.md`
@@ -50,13 +63,24 @@
 
 **Kiểm thử độc lập**: sai role/scope/reason/digest bị từ chối; hai review trái chiều được giữ và case chuyển xung đột.
 
-- [ ] T022 [P] [US2] Viết state/authorization/append-only tests trong `tests/test_workspace_case_expert_review.py`
-- [ ] T023 [P] [US2] Viết UI inbox/request/response tests trong `tests/test_workspace_expert_ui.py`
-- [ ] T024 [US2] Thêm model `ExpertRequest` và `ExpertReview` trong `src/aios_habit/workspace_case_models.py`
-- [ ] T025 [US2] Thêm bảng/query expert append-only trong `src/aios_habit/workspace_case_repository.py`
-- [ ] T026 [US2] Triển khai request/review/conflict service với role/scope/digest guard trong `src/aios_habit/workspace_expert_service.py`
-- [ ] T027 [US2] Tạo inbox và form thẩm định tiếng Việt trong `src/aios_habit/workspace_expert_ui.py`
-- [ ] T028 [US2] Gắn expert inbox/detail vào `src/aios_habit/workspace_chat_app.py` và chạy Gate 3 theo `specs/008-evidence-case-loop/quickstart.md`
+**Điều kiện bắt đầu**: T013 và T021 đã được kiểm toán độc lập và ghi bằng chứng; nếu chưa thì chỉ được đọc/chuẩn bị test, không mở phần triển khai US2.
+
+**Thứ tự giao cho Gemini Flash**: T022 và T023 có thể chuẩn bị song song; sau đó lần lượt T024 → T025 → T026 → T027 → T028. Không gộp mô hình dữ liệu, kho lưu trữ, dịch vụ và giao diện vào một lượt.
+
+- [ ] T022 [P] [US2] Trong `tests/test_workspace_case_expert_review.py`, viết riêng các test cho tạo yêu cầu đúng scope, từ chối role/scope hết hạn hoặc bị thu hồi, khóa `claim_digest`/`evidence_digest`, review append-only, supersede và giữ hai ý kiến trái chiều; chưa sửa phần triển khai
+  - Đạt khi: test mới được thu thập thành công và đang trượt đúng vì API/mô hình dữ liệu/kho lưu trữ US2 chưa có, không vì lỗi fixture hoặc import.
+- [ ] T023 [P] [US2] Trong `tests/test_workspace_expert_ui.py`, viết test hiển thị hàng chờ theo người nhận, form tạo yêu cầu, form `confirmed`/`rejected`/`needs_more_evidence`, thông báo lỗi tiếng Việt và không lộ dữ liệu kỹ thuật; chưa sửa phần triển khai giao diện
+  - Đạt khi: mỗi hành trình UI có một test thành công dự kiến và các test từ chối input thiếu/sai quyền.
+- [ ] T024 [US2] Trong `src/aios_habit/workspace_case_models.py`, thêm `ExpertRequest` và `ExpertReview` đúng trường, enum trạng thái/quyết định và validation tại mục 3.6–3.7 của `data-model.md`; chỉ cập nhật test model liên quan nếu cần
+  - Đạt khi: mô hình dữ liệu từ chối ID/digest/lý do rỗng, chỉ nhận trạng thái hợp lệ và đọc lại ổn định mà không chứa bằng chứng thô.
+- [ ] T025 [US2] Trong `src/aios_habit/workspace_case_repository.py` và migration hiện có, thêm bảng/index/query cho yêu cầu và review append-only; hỗ trợ list inbox, lấy lịch sử và thêm review mới nhưng không có đường update/delete record cũ
+  - Đạt khi: upgrade/readback/restart và rollback fixture cũ đạt; ghi review cùng activity trong transaction và chuỗi digest vẫn hợp lệ.
+- [ ] T026 [US2] Tạo `src/aios_habit/workspace_expert_service.py` với ba use case `request_expert_review`, `record_expert_review`, `resolve_review_conflict`; tái dùng authorization service hiện có để kiểm role/scope/thời hạn, khóa claim/evidence digest và chuyển trạng thái case đúng contract
+  - Đạt khi: toàn bộ test T022 đạt; hai review trái chiều được giữ nguyên, case chuyển trạng thái cần phân xử và AI không có đường tự xác nhận.
+- [ ] T027 [US2] Tạo `src/aios_habit/workspace_expert_ui.py` gồm hàng chờ của chuyên gia, chi tiết yêu cầu và form phản hồi tiếng Việt; UI chỉ gọi service, không tự quyết quyền hoặc ghi thẳng repository
+  - Đạt khi: toàn bộ test T023 đạt; dữ liệu nhập thiếu lý do/sai quyền nhận thông báo tiếng Việt an toàn và không lộ traceback, đường dẫn hoặc digest nội bộ không cần thiết.
+- [ ] T028 [US2] Gắn hàng chờ và chi tiết thẩm định vào `src/aios_habit/workspace_chat_app.py`, sau đó chạy kịch bản Gate 3 trong `specs/008-evidence-case-loop/quickstart.md`; chỉ cập nhật `PROJECT_HANDOVER.md` bằng bằng chứng đã làm sạch sau lượt kiểm toán độc lập
+  - Đạt khi: tạo yêu cầu → người đúng scope xem inbox → phản hồi → restart/readback hoạt động; import boundary, test US2, audit chain và kiểm tra tiếng Việt đều đạt.
 
 ## Giai đoạn 5 — US3: Học từ phản hồi và dùng lại có truy vết
 
