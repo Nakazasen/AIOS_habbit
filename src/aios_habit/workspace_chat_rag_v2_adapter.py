@@ -104,6 +104,8 @@ _PREPARATION_LOCK = threading.RLock()
 _PREPARATION_EXECUTOR: concurrent.futures.ThreadPoolExecutor | None = None
 _DRAIN_RUNNING_LOCK = threading.Lock()
 _DRAIN_IS_RUNNING = False
+_PREPARATION_LEDGER_INIT_LOCK = threading.Lock()
+_PREPARATION_LEDGER_INITIALIZED_PATHS: set[str] = set()
 _SOURCE_CACHE_LOCK = threading.Lock()
 _SOURCE_CACHE: dict[tuple[str, str], WorkspaceAIContextSource] = {}
 
@@ -143,6 +145,16 @@ _DEFAULT_RUNTIME_ROOT = Path("local_runs/workspace_chat_rag_v2_canary")
 _ALLOWED_PROFILES = frozenset({"bge_m3_hybrid"})
 _TRUE_VALUES = frozenset({"1", "true", "yes", "on"})
 _SAFE_REASON = re.compile(r"[^a-z0-9_.-]+")
+_SAFE_PREPARATION_REASON_PREFIXES = (
+    "bge_worker_",
+    "preparation_init_",
+    "preparation_batch_",
+)
+_SAFE_PREPARATION_REASON_CODES = frozenset({
+    "library_writer_busy",
+    "rag_v2_ingestion_incomplete",
+})
+_LEGACY_UNDIAGNOSED_PREPARATION_ERROR = "runtimeerror"
 _SEMANTIC_SOURCE_STOP_WORDS = frozenset(
     {
         "cau", "hoi", "che", "do", "hoat", "dong", "nhu", "the", "nao",
@@ -447,8 +459,8 @@ def _sanitize_degraded_reason(reason: Any) -> str:
 
 def _safe_reason(error: BaseException | str) -> str:
     """Return a bounded reason code without paths, content, or exception text."""
-    raw = str(error) if isinstance(error, SemanticBackendError) else ""
-    if raw.startswith("bge_worker_"):
+    raw = str(error) if isinstance(error, (SemanticBackendError, RuntimeError)) else ""
+    if raw.startswith(_SAFE_PREPARATION_REASON_PREFIXES) or raw in _SAFE_PREPARATION_REASON_CODES:
         name = raw
     else:
         name = error if isinstance(error, str) else type(error).__name__
@@ -1141,41 +1153,59 @@ def _get_ledger_db_path(config: WorkspaceChatRagV2CanaryConfig) -> Path:
 
 
 def _init_preparation_ledger_db(db_path: Path) -> None:
+    """Create the ledger and reclaim interrupted work once per app process.
+
+    Streamlit re-runs the UI frequently.  Reclaiming every ``processing`` row
+    during each read made a healthy background worker appear paused.  A fresh
+    Python process still reclaims work left by a previous process, but normal
+    UI refreshes now leave an active worker alone.
+    """
     db_path.parent.mkdir(parents=True, exist_ok=True)
-    conn = sqlite3.connect(db_path, timeout=10.0)
-    try:
-        with conn:
-            conn.execute(
-                f"""CREATE TABLE IF NOT EXISTS {PREPARATION_LEDGER_TABLE} (
-                    source_scope TEXT NOT NULL,
-                    source_id TEXT NOT NULL,
-                    source_fingerprint TEXT NOT NULL,
-                    model_id TEXT NOT NULL,
-                    model_revision TEXT NOT NULL,
-                    state TEXT NOT NULL,
-                    priority TEXT NOT NULL DEFAULT '{PREP_PRIORITY_NORMAL}',
-                    attempt_count INTEGER NOT NULL DEFAULT 0,
-                    last_error TEXT NOT NULL DEFAULT '',
-                    document_id TEXT NOT NULL DEFAULT '',
-                    created_at REAL NOT NULL,
-                    updated_at REAL NOT NULL,
-                    PRIMARY KEY (source_scope, source_id)
-                )"""
-            )
-            conn.execute(
-                f"""CREATE INDEX IF NOT EXISTS idx_prep_ledger_state_priority
-                    ON {PREPARATION_LEDGER_TABLE} (state, priority, updated_at)"""
-            )
-            # Stale processing recovery on startup / init
-            now = time.time()
-            conn.execute(
-                f"""UPDATE {PREPARATION_LEDGER_TABLE}
-                    SET state = '{PREP_STATE_PENDING}', updated_at = ?
-                    WHERE state = '{PREP_STATE_PROCESSING}'""",
-                (now,),
-            )
-    finally:
-        conn.close()
+    ledger_identity = str(db_path.resolve())
+    with _PREPARATION_LEDGER_INIT_LOCK:
+        recover_interrupted_work = ledger_identity not in _PREPARATION_LEDGER_INITIALIZED_PATHS
+        conn = sqlite3.connect(db_path, timeout=10.0)
+        try:
+            with conn:
+                conn.execute(
+                    f"""CREATE TABLE IF NOT EXISTS {PREPARATION_LEDGER_TABLE} (
+                        source_scope TEXT NOT NULL,
+                        source_id TEXT NOT NULL,
+                        source_fingerprint TEXT NOT NULL,
+                        model_id TEXT NOT NULL,
+                        model_revision TEXT NOT NULL,
+                        state TEXT NOT NULL,
+                        priority TEXT NOT NULL DEFAULT '{PREP_PRIORITY_NORMAL}',
+                        attempt_count INTEGER NOT NULL DEFAULT 0,
+                        last_error TEXT NOT NULL DEFAULT '',
+                        document_id TEXT NOT NULL DEFAULT '',
+                        created_at REAL NOT NULL,
+                        updated_at REAL NOT NULL,
+                        PRIMARY KEY (source_scope, source_id)
+                    )"""
+                )
+                conn.execute(
+                    f"""CREATE INDEX IF NOT EXISTS idx_prep_ledger_state_priority
+                        ON {PREPARATION_LEDGER_TABLE} (state, priority, updated_at)"""
+                )
+                if recover_interrupted_work:
+                    # Only a newly started application can reclaim a row left
+                    # behind by an interrupted earlier process.
+                    conn.execute(
+                        f"""UPDATE {PREPARATION_LEDGER_TABLE}
+                            SET state = '{PREP_STATE_PENDING}', updated_at = ?
+                            WHERE state = '{PREP_STATE_PROCESSING}'""",
+                        (time.time(),),
+                    )
+            _PREPARATION_LEDGER_INITIALIZED_PATHS.add(ledger_identity)
+        finally:
+            conn.close()
+
+
+def _background_preparation_is_running() -> bool:
+    """Return whether this application process currently owns the queue drain."""
+    with _DRAIN_RUNNING_LOCK:
+        return _DRAIN_IS_RUNNING
 
 
 def _load_ledger_row(db_path: Path, source_scope: str, source_id: str) -> SourcePreparationLedgerRow | None:
@@ -1266,7 +1296,8 @@ def _claim_next_preparation_item(db_path: Path, model_id: str, model_revision: s
     conn = sqlite3.connect(db_path, timeout=10.0)
     try:
         with conn:
-            # Check if there is already a processing item (strict single CPU worker)
+            # A second drainer must never receive work already owned by the
+            # current worker.  It exits and lets the owner commit the result.
             cur = conn.execute(
                 f"""SELECT source_scope, source_id, source_fingerprint, model_id, model_revision,
                            state, priority, attempt_count, last_error, document_id, created_at, updated_at
@@ -1276,7 +1307,7 @@ def _claim_next_preparation_item(db_path: Path, model_id: str, model_revision: s
             )
             existing_proc = cur.fetchone()
             if existing_proc:
-                return SourcePreparationLedgerRow(*existing_proc)
+                return None
 
             cur = conn.execute(
                 f"""SELECT source_scope, source_id, source_fingerprint, model_id, model_revision,
@@ -1404,6 +1435,10 @@ def get_workspace_chat_preparation_summary(
             "statuses": statuses,
             "errors": {},
             "bge_available": False,
+            "worker_running": False,
+            "preparation_state": "unavailable",
+            "completed": 0,
+            "progress_percent": 0,
         }
 
     db_path = _get_ledger_db_path(resolved)
@@ -1469,6 +1504,24 @@ def get_workspace_chat_preparation_summary(
             pending_count += 1
         elif state == PREP_STATE_FAILED:
             failed_count += 1
+        else:
+            # A source with no durable row is still waiting for preparation.
+            pending_count += 1
+
+    worker_running = _background_preparation_is_running()
+    # The progress bar represents documents ready for trustworthy search, not
+    # attempts that ended in an error.  A failed document must never make the
+    # library look 100% ready.
+    completed = ready_count
+    progress_percent = int(round((completed * 100) / total_count)) if total_count else 0
+    if ready_count == total_count:
+        preparation_state = "ready"
+    elif worker_running and (processing_count > 0 or pending_count > 0):
+        preparation_state = "running"
+    elif failed_count > 0:
+        preparation_state = "needs_attention"
+    else:
+        preparation_state = "paused"
 
     return {
         "total": total_count,
@@ -1480,6 +1533,10 @@ def get_workspace_chat_preparation_summary(
         "statuses": statuses,
         "errors": errors,
         "bge_available": True,
+        "worker_running": worker_running,
+        "preparation_state": preparation_state,
+        "completed": completed,
+        "progress_percent": progress_percent,
     }
 
 
@@ -1562,6 +1619,7 @@ def reconcile_and_enqueue_workspace_chat_sources(
             and row.state == PREP_STATE_FAILED
             and row.source_fingerprint == current_fp
             and priority != PREP_PRIORITY_INTERACTIVE
+            and row.last_error != _LEGACY_UNDIAGNOSED_PREPARATION_ERROR
         ):
             continue
 
@@ -1773,17 +1831,27 @@ def retry_workspace_chat_source_preparation(
     except Exception:
         return
     sources = tuple(context_sources)
-    with _PREPARATION_LOCK:
-        for source in sources:
-            _PREPARATION_REGISTRY.pop(_preparation_key(resolved, source), None)
-
+    if not sources:
+        return
     db_path = _get_ledger_db_path(resolved)
-    _delete_ledger_rows(db_path, [(s.source_scope, s.source_id) for s in sources])
-    global _DRAIN_IS_RUNNING
-    with _DRAIN_RUNNING_LOCK:
-        _DRAIN_IS_RUNNING = False
+    # A stale page can race an active worker.  Never delete its processing
+    # claim; failed rows can safely be queued behind the active item instead.
+    retryable_sources = []
+    for source in sources:
+        row = _load_ledger_row(db_path, source.source_scope, source.source_id)
+        if row is None or row.state != PREP_STATE_PROCESSING:
+            retryable_sources.append(source)
+    if not retryable_sources:
+        return
+    with _PREPARATION_LOCK:
+        for source in retryable_sources:
+            _PREPARATION_REGISTRY.pop(_preparation_key(resolved, source), None)
+    _delete_ledger_rows(
+        db_path,
+        [(source.source_scope, source.source_id) for source in retryable_sources],
+    )
     reconcile_and_enqueue_workspace_chat_sources(
-        sources,
+        tuple(retryable_sources),
         config=resolved,
         priority=PREP_PRIORITY_INTERACTIVE,
     )
@@ -1800,14 +1868,10 @@ def resume_workspace_chat_source_preparation(
     except Exception:
         return
     sources = tuple(source for source in context_sources if (source.text or "").strip())
-    reconcile_and_enqueue_workspace_chat_sources(sources, config=resolved)
     if sources:
         with _SOURCE_CACHE_LOCK:
             for source in sources:
                 _SOURCE_CACHE[(source.source_scope, source.source_id)] = source
-        global _DRAIN_IS_RUNNING
-        with _DRAIN_RUNNING_LOCK:
-            _DRAIN_IS_RUNNING = False
         schedule_workspace_chat_source_preparation(sources, config=resolved)
 
 

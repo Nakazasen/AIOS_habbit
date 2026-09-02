@@ -1053,6 +1053,9 @@ class TestWorkspaceChatUIAntiHardcode:
             "status_bge_unavailable",
             "status_preview_only",
             "status_prep_error",
+            "loading",
+            "sources",
+            "preparing_sources_background",
             "no_conversations_in_notebook",
             "create_first_conversation_now",
             "close_save_notification",
@@ -1155,3 +1158,24 @@ class TestWorkspaceChatUIAntiHardcode:
                 assert key in loc_dict, f"Missing key '{key}' in locale '{locale}'"
                 val = loc_dict[key]
                 assert isinstance(val, str) and len(val.strip()) > 0, f"Empty value for key '{key}' in locale '{locale}'"
+
+    def test_literal_workspace_chat_translation_keys_are_defined(self) -> None:
+        """Do not let an internal translation key reach the user interface."""
+        for ui_file in (
+            Path("src/aios_habit/workspace_chat_app.py"),
+            Path("src/aios_habit/workspace_chat_ui.py"),
+        ):
+            tree = ast.parse(ui_file.read_text(encoding="utf-8"), filename=str(ui_file))
+            keys = {
+                call.args[0].value
+                for call in ast.walk(tree)
+                if isinstance(call, ast.Call)
+                and isinstance(call.func, ast.Name)
+                and call.func.id == "t"
+                and call.args
+                and isinstance(call.args[0], ast.Constant)
+                and isinstance(call.args[0].value, str)
+            }
+            for locale in SUPPORTED_LOCALES:
+                missing = sorted(key for key in keys if key not in TRANSLATIONS[locale])
+                assert not missing, f"{ui_file} thiếu bản dịch {locale}: {missing}"

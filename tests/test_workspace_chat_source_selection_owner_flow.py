@@ -1616,7 +1616,7 @@ def test_e2e_sandbox_upload_new_source_transitions_from_pending_to_ready(tmp_pat
     assert final_summary["failed"] == 0
     assert final_summary["statuses"].get("temporary:upload_e2e_src_1") == "ready"
     summary_text = format_preparation_summary_text(final_summary, locale="vi")
-    assert "1/1 sẵn sàng" in summary_text
+    assert "Tài liệu sẵn sàng để tìm kiếm: 1/1" in summary_text
 
     # 4. Verify SQLite ledger record
     row = adapter._load_ledger_row(db_path, "temporary", "upload_e2e_src_1")

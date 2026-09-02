@@ -128,6 +128,43 @@ def test_detail_hides_unknown_actor_and_raw_locator_values():
     assert "private/folder" not in rendered
 
 
+def test_case_list_and_detail_presenter_japanese():
+    case = _case()
+    rows = case_list_rows([case], locale="ja")
+    sections = case_detail_sections(
+        CaseDetail(case=case, evidence=(), activities=(), checklist=()),
+        TraceResolution(status="missing", trace_id=case.trace_id),
+        locale="ja",
+    )
+
+    assert rows == [{"ケースID": case.case_id, "種別": "調査", "ステータス": "下書き", "優先度": "通常", "担当者": "未割り当て"}]
+    assert sections["status"] == "下書き"
+    assert sections["assignee"] == "未割り当て"
+    assert sections["trace_status"] == "元の証拠トレースが不足しています"
+
+
+def test_case_list_and_detail_presenter_chinese():
+    case = _case()
+    rows = case_list_rows([case], locale="zh-CN")
+    sections = case_detail_sections(
+        CaseDetail(case=case, evidence=(), activities=(), checklist=()),
+        TraceResolution(status="missing", trace_id=case.trace_id),
+        locale="zh-CN",
+    )
+
+    assert rows == [{"案例编号": case.case_id, "类型": "调查", "状态": "草稿", "优先级": "正常", "负责人": "未分配"}]
+    assert sections["status"] == "草稿"
+    assert sections["assignee"] == "未分配"
+    assert sections["trace_status"] == "缺失原始证据追踪记录"
+
+
+def test_case_error_messages_multilingual():
+    err = CaseValidationError("CASE_VERSION_CONFLICT")
+    assert safe_case_error_message(err, locale="vi") == "Hồ sơ đã được cập nhật ở nơi khác. Hãy tải lại rồi thử lại."
+    assert safe_case_error_message(err, locale="ja") == "ケースは別の場所で更新されました。再読み込みしてから再試行してください。"
+    assert safe_case_error_message(err, locale="zh-CN") == "案例已在其他位置更新。请刷新后重试。"
+
+
 def test_all_supported_workspace_modules_forbid_legacy_imports():
     supported = sorted(Path("src/aios_habit").glob("workspace_chat*.py")) + sorted(
         Path("src/aios_habit").glob("workspace_case*.py")

@@ -742,9 +742,61 @@ def test_preparation_schedule_deduplicates_and_retry_is_explicit(monkeypatch, tm
     adapter.schedule_workspace_chat_source_preparation((source,), config=config)
     assert len(executor.submissions) == 1
 
+    # The fake executor never starts its worker, so simulate the interrupted
+    # queue that an explicit retry is meant to wake.
+    monkeypatch.setattr(adapter, "_DRAIN_IS_RUNNING", False)
     adapter.retry_workspace_chat_source_preparation((source,), config=config)
     assert len(executor.submissions) == 2
     assert adapter._PREPARATION_REGISTRY[key]["status"] == "pending"
+
+
+def test_retry_never_reclaims_a_source_owned_by_an_active_worker(monkeypatch, tmp_path):
+    config = _enabled_config(tmp_path)
+    source = _source("Active source must remain owned by its worker.")
+    db_path = adapter._get_ledger_db_path(config)
+    adapter._init_preparation_ledger_db(db_path)
+    adapter._upsert_ledger_row(
+        db_path,
+        adapter.SourcePreparationLedgerRow(
+            source_scope=source.source_scope,
+            source_id=source.source_id,
+            source_fingerprint=adapter._source_fingerprint(source),
+            model_id="BAAI/bge-m3",
+            model_revision=config.bge_m3_model_revision,
+            state=adapter.PREP_STATE_PROCESSING,
+            document_id=adapter._document_id(source),
+            created_at=10.0,
+            updated_at=10.0,
+        ),
+    )
+    key = adapter._preparation_key(config, source)
+    with adapter._PREPARATION_LOCK:
+        adapter._PREPARATION_REGISTRY[key] = adapter._preparation_entry(
+            config, source, adapter.PREP_STATE_PROCESSING
+        )
+    monkeypatch.setattr(adapter, "_DRAIN_IS_RUNNING", True)
+
+    adapter.retry_workspace_chat_source_preparation((source,), config=config)
+
+    row = adapter._load_ledger_row(db_path, source.source_scope, source.source_id)
+    assert row is not None
+    assert row.state == adapter.PREP_STATE_PROCESSING
+    assert adapter._PREPARATION_REGISTRY[key]["status"] == adapter.PREP_STATE_PROCESSING
+
+
+@pytest.mark.parametrize(
+    ("error", "expected"),
+    [
+        (RuntimeError("preparation_init_bge_worker_timeout"), "preparation_init_bge_worker_timeout"),
+        (
+            RuntimeError("preparation_batch_003_document_9f4a2c17e6b3_bge_worker_timeout"),
+            "preparation_batch_003_document_9f4a2c17e6b3_bge_worker_timeout",
+        ),
+        (RuntimeError(r"D:\private\folder\details"), "runtimeerror"),
+    ],
+)
+def test_preparation_failure_reason_keeps_only_safe_diagnostic_codes(error, expected):
+    assert adapter._safe_reason(error) == expected
 
 
 def test_preparation_fingerprint_changes_for_content_privacy_and_config(tmp_path):
@@ -954,7 +1006,8 @@ def test_semantic_preparation_batch_failure_preserves_prior_commits(monkeypatch,
     assert {states[f"temporary:source-{index}"] for index in range(1, 5)} == {"failed"}
     for source in sources[1:]:
         entry = adapter._PREPARATION_REGISTRY[adapter._preparation_key(config, source)]
-        assert entry["reason"] == "runtimeerror"
+        assert entry["reason"].startswith("preparation_batch_002_document_")
+        assert entry["reason"].endswith("_runtimeerror")
         assert "sensitive" not in str(entry)
 
 
@@ -1271,7 +1324,7 @@ def test_semantic_preparation_initialization_failure_is_phase_safe(monkeypatch, 
     assert set(adapter.get_workspace_chat_source_preparation_status(sources, config=config).values()) == {"failed"}
     for source in sources:
         entry = adapter._PREPARATION_REGISTRY[adapter._preparation_key(config, source)]
-        assert entry["reason"] == "runtimeerror"
+        assert entry["reason"] == "preparation_init_bge_worker_init_timeout"
 
 
 def test_batch_failure_reason_is_opaque_and_deterministic(tmp_path):
@@ -1716,7 +1769,8 @@ def test_sqlite_stale_processing_recovery_on_startup(tmp_path: Path):
     )
     adapter._upsert_ledger_row(db_path, row)
 
-    # Re-init simulates process restart
+    # Re-init after removing this process marker simulates process restart.
+    adapter._PREPARATION_LEDGER_INITIALIZED_PATHS.discard(str(db_path.resolve()))
     adapter._init_preparation_ledger_db(db_path)
     recovered = adapter._load_ledger_row(db_path, "temporary", "src-stale")
     assert recovered is not None
@@ -1758,12 +1812,11 @@ def test_sqlite_preparation_priority_ordering_and_atomic_claim(tmp_path: Path):
     assert item1.source_id == "src-interactive"
     assert item1.state == adapter.PREP_STATE_PROCESSING
 
-    # While item1 is processing, next claim returns the same active item (single worker lock)
+    # A second worker must not claim an item already being processed.
     item_dup = adapter._claim_next_preparation_item(
         db_path, "BAAI/bge-m3", config.bge_m3_model_revision
     )
-    assert item_dup is not None
-    assert item_dup.source_id == "src-interactive"
+    assert item_dup is None
 
     # Commit item1 as ready
     adapter._commit_preparation_result(
@@ -1840,6 +1893,48 @@ def test_reconcile_and_enqueue_preserves_ready_and_deduplicates(tmp_path: Path, 
     )
     # Only source_new needed enqueue
     assert count == 1
+
+
+def test_reconcile_retries_legacy_undiagnosed_failure_once_but_keeps_known_failure(tmp_path, monkeypatch):
+    config = _enabled_config(tmp_path)
+    executor = _ImmediateExecutor()
+    monkeypatch.setattr(adapter, "_get_executor", lambda: executor)
+    legacy = _source("Legacy failed source")
+    known = WorkspaceAIContextSource(
+        source_id="known-failure",
+        source_scope="temporary",
+        source_type="pasted_text",
+        title="known.txt",
+        privacy_label="local_only",
+        text="Known failed source",
+        included_chars=20,
+        truncated=False,
+    )
+    db_path = adapter._get_ledger_db_path(config)
+    adapter._init_preparation_ledger_db(db_path)
+    for source, reason in ((legacy, "runtimeerror"), (known, "bge_worker_prepare_timeout")):
+        adapter._upsert_ledger_row(
+            db_path,
+            adapter.SourcePreparationLedgerRow(
+                source_scope=source.source_scope,
+                source_id=source.source_id,
+                source_fingerprint=adapter._source_fingerprint(source),
+                model_id="BAAI/bge-m3",
+                model_revision=config.bge_m3_model_revision,
+                state=adapter.PREP_STATE_FAILED,
+                priority=adapter.PREP_PRIORITY_NORMAL,
+                attempt_count=3,
+                last_error=reason,
+                document_id=adapter._document_id(source),
+                created_at=10.0,
+                updated_at=10.0,
+            ),
+        )
+
+    assert adapter.reconcile_and_enqueue_workspace_chat_sources((legacy, known), config=config) == 1
+    assert adapter._load_ledger_row(db_path, legacy.source_scope, legacy.source_id).state == adapter.PREP_STATE_PENDING
+    assert adapter._load_ledger_row(db_path, known.source_scope, known.source_id).state == adapter.PREP_STATE_FAILED
+    assert len(executor.submissions) == 1
 
 
 def test_promote_priority_to_interactive(tmp_path: Path):
@@ -1960,9 +2055,38 @@ def test_get_workspace_chat_preparation_summary_aggregate(tmp_path: Path):
     assert summary["processing"] == 1
     assert summary["failed"] == 1
     assert summary["bge_available"] is True
-    assert "BGE-M3: 1/3 sẵn sàng" in summary_text
-    assert "đang đọc doc2.txt" in summary_text
-    assert "1 lỗi" in summary_text
+    assert summary["completed"] == 1
+    assert summary["progress_percent"] == 33
+    assert "Tài liệu sẵn sàng để tìm kiếm: 1/3" in summary_text
+    assert "doc2.txt" not in summary_text
+    assert "BGE-M3" not in summary_text
+
+
+def test_preparation_summary_does_not_reset_an_active_worker_on_ui_refresh(tmp_path: Path):
+    config = _enabled_config(tmp_path)
+    db_path = adapter._get_ledger_db_path(config)
+    source = _source("Active source")
+    adapter._init_preparation_ledger_db(db_path)
+    adapter._upsert_ledger_row(
+        db_path,
+        adapter.SourcePreparationLedgerRow(
+            source_scope=source.source_scope,
+            source_id=source.source_id,
+            source_fingerprint=adapter._source_fingerprint(source),
+            model_id="BAAI/bge-m3",
+            model_revision=config.bge_m3_model_revision,
+            state=adapter.PREP_STATE_PROCESSING,
+            document_id=adapter._document_id(source),
+            created_at=10.0,
+            updated_at=10.0,
+        ),
+    )
+
+    adapter.get_workspace_chat_preparation_summary((source,), config=config)
+
+    row = adapter._load_ledger_row(db_path, source.source_scope, source.source_id)
+    assert row is not None
+    assert row.state == adapter.PREP_STATE_PROCESSING
 
 
 def test_forget_sources_deletes_ledger_rows(tmp_path: Path):

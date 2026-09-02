@@ -719,7 +719,7 @@ def render_source_library_summary(notebook_count: int, temporary_count: int, ena
 
 
 def format_preparation_summary_text(summary: Optional[Dict[str, Any]], locale: str = "vi") -> str:
-    """Format neutral preparation summary data into localized user-facing text."""
+    """Format document preparation progress without exposing internal engines."""
     if not summary or summary.get("total", 0) <= 0:
         return ""
     if not summary.get("bge_available", True):
@@ -727,18 +727,35 @@ def format_preparation_summary_text(summary: Optional[Dict[str, Any]], locale: s
 
     total = summary.get("total", 0)
     ready = summary.get("ready", 0)
-    processing = summary.get("processing", 0)
     pending = summary.get("pending", 0)
     failed = summary.get("failed", 0)
-    current_title = summary.get("current_source_title")
+    completed = summary.get("completed", ready)
+    progress_percent = summary.get(
+        "progress_percent",
+        int(round((completed * 100) / total)) if total else 0,
+    )
+    preparation_state = summary.get("preparation_state", "")
 
-    parts = [t("bge_ready_ratio", locale=locale, ready=ready, total=total)]
-    if current_title:
-        parts.append(t("bge_reading_source", locale=locale, title=current_title))
+    parts = [
+        t(
+            "document_preparation_progress",
+            locale=locale,
+            completed=completed,
+            total=total,
+            percent=progress_percent,
+        ),
+        t("bge_ready_ratio", locale=locale, ready=ready, total=total),
+    ]
+    if failed > 0:
+        parts.append(t("document_preparation_needs_attention", locale=locale, count=failed))
+    elif preparation_state == "running":
+        parts.append(t("document_preparation_running", locale=locale))
+    elif preparation_state == "paused":
+        parts.append(t("document_preparation_paused", locale=locale))
+    elif preparation_state == "ready":
+        parts.append(t("document_preparation_complete", locale=locale))
     elif pending > 0:
         parts.append(t("bge_pending_count", locale=locale, count=pending))
-    if failed > 0:
-        parts.append(t("bge_failed_count", locale=locale, count=failed))
 
     return " · ".join(parts)
 
@@ -746,30 +763,52 @@ def format_preparation_summary_text(summary: Optional[Dict[str, Any]], locale: s
 def render_preparation_progress_bar(
     summary: Optional[Dict[str, Any]],
     on_retry_all_failed: Optional[Callable[[], None]] = None,
+    on_resume: Optional[Callable[[], None]] = None,
     locale: str = "vi",
 ) -> None:
-    """Renders compact single-line BGE-M3 preparation progress banner."""
+    """Render a truthful, actionable document-preparation progress panel."""
     if not summary or summary.get("total", 0) <= 0:
         return
     text = format_preparation_summary_text(summary, locale=locale)
     if not text:
         return
     failed = summary.get("failed", 0)
-    processing = summary.get("processing", 0)
-    pending = summary.get("pending", 0)
+    ready = int(summary.get("ready", 0))
+    failed = int(summary.get("failed", 0))
+    completed = int(summary.get("completed", ready))
+    total = int(summary.get("total", 0))
+    default_percent = int(round((completed * 100) / total)) if total else 0
+    progress_percent = max(0, min(100, int(summary.get("progress_percent", default_percent))))
+    preparation_state = summary.get("preparation_state", "")
+    if not preparation_state:
+        if ready == total:
+            preparation_state = "ready"
+        elif failed > 0:
+            preparation_state = "needs_attention"
+        elif summary.get("processing", 0) or summary.get("pending", 0):
+            preparation_state = "running"
+        else:
+            preparation_state = "paused"
 
-    if failed > 0:
-        col_txt, col_btn = st.columns([3, 1])
-        with col_txt:
-            st.warning(f"📊 **BGE-M3:** {text}")
-        with col_btn:
-            if on_retry_all_failed is not None:
-                if st.button(f"🔄 {t('retry_preparation', locale=locale)}", key="wsc_retry_all_failed_sources", use_container_width=True):
-                    on_retry_all_failed()
-    elif processing > 0 or pending > 0:
-        st.info(f"📊 **BGE-M3:** {text}")
+    if summary.get("bge_available", True):
+        st.progress(progress_percent, text=t("document_preparation_progress", locale=locale,
+                                             completed=completed,
+                                             total=total,
+                                             percent=progress_percent))
+
+    if preparation_state == "ready":
+        st.success(f"📚 {text}")
+    elif preparation_state in {"paused", "needs_attention"} or failed > 0:
+        st.warning(f"📚 {text}")
     else:
-        st.success(f"📊 **BGE-M3:** {text}")
+        st.info(f"📚 {text}")
+
+    if preparation_state == "paused" and on_resume is not None:
+        if st.button(t("resume_pending_preparation", locale=locale), key="wsc_resume_pending_preparation", use_container_width=True):
+            on_resume()
+    if failed > 0 and preparation_state != "running" and on_retry_all_failed is not None:
+        if st.button(f"🔄 {t('retry_preparation', locale=locale)}", key="wsc_retry_all_failed_sources", use_container_width=True):
+            on_retry_all_failed()
 
 
 def render_document_manager(
@@ -787,6 +826,7 @@ def render_document_manager(
     preparation_summary: Optional[Dict[str, Any]] = None,
     on_retry_source: Optional[Callable[[str, str], None]] = None,
     on_retry_all_failed: Optional[Callable[[], None]] = None,
+    show_preparation_progress: bool = True,
     locale: str = "vi",
 ) -> None:
     """Render the owner-facing document manager in the chat column."""
@@ -794,7 +834,7 @@ def render_document_manager(
     st.caption(t("sources_in_use_desc", locale=locale))
     st.info(t("input_help_instruction", locale=locale))
 
-    if preparation_summary:
+    if preparation_summary and show_preparation_progress:
         render_preparation_progress_bar(preparation_summary, on_retry_all_failed=on_retry_all_failed, locale=locale)
 
     def render_undo_control() -> None:
@@ -879,18 +919,17 @@ def render_document_manager(
                 location = t("in_notebook", locale=locale) if scope == "notebook" else t("temp_in_conversation", locale=locale)
                 st.caption(f"{location} · {state}")
 
-                # BGE-M3 readiness status badge
+                # Never expose the internal retrieval engine in owner-facing UI.
                 if item_status == "ready":
-                    st.caption(f"🟢 **BGE-M3:** {t('status_ready', locale=locale)}")
+                    st.caption(f"🟢 **{t('document_preparation_status_label', locale=locale)}:** {t('status_ready', locale=locale)}")
                 elif item_status == "processing":
-                    st.caption(f"⏳ **BGE-M3:** {t('status_processing', locale=locale)}")
+                    st.caption(f"⏳ **{t('document_preparation_status_label', locale=locale)}:** {t('status_processing', locale=locale)}")
                 elif item_status == "pending":
-                    st.caption(f"⏱️ **BGE-M3:** {t('status_pending', locale=locale)}")
+                    st.caption(f"⏱️ **{t('document_preparation_status_label', locale=locale)}:** {t('status_pending', locale=locale)}")
                 elif item_status == "failed":
-                    err_info = f" ({item_error})" if item_error else ""
-                    st.caption(f"🔴 **BGE-M3:** {t('status_failed', locale=locale)}{err_info}")
+                    st.caption(f"🔴 **{t('document_preparation_status_label', locale=locale)}:** {t('status_failed', locale=locale)}")
                 elif item_status == "unavailable":
-                    st.caption(f"⚪ **BGE-M3:** {t('status_bge_unavailable', locale=locale)}")
+                    st.caption(f"⚪ **{t('document_preparation_status_label', locale=locale)}:** {t('status_bge_unavailable', locale=locale)}")
 
             with action_col:
                 if item_status == "failed" and on_retry_source is not None:

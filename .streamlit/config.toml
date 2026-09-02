@@ -5,7 +5,8 @@ primaryColor="#3b82f6"
 [client]
 toolbarMode = "minimal"
 showSidebarNavigation = false
-showErrorDetails = false
+showErrorDetails = "none"
+showErrorLinks = false
 
 [server]
 runOnSave = true

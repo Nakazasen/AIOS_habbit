@@ -5,6 +5,9 @@ Verifies that source library renderers, readiness badges, evidence grouping,
 and truthful provenance headers correctly localize user-facing text across
 vi, ja, and zh-CN without leaking forbidden technical jargon into owner views.
 """
+import ast
+from pathlib import Path
+
 import pytest
 import streamlit as st
 from aios_habit.workspace_chat_ui import (
@@ -121,6 +124,9 @@ class MockStreamlit:
     def success(self, text, *args, **kwargs):
         self.calls.append(("success", str(text), None, None))
 
+    def progress(self, value, text=None, *args, **kwargs):
+        self.calls.append(("progress", int(value), str(text or ""), None))
+
     def text_area(self, label, value="", *args, **kwargs):
         self.calls.append(("text_area", str(label), value, None))
 
@@ -141,6 +147,7 @@ def mock_st(monkeypatch):
     monkeypatch.setattr(st, "columns", st_mock.columns)
     monkeypatch.setattr(st, "warning", st_mock.warning)
     monkeypatch.setattr(st, "success", st_mock.success)
+    monkeypatch.setattr(st, "progress", st_mock.progress)
     monkeypatch.setattr(st, "text_area", st_mock.text_area)
     monkeypatch.setattr(st, "session_state", st_mock.session_state)
     return st_mock
@@ -204,9 +211,9 @@ def test_render_source_library_source_row_coverage(mock_st, locale: str):
 
 
 @pytest.mark.parametrize("locale", ["vi", "ja", "zh-CN"])
-def test_bge_preparation_summary_text_matrix(locale: str):
-    """Test format_preparation_summary_text for all lifecycle cases across vi, ja, and zh-CN."""
-    # 1. BGE Unavailable
+def test_document_preparation_summary_text_matrix(locale: str):
+    """Test user-safe document preparation copy across every supported locale."""
+    # 1. Library unavailable
     unavail_summary = {"total": 3, "bge_available": False}
     unavail_text = format_preparation_summary_text(unavail_summary, locale=locale)
     assert unavail_text == t("bge_unavailable", locale=locale)
@@ -224,7 +231,7 @@ def test_bge_preparation_summary_text_matrix(locale: str):
     assert t("bge_ready_ratio", locale=locale, ready=1, total=3) in pending_text
     assert t("bge_pending_count", locale=locale, count=2) in pending_text
 
-    # 3. Processing with document title (title preserved verbatim)
+    # 3. Processing never exposes the current document title in the shared banner.
     doc_title = "quy_trinh_2026_special_v1.pdf"
     proc_summary = {
         "total": 4,
@@ -237,8 +244,8 @@ def test_bge_preparation_summary_text_matrix(locale: str):
     }
     proc_text = format_preparation_summary_text(proc_summary, locale=locale)
     assert t("bge_ready_ratio", locale=locale, ready=2, total=4) in proc_text
-    assert doc_title in proc_text
-    assert t("bge_reading_source", locale=locale, title=doc_title) in proc_text
+    assert doc_title not in proc_text
+    assert "BGE-M3" not in proc_text
 
     # 4. Failed
     fail_summary = {
@@ -263,7 +270,7 @@ def test_bge_preparation_summary_text_matrix(locale: str):
         "bge_available": True,
     }
     ready_text = format_preparation_summary_text(ready_summary, locale=locale)
-    assert ready_text == t("bge_ready_ratio", locale=locale, ready=5, total=5)
+    assert t("bge_ready_ratio", locale=locale, ready=5, total=5) in ready_text
 
 
 @pytest.mark.parametrize("locale", ["vi", "ja", "zh-CN"])
@@ -277,6 +284,8 @@ def test_render_preparation_progress_bar_all_ready_multilingual(mock_st, locale:
         "bge_available": True,
     }
     render_preparation_progress_bar(summary, locale=locale)
+    progress_calls = [c for c in mock_st.calls if c[0] == "progress"]
+    assert progress_calls == [("progress", 100, t("document_preparation_progress", locale=locale, completed=5, total=5, percent=100), None)]
     success_calls = [c[1] for c in mock_st.calls if c[0] == "success"]
     assert len(success_calls) == 1
     assert t("bge_ready_ratio", locale=locale, ready=5, total=5) in success_calls[0]
@@ -300,6 +309,79 @@ def test_render_preparation_progress_bar_with_failures_multilingual(mock_st, loc
     assert t("bge_failed_count", locale=locale, count=2) in warning_calls[0]
     button_calls = [c[1] for c in mock_st.calls if c[0] == "button"]
     assert any(t("retry_preparation", locale=locale) in b for b in button_calls)
+
+
+def test_render_preparation_progress_shows_percent_and_paused_action(mock_st):
+    summary = {
+        "total": 78,
+        "ready": 20,
+        "processing": 0,
+        "pending": 58,
+        "failed": 0,
+        "completed": 20,
+        "progress_percent": 26,
+        "preparation_state": "paused",
+        "bge_available": True,
+    }
+    resumed = []
+
+    render_preparation_progress_bar(summary, on_resume=lambda: resumed.append(True))
+
+    progress_calls = [c for c in mock_st.calls if c[0] == "progress"]
+    assert progress_calls == [("progress", 26, "Đã chuẩn bị xong 20/78 tài liệu (26%)", None)]
+    warning_calls = [c[1] for c in mock_st.calls if c[0] == "warning"]
+    assert any("tạm dừng" in call for call in warning_calls)
+    assert any(call[0] == "button" and call[1] == t("resume_pending_preparation") for call in mock_st.calls)
+
+
+def test_document_manager_can_hide_duplicate_preparation_progress(mock_st):
+    summary = {
+        "total": 2,
+        "ready": 1,
+        "processing": 0,
+        "pending": 0,
+        "failed": 1,
+        "bge_available": True,
+    }
+
+    render_preparation_progress_bar(summary, on_retry_all_failed=lambda: None)
+    render_document_manager(
+        notebook_sources=[],
+        temporary_sources=[],
+        selections_map={},
+        conversation_id="conv-no-duplicate-progress",
+        on_toggle_source=lambda *args: None,
+        on_delete_source=lambda *args: None,
+        on_delete_sources=lambda *args: None,
+        on_promote_temporary=lambda *args: None,
+        on_privacy_save=lambda *args: None,
+        preparation_summary=summary,
+        on_retry_all_failed=lambda: None,
+        show_preparation_progress=False,
+    )
+
+    retry_calls = [call for call in mock_st.calls if call[0] == "button" and call[2] == "wsc_retry_all_failed_sources"]
+    assert len(retry_calls) == 1
+
+
+def test_workspace_chat_renders_the_shared_preparation_banner_only_once():
+    app_tree = ast.parse(Path("src/aios_habit/workspace_chat_app.py").read_text(encoding="utf-8"))
+    document_manager_calls = [
+        node
+        for node in ast.walk(app_tree)
+        if isinstance(node, ast.Call)
+        and isinstance(node.func, ast.Name)
+        and node.func.id == "render_document_manager"
+        and any(keyword.arg == "preparation_summary" for keyword in node.keywords)
+    ]
+
+    assert len(document_manager_calls) == 1
+    progress_flag = next(
+        keyword.value
+        for keyword in document_manager_calls[0].keywords
+        if keyword.arg == "show_preparation_progress"
+    )
+    assert isinstance(progress_flag, ast.Constant) and progress_flag.value is False
 
 
 @pytest.mark.parametrize("locale", ["vi", "ja", "zh-CN"])
@@ -333,7 +415,8 @@ def test_render_document_manager_readiness_badges(mock_st, locale: str):
     )
     all_captions = [c[1] for c in mock_st.calls if c[0] == "caption"]
     assert any(t("status_ready", locale=locale) in c for c in all_captions)
-    assert any("File corrupted" in c for c in all_captions)
+    assert not any("File corrupted" in c for c in all_captions)
+    assert any(t("document_preparation_status_label", locale=locale) in c for c in all_captions)
 
 
 @pytest.mark.parametrize("locale", ["vi", "ja", "zh-CN"])

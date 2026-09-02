@@ -730,7 +730,7 @@ def _pending_source_submission_state(
         return "changed", ""
     statuses = get_workspace_chat_source_preparation_status(required_sources)
     if any(status == "unavailable" for status in statuses.values()):
-        return "unavailable", "BGE-M3 chưa sẵn sàng"
+        return "unavailable", "Thư viện tài liệu chưa sẵn sàng"
     if any(status == "failed" for status in statuses.values()):
         return "failed", ", ".join(identity for identity, status in statuses.items() if status == "failed")
     if any(status != "ready" for status in statuses.values()):
@@ -1186,6 +1186,23 @@ if st.sidebar.button(f"🗂️ {t('case_workspace', locale=st.session_state.get(
     safe_rerun()
 
 if st.session_state.wsc_show_case_workspace:
+    current_ui_locale = st.session_state.get("wsc_global_ui_locale", "vi")
+    current_answer_language = st.session_state.get("wsc_global_answer_language", "vi")
+
+    with st.sidebar.expander(f"🌐 {t('language_selector', locale=current_ui_locale)}", expanded=False):
+        def _handle_case_lang_change(new_ui_loc: str, new_ans_lang: str):
+            st.session_state.wsc_global_ui_locale = new_ui_loc
+            st.session_state.wsc_global_answer_language = new_ans_lang
+            safe_rerun()
+
+        render_language_selector(
+            current_ui_locale=current_ui_locale,
+            current_answer_language=current_answer_language,
+            on_change=_handle_case_lang_change,
+            key_prefix="wsc_case_lang",
+            locale=current_ui_locale,
+        )
+
     def _close_case_workspace() -> None:
         st.session_state.wsc_show_case_workspace = False
         set_query_params(case=None)
@@ -1194,7 +1211,7 @@ if st.session_state.wsc_show_case_workspace:
     def _open_case_trace(resolution) -> None:
         trace = resolution.trace
         if trace is None:
-            st.session_state.wsc_action_error = "Dấu vết bằng chứng gốc không còn tồn tại."
+            st.session_state.wsc_action_error = t("case_trace_missing", locale=current_ui_locale)
             safe_rerun()
             return
         conversation_id = str(getattr(trace, "conversation_id", "") or "")
@@ -1213,6 +1230,7 @@ if st.session_state.wsc_show_case_workspace:
         WorkspaceCaseService(),
         on_close=_close_case_workspace,
         on_open_trace=_open_case_trace,
+        locale=current_ui_locale,
     )
     st.stop()
 
@@ -2344,7 +2362,7 @@ else:
                             "expired": "Câu hỏi chờ đã quá thời gian. Hãy gửi lại khi tài liệu sẵn sàng.",
                             "changed": "Nguồn đã thay đổi khi câu hỏi đang chờ. Hãy gửi lại để AIOS dùng đúng tài liệu.",
                             "failed": f"Không chuẩn bị được nguồn: {pending_detail}. Hãy thử chuẩn bị lại nguồn đó rồi gửi lại câu hỏi.",
-                            "unavailable": "Tìm kiếm tài liệu BGE-M3 chưa sẵn sàng, nên AIOS không thể tự tiếp tục câu hỏi này.",
+                            "unavailable": t("bge_search_unavailable", locale=current_ui_locale),
                         }
                         st.session_state.wsc_action_error = pending_messages.get(pending_state, "Không thể tiếp tục câu hỏi đang chờ.")
 
@@ -2663,8 +2681,9 @@ else:
                                 waiting_sources = [identity for identity, state in preparation_states.items() if state != "ready" and state != "failed"]
 
                                 if unavailable_sources:
-                                    st.session_state.wsc_action_error = (
-                                        "Tìm kiếm tài liệu BGE-M3 chưa sẵn sàng. Hãy khôi phục BGE-M3 rồi hỏi lại."
+                                    st.session_state.wsc_action_error = t(
+                                        "bge_search_unavailable",
+                                        locale=current_ui_locale,
                                     )
                                     st.session_state.wsc_last_ai_badge = None
                                     safe_rerun()
@@ -3091,7 +3110,7 @@ else:
                     target = [s for s in ctx_all_sources if s.source_scope == scope and s.source_id == source_id]
                     if target:
                         retry_workspace_chat_source_preparation(target)
-                        st.session_state.wsc_action_message = f"Đang chuẩn bị lại tài liệu {target[0].title}."
+                        st.session_state.wsc_action_message = "Đang chuẩn bị lại tài liệu đã chọn."
                         safe_rerun()
 
                 def on_retry_all_failed_sources():
@@ -3105,13 +3124,17 @@ else:
                         st.session_state.wsc_action_message = f"Đang chuẩn bị lại {len(targets)} tài liệu gặp lỗi."
                         safe_rerun()
 
-                # Always-visible single-line preparation progress banner outside expander
-                render_preparation_progress_bar(prep_summary, on_retry_all_failed=on_retry_all_failed_sources, locale=current_ui_locale)
-                if prep_summary.get("pending", 0) or prep_summary.get("processing", 0):
-                    if st.button(t("resume_pending_preparation", locale=current_ui_locale), key="wsc_resume_pending_preparation", use_container_width=True):
-                        resume_workspace_chat_source_preparation(ctx_all_sources)
-                        st.session_state.wsc_action_message = "Đã khởi động lại hàng đợi lập chỉ mục cục bộ."
-                        safe_rerun()
+                def on_resume_preparation():
+                    resume_workspace_chat_source_preparation(ctx_all_sources)
+                    st.session_state.wsc_action_message = "Đã tiếp tục chuẩn bị thư viện tài liệu."
+                    safe_rerun()
+
+                render_preparation_progress_bar(
+                    prep_summary,
+                    on_retry_all_failed=on_retry_all_failed_sources,
+                    on_resume=on_resume_preparation,
+                    locale=current_ui_locale,
+                )
 
                 with st.expander(
                     t("managing_sources_expander", locale=current_ui_locale, total=document_total, enabled=enabled_total),
@@ -3132,6 +3155,7 @@ else:
                         preparation_summary=prep_summary,
                         on_retry_source=on_retry_single_source,
                         on_retry_all_failed=on_retry_all_failed_sources,
+                        show_preparation_progress=False,
                         locale=current_ui_locale,
                     )
 
