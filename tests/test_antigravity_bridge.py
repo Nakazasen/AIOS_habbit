@@ -36,6 +36,7 @@ from aios_habit.antigravity_bridge import (
 from aios_habit.ai_provider_bridge import ProviderConfig, answer_with_provider
 from scripts.antigravity_sidecar_daemon import (
     AntigravityBridgeHTTPHandler,
+    SIDECAR_CONFIG,
     evaluate_sidecar_health,
 )
 
@@ -358,7 +359,7 @@ class TestSidecarDaemonASTSecurity:
 class TestSidecarDaemonDynamicHealth:
     def test_evaluate_sidecar_health_empty_outbox(self, tmp_path):
         """When outbox is empty, health is handoff_ready."""
-        health = evaluate_sidecar_health(handoff_root=tmp_path)
+        health = evaluate_sidecar_health(handoff_root=tmp_path, mode="handoff")
         assert health["status"] == "handoff_ready"
         assert health["mode"] == "handoff"
         assert health["capabilities"] == ["local_handoff"]
@@ -374,13 +375,14 @@ class TestSidecarDaemonDynamicHealth:
         }
         (outbox / "manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
 
-        health = evaluate_sidecar_health(handoff_root=tmp_path)
+        health = evaluate_sidecar_health(handoff_root=tmp_path, mode="handoff")
         assert health["status"] == "handoff_pending"
         assert health["mode"] == "handoff"
         assert "1 request(s)" in health["reason"]
 
-    def test_sidecar_rejects_direct_completion_http_503(self):
+    def test_sidecar_rejects_direct_completion_http_503(self, monkeypatch):
         """Sidecar returns HTTP 503 when direct chat completions is requested without verified adapter."""
+        monkeypatch.setitem(SIDECAR_CONFIG, "mode", "handoff")
         server = HTTPServer(("127.0.0.1", 0), AntigravityBridgeHTTPHandler)
         port = server.server_address[1]
         thread = threading.Thread(target=server.serve_forever, daemon=True)

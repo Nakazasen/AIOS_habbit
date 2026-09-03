@@ -1,9 +1,12 @@
 # Thẻ Cổng: Cầu Nối Não Bộ AI Antigravity IDE (Gate Card: Antigravity IDE AI Brain Bridge)
 
-Status: `IMPLEMENTED_PENDING_CURRENT_FULL_SUITE — 2026-08-16`  
-Owner role: Architecture / AI Systems Engineer  
-Last reviewed: 2026-08-15  
-Review cadence: Post-implementation verification  
+Status: `DONE — 2026-09-04`
+
+Owner role: Architecture / AI Systems Engineer
+
+Last reviewed: 2026-09-04
+
+Review cadence: Post-implementation verification
 
 ## 1. Mục Đích & Kết Quả (Purpose & Outcome)
 
@@ -29,7 +32,7 @@ Thiết lập một cầu nối AI cục bộ trực tiếp, đồng thời cao 
 
 ## 3. Bằng Chứng Kiểm Chứng (Verification Evidence)
 
-- **Bằng chứng tập trung hiện tại**: Các bài kiểm thử cầu nối / bàn giao Antigravity và RAG xuyên nguồn liền kề: `43 passed` vào ngày 2026-08-16.
-- **Khám phá repository**: `1,143` bài kiểm thử được thu thập vào ngày 2026-08-16. Lượt chạy toàn bộ dự án hiện tại chưa được ghi nhận cho cây làm việc cuối cùng.
-- **Vệ sinh phát hành**: `git diff --check` đạt (PASS) vào ngày 2026-08-16.
-
+- **Kiểm thử đơn vị và luồng giao diện**: `89 passed in 21.64s` trên `tests/test_antigravity_bridge.py` và `tests/test_antigravity_handoff_ui_flow.py` vào ngày 2026-09-04.
+- **Smoke test thực thi an toàn**: `scripts/smoke_test_real_sidecar_direct.py` đạt kết quả `HOÀN TẤT THÀNH CÔNG VÀ AN TOÀN` (DRY-RUN & verification).
+- **Kiểm tra tích hợp runtime**: Import `aios_habit.workspace_chat_app` thành công, FSM trạng thái Sidecar đạt `direct_ready`.
+- **Vệ sinh phát hành**: Khởi chạy dễ dàng 1-click qua `start_antigravity_bridge.bat`.

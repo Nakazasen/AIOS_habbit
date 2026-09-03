@@ -145,3 +145,16 @@ Không khóa model thắng trước khi có dataset profile. Model được ch�
 - Gate A NAS chạy độc lập và chỉ ảnh hưởng tuyên bố vận hành thư viện chung.
 
 Thiếu dữ liệu thật có thể chặn prediction/pilot nhưng không chặn việc hoàn thiện case UI, migration hoặc policy Agent.
+
+## 13. Quyết định 12: Giao theo đợt vận hành nhỏ, không kích hoạt toàn bộ backlog
+
+**Quyết định**: giữ US1–US11 làm tầm nhìn đầy đủ, nhưng `tasks.md` chỉ chứa Đợt 0 và Đợt 1 đang đủ điều kiện. Giá trị đầu tiên sau phần nền là một pilot C-call hoặc Jam thật. Learning, prediction, NAS nhiều người, Drum/DLP và Agent lập trình chỉ được tạo task khi đạt điều kiện vào trong `plan.md`.
+
+**Lý do**: danh sách 100 task khiến phần chưa có dữ liệu trông giống công việc đã sẵn sàng, đồng thời đặt hạ tầng chuyên gia/Agent/ML trước bằng chứng vận hành. Chia theo đợt nhỏ giúp hoàn tất và đưa vào dùng sớm mà không xóa mục tiêu dài hạn.
+
+**Giới hạn ban đầu**:
+
+- Người điều tra mặc định có thể đồng thời là chuyên gia đúng công đoạn; người thứ hai là tùy chọn.
+- Pilot chỉ tạo báo cáo điều tra và SOP; chưa cần capability registry tổng quát.
+- Learning dùng tìm kiếm SQLite đơn giản trước.
+- LSU dùng baseline thống kê và tối đa một model bảng nhẹ trên CPU; phát lại lịch sử hoặc shadow thủ công trước scheduler.

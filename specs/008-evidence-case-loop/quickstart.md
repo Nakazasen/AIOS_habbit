@@ -1,123 +1,89 @@
-# Hướng dẫn kiểm chứng theo gate
+# Hướng dẫn kiểm chứng đợt đang thực thi
 
-Tài liệu này là run guide nghiệm thu, không phải hướng dẫn triển khai code. Dữ liệu thật chỉ chạy trong vùng cục bộ được chủ sở hữu cho phép và không được commit.
+Tài liệu này chỉ hướng dẫn nghiệm thu Đợt 0 và Đợt 1. Dữ liệu thật phải nằm trong vùng cục bộ được phép và không được commit.
 
-## 1. Baseline hiện tại
+## 1. Ghi baseline
 
 ```powershell
-git rev-parse --abbrev-ref HEAD
+git branch --show-current
 git rev-parse HEAD
-py -3 -m pytest -q tests/test_workspace_case_store.py tests/test_workspace_case_service.py tests/test_workspace_chat_ui_copy.py tests/test_workspace_chat_source_selection_owner_flow.py
+git status --short
 ```
 
-Kỳ vọng baseline tại thời điểm lập kế hoạch: nhánh `gate1-local-case-sqlite`, commit `2bb7a5f`, 80 test đạt. Nếu checkout thay đổi, chạy lại và ghi kết quả mới; không dùng con số này làm bằng chứng hiện tại.
+Ghi lại thay đổi cục bộ cần bảo toàn. Không dùng số test hoặc commit cũ làm bằng chứng hiện tại.
 
-## 2. Gate 1A — Migration và audit Cổng 1
-
-1. Tạo DB bằng schema Cổng 1, thêm một case/evidence/audit event.
-2. Chạy migration lên version mới.
-3. Đọc lại record và xác minh digest không đổi.
-4. Fault injection giữa migration; xác minh restore snapshot và `quick_check` đạt.
-5. Tìm chuỗi câu hỏi/câu trả lời/excerpt fixture trong DB; kỳ vọng không có.
-
-## 3. Gate 2 — Danh sách và chi tiết case
-
-1. Từ answer có citation, bấm “Lưu vào hồ sơ”.
-2. Mở mục “Hồ sơ vụ việc”, lọc theo loại/trạng thái, bấm case.
-3. Xem timeline/evidence/assignee và mở trace gốc.
-4. Xóa trace fixture có kiểm soát; case detail phải báo thiếu bằng chứng, không tái tạo nội dung.
-5. Thử transition với version cũ; service phải từ chối.
-
-## 4. Gate 3 — Chuyên gia
-
-1. Tạo role/scope fixture cục bộ.
-2. Giao một câu hỏi cho chuyên gia đúng scope; hàng chờ hiển thị.
-3. Thử xác nhận thiếu rationale/sai scope/sai evidence digest; đều bị từ chối.
-4. Ghi hai review trái chiều; case chuyển trạng thái cần phân xử và giữ cả hai record.
-5. Restart/readback; audit chain vẫn đầy đủ.
-
-## 5. Gate 4 — Vòng học
-
-1. Tạo learning candidate từ review `confirmed`.
-2. Tìm trong case-memory trước promotion; không có kết quả chuẩn.
-3. Promotion bằng quality manager, tìm lại và mở provenance.
-4. Withdraw; kết quả biến mất khỏi search thông thường nhưng audit còn.
-5. Xác minh `library.sqlite` không thay đổi.
-
-## 6. Gate 5 — Pilot line
-
-1. Ingest log được phép vào `line_events.sqlite`; ghi source digest/timezone/version.
-2. Tạo case điều tra, attach event match và dựng timeline.
-3. Câu hỏi không match phải trả rỗng, không lấy năm event gần nhất.
-4. Chuyên gia review relevance; mapping chỉ mở với manifest đã duyệt.
-5. Hoàn tất một case thật với SOP, mã lỗi, báo cáo và outcome được duyệt.
-
-Pilot thiếu dữ liệu thật được ghi `BLOCKED`, không thay bằng fixture tổng hợp để đóng gate.
-
-## 7. Gate 6–7 — Agent
-
-### Artifact theo case
-
-1. Tạo proposal báo cáo/SOP từ case confirmed.
-2. Thử evidence rỗng, output path bảo vệ, overwrite và approval sai version; đều bị từ chối.
-3. Generate → verify → approve → export; file mới có version và provenance.
-4. Chỉnh artifact sau approval; phải yêu cầu approval mới.
-
-### Lập trình
-
-1. Tạo task pack với branch/head/allowed files/commands/tests.
-2. Thử truy cập `local_cases`, `.env`, source nhà máy hoặc file ngoài workspace; bị deny.
-3. Tạo patch proposal, xem diff, approve đúng digest, chạy test allowlisted.
-4. Self-report PASS không observed evidence phải `REVIEW_REQUIRED`/từ chối.
-5. Xác minh không tự commit/merge/push.
-
-## 8. Gate 8–9 — Dữ liệu và model LSU/Iris
-
-1. Chạy data validator trên snapshot local: join keys, unit, timezone, version, duplicates, label provenance.
-2. Thiếu một trong sáu readiness conditions; kết quả `blocked`, không tạo model.
-3. Đóng băng dataset/protocol; build feature snapshot với `as_of_time`.
-4. Chạy baseline không cảnh báo, EWMA/CUSUM và model ứng viên theo cùng temporal/group split.
-5. Report phải có false alarm, missed detection, lead time, precision/recall, calibration, stability slice và digests.
-6. Thử đưa feature tương lai vào snapshot; leakage guard phải chặn.
-
-## 9. Gate 10 — Shadow prediction
-
-1. Approve model/threshold cho shadow.
-2. Replay input window; tạo `RiskAssessment` và case prediction khi vượt threshold.
-3. Chạy lại cùng signal trong cooldown; không tạo case trùng.
-4. Gắn outcome đúng/sai/chưa đủ và kiểm metric cập nhật.
-5. Theo dõi connector/mock; không có call PLC, alert ngoài hoặc route cloud.
-
-## 10. Gate 11–12 — Alert có duyệt và Drum/DLP
-
-1. Chưa có owner approval/kill switch; enable alert phải bị chặn.
-2. Sau approval, chỉ role được phép thấy in-app alert và mở case.
-3. Action proposal cần human approval; không có plant control.
-4. Drum/DLP phải chạy Data Gate riêng; threshold/model LSU không được reuse nguyên trạng.
-
-## 11. Gate 13 — NAS và pilot tổ chức
-
-1. Chạy trên đường dẫn thư viện thật được phép.
-2. Xác minh one-writer/multi-reader và fail-closed writer thứ hai.
-3. Online backup, `quick_check`, restore và readback.
-4. Hai người/ca bàn giao một case và mở đúng evidence/review/outcome.
-
-Không có môi trường thật thì Gate A giữ `PARTIAL`.
-
-## 12. Lệnh đóng mỗi gate
+## 2. Kiểm tra tập trung phần nền
 
 ```powershell
-py -3 -m compileall src tests
-py -3 -m pytest -q <tests-tập-trung>
+py -3 -m pytest -q tests/test_workspace_case_migrations.py tests/test_workspace_case_store.py tests/test_workspace_case_authorization.py tests/test_workspace_case_service.py tests/test_workspace_case_ui.py
+py -3 -m pytest -q tests/test_workspace_chat_rag_v2_adapter.py
 $env:PYTHONPATH="src"; py -3 -c "import aios_habit.workspace_chat_app"
 git diff --check
 ```
 
-Trước merge/đóng gate:
+Nếu tên file test chuẩn bị nguồn đã thay đổi, chọn đúng các test chứa `source_preparation`, `preparation_summary`, `pending_question` và progress; ghi rõ danh sách thực chạy.
+
+## 3. Smoke trình duyệt Đợt 0
+
+### Chuẩn bị nguồn
+
+1. Mở Workspace Chat với thư viện có nguồn chưa sẵn sàng.
+2. Xác minh giao diện nói rõ chưa thể tìm kiếm đầy đủ, hiển thị phần trăm và số nguồn đã xong/đang chờ/gặp lỗi.
+3. Xác minh không có tên engine/model nội bộ trong nhãn, lỗi hoặc cảnh báo.
+4. Dừng/khởi động lại ứng dụng; tiến độ phải tiếp tục hoặc có nút “Tiếp tục chuẩn bị”, không đứng im mà không hướng dẫn.
+5. Với một nguồn lỗi, nút “Thử lại” phải hoạt động và lỗi hiển thị bằng tiếng Việt, không có traceback.
+
+### Hồ sơ vụ việc
+
+1. Từ câu trả lời có citation, lưu vào hồ sơ.
+2. Mở mục “Hồ sơ vụ việc”, lọc và chọn case trong tối đa ba thao tác.
+3. Đổi trạng thái, ghi kết luận và mở trace gốc.
+4. Khởi động lại ứng dụng; trạng thái và kết luận phải đọc lại đúng.
+5. Với trace/evidence fixture bị thiếu, UI phải báo thiếu bằng chứng thay vì dựng lại nội dung.
+
+## 4. Xác nhận tối thiểu trong case
+
+1. Người được giao điều tra và có đúng scope xác nhận hoặc bác bỏ một manh mối, kèm lý do.
+2. Thử thiếu lý do, sai scope, scope hết hạn hoặc sai digest; service phải từ chối.
+3. Nếu có người theo dõi công đoạn thứ hai, tạo yêu cầu riêng và giữ cả hai phản hồi.
+4. Khởi động lại; review cũ vẫn còn và không có thao tác sửa/xóa phá hủy.
+5. Xác minh AI không có role/scope phê duyệt.
+
+## 5. Pilot C-call hoặc Jam
+
+1. Chọn một bộ log được phép, SOP, danh mục mã lỗi và mapping có phiên bản.
+2. Ingest log vào `line_events.sqlite`; ghi source digest, collector version và timezone Việt Nam.
+3. Tạo case điều tra, gắn event khớp và dựng timeline.
+4. Truy vấn không khớp phải trả rỗng, không lấy các event gần nhất làm bằng chứng.
+5. Người phụ trách xác nhận relevance của manh mối; mapping chưa duyệt không được hiển thị.
+6. Ghi kết luận/outcome và tạo bản nháp báo cáo điều tra hoặc SOP.
+7. Người có thẩm quyền xem, sửa và duyệt; mọi sửa đổi sau duyệt phải tạo version mới.
+
+Pilot chỉ đạt khi có một case thật đi trọn vòng. Thiếu dữ liệu hoặc người xác nhận được ghi `BLOCKED`, không thay bằng fixture để đóng pilot.
+
+## 6. Kiểm tra an toàn artifact
+
+1. Thử tạo nháp khi không có evidence; phải bị chặn.
+2. Thử ghi đè file nguồn hoặc ghi ngoài output root; phải bị chặn.
+3. Tạo báo cáo/SOP mới, xem trước, duyệt rồi đọc lại provenance và version.
+4. Xác minh không có dữ liệu thô, đường dẫn hệ thống hoặc secret trong UI/báo cáo đã làm sạch.
+
+## 7. Đóng một đợt
+
+Chỉ chạy bộ đầy đủ khi chuẩn bị hợp nhất, phát hành hoặc đánh dấu đợt hoàn tất:
 
 ```powershell
+py -3 -m compileall src tests
 py -3 -m pytest -q
 $env:PYTHONPATH="src"; py -3 -m aios_habit.cli audit
+$env:PYTHONPATH="src"; py -3 -c "import aios_habit.workspace_chat_app"
+py -3 scripts/check_docs.py
+git diff --check
+git diff --cached --check
 ```
 
-Kỳ vọng audit có `"status": "PASS"`. Kết quả phải ghi commit, branch, lệnh, exit code, test count, artifact path đã scrub và những phần chưa runtime-verified.
+Ghi commit, nhánh, lệnh, exit code, số test và phần chưa kiểm chứng vào `PROJECT_HANDOVER.md`. Có lỗi môi trường hoặc thiếu bằng chứng thật thì dùng `PARTIAL`/`BLOCKED`, không ghi `PASS` thay.
+
+## 8. Năng lực chưa kích hoạt
+
+Promotion bài học, hàng chờ chuyên gia đầy đủ, prediction store/model/shadow tự động, cảnh báo, NAS nhiều người, Drum/DLP và Agent lập trình chỉ được bổ sung vào hướng dẫn khi điều kiện trong [plan.md](plan.md) đã đạt.

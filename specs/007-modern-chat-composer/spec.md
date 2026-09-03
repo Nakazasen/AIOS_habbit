@@ -4,7 +4,7 @@
 
 **Created**: 2026-08-25
 
-**Status**: Draft
+**Trạng thái**: `IMPLEMENTED_PENDING_VERIFICATION` — giao diện đã có; còn một lượt kiểm chứng trên cây code hiện tại
 
 **Input**: User description: "Thiết kế lại thanh hỏi đáp theo AI IDE hiện đại: thumbnail ảnh đính kèm, dán nhanh ảnh clipboard, chọn Mô hình AI trong composer, và không còn vùng đính kèm choáng chỗ."
 

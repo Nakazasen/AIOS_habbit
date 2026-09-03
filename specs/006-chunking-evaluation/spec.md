@@ -2,7 +2,7 @@
 
 **Feature Branch**: `006-chunking-evaluation`
 **Created**: 2026-08-24
-**Status**: Draft
+**Trạng thái**: `IMPLEMENTED_PENDING_REAL_CORPUS_VALIDATION` — bộ đánh giá đã có; không mở E3/E4 nếu chưa có bằng chứng trên corpus thật
 **Input**: User description: "Evaluate and improve RAG chunking only when measured evidence proves a gain; cover Vietnamese, Japanese, and Chinese documents without assuming overlap is automatically better."
 
 ## User Scenarios & Testing *(mandatory)*

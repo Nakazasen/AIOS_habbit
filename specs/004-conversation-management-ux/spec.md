@@ -4,7 +4,7 @@
 
 **Created**: 2026-08-22
 
-**Status**: Draft
+**Trạng thái**: `IMPLEMENTED_PENDING_CURRENT_FULL_SUITE` — chức năng đã có; còn cần kiểm chứng lại trên cây code hiện tại
 
 **Input**: User description: "Deleting a conversation is difficult to use, does not clearly identify the target conversation, and leaves a blank screen until another conversation is selected."
 

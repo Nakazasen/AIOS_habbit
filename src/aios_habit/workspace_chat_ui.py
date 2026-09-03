@@ -806,7 +806,7 @@ def render_preparation_progress_bar(
     if preparation_state == "paused" and on_resume is not None:
         if st.button(t("resume_pending_preparation", locale=locale), key="wsc_resume_pending_preparation", use_container_width=True):
             on_resume()
-    if failed > 0 and preparation_state != "running" and on_retry_all_failed is not None:
+    if failed > 0 and on_retry_all_failed is not None:
         if st.button(f"🔄 {t('retry_preparation', locale=locale)}", key="wsc_retry_all_failed_sources", use_container_width=True):
             on_retry_all_failed()
 

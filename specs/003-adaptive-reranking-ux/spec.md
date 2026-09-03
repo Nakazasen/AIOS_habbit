@@ -4,7 +4,7 @@
 
 **Created**: 2026-08-16
 
-**Status**: Draft for implementation and independent audit
+**Trạng thái**: `IMPLEMENTED_PENDING_REAL_BENCHMARK` — code và test đã có; chưa bật mặc định trước benchmark trên model/corpus thật
 
 **Input**: User description: "Mặc định hệ thống tự đánh giá câu hỏi để dùng BGE-M3 Hybrid hoặc BGE-M3 Hybrid + Reranker; người dùng có quyền bật Tìm kỹ hơn, và hệ thống không được tự coi mọi câu hỏi là dễ."
 

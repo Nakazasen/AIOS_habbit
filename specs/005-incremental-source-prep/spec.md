@@ -4,7 +4,9 @@
 
 **Created**: 2026-08-22
 
-**Status**: Draft
+**Trạng thái**: `IMPLEMENTED_PENDING_BROWSER_SMOKE` — code/test đã có; còn cần smoke trình duyệt với nguồn thật
+
+> Checklist cũ trong `tasks.md` của đặc tả này là dấu vết lập kế hoạch, không phải 35 việc cần viết lại. Trạng thái thực thi hiện tại được theo dõi trong `ROADMAP.md` và Đợt 0 của đặc tả 008.
 
 **Input**: Make Workspace Chat prepare every new or changed searchable document in the background, keep previously ready documents searchable, show trustworthy progress, and avoid requiring the user to ask the same question again.
 

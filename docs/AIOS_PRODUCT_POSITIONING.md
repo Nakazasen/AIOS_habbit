@@ -36,16 +36,16 @@ AIOS không chỉ đơn thuần là công cụ hỏi đáp tài liệu. AIOS ph�
 - Giai đoạn 1 — Nền tảng Local Case Cockpit: ĐẠT (DONE).
 - Giai đoạn 2 — Nền tảng Tài liệu thực tế / MOM: ĐẠT KÈM CẢNH BÁO (DONE_WITH_WARNINGS).
 - Giai đoạn 3 — An toàn Provider + Giao diện hằng ngày: ĐẠT KÈM CẢNH BÁO (DONE_WITH_WARNINGS).
-- Vị trí hiện tại: cuối Giai đoạn 3, trước Giai đoạn 4 RAG Engine v2 và Giai đoạn 5 Cầu nối IDE/model.
-- P1.0: ĐÃ KHÓA (LOCKED), chưa mở.
+- Vị trí hiện tại: nền RAG v2, cầu nối IDE và hồ sơ Workspace Chat đã có code; trọng tâm vận hành là khóa phần nền rồi hoàn thành một pilot điều tra line thật.
+- P1.0: đã được phê duyệt và mở khóa theo `ROADMAP.md`; từng năng lực mới vẫn phải qua gate riêng.
 - Tương đương năng lực NotebookLM (NotebookLM parity): chưa đạt và tuyệt đối không giả mạo.
-- Cầu nối IDE/model: chưa triển khai.
+- Cầu nối IDE/model: đã triển khai nền cầu nối trung thực; không đồng nghĩa Agent được tự sửa hoặc tự duyệt.
 
 ## Lộ Trình Giai Đoạn (Phase Roadmap)
 
 ### Giai Đoạn 4 — RAG Engine v2 / Truy Xuất Tương Đương NotebookLM
 
-Trạng thái: KẾ TIẾP (NEXT).
+Trạng thái: ĐÃ CÓ NỀN; tiếp tục đo trên corpus thật và không mở rộng khi chưa có bằng chứng.
 
 Phạm vi:
 - Bộ chuyển đổi parser tốt hơn
@@ -66,7 +66,7 @@ Chưa được phép:
 
 ### Giai Đoạn 5 — Cầu Nối Mô Hình Mạnh / IDE (IDE / Strong Model Answer Bridge)
 
-Trạng thái: KẾ TIẾP SONG SONG (NEXT_PARALLEL).
+Trạng thái: ĐÃ CÓ NỀN CẦU NỐI; các hành động thay đổi vẫn cần phê duyệt.
 
 Phạm vi:
 - Xuất gói prompt
@@ -112,19 +112,14 @@ Chỉ sử dụng các mẫu thiết kế công khai; tuyệt đối không sao 
 - LangGraph
 - Semantic Kernel
 
-## Hàng Đợi Cổng Tiếp Theo (Next Gate Queue)
+## Hàng đợi cổng tiếp theo
 
 Trước mắt:
-1. `AIOS-RAG-AGENT-HARNESS-0` — nghiên cứu các mẫu khung điều phối RAG + Claude-Code, chỉ tài liệu.
-2. `AIOS-RAG-INGEST-1` — cải thiện metadata bộ phân tích/chunk, chưa dùng vector DB.
-3. `AIOS-RAG-SEARCH-1` — nền tảng tìm kiếm kết hợp cục bộ, SQLite FTS/BM25, lọc metadata, ID trích dẫn.
-4. `AIOS-RAG-EVIDENCE-PACK-1` — bộ tạo gói bằng chứng, chấm điểm nguồn, từ chối trả lời khi thiếu dữ liệu.
-5. `AIOS-IDE-BRIDGE-1` — xuất prompt thủ công, dán câu trả lời ngược lại, lưu log model/công cụ/bằng chứng/tuyến.
 
-Sau này:
-6. `AIOS-RAG-RERANK-1`
-7. `AIOS-RAG-BENCHMARK-1`
-8. `AIOS-CASE-SCALE-1`
-9. `AIOS-WORKSTREAM-MAP-1`
-10. `AIOS-P1-READINESS-CHECKLIST`
+1. Khóa phần nền chuẩn bị nguồn và hồ sơ bằng test hiện tại cùng smoke trình duyệt.
+2. Hoàn thành một pilot C-call hoặc Jam thật từ bằng chứng đến báo cáo được duyệt.
+3. Chỉ sau pilot mới mở promotion/tìm lại bài học.
+4. Chỉ sau Data Gate mới mở thử nghiệm LSU nhẹ trên CPU.
+
+NAS nhiều người, cảnh báo, Drum/DLP, Agent lập trình và các đầu ra artifact khác là backlog có điều kiện; xem [kế hoạch 008](../specs/008-evidence-case-loop/plan.md).
 

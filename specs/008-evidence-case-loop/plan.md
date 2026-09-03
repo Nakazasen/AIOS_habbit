@@ -2,297 +2,214 @@
 
 **Mã tính năng**: `008-evidence-case-loop`
 
-**Checkout hiện tại**: nhánh `gate1-local-case-sqlite`, commit `2bb7a5f`
+**Ngày cập nhật**: 04/09/2026
 
-**Nhánh được metadata Spec Kit khai báo**: `008-evidence-case-loop`
+**Trạng thái**: Đã duyệt cách triển khai theo các đợt vận hành nhỏ
 
-**Trạng thái**: Chủ sở hữu đã duyệt Gate 1A + US1 để triển khai
 **Đặc tả**: [spec.md](spec.md)
 
-## 1. Kết quả mong muốn
+## 1. Kết quả cần đạt
 
-Chuyển Workspace Chat từ “não đọc tài liệu + kính lúp log” thành trợ lý công việc có kiểm soát:
-
-```text
-Vấn đề hoặc tín hiệu rủi ro
-        ↓
-Hồ sơ vụ việc + bằng chứng + dòng thời gian
-        ↓
-Hỏi phần còn thiếu + giao đúng chuyên gia
-        ↓
-Kết luận/outcome được con người xác nhận
-        ↓
-Bài học dùng lại + artifact công việc + dữ liệu đánh giá
-        ↓
-Shadow prediction và đề xuất phòng ngừa có duyệt
-```
-
-Kế hoạch không biến AI thành hệ điều khiển nhà máy. Sự chủ động được phép gồm gom dữ liệu, hỏi ngược, tạo case, tạo draft, chạy kiểm tra trong sandbox và xếp ưu tiên; mọi quyết định vận hành vẫn thuộc con người.
-
-## 2. Hiện trạng và điểm bắt đầu
-
-- Cổng lưu metadata case từ Workspace Chat đã được triển khai tại `2bb7a5f`; 80 test tập trung đã đạt trong lượt lập kế hoạch này.
-- Chưa chạy full suite/audit độc lập cho toàn bộ chương trình mới; Cổng 1 là `IMPLEMENTED_PENDING_INDEPENDENT_AUDIT`, không phải `DONE`.
-- `workspace_cases.sqlite` chưa có migration version chính thức.
-- Chưa có list/detail UI, expert workflow, learning retrieval, prediction store/model/shadow.
-- Agent artifact và Agent IDE đã có các mảnh nền nhưng chưa có capability contract thống nhất theo case.
-- Gate A NAS vẫn `PARTIAL` cho đến khi có smoke thật.
-
-Không làm lại Cổng 1. Việc tiếp theo là audit/khóa migration rồi mở giao diện case.
-
-## 3. Bối cảnh kỹ thuật
-
-| Hạng mục | Lựa chọn |
-|---|---|
-| Runtime | Python `>=3.11,<3.12` |
-| Giao diện | Streamlit trong `workspace_chat_app.py`; không mở route Case Cockpit/Studio |
-| Kho hồ sơ | `local_cases/workspace_cases.sqlite`, một máy, không sync |
-| Kho log | `line_events.sqlite`, chỉ event `suspected` |
-| Thư viện tài liệu | `library.sqlite`, tách khỏi case/log/prediction |
-| Kho dự đoán | SQLite cục bộ mới dưới `local_cases/production_prediction.sqlite` |
-| Xử lý bảng | `pandas` hiện có; giữ phép biến đổi tất định và có schema |
-| Baseline prediction | Rule/SPC như EWMA/CUSUM sau khi dữ liệu đáp ứng giả định |
-| Model ứng viên | `scikit-learn` trong optional extra riêng sau Data Gate; chưa khóa thuật toán thắng |
-| Artifact Agent | Capability registry + output versioned + verifier + approval |
-| Agent lập trình | Task pack + workspace bridge + proposal/diff/command + observed evidence |
-| Quyền riêng tư | `local_only` mặc định; không gửi Gemini Web/Nakazasen Router |
-
-Không còn mục `NEEDS CLARIFICATION` về kiến trúc. Các lựa chọn dữ liệu/role/threshold chưa có là **đầu vào bắt buộc của từng gate**, được ghi `BLOCKED` nếu chủ sở hữu chưa cung cấp; không được tự điền giả.
-
-## 4. Kiến trúc đích
+Giữ nguyên tầm nhìn đầy đủ của US1–US11 nhưng đưa sản phẩm vào dùng theo từng lát cắt có giá trị:
 
 ```text
-Workspace Chat
- ├─ Trò chuyện/RAG ───────────────> library.sqlite
- ├─ Hồ sơ vụ việc
- │   ├─ Case UI + timeline
- │   ├─ Expert request/review
- │   ├─ Learning promotion/search
- │   └─ Artifact proposal/approval
- │                                  └─ workspace_cases.sqlite
- ├─ Điều tra line ────────────────> line_events.sqlite
- ├─ Prediction lab/shadow ────────> production_prediction.sqlite
- └─ Agent kỹ thuật phần mềm ──────> workspace code riêng + task pack
+Nguồn và hồ sơ ổn định
+        ↓
+Một vụ C-call hoặc Jam thật được điều tra đến cùng
+        ↓
+Bài học đã duyệt được tìm lại
+        ↓
+LSU được đánh giá bằng dữ liệu thật và chế độ thử nghiệm bóng
+        ↓
+Chỉ mở cảnh báo, NAS nhiều người, Drum/DLP hoặc Agent lập trình khi đủ điều kiện
 ```
 
-Các kho chỉ liên kết qua ID/digest bất biến. Không join bằng tên file hoặc nội dung LLM sinh. Module Workspace Chat không import `studio`/`case_cockpit`.
+AI chỉ gom bằng chứng, chỉ ra phần thiếu và tạo bản nháp. Con người xác nhận kết luận, duyệt bài học, phát hành tài liệu và quyết định mọi hành động vận hành.
 
-## 5. Kiểm tra Hiến chương trước thiết kế
+## 2. Hiện trạng làm điểm xuất phát
 
-| Nguyên tắc | Đánh giá | Cách đáp ứng |
-|---|---|---|
-| Bằng chứng trước tuyên bố | Đạt ở mức thiết kế | Tách `suspected`, `confirmed`, `false_alarm`, `unknown`; mọi promotion/model claim có digest/evidence. |
-| Ưu tiên cục bộ | Đạt ở mức thiết kế | Bốn kho cục bộ tách biệt; route ngoài bị chặn theo policy. |
-| Tri thức có thể chuyển đổi | Đạt ở mức thiết kế | Schema mở, model card/dataset manifest JSON/Markdown, không lệ thuộc provider. |
-| Workspace Chat là UI duy nhất | Đạt ở mức thiết kế | Case/Expert/Prediction/Agent nằm trong Workspace Chat. |
-| Thiết kế trước code, kiểm chứng theo gate | Đạt ở mức thiết kế | Có gate tuần tự, test/fault injection/audit độc lập và owner approval. |
-| Tương thích dữ liệu lưu trữ | Cần xử lý trước Gate 2 | Thêm schema migration, backup và rollback trước khi mở rộng Cổng 1. |
+- Gate 1A và US1 đã có nền code: migration, role/scope, activity, danh sách/chi tiết case, trạng thái, kết luận và tham chiếu bằng chứng.
+- Chuẩn bị nguồn tăng dần đã có code/test nhưng còn thiếu smoke trình duyệt với tài liệu thật.
+- Phần nền chưa được gọi là hoàn tất cho tới khi kiểm chứng lại trên cây code hiện tại.
+- Parser Jam/C-call/LSU và `line_events.sqlite` đã có; chưa có một pilot line thật khép kín.
+- Chưa có vòng chuyên gia trong sản phẩm, bài học được promotion rồi dùng lại, model LSU, shadow hoặc cảnh báo vận hành.
+- Gate A NAS vẫn `PARTIAL`; dữ liệu thật và đường dẫn cục bộ không được commit.
 
-Không có ngoại lệ Hiến chương được đề xuất.
+Không làm lại phần nền đã có. Đợt đầu tiên là kiểm chứng và sửa đúng lỗi quan sát được, sau đó mở một pilot thực tế.
 
-## 6. Các phương án tổ chức chương trình
+## 3. Phương án đã chọn
 
-### Phương án A — Một đợt triển khai lớn
+### Phương án A — Triển khai liên tục cả 14 gate
 
-**Ưu**: nhìn như “làm hết” trong một lần.
+Ưu điểm: mọi ý tưởng đều có task ngay.
 
-**Nhược**: trộn UI, persistence, ML và Agent; khó audit độc lập, dễ fake PASS, rollback kém.
-**Không chọn**.
+Nhược điểm: 81 task tương lai cùng hoạt động, phụ thuộc giả, khó biết khi nào sản phẩm dùng được và dễ xây hạ tầng trước dữ liệu.
 
-### Phương án B — Chỉ hoàn thiện case, hoãn prediction và Agent
+Kết luận: không chọn.
 
-**Ưu**: rủi ro thấp, sớm có UI.
+### Phương án B — Cắt còn một trình quản lý hồ sơ
 
-**Nhược**: không đạt ý đồ “Đôrêmon có kiểm soát” và không giải quyết LSU/Iris.
-**Không chọn**.
+Ưu điểm: nhanh và ít code.
 
-### Phương án C — Một chương trình, ba track có gate phụ thuộc
+Nhược điểm: mất vòng bằng chứng → xác nhận → bài học → phòng ngừa, không còn đúng mục tiêu WorkLens.
 
-**Ưu**: giữ đầy đủ phạm vi nhưng mỗi gate có artifact/test/rollback riêng; dữ liệu thật chặn đúng prediction mà không chặn case UI.
+Kết luận: không chọn.
 
-**Nhược**: nhiều gate và cần chủ sở hữu cung cấp dữ liệu/role ở đúng thời điểm.
-**Chọn phương án này**.
+### Phương án C — Giữ đặc tả đầy đủ, giao theo đợt nhỏ
 
-Ba track là:
+Ưu điểm: bảo toàn tầm nhìn, mỗi đợt có giá trị sử dụng và có thể dừng an toàn; chỉ xây kho/model/UI khi đầu vào đã có.
 
-1. **Vòng vụ việc**: migration → case UI → chuyên gia → learning → line pilot.
-2. **Agent tạo đầu ra**: capability policy → artifact Agent → coding Agent.
-3. **Phòng ngừa lỗi**: data contract → LSU model lab → shadow case → alert có duyệt → adapter Drum/DLP.
+Nhược điểm: trạng thái cần được cập nhật đều và mỗi đợt phải có bằng chứng vận hành riêng.
 
-Gate A NAS là track vận hành độc lập; không được dùng để tuyên bố toàn hệ thống production-ready.
+Kết luận: chọn phương án này.
 
-## 7. Trình tự gate bắt buộc
+## 4. Nguyên tắc kiến trúc tối thiểu
 
-### Gate 1A — Kiểm toán và khóa nền hồ sơ đã triển khai
+1. Workspace Chat vẫn là giao diện chính; không khôi phục Case Cockpit hoặc Studio.
+2. `library.sqlite`, `line_events.sqlite` và `workspace_cases.sqlite` giữ ranh giới hiện có, liên kết bằng ID/digest.
+3. Chưa tạo `production_prediction.sqlite` cho tới khi Data Gate LSU/Iris đạt.
+4. Dùng SQLite và tìm kiếm từ khóa trước; chỉ thêm embedding hoặc thư viện máy học khi phép đo chứng minh cần thiết.
+5. Giữ activity hash-chain đang có cho hồ sơ; không nhân rộng chuỗi băm sang mọi bảng nếu chưa có yêu cầu kiểm toán thật.
+6. Mặc định người điều tra cũng là chuyên gia đúng công đoạn. Chỉ thêm người thứ hai khi cần theo dõi riêng hoặc phân xử.
+7. Pilot artifact chỉ gồm báo cáo điều tra và SOP. Chưa xây danh mục năng lực tổng quát.
+8. Mọi giao diện, cảnh báo và lỗi người dùng thấy phải bằng tiếng Việt và không lộ tên engine/model nội bộ.
 
-- Audit commit `2bb7a5f`, chạy focused/full gates theo phạm vi.
-- Thêm migration framework, schema version, backup/restore và fixture dữ liệu cũ.
-- Loại bỏ/deprecate copy placeholder “chế độ mô phỏng” không còn dùng.
-- Cập nhật contract dữ liệu lưu trữ trước khi thêm bảng.
+## 5. Các đợt triển khai
 
-**Điều kiện đóng**: readback/restart/fault injection/migration rollback đạt; audit độc lập xác nhận không lưu chat thô.
+### Đợt 0 — Khóa phần nền để dùng cá nhân
 
-### Gate 2 — Mục “Hồ sơ vụ việc” và vòng đời case
+**Phạm vi**
 
-- List/filter/detail/timeline/open-trace trong Workspace Chat.
-- Thêm type, priority, assignee, missing-evidence checklist và state machine.
-- Cho phép gắn thêm tham chiếu ảnh, SOP, tài liệu hoặc log đã có trong kho nguồn mà không sao chép nội dung thô.
-- Không cho UI ghi transition trực tiếp; mọi thao tác qua service.
+- Đối soát code hiện có với Gate 1A, US1, đặc tả 005 và 007.
+- Chạy test tập trung cho chuẩn bị nguồn, lưu/mở case, migration và quyền.
+- Smoke trình duyệt: tiến độ lập chỉ mục, trạng thái chưa sẵn sàng, danh sách/chi tiết case, kết luận và đọc lại sau restart.
+- Chỉ sửa lỗi thật quan sát được; không viết lại kiến trúc.
 
-**Điều kiện đóng**: người dùng mở case trong tối đa ba thao tác; trace thiếu được hiển thị trung thực.
+**Điều kiện hoàn tất**
 
-### Gate 3 — Giao việc và thẩm định chuyên gia
+- Người dùng hiểu rõ khi thư viện chưa sẵn sàng và thấy tiến độ phần trăm.
+- Case tạo từ câu trả lời có thể mở lại, cập nhật trạng thái/kết luận và đọc sau restart.
+- Kiểm thử tập trung đạt; bộ kiểm thử toàn bộ, audit, import và kiểm tra tài liệu được ghi đúng kết quả.
 
-- Role/scope registry cục bộ.
-- Expert request/inbox/response/conflict resolution.
-- Review append-only, digest-bound, không tin caller boolean.
+### Đợt 1 — Một pilot điều tra line thật
 
-**Điều kiện đóng**: mọi transition sai quyền/thiếu lý do/sai digest bị fail-closed.
+**Phạm vi**
 
-### Gate 4 — Promotion và dùng lại bài học
+- Chọn đúng một loại sự việc đầu tiên: C-call hoặc Jam.
+- Tạo timeline từ log với timezone Việt Nam; event ban đầu luôn là `suspected` và không có fallback giả.
+- Gắn SOP, mã lỗi và mapping có phiên bản vào case bằng locator/digest, không sao chép dữ liệu thô.
+- Người điều tra kiêm chuyên gia có thể xác nhận/bác bỏ manh mối; người theo dõi công đoạn thứ hai là tùy chọn.
+- Tạo bản nháp báo cáo điều tra và SOP từ bằng chứng; người có thẩm quyền duyệt trước khi phát hành.
 
-- Adapter import thẻ cũ chỉ khi người dùng chọn.
-- Learning candidate → promoted/withdrawn.
-- Retriever case-memory riêng, citation đến case/review/evidence.
+**Không làm trong đợt này**
 
-**Điều kiện đóng**: case mới tìm được bài học promoted phù hợp; candidate/withdrawn không rò vào kết quả chuẩn.
+- Hàng chờ nhiều người, ma trận quyền quản trị đầy đủ hoặc phân xử phức tạp.
+- Capability registry tổng quát cho mọi loại file.
+- Model dự đoán, cảnh báo hoặc điều khiển máy.
 
-### Gate 5 — Pilot điều tra line khép kín
+**Điều kiện hoàn tất**
 
-- Bổ sung source digest/collector/timezone, bỏ fallback event không match.
-- Timeline, repeat grouping, gap questions, relevance review.
-- Mapping overlay chỉ từ manifest đã duyệt.
-- Chạy một pilot thật từ case đến báo cáo/outcome.
+- Một case thật được phép đi từ mở hồ sơ → timeline → xác nhận → kết luận → báo cáo được duyệt.
+- Báo cáo vẫn mô tả đây là hỗ trợ điều tra, không phải chẩn đoán tự động.
 
-**Điều kiện đóng**: có SOP/mã lỗi/log/report thật được phép, reviewer xác nhận; vẫn không tuyên bố chẩn đoán.
+### Đợt 2 — Dùng lại bài học đã duyệt
 
-### Gate 6 — Capability registry và Agent artifact
+**Điều kiện vào**: có ít nhất một case thật đã kết luận và một phản hồi xác nhận có provenance.
 
-- Định nghĩa loại artifact, risk tier, template, verifier, approver, output root.
-- Hỗ trợ trước: báo cáo điều tra và SOP.
-- Mở tiếp hồ sơ thiết kế công đoạn/bảng tính/sơ đồ sau khi chủ sở hữu chọn format đầu tiên.
-- Mỗi lần xuất tạo version mới, diff/preview và audit event.
+**Phạm vi**
 
-**Điều kiện đóng**: no-evidence/unapproved/overwrite/protected path đều bị chặn; artifact chính thức truy vết đầy đủ.
+- Tạo ứng viên bài học từ case đã xác nhận.
+- Trợ lý/trưởng/phó phòng duyệt promotion hoặc thu hồi.
+- Tìm kiếm chính xác/từ khóa bằng SQLite; kết quả luôn dẫn về case, review và evidence gốc.
+- Chỉ thêm hàng chờ chuyên gia nhiều người nếu pilot chứng minh có bàn giao thật.
 
-### Gate 7 — Agent lập trình có sandbox và phê duyệt
+**Điều kiện hoàn tất**
 
-- Nối task pack, result import và Workspace Agent proposal thành một luồng case `agent_work`.
-- Tách workspace code với dữ liệu nhà máy; allowlist file/command/test.
-- Proposal diff/command bất biến; observed evidence là điều kiện PASS.
+- Bài học chưa duyệt/đã thu hồi không xuất hiện như sự thật.
+- Một case mới tìm lại được bài học đã duyệt mà không thay đổi `library.sqlite`.
 
-**Điều kiện đóng**: không tự merge/push, không truy cập `local_cases`, mọi patch/test có audit và rollback.
+### Đợt 3 — Thử nghiệm dự đoán LSU nhẹ
 
-### Gate 8 — Data Gate cho LSU/Iris
+**Điều kiện vào**
 
-- Chốt data dictionary, stable join keys, đơn vị, timezone, jig/process version, outcome labels.
-- Ingest snapshot bất biến; kiểm completeness, duplicate, leakage, drift và class balance.
-- Tạo dataset manifest và readiness report.
+- Có data dictionary, khóa join, đơn vị, timezone, phiên bản JIG/quy trình, outcome OK/NG và người xác nhận nhãn.
+- Đã kiểm tra rò rỉ tương lai, chất lượng nhãn và khả năng phát lại lịch sử.
 
-**Điều kiện đóng**: thiếu nhãn/owner/replay/leakage check thì `BLOCKED`; không train model.
+**Phạm vi**
 
-### Gate 9 — Prediction lab và model card
+- Tạo kho dự đoán cục bộ và snapshot có version sau khi Data Gate đạt.
+- So sánh không cảnh báo, rule/EWMA/CUSUM và tối đa một model bảng đơn giản chạy CPU.
+- Chia dữ liệu theo thời gian/nhóm máy; báo false alarm, missed detection, lead time và độ ổn định.
+- Chạy phát lại lịch sử hoặc shadow thủ công trước. Chưa cần scheduler.
 
-- Baseline không cảnh báo, baseline EWMA/CUSUM và model có giám sát đơn giản.
-- Temporal/group split, calibration, feature importance trên holdout.
-- Đo false alarm, missed detection, lead time, precision/recall và stability slice.
-- Chọn threshold theo cost do owner phê duyệt.
+**Điều kiện hoàn tất**
 
-**Điều kiện đóng**: protocol đóng băng, report tái lập được, model/dataset/code digest đầy đủ; chưa phát alert.
+- Có báo cáo tái lập được, model/dataset/threshold có version và rollback.
+- Mỗi tín hiệu có feature snapshot; không phát cảnh báo vận hành và không điều khiển máy.
 
-### Gate 10 — Shadow prediction tạo hồ sơ dự đoán
+### Đợt 4 — Mở rộng có điều kiện
 
-- Local scheduler/replay tạo `RiskAssessment` từ feature snapshot.
-- Dedup/cooldown và tạo/cập nhật case `prediction`.
-- Kỹ sư gắn outcome `confirmed`, `false_alarm`, `unknown`.
-- Dashboard shadow không ảnh hưởng line.
+Mỗi nhánh dưới đây là một quyết định riêng, không chặn nhau:
 
-**Điều kiện đóng**: đạt số case và ngưỡng thời gian/chi phí do owner ký; không có plant action.
-
-### Gate 11 — Cảnh báo có duyệt và đề xuất phòng ngừa
-
-- Chỉ mở in-app alert cho role được phép.
-- Action library versioned; Agent đề xuất kiểm tra/phòng ngừa có evidence.
-- Theo dõi `effective`/`ineffective`, rollback threshold/model/action.
-
-**Điều kiện đóng**: owner phê duyệt alert policy, escalation và kill switch; không có PLC/control.
-
-### Gate 12 — Adapter Drum/DLP
-
-- Reuse lõi dataset/model/shadow; mỗi miền có mapping, label, feature và acceptance riêng.
-- Không copy threshold/model LSU sang Drum/DLP.
-
-**Điều kiện đóng**: mỗi adapter có Data Gate và shadow evidence độc lập.
-
-### Gate 13 — Gate A NAS và pilot tổ chức
-
-- Nghiệm thu thư viện chung trên đường dẫn thật, one-writer/multi-reader, backup/restore.
-- Pilot bàn giao case giữa ít nhất hai vai trò/ca làm việc.
-- Cập nhật retention/backup runbook.
-
-**Điều kiện đóng**: bằng chứng runtime thật; thiếu thì giữ `PARTIAL`.
-
-### Gate 14 — Hội tụ và bàn giao
-
-- Audit độc lập từng gate/commit.
-- Chạy full quality gates, docs check, migration/restore drill, privacy/security regression.
-- Cập nhật `ARCHITECTURE.md`, `ROADMAP.md`, `PROJECT_HANDOVER.md`, PIA và compatibility contract theo hành vi thật.
-
-## 8. Chiến lược nhánh và commit
-
-Không triển khai tất cả trên một commit. Mỗi gate là một nhánh/commit nhỏ có allowlist và audit riêng. Trước khi bắt đầu Gate 2, chủ sở hữu chọn một trong hai cách:
-
-1. Merge/audit `gate1-local-case-sqlite` rồi tạo nhánh `008-evidence-case-loop` từ `main` đã cập nhật.
-2. Tiếp tục trên nhánh hiện tại nhưng chỉ sau khi tài liệu kế hoạch được tách rõ và Gate 1A đạt audit. Đây là phương án chủ sở hữu đã duyệt cho lượt triển khai Gate 1A + US1; không merge/push tự động.
-
-Không tự chọn chiến lược merge khi chưa kiểm tra `origin/main` và chưa có phê duyệt.
-
-## 9. Chiến lược kiểm thử
-
-Mỗi gate có ba lớp:
-
-1. **Contract/unit**: state machine, role, digest, migration, metric và policy.
-2. **Integration**: restart/readback/fault injection/UI callback/store boundaries.
-3. **Acceptance**: case/pilot/shadow bằng dữ liệu được phép; không dùng fixture tổng hợp để thay thế claim runtime thật.
-
-Cuối mỗi gate chạy tối thiểu:
-
-```powershell
-py -3 -m compileall src tests
-py -3 -m pytest -q <tests-tập-trung>
-$env:PYTHONPATH="src"; py -3 -c "import aios_habit.workspace_chat_app"
-git diff --check
-```
-
-Trước đóng gate/merge chạy thêm:
-
-```powershell
-py -3 -m pytest -q
-$env:PYTHONPATH="src"; py -3 -m aios_habit.cli audit
-```
-
-`cli audit` phải trả `"status": "PASS"`. Timeout, dependency thiếu, smoke chưa chạy hoặc dữ liệu thật chưa có là `PARTIAL`/`BLOCKED`.
-
-## 10. Rủi ro và giảm thiểu
-
-| Rủi ro | Giảm thiểu |
+| Nhánh | Chỉ mở khi |
 |---|---|
-| Schema Cổng 1 bị thay đổi không tương thích | Migration version + online backup + rollback test trước Gate 2. |
-| UI làm người dùng nhầm AI đã xác nhận | Badge nguồn/trạng thái, service guard, append-only review. |
-| Bài học case bị nhầm với SOP chuẩn | Retriever riêng, nhãn “Bài học đã xác nhận”, provenance bắt buộc. |
-| Agent code trở thành đường tắt chạm dữ liệu nhà máy | Hai miền workspace, deny `local_cases`, task pack và approval riêng. |
-| Prediction học từ tương lai | Feature snapshot tại thời điểm dự báo, temporal/group split, leakage audit. |
-| Alert quá nhiều | Shadow trước, cost matrix, calibration, dedup/cooldown, owner threshold. |
-| Mở rộng Drum/DLP quá sớm | LSU/Iris vertical slice là gate bắt buộc. |
-| Gate A NAS bị báo PASS bằng test giả | Chỉ runtime evidence trên đường dẫn thật được đổi trạng thái. |
+| Cảnh báo trong Workspace Chat | Shadow LSU đạt ngưỡng do chủ sở hữu duyệt, có kill switch và quy trình phản hồi |
+| NAS nhiều người | Có môi trường thật để thử một writer–nhiều reader, backup/restore và bàn giao liên ca |
+| Drum hoặc DLP | LSU chứng minh hợp đồng lõi có giá trị; mỗi miền có Data Gate và threshold riêng |
+| Agent lập trình | Có nhu cầu nghiệp vụ riêng, workspace cách ly, allowlist và người duyệt rõ ràng |
+| Artifact khác báo cáo/SOP | Có ít nhất ba loại đầu ra thật cần cùng một cơ chế dùng lại |
 
-## 11. Kiểm tra Hiến chương sau thiết kế
+## 6. Ánh xạ 14 gate cũ vào kế hoạch mới
 
-- Không lưu chat thô trong case; đạt yêu cầu ưu tiên bằng chứng và dữ liệu tối thiểu.
-- Không có production control hoặc autonomous factory action; đạt ranh giới thẩm quyền con người.
-- Workspace Chat vẫn là UI duy nhất; không hồi sinh legacy.
-- Mọi persistent schema mới có migration/rollback trong kế hoạch.
-- Mọi model/alert claim có dataset/model/threshold version và outcome review.
-- Full quality gates và audit độc lập là điều kiện đóng, không phải bước tùy chọn.
+| Gate cũ | Cách xử lý |
+|---|---|
+| 1A | Đợt 0: kiểm toán phần nền đã có, không xây lại |
+| 2 | Đợt 0: smoke case UI và vòng đời |
+| 3 | Đợt 1: xác nhận tối thiểu cùng người; hàng chờ nhiều người để sau khi có nhu cầu |
+| 4 | Đợt 2: promotion thủ công và tìm kiếm SQLite |
+| 5 | Đợt 1: đưa lên trước để tạo giá trị vận hành đầu tiên |
+| 6 | Đợt 1: chỉ báo cáo điều tra và SOP |
+| 7 | Đợt 4: tách thành nhánh Agent lập trình riêng |
+| 8 | Đợt 3: chỉ Data Gate LSU/Iris |
+| 9 | Đợt 3: baseline thống kê và một model CPU đơn giản |
+| 10 | Đợt 3: phát lại lịch sử hoặc shadow thủ công trước |
+| 11 | Đợt 4: chỉ sau bằng chứng shadow |
+| 12 | Đợt 4: Drum/DLP sau LSU và có gate riêng |
+| 13 | Đợt 4: tách NAS, pilot tổ chức và mở rộng miền thành ba việc độc lập |
+| 14 | Đóng ở cuối từng đợt nhỏ, không chờ toàn bộ tầm nhìn |
 
-**Kết luận**: thiết kế không vi phạm Hiến chương. Việc triển khai code phải chờ chủ sở hữu phê duyệt kế hoạch và các quyết định gate tương ứng.
+## 7. Ngân sách kỹ thuật cho máy i5, RAM 16 GB, không GPU
+
+- Một worker lập chỉ mục tại một thời điểm; có thể dừng và tiếp tục.
+- SQLite/FTS và xử lý theo lô nhỏ là mặc định.
+- Không chạy LLM lớn cục bộ, AutoML, deep learning, nhiều model song song hoặc quét tham số lớn.
+- Embedding/rerank chỉ chạy khi cần và phải hiển thị rõ trạng thái sẵn sàng cho người dùng.
+- Dữ liệu prediction ưu tiên phép biến đổi tất định và model bảng nhẹ trên CPU.
+
+## 8. Chiến lược kiểm thử
+
+- Mỗi task: chạy test tập trung cho module vừa đổi và `git diff --check`.
+- Mỗi story: chạy luồng restart/readback, privacy, quyền và thông báo tiếng Việt liên quan.
+- Trước hợp nhất, phát hành hoặc đánh dấu hoàn tất một đợt: chạy compile, toàn bộ pytest, CLI audit, import Workspace Chat và kiểm tra tài liệu.
+- Thiếu môi trường/dữ liệu thật phải ghi `PARTIAL` hoặc `BLOCKED`; không thay bằng fixture để tuyên bố vận hành.
+- Người kiểm toán không dùng chính kết luận của lượt triển khai làm bằng chứng duy nhất.
+
+## 9. Rủi ro và cách dừng an toàn
+
+| Rủi ro | Cách kiểm soát |
+|---|---|
+| Tài liệu trạng thái lệch code | `ROADMAP.md` là nguồn trạng thái duy nhất; tasks chỉ chứa đợt đang làm |
+| Xây quá sớm | Mọi đợt có điều kiện vào; chưa đạt thì không tạo schema/dependency/UI tương ứng |
+| Mất dữ liệu | Migration có backup/readback; không xóa dữ liệu/cột cũ chỉ để làm sạch |
+| Lộ dữ liệu nhà máy | Chỉ lưu locator/digest đã làm sạch; `local_only` không rời máy và không commit |
+| Người dùng hiểu nhầm AI | UI ghi rõ nháp, manh mối, chưa xác nhận và người duyệt |
+| Máy yếu bị nghẽn | Một worker, lô nhỏ, model nhẹ và thao tác có thể tiếp tục |
+
+## 10. Kiểm tra Hiến chương
+
+- Bằng chứng đi trước tuyên bố: đạt ở mức kế hoạch.
+- Ưu tiên cục bộ và an toàn dữ liệu: đạt ở mức kế hoạch.
+- Workspace Chat là giao diện chính: giữ nguyên.
+- Không fake PASS: có điều kiện đóng và trạng thái `PARTIAL`/`BLOCKED` rõ ràng.
+- Không over-engineer: kho prediction, hàng chờ nhiều người, registry tổng quát và adapter mới đều chưa được kích hoạt trước nhu cầu.
+- Không có ngoại lệ Hiến chương được đề xuất.

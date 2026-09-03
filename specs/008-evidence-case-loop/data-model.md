@@ -1,5 +1,7 @@
 # Mô hình dữ liệu: Vòng vụ việc, Agent và dự đoán có kiểm soát
 
+> **Ranh giới kích hoạt**: Tài liệu này giữ hợp đồng dữ liệu cho toàn bộ US1–US11, không có nghĩa mọi bảng/kho phải được tạo ngay. Đợt hiện tại chỉ mở rộng `workspace_cases.sqlite` khi pilot cần. `production_prediction.sqlite` chỉ được tạo sau khi Data Gate LSU/Iris đạt; các bảng Agent/prediction còn lại là thiết kế dự phòng.
+
 ## 1. Nguyên tắc phân kho
 
 | Kho | Mục đích | Nội dung bị cấm |

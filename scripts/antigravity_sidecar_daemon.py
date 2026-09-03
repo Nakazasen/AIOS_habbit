@@ -54,7 +54,7 @@ FSM_FAILED = "failed"
 
 # Operational Mode setting: "direct" or "handoff"
 SIDECAR_CONFIG = {
-    "mode": "handoff",
+    "mode": "direct",
 }
 
 

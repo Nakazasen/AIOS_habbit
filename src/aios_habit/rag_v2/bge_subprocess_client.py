@@ -27,7 +27,7 @@ LOGGER = logging.getLogger(__name__)
 # exceed three minutes while still completing successfully, so allow five minutes
 # but retain a hard fail-closed process deadline.
 _INIT_TIMEOUT_SECONDS = 300.0
-_PREPARE_TIMEOUT_SECONDS = 90.0
+_PREPARE_TIMEOUT_SECONDS = float(os.environ.get("AIOS_BGE_PREPARE_TIMEOUT", "300.0"))
 _QUERY_TIMEOUT_SECONDS = 30.0
 _WORKER_PROTOCOL_VERSION = "1"
 

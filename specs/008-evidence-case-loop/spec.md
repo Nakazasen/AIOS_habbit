@@ -1,9 +1,9 @@
 # Đặc tả tính năng: Trợ lý công việc khép kín từ vụ việc đến phòng ngừa lỗi
 
 **Mã nhánh tính năng**: `008-evidence-case-loop`  
-**Ngày cập nhật**: 30/08/2026
+**Ngày cập nhật**: 04/09/2026
 
-**Trạng thái**: Chủ sở hữu đã duyệt Gate 1A + US1 để triển khai
+**Trạng thái**: Đang hội tụ phần nền đã có và chuẩn bị một pilot điều tra line thật
 **Phạm vi**: Workspace Chat, hồ sơ vụ việc, chuyên gia, bài học, trợ lý tạo đầu ra công việc, điều tra line và thử nghiệm dự đoán có kiểm soát.
 
 ## 1. Ý đồ sản phẩm bằng ngôn ngữ đời thường
@@ -19,13 +19,32 @@ AIOS không được dừng ở mức “hỏi tài liệu rồi trả lời nh�
 
 “Hồ sơ vụ việc” không phải ticket hành chính bắt mọi việc phải xin chữ ký. Nó là bìa hồ sơ chung cho một việc quan trọng, lặp lại, chưa rõ nguyên nhân hoặc cần bàn giao. Việc đơn giản vẫn có thể xử lý trực tiếp trong Workspace Chat mà không tạo hồ sơ.
 
+### 1.1. Nguyên tắc giao sớm nhưng không cắt mất tầm nhìn
+
+- US1–US11 bên dưới là lời hứa sản phẩm dài hạn và không bị xóa chỉ để làm kế hoạch ngắn hơn.
+- Mỗi lần chỉ đưa **một đợt vận hành nhỏ** vào `tasks.md`; năng lực tương lai chỉ được kích hoạt khi đạt điều kiện đầu vào của đợt đó.
+- Giá trị vận hành đầu tiên sau phần nền là một hồ sơ C-call hoặc Jam thật đi từ bằng chứng đến kết luận và báo cáo được con người duyệt.
+- Không dựng model, kho dữ liệu, hàng chờ hay lớp trừu tượng chỉ để trình diễn khi chưa có dữ liệu thật hoặc nhu cầu sử dụng thật.
+- Kiểm thử tập trung chạy trong từng task; bộ kiểm thử toàn bộ chạy trước khi hợp nhất, phát hành hoặc tuyên bố đóng một đợt.
+
+### 1.2. Các đợt đưa vào vận hành
+
+| Đợt | Kết quả sử dụng được | Điều kiện để bắt đầu |
+|---|---|---|
+| 0 — Khóa phần nền | Chuẩn bị nguồn và hồ sơ đã có được kiểm tra trên trình duyệt, đọc lại được sau khởi động | Code hiện tại, không cần dữ liệu nhà máy mới |
+| 1 — Pilot điều tra thật | Một hồ sơ C-call hoặc Jam có timeline, SOP/mã lỗi/mapping, kết luận và báo cáo nháp được duyệt | Có bộ dữ liệu được phép và người phụ trách đúng công đoạn |
+| 2 — Dùng lại bài học | Bài học đã duyệt được tìm lại bằng tìm kiếm SQLite đơn giản và truy về hồ sơ gốc | Có ít nhất một hồ sơ thật đã kết luận |
+| 3 — Thử nghiệm LSU | Báo cáo sẵn sàng dữ liệu, baseline nhẹ và phát lại lịch sử hoặc shadow thủ công | Data Gate đạt và nhãn được xác nhận |
+| 4 — Mở rộng có điều kiện | Cảnh báo, NAS nhiều người, Drum/DLP hoặc Agent lập trình | Chỉ mở từng nhánh khi đợt trước chứng minh giá trị |
+
 ## 2. Trạng thái thật tại thời điểm lập kế hoạch
 
 | Nhánh năng lực | Trạng thái đã kiểm chứng |
 |---|---|
 | RAG tài liệu nội bộ | Có nền BGE-M3 hybrid, chunking, citation và evidence. Vận hành thư viện chung trên dữ liệu/NAS thật vẫn `PARTIAL`. |
 | Gói bằng chứng điều tra | Đã ghép citation tài liệu với lát log `suspected` từ `line_events.sqlite`. |
-| Lưu hồ sơ từ Workspace Chat | Đã có commit Cổng 1 lưu metadata và tham chiếu bằng chứng vào `local_cases/workspace_cases.sqlite`; bộ test tập trung hiện tại đạt 80 bài. Chưa có danh sách/màn hình mở lại hồ sơ. |
+| Chuẩn bị nguồn và RAG | Đã có code/test cho tiến độ chuẩn bị nguồn, truy xuất và citation; còn cần smoke trên trình duyệt với nguồn thật. Gate A NAS vẫn `PARTIAL`. |
+| Lưu và mở lại hồ sơ từ Workspace Chat | Đã có migration, kho cục bộ, danh sách/chi tiết, trạng thái, kết luận và mở lại trace; còn chờ kiểm chứng trình duyệt và bộ kiểm thử hiện tại trước khi đóng đợt nền. |
 | Điều tra lỗi line | Có parser Jam/C-call/LSU và kho log riêng; chưa có pilot thực tế khép kín với SOP, mã lỗi, báo cáo, mapping và chuyên gia xác nhận. |
 | Chuyên gia và vòng học | Có model/thẻ học cũ rời rạc; chưa có luồng giao việc–phản hồi–xác nhận–promotion trong Workspace Chat. |
 | Agent | Có soạn nháp SOP/báo cáo có duyệt và có nền Agent IDE/task pack; chưa có một luồng sản phẩm thống nhất theo case cho báo cáo, thiết kế công đoạn và lập trình. |
@@ -61,6 +80,8 @@ Người dùng mở mục **Hồ sơ vụ việc**, lọc danh sách, bấm mộ
 
 Người điều tra tạo câu hỏi cụ thể cho chuyên gia, chỉ định phạm vi, người nhận và hạn mong muốn. Chuyên gia mở hàng chờ của mình, xem bằng chứng rồi chọn `confirmed`, `rejected` hoặc `needs_more_evidence` kèm lý do.
 
+- Mặc định người được giao điều tra đồng thời là người xác nhận đúng công đoạn. Chỉ tạo giao việc cho chuyên gia thứ hai khi có người theo dõi công đoạn riêng hoặc cần phân xử.
+- Pilot đầu tiên được dùng màn hình xác nhận ngay trong chi tiết case; hàng chờ nhiều người chỉ mở khi xuất hiện nhu cầu giao nhận thật.
 - Không có người nhận hợp lệ, phạm vi quyền hoặc lý do thì không thể xác nhận.
 - Mọi phản hồi là append-only; sửa ý kiến phải tạo bản mới.
 - Hai ý kiến trái chiều được giữ nguyên và chuyển sang trạng thái cần phân xử.
@@ -69,6 +90,8 @@ Người điều tra tạo câu hỏi cụ thể cho chuyên gia, chỉ định 
 
 Quản lý chọn một thẩm định `confirmed`, tạo bài học ứng viên, sửa nội dung và promotion thành bài học chính thức. Lần sau Workspace Chat có thể tìm bài học liên quan trong kho case-memory riêng và luôn dẫn về case/review/evidence gốc.
 
+- Chỉ mở đợt này sau khi có ít nhất một case thật đã được xác nhận và kết luận.
+- Bản đầu dùng tìm kiếm chính xác/từ khóa trên SQLite; chưa cần embedding, vector database hoặc tự huấn luyện.
 - Không tự huấn luyện lại model và không ghi bài học vào `library.sqlite`.
 - Bài học chưa promotion không được dùng như sự thật.
 - Bài học bị thu hồi không xuất hiện trong kết quả dùng lại thông thường.
@@ -86,6 +109,7 @@ Trong một hồ sơ điều tra, hệ thống gom log, SOP, ảnh/biên bản �
 
 Từ một case có đủ bằng chứng, người dùng yêu cầu Agent tạo báo cáo, SOP, hồ sơ thiết kế công đoạn, bảng tính hoặc sơ đồ mới. Agent phải cho xem nguồn đã dùng, bản khác biệt giữa các phiên bản và người phê duyệt.
 
+- Pilot đầu chỉ hỗ trợ hai đầu ra cụ thể là báo cáo điều tra và SOP. Chỉ tổng quát hóa thành danh mục năng lực khi có ít nhất ba loại đầu ra thật cần dùng lại.
 - Chỉ tạo artifact mới trong vùng output được phép; không xóa hoặc ghi đè nguồn nhà máy.
 - Mỗi loại artifact có template, bộ kiểm tra và vai trò duyệt riêng.
 - “Kiến thức được đào tạo” trong phạm vi này nghĩa là tài liệu và bài học đã xác nhận được truy xuất có citation, không phải tự fine-tune từ chat thô.
@@ -102,6 +126,7 @@ Người dùng giao một task lập trình có phạm vi file và lệnh kiểm
 
 Kỹ sư dữ liệu nạp lịch sử đo, serial/asset, phiên bản jig/quy trình và outcome OK/NG đã xác nhận vào kho dự đoán cục bộ có version. Adapter LSU/Iris là lát cắt đầu tiên; Drum và DLP dùng cùng hợp đồng lõi nhưng mapping riêng.
 
+- Kho dự đoán chỉ được tạo sau khi Data Gate LSU/Iris đủ điều kiện; Drum/DLP chưa thuộc lát cắt đang triển khai.
 - Khóa join, đơn vị, múi giờ, thời điểm sự kiện và thời điểm dữ liệu đến phải tường minh.
 - Nhãn tối thiểu gồm `confirmed`, `false_alarm`, `unknown`; không suy ra nhãn từ tên file.
 - Dữ liệu thiếu hoặc có nguy cơ rò rỉ outcome làm gate bị `blocked`.
@@ -116,7 +141,7 @@ Nhóm kỹ thuật chạy baseline rule/SPC và model ứng viên trên snapshot
 
 ### US9 — Chạy thử nghiệm bóng và tạo hồ sơ dự đoán (P2)
 
-Model được duyệt cho shadow chạy cục bộ, không phát cảnh báo vận hành. Khi vượt threshold, nó tạo hoặc cập nhật hồ sơ dự đoán có dedup/cooldown để kỹ sư xem. Kết quả kiểm tra thực tế được gắn là đúng, sai hoặc chưa đủ dữ liệu.
+Model được duyệt cho shadow chạy cục bộ, không phát cảnh báo vận hành. Bước đầu chạy phát lại lịch sử hoặc shadow thủ công; scheduler chỉ được thêm khi việc chạy lặp lại đã ổn định. Khi vượt threshold, nó tạo hoặc cập nhật hồ sơ dự đoán có dedup/cooldown để kỹ sư xem. Kết quả kiểm tra thực tế được gắn là đúng, sai hoặc chưa đủ dữ liệu.
 
 - Không có lệnh PLC, không tự dừng máy, không tự đổi thông số.
 - Mọi dự đoán lưu snapshot feature tại thời điểm dự báo để ngăn nhìn trước tương lai.
@@ -134,6 +159,7 @@ Sau khi shadow đạt gate, hệ thống mới được mở cảnh báo trong W
 
 Chủ sở hữu nghiệm thu NAS/thư viện thật, backup/restore, một writer–nhiều reader và một pilot liên ca có bàn giao case giữa người dùng.
 
+- Kiểm tra NAS, pilot nhiều người và mở rộng Drum/DLP là ba điều kiện độc lập; không gộp chúng thành một lần phát hành bắt buộc.
 - Nếu thiếu dữ liệu hoặc môi trường thật, trạng thái giữ `PARTIAL`, không dùng test tổng hợp để thay thế.
 - Dữ liệu thật không được commit và không xuất hiện trong report kiểm thử.
 
@@ -158,6 +184,8 @@ Chủ sở hữu nghiệm thu NAS/thư viện thật, backup/restore, một writ
 - **FR-017**: `local_only` không được rời máy qua Gemini Web/Nakazasen Router; C-AGENT chỉ được dùng theo policy và đồng ý hiện có.
 - **FR-018**: Không module Workspace Chat được hỗ trợ nào import `studio` hoặc `case_cockpit`.
 - **FR-019**: Dịch vụ hồ sơ phải cho phép gắn thêm tham chiếu bằng chứng vào case hiện hữu theo kiểu append-only, kiểm tra role/scope, digest, provenance và optimistic version.
+- **FR-020**: `tasks.md` chỉ được chứa task của đợt đang thực thi; các US chưa đủ điều kiện vẫn phải còn trong đặc tả và kế hoạch dưới dạng backlog có điều kiện.
+- **FR-021**: Luồng xác nhận phải cho phép người điều tra kiêm chuyên gia trong đúng phạm vi công đoạn; chuyên gia thứ hai là tùy chọn và mọi xác nhận vẫn do con người thực hiện.
 
 ## 6. Tiêu chí thành công đo được
 

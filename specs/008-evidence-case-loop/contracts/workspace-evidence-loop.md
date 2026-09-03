@@ -1,5 +1,7 @@
 # Hợp đồng an toàn cho vòng vụ việc, Agent và dự đoán
 
+> **Ranh giới áp dụng**: Đây là hợp đồng đích của toàn bộ đặc tả. Trong mỗi đợt chỉ các mục được kích hoạt trong `plan.md` và `tasks.md` mới là hợp đồng thực thi. Không tạo API, bảng hay dependency tương lai chỉ để đáp ứng phần chưa đủ điều kiện.
+
 ## 1. Bất biến toàn hệ thống
 
 1. Thiếu evidence, role, scope, digest, migration hoặc owner decision thì fail-closed.
