@@ -22,6 +22,59 @@ LOCAL_ADMIN_ACTOR_ID: Final[str] = "local_admin"
 CASE_PROVENANCE_UNKNOWN: Final[str] = "unknown"
 CASE_PRIVACY_LOCAL_ONLY: Final[str] = "local_only"
 
+EXPERT_REQUEST_STATUS_OPEN: Final[str] = "open"
+EXPERT_REQUEST_STATUS_ANSWERED: Final[str] = "answered"
+EXPERT_REQUEST_STATUS_CANCELLED: Final[str] = "cancelled"
+EXPERT_REQUEST_STATUS_EXPIRED: Final[str] = "expired"
+
+EXPERT_DECISION_CONFIRMED: Final[str] = "confirmed"
+EXPERT_DECISION_REJECTED: Final[str] = "rejected"
+EXPERT_DECISION_NEEDS_MORE_EVIDENCE: Final[str] = "needs_more_evidence"
+EXPERT_DECISION_CONFLICTED: Final[str] = "conflicted"
+
+ALLOWED_EXPERT_DECISIONS: Final[frozenset[str]] = frozenset(
+    {
+        EXPERT_DECISION_CONFIRMED,
+        EXPERT_DECISION_REJECTED,
+        EXPERT_DECISION_NEEDS_MORE_EVIDENCE,
+        EXPERT_DECISION_CONFLICTED,
+    }
+)
+
+LESSON_STATUS_CANDIDATE: Final[str] = "candidate"
+LESSON_STATUS_APPROVED: Final[str] = "approved"
+LESSON_STATUS_REVOKED: Final[str] = "revoked"
+
+ALLOWED_LESSON_STATUSES: Final[frozenset[str]] = frozenset(
+    {
+        LESSON_STATUS_CANDIDATE,
+        LESSON_STATUS_APPROVED,
+        LESSON_STATUS_REVOKED,
+    }
+)
+
+ARTIFACT_STATUS_DRAFT: Final[str] = "draft"
+ARTIFACT_STATUS_APPROVED: Final[str] = "approved"
+ARTIFACT_STATUS_SUPERSEDED: Final[str] = "superseded"
+
+ALLOWED_ARTIFACT_STATUSES: Final[frozenset[str]] = frozenset(
+    {
+        ARTIFACT_STATUS_DRAFT,
+        ARTIFACT_STATUS_APPROVED,
+        ARTIFACT_STATUS_SUPERSEDED,
+    }
+)
+
+ARTIFACT_TYPE_REPORT: Final[str] = "report"
+ARTIFACT_TYPE_SOP: Final[str] = "sop"
+
+ALLOWED_ARTIFACT_TYPES: Final[frozenset[str]] = frozenset(
+    {
+        ARTIFACT_TYPE_REPORT,
+        ARTIFACT_TYPE_SOP,
+    }
+)
+
 
 def utc_now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
@@ -193,11 +246,89 @@ class CaseFilter:
 
 
 @dataclass(frozen=True)
+class ExpertRequest:
+    request_id: str
+    case_id: str
+    claim_digest: str
+    question_text: str
+    required_scope: str
+    requested_expert_id: Optional[str] = None
+    status: str = EXPERT_REQUEST_STATUS_OPEN
+    due_at: Optional[str] = None
+    created_by: str = LOCAL_ADMIN_ACTOR_ID
+    created_at: str = field(default_factory=utc_now_iso)
+
+
+@dataclass(frozen=True)
+class ExpertReview:
+    review_id: str
+    request_id: str
+    case_id: str
+    claim_digest: str
+    evidence_digest: str
+    decision: str
+    reviewer_id: str
+    reviewer_role: str
+    scope: str
+    rationale: str
+    confidence: float = 1.0
+    supersedes_review_id: Optional[str] = None
+    reviewed_at: str = field(default_factory=utc_now_iso)
+
+
+@dataclass(frozen=True)
+class CaseLesson:
+    lesson_id: str
+    case_id: str
+    review_id: str
+    claim_digest: str
+    evidence_digest: str
+    title: str
+    content: str
+    status: str = LESSON_STATUS_CANDIDATE
+    version: int = 1
+    created_by: str = LOCAL_ADMIN_ACTOR_ID
+    created_at: str = field(default_factory=utc_now_iso)
+    updated_by: str = LOCAL_ADMIN_ACTOR_ID
+    updated_at: str = field(default_factory=utc_now_iso)
+    approved_by: Optional[str] = None
+    approved_at: Optional[str] = None
+    revoked_by: Optional[str] = None
+    revoked_at: Optional[str] = None
+    revocation_reason: Optional[str] = None
+
+
+@dataclass(frozen=True)
+class CaseArtifactRecord:
+    artifact_id: str
+    case_id: str
+    artifact_type: str
+    title: str
+    content_markdown: str
+    content_digest: str
+    version: int = 1
+    status: str = ARTIFACT_STATUS_DRAFT
+    created_by: str = LOCAL_ADMIN_ACTOR_ID
+    created_at: str = field(default_factory=utc_now_iso)
+    updated_by: str = LOCAL_ADMIN_ACTOR_ID
+    updated_at: str = field(default_factory=utc_now_iso)
+    approved_by: Optional[str] = None
+    approved_at: Optional[str] = None
+    approval_notes: Optional[str] = None
+    exported_path: Optional[str] = None
+    provenance_digest: str = ""
+
+
+@dataclass(frozen=True)
 class CaseDetail:
     case: CaseRecord
     evidence: tuple[CaseEvidenceReference, ...]
     activities: tuple[CaseActivity, ...]
     checklist: tuple[CaseChecklistItem, ...]
+    expert_requests: tuple[ExpertRequest, ...] = ()
+    expert_reviews: tuple[ExpertReview, ...] = ()
+    lessons: tuple[CaseLesson, ...] = ()
+    artifacts: tuple[CaseArtifactRecord, ...] = ()
 
 
 @dataclass(frozen=True)

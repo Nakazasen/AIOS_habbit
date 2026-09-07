@@ -142,10 +142,10 @@ def is_forbidden_metadata_path(path_str: str) -> bool:
     Checks if path_str points to forbidden or sensitive paths/files.
     """
     normalized = path_str.replace("\\", "/").lower()
-    forbidden_segments = {".ai", "local_cases", "task.md", "walkthrough.md", "implementation_plan.md"}
+    forbidden_segments = {".ai", "local_cases", "local_runs", ".env", "task.md", "walkthrough.md", "implementation_plan.md"}
     parts = normalized.split("/")
     for part in parts:
-        if part in forbidden_segments:
+        if part in forbidden_segments or part.startswith(".env"):
             return True
         if part.endswith(".json") and ("secret" in part or "config" in part or "runtime" in part):
             return True
@@ -171,8 +171,8 @@ def check_sensitive_content(text: str) -> None:
     # Check home directory pattern
     if "/home/" in text or "/Users/" in text or "\\Users\\" in text or "\\home\\" in text:
         raise ValidationError("Home directory pattern detected in text.")
-    # Check local_cases / .ai / runtime paths in text
-    for marker in [".ai", "local_cases", "task.md", "walkthrough.md", "implementation_plan.md"]:
+    # Check local_cases / local_runs / .env / runtime paths in text
+    for marker in [".ai", "local_cases", "local_runs", ".env", "task.md", "walkthrough.md", "implementation_plan.md"]:
         if marker in text:
             raise ValidationError(f"Forbidden workspace reference '{marker}' detected in text.")
     # Large text blobs check

@@ -16,6 +16,37 @@ Nút “Lưu vào hồ sơ” chỉ lưu thông tin mô tả cục bộ vào `lo
 
 Workspace Chat có mục “Hồ sơ vụ việc” để lọc, xem chi tiết, dòng thời gian, checklist, người phụ trách, chuyển trạng thái và gắn thêm tham chiếu bằng chứng. Actor cục bộ do ứng dụng kiểm soát; bản một người dùng dùng `local_admin` với grant điều tra/chuyên gia tường minh trong scope `general`, không coi `admin` là wildcard. Hồ sơ không sao chép câu hỏi, câu trả lời, đoạn trích, ảnh, log thô hoặc đường dẫn hệ thống; `trace` chỉ được phân giải lúc đọc và khi mất phải hiển thị là thiếu. Phần này chưa bao gồm luồng thẩm định chuyên gia, promotion bài học, pilot line, dự đoán hoặc quyền Agent thực thi.
 
+### Lát cắt cảnh báo sớm Iris LSU — kiến trúc đã triển khai (Mốc 0–4 TECHNICAL_PASS)
+
+Lát cắt cảnh báo sớm Iris LSU đã hoàn thành toàn bộ kiểm chứng kỹ thuật (Mốc 0 đến Mốc 4 đạt `TECHNICAL_PASS`). Kiến trúc bao gồm 4 thành phần trụ cột gắn kết chặt chẽ với Workspace Chat:
+
+1. **Cổng kiểm tra dữ liệu LSU (Data Gate) & Kho lưu trữ chuyên dụng**:
+   - Dữ liệu đầu vào gồm 3 tệp nguồn: thông số linh kiện theo lot (`ComponentLotMeasurement`), liên kết Unit-lot (`UnitLotLink`) và kết quả đo tại JIG (`JigOutcomeResult`).
+   - Tự động chuẩn hóa múi giờ (`Asia/Ho_Chi_Minh`), kiểm tra tính toàn vẹn, phát hiện trùng lặp khóa chính, thiếu khóa, và rò rỉ dữ liệu tương lai.
+   - Kho `local_cases/production_prediction.sqlite` hoạt động độc lập với `library.sqlite` và `workspace_cases.sqlite`, có schema versioned, kiểm tra tính toàn vẹn `quick_check`, và chốt chặn cấm ghi bền vững dữ liệu vi phạm (`BLOCKED_DATA`).
+
+2. **Công cụ phát lại lịch sử tất định (Deterministic Replay Evaluation)**:
+   - Giao thức phát lại `ReplayProtocol` đóng băng tham số và tính toán chuỗi digest SHA-256 bất biến từ snapshot/code/threshold.
+   - So sánh 2 phương án nền: `no_alert` (mặc định không cảnh báo, ghi nhận toàn bộ NG là bỏ sót) và `EWMA` (ngưỡng dung sai kiểm soát cố định 3.0 độ lệch chuẩn).
+   - Nhánh mô hình học máy (`evaluate_supervised_model`) được khóa an toàn ở trạng thái `not_applicable` khi chưa đủ điều kiện cỡ mẫu ($\ge 200$ Units, $\ge 30$ NG), đảm bảo không cài thêm dependency máy học không cần thiết trên CPU laptop.
+   - Tự động đánh giá theo hợp đồng rubric để phân loại kết luận (`AUTO_SHADOW` hoặc `LEARNING_SHADOW`).
+
+3. **Trình chạy bóng thủ công (Manual Shadow Runner) & Liên kết Case chống trùng**:
+   - `ManualShadowRunner` xử lý file theo lô nhỏ do người dùng kích hoạt, có tiến độ thời gian thực, nút dừng an toàn, không có scheduler ngầm hay kết nối điều khiển máy PLC.
+   - Khóa định danh `idempotency_key` được sinh tất định từ digest snapshot, digest protocol, mã Unit và thời điểm `as_of_time`, không phụ thuộc vào đồng hồ lúc chạy.
+   - Liên kết tự động sang `workspace_cases.sqlite` qua `link_shadow_risk_to_workspace_case` với nhãn `local_only`. Cơ chế phục hồi tự động tìm case hiện có theo digest để chống trùng lặp tuyệt đối khi chạy lại.
+   - Cho phép ghi nhận kết quả thực tế (`record_shadow_outcome`) cho cả Unit đã cảnh báo và Unit NG bị bỏ sót không có cảnh báo trước đó.
+
+4. **Bản đồ mở rộng có điều kiện & Bí danh dữ liệu cục bộ**:
+   - Đăng ký 2 bí danh: `KHO_LSU_CUC_BO` (dữ liệu sản xuất thật LSU tại xưởng, nhãn `local_only`) và `GOI_KYOCERA_CUC_BO` (tài liệu/log kiểm kê dòng máy Kyocera cục bộ).
+   - 6 nhánh độc lập sẵn sàng kích hoạt khi dữ liệu đạt yêu cầu theo chuẩn `spec.md`: US3 (Học từ bài học đã xác nhận), US4 (Trợ lý điều tra line chủ động), US5 (Agent tạo Báo cáo & SOP có kiểm soát), US6 (Agent hỗ trợ lập trình sandbox tách biệt), US10 (Cảnh báo nguy cơ an toàn trong app), US11 (Thư viện dùng chung đa máy qua NAS/SMB). Các miền mở rộng Kyocera (Drum/DLP) và C-call/Jam được xếp thành task pack riêng sau chuỗi LSU Iris (US7–US10). Không nhánh nào tạo điểm nghẽn cho các nhánh còn lại.
+
+### Lớp trình bày tiếng Việt duy nhất
+
+Mọi nội dung do chương trình hiển thị hoặc xuất cho người dùng/người vận hành phải đi qua lớp trình bày tiếng Việt: giao diện, trạng thái, tiến độ, cảnh báo, lỗi, nhật ký vận hành và báo cáo. Lỗi tiếng Anh từ thư viện, hệ điều hành hoặc dịch vụ bên ngoài không được truyền thẳng ra ngoài; phải đổi thành câu tiếng Việt nói rõ sự cố và bước xử lý. Mã kỹ thuật có thể được lưu nội bộ để tra cứu nhưng không thay thế lời giải thích.
+
+Giao diện chỉ hỗ trợ tiếng Việt và không hiển thị bộ chọn ngôn ngữ khác. Locale giao diện được tách khỏi ngôn ngữ nguồn và locale lịch sử: khả năng đọc trace cũ cùng tài liệu đa ngôn ngữ vẫn được giữ để bảo toàn nguồn tiếng Nhật, tiếng Trung hoặc nguồn khác; nội dung nguồn được phân biệt rõ với lời điều khiển/kết luận do chương trình tạo.
+
 ## Workspace Chat: chuẩn bị nguồn tăng dần (2026-08-22)
 
 - Mỗi nguồn mới chỉ được đưa vào hàng đợi lập chỉ mục riêng sau khi đọc file thành công;
@@ -27,7 +58,7 @@ Workspace Chat có mục “Hồ sơ vụ việc” để lọc, xem chi tiết,
   bộ thư viện sau khi báo câu hỏi đã sẵn sàng, vì điều đó tạo lỗi chờ rồi thất bại mâu thuẫn.
 - Câu hỏi quá rộng không được phép kích hoạt lập chỉ mục hàng loạt. Người dùng phải nêu tên
   hệ thống/tài liệu hoặc chọn rõ nguồn, trừ khi toàn bộ nguồn đã sẵn sàng từ trước.
-- Khi BGE-M3 chưa được triển khai hợp lệ, nguồn hiển thị `BGE-M3 chưa sẵn sàng`; ứng dụng
+- Khi bộ tìm kiếm tài liệu chưa được triển khai hợp lệ, nguồn hiển thị “Bộ tìm kiếm tài liệu chưa sẵn sàng”; ứng dụng
   không tạo hàng đợi giả hoặc treo chờ vô hạn. Quy tắc fail-closed của truy xuất vẫn giữ nguyên.
 
 ## 1. Ý định kiến trúc
@@ -366,7 +397,7 @@ Evidence phải trả lời được:
 ## 7. Mô hình độ tin cậy
 
 | Level | Meaning | Allowed Use |
-|---|---|---|
+| --- | --- | --- |
 | `low` | Có dấu hiệu nhưng evidence yếu | Không dùng cho master profile |
 | `medium` | Có evidence rõ nhưng ít nguồn | Dùng có chú thích |
 | `high` | Có nhiều evidence hoặc xác nhận trực tiếp | Dùng trong master profile |
@@ -375,7 +406,7 @@ Evidence phải trả lời được:
 ## 8. Mô hình trạng thái
 
 | Status | Meaning |
-|---|---|
+| --- | --- |
 | `candidate` | Mới trích xuất, chưa validate |
 | `validated` | Đã qua kiểm định |
 | `deprecated` | Không còn đúng hoặc đã thay thế |

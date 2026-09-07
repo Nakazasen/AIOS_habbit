@@ -1,9 +1,9 @@
 # Đặc tả tính năng: Trợ lý công việc khép kín từ vụ việc đến phòng ngừa lỗi
 
 **Mã nhánh tính năng**: `008-evidence-case-loop`  
-**Ngày cập nhật**: 04/09/2026
+**Ngày cập nhật**: 05/09/2026
 
-**Trạng thái**: Đang hội tụ phần nền đã có và chuẩn bị một pilot điều tra line thật
+**Trạng thái**: Đã chốt MVP ưu tiên cảnh báo sớm Iris LSU; các đích WorkLens khác vẫn được giữ
 **Phạm vi**: Workspace Chat, hồ sơ vụ việc, chuyên gia, bài học, trợ lý tạo đầu ra công việc, điều tra line và thử nghiệm dự đoán có kiểm soát.
 
 ## 1. Ý đồ sản phẩm bằng ngôn ngữ đời thường
@@ -14,7 +14,7 @@ AIOS không được dừng ở mức “hỏi tài liệu rồi trả lời nh�
 2. Hệ thống tự gom thành hồ sơ, dòng thời gian và danh sách bằng chứng.
 3. Hệ thống chỉ ra còn thiếu gì, hỏi ngược câu cần thiết và chuyển đúng việc cho người có chuyên môn.
 4. Hệ thống tạo đầu ra hữu ích như báo cáo điều tra, SOP, hồ sơ thiết kế công đoạn, bảng kiểm tra hoặc đề xuất thay đổi mã nguồn.
-5. Con người xem, sửa và phê duyệt theo mức rủi ro trước khi đầu ra được áp dụng.
+5. Việc đọc-only và có rubric được tự xác nhận để giao sớm; con người chỉ cần can thiệp khi muốn sửa kết quả hoặc áp dụng hành động tác động ngoài đời.
 6. Kết quả thực tế đã xác nhận trở thành bài học để lần sau hệ thống hỗ trợ nhanh và đúng hơn.
 
 “Hồ sơ vụ việc” không phải ticket hành chính bắt mọi việc phải xin chữ ký. Nó là bìa hồ sơ chung cho một việc quan trọng, lặp lại, chưa rõ nguyên nhân hoặc cần bàn giao. Việc đơn giản vẫn có thể xử lý trực tiếp trong Workspace Chat mà không tạo hồ sơ.
@@ -23,24 +23,33 @@ AIOS không được dừng ở mức “hỏi tài liệu rồi trả lời nh�
 
 - US1–US11 bên dưới là lời hứa sản phẩm dài hạn và không bị xóa chỉ để làm kế hoạch ngắn hơn.
 - Mỗi lần chỉ đưa **một đợt vận hành nhỏ** vào `tasks.md`; năng lực tương lai chỉ được kích hoạt khi đạt điều kiện đầu vào của đợt đó.
-- Giá trị vận hành đầu tiên sau phần nền là một hồ sơ C-call hoặc Jam thật đi từ bằng chứng đến kết luận và báo cáo được con người duyệt.
+- Mỗi mốc tách hai kết quả: **hoàn thành kỹ thuật** bằng dữ liệu mẫu đã làm sạch và **được phép vận hành thật** bằng bằng chứng nhà máy. Thiếu dữ liệu thật không được dùng để tuyên bố pilot, nhưng cũng không được ngăn xây và kiểm thử mốc kỹ thuật kế tiếp.
+- Giá trị vận hành đầu tiên sau phần nền là một lát cắt Iris LSU thật: nối lot linh kiện → Unit → JIG → kết quả, phát lại lịch sử và tạo cảnh báo shadow để con người đối chiếu.
 - Không dựng model, kho dữ liệu, hàng chờ hay lớp trừu tượng chỉ để trình diễn khi chưa có dữ liệu thật hoặc nhu cầu sử dụng thật.
 - Kiểm thử tập trung chạy trong từng task; bộ kiểm thử toàn bộ chạy trước khi hợp nhất, phát hành hoặc tuyên bố đóng một đợt.
 
-### 1.2. Các đợt đưa vào vận hành
+### 1.2. Ranh giới của đợt 29 nhiệm vụ
+
+- Giai đoạn ban đầu T001–T029 chỉ triển khai lát cắt của US1, US2, US7, US8 và US9. Đợt hội tụ bổ sung toàn diện T030–T057 đã chính thức kích hoạt tiếp US3, US4, US5, US6, US10 và US11 theo kế hoạch tại tasks.md:325.
+- Gemini chỉ dùng mã nguồn, tài liệu sản phẩm và fixture giả hoàn toàn. Gemini không được mở, đọc, tóm tắt hoặc đưa vào ngữ cảnh model bất kỳ file thật nào trong `Tài liệu của tất cả dòng máy/`, `local_cases/`, `local_runs/` của phiên khác hoặc vùng dữ liệu nhà máy.
+- T029 và T057 thuộc tác tử kiểm toán độc lập với tác tử đã sửa code, nhưng nằm trong cùng một `/goal`. Tác tử kiểm toán được tự kết luận theo rubric và lệnh thực tế.
+- Hoàn thành T001–T057 không đồng nghĩa toàn bộ US1–US11 hoặc quyền điều khiển nhà máy đã hoàn thành. Cổng kỹ thuật, chạy bóng đọc-only và hành động vật lý luôn được báo riêng.
+
+### 1.3. Các đợt đưa vào vận hành
 
 | Đợt | Kết quả sử dụng được | Điều kiện để bắt đầu |
-|---|---|---|
+| --- | --- | --- |
 | 0 — Khóa phần nền | Chuẩn bị nguồn và hồ sơ đã có được kiểm tra trên trình duyệt, đọc lại được sau khởi động | Code hiện tại, không cần dữ liệu nhà máy mới |
-| 1 — Pilot điều tra thật | Một hồ sơ C-call hoặc Jam có timeline, SOP/mã lỗi/mapping, kết luận và báo cáo nháp được duyệt | Có bộ dữ liệu được phép và người phụ trách đúng công đoạn |
-| 2 — Dùng lại bài học | Bài học đã duyệt được tìm lại bằng tìm kiếm SQLite đơn giản và truy về hồ sơ gốc | Có ít nhất một hồ sơ thật đã kết luận |
-| 3 — Thử nghiệm LSU | Báo cáo sẵn sàng dữ liệu, baseline nhẹ và phát lại lịch sử hoặc shadow thủ công | Data Gate đạt và nhãn được xác nhận |
-| 4 — Mở rộng có điều kiện | Cảnh báo, NAS nhiều người, Drum/DLP hoặc Agent lập trình | Chỉ mở từng nhánh khi đợt trước chứng minh giá trị |
+| 1 — Trợ lý LSU có căn cứ | Tra tài liệu LSU, ghi câu hỏi còn thiếu và nhận xác nhận chuyên gia ngay trong case | Nền RAG/case đọc lại ổn định |
+| 2 — Nối dữ liệu Iris LSU | Truy ngược được lot linh kiện → Unit → JIG → kết quả cho BOWSKEW 4 BEAM | Có data dictionary và file được phép |
+| 3 — Phát lại lịch sử | Baseline cảnh báo sớm được so với kết quả OK/NG thật; chỉ thêm một model CPU nếu dữ liệu đủ | Chuỗi dữ liệu đạt Data Gate |
+| 4 — Shadow thủ công | Người dùng nhập lô dữ liệu mới, xem nguy cơ trong Workspace Chat và ghi kết quả thực tế | Phát lại lịch sử vượt rubric tự động hoặc vào chế độ học hỏi đọc-only |
+| 5 — Học tiếp và mở rộng | Điều chỉnh ngưỡng/model có version; sau đó mới xét C-call/Jam, NAS, Drum/DLP và Agent | Có phản hồi shadow thật |
 
 ## 2. Trạng thái thật tại thời điểm lập kế hoạch
 
 | Nhánh năng lực | Trạng thái đã kiểm chứng |
-|---|---|
+| --- | --- |
 | RAG tài liệu nội bộ | Có nền BGE-M3 hybrid, chunking, citation và evidence. Vận hành thư viện chung trên dữ liệu/NAS thật vẫn `PARTIAL`. |
 | Gói bằng chứng điều tra | Đã ghép citation tài liệu với lát log `suspected` từ `line_events.sqlite`. |
 | Chuẩn bị nguồn và RAG | Đã có code/test cho tiến độ chuẩn bị nguồn, truy xuất và citation; còn cần smoke trên trình duyệt với nguồn thật. Gate A NAS vẫn `PARTIAL`. |
@@ -96,7 +105,7 @@ Quản lý chọn một thẩm định `confirmed`, tạo bài học ứng viên
 - Bài học chưa promotion không được dùng như sự thật.
 - Bài học bị thu hồi không xuất hiện trong kết quả dùng lại thông thường.
 
-### US4 — Trợ lý điều tra line chủ động (P1)
+### US4 — Trợ lý điều tra line chủ động (P2)
 
 Trong một hồ sơ điều tra, hệ thống gom log, SOP, ảnh/biên bản được phép, dựng dòng thời gian, nhóm hiện tượng lặp lại và sinh danh sách câu hỏi còn thiếu. Chuyên gia xác nhận tính liên quan của từng manh mối trước khi kết luận.
 
@@ -105,7 +114,7 @@ Trong một hồ sơ điều tra, hệ thống gom log, SOP, ảnh/biên bản �
 - Mapping sơ đồ chỉ hiển thị khi nguồn mapping có phiên bản và đã được chuyên gia duyệt.
 - Pilot chỉ đạt khi có ít nhất một case thật đi từ mở hồ sơ đến báo cáo được duyệt và kết luận outcome.
 
-### US5 — Agent tạo đầu ra công việc có kiểm soát (P1)
+### US5 — Agent tạo đầu ra công việc có kiểm soát (P2)
 
 Từ một case có đủ bằng chứng, người dùng yêu cầu Agent tạo báo cáo, SOP, hồ sơ thiết kế công đoạn, bảng tính hoặc sơ đồ mới. Agent phải cho xem nguồn đã dùng, bản khác biệt giữa các phiên bản và người phê duyệt.
 
@@ -114,7 +123,7 @@ Từ một case có đủ bằng chứng, người dùng yêu cầu Agent tạo 
 - Mỗi loại artifact có template, bộ kiểm tra và vai trò duyệt riêng.
 - “Kiến thức được đào tạo” trong phạm vi này nghĩa là tài liệu và bài học đã xác nhận được truy xuất có citation, không phải tự fine-tune từ chat thô.
 
-### US6 — Agent hỗ trợ lập trình trong workspace tách biệt (P2)
+### US6 — Agent hỗ trợ lập trình trong workspace tách biệt (P3)
 
 Người dùng giao một task lập trình có phạm vi file và lệnh kiểm thử rõ. Agent đọc code, đề xuất diff, chạy lệnh trong sandbox/workspace được tin cậy và chờ phê duyệt trước khi áp dụng thay đổi.
 
@@ -122,30 +131,34 @@ Người dùng giao một task lập trình có phạm vi file và lệnh kiểm
 - Mọi patch/command có proposal bất biến, diff hiển thị, allowlist và audit event.
 - PASS chỉ được ghi khi có observed evidence từ test thật; AI không tự merge/push nếu chưa có quyền riêng.
 
-### US7 — Nền dữ liệu dự đoán dùng chung cho LSU/Drum/DLP (P2)
+### US7 — Nối dữ liệu lot–Unit–JIG cho Iris LSU (P1)
 
-Kỹ sư dữ liệu nạp lịch sử đo, serial/asset, phiên bản jig/quy trình và outcome OK/NG đã xác nhận vào kho dự đoán cục bộ có version. Adapter LSU/Iris là lát cắt đầu tiên; Drum và DLP dùng cùng hợp đồng lõi nhưng mapping riêng.
+Kỹ sư nạp thông số linh kiện theo lot, liên kết lot đã dùng cho từng Unit, dữ liệu đo trên JIG và outcome OK/NG đã xác nhận vào kho dự đoán cục bộ có version. Lát cắt đầu tiên là Iris LSU BOWSKEW 4 BEAM; BOWSKEW 2 BEAM và BEAM 4 BEAM là ưu tiên kế tiếp nhưng chưa triển khai đồng thời.
 
 - Kho dự đoán chỉ được tạo sau khi Data Gate LSU/Iris đủ điều kiện; Drum/DLP chưa thuộc lát cắt đang triển khai.
+- Từ một `unit_serial` phải truy ngược được `component_lot_id`, thông số linh kiện, `jig_id`, lần đo, thời điểm và outcome cuối cùng.
+- MVP chỉ nhận file cục bộ theo mẫu đã duyệt; chưa tích hợp tự động với máy/JIG, ERP hoặc hệ thống nhà máy.
 - Khóa join, đơn vị, múi giờ, thời điểm sự kiện và thời điểm dữ liệu đến phải tường minh.
-- Nhãn tối thiểu gồm `confirmed`, `false_alarm`, `unknown`; không suy ra nhãn từ tên file.
+- Nhãn tối thiểu gồm `confirmed`, `false_alarm`, `unknown`; kết quả cuối cùng OK/NG có khóa và digest hợp lệ được xác nhận tự động, còn mâu thuẫn thành `unknown`. Không suy ra nhãn từ tên file.
 - Dữ liệu thiếu hoặc có nguy cơ rò rỉ outcome làm gate bị `blocked`.
 
-### US8 — Huấn luyện và đánh giá model dự đoán có trách nhiệm (P2)
+### US8 — Phát lại lịch sử và đánh giá cảnh báo sớm (P1)
 
-Nhóm kỹ thuật chạy baseline rule/SPC và model ứng viên trên snapshot dữ liệu đóng băng, chia theo thời gian/nhóm thiết bị, so sánh với cùng giao thức và ghi model card.
+Nhóm kỹ thuật chạy phương án không cảnh báo, EWMA và hồi quy logistic tùy chọn trên snapshot dữ liệu đóng băng, chia theo thời gian/nhóm thiết bị, so sánh với cùng giao thức và ghi phiếu mô tả phương pháp.
 
 - Báo riêng precision, recall, false alarm, missed detection, lead time, calibration và độ ổn định theo máy/ca/thời gian.
 - Không chọn model chỉ vì accuracy trung bình cao.
 - Model, feature schema, dataset digest, code version và threshold đều có version/rollback.
+- Nếu dữ liệu chưa đủ cho hồi quy logistic, hệ thống vẫn phải hoàn thành báo cáo Data Gate cùng phương án không cảnh báo/EWMA; không tạo model giả để trình diễn.
+- MVP so sánh baseline với tối đa một model bảng nhẹ chạy CPU, không AutoML hoặc quét tham số lớn.
 
-### US9 — Chạy thử nghiệm bóng và tạo hồ sơ dự đoán (P2)
+### US9 — Chạy shadow thủ công và tạo hồ sơ dự đoán (P1)
 
-Model được duyệt cho shadow chạy cục bộ, không phát cảnh báo vận hành. Bước đầu chạy phát lại lịch sử hoặc shadow thủ công; scheduler chỉ được thêm khi việc chạy lặp lại đã ổn định. Khi vượt threshold, nó tạo hoặc cập nhật hồ sơ dự đoán có dedup/cooldown để kỹ sư xem. Kết quả kiểm tra thực tế được gắn là đúng, sai hoặc chưa đủ dữ liệu.
+Baseline hoặc model vượt rubric tự động được chạy shadow cục bộ, không phát cảnh báo vận hành. Trường hợp chưa đủ mẫu nhưng kỹ thuật an toàn được chạy ở chế độ học hỏi đọc-only. Người dùng chủ động nhập lô dữ liệu mới; scheduler chỉ được thêm khi việc chạy lặp lại đã ổn định. Khi vượt threshold, hệ thống tạo hoặc cập nhật hồ sơ dự đoán có dedup/cooldown để kỹ sư xem. Kết quả kiểm tra thực tế được gắn là đúng, sai hoặc chưa đủ dữ liệu.
 
 - Không có lệnh PLC, không tự dừng máy, không tự đổi thông số.
 - Mọi dự đoán lưu snapshot feature tại thời điểm dự báo để ngăn nhìn trước tương lai.
-- Shadow chỉ được nâng cấp khi đủ số case và ngưỡng do chủ sở hữu ký duyệt.
+- Shadow đọc-only được tự mở theo rubric có version; chỉ việc tác động máy, đổi thông số hoặc quyết định chặn/xuất hàng mới cần một đặc tả và quyền vận hành riêng.
 
 ### US10 — Cảnh báo có duyệt và đề xuất phòng ngừa (P3)
 
@@ -169,7 +182,7 @@ Chủ sở hữu nghiệm thu NAS/thư viện thật, backup/restore, một writ
 - **FR-002**: Kho hồ sơ phải có schema migration có version, backup trước migration và rollback được.
 - **FR-003**: Case phải hỗ trợ ba loại `investigation`, `prediction`, `agent_work` cùng state machine được kiểm tra phía service.
 - **FR-004**: Evidence, review, activity, approval và outcome phải append-only hoặc versioned; không cập nhật phá hủy lịch sử.
-- **FR-005**: Quyền chuyên gia/phê duyệt phải dựa trên cấu hình role/scope do chủ sở hữu cung cấp, không tin boolean từ UI.
+- **FR-005**: Quyền người dùng/chuyên gia phải dựa trên cấu hình role/scope do chủ sở hữu cung cấp, không tin boolean từ UI. Cổng rubric tự động dùng vai trò hệ thống riêng và không được tự tạo hoặc nâng quyền con người.
 - **FR-006**: Hệ thống phải hỗ trợ yêu cầu thêm bằng chứng, assignment và xung đột ý kiến.
 - **FR-007**: Bài học chỉ được promotion từ review `confirmed` và được truy xuất từ kho riêng có provenance.
 - **FR-008**: Pilot line phải bảo toàn `suspected`, provenance nguồn và relevance review.
@@ -180,25 +193,39 @@ Chủ sở hữu nghiệm thu NAS/thư viện thật, backup/restore, một writ
 - **FR-013**: Đánh giá model phải chống outcome leakage và dùng phép chia theo thời gian/nhóm phù hợp.
 - **FR-014**: Shadow prediction chỉ tạo hồ sơ/queue cục bộ; production alert và plant control mặc định bị cấm.
 - **FR-015**: Kết quả chuyên gia `confirmed`, `false_alarm`, `unknown`, `effective`, `ineffective` phải quay về thành outcome có provenance.
-- **FR-016**: Mọi UI, cảnh báo và lỗi người dùng thấy phải bằng tiếng Việt, không lộ traceback, secret hoặc đường dẫn hệ thống.
-- **FR-017**: `local_only` không được rời máy qua Gemini Web/Nakazasen Router; C-AGENT chỉ được dùng theo policy và đồng ý hiện có.
+- **FR-016**: Mọi câu chữ người dùng hoặc người vận hành thấy phải là tiếng Việt dễ hiểu: giao diện, hướng dẫn, tiến độ, trạng thái, cảnh báo, lỗi, thông báo, nhật ký vận hành và báo cáo; không dùng câu tiếng Anh làm phương án dự phòng.
+- **FR-017**: `local_only` không được rời máy qua Gemini Web/Nakazasen Router hoặc qua tác tử phát triển dùng model cloud; C-AGENT chỉ được dùng theo policy và đồng ý hiện có. Tác tử cloud chỉ được dùng fixture giả hoàn toàn hoặc manifest đã làm sạch.
 - **FR-018**: Không module Workspace Chat được hỗ trợ nào import `studio` hoặc `case_cockpit`.
 - **FR-019**: Dịch vụ hồ sơ phải cho phép gắn thêm tham chiếu bằng chứng vào case hiện hữu theo kiểu append-only, kiểm tra role/scope, digest, provenance và optimistic version.
-- **FR-020**: `tasks.md` chỉ được chứa task của đợt đang thực thi; các US chưa đủ điều kiện vẫn phải còn trong đặc tả và kế hoạch dưới dạng backlog có điều kiện.
-- **FR-021**: Luồng xác nhận phải cho phép người điều tra kiêm chuyên gia trong đúng phạm vi công đoạn; chuyên gia thứ hai là tùy chọn và mọi xác nhận vẫn do con người thực hiện.
+- **FR-020**: `tasks.md` chỉ được chứa task của đợt đang thực thi; đợt T001–T029 chỉ thực thi US1, US2, US7, US8 và US9. Các US chưa đủ điều kiện vẫn phải còn trong đặc tả và kế hoạch dưới dạng backlog có điều kiện.
+- **FR-021**: Luồng xác nhận phải cho phép người điều tra kiêm chuyên gia trong đúng phạm vi công đoạn; chuyên gia thứ hai là tùy chọn. Nhãn có nguồn máy hợp lệ được xác nhận tự động, còn sửa/bác bỏ của con người phải append-only và có lý do.
+- **FR-022**: Dữ liệu Iris LSU phải liên kết tường minh `component_lot_id → unit_serial → jig_id → measurement → outcome`; bản ghi không nối được phải vào báo cáo thiếu dữ liệu, không được tự ghép theo tên file.
+- **FR-023**: Lát cắt đầu tiên phải cấu hình cho BOWSKEW 4 BEAM và không hard-code vào lõi dùng chung; các JIG/Unit khác chỉ mở sau khi lát cắt đầu hoạt động.
+- **FR-024**: MVP phải có đường hoàn thành khi dữ liệu chưa đủ cho học máy: phương án không cảnh báo/EWMA và báo cáo thiếu dữ liệu là đầu ra hợp lệ; tuyệt đối không tạo model hoặc độ chính xác giả.
+- **FR-025**: Tiếng Việt là ngôn ngữ giao diện duy nhất; lỗi tiếng Anh từ thư viện, hệ điều hành hoặc dịch vụ phải được chặn và đổi thành lời giải thích cùng bước xử lý bằng tiếng Việt trước khi hiển thị. Mã thiết bị, tên tệp và hằng máy đọc chỉ là định danh, không được dùng thay cho câu giải thích.
+- **FR-026**: Mỗi mốc phải có gói dữ liệu mẫu đã làm sạch, runtime thử nghiệm tách khỏi dữ liệu người dùng, kiểm thử độc lập và đầu ra kỹ thuật có thể chạy lại trên Python 3.11. Một cổng vận hành thiếu dữ liệu, người duyệt hoặc môi trường thật chỉ chặn việc kích hoạt nhánh phụ thuộc; không được chặn sửa nền, xây giao diện trạng thái, hoàn thiện công cụ kiểm tra hoặc triển khai nhánh độc lập khác.
+- **FR-027**: T011, T022 và T029 phải dùng rubric có version/digest để tự kết luận; tác tử không được đổi ngưỡng sau khi thấy kết quả. T029 phải do tác tử kiểm toán khác tác tử thực thi và được phép tự đóng cổng kỹ thuật sau tối đa hai vòng sửa–kiểm tra lại.
+- **FR-028**: AI được tự đăng ký snapshot hợp lệ, chọn `AUTO_SHADOW` hoặc `LEARNING_SHADOW` và xác nhận outcome từ nguồn máy đủ provenance. AI không được điều khiển máy, sửa PLC, đổi thông số, chặn/xuất hàng hoặc xóa/ghi đè nguồn.
 
 ## 6. Tiêu chí thành công đo được
 
+SC-001–SC-003, SC-007–SC-009 và SC-011–SC-015 áp dụng cho đợt T001–T029 theo phần năng lực đã kích hoạt. SC-004–SC-006 và SC-010 là tiêu chí của các đợt sau; chúng được giữ để không mất đích nhưng không được dùng để ép Gemini mở rộng phạm vi hiện tại.
+
 - **SC-001**: Người dùng mở một case đã lưu trong tối đa ba thao tác từ Workspace Chat mà không hỏi lại RAG.
-- **SC-002**: 100% case/review/lesson/artifact/prediction đọc lại được sau restart trong test và không có bản ghi nửa vời khi fault injection.
+- **SC-002**: 100% loại bản ghi đã được kích hoạt trong đợt hiện tại đọc lại được sau restart trong test và không có bản ghi nửa vời khi fault injection; lesson/artifact chỉ áp dụng khi đợt tương ứng được mở.
 - **SC-003**: 100% transition trái quyền, thiếu evidence, sai digest hoặc thiếu lý do bị từ chối phía service.
-- **SC-004**: 100% bài học dùng lại truy vết được đến case, review và evidence digest gốc.
-- **SC-005**: Pilot line thật hoàn thành ít nhất một case end-to-end với báo cáo được duyệt; kết quả vẫn được mô tả là hỗ trợ điều tra, không phải chẩn đoán tự động.
-- **SC-006**: 100% artifact chính thức có phiên bản, evidence digest, reviewer và không ghi đè nguồn.
-- **SC-007**: Báo cáo model chứa confusion matrix, false-alarm rate, missed-detection rate, lead time, calibration, temporal split và dataset/model digest.
-- **SC-008**: Trong shadow, 100% risk signal có feature snapshot, model version, threshold version và outcome review; không có hành động điều khiển máy.
+- **SC-004 — đợt sau**: 100% bài học dùng lại truy vết được đến case, review và evidence digest gốc.
+- **SC-005 — đợt sau**: Pilot line thật hoàn thành ít nhất một case end-to-end với báo cáo được duyệt; kết quả vẫn được mô tả là hỗ trợ điều tra, không phải chẩn đoán tự động.
+- **SC-006 — đợt sau**: 100% artifact chính thức có phiên bản, evidence digest, reviewer và không ghi đè nguồn.
+- **SC-007**: Báo cáo phát lại chứa số cảnh báo đúng/nhầm/bỏ sót, lead time, temporal split và dataset/phương pháp digest; calibration chỉ bắt buộc khi phương pháp tạo xác suất và có đủ mẫu để đo.
+- **SC-008**: Trong shadow, 100% risk signal có snapshot đầu vào, phiên bản phương pháp, threshold version và outcome review; không có hành động điều khiển máy.
 - **SC-009**: Full quality gates của repo đạt trước mỗi lần đóng gate; thiếu lệnh hoặc timeout được ghi `PARTIAL`/`BLOCKED`, không phải PASS.
-- **SC-010**: Gate A NAS chỉ chuyển khỏi `PARTIAL` sau smoke thật có bằng chứng backup/restore và một writer–nhiều reader.
+- **SC-010 — đợt sau**: Gate A NAS chỉ chuyển khỏi `PARTIAL` sau smoke thật có bằng chứng backup/restore và một writer–nhiều reader.
+- **SC-011**: Với mỗi Unit đủ dữ liệu trong pilot, người dùng truy được lot linh kiện, thông số đầu vào, JIG/lần đo và outcome cuối trong một màn hình mà không dò thủ công nhiều file.
+- **SC-012**: Một lượt phát lại lịch sử xuất được số cảnh báo đúng, cảnh báo nhầm, bỏ sót và thời gian cảnh báo sớm so với cùng một baseline; thiếu dữ liệu được báo rõ thay vì bỏ qua.
+- **SC-013**: Trong shadow thủ công, người dùng nhập một lô dữ liệu mới, nhận danh sách nguy cơ có căn cứ và ghi kết quả thực tế mà không có lệnh điều khiển máy hoặc gửi dữ liệu ra ngoài.
+- **SC-014**: Với mọi luồng thuộc MVP, kiểm thử bao phủ trạng thái bình thường, trống, chờ, thành công, cảnh báo và lỗi; khi cố ý tạo lỗi bên ngoài, không có câu tiếng Anh, traceback hoặc thuật ngữ kỹ thuật không giải thích xuất hiện trước người dùng.
+- **SC-015**: Mốc 2–4 đều chạy hết đường kỹ thuật bằng fixture đã làm sạch khi chưa có dữ liệu thật; báo cáo phân biệt rõ `TECHNICAL_PASS`, `OPERATIONAL_PARTIAL` và `OPERATIONAL_BLOCKED`, không dùng kết quả fixture để thay bằng chứng pilot.
 
 ## 7. Ranh giới không thương lượng
 
@@ -206,16 +233,19 @@ Chủ sở hữu nghiệm thu NAS/thư viện thật, backup/restore, một writ
 - Không tự chạy hành động nhà máy, sửa PLC, dừng line, chặn/xuất hàng hoặc đổi thông số.
 - Không xóa/ghi đè dữ liệu nguồn; artifact mới phải versioned và rollback được.
 - Không dùng chat thô, output AI hoặc tên client làm nhãn/bằng chứng.
-- Không bật cảnh báo vận hành trước khi shadow đạt ngưỡng do chủ sở hữu phê duyệt.
+- Không bật cảnh báo vận hành trước khi shadow vượt rubric có version và có nút tắt; chạy bóng đọc-only không phải hành động vận hành máy.
 - Không mở Drum/DLP chỉ để “đủ phạm vi” trước khi lát cắt LSU/Iris hoàn thành và adapter lõi được chứng minh.
+- Không phát hành màn hình, thông báo hoặc nhật ký vận hành còn câu tiếng Anh; nguồn bằng chứng có thể giữ nguyên ngôn ngữ gốc nhưng phần điều khiển và giải thích của chương trình phải là tiếng Việt.
 
-## 8. Quyết định bắt buộc của chủ sở hữu trước từng gate
+## 8. Mặc định tự động và trường hợp mới cần chủ sở hữu
 
-1. Danh sách role/scope và người có quyền thẩm định, promotion, phát hành artifact, duyệt shadow.
-2. Chính sách retention/xóa và backup cho `workspace_cases.sqlite` cùng kho dự đoán.
-3. Bộ log/SOP/mapping được phép dùng cho pilot line.
-4. Data dictionary, join keys, đơn vị, nhãn và chi phí tương đối của cảnh báo sai/bỏ sót cho LSU/Iris.
-5. Loại hồ sơ thiết kế công đoạn cần hỗ trợ đầu tiên và verifier tương ứng.
-6. Ngưỡng đóng shadow và điều kiện mở cảnh báo trong Workspace Chat.
+T011 và T022 dùng thẳng mẫu từ điển dữ liệu cùng rubric có version; không chờ người dùng tự nghĩ metric, công thức SPC, cỡ mẫu hoặc ngưỡng chạy bóng. Cấu hình cục bộ có thể ghi đè về sau và luôn có đường quay lại.
 
-Thiếu quyết định nào thì gate phụ thuộc phải giữ `BLOCKED`; các gate độc lập vẫn được tiếp tục theo thứ tự đã phê duyệt.
+Chỉ các quyết định sau vẫn cần chủ sở hữu vì có tác động ngoài phạm vi đọc-only:
+
+1. Cấp hoặc nâng quyền cho một người/chuyên gia thật.
+2. Xóa dữ liệu, thay chính sách lưu giữ hoặc phục hồi đè lên kho đang dùng.
+3. Cho phép tài liệu/log nhạy cảm rời khỏi vùng cục bộ.
+4. Bật cảnh báo ra ngoài ứng dụng hoặc hành động làm thay đổi máy, line, thông số, chặn/xuất hàng.
+
+Thiếu các quyết định này không chặn T001–T029, Data Gate, phát lại hay chạy bóng đọc-only. Hệ thống tiếp tục bằng mặc định an toàn và ghi rõ việc nào chưa được phép tác động ngoài đời.

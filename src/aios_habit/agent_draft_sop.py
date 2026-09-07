@@ -71,8 +71,13 @@ class DraftDocument:
     content_markdown: str
     author: str
     created_at: str
+    case_id: str = ""
+    version: int = 1
+    evidence_digest: str = ""
+    required_approver_role: str = "quality_manager"
     provenance_items: tuple[DraftProvenanceItem, ...] = ()
     approval_metadata: dict[str, Any] = field(default_factory=dict)
+
 
 
 def is_factory_protected_path(target_path: str | Path) -> bool:
@@ -131,6 +136,12 @@ def compose_draft_from_evidence(
     title: str = "Dự thảo Quy trình / Báo cáo Điều tra",
     author: str = "AIOS Habit Agent",
     target_station: str = "",
+    case_id: str = "",
+    version: int = 1,
+    evidence_digest: str = "",
+    required_approver_role: str = "quality_manager",
+    conclusions_or_grounds: str = "",
+    require_evidence: bool = False,
 ) -> DraftDocument:
     """Compose a draft SOP or investigation report from text citations and suspected line log events."""
     if doc_type not in {"sop", "report"}:
@@ -142,6 +153,10 @@ def compose_draft_from_evidence(
     line_events_matched = evidence_pack.get("line_events_matched") or {}
     if not line_events_matched and "events" in evidence_pack:
         line_events_matched = {"events": evidence_pack["events"]}
+    events = line_events_matched.get("events") or ()
+
+    if require_evidence and not evidence_items and not events:
+        raise ValueError("Không đủ bằng chứng để tạo dự thảo có kiểm soát.")
 
     provenance_list: list[DraftProvenanceItem] = []
 
@@ -170,7 +185,6 @@ def compose_draft_from_evidence(
         else:
             text_citations.append({"title": src_title, "text": text, "provenance": prov, "location": loc})
 
-    events = line_events_matched.get("events") or ()
     if events and not log_citations:
         for ev in events:
             code = getattr(ev, "code", "") if hasattr(ev, "code") else ev.get("code", "")
@@ -200,16 +214,26 @@ def compose_draft_from_evidence(
     lines.append(f"# {title.upper()}")
     lines.append("")
     lines.append("> [!IMPORTANT]")
-    lines.append(f"> **Trạng thái:** NHÁP (Chưa phê duyệt) | **Mã dự thảo:** `{draft_id}` | **Ngày tạo:** `{now_iso}`")
+    case_part = f" | **Mã hồ sơ:** `{case_id}`" if case_id else ""
+    lines.append(f"> **Trạng thái:** NHÁP (Chưa phê duyệt){case_part} | **Phiên bản:** `v{version}`")
+    lines.append(f"> **Mã dự thảo:** `{draft_id}` | **Ngày tạo:** `{now_iso}` | **Người tạo:** `{author}`")
+    lines.append(f"> **Vai trò duyệt yêu cầu:** `{required_approver_role}` | **Digest bằng chứng:** `{evidence_digest or 'chưa_xác_định'}`")
     lines.append("> **Quy tắc an toàn:** Mọi hành động ghi ra file chính thức đều bị chặn cho đến khi người dùng bấm duyệt trên giao diện.")
     lines.append("")
 
-    lines.append("## 1. Mục tiêu và phạm vi áp dụng")
+    lines.append("## 1. Mục tiêu, phạm vi và kết luận bước đầu")
     target_info = f" cho trạm/máy `{target_station}`" if target_station else ""
     if doc_type == "sop":
         lines.append(f"Dự thảo quy trình thao tác chuẩn (SOP){target_info} được tổng hợp tự động từ gói bằng chứng tri thức và log.")
     else:
         lines.append(f"Dự thảo báo cáo điều tra kỹ thuật{target_info} đối chiếu giữa tiêu chuẩn và sự kiện log thực tế.")
+    lines.append("")
+    if conclusions_or_grounds:
+        lines.append(f"**Kết luận / Nhận định căn cứ:**\n{conclusions_or_grounds}")
+    elif not evidence_items and not events:
+        lines.append("**Cảnh báo:** Chưa đủ căn cứ bằng chứng đã xác minh để đưa ra kết luận kỹ thuật chính thức.")
+    else:
+        lines.append("**Căn cứ ban đầu:** Tổng hợp từ các nguồn tài liệu và sự kiện log đã ghi nhận.")
     lines.append("")
 
     lines.append("## 2. Căn cứ văn bản và tiêu chuẩn đã xác minh (RAG)")
@@ -261,6 +285,10 @@ def compose_draft_from_evidence(
         content_markdown=content_markdown,
         author=author,
         created_at=now_iso,
+        case_id=case_id,
+        version=version,
+        evidence_digest=evidence_digest,
+        required_approver_role=required_approver_role,
         provenance_items=tuple(provenance_list),
         approval_metadata={},
     )
@@ -298,6 +326,10 @@ def approve_draft_document(
         content_markdown=updated_content,
         author=draft.author,
         created_at=draft.created_at,
+        case_id=draft.case_id,
+        version=draft.version,
+        evidence_digest=draft.evidence_digest,
+        required_approver_role=draft.required_approver_role,
         provenance_items=draft.provenance_items,
         approval_metadata=metadata,
     )
@@ -308,9 +340,18 @@ def save_draft_document(
     output_path: str | Path,
     *,
     approved: bool = False,
+    output_root: str | Path | None = None,
+    auto_version_existing: bool = False,
 ) -> str:
     """Save an approved draft document to a file. Fails closed if not approved or doc is draft."""
     target = Path(output_path).resolve()
+
+    if output_root is not None:
+        root_resolved = Path(output_root).resolve()
+        try:
+            target.relative_to(root_resolved)
+        except ValueError:
+            raise FactoryFileProtectionError("Đường dẫn lưu file nằm ngoài thư mục output_root được phép.")
 
     guard_factory_file_action("write", target, approved=approved)
 
@@ -320,9 +361,14 @@ def save_draft_document(
         )
 
     if target.exists():
-        raise FactoryFileProtectionError(
-            "Không được ghi đè file đang có. Agent chỉ được tạo file nháp mới sau khi duyệt."
-        )
+        if not auto_version_existing:
+            raise FactoryFileProtectionError(
+                "Không được ghi đè file đang có. Agent chỉ được tạo file nháp mới sau khi duyệt."
+            )
+        target = target.with_name(f"{target.stem}_v{doc.version}{target.suffix}")
+        if target.exists():
+            ts = datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S")
+            target = target.with_name(f"{target.stem}_{ts}{target.suffix}")
 
     target.parent.mkdir(parents=True, exist_ok=True)
     target.write_text(doc.content_markdown, encoding="utf-8")

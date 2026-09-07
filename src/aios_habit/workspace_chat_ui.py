@@ -152,6 +152,10 @@ def render_language_selector(
     locale: Optional[str] = None,
 ) -> Tuple[str, str]:
     """Render language selector dropdowns for interface language and AI answer language."""
+    from aios_habit.i18n import SUPPORTED_UI_LOCALES
+    if SUPPORTED_UI_LOCALES == ("vi",):
+        return "vi", "vi"
+
     eff_locale = normalize_locale(locale or current_ui_locale)
     supported = get_supported_locales()
     loc_codes = [code for code, _ in supported]

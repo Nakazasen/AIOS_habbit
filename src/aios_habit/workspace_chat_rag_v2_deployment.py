@@ -83,7 +83,14 @@ def _manifest_path(
         return Path(path)
     values = os.environ if env is None else env
     override = str(values.get(DEPLOYMENT_MANIFEST_ENV, "") or "").strip()
-    return Path(override) if override else DEFAULT_DEPLOYMENT_MANIFEST
+    if override:
+        return Path(override)
+    if env is not None:
+        # An explicit environment mapping (e.g. tests or Docker containers)
+        # only points to a manifest if explicitly configured via DEPLOYMENT_MANIFEST_ENV.
+        # It must not leak the host machine's gitignored local manifest.
+        return Path("")
+    return DEFAULT_DEPLOYMENT_MANIFEST
 
 
 def _read_json_object(path: Path) -> dict[str, Any]:

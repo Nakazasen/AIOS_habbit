@@ -21,7 +21,7 @@ AIOS không chỉ đơn thuần là công cụ hỏi đáp tài liệu. AIOS ph�
 - Không phải là công cụ tải tài liệu công ty lên đám mây.
 - Không phải là hệ thống truy xuất nguồn gốc chỉ dành riêng cho LSU.
 
-## Nguyên Tắc Sản Phẩm (Product Principles)
+## Nguyên tắc sản phẩm
 
 - Không lưu toàn văn hội thoại nếu không cần thiết; ưu tiên lưu tri thức đã được cấu trúc hóa.
 - Không chỉ lưu câu chữ bề nổi; lưu trữ mô hình làm việc, quyết định và bài học kinh nghiệm.
@@ -29,6 +29,7 @@ AIOS không chỉ đơn thuần là công cụ hỏi đáp tài liệu. AIOS ph�
 - Dữ liệu công ty/mật mặc định ở chế độ ưu tiên cục bộ và tuyệt đối không gửi ra ngoài.
 - Mọi câu trả lời quan trọng bắt buộc phải truy xuất được nguồn bằng chứng, nhật ký định tuyến, model/công cụ đã dùng và chế độ bảo mật.
 - Model mạnh chỉ là một phần; chất lượng thực sự phụ thuộc vào bộ phân tích cú pháp (parser), chỉ mục (index), truy xuất (retrieval), xếp hạng lại (rerank), gói bằng chứng (evidence pack), ngữ cảnh và chốt chặn quyền riêng tư.
+- Tiếng Việt dễ hiểu là ngôn ngữ duy nhất của giao diện, thông báo, lỗi, nhật ký vận hành và báo cáo. Người dùng không phải học công nghệ thông tin hoặc tiếng Anh để biết chương trình đang làm gì và cần làm gì tiếp theo.
 
 ## Trạng Thái Hiện Tại (Current Status)
 
@@ -117,9 +118,10 @@ Chỉ sử dụng các mẫu thiết kế công khai; tuyệt đối không sao 
 Trước mắt:
 
 1. Khóa phần nền chuẩn bị nguồn và hồ sơ bằng test hiện tại cùng smoke trình duyệt.
-2. Hoàn thành một pilot C-call hoặc Jam thật từ bằng chứng đến báo cáo được duyệt.
-3. Chỉ sau pilot mới mở promotion/tìm lại bài học.
-4. Chỉ sau Data Gate mới mở thử nghiệm LSU nhẹ trên CPU.
+2. Dùng RAG/case hiện có làm trợ lý LSU có citation và xác nhận của người đúng công đoạn.
+3. Nối file cục bộ theo chuỗi lot linh kiện → Unit → JIG → outcome cho BOWSKEW 4 BEAM.
+4. Phát lại lịch sử bằng baseline thống kê; chỉ thử tối đa một model CPU khi Data Gate đạt.
+5. Chạy shadow thủ công trong Workspace Chat rồi mới xét cảnh báo hoặc target tiếp theo.
 
-NAS nhiều người, cảnh báo, Drum/DLP, Agent lập trình và các đầu ra artifact khác là backlog có điều kiện; xem [kế hoạch 008](../specs/008-evidence-case-loop/plan.md).
+C-call/Jam, promotion bài học, NAS nhiều người, cảnh báo, Drum/DLP, Agent lập trình và các đầu ra artifact khác vẫn là backlog có điều kiện; xem [kế hoạch 008](../specs/008-evidence-case-loop/plan.md).
 

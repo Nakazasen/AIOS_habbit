@@ -45,9 +45,11 @@ Không định dạng dữ liệu theo riêng một AI. Mọi bộ nhớ lõi ph
 
 Dữ liệu gốc thuộc người dùng. Mặc định lưu cục bộ. Không đồng bộ ra mây nếu chưa có chính sách rõ ràng.
 
-### Nguyên tắc 6: Tài liệu người đọc phải tiếng Việt
+### Nguyên tắc 6: Người dùng chỉ phải đọc tiếng Việt dễ hiểu
 
-Mọi câu văn trong tài liệu sản phẩm (README, hiến chương, quy tắc agent, kiến trúc, roadmap, spec đang mở, sổ thảo luận) viết tiếng Việt. Cấm tiêu đề và đoạn văn tiếng Anh. Chỉ được giữ token tiếng Anh khi là đường dẫn, lệnh, tên mã, nhãn máy (`Status:`, `PASS`) hoặc hằng (`local_only`) — và phải giải thích tiếng Việt bên cạnh. Luật chi tiết: `AGENT_RULES.md` mục 4.
+Mọi câu chữ do sản phẩm hiển thị hoặc xuất cho người dùng và người vận hành phải là tiếng Việt dễ hiểu: giao diện, nút, hướng dẫn, tiến độ, trạng thái, cảnh báo, lỗi, thông báo, nhật ký vận hành và báo cáo. Không dùng câu tiếng Anh làm phương án dự phòng. Lỗi từ thư viện bên ngoài phải được chặn và đổi thành lời giải thích tiếng Việt; không hiện nguyên văn lỗi kỹ thuật hoặc traceback.
+
+Tài liệu sản phẩm (README, hiến chương, quy tắc agent, kiến trúc, roadmap, spec đang mở, sổ thảo luận) cũng phải viết tiếng Việt. Chỉ được giữ nguyên đường dẫn, lệnh, tên mã, mã thiết bị/sản phẩm và hằng máy đọc; khi chúng xuất hiện trước người dùng phải có giải thích tiếng Việt gần đó. Mã nguồn và định danh lập trình không thuộc giao diện. Luật chi tiết: `AGENT_RULES.md` mục 4 và `docs/UI_LANGUAGE_POLICY.md`.
 
 ## 4. Quy tắc bắt buộc khi phát triển
 

@@ -1427,3 +1427,247 @@ Sao lưu log (K-Box 30 ngày xóa): Drive **nội bộ công ty** hoặc thư vi
 - **Không hứa:** chỉ đúng từng sensor; đọc chữ viết tay IQC (vẫn gõ Excel hoặc bỏ); Jam log “luôn đúng” (Hải đã nói độ tin chưa cao).
 - Soft bản mạch / controller phía Thiết kế không cấp: **không bắt buộc** cho pilot. Phân giải **định dạng log + tool đang dùng nội bộ** (so output tool với parser) thì đủ để bắt đầu nhánh C hoặc Jam.
 - Thứ tự: (1) Hải tập hợp gói tài liệu, (2) parser Jam hoặc C, (3) thư viện SOP/mã lỗi/báo cáo đã duyệt, (4) bảng ánh xạ sơ đồ, (5) overlay có người xác nhận. Hỏi có bản vẽ → chọn **C-AGENT**. Không nhét log thô vào RAG chữ.
+
+## 30. Kế hoạch nâng US6 thành Agent lập trình và thao tác file đủ dùng hằng ngày
+
+Status: `PROPOSED_OWNER_APPROVAL`
+
+Kế hoạch này được viết trong lúc chờ kiểm toán T030–T057 được xác nhận. Đây là phần nối dài của US6, không phải một sản phẩm chatbot hoặc IDE thứ ba bên trong AIOS. Chưa triển khai code, chưa đổi trạng thái US6 và chưa tuyên bố tương đương Cline/OpenCode.
+
+### 30.1. Kết luận kiến trúc
+
+Hướng đề nghị:
+
+```text
+Workspace Chat / hồ sơ agent_work
+        ↓ nhiệm vụ, evidence, quyền và phê duyệt
+AIOS Agent Gateway
+        ↓ adapter cục bộ có phiên bản
+OpenCode runtime/server
+        ↓ tool, phiên làm việc, luồng sự kiện, MCP
+Workspace Git tách biệt + lệnh kiểm thử
+        ↓ diff, kết quả quan sát, mã kiểm tra
+AIOS Case + Evidence + Audit + Learning đã duyệt
+
+Mặt bàn lập trình: Code-OSS + extension mỏng trong repo Nvidia
+Chuẩn đối chiếu hành vi: Cline và OpenCode
+```
+
+Quyết định đề nghị là **không tự viết lại harness**. OpenCode được dùng qua giao thức server/adapter trước; Cline dùng làm chuẩn hành vi và phương án dự phòng nếu spike chứng minh OpenCode không cho chặn quyền hoặc phục hồi phiên đúng yêu cầu. Code-OSS cung cấp editor, terminal, LSP, Git và debugger; AIOS không xây lại các phần đó trong Streamlit.
+
+Nguồn công khai cần ghi pin phiên bản, giấy phép và notices khi bắt đầu spike:
+
+- OpenCode: [server](https://opencode.ai/docs/server/), [tools](https://opencode.ai/docs/tools/), session, permission và MCP; [giấy phép MIT](https://github.com/anomalyco/opencode/blob/dev/LICENSE). Bản đầu ưu tiên server/adapter, không phụ thuộc embedded SDK còn beta.
+- Cline: [checkpoint](https://docs.cline.bot/core-workflows/checkpoints), [kiến trúc SDK](https://docs.cline.bot/sdk/architecture/overview) và approval làm chuẩn đối chiếu; [giấy phép Apache-2.0](https://github.com/cline/cline/blob/main/LICENSE).
+- Code-OSS: [mã nguồn nền](https://github.com/microsoft/vscode); giấy phép MIT, không dùng thương hiệu, icon, Marketplace hoặc telemetry độc quyền của Microsoft.
+
+### 30.2. Ba phương án và quyết định chọn
+
+| Phương án | Ưu điểm | Nhược điểm | Quyết định |
+|---|---|---|---|
+| Code-OSS + OpenCode adapter + AIOS governance | Tận dụng editor và harness trưởng thành; diff nhỏ; cập nhật upstream được; giữ ranh giới AIOS | Phải chứng minh callback quyền, session và event stream đủ để fail-closed | **Chọn để spike và làm chính** |
+| Fork OpenCode desktop rồi đổi giao diện | Có thể ra demo nhanh nếu toàn bộ luồng đã vừa nhu cầu | Gánh fork UI/runtime, upstream drift, branding và đóng gói; dễ làm AIOS lệch thành coding app | Chỉ xét nếu adapter thất bại có bằng chứng |
+| Tiếp tục tự mở rộng orchestrator/bridge hiện tại | Kiểm soát hoàn toàn | Phải tự viết session, PTY, checkpoint, MCP, undo, conflict, CLI và recovery; chậm và rủi ro cao | **Dừng mở rộng ngoài phần adapter** |
+
+Không sao chép giao diện trước rồi mới tìm cách ghép an toàn. Phần tạo ra năng lực thật là runtime, tool lifecycle, permission, checkpoint và recovery. Giao diện chỉ là extension mỏng hiển thị trạng thái đó.
+
+### 30.3. Ranh giới sản phẩm
+
+AIOS giữ:
+
+- `Case`, `EvidencePack`, citation, phạm vi dữ liệu và trạng thái `agent_work`.
+- Task Pack, chính sách quyền, quyết định phê duyệt, audit append-only và observed evidence độc lập.
+- Lời giải thích tiếng Việt, định tuyến provider theo privacy và promotion bài học có người duyệt.
+- Nút mở/tiếp tục nhiệm vụ lập trình từ Workspace Chat và liên kết kết quả về hồ sơ.
+
+Runtime kế thừa giữ:
+
+- Phiên agent, vòng lặp model–tool, streaming, cancel/resume, MCP và quản lý context.
+- Đọc/search code, thao tác Git/worktree, patch nhiều file và chạy lệnh foreground/background.
+- Checkpoint kỹ thuật, snapshot/undo trong workspace tách biệt và sự kiện runtime.
+
+Code-OSS giữ:
+
+- Editor, diff/hunk review, terminal PTY, LSP/diagnostics, Git/SCM, debugger và extension host.
+
+Không được tạo đường đi trực tiếp từ câu trả lời RAG đến tool ghi. Mọi thao tác ghi phải đi qua proposal, policy và receipt. Không cho extension hoặc runtime tự nhận vai `local_admin`.
+
+### 30.4. Nền hiện có được tái sử dụng
+
+Không bỏ các phần US6 đã làm. Chúng trở thành lớp hợp đồng bên ngoài runtime:
+
+| Nền hiện có | Giữ lại để làm gì | Phần cần nâng |
+|---|---|---|
+| `agent_task_pack.py` | Khóa mục tiêu, file, lệnh, commit và privacy | Thêm phiên bản protocol, base digest và loại môi trường chạy |
+| `coding_assistant.py` | Proposal, digest, approve/reject | Approval phải gắn actor thật, scope, expiry và đúng payload bất biến |
+| `agent_result_import.py` | Không tin PASS tự khai | Nhận event/receipt từ runtime và đối chiếu trạng thái workspace sau chạy |
+| `workspace_agent_policy.py` | Allow/deny tool fail-closed | Policy theo task; không truyền cờ `approved=True` như sự thật tự khai |
+| `workspace_agent_bridge_client.py` | Ranh giới tiến trình cục bộ | Chuyển thành adapter có version, health, stream, cancel và timeout rõ |
+| `workspace_agent_orchestrator.py` | Điểm gọi hiện có | Không phát triển thành harness riêng; chỉ điều phối AIOS ↔ runtime |
+| `agent_learning.py` | Candidate local, promotion có evidence | Chỉ học pattern từ thay đổi đã được duyệt và test thật đạt |
+| Code-OSS spike trong repo `Nvidia` | Mặt bàn lập trình native | Extension mỏng gọi protocol chung, không giữ secret hoặc policy riêng |
+
+### 30.5. Phạm vi bản đầu tiên
+
+Bản đầu tiên phải hoàn thành trọn vòng sau trên Windows:
+
+```text
+Chọn workspace Git đã tin cậy
+→ mô tả nhiệm vụ và tiêu chí đạt
+→ Agent đọc/search/lập kế hoạch
+→ người dùng duyệt kế hoạch một lần
+→ Agent tự sửa trong worktree tách biệt
+→ chạy lệnh allowlist, tự sửa lại khi test lỗi trong ngân sách
+→ hiển thị diff nhiều file và bằng chứng test
+→ người dùng nhận/từ chối theo file hoặc hunk
+→ áp dụng đúng phiên bản đã duyệt vào workspace đích
+→ kiểm tra lại độc lập
+→ ghi receipt vào hồ sơ agent_work
+```
+
+Năng lực bắt buộc:
+
+- Đọc file, đọc theo trang, tìm kiếm, repo map/symbol và Git context.
+- Patch nhiều file; tạo file; xóa/đổi tên chỉ trong worktree tách biệt và phải hiện rõ trong diff.
+- Lệnh foreground/background, stream output có giới hạn, xem trạng thái và hủy an toàn.
+- Phiên bền vững, resume sau khi UI/service dừng và không lặp lại thao tác đã hoàn tất.
+- Snapshot/rollback, phát hiện file đổi sau proposal và cảnh báo conflict.
+- Permission theo tool + đường dẫn + lệnh + thời hạn; deny mặc định.
+- MCP có allowlist; provider/model không được tự thay đổi policy.
+- Giao diện Code-OSS và đường CLI/headless dùng cùng protocol.
+- Đường dẫn Windows có khoảng trắng và tiếng Việt; UTF-8 end-to-end.
+
+Ngoài phạm vi bản đầu:
+
+- Swarm không giới hạn, scheduler nhiều máy, Kubernetes hoặc server database mới.
+- Tự commit, push, merge, deploy, cài extension hoặc thay cấu hình hệ thống.
+- Thao tác ngoài workspace, quyền quản trị máy, trình duyệt tự động hoặc điều khiển line/PLC/JIG.
+- Tự fine-tune từ chat, diff bị từ chối hoặc commit chưa được kiểm chứng.
+- Xây editor, terminal, Git UI, debugger hoặc model router mới.
+
+### 30.6. Mô hình quyền thực tế
+
+| Cấp | Ví dụ | Chính sách bản đầu |
+|---|---|---|
+| 0 — quan sát | đọc/search/index/Git status | Tự động trong workspace đã tin cậy |
+| 1 — sandbox | sửa/tạo/xóa file trong worktree tách biệt; chạy lệnh allowlist | Cho phép sau khi duyệt Task Pack/kế hoạch; ghi event đầy đủ |
+| 2 — áp dụng | đưa diff vào workspace người dùng, chạy lệnh ngoài allowlist an toàn | Duyệt đúng proposal digest; có expiry và actor từ app context |
+| 3 — nguy hiểm | ngoài workspace, quyền admin, deploy, commit/push, xóa dữ liệu thật | Chưa hỗ trợ; từ chối chạy |
+
+Approval phải ràng buộc ít nhất: `task_id`, `runtime_session_id`, base commit, danh sách file + digest, command + digest, policy version, actor, scope và thời hạn. Thay đổi một byte tạo proposal mới. Restart không được biến approval cũ thành quyền chung.
+
+### 30.7. Trạng thái và dữ liệu tối thiểu
+
+Không tạo một hệ schema lớn mới. Nâng các object hiện có thành ba hợp đồng có version:
+
+1. `AgentTaskPack`: mục tiêu, workspace, base commit, file/lệnh cho phép, budget, privacy và tiêu chí đạt.
+2. `ActionProposal`: diff/command bất biến, digest, policy decision, approval/rejection và thời hạn.
+3. `ExecutionReceipt`: event IDs, file digest trước/sau, lệnh, exit code, test, checkpoint và kết quả xác minh độc lập.
+
+Trạng thái chuẩn:
+
+```text
+created → planning → awaiting_plan_approval → executing
+        → awaiting_apply_approval → verifying → completed
+        ↘ rejected / failed / cancelled
+        ↘ interrupted → resumable → executing
+```
+
+OpenCode giữ session/checkpoint kỹ thuật trong vùng local runtime của nó. `workspace_cases.sqlite` chỉ giữ metadata, ID, digest và receipt cần audit; không sao chép toàn bộ transcript hoặc stdout thô vào Case. Không thêm SQLite thứ năm chỉ để lưu agent session.
+
+### 30.8. Các cổng triển khai
+
+| Cổng | Việc thực hiện | Điều kiện ra |
+|---|---|---|
+| G0 — Khóa nền | Hoàn tất audit T057; ghi US6 hiện tại là foundation; chốt ADR về developer companion UI và runtime kế thừa | Audit trung thực, worktree baseline được nhận diện, chủ sở hữu duyệt hướng |
+| G1 — Spike adapter chỉ đọc | Pin một OpenCode version; chạy local server; tạo/resume session; stream event; đọc/search một repo fixture; chứng minh không ghi được khi policy deny | Health/version/capability probe và negative test đều đạt |
+| G2 — Protocol và phiên | Map Task Pack ↔ runtime session; event append-only; cancel/resume/idempotency; CLI và extension dùng cùng contract | Kill/restart không lặp write; event đọc lại được |
+| G3 — Sandbox và proposal | Mỗi task có Git worktree; patch nhiều file; command jobs; snapshot; diff/hunk; conflict detection | Không sửa main workspace trước duyệt; rollback sạch |
+| G4 — Vòng coding hoàn chỉnh | Plan → edit → test → repair có giới hạn; observed verifier độc lập; giới hạn bước/thời gian/output | Hoàn thành bộ fixture Python và TypeScript, không fake PASS |
+| G5 — Giao diện dùng hằng ngày | Extension Code-OSS: task, timeline, quyền, diff, terminal, resume; Workspace Chat chỉ mở/tra cứu hồ sơ | Một người dùng hoàn tất task không cần mở màn hình kỹ thuật phụ |
+| G6 — AIOS evidence và learning | Gắn receipt vào `agent_work`; privacy route; lesson candidate từ kết quả đã duyệt | Thu hồi/reject không thành bài học; citation/digest truy ngược được |
+| G7 — Bảo mật và phát hành | Threat model, secret scan, dependency/license/SBOM, pin/rebase check, clean-machine package | Bộ cài sạch chạy được trên máy Windows hỗ trợ |
+| G8 — Đối chiếu Cline/OpenCode | Chạy cùng model, repo fixture, task và giới hạn; ghi kết quả mù theo rubric | Đạt chuẩn định nghĩa ở mục 30.10; không dùng cảm nhận để tuyên bố parity |
+
+G1 là cổng dừng sớm. Nếu OpenCode không cho chặn write/command theo permission callback, không cho resume có ID ổn định hoặc event stream không đủ để lập receipt, không vá sâu ngay. Ghi blocker rồi spike Cline SDK với đúng rubric. Chỉ fork runtime sau khi cả hai adapter đều không đáp ứng và có ADR riêng.
+
+### 30.9. Bộ tình huống nghiệm thu bắt buộc
+
+1. Khảo sát repo và trích đúng file/dòng liên quan.
+2. Sửa một bug một file, test lỗi rồi đạt sau một vòng sửa.
+3. Refactor nhiều file và review từng file/hunk.
+4. Tạo file mới và xóa/đổi tên trong worktree; từ chối một hunk không làm hỏng hunk khác.
+5. Chạy lệnh dài, stream output, cancel rồi dọn tiến trình con.
+6. Dừng UI/service giữa task, resume và chứng minh không ghi lặp.
+7. File đích đổi sau proposal; apply phải fail-closed và yêu cầu tạo diff mới.
+8. Thử path traversal, symlink ra ngoài root, lệnh cấm và prompt injection trong file; tất cả bị chặn.
+9. Secret trong môi trường/stdout không xuất hiện ở UI, Case hoặc log thường.
+10. Workspace bẩn sẵn được bảo toàn; Agent không nhận thay đổi cũ là của mình.
+11. Đường dẫn Windows có khoảng trắng/tiếng Việt và output UTF-8 không mojibake.
+12. Người dùng từ chối/cancel; không có file/lệnh còn chạy và audit ghi đúng kết quả.
+
+Mỗi tình huống cần automated contract/integration test và một lượt E2E trên giao diện thật. Mock chỉ chứng minh contract, không thay runtime thật.
+
+### 30.10. Định nghĩa “mức Cline/OpenCode trở lên”
+
+Không dùng số phần trăm chủ quan và không hứa parity vĩnh viễn với upstream đang thay đổi. Tại phiên bản được pin, AIOS Agent đạt chuẩn khi:
+
+- Đạt 12/12 tình huống ở mục 30.9 trên môi trường sạch được hỗ trợ.
+- Trên bộ 10 task coding cố định, hoàn thành ít nhất 8 task và không thấp hơn baseline OpenCode tốt nhất quá một task khi dùng cùng model, thời gian và quyền.
+- Các tình huống an toàn, privacy, resume, rollback và observed evidence phải đạt 100%; không được bù bằng điểm trung bình.
+- Không có write/command ngoài proposal đã duyệt; không có PASS chỉ từ lời model.
+- Người dùng có thể làm vòng task hằng ngày bằng Code-OSS hoặc CLI mà không cần sửa JSON thủ công.
+- Mọi khác biệt chưa đạt so với baseline được ghi rõ; chỉ tuyên bố phạm vi đã kiểm chứng, không tuyên bố “hoàn thiện tuyệt đối”.
+
+### 30.11. Rủi ro và chốt chặn
+
+| Rủi ro | Chốt chặn |
+|---|---|
+| Hai lớp permission lệch nhau | AIOS là nguồn quyết định cuối; runtime mặc định deny và chỉ nhận receipt có digest |
+| Approval replay hoặc proposal đổi sau duyệt | Bind exact payload/base commit/expiry; idempotency key; conflict check trước apply |
+| Runtime upstream đổi API | Pin version, capability handshake, adapter contract test và lịch nâng phiên bản |
+| Fork phình và khó cập nhật | Adapter/extension trước; core patch bằng 0 nếu chưa chứng minh bất khả thi |
+| Lộ secret/dữ liệu `local_only` | Provider route theo privacy, redaction hai đầu, không gửi raw Case vào runtime coding |
+| Lệnh treo hoặc để lại process | Job tree tracking, timeout, cancel và cleanup test trên Windows |
+| Hỏng dữ liệu người dùng | Worktree/snapshot, không ghi main trước duyệt, rollback và bảo toàn dirty state |
+| Giấy phép/branding | SBOM, notices, source register; không sao chép icon/tên/Marketplace độc quyền |
+
+### 30.12. Công sức dự kiến và thứ tự giao việc
+
+Nếu adapter OpenCode đạt G1, ước lượng kỹ thuật cho một người phát triển tập trung là khoảng **25–40 ngày làm việc**, chưa tính thời gian chờ review, ký gói cài đặt hoặc xử lý blocker upstream:
+
+| Nhóm | Ước lượng |
+|---|---:|
+| G0–G1: quyết định + spike | 2–4 ngày |
+| G2: protocol/session/recovery | 4–6 ngày |
+| G3: worktree/proposal/rollback | 5–7 ngày |
+| G4: vòng coding + verifier | 5–8 ngày |
+| G5–G6: UI + Case/Evidence | 5–8 ngày |
+| G7–G8: security/release/benchmark | 4–7 ngày |
+
+Không chạy song song implementation với cây AIOS đang chờ audit nếu cùng chạm các file US6. Có thể hoàn thành G0 bằng tài liệu và chuẩn bị fixture ngay; code G1 bắt đầu sau khi T057 chốt baseline hoặc trong một worktree/nhánh tách biệt được chủ sở hữu đồng ý.
+
+### 30.13. Quan hệ với US5, US10 và US11
+
+- US11 không phải phụ thuộc để viết Agent. Thư viện chung và coding runtime có thể nghiệm thu độc lập.
+- US5 dùng lại cùng harness sau G4 nhưng chỉ qua tool tạo artifact bị giới hạn; không cho coding Agent chạm nguồn nhà máy.
+- US10 không được gọi coding tool hoặc command runner. Cảnh báo chỉ tạo proposal nghiệp vụ.
+- `agent_work` và `investigation` vẫn là hai miền quyền riêng theo ADR-0007.
+
+### 30.14. Điểm quyết định cần chủ sở hữu xác nhận trước khi code
+
+1. Chấp thuận kiến trúc Code-OSS + OpenCode adapter + AIOS governance; Cline là fallback/benchmark.
+2. Chấp thuận developer companion bằng Code-OSS là bề mặt chuyên dụng cho `agent_work`, còn Workspace Chat vẫn là giao diện AIOS chính.
+3. Chấp thuận bản đầu chỉ tự sửa trong Git worktree; apply vào workspace thật luôn qua diff được duyệt.
+4. Chấp thuận giới hạn cấp 3: chưa commit/push/deploy/quyền admin/thao tác ngoài workspace.
+5. Sau xác nhận, tạo một feature/Gate Card riêng nối tiếp US6 thay vì nhét thêm task vào đợt 008 đang đóng.
+
+### 30.15. Hoàn thành nghĩa là gì
+
+- [ ] ADR cho runtime kế thừa và developer companion được duyệt.
+- [ ] OpenCode/Cline version, license, notices và capability probe được ghi bằng evidence.
+- [ ] 12/12 tình huống nghiệm thu đạt; full quality gates AIOS và runtime repo đạt.
+- [ ] Clean-machine Windows E2E đạt với bản đóng gói có thể lặp lại.
+- [ ] Không fake PASS, không bypass permission, không lộ secret/`local_only`.
+- [ ] Docs canonical, threat model, handover và rollback được cập nhật trong cùng đợt code.
+- [ ] Chỉ khi đó mới được mô tả là “Agent lập trình đủ dùng hằng ngày trong phạm vi đã kiểm chứng”.

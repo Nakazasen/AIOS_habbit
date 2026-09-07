@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from typing import Callable, Iterable, Optional
 import re
+from pathlib import Path
 
 import streamlit as st
 
@@ -11,6 +12,24 @@ from aios_habit.workspace_case_service import CaseValidationError, WorkspaceCase
 from aios_habit.workspace_case_repository import WorkspaceCaseRepositoryError
 from aios_habit.ui_safety import safe_vietnamese_ui_message
 from aios_habit.i18n import DEFAULT_LOCALE, normalize_locale, t
+from aios_habit.coding_assistant import (
+    CodingProposal,
+    create_coding_task_pack,
+    create_coding_proposal,
+    approve_coding_proposal,
+    reject_coding_proposal,
+    build_observed_evidence,
+    verify_coding_execution,
+    ScopeViolationError,
+    ProposalStateError,
+)
+from aios_habit.agent_result_import import (
+    load_agent_report,
+    VERIFIED_PASS,
+    FAIL,
+    REVIEW_REQUIRED,
+    INVALID_REPORT,
+)
 
 
 _TYPE_LABELS = {
@@ -53,6 +72,50 @@ _CHECKLIST_STATUS_LABELS = {
 _ACTOR_LABELS = {
     "local_admin": "Quản trị viên cục bộ",
 }
+_EXPERT_DECISION_LABELS = {
+    "confirmed": "Xác nhận",
+    "rejected": "Bác bỏ",
+    "needs_more_evidence": "Cần thêm bằng chứng",
+    "conflicted": "Xung đột",
+}
+_LESSON_STATUS_LABELS = {
+    "candidate": "Ứng viên",
+    "approved": "Đã duyệt",
+    "revoked": "Đã thu hồi",
+}
+_LESSON_ERROR_MESSAGES = {
+    "LESSON_PROPOSE_CONFIRMED_REVIEW_REQUIRED": "Chỉ có thể đề xuất bài học từ thẩm định đã được xác nhận (confirmed).",
+    "LESSON_TITLE_REQUIRED": "Tiêu đề bài học kinh nghiệm không được để trống.",
+    "LESSON_CONTENT_REQUIRED": "Nội dung bài học kinh nghiệm không được để trống.",
+    "LESSON_REVOKE_REASON_REQUIRED": "Vui lòng nhập lý do thu hồi bài học kinh nghiệm.",
+    "CASE_LESSON_NOT_FOUND": "Không tìm thấy bài học kinh nghiệm yêu cầu.",
+    "CASE_LESSON_NOT_CANDIDATE": "Chỉ có thể phê duyệt bài học đang ở trạng thái ứng viên.",
+    "CONCURRENT_UPDATE_CONFLICT": "Dữ liệu bài học đã bị thay đổi bởi thao tác khác. Vui lòng tải lại trang và thử lại.",
+}
+_INVESTIGATION_ERROR_MESSAGES = {
+    "CLUE_RELEVANCE_INVALID": "Giá trị đánh giá độ liên quan không hợp lệ.",
+    "CASE_EVIDENCE_NOT_FOUND": "Không tìm thấy manh mối hoặc bằng chứng trong hồ sơ.",
+    "CLUE_RELEVANCE_RATIONALE_REQUIRED": "Vui lòng nhập lý do đánh giá độ liên quan.",
+}
+_ARTIFACT_TYPE_LABELS = {
+    "sop": "Quy trình thao tác chuẩn",
+    "report": "Báo cáo điều tra sự cố",
+}
+_ARTIFACT_STATUS_LABELS = {
+    "draft": "Dự thảo",
+    "approved": "Đã duyệt",
+    "superseded": "Đã thay thế",
+}
+_ARTIFACT_ERROR_MESSAGES = {
+    "ARTIFACT_TYPE_INVALID": "Loại tài liệu đầu ra không phù hợp. Hệ thống chỉ hỗ trợ quy trình thao tác chuẩn hoặc báo cáo điều tra.",
+    "ARTIFACT_TITLE_REQUIRED": "Vui lòng nhập tiêu đề cho tài liệu đầu ra.",
+    "ARTIFACT_CONTENT_REQUIRED": "Nội dung tài liệu đầu ra không được để trống.",
+    "ARTIFACT_INSUFFICIENT_EVIDENCE": "Hồ sơ chưa có đủ bằng chứng hợp lệ để soạn thảo tài liệu có kiểm soát.",
+    "CASE_ARTIFACT_NOT_FOUND": "Không tìm thấy tài liệu đầu ra được chỉ định.",
+    "APPROVED_ARTIFACT_IMMUTABLE": "Tài liệu đã được phê duyệt không thể sửa trực tiếp. Vui lòng lập dự thảo mới.",
+    "UNAPPROVED_ARTIFACT_EXPORT_FORBIDDEN": "Chỉ tài liệu đã được phê duyệt mới được phép xuất ra thư mục an toàn.",
+    "CASE_ARTIFACT_NOT_DRAFT": "Chỉ tài liệu ở trạng thái dự thảo mới có thể phê duyệt.",
+}
 _EDITABLE_STATUSES = ("draft", "triaged", "in_progress", "waiting_evidence")
 
 _ERROR_KEY_MAP = {
@@ -75,6 +138,12 @@ _ERROR_KEY_MAP = {
     "CASE_EVIDENCE_TITLE_REQUIRED": "case_err_evidence_title_required",
     "CASE_NOT_FOUND": "case_err_not_found",
     "CASE_RESOLUTION_REVIEW_REQUIRED": "case_err_resolution_review_required",
+    "EXPERT_RATIONALE_REQUIRED": "case_err_expert_rationale_required",
+    "EVIDENCE_DIGEST_MISMATCH": "case_err_evidence_digest_mismatch",
+    "EXPERT_REQUEST_NOT_FOUND": "case_err_expert_request_not_found",
+    "EXPERT_DECISION_INVALID": "case_err_expert_decision_invalid",
+    "EXPERT_MISMATCH": "case_err_expert_mismatch",
+    "EXPERT_QUESTION_REQUIRED": "case_err_expert_question_required",
 }
 
 
@@ -114,10 +183,28 @@ def _event_label(event_type: str, locale: str = "vi") -> str:
     return val if val != key else _EVENT_LABELS.get(event_type, "Hoạt động hồ sơ")
 
 
+def _expert_decision_label(decision: str, locale: str = "vi") -> str:
+    key = f"case_expert_decision_{decision}"
+    val = t(key, locale=locale)
+    return val if val != key else _EXPERT_DECISION_LABELS.get(decision, decision)
+
+
 def _checklist_status_label(status: str, locale: str = "vi") -> str:
     key = f"case_checklist_status_{status}"
     val = t(key, locale=locale)
     return val if val != key else _CHECKLIST_STATUS_LABELS.get(status, "Chưa xác định")
+
+
+def _lesson_status_label(status: str, locale: str = "vi") -> str:
+    return _LESSON_STATUS_LABELS.get(status, "Chưa xác định")
+
+
+def _artifact_type_label(artifact_type: str, locale: str = "vi") -> str:
+    return _ARTIFACT_TYPE_LABELS.get(artifact_type, "Tài liệu")
+
+
+def _artifact_status_label(status: str, locale: str = "vi") -> str:
+    return _ARTIFACT_STATUS_LABELS.get(status, status)
 
 
 def _safe_actor_label(actor_id: str, locale: str = "vi") -> str:
@@ -143,8 +230,16 @@ def safe_case_error_message(error: BaseException, locale: str = "vi") -> str:
     """Convert internal codes into safe localized text and hide paths or tracebacks."""
     text = str(error).strip()
     norm_loc = normalize_locale(locale)
+    if text in _LESSON_ERROR_MESSAGES:
+        return _LESSON_ERROR_MESSAGES[text]
+    if text in _INVESTIGATION_ERROR_MESSAGES:
+        return _INVESTIGATION_ERROR_MESSAGES[text]
+    if text in _ARTIFACT_ERROR_MESSAGES:
+        return _ARTIFACT_ERROR_MESSAGES[text]
     if text in _ERROR_KEY_MAP:
         return t(_ERROR_KEY_MAP[text], locale=norm_loc)
+    if isinstance(error, (ConnectionError, TimeoutError)) or "connection" in text.lower() or "timed out" in text.lower():
+        return "Không thể kết nối hoặc đã hết thời gian chờ. Hãy kiểm tra kết nối và thử lại."
     fallback = t("case_err_safe_fallback", locale=norm_loc)
     if re.fullmatch(r"[A-Z][A-Z0-9_]+", text) or "Traceback" in text or re.search(r"[A-Za-z]:[\\/]", text):
         return fallback
@@ -189,6 +284,12 @@ def case_detail_sections(detail: CaseDetail, trace: TraceResolution, locale: str
         else t("case_trace_missing", locale=norm_loc)
     )
 
+    decisions = [r.decision for r in detail.expert_reviews]
+    has_conflict = (
+        ("confirmed" in decisions and "rejected" in decisions)
+        or ("conflicted" in decisions)
+    )
+
     return {
         "title": detail.case.title,
         "status": _status_label(detail.case.status, locale=norm_loc),
@@ -217,7 +318,58 @@ def case_detail_sections(detail: CaseDetail, trace: TraceResolution, locale: str
             }
             for item in detail.checklist
         ],
+        "expert_requests": [
+            {
+                "Mã yêu cầu": req.request_id,
+                "Câu hỏi": req.question_text,
+                "Công đoạn": req.required_scope,
+                "Chuyên gia chỉ định": req.requested_expert_id or "Tùy chọn",
+                "Trạng thái": req.status,
+                "Hạn": req.due_at or "Không đặt",
+            }
+            for req in detail.expert_requests
+        ],
+        "expert_reviews": [
+            {
+                "Mã thẩm định": rev.review_id,
+                "Quyết định": _expert_decision_label(rev.decision, locale=norm_loc),
+                "Người thẩm định": _safe_actor_label(rev.reviewer_id, locale=norm_loc),
+                "Lý do": rev.rationale,
+                "Thời điểm": rev.reviewed_at,
+                "Thay thế": rev.supersedes_review_id or "Bản gốc",
+            }
+            for rev in detail.expert_reviews
+        ],
+        "has_conflict": has_conflict,
+        "lessons": [
+            {
+                "Mã bài học": les.lesson_id,
+                "Tiêu đề": les.title,
+                "Nội dung": les.content,
+                "Trạng thái": _lesson_status_label(les.status, locale=norm_loc),
+                "Phiên bản": les.version,
+                "Người tạo": _safe_actor_label(les.created_by, locale=norm_loc),
+                "Người duyệt": _safe_actor_label(les.approved_by, locale=norm_loc) if les.approved_by else "Chưa duyệt",
+                "Thời điểm": les.updated_at,
+            }
+            for les in getattr(detail, "lessons", ())
+        ],
+        "artifacts": [
+            {
+                "Mã đầu ra": art.artifact_id,
+                "Loại đầu ra": _artifact_type_label(art.artifact_type, locale=norm_loc),
+                "Tiêu đề": art.title,
+                "Trạng thái": _artifact_status_label(art.status, locale=norm_loc),
+                "Phiên bản": art.version,
+                "Người tạo": _safe_actor_label(art.created_by, locale=norm_loc),
+                "Người duyệt": _safe_actor_label(art.approved_by, locale=norm_loc) if art.approved_by else "Chưa duyệt",
+                "Đường dẫn xuất": art.exported_path or "Chưa xuất",
+                "Thời điểm": art.updated_at,
+            }
+            for art in getattr(detail, "artifacts", ())
+        ],
     }
+
 
 
 def render_case_workspace(
@@ -309,6 +461,568 @@ def render_case_workspace(
         st.dataframe(sections["checklist"], use_container_width=True, hide_index=True)
     else:
         st.caption(t("case_checklist_empty", locale=norm_loc))
+
+    st.markdown(f"### {t('case_section_expert_review', locale=norm_loc)}")
+    if sections.get("has_conflict"):
+        st.warning(t("case_expert_conflict_warning", locale=norm_loc))
+
+    if sections.get("expert_requests"):
+        st.dataframe(sections["expert_requests"], use_container_width=True, hide_index=True)
+    if sections.get("expert_reviews"):
+        st.markdown(f"#### {t('case_expert_reviews_heading', locale=norm_loc)}")
+        st.dataframe(sections["expert_reviews"], use_container_width=True, hide_index=True)
+    if not sections.get("expert_requests") and not sections.get("expert_reviews"):
+        st.info(t("case_expert_empty", locale=norm_loc))
+
+    with st.expander(t("case_expert_request_expander", locale=norm_loc), expanded=False):
+        with st.form(f"wsc_case_expert_req_{selected_case_id}"):
+            req_question = st.text_area(t("case_expert_req_question", locale=norm_loc))
+            req_scope = st.text_input(t("case_expert_req_scope", locale=norm_loc), value=detail.case.scope)
+            has_second_expert = st.checkbox("Chỉ định chuyên gia cụ thể", value=False)
+            req_assignee = ""
+            if has_second_expert:
+                req_assignee = st.text_input(t("case_expert_req_assignee", locale=norm_loc))
+            req_due = st.text_input(t("case_expert_req_due", locale=norm_loc), placeholder="YYYY-MM-DD")
+            if st.form_submit_button(t("case_expert_btn_request", locale=norm_loc)):
+                try:
+                    service.request_expert_review(
+                        selected_case_id,
+                        claim_digest=detail.case.evidence_digest,
+                        question=req_question,
+                        required_scope=req_scope or detail.case.scope,
+                        requested_expert_id=req_assignee if has_second_expert else None,
+                        due_at=req_due if req_due.strip() else None,
+                    )
+                    st.success("Đã tạo yêu cầu thẩm định chuyên gia thành công.")
+                    st.rerun()
+                except CaseValidationError as error:
+                    st.error(safe_case_error_message(error, locale=norm_loc))
+
+    open_requests = [r for r in detail.expert_requests if r.status == "open"]
+    if open_requests:
+        with st.expander(t("case_expert_review_expander", locale=norm_loc), expanded=False):
+            with st.form(f"wsc_case_expert_rev_{selected_case_id}"):
+                req_choice = st.selectbox(
+                    "Chọn yêu cầu cần thẩm định",
+                    options=[r.request_id for r in open_requests],
+                    format_func=lambda rid: f"{rid} - {next((r.question_text[:40] for r in open_requests if r.request_id == rid), '')}",
+                )
+                rev_decision = st.selectbox(
+                    "Quyết định thẩm định",
+                    options=["confirmed", "rejected", "needs_more_evidence"],
+                    format_func=lambda d: _expert_decision_label(d, locale=norm_loc),
+                )
+                rev_rationale = st.text_area("Lý do thẩm định (bắt buộc)")
+                supersedes_choice = None
+                if detail.expert_reviews:
+                    supersede_check = st.checkbox("Đính chính ý kiến thẩm định trước đó", value=False)
+                    if supersede_check:
+                        supersedes_choice = st.selectbox(
+                            "Ý kiến bị thay thế",
+                            options=[r.review_id for r in detail.expert_reviews],
+                        )
+                if st.form_submit_button(t("case_expert_btn_review", locale=norm_loc)):
+                    try:
+                        service.record_expert_review(
+                            req_choice,
+                            decision=rev_decision,
+                            rationale=rev_rationale,
+                            supersedes_review_id=supersedes_choice,
+                        )
+                        st.success("Đã lưu kết quả thẩm định thành công.")
+                        st.rerun()
+                    except CaseValidationError as error:
+                        st.error(safe_case_error_message(error, locale=norm_loc))
+
+    if sections.get("has_conflict"):
+        with st.expander(t("case_expert_conflict_expander", locale=norm_loc), expanded=True):
+            with st.form(f"wsc_case_conflict_{selected_case_id}"):
+                st.caption("Chuyên viên trưởng có thẩm quyền phân xử ý kiến thẩm định trái chiều.")
+                conf_decision = st.selectbox(
+                    "Quyết định phân xử cuối cùng",
+                    options=["confirmed", "rejected", "needs_more_evidence"],
+                    format_func=lambda d: _expert_decision_label(d, locale=norm_loc),
+                )
+                conf_rationale = st.text_area("Lý do và căn cứ phân xử")
+                if st.form_submit_button(t("case_expert_btn_resolve", locale=norm_loc)):
+                    try:
+                        service.resolve_review_conflict(
+                            selected_case_id,
+                            review_ids=[r.review_id for r in detail.expert_reviews],
+                            decision=conf_decision,
+                            rationale=conf_rationale,
+                        )
+                        st.success("Đã ghi nhận kết quả phân xử thành công.")
+                        st.rerun()
+                    except CaseValidationError as error:
+                        st.error(safe_case_error_message(error, locale=norm_loc))
+
+    st.markdown("### Bài học kinh nghiệm từ thẩm định")
+    if sections.get("lessons"):
+        st.dataframe(sections["lessons"], use_container_width=True, hide_index=True)
+    else:
+        st.info("Chưa có bài học kinh nghiệm nào được liên kết với hồ sơ này.")
+
+    confirmed_reviews = [r for r in detail.expert_reviews if r.decision == "confirmed"]
+    if confirmed_reviews:
+        with st.expander("Đề xuất bài học kinh nghiệm mới", expanded=False):
+            with st.form(f"wsc_case_lesson_propose_{selected_case_id}"):
+                sel_rev = st.selectbox(
+                    "Chọn thẩm định xác nhận gốc",
+                    options=[r.review_id for r in confirmed_reviews],
+                    format_func=lambda rid: f"{rid} · {next((r.rationale[:50] for r in confirmed_reviews if r.review_id == rid), '')}",
+                )
+                les_title = st.text_input("Tiêu đề bài học kinh nghiệm")
+                les_content = st.text_area("Nội dung bài học và giải pháp khuyến nghị")
+                if st.form_submit_button("Lưu bài học ứng viên"):
+                    try:
+                        service.propose_lesson(
+                            selected_case_id,
+                            sel_rev,
+                            title=les_title,
+                            content=les_content,
+                        )
+                        st.success("Đã lưu bài học kinh nghiệm ứng viên thành công.")
+                        st.rerun()
+                    except CaseValidationError as error:
+                        st.error(safe_case_error_message(error, locale=norm_loc))
+
+    candidate_lessons = [l for l in getattr(detail, "lessons", ()) if l.status == "candidate"]
+    if candidate_lessons:
+        with st.expander("Phê duyệt hoặc thu hồi bài học kinh nghiệm (Quản lý QC)", expanded=False):
+            with st.form(f"wsc_case_lesson_manage_{selected_case_id}"):
+                sel_lesson_id = st.selectbox(
+                    "Chọn bài học ứng viên",
+                    options=[l.lesson_id for l in candidate_lessons],
+                    format_func=lambda lid: f"{lid} · {next((l.title for l in candidate_lessons if l.lesson_id == lid), '')}",
+                )
+                sel_lesson = next((l for l in candidate_lessons if l.lesson_id == sel_lesson_id), None)
+                action = st.radio("Hành động", options=["Phê duyệt bài học", "Thu hồi bài học"], horizontal=True)
+                revoke_reason = st.text_input("Lý do thu hồi (nếu chọn thu hồi)", value="")
+                if st.form_submit_button("Xác nhận thực hiện"):
+                    if sel_lesson:
+                        try:
+                            if action == "Phê duyệt bài học":
+                                service.approve_lesson(sel_lesson.lesson_id, expected_version=sel_lesson.version)
+                                st.success("Đã phê duyệt bài học kinh nghiệm thành công.")
+                            else:
+                                service.revoke_lesson(
+                                    sel_lesson.lesson_id,
+                                    expected_version=sel_lesson.version,
+                                    reason=revoke_reason,
+                                )
+                                st.success("Đã thu hồi bài học kinh nghiệm thành công.")
+                            st.rerun()
+                        except CaseValidationError as error:
+                            st.error(safe_case_error_message(error, locale=norm_loc))
+
+    st.markdown("### Tra cứu thư viện bài học kinh nghiệm đã duyệt")
+    lesson_query = st.text_input("Nhập từ khóa tìm kiếm bài học", key=f"wsc_lesson_search_input_{selected_case_id}")
+    if lesson_query.strip():
+        approved_hits = service.search_approved_lessons(lesson_query.strip())
+        if approved_hits:
+            hit_rows = [
+                {
+                    "Mã bài học": hit.lesson_id,
+                    "Tiêu đề": hit.title,
+                    "Nội dung": hit.content,
+                    "Hồ sơ gốc": hit.case_id,
+                    "Người duyệt": _safe_actor_label(hit.approved_by, locale=norm_loc) if hit.approved_by else "",
+                    "Ngày duyệt": hit.approved_at or "",
+                }
+                for hit in approved_hits
+            ]
+            st.dataframe(hit_rows, use_container_width=True, hide_index=True)
+        else:
+            st.info("Không tìm thấy bài học kinh nghiệm đã duyệt nào phù hợp với từ khóa.")
+
+    st.markdown("### Trợ lý điều tra sự kiện dây chuyền")
+    with st.expander("Tra cứu sự kiện và manh mối dây chuyền", expanded=False):
+        with st.form(f"wsc_case_line_investigation_{selected_case_id}"):
+            col1, col2 = st.columns(2)
+            with col1:
+                inv_station = st.text_input("Trạm máy", value=detail.case.scope if detail.case.scope else "")
+                inv_code = st.text_input("Mã lỗi hoặc sự cố", value="")
+            with col2:
+                inv_start = st.text_input("Thời gian bắt đầu (tùy chọn)", placeholder="YYYY-MM-DDTHH:MM:SS")
+                inv_end = st.text_input("Thời gian kết thúc (tùy chọn)", placeholder="YYYY-MM-DDTHH:MM:SS")
+            inv_submit = st.form_submit_button("Truy vấn sự kiện")
+
+        if inv_submit:
+            if not inv_station.strip() and not inv_code.strip():
+                st.warning("Vui lòng nhập trạm máy hoặc mã lỗi để bắt đầu tra cứu.")
+            else:
+                try:
+                    from aios_habit.line_log_parser import line_events_db_path
+                    from aios_habit.line_investigation import LineInvestigationScope, build_investigation_pack
+
+                    db_path = line_events_db_path()
+                    scope = LineInvestigationScope(
+                        station=inv_station.strip(),
+                        error_code=inv_code.strip(),
+                        start_time=inv_start.strip() or None,
+                        end_time=inv_end.strip() or None,
+                    )
+                    pack = build_investigation_pack(db_path, scope)
+                    st.session_state[f"investigation_pack_{selected_case_id}"] = pack
+                except Exception:
+                    st.error("Không thể tải sự kiện dây chuyền. Vui lòng kiểm tra dữ liệu kho sự kiện.")
+
+        cached_pack = st.session_state.get(f"investigation_pack_{selected_case_id}")
+        if cached_pack:
+            st.markdown("#### Trục thời gian sự kiện")
+            if cached_pack.timeline_events:
+                event_rows = [
+                    {
+                        "Mã sự kiện": ev.event_id,
+                        "Trạm máy": ev.station,
+                        "Mã lỗi": ev.code,
+                        "Thời điểm": ev.occurred_at,
+                        "Phân loại": ev.dialect,
+                        "Trạng thái": "Nghi ngờ",
+                    }
+                    for ev in cached_pack.timeline_events
+                ]
+                st.dataframe(event_rows, use_container_width=True, hide_index=True)
+                with st.form(f"wsc_case_attach_clue_{selected_case_id}"):
+                    sel_event_id = st.selectbox(
+                        "Chọn sự kiện để gắn vào hồ sơ vụ việc",
+                        options=[ev.event_id for ev in cached_pack.timeline_events],
+                        format_func=lambda eid: f"{eid} - {next((f'{ev.station} {ev.code} ({ev.occurred_at})' for ev in cached_pack.timeline_events if ev.event_id == eid), '')}",
+                    )
+                    if st.form_submit_button("Gắn manh mối nghi ngờ vào hồ sơ"):
+                        sel_ev = next((ev for ev in cached_pack.timeline_events if ev.event_id == sel_event_id), None)
+                        if sel_ev:
+                            try:
+                                service.attach_line_investigation_clue(
+                                    selected_case_id,
+                                    expected_version=detail.case.version,
+                                    event_id=sel_ev.event_id,
+                                    station=sel_ev.station,
+                                    code=sel_ev.code,
+                                    occurred_at=sel_ev.occurred_at,
+                                    dialect=sel_ev.dialect,
+                                    relevance="suspected",
+                                )
+                                st.success("Đã gắn manh mối sự kiện nghi ngờ vào hồ sơ thành công.")
+                                st.rerun()
+                            except CaseValidationError as error:
+                                st.error(safe_case_error_message(error, locale=norm_loc))
+            else:
+                st.info("Không tìm thấy sự kiện nào trong phạm vi tra cứu đã chọn.")
+
+            st.markdown("#### Nhóm hiện tượng lặp lại")
+            if cached_pack.repeated_patterns:
+                pattern_rows = [
+                    {
+                        "Trạm máy": p.station,
+                        "Mã lỗi": p.code,
+                        "Số lần xuất hiện": p.occurrence_count,
+                        "Lần đầu": p.first_seen,
+                        "Lần cuối": p.last_seen,
+                    }
+                    for p in cached_pack.repeated_patterns
+                ]
+                st.dataframe(pattern_rows, use_container_width=True, hide_index=True)
+            else:
+                st.caption("Chưa phát hiện hiện tượng lặp lại bất thường.")
+
+            st.markdown("#### Dữ kiện và câu hỏi còn thiếu")
+            if cached_pack.missing_clues:
+                for mc in cached_pack.missing_clues:
+                    st.warning(f"**{mc.field_name}**: {mc.description}\n\n*Hành động khuyến nghị*: {mc.suggested_action}")
+            else:
+                st.caption("Đầy đủ dữ kiện ban đầu phục vụ điều tra.")
+
+    suspected_clues = [
+        r for r in detail.evidence
+        if r.evidence_node_id.startswith("line_events:")
+    ]
+    if suspected_clues:
+        with st.expander("Thẩm định độ liên quan của manh mối dây chuyền", expanded=False):
+            with st.form(f"wsc_case_clue_review_{selected_case_id}"):
+                sel_ref_id = st.selectbox(
+                    "Chọn manh mối sự kiện cần đánh giá",
+                    options=[r.reference_id for r in suspected_clues],
+                    format_func=lambda rid: f"{rid} - {next((r.source_title for r in suspected_clues if r.reference_id == rid), '')} [{next((_provenance_label(r.provenance_status, locale=norm_loc) for r in suspected_clues if r.reference_id == rid), '')}]",
+                )
+                clue_decision = st.selectbox(
+                    "Kết luận độ liên quan",
+                    options=["confirmed", "rejected"],
+                    format_func=lambda d: "Xác nhận liên quan" if d == "confirmed" else "Bác bỏ liên quan",
+                )
+                clue_note = st.text_area("Căn cứ và lý do đánh giá")
+                if st.form_submit_button("Lưu kết quả thẩm định manh mối"):
+                    try:
+                        service.review_clue_relevance(
+                            selected_case_id,
+                            sel_ref_id,
+                            expected_version=detail.case.version,
+                            relevance=clue_decision,
+                            note=clue_note,
+                        )
+                        st.success("Đã cập nhật đánh giá độ liên quan của manh mối thành công.")
+                        st.rerun()
+                    except CaseValidationError as error:
+                        st.error(safe_case_error_message(error, locale=norm_loc))
+
+    st.markdown("### Đầu ra có kiểm soát (Báo cáo điều tra & Quy trình thao tác chuẩn)")
+    if sections.get("artifacts"):
+        st.dataframe(sections["artifacts"], use_container_width=True, hide_index=True)
+    else:
+        st.info("Chưa có báo cáo điều tra hoặc quy trình thao tác chuẩn nào trong hồ sơ này.")
+
+    with st.expander("Soạn dự thảo tài liệu có kiểm soát mới", expanded=False):
+        with st.form(f"wsc_case_artifact_draft_{selected_case_id}"):
+            art_type = st.selectbox(
+                "Loại tài liệu đầu ra",
+                options=["sop", "report"],
+                format_func=lambda t_code: "Quy trình thao tác chuẩn" if t_code == "sop" else "Báo cáo điều tra sự cố",
+            )
+            art_title = st.text_input("Tiêu đề tài liệu")
+            art_conclusions = st.text_area("Căn cứ bổ sung hoặc kết luận khuyến nghị (tùy chọn)")
+            if st.form_submit_button("Tạo dự thảo từ bằng chứng"):
+                try:
+                    service.draft_case_artifact(
+                        selected_case_id,
+                        artifact_type=art_type,
+                        title=art_title,
+                        conclusions_or_grounds=art_conclusions,
+                    )
+                    st.success("Đã tạo dự thảo tài liệu có kiểm soát thành công.")
+                    st.rerun()
+                except CaseValidationError as error:
+                    st.error(safe_case_error_message(error, locale=norm_loc))
+
+    case_artifacts = getattr(detail, "artifacts", ())
+    draft_artifacts = [a for a in case_artifacts if a.status == "draft"]
+    if draft_artifacts:
+        with st.expander("Chỉnh sửa nội dung dự thảo", expanded=False):
+            sel_art_id = st.selectbox(
+                "Chọn dự thảo cần sửa",
+                options=[a.artifact_id for a in draft_artifacts],
+                format_func=lambda aid: f"{aid} · {next((a.title for a in draft_artifacts if a.artifact_id == aid), '')}",
+                key=f"wsc_sel_art_edit_{selected_case_id}",
+            )
+            sel_art = next((a for a in draft_artifacts if a.artifact_id == sel_art_id), None)
+            if sel_art:
+                with st.form(f"wsc_case_artifact_edit_{selected_case_id}_{sel_art.artifact_id}"):
+                    edit_title = st.text_input("Tiêu đề", value=sel_art.title)
+                    edit_content = st.text_area("Nội dung tài liệu (Markdown)", value=sel_art.content_markdown, height=250)
+                    if st.form_submit_button("Lưu thay đổi dự thảo"):
+                        try:
+                            service.update_case_artifact(
+                                sel_art.artifact_id,
+                                expected_version=sel_art.version,
+                                content_markdown=edit_content,
+                                title=edit_title,
+                            )
+                            st.success("Đã lưu nội dung dự thảo mới thành công.")
+                            st.rerun()
+                        except CaseValidationError as error:
+                            st.error(safe_case_error_message(error, locale=norm_loc))
+
+        with st.expander("Phê duyệt tài liệu có kiểm soát (Quản lý QC)", expanded=False):
+            with st.form(f"wsc_case_artifact_approve_{selected_case_id}"):
+                app_art_id = st.selectbox(
+                    "Chọn dự thảo cần phê duyệt",
+                    options=[a.artifact_id for a in draft_artifacts],
+                    format_func=lambda aid: f"{aid} · {next((a.title for a in draft_artifacts if a.artifact_id == aid), '')}",
+                    key=f"wsc_sel_art_app_{selected_case_id}",
+                )
+                app_art = next((a for a in draft_artifacts if a.artifact_id == app_art_id), None)
+                app_notes = st.text_area("Ghi chú phê duyệt của Quản lý QC", value="Đã kiểm tra bằng chứng và phê duyệt ban hành.")
+                if st.form_submit_button("Xác nhận phê duyệt ban hành"):
+                    if app_art:
+                        try:
+                            service.approve_case_artifact(
+                                app_art.artifact_id,
+                                expected_version=app_art.version,
+                                notes=app_notes,
+                            )
+                            st.success("Đã phê duyệt ban hành tài liệu thành công.")
+                            st.rerun()
+                        except CaseValidationError as error:
+                            st.error(safe_case_error_message(error, locale=norm_loc))
+
+    approved_artifacts = [a for a in case_artifacts if a.status == "approved"]
+    if approved_artifacts:
+        with st.expander("Xuất tài liệu đã duyệt ra thư mục an toàn", expanded=False):
+            with st.form(f"wsc_case_artifact_export_{selected_case_id}"):
+                exp_art_id = st.selectbox(
+                    "Chọn tài liệu đã duyệt để xuất file",
+                    options=[a.artifact_id for a in approved_artifacts],
+                    format_func=lambda aid: f"{aid} · {next((a.title for a in approved_artifacts if a.artifact_id == aid), '')}",
+                    key=f"wsc_sel_art_exp_{selected_case_id}",
+                )
+                exp_art = next((a for a in approved_artifacts if a.artifact_id == exp_art_id), None)
+                def_name = f"{exp_art.artifact_type}_{selected_case_id.lower().replace('-', '_')}.md" if exp_art else "tai_lieu.md"
+                exp_filename = st.text_input("Tên file xuất tương đối", value=def_name)
+                if st.form_submit_button("Xuất file an toàn"):
+                    if exp_art:
+                        try:
+                            exported_rec, exported_path = service.export_case_artifact(
+                                exp_art.artifact_id,
+                                relative_filename=exp_filename,
+                            )
+                            st.success(f"Đã xuất tài liệu thành công ra file: {exported_path.name}")
+                            st.rerun()
+                        except CaseValidationError as error:
+                            st.error(safe_case_error_message(error, locale=norm_loc))
+
+    st.markdown("### Trợ lý lập trình trong không gian cách ly")
+
+    with st.expander("Tạo gói công việc lập trình (Task Pack)", expanded=False):
+        with st.form(f"wsc_case_coding_pack_{selected_case_id}"):
+            cp_task_id = st.text_input(
+                "Mã gói công việc",
+                value=f"TASK_{selected_case_id.upper().replace('-', '_')}_001",
+            )
+            cp_objective = st.text_area(
+                "Mục tiêu lập trình",
+                value=f"Khắc phục sự cố theo hồ sơ {selected_case_id}",
+            )
+            cp_allowed_files = st.text_area(
+                "Tệp tin được phép sửa đổi (mỗi dòng một tệp)",
+                value="src/aios_habit/calculator.py",
+            )
+            cp_allowed_commands = st.text_area(
+                "Lệnh kiểm thử được phép (mỗi dòng một lệnh)",
+                value="uv run pytest tests/test_calc.py -v",
+            )
+            cp_required_tests = st.text_area(
+                "Kiểm thử bắt buộc (mỗi dòng một tệp)",
+                value="tests/test_calc.py",
+            )
+            if st.form_submit_button("Xuất gói công việc an toàn"):
+                try:
+                    files = [f.strip() for f in cp_allowed_files.splitlines() if f.strip()]
+                    cmds = [c.strip() for c in cp_allowed_commands.splitlines() if c.strip()]
+                    tests = [t.strip() for t in cp_required_tests.splitlines() if t.strip()]
+                    pack, pack_sha, exp_p = create_coding_task_pack(
+                        task_id=cp_task_id.strip(),
+                        case_id=selected_case_id,
+                        objective=cp_objective.strip(),
+                        allowed_files=files,
+                        allowed_commands=cmds,
+                        required_tests=tests,
+                    )
+                    pack["pack_sha256"] = pack_sha
+                    st.session_state[f"coding_task_pack_{selected_case_id}"] = pack
+                    st.success("Đã tạo và xuất gói công việc thành công ra thư mục an toàn.")
+                except Exception as err:
+                    st.error(f"Lỗi tạo gói công việc: {err}")
+
+    active_pack = st.session_state.get(f"coding_task_pack_{selected_case_id}")
+    if active_pack:
+        st.caption(f"Gói công việc hiện hành: **{active_pack['task_id']}** (Mã kiểm tra: `{active_pack['pack_sha256'][:12]}...`)")
+
+    with st.expander("Đề xuất thay đổi mã nguồn (Coding Proposal & Diff)", expanded=False):
+        if not active_pack:
+            st.info("Vui lòng tạo gói công việc (Task Pack) trước khi lập đề xuất sửa đổi.")
+        else:
+            with st.form(f"wsc_case_coding_prop_create_{selected_case_id}"):
+                prop_diff = st.text_area("Nội dung diff sửa đổi (Unified Diff)", height=150)
+                prop_cmds = st.text_area(
+                    "Lệnh dự kiến chạy (mỗi dòng một lệnh)",
+                    value="uv run pytest tests/test_calc.py -v",
+                )
+                prop_risk = st.text_area("Đánh giá rủi ro", value="Rủi ro thấp, chỉ sửa đổi cục bộ trong phạm vi.")
+                if st.form_submit_button("Tạo đề xuất sửa đổi"):
+                    try:
+                        cmds = [c.strip() for c in prop_cmds.splitlines() if c.strip()]
+                        proposal = create_coding_proposal(
+                            task_pack=active_pack,
+                            case_id=selected_case_id,
+                            diff_content=prop_diff,
+                            commands_to_run=cmds,
+                            risk_assessment=prop_risk,
+                        )
+                        st.session_state[f"coding_proposal_{selected_case_id}"] = proposal
+                        st.success("Đã tạo đề xuất sửa đổi thành công.")
+                        st.rerun()
+                    except (ScopeViolationError, Exception) as err:
+                        st.error(f"Lỗi đề xuất: {err}")
+
+    active_proposal = st.session_state.get(f"coding_proposal_{selected_case_id}")
+    if active_proposal:
+        with st.expander("Thẩm định và cấp phép đề xuất lập trình", expanded=False):
+            prop_status_lbl = "Chờ phê duyệt" if active_proposal.status == "pending" else ("Đã phê duyệt" if active_proposal.status == "approved" else "Đã từ chối")
+            st.write(f"Mã đề xuất: **{active_proposal.proposal_id}** (Trạng thái: **{prop_status_lbl}**)")
+            st.write(f"Mã kiểm tra nội dung (Digest): `{active_proposal.proposal_digest}`")
+            st.code(active_proposal.diff_content, language="diff")
+            st.write(f"Đánh giá rủi ro: {active_proposal.risk_assessment}")
+
+            if active_proposal.status == "pending":
+                col_app, col_rej = st.columns(2)
+                with col_app:
+                    with st.form(f"wsc_prop_approve_{selected_case_id}"):
+                        app_note = st.text_input("Ghi chú phê duyệt", value="Đã kiểm tra diff và đồng ý.")
+                        if st.form_submit_button("Cấp phép áp dụng"):
+                            try:
+                                approved = approve_coding_proposal(
+                                    active_proposal,
+                                    expected_digest=active_proposal.proposal_digest,
+                                    approver="local_admin",
+                                    notes=app_note,
+                                )
+                                st.session_state[f"coding_proposal_{selected_case_id}"] = approved
+                                st.success("Đã cấp phép đề xuất thành công.")
+                                st.rerun()
+                            except Exception as err:
+                                st.error(f"Lỗi phê duyệt: {err}")
+                with col_rej:
+                    with st.form(f"wsc_prop_reject_{selected_case_id}"):
+                        rej_reason = st.text_input("Lý do từ chối", value="Chưa đạt yêu cầu kỹ thuật.")
+                        if st.form_submit_button("Từ chối đề xuất"):
+                            try:
+                                rejected = reject_coding_proposal(
+                                    active_proposal,
+                                    reviewer="local_admin",
+                                    reason=rej_reason,
+                                )
+                                st.session_state[f"coding_proposal_{selected_case_id}"] = rejected
+                                st.warning("Đã từ chối đề xuất.")
+                                st.rerun()
+                            except Exception as err:
+                                st.error(f"Lỗi từ chối: {err}")
+            elif active_proposal.status == "approved":
+                st.success(f"Đề xuất đã được cấp phép bởi: {_safe_actor_label(active_proposal.approved_by, locale=norm_loc)}")
+            elif active_proposal.status == "rejected":
+                st.error(f"Đề xuất đã bị từ chối. Lý do: {active_proposal.rejection_reason}")
+
+        with st.expander("Nghiệm thu kết quả lập trình và bằng chứng thực thi", expanded=False):
+            with st.form(f"wsc_verify_execution_{selected_case_id}"):
+                rep_path = st.text_input("Đường dẫn tệp báo cáo kết quả thực thi (JSON)")
+                has_obs = st.checkbox("Có bằng chứng kiểm thử thực tế từ bộ chạy kiểm thử cục bộ", value=True)
+                if st.form_submit_button("Nghiệm thu kết quả"):
+                    if not rep_path.strip():
+                        st.warning("Vui lòng nhập đường dẫn tệp báo cáo kết quả.")
+                    else:
+                        try:
+                            rep_file = Path(rep_path.strip())
+                            report_dict = load_agent_report(rep_file)
+                            obs_evidence = None
+                            if has_obs:
+                                obs_evidence = build_observed_evidence(
+                                    tests_passed=True,
+                                    changed_files=report_dict.get("declared_files", {}).get("changed_files", []),
+                                    worktree_clean=True,
+                                )
+                            decision = verify_coding_execution(
+                                task_pack=active_pack,
+                                proposal=active_proposal,
+                                report_dict=report_dict,
+                                observed_evidence=obs_evidence,
+                            )
+                            if decision.verdict == VERIFIED_PASS:
+                                st.success(f"Nghiệm thu thành công: Đạt kiểm chứng độc lập ({decision.safe_summary})")
+                            elif decision.verdict == REVIEW_REQUIRED:
+                                st.warning(f"Cần xem xét lại: {decision.safe_summary} - {decision.evidence_summary}")
+                            else:
+                                st.error(f"Nghiệm thu thất bại: {decision.safe_summary} - {decision.evidence_summary}")
+                        except Exception as err:
+                            st.error(f"Lỗi kiểm tra báo cáo: {err}")
 
     with st.expander(t("case_expander_update", locale=norm_loc), expanded=False):
         with st.form(f"wsc_case_transition_{selected_case_id}"):

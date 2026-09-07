@@ -98,6 +98,7 @@ Tài liệu của tất cả dòng máy/
 graphify-out/
 
 # Ephemeral multi-agent workspaces and local scratch investigations
+/.brain/
 /.agents/*/
 /.excaliflow/
 /scratch/

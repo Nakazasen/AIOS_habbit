@@ -437,8 +437,8 @@ class TestUILocalizedLabels:
 class TestUILanguageSelector:
     """Tests for render_language_selector component logic and event callbacks."""
 
-    def test_render_language_selector_renders_options(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        """Verify selectboxes are invoked with supported locale codes and format functions."""
+    def test_render_language_selector_is_suppressed_in_supported_mode(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """Verify selectboxes are suppressed and Vietnamese is enforced per docs/UI_LANGUAGE_POLICY.md."""
         calls: List[Dict[str, Any]] = []
 
         def mock_selectbox(label: str, options: List[str], index: int, format_func: Any, key: str) -> str:
@@ -447,7 +447,6 @@ class TestUILanguageSelector:
                 "options": options,
                 "index": index,
                 "key": key,
-                "formatted": [format_func(opt) for opt in options],
             })
             return options[index]
 
@@ -460,53 +459,11 @@ class TestUILanguageSelector:
         )
 
         assert ui_loc == "vi"
-        assert ans_lang == "ja"
-        assert len(calls) == 2
-
-        # Check UI selectbox call
-        ui_call = calls[0]
-        assert "Ngôn ngữ giao diện" in ui_call["label"]
-        assert ui_call["options"] == ["vi", "ja", "zh-CN"]
-        assert ui_call["index"] == 0  # 'vi' is index 0
-        assert ui_call["formatted"] == ["Tiếng Việt (vi)", "日本語 (ja)", "简体中文 (zh-CN)"]
-
-        # Check AI Answer selectbox call
-        ans_call = calls[1]
-        assert "Ngôn ngữ trả lời AI" in ans_call["label"]
-        assert ans_call["options"] == ["vi", "ja", "zh-CN"]
-        assert ans_call["index"] == 1  # 'ja' is index 1
-
-    def test_render_language_selector_callbacks_on_change(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        """Verify callbacks fire when user changes UI locale or answer language."""
-        # Simulate user selecting 'zh-CN' for UI and 'ja' for AI answer
-        def mock_selectbox(label: str, options: List[str], index: int, format_func: Any, key: str) -> str:
-            if "ui_locale" in key:
-                return "zh-CN"
-            if "answer_language" in key:
-                return "ja"
-            return options[index]
-
-        monkeypatch.setattr("streamlit.selectbox", mock_selectbox)
-
-        changed_ui_records: List[str] = []
-        changed_ans_records: List[str] = []
-        combined_records: List[Tuple[str, str]] = []
-
-        render_language_selector(
-            current_ui_locale="vi",
-            current_answer_language="vi",
-            on_ui_locale_change=lambda u: changed_ui_records.append(u),
-            on_answer_language_change=lambda a: changed_ans_records.append(a),
-            on_change=lambda u, a: combined_records.append((u, a)),
-            key_prefix="test_cb",
-        )
-
-        assert changed_ui_records == ["zh-CN"]
-        assert changed_ans_records == ["ja"]
-        assert combined_records == [("zh-CN", "ja")]
+        assert ans_lang == "vi"
+        assert len(calls) == 0
 
     def test_render_language_selector_invalid_input_falls_back(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        """Verify invalid current locales are safely mapped to 'vi' index 0."""
+        """Verify invalid current locales are safely mapped to 'vi' and no selectbox rendered."""
         calls: List[Dict[str, Any]] = []
 
         def mock_selectbox(label: str, options: List[str], index: int, format_func: Any, key: str) -> str:
@@ -523,8 +480,21 @@ class TestUILanguageSelector:
 
         assert ui_loc == "vi"
         assert ans_lang == "vi"
-        assert calls[0]["index"] == 0
-        assert calls[1]["index"] == 0
+        assert len(calls) == 0
+
+    def test_language_selector_is_disabled_or_locked_to_vietnamese(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """Verify language selector enforces Vietnamese-only UI policy per docs/UI_LANGUAGE_POLICY.md."""
+        from aios_habit.i18n import SUPPORTED_UI_LOCALES
+        assert SUPPORTED_UI_LOCALES == ("vi",)
+        ui_loc, ans_lang = render_language_selector(
+            current_ui_locale="ja",
+            current_answer_language="zh-CN",
+            key_prefix="test_lock_vi",
+        )
+        assert ui_loc == "vi"
+        assert ans_lang == "vi"
+
+
 
 
 # ===========================================================================

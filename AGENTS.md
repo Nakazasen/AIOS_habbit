@@ -56,10 +56,11 @@ Tóm tắt để không phá repo. Chi tiết nằm ở `AGENT_RULES.md`, `CONST
 3. **Phạm vi.** Thay đổi nhỏ gọn, bám gate/ADR đã duyệt. Không tự mở feature ngoài scope.
 4. **Ranh giới legacy.** Module Workspace Chat được hỗ trợ không được import `studio` hoặc `case_cockpit`.
 5. **Xác minh tối thiểu** trước khi nói “xong” (lệnh khóa trong `AGENT_RULES.md`):
-   - `py -3 -m compileall src tests`
-   - `py -3 -m pytest -q`
-   - `$env:PYTHONPATH="src"; py -3 -m aios_habit.cli audit` → `"status": "PASS"`
-   - `$env:PYTHONPATH="src"; py -3 -c "import aios_habit.workspace_chat_app"`
+   - Xác nhận interpreter là Python 3.11; không dùng `py -3` nếu máy chọn phiên bản khác.
+   - `uv run --no-sync --group dev python -m compileall src tests`
+   - `uv run --no-sync --group dev pytest -q`
+   - `uv run --no-sync --group dev python -m aios_habit.cli audit` → `"status": "PASS"`
+   - `uv run --no-sync --group dev python -c "import aios_habit.workspace_chat_app"` trong runtime thử nghiệm
    - Cổng đầy đủ: `docs/quality/QUALITY_GATES.md`
 
 ---
@@ -154,6 +155,8 @@ Khi báo cáo “xong”, phải đưa bằng chứng lệnh / test / diff — k
 ## 9. Ngôn ngữ (luật — xem `AGENT_RULES.md` mục 4)
 
 - Giải thích với người dùng: tiếng Việt.
+- Tiếng Việt dễ hiểu là ngôn ngữ duy nhất trên giao diện, thông báo, cảnh báo, lỗi, tiến độ, nhật ký vận hành và báo cáo người dùng đọc. Không có bộ chọn ngôn ngữ khác và không dùng câu tiếng Anh làm phương án dự phòng.
+- Lỗi tiếng Anh từ thư viện, hệ điều hành hoặc dịch vụ phải được chặn và đổi thành lời giải thích cùng bước xử lý bằng tiếng Việt. Tài liệu nguồn ngoại ngữ được giữ nguyên làm bằng chứng; phần điều khiển/giải thích của chương trình vẫn bằng tiếng Việt.
 - **Tài liệu sản phẩm: câu văn tiếng Việt.** Cấm tiêu đề/đoạn văn tiếng Anh. Không thêm tiếng Anh khi sửa file. Chi tiết: `CONSTITUTION.md` nguyên tắc 6, `docs/DOCUMENTATION_GOVERNANCE.md`.
 - Chỉ giữ token: đường dẫn, lệnh, tên mã, `Status:` / `PASS`, hằng `local_only` (giải thích tiếng Việt bên cạnh).
 - `docs/archive/` và changelog lịch sử: không viết thêm tiếng Anh; không dịch hết một lượt.

@@ -1,7 +1,20 @@
+import os
+import logging
+
+# Chặn nhật ký cảnh báo tiếng Anh từ Streamlit khi module được nhập trong chế độ kiểm thử bare/headless
+if not os.environ.get("STREAMLIT_SERVER_PORT"):
+    try:
+        from streamlit.logger import get_logger
+        get_logger("streamlit.runtime.scriptrunner_utils.script_run_context").disabled = True
+        get_logger("streamlit.runtime.state.session_state_proxy").disabled = True
+        get_logger("streamlit").disabled = True
+        get_logger("root").disabled = True
+    except Exception:
+        pass
+
 import streamlit as st
 import uuid
 import time
-import os
 from concurrent.futures import ThreadPoolExecutor
 from threading import Event
 from io import BytesIO
@@ -317,6 +330,10 @@ from aios_habit.evidence_trace import build_evidence_trace_from_citations
 from aios_habit.workspace_case_service import CaseValidationError, WorkspaceCaseService
 from aios_habit.workspace_case_repository import WorkspaceCaseRepositoryError
 from aios_habit.workspace_case_ui import render_case_workspace, safe_case_error_message
+from aios_habit.workspace_case_authorization import trusted_local_actor
+from aios_habit.prediction_shadow_ui import render_lsu_data_gate
+from aios_habit.production_prediction.repository import ProductionPredictionRepository
+from aios_habit.in_app_risk_alert import render_in_app_risk_alerts
 from aios_habit.ui_safety import safe_vietnamese_ui_message
 from aios_habit.workspace_chat_models import (
     DocumentNotebook,
@@ -813,6 +830,8 @@ if "wsc_action_message" not in st.session_state:
     st.session_state.wsc_action_message = None
 if "wsc_action_error" not in st.session_state:
     st.session_state.wsc_action_error = None
+if "wsc_action_warning" not in st.session_state:
+    st.session_state.wsc_action_warning = None
 if "wsc_last_ai_badge" not in st.session_state:
     st.session_state.wsc_last_ai_badge = None
 if "wsc_archive_confirm_notebook_id" not in st.session_state:
@@ -961,8 +980,11 @@ def confirm_compress_conversation_callback(
 
     health = health_status or get_antigravity_bridge_health()
     if not health.is_direct_ready:
+        reason_vi = "chế độ kết nối trực tiếp chưa khả dụng"
+        if health.reason and "not available" not in str(health.reason).lower():
+            reason_vi = str(health.reason)
         st.session_state.wsc_action_error = (
-            f"Antigravity Direct chưa sẵn sàng ({health.status}: {health.reason or 'direct mode not available'}). "
+            f"Kết nối trực tiếp Antigravity chưa sẵn sàng ({health.status}: {reason_vi}). "
             "Không thể nén ngữ cảnh."
         )
         st.session_state.wsc_pending_compress_conversation_id = None
@@ -1183,25 +1205,18 @@ def update_temporary_source_privacy_for_active_conversation(conversation_id: str
 active_nb_id = st.session_state.wsc_active_notebook_id
 if st.sidebar.button(f"🗂️ {t('case_workspace', locale=st.session_state.get('wsc_global_ui_locale', 'vi'))}", key="wsc_open_case_workspace", use_container_width=True):
     st.session_state.wsc_show_case_workspace = True
+    st.session_state.wsc_show_lsu_data_gate = False
+    safe_rerun()
+
+if st.sidebar.button(f"🔍 {t('lsu_data_gate', locale=st.session_state.get('wsc_global_ui_locale', 'vi'))}", key="wsc_open_lsu_data_gate", use_container_width=True):
+    st.session_state.wsc_show_lsu_data_gate = True
+    st.session_state.wsc_show_case_workspace = False
     safe_rerun()
 
 if st.session_state.wsc_show_case_workspace:
     current_ui_locale = st.session_state.get("wsc_global_ui_locale", "vi")
-    current_answer_language = st.session_state.get("wsc_global_answer_language", "vi")
-
-    with st.sidebar.expander(f"🌐 {t('language_selector', locale=current_ui_locale)}", expanded=False):
-        def _handle_case_lang_change(new_ui_loc: str, new_ans_lang: str):
-            st.session_state.wsc_global_ui_locale = new_ui_loc
-            st.session_state.wsc_global_answer_language = new_ans_lang
-            safe_rerun()
-
-        render_language_selector(
-            current_ui_locale=current_ui_locale,
-            current_answer_language=current_answer_language,
-            on_change=_handle_case_lang_change,
-            key_prefix="wsc_case_lang",
-            locale=current_ui_locale,
-        )
+    current_ui_locale = "vi"
+    current_answer_language = "vi"
 
     def _close_case_workspace() -> None:
         st.session_state.wsc_show_case_workspace = False
@@ -1234,6 +1249,21 @@ if st.session_state.wsc_show_case_workspace:
     )
     st.stop()
 
+if st.session_state.get("wsc_show_lsu_data_gate", False):
+    current_ui_locale = "vi"
+
+    def _close_lsu_data_gate() -> None:
+        st.session_state.wsc_show_lsu_data_gate = False
+        safe_rerun()
+
+    pred_repo = ProductionPredictionRepository(Path("local_cases/production_prediction.sqlite"))
+    render_lsu_data_gate(
+        repository=pred_repo,
+        on_close=_close_lsu_data_gate,
+        locale=current_ui_locale,
+    )
+    st.stop()
+
 if active_nb_id is None:
     current_ui_locale = st.session_state.get("wsc_global_ui_locale", "vi")
     current_answer_language = st.session_state.get("wsc_global_answer_language", "vi")
@@ -1241,28 +1271,34 @@ if active_nb_id is None:
     st.sidebar.markdown(f"## 📚 {t('workspace_title', locale=current_ui_locale)}")
     st.sidebar.info(t("workspace_select_prompt", locale=current_ui_locale))
 
-    with st.sidebar.expander(f"🌐 {t('language_selector', locale=current_ui_locale)}", expanded=False):
-        def _handle_home_lang_change(new_ui_loc: str, new_ans_lang: str):
-            st.session_state.wsc_global_ui_locale = new_ui_loc
-            st.session_state.wsc_global_answer_language = new_ans_lang
-            safe_rerun()
-
-        render_language_selector(
-            current_ui_locale=current_ui_locale,
-            current_answer_language=current_answer_language,
-            on_change=_handle_home_lang_change,
-            key_prefix="wsc_home_lang",
-            locale=current_ui_locale,
-        )
-
     render_notebook_header(locale=current_ui_locale)
 
     if "wsc_action_message" in st.session_state and st.session_state.wsc_action_message:
         st.success(safe_vietnamese_ui_message(st.session_state.wsc_action_message, "Đã hoàn tất thao tác."))
         st.session_state.wsc_action_message = None
+    if "wsc_action_warning" in st.session_state and st.session_state.wsc_action_warning:
+        st.warning(safe_vietnamese_ui_message(st.session_state.wsc_action_warning, "Cảnh báo: Dữ liệu cần kiểm tra lại."))
+        st.session_state.wsc_action_warning = None
     if "wsc_action_error" in st.session_state and st.session_state.wsc_action_error:
         st.error(safe_vietnamese_ui_message(st.session_state.wsc_action_error, "Không thể hoàn tất thao tác lúc này."))
         st.session_state.wsc_action_error = None
+
+    def _open_alert_case(case_id: str) -> None:
+        st.session_state.wsc_show_case_workspace = True
+        set_query_params(case=case_id)
+        safe_rerun()
+
+    actor_ctx = trusted_local_actor()
+    current_actor = actor_ctx.actor_id
+    current_role = "local_admin"
+
+    render_in_app_risk_alerts(
+        Path("local_cases/production_prediction.sqlite"),
+        on_open_case=_open_alert_case,
+        actor=current_actor,
+        actor_role=current_role,
+        locale=current_ui_locale,
+    )
 
     with st.expander(t("shared_library_expander", locale=current_ui_locale), expanded=True):
         st.write(t("shared_library_help", locale=current_ui_locale))
@@ -1295,7 +1331,39 @@ if active_nb_id is None:
             placeholder=t("shared_library_path_placeholder", locale=current_ui_locale),
             key=path_key,
         )
-        if st.button(t("shared_library_save", locale=current_ui_locale), key="btn_save_shared_library"):
+        col_save, col_reset = st.columns([1, 1])
+        with col_save:
+            btn_save = st.button(t("shared_library_save", locale=current_ui_locale), key="btn_save_shared_library", use_container_width=True)
+        with col_reset:
+            btn_reset = st.button(
+                t("shared_library_reset", locale=current_ui_locale),
+                key="btn_reset_shared_library",
+                use_container_width=True,
+            )
+
+        if btn_reset:
+            st.session_state[path_key] = ""
+            try:
+                from aios_habit.workspace_chat_rag_v2_adapter import (
+                    WorkspaceChatRagV2CanaryConfig,
+                )
+                rag_config = WorkspaceChatRagV2CanaryConfig.from_env()
+                fallback_root = rag_config.runtime_root / rag_config.requested_profile
+                relocate_collection_storage(
+                    DEFAULT_COLLECTION_ID,
+                    "",
+                    local_fallback_root=fallback_root,
+                )
+                st.session_state.wsc_action_message = t(
+                    "shared_library_cleared", locale=current_ui_locale
+                )
+            except Exception as exc:
+                st.session_state.wsc_action_error = safe_vietnamese_ui_message(
+                    str(exc), "Không thể quay về thư viện cục bộ lúc này."
+                )
+            safe_rerun()
+
+        if btn_save:
             raw_path = str(st.session_state.get(path_key) or "").strip()
             try:
                 from aios_habit.workspace_chat_rag_v2_adapter import (
@@ -1349,6 +1417,76 @@ if active_nb_id is None:
                 st.session_state.wsc_action_error = t(
                     "shared_library_io_error", locale=current_ui_locale
                 )
+            safe_rerun()
+
+        st.markdown("---")
+        st.markdown(t("shared_library_backup_heading", locale=current_ui_locale))
+        st.caption(t("shared_library_backup_help", locale=current_ui_locale))
+        if st.button(
+            t("shared_library_backup_create", locale=current_ui_locale),
+            key="btn_create_backup",
+            use_container_width=True,
+        ):
+            try:
+                from aios_habit.library_backup import create_library_backup
+                from aios_habit.workspace_chat_rag_v2_adapter import (
+                    WorkspaceChatRagV2CanaryConfig,
+                )
+                rag_cfg = WorkspaceChatRagV2CanaryConfig.from_env()
+                fb_root = rag_cfg.runtime_root / rag_cfg.requested_profile
+                dest_dir, manifest = create_library_backup(
+                    collection_id=DEFAULT_COLLECTION_ID,
+                    local_fallback_root=fb_root,
+                )
+                st.session_state.wsc_action_message = t(
+                    "shared_library_backup_success",
+                    locale=current_ui_locale,
+                    dir=dest_dir.name,
+                    id=manifest.backup_id,
+                    digest=manifest.manifest_digest[:8],
+                )
+            except Exception:
+                st.session_state.wsc_action_error = t(
+                    "shared_library_backup_error", locale=current_ui_locale
+                )
+            safe_rerun()
+
+        restore_path_key = "wsc_restore_backup_path"
+        st.text_input(
+            t("shared_library_restore_path_label", locale=current_ui_locale),
+            placeholder="local_cases/library_backups/backup_...",
+            key=restore_path_key,
+        )
+        if st.button(
+            t("shared_library_restore", locale=current_ui_locale),
+            key="btn_restore_backup",
+        ):
+            restore_target = str(st.session_state.get(restore_path_key) or "").strip()
+            if not restore_target:
+                st.session_state.wsc_action_error = t(
+                    "shared_library_restore_path_required", locale=current_ui_locale
+                )
+            else:
+                try:
+                    from aios_habit.library_backup import restore_library_backup
+                    from aios_habit.workspace_chat_rag_v2_adapter import (
+                        WorkspaceChatRagV2CanaryConfig,
+                    )
+                    from aios_habit.workspace_chat_store import collection_runtime_layout
+
+                    rag_cfg = WorkspaceChatRagV2CanaryConfig.from_env()
+                    fb_root = rag_cfg.runtime_root / rag_cfg.requested_profile
+                    curr_runtime_dir, _ = collection_runtime_layout(
+                        DEFAULT_COLLECTION_ID, fb_root
+                    )
+                    restore_library_backup(Path(restore_target), curr_runtime_dir)
+                    st.session_state.wsc_action_message = t(
+                        "shared_library_restore_success", locale=current_ui_locale
+                    )
+                except Exception:
+                    st.session_state.wsc_action_error = t(
+                        "shared_library_restore_error", locale=current_ui_locale
+                    )
             safe_rerun()
         saved = load_collection(DEFAULT_COLLECTION_ID)
         if saved is not None and str(saved.storage_root or "").strip():
@@ -1550,30 +1688,6 @@ else:
                     st.caption(t("deep_search_unavailable", locale=current_ui_locale))
 
                 st.markdown("---")
-                def _handle_conv_lang_change(new_ui_loc: str, new_ans_lang: str):
-                    update_conversation_language_settings(
-                        target_conv.id,
-                        ui_locale=new_ui_loc,
-                        answer_language=new_ans_lang,
-                    )
-                    target_conv.ui_locale = new_ui_loc
-                    target_conv.answer_language = new_ans_lang
-                    if active_conversation and active_conversation.id == target_conv.id:
-                        active_conversation.ui_locale = new_ui_loc
-                        active_conversation.answer_language = new_ans_lang
-                    st.session_state.wsc_global_ui_locale = new_ui_loc
-                    st.session_state.wsc_global_answer_language = new_ans_lang
-                    safe_rerun()
-
-                render_language_selector(
-                    current_ui_locale=getattr(target_conv, "ui_locale", "vi"),
-                    current_answer_language=getattr(target_conv, "answer_language", "vi"),
-                    on_change=_handle_conv_lang_change,
-                    key_prefix=f"wsc_conv_lang_{target_conv.id}",
-                    locale=current_ui_locale,
-                )
-
-                st.markdown("---")
                 pending_del_id = st.session_state.get("wsc_pending_conversation_delete_id")
                 if pending_del_id == target_conv.id:
                     st.warning(f"⚠️ {t('confirm_delete_conv_warning', locale=current_ui_locale)}: **{target_conv.title}**")
@@ -1589,27 +1703,6 @@ else:
                         request_delete_conversation_callback(active_nb_id, target_conv.id)
 
     if active_conversation:
-        with st.sidebar.expander(f"🌐 {t('language_selector', locale=current_ui_locale)}", expanded=False):
-            def _handle_active_lang_change(new_ui_loc: str, new_ans_lang: str):
-                if active_conversation:
-                    update_conversation_language_settings(
-                        active_conversation.id,
-                        ui_locale=new_ui_loc,
-                        answer_language=new_ans_lang,
-                    )
-                    active_conversation.ui_locale = new_ui_loc
-                    active_conversation.answer_language = new_ans_lang
-                st.session_state.wsc_global_ui_locale = new_ui_loc
-                st.session_state.wsc_global_answer_language = new_ans_lang
-                safe_rerun()
-
-            render_language_selector(
-                current_ui_locale=current_ui_locale,
-                current_answer_language=current_answer_language,
-                on_change=_handle_active_lang_change,
-                key_prefix=f"wsc_sidebar_lang_{active_conversation.id}",
-                locale=current_ui_locale,
-            )
         # Nén Ngữ Cảnh & Kế Thừa
         messages = load_messages(active_conversation.id)
         if len(messages) > 0:
@@ -3580,7 +3673,9 @@ else:
                                     workspace_root=workspace_root, scope_confirmed=scope_confirmed,
                                 )
                                 st.session_state.wsc_agent_pending_action = None
-                                st.success(result.answer_text if result.state == "completed" else t("agent_general_error", locale=current_ui_locale))
+                                is_done = (result.state == "completed")
+                                msg = result.answer_text if is_done else t("agent_general_error", locale=current_ui_locale)
+                                st.success(msg)
                                 safe_rerun()
                         else:
                             command = action.payload.get("command", "")
@@ -3591,7 +3686,9 @@ else:
                                     scope_confirmed=scope_confirmed,
                                 )
                                 st.session_state.wsc_agent_pending_action = None
-                                st.success(result.answer_text if result.state == "completed" else t("agent_general_error", locale=current_ui_locale))
+                                is_done = (result.state == "completed")
+                                msg = result.answer_text if is_done else t("agent_general_error", locale=current_ui_locale)
+                                st.success(msg)
                                 safe_rerun()
                         if st.button(t("agent_ide_reject", locale=current_ui_locale), key="wsc_agent_discard_btn"):
                             st.session_state.wsc_agent_pending_action = None

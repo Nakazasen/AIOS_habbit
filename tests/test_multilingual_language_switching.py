@@ -202,3 +202,26 @@ def test_language_selector_callbacks():
     assert LOCALE_NAMES["vi"] == "Tiếng Việt"
     assert LOCALE_NAMES["ja"] == "日本語"
     assert LOCALE_NAMES["zh-CN"] == "简体中文"
+
+
+def test_language_selector_is_forbidden_in_supported_ui():
+    """Verify render_language_selector enforces Vietnamese and avoids foreign UI options."""
+    from aios_habit.workspace_chat_ui import render_language_selector
+    ui_loc, ans_lang = render_language_selector(current_ui_locale="ja", current_answer_language="zh-CN")
+    assert ui_loc == "vi"
+    assert ans_lang == "vi"
+
+
+def test_legacy_conversation_with_foreign_locale_reads_safely_but_ui_defaults_vietnamese():
+    """Verify legacy records with ja/zh-CN locales deserialize safely but UI presents in Vietnamese."""
+    from aios_habit.workspace_chat_models import WorkspaceConversation
+    conv = WorkspaceConversation(
+        id="conv_legacy_foreign",
+        notebook_id="nb_default",
+        title="Cuộc trò chuyện cũ",
+        ui_locale="ja",
+        answer_language="zh-CN",
+    )
+    assert conv.ui_locale == "ja"
+    from aios_habit.i18n import SUPPORTED_UI_LOCALES
+    assert SUPPORTED_UI_LOCALES == ("vi",)

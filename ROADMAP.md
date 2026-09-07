@@ -37,9 +37,7 @@ Tài liệu tham khảo tầm nhìn dài hạn tương lai: [Production Intellig
 | Hội tụ chất lượng Dev RAG v2 | `DONE`: `RAG-V2-DEV-QUALITY-CONVERGENCE` — `DEV_READY_WITH_LIMITATIONS` |
 | Gate H hybrid canary | `DONE`: `RAG-V2-GATE-H-HYBRID-CANARY` — `ADVANCE_TO_CANARY_WITH_LIMITATIONS`; 87 test trọng điểm, 1094 test toàn bộ |
 | OCR tập dữ liệu & phục hồi nguồn RAG v2 | `DONE`: 70/70 nguồn sử dụng tốt, kiểm tra cục bộ nghiêm ngặt ĐẠT, 49 test trọng điểm và 1108 test toàn bộ |
-| Adaptive Reranking UX (003) | `IMPLEMENTED_PENDING_REAL_BENCHMARK` — 154 test trọng điểm ĐẠT, 1.175 test toàn bộ ĐẠT, schema v3, circuit breaker, fail-closed benchmark CLI; canary/production activation `BLOCKED` cho đến khi chạy benchmark trên model/corpus thật |
-| Vòng hồ sơ có bằng chứng (008), Gate 1A + US1 | `IMPLEMENTED_PENDING_CURRENT_FULL_SUITE` — migration/version/rollback, role-scope, activity hash-chain và màn hình danh sách/chi tiết case đã có; test trọng điểm đạt. Full suite Python 3.11 còn 2 lỗi đóng gói/VPS ngoài phạm vi nên chưa đóng Gate. |
-| Tiếp tục an toàn Giai đoạn A (001) | `DONE` — đã triển khai và kiểm chứng; chỉ bảo trì khi có lỗi |
+| Vòng hồ sơ bằng chứng & LSU Loop (008), Mốc 0–4 | `TECHNICAL_PASS`: Mốc 0–4 đạt 100% kỹ thuật (Mốc 0 đạt đầy đủ; Mốc 1–4 đạt `OPERATIONAL_PARTIAL` chờ dữ liệu/nghiệm thu thực địa tại xưởng). Mốc 5 đang kiểm toán. |
 | Tổng hợp đa nguồn (002) | `IMPLEMENTED_PENDING_CURRENT_FULL_SUITE` — còn lượt xác minh cuối trên cây code hiện tại |
 | Quản lý cuộc trò chuyện (004) | `IMPLEMENTED_PENDING_CURRENT_FULL_SUITE` — chức năng đã có, chưa ghi bằng chứng đầy đủ hiện tại |
 | Đánh giá chunk dựa trên bằng chứng (006) | `IMPLEMENTED_PENDING_REAL_CORPUS_VALIDATION` — đóng băng thay đổi E3/E4 cho đến khi corpus thật chứng minh lợi ích |
@@ -93,13 +91,34 @@ Các dòng vòng đời ở trên phản ánh metadata của Gate Card hiện c�
 14. [DOCS-LEGACY-CLEANUP-RESET](docs/roadmap/completed/DOCS-LEGACY-CLEANUP-RESET.md)
 15. [STUDIO-AND-PUBLIC-LEGACY-ROUTE-RETIREMENT](docs/roadmap/completed/STUDIO-AND-PUBLIC-LEGACY-ROUTE-RETIREMENT.md)
 
-## Kế hoạch Gate Card ngắn hạn
+## Kế hoạch Gate Card & Trạng thái Vận hành theo Mốc
 
-1. **Đợt 0 — Khóa phần nền**: đối soát 005/007/008, chạy test tập trung và smoke trình duyệt cho tiến độ chuẩn bị nguồn cùng vòng đời case.
-2. **Đợt 1 — Pilot điều tra line thật**: chọn một C-call hoặc Jam, dựng timeline, xác nhận manh mối, kết luận và phát hành báo cáo/SOP có duyệt.
-3. **Đợt 2 — Dùng lại bài học**: chỉ mở sau khi có case thật đã kết luận; promotion thủ công và tìm kiếm SQLite trước.
-4. **Đợt 3 — Thử nghiệm LSU nhẹ**: chỉ mở sau Data Gate; baseline thống kê, một model CPU đơn giản và phát lại lịch sử/shadow thủ công.
-5. **Đợt 4 — Mở rộng có điều kiện**: cảnh báo, NAS nhiều người, Drum/DLP và Agent lập trình là các quyết định độc lập.
+**Cổng ngôn ngữ áp dụng cho mọi mốc**: tiếng Việt là ngôn ngữ giao diện duy nhất. Mốc chưa được đóng nếu nút, hướng dẫn, tiến độ, cảnh báo, lỗi, nhật ký vận hành hoặc báo cáo còn câu tiếng Anh hay hiện nguyên lỗi từ thư viện bên ngoài. Tài liệu nguồn ngoại ngữ vẫn được giữ nguyên làm bằng chứng.
+
+1. **Mốc 0 — Khóa phần nền (T001–T005)**: `TECHNICAL_PASS` (100%). Khóa interpreter Python 3.11.14, atomicity kho Case SQLite, quét UI tiếng Việt 100%, headless smoke Streamlit port 8537 đạt.
+2. **Mốc 1 — Trợ lý LSU có căn cứ (T006–T010, US2)**: `TECHNICAL_PASS` & `OPERATIONAL_PARTIAL`. Hợp đồng thẩm định chuyên gia `ExpertRequest`/`ExpertReview` append-only, phân quyền theo scope, màn hình chi tiết case tiếng Việt, restart/readback case LSU có citation đạt `RESTART_READBACK_PASS`.
+3. **Mốc 2 — Nối dữ liệu BOWSKEW 4 BEAM (T011–T017, US7)**: `TECHNICAL_PASS` & `OPERATIONAL_PARTIAL`. Bộ 7 fixture giả lập LSU Iris, mô hình dữ liệu và Data Gate rubric, kho SQLite có migration và chốt chặn `BLOCKED_DATA`, màn hình kiểm tra dữ liệu và tra cứu chuỗi Unit. Rehearsal đạt `REHEARSAL_RESTART_READBACK_PASS`.
+4. **Mốc 3 — Phát lại lịch sử (T018–T022, US8)**: `TECHNICAL_PASS` & `OPERATIONAL_PARTIAL` (kết luận `LEARNING_SHADOW`). Giao thức phát lại lịch sử khóa `as_of_time`, chống rò rỉ tương lai 100%, so sánh phương án nền `no_alert` với `EWMA` (3.0 std), nhánh mô hình học máy khóa an toàn (`not_applicable`). Báo cáo so sánh tiếng Việt tất định theo digest.
+5. **Mốc 4 — Shadow thủ công (T023–T027, US9)**: `TECHNICAL_PASS` & `OPERATIONAL_PARTIAL`. Runner thủ công theo lô nhỏ (`ManualShadowRunner`) an toàn CPU laptop, tiến độ thời gian thực, nút dừng an toàn, đánh giá nguy cơ gắn `idempotency_key` bất biến, liên kết case Workspace Case chống trùng, ghi nhận outcome thực tế (kể cả Unit NG bị bỏ sót). Rehearsal đạt `REHEARSAL_MILESTONE_4_PASS`.
+6. **Mốc 5 — Đóng đợt & Kích hoạt đợt kế tiếp (T028–T029)**: T028 hoàn tất đồng bộ tài liệu, lộ trình và bản đồ kích hoạt; T029 thực hiện kiểm toán độc lập toàn diện.
+
+### Bản đồ kích hoạt các nhánh độc lập kế tiếp (US3, US4, US5, US6, US10, US11)
+
+Đăng ký 2 bí danh nguồn cục bộ:
+
+- `KHO_LSU_CUC_BO`: Thư mục dữ liệu sản xuất thật LSU tại nhà máy (nhãn `local_only`, không commit Git).
+- `GOI_KYOCERA_CUC_BO`: Gói tài liệu và log mẫu dòng máy Kyocera cục bộ để kiểm kê cấu trúc.
+
+Bản đồ kích hoạt (mỗi nhánh độc lập 4 tiêu chí bắt buộc theo chuẩn `spec.md`):
+
+- **US3 (Học từ bài học đã xác nhận)**: Đầu vào: Ít nhất 1 case `confirmed` đã kết luận; Người duyệt: Quản lý kỹ thuật / QC; Đầu ra: Bảng tra cứu bài học trong kho case-memory dẫn về bằng chứng gốc; Test đầu tiên: `pytest tests/test_case_knowledge_lessons.py -k test_lesson_extraction_contract`.
+- **US4 (Trợ lý điều tra line chủ động)**: Đầu vào: Hồ sơ điều tra kèm log và biên bản được phép; Người duyệt: Chuyên gia công đoạn phụ trách line; Đầu ra: Dòng thời gian sự kiện, phân nhóm hiện tượng và danh sách câu hỏi cần làm rõ; Test đầu tiên: `pytest tests/test_line_investigation_assistant.py -k test_investigation_timeline_contract`.
+- **US5 (Agent tạo đầu ra công việc có kiểm soát: Báo cáo & SOP)**: Đầu vào: Hồ sơ case có đủ bằng chứng đã xác nhận; Người duyệt: Kỹ sư trưởng / Người phê duyệt tài liệu công đoạn; Đầu ra: Bản nháp báo cáo điều tra và SOP có đối chiếu khác biệt phiên bản; Test đầu tiên: `pytest tests/test_controlled_work_artifacts.py -k test_sop_report_generation`.
+- **US6 (Agent hỗ trợ lập trình trong workspace tách biệt)**: Đầu vào: Nhiệm vụ lập trình có phạm vi file và lệnh test rõ ràng; Người duyệt: Kỹ sư phần mềm phụ trách kho mã; Đầu ra: Bản vá đề xuất trong sandbox có bằng chứng test thực tế trước khi áp dụng; Test đầu tiên: `pytest tests/test_isolated_coding_agent.py -k test_proposal_sandbox_execution`.
+- **US10 (Cảnh báo nguy cơ an toàn trong app)**: Đầu vào: Ít nhất 1 lô sản xuất thật hoàn tất outcome và người dùng cấp quyền; Người duyệt: Trưởng ca vận hành; Đầu ra: Khối cảnh báo nguy cơ an toàn trên Workspace Chat; Test đầu tiên: `pytest tests/test_in_app_risk_notification.py -k test_notification_banner_render`.
+- **US11 (Thư viện dùng chung mạng NAS/SMB)**: Đầu vào: Đường dẫn thư mục mạng cục bộ có cấu hình sao lưu; Người duyệt: Quản trị viên IT; Đầu ra: Khóa tệp SQLite fail-closed chống xung đột ghi đa máy; Test đầu tiên: `pytest tests/test_nas_sqlite_concurrency.py -k test_safe_file_locking`.
+
+*Ghi chú*: Các miền dữ liệu mở rộng như dòng máy Kyocera (cụm Drum / DLP) và phân tích sự kiện C-call/Jam là các task pack độc lập phát triển tiếp theo sau chuỗi LSU Iris (US7–US10), không làm thay đổi định nghĩa chuẩn của US4–US6 trong `spec.md`.
 
 Chi tiết và điều kiện vào/ra nằm tại [kế hoạch 008](specs/008-evidence-case-loop/plan.md). Không mở gate mới chỉ từ báo cáo cục bộ hoặc kết quả thu thập test.
 

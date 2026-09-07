@@ -2,7 +2,7 @@
 
 Status: `ACCEPTED`
 Vai trò chủ sở hữu: Chủ sở hữu dự án / người duyệt kiến trúc
-Xem xét lần cuối: 2026-08-30
+Xem xét lần cuối: 2026-09-05
 Chu kỳ xem xét: Trước khi thêm kho, loại hồ sơ hoặc quyền Agent mới
 
 ## Bối cảnh
@@ -17,7 +17,9 @@ Workspace Chat đã lưu được siêu dữ liệu hồ sơ và tham chiếu b�
 
 ## Quyết định
 
-Chọn phương án 2. `library.sqlite`, `line_events.sqlite`, `workspace_cases.sqlite` và `production_prediction.sqlite` tách biệt. Hồ sơ chỉ giữ siêu dữ liệu, vị trí đã làm sạch và mã kiểm tra. Ba loại hồ sơ là `investigation`, `prediction`, `agent_work`. Agent tạo đầu ra theo hồ sơ và Agent kỹ thuật phần mềm là hai miền quyền riêng; cả hai chỉ tạo đề xuất hoặc bản nháp cho đến khi con người có vai trò/phạm vi hợp lệ duyệt.
+Chọn phương án 2. `library.sqlite`, `line_events.sqlite`, `workspace_cases.sqlite` và `production_prediction.sqlite` tách biệt. Hồ sơ chỉ giữ siêu dữ liệu, vị trí đã làm sạch và mã kiểm tra. Ba loại hồ sơ là `investigation`, `prediction`, `agent_work`. Agent tạo đầu ra theo hồ sơ và Agent kỹ thuật phần mềm là hai miền quyền riêng. Rubric có version được phép tự xác nhận cổng kỹ thuật, Data Gate và chạy bóng đọc-only; đầu ra làm thay đổi quyền, dữ liệu nguồn hoặc hành động ngoài đời vẫn cần quyền riêng.
+
+`production_prediction.sqlite` là ranh giới đích, không được tạo trước khi rubric Data Gate đạt. Lát cắt đầu tiên chỉ nối file Iris LSU cho BOWSKEW 4 BEAM và chạy phát lại lịch sử/shadow thủ công. Rubric tự chọn `AUTO_SHADOW` hoặc `LEARNING_SHADOW`; MVP dùng idempotency key khi tạo hoặc cập nhật case. Scheduler, worker và hộp thư đi chỉ được xem xét nếu shadow chứng minh nhu cầu chạy nền.
 
 Người được giao việc mặc định có cả quyền điều tra và chuyên gia trong đúng phạm vi công đoạn. Chỉ cấu hình một chuyên gia theo dõi riêng trong trường hợp đặc biệt. Vai trò `admin` không có quyền bao trùm ngầm; mọi khả năng vẫn được liệt kê và kiểm tra phạm vi.
 
@@ -27,12 +29,12 @@ Người thao tác của Workspace Chat lấy từ ngữ cảnh do ứng dụng 
 
 - Lược đồ hồ sơ phải chuyển đổi theo phiên bản và sao lưu/khôi phục trước khi thêm bảng.
 - Mọi chuyển trạng thái, gắn bằng chứng, giao việc và thẩm định đi qua lớp dịch vụ, dùng phiên bản chống ghi đè và lịch sử chỉ ghi nối có chuỗi mã kiểm tra.
-- Liên kết dự đoán sang hồ sơ dùng hộp thư đi, chống ghi lặp và đối soát; không dùng giao dịch phân tán giữa hai SQLite.
+- Liên kết dự đoán sang hồ sơ phải chống ghi lặp. MVP thủ công dùng idempotency key và kiểm tra case hiện có; không dùng giao dịch phân tán giữa hai SQLite. Hộp thư đi chỉ cần khi có worker nền được duyệt sau này.
 - Workspace Chat không import `studio` hoặc `case_cockpit`.
 
 ## Tác động bảo mật và quyền riêng tư
 
-Kho hồ sơ nằm dưới `local_cases/`, bị Git bỏ qua và không lưu câu hỏi thô, câu trả lời thô, đoạn trích thô, ảnh hoặc nhật ký thô. Vị trí tuyệt đối của hệ thống phải được thay bằng định danh đã làm sạch. AI chỉ tạo nháp, không có vai trò phê duyệt và không được mượn danh `local_admin`.
+Kho hồ sơ nằm dưới `local_cases/`, bị Git bỏ qua và không lưu câu hỏi thô, câu trả lời thô, đoạn trích thô, ảnh hoặc nhật ký thô. Vị trí tuyệt đối của hệ thống phải được thay bằng định danh đã làm sạch. AI có vai trò kiểm toán rubric tách biệt nhưng không được mượn danh `local_admin`, tự tạo quyền người dùng, sửa dữ liệu nguồn hoặc phát lệnh tác động máy.
 
 ## Di chuyển và hoàn tác
 

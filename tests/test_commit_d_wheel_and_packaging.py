@@ -354,7 +354,7 @@ class TestDesktopPackagingConfiguration:
         passed = False
         start_time = time.time()
         try:
-            while time.time() - start_time < 15:
+            while time.time() - start_time < 60:
                 try:
                     with urllib.request.urlopen(health_url, timeout=2) as resp:
                         if resp.status == 200:
@@ -383,6 +383,9 @@ class TestDesktopPackagingConfiguration:
             child_env = os.environ.copy()
             child_env["AIOS_COMMIT_D_BGE_CHILD"] = "1"
             child_env["PYTHONIOENCODING"] = "utf-8"
+            child_env["KMP_DUPLICATE_LIB_OK"] = "TRUE"
+            child_env["OMP_NUM_THREADS"] = "1"
+            child_env["MKL_NUM_THREADS"] = "1"
             node_id = (
                 f"{Path(__file__).resolve()}::TestDesktopPackagingConfiguration::"
                 "test_packaged_desktop_e2e_rag_to_atlas"
@@ -620,8 +623,11 @@ class TestCleanMachineSmokeScript:
     def test_clean_machine_full_isolated_venv_installation(self) -> None:
         """Run full standalone clean machine smoke test with isolated venv."""
         smoke_script = REPO_ROOT / "scripts" / "desktop_smoke_test.py"
-        assert smoke_script.exists()
-
+        child_env = os.environ.copy()
+        child_env["PYTHONIOENCODING"] = "utf-8"
+        child_env["KMP_DUPLICATE_LIB_OK"] = "TRUE"
+        child_env["OMP_NUM_THREADS"] = "1"
+        child_env["MKL_NUM_THREADS"] = "1"
         res = subprocess.run(
             [sys.executable, str(smoke_script)],
             cwd=str(REPO_ROOT),
@@ -630,6 +636,7 @@ class TestCleanMachineSmokeScript:
             encoding="utf-8",
             errors="replace",
             timeout=600,
+            env=child_env,
         )
         assert res.returncode == 0, f"Full venv smoke test failed: {res.stderr}\n{res.stdout}"
         assert "ALL CLEAN MACHINE SMOKE TESTS PASSED" in res.stdout

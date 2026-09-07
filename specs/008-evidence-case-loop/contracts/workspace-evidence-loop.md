@@ -9,7 +9,9 @@
 3. Không có API nào trong phạm vi này được điều khiển PLC, dừng line, chặn/xuất hàng, xóa hoặc ghi đè nguồn nhà máy.
 4. AI output không tự trở thành `confirmed`, outcome label, bài học hoặc PASS.
 5. Workspace Chat không import `studio` hoặc `case_cockpit`.
-6. Mọi lỗi UI được đổi thành thông báo tiếng Việt an toàn, không traceback/secret/system path.
+6. Mọi câu chữ người dùng hoặc người vận hành thấy chỉ dùng tiếng Việt dễ hiểu, gồm giao diện, tiến độ, cảnh báo, lỗi, nhật ký vận hành và báo cáo; không có câu tiếng Anh dự phòng.
+7. Lỗi từ thư viện, hệ điều hành hoặc dịch vụ bên ngoài phải được chặn và đổi thành lời giải thích cùng bước xử lý bằng tiếng Việt; không hiện traceback, secret hoặc đường dẫn hệ thống.
+8. Tác tử phát triển dùng model cloud không được đọc file `local_only` hoặc dữ liệu nhà máy thật. Phát triển chỉ dùng fixture giả hoàn toàn hoặc manifest tên cột/quy tắc đã được chủ sở hữu làm sạch.
 
 ## 2. Hợp đồng migration
 
@@ -134,59 +136,68 @@ record_observed_tests(case_id, evidence, auditor) -> AgentExecutionRecord
 - Báo cáo PASS cần observed evidence do runner/auditor thu, không tin self-report.
 - Không tự merge/push/commit nếu capability và approval riêng chưa được cấp.
 
-## 9. Hợp đồng Data Gate dự đoán
+## 9. Hợp đồng Data Gate Iris LSU
 
 ```text
-register_dataset_snapshot(manifest, actor) -> DatasetVersion
-evaluate_prediction_readiness(dataset_id, protocol_id, actor) -> ReadinessResult
+validate_lsu_snapshot(files, data_dictionary, target_config, actor) -> ReadinessResult
+register_lsu_snapshot(readiness_id, actor) -> DatasetVersion
+trace_lsu_unit(dataset_id, unit_serial, actor) -> LsuUnitTrace
 ```
 
-### Sáu điều kiện bắt buộc
+### Điều kiện đăng ký snapshot
 
-1. Stable join keys và data dictionary được duyệt.
-2. Measurement có unit, event time, ingest time, jig/process version.
-3. Outcome labels có reviewer/evidence và đủ positive/negative theo protocol.
+1. Khóa nối `component_lot_id → unit_serial → jig_id/run_id` và data dictionary đạt rubric T011.
+2. Thông số lot và phép đo JIG có đơn vị, thời điểm sự kiện, thời điểm nhận dữ liệu và nguồn/digest.
+3. Outcome OK/NG đến từ trường kết quả cuối cùng có khóa/digest hợp lệ hoặc bản sửa append-only của người dùng; số lượng dương/âm được báo theo protocol.
 4. Data owner và quality owner được chỉ định.
-5. Temporal/group split, replay và leakage checks đã định nghĩa.
-6. Shadow reviewer, acceptance thresholds và rollback owner đã ký duyệt.
 
-Thiếu bất kỳ điều kiện nào trả `blocked` cùng danh sách thiếu; không train model.
+Rubric tại `lsu-acceptance-rubric.md` tự trả `PASS`, `PASS_WITH_WARNING` hoặc `BLOCKED_DATA`. Phần hợp lệ được phép đăng ký bằng digest riêng; dữ liệu mâu thuẫn không được tự sửa hoặc ghép đoán. Kho/migration vẫn phải được kiểm thử bằng SQLite tạm và fixture đã làm sạch để không khóa tiến độ kỹ thuật. `trace_lsu_unit` chỉ trả dữ liệu thuộc snapshot đã đăng ký.
 
-## 10. Hợp đồng huấn luyện và đánh giá
+Trong quá trình phát triển bằng Gemini, `files` chỉ được trỏ tới fixture trong repo. Kiểm tra file thật là thao tác cục bộ do chủ sở hữu chạy; đầu ra chia sẻ cho tác tử chỉ gồm schema manifest và số tổng hợp đã làm sạch.
+
+### Điều kiện mở đánh giá và shadow
+
+- Mở phát lại lịch sử khi temporal/group split, thời điểm dự báo và kiểm tra rò rỉ đã được định nghĩa. Việc này không cần ngưỡng shadow.
+- Mở chạy thử nghiệm bóng đọc-only khi báo cáo phát lại tự nhận `AUTO_SHADOW` hoặc `LEARNING_SHADOW` theo rubric có version/digest và có nút tắt/quay lại phiên bản trước.
+- Thiếu điều kiện đánh giá hoặc shadow chỉ chặn đúng hoạt động phụ thuộc. Nó không được làm mất snapshot hợp lệ hoặc chặn kiểm thử kỹ thuật của API kế tiếp.
+
+## 10. Hợp đồng phát lại lịch sử
 
 ```text
-build_feature_snapshot(dataset_id, as_of_time, feature_schema) -> FeatureSnapshot
-train_candidate(dataset_id, protocol_id, algorithm_config) -> ModelVersion
-evaluate_candidate(model_id, holdout_id, protocol_id) -> EvaluationReport
-approve_model_for_shadow(model_id, actor, rationale) -> ModelVersion
+evaluate_lsu_replay(dataset_id, method_config, protocol, actor) -> EvaluationReport
+evaluate_shadow_rubric(evaluation_id, rubric_version) -> EvaluationRun
 ```
 
 ### Chốt chặn
 
 - Feature chỉ dùng event có thời gian không vượt `as_of_time`.
-- Dataset/protocol/code/feature schema digest phải đóng băng.
-- Evaluation bắt buộc có false alarm, missed detection, lead time, precision, recall, calibration và slice stability.
-- Model không được tự chọn threshold; owner phê duyệt cost matrix/threshold.
-- Chỉ status `approved_for_shadow`; không có production control state.
+- Dataset/protocol/code/threshold digest phải đóng băng. Protocol bắt buộc có metric, chiều rủi ro, tham số EWMA, cửa sổ nền, khoảng dự báo, quy tắc ghép cảnh báo–outcome, feature allowlist và phép chia thời gian/Unit.
+- Mỗi Unit có tối đa một cảnh báo trong một cửa sổ. Cảnh báo đúng là cảnh báo có NG cùng Unit trong khoảng dự báo; cảnh báo nhầm là có cảnh báo nhưng không có NG; bỏ sót là có NG nhưng không có cảnh báo. Lead time bằng thời điểm NG trừ thời điểm cảnh báo.
+- Phương án `no_alert` có mọi NG là bỏ sót. Thiếu trường protocol hoặc chuỗi thời gian không dùng được thì EWMA trả `not_applicable`, không tự chọn luật khác.
+- Luôn có phương án `no_alert` và EWMA cấu hình được để so sánh; nếu EWMA không áp dụng được thì báo lý do thay vì tự chọn luật khác.
+- Báo cáo bắt buộc có cảnh báo đúng, cảnh báo nhầm, bỏ sót và thời gian cảnh báo sớm; nếu đủ mẫu mới báo thêm precision/recall/calibration.
+- MVP chỉ cho phép một hồi quy logistic nhẹ trên CPU khi Data Gate và công thức cỡ mẫu trong rubric tự động đạt. Trước thời điểm đó không thêm dependency máy học; nhánh model trả `not_applicable` và báo cáo baseline vẫn hoàn thành.
+- Threshold dùng mặc định versioned hoặc cấu hình cục bộ versioned. Kết quả là `AUTO_SHADOW`, `LEARNING_SHADOW`, `BLOCKED_DATA` hoặc `FAIL_TECHNICAL`; không có trạng thái điều khiển sản xuất.
 
-## 11. Hợp đồng shadow và case dự đoán
+## 11. Hợp đồng shadow thủ công và case dự đoán
 
 ```text
-run_shadow(model_id, input_window) -> PredictionRun
-enqueue_prediction_case(risk_assessment, dedup_policy) -> PredictionCaseDispatch
-reconcile_prediction_cases(limit, actor) -> ReconciliationResult
+run_manual_shadow(evaluation_id, files, actor) -> ShadowRun
+upsert_prediction_case(risk_assessment, actor) -> CaseRecord
 record_shadow_outcome(assessment_id, decision, observed_outcome, actor) -> ShadowOutcome
+record_missed_detection(shadow_run_id, unit_serial, observed_outcome, actor, rationale) -> ShadowOutcome
 ```
 
 ### Chốt chặn
 
-- Model, feature schema và threshold version phải active/approved.
-- Risk assessment có feature snapshot, horizon, uncertainty và factor digest.
-- Dedup/cooldown ngăn tạo bão case.
-- Ghi `RiskAssessment` và outbox dispatch trong cùng transaction của kho dự đoán; worker gọi case service bằng idempotency key rồi mới đánh dấu dispatched.
-- Restart/lỗi nửa chừng phải reconcile được; không dựa vào transaction phân tán giữa `production_prediction.sqlite` và `workspace_cases.sqlite`.
-- Shadow chỉ ghi DB/queue local; không gửi alert ngoài, không plant action.
-- Outcome `true_positive`, `false_alarm`, `missed_detection`, `unknown` cần reviewer/evidence.
+- Baseline/model, schema, threshold và rubric version phải đúng bản đã tự chấm.
+- Risk assessment có snapshot đầu vào, thời điểm đánh giá, threshold digest và phần giải thích yếu tố.
+- File đầu vào shadow chỉ chứa dữ liệu có sẵn tại `as_of_time`; outcome/retest xảy ra sau thời điểm dự báo chỉ được nhập ở bước ghi phản hồi.
+- Dedup/cooldown ngăn tạo bão case. Khóa idempotency dùng digest lô dữ liệu, Unit và cửa sổ đánh giá; không dùng thời điểm đồng hồ lúc chạy.
+- Người dùng chọn file; chương trình tự kiểm và chạy khi rubric cho phép. Không scheduler hoặc worker nền trong MVP.
+- Tạo/cập nhật case bằng idempotency key. Assessment đi qua `pending_case_link` → `linked`; lỗi có thể thử lại giữ `retryable_error`. Nếu lỗi giữa hai kho, lần chạy lại phải tìm case hiện có trước khi tạo mới; MVP không dựng outbox phân tán.
+- Shadow chỉ ghi kho cục bộ; không gửi cảnh báo ngoài và không có hành động máy.
+- Outcome `true_positive`, `false_alarm`, `missed_detection`, `unknown` có nguồn/digest. Nguồn máy hợp lệ được xác nhận tự động; mâu thuẫn thành `unknown`; người dùng có thể sửa bằng bản ghi append-only có lý do. Bỏ sót được ghi theo Unit trong shadow run dù trước đó không có assessment cảnh báo.
 
 ## 12. Hợp đồng cảnh báo có duyệt
 

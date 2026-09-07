@@ -1,10 +1,11 @@
 <!--
-Sync Impact Report
-- Version change: template (unversioned) → 1.0.0
-- Modified principles: none; initial adoption derived from CONSTITUTION.md and AGENT_RULES.md
-- Added sections: Operational Constraints; Development Workflow and Quality Gates
-- Removed sections: none
-- Follow-up TODOs: none
+Báo cáo tác động đồng bộ
+- Đổi phiên bản: 1.0.0 → 1.1.0
+- Nguyên tắc sửa đổi: IV — chỉ dùng tiếng Việt trên bề mặt người dùng
+- Quy trình sửa đổi: khóa Python 3.11 qua uv và runtime thử nghiệm tách dữ liệu thật
+- Tài liệu đã đồng bộ: AGENTS.md, AGENT_RULES.md, đặc tả/kế hoạch 008
+- Nội dung bị xóa: không có
+- Việc còn chờ: không có
 -->
 # AIOS WorkLens Constitution
 
@@ -35,12 +36,14 @@ workflow may depend exclusively on one AI provider, opaque proprietary memory,
 or non-exportable conversation history. This keeps the user's knowledge usable
 across models and over time.
 
-### IV. User-Centered Workspace Chat
-Workspace Chat is the supported user-facing surface. User-visible functionality
-MUST be Vietnamese-first, explain necessary technical constants in Vietnamese,
-and transform internal failures into safe, clear localized messages. New work
-MUST NOT restore retired Case Cockpit or Habit Studio paths, imports, launchers,
-or test expectations without an explicitly approved architectural decision.
+### IV. Workspace Chat dành cho người dùng không chuyên
+Workspace Chat là giao diện được hỗ trợ. Tiếng Việt dễ hiểu là ngôn ngữ duy nhất
+trên giao diện, hướng dẫn, tiến độ, cảnh báo, lỗi, nhật ký vận hành và báo cáo.
+Lỗi từ thư viện hoặc dịch vụ bên ngoài phải được chặn và đổi thành lời giải thích
+cùng bước xử lý bằng tiếng Việt; không được hiện câu tiếng Anh hoặc traceback.
+Tài liệu nguồn ngoại ngữ có thể giữ nguyên để bảo toàn bằng chứng. Công việc mới
+không được khôi phục đường dẫn, import, launcher hoặc kỳ vọng kiểm thử của Case
+Cockpit hay Habit Studio nếu chưa có quyết định kiến trúc được phê duyệt rõ ràng.
 
 ### V. Change Discipline and Verifiable Quality
 Every non-trivial change MUST be audited and designed before implementation,
@@ -64,23 +67,23 @@ subsequent phase opens.
 - Complexity, external integrations, and data egress MUST have a documented
   rationale and a safe rollback or remediation path.
 
-## Development Workflow and Quality Gates
+## Quy trình phát triển và cổng chất lượng
 
-1. Feature work MUST start with `/speckit-specify`; architecture-affecting or
-   multi-step work MUST continue through `/speckit-plan` and `/speckit-tasks`
-   before `/speckit-implement`.
-2. Before merge or release, applicable changes MUST pass:
-   `py -3 -m compileall src tests`, `py -3 -m pytest -q`,
-   `$env:PYTHONPATH="src"; py -3 -m aios_habit.cli audit`, and
-   `$env:PYTHONPATH="src"; py -3 -c "import aios_habit.workspace_chat_app"`.
-3. The CLI audit MUST report `"status": "PASS"`; otherwise the change MUST be
-   recorded as `FAIL`, `BLOCKED`, or `PARTIAL` with the next corrective action.
-4. Reviewers MUST inspect modified files, test evidence, privacy boundaries,
-   and migration/rollback implications. Audit-only agents MUST NOT write feature
-   code unless the user explicitly authorizes a minor correction.
-5. Where `graphify-out/graph.json` exists, implementation and architectural
-   investigation MUST query the graph before broad source inspection; code
-   changes MUST refresh it with `graphify update .`.
+1. Công việc tính năng phải bắt đầu bằng `/speckit-specify`; thay đổi kiến trúc
+   hoặc nhiều bước phải tiếp tục qua `/speckit-plan` và `/speckit-tasks` trước
+   `/speckit-implement`.
+2. Trước khi hợp nhất hoặc phát hành, thay đổi liên quan phải chạy bằng Python
+   3.11 và đạt: `uv run --no-sync --group dev python -m compileall src tests`,
+   `uv run --no-sync --group dev pytest -q`,
+   `uv run --no-sync --group dev python -m aios_habit.cli audit`, và
+   `uv run --no-sync --group dev python -c "import aios_habit.workspace_chat_app"`.
+3. CLI audit phải trả `"status": "PASS"`; nếu không, thay đổi phải ghi `FAIL`,
+   `BLOCKED` hoặc `PARTIAL` cùng hành động khắc phục tiếp theo.
+4. Người kiểm toán phải xem file đã sửa, bằng chứng test, ranh giới riêng tư và
+   ảnh hưởng migration/rollback. Tác tử chỉ kiểm toán không được viết code tính
+   năng trừ khi người dùng cho phép một sửa chữa nhỏ.
+5. Khi có `graphify-out/graph.json`, điều tra implementation và kiến trúc phải
+   hỏi graph trước khi đọc rộng; thay đổi code phải chạy `graphify update .`.
 
 ## Governance
 
@@ -98,4 +101,4 @@ task list, implementation review, and release assessment MUST verify compliance
 with these principles; exceptions require explicit user approval, a bounded
 scope, and recorded remediation or rollback.
 
-**Version**: 1.0.0 | **Ratified**: 2026-08-04 | **Last Amended**: 2026-08-04
+**Version**: 1.1.0 | **Ratified**: 2026-08-04 | **Last Amended**: 2026-09-05

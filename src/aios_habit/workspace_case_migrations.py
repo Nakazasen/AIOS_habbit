@@ -13,7 +13,7 @@ from typing import Callable, Optional
 from aios_habit.workspace_case_models import CaseActivity
 
 
-CURRENT_SCHEMA_VERSION = 2
+CURRENT_SCHEMA_VERSION = 5
 FaultInjector = Callable[[str, int], None]
 
 
@@ -32,6 +32,9 @@ class MigrationResult:
 _MIGRATION_DESCRIPTIONS = {
     1: "gate1_cases_evidence_audit",
     2: "case_lifecycle_authorization_activity",
+    3: "expert_request_review_append_only",
+    4: "case_lessons_learned_store",
+    5: "case_controlled_artifacts_store",
 }
 _MIGRATION_CHECKSUMS = {
     version: hashlib.sha256(description.encode("utf-8")).hexdigest()
@@ -272,6 +275,122 @@ def _apply_v2(connection: sqlite3.Connection) -> None:
         )
 
 
+def _apply_v3(connection: sqlite3.Connection) -> None:
+    statements = (
+        """
+        CREATE TABLE IF NOT EXISTS expert_requests (
+            request_id TEXT PRIMARY KEY,
+            case_id TEXT NOT NULL REFERENCES cases(case_id) ON DELETE RESTRICT,
+            claim_digest TEXT NOT NULL,
+            question_text TEXT NOT NULL,
+            requested_expert_id TEXT,
+            required_scope TEXT NOT NULL,
+            status TEXT NOT NULL,
+            due_at TEXT,
+            created_by TEXT NOT NULL,
+            created_at TEXT NOT NULL
+        )
+        """,
+        "CREATE INDEX IF NOT EXISTS expert_requests_case_idx ON expert_requests(case_id)",
+        """
+        CREATE TABLE IF NOT EXISTS expert_reviews (
+            review_id TEXT PRIMARY KEY,
+            request_id TEXT NOT NULL REFERENCES expert_requests(request_id) ON DELETE RESTRICT,
+            case_id TEXT NOT NULL REFERENCES cases(case_id) ON DELETE RESTRICT,
+            claim_digest TEXT NOT NULL,
+            evidence_digest TEXT NOT NULL,
+            decision TEXT NOT NULL,
+            reviewer_id TEXT NOT NULL,
+            reviewer_role TEXT NOT NULL,
+            scope TEXT NOT NULL,
+            rationale TEXT NOT NULL,
+            confidence REAL NOT NULL DEFAULT 1.0,
+            supersedes_review_id TEXT REFERENCES expert_reviews(review_id) ON DELETE RESTRICT,
+            reviewed_at TEXT NOT NULL
+        )
+        """,
+        "CREATE INDEX IF NOT EXISTS expert_reviews_case_idx ON expert_reviews(case_id)",
+        "CREATE INDEX IF NOT EXISTS expert_reviews_request_idx ON expert_reviews(request_id)",
+    )
+    for statement in statements:
+        connection.execute(statement)
+
+
+def _apply_v4(connection: sqlite3.Connection) -> None:
+    statements = (
+        """
+        CREATE TABLE IF NOT EXISTS case_lessons (
+            lesson_id TEXT PRIMARY KEY,
+            case_id TEXT NOT NULL REFERENCES cases(case_id) ON DELETE RESTRICT,
+            review_id TEXT NOT NULL REFERENCES expert_reviews(review_id) ON DELETE RESTRICT,
+            claim_digest TEXT NOT NULL,
+            evidence_digest TEXT NOT NULL,
+            title TEXT NOT NULL,
+            content TEXT NOT NULL,
+            status TEXT NOT NULL,
+            version INTEGER NOT NULL DEFAULT 1,
+            created_by TEXT NOT NULL,
+            created_at TEXT NOT NULL,
+            updated_by TEXT NOT NULL,
+            updated_at TEXT NOT NULL,
+            approved_by TEXT,
+            approved_at TEXT,
+            revoked_by TEXT,
+            revoked_at TEXT,
+            revocation_reason TEXT
+        )
+        """,
+        "CREATE INDEX IF NOT EXISTS case_lessons_case_idx ON case_lessons(case_id)",
+        "CREATE INDEX IF NOT EXISTS case_lessons_review_idx ON case_lessons(review_id)",
+        "CREATE INDEX IF NOT EXISTS case_lessons_status_idx ON case_lessons(status)",
+        """
+        INSERT OR IGNORE INTO role_grants VALUES (
+            'LOCAL-ADMIN-QUALITY-MANAGER', 'local_admin', 'quality_manager', 'general',
+            '2000-01-01T00:00:00+00:00', '9999-12-31T23:59:59+00:00', NULL
+        )
+        """,
+    )
+    for statement in statements:
+        connection.execute(statement)
+
+
+def _apply_v5(connection: sqlite3.Connection) -> None:
+    statements = (
+        """
+        CREATE TABLE IF NOT EXISTS case_artifacts (
+            artifact_id TEXT PRIMARY KEY,
+            case_id TEXT NOT NULL REFERENCES cases(case_id) ON DELETE RESTRICT,
+            artifact_type TEXT NOT NULL,
+            title TEXT NOT NULL,
+            content_markdown TEXT NOT NULL,
+            content_digest TEXT NOT NULL,
+            version INTEGER NOT NULL DEFAULT 1,
+            status TEXT NOT NULL DEFAULT 'draft',
+            created_by TEXT NOT NULL,
+            created_at TEXT NOT NULL,
+            updated_by TEXT NOT NULL,
+            updated_at TEXT NOT NULL,
+            approved_by TEXT,
+            approved_at TEXT,
+            approval_notes TEXT,
+            exported_path TEXT,
+            provenance_digest TEXT NOT NULL DEFAULT ''
+        )
+        """,
+        "CREATE INDEX IF NOT EXISTS case_artifacts_case_idx ON case_artifacts(case_id)",
+        "CREATE INDEX IF NOT EXISTS case_artifacts_type_idx ON case_artifacts(artifact_type)",
+        "CREATE INDEX IF NOT EXISTS case_artifacts_status_idx ON case_artifacts(status)",
+        """
+        INSERT OR IGNORE INTO role_grants VALUES (
+            'LOCAL-ADMIN-ARTIFACT-APPROVER', 'local_admin', 'artifact_approver', 'general',
+            '2000-01-01T00:00:00+00:00', '9999-12-31T23:59:59+00:00', NULL
+        )
+        """,
+    )
+    for statement in statements:
+        connection.execute(statement)
+
+
 def _ensure_migration_table(connection: sqlite3.Connection) -> None:
     connection.execute(
         """
@@ -331,6 +450,12 @@ def migrate_store(
                     _apply_v1(connection)
                 elif version == 2:
                     _apply_v2(connection)
+                elif version == 3:
+                    _apply_v3(connection)
+                elif version == 4:
+                    _apply_v4(connection)
+                elif version == 5:
+                    _apply_v5(connection)
                 connection.execute(
                     "INSERT INTO schema_migrations VALUES (?, ?, ?, ?)",
                     (version, _MIGRATION_DESCRIPTIONS[version], _MIGRATION_CHECKSUMS[version], _utc_now()),

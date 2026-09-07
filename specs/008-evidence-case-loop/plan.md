@@ -2,214 +2,258 @@
 
 **Mã tính năng**: `008-evidence-case-loop`
 
-**Ngày cập nhật**: 04/09/2026
+**Ngày cập nhật**: 05/09/2026
 
-**Trạng thái**: Đã duyệt cách triển khai theo các đợt vận hành nhỏ
+**Trạng thái**: Đã duyệt hướng Iris LSU trước, triển khai theo lát cắt nhỏ
 
 **Đặc tả**: [spec.md](spec.md)
 
-## 1. Kết quả cần đạt
+**Lệnh thực thi Antigravity**: [ANTIGRAVITY_GOAL.md](ANTIGRAVITY_GOAL.md)
 
-Giữ nguyên tầm nhìn đầy đủ của US1–US11 nhưng đưa sản phẩm vào dùng theo từng lát cắt có giá trị:
+**Mẫu quyết định tự động**: [Từ điển dữ liệu Iris LSU](contracts/lsu-iris-input.md) và [thang chấm T011/T022/T029](contracts/lsu-acceptance-rubric.md)
+
+## 1. Kết quả cần đạt sớm
+
+Lát cắt đầu tiên bám đúng nhu cầu trong `AI cảnh báo lỗi LSU.pptx`:
 
 ```text
-Nguồn và hồ sơ ổn định
+Thông số linh kiện theo lot
         ↓
-Một vụ C-call hoặc Jam thật được điều tra đến cùng
+Unit đã dùng lot đó
         ↓
-Bài học đã duyệt được tìm lại
+Kết quả đo trên JIG BOWSKEW 4 BEAM
         ↓
-LSU được đánh giá bằng dữ liệu thật và chế độ thử nghiệm bóng
+Phát lại lịch sử để đo cảnh báo đúng, nhầm, bỏ sót và sớm bao lâu
         ↓
-Chỉ mở cảnh báo, NAS nhiều người, Drum/DLP hoặc Agent lập trình khi đủ điều kiện
+Shadow thủ công để người dùng đối chiếu với kết quả thật
 ```
 
-AI chỉ gom bằng chứng, chỉ ra phần thiếu và tạo bản nháp. Con người xác nhận kết luận, duyệt bài học, phát hành tài liệu và quyết định mọi hành động vận hành.
+MVP không hứa chẩn đoán tự động. AI chỉ tra tài liệu, chỉ ra mối liên hệ có căn cứ, báo phần dữ liệu thiếu và tạo danh sách nguy cơ để con người kiểm tra.
 
-## 2. Hiện trạng làm điểm xuất phát
+## 2. Những đích sản phẩm vẫn được giữ
 
-- Gate 1A và US1 đã có nền code: migration, role/scope, activity, danh sách/chi tiết case, trạng thái, kết luận và tham chiếu bằng chứng.
-- Chuẩn bị nguồn tăng dần đã có code/test nhưng còn thiếu smoke trình duyệt với tài liệu thật.
-- Phần nền chưa được gọi là hoàn tất cho tới khi kiểm chứng lại trên cây code hiện tại.
-- Parser Jam/C-call/LSU và `line_events.sqlite` đã có; chưa có một pilot line thật khép kín.
-- Chưa có vòng chuyên gia trong sản phẩm, bài học được promotion rồi dùng lại, model LSU, shadow hoặc cảnh báo vận hành.
-- Gate A NAS vẫn `PARTIAL`; dữ liệu thật và đường dẫn cục bộ không được commit.
+Iris LSU là lát cắt ưu tiên, không phải toàn bộ sản phẩm. Kế hoạch vẫn giữ đủ các đích sau:
 
-Không làm lại phần nền đã có. Đợt đầu tiên là kiểm chứng và sửa đúng lỗi quan sát được, sau đó mở một pilot thực tế.
+1. Thư viện tài liệu nội bộ có citation và bằng chứng.
+2. Hồ sơ vụ việc đọc lại được trong Workspace Chat.
+3. Hỏi, giao và nhận xác nhận của chuyên gia đúng công đoạn.
+4. Biến phản hồi đã duyệt thành bài học có thể tìm lại.
+5. Điều tra C-call/Jam bằng timeline log, SOP, mã lỗi và mapping.
+6. Agent tạo nháp báo cáo, SOP, bảng tính, sơ đồ hoặc thiết kế công đoạn có duyệt.
+7. Agent hỗ trợ lập trình trong workspace tách biệt, không tự merge/push.
+8. Cảnh báo sớm LSU; chỉ mở Drum/DLP sau khi LSU chứng minh được giá trị.
+9. Thư viện dùng chung trên NAS, backup/restore và một máy ghi–nhiều máy đọc.
 
-## 3. Phương án đã chọn
+Các đích này không bị xóa khỏi US1–US11. Chúng chỉ không được xây đồng thời khi chưa có đầu vào thật.
 
-### Phương án A — Triển khai liên tục cả 14 gate
+## 3. Hiện trạng làm điểm xuất phát
 
-Ưu điểm: mọi ý tưởng đều có task ngay.
+- Gate 1A và US1 đã có nền code cho migration, quyền, danh sách/chi tiết case, trạng thái, kết luận và tham chiếu bằng chứng.
+- Chuẩn bị nguồn tăng dần đã có code/test; vẫn cần smoke trình duyệt trên cây code hiện tại.
+- RAG tài liệu và parser log đã có nền; chưa có vòng LSU lot → Unit → JIG → outcome.
+- Chưa có model dự đoán, đánh giá phát lại lịch sử hoặc shadow thật.
+- Gate A NAS vẫn `PARTIAL`; dữ liệu nhà máy và đường dẫn thật không được commit.
 
-Nhược điểm: 81 task tương lai cùng hoạt động, phụ thuộc giả, khó biết khi nào sản phẩm dùng được và dễ xây hạ tầng trước dữ liệu.
+Không làm lại phần nền. Chỉ sửa lỗi thật quan sát được rồi nối lát cắt LSU nhỏ nhất.
 
-Kết luận: không chọn.
+## 4. Khóa phạm vi theo nguồn lực
 
-### Phương án B — Cắt còn một trình quản lý hồ sơ
+MVP chạy trên laptop i5, RAM 16 GB, không GPU, nên khóa các giới hạn sau:
 
-Ưu điểm: nhanh và ít code.
+- Chỉ làm BOWSKEW 4 BEAM trước; BOWSKEW 2 BEAM và BEAM 4 BEAM để sau.
+- Chỉ nhập file cục bộ theo mẫu đã duyệt; chưa nối trực tiếp ERP, JIG hoặc hệ thống nhà máy.
+- Một tiến trình xử lý tại một thời điểm, theo lô nhỏ, có thể dừng và chạy lại.
+- Mặc định bảo vệ laptop: CSV tối đa 100 MB mỗi file, XLSX tối đa 25 MB mỗi file, tối đa 200.000 dòng mỗi sheet và lô xử lý 10.000 dòng. Các giới hạn được cấu hình cục bộ; vượt giới hạn phải hướng dẫn người dùng chia file, không cố nạp toàn bộ vào RAM.
+- Mỗi lần chỉ chạy một thao tác nặng như toàn bộ test, đọc file lớn, lập chỉ mục hoặc đánh giá. Các thư viện tính toán số chỉ dùng một luồng CPU trong lượt kiểm chứng mặc định.
+- SQLite và xử lý bảng là mặc định; không dựng cơ sở dữ liệu vector hoặc Knowledge Graph riêng cho prediction.
+- Baseline luôn có phương án không cảnh báo và một luật EWMA cấu hình được cho lát cắt đầu; CUSUM/SPC khác chỉ mở nếu báo cáo dữ liệu chứng minh EWMA không phù hợp. Chỉ thử một hồi quy logistic nhẹ trên CPU khi Data Gate và số mẫu xác nhận đạt ngưỡng đã ghi trong cấu hình.
+- Không AutoML, deep learning, quét tham số lớn, nhiều model song song hoặc huấn luyện nền liên tục.
+- Shadow đọc-only được chương trình tự mở khi rubric đạt hoặc khi cần thu thêm outcome ở chế độ học. Chưa có scheduler, tin nhắn ngoài ứng dụng, PLC hoặc tự đổi thông số máy.
+- Không làm dashboard quản trị nhiều tầng, hàng chờ chuyên gia đầy đủ hoặc capability registry tổng quát trong MVP.
+- Tiếng Việt là ngôn ngữ giao diện duy nhất. Mọi nút, hướng dẫn, tiến độ, cảnh báo, lỗi, nhật ký vận hành và báo cáo phải dùng tiếng Việt dễ hiểu cho người không học công nghệ thông tin.
+- Chuỗi lỗi từ thư viện, hệ điều hành hoặc dịch vụ bên ngoài phải được chặn và đổi thành lời giải thích cùng bước xử lý bằng tiếng Việt; không dùng câu tiếng Anh làm phương án dự phòng.
+- Tài liệu nguồn có thể giữ nguyên ngôn ngữ gốc để bảo toàn bằng chứng; phần điều khiển và kết luận do chương trình tạo vẫn chỉ dùng tiếng Việt.
+- Gemini và mọi tác tử phát triển dùng model cloud chỉ được đọc code, tài liệu sản phẩm và fixture giả hoàn toàn. Dữ liệu LSU/log/tài liệu nhà máy thật chỉ được chương trình cục bộ xử lý; tác tử chỉ nhận manifest cột hoặc số tổng hợp đã làm sạch.
 
-Nhược điểm: mất vòng bằng chứng → xác nhận → bài học → phòng ngừa, không còn đúng mục tiêu WorkLens.
+## 5. Kiến trúc tối thiểu
 
-Kết luận: không chọn.
+1. Workspace Chat là giao diện chính; không khôi phục Case Cockpit hoặc Studio.
+2. Giữ ranh giới `library.sqlite`, `line_events.sqlite` và `workspace_cases.sqlite`.
+3. Dữ liệu LSU được chuẩn hóa bằng ba nhóm bản ghi tối thiểu: thông số lot linh kiện, liên kết Unit–lot và kết quả đo JIG/outcome.
+4. Chỉ tạo `production_prediction.sqlite` sau khi file thật vượt Data Gate. Trước đó chỉ tạo báo cáo kiểm tra dữ liệu.
+5. Luồng phân tích dùng các hàm tất định, có thể kiểm thử và phát lại. Model là tùy chọn, không phải điều kiện để MVP hoàn thành.
+6. Mỗi kết quả phải truy về file nguồn/digest, thời điểm và phiên bản luật/model; không tự ghép theo tên file.
+7. Người điều tra mặc định có thể là chuyên gia trong đúng công đoạn. AI được tự xác nhận cổng dữ liệu, nhãn từ nguồn máy hợp lệ, ngưỡng mặc định và chạy bóng đọc-only theo rubric; AI không được tạo quyền người dùng hoặc phát lệnh điều khiển máy.
 
-### Phương án C — Giữ đặc tả đầy đủ, giao theo đợt nhỏ
+### 5.1. Hợp đồng phát lại nhỏ nhất
 
-Ưu điểm: bảo toàn tầm nhìn, mỗi đợt có giá trị sử dụng và có thể dừng an toàn; chỉ xây kho/model/UI khi đầu vào đã có.
+Mỗi cấu hình phát lại phải khóa các trường sau. Nếu cấu hình cục bộ không ghi đè, chương trình dùng mặc định có version trong `contracts/lsu-iris-input.md`; người dùng không phải tự chọn công thức thống kê:
 
-Nhược điểm: trạng thái cần được cập nhật đều và mỗi đợt phải có bằng chứng vận hành riêng.
+- metric số được phép dùng, chiều rủi ro tăng/giảm/hai phía, hệ số EWMA, cửa sổ nền và ngưỡng;
+- `as_of_time`, khoảng dự báo và quy tắc ghép một cảnh báo với outcome của cùng Unit;
+- một Unit chỉ có tối đa một cảnh báo trong cùng cửa sổ đánh giá;
+- cảnh báo đúng là Unit có cảnh báo rồi xuất hiện NG trong khoảng dự báo; cảnh báo nhầm là có cảnh báo nhưng không có NG; bỏ sót là có NG nhưng không có cảnh báo;
+- thời gian cảnh báo sớm bằng thời điểm outcome trừ thời điểm cảnh báo; phương án không cảnh báo có mọi NG là bỏ sót;
+- feature chỉ lấy từ danh sách cột cho phép và chỉ từ bản ghi có thời gian không vượt `as_of_time`; outcome/retest và dữ liệu đến sau không được làm feature.
 
-Kết luận: chọn phương án này.
+Thiếu một trường trong dữ liệu thì phương pháp trả `not_applicable` cùng lý do. Chương trình không quét hàng loạt công thức để tìm kết quả đẹp; nó chỉ dùng mặc định đã khóa hoặc bản ghi đè có version.
 
-## 4. Nguyên tắc kiến trúc tối thiểu
+### 5.2. Cổng tự động và giới hạn cuối
 
-1. Workspace Chat vẫn là giao diện chính; không khôi phục Case Cockpit hoặc Studio.
-2. `library.sqlite`, `line_events.sqlite` và `workspace_cases.sqlite` giữ ranh giới hiện có, liên kết bằng ID/digest.
-3. Chưa tạo `production_prediction.sqlite` cho tới khi Data Gate LSU/Iris đạt.
-4. Dùng SQLite và tìm kiếm từ khóa trước; chỉ thêm embedding hoặc thư viện máy học khi phép đo chứng minh cần thiết.
-5. Giữ activity hash-chain đang có cho hồ sơ; không nhân rộng chuỗi băm sang mọi bảng nếu chưa có yêu cầu kiểm toán thật.
-6. Mặc định người điều tra cũng là chuyên gia đúng công đoạn. Chỉ thêm người thứ hai khi cần theo dõi riêng hoặc phân xử.
-7. Pilot artifact chỉ gồm báo cáo điều tra và SOP. Chưa xây danh mục năng lực tổng quát.
-8. Mọi giao diện, cảnh báo và lỗi người dùng thấy phải bằng tiếng Việt và không lộ tên engine/model nội bộ.
+`contracts/lsu-acceptance-rubric.md` là nguồn duy nhất cho cách T011, T022 và T029 chấm kết quả. Tác tử được tự kết luận và đi tiếp khi có digest cùng bằng chứng chạy lại được:
 
-## 5. Các đợt triển khai
+- T011 tự ánh xạ cột đủ chắc chắn, tự xác nhận nhãn OK/NG từ trường kết quả cuối cùng và tự đăng ký phần dữ liệu hợp lệ. Mâu thuẫn phải thành `UNKNOWN`, không được đoán.
+- T022 tự chọn `AUTO_SHADOW` khi đạt ngưỡng hoặc `LEARNING_SHADOW` khi kỹ thuật an toàn nhưng chưa đủ bằng chứng. Cả hai chỉ chạy cục bộ, đọc-only.
+- T029 do một tác tử kiểm toán độc lập trong cùng `/goal` thực hiện. Lỗi được trả về tác tử thực thi sửa tối đa hai vòng rồi kiểm toán lại.
+- AI không được thay rubric sau khi thấy kết quả để lấy `PASS`; mọi thay đổi tạo phiên bản và digest mới.
+- Chỉ dừng toàn đợt khi có nguy cơ mất/rò dữ liệu, migration không phục hồi, thay đổi ngoài phạm vi hoặc yêu cầu tác động vật lý. Dữ liệu thiếu chỉ chặn lô phụ thuộc.
 
-### Đợt 0 — Khóa phần nền để dùng cá nhân
+Ranh giới cuối không cản build/ship: 29 task không có connector điều khiển máy. AI không được dừng line, sửa PLC, đổi thông số, chặn/xuất hàng hoặc xóa/ghi đè dữ liệu nguồn.
 
-**Phạm vi**
+### 5.3. Hai cổng để không tạo đường cụt
 
-- Đối soát code hiện có với Gate 1A, US1, đặc tả 005 và 007.
-- Chạy test tập trung cho chuẩn bị nguồn, lưu/mở case, migration và quyền.
-- Smoke trình duyệt: tiến độ lập chỉ mục, trạng thái chưa sẵn sàng, danh sách/chi tiết case, kết luận và đọc lại sau restart.
-- Chỉ sửa lỗi thật quan sát được; không viết lại kiến trúc.
+Mỗi mốc từ 2 đến 4 có hai cổng tách biệt:
 
-**Điều kiện hoàn tất**
+- **Cổng kỹ thuật**: code, migration, giao diện, lỗi an toàn và kiểm thử phải chạy hết bằng fixture nhỏ đã làm sạch trong repo. Đạt cổng này thì được phép xây mốc kỹ thuật kế tiếp.
+- **Cổng vận hành đọc-only**: đạt khi chạy trên dữ liệu thật được phép và vượt rubric tự động có version. Chưa đạt thì giữ `PARTIAL` hoặc `BLOCKED_DATA`, nhưng vẫn được tiếp tục các phần kỹ thuật độc lập.
 
-- Người dùng hiểu rõ khi thư viện chưa sẵn sàng và thấy tiến độ phần trăm.
-- Case tạo từ câu trả lời có thể mở lại, cập nhật trạng thái/kết luận và đọc sau restart.
-- Kiểm thử tập trung đạt; bộ kiểm thử toàn bộ, audit, import và kiểm tra tài liệu được ghi đúng kết quả.
+Fixture chỉ chứng minh phần mềm biết xử lý đúng hợp đồng. Fixture không chứng minh dữ liệu nhà máy đủ tốt, cảnh báo hữu ích hoặc pilot đã hoàn thành.
 
-### Đợt 1 — Một pilot điều tra line thật
+| Trở ngại | Việc vẫn tiếp tục | Việc phải giữ khóa |
+| --- | --- | --- |
+| Chưa nhận được file thật | Hoàn thiện hợp đồng file, fixture, bộ nhập, báo cáo thiếu dữ liệu và giao diện | Đăng ký snapshot thật và tuyên bố Data Gate đạt |
+| File thật thiếu khóa nối | Xuất danh sách cột/dòng cần bổ sung; tiếp tục kiểm thử phát lại bằng fixture | Đánh giá chất lượng trên dữ liệu thật |
+| Nhãn quá ít hoặc chỉ có một loại | Chạy phương án không cảnh báo, EWMA và `LEARNING_SHADOW` để thu thêm nhãn | Kích hoạt hồi quy logistic; chạy bóng đọc-only vẫn đi tiếp |
+| Luật/model không tốt hơn phương án không cảnh báo | Giữ công cụ phát lại, thu thập thêm outcome và điều chỉnh cấu hình có version | Cảnh báo vận hành |
+| Chưa có người duyệt | Dùng rubric mặc định để tự mở chạy bóng đọc-only và ghi rõ mức bằng chứng | Chỉ khóa hành động tác động vật lý hoặc quyền người dùng |
+| NAS chưa sẵn sàng | Tiếp tục case, LSU, Agent và pilot cục bộ | Tuyên bố thư viện dùng chung nhiều máy |
 
-**Phạm vi**
+## 6. Các mốc triển khai
 
-- Chọn đúng một loại sự việc đầu tiên: C-call hoặc Jam.
-- Tạo timeline từ log với timezone Việt Nam; event ban đầu luôn là `suspected` và không có fallback giả.
-- Gắn SOP, mã lỗi và mapping có phiên bản vào case bằng locator/digest, không sao chép dữ liệu thô.
-- Người điều tra kiêm chuyên gia có thể xác nhận/bác bỏ manh mối; người theo dõi công đoạn thứ hai là tùy chọn.
-- Tạo bản nháp báo cáo điều tra và SOP từ bằng chứng; người có thẩm quyền duyệt trước khi phát hành.
+### Mốc 0 — Khóa phần nền
 
-**Không làm trong đợt này**
+**Làm**: kiểm tra test và smoke trình duyệt cho chuẩn bị nguồn, tiến độ, lưu/mở case, trạng thái, kết luận và đọc lại sau khởi động.
 
-- Hàng chờ nhiều người, ma trận quyền quản trị đầy đủ hoặc phân xử phức tạp.
-- Capability registry tổng quát cho mọi loại file.
-- Model dự đoán, cảnh báo hoặc điều khiển máy.
+**Hoàn tất khi**: lỗi quan sát được đã sửa; người dùng hiểu khi nào thư viện chưa sẵn sàng; case đọc lại đúng. Thiếu smoke thật phải ghi `PARTIAL`.
 
-**Điều kiện hoàn tất**
+### Mốc 1 — Trợ lý LSU có căn cứ
 
-- Một case thật được phép đi từ mở hồ sơ → timeline → xác nhận → kết luận → báo cáo được duyệt.
-- Báo cáo vẫn mô tả đây là hỗ trợ điều tra, không phải chẩn đoán tự động.
+**Làm**: dùng RAG hiện có để tra tài liệu LSU; trong chi tiết case cho phép người phụ trách xác nhận, bác bỏ hoặc yêu cầu thêm bằng chứng. Chưa tạo hộp thư chuyên gia riêng.
 
-### Đợt 2 — Dùng lại bài học đã duyệt
+**Hoàn tất khi**: một câu hỏi LSU có citation được lưu thành case; phản hồi từ nguồn máy hoặc người đúng scope được lưu có provenance. AI có thể tự chấm phần có quy tắc tất định nhưng không tự tạo danh tính/chức danh chuyên gia.
 
-**Điều kiện vào**: có ít nhất một case thật đã kết luận và một phản hồi xác nhận có provenance.
+### Mốc 2 — Nối dữ liệu BOWSKEW 4 BEAM
 
-**Phạm vi**
+**Làm**:
 
-- Tạo ứng viên bài học từ case đã xác nhận.
-- Trợ lý/trưởng/phó phòng duyệt promotion hoặc thu hồi.
-- Tìm kiếm chính xác/từ khóa bằng SQLite; kết quả luôn dẫn về case, review và evidence gốc.
-- Chỉ thêm hàng chờ chuyên gia nhiều người nếu pilot chứng minh có bàn giao thật.
+- Chốt data dictionary và mẫu file cho lot linh kiện, liên kết Unit–lot, phép đo JIG và outcome.
+- Kiểm tra khóa join, đơn vị, múi giờ, thời điểm sự kiện, dữ liệu đến, phiên bản JIG/quy trình và nhãn.
+- Cho phép truy một Unit để xem toàn chuỗi lot → thông số → JIG/lần đo → outcome.
+- Liệt kê bản ghi thiếu hoặc mâu thuẫn; không tự đoán khóa nối.
 
-**Điều kiện hoàn tất**
+**Hoàn thành kỹ thuật khi**: fixture hợp lệ truy được toàn chuỗi; fixture lỗi tạo đúng báo cáo thiếu/trùng/mâu thuẫn; giao diện nói rõ bước xử lý.
 
-- Bài học chưa duyệt/đã thu hồi không xuất hiện như sự thật.
-- Một case mới tìm lại được bài học đã duyệt mà không thay đổi `library.sqlite`.
+**Được phép vận hành khi**: một snapshot cục bộ thật vượt rubric T011 và được tự đăng ký. Nếu chưa đạt, phần kỹ thuật vẫn đóng được nhưng trạng thái vận hành giữ `PARTIAL` hoặc `BLOCKED_DATA`.
 
-### Đợt 3 — Thử nghiệm dự đoán LSU nhẹ
+### Mốc 3 — Phát lại lịch sử
 
-**Điều kiện vào**
+**Làm**:
 
-- Có data dictionary, khóa join, đơn vị, timezone, phiên bản JIG/quy trình, outcome OK/NG và người xác nhận nhãn.
-- Đã kiểm tra rò rỉ tương lai, chất lượng nhãn và khả năng phát lại lịch sử.
+- Đóng băng snapshot và chia theo thời gian/Unit để không học từ tương lai.
+- Dùng đúng hợp đồng phát lại tại mục 5.1; cùng một protocol phải tạo cùng phép ghép cảnh báo–outcome và cùng digest.
+- So sánh phương án không cảnh báo với một luật EWMA cấu hình được; không triển khai đồng thời nhiều họ luật.
+- Nếu Data Gate và công thức cỡ mẫu trong rubric tự động đạt, mới thêm đúng một hồi quy logistic nhẹ trên CPU với cùng giao thức. Khi chưa đạt, nhánh model chỉ trả `not_applicable` và không thêm dependency máy học.
+- Báo cảnh báo đúng, cảnh báo nhầm, bỏ sót, thời gian cảnh báo sớm và kết quả theo giai đoạn/JIG.
 
-**Phạm vi**
+**Hoàn thành kỹ thuật khi**: công cụ phát lại chạy lại cho cùng kết quả trên fixture, chặn rò rỉ tương lai và xuất đủ số đúng/nhầm/bỏ sót/thời gian sớm.
 
-- Tạo kho dự đoán cục bộ và snapshot có version sau khi Data Gate đạt.
-- So sánh không cảnh báo, rule/EWMA/CUSUM và tối đa một model bảng đơn giản chạy CPU.
-- Chia dữ liệu theo thời gian/nhóm máy; báo false alarm, missed detection, lead time và độ ổn định.
-- Chạy phát lại lịch sử hoặc shadow thủ công trước. Chưa cần scheduler.
+**Được phép vận hành khi**: báo cáo trên snapshot thật tự nhận `AUTO_SHADOW` hoặc `LEARNING_SHADOW` theo rubric. Dữ liệu chưa đủ cho model không chặn EWMA hoặc chạy bóng học hỏi; chỉ lỗi schema, rò rỉ tương lai hoặc không tái lập mới chặn lô thật.
 
-**Điều kiện hoàn tất**
+### Mốc 4 — Shadow thủ công
 
-- Có báo cáo tái lập được, model/dataset/threshold có version và rollback.
-- Mỗi tín hiệu có feature snapshot; không phát cảnh báo vận hành và không điều khiển máy.
+**Làm**: người dùng chọn một lô file mới không chứa outcome tương lai tại thời điểm dự báo, chạy phân tích, xem danh sách Unit có nguy cơ cùng lý do/bằng chứng trong Workspace Chat, rồi ghi kết quả kiểm tra thực tế ở bước riêng sau đó. Người dùng cũng có thể ghi một Unit NG bị bỏ sót dù trước đó Unit không có cảnh báo.
 
-### Đợt 4 — Mở rộng có điều kiện
+**Hoàn thành kỹ thuật khi**: fixture chạy hết nhập file → danh sách nguy cơ → tạo/cập nhật case không trùng → ghi phản hồi, kể cả lỗi giữa hai kho và chạy lại.
 
-Mỗi nhánh dưới đây là một quyết định riêng, không chặn nhau:
+**Được phép vận hành khi**: chạy được ít nhất một lô thật vượt rubric từ nhập file → danh sách nguy cơ → phản hồi đúng/nhầm/bỏ sót; không phát lệnh máy hoặc cảnh báo ra ngoài ứng dụng.
 
-| Nhánh | Chỉ mở khi |
-|---|---|
-| Cảnh báo trong Workspace Chat | Shadow LSU đạt ngưỡng do chủ sở hữu duyệt, có kill switch và quy trình phản hồi |
-| NAS nhiều người | Có môi trường thật để thử một writer–nhiều reader, backup/restore và bàn giao liên ca |
-| Drum hoặc DLP | LSU chứng minh hợp đồng lõi có giá trị; mỗi miền có Data Gate và threshold riêng |
-| Agent lập trình | Có nhu cầu nghiệp vụ riêng, workspace cách ly, allowlist và người duyệt rõ ràng |
-| Artifact khác báo cáo/SOP | Có ít nhất ba loại đầu ra thật cần cùng một cơ chế dùng lại |
+### Mốc 5 — Học tiếp và mở rộng có điều kiện
 
-## 6. Ánh xạ 14 gate cũ vào kế hoạch mới
+**Làm**: rubric tự đề xuất và kiểm chứng threshold hoặc model bằng version mới; giữ bản cũ để rollback. Người dùng có thể bác bỏ hoặc ghi đè bằng cấu hình cục bộ có lý do.
 
-| Gate cũ | Cách xử lý |
-|---|---|
-| 1A | Đợt 0: kiểm toán phần nền đã có, không xây lại |
-| 2 | Đợt 0: smoke case UI và vòng đời |
-| 3 | Đợt 1: xác nhận tối thiểu cùng người; hàng chờ nhiều người để sau khi có nhu cầu |
-| 4 | Đợt 2: promotion thủ công và tìm kiếm SQLite |
-| 5 | Đợt 1: đưa lên trước để tạo giá trị vận hành đầu tiên |
-| 6 | Đợt 1: chỉ báo cáo điều tra và SOP |
-| 7 | Đợt 4: tách thành nhánh Agent lập trình riêng |
-| 8 | Đợt 3: chỉ Data Gate LSU/Iris |
-| 9 | Đợt 3: baseline thống kê và một model CPU đơn giản |
-| 10 | Đợt 3: phát lại lịch sử hoặc shadow thủ công trước |
-| 11 | Đợt 4: chỉ sau bằng chứng shadow |
-| 12 | Đợt 4: Drum/DLP sau LSU và có gate riêng |
-| 13 | Đợt 4: tách NAS, pilot tổ chức và mở rộng miền thành ba việc độc lập |
-| 14 | Đóng ở cuối từng đợt nhỏ, không chờ toàn bộ tầm nhìn |
+Sau đó mới quyết định riêng từng nhánh:
 
-## 7. Ngân sách kỹ thuật cho máy i5, RAM 16 GB, không GPU
+| Nhánh | Điều kiện mở |
+| --- | --- |
+| BOWSKEW 2 BEAM, BEAM 4 BEAM | BOWSKEW 4 BEAM có chuỗi dữ liệu và shadow dùng được |
+| Cảnh báo trong Workspace Chat | Shadow đạt ngưỡng, có người nhận, kill switch và quy trình phản hồi |
+| C-call/Jam | Có bộ log/SOP/mapping và người phụ trách sẵn sàng đóng một case thật |
+| Bài học đã duyệt | Có case thật với phản hồi chuyên gia đủ provenance |
+| NAS nhiều người | Có môi trường thử backup/restore và một máy ghi–nhiều máy đọc |
+| Drum/DLP | LSU chứng minh hợp đồng dữ liệu và đánh giá có giá trị; mỗi miền có Data Gate riêng |
+| Agent artifact/lập trình | Có nhu cầu thật, workspace/output root và người duyệt rõ ràng |
 
-- Một worker lập chỉ mục tại một thời điểm; có thể dừng và tiếp tục.
-- SQLite/FTS và xử lý theo lô nhỏ là mặc định.
-- Không chạy LLM lớn cục bộ, AutoML, deep learning, nhiều model song song hoặc quét tham số lớn.
-- Embedding/rerank chỉ chạy khi cần và phải hiển thị rõ trạng thái sẵn sàng cho người dùng.
-- Dữ liệu prediction ưu tiên phép biến đổi tất định và model bảng nhẹ trên CPU.
+Mốc 5 không phải một cổng lớn bắt mọi nhánh chờ nhau. Nó là điểm chọn task pack kế tiếp theo năm đường độc lập:
 
-## 8. Chiến lược kiểm thử
+1. Case có review thật → US3 trích xuất và tra cứu bài học kinh nghiệm (Lesson Learned).
+2. Log sự kiện dây chuyền và bằng chứng sẵn sàng → US4 trợ lý điều tra line chủ động (Line Investigation & Root Cause Triage).
+3. Hồ sơ vụ việc có đủ bằng chứng đã xác nhận → US5 Agent tạo đầu ra công việc có kiểm soát (Controlled Artifacts & SOP Review).
+4. Task pack và sandbox sẵn sàng → US6 Agent hỗ trợ lập trình trong workspace tách biệt (Sandbox Scripting & Tool Prototyping).
+5. Shadow LSU đạt rubric → US10 cảnh báo trong ứng dụng có duyệt và đề xuất phòng ngừa (In-App Risk Notification).
+6. Thư mục chia sẻ và quy trình sao lưu sẵn sàng → US11 thư viện công ty dùng chung và đa tiến trình/NAS an toàn (Multi-User Shared Library).
 
-- Mỗi task: chạy test tập trung cho module vừa đổi và `git diff --check`.
-- Mỗi story: chạy luồng restart/readback, privacy, quyền và thông báo tiếng Việt liên quan.
-- Trước hợp nhất, phát hành hoặc đánh dấu hoàn tất một đợt: chạy compile, toàn bộ pytest, CLI audit, import Workspace Chat và kiểm tra tài liệu.
-- Thiếu môi trường/dữ liệu thật phải ghi `PARTIAL` hoặc `BLOCKED`; không thay bằng fixture để tuyên bố vận hành.
-- Người kiểm toán không dùng chính kết luận của lượt triển khai làm bằng chứng duy nhất.
+Nếu một đường chưa đủ đầu vào, chỉ đường đó giữ `PARTIAL`/`BLOCKED`. T028 phải chuẩn bị task pack nhỏ cho đường đã đủ điều kiện; không mở đồng thời tất cả và không bắt đường độc lập chờ nhau.
 
-## 9. Rủi ro và cách dừng an toàn
+## 7. Định nghĩa MVP LSU hoàn thành
 
-| Rủi ro | Cách kiểm soát |
-|---|---|
-| Tài liệu trạng thái lệch code | `ROADMAP.md` là nguồn trạng thái duy nhất; tasks chỉ chứa đợt đang làm |
-| Xây quá sớm | Mọi đợt có điều kiện vào; chưa đạt thì không tạo schema/dependency/UI tương ứng |
-| Mất dữ liệu | Migration có backup/readback; không xóa dữ liệu/cột cũ chỉ để làm sạch |
-| Lộ dữ liệu nhà máy | Chỉ lưu locator/digest đã làm sạch; `local_only` không rời máy và không commit |
-| Người dùng hiểu nhầm AI | UI ghi rõ nháp, manh mối, chưa xác nhận và người duyệt |
-| Máy yếu bị nghẽn | Một worker, lô nhỏ, model nhẹ và thao tác có thể tiếp tục |
+MVP chỉ được gọi là hoàn thành khi đồng thời có:
+
+- Một target BOWSKEW 4 BEAM được cấu hình, không hard-code vào lõi.
+- Một snapshot thật được phép, có báo cáo chất lượng và truy vết lot → Unit → JIG → outcome.
+- Một lượt phát lại lịch sử với baseline và số đúng/nhầm/bỏ sót/thời gian cảnh báo sớm.
+- Một lượt shadow thủ công được người dùng đối chiếu với outcome thật.
+- Giao diện tiếng Việt, không lộ tên engine/model nội bộ hoặc traceback.
+- Không có bộ chọn ngôn ngữ khác; mọi trạng thái và nhật ký vận hành người dùng thấy đều là tiếng Việt dễ hiểu, kể cả khi thư viện bên ngoài trả lỗi tiếng Anh.
+- Không có hành động điều khiển máy; dữ liệu `local_only` không rời máy và không vào Git.
+- Các lệnh kiểm tra bắt buộc của repo được ghi đúng trạng thái; thiếu bằng chứng là `PARTIAL` hoặc `BLOCKED`.
+
+MVP không bắt buộc phải có model học máy. Nếu baseline không tạo giá trị hoặc dữ liệu chưa đủ, báo cáo trung thực đó vẫn đóng được mốc nghiên cứu nhưng không mở cảnh báo vận hành.
+
+## 8. Ánh xạ US để không mất đích
+
+| US | Vị trí trong kế hoạch |
+| --- | --- |
+| US1 | Mốc 0 và tiếp tục làm bìa hồ sơ cho mọi mốc |
+| US2 | Mốc 1, xác nhận tối thiểu ngay trong case |
+| US3 | Mốc 5 khi đã có phản hồi thật để tạo bài học kinh nghiệm (Lesson Learned) |
+| US4 | Nhánh trợ lý điều tra line chủ động (Line Investigation & Root Cause Triage) |
+| US5 | Nhánh Agent tạo đầu ra công việc có kiểm soát (Controlled Artifacts & SOP Review) |
+| US6 | Nhánh Agent hỗ trợ lập trình trong workspace tách biệt (Sandbox Scripting & Tool Prototyping) |
+| US7 | Mốc 2, chuỗi dữ liệu Iris LSU |
+| US8 | Mốc 3, phát lại lịch sử và đánh giá |
+| US9 | Mốc 4, shadow thủ công |
+| US10 | Sau shadow đạt ngưỡng, cảnh báo trong ứng dụng có duyệt và đề xuất phòng ngừa (In-App Risk Notification) |
+| US11 | Mốc 5, thư viện công ty dùng chung và đa tiến trình/NAS an toàn (Multi-User Shared Library) |
+
+## 9. Cách kiểm thử và dừng an toàn
+
+- Mỗi task chạy test tập trung và `git diff --check`.
+- Mọi lệnh Python chạy bằng Python 3.11 trong môi trường `uv` đã khóa. Nếu `.venv` hiện có lỗi, tạo môi trường mới dưới `local_runs/`; không xóa hoặc sửa quyền môi trường cũ.
+- Smoke tự động dùng thư mục làm việc dưới `local_runs/` để toàn bộ `Path.cwd()/local_cases` trỏ vào dữ liệu thử nghiệm. Không mở dữ liệu thật bằng Gemini hoặc tác tử cloud.
+- Chỉ tác tử điều phối ghi checklist, trạng thái chung, `PROJECT_HANDOVER.md` và chạy Git. Tác tử thực thi ghi biên nhận riêng; hai tác tử không sửa cùng file đồng thời.
+- Gemini thực hiện T001–T029 trong một `/goal`; T029 do tác tử kiểm toán độc lập với tác tử thực thi. Lỗi được trả lại để tự sửa tối đa hai vòng rồi kiểm toán lại.
+- Mỗi mốc có kiểm tra restart/readback, quyền riêng tư, quyền hạn và thông báo tiếng Việt liên quan.
+- Mỗi luồng giao diện phải kiểm đủ trạng thái bình thường, trống, chờ, thành công, cảnh báo và lỗi; cố ý tạo lỗi tiếng Anh từ bên ngoài để chứng minh lớp hiển thị đã đổi thành tiếng Việt và hướng dẫn cách xử lý.
+- Trước hợp nhất, phát hành hoặc đánh dấu hoàn tất mốc: chạy compile, toàn bộ pytest, CLI audit, import Workspace Chat và kiểm tra tài liệu.
+- Không dùng fixture để tuyên bố pilot thật. Không đủ dữ liệu thì xuất báo cáo thiếu gì và dừng ở cổng tương ứng.
+- Không xóa schema/dữ liệu cũ để làm đẹp. Mọi thay đổi bền vững phải migration, backup và đọc lại được.
+- Lỗi công cụ/môi trường được chẩn đoán và thử lại tối đa hai lần. Nếu vẫn không thể sửa an toàn, ghi blocker cụ thể rồi tiếp tục task độc lập; không mở rộng vô hạn sang hệ thống ngoài phạm vi.
 
 ## 10. Kiểm tra Hiến chương
 
 - Bằng chứng đi trước tuyên bố: đạt ở mức kế hoạch.
 - Ưu tiên cục bộ và an toàn dữ liệu: đạt ở mức kế hoạch.
 - Workspace Chat là giao diện chính: giữ nguyên.
-- Không fake PASS: có điều kiện đóng và trạng thái `PARTIAL`/`BLOCKED` rõ ràng.
-- Không over-engineer: kho prediction, hàng chờ nhiều người, registry tổng quát và adapter mới đều chưa được kích hoạt trước nhu cầu.
+- Không fake PASS: có đường kết thúc trung thực khi dữ liệu chưa đủ.
+- Không over-engineer: một JIG, file thủ công, baseline trước, tối đa một model CPU, không scheduler/PLC/AutoML trong MVP.
 - Không có ngoại lệ Hiến chương được đề xuất.

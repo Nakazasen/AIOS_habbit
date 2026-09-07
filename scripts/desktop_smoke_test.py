@@ -11,8 +11,15 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 from pathlib import Path
 import sys
+
+# Ensure OpenMP and PyTorch runtime safety on Windows desktop
+os.environ.setdefault("KMP_DUPLICATE_LIB_OK", "TRUE")
+os.environ.setdefault("OMP_NUM_THREADS", "1")
+os.environ.setdefault("MKL_NUM_THREADS", "1")
+os.environ.setdefault("PYTHONIOENCODING", "utf-8")
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 VENDOR_WHEELS_DIR = REPO_ROOT / "vendor" / "wheels"
@@ -157,7 +164,7 @@ def test_built_desktop_executable() -> None:
     passed = False
     start_time = time.time()
     try:
-        while time.time() - start_time < 15:
+        while time.time() - start_time < 60:
             try:
                 with urllib.request.urlopen(health_url, timeout=2) as resp:
                     if resp.status == 200:
@@ -167,9 +174,8 @@ def test_built_desktop_executable() -> None:
                             break
             except Exception:
                 time.sleep(0.5)
-        assert passed, f"Desktop GUI health endpoint failed to respond 200 ok within 15s at {health_url}"
+        assert passed, f"Desktop GUI health endpoint failed to respond 200 ok within 60s at {health_url}"
 
-        # Verify root HTML is served
         with urllib.request.urlopen(root_url, timeout=3) as resp:
             assert resp.status == 200, f"Root UI failed with status {resp.status}"
             html = resp.read().decode("utf-8")

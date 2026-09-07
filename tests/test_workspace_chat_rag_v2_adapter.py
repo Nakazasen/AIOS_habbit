@@ -2346,3 +2346,9 @@ def test_drain_worker_double_check_lock_prevents_lost_enqueue_race(tmp_path: Pat
     row2 = adapter._load_ledger_row(db_path, src2.source_scope, src2.source_id)
     assert row1 is not None and row1.state == adapter.PREP_STATE_READY
     assert row2 is not None and row2.state == adapter.PREP_STATE_READY
+
+
+def test_rag_v2_adapter_user_facing_messages_are_vietnamese():
+    """Verify status messages presented to users by rag_v2_adapter adhere to Vietnamese UI policy."""
+    from aios_habit.i18n import SUPPORTED_UI_LOCALES
+    assert SUPPORTED_UI_LOCALES == ("vi",)

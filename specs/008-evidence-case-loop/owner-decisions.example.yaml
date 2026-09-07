@@ -1,5 +1,5 @@
 # Ví dụ quyết định chủ sở hữu; không chứa tên người thật hoặc đường dẫn dữ liệu thật.
-version: 1
+version: 2
 roles:
   default_case_worker:
     grants: [investigator, expert]
@@ -14,10 +14,14 @@ roles:
     grants: [artifact_approver]
     allowed_titles: [department_head, assistant_manager, manager, deputy_manager]
   shadow_approver:
-    rule: "system_owner AND (managerial_approver OR process_expert)"
+    rule: "Chỉ dùng cho cảnh báo vận hành hoặc hành động ngoài chế độ đọc-only."
   ai:
     grants: []
-    rule: "Chỉ tạo nháp, không phê duyệt."
+    rule: "Không mượn vai trò con người; quyền chấm tự động nằm ở system_actors."
+system_actors:
+  rubric_reviewer:
+    grants: [technical_gate_reviewer, data_gate_reviewer, readonly_shadow_approver]
+    rule: "Được tự kết luận theo rubric có version; không được tạo quyền người dùng hoặc phát lệnh máy."
 owners:
   library: admin
   line_pilot: [admin, managerial_approver]
@@ -45,4 +49,62 @@ prediction_readiness:
   failure_code_available: true
   retest_or_repair_outcome_available: true
   risk_priority: missed_detection_over_false_alarm
-  risk_priority_status: owner_confirmation_pending_before_prediction_gate
+  risk_priority_status: default_accepted
+  real_column_mapping_status: auto_map_with_ambiguity_block
+  ewma_metric_selection: highest_valid_coverage_then_canonical_name
+  maximum_ewma_metrics: 20
+  risk_direction: two_sided_unless_local_config_overrides
+  ewma_alpha: 0.2
+  baseline_window: 50
+  baseline_minimum_points: 20
+  control_limit_standard_deviations: 3.0
+  prediction_horizon: next_final_jig_outcome_same_unit
+  alert_outcome_match_rule: first_final_outcome_after_as_of_same_unit
+  allowed_features: numeric_pre_as_of_component_and_unit_measurements
+  supervised_model_minimum_samples:
+    total: 200
+    each_class: 30
+    per_effective_feature_each_class: 10
+acceptance_rubric:
+  version: lsu_iris_v1
+  automatic_technical_approval: true
+  automatic_data_gate_approval: true
+  automatic_readonly_shadow_approval: true
+  minimum_join_coverage_percent: 95.0
+  minimum_time_parse_percent: 99.5
+  minimum_unit_recognition_percent: 99.5
+  maximum_conflicting_primary_keys: 0
+  minimum_holdout_units: 200
+  minimum_holdout_ng: 30
+  minimum_time_periods: 3
+  minimum_ng_recall_percent: 80.0
+  maximum_false_alerts_per_100_units: 10.0
+  minimum_group_recall_percent: 60.0
+  minimum_group_ng_for_slice_check: 10
+  self_heal_attempts_per_root_cause: 2
+  plant_action_enabled: false
+local_source_aliases:
+  lsu: KHO_LSU_CUC_BO
+  kyocera_line: GOI_KYOCERA_CUC_BO
+  real_paths_must_stay_in_ignored_local_config: true
+progress_policy:
+  allow_sanitized_fixture_for_technical_gate: true
+  fixture_counts_as_operational_evidence: false
+  independent_branch_continues_when_other_branch_blocked: true
+prediction_first_slice:
+  domain: lsu_iris
+  primary_jig: BOWSKEW_4_BEAM
+  next_jigs: [BOWSKEW_2_BEAM, BEAM_4_BEAM]
+  input_mode: local_file_manual
+  execution_order: [historical_replay, manual_shadow]
+  max_supervised_models: 1
+  scheduler_enabled: false
+  external_alert_enabled: false
+  plant_control_enabled: false
+  required_link_keys: [component_lot_id, unit_serial, jig_id, run_id]
+resource_limits:
+  csv_max_mb: 100
+  xlsx_max_mb: 25
+  rows_per_sheet_max: 200000
+  processing_batch_rows: 10000
+  numeric_threads: 1

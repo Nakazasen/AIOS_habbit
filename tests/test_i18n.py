@@ -34,6 +34,21 @@ def test_supported_locales_constants() -> None:
     assert len(SUPPORTED_LOCALES) == 3
 
 
+def test_supported_ui_locales_strictly_vietnamese_only() -> None:
+    """UI policy: only Vietnamese is supported on user interfaces (docs/UI_LANGUAGE_POLICY.md)."""
+    from aios_habit.i18n import SUPPORTED_UI_LOCALES
+    assert SUPPORTED_UI_LOCALES == ("vi",)
+
+
+def test_external_error_sanitization_to_vietnamese() -> None:
+    """Verify external technical exceptions are converted to safe Vietnamese without exposing English or paths."""
+    from aios_habit.workspace_case_ui import safe_case_error_message
+    msg = safe_case_error_message(ConnectionRefusedError("Connection refused: 127.0.0.1:8000"))
+    assert "Connection refused" not in msg
+    assert "127.0.0.1" not in msg
+    assert any(word in msg for word in ["kết nối", "sự cố", "thử lại"])
+
+
 def test_get_supported_locales() -> None:
     """Verify get_supported_locales returns (code, name) tuples."""
     locales = get_supported_locales()

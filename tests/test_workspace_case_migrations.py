@@ -122,4 +122,155 @@ def test_concurrent_migration_rechecks_version_under_write_lock(tmp_path):
     with sqlite3.connect(path) as connection:
         assert connection.execute("PRAGMA user_version").fetchone()[0] == CURRENT_SCHEMA_VERSION
         assert connection.execute("PRAGMA quick_check").fetchone()[0] == "ok"
-        assert connection.execute("SELECT COUNT(*) FROM schema_migrations WHERE version = 2").fetchone()[0] == 1
+        assert connection.execute("SELECT COUNT(*) FROM schema_migrations WHERE version = 3").fetchone()[0] == 1
+
+
+def test_migrate_v2_to_v3_creates_expert_tables_and_preserves_data(tmp_path):
+    path = tmp_path / "workspace_cases.sqlite"
+    # First migrate to v2
+    migrate_store(path, target_version=2)
+    with sqlite3.connect(path) as connection:
+        assert connection.execute("PRAGMA user_version").fetchone()[0] == 2
+        connection.execute(
+            """
+            INSERT INTO cases (case_id, conversation_id, assistant_message_id, trace_id, evidence_digest, title, status, created_at, created_by, updated_at)
+            VALUES ('CASE-V2', 'CONV-V2', 'MSG-V2', 'TRC-V2', 'DIG-V2', 'Case V2 Title', 'in_progress', '2026-09-01T00:00:00+00:00', 'local_admin', '2026-09-01T00:00:00+00:00')
+            """
+        )
+        connection.commit()
+
+    # Migrate to v3
+    result = migrate_store(path, target_version=3)
+    assert result.from_version == 2
+    assert result.to_version == 3
+    assert result.migrated is True
+    assert result.backup_path is not None and result.backup_path.exists()
+
+    with sqlite3.connect(path) as connection:
+        assert connection.execute("PRAGMA user_version").fetchone()[0] == 3
+        assert connection.execute("PRAGMA quick_check").fetchone()[0] == "ok"
+        # Check v2 data preserved
+        row = connection.execute("SELECT title, status FROM cases WHERE case_id = 'CASE-V2'").fetchone()
+        assert row[0] == "Case V2 Title"
+        assert row[1] == "in_progress"
+        # Check expert tables exist
+        tables = {r[0] for r in connection.execute("SELECT name FROM sqlite_master WHERE type='table'")}
+        assert "expert_requests" in tables
+        assert "expert_reviews" in tables
+
+
+def test_migration_v3_fault_restores_v2_snapshot(tmp_path):
+    path = tmp_path / "workspace_cases.sqlite"
+    migrate_store(path, target_version=2)
+
+    def fail(stage: str, version: int) -> None:
+        if stage == "after_migration" and version == 3:
+            raise RuntimeError("v3 migration synthetic fault")
+
+    with pytest.raises(WorkspaceCaseMigrationError, match="MIGRATION_FAILED"):
+        migrate_store(path, target_version=3, fault_injector=fail)
+
+    with sqlite3.connect(path) as connection:
+        assert connection.execute("PRAGMA user_version").fetchone()[0] == 2
+        assert connection.execute("PRAGMA quick_check").fetchone()[0] == "ok"
+
+
+def test_migrate_v3_to_v4_creates_lesson_tables_and_preserves_data(tmp_path):
+    path = tmp_path / "workspace_cases.sqlite"
+    # First migrate to v3
+    migrate_store(path, target_version=3)
+    with sqlite3.connect(path) as connection:
+        assert connection.execute("PRAGMA user_version").fetchone()[0] == 3
+        connection.execute(
+            """
+            INSERT INTO cases (case_id, conversation_id, assistant_message_id, trace_id, evidence_digest, title, status, created_at, created_by, updated_at)
+            VALUES ('CASE-V3', 'CONV-V3', 'MSG-V3', 'TRC-V3', 'DIG-V3', 'Case V3 Title', 'in_progress', '2026-09-02T00:00:00+00:00', 'local_admin', '2026-09-02T00:00:00+00:00')
+            """
+        )
+        connection.commit()
+
+    # Migrate to v4
+    result = migrate_store(path, target_version=4)
+    assert result.from_version == 3
+    assert result.to_version == 4
+    assert result.migrated is True
+    assert result.backup_path is not None and result.backup_path.exists()
+
+    with sqlite3.connect(path) as connection:
+        assert connection.execute("PRAGMA user_version").fetchone()[0] == 4
+        assert connection.execute("PRAGMA quick_check").fetchone()[0] == "ok"
+        # Check v3 data preserved
+        row = connection.execute("SELECT title, status FROM cases WHERE case_id = 'CASE-V3'").fetchone()
+        assert row[0] == "Case V3 Title"
+        assert row[1] == "in_progress"
+        # Check lesson table exists
+        tables = {r[0] for r in connection.execute("SELECT name FROM sqlite_master WHERE type='table'")}
+        assert "case_lessons" in tables
+        # Check quality manager role grant exists
+        grants = {r[0] for r in connection.execute("SELECT role FROM role_grants WHERE actor_id='local_admin'")}
+        assert "quality_manager" in grants
+
+
+def test_migration_v4_fault_restores_v3_snapshot(tmp_path):
+    path = tmp_path / "workspace_cases.sqlite"
+    migrate_store(path, target_version=3)
+
+    def fail(stage: str, version: int) -> None:
+        if stage == "after_migration" and version == 4:
+            raise RuntimeError("v4 migration synthetic fault")
+
+    with pytest.raises(WorkspaceCaseMigrationError, match="MIGRATION_FAILED"):
+        migrate_store(path, target_version=4, fault_injector=fail)
+
+    with sqlite3.connect(path) as connection:
+        assert connection.execute("PRAGMA user_version").fetchone()[0] == 3
+        assert connection.execute("PRAGMA quick_check").fetchone()[0] == "ok"
+
+
+def test_migrate_v4_to_v5_creates_artifact_tables_and_preserves_data(tmp_path):
+    path = tmp_path / "workspace_cases.sqlite"
+    migrate_store(path, target_version=4)
+
+    # Insert a case and lesson in v4
+    with sqlite3.connect(path) as connection:
+        connection.execute(
+            """
+            INSERT INTO cases (case_id, conversation_id, assistant_message_id, trace_id, evidence_digest, title, status, created_at, created_by, updated_at)
+            VALUES ('CASE-V4', 'CONV-1', 'MSG-1', 'TR-1', 'DIG-1', 'Case V4 Title', 'in_progress', '2026-09-06T00:00:00Z', 'local_admin', '2026-09-06T00:00:00Z')
+            """
+        )
+        connection.commit()
+
+    # Migrate to v5
+    result = migrate_store(path, target_version=5)
+    assert result.from_version == 4
+    assert result.to_version == 5
+    assert result.migrated is True
+    assert result.backup_path is not None and result.backup_path.exists()
+
+    with sqlite3.connect(path) as connection:
+        assert connection.execute("PRAGMA user_version").fetchone()[0] == 5
+        assert connection.execute("PRAGMA quick_check").fetchone()[0] == "ok"
+        # Check v4 data preserved
+        row = connection.execute("SELECT title, status FROM cases WHERE case_id = 'CASE-V4'").fetchone()
+        assert row[0] == "Case V4 Title"
+        assert row[1] == "in_progress"
+        # Check artifact table exists
+        tables = {r[0] for r in connection.execute("SELECT name FROM sqlite_master WHERE type='table'")}
+        assert "case_artifacts" in tables
+
+
+def test_migration_v5_fault_restores_v4_snapshot(tmp_path):
+    path = tmp_path / "workspace_cases.sqlite"
+    migrate_store(path, target_version=4)
+
+    def fail(stage: str, version: int) -> None:
+        if stage == "after_migration" and version == 5:
+            raise RuntimeError("v5 migration synthetic fault")
+
+    with pytest.raises(WorkspaceCaseMigrationError, match="MIGRATION_FAILED"):
+        migrate_store(path, target_version=5, fault_injector=fail)
+
+    with sqlite3.connect(path) as connection:
+        assert connection.execute("PRAGMA user_version").fetchone()[0] == 4
+        assert connection.execute("PRAGMA quick_check").fetchone()[0] == "ok"

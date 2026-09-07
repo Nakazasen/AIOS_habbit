@@ -21,7 +21,7 @@ Tài liệu này quy định các điều luật bị khóa cứng mà toàn b�
 - **Ràng buộc:**
   - Phải tuân thủ nghiêm ngặt theo bản kế hoạch triển khai đã được người dùng phê duyệt.
   - Không được bỏ qua viết kiểm thử hoặc chạy xác minh lệnh thực tế.
-- **Mô hình khuyến nghị hiện tại:** Gemini Flash 3.5 High / Gemini Pro 3.1 hoặc tương đương.
+- **Mô hình khuyến nghị hiện tại:** Gemini Flash ở chế độ suy luận cao hoặc mô hình thực thi tương đương; phiên bản cụ thể do Antigravity đang cung cấp.
 
 ---
 
@@ -29,11 +29,13 @@ Tài liệu này quy định các điều luật bị khóa cứng mà toàn b�
 
 Không một pull request hay thay đổi mã nguồn nào được phép gộp hoặc đẩy nếu không đáp ứng đầy đủ:
 
-1. **Kiểm tra biên dịch:** mã phải biên dịch sạch khi chạy `py -3 -m compileall src tests`.
-2. **Kiểm thử:** toàn bộ bài kiểm tra hiện có và bài mới phải vượt `py -3 -m pytest -q`.
-3. **Kiểm tra audit cục bộ:** `$env:PYTHONPATH="src"; py -3 -m aios_habit.cli audit` phải trả `"status": "PASS"`.
-4. **Kiểm tra import giao diện chính:** `$env:PYTHONPATH="src"; py -3 -c "import aios_habit.workspace_chat_app"` phải thành công.
-5. **Ranh giới hệ thống cũ:** module Workspace Chat được hỗ trợ không được import `studio` hoặc `case_cockpit`; khi dừng phần cũ phải gỡ đường khởi chạy và kỳ vọng kiểm thử lỗi thời.
+1. **Đúng phiên bản Python:** mọi lệnh phải chạy bằng Python 3.11 theo `pyproject.toml`. Trên máy có nhiều Python, dùng môi trường `uv` đã khóa; không dùng `py -3` nếu lệnh đó chọn phiên bản khác 3.11.
+2. **Kiểm tra biên dịch:** mã phải biên dịch sạch khi chạy `uv run --no-sync --group dev python -m compileall src tests`.
+3. **Kiểm thử:** toàn bộ bài kiểm tra hiện có và bài mới phải vượt `uv run --no-sync --group dev pytest -q`.
+4. **Kiểm tra audit cục bộ:** `uv run --no-sync --group dev python -m aios_habit.cli audit` phải trả `"status": "PASS"`.
+5. **Kiểm tra import giao diện chính:** `uv run --no-sync --group dev python -c "import aios_habit.workspace_chat_app"` phải thành công trong thư mục runtime thử nghiệm, không chạm dữ liệu thật.
+6. **Môi trường bị lỗi:** nếu `.venv` hiện có bị khóa hoặc sai phiên bản, tạo môi trường 3.11 mới dưới `local_runs/`; không xóa, chiếm quyền sở hữu hoặc sửa mù môi trường cũ.
+7. **Ranh giới hệ thống cũ:** module Workspace Chat được hỗ trợ không được import `studio` hoặc `case_cockpit`; khi dừng phần cũ phải gỡ đường khởi chạy và kỳ vọng kiểm thử lỗi thời.
 
 ---
 
@@ -53,9 +55,13 @@ Chi tiết phân loại dữ liệu: `00_governance/DATA_POLICY.md`. Đánh giá
 Áp dụng cho mọi người và mọi agent. Không có ngoại lệ “viết nhanh bằng tiếng Anh rồi dịch sau”.
 
 ### 4.1 Giao diện người dùng
-- Nhãn, hành động, cảnh báo, trạng thái trống, lỗi hiển thị cho người dùng: **100% tiếng Việt**.
-- Hằng kỹ thuật bắt buộc giữ nguyên (`local_only`, `redacted_export`, `cloud_allowed`) phải có giải thích tiếng Việt ngay bên cạnh.
+- Tiếng Việt là ngôn ngữ giao diện duy nhất được hỗ trợ. Không để người dùng chọn giao diện tiếng Anh hoặc ngôn ngữ khác.
+- Nhãn, hành động, hướng dẫn, trợ giúp, tiến độ, cảnh báo, trạng thái trống, lỗi, thông báo và báo cáo hiển thị cho người dùng: **100% tiếng Việt dễ hiểu cho người không học công nghệ thông tin**.
+- Nhật ký vận hành, bảng trạng thái và đầu ra dòng lệnh dành cho người dùng cũng phải là tiếng Việt; cấm câu tiếng Anh làm phương án dự phòng.
+- Lỗi/chuỗi tiếng Anh từ thư viện, hệ điều hành hoặc dịch vụ bên ngoài phải được chặn, ghi mã nội bộ nếu cần và ánh xạ thành lời giải thích tiếng Việt trước khi hiển thị.
+- Hằng kỹ thuật bắt buộc giữ nguyên (`local_only`, `redacted_export`, `cloud_allowed`), mã thiết bị, mã lỗi và tên tệp chỉ được xuất hiện như định danh; phải có giải thích tiếng Việt ngay bên cạnh nếu người dùng cần hiểu.
 - Không lộ traceback thô, đường dẫn hệ thống, secret, hay nội dung `local_only` trên giao diện thường.
+- Tài liệu nguồn có thể giữ nguyên ngôn ngữ gốc để bảo toàn bằng chứng; phần điều khiển, giải thích và kết luận của chương trình vẫn phải là tiếng Việt.
 
 ### 4.2 Tài liệu sản phẩm (mọi file `.md` thuộc repo, trừ mục 4.4)
 - **Câu văn, tiêu đề mục, mô tả, bảng giải thích: tiếng Việt.** Cấm viết đoạn văn hay tiêu đề bằng tiếng Anh.
@@ -64,7 +70,7 @@ Chi tiết phân loại dữ liệu: `00_governance/DATA_POLICY.md`. Đánh giá
 - Khi sửa file cũ còn tiếng Anh: **dịch phần đụng tới** trong cùng lượt, không để nguyên đoạn Anh và không thêm Anh mới.
 - Sổ thảo luận sống (`Thảo_luận_AI_dự_đoán_lỗi_LSU.md`), README, spec đang mở, ADR, runbook: cùng luật.
 
-### 4.3 Được giữ nguyên (không phải câu văn)
+### 4.3 Được giữ nguyên vì là định danh, không phải câu giao diện
 Chỉ các **token** sau được để tiếng Anh, và phải có nghĩa tiếng Việt gần đó nếu người đọc không phải lập trình viên:
 - Đường dẫn file, tên module/lớp/hàm, lệnh chạy (`pytest`, `compileall`).
 - Nhãn máy mà công cụ đọc được: `Status:`, `PASS` / `FAIL`, hằng `local_only`.
@@ -77,4 +83,3 @@ Chỉ các **token** sau được để tiếng Anh, và phải có nghĩa tiế
 Tên định danh, comment kỹ thuật, commit message: tiếng Anh (không phải tài liệu người đọc).
 
 Chi tiết kiểm soát tài liệu: `docs/DOCUMENTATION_GOVERNANCE.md`. Chi tiết UI: `docs/UI_LANGUAGE_POLICY.md`.
-

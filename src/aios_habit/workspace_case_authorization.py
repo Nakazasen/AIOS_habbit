@@ -38,15 +38,71 @@ ROLE_CAPABILITIES: Final[dict[str, frozenset[str]]] = {
             "case.assign",
             "case.checklist",
             "case.attach_evidence",
+            "expert.request",
+            "expert.resolve_conflict",
+            "learning.propose",
+            "artifact.draft",
+            "alert.view",
         }
     ),
-    "expert": frozenset({"case.view", "case.attach_evidence", "expert.review"}),
+    "expert": frozenset(
+        {
+            "case.view",
+            "case.attach_evidence",
+            "expert.review",
+            "expert.request",
+            "learning.propose",
+            "alert.view",
+        }
+    ),
     # Admin is deliberately not a wildcard; capabilities remain explicit.
-    "admin": frozenset({"case.view", "case.configure_roles"}),
-    "quality_manager": frozenset({"case.view", "learning.approve"}),
-    "artifact_approver": frozenset({"case.view", "artifact.approve"}),
-    "shadow_reviewer": frozenset({"case.view", "shadow.review"}),
-    "system_owner": frozenset({"case.view", "shadow.approve"}),
+    "admin": frozenset(
+        {
+            "case.view",
+            "case.configure_roles",
+            "learning.view",
+            "alert.view",
+            "alert.manage_policy",
+            "alert.kill_switch",
+        }
+    ),
+    "local_admin": frozenset(
+        {
+            "case.view",
+            "case.configure_roles",
+            "learning.view",
+            "alert.view",
+            "alert.manage_policy",
+            "alert.kill_switch",
+        }
+    ),
+    "quality_manager": frozenset(
+        {
+            "case.view",
+            "learning.propose",
+            "learning.approve",
+            "learning.revoke",
+            "expert.resolve_conflict",
+            "artifact.draft",
+            "artifact.approve",
+            "alert.view",
+            "alert.manage_policy",
+            "alert.kill_switch",
+        }
+    ),
+    "artifact_approver": frozenset({"case.view", "artifact.draft", "artifact.approve"}),
+    "shadow_reviewer": frozenset({"case.view", "shadow.review", "alert.view"}),
+    "system_owner": frozenset(
+        {
+            "case.view",
+            "shadow.approve",
+            "alert.view",
+            "alert.manage_policy",
+            "alert.kill_switch",
+        }
+    ),
+    "qc_operator": frozenset({"case.view", "alert.view"}),
+    "operator": frozenset({"case.view", "alert.view"}),
 }
 
 
@@ -67,7 +123,7 @@ class WorkspaceCaseAuthorization:
             raise AuthorizationError("CASE_SCOPE_REQUIRED")
         now = datetime.now(timezone.utc)
         for grant in self.store.list_role_grants(actor_id):
-            if grant.scope != scope or grant.scope == "*" or grant.revoked_at:
+            if (grant.scope != scope and grant.scope != "general") or grant.scope == "*" or grant.revoked_at:
                 continue
             try:
                 valid_from = datetime.fromisoformat(grant.valid_from)
@@ -86,3 +142,39 @@ class WorkspaceCaseAuthorization:
             if valid_from <= now <= valid_until and capability in ROLE_CAPABILITIES.get(grant.role, frozenset()):
                 return
         raise AuthorizationError("CASE_AUTH_DENIED")
+
+    def has_capability(self, actor: ActorContext, capability: str, scope: str) -> bool:
+        """Check if actor holds capability in given scope without raising exception."""
+        try:
+            self.require(actor, capability, scope)
+            return True
+        except (AuthorizationError, PermissionError):
+            return False
+
+    def get_active_roles(self, actor: ActorContext, scope: str) -> set[str]:
+        """Return set of unrevoked, active roles for actor in scope (or general)."""
+        actor_id = actor.actor_id.strip()
+        if not actor_id or not scope or scope == "*":
+            return set()
+        now = datetime.now(timezone.utc)
+        active_roles: set[str] = set()
+        for grant in self.store.list_role_grants(actor_id):
+            if (grant.scope != scope and grant.scope != "general") or grant.scope == "*" or grant.revoked_at:
+                continue
+            try:
+                valid_from = datetime.fromisoformat(grant.valid_from)
+                valid_until = datetime.fromisoformat(grant.valid_until)
+            except (TypeError, ValueError):
+                continue
+            if (
+                valid_from.tzinfo is None
+                or valid_until.tzinfo is None
+                or valid_from.utcoffset() is None
+                or valid_until.utcoffset() is None
+            ):
+                continue
+            valid_from = valid_from.astimezone(timezone.utc)
+            valid_until = valid_until.astimezone(timezone.utc)
+            if valid_from <= now <= valid_until:
+                active_roles.add(grant.role)
+        return active_roles

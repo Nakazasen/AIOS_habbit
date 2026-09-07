@@ -268,15 +268,15 @@ def test_route_workspace_chat_handoff_mode_pending_state(monkeypatch, tmp_path):
     assert saved_messages[1].content == "⏳ Đang chờ Antigravity IDE xử lý..."
 
 
-def test_render_bridge_header_status_truthfulness():
+def test_render_bridge_header_status_truthfulness(monkeypatch: pytest.MonkeyPatch) -> None:
     import streamlit as st
     from aios_habit.antigravity_bridge import AntigravityHealthStatus
     from aios_habit.workspace_chat_ui import render_bridge_header_status
 
-    rendered_messages = []
-    st.info = lambda msg: rendered_messages.append(("info", msg))
-    st.warning = lambda msg: rendered_messages.append(("warning", msg))
-    st.error = lambda msg: rendered_messages.append(("error", msg))
+    rendered_messages: list[tuple[str, str]] = []
+    monkeypatch.setattr(st, "info", lambda msg: rendered_messages.append(("info", msg)))
+    monkeypatch.setattr(st, "warning", lambda msg: rendered_messages.append(("warning", msg)))
+    monkeypatch.setattr(st, "error", lambda msg: rendered_messages.append(("error", msg)))
 
     # Direct ready
     render_bridge_header_status(AntigravityHealthStatus("direct_ready", "direct", ["direct"]))

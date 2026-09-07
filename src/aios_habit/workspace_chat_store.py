@@ -1,3 +1,4 @@
+import json
 import logging
 import os
 import threading
@@ -122,16 +123,20 @@ def save_collection(collection: KnowledgeCollection) -> KnowledgeCollection:
 COLLECTION_INDEX_BASENAME = "library.sqlite"
 COLLECTION_RUNTIME_DIRNAME = "aios_thu_vien"
 WRITER_LOCK_NAME = ".aios-library-writer.lock"
+WRITER_INFO_NAME = ".aios-library-writer.info"
 
 
 class LibraryWriterLease:
     """Cross-process exclusive lease for one collection runtime directory."""
 
     def __init__(self, runtime_dir: Path) -> None:
-        self.path = Path(runtime_dir) / WRITER_LOCK_NAME
+        self.runtime_dir = Path(runtime_dir)
+        self.path = self.runtime_dir / WRITER_LOCK_NAME
+        self.info_path = self.runtime_dir / WRITER_INFO_NAME
         self._handle: Any = None
+        self._owner: str = "local_admin"
 
-    def acquire(self) -> bool:
+    def acquire(self, owner: str = "local_admin") -> bool:
         self.path.parent.mkdir(parents=True, exist_ok=True)
         handle = open(self.path, "a+b")
         try:
@@ -152,12 +157,50 @@ class LibraryWriterLease:
             handle.close()
             return False
         self._handle = handle
+        self._owner = owner
+
+        # Record holder metadata
+        try:
+            now_iso = datetime.now().isoformat()
+            info = {
+                "owner": owner,
+                "pid": os.getpid(),
+                "acquired_at": now_iso,
+                "heartbeat_at": now_iso,
+            }
+            self.info_path.write_text(json.dumps(info, ensure_ascii=False), encoding="utf-8")
+        except Exception:
+            pass
+
         return True
+
+    def heartbeat(self) -> bool:
+        """Refresh lease heartbeat timestamp."""
+        if self._handle is None:
+            return False
+        try:
+            now_iso = datetime.now().isoformat()
+            info = {
+                "owner": self._owner,
+                "pid": os.getpid(),
+                "heartbeat_at": now_iso,
+            }
+            if self.info_path.exists():
+                existing = json.loads(self.info_path.read_text(encoding="utf-8"))
+                info["acquired_at"] = existing.get("acquired_at", now_iso)
+            self.info_path.write_text(json.dumps(info, ensure_ascii=False), encoding="utf-8")
+            return True
+        except Exception:
+            return False
 
     def release(self) -> None:
         handle = self._handle
         if handle is None:
             return
+        try:
+            self.info_path.unlink(missing_ok=True)
+        except Exception:
+            pass
         try:
             if os.name == "nt":
                 import msvcrt
@@ -173,6 +216,34 @@ class LibraryWriterLease:
         finally:
             handle.close()
             self._handle = None
+
+    def get_lease_info(self, runtime_dir: Optional[Path] = None) -> Optional[dict[str, Any]]:
+        """Read companion info file for current active lease holder."""
+        target = Path(runtime_dir) if runtime_dir is not None else self.runtime_dir
+        info_file = target / WRITER_INFO_NAME
+        if not info_file.exists():
+            return None
+        try:
+            return json.loads(info_file.read_text(encoding="utf-8"))
+        except Exception:
+            return None
+
+    @classmethod
+    def format_busy_message(cls, runtime_dir: Path) -> str:
+        """Provide polite Vietnamese explanation when a writer lease is already held."""
+        info_file = Path(runtime_dir) / WRITER_INFO_NAME
+        info = None
+        if info_file.exists():
+            try:
+                info = json.loads(info_file.read_text(encoding="utf-8"))
+            except Exception:
+                pass
+        if info:
+            pid = info.get("pid", "chưa rõ")
+            acquired = info.get("acquired_at", "vừa xong")
+            owner = info.get("owner", "tiến trình khác")
+            return f"Thư viện hiện đang được cập nhật bởi máy/tiến trình: {owner} (mã tiến trình {pid}, bắt đầu lúc {acquired}). Vui lòng chờ máy trên hoàn tất thao tác trước khi thử lại."
+        return "Thư viện hiện đang được ghi bởi một tiến trình khác. Vui lòng thử lại sau giây lát."
 
 
 def is_remote_filesystem_path(path: Path) -> bool:

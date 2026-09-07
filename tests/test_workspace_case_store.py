@@ -131,3 +131,43 @@ def test_activity_chain_detects_tampered_last_event(tmp_path):
             expected_version=case.version,
             actor_id=case.created_by,
         )
+
+
+def test_transaction_fault_injection_during_transition_rolls_back_atomically_and_passes_quick_check(tmp_path, monkeypatch):
+    database_path = tmp_path / "workspace_cases.sqlite"
+    store = WorkspaceCaseRepository(database_path)
+    case = _case()
+    store.create_case_with_evidence(case, [_reference(case.case_id)])
+    initial = store.load_case(case.case_id)
+    assert initial is not None
+    initial_activities = store.list_activities(case.case_id)
+
+    # Inject fault inside transaction after updating case status
+    original_insert_activity = store._insert_activity
+
+    def faulty_insert_activity(connection, activity):
+        if activity.event_type == "status_transition":
+            raise sqlite3.OperationalError("simulated crash inside transition transaction")
+        return original_insert_activity(connection, activity)
+
+    monkeypatch.setattr(store, "_insert_activity", faulty_insert_activity)
+
+    with pytest.raises(WorkspaceCaseRepositoryError):
+        store.transition_case(
+            case_id=case.case_id,
+            expected_version=initial.version,
+            new_status="triaged",
+            actor_id="test-operator",
+            payload_digest="test-payload-digest",
+        )
+
+    # Verify rollback: case record is unchanged, no partial activity
+    current = store.load_case(case.case_id)
+    assert current is not None
+    assert current.status == initial.status
+    assert current.version == initial.version
+    assert len(store.list_activities(case.case_id)) == len(initial_activities)
+
+    # Verify database integrity with quick_check
+    with sqlite3.connect(database_path) as connection:
+        assert connection.execute("PRAGMA quick_check").fetchone()[0] == "ok"

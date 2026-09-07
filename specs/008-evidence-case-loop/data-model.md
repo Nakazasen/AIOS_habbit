@@ -1,6 +1,6 @@
 # Mô hình dữ liệu: Vòng vụ việc, Agent và dự đoán có kiểm soát
 
-> **Ranh giới kích hoạt**: Tài liệu này giữ hợp đồng dữ liệu cho toàn bộ US1–US11, không có nghĩa mọi bảng/kho phải được tạo ngay. Đợt hiện tại chỉ mở rộng `workspace_cases.sqlite` khi pilot cần. `production_prediction.sqlite` chỉ được tạo sau khi Data Gate LSU/Iris đạt; các bảng Agent/prediction còn lại là thiết kế dự phòng.
+> **Ranh giới kích hoạt**: Tài liệu này giữ hướng dữ liệu cho toàn bộ US1–US11, không yêu cầu tạo tất cả bảng ngay. MVP chỉ mở rộng `workspace_cases.sqlite` cho xác nhận chuyên gia và chỉ tạo `production_prediction.sqlite` sau khi file Iris LSU thật vượt Data Gate. Các bảng Agent và mở rộng prediction còn lại là thiết kế dự phòng, không phải task hiện tại.
 
 ## 1. Nguyên tắc phân kho
 
@@ -78,6 +78,8 @@ AI được tạo item `open`; chỉ evidence/human action hợp lệ mới chuy
 | `valid_from`, `valid_until`, `revoked_at` | Hiệu lực theo thời gian |
 | `granted_by`, `reason` | Bắt buộc |
 
+Tác tử hệ thống `system:rubric` không phải `RoleGrant` của con người. Nó chỉ được ghi quyết định Data Gate, chạy bóng đọc-only và cổng kỹ thuật kèm `rubric_version`/digest; không được xác nhận chuyên gia, cấp quyền hoặc phát lệnh máy.
+
 ### 3.6. `ExpertRequest`
 
 `request_id`, `case_id`, `claim_digest`, `question_text`, `requested_expert_id`, `required_scope`, `status`, `due_at`, `created_by`, `created_at`. Trạng thái: `open`, `answered`, `cancelled`, `expired`.
@@ -146,69 +148,75 @@ Cho coding Agent: `execution_id`, `case_id`, `task_pack_digest`, `workspace_root
 
 Không lưu secret, raw command output nhạy cảm hoặc đường dẫn hệ thống trong UI.
 
-## 5. Kho dữ liệu dự đoán
+## 5. Kho dữ liệu Iris LSU cho MVP
 
-### 5.1. `AssetRecord`
+Kho này chỉ được tạo sau khi dữ liệu thật chứng minh có thể nối ổn định. Trước thời điểm đó, bộ nhập file chỉ trả báo cáo Data Gate và không ghi dữ liệu bền vững.
 
-`asset_id`, `asset_type`, `line_id`, `station_id`, `effective_from`, `effective_to`, `source_digest`. `asset_type` hỗ trợ adapter `lsu_iris`, `drum`, `dlp` nhưng lõi không hard-code feature.
+### 5.1. `ComponentLotMeasurement`
 
-### 5.2. `MeasurementRecord`
+| Trường | Ràng buộc |
+|---|---|
+| `lot_measurement_id` | ID bất biến |
+| `component_lot_id`, `component_code` | Khóa lot và loại linh kiện theo data dictionary |
+| `metric_name`, `value`, `unit` | Thông số đầu vào; không bỏ giá trị thô |
+| `event_time`, `ingested_at` | Tách thời điểm đo và thời điểm nhận dữ liệu |
+| `source_digest`, `privacy_label` | Bắt buộc; mặc định `local_only` |
 
-`measurement_id`, `asset_id`, `unit_serial`, `event_time`, `ingested_at`, `metric_name`, `value`, `unit`, `jig_version`, `process_version`, `source_digest`, `privacy_label`.
+### 5.2. `UnitLotLink`
 
-Không làm tròn bỏ giá trị thô; thời gian sự kiện và ingest tách riêng.
+`link_id`, `unit_serial`, `component_lot_id`, `component_code`, `assembly_time`, `line_id`, `station_id`, `source_digest`, `ingested_at`.
 
-### 5.3. `OutcomeLabel`
+Một Unit có thể dùng nhiều loại linh kiện. Cặp khóa hợp lệ phải do data dictionary quy định; không ghép bằng tên file hoặc vị trí dòng.
 
-`outcome_id`, `asset_id`, `unit_serial`, `case_id`, `target_label`, `review_state`, `action_effectiveness`, `effective_time`, `confirmed_by`, `review_id`, `evidence_digest`, `created_at`.
+### 5.3. `JigMeasurementOutcome`
 
-- `target_label` biểu diễn sự thật cần học như `ok`, `ng` hoặc một failure class đã được data dictionary duyệt.
-- `review_state` biểu diễn trạng thái thẩm định `confirmed`, `rejected`, `unknown`; không được dùng thay cho nhãn mục tiêu.
-- `action_effectiveness` là `not_applicable`, `effective`, `ineffective` và chỉ dùng cho outcome hành động phòng ngừa.
-
-Chỉ target label có review `confirmed` và provenance đầy đủ mới được dùng khi train/evaluate. `false_alarm` và `missed_detection` là kết quả đánh giá shadow, không phải target label nguồn.
+| Trường | Ràng buộc |
+|---|---|
+| `jig_result_id`, `unit_serial`, `jig_id`, `run_id` | Xác định đúng Unit, JIG và lần đo |
+| `event_time`, `ingested_at` | Thời điểm đo và thời điểm dữ liệu đến |
+| `metric_name`, `value`, `unit` | Phép đo JIG |
+| `jig_version`, `process_version` | Có thể rỗng nhưng phải bị báo trong Data Gate |
+| `target_label`, `failure_code`, `retest_outcome` | OK/NG và kết quả thực tế theo data dictionary |
+| `review_state`, `confirmed_by`, `evidence_digest` | `machine_verified` hoặc `human_confirmed` mới dùng để đánh giá/model; mâu thuẫn là `unknown` |
+| `source_digest`, `privacy_label` | Bắt buộc; mặc định `local_only` |
 
 ### 5.4. `DatasetVersion`
 
-`dataset_id`, `domain_adapter`, `schema_version`, `snapshot_started_at`, `snapshot_ended_at`, `row_count`, `positive_count`, `negative_count`, `unknown_count`, `source_digest`, `label_policy_digest`, `quality_report_digest`, `created_by`, `created_at`.
+`dataset_id`, `domain_adapter`, `primary_jig`, `schema_version`, `mapping_digest`, `rubric_version`, `rubric_digest`, `gate_status`, `snapshot_started_at`, `snapshot_ended_at`, `row_count`, `joined_unit_count`, `missing_count`, `conflict_count`, `positive_count`, `negative_count`, `source_digest`, `quality_report_digest`, `created_by`, `created_at`.
 
-### 5.5. `FeatureSnapshot`
+MVP chỉ dùng `domain_adapter=lsu_iris` và `primary_jig=BOWSKEW_4_BEAM`. Giá trị target dùng hợp đồng mặc định có version hoặc cấu hình cục bộ ghi đè, không hard-code trong lõi chung.
 
-`feature_snapshot_id`, `dataset_id`, `asset_id`, `as_of_time`, `feature_schema_version`, `feature_values_digest`, `source_window_digest`, `created_at`.
+### 5.5. `EvaluationRun`
 
-Snapshot chỉ dùng dữ liệu có `event_time <= as_of_time`; đây là chốt chống outcome leakage.
+`evaluation_id`, `dataset_id`, `method`, `protocol_digest`, `threshold_digest`, `rubric_version`, `rubric_digest`, `code_commit`, `true_alerts`, `false_alerts`, `missed_detections`, `lead_time_summary`, `report_digest`, `status`, `created_at`.
 
-### 5.6. `EvaluationProtocol`
+`status` gồm `evaluated`, `AUTO_SHADOW`, `LEARNING_SHADOW`, `BLOCKED_DATA`, `FAIL_TECHNICAL`. Quyết định đọc-only nằm ngay trên evaluation để không phải tạo thêm bảng phê duyệt và workflow thừa.
 
-`protocol_id`, `split_strategy`, `time_boundaries`, `group_keys`, `gap`, `metrics`, `cost_matrix`, `calibration_method`, `acceptance_thresholds`, `owner_approval_digest`.
+`method` trước hết là `no_alert` hoặc một baseline thống kê. Chỉ thêm một `model` khi Data Gate đạt; model artifact và feature schema được ghi cùng `report_digest`, không cần dựng registry model tổng quát trong MVP.
 
-### 5.7. `ModelVersion`
+`protocol_digest` đại diện cho cấu hình nhỏ nhất gồm metric được phép, chiều rủi ro, hệ số EWMA, cửa sổ nền, `as_of_time`, khoảng dự báo, quy tắc ghép cảnh báo–outcome, danh sách feature cho phép và phép chia thời gian/Unit. Không có đủ cấu hình thì phương pháp là `not_applicable`, không tự điền giá trị dùng cho dữ liệu thật.
 
-`model_id`, `algorithm`, `hyperparameters_digest`, `dataset_id`, `protocol_id`, `feature_schema_version`, `code_commit`, `artifact_digest`, `model_card_path`, `status`, `created_at`.
+### 5.6. `RiskAssessment`
 
-`status`: `candidate`, `evaluated`, `approved_for_shadow`, `retired`, `rejected`. Không có `production_control`.
+`assessment_id`, `evaluation_id`, `shadow_run_id`, `unit_serial`, `as_of_time`, `evaluation_window_start`, `evaluation_window_end`, `input_snapshot_digest`, `batch_digest`, `risk_score`, `threshold_digest`, `factor_summary`, `link_status`, `case_id`, `idempotency_key`, `created_at`.
 
-### 5.8. `PredictionRun`
+- Chỉ dùng dữ liệu có `event_time <= as_of_time`.
+- `link_status` chỉ gồm `pending_case_link`, `linked`, `retryable_error`; trạng thái này cho phép tiếp tục sau lỗi giữa hai kho mà không cần outbox.
+- `factor_summary` là giải thích ngắn đã làm sạch; dữ liệu chi tiết vẫn ở nguồn cục bộ.
+- UI phải nói “nguy cơ cần kiểm tra”, không nói “chắc chắn lỗi”.
+- `idempotency_key` được tạo từ dataset, phương pháp, threshold, `batch_digest`, Unit và cửa sổ đánh giá bằng cách tuần tự hóa chuẩn. Không dùng thời điểm đồng hồ lúc chạy; chạy lại cùng lô phải ra cùng khóa và không tạo case trùng. MVP không cần outbox hay worker nền.
 
-`run_id`, `model_id`, `started_at`, `ended_at`, `input_snapshot_digest`, `status`, `error_code`, `created_case_count`. Error lưu mã an toàn, không traceback thô.
+### 5.7. `ShadowOutcome`
 
-### 5.9. `RiskAssessment`
+`shadow_outcome_id`, `shadow_run_id`, `assessment_id`, `unit_serial`, `decision`, `observed_jig_result_id`, `reviewer_id`, `rationale`, `reviewed_at`.
 
-`assessment_id`, `run_id`, `asset_id`, `feature_snapshot_id`, `horizon`, `risk_score`, `calibrated_probability`, `uncertainty`, `threshold_version`, `top_factor_digest`, `case_id`, `created_at`.
+`decision`: `true_positive`, `false_alarm`, `missed_detection`, `unknown`. Nguồn kết quả cuối cùng vượt rubric được ghi với `reviewer_id=system:rubric`; người dùng có thể bổ sung bản sửa append-only có lý do.
 
-Không lưu câu “chắc chắn hỏng”; UI hiển thị đây là rủi ro cần kiểm tra.
+Với `missed_detection`, `assessment_id` được phép rỗng nhưng `shadow_run_id`, `unit_serial`, outcome đã xác nhận, nguồn xác nhận, rationale và evidence bắt buộc có. Outcome được nhập sau lượt dự báo; file đầu vào shadow không được mang outcome tương lai vào feature snapshot.
 
-### 5.10. `ShadowOutcome`
+### 5.8. Phần chỉ mở sau MVP
 
-`shadow_outcome_id`, `assessment_id`, `case_id`, `decision`, `reviewer_id`, `review_id`, `observed_outcome_id`, `rationale`, `reviewed_at`.
-
-`decision`: `true_positive`, `false_alarm`, `missed_detection`, `unknown`. Missed detection có thể được tạo từ outcome thực không có assessment trước đó.
-
-### 5.11. `PredictionCaseDispatch`
-
-`dispatch_id`, `assessment_id`, `idempotency_key`, `target_case_id`, `status`, `attempt_count`, `last_error_code`, `created_at`, `updated_at`.
-
-Record outbox này nằm trong kho dự đoán và có unique key theo `assessment_id` cùng phiên bản policy. Worker chỉ gọi case service bằng idempotency key; sau lỗi hoặc restart có thể reconcile mà không tạo case trùng. Không có transaction phân tán trực tiếp giữa hai SQLite.
+Scheduler, outbox nhiều tiến trình, registry model tổng quát, calibration service, cảnh báo ngoài ứng dụng và adapter Drum/DLP chỉ được thiết kế chi tiết khi shadow thủ công chứng minh nhu cầu. Không tạo bảng rỗng cho các phần này trong MVP.
 
 ## 6. Quan hệ chính
 
@@ -221,16 +229,15 @@ CaseRecord
  ├─ ArtifactProposal ──> ArtifactVersion ──> ApprovalRecord
  └─ RiskAssessment ──> ShadowOutcome
 
-DatasetVersion ──> FeatureSnapshot ──> ModelVersion
-ModelVersion ──> PredictionRun ──> RiskAssessment ──> CaseRecord(prediction)
-                                      └─ PredictionCaseDispatch ──> CaseRecord(prediction)
-OutcomeLabel ───────────────────────────────────────> ShadowOutcome
+ComponentLotMeasurement ──┐
+UnitLotLink ───────────────┼─> DatasetVersion ─> EvaluationRun ─> RiskAssessment ─> CaseRecord(prediction)
+JigMeasurementOutcome ────┘                                      └───────────────> ShadowOutcome
 ```
 
 ## 7. Quy tắc xóa, thu hồi và rollback
 
 - Không hard-delete case/review/approval/prediction audit record qua UI thông thường.
-- Thu hồi bài học/model/artifact bằng trạng thái và activity mới.
+- Thu hồi bài học/model/artifact bằng trạng thái và activity mới; model chỉ áp dụng nếu MVP thực sự tạo model.
 - Xóa dữ liệu thật chỉ theo retention policy do chủ sở hữu phê duyệt và phải có audit/backup boundary.
-- Model rollback chuyển threshold/model active pointer về version trước; không xóa model card/evaluation cũ.
+- Rollback prediction chuyển threshold hoặc model được chọn về version trước; không xóa báo cáo đánh giá cũ.
 - Artifact rollback tạo version thay thế, không ghi đè version đã phát hành.

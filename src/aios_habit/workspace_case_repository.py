@@ -10,12 +10,20 @@ from aios_habit.workspace_case_authorization import RoleGrant
 from aios_habit.workspace_case_migrations import WorkspaceCaseMigrationError, migrate_store
 from aios_habit.workspace_case_models import (
     CaseActivity,
+    CaseArtifactRecord,
     CaseAuditEvent,
     CaseChecklistItem,
     CaseEvidenceReference,
     CaseFilter,
+    CaseLesson,
     CaseRecord,
+    ExpertRequest,
+    ExpertReview,
+    LESSON_STATUS_APPROVED,
+    LESSON_STATUS_CANDIDATE,
+    LESSON_STATUS_REVOKED,
     case_activity_digest,
+    utc_now_iso,
 )
 
 
@@ -463,6 +471,65 @@ class WorkspaceCaseRepository:
             raise WorkspaceCaseRepositoryError("CASE_NOT_FOUND")
         return updated
 
+    def update_evidence_provenance(
+        self,
+        case_id: str,
+        reference_id: str,
+        *,
+        expected_version: int,
+        new_provenance: str,
+        actor_id: str,
+        note: str = "",
+    ) -> CaseRecord:
+        self.initialize()
+        try:
+            with self._connection() as connection:
+                connection.execute("BEGIN IMMEDIATE")
+                row = connection.execute("SELECT * FROM cases WHERE case_id = ?", (case_id,)).fetchone()
+                if row is None:
+                    raise WorkspaceCaseRepositoryError("CASE_NOT_FOUND")
+                if int(row["version"]) != expected_version:
+                    raise WorkspaceCaseRepositoryError("CASE_VERSION_CONFLICT")
+                if not self._verify_chain_in_connection(connection, row):
+                    raise WorkspaceCaseRepositoryError("CASE_ACTIVITY_CHAIN_INVALID")
+                ref_row = connection.execute(
+                    "SELECT * FROM case_evidence_references WHERE reference_id = ? AND case_id = ?",
+                    (reference_id, case_id),
+                ).fetchone()
+                if ref_row is None:
+                    raise WorkspaceCaseRepositoryError("CASE_EVIDENCE_NOT_FOUND")
+
+                activity = CaseActivity.new(
+                    case_id=case_id,
+                    event_type="clue_relevance_reviewed",
+                    actor_id=actor_id,
+                    payload_digest=hashlib_sha256(f"{reference_id}:{new_provenance}:{note}"),
+                    previous_event_digest=row["activity_head_digest"],
+                )
+                connection.execute(
+                    "UPDATE case_evidence_references SET provenance_status = ? WHERE reference_id = ?",
+                    (new_provenance, reference_id),
+                )
+                cursor = connection.execute(
+                    """
+                    UPDATE cases SET version = ?, updated_at = ?, activity_head_digest = ?
+                    WHERE case_id = ? AND version = ?
+                    """,
+                    (expected_version + 1, activity.occurred_at, activity.event_digest, case_id, expected_version),
+                )
+                if cursor.rowcount != 1:
+                    raise WorkspaceCaseRepositoryError("CASE_VERSION_CONFLICT")
+                self._insert_activity(connection, activity)
+                connection.commit()
+        except WorkspaceCaseRepositoryError:
+            raise
+        except sqlite3.Error as error:
+            raise WorkspaceCaseRepositoryError("CASE_EVIDENCE_UPDATE_FAILED") from error
+        updated = self.load_case(case_id)
+        if updated is None:
+            raise WorkspaceCaseRepositoryError("CASE_NOT_FOUND")
+        return updated
+
     def replace_role_grants(self, actor_id: str, grants: Iterable[RoleGrant]) -> None:
         self.initialize()
         grant_list = list(grants)
@@ -536,6 +603,736 @@ class WorkspaceCaseRepository:
         if updated is None:
             raise WorkspaceCaseRepositoryError("CASE_NOT_FOUND")
         return updated
+
+    def create_expert_request(self, request: ExpertRequest, *, activity: Optional[CaseActivity] = None) -> ExpertRequest:
+        self.initialize()
+        try:
+            with self._connection() as connection:
+                connection.execute("BEGIN IMMEDIATE")
+                connection.execute(
+                    """
+                    INSERT INTO expert_requests (
+                        request_id, case_id, claim_digest, question_text, requested_expert_id,
+                        required_scope, status, due_at, created_by, created_at
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    (
+                        request.request_id,
+                        request.case_id,
+                        request.claim_digest,
+                        request.question_text,
+                        request.requested_expert_id,
+                        request.required_scope,
+                        request.status,
+                        request.due_at,
+                        request.created_by,
+                        request.created_at,
+                    ),
+                )
+                if activity is not None:
+                    self._insert_activity(connection, activity)
+                    connection.execute(
+                        "UPDATE cases SET activity_head_digest = ?, updated_at = ? WHERE case_id = ?",
+                        (activity.event_digest, activity.occurred_at, request.case_id),
+                    )
+                connection.commit()
+        except sqlite3.Error as error:
+            raise WorkspaceCaseRepositoryError("EXPERT_REQUEST_CREATE_FAILED") from error
+        return request
+
+    def load_expert_request(self, request_id: str) -> Optional[ExpertRequest]:
+        self.initialize()
+        with self._connection() as connection:
+            row = connection.execute(
+                "SELECT * FROM expert_requests WHERE request_id = ?", (request_id,)
+            ).fetchone()
+            if row is None:
+                return None
+            return ExpertRequest(
+                request_id=row["request_id"],
+                case_id=row["case_id"],
+                claim_digest=row["claim_digest"],
+                question_text=row["question_text"],
+                requested_expert_id=row["requested_expert_id"],
+                required_scope=row["required_scope"],
+                status=row["status"],
+                due_at=row["due_at"],
+                created_by=row["created_by"],
+                created_at=row["created_at"],
+            )
+
+    def list_expert_requests(self, case_id: str) -> list[ExpertRequest]:
+        self.initialize()
+        with self._connection() as connection:
+            rows = connection.execute(
+                "SELECT * FROM expert_requests WHERE case_id = ? ORDER BY created_at ASC", (case_id,)
+            ).fetchall()
+            return [
+                ExpertRequest(
+                    request_id=row["request_id"],
+                    case_id=row["case_id"],
+                    claim_digest=row["claim_digest"],
+                    question_text=row["question_text"],
+                    requested_expert_id=row["requested_expert_id"],
+                    required_scope=row["required_scope"],
+                    status=row["status"],
+                    due_at=row["due_at"],
+                    created_by=row["created_by"],
+                    created_at=row["created_at"],
+                )
+                for row in rows
+            ]
+
+    def record_expert_review(
+        self,
+        review: ExpertReview,
+        *,
+        updated_request_status: str = "answered",
+        activity: Optional[CaseActivity] = None,
+        fault_injector: Optional[Callable[[str], None]] = None,
+    ) -> ExpertReview:
+        self.initialize()
+        try:
+            with self._connection() as connection:
+                connection.execute("BEGIN IMMEDIATE")
+                connection.execute(
+                    """
+                    INSERT INTO expert_reviews (
+                        review_id, request_id, case_id, claim_digest, evidence_digest,
+                        decision, reviewer_id, reviewer_role, scope, rationale,
+                        confidence, supersedes_review_id, reviewed_at
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    (
+                        review.review_id,
+                        review.request_id,
+                        review.case_id,
+                        review.claim_digest,
+                        review.evidence_digest,
+                        review.decision,
+                        review.reviewer_id,
+                        review.reviewer_role,
+                        review.scope,
+                        review.rationale,
+                        review.confidence,
+                        review.supersedes_review_id,
+                        review.reviewed_at,
+                    ),
+                )
+                connection.execute(
+                    "UPDATE expert_requests SET status = ? WHERE request_id = ?",
+                    (updated_request_status, review.request_id),
+                )
+                if activity is not None:
+                    self._insert_activity(connection, activity)
+                    connection.execute(
+                        "UPDATE cases SET activity_head_digest = ?, updated_at = ? WHERE case_id = ?",
+                        (activity.event_digest, activity.occurred_at, review.case_id),
+                    )
+                if fault_injector is not None:
+                    fault_injector("before_commit")
+                connection.commit()
+        except WorkspaceCaseRepositoryError:
+            raise
+        except Exception as error:
+            raise WorkspaceCaseRepositoryError("EXPERT_REVIEW_RECORD_FAILED") from error
+        return review
+
+    def record_expert_review_with_fault(
+        self,
+        *,
+        request_id: str,
+        decision: str,
+        rationale: str,
+        confidence: float = 1.0,
+        actor_id: str,
+        fault_injector: Optional[Callable[[str], None]] = None,
+        supersedes_review_id: Optional[str] = None,
+    ) -> ExpertReview:
+        from uuid import uuid4
+
+        req = self.load_expert_request(request_id)
+        if req is None:
+            raise WorkspaceCaseRepositoryError("EXPERT_REQUEST_NOT_FOUND")
+        case = self.load_case(req.case_id)
+        if case is None:
+            raise WorkspaceCaseRepositoryError("CASE_NOT_FOUND")
+
+        review_id = f"EXP-REV-{uuid4().hex[:12].upper()}"
+        review = ExpertReview(
+            review_id=review_id,
+            request_id=request_id,
+            case_id=req.case_id,
+            claim_digest=req.claim_digest,
+            evidence_digest=case.evidence_digest,
+            decision=decision,
+            reviewer_id=actor_id,
+            reviewer_role="expert",
+            scope=req.required_scope,
+            rationale=rationale,
+            confidence=confidence,
+            supersedes_review_id=supersedes_review_id,
+        )
+        activity = CaseActivity.new(
+            case_id=case.case_id,
+            event_type="expert_review_recorded",
+            actor_id=actor_id,
+            payload_digest=hashlib_sha256(f"{review_id}:{decision}"),
+            previous_event_digest=case.activity_head_digest,
+        )
+        return self.record_expert_review(
+            review,
+            updated_request_status="answered",
+            activity=activity,
+            fault_injector=fault_injector,
+        )
+
+    def list_expert_reviews(self, case_id: str) -> list[ExpertReview]:
+        self.initialize()
+        with self._connection() as connection:
+            rows = connection.execute(
+                "SELECT * FROM expert_reviews WHERE case_id = ? ORDER BY reviewed_at ASC", (case_id,)
+            ).fetchall()
+            return [
+                ExpertReview(
+                    review_id=row["review_id"],
+                    request_id=row["request_id"],
+                    case_id=row["case_id"],
+                    claim_digest=row["claim_digest"],
+                    evidence_digest=row["evidence_digest"],
+                    decision=row["decision"],
+                    reviewer_id=row["reviewer_id"],
+                    reviewer_role=row["reviewer_role"],
+                    scope=row["scope"],
+                    rationale=row["rationale"],
+                    confidence=float(row["confidence"]),
+                    supersedes_review_id=row["supersedes_review_id"],
+                    reviewed_at=row["reviewed_at"],
+                )
+                for row in rows
+            ]
+
+    def load_expert_review(self, review_id: str) -> Optional[ExpertReview]:
+        self.initialize()
+        with self._connection() as connection:
+            row = connection.execute(
+                "SELECT * FROM expert_reviews WHERE review_id = ?", (review_id,)
+            ).fetchone()
+            if row is None:
+                return None
+            return ExpertReview(
+                review_id=row["review_id"],
+                request_id=row["request_id"],
+                case_id=row["case_id"],
+                claim_digest=row["claim_digest"],
+                evidence_digest=row["evidence_digest"],
+                decision=row["decision"],
+                reviewer_id=row["reviewer_id"],
+                reviewer_role=row["reviewer_role"],
+                scope=row["scope"],
+                rationale=row["rationale"],
+                confidence=float(row["confidence"]),
+                supersedes_review_id=row["supersedes_review_id"],
+                reviewed_at=row["reviewed_at"],
+            )
+
+    def create_case_lesson(
+        self,
+        lesson: CaseLesson,
+        *,
+        activity: Optional[CaseActivity] = None,
+        fault_injector: Optional[Callable[[str], None]] = None,
+    ) -> CaseLesson:
+        self.initialize()
+        try:
+            with self._connection() as connection:
+                connection.execute("BEGIN IMMEDIATE")
+                connection.execute(
+                    """
+                    INSERT INTO case_lessons (
+                        lesson_id, case_id, review_id, claim_digest, evidence_digest,
+                        title, content, status, version, created_by, created_at,
+                        updated_by, updated_at, approved_by, approved_at,
+                        revoked_by, revoked_at, revocation_reason
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    (
+                        lesson.lesson_id,
+                        lesson.case_id,
+                        lesson.review_id,
+                        lesson.claim_digest,
+                        lesson.evidence_digest,
+                        lesson.title,
+                        lesson.content,
+                        lesson.status,
+                        lesson.version,
+                        lesson.created_by,
+                        lesson.created_at,
+                        lesson.updated_by,
+                        lesson.updated_at,
+                        lesson.approved_by,
+                        lesson.approved_at,
+                        lesson.revoked_by,
+                        lesson.revoked_at,
+                        lesson.revocation_reason,
+                    ),
+                )
+                if activity is not None:
+                    self._insert_activity(connection, activity)
+                    connection.execute(
+                        "UPDATE cases SET activity_head_digest = ?, updated_at = ? WHERE case_id = ?",
+                        (activity.event_digest, activity.occurred_at, lesson.case_id),
+                    )
+                if fault_injector is not None:
+                    fault_injector("before_commit")
+                connection.commit()
+        except WorkspaceCaseRepositoryError:
+            raise
+        except Exception as error:
+            raise WorkspaceCaseRepositoryError("CASE_LESSON_CREATE_FAILED") from error
+        return lesson
+
+    def update_case_lesson(
+        self,
+        lesson_id: str,
+        *,
+        expected_version: int,
+        title: str,
+        content: str,
+        actor_id: str,
+        activity: Optional[CaseActivity] = None,
+    ) -> CaseLesson:
+        self.initialize()
+        now = utc_now_iso()
+        try:
+            with self._connection() as connection:
+                connection.execute("BEGIN IMMEDIATE")
+                row = connection.execute(
+                    "SELECT version FROM case_lessons WHERE lesson_id = ?", (lesson_id,)
+                ).fetchone()
+                if row is None:
+                    raise WorkspaceCaseRepositoryError("CASE_LESSON_NOT_FOUND")
+                if row["version"] != expected_version:
+                    raise WorkspaceCaseRepositoryError("CONCURRENT_UPDATE_CONFLICT")
+                new_version = expected_version + 1
+                connection.execute(
+                    """
+                    UPDATE case_lessons
+                    SET title = ?, content = ?, version = ?, updated_by = ?, updated_at = ?
+                    WHERE lesson_id = ? AND version = ?
+                    """,
+                    (title, content, new_version, actor_id, now, lesson_id, expected_version),
+                )
+                if activity is not None:
+                    self._insert_activity(connection, activity)
+                    connection.execute(
+                        "UPDATE cases SET activity_head_digest = ?, updated_at = ? WHERE case_id = ?",
+                        (activity.event_digest, activity.occurred_at, activity.case_id),
+                    )
+                connection.commit()
+        except WorkspaceCaseRepositoryError:
+            raise
+        except Exception as error:
+            raise WorkspaceCaseRepositoryError("CASE_LESSON_UPDATE_FAILED") from error
+        updated = self.load_case_lesson(lesson_id)
+        if updated is None:
+            raise WorkspaceCaseRepositoryError("CASE_LESSON_NOT_FOUND")
+        return updated
+
+    def promote_case_lesson(
+        self,
+        lesson_id: str,
+        *,
+        expected_version: int,
+        actor_id: str,
+        activity: Optional[CaseActivity] = None,
+    ) -> CaseLesson:
+        self.initialize()
+        now = utc_now_iso()
+        try:
+            with self._connection() as connection:
+                connection.execute("BEGIN IMMEDIATE")
+                row = connection.execute(
+                    "SELECT version, status FROM case_lessons WHERE lesson_id = ?", (lesson_id,)
+                ).fetchone()
+                if row is None:
+                    raise WorkspaceCaseRepositoryError("CASE_LESSON_NOT_FOUND")
+                if row["version"] != expected_version:
+                    raise WorkspaceCaseRepositoryError("CONCURRENT_UPDATE_CONFLICT")
+                if row["status"] != LESSON_STATUS_CANDIDATE:
+                    raise WorkspaceCaseRepositoryError("CASE_LESSON_NOT_CANDIDATE")
+                new_version = expected_version + 1
+                connection.execute(
+                    """
+                    UPDATE case_lessons
+                    SET status = ?, approved_by = ?, approved_at = ?, version = ?, updated_by = ?, updated_at = ?
+                    WHERE lesson_id = ? AND version = ?
+                    """,
+                    (LESSON_STATUS_APPROVED, actor_id, now, new_version, actor_id, now, lesson_id, expected_version),
+                )
+                if activity is not None:
+                    self._insert_activity(connection, activity)
+                    connection.execute(
+                        "UPDATE cases SET activity_head_digest = ?, updated_at = ? WHERE case_id = ?",
+                        (activity.event_digest, activity.occurred_at, activity.case_id),
+                    )
+                connection.commit()
+        except WorkspaceCaseRepositoryError:
+            raise
+        except Exception as error:
+            raise WorkspaceCaseRepositoryError("CASE_LESSON_PROMOTE_FAILED") from error
+        promoted = self.load_case_lesson(lesson_id)
+        if promoted is None:
+            raise WorkspaceCaseRepositoryError("CASE_LESSON_NOT_FOUND")
+        return promoted
+
+    def revoke_case_lesson(
+        self,
+        lesson_id: str,
+        *,
+        expected_version: int,
+        actor_id: str,
+        reason: str,
+        activity: Optional[CaseActivity] = None,
+    ) -> CaseLesson:
+        self.initialize()
+        now = utc_now_iso()
+        try:
+            with self._connection() as connection:
+                connection.execute("BEGIN IMMEDIATE")
+                row = connection.execute(
+                    "SELECT version, status FROM case_lessons WHERE lesson_id = ?", (lesson_id,)
+                ).fetchone()
+                if row is None:
+                    raise WorkspaceCaseRepositoryError("CASE_LESSON_NOT_FOUND")
+                if row["version"] != expected_version:
+                    raise WorkspaceCaseRepositoryError("CONCURRENT_UPDATE_CONFLICT")
+                new_version = expected_version + 1
+                connection.execute(
+                    """
+                    UPDATE case_lessons
+                    SET status = ?, revoked_by = ?, revoked_at = ?, revocation_reason = ?, version = ?, updated_by = ?, updated_at = ?
+                    WHERE lesson_id = ? AND version = ?
+                    """,
+                    (LESSON_STATUS_REVOKED, actor_id, now, reason, new_version, actor_id, now, lesson_id, expected_version),
+                )
+                if activity is not None:
+                    self._insert_activity(connection, activity)
+                    connection.execute(
+                        "UPDATE cases SET activity_head_digest = ?, updated_at = ? WHERE case_id = ?",
+                        (activity.event_digest, activity.occurred_at, activity.case_id),
+                    )
+                connection.commit()
+        except WorkspaceCaseRepositoryError:
+            raise
+        except Exception as error:
+            raise WorkspaceCaseRepositoryError("CASE_LESSON_REVOKE_FAILED") from error
+        revoked = self.load_case_lesson(lesson_id)
+        if revoked is None:
+            raise WorkspaceCaseRepositoryError("CASE_LESSON_NOT_FOUND")
+        return revoked
+
+    def load_case_lesson(self, lesson_id: str) -> Optional[CaseLesson]:
+        self.initialize()
+        with self._connection() as connection:
+            row = connection.execute(
+                "SELECT * FROM case_lessons WHERE lesson_id = ?", (lesson_id,)
+            ).fetchone()
+            if row is None:
+                return None
+            return self._row_to_lesson(row)
+
+    def list_case_lessons(self, case_id: str) -> list[CaseLesson]:
+        self.initialize()
+        with self._connection() as connection:
+            rows = connection.execute(
+                "SELECT * FROM case_lessons WHERE case_id = ? ORDER BY created_at ASC", (case_id,)
+            ).fetchall()
+            return [self._row_to_lesson(row) for row in rows]
+
+    def list_all_lessons(self, *, status: Optional[str] = None) -> list[CaseLesson]:
+        self.initialize()
+        with self._connection() as connection:
+            if status:
+                rows = connection.execute(
+                    "SELECT * FROM case_lessons WHERE status = ? ORDER BY updated_at DESC", (status,)
+                ).fetchall()
+            else:
+                rows = connection.execute(
+                    "SELECT * FROM case_lessons ORDER BY updated_at DESC"
+                ).fetchall()
+            return [self._row_to_lesson(row) for row in rows]
+
+    def search_approved_lessons(self, query: str, *, limit: int = 20) -> list[CaseLesson]:
+        self.initialize()
+        clean_q = f"%{query.strip()}%"
+        with self._connection() as connection:
+            rows = connection.execute(
+                """
+                SELECT * FROM case_lessons
+                WHERE status = 'approved' AND (title LIKE ? OR content LIKE ?)
+                ORDER BY approved_at DESC, updated_at DESC
+                LIMIT ?
+                """,
+                (clean_q, clean_q, limit),
+            ).fetchall()
+            return [self._row_to_lesson(row) for row in rows]
+
+    @staticmethod
+    def _row_to_lesson(row: sqlite3.Row) -> CaseLesson:
+        return CaseLesson(
+            lesson_id=row["lesson_id"],
+            case_id=row["case_id"],
+            review_id=row["review_id"],
+            claim_digest=row["claim_digest"],
+            evidence_digest=row["evidence_digest"],
+            title=row["title"],
+            content=row["content"],
+            status=row["status"],
+            version=int(row["version"]),
+            created_by=row["created_by"],
+            created_at=row["created_at"],
+            updated_by=row["updated_by"],
+            updated_at=row["updated_at"],
+            approved_by=row["approved_by"],
+            approved_at=row["approved_at"],
+            revoked_by=row["revoked_by"],
+            revoked_at=row["revoked_at"],
+            revocation_reason=row["revocation_reason"],
+        )
+
+    def insert_artifact(self, artifact: CaseArtifactRecord, *, activity: Optional[CaseActivity] = None) -> CaseArtifactRecord:
+        self.initialize()
+        with self._connection() as connection:
+            connection.execute("BEGIN IMMEDIATE")
+            connection.execute(
+                """
+                INSERT INTO case_artifacts (
+                    artifact_id, case_id, artifact_type, title, content_markdown,
+                    content_digest, version, status, created_by, created_at,
+                    updated_by, updated_at, approved_by, approved_at, approval_notes,
+                    exported_path, provenance_digest
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    artifact.artifact_id,
+                    artifact.case_id,
+                    artifact.artifact_type,
+                    artifact.title,
+                    artifact.content_markdown,
+                    artifact.content_digest,
+                    artifact.version,
+                    artifact.status,
+                    artifact.created_by,
+                    artifact.created_at,
+                    artifact.updated_by,
+                    artifact.updated_at,
+                    artifact.approved_by,
+                    artifact.approved_at,
+                    artifact.approval_notes,
+                    artifact.exported_path,
+                    artifact.provenance_digest,
+                ),
+            )
+            if activity is not None:
+                self._insert_activity(connection, activity)
+                connection.execute(
+                    "UPDATE cases SET activity_head_digest = ?, updated_at = ? WHERE case_id = ?",
+                    (activity.event_digest, activity.occurred_at, activity.case_id),
+                )
+            connection.commit()
+        return artifact
+
+    def update_artifact_content(
+        self,
+        artifact_id: str,
+        *,
+        expected_version: int,
+        title: Optional[str] = None,
+        content_markdown: str,
+        content_digest: str,
+        updated_by: str,
+        activity: Optional[CaseActivity] = None,
+    ) -> CaseArtifactRecord:
+        self.initialize()
+        now_iso = utc_now_iso()
+        with self._connection() as connection:
+            connection.execute("BEGIN IMMEDIATE")
+            row = connection.execute(
+                "SELECT version, status, title, case_id FROM case_artifacts WHERE artifact_id = ?", (artifact_id,)
+            ).fetchone()
+            if row is None:
+                raise WorkspaceCaseRepositoryError("CASE_ARTIFACT_NOT_FOUND")
+            if int(row["version"]) != expected_version:
+                raise WorkspaceCaseRepositoryError("CONCURRENT_UPDATE_CONFLICT")
+            if row["status"] == "approved":
+                raise WorkspaceCaseRepositoryError("APPROVED_ARTIFACT_IMMUTABLE")
+
+            new_title = title if title is not None else row["title"]
+            new_version = expected_version + 1
+            cursor = connection.execute(
+                """
+                UPDATE case_artifacts
+                SET title = ?, content_markdown = ?, content_digest = ?, version = ?,
+                    status = 'draft', updated_by = ?, updated_at = ?, approved_by = NULL,
+                    approved_at = NULL, approval_notes = NULL
+                WHERE artifact_id = ? AND version = ?
+                """,
+                (new_title, content_markdown, content_digest, new_version, updated_by, now_iso, artifact_id, expected_version),
+            )
+            if cursor.rowcount != 1:
+                raise WorkspaceCaseRepositoryError("CONCURRENT_UPDATE_CONFLICT")
+            if activity is not None:
+                self._insert_activity(connection, activity)
+                connection.execute(
+                    "UPDATE cases SET activity_head_digest = ?, updated_at = ? WHERE case_id = ?",
+                    (activity.event_digest, activity.occurred_at, activity.case_id),
+                )
+            connection.commit()
+        updated = self.load_case_artifact(artifact_id)
+        if updated is None:
+            raise WorkspaceCaseRepositoryError("CASE_ARTIFACT_NOT_FOUND")
+        return updated
+
+    def approve_artifact(
+        self,
+        artifact_id: str,
+        *,
+        expected_version: int,
+        approved_by: str,
+        approval_notes: str = "",
+        approved_content: Optional[str] = None,
+        activity: Optional[CaseActivity] = None,
+    ) -> CaseArtifactRecord:
+        self.initialize()
+        now_iso = utc_now_iso()
+        with self._connection() as connection:
+            connection.execute("BEGIN IMMEDIATE")
+            row = connection.execute(
+                "SELECT version, status, content_markdown, case_id FROM case_artifacts WHERE artifact_id = ?", (artifact_id,)
+            ).fetchone()
+            if row is None:
+                raise WorkspaceCaseRepositoryError("CASE_ARTIFACT_NOT_FOUND")
+            if int(row["version"]) != expected_version:
+                raise WorkspaceCaseRepositoryError("CONCURRENT_UPDATE_CONFLICT")
+            if row["status"] != "draft":
+                raise WorkspaceCaseRepositoryError("CASE_ARTIFACT_NOT_DRAFT")
+
+            final_content = approved_content if approved_content is not None else row["content_markdown"]
+            final_digest = hashlib_sha256(final_content)
+            new_version = expected_version + 1
+            cursor = connection.execute(
+                """
+                UPDATE case_artifacts
+                SET status = 'approved', content_markdown = ?, content_digest = ?,
+                    version = ?, updated_by = ?, updated_at = ?,
+                    approved_by = ?, approved_at = ?, approval_notes = ?
+                WHERE artifact_id = ? AND version = ?
+                """,
+                (
+                    final_content,
+                    final_digest,
+                    new_version,
+                    approved_by,
+                    now_iso,
+                    approved_by,
+                    now_iso,
+                    approval_notes,
+                    artifact_id,
+                    expected_version,
+                ),
+            )
+            if cursor.rowcount != 1:
+                raise WorkspaceCaseRepositoryError("CONCURRENT_UPDATE_CONFLICT")
+            if activity is not None:
+                self._insert_activity(connection, activity)
+                connection.execute(
+                    "UPDATE cases SET activity_head_digest = ?, updated_at = ? WHERE case_id = ?",
+                    (activity.event_digest, activity.occurred_at, activity.case_id),
+                )
+            connection.commit()
+        approved = self.load_case_artifact(artifact_id)
+        if approved is None:
+            raise WorkspaceCaseRepositoryError("CASE_ARTIFACT_NOT_FOUND")
+        return approved
+
+    def record_artifact_export(
+        self,
+        artifact_id: str,
+        *,
+        exported_path: str,
+        activity: Optional[CaseActivity] = None,
+    ) -> CaseArtifactRecord:
+        self.initialize()
+        now_iso = utc_now_iso()
+        with self._connection() as connection:
+            connection.execute("BEGIN IMMEDIATE")
+            row = connection.execute(
+                "SELECT status, case_id FROM case_artifacts WHERE artifact_id = ?", (artifact_id,)
+            ).fetchone()
+            if row is None:
+                raise WorkspaceCaseRepositoryError("CASE_ARTIFACT_NOT_FOUND")
+            if row["status"] != "approved":
+                raise WorkspaceCaseRepositoryError("UNAPPROVED_ARTIFACT_EXPORT_FORBIDDEN")
+            connection.execute(
+                """
+                UPDATE case_artifacts
+                SET exported_path = ?, updated_at = ?
+                WHERE artifact_id = ?
+                """,
+                (exported_path, now_iso, artifact_id),
+            )
+            if activity is not None:
+                self._insert_activity(connection, activity)
+                connection.execute(
+                    "UPDATE cases SET activity_head_digest = ?, updated_at = ? WHERE case_id = ?",
+                    (activity.event_digest, activity.occurred_at, activity.case_id),
+                )
+            connection.commit()
+        exported = self.load_case_artifact(artifact_id)
+        if exported is None:
+            raise WorkspaceCaseRepositoryError("CASE_ARTIFACT_NOT_FOUND")
+        return exported
+
+    def load_case_artifact(self, artifact_id: str) -> Optional[CaseArtifactRecord]:
+        self.initialize()
+        with self._connection() as connection:
+            row = connection.execute(
+                "SELECT * FROM case_artifacts WHERE artifact_id = ?", (artifact_id,)
+            ).fetchone()
+            if row is None:
+                return None
+            return self._row_to_artifact(row)
+
+    def list_case_artifacts(self, case_id: str) -> list[CaseArtifactRecord]:
+        self.initialize()
+        with self._connection() as connection:
+            rows = connection.execute(
+                "SELECT * FROM case_artifacts WHERE case_id = ? ORDER BY created_at ASC", (case_id,)
+            ).fetchall()
+            return [self._row_to_artifact(row) for row in rows]
+
+    @staticmethod
+    def _row_to_artifact(row: sqlite3.Row) -> CaseArtifactRecord:
+        return CaseArtifactRecord(
+            artifact_id=row["artifact_id"],
+            case_id=row["case_id"],
+            artifact_type=row["artifact_type"],
+            title=row["title"],
+            content_markdown=row["content_markdown"],
+            content_digest=row["content_digest"],
+            version=int(row["version"]),
+            status=row["status"],
+            created_by=row["created_by"],
+            created_at=row["created_at"],
+            updated_by=row["updated_by"],
+            updated_at=row["updated_at"],
+            approved_by=row["approved_by"],
+            approved_at=row["approved_at"],
+            approval_notes=row["approval_notes"],
+            exported_path=row["exported_path"],
+            provenance_digest=row["provenance_digest"],
+        )
 
 
 def hashlib_sha256(value: str) -> str:
