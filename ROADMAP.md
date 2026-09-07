@@ -38,6 +38,7 @@ Tài liệu tham khảo tầm nhìn dài hạn tương lai: [Production Intellig
 | Gate H hybrid canary | `DONE`: `RAG-V2-GATE-H-HYBRID-CANARY` — `ADVANCE_TO_CANARY_WITH_LIMITATIONS`; 87 test trọng điểm, 1094 test toàn bộ |
 | OCR tập dữ liệu & phục hồi nguồn RAG v2 | `DONE`: 70/70 nguồn sử dụng tốt, kiểm tra cục bộ nghiêm ngặt ĐẠT, 49 test trọng điểm và 1108 test toàn bộ |
 | Vòng hồ sơ bằng chứng & LSU Loop (008), Mốc 0–4 | `TECHNICAL_PASS`: Mốc 0–4 đạt 100% kỹ thuật (Mốc 0 đạt đầy đủ; Mốc 1–4 đạt `OPERATIONAL_PARTIAL` chờ dữ liệu/nghiệm thu thực địa tại xưởng). Mốc 5 đang kiểm toán. |
+| Agent lập trình và thao tác file có kiểm soát (009) | `ACTIVE`: G0 đã khóa đặc tả, ADR-0008 và Gate Card; G1 là spike OpenCode chỉ đọc có cổng dừng sớm. Chưa triển khai runtime và chưa tuyên bố tương đương Cline/OpenCode. |
 | Tổng hợp đa nguồn (002) | `IMPLEMENTED_PENDING_CURRENT_FULL_SUITE` — còn lượt xác minh cuối trên cây code hiện tại |
 | Quản lý cuộc trò chuyện (004) | `IMPLEMENTED_PENDING_CURRENT_FULL_SUITE` — chức năng đã có, chưa ghi bằng chứng đầy đủ hiện tại |
 | Đánh giá chunk dựa trên bằng chứng (006) | `IMPLEMENTED_PENDING_REAL_CORPUS_VALIDATION` — đóng băng thay đổi E3/E4 cho đến khi corpus thật chứng minh lợi ích |

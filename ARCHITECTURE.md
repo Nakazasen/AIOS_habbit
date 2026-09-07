@@ -487,3 +487,9 @@ trust-boundary, sequence, decision và control hiện hành nằm trong:
 
 Các hồ sơ đó không thay thế nguyên tắc local-first/evidence-first ở đây; chúng
 mô tả implementation boundary và operational evidence cho trạng thái hiện tại.
+
+## 14. Ranh giới Agent lập trình kế thừa
+
+Feature 009 chọn Code-OSS làm mặt bàn chuyên dụng và OpenCode server làm runtime ứng viên qua adapter; Cline là benchmark/fallback. Workspace Chat vẫn là giao diện AIOS chính. AIOS sở hữu Task Pack, policy, approval, receipt, Case/Evidence và learning đã duyệt; runtime sở hữu session và vòng tool; Code-OSS sở hữu editor, terminal, SCM, LSP và debugger.
+
+Mọi write/command phải đi qua proposal có digest và chạy trong Git worktree tách biệt. Không có đường trực tiếp từ câu trả lời RAG đến tool ghi, không tạo database session mới và không hỗ trợ tự commit/push/deploy hoặc quyền admin ở bản đầu. Quyết định đầy đủ: [ADR-0008](docs/adr/0008-inherited-agent-runtime-and-code-oss-companion.md).

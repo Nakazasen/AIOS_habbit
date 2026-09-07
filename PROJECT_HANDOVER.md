@@ -1,9 +1,12 @@
 # Biên bản Bàn giao Dự án (Project Handover)
 
-Cập nhật: 2026-08-30
+Cập nhật: 2026-09-07
 Nguồn trạng thái chuẩn: [ROADMAP.md](ROADMAP.md) là nguồn trạng thái chuẩn duy nhất cho vòng đời các Gate; tệp này là ảnh chụp nhanh (snapshot) vận hành và không được tự ý chuyển các tuyên bố lịch sử thành tuyên bố phát hành hiện tại.
 
 ## Ảnh chụp trạng thái hiện tại (Current Snapshot)
+
+- **Đợt T030–T057:** Đã commit và push tại `1d0749b` trên `gate1-local-case-sqlite`. Kiểm toán lại ngày 2026-09-07 xác nhận local/remote cùng SHA; 29 test US10/Workspace Chat trọng điểm, `compileall`, CLI audit, import, hợp đồng tài liệu và chính sách UI tiếng Việt đều đạt. Không dùng lượt này để tuyên bố full suite 2.559 test hiện tại.
+- **Feature 009 — Agent lập trình có kiểm soát:** G0 đã mở với [ADR-0008](docs/adr/0008-inherited-agent-runtime-and-code-oss-companion.md), [đặc tả/kế hoạch](specs/009-agent-harness-adoption/plan.md) và [Gate Card active](docs/roadmap/active/AIOS-AGENT-HARNESS-ADOPTION.md). Bước kế tiếp chỉ là G1 spike OpenCode đọc-only; chưa được bật write/command hoặc mô tả parity với Cline/OpenCode.
 
 - **Chuẩn bị nguồn tăng dần (005):** Mã đã triển khai và 101 bài kiểm tra liên quan đã PASS:
   nguồn mới được chuẩn bị riêng, câu hỏi chờ tự tiếp tục một lần sau khi nguồn sẵn sàng, và

@@ -1430,7 +1430,9 @@ Sao lưu log (K-Box 30 ngày xóa): Drive **nội bộ công ty** hoặc thư vi
 
 ## 30. Kế hoạch nâng US6 thành Agent lập trình và thao tác file đủ dùng hằng ngày
 
-Status: `PROPOSED_OWNER_APPROVAL`
+Status: `APPROVED_G0_ACTIVE`
+
+Chủ sở hữu đã chấp thuận năm điểm quyết định tại mục 30.14 ngày 2026-09-07. Kế hoạch canonical đã được mở thành [feature 009](specs/009-agent-harness-adoption/plan.md), [ADR-0008](docs/adr/0008-inherited-agent-runtime-and-code-oss-companion.md) và [Gate Card đang hoạt động](docs/roadmap/active/AIOS-AGENT-HARNESS-ADOPTION.md). Việc viết code bắt đầu từ G1 và phải dừng sớm nếu capability probe không đạt.
 
 Kế hoạch này được viết trong lúc chờ kiểm toán T030–T057 được xác nhận. Đây là phần nối dài của US6, không phải một sản phẩm chatbot hoặc IDE thứ ba bên trong AIOS. Chưa triển khai code, chưa đổi trạng thái US6 và chưa tuyên bố tương đương Cline/OpenCode.
 
