@@ -13,7 +13,7 @@ from typing import Callable, Optional
 from aios_habit.workspace_case_models import CaseActivity
 
 
-CURRENT_SCHEMA_VERSION = 5
+CURRENT_SCHEMA_VERSION = 7
 FaultInjector = Callable[[str, int], None]
 
 
@@ -35,6 +35,8 @@ _MIGRATION_DESCRIPTIONS = {
     3: "expert_request_review_append_only",
     4: "case_lessons_learned_store",
     5: "case_controlled_artifacts_store",
+    6: "expert_profiles_and_scope_grants",
+    7: "knowledge_coverage_and_gaps",
 }
 _MIGRATION_CHECKSUMS = {
     version: hashlib.sha256(description.encode("utf-8")).hexdigest()
@@ -391,6 +393,84 @@ def _apply_v5(connection: sqlite3.Connection) -> None:
         connection.execute(statement)
 
 
+def _apply_v6(connection: sqlite3.Connection) -> None:
+    statements = (
+        """
+        CREATE TABLE IF NOT EXISTS expert_profiles (
+            expert_id TEXT PRIMARY KEY,
+            subject TEXT NOT NULL UNIQUE,
+            full_name TEXT NOT NULL,
+            scopes_json TEXT NOT NULL,
+            status TEXT NOT NULL DEFAULT 'active',
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL
+        )
+        """,
+        "CREATE INDEX IF NOT EXISTS expert_profiles_subject_idx ON expert_profiles(subject)",
+        "CREATE INDEX IF NOT EXISTS expert_profiles_status_idx ON expert_profiles(status)",
+        """
+        CREATE TABLE IF NOT EXISTS expert_scope_grants (
+            grant_id TEXT PRIMARY KEY,
+            subject TEXT NOT NULL,
+            action TEXT NOT NULL,
+            scope TEXT NOT NULL,
+            granted_by TEXT NOT NULL,
+            granted_at TEXT NOT NULL,
+            expires_at TEXT,
+            revoked_at TEXT,
+            status TEXT NOT NULL DEFAULT 'active'
+        )
+        """,
+        "CREATE INDEX IF NOT EXISTS expert_scope_grants_subject_idx ON expert_scope_grants(subject)",
+        "CREATE INDEX IF NOT EXISTS expert_scope_grants_action_idx ON expert_scope_grants(action)",
+        "CREATE INDEX IF NOT EXISTS expert_scope_grants_status_idx ON expert_scope_grants(status)",
+    )
+    for statement in statements:
+        connection.execute(statement)
+
+
+def _apply_v7(connection: sqlite3.Connection) -> None:
+    statements = (
+        """
+        CREATE TABLE IF NOT EXISTS knowledge_gap_events (
+            event_id TEXT PRIMARY KEY,
+            gap_id TEXT NOT NULL,
+            collection_id TEXT NOT NULL,
+            scope TEXT NOT NULL,
+            title TEXT NOT NULL,
+            description TEXT NOT NULL,
+            gap_type TEXT NOT NULL,
+            evidence_refs_json TEXT NOT NULL,
+            status TEXT NOT NULL,
+            priority TEXT NOT NULL,
+            idempotency_key TEXT NOT NULL UNIQUE,
+            created_by TEXT NOT NULL,
+            created_at TEXT NOT NULL,
+            digest TEXT NOT NULL
+        )
+        """,
+        "CREATE INDEX IF NOT EXISTS knowledge_gap_events_gap_idx ON knowledge_gap_events(gap_id)",
+        "CREATE INDEX IF NOT EXISTS knowledge_gap_events_coll_scope_idx ON knowledge_gap_events(collection_id, scope)",
+        "CREATE INDEX IF NOT EXISTS knowledge_gap_events_status_idx ON knowledge_gap_events(status)",
+        """
+        CREATE TABLE IF NOT EXISTS coverage_runs (
+            run_id TEXT PRIMARY KEY,
+            collection_id TEXT NOT NULL,
+            scope TEXT NOT NULL,
+            total_questions INTEGER NOT NULL,
+            covered_questions INTEGER NOT NULL,
+            coverage_ratio REAL NOT NULL,
+            gaps_count INTEGER NOT NULL,
+            idempotency_key TEXT NOT NULL UNIQUE,
+            measured_at TEXT NOT NULL
+        )
+        """,
+        "CREATE INDEX IF NOT EXISTS coverage_runs_coll_scope_idx ON coverage_runs(collection_id, scope)",
+    )
+    for statement in statements:
+        connection.execute(statement)
+
+
 def _ensure_migration_table(connection: sqlite3.Connection) -> None:
     connection.execute(
         """
@@ -456,6 +536,10 @@ def migrate_store(
                     _apply_v4(connection)
                 elif version == 5:
                     _apply_v5(connection)
+                elif version == 6:
+                    _apply_v6(connection)
+                elif version == 7:
+                    _apply_v7(connection)
                 connection.execute(
                     "INSERT INTO schema_migrations VALUES (?, ?, ?, ?)",
                     (version, _MIGRATION_DESCRIPTIONS[version], _MIGRATION_CHECKSUMS[version], _utc_now()),

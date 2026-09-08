@@ -1,0 +1,35 @@
+{
+  "audio_file": "sample_interview_sine_16k.wav",
+  "format": "wav",
+  "sample_rate": 16000,
+  "channels": 1,
+  "duration_seconds": 1.0,
+  "digest_sha256": "synthetic_safe_test_audio_digest",
+  "simulated_transcript": [
+    {
+      "start_time": 0.0,
+      "end_time": 0.5,
+      "text": "Nhiệt độ tối đa",
+      "tokens": [
+        "Nhiệt",
+        "độ",
+        "tối",
+        "đa"
+      ]
+    },
+    {
+      "start_time": 0.5,
+      "end_time": 1.0,
+      "text": "năm mươi lăm độ C",
+      "tokens": [
+        "55",
+        "độ",
+        "C"
+      ],
+      "critical_tokens": [
+        "55",
+        "độ C"
+      ]
+    }
+  ]
+}

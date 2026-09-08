@@ -7,9 +7,23 @@ from pathlib import Path
 
 import streamlit as st
 
+from aios_habit.knowledge_coverage import KnowledgeGapCandidate
 from aios_habit.workspace_case_models import CaseDetail, CaseFilter, CaseRecord, TraceResolution
 from aios_habit.workspace_case_service import CaseValidationError, WorkspaceCaseService
 from aios_habit.workspace_case_repository import WorkspaceCaseRepositoryError
+from aios_habit.expert_interview_models import (
+    InterviewPlan,
+    InterviewSession,
+    InterviewTurn,
+    SESSION_STATE_ACTIVE,
+    SESSION_STATE_PAUSED,
+    SESSION_STATE_COMPLETED,
+    SESSION_STATE_STOPPED,
+    SESSION_STATE_BLOCKED,
+)
+from aios_habit.expert_interview_service import ExpertInterviewService
+from aios_habit.expert_interview_repository import ExpertInterviewRepository
+from aios_habit.expert_identity import VerifiedPrincipal
 from aios_habit.ui_safety import safe_vietnamese_ui_message
 from aios_habit.i18n import DEFAULT_LOCALE, normalize_locale, t
 from aios_habit.coding_assistant import (
@@ -117,6 +131,73 @@ _ARTIFACT_ERROR_MESSAGES = {
     "CASE_ARTIFACT_NOT_DRAFT": "Chỉ tài liệu ở trạng thái dự thảo mới có thể phê duyệt.",
 }
 _EDITABLE_STATUSES = ("draft", "triaged", "in_progress", "waiting_evidence")
+
+_GAP_TYPE_LABELS = {
+    "missing_threshold": "Thiếu thông số kỹ thuật",
+    "conflict": "Mâu thuẫn thông tin giữa các tài liệu",
+    "stale": "Thông tin đã cũ hoặc hết hạn",
+    "missing_source": "Thiếu tài liệu nguồn kiểm chứng",
+    "unverified_claim": "Nhận định chưa được kiểm chứng",
+}
+_GAP_STATUS_LABELS = {
+    "candidate": "Đang chờ xem xét",
+    "accepted": "Đã chấp thuận để phỏng vấn",
+    "merged": "Đã gộp vào nội dung khác",
+    "deferred": "Tạm hoãn xem xét",
+    "rejected": "Đã từ chối",
+}
+_GAP_DECISION_LABELS = {
+    "accept": "Chấp thuận để phỏng vấn",
+    "merge": "Gộp vào nội dung khác",
+    "defer": "Tạm hoãn xem xét",
+    "reject": "Từ chối",
+}
+_GAP_ERROR_MESSAGES = {
+    "GAP_NOT_FOUND": "Không tìm thấy nội dung còn thiếu yêu cầu.",
+    "GAP_STALE_DIGEST": "Nội dung này đã được cập nhật ở nơi khác. Vui lòng tải lại và thử lại.",
+    "GAP_DECISION_INVALID": "Quyết định xem xét không hợp lệ.",
+    "GAP_EVIDENCE_REQUIRED": "Nội dung còn thiếu phải có ít nhất một bằng chứng tham chiếu.",
+}
+
+_INTERVIEW_SESSION_STATE_LABELS = {
+    "ready": "Sẵn sàng",
+    "active": "Đang phỏng vấn",
+    "paused": "Tạm dừng",
+    "awaiting_confirmation": "Chờ xác nhận",
+    "completed": "Hoàn tất",
+    "stopped": "Đã dừng",
+    "blocked": "Bị khóa thẩm quyền",
+}
+_INTERVIEW_ANSWER_STATE_LABELS = {
+    "answered": "Đã trả lời",
+    "unknown": "Không rõ / Chưa nắm được",
+    "uncertain": "Chưa chắc chắn",
+    "skipped": "Bỏ qua",
+    "corrected": "Đã đính chính",
+}
+
+
+def _session_state_label(state: str, locale: str = "vi") -> str:
+    return _INTERVIEW_SESSION_STATE_LABELS.get(state, state)
+
+
+def _turn_answer_state_label(state: str, locale: str = "vi") -> str:
+    return _INTERVIEW_ANSWER_STATE_LABELS.get(state, state)
+
+
+def interview_turn_rows(turns: Sequence[InterviewTurn], locale: str = "vi") -> list[dict[str, Any]]:
+    norm_loc = normalize_locale(locale)
+    return [
+        {
+            "Lượt": turn.sequence,
+            "Câu hỏi": turn.question_text,
+            "Câu trả lời": turn.answer_text,
+            "Trạng thái": _turn_answer_state_label(turn.answer_state, locale=norm_loc),
+            "Độ tin cậy": f"{int(turn.answer_confidence * 100)}%",
+            "Thời điểm": turn.created_at,
+        }
+        for turn in turns
+    ]
 
 _ERROR_KEY_MAP = {
     "CASE_VERSION_CONFLICT": "case_err_version_conflict",
@@ -236,6 +317,8 @@ def safe_case_error_message(error: BaseException, locale: str = "vi") -> str:
         return _INVESTIGATION_ERROR_MESSAGES[text]
     if text in _ARTIFACT_ERROR_MESSAGES:
         return _ARTIFACT_ERROR_MESSAGES[text]
+    if text in _GAP_ERROR_MESSAGES:
+        return _GAP_ERROR_MESSAGES[text]
     if text in _ERROR_KEY_MAP:
         return t(_ERROR_KEY_MAP[text], locale=norm_loc)
     if isinstance(error, (ConnectionError, TimeoutError)) or "connection" in text.lower() or "timed out" in text.lower():
@@ -244,6 +327,39 @@ def safe_case_error_message(error: BaseException, locale: str = "vi") -> str:
     if re.fullmatch(r"[A-Z][A-Z0-9_]+", text) or "Traceback" in text or re.search(r"[A-Za-z]:[\\/]", text):
         return fallback
     return safe_vietnamese_ui_message(text, fallback)
+
+
+def _gap_type_label(gap_type: str, locale: str = "vi") -> str:
+    return _GAP_TYPE_LABELS.get(gap_type, "Nội dung cần làm rõ")
+
+
+def _gap_status_label(status: str, locale: str = "vi") -> str:
+    return _GAP_STATUS_LABELS.get(status, "Đang chờ xem xét")
+
+
+def _gap_decision_label(decision: str, locale: str = "vi") -> str:
+    return _GAP_DECISION_LABELS.get(decision, decision)
+
+
+def gap_list_rows(gaps: Iterable[KnowledgeGapCandidate], locale: str = "vi") -> list[dict[str, str]]:
+    norm_loc = normalize_locale(locale)
+    rows = []
+    for gap in gaps:
+        evidence_count = len(gap.evidence_refs)
+        evidence_text = f"{evidence_count} tài liệu nguồn" if evidence_count > 0 else "Chưa có bằng chứng"
+        rows.append(
+            {
+                "Mã nội dung": gap.gap_id,
+                "Tiêu đề": gap.title,
+                "Công đoạn": gap.scope,
+                "Loại thiếu sót": _gap_type_label(gap.gap_type, locale=norm_loc),
+                "Mức ưu tiên": _priority_label(gap.priority, locale=norm_loc),
+                "Trạng thái": _gap_status_label(gap.status, locale=norm_loc),
+                "Bằng chứng": evidence_text,
+            }
+        )
+    return rows
+
 
 
 def case_list_rows(cases: Iterable[CaseRecord], locale: str = "vi") -> list[dict[str, str]]:
@@ -372,6 +488,276 @@ def case_detail_sections(detail: CaseDetail, trace: TraceResolution, locale: str
 
 
 
+def render_knowledge_coverage_view(
+    service: WorkspaceCaseService,
+    *,
+    locale: str = "vi",
+) -> None:
+    norm_loc = normalize_locale(locale)
+    st.subheader("Kiểm kê tri thức và nội dung còn thiếu")
+    st.caption("Kiểm tra phạm vi tài liệu đã có, tỷ lệ bao phủ và xem xét các nội dung cần chuyên gia bổ sung.")
+
+    col1, col2 = st.columns(2)
+    with col1:
+        selected_scope = st.selectbox(
+            "Công đoạn cần kiểm tra",
+            options=(None, "all", "lsu_optical_assembly", "lsu_mirror_mount"),
+            format_func=lambda s: "Tất cả công đoạn" if s in (None, "all") else s,
+            key="wsc_gap_filter_scope",
+        )
+    with col2:
+        selected_status = st.selectbox(
+            "Trạng thái nội dung thiếu",
+            options=(None, "all", *tuple(_GAP_STATUS_LABELS)),
+            format_func=lambda s: "Tất cả trạng thái" if s in (None, "all") else _gap_status_label(s, locale=norm_loc),
+            key="wsc_gap_filter_status",
+        )
+
+    scope_filter = None if selected_scope in (None, "all") else selected_scope
+    status_filter = None if selected_status in (None, "all") else selected_status
+
+    try:
+        gaps = service.list_gap_candidates(scope=scope_filter, status=status_filter)
+    except Exception as error:
+        st.error(safe_case_error_message(error, locale=norm_loc))
+        return
+
+    if not gaps:
+        st.info("Hiện không có nội dung còn thiếu nào theo bộ lọc đã chọn.")
+        return
+
+    st.dataframe(gap_list_rows(gaps, locale=norm_loc), use_container_width=True, hide_index=True)
+
+    gap_by_id = {g.gap_id: g for g in gaps}
+    selected_gap_id = st.selectbox(
+        "Chọn nội dung để xem xét",
+        options=tuple(gap_by_id),
+        format_func=lambda gid: f"{gid} · {gap_by_id[gid].title}",
+        key="wsc_selected_gap_id",
+    )
+
+    selected_gap = gap_by_id[selected_gap_id]
+    with st.expander(f"Chi tiết nội dung: {selected_gap.title}", expanded=True):
+        st.write(f"**Mô tả:** {selected_gap.description}")
+        st.write(f"**Công đoạn:** {selected_gap.scope}")
+        st.write(f"**Loại thiếu sót:** {_gap_type_label(selected_gap.gap_type, locale=norm_loc)}")
+        st.write(f"**Mức ưu tiên:** {_priority_label(selected_gap.priority, locale=norm_loc)}")
+        st.write(f"**Trạng thái hiện tại:** {_gap_status_label(selected_gap.status, locale=norm_loc)}")
+
+        if selected_gap.evidence_refs:
+            st.write("**Bằng chứng tham chiếu:**")
+            for ref in selected_gap.evidence_refs:
+                st.markdown(f"- `{ref}`")
+        else:
+            st.caption("Chưa có bằng chứng đính kèm.")
+
+        with st.form(f"wsc_review_gap_form_{selected_gap_id}"):
+            decision = st.selectbox(
+                "Quyết định xử lý",
+                options=("accept", "merge", "defer", "reject"),
+                format_func=lambda d: _gap_decision_label(d, locale=norm_loc),
+            )
+            rationale = st.text_area("Lý do hoặc ghi chú của người kiểm duyệt (tùy chọn)")
+            submitted = st.form_submit_button("Lưu kết quả thẩm định")
+            if submitted:
+                try:
+                    service.review_gap_candidate(
+                        gap_id=selected_gap_id,
+                        decision=decision,
+                        rationale=rationale,
+                        expected_digest=selected_gap.digest,
+                    )
+                    st.success("Đã cập nhật trạng thái nội dung còn thiếu thành công.")
+                    st.rerun()
+                except CaseValidationError as error:
+                    st.error(safe_case_error_message(error, locale=norm_loc))
+
+
+
+def render_expert_interview_view(
+    service: WorkspaceCaseService,
+    *,
+    locale: str = "vi",
+) -> None:
+    norm_loc = normalize_locale(locale)
+    st.subheader("Phỏng vấn chuyên gia thu thập tri thức kỹ thuật")
+    st.caption("Khung đối thoại có kiểm soát và thích nghi nhằm làm rõ các khoảng trống tri thức công đoạn.")
+
+    interview_repo = ExpertInterviewRepository(service.repository.database_path)
+    interview_svc = ExpertInterviewService(store=service.repository, interview_repo=interview_repo, actor_context=service.actor_context)
+
+    # Hiển thị danh sách các phiên hiện có
+    existing_sessions = interview_repo.list_sessions()
+    session_options = [s.session_id for s in existing_sessions]
+
+    col_s1, col_s2 = st.columns([3, 1])
+    with col_s1:
+        selected_session_id = st.selectbox(
+            "Chọn phiên phỏng vấn hiện có",
+            options=["new"] + session_options,
+            format_func=lambda sid: "Tạo phiên phỏng vấn mới" if sid == "new" else f"Phiên {sid} ({_session_state_label(next((s.state for s in existing_sessions if s.session_id == sid), ''))})",
+            key="wsc_interview_sel_session",
+        )
+
+    # Tạo phiên mới
+    if selected_session_id == "new":
+        st.markdown("#### Khởi tạo phiên phỏng vấn mới từ khoảng trống tri thức đã chấp thuận")
+        accepted_gaps = service.list_gap_candidates(status="accepted")
+        if not accepted_gaps:
+            st.info("Chưa có khoảng trống tri thức nào ở trạng thái 'Đã chấp thuận' (accepted). Vui lòng thẩm định tại tab Kiểm kê tri thức trước.")
+            return
+
+        with st.form("wsc_create_interview_session_form"):
+            gap_choices = {g.gap_id: g for g in accepted_gaps}
+            sel_gap_id = st.selectbox(
+                "Khoảng trống tri thức mục tiêu",
+                options=tuple(gap_choices),
+                format_func=lambda gid: f"{gid} · {gap_choices[gid].title} ({gap_choices[gid].scope})",
+            )
+            sel_gap = gap_choices[sel_gap_id]
+            eligible = interview_svc.resolve_eligible_experts(sel_gap.scope)
+            if not eligible:
+                st.warning(f"Chưa có chuyên gia nào có thẩm quyền cho công đoạn '{sel_gap.scope}'.")
+                sel_expert = ""
+            else:
+                sel_expert = st.selectbox("Chuyên gia thực hiện phỏng vấn", options=eligible)
+
+            turns_budget = st.number_input("Số lượt tối đa (ngân sách)", min_value=1, max_value=50, value=10)
+            create_btn = st.form_submit_button("Tạo kế hoạch và bắt đầu phiên phỏng vấn")
+
+            if create_btn:
+                if not sel_expert:
+                    st.error("Không thể bắt đầu phiên khi chưa chọn chuyên gia đủ thẩm quyền.")
+                else:
+                    try:
+                        from aios_habit.expert_interview_models import InterviewBudget, CompletionRubric
+                        plan = interview_svc.create_interview_plan(
+                            gap_id=sel_gap_id,
+                            budget=InterviewBudget(max_turns=int(turns_budget), max_minutes=30, token_budget=4000),
+                            completion_rubric=CompletionRubric(
+                                required_aspects=("threshold", "unit", "exceptions"),
+                                escalation_owner=service.actor_context.actor_id,
+                            ),
+                        )
+                        principal = VerifiedPrincipal(
+                            subject=sel_expert,
+                            provider_name="local_interactive",
+                            display_name=sel_expert,
+                        )
+                        new_sess = interview_svc.start_interview_session(
+                            plan_id=plan.plan_id,
+                            principal=principal,
+                            expert_id=sel_expert,
+                            idempotency_key=f"START-{plan.plan_id}",
+                        )
+                        st.success(f"Đã khởi tạo phiên phỏng vấn thành công: {new_sess.session_id}")
+                        st.session_state["wsc_active_interview_session_id"] = new_sess.session_id
+                        st.rerun()
+                    except Exception as err:
+                        st.error(safe_vietnamese_ui_message(str(err)))
+        return
+
+    # Phiên đang được chọn
+    curr_session = interview_repo.get_session(selected_session_id)
+    if curr_session is None:
+        st.error("Không tìm thấy dữ liệu của phiên đã chọn.")
+        return
+
+    plan = interview_svc.get_interview_plan(curr_session.plan_id)
+    max_turns = plan.budget.max_turns if plan else 10
+
+    # Hiển thị thanh trạng thái & tiến độ
+    turns = interview_repo.list_turns(curr_session.session_id)
+    turns_count = len(turns)
+    progress_pct = min(1.0, turns_count / max_turns)
+
+    m1, m2, m3 = st.columns(3)
+    m1.metric("Trạng thái phiên", _session_state_label(curr_session.state, locale=norm_loc))
+    m2.metric("Tiến độ lượt phỏng vấn", f"{turns_count} / {max_turns} lượt")
+    m3.metric("Chuyên gia tham gia", curr_session.expert_id)
+
+    st.progress(progress_pct, text=f"Tiến độ hoàn thành: {int(progress_pct * 100)}%")
+
+    if curr_session.state == SESSION_STATE_PAUSED:
+        st.warning("Phiên phỏng vấn hiện đang tạm dừng.")
+        if st.button("Tiếp tục phiên phỏng vấn", type="primary"):
+            try:
+                principal = VerifiedPrincipal(
+                    subject=curr_session.principal_subject_id,
+                    provider_name="local_interactive",
+                    display_name=curr_session.expert_id,
+                )
+                interview_svc.resume_interview_session(curr_session.session_id, principal=principal)
+                st.success("Đã tiếp tục lại phiên phỏng vấn.")
+                st.rerun()
+            except Exception as err:
+                st.error(safe_vietnamese_ui_message(str(err)))
+
+    elif curr_session.state in (SESSION_STATE_COMPLETED, SESSION_STATE_STOPPED, SESSION_STATE_BLOCKED):
+        st.info(f"Phiên phỏng vấn đã kết thúc với trạng thái: {_session_state_label(curr_session.state, locale=norm_loc)}. Lý do: {curr_session.stop_reason or 'Hoàn tất quy trình'}.")
+
+    # Khung hiển thị lịch sử hội thoại
+    st.markdown("#### Lịch sử các lượt trao đổi")
+    if turns:
+        for t_item in turns:
+            with st.chat_message("assistant"):
+                st.write(f"**Hệ thống (Lượt {t_item.sequence}):** {t_item.question_text}")
+            with st.chat_message("user"):
+                status_lbl = _turn_answer_state_label(t_item.answer_state, locale=norm_loc)
+                st.write(f"**Chuyên gia ({curr_session.expert_id}):** {t_item.answer_text}")
+                st.caption(f"Trạng thái ghi nhận: {status_lbl} | Thời điểm: {t_item.created_at}")
+    else:
+        st.caption("Chưa có lượt trao đổi nào trong phiên này.")
+
+    # Nếu phiên đang active thì cho phép trả lời
+    if curr_session.state == SESSION_STATE_ACTIVE:
+        st.markdown("#### Phản hồi lượt phỏng vấn tiếp theo")
+        next_q = plan.seed_questions[0].text if (plan and plan.seed_questions and not turns) else f"Câu hỏi làm rõ lượt {turns_count + 1}"
+        st.info(f"**Câu hỏi hiện tại:** {next_q}")
+
+        with st.form(f"wsc_answer_turn_form_{curr_session.session_id}"):
+            ans_input = st.text_area("Nhập câu trả lời của chuyên gia", key=f"ans_text_{curr_session.session_id}")
+            col_b1, col_b2, col_b3, col_b4 = st.columns(4)
+            with col_b1:
+                submit_ans = st.form_submit_button("Gửi câu trả lời", type="primary")
+            with col_b2:
+                btn_unknown = st.form_submit_button("Chưa rõ thông tin")
+            with col_b3:
+                btn_pause = st.form_submit_button("Tạm dừng phiên")
+            with col_b4:
+                btn_stop = st.form_submit_button("Dừng phiên phỏng vấn")
+
+            final_ans = None
+            if submit_ans:
+                final_ans = ans_input.strip()
+            elif btn_unknown:
+                final_ans = "không rõ"
+            elif btn_pause:
+                final_ans = "tạm dừng"
+            elif btn_stop:
+                final_ans = "dừng"
+
+            if final_ans:
+                try:
+                    principal = VerifiedPrincipal(
+                        subject=curr_session.principal_subject_id,
+                        provider_name="local_interactive",
+                        display_name=curr_session.expert_id,
+                    )
+                    from uuid import uuid4
+                    interview_svc.submit_interview_turn(
+                        session_id=curr_session.session_id,
+                        answer_text=final_ans,
+                        principal=principal,
+                        idempotency_key=f"TURN-{curr_session.session_id}-{turns_count + 1}-{uuid4().hex[:6]}",
+                        question_override=next_q,
+                    )
+                    st.success("Đã ghi nhận phản hồi thành công.")
+                    st.rerun()
+                except Exception as err:
+                    st.error(safe_vietnamese_ui_message(str(err)))
+
+
 def render_case_workspace(
     service: WorkspaceCaseService,
     *,
@@ -388,6 +774,21 @@ def render_case_workspace(
         if on_close and st.button(t("case_btn_back", locale=norm_loc), use_container_width=True):
             on_close()
             return
+
+    view_mode = st.radio(
+        "Khu vực làm việc",
+        options=("cases", "coverage", "interview"),
+        format_func=lambda m: "Hồ sơ sự vụ" if m == "cases" else ("Kiểm kê tri thức & Nội dung còn thiếu" if m == "coverage" else "Phỏng vấn chuyên gia"),
+        horizontal=True,
+        label_visibility="collapsed",
+        key="wsc_workspace_view_mode",
+    )
+    if view_mode == "coverage":
+        render_knowledge_coverage_view(service, locale=norm_loc)
+        return
+    elif view_mode == "interview":
+        render_expert_interview_view(service, locale=norm_loc)
+        return
 
     filter_col1, filter_col2 = st.columns(2)
     with filter_col1:

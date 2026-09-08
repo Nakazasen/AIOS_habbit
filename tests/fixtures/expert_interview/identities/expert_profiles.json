@@ -1,0 +1,56 @@
+{
+  "profiles": [
+    {
+      "expert_id": "EXPERT_FIXTURE_ALPHA",
+      "subject": "win_sim_alpha_expert",
+      "full_name": "Nguyễn Văn An (Giả lập)",
+      "scopes": [
+        "lsu_optical_assembly"
+      ],
+      "status": "active",
+      "allowed_actions": [
+        "interview.answer",
+        "claim.review",
+        "artifact.candidate_create"
+      ]
+    },
+    {
+      "expert_id": "EXPERT_FIXTURE_BETA",
+      "subject": "win_sim_beta_expert",
+      "full_name": "Trần Thị Bình (Giả lập)",
+      "scopes": [
+        "lsu_lens_calibration"
+      ],
+      "status": "active",
+      "allowed_actions": [
+        "interview.answer",
+        "claim.review",
+        "artifact.candidate_create",
+        "artifact.approve"
+      ]
+    }
+  ],
+  "grants": [
+    {
+      "grant_id": "GRANT-SIM-001",
+      "subject": "win_sim_alpha_expert",
+      "scope": "lsu_optical_assembly",
+      "action": "interview.answer",
+      "status": "active"
+    },
+    {
+      "grant_id": "GRANT-SIM-002",
+      "subject": "win_sim_beta_expert",
+      "scope": "lsu_lens_calibration",
+      "action": "interview.answer",
+      "status": "active"
+    },
+    {
+      "grant_id": "GRANT-SIM-003",
+      "subject": "win_sim_beta_expert",
+      "scope": "lsu_lens_calibration",
+      "action": "artifact.approve",
+      "status": "active"
+    }
+  ]
+}

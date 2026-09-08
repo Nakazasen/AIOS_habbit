@@ -1,0 +1,21 @@
+{
+  "session_id": "SESS-SIM-003",
+  "gap_id": "GAP-SIM-003",
+  "expert_id": "EXPERT_FIXTURE_BETA",
+  "scope": "lsu_lens_calibration",
+  "status": "completed",
+  "turns": [
+    {
+      "turn_id": "TURN-001",
+      "speaker": "ai",
+      "content": "Tài liệu cũ ghi nhiệt độ ổn định là 50°C, nhưng thực tế đo được 55°C. Sự khác biệt này là do đâu?",
+      "action": "ask_seed"
+    },
+    {
+      "turn_id": "TURN-002",
+      "speaker": "expert",
+      "content": "50°C là tài liệu ban đầu khi chạy thử nghiệm phòng thí nghiệm. Khi đưa vào dây chuyền sản xuất thực tế JG-SIM-808 tỏa nhiệt nên cần duy trì 55°C mới không bị sốc nhiệt.",
+      "confidence": 0.95
+    }
+  ]
+}

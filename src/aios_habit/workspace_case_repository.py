@@ -1,11 +1,16 @@
 """SQLite repository for local-only Workspace Chat case metadata."""
 from __future__ import annotations
 
+import json
 import sqlite3
 from contextlib import contextmanager
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Iterable, Iterator, Optional
+from uuid import uuid4
 
+from aios_habit.expert_identity import ExpertProfile, ScopeGrant
+from aios_habit.knowledge_coverage import CoverageMetric, KnowledgeGapCandidate
 from aios_habit.workspace_case_authorization import RoleGrant
 from aios_habit.workspace_case_migrations import WorkspaceCaseMigrationError, migrate_store
 from aios_habit.workspace_case_models import (
@@ -1333,6 +1338,416 @@ class WorkspaceCaseRepository:
             exported_path=row["exported_path"],
             provenance_digest=row["provenance_digest"],
         )
+
+    def save_expert_profile(self, profile: ExpertProfile) -> None:
+        """Save or update an expert profile append-only/upsert."""
+        self.initialize()
+        scopes_json = json.dumps(list(profile.scopes), ensure_ascii=False)
+        with self._connect() as conn:
+            conn.execute(
+                """
+                INSERT INTO expert_profiles (expert_id, subject, full_name, scopes_json, status, created_at, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(expert_id) DO UPDATE SET
+                    subject = excluded.subject,
+                    full_name = excluded.full_name,
+                    scopes_json = excluded.scopes_json,
+                    status = excluded.status,
+                    updated_at = excluded.updated_at
+                """,
+                (
+                    profile.expert_id,
+                    profile.subject,
+                    profile.full_name,
+                    scopes_json,
+                    profile.status,
+                    profile.created_at or utc_now_iso(),
+                    profile.updated_at or utc_now_iso(),
+                ),
+            )
+
+    def get_expert_profile(self, expert_id: str) -> Optional[ExpertProfile]:
+        """Fetch expert profile by expert_id."""
+        self.initialize()
+        with self._connect() as conn:
+            row = conn.execute(
+                "SELECT expert_id, subject, full_name, scopes_json, status, created_at, updated_at FROM expert_profiles WHERE expert_id = ?",
+                (expert_id,),
+            ).fetchone()
+            if row is None:
+                return None
+            return ExpertProfile(
+                expert_id=row["expert_id"],
+                subject=row["subject"],
+                full_name=row["full_name"],
+                scopes=tuple(json.loads(row["scopes_json"])),
+                status=row["status"],
+                created_at=row["created_at"],
+                updated_at=row["updated_at"],
+            )
+
+    def get_expert_profile_by_subject(self, subject: str) -> Optional[ExpertProfile]:
+        """Fetch expert profile by underlying authenticated subject."""
+        self.initialize()
+        with self._connect() as conn:
+            row = conn.execute(
+                "SELECT expert_id, subject, full_name, scopes_json, status, created_at, updated_at FROM expert_profiles WHERE subject = ?",
+                (subject,),
+            ).fetchone()
+            if row is None:
+                return None
+            return ExpertProfile(
+                expert_id=row["expert_id"],
+                subject=row["subject"],
+                full_name=row["full_name"],
+                scopes=tuple(json.loads(row["scopes_json"])),
+                status=row["status"],
+                created_at=row["created_at"],
+                updated_at=row["updated_at"],
+            )
+
+    def list_expert_profiles(self, status: Optional[str] = None) -> list[ExpertProfile]:
+        """List expert profiles with optional status filter."""
+        self.initialize()
+        with self._connect() as conn:
+            if status:
+                rows = conn.execute(
+                    "SELECT expert_id, subject, full_name, scopes_json, status, created_at, updated_at FROM expert_profiles WHERE status = ? ORDER BY expert_id",
+                    (status,),
+                ).fetchall()
+            else:
+                rows = conn.execute(
+                    "SELECT expert_id, subject, full_name, scopes_json, status, created_at, updated_at FROM expert_profiles ORDER BY expert_id"
+                ).fetchall()
+            return [
+                ExpertProfile(
+                    expert_id=r["expert_id"],
+                    subject=r["subject"],
+                    full_name=r["full_name"],
+                    scopes=tuple(json.loads(r["scopes_json"])),
+                    status=r["status"],
+                    created_at=r["created_at"],
+                    updated_at=r["updated_at"],
+                )
+                for r in rows
+            ]
+
+    def save_scope_grant(self, grant: ScopeGrant) -> None:
+        """Save or update a scope grant."""
+        self.initialize()
+        with self._connect() as conn:
+            conn.execute(
+                """
+                INSERT INTO expert_scope_grants (grant_id, subject, action, scope, granted_by, granted_at, expires_at, revoked_at, status)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(grant_id) DO UPDATE SET
+                    subject = excluded.subject,
+                    action = excluded.action,
+                    scope = excluded.scope,
+                    granted_by = excluded.granted_by,
+                    granted_at = excluded.granted_at,
+                    expires_at = excluded.expires_at,
+                    revoked_at = excluded.revoked_at,
+                    status = excluded.status
+                """,
+                (
+                    grant.grant_id,
+                    grant.subject,
+                    grant.action,
+                    grant.scope,
+                    grant.granted_by,
+                    grant.granted_at or utc_now_iso(),
+                    grant.expires_at,
+                    grant.revoked_at,
+                    grant.status,
+                ),
+            )
+
+    def get_scope_grant(self, grant_id: str) -> Optional[ScopeGrant]:
+        """Fetch scope grant by grant_id."""
+        self.initialize()
+        with self._connect() as conn:
+            row = conn.execute(
+                "SELECT grant_id, subject, action, scope, granted_by, granted_at, expires_at, revoked_at, status FROM expert_scope_grants WHERE grant_id = ?",
+                (grant_id,),
+            ).fetchone()
+            if row is None:
+                return None
+            return ScopeGrant(
+                grant_id=row["grant_id"],
+                subject=row["subject"],
+                action=row["action"],
+                scope=row["scope"],
+                granted_by=row["granted_by"],
+                granted_at=row["granted_at"],
+                expires_at=row["expires_at"],
+                revoked_at=row["revoked_at"],
+                status=row["status"],
+            )
+
+    def list_scope_grants_for_subject(self, subject: str) -> list[ScopeGrant]:
+        """List active scope grants for a given subject."""
+        self.initialize()
+        with self._connect() as conn:
+            rows = conn.execute(
+                "SELECT grant_id, subject, action, scope, granted_by, granted_at, expires_at, revoked_at, status FROM expert_scope_grants WHERE subject = ? AND status = 'active' AND revoked_at IS NULL ORDER BY granted_at DESC",
+                (subject,),
+            ).fetchall()
+            return [
+                ScopeGrant(
+                    grant_id=r["grant_id"],
+                    subject=r["subject"],
+                    action=r["action"],
+                    scope=r["scope"],
+                    granted_by=r["granted_by"],
+                    granted_at=r["granted_at"],
+                    expires_at=r["expires_at"],
+                    revoked_at=r["revoked_at"],
+                    status=r["status"],
+                )
+                for r in rows
+            ]
+
+    def list_scope_grants(
+        self,
+        action: Optional[str] = None,
+        scope: Optional[str] = None,
+        status: Optional[str] = None,
+    ) -> list[ScopeGrant]:
+        """List all scope grants with optional filters."""
+        self.initialize()
+        query = "SELECT grant_id, subject, action, scope, granted_by, granted_at, expires_at, revoked_at, status FROM expert_scope_grants WHERE 1=1"
+        params = []
+        if action:
+            query += " AND (action = ? OR action = '*')"
+            params.append(action)
+        if scope:
+            query += " AND (scope = ? OR scope = '*' OR scope = 'all')"
+            params.append(scope)
+        if status:
+            query += " AND status = ?"
+            params.append(status)
+        query += " ORDER BY granted_at DESC"
+        with self._connect() as conn:
+            rows = conn.execute(query, params).fetchall()
+            return [
+                ScopeGrant(
+                    grant_id=r["grant_id"],
+                    subject=r["subject"],
+                    action=r["action"],
+                    scope=r["scope"],
+                    granted_by=r["granted_by"],
+                    granted_at=r["granted_at"],
+                    expires_at=r["expires_at"],
+                    revoked_at=r["revoked_at"],
+                    status=r["status"],
+                )
+                for r in rows
+            ]
+
+    def revoke_scope_grant(
+        self,
+        grant_id: str,
+        revoked_by: str,
+        revoked_at: Optional[str] = None,
+    ) -> None:
+        """Revoke a scope grant explicitly."""
+        self.initialize()
+        now = revoked_at or utc_now_iso()
+        with self._connect() as conn:
+            conn.execute(
+                "UPDATE expert_scope_grants SET status = 'revoked', revoked_at = ? WHERE grant_id = ?",
+                (now, grant_id),
+            )
+
+    def save_coverage_run(self, metric: CoverageMetric, idempotency_key: str) -> str:
+        """Save a coverage evaluation run idempotently."""
+        self.initialize()
+        with self._connect() as conn:
+            existing = conn.execute(
+                "SELECT run_id FROM coverage_runs WHERE idempotency_key = ?",
+                (idempotency_key,),
+            ).fetchone()
+            if existing is not None:
+                return str(existing["run_id"])
+
+            run_id = f"COV-RUN-{int(datetime.now(timezone.utc).timestamp())}-{uuid4().hex[:8]}"
+            conn.execute(
+                """
+                INSERT INTO coverage_runs (run_id, collection_id, scope, total_questions, covered_questions, coverage_ratio, gaps_count, idempotency_key, measured_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    run_id,
+                    metric.collection_id,
+                    metric.scope,
+                    metric.total_questions,
+                    metric.covered_questions,
+                    metric.coverage_ratio,
+                    metric.gaps_count,
+                    idempotency_key,
+                    metric.measured_at or utc_now_iso(),
+                ),
+            )
+            return run_id
+
+    def save_gap_candidate(
+        self,
+        gap: KnowledgeGapCandidate,
+        idempotency_key: str,
+        actor_id: str,
+    ) -> None:
+        """Save or update a gap candidate event idempotently."""
+        self.initialize()
+        evidence_json = json.dumps(list(gap.evidence_refs), ensure_ascii=False)
+        with self._connect() as conn:
+            conn.execute(
+                """
+                INSERT INTO knowledge_gap_events (
+                    event_id, gap_id, collection_id, scope, title, description,
+                    gap_type, evidence_refs_json, status, priority, idempotency_key,
+                    created_by, created_at, digest
+                )
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(idempotency_key) DO UPDATE SET
+                    title = excluded.title,
+                    description = excluded.description,
+                    evidence_refs_json = excluded.evidence_refs_json,
+                    status = excluded.status,
+                    priority = excluded.priority,
+                    digest = excluded.digest
+                """,
+                (
+                    f"GAP-EVT-{gap.gap_id}-{int(datetime.now(timezone.utc).timestamp())}-{uuid4().hex[:8]}",
+                    gap.gap_id,
+                    gap.collection_id,
+                    gap.scope,
+                    gap.title,
+                    gap.description,
+                    gap.gap_type,
+                    evidence_json,
+                    gap.status,
+                    gap.priority,
+                    idempotency_key,
+                    actor_id,
+                    gap.created_at or utc_now_iso(),
+                    gap.digest,
+                ),
+            )
+
+    def get_gap_candidate(self, gap_id: str) -> Optional[KnowledgeGapCandidate]:
+        """Fetch latest state of a gap candidate."""
+        self.initialize()
+        with self._connect() as conn:
+            row = conn.execute(
+                """
+                SELECT gap_id, collection_id, scope, title, description, gap_type,
+                       evidence_refs_json, status, priority, created_at, digest
+                FROM knowledge_gap_events
+                WHERE gap_id = ?
+                ORDER BY created_at DESC
+                LIMIT 1
+                """,
+                (gap_id,),
+            ).fetchone()
+            if row is None:
+                return None
+            return KnowledgeGapCandidate(
+                gap_id=row["gap_id"],
+                collection_id=row["collection_id"],
+                scope=row["scope"],
+                title=row["title"],
+                description=row["description"],
+                gap_type=row["gap_type"],
+                evidence_refs=tuple(json.loads(row["evidence_refs_json"])),
+                status=row["status"],
+                priority=row["priority"],
+                created_at=row["created_at"],
+                digest=row["digest"],
+            )
+
+    def list_gap_candidates(
+        self,
+        collection_id: Optional[str] = None,
+        scope: Optional[str] = None,
+        status: Optional[str] = None,
+    ) -> List[KnowledgeGapCandidate]:
+        """List latest gap candidates matching optional filters."""
+        self.initialize()
+        query = """
+            SELECT e.gap_id, e.collection_id, e.scope, e.title, e.description,
+                   e.gap_type, e.evidence_refs_json, e.status, e.priority,
+                   e.created_at, e.digest
+            FROM knowledge_gap_events e
+            INNER JOIN (
+                SELECT gap_id, MAX(created_at) as max_created
+                FROM knowledge_gap_events
+                GROUP BY gap_id
+            ) latest ON e.gap_id = latest.gap_id AND e.created_at = latest.max_created
+            WHERE 1=1
+        """
+        params = []
+        if collection_id:
+            query += " AND e.collection_id = ?"
+            params.append(collection_id)
+        if scope:
+            query += " AND (e.scope = ? OR e.scope = '*' OR e.scope = 'all')"
+            params.append(scope)
+        if status:
+            query += " AND e.status = ?"
+            params.append(status)
+        query += " ORDER BY e.created_at DESC"
+
+        with self._connect() as conn:
+            rows = conn.execute(query, params).fetchall()
+            return [
+                KnowledgeGapCandidate(
+                    gap_id=r["gap_id"],
+                    collection_id=r["collection_id"],
+                    scope=r["scope"],
+                    title=r["title"],
+                    description=r["description"],
+                    gap_type=r["gap_type"],
+                    evidence_refs=tuple(json.loads(r["evidence_refs_json"])),
+                    status=r["status"],
+                    priority=r["priority"],
+                    created_at=r["created_at"],
+                    digest=r["digest"],
+                )
+                for r in rows
+            ]
+
+    def update_gap_status(
+        self,
+        gap_id: str,
+        new_status: str,
+        actor_id: str,
+        rationale: str = "",
+    ) -> None:
+        """Update gap status with state machine validation."""
+        current = self.get_gap_candidate(gap_id)
+        if current is None:
+            raise WorkspaceCaseRepositoryError(f"Không tìm thấy khoảng trống tri thức '{gap_id}'.")
+        if not current.can_transition_to(new_status):
+            raise WorkspaceCaseRepositoryError(
+                f"Chuyển trạng thái không hợp lệ từ '{current.status}' sang '{new_status}'."
+            )
+
+        updated_gap = KnowledgeGapCandidate(
+            gap_id=current.gap_id,
+            collection_id=current.collection_id,
+            scope=current.scope,
+            title=current.title,
+            description=current.description if not rationale else f"{current.description} [Ghi chú: {rationale}]",
+            gap_type=current.gap_type,
+            evidence_refs=current.evidence_refs,
+            status=new_status,
+            priority=current.priority,
+            created_at=utc_now_iso(),
+            digest=current.digest,
+        )
+        idemp = f"IDEMP-GAP-STATUS-{gap_id}-{new_status}-{utc_now_iso()}"
+        self.save_gap_candidate(updated_gap, idemp, actor_id)
 
 
 def hashlib_sha256(value: str) -> str:

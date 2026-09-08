@@ -1,0 +1,60 @@
+{
+  "collection_id": "lsu_simulated_knowledge",
+  "items": [
+    {
+      "gap_id": "GAP-SIM-001",
+      "scope": "lsu_optical_assembly",
+      "title": "Thiếu ngưỡng nhiệt độ sấy keo UV tối đa trong tài liệu SOP-LSU-SIM-001",
+      "evidence_refs": [
+        "DOC-SIM-001#step-3"
+      ],
+      "gap_type": "missing_threshold",
+      "status": "accepted",
+      "priority": "high"
+    },
+    {
+      "gap_id": "GAP-SIM-002",
+      "scope": "lsu_optical_assembly",
+      "title": "Thiếu thời gian chờ làm mát đồ gá JG-SIM-808 giữa hai chu kỳ",
+      "evidence_refs": [
+        "DOC-SIM-001#equip-jg808"
+      ],
+      "gap_type": "missing_condition",
+      "status": "accepted",
+      "priority": "medium"
+    },
+    {
+      "gap_id": "GAP-SIM-003",
+      "scope": "lsu_lens_calibration",
+      "title": "Mâu thuẫn thông số nhiệt độ ổn định đồ gá (50°C trong LESSON-SIM-001 vs thực tế vận hành)",
+      "evidence_refs": [
+        "DOC-SIM-002#recommendation"
+      ],
+      "gap_type": "conflict",
+      "status": "accepted",
+      "priority": "high"
+    },
+    {
+      "gap_id": "GAP-SIM-004",
+      "scope": "lsu_lens_calibration",
+      "title": "Thiếu ngoại lệ xử lý khi tia laser lệch góc vượt quá 0.05 mrad",
+      "evidence_refs": [
+        "DOC-SIM-002#laser-drift"
+      ],
+      "gap_type": "missing_exception",
+      "status": "accepted",
+      "priority": "medium"
+    },
+    {
+      "gap_id": "GAP-SIM-005",
+      "scope": "lsu_optical_assembly",
+      "title": "Thiếu thông số lực ép định vị thấu kính trên đồ gá JG-SIM-808",
+      "evidence_refs": [
+        "DOC-SIM-001#step-1"
+      ],
+      "gap_type": "missing_threshold",
+      "status": "accepted",
+      "priority": "low"
+    }
+  ]
+}

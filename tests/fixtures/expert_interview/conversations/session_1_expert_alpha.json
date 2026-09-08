@@ -1,0 +1,34 @@
+{
+  "session_id": "SESS-SIM-001",
+  "gap_id": "GAP-SIM-001",
+  "expert_id": "EXPERT_FIXTURE_ALPHA",
+  "scope": "lsu_optical_assembly",
+  "status": "completed",
+  "turns": [
+    {
+      "turn_id": "TURN-001",
+      "speaker": "ai",
+      "content": "Chào anh An, xin anh cho biết khi chiếu đèn sấy UV cho thấu kính, nhiệt độ bề mặt tối đa cho phép là bao nhiêu?",
+      "action": "ask_seed"
+    },
+    {
+      "turn_id": "TURN-002",
+      "speaker": "expert",
+      "content": "Thường thì không được quá nóng, nếu nóng quá keo sẽ bị giòn và nứt.",
+      "confidence": 0.8
+    },
+    {
+      "turn_id": "TURN-003",
+      "speaker": "ai",
+      "content": "Xin anh cho biết cụ thể ngưỡng nhiệt độ số đo (°C) tối đa là bao nhiêu và thời gian chiếu tối đa là mấy giây?",
+      "action": "ask_followup",
+      "reason": "missing_threshold"
+    },
+    {
+      "turn_id": "TURN-004",
+      "speaker": "expert",
+      "content": "Ngưỡng nhiệt độ tối đa là 55°C, dung sai cho phép là cộng trừ 2°C. Thời gian chiếu là 120 giây.",
+      "confidence": 0.95
+    }
+  ]
+}

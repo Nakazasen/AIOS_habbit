@@ -1,0 +1,26 @@
+{
+  "collection_id": "lsu_simulated_knowledge",
+  "version": "1.0.0",
+  "scopes": [
+    "lsu_optical_assembly",
+    "lsu_lens_calibration"
+  ],
+  "documents": [
+    {
+      "doc_id": "DOC-SIM-001",
+      "title": "Quy trình căn chỉnh cụm thấu kính hội tụ (Giả lập)",
+      "path": "corpus/sop_alignment_fixture.md",
+      "scope": "lsu_optical_assembly",
+      "digest": "sha256_fixture_sim_doc_001",
+      "status": "active"
+    },
+    {
+      "doc_id": "DOC-SIM-002",
+      "title": "Bài học kinh nghiệm: Khắc phục lệch tiêu cự thấu kính (Giả lập)",
+      "path": "corpus/lessons_learned_fixture.md",
+      "scope": "lsu_lens_calibration",
+      "digest": "sha256_fixture_sim_doc_002",
+      "status": "active"
+    }
+  ]
+}

@@ -447,3 +447,39 @@ def test_controlled_artifacts_ui_presenter_and_error_messages():
         safe_case_error_message(CaseValidationError("UNAPPROVED_ARTIFACT_EXPORT_FORBIDDEN"))
         == "Chỉ tài liệu đã được phê duyệt mới được phép xuất ra thư mục an toàn."
     )
+
+
+def test_expert_interview_ui_presenters_and_rows():
+    from aios_habit.expert_interview_models import ANSWER_STATE_ANSWERED, ANSWER_STATE_UNKNOWN, InterviewTurn
+    from aios_habit.workspace_case_ui import (
+        _session_state_label,
+        _turn_answer_state_label,
+        interview_turn_rows,
+    )
+
+    assert _session_state_label("active") == "Đang phỏng vấn"
+    assert _session_state_label("paused") == "Tạm dừng"
+    assert _session_state_label("blocked") == "Bị khóa thẩm quyền"
+    assert _session_state_label("completed") == "Hoàn tất"
+
+    assert _turn_answer_state_label(ANSWER_STATE_ANSWERED) == "Đã trả lời"
+    assert _turn_answer_state_label(ANSWER_STATE_UNKNOWN) == "Không rõ / Chưa nắm được"
+
+    turn = InterviewTurn(
+        turn_id="TURN-1",
+        session_id="SESS-1",
+        sequence=1,
+        question_text="Ngưỡng bước sóng là bao nhiêu?",
+        answer_text="Ngưỡng là 632.8 nm",
+        question_reason="missing_threshold",
+        answer_confidence=0.95,
+        answer_state=ANSWER_STATE_ANSWERED,
+        created_at="2026-09-08T00:00:00Z",
+    )
+    rows = interview_turn_rows([turn])
+    assert len(rows) == 1
+    assert rows[0]["Lượt"] == 1
+    assert rows[0]["Câu hỏi"] == "Ngưỡng bước sóng là bao nhiêu?"
+    assert rows[0]["Câu trả lời"] == "Ngưỡng là 632.8 nm"
+    assert rows[0]["Trạng thái"] == "Đã trả lời"
+    assert rows[0]["Độ tin cậy"] == "95%"

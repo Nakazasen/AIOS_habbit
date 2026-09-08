@@ -8,6 +8,13 @@ from typing import Any, Callable, Optional
 from uuid import uuid4
 
 from aios_habit.evidence_trace import is_insufficient_evidence
+from aios_habit.knowledge_coverage import (
+    GAP_STATUS_ACCEPTED,
+    GAP_STATUS_DEFERRED,
+    GAP_STATUS_MERGED,
+    GAP_STATUS_REJECTED,
+    KnowledgeGapCandidate,
+)
 from aios_habit.workspace_case_authorization import (
     ActorContext,
     AuthorizationError,
@@ -1001,3 +1008,78 @@ class WorkspaceCaseService:
                 )
             )
         return references
+
+    def review_gap_candidate(
+        self,
+        gap_id: str,
+        decision: str,
+        rationale: str = "",
+        expected_digest: Optional[str] = None,
+        actor: Optional[ActorContext] = None,
+    ) -> KnowledgeGapCandidate:
+        """Review a knowledge gap candidate with strict scope-based authorization.
+
+        Decisions:
+          - 'accept' -> status 'accepted'
+          - 'merge'  -> status 'merged'
+          - 'defer'  -> status 'deferred'
+          - 'reject' -> status 'rejected'
+        """
+        decision_map = {
+            "accept": GAP_STATUS_ACCEPTED,
+            "merge": GAP_STATUS_MERGED,
+            "defer": GAP_STATUS_DEFERRED,
+            "reject": GAP_STATUS_REJECTED,
+        }
+        clean_dec = decision.strip().lower()
+        if clean_dec not in decision_map:
+            raise CaseValidationError(f"Quyết định xem xét khoảng trống '{decision}' không hợp lệ.")
+
+        target_status = decision_map[clean_dec]
+
+        gap = self.store.get_gap_candidate(gap_id)
+        if gap is None:
+            raise CaseValidationError(f"Không tìm thấy khoảng trống tri thức '{gap_id}'.")
+
+        if expected_digest is not None and gap.digest != expected_digest:
+            raise CaseValidationError("Khoảng trống tri thức đã bị thay đổi (stale digest).")
+
+        actor_context = actor or self.actor
+        self.authorization.require(actor_context, "coverage.manage", gap.scope)
+
+        self.store.update_gap_status(
+            gap_id=gap_id,
+            new_status=target_status,
+            actor_id=actor_context.actor_id,
+            rationale=rationale,
+        )
+
+        updated = self.store.get_gap_candidate(gap_id)
+        if updated is None:
+            raise CaseValidationError(f"Không thể tải lại khoảng trống sau khi cập nhật: '{gap_id}'.")
+        return updated
+
+    def list_gap_candidates(
+        self,
+        collection_id: Optional[str] = None,
+        scope: Optional[str] = None,
+        status: Optional[str] = None,
+        actor: Optional[ActorContext] = None,
+    ) -> list[KnowledgeGapCandidate]:
+        """List gap candidates matching scope criteria."""
+        actor_context = actor or self.actor
+        if scope and scope != "*" and scope != "all":
+            self.authorization.require(actor_context, "case.view", scope)
+        return self.store.list_gap_candidates(collection_id=collection_id, scope=scope, status=status)
+
+    def get_gap_candidate(
+        self,
+        gap_id: str,
+        actor: Optional[ActorContext] = None,
+    ) -> Optional[KnowledgeGapCandidate]:
+        """Retrieve gap candidate with authorization check."""
+        gap = self.store.get_gap_candidate(gap_id)
+        if gap is not None:
+            actor_context = actor or self.actor
+            self.authorization.require(actor_context, "case.view", gap.scope)
+        return gap

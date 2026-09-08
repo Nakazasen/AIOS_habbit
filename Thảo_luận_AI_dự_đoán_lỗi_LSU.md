@@ -1673,3 +1673,35 @@ Không chạy song song implementation với cây AIOS đang chờ audit nếu c
 - [ ] Không fake PASS, không bypass permission, không lộ secret/`local_only`.
 - [ ] Docs canonical, threat model, handover và rollback được cập nhật trong cùng đợt code.
 - [ ] Chỉ khi đó mới được mô tả là “Agent lập trình đủ dùng hằng ngày trong phạm vi đã kiểm chứng”.
+
+## 31. Kế hoạch AI phỏng vấn chuyên gia và làm giàu tri thức
+
+### 31.1. Kết luận sản phẩm
+
+Hệ phải chat được nhiều vòng thật. Gemini không chỉ đọc một bộ câu hỏi cố định mà phải nhận ra câu trả lời còn thiếu điều kiện, ngưỡng, đơn vị, ngoại lệ, ví dụ, phản ví dụ, nguồn hoặc đang mâu thuẫn để chọn câu hỏi tiếp theo. Chuyên gia vẫn có quyền trả lời “không biết”, “không chắc”, bỏ qua, tạm dừng hoặc kết thúc.
+
+Ba cửa khóa không làm mất tính AI:
+
+1. Xác thực đúng chuyên gia và đúng phạm vi trước khi nhận/duyệt tri thức.
+2. Giữ audio/transcript thô ở máy và chỉ ghi âm khi có đồng ý.
+3. Chỉ cho SOP/bài học đã duyệt, đúng digest đi vào thư viện.
+
+AI thực hiện phát hiện gap, lập kế hoạch hỏi, hội thoại thích nghi, trích claim, phát hiện mâu thuẫn và soạn SOP. AIOS giữ quyền quyết định và bằng chứng để model không tự biến một câu trả lời sai thành quy định chính thức.
+
+### 31.2. Hai vòng học
+
+- **Học tri thức dùng ngay:** artifact đã duyệt được nạp có version vào collection; câu hỏi sau truy xuất và dùng ngay với citation, có thể thu hồi/thay thế.
+- **Học trọng số:** fine-tune chỉ mở khi G9 chứng minh retrieval/prompting chưa đủ, có tập mẫu sạch đã duyệt, quyền sử dụng, holdout và rollback. Fine-tune dùng cho hành vi ổn định, không dùng để ghi nhớ SOP/sự thật và không lấy raw transcript.
+
+### 31.3. Hồ sơ thực thi
+
+Feature độc lập: `010-expert-knowledge-acquisition`.
+
+- [Đặc tả](specs/010-expert-knowledge-acquisition/spec.md)
+- [Kế hoạch G0–G10](specs/010-expert-knowledge-acquisition/plan.md)
+- [81 task theo thứ tự](specs/010-expert-knowledge-acquisition/tasks.md)
+- [Chỉ dẫn chạy Goal cho Gemini Flash 3.8](specs/010-expert-knowledge-acquisition/GEMINI_FLASH_3_8_GOAL.md)
+- [Gate Card](docs/roadmap/backlog/AIOS-EXPERT-KNOWLEDGE-ACQUISITION.md)
+- [ADR-0009](docs/adr/0009-expert-interview-and-knowledge-publication-boundary.md)
+
+Trạng thái hiện tại: `READY_TO_RUN`. Chưa code feature 010. T000 bắt buộc học có chọn lọc từ STORM/Co-STORM, LangGraph, Microsoft GraphRAG, Microsoft Presidio, `whisper.cpp` và `faster-whisper`; chỉ kế thừa pattern/module phù hợp, không copy mù toàn hệ. Sáu mặc định đã khóa: Windows/OS identity, scope tách biệt, consent từng phiên, raw data local-only không tự xóa, collection fixture khi test và fine-tune tắt. Gemini tự chạy liên tục qua G0–G10, dùng agent/phiên audit tách biệt và tự sửa finding; không có phase chờ con người. Người thật chỉ tham gia khi vận hành để đồng ý ghi âm, trả lời và duyệt nội dung.

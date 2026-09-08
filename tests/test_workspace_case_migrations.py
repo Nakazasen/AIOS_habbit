@@ -274,3 +274,105 @@ def test_migration_v5_fault_restores_v4_snapshot(tmp_path):
     with sqlite3.connect(path) as connection:
         assert connection.execute("PRAGMA user_version").fetchone()[0] == 4
         assert connection.execute("PRAGMA quick_check").fetchone()[0] == "ok"
+
+
+def test_migrate_v5_to_v6_creates_expert_tables_and_preserves_data(tmp_path):
+    path = tmp_path / "workspace_cases.sqlite"
+    migrate_store(path, target_version=5)
+
+    with sqlite3.connect(path) as connection:
+        connection.execute(
+            """
+            INSERT INTO cases (case_id, conversation_id, assistant_message_id, trace_id, evidence_digest, title, status, created_at, created_by, updated_at)
+            VALUES ('CASE-V5', 'CONV-5', 'MSG-5', 'TR-5', 'DIG-5', 'Case V5 Title', 'in_progress', '2026-09-08T00:00:00Z', 'local_admin', '2026-09-08T00:00:00Z')
+            """
+        )
+        connection.commit()
+
+    # Migrate to v6
+    result = migrate_store(path, target_version=6)
+    assert result.migrated is True
+    assert result.to_version == 6
+
+    with sqlite3.connect(path) as connection:
+        assert connection.execute("PRAGMA user_version").fetchone()[0] == 6
+        assert connection.execute("PRAGMA quick_check").fetchone()[0] == "ok"
+        # Check v5 data preserved
+        row = connection.execute("SELECT title, status FROM cases WHERE case_id = 'CASE-V5'").fetchone()
+        assert row[0] == "Case V5 Title"
+        assert row[1] == "in_progress"
+        # Check expert tables exist
+        tables = {r[0] for r in connection.execute("SELECT name FROM sqlite_master WHERE type='table'")}
+        assert "expert_profiles" in tables
+        assert "expert_scope_grants" in tables
+
+
+def test_migration_v6_fault_restores_v5_snapshot(tmp_path):
+    path = tmp_path / "workspace_cases.sqlite"
+    migrate_store(path, target_version=5)
+
+    def fail(stage: str, version: int) -> None:
+        if stage == "after_migration" and version == 6:
+            raise RuntimeError("v6 migration synthetic fault")
+
+    with pytest.raises(WorkspaceCaseMigrationError, match="MIGRATION_FAILED"):
+        migrate_store(path, target_version=6, fault_injector=fail)
+
+    with sqlite3.connect(path) as connection:
+        assert connection.execute("PRAGMA user_version").fetchone()[0] == 5
+        assert connection.execute("PRAGMA quick_check").fetchone()[0] == "ok"
+
+
+def test_migrate_v6_to_v7_creates_gap_tables_and_preserves_data(tmp_path):
+    path = tmp_path / "workspace_cases.sqlite"
+    migrate_store(path, target_version=6)
+
+    with sqlite3.connect(path) as connection:
+        connection.execute(
+            """
+            INSERT INTO cases (case_id, conversation_id, assistant_message_id, trace_id, evidence_digest, title, status, created_at, created_by, updated_at)
+            VALUES ('CASE-V6', 'CONV-6', 'MSG-6', 'TR-6', 'DIG-6', 'Case V6 Title', 'in_progress', '2026-09-08T00:00:00Z', 'local_admin', '2026-09-08T00:00:00Z')
+            """
+        )
+        connection.execute(
+            """
+            INSERT INTO expert_profiles (expert_id, subject, full_name, scopes_json, status, created_at, updated_at)
+            VALUES ('EXP-6', 'SUBJ-6', 'Chuyên gia V6', '["lsu_optical_assembly"]', 'active', '2026-09-08T00:00:00Z', '2026-09-08T00:00:00Z')
+            """
+        )
+        connection.commit()
+
+    # Migrate to v7
+    result = migrate_store(path, target_version=7)
+    assert result.migrated is True
+    assert result.to_version == 7
+
+    with sqlite3.connect(path) as connection:
+        assert connection.execute("PRAGMA user_version").fetchone()[0] == 7
+        assert connection.execute("PRAGMA quick_check").fetchone()[0] == "ok"
+        # Check v6 data preserved
+        row = connection.execute("SELECT title, status FROM cases WHERE case_id = 'CASE-V6'").fetchone()
+        assert row[0] == "Case V6 Title"
+        assert row[1] == "in_progress"
+        exp_row = connection.execute("SELECT full_name FROM expert_profiles WHERE expert_id = 'EXP-6'").fetchone()
+        assert exp_row[0] == "Chuyên gia V6"
+        # Check gap and coverage tables exist
+        tables = {r[0] for r in connection.execute("SELECT name FROM sqlite_master WHERE type='table'")}
+        assert "knowledge_gap_events" in tables
+        assert "coverage_runs" in tables
+
+
+def test_migration_v7_fault_restores_v6_snapshot(tmp_path):
+    path = tmp_path / "workspace_cases.sqlite"
+    migrate_store(path, target_version=6)
+
+    def fail(stage: str, version: int) -> None:
+        if stage == "after_migration" and version == 7:
+            raise RuntimeError("v7 migration synthetic fault")
+
+    with pytest.raises(WorkspaceCaseMigrationError, match="MIGRATION_FAILED"):
+        migrate_store(path, target_version=7, fault_injector=fail)
+
+    with sqlite3.connect(path) as connection:
+        assert connection.execute("PRAGMA user_version").fetchone()[0] == 6
+        assert connection.execute("PRAGMA quick_check").fetchone()[0] == "ok"

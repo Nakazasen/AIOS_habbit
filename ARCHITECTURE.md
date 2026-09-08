@@ -493,3 +493,27 @@ mô tả implementation boundary và operational evidence cho trạng thái hi�
 Feature 009 chọn Code-OSS làm mặt bàn chuyên dụng và OpenCode server làm runtime ứng viên qua adapter; Cline là benchmark/fallback. Workspace Chat vẫn là giao diện AIOS chính. AIOS sở hữu Task Pack, policy, approval, receipt, Case/Evidence và learning đã duyệt; runtime sở hữu session và vòng tool; Code-OSS sở hữu editor, terminal, SCM, LSP và debugger.
 
 Mọi write/command phải đi qua proposal có digest và chạy trong Git worktree tách biệt. Không có đường trực tiếp từ câu trả lời RAG đến tool ghi, không tạo database session mới và không hỗ trợ tự commit/push/deploy hoặc quyền admin ở bản đầu. Quyết định đầy đủ: [ADR-0008](docs/adr/0008-inherited-agent-runtime-and-code-oss-companion.md).
+
+## 15. Ranh giới phỏng vấn chuyên gia và xuất bản tri thức
+
+Feature 010 bổ sung quy trình phỏng vấn chuyên gia thích nghi và làm giàu tri thức có kiểm soát với sự phân vai nghiêm ngặt:
+
+1. **Gemini Flash 3.8**: Đóng vai trò là **Execution Specialist** trong môi trường phát triển (viết mã nguồn, kiểm thử, tuân thủ quality gate và harness).
+2. **BGE-M3**: Đóng vai trò là mô hình nhúng (embedding model) phục vụ RAG v2, chỉ tạo biểu diễn vector, tìm kiếm ngữ nghĩa và xếp hạng các đoạn tài liệu (snippets) liên quan từ kho tài liệu.
+3. **AIOS**: Lớp điều khiển tất định (deterministic runtime). AIOS sử dụng kết quả retrieval cùng metadata, version, digest và bộ câu hỏi bao phủ để sinh tín hiệu tất định về thiếu nguồn, thiếu thuộc tính bắt buộc, mâu thuẫn và tài liệu lỗi thời. AIOS tự kiểm tra danh tính (`IdentityProvider`), phạm vi (`scope`) và thẩm quyền (`grant`); mô hình ngôn ngữ không được tự chọn chuyên gia ngoài danh sách hợp lệ.
+4. **C-AGENT qua Brain Gateway**: Tiếp nhận gói tín hiệu và bằng chứng giới hạn để giải thích lý do khoảng trống tri thức, xếp hạng các candidate và gợi ý câu hỏi thích nghi tiếp theo. Cấu hình C-AGENT được quản lý qua Brain Gateway (không hardcode "Sonnet 4" trong mã nguồn) và lưu biên nhận model/provider receipt khi endpoint phản hồi. Mọi đầu ra từ C-AGENT không kèm dẫn chứng (citation) hợp lệ đều bị loại bỏ ngay lập tức. Nếu C-AGENT không sẵn sàng, AIOS giữ nguyên tín hiệu tất định ở trạng thái `candidate`, tuyệt đối không tự fallback sang dịch vụ cloud bên ngoài và không làm nghẽn kịch bản fixture.
+5. **Bảo mật và an toàn dữ liệu**: Dữ liệu gắn nhãn `local_only` (âm thanh, bản chép lời thô) chỉ đi qua đường C-AGENT nội bộ được cấp phép rõ ràng; cấm tự ý chuyển tiếp hoặc fallback ra cloud công cộng.
+
+Ba lớp lưu trữ được cách ly tuyệt đối:
+- Workflow metadata và phiên làm việc lưu trong `workspace_cases.sqlite`.
+- Âm thanh và bản chép lời thô lưu trong vùng `local_only` cô lập ngoài Git.
+- Tri thức đã qua phê duyệt được xuất bản bất biến vào `library.sqlite`.
+
+```text
+Tín hiệu retrieval (BGE-M3 + AIOS) -> Gói bằng chứng -> C-AGENT (giải thích gap candidate)
+    -> Đánh giá của chuyên viên QC -> InterviewPlan (AIOS khóa scope/expert)
+    -> Phiên phỏng vấn thích nghi -> Claim có nguồn -> SOP/Bài học candidate
+    -> Thẩm định đúng thẩm quyền -> PublicationPackage -> Ingest vào library.sqlite
+```
+
+Multi-user bắt buộc qua `IdentityProvider` và xử lý fail-closed. Trạng thái `candidate`, `conflicted` và `revoked` bị cấm xuất hiện trong luồng retrieval sản xuất thông thường. Fine-tune không dùng làm kho lưu trữ sự thật: tri thức mới có hiệu lực ngay qua retrieval sau khi duyệt. Quyết định kiến trúc chi tiết: [ADR-0009](docs/adr/0009-expert-interview-and-knowledge-publication-boundary.md).
