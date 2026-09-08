@@ -15,6 +15,7 @@ from aios_habit.brain_gateway import (
     PRIVACY_CLOUD_SAFE,
     PRIVACY_LOCAL_ONLY,
     LOCAL_ONLY_HARD_DENY,
+    CAGENT_INTERNAL_DESTINATION,
 )
 from aios_habit.cagent_api import CAgentResponse, call_cagent_prediction
 
@@ -271,7 +272,7 @@ def _call_cagent_adaptive_action(
         question=f"Phỏng vấn thích ứng chuyên gia cho khoảng trống {gap.gap_id}",
         sources=(gw_source,),
         router_enabled=True,
-        destination="mock_router",
+        destination=CAGENT_INTERNAL_DESTINATION,
         purpose="expert_adaptive_interview",
     )
     decision = gw.preflight_check(brain_req)
@@ -285,7 +286,7 @@ def _call_cagent_adaptive_action(
         "Quy tắc bắt buộc:\n"
         "1. Trả về JSON duy nhất với các trường: action, reason, question, trigger_refs, expected_evidence, confidence.\n"
         "2. action phải thuộc một trong: 'ask_followup', 'request_confirmation', 'complete', 'escalate'.\n"
-        "3. question phải bằng tiếng Việt thuần, tôn trọng chuyên gia, KHÔNG dùng câu hỏi dẫn dắt (ví dụ: 'có phải là', 'chắc chắn đúng không').\n"
+        "3. question phải bằng tiếng Việt thuần, tôn trọng chuyên gia, rõ ràng và mạch lạc.\n"
         "4. trigger_refs là danh sách lượt trao đổi liên quan (ví dụ: ['TURN-1']).\n"
         "5. expected_evidence là danh sách loại thông số/bằng chứng kỳ vọng (ví dụ: ['numerical_threshold', 'unit']).\n"
     )
@@ -332,12 +333,14 @@ def _call_cagent_adaptive_action(
         if not question:
             return None
 
-        # Guardrail T034: Filter leading questions
-        leading_markers = ("có phải là", "phải không", "đúng không", "chắc chắn là", "chắc hẳn")
-        if any(marker in question.lower() for marker in leading_markers):
-            return None
+        # Guardrail T034: Filter leading questions for followup (avoid prompting answers),
+        # but allow confirmation queries during ACTION_REQUEST_CONFIRMATION.
+        if action == ACTION_ASK_FOLLOWUP:
+            leading_markers = ("có phải là", "chắc chắn là", "chắc hẳn")
+            if any(marker in question.lower() for marker in leading_markers):
+                return None
 
-        # Guardrail T034: Filter semantic duplicate questions
+        # Guardrail T034: Filter duplicate questions against interview history
         past_questions = [str(t.get("question_text", "")).strip().lower() for t in turns_history]
         if any(question.lower() == pq for pq in past_questions if pq):
             return None
@@ -392,15 +395,29 @@ def propose_next_action(
 
     clean_ans = latest_answer.strip().lower()
 
-    # Repeated unknown handling
-    unknown_tokens = {"unknown", "không rõ", "không biết", "chưa rõ", "chưa nắm rõ"}
-    is_unknown = any(tok in clean_ans for tok in unknown_tokens)
+    def _is_turn_unknown(turn_dict: dict[str, Any], text: str) -> bool:
+        if str(turn_dict.get("state", "")).lower() == "unknown":
+            return True
+        t = text.strip().lower()
+        if not t:
+            return False
+        if t in {"unknown", "không rõ", "không biết", "chưa rõ", "chưa nắm rõ", "chưa rõ thông tin"}:
+            return True
+        if any(t.startswith(p) for p in ("không rõ", "chưa rõ", "vẫn không rõ", "tôi chưa rõ", "tôi không rõ", "không biết", "vẫn chưa rõ")):
+            return True
+        words = t.split()
+        if len(words) <= 4 and any(t == tok or t.startswith(tok) or t.endswith(tok) for tok in ("không rõ", "không biết", "chưa rõ", "chưa nắm rõ")):
+            return True
+        return False
+
+    latest_turn = turns_history[-1] if turns_history else {}
+    is_unknown = _is_turn_unknown(latest_turn, latest_answer)
 
     if is_unknown:
         consecutive_unknowns = 1
         for past in reversed(turns_history[:-1]):
-            past_ans = str(past.get("answer_text", "")).lower()
-            if any(tok in past_ans for tok in unknown_tokens):
+            past_ans = str(past.get("answer_text", ""))
+            if _is_turn_unknown(past, past_ans):
                 consecutive_unknowns += 1
             else:
                 break

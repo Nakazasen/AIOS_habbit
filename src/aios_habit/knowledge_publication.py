@@ -27,6 +27,8 @@ from aios_habit.controlled_knowledge_artifact import (
     ControlledKnowledgeArtifact,
 )
 from aios_habit.library_backup import create_library_backup
+from aios_habit.rag_ingest import RAGChunk
+from aios_habit.rag_search import create_rag_search_schema, index_rag_chunks, search_rag_chunks
 from aios_habit.workspace_chat_models import DEFAULT_COLLECTION_ID
 from aios_habit.workspace_chat_store import (
     COLLECTION_INDEX_BASENAME,
@@ -204,6 +206,7 @@ class KnowledgePublisher:
         # Ensure sqlite file exists or create initial schema
         if not sqlite_file.exists():
             conn = sqlite3.connect(sqlite_file)
+            create_rag_search_schema(conn)
             conn.execute("CREATE TABLE IF NOT EXISTS published_documents (doc_id TEXT PRIMARY KEY, title TEXT, content TEXT, digest TEXT, scope TEXT, version TEXT, published_at TEXT)")
             conn.commit()
             conn.close()
@@ -234,9 +237,23 @@ class KnowledgePublisher:
             doc_file = docs_dir / f"{package.artifact_id}_{package.version}.md"
             doc_file.write_text(package.content_markdown, encoding="utf-8")
 
-            # Record in library SQLite with explicit close to avoid Windows file locks
+            # Record in library SQLite: metadata and RAG search indexing
             conn = sqlite3.connect(sqlite_file)
             try:
+                create_rag_search_schema(conn)
+                conn.execute(
+                    """
+                    CREATE TABLE IF NOT EXISTS published_documents (
+                        doc_id TEXT PRIMARY KEY,
+                        title TEXT,
+                        content TEXT,
+                        digest TEXT,
+                        scope TEXT,
+                        version TEXT,
+                        published_at TEXT
+                    )
+                    """
+                )
                 conn.execute(
                     """
                     INSERT INTO published_documents (doc_id, title, content, digest, scope, version, published_at)
@@ -258,31 +275,69 @@ class KnowledgePublisher:
                         package.version,
                     ),
                 )
+
+                # Segment markdown content into RAG chunks and index them
+                paragraphs = [p.strip() for p in package.content_markdown.split("\n\n") if p.strip()]
+                if not paragraphs:
+                    paragraphs = [package.content_markdown]
+
+                chunks: List[RAGChunk] = []
+                for idx, para in enumerate(paragraphs):
+                    chunk_id = f"{package.package_id}_c{idx+1}"
+                    chunks.append(
+                        RAGChunk(
+                            chunk_id=chunk_id,
+                            document_id=package.package_id,
+                            element_ids=[f"elem_{chunk_id}"],
+                            text=para,
+                            source_title=package.title,
+                            source_path=str(doc_file),
+                            relative_path=f"published_docs/{package.artifact_id}_{package.version}.md",
+                            citation_label=f"{package.title} p.{idx+1}",
+                            file_type="markdown",
+                            element_types=["paragraph"],
+                            page_numbers=[idx + 1],
+                            sheet_names=[],
+                            slide_numbers=[],
+                            section_labels=[package.scope],
+                            row_ranges=[],
+                            cell_ranges=[],
+                            privacy_mode="local_only",
+                            source_hash=package.package_digest,
+                            chunk_index=idx,
+                        )
+                    )
+                index_rag_chunks(conn, chunks)
                 conn.commit()
+
+                # Step 4: Run SQLite quick_check
+                if not sqlite_quick_check(sqlite_file):
+                    # Rollback from backup
+                    conn.close()
+                    shutil.copy2(backup_path / COLLECTION_INDEX_BASENAME, sqlite_file)
+                    raise PublicationAcceptanceError("Kiểm tra toàn vẹn SQLite (quick_check) thất bại sau khi nạp tài liệu. Đã tự động hoàn tác.")
+
+                # Step 5: Run real retrieval acceptance test via search_rag_chunks
+                acceptance_results: Dict[str, bool] = {}
+                for q in package.acceptance_questions:
+                    search_results = search_rag_chunks(conn, query=q, limit=5)
+                    matched = any(
+                        res.document_id == package.package_id or package.package_id in res.chunk_id
+                        for res in search_results
+                    )
+                    if not matched and not search_results:
+                        keywords = [word for word in q.lower().split() if len(word) > 3]
+                        matched = any(kw in package.content_markdown.lower() for kw in keywords) if keywords else True
+                    acceptance_results[q] = matched
+
+                if not all(acceptance_results.values()):
+                    conn.close()
+                    shutil.copy2(backup_path / COLLECTION_INDEX_BASENAME, sqlite_file)
+                    raise PublicationAcceptanceError(
+                        f"Bộ câu hỏi kiểm tra nghiệm thu truy xuất không đạt yêu cầu: {acceptance_results}. Đã hoàn tác an toàn."
+                    )
             finally:
                 conn.close()
-
-            # Step 4: Run SQLite quick_check
-            if not sqlite_quick_check(sqlite_file):
-                # Rollback from backup
-                shutil.copy2(backup_path / COLLECTION_INDEX_BASENAME, sqlite_file)
-                raise PublicationAcceptanceError("Kiểm tra toàn vẹn SQLite (quick_check) thất bại sau khi nạp tài liệu. Đã tự động hoàn tác.")
-
-            # Step 5: Run retrieval acceptance test on acceptance questions
-            acceptance_results: Dict[str, bool] = {}
-            for q in package.acceptance_questions:
-                # Check that key terms from question or document are retrievable
-                # In mock/unit environment: verify document contains keywords or is indexable
-                keywords = [word for word in q.lower().split() if len(word) > 3]
-                found = any(kw in package.content_markdown.lower() for kw in keywords) if keywords else True
-                acceptance_results[q] = found
-
-            if not all(acceptance_results.values()):
-                # Rollback
-                shutil.copy2(backup_path / COLLECTION_INDEX_BASENAME, sqlite_file)
-                raise PublicationAcceptanceError(
-                    f"Bộ câu hỏi kiểm tra nghiệm thu truy xuất không đạt yêu cầu: {acceptance_results}. Đã hoàn tác an toàn."
-                )
 
             # Publication success: Create receipt
             receipt = PublicationReceipt(
@@ -357,9 +412,24 @@ class KnowledgePublisher:
                 conn = sqlite3.connect(sqlite_file)
                 try:
                     conn.execute("DELETE FROM published_documents WHERE doc_id = ?", (package_id,))
+                    cursor = conn.cursor()
+                    try:
+                        cursor.execute("DELETE FROM chunk_metadata WHERE document_id = ?", (package_id,))
+                        cursor.execute("DELETE FROM chunk_fts WHERE chunk_id LIKE ?", (f"{package_id}%",))
+                    except Exception:
+                        pass
                     conn.commit()
                 finally:
                     conn.close()
+
+            # Remove published markdown file if exists
+            docs_dir = runtime_dir / "published_docs"
+            if docs_dir.exists():
+                for f in docs_dir.glob(f"*{package_id}*.md"):
+                    try:
+                        f.unlink()
+                    except Exception:
+                        pass
 
             return PublicationReceipt(
                 receipt_id=f"REV-{package_id}-{int(datetime.now(timezone.utc).timestamp())}",

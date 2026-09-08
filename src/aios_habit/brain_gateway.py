@@ -28,9 +28,13 @@ SAFE_SCOPES = {"notebook", "temporary", "unknown"}
 # Stable destinations used by the policy boundary.
 MOCK_ROUTER_DESTINATION = "mock_router"
 WORKSPACE_CHAT_EXTERNAL_ROUTER_DESTINATION = "workspace_chat_external_router"
+CAGENT_INTERNAL_DESTINATION = "cagent_internal"
+CAGENT_DESTINATION = "cagent"
 ALLOWED_EXTERNAL_DESTINATIONS = {
     MOCK_ROUTER_DESTINATION,
     WORKSPACE_CHAT_EXTERNAL_ROUTER_DESTINATION,
+    CAGENT_INTERNAL_DESTINATION,
+    CAGENT_DESTINATION,
 }
 WORKSPACE_CHAT_ANSWER_PURPOSE = "workspace_chat_answer"
 

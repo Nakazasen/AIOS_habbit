@@ -375,7 +375,10 @@ class ExpertInterviewService:
             return turn, NextActionDecision(action=ACTION_COMPLETE, reason=REASON_EXPERT_STOP, question="Phiên đã dừng theo yêu cầu của chuyên gia.")
 
         # Determine answer state
-        if clean_ans in ("unknown", "không rõ", "không biết", "chưa rõ"):
+        if (
+            clean_ans in ("unknown", "không rõ", "không biết", "chưa rõ", "chưa nắm rõ")
+            or any(clean_ans.startswith(p) for p in ("không rõ", "chưa rõ", "vẫn không rõ", "tôi chưa rõ", "tôi không rõ", "không biết", "vẫn chưa rõ"))
+        ):
             ans_state = ANSWER_STATE_UNKNOWN
         elif clean_ans in ("uncertain", "không chắc", "chưa chắc"):
             ans_state = ANSWER_STATE_UNCERTAIN

@@ -4,9 +4,12 @@ Implements T067 of Goal 010-expert-knowledge-acquisition.
 """
 from __future__ import annotations
 
+import sqlite3
 import tempfile
 from pathlib import Path
 import pytest
+
+from aios_habit.rag_search import search_rag_chunks
 
 from aios_habit.controlled_knowledge_artifact import (
     ARTIFACT_STATUS_APPROVED,
@@ -118,6 +121,17 @@ def test_publish_package_success():
         assert doc_path.exists()
         assert "Nhiệt độ sấy tối ưu 65 độ C" in doc_path.read_text(encoding="utf-8")
 
+        # Verify real RAG search query retrieves the newly published knowledge
+        db_path = base_dir / "collections" / "tri_thuc" / "library.sqlite"
+        conn = sqlite3.connect(db_path)
+        try:
+            results = search_rag_chunks(conn, query="Nhiệt độ sấy keo tối ưu", limit=5)
+            assert len(results) > 0
+            assert any(r.document_id == pkg.package_id for r in results)
+            assert "65 độ C" in results[0].text
+        finally:
+            conn.close()
+
 
 def test_unapproved_status_package_rejected():
     """Test invariant: Cannot publish a package that is not in sealed status."""
@@ -166,3 +180,12 @@ def test_revoke_published_package():
 
         assert receipt.state == "revoked"
         assert receipt.package_id == pkg.package_id
+
+        # Verify real RAG search query no longer retrieves the revoked document
+        db_path = base_dir / "collections" / "tri_thuc" / "library.sqlite"
+        conn = sqlite3.connect(db_path)
+        try:
+            results = search_rag_chunks(conn, query="Nhiệt độ sấy keo", limit=5)
+            assert not any(r.document_id == pkg.package_id for r in results)
+        finally:
+            conn.close()

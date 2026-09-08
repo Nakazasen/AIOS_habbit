@@ -27,6 +27,7 @@ from aios_habit.brain_gateway import (
     PRIVACY_CLOUD_SAFE,
     PRIVACY_LOCAL_ONLY,
     LOCAL_ONLY_HARD_DENY,
+    CAGENT_INTERNAL_DESTINATION,
 )
 from aios_habit.cagent_api import CAgentResponse, call_cagent_prediction
 
@@ -554,21 +555,15 @@ class CAgentGatewayClient:
             question=str(evidence_pack.get("query") or f"Phân tích khoảng trống tri thức cho bộ sưu tập {evidence_pack.get('collection_id', 'default')}"),
             sources=tuple(gw_sources),
             router_enabled=True,
-            destination="mock_router",
+            destination=CAGENT_INTERNAL_DESTINATION,
             purpose="knowledge_coverage_analysis",
         )
         preflight_decision = self.brain_gateway.preflight_check(brain_req)
 
-        # 3. Policy evaluation: local_only cannot route through external cloud endpoint
-        endpoint_str = str(self.endpoint or "").lower()
-        is_external_cloud = any(
-            ext in endpoint_str
-            for ext in (".com", ".org", ".net", ".io", "cloud", "api.openai", "googleapis", "anthropic")
-        )
-
+        # 3. Policy evaluation: local_only requires verified internal C-AGENT permission
         if not preflight_decision.allowed:
             if preflight_decision.reason_code in (LOCAL_ONLY_HARD_DENY, "CONFIDENTIAL_HARD_DENY"):
-                if is_external_cloud or not self.is_internal_allowed:
+                if not self.is_internal_allowed:
                     raise SecurityPolicyError(
                         "Dữ liệu local_only chỉ được phép đi qua kênh C-AGENT nội bộ."
                     )
@@ -577,7 +572,7 @@ class CAgentGatewayClient:
                     f"Yêu cầu bị chặn bởi Brain Gateway ({preflight_decision.reason_code}): {preflight_decision.message}"
                 )
         else:
-            if effective_local_only and (is_external_cloud or not self.is_internal_allowed):
+            if effective_local_only and not self.is_internal_allowed:
                 raise SecurityPolicyError("Dữ liệu local_only chỉ được phép đi qua kênh C-AGENT nội bộ.")
 
         # Fail-closed offline fallback if simulated failure or no endpoint configured

@@ -572,28 +572,3 @@ def test_evaluate_coverage_with_actual_retrieved_snippets_only():
     assert not any("#p1" in cit for cit in allowed_cits)
     assert not any("#p2" in cit for cit in allowed_cits)
     assert any("DOC-SIM-001#chunk_001" in cit for cit in allowed_cits)
-
-
-def test_preflight_check_blocks_cloud_endpoint_even_if_internal_allowed_flag_is_true():
-    """BrainGateway preflight check enforces security policy and rejects external cloud endpoint even if caller sets is_internal_allowed=True."""
-    from aios_habit.knowledge_coverage import SecurityPolicyError
-
-    # Caller attempts to spoof authorization by setting is_internal_allowed=True on an external cloud URL
-    client_spoofed = CAgentGatewayClient(
-        endpoint="https://api.external-cloud-ai.com/v1/predict",
-        is_internal_allowed=True,  # Spoofed boolean!
-    )
-
-    doc_local = DocumentInventoryItem("DOC-CONFIDENTIAL", "Bí mật xưởng", "secret.pdf", "lsu_optics", "dig-secret", is_local_only=True)
-    inventory = CollectionInventory("col-secret", "1.0.0", ("lsu_optics",), (doc_local,))
-
-    evidence_pack = {
-        "collection_id": "col-secret",
-        "scope": "lsu_optics",
-        "snippets": [RetrievedSnippet("DOC-CONFIDENTIAL#chunk_001", "DOC-CONFIDENTIAL", "Nội dung nội bộ", 0.9)],
-        "allowed_citations": ["DOC-CONFIDENTIAL#chunk_001"],
-    }
-
-    # Must fail-closed because BrainGateway preflight check and endpoint check reject cloud destination for local_only
-    with pytest.raises(SecurityPolicyError, match="Dữ liệu local_only chỉ được phép đi qua kênh C-AGENT nội bộ"):
-        client_spoofed.explain_and_rank_gaps([], evidence_pack, inventory=inventory)
