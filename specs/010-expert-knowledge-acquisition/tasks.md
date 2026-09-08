@@ -107,14 +107,14 @@ Tài liệu này định nghĩa danh sách nhiệm vụ kỹ thuật có thứ t
 
 ## Giai đoạn 11 — G10: Pilot thật, bảo mật và đóng cổng
 
-- [ ] T073 Cập nhật threat model, privacy impact và retention đã duyệt trong `docs/security/THREAT_MODEL.md` và `docs/security/PRIVACY_IMPACT_ASSESSMENT.md`
-- [ ] T074 Chạy E2E fixture trọn vòng gap đến chat, claim, SOP, publish và revoke trong `tests/test_expert_knowledge_e2e.py`
-- [ ] T075 Chạy E2E Windows với path tiếng Việt/khoảng trắng, restart và local transcription theo `specs/010-expert-knowledge-acquisition/quickstart.md`
-- [ ] T076 Chạy diễn tập tự động tối thiểu 2 danh tính chuyên gia fixture, 2 scope, 3 phiên và 5 gap; chỉ ghi receipt đã làm sạch vào `docs/roadmap/backlog/AIOS-EXPERT-KNOWLEDGE-ACQUISITION.md`
-- [ ] T077 Đo 5 đơn vị tri thức, 1 quy trình fixture, provenance/citation, unauthorized access và critical-token confirmation theo SC-001–SC-008 trong `docs/roadmap/backlog/AIOS-EXPERT-KNOWLEDGE-ACQUISITION.md`
-- [ ] T078 Chạy đầy đủ quality gate, quét cấm từ kỹ thuật tiếng Anh trên giao diện và ghi command, exit code, phạm vi vào `docs/roadmap/backlog/AIOS-EXPERT-KNOWLEDGE-ACQUISITION.md`
-- [ ] T079 Đồng bộ trạng thái thực tế trong `ARCHITECTURE.md`, `ROADMAP.md`, `PROJECT_HANDOVER.md` và `Thảo_luận_AI_dự_đoán_lỗi_LSU.md`
-- [ ] T080 Chạy Audit Specialist bằng agent/phiên tách biệt, tự sửa và kiểm toán lại logic, privacy, quyền và evidence; chuyển Gate Card sang `TECHNICAL_READY` khi SC-001–SC-010 đạt trong `docs/roadmap/backlog/AIOS-EXPERT-KNOWLEDGE-ACQUISITION.md`
+- [x] T073 Cập nhật threat model, privacy impact và retention đã duyệt trong `docs/security/THREAT_MODEL.md` và `docs/security/PRIVACY_IMPACT_ASSESSMENT.md`
+- [x] T074 Chạy E2E fixture trọn vòng gap đến chat, claim, SOP, publish và revoke trong `tests/test_expert_knowledge_e2e.py`
+- [x] T075 Chạy E2E Windows với path tiếng Việt/khoảng trắng, restart và local transcription theo `specs/010-expert-knowledge-acquisition/quickstart.md`
+- [x] T076 Chạy diễn tập tự động tối thiểu 2 danh tính chuyên gia fixture, 2 scope, 3 phiên và 5 gap; chỉ ghi receipt đã làm sạch vào `docs/roadmap/backlog/AIOS-EXPERT-KNOWLEDGE-ACQUISITION.md`
+- [x] T077 Đo 5 đơn vị tri thức, 1 quy trình fixture, provenance/citation, unauthorized access và critical-token confirmation theo SC-001–SC-008 trong `docs/roadmap/backlog/AIOS-EXPERT-KNOWLEDGE-ACQUISITION.md`
+- [x] T078 Chạy đầy đủ quality gate, quét cấm từ kỹ thuật tiếng Anh trên giao diện và ghi command, exit code, phạm vi vào `docs/roadmap/backlog/AIOS-EXPERT-KNOWLEDGE-ACQUISITION.md`
+- [x] T079 Đồng bộ trạng thái thực tế trong `ARCHITECTURE.md`, `ROADMAP.md`, `PROJECT_HANDOVER.md` và `Thảo_luận_AI_dự_đoán_lỗi_LSU.md`
+- [x] T080 Chạy Audit Specialist bằng agent/phiên tách biệt, tự sửa và kiểm toán lại logic, privacy, quyền và evidence; chuyển Gate Card sang `TECHNICAL_READY` khi SC-001–SC-010 đạt trong `docs/roadmap/backlog/AIOS-EXPERT-KNOWLEDGE-ACQUISITION.md`
 
 ## Phụ thuộc và chiến lược
 

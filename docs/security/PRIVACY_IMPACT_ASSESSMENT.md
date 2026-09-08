@@ -12,7 +12,7 @@ Review cadence: Before any new external recipient, data class or cloud route
 ## Kiểm Kê Xử Lý Dữ Liệu (Processing Inventory)
 
 | Phân loại dữ liệu | Xử lý cục bộ | Bên nhận bên ngoài | Điều kiện | Thực tế lưu trữ |
-|---|---|---|---|---|
+| --- | --- | --- | --- | --- |
 | Sổ ghi chép, tin nhắn và nguồn Workspace Chat | JSONL dưới `local_cases/workspace_chat/` (được gitignore) | Mặc định không có | Dùng cục bộ | Dữ liệu hệ thống tệp do chủ sở hữu tự quản lý; chưa có bộ máy xóa/lưu tự động được kiểm chứng |
 | Chunk / Chỉ mục RAG v2 | Đường dẫn SQLite cục bộ do caller chọn | Mặc định không có | Truy xuất cục bộ | Có thể tái tạo từ đầu vào nguồn/chunk có sẵn nơi caller lưu giữ |
 | Hồ sơ vụ việc, review và bài học | SQLite dưới `local_cases/` | Mặc định không có | Chỉ metadata, role/scope, digest và locator đã làm sạch | Không lưu chat/excerpt/raw log; retention tự động chưa được kiểm chứng |
@@ -23,6 +23,10 @@ Review cadence: Before any new external recipient, data class or cloud route
 | Văn bản nguồn `cloud_safe` / `public` | Cục bộ hoặc provider tùy chọn | Provider đã cấu hình | Phê duyệt từ Gateway + luồng yêu cầu tường minh thông thường | Điều khoản / lưu trữ của provider là bên ngoài và bắt buộc phải được chủ sở hữu xem xét |
 | API key | Biến môi trường tiến trình cho tích hợp router | Chỉ dùng xác thực provider | Tuyến live tường minh | Không lưu trữ theo hợp đồng ứng dụng; tuyệt đối không commit |
 | Log / Chẩn đoán | Cục bộ / do người vận hành kiểm soát | Mặc định không có | Chỉ thu thập bản đã làm sạch | Chưa có chính sách lưu trữ tự động chính thức |
+| Dữ liệu âm thanh phỏng vấn chuyên gia (`audio`) | Thư mục `local_only/` cấu hình riêng (hỗ trợ đường dẫn Windows có dấu và khoảng trắng) | Tuyệt đối không | Yêu cầu hồ sơ đồng ý (`ConsentRecord`) hợp lệ; rút đồng ý dừng xử lý ngay | Lưu trữ cục bộ dạng tệp nhị phân; 0 lưu binary BLOB vào SQLite, gitignore toàn bộ |
+| Bản chép lời phỏng vấn (`transcript`) | Xử lý offline cục bộ 100% qua adapter Whisper.cpp | Tuyệt đối không | Chỉ xử lý khi có sự đồng ý; thông số kỹ thuật phải được xác nhận trước khi trích xuất | Lưu trữ tệp dưới `local_only/`; metadata và trạng thái lưu trong SQLite; không gửi ra provider ngoài |
+| Nhận định tri thức (`KnowledgeClaim`) và hồ sơ đồng ý (`ConsentRecord`) | SQLite dưới `local_cases/` (bảng `knowledge_claims`, `expert_consents`) | Tuyệt đối không | Bắt buộc có nguồn chứng minh (`source_refs`); phát hiện mâu thuẫn số liệu tự động | Lưu vết kiểm toán append-only và mã băm SHA-256; không tự động chọn bên thắng |
+| Tài liệu chuẩn hóa SOP, Bài học và Gói xuất bản tri thức | Quản lý vòng đời cục bộ và nạp vào SQLite thư viện dùng chung | Cục bộ / Caller chỉ định | Chỉ xuất bản khi đã duyệt độc lập (cấm tự duyệt); tự động sao lưu và khóa ghi `LibraryWriterLease` | Tệp văn bản và bản ghi SQLite thư viện; hỗ trợ thu hồi sạch sẽ (`revoked`) khi có yêu cầu |
 
 ## Độ Bao Phủ Chính Sách Theo Tuyến (Route-specific Policy Coverage)
 
@@ -39,7 +43,7 @@ Tuyến thực tế sử dụng đích đến `workspace_chat_external_router` v
 ## Quyết Định Bắt Buộc Của Chủ Sở Hữu (Owner Decisions Required)
 
 | Quyết định | Trạng thái |
-|---|---|
+| --- | --- |
 | Cơ sở pháp lý và nghĩa vụ quyền riêng tư theo khu vực tài phán cụ thể | `OWNER_DECISION_REQUIRED` |
 | Danh sách provider bên ngoài và các điều khoản / bên xử lý phụ của họ | `OWNER_DECISION_REQUIRED` |
 | Thời hạn lưu trữ / lịch trình xóa dữ liệu | `OWNER_DECISION_REQUIRED` |
@@ -51,6 +55,14 @@ Tuyến thực tế sử dụng đích đến `workspace_chat_external_router` v
 - Các bài kiểm thử bao phủ: từ chối cứng (hard deny), từ chối mặc định (default deny), sự đồng ý ràng buộc tập nguồn và làm sạch dữ liệu.
 - CI chỉ sử dụng fixture dữ liệu tổng hợp và không có thông tin xác thực provider.
 - Live smoke với provider là tùy chọn opt-in và sử dụng prompt generic không chứa ngữ cảnh dự án / nguồn. Bằng chứng chỉ ghi trạng thái / model, tuyệt đối không ghi API key hoặc yêu cầu thô.
+
+## Chính Sách Lưu Trữ Dữ Liệu Đã Duyệt Cho Goal 010 (Approved Retention Policy)
+
+Theo quyết định mặc định đã khóa cho Goal 010:
+- **Dữ liệu âm thanh thô và chép lời (`local_only`)**: Giữ nguyên vẹn tại máy trạm cục bộ, không tự động xóa theo lịch trình nền (no automated background deletion scheduler) nhằm bảo toàn chứng cứ gốc.
+- **Thao tác xóa thủ công**: Chỉ chuyên gia sở hữu bản ghi hoặc quản trị viên có thẩm quyền RBAC phù hợp mới được phép thực hiện thao tác xóa thủ công.
+- **Hồ sơ đồng ý (`ConsentRecord`)**: Được lưu trữ dạng append-only phục vụ kiểm toán nguồn gốc xuất xứ (provenance), kể cả khi chuyển sang trạng thái đã rút (`withdrawn`).
+- **Dữ liệu tri thức đã xuất bản**: Tồn tại trong thư viện dùng chung cho đến khi có lệnh thu hồi (`revoked`) chính thức; luôn tự động tạo bản sao lưu an toàn trước khi ghi/sửa đổi.
 
 ## Các Chốt Chặn Liên Quan (Related Controls)
 

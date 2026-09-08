@@ -28,7 +28,8 @@
       "scope": "lsu_lens_calibration",
       "title": "Mâu thuẫn thông số nhiệt độ ổn định đồ gá (50°C trong LESSON-SIM-001 vs thực tế vận hành)",
       "evidence_refs": [
-        "DOC-SIM-002#recommendation"
+        "DOC-SIM-002#recommendation",
+        "DOC-SIM-001#equip-jg808"
       ],
       "gap_type": "conflict",
       "status": "accepted",

@@ -12,7 +12,7 @@ Mô hình này bao quát nền tảng Workspace Chat ưu tiên cục bộ (local
 ## Tài Sản Cần Bảo Vệ (Assets)
 
 | Tài sản | Nhu cầu bảo vệ chính |
-|---|---|
+| --- | --- |
 | Nguồn dữ liệu cục bộ, nội dung chat và bằng chứng | Tính bảo mật (Confidentiality), quyền kiểm soát của chủ sở hữu |
 | Trạng thái JSONL của Workspace Chat dưới `local_cases/` | Tính bảo mật, tính toàn vẹn (Integrity), khả năng phục hồi |
 | Chỉ mục và các chunk cục bộ của RAG v2 | Tính bảo mật, tính toàn vẹn, khả năng tái tạo |
@@ -20,6 +20,10 @@ Mô hình này bao quát nền tảng Workspace Chat ưu tiên cục bộ (local
 | Nhãn bảo mật nguồn và sự đồng ý của chủ sở hữu | Tính toàn vẹn, ủy quyền chính xác |
 | Mã nguồn, tài liệu và cấu hình phụ thuộc được theo dõi | Tính toàn vẹn, nguồn gốc xuất xứ (Provenance) |
 | Log, kết quả kiểm thử và dữ liệu chẩn đoán | Tính bảo mật, mức chi tiết tối thiểu cần thiết |
+| Âm thanh phỏng vấn chuyên gia (`audio`) và bản chép lời thô | Tính bảo mật tuyệt đối (`local_only`), không lưu BLOB vào DB, cấm rò rỉ đám mây |
+| Nhận định tri thức (`KnowledgeClaim`) và hồ sơ đồng ý (`ConsentRecord`) | Tính toàn vẹn, nguồn gốc xuất xứ, xác thực thông số kỹ thuật |
+| Tài liệu kiểm soát SOP, Bài học và gói xuất bản tri thức | Tính toàn vẹn (digest SHA-256), cấm tự duyệt, chống trôi lệch phiên bản |
+| Thư viện tri thức dùng chung và khóa ghi tiến trình (`LibraryWriterLease`) | Tính toàn vẹn, tính sẵn sàng, sao lưu an toàn trước sửa đổi |
 
 ## Ranh Giới Tin Cậy (Trust Boundaries)
 
@@ -40,7 +44,7 @@ Ranh giới provider là tùy chọn. Các nguồn `local_only` và `confidentia
 ## Sổ Đăng Ký Mối Đe Dọa (Threat Register)
 
 | ID | Mối đe dọa / STRIDE | Chốt chặn kiểm soát hiện tại | Trạng thái | Rủi ro tồn dư / Hành động tiếp theo |
-|---|---|---|---|---|
+| --- | --- | --- | --- | --- |
 | TM-01 | Văn bản riêng tư hoặc đường dẫn bị gửi tới provider (I) | Tuyến Workspace Chat thực tế và mock đều dùng `BrainGateway` trước khi gọi adapter; ảnh chụp nhanh toàn bộ nguồn, ràng buộc sự đồng ý, cấp phép bằng chứng gửi ra ngoài và payload định kiểu đã làm sạch đều được bao phủ bởi kiểm thử hồi quy | `IMPLEMENTED` | Việc lựa chọn nhãn của chủ sở hữu và điều khoản provider bên ngoài vẫn là rủi ro tồn dư; các nhãn nhạy cảm cũ không thể gửi cho đến khi được phân loại lại tường minh. |
 | TM-02 | Thông tin xác thực bị lộ vào mã nguồn, log hoặc Git (I) | Các mẫu `.gitignore`, quét secret khi audit và fixture kiểm thử an toàn | `PARTIAL` | Phát hiện theo mẫu mang tính heuristic; chủ sở hữu phải sử dụng quy trình báo cáo riêng tư và thu hồi key. |
 | TM-03 | Prompt injection trong tài liệu tải lên làm thay đổi hành vi hệ thống (T/E) | Lựa chọn nguồn, nhãn bảo mật và kỷ luật bằng chứng | `PARTIAL` | Chưa có chính sách/chốt chặn runtime cô lập nội dung không đáng tin cậy chuyên dụng; bổ sung bài test hồi quy khi mở rộng tổng hợp. |
@@ -51,6 +55,10 @@ Ranh giới provider là tùy chọn. Các nguồn `local_only` và `confidentia
 | TM-08 | Provider ngừng hoạt động, hết hạn ngạch hoặc phản hồi xấu (D/I) | Thông báo lỗi an toàn bằng Tiếng Việt trong adapter Workspace Chat; tuyến ưu tiên cục bộ luôn sẵn sàng | `PARTIAL` | Không có cam kết SLA về tính khả dụng hoặc bảo đảm sức khỏe provider. |
 | TM-09 | Nội dung chẩn đoán / báo cáo nhạy cảm bị xuất ra ngoài (I) | Quy tắc Git-ignore và kiểm soát audit/export | `PARTIAL` | Người vận hành cần tuân thủ quy trình chẩn đoán an toàn. |
 | TM-10 | Một Maintainer duy nhất không thể phản ứng / khôi phục (D) | Tài liệu bàn giao (Handover) và tài liệu cơ sở | `PARTIAL` | Chỉ định chủ sở hữu dự phòng thông qua quyết định quản trị. |
+| TM-11 | Rò rỉ âm thanh thô hoặc bản chép lời phỏng vấn chưa biên tập ra ngoài (I) | Lưu trữ dưới `local_only_root`, không lưu BLOB vào DB, gitignore file âm thanh/chép lời, Whisper.cpp chạy offline cục bộ 100%, kiểm tra quyền đồng ý (`ConsentRecord`) trước khi xử lý | `IMPLEMENTED` | Dữ liệu âm thanh thô chỉ lưu cục bộ, người vận hành có trách nhiệm bảo vệ thư mục máy tính cá nhân. |
+| TM-12 | Giả mạo hoặc sửa đổi trái phép nhận định chuyên gia / tài liệu SOP đã duyệt (T/R) | Toàn vẹn bảo chứng qua mã băm SHA-256 (`digest`), quy tắc cấm tự duyệt (`SelfApprovalDeniedError`), phát hiện digest bị lệch (`StaleArtifactDigestError`), kiểm tra claim mâu thuẫn (`ConflictedClaimArtifactError`) | `IMPLEMENTED` | Chuyên gia và người duyệt phải giữ tính xác thực của danh tính khi phê duyệt. |
+| TM-13 | Xuất bản tài liệu hỏng hoặc tranh chấp ghi thư viện làm gián đoạn hệ thống (T/D) | Tự động tạo bản sao lưu `create_library_backup` trước khi xuất bản/thu hồi, chiếm khóa ghi tiến trình độc quyền `LibraryWriterLease`, kiểm tra tính toàn vẹn `sqlite_quick_check` và bộ câu hỏi nghiệm thu truy xuất; tự động hoàn tác khi lỗi | `IMPLEMENTED` | Bản sao lưu được lưu trữ cục bộ để sẵn sàng khôi phục khẩn cấp. |
+| TM-14 | Trích xuất thông số kỹ thuật sai lệch từ bản chép lời (T) | Cơ chế fail-closed với `UnconfirmedCriticalTokenError` khi các số, mã máy, đơn vị đo chưa được xác nhận rõ ràng; hạ độ tin cậy khi trả lời không chắc chắn | `IMPLEMENTED` | Chuyên gia cần chủ động rà soát từ khóa kỹ thuật trên giao diện. |
 
 Chú giải STRIDE: S=giả mạo (spoofing), T=giả mạo sửa đổi (tampering), R=chối bỏ (repudiation), I=tiết lộ thông tin (information disclosure), D=từ chối dịch vụ (denial of service), E=leo thang đặc quyền (elevation of privilege).
 
@@ -60,4 +68,3 @@ Chú giải STRIDE: S=giả mạo (spoofing), T=giả mạo sửa đổi (tamper
 - Các bài kiểm thử quyền riêng tư router/mock và kiểm thử provider Workspace Chat thực tế chứng minh hợp đồng Gateway duy nhất: từ chối cứng, đồng ý theo tập nguồn, cấp phép bằng chứng gửi ra ngoài, ranh giới payload định kiểu và làm sạch đường dẫn/key.
 - Không cần thông tin xác thực live cho CI. Live smoke là thủ công, tường minh, generic và tuyệt đối không ghi log key hoặc nội dung nguồn.
 - Các rủi ro tồn dư TM-03, TM-04, TM-05, TM-07 và TM-10 cần sự đánh giá của chủ sở hữu trước khi tuyên bố sẵn sàng cho production/tuân thủ.
-

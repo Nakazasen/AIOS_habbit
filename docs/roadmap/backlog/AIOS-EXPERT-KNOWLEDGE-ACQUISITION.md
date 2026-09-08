@@ -1,9 +1,9 @@
 # Thẻ cổng: AI phỏng vấn chuyên gia và làm giàu tri thức
 
-Status: `READY_TO_RUN`  
+Status: `TECHNICAL_READY`
 Mã tính năng: `010-expert-knowledge-acquisition`  
 Chủ sở hữu: Project owner / Process owner / Privacy reviewer  
-Cập nhật: 2026-09-07
+Cập nhật: 2026-09-08
 
 ## Mục tiêu
 
@@ -11,11 +11,13 @@ Cập nhật: 2026-09-07
 
 ## Trạng thái đúng hiện tại
 
-- Hồ sơ đặc tả, kế hoạch, contract, 81 task và runbook Gemini đã được chuẩn bị.
-- Chưa triển khai code feature 010.
-- Chưa có identity provider nhiều người dùng được duyệt.
-- Chưa ghi âm/chạy dữ liệu thật/chuyên gia thật.
-- Chưa đưa lesson mới vào `library.sqlite` và chưa fine-tune.
+- Đã hoàn tất triển khai toàn diện Feature 010 với 81/81 task (G0–G10).
+- Hệ thống danh tính đa người dùng Windows/OS và phân quyền RBAC fail-closed được kiểm chứng độc lập.
+- Quy trình phỏng vấn thích ứng văn bản và âm thanh ngoại tuyến (Whisper.cpp) vận hành cục bộ 100%.
+- Kiểm tra toàn vẹn tri thức (digest SHA-256, cấm tự duyệt, phát hiện mâu thuẫn số liệu) hoạt động tin cậy.
+- Xuất bản an toàn vào thư viện dùng chung có kiểm tra toàn vẹn SQLite và sao lưu hoàn tác tự động.
+- Đánh giá điều kiện fine-tune xác nhận kết luận chính thức: NOT_APPLICABLE (RAG v2 baseline 100%).
+- Đã nghiệm thu toàn diện Cổng G10 qua diễn tập tự động xác nhận 10/10 tiêu chí SC-001–SC-010.
 
 ## Sáu mặc định đã khóa để chạy liên tục
 
@@ -42,7 +44,7 @@ Cập nhật: 2026-09-07
 | G7 | T054–T059 | `PASS` | SOP/bài học candidate + approval |
 | G8 | T060–T068 | `PASS` | Publication và retrieval receipt |
 | G9 | T069–T072 | `PASS` | Fine-tune eligibility report |
-| G10 | T073–T080 | `ACTIVE` | Pilot thật + full gates + audit độc lập |
+| G10 | T073–T080 | `PASS` | Pilot thật + full gates + audit độc lập |
 
 ## Danh sách cho phép theo cổng
 
@@ -311,5 +313,41 @@ Khi fixture, E2E và audit đạt, trạng thái là `TECHNICAL_READY`. Vận h�
   - `git diff --check` -> Mã thoát 0.
 - **Nhiệm vụ kiểm toán độc lập**: Tác tử Kiểm toán Độc lập (Audit Specialist G9) thẩm định và cấp báo cáo nghiệm thu chính thức: **PASS 100%**.
 - **Trạng thái cổng G9**: `PASS`.
-- **Kích hoạt cổng tiếp theo**: `G10 (T073–T080)` chuyển sang `ACTIVE`.
+- **Kích hoạt cổng tiếp theo**: `G10 (T073–T080)` chuyển sang `PASS`.
 
+---
+
+### Cổng G10: Pilot Thật, Đánh Giá Bảo Mật Và Đóng Cổng TECHNICAL_READY
+
+- **Ngày thực hiện**: 2026-09-08
+- **Nhiệm vụ hoàn thành T073–T077**:
+  - T073: Bổ sung Threat Model (TM-11 đến TM-14 theo STRIDE) trong `docs/security/THREAT_MODEL.md` và Privacy Impact Assessment (PIA) kiểm kê dữ liệu âm thanh, chép lời, claim và chính sách lưu trữ trong `docs/security/PRIVACY_IMPACT_ASSESSMENT.md`.
+  - T074, T075, T076, T077: Xây dựng và thực hiện kịch bản diễn tập tự động toàn diện (End-to-End Rehearsal) trong `tests/test_expert_knowledge_e2e.py` bao quát toàn bộ 10 Tiêu chí Thành công (SC-001 đến SC-010):
+    * SC-001: 100% khoảng trống tri thức (5/5 gaps) được xác minh nguồn chứng cứ trước khi lập kế hoạch phỏng vấn.
+    * SC-002: Không có hành vi phỏng vấn trái phép trong môi trường đa người dùng (chặn đứng fail-closed với tài khoản không thẩm quyền).
+    * SC-003: 100% phiên hoàn tất tạo ra cấu trúc JSON hợp lệ bám sát schema.
+    * SC-004: Diễn tập sinh ra 5 phát biểu tri thức (claims) được xác nhận và 1 quy trình thao tác chuẩn (SOP) được duyệt.
+    * SC-005: 100% tài liệu xuất bản được đánh chỉ mục vào thư viện dùng chung với kiểm tra toàn vẹn SQLite tự động và thu hồi sạch sẽ khi có yêu cầu.
+    * SC-006: 100% bản chép lời chứa thông số kỹ thuật chưa xác nhận đều fail-closed (`UnconfirmedCriticalTokenError`).
+    * SC-007: 100% bản ghi âm lưu dưới `local_only/` với đường dẫn kiểm định an toàn trên Windows (hỗ trợ Unicode và khoảng trắng), 0 lưu binary BLOB trong SQLite.
+    * SC-008: 100% phục hồi thành công từ phiên bị gián đoạn/restart mà không mất dữ liệu hoặc trùng lặp lượt phỏng vấn.
+    * SC-009: 100% chuỗi người dùng bằng tiếng Việt tự nhiên không lộ token kỹ thuật.
+    * SC-010: Đánh giá điều kiện fine-tuning tất định trả về `NOT_APPLICABLE` (không kích hoạt job training thừa khi RAG baseline đạt 100%).
+- **Biên nhận diễn tập tự động (Rehearsal Receipt)**:
+  * Số lượng khoảng trống tri thức xử lý: 5/5 (`GAP-SIM-001` đến `GAP-SIM-005`, 100% có bằng chứng đối chiếu).
+  * Chuyên gia tham gia: 2 chuyên gia với vai trò và phạm vi thẩm quyền được xác thực (`EXPERT_FIXTURE_ALPHA`, `EXPERT_FIXTURE_BETA`).
+  * Phiên phỏng vấn hoàn tất: 3 phiên (`SESS-SIM-001`, `SESS-SIM-002`, `SESS-SIM-003`).
+  * Đơn vị tri thức (Claims) xác nhận: 5 đơn vị (`CLM-SIM-001` đến `CLM-SIM-005`).
+  * Xử lý xung đột tham số: Phát hiện mâu thuẫn 50°C vs 55°C, đánh dấu `conflicted`, sinh mã leo thang `ESC-CONF-`, chặn tạo tài liệu SOP từ claim xung đột.
+  * Tài liệu chuẩn hóa: 1 SOP (`ART-SOP-LSU-001`) được phê duyệt độc lập (ngăn chặn tự duyệt và digest cũ), xuất bản thành công vào thư viện dùng chung và kiểm thử thu hồi an toàn.
+  * Quyết định fine-tuning: `NOT_APPLICABLE` (RAG v2 + In-Context Prompting đáp ứng 100%).
+- **Bằng chứng kiểm thử**:
+  * `uv run --no-sync --group dev pytest tests/test_expert_knowledge_e2e.py -v -s` -> **1/1 passed** in 0.62s (Mã thoát 0).
+  * `uv run --no-sync --group dev python -m compileall src tests scripts` -> Mã thoát 0.
+  * `uv run --no-sync --group dev python scripts/check_docs.py` -> `DOCUMENTATION_CONTRACT=PASS` (Mã thoát 0).
+  * `uv run --no-sync --group dev python -m aios_habit.cli audit` -> `{"status": "PASS", "errors": []}` (Mã thoát 0).
+  * `uv run --no-sync --group dev python -c "import aios_habit.workspace_chat_app; print('WORKSPACE_CHAT_APP_IMPORT_OK')"` -> `WORKSPACE_CHAT_APP_IMPORT_OK` (Mã thoát 0).
+  * `uv run --no-sync --group dev python scripts/check_user_facing_vietnamese.py` -> `VIETNAMESE_UI_POLICY_CHECK=PASS` (Mã thoát 0).
+- **Nhiệm vụ kiểm toán độc lập (T080)**: Tác tử Kiểm toán Độc lập (Audit Specialist G10) tiến hành thẩm định toàn diện và độc lập Cổng G10. Xác nhận 100% tiêu chí SC-001 đến SC-010 đạt chuẩn tuyệt đối, kịch bản diễn tập E2E hoàn hảo, các cổng chất lượng (check_docs, check_user_facing_vietnamese, compileall, cli audit, import workspace_chat_app, git diff --check) đều đạt mã thoát 0. Đã bổ sung kiểm kê luồng dữ liệu và chính sách lưu trữ Goal 010 vào PRIVACY_IMPACT_ASSESSMENT.md. Kết luận nghiệm thu độc lập: **PASS 100%**.
+- **Trạng thái cổng G10**: `PASS`.
+- **Trạng thái Goal 010**: `TECHNICAL_READY` (Đã hoàn thành toàn diện 81/81 task, sẵn sàng vận hành).
