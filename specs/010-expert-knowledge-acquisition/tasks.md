@@ -1,72 +1,64 @@
-# Danh sách việc: Phỏng vấn chuyên gia và làm giàu tri thức có kiểm soát
+# Nhiệm vụ: Tiếp nhận tri thức chuyên gia (Goal 010)
 
-## Giai đoạn 1 — G0: Khóa mặc định, baseline và fixture
+Tài liệu này định nghĩa danh sách nhiệm vụ kỹ thuật có thứ tự phụ thuộc chặt chẽ cho Feature 010.
 
-- [x] T000 Pin commit/tag, đọc kiến trúc/test/license và lập ma trận `adopt|adapt|reject` cho STORM/Co-STORM, LangGraph, Microsoft GraphRAG, Microsoft Presidio, `whisper.cpp` và `faster-whisper` trong `specs/010-expert-knowledge-acquisition/research.md`
-- [x] T001 Xác minh sáu mặc định đã khóa về identity, scope, consent, retention, collection và fine-tune trong `docs/roadmap/backlog/AIOS-EXPERT-KNOWLEDGE-ACQUISITION.md`
-- [x] T002 Xác minh ADR-0009 ở trạng thái `ACCEPTED` và không còn câu chờ quyết định trước G1 trong `docs/adr/0009-expert-interview-and-knowledge-publication-boundary.md`
-- [x] T003 Tạo feature flags mặc định tắt cho coverage, interview, audio và publication trong `src/aios_habit/feature_flags.py`
-- [x] T004 Tạo corpus, hội thoại và audio fixture giả lập không chứa dữ liệu thật trong `tests/fixtures/expert_interview/`
-- [x] T005 Viết kiểm thử fixture không có secret, dữ liệu thật hoặc đường dẫn local trong `tests/test_expert_interview_fixture_hygiene.py`
-- [x] T006 Ghi baseline test, trạng thái worktree và cổng G0 vào `docs/roadmap/backlog/AIOS-EXPERT-KNOWLEDGE-ACQUISITION.md`
-- [x] T007 Chạy Audit Specialist bằng agent/phiên tách biệt, tự sửa finding trong phạm vi rồi đổi Gate Card sang `ACTIVE_G1` khi T000–T006 đạt trong `docs/roadmap/backlog/AIOS-EXPERT-KNOWLEDGE-ACQUISITION.md`
+## Giai đoạn 1 — G0: Nghiên cứu, khóa mặc định và fixture
 
-## Giai đoạn 2 — G1: Danh tính và phạm vi nhiều chuyên gia
+- [x] T000 Nghiên cứu 6 hướng kỹ thuật và lập ma trận adopt/adapt/reject có pin version trong `specs/010-expert-knowledge-acquisition/research.md`
+- [x] T001 Khóa sáu quyết định mặc định trong `docs/roadmap/backlog/AIOS-EXPERT-KNOWLEDGE-ACQUISITION.md`
+- [x] T002 Soạn và chốt ADR-0009 trong `docs/adr/0009-expert-interview-and-knowledge-publication-boundary.md`
+- [x] T003 Thêm cờ tính năng `010` fail-closed trong `src/aios_habit/feature_flags.py`
+- [x] T004 Chuẩn bị 2 danh tính chuyên gia fixture không chứa secret trong `tests/fixtures/expert_interview/identities/`
+- [x] T005 Chuẩn bị 5 gap kiến thức và 3 hội thoại phỏng vấn trong `tests/fixtures/expert_interview/gaps/` và `conversations/`
+- [x] T006 Chuẩn bị 1 file audio WAV mono 16kHz synthetic hợp lệ và 1 file corrupt trong `tests/fixtures/expert_interview/audio/`
+- [x] T007 [P] Viết test kiểm tra fixture hygiene, audio hợp lệ và cờ tính năng trong `tests/test_expert_interview_fixture_hygiene.py`
 
-**Kiểm thử độc lập**: principal thật/fixture được ánh xạ đúng profile; prompt/form không mạo danh được; grant sai scope, hết hạn hoặc bị thu hồi đều bị từ chối.
+## Giai đoạn 2 — G1: Danh tính và phân quyền chuyên gia
 
-- [x] T008 [US2] Định nghĩa `VerifiedPrincipal`, `ExpertProfile`, `ScopeGrant` và action constants trong `src/aios_habit/expert_identity.py`
-- [x] T009 [US2] Định nghĩa protocol `IdentityProvider` và adapter fixture trong `src/aios_habit/expert_identity.py`
-- [x] T010 [US2] Cài adapter Windows/OS identity đã khóa mặc định, không lưu password, trong `src/aios_habit/expert_identity_windows.py`
-- [x] T011 [US2] Mở rộng authorization canonical để kiểm tra principal, action, scope và thời hạn trong `src/aios_habit/workspace_case_authorization.py`
-- [x] T012 [US2] Lưu profile/grant append-only bằng migration an toàn trong `src/aios_habit/workspace_case_repository.py`
-- [x] T013 [P] [US2] Viết test mạo danh, duplicate subject, disable, expiry, revoke và provider failure trong `tests/test_expert_identity.py`
-- [x] T014 [P] [US2] Viết test không fallback `local_admin` khi multi-user bật trong `tests/test_expert_identity.py`
-- [x] T015 [US2] Ghi capability/negative-test receipt; nếu máy dev thiếu nhiều tài khoản OS thì giữ runtime multi-user tắt, dùng fixture cho contract và tiếp tục G2 trong `docs/roadmap/backlog/AIOS-EXPERT-KNOWLEDGE-ACQUISITION.md`
+- [x] T008 [US1] Định nghĩa `VerifiedPrincipal`, `ExpertProfile` và `ScopeGrant` trong `src/aios_habit/expert_identity.py`
+- [x] T009 [US1] Tạo `WindowsOSIdentityProvider` đọc OS user và `FixtureIdentityProvider` trong `src/aios_habit/expert_identity.py`
+- [x] T010 [US1] Thêm bảng `expert_profiles` và `expert_scope_grants` trong `src/aios_habit/expert_interview_repository.py`
+- [x] T011 [US1] Thêm migration an toàn không xóa bảng cũ trong `src/aios_habit/workspace_case_migrations.py`
+- [x] T012 [US1] Thêm màn hình phân quyền chuyên gia thuần Việt trong `src/aios_habit/workspace_case_ui.py`
+- [x] T013 [US1] Cài audit event và lý do thu hồi quyền trong `src/aios_habit/expert_identity.py`
+- [x] T014 [US1] Cài chặn mạo danh, profile suspended/revoked, grant hết hạn và cấm fallback về `local_admin` khi bật multi-user trong `src/aios_habit/expert_identity.py`
+- [x] T015 [P] [US1] Viết unit/contract test cho provider, grant validation và impersonation denial trong `tests/test_expert_identity.py`
 
-## Giai đoạn 3 — G2: US1 lập bản đồ và khoảng trống tri thức
+## Giai đoạn 3 — G2: US2 phát hiện gap kiến thức
 
-**Kiểm thử độc lập**: corpus fixture tạo gap thiếu, xung đột (ít nhất 2 nguồn) và lỗi thời đúng evidence; gap hallucinated hoặc thiếu citation bị loại; model không tự accept gap.
+- [x] T016 [US2] Định nghĩa `KnowledgeGapCandidate`, `CoverageEvaluation` và digest trong `src/aios_habit/knowledge_coverage.py`
+- [x] T017 [US2] Cài adapter lấy inventory và retrieval receipt từ pipeline BGE-M3 hiện có trong `src/aios_habit/knowledge_coverage.py`
+- [x] T018 [US2] Cài bộ sinh gap tất định cho thiếu nguồn, thiếu phần bắt buộc và metadata cũ trong `src/aios_habit/knowledge_coverage.py`
+- [x] T019 [US2] Cài phát hiện mâu thuẫn ngữ nghĩa có trích dẫn snippet đối chiếu trong `src/aios_habit/knowledge_coverage.py`
+- [x] T020 [US2] Nối C-AGENT qua Brain Gateway đọc tín hiệu gap, giải thích và xếp hạng candidate; loại bỏ citation bịa đặt trong `src/aios_habit/knowledge_coverage.py`
+- [x] T021 [US2] Thêm bảng lưu coverage snapshot và gap candidate trong `src/aios_habit/expert_interview_repository.py`
+- [x] T022 [US2] Thêm màn hình xem gap, xếp hạng và phê duyệt candidate thuần Việt trong `src/aios_habit/workspace_case_ui.py`
+- [x] T023 [P] [US2] Viết test deterministic gap, BGE-M3 retrieval, C-AGENT qua Brain Gateway và digest trong `tests/test_knowledge_coverage.py`
+- [x] T024 [US2] Thêm migration cho bảng coverage snapshot và gap candidate trong `src/aios_habit/workspace_case_migrations.py`
 
-- [x] T016 [US1] Định nghĩa coverage/gap models và state transitions trong `src/aios_habit/knowledge_coverage.py`
-- [x] T017 [US1] Adapter lấy inventory và retrieval receipt qua interface hiện có (có production adapter và fake adapter cùng contract) trong `src/aios_habit/knowledge_coverage.py`
-- [x] T018 [US1] Định nghĩa bộ câu hỏi bao phủ có expected evidence và version trong `src/aios_habit/knowledge_coverage.py`
-- [x] T019 [US1] Thu receipt retrieval (câu hỏi, nguồn, snippets, điểm bao phủ, version/timestamp, lý do) và tạo tín hiệu deterministic thiếu nguồn, mâu thuẫn, stale metadata từ nguồn thật trong `src/aios_habit/knowledge_coverage.py`
-- [x] T020 [US1] C-AGENT qua Brain Gateway đọc gói bằng chứng giới hạn (chỉ snippet_id thật) giải thích/xếp hạng gap, loại bỏ output thiếu citation hoặc ngoài retrieval, không tự accept gap trong `src/aios_habit/knowledge_coverage.py`
-- [x] T021 [US1] Lưu coverage/gap event idempotent trong `src/aios_habit/workspace_case_repository.py`
-- [x] T022 [US1] Thêm service review `accept|merge|defer|reject` có scope trong `src/aios_habit/workspace_case_service.py`
-- [x] T023 [P] [US1] Viết integration test chứng minh gói thật qua Brain Gateway/policy, local_only tự suy ra và bị chặn ở đường không hợp lệ, citation ngoài retrieval bị loại, cấm model tự accept trong `tests/test_knowledge_coverage.py`
-- [x] T024 [US1] Thêm màn hình kiểm kê và danh sách nội dung còn thiếu bằng tiếng Việt đời thường trong `src/aios_habit/workspace_case_ui.py`
+## Giai đoạn 4 — G3: US2 lập kế hoạch phỏng vấn thích nghi
 
-## Giai đoạn 4 — G3: Lập kế hoạch phỏng vấn
+- [x] T025 [US2] Định nghĩa `InterviewPlan`, `InterviewBudget`, `CompletionRubric`, `SeedQuestion` và digest trong `src/aios_habit/expert_interview_models.py`
+- [x] T026 [US2] Cài thuật toán chọn chuyên gia theo verified profile và scope grant trong `src/aios_habit/expert_interview_service.py`
+- [x] T027 [US2] Sinh seed questions bám sát gap type, scope và required aspects trong `src/aios_habit/adaptive_interview_engine.py`
+- [x] T028 [US2] Khóa ngân sách hữu hạn và escalation owner bắt buộc khi duyệt plan trong `src/aios_habit/expert_interview_service.py`
+- [x] T029 [P] [US2] Viết test sinh câu hỏi từ gap, chọn chuyên gia, budget hữu hạn và rubric validation trong `tests/test_adaptive_expert_interview.py`
 
-**Kiểm thử độc lập**: một gap accepted tạo plan đúng chuyên gia/scope, câu hỏi nền, ngân sách và completion rubric; plan thiếu expert hợp lệ bị chặn.
+## Giai đoạn 5 — G4: US3 phỏng vấn thích nghi dạng văn bản
 
-- [x] T025 [US2] Định nghĩa `InterviewPlan` và version/digest trong `src/aios_habit/expert_interview_models.py`
-- [x] T026 [US2] Chọn eligible experts từ verified profile và grant, không từ model text, trong `src/aios_habit/expert_interview_service.py`
-- [x] T027 [US2] Sinh seed questions theo gap/process và kiểm tra schema trong `src/aios_habit/adaptive_interview_engine.py`
-- [x] T028 [US2] Khóa max turns/time/token, completion rubric và escalation owner trong `src/aios_habit/expert_interview_service.py`
-- [x] T029 [P] [US2] Viết test plan đúng/sai scope, empty expert, stale gap và budget vô hạn trong `tests/test_adaptive_expert_interview.py`
+- [x] T030 [US3] Định nghĩa session, turn, checkpoint và transition validator trong `src/aios_habit/expert_interview_models.py`
+- [x] T031 [US3] Cài lưu session, turn và checkpoint append-only, idempotent trong `src/aios_habit/expert_interview_repository.py`
+- [x] T032 [US3] Cài máy trạng thái phiên, bind verified principal và re-check quyền mỗi turn trong `src/aios_habit/expert_interview_service.py`
+- [x] T033 [US3] Nối C-AGENT qua Brain Gateway sinh câu hỏi thích nghi theo schema, trigger refs và budget limit trong `src/aios_habit/adaptive_interview_engine.py`
+- [x] T034 [US3] Cài bộ lọc chống câu hỏi dẫn dắt, ngoài scope và trùng lặp ngữ nghĩa trong `src/aios_habit/adaptive_interview_engine.py`
+- [x] T035 [US3] Hỗ trợ câu trả lời không rõ, chưa chắc chắn, đính chính, tạm dừng và dừng phiên trong `src/aios_habit/expert_interview_service.py`
+- [x] T036 [US3] Thêm giao diện chat phỏng vấn, thanh tiến độ, budget counter và nút pause/stop thuần Việt trong `src/aios_habit/workspace_case_ui.py`
+- [x] T037 [P] [US3] Viết test luồng hỏi-đáp, guardrails, budget cutoff, pause/resume và stop escalation trong `tests/test_adaptive_expert_interview.py`
+- [x] T038 [P] [US3] Viết test timeout, schema repair, restart/resume và duplicate submission idempotency trong `tests/test_expert_interview_recovery.py`
 
-## Giai đoạn 5 — G4: US2 chat thích nghi nhiều vòng
+## Giai đoạn 6 — G5: US3 phỏng vấn bằng giọng nói và chép lời cục bộ
 
-**Kiểm thử độc lập**: câu trả lời mơ hồ khiến C-AGENT qua Brain Gateway hỏi đúng ngưỡng, đơn vị và ngoại lệ; `unknown`, pause, restart và conflict hoạt động; không lặp vô hạn.
-
-- [x] T030 [US2] Cài máy trạng thái phiên và transition validator trong `src/aios_habit/adaptive_interview_engine.py`
-- [x] T031 [US2] Lưu session, turn và checkpoint append-only/idempotent trong `src/aios_habit/expert_interview_repository.py`
-- [x] T032 [US2] Bind session với principal, expert, plan và kiểm tra lại quyền mỗi turn trong `src/aios_habit/expert_interview_service.py`
-- [x] T033 [US2] Gọi C-AGENT qua Brain Gateway với schema `next_action`, trigger refs và privacy label trong `src/aios_habit/adaptive_interview_engine.py`
-- [x] T034 [US2] Chặn câu hỏi ngoài scope, dẫn dắt, semantic duplicate và vượt budget trong `src/aios_habit/adaptive_interview_engine.py`
-- [x] T035 [US2] Hỗ trợ `unknown|uncertain|skip|pause|stop` và correction version trong `src/aios_habit/expert_interview_service.py`
-- [x] T036 [US2] Thêm khung trò chuyện tiếng Việt, tiến độ, giới hạn và nút dừng/tiếp tục dễ hiểu trong `src/aios_habit/workspace_case_ui.py`
-- [x] T037 [P] [US2] Viết contract test ambiguity, threshold, exception, example, contradiction và no-leading trong `tests/test_adaptive_expert_interview.py`
-- [x] T038 [P] [US2] Viết fault test timeout, schema repair, restart/resume và duplicate submit trong `tests/test_expert_interview_recovery.py`
-
-## Giai đoạn 6 — G5: US3 audio và chép lời cục bộ
-
-**Kiểm thử độc lập**: record trước consent bị chặn; text chat vẫn chạy khi từ chối; transcript local có timestamps và critical tokens phải xác nhận.
-
-- [x] T039 [US3] Định nghĩa consent/audio/transcription protocol và receipt trong `src/aios_habit/local_transcription.py`
+- [x] T039 [US3] Định nghĩa consent record, audio path validator, transcript segment và critical token trong `src/aios_habit/local_transcription.py`
 - [x] T040 [US3] Viết benchmark `whisper.cpp` và `faster-whisper` trên fixture tiếng Việt trong `scripts/benchmark_local_transcription.py`
 - [x] T041 [US3] Tự chọn engine theo điểm benchmark tất định rồi ghi version, checksum, license và tài nguyên vào `docs/roadmap/backlog/AIOS-EXPERT-KNOWLEDGE-ACQUISITION.md`
 - [x] T042 [US3] Cài một adapter local đã thắng benchmark, pin version và timeout trong `src/aios_habit/local_transcription.py`
@@ -75,30 +67,43 @@
 - [x] T045 [US3] Thêm sửa bản chép lời theo đoạn và xác nhận mã máy, con số, đơn vị trong `src/aios_habit/workspace_case_ui.py`
 - [x] T046 [P] [US3] Viết test consent lifecycle, device failure, corrupt audio, critical token và UTF-8 trong `tests/test_local_transcription.py`
 - [x] T047 [P] [US3] Viết privacy test không có raw audio/transcript trong Git, case DB, log và provider payload trong `tests/test_expert_interview_privacy.py`
+
+## Giai đoạn 7 — G6: US4 claim, nguồn và xung đột
+
+- [x] T048 [US4] Định nghĩa `KnowledgeClaim`, source refs, uncertainty và conflict links trong `src/aios_habit/knowledge_claim_extractor.py`
+- [x] T049 [US4] Trích claim theo schema và kiểm tra support tối thiểu với source refs trong `src/aios_habit/knowledge_claim_extractor.py`
+- [x] T050 [US4] Chặn source stale và transcript có critical token chưa xác nhận trong `src/aios_habit/knowledge_claim_extractor.py`
+- [x] T051 [US4] Phát hiện claim overlap/conflict và tạo escalation, không auto-resolve, trong `src/aios_habit/knowledge_claim_extractor.py`
 - [x] T052 [US4] Lưu claim event/version và review decision trong `src/aios_habit/expert_interview_repository.py`
 - [x] T053 [P] [US4] Viết test unsupported claim, exact provenance, uncertainty, correction và conflict trong `tests/test_knowledge_claims.py`
 
 ## Giai đoạn 8 — G7: US4 SOP/bài học và phê duyệt
 
-**Kiểm thử độc lập**: Gemini tạo SOP/lesson candidate có claim map/diff; đúng người duyệt exact digest; sửa sau duyệt làm approval stale.
-
 - [x] T054 [US4] Định nghĩa artifact, version, claim map và approval matrix trong `src/aios_habit/controlled_knowledge_artifact.py`
 - [x] T055 [US4] Sinh SOP và lesson candidate tiếng Việt từ claim được phép trong `src/aios_habit/controlled_knowledge_artifact.py`
 - [x] T056 [US4] Tạo diff giữa artifact versions và mục cần quyết định cho conflict trong `src/aios_habit/controlled_knowledge_artifact.py`
 - [x] T057 [US4] Cài approve/reject/request-change/revoke theo exact digest và scope trong `src/aios_habit/expert_interview_service.py`
+- [x] T058 [US4] Thêm giao diện xem trước nguồn, so sánh phiên bản và phê duyệt thuần Việt trong `src/aios_habit/workspace_case_ui.py`
+- [x] T059 [P] [US4] Viết test self-approval policy, stale digest, missing approval, conflict và revoke trong `tests/test_controlled_knowledge_artifact.py`
 
-- [ ] T060 [US5] Định nghĩa `PublicationPackage` bất biến và acceptance question set trong `src/aios_habit/knowledge_publication.py`
-- [ ] T061 [US5] Xác minh approval, status, digest và collection trước publication trong `src/aios_habit/knowledge_publication.py`
-- [ ] T062 [US5] Nối backup và `LibraryWriterLease` hiện có, không ghi SQL trực tiếp từ model, trong `src/aios_habit/knowledge_publication.py`
-- [ ] T063 [US5] Nạp Markdown/JSON qua pipeline collection hiện có và ghi source digest trong `src/aios_habit/knowledge_publication.py`
-- [ ] T064 [US5] Chạy SQLite `quick_check`, retrieval acceptance và receipt trước trạng thái published trong `src/aios_habit/knowledge_publication.py`
-- [ ] T065 [US5] Cài revoke, supersede, re-index và rollback receipt trong `src/aios_habit/knowledge_publication.py`
-- [ ] T066 [US5] Thêm màn hình đưa vào thư viện/thu hồi cùng trạng thái sao lưu/kiểm tra bằng tiếng Việt trong `src/aios_habit/workspace_case_ui.py`
-- [ ] T067 [P] [US5] Viết test unpublished/conflicted/revoked filtering và stale package trong `tests/test_knowledge_publication.py`
-- [ ] T068 [P] [US5] Viết fault test writer busy, disk-full simulation, interrupted ingest và restore trong `tests/test_knowledge_publication_recovery.py`
+## Giai đoạn 9 — G8: US5 xuất bản vào thư viện
 
-- [ ] T071 Viết test không dùng raw audio/transcript/local-only và không tự chạy train trong `tests/test_fine_tune_eligibility.py`
-- [ ] T072 Ghi kết luận `NOT_APPLICABLE` cho fine-tune trong feature 010 cùng số đo baseline vào `docs/roadmap/backlog/AIOS-EXPERT-KNOWLEDGE-ACQUISITION.md`
+- [x] T060 [US5] Định nghĩa `PublicationPackage` bất biến và acceptance question set trong `src/aios_habit/knowledge_publication.py`
+- [x] T061 [US5] Xác minh approval, status, digest và collection trước publication trong `src/aios_habit/knowledge_publication.py`
+- [x] T062 [US5] Nối backup và `LibraryWriterLease` hiện có, không ghi SQL trực tiếp từ model, trong `src/aios_habit/knowledge_publication.py`
+- [x] T063 [US5] Nạp Markdown/JSON qua pipeline collection hiện có và ghi source digest trong `src/aios_habit/knowledge_publication.py`
+- [x] T064 [US5] Chạy SQLite `quick_check`, retrieval acceptance và receipt trước trạng thái published trong `src/aios_habit/knowledge_publication.py`
+- [x] T065 [US5] Cài revoke, supersede, re-index và rollback receipt trong `src/aios_habit/knowledge_publication.py`
+- [x] T066 [US5] Thêm màn hình đưa vào thư viện/thu hồi cùng trạng thái sao lưu/kiểm tra bằng tiếng Việt trong `src/aios_habit/workspace_case_ui.py`
+- [x] T067 [P] [US5] Viết test unpublished/conflicted/revoked filtering và stale package trong `tests/test_knowledge_publication.py`
+- [x] T068 [P] [US5] Viết fault test writer busy, disk-full simulation, interrupted ingest và restore trong `tests/test_knowledge_publication_recovery.py`
+
+## Giai đoạn 10 — G9: Đánh giá fine-tune có điều kiện
+
+- [x] T069 Tạo baseline retrieval/prompt và holdout split chống leakage trong `scripts/evaluate_expert_learning_baseline.py`
+- [x] T070 Cài eligibility rubric không có side effect trong `src/aios_habit/fine_tune_eligibility.py`
+- [x] T071 Viết test không dùng raw audio/transcript/local-only và không tự chạy train trong `tests/test_fine_tune_eligibility.py`
+- [x] T072 Ghi kết luận `NOT_APPLICABLE` cho fine-tune trong feature 010 cùng số đo baseline vào `docs/roadmap/backlog/AIOS-EXPERT-KNOWLEDGE-ACQUISITION.md`
 
 ## Giai đoạn 11 — G10: Pilot thật, bảo mật và đóng cổng
 

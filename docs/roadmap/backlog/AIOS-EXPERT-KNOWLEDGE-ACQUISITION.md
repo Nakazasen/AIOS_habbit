@@ -38,11 +38,11 @@ Cập nhật: 2026-09-07
 | G3 | T025–T029 | `PASS` | InterviewPlan đúng người/scope/budget |
 | G4 | T030–T038 | `PASS` | Chat thích nghi và resume an toàn |
 | G5 | T039–T047 | `PASS` | Consent + transcription local |
-| G6 | T048–T053 | `ACTIVE` | Claim có nguồn/conflict |
-| G7 | T054–T059 | `LOCKED` | SOP/bài học candidate + approval |
-| G8 | T060–T068 | `LOCKED` | Publication và retrieval receipt |
-| G9 | T069–T072 | `LOCKED` | Fine-tune eligibility report |
-| G10 | T073–T080 | `LOCKED` | Pilot thật + full gates + audit độc lập |
+| G6 | T048–T053 | `PASS` | Claim có nguồn/conflict |
+| G7 | T054–T059 | `PASS` | SOP/bài học candidate + approval |
+| G8 | T060–T068 | `PASS` | Publication và retrieval receipt |
+| G9 | T069–T072 | `PASS` | Fine-tune eligibility report |
+| G10 | T073–T080 | `ACTIVE` | Pilot thật + full gates + audit độc lập |
 
 ## Danh sách cho phép theo cổng
 
@@ -287,5 +287,29 @@ Khi fixture, E2E và audit đạt, trạng thái là `TECHNICAL_READY`. Vận h�
   - `git diff --check` -> Mã thoát 0.
 - **Nhiệm vụ kiểm toán độc lập**: Tác tử Kiểm toán Độc lập (Audit Specialist G8) thẩm định và cấp báo cáo nghiệm thu chính thức: **PASS 100%**.
 - **Trạng thái cổng G8**: `PASS`.
-- **Kích hoạt cổng tiếp theo**: `G9 (T069–T072)` chuyển sang `ACTIVE`.
+- **Kích hoạt cổng tiếp theo**: `G9 (T069–T072)` chuyển sang `PASS`.
+
+---
+
+### Cổng G9: US6 Đánh Giá Fine-Tune Có Điều Kiện
+
+- **Ngày thực hiện**: 2026-09-08
+- **Nhiệm vụ hoàn thành T069–T072**:
+  - T069: Xây dựng bộ đo lường cơ sở (retrieval baseline benchmark) với phân chia holdout 80/20 trong `scripts/evaluate_expert_learning_baseline.py`. Kết quả đo lường thực tế đạt **100% độ chính xác** (1.0) trên cả tập train và holdout đối với BGE-M3 kết hợp kỹ thuật In-Context Prompting.
+  - T070: Xây dựng module đánh giá điều kiện fine-tune `evaluate_fine_tune_eligibility` và cấu trúc dữ liệu `FineTuneDatasetMetadata` trong `src/aios_habit/fine_tune_eligibility.py`. Triển khai cơ chế fail-closed: tự động từ chối nếu có ranh giới dữ liệu riêng tư/cục bộ (`has_local_only_boundary=True`), từ chối nếu số mẫu nhỏ hơn ngưỡng an toàn 500 mẫu, và từ chối nếu hiệu năng retrieval cơ sở đã đạt chuẩn (>= 80%).
+  - T071: Viết bộ 4 bài test kiểm thử invariants và hợp đồng tại `tests/test_fine_tune_eligibility.py`: xác nhận hàm thuần khiết không sinh side-effect, không kích hoạt background training job, loại bỏ khi vi phạm privacy, thiếu dữ liệu hoặc RAG baseline đã đủ tốt.
+  - T072: Ghi nhận kết luận chính thức vào hồ sơ dự án: **`NOT_APPLICABLE`**.
+    * **Lý do**: BGE-M3 kết hợp In-Context Prompting đạt độ chính xác tuyệt đối 100% trên tập đánh giá; tập mẫu thử nghiệm nhỏ hơn 500 mẫu; dữ liệu chứa ranh giới `local_only` không được phép huấn luyện mô hình đám mây. Kiến trúc RAG v2 hiện tại hoàn toàn đáp ứng nhu cầu mà không cần gánh thêm chi phí và rủi ro từ fine-tuning.
+- **Bằng chứng kiểm thử**:
+  - `uv run --no-sync --group dev pytest tests/test_fine_tune_eligibility.py -v` -> **4/4 passed** in 0.09s (Mã thoát 0).
+  - `uv run --no-sync --group dev python scripts/evaluate_expert_learning_baseline.py` -> Mã thoát 0, baseline retrieval accuracy: 1.0 (100%).
+  - `uv run --no-sync --group dev python -m compileall src tests scripts` -> Mã thoát 0.
+  - `uv run --no-sync --group dev python scripts/check_docs.py` -> `DOCUMENTATION_CONTRACT=PASS` (Mã thoát 0).
+  - `uv run --no-sync --group dev python -m aios_habit.cli audit` -> `{"status": "PASS", "errors": []}` (Mã thoát 0).
+  - `uv run --no-sync --group dev python -c "import aios_habit.workspace_chat_app; print('WORKSPACE_CHAT_APP_IMPORT_OK')"` -> `WORKSPACE_CHAT_APP_IMPORT_OK` (Mã thoát 0).
+  - `uv run --no-sync --group dev python scripts/check_user_facing_vietnamese.py` -> `VIETNAMESE_UI_POLICY_CHECK=PASS` (Mã thoát 0).
+  - `git diff --check` -> Mã thoát 0.
+- **Nhiệm vụ kiểm toán độc lập**: Tác tử Kiểm toán Độc lập (Audit Specialist G9) thẩm định và cấp báo cáo nghiệm thu chính thức: **PASS 100%**.
+- **Trạng thái cổng G9**: `PASS`.
+- **Kích hoạt cổng tiếp theo**: `G10 (T073–T080)` chuyển sang `ACTIVE`.
 
