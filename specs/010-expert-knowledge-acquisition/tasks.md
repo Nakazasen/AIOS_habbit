@@ -80,12 +80,12 @@
 
 **Kiểm thử độc lập**: chỉ source đã khóa tạo claim; claim không support bị loại; hai ngưỡng trái nhau giữ conflict và cần escalation.
 
-- [ ] T048 [US4] Định nghĩa `KnowledgeClaim`, source refs, uncertainty và conflict links trong `src/aios_habit/knowledge_claim_extractor.py`
-- [ ] T049 [US4] Trích claim theo schema và kiểm tra support tối thiểu với source refs trong `src/aios_habit/knowledge_claim_extractor.py`
-- [ ] T050 [US4] Chặn source stale và transcript có critical token chưa xác nhận trong `src/aios_habit/knowledge_claim_extractor.py`
-- [ ] T051 [US4] Phát hiện claim overlap/conflict và tạo escalation, không auto-resolve, trong `src/aios_habit/knowledge_claim_extractor.py`
-- [ ] T052 [US4] Lưu claim event/version và review decision trong `src/aios_habit/expert_interview_repository.py`
-- [ ] T053 [P] [US4] Viết test unsupported claim, exact provenance, uncertainty, correction và conflict trong `tests/test_knowledge_claims.py`
+- [x] T048 [US4] Định nghĩa `KnowledgeClaim`, source refs, uncertainty và conflict links trong `src/aios_habit/knowledge_claim_extractor.py`
+- [x] T049 [US4] Trích claim theo schema và kiểm tra support tối thiểu với source refs trong `src/aios_habit/knowledge_claim_extractor.py`
+- [x] T050 [US4] Chặn source stale và transcript có critical token chưa xác nhận trong `src/aios_habit/knowledge_claim_extractor.py`
+- [x] T051 [US4] Phát hiện claim overlap/conflict và tạo escalation, không auto-resolve, trong `src/aios_habit/knowledge_claim_extractor.py`
+- [x] T052 [US4] Lưu claim event/version và review decision trong `src/aios_habit/expert_interview_repository.py`
+- [x] T053 [P] [US4] Viết test unsupported claim, exact provenance, uncertainty, correction và conflict trong `tests/test_knowledge_claims.py`
 
 ## Giai đoạn 8 — G7: US4 SOP/bài học và phê duyệt
 

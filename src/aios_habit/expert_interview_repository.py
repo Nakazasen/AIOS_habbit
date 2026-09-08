@@ -16,6 +16,14 @@ from aios_habit.expert_interview_models import (
     InterviewSession,
     InterviewTurn,
 )
+from aios_habit.knowledge_claim_extractor import (
+    CLAIM_STATUS_CANDIDATE,
+    CLAIM_STATUS_CONFIRMED,
+    CLAIM_STATUS_CONFLICTED,
+    CLAIM_STATUS_REJECTED,
+    CLAIM_STATUS_SUPERSEDED,
+    KnowledgeClaim,
+)
 from aios_habit.local_transcription import (
     AudioPathSecurityError,
     ConsentRecord,
@@ -153,6 +161,46 @@ class ExpertInterviewRepository:
                 """
             )
             conn.execute("CREATE INDEX IF NOT EXISTS interview_transcripts_session_idx ON interview_transcripts(session_id)")
+
+            conn.execute(
+                """
+                CREATE TABLE IF NOT EXISTS knowledge_claims (
+                    claim_id TEXT PRIMARY KEY,
+                    statement TEXT NOT NULL,
+                    scope TEXT NOT NULL,
+                    source_refs_json TEXT NOT NULL,
+                    version TEXT NOT NULL,
+                    validity_conditions_json TEXT NOT NULL,
+                    confidence REAL NOT NULL,
+                    uncertainty_note TEXT NOT NULL,
+                    status TEXT NOT NULL,
+                    conflict_claim_ids_json TEXT NOT NULL,
+                    escalation_id TEXT,
+                    confirmed_by TEXT,
+                    confirmed_at TEXT,
+                    digest TEXT NOT NULL,
+                    created_at TEXT NOT NULL,
+                    idempotency_key TEXT NOT NULL UNIQUE
+                )
+                """
+            )
+            conn.execute("CREATE INDEX IF NOT EXISTS knowledge_claims_scope_idx ON knowledge_claims(scope)")
+            conn.execute("CREATE INDEX IF NOT EXISTS knowledge_claims_status_idx ON knowledge_claims(status)")
+
+            conn.execute(
+                """
+                CREATE TABLE IF NOT EXISTS claim_review_decisions (
+                    decision_id TEXT PRIMARY KEY,
+                    claim_id TEXT NOT NULL,
+                    decision TEXT NOT NULL,
+                    reviewer_id TEXT NOT NULL,
+                    reason TEXT NOT NULL,
+                    created_at TEXT NOT NULL,
+                    idempotency_key TEXT NOT NULL UNIQUE
+                )
+                """
+            )
+            conn.execute("CREATE INDEX IF NOT EXISTS claim_review_decisions_claim_idx ON claim_review_decisions(claim_id)")
 
     def save_session(self, session: InterviewSession, idempotency_key: str) -> None:
         """Idempotently save or update an interview session."""
@@ -554,4 +602,158 @@ class ExpertInterviewRepository:
                 all_critical_tokens=critical_tokens,
                 state=row["state"],
                 created_at=row["created_at"],
+            )
+
+    def save_claim(self, claim: KnowledgeClaim, idempotency_key: str) -> None:
+        """Idempotently save or update a knowledge claim."""
+        self.initialize()
+        with self._connection() as conn:
+            conn.execute(
+                """
+                INSERT INTO knowledge_claims (
+                    claim_id, statement, scope, source_refs_json,
+                    version, validity_conditions_json, confidence,
+                    uncertainty_note, status, conflict_claim_ids_json,
+                    escalation_id, confirmed_by, confirmed_at, digest,
+                    created_at, idempotency_key
+                )
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(claim_id) DO UPDATE SET
+                    statement = excluded.statement,
+                    scope = excluded.scope,
+                    source_refs_json = excluded.source_refs_json,
+                    version = excluded.version,
+                    validity_conditions_json = excluded.validity_conditions_json,
+                    confidence = excluded.confidence,
+                    uncertainty_note = excluded.uncertainty_note,
+                    status = excluded.status,
+                    conflict_claim_ids_json = excluded.conflict_claim_ids_json,
+                    escalation_id = excluded.escalation_id,
+                    confirmed_by = excluded.confirmed_by,
+                    confirmed_at = excluded.confirmed_at,
+                    digest = excluded.digest,
+                    idempotency_key = excluded.idempotency_key
+                """,
+                (
+                    claim.claim_id,
+                    claim.statement,
+                    claim.scope,
+                    json.dumps(list(claim.source_refs)),
+                    claim.version,
+                    json.dumps(list(claim.validity_conditions)),
+                    claim.confidence,
+                    claim.uncertainty_note,
+                    claim.status,
+                    json.dumps(list(claim.conflict_claim_ids)),
+                    claim.escalation_id,
+                    claim.confirmed_by,
+                    claim.confirmed_at,
+                    claim.digest,
+                    claim.created_at,
+                    idempotency_key,
+                ),
+            )
+
+    def get_claim(self, claim_id: str) -> Optional[KnowledgeClaim]:
+        """Fetch claim by ID."""
+        self.initialize()
+        with self._connection() as conn:
+            row = conn.execute(
+                """
+                SELECT claim_id, statement, scope, source_refs_json,
+                       version, validity_conditions_json, confidence,
+                       uncertainty_note, status, conflict_claim_ids_json,
+                       escalation_id, confirmed_by, confirmed_at, digest, created_at
+                FROM knowledge_claims
+                WHERE claim_id = ?
+                """,
+                (claim_id,),
+            ).fetchone()
+            if row is None:
+                return None
+
+            return KnowledgeClaim(
+                claim_id=row["claim_id"],
+                statement=row["statement"],
+                scope=row["scope"],
+                source_refs=tuple(json.loads(row["source_refs_json"])),
+                version=row["version"],
+                validity_conditions=tuple(json.loads(row["validity_conditions_json"])),
+                confidence=float(row["confidence"]),
+                uncertainty_note=row["uncertainty_note"],
+                status=row["status"],
+                conflict_claim_ids=tuple(json.loads(row["conflict_claim_ids_json"])),
+                escalation_id=row["escalation_id"],
+                confirmed_by=row["confirmed_by"],
+                confirmed_at=row["confirmed_at"],
+                created_at=row["created_at"],
+            )
+
+    def list_claims(
+        self,
+        scope: Optional[str] = None,
+        status: Optional[str] = None,
+    ) -> list[KnowledgeClaim]:
+        """List claims with optional scope and status filtering."""
+        self.initialize()
+        with self._connection() as conn:
+            query = "SELECT claim_id, statement, scope, source_refs_json, version, validity_conditions_json, confidence, uncertainty_note, status, conflict_claim_ids_json, escalation_id, confirmed_by, confirmed_at, digest, created_at FROM knowledge_claims"
+            params: list[str] = []
+            conditions: list[str] = []
+
+            if scope is not None:
+                conditions.append("scope = ?")
+                params.append(scope)
+            if status is not None:
+                conditions.append("status = ?")
+                params.append(status)
+
+            if conditions:
+                query += " WHERE " + " AND ".join(conditions)
+
+            query += " ORDER BY created_at ASC"
+
+            rows = conn.execute(query, tuple(params)).fetchall()
+            return [
+                KnowledgeClaim(
+                    claim_id=r["claim_id"],
+                    statement=r["statement"],
+                    scope=r["scope"],
+                    source_refs=tuple(json.loads(r["source_refs_json"])),
+                    version=r["version"],
+                    validity_conditions=tuple(json.loads(r["validity_conditions_json"])),
+                    confidence=float(r["confidence"]),
+                    uncertainty_note=r["uncertainty_note"],
+                    status=r["status"],
+                    conflict_claim_ids=tuple(json.loads(r["conflict_claim_ids_json"])),
+                    escalation_id=r["escalation_id"],
+                    confirmed_by=r["confirmed_by"],
+                    confirmed_at=r["confirmed_at"],
+                    created_at=r["created_at"],
+                )
+                for r in rows
+            ]
+
+    def save_claim_review_decision(
+        self,
+        decision_id: str,
+        claim_id: str,
+        decision: str,
+        reviewer_id: str,
+        reason: str,
+        idempotency_key: str,
+    ) -> None:
+        """Record review decision for a claim."""
+        self.initialize()
+        with self._connection() as conn:
+            conn.execute(
+                """
+                INSERT INTO claim_review_decisions (
+                    decision_id, claim_id, decision, reviewer_id,
+                    reason, created_at, idempotency_key
+                )
+                VALUES (?, ?, ?, ?, ?, datetime('now'), ?)
+                ON CONFLICT(decision_id) DO NOTHING
+                """,
+                (decision_id, claim_id, decision, reviewer_id, reason, idempotency_key),
             )

@@ -213,5 +213,29 @@ Khi fixture, E2E và audit đạt, trạng thái là `TECHNICAL_READY`. Vận h�
   - `git diff --check` -> Mã thoát 0.
 - **Nhiệm vụ kiểm toán độc lập**: Tác tử Kiểm toán Độc lập (Audit Specialist) thẩm định và cấp báo cáo nghiệm thu chính thức: **PASS 100%**.
 - **Trạng thái cổng G5**: `PASS`.
-- **Kích hoạt cổng tiếp theo**: `G6 (T048–T053)` chuyển sang `ACTIVE`.
+- **Kích hoạt cổng tiếp theo**: `G6 (T048–T053)` chuyển sang `PASS`.
+
+---
+
+### Cổng G6: US4 Claim, Nguồn Và Xung Đột
+
+- **Ngày thực hiện**: 2026-09-08
+- **Nhiệm vụ hoàn thành T048–T053**:
+  - T048: Định nghĩa `KnowledgeClaim`, `source_refs`, `validity_conditions`, trạng thái `candidate/confirmed/conflicted/rejected/superseded` và tính toán digest SHA-256 nội dung trong `src/aios_habit/knowledge_claim_extractor.py`.
+  - T049: Trích xuất claim nguyên tử từ lượt phỏng vấn (`extract_claim_from_turn`) với ràng buộc tối thiểu phải có nguồn chứng minh (`source_refs`), loại bỏ hoàn toàn unsupported claims (`UnsupportedClaimError`).
+  - T050: Ràng buộc an toàn thông số kỹ thuật (`critical_tokens`): transcript chứa số, đơn vị đo, mã máy chưa xác nhận thì không được trích xuất claim (`UnconfirmedCriticalTokenError`); lượt không rõ/bỏ qua bị loại; câu trả lời không chắc chắn hạ điểm tin cậy `confidence <= 0.6`.
+  - T051: Thuật toán phát hiện phân kỳ số liệu (`detect_claim_conflicts`) trong cùng phạm vi (scope) và đánh dấu mâu thuẫn (`mark_conflicting_claims`), sinh mã leo thang `ESC-CONF-<timestamp>`, tuyệt đối không tự chọn bên thắng.
+  - T052: Cài đặt bảng SQLite `knowledge_claims` và `claim_review_decisions` trong `src/aios_habit/expert_interview_repository.py` với các phương thức `save_claim`, `get_claim`, `list_claims`, `save_claim_review_decision` đảm bảo tính lũy nghiệm (idempotency) và lưu vết append-only.
+  - T053: Bộ 8 bài test hợp đồng và invariants trong `tests/test_knowledge_claims.py`.
+- **Bằng chứng kiểm thử**:
+  - `uv run --no-sync --group dev pytest tests/test_knowledge_claims.py -v` -> **8/8 passed** in 0.28s (Mã thoát 0).
+  - `uv run --no-sync --group dev python -m compileall src tests scripts` -> Mã thoát 0.
+  - `uv run --no-sync --group dev python scripts/check_docs.py` -> `DOCUMENTATION_CONTRACT=PASS` (Mã thoát 0).
+  - `uv run --no-sync --group dev python -m aios_habit.cli audit` -> `{"status": "PASS", "errors": []}` (Mã thoát 0).
+  - `uv run --no-sync --group dev python -c "import aios_habit.workspace_chat_app; print('WORKSPACE_CHAT_APP_IMPORT_OK')"` -> `WORKSPACE_CHAT_APP_IMPORT_OK` (Mã thoát 0).
+  - `uv run --no-sync --group dev python scripts/check_user_facing_vietnamese.py` -> `VIETNAMESE_UI_POLICY_CHECK=PASS` (Mã thoát 0).
+  - `git diff --check` -> Mã thoát 0.
+- **Nhiệm vụ kiểm toán độc lập**: Tác tử Kiểm toán Độc lập (Audit Specialist G6) thẩm định và cấp báo cáo nghiệm thu chính thức: **PASS 100%**.
+- **Trạng thái cổng G6**: `PASS`.
+- **Kích hoạt cổng tiếp theo**: `G7 (T054–T059)` chuyển sang `ACTIVE`.
 
