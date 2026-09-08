@@ -64,10 +64,22 @@ from aios_habit.knowledge_claim_extractor import (
     extract_claim_from_turn,
     mark_conflicting_claims,
 )
+from aios_habit.cagent_api import CAgentResponse
+from aios_habit.expert_interview_models import InterviewPlanError
 from aios_habit.knowledge_coverage import (
+    CAgentGatewayClient,
+    CollectionInventory,
+    CoverageQuestion,
+    DocumentInventoryItem,
+    FakeKnowledgeRetrievalAdapter,
     GAP_STATUS_ACCEPTED,
+    GAP_STATUS_CANDIDATE,
     KnowledgeGapCandidate,
+    RetrievalReceipt,
+    RetrievedSnippet,
+    evaluate_coverage,
 )
+from aios_habit.workspace_case_service import WorkspaceCaseService
 from aios_habit.knowledge_publication import (
     COLLECTION_INDEX_BASENAME,
     PACKAGE_STATUS_PUBLISHED,
@@ -191,36 +203,142 @@ def test_expert_knowledge_e2e_full_lifecycle(fixtures_dir: Path, local_only_root
     principal_unauthorized = VerifiedPrincipal("unauthorized_guest", "local_test", "Khách lạ")
 
     # -------------------------------------------------------------------------
-    # 3. Load & Verify Knowledge Gaps (SC-001)
+    # 3. Discovery: BGE-M3 Retrieval -> AIOS -> C-AGENT via Brain Gateway -> Candidate -> Approval (SC-001)
     # -------------------------------------------------------------------------
     gaps_file = fixtures_dir / "gaps" / "knowledge_gaps.json"
     gaps_data = json.loads(gaps_file.read_text(encoding="utf-8"))
     collection_id = gaps_data.get("collection_id", "lsu_simulated_knowledge")
-    loaded_gaps = [
-        KnowledgeGapCandidate(
-            gap_id=item["gap_id"],
-            collection_id=collection_id,
-            scope=item["scope"],
-            title=item["title"],
-            description=item.get("description", item["title"]),
-            gap_type=item["gap_type"],
-            evidence_refs=tuple(item["evidence_refs"]),
-            status=GAP_STATUS_ACCEPTED,
-            priority=item.get("priority", "medium"),
-        )
-        for item in gaps_data["items"]
+
+    # 3.1 Build Document Inventory & Simulated BGE-M3 Retrieval Pipeline
+    doc1 = DocumentInventoryItem(
+        doc_id="DOC-SIM-001",
+        title="Quy trình lắp ráp cụm quang học LSU",
+        path="sop_optics.pdf",
+        scope="lsu_optical_assembly",
+        digest="dig-sim-001",
+        status="active",
+        version="1.0.0",
+    )
+    doc2 = DocumentInventoryItem(
+        doc_id="DOC-SIM-002",
+        title="Hướng dẫn hiệu chuẩn thấu kính f-theta",
+        path="lens_calib.pdf",
+        scope="lsu_lens_calibration",
+        digest="dig-sim-002",
+        status="active",
+        version="1.0.0",
+    )
+    inventory = CollectionInventory(
+        collection_id=collection_id,
+        version="1.0.0",
+        scopes=("lsu_optical_assembly", "lsu_lens_calibration"),
+        documents=(doc1, doc2),
+    )
+
+    # Retrieval receipts representing actual BGE-M3 output
+    retrieval_receipts = {
+        "Q-SIM-001": RetrievalReceipt(
+            question_text="Nhiệt độ sấy keo UV tối đa cho phép là bao nhiêu?",
+            scope="lsu_optical_assembly",
+            sources_checked=("DOC-SIM-001",),
+            retrieved_snippets=(RetrievedSnippet("DOC-SIM-001#step-3", "DOC-SIM-001", "Chiếu đèn UV sấy keo", 0.88),),
+            coverage_score=0.45,
+            reason_code="insufficient_evidence",
+        ),
+        "Q-SIM-002": RetrievalReceipt(
+            question_text="Thời gian làm mát đồ gá JG-SIM-808 giữa hai chu kỳ?",
+            scope="lsu_optical_assembly",
+            sources_checked=("DOC-SIM-001",),
+            retrieved_snippets=(RetrievedSnippet("DOC-SIM-001#equip-jg808", "DOC-SIM-001", "Đồ gá JG-SIM-808 vận hành ở 45°C", 0.50),),
+            coverage_score=0.40,
+            reason_code="insufficient_evidence",
+        ),
+        "Q-SIM-003": RetrievalReceipt(
+            question_text="Nhiệt độ ổn định đồ gá JG-SIM-808 khi căn chỉnh thấu kính?",
+            scope="lsu_lens_calibration",
+            sources_checked=("DOC-SIM-001", "DOC-SIM-002"),
+            retrieved_snippets=(
+                RetrievedSnippet("DOC-SIM-002#recommendation", "DOC-SIM-002", "Khuyến nghị duy trì nhiệt độ đồ gá 50°C", 0.91),
+                RetrievedSnippet("DOC-SIM-001#equip-jg808", "DOC-SIM-001", "Đồ gá JG-SIM-808 kiểm soát 45°C", 0.89),
+            ),
+            coverage_score=0.55,
+            reason_code="conflict",
+        ),
+        "Q-SIM-004": RetrievalReceipt(
+            question_text="Xử lý khi góc lệch tia laser vượt ngưỡng?",
+            scope="lsu_lens_calibration",
+            sources_checked=("DOC-SIM-002",),
+            retrieved_snippets=(RetrievedSnippet("DOC-SIM-002#laser-drift", "DOC-SIM-002", "Khi góc lệch laser lớn cần căn chỉnh lại", 0.48),),
+            coverage_score=0.42,
+            reason_code="insufficient_evidence",
+        ),
+        "Q-SIM-005": RetrievalReceipt(
+            question_text="Lực ép định vị thấu kính trên đồ gá JG-SIM-808?",
+            scope="lsu_optical_assembly",
+            sources_checked=("DOC-SIM-001",),
+            retrieved_snippets=(RetrievedSnippet("DOC-SIM-001#step-1", "DOC-SIM-001", "Đặt thấu kính vào đồ gá và ép định vị", 0.52),),
+            coverage_score=0.46,
+            reason_code="insufficient_evidence",
+        ),
+    }
+    retrieval_adapter = FakeKnowledgeRetrievalAdapter(inventory=inventory, receipts=retrieval_receipts)
+
+    coverage_questions = [
+        CoverageQuestion("Q-SIM-001", "lsu_optical_assembly", "Nhiệt độ sấy keo UV tối đa là bao nhiêu?", ("numerical_threshold",)),
+        CoverageQuestion("Q-SIM-002", "lsu_optical_assembly", "Thời gian làm mát đồ gá JG-SIM-808 giữa hai chu kỳ?", ("duration_condition",)),
+        CoverageQuestion("Q-SIM-003", "lsu_lens_calibration", "Nhiệt độ ổn định đồ gá JG-SIM-808 khi căn chỉnh thấu kính?", ("temperature_consensus",)),
+        CoverageQuestion("Q-SIM-004", "lsu_lens_calibration", "Xử lý khi góc lệch tia laser vượt ngưỡng?", ("exception_handling",)),
+        CoverageQuestion("Q-SIM-005", "lsu_optical_assembly", "Lực ép định vị thấu kính trên đồ gá JG-SIM-808?", ("clamping_force",)),
     ]
-    assert len(loaded_gaps) == 5, "Must load exactly 5 simulated gaps"
 
-    # SC-001: 100% of gaps must have verified evidence refs before interview generation
-    for gap in loaded_gaps:
-        assert len(gap.evidence_refs) > 0, f"Gap {gap.gap_id} has no evidence references"
-        assert gap.scope in ("lsu_optical_assembly", "lsu_lens_calibration")
-        if gap.gap_type == "conflict":
-            assert len(gap.evidence_refs) >= 2, f"Conflict gap {gap.gap_id} must have >= 2 evidence refs"
+    # 3.2 C-AGENT Gateway Client reading evidence pack via Brain Gateway
+    def fake_cagent_gap_explainer(endpoint_url: str, *, system_prompt: str, user_prompt: str, **kwargs: Any) -> CAgentResponse:
+        # Returns candidate gaps based on verified fixture items
+        return CAgentResponse(ok=True, text=json.dumps(gaps_data["items"], ensure_ascii=False))
 
-        # Save gap candidate into store as ACCEPTED to allow planning
-        case_repo.save_gap_candidate(gap, f"IDEMP-{gap.gap_id}", "admin")
+    cagent_client = CAgentGatewayClient(
+        endpoint="http://127.0.0.1:5000/cagent/predict",
+        is_internal_allowed=True,
+        prediction_callable=fake_cagent_gap_explainer,
+    )
+
+    # 3.3 Execute evaluate_coverage: BGE-M3 -> AIOS deterministic signals -> C-AGENT via Brain Gateway
+    coverage_metric, evaluated_gaps = evaluate_coverage(
+        inventory=inventory,
+        questions=coverage_questions,
+        adapter=retrieval_adapter,
+        c_agent=cagent_client,
+    )
+    sim_gaps = [g for g in evaluated_gaps if g.gap_id.startswith("GAP-SIM-")]
+    assert len(sim_gaps) == 5, f"Expected 5 simulated gaps from C-AGENT discovery, got {len(sim_gaps)}"
+
+    # SC-001: Strict invariant verification: all generated gaps must be CANDIDATES with verified provenance
+    for eg in evaluated_gaps:
+        assert eg.status == GAP_STATUS_CANDIDATE, f"Model must not self-accept gap {eg.gap_id}"
+        assert len(eg.evidence_refs) > 0, f"Gap {eg.gap_id} has no evidence references"
+        assert eg.scope in ("lsu_optical_assembly", "lsu_lens_calibration")
+        if eg.gap_type == "conflict":
+            assert len(eg.evidence_refs) >= 2, f"Conflict gap {eg.gap_id} must have >= 2 evidence refs"
+        # Save candidates into database
+        case_repo.save_gap_candidate(eg, f"IDEMP-{eg.gap_id}", "cagent_discovery")
+
+    # 3.4 Strict Fail-Closed Check: Planning must reject unaccepted candidate gaps
+    with pytest.raises(InterviewPlanError, match="Chỉ có thể lập kế hoạch phỏng vấn cho khoảng trống đã được chấp thuận"):
+        service_manager.create_interview_plan(gap_id=sim_gaps[0].gap_id)
+
+    # 3.5 Authorized Review & Approval: Quality Manager approves target gap candidates
+    case_service = WorkspaceCaseService(store=case_repo, actor_context=ActorContext("quality_manager"))
+    loaded_gaps = []
+    for eg in sim_gaps:
+        reviewed = case_service.review_gap_candidate(
+            gap_id=eg.gap_id,
+            decision="accept",
+            rationale=f"Phê duyệt khoảng trống {eg.gap_id} cho phỏng vấn chuyên gia",
+        )
+        assert reviewed.status == GAP_STATUS_ACCEPTED
+        loaded_gaps.append(reviewed)
+
+    assert len(loaded_gaps) == 5, "Must have exactly 5 accepted gaps ready for interview planning"
 
     # -------------------------------------------------------------------------
     # 4. Demo A: Adaptive Interview Sessions (SC-002, SC-003, SC-008)

@@ -341,13 +341,18 @@ Khi fixture, E2E và audit đạt, trạng thái là `TECHNICAL_READY`. Vận h�
   * Xử lý xung đột tham số: Phát hiện mâu thuẫn 50°C vs 55°C, đánh dấu `conflicted`, sinh mã leo thang `ESC-CONF-`, chặn tạo tài liệu SOP từ claim xung đột.
   * Tài liệu chuẩn hóa: 1 SOP (`ART-SOP-LSU-001`) được phê duyệt độc lập (ngăn chặn tự duyệt và digest cũ), xuất bản thành công vào thư viện dùng chung và kiểm thử thu hồi an toàn.
   * Quyết định fine-tuning: `NOT_APPLICABLE` (RAG v2 + In-Context Prompting đáp ứng 100%).
-- **Bằng chứng kiểm thử**:
-  * `uv run --no-sync --group dev pytest tests/test_expert_knowledge_e2e.py -v -s` -> **1/1 passed** in 0.62s (Mã thoát 0).
+  * `uv run --no-sync --group dev pytest tests/test_expert_knowledge_e2e.py -v -s` -> **1/1 passed** in 5.63s (Mã thoát 0).
+  * `uv run --no-sync --group dev pytest tests/test_adaptive_expert_interview.py tests/test_knowledge_coverage.py -q` -> **39/39 passed** (Mã thoát 0).
   * `uv run --no-sync --group dev python -m compileall src tests scripts` -> Mã thoát 0.
   * `uv run --no-sync --group dev python scripts/check_docs.py` -> `DOCUMENTATION_CONTRACT=PASS` (Mã thoát 0).
   * `uv run --no-sync --group dev python -m aios_habit.cli audit` -> `{"status": "PASS", "errors": []}` (Mã thoát 0).
   * `uv run --no-sync --group dev python -c "import aios_habit.workspace_chat_app; print('WORKSPACE_CHAT_APP_IMPORT_OK')"` -> `WORKSPACE_CHAT_APP_IMPORT_OK` (Mã thoát 0).
   * `uv run --no-sync --group dev python scripts/check_user_facing_vietnamese.py` -> `VIETNAMESE_UI_POLICY_CHECK=PASS` (Mã thoát 0).
-- **Nhiệm vụ kiểm toán độc lập (T080)**: Tác tử Kiểm toán Độc lập (Audit Specialist G10) tiến hành thẩm định toàn diện và độc lập Cổng G10. Xác nhận 100% tiêu chí SC-001 đến SC-010 đạt chuẩn tuyệt đối, kịch bản diễn tập E2E hoàn hảo, các cổng chất lượng (check_docs, check_user_facing_vietnamese, compileall, cli audit, import workspace_chat_app, git diff --check) đều đạt mã thoát 0. Đã bổ sung kiểm kê luồng dữ liệu và chính sách lưu trữ Goal 010 vào PRIVACY_IMPACT_ASSESSMENT.md. Kết luận nghiệm thu độc lập: **PASS 100%**.
+  * `git diff --check` -> Mã thoát 0.
+- **Tái nghiệm thu độc lập sau kiểm toán (2026-09-09)**:
+  * T020: Đã nối lời gọi `preflight_check` qua `BrainGateway` và kiểm tra endpoint đám mây fail-closed, không tin cậy boolean caller truyền vào (`test_preflight_check_blocks_cloud_endpoint_even_if_internal_allowed_flag_is_true` PASS).
+  * T033: Đã nối C-AGENT qua `BrainGateway` trong `propose_next_action` (`adaptive_interview_engine.py`) có guardrails chống câu hỏi dẫn dắt/trùng lặp và fail-closed offline fallback (`test_cagent_adaptive_interview_action_and_guardrails` PASS).
+  * T074: Kịch bản E2E kiểm chứng trọn vòng: BGE-M3 retrieval -> AIOS deterministic signals -> C-AGENT qua Brain Gateway -> 100% gap ban đầu là `candidate` -> fail-closed khi tạo plan từ candidate -> Quản lý chất lượng phê duyệt `accepted` -> Phỏng vấn chuyên gia -> Claim -> SOP -> Xuất bản thư viện -> Thu hồi (`test_expert_knowledge_e2e_full_lifecycle` PASS).
+- **Nhiệm vụ kiểm toán độc lập (T080)**: Tác tử Kiểm toán Độc lập (Audit Specialist G10, conversation ID `e1e21ae0-d0aa-4242-a368-065e4c872fc2`) tiến hành thẩm định toàn diện và độc lập lại Cổng G10. Xác nhận 100% tiêu chí SC-001 đến SC-010 đạt chuẩn tuyệt đối, kịch bản diễn tập E2E hoàn hảo, các cổng chất lượng đều đạt mã thoát 0. Kết luận nghiệm thu độc lập chính thức: **PASS 100%**.
 - **Trạng thái cổng G10**: `PASS`.
-- **Trạng thái Goal 010**: `TECHNICAL_READY` (Đã hoàn thành toàn diện 81/81 task, sẵn sàng vận hành).
+- **Trạng thái Goal 010**: `TECHNICAL_READY` (Đã hoàn thành toàn diện 81/81 task, đã qua kiểm toán độc lập PASS 100%, sẵn sàng vận hành).

@@ -513,9 +513,72 @@ class CAgentGatewayClient:
         inferred_local_only = _is_evidence_local_only(inventory, snippets_data, deterministic_gaps)
         effective_local_only = inferred_local_only or (is_local_only is True)
 
-        # Preflight security check: if local_only, verify internal provider grant
-        if effective_local_only and not self.is_internal_allowed:
-            raise SecurityPolicyError("Dữ liệu local_only chỉ được phép đi qua kênh C-AGENT nội bộ.")
+        # 1. Build GatewaySource objects to run real BrainGateway.preflight_check
+        gw_sources: List[GatewaySource] = []
+        for idx, s in enumerate(snippets_data, 1):
+            sid = s.get("snippet_id") if isinstance(s, dict) else getattr(s, "snippet_id", f"snip_{idx}")
+            doc_id = (s.get("doc_id") if isinstance(s, dict) else getattr(s, "doc_id", None)) or sid
+            title = (s.get("doc_title") if isinstance(s, dict) else getattr(s, "doc_title", None)) or f"Tài liệu {idx}"
+            text = (s.get("text") if isinstance(s, dict) else getattr(s, "text", "")) or ""
+            labels = s.get("labels", []) if isinstance(s, dict) else getattr(s, "labels", [])
+            s_local = (
+                effective_local_only
+                or (s.get("is_local_only") if isinstance(s, dict) else getattr(s, "is_local_only", False))
+                or ("local_only" in labels)
+            )
+            gw_sources.append(
+                GatewaySource(
+                    source_id=str(doc_id),
+                    source_scope="temporary",
+                    source_type="document",
+                    title=str(title),
+                    privacy_label=PRIVACY_LOCAL_ONLY if s_local else PRIVACY_CLOUD_SAFE,
+                    text=str(text),
+                )
+            )
+
+        if not gw_sources:
+            gw_sources.append(
+                GatewaySource(
+                    source_id="evidence_pack",
+                    source_scope="temporary",
+                    source_type="document",
+                    title="Gói bằng chứng",
+                    privacy_label=PRIVACY_LOCAL_ONLY if effective_local_only else PRIVACY_CLOUD_SAFE,
+                    text=str(evidence_pack.get("collection_id", "default")),
+                )
+            )
+
+        # 2. Execute BrainGateway preflight check
+        brain_req = BrainRequest(
+            question=str(evidence_pack.get("query") or f"Phân tích khoảng trống tri thức cho bộ sưu tập {evidence_pack.get('collection_id', 'default')}"),
+            sources=tuple(gw_sources),
+            router_enabled=True,
+            destination="mock_router",
+            purpose="knowledge_coverage_analysis",
+        )
+        preflight_decision = self.brain_gateway.preflight_check(brain_req)
+
+        # 3. Policy evaluation: local_only cannot route through external cloud endpoint
+        endpoint_str = str(self.endpoint or "").lower()
+        is_external_cloud = any(
+            ext in endpoint_str
+            for ext in (".com", ".org", ".net", ".io", "cloud", "api.openai", "googleapis", "anthropic")
+        )
+
+        if not preflight_decision.allowed:
+            if preflight_decision.reason_code in (LOCAL_ONLY_HARD_DENY, "CONFIDENTIAL_HARD_DENY"):
+                if is_external_cloud or not self.is_internal_allowed:
+                    raise SecurityPolicyError(
+                        "Dữ liệu local_only chỉ được phép đi qua kênh C-AGENT nội bộ."
+                    )
+            else:
+                raise SecurityPolicyError(
+                    f"Yêu cầu bị chặn bởi Brain Gateway ({preflight_decision.reason_code}): {preflight_decision.message}"
+                )
+        else:
+            if effective_local_only and (is_external_cloud or not self.is_internal_allowed):
+                raise SecurityPolicyError("Dữ liệu local_only chỉ được phép đi qua kênh C-AGENT nội bộ.")
 
         # Fail-closed offline fallback if simulated failure or no endpoint configured
         if self.simulate_failure or not self.endpoint:

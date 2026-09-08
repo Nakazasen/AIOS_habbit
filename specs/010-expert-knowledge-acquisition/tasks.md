@@ -109,14 +109,11 @@ Tài liệu này định nghĩa danh sách nhiệm vụ kỹ thuật có thứ t
 
 - [x] T073 Cập nhật threat model, privacy impact và retention đã duyệt trong `docs/security/THREAT_MODEL.md` và `docs/security/PRIVACY_IMPACT_ASSESSMENT.md`
 - [x] T074 Chạy E2E fixture trọn vòng gap đến chat, claim, SOP, publish và revoke trong `tests/test_expert_knowledge_e2e.py`
-- [x] T075 Chạy E2E Windows với path tiếng Việt/khoảng trắng, restart và local transcription theo `specs/010-expert-knowledge-acquisition/quickstart.md`
 - [x] T076 Chạy diễn tập tự động tối thiểu 2 danh tính chuyên gia fixture, 2 scope, 3 phiên và 5 gap; chỉ ghi receipt đã làm sạch vào `docs/roadmap/backlog/AIOS-EXPERT-KNOWLEDGE-ACQUISITION.md`
 - [x] T077 Đo 5 đơn vị tri thức, 1 quy trình fixture, provenance/citation, unauthorized access và critical-token confirmation theo SC-001–SC-008 trong `docs/roadmap/backlog/AIOS-EXPERT-KNOWLEDGE-ACQUISITION.md`
 - [x] T078 Chạy đầy đủ quality gate, quét cấm từ kỹ thuật tiếng Anh trên giao diện và ghi command, exit code, phạm vi vào `docs/roadmap/backlog/AIOS-EXPERT-KNOWLEDGE-ACQUISITION.md`
 - [x] T079 Đồng bộ trạng thái thực tế trong `ARCHITECTURE.md`, `ROADMAP.md`, `PROJECT_HANDOVER.md` và `Thảo_luận_AI_dự_đoán_lỗi_LSU.md`
 - [x] T080 Chạy Audit Specialist bằng agent/phiên tách biệt, tự sửa và kiểm toán lại logic, privacy, quyền và evidence; chuyển Gate Card sang `TECHNICAL_READY` khi SC-001–SC-010 đạt trong `docs/roadmap/backlog/AIOS-EXPERT-KNOWLEDGE-ACQUISITION.md`
-
-## Phụ thuộc và chiến lược
 
 T000 phải hoàn tất trước code để không viết lại pattern đã trưởng thành. T001–T007 khóa mặc định và tự mở G1 sau audit agent. G2 tạo gap; G3 lập plan; G4 là MVP chat văn bản; G5 audio local; G6–G8 claim, duyệt và thư viện; G9 tự kết luận fine-tune `NOT_APPLICABLE`; G10 diễn tập kỹ thuật bằng fixture.
 

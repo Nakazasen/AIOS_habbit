@@ -87,11 +87,13 @@ class ExpertInterviewService:
         interview_repo: Optional[ExpertInterviewRepository] = None,
         *,
         actor_context: Optional[ActorContext] = None,
+        gateway_client: Optional[Any] = None,
     ) -> None:
         self.store = store or WorkspaceCaseRepository()
         self.interview_repo = interview_repo or ExpertInterviewRepository(self.store.database_path)
         self.actor = actor_context or trusted_local_actor()
         self.authorization = WorkspaceCaseAuthorization(self.store)
+        self.gateway_client = gateway_client
         self._plan_cache: dict[str, InterviewPlan] = {}
 
     def resolve_eligible_experts(
@@ -433,6 +435,7 @@ class ExpertInterviewService:
             rubric=plan.completion_rubric,
             latest_answer=answer_text,
             gap=gap or KnowledgeGapCandidate("G", "C", plan.required_scope, "T", "D", "missing_threshold", ("DOC-1",)),
+            gateway_client=self.gateway_client,
         )
 
         # Check if terminal

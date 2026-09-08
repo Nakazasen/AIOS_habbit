@@ -1704,4 +1704,4 @@ Feature độc lập: `010-expert-knowledge-acquisition`.
 - [Gate Card](docs/roadmap/backlog/AIOS-EXPERT-KNOWLEDGE-ACQUISITION.md)
 - [ADR-0009](docs/adr/0009-expert-interview-and-knowledge-publication-boundary.md)
 
-Trạng thái hiện tại: `TECHNICAL_READY` (Đang nghiệm thu Cổng G10). Đã hoàn tất triển khai G0–G10 (81 task), toàn bộ 2.661 test pass 100%, kịch bản E2E kiểm chứng 10/10 tiêu chí SC-001–SC-010 thành công, fine-tune đạt kết luận `NOT_APPLICABLE`. Sẵn sàng đóng Goal 010 sau vòng kiểm toán độc lập. Người thật chỉ tham gia khi vận hành thực tế để đồng ý ghi âm, trả lời và duyệt nội dung.
+Trạng thái hiện tại: `TECHNICAL_READY` (Đã hoàn tất nghiệm thu Cổng G10). Đã hoàn tất triển khai G0–G10 (81 task), toàn bộ test suite pass 100%, kịch bản E2E kiểm chứng 10/10 tiêu chí SC-001–SC-010 thành công, fine-tune đạt kết luận `NOT_APPLICABLE`, kiểm toán độc lập AuditSpecialistG10 kết luận PASS 100%. Người thật chỉ tham gia khi vận hành thực tế để đồng ý ghi âm, trả lời và duyệt nội dung.

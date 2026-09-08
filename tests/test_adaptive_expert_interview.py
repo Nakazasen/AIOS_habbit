@@ -548,3 +548,119 @@ def test_stop_command_ends_session(repo: WorkspaceCaseRepository, service: Exper
     sess_stopped = service.interview_repo.get_session(session.session_id)
     assert sess_stopped.state == SESSION_STATE_STOPPED
     assert sess_stopped.stop_reason == "expert_stopped"
+
+
+def test_cagent_adaptive_interview_action_and_guardrails():
+    """C-AGENT via Brain Gateway proposes adaptive question, leading questions are rejected, and failures fallback safely (T033, T034)."""
+    import json
+    from typing import Any
+    from aios_habit.cagent_api import CAgentResponse
+    from aios_habit.knowledge_coverage import CAgentGatewayClient, KnowledgeGapCandidate
+    from aios_habit.adaptive_interview_engine import propose_next_action
+    from aios_habit.expert_interview_models import (
+        ACTION_ASK_FOLLOWUP,
+        ACTION_REQUEST_CONFIRMATION,
+        CompletionRubric,
+        InterviewBudget,
+    )
+
+    budget = InterviewBudget(max_turns=5, max_minutes=30, token_budget=4000)
+    rubric = CompletionRubric(
+        required_aspects=("threshold", "unit"),
+        min_grounded_claims=1,
+        allow_unknown=True,
+        stop_on_repeated_unknowns=2,
+        escalation_owner="supervisor_lead",
+    )
+    gap = KnowledgeGapCandidate(
+        gap_id="GAP-CAGENT-TEST",
+        collection_id="col-optics",
+        scope="lsu_optical_assembly",
+        title="Khoảng trống nhiệt độ sấy",
+        description="Thiếu ngưỡng nhiệt độ sấy keo UV",
+        gap_type="missing_threshold",
+        evidence_refs=("DOC-1#chunk_1",),
+        status="accepted",
+    )
+
+    # 1. Successful C-AGENT response via Brain Gateway
+    def mock_cagent_valid(endpoint_url: str, *, system_prompt: str, user_prompt: str, **kwargs: Any) -> CAgentResponse:
+        payload = {
+            "action": "ask_followup",
+            "reason": "missing_threshold",
+            "question": "Nhiệt độ tối đa cho phép trong buồng sấy quang học là bao nhiêu độ C?",
+            "trigger_refs": ["TURN-1"],
+            "expected_evidence": ["numerical_threshold", "temperature_unit"],
+            "confidence": 0.92,
+        }
+        return CAgentResponse(ok=True, text=json.dumps(payload, ensure_ascii=False))
+
+    client_valid = CAgentGatewayClient(
+        endpoint="http://127.0.0.1:5000/cagent/predict",
+        is_internal_allowed=True,
+        prediction_callable=mock_cagent_valid,
+    )
+
+    dec_valid = propose_next_action(
+        turns_history=[{"sequence": 1, "question_text": "Bắt đầu", "answer_text": "Cần sấy keo UV"}],
+        budget=budget,
+        rubric=rubric,
+        latest_answer="Hiện tại chúng tôi sấy keo UV ở buồng nhiệt riêng theo chu trình tiêu chuẩn.",
+        gap=gap,
+        gateway_client=client_valid,
+    )
+    assert dec_valid.action == ACTION_ASK_FOLLOWUP
+    assert dec_valid.reason == "missing_threshold"
+    assert "Nhiệt độ tối đa cho phép" in dec_valid.question
+    assert dec_valid.confidence == 0.92
+
+    # 2. C-AGENT returns a leading question -> Filtered by guardrail (T034) -> fallback to deterministic
+    def mock_cagent_leading(endpoint_url: str, *, system_prompt: str, user_prompt: str, **kwargs: Any) -> CAgentResponse:
+        payload = {
+            "action": "ask_followup",
+            "reason": "missing_threshold",
+            "question": "Có phải là nhiệt độ luôn dưới 50 độ C đúng không?",  # Leading question!
+            "trigger_refs": ["TURN-1"],
+            "expected_evidence": ["confirmation"],
+            "confidence": 0.8,
+        }
+        return CAgentResponse(ok=True, text=json.dumps(payload, ensure_ascii=False))
+
+    client_leading = CAgentGatewayClient(
+        endpoint="http://127.0.0.1:5000/cagent/predict",
+        is_internal_allowed=True,
+        prediction_callable=mock_cagent_leading,
+    )
+
+    dec_fallback = propose_next_action(
+        turns_history=[{"sequence": 1, "question_text": "Bắt đầu", "answer_text": "Cần sấy keo UV"}],
+        budget=budget,
+        rubric=rubric,
+        latest_answer="Cần sấy keo UV",
+        gap=gap,
+        gateway_client=client_leading,
+    )
+    # The leading question was rejected; deterministic rule generated a neutral question asking for threshold
+    assert "có phải là" not in dec_fallback.question.lower()
+    assert "đúng không" not in dec_fallback.question.lower()
+    assert dec_fallback.action == ACTION_ASK_FOLLOWUP
+
+    # 3. C-AGENT network failure -> Fail-closed offline fallback preserves session
+    def mock_cagent_failure(endpoint_url: str, **kwargs: Any) -> CAgentResponse:
+        raise ConnectionResetError("Mất kết nối gateway")
+
+    client_fail = CAgentGatewayClient(
+        endpoint="http://127.0.0.1:5000/cagent/predict",
+        is_internal_allowed=True,
+        prediction_callable=mock_cagent_failure,
+    )
+
+    dec_offline = propose_next_action(
+        turns_history=[{"sequence": 1, "question_text": "Bắt đầu", "answer_text": "Nhiệt độ 55 độ C"}],
+        budget=budget,
+        rubric=rubric,
+        latest_answer="Nhiệt độ chuẩn là 55 độ C không có ngoại lệ",
+        gap=gap,
+        gateway_client=client_fail,
+    )
+    assert dec_offline.action == ACTION_REQUEST_CONFIRMATION
