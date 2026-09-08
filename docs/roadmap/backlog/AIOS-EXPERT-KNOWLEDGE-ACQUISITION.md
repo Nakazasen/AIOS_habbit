@@ -237,5 +237,29 @@ Khi fixture, E2E và audit đạt, trạng thái là `TECHNICAL_READY`. Vận h�
   - `git diff --check` -> Mã thoát 0.
 - **Nhiệm vụ kiểm toán độc lập**: Tác tử Kiểm toán Độc lập (Audit Specialist G6) thẩm định và cấp báo cáo nghiệm thu chính thức: **PASS 100%**.
 - **Trạng thái cổng G6**: `PASS`.
-- **Kích hoạt cổng tiếp theo**: `G7 (T054–T059)` chuyển sang `ACTIVE`.
+- **Kích hoạt cổng tiếp theo**: `G7 (T054–T059)` chuyển sang `PASS`.
+
+---
+
+### Cổng G7: US4 SOP/Bài Học Và Phê Duyệt
+
+- **Ngày thực hiện**: 2026-09-08
+- **Nhiệm vụ hoàn thành T054–T059**:
+  - T054: Định nghĩa `ControlledKnowledgeArtifact`, `ArtifactApproval`, `ArtifactDiffReport` và tính toán digest SHA-256 nội dung trong `src/aios_habit/controlled_knowledge_artifact.py`.
+  - T055: Hàm sinh SOP (`generate_candidate_sop`) và bài học kinh nghiệm (`generate_candidate_lesson`) bằng Markdown tiếng Việt chuẩn với cấu trúc bài bản, tự động ánh xạ claim map, fail-closed từ chối nếu có claim xung đột (`ConflictedClaimArtifactError`).
+  - T056: Hàm so sánh phiên bản (`generate_artifact_diff`) tạo unified diff giữa các bản sửa đổi và xác định điểm quyết định khi xung đột (`conflict_decision_items`).
+  - T057: Cài đặt quy trình phê duyệt trong `src/aios_habit/expert_interview_service.py` với phương thức `submit_artifact_approval`, thực thi chính sách cấm tự duyệt (`SelfApprovalDeniedError`), phát hiện digest bị cũ/lệch (`StaleArtifactDigestError`), chặn duyệt tài liệu có claim xung đột trong kho, và lưu vết kiểm toán bất biến.
+  - T058: Bổ sung giao diện `render_controlled_artifacts_management` trong `src/aios_habit/workspace_case_ui.py` với 4 tab thuần Việt: xem trước nội dung, bản đồ nguồn, so sánh phiên bản và form duyệt với xử lý lỗi tiếng Việt an toàn.
+  - T059: Bộ 8 bài test hợp đồng và invariants trong `tests/test_controlled_knowledge_artifact.py`.
+- **Bằng chứng kiểm thử**:
+  - `uv run --no-sync --group dev pytest tests/test_controlled_knowledge_artifact.py -v` -> **8/8 passed** in 0.84s (Mã thoát 0).
+  - `uv run --no-sync --group dev python -m compileall src tests scripts` -> Mã thoát 0.
+  - `uv run --no-sync --group dev python scripts/check_docs.py` -> `DOCUMENTATION_CONTRACT=PASS` (Mã thoát 0).
+  - `uv run --no-sync --group dev python -m aios_habit.cli audit` -> `{"status": "PASS", "errors": []}` (Mã thoát 0).
+  - `uv run --no-sync --group dev python -c "import aios_habit.workspace_chat_app; print('WORKSPACE_CHAT_APP_IMPORT_OK')"` -> `WORKSPACE_CHAT_APP_IMPORT_OK` (Mã thoát 0).
+  - `uv run --no-sync --group dev python scripts/check_user_facing_vietnamese.py` -> `VIETNAMESE_UI_POLICY_CHECK=PASS` (Mã thoát 0).
+  - `git diff --check` -> Mã thoát 0.
+- **Nhiệm vụ kiểm toán độc lập**: Tác tử Kiểm toán Độc lập (Audit Specialist G7) thẩm định và cấp báo cáo nghiệm thu chính thức: **PASS 100%**.
+- **Trạng thái cổng G7**: `PASS`.
+- **Kích hoạt cổng tiếp theo**: `G8 (T060–T068)` chuyển sang `ACTIVE`.
 

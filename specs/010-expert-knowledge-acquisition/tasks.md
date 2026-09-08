@@ -91,12 +91,12 @@
 
 **Kiểm thử độc lập**: Gemini tạo SOP/lesson candidate có claim map/diff; đúng người duyệt exact digest; sửa sau duyệt làm approval stale.
 
-- [ ] T054 [US4] Định nghĩa artifact, version, claim map và approval matrix trong `src/aios_habit/controlled_knowledge_artifact.py`
-- [ ] T055 [US4] Sinh SOP và lesson candidate tiếng Việt từ claim được phép trong `src/aios_habit/controlled_knowledge_artifact.py`
-- [ ] T056 [US4] Tạo diff giữa artifact versions và mục cần quyết định cho conflict trong `src/aios_habit/controlled_knowledge_artifact.py`
-- [ ] T057 [US4] Cài approve/reject/request-change/revoke theo exact digest và scope trong `src/aios_habit/expert_interview_service.py`
-- [ ] T058 [US4] Thêm giao diện xem trước nguồn, so sánh phiên bản và phê duyệt thuần Việt trong `src/aios_habit/workspace_case_ui.py`
-- [ ] T059 [P] [US4] Viết test self-approval policy, stale digest, missing approval, conflict và revoke trong `tests/test_controlled_knowledge_artifact.py`
+- [x] T054 [US4] Định nghĩa artifact, version, claim map và approval matrix trong `src/aios_habit/controlled_knowledge_artifact.py`
+- [x] T055 [US4] Sinh SOP và lesson candidate tiếng Việt từ claim được phép trong `src/aios_habit/controlled_knowledge_artifact.py`
+- [x] T056 [US4] Tạo diff giữa artifact versions và mục cần quyết định cho conflict trong `src/aios_habit/controlled_knowledge_artifact.py`
+- [x] T057 [US4] Cài approve/reject/request-change/revoke theo exact digest và scope trong `src/aios_habit/expert_interview_service.py`
+- [x] T058 [US4] Thêm giao diện xem trước nguồn, so sánh phiên bản và phê duyệt thuần Việt trong `src/aios_habit/workspace_case_ui.py`
+- [x] T059 [P] [US4] Viết test self-approval policy, stale digest, missing approval, conflict và revoke trong `tests/test_controlled_knowledge_artifact.py`
 
 ## Giai đoạn 9 — G8: US5 xuất bản vào thư viện
 

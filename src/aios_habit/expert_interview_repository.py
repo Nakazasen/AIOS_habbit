@@ -5,6 +5,16 @@ Follows ADR-0009 and data-model.md.
 """
 from __future__ import annotations
 
+from aios_habit.controlled_knowledge_artifact import (
+    ARTIFACT_STATUS_APPROVED,
+    ARTIFACT_STATUS_CANDIDATE,
+    ARTIFACT_STATUS_CHANGES_REQUESTED,
+    ARTIFACT_STATUS_REJECTED,
+    ARTIFACT_STATUS_REVOKED,
+    ArtifactApproval,
+    ControlledKnowledgeArtifact,
+)
+
 import json
 import sqlite3
 from contextlib import contextmanager
@@ -201,6 +211,46 @@ class ExpertInterviewRepository:
                 """
             )
             conn.execute("CREATE INDEX IF NOT EXISTS claim_review_decisions_claim_idx ON claim_review_decisions(claim_id)")
+
+            conn.execute(
+                """
+                CREATE TABLE IF NOT EXISTS controlled_knowledge_artifacts (
+                    artifact_id TEXT PRIMARY KEY,
+                    artifact_type TEXT NOT NULL,
+                    title TEXT NOT NULL,
+                    scope TEXT NOT NULL,
+                    version TEXT NOT NULL,
+                    content_markdown TEXT NOT NULL,
+                    claim_ids_json TEXT NOT NULL,
+                    claim_map_json TEXT NOT NULL,
+                    status TEXT NOT NULL,
+                    created_by TEXT NOT NULL,
+                    digest TEXT NOT NULL,
+                    created_at TEXT NOT NULL,
+                    idempotency_key TEXT NOT NULL UNIQUE
+                )
+                """
+            )
+            conn.execute("CREATE INDEX IF NOT EXISTS artifacts_scope_idx ON controlled_knowledge_artifacts(scope)")
+            conn.execute("CREATE INDEX IF NOT EXISTS artifacts_status_idx ON controlled_knowledge_artifacts(status)")
+
+            conn.execute(
+                """
+                CREATE TABLE IF NOT EXISTS artifact_approvals (
+                    approval_id TEXT PRIMARY KEY,
+                    artifact_id TEXT NOT NULL,
+                    artifact_digest TEXT NOT NULL,
+                    action TEXT NOT NULL,
+                    actor_id TEXT NOT NULL,
+                    scope TEXT NOT NULL,
+                    reason TEXT NOT NULL,
+                    created_at TEXT NOT NULL,
+                    idempotency_key TEXT NOT NULL UNIQUE
+                )
+                """
+            )
+            conn.execute("CREATE INDEX IF NOT EXISTS artifact_approvals_art_idx ON artifact_approvals(artifact_id)")
+
 
     def save_session(self, session: InterviewSession, idempotency_key: str) -> None:
         """Idempotently save or update an interview session."""
@@ -757,3 +807,163 @@ class ExpertInterviewRepository:
                 """,
                 (decision_id, claim_id, decision, reviewer_id, reason, idempotency_key),
             )
+
+    def save_artifact(self, artifact: ControlledKnowledgeArtifact, idempotency_key: str) -> None:
+        """Save or update controlled knowledge artifact idempotently."""
+        self.initialize()
+        with self._connection() as conn:
+            conn.execute(
+                """
+                INSERT INTO controlled_knowledge_artifacts (
+                    artifact_id, artifact_type, title, scope, version,
+                    content_markdown, claim_ids_json, claim_map_json,
+                    status, created_by, digest, created_at, idempotency_key
+                )
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(artifact_id) DO UPDATE SET
+                    title = excluded.title,
+                    version = excluded.version,
+                    content_markdown = excluded.content_markdown,
+                    claim_ids_json = excluded.claim_ids_json,
+                    claim_map_json = excluded.claim_map_json,
+                    status = excluded.status,
+                    digest = excluded.digest,
+                    idempotency_key = excluded.idempotency_key
+                """,
+                (
+                    artifact.artifact_id,
+                    artifact.artifact_type,
+                    artifact.title,
+                    artifact.scope,
+                    artifact.version,
+                    artifact.content_markdown,
+                    json.dumps(list(artifact.claim_ids)),
+                    json.dumps(artifact.claim_map),
+                    artifact.status,
+                    artifact.created_by,
+                    artifact.digest,
+                    artifact.created_at,
+                    idempotency_key,
+                ),
+            )
+
+    def get_artifact(self, artifact_id: str) -> Optional[ControlledKnowledgeArtifact]:
+        """Fetch artifact by ID including associated approvals."""
+        self.initialize()
+        with self._connection() as conn:
+            row = conn.execute(
+                """
+                SELECT artifact_id, artifact_type, title, scope, version,
+                       content_markdown, claim_ids_json, claim_map_json,
+                       status, created_by, digest, created_at
+                FROM controlled_knowledge_artifacts
+                WHERE artifact_id = ?
+                """,
+                (artifact_id,),
+            ).fetchone()
+            if row is None:
+                return None
+
+            approvals = self.list_artifact_approvals(artifact_id)
+
+            return ControlledKnowledgeArtifact(
+                artifact_id=row["artifact_id"],
+                artifact_type=row["artifact_type"],
+                title=row["title"],
+                scope=row["scope"],
+                version=row["version"],
+                content_markdown=row["content_markdown"],
+                claim_ids=tuple(json.loads(row["claim_ids_json"])),
+                claim_map=json.loads(row["claim_map_json"]),
+                status=row["status"],
+                created_by=row["created_by"],
+                created_at=row["created_at"],
+                approvals=tuple(approvals),
+            )
+
+    def list_artifacts(
+        self,
+        scope: Optional[str] = None,
+        status: Optional[str] = None,
+    ) -> list[ControlledKnowledgeArtifact]:
+        """List artifacts with optional filtering."""
+        self.initialize()
+        with self._connection() as conn:
+            query = "SELECT artifact_id FROM controlled_knowledge_artifacts"
+            params: list[str] = []
+            conditions: list[str] = []
+
+            if scope is not None:
+                conditions.append("scope = ?")
+                params.append(scope)
+            if status is not None:
+                conditions.append("status = ?")
+                params.append(status)
+
+            if conditions:
+                query += " WHERE " + " AND ".join(conditions)
+
+            query += " ORDER BY created_at ASC"
+            rows = conn.execute(query, tuple(params)).fetchall()
+
+            result: list[ControlledKnowledgeArtifact] = []
+            for r in rows:
+                art = self.get_artifact(r["artifact_id"])
+                if art:
+                    result.append(art)
+            return result
+
+    def save_artifact_approval(self, approval: ArtifactApproval, idempotency_key: str) -> None:
+        """Record approval action audit log."""
+        self.initialize()
+        with self._connection() as conn:
+            conn.execute(
+                """
+                INSERT INTO artifact_approvals (
+                    approval_id, artifact_id, artifact_digest, action,
+                    actor_id, scope, reason, created_at, idempotency_key
+                )
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(approval_id) DO NOTHING
+                """,
+                (
+                    approval.approval_id,
+                    approval.artifact_id,
+                    approval.artifact_digest,
+                    approval.action,
+                    approval.actor_id,
+                    approval.scope,
+                    approval.reason,
+                    approval.created_at,
+                    idempotency_key,
+                ),
+            )
+
+    def list_artifact_approvals(self, artifact_id: str) -> list[ArtifactApproval]:
+        """Fetch all approval decisions for an artifact."""
+        self.initialize()
+        with self._connection() as conn:
+            rows = conn.execute(
+                """
+                SELECT approval_id, artifact_id, artifact_digest, action,
+                       actor_id, scope, reason, created_at
+                FROM artifact_approvals
+                WHERE artifact_id = ?
+                ORDER BY created_at ASC
+                """,
+                (artifact_id,),
+            ).fetchall()
+
+            return [
+                ArtifactApproval(
+                    approval_id=r["approval_id"],
+                    artifact_id=r["artifact_id"],
+                    artifact_digest=r["artifact_digest"],
+                    action=r["action"],
+                    actor_id=r["actor_id"],
+                    scope=r["scope"],
+                    reason=r["reason"],
+                    created_at=r["created_at"],
+                )
+                for r in rows
+            ]

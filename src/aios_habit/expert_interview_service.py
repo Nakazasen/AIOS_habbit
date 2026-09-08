@@ -49,6 +49,25 @@ from aios_habit.expert_interview_models import (
     REASON_EXPERT_STOP,
 )
 from aios_habit.expert_interview_repository import ExpertInterviewRepository
+from aios_habit.controlled_knowledge_artifact import (
+    APPROVAL_ACTION_APPROVE,
+    APPROVAL_ACTION_REJECT,
+    APPROVAL_ACTION_REQUEST_CHANGE,
+    APPROVAL_ACTION_REVOKE,
+    ARTIFACT_STATUS_APPROVED,
+    ARTIFACT_STATUS_CANDIDATE,
+    ARTIFACT_STATUS_CHANGES_REQUESTED,
+    ARTIFACT_STATUS_REJECTED,
+    ARTIFACT_STATUS_REVOKED,
+    ArtifactApproval,
+    ConflictedClaimArtifactError,
+    ControlledArtifactError,
+    ControlledKnowledgeArtifact,
+    SelfApprovalDeniedError,
+    StaleArtifactDigestError,
+)
+from aios_habit.knowledge_claim_extractor import CLAIM_STATUS_CONFLICTED
+
 from aios_habit.knowledge_coverage import GAP_STATUS_ACCEPTED, KnowledgeGapCandidate
 from aios_habit.workspace_case_authorization import (
     ActorContext,
@@ -500,3 +519,94 @@ class ExpertInterviewService:
         )
         self.interview_repo.save_session(resumed_session, f"IDEMP-RESUME-{session_id}-{now_iso}")
         return resumed_session
+
+    def create_controlled_artifact(
+        self,
+        artifact: ControlledKnowledgeArtifact,
+        idempotency_key: str,
+    ) -> ControlledKnowledgeArtifact:
+        """Create and persist a candidate controlled knowledge artifact."""
+        self.interview_repo.save_artifact(artifact, idempotency_key)
+        return artifact
+
+    def submit_artifact_approval(
+        self,
+        approval_id: str,
+        artifact_id: str,
+        action: str,
+        actor_id: str,
+        expected_digest: str,
+        reason: str,
+        idempotency_key: str,
+    ) -> ControlledKnowledgeArtifact:
+        """Process approval decision with fail-closed self-approval, stale digest, and conflict guards.
+
+        Implements T057.
+        """
+        artifact = self.interview_repo.get_artifact(artifact_id)
+        if artifact is None:
+            raise ControlledArtifactError(f"Không tìm thấy tài liệu quy chuẩn '{artifact_id}'.")
+
+        # 1. Fail-closed: Self-approval policy
+        if actor_id == artifact.created_by:
+            raise SelfApprovalDeniedError(
+                f"Người tạo tài liệu '{actor_id}' không được phép tự phê duyệt tài liệu do mình tạo."
+            )
+
+        # 2. Fail-closed: Stale digest check
+        if expected_digest != artifact.digest:
+            raise StaleArtifactDigestError(
+                f"Mã kiểm tra tài liệu không khớp (kỳ vọng: {expected_digest[:8]}..., thực tế: {artifact.digest[:8]}...). Tài liệu có thể đã bị sửa đổi."
+            )
+
+        # 3. Fail-closed: Cannot approve artifact referencing conflicted claims
+        if action == APPROVAL_ACTION_APPROVE:
+            for claim_id in artifact.claim_ids:
+                claim = self.interview_repo.get_claim(claim_id)
+                if claim and claim.status == CLAIM_STATUS_CONFLICTED:
+                    raise ConflictedClaimArtifactError(
+                        f"Không thể phê duyệt tài liệu '{artifact_id}' vì phát biểu tri thức '{claim_id}' đang trong trạng thái xung đột chưa giải quyết."
+                    )
+
+        # Determine new status
+        if action == APPROVAL_ACTION_APPROVE:
+            new_status = ARTIFACT_STATUS_APPROVED
+        elif action == APPROVAL_ACTION_REJECT:
+            new_status = ARTIFACT_STATUS_REJECTED
+        elif action == APPROVAL_ACTION_REQUEST_CHANGE:
+            new_status = ARTIFACT_STATUS_CHANGES_REQUESTED
+        elif action == APPROVAL_ACTION_REVOKE:
+            new_status = ARTIFACT_STATUS_REVOKED
+        else:
+            raise ValueError(f"Hành động phê duyệt '{action}' không hợp lệ.")
+
+        # Save approval audit record
+        approval = ArtifactApproval(
+            approval_id=approval_id,
+            artifact_id=artifact_id,
+            artifact_digest=artifact.digest,
+            action=action,
+            actor_id=actor_id,
+            scope=artifact.scope,
+            reason=reason,
+            created_at=datetime.now(timezone.utc).isoformat(),
+        )
+        self.interview_repo.save_artifact_approval(approval, idempotency_key=f"IDEMP-APP-{approval_id}")
+
+        # Update artifact status
+        updated_artifact = ControlledKnowledgeArtifact(
+            artifact_id=artifact.artifact_id,
+            artifact_type=artifact.artifact_type,
+            title=artifact.title,
+            scope=artifact.scope,
+            version=artifact.version,
+            content_markdown=artifact.content_markdown,
+            claim_ids=artifact.claim_ids,
+            claim_map=artifact.claim_map,
+            status=new_status,
+            created_by=artifact.created_by,
+            created_at=artifact.created_at,
+            approvals=tuple(list(artifact.approvals) + [approval]),
+        )
+        self.interview_repo.save_artifact(updated_artifact, idempotency_key=idempotency_key)
+        return updated_artifact

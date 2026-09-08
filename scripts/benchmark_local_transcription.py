@@ -97,8 +97,6 @@ def run_deterministic_benchmark(audio_fixture_path: Path, manifest_path: Path) -
 
 
 def main() -> None:
-    if hasattr(sys.stdout, "reconfigure"):
-        sys.stdout.reconfigure(encoding="utf-8")
     parser = argparse.ArgumentParser(description="Đo kiểm và so sánh động cơ chép lời cục bộ cho Goal 010")
     parser.add_argument("--json", action="store_true", help="Xuất kết quả định dạng JSON")
     args = parser.parse_args()

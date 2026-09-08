@@ -1,6 +1,25 @@
 """Multilingual Streamlit views for the supported Workspace case workflow (vi, ja, zh-CN)."""
 from __future__ import annotations
 
+from aios_habit.controlled_knowledge_artifact import (
+    APPROVAL_ACTION_APPROVE,
+    APPROVAL_ACTION_REJECT,
+    APPROVAL_ACTION_REQUEST_CHANGE,
+    APPROVAL_ACTION_REVOKE,
+    ARTIFACT_STATUS_APPROVED,
+    ARTIFACT_STATUS_CANDIDATE,
+    ARTIFACT_STATUS_CHANGES_REQUESTED,
+    ARTIFACT_STATUS_REJECTED,
+    ARTIFACT_STATUS_REVOKED,
+    ArtifactDiffReport,
+    ConflictedClaimArtifactError,
+    ControlledArtifactError,
+    ControlledKnowledgeArtifact,
+    SelfApprovalDeniedError,
+    StaleArtifactDigestError,
+    generate_artifact_diff,
+)
+
 from typing import Callable, Iterable, Optional
 import re
 from pathlib import Path
@@ -1636,3 +1655,111 @@ def render_case_workspace(
                     st.rerun()
                 except CaseValidationError as error:
                     st.error(safe_case_error_message(error, locale=norm_loc))
+
+
+_CONTROLLED_ARTIFACT_STATUS_LABELS = {
+    "candidate": "Đang chờ phê duyệt",
+    "approved": "Đã phê duyệt",
+    "rejected": "Đã từ chối",
+    "changes_requested": "Yêu cầu chỉnh sửa",
+    "revoked": "Đã thu hồi",
+}
+
+_CONTROLLED_ARTIFACT_TYPE_LABELS = {
+    "sop": "Quy trình thao tác chuẩn (SOP)",
+    "lesson": "Bài học kinh nghiệm",
+}
+
+
+def render_controlled_artifacts_management(
+    service: ExpertInterviewService,
+    actor_principal: VerifiedPrincipal,
+    locale: str = "vi",
+) -> None:
+    """Render preview, provenance map, version diff, and approval interface for controlled knowledge artifacts (T058)."""
+    norm_loc = normalize_locale(locale)
+    st.subheader("Quản lý Quy trình & Bài học Tri thức Chuẩn hóa")
+
+    artifacts = service.interview_repo.list_artifacts()
+    if not artifacts:
+        st.info("Chưa có tài liệu quy chuẩn (SOP hoặc Bài học) nào được tạo.")
+        return
+
+    artifact_titles = [f"{a.artifact_id} - {a.title} (v{a.version}) [{_CONTROLLED_ARTIFACT_STATUS_LABELS.get(a.status, a.status)}]" for a in artifacts]
+    selected_idx = st.selectbox("Chọn tài liệu cần kiểm tra / phê duyệt:", range(len(artifacts)), format_func=lambda i: artifact_titles[i])
+    selected_artifact = artifacts[selected_idx]
+
+    # Tabs: Preview, Provenance Map, Version Diff, Approval
+    tab_view, tab_prov, tab_diff, tab_action = st.tabs([
+        "Xem trước Nội dung",
+        "Bản đồ Nguồn chứng minh",
+        "So sánh Phiên bản",
+        "Quyết định Phê duyệt",
+    ])
+
+    with tab_view:
+        st.markdown(selected_artifact.content_markdown)
+        st.caption(f"Mã kiểm tra nội dung (SHA-256 Digest): `{selected_artifact.digest}`")
+
+    with tab_prov:
+        st.write("**Danh sách phát biểu tri thức (Claims) cấu thành:**")
+        for cid, stmt in selected_artifact.claim_map.items():
+            st.markdown(f"- **`{cid}`**: {stmt}")
+        if not selected_artifact.claim_map:
+            for cid in selected_artifact.claim_ids:
+                st.markdown(f"- **`{cid}`**")
+
+    with tab_diff:
+        same_id_artifacts = [a for a in artifacts if a.artifact_id == selected_artifact.artifact_id]
+        if len(same_id_artifacts) > 1:
+            diff_options = [f"v{a.version}" for a in same_id_artifacts]
+            target_v_idx = st.selectbox("So sánh với phiên bản:", range(len(same_id_artifacts)), format_func=lambda i: diff_options[i])
+            compare_artifact = same_id_artifacts[target_v_idx]
+            if compare_artifact.version != selected_artifact.version:
+                report = generate_artifact_diff(compare_artifact, selected_artifact)
+                st.code(report.content_diff, language="diff")
+                if report.conflict_decision_items:
+                    st.warning("Các điểm cần lưu ý khi chuyển phiên bản:")
+                    for item in report.conflict_decision_items:
+                        st.markdown(f"- {item}")
+            else:
+                st.info("Đang chọn cùng một phiên bản.")
+        else:
+            st.info("Tài liệu hiện tại chỉ có một phiên bản duy nhất.")
+
+    with tab_action:
+        st.write(f"**Trạng thái hiện tại:** {_CONTROLLED_ARTIFACT_STATUS_LABELS.get(selected_artifact.status, selected_artifact.status)}")
+        with st.form(f"form_approval_{selected_artifact.artifact_id}"):
+            action_choice = st.selectbox(
+                "Hành động phê duyệt:",
+                [
+                    ("approve", "Phê duyệt ban hành"),
+                    ("reject", "Từ chối tài liệu"),
+                    ("request_change", "Yêu cầu chỉnh sửa bổ sung"),
+                    ("revoke", "Thu hồi tài liệu đã duyệt"),
+                ],
+                format_func=lambda x: x[1],
+            )
+            reason = st.text_area("Lý do / Căn cứ ra quyết định:")
+            submitted = st.form_submit_button("Xác nhận Quyết định")
+
+            if submitted:
+                if not reason.strip():
+                    st.error("Vui lòng nhập lý do phê duyệt hoặc từ chối.")
+                else:
+                    try:
+                        approval_id = f"APP-{selected_artifact.artifact_id}-{int(st.session_state.get('app_seq', 1))}"
+                        service.submit_artifact_approval(
+                            approval_id=approval_id,
+                            artifact_id=selected_artifact.artifact_id,
+                            action=action_choice[0],
+                            actor_id=actor_principal.subject,
+                            expected_digest=selected_artifact.digest,
+                            reason=reason.strip(),
+                            idempotency_key=f"IDEMP-{approval_id}",
+                        )
+                        st.success(f"Đã ghi nhận quyết định thành công cho tài liệu '{selected_artifact.artifact_id}'.")
+                        st.rerun()
+                    except (SelfApprovalDeniedError, StaleArtifactDigestError, ConflictedClaimArtifactError, ControlledArtifactError) as exc:
+                        thong_bao_loi = safe_vietnamese_ui_message(str(exc))
+                        st.error(thong_bao_loi)
