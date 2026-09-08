@@ -16,6 +16,13 @@ from aios_habit.expert_interview_models import (
     InterviewSession,
     InterviewTurn,
 )
+from aios_habit.local_transcription import (
+    AudioPathSecurityError,
+    ConsentRecord,
+    TranscriptionReceipt,
+    TranscriptionSegment,
+    validate_local_only_audio_path,
+)
 
 
 def default_interview_db_path() -> Path:
@@ -107,6 +114,45 @@ class ExpertInterviewRepository:
                 """
             )
             conn.execute("CREATE INDEX IF NOT EXISTS interview_checkpoints_session_seq_idx ON interview_checkpoints(session_id, sequence)")
+
+            conn.execute(
+                """
+                CREATE TABLE IF NOT EXISTS interview_consents (
+                    consent_id TEXT PRIMARY KEY,
+                    session_id TEXT NOT NULL UNIQUE,
+                    subject TEXT NOT NULL,
+                    version TEXT NOT NULL,
+                    state TEXT NOT NULL,
+                    purposes_json TEXT NOT NULL,
+                    retention_policy TEXT NOT NULL,
+                    granted_at TEXT,
+                    withdrawn_at TEXT,
+                    policy_digest TEXT NOT NULL,
+                    idempotency_key TEXT NOT NULL UNIQUE
+                )
+                """
+            )
+            conn.execute("CREATE INDEX IF NOT EXISTS interview_consents_session_idx ON interview_consents(session_id)")
+
+            conn.execute(
+                """
+                CREATE TABLE IF NOT EXISTS interview_transcripts (
+                    receipt_id TEXT PRIMARY KEY,
+                    session_id TEXT NOT NULL,
+                    audio_path TEXT NOT NULL,
+                    audio_digest TEXT NOT NULL,
+                    engine_name TEXT NOT NULL,
+                    engine_version TEXT NOT NULL,
+                    segments_json TEXT NOT NULL,
+                    full_text TEXT NOT NULL,
+                    all_critical_tokens_json TEXT NOT NULL,
+                    state TEXT NOT NULL,
+                    created_at TEXT NOT NULL,
+                    idempotency_key TEXT NOT NULL UNIQUE
+                )
+                """
+            )
+            conn.execute("CREATE INDEX IF NOT EXISTS interview_transcripts_session_idx ON interview_transcripts(session_id)")
 
     def save_session(self, session: InterviewSession, idempotency_key: str) -> None:
         """Idempotently save or update an interview session."""
@@ -339,5 +385,173 @@ class ExpertInterviewRepository:
                 state=row["state"],
                 snapshot_json=row["snapshot_json"],
                 digest=row["digest"],
+                created_at=row["created_at"],
+            )
+
+    def save_consent(self, consent: ConsentRecord, idempotency_key: str) -> None:
+        """Idempotently save or update expert consent record."""
+        self.initialize()
+        purposes_json = json.dumps(list(consent.purposes), ensure_ascii=False)
+        with self._connection() as conn:
+            conn.execute(
+                """
+                INSERT INTO interview_consents (
+                    consent_id, session_id, subject, version, state,
+                    purposes_json, retention_policy, granted_at, withdrawn_at,
+                    policy_digest, idempotency_key
+                )
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(session_id) DO UPDATE SET
+                    state = excluded.state,
+                    withdrawn_at = excluded.withdrawn_at,
+                    policy_digest = excluded.policy_digest
+                """,
+                (
+                    consent.consent_id,
+                    consent.session_id,
+                    consent.subject,
+                    consent.version,
+                    consent.state,
+                    purposes_json,
+                    consent.retention_policy,
+                    consent.granted_at,
+                    consent.withdrawn_at,
+                    consent.policy_digest or consent.compute_digest(),
+                    idempotency_key,
+                ),
+            )
+
+    def get_consent(self, session_id: str) -> Optional[ConsentRecord]:
+        """Fetch consent record for a session."""
+        self.initialize()
+        with self._connection() as conn:
+            row = conn.execute(
+                """
+                SELECT consent_id, session_id, subject, version, state,
+                       purposes_json, retention_policy, granted_at, withdrawn_at, policy_digest
+                FROM interview_consents
+                WHERE session_id = ?
+                """,
+                (session_id,),
+            ).fetchone()
+            if row is None:
+                return None
+            return ConsentRecord(
+                consent_id=row["consent_id"],
+                session_id=row["session_id"],
+                subject=row["subject"],
+                version=row["version"],
+                state=row["state"],
+                purposes=tuple(json.loads(row["purposes_json"])),
+                retention_policy=row["retention_policy"],
+                granted_at=row["granted_at"],
+                withdrawn_at=row["withdrawn_at"],
+                policy_digest=row["policy_digest"],
+            )
+
+    def save_transcription_receipt(
+        self,
+        receipt: TranscriptionReceipt,
+        idempotency_key: str,
+        local_only_root: Optional[Path] = None,
+    ) -> None:
+        """Idempotently save transcription receipt, validating local_only audio boundary."""
+        self.initialize()
+        if local_only_root:
+            validate_local_only_audio_path(Path(receipt.audio_path), local_only_root)
+
+        segments_data = [
+            {
+                "segment_id": s.segment_id,
+                "start_time": s.start_time,
+                "end_time": s.end_time,
+                "text": s.text,
+                "tokens": list(s.tokens),
+                "critical_tokens": list(s.critical_tokens),
+                "is_confirmed": s.is_confirmed,
+                "edited_text": s.edited_text,
+            }
+            for s in receipt.segments
+        ]
+        segments_json = json.dumps(segments_data, ensure_ascii=False)
+        critical_json = json.dumps(list(receipt.all_critical_tokens), ensure_ascii=False)
+
+        with self._connection() as conn:
+            conn.execute(
+                """
+                INSERT INTO interview_transcripts (
+                    receipt_id, session_id, audio_path, audio_digest,
+                    engine_name, engine_version, segments_json, full_text,
+                    all_critical_tokens_json, state, created_at, idempotency_key
+                )
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(receipt_id) DO UPDATE SET
+                    state = excluded.state,
+                    segments_json = excluded.segments_json,
+                    full_text = excluded.full_text,
+                    all_critical_tokens_json = excluded.all_critical_tokens_json
+                """,
+                (
+                    receipt.receipt_id,
+                    receipt.session_id,
+                    receipt.audio_path,
+                    receipt.audio_digest,
+                    receipt.engine_name,
+                    receipt.engine_version,
+                    segments_json,
+                    receipt.full_text,
+                    critical_json,
+                    receipt.state,
+                    receipt.created_at,
+                    idempotency_key,
+                ),
+            )
+
+    def get_transcription_receipt(self, session_id: str) -> Optional[TranscriptionReceipt]:
+        """Fetch transcription receipt for a session."""
+        self.initialize()
+        with self._connection() as conn:
+            row = conn.execute(
+                """
+                SELECT receipt_id, session_id, audio_path, audio_digest,
+                       engine_name, engine_version, segments_json, full_text,
+                       all_critical_tokens_json, state, created_at
+                FROM interview_transcripts
+                WHERE session_id = ?
+                ORDER BY created_at DESC
+                LIMIT 1
+                """,
+                (session_id,),
+            ).fetchone()
+            if row is None:
+                return None
+
+            segments_raw = json.loads(row["segments_json"])
+            segments = tuple(
+                TranscriptionSegment(
+                    segment_id=s["segment_id"],
+                    start_time=float(s["start_time"]),
+                    end_time=float(s["end_time"]),
+                    text=s["text"],
+                    tokens=tuple(s.get("tokens", [])),
+                    critical_tokens=tuple(s.get("critical_tokens", [])),
+                    is_confirmed=bool(s.get("is_confirmed", False)),
+                    edited_text=s.get("edited_text"),
+                )
+                for s in segments_raw
+            )
+            critical_tokens = tuple(json.loads(row["all_critical_tokens_json"]))
+
+            return TranscriptionReceipt(
+                receipt_id=row["receipt_id"],
+                session_id=row["session_id"],
+                audio_path=row["audio_path"],
+                audio_digest=row["audio_digest"],
+                engine_name=row["engine_name"],
+                engine_version=row["engine_version"],
+                segments=segments,
+                full_text=row["full_text"],
+                all_critical_tokens=critical_tokens,
+                state=row["state"],
                 created_at=row["created_at"],
             )

@@ -24,6 +24,15 @@ from aios_habit.expert_interview_models import (
 from aios_habit.expert_interview_service import ExpertInterviewService
 from aios_habit.expert_interview_repository import ExpertInterviewRepository
 from aios_habit.expert_identity import VerifiedPrincipal
+from aios_habit.local_transcription import (
+    ConsentRecord,
+    CONSENT_STATE_GRANTED,
+    CONSENT_STATE_DECLINED,
+    CONSENT_STATE_WITHDRAWN,
+    LocalWhisperCppTranscriptionAdapter,
+    TranscriptionReceipt,
+    TranscriptionSegment,
+)
 from aios_habit.ui_safety import safe_vietnamese_ui_message
 from aios_habit.i18n import DEFAULT_LOCALE, normalize_locale, t
 from aios_habit.coding_assistant import (
@@ -711,6 +720,126 @@ def render_expert_interview_view(
 
     # Nếu phiên đang active thì cho phép trả lời
     if curr_session.state == SESSION_STATE_ACTIVE:
+        st.markdown("#### Đồng ý ghi âm và chép lời cục bộ (Tùy chọn)")
+        current_consent = interview_repo.get_consent(curr_session.session_id)
+        consent_is_granted = current_consent is not None and current_consent.is_active
+
+        if consent_is_granted:
+            st.success("🔴 Đang kích hoạt ghi âm âm thanh cục bộ (an toàn, không tải lên mạng).")
+            st.caption(f"Mã đồng ý: {current_consent.consent_id} · Phiên bản: {current_consent.version} · Lưu trữ: Chỉ trong máy nội bộ")
+            if st.button("Rút lại sự đồng ý ghi âm", key=f"btn_withdraw_{curr_session.session_id}"):
+                withdrawn_consent = ConsentRecord(
+                    consent_id=current_consent.consent_id,
+                    session_id=current_consent.session_id,
+                    subject=current_consent.subject,
+                    version=current_consent.version,
+                    state=CONSENT_STATE_WITHDRAWN,
+                    purposes=current_consent.purposes,
+                    retention_policy=current_consent.retention_policy,
+                    granted_at=current_consent.granted_at,
+                    withdrawn_at=datetime.now(timezone.utc).isoformat(),
+                )
+                interview_repo.save_consent(withdrawn_consent, f"IDEMP-WITHDRAW-{curr_session.session_id}")
+                st.warning("Đã rút lại sự đồng ý ghi âm. Hệ thống chuyển sang chế độ trả lời bằng văn bản thuần túy.")
+                st.rerun()
+
+            # Khung chép lời âm thanh khi đã đồng ý
+            st.markdown("##### Tải lên tệp âm thanh để chép lời tự động")
+            uploaded_audio = st.file_uploader(
+                "Chọn tệp âm thanh (định dạng WAV mono 16kHz)",
+                type=["wav"],
+                key=f"audio_upload_{curr_session.session_id}",
+            )
+            col_tr1, col_tr2 = st.columns([2, 1])
+            with col_tr1:
+                use_fixture = st.checkbox("Sử dụng bản ghi âm mẫu kiểm chuẩn (fixture 16kHz)", value=True, key=f"chk_fix_{curr_session.session_id}")
+            with col_tr2:
+                btn_run_transcribe = st.button("Chép lời âm thanh cục bộ", key=f"btn_transcribe_{curr_session.session_id}")
+
+            if btn_run_transcribe:
+                audio_file_path = None
+                if uploaded_audio is not None:
+                    # Save temporarily into local_cases
+                    temp_dir = Path("local_cases") / "audio_uploads"
+                    temp_dir.mkdir(parents=True, exist_ok=True)
+                    target_file = temp_dir / uploaded_audio.name
+                    target_file.write_bytes(uploaded_audio.getvalue())
+                    audio_file_path = target_file
+                elif use_fixture:
+                    fixture_audio = Path("tests") / "fixtures" / "expert_interview" / "audio" / "sample_interview_sine_16k.wav"
+                    if fixture_audio.exists():
+                        audio_file_path = fixture_audio
+
+                if audio_file_path and audio_file_path.exists():
+                    manifest_path = Path("tests") / "fixtures" / "expert_interview" / "audio" / "mock_transcription_manifest.json"
+                    adapter = LocalWhisperCppTranscriptionAdapter(
+                        fallback_mock_engine=MockLocalTranscriptionEngine(fixture_manifest_path=manifest_path)
+                    )
+                    try:
+                        receipt = adapter.transcribe(
+                            audio_path=audio_file_path,
+                            session_id=curr_session.session_id,
+                            consent=current_consent,
+                        )
+                        interview_repo.save_transcription_receipt(receipt, f"IDEMP-TRCP-{receipt.receipt_id}")
+                        st.session_state[f"last_receipt_{curr_session.session_id}"] = receipt
+                        st.success("Chép lời âm thanh cục bộ thành công.")
+                    except Exception as exc:
+                        thong_bao_loi = safe_vietnamese_ui_message(str(exc))
+                        st.error(thong_bao_loi)
+                else:
+                    st.error("Vui lòng chọn hoặc tải lên tệp âm thanh hợp lệ.")
+
+            # Hiển thị kết quả chép lời và xác nhận mã máy, con số, đơn vị (T045)
+            last_receipt = st.session_state.get(f"last_receipt_{curr_session.session_id}")
+            if last_receipt:
+                st.markdown("##### Kết quả chép lời và xác nhận thông số kỹ thuật")
+                st.info(f"**Văn bản nhận dạng:** {last_receipt.full_text}")
+                if last_receipt.all_critical_tokens:
+                    st.write("**Các thông số, mã thiết bị và đơn vị đo được nhận dạng:**")
+                    st.write(", ".join(f"`{tok}`" for tok in last_receipt.all_critical_tokens))
+
+                # Xác nhận đưa vào câu trả lời
+                if st.button("Xác nhận thông số và điền vào ô câu trả lời", key=f"btn_confirm_tokens_{curr_session.session_id}"):
+                    st.session_state[f"ans_text_{curr_session.session_id}"] = last_receipt.full_text
+                    st.success("Đã điền nội dung chép lời đã xác nhận vào ô phản hồi.")
+                    st.rerun()
+
+        else:
+            st.info("Chế độ ghi âm hiện đang tắt. Chuyên gia có thể trả lời trực tiếp bằng văn bản bên dưới hoặc cấp quyền ghi âm.")
+            col_c1, col_c2 = st.columns(2)
+            with col_c1:
+                if st.button("Chấp thuận ghi âm và chép lời (Phiên bản 1.0)", key=f"btn_grant_{curr_session.session_id}"):
+                    new_consent = ConsentRecord(
+                        consent_id=f"CSNT-{curr_session.session_id}-{int(datetime.now(timezone.utc).timestamp())}",
+                        session_id=curr_session.session_id,
+                        subject=curr_session.principal_subject_id,
+                        version="1.0",
+                        state=CONSENT_STATE_GRANTED,
+                        purposes=("audio_recording", "local_transcription"),
+                        retention_policy="local_only_retained",
+                        granted_at=datetime.now(timezone.utc).isoformat(),
+                    )
+                    interview_repo.save_consent(new_consent, f"IDEMP-GRANT-{curr_session.session_id}")
+                    st.success("Đã kích hoạt đồng ý ghi âm thành công.")
+                    st.rerun()
+            with col_c2:
+                if st.button("Từ chối ghi âm (Tiếp tục bằng văn bản)", key=f"btn_decline_{curr_session.session_id}"):
+                    declined_consent = ConsentRecord(
+                        consent_id=f"CSNT-{curr_session.session_id}-{int(datetime.now(timezone.utc).timestamp())}",
+                        session_id=curr_session.session_id,
+                        subject=curr_session.principal_subject_id,
+                        version="1.0",
+                        state=CONSENT_STATE_DECLINED,
+                        purposes=("text_only",),
+                        retention_policy="local_only_retained",
+                        granted_at=None,
+                        withdrawn_at=None,
+                    )
+                    interview_repo.save_consent(declined_consent, f"IDEMP-DECLINE-{curr_session.session_id}")
+                    st.info("Đã ghi nhận lựa chọn chỉ sử dụng văn bản.")
+                    st.rerun()
+
         st.markdown("#### Phản hồi lượt phỏng vấn tiếp theo")
         next_q = plan.seed_questions[0].text if (plan and plan.seed_questions and not turns) else f"Câu hỏi làm rõ lượt {turns_count + 1}"
         st.info(f"**Câu hỏi hiện tại:** {next_q}")

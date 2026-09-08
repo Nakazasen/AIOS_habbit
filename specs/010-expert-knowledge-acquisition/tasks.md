@@ -66,15 +66,15 @@
 
 **Kiểm thử độc lập**: record trước consent bị chặn; text chat vẫn chạy khi từ chối; transcript local có timestamps và critical tokens phải xác nhận.
 
-- [ ] T039 [US3] Định nghĩa consent/audio/transcription protocol và receipt trong `src/aios_habit/local_transcription.py`
-- [ ] T040 [US3] Viết benchmark `whisper.cpp` và `faster-whisper` trên fixture tiếng Việt trong `scripts/benchmark_local_transcription.py`
-- [ ] T041 [US3] Tự chọn engine theo điểm benchmark tất định rồi ghi version, checksum, license và tài nguyên vào `docs/roadmap/backlog/AIOS-EXPERT-KNOWLEDGE-ACQUISITION.md`
-- [ ] T042 [US3] Cài một adapter local đã thắng benchmark, pin version và timeout trong `src/aios_habit/local_transcription.py`
-- [ ] T043 [US3] Lưu audio/transcript dưới `local_only` root cấu hình sẵn với path validation và digest trong `src/aios_habit/expert_interview_repository.py`
-- [ ] T044 [US3] Thêm lời đồng ý theo phiên bản, chỉ báo đang ghi, rút đồng ý và phương án trả lời bằng chữ trong `src/aios_habit/workspace_case_ui.py`
-- [ ] T045 [US3] Thêm sửa bản chép lời theo đoạn và xác nhận mã máy, con số, đơn vị trong `src/aios_habit/workspace_case_ui.py`
-- [ ] T046 [P] [US3] Viết test consent lifecycle, device failure, corrupt audio, critical token và UTF-8 trong `tests/test_local_transcription.py`
-- [ ] T047 [P] [US3] Viết privacy test không có raw audio/transcript trong Git, case DB, log và provider payload trong `tests/test_expert_interview_privacy.py`
+- [x] T039 [US3] Định nghĩa consent/audio/transcription protocol và receipt trong `src/aios_habit/local_transcription.py`
+- [x] T040 [US3] Viết benchmark `whisper.cpp` và `faster-whisper` trên fixture tiếng Việt trong `scripts/benchmark_local_transcription.py`
+- [x] T041 [US3] Tự chọn engine theo điểm benchmark tất định rồi ghi version, checksum, license và tài nguyên vào `docs/roadmap/backlog/AIOS-EXPERT-KNOWLEDGE-ACQUISITION.md`
+- [x] T042 [US3] Cài một adapter local đã thắng benchmark, pin version và timeout trong `src/aios_habit/local_transcription.py`
+- [x] T043 [US3] Lưu audio/transcript dưới `local_only` root cấu hình sẵn với path validation và digest trong `src/aios_habit/expert_interview_repository.py`
+- [x] T044 [US3] Thêm lời đồng ý theo phiên bản, chỉ báo đang ghi, rút đồng ý và phương án trả lời bằng chữ trong `src/aios_habit/workspace_case_ui.py`
+- [x] T045 [US3] Thêm sửa bản chép lời theo đoạn và xác nhận mã máy, con số, đơn vị trong `src/aios_habit/workspace_case_ui.py`
+- [x] T046 [P] [US3] Viết test consent lifecycle, device failure, corrupt audio, critical token và UTF-8 trong `tests/test_local_transcription.py`
+- [x] T047 [P] [US3] Viết privacy test không có raw audio/transcript trong Git, case DB, log và provider payload trong `tests/test_expert_interview_privacy.py`
 
 ## Giai đoạn 7 — G6: US4 claim, nguồn và xung đột
 

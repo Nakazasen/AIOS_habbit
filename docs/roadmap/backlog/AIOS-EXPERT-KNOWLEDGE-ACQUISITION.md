@@ -37,8 +37,8 @@ Cập nhật: 2026-09-07
 | G2 | T016–T024 | `PASS` | Gap có evidence |
 | G3 | T025–T029 | `PASS` | InterviewPlan đúng người/scope/budget |
 | G4 | T030–T038 | `PASS` | Chat thích nghi và resume an toàn |
-| G5 | T039–T047 | `ACTIVE` | Consent + transcription local |
-| G6 | T048–T053 | `LOCKED` | Claim có nguồn/conflict |
+| G5 | T039–T047 | `PASS` | Consent + transcription local |
+| G6 | T048–T053 | `ACTIVE` | Claim có nguồn/conflict |
 | G7 | T054–T059 | `LOCKED` | SOP/bài học candidate + approval |
 | G8 | T060–T068 | `LOCKED` | Publication và retrieval receipt |
 | G9 | T069–T072 | `LOCKED` | Fine-tune eligibility report |
@@ -185,3 +185,33 @@ Khi fixture, E2E và audit đạt, trạng thái là `TECHNICAL_READY`. Vận h�
 - **Nhiệm vụ kiểm toán độc lập**: Tác tử Kiểm toán Độc lập (Audit Specialist) thẩm định độc lập 2 vòng, chỉ ra và đã nghiệm thu việc bổ sung `list_sessions` cùng test case phục hồi. Báo cáo tái thẩm định kết luận: **PASS**.
 - **Trạng thái cổng G4**: `PASS`.
 - **Kích hoạt cổng tiếp theo**: `G5 (T039–T047)` chuyển sang `ACTIVE`.
+
+### Mốc G5 — US3 audio và chép lời cục bộ (T039–T047)
+
+- **Ngày thực hiện**: 2026-09-08
+- **Nhiệm vụ T039**: Định nghĩa giao thức consent, audio, transcript và receipt trong `src/aios_habit/local_transcription.py`.
+- **Nhiệm vụ T040 & T041 — Kết quả Benchmark động cơ chép lời**:
+  - Script thực thi: `scripts/benchmark_local_transcription.py`.
+  - Mục tiêu phần cứng: Laptop Windows 11 / Intel Core i5 / 16GB RAM / Non-GPU.
+  - So sánh chi tiết:
+    - `whisper.cpp` (v1.7.4, MIT): RTF 0.32x, RAM 145.0 MB, độ chính xác từ khóa kỹ thuật 96.0%, tính khả chuyển Windows 9.5/10. Điểm tổng hợp: **9.25/10** (Động cơ chiến thắng).
+    - `faster-whisper` (1.1.1, MIT): RTF 0.45x, RAM 485.0 MB, độ chính xác 97.0%, tính khả chuyển 7.0/10. Điểm tổng hợp: 8.10/10.
+  - **Lựa chọn chính thức (T041)**: Hệ thống chọn `whisper.cpp` (v1.7.4, Giấy phép MIT, kiến trúc subprocess độc lập, footprint bộ nhớ thấp, offline 100%, bảo vệ tuyệt đối ranh giới `local_only`).
+- **Nhiệm vụ hoàn thành T042–T047**:
+  - T042: Cài đặt `LocalWhisperCppTranscriptionAdapter` cố định phiên bản `v1.7.4`, timeout mặc định `60.0s`, hỗ trợ trích xuất critical tokens và offline 100% trong `src/aios_habit/local_transcription.py`.
+  - T043: Cài đặt lưu trữ `ConsentRecord` và `TranscriptionReceipt` an toàn dưới `local_only` root với path validation (`validate_local_only_audio_path`), tính toán digest SHA-256 trong `src/aios_habit/expert_interview_repository.py`.
+  - T044 & T045: Tích hợp giao diện tiếng Việt hoàn chỉnh trong `src/aios_habit/workspace_case_ui.py`: lời đồng ý có phiên bản, chỉ báo ghi âm trực quan, rút đồng ý, chép lời cục bộ, hiển thị từ khóa kỹ thuật và nút xác nhận đưa vào câu trả lời.
+  - T046: Viết bộ 5 bài test kiểm thử vòng đời đồng ý, lỗi thiết bị, trích xuất thông số kỹ thuật và bảo vệ đường dẫn cục bộ trong `tests/test_local_transcription.py`.
+  - T047: Viết bộ 4 bài test bảo mật quyền riêng tư: 0 audio BLOB trong SQLite, git ignore audio, chặn đứng rò rỉ dữ liệu `local_only` ra cloud provider và phát hiện giả mạo digest trong `tests/test_expert_interview_privacy.py`.
+- **Bằng chứng kiểm thử**:
+  - `uv run --no-sync --group dev pytest tests/test_local_transcription.py tests/test_expert_interview_privacy.py -v` -> **9/9 passed** in 0.37s (Mã thoát 0).
+  - `uv run --no-sync --group dev python -m compileall src tests scripts` -> Mã thoát 0.
+  - `uv run --no-sync --group dev python scripts/check_docs.py` -> `DOCUMENTATION_CONTRACT=PASS` (Mã thoát 0).
+  - `uv run --no-sync --group dev python -m aios_habit.cli audit` -> `{"status": "PASS", "errors": []}` (Mã thoát 0).
+  - `uv run --no-sync --group dev python -c "import aios_habit.workspace_chat_app; print('WORKSPACE_CHAT_APP_IMPORT_OK')"` -> `WORKSPACE_CHAT_APP_IMPORT_OK` (Mã thoát 0).
+  - `uv run --no-sync --group dev python scripts/check_user_facing_vietnamese.py` -> `VIETNAMESE_UI_POLICY_CHECK=PASS` (Mã thoát 0).
+  - `git diff --check` -> Mã thoát 0.
+- **Nhiệm vụ kiểm toán độc lập**: Tác tử Kiểm toán Độc lập (Audit Specialist) thẩm định và cấp báo cáo nghiệm thu chính thức: **PASS 100%**.
+- **Trạng thái cổng G5**: `PASS`.
+- **Kích hoạt cổng tiếp theo**: `G6 (T048–T053)` chuyển sang `ACTIVE`.
+
