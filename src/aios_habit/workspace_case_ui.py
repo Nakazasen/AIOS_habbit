@@ -1,6 +1,16 @@
 """Multilingual Streamlit views for the supported Workspace case workflow (vi, ja, zh-CN)."""
 from __future__ import annotations
 
+from aios_habit.knowledge_publication import (
+    KnowledgePublisher,
+    LibraryWriterBusyError,
+    PublicationAcceptanceError,
+    PublicationError,
+    PublicationPackage,
+    PublicationReceipt,
+    UnapprovedArtifactPublicationError,
+    seal_publication_package,
+)
 from aios_habit.controlled_knowledge_artifact import (
     APPROVAL_ACTION_APPROVE,
     APPROVAL_ACTION_REJECT,
@@ -1761,5 +1771,86 @@ def render_controlled_artifacts_management(
                         st.success(f"Đã ghi nhận quyết định thành công cho tài liệu '{selected_artifact.artifact_id}'.")
                         st.rerun()
                     except (SelfApprovalDeniedError, StaleArtifactDigestError, ConflictedClaimArtifactError, ControlledArtifactError) as exc:
+                        thong_bao_loi = safe_vietnamese_ui_message(str(exc))
+                        st.error(thong_bao_loi)
+
+
+def render_knowledge_publication_management(
+    service: ExpertInterviewService,
+    publisher: KnowledgePublisher,
+    actor_principal: VerifiedPrincipal,
+    locale: str = "vi",
+) -> None:
+    """Render publication pipeline, backup status, and revocation UI for approved knowledge artifacts (T066)."""
+    norm_loc = normalize_locale(locale)
+    st.subheader("Xuất bản Tri thức vào Thư viện Dùng chung")
+
+    artifacts = service.interview_repo.list_artifacts(status=ARTIFACT_STATUS_APPROVED)
+    if not artifacts:
+        st.info("Chưa có tài liệu quy chuẩn nào được phê duyệt (approved) để xuất bản.")
+        return
+
+    art_options = [f"{a.artifact_id} - {a.title} (v{a.version})" for a in artifacts]
+    selected_idx = st.selectbox("Chọn tài liệu đã duyệt để xuất bản:", range(len(artifacts)), format_func=lambda i: art_options[i])
+    selected_artifact = artifacts[selected_idx]
+
+    tab_pub, tab_revoke = st.tabs(["Tiến trình Xuất bản", "Thu hồi khỏi Thư viện"])
+
+    with tab_pub:
+        st.write(f"**Tài liệu:** {selected_artifact.title} (`{selected_artifact.artifact_id}`)")
+        st.write(f"**Phạm vi:** {selected_artifact.scope} | **Phiên bản:** {selected_artifact.version}")
+        st.caption(f"Mã băm tài liệu: `{selected_artifact.digest}`")
+
+        with st.form(f"form_publish_{selected_artifact.artifact_id}"):
+            q1 = st.text_input("Câu hỏi kiểm tra nghiệm thu 1:", value=f"Quy trình {selected_artifact.scope} yêu cầu thông số gì?")
+            q2 = st.text_input("Câu hỏi kiểm tra nghiệm thu 2:", value=f"Cách thực hiện {selected_artifact.title} chi tiết thế nào?")
+            submitted = st.form_submit_button("Tiến hành Niêm phong & Xuất bản")
+
+            if submitted:
+                questions = [q.strip() for q in [q1, q2] if q.strip()]
+                if len(questions) < 1:
+                    st.error("Vui lòng nhập ít nhất một câu hỏi nghiệm thu.")
+                else:
+                    try:
+                        pkg = seal_publication_package(
+                            artifact=selected_artifact,
+                            acceptance_questions=questions,
+                            sealed_by=actor_principal.subject,
+                        )
+                        st.info("Đã niêm phong gói xuất bản. Đang sao lưu và nạp vào thư viện...")
+
+                        pub_pkg, receipt = publisher.publish_package(pkg, actor=actor_principal.subject)
+                        st.success(f"Xuất bản thành công! Mã biên nhận: '{receipt.receipt_id}'.")
+                        st.write(f"- Trạng thái kiểm tra toàn vẹn cơ sở dữ liệu: **{receipt.quick_check_status}**")
+                        st.write(f"- Mã bản sao lưu phục hồi an toàn: `{receipt.backup_id}`")
+                        st.write("- Kết quả nghiệm thu truy xuất:")
+                        for q_text, passed in receipt.acceptance_results.items():
+                            st.write(f"  + *{q_text}*: {'Đạt' if passed else 'Không đạt'}")
+                    except (UnapprovedArtifactPublicationError, LibraryWriterBusyError, PublicationAcceptanceError, PublicationError) as exc:
+                        thong_bao_loi = safe_vietnamese_ui_message(str(exc))
+                        st.error(thong_bao_loi)
+
+    with tab_revoke:
+        with st.form(f"form_revoke_{selected_artifact.artifact_id}"):
+            package_id_to_revoke = st.text_input(
+                "Mã gói xuất bản cần thu hồi:",
+                value=f"PKG-{selected_artifact.artifact_id}-V{selected_artifact.version.replace('.', '_')}",
+            )
+            revoke_reason = st.text_area("Lý do thu hồi gói xuất bản:")
+            btn_revoke = st.form_submit_button("Xác nhận Thu hồi khỏi Thư viện")
+
+            if btn_revoke:
+                if not revoke_reason.strip():
+                    st.error("Vui lòng nhập lý do thu hồi.")
+                else:
+                    try:
+                        rev_receipt = publisher.revoke_publication(
+                            package_id=package_id_to_revoke.strip(),
+                            collection_id=DEFAULT_COLLECTION_ID,
+                            reason=revoke_reason.strip(),
+                            actor=actor_principal.subject,
+                        )
+                        st.success(f"Đã thu hồi gói '{package_id_to_revoke}' thành công. Biên nhận thu hồi: '{rev_receipt.receipt_id}'.")
+                    except (LibraryWriterBusyError, PublicationError) as exc:
                         thong_bao_loi = safe_vietnamese_ui_message(str(exc))
                         st.error(thong_bao_loi)

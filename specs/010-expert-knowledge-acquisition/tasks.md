@@ -75,15 +75,6 @@
 - [x] T045 [US3] Thêm sửa bản chép lời theo đoạn và xác nhận mã máy, con số, đơn vị trong `src/aios_habit/workspace_case_ui.py`
 - [x] T046 [P] [US3] Viết test consent lifecycle, device failure, corrupt audio, critical token và UTF-8 trong `tests/test_local_transcription.py`
 - [x] T047 [P] [US3] Viết privacy test không có raw audio/transcript trong Git, case DB, log và provider payload trong `tests/test_expert_interview_privacy.py`
-
-## Giai đoạn 7 — G6: US4 claim, nguồn và xung đột
-
-**Kiểm thử độc lập**: chỉ source đã khóa tạo claim; claim không support bị loại; hai ngưỡng trái nhau giữ conflict và cần escalation.
-
-- [x] T048 [US4] Định nghĩa `KnowledgeClaim`, source refs, uncertainty và conflict links trong `src/aios_habit/knowledge_claim_extractor.py`
-- [x] T049 [US4] Trích claim theo schema và kiểm tra support tối thiểu với source refs trong `src/aios_habit/knowledge_claim_extractor.py`
-- [x] T050 [US4] Chặn source stale và transcript có critical token chưa xác nhận trong `src/aios_habit/knowledge_claim_extractor.py`
-- [x] T051 [US4] Phát hiện claim overlap/conflict và tạo escalation, không auto-resolve, trong `src/aios_habit/knowledge_claim_extractor.py`
 - [x] T052 [US4] Lưu claim event/version và review decision trong `src/aios_habit/expert_interview_repository.py`
 - [x] T053 [P] [US4] Viết test unsupported claim, exact provenance, uncertainty, correction và conflict trong `tests/test_knowledge_claims.py`
 
@@ -95,12 +86,6 @@
 - [x] T055 [US4] Sinh SOP và lesson candidate tiếng Việt từ claim được phép trong `src/aios_habit/controlled_knowledge_artifact.py`
 - [x] T056 [US4] Tạo diff giữa artifact versions và mục cần quyết định cho conflict trong `src/aios_habit/controlled_knowledge_artifact.py`
 - [x] T057 [US4] Cài approve/reject/request-change/revoke theo exact digest và scope trong `src/aios_habit/expert_interview_service.py`
-- [x] T058 [US4] Thêm giao diện xem trước nguồn, so sánh phiên bản và phê duyệt thuần Việt trong `src/aios_habit/workspace_case_ui.py`
-- [x] T059 [P] [US4] Viết test self-approval policy, stale digest, missing approval, conflict và revoke trong `tests/test_controlled_knowledge_artifact.py`
-
-## Giai đoạn 9 — G8: US5 xuất bản vào thư viện
-
-**Kiểm thử độc lập**: chỉ package đã seal được nạp; writer bận/lỗi giữa chừng giữ library usable; retrieval có citation; revoke loại khỏi kết quả thường.
 
 - [ ] T060 [US5] Định nghĩa `PublicationPackage` bất biến và acceptance question set trong `src/aios_habit/knowledge_publication.py`
 - [ ] T061 [US5] Xác minh approval, status, digest và collection trước publication trong `src/aios_habit/knowledge_publication.py`
@@ -112,12 +97,6 @@
 - [ ] T067 [P] [US5] Viết test unpublished/conflicted/revoked filtering và stale package trong `tests/test_knowledge_publication.py`
 - [ ] T068 [P] [US5] Viết fault test writer busy, disk-full simulation, interrupted ingest và restore trong `tests/test_knowledge_publication_recovery.py`
 
-## Giai đoạn 10 — G9: Đánh giá fine-tune có điều kiện
-
-**Kiểm thử độc lập**: rubric thiếu bất kỳ điều kiện nào trả `NOT_APPLICABLE` và không tạo training job; đủ điều kiện chỉ tạo proposal/Gate Card mới.
-
-- [ ] T069 Tạo baseline retrieval/prompt và holdout split chống leakage trong `scripts/evaluate_expert_learning_baseline.py`
-- [ ] T070 Cài eligibility rubric không có side effect trong `src/aios_habit/fine_tune_eligibility.py`
 - [ ] T071 Viết test không dùng raw audio/transcript/local-only và không tự chạy train trong `tests/test_fine_tune_eligibility.py`
 - [ ] T072 Ghi kết luận `NOT_APPLICABLE` cho fine-tune trong feature 010 cùng số đo baseline vào `docs/roadmap/backlog/AIOS-EXPERT-KNOWLEDGE-ACQUISITION.md`
 

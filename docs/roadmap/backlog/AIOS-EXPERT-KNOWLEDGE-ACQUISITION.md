@@ -261,5 +261,31 @@ Khi fixture, E2E và audit đạt, trạng thái là `TECHNICAL_READY`. Vận h�
   - `git diff --check` -> Mã thoát 0.
 - **Nhiệm vụ kiểm toán độc lập**: Tác tử Kiểm toán Độc lập (Audit Specialist G7) thẩm định và cấp báo cáo nghiệm thu chính thức: **PASS 100%**.
 - **Trạng thái cổng G7**: `PASS`.
-- **Kích hoạt cổng tiếp theo**: `G8 (T060–T068)` chuyển sang `ACTIVE`.
+- **Kích hoạt cổng tiếp theo**: `G8 (T060–T068)` chuyển sang `PASS`.
+
+---
+
+### Cổng G8: US5 Xuất Bản Vào Thư Viện
+
+- **Ngày thực hiện**: 2026-09-08
+- **Nhiệm vụ hoàn thành T060–T068**:
+  - T060: Định nghĩa cấu trúc bất biến `PublicationPackage`, trường `package_digest` SHA-256 tất định và kiểm tra bộ câu hỏi nghiệm thu truy xuất trong `src/aios_habit/knowledge_publication.py`.
+  - T061: Cài đặt hàm `seal_publication_package` với cơ chế fail-closed chặt chẽ: chỉ tài liệu đã được duyệt (`approved`) và có biên bản phê duyệt hợp lệ mới được niêm phong; chặn mọi tài liệu chưa duyệt hoặc bị thu hồi (`UnapprovedArtifactPublicationError`).
+  - T062 & T063: Cài đặt `KnowledgePublisher.publish_package` tích hợp sao lưu an toàn `create_library_backup` trước khi sửa đổi, chiếm khóa ghi tiến trình độc quyền `LibraryWriterLease` (ném `LibraryWriterBusyError` khi bận), nạp file Markdown và cập nhật SQLite với đóng kết nối tường minh tránh khóa file Windows.
+  - T064: Tự động chạy kiểm tra toàn vẹn `sqlite_quick_check` và kiểm tra bộ câu hỏi nghiệm thu truy xuất `acceptance_questions` trước khi cấp `PublicationReceipt` ở trạng thái published; tự động hoàn tác (rollback) từ bản sao lưu nếu có lỗi.
+  - T065: Cài đặt hàm thu hồi `revoke_publication` có sao lưu trước thu hồi, xóa bản ghi khỏi SQLite và cấp biên nhận thu hồi `state="revoked"`.
+  - T066: Bổ sung giao diện quản lý xuất bản `render_knowledge_publication_management` trong `src/aios_habit/workspace_case_ui.py` với 2 tab thuần Việt: tiến trình xuất bản kèm kiểm tra toàn vẹn cơ sở dữ liệu và tab thu hồi.
+  - T067: Bộ kiểm thử hợp đồng và trạng thái xuất bản trong `tests/test_knowledge_publication.py` (5 tests).
+  - T068: Bộ kiểm thử xử lý tranh chấp khóa ghi và phục hồi tự động khi gián đoạn trong `tests/test_knowledge_publication_recovery.py` (3 tests).
+- **Bằng chứng kiểm thử**:
+  - `uv run --no-sync --group dev pytest tests/test_knowledge_publication.py tests/test_knowledge_publication_recovery.py -v` -> **8/8 passed** in 0.33s (Mã thoát 0).
+  - `uv run --no-sync --group dev python -m compileall src tests scripts` -> Mã thoát 0.
+  - `uv run --no-sync --group dev python scripts/check_docs.py` -> `DOCUMENTATION_CONTRACT=PASS` (Mã thoát 0).
+  - `uv run --no-sync --group dev python -m aios_habit.cli audit` -> `{"status": "PASS", "errors": []}` (Mã thoát 0).
+  - `uv run --no-sync --group dev python -c "import aios_habit.workspace_chat_app; print('WORKSPACE_CHAT_APP_IMPORT_OK')"` -> `WORKSPACE_CHAT_APP_IMPORT_OK` (Mã thoát 0).
+  - `uv run --no-sync --group dev python scripts/check_user_facing_vietnamese.py` -> `VIETNAMESE_UI_POLICY_CHECK=PASS` (Mã thoát 0).
+  - `git diff --check` -> Mã thoát 0.
+- **Nhiệm vụ kiểm toán độc lập**: Tác tử Kiểm toán Độc lập (Audit Specialist G8) thẩm định và cấp báo cáo nghiệm thu chính thức: **PASS 100%**.
+- **Trạng thái cổng G8**: `PASS`.
+- **Kích hoạt cổng tiếp theo**: `G9 (T069–T072)` chuyển sang `ACTIVE`.
 
