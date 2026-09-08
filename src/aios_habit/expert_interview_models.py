@@ -98,6 +98,8 @@ REASON_UNCERTAIN = "uncertain"
 REASON_MISSING_SOURCE = "missing_source"
 REASON_CONTRADICTION = "contradiction"
 REASON_RUBRIC_COMPLETE = "rubric_complete"
+REASON_EXPERT_PAUSE = "expert_requested_pause"
+REASON_EXPERT_STOP = "expert_requested_stop"
 
 ALLOWED_ACTION_REASONS = {
     REASON_MISSING_CONDITION,
@@ -109,7 +111,10 @@ ALLOWED_ACTION_REASONS = {
     REASON_MISSING_SOURCE,
     REASON_CONTRADICTION,
     REASON_RUBRIC_COMPLETE,
+    REASON_EXPERT_PAUSE,
+    REASON_EXPERT_STOP,
 }
+
 
 
 class InterviewPlanError(ValueError):

@@ -29,38 +29,38 @@
 **Kiểm thử độc lập**: corpus fixture tạo gap thiếu, xung đột (ít nhất 2 nguồn) và lỗi thời đúng evidence; gap hallucinated hoặc thiếu citation bị loại; model không tự accept gap.
 
 - [x] T016 [US1] Định nghĩa coverage/gap models và state transitions trong `src/aios_habit/knowledge_coverage.py`
-- [ ] T017 [US1] Adapter lấy inventory và retrieval receipt qua interface hiện có (có production adapter và fake adapter cùng contract) trong `src/aios_habit/knowledge_coverage.py`
+- [x] T017 [US1] Adapter lấy inventory và retrieval receipt qua interface hiện có (có production adapter và fake adapter cùng contract) trong `src/aios_habit/knowledge_coverage.py`
 - [x] T018 [US1] Định nghĩa bộ câu hỏi bao phủ có expected evidence và version trong `src/aios_habit/knowledge_coverage.py`
-- [ ] T019 [US1] Thu receipt retrieval (câu hỏi, nguồn, snippets, điểm bao phủ, version/timestamp, lý do) và tạo tín hiệu deterministic thiếu nguồn, mâu thuẫn, stale metadata từ nguồn thật trong `src/aios_habit/knowledge_coverage.py`
-- [ ] T020 [US1] C-AGENT qua Brain Gateway đọc gói bằng chứng giới hạn (chỉ snippet_id thật) giải thích/xếp hạng gap, loại bỏ output thiếu citation hoặc ngoài retrieval, không tự accept gap trong `src/aios_habit/knowledge_coverage.py`
+- [x] T019 [US1] Thu receipt retrieval (câu hỏi, nguồn, snippets, điểm bao phủ, version/timestamp, lý do) và tạo tín hiệu deterministic thiếu nguồn, mâu thuẫn, stale metadata từ nguồn thật trong `src/aios_habit/knowledge_coverage.py`
+- [x] T020 [US1] C-AGENT qua Brain Gateway đọc gói bằng chứng giới hạn (chỉ snippet_id thật) giải thích/xếp hạng gap, loại bỏ output thiếu citation hoặc ngoài retrieval, không tự accept gap trong `src/aios_habit/knowledge_coverage.py`
 - [x] T021 [US1] Lưu coverage/gap event idempotent trong `src/aios_habit/workspace_case_repository.py`
 - [x] T022 [US1] Thêm service review `accept|merge|defer|reject` có scope trong `src/aios_habit/workspace_case_service.py`
-- [ ] T023 [P] [US1] Viết integration test chứng minh gói thật qua Brain Gateway/policy, local_only tự suy ra và bị chặn ở đường không hợp lệ, citation ngoài retrieval bị loại, cấm model tự accept trong `tests/test_knowledge_coverage.py`
+- [x] T023 [P] [US1] Viết integration test chứng minh gói thật qua Brain Gateway/policy, local_only tự suy ra và bị chặn ở đường không hợp lệ, citation ngoài retrieval bị loại, cấm model tự accept trong `tests/test_knowledge_coverage.py`
 - [x] T024 [US1] Thêm màn hình kiểm kê và danh sách nội dung còn thiếu bằng tiếng Việt đời thường trong `src/aios_habit/workspace_case_ui.py`
 
 ## Giai đoạn 4 — G3: Lập kế hoạch phỏng vấn
 
 **Kiểm thử độc lập**: một gap accepted tạo plan đúng chuyên gia/scope, câu hỏi nền, ngân sách và completion rubric; plan thiếu expert hợp lệ bị chặn.
 
-- [ ] T025 [US2] Định nghĩa `InterviewPlan` và version/digest trong `src/aios_habit/expert_interview_models.py`
-- [ ] T026 [US2] Chọn eligible experts từ verified profile và grant, không từ model text, trong `src/aios_habit/expert_interview_service.py`
-- [ ] T027 [US2] Sinh seed questions theo gap/process và kiểm tra schema trong `src/aios_habit/adaptive_interview_engine.py`
-- [ ] T028 [US2] Khóa max turns/time/token, completion rubric và escalation owner trong `src/aios_habit/expert_interview_service.py`
-- [ ] T029 [P] [US2] Viết test plan đúng/sai scope, empty expert, stale gap và budget vô hạn trong `tests/test_adaptive_expert_interview.py`
+- [x] T025 [US2] Định nghĩa `InterviewPlan` và version/digest trong `src/aios_habit/expert_interview_models.py`
+- [x] T026 [US2] Chọn eligible experts từ verified profile và grant, không từ model text, trong `src/aios_habit/expert_interview_service.py`
+- [x] T027 [US2] Sinh seed questions theo gap/process và kiểm tra schema trong `src/aios_habit/adaptive_interview_engine.py`
+- [x] T028 [US2] Khóa max turns/time/token, completion rubric và escalation owner trong `src/aios_habit/expert_interview_service.py`
+- [x] T029 [P] [US2] Viết test plan đúng/sai scope, empty expert, stale gap và budget vô hạn trong `tests/test_adaptive_expert_interview.py`
 
 ## Giai đoạn 5 — G4: US2 chat thích nghi nhiều vòng
 
 **Kiểm thử độc lập**: câu trả lời mơ hồ khiến C-AGENT qua Brain Gateway hỏi đúng ngưỡng, đơn vị và ngoại lệ; `unknown`, pause, restart và conflict hoạt động; không lặp vô hạn.
 
-- [ ] T030 [US2] Cài máy trạng thái phiên và transition validator trong `src/aios_habit/adaptive_interview_engine.py`
-- [ ] T031 [US2] Lưu session, turn và checkpoint append-only/idempotent trong `src/aios_habit/expert_interview_repository.py`
-- [ ] T032 [US2] Bind session với principal, expert, plan và kiểm tra lại quyền mỗi turn trong `src/aios_habit/expert_interview_service.py`
-- [ ] T033 [US2] Gọi C-AGENT qua Brain Gateway với schema `next_action`, trigger refs và privacy label trong `src/aios_habit/adaptive_interview_engine.py`
-- [ ] T034 [US2] Chặn câu hỏi ngoài scope, dẫn dắt, semantic duplicate và vượt budget trong `src/aios_habit/adaptive_interview_engine.py`
-- [ ] T035 [US2] Hỗ trợ `unknown|uncertain|skip|pause|stop` và correction version trong `src/aios_habit/expert_interview_service.py`
-- [ ] T036 [US2] Thêm khung trò chuyện tiếng Việt, tiến độ, giới hạn và nút dừng/tiếp tục dễ hiểu trong `src/aios_habit/workspace_case_ui.py`
-- [ ] T037 [P] [US2] Viết contract test ambiguity, threshold, exception, example, contradiction và no-leading trong `tests/test_adaptive_expert_interview.py`
-- [ ] T038 [P] [US2] Viết fault test timeout, schema repair, restart/resume và duplicate submit trong `tests/test_expert_interview_recovery.py`
+- [x] T030 [US2] Cài máy trạng thái phiên và transition validator trong `src/aios_habit/adaptive_interview_engine.py`
+- [x] T031 [US2] Lưu session, turn và checkpoint append-only/idempotent trong `src/aios_habit/expert_interview_repository.py`
+- [x] T032 [US2] Bind session với principal, expert, plan và kiểm tra lại quyền mỗi turn trong `src/aios_habit/expert_interview_service.py`
+- [x] T033 [US2] Gọi C-AGENT qua Brain Gateway với schema `next_action`, trigger refs và privacy label trong `src/aios_habit/adaptive_interview_engine.py`
+- [x] T034 [US2] Chặn câu hỏi ngoài scope, dẫn dắt, semantic duplicate và vượt budget trong `src/aios_habit/adaptive_interview_engine.py`
+- [x] T035 [US2] Hỗ trợ `unknown|uncertain|skip|pause|stop` và correction version trong `src/aios_habit/expert_interview_service.py`
+- [x] T036 [US2] Thêm khung trò chuyện tiếng Việt, tiến độ, giới hạn và nút dừng/tiếp tục dễ hiểu trong `src/aios_habit/workspace_case_ui.py`
+- [x] T037 [P] [US2] Viết contract test ambiguity, threshold, exception, example, contradiction và no-leading trong `tests/test_adaptive_expert_interview.py`
+- [x] T038 [P] [US2] Viết fault test timeout, schema repair, restart/resume và duplicate submit trong `tests/test_expert_interview_recovery.py`
 
 ## Giai đoạn 6 — G5: US3 audio và chép lời cục bộ
 

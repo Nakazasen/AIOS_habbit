@@ -45,6 +45,8 @@ from aios_habit.expert_interview_models import (
     InterviewSessionError,
     InterviewTurn,
     NextActionDecision,
+    REASON_EXPERT_PAUSE,
+    REASON_EXPERT_STOP,
 )
 from aios_habit.expert_interview_repository import ExpertInterviewRepository
 from aios_habit.knowledge_coverage import GAP_STATUS_ACCEPTED, KnowledgeGapCandidate
@@ -319,7 +321,8 @@ class ExpertInterviewService:
                 answer_state=ANSWER_STATE_SKIPPED,
                 created_at=now_iso,
             )
-            return turn, NextActionDecision(action=ACTION_PAUSE, reason="expert_requested_pause", question="Phiên đã được tạm dừng an toàn.")
+            self.interview_repo.save_turn(turn, idempotency_key)
+            return turn, NextActionDecision(action=ACTION_PAUSE, reason=REASON_EXPERT_PAUSE, question="Phiên đã được tạm dừng an toàn.")
 
         if clean_ans in ("stop", "dừng", "kết thúc"):
             stopped_session = InterviewSession(
@@ -347,7 +350,8 @@ class ExpertInterviewService:
                 answer_state=ANSWER_STATE_SKIPPED,
                 created_at=now_iso,
             )
-            return turn, NextActionDecision(action=ACTION_COMPLETE, reason="expert_requested_stop", question="Phiên đã dừng theo yêu cầu của chuyên gia.")
+            self.interview_repo.save_turn(turn, idempotency_key)
+            return turn, NextActionDecision(action=ACTION_COMPLETE, reason=REASON_EXPERT_STOP, question="Phiên đã dừng theo yêu cầu của chuyên gia.")
 
         # Determine answer state
         if clean_ans in ("unknown", "không rõ", "không biết", "chưa rõ"):
