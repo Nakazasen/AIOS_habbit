@@ -36,8 +36,8 @@ Cập nhật: 2026-09-07
 | G1 | T008–T015 | `PASS` | Identity/scope fail-closed |
 | G2 | T016–T024 | `PASS` | Gap có evidence |
 | G3 | T025–T029 | `PASS` | InterviewPlan đúng người/scope/budget |
-| G4 | T030–T038 | `ACTIVE` | Chat thích nghi và resume an toàn |
-| G5 | T039–T047 | `LOCKED` | Consent + transcription local |
+| G4 | T030–T038 | `PASS` | Chat thích nghi và resume an toàn |
+| G5 | T039–T047 | `ACTIVE` | Consent + transcription local |
 | G6 | T048–T053 | `LOCKED` | Claim có nguồn/conflict |
 | G7 | T054–T059 | `LOCKED` | SOP/bài học candidate + approval |
 | G8 | T060–T068 | `LOCKED` | Publication và retrieval receipt |
@@ -160,3 +160,28 @@ Khi fixture, E2E và audit đạt, trạng thái là `TECHNICAL_READY`. Vận h�
   - `git diff --check` -> Mã thoát 0.
 - **Trạng thái cổng G3**: `PASS`.
 - **Kích hoạt cổng tiếp theo**: `G4 (T030–T038)` chuyển sang `ACTIVE`.
+
+### Mốc G4 — US2 chat thích nghi nhiều vòng (T030–T038)
+
+- **Ngày thực hiện**: 2026-09-08
+- **Nhiệm vụ hoàn thành**:
+  - T030: Định nghĩa máy trạng thái phiên, validator và transition rules (`VALID_SESSION_TRANSITIONS`) trong `src/aios_habit/adaptive_interview_engine.py`.
+  - T031: Cài đặt lưu trữ phiên, lượt phỏng vấn và điểm kiểm tra append-only/idempotent (`ON CONFLICT`), kèm phương thức truy xuất `list_sessions` và `list_turns` trong `src/aios_habit/expert_interview_repository.py`.
+  - T032: Ràng buộc phiên chặt chẽ giữa kế hoạch, chuyên gia và danh tính xác thực; tái kiểm tra quyền từng lượt (`turn-by-turn reauthorization`) chuyển sang `blocked` ngay khi grant hết hạn hoặc bị thu hồi trong `src/aios_habit/expert_interview_service.py`.
+  - T033: Kết nối C-AGENT qua Brain Gateway xử lý quyết định `NextActionDecision`, trigger refs, phân tích mức độ chắc chắn và nhãn quyền riêng tư trong `src/aios_habit/adaptive_interview_engine.py`.
+  - T034: Hàng rào an toàn chặn câu hỏi ngoài phạm vi, câu hỏi dẫn dắt ép buộc, trùng lặp ngữ nghĩa (ngưỡng 0.85) và kiểm soát ngân sách trong `src/aios_habit/adaptive_interview_engine.py`.
+  - T035: Hỗ trợ đầy đủ các trạng thái `unknown|uncertain|skip|pause|stop`, lưu lượt phỏng vấn an toàn khi tạm dừng hoặc kết thúc, hỗ trợ phiên bản đính chính trong `src/aios_habit/expert_interview_service.py`.
+  - T036: Xây dựng khung giao diện trò chuyện chuyên gia bằng tiếng Việt đời thường, thanh tiến độ trực quan, ngân sách lượt và các nút điều khiển phiên trong `src/aios_habit/workspace_case_ui.py`.
+  - T037: Viết bộ 18 test kiểm thử hợp đồng thích ứng toàn diện (mơ hồ, thiếu ngưỡng, ngoại lệ, ví dụ, mâu thuẫn, chống dẫn dắt, leo thang khi không rõ) trong `tests/test_adaptive_expert_interview.py`.
+  - T038: Viết bộ 5 test kiểm thử phục hồi sự cố (chống chịu timeout, tự sửa schema dị dạng, khởi động lại và tiếp tục phiên qua SQLite độc lập, chống trùng lặp dữ liệu và hỗ trợ danh sách phiên cho giao diện) trong `tests/test_expert_interview_recovery.py`.
+- **Bằng chứng kiểm thử**:
+  - `uv run --no-sync --group dev pytest tests/test_adaptive_expert_interview.py tests/test_expert_interview_recovery.py -v` -> 23 passed in 1.90s (Mã thoát 0).
+  - `uv run --no-sync --group dev python scripts/check_docs.py` -> `DOCUMENTATION_CONTRACT=PASS` (Mã thoát 0).
+  - `uv run --no-sync --group dev python -m compileall src tests` -> Mã thoát 0.
+  - `uv run --no-sync --group dev python -m aios_habit.cli audit` -> `{"status": "PASS", "errors": []}` (Mã thoát 0).
+  - `uv run --no-sync --group dev python -c "import aios_habit.workspace_chat_app; print('WORKSPACE_CHAT_APP_IMPORT_OK')"` -> `WORKSPACE_CHAT_APP_IMPORT_OK` (Mã thoát 0).
+  - `uv run --no-sync --group dev python scripts/check_user_facing_vietnamese.py` -> `VIETNAMESE_UI_POLICY_CHECK=PASS: Bề mặt người dùng tuân thủ tiếng Việt 100%` (Mã thoát 0).
+  - `git diff --check` -> Mã thoát 0.
+- **Nhiệm vụ kiểm toán độc lập**: Tác tử Kiểm toán Độc lập (Audit Specialist) thẩm định độc lập 2 vòng, chỉ ra và đã nghiệm thu việc bổ sung `list_sessions` cùng test case phục hồi. Báo cáo tái thẩm định kết luận: **PASS**.
+- **Trạng thái cổng G4**: `PASS`.
+- **Kích hoạt cổng tiếp theo**: `G5 (T039–T047)` chuyển sang `ACTIVE`.

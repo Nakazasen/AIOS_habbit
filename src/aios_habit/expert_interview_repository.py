@@ -178,6 +178,50 @@ class ExpertInterviewRepository:
                 stop_reason=row["stop_reason"],
             )
 
+    def list_sessions(self, plan_id: Optional[str] = None) -> list[InterviewSession]:
+        """Fetch all interview sessions, optionally filtered by plan_id, ordered by started_at DESC."""
+        self.initialize()
+        with self._connection() as conn:
+            if plan_id:
+                rows = conn.execute(
+                    """
+                    SELECT session_id, plan_id, expert_id, principal_subject_id,
+                           state, consent_state, checkpoint_seq, last_turn_digest,
+                           started_at, updated_at, ended_at, stop_reason
+                    FROM interview_sessions
+                    WHERE plan_id = ?
+                    ORDER BY started_at DESC
+                    """,
+                    (plan_id,),
+                ).fetchall()
+            else:
+                rows = conn.execute(
+                    """
+                    SELECT session_id, plan_id, expert_id, principal_subject_id,
+                           state, consent_state, checkpoint_seq, last_turn_digest,
+                           started_at, updated_at, ended_at, stop_reason
+                    FROM interview_sessions
+                    ORDER BY started_at DESC
+                    """
+                ).fetchall()
+            return [
+                InterviewSession(
+                    session_id=r["session_id"],
+                    plan_id=r["plan_id"],
+                    expert_id=r["expert_id"],
+                    principal_subject_id=r["principal_subject_id"],
+                    state=r["state"],
+                    consent_state=r["consent_state"],
+                    checkpoint_seq=r["checkpoint_seq"],
+                    last_turn_digest=r["last_turn_digest"],
+                    started_at=r["started_at"],
+                    updated_at=r["updated_at"],
+                    ended_at=r["ended_at"],
+                    stop_reason=r["stop_reason"],
+                )
+                for r in rows
+            ]
+
     def save_turn(self, turn: InterviewTurn, idempotency_key: str) -> None:
         """Idempotently save an interview turn."""
         self.initialize()

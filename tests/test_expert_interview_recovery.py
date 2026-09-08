@@ -313,3 +313,47 @@ def test_duplicate_submission_idempotency(initialized_env):
     turns = interview_repo.list_turns(session.session_id)
     assert len(turns) == 1
     assert turns[0].turn_id == turn1.turn_id
+
+
+def test_list_sessions_repository_and_ui_support(initialized_env):
+    """Repository supports listing all sessions and filtering by plan_id to prevent UI crash."""
+    case_repo, interview_repo, interview_service = initialized_env
+
+    # 1. Initially empty or existing
+    initial_sessions = interview_repo.list_sessions()
+    initial_count = len(initial_sessions)
+
+    # 2. Create gap and 2 plans
+    gap = KnowledgeGapCandidate(
+        gap_id="GAP-LIST-1",
+        collection_id="col-1",
+        scope="lsu_optics",
+        title="Thiếu bước sóng",
+        description="Mô tả",
+        gap_type=GAP_TYPE_MISSING_THRESHOLD,
+        evidence_refs=("DOC-1#chunk_001",),
+        status=GAP_STATUS_ACCEPTED,
+    )
+    case_repo.save_gap_candidate(gap, "KEY-GAP-LIST", "admin_user")
+
+    plan1 = interview_service.create_interview_plan(
+        gap_id=gap.gap_id,
+        budget=InterviewBudget(max_turns=3, max_minutes=10, token_budget=1000),
+        completion_rubric=CompletionRubric(escalation_owner="owner_1"),
+    )
+    principal = VerifiedPrincipal("user_exp_001", "local_test", "Nguyễn Văn A")
+    sess1 = interview_service.start_interview_session(plan1.plan_id, principal, "user_exp_001", "IDEMP-SESS-L1")
+
+    # 3. Verify list_sessions() contains sess1
+    all_sessions = interview_repo.list_sessions()
+    assert len(all_sessions) == initial_count + 1
+    assert any(s.session_id == sess1.session_id for s in all_sessions)
+
+    # 4. Filter by plan_id
+    filtered = interview_repo.list_sessions(plan_id=plan1.plan_id)
+    assert len(filtered) == 1
+    assert filtered[0].session_id == sess1.session_id
+
+    # 5. Filter by non-existent plan_id returns empty
+    empty_filtered = interview_repo.list_sessions(plan_id="NON_EXISTENT_PLAN")
+    assert len(empty_filtered) == 0
