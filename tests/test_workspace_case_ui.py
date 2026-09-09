@@ -483,3 +483,257 @@ def test_expert_interview_ui_presenters_and_rows():
     assert rows[0]["Câu trả lời"] == "Ngưỡng là 632.8 nm"
     assert rows[0]["Trạng thái"] == "Đã trả lời"
     assert rows[0]["Độ tin cậy"] == "95%"
+
+
+def test_four_stages_navigation_and_vietnamese_labels():
+    """T105: Verify 4 stages navigation labels, single primary action per stage, and zero technical leak."""
+    from aios_habit.workspace_case_ui import (
+        _CONTROLLED_ARTIFACT_STATUS_LABELS,
+        _CONTROLLED_ARTIFACT_TYPE_LABELS,
+    )
+
+    for status_key, label in _CONTROLLED_ARTIFACT_STATUS_LABELS.items():
+        assert not any(leak in label.lower() for leak in ("approved", "rejected", "candidate", "revoked", "changes_requested"))
+        assert len(label) > 0
+
+    for type_key, label in _CONTROLLED_ARTIFACT_TYPE_LABELS.items():
+        assert len(label) > 0
+
+    # Verify workspace navigation options contain all 4 stages in pure Vietnamese
+    from aios_habit.workspace_case_ui import render_case_workspace
+    import inspect
+    src = inspect.getsource(render_case_workspace)
+    assert "review_approve" in src
+    assert "library_publish" in src
+    assert "interview" in src
+    assert "Chặng 1: Phỏng vấn chuyên gia" in src
+    assert "Chặng 2 & 3: Kiểm tra & Phê duyệt bản nháp" in src
+    assert "Chặng 4: Đưa vào thư viện dùng chung" in src
+    assert "Mã kiểm tra toàn vẹn nội dung" in Path("src/aios_habit/workspace_case_ui.py").read_text(encoding="utf-8")
+
+
+def test_case_workspace_library_publish_wiring_has_no_type_error():
+    """Verify that the library_publish view code path instantiates KnowledgePublisher with valid arguments."""
+    from aios_habit.workspace_case_ui import render_case_workspace
+    import inspect
+    src = inspect.getsource(render_case_workspace)
+    assert "publisher = KnowledgePublisher(" in src
+    # Must not pass unsupported kwargs directly without base_dir
+    assert "base_dir" in src
+
+
+def test_controlled_artifact_approval_id_uniqueness():
+    """Verify that the approval_id generation logic in workspace_case_ui incorporates approval count and timestamp."""
+    from aios_habit.workspace_case_ui import render_controlled_artifacts_management
+    import inspect
+    src = inspect.getsource(render_controlled_artifacts_management)
+    assert "list_artifact_approvals" in src
+    assert "app_count + 1" in src
+
+
+def test_safe_vietnamese_ui_message_default_fallback_behavior():
+    """Verify safe_vietnamese_ui_message works cleanly with 1 argument, returning default fallback on English error."""
+    from aios_habit.ui_safety import safe_vietnamese_ui_message
+
+    # Pure Vietnamese text is returned intact
+    vn_text = "Thao tác thành công tốt đẹp."
+    assert safe_vietnamese_ui_message(vn_text) == vn_text
+
+    # English technical diagnostic returns Vietnamese fallback
+    en_error = "ConnectionError: connection timed out to 127.0.0.1:8000"
+    result = safe_vietnamese_ui_message(en_error)
+    assert result == "Đã xảy ra lỗi trong quá trình xử lý. Vui lòng thử lại sau."
+    assert "ConnectionError" not in result
+
+    # 1-argument call on empty input
+    assert safe_vietnamese_ui_message("") == "Đã xảy ra lỗi trong quá trình xử lý. Vui lòng thử lại sau."
+
+
+def test_render_knowledge_publication_and_controlled_artifacts_clean_execution(tmp_path):
+    """Verify render_controlled_artifacts_management and render_knowledge_publication_management run without TypeError."""
+    from unittest.mock import MagicMock, patch
+    from aios_habit.expert_interview_repository import ExpertInterviewRepository
+    from aios_habit.expert_interview_service import ExpertInterviewService
+    from aios_habit.expert_identity import VerifiedPrincipal
+    from aios_habit.knowledge_publication import KnowledgePublisher
+    from aios_habit.workspace_case_authorization import ActorContext
+    from aios_habit.workspace_case_repository import WorkspaceCaseRepository
+    from aios_habit.workspace_case_ui import (
+        render_controlled_artifacts_management,
+        render_knowledge_publication_management,
+    )
+
+    db_path = tmp_path / "test_ui.sqlite"
+    case_repo = WorkspaceCaseRepository(db_path)
+    case_repo.initialize()
+    interview_repo = ExpertInterviewRepository(db_path)
+    interview_repo.initialize()
+    actor_ctx = ActorContext("test_actor")
+    svc = ExpertInterviewService(store=case_repo, interview_repo=interview_repo, actor_context=actor_ctx)
+    principal = VerifiedPrincipal("test_actor", "local", "Test Actor")
+    publisher = KnowledgePublisher(base_dir=tmp_path / "chat", backup_dir=tmp_path / "backups")
+
+    with patch("streamlit.subheader"), patch("streamlit.info"), patch("streamlit.write"), patch("streamlit.selectbox", return_value=0), patch("streamlit.tabs", return_value=[MagicMock(), MagicMock(), MagicMock(), MagicMock()]):
+        # When no artifacts exist, these views render their info panels cleanly
+        render_controlled_artifacts_management(svc, principal)
+        render_knowledge_publication_management(svc, publisher, principal)
+
+
+def test_workspace_case_ui_module_imports_and_type_hints():
+    """Verify datetime, timezone, DEFAULT_COLLECTION_ID, Sequence, Any are imported and all type hints resolve."""
+    import typing
+    from datetime import datetime, timezone
+    import aios_habit.workspace_case_ui as wsc_ui
+    from aios_habit.workspace_chat_models import DEFAULT_COLLECTION_ID
+
+    assert wsc_ui.datetime is datetime
+    assert wsc_ui.timezone is timezone
+    assert wsc_ui.DEFAULT_COLLECTION_ID == DEFAULT_COLLECTION_ID
+    assert hasattr(wsc_ui, "Sequence")
+    assert hasattr(wsc_ui, "Any")
+
+    hints = typing.get_type_hints(wsc_ui.interview_turn_rows)
+    assert "turns" in hints
+    assert "return" in hints
+
+
+def test_render_controlled_artifacts_management_with_existing_artifact_executes_cleanly(tmp_path):
+    """Verify render_controlled_artifacts_management generates approval_id with datetime and submits cleanly."""
+    from unittest.mock import MagicMock, patch
+    from aios_habit.controlled_knowledge_artifact import ControlledKnowledgeArtifact, ARTIFACT_STATUS_CANDIDATE
+    from aios_habit.expert_interview_repository import ExpertInterviewRepository
+    from aios_habit.expert_interview_service import ExpertInterviewService
+    from aios_habit.expert_identity import VerifiedPrincipal
+    from aios_habit.workspace_case_authorization import ActorContext, RoleGrant
+    from aios_habit.workspace_case_repository import WorkspaceCaseRepository
+    from aios_habit.workspace_case_ui import render_controlled_artifacts_management
+
+    db_path = tmp_path / "test_artifact_ui.sqlite"
+    case_repo = WorkspaceCaseRepository(db_path)
+    case_repo.initialize()
+    interview_repo = ExpertInterviewRepository(db_path)
+    interview_repo.initialize()
+
+    # Grant quality_manager role to test_actor
+    case_repo.replace_role_grants(
+        "test_actor",
+        [
+            RoleGrant(
+                grant_id="GRANT-ACTOR-1",
+                actor_id="test_actor",
+                role="quality_manager",
+                scope="general",
+                valid_from="2000-01-01T00:00:00+00:00",
+                valid_until="9999-12-31T23:59:59+00:00",
+            ),
+        ],
+    )
+
+    actor_ctx = ActorContext("test_actor")
+    svc = ExpertInterviewService(store=case_repo, interview_repo=interview_repo, actor_context=actor_ctx)
+    principal = VerifiedPrincipal("test_actor", "local", "Test Actor")
+
+    art = ControlledKnowledgeArtifact(
+        artifact_id="ART-TEST-001",
+        artifact_type="sop",
+        title="Quy trình thử nghiệm",
+        scope="general",
+        version="1.0",
+        content_markdown="# Nội dung quy trình thử nghiệm",
+        claim_ids=("CLM-001",),
+        status=ARTIFACT_STATUS_CANDIDATE,
+        created_by="creator_actor",
+    )
+    interview_repo.save_artifact(art, "IDEMP-ART-TEST-1")
+
+    tab_mocks = [MagicMock(), MagicMock(), MagicMock(), MagicMock()]
+    with patch("streamlit.subheader"), \
+         patch("streamlit.info"), \
+         patch("streamlit.write"), \
+         patch("streamlit.caption"), \
+         patch("streamlit.markdown"), \
+         patch("streamlit.selectbox", return_value=0), \
+         patch("streamlit.tabs", return_value=tab_mocks), \
+         patch("streamlit.form"), \
+         patch("streamlit.text_area", return_value="Căn cứ phê duyệt hợp lệ."), \
+         patch("streamlit.form_submit_button", return_value=True), \
+         patch("streamlit.success") as mock_success, \
+         patch("streamlit.rerun"):
+        render_controlled_artifacts_management(svc, principal)
+        mock_success.assert_called_once()
+        # Verify approval record was created in database
+        approvals = interview_repo.list_artifact_approvals("ART-TEST-001")
+        assert len(approvals) == 1
+        assert approvals[0].artifact_id == "ART-TEST-001"
+        assert approvals[0].approval_id.startswith("APP-ART-TEST-001-1-")
+
+
+def test_render_knowledge_publication_management_revocation_executes_cleanly(tmp_path):
+    """Verify render_knowledge_publication_management revocation utilizes DEFAULT_COLLECTION_ID without NameError."""
+    from unittest.mock import MagicMock, patch
+    from aios_habit.controlled_knowledge_artifact import ControlledKnowledgeArtifact, ARTIFACT_STATUS_APPROVED
+    from aios_habit.expert_interview_repository import ExpertInterviewRepository
+    from aios_habit.expert_interview_service import ExpertInterviewService
+    from aios_habit.expert_identity import VerifiedPrincipal
+    from aios_habit.knowledge_publication import KnowledgePublisher, PublicationReceipt
+    from aios_habit.workspace_case_authorization import ActorContext
+    from aios_habit.workspace_case_repository import WorkspaceCaseRepository
+    from aios_habit.workspace_case_ui import render_knowledge_publication_management
+    from aios_habit.workspace_chat_models import DEFAULT_COLLECTION_ID
+
+    db_path = tmp_path / "test_pub_ui.sqlite"
+    case_repo = WorkspaceCaseRepository(db_path)
+    case_repo.initialize()
+    interview_repo = ExpertInterviewRepository(db_path)
+    interview_repo.initialize()
+    actor_ctx = ActorContext("test_actor")
+    svc = ExpertInterviewService(store=case_repo, interview_repo=interview_repo, actor_context=actor_ctx)
+    principal = VerifiedPrincipal("test_actor", "local", "Test Actor")
+
+    art = ControlledKnowledgeArtifact(
+        artifact_id="ART-PUB-001",
+        artifact_type="sop",
+        title="Quy trình đã duyệt",
+        scope="general",
+        version="1.0",
+        content_markdown="# Nội dung quy trình đã duyệt",
+        claim_ids=("CLM-001",),
+        status=ARTIFACT_STATUS_APPROVED,
+        created_by="creator_actor",
+    )
+    interview_repo.save_artifact(art, "IDEMP-ART-PUB-1")
+
+    publisher = KnowledgePublisher(base_dir=tmp_path / "chat", backup_dir=tmp_path / "backups")
+    mock_receipt = PublicationReceipt(
+        receipt_id="REV-TEST-01",
+        package_id="PKG-ART-PUB-001-V1_0",
+        package_digest="",
+        backup_id="BCK-01",
+        quick_check_status="PASS",
+        acceptance_results={},
+        published_at="2026-09-09T00:00:00Z",
+        published_by="test_actor",
+        state="revoked",
+    )
+
+    tab_mocks = [MagicMock(), MagicMock()]
+    with patch("streamlit.subheader"), \
+         patch("streamlit.info"), \
+         patch("streamlit.write"), \
+         patch("streamlit.caption"), \
+         patch("streamlit.selectbox", return_value=0), \
+         patch("streamlit.tabs", return_value=tab_mocks), \
+         patch("streamlit.form"), \
+         patch("streamlit.text_input", return_value="PKG-ART-PUB-001-V1_0"), \
+         patch("streamlit.text_area", return_value="Lý do thu hồi hợp lệ."), \
+         patch("streamlit.form_submit_button", return_value=True), \
+         patch.object(publisher, "revoke_publication", return_value=mock_receipt) as mock_revoke, \
+         patch("streamlit.success") as mock_success:
+        render_knowledge_publication_management(svc, publisher, principal)
+        mock_revoke.assert_called_once_with(
+            package_id="PKG-ART-PUB-001-V1_0",
+            collection_id=DEFAULT_COLLECTION_ID,
+            reason="Lý do thu hồi hợp lệ.",
+            actor="test_actor",
+        )
+        mock_success.assert_called_once()

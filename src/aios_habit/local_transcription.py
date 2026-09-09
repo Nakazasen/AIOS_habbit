@@ -44,6 +44,11 @@ class TranscriptionError(Exception):
     pass
 
 
+class TranscriptionEngineUnavailableError(TranscriptionError):
+    """Raised when the speech-to-text engine binary or model is missing or fails."""
+    pass
+
+
 class ConsentRequiredError(TranscriptionError):
     """Raised when audio capture or transcription is attempted without active consent."""
     pass
@@ -186,6 +191,7 @@ class MockLocalTranscriptionEngine:
         session_id: str,
         consent: ConsentRecord,
         timeout_seconds: float = 60.0,
+        local_only_root: Optional[Path] = None,
     ) -> TranscriptionReceipt:
         # 1. Enforce fail-closed consent check
         if not consent.is_active:
@@ -193,7 +199,11 @@ class MockLocalTranscriptionEngine:
                 raise ConsentWithdrawnError("Sự đồng ý của chuyên gia đã bị rút lại. Quá trình chép lời bị từ chối.")
             raise ConsentRequiredError("Không thể chép lời âm thanh khi chưa có sự đồng ý của chuyên gia.")
 
-        # 2. Check file existence
+        # 2. Enforce local_only path security check if root specified
+        if local_only_root:
+            validate_local_only_audio_path(audio_path, local_only_root)
+
+        # 3. Check file existence
         if not audio_path.exists():
             raise FileNotFoundError(f"Không tìm thấy tệp âm thanh tại '{audio_path}'.")
 
@@ -288,11 +298,11 @@ class LocalWhisperCppTranscriptionAdapter:
         self,
         binary_path: Optional[Path] = None,
         model_path: Optional[Path] = None,
-        fallback_mock_engine: Optional[MockLocalTranscriptionEngine] = None,
+        fallback_mock_engine: Optional[Any] = None,
     ) -> None:
         self.binary_path = binary_path
         self.model_path = model_path
-        self._fallback_mock = fallback_mock_engine or MockLocalTranscriptionEngine()
+        self.fallback_mock_engine = fallback_mock_engine
 
     def transcribe(
         self,
@@ -364,42 +374,70 @@ class LocalWhisperCppTranscriptionAdapter:
                     engine_version=self.PINNED_VERSION,
                     segments=tuple(segments_list),
                     full_text=full_text,
-                    all_critical_tokens=tuple(set(c for s in segments_list for c in s.critical_tokens)),
+                    all_critical_tokens=tuple(dict.fromkeys(c for s in segments_list for c in s.critical_tokens)),
                     state=TRANSCRIPT_STATE_DRAFT,
                     created_at=now_iso,
                 )
             except subprocess.TimeoutExpired:
-                raise TranscriptionError(f"Thời gian chép lời vượt quá giới hạn an toàn {timeout_seconds}s.")
+                raise TranscriptionError(f"Thời gian chép lời vượt quá giới hạn an toàn {timeout_seconds}s. Vui lòng kiểm tra lại tệp âm thanh hoặc chuyển sang nhập văn bản thủ công.")
             except Exception as e:
-                # Deterministic fallback if subprocess encounters runtime error
-                receipt = self._fallback_mock.transcribe(audio_path, session_id, consent, timeout_seconds)
-                return TranscriptionReceipt(
-                    receipt_id=receipt.receipt_id,
-                    session_id=receipt.session_id,
-                    audio_path=receipt.audio_path,
-                    audio_digest=receipt.audio_digest,
-                    engine_name="whisper.cpp",
-                    engine_version=self.PINNED_VERSION,
-                    segments=receipt.segments,
-                    full_text=receipt.full_text,
-                    all_critical_tokens=receipt.all_critical_tokens,
-                    state=receipt.state,
-                    created_at=receipt.created_at,
+                raise TranscriptionEngineUnavailableError(
+                    f"Bộ máy chép lời whisper.cpp gặp sự cố trong quá trình thực thi: {e}. Vui lòng thử lại hoặc chuyển sang nhập văn bản thủ công."
                 )
-        else:
-            # Fallback for dev / CI environments without compiled C++ binary
-            receipt = self._fallback_mock.transcribe(audio_path, session_id, consent, timeout_seconds)
-            return TranscriptionReceipt(
-                receipt_id=receipt.receipt_id,
-                session_id=receipt.session_id,
-                audio_path=receipt.audio_path,
-                audio_digest=receipt.audio_digest,
-                engine_name="whisper.cpp",
-                engine_version=self.PINNED_VERSION,
-                segments=receipt.segments,
-                full_text=receipt.full_text,
-                all_critical_tokens=receipt.all_critical_tokens,
-                state=receipt.state,
-                created_at=receipt.created_at,
+        elif self.fallback_mock_engine is not None:
+            return self.fallback_mock_engine.transcribe(
+                audio_path=audio_path,
+                session_id=session_id,
+                consent=consent,
+                timeout_seconds=timeout_seconds,
+                local_only_root=local_only_root,
             )
+        else:
+            raise TranscriptionEngineUnavailableError(
+                "Bộ máy chép lời whisper.cpp chưa sẵn sàng hoặc không tìm thấy tệp thực thi. Vui lòng kiểm tra cài đặt bộ máy hoặc chuyển sang chế độ nhập văn bản thủ công."
+            )
+
+
+def create_manual_transcription_receipt(
+    text: str,
+    session_id: str,
+    consent: ConsentRecord,
+) -> TranscriptionReceipt:
+    """Create a verified transcription receipt from manual user input when local engine is unavailable."""
+    if not consent.is_active:
+        if consent.state == CONSENT_STATE_WITHDRAWN:
+            raise ConsentWithdrawnError("Sự đồng ý của chuyên gia đã bị rút lại. Thao tác bị từ chối.")
+        raise ConsentRequiredError("Không thể tiếp nhận văn bản khi chưa có sự đồng ý của chuyên gia.")
+
+    cleaned_text = text.strip()
+    if not cleaned_text:
+        raise ValueError("Nội dung văn bản nhập thủ công không được để trống.")
+
+    critical = extract_critical_tokens(cleaned_text)
+    segment = TranscriptionSegment(
+        segment_id=f"SEG-MANUAL-{session_id}-1",
+        start_time=0.0,
+        end_time=0.0,
+        text=cleaned_text,
+        tokens=tuple(cleaned_text.split()),
+        critical_tokens=critical,
+        is_confirmed=True,
+    )
+    payload_hash = hashlib.sha256(cleaned_text.encode("utf-8")).hexdigest()
+    now_iso = datetime.now(timezone.utc).isoformat()
+    receipt_id = f"TRCP-MANUAL-{session_id}-{int(datetime.now(timezone.utc).timestamp())}"
+
+    return TranscriptionReceipt(
+        receipt_id=receipt_id,
+        session_id=session_id,
+        audio_path="manual_input",
+        audio_digest=payload_hash,
+        engine_name="manual_input",
+        engine_version="1.0.0",
+        segments=(segment,),
+        full_text=cleaned_text,
+        all_critical_tokens=critical,
+        state=TRANSCRIPT_STATE_REVIEWED,
+        created_at=now_iso,
+    )
 

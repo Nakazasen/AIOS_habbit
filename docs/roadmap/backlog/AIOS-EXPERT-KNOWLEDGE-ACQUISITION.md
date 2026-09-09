@@ -1,9 +1,9 @@
 # Thẻ cổng: AI phỏng vấn chuyên gia và làm giàu tri thức
 
-Status: `TECHNICAL_READY`
+Status: `REOPENED_FOR_SIMPLIFICATION`
 Mã tính năng: `010-expert-knowledge-acquisition`  
 Chủ sở hữu: Project owner / Process owner / Privacy reviewer  
-Cập nhật: 2026-09-08
+Cập nhật: 2026-09-09
 
 ## Mục tiêu
 
@@ -11,15 +11,32 @@ Cập nhật: 2026-09-08
 
 ## Trạng thái đúng hiện tại
 
-- Đã hoàn tất triển khai toàn diện Feature 010 với 81/81 task (G0–G10).
-- Hệ thống danh tính đa người dùng Windows/OS và phân quyền RBAC fail-closed được kiểm chứng độc lập.
-- Quy trình phỏng vấn thích ứng văn bản và âm thanh ngoại tuyến (Whisper.cpp) vận hành cục bộ 100%.
-- Kiểm tra toàn vẹn tri thức (digest SHA-256, cấm tự duyệt, phát hiện mâu thuẫn số liệu) hoạt động tin cậy.
-- Xuất bản an toàn vào thư viện dùng chung có kiểm tra toàn vẹn SQLite và sao lưu hoàn tác tự động.
-- Đánh giá điều kiện fine-tune xác nhận kết luận chính thức: NOT_APPLICABLE (RAG v2 baseline 100%).
-- Đã nghiệm thu toàn diện Cổng G10 qua diễn tập tự động xác nhận 10/10 tiêu chí SC-001–SC-010.
+- T000–T080 đã hoàn thành theo thiết kế cũ; bằng chứng G0–G10 được giữ làm lịch sử, không bị xóa.
+- Kiểm toán lại ngày 2026-09-09 phát hiện thiết kế danh tính/phân quyền không phù hợp vì sản phẩm không có hệ tài khoản dùng chung; lớp này không tạo ranh giới bảo mật thật cho thư viện chung.
+- Phát hiện thêm các finding mức chặn: bản chép lời thô có đường lưu vi phạm hợp đồng, runtime chép lời có thể fallback mock nhưng gắn nhãn như kết quả thật, một số trạng thái xuất bản/thu hồi chưa phản ánh dữ liệu chắc chắn và các màn duyệt/xuất bản chưa được nối vào hành trình chính.
+- Giao diện hiện còn lộ thuật ngữ `fixture`, `digest`, `claim`, `approved`, mã nội bộ và bắt người dùng nhập cấu hình/nghiệm thu kỹ thuật.
+- ADR-0009, đặc tả và kế hoạch đã được sửa sang mô hình nhóm tin cậy: tên chỉ để ghi nhận trách nhiệm; mọi người mở được thư viện đều có thể ghi; khóa ghi chỉ chống xung đột đồng thời.
+- Goal chưa sẵn sàng vận hành theo thiết kế mới cho đến khi T083–T109 được thực hiện và kiểm toán lại.
 
-## Sáu mặc định đã khóa để chạy liên tục
+## Quyết định sau kiểm toán
+
+| Giữ | Giản lược | Bỏ khỏi Goal 010 |
+| --- | --- | --- |
+| Dữ liệu thô cục bộ, consent, nguồn, phiên bản, lịch sử, backup, kiểm tra và rollback | Gap là gợi ý; giới hạn phiên là mặc định nội bộ; chi tiết kỹ thuật thu gọn; xác nhận và xuất bản thành một hành động chính | Đăng nhập, RBAC, scope grant, cấm tự duyệt, máy ghi cố định, quyền Windows/NAS, màn hình fixture, fine-tune như một cổng sản phẩm |
+
+Luồng đích: **Chọn thư viện → Phỏng vấn → Kiểm tra bản nháp → Xác nhận và đưa vào thư viện**.
+
+## Cổng sửa lại
+
+| Cổng | Task | Trạng thái | Điều kiện ra |
+| --- | ---: | --- | --- |
+| R1 | T083–T088 | `PENDING` | Ranh giới dữ liệu thô, chép lời và trạng thái xuất bản đúng |
+| R2 | T089–T093 | `PENDING` | Không còn quyền giả; quyết định có đủ thông tin trách nhiệm |
+| R3 | T094–T097 | `PENDING` | Chọn cá nhân/dùng chung và ghi snapshot an toàn |
+| R4 | T098–T105 | `PENDING` | Bốn chặng truy cập được, không lộ chi tiết kỹ thuật ở luồng chính |
+| R5 | T106–T109 | `PENDING` | Lượt đi bộ nontech, E2E, full gate và audit độc lập đạt |
+
+## Sáu mặc định của thiết kế cũ — chỉ giữ làm lịch sử
 
 | Mục | Mặc định thực thi | Ranh giới |
 | --- | --- | --- |
@@ -70,7 +87,7 @@ Theo SC-001–SC-010 trong [đặc tả](../../../specs/010-expert-knowledge-acq
 - 0 raw audio/transcript trong Git, library, case DB, log thường hoặc provider trái policy.
 - E2E Windows, full quality gate và audit độc lập đạt.
 
-Khi fixture, E2E và audit đạt, trạng thái là `TECHNICAL_READY`. Vận hành với người thật bắt đầu sau đó mà không cần đổi code.
+Đoạn G0–G10 bên dưới là nhật ký lịch sử của thiết kế cũ. Trạng thái hiện hành chỉ được xác định bởi R1–R5 và không được khôi phục `TECHNICAL_READY` nếu chưa có bằng chứng mới.
 
 ## Liên kết
 

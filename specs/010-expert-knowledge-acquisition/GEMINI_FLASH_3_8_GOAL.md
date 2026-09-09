@@ -1,5 +1,7 @@
 # Goal cho Gemini Flash 3.8: AI phỏng vấn chuyên gia
 
+> **Tài liệu lịch sử**: T000–T080 đã được thực thi theo thiết kế ngày 2026-09-07. Không dùng các chỉ dẫn danh tính/phân quyền, G0–G10 hoặc trạng thái `TECHNICAL_READY` trong file này cho phần sửa hiện tại. Từ ngày 2026-09-09, nguồn thực thi là [plan.md](plan.md), [tasks.md](tasks.md) phần T083–T109 và ADR-0009 bản sửa.
+
 ## Prompt khởi chạy để dán vào Gemini
 
 ```text

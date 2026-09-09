@@ -1,13 +1,14 @@
 # Biên bản Bàn giao Dự án (Project Handover)
 
-Cập nhật: 2026-09-07
+Cập nhật: 2026-09-09
 Nguồn trạng thái chuẩn: [ROADMAP.md](ROADMAP.md) là nguồn trạng thái chuẩn duy nhất cho vòng đời các Gate; tệp này là ảnh chụp nhanh (snapshot) vận hành và không được tự ý chuyển các tuyên bố lịch sử thành tuyên bố phát hành hiện tại.
 
 ## Ảnh chụp trạng thái hiện tại (Current Snapshot)
 
 - **Đợt T030–T057:** Đã commit và push tại `1d0749b` trên `gate1-local-case-sqlite`. Kiểm toán lại ngày 2026-09-07 xác nhận local/remote cùng SHA; 29 test US10/Workspace Chat trọng điểm, `compileall`, CLI audit, import, hợp đồng tài liệu và chính sách UI tiếng Việt đều đạt. Không dùng lượt này để tuyên bố full suite 2.559 test hiện tại.
 - **Feature 009 — Agent lập trình có kiểm soát:** G0 đã mở với [ADR-0008](docs/adr/0008-inherited-agent-runtime-and-code-oss-companion.md), [đặc tả/kế hoạch](specs/009-agent-harness-adoption/plan.md) và [Gate Card active](docs/roadmap/active/AIOS-AGENT-HARNESS-ADOPTION.md). Bước kế tiếp chỉ là G1 spike OpenCode đọc-only; chưa được bật write/command hoặc mô tả parity với Cline/OpenCode.
-- **Feature 010 — AI phỏng vấn chuyên gia:** `TECHNICAL_READY` (Đã hoàn tất nghiệm thu Cổng G10). Đã hoàn tất triển khai G0–G10 với 81/81 task, vượt qua toàn bộ các bài kiểm thử của repository, diễn tập tự động xác nhận 100% tiêu chí SC-001–SC-010 (bao gồm BGE-M3 retrieval -> AIOS -> C-AGENT qua Brain Gateway -> candidate -> phê duyệt -> phỏng vấn -> claim -> SOP -> xuất bản thư viện -> thu hồi), fine-tuning đạt kết luận `NOT_APPLICABLE`, kiểm toán độc lập AuditSpecialistG10 kết luận PASS 100%. Sẵn sàng vận hành thực tế.
+- **Feature 010 — AI phỏng vấn chuyên gia:** `REOPENED_FOR_SIMPLIFICATION`. T000–T080 và bằng chứng G0–G10 được giữ làm lịch sử, nhưng kiểm toán lại ngày 2026-09-09 không chấp nhận tuyên bố sẵn sàng vận hành: mô hình phân quyền không có hệ tài khoản chung tạo an toàn giả; dữ liệu bản chép lời, fallback mock, trạng thái xuất bản/thu hồi và hành trình UI còn finding. ADR/spec/plan đã chuyển sang nhóm tin cậy, tên ghi nhận trách nhiệm, chọn thư viện cá nhân/dùng chung và luồng bốn chặng. Cần hoàn tất T083–T109 rồi kiểm toán lại.
+- **Điểm lưu Goal 010 ngày 2026-09-09:** Mã và tài liệu hiện tại chỉ là trạng thái đang làm, chưa nghiệm thu. Ý chí kiểm toán, bằng chứng đã chạy, phạm vi commit và các điểm chặn để tiếp tục được ghi tại [biên bản kế thừa Goal 010](docs/reports/BIEN_BAN_KE_THUA_AUDIT_GOAL_010_2026-09-09.md).
 
 - **Chuẩn bị nguồn tăng dần (005):** Mã đã triển khai và 101 bài kiểm tra liên quan đã PASS:
   nguồn mới được chuẩn bị riêng, câu hỏi chờ tự tiếp tục một lần sau khi nguồn sẵn sàng, và

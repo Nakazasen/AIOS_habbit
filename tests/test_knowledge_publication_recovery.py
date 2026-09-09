@@ -135,3 +135,83 @@ def test_interrupted_ingest_leaves_library_usable():
         sqlite_file = runtime_dir / COLLECTION_INDEX_BASENAME
         assert sqlite_file.exists()
         assert sqlite_quick_check(sqlite_file) is True
+
+
+def test_publication_mid_operation_exception_cleans_up_and_restores_backup():
+    """Test invariant: Unexpected exception during indexing triggers complete rollback of doc file and restores SQLite."""
+    import sqlite3
+    with tempfile.TemporaryDirectory() as tmpdir:
+        base_dir = Path(tmpdir) / "workspace_chat"
+        backup_dir = Path(tmpdir) / "backups"
+        publisher = KnowledgePublisher(base_dir=base_dir, backup_dir=backup_dir)
+
+        artifact = make_approved_artifact("ART-EXCEPTION-01")
+        pkg = seal_publication_package(
+            artifact=artifact,
+            acceptance_questions=["Nhiệt độ sấy keo là bao nhiêu?"],
+            sealed_by="lead_reviewer",
+        )
+
+        # Inject synthetic exception in index_rag_chunks simulating disk full or indexing crash
+        with patch("aios_habit.knowledge_publication.index_rag_chunks", side_effect=sqlite3.OperationalError("disk I/O error")):
+            with pytest.raises(sqlite3.OperationalError, match="disk I/O error"):
+                publisher.publish_package(pkg, actor="lead_reviewer")
+
+        runtime_dir, _ = collection_runtime_layout(pkg.target_collection_id, base_dir)
+        sqlite_file = runtime_dir / COLLECTION_INDEX_BASENAME
+        # Database must still exist and be valid
+        assert sqlite_file.exists()
+        assert sqlite_quick_check(sqlite_file) is True
+
+        # Published markdown file must have been unlinked
+        docs_dir = runtime_dir / "published_docs"
+        if docs_dir.exists():
+            matched_files = list(docs_dir.glob(f"*{artifact.artifact_id}*.md"))
+            assert len(matched_files) == 0, f"Published doc must be removed on rollback: {matched_files}"
+
+        # Lease must be free and acquirable
+        lease = LibraryWriterLease(runtime_dir)
+        assert lease.acquire(owner="checker") is True
+        lease.release()
+
+
+def test_publication_pre_indexing_connect_failure_cleans_up_and_restores_backup():
+    """Test invariant: If sqlite3.connect or schema creation fails after doc is written, doc is unlinked and lease released."""
+    import sqlite3
+    with tempfile.TemporaryDirectory() as tmpdir:
+        base_dir = Path(tmpdir) / "workspace_chat"
+        backup_dir = Path(tmpdir) / "backups"
+        publisher = KnowledgePublisher(base_dir=base_dir, backup_dir=backup_dir)
+
+        artifact = make_approved_artifact("ART-CONNECT-FAIL-01")
+        pkg = seal_publication_package(
+            artifact=artifact,
+            acceptance_questions=["Nhiệt độ sấy keo là bao nhiêu?"],
+            sealed_by="lead_reviewer",
+        )
+
+        with patch("sqlite3.connect", side_effect=sqlite3.OperationalError("unable to open database file")):
+            with pytest.raises(sqlite3.OperationalError, match="unable to open database file"):
+                publisher.publish_package(pkg, actor="lead_reviewer")
+
+        runtime_dir, _ = collection_runtime_layout(pkg.target_collection_id, base_dir)
+        # Published markdown file must have been unlinked
+        docs_dir = runtime_dir / "published_docs"
+        if docs_dir.exists():
+            matched_files = list(docs_dir.glob(f"*{artifact.artifact_id}*.md"))
+            assert len(matched_files) == 0, f"Orphaned doc must be cleaned up on connect error: {matched_files}"
+
+        # Lease must be released
+        lease = LibraryWriterLease(runtime_dir)
+        assert lease.acquire(owner="checker") is True
+        lease.release()
+
+
+def test_knowledge_publisher_init_supports_interview_repo_kwarg():
+    """Test invariant: KnowledgePublisher accepts interview_repo kwarg for seamless UI compatibility."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        base_dir = Path(tmpdir) / "workspace_chat"
+        backup_dir = Path(tmpdir) / "backups"
+        sentinel_repo = object()
+        pub = KnowledgePublisher(base_dir=base_dir, backup_dir=backup_dir, interview_repo=sentinel_repo)
+        assert pub.interview_repo is sentinel_repo

@@ -1,67 +1,70 @@
-# Hợp đồng danh tính, đồng ý và quyền riêng tư
+# Hợp đồng tên ghi nhận, đồng ý và quyền riêng tư
 
-## 1. Danh tính
+## 1. Tên ghi nhận
 
-`IdentityProvider.resolve_current_principal()` phải trả principal từ phiên đăng nhập/OS đã xác thực. UI/prompt không được truyền `expert_id` để thay đổi danh tính hiện tại.
+Ứng dụng có thể đọc tên tài khoản Windows/OS để điền sẵn, nhưng người dùng được sửa tên hiển thị trước khi ra quyết định. Tên này chỉ phục vụ lịch sử trách nhiệm.
 
-```text
-Principal -> ExpertProfile(active) -> ScopeGrant(action, scope, time) -> Allow
-          mọi mắt xích thiếu/hết hạn/revoked                 -> Deny
-```
+Hệ thống phải nói rõ:
 
-### Điều kiện fail-closed
+- Tên ghi nhận không phải danh tính đã xác minh.
+- Tên ghi nhận không cấp hoặc từ chối quyền.
+- Bất kỳ người nào mở được thư viện dùng chung đều có thể phỏng vấn, xác nhận, đưa vào thư viện và thu hồi.
+- Mã máy và thời điểm chỉ hỗ trợ truy vết, không chứng minh chắc chắn ai đã thao tác.
 
-- Adapter không hoạt động hoặc không xác minh được principal.
-- Hai profile cùng ánh xạ một subject.
-- Profile suspended/revoked/hết hạn.
-- Action hoặc scope không khớp chính xác.
-- Grant hết hạn/revoked hoặc người cấp không hợp lệ.
-- Principal của phiên khác principal hiện tại khi resume.
+Goal 010 không có tài khoản ứng dụng, hồ sơ chuyên gia, vai trò, phạm vi cấp quyền, quản trị viên hoặc chế độ nhiều người dùng phải bật/tắt.
 
-### Chế độ một người dùng
+## 2. Quyết định có trách nhiệm
 
-`local_admin` do app cấp vẫn được dùng cho luồng cũ. Khi feature flag multi-user bật, không được fallback về `local_admin` sau lỗi identity.
+Mọi quyết định `confirm`, `reject`, `request_change` hoặc `revoke` phải lưu:
 
-## 2. Consent ghi âm
+- Đúng mã kiểm tra và phiên bản nội dung.
+- Tên người quyết định.
+- Thời điểm do hệ thống tự ghi.
+- Mức tự tin: thấp, vừa hoặc cao.
+- Lý do/căn cứ.
+- Các nguồn người dùng cho biết đã kiểm tra.
+- Xác nhận “Tôi đã kiểm tra nội dung và chịu trách nhiệm về quyết định này.”
 
-Consent phải lưu:
+Thiếu trường bắt buộc thì chưa ghi quyết định. Nếu nội dung thay đổi sau khi mở form, yêu cầu người dùng xem và xác nhận lại bản mới.
 
-- Ai đồng ý, thời điểm, phiên và mục đích.
-- Loại dữ liệu: audio, transcript máy, transcript đã sửa.
-- Nơi lưu, ai được xem, lịch giữ/xóa và có dùng cho đánh giá hay không.
-- Phiên bản nội dung consent.
+## 3. Đồng ý xử lý âm thanh
 
-Trước `granted`, API record phải deny. Trong khi ghi phải có chỉ báo nhìn thấy. Khi `withdrawn`, dừng capture ngay; hành vi với dữ liệu đã có tuân policy đã duyệt và tạo receipt.
+Trước khi ghi hoặc chép lời, giao diện giải thích ngắn gọn dữ liệu nào được tạo, lưu ở đâu và cách dừng. Người dùng có thể từ chối và tiếp tục bằng văn bản.
 
-Từ chối ghi âm không được chặn chat văn bản.
+Khi rút đồng ý:
 
-## 3. Nhãn và tuyến dữ liệu
+- Dừng xử lý âm thanh mới ngay.
+- Không xóa dữ liệu cũ một cách âm thầm.
+- Hiển thị lựa chọn tiếp tục bằng văn bản và thao tác xóa dữ liệu cục bộ nếu được hỗ trợ.
+- Ghi lại thay đổi trạng thái đồng ý mà không lưu nội dung thô vào log.
+
+## 4. Nhãn và tuyến dữ liệu
 
 | Dữ liệu | Nhãn mặc định | Đích được phép |
-|---|---|---|
-| Audio thô | `local_only` | Vùng interview local đã cấu hình |
-| Transcript máy | `local_only` | Vùng interview local đã cấu hình |
-| Transcript đã sửa | `local_only` cho tới khi duyệt | Vùng local; chỉ claim/artifact trích xuất đi tiếp |
-| Gap/plan metadata | Nội bộ có kiểm soát | `workspace_cases.sqlite` |
-| Claim/artifact candidate | Nội bộ có kiểm soát | Workflow store, không retrieval thường |
-| Artifact đã duyệt | Theo classification của nội dung | Publication package và collection được phép |
-| Receipt/digest | Local metadata | Workflow DB/audit log đã làm sạch |
+| --- | --- | --- |
+| Audio thô | `local_only` | Vùng phỏng vấn cục bộ |
+| Bản chép lời máy | `local_only` | Vùng phỏng vấn cục bộ |
+| Bản chép lời đã sửa | `local_only` cho tới khi rút ra bản nháp | Vùng phỏng vấn cục bộ |
+| Tiến độ phiên | Siêu dữ liệu cục bộ | DB điều phối, không chứa bản chép lời thô |
+| Bản nháp tri thức | Nội bộ | Kho bản nháp, không dùng cho hỏi đáp thường |
+| Nội dung đã xác nhận | Theo phân loại của nguồn | Thư viện đã chọn |
+| Quyết định và biên nhận | Siêu dữ liệu cục bộ | Lịch sử đã làm sạch |
 
-Không đặt đường dẫn tuyệt đối, raw transcript, token hay traceback vào UI/log thông thường.
+Không đặt audio, bản chép lời thô, đường dẫn tuyệt đối, secret hoặc traceback vào UI/log thông thường. Không gửi dữ liệu `local_only` sang provider không được chính sách cho phép.
 
-## 4. Provider route
+## 5. Hành vi chép lời
 
-- Nếu prompt chứa `local_only`, chỉ local model khi owner đã cấu hình rõ; nếu không có route an toàn thì chặn.
-- Với dữ liệu được phép qua provider, chỉ gửi đoạn tối thiểu cần thiết và ghi route receipt đã làm sạch.
-- Không gửi audio thô cho Gemini trong bản đầu. Gemini nhận text đã được policy cho phép hoặc làm việc hoàn toàn với fixture ở giai đoạn dev.
-- Không dùng conversation/transcript làm dữ liệu huấn luyện nếu consent không nói rõ mục đích đó.
+- Runtime thật chỉ báo thành công khi bộ máy chép lời thật đã chạy và trả kết quả hợp lệ.
+- Mock/fixture chỉ được dùng trong test hoặc chế độ phát triển được nhận diện rõ, không có công tắc trong giao diện thường.
+- Nếu bộ máy thật chưa sẵn sàng, giữ dữ liệu cục bộ, giải thích bằng tiếng Việt và đề nghị tiếp tục bằng văn bản.
+- Không dùng hội thoại hoặc bản chép lời để fine-tune trong Goal 010.
 
-## 5. Kiểm thử bắt buộc
+## 6. Kiểm thử bắt buộc
 
-- Mạo danh bằng prompt/form/header tùy ý.
-- Grant đúng action nhưng sai scope; đúng scope nhưng hết hạn.
-- Revoke giữa phiên và giữa approval/publish.
-- Identity provider lỗi rồi thử fallback.
-- Record trước consent, sau withdraw và khi UI indicator lỗi.
-- Secret/raw transcript trong error/stdout/provider payload.
-- Restart đọc lại consent đúng phiên bản và không tự chuyển `declined` thành `granted`.
+- Tên OS được điền sẵn, người dùng sửa được và UI không gọi đó là xác thực.
+- Quyết định thiếu độ tự tin, căn cứ, nguồn kiểm tra hoặc xác nhận trách nhiệm bị từ chối.
+- Nội dung đổi phiên bản giữa lúc xem và xác nhận bị yêu cầu xem lại.
+- Ghi/chế biến âm thanh trước đồng ý và sau khi rút đồng ý bị chặn.
+- Audio/bản chép lời thô không xuất hiện trong Git, DB hồ sơ, thư viện, log hay payload trái chính sách.
+- Bộ máy thật lỗi không rơi về mock rồi báo thành công.
+- Restart đọc lại đúng trạng thái đồng ý và không tự đổi từ chối thành đồng ý.

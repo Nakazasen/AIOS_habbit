@@ -1173,3 +1173,28 @@ def test_workspace_chat_store_class_wrapper_trace_methods():
     assert ws_store.load_message_trace("ast_wrapper") is not None
     assert ws_store.load_message_trace("usr_wrapper") is not None
     assert len(ws_store.load_all_evidence_traces()) >= 1
+
+
+def test_select_library_mode_personal_and_shared_switch_without_restart(tmp_path):
+    """Verify switching between personal and shared library without requiring restart (T094)."""
+    # 1. Start with default personal library
+    info = store.get_active_library_mode()
+    assert info["mode"] == "personal"
+    assert info["storage_root"] == ""
+
+    # 2. Switch to shared library
+    shared_folder = tmp_path / "shared_lib"
+    updated = store.select_library_mode("shared", str(shared_folder))
+    assert updated.storage_root == str(shared_folder)
+
+    info_shared = store.get_active_library_mode()
+    assert info_shared["mode"] == "shared"
+    assert info_shared["storage_root"] == str(shared_folder)
+
+    # 3. Switch back to personal library without restart
+    personal = store.select_library_mode("personal")
+    assert personal.storage_root == ""
+
+    info_personal = store.get_active_library_mode()
+    assert info_personal["mode"] == "personal"
+    assert info_personal["storage_root"] == ""

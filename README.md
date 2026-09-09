@@ -10,7 +10,7 @@ tiếng Anh. Lối vào cho agent: [`AGENTS.md`](AGENTS.md).
 
 - Workspace Chat quản lý nguồn theo sổ tài liệu và từng cuộc trò chuyện.
 - Tìm kiếm hybrid BGE-M3 cục bộ khi máy có gói model đã được xác thực.
-- Giao diện và ngôn ngữ trả lời: Tiếng Việt, 日本語, 简体中文.
+- Giao diện và ngôn ngữ vận hành: 100% Tiếng Việt chuẩn mực, thân thiện với người dùng.
 - Lưu vết bằng chứng `rag-trace/v1` gắn với tin nhắn trả lời.
 - Nút xem đồ thị bằng chứng khi câu trả lời có trích dẫn hợp lệ.
 - Mã đóng gói Desktop/VPS với Graphify và ExcaliFlow được ghim phiên bản.

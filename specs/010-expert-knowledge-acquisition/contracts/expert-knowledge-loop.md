@@ -2,112 +2,90 @@
 
 ## 1. Mục đích
 
-Hợp đồng này khóa hành vi giữa coverage, chat, claim, artifact và publication. Tên Python/HTTP cụ thể có thể thay đổi; invariant không được thay đổi nếu chưa cập nhật ADR/spec.
+Hợp đồng này khóa hành vi tối thiểu giữa chọn thư viện, phỏng vấn, bản nháp, quyết định và xuất bản. Tên hàm có thể thay đổi; trải nghiệm và an toàn dữ liệu không được thay đổi nếu chưa cập nhật ADR/đặc tả.
 
 ## 2. Lệnh nghiệp vụ
 
-### `propose_coverage_run`
+### `select_library`
 
-**Đầu vào**: `collection_id`, `scope`, `source_inventory_digest`, `question_set`, actor.  
-**Đầu ra**: `coverage_id`, metrics, gap candidates và receipt.  
-**Từ chối**: collection/scope không hợp lệ, inventory đổi giữa lượt, câu hỏi không có expected evidence.
+**Đầu vào**: loại `personal|shared` và thư mục nếu dùng chung.
+**Đầu ra**: lựa chọn thư viện hiện hành và kết quả kiểm tra khả năng đọc/ghi.
+**Từ chối**: vị trí không hợp lệ hoặc không thể mở; giữ nguyên lựa chọn cũ và giải thích cách chọn lại.
 
-### `review_gap_candidate`
+### `suggest_knowledge_gaps`
 
-**Đầu vào**: `gap_id`, exact digest, quyết định `accept|merge|defer|reject`, lý do, actor.  
-**Đầu ra**: trạng thái mới append-only.  
-**Từ chối**: actor thiếu scope, digest stale hoặc gap không còn ở trạng thái reviewable.
-
-### `create_interview_plan`
-
-**Đầu vào**: gap đã accepted, required scope, expert candidates, budget, completion rubric.  
-**Đầu ra**: plan draft; AI có thể đề xuất câu hỏi nhưng không tự phê duyệt plan.  
-**Từ chối**: gap thiếu evidence, expert không có verified profile hoặc budget không hữu hạn.
+**Đầu vào**: thư viện hiện hành và phạm vi nội dung tùy chọn.
+**Đầu ra**: danh sách gợi ý có nguồn/lý do.
+**Từ chối**: nguồn đổi giữa lượt hoặc không có căn cứ.
+**Lưu ý**: lệnh này là tùy chọn; người dùng có thể nhập chủ đề và bỏ qua hoàn toàn.
 
 ### `start_or_resume_interview`
 
-**Đầu vào**: `plan_id`, principal context, session ID tùy chọn, idempotency key.  
-**Đầu ra**: session/checkpoint và câu hỏi kế tiếp.  
-**Từ chối**: principal không ánh xạ, scope hết hạn, plan chưa duyệt, session bind người khác.
+**Đầu vào**: chủ đề, `gap_id` tùy chọn, session ID tùy chọn và khóa chống gửi lặp.
+**Đầu ra**: phiên/checkpoint và câu hỏi tiếp theo.
+**Từ chối**: chủ đề trống, checkpoint cũ hoặc phiên không còn tồn tại. Không yêu cầu principal, hồ sơ chuyên gia, scope grant hoặc kế hoạch được duyệt.
 
 ### `submit_interview_answer`
 
-**Đầu vào**: session/checkpoint, turn ID, answer hoặc `unknown|uncertain|skip|pause|stop`, confidence, idempotency key.  
-**Đầu ra**: turn receipt và một trong `ask_followup|request_confirmation|complete|pause|escalate`.  
-**Từ chối**: checkpoint cũ, answer lặp khác payload, session không active hoặc principal đổi.
+**Đầu vào**: session/checkpoint, câu trả lời hoặc `unknown|uncertain|skip|pause|stop`, cùng khóa chống gửi lặp.
+**Đầu ra**: biên nhận lượt và một trong `ask_followup|request_confirmation|complete|pause`.
+**Từ chối**: checkpoint cũ, cùng khóa nhưng payload khác hoặc phiên không hoạt động.
 
-### `propose_next_question`
-
-Model chỉ được trả schema:
-
-```json
-{
-  "action": "ask_followup",
-  "reason": "missing_threshold",
-  "question": "Ngưỡng nào khiến anh/chị chuyển từ theo dõi sang dừng máy?",
-  "trigger_refs": ["TURN-003"],
-  "expected_evidence": ["threshold", "unit", "exception"],
-  "confidence": 0.73
-}
-```
-
-`action`: `ask_followup|request_confirmation|complete|escalate`.  
-`reason`: `missing_condition|missing_threshold|missing_exception|missing_example|missing_counterexample|uncertain|missing_source|contradiction|rubric_complete`.  
-
-Service phải từ chối schema sai, câu hỏi ngoài scope, trigger không tồn tại, budget hết hoặc lặp semantic vượt ngưỡng. Model không trực tiếp ghi turn.
-
-### `extract_claim_candidates`
-
-**Đầu vào**: các turn/transcript segment đã khóa digest.  
-**Đầu ra**: claim candidate nguyên tử với exact source refs, scope, condition, uncertainty và conflict links.  
-**Từ chối**: source chưa tồn tại, transcript critical token chưa xác nhận hoặc model tạo statement không có support.
+Model chỉ được đề xuất hành động, lý do, câu hỏi và nguồn kích hoạt. Dịch vụ giới hạn số lượt, chặn lặp/dẫn dắt và lưu sự kiện; người dùng không phải cấu hình budget/token hoặc đọc schema.
 
 ### `build_artifact_candidate`
 
-**Đầu vào**: confirmed/candidate claims được chọn, template version, artifact type.  
-**Đầu ra**: versioned Markdown/JSON + claim map + diff.  
-**Từ chối**: dùng claim rejected/revoked; claim conflicted chỉ được xuất hiện trong phần “cần quyết định”, không phải hướng dẫn chính thức.
+**Đầu vào**: các câu trả lời hoặc đoạn chép lời đã xác nhận cùng nguồn tham chiếu.
+**Đầu ra**: bản nháp SOP/bài học theo phiên bản, điểm chưa chắc chắn và mâu thuẫn.
+**Từ chối**: dùng bản chép lời có thông số quan trọng chưa xác nhận hoặc tạo kết luận không có căn cứ mà không đánh dấu rõ.
 
-### `decide_artifact`
+Việc tách phát biểu nhỏ, mã kiểm tra và bản đồ nguồn là chi tiết nội bộ. Giao diện trình bày nội dung, nguồn và điểm cần xem lại bằng tiếng Việt đời thường.
 
-**Đầu vào**: exact artifact digest, `approve|reject|request_change|revoke`, rationale, authenticated actor.  
-**Đầu ra**: ApprovalDecision append-only.  
-**Từ chối**: actor/scope không đúng, self-approval bị policy cấm, digest/version stale hoặc thiếu approval bắt buộc.
+### `record_decision`
+
+**Đầu vào**: đúng mã kiểm tra/phiên bản, `confirm|reject|request_change|revoke`, tên ghi nhận, độ tự tin, căn cứ, nguồn đã kiểm tra và xác nhận trách nhiệm.
+**Đầu ra**: `DecisionRecord` ghi nối.
+**Từ chối**: nội dung đã đổi, thiếu trường trách nhiệm hoặc bản nháp còn mâu thuẫn chưa được người dùng xử lý rõ.
+
+Không kiểm tra vai trò, scope, cấm tự duyệt hoặc danh tính xác thực. Model không được tự gọi lệnh này.
 
 ### `publish_artifact`
 
-**Đầu vào**: sealed PublicationPackage và actor có `publication.publish` trên collection.  
+**Đầu vào**: bản nội dung đã xác nhận, `DecisionRecord` khớp và thư viện hiện hành.
 **Thứ tự bắt buộc**:
 
-1. Xác minh approval + digest + artifact status.
-2. Tạo/kiểm tra backup collection.
-3. Lấy writer lease.
-4. Nạp artifact qua pipeline nguồn chuẩn.
-5. Chạy SQLite `quick_check` và retrieval acceptance.
-6. Ghi receipt rồi mới chuyển `published`.
+1. Xác minh quyết định, mã kiểm tra, phiên bản và trạng thái.
+2. Chuẩn bị bản sao cục bộ từ thư viện hiện hành.
+3. Lấy `LibraryWriterLease` trong thời gian ngắn.
+4. Nếu khóa bận, giữ bản nháp và trả hướng dẫn thử lại.
+5. Nạp nội dung vào bản sao, chạy kiểm tra nhanh.
+6. Sao lưu thư viện dùng chung hiện tại.
+7. Thay bằng snapshot đã kiểm tra và ghi biên nhận.
+8. Giải phóng khóa trong cả trường hợp thành công lẫn lỗi.
 
-Lỗi ở bước 3–5 không được ghi `published`; giữ hoặc khôi phục bản usable trước đó.
+Lỗi ở bất kỳ bước ghi nào không được tạo trạng thái `published`; thư viện dùng được gần nhất phải còn nguyên hoặc được khôi phục.
 
 ### `revoke_or_supersede_publication`
 
-**Đầu vào**: publication ID, exact digest, lý do, replacement tùy chọn, actor có quyền.  
-**Đầu ra**: receipt loại khỏi retrieval hiện hành và liên kết lịch sử.  
-**Từ chối**: quyền không hợp lệ, replacement chưa duyệt hoặc digest stale.
+**Đầu vào**: bản xuất bản được chọn từ lịch sử, đúng mã kiểm tra, lý do và thông tin trách nhiệm như một quyết định mới.
+**Đầu ra**: biên nhận loại bản cũ khỏi tri thức hiện hành và liên kết bản thay thế nếu có.
+**Từ chối**: bản không tồn tại, nội dung đích đã đổi hoặc bản thay thế chưa được xác nhận.
 
-## 3. Invariant bắt buộc
+## 3. Bất biến bắt buộc
 
-- Không model output nào tự trở thành quyết định quyền hoặc phê duyệt.
-- Không turn nào được ghi hai lần với cùng idempotency key.
-- Không question nào thiếu gap/turn/claim trigger hợp lệ.
-- Không claim xuất bản nào thiếu source refs.
-- Không critical token từ audio nào được xuất bản khi chưa human-confirmed.
-- Không candidate/conflicted/revoked nào đi vào retrieval thường.
-- Không ghi trực tiếp SQL từ model vào `library.sqlite`.
-- Không sửa/xóa event audit cũ; correction tạo version/event mới.
+- Model không tự xác nhận, thu hồi hoặc ghi thư viện.
+- Không ghi một câu trả lời hai lần với cùng khóa chống lặp.
+- Audio và bản chép lời thô không nằm trong DB hồ sơ hoặc thư viện.
+- Nội dung chưa xác nhận, mâu thuẫn chưa xử lý hoặc đã thu hồi không đi vào truy xuất thường.
+- Không ghi SQL trực tiếp từ model vào `library.sqlite`.
+- Quyết định luôn gắn đúng nội dung/phiên bản và giữ lịch sử cũ.
+- Khóa ghi chỉ điều phối đồng thời, không được dùng hoặc mô tả như quyền.
+- Không yêu cầu người dùng thường nhập mã gói, mã băm hoặc câu hỏi nghiệm thu.
 
-## 4. Hành vi khi lỗi model
+## 4. Hành vi khi lỗi
 
-- Timeout: lưu checkpoint, hiển thị lỗi tiếng Việt và cho thử lại; không nhân đôi turn.
-- Schema sai: một lần repair có giới hạn; sau đó `blocked_model_output`.
-- Nội dung ngoài scope/không có nguồn: từ chối proposal và không hiển thị như kết luận.
-- Provider không được phép nhận dữ liệu: dùng local route hoặc chặn, không âm thầm đổi route.
+- Model lỗi: lưu tiến độ, giải thích và cho thử lại hoặc tiếp tục bằng câu hỏi thủ công; không nhân đôi lượt.
+- Chép lời lỗi: không dùng mock trong runtime và không báo thành công giả; cho tiếp tục bằng văn bản.
+- Thư viện đang bận: giữ nội dung, báo người dùng chờ và có nút thử lại.
+- Mất kết nối/hết dung lượng/kiểm tra không đạt: giữ thư viện cũ và bản nháp, không lộ traceback.
+- Provider không được phép nhận dữ liệu: dùng tuyến cục bộ được phép hoặc chặn, không âm thầm đổi tuyến.

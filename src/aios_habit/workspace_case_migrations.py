@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import hashlib
+import json
 import shutil
 import sqlite3
 from contextlib import closing
@@ -13,7 +14,7 @@ from typing import Callable, Optional
 from aios_habit.workspace_case_models import CaseActivity
 
 
-CURRENT_SCHEMA_VERSION = 7
+CURRENT_SCHEMA_VERSION = 8
 FaultInjector = Callable[[str, int], None]
 
 
@@ -37,6 +38,7 @@ _MIGRATION_DESCRIPTIONS = {
     5: "case_controlled_artifacts_store",
     6: "expert_profiles_and_scope_grants",
     7: "knowledge_coverage_and_gaps",
+    8: "raw_transcript_local_only_isolation",
 }
 _MIGRATION_CHECKSUMS = {
     version: hashlib.sha256(description.encode("utf-8")).hexdigest()
@@ -471,6 +473,76 @@ def _apply_v7(connection: sqlite3.Connection) -> None:
         connection.execute(statement)
 
 
+def _apply_v8(connection: sqlite3.Connection) -> None:
+    if _table_exists(connection, "interview_transcripts"):
+        _add_column(connection, "interview_transcripts", "transcript_locator TEXT NOT NULL DEFAULT ''")
+        _add_column(connection, "interview_transcripts", "transcript_digest TEXT NOT NULL DEFAULT ''")
+        # Migrate any existing raw transcripts from SQLite to local_only storage
+        db_rows = connection.execute("PRAGMA database_list").fetchall()
+        db_file = None
+        for row in db_rows:
+            if str(row[1]) == "main" and row[2]:
+                db_file = Path(str(row[2]))
+                break
+        if db_file is not None and db_file.exists():
+            transcripts_dir = db_file.parent / "local_only" / "transcripts"
+        else:
+            transcripts_dir = Path.cwd() / "local_cases" / "local_only" / "transcripts"
+        legacy_rows = connection.execute(
+            "SELECT receipt_id, session_id, segments_json, full_text FROM interview_transcripts WHERE segments_json != '' OR full_text != ''"
+        ).fetchall()
+        for r_id, s_id, s_json, f_text in legacy_rows:
+            transcripts_dir.mkdir(parents=True, exist_ok=True)
+            target_file = transcripts_dir / f"{s_id}_{r_id}.json"
+            raw_segments_string = None
+            try:
+                seg_data = json.loads(s_json) if s_json else []
+            except Exception:
+                seg_data = []
+                raw_segments_string = s_json
+            raw_payload = {
+                "receipt_id": r_id,
+                "session_id": s_id,
+                "full_text": f_text or "",
+                "segments": seg_data,
+            }
+            if raw_segments_string is not None:
+                raw_payload["raw_segments_string"] = raw_segments_string
+            raw_bytes = json.dumps(raw_payload, ensure_ascii=False, indent=2).encode("utf-8")
+            target_file.write_bytes(raw_bytes)
+            if not target_file.exists() or target_file.stat().st_size == 0:
+                raise RuntimeError(f"Không thể di chuyển bản chép lời {r_id} sang {target_file}: tệp không tồn tại hoặc trống")
+            digest = hashlib.sha256(raw_bytes).hexdigest()
+            connection.execute(
+                "UPDATE interview_transcripts SET transcript_locator = ?, transcript_digest = ?, segments_json = '', full_text = '' WHERE receipt_id = ?",
+                (str(target_file), digest, r_id),
+            )
+    else:
+        statements = (
+            """
+            CREATE TABLE IF NOT EXISTS interview_transcripts (
+                receipt_id TEXT PRIMARY KEY,
+                session_id TEXT NOT NULL,
+                audio_path TEXT NOT NULL,
+                audio_digest TEXT NOT NULL,
+                engine_name TEXT NOT NULL,
+                engine_version TEXT NOT NULL,
+                transcript_locator TEXT NOT NULL DEFAULT '',
+                transcript_digest TEXT NOT NULL DEFAULT '',
+                segments_json TEXT NOT NULL DEFAULT '',
+                full_text TEXT NOT NULL DEFAULT '',
+                all_critical_tokens_json TEXT NOT NULL,
+                state TEXT NOT NULL,
+                created_at TEXT NOT NULL,
+                idempotency_key TEXT NOT NULL UNIQUE
+            )
+            """,
+            "CREATE INDEX IF NOT EXISTS interview_transcripts_session_idx ON interview_transcripts(session_id)",
+        )
+        for statement in statements:
+            connection.execute(statement)
+
+
 def _ensure_migration_table(connection: sqlite3.Connection) -> None:
     connection.execute(
         """
@@ -540,6 +612,8 @@ def migrate_store(
                     _apply_v6(connection)
                 elif version == 7:
                     _apply_v7(connection)
+                elif version == 8:
+                    _apply_v8(connection)
                 connection.execute(
                     "INSERT INTO schema_migrations VALUES (?, ?, ?, ?)",
                     (version, _MIGRATION_DESCRIPTIONS[version], _MIGRATION_CHECKSUMS[version], _utc_now()),

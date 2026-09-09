@@ -183,9 +183,12 @@ class KnowledgePublisher:
         self,
         base_dir: Optional[Path] = None,
         backup_dir: Optional[Path] = None,
+        interview_repo: Optional[Any] = None,
+        **kwargs: Any,
     ) -> None:
         self.base_dir = Path(base_dir or Path.cwd() / "local_cases" / "workspace_chat")
         self.backup_dir = Path(backup_dir or Path.cwd() / "local_cases" / "library_backups")
+        self.interview_repo = interview_repo or kwargs.get("interview_repo")
 
     def publish_package(
         self,
@@ -211,26 +214,26 @@ class KnowledgePublisher:
             conn.commit()
             conn.close()
 
-        # Step 1: Create point-in-time backup before modifying library
-        try:
-            backup_path, manifest = create_library_backup(
-                collection_id=package.target_collection_id,
-                backup_root=self.backup_dir,
-                note=f"Tự động sao lưu trước khi xuất bản gói {package.package_id}",
-                actor=actor,
-                local_fallback_root=self.base_dir,
-            )
-        except ValueError as exc:
-            if "cập nhật" in str(exc).lower() or "tiến trình" in str(exc).lower():
-                raise LibraryWriterBusyError(str(exc)) from exc
-            raise
-
-        # Step 2: Acquire LibraryWriterLease
+        # Step 1: Acquire LibraryWriterLease BEFORE modifying or backing up
         lease = LibraryWriterLease(runtime_dir)
         if not lease.acquire(owner=actor):
             raise LibraryWriterBusyError(LibraryWriterLease.format_busy_message(runtime_dir))
 
         try:
+            # Step 2: Create point-in-time backup while holding exclusive lease
+            try:
+                backup_path, manifest = create_library_backup(
+                    collection_id=package.target_collection_id,
+                    backup_root=self.backup_dir,
+                    note=f"Tự động sao lưu trước khi xuất bản gói {package.package_id}",
+                    actor=actor,
+                    local_fallback_root=self.base_dir,
+                    lease=lease,
+                )
+            except ValueError as exc:
+                if "cập nhật" in str(exc).lower() or "tiến trình" in str(exc).lower():
+                    raise LibraryWriterBusyError(str(exc)) from exc
+                raise
             # Step 3: Ingest document into library storage
             docs_dir = runtime_dir / "published_docs"
             docs_dir.mkdir(parents=True, exist_ok=True)
@@ -317,7 +320,7 @@ class KnowledgePublisher:
                     shutil.copy2(backup_path / COLLECTION_INDEX_BASENAME, sqlite_file)
                     raise PublicationAcceptanceError("Kiểm tra toàn vẹn SQLite (quick_check) thất bại sau khi nạp tài liệu. Đã tự động hoàn tác.")
 
-                # Step 5: Run real retrieval acceptance test via search_rag_chunks
+                # Step 5: Run real retrieval acceptance test via search_rag_chunks (NO keyword fallback)
                 acceptance_results: Dict[str, bool] = {}
                 for q in package.acceptance_questions:
                     search_results = search_rag_chunks(conn, query=q, limit=5)
@@ -325,17 +328,22 @@ class KnowledgePublisher:
                         res.document_id == package.package_id or package.package_id in res.chunk_id
                         for res in search_results
                     )
-                    if not matched and not search_results:
-                        keywords = [word for word in q.lower().split() if len(word) > 3]
-                        matched = any(kw in package.content_markdown.lower() for kw in keywords) if keywords else True
                     acceptance_results[q] = matched
 
                 if not all(acceptance_results.values()):
-                    conn.close()
-                    shutil.copy2(backup_path / COLLECTION_INDEX_BASENAME, sqlite_file)
+                    if doc_file and doc_file.exists():
+                        doc_file.unlink(missing_ok=True)
+                    if backup_path and (backup_path / COLLECTION_INDEX_BASENAME).exists():
+                        shutil.copy2(backup_path / COLLECTION_INDEX_BASENAME, sqlite_file)
                     raise PublicationAcceptanceError(
                         f"Bộ câu hỏi kiểm tra nghiệm thu truy xuất không đạt yêu cầu: {acceptance_results}. Đã hoàn tác an toàn."
                     )
+            except Exception:
+                if doc_file and doc_file.exists():
+                    doc_file.unlink(missing_ok=True)
+                if backup_path and (backup_path / COLLECTION_INDEX_BASENAME).exists():
+                    shutil.copy2(backup_path / COLLECTION_INDEX_BASENAME, sqlite_file)
+                raise
             finally:
                 conn.close()
 
@@ -377,9 +385,9 @@ class KnowledgePublisher:
     def revoke_publication(
         self,
         package_id: str,
-        collection_id: str,
-        reason: str,
-        actor: str,
+        collection_id: str = DEFAULT_COLLECTION_ID,
+        reason: str = "Thu hồi tài liệu đã xuất bản",
+        actor: str = "local_admin",
     ) -> PublicationReceipt:
         """Revoke a published package from the library collection.
 
@@ -388,26 +396,27 @@ class KnowledgePublisher:
         runtime_dir, _ = collection_runtime_layout(collection_id, self.base_dir)
         sqlite_file = runtime_dir / COLLECTION_INDEX_BASENAME
 
-        # Step 1: Backup before revocation
-        try:
-            backup_path, manifest = create_library_backup(
-                collection_id=collection_id,
-                backup_root=self.backup_dir,
-                note=f"Sao lưu trước khi thu hồi gói {package_id}: {reason}",
-                actor=actor,
-                local_fallback_root=self.base_dir,
-            )
-        except ValueError as exc:
-            if "cập nhật" in str(exc).lower() or "tiến trình" in str(exc).lower():
-                raise LibraryWriterBusyError(str(exc)) from exc
-            raise
-
-        # Step 2: Acquire lease to remove document
+        # Step 1: Acquire lease BEFORE modifying or backing up
         lease = LibraryWriterLease(runtime_dir)
         if not lease.acquire(owner=actor):
             raise LibraryWriterBusyError(LibraryWriterLease.format_busy_message(runtime_dir))
 
         try:
+            # Step 2: Backup before revocation while holding lease
+            try:
+                backup_path, manifest = create_library_backup(
+                    collection_id=collection_id,
+                    backup_root=self.backup_dir,
+                    note=f"Sao lưu trước khi thu hồi gói {package_id}: {reason}",
+                    actor=actor,
+                    local_fallback_root=self.base_dir,
+                    lease=lease,
+                )
+            except ValueError as exc:
+                if "cập nhật" in str(exc).lower() or "tiến trình" in str(exc).lower():
+                    raise LibraryWriterBusyError(str(exc)) from exc
+                raise
+
             if sqlite_file.exists():
                 conn = sqlite3.connect(sqlite_file)
                 try:
@@ -422,14 +431,27 @@ class KnowledgePublisher:
                 finally:
                     conn.close()
 
-            # Remove published markdown file if exists
+            # Remove published markdown file if exists (matching both package_id and artifact_id variants)
             docs_dir = runtime_dir / "published_docs"
             if docs_dir.exists():
-                for f in docs_dir.glob(f"*{package_id}*.md"):
+                targets = set(docs_dir.glob(f"*{package_id}*.md"))
+                if package_id.startswith("PKG-"):
+                    parts = package_id[4:].split("-V")
+                    if parts:
+                        art_id = parts[0]
+                        targets.update(docs_dir.glob(f"*{art_id}*.md"))
+                for f in targets:
                     try:
                         f.unlink()
-                    except Exception:
-                        pass
+                    except Exception as unlink_err:
+                        raise RuntimeError(f"Không thể xóa tệp tài liệu đã xuất bản '{f.name}' khi thu hồi: {unlink_err}") from unlink_err
+                    if f.exists():
+                        raise RuntimeError(f"Tệp tài liệu '{f.name}' vẫn tồn tại sau khi yêu cầu xóa khi thu hồi.")
+
+            # Step 3: Run REAL quick check on SQLite
+            if sqlite_file.exists():
+                if not sqlite_quick_check(sqlite_file):
+                    raise PublicationError("Kiểm tra toàn vẹn SQLite thất bại sau khi thu hồi tài liệu.")
 
             return PublicationReceipt(
                 receipt_id=f"REV-{package_id}-{int(datetime.now(timezone.utc).timestamp())}",

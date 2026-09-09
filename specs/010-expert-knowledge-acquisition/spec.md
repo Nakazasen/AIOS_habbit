@@ -1,156 +1,150 @@
-# Đặc tả: Phỏng vấn chuyên gia và làm giàu tri thức có kiểm soát
+# Đặc tả: Phỏng vấn chuyên gia và làm giàu tri thức đơn giản
 
-**Mã tính năng**: `010-expert-knowledge-acquisition`  
-**Nhánh lập kế hoạch**: `gate1-local-case-sqlite`  
-**Ngày tạo**: 2026-09-07  
-**Trạng thái**: `READY_FOR_TASK_EXECUTION`
+**Mã tính năng**: `010-expert-knowledge-acquisition`
+**Ngày tạo**: 2026-09-07
+**Sửa theo kiểm toán**: 2026-09-09
+**Trạng thái**: `REOPENED_FOR_SIMPLIFICATION`
 
 ## 1. Mục tiêu
 
-Nâng quy trình hỏi–đáp có cấu trúc hiện tại thành một vòng thu nhận tri thức thực tế: hệ thống tìm khoảng trống có bằng chứng, chuẩn bị cuộc phỏng vấn đúng chuyên gia, hỏi tiếp khi câu trả lời còn mơ hồ, chép lời cục bộ khi được đồng ý, trích xuất tri thức dạng ứng viên, rồi chỉ xuất bản nội dung đã được người có thẩm quyền duyệt.
+Giúp một cá nhân hoặc nhóm nhỏ thu nhận kinh nghiệm thực tế bằng hội thoại, kiểm tra lại nội dung rút ra rồi đưa phần đã xác nhận vào thư viện có thể tìm kiếm. Người dùng cá nhân không phải đăng nhập. Nhóm dùng chung không phải cấu hình tài khoản, vai trò, máy quản lý hay quyền Windows/NAS trong ứng dụng.
 
-Hệ thống không tự nhận mình đã “phát hiện toàn bộ” khoảng trống, không coi transcript là sự thật, không tự phong người dùng thành chuyên gia và không tự fine-tune từ dữ liệu chưa duyệt.
+Hệ thống bảo vệ điều có thể bảo vệ thực sự: dữ liệu phỏng vấn thô ở máy cục bộ, nội dung chưa xác nhận không đi vào thư viện, mỗi quyết định có người nhận trách nhiệm, hai lượt ghi không đè lên nhau và thư viện có bản sao để khôi phục. Tên người quyết định là thông tin tự khai để truy vết, không phải danh tính đã xác minh.
 
 ## 2. Hành trình người dùng và kiểm thử
 
-### US1 — Lập bản đồ khoảng trống tri thức có bằng chứng (P1)
+### US1 — Chọn nơi lưu và bắt đầu phỏng vấn (P1)
 
-Người quản lý chọn một thư viện, phạm vi công đoạn và bộ câu hỏi kiểm tra. Hệ thống đối chiếu tài liệu, kết quả truy xuất, hồ sơ sự cố và phản hồi chuyên gia để đề xuất các khoảng trống cần làm rõ.
+Người dùng chọn “Thư viện cá nhân” hoặc “Thư viện dùng chung”. Với thư viện dùng chung, người dùng chọn một thư mục. Sau đó họ có thể nhập chủ đề cần hỏi hoặc chọn một nội dung còn thiếu do hệ thống gợi ý rồi bắt đầu ngay.
 
-**Kiểm thử độc lập**: dùng corpus fixture có khoảng trống, xung đột và tài liệu lỗi thời đã biết; hệ thống phải tạo đúng ứng viên có dẫn chứng và không tuyên bố bao phủ tuyệt đối.
-
-**Tiêu chí chấp nhận**:
-
-1. Mỗi ứng viên khoảng trống chỉ ra phạm vi, câu hỏi thất bại, nguồn đã kiểm tra, lý do thiếu/xung đột/lỗi thời và mức ưu tiên.
-2. Ứng viên không có bằng chứng hoặc chỉ do model suy đoán không được chuyển sang kế hoạch phỏng vấn.
-3. Người có quyền có thể gộp, bác bỏ, hoãn hoặc giao ứng viên cho một nhóm chuyên gia.
-
-### US2 — Phỏng vấn nhiều vòng theo chuyên gia và công đoạn (P1)
-
-Chuyên gia đã xác thực nhận một kế hoạch đúng phạm vi của mình, trả lời bằng văn bản hoặc chọn “không biết/không chắc”. Hệ thống hỏi tiếp có giới hạn để làm rõ điều kiện, ngưỡng, ngoại lệ, ví dụ và nguồn xác minh.
-
-**Kiểm thử độc lập**: chạy phiên fixture có câu trả lời rõ, mơ hồ, mâu thuẫn và từ chối; kiểm tra câu hỏi tiếp nối, giới hạn lượt, quyền dừng và khả năng tiếp tục sau restart.
+**Kiểm thử độc lập**: từ màn hình chính, một người chưa biết thuật ngữ kỹ thuật chọn được một trong hai loại thư viện và bắt đầu phỏng vấn mà không đăng nhập, không khởi động lại và không cấu hình quyền.
 
 **Tiêu chí chấp nhận**:
 
-1. Danh tính được lấy từ ngữ cảnh xác thực, không từ prompt hay trường tự khai; quyền theo phạm vi được kiểm tra trước mỗi thao tác.
-2. Câu hỏi tiếp theo phải liên kết với khoảng trống hoặc câu trả lời trước, không lặp vô hạn và không dẫn dắt chuyên gia xác nhận giả thuyết.
-3. Chuyên gia luôn có thể bỏ qua, sửa câu trả lời, đánh dấu không chắc, tạm dừng hoặc kết thúc phiên.
-4. Mất kết nối hoặc restart không làm mất câu trả lời đã lưu và không gửi lặp câu hỏi.
+1. Loại thư viện đang dùng và vị trí được giải thích bằng tiếng Việt dễ hiểu.
+2. Đổi giữa thư viện cá nhân và dùng chung không cần khởi động lại.
+3. Có thể bắt đầu từ chủ đề nhập tay; gợi ý nội dung còn thiếu là tùy chọn, không phải cửa chặn.
+4. Không yêu cầu chọn vai trò, phạm vi quyền, hồ sơ chuyên gia, ngân sách lượt hay chủ thể leo thang trên giao diện.
 
-### US3 — Ghi âm và chép lời cục bộ có đồng ý (P2)
+### US2 — Trả lời bằng chữ hoặc giọng nói (P1)
 
-Khi chuyên gia chủ động đồng ý, hệ thống ghi âm buổi phỏng vấn, hiển thị trạng thái ghi rõ ràng, chép lời trên máy và cho phép sửa các mã máy, thông số, tên riêng trước khi ký xác nhận.
+Người dùng trả lời câu hỏi bằng văn bản. Nếu muốn dùng âm thanh, họ đọc giải thích ngắn, đồng ý trước khi ghi hoặc tải tệp, xem lại bản chép lời và sửa các mã máy, con số hoặc đơn vị trước khi tiếp tục.
 
-**Kiểm thử độc lập**: chạy audio fixture tiếng Việt có mã thiết bị và số đo, thử đồng ý/từ chối/rút đồng ý, ngắt giữa chừng và chép lời lại; xác minh audio không rời máy và nội dung xuất bản đã được sửa tay.
-
-**Tiêu chí chấp nhận**:
-
-1. Không ghi âm trước đồng ý; rút đồng ý dừng ghi ngay và xử lý dữ liệu theo quyết định lưu giữ đã cấu hình.
-2. Audio và transcript thô nằm ngoài Git, ngoài `library.sqlite` và ngoài `workspace_cases.sqlite`; hồ sơ chỉ giữ locator cục bộ, digest và trạng thái đồng ý.
-3. Mọi mã máy, đơn vị, ngưỡng và giá trị số trong nội dung sắp xuất bản phải được người duyệt xác nhận.
-4. Lỗi thiết bị/chép lời được giải thích bằng tiếng Việt và không làm mất phần phiên đã lưu.
-
-### US4 — Tạo và duyệt SOP/bài học có truy nguyên (P2)
-
-Hệ thống tách câu trả lời thành các phát biểu có nguồn, nhận diện xung đột và tạo bản nháp SOP hoặc bài học. Chuyên gia và người phê duyệt tài liệu xem diff, sửa, bác bỏ hoặc ký duyệt.
-
-**Kiểm thử độc lập**: từ transcript fixture tạo phát biểu, một xung đột, một SOP nháp và bài học; xác minh nội dung chưa duyệt không xuất hiện trong tìm kiếm thường.
+**Kiểm thử độc lập**: hoàn thành một phiên bằng chữ và một phiên dùng tệp âm thanh giả lập; tạm dừng rồi tiếp tục mà không mất câu trả lời.
 
 **Tiêu chí chấp nhận**:
 
-1. Mọi phát biểu có liên kết tới đoạn transcript/tài liệu/case nguồn, người xác nhận và phiên bản.
-2. Hai câu trả lời mâu thuẫn giữ trạng thái `conflicted`; hệ thống không tự chọn bên thắng.
-3. SOP/bài học chỉ là `candidate` cho đến khi đủ vai trò và phạm vi phê duyệt.
-4. Bản sửa và quyết định duyệt/bác bỏ/thu hồi được ghi append-only và đọc lại sau restart.
+1. Luôn có lựa chọn dùng văn bản; từ chối hoặc rút đồng ý ghi âm không chặn phiên.
+2. Audio và bản chép lời thô chỉ ở vùng `local_only`, không nằm trong mã nguồn, kho điều phối hoặc thư viện tri thức.
+3. Người dùng có thể sửa bản chép lời và xác nhận các thông số quan trọng.
+4. Phiên có thể tạm dừng, tiếp tục hoặc kết thúc; không gửi lặp cùng một câu trả lời sau sự cố.
+5. Giao diện thường không có fixture, tên bộ máy chép lời, phiên bản kỹ thuật hoặc đường dẫn hệ thống.
 
-### US5 — Xuất bản an toàn vào thư viện và đánh giá sử dụng (P3)
+### US3 — Kiểm tra và chịu trách nhiệm về bản nháp (P1)
 
-Người quản lý xuất bản gói tri thức đã duyệt vào đúng collection. Hệ thống sao lưu, khóa ghi, nạp phiên bản, kiểm tra SQLite và chạy bộ câu hỏi truy xuất có citation; phiên bản sai có thể thu hồi hoặc thay thế.
+Hệ thống tạo bản nháp SOP hoặc bài học từ câu trả lời và nguồn liên quan. Người dùng đọc, sửa, xem nguồn đã dùng và quyết định có đưa nội dung vào thư viện hay không.
 
-**Kiểm thử độc lập**: xuất bản một SOP đã duyệt vào collection fixture, truy vấn được với citation, thử xuất bản ứng viên chưa duyệt bị chặn, rồi thu hồi và xác minh không còn được dùng trong trả lời thường.
+**Kiểm thử độc lập**: tạo một bản nháp, sửa nội dung rồi xác nhận hoặc từ chối; bản chưa xác nhận không xuất hiện trong kết quả hỏi đáp thông thường.
 
 **Tiêu chí chấp nhận**:
 
-1. Chỉ `PublicationPackage` đã duyệt, đúng digest và đúng collection mới được nạp qua đường ingest chuẩn.
-2. Ghi thư viện dùng writer lease, backup và `quick_check`; lỗi giữa chừng phải hoàn tác hoặc giữ bản cũ sử dụng được.
-3. Nội dung bị thu hồi/thay thế không còn được trả như tri thức hiện hành nhưng lịch sử audit vẫn còn.
-4. Fine-tune không chạy trong bản đầu; chỉ có báo cáo đủ/không đủ điều kiện sau khi dữ liệu đã duyệt và retrieval baseline được đo.
+1. Bản nháp nói rõ đây chưa phải tri thức chính thức.
+2. Mỗi kết luận quan trọng có nguồn tham chiếu hoặc được đánh dấu cần kiểm tra.
+3. Nội dung mâu thuẫn được chỉ ra để người dùng quyết định; AI không tự chọn bên thắng.
+4. Form quyết định ghi: tên người quyết định, thời điểm tự động, mức tự tin `thấp|vừa|cao`, lý do/căn cứ, nguồn đã kiểm tra và xác nhận chịu trách nhiệm.
+5. Tên tài khoản Windows/OS được điền sẵn nhưng có thể sửa; giao diện nói rõ đây là tên ghi nhận, không phải xác minh danh tính.
+
+### US4 — Đưa vào thư viện và khôi phục khi lỗi (P1)
+
+Sau khi xác nhận, người dùng đưa bản hiện tại vào thư viện đã chọn. Nếu thư viện đang được người khác cập nhật, ứng dụng giải thích ngắn gọn và cho thử lại. Người dùng không phải chọn máy được quyền ghi hoặc nhập câu hỏi nghiệm thu kỹ thuật.
+
+**Kiểm thử độc lập**: xuất bản vào thư viện cá nhân và dùng chung, thử hai lượt ghi trùng thời điểm, thu hồi một bản và phục hồi sau lỗi mô phỏng.
+
+**Tiêu chí chấp nhận**:
+
+1. Bất kỳ người nào mở được thư viện dùng chung đều có thể ghi; khóa ghi chỉ chống ghi đồng thời.
+2. Lượt ghi dùng bản sao cục bộ, kiểm tra nhanh, sao lưu bản dùng chung rồi thay bằng snapshot đã kiểm tra.
+3. Lỗi giữa chừng không làm mất bản thư viện sử dụng được gần nhất và không ghi trạng thái “đã đưa vào thư viện”.
+4. Nội dung bị thu hồi hoặc thay thế không còn được dùng như bản hiện hành nhưng lịch sử vẫn còn.
+5. Mã gói, mã băm, mã biên nhận, kiểm tra SQLite và câu hỏi nghiệm thu chỉ nằm trong chi tiết kỹ thuật thu gọn hoặc nhật ký hỗ trợ.
+
+### US5 — Dùng giao diện đơn giản với người không chuyên (P1)
+
+Người dùng đi theo bốn chặng có tên đời thường: chọn thư viện → phỏng vấn → kiểm tra bản nháp → xác nhận và đưa vào thư viện.
+
+**Kiểm thử độc lập**: một người không học công nghệ thông tin hoàn thành các nhiệm vụ chính từ màn hình ứng dụng mà không cần đọc tài liệu kỹ thuật.
+
+**Tiêu chí chấp nhận**:
+
+1. Mỗi chặng có tối đa một hành động chính nổi bật; hành động phụ được đặt sau hoặc trong phần thu gọn.
+2. Không hiển thị token trạng thái nội bộ hoặc từ như `fixture`, `digest`, `claim`, `approved`, `Markdown`, `JSON`, `lease` trên bề mặt chính.
+3. Mọi lỗi cho biết điều gì xảy ra và người dùng nên làm gì tiếp theo.
+4. Không có màn hình phân quyền chuyên gia trong luồng Goal 010.
+5. Màn hình xác nhận và đưa vào thư viện không bắt người dùng nhập thông tin mà hệ thống có thể tự tạo.
 
 ## 3. Trường hợp biên bắt buộc
 
-- Một người có nhiều vai trò nhưng chỉ được duyệt ở một công đoạn; tài khoản bị vô hiệu hóa giữa phiên.
-- Hai chuyên gia cùng cấp đưa ra ngưỡng trái nhau; một người sửa câu trả lời sau khi SOP đã được tạo.
-- Corpus không có tài liệu, tài liệu không đọc được, citation hỏng hoặc câu hỏi nằm ngoài phạm vi đã kiểm kê.
-- Model hỏi lặp, hỏi dẫn dắt, vượt ngân sách hoặc tạo nội dung không có trong câu trả lời.
-- Microphone bị chiếm dụng, audio mất đoạn, có nhiều người nói, tiếng ồn cao hoặc chép sai mã thiết bị.
-- Chuyên gia từ chối ghi âm nhưng vẫn muốn trả lời bằng văn bản; rút đồng ý sau buổi phỏng vấn.
-- Library đang có writer khác, ổ đĩa đầy, digest thay đổi sau duyệt hoặc nạp thư viện bị ngắt.
-- Đường dẫn Windows có khoảng trắng/tiếng Việt; transcript UTF-8 không mojibake.
-- Dữ liệu `local_only`, bí mật thương mại hoặc thông tin cá nhân không được gửi qua provider không được phép.
+- Hai người cùng thử cập nhật một thư viện; một lượt được ghi, lượt kia nhận hướng dẫn chờ và thử lại.
+- Hai người dùng cùng tên hiển thị; lịch sử vẫn lưu thêm máy và thời điểm nhưng không tuyên bố phân biệt danh tính chắc chắn.
+- Thư mục dùng chung bị mất kết nối, chỉ đọc, đổi bên ngoài hoặc hết dung lượng.
+- Người dùng sửa bản nháp sau khi đã mở form xác nhận; quyết định cũ không áp dụng cho nội dung mới.
+- Bản chép lời sai mã máy, con số hoặc đơn vị; nội dung chưa xác nhận không được xuất bản.
+- Nguồn mâu thuẫn, thiếu hoặc đã cũ; hệ thống nêu rõ thay vì tự hợp nhất.
+- Ứng dụng dừng giữa lúc ghi; thư viện cũ vẫn mở được và lần chạy sau giải thích trạng thái.
+- Người khác sửa/xóa trực tiếp file thư viện; hệ thống chỉ có thể phát hiện và cảnh báo, không được hứa ngăn chặn.
 
 ## 4. Yêu cầu chức năng
 
-- **FR-001**: Hệ thống phải kiểm kê phạm vi tài liệu và định nghĩa bộ câu hỏi/tiêu chí bao phủ trước khi đề xuất khoảng trống.
-- **FR-002**: Mỗi `KnowledgeGapCandidate` phải có evidence, loại khoảng trống, phạm vi, mức ưu tiên và trạng thái duyệt.
-- **FR-003**: Hệ thống phải lập `InterviewPlan` theo khoảng trống, công đoạn, vai trò chuyên gia, thời lượng và tiêu chí kết thúc.
-- **FR-004**: Phiên phỏng vấn phải là máy trạng thái hữu hạn, có giới hạn lượt/thời gian/token và checkpoint để tiếp tục an toàn.
-- **FR-005**: Hệ thống phải hỏi tiếp khi thiếu điều kiện, ngưỡng, ngoại lệ, ví dụ, phản ví dụ, độ chắc chắn hoặc nguồn; không hỏi tiếp ngoài phạm vi.
-- **FR-006**: Mỗi câu hỏi và câu trả lời phải có ID, thứ tự, thời điểm, nguồn kích hoạt và digest chống ghi lặp.
-- **FR-007**: Hệ thống phải hỗ trợ `unknown`, `uncertain`, `skip`, `pause`, `stop` mà không ép chuyên gia trả lời.
-- **FR-008**: Chế độ nhiều người dùng phải fail-closed nếu không ánh xạ được danh tính xác thực tới hồ sơ chuyên gia và phạm vi quyền.
-- **FR-009**: Bản đầu phải dùng ranh giới `IdentityProvider`; ưu tiên danh tính Windows/OS hoặc SSO doanh nghiệp, không tự xây kho mật khẩu.
-- **FR-010**: Ghi âm là tùy chọn, cần đồng ý rõ ràng, chỉ báo đang ghi và khả năng rút đồng ý.
-- **FR-011**: Chép lời phải chạy cục bộ theo adapter có phiên bản; lựa chọn engine chỉ được khóa sau benchmark tiếng Việt có thuật ngữ công đoạn.
-- **FR-012**: Audio/transcript thô phải ở vùng `local_only` ngoài Git; kho case chỉ giữ metadata, locator và digest.
-- **FR-013**: Hệ thống phải cho sửa transcript theo đoạn và lưu cả bản máy, bản sửa cùng người sửa để truy nguyên.
-- **FR-014**: Hệ thống phải trích xuất `KnowledgeClaim` có nguồn đoạn, độ chắc chắn, phạm vi hiệu lực và trạng thái mâu thuẫn.
-- **FR-015**: SOP/bài học được tạo tự động luôn ở trạng thái ứng viên và không được dùng như tri thức chính thức trước phê duyệt.
-- **FR-016**: Phê duyệt phải kiểm tra actor, vai trò, phạm vi, digest và phiên bản; title tự khai không tạo quyền.
-- **FR-017**: Nội dung mâu thuẫn phải được giữ nguyên và chuyển người có thẩm quyền; model không tự hòa giải thành sự thật.
-- **FR-018**: Gói xuất bản phải là Markdown/JSON có version, source digest, quyết định duyệt và collection đích.
-- **FR-019**: Nạp vào `library.sqlite` phải dùng API ingest hiện có, writer lease, backup, kiểm tra toàn vẹn và khả năng rollback.
-- **FR-020**: Chỉ nội dung đã duyệt và chưa bị thu hồi mới xuất hiện trong retrieval thường; candidate/conflicted phải bị lọc.
-- **FR-021**: Mỗi lần xuất bản phải chạy bộ câu hỏi chấp nhận và lưu receipt citation/truy xuất.
-- **FR-022**: Hệ thống phải hỗ trợ thu hồi, thay thế và truy ngược phiên bản mà không xóa audit trail.
-- **FR-023**: Fine-tune phải tắt mặc định; chỉ lập báo cáo điều kiện khi có đủ mẫu đã duyệt, ẩn danh, quyền sử dụng và baseline retrieval chứng minh nhu cầu.
-- **FR-024**: Không được đưa audio/transcript thô, dữ liệu `local_only` hoặc nội dung chưa duyệt vào tập fine-tune.
-- **FR-025**: Toàn bộ chữ người dùng nhìn thấy phải là tiếng Việt đời thường, gồm nhãn, nút, trạng thái, hướng dẫn, lỗi, tiến độ và báo cáo; cấm từ kỹ thuật tiếng Anh, traceback, tên engine/provider, tên trạng thái nội bộ và đường dẫn hệ thống trên giao diện.
+- **FR-001**: Cho phép chọn thư viện cá nhân hoặc thư viện dùng chung ngay trên giao diện và đổi lựa chọn không cần khởi động lại.
+- **FR-002**: Cho phép bắt đầu phỏng vấn từ chủ đề nhập tay hoặc từ gợi ý nội dung còn thiếu.
+- **FR-003**: Gợi ý nội dung còn thiếu phải kèm căn cứ và luôn là đề xuất; không bắt buộc duyệt đề xuất trước khi phỏng vấn.
+- **FR-004**: Phiên phỏng vấn có giới hạn an toàn nội bộ, lưu được tiến độ và hỗ trợ tạm dừng, tiếp tục, bỏ qua hoặc kết thúc.
+- **FR-005**: Câu hỏi tiếp theo phải liên quan tới chủ đề hoặc câu trả lời trước, không lặp vô hạn và không dẫn dắt người dùng xác nhận giả thuyết.
+- **FR-006**: Văn bản là đường mặc định; âm thanh là tùy chọn và cần đồng ý rõ ràng trước khi xử lý.
+- **FR-007**: Audio và bản chép lời thô phải ở vùng `local_only`, ngoài mã nguồn, kho điều phối và thư viện tri thức.
+- **FR-008**: Bản chép lời phải cho sửa; mã máy, số và đơn vị phải được người dùng xác nhận trước khi dùng trong nội dung xuất bản.
+- **FR-009**: Nội dung AI tạo luôn là bản nháp cho đến khi một người xác nhận.
+- **FR-010**: Bản nháp phải giữ nguồn tham chiếu, điều kiện áp dụng, điểm chưa chắc chắn và nội dung mâu thuẫn có ý nghĩa.
+- **FR-011**: Quyết định xác nhận, từ chối, yêu cầu sửa hoặc thu hồi phải gắn với đúng nội dung và phiên bản.
+- **FR-012**: Mỗi quyết định phải lưu tên ghi nhận, máy, thời điểm, mức tự tin, lý do/căn cứ, nguồn đã kiểm tra và xác nhận chịu trách nhiệm.
+- **FR-013**: Tên Windows/OS chỉ dùng điền sẵn và có thể sửa; hệ thống không gọi đó là danh tính đã xác minh.
+- **FR-014**: Goal 010 không kiểm tra vai trò, phạm vi quyền, quản trị viên hoặc cấm tự duyệt. Người truy cập được thư viện được coi là thành viên nhóm tin cậy.
+- **FR-015**: Chỉ nội dung đã xác nhận và chưa bị thu hồi mới xuất hiện trong truy xuất thông thường.
+- **FR-016**: Mọi lượt ghi thư viện phải dùng khóa ghi ngắn hạn, bản sao cục bộ, kiểm tra toàn vẹn, sao lưu và thay snapshot an toàn.
+- **FR-017**: Khi khóa ghi đang bận, không tự giành quyền hoặc báo lỗi kỹ thuật; hiển thị lời giải thích và nút thử lại.
+- **FR-018**: Thu hồi, thay thế và khôi phục tạo lịch sử mới, không xóa dấu vết quyết định trước.
+- **FR-019**: Giao diện chính chỉ dùng tiếng Việt dễ hiểu và bốn chặng của hành trình; chi tiết kỹ thuật được ẩn mặc định.
+- **FR-020**: Fixture, tên model/provider, mã băm, mã gói, trạng thái nội bộ và đường dẫn hệ thống không xuất hiện ở luồng người dùng thường.
+- **FR-021**: Không âm thầm dùng kết quả chép lời giả hoặc nguồn thay thế rồi gắn nhãn như kết quả thật.
+- **FR-022**: Fine-tune nằm ngoài Goal 010 và không xuất hiện trên giao diện người dùng.
 
 ## 5. Thực thể chính
 
-- **ExpertProfile**: ánh xạ danh tính xác thực tới chuyên môn, công đoạn và trạng thái hoạt động; không chứa mật khẩu ứng dụng tự chế.
-- **ScopeGrant**: quyền có thời hạn của actor trên công đoạn/hành động, có người cấp và lý do.
-- **KnowledgeCoverageMap**: phạm vi, tài liệu đã kiểm kê, bộ câu hỏi và kết quả đo bao phủ.
-- **KnowledgeGapCandidate**: khoảng trống đề xuất có evidence và quyết định xử lý.
-- **InterviewPlan**: mục tiêu, người phù hợp, câu hỏi nền, ngân sách và tiêu chí kết thúc.
-- **InterviewSession**: trạng thái phiên, consent, checkpoint và liên kết tới lượt hỏi–đáp.
-- **InterviewTurn**: câu hỏi/câu trả lời, nguồn kích hoạt, mức chắc chắn và digest.
-- **TranscriptSegment**: đoạn chép lời có mốc thời gian, bản máy, bản sửa và provenance.
-- **KnowledgeClaim**: phát biểu nguyên tử có nguồn, phạm vi, độ chắc chắn và trạng thái xung đột.
-- **KnowledgeArtifactCandidate**: bản nháp SOP/bài học có version và diff.
-- **PublicationPackage**: gói bất biến đã duyệt để nạp vào collection.
-- **PublicationReceipt**: kết quả backup, ingest, kiểm tra toàn vẹn, retrieval và rollback.
+- **LibrarySelection**: loại thư viện, tên hiển thị và vị trí đang dùng.
+- **RecordedPerson**: tên ghi nhận, tên tài khoản OS gợi ý, máy và thời điểm; không mang quyền.
+- **KnowledgeGapCandidate**: nội dung còn thiếu được gợi ý cùng căn cứ; không phải cửa chặn.
+- **InterviewSession**: chủ đề, tiến độ và lịch sử hỏi–đáp có thể tiếp tục.
+- **TranscriptSegment**: bản chép lời cục bộ, bản sửa và thông số cần xác nhận.
+- **KnowledgeArtifactCandidate**: SOP hoặc bài học dạng bản nháp có nội dung, nguồn và phiên bản.
+- **DecisionRecord**: quyết định, người nhận trách nhiệm, mức tự tin, căn cứ, nguồn đã kiểm tra và thời điểm.
+- **PublicationReceipt**: kết quả sao lưu, ghi, kiểm tra và khôi phục dành cho lịch sử hỗ trợ.
 
 ## 6. Tiêu chí thành công đo được
 
-- **SC-001**: 100% khoảng trống được đưa vào phỏng vấn có ít nhất một evidence kiểm chứng được; 0 khoảng trống chỉ do model khẳng định.
-- **SC-002**: 100% thao tác nhiều người dùng bị từ chối khi danh tính hoặc scope không hợp lệ; các negative test mượn danh đạt toàn bộ.
-- **SC-003**: Hoàn thành diễn tập tự động với ít nhất 2 danh tính chuyên gia giả lập thuộc 2 phạm vi, 3 phiên và 5 khoảng trống được xử lý; hệ sẵn sàng nhận người thật mà không đổi code.
-- **SC-004**: Xuất bản vào collection fixture tối thiểu 5 đơn vị tri thức và 1 quy trình đã duyệt; 100% phát biểu xuất bản truy ngược tới đoạn/source và danh tính duyệt giả lập.
-- **SC-005**: 0 candidate/conflicted/revoked xuất hiện trong retrieval thường; 100% câu hỏi chấp nhận của gói xuất bản trả đúng citation hoặc thừa nhận chưa đủ căn cứ.
-- **SC-006**: 100% mã máy, đơn vị, ngưỡng và số liệu trong artifact xuất bản từ audio được người có quyền xác nhận.
-- **SC-007**: Audio/transcript thô không xuất hiện trong Git, `library.sqlite`, `workspace_cases.sqlite`, log thường hoặc payload provider ngoài policy.
-- **SC-008**: Phiên pause/restart/resume không mất lượt đã lưu, không gửi lặp và không tạo hai artifact cho cùng idempotency key.
-- **SC-009**: Full quality gate, E2E Windows đường dẫn tiếng Việt và quét giao diện không còn từ kỹ thuật tiếng Anh đều đạt trước khi chuyển Gate Card sang `DONE`.
-- **SC-010**: Fine-tune giữ trạng thái `NOT_APPLICABLE` hoặc có hồ sơ đánh giá riêng được chủ sở hữu phê duyệt; không tự huấn luyện trong feature này.
+- **SC-001**: Người dùng lần đầu chọn được thư viện và bắt đầu phỏng vấn trong không quá 3 thao tác chính, không cần đăng nhập hoặc đọc hướng dẫn kỹ thuật.
+- **SC-002**: 100% quyết định đưa vào hoặc thu hồi tri thức có đủ các trường trách nhiệm của FR-012.
+- **SC-003**: 100% audio và bản chép lời thô trong kiểm thử không xuất hiện trong mã nguồn, kho điều phối, thư viện tri thức, nhật ký thường hoặc dữ liệu gửi ra ngoài trái chính sách.
+- **SC-004**: 100% nội dung xuất bản có ít nhất một nguồn hoặc đánh dấu rõ phần chưa có căn cứ; 0 bản nháp/chưa xác nhận/đã thu hồi xuất hiện như tri thức hiện hành.
+- **SC-005**: Trong kiểm thử hai lượt ghi đồng thời, không có ghi đè âm thầm và thư viện cuối cùng vượt qua kiểm tra toàn vẹn.
+- **SC-006**: Với lỗi mô phỏng giữa lúc xuất bản, bản thư viện dùng được gần nhất vẫn mở được và lịch sử không ghi thành công giả.
+- **SC-007**: 0 từ kỹ thuật bị cấm ở FR-020 xuất hiện trên bề mặt chính của luồng Goal 010.
+- **SC-008**: Một lượt đi bộ giao diện với người không chuyên hoàn thành đủ bốn chặng mà không cần trợ giúp; mọi điểm vướng được ghi thành finding trước khi đóng Goal.
 
 ## 7. Giả định và ranh giới
 
-- Workspace Chat vẫn là giao diện chính; không tạo một sản phẩm họp trực tuyến hoặc hệ quản trị tài liệu mới.
-- Phiên bản đầu ưu tiên phỏng vấn văn bản; audio mở sau khi G1 danh tính và G4 consent/retention đạt.
-- `workspace_cases.sqlite` giữ workflow metadata/digest; raw audio/transcript dùng vùng cục bộ riêng; `library.sqlite` chỉ nhận artifact đã duyệt.
-- Mặc định triển khai đã khóa: danh tính Windows/OS; đồng ý từng phiên; không tự xóa audio/bản chép lời; collection fixture khi kiểm thử và collection đang chọn khi vận hành; fine-tune tắt.
-- Goal triển khai kỹ thuật không chờ người thật. Đồng ý ghi âm và duyệt quy trình vẫn là thao tác bắt buộc khi sản phẩm được dùng thật, không phải checkpoint phát triển.
-- Gemini Flash 3.8 là vai trò thực thi được yêu cầu; mã model/provider thật phải lấy từ runtime đã cấu hình, không hardcode tên marketing vào code.
-- Fine-tune, nhận dạng người nói nâng cao, họp từ xa, lịch mời chuyên gia và tự động ban hành tài liệu là ngoài phạm vi bản đầu.
+- Thư viện dùng chung dành cho nhóm tin cậy. Quyền truy cập thư mục do môi trường bên ngoài quyết định; ứng dụng không cấu hình quyền Windows/NAS.
+- Người dùng hiểu rằng tên ghi nhận có thể sửa và không được xác minh.
+- Mỗi thời điểm chỉ một tiến trình ghi một snapshot; nhiều người có thể đọc và chuẩn bị nội dung song song.
+- Workspace Chat vẫn là giao diện chính; không tạo ứng dụng hoặc hệ thiết kế giao diện mới.
+- Phiên bản đầu ưu tiên văn bản. Âm thanh là tiện ích tùy chọn và có thể tắt khi bộ máy thật chưa sẵn sàng.
+- Không xây đăng nhập, vai trò, máy chủ trung tâm, cơ sở dữ liệu phân tán, hệ quản trị tài liệu hoặc fine-tune trong Goal này.

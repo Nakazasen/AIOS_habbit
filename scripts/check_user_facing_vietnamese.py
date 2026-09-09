@@ -66,6 +66,7 @@ ENGLISH_UI_LEAK_WORDS = [
     "snapshot", "sqlite", "tab 1", "tab 2", "read-only", "đọc-only",
     "direct mode", "not available", "unit serial",
     "completed", "stopped", "running", "unit", "units", "lot", "lots",
+    "fixture", "digest", "claim", "approved", "markdown", "json", "lease",
 ]
 
 

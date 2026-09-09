@@ -70,6 +70,7 @@ def create_library_backup(
     note: str = "",
     actor: str = "local_admin",
     local_fallback_root: Optional[Path] = None,
+    lease: Optional[LibraryWriterLease] = None,
 ) -> Tuple[Path, LibraryBackupManifest]:
     """
     Creates a verified, point-in-time backup of the specified collection.
@@ -88,10 +89,14 @@ def create_library_backup(
             f"Không tìm thấy tệp dữ liệu thư viện tại: {source_sqlite}. Vui lòng tạo thư viện trước khi sao lưu."
         )
 
-    # Acquire writer lease to ensure quiet state during snapshot initiation
-    lease = LibraryWriterLease(runtime_dir)
-    if not lease.acquire(owner=actor):
-        raise ValueError(LibraryWriterLease.format_busy_message(runtime_dir))
+    # Acquire writer lease if not provided by caller
+    owned_lease = False
+    active_lease = lease
+    if active_lease is None:
+        active_lease = LibraryWriterLease(runtime_dir)
+        if not active_lease.acquire(owner=actor):
+            raise ValueError(LibraryWriterLease.format_busy_message(runtime_dir))
+        owned_lease = True
 
     backup_id = f"BAK-{uuid.uuid4().hex[:10].upper()}"
     now_iso = datetime.now(timezone.utc).isoformat()
@@ -157,7 +162,8 @@ def create_library_backup(
         manifest_file.write_text(json.dumps(manifest.to_dict(), indent=2, ensure_ascii=False), encoding="utf-8")
         return dest_dir, manifest
     finally:
-        lease.release()
+        if owned_lease and active_lease is not None:
+            active_lease.release()
 
 
 def verify_library_backup(backup_dir: Path) -> Tuple[bool, str]:

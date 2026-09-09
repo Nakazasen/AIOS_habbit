@@ -27,9 +27,11 @@ from aios_habit.local_transcription import (
     ConsentWithdrawnError,
     LocalWhisperCppTranscriptionAdapter,
     MockLocalTranscriptionEngine,
+    TranscriptionEngineUnavailableError,
     TranscriptionError,
     TranscriptionReceipt,
     TranscriptionSegment,
+    create_manual_transcription_receipt,
     extract_critical_tokens,
     validate_local_only_audio_path,
 )
@@ -59,9 +61,7 @@ def manifest_path() -> Path:
 
 def test_consent_lifecycle_granted_vs_declined_vs_withdrawn(sample_wav_path: Path, manifest_path: Path):
     """Transcription proceeds only when consent is active and fails closed otherwise."""
-    adapter = LocalWhisperCppTranscriptionAdapter(
-        fallback_mock_engine=MockLocalTranscriptionEngine(fixture_manifest_path=manifest_path)
-    )
+    engine = MockLocalTranscriptionEngine(fixture_manifest_path=manifest_path)
 
     # 1. Active consent -> SUCCESS
     active_consent = ConsentRecord(
@@ -70,13 +70,13 @@ def test_consent_lifecycle_granted_vs_declined_vs_withdrawn(sample_wav_path: Pat
         subject="expert_1",
         state=CONSENT_STATE_GRANTED,
     )
-    receipt = adapter.transcribe(
+    receipt = engine.transcribe(
         audio_path=sample_wav_path,
         session_id="SESS-001",
         consent=active_consent,
     )
     assert receipt.receipt_id.startswith("TRCP-SESS-001")
-    assert receipt.engine_name == "whisper.cpp"
+    assert receipt.engine_name == "mock_local_transcription"
     assert len(receipt.segments) > 0
     assert "Nhiệt độ tối đa" in receipt.full_text
 
@@ -88,7 +88,7 @@ def test_consent_lifecycle_granted_vs_declined_vs_withdrawn(sample_wav_path: Pat
         state=CONSENT_STATE_DECLINED,
     )
     with pytest.raises(ConsentRequiredError, match="đồng ý"):
-        adapter.transcribe(
+        engine.transcribe(
             audio_path=sample_wav_path,
             session_id="SESS-002",
             consent=declined_consent,
@@ -102,7 +102,7 @@ def test_consent_lifecycle_granted_vs_declined_vs_withdrawn(sample_wav_path: Pat
         state=CONSENT_STATE_WITHDRAWN,
     )
     with pytest.raises(ConsentWithdrawnError, match="rút lại"):
-        adapter.transcribe(
+        engine.transcribe(
             audio_path=sample_wav_path,
             session_id="SESS-003",
             consent=withdrawn_consent,
@@ -111,9 +111,7 @@ def test_consent_lifecycle_granted_vs_declined_vs_withdrawn(sample_wav_path: Pat
 
 def test_missing_or_corrupt_audio(manifest_path: Path):
     """Missing or non-existent audio file raises FileNotFoundError."""
-    adapter = LocalWhisperCppTranscriptionAdapter(
-        fallback_mock_engine=MockLocalTranscriptionEngine(fixture_manifest_path=manifest_path)
-    )
+    engine = MockLocalTranscriptionEngine(fixture_manifest_path=manifest_path)
     consent = ConsentRecord(
         consent_id="CSNT-OK",
         session_id="SESS-ERR",
@@ -122,7 +120,44 @@ def test_missing_or_corrupt_audio(manifest_path: Path):
     )
     missing_audio = Path("non_existent_audio_sample_12345.wav")
     with pytest.raises(FileNotFoundError):
-        adapter.transcribe(missing_audio, "SESS-ERR", consent)
+        engine.transcribe(missing_audio, "SESS-ERR", consent)
+
+
+def test_whisper_cpp_fails_closed_when_engine_unavailable_and_no_mock_fallback(sample_wav_path: Path):
+    """T085/T086: Real adapter must never fall back silently to mock; must raise Vietnamese error and offer manual input."""
+    adapter = LocalWhisperCppTranscriptionAdapter(binary_path=Path("non_existent_whisper_binary.exe"))
+    consent = ConsentRecord(
+        consent_id="CSNT-FAIL-CLOSED",
+        session_id="SESS-FAIL-1",
+        subject="expert_1",
+        state=CONSENT_STATE_GRANTED,
+    )
+    with pytest.raises(TranscriptionEngineUnavailableError) as exc_info:
+        adapter.transcribe(sample_wav_path, "SESS-FAIL-1", consent)
+
+    error_msg = str(exc_info.value)
+    assert "whisper.cpp" in error_msg
+    assert "thủ công" in error_msg
+
+
+def test_create_manual_transcription_receipt():
+    """Manual input creates a valid verified receipt with critical tokens and consent check."""
+    consent = ConsentRecord(
+        consent_id="CSNT-MANUAL-1",
+        session_id="SESS-MANUAL-1",
+        subject="expert_1",
+        state=CONSENT_STATE_GRANTED,
+    )
+    manual_text = "Hiệu chuẩn thấu kính LSU-200 ở nhiệt độ 65 độ C trong 30 phút."
+    receipt = create_manual_transcription_receipt(manual_text, "SESS-MANUAL-1", consent)
+
+    assert receipt.session_id == "SESS-MANUAL-1"
+    assert receipt.full_text == manual_text
+    assert receipt.engine_name == "manual_input"
+    assert receipt.state == "reviewed"
+    assert len(receipt.segments) == 1
+    assert receipt.segments[0].is_confirmed is True
+    assert any("LSU-200" in t for t in receipt.all_critical_tokens)
 
 
 def test_critical_token_extraction_and_vietnamese_utf8():
@@ -188,10 +223,8 @@ def test_repository_consent_and_transcription_persistence(temp_repo: ExpertInter
     assert reloaded_consent.state == CONSENT_STATE_GRANTED
 
     # 2. Transcribe and save receipt
-    adapter = LocalWhisperCppTranscriptionAdapter(
-        fallback_mock_engine=MockLocalTranscriptionEngine(fixture_manifest_path=manifest_path)
-    )
-    receipt = adapter.transcribe(sample_wav_path, session_id, consent)
+    engine = MockLocalTranscriptionEngine(fixture_manifest_path=manifest_path)
+    receipt = engine.transcribe(sample_wav_path, session_id, consent)
     temp_repo.save_transcription_receipt(receipt, "IDEMP-TRCP-1")
 
     # 3. Retrieve receipt
@@ -201,4 +234,34 @@ def test_repository_consent_and_transcription_persistence(temp_repo: ExpertInter
     assert reloaded_receipt.audio_digest == receipt.audio_digest
     assert len(reloaded_receipt.segments) == len(receipt.segments)
     assert reloaded_receipt.full_text == receipt.full_text
-    assert reloaded_receipt.engine_name == "whisper.cpp"
+    assert reloaded_receipt.engine_name == "mock_local_transcription"
+
+
+def test_create_manual_transcription_receipt_multiline_and_complex_utf8():
+    """Manual input with multi-line text and complex Vietnamese characters preserves exact encoding and extracts parameters."""
+    consent = ConsentRecord(
+        consent_id="CSNT-MANUAL-MULTI",
+        session_id="SESS-MANUAL-MULTI",
+        subject="chuyen_gia_co_khi",
+        state=CONSENT_STATE_GRANTED,
+    )
+    raw_multiline = (
+        "Tiếp nhận quy trình hiệu chỉnh gương phản xạ LSU-300.\r\n"
+        "Nhiệt độ phòng sạch: 22 ± 1 °C tại trạm đo.\n"
+        "Độ ẩm tương đối: 45% với áp suất chân không 0.05 bar trong 15 phút."
+    )
+    receipt = create_manual_transcription_receipt(raw_multiline, "SESS-MANUAL-MULTI", consent)
+
+    assert receipt.session_id == "SESS-MANUAL-MULTI"
+    assert receipt.engine_name == "manual_input"
+    assert receipt.full_text == raw_multiline.strip()
+    assert receipt.audio_digest == hashlib.sha256(raw_multiline.strip().encode("utf-8")).hexdigest()
+
+    # Parameters extraction
+    tokens = receipt.all_critical_tokens
+    assert any("LSU-300" in t for t in tokens)
+    assert any("22" in t for t in tokens)
+    assert any("°C" in t for t in tokens)
+    assert any("45%" in t for t in tokens)
+    assert any("0.05 bar" in t for t in tokens)
+    assert any("15 phút" in t for t in tokens)

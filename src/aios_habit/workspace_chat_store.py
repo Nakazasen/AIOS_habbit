@@ -494,6 +494,38 @@ def set_collection_storage_root(collection_id: str, storage_root: str) -> Knowle
     return save_collection(collection)
 
 
+def get_active_library_mode(collection_id: str = DEFAULT_COLLECTION_ID) -> dict[str, Any]:
+    """Return active library configuration (mode, path, label) without restart."""
+    collection = load_collection(collection_id) or ensure_default_collection()
+    storage = str(collection.storage_root or "").strip()
+    is_shared = bool(storage)
+    return {
+        "collection_id": collection.id,
+        "mode": "shared" if is_shared else "personal",
+        "mode_label": "Thư viện dùng chung" if is_shared else "Thư viện cá nhân",
+        "storage_root": storage,
+        "title": collection.title,
+    }
+
+
+def select_library_mode(
+    mode: str,
+    shared_path: Optional[str] = None,
+    *,
+    collection_id: str = DEFAULT_COLLECTION_ID,
+) -> KnowledgeCollection:
+    """Switch active library between personal and shared storage without restart (T095)."""
+    norm_mode = str(mode or "").strip().lower()
+    if norm_mode in ("personal", "ca_nhan", "cá nhân"):
+        return set_collection_storage_root(collection_id, "")
+    elif norm_mode in ("shared", "dung_chung", "dùng chung"):
+        if not shared_path or not str(shared_path).strip():
+            raise ValueError("shared_storage_path_required")
+        return set_collection_storage_root(collection_id, str(shared_path).strip())
+    else:
+        raise ValueError(f"invalid_library_mode: {mode}")
+
+
 def resolve_collection_id_from_notebook_source_id(source_id: str) -> str:
     for source in load_all_notebook_sources():
         if source.id == source_id:

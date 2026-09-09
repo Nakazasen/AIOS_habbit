@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from concurrent.futures import ThreadPoolExecutor
+from pathlib import Path
 import sqlite3
 
 import pytest
@@ -376,3 +377,171 @@ def test_migration_v7_fault_restores_v6_snapshot(tmp_path):
     with sqlite3.connect(path) as connection:
         assert connection.execute("PRAGMA user_version").fetchone()[0] == 6
         assert connection.execute("PRAGMA quick_check").fetchone()[0] == "ok"
+
+
+def test_migrate_v7_to_v8_creates_transcript_columns_and_preserves_data(tmp_path):
+    path = tmp_path / "workspace_cases.sqlite"
+    migrate_store(path, target_version=7)
+
+    # Migrate to v8
+    result = migrate_store(path, target_version=8)
+    assert result.migrated is True
+    assert result.to_version == 8
+
+    with sqlite3.connect(path) as connection:
+        assert connection.execute("PRAGMA user_version").fetchone()[0] == 8
+        assert connection.execute("PRAGMA quick_check").fetchone()[0] == "ok"
+        tables = {r[0] for r in connection.execute("SELECT name FROM sqlite_master WHERE type='table'")}
+        assert "interview_transcripts" in tables
+        columns = {str(r[1]) for r in connection.execute("PRAGMA table_info(interview_transcripts)")}
+        assert "transcript_locator" in columns
+        assert "transcript_digest" in columns
+
+
+def test_migration_v8_fault_restores_v7_snapshot(tmp_path):
+    path = tmp_path / "workspace_cases.sqlite"
+    migrate_store(path, target_version=7)
+
+    def fail(stage: str, version: int) -> None:
+        if stage == "after_migration" and version == 8:
+            raise RuntimeError("v8 migration synthetic fault")
+
+    with pytest.raises(WorkspaceCaseMigrationError, match="MIGRATION_FAILED"):
+        migrate_store(path, target_version=8, fault_injector=fail)
+
+    with sqlite3.connect(path) as connection:
+        assert connection.execute("PRAGMA user_version").fetchone()[0] == 7
+        assert connection.execute("PRAGMA quick_check").fetchone()[0] == "ok"
+
+
+def test_migrate_v7_to_v8_migrates_legacy_transcripts_to_local_only(tmp_path):
+    import json
+    path = tmp_path / "workspace_cases.sqlite"
+    migrate_store(path, target_version=7)
+
+    # Insert a table and row simulating legacy transcript in v7 store
+    with sqlite3.connect(path) as connection:
+        connection.execute(
+            """
+            CREATE TABLE IF NOT EXISTS interview_transcripts (
+                receipt_id TEXT PRIMARY KEY,
+                session_id TEXT NOT NULL,
+                audio_path TEXT NOT NULL,
+                audio_digest TEXT NOT NULL,
+                engine_name TEXT NOT NULL,
+                engine_version TEXT NOT NULL,
+                segments_json TEXT NOT NULL DEFAULT '',
+                full_text TEXT NOT NULL DEFAULT '',
+                all_critical_tokens_json TEXT NOT NULL,
+                state TEXT NOT NULL,
+                created_at TEXT NOT NULL,
+                idempotency_key TEXT NOT NULL UNIQUE
+            )
+            """
+        )
+        legacy_segments = json.dumps([{"segment_id": "SEG-LEGACY-1", "text": "Đoạn chép cũ bí mật", "start_time": 0.0, "end_time": 1.0}])
+        legacy_full_text = "Đoạn chép cũ bí mật cần được di chuyển ra ngoài SQLite"
+        connection.execute(
+            """
+            INSERT INTO interview_transcripts (
+                receipt_id, session_id, audio_path, audio_digest,
+                engine_name, engine_version, segments_json, full_text,
+                all_critical_tokens_json, state, created_at, idempotency_key
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                "RCP-LEGACY-1",
+                "SESS-LEGACY-1",
+                "local_cases/audio.wav",
+                "dig_legacy",
+                "mock",
+                "1.0",
+                legacy_segments,
+                legacy_full_text,
+                "[]",
+                "draft",
+                "2026-09-08T00:00:00Z",
+                "IDEMP-LEGACY-1",
+            ),
+        )
+        connection.commit()
+
+    # Migrate to v8
+    result = migrate_store(path, target_version=8)
+    assert result.migrated is True
+    assert result.to_version == 8
+
+    # Verify that in SQLite, raw text has been purged and locator/digest populated
+    with sqlite3.connect(path) as connection:
+        connection.row_factory = sqlite3.Row
+        row = connection.execute("SELECT * FROM interview_transcripts WHERE receipt_id = 'RCP-LEGACY-1'").fetchone()
+        assert row is not None
+        assert row["segments_json"] == "", "Legacy segments_json must be cleared in SQLite"
+        assert row["full_text"] == "", "Legacy full_text must be cleared in SQLite"
+        assert row["transcript_locator"] != "", "transcript_locator must be populated"
+        assert row["transcript_digest"] != "", "transcript_digest must be populated"
+
+        # Verify the file on disk in local_only/transcripts
+        target_file = Path(row["transcript_locator"])
+        assert target_file.exists()
+        file_data = json.loads(target_file.read_text(encoding="utf-8"))
+        assert file_data["full_text"] == legacy_full_text
+        assert len(file_data["segments"]) == 1
+        assert file_data["segments"][0]["text"] == "Đoạn chép cũ bí mật"
+
+
+def test_migrate_v7_to_v8_migrates_legacy_transcripts_on_memory_db():
+    import json
+    from aios_habit.workspace_case_migrations import _apply_v8
+
+    conn = sqlite3.connect(":memory:")
+    conn.execute(
+        """
+        CREATE TABLE interview_transcripts (
+            receipt_id TEXT PRIMARY KEY,
+            session_id TEXT NOT NULL,
+            audio_path TEXT NOT NULL,
+            audio_digest TEXT NOT NULL,
+            engine_name TEXT NOT NULL,
+            engine_version TEXT NOT NULL,
+            segments_json TEXT NOT NULL DEFAULT '',
+            full_text TEXT NOT NULL DEFAULT '',
+            all_critical_tokens_json TEXT NOT NULL,
+            state TEXT NOT NULL,
+            created_at TEXT NOT NULL,
+            idempotency_key TEXT NOT NULL UNIQUE
+        )
+        """
+    )
+    legacy_segments = json.dumps([{"segment_id": "SEG-MEM-1", "text": "Bộ nhớ tạm", "start_time": 0.0, "end_time": 1.0}])
+    legacy_full_text = "Nội dung bí mật trong bộ nhớ tạm"
+    conn.execute(
+        """
+        INSERT INTO interview_transcripts (
+            receipt_id, session_id, audio_path, audio_digest,
+            engine_name, engine_version, segments_json, full_text,
+            all_critical_tokens_json, state, created_at, idempotency_key
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """,
+        (
+            "RCP-MEM-1", "SESS-MEM-1", "local_cases/audio.wav", "dig_mem",
+            "mock", "1.0", legacy_segments, legacy_full_text, "[]", "draft",
+            "2026-09-08T00:00:00Z", "IDEMP-MEM-1",
+        ),
+    )
+    conn.commit()
+
+    _apply_v8(conn)
+
+    conn.row_factory = sqlite3.Row
+    row = conn.execute("SELECT * FROM interview_transcripts WHERE receipt_id = 'RCP-MEM-1'").fetchone()
+    assert row is not None
+    assert row["segments_json"] == ""
+    assert row["full_text"] == ""
+    assert row["transcript_locator"] != ""
+    assert row["transcript_digest"] != ""
+    target_file = Path(row["transcript_locator"])
+    assert target_file.exists()
+    conn.close()

@@ -1,5 +1,7 @@
 # Nghiên cứu và quyết định kỹ thuật
 
+> **Ghi chú kiểm toán 2026-09-09**: các lựa chọn công nghệ dưới đây là bằng chứng của lần triển khai T000–T080. Quyết định sản phẩm về danh tính/phân quyền và cổng fine-tune đã được thay bởi [ADR-0009](../../docs/adr/0009-expert-interview-and-knowledge-publication-boundary.md) và [plan.md](plan.md); không tiếp tục mở rộng các lớp đó trong T083–T109.
+
 ## 0. Ma trận học từ hệ trưởng thành
 
 Trước khi code, Gemini phải đọc kiến trúc, test và license ở commit/tag được pin; ưu tiên học pattern rồi nối vào ranh giới AIOS. Không chép toàn repo, UI, thương hiệu hoặc kéo dependency khi vài cấu trúc dữ liệu/hợp đồng là đủ.

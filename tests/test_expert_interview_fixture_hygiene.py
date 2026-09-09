@@ -22,6 +22,7 @@ from aios_habit.feature_flags import (
     FEATURE_EXPERT_AUDIO,
     FEATURE_EXPERT_COVERAGE,
     FEATURE_EXPERT_INTERVIEW,
+    FEATURE_EXPERT_KNOWLEDGE_ACQUISITION,
     FEATURE_EXPERT_MULTI_USER,
     FEATURE_EXPERT_PUBLICATION,
     is_feature_enabled,
@@ -164,10 +165,13 @@ def test_fixture_audio_validity():
 
 
 def test_feature_flags_default_fail_closed():
-    """Verify that all 010 feature flags are disabled by default."""
+    """Verify that Goal 010 feature flag is consolidated into a single flag and disabled by default."""
+    assert len(ALL_010_FEATURES) == 1
+    assert ALL_010_FEATURES[0] == FEATURE_EXPERT_KNOWLEDGE_ACQUISITION
     for flag in ALL_010_FEATURES:
         assert is_feature_enabled(flag) is False, f"Flag {flag} must be disabled by default"
 
+    assert is_feature_enabled(FEATURE_EXPERT_KNOWLEDGE_ACQUISITION) is False
     assert is_feature_enabled(FEATURE_EXPERT_COVERAGE) is False
     assert is_feature_enabled(FEATURE_EXPERT_INTERVIEW) is False
     assert is_feature_enabled(FEATURE_EXPERT_AUDIO) is False
@@ -176,9 +180,9 @@ def test_feature_flags_default_fail_closed():
 
 
 def test_feature_flags_override_context_manager():
-    """Verify that feature flags can be temporarily overridden for testing."""
-    assert is_feature_enabled(FEATURE_EXPERT_INTERVIEW) is False
-    with override_feature_flags(expert_interview=True):
+    """Verify that single consolidated feature flag can be temporarily overridden for testing."""
+    assert is_feature_enabled(FEATURE_EXPERT_KNOWLEDGE_ACQUISITION) is False
+    with override_feature_flags(expert_knowledge_acquisition=True):
+        assert is_feature_enabled(FEATURE_EXPERT_KNOWLEDGE_ACQUISITION) is True
         assert is_feature_enabled(FEATURE_EXPERT_INTERVIEW) is True
-        assert is_feature_enabled(FEATURE_EXPERT_COVERAGE) is False
-    assert is_feature_enabled(FEATURE_EXPERT_INTERVIEW) is False
+    assert is_feature_enabled(FEATURE_EXPERT_KNOWLEDGE_ACQUISITION) is False

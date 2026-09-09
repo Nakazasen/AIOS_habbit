@@ -15,6 +15,7 @@ from aios_habit.controlled_knowledge_artifact import (
     ControlledKnowledgeArtifact,
 )
 
+import hashlib
 import json
 import sqlite3
 from contextlib import contextmanager
@@ -161,8 +162,10 @@ class ExpertInterviewRepository:
                     audio_digest TEXT NOT NULL,
                     engine_name TEXT NOT NULL,
                     engine_version TEXT NOT NULL,
-                    segments_json TEXT NOT NULL,
-                    full_text TEXT NOT NULL,
+                    transcript_locator TEXT NOT NULL DEFAULT '',
+                    transcript_digest TEXT NOT NULL DEFAULT '',
+                    segments_json TEXT NOT NULL DEFAULT '',
+                    full_text TEXT NOT NULL DEFAULT '',
                     all_critical_tokens_json TEXT NOT NULL,
                     state TEXT NOT NULL,
                     created_at TEXT NOT NULL,
@@ -553,11 +556,22 @@ class ExpertInterviewRepository:
         idempotency_key: str,
         local_only_root: Optional[Path] = None,
     ) -> None:
-        """Idempotently save transcription receipt, validating local_only audio boundary."""
+        """Idempotently save transcription receipt, isolating raw transcript data into local_only storage."""
         self.initialize()
-        if local_only_root:
+        if local_only_root and receipt.audio_path != "manual_input" and Path(receipt.audio_path).exists():
             validate_local_only_audio_path(Path(receipt.audio_path), local_only_root)
 
+        if local_only_root:
+            transcripts_dir = Path(local_only_root) / "transcripts"
+        else:
+            transcripts_dir = self.database_path.parent / "local_only" / "transcripts"
+
+        try:
+            transcripts_dir.mkdir(parents=True, exist_ok=True)
+        except OSError as exc:
+            raise RuntimeError(f"Không thể khởi tạo thư mục lưu trữ cục bộ '{transcripts_dir}': {exc}") from exc
+
+        # 1. Isolate raw transcript into local_only storage (outside SQLite database)
         segments_data = [
             {
                 "segment_id": s.segment_id,
@@ -571,73 +585,174 @@ class ExpertInterviewRepository:
             }
             for s in receipt.segments
         ]
-        segments_json = json.dumps(segments_data, ensure_ascii=False)
+        raw_payload = {
+            "receipt_id": receipt.receipt_id,
+            "session_id": receipt.session_id,
+            "full_text": receipt.full_text,
+            "segments": segments_data,
+        }
+        raw_json_bytes = json.dumps(raw_payload, ensure_ascii=False, indent=2).encode("utf-8")
+        transcript_digest = hashlib.sha256(raw_json_bytes).hexdigest()
+
+        # Sanitize filename strictly against path traversal
+        import re
+        safe_receipt_stem = re.sub(r"[^a-zA-Z0-9_\-]", "_", receipt.receipt_id)
+        if not safe_receipt_stem or safe_receipt_stem.startswith("."):
+            safe_receipt_stem = f"receipt_{safe_receipt_stem.lstrip('.')}"
+        transcript_file = (transcripts_dir / f"{safe_receipt_stem}.json").resolve()
+        resolved_dir = transcripts_dir.resolve()
+        if not str(transcript_file).startswith(str(resolved_dir)):
+            raise ValueError(f"Đường dẫn transcript không hợp lệ (path traversal): '{receipt.receipt_id}'")
+
+        # Atomic write with rollback on DB failure
+        already_existed = transcript_file.exists()
+        backup_bytes = transcript_file.read_bytes() if already_existed else None
+
+        transcript_file.write_bytes(raw_json_bytes)
+        transcript_locator = str(transcript_file)
         critical_json = json.dumps(list(receipt.all_critical_tokens), ensure_ascii=False)
 
-        with self._connection() as conn:
-            conn.execute(
-                """
-                INSERT INTO interview_transcripts (
-                    receipt_id, session_id, audio_path, audio_digest,
-                    engine_name, engine_version, segments_json, full_text,
-                    all_critical_tokens_json, state, created_at, idempotency_key
+        try:
+            with self._connection() as conn:
+                # Ensure migration columns exist
+                columns = {str(r[1]) for r in conn.execute("PRAGMA table_info(interview_transcripts)")}
+                if "transcript_locator" not in columns:
+                    conn.execute("ALTER TABLE interview_transcripts ADD COLUMN transcript_locator TEXT NOT NULL DEFAULT ''")
+                if "transcript_digest" not in columns:
+                    conn.execute("ALTER TABLE interview_transcripts ADD COLUMN transcript_digest TEXT NOT NULL DEFAULT ''")
+
+                conn.execute(
+                    """
+                    INSERT INTO interview_transcripts (
+                        receipt_id, session_id, audio_path, audio_digest,
+                        engine_name, engine_version, transcript_locator, transcript_digest,
+                        segments_json, full_text, all_critical_tokens_json, state,
+                        created_at, idempotency_key
+                    )
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    ON CONFLICT(receipt_id) DO UPDATE SET
+                        state = excluded.state,
+                        transcript_locator = excluded.transcript_locator,
+                        transcript_digest = excluded.transcript_digest,
+                        segments_json = excluded.segments_json,
+                        full_text = excluded.full_text,
+                        all_critical_tokens_json = excluded.all_critical_tokens_json
+                    """,
+                    (
+                        receipt.receipt_id,
+                        receipt.session_id,
+                        receipt.audio_path,
+                        receipt.audio_digest,
+                        receipt.engine_name,
+                        receipt.engine_version,
+                        transcript_locator,
+                        transcript_digest,
+                        "",  # Zero raw transcript stored in SQLite DB
+                        "",  # Zero raw full text stored in SQLite DB
+                        critical_json,
+                        receipt.state,
+                        receipt.created_at,
+                        idempotency_key,
+                    ),
                 )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                ON CONFLICT(receipt_id) DO UPDATE SET
-                    state = excluded.state,
-                    segments_json = excluded.segments_json,
-                    full_text = excluded.full_text,
-                    all_critical_tokens_json = excluded.all_critical_tokens_json
-                """,
-                (
-                    receipt.receipt_id,
-                    receipt.session_id,
-                    receipt.audio_path,
-                    receipt.audio_digest,
-                    receipt.engine_name,
-                    receipt.engine_version,
-                    segments_json,
-                    receipt.full_text,
-                    critical_json,
-                    receipt.state,
-                    receipt.created_at,
-                    idempotency_key,
-                ),
-            )
+        except Exception:
+            # Rollback file changes if DB transaction failed
+            if not already_existed:
+                transcript_file.unlink(missing_ok=True)
+            elif backup_bytes is not None:
+                transcript_file.write_bytes(backup_bytes)
+            raise
 
     def get_transcription_receipt(self, session_id: str) -> Optional[TranscriptionReceipt]:
-        """Fetch transcription receipt for a session."""
+        """Fetch transcription receipt for a session, resolving raw transcript from local_only store."""
         self.initialize()
         with self._connection() as conn:
-            row = conn.execute(
-                """
-                SELECT receipt_id, session_id, audio_path, audio_digest,
-                       engine_name, engine_version, segments_json, full_text,
-                       all_critical_tokens_json, state, created_at
-                FROM interview_transcripts
-                WHERE session_id = ?
-                ORDER BY created_at DESC
-                LIMIT 1
-                """,
-                (session_id,),
-            ).fetchone()
+            columns = {str(r[1]) for r in conn.execute("PRAGMA table_info(interview_transcripts)")}
+            has_locator = "transcript_locator" in columns and "transcript_digest" in columns
+
+            if has_locator:
+                row = conn.execute(
+                    """
+                    SELECT receipt_id, session_id, audio_path, audio_digest,
+                           engine_name, engine_version, transcript_locator, transcript_digest,
+                           segments_json, full_text, all_critical_tokens_json, state, created_at
+                    FROM interview_transcripts
+                    WHERE session_id = ?
+                    ORDER BY created_at DESC
+                    LIMIT 1
+                    """,
+                    (session_id,),
+                ).fetchone()
+            else:
+                row = conn.execute(
+                    """
+                    SELECT receipt_id, session_id, audio_path, audio_digest,
+                           engine_name, engine_version,
+                           segments_json, full_text, all_critical_tokens_json, state, created_at
+                    FROM interview_transcripts
+                    WHERE session_id = ?
+                    ORDER BY created_at DESC
+                    LIMIT 1
+                    """,
+                    (session_id,),
+                ).fetchone()
+
             if row is None:
                 return None
 
-            segments_raw = json.loads(row["segments_json"])
-            segments = tuple(
-                TranscriptionSegment(
-                    segment_id=s["segment_id"],
-                    start_time=float(s["start_time"]),
-                    end_time=float(s["end_time"]),
-                    text=s["text"],
-                    tokens=tuple(s.get("tokens", [])),
-                    critical_tokens=tuple(s.get("critical_tokens", [])),
-                    is_confirmed=bool(s.get("is_confirmed", False)),
-                    edited_text=s.get("edited_text"),
-                )
-                for s in segments_raw
-            )
+            full_text = ""
+            segments_list = []
+
+            transcript_locator = row["transcript_locator"] if has_locator and "transcript_locator" in row.keys() else ""
+            transcript_digest = row["transcript_digest"] if has_locator and "transcript_digest" in row.keys() else ""
+
+            locator_path = Path(transcript_locator) if transcript_locator else None
+            if locator_path and not locator_path.exists():
+                fallback_path = self.database_path.parent / "local_only" / "transcripts" / locator_path.name
+                if fallback_path.exists():
+                    locator_path = fallback_path
+
+            if locator_path and locator_path.exists():
+                file_bytes = locator_path.read_bytes()
+                computed_digest = hashlib.sha256(file_bytes).hexdigest()
+                if transcript_digest and computed_digest != transcript_digest:
+                    raise RuntimeError(f"Sai lệch mã băm bản chép lời tại '{locator_path}'.")
+                data = json.loads(file_bytes.decode("utf-8"))
+                full_text = data.get("full_text", "")
+                segments_raw = data.get("segments", [])
+                segments_list = [
+                    TranscriptionSegment(
+                        segment_id=s["segment_id"],
+                        start_time=float(s["start_time"]),
+                        end_time=float(s["end_time"]),
+                        text=s["text"],
+                        tokens=tuple(s.get("tokens", [])),
+                        critical_tokens=tuple(s.get("critical_tokens", [])),
+                        is_confirmed=bool(s.get("is_confirmed", False)),
+                        edited_text=s.get("edited_text"),
+                    )
+                    for s in segments_raw
+                ]
+            elif row["segments_json"]:
+                # Legacy fallback
+                segments_raw = json.loads(row["segments_json"])
+                segments_list = [
+                    TranscriptionSegment(
+                        segment_id=s["segment_id"],
+                        start_time=float(s["start_time"]),
+                        end_time=float(s["end_time"]),
+                        text=s["text"],
+                        tokens=tuple(s.get("tokens", [])),
+                        critical_tokens=tuple(s.get("critical_tokens", [])),
+                        is_confirmed=bool(s.get("is_confirmed", False)),
+                        edited_text=s.get("edited_text"),
+                    )
+                    for s in segments_raw
+                ]
+                full_text = row["full_text"]
+            elif transcript_locator:
+                raise FileNotFoundError(f"Tệp bản chép lời cục bộ không tồn tại hoặc đã bị mất tại: '{transcript_locator}'.")
+
             critical_tokens = tuple(json.loads(row["all_critical_tokens_json"]))
 
             return TranscriptionReceipt(
@@ -647,8 +762,8 @@ class ExpertInterviewRepository:
                 audio_digest=row["audio_digest"],
                 engine_name=row["engine_name"],
                 engine_version=row["engine_version"],
-                segments=segments,
-                full_text=row["full_text"],
+                segments=tuple(segments_list),
+                full_text=full_text,
                 all_critical_tokens=critical_tokens,
                 state=row["state"],
                 created_at=row["created_at"],

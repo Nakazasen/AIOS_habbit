@@ -14,7 +14,10 @@ _ENGLISH_DIAGNOSTIC = re.compile(
 )
 
 
-def safe_vietnamese_ui_message(value: Any, fallback: str) -> str:
+def safe_vietnamese_ui_message(
+    value: Any,
+    fallback: str = "Đã xảy ra lỗi trong quá trình xử lý. Vui lòng thử lại sau.",
+) -> str:
     """Return dynamic text only when it is safe and recognizably Vietnamese."""
     text = str(value or "").strip()
     lowered = text.lower()

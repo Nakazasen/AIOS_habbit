@@ -2,200 +2,153 @@
 
 ## 1. Nguyên tắc
 
-- Workflow, nội dung thô và tri thức xuất bản là ba lớp khác nhau.
-- Mọi thực thể thay đổi trạng thái bằng sự kiện append-only; projection có thể dựng lại.
-- Actor lấy từ `IdentityProvider`; trường hiển thị không tạo quyền.
-- Nội dung AI tạo mặc định là `candidate`.
-- Audio/transcript chỉ tham chiếu bằng locator cục bộ + digest trong workflow DB.
+- Dữ liệu phỏng vấn thô, dữ liệu điều phối và tri thức xuất bản là ba lớp riêng.
+- Chỉ sự kiện có ý nghĩa phục hồi hoặc trách nhiệm mới cần ghi nối; không biến mọi thao tác giao diện thành sổ kiểm toán.
+- Tên người dùng là thông tin ghi nhận, không cấp quyền và không được gọi là danh tính xác minh.
+- Nội dung AI tạo mặc định là bản nháp.
+- Audio và bản chép lời chỉ được lưu trong vùng `local_only`; DB điều phối chỉ giữ chỉ dẫn cục bộ đã làm sạch và mã kiểm tra.
+- Mã nội bộ được lưu để chống ghi nhầm phiên bản nhưng không hiển thị ở luồng người dùng thường.
 
 ## 2. Quan hệ
 
 ```text
-VerifiedPrincipal 1─1 ExpertProfile 1─* ScopeGrant
-KnowledgeCoverageMap 1─* KnowledgeGapCandidate
-KnowledgeGapCandidate *─* InterviewPlan
-InterviewPlan 1─* InterviewSession 1─* InterviewTurn
+LibrarySelection 1─* InterviewSession 1─* InterviewTurn
 InterviewSession 1─* TranscriptSegment
-InterviewTurn/TranscriptSegment *─* KnowledgeClaim
-KnowledgeClaim *─* KnowledgeArtifactCandidate
-KnowledgeArtifactCandidate 1─* ApprovalDecision
-KnowledgeArtifactCandidate 1─* PublicationPackage 1─1 PublicationReceipt
+InterviewTurn/TranscriptSegment *─* KnowledgeArtifactCandidate
+KnowledgeArtifactCandidate 1─* DecisionRecord
+KnowledgeArtifactCandidate 1─* PublicationReceipt
+RecordedPerson 1─* DecisionRecord
 ```
+
+`KnowledgeGapCandidate` và các phát biểu tri thức nhỏ có thể được dùng nội bộ để gợi ý và truy nguồn, nhưng không phải cửa chặn hoặc khái niệm bắt người dùng quản lý.
 
 ## 3. Thực thể và trường tối thiểu
 
-### 3.1 VerifiedPrincipal
+### 3.1 LibrarySelection
 
 | Trường | Ý nghĩa |
-|---|---|
-| `provider_id` | Adapter identity có version |
-| `subject_id` | ID ổn định từ provider, không phải tên tự khai |
-| `display_name` | Chỉ để hiển thị |
-| `assurance_level` | Mức đảm bảo xác thực |
-| `authenticated_at` | Thời điểm xác thực |
-| `session_digest` | Liên kết phiên đã làm sạch |
+| --- | --- |
+| `library_id` | Mã ổn định nội bộ |
+| `kind` | `personal` hoặc `shared` |
+| `display_name` | Tên dễ hiểu trên giao diện |
+| `location_ref` | Tham chiếu vị trí đã làm sạch; không hiện đường dẫn tuyệt đối trong thông báo thường |
+| `selected_at` | Thời điểm bắt đầu dùng lựa chọn này |
 
-Không lưu password/token dài hạn trong kho feature.
-
-### 3.2 ExpertProfile
+### 3.2 RecordedPerson
 
 | Trường | Ý nghĩa |
-|---|---|
-| `expert_id` | ID nội bộ bất biến |
-| `subject_id` | Liên kết principal xác thực |
-| `competency_scopes` | Các công đoạn/năng lực đã xác nhận |
-| `status` | `active`, `suspended`, `revoked` |
-| `valid_from`, `valid_until` | Thời hạn hiệu lực |
-| `evidence_refs` | Bằng chứng cấp hồ sơ |
+| --- | --- |
+| `recorded_name` | Tên người dùng xác nhận để ghi vào lịch sử |
+| `os_name_suggestion` | Tên OS chỉ dùng điền sẵn |
+| `machine_ref` | Mã máy đã làm sạch để hỗ trợ truy vết |
+| `recorded_at` | Thời điểm ghi |
 
-### 3.3 ScopeGrant
+Không có `assurance_level`, hồ sơ quyền, vai trò hoặc phạm vi cấp phép. Tên có thể sửa và không được xem là xác thực.
 
-| Trường | Ý nghĩa |
-|---|---|
-| `grant_id` | ID append-only |
-| `expert_id` | Người nhận quyền |
-| `action` | `interview.answer`, `claim.confirm`, `artifact.approve`, `publication.publish`, `publication.revoke` |
-| `scope_type`, `scope_id` | Miền/công đoạn/collection |
-| `granted_by`, `reason` | Người cấp và lý do |
-| `valid_from`, `valid_until`, `revoked_at` | Vòng đời |
-
-### 3.4 KnowledgeCoverageMap
+### 3.3 KnowledgeGapCandidate
 
 | Trường | Ý nghĩa |
-|---|---|
-| `coverage_id`, `version` | Bản đồ bất biến theo phiên bản |
-| `collection_id` | Thư viện được đánh giá |
-| `scope` | Công đoạn/thiết bị/lỗi |
-| `source_inventory_digest` | Digest inventory đầu vào |
-| `question_set_digest` | Digest bộ câu hỏi kiểm tra |
-| `coverage_metrics` | Số câu đủ/thiếu/xung đột/lỗi thời |
-| `created_by`, `created_at` | Audit |
+| --- | --- |
+| `gap_id` | Mã ổn định nội bộ |
+| `question`, `topic` | Điều nên làm rõ |
+| `evidence_refs` | Nguồn/câu hỏi cho thấy nội dung còn thiếu |
+| `reason`, `priority` | Lý do và mức gợi ý |
+| `status` | `suggested`, `used`, `dismissed`, `resolved` |
 
-### 3.5 KnowledgeGapCandidate
+Người dùng có thể bắt đầu phỏng vấn mà không có bản ghi này.
 
-| Trường | Ý nghĩa |
-|---|---|
-| `gap_id` | ID ổn định |
-| `coverage_id` | Bản đồ sinh gap |
-| `gap_type` | `missing`, `ambiguous`, `conflicted`, `stale`, `uncited` |
-| `question`, `scope` | Điều cần làm rõ |
-| `evidence_refs` | Query/source/case chứng minh |
-| `priority`, `confidence` | Xếp hạng, không phải truth |
-| `status` | `candidate`, `accepted`, `merged`, `deferred`, `rejected`, `resolved` |
-| `decision_actor`, `decision_reason` | Quyết định của người có quyền |
-
-### 3.6 InterviewPlan
+### 3.4 InterviewSession
 
 | Trường | Ý nghĩa |
-|---|---|
-| `plan_id`, `version` | Phiên bản kế hoạch |
-| `gap_ids` | Khoảng trống được giao |
-| `required_scope` | Năng lực tối thiểu |
-| `eligible_expert_ids` | Danh sách từ quyền, không do model tự phong |
-| `seed_questions` | Câu hỏi nền |
-| `max_turns`, `max_minutes`, `token_budget` | Ngân sách |
-| `completion_rubric` | Điều kiện đủ/dừng/escalate |
-| `status` | `draft`, `approved`, `scheduled`, `closed`, `cancelled` |
-
-### 3.7 InterviewSession
-
-| Trường | Ý nghĩa |
-|---|---|
-| `session_id` | ID resume |
-| `plan_id`, `expert_id`, `principal_subject_id` | Bind kế hoạch/người |
-| `state` | `ready`, `active`, `paused`, `awaiting_confirmation`, `completed`, `stopped`, `blocked` |
+| --- | --- |
+| `session_id` | Mã để tiếp tục phiên |
+| `library_id`, `topic`, `gap_id` | Đích và chủ đề; `gap_id` tùy chọn |
+| `state` | `active`, `paused`, `completed`, `stopped`, `blocked` |
 | `consent_state` | `not_requested`, `declined`, `granted`, `withdrawn` |
-| `checkpoint_seq`, `last_turn_digest` | Resume/idempotency |
+| `checkpoint_seq`, `last_turn_digest` | Tiếp tục và chống gửi lặp |
 | `started_at`, `updated_at`, `ended_at` | Thời gian |
 | `stop_reason` | Lý do kết thúc |
 
-### 3.8 InterviewTurn
+Giới hạn lượt/thời gian là cấu hình an toàn nội bộ, không phải trường người dùng phải quyết định.
+
+### 3.5 InterviewTurn
 
 | Trường | Ý nghĩa |
-|---|---|
-| `turn_id`, `sequence` | Thứ tự bất biến |
-| `question_text`, `answer_text` | Văn bản UTF-8 |
-| `question_reason` | Lý do follow-up được phép |
-| `trigger_refs` | Gap/turn/claim gây ra câu hỏi |
-| `answer_confidence` | Tự đánh giá của chuyên gia |
+| --- | --- |
+| `turn_id`, `sequence` | Thứ tự ổn định |
+| `question_text`, `answer_locator` | Câu hỏi và tham chiếu câu trả lời cục bộ |
 | `answer_state` | `answered`, `unknown`, `uncertain`, `skipped`, `corrected` |
-| `payload_digest`, `created_at` | Chống ghi lặp/audit |
+| `source_refs` | Chủ đề/lượt trước/nguồn làm căn cứ hỏi tiếp |
+| `payload_digest`, `created_at` | Chống gửi lặp và phục hồi |
 
-### 3.9 TranscriptSegment
+Không lưu nội dung audio hoặc bản chép lời thô trong `workspace_cases.sqlite`.
+
+### 3.6 TranscriptSegment
 
 | Trường | Ý nghĩa |
-|---|---|
+| --- | --- |
 | `segment_id`, `session_id` | Liên kết phiên |
 | `start_ms`, `end_ms` | Mốc thời gian |
-| `machine_text`, `corrected_text` | Bản máy và bản sửa |
+| `machine_text`, `corrected_text` | Chỉ tồn tại trong kho `local_only` |
 | `critical_tokens` | Mã máy/số/đơn vị cần xác nhận |
-| `confirmation_state`, `confirmed_by` | Trạng thái duyệt |
-| `audio_locator`, `audio_digest` | Chỉ trỏ local-only |
-| `engine_receipt` | Engine/model/version/config digest |
+| `confirmation_state`, `confirmed_by_name` | Trạng thái người dùng kiểm tra |
+| `audio_locator`, `audio_digest` | Chỉ trỏ cục bộ |
+| `engine_receipt` | Chi tiết hỗ trợ kỹ thuật, không hiện mặc định |
 
-### 3.10 KnowledgeClaim
-
-| Trường | Ý nghĩa |
-|---|---|
-| `claim_id`, `version` | Phát biểu nguyên tử |
-| `statement` | Nội dung chuẩn hóa |
-| `scope`, `validity_conditions` | Điều kiện áp dụng |
-| `source_refs` | Turn/segment/document/case |
-| `confidence`, `uncertainty_note` | Độ chắc chắn có giải thích |
-| `status` | `candidate`, `confirmed`, `conflicted`, `rejected`, `superseded` |
-| `confirmed_by`, `confirmed_at` | Người xác nhận |
-
-### 3.11 KnowledgeArtifactCandidate
+### 3.7 KnowledgeArtifactCandidate
 
 | Trường | Ý nghĩa |
-|---|---|
-| `artifact_id`, `artifact_type`, `version` | `sop` hoặc `lesson` |
-| `title`, `content_locator`, `content_digest` | Artifact versioned |
-| `claim_ids` | Nguồn claim |
-| `diff_from_version` | Bản so sánh |
-| `status` | `candidate`, `in_review`, `approved`, `rejected`, `revoked`, `superseded` |
-| `required_approvals` | Ma trận vai trò/scope |
+| --- | --- |
+| `artifact_id`, `artifact_type`, `version` | Bản nháp SOP hoặc bài học |
+| `title`, `content_locator`, `content_digest` | Nội dung theo phiên bản |
+| `source_refs` | Nguồn dùng để tạo nội dung |
+| `uncertainty_notes`, `conflict_notes` | Điểm cần người dùng xem lại |
+| `status` | `draft`, `confirmed`, `rejected`, `published`, `revoked`, `superseded` |
 
-### 3.12 ApprovalDecision
-
-| Trường | Ý nghĩa |
-|---|---|
-| `decision_id` | ID append-only |
-| `subject_type`, `subject_id`, `subject_digest` | Nội dung được duyệt chính xác |
-| `actor_id`, `scope_snapshot` | Người duyệt và quyền lúc duyệt |
-| `decision` | `approve`, `reject`, `request_change`, `revoke` |
-| `rationale`, `created_at` | Lý do/thời điểm |
-
-### 3.13 PublicationPackage và PublicationReceipt
+### 3.8 DecisionRecord
 
 | Trường | Ý nghĩa |
-|---|---|
-| `package_id`, `artifact_id`, `artifact_digest` | Payload bất biến |
-| `collection_id`, `source_name`, `source_digest` | Đích ingest |
-| `approval_decision_ids` | Bằng chứng quyền |
-| `acceptance_question_set` | Câu hỏi sau ingest |
-| `status` | `sealed`, `publishing`, `published`, `failed`, `revoked`, `superseded` |
-| `backup_id`, `index_digest_before/after` | Receipt an toàn |
-| `retrieval_receipts`, `rollback_receipt` | Bằng chứng dùng/hoàn tác |
+| --- | --- |
+| `decision_id` | Mã ghi nối |
+| `subject_id`, `subject_digest`, `subject_version` | Đúng nội dung được quyết định |
+| `decision` | `confirm`, `reject`, `request_change`, `revoke` |
+| `recorded_name`, `machine_ref` | Thông tin người nhận trách nhiệm; không phải xác thực |
+| `confidence` | `low`, `medium`, `high` |
+| `rationale` | Lý do hoặc căn cứ |
+| `checked_source_refs` | Nguồn người dùng cho biết đã kiểm tra |
+| `responsibility_acknowledged` | Xác nhận chịu trách nhiệm |
+| `created_at` | Thời điểm hệ thống tự ghi |
+
+### 3.9 PublicationReceipt
+
+| Trường | Ý nghĩa |
+| --- | --- |
+| `publication_id`, `artifact_id`, `artifact_digest` | Liên kết đúng bản nội dung |
+| `library_id`, `source_digest` | Đích và nguồn được nạp |
+| `decision_id` | Quyết định làm căn cứ |
+| `status` | `preparing`, `published`, `failed`, `revoked`, `superseded` |
+| `backup_ref`, `index_digest_before`, `index_digest_after` | Phục hồi và đối chiếu |
+| `integrity_result`, `retrieval_result`, `rollback_result` | Bằng chứng kỹ thuật |
+| `created_at` | Thời điểm |
 
 ## 4. Chuyển trạng thái chính
 
 ```text
-Gap: candidate -> accepted -> resolved
-                 \-> deferred/rejected/merged
+Phiên: active -> paused -> active -> completed
+              \-> stopped/blocked
 
-Session: ready -> active -> paused -> active -> awaiting_confirmation -> completed
-                           \-> stopped/blocked
-
-Claim: candidate -> confirmed -> superseded
-                  \-> conflicted/rejected
-
-Artifact: candidate -> in_review -> approved -> published -> superseded/revoked
-                      \-> rejected/request_change
+Bản nháp: draft -> confirmed -> published -> superseded/revoked
+             \-> rejected/request_change
 ```
 
-Mọi transition phải kiểm tra state hiện tại, exact digest, actor/scope và idempotency key. Transition không hợp lệ bị từ chối, không tự sửa projection.
+Quyết định chỉ áp dụng khi mã kiểm tra và phiên bản còn khớp. Nếu nội dung thay đổi, người dùng phải xác nhận bản mới. Ghi thư viện dùng khóa ngắn hạn; khóa không mang thông tin quyền.
 
 ## 5. Lưu giữ và xóa
 
-Mặc định kỹ thuật là không tự xóa audio/bản chép lời và chỉ lưu ở vùng `local_only`; người có quyền có thể xóa thủ công theo consent. Thu hồi tri thức khỏi retrieval không đồng nghĩa xóa audit trail. Tự động xóa theo ngày chỉ được bổ sung bằng Goal cấu hình riêng khi doanh nghiệp có chính sách pháp lý cụ thể.
+Audio và bản chép lời thô chỉ ở vùng `local_only`. Người dùng có thể xóa dữ liệu phỏng vấn cục bộ; xóa dữ liệu thô không được âm thầm xóa tri thức đã xuất bản hoặc lịch sử quyết định. Thu hồi tri thức khỏi kết quả hỏi đáp tạo sự kiện mới và giữ dấu vết cũ. Chính sách tự xóa theo ngày chỉ được bổ sung khi có yêu cầu vận hành cụ thể.
+
+## 6. Chuyển đổi từ mô hình cũ
+
+- Giữ bảng hồ sơ chuyên gia và quyền cũ để đọc dữ liệu lịch sử; Goal 010 không dùng chúng làm điều kiện thao tác mới.
+- Chuyển các quyết định cũ sang trạng thái “thông tin trách nhiệm chưa đầy đủ” thay vì tự điền độ tự tin hoặc nguồn đã kiểm tra.
+- Không sao chép bản chép lời thô đang nằm sai chỗ sang thư viện. Việc di chuyển/xóa khỏi DB hồ sơ phải có migration, backup và test không mất dữ liệu.

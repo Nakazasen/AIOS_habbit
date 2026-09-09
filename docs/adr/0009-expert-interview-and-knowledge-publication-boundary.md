@@ -1,85 +1,91 @@
 # ADR-0009: Ranh giới phỏng vấn chuyên gia và xuất bản tri thức
 
-Status: `ACCEPTED`  
-Owner role: Project owner / Architecture reviewer / Privacy reviewer  
-Xem xét lần cuối: 2026-09-07  
-Chu kỳ xem xét: Trước khi bắt đầu G1 hoặc khi thay đổi ranh giới identity, consent hay publication
+Status: `ACCEPTED_REVISED`
+Vai trò chủ sở hữu: Chủ sở hữu dự án / người duyệt kiến trúc / người duyệt quyền riêng tư
+Xem xét lần cuối: 2026-09-09
+Chu kỳ xem xét: Khi thay đổi nơi lưu dữ liệu thô, cách ghi thư viện dùng chung hoặc mức tin cậy giữa người dùng
 
 ## Bối cảnh
 
-Vòng Case hiện có hỗ trợ yêu cầu chuyên gia, ghi quyết định và tạo lesson candidate có người duyệt. Nó chưa có phát hiện gap toàn kho, chat thích nghi, audio/transcription, danh tính nhiều chuyên gia thật hoặc đường xuất bản tri thức đã duyệt vào collection.
+Goal 010 đã triển khai một vòng phỏng vấn, rút tri thức và xuất bản vào thư viện. Thiết kế ban đầu giả định môi trường doanh nghiệp có danh tính xác thực, hồ sơ chuyên gia, quyền theo phạm vi và người duyệt tách biệt. Sản phẩm hiện không có hệ tài khoản dùng chung; người dùng có quyền mở cùng thư mục thư viện vốn đã có thể đọc và thay đổi dữ liệu trong thư mục đó. Vì vậy lớp phân quyền trong ứng dụng tạo cảm giác an toàn nhưng không tạo ranh giới bảo mật thực, đồng thời làm luồng cá nhân và nhóm nhỏ khó dùng.
 
-Nếu nối thẳng model với transcript và `library.sqlite`, một câu nói sai, mạo danh hoặc chép lời sai có thể trở thành căn cứ trả lời. Nếu tự xây tài khoản/password trong feature, phạm vi bảo mật tăng mạnh và trái ranh giới fail-closed của ADR-0007.
+Ranh giới phù hợp hơn là cộng tác trong nhóm tin cậy: danh tính dùng để ghi nhận trách nhiệm, không dùng để cấp quyền. Hệ thống vẫn phải bảo vệ dữ liệu thô, tránh hai lượt ghi đè nhau, giữ lịch sử và phục hồi được khi xuất bản lỗi.
 
 ## Động lực quyết định
 
-- Tạo AI phỏng vấn thực sự, không phải form cố định.
-- Học tri thức mới nhanh nhưng vẫn có citation, phê duyệt và rollback.
-- Bảo vệ audio/transcript và danh tính chuyên gia.
-- Dùng lại Case/authorization/collection ingest/backup/lease hiện có.
-- Giữ fine-tune ở đúng vai trò: tối ưu hành vi khi có dữ liệu đủ sạch, không làm kho sự thật.
+- Một người dùng có thể dùng chương trình như trợ lý cá nhân mà không đăng nhập hoặc cấu hình quản trị.
+- Nhóm nhỏ dùng chung một thư viện mà không cần máy chủ, tài khoản, vai trò hay hỗ trợ IT.
+- Mọi quyết định đưa tri thức vào thư viện có người nhận trách nhiệm, thời điểm, căn cứ và mức tự tin.
+- Dữ liệu phỏng vấn thô vẫn ở máy cục bộ; thư viện dùng chung chỉ nhận nội dung đã được người dùng xác nhận.
+- Ghi đồng thời không làm hỏng thư viện và có thể khôi phục bản trước.
+- Giao diện đủ đơn giản để người không học công nghệ thông tin hoàn thành luồng chính.
 
 ## Các phương án
 
-### A. Model tự phỏng vấn rồi ghi thẳng vào thư viện
+### A. Giữ phân quyền theo tài khoản, vai trò và phạm vi
 
-Nhanh nhất nhưng không có ranh giới danh tính, consent, provenance và phê duyệt. Không chọn.
+Không chọn cho bản hiện tại. Muốn ranh giới này có ý nghĩa phải có dịch vụ danh tính và nơi lưu tập trung đáng tin cậy. Xây riêng phần đó vượt nhu cầu của trợ lý cá nhân và nhóm tin cậy.
 
-### B. Form câu hỏi cố định, người quản trị tự nhập SOP
+### B. Chỉ một máy được phép ghi thư viện dùng chung
 
-An toàn hơn nhưng không đáp ứng chat nhiều vòng/tự hỏi tiếp và không giảm đủ công sức thu nhận kiến thức. Không chọn làm đích; chỉ dùng fallback khi model lỗi.
+Không chọn. Cách này giảm xung đột nhưng gây khó hiểu, phụ thuộc một máy và không phù hợp cách cộng tác thực tế.
 
-### C. Vòng candidate → review → publication có ba cửa khóa
+### C. Cộng tác tin cậy, ghi nhận trách nhiệm và ghi an toàn
 
-AI đề xuất gap/câu hỏi/claim/SOP; AIOS kiểm soát identity, raw data và publication. Chọn.
+Chọn. Ai truy cập được thư mục dùng chung đều có thể hỏi, phỏng vấn, xác nhận, xuất bản và thu hồi. Hệ thống không tuyên bố xác minh danh tính hay bảo vệ bí mật giữa những người cùng truy cập thư mục.
 
 ## Quyết định
 
-1. **Danh tính**: mọi multi-user action đi qua `IdentityProvider` và ánh xạ principal xác thực tới `ExpertProfile`/`ScopeGrant`. Không có ánh xạ thì deny; không fallback `local_admin` khi multi-user bật.
-2. **Hội thoại**: Gemini điều khiển câu hỏi thích nghi nhưng AIOS giữ finite-state machine, budget, transition và idempotency. Model không trực tiếp ghi event hoặc tự tuyên bố approval.
-3. **Dữ liệu thô**: audio/transcript là `local_only`, nằm ngoài Git, case DB và library. Case chỉ giữ locator/digest/consent metadata được phép.
-4. **Tri thức**: transcript sinh `KnowledgeClaim` và artifact `candidate`; conflict không tự hòa giải. Chỉ artifact đã duyệt đúng scope/digest được seal thành publication package.
-5. **Xuất bản**: publication dùng backup, `LibraryWriterLease`, đường ingest collection hiện có, SQLite integrity check và retrieval acceptance. Không cho model ghi SQL trực tiếp.
-6. **Học**: nội dung đã duyệt được dùng ngay qua retrieval. Fine-tune tắt trong feature 010; G9 ghi `NOT_APPLICABLE`, còn huấn luyện bổ sung tương lai dùng Goal riêng.
-7. **Mặc định triển khai**: Windows/OS identity; đồng ý ghi âm từng phiên; không tự xóa raw data; collection fixture khi test; agent audit tách biệt tự trả finding; không có checkpoint chờ con người trong chuỗi phát triển.
+1. **Chọn thư viện**: trên giao diện, người dùng chọn “Thư viện cá nhân” hoặc “Thư viện dùng chung”. Chọn thư viện dùng chung bằng thư mục; đổi qua lại không cần khởi động lại ứng dụng.
+2. **Danh tính ghi nhận**: ứng dụng điền sẵn tên tài khoản Windows/OS nhưng cho sửa tên hiển thị. Giá trị này chỉ là thông tin tự khai để truy vết, không phải danh tính đã xác minh và không cấp quyền.
+3. **Quyền thao tác**: không có tài khoản, vai trò, quản trị viên hay quyền theo công đoạn trong Goal 010. Người có thể mở thư viện được coi là thành viên của nhóm tin cậy và có thể thực hiện toàn bộ vòng tri thức.
+4. **Quyết định nội dung**: khi xác nhận hoặc thu hồi, phải lưu tên người quyết định, thời điểm tự động, mức tự tin `thấp|vừa|cao`, lý do/căn cứ, nguồn đã kiểm tra và xác nhận chịu trách nhiệm. Quyết định gắn với đúng nội dung, mã kiểm tra và phiên bản.
+5. **Hội thoại**: có thể bắt đầu trực tiếp từ một chủ đề do người dùng nhập hoặc từ nội dung còn thiếu được gợi ý. Không bắt buộc duyệt khoảng trống, chọn hồ sơ chuyên gia hay cấu hình ngân sách kỹ thuật trước khi hỏi.
+6. **Dữ liệu thô**: audio và bản chép lời thô là `local_only`, nằm ngoài Git, `workspace_cases.sqlite` và `library.sqlite`. Chỉ nội dung đã được người dùng xem và xác nhận mới được đưa vào thư viện.
+7. **Xuất bản**: `LibraryWriterLease` chỉ là khóa ghi ngắn hạn chống hai tiến trình sửa cùng lúc, không phải quyền. Bất kỳ người dùng nào lấy được khóa trước đều có thể ghi; khi bận, giao diện giải thích và cho thử lại.
+8. **An toàn ghi**: sửa trên bản sao cục bộ, kiểm tra nhanh, sao lưu bản dùng chung hiện tại, thay snapshot đã kiểm tra rồi giải phóng khóa. Lỗi không được đánh dấu là đã xuất bản.
+9. **Lịch sử**: không xóa quyết định cũ. Sửa, thu hồi hoặc thay thế tạo bản ghi mới và giữ khả năng quay lại bản trước.
+10. **Học**: tri thức đã xác nhận được dùng qua truy xuất. Fine-tune không thuộc Goal 010 và không xuất hiện trong luồng người dùng.
+
+## Giao diện tối thiểu
+
+Luồng chính chỉ có bốn chặng: chọn thư viện → phỏng vấn → kiểm tra bản nháp → xác nhận và đưa vào thư viện. Mỗi chặng có một hành động chính. Mã nội bộ, mã băm, câu hỏi nghiệm thu, trạng thái máy, fixture và chi tiết sao lưu không xuất hiện ở bề mặt chính; chỉ đặt trong phần “Chi tiết kỹ thuật” thu gọn khi thật sự cần hỗ trợ.
+
+Màn hình xác nhận chỉ yêu cầu các thông tin có ý nghĩa với người dùng: tên người quyết định, mức tự tin, căn cứ, nguồn đã kiểm tra và ô xác nhận trách nhiệm. Ngày giờ do hệ thống tự điền.
+
+## Rủi ro được chấp nhận
+
+- Người có quyền truy cập thư mục dùng chung có thể thêm, sửa ngoài ứng dụng, thu hồi hoặc xóa dữ liệu.
+- Tên người quyết định có thể được khai không đúng.
+- Mô hình này không bảo vệ bí mật khác nhau giữa các thành viên cùng dùng thư viện.
+
+Giao diện và tài liệu phải nói rõ đây là lịch sử trách nhiệm, không phải cơ chế xác thực. Khi tương lai cần quyền truy cập khác nhau, tạo Goal riêng cho dịch vụ tập trung hoặc tách thư viện; không mở rộng Goal 010 bằng một lớp phân quyền nửa vời.
 
 ## Hệ quả
 
 ### Tích cực
 
-- Có chat AI linh hoạt nhưng vẫn audit/rollback được.
-- Tri thức mới có thể dùng ngay mà không cần huấn luyện lại model.
-- Danh tính, consent và quyền duyệt độc lập với prompt/model.
-- Audio có thể bị chặn mà chat văn bản vẫn tạo giá trị.
+- Dùng cá nhân ngay, không cần đăng nhập hay cấu hình.
+- Nhóm nhỏ cùng ghi được, không phụ thuộc một máy quản lý.
+- Ít màn hình và ít khái niệm kỹ thuật hơn.
+- Vẫn giữ được nguồn, trách nhiệm, lịch sử và phục hồi dữ liệu.
 
-### Chi phí
+### Đánh đổi
 
-- Identity thật và thao tác consent/approval được cấu hình khi vận hành; chuỗi phát triển dùng fixture và bộ mặc định đã khóa.
-- Phải xây claim/provenance/publication lifecycle, không chỉ UI chat.
-- Fine-tune chậm hơn mong muốn vì cần dataset/evaluation riêng.
+- Không ngăn được thành viên trong nhóm tin cậy cố tình mượn tên hoặc sửa file trực tiếp.
+- Không phù hợp môi trường cần phân quyền bảo mật chính thức.
+- Cần sửa phần triển khai cũ đang dùng hồ sơ chuyên gia/quyền theo phạm vi và giao diện nhiều bước.
 
-## Bảo mật và quyền riêng tư
+## Không thuộc phạm vi
 
-- Identity provider lỗi, grant thiếu/hết hạn/revoked đều fail-closed.
-- Không ghi âm trước consent; rút consent dừng capture.
-- Không gửi audio thô tới cloud ở bản đầu.
-- Không log raw transcript, đường dẫn tuyệt đối, secret hoặc traceback.
-- Raw data không vào Git và không được dùng train nếu thiếu consent/quyền sử dụng.
-- Candidate/conflicted/revoked bị lọc khỏi retrieval thường.
-
-## Khôi phục
-
-- Tắt feature flags, giữ luồng ExpertRequest/ExpertReview hiện có.
-- Gỡ identity adapter mới mà không đổi dữ liệu Case cũ.
-- Thu hồi/re-index publication hoặc phục hồi collection backup.
-- Khi transcription không đạt, khóa audio và giữ chat văn bản.
-- Khi máy dev thiếu tài khoản OS thật, giữ multi-user runtime tắt, hoàn tất contract bằng fixture và tiếp tục; không giảm chuẩn xác thực.
+- Đăng nhập, mật khẩu, SSO, vai trò, quản trị viên và quyền theo tài liệu/công đoạn.
+- Cấu hình quyền Windows/NAS hoặc yêu cầu IT cấp quyền.
+- Máy chủ trung tâm, cơ sở dữ liệu phân tán hoặc nhiều người sửa cùng một giao dịch.
+- Hệ quản trị tài liệu, công cụ họp trực tuyến hoặc pipeline fine-tune.
 
 ## Bằng chứng và liên kết
 
 - [Đặc tả 010](../../specs/010-expert-knowledge-acquisition/spec.md)
 - [Kế hoạch 010](../../specs/010-expert-knowledge-acquisition/plan.md)
-- [Hợp đồng danh tính/consent](../../specs/010-expert-knowledge-acquisition/contracts/identity-consent-and-privacy.md)
-- [ADR-0007](0007-evidence-case-loop-boundaries.md)
-- [`whisper.cpp`](https://github.com/ggml-org/whisper.cpp)
-- [`faster-whisper`](https://github.com/SYSTRAN/faster-whisper)
+- [Hợp đồng danh tính, đồng ý và quyền riêng tư](../../specs/010-expert-knowledge-acquisition/contracts/identity-consent-and-privacy.md)
+- [Hợp đồng vòng tri thức](../../specs/010-expert-knowledge-acquisition/contracts/expert-knowledge-loop.md)

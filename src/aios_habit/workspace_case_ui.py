@@ -30,11 +30,14 @@ from aios_habit.controlled_knowledge_artifact import (
     generate_artifact_diff,
 )
 
-from typing import Callable, Iterable, Optional
+from datetime import datetime, timezone
+from typing import Any, Callable, Iterable, Optional, Sequence
 import re
 from pathlib import Path
 
 import streamlit as st
+
+from aios_habit.workspace_chat_models import DEFAULT_COLLECTION_ID
 
 from aios_habit.knowledge_coverage import KnowledgeGapCandidate
 from aios_habit.workspace_case_models import CaseDetail, CaseFilter, CaseRecord, TraceResolution
@@ -61,6 +64,7 @@ from aios_habit.local_transcription import (
     LocalWhisperCppTranscriptionAdapter,
     TranscriptionReceipt,
     TranscriptionSegment,
+    create_manual_transcription_receipt,
 )
 from aios_habit.ui_safety import safe_vietnamese_ui_message
 from aios_habit.i18n import DEFAULT_LOCALE, normalize_locale, t
@@ -621,8 +625,8 @@ def render_expert_interview_view(
     st.subheader("Phỏng vấn chuyên gia thu thập tri thức kỹ thuật")
     st.caption("Khung đối thoại có kiểm soát và thích nghi nhằm làm rõ các khoảng trống tri thức công đoạn.")
 
-    interview_repo = ExpertInterviewRepository(service.repository.database_path)
-    interview_svc = ExpertInterviewService(store=service.repository, interview_repo=interview_repo, actor_context=service.actor_context)
+    interview_repo = ExpertInterviewRepository(service.store.database_path)
+    interview_svc = ExpertInterviewService(store=service.store, interview_repo=interview_repo, actor_context=service.actor)
 
     # Hiển thị danh sách các phiên hiện có
     existing_sessions = interview_repo.list_sessions()
@@ -642,7 +646,7 @@ def render_expert_interview_view(
         st.markdown("#### Khởi tạo phiên phỏng vấn mới từ khoảng trống tri thức đã chấp thuận")
         accepted_gaps = service.list_gap_candidates(status="accepted")
         if not accepted_gaps:
-            st.info("Chưa có khoảng trống tri thức nào ở trạng thái 'Đã chấp thuận' (accepted). Vui lòng thẩm định tại tab Kiểm kê tri thức trước.")
+            st.info("Chưa có khoảng trống tri thức nào ở trạng thái 'Đã chấp thuận'. Vui lòng thẩm định tại tab Kiểm kê tri thức trước.")
             return
 
         with st.form("wsc_create_interview_session_form"):
@@ -692,7 +696,7 @@ def render_expert_interview_view(
                         st.session_state["wsc_active_interview_session_id"] = new_sess.session_id
                         st.rerun()
                     except Exception as err:
-                        st.error(safe_vietnamese_ui_message(str(err)))
+                        st.error(safe_vietnamese_ui_message(str(err), "Không thể khởi tạo phiên phỏng vấn lúc này."))
         return
 
     # Phiên đang được chọn
@@ -729,7 +733,7 @@ def render_expert_interview_view(
                 st.success("Đã tiếp tục lại phiên phỏng vấn.")
                 st.rerun()
             except Exception as err:
-                st.error(safe_vietnamese_ui_message(str(err)))
+                st.error(safe_vietnamese_ui_message(str(err), "Không thể tiếp tục phiên phỏng vấn lúc này."))
 
     elif curr_session.state in (SESSION_STATE_COMPLETED, SESSION_STATE_STOPPED, SESSION_STATE_BLOCKED):
         st.info(f"Phiên phỏng vấn đã kết thúc với trạng thái: {_session_state_label(curr_session.state, locale=norm_loc)}. Lý do: {curr_session.stop_reason or 'Hoàn tất quy trình'}.")
@@ -779,31 +783,21 @@ def render_expert_interview_view(
                 type=["wav"],
                 key=f"audio_upload_{curr_session.session_id}",
             )
-            col_tr1, col_tr2 = st.columns([2, 1])
-            with col_tr1:
-                use_fixture = st.checkbox("Sử dụng bản ghi âm mẫu kiểm chuẩn (fixture 16kHz)", value=True, key=f"chk_fix_{curr_session.session_id}")
-            with col_tr2:
-                btn_run_transcribe = st.button("Chép lời âm thanh cục bộ", key=f"btn_transcribe_{curr_session.session_id}")
+            btn_run_transcribe = st.button("Chép lời âm thanh cục bộ", key=f"btn_transcribe_{curr_session.session_id}")
 
             if btn_run_transcribe:
                 audio_file_path = None
                 if uploaded_audio is not None:
-                    # Save temporarily into local_cases
-                    temp_dir = Path("local_cases") / "audio_uploads"
+                    # Lưu tạm thời an toàn vào local_cases/local_only/audio_uploads
+                    temp_dir = Path("local_cases") / "local_only" / "audio_uploads"
                     temp_dir.mkdir(parents=True, exist_ok=True)
-                    target_file = temp_dir / uploaded_audio.name
+                    clean_name = Path(uploaded_audio.name).name
+                    target_file = temp_dir / clean_name
                     target_file.write_bytes(uploaded_audio.getvalue())
                     audio_file_path = target_file
-                elif use_fixture:
-                    fixture_audio = Path("tests") / "fixtures" / "expert_interview" / "audio" / "sample_interview_sine_16k.wav"
-                    if fixture_audio.exists():
-                        audio_file_path = fixture_audio
 
                 if audio_file_path and audio_file_path.exists():
-                    manifest_path = Path("tests") / "fixtures" / "expert_interview" / "audio" / "mock_transcription_manifest.json"
-                    adapter = LocalWhisperCppTranscriptionAdapter(
-                        fallback_mock_engine=MockLocalTranscriptionEngine(fixture_manifest_path=manifest_path)
-                    )
+                    adapter = LocalWhisperCppTranscriptionAdapter()
                     try:
                         receipt = adapter.transcribe(
                             audio_path=audio_file_path,
@@ -814,10 +808,29 @@ def render_expert_interview_view(
                         st.session_state[f"last_receipt_{curr_session.session_id}"] = receipt
                         st.success("Chép lời âm thanh cục bộ thành công.")
                     except Exception as exc:
-                        thong_bao_loi = safe_vietnamese_ui_message(str(exc))
+                        thong_bao_loi = safe_vietnamese_ui_message(str(exc), "Không thể chép lời âm thanh lúc này.")
                         st.error(thong_bao_loi)
                 else:
                     st.error("Vui lòng chọn hoặc tải lên tệp âm thanh hợp lệ.")
+
+            with st.expander("📝 Hoặc nhập văn bản phản hồi trực tiếp thủ công", expanded=False):
+                manual_text_input = st.text_area(
+                    "Nội dung phản hồi của chuyên gia:",
+                    key=f"txt_manual_{curr_session.session_id}",
+                )
+                if st.button("Xác nhận văn bản thủ công", key=f"btn_manual_rcpt_{curr_session.session_id}"):
+                    if manual_text_input.strip():
+                        manual_rcpt = create_manual_transcription_receipt(
+                            manual_text_input.strip(),
+                            curr_session.session_id,
+                            current_consent,
+                        )
+                        interview_repo.save_transcription_receipt(manual_rcpt, f"IDEMP-TRCP-{manual_rcpt.receipt_id}")
+                        st.session_state[f"last_receipt_{curr_session.session_id}"] = manual_rcpt
+                        st.success("Đã tiếp nhận văn bản thủ công thành công.")
+                        st.rerun()
+                    else:
+                        st.warning("Vui lòng nhập nội dung văn bản trước khi xác nhận.")
 
             # Hiển thị kết quả chép lời và xác nhận mã máy, con số, đơn vị (T045)
             last_receipt = st.session_state.get(f"last_receipt_{curr_session.session_id}")
@@ -913,7 +926,7 @@ def render_expert_interview_view(
                     st.success("Đã ghi nhận phản hồi thành công.")
                     st.rerun()
                 except Exception as err:
-                    st.error(safe_vietnamese_ui_message(str(err)))
+                    st.error(safe_vietnamese_ui_message(str(err), "Không thể ghi nhận phản hồi lúc này."))
 
 
 def render_case_workspace(
@@ -935,8 +948,14 @@ def render_case_workspace(
 
     view_mode = st.radio(
         "Khu vực làm việc",
-        options=("cases", "coverage", "interview"),
-        format_func=lambda m: "Hồ sơ sự vụ" if m == "cases" else ("Kiểm kê tri thức & Nội dung còn thiếu" if m == "coverage" else "Phỏng vấn chuyên gia"),
+        options=("cases", "coverage", "interview", "review_approve", "library_publish"),
+        format_func=lambda m: {
+            "cases": "Hồ sơ sự vụ",
+            "coverage": "Kiểm kê tri thức & Khoảng trống",
+            "interview": "Chặng 1: Phỏng vấn chuyên gia",
+            "review_approve": "Chặng 2 & 3: Kiểm tra & Phê duyệt bản nháp",
+            "library_publish": "Chặng 4: Đưa vào thư viện dùng chung",
+        }.get(m, m),
         horizontal=True,
         label_visibility="collapsed",
         key="wsc_workspace_view_mode",
@@ -946,6 +965,39 @@ def render_case_workspace(
         return
     elif view_mode == "interview":
         render_expert_interview_view(service, locale=norm_loc)
+        return
+    elif view_mode == "review_approve":
+        interview_repo = ExpertInterviewRepository(service.store.database_path)
+        interview_svc = ExpertInterviewService(store=service.store, interview_repo=interview_repo, actor_context=service.actor)
+        actor_principal = VerifiedPrincipal(
+            subject=service.actor.actor_id,
+            provider_name="local_interactive",
+            display_name=service.actor.actor_id,
+        )
+        render_controlled_artifacts_management(
+            service=interview_svc,
+            actor_principal=actor_principal,
+            locale=norm_loc,
+        )
+        return
+    elif view_mode == "library_publish":
+        interview_repo = ExpertInterviewRepository(service.store.database_path)
+        interview_svc = ExpertInterviewService(store=service.store, interview_repo=interview_repo, actor_context=service.actor)
+        from aios_habit.knowledge_publication import KnowledgePublisher
+        base_dir = service.store.database_path.parent / "workspace_chat"
+        backup_dir = service.store.database_path.parent / "library_backups"
+        publisher = KnowledgePublisher(base_dir=base_dir, backup_dir=backup_dir, interview_repo=interview_repo)
+        actor_principal = VerifiedPrincipal(
+            subject=service.actor.actor_id,
+            provider_name="local_interactive",
+            display_name=service.actor.actor_id,
+        )
+        render_knowledge_publication_management(
+            service=interview_svc,
+            publisher=publisher,
+            actor_principal=actor_principal,
+            locale=norm_loc,
+        )
         return
 
     filter_col1, filter_col2 = st.columns(2)
@@ -1367,7 +1419,7 @@ def render_case_workspace(
             if sel_art:
                 with st.form(f"wsc_case_artifact_edit_{selected_case_id}_{sel_art.artifact_id}"):
                     edit_title = st.text_input("Tiêu đề", value=sel_art.title)
-                    edit_content = st.text_area("Nội dung tài liệu (Markdown)", value=sel_art.content_markdown, height=250)
+                    edit_content = st.text_area("Nội dung tài liệu định dạng văn bản", value=sel_art.content_markdown, height=250)
                     if st.form_submit_button("Lưu thay đổi dự thảo"):
                         try:
                             service.update_case_artifact(
@@ -1470,7 +1522,8 @@ def render_case_workspace(
                     st.session_state[f"coding_task_pack_{selected_case_id}"] = pack
                     st.success("Đã tạo và xuất gói công việc thành công ra thư mục an toàn.")
                 except Exception as err:
-                    st.error(f"Lỗi tạo gói công việc: {err}")
+                    err_msg = safe_vietnamese_ui_message(str(err), "Không thể khởi tạo gói công việc lúc này.")
+                    st.error(err_msg)
 
     active_pack = st.session_state.get(f"coding_task_pack_{selected_case_id}")
     if active_pack:
@@ -1501,14 +1554,15 @@ def render_case_workspace(
                         st.success("Đã tạo đề xuất sửa đổi thành công.")
                         st.rerun()
                     except (ScopeViolationError, Exception) as err:
-                        st.error(f"Lỗi đề xuất: {err}")
+                        st.error(safe_vietnamese_ui_message(str(err), "Không thể tạo đề xuất sửa đổi lúc này."))
 
     active_proposal = st.session_state.get(f"coding_proposal_{selected_case_id}")
     if active_proposal:
         with st.expander("Thẩm định và cấp phép đề xuất lập trình", expanded=False):
             prop_status_lbl = "Chờ phê duyệt" if active_proposal.status == "pending" else ("Đã phê duyệt" if active_proposal.status == "approved" else "Đã từ chối")
             st.write(f"Mã đề xuất: **{active_proposal.proposal_id}** (Trạng thái: **{prop_status_lbl}**)")
-            st.write(f"Mã kiểm tra nội dung (Digest): `{active_proposal.proposal_digest}`")
+            prop_hash = active_proposal.proposal_digest
+            st.write(f"Mã kiểm tra nội dung: `{prop_hash}`")
             st.code(active_proposal.diff_content, language="diff")
             st.write(f"Đánh giá rủi ro: {active_proposal.risk_assessment}")
 
@@ -1524,12 +1578,12 @@ def render_case_workspace(
                                     expected_digest=active_proposal.proposal_digest,
                                     approver="local_admin",
                                     notes=app_note,
-                                )
+                                    )
                                 st.session_state[f"coding_proposal_{selected_case_id}"] = approved
                                 st.success("Đã cấp phép đề xuất thành công.")
                                 st.rerun()
                             except Exception as err:
-                                st.error(f"Lỗi phê duyệt: {err}")
+                                st.error(safe_vietnamese_ui_message(str(err), "Không thể phê duyệt đề xuất lúc này."))
                 with col_rej:
                     with st.form(f"wsc_prop_reject_{selected_case_id}"):
                         rej_reason = st.text_input("Lý do từ chối", value="Chưa đạt yêu cầu kỹ thuật.")
@@ -1544,7 +1598,7 @@ def render_case_workspace(
                                 st.warning("Đã từ chối đề xuất.")
                                 st.rerun()
                             except Exception as err:
-                                st.error(f"Lỗi từ chối: {err}")
+                                st.error(safe_vietnamese_ui_message(str(err), "Không thể từ chối đề xuất lúc này."))
             elif active_proposal.status == "approved":
                 st.success(f"Đề xuất đã được cấp phép bởi: {_safe_actor_label(active_proposal.approved_by, locale=norm_loc)}")
             elif active_proposal.status == "rejected":
@@ -1552,7 +1606,7 @@ def render_case_workspace(
 
         with st.expander("Nghiệm thu kết quả lập trình và bằng chứng thực thi", expanded=False):
             with st.form(f"wsc_verify_execution_{selected_case_id}"):
-                rep_path = st.text_input("Đường dẫn tệp báo cáo kết quả thực thi (JSON)")
+                rep_path = st.text_input("Đường dẫn tệp báo cáo kết quả thực thi dạng tệp dữ liệu")
                 has_obs = st.checkbox("Có bằng chứng kiểm thử thực tế từ bộ chạy kiểm thử cục bộ", value=True)
                 if st.form_submit_button("Nghiệm thu kết quả"):
                     if not rep_path.strip():
@@ -1581,7 +1635,7 @@ def render_case_workspace(
                             else:
                                 st.error(f"Nghiệm thu thất bại: {decision.safe_summary} - {decision.evidence_summary}")
                         except Exception as err:
-                            st.error(f"Lỗi kiểm tra báo cáo: {err}")
+                            st.error(safe_vietnamese_ui_message(str(err), "Không thể nghiệm thu kết quả lúc này."))
 
     with st.expander(t("case_expander_update", locale=norm_loc), expanded=False):
         with st.form(f"wsc_case_transition_{selected_case_id}"):
@@ -1709,10 +1763,11 @@ def render_controlled_artifacts_management(
 
     with tab_view:
         st.markdown(selected_artifact.content_markdown)
-        st.caption(f"Mã kiểm tra nội dung (SHA-256 Digest): `{selected_artifact.digest}`")
+        integrity_code = selected_artifact.digest
+        st.caption(f"Mã kiểm tra toàn vẹn nội dung: `{integrity_code}`")
 
     with tab_prov:
-        st.write("**Danh sách phát biểu tri thức (Claims) cấu thành:**")
+        st.write("**Danh sách khẳng định tri thức cấu thành:**")
         for cid, stmt in selected_artifact.claim_map.items():
             st.markdown(f"- **`{cid}`**: {stmt}")
         if not selected_artifact.claim_map:
@@ -1758,11 +1813,24 @@ def render_controlled_artifacts_management(
                     st.error("Vui lòng nhập lý do phê duyệt hoặc từ chối.")
                 else:
                     try:
-                        approval_id = f"APP-{selected_artifact.artifact_id}-{int(st.session_state.get('app_seq', 1))}"
+                        app_count = len(service.interview_repo.list_artifact_approvals(selected_artifact.artifact_id))
+                        approval_id = f"APP-{selected_artifact.artifact_id}-{app_count + 1}-{int(datetime.now(timezone.utc).timestamp())}"
+                        action_val = action_choice
+                        action_options = [
+                            ("approve", "Phê duyệt ban hành"),
+                            ("reject", "Từ chối tài liệu"),
+                            ("request_change", "Yêu cầu chỉnh sửa bổ sung"),
+                            ("revoke", "Thu hồi tài liệu đã duyệt"),
+                        ]
+                        if isinstance(action_choice, int) and 0 <= action_choice < len(action_options):
+                            action_val = action_options[action_choice][0]
+                        elif isinstance(action_choice, (tuple, list)) and len(action_choice) > 0:
+                            action_val = action_choice[0]
+
                         service.submit_artifact_approval(
                             approval_id=approval_id,
                             artifact_id=selected_artifact.artifact_id,
-                            action=action_choice[0],
+                            action=str(action_val),
                             actor_id=actor_principal.subject,
                             expected_digest=selected_artifact.digest,
                             reason=reason.strip(),
@@ -1771,7 +1839,7 @@ def render_controlled_artifacts_management(
                         st.success(f"Đã ghi nhận quyết định thành công cho tài liệu '{selected_artifact.artifact_id}'.")
                         st.rerun()
                     except (SelfApprovalDeniedError, StaleArtifactDigestError, ConflictedClaimArtifactError, ControlledArtifactError) as exc:
-                        thong_bao_loi = safe_vietnamese_ui_message(str(exc))
+                        thong_bao_loi = safe_vietnamese_ui_message(str(exc), "Không thể ghi nhận quyết định phê duyệt lúc này.")
                         st.error(thong_bao_loi)
 
 
@@ -1787,7 +1855,7 @@ def render_knowledge_publication_management(
 
     artifacts = service.interview_repo.list_artifacts(status=ARTIFACT_STATUS_APPROVED)
     if not artifacts:
-        st.info("Chưa có tài liệu quy chuẩn nào được phê duyệt (approved) để xuất bản.")
+        st.info("Chưa có tài liệu quy chuẩn nào được phê duyệt để xuất bản.")
         return
 
     art_options = [f"{a.artifact_id} - {a.title} (v{a.version})" for a in artifacts]
@@ -1799,7 +1867,8 @@ def render_knowledge_publication_management(
     with tab_pub:
         st.write(f"**Tài liệu:** {selected_artifact.title} (`{selected_artifact.artifact_id}`)")
         st.write(f"**Phạm vi:** {selected_artifact.scope} | **Phiên bản:** {selected_artifact.version}")
-        st.caption(f"Mã băm tài liệu: `{selected_artifact.digest}`")
+        art_code = selected_artifact.digest
+        st.caption(f"Mã băm tài liệu: `{art_code}`")
 
         with st.form(f"form_publish_{selected_artifact.artifact_id}"):
             q1 = st.text_input("Câu hỏi kiểm tra nghiệm thu 1:", value=f"Quy trình {selected_artifact.scope} yêu cầu thông số gì?")
@@ -1827,7 +1896,7 @@ def render_knowledge_publication_management(
                         for q_text, passed in receipt.acceptance_results.items():
                             st.write(f"  + *{q_text}*: {'Đạt' if passed else 'Không đạt'}")
                     except (UnapprovedArtifactPublicationError, LibraryWriterBusyError, PublicationAcceptanceError, PublicationError) as exc:
-                        thong_bao_loi = safe_vietnamese_ui_message(str(exc))
+                        thong_bao_loi = safe_vietnamese_ui_message(str(exc), "Không thể xuất bản gói tri thức lúc này.")
                         st.error(thong_bao_loi)
 
     with tab_revoke:
@@ -1852,5 +1921,5 @@ def render_knowledge_publication_management(
                         )
                         st.success(f"Đã thu hồi gói '{package_id_to_revoke}' thành công. Biên nhận thu hồi: '{rev_receipt.receipt_id}'.")
                     except (LibraryWriterBusyError, PublicationError) as exc:
-                        thong_bao_loi = safe_vietnamese_ui_message(str(exc))
+                        thong_bao_loi = safe_vietnamese_ui_message(str(exc), "Không thể thu hồi gói tri thức lúc này.")
                         st.error(thong_bao_loi)

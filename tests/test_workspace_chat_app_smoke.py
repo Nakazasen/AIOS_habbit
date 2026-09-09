@@ -308,3 +308,14 @@ class TestWorkspaceChatAppSmoke:
         assert len(refs) == 1
         assert refs[0].reference_id == "REF_SMOKE_01"
         assert refs[0].source_title == "Quy trình đo kiểm LSU"
+
+    def test_smoke_four_stages_goal_010_accessible_from_workspace_chat(self) -> None:
+        """T098: Verify all 4 Goal 010 stages are accessible from Workspace Chat without unhandled exceptions."""
+        with sandboxed_chat_store():
+            for stage_mode in ("cases", "coverage", "interview", "review_approve", "library_publish"):
+                at = AppTest.from_file(APP_SCRIPT_PATH, default_timeout=30)
+                at.session_state["wsc_show_case_workspace"] = True
+                at.session_state["wsc_workspace_view_mode"] = stage_mode
+                at.session_state["wsc_global_ui_locale"] = "vi"
+                at.run()
+                assert not at.exception, f"AppTest raised exception on stage '{stage_mode}': {at.exception}"
