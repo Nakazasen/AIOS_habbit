@@ -178,8 +178,6 @@ def test_publication_mid_operation_exception_cleans_up_and_restores_backup():
         lease = LibraryWriterLease(runtime_dir)
         assert lease.acquire(owner="checker") is True
         lease.release()
-
-
 def test_publication_pre_indexing_connect_failure_cleans_up_and_restores_backup():
     """Test invariant: If sqlite3.connect or schema creation fails after doc is written, doc is unlinked and lease released."""
     import sqlite3
@@ -501,3 +499,144 @@ def test_revoke_responsibility_failure_restores_searchable_library():
         finally:
             conn.close()
         assert list((runtime_dir / "published_docs").glob("ART-REVOKE-DECISION_1.0_*.md"))
+
+
+def test_concurrent_writes_second_writer_receives_busy_and_preserves_library():
+    """T096: Concurrent writes fail closed with busy error and preserve existing library."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        base_dir = Path(tmpdir) / "workspace_chat"
+        publisher = KnowledgePublisher(base_dir=base_dir, backup_dir=Path(tmpdir) / "backups")
+
+        pkg1 = seal_publication_package(
+            artifact=make_approved_artifact("ART-CONC-01"),
+            acceptance_questions=["Nhiệt độ sấy keo là bao nhiêu?"],
+            sealed_by="writer_1",
+        )
+        publisher.publish_package(pkg1, actor="writer_1")
+
+        pkg2 = seal_publication_package(
+            artifact=make_approved_artifact("ART-CONC-02"),
+            acceptance_questions=["Nhiệt độ sấy keo là bao nhiêu?"],
+            sealed_by="writer_2",
+        )
+
+        runtime_dir, _ = collection_runtime_layout(pkg1.target_collection_id, base_dir)
+        # Simulate writer 1 holding the lease concurrently
+        lease = LibraryWriterLease(runtime_dir)
+        assert lease.acquire(owner="writer_1") is True
+
+        try:
+            with pytest.raises(LibraryWriterBusyError, match="cập nhật"):
+                publisher.publish_package(pkg2, actor="writer_2")
+        finally:
+            lease.release()
+
+        # Verify package 1 is still intact and searchable
+        conn = sqlite3.connect(runtime_dir / COLLECTION_INDEX_BASENAME)
+        try:
+            assert conn.execute(
+                "SELECT 1 FROM published_documents WHERE doc_id = ?", (pkg1.package_id,)
+            ).fetchone() == (1,)
+        finally:
+            conn.close()
+
+        # Now writer 2 can succeed after lease is released
+        publisher.publish_package(pkg2, actor="writer_2")
+        conn = sqlite3.connect(runtime_dir / COLLECTION_INDEX_BASENAME)
+        try:
+            assert conn.execute(
+                "SELECT 1 FROM published_documents WHERE doc_id = ?", (pkg1.package_id,)
+            ).fetchone() == (1,)
+            assert conn.execute(
+                "SELECT 1 FROM published_documents WHERE doc_id = ?", (pkg2.package_id,)
+            ).fetchone() == (1,)
+        finally:
+            conn.close()
+
+
+def test_publication_disk_full_or_io_error_restores_usable_library_and_releases_lease():
+    """T096: Simulated disk-full (ENOSPC) during publication rolls back and leaves library intact."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        base_dir = Path(tmpdir) / "workspace_chat"
+        publisher = KnowledgePublisher(base_dir=base_dir, backup_dir=Path(tmpdir) / "backups")
+
+        original = seal_publication_package(
+            artifact=make_approved_artifact("ART-DISKFULL-01"),
+            acceptance_questions=["Nhiệt độ sấy keo là bao nhiêu?"],
+            sealed_by="lead_reviewer",
+        )
+        publisher.publish_package(original, actor="lead_reviewer")
+
+        replacement = seal_publication_package(
+            artifact=make_approved_artifact("ART-DISKFULL-02"),
+            acceptance_questions=["Nhiệt độ sấy keo là bao nhiêu?"],
+            sealed_by="lead_reviewer",
+        )
+
+        real_replace = __import__("os").replace
+
+        def simulate_disk_full(source, target):
+            if COLLECTION_INDEX_BASENAME in str(source):
+                raise OSError(28, "No space left on device")
+            return real_replace(source, target)
+
+        with patch("aios_habit.knowledge_publication.os.replace", side_effect=simulate_disk_full):
+            with pytest.raises(OSError, match="No space left on device"):
+                publisher.publish_package(replacement, actor="lead_reviewer")
+
+        runtime_dir, _ = collection_runtime_layout(original.target_collection_id, base_dir)
+        live_database = runtime_dir / COLLECTION_INDEX_BASENAME
+        assert sqlite_quick_check(live_database) is True
+        conn = sqlite3.connect(live_database)
+        try:
+            assert conn.execute(
+                "SELECT 1 FROM published_documents WHERE doc_id = ?", (original.package_id,)
+            ).fetchone() == (1,)
+            assert conn.execute(
+                "SELECT 1 FROM published_documents WHERE doc_id = ?", (replacement.package_id,)
+            ).fetchone() is None
+        finally:
+            conn.close()
+
+        # Lease is properly released
+        lease = LibraryWriterLease(runtime_dir)
+        assert lease.acquire(owner="checker") is True
+        lease.release()
+
+
+def test_publication_disconnected_storage_path_fails_safely_without_data_corruption():
+    """T096: Disconnected or missing storage directory fails cleanly without corrupting previous state."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        base_dir = Path(tmpdir) / "workspace_chat"
+        publisher = KnowledgePublisher(base_dir=base_dir, backup_dir=Path(tmpdir) / "backups")
+
+        original = seal_publication_package(
+            artifact=make_approved_artifact("ART-DISCONNECT-01"),
+            acceptance_questions=["Nhiệt độ sấy keo là bao nhiêu?"],
+            sealed_by="lead_reviewer",
+        )
+        publisher.publish_package(original, actor="lead_reviewer")
+
+        replacement = seal_publication_package(
+            artifact=make_approved_artifact("ART-DISCONNECT-02"),
+            acceptance_questions=["Nhiệt độ sấy keo là bao nhiêu?"],
+            sealed_by="lead_reviewer",
+        )
+
+        real_replace = __import__("os").replace
+
+        def simulate_network_loss(source, target):
+            raise PermissionError("The network path was not found")
+
+        with patch("aios_habit.knowledge_publication.os.replace", side_effect=simulate_network_loss):
+            with pytest.raises(PermissionError, match="network path"):
+                publisher.publish_package(replacement, actor="lead_reviewer")
+
+        runtime_dir, _ = collection_runtime_layout(original.target_collection_id, base_dir)
+        live_database = runtime_dir / COLLECTION_INDEX_BASENAME
+        assert sqlite_quick_check(live_database) is True
+
+        lease = LibraryWriterLease(runtime_dir)
+        assert lease.acquire(owner="checker") is True
+        lease.release()
+

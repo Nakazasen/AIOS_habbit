@@ -3,7 +3,11 @@
 **Mã tính năng**: `009-agent-harness-adoption`
 **Nhánh lập kế hoạch**: `gate1-local-case-sqlite`
 **Ngày tạo**: 2026-09-07
-**Trạng thái**: `READY_FOR_TASK_EXECUTION`
+**Trạng thái**: `PLAN_REFRESHED_PENDING_TASK_REGENERATION`
+
+## 0. Hiện trạng kế thừa
+
+Repo đã có Task Pack, proposal lập trình, nhập báo cáo kết quả, policy nền, một bridge cục bộ và giao diện thử nghiệm. Các phần này chưa chứng minh một vòng hoàn chỉnh “lập kế hoạch → sửa file trong worktree → chạy kiểm thử → sửa lỗi → báo cáo lỗi → duyệt đúng diff → áp dụng hoặc hoàn tác”. Giao diện Agent trong Workspace Chat hiện vẫn bị ẩn; runtime kế thừa, protocol phiên, worktree tách biệt, resume và kiểm thử E2E chưa có bằng chứng hoàn tất. Vì vậy các artifact cũ là nền kế thừa, không phải bằng chứng Goal 009 đã đạt.
 
 ## 1. Mục tiêu
 
@@ -71,6 +75,8 @@ Kỹ sư theo dõi task, quyền, diff, terminal và resume trong Code-OSS; từ
 - **FR-013**: Không thêm cơ sở dữ liệu riêng cho transcript/session runtime.
 - **FR-014**: Không gửi dữ liệu `local_only` hoặc secret sang provider/runtime không được phép.
 - **FR-015**: Cline chỉ là chuẩn đối chiếu và fallback sau khi OpenCode không đạt G1 bằng bằng chứng.
+- **FR-016**: Mọi lỗi, gián đoạn, hủy chưa hoàn tất và kiểm thử không đạt phải sinh báo cáo lỗi tiếng Việt đã làm sạch, nêu bước thất bại, sự kiện quan sát được, việc người dùng có thể làm tiếp và liên kết receipt; không lộ traceback, đường dẫn tuyệt đối, secret, transcript hoặc stdout/stderr thô.
+- **FR-017**: Chọn một phần hunk phải tạo quyết định gắn đúng tập hunk và digest; verifier phải kiểm tra lại đúng tập đã chọn trước khi áp dụng, không được dùng kết quả kiểm thử của toàn bộ diff để chứng minh cho diff một phần.
 
 ## 5. Thực thể chính
 
@@ -88,6 +94,7 @@ Kỹ sư theo dõi task, quyền, diff, terminal và resume trong Code-OSS; từ
 - **SC-004**: Không có write/command ngoài proposal đã duyệt và không có PASS chỉ dựa trên lời model.
 - **SC-005**: Người dùng hoàn tất task hằng ngày bằng Code-OSS hoặc CLI mà không sửa JSON thủ công.
 - **SC-006**: Clean-machine Windows E2E và toàn bộ quality gate AIOS đạt trước khi tuyên bố đủ dùng hằng ngày.
+- **SC-007**: 100% tình huống lỗi bắt buộc sinh báo cáo tiếng Việt có reason code nội bộ, bằng chứng quan sát và bước xử lý; dữ liệu cấm không xuất hiện trong hồ sơ hoặc giao diện thường.
 
 ## 7. Giả định và ranh giới
 

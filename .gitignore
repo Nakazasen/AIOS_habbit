@@ -96,6 +96,7 @@ tailieugoc/
 Tài liệu của tất cả dòng máy/
 
 graphify-out/
+local_tools/
 
 # Ephemeral multi-agent workspaces and local scratch investigations
 /.brain/

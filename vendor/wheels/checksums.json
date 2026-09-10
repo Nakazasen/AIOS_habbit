@@ -1,0 +1,23 @@
+{
+  "aios_habit-0.1.0-py3-none-any.whl": {
+    "filename": "aios_habit-0.1.0-py3-none-any.whl",
+    "size_bytes": 571852,
+    "sha256": "efdde59c95988c5d29af346643cde356a54e0be5fa6488a26bd586cff4bfcafb",
+    "sha512": "5aa594402c99fcc4af85d4488ab58d0b53b9104e2a8b50951378feaa4f17a18d4aa39d6e3bc2c0927b3d4926151d0d24420af3fda1fd7b7244a0faed4e67acc1",
+    "built_for": "AIOS_habbit Commit D Offline Packaging"
+  },
+  "excaliflow-0.1.5-py3-none-any.whl": {
+    "filename": "excaliflow-0.1.5-py3-none-any.whl",
+    "size_bytes": 836312,
+    "sha256": "1a7e6d83fc9ee8397452349220bd847d792d6c822f1adadc0d20934430305e43",
+    "sha512": "2f6f989a15007590073cac7050bfd868977079b8b11559865739d8fa92a4d00599ba38fce97581ec1280cf584d9e540134692607022cb30cae7eecf2ee9fb617",
+    "built_for": "AIOS_habbit Commit D Offline Packaging"
+  },
+  "nakazasen_ai_router-0.8.0-py3-none-any.whl": {
+    "filename": "nakazasen_ai_router-0.8.0-py3-none-any.whl",
+    "size_bytes": 80971,
+    "sha256": "79e687445a89be215f7156c44ff0ff56fbd979d1badd52446574a7df02d0ef73",
+    "sha512": "e376c94f4ede0c12b0e77a8ec0c4b9d744582f13201854a89d0d4b6c71d90f40e400d13f11d07bb804003452a81611209fa3fc06c54d3fa0094fa65e813893a9",
+    "built_for": "AIOS_habbit Commit D Offline Packaging"
+  }
+}

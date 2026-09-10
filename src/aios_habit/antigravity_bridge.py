@@ -653,10 +653,105 @@ def route_workspace_chat_submission(
     if blocked_images:
         return (False, "", None, blocked_images)
 
-    if backend in {"cagent_api", "nakazasen_router"}:
-        if backend == "cagent_api" and not cagent_endpoint_url.strip():
-            return (False, "", None, "Hãy nhập URL API của AgentFlow C-AGENT trước khi Hỏi.")
+    if backend == "cagent_api":
+        endpoint = (
+            str(cagent_endpoint_url or "").strip()
+            or os.environ.get("AIOS_CAGENT_API_URL", "").strip()
+            or "https://kdtvn-ai.cmcts.vn/api/v1/prediction/1881aa32-c996-4e6f-9257-78246177ba9f"
+        )
+        from aios_habit.cagent_api import call_cagent_prediction
+        from aios_habit.workspace_chat_ai_answer import build_workspace_ai_prompt, _get_ai_disclaimer
 
+        prompt_sources = [s for s in packed_sources if getattr(s, "included_chars", len(getattr(s, "text", ""))) > 0]
+        if not prompt_sources and packed_sources:
+            prompt_sources = list(packed_sources[:5])
+
+        system_prompt, user_prompt = build_workspace_ai_prompt(
+            question,
+            prompt_sources,
+            chat_history,
+            answer_language=answer_language,
+        )
+        cagent_res = call_cagent_prediction(
+            endpoint,
+            system_prompt=system_prompt,
+            user_prompt=user_prompt,
+        )
+        if was_cancelled():
+            return (False, "", None, "Đã dừng yêu cầu AI.")
+        if not cagent_res.ok:
+            return (False, "", None, cagent_res.error_message or "C-AGENT API không trả về câu trả lời.")
+
+        disclaimer = _get_ai_disclaimer(answer_language)
+        answer_text = cagent_res.text.strip() + disclaimer
+
+        user_msg = ChatMessage(
+            id=f"MSG-{uuid.uuid4().hex[:8].upper()}",
+            conversation_id=conversation_id,
+            role="user",
+            content=user_raw_input,
+        )
+        save_message(user_msg)
+        assistant_msg_id = f"MSG-{uuid.uuid4().hex[:8].upper()}"
+        from aios_habit.workspace_chat_store import (
+            load_conversation,
+            load_conversation_source_selections,
+            save_evidence_trace,
+        )
+        from aios_habit.evidence_trace import build_evidence_trace_from_citations
+
+        selections = load_conversation_source_selections(conversation_id)
+        allowed_source_ids = [item.source_id for item in selections if item.enabled] if selections else None
+        conversation = load_conversation(conversation_id)
+        ui_locale = getattr(conversation, "ui_locale", "vi") if conversation else "vi"
+        provider_name = "C-AGENT API"
+        trace = build_evidence_trace_from_citations(
+            query=question,
+            answer_text=answer_text,
+            evidence_items=evidence_items,
+            allowed_source_ids=allowed_source_ids,
+            notebook_id=notebook_id,
+            conversation_id=conversation_id,
+            user_message_id=user_msg.id,
+            assistant_message_id=assistant_msg_id,
+            ui_locale=ui_locale,
+            answer_language=answer_language,
+            provenance={
+                "operational_mode": "external_api",
+                "provider_name": provider_name,
+                "model_name": "configured_by_provider",
+            },
+        )
+        save_evidence_trace(trace)
+        save_message(ChatMessage(
+            id=assistant_msg_id,
+            conversation_id=conversation_id,
+            role="assistant",
+            content=answer_text,
+            trace_id=trace.trace_id,
+        ))
+        source_titles = [
+            (item.get("title", "") if isinstance(item, dict) else getattr(item, "title", ""))
+            for item in evidence_items
+        ]
+        badge = {
+            "conversation_id": conversation_id,
+            "type": "ai_answered",
+            "source_count": len(source_titles),
+            "source_titles": source_titles,
+            "ai_source": provider_name,
+            "bridge": provider_name,
+            "provider": provider_name,
+            "model_tool_name": "",
+            "verified_model": "",
+            "operational_mode": "external_api",
+            "retrieval_summary": retrieval_summary,
+            "evidence_items": evidence_items,
+            "trace_id": trace.trace_id,
+        }
+        return (True, f"Đã nhận câu trả lời từ {provider_name}.", badge, None)
+
+    if backend == "nakazasen_router":
         request = WorkspaceAIAnswerRequest(
             conversation_id=conversation_id,
             question=question,
@@ -666,17 +761,12 @@ def route_workspace_chat_submission(
             consent_source_keys=tuple(current_keys),
             retrieval_applied=retrieval_applied,
             retrieved_context_sources=retrieved_sources,
-            real_router_enabled=(backend == "nakazasen_router"),
-            router_enabled=(backend == "cagent_api"),
+            real_router_enabled=True,
+            router_enabled=False,
             chat_history=chat_history,
             answer_language=answer_language,
         )
-        provider_client: Any = object()
-        if backend == "cagent_api":
-            from aios_habit.cagent_api import CAgentWorkspaceProviderClient
-            provider_client = CAgentWorkspaceProviderClient(cagent_endpoint_url)
-
-        result = generate_workspace_ai_answer(request, provider_client)
+        result = generate_workspace_ai_answer(request, object())
         if was_cancelled():
             return (False, "", None, "Đã dừng yêu cầu AI.")
         if not result.ok:

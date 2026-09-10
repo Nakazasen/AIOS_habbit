@@ -365,3 +365,19 @@ def test_os_name_is_only_an_editable_non_authoritative_suggestion(monkeypatch):
     assert suggestion.is_verified is False
     edited_name = "Tên người dùng tự sửa"
     assert edited_name != suggestion.suggested_name
+
+
+def test_recorded_person_suggestion_confers_no_authorization_or_grants(auth: WorkspaceCaseAuthorization):
+    """T089: RecordedPersonSuggestion is responsibility attribution only; it does NOT grant authority."""
+    from aios_habit.expert_identity_windows import suggest_recorded_person
+
+    suggestion = suggest_recorded_person()
+    assert suggestion.is_verified is False
+
+    # RecordedPersonSuggestion cannot be used as VerifiedPrincipal to bypass authorization
+    with pytest.raises(AuthorizationError, match="EXPERT_PRINCIPAL_INVALID"):
+        auth.require_expert_action(
+            suggestion,  # type: ignore[arg-type]
+            action=ACTION_INTERVIEW_ANSWER,
+            scope="lsu_optical_assembly",
+        )

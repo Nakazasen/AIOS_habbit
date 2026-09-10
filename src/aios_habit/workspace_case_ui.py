@@ -747,7 +747,7 @@ def render_expert_interview_view(
     m1, m2, m3 = st.columns(3)
     m1.metric("Trạng thái phiên", _session_state_label(curr_session.state, locale=norm_loc))
     m2.metric("Tiến độ lượt phỏng vấn", f"{turns_count} / {max_turns} lượt")
-    m3.metric("Chuyên gia tham gia", curr_session.expert_id)
+    m3.metric("Người tham gia", curr_session.expert_id)
 
     st.progress(progress_pct, text=f"Tiến độ hoàn thành: {int(progress_pct * 100)}%")
 
@@ -777,7 +777,7 @@ def render_expert_interview_view(
                 st.write(f"**Hệ thống (Lượt {t_item.sequence}):** {t_item.question_text}")
             with st.chat_message("user"):
                 status_lbl = _turn_answer_state_label(t_item.answer_state, locale=norm_loc)
-                st.write(f"**Chuyên gia ({curr_session.expert_id}):** {t_item.answer_text}")
+                st.write(f"**Người tham gia ({curr_session.expert_id}):** {t_item.answer_text}")
                 st.caption(f"Trạng thái ghi nhận: {status_lbl} | Thời điểm: {t_item.created_at}")
     else:
         st.caption("Chưa có lượt trao đổi nào trong phiên này.")
@@ -849,7 +849,7 @@ def render_expert_interview_view(
 
             with st.expander("📝 Hoặc nhập văn bản phản hồi trực tiếp thủ công", expanded=False):
                 manual_text_input = st.text_area(
-                    "Nội dung phản hồi của chuyên gia:",
+                    "Nội dung phản hồi:",
                     key=f"txt_manual_{curr_session.session_id}",
                 )
                 if st.button("Xác nhận văn bản thủ công", key=f"btn_manual_rcpt_{curr_session.session_id}"):
@@ -882,7 +882,7 @@ def render_expert_interview_view(
                     st.rerun()
 
         elif audio_enabled:
-            st.info("Chế độ ghi âm hiện đang tắt. Chuyên gia có thể trả lời trực tiếp bằng văn bản bên dưới hoặc cấp quyền ghi âm.")
+            st.info("Chế độ ghi âm hiện đang tắt. Bạn có thể trả lời trực tiếp bằng văn bản bên dưới hoặc đồng ý ghi âm.")
             col_c1, col_c2 = st.columns(2)
             with col_c1:
                 if st.button("Chấp thuận ghi âm và chép lời (Phiên bản 1.0)", key=f"btn_grant_{curr_session.session_id}"):
@@ -921,7 +921,7 @@ def render_expert_interview_view(
         st.info(f"**Câu hỏi hiện tại:** {next_q}")
 
         with st.form(f"wsc_answer_turn_form_{curr_session.session_id}"):
-            ans_input = st.text_area("Nhập câu trả lời của chuyên gia", key=f"ans_text_{curr_session.session_id}")
+            ans_input = st.text_area("Nhập câu trả lời", key=f"ans_text_{curr_session.session_id}")
             col_b1, col_b2, col_b3, col_b4 = st.columns(4)
             with col_b1:
                 submit_ans = st.form_submit_button("Gửi câu trả lời", type="primary")

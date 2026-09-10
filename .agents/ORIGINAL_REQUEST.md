@@ -81,3 +81,80 @@ Integrity mode: development
 - [ ] Spec Kit artifacts được tạo/cập nhật đầy đủ.
 - [ ] Graphify graph được cập nhật (`graphify update .`).
 - [ ] Báo cáo kết quả đầy đủ: giao thức direct (hoặc lý do unavailable), bằng chứng handoff, kết quả test, file thay đổi.
+
+## Follow-up — 2026-09-09T11:26:45Z
+
+This is a single self-contained fix; keep it small and focused. Triển khai với đội ngũ tinh gọn (Small, focused team) tập trung xử lý tuần tự từng cụm theo thứ tự: (1) Sửa ranh giới dữ liệu chép lời thô & khắc phục 37 bài kiểm thử thất bại, (2) Tinh gọn cờ tính năng Goal 010 thành 1 cờ duy nhất, (3) Nối đủ 4 chặng giao diện tiếp nhận tri thức tại workspace_case_ui.py, (4) Tối ưu 3 cụm điều hướng Workspace Chat và chuẩn hóa 100% tiếng Việt giao diện.
+
+Working directory: d:/Sandbox/AIOS_habbit
+Integrity mode: development
+
+---
+
+## Requirements
+
+### R1. Ranh giới dữ liệu & Xử lý chép lời minh bạch
+- Chuyển toàn bộ nội dung chép lời thô từ `workspace_cases.sqlite` sang vùng lưu trữ cục bộ `local_only`. Cơ sở dữ liệu điều phối chỉ lưu trữ mã băm (SHA-256), siêu dữ liệu, đường dẫn tham chiếu và dữ liệu đã làm sạch.
+- Loại bỏ cơ chế fallback giả lập chép lời khi `whisper.cpp` không chạy trong `local_transcription.py`. Hiển thị thông báo lỗi rõ ràng bằng tiếng Việt và cho phép nhập văn bản thủ công.
+
+### R2. Tinh gọn cờ tính năng Goal 010 & Đồng bộ tài liệu
+- Gom 5 cờ Goal 010 phân mảnh thành **một cờ duy nhất** để bật/tắt toàn bộ tính năng Goal 010 tại `feature_flags.py`. Loại bỏ các cờ giả lập không được code đọc.
+- Đồng bộ lại tài liệu lưu trữ `PERSISTED_DATA_COMPATIBILITY.md` phản ánh đúng việc `production_prediction.sqlite` đã được sử dụng; cập nhật `README.md` sang tiếng Việt duy nhất theo quy định UI/Doc; cập nhật ma trận truy xuất `TRACEABILITY_MATRIX.md`.
+
+### R3. Kết nối đầy đủ 4 chặng giao diện Tiếp nhận Tri thức (Goal 010)
+- Nối hai màn hình kiểm tra/phê duyệt (`workspace_case_ui.py:1684`) và đưa vào thư viện (`workspace_case_ui.py:1778`) vào luồng vận hành chính thức, hoàn thiện chu trình 4 chặng: Phỏng vấn → Trích xuất/Biên tập → Kiểm tra/Phê duyệt → Đưa vào thư viện.
+- Đảm bảo tính toàn vẹn giao dịch (atomic) khi xuất bản và thu hồi tri thức: trạng thái thành công phải khớp chính xác với dữ liệu lưu trữ cuối cùng, có kiểm thử lỗi giữa chừng và rollback.
+
+### R4. Tối ưu cấu trúc điều hướng Workspace Chat & Chuẩn hóa hiển thị tiếng Việt
+- Phân tách màn hình Workspace Chat thành 3 nhóm điều hướng mạch lạc:
+  1. **Hỏi tài liệu** (Mặc định)
+  2. **Hồ sơ và tri thức**
+  3. **Công cụ nâng cao** (Thu gọn, bao gồm LSU shadow mode, C-AGENT, Agent IDE)
+- Rà soát và chuyển đổi toàn bộ thuật ngữ kỹ thuật rò rỉ trên UI (`fixture`, `SHA-256 Digest`, `Claims`, `approved`...) sang tiếng Việt thân thiện với người dùng cuối, ẩn chi tiết kỹ thuật ở chế độ hiển thị mặc định.
+
+### R5. Khắc phục dứt điểm 37 bài kiểm thử thất bại & Đạt chuẩn kiểm toán
+- Điều tra nguyên nhân gốc rễ và khắc phục toàn bộ 37 ca kiểm thử thất bại trong tổng số 2.662 bài kiểm thử hiện có mà không xóa hay vô hiệu hóa bất kỳ assertion/test case nào.
+- Hoàn tất các nhiệm vụ T083–T109 thuộc Goal 010 theo đúng đặc tả và kế hoạch tại `specs/010-expert-knowledge-acquisition/`.
+
+---
+
+## Acceptance Criteria
+
+### Tính đúng đắn của dữ liệu & Bảo mật
+- [ ] Không còn dữ liệu chép lời thô (raw transcript) lưu trực tiếp trong `workspace_cases.sqlite`.
+- [ ] Khi engine `whisper.cpp` vắng mặt hoặc lỗi, hệ thống hiển thị thông báo lỗi tiếng Việt và kích hoạt giao diện nhập tay, không giả mạo kết quả chép lời.
+- [ ] Quy trình xuất bản/thu hồi tri thức có cơ chế kiểm soát lỗi giữa chừng, đảm bảo tính nguyên tử (atomic) và khôi phục khi gặp sự cố.
+
+### Giao diện & Trải nghiệm người dùng
+- [ ] Cả 4 chặng tiếp nhận tri thức chuyên gia đều có thể truy cập và hoàn tất tuần tự từ giao diện người dùng.
+- [ ] Giao diện Workspace Chat phân định rõ 3 khu vực điều hướng, không gây rối cho người dùng thông thường.
+- [ ] 100% văn bản giao diện hiển thị bằng tiếng Việt chuẩn mực, không rò rỉ từ ngữ kỹ thuật tiếng Anh hoặc traceback thô.
+- [ ] Chỉ 1 cờ tính năng duy nhất điều khiển toàn bộ Goal 010.
+
+### Kiểm thử & Kiểm toán mã nguồn
+- [ ] `uv run --no-sync --group dev python -m compileall src tests` kết thúc không có lỗi cú pháp.
+- [ ] Toàn bộ bộ kiểm thử `uv run --no-sync --group dev pytest -q` đạt 100% PASS (0 failures, 0 errors).
+- [ ] `uv run --no-sync --group dev python -m aios_habit.cli audit` trả về kết quả `"status": "PASS"`.
+- [ ] Lệnh nhập kiểm tra `uv run --no-sync --group dev python -c "import aios_habit.workspace_chat_app"` thực thi thành công.
+
+## Follow-up — 2026-09-09T12:50:06Z
+
+CHỈ THỊ KIỂM TOÁN KHẨN CẤP TỪ USER (AUDIT BLOCKER):
+
+Kết luận kiểm toán độc lập song song: KHÔNG CHẤP NHẬN, KHÔNG COMMIT VÀ KHÔNG ĐÓNG GOAL 010.
+Các vòng phản biện trước đã bỏ lọt hoặc tự tạo nguy cơ Fake PASS.
+
+YÊU CẦU THỰC THI NGAY LẬP TỨC:
+1. Dừng ngay việc đánh dấu hoàn thành. Trả toàn bộ các công việc T083–T109 trong specs/010-expert-knowledge-acquisition/tasks.md về trạng thái chưa hoàn thành `[ ]`.
+2. Dỡ bỏ toàn bộ logic tự sinh fixture thiếu hoặc nuốt lỗi trong tests/conftest.py (vi phạm quy tắc Không Fake PASS của repo).
+3. Xử lý triệt để 8 blocker sau đây theo thứ tự nghiêm ngặt:
+   - Blocker 1 (Lỗi Runtime): Sửa `NameError: name 'hashlib' is not defined` tại src/aios_habit/expert_interview_repository.py:594.
+   - Blocker 2 (Lỗi Runtime): Sửa crash luồng phỏng vấn do truy cập `service.repository` không tồn tại tại src/aios_habit/workspace_case_ui.py:628.
+   - Blocker 3 (Bảo toàn dữ liệu): Sửa migration v8 tại src/aios_habit/workspace_case_migrations.py:497. Tuyệt đối không để mất dữ liệu; JSON lỗi không được đổi thành danh sách rỗng rồi xóa dữ liệu gốc (phải fail-closed hoặc xử lý an toàn).
+   - Blocker 4 (Cờ tính năng): Bật Goal 010 không được liên quan hoặc kích hoạt lại phân quyền cũ thông qua alias `FEATURE_EXPERT_MULTI_USER` tại src/aios_habit/feature_flags.py:19.
+   - Blocker 5 (Rollback/Thu hồi xuất bản): Tại src/aios_habit/knowledge_publication.py:462, rollback xuất bản phải an toàn, thu hồi phải xóa file thật, không nuốt lỗi rồi trả PASS giả.
+   - Blocker 6 (Chuẩn hóa UX 4 chặng): Đơn giản hóa giao diện đúng 4 chặng (bỏ menu 5 lựa chọn, bỏ âm thanh mẫu, bỏ chọn chuyên gia/scope/ngân sách, bỏ mã băm, mã sao lưu và nhập mã gói trên UI thường).
+   - Blocker 7 (Kiểm thử thực chất): Khắc phục dứt điểm các ca kiểm thử đang fail (27 PASS 5 FAIL ở nhánh transcript/migration, 63 PASS 3 FAIL ở nhánh UI/xuất bản, 1 FAIL ở E2E Goal 010).
+   - Blocker 8 (Quy trình nghiệm thu): Chỉ được tick `[x]` từng task sau khi test tương ứng thực sự PASS và Audit Specialist độc lập xác nhận có bằng chứng lệnh. Không mở thêm phạm vi.
+
+Hãy chuyển tiếp chỉ thị này ngay đến Orchestrator và đội ngũ thực thi để khắc phục.

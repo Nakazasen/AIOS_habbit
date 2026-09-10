@@ -2072,6 +2072,7 @@ else:
                 return
             _complete_pending_workspace_upload(pending, replace_existing=False)
 
+        active_action_error = st.session_state.get("wsc_action_error")
         with st.sidebar:
             if "wsc_action_message" in st.session_state and st.session_state.wsc_action_message:
                 st.success(safe_vietnamese_ui_message(st.session_state.wsc_action_message, "Đã hoàn tất thao tác."))
@@ -2149,7 +2150,10 @@ else:
         cagent_endpoint = ""
         if selected_ai_backend == "cagent_api":
             cagent_endpoint_key = f"wsc_cagent_endpoint_{active_conversation_id}"
-            configured_cagent_endpoint = os.environ.get("AIOS_CAGENT_API_URL", "").strip()
+            configured_cagent_endpoint = (
+                os.environ.get("AIOS_CAGENT_API_URL", "").strip()
+                or "https://kdtvn-ai.cmcts.vn/api/v1/prediction/1881aa32-c996-4e6f-9257-78246177ba9f"
+            )
             if not str(st.session_state.get(cagent_endpoint_key, "")).strip() and configured_cagent_endpoint:
                 st.session_state[cagent_endpoint_key] = configured_cagent_endpoint
             cagent_endpoint = st.text_input(
@@ -2543,6 +2547,8 @@ else:
                 }
                 pasted_image_key = f"wsc_pasted_image_{active_conversation.id}"
                 upload_key = f"wsc_chat_img_{active_conversation.id}_{st.session_state.wsc_upload_version}"
+                if active_action_error:
+                    st.error(safe_vietnamese_ui_message(active_action_error, "Không thể hoàn tất thao tác lúc này."))
                 with st.container(border=True, key=f"wsc-composer-{active_conversation.id}"):
                     uploaded_image = None
                     user_input = st.text_area(
@@ -2593,7 +2599,10 @@ else:
                         if selected_ai_backend == "cagent_api":
                             with st.popover(t("cagent_config_popover", locale=current_ui_locale), icon=":material/settings:"):
                                 cagent_endpoint_key = f"wsc_cagent_endpoint_{active_conversation.id}"
-                                configured_cagent_endpoint = os.environ.get("AIOS_CAGENT_API_URL", "").strip()
+                                configured_cagent_endpoint = (
+                                    os.environ.get("AIOS_CAGENT_API_URL", "").strip()
+                                    or "https://kdtvn-ai.cmcts.vn/api/v1/prediction/1881aa32-c996-4e6f-9257-78246177ba9f"
+                                )
                                 cagent_endpoint = st.text_input(
                                     t("cagent_endpoint_label", locale=current_ui_locale),
                                     value=configured_cagent_endpoint,
@@ -2606,6 +2615,8 @@ else:
                     selected_ai_backend = st.session_state.get(backend_key, "gemini_web")
                     cagent_endpoint_url = (
                         str(st.session_state.get(f"wsc_cagent_endpoint_{active_conversation.id}", "")).strip()
+                        or os.environ.get("AIOS_CAGENT_API_URL", "").strip()
+                        or "https://kdtvn-ai.cmcts.vn/api/v1/prediction/1881aa32-c996-4e6f-9257-78246177ba9f"
                         if selected_ai_backend == "cagent_api" else ""
                     )
                     ai_backend = selected_ai_backend

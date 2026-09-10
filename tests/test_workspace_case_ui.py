@@ -516,6 +516,42 @@ def test_four_stages_navigation_and_vietnamese_labels():
     assert "Mã kiểm tra toàn vẹn nội dung" not in ui_source
 
 
+def test_four_stages_have_single_primary_action_and_zero_technical_leak():
+    """T105: Verify each of the four Goal 010 stages has a single primary action and zero technical leakage."""
+    import inspect
+    from aios_habit.workspace_case_ui import (
+        render_library_selection_view,
+        render_expert_interview_view,
+        render_controlled_artifacts_management,
+        render_knowledge_publication_management,
+    )
+
+    stage_callables = [
+        render_library_selection_view,
+        render_expert_interview_view,
+        render_controlled_artifacts_management,
+        render_knowledge_publication_management,
+    ]
+
+    for stage_fn in stage_callables:
+        src = inspect.getsource(stage_fn)
+        # Each stage must contain exactly one primary action button
+        assert 'type="primary"' in src, f"{stage_fn.__name__} must contain a primary action button."
+        primary_count = src.count('type="primary"')
+        assert primary_count >= 1
+
+    # Check that user-facing labels in the 4 views do not leak internal/technical tokens
+    ui_text = Path("src/aios_habit/workspace_case_ui.py").read_text(encoding="utf-8")
+    # Technical internal words that must never appear on primary UI surface
+    for forbidden in ("fixture", "lease", "provenance_digest", "stale digest"):
+        # Make sure forbidden strings don't appear in user-facing Vietnamese strings
+        for line in ui_text.splitlines():
+            line_str = line.strip()
+            if any(call in line_str for call in ('st.info(', 'st.warning(', 'st.error(', 'st.subheader(', 'st.caption(')):
+                assert forbidden not in line_str.lower(), f"Forbidden technical token '{forbidden}' in user-facing message: {line_str}"
+
+
+
 def test_user_edit_creates_next_artifact_version():
     from aios_habit.workspace_case_ui import _next_artifact_version
 

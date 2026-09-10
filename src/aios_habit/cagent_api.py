@@ -6,6 +6,7 @@ chat prompt to the published AgentFlow URL, so no LiteLLM key is stored here.
 from __future__ import annotations
 
 import json
+import os
 from dataclasses import dataclass
 from typing import Any
 from urllib.error import HTTPError, URLError
@@ -14,6 +15,7 @@ from urllib.request import Request, urlopen
 
 
 DEFAULT_TIMEOUT_SECONDS = 60
+DEFAULT_CAGENT_API_URL = "https://kdtvn-ai.cmcts.vn/api/v1/prediction/1881aa32-c996-4e6f-9257-78246177ba9f"
 
 
 @dataclass(frozen=True)
@@ -40,14 +42,14 @@ def _extract_text(payload: Any) -> str:
 
 
 def call_cagent_prediction(
-    endpoint_url: str,
+    endpoint_url: str = "",
     *,
     system_prompt: str,
     user_prompt: str,
     timeout_seconds: int = DEFAULT_TIMEOUT_SECONDS,
 ) -> CAgentResponse:
     """Submit one approved Workspace Chat prompt to a C-AGENT AgentFlow."""
-    endpoint = str(endpoint_url or "").strip()
+    endpoint = str(endpoint_url or os.environ.get("AIOS_CAGENT_API_URL", "") or DEFAULT_CAGENT_API_URL).strip()
     parsed = urlparse(endpoint)
     if parsed.scheme not in {"https", "http"} or not parsed.netloc:
         return CAgentResponse(False, error_message="C-AGENT API chưa có URL AgentFlow hợp lệ.")
@@ -83,8 +85,8 @@ def call_cagent_prediction(
 class CAgentWorkspaceProviderClient:
     """Adapter matching ``WorkspaceAIProviderClient`` without retaining a token."""
 
-    def __init__(self, endpoint_url: str) -> None:
-        self.endpoint_url = endpoint_url
+    def __init__(self, endpoint_url: str = "") -> None:
+        self.endpoint_url = str(endpoint_url or os.environ.get("AIOS_CAGENT_API_URL", "") or DEFAULT_CAGENT_API_URL).strip()
 
     def generate(self, *, system_prompt: str, user_prompt: str) -> str:
         response = call_cagent_prediction(

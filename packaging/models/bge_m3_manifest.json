@@ -4,7 +4,8 @@
   "model_tree_checksum": "sha256:b1d887e03f13547609b4c6498ce8f357242edb5079a448c62d31d4caac320b61",
   "dimension": 1024,
   "approved_checksums": [
-    "sha256:b1d887e03f13547609b4c6498ce8f357242edb5079a448c62d31d4caac320b61"
+    "sha256:b1d887e03f13547609b4c6498ce8f357242edb5079a448c62d31d4caac320b61",
+    "sha256:697a97c33326734d8152b6f026297cd1421587039c301f52c39c34896bd40fda"
   ],
   "files": {
     "1_Pooling/config.json": {
