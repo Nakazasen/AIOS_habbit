@@ -498,24 +498,28 @@ Mọi write/command phải đi qua proposal có digest và chạy trong Git work
 
 ## 15. Ranh giới phỏng vấn chuyên gia và xuất bản tri thức
 
-Feature 010 bổ sung quy trình phỏng vấn chuyên gia thích nghi và làm giàu tri thức có kiểm soát với sự phân vai nghiêm ngặt:
+T000–T080 là đường triển khai lịch sử của Goal 010. Thiết kế danh tính xác thực, hồ sơ chuyên gia, quyền theo phạm vi và cấm tự duyệt trong đường cũ đã được thay thế bởi [ADR-0009](docs/adr/0009-expert-interview-and-knowledge-publication-boundary.md) bản sửa. Các lớp cũ được giữ để đọc dữ liệu lịch sử hoặc phục vụ feature khác, nhưng không còn là điều kiện thao tác của Goal 010.
 
-1. **Gemini Flash 3.8**: Đóng vai trò là **Execution Specialist** trong môi trường phát triển (viết mã nguồn, kiểm thử, tuân thủ quality gate và harness).
-2. **BGE-M3**: Đóng vai trò là mô hình nhúng (embedding model) phục vụ RAG v2, chỉ tạo biểu diễn vector, tìm kiếm ngữ nghĩa và xếp hạng các đoạn tài liệu (snippets) liên quan từ kho tài liệu.
-3. **AIOS**: Lớp điều khiển tất định (deterministic runtime). AIOS sử dụng kết quả retrieval cùng metadata, version, digest và bộ câu hỏi bao phủ để sinh tín hiệu tất định về thiếu nguồn, thiếu thuộc tính bắt buộc, mâu thuẫn và tài liệu lỗi thời. AIOS tự kiểm tra danh tính (`IdentityProvider`), phạm vi (`scope`) và thẩm quyền (`grant`); mô hình ngôn ngữ không được tự chọn chuyên gia ngoài danh sách hợp lệ.
-4. **C-AGENT qua Brain Gateway**: Tiếp nhận gói tín hiệu và bằng chứng giới hạn để giải thích lý do khoảng trống tri thức, xếp hạng các candidate và gợi ý câu hỏi thích nghi tiếp theo. Cấu hình C-AGENT được quản lý qua Brain Gateway (không hardcode "Sonnet 4" trong mã nguồn) và lưu biên nhận model/provider receipt khi endpoint phản hồi. Mọi đầu ra từ C-AGENT không kèm dẫn chứng (citation) hợp lệ đều bị loại bỏ ngay lập tức. Nếu C-AGENT không sẵn sàng, AIOS giữ nguyên tín hiệu tất định ở trạng thái `candidate`, tuyệt đối không tự fallback sang dịch vụ cloud bên ngoài và không làm nghẽn kịch bản fixture.
-5. **Bảo mật và an toàn dữ liệu**: Dữ liệu gắn nhãn `local_only` (âm thanh, bản chép lời thô) chỉ đi qua đường C-AGENT nội bộ được cấp phép rõ ràng; cấm tự ý chuyển tiếp hoặc fallback ra cloud công cộng.
+Goal 010 hiện dùng mô hình cá nhân hoặc nhóm nhỏ tin cậy:
 
-Ba lớp lưu trữ được cách ly tuyệt đối:
-- Workflow metadata và phiên làm việc lưu trong `workspace_cases.sqlite`.
-- Âm thanh và bản chép lời thô lưu trong vùng `local_only` cô lập ngoài Git.
-- Tri thức đã qua phê duyệt được xuất bản bất biến vào `library.sqlite`.
+1. Người dùng chọn thư viện cá nhân hoặc thư viện dùng chung ngay trên Workspace Chat và có thể đổi mà không khởi động lại.
+2. Tên tài khoản hệ điều hành chỉ là gợi ý có thể sửa để ghi nhận trách nhiệm; không phải danh tính xác minh và không cấp quyền.
+3. Không có tài khoản ứng dụng, RBAC, quyền theo công đoạn, quản trị viên, cấu hình quyền NAS hoặc máy ghi cố định trong Goal 010.
+4. `LibraryWriterLease` chỉ là khóa ghi ngắn hạn chống hai lượt ghi đè nhau; tiến trình không lấy được khóa phải giữ bản nháp và cho người dùng thử lại.
+5. Mỗi quyết định xác nhận, từ chối, yêu cầu sửa hoặc thu hồi phải gắn đúng nội dung và phiên bản, đồng thời lưu tên ghi nhận, máy, thời điểm, mức tự tin, căn cứ, nguồn đã kiểm tra và xác nhận trách nhiệm.
+6. Model AI chỉ đề xuất câu hỏi và bản nháp. Model không được tự ghi quyết định, xuất bản, thu hồi hoặc ghi SQL vào thư viện.
+
+Ba lớp lưu trữ tiếp tục được cách ly:
+
+- Siêu dữ liệu phiên và biên nhận đã làm sạch nằm trong `workspace_cases.sqlite`.
+- Âm thanh và bản chép lời thô nằm trong vùng `local_only` ngoài Git và ngoài thư viện dùng chung.
+- Chỉ tri thức đã được người dùng xác nhận mới được đưa vào `library.sqlite`; bản nháp, nội dung mâu thuẫn chưa xử lý và bản đã thu hồi không xuất hiện trong truy xuất thông thường.
 
 ```text
-Tín hiệu retrieval (BGE-M3 + AIOS) -> Gói bằng chứng -> C-AGENT (giải thích gap candidate)
-    -> Đánh giá của chuyên viên QC -> InterviewPlan (AIOS khóa scope/expert)
-    -> Phiên phỏng vấn thích nghi -> Claim có nguồn -> SOP/Bài học candidate
-    -> Thẩm định đúng thẩm quyền -> PublicationPackage -> Ingest vào library.sqlite
+Chọn thư viện -> Phỏng vấn bằng chữ hoặc âm thanh cục bộ
+    -> Xem và sửa bản nháp cùng nguồn
+    -> Ghi quyết định có trách nhiệm
+    -> Khóa ghi ngắn hạn -> Bản sao cục bộ -> Kiểm tra -> Sao lưu -> Thay snapshot
 ```
 
-Multi-user bắt buộc qua `IdentityProvider` và xử lý fail-closed. Trạng thái `candidate`, `conflicted` và `revoked` bị cấm xuất hiện trong luồng retrieval sản xuất thông thường. Fine-tune không dùng làm kho lưu trữ sự thật: tri thức mới có hiệu lực ngay qua retrieval sau khi duyệt. Quyết định kiến trúc chi tiết: [ADR-0009](docs/adr/0009-expert-interview-and-knowledge-publication-boundary.md).
+Nếu cần phân quyền bảo mật thật giữa các thành viên, phải mở Goal riêng với dịch vụ danh tính và kho tập trung; không mở rộng Goal 010 bằng một lớp phân quyền không tạo ranh giới bảo mật thực.

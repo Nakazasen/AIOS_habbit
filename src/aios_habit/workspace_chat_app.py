@@ -1203,16 +1203,17 @@ def update_temporary_source_privacy_for_active_conversation(conversation_id: str
     return True
 
 active_nb_id = st.session_state.wsc_active_notebook_id
+current_ui_locale = "vi"
 
 # 3 cụm điều hướng chính của Workspace Chat (R4)
-st.sidebar.markdown("### 🧭 Điều hướng")
+st.sidebar.markdown(t("sidebar_navigation_heading", locale=current_ui_locale))
 
 is_case = bool(st.session_state.get("wsc_show_case_workspace", False))
 is_lsu = bool(st.session_state.get("wsc_show_lsu_data_gate", False))
 current_nav = "cases" if is_case else ("advanced" if is_lsu else "chat")
 
 selected_cluster = st.sidebar.radio(
-    "Khu vực làm việc",
+    t("sidebar_workspace_area", locale=current_ui_locale),
     options=["chat", "cases", "advanced"],
     format_func=lambda c: {
         "chat": "📖 Hỏi tài liệu",
@@ -1237,14 +1238,14 @@ elif selected_cluster == "advanced" and not is_lsu:
     st.session_state.wsc_show_lsu_data_gate = True
     safe_rerun()
 
-with st.sidebar.expander("🛠️ Danh mục công cụ nâng cao", expanded=(selected_cluster == "advanced")):
-    st.caption("Các công cụ chuyên sâu dành cho kỹ thuật viên & quản trị:")
-    if st.button("🔍 Cổng dữ liệu LSU (Chế độ chạy ngầm)", key="wsc_open_lsu_data_gate_btn", use_container_width=True):
+with st.sidebar.expander(t("sidebar_advanced_tools", locale=current_ui_locale), expanded=(selected_cluster == "advanced")):
+    st.caption(t("sidebar_advanced_tools_help", locale=current_ui_locale))
+    if st.button(t("sidebar_lsu_background_tool", locale=current_ui_locale), key="wsc_open_lsu_data_gate_btn", use_container_width=True):
         st.session_state.wsc_show_lsu_data_gate = True
         st.session_state.wsc_show_case_workspace = False
         safe_rerun()
-    st.caption("• Giám sát sai lệch tham số & C-AGENT")
-    st.caption("• Môi trường phát triển Agent (Agent IDE)")
+    st.caption(t("sidebar_parameter_monitoring", locale=current_ui_locale))
+    st.caption(t("sidebar_agent_workspace", locale=current_ui_locale))
 
 st.sidebar.write("---")
 

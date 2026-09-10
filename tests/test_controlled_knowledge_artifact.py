@@ -38,7 +38,123 @@ from aios_habit.knowledge_claim_extractor import (
     KnowledgeClaim,
 )
 from aios_habit.workspace_case_repository import WorkspaceCaseRepository
+from aios_habit.controlled_knowledge_artifact import DecisionRecord
 
+
+def decision_details() -> dict:
+    return {
+        "machine_ref": "MAY-TEST",
+        "confidence": "high",
+        "checked_source_refs": ("source:test",),
+        "responsibility_acknowledged": True,
+    }
+
+
+def test_decision_record_requires_full_responsibility_details():
+    base = {
+        "decision_id": "DEC-1",
+        "subject_id": "ART-1",
+        "subject_digest": "a" * 64,
+        "subject_version": "1.0",
+        "decision": "confirm",
+        "recorded_name": "Tên tự khai",
+        "machine_ref": "MAY-01",
+        "confidence": "high",
+        "rationale": "Đã đối chiếu nội dung",
+        "checked_source_refs": ("source:1",),
+        "responsibility_acknowledged": True,
+    }
+    record = DecisionRecord(**base)
+    assert record.recorded_name == "Tên tự khai"
+    assert "not authenticated" in DecisionRecord.__doc__
+
+    for field_name in ("recorded_name", "machine_ref", "rationale", "subject_version"):
+        incomplete = dict(base)
+        incomplete[field_name] = ""
+        with pytest.raises(ValueError):
+            DecisionRecord(**incomplete)
+
+    incomplete = dict(base)
+    incomplete["checked_source_refs"] = ()
+    with pytest.raises(ValueError):
+        DecisionRecord(**incomplete)
+
+    incomplete = dict(base)
+    incomplete["responsibility_acknowledged"] = False
+    with pytest.raises(ValueError):
+        DecisionRecord(**incomplete)
+
+
+def test_goal_010_allows_creator_to_record_complete_decision():
+    with tempfile.TemporaryDirectory() as tmpdir:
+        db_path = Path(tmpdir) / "decision.sqlite"
+        repo = ExpertInterviewRepository(database_path=db_path)
+        service = ExpertInterviewService(
+            store=WorkspaceCaseRepository(database_path=db_path),
+            interview_repo=repo,
+        )
+        claim = make_sample_claim("CLM-DEC", "ep_khuon", "Áp suất 3.5 bar.")
+        artifact = generate_candidate_sop(
+            artifact_id="ART-DEC",
+            title="Quy trình ép",
+            scope="ep_khuon",
+            claims=[claim],
+            created_by="Nguyễn An",
+        )
+        service.create_controlled_artifact(artifact, "idemp-art-dec")
+
+        decided = service.submit_artifact_approval(
+            approval_id="DEC-SELF",
+            artifact_id=artifact.artifact_id,
+            action=APPROVAL_ACTION_APPROVE,
+            actor_id="Nguyễn An",
+            expected_digest=artifact.digest,
+            reason="Đã kiểm tra nội dung và nguồn.",
+            idempotency_key="idemp-dec-self",
+            machine_ref="MAY-XUONG-01",
+            confidence="high",
+            checked_source_refs=("turn:CLM-DEC",),
+            responsibility_acknowledged=True,
+        )
+
+        assert decided.status == ARTIFACT_STATUS_APPROVED
+        assert decided.approvals == ()
+        assert decided.decisions[0].recorded_name == "Nguyễn An"
+        assert repo.list_decision_records(artifact.artifact_id) == list(decided.decisions)
+
+        retried = service.submit_artifact_approval(
+            approval_id="DEC-SELF",
+            artifact_id=artifact.artifact_id,
+            action=APPROVAL_ACTION_APPROVE,
+            actor_id="Nguyễn An",
+            expected_digest=artifact.digest,
+            reason="Đã kiểm tra nội dung và nguồn.",
+            idempotency_key="idemp-dec-self",
+            machine_ref="MAY-XUONG-01",
+            confidence="high",
+            checked_source_refs=("turn:CLM-DEC",),
+            responsibility_acknowledged=True,
+        )
+        assert len(retried.decisions) == 1
+
+        with pytest.raises(ValueError, match="đã được dùng"):
+            service.submit_artifact_approval(
+                approval_id="DEC-SELF",
+                artifact_id=artifact.artifact_id,
+                action=APPROVAL_ACTION_REJECT,
+                actor_id="Nguyễn An",
+                expected_digest=artifact.digest,
+                reason="Đổi quyết định trên cùng mã.",
+                idempotency_key="idemp-dec-conflict",
+                machine_ref="MAY-XUONG-01",
+                confidence="low",
+                checked_source_refs=("turn:CLM-DEC",),
+                responsibility_acknowledged=True,
+            )
+        unchanged = repo.get_artifact(artifact.artifact_id)
+        assert unchanged is not None
+        assert unchanged.status == ARTIFACT_STATUS_APPROVED
+        assert len(unchanged.decisions) == 1
 
 def make_sample_claim(claim_id: str, scope: str, statement: str, status: str = CLAIM_STATUS_CONFIRMED) -> KnowledgeClaim:
     return KnowledgeClaim(
@@ -104,8 +220,7 @@ def test_cannot_generate_artifact_from_conflicted_claim():
         )
 
 
-def test_self_approval_denied():
-    """Test invariant: Self-approval policy strictly blocks author from approving own artifact."""
+def test_creator_can_confirm_with_complete_responsibility_record():
     with tempfile.TemporaryDirectory() as tmpdir:
         db_path = Path(tmpdir) / "test_approval.sqlite"
         repo = ExpertInterviewRepository(database_path=db_path)
@@ -122,17 +237,17 @@ def test_self_approval_denied():
         )
         service.create_controlled_artifact(sop, idempotency_key="idemp_art_100")
 
-        # Tác giả "expert_phuong" cố tình tự duyệt -> bị từ chối
-        with pytest.raises(SelfApprovalDeniedError, match="không được phép tự phê duyệt"):
-            service.submit_artifact_approval(
-                approval_id="APP-01",
-                artifact_id="ART-SOP-100",
-                action=APPROVAL_ACTION_APPROVE,
-                actor_id="expert_phuong",
-                expected_digest=sop.digest,
-                reason="Tự xác nhận quy trình đúng",
-                idempotency_key="idemp_app_01",
-            )
+        decided = service.submit_artifact_approval(
+            approval_id="APP-01",
+            artifact_id="ART-SOP-100",
+            action=APPROVAL_ACTION_APPROVE,
+            actor_id="expert_phuong",
+            expected_digest=sop.digest,
+            reason="Tự xác nhận quy trình đúng",
+            idempotency_key="idemp_app_01",
+            **decision_details(),
+        )
+        assert decided.status == ARTIFACT_STATUS_APPROVED
 
 
 def test_stale_digest_approval_rejected():
@@ -162,6 +277,7 @@ def test_stale_digest_approval_rejected():
                 expected_digest="tampered_or_stale_digest_12345678",
                 reason="Phê duyệt dựa trên bản cũ",
                 idempotency_key="idemp_app_02",
+                **decision_details(),
             )
 
 
@@ -197,6 +313,7 @@ def test_cannot_approve_artifact_when_claim_is_conflicted_in_repo():
                 expected_digest=sop.digest,
                 reason="Thử duyệt quy trình có claim xung đột",
                 idempotency_key="idemp_app_03",
+                **decision_details(),
             )
 
 
@@ -229,6 +346,7 @@ def test_approval_lifecycle_and_actions():
             expected_digest=sop.digest,
             reason="Cần bổ sung thời gian ép",
             idempotency_key="idemp_app_r1",
+            **decision_details(),
         )
         assert art_req.status == ARTIFACT_STATUS_CHANGES_REQUESTED
 
@@ -241,9 +359,10 @@ def test_approval_lifecycle_and_actions():
             expected_digest=art_req.digest,
             reason="Đã đạt chuẩn kỹ thuật",
             idempotency_key="idemp_app_r2",
+            **decision_details(),
         )
         assert art_app.status == ARTIFACT_STATUS_APPROVED
-        assert len(art_app.approvals) == 2
+        assert len(art_app.decisions) == 2
 
         # 3. Revoke
         art_rev = service.submit_artifact_approval(
@@ -254,6 +373,7 @@ def test_approval_lifecycle_and_actions():
             expected_digest=art_app.digest,
             reason="Thay đổi dây chuyền công nghệ mới",
             idempotency_key="idemp_app_r3",
+            **decision_details(),
         )
         assert art_rev.status == ARTIFACT_STATUS_REVOKED
 

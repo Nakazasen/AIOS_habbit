@@ -13,19 +13,27 @@ from aios_habit.controlled_knowledge_artifact import (
     ARTIFACT_STATUS_REVOKED,
     ArtifactApproval,
     ControlledKnowledgeArtifact,
+    DecisionRecord,
 )
 
 import hashlib
 import json
+import os
+import re
 import sqlite3
+import tempfile
 from contextlib import contextmanager
 from pathlib import Path
 from typing import Iterator, Optional
 
 from aios_habit.expert_interview_models import (
+    CompletionRubric,
+    InterviewBudget,
     InterviewCheckpoint,
+    InterviewPlan,
     InterviewSession,
     InterviewTurn,
+    SeedQuestion,
 )
 from aios_habit.knowledge_claim_extractor import (
     CLAIM_STATUS_CANDIDATE,
@@ -42,6 +50,36 @@ from aios_habit.local_transcription import (
     TranscriptionSegment,
     validate_local_only_audio_path,
 )
+
+
+def _atomic_write_bytes(destination: Path, payload: bytes) -> None:
+    """Durably replace one file without exposing a partially written payload."""
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    temporary_path: Optional[Path] = None
+    try:
+        with tempfile.NamedTemporaryFile(
+            mode="wb",
+            dir=destination.parent,
+            prefix=f".{destination.name}.",
+            suffix=".tmp",
+            delete=False,
+        ) as temporary_file:
+            temporary_path = Path(temporary_file.name)
+            temporary_file.write(payload)
+            temporary_file.flush()
+            os.fsync(temporary_file.fileno())
+        os.replace(temporary_path, destination)
+        temporary_path = None
+    finally:
+        if temporary_path is not None:
+            temporary_path.unlink(missing_ok=True)
+
+
+def _file_has_digest(path: Path, expected_digest: str) -> bool:
+    try:
+        return hashlib.sha256(path.read_bytes()).hexdigest() == expected_digest
+    except OSError:
+        return False
 
 
 def default_interview_db_path() -> Path:
@@ -76,6 +114,17 @@ class ExpertInterviewRepository:
     def initialize(self) -> None:
         """Create tables and indexes if they do not exist."""
         with self._connection() as conn:
+            conn.execute(
+                """
+                CREATE TABLE IF NOT EXISTS expert_interview_plans (
+                    plan_id TEXT PRIMARY KEY,
+                    plan_json TEXT NOT NULL,
+                    digest TEXT NOT NULL,
+                    idempotency_key TEXT NOT NULL UNIQUE
+                )
+                """
+            )
+
             conn.execute(
                 """
                 CREATE TABLE IF NOT EXISTS interview_sessions (
@@ -236,6 +285,39 @@ class ExpertInterviewRepository:
             )
             conn.execute("CREATE INDEX IF NOT EXISTS artifacts_scope_idx ON controlled_knowledge_artifacts(scope)")
             conn.execute("CREATE INDEX IF NOT EXISTS artifacts_status_idx ON controlled_knowledge_artifacts(status)")
+            conn.execute(
+                """
+                CREATE TABLE IF NOT EXISTS controlled_knowledge_artifact_versions (
+                    artifact_id TEXT NOT NULL,
+                    artifact_type TEXT NOT NULL,
+                    title TEXT NOT NULL,
+                    scope TEXT NOT NULL,
+                    version TEXT NOT NULL,
+                    content_markdown TEXT NOT NULL,
+                    claim_ids_json TEXT NOT NULL,
+                    claim_map_json TEXT NOT NULL,
+                    status TEXT NOT NULL,
+                    created_by TEXT NOT NULL,
+                    digest TEXT NOT NULL,
+                    created_at TEXT NOT NULL,
+                    idempotency_key TEXT NOT NULL UNIQUE,
+                    PRIMARY KEY (artifact_id, version)
+                )
+                """
+            )
+            conn.execute(
+                """
+                INSERT OR IGNORE INTO controlled_knowledge_artifact_versions (
+                    artifact_id, artifact_type, title, scope, version,
+                    content_markdown, claim_ids_json, claim_map_json, status,
+                    created_by, digest, created_at, idempotency_key
+                )
+                SELECT artifact_id, artifact_type, title, scope, version,
+                       content_markdown, claim_ids_json, claim_map_json, status,
+                       created_by, digest, created_at, 'BASELINE-' || artifact_id || '-' || version
+                FROM controlled_knowledge_artifacts
+                """
+            )
 
             conn.execute(
                 """
@@ -254,6 +336,122 @@ class ExpertInterviewRepository:
             )
             conn.execute("CREATE INDEX IF NOT EXISTS artifact_approvals_art_idx ON artifact_approvals(artifact_id)")
 
+            conn.execute(
+                """
+                CREATE TABLE IF NOT EXISTS artifact_decisions (
+                    decision_id TEXT PRIMARY KEY,
+                    subject_id TEXT NOT NULL,
+                    subject_digest TEXT NOT NULL,
+                    subject_version TEXT NOT NULL,
+                    decision TEXT NOT NULL,
+                    recorded_name TEXT NOT NULL,
+                    machine_ref TEXT NOT NULL,
+                    confidence TEXT NOT NULL,
+                    rationale TEXT NOT NULL,
+                    checked_source_refs_json TEXT NOT NULL,
+                    responsibility_acknowledged INTEGER NOT NULL,
+                    created_at TEXT NOT NULL,
+                    idempotency_key TEXT NOT NULL UNIQUE
+                )
+                """
+            )
+            conn.execute("CREATE INDEX IF NOT EXISTS artifact_decisions_subject_idx ON artifact_decisions(subject_id)")
+
+
+    @staticmethod
+    def _plan_payload(plan: InterviewPlan) -> dict:
+        return {
+            "plan_id": plan.plan_id,
+            "version": plan.version,
+            "gap_ids": list(plan.gap_ids),
+            "required_scope": plan.required_scope,
+            "eligible_expert_ids": list(plan.eligible_expert_ids),
+            "seed_questions": [
+                {
+                    "question_id": question.question_id,
+                    "text": question.text,
+                    "target_gap_id": question.target_gap_id,
+                    "expected_aspects": list(question.expected_aspects),
+                    "suggested_order": question.suggested_order,
+                }
+                for question in plan.seed_questions
+            ],
+            "budget": {
+                "max_turns": plan.budget.max_turns,
+                "max_minutes": plan.budget.max_minutes,
+                "token_budget": plan.budget.token_budget,
+            },
+            "completion_rubric": {
+                "required_aspects": list(plan.completion_rubric.required_aspects),
+                "min_grounded_claims": plan.completion_rubric.min_grounded_claims,
+                "allow_unknown": plan.completion_rubric.allow_unknown,
+                "stop_on_repeated_unknowns": plan.completion_rubric.stop_on_repeated_unknowns,
+                "escalation_owner": plan.completion_rubric.escalation_owner,
+            },
+            "status": plan.status,
+            "created_by": plan.created_by,
+            "created_at": plan.created_at,
+            "digest": plan.digest,
+        }
+
+    def save_interview_plan(self, plan: InterviewPlan, idempotency_key: str) -> None:
+        """Persist an immutable interview plan so UI reruns can resume safely."""
+        self.initialize()
+        plan_json = json.dumps(self._plan_payload(plan), ensure_ascii=False, sort_keys=True)
+        with self._connection() as conn:
+            existing = conn.execute(
+                "SELECT plan_id, plan_json, digest, idempotency_key FROM expert_interview_plans WHERE plan_id = ? OR idempotency_key = ?",
+                (plan.plan_id, idempotency_key),
+            ).fetchone()
+            expected = (plan.plan_id, plan_json, plan.digest, idempotency_key)
+            if existing is not None:
+                if tuple(existing) != expected:
+                    raise ValueError("Mã kế hoạch hoặc mã chống ghi lặp đã được dùng cho nội dung khác.")
+                return
+            conn.execute(
+                "INSERT INTO expert_interview_plans (plan_id, plan_json, digest, idempotency_key) VALUES (?, ?, ?, ?)",
+                expected,
+            )
+
+    def get_interview_plan(self, plan_id: str) -> Optional[InterviewPlan]:
+        self.initialize()
+        with self._connection() as conn:
+            row = conn.execute(
+                "SELECT plan_json FROM expert_interview_plans WHERE plan_id = ?",
+                (plan_id,),
+            ).fetchone()
+        if row is None:
+            return None
+        payload = json.loads(row["plan_json"])
+        return InterviewPlan(
+            plan_id=payload["plan_id"],
+            version=payload["version"],
+            gap_ids=tuple(payload["gap_ids"]),
+            required_scope=payload["required_scope"],
+            eligible_expert_ids=tuple(payload["eligible_expert_ids"]),
+            seed_questions=tuple(
+                SeedQuestion(
+                    question_id=question["question_id"],
+                    text=question["text"],
+                    target_gap_id=question["target_gap_id"],
+                    expected_aspects=tuple(question["expected_aspects"]),
+                    suggested_order=question["suggested_order"],
+                )
+                for question in payload["seed_questions"]
+            ),
+            budget=InterviewBudget(**payload["budget"]),
+            completion_rubric=CompletionRubric(
+                required_aspects=tuple(payload["completion_rubric"]["required_aspects"]),
+                min_grounded_claims=payload["completion_rubric"]["min_grounded_claims"],
+                allow_unknown=payload["completion_rubric"]["allow_unknown"],
+                stop_on_repeated_unknowns=payload["completion_rubric"]["stop_on_repeated_unknowns"],
+                escalation_owner=payload["completion_rubric"]["escalation_owner"],
+            ),
+            status=payload["status"],
+            created_by=payload["created_by"],
+            created_at=payload["created_at"],
+            digest=payload["digest"],
+        )
 
     def save_session(self, session: InterviewSession, idempotency_key: str) -> None:
         """Idempotently save or update an interview session."""
@@ -594,12 +792,38 @@ class ExpertInterviewRepository:
         raw_json_bytes = json.dumps(raw_payload, ensure_ascii=False, indent=2).encode("utf-8")
         transcript_digest = hashlib.sha256(raw_json_bytes).hexdigest()
 
+        with self._connection() as conn:
+            existing = conn.execute(
+                """
+                SELECT receipt_id, session_id, transcript_locator, transcript_digest, idempotency_key
+                FROM interview_transcripts
+                WHERE receipt_id = ? OR idempotency_key = ?
+                """,
+                (receipt.receipt_id, idempotency_key),
+            ).fetchone()
+        if existing is not None:
+            if (
+                existing["receipt_id"] != receipt.receipt_id
+                or existing["session_id"] != receipt.session_id
+                or existing["transcript_digest"] != transcript_digest
+                or existing["idempotency_key"] != idempotency_key
+            ):
+                raise ValueError("Mã bản chép lời hoặc mã chống ghi lặp đã được dùng cho nội dung khác.")
+            existing_file = Path(existing["transcript_locator"])
+            if existing_file.exists() and _file_has_digest(existing_file, transcript_digest):
+                return
+            raise RuntimeError("Bản chép lời đã lưu bị thiếu hoặc không còn khớp mã kiểm tra.")
+
         # Sanitize filename strictly against path traversal
-        import re
         safe_receipt_stem = re.sub(r"[^a-zA-Z0-9_\-]", "_", receipt.receipt_id)
         if not safe_receipt_stem or safe_receipt_stem.startswith("."):
             safe_receipt_stem = f"receipt_{safe_receipt_stem.lstrip('.')}"
-        transcript_file = (transcripts_dir / f"{safe_receipt_stem}.json").resolve()
+        # Keep enough human-readable context without exceeding Windows path limits.
+        safe_receipt_stem = safe_receipt_stem[:48].rstrip("_-.") or "receipt"
+        receipt_key = hashlib.sha256(receipt.receipt_id.encode("utf-8")).hexdigest()[:12]
+        transcript_file = (
+            transcripts_dir / f"{safe_receipt_stem}_{receipt_key}_{transcript_digest[:12]}.json"
+        ).resolve()
         resolved_dir = transcripts_dir.resolve()
         if not str(transcript_file).startswith(str(resolved_dir)):
             raise ValueError(f"Đường dẫn transcript không hợp lệ (path traversal): '{receipt.receipt_id}'")
@@ -608,7 +832,7 @@ class ExpertInterviewRepository:
         already_existed = transcript_file.exists()
         backup_bytes = transcript_file.read_bytes() if already_existed else None
 
-        transcript_file.write_bytes(raw_json_bytes)
+        _atomic_write_bytes(transcript_file, raw_json_bytes)
         transcript_locator = str(transcript_file)
         critical_json = json.dumps(list(receipt.all_critical_tokens), ensure_ascii=False)
 
@@ -630,13 +854,6 @@ class ExpertInterviewRepository:
                         created_at, idempotency_key
                     )
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                    ON CONFLICT(receipt_id) DO UPDATE SET
-                        state = excluded.state,
-                        transcript_locator = excluded.transcript_locator,
-                        transcript_digest = excluded.transcript_digest,
-                        segments_json = excluded.segments_json,
-                        full_text = excluded.full_text,
-                        all_critical_tokens_json = excluded.all_critical_tokens_json
                     """,
                     (
                         receipt.receipt_id,
@@ -656,11 +873,12 @@ class ExpertInterviewRepository:
                     ),
                 )
         except Exception:
-            # Rollback file changes if DB transaction failed
-            if not already_existed:
-                transcript_file.unlink(missing_ok=True)
-            elif backup_bytes is not None:
-                transcript_file.write_bytes(backup_bytes)
+            # Only undo our own payload. A concurrent newer replacement must win.
+            if _file_has_digest(transcript_file, transcript_digest):
+                if not already_existed:
+                    transcript_file.unlink(missing_ok=True)
+                elif backup_bytes is not None:
+                    _atomic_write_bytes(transcript_file, backup_bytes)
             raise
 
     def get_transcription_receipt(self, session_id: str) -> Optional[TranscriptionReceipt]:
@@ -927,6 +1145,7 @@ class ExpertInterviewRepository:
         """Save or update controlled knowledge artifact idempotently."""
         self.initialize()
         with self._connection() as conn:
+            self._insert_artifact_version(conn, artifact, idempotency_key)
             conn.execute(
                 """
                 INSERT INTO controlled_knowledge_artifacts (
@@ -980,6 +1199,7 @@ class ExpertInterviewRepository:
                 return None
 
             approvals = self.list_artifact_approvals(artifact_id)
+            decisions = self.list_decision_records(artifact_id)
 
             return ControlledKnowledgeArtifact(
                 artifact_id=row["artifact_id"],
@@ -994,6 +1214,7 @@ class ExpertInterviewRepository:
                 created_by=row["created_by"],
                 created_at=row["created_at"],
                 approvals=tuple(approvals),
+                decisions=tuple(decisions),
             )
 
     def list_artifacts(
@@ -1082,3 +1303,219 @@ class ExpertInterviewRepository:
                 )
                 for r in rows
             ]
+
+    def save_decision_record(self, decision: DecisionRecord, idempotency_key: str) -> None:
+        """Persist one immutable responsibility decision idempotently."""
+        self.initialize()
+        sources_json = json.dumps(list(decision.checked_source_refs), ensure_ascii=False)
+        with self._connection() as conn:
+            existing = conn.execute(
+                """
+                SELECT decision_id, subject_id, subject_digest, subject_version,
+                       decision, recorded_name, machine_ref, confidence, rationale,
+                       checked_source_refs_json, responsibility_acknowledged, idempotency_key
+                FROM artifact_decisions WHERE decision_id = ? OR idempotency_key = ?
+                """,
+                (decision.decision_id, idempotency_key),
+            ).fetchone()
+            expected = (
+                decision.decision_id, decision.subject_id, decision.subject_digest,
+                decision.subject_version, decision.decision, decision.recorded_name,
+                decision.machine_ref, decision.confidence, decision.rationale,
+                sources_json, int(decision.responsibility_acknowledged), idempotency_key,
+            )
+            if existing is not None:
+                if tuple(existing) != expected:
+                    raise ValueError("Mã quyết định hoặc mã chống ghi lặp đã được dùng cho nội dung khác.")
+                return
+            conn.execute(
+                """
+                INSERT INTO artifact_decisions (
+                    decision_id, subject_id, subject_digest, subject_version,
+                    decision, recorded_name, machine_ref, confidence, rationale,
+                    checked_source_refs_json, responsibility_acknowledged,
+                    created_at, idempotency_key
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    decision.decision_id,
+                    decision.subject_id,
+                    decision.subject_digest,
+                    decision.subject_version,
+                    decision.decision,
+                    decision.recorded_name,
+                    decision.machine_ref,
+                    decision.confidence,
+                    decision.rationale,
+                    sources_json,
+                    int(decision.responsibility_acknowledged),
+                    decision.created_at,
+                    idempotency_key,
+                ),
+            )
+
+    @staticmethod
+    def _insert_artifact_version(
+        conn: sqlite3.Connection,
+        artifact: ControlledKnowledgeArtifact,
+        idempotency_key: str,
+    ) -> None:
+        claim_ids_json = json.dumps(list(artifact.claim_ids))
+        claim_map_json = json.dumps(artifact.claim_map)
+        existing = conn.execute(
+            """
+            SELECT artifact_id, artifact_type, title, scope, version,
+                   content_markdown, claim_ids_json, claim_map_json, status,
+                   created_by, digest, created_at, idempotency_key
+            FROM controlled_knowledge_artifact_versions
+            WHERE (artifact_id = ? AND version = ?) OR idempotency_key = ?
+            """,
+            (artifact.artifact_id, artifact.version, idempotency_key),
+        ).fetchone()
+        expected = (
+            artifact.artifact_id, artifact.artifact_type, artifact.title, artifact.scope,
+            artifact.version, artifact.content_markdown, claim_ids_json, claim_map_json,
+            artifact.status, artifact.created_by, artifact.digest, artifact.created_at,
+            idempotency_key,
+        )
+        if existing is not None:
+            if tuple(existing) != expected:
+                raise ValueError("Phiên bản nội dung hoặc mã chống ghi lặp đã được dùng cho dữ liệu khác.")
+            return
+        conn.execute(
+            """
+            INSERT INTO controlled_knowledge_artifact_versions (
+                artifact_id, artifact_type, title, scope, version,
+                content_markdown, claim_ids_json, claim_map_json, status,
+                created_by, digest, created_at, idempotency_key
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            expected,
+        )
+
+    def list_artifact_versions(self, artifact_id: str) -> list[ControlledKnowledgeArtifact]:
+        """Return every immutable content version for one logical artifact."""
+        self.initialize()
+        with self._connection() as conn:
+            rows = conn.execute(
+                """
+                SELECT artifact_id, artifact_type, title, scope, version,
+                       content_markdown, claim_ids_json, claim_map_json, status,
+                       created_by, created_at
+                FROM controlled_knowledge_artifact_versions
+                WHERE artifact_id = ? ORDER BY created_at, version
+                """,
+                (artifact_id,),
+            ).fetchall()
+        return [
+            ControlledKnowledgeArtifact(
+                artifact_id=row["artifact_id"], artifact_type=row["artifact_type"],
+                title=row["title"], scope=row["scope"], version=row["version"],
+                content_markdown=row["content_markdown"],
+                claim_ids=tuple(json.loads(row["claim_ids_json"])),
+                claim_map=json.loads(row["claim_map_json"]), status=row["status"],
+                created_by=row["created_by"], created_at=row["created_at"],
+                decisions=tuple(self.list_decision_records(artifact_id)),
+            )
+            for row in rows
+        ]
+
+    def save_decision_and_artifact(
+        self,
+        decision: DecisionRecord,
+        artifact: ControlledKnowledgeArtifact,
+        idempotency_key: str,
+    ) -> None:
+        """Atomically append a decision and apply its matching artifact state."""
+        self.initialize()
+        if decision.subject_id != artifact.artifact_id:
+            raise ValueError("Quyết định không thuộc đúng nội dung cần đổi trạng thái.")
+        sources_json = json.dumps(list(decision.checked_source_refs), ensure_ascii=False)
+        with self._connection() as conn:
+            existing = conn.execute(
+                """
+                SELECT decision_id, subject_id, subject_digest, subject_version, decision,
+                       recorded_name, machine_ref, confidence, rationale,
+                       checked_source_refs_json, responsibility_acknowledged, idempotency_key
+                FROM artifact_decisions
+                WHERE decision_id = ? OR idempotency_key = ?
+                """,
+                (decision.decision_id, idempotency_key),
+            ).fetchone()
+            expected = (
+                decision.decision_id,
+                decision.subject_id,
+                decision.subject_digest,
+                decision.subject_version,
+                decision.decision,
+                decision.recorded_name,
+                decision.machine_ref,
+                decision.confidence,
+                decision.rationale,
+                sources_json,
+                int(decision.responsibility_acknowledged),
+                idempotency_key,
+            )
+            if existing is not None and tuple(existing) != expected:
+                raise ValueError("Mã quyết định hoặc mã chống ghi lặp đã được dùng cho nội dung khác.")
+            if existing is None:
+                conn.execute(
+                    """
+                    INSERT INTO artifact_decisions (
+                        decision_id, subject_id, subject_digest, subject_version,
+                        decision, recorded_name, machine_ref, confidence, rationale,
+                        checked_source_refs_json, responsibility_acknowledged,
+                        created_at, idempotency_key
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    (*expected[:-1], decision.created_at, idempotency_key),
+                )
+            conn.execute(
+                """
+                UPDATE controlled_knowledge_artifacts
+                SET status = ?, idempotency_key = ?
+                WHERE artifact_id = ? AND digest = ? AND version = ?
+                """,
+                (
+                    artifact.status,
+                    idempotency_key,
+                    artifact.artifact_id,
+                    decision.subject_digest,
+                    decision.subject_version,
+                ),
+            )
+            if conn.execute("SELECT changes()").fetchone()[0] != 1:
+                raise ValueError("Nội dung đã thay đổi; hãy xem lại bản mới trước khi quyết định.")
+
+    def list_decision_records(self, subject_id: str) -> list[DecisionRecord]:
+        """Return responsibility decisions for one exact content subject."""
+        self.initialize()
+        with self._connection() as conn:
+            rows = conn.execute(
+                """
+                SELECT decision_id, subject_id, subject_digest, subject_version,
+                       decision, recorded_name, machine_ref, confidence, rationale,
+                       checked_source_refs_json, responsibility_acknowledged, created_at
+                FROM artifact_decisions
+                WHERE subject_id = ?
+                ORDER BY created_at ASC
+                """,
+                (subject_id,),
+            ).fetchall()
+        return [
+            DecisionRecord(
+                decision_id=row["decision_id"],
+                subject_id=row["subject_id"],
+                subject_digest=row["subject_digest"],
+                subject_version=row["subject_version"],
+                decision=row["decision"],
+                recorded_name=row["recorded_name"],
+                machine_ref=row["machine_ref"],
+                confidence=row["confidence"],
+                rationale=row["rationale"],
+                checked_source_refs=tuple(json.loads(row["checked_source_refs_json"])),
+                responsibility_acknowledged=bool(row["responsibility_acknowledged"]),
+                created_at=row["created_at"],
+            )
+            for row in rows
+        ]

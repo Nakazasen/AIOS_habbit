@@ -56,6 +56,18 @@ VALID_APPROVAL_ACTIONS = {
     APPROVAL_ACTION_REVOKE,
 }
 
+DECISION_CONFIRM = "confirm"
+DECISION_REJECT = "reject"
+DECISION_REQUEST_CHANGE = "request_change"
+DECISION_REVOKE = "revoke"
+VALID_DECISIONS = {
+    DECISION_CONFIRM,
+    DECISION_REJECT,
+    DECISION_REQUEST_CHANGE,
+    DECISION_REVOKE,
+}
+VALID_DECISION_CONFIDENCE = {"low", "medium", "high"}
+
 
 class ControlledArtifactError(Exception):
     """Base exception for controlled knowledge artifacts."""
@@ -106,6 +118,47 @@ class ArtifactApproval:
 
 
 @dataclass(frozen=True)
+class DecisionRecord:
+    """Responsibility record; the supplied name is descriptive, not authenticated."""
+
+    decision_id: str
+    subject_id: str
+    subject_digest: str
+    subject_version: str
+    decision: str
+    recorded_name: str
+    machine_ref: str
+    confidence: str
+    rationale: str
+    checked_source_refs: Tuple[str, ...]
+    responsibility_acknowledged: bool
+    created_at: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+
+    def __post_init__(self) -> None:
+        required_text = {
+            "Mã quyết định": self.decision_id,
+            "Mã nội dung": self.subject_id,
+            "Mã kiểm tra nội dung": self.subject_digest,
+            "Phiên bản nội dung": self.subject_version,
+            "Tên người ghi nhận": self.recorded_name,
+            "Máy ghi nhận": self.machine_ref,
+            "Căn cứ quyết định": self.rationale,
+            "Thời điểm": self.created_at,
+        }
+        for label, value in required_text.items():
+            if not value.strip():
+                raise ValueError(f"{label} không được để trống.")
+        if self.decision not in VALID_DECISIONS:
+            raise ValueError("Quyết định không hợp lệ.")
+        if self.confidence not in VALID_DECISION_CONFIDENCE:
+            raise ValueError("Mức tự tin phải là low, medium hoặc high.")
+        if not self.checked_source_refs or any(not source.strip() for source in self.checked_source_refs):
+            raise ValueError("Phải ghi ít nhất một nguồn đã kiểm tra.")
+        if not self.responsibility_acknowledged:
+            raise ValueError("Người ghi nhận phải xác nhận trách nhiệm trước khi lưu quyết định.")
+
+
+@dataclass(frozen=True)
 class ControlledKnowledgeArtifact:
     """Formalized standard operating procedure or lesson learned derived from verified claims."""
 
@@ -121,6 +174,7 @@ class ControlledKnowledgeArtifact:
     created_by: str = ""
     created_at: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
     approvals: Tuple[ArtifactApproval, ...] = ()
+    decisions: Tuple[DecisionRecord, ...] = ()
 
     def __post_init__(self) -> None:
         if not self.artifact_id.strip():

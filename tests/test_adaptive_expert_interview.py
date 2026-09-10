@@ -1,16 +1,8 @@
 """Unit and integration tests for adaptive expert interview planning and guardrails.
 
 Implements T029 of 010-expert-knowledge-acquisition.
-Verifies:
-1. Valid plan creation with verified expert and accepted gap.
-2. Rejection when no eligible verified expert exists for required scope.
-3. Rejection of stale gap digest.
-4. Rejection of non-accepted gaps (draft, candidate, deferred, rejected).
-5. Rejection of hallucinated gaps (empty evidence_refs).
-6. Rejection of infinite or invalid budget parameters.
-7. Rejection of empty escalation owner.
-8. Caller scope-based authorization enforcement.
-9. Schema-grounded seed question generation.
+Verifies plan creation from an accepted gap without account, profile, grant, or RBAC gates,
+plus stale-data, evidence, budget, transition, and question guardrails.
 """
 from __future__ import annotations
 
@@ -28,6 +20,7 @@ from aios_habit.expert_interview_models import (
     InterviewPlanError,
 )
 from aios_habit.expert_interview_service import ExpertInterviewService
+from aios_habit.expert_interview_repository import ExpertInterviewRepository
 from aios_habit.knowledge_coverage import (
     GAP_STATUS_ACCEPTED,
     GAP_STATUS_CANDIDATE,
@@ -40,7 +33,6 @@ from aios_habit.knowledge_coverage import (
 )
 from aios_habit.workspace_case_authorization import (
     ActorContext,
-    AuthorizationError,
     RoleGrant,
     WorkspaceCaseAuthorization,
 )
@@ -131,7 +123,7 @@ def _setup_expert(
 
 
 def test_create_interview_plan_success(repo: WorkspaceCaseRepository, service: ExpertInterviewService):
-    """A valid accepted gap creates an interview plan with verified expert and rubric."""
+    """A valid accepted gap creates a plan for the locally recorded participant name."""
     gap = _create_sample_gap(repo)
     _setup_expert(repo, "expert_opt_lead", "lsu_optical_assembly")
 
@@ -144,7 +136,7 @@ def test_create_interview_plan_success(repo: WorkspaceCaseRepository, service: E
     assert plan.version == 1
     assert plan.gap_ids == (gap.gap_id,)
     assert plan.required_scope == "lsu_optical_assembly"
-    assert "expert_opt_lead" in plan.eligible_expert_ids
+    assert plan.eligible_expert_ids == ("test_manager",)
     assert len(plan.seed_questions) >= 2
     assert plan.status == PLAN_STATUS_DRAFT
     assert plan.budget.max_turns == 10
@@ -154,27 +146,30 @@ def test_create_interview_plan_success(repo: WorkspaceCaseRepository, service: E
     assert plan.digest != ""
     assert plan.digest == plan.calculate_digest()
 
+    restarted = ExpertInterviewService(
+        store=WorkspaceCaseRepository(repo.database_path),
+        interview_repo=ExpertInterviewRepository(repo.database_path),
+    )
+    assert restarted.get_interview_plan(plan.plan_id) == plan
 
-def test_rejection_when_no_eligible_expert_for_scope(repo: WorkspaceCaseRepository, service: ExpertInterviewService):
-    """Plan creation must fail closed if no verified expert has grant on the required scope."""
+
+def test_plan_does_not_require_expert_profile_or_scope_grant(repo: WorkspaceCaseRepository, service: ExpertInterviewService):
     gap = _create_sample_gap(repo, scope="lsu_optical_assembly")
     # Expert only has grant on mirror mount scope
     _setup_expert(repo, "expert_mirror", "lsu_mirror_mount")
 
-    with pytest.raises(InterviewPlanError, match="Không tìm thấy chuyên gia"):
-        service.create_interview_plan(gap_id=gap.gap_id)
+    plan = service.create_interview_plan(gap_id=gap.gap_id)
+    assert plan.required_scope == "lsu_optical_assembly"
 
 
-def test_rejection_when_expert_profile_suspended_or_grant_expired(
+def test_historical_profile_and_grant_state_do_not_gate_goal_010(
     repo: WorkspaceCaseRepository, service: ExpertInterviewService
 ):
-    """Suspended expert profiles or expired/revoked grants are rejected."""
     gap = _create_sample_gap(repo, gap_id="GAP-EXP-FAIL")
 
     # 1. Suspended profile
     _setup_expert(repo, "expert_suspended", "lsu_optical_assembly", profile_status="suspended")
-    with pytest.raises(InterviewPlanError, match="Không tìm thấy chuyên gia"):
-        service.create_interview_plan(gap_id=gap.gap_id)
+    assert service.create_interview_plan(gap_id=gap.gap_id).plan_id
 
     # 2. Expired grant
     _setup_expert(
@@ -183,8 +178,7 @@ def test_rejection_when_expert_profile_suspended_or_grant_expired(
         "lsu_optical_assembly",
         expires_at="2020-01-01T00:00:00+00:00",
     )
-    with pytest.raises(InterviewPlanError, match="Không tìm thấy chuyên gia"):
-        service.create_interview_plan(gap_id=gap.gap_id)
+    assert service.create_interview_plan(gap_id=gap.gap_id).plan_id
 
     # 3. Revoked grant
     _setup_expert(
@@ -193,8 +187,7 @@ def test_rejection_when_expert_profile_suspended_or_grant_expired(
         "lsu_optical_assembly",
         revoked_at="2026-09-08T00:00:00+00:00",
     )
-    with pytest.raises(InterviewPlanError, match="Không tìm thấy chuyên gia"):
-        service.create_interview_plan(gap_id=gap.gap_id)
+    assert service.create_interview_plan(gap_id=gap.gap_id).plan_id
 
 
 def test_rejection_for_stale_gap_digest(repo: WorkspaceCaseRepository, service: ExpertInterviewService):
@@ -251,17 +244,13 @@ def test_rubric_escalation_owner_validation():
         CompletionRubric(escalation_owner="   ")
 
 
-def test_caller_authorization_enforcement(repo: WorkspaceCaseRepository, service: ExpertInterviewService):
-    """Caller without coverage.manage on scope is denied."""
+def test_recorded_person_name_does_not_require_authorization(repo: WorkspaceCaseRepository, service: ExpertInterviewService):
     gap = _create_sample_gap(repo)
     _setup_expert(repo, "expert_opt_lead", "lsu_optical_assembly")
 
     unauthorized_actor = ActorContext("unauthorized_user")
-    with pytest.raises(AuthorizationError):
-        service.create_interview_plan(
-            gap_id=gap.gap_id,
-            actor=unauthorized_actor,
-        )
+    plan = service.create_interview_plan(gap_id=gap.gap_id, actor=unauthorized_actor)
+    assert plan.created_by == "unauthorized_user"
 
 
 def test_seed_questions_by_gap_type():
@@ -450,12 +439,11 @@ def test_adaptive_stop_on_repeated_unknowns_escalates(repo: WorkspaceCaseReposit
     assert updated_session.stop_reason == "escalated_due_to_uncertainty"
 
 
-def test_turn_by_turn_reauthorization_blocks_session_on_revocation(
+def test_grant_revocation_does_not_block_trusted_group_interview(
     repo: WorkspaceCaseRepository, service: ExpertInterviewService
 ):
-    """Session is blocked immediately if expert grant is revoked between turns."""
+    """Legacy grants are not authorization gates for the simplified Goal 010 flow."""
     from aios_habit.expert_identity import VerifiedPrincipal
-    from aios_habit.expert_interview_models import SESSION_STATE_BLOCKED
 
     gap = _create_sample_gap(repo, gap_id="GAP-REVOKE-TEST")
     _setup_expert(repo, "expert_opt_lead", "lsu_optical_assembly")
@@ -475,18 +463,16 @@ def test_turn_by_turn_reauthorization_blocks_session_on_revocation(
     # Revoke grant before turn 2
     repo.revoke_scope_grant(f"GRANT-expert_opt_lead-lsu_optical_assembly", "security_admin")
 
-    with pytest.raises(AuthorizationError, match="thu hồi hoặc hết hạn"):
-        service.submit_interview_turn(
-            session_id=session.session_id,
-            answer_text="Ngoại lệ là khi nhiệt độ trên 50 độ C",
-            principal=principal,
-            idempotency_key="IDEMP-TURN-REV-2",
-        )
+    service.submit_interview_turn(
+        session_id=session.session_id,
+        answer_text="Ngoại lệ là khi nhiệt độ trên 50 độ C",
+        principal=principal,
+        idempotency_key="IDEMP-TURN-REV-2",
+    )
 
     blocked_session = service.interview_repo.get_session(session.session_id)
     assert blocked_session is not None
-    assert blocked_session.state == SESSION_STATE_BLOCKED
-    assert blocked_session.stop_reason == "authority_revoked_or_expired_during_session"
+    assert blocked_session.state != "blocked"
 
 
 def test_pause_and_resume_session(repo: WorkspaceCaseRepository, service: ExpertInterviewService):

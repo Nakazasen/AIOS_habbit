@@ -10,6 +10,7 @@ from __future__ import annotations
 import getpass
 import os
 import platform
+from dataclasses import dataclass
 from typing import Optional
 
 from aios_habit.expert_identity import (
@@ -21,6 +22,27 @@ from aios_habit.feature_flags import (
     FEATURE_EXPERT_MULTI_USER,
     is_feature_enabled,
 )
+
+
+@dataclass(frozen=True)
+class RecordedPersonSuggestion:
+    """Editable responsibility metadata; it never represents authentication or authority."""
+
+    suggested_name: str
+    machine_ref: str
+    is_verified: bool = False
+
+
+def suggest_recorded_person() -> RecordedPersonSuggestion:
+    """Suggest local OS metadata without turning it into an identity or grant."""
+    try:
+        name = getpass.getuser().strip()
+    except Exception:
+        name = ""
+    return RecordedPersonSuggestion(
+        suggested_name=name or "người dùng",
+        machine_ref=platform.node().strip() or "máy hiện tại",
+    )
 
 
 class WindowsOSIdentityProvider:

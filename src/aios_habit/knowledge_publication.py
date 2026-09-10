@@ -13,13 +13,16 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
+import re
 import shutil
 import sqlite3
+import tempfile
 import uuid
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Sequence, Set, Tuple
+from typing import Any, Callable, Dict, List, Optional, Sequence, Set, Tuple
 
 from aios_habit.controlled_knowledge_artifact import (
     ARTIFACT_STATUS_APPROVED,
@@ -149,7 +152,16 @@ def seal_publication_package(
             f"Chỉ tài liệu đã được phê duyệt chính thức (approved) mới được phép niêm phong xuất bản. Trạng thái hiện tại: '{artifact.status}'."
         )
 
-    if not artifact.approvals:
+    matching_confirmations = [
+        decision
+        for decision in artifact.decisions
+        if decision.decision == "confirm"
+        and decision.subject_id == artifact.artifact_id
+        and decision.subject_digest == artifact.digest
+        and decision.subject_version == artifact.version
+        and decision.responsibility_acknowledged
+    ]
+    if not matching_confirmations:
         raise UnapprovedArtifactPublicationError(
             f"Tài liệu '{artifact.artifact_id}' chưa có biên bản phê duyệt hợp lệ trong hệ thống."
         )
@@ -190,6 +202,26 @@ class KnowledgePublisher:
         self.backup_dir = Path(backup_dir or Path.cwd() / "local_cases" / "library_backups")
         self.interview_repo = interview_repo or kwargs.get("interview_repo")
 
+    def list_published_documents(self, collection_id: str) -> List[Dict[str, str]]:
+        """List current library entries for a user-facing revoke history."""
+        runtime_dir, _ = collection_runtime_layout(collection_id, self.base_dir)
+        sqlite_file = runtime_dir / COLLECTION_INDEX_BASENAME
+        if not sqlite_file.exists():
+            return []
+        conn = sqlite3.connect(sqlite_file)
+        conn.row_factory = sqlite3.Row
+        try:
+            if conn.execute(
+                "SELECT 1 FROM sqlite_master WHERE type='table' AND name='published_documents'"
+            ).fetchone() is None:
+                return []
+            rows = conn.execute(
+                "SELECT doc_id, title, version, published_at FROM published_documents ORDER BY published_at DESC"
+            ).fetchall()
+            return [dict(row) for row in rows]
+        finally:
+            conn.close()
+
     def publish_package(
         self,
         package: PublicationPackage,
@@ -201,26 +233,21 @@ class KnowledgePublisher:
         """
         if package.status != PACKAGE_STATUS_SEALED:
             raise PublicationError(f"Chỉ gói ở trạng thái 'sealed' mới có thể xuất bản. Trạng thái hiện tại: '{package.status}'.")
+        if not re.fullmatch(r"[A-Za-z0-9_-]+", package.artifact_id) or not re.fullmatch(
+            r"[A-Za-z0-9._-]+", package.version
+        ):
+            raise PublicationError("Mã nội dung hoặc phiên bản chứa ký tự không an toàn.")
 
         runtime_dir, _ = collection_runtime_layout(package.target_collection_id, self.base_dir)
         runtime_dir.mkdir(parents=True, exist_ok=True)
         sqlite_file = runtime_dir / COLLECTION_INDEX_BASENAME
 
-        # Ensure sqlite file exists or create initial schema
-        if not sqlite_file.exists():
-            conn = sqlite3.connect(sqlite_file)
-            create_rag_search_schema(conn)
-            conn.execute("CREATE TABLE IF NOT EXISTS published_documents (doc_id TEXT PRIMARY KEY, title TEXT, content TEXT, digest TEXT, scope TEXT, version TEXT, published_at TEXT)")
-            conn.commit()
-            conn.close()
-
-        # Step 1: Acquire LibraryWriterLease BEFORE modifying or backing up
         lease = LibraryWriterLease(runtime_dir)
         if not lease.acquire(owner=actor):
             raise LibraryWriterBusyError(LibraryWriterLease.format_busy_message(runtime_dir))
 
         try:
-            # Step 2: Create point-in-time backup while holding exclusive lease
+            self._ensure_library_database(sqlite_file)
             try:
                 backup_path, manifest = create_library_backup(
                     collection_id=package.target_collection_id,
@@ -234,118 +261,62 @@ class KnowledgePublisher:
                 if "cập nhật" in str(exc).lower() or "tiến trình" in str(exc).lower():
                     raise LibraryWriterBusyError(str(exc)) from exc
                 raise
-            # Step 3: Ingest document into library storage
+
             docs_dir = runtime_dir / "published_docs"
             docs_dir.mkdir(parents=True, exist_ok=True)
-            doc_file = docs_dir / f"{package.artifact_id}_{package.version}.md"
-            doc_file.write_text(package.content_markdown, encoding="utf-8")
+            doc_file = docs_dir / (
+                f"{package.artifact_id}_{package.version}_{package.package_digest[:12]}.md"
+            )
+            if doc_file.resolve().parent != docs_dir.resolve():
+                raise PublicationError("Đường dẫn tài liệu xuất bản không an toàn.")
 
-            # Record in library SQLite: metadata and RAG search indexing
-            conn = sqlite3.connect(sqlite_file)
-            try:
-                create_rag_search_schema(conn)
-                conn.execute(
-                    """
-                    CREATE TABLE IF NOT EXISTS published_documents (
-                        doc_id TEXT PRIMARY KEY,
-                        title TEXT,
-                        content TEXT,
-                        digest TEXT,
-                        scope TEXT,
-                        version TEXT,
-                        published_at TEXT
-                    )
-                    """
-                )
-                conn.execute(
-                    """
-                    INSERT INTO published_documents (doc_id, title, content, digest, scope, version, published_at)
-                    VALUES (?, ?, ?, ?, ?, ?, datetime('now'))
-                    ON CONFLICT(doc_id) DO UPDATE SET
-                        title = excluded.title,
-                        content = excluded.content,
-                        digest = excluded.digest,
-                        scope = excluded.scope,
-                        version = excluded.version,
-                        published_at = excluded.published_at
-                    """,
-                    (
-                        package.package_id,
-                        package.title,
-                        package.content_markdown,
-                        package.package_digest,
-                        package.scope,
-                        package.version,
-                    ),
-                )
+            with tempfile.TemporaryDirectory(prefix="publication_", dir=runtime_dir) as staging_name:
+                staging_dir = Path(staging_name)
+                staging_sqlite = staging_dir / COLLECTION_INDEX_BASENAME
+                staging_doc = staging_dir / doc_file.name
+                previous_doc = staging_dir / f"previous_{doc_file.name}"
+                shutil.copy2(sqlite_file, staging_sqlite)
+                if doc_file.exists():
+                    shutil.copy2(doc_file, previous_doc)
+                staging_doc.write_text(package.content_markdown, encoding="utf-8")
 
-                # Segment markdown content into RAG chunks and index them
-                paragraphs = [p.strip() for p in package.content_markdown.split("\n\n") if p.strip()]
-                if not paragraphs:
-                    paragraphs = [package.content_markdown]
-
-                chunks: List[RAGChunk] = []
-                for idx, para in enumerate(paragraphs):
-                    chunk_id = f"{package.package_id}_c{idx+1}"
-                    chunks.append(
-                        RAGChunk(
-                            chunk_id=chunk_id,
-                            document_id=package.package_id,
-                            element_ids=[f"elem_{chunk_id}"],
-                            text=para,
-                            source_title=package.title,
-                            source_path=str(doc_file),
-                            relative_path=f"published_docs/{package.artifact_id}_{package.version}.md",
-                            citation_label=f"{package.title} p.{idx+1}",
-                            file_type="markdown",
-                            element_types=["paragraph"],
-                            page_numbers=[idx + 1],
-                            sheet_names=[],
-                            slide_numbers=[],
-                            section_labels=[package.scope],
-                            row_ranges=[],
-                            cell_ranges=[],
-                            privacy_mode="local_only",
-                            source_hash=package.package_digest,
-                            chunk_index=idx,
-                        )
-                    )
-                index_rag_chunks(conn, chunks)
-                conn.commit()
-
-                # Step 4: Run SQLite quick_check
-                if not sqlite_quick_check(sqlite_file):
-                    # Rollback from backup
+                conn = sqlite3.connect(staging_sqlite)
+                try:
+                    self._upsert_package(conn, package, doc_file)
+                finally:
                     conn.close()
-                    shutil.copy2(backup_path / COLLECTION_INDEX_BASENAME, sqlite_file)
-                    raise PublicationAcceptanceError("Kiểm tra toàn vẹn SQLite (quick_check) thất bại sau khi nạp tài liệu. Đã tự động hoàn tác.")
 
-                # Step 5: Run real retrieval acceptance test via search_rag_chunks (NO keyword fallback)
-                acceptance_results: Dict[str, bool] = {}
-                for q in package.acceptance_questions:
-                    search_results = search_rag_chunks(conn, query=q, limit=5)
-                    matched = any(
-                        res.document_id == package.package_id or package.package_id in res.chunk_id
-                        for res in search_results
-                    )
-                    acceptance_results[q] = matched
-
-                if not all(acceptance_results.values()):
-                    if doc_file and doc_file.exists():
-                        doc_file.unlink(missing_ok=True)
-                    if backup_path and (backup_path / COLLECTION_INDEX_BASENAME).exists():
-                        shutil.copy2(backup_path / COLLECTION_INDEX_BASENAME, sqlite_file)
+                if not sqlite_quick_check(staging_sqlite):
                     raise PublicationAcceptanceError(
-                        f"Bộ câu hỏi kiểm tra nghiệm thu truy xuất không đạt yêu cầu: {acceptance_results}. Đã hoàn tác an toàn."
+                        "Kiểm tra toàn vẹn SQLite (quick_check) thất bại sau khi nạp tài liệu. Thư viện cũ được giữ nguyên."
                     )
-            except Exception:
-                if doc_file and doc_file.exists():
-                    doc_file.unlink(missing_ok=True)
-                if backup_path and (backup_path / COLLECTION_INDEX_BASENAME).exists():
-                    shutil.copy2(backup_path / COLLECTION_INDEX_BASENAME, sqlite_file)
-                raise
-            finally:
-                conn.close()
+
+                acceptance_results = self._run_acceptance(staging_sqlite, package)
+                if not all(acceptance_results.values()):
+                    raise PublicationAcceptanceError(
+                        f"Bộ câu hỏi kiểm tra nghiệm thu truy xuất không đạt yêu cầu: {acceptance_results}. Thư viện cũ được giữ nguyên."
+                    )
+
+                doc_replaced = False
+                database_replaced = False
+                try:
+                    os.replace(staging_doc, doc_file)
+                    doc_replaced = True
+                    os.replace(staging_sqlite, sqlite_file)
+                    database_replaced = True
+                    if not sqlite_quick_check(sqlite_file):
+                        raise PublicationAcceptanceError(
+                            "Kiểm tra toàn vẹn tệp thư viện chính thức thất bại. Đã khôi phục bản dùng được gần nhất."
+                        )
+                except Exception:
+                    if database_replaced:
+                        self._restore_database(backup_path / COLLECTION_INDEX_BASENAME, sqlite_file)
+                    if doc_replaced:
+                        if previous_doc.exists():
+                            os.replace(previous_doc, doc_file)
+                        else:
+                            doc_file.unlink(missing_ok=True)
+                    raise
 
             # Publication success: Create receipt
             receipt = PublicationReceipt(
@@ -382,12 +353,108 @@ class KnowledgePublisher:
         finally:
             lease.release()
 
+    @staticmethod
+    def _ensure_library_database(sqlite_file: Path) -> None:
+        if sqlite_file.exists():
+            return
+        sqlite_file.parent.mkdir(parents=True, exist_ok=True)
+        conn = sqlite3.connect(sqlite_file)
+        try:
+            create_rag_search_schema(conn)
+            conn.execute(
+                "CREATE TABLE IF NOT EXISTS published_documents (doc_id TEXT PRIMARY KEY, title TEXT, content TEXT, digest TEXT, scope TEXT, version TEXT, published_at TEXT)"
+            )
+            conn.commit()
+        finally:
+            conn.close()
+
+    @staticmethod
+    def _upsert_package(conn: sqlite3.Connection, package: PublicationPackage, doc_file: Path) -> None:
+        create_rag_search_schema(conn)
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS published_documents (
+                doc_id TEXT PRIMARY KEY, title TEXT, content TEXT, digest TEXT,
+                scope TEXT, version TEXT, published_at TEXT
+            )
+            """
+        )
+        if KnowledgePublisher._table_exists(conn, "chunk_fts"):
+            conn.execute("DELETE FROM chunk_fts WHERE chunk_id LIKE ?", (f"{package.package_id}_%",))
+        conn.execute("DELETE FROM chunk_metadata WHERE document_id = ?", (package.package_id,))
+        conn.execute(
+            """
+            INSERT INTO published_documents (doc_id, title, content, digest, scope, version, published_at)
+            VALUES (?, ?, ?, ?, ?, ?, datetime('now'))
+            ON CONFLICT(doc_id) DO UPDATE SET title=excluded.title, content=excluded.content,
+                digest=excluded.digest, scope=excluded.scope, version=excluded.version,
+                published_at=excluded.published_at
+            """,
+            (
+                package.package_id, package.title, package.content_markdown,
+                package.package_digest, package.scope, package.version,
+            ),
+        )
+        paragraphs = [p.strip() for p in package.content_markdown.split("\n\n") if p.strip()]
+        chunks = [
+            RAGChunk(
+                chunk_id=f"{package.package_id}_c{idx + 1}",
+                document_id=package.package_id,
+                element_ids=[f"elem_{package.package_id}_c{idx + 1}"],
+                text=paragraph,
+                source_title=package.title,
+                source_path=str(doc_file),
+                relative_path=f"published_docs/{doc_file.name}",
+                citation_label=f"{package.title} p.{idx + 1}",
+                file_type="markdown",
+                element_types=["paragraph"],
+                page_numbers=[idx + 1],
+                sheet_names=[], slide_numbers=[], section_labels=[package.scope],
+                row_ranges=[], cell_ranges=[], privacy_mode="local_only",
+                source_hash=package.package_digest, chunk_index=idx,
+            )
+            for idx, paragraph in enumerate(paragraphs or [package.content_markdown])
+        ]
+        index_rag_chunks(conn, chunks)
+
+    @staticmethod
+    def _run_acceptance(sqlite_file: Path, package: PublicationPackage) -> Dict[str, bool]:
+        conn = sqlite3.connect(sqlite_file)
+        try:
+            return {
+                question: any(
+                    result.document_id == package.package_id or package.package_id in result.chunk_id
+                    for result in search_rag_chunks(conn, query=question, limit=5)
+                )
+                for question in package.acceptance_questions
+            }
+        finally:
+            conn.close()
+
+    @staticmethod
+    def _restore_database(source: Path, target: Path) -> None:
+        restore_file = target.with_name(f".{target.name}.{uuid.uuid4().hex}.restore")
+        try:
+            shutil.copy2(source, restore_file)
+            os.replace(restore_file, target)
+        finally:
+            restore_file.unlink(missing_ok=True)
+
+    @staticmethod
+    def _table_exists(conn: sqlite3.Connection, table_name: str) -> bool:
+        return conn.execute(
+            "SELECT 1 FROM sqlite_master WHERE type IN ('table', 'view') AND name = ?",
+            (table_name,),
+        ).fetchone() is not None
+
     def revoke_publication(
         self,
         package_id: str,
         collection_id: str = DEFAULT_COLLECTION_ID,
         reason: str = "Thu hồi tài liệu đã xuất bản",
         actor: str = "local_admin",
+        *,
+        record_responsibility: Callable[[], None],
     ) -> PublicationReceipt:
         """Revoke a published package from the library collection.
 
@@ -417,41 +484,49 @@ class KnowledgePublisher:
                     raise LibraryWriterBusyError(str(exc)) from exc
                 raise
 
-            if sqlite_file.exists():
-                conn = sqlite3.connect(sqlite_file)
+            with tempfile.TemporaryDirectory(prefix="revocation_", dir=runtime_dir) as staging_name:
+                staging_dir = Path(staging_name)
+                staging_sqlite = staging_dir / COLLECTION_INDEX_BASENAME
+                shutil.copy2(sqlite_file, staging_sqlite)
+                conn = sqlite3.connect(staging_sqlite)
                 try:
                     conn.execute("DELETE FROM published_documents WHERE doc_id = ?", (package_id,))
-                    cursor = conn.cursor()
-                    try:
-                        cursor.execute("DELETE FROM chunk_metadata WHERE document_id = ?", (package_id,))
-                        cursor.execute("DELETE FROM chunk_fts WHERE chunk_id LIKE ?", (f"{package_id}%",))
-                    except Exception:
-                        pass
+                    if self._table_exists(conn, "chunk_fts"):
+                        conn.execute("DELETE FROM chunk_fts WHERE chunk_id LIKE ?", (f"{package_id}%",))
+                    conn.execute("DELETE FROM chunk_metadata WHERE document_id = ?", (package_id,))
                     conn.commit()
                 finally:
                     conn.close()
-
-            # Remove published markdown file if exists (matching both package_id and artifact_id variants)
-            docs_dir = runtime_dir / "published_docs"
-            if docs_dir.exists():
-                targets = set(docs_dir.glob(f"*{package_id}*.md"))
-                if package_id.startswith("PKG-"):
-                    parts = package_id[4:].split("-V")
-                    if parts:
-                        art_id = parts[0]
-                        targets.update(docs_dir.glob(f"*{art_id}*.md"))
-                for f in targets:
-                    try:
-                        f.unlink()
-                    except Exception as unlink_err:
-                        raise RuntimeError(f"Không thể xóa tệp tài liệu đã xuất bản '{f.name}' khi thu hồi: {unlink_err}") from unlink_err
-                    if f.exists():
-                        raise RuntimeError(f"Tệp tài liệu '{f.name}' vẫn tồn tại sau khi yêu cầu xóa khi thu hồi.")
-
-            # Step 3: Run REAL quick check on SQLite
-            if sqlite_file.exists():
-                if not sqlite_quick_check(sqlite_file):
+                if not sqlite_quick_check(staging_sqlite):
                     raise PublicationError("Kiểm tra toàn vẹn SQLite thất bại sau khi thu hồi tài liệu.")
+
+                targets = self._publication_document_targets(runtime_dir, package_id)
+                moved_files: List[Tuple[Path, Path]] = []
+                database_replaced = False
+                try:
+                    for source in targets:
+                        held = staging_dir / f"held_{len(moved_files)}_{source.name}"
+                        try:
+                            os.replace(source, held)
+                        except Exception as unlink_err:
+                            raise RuntimeError(
+                                f"Không thể xóa tệp tài liệu đã xuất bản '{source.name}' khi thu hồi: {unlink_err}"
+                            ) from unlink_err
+                        moved_files.append((source, held))
+                    os.replace(staging_sqlite, sqlite_file)
+                    database_replaced = True
+                    if not sqlite_quick_check(sqlite_file):
+                        raise PublicationError(
+                            "Kiểm tra toàn vẹn SQLite thất bại sau khi thu hồi tài liệu. Đã khôi phục bản cũ."
+                        )
+                    record_responsibility()
+                except Exception:
+                    if database_replaced:
+                        self._restore_database(backup_path / COLLECTION_INDEX_BASENAME, sqlite_file)
+                    for source, held in reversed(moved_files):
+                        if held.exists():
+                            os.replace(held, source)
+                    raise
 
             return PublicationReceipt(
                 receipt_id=f"REV-{package_id}-{int(datetime.now(timezone.utc).timestamp())}",
@@ -466,3 +541,20 @@ class KnowledgePublisher:
             )
         finally:
             lease.release()
+
+    @staticmethod
+    def _publication_document_targets(runtime_dir: Path, package_id: str) -> List[Path]:
+        docs_dir = runtime_dir / "published_docs"
+        if not docs_dir.exists() or not package_id.startswith("PKG-") or "-V" not in package_id:
+            return []
+        artifact_id, encoded_version = package_id[4:].rsplit("-V", 1)
+        if not re.fullmatch(r"[A-Za-z0-9_-]+", artifact_id) or not re.fullmatch(
+            r"[A-Za-z0-9_-]+", encoded_version
+        ):
+            return []
+        version = encoded_version.replace("_", ".")
+        legacy_file = docs_dir / f"{artifact_id}_{version}.md"
+        immutable_files = sorted(docs_dir.glob(f"{artifact_id}_{version}_*.md"))
+        if legacy_file.exists():
+            immutable_files.append(legacy_file)
+        return immutable_files

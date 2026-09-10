@@ -26,6 +26,7 @@ from aios_habit.local_transcription import (
     ConsentRequiredError,
     ConsentWithdrawnError,
     LocalWhisperCppTranscriptionAdapter,
+    save_local_audio_upload,
     MockLocalTranscriptionEngine,
     TranscriptionEngineUnavailableError,
     TranscriptionError,
@@ -265,3 +266,28 @@ def test_create_manual_transcription_receipt_multiline_and_complex_utf8():
     assert any("45%" in t for t in tokens)
     assert any("0.05 bar" in t for t in tokens)
     assert any("15 phút" in t for t in tokens)
+
+
+def test_audio_upload_is_local_atomic_and_collision_resistant(tmp_path: Path):
+    first = save_local_audio_upload(tmp_path, "SESS/01", "../../ghi-am.wav", b"first-audio")
+    second = save_local_audio_upload(tmp_path, "SESS/01", "../../ghi-am.wav", b"second-audio")
+    upload_dir = (tmp_path / "local_only" / "audio_uploads").resolve()
+
+    assert first.parent == upload_dir
+    assert second.parent == upload_dir
+    assert first != second
+    assert first.read_bytes() == b"first-audio"
+    assert second.read_bytes() == b"second-audio"
+    assert not list(upload_dir.glob("*.tmp"))
+
+
+def test_audio_upload_failure_leaves_no_partial_file(tmp_path: Path, monkeypatch):
+    def fail_replace(_source, _target):
+        raise OSError("synthetic audio replace failure")
+
+    monkeypatch.setattr("aios_habit.local_transcription.os.replace", fail_replace)
+    with pytest.raises(OSError, match="synthetic audio replace failure"):
+        save_local_audio_upload(tmp_path, "SESS-FAIL", "ghi-am.wav", b"audio")
+
+    upload_dir = tmp_path / "local_only" / "audio_uploads"
+    assert not list(upload_dir.iterdir())

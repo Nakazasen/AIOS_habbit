@@ -3,8 +3,11 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
+import re
 import shutil
 import sqlite3
+import tempfile
 from contextlib import closing
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -121,6 +124,43 @@ def _restore_database(database_path: Path, backup_path: Optional[Path], existed_
     elif not existed_before and database_path.exists():
         database_path.unlink()
     _cleanup_sidecars(database_path)
+
+
+def _atomic_write_bytes(destination: Path, payload: bytes) -> None:
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    temporary_path: Optional[Path] = None
+    try:
+        with tempfile.NamedTemporaryFile(
+            mode="wb",
+            dir=destination.parent,
+            prefix=f".{destination.name}.",
+            suffix=".tmp",
+            delete=False,
+        ) as temporary_file:
+            temporary_path = Path(temporary_file.name)
+            temporary_file.write(payload)
+            temporary_file.flush()
+            os.fsync(temporary_file.fileno())
+        os.replace(temporary_path, destination)
+        temporary_path = None
+    finally:
+        if temporary_path is not None:
+            temporary_path.unlink(missing_ok=True)
+
+
+def _safe_filename_part(value: object, fallback: str) -> str:
+    cleaned = re.sub(r"[^a-zA-Z0-9_-]", "_", str(value)).strip("._")
+    return (cleaned[:48].rstrip("_-") or fallback)[:48]
+
+
+def _cleanup_created_transcripts(created_transcripts: list[tuple[Path, str]]) -> None:
+    for path, digest in reversed(created_transcripts):
+        try:
+            current_digest = hashlib.sha256(path.read_bytes()).hexdigest()
+        except OSError:
+            continue
+        if current_digest == digest:
+            path.unlink(missing_ok=True)
 
 
 def _apply_v1(connection: sqlite3.Connection) -> None:
@@ -473,7 +513,10 @@ def _apply_v7(connection: sqlite3.Connection) -> None:
         connection.execute(statement)
 
 
-def _apply_v8(connection: sqlite3.Connection) -> None:
+def _apply_v8(
+    connection: sqlite3.Connection,
+    created_transcripts: Optional[list[tuple[Path, str]]] = None,
+) -> None:
     if _table_exists(connection, "interview_transcripts"):
         _add_column(connection, "interview_transcripts", "transcript_locator TEXT NOT NULL DEFAULT ''")
         _add_column(connection, "interview_transcripts", "transcript_digest TEXT NOT NULL DEFAULT ''")
@@ -493,7 +536,6 @@ def _apply_v8(connection: sqlite3.Connection) -> None:
         ).fetchall()
         for r_id, s_id, s_json, f_text in legacy_rows:
             transcripts_dir.mkdir(parents=True, exist_ok=True)
-            target_file = transcripts_dir / f"{s_id}_{r_id}.json"
             raw_segments_string = None
             try:
                 seg_data = json.loads(s_json) if s_json else []
@@ -509,10 +551,18 @@ def _apply_v8(connection: sqlite3.Connection) -> None:
             if raw_segments_string is not None:
                 raw_payload["raw_segments_string"] = raw_segments_string
             raw_bytes = json.dumps(raw_payload, ensure_ascii=False, indent=2).encode("utf-8")
-            target_file.write_bytes(raw_bytes)
+            digest = hashlib.sha256(raw_bytes).hexdigest()
+            safe_session = _safe_filename_part(s_id, "session")
+            safe_receipt = _safe_filename_part(r_id, "receipt")
+            target_file = transcripts_dir / f"{safe_session}_{safe_receipt}.json"
+            if target_file.exists() and hashlib.sha256(target_file.read_bytes()).hexdigest() != digest:
+                target_file = transcripts_dir / f"{safe_session}_{safe_receipt}_{digest[:12]}.json"
+            if not target_file.exists():
+                _atomic_write_bytes(target_file, raw_bytes)
+                if created_transcripts is not None:
+                    created_transcripts.append((target_file, digest))
             if not target_file.exists() or target_file.stat().st_size == 0:
                 raise RuntimeError(f"Không thể di chuyển bản chép lời {r_id} sang {target_file}: tệp không tồn tại hoặc trống")
-            digest = hashlib.sha256(raw_bytes).hexdigest()
             connection.execute(
                 "UPDATE interview_transcripts SET transcript_locator = ?, transcript_digest = ?, segments_json = '', full_text = '' WHERE receipt_id = ?",
                 (str(target_file), digest, r_id),
@@ -570,6 +620,7 @@ def migrate_store(
     backup_path: Optional[Path] = None
     from_version: Optional[int] = None
     needs_history_bootstrap = False
+    created_transcripts: list[tuple[Path, str]] = []
     try:
         with closing(sqlite3.connect(path)) as connection:
             connection.execute("PRAGMA foreign_keys = ON")
@@ -613,7 +664,7 @@ def migrate_store(
                 elif version == 7:
                     _apply_v7(connection)
                 elif version == 8:
-                    _apply_v8(connection)
+                    _apply_v8(connection, created_transcripts)
                 connection.execute(
                     "INSERT INTO schema_migrations VALUES (?, ?, ?, ?)",
                     (version, _MIGRATION_DESCRIPTIONS[version], _MIGRATION_CHECKSUMS[version], _utc_now()),
@@ -628,9 +679,11 @@ def migrate_store(
             _quick_check(connection)
         return MigrationResult(from_version, target_version, True, backup_path)
     except WorkspaceCaseMigrationError:
+        _cleanup_created_transcripts(created_transcripts)
         if from_version is not None and (target_version != from_version or needs_history_bootstrap):
             _restore_database(path, backup_path, existed_before)
         raise
     except Exception as error:
+        _cleanup_created_transcripts(created_transcripts)
         _restore_database(path, backup_path, existed_before)
         raise WorkspaceCaseMigrationError("MIGRATION_FAILED") from error

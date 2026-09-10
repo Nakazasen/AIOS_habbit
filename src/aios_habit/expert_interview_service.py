@@ -16,7 +16,7 @@ from aios_habit.adaptive_interview_engine import (
     validate_candidate_question,
     validate_session_transition,
 )
-from aios_habit.expert_identity import ACTION_INTERVIEW_ANSWER, VerifiedPrincipal
+from aios_habit.expert_identity import VerifiedPrincipal
 from aios_habit.expert_interview_models import (
     ACTION_COMPLETE,
     ACTION_ESCALATE,
@@ -59,22 +59,20 @@ from aios_habit.controlled_knowledge_artifact import (
     ARTIFACT_STATUS_CHANGES_REQUESTED,
     ARTIFACT_STATUS_REJECTED,
     ARTIFACT_STATUS_REVOKED,
-    ArtifactApproval,
+    DECISION_CONFIRM,
+    DECISION_REJECT,
+    DECISION_REQUEST_CHANGE,
+    DECISION_REVOKE,
     ConflictedClaimArtifactError,
     ControlledArtifactError,
     ControlledKnowledgeArtifact,
-    SelfApprovalDeniedError,
+    DecisionRecord,
     StaleArtifactDigestError,
 )
 from aios_habit.knowledge_claim_extractor import CLAIM_STATUS_CONFLICTED
 
 from aios_habit.knowledge_coverage import GAP_STATUS_ACCEPTED, KnowledgeGapCandidate
-from aios_habit.workspace_case_authorization import (
-    ActorContext,
-    AuthorizationError,
-    WorkspaceCaseAuthorization,
-    trusted_local_actor,
-)
+from aios_habit.workspace_case_authorization import ActorContext, trusted_local_actor
 from aios_habit.workspace_case_repository import WorkspaceCaseRepository
 
 
@@ -92,36 +90,8 @@ class ExpertInterviewService:
         self.store = store or WorkspaceCaseRepository()
         self.interview_repo = interview_repo or ExpertInterviewRepository(self.store.database_path)
         self.actor = actor_context or trusted_local_actor()
-        self.authorization = WorkspaceCaseAuthorization(self.store)
         self.gateway_client = gateway_client
         self._plan_cache: dict[str, InterviewPlan] = {}
-
-    def resolve_eligible_experts(
-        self,
-        scope: str,
-        action: str = ACTION_INTERVIEW_ANSWER,
-    ) -> list[str]:
-        """Resolve eligible expert subject IDs from verified profiles and active grants."""
-        all_grants = self.store.list_scope_grants(action=action, status="active")
-        now_iso = datetime.now(timezone.utc).isoformat()
-
-        eligible_subjects: list[str] = []
-        for grant in all_grants:
-            if grant.scope != "*" and grant.scope != scope:
-                continue
-            if grant.revoked_at is not None:
-                continue
-            if grant.expires_at and grant.expires_at < now_iso:
-                continue
-
-            profile = self.store.get_expert_profile_by_subject(grant.subject) or self.store.get_expert_profile(grant.subject)
-            if profile is None or profile.status != "active":
-                continue
-
-            if grant.subject not in eligible_subjects:
-                eligible_subjects.append(grant.subject)
-
-        return sorted(eligible_subjects)
 
     def create_interview_plan(
         self,
@@ -142,8 +112,6 @@ class ExpertInterviewService:
         if expected_gap_digest is not None and gap.digest != expected_gap_digest:
             raise InterviewPlanError("Khoảng trống tri thức đã bị thay đổi (stale digest).")
 
-        self.authorization.require(actor_ctx, "coverage.manage", gap.scope)
-
         if not gap.evidence_refs:
             raise InterviewPlanError("Khoảng trống tri thức thiếu bằng chứng tham chiếu.")
 
@@ -152,11 +120,7 @@ class ExpertInterviewService:
                 f"Chỉ có thể lập kế hoạch phỏng vấn cho khoảng trống đã được chấp thuận (accepted). Trạng thái hiện tại: '{gap.status}'."
             )
 
-        eligible_experts = self.resolve_eligible_experts(gap.scope)
-        if not eligible_experts:
-            raise InterviewPlanError(
-                f"Không tìm thấy chuyên gia nào có hồ sơ hợp lệ và thẩm quyền cho công đoạn '{gap.scope}'."
-            )
+        recorded_person = actor_ctx.actor_id.strip() or "người dùng"
 
         plan_budget = budget or InterviewBudget(max_turns=10, max_minutes=30, token_budget=4000)
 
@@ -185,7 +149,7 @@ class ExpertInterviewService:
             version=1,
             gap_ids=(gap.gap_id,),
             required_scope=gap.scope,
-            eligible_expert_ids=tuple(eligible_experts),
+            eligible_expert_ids=(recorded_person,),
             seed_questions=seed_questions,
             budget=plan_budget,
             completion_rubric=plan_rubric,
@@ -194,11 +158,18 @@ class ExpertInterviewService:
             created_at=now_iso,
         )
 
+        self.interview_repo.save_interview_plan(plan, f"PLAN-{plan.plan_id}-{plan.digest}")
         self._plan_cache[plan.plan_id] = plan
         return plan
 
     def get_interview_plan(self, plan_id: str) -> Optional[InterviewPlan]:
-        return self._plan_cache.get(plan_id)
+        cached = self._plan_cache.get(plan_id)
+        if cached is not None:
+            return cached
+        persisted = self.interview_repo.get_interview_plan(plan_id)
+        if persisted is not None:
+            self._plan_cache[plan_id] = persisted
+        return persisted
 
     def start_interview_session(
         self,
@@ -214,20 +185,6 @@ class ExpertInterviewService:
         plan = self.get_interview_plan(plan_id)
         if plan is None:
             raise InterviewSessionError(f"Không tìm thấy kế hoạch phỏng vấn '{plan_id}'.")
-
-        if expert_id not in plan.eligible_expert_ids:
-            raise InterviewSessionError(f"Chuyên gia '{expert_id}' không thuộc danh sách đủ điều kiện của kế hoạch này.")
-
-        # Invariant: principal must match expert subject
-        if principal.subject != expert_id:
-            profile = self.store.get_expert_profile(expert_id)
-            if profile is None or profile.subject != principal.subject:
-                raise AuthorizationError("Người dùng xác thực không khớp với danh tính chuyên gia được chỉ định.")
-
-        # Verify active grant at start
-        eligible = self.resolve_eligible_experts(plan.required_scope)
-        if expert_id not in eligible and principal.subject not in eligible:
-            raise AuthorizationError(f"Chuyên gia không có thẩm quyền hợp lệ cho công đoạn '{plan.required_scope}'.")
 
         now_iso = datetime.now(timezone.utc).isoformat()
         session_id = f"SESS-{plan.plan_id}-{int(datetime.now(timezone.utc).timestamp())}-{uuid4().hex[:6]}"
@@ -285,33 +242,9 @@ class ExpertInterviewService:
                 f"Không thể gửi câu trả lời khi phiên đang ở trạng thái '{session.state}'."
             )
 
-        # Recheck caller binding
-        if principal.subject != session.principal_subject_id:
-            raise AuthorizationError("Người gửi câu trả lời không khớp với chuyên gia đã liên kết với phiên này.")
-
         plan = self.get_interview_plan(session.plan_id)
         if plan is None:
             raise InterviewSessionError("Không tìm thấy kế hoạch liên kết của phiên.")
-
-        # T032: Re-verify authorization on every single turn
-        eligible = self.resolve_eligible_experts(plan.required_scope)
-        if session.expert_id not in eligible and session.principal_subject_id not in eligible:
-            # Block session immediately
-            blocked_session = InterviewSession(
-                session_id=session.session_id,
-                plan_id=session.plan_id,
-                expert_id=session.expert_id,
-                principal_subject_id=session.principal_subject_id,
-                state=SESSION_STATE_BLOCKED,
-                consent_state=session.consent_state,
-                checkpoint_seq=session.checkpoint_seq + 1,
-                last_turn_digest=session.last_turn_digest,
-                started_at=session.started_at,
-                updated_at=datetime.now(timezone.utc).isoformat(),
-                stop_reason="authority_revoked_or_expired_during_session",
-            )
-            self.interview_repo.save_session(blocked_session, f"IDEMP-BLOCK-{session.session_id}")
-            raise AuthorizationError("Thẩm quyền của chuyên gia đã bị thu hồi hoặc hết hạn trong quá trình phỏng vấn.")
 
         # T035: Check special commands (pause / stop)
         clean_ans = answer_text.strip().lower()
@@ -499,16 +432,9 @@ class ExpertInterviewService:
                 f"Chỉ có thể tiếp tục lại phiên đang tạm dừng. Trạng thái hiện tại: '{session.state}'."
             )
 
-        if principal.subject != session.principal_subject_id:
-            raise AuthorizationError("Người yêu cầu tiếp tục phiên không khớp với chuyên gia đã liên kết.")
-
         plan = self.get_interview_plan(session.plan_id)
         if plan is None:
             raise InterviewSessionError("Không tìm thấy kế hoạch của phiên.")
-
-        eligible = self.resolve_eligible_experts(plan.required_scope)
-        if session.expert_id not in eligible:
-            raise AuthorizationError("Thẩm quyền của chuyên gia không còn hiệu lực để tiếp tục phiên.")
 
         now_iso = datetime.now(timezone.utc).isoformat()
         resumed_session = InterviewSession(
@@ -544,28 +470,31 @@ class ExpertInterviewService:
         expected_digest: str,
         reason: str,
         idempotency_key: str,
+        *,
+        machine_ref: Optional[str] = None,
+        confidence: Optional[str] = None,
+        checked_source_refs: Optional[Sequence[str]] = None,
+        responsibility_acknowledged: Optional[bool] = None,
     ) -> ControlledKnowledgeArtifact:
-        """Process approval decision with fail-closed self-approval, stale digest, and conflict guards.
-
-        Implements T057.
-        """
+        """Record a responsibility decision bound to the exact artifact version."""
         artifact = self.interview_repo.get_artifact(artifact_id)
         if artifact is None:
             raise ControlledArtifactError(f"Không tìm thấy tài liệu quy chuẩn '{artifact_id}'.")
 
-        # 1. Fail-closed: Self-approval policy
-        if actor_id == artifact.created_by:
-            raise SelfApprovalDeniedError(
-                f"Người tạo tài liệu '{actor_id}' không được phép tự phê duyệt tài liệu do mình tạo."
-            )
-
-        # 2. Fail-closed: Stale digest check
+        missing_responsibility = any(
+            value is None
+            for value in (machine_ref, confidence, checked_source_refs, responsibility_acknowledged)
+        )
+        # A decision is valid only for the exact content version the person reviewed.
         if expected_digest != artifact.digest:
             raise StaleArtifactDigestError(
                 f"Mã kiểm tra tài liệu không khớp (kỳ vọng: {expected_digest[:8]}..., thực tế: {artifact.digest[:8]}...). Tài liệu có thể đã bị sửa đổi."
             )
 
-        # 3. Fail-closed: Cannot approve artifact referencing conflicted claims
+        if missing_responsibility:
+            raise ValueError("Quyết định phải có máy, độ tự tin, nguồn đã kiểm tra và xác nhận trách nhiệm.")
+
+        # Conflicted source material still requires resolution before confirmation.
         if action == APPROVAL_ACTION_APPROVE:
             for claim_id in artifact.claim_ids:
                 claim = self.interview_repo.get_claim(claim_id)
@@ -586,18 +515,26 @@ class ExpertInterviewService:
         else:
             raise ValueError(f"Hành động phê duyệt '{action}' không hợp lệ.")
 
-        # Save approval audit record
-        approval = ArtifactApproval(
-            approval_id=approval_id,
-            artifact_id=artifact_id,
-            artifact_digest=artifact.digest,
-            action=action,
-            actor_id=actor_id,
-            scope=artifact.scope,
-            reason=reason,
+        decision_kind = {
+            APPROVAL_ACTION_APPROVE: DECISION_CONFIRM,
+            APPROVAL_ACTION_REJECT: DECISION_REJECT,
+            APPROVAL_ACTION_REQUEST_CHANGE: DECISION_REQUEST_CHANGE,
+            APPROVAL_ACTION_REVOKE: DECISION_REVOKE,
+        }[action]
+        decision = DecisionRecord(
+            decision_id=approval_id,
+            subject_id=artifact_id,
+            subject_digest=artifact.digest,
+            subject_version=artifact.version,
+            decision=decision_kind,
+            recorded_name=actor_id,
+            machine_ref=machine_ref or "",
+            confidence=confidence or "",
+            rationale=reason,
+            checked_source_refs=tuple(checked_source_refs or ()),
+            responsibility_acknowledged=bool(responsibility_acknowledged),
             created_at=datetime.now(timezone.utc).isoformat(),
         )
-        self.interview_repo.save_artifact_approval(approval, idempotency_key=f"IDEMP-APP-{approval_id}")
 
         # Update artifact status
         updated_artifact = ControlledKnowledgeArtifact(
@@ -612,7 +549,11 @@ class ExpertInterviewService:
             status=new_status,
             created_by=artifact.created_by,
             created_at=artifact.created_at,
-            approvals=tuple(list(artifact.approvals) + [approval]),
+            approvals=artifact.approvals,
+            decisions=tuple(list(artifact.decisions) + [decision]),
         )
-        self.interview_repo.save_artifact(updated_artifact, idempotency_key=idempotency_key)
-        return updated_artifact
+        self.interview_repo.save_decision_and_artifact(decision, updated_artifact, idempotency_key)
+        persisted_artifact = self.interview_repo.get_artifact(artifact_id)
+        if persisted_artifact is None:
+            raise ControlledArtifactError(f"Không thể đọc lại tài liệu quy chuẩn '{artifact_id}' sau khi lưu quyết định.")
+        return persisted_artifact

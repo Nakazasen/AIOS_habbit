@@ -14,6 +14,7 @@ import hashlib
 import json
 import os
 import re
+import tempfile
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
@@ -62,6 +63,40 @@ class ConsentWithdrawnError(TranscriptionError):
 class AudioPathSecurityError(TranscriptionError):
     """Raised when an audio path attempts directory traversal or leaves local_only boundary."""
     pass
+
+
+def save_local_audio_upload(
+    storage_root: Path,
+    session_id: str,
+    original_name: str,
+    payload: bytes,
+) -> Path:
+    """Atomically persist one WAV upload inside the local-only workspace boundary."""
+    if Path(original_name).suffix.lower() != ".wav":
+        raise AudioPathSecurityError("Chỉ chấp nhận tệp âm thanh WAV trong vùng lưu cục bộ.")
+    if not payload:
+        raise AudioPathSecurityError("Tệp âm thanh tải lên đang trống.")
+
+    upload_dir = (Path(storage_root) / "local_only" / "audio_uploads").resolve()
+    upload_dir.mkdir(parents=True, exist_ok=True)
+    safe_session = re.sub(r"[^A-Za-z0-9_-]", "_", session_id)[:48].strip("_-") or "session"
+    safe_stem = re.sub(r"[^A-Za-z0-9_-]", "_", Path(original_name).stem)[:48].strip("_-") or "audio"
+    digest = hashlib.sha256(payload).hexdigest()
+    target = (upload_dir / f"{safe_session}_{safe_stem}_{digest[:12]}.wav").resolve()
+    if target.parent != upload_dir:
+        raise AudioPathSecurityError("Đường dẫn tệp âm thanh nằm ngoài vùng lưu cục bộ.")
+
+    handle, temporary_name = tempfile.mkstemp(prefix=".audio_", suffix=".tmp", dir=upload_dir)
+    temporary = Path(temporary_name)
+    try:
+        with os.fdopen(handle, "wb") as stream:
+            stream.write(payload)
+            stream.flush()
+            os.fsync(stream.fileno())
+        os.replace(temporary, target)
+    finally:
+        temporary.unlink(missing_ok=True)
+    return target
 
 
 @dataclass(frozen=True)
@@ -273,7 +308,9 @@ def validate_local_only_audio_path(audio_path: Path, local_only_root: Path) -> P
     resolved_root = local_only_root.resolve()
     resolved_path = audio_path.resolve()
 
-    if not str(resolved_path).startswith(str(resolved_root)):
+    try:
+        resolved_path.relative_to(resolved_root)
+    except ValueError:
         raise AudioPathSecurityError(
             f"Tệp âm thanh '{audio_path}' nằm ngoài ranh giới vùng dữ liệu cục bộ an toàn '{local_only_root}'."
         )

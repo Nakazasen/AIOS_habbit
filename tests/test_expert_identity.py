@@ -351,3 +351,17 @@ def test_t014_no_fallback_to_local_admin_when_multi_user_enabled(
                 action=ACTION_INTERVIEW_ANSWER,
                 scope="lsu_optical_assembly",
             )
+
+
+def test_os_name_is_only_an_editable_non_authoritative_suggestion(monkeypatch):
+    from aios_habit.expert_identity_windows import suggest_recorded_person
+
+    monkeypatch.setattr("getpass.getuser", lambda: "ten_goi_y")
+    monkeypatch.setattr("platform.node", lambda: "MAY-01")
+    suggestion = suggest_recorded_person()
+
+    assert suggestion.suggested_name == "ten_goi_y"
+    assert suggestion.machine_ref == "MAY-01"
+    assert suggestion.is_verified is False
+    edited_name = "Tên người dùng tự sửa"
+    assert edited_name != suggestion.suggested_name

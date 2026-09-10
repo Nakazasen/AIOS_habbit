@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import sqlite3
 import tempfile
+from dataclasses import replace
 from pathlib import Path
 import pytest
 
@@ -16,8 +17,8 @@ from aios_habit.controlled_knowledge_artifact import (
     ARTIFACT_STATUS_CANDIDATE,
     ARTIFACT_STATUS_REVOKED,
     ARTIFACT_TYPE_SOP,
-    ArtifactApproval,
     ControlledKnowledgeArtifact,
+    DecisionRecord,
 )
 from aios_habit.knowledge_publication import (
     KnowledgePublisher,
@@ -33,16 +34,7 @@ from aios_habit.knowledge_publication import (
 
 
 def make_approved_artifact(artifact_id: str = "ART-SOP-01") -> ControlledKnowledgeArtifact:
-    approval = ArtifactApproval(
-        approval_id="APP-01",
-        artifact_id=artifact_id,
-        artifact_digest="dig_123",
-        action="approve",
-        actor_id="qa_lead",
-        scope="say_keo",
-        reason="Đạt chuẩn kỹ thuật vận hành",
-    )
-    return ControlledKnowledgeArtifact(
+    artifact = ControlledKnowledgeArtifact(
         artifact_id=artifact_id,
         artifact_type=ARTIFACT_TYPE_SOP,
         title="Quy trình sấy keo",
@@ -53,8 +45,14 @@ def make_approved_artifact(artifact_id: str = "ART-SOP-01") -> ControlledKnowled
         claim_map={"CLM-01": "Nhiệt độ sấy tối ưu 65 độ C trong 45 phút."},
         status=ARTIFACT_STATUS_APPROVED,
         created_by="engineer_a",
-        approvals=(approval,),
     )
+    decision = DecisionRecord(
+        decision_id="DEC-01", subject_id=artifact_id, subject_digest=artifact.digest,
+        subject_version=artifact.version, decision="confirm", recorded_name="qa_lead",
+        machine_ref="MAY-QC", confidence="high", rationale="Đạt chuẩn kỹ thuật vận hành",
+        checked_source_refs=("CLM-01",), responsibility_acknowledged=True,
+    )
+    return replace(artifact, decisions=(decision,))
 
 
 def test_seal_unapproved_artifact_fails():
@@ -117,7 +115,13 @@ def test_publish_package_success():
         assert receipt.acceptance_results["Nhiệt độ sấy keo tối ưu là bao nhiêu?"] is True
 
         # Check published markdown exists
-        doc_path = base_dir / "collections" / "tri_thuc" / "published_docs" / "ART-SOP-PUB_1.0.md"
+        doc_paths = list(
+            (base_dir / "collections" / "tri_thuc" / "published_docs").glob(
+                "ART-SOP-PUB_1.0_*.md"
+            )
+        )
+        assert len(doc_paths) == 1
+        doc_path = doc_paths[0]
         assert doc_path.exists()
         assert "Nhiệt độ sấy tối ưu 65 độ C" in doc_path.read_text(encoding="utf-8")
 
@@ -155,6 +159,24 @@ def test_unapproved_status_package_rejected():
             publisher.publish_package(pkg, actor="lead")
 
 
+def test_publish_rejects_artifact_path_traversal_before_writing():
+    with tempfile.TemporaryDirectory() as tmpdir:
+        root = Path(tmpdir)
+        publisher = KnowledgePublisher(base_dir=root / "chat", backup_dir=root / "backups")
+        artifact = make_approved_artifact("../escaped")
+        package = seal_publication_package(
+            artifact=artifact,
+            acceptance_questions=["Nhiệt độ sấy keo là bao nhiêu?"],
+            sealed_by="Người xác nhận",
+        )
+
+        with pytest.raises(PublicationError, match="ký tự không an toàn"):
+            publisher.publish_package(package, actor="Người xác nhận")
+
+        assert not (root / "escaped_1.0.md").exists()
+        assert not (root / "chat" / "collections" / "tri_thuc").exists()
+
+
 def test_revoke_published_package():
     """Test revoking a published package generates backup and removes document."""
     with tempfile.TemporaryDirectory() as tmpdir:
@@ -176,6 +198,7 @@ def test_revoke_published_package():
             collection_id=pkg.target_collection_id,
             reason="Quy trình lỗi thời do thay máy sấy mới",
             actor="lead_reviewer",
+            record_responsibility=lambda: None,
         )
 
         assert receipt.state == "revoked"

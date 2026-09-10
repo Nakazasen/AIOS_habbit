@@ -1,9 +1,9 @@
 # Ma Trận Truy Xuất Nguồn Gốc
 
 Trạng thái: `HOẠT ĐỘNG`
-Vai trò phụ trách: Chủ sở hữu dự án / Người rà soát chất lượng
-Lần rà soát gần nhất: 2026-09-09
-Chu kỳ rà soát: Mỗi khi đóng Thẻ cổng và xét duyệt bản phát hành
+Vai trò chủ sở hữu: Chủ sở hữu dự án / Người rà soát chất lượng
+Xem xét lần cuối: 2026-09-09
+Chu kỳ xem xét: Mỗi khi đóng Thẻ cổng và xét duyệt bản phát hành
 
 | Yêu cầu | Quyết định / Thiết kế | Thành phần | Kiểm thử / Bằng chứng | Runbook / Kiểm soát phát hành |
 |---|---|---|---|---|

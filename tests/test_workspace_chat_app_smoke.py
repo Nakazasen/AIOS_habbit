@@ -20,6 +20,7 @@ import streamlit as st
 from streamlit.testing.v1 import AppTest
 
 import aios_habit.workspace_chat_store as store_mod
+from aios_habit.feature_flags import override_feature_flags
 from aios_habit.workspace_chat_models import (
     DocumentNotebook,
     WorkspaceConversation,
@@ -311,8 +312,8 @@ class TestWorkspaceChatAppSmoke:
 
     def test_smoke_four_stages_goal_010_accessible_from_workspace_chat(self) -> None:
         """T098: Verify all 4 Goal 010 stages are accessible from Workspace Chat without unhandled exceptions."""
-        with sandboxed_chat_store():
-            for stage_mode in ("cases", "coverage", "interview", "review_approve", "library_publish"):
+        with sandboxed_chat_store(), override_feature_flags(expert_knowledge_acquisition=True):
+            for stage_mode in ("library_select", "interview", "review_approve", "library_publish"):
                 at = AppTest.from_file(APP_SCRIPT_PATH, default_timeout=30)
                 at.session_state["wsc_show_case_workspace"] = True
                 at.session_state["wsc_workspace_view_mode"] = stage_mode

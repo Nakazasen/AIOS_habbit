@@ -364,14 +364,14 @@ def test_expert_knowledge_e2e_full_lifecycle(fixtures_dir: Path, local_only_root
         completion_rubric=CompletionRubric(escalation_owner="quality_manager"),
     )
 
-    # SC-002: Fail-closed unauthorized attempt
-    with pytest.raises(Exception):
-        service_manager.start_interview_session(
-            plan_id=plan_1.plan_id,
-            principal=principal_unauthorized,
-            expert_id="unauthorized_guest",
-            idempotency_key="IDEMP-START-FAIL",
-        )
+    # Goal 010 records a supplied name but does not turn it into an authorization gate.
+    guest_session = service_manager.start_interview_session(
+        plan_id=plan_1.plan_id,
+        principal=principal_unauthorized,
+        expert_id="unauthorized_guest",
+        idempotency_key="IDEMP-START-GUEST",
+    )
+    assert guest_session.state == SESSION_STATE_ACTIVE
 
     # Phiên 1: Alpha phỏng vấn GAP-SIM-001
     sess_1 = service_manager.start_interview_session(
@@ -410,9 +410,6 @@ def test_expert_knowledge_e2e_full_lifecycle(fixtures_dir: Path, local_only_root
         actor_context=ActorContext("quality_manager"),
         interview_repo=interview_repo_restarted,
     )
-    # Re-cache plan in restarted service
-    service_restarted._plan_cache[plan_1.plan_id] = plan_1
-
     resumed_sess_1 = service_restarted.resume_interview_session(sess_1.session_id, principal_alpha)
     assert resumed_sess_1.state == SESSION_STATE_ACTIVE
 
@@ -684,19 +681,22 @@ def test_expert_knowledge_e2e_full_lifecycle(fixtures_dir: Path, local_only_root
     service_manager.create_controlled_artifact(sop_candidate, "IDEMP-ART-SOP-1")
 
     # -------------------------------------------------------------------------
-    # 9. Quy trình Phê duyệt: Self-Approval denied & Reviewer Approval
+    # 9. Quyết định có đủ thông tin trách nhiệm, kể cả do người tạo tự xác nhận
     # -------------------------------------------------------------------------
-    # Cấm tự duyệt
-    with pytest.raises(SelfApprovalDeniedError, match="không được phép tự phê duyệt"):
-        service_manager.submit_artifact_approval(
-            approval_id="APP-01",
-            artifact_id="ART-SOP-LSU-001",
-            action=APPROVAL_ACTION_APPROVE,
-            actor_id="win_sim_alpha_expert",  # Creator!
-            expected_digest=sop_candidate.digest,
-            reason="Tôi tự thấy chuẩn rồi",
-            idempotency_key="IDEMP-APP-SELF",
-        )
+    self_confirmed = service_manager.submit_artifact_approval(
+        approval_id="APP-01",
+        artifact_id="ART-SOP-LSU-001",
+        action=APPROVAL_ACTION_APPROVE,
+        actor_id="win_sim_alpha_expert",
+        expected_digest=sop_candidate.digest,
+        reason="Tôi đã kiểm tra nội dung và chịu trách nhiệm.",
+        idempotency_key="IDEMP-APP-SELF",
+        machine_ref="MAY-ALPHA",
+        confidence="high",
+        checked_source_refs=("CLM-SIM-001", "CLM-SIM-002", "CLM-SIM-003"),
+        responsibility_acknowledged=True,
+    )
+    assert self_confirmed.status == ARTIFACT_STATUS_APPROVED
 
     # Duyệt với digest cũ/sai
     with pytest.raises(StaleArtifactDigestError, match="Mã kiểm tra tài liệu không khớp"):
@@ -719,9 +719,13 @@ def test_expert_knowledge_e2e_full_lifecycle(fixtures_dir: Path, local_only_root
         expected_digest=sop_candidate.digest,
         reason="Đã nghiệm thu đạt chuẩn thông số kỹ thuật 55 độ C và 120 giây",
         idempotency_key="IDEMP-APP-VALID",
+        machine_ref="MAY-QC",
+        confidence="high",
+        checked_source_refs=("CLM-SIM-001", "CLM-SIM-002", "CLM-SIM-003"),
+        responsibility_acknowledged=True,
     )
     assert approved_artifact.status == ARTIFACT_STATUS_APPROVED
-    assert len(approved_artifact.approvals) == 1
+    assert len(approved_artifact.decisions) == 2
 
     # -------------------------------------------------------------------------
     # 10. Xuất Bản Vào Thư Viện (SC-004, SC-005)
@@ -780,6 +784,7 @@ def test_expert_knowledge_e2e_full_lifecycle(fixtures_dir: Path, local_only_root
         collection_id=pkg.target_collection_id,
         reason="Phát hiện cần cập nhật phiên bản 2.0",
         actor="quality_manager",
+        record_responsibility=lambda: None,
     )
     assert rev_receipt.state == "revoked"
 

@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import os
 import subprocess
+from contextlib import contextmanager
 from pathlib import Path
 import pytest
 
@@ -234,6 +235,76 @@ def test_transcript_atomic_rollback_cleans_up_file_on_db_error(temp_repo: Expert
     assert not expected_file.exists(), "Transcript file must be cleaned up when DB transaction rolls back"
 
 
+def test_transcript_write_uses_same_directory_temp_file_and_replace(
+    temp_repo: ExpertInterviewRepository, monkeypatch
+):
+    receipt = TranscriptionReceipt(
+        receipt_id="TRCP-ATOMIC-WRITE",
+        session_id="SESS-ATOMIC-WRITE",
+        audio_path="manual_input",
+        audio_digest="d" * 64,
+        engine_name="manual",
+        engine_version="1",
+        segments=(),
+        full_text="Nội dung phải được thay nguyên tử",
+        all_critical_tokens=(),
+    )
+    replace_calls: list[tuple[Path, Path]] = []
+    real_replace = os.replace
+
+    def record_replace(source, destination):
+        source_path = Path(source)
+        destination_path = Path(destination)
+        assert source_path.parent == destination_path.parent
+        assert source_path.exists()
+        replace_calls.append((source_path, destination_path))
+        real_replace(source_path, destination_path)
+
+    monkeypatch.setattr("aios_habit.expert_interview_repository.os.replace", record_replace)
+
+    temp_repo.save_transcription_receipt(receipt, "IDEMP-ATOMIC-WRITE")
+
+    assert replace_calls
+    assert not list(replace_calls[0][1].parent.glob("*.tmp"))
+
+
+def test_transcript_rollback_does_not_overwrite_newer_concurrent_file(
+    temp_repo: ExpertInterviewRepository, monkeypatch
+):
+    receipt = TranscriptionReceipt(
+        receipt_id="TRCP-CONCURRENT-ROLLBACK",
+        session_id="SESS-CONCURRENT-ROLLBACK",
+        audio_path="manual_input",
+        audio_digest="e" * 64,
+        engine_name="manual",
+        engine_version="1",
+        segments=(),
+        full_text="Nội dung của lượt ghi bị lỗi",
+        all_critical_tokens=(),
+    )
+    transcript_file = (
+        temp_repo.database_path.parent / "local_only" / "transcripts" / "TRCP-CONCURRENT-ROLLBACK.json"
+    )
+    transcript_file.parent.mkdir(parents=True, exist_ok=True)
+    transcript_file.write_bytes(b"older-content")
+    newer_content = b"newer-concurrent-content"
+
+    monkeypatch.setattr(temp_repo, "initialize", lambda: None)
+
+    @contextmanager
+    def fail_after_concurrent_write():
+        transcript_file.write_bytes(newer_content)
+        raise RuntimeError("Simulated SQLite failure after concurrent write")
+        yield
+
+    monkeypatch.setattr(temp_repo, "_connection", fail_after_concurrent_write)
+
+    with pytest.raises(RuntimeError, match="Simulated SQLite failure"):
+        temp_repo.save_transcription_receipt(receipt, "IDEMP-CONCURRENT-ROLLBACK")
+
+    assert transcript_file.read_bytes() == newer_content
+
+
 def test_transcript_path_traversal_sanitization(temp_repo: ExpertInterviewRepository):
     """Verify that malicious receipt_id with '..' or slashes cannot escape the transcripts directory."""
     receipt = TranscriptionReceipt(
@@ -276,10 +347,81 @@ def test_missing_transcript_file_raises_fail_closed_error(temp_repo: ExpertInter
 
     # Manually delete the transcript file from disk to simulate file loss / disk failure
     transcripts_dir = temp_repo.database_path.parent / "local_only" / "transcripts"
-    transcript_file = transcripts_dir / "TRCP-MISSING-TEST.json"
+    transcript_files = list(transcripts_dir.glob("*.json"))
+    assert len(transcript_files) == 1
+    transcript_file = transcript_files[0]
     assert transcript_file.exists()
     transcript_file.unlink()
 
     # Must raise FileNotFoundError fail-closed, NOT return an empty transcript
     with pytest.raises(FileNotFoundError):
         temp_repo.get_transcription_receipt("SESS-MISSING-1")
+
+
+def test_sanitized_transcript_names_do_not_collide(temp_repo: ExpertInterviewRepository):
+    receipts = (
+        TranscriptionReceipt(
+            receipt_id="TRCP/A-B",
+            session_id="SESS-COLLISION-A",
+            audio_path="local_cases/audio/a.wav",
+            audio_digest="d" * 64,
+            engine_name="whisper.cpp",
+            engine_version="v1.7.4",
+            segments=(),
+            full_text="Nội dung thứ nhất",
+            all_critical_tokens=(),
+        ),
+        TranscriptionReceipt(
+            receipt_id="TRCP?A-B",
+            session_id="SESS-COLLISION-B",
+            audio_path="local_cases/audio/b.wav",
+            audio_digest="e" * 64,
+            engine_name="whisper.cpp",
+            engine_version="v1.7.4",
+            segments=(),
+            full_text="Nội dung thứ hai",
+            all_critical_tokens=(),
+        ),
+    )
+    for index, receipt in enumerate(receipts):
+        temp_repo.save_transcription_receipt(receipt, f"IDEMP-COLLISION-{index}")
+
+    assert temp_repo.get_transcription_receipt("SESS-COLLISION-A").full_text == "Nội dung thứ nhất"
+    assert temp_repo.get_transcription_receipt("SESS-COLLISION-B").full_text == "Nội dung thứ hai"
+    transcript_files = list((temp_repo.database_path.parent / "local_only" / "transcripts").glob("*.json"))
+    assert len(transcript_files) == 2
+    assert transcript_files[0].name != transcript_files[1].name
+
+
+def test_transcript_idempotency_key_cannot_be_reused_for_other_content(
+    temp_repo: ExpertInterviewRepository,
+):
+    original = TranscriptionReceipt(
+        receipt_id="TRCP-IDEMP-A",
+        session_id="SESS-IDEMP-A",
+        audio_path="local_cases/audio/a.wav",
+        audio_digest="f" * 64,
+        engine_name="whisper.cpp",
+        engine_version="v1.7.4",
+        segments=(),
+        full_text="Nội dung gốc",
+        all_critical_tokens=(),
+    )
+    changed = TranscriptionReceipt(
+        receipt_id="TRCP-IDEMP-B",
+        session_id="SESS-IDEMP-B",
+        audio_path="local_cases/audio/b.wav",
+        audio_digest="1" * 64,
+        engine_name="whisper.cpp",
+        engine_version="v1.7.4",
+        segments=(),
+        full_text="Nội dung khác",
+        all_critical_tokens=(),
+    )
+    temp_repo.save_transcription_receipt(original, "IDEMP-TRANSCRIPT-ONE")
+
+    with pytest.raises(ValueError, match="đã được dùng"):
+        temp_repo.save_transcription_receipt(changed, "IDEMP-TRANSCRIPT-ONE")
+
+    assert temp_repo.get_transcription_receipt("SESS-IDEMP-A").full_text == "Nội dung gốc"
+    assert temp_repo.get_transcription_receipt("SESS-IDEMP-B") is None

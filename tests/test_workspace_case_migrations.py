@@ -491,6 +491,83 @@ def test_migrate_v7_to_v8_migrates_legacy_transcripts_to_local_only(tmp_path):
         assert file_data["segments"][0]["text"] == "Đoạn chép cũ bí mật"
 
 
+def test_migrate_v7_to_v8_sanitizes_transcript_filename(tmp_path):
+    path = tmp_path / "workspace_cases.sqlite"
+    migrate_store(path, target_version=7)
+    with sqlite3.connect(path) as connection:
+        connection.execute(
+            """
+            CREATE TABLE interview_transcripts (
+                receipt_id TEXT PRIMARY KEY, session_id TEXT NOT NULL,
+                audio_path TEXT NOT NULL, audio_digest TEXT NOT NULL,
+                engine_name TEXT NOT NULL, engine_version TEXT NOT NULL,
+                segments_json TEXT NOT NULL DEFAULT '', full_text TEXT NOT NULL DEFAULT '',
+                all_critical_tokens_json TEXT NOT NULL, state TEXT NOT NULL,
+                created_at TEXT NOT NULL, idempotency_key TEXT NOT NULL UNIQUE
+            )
+            """
+        )
+        connection.execute(
+            """
+            INSERT INTO interview_transcripts VALUES
+            ('../../RCP:unsafe', '..\\SESS/unsafe', 'local_cases/audio.wav', 'digest',
+             'manual', '1', '[]', 'Nội dung cũ', '[]', 'draft',
+             '2026-09-08T00:00:00Z', 'IDEMP-UNSAFE')
+            """
+        )
+        connection.commit()
+
+    migrate_store(path, target_version=8)
+
+    with sqlite3.connect(path) as connection:
+        locator = Path(
+            connection.execute(
+                "SELECT transcript_locator FROM interview_transcripts WHERE receipt_id = '../../RCP:unsafe'"
+            ).fetchone()[0]
+        )
+    transcripts_dir = (tmp_path / "local_only" / "transcripts").resolve()
+    assert locator.resolve().parent == transcripts_dir
+    assert ".." not in locator.name
+    assert "/" not in locator.name and "\\" not in locator.name
+
+
+def test_migration_v8_rollback_removes_new_transcript_files(tmp_path):
+    path = tmp_path / "workspace_cases.sqlite"
+    migrate_store(path, target_version=7)
+    with sqlite3.connect(path) as connection:
+        connection.execute(
+            """
+            CREATE TABLE interview_transcripts (
+                receipt_id TEXT PRIMARY KEY, session_id TEXT NOT NULL,
+                audio_path TEXT NOT NULL, audio_digest TEXT NOT NULL,
+                engine_name TEXT NOT NULL, engine_version TEXT NOT NULL,
+                segments_json TEXT NOT NULL DEFAULT '', full_text TEXT NOT NULL DEFAULT '',
+                all_critical_tokens_json TEXT NOT NULL, state TEXT NOT NULL,
+                created_at TEXT NOT NULL, idempotency_key TEXT NOT NULL UNIQUE
+            )
+            """
+        )
+        connection.execute(
+            """
+            INSERT INTO interview_transcripts VALUES
+            ('RCP-ROLLBACK', 'SESS-ROLLBACK', 'local_cases/audio.wav', 'digest',
+             'manual', '1', '[]', 'Không được để lại tệp mồ côi', '[]', 'draft',
+             '2026-09-08T00:00:00Z', 'IDEMP-ROLLBACK')
+            """
+        )
+        connection.commit()
+
+    def fail(stage: str, version: int) -> None:
+        if stage == "after_migration" and version == 8:
+            raise RuntimeError("v8 migration synthetic fault")
+
+    with pytest.raises(WorkspaceCaseMigrationError, match="MIGRATION_FAILED"):
+        migrate_store(path, target_version=8, fault_injector=fail)
+
+    transcripts_dir = tmp_path / "local_only" / "transcripts"
+    assert not list(transcripts_dir.glob("*.json"))
+
+
 def test_migrate_v7_to_v8_migrates_legacy_transcripts_on_memory_db():
     import json
     from aios_habit.workspace_case_migrations import _apply_v8

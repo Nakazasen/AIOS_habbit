@@ -506,10 +506,22 @@ def test_four_stages_navigation_and_vietnamese_labels():
     assert "review_approve" in src
     assert "library_publish" in src
     assert "interview" in src
-    assert "Chặng 1: Phỏng vấn chuyên gia" in src
-    assert "Chặng 2 & 3: Kiểm tra & Phê duyệt bản nháp" in src
-    assert "Chặng 4: Đưa vào thư viện dùng chung" in src
-    assert "Mã kiểm tra toàn vẹn nội dung" in Path("src/aios_habit/workspace_case_ui.py").read_text(encoding="utf-8")
+    assert "1. Chọn thư viện" in src
+    assert "2. Phỏng vấn" in src
+    assert "3. Kiểm tra bản nháp" in src
+    assert "4. Đưa vào thư viện" in src
+    ui_source = Path("src/aios_habit/workspace_case_ui.py").read_text(encoding="utf-8")
+    assert "Nội dung bản nháp" in ui_source
+    assert "Lưu chỉnh sửa và xác nhận" in ui_source
+    assert "Mã kiểm tra toàn vẹn nội dung" not in ui_source
+
+
+def test_user_edit_creates_next_artifact_version():
+    from aios_habit.workspace_case_ui import _next_artifact_version
+
+    assert _next_artifact_version("1.0") == "1.1"
+    assert _next_artifact_version("2") == "3"
+    assert _next_artifact_version("ban-dau") == "ban-dau.1"
 
 
 def test_case_workspace_library_publish_wiring_has_no_type_error():
@@ -522,12 +534,37 @@ def test_case_workspace_library_publish_wiring_has_no_type_error():
     assert "base_dir" in src
 
 
+def test_goal_010_workspace_modes_fail_closed_until_enabled():
+    from aios_habit.feature_flags import override_feature_flags
+    from aios_habit.workspace_case_ui import _case_workspace_modes
+
+    with override_feature_flags(expert_knowledge_acquisition=False):
+        assert _case_workspace_modes() == ("cases",)
+
+    with override_feature_flags(expert_knowledge_acquisition=True):
+        assert _case_workspace_modes() == (
+            "library_select",
+            "interview",
+            "review_approve",
+            "library_publish",
+        )
+
+
+def test_interview_plan_uses_service_actor_context_compatibly():
+    from aios_habit.workspace_case_ui import render_expert_interview_view
+    import inspect
+
+    src = inspect.getsource(render_expert_interview_view)
+    assert "service.actor.actor_id" in src
+    assert "service.actor_context" not in src
+
+
 def test_controlled_artifact_approval_id_uniqueness():
     """Verify that the approval_id generation logic in workspace_case_ui incorporates approval count and timestamp."""
     from aios_habit.workspace_case_ui import render_controlled_artifacts_management
     import inspect
     src = inspect.getsource(render_controlled_artifacts_management)
-    assert "list_artifact_approvals" in src
+    assert "list_decision_records" in src
     assert "app_count + 1" in src
 
 
@@ -655,17 +692,29 @@ def test_render_controlled_artifacts_management_with_existing_artifact_executes_
          patch("streamlit.selectbox", return_value=0), \
          patch("streamlit.tabs", return_value=tab_mocks), \
          patch("streamlit.form"), \
-         patch("streamlit.text_area", return_value="Căn cứ phê duyệt hợp lệ."), \
+             patch(
+                 "streamlit.text_area",
+                 side_effect=[
+                     "# Nội dung quy trình đã chỉnh sửa",
+                    "Căn cứ phê duyệt hợp lệ.",
+                     "Biên bản phỏng vấn đã kiểm tra",
+                 ],
+             ), \
+             patch("streamlit.text_input", return_value="Người kiểm tra"), \
+             patch("streamlit.checkbox", return_value=True), \
          patch("streamlit.form_submit_button", return_value=True), \
          patch("streamlit.success") as mock_success, \
          patch("streamlit.rerun"):
         render_controlled_artifacts_management(svc, principal)
         mock_success.assert_called_once()
-        # Verify approval record was created in database
-        approvals = interview_repo.list_artifact_approvals("ART-TEST-001")
-        assert len(approvals) == 1
-        assert approvals[0].artifact_id == "ART-TEST-001"
-        assert approvals[0].approval_id.startswith("APP-ART-TEST-001-1-")
+        decisions = interview_repo.list_decision_records("ART-TEST-001")
+        assert len(decisions) == 1
+        assert decisions[0].subject_id == "ART-TEST-001"
+        assert decisions[0].decision_id.startswith("APP-ART-TEST-001-1-")
+        revised = interview_repo.get_artifact("ART-TEST-001")
+        assert revised is not None
+        assert revised.version == "1.1"
+        assert revised.content_markdown == "# Nội dung quy trình đã chỉnh sửa"
 
 
 def test_render_knowledge_publication_management_revocation_executes_cleanly(tmp_path):
@@ -716,24 +765,43 @@ def test_render_knowledge_publication_management_revocation_executes_cleanly(tmp
         state="revoked",
     )
 
+    def revoke_and_record(**kwargs):
+        kwargs["record_responsibility"]()
+        return mock_receipt
+
     tab_mocks = [MagicMock(), MagicMock()]
     with patch("streamlit.subheader"), \
          patch("streamlit.info"), \
          patch("streamlit.write"), \
          patch("streamlit.caption"), \
-         patch("streamlit.selectbox", return_value=0), \
+         patch("streamlit.selectbox", side_effect=[0, "PKG-ART-PUB-001-V1_0", "high"]), \
          patch("streamlit.tabs", return_value=tab_mocks), \
          patch("streamlit.form"), \
          patch("streamlit.text_input", return_value="PKG-ART-PUB-001-V1_0"), \
          patch("streamlit.text_area", return_value="Lý do thu hồi hợp lệ."), \
+         patch("streamlit.checkbox", return_value=True), \
          patch("streamlit.form_submit_button", return_value=True), \
-         patch.object(publisher, "revoke_publication", return_value=mock_receipt) as mock_revoke, \
+         patch.object(
+             publisher,
+             "list_published_documents",
+             return_value=[{
+                 "doc_id": "PKG-ART-PUB-001-V1_0",
+                 "title": "Quy trình đã duyệt",
+                 "version": "1.0",
+                 "published_at": "2026-09-09T00:00:00Z",
+             }],
+         ), \
+         patch.object(publisher, "revoke_publication", side_effect=revoke_and_record) as mock_revoke, \
          patch("streamlit.success") as mock_success:
         render_knowledge_publication_management(svc, publisher, principal)
-        mock_revoke.assert_called_once_with(
-            package_id="PKG-ART-PUB-001-V1_0",
-            collection_id=DEFAULT_COLLECTION_ID,
-            reason="Lý do thu hồi hợp lệ.",
-            actor="test_actor",
-        )
+        mock_revoke.assert_called_once()
+        revoke_args = mock_revoke.call_args.kwargs
+        assert revoke_args["package_id"] == "PKG-ART-PUB-001-V1_0"
+        assert revoke_args["collection_id"] == DEFAULT_COLLECTION_ID
+        assert revoke_args["reason"] == "Lý do thu hồi hợp lệ."
+        assert revoke_args["actor"] == "test_actor"
+        assert callable(revoke_args["record_responsibility"])
         mock_success.assert_called_once()
+        decisions = interview_repo.list_decision_records("ART-PUB-001")
+        assert len(decisions) == 1
+        assert decisions[0].decision == "revoke"

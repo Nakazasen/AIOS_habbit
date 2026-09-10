@@ -1,9 +1,9 @@
 # Khả Năng Tương Thích Dữ Liệu Lưu Trữ
 
 Trạng thái: `HOÀN TẤT MỘT PHẦN`
-Vai trò phụ trách: Chủ sở hữu dự án / Người rà soát lưu trữ
-Lần rà soát gần nhất: 2026-09-09
-Chu kỳ rà soát: Trước khi thay đổi mô hình lưu trữ, trường JSONL hoặc lược đồ SQLite
+Vai trò chủ sở hữu: Chủ sở hữu dự án / Người rà soát lưu trữ
+Xem xét lần cuối: 2026-09-09
+Chu kỳ xem xét: Trước khi thay đổi mô hình lưu trữ, trường JSONL hoặc lược đồ SQLite
 
 ## Các hình thức lưu trữ hiện tại
 
