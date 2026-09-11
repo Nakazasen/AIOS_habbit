@@ -48,8 +48,11 @@ from aios_habit.local_transcription import (
     ConsentRecord,
     TranscriptionReceipt,
     TranscriptionSegment,
+    extract_critical_tokens,
     validate_local_only_audio_path,
 )
+
+COORDINATION_EMPTY_JSON = "[]"
 
 
 def _atomic_write_bytes(destination: Path, payload: bytes) -> None:
@@ -80,6 +83,46 @@ def _file_has_digest(path: Path, expected_digest: str) -> bool:
         return hashlib.sha256(path.read_bytes()).hexdigest() == expected_digest
     except OSError:
         return False
+
+
+def _transcript_sidecar_bytes(receipt: TranscriptionReceipt) -> bytes:
+    payload = {
+        "receipt_id": receipt.receipt_id,
+        "session_id": receipt.session_id,
+        "full_text": receipt.full_text,
+        "segments": [
+            {
+                "segment_id": segment.segment_id,
+                "start_time": segment.start_time,
+                "end_time": segment.end_time,
+                "text": segment.text,
+                "tokens": list(segment.tokens),
+                "critical_tokens": list(segment.critical_tokens),
+                "is_confirmed": segment.is_confirmed,
+                "edited_text": segment.edited_text,
+            }
+            for segment in receipt.segments
+        ],
+        "all_critical_tokens": list(receipt.all_critical_tokens),
+        "state": receipt.state,
+    }
+    return json.dumps(payload, ensure_ascii=False, indent=2).encode("utf-8")
+
+
+def _critical_tokens_from_sidecar(
+    data: dict,
+    segments: list[TranscriptionSegment],
+    full_text: str,
+) -> tuple[str, ...]:
+    raw_tokens = data.get("all_critical_tokens") or ()
+    if raw_tokens:
+        return tuple(raw_tokens)
+    from_segments = tuple(dict.fromkeys(token for segment in segments for token in segment.critical_tokens))
+    if from_segments:
+        return from_segments
+    if full_text:
+        return extract_critical_tokens(full_text)
+    return ()
 
 
 def default_interview_db_path() -> Path:
@@ -223,6 +266,15 @@ class ExpertInterviewRepository:
                 """
             )
             conn.execute("CREATE INDEX IF NOT EXISTS interview_transcripts_session_idx ON interview_transcripts(session_id)")
+            conn.execute(
+                """
+                UPDATE interview_transcripts
+                SET all_critical_tokens_json = ?
+                WHERE all_critical_tokens_json IS NOT NULL
+                  AND TRIM(all_critical_tokens_json) NOT IN ('', '[]')
+                """,
+                (COORDINATION_EMPTY_JSON,),
+            )
 
             conn.execute(
                 """
@@ -770,26 +822,7 @@ class ExpertInterviewRepository:
             raise RuntimeError(f"Không thể khởi tạo thư mục lưu trữ cục bộ '{transcripts_dir}': {exc}") from exc
 
         # 1. Isolate raw transcript into local_only storage (outside SQLite database)
-        segments_data = [
-            {
-                "segment_id": s.segment_id,
-                "start_time": s.start_time,
-                "end_time": s.end_time,
-                "text": s.text,
-                "tokens": list(s.tokens),
-                "critical_tokens": list(s.critical_tokens),
-                "is_confirmed": s.is_confirmed,
-                "edited_text": s.edited_text,
-            }
-            for s in receipt.segments
-        ]
-        raw_payload = {
-            "receipt_id": receipt.receipt_id,
-            "session_id": receipt.session_id,
-            "full_text": receipt.full_text,
-            "segments": segments_data,
-        }
-        raw_json_bytes = json.dumps(raw_payload, ensure_ascii=False, indent=2).encode("utf-8")
+        raw_json_bytes = _transcript_sidecar_bytes(receipt)
         transcript_digest = hashlib.sha256(raw_json_bytes).hexdigest()
 
         with self._connection() as conn:
@@ -834,7 +867,6 @@ class ExpertInterviewRepository:
 
         _atomic_write_bytes(transcript_file, raw_json_bytes)
         transcript_locator = str(transcript_file)
-        critical_json = json.dumps(list(receipt.all_critical_tokens), ensure_ascii=False)
 
         try:
             with self._connection() as conn:
@@ -866,7 +898,7 @@ class ExpertInterviewRepository:
                         transcript_digest,
                         "",  # Zero raw transcript stored in SQLite DB
                         "",  # Zero raw full text stored in SQLite DB
-                        critical_json,
+                        COORDINATION_EMPTY_JSON,
                         receipt.state,
                         receipt.created_at,
                         idempotency_key,
@@ -930,14 +962,15 @@ class ExpertInterviewRepository:
                 if fallback_path.exists():
                     locator_path = fallback_path
 
+            sidecar_data: dict = {}
             if locator_path and locator_path.exists():
                 file_bytes = locator_path.read_bytes()
                 computed_digest = hashlib.sha256(file_bytes).hexdigest()
                 if transcript_digest and computed_digest != transcript_digest:
                     raise RuntimeError(f"Sai lệch mã băm bản chép lời tại '{locator_path}'.")
-                data = json.loads(file_bytes.decode("utf-8"))
-                full_text = data.get("full_text", "")
-                segments_raw = data.get("segments", [])
+                sidecar_data = json.loads(file_bytes.decode("utf-8"))
+                full_text = sidecar_data.get("full_text", "")
+                segments_raw = sidecar_data.get("segments", [])
                 segments_list = [
                     TranscriptionSegment(
                         segment_id=s["segment_id"],
@@ -971,7 +1004,8 @@ class ExpertInterviewRepository:
             elif transcript_locator:
                 raise FileNotFoundError(f"Tệp bản chép lời cục bộ không tồn tại hoặc đã bị mất tại: '{transcript_locator}'.")
 
-            critical_tokens = tuple(json.loads(row["all_critical_tokens_json"]))
+            critical_tokens = _critical_tokens_from_sidecar(sidecar_data, segments_list, full_text)
+            receipt_state = str(sidecar_data.get("state") or row["state"])
 
             return TranscriptionReceipt(
                 receipt_id=row["receipt_id"],
@@ -983,9 +1017,52 @@ class ExpertInterviewRepository:
                 segments=tuple(segments_list),
                 full_text=full_text,
                 all_critical_tokens=critical_tokens,
-                state=row["state"],
+                state=receipt_state,
                 created_at=row["created_at"],
             )
+
+    def replace_transcription_receipt(self, receipt: TranscriptionReceipt) -> TranscriptionReceipt:
+        """Update an existing transcript sidecar and coordination metadata without storing tokens."""
+        self.initialize()
+        with self._connection() as conn:
+            existing = conn.execute(
+                """
+                SELECT receipt_id, transcript_locator, transcript_digest
+                FROM interview_transcripts
+                WHERE receipt_id = ?
+                """,
+                (receipt.receipt_id,),
+            ).fetchone()
+        if existing is None:
+            raise ValueError("Không tìm thấy bản chép lời để cập nhật.")
+
+        locator = Path(existing["transcript_locator"])
+        if not locator.exists():
+            fallback = self.database_path.parent / "local_only" / "transcripts" / locator.name
+            if fallback.exists():
+                locator = fallback
+        if not locator.exists():
+            raise FileNotFoundError("Tệp bản chép lời cục bộ không tồn tại hoặc đã bị mất.")
+
+        raw_json_bytes = _transcript_sidecar_bytes(receipt)
+        transcript_digest = hashlib.sha256(raw_json_bytes).hexdigest()
+        backup_bytes = locator.read_bytes()
+        _atomic_write_bytes(locator, raw_json_bytes)
+        try:
+            with self._connection() as conn:
+                conn.execute(
+                    """
+                    UPDATE interview_transcripts
+                    SET transcript_digest = ?, all_critical_tokens_json = ?, state = ?
+                    WHERE receipt_id = ?
+                    """,
+                    (transcript_digest, COORDINATION_EMPTY_JSON, receipt.state, receipt.receipt_id),
+                )
+        except Exception:
+            if _file_has_digest(locator, transcript_digest):
+                _atomic_write_bytes(locator, backup_bytes)
+            raise
+        return receipt
 
     def save_claim(self, claim: KnowledgeClaim, idempotency_key: str) -> None:
         """Idempotently save or update a knowledge claim."""

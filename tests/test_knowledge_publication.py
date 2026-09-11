@@ -212,3 +212,70 @@ def test_revoke_published_package():
             assert not any(r.document_id == pkg.package_id for r in results)
         finally:
             conn.close()
+
+
+def test_revoke_missing_package_does_not_report_success_or_record_responsibility():
+    with tempfile.TemporaryDirectory() as tmpdir:
+        base_dir = Path(tmpdir) / "workspace_chat"
+        backup_dir = Path(tmpdir) / "backups"
+        publisher = KnowledgePublisher(base_dir=base_dir, backup_dir=backup_dir)
+
+        artifact = make_approved_artifact("ART-SOP-REAL")
+        pkg = seal_publication_package(
+            artifact=artifact,
+            acceptance_questions=["Nhiệt độ sấy keo là bao nhiêu?"],
+            sealed_by="lead_reviewer",
+        )
+        publisher.publish_package(pkg, actor="lead_reviewer")
+
+        recorded: list[str] = []
+        with pytest.raises(PublicationError, match="Không tìm thấy"):
+            publisher.revoke_publication(
+                package_id="PKG-KHONG-CO-V1_0",
+                collection_id=pkg.target_collection_id,
+                reason="Thu hồi mã gói không tồn tại",
+                actor="lead_reviewer",
+                record_responsibility=lambda: recorded.append("called"),
+            )
+        assert recorded == []
+
+        db_path = base_dir / "collections" / "tri_thuc" / "library.sqlite"
+        conn = sqlite3.connect(db_path)
+        try:
+            results = search_rag_chunks(conn, query="Nhiệt độ sấy keo", limit=5)
+            assert any(r.document_id == pkg.package_id for r in results)
+        finally:
+            conn.close()
+
+
+def test_revoke_already_revoked_package_does_not_report_success():
+    with tempfile.TemporaryDirectory() as tmpdir:
+        base_dir = Path(tmpdir) / "workspace_chat"
+        backup_dir = Path(tmpdir) / "backups"
+        publisher = KnowledgePublisher(base_dir=base_dir, backup_dir=backup_dir)
+
+        artifact = make_approved_artifact("ART-SOP-TWICE")
+        pkg = seal_publication_package(
+            artifact=artifact,
+            acceptance_questions=["Nhiệt độ sấy keo là bao nhiêu?"],
+            sealed_by="lead_reviewer",
+        )
+        publisher.publish_package(pkg, actor="lead_reviewer")
+        publisher.revoke_publication(
+            package_id=pkg.package_id,
+            collection_id=pkg.target_collection_id,
+            reason="Thu hồi lần một",
+            actor="lead_reviewer",
+            record_responsibility=lambda: None,
+        )
+
+        recorded: list[str] = []
+        with pytest.raises(PublicationError, match="Không tìm thấy"):
+            publisher.revoke_publication(
+                package_id=pkg.package_id,
+                collection_id=pkg.target_collection_id,
+                reason="Thu hồi lần hai",
+                actor="lead_reviewer",
+                record_responsibility=lambda: recorded.append("called"),
+            )
+        assert recorded == []

@@ -618,6 +618,18 @@ def test_interview_plan_uses_service_actor_context_compatibly():
     assert "service.actor_context" not in src
 
 
+def test_interview_audio_configures_whisper_and_confirms_tokens():
+    from aios_habit.workspace_case_ui import render_expert_interview_view
+    import inspect
+
+    src = inspect.getsource(render_expert_interview_view)
+    assert "resolve_whisper_cpp_runtime" in src
+    assert "binary_path=binary_path" in src
+    assert "model_path=model_path" in src
+    assert "confirm_critical_tokens" in src
+    assert "replace_transcription_receipt" in src
+
+
 def test_controlled_artifact_approval_id_uniqueness():
     """Verify that the approval_id generation logic in workspace_case_ui incorporates approval count and timestamp."""
     from aios_habit.workspace_case_ui import render_knowledge_publication_management

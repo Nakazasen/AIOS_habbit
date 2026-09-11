@@ -74,7 +74,9 @@ from aios_habit.local_transcription import (
     LocalWhisperCppTranscriptionAdapter,
     TranscriptionReceipt,
     TranscriptionSegment,
+    confirm_critical_tokens,
     create_manual_transcription_receipt,
+    resolve_whisper_cpp_runtime,
     save_local_audio_upload,
 )
 from aios_habit.ui_safety import safe_vietnamese_ui_message
@@ -879,7 +881,11 @@ def render_expert_interview_view(
                                 uploaded_audio.getvalue(),
                             )
                     if audio_file_path and audio_file_path.exists():
-                        adapter = LocalWhisperCppTranscriptionAdapter()
+                        binary_path, model_path = resolve_whisper_cpp_runtime()
+                        adapter = LocalWhisperCppTranscriptionAdapter(
+                            binary_path=binary_path,
+                            model_path=model_path,
+                        )
                         try:
                             receipt = adapter.transcribe(
                                 audio_path=audio_file_path,
@@ -911,10 +917,21 @@ def render_expert_interview_view(
                     if last_receipt.all_critical_tokens:
                         st.write("Hãy kiểm tra các số, mã máy và đơn vị sau:")
                         st.write(", ".join(str(tok) for tok in last_receipt.all_critical_tokens))
-                    if st.button("Dùng lời đã chép làm câu trả lời", key=f"btn_confirm_tokens_{curr_session.session_id}"):
-                        st.session_state[f"ans_text_{curr_session.session_id}"] = last_receipt.full_text
-                        st.success("Đã điền lời đã chép vào ô trả lời. Hãy đọc lại rồi gửi.")
-                        st.rerun()
+                    if st.button("Xác nhận mã máy, thông số và dùng lời đã chép", key=f"btn_confirm_tokens_{curr_session.session_id}"):
+                        try:
+                            confirmed_receipt = confirm_critical_tokens(last_receipt)
+                            interview_repo.replace_transcription_receipt(confirmed_receipt)
+                            st.session_state[f"last_receipt_{curr_session.session_id}"] = confirmed_receipt
+                            st.session_state[f"ans_text_{curr_session.session_id}"] = confirmed_receipt.full_text
+                            st.success("Đã xác nhận mã máy, thông số và điền lời đã chép vào ô trả lời.")
+                            st.rerun()
+                        except Exception:
+                            st.error(
+                                _goal010_error(
+                                    "Chưa xác nhận được mã máy và thông số.",
+                                    "Hãy thử lại hoặc nhập câu trả lời bằng chữ.",
+                                )
+                            )
             else:
                 st.write("Ghi âm chỉ lưu trên máy này. Không bắt buộc; bạn luôn có thể trả lời bằng chữ.")
                 col_c1, col_c2 = st.columns(2)

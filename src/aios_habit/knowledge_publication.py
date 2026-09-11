@@ -469,6 +469,23 @@ class KnowledgePublisher:
             raise LibraryWriterBusyError(LibraryWriterLease.format_busy_message(runtime_dir))
 
         try:
+            if not sqlite_file.exists():
+                raise PublicationError("Không tìm thấy tài liệu đã xuất bản để thu hồi.")
+
+            existing_row = False
+            conn = sqlite3.connect(sqlite_file)
+            try:
+                if self._table_exists(conn, "published_documents"):
+                    existing_row = conn.execute(
+                        "SELECT 1 FROM published_documents WHERE doc_id = ?",
+                        (package_id,),
+                    ).fetchone() is not None
+            finally:
+                conn.close()
+            targets = self._publication_document_targets(runtime_dir, package_id)
+            if not existing_row and not targets:
+                raise PublicationError("Không tìm thấy tài liệu đã xuất bản để thu hồi.")
+
             # Step 2: Backup before revocation while holding lease
             try:
                 backup_path, manifest = create_library_backup(
@@ -490,17 +507,29 @@ class KnowledgePublisher:
                 shutil.copy2(sqlite_file, staging_sqlite)
                 conn = sqlite3.connect(staging_sqlite)
                 try:
-                    conn.execute("DELETE FROM published_documents WHERE doc_id = ?", (package_id,))
+                    if self._table_exists(conn, "published_documents"):
+                        conn.execute(
+                            "DELETE FROM published_documents WHERE doc_id = ?",
+                            (package_id,),
+                        )
                     if self._table_exists(conn, "chunk_fts"):
                         conn.execute("DELETE FROM chunk_fts WHERE chunk_id LIKE ?", (f"{package_id}%",))
-                    conn.execute("DELETE FROM chunk_metadata WHERE document_id = ?", (package_id,))
+                    if self._table_exists(conn, "chunk_metadata"):
+                        conn.execute("DELETE FROM chunk_metadata WHERE document_id = ?", (package_id,))
+                    remaining = None
+                    if self._table_exists(conn, "published_documents"):
+                        remaining = conn.execute(
+                            "SELECT 1 FROM published_documents WHERE doc_id = ?",
+                            (package_id,),
+                        ).fetchone()
                     conn.commit()
                 finally:
                     conn.close()
+                if existing_row and remaining is not None:
+                    raise PublicationError("Chưa xóa được dữ liệu tài liệu khi thu hồi.")
                 if not sqlite_quick_check(staging_sqlite):
                     raise PublicationError("Kiểm tra toàn vẹn SQLite thất bại sau khi thu hồi tài liệu.")
 
-                targets = self._publication_document_targets(runtime_dir, package_id)
                 moved_files: List[Tuple[Path, Path]] = []
                 database_replaced = False
                 try:
@@ -513,6 +542,9 @@ class KnowledgePublisher:
                                 f"Không thể xóa tệp tài liệu đã xuất bản '{source.name}' khi thu hồi: {unlink_err}"
                             ) from unlink_err
                         moved_files.append((source, held))
+                    leftover_targets = [source for source, _held in moved_files if source.exists()]
+                    if leftover_targets:
+                        raise PublicationError("Chưa xóa được tệp tài liệu khi thu hồi.")
                     os.replace(staging_sqlite, sqlite_file)
                     database_replaced = True
                     if not sqlite_quick_check(sqlite_file):

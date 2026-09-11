@@ -27,6 +27,7 @@ from aios_habit.local_transcription import (
     ConsentRecord,
     TranscriptionReceipt,
     TranscriptionSegment,
+    confirm_critical_tokens,
 )
 
 
@@ -192,11 +193,14 @@ def test_sqlite_db_contains_no_raw_transcript_text(temp_repo: ExpertInterviewRep
         assert row["transcript_locator"] != "", "Column transcript_locator must point to local_only file"
         assert row["transcript_digest"] != "", "Column transcript_digest must hold SHA-256 digest"
 
+        assert row["all_critical_tokens_json"] == "[]"
+
         # Verify raw text does not appear in any column of interview_transcripts
         for col_name in row.keys():
             val = str(row[col_name])
             assert "tuyệt mật" not in val, f"Raw transcript leaked into column {col_name}"
             assert "hiệu chuẩn gương" not in val, f"Raw transcript leaked into column {col_name}"
+            assert "LSU-300" not in val, f"Critical token leaked into column {col_name}"
 
     # Verify repository get_transcription_receipt correctly reloads from local_only store
     reloaded = temp_repo.get_transcription_receipt("SESS-RAW-ISOLATION-1")
@@ -204,6 +208,7 @@ def test_sqlite_db_contains_no_raw_transcript_text(temp_repo: ExpertInterviewRep
     assert reloaded.full_text == raw_secret_text
     assert len(reloaded.segments) == 1
     assert reloaded.segments[0].text == raw_secret_text
+    assert reloaded.all_critical_tokens == ("LSU-300",)
 
 
 def test_transcript_atomic_rollback_cleans_up_file_on_db_error(temp_repo: ExpertInterviewRepository, monkeypatch):
@@ -425,3 +430,85 @@ def test_transcript_idempotency_key_cannot_be_reused_for_other_content(
 
     assert temp_repo.get_transcription_receipt("SESS-IDEMP-A").full_text == "Nội dung gốc"
     assert temp_repo.get_transcription_receipt("SESS-IDEMP-B") is None
+
+
+def test_sqlite_db_scrubs_existing_critical_tokens_on_initialize(temp_repo: ExpertInterviewRepository):
+    """Coordination DB must not keep machine codes or measurements after initialize."""
+    receipt = TranscriptionReceipt(
+        receipt_id="TRCP-SCRUB-1",
+        session_id="SESS-SCRUB-1",
+        audio_path="local_cases/audio/scrub.wav",
+        audio_digest="a" * 64,
+        engine_name="whisper.cpp",
+        engine_version="v1.7.4",
+        segments=(
+            TranscriptionSegment("SEG-SCRUB-1", 0.0, 1.0, "Máy LSU-300 chạy 2.5 bar", ("Máy",), ("LSU-300", "2.5 bar")),
+        ),
+        full_text="Máy LSU-300 chạy 2.5 bar",
+        all_critical_tokens=("LSU-300", "2.5 bar"),
+    )
+    temp_repo.save_transcription_receipt(receipt, "IDEMP-SCRUB-1")
+    with temp_repo._connection() as conn:
+        conn.execute(
+            "UPDATE interview_transcripts SET all_critical_tokens_json = ? WHERE receipt_id = ?",
+            ('["LSU-300", "2.5 bar"]', "TRCP-SCRUB-1"),
+        )
+
+    temp_repo.initialize()
+    with temp_repo._connection() as conn:
+        row = conn.execute(
+            "SELECT all_critical_tokens_json FROM interview_transcripts WHERE receipt_id = ?",
+            ("TRCP-SCRUB-1",),
+        ).fetchone()
+        assert row["all_critical_tokens_json"] == "[]"
+
+    reloaded = temp_repo.get_transcription_receipt("SESS-SCRUB-1")
+    assert reloaded is not None
+    assert "LSU-300" in reloaded.all_critical_tokens
+    assert "2.5 bar" in reloaded.all_critical_tokens
+
+
+def test_confirm_transcription_persists_flags_without_sqlite_tokens(temp_repo: ExpertInterviewRepository):
+    receipt = TranscriptionReceipt(
+        receipt_id="TRCP-CONFIRM-1",
+        session_id="SESS-CONFIRM-1",
+        audio_path="local_cases/audio/confirm.wav",
+        audio_digest="b" * 64,
+        engine_name="whisper.cpp",
+        engine_version="v1.7.4",
+        segments=(
+            TranscriptionSegment(
+                "SEG-CONFIRM-1",
+                0.0,
+                1.5,
+                "Hiệu chuẩn LSU-200 ở 65 độ C",
+                ("Hiệu", "chuẩn"),
+                ("LSU-200", "65 độ C"),
+                is_confirmed=False,
+            ),
+        ),
+        full_text="Hiệu chuẩn LSU-200 ở 65 độ C",
+        all_critical_tokens=("LSU-200", "65 độ C"),
+        state="draft",
+    )
+    temp_repo.save_transcription_receipt(receipt, "IDEMP-CONFIRM-1")
+    confirmed = temp_repo.replace_transcription_receipt(confirm_critical_tokens(receipt))
+
+    assert confirmed.state == "confirmed"
+    assert confirmed.segments[0].is_confirmed is True
+
+    reloaded = temp_repo.get_transcription_receipt("SESS-CONFIRM-1")
+    assert reloaded is not None
+    assert reloaded.state == "confirmed"
+    assert reloaded.segments[0].is_confirmed is True
+    assert reloaded.all_critical_tokens == ("LSU-200", "65 độ C")
+
+    with temp_repo._connection() as conn:
+        row = conn.execute(
+            "SELECT all_critical_tokens_json, state FROM interview_transcripts WHERE receipt_id = ?",
+            ("TRCP-CONFIRM-1",),
+        ).fetchone()
+        assert row["all_critical_tokens_json"] == "[]"
+        assert row["state"] == "confirmed"
+        assert "LSU-200" not in str(row["all_critical_tokens_json"])
+        assert "65" not in str(row["all_critical_tokens_json"])

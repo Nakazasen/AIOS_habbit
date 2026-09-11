@@ -13,6 +13,8 @@ Verifies:
 from __future__ import annotations
 
 import hashlib
+import json
+import subprocess
 from pathlib import Path
 import pytest
 
@@ -28,12 +30,15 @@ from aios_habit.local_transcription import (
     LocalWhisperCppTranscriptionAdapter,
     save_local_audio_upload,
     MockLocalTranscriptionEngine,
+    TRANSCRIPT_STATE_CONFIRMED,
     TranscriptionEngineUnavailableError,
     TranscriptionError,
     TranscriptionReceipt,
     TranscriptionSegment,
+    confirm_critical_tokens,
     create_manual_transcription_receipt,
     extract_critical_tokens,
+    resolve_whisper_cpp_runtime,
     validate_local_only_audio_path,
 )
 
@@ -294,3 +299,128 @@ def test_audio_upload_failure_leaves_no_partial_file(tmp_path: Path, monkeypatch
 
     upload_dir = tmp_path / "local_only" / "audio_uploads"
     assert not list(upload_dir.iterdir())
+
+
+def test_confirm_critical_tokens_marks_machine_codes_and_measurements():
+    receipt = TranscriptionReceipt(
+        receipt_id="TRCP-CONFIRM-UNIT",
+        session_id="SESS-CONFIRM-UNIT",
+        audio_path="local_cases/audio/confirm.wav",
+        audio_digest="c" * 64,
+        engine_name="whisper.cpp",
+        engine_version="v1.7.4",
+        segments=(
+            TranscriptionSegment(
+                "SEG-1",
+                0.0,
+                1.0,
+                "Máy LSU-300 chạy 2.5 bar",
+                ("Máy",),
+                ("LSU-300", "2.5 bar"),
+                is_confirmed=False,
+            ),
+        ),
+        full_text="Máy LSU-300 chạy 2.5 bar",
+        all_critical_tokens=("LSU-300", "2.5 bar"),
+        state="draft",
+    )
+    confirmed = confirm_critical_tokens(receipt)
+    assert receipt.segments[0].is_confirmed is False
+    assert receipt.state == "draft"
+    assert confirmed.segments[0].is_confirmed is True
+    assert confirmed.state == TRANSCRIPT_STATE_CONFIRMED
+    assert confirmed.all_critical_tokens == ("LSU-300", "2.5 bar")
+
+
+def test_resolve_whisper_runtime_from_env(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    binary = tmp_path / "whisper-cli.exe"
+    model = tmp_path / "ggml-base.bin"
+    binary.write_bytes(b"fake-binary")
+    model.write_bytes(b"fake-model")
+    monkeypatch.setenv("AIOS_WHISPER_CPP_BINARY", str(binary))
+    monkeypatch.setenv("AIOS_WHISPER_CPP_MODEL", str(model))
+
+    resolved_binary, resolved_model = resolve_whisper_cpp_runtime()
+    assert resolved_binary == binary.resolve()
+    assert resolved_model == model.resolve()
+
+
+def test_whisper_cpp_requires_both_binary_and_model(tmp_path: Path, sample_wav_path: Path):
+    binary = tmp_path / "whisper-cli.exe"
+    binary.write_bytes(b"fake-binary")
+    consent = ConsentRecord(
+        consent_id="CSNT-MODEL-MISSING",
+        session_id="SESS-MODEL-MISSING",
+        subject="expert_1",
+        state=CONSENT_STATE_GRANTED,
+    )
+    adapter = LocalWhisperCppTranscriptionAdapter(binary_path=binary, model_path=None)
+    with pytest.raises(TranscriptionEngineUnavailableError, match="chép"):
+        adapter.transcribe(sample_wav_path, "SESS-MODEL-MISSING", consent)
+
+
+WHISPER_CPP_V174_JSON = {
+    "systeminfo": "whisper.cpp v1.7.4",
+    "result": {"language": "vi"},
+    "transcription": [
+        {
+            "timestamps": {"from": "00:00:00,000", "to": "00:00:02,500"},
+            "offsets": {"from": 0, "to": 2500},
+            "text": " Nhiệt độ tối đa năm mươi lăm độ C tại buồng sấy LSU-200",
+        },
+        {
+            "timestamps": {"from": "00:00:02,500", "to": "00:00:05,000"},
+            "offsets": {"from": 2500, "to": 5000},
+            "text": " Áp suất khí nén đạt 2.5 bar.",
+        },
+    ],
+}
+
+
+def test_whisper_cpp_reads_v174_json_file_not_stdout(tmp_path: Path, sample_wav_path: Path, monkeypatch: pytest.MonkeyPatch):
+    """Real adapter must read whisper.cpp v1.7.4 JSON from --output-file, not stdout."""
+    binary = tmp_path / "whisper-cli.exe"
+    model = tmp_path / "ggml-base.bin"
+    binary.write_bytes(b"fake-whisper-binary")
+    model.write_bytes(b"fake-whisper-model")
+
+    captured: dict[str, object] = {}
+
+    def fake_run(cmd, **kwargs):
+        assert "--output-json" in cmd
+        assert "--output-file" in cmd
+        prefix = Path(cmd[cmd.index("--output-file") + 1])
+        json_path = prefix.with_suffix(".json")
+        captured["prefix"] = prefix
+        captured["json_path"] = json_path
+        json_path.write_text(json.dumps(WHISPER_CPP_V174_JSON), encoding="utf-8")
+        stdout = "whisper_print: processing audio ...\n"
+        with pytest.raises(json.JSONDecodeError):
+            json.loads(stdout)
+        return subprocess.CompletedProcess(cmd, 0, stdout=stdout, stderr="")
+
+    monkeypatch.setattr("aios_habit.local_transcription.subprocess.run", fake_run)
+    adapter = LocalWhisperCppTranscriptionAdapter(binary_path=binary, model_path=model)
+    consent = ConsentRecord(
+        consent_id="CSNT-WHISPER-OK",
+        session_id="SESS-WHISPER-OK",
+        subject="expert_1",
+        state=CONSENT_STATE_GRANTED,
+    )
+    receipt = adapter.transcribe(sample_wav_path, "SESS-WHISPER-OK", consent)
+
+    assert receipt.engine_name == "whisper.cpp"
+    assert receipt.engine_version == "v1.7.4"
+    assert receipt.full_text == (
+        "Nhiệt độ tối đa năm mươi lăm độ C tại buồng sấy LSU-200 "
+        "Áp suất khí nén đạt 2.5 bar."
+    )
+    assert len(receipt.segments) == 2
+    assert receipt.segments[0].start_time == pytest.approx(0.0)
+    assert receipt.segments[0].end_time == pytest.approx(2.5)
+    assert receipt.segments[1].start_time == pytest.approx(2.5)
+    assert receipt.segments[1].end_time == pytest.approx(5.0)
+    assert any("LSU-200" in token for token in receipt.all_critical_tokens)
+    assert any("2.5 bar" in token for token in receipt.all_critical_tokens)
+    assert captured["json_path"].exists() is False
+    assert captured["prefix"].parent.exists() is False

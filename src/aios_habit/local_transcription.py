@@ -14,11 +14,15 @@ import hashlib
 import json
 import os
 import re
+import subprocess
 import tempfile
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Protocol, Sequence, Tuple
+
+WHISPER_CPP_BINARY_ENV = "AIOS_WHISPER_CPP_BINARY"
+WHISPER_CPP_MODEL_ENV = "AIOS_WHISPER_CPP_MODEL"
 
 # Consent States
 CONSENT_STATE_GRANTED = "granted"
@@ -191,6 +195,64 @@ def extract_critical_tokens(text: str) -> Tuple[str, ...]:
     return tuple(cleaned)
 
 
+def confirm_critical_tokens(receipt: TranscriptionReceipt) -> TranscriptionReceipt:
+    """Mark machine codes, measurements, and units as human-confirmed."""
+    confirmed_segments = tuple(replace(segment, is_confirmed=True) for segment in receipt.segments)
+    return replace(receipt, segments=confirmed_segments, state=TRANSCRIPT_STATE_CONFIRMED)
+
+
+def _first_existing_file(paths: Sequence[Path]) -> Optional[Path]:
+    for path in paths:
+        try:
+            if path.is_file():
+                return path.resolve()
+        except OSError:
+            continue
+    return None
+
+
+def resolve_whisper_cpp_runtime(
+    *,
+    binary_path: Optional[Path] = None,
+    model_path: Optional[Path] = None,
+) -> Tuple[Optional[Path], Optional[Path]]:
+    """Resolve whisper.cpp binary and model from explicit paths, env, then local_tools."""
+    binaries: List[Path] = []
+    models: List[Path] = []
+    if binary_path is not None:
+        binaries.append(Path(binary_path))
+    env_binary = os.environ.get(WHISPER_CPP_BINARY_ENV, "").strip()
+    if env_binary:
+        binaries.append(Path(env_binary))
+    if model_path is not None:
+        models.append(Path(model_path))
+    env_model = os.environ.get(WHISPER_CPP_MODEL_ENV, "").strip()
+    if env_model:
+        models.append(Path(env_model))
+
+    repo_root = Path(__file__).resolve().parents[2]
+    tools_dir = repo_root / "local_tools" / "whisper.cpp"
+    binaries.extend(
+        [
+            tools_dir / "whisper-cli.exe",
+            tools_dir / "whisper.exe",
+            tools_dir / "main.exe",
+            tools_dir / "whisper-cli",
+            tools_dir / "whisper",
+            tools_dir / "main",
+        ]
+    )
+    models.extend(
+        [
+            tools_dir / "models" / "ggml-base.bin",
+            tools_dir / "ggml-base.bin",
+            repo_root / "models" / "ggml-base.bin",
+            repo_root / "local_runs" / "whisper.cpp" / "models" / "ggml-base.bin",
+        ]
+    )
+    return _first_existing_file(binaries), _first_existing_file(models)
+
+
 class LocalTranscriptionProtocol(Protocol):
     """Interface contract for local speech-to-text engines."""
 
@@ -361,36 +423,53 @@ class LocalWhisperCppTranscriptionAdapter:
         if not audio_path.exists():
             raise FileNotFoundError(f"Không tìm thấy tệp âm thanh tại '{audio_path}'.")
 
-        # 4. Check if binary executable exists on the system
-        if self.binary_path and self.binary_path.exists():
-            # In a deployed production environment with pre-built binary
-            import subprocess
-            cmd = [
-                str(self.binary_path),
-                "-m", str(self.model_path) if self.model_path else "models/ggml-base.bin",
-                "-f", str(audio_path),
-                "-l", "vi",
-                "--output-json",
-            ]
-            try:
-                proc = subprocess.run(
+        binary_path = Path(self.binary_path) if self.binary_path else None
+        model_path = Path(self.model_path) if self.model_path else None
+        if binary_path is None or not binary_path.exists() or model_path is None or not model_path.exists():
+            raise TranscriptionEngineUnavailableError(
+                "Chưa chép được lời từ tệp ghi âm vì bộ máy trên máy này chưa sẵn sàng. "
+                "Tệp ghi âm vẫn được giữ an toàn. Hãy dùng ô văn bản để nhập câu trả lời."
+            )
+
+        try:
+            with tempfile.TemporaryDirectory(prefix="whisper_cpp_") as tmpdir:
+                output_prefix = Path(tmpdir) / "transcript"
+                cmd = [
+                    str(binary_path),
+                    "-m", str(model_path),
+                    "-f", str(audio_path),
+                    "-l", "vi",
+                    "--output-json",
+                    "--output-file", str(output_prefix),
+                ]
+                subprocess.run(
                     cmd,
                     capture_output=True,
                     text=True,
                     timeout=timeout_seconds,
                     check=True,
                 )
-                output_json = json.loads(proc.stdout)
-                # Parse JSON segments from whisper.cpp
+                json_path = output_prefix.with_suffix(".json")
+                if not json_path.is_file():
+                    raise TranscriptionEngineUnavailableError(
+                        "Chưa chép được lời từ tệp ghi âm. Tệp ghi âm vẫn được giữ trên máy này. "
+                        "Hãy dùng ô văn bản để nhập câu trả lời."
+                    )
+                output_json = json.loads(json_path.read_text(encoding="utf-8"))
                 segments_list = []
                 for idx, item in enumerate(output_json.get("transcription", [])):
-                    text = item.get("text", "").strip()
+                    text = str(item.get("text", "")).strip()
+                    # whisper.cpp v1.7.4: timestamps.from/to are clock strings;
+                    # offsets.from/to are integer milliseconds. Segment times are seconds.
+                    offsets = item.get("offsets") or {}
+                    start_time = float(offsets["from"]) / 1000.0
+                    end_time = float(offsets["to"]) / 1000.0
                     critical = extract_critical_tokens(text)
                     segments_list.append(
                         TranscriptionSegment(
                             segment_id=f"SEG-{session_id}-{idx + 1}",
-                            start_time=float(item.get("timestamps", {}).get("from", idx)),
-                            end_time=float(item.get("timestamps", {}).get("to", idx + 1)),
+                            start_time=start_time,
+                            end_time=end_time,
                             text=text,
                             tokens=tuple(text.split()),
                             critical_tokens=critical,
@@ -413,20 +492,20 @@ class LocalWhisperCppTranscriptionAdapter:
                     state=TRANSCRIPT_STATE_DRAFT,
                     created_at=now_iso,
                 )
-            except subprocess.TimeoutExpired:
-                raise TranscriptionError(
-                    "Chưa chép được lời từ tệp ghi âm vì mất quá nhiều thời gian. "
-                    "Tệp ghi âm vẫn được giữ trên máy này. Hãy dùng ô văn bản để nhập câu trả lời."
-                )
-            except Exception:
-                raise TranscriptionEngineUnavailableError(
-                    "Chưa chép được lời từ tệp ghi âm. Tệp ghi âm vẫn được giữ trên máy này. "
-                    "Hãy dùng ô văn bản để nhập câu trả lời."
-                )
-        raise TranscriptionEngineUnavailableError(
-            "Chưa chép được lời từ tệp ghi âm vì bộ máy trên máy này chưa sẵn sàng. "
-            "Tệp ghi âm vẫn được giữ an toàn. Hãy dùng ô văn bản để nhập câu trả lời."
-        )
+        except subprocess.TimeoutExpired:
+            raise TranscriptionError(
+                "Chưa chép được lời từ tệp ghi âm vì mất quá nhiều thời gian. "
+                "Tệp ghi âm vẫn được giữ trên máy này. Hãy dùng ô văn bản để nhập câu trả lời."
+            )
+        except TranscriptionError:
+            raise
+        except TranscriptionEngineUnavailableError:
+            raise
+        except Exception:
+            raise TranscriptionEngineUnavailableError(
+                "Chưa chép được lời từ tệp ghi âm. Tệp ghi âm vẫn được giữ trên máy này. "
+                "Hãy dùng ô văn bản để nhập câu trả lời."
+            )
 
 
 def create_manual_transcription_receipt(
