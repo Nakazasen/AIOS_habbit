@@ -335,11 +335,9 @@ class LocalWhisperCppTranscriptionAdapter:
         self,
         binary_path: Optional[Path] = None,
         model_path: Optional[Path] = None,
-        fallback_mock_engine: Optional[Any] = None,
     ) -> None:
         self.binary_path = binary_path
         self.model_path = model_path
-        self.fallback_mock_engine = fallback_mock_engine
 
     def transcribe(
         self,
@@ -416,23 +414,19 @@ class LocalWhisperCppTranscriptionAdapter:
                     created_at=now_iso,
                 )
             except subprocess.TimeoutExpired:
-                raise TranscriptionError(f"Thời gian chép lời vượt quá giới hạn an toàn {timeout_seconds}s. Vui lòng kiểm tra lại tệp âm thanh hoặc chuyển sang nhập văn bản thủ công.")
-            except Exception as e:
-                raise TranscriptionEngineUnavailableError(
-                    f"Bộ máy chép lời whisper.cpp gặp sự cố trong quá trình thực thi: {e}. Vui lòng thử lại hoặc chuyển sang nhập văn bản thủ công."
+                raise TranscriptionError(
+                    "Chưa chép được lời từ tệp ghi âm vì mất quá nhiều thời gian. "
+                    "Tệp ghi âm vẫn được giữ trên máy này. Hãy dùng ô văn bản để nhập câu trả lời."
                 )
-        elif self.fallback_mock_engine is not None:
-            return self.fallback_mock_engine.transcribe(
-                audio_path=audio_path,
-                session_id=session_id,
-                consent=consent,
-                timeout_seconds=timeout_seconds,
-                local_only_root=local_only_root,
-            )
-        else:
-            raise TranscriptionEngineUnavailableError(
-                "Bộ máy chép lời whisper.cpp chưa sẵn sàng hoặc không tìm thấy tệp thực thi. Vui lòng kiểm tra cài đặt bộ máy hoặc chuyển sang chế độ nhập văn bản thủ công."
-            )
+            except Exception:
+                raise TranscriptionEngineUnavailableError(
+                    "Chưa chép được lời từ tệp ghi âm. Tệp ghi âm vẫn được giữ trên máy này. "
+                    "Hãy dùng ô văn bản để nhập câu trả lời."
+                )
+        raise TranscriptionEngineUnavailableError(
+            "Chưa chép được lời từ tệp ghi âm vì bộ máy trên máy này chưa sẵn sàng. "
+            "Tệp ghi âm vẫn được giữ an toàn. Hãy dùng ô văn bản để nhập câu trả lời."
+        )
 
 
 def create_manual_transcription_receipt(

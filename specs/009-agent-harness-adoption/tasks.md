@@ -1,63 +1,77 @@
-# Danh sách việc: Agent lập trình và thao tác file có kiểm soát
+# Danh sách việc: Trợ lý thực thi công việc cho kỹ sư
 
-## Giai đoạn 1 — Khóa nền và spike
+## Giai đoạn 1 — Khóa phạm vi và runtime
 
-- [ ] T001 Ghi phiên bản, checksum, giấy phép và notices của OpenCode/Cline/Code-OSS vào `docs/roadmap/active/AIOS-AGENT-HARNESS-ADOPTION.md`
-- [ ] T002 Tạo repo fixture Python và TypeScript không chứa dữ liệu thật trong `tests/fixtures/agent_harness/`
-- [ ] T003 Viết capability probe fail-closed trong `scripts/probe_opencode_runtime.py`
-- [ ] T004 Viết contract test health/version/session/event/read/search/deny trong `tests/test_agent_runtime_capabilities.py`
-- [ ] T005 Quyết định G1 trong `docs/roadmap/active/AIOS-AGENT-HARNESS-ADOPTION.md`; dừng `BLOCKED` hoặc cho phép G2
+- [ ] T001 Ghi phiên bản, checksum, giấy phép và cách khởi động OpenCode cục bộ vào `docs/roadmap/active/AIOS-AGENT-HARNESS-ADOPTION.md`
+- [ ] T002 Tạo fixture Windows không có dữ liệu thật cho báo cáo, tài liệu công đoạn và repo lỗi mẫu trong `tests/fixtures/agent_harness/`
+- [ ] T003 Viết kiểm thử probe read/search/create/edit/test/resume/undo và deny ngoài vùng trong `tests/test_agent_runtime_capabilities.py`
+- [ ] T004 Viết probe OpenCode theo đúng bản đã pin trong `scripts/probe_opencode_runtime.py`
+- [ ] T005 Ghi quyết định G1 dựa trên output thật vào `docs/roadmap/active/AIOS-AGENT-HARNESS-ADOPTION.md`; chỉ tạo adapter nếu probe đạt
 
-## Giai đoạn 2 — Nền protocol dùng chung
+## Giai đoạn 2 — Nền dùng chung tối thiểu
 
-- [ ] T006 Định nghĩa protocol và event có version trong `src/aios_habit/agent_runtime_protocol.py`
-- [ ] T007 Nâng Task Pack với base digest, runtime kind và budget trong `src/aios_habit/agent_task_pack.py`
-- [ ] T008 Nâng policy theo tool/path/command/expiry trong `src/aios_habit/workspace_agent_policy.py`
-- [ ] T009 Tạo adapter OpenCode chỉ sau khi T005 cho phép trong `src/aios_habit/opencode_runtime_adapter.py`
-- [ ] T010 Kiểm thử idempotency, event replay, cancel và resume trong `tests/test_agent_runtime_session.py`
+- [ ] T006 Mở rộng policy theo task root, loại nhiệm vụ, lệnh test và vùng cấm trong `src/aios_habit/workspace_agent_policy.py`
+- [ ] T007 Tạo adapter OpenCode mỏng cho session, event, file và command trong `src/aios_habit/opencode_runtime_adapter.py`
+- [ ] T008 Mở rộng orchestrator cho checkpoint, resume, rollback và một writer theo workspace trong `src/aios_habit/workspace_agent_orchestrator.py`
+- [ ] T009 Mở rộng record `agent_work` bằng migration nhỏ, có backup và rollback trong `src/aios_habit/workspace_case_repository.py`
+- [ ] T010 Kiểm thử chung về path traversal, secret, Unicode, idempotency và restart trong `tests/test_agent_work_foundation.py`
 
-## Giai đoạn 3 — US1: Quan sát và lập kế hoạch (P1)
+## Giai đoạn 3 — US1: Báo cáo lỗi có biểu đồ
 
-**Kiểm thử độc lập**: Agent đọc/search đúng repo fixture, tạo kế hoạch và không thể ghi hoặc chạy lệnh khi policy deny.
+**Mục tiêu**: kỹ sư giao hồ sơ lỗi và nhận bản nháp báo cáo tiếng Việt có bảng/biểu đồ đúng nguồn.
 
-- [ ] T011 [US1] Ánh xạ Task Pack sang runtime session trong `src/aios_habit/workspace_agent_orchestrator.py`
-- [ ] T012 [P] [US1] Thêm read/search adapter có kiểm tra root trong `src/aios_habit/opencode_runtime_adapter.py`
-- [ ] T013 [P] [US1] Thêm negative tests write/command/path traversal trong `tests/test_agent_runtime_readonly.py`
-- [ ] T014 [US1] Ghi receipt đọc/search đã làm sạch trong `src/aios_habit/agent_result_import.py`
+**Kiểm thử độc lập**: fixture có log và số liệu tạo được báo cáo; mọi điểm trên biểu đồ truy ngược được, còn fixture thiếu số liệu không sinh biểu đồ giả.
 
-## Giai đoạn 4 — US2: Coding trong worktree (P2)
+- [ ] T011 [US1] Viết kiểm thử hợp đồng báo cáo, nguồn số liệu và fallback không vẽ biểu đồ trong `tests/test_agent_error_report_artifact.py`
+- [ ] T012 [P] [US1] Dùng lại bộ đọc tài liệu và metadata Excel để tạo bảng dữ liệu biểu đồ trong `src/aios_habit/agent_work_artifact.py`
+- [ ] T013 [P] [US1] Dùng lại khả năng Mermaid/visual hiện có để tạo biểu đồ hoặc sơ đồ kèm provenance trong `src/aios_habit/agent_work_artifact.py`
+- [ ] T014 [US1] Tạo hoặc cập nhật bản nháp báo cáo lỗi và checkpoint hoàn tác trong `src/aios_habit/agent_work_artifact.py`
+- [ ] T015 [US1] Thêm hành động “Tạo báo cáo lỗi” và thẻ kết quả đời thường trong `src/aios_habit/workspace_chat_app.py`
 
-**Kiểm thử độc lập**: bug fixture được sửa và test trong worktree; main workspace chỉ đổi sau khi duyệt đúng proposal digest; rollback sạch.
+## Giai đoạn 4 — US2: Rà soát thiết kế công đoạn
 
-- [ ] T015 [US2] Tạo và xác minh Git worktree tách biệt trong `src/aios_habit/workspace_agent_orchestrator.py`
-- [ ] T016 [US2] Khóa proposal patch/command bất biến trong `src/aios_habit/coding_assistant.py`
-- [ ] T017 [P] [US2] Thực thi command job có allowlist, timeout và process-tree cancel trong `src/aios_habit/opencode_runtime_adapter.py`
-- [ ] T018 [US2] Thêm snapshot, diff/hunk và rollback trong `src/aios_habit/workspace_agent_orchestrator.py`
-- [ ] T019 [US2] Chặn apply khi base/file/proposal/approval hết hạn trong `src/aios_habit/coding_assistant.py`
-- [ ] T020 [US2] Xác minh exit code và workspace state độc lập trong `src/aios_habit/agent_result_import.py`
-- [ ] T021 [P] [US2] Kiểm thử dirty workspace, conflict, rename/delete và partial hunk trong `tests/test_agent_worktree_safety.py`
-- [ ] T022 [P] [US2] Kiểm thử long job, cancel, restart/resume và không ghi lặp trong `tests/test_agent_runtime_recovery.py`
+**Mục tiêu**: chỉ ra điểm sai, mâu thuẫn, thiếu kiểm soát và cải tiến nên làm từ tài liệu đã chọn.
 
-## Giai đoạn 5 — US3: Giao diện và bằng chứng hằng ngày (P3)
+**Kiểm thử độc lập**: fixture có mâu thuẫn giới hạn, bước thiếu điểm kiểm tra và khoảng trống bằng chứng được phân loại đúng, dẫn đúng nguồn và chỉ tạo bản nháp.
 
-**Kiểm thử độc lập**: cùng một task hoàn tất qua Code-OSS và CLI/headless, resume được và tra cứu receipt từ hồ sơ `agent_work`.
+- [ ] T016 [US2] Viết kiểm thử phát hiện có nguồn, suy luận, đề xuất và câu hỏi cần xác nhận trong `tests/test_agent_process_design_review.py`
+- [ ] T017 [US2] Ghép evidence pack theo phạm vi tài liệu người dùng chọn trong `src/aios_habit/agent_work_artifact.py`
+- [ ] T018 [US2] Tạo bản rà soát năm phần và sơ đồ hiện tại/đề xuất trong `src/aios_habit/agent_work_artifact.py`
+- [ ] T019 [US2] Thêm hành động “Rà soát thiết kế công đoạn” và cảnh báo đây là bản nháp trong `src/aios_habit/workspace_chat_app.py`
 
-- [ ] T023 [US3] Tạo extension Code-OSS mỏng dùng protocol chung trong `extensions/aios-agent-companion/`
-- [ ] T024 [P] [US3] Tạo CLI/headless client dùng cùng protocol trong `src/aios_habit/agent_runtime_cli.py`
-- [ ] T025 [US3] Liên kết receipt với hồ sơ `agent_work` trong `src/aios_habit/workspace_case_service.py`
-- [ ] T026 [US3] Chỉ tạo lesson candidate từ kết quả đã duyệt trong `src/aios_habit/agent_learning.py`
-- [ ] T027 [P] [US3] Kiểm thử UI tiếng Việt, secret redaction và không lộ traceback trong `tests/test_agent_companion_ui.py`
-- [ ] T028 [US3] Kiểm thử E2E Windows với path khoảng trắng/tiếng Việt trong `tests/test_agent_runtime_windows_e2e.py`
+## Giai đoạn 5 — US3: Sửa mã và chạy test
 
-## Giai đoạn 6 — An toàn, phát hành và benchmark
+**Mục tiêu**: Agent tự đọc, sửa và chạy test trong worktree rồi cho dùng kết quả hoặc hoàn tác.
 
-- [ ] T029 Cập nhật threat model và privacy review trong `docs/security/THREAT_MODEL.md` và `docs/security/PRIVACY_IMPACT_ASSESSMENT.md`
-- [ ] T030 Ghi SBOM, license, notices và quy trình nâng upstream trong `docs/release/AGENT_RUNTIME_SUPPLY_CHAIN.md`
-- [ ] T031 Chạy 12 tình huống và 10 task benchmark; ghi evidence vào `docs/roadmap/active/AIOS-AGENT-HARNESS-ADOPTION.md`
-- [ ] T032 Chạy clean-machine Windows E2E và đóng gói lặp lại theo `specs/009-agent-harness-adoption/quickstart.md`
-- [ ] T033 Đồng bộ `./ARCHITECTURE.md`, `./ROADMAP.md` và `./PROJECT_HANDOVER.md` theo trạng thái thực tế
-- [ ] T034 Chạy toàn bộ quality gate trong `specs/009-agent-harness-adoption/quickstart.md` và chỉ chuyển Gate Card sang `DONE` khi không còn blocker
+**Kiểm thử độc lập**: bug fixture được sửa sau một vòng test lỗi–sửa lại–test đạt; workspace chính không mất thay đổi có trước và thao tác cấm bị chặn.
 
-## Phụ thuộc và chiến lược
+- [ ] T020 [US3] Viết E2E cho vòng sửa–test–sửa lại–dùng kết quả–hoàn tác trong `tests/test_agent_code_worktree.py`
+- [ ] T021 [US3] Nối OpenCode adapter vào orchestrator cho tác vụ mã nguồn trong `src/aios_habit/workspace_agent_orchestrator.py`
+- [ ] T022 [US3] Xác minh exit code, trạng thái Git và xung đột trước khi dùng kết quả trong `src/aios_habit/agent_result_import.py`
+- [ ] T023 [US3] Thêm thẻ tóm tắt “đã làm gì, test ra sao, file bị tác động, rủi ro” và thu gọn `diff` trong `src/aios_habit/workspace_chat_app.py`
 
-T001–T005 là cổng dừng sớm. T006–T010 chỉ bắt đầu khi G1 đạt. US1 là MVP; US2 phụ thuộc protocol; US3 phụ thuộc vòng coding an toàn. Các task gắn `[P]` có thể thực hiện song song khi task nền của cùng giai đoạn đã xong.
+## Giai đoạn 6 — US4: Hàng đợi nhiều việc
+
+**Mục tiêu**: người dùng tiếp tục giao việc và theo dõi nhiều nhiệm vụ mà không cần cấu hình kỹ thuật.
+
+**Kiểm thử độc lập**: ba việc thuộc ba loại giữ đúng thứ tự/trạng thái qua restart; hai việc ghi cùng workspace không chạy đồng thời.
+
+- [ ] T024 [US4] Viết kiểm thử hàng đợi, writer lock theo workspace, hủy và resume trong `tests/test_agent_work_queue.py`
+- [ ] T025 [US4] Mở rộng orchestrator bằng hàng đợi bền vững tối thiểu dùng record hiện có trong `src/aios_habit/workspace_agent_orchestrator.py`
+- [ ] T026 [US4] Hiển thị các trạng thái tiếng Việt và hành động mở/hủy/hoàn tác trong `src/aios_habit/workspace_chat_app.py`
+
+## Giai đoạn 7 — Hoàn thiện và kiểm toán độc lập
+
+- [ ] T027 Chạy kiểm thử privacy, secret, prompt injection, đường dẫn Windows, mojibake và hồi quy cầu nối Antigravity trong `tests/test_agent_work_foundation.py`
+- [ ] T028 Cập nhật threat model và đánh giá riêng tư đúng phần thay đổi trong `docs/security/THREAT_MODEL.md` và `docs/security/PRIVACY_IMPACT_ASSESSMENT.md`
+- [ ] T029 Cập nhật trạng thái thực tế và bằng chứng vào `ARCHITECTURE.md`, `ROADMAP.md`, `PROJECT_HANDOVER.md` và `docs/roadmap/active/AIOS-AGENT-HARNESS-ADOPTION.md`
+- [ ] T030 Chạy các cổng chất lượng trong `specs/009-agent-harness-adoption/quickstart.md`; reviewer độc lập mới quyết định `DONE` hoặc `BLOCKED`
+
+## Phụ thuộc và chiến lược triển khai
+
+- T001–T005 là cổng dừng sớm. Nếu OpenCode không chứng minh được đọc–sửa–test–hoàn tác đúng phạm vi, dừng và đánh giá Cline theo cùng fixture; không fork sâu.
+- T006–T010 là nền chung nhỏ nhất. Không mở thêm abstraction nếu chưa có task nghiệm thu cần nó.
+- US1 là MVP và phải hoàn tất trước: nó chứng minh giá trị tạo file/báo cáo và khả năng trực quan hóa.
+- US2 dùng lại nền nguồn và artifact của US1; US3 dùng lại policy/checkpoint; US4 chỉ bắt đầu sau khi ít nhất US1 và US3 chạy được đơn nhiệm.
+- T012 và T013 có thể làm song song sau T011. Các story khác thực hiện tuần tự để giữ diff nhỏ và dễ hoàn tác.
+- Extension Code-OSS, partial-hunk approval, scheduler nhiều máy và multi-agent swarm không thuộc danh sách này.

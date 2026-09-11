@@ -83,3 +83,13 @@ Chỉ các **token** sau được để tiếng Anh, và phải có nghĩa tiế
 Tên định danh, comment kỹ thuật, commit message: tiếng Anh (không phải tài liệu người đọc).
 
 Chi tiết kiểm soát tài liệu: `docs/DOCUMENTATION_GOVERNANCE.md`. Chi tiết UI: `docs/UI_LANGUAGE_POLICY.md`.
+
+---
+
+## 5. Luật chống thiết kế quá mức
+
+- Chỉ xây phần cần thiết để đạt yêu cầu và tiêu chí nghiệm thu hiện tại; không mở rộng phạm vi để phòng nhu cầu chưa được xác nhận.
+- Ưu tiên sửa hoặc dùng lại module, dữ liệu và luồng hiện có trước khi tạo lớp, dịch vụ hay cấu hình mới.
+- Không thêm framework, cơ sở dữ liệu, dependency, feature flag hoặc abstraction nếu không chỉ ra được task và kiểm thử hiện tại cần nó.
+- Khi nhiều phương án cùng đáp ứng yêu cầu, chọn phương án ít thành phần hơn, dễ đọc hơn và dễ hoàn tác hơn.
+- Chuyên gia kiểm toán phải đánh dấu `NEEDS_FIX` nếu thay đổi có hạ tầng hoặc độ phức tạp không phục vụ trực tiếp tiêu chí nghiệm thu.

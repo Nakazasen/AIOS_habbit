@@ -1,19 +1,20 @@
-# Thẻ cổng: Nâng US6 thành Agent lập trình có kiểm soát
+# Thẻ cổng: Trợ lý thực thi công việc cho kỹ sư
 
 Status: `ACTIVE`
 Mã tính năng: `009-agent-harness-adoption`
 Chủ sở hữu: Project owner / Software engineering reviewer
-Cập nhật: 2026-09-07
+Cập nhật: 2026-09-11
 
 ## Mục tiêu
 
-Đạt vòng lập trình và thao tác file đủ dùng hằng ngày bằng runtime kế thừa, trong khi AIOS giữ quyền, bằng chứng và phê duyệt. G1 chỉ là spike chỉ đọc và là cổng dừng sớm.
+Đạt vòng giao việc đủ dùng hằng ngày bằng runtime kế thừa: tạo file/báo cáo lỗi có biểu đồ, rà soát thiết kế công đoạn có dẫn nguồn và sửa mã có test thật. AIOS giữ nguồn, policy theo vùng, checkpoint, verifier và hoàn tác. G1 phải probe đầy đủ đọc–sửa–test–resume–undo, không phải spike chỉ đọc.
 
 ## Phi mục tiêu
 
-- Không fork OpenCode, dựng editor/terminal/model router hoặc tạo database session mới trong G1.
+- Không fork OpenCode, dựng editor/terminal/model router, extension Code-OSS, scheduler đa Agent hoặc database session mới trong G1.
 - Không tự commit, push, merge, deploy, dùng quyền admin hoặc ghi ngoài workspace.
 - Không mở swarm, scheduler nhiều máy, browser automation hay điều khiển line/PLC/JIG.
+- Không tự thay SOP, giới hạn sản xuất hoặc tài liệu công đoạn chính thức.
 
 ## Điều kiện tiên quyết
 
@@ -28,7 +29,6 @@ Cập nhật: 2026-09-07
 - `src/aios_habit/workspace_agent_policy.py`
 - `src/aios_habit/workspace_agent_bridge_client.py`
 - `src/aios_habit/workspace_agent_orchestrator.py`
-- `src/aios_habit/agent_runtime_protocol.py`
 - `src/aios_habit/opencode_runtime_adapter.py`
 - `scripts/probe_opencode_runtime.py`
 - `tests/fixtures/agent_harness/`
@@ -40,9 +40,10 @@ Mở rộng ngoài allowlist cần cập nhật thẻ cổng trước khi sửa.
 ## Tiêu chí ra G1
 
 - Pin version, checksum, license và notices.
-- Health/version/session/SSE/read/search probe đạt trên Windows.
-- Write và command bị deny trước khi thực thi; digest fixture không đổi.
-- Session ID/resume và event ordering đủ để lập receipt.
+- Health/version/session/event/read/search/create/edit/test/resume/undo probe đạt trên Windows.
+- Read/search/create/edit/test trong task root chạy tự động, không hỏi từng action.
+- Path ngoài root, secret, quyền admin, commit, push, merge và deploy bị deny trước thực thi.
+- Checkpoint hoàn tác fixture về đúng digest ban đầu; session/event đủ để lập receipt và không lặp action.
 - Nếu thiếu một điều kiện: trạng thái `BLOCKED`, ghi bằng chứng và đánh giá Cline; không fork.
 
 ## Quyền riêng tư
@@ -55,7 +56,7 @@ Theo [quickstart](../../../specs/009-agent-harness-adoption/quickstart.md) và [
 
 ## Hoàn tác
 
-Dừng server, xóa worktree fixture tạm và gỡ adapter/feature flag chưa phát hành. Giữ nguyên US6 foundation và không xóa receipt đã ghi.
+Dừng server, dọn worktree fixture tạm sau khi xác minh checkpoint và gỡ adapter/feature flag chưa phát hành. Giữ `antigravity_bridge.py`, nền US6 và receipt đã ghi; không xóa thay đổi có trước của người dùng.
 
 ## Liên kết trạng thái
 

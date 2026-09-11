@@ -137,8 +137,11 @@ def test_whisper_cpp_fails_closed_when_engine_unavailable_and_no_mock_fallback(s
         adapter.transcribe(sample_wav_path, "SESS-FAIL-1", consent)
 
     error_msg = str(exc_info.value)
-    assert "whisper.cpp" in error_msg
-    assert "thủ công" in error_msg
+    assert "chép" in error_msg.lower()
+    assert "văn bản" in error_msg
+    assert "an toàn" in error_msg or "giữ" in error_msg
+    assert "mock" not in error_msg.lower()
+    assert "whisper.cpp" not in error_msg
 
 
 def test_create_manual_transcription_receipt():

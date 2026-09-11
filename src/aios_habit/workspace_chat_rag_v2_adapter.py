@@ -299,7 +299,7 @@ class WorkspaceChatRagV2CanaryConfig:
         )
         try:
             deployment = load_workspace_chat_rag_v2_deployment(
-                env=values,
+                env=env,
                 require_activated=True,
             )
         except DeploymentManifestError:

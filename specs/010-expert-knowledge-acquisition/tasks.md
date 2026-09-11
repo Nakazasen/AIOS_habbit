@@ -129,43 +129,43 @@ Task `[P]` chỉ chạy song song khi không sửa cùng file và task nền c�
 
 ## Giai đoạn 13 — R1: Sửa ranh giới dữ liệu và hành vi sai
 
-- [ ] T083 [P] [US2] Viết test chứng minh audio và bản chép lời thô không được lưu trong `workspace_cases.sqlite` tại `tests/test_expert_interview_privacy.py`
-- [ ] T084 [US2] Di chuyển nội dung bản chép lời thô sang kho `local_only` và chỉ giữ locator/digest đã làm sạch trong `src/aios_habit/expert_interview_repository.py` cùng migration tại `src/aios_habit/workspace_case_migrations.py`
-- [ ] T085 [P] [US2] Viết test runtime không được fallback sang mock rồi báo kết quả chép lời thật trong `tests/test_local_transcription.py`
-- [ ] T086 [US2] Tách adapter thật khỏi mock fixture và trả thông báo tiếng Việt có bước tiếp theo khi bộ máy thật chưa sẵn sàng trong `src/aios_habit/local_transcription.py`
-- [ ] T087 [P] [US4] Bổ sung test trạng thái xuất bản, thu hồi và khôi phục phải khớp dữ liệu thực trong `tests/test_knowledge_publication.py` và `tests/test_knowledge_publication_recovery.py`
-- [ ] T088 [US4] Sửa kiểm tra nghiệm thu, thu hồi và rollback để không ghi thành công giả hoặc giữ nội dung đã thu hồi trong truy xuất tại `src/aios_habit/knowledge_publication.py`
+- [x] T083 [P] [US2] Viết test chứng minh audio và bản chép lời thô không được lưu trong `workspace_cases.sqlite` tại `tests/test_expert_interview_privacy.py`
+- [x] T084 [US2] Di chuyển nội dung bản chép lời thô sang kho `local_only` và chỉ giữ locator/digest đã làm sạch trong `src/aios_habit/expert_interview_repository.py` cùng migration tại `src/aios_habit/workspace_case_migrations.py`
+- [x] T085 [P] [US2] Viết test runtime không được fallback sang mock rồi báo kết quả chép lời thật trong `tests/test_local_transcription.py`
+- [x] T086 [US2] Tách adapter thật khỏi mock fixture và trả thông báo tiếng Việt có bước tiếp theo khi bộ máy thật chưa sẵn sàng trong `src/aios_habit/local_transcription.py`
+- [x] T087 [P] [US4] Bổ sung test trạng thái xuất bản, thu hồi và khôi phục phải khớp dữ liệu thực trong `tests/test_knowledge_publication.py` và `tests/test_knowledge_publication_recovery.py`
+- [x] T088 [US4] Sửa kiểm tra nghiệm thu, thu hồi và rollback để không ghi thành công giả hoặc giữ nội dung đã thu hồi trong truy xuất tại `src/aios_habit/knowledge_publication.py`
 
 ## Giai đoạn 14 — R2: Cộng tác tin cậy và trách nhiệm
 
-- [ ] T089 [P] [US3] Viết test hợp đồng tên OS chỉ điền sẵn, có thể sửa và không cấp quyền trong `tests/test_expert_identity.py`
-- [ ] T090 [US1] Bỏ hồ sơ chuyên gia, scope grant và tái kiểm tra quyền khỏi điều kiện bắt đầu/tiếp tục phỏng vấn của Goal 010 trong `src/aios_habit/expert_interview_service.py`
-- [ ] T091 [US3] Thêm `DecisionRecord` gồm tên ghi nhận, máy, thời điểm, độ tự tin, căn cứ, nguồn đã kiểm tra và xác nhận trách nhiệm trong `src/aios_habit/controlled_knowledge_artifact.py` và `src/aios_habit/expert_interview_repository.py`
-- [ ] T092 [P] [US3] Viết test quyết định thiếu trường, nội dung đổi phiên bản và tên tự khai không bị mô tả là xác thực trong `tests/test_controlled_knowledge_artifact.py`
-- [ ] T093 [US3] Thay điều kiện vai trò/scope/cấm tự duyệt bằng kiểm tra nội dung đúng phiên bản và thông tin trách nhiệm đầy đủ trong `src/aios_habit/expert_interview_service.py`
+- [x] T089 [P] [US3] Viết test hợp đồng tên OS chỉ điền sẵn, có thể sửa và không cấp quyền trong `tests/test_expert_identity.py`
+- [x] T090 [US1] Bỏ hồ sơ chuyên gia, scope grant và tái kiểm tra quyền khỏi điều kiện bắt đầu/tiếp tục phỏng vấn của Goal 010 trong `src/aios_habit/expert_interview_service.py`
+- [x] T091 [US3] Thêm `DecisionRecord` gồm tên ghi nhận, máy, thời điểm, độ tự tin, căn cứ, nguồn đã kiểm tra và xác nhận trách nhiệm trong `src/aios_habit/controlled_knowledge_artifact.py` và `src/aios_habit/expert_interview_repository.py`
+- [x] T092 [P] [US3] Viết test quyết định thiếu trường, nội dung đổi phiên bản và tên tự khai không bị mô tả là xác thực trong `tests/test_controlled_knowledge_artifact.py`
+- [x] T093 [US3] Thay điều kiện vai trò/scope/cấm tự duyệt bằng kiểm tra nội dung đúng phiên bản và thông tin trách nhiệm đầy đủ trong `src/aios_habit/expert_interview_service.py`
 
 ## Giai đoạn 15 — R3: Chọn thư viện và ghi snapshot an toàn
 
-- [ ] T094 [P] [US1] Viết test chọn thư viện cá nhân/dùng chung và đổi qua lại không cần restart trong `tests/test_workspace_chat_store.py`
-- [ ] T095 [US1] Thêm lựa chọn thư viện hiện hành dùng chung đường lưu trữ sẵn có, không thêm công tắc cấu hình hoặc hệ tài khoản, trong `src/aios_habit/workspace_chat_store.py`
-- [ ] T096 [P] [US4] Viết fault test hai lượt ghi, khóa bận, mất kết nối, hết dung lượng và bản cũ còn dùng được trong `tests/test_knowledge_publication_recovery.py`
-- [ ] T097 [US4] Hoàn thiện luồng bản sao cục bộ → khóa ghi ngắn hạn → kiểm tra → sao lưu → thay snapshot → giải phóng khóa trong `src/aios_habit/knowledge_publication.py`
+- [x] T094 [P] [US1] Viết test chọn thư viện cá nhân/dùng chung và đổi qua lại không cần restart trong `tests/test_workspace_chat_store.py`
+- [x] T095 [US1] Thêm lựa chọn thư viện hiện hành dùng chung đường lưu trữ sẵn có, không thêm công tắc cấu hình hoặc hệ tài khoản, trong `src/aios_habit/workspace_chat_store.py`
+- [x] T096 [P] [US4] Viết fault test hai lượt ghi, khóa bận, mất kết nối, hết dung lượng và bản cũ còn dùng được trong `tests/test_knowledge_publication_recovery.py`
+- [x] T097 [US4] Hoàn thiện luồng bản sao cục bộ → khóa ghi ngắn hạn → kiểm tra → sao lưu → thay snapshot → giải phóng khóa trong `src/aios_habit/knowledge_publication.py`
 
 ## Giai đoạn 16 — R4: Giao diện bốn chặng cho người không chuyên
 
-- [ ] T098 [P] [US5] Viết smoke test chứng minh bốn chặng Goal 010 đều truy cập được từ Workspace Chat trong `tests/test_workspace_chat_app_smoke.py`
-- [ ] T099 [US5] Tạo điều hướng bốn chặng “Chọn thư viện”, “Phỏng vấn”, “Kiểm tra bản nháp”, “Đưa vào thư viện” và nối các màn hiện đang không được gọi trong `src/aios_habit/workspace_case_ui.py`
-- [ ] T100 [US1] Thêm hai lựa chọn thư viện với mô tả đời thường, hiển thị lựa chọn hiện hành và cho đổi không restart trong `src/aios_habit/workspace_case_ui.py`
-- [ ] T101 [US2] Bỏ chọn chuyên gia/scope/budget khỏi luồng chính, bỏ công tắc fixture và gom hành động phụ vào phần thu gọn trong `src/aios_habit/workspace_case_ui.py`
-- [ ] T102 [US3] Hợp nhất xem, sửa, nguồn và form trách nhiệm; dùng một nút chính “Xác nhận và đưa vào thư viện” trong `src/aios_habit/workspace_case_ui.py`
-- [ ] T103 [US4] Cho thu hồi từ lịch sử mà không nhập mã gói và đổi lỗi khóa bận/thư mục lỗi thành hướng dẫn thử lại trong `src/aios_habit/workspace_case_ui.py`
-- [ ] T104 [P] [US5] Mở rộng bộ quét để phát hiện `fixture`, `digest`, `claim`, `approved`, `Markdown`, `JSON`, `lease` và trạng thái nội bộ trên bề mặt chính trong `scripts/check_user_facing_vietnamese.py`
-- [ ] T105 [P] [US5] Viết test chữ giao diện, một hành động chính mỗi chặng và chi tiết kỹ thuật ẩn mặc định trong `tests/test_workspace_case_ui.py`
+- [x] T098 [P] [US5] Viết smoke test chứng minh bốn chặng Goal 010 đều truy cập được từ Workspace Chat trong `tests/test_workspace_chat_app_smoke.py`
+- [x] T099 [US5] Tạo điều hướng bốn chặng “Chọn thư viện”, “Phỏng vấn”, “Kiểm tra bản nháp”, “Đưa vào thư viện” và nối các màn hiện đang không được gọi trong `src/aios_habit/workspace_case_ui.py`
+- [x] T100 [US1] Thêm hai lựa chọn thư viện với mô tả đời thường, hiển thị lựa chọn hiện hành và cho đổi không restart trong `src/aios_habit/workspace_case_ui.py`
+- [x] T101 [US2] Bỏ chọn chuyên gia/scope/budget khỏi luồng chính, bỏ công tắc fixture và gom hành động phụ vào phần thu gọn trong `src/aios_habit/workspace_case_ui.py`
+- [x] T102 [US3] Hợp nhất xem, sửa, nguồn và form trách nhiệm; dùng một nút chính “Xác nhận và đưa vào thư viện” trong `src/aios_habit/workspace_case_ui.py`
+- [x] T103 [US4] Cho thu hồi từ lịch sử mà không nhập mã gói và đổi lỗi khóa bận/thư mục lỗi thành hướng dẫn thử lại trong `src/aios_habit/workspace_case_ui.py`
+- [x] T104 [P] [US5] Mở rộng bộ quét để phát hiện `fixture`, `digest`, `claim`, `approved`, `Markdown`, `JSON`, `lease` và trạng thái nội bộ trên bề mặt chính trong `scripts/check_user_facing_vietnamese.py`
+- [x] T105 [P] [US5] Viết test chữ giao diện, một hành động chính mỗi chặng và chi tiết kỹ thuật ẩn mặc định trong `tests/test_workspace_case_ui.py`
 
 ## Giai đoạn 17 — R5: Kiểm chứng và đóng lại Goal
 
 - [ ] T106 [US5] Chạy kịch bản người không chuyên trong `specs/010-expert-knowledge-acquisition/quickstart.md` và ghi finding ngắn gọn vào Gate Card
-- [ ] T107 [US1] Chạy E2E cá nhân và dùng chung từ chọn thư viện đến hỏi lại/thu hồi trong `tests/test_expert_knowledge_e2e.py`
+- [x] T107 [US1] Chạy E2E cá nhân và dùng chung từ chọn thư viện đến hỏi lại/thu hồi trong `tests/test_expert_knowledge_e2e.py`
 - [ ] T108 Chạy toàn bộ quality gate, smoke giao diện và ghi đúng lệnh/mã thoát/phạm vi vào `docs/roadmap/backlog/AIOS-EXPERT-KNOWLEDGE-ACQUISITION.md`
 - [ ] T109 Kiểm toán độc lập logic, quyền riêng tư, ghi đồng thời và UX/UI; chỉ khi không còn finding mức chặn mới đồng bộ `ARCHITECTURE.md`, `ROADMAP.md` và `PROJECT_HANDOVER.md`
 

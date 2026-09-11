@@ -4,9 +4,9 @@
 
 Luật sản phẩm vẫn: `AGENTS.md` → `CONSTITUTION.md` / `AGENT_RULES.md` → `ARCHITECTURE.md`.
 
-## Một hệ thống (còn hiệu lực — 2026-08-30)
+## Một hệ thống (còn hiệu lực — 2026-09-11)
 
-Bốn việc **không rời**: cùng vòng *vụ việc → bằng chứng → đề xuất → người duyệt → bài học*. Khác **tủ dữ liệu** và **cầu nối AI**.
+Bốn việc **không rời**: cùng vòng *vụ việc → bằng chứng → hành động có thể hoàn tác → kết quả → bài học*. Người dùng duyệt quyết định nghiệp vụ hoặc tài liệu chính thức, không phải duyệt từng lệnh kỹ thuật. Khác **tủ dữ liệu** và **cầu nối AI**.
 
 ```text
                     ┌─ Thư viện chữ + mô tả ảnh (SOP, MOM, ISO, mã lỗi, báo cáo đã duyệt)
@@ -22,8 +22,10 @@ Bốn việc **không rời**: cùng vòng *vụ việc → bằng chứng → �
          chống mất tri thức   C/Jam pilot      LSU → Drum/DLP
                               │
                               ▼
-                    (4) Agent = tay (báo cáo, SOP nháp, lệnh)
-                         phải duyệt; không xóa file nhà máy
+                    (4) Agent = tay (tạo file, báo cáo + biểu đồ,
+                         rà thiết kế công đoạn, sửa mã + test)
+                         tự làm trong vùng có checkpoint; luôn hoàn tác được;
+                         không tự thay tài liệu chính thức hay xóa file nhà máy
 ```
 
 **Cầu nối:** Router / Gemini Web = chữ, không bản vẽ. C-AGENT Sonnet 4 công ty = được gửi sơ đồ/log (luật `AGENT_RULES.md`). Gate C đã chặn file ảnh ở UI và route; caption không thay thế chặn.
@@ -46,7 +48,7 @@ Không: bốn nhánh song song; E3; LightRAG tuần này; “vài serial là sha
 ## Nhật ký — cái nào còn, cái nào bỏ
 
 | Mục | Trạng thái |
-|---|---|
+| --- | --- |
 | 1–11, 15–16 | **Nền LSU / nhân quả / Golden Knowledge** — còn hướng, chưa triển khai |
 | 12 | RAG audit — còn (BGE-M3, không thay LightRAG ngay) |
 | 13–14 LightRAG, R1–R5 | **Challenger sau** — không làm lúc này |
@@ -182,7 +184,7 @@ Lượt kiểm kê đầu tiên ghi nhận:
 `Barcode_List.xlsx` ánh xạ:
 
 | Serial | Vị trí mẫu |
-|---|---|
+| --- | --- |
 | 61C1068E9521 | Shot 1 đầu lot |
 | 61C1068E9522 | Shot 2 đầu lot |
 | 61C1068E9523 | Shot 3 giữa lot |
@@ -572,7 +574,7 @@ Test contract không thay thế benchmark recall trên tài liệu LSU.
 Chunker cắt tuần tự toàn bộ văn bản; không bỏ phần giữa. Điểm yếu thật là `zero-overlap`:
 
 - Child khoảng 900–1.000 ký tự.
-- Cắt theo `. `, xuống dòng hoặc khoảng trắng.
+- Cắt theo `.`, xuống dòng hoặc khoảng trắng.
 - Không có overlap.
 - Chưa nhận diện đầy đủ dấu câu CJK như `。！？`.
 - Parent 3.000–8.000 ký tự được tạo nhưng `retrievable=False`.
@@ -788,7 +790,7 @@ Không có evidence coordinate thì cạnh không được dùng làm bằng ch�
 Trên cùng LSU judged set, đo:
 
 | Candidate | Mục đích |
-|---|---|
+| --- | --- |
 | AIOS BGE-M3 hybrid | Baseline hiện tại |
 | LightRAG naive | Kiểm tra khác biệt do pipeline/chunk |
 | LightRAG local | Entity/detail lookup |
@@ -944,7 +946,7 @@ Thêm structured log, time-series, Knowledge Graph và expert knowledge retrieva
 ## 16. Tiêu chuẩn để tuyên bố đã đạt cấp độ cao
 
 | Năng lực | Điều kiện tối thiểu |
-|---|---|
+| --- | --- |
 | Dự đoán đáng tin | Test dữ liệu tương lai, shadow live, xác suất được calibration, KPI nghiệp vụ đạt |
 | Quan hệ nhân quả | Cơ chế kỹ thuật, DOE/đối chứng, loại trừ sai lệch JIG, chuyên gia phê duyệt |
 | Golden Knowledge | Provenance, scope, review, phản chứng, version và quyền phê duyệt |
@@ -1065,7 +1067,7 @@ RAG vẫn là lớp nền knowledge. Nó phục vụ các câu hỏi như quy tr
 Không được để Agent có thể suy luận từ RAG rồi tự ý thực hiện hành động bất kỳ. Cần tách ba mặt phẳng:
 
 | Mặt phẳng | Năng lực | Quyền mặc định |
-|---|---|---|
+| --- | --- | --- |
 | Knowledge | hỏi/đáp tài liệu, retrieval và citation | chỉ đọc |
 | Investigation | phân tích case, graph, log, dự báo và đề xuất | chỉ đọc, tạo đề xuất |
 | Action | tạo/sửa/xóa file, chạy lệnh, gọi hệ thống | chặn hoặc yêu cầu duyệt |
@@ -1088,7 +1090,7 @@ Người dùng hỏi hoặc mở case
 Agent có thể đọc/tìm file, tạo report, sinh patch, sửa file hoặc chạy tool như các IDE hiện đại. Tuy nhiên quyền cần theo cấp:
 
 | Cấp | Hành động | Chính sách |
-|---|---|---|
+| --- | --- | --- |
 | 0 | đọc file, search, RAG | tự động |
 | 1 | tạo draft/report/patch trong sandbox | tự động hoặc thông báo |
 | 2 | sửa file trong workspace/worktree | yêu cầu duyệt hoặc policy rõ ràng |
@@ -1206,7 +1208,7 @@ Hướng đúng: **một máy ingest thư viện đã lọc → niêm (checksum 
 Hai việc khác nhau:
 
 | Việc | Dữ liệu | Kho |
-|---|---|---|
+| --- | --- | --- |
 | Hỏi–đáp / tra cứu | MOM, SOP, ISO, Excel chuẩn, slide | Index RAG (đoạn văn) |
 | Theo dõi / dự đoán LSU | Log JIG, serial, OK/NG, time-series | **Bảng có schema**, không cắt 900 ký tự rồi embed |
 
@@ -1318,7 +1320,7 @@ Các case lưu: (1) chỉ máy này, (2) thư mục dùng chung, (3) đổi ch�
 ### 0. Nền dùng chung (mọi nhánh đều cần)
 
 | Case | Việc người dùng | Hệ thống làm |
-|---|---|---|
+| --- | --- | --- |
 | Thư viện chung | Chọn chỗ lưu (ổ D / mạng) | Kho `aios_thu_vien/library.sqlite` |
 | Đổi chỗ lưu | Chọn thư mục mới | Copy kho; bản cũ giữ; chỗ mới đã có kho khác thì chặn |
 | Máy khác hỏi | Cùng đường dẫn | Chỉ đọc, không embed lại |
@@ -1334,7 +1336,7 @@ Các case lưu: (1) chỉ máy này, (2) thư mục dùng chung, (3) đổi ch�
 Mục đích: hỏi được SOP, MOM, ISO, hướng dẫn dòng máy **có trích dẫn**, không phụ thuộc “anh ấy nhớ”.
 
 | Case | Ví dụ |
-|---|---|
+| --- | --- |
 | Tra cứu quy trình | “Hạng mục nhập kho gồm những mục nào?” |
 | Tra cứu spec / ISO | Giới hạn đã ban hành, không đoán |
 | Bảng Excel chuẩn | Tiêu chuẩn nguyên liệu, checklist |
@@ -1353,7 +1355,7 @@ Mục đích: hỏi được SOP, MOM, ISO, hướng dẫn dòng máy **có trí
 Mục đích: cảnh báo **có căn cứ** (drift JIG, lô giống lần NG), người quyết. Không phải AI tự dừng chuyền.
 
 | Case | Ví dụ |
-|---|---|
+| --- | --- |
 | Hồ sơ serial | Thông số ↔ log JIG ↔ OK/NG |
 | Cảnh báo sớm | Drift, lô nghi ngờ — mức rủi ro, không phán xuất hàng |
 | Phòng ngừa | Gợi ý kiểm tra đã được người duyệt |
@@ -1369,7 +1371,7 @@ Mục đích: cảnh báo **có căn cứ** (drift JIG, lô giống lần NG), n
 Mục đích: cùng kỹ sư lần vết — mã lỗi, công đoạn, log, bản vẽ — ra **báo cáo sự vụ có bằng chứng**. Tham chiếu hướng `phantichphanmemdc`.
 
 | Case | Tài liệu / dữ liệu |
-|---|---|
+| --- | --- |
 | Tra cứu khi dừng máy | SOP, mã lỗi, nguyên lý, tài liệu triển khai (nếu được phép) |
 | Log máy / điều chỉnh | CSV có cột, serial, thời điểm — **không** embed từng dòng |
 | Ảnh lỗi / bản vẽ scan | OCR + người rà chữ viết tay |
@@ -1386,7 +1388,7 @@ Mục đích: cùng kỹ sư lần vết — mã lỗi, công đoạn, log, bả
 Mục đích: sau khi có bằng chứng, **đề xuất hành động** — báo cáo, SOP nháp, biểu đồ, lệnh — **người duyệt**. NVIDIA/tool đã có mầm; xóa/sửa file nhà máy **cấm** không duyệt.
 
 | Case | Agent được / không |
-|---|---|
+| --- | --- |
 | Đọc / tìm file, git status | Được |
 | Sửa file, chạy lệnh | Phải duyệt |
 | Xóa / đổi tên / git push | Cấm |
@@ -1416,7 +1418,7 @@ Nguồn: trao đổi Vinh–Hải, thí điểm C call / Jam call. Kết luận:
 Công ty đã mua C-AGENT (Việt Nam), cam kết bảo mật. Không cấm gửi tài liệu kỹ thuật theo kiểu “không được lên mây”; **cấm sai cầu nối**.
 
 | Cầu nối | Gửi gì |
-|---|---|
+| --- | --- |
 | **1. Nakazasen Router** | Văn bản / hỏi đáp thường. **Không** gửi bản vẽ, sơ đồ mạch, scan bản vẽ. |
 | **2. Gemini Web** | Văn bản / hỏi đáp thường. **Không** gửi bản vẽ, sơ đồ mạch. |
 | **3. C-AGENT — Sonnet 4 công ty** | **Được gửi đủ:** sơ đồ mạch, log, báo cáo lỗi, tool mô tả, ảnh VPS, Excel IQC. Đây là đường cho gói điều tra line. |
@@ -1466,7 +1468,7 @@ Nguồn công khai cần ghi pin phiên bản, giấy phép và notices khi bắ
 ### 30.2. Ba phương án và quyết định chọn
 
 | Phương án | Ưu điểm | Nhược điểm | Quyết định |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | Code-OSS + OpenCode adapter + AIOS governance | Tận dụng editor và harness trưởng thành; diff nhỏ; cập nhật upstream được; giữ ranh giới AIOS | Phải chứng minh callback quyền, session và event stream đủ để fail-closed | **Chọn để spike và làm chính** |
 | Fork OpenCode desktop rồi đổi giao diện | Có thể ra demo nhanh nếu toàn bộ luồng đã vừa nhu cầu | Gánh fork UI/runtime, upstream drift, branding và đóng gói; dễ làm AIOS lệch thành coding app | Chỉ xét nếu adapter thất bại có bằng chứng |
 | Tiếp tục tự mở rộng orchestrator/bridge hiện tại | Kiểm soát hoàn toàn | Phải tự viết session, PTY, checkpoint, MCP, undo, conflict, CLI và recovery; chậm và rủi ro cao | **Dừng mở rộng ngoài phần adapter** |
@@ -1499,7 +1501,7 @@ Không được tạo đường đi trực tiếp từ câu trả lời RAG đ�
 Không bỏ các phần US6 đã làm. Chúng trở thành lớp hợp đồng bên ngoài runtime:
 
 | Nền hiện có | Giữ lại để làm gì | Phần cần nâng |
-|---|---|---|
+| --- | --- | --- |
 | `agent_task_pack.py` | Khóa mục tiêu, file, lệnh, commit và privacy | Thêm phiên bản protocol, base digest và loại môi trường chạy |
 | `coding_assistant.py` | Proposal, digest, approve/reject | Approval phải gắn actor thật, scope, expiry và đúng payload bất biến |
 | `agent_result_import.py` | Không tin PASS tự khai | Nhận event/receipt từ runtime và đối chiếu trạng thái workspace sau chạy |
@@ -1550,7 +1552,7 @@ Ngoài phạm vi bản đầu:
 ### 30.6. Mô hình quyền thực tế
 
 | Cấp | Ví dụ | Chính sách bản đầu |
-|---|---|---|
+| --- | --- | --- |
 | 0 — quan sát | đọc/search/index/Git status | Tự động trong workspace đã tin cậy |
 | 1 — sandbox | sửa/tạo/xóa file trong worktree tách biệt; chạy lệnh allowlist | Cho phép sau khi duyệt Task Pack/kế hoạch; ghi event đầy đủ |
 | 2 — áp dụng | đưa diff vào workspace người dùng, chạy lệnh ngoài allowlist an toàn | Duyệt đúng proposal digest; có expiry và actor từ app context |
@@ -1580,7 +1582,7 @@ OpenCode giữ session/checkpoint kỹ thuật trong vùng local runtime của n
 ### 30.8. Các cổng triển khai
 
 | Cổng | Việc thực hiện | Điều kiện ra |
-|---|---|---|
+| --- | --- | --- |
 | G0 — Khóa nền | Hoàn tất audit T057; ghi US6 hiện tại là foundation; chốt ADR về developer companion UI và runtime kế thừa | Audit trung thực, worktree baseline được nhận diện, chủ sở hữu duyệt hướng |
 | G1 — Spike adapter chỉ đọc | Pin một OpenCode version; chạy local server; tạo/resume session; stream event; đọc/search một repo fixture; chứng minh không ghi được khi policy deny | Health/version/capability probe và negative test đều đạt |
 | G2 — Protocol và phiên | Map Task Pack ↔ runtime session; event append-only; cancel/resume/idempotency; CLI và extension dùng cùng contract | Kill/restart không lặp write; event đọc lại được |
@@ -1624,7 +1626,7 @@ Không dùng số phần trăm chủ quan và không hứa parity vĩnh viễn v
 ### 30.11. Rủi ro và chốt chặn
 
 | Rủi ro | Chốt chặn |
-|---|---|
+| --- | --- |
 | Hai lớp permission lệch nhau | AIOS là nguồn quyết định cuối; runtime mặc định deny và chỉ nhận receipt có digest |
 | Approval replay hoặc proposal đổi sau duyệt | Bind exact payload/base commit/expiry; idempotency key; conflict check trước apply |
 | Runtime upstream đổi API | Pin version, capability handshake, adapter contract test và lịch nâng phiên bản |
@@ -1639,7 +1641,7 @@ Không dùng số phần trăm chủ quan và không hứa parity vĩnh viễn v
 Nếu adapter OpenCode đạt G1, ước lượng kỹ thuật cho một người phát triển tập trung là khoảng **25–40 ngày làm việc**, chưa tính thời gian chờ review, ký gói cài đặt hoặc xử lý blocker upstream:
 
 | Nhóm | Ước lượng |
-|---|---:|
+| --- | ---: |
 | G0–G1: quyết định + spike | 2–4 ngày |
 | G2: protocol/session/recovery | 4–6 ngày |
 | G3: worktree/proposal/rollback | 5–7 ngày |
@@ -1704,4 +1706,5 @@ Feature độc lập: `010-expert-knowledge-acquisition`.
 - [Gate Card](docs/roadmap/backlog/AIOS-EXPERT-KNOWLEDGE-ACQUISITION.md)
 - [ADR-0009](docs/adr/0009-expert-interview-and-knowledge-publication-boundary.md)
 
-Trạng thái hiện tại: `TECHNICAL_READY` (Đã hoàn tất nghiệm thu Cổng G10). Đã hoàn tất triển khai G0–G10 (81 task), toàn bộ test suite pass 100%, kịch bản E2E kiểm chứng 10/10 tiêu chí SC-001–SC-010 thành công, fine-tune đạt kết luận `NOT_APPLICABLE`, kiểm toán độc lập AuditSpecialistG10 kết luận PASS 100%. Người thật chỉ tham gia khi vận hành thực tế để đồng ý ghi âm, trả lời và duyệt nội dung.
+Trạng thái hiện tại: `READY_TO_RUN`. Chưa code feature 010. T000 bắt buộc học có chọn lọc từ STORM/Co-STORM, LangGraph, Microsoft GraphRAG, Microsoft Presidio, `whisper.cpp` và `faster-whisper`; chỉ kế thừa pattern/module phù hợp, không copy mù toàn hệ. Sáu mặc định đã khóa: Windows/OS identity, scope tách biệt, consent từng phiên, raw data local-only không tự xóa, collection fixture khi test và fine-tune tắt. Gemini tự chạy liên tục qua G0–G10, dùng agent/phiên audit tách biệt và tự sửa finding; không có phase chờ con người. Người thật chỉ tham gia khi vận hành để đồng ý ghi âm, trả lời và duyệt nội dung.
+Trạng thái hiện tại: `TECHNICAL_READY` (Đang nghiệm thu Cổng G10). Đã hoàn tất triển khai G0–G10 (81 task), toàn bộ 2.661 test pass 100%, kịch bản E2E kiểm chứng 10/10 tiêu chí SC-001–SC-010 thành công, fine-tune đạt kết luận `NOT_APPLICABLE`. Sẵn sàng đóng Goal 010 sau vòng kiểm toán độc lập. Người thật chỉ tham gia khi vận hành thực tế để đồng ý ghi âm, trả lời và duyệt nội dung.

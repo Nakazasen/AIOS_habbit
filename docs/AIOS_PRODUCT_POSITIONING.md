@@ -67,7 +67,7 @@ Chưa được phép:
 
 ### Giai Đoạn 5 — Cầu Nối Mô Hình Mạnh / IDE (IDE / Strong Model Answer Bridge)
 
-Trạng thái: ĐÃ CÓ NỀN CẦU NỐI; các hành động thay đổi vẫn cần phê duyệt.
+Trạng thái: ĐÃ CÓ NỀN CẦU NỐI; Goal 009 đang thử nghiệm thao tác tự động trong vùng có checkpoint và hoàn tác.
 
 Phạm vi:
 - Xuất gói prompt
@@ -77,11 +77,17 @@ Phạm vi:
 - Lưu tham chiếu bằng chứng
 - Lưu tóm tắt định tuyến
 - Chốt chặn bảo vệ quyền riêng tư
+- Tạo file và báo cáo lỗi có bảng/biểu đồ từ bằng chứng đã chọn
+- Rà soát thiết kế công đoạn và tạo đề xuất có dẫn nguồn
+- Sửa mã, chạy test thật và trả kết quả dễ hiểu trong vùng làm việc tách biệt
 
 Chưa được phép:
 - Gọi API trực tiếp lên cloud đối với dữ liệu công ty / bí mật
 - Để lộ API key thô trong UI/log
-- Cho phép AI tự động chỉnh sửa mà không có sự phê duyệt
+- Tự động sửa ngoài vùng nhiệm vụ, đọc bí mật, dùng quyền quản trị hoặc tự commit/push/merge/deploy
+- Tự thay SOP, giới hạn sản xuất hoặc tài liệu công đoạn chính thức từ một bản phân tích nháp
+
+Trong vùng nhiệm vụ thử nghiệm, action đọc–tạo–sửa–test được tự động duyệt. Người dùng không phải duyệt từng lệnh hoặc toàn bộ `diff`; họ xem kết quả, bằng chứng, kiểm tra và có thể hoàn tác. Chi tiết kỹ thuật chỉ mở khi cần.
 
 ### Các Giai Đoạn Tiếp Theo
 

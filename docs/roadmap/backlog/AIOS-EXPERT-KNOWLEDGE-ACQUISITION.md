@@ -3,7 +3,7 @@
 Status: `REOPENED_FOR_SIMPLIFICATION`
 Mã tính năng: `010-expert-knowledge-acquisition`  
 Chủ sở hữu: Project owner / Process owner / Privacy reviewer  
-Cập nhật: 2026-09-09
+Cập nhật: 2026-09-11
 
 ## Mục tiêu
 
@@ -30,11 +30,11 @@ Luồng đích: **Chọn thư viện → Phỏng vấn → Kiểm tra bản nhá
 
 | Cổng | Task | Trạng thái | Điều kiện ra |
 | --- | ---: | --- | --- |
-| R1 | T083–T088 | `PENDING` | Ranh giới dữ liệu thô, chép lời và trạng thái xuất bản đúng |
-| R2 | T089–T093 | `PENDING` | Không còn quyền giả; quyết định có đủ thông tin trách nhiệm |
-| R3 | T094–T097 | `PENDING` | Chọn cá nhân/dùng chung và ghi snapshot an toàn |
-| R4 | T098–T105 | `PENDING` | Bốn chặng truy cập được, không lộ chi tiết kỹ thuật ở luồng chính |
-| R5 | T106–T109 | `PENDING` | Lượt đi bộ nontech, E2E, full gate và audit độc lập đạt |
+| R1 | T083–T088 | `IMPLEMENTED_PENDING_INDEPENDENT_AUDIT` | Ranh giới dữ liệu thô, chép lời và trạng thái xuất bản đúng |
+| R2 | T089–T093 | `IMPLEMENTED_PENDING_INDEPENDENT_AUDIT` | Không còn quyền giả; quyết định có đủ thông tin trách nhiệm |
+| R3 | T094–T097 | `IMPLEMENTED_PENDING_INDEPENDENT_AUDIT` | Chọn cá nhân/dùng chung và ghi snapshot an toàn |
+| R4 | T098–T105 | `IMPLEMENTED_PENDING_INDEPENDENT_AUDIT` | Bốn chặng truy cập được, không lộ chi tiết kỹ thuật ở luồng chính |
+| R5 | T106–T109 | `PARTIAL` | Lượt đi bộ nontech, E2E, full gate và audit độc lập đạt |
 
 ## Sáu mặc định của thiết kế cũ — chỉ giữ làm lịch sử
 
@@ -88,6 +88,32 @@ Theo SC-001–SC-010 trong [đặc tả](../../../specs/010-expert-knowledge-acq
 - E2E Windows, full quality gate và audit độc lập đạt.
 
 Đoạn G0–G10 bên dưới là nhật ký lịch sử của thiết kế cũ. Trạng thái hiện hành chỉ được xác định bởi R1–R5 và không được khôi phục `TECHNICAL_READY` nếu chưa có bằng chứng mới.
+
+## Bằng chứng lượt 2026-09-11 — chưa đóng Goal
+
+Python: 3.11.14. Cờ `expert_knowledge_acquisition` vẫn tắt mặc định.
+
+| Lệnh | Mã thoát | Phạm vi |
+| --- | ---: | --- |
+| `uv run --no-sync --group dev python --version` | 0 | 3.11.14 |
+| `uv run --no-sync --group dev python -m compileall src tests` | 0 | src + tests |
+| `uv run --no-sync --group dev python scripts/check_docs.py` | 0 | `DOCUMENTATION_CONTRACT=PASS` |
+| `uv run --no-sync --group dev python scripts/check_user_facing_vietnamese.py` | 0 | `VIETNAMESE_UI_POLICY_CHECK=PASS` |
+| `uv run --no-sync --group dev python -m aios_habit.cli audit` | 0 | `"status": "PASS"` |
+| `uv run --no-sync --group dev python -c "import aios_habit.workspace_chat_app"` | 0 | import sạch |
+| `uv run --no-sync --group dev pytest -q tests/test_local_transcription.py tests/test_controlled_knowledge_artifact.py tests/test_workspace_case_ui.py tests/test_vietnamese_ui_audit_us_slices.py tests/test_expert_interview_privacy.py tests/test_knowledge_publication.py tests/test_knowledge_publication_recovery.py tests/test_expert_identity.py tests/test_workspace_chat_store.py::test_select_library_mode_personal_and_shared_switch_without_restart` | 0 | 98 passed |
+| `uv run --no-sync --group dev pytest -q tests/test_expert_knowledge_e2e.py tests/test_workspace_chat_app_smoke.py::TestWorkspaceChatAppSmoke::test_smoke_four_stages_goal_010_accessible_from_workspace_chat` | 0 | 3 passed |
+| `uv run --no-sync --group dev pytest -q tests/test_adaptive_expert_interview.py tests/test_expert_interview_fixture_hygiene.py tests/test_workspace_case_migrations.py tests/test_expert_interview_recovery.py` | 0 | 53 passed |
+| `uv run --no-sync --group dev pytest -q --durations=20` | 1 | 2711 passed, 4 failed; 274.82s. Không treo. 4 fail đều thuộc `tests/test_commit_d_wheel_and_packaging.py` (đếm wheel đóng gói và native BGE-M3/torch), ngoài phạm vi Goal 010. |
+| `git diff --check` | 0 | không lỗi khoảng trắng |
+
+Finding còn mở trước khi đóng Goal:
+
+- Chưa có lượt đi bộ giao diện với người không chuyên (T106 / SC-008).
+- Full suite chưa xanh vì 4 test đóng gói/BGE-M3 ngoài Goal 010.
+- Cờ Goal 010 vẫn fail-closed; chưa bật vận hành.
+- Kiểm toán độc lập 2026-09-11: chưa đóng Goal. Đã xử lý prefill tên OS, không đưa câu lỗi SQLite/digest ra UI, và E2E xuất bản thư viện dùng chung. Scanner UX vẫn chủ yếu quét source, chưa thay cho đi bộ người dùng.
+- Chưa đồng bộ `ARCHITECTURE.md`, `ROADMAP.md`, `PROJECT_HANDOVER.md` vì còn finding mức chặn ở cổng R5.
 
 ## Liên kết
 

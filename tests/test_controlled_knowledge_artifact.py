@@ -416,3 +416,61 @@ def test_artifact_persistence_and_listing():
         assert len(repo.list_artifacts(scope="ep_khuon")) == 1
         assert len(repo.list_artifacts(scope="khac")) == 0
         assert len(repo.list_artifacts(status=ARTIFACT_STATUS_CANDIDATE)) == 1
+
+
+def test_create_draft_from_session_uses_plain_language_and_is_idempotent(tmp_path: Path):
+    from aios_habit.expert_identity import VerifiedPrincipal
+    from aios_habit.expert_interview_models import CompletionRubric, InterviewBudget
+    from aios_habit.knowledge_coverage import (
+        GAP_STATUS_ACCEPTED,
+        GAP_TYPE_MISSING_EXAMPLE,
+        KnowledgeGapCandidate,
+    )
+    from aios_habit.workspace_chat_models import DEFAULT_COLLECTION_ID
+
+    db_path = tmp_path / "draft.sqlite"
+    store = WorkspaceCaseRepository(database_path=db_path)
+    repo = ExpertInterviewRepository(database_path=db_path)
+    service = ExpertInterviewService(store=store, interview_repo=repo)
+    gap = KnowledgeGapCandidate(
+        gap_id="GAP-TOPIC-DRAFT",
+        collection_id=DEFAULT_COLLECTION_ID,
+        scope="chia_se_kinh_nghiem",
+        title="Cách chỉnh keo UV",
+        description="Cách chỉnh keo UV",
+        gap_type=GAP_TYPE_MISSING_EXAMPLE,
+        evidence_refs=("nguoi_dung:chu_de",),
+        status=GAP_STATUS_ACCEPTED,
+    )
+    store.save_gap_candidate(gap, "IDEMP-GAP-DRAFT", "An")
+    plan = service.create_interview_plan(
+        gap_id=gap.gap_id,
+        budget=InterviewBudget(max_turns=10, max_minutes=30, token_budget=4000),
+        completion_rubric=CompletionRubric(
+            required_aspects=("threshold", "unit", "exceptions"),
+            escalation_owner="An",
+        ),
+    )
+    session = service.start_interview_session(
+        plan_id=plan.plan_id,
+        principal=VerifiedPrincipal("An", "local_recorded_name", "An"),
+        expert_id="An",
+        idempotency_key="START-DRAFT",
+    )
+    service.submit_interview_turn(
+        session_id=session.session_id,
+        answer_text="Sấy keo ở 55 độ C trong 30 giây.",
+        principal=VerifiedPrincipal("An", "local_recorded_name", "An"),
+        idempotency_key="TURN-DRAFT-1",
+        question_override="Nhiệt độ sấy keo là bao nhiêu?",
+    )
+    first = service.create_draft_from_session(session.session_id)
+    second = service.create_draft_from_session(session.session_id)
+    assert first.artifact_id == second.artifact_id
+    assert first.status == ARTIFACT_STATUS_CANDIDATE
+    assert first.artifact_type == ARTIFACT_TYPE_LESSON
+    assert "Đây là bản nháp, chưa phải tri thức chính thức." in first.content_markdown
+    assert "Cách chỉnh keo UV" in first.content_markdown
+    assert "Sấy keo ở 55 độ C" in first.content_markdown
+    assert "claim_id" not in first.content_markdown
+    assert "SOP" not in first.content_markdown

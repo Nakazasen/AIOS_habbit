@@ -99,6 +99,7 @@ from aios_habit.local_transcription import (
     ConsentWithdrawnError,
     LocalWhisperCppTranscriptionAdapter,
     MockLocalTranscriptionEngine,
+    TranscriptionEngineUnavailableError,
     TranscriptionReceipt,
     TranscriptionSegment,
 )
@@ -484,10 +485,10 @@ def test_expert_knowledge_e2e_full_lifecycle(fixtures_dir: Path, local_only_root
     interview_repo.save_consent(declined_consent, "IDEMP-CONSENT-DECLINED")
 
     mock_engine = MockLocalTranscriptionEngine(fixture_manifest_path=manifest_json)
-    whisper_adapter = LocalWhisperCppTranscriptionAdapter(fallback_mock_engine=mock_engine)
+    real_adapter = LocalWhisperCppTranscriptionAdapter(binary_path=Path("non_existent_whisper_binary.exe"))
 
     with pytest.raises(ConsentRequiredError):
-        whisper_adapter.transcribe(
+        mock_engine.transcribe(
             audio_path=local_audio_file,
             session_id=sess_1.session_id,
             consent=declined_consent,
@@ -503,7 +504,17 @@ def test_expert_knowledge_e2e_full_lifecycle(fixtures_dir: Path, local_only_root
     )
     interview_repo.save_consent(granted_consent, "IDEMP-CONSENT-GRANTED")
 
-    receipt = whisper_adapter.transcribe(
+    with pytest.raises(TranscriptionEngineUnavailableError) as unavailable:
+        real_adapter.transcribe(
+            audio_path=local_audio_file,
+            session_id=sess_1.session_id,
+            consent=granted_consent,
+            local_only_root=local_only_root,
+        )
+    assert "văn bản" in str(unavailable.value)
+    assert "mock" not in str(unavailable.value).lower()
+
+    receipt = mock_engine.transcribe(
         audio_path=local_audio_file,
         session_id=sess_1.session_id,
         consent=granted_consent,
@@ -529,7 +540,7 @@ def test_expert_knowledge_e2e_full_lifecycle(fixtures_dir: Path, local_only_root
     )
     interview_repo.save_consent(withdrawn_consent, "IDEMP-CONSENT-WITHDRAWN")
     with pytest.raises(ConsentWithdrawnError):
-        whisper_adapter.transcribe(
+        mock_engine.transcribe(
             audio_path=local_audio_file,
             session_id=sess_1.session_id,
             consent=withdrawn_consent,
@@ -831,3 +842,148 @@ def test_expert_knowledge_e2e_full_lifecycle(fixtures_dir: Path, local_only_root
     print(f"Knowledge claims confirmed: {len(all_claims)} (SC-004: >= 5 units)")
     print(f"SOP Published and Revoked cleanly: {approved_artifact.artifact_id} (SC-004, SC-005)")
     print(f"Fine-tune Decision: {fine_tune_report.verdict} (SC-010: NOT_APPLICABLE)")
+
+
+def test_goal_010_personal_and_shared_four_stage_loop(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """T107: personal then shared library from topic to publish/revoke without fake roles."""
+    from aios_habit.expert_interview_models import CompletionRubric, InterviewBudget
+    from aios_habit.knowledge_publication import KnowledgePublisher, seal_publication_package
+    from aios_habit.workspace_chat_models import DEFAULT_COLLECTION_ID
+    import aios_habit.workspace_chat_store as chat_store
+    from aios_habit.local_jsonl import clear_jsonl_cache
+
+    sandbox = tmp_path / "workspace_chat"
+    monkeypatch.setattr(chat_store, "LOCAL_CHAT_DIR", sandbox)
+    monkeypatch.setattr(chat_store, "NOTEBOOKS_FILE", sandbox / "notebooks.jsonl")
+    monkeypatch.setattr(chat_store, "COLLECTIONS_FILE", sandbox / "collections.jsonl")
+    monkeypatch.setattr(chat_store, "CONVERSATIONS_FILE", sandbox / "conversations.jsonl")
+    monkeypatch.setattr(chat_store, "MESSAGES_FILE", sandbox / "messages.jsonl")
+    monkeypatch.setattr(chat_store, "TEMPORARY_SOURCES_FILE", sandbox / "temporary_sources.jsonl")
+    monkeypatch.setattr(chat_store, "NOTEBOOK_SOURCES_FILE", sandbox / "notebook_sources.jsonl")
+    monkeypatch.setattr(chat_store, "SOURCE_SELECTIONS_FILE", sandbox / "conversation_source_selections.jsonl")
+    monkeypatch.setattr(chat_store, "TRACES_FILE", sandbox / "traces.jsonl")
+    clear_jsonl_cache()
+    chat_store.init_chat_store()
+
+    db_path = tmp_path / "four_stage.sqlite"
+    store = WorkspaceCaseRepository(database_path=db_path)
+    interview_repo = ExpertInterviewRepository(database_path=db_path)
+    service = ExpertInterviewService(store=store, interview_repo=interview_repo)
+    principal = VerifiedPrincipal("An", "local_recorded_name", "An")
+
+    personal = chat_store.select_library_mode("personal")
+    assert personal.storage_root == ""
+    shared_dir = tmp_path / "thu_vien_chung"
+    shared = chat_store.select_library_mode("shared", str(shared_dir))
+    assert shared.storage_root == str(shared_dir)
+    back = chat_store.select_library_mode("personal")
+    assert back.storage_root == ""
+
+    topic_gap = KnowledgeGapCandidate(
+        gap_id="GAP-TOPIC-FOUR",
+        collection_id=DEFAULT_COLLECTION_ID,
+        scope="chia_se_kinh_nghiem",
+        title="Cách chỉnh keo UV",
+        description="Cách chỉnh keo UV",
+        gap_type="missing_example",
+        evidence_refs=("nguoi_dung:chu_de",),
+        status=GAP_STATUS_ACCEPTED,
+    )
+    store.save_gap_candidate(topic_gap, "IDEMP-GAP-FOUR", "An")
+    plan = service.create_interview_plan(
+        gap_id=topic_gap.gap_id,
+        budget=InterviewBudget(max_turns=10, max_minutes=30, token_budget=4000),
+        completion_rubric=CompletionRubric(
+            required_aspects=("threshold", "unit", "exceptions"),
+            escalation_owner="An",
+        ),
+    )
+    session = service.start_interview_session(
+        plan_id=plan.plan_id,
+        principal=principal,
+        expert_id="An",
+        idempotency_key="START-FOUR",
+    )
+    service.submit_interview_turn(
+        session_id=session.session_id,
+        answer_text="Sấy keo ở 55 độ C trong 30 giây.",
+        principal=principal,
+        idempotency_key="TURN-FOUR-1",
+        question_override="Nhiệt độ sấy keo là bao nhiêu?",
+    )
+    draft = service.create_draft_from_session(session.session_id)
+    assert "Đây là bản nháp, chưa phải tri thức chính thức." in draft.content_markdown
+    confirmed = service.submit_artifact_approval(
+        approval_id="APP-FOUR-1",
+        artifact_id=draft.artifact_id,
+        action=APPROVAL_ACTION_APPROVE,
+        actor_id="An",
+        expected_digest=draft.digest,
+        reason="Đã đọc lại và chịu trách nhiệm.",
+        idempotency_key="IDEMP-FOUR-APP",
+        machine_ref="MAY-AN",
+        confidence="high",
+        checked_source_refs=("Buổi hỏi đáp với An",),
+        responsibility_acknowledged=True,
+    )
+    assert confirmed.status == ARTIFACT_STATUS_APPROVED
+    publisher = KnowledgePublisher(
+        base_dir=tmp_path / "workspace_chat",
+        backup_dir=tmp_path / "library_backups",
+        interview_repo=interview_repo,
+    )
+    package = seal_publication_package(
+        artifact=confirmed,
+        acceptance_questions=("Cách chỉnh keo UV nói gì?", "Khi nào áp dụng cách chỉnh keo UV?"),
+        sealed_by="An",
+    )
+    published, _receipt = publisher.publish_package(package, actor="An")
+    assert published.status == "published"
+    history = publisher.list_published_documents(DEFAULT_COLLECTION_ID)
+    assert any(item["title"] == confirmed.title for item in history)
+
+    chat_store.select_library_mode("shared", str(shared_dir))
+    shared_publisher = KnowledgePublisher(
+        base_dir=shared_dir,
+        backup_dir=tmp_path / "shared_backups",
+        interview_repo=interview_repo,
+    )
+    shared_package = seal_publication_package(
+        artifact=confirmed,
+        acceptance_questions=("Cách chỉnh keo UV nói gì?", "Khi nào áp dụng cách chỉnh keo UV?"),
+        sealed_by="An",
+    )
+    shared_published, _shared_receipt = shared_publisher.publish_package(shared_package, actor="An")
+    assert shared_published.status == "published"
+    shared_history = shared_publisher.list_published_documents(DEFAULT_COLLECTION_ID)
+    assert any(item["title"] == confirmed.title for item in shared_history)
+    shared_revoked = shared_publisher.revoke_publication(
+        package_id=shared_published.package_id,
+        collection_id=DEFAULT_COLLECTION_ID,
+        reason="Thu hồi bản dùng chung để kiểm tra lại",
+        actor="An",
+        record_responsibility=lambda: None,
+    )
+    assert shared_revoked.state == "revoked"
+    chat_store.select_library_mode("personal")
+
+    revoked = publisher.revoke_publication(
+        package_id=published.package_id,
+        collection_id=DEFAULT_COLLECTION_ID,
+        reason="Thu hồi để kiểm tra lại",
+        actor="An",
+        record_responsibility=lambda: service.submit_artifact_approval(
+            approval_id="DEC-REVOKE-FOUR",
+            artifact_id=confirmed.artifact_id,
+            action="revoke",
+            actor_id="An",
+            expected_digest=confirmed.digest,
+            reason="Thu hồi để kiểm tra lại",
+            idempotency_key="IDEMP-FOUR-REVOKE",
+            machine_ref="MAY-AN",
+            confidence="medium",
+            checked_source_refs=("Buổi hỏi đáp với An",),
+            responsibility_acknowledged=True,
+        ),
+    )
+    assert revoked.state == "revoked"

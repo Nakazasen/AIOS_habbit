@@ -490,11 +490,11 @@ trust-boundary, sequence, decision và control hiện hành nằm trong:
 Các hồ sơ đó không thay thế nguyên tắc local-first/evidence-first ở đây; chúng
 mô tả implementation boundary và operational evidence cho trạng thái hiện tại.
 
-## 14. Ranh giới Agent lập trình kế thừa
+## 14. Ranh giới trợ lý thực thi công việc kế thừa
 
-Feature 009 chọn Code-OSS làm mặt bàn chuyên dụng và OpenCode server làm runtime ứng viên qua adapter; Cline là benchmark/fallback. Workspace Chat vẫn là giao diện AIOS chính. AIOS sở hữu Task Pack, policy, approval, receipt, Case/Evidence và learning đã duyệt; runtime sở hữu session và vòng tool; Code-OSS sở hữu editor, terminal, SCM, LSP và debugger.
+Feature 009 dùng Workspace Chat làm giao diện chính và OpenCode server làm runtime Agent ứng viên qua adapter mỏng; Cline chỉ là fallback nếu probe OpenCode không đạt. `antigravity_bridge.py` vẫn là tuyến nguồn AI của Workspace Chat và không bị thay; chỉ bridge NVIDIA lập trình cũ nằm trong đường chuyển đổi. AIOS sở hữu Task Pack, policy theo vùng, checkpoint, verifier, receipt và Case/Evidence; runtime sở hữu session cùng vòng model–tool.
 
-Mọi write/command phải đi qua proposal có digest và chạy trong Git worktree tách biệt. Không có đường trực tiếp từ câu trả lời RAG đến tool ghi, không tạo database session mới và không hỗ trợ tự commit/push/deploy hoặc quyền admin ở bản đầu. Quyết định đầy đủ: [ADR-0008](docs/adr/0008-inherited-agent-runtime-and-code-oss-companion.md).
+Vòng đầu hỗ trợ ba loại việc: báo cáo lỗi có bảng/biểu đồ, rà soát thiết kế công đoạn có dẫn nguồn và sửa mã có test thật. Action hợp lệ trong task root được tự động duyệt; action ngoài vùng, secret, quyền admin, commit/push/merge/deploy và sửa tài liệu công đoạn chính thức bị chặn. Mã nguồn chạy trong Git worktree; artifact ghi vào vùng bản nháp có checkpoint. Người dùng xem kết quả tiếng Việt và hoàn tác ở cấp nhiệm vụ, không bắt buộc duyệt raw diff. Trạng thái hàng đợi dùng record hiện có, khóa một writer theo workspace; không tạo database session, extension Code-OSS hoặc scheduler đa Agent ở MVP. Quyết định đầy đủ: [ADR-0008](docs/adr/0008-inherited-agent-runtime-and-code-oss-companion.md).
 
 ## 15. Ranh giới phỏng vấn chuyên gia và xuất bản tri thức
 

@@ -375,7 +375,7 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
         "collection_help": "Sổ chỉ trỏ vào một thư viện. Chọn thư mục dùng chung rồi nạp một lần.",
         "collection_card_label": "Thư viện: {name}",
         "shared_library_expander": "Vị trí thư viện chung",
-        "shared_library_help": "Chọn thư mục mọi người cùng thấy (ổ D, ổ mạng). Kho tìm kiếm nằm trong aios_thu_vien, không trộn Word/Excel. Máy khác chọn cùng đường dẫn để dùng chung index. Trên máy mới vẫn cần tạo sổ và thêm tài liệu; cùng nội dung đã có trong kho thì không lập chỉ mục lại. Lịch sử chat không đi theo thư viện. Đừng chọn thư mục toàn file log CSV. Ổ mạng + WAL nhiều máy chưa được bảo đảm.",
+        "shared_library_help": "Nếu chỉ dùng thư viện trên máy này, bạn không cần thay đổi gì. Muốn đổi nơi lưu, hãy bấm “Chọn thư mục…”, chọn một thư mục rồi bấm “Lưu vị trí thư viện”. Sau đó, hãy tạo sổ và thêm tài liệu cần dùng. Các cuộc trò chuyện cũ không được chuyển theo.",
         "shared_library_path_label": "Thư mục lưu thư viện",
         "shared_library_path_placeholder": "D:\\ThuVienChung\\TriThuc",
         "shared_library_choose": "Chọn thư mục…",

@@ -214,13 +214,45 @@ _GAP_ERROR_MESSAGES = {
 
 _INTERVIEW_SESSION_STATE_LABELS = {
     "ready": "Sẵn sàng",
-    "active": "Đang phỏng vấn",
+    "active": "Đang hỏi đáp",
     "paused": "Tạm dừng",
     "awaiting_confirmation": "Chờ xác nhận",
     "completed": "Hoàn tất",
     "stopped": "Đã dừng",
-    "blocked": "Bị khóa thẩm quyền",
+    "blocked": "Không thể tiếp tục lúc này",
 }
+
+GOAL010_NEXT_LIBRARY = "Bước tiếp theo: mở mục Phỏng vấn để bắt đầu hỏi đáp."
+GOAL010_NEXT_INTERVIEW = "Bước tiếp theo: sau khi hỏi xong, mở mục Kiểm tra bản nháp."
+GOAL010_NEXT_REVIEW = "Bước tiếp theo: mở mục Đưa vào thư viện để xác nhận."
+GOAL010_NEXT_PUBLISH = "Hãy đọc lại nội dung, ghi tên người chịu trách nhiệm rồi đưa vào thư viện."
+
+
+def _goal010_error(what: str, next_step: str, *, data_safe: bool = True) -> str:
+    safety = "Dữ liệu đã nhập vẫn được giữ an toàn." if data_safe else "Hãy kiểm tra lại trước khi thử."
+    return f"{what} {safety} {next_step}"
+
+
+def _goal010_busy_error() -> str:
+    return "Thư viện đang được cập nhật trên máy khác. Nội dung của bạn vẫn được giữ; hãy thử lại sau."
+
+
+def _interview_choice_label(
+    session: InterviewSession,
+    interview_svc: ExpertInterviewService,
+    store: WorkspaceCaseService,
+) -> str:
+    title = ""
+    plan = interview_svc.get_interview_plan(session.plan_id)
+    if plan and plan.gap_ids:
+        gap = store.store.get_gap_candidate(plan.gap_ids[0])
+        if gap and gap.title.strip():
+            title = gap.title.strip()
+    person = session.expert_id
+    state = _session_state_label(session.state)
+    if title:
+        return f"{title} — {person} ({state})"
+    return f"{person} ({state})"
 _INTERVIEW_ANSWER_STATE_LABELS = {
     "answered": "Đã trả lời",
     "unknown": "Không rõ / Chưa nắm được",
@@ -633,32 +665,32 @@ def render_expert_interview_view(
     locale: str = "vi",
 ) -> None:
     norm_loc = normalize_locale(locale)
-    st.subheader("Phỏng vấn chuyên gia thu thập tri thức kỹ thuật")
-    st.caption("Khung đối thoại có kiểm soát và thích nghi nhằm làm rõ các khoảng trống tri thức công đoạn.")
+    st.subheader("Phỏng vấn")
+    st.caption("Nhập chủ đề rồi trả lời từng câu hỏi bằng lời thường dùng. Có thể tạm dừng và quay lại sau.")
+    st.caption(GOAL010_NEXT_INTERVIEW)
 
     interview_repo = ExpertInterviewRepository(service.store.database_path)
     interview_svc = ExpertInterviewService(store=service.store, interview_repo=interview_repo, actor_context=service.actor)
     person_suggestion = suggest_recorded_person()
 
-    # Hiển thị danh sách các phiên hiện có
     existing_sessions = interview_repo.list_sessions()
-    session_options = [s.session_id for s in existing_sessions]
+    session_by_id = {item.session_id: item for item in existing_sessions}
+    session_options = [item.session_id for item in existing_sessions]
 
-    col_s1, col_s2 = st.columns([3, 1])
-    with col_s1:
-        selected_session_id = st.selectbox(
-            "Chọn phiên phỏng vấn hiện có",
-            options=["new"] + session_options,
-            format_func=lambda sid: "Tạo phiên phỏng vấn mới" if sid == "new" else f"Phiên {sid} ({_session_state_label(next((s.state for s in existing_sessions if s.session_id == sid), ''))})",
-            key="wsc_interview_sel_session",
-        )
+    selected_session_id = st.selectbox(
+        "Buổi hỏi đáp",
+        options=["new"] + session_options,
+        format_func=lambda sid: (
+            "Bắt đầu buổi mới"
+            if sid == "new"
+            else _interview_choice_label(session_by_id[sid], interview_svc, service)
+        ),
+        key="wsc_interview_sel_session",
+    )
 
-    # Tạo phiên mới
     if selected_session_id == "new":
-        st.markdown("#### Khởi tạo phiên phỏng vấn mới từ khoảng trống tri thức đã chấp thuận")
         accepted_gaps = service.list_gap_candidates(status="accepted")
-        if not accepted_gaps:
-            st.info("Bạn có thể nhập một chủ đề mới để bắt đầu ngay.")
+        st.info("Bạn có thể gõ một chủ đề mới để bắt đầu ngay. Gợi ý bên dưới chỉ là tùy chọn.")
 
         with st.form("wsc_create_interview_session_form"):
             topic = st.text_input(
@@ -668,21 +700,27 @@ def render_expert_interview_view(
             gap_choices = {g.gap_id: g for g in accepted_gaps}
             sel_gap_id = None
             if gap_choices:
-                sel_gap_id = st.selectbox(
-                    "Hoặc tiếp tục một chủ đề đã chuẩn bị",
-                    options=(None, *tuple(gap_choices)),
-                    format_func=lambda gid: "Không chọn" if gid is None else gap_choices[gid].title,
-                )
+                with st.expander("Gợi ý chủ đề có sẵn", expanded=False):
+                    sel_gap_id = st.selectbox(
+                        "Chọn một gợi ý nếu muốn",
+                        options=(None, *tuple(gap_choices)),
+                        format_func=lambda gid: "Không chọn" if gid is None else gap_choices[gid].title,
+                    )
             recorded_name = st.text_input(
                 "Tên người tham gia",
                 value=person_suggestion.suggested_name,
-                help="Tên tự khai để ghi lại ai đã cung cấp thông tin; tên này không cấp quyền.",
+                help="Tên này chỉ để ghi lại ai đã chia sẻ, không dùng để cấp quyền.",
             )
-            create_btn = st.form_submit_button("Bắt đầu phỏng vấn")
+            create_btn = st.form_submit_button("Bắt đầu phỏng vấn", type="primary")
 
             if create_btn:
                 if not recorded_name.strip() or (not topic.strip() and sel_gap_id is None):
-                    st.error("Hãy nhập tên người tham gia và chủ đề muốn ghi lại.")
+                    st.error(
+                        _goal010_error(
+                            "Chưa đủ thông tin để bắt đầu.",
+                            "Hãy nhập tên người tham gia và chủ đề muốn ghi lại.",
+                        )
+                    )
                 else:
                     try:
                         if topic.strip():
@@ -723,11 +761,16 @@ def render_expert_interview_view(
                             expert_id=recorded_name.strip(),
                             idempotency_key=f"START-{plan.plan_id}",
                         )
-                        st.success(f"Đã khởi tạo phiên phỏng vấn thành công: {new_sess.session_id}")
+                        st.success("Đã bắt đầu buổi hỏi đáp. Hãy trả lời câu hỏi bên dưới.")
                         st.session_state["wsc_active_interview_session_id"] = new_sess.session_id
                         st.rerun()
-                    except Exception as err:
-                        st.error(safe_vietnamese_ui_message(str(err), "Không thể khởi tạo phiên phỏng vấn lúc này."))
+                    except Exception:
+                        st.error(
+                            _goal010_error(
+                                "Chưa bắt đầu được buổi hỏi đáp.",
+                                "Hãy thử lại hoặc đổi chủ đề ngắn hơn.",
+                            )
+                        )
         return
 
     # Phiên đang được chọn
@@ -739,21 +782,20 @@ def render_expert_interview_view(
     plan = interview_svc.get_interview_plan(curr_session.plan_id)
     max_turns = plan.budget.max_turns if plan else 10
 
-    # Hiển thị thanh trạng thái & tiến độ
     turns = interview_repo.list_turns(curr_session.session_id)
     turns_count = len(turns)
     progress_pct = min(1.0, turns_count / max_turns)
 
     m1, m2, m3 = st.columns(3)
-    m1.metric("Trạng thái phiên", _session_state_label(curr_session.state, locale=norm_loc))
-    m2.metric("Tiến độ lượt phỏng vấn", f"{turns_count} / {max_turns} lượt")
+    m1.metric("Trạng thái", _session_state_label(curr_session.state, locale=norm_loc))
+    m2.metric("Đã trả lời", f"{turns_count} câu")
     m3.metric("Người tham gia", curr_session.expert_id)
 
-    st.progress(progress_pct, text=f"Tiến độ hoàn thành: {int(progress_pct * 100)}%")
+    st.progress(progress_pct, text=f"Đã xong {int(progress_pct * 100)}%")
 
     if curr_session.state == SESSION_STATE_PAUSED:
-        st.warning("Phiên phỏng vấn hiện đang tạm dừng.")
-        if st.button("Tiếp tục phiên phỏng vấn", type="primary"):
+        st.warning("Buổi hỏi đáp đang tạm dừng. Nội dung đã nhập vẫn còn.")
+        if st.button("Tiếp tục hỏi đáp", type="primary"):
             try:
                 principal = VerifiedPrincipal(
                     subject=curr_session.principal_subject_id,
@@ -761,176 +803,163 @@ def render_expert_interview_view(
                     display_name=curr_session.expert_id,
                 )
                 interview_svc.resume_interview_session(curr_session.session_id, principal=principal)
-                st.success("Đã tiếp tục lại phiên phỏng vấn.")
+                st.success("Đã tiếp tục buổi hỏi đáp.")
                 st.rerun()
-            except Exception as err:
-                st.error(safe_vietnamese_ui_message(str(err), "Không thể tiếp tục phiên phỏng vấn lúc này."))
+            except Exception:
+                st.error(
+                    _goal010_error(
+                        "Chưa tiếp tục được buổi hỏi đáp.",
+                        "Hãy bấm lại sau vài giây.",
+                    )
+                )
 
     elif curr_session.state in (SESSION_STATE_COMPLETED, SESSION_STATE_STOPPED, SESSION_STATE_BLOCKED):
-        st.info(f"Phiên phỏng vấn đã kết thúc với trạng thái: {_session_state_label(curr_session.state, locale=norm_loc)}. Lý do: {curr_session.stop_reason or 'Hoàn tất quy trình'}.")
+        st.info(
+            f"Buổi hỏi đáp đã {_session_state_label(curr_session.state, locale=norm_loc).lower()}. "
+            f"{GOAL010_NEXT_INTERVIEW}"
+        )
+        try:
+            interview_svc.create_draft_from_session(curr_session.session_id)
+        except ControlledArtifactError:
+            pass
 
-    # Khung hiển thị lịch sử hội thoại
-    st.markdown("#### Lịch sử các lượt trao đổi")
+    st.markdown("#### Các câu đã hỏi")
     if turns:
         for t_item in turns:
             with st.chat_message("assistant"):
-                st.write(f"**Hệ thống (Lượt {t_item.sequence}):** {t_item.question_text}")
+                st.write(t_item.question_text)
             with st.chat_message("user"):
-                status_lbl = _turn_answer_state_label(t_item.answer_state, locale=norm_loc)
-                st.write(f"**Người tham gia ({curr_session.expert_id}):** {t_item.answer_text}")
-                st.caption(f"Trạng thái ghi nhận: {status_lbl} | Thời điểm: {t_item.created_at}")
+                st.write(t_item.answer_text)
+                st.caption(_turn_answer_state_label(t_item.answer_state, locale=norm_loc))
     else:
-        st.caption("Chưa có lượt trao đổi nào trong phiên này.")
+        st.caption("Chưa có câu trả lời nào. Hãy trả lời câu hỏi bên dưới.")
 
-    # Nếu phiên đang active thì cho phép trả lời
     if curr_session.state == SESSION_STATE_ACTIVE:
-        audio_enabled = st.checkbox(
-            "Tùy chọn: dùng ghi âm cục bộ thay cho nhập chữ",
-            value=False,
-            key=f"use_audio_{curr_session.session_id}",
-        )
         current_consent = interview_repo.get_consent(curr_session.session_id)
         consent_is_granted = current_consent is not None and current_consent.is_active
 
-        if audio_enabled and consent_is_granted:
-            st.success("🔴 Đang kích hoạt ghi âm âm thanh cục bộ (an toàn, không tải lên mạng).")
-            st.caption(f"Mã đồng ý: {current_consent.consent_id} · Phiên bản: {current_consent.version} · Lưu trữ: Chỉ trong máy nội bộ")
-            if st.button("Rút lại sự đồng ý ghi âm", key=f"btn_withdraw_{curr_session.session_id}"):
-                withdrawn_consent = ConsentRecord(
-                    consent_id=current_consent.consent_id,
-                    session_id=current_consent.session_id,
-                    subject=current_consent.subject,
-                    version=current_consent.version,
-                    state=CONSENT_STATE_WITHDRAWN,
-                    purposes=current_consent.purposes,
-                    retention_policy=current_consent.retention_policy,
-                    granted_at=current_consent.granted_at,
-                    withdrawn_at=datetime.now(timezone.utc).isoformat(),
-                )
-                interview_repo.save_consent(withdrawn_consent, f"IDEMP-WITHDRAW-{curr_session.session_id}")
-                st.warning("Đã rút lại sự đồng ý ghi âm. Hệ thống chuyển sang chế độ trả lời bằng văn bản thuần túy.")
-                st.rerun()
-
-            # Khung chép lời âm thanh khi đã đồng ý
-            st.markdown("##### Tải lên tệp âm thanh để chép lời tự động")
-            uploaded_audio = st.file_uploader(
-                "Chọn tệp âm thanh (định dạng WAV mono 16kHz)",
-                type=["wav"],
-                key=f"audio_upload_{curr_session.session_id}",
-            )
-            btn_run_transcribe = st.button("Chép lời âm thanh cục bộ", key=f"btn_transcribe_{curr_session.session_id}")
-
-            if btn_run_transcribe:
-                audio_file_path = None
-                if uploaded_audio is not None:
-                    audio_file_path = save_local_audio_upload(
-                        interview_repo.database_path.parent,
-                        curr_session.session_id,
-                        uploaded_audio.name,
-                        uploaded_audio.getvalue(),
+        with st.expander("Dùng ghi âm (không bắt buộc)", expanded=False):
+            if consent_is_granted:
+                st.write("Đang dùng ghi âm trên máy này. Có thể rút lại bất cứ lúc nào và tiếp tục bằng chữ.")
+                if st.button("Rút lại đồng ý ghi âm", key=f"btn_withdraw_{curr_session.session_id}"):
+                    withdrawn_consent = ConsentRecord(
+                        consent_id=current_consent.consent_id,
+                        session_id=current_consent.session_id,
+                        subject=current_consent.subject,
+                        version=current_consent.version,
+                        state=CONSENT_STATE_WITHDRAWN,
+                        purposes=current_consent.purposes,
+                        retention_policy=current_consent.retention_policy,
+                        granted_at=current_consent.granted_at,
+                        withdrawn_at=datetime.now(timezone.utc).isoformat(),
                     )
+                    interview_repo.save_consent(withdrawn_consent, f"IDEMP-WITHDRAW-{curr_session.session_id}")
+                    st.warning("Đã rút đồng ý ghi âm. Bạn vẫn trả lời bằng chữ như bình thường.")
+                    st.rerun()
 
-                if audio_file_path and audio_file_path.exists():
-                    adapter = LocalWhisperCppTranscriptionAdapter()
-                    try:
-                        receipt = adapter.transcribe(
-                            audio_path=audio_file_path,
-                            session_id=curr_session.session_id,
-                            consent=current_consent,
-                        )
-                        interview_repo.save_transcription_receipt(receipt, f"IDEMP-TRCP-{receipt.receipt_id}")
-                        st.session_state[f"last_receipt_{curr_session.session_id}"] = receipt
-                        st.success("Chép lời âm thanh cục bộ thành công.")
-                    except Exception as exc:
-                        thong_bao_loi = safe_vietnamese_ui_message(str(exc), "Không thể chép lời âm thanh lúc này.")
-                        st.error(thong_bao_loi)
-                else:
-                    st.error("Vui lòng chọn hoặc tải lên tệp âm thanh hợp lệ.")
-
-            with st.expander("📝 Hoặc nhập văn bản phản hồi trực tiếp thủ công", expanded=False):
-                manual_text_input = st.text_area(
-                    "Nội dung phản hồi:",
-                    key=f"txt_manual_{curr_session.session_id}",
+                uploaded_audio = st.file_uploader(
+                    "Chọn tệp ghi âm nếu muốn",
+                    key=f"audio_upload_{curr_session.session_id}",
                 )
-                if st.button("Xác nhận văn bản thủ công", key=f"btn_manual_rcpt_{curr_session.session_id}"):
-                    if manual_text_input.strip():
-                        manual_rcpt = create_manual_transcription_receipt(
-                            manual_text_input.strip(),
-                            curr_session.session_id,
-                            current_consent,
-                        )
-                        interview_repo.save_transcription_receipt(manual_rcpt, f"IDEMP-TRCP-{manual_rcpt.receipt_id}")
-                        st.session_state[f"last_receipt_{curr_session.session_id}"] = manual_rcpt
-                        st.success("Đã tiếp nhận văn bản thủ công thành công.")
-                        st.rerun()
+                if st.button("Chép lời từ tệp ghi âm", key=f"btn_transcribe_{curr_session.session_id}"):
+                    audio_file_path = None
+                    if uploaded_audio is not None:
+                        if not str(uploaded_audio.name).lower().endswith(".wav"):
+                            st.error(
+                                _goal010_error(
+                                    "Tệp này chưa dùng được để chép lời.",
+                                    "Hãy chọn tệp ghi âm hoặc nhập câu trả lời bằng chữ.",
+                                )
+                            )
+                        else:
+                            audio_file_path = save_local_audio_upload(
+                                interview_repo.database_path.parent,
+                                curr_session.session_id,
+                                uploaded_audio.name,
+                                uploaded_audio.getvalue(),
+                            )
+                    if audio_file_path and audio_file_path.exists():
+                        adapter = LocalWhisperCppTranscriptionAdapter()
+                        try:
+                            receipt = adapter.transcribe(
+                                audio_path=audio_file_path,
+                                session_id=curr_session.session_id,
+                                consent=current_consent,
+                            )
+                            interview_repo.save_transcription_receipt(receipt, f"IDEMP-TRCP-{receipt.receipt_id}")
+                            st.session_state[f"last_receipt_{curr_session.session_id}"] = receipt
+                            st.success("Đã chép lời. Hãy đọc lại rồi xác nhận các số liệu trước khi dùng.")
+                        except Exception as exc:
+                            st.error(
+                                _goal010_error(
+                                    "Chưa chép được lời từ tệp ghi âm.",
+                                    "Hãy dùng ô văn bản bên dưới để nhập câu trả lời.",
+                                )
+                            )
                     else:
-                        st.warning("Vui lòng nhập nội dung văn bản trước khi xác nhận.")
+                        st.error(
+                            _goal010_error(
+                                "Chưa có tệp ghi âm để chép lời.",
+                                "Hãy chọn một tệp hoặc nhập câu trả lời bằng chữ.",
+                            )
+                        )
 
-            # Hiển thị kết quả chép lời và xác nhận mã máy, con số, đơn vị (T045)
-            last_receipt = st.session_state.get(f"last_receipt_{curr_session.session_id}")
-            if last_receipt:
-                st.markdown("##### Kết quả chép lời và xác nhận thông số kỹ thuật")
-                st.info(f"**Văn bản nhận dạng:** {last_receipt.full_text}")
-                if last_receipt.all_critical_tokens:
-                    st.write("**Các thông số, mã thiết bị và đơn vị đo được nhận dạng:**")
-                    st.write(", ".join(f"`{tok}`" for tok in last_receipt.all_critical_tokens))
+                last_receipt = st.session_state.get(f"last_receipt_{curr_session.session_id}")
+                if last_receipt:
+                    st.write("**Lời đã chép:**")
+                    st.write(last_receipt.full_text)
+                    if last_receipt.all_critical_tokens:
+                        st.write("Hãy kiểm tra các số, mã máy và đơn vị sau:")
+                        st.write(", ".join(str(tok) for tok in last_receipt.all_critical_tokens))
+                    if st.button("Dùng lời đã chép làm câu trả lời", key=f"btn_confirm_tokens_{curr_session.session_id}"):
+                        st.session_state[f"ans_text_{curr_session.session_id}"] = last_receipt.full_text
+                        st.success("Đã điền lời đã chép vào ô trả lời. Hãy đọc lại rồi gửi.")
+                        st.rerun()
+            else:
+                st.write("Ghi âm chỉ lưu trên máy này. Không bắt buộc; bạn luôn có thể trả lời bằng chữ.")
+                col_c1, col_c2 = st.columns(2)
+                with col_c1:
+                    if st.button("Đồng ý ghi âm trên máy này", key=f"btn_grant_{curr_session.session_id}"):
+                        new_consent = ConsentRecord(
+                            consent_id=f"CSNT-{curr_session.session_id}-{int(datetime.now(timezone.utc).timestamp())}",
+                            session_id=curr_session.session_id,
+                            subject=curr_session.principal_subject_id,
+                            version="1.0",
+                            state=CONSENT_STATE_GRANTED,
+                            purposes=("audio_recording", "local_transcription"),
+                            retention_policy="local_only_retained",
+                            granted_at=datetime.now(timezone.utc).isoformat(),
+                        )
+                        interview_repo.save_consent(new_consent, f"IDEMP-GRANT-{curr_session.session_id}")
+                        st.success("Đã đồng ý ghi âm. Bạn vẫn có thể trả lời bằng chữ.")
+                        st.rerun()
+                with col_c2:
+                    if st.button("Không dùng ghi âm", key=f"btn_decline_{curr_session.session_id}"):
+                        declined_consent = ConsentRecord(
+                            consent_id=f"CSNT-{curr_session.session_id}-{int(datetime.now(timezone.utc).timestamp())}",
+                            session_id=curr_session.session_id,
+                            subject=curr_session.principal_subject_id,
+                            version="1.0",
+                            state=CONSENT_STATE_DECLINED,
+                            purposes=("text_only",),
+                            retention_policy="local_only_retained",
+                            granted_at=None,
+                            withdrawn_at=None,
+                        )
+                        interview_repo.save_consent(declined_consent, f"IDEMP-DECLINE-{curr_session.session_id}")
+                        st.info("Đã chọn trả lời bằng chữ.")
+                        st.rerun()
 
-                # Xác nhận đưa vào câu trả lời
-                if st.button("Xác nhận thông số và điền vào ô câu trả lời", key=f"btn_confirm_tokens_{curr_session.session_id}"):
-                    st.session_state[f"ans_text_{curr_session.session_id}"] = last_receipt.full_text
-                    st.success("Đã điền nội dung chép lời đã xác nhận vào ô phản hồi.")
-                    st.rerun()
-
-        elif audio_enabled:
-            st.info("Chế độ ghi âm hiện đang tắt. Bạn có thể trả lời trực tiếp bằng văn bản bên dưới hoặc đồng ý ghi âm.")
-            col_c1, col_c2 = st.columns(2)
-            with col_c1:
-                if st.button("Chấp thuận ghi âm và chép lời (Phiên bản 1.0)", key=f"btn_grant_{curr_session.session_id}"):
-                    new_consent = ConsentRecord(
-                        consent_id=f"CSNT-{curr_session.session_id}-{int(datetime.now(timezone.utc).timestamp())}",
-                        session_id=curr_session.session_id,
-                        subject=curr_session.principal_subject_id,
-                        version="1.0",
-                        state=CONSENT_STATE_GRANTED,
-                        purposes=("audio_recording", "local_transcription"),
-                        retention_policy="local_only_retained",
-                        granted_at=datetime.now(timezone.utc).isoformat(),
-                    )
-                    interview_repo.save_consent(new_consent, f"IDEMP-GRANT-{curr_session.session_id}")
-                    st.success("Đã kích hoạt đồng ý ghi âm thành công.")
-                    st.rerun()
-            with col_c2:
-                if st.button("Từ chối ghi âm (Tiếp tục bằng văn bản)", key=f"btn_decline_{curr_session.session_id}"):
-                    declined_consent = ConsentRecord(
-                        consent_id=f"CSNT-{curr_session.session_id}-{int(datetime.now(timezone.utc).timestamp())}",
-                        session_id=curr_session.session_id,
-                        subject=curr_session.principal_subject_id,
-                        version="1.0",
-                        state=CONSENT_STATE_DECLINED,
-                        purposes=("text_only",),
-                        retention_policy="local_only_retained",
-                        granted_at=None,
-                        withdrawn_at=None,
-                    )
-                    interview_repo.save_consent(declined_consent, f"IDEMP-DECLINE-{curr_session.session_id}")
-                    st.info("Đã ghi nhận lựa chọn chỉ sử dụng văn bản.")
-                    st.rerun()
-
-        st.markdown("#### Phản hồi lượt phỏng vấn tiếp theo")
-        next_q = plan.seed_questions[0].text if (plan and plan.seed_questions and not turns) else f"Câu hỏi làm rõ lượt {turns_count + 1}"
+        next_q = plan.seed_questions[0].text if (plan and plan.seed_questions and not turns) else f"Bạn có thể nói rõ thêm được không?"
         st.info(f"**Câu hỏi hiện tại:** {next_q}")
 
         with st.form(f"wsc_answer_turn_form_{curr_session.session_id}"):
             ans_input = st.text_area("Nhập câu trả lời", key=f"ans_text_{curr_session.session_id}")
-            col_b1, col_b2, col_b3, col_b4 = st.columns(4)
-            with col_b1:
-                submit_ans = st.form_submit_button("Gửi câu trả lời", type="primary")
-            with col_b2:
-                btn_unknown = st.form_submit_button("Chưa rõ thông tin")
-            with col_b3:
-                btn_pause = st.form_submit_button("Tạm dừng phiên")
-            with col_b4:
-                btn_stop = st.form_submit_button("Dừng phiên phỏng vấn")
+            submit_ans = st.form_submit_button("Gửi câu trả lời", type="primary")
+            with st.expander("Việc khác", expanded=False):
+                btn_unknown = st.form_submit_button("Chưa rõ")
+                btn_pause = st.form_submit_button("Tạm dừng")
+                btn_stop = st.form_submit_button("Kết thúc")
 
             final_ans = None
             if submit_ans:
@@ -957,10 +986,22 @@ def render_expert_interview_view(
                         idempotency_key=f"TURN-{curr_session.session_id}-{turns_count + 1}-{uuid4().hex[:6]}",
                         question_override=next_q,
                     )
-                    st.success("Đã ghi nhận phản hồi thành công.")
+                    if final_ans == "dừng":
+                        try:
+                            interview_svc.create_draft_from_session(curr_session.session_id)
+                        except ControlledArtifactError:
+                            pass
+                        st.success("Đã kết thúc buổi hỏi đáp. Hãy mở mục Kiểm tra bản nháp.")
+                    else:
+                        st.success("Đã ghi nhận câu trả lời.")
                     st.rerun()
-                except Exception as err:
-                    st.error(safe_vietnamese_ui_message(str(err), "Không thể ghi nhận phản hồi lúc này."))
+                except Exception:
+                    st.error(
+                        _goal010_error(
+                            "Chưa ghi được câu trả lời.",
+                            "Hãy thử gửi lại. Nội dung trong ô nhập vẫn còn.",
+                        )
+                    )
 
 
 def _case_workspace_modes() -> tuple[str, ...]:
@@ -973,15 +1014,17 @@ def _case_workspace_modes() -> tuple[str, ...]:
 def render_library_selection_view() -> None:
     """Render the simple personal/shared library choice for stage one."""
     st.subheader("Chọn thư viện")
+    st.caption("Hãy chọn nơi lưu kiến thức. Chỉ cần một thao tác rồi sang bước phỏng vấn.")
     current = get_active_library_mode()
     st.info(f"Đang dùng: {current['mode_label']}")
+    st.caption(GOAL010_NEXT_LIBRARY)
     mode = st.radio(
-        "Bạn muốn lưu tri thức ở đâu?",
+        "Bạn muốn lưu kiến thức ở đâu?",
         options=("personal", "shared"),
         format_func=lambda value: (
-            "Thư viện cá nhân – chỉ dùng trên máy này"
+            "Thư viện cá nhân — chỉ trên máy này"
             if value == "personal"
-            else "Thư viện dùng chung – nhóm nhỏ cùng sử dụng"
+            else "Thư viện dùng chung — cùng dùng một thư mục"
         ),
         index=0 if current["mode"] == "personal" else 1,
         key="goal010_library_mode",
@@ -991,14 +1034,20 @@ def render_library_selection_view() -> None:
         shared_path = st.text_input(
             "Thư mục dùng chung",
             value=current["storage_root"] if current["mode"] == "shared" else "",
-            help="Chọn thư mục mà các thành viên tin cậy đều truy cập được.",
+            help="Chọn thư mục mà mọi người trong nhóm tin cậy đều mở được.",
         )
     if st.button("Dùng thư viện này", type="primary", key="goal010_select_library"):
         try:
             select_library_mode(mode, shared_path or None)
-            st.success("Đã đổi thư viện hiện hành. Bạn có thể tiếp tục mà không cần khởi động lại.")
+            st.success("Đã chọn thư viện. Bạn có thể tiếp tục mà không cần khởi động lại.")
+            st.caption(GOAL010_NEXT_LIBRARY)
         except ValueError:
-            st.error("Chưa thể dùng thư mục này. Hãy chọn một thư mục đầy đủ và thử lại.")
+            st.error(
+                _goal010_error(
+                    "Chưa chọn được thư mục dùng chung.",
+                    "Hãy chọn một thư mục đầy đủ rồi bấm lại.",
+                )
+            )
 
 
 def render_case_workspace(
@@ -1041,10 +1090,11 @@ def render_case_workspace(
     elif view_mode == "review_approve":
         interview_repo = ExpertInterviewRepository(service.store.database_path)
         interview_svc = ExpertInterviewService(store=service.store, interview_repo=interview_repo, actor_context=service.actor)
+        suggested = suggest_recorded_person()
         actor_principal = VerifiedPrincipal(
-            subject=service.actor.actor_id,
-            provider_name="local_interactive",
-            display_name=service.actor.actor_id,
+            subject=suggested.suggested_name or service.actor.actor_id,
+            provider_name="local_recorded_name",
+            display_name=suggested.suggested_name or service.actor.actor_id,
         )
         render_controlled_artifacts_management(
             service=interview_svc,
@@ -1059,10 +1109,11 @@ def render_case_workspace(
         base_dir = service.store.database_path.parent / "workspace_chat"
         backup_dir = service.store.database_path.parent / "library_backups"
         publisher = KnowledgePublisher(base_dir=base_dir, backup_dir=backup_dir, interview_repo=interview_repo)
+        suggested = suggest_recorded_person()
         actor_principal = VerifiedPrincipal(
-            subject=service.actor.actor_id,
-            provider_name="local_interactive",
-            display_name=service.actor.actor_id,
+            subject=suggested.suggested_name or service.actor.actor_id,
+            provider_name="local_recorded_name",
+            display_name=suggested.suggested_name or service.actor.actor_id,
         )
         render_knowledge_publication_management(
             service=interview_svc,
@@ -1802,8 +1853,8 @@ _CONTROLLED_ARTIFACT_STATUS_LABELS = {
 }
 
 _CONTROLLED_ARTIFACT_TYPE_LABELS = {
-    "sop": "Quy trình thao tác chuẩn (SOP)",
-    "lesson": "Bài học kinh nghiệm",
+    "sop": "Quy trình",
+    "lesson": "Bài học",
 }
 
 
@@ -1821,156 +1872,89 @@ def render_controlled_artifacts_management(
     actor_principal: VerifiedPrincipal,
     locale: str = "vi",
 ) -> None:
-    """Render preview, provenance map, version diff, and approval interface for controlled knowledge artifacts (T058)."""
+    """Stage 3: review and edit the draft before confirmation."""
     norm_loc = normalize_locale(locale)
-    st.subheader("Quản lý Quy trình & Bài học Tri thức Chuẩn hóa")
+    st.subheader("Kiểm tra bản nháp")
+    st.caption("Đọc và sửa nội dung. Đây chưa phải tri thức chính thức.")
+    st.caption(GOAL010_NEXT_REVIEW)
 
+    service.ensure_drafts_from_answered_sessions()
     artifacts = service.interview_repo.list_artifacts()
     if not artifacts:
-        st.info("Chưa có tài liệu quy chuẩn (SOP hoặc Bài học) nào được tạo.")
+        st.info("Chưa có bản nháp. Hãy hoàn thành một buổi hỏi đáp ở bước Phỏng vấn trước.")
         return
 
     artifact_titles = [
-        f"{a.title} (bản {a.version}) — {_CONTROLLED_ARTIFACT_STATUS_LABELS.get(a.status, a.status)}"
+        f"{a.title} — {_CONTROLLED_ARTIFACT_STATUS_LABELS.get(a.status, a.status)}"
         for a in artifacts
     ]
-    selected_idx = st.selectbox("Chọn tài liệu cần kiểm tra / phê duyệt:", range(len(artifacts)), format_func=lambda i: artifact_titles[i])
+    selected_idx = st.selectbox(
+        "Chọn bản nháp cần đọc",
+        range(len(artifacts)),
+        format_func=lambda i: artifact_titles[i],
+    )
     selected_artifact = artifacts[selected_idx]
+    st.info("Đây là bản nháp, chưa phải tri thức chính thức.")
 
-    # Tabs: Preview, Provenance Map, Version Diff, Approval
-    tab_view, tab_prov, tab_diff, tab_action = st.tabs([
-        "Xem trước Nội dung",
-        "Bản đồ Nguồn chứng minh",
-        "So sánh Phiên bản",
-        "Quyết định Phê duyệt",
-    ])
-
-    with tab_view:
-        st.markdown(selected_artifact.content_markdown)
-
-    with tab_prov:
-        st.write("**Những nội dung đã dùng làm căn cứ:**")
-        for statement in selected_artifact.claim_map.values():
+    source_lines = [str(item).strip() for item in selected_artifact.claim_map.values() if str(item).strip()]
+    if source_lines:
+        st.write("**Nguồn đã dùng:**")
+        for statement in source_lines:
             st.markdown(f"- {statement}")
-        if not selected_artifact.claim_map:
-            st.info("Nguồn gốc chi tiết đã được lưu cùng bản nháp và sẽ được kiểm tra khi xác nhận.")
+    else:
+        st.caption("Nguồn sẽ được ghi nhận khi bạn xác nhận ở bước sau.")
 
-    with tab_diff:
+    if "chưa chắc" in selected_artifact.content_markdown.lower() or "cần kiểm tra" in selected_artifact.content_markdown.lower():
+        st.warning("Có phần chưa chắc chắn. Hãy sửa hoặc ghi chú trước khi đưa vào thư viện.")
+
+    with st.form(f"form_approval_{selected_artifact.artifact_id}"):
+        draft_content = st.text_area(
+            "Nội dung bản nháp",
+            value=selected_artifact.content_markdown,
+            help="Sửa trực tiếp. Mỗi lần lưu sẽ gắn quyết định với đúng nội dung bạn vừa xem.",
+        )
+        submitted = st.form_submit_button("Lưu chỉnh sửa", type="primary")
+        if submitted:
+            if not draft_content.strip():
+                st.error(
+                    _goal010_error(
+                        "Chưa lưu được vì nội dung đang trống.",
+                        "Hãy điền nội dung rồi bấm lưu lại.",
+                    )
+                )
+            else:
+                try:
+                    if draft_content != selected_artifact.content_markdown:
+                        revised = replace(
+                            selected_artifact,
+                            version=_next_artifact_version(selected_artifact.version),
+                            content_markdown=draft_content,
+                            status=ARTIFACT_STATUS_CANDIDATE,
+                        )
+                        service.create_controlled_artifact(
+                            revised,
+                            f"REVISION-{revised.artifact_id}-{revised.digest}",
+                        )
+                    st.success("Đã lưu bản nháp. Hãy sang bước Đưa vào thư viện để xác nhận.")
+                    st.rerun()
+                except (ValueError, ControlledArtifactError):
+                    st.error(
+                        _goal010_error(
+                            "Chưa lưu được bản nháp.",
+                            "Hãy thử lưu lại.",
+                        )
+                    )
+
+    with st.expander("Chi tiết kỹ thuật", expanded=False):
         same_id_artifacts = [a for a in artifacts if a.artifact_id == selected_artifact.artifact_id]
         if len(same_id_artifacts) > 1:
-            diff_options = [f"v{a.version}" for a in same_id_artifacts]
-            target_v_idx = st.selectbox("So sánh với phiên bản:", range(len(same_id_artifacts)), format_func=lambda i: diff_options[i])
-            compare_artifact = same_id_artifacts[target_v_idx]
+            st.caption("So sánh với bản trước, chỉ dùng khi cần hỗ trợ.")
+            compare_artifact = same_id_artifacts[0]
             if compare_artifact.version != selected_artifact.version:
                 report = generate_artifact_diff(compare_artifact, selected_artifact)
-                st.code(report.content_diff, language="diff")
-                if report.conflict_decision_items:
-                    st.warning("Các điểm cần lưu ý khi chuyển phiên bản:")
-                    for item in report.conflict_decision_items:
-                        st.markdown(f"- {item}")
-            else:
-                st.info("Đang chọn cùng một phiên bản.")
+                st.text(report.content_diff)
         else:
-            st.info("Tài liệu hiện tại chỉ có một phiên bản duy nhất.")
-
-    with tab_action:
-        st.write(f"**Trạng thái hiện tại:** {_CONTROLLED_ARTIFACT_STATUS_LABELS.get(selected_artifact.status, selected_artifact.status)}")
-        with st.form(f"form_approval_{selected_artifact.artifact_id}"):
-            draft_content = st.text_area(
-                "Nội dung bản nháp",
-                value=selected_artifact.content_markdown,
-                help="Có thể sửa trực tiếp. Mỗi lần sửa sẽ tạo một bản mới để quyết định luôn gắn đúng nội dung đã xem.",
-            )
-            action_choice = st.selectbox(
-                "Quyết định:",
-                [
-                    ("approve", "Xác nhận nội dung"),
-                    ("reject", "Không sử dụng nội dung này"),
-                    ("request_change", "Cần chỉnh sửa thêm"),
-                ],
-                format_func=lambda x: x[1],
-            )
-            reason = st.text_area("Lý do / Căn cứ ra quyết định:")
-            recorded_name = st.text_input(
-                "Tên người ghi nhận",
-                value=actor_principal.display_name or actor_principal.subject,
-                help="Tên tự khai để truy vết trách nhiệm, không phải tài khoản xác thực.",
-            )
-            machine_ref = st.text_input("Máy ghi nhận", value=suggest_recorded_person().machine_ref)
-            confidence = st.selectbox(
-                "Mức tự tin",
-                options=("high", "medium", "low"),
-                format_func=lambda value: {"high": "Cao", "medium": "Vừa", "low": "Thấp"}[value],
-            )
-            checked_sources = st.text_area(
-                "Nguồn đã kiểm tra",
-                value=(
-                    "\n".join(selected_artifact.claim_map.values())
-                    or "Nội dung phỏng vấn đã xác nhận"
-                ),
-                help="Mỗi nguồn một dòng.",
-            )
-            responsibility_acknowledged = st.checkbox(
-                "Tôi xác nhận chịu trách nhiệm về quyết định này."
-            )
-            submitted = st.form_submit_button("Lưu chỉnh sửa và xác nhận", type="primary")
-
-            if submitted:
-                if not draft_content.strip():
-                    st.error("Nội dung bản nháp không được để trống.")
-                elif not reason.strip() or not recorded_name.strip() or not checked_sources.strip() or not responsibility_acknowledged:
-                    st.error("Hãy điền đủ tên, căn cứ, nguồn đã kiểm tra và xác nhận trách nhiệm.")
-                else:
-                    try:
-                        artifact_for_decision = selected_artifact
-                        if draft_content != selected_artifact.content_markdown:
-                            artifact_for_decision = replace(
-                                selected_artifact,
-                                version=_next_artifact_version(selected_artifact.version),
-                                content_markdown=draft_content,
-                                status=ARTIFACT_STATUS_CANDIDATE,
-                            )
-                            service.create_controlled_artifact(
-                                artifact_for_decision,
-                                f"REVISION-{artifact_for_decision.artifact_id}-{artifact_for_decision.digest}",
-                            )
-                        app_count = len(service.interview_repo.list_decision_records(selected_artifact.artifact_id))
-                        approval_id = f"APP-{selected_artifact.artifact_id}-{app_count + 1}-{int(datetime.now(timezone.utc).timestamp())}"
-                        action_val = action_choice
-                        action_options = [
-                            ("approve", "Phê duyệt ban hành"),
-                            ("reject", "Từ chối tài liệu"),
-                            ("request_change", "Yêu cầu chỉnh sửa bổ sung"),
-                        ]
-                        if isinstance(action_choice, int) and 0 <= action_choice < len(action_options):
-                            action_val = action_options[action_choice][0]
-                        elif isinstance(action_choice, (tuple, list)) and len(action_choice) > 0:
-                            action_val = action_choice[0]
-
-                        confidence_value = confidence
-                        if isinstance(confidence, int):
-                            confidence_value = ("high", "medium", "low")[confidence]
-
-                        service.submit_artifact_approval(
-                            approval_id=approval_id,
-                            artifact_id=selected_artifact.artifact_id,
-                            action=str(action_val),
-                            actor_id=recorded_name.strip(),
-                            expected_digest=artifact_for_decision.digest,
-                            reason=reason.strip(),
-                            idempotency_key=f"IDEMP-{approval_id}",
-                            machine_ref=machine_ref.strip(),
-                            confidence=str(confidence_value),
-                            checked_source_refs=tuple(
-                                source.strip() for source in checked_sources.splitlines() if source.strip()
-                            ),
-                            responsibility_acknowledged=responsibility_acknowledged,
-                        )
-                        st.success("Đã lưu bản nội dung và ghi nhận đầy đủ quyết định của bạn.")
-                        st.rerun()
-                    except (ValueError, StaleArtifactDigestError, ConflictedClaimArtifactError, ControlledArtifactError) as exc:
-                        thong_bao_loi = safe_vietnamese_ui_message(str(exc), "Không thể ghi nhận quyết định phê duyệt lúc này.")
-                        st.error(thong_bao_loi)
+            st.caption("Chưa có bản trước để so sánh.")
 
 
 def render_knowledge_publication_management(
@@ -1979,116 +1963,187 @@ def render_knowledge_publication_management(
     actor_principal: VerifiedPrincipal,
     locale: str = "vi",
 ) -> None:
-    """Render publication pipeline, backup status, and revocation UI for approved knowledge artifacts (T066)."""
+    """Stage 4: confirm responsibility and put the draft into the library."""
     norm_loc = normalize_locale(locale)
-    st.subheader("Đưa tri thức vào thư viện")
+    st.subheader("Xác nhận và đưa vào thư viện")
+    st.caption(GOAL010_NEXT_PUBLISH)
 
-    artifacts = service.interview_repo.list_artifacts(status=ARTIFACT_STATUS_APPROVED)
+    artifacts = [
+        item
+        for item in service.interview_repo.list_artifacts()
+        if item.status in {ARTIFACT_STATUS_CANDIDATE, ARTIFACT_STATUS_APPROVED}
+    ]
     if not artifacts:
-        st.info("Chưa có tài liệu quy chuẩn nào được phê duyệt để xuất bản.")
+        st.info("Chưa có bản nháp để đưa vào thư viện. Hãy hoàn thành bước Kiểm tra bản nháp trước.")
         return
 
-    art_options = [f"{a.title} (bản {a.version})" for a in artifacts]
-    selected_idx = st.selectbox("Chọn tài liệu đã duyệt để xuất bản:", range(len(artifacts)), format_func=lambda i: art_options[i])
+    art_options = [
+        f"{a.title} — {_CONTROLLED_ARTIFACT_STATUS_LABELS.get(a.status, a.status)}"
+        for a in artifacts
+    ]
+    selected_idx = st.selectbox(
+        "Chọn nội dung cần đưa vào thư viện",
+        range(len(artifacts)),
+        format_func=lambda i: art_options[i],
+    )
     selected_artifact = artifacts[selected_idx]
+    person_suggestion = suggest_recorded_person()
+    default_sources = "\n".join(
+        str(item).strip() for item in selected_artifact.claim_map.values() if str(item).strip()
+    ) or "Buổi hỏi đáp đã xem lại"
 
-    tab_pub, tab_revoke = st.tabs(["Tiến trình Xuất bản", "Thu hồi khỏi Thư viện"])
+    with st.form(f"form_publish_{selected_artifact.artifact_id}"):
+        st.write(f"**Nội dung:** {selected_artifact.title}")
+        st.caption("Thời điểm được ghi tự động khi bạn xác nhận.")
+        recorded_name = st.text_input(
+            "Tên người ghi nhận",
+            value=person_suggestion.suggested_name or actor_principal.display_name,
+            help="Tên tự khai để nhớ ai chịu trách nhiệm, không phải tài khoản đã xác minh.",
+        )
+        confidence = st.selectbox(
+            "Mức tự tin",
+            options=("high", "medium", "low"),
+            format_func=lambda value: {"high": "Cao", "medium": "Vừa", "low": "Thấp"}[value],
+        )
+        reason = st.text_area("Căn cứ / lý do xác nhận:")
+        checked_sources = st.text_area(
+            "Nguồn đã kiểm tra",
+            value=default_sources,
+            help="Mỗi nguồn một dòng.",
+        )
+        responsibility_acknowledged = st.checkbox("Tôi xác nhận chịu trách nhiệm về quyết định này.")
+        submitted = st.form_submit_button("Xác nhận và đưa vào thư viện", type="primary")
 
-    with tab_pub:
-        st.write(f"**Nội dung:** {selected_artifact.title} (bản {selected_artifact.version})")
-        with st.form(f"form_publish_{selected_artifact.artifact_id}"):
-            st.write("Hệ thống sẽ tự kiểm tra nội dung và giữ bản cũ nếu việc ghi không hoàn tất.")
-            submitted = st.form_submit_button("Đưa nội dung này vào thư viện", type="primary")
-
-            if submitted:
-                questions = (
-                    f"Quy trình {selected_artifact.scope} yêu cầu thông số gì?",
-                    f"Cách thực hiện {selected_artifact.title} chi tiết thế nào?",
-                )
-                try:
-                        pkg = seal_publication_package(
-                            artifact=selected_artifact,
-                            acceptance_questions=questions,
-                            sealed_by=actor_principal.subject,
-                        )
-                        st.info("Đang kiểm tra và đưa nội dung vào thư viện...")
-
-                        pub_pkg, receipt = publisher.publish_package(pkg, actor=actor_principal.subject)
-                        st.success("Đã đưa nội dung vào thư viện và kiểm tra có thể tìm lại.")
-                except (UnapprovedArtifactPublicationError, LibraryWriterBusyError, PublicationAcceptanceError, PublicationError) as exc:
-                    thong_bao_loi = safe_vietnamese_ui_message(
-                        str(exc),
-                        "Chưa thể ghi vào thư viện. Bản cũ vẫn an toàn; hãy thử lại sau.",
+        if submitted:
+            if not reason.strip() or not recorded_name.strip() or not checked_sources.strip() or not responsibility_acknowledged:
+                st.error(
+                    _goal010_error(
+                        "Chưa đưa vào thư viện vì còn thiếu thông tin.",
+                        "Hãy điền tên, căn cứ, nguồn đã kiểm tra và xác nhận trách nhiệm.",
                     )
-                    st.error(thong_bao_loi)
+                )
+            else:
+                try:
+                    working = selected_artifact
+                    if working.status != ARTIFACT_STATUS_APPROVED:
+                        app_count = len(service.interview_repo.list_decision_records(working.artifact_id))
+                        approval_id = f"APP-{working.artifact_id}-{app_count + 1}-{int(datetime.now(timezone.utc).timestamp())}"
+                        confidence_value = confidence
+                        if isinstance(confidence, int):
+                            confidence_value = ("high", "medium", "low")[confidence]
+                        working = service.submit_artifact_approval(
+                            approval_id=approval_id,
+                            artifact_id=working.artifact_id,
+                            action=APPROVAL_ACTION_APPROVE,
+                            actor_id=recorded_name.strip(),
+                            expected_digest=working.digest,
+                            reason=reason.strip(),
+                            idempotency_key=f"IDEMP-{approval_id}",
+                            machine_ref=person_suggestion.machine_ref,
+                            confidence=str(confidence_value),
+                            checked_source_refs=tuple(
+                                source.strip() for source in checked_sources.splitlines() if source.strip()
+                            ),
+                            responsibility_acknowledged=True,
+                        )
+                    questions = (
+                        f"{selected_artifact.title} nói gì?",
+                        f"Khi nào áp dụng {selected_artifact.title}?",
+                    )
+                    pkg = seal_publication_package(
+                        artifact=working,
+                        acceptance_questions=questions,
+                        sealed_by=recorded_name.strip(),
+                    )
+                    publisher.publish_package(pkg, actor=recorded_name.strip())
+                    st.success("Đã đưa nội dung vào thư viện. Bản cũ vẫn được giữ nếu lần ghi này gặp sự cố.")
+                except LibraryWriterBusyError:
+                    st.error(_goal010_busy_error())
+                except (UnapprovedArtifactPublicationError, PublicationAcceptanceError, PublicationError, ValueError, StaleArtifactDigestError, ConflictedClaimArtifactError, ControlledArtifactError):
+                    st.error(
+                        _goal010_error(
+                            "Chưa đưa được vào thư viện.",
+                            "Hãy thử lại sau. Bản thư viện cũ vẫn dùng được.",
+                        )
+                    )
 
-    with tab_revoke:
-        publication_history = publisher.list_published_documents(DEFAULT_COLLECTION_ID)
+    publication_history = publisher.list_published_documents(DEFAULT_COLLECTION_ID)
+    with st.expander("Lịch sử và thu hồi", expanded=False):
         if not publication_history:
             st.info("Thư viện chưa có nội dung nào để thu hồi.")
-            return
-        history_by_id = {item["doc_id"]: item for item in publication_history}
-        with st.form(f"form_revoke_{selected_artifact.artifact_id}"):
-            package_id_to_revoke = st.selectbox(
-                "Nội dung đã đưa vào thư viện",
-                options=tuple(history_by_id),
-                format_func=lambda package_id: (
-                    f"{history_by_id[package_id]['title']} "
-                    f"(bản {history_by_id[package_id]['version']})"
-                ),
-            )
-            revoke_reason = st.text_area("Lý do thu hồi nội dung:")
-            revoke_name = st.text_input(
-                "Tên người ghi nhận thu hồi",
-                value=actor_principal.display_name or actor_principal.subject,
-            )
-            revoke_machine = st.text_input("Máy ghi nhận thu hồi", value=suggest_recorded_person().machine_ref)
-            revoke_confidence = st.selectbox(
-                "Mức tự tin khi thu hồi",
-                options=("high", "medium", "low"),
-                format_func=lambda value: {"high": "Cao", "medium": "Vừa", "low": "Thấp"}[value],
-            )
-            revoke_ack = st.checkbox("Tôi xác nhận chịu trách nhiệm về quyết định thu hồi này.")
-            btn_revoke = st.form_submit_button("Xác nhận thu hồi khỏi thư viện")
-
-            if btn_revoke:
-                if not revoke_reason.strip() or not revoke_name.strip() or not revoke_ack:
-                    st.error("Hãy điền tên, lý do và xác nhận trách nhiệm trước khi thu hồi.")
-                else:
-                    try:
-                        artifact_id_to_revoke = package_id_to_revoke[4:].rsplit("-V", 1)[0]
-                        artifact_to_revoke = service.interview_repo.get_artifact(artifact_id_to_revoke)
-                        if artifact_to_revoke is None:
-                            raise ControlledArtifactError("Không tìm thấy nội dung gốc để ghi nhận trách nhiệm.")
-                        confidence_value = revoke_confidence
-                        if isinstance(revoke_confidence, int):
-                            confidence_value = ("high", "medium", "low")[revoke_confidence]
-                        decision_count = len(service.interview_repo.list_decision_records(artifact_id_to_revoke))
-                        revoke_decision_id = f"DEC-REVOKE-{artifact_id_to_revoke}-{decision_count + 1}"
-
-                        def record_revoke_responsibility() -> None:
-                            service.submit_artifact_approval(
-                                approval_id=revoke_decision_id,
-                                artifact_id=artifact_id_to_revoke,
-                                action=APPROVAL_ACTION_REVOKE,
-                                actor_id=revoke_name.strip(),
-                                expected_digest=artifact_to_revoke.digest,
-                                reason=revoke_reason.strip(),
-                                idempotency_key=f"REVOKE-{revoke_decision_id}",
-                                machine_ref=revoke_machine.strip(),
-                                confidence=str(confidence_value),
-                                checked_source_refs=(package_id_to_revoke,),
-                                responsibility_acknowledged=revoke_ack,
+        else:
+            history_by_id = {item["doc_id"]: item for item in publication_history}
+            with st.form(f"form_revoke_{selected_artifact.artifact_id}"):
+                package_id_to_revoke = st.selectbox(
+                    "Nội dung đã đưa vào thư viện",
+                    options=tuple(history_by_id),
+                    format_func=lambda package_id: history_by_id[package_id]["title"],
+                )
+                revoke_reason = st.text_area("Lý do thu hồi nội dung:")
+                revoke_name = st.text_input(
+                    "Tên người ghi nhận thu hồi",
+                    value=actor_principal.display_name or actor_principal.subject,
+                )
+                revoke_confidence = st.selectbox(
+                    "Mức tự tin khi thu hồi",
+                    options=("high", "medium", "low"),
+                    format_func=lambda value: {"high": "Cao", "medium": "Vừa", "low": "Thấp"}[value],
+                )
+                revoke_ack = st.checkbox("Tôi xác nhận chịu trách nhiệm về quyết định thu hồi này.")
+                btn_revoke = st.form_submit_button("Thu hồi khỏi thư viện")
+                if btn_revoke:
+                    if not revoke_reason.strip() or not revoke_name.strip() or not revoke_ack:
+                        st.error(
+                            _goal010_error(
+                                "Chưa thu hồi được vì còn thiếu thông tin.",
+                                "Hãy điền tên, lý do và xác nhận trách nhiệm.",
                             )
-
-                        rev_receipt = publisher.revoke_publication(
-                            package_id=package_id_to_revoke.strip(),
-                            collection_id=DEFAULT_COLLECTION_ID,
-                            reason=revoke_reason.strip(),
-                            actor=actor_principal.subject,
-                            record_responsibility=record_revoke_responsibility,
                         )
-                        st.success("Đã thu hồi nội dung khỏi thư viện và lưu người chịu trách nhiệm.")
-                    except (LibraryWriterBusyError, PublicationError) as exc:
-                        thong_bao_loi = safe_vietnamese_ui_message(str(exc), "Không thể thu hồi gói tri thức lúc này.")
-                        st.error(thong_bao_loi)
+                    else:
+                        try:
+                            artifact_id_to_revoke = selected_artifact.artifact_id
+                            for item in artifacts:
+                                if item.title == history_by_id[package_id_to_revoke]["title"]:
+                                    artifact_id_to_revoke = item.artifact_id
+                                    break
+                            artifact_to_revoke = service.interview_repo.get_artifact(artifact_id_to_revoke)
+                            if artifact_to_revoke is None:
+                                raise ControlledArtifactError("Không tìm thấy nội dung gốc để ghi nhận trách nhiệm.")
+                            confidence_value = revoke_confidence
+                            if isinstance(revoke_confidence, int):
+                                confidence_value = ("high", "medium", "low")[revoke_confidence]
+                            decision_count = len(service.interview_repo.list_decision_records(artifact_id_to_revoke))
+                            revoke_decision_id = f"DEC-REVOKE-{artifact_id_to_revoke}-{decision_count + 1}"
+
+                            def record_revoke_responsibility() -> None:
+                                service.submit_artifact_approval(
+                                    approval_id=revoke_decision_id,
+                                    artifact_id=artifact_id_to_revoke,
+                                    action=APPROVAL_ACTION_REVOKE,
+                                    actor_id=revoke_name.strip(),
+                                    expected_digest=artifact_to_revoke.digest,
+                                    reason=revoke_reason.strip(),
+                                    idempotency_key=f"REVOKE-{revoke_decision_id}",
+                                    machine_ref=person_suggestion.machine_ref,
+                                    confidence=str(confidence_value),
+                                    checked_source_refs=(history_by_id[package_id_to_revoke]["title"],),
+                                    responsibility_acknowledged=revoke_ack,
+                                )
+
+                            publisher.revoke_publication(
+                                package_id=str(package_id_to_revoke).strip(),
+                                collection_id=DEFAULT_COLLECTION_ID,
+                                reason=revoke_reason.strip(),
+                                actor=revoke_name.strip(),
+                                record_responsibility=record_revoke_responsibility,
+                            )
+                            st.success("Đã thu hồi nội dung khỏi thư viện. Lịch sử quyết định vẫn được giữ.")
+                        except LibraryWriterBusyError:
+                            st.error(_goal010_busy_error())
+                        except (PublicationError, ControlledArtifactError, ValueError):
+                            st.error(
+                                _goal010_error(
+                                    "Chưa thu hồi được nội dung.",
+                                    "Hãy thử lại sau. Thư viện hiện tại vẫn dùng được.",
+                                )
+                            )

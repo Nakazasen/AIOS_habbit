@@ -38,7 +38,7 @@ Tài liệu tham khảo tầm nhìn dài hạn tương lai: [Production Intellig
 | Gate H hybrid canary | `DONE`: `RAG-V2-GATE-H-HYBRID-CANARY` — `ADVANCE_TO_CANARY_WITH_LIMITATIONS`; 87 test trọng điểm, 1094 test toàn bộ |
 | OCR tập dữ liệu & phục hồi nguồn RAG v2 | `DONE`: 70/70 nguồn sử dụng tốt, kiểm tra cục bộ nghiêm ngặt ĐẠT, 49 test trọng điểm và 1108 test toàn bộ |
 | Vòng hồ sơ bằng chứng & LSU Loop (008), Mốc 0–4 | `TECHNICAL_PASS`: Mốc 0–4 đạt 100% kỹ thuật (Mốc 0 đạt đầy đủ; Mốc 1–4 đạt `OPERATIONAL_PARTIAL` chờ dữ liệu/nghiệm thu thực địa tại xưởng). Mốc 5 đang kiểm toán. |
-| Agent lập trình và thao tác file có kiểm soát (009) | `ACTIVE`: G0 đã khóa đặc tả, ADR-0008 và Gate Card; G1 là spike OpenCode chỉ đọc có cổng dừng sớm. Chưa triển khai runtime và chưa tuyên bố tương đương Cline/OpenCode. |
+| Trợ lý thực thi công việc cho kỹ sư (009) | `ACTIVE`: G0 đã làm mới đặc tả/kế hoạch/task theo phạm vi báo cáo lỗi có biểu đồ, rà soát thiết kế công đoạn, sửa mã có test và hàng đợi nhỏ. G1 phải probe OpenCode đọc–sửa–test–resume–undo trong vùng tự động duyệt; chưa triển khai runtime và chưa tuyên bố tương đương Cline/OpenCode. |
 | AI phỏng vấn chuyên gia và làm giàu tri thức (010) | `REOPENED_FOR_SIMPLIFICATION`: T000–T080 là lịch sử triển khai cũ. Kiểm toán 2026-09-09 mở R1–R5 (T083–T109) để sửa ranh giới dữ liệu/chép lời/xuất bản, thay phân quyền giả bằng thông tin trách nhiệm, cho chọn thư viện cá nhân/dùng chung và đơn giản hóa luồng bốn chặng cho người không chuyên. |
 | Tổng hợp đa nguồn (002) | `IMPLEMENTED_PENDING_CURRENT_FULL_SUITE` — còn lượt xác minh cuối trên cây code hiện tại |
 | Quản lý cuộc trò chuyện (004) | `IMPLEMENTED_PENDING_CURRENT_FULL_SUITE` — chức năng đã có, chưa ghi bằng chứng đầy đủ hiện tại |

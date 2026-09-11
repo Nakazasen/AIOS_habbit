@@ -1,105 +1,136 @@
-# Đặc tả: Agent lập trình và thao tác file có kiểm soát
+# Đặc tả: Trợ lý thực thi công việc cho kỹ sư
 
 **Mã tính năng**: `009-agent-harness-adoption`
+
 **Nhánh lập kế hoạch**: `gate1-local-case-sqlite`
+
 **Ngày tạo**: 2026-09-07
-**Trạng thái**: `PLAN_REFRESHED_PENDING_TASK_REGENERATION`
+
+**Ngày làm mới**: 2026-09-11
+
+**Trạng thái**: `SPEC_PLAN_TASKS_REFRESHED`
 
 ## 0. Hiện trạng kế thừa
 
-Repo đã có Task Pack, proposal lập trình, nhập báo cáo kết quả, policy nền, một bridge cục bộ và giao diện thử nghiệm. Các phần này chưa chứng minh một vòng hoàn chỉnh “lập kế hoạch → sửa file trong worktree → chạy kiểm thử → sửa lỗi → báo cáo lỗi → duyệt đúng diff → áp dụng hoặc hoàn tác”. Giao diện Agent trong Workspace Chat hiện vẫn bị ẩn; runtime kế thừa, protocol phiên, worktree tách biệt, resume và kiểm thử E2E chưa có bằng chứng hoàn tất. Vì vậy các artifact cũ là nền kế thừa, không phải bằng chứng Goal 009 đã đạt.
+AIOS đã có nguồn AI cho Workspace Chat qua `antigravity_bridge.py`, nền Task Pack, kiểm tra báo cáo Agent, đọc tài liệu, hồ sơ vụ việc và xuất sơ đồ. Các phần này chưa tạo thành một trợ lý có thể nhận nhiều việc, tự đọc và sửa trong vùng an toàn, chạy kiểm tra thật rồi trả kết quả dễ hiểu.
+
+Cầu nối AI của Workspace Chat phải được giữ. Goal 009 chỉ thay đường Agent lập trình NVIDIA cũ bằng runtime kế thừa phù hợp; không thay nguồn AI hiện hành và không dựng lại một IDE hay nền tảng đa Agent.
 
 ## 1. Mục tiêu
 
-Nâng nền US6 hiện có thành trợ lý lập trình đủ dùng hằng ngày mà không tự viết lại editor, terminal hoặc vòng lặp agent đã có ở các dự án trưởng thành. AIOS giữ quyền, bằng chứng, phê duyệt và dữ liệu; runtime kế thừa đảm nhiệm phiên agent và tool; Code-OSS là mặt bàn chuyên dụng. Workspace Chat vẫn là giao diện AIOS chính.
+Giúp kỹ sư giao việc bằng tiếng Việt và nhận đầu ra dùng được mà không phải theo dõi từng lệnh hoặc đọc toàn bộ thay đổi mã nguồn. Vòng đầu hỗ trợ bốn việc liên quan:
+
+1. Đọc, tìm và chỉnh sửa file trong vùng làm việc có thể hoàn tác.
+2. Tạo hoặc cập nhật nhanh báo cáo lỗi kỹ thuật, kèm bảng và biểu đồ khi dữ liệu nguồn đủ.
+3. Đối chiếu tài liệu nền để chỉ ra thiết kế công đoạn chưa hợp lý, phần còn thiếu hoặc mâu thuẫn, rồi đề xuất cải tiến có dẫn nguồn.
+4. Sửa mã nguồn và chạy kiểm thử thật trước khi báo hoàn tất.
+
+Người dùng đánh giá kết quả công việc bằng lời giải thích tiếng Việt đời thường. Toàn bộ thay đổi kỹ thuật vẫn có thể mở xem nhưng không phải bước bắt buộc.
 
 ## 2. Hành trình người dùng và kiểm thử
 
-### US1 — Xác minh runtime kế thừa ở chế độ chỉ đọc (P1)
+### US1 — Tạo báo cáo lỗi kỹ thuật nhanh (P1)
 
-Kỹ sư chọn một repo fixture và yêu cầu Agent đọc, tìm kiếm, lập kế hoạch. Hệ thống phải tạo hoặc tiếp tục phiên, truyền sự kiện và từ chối mọi thao tác ghi khi policy cấm.
+Kỹ sư chọn hồ sơ, log, bảng tính hoặc tài liệu liên quan rồi yêu cầu AIOS tạo hay cập nhật báo cáo lỗi. AIOS tự thu thập phần được phép, tạo file báo cáo có cấu trúc, thêm bảng hoặc biểu đồ phù hợp và ghi rõ căn cứ của từng kết luận.
 
-**Kiểm thử độc lập**: khởi động runtime đã pin phiên bản, chạy health/capability probe, đọc và tìm đúng file; thử edit/command bị từ chối và không có file đổi.
-
-**Tiêu chí chấp nhận**:
-
-1. Khi runtime tương thích, health, version, session, event stream, read/search và permission probe đều có receipt.
-2. Khi runtime không chặn được write/command hoặc không resume được bằng ID ổn định, G1 dừng và ghi `BLOCKED`; không vá sâu hoặc fork ngay.
-
-### US2 — Hoàn tất một task lập trình trong worktree tách biệt (P2)
-
-Kỹ sư duyệt Task Pack một lần, Agent sửa nhiều file và chạy lệnh trong ngân sách. Main workspace không đổi trước khi người dùng duyệt đúng diff; kết quả test phải do verifier quan sát độc lập.
-
-**Kiểm thử độc lập**: sửa một bug fixture, tạo proposal bất biến, chạy test lỗi rồi sửa đạt, duyệt một phần diff, áp dụng và kiểm tra lại; rollback phải đưa worktree về trạng thái sạch.
+**Kiểm thử độc lập**: với một bộ dữ liệu giả lập có log, số liệu và mô tả lỗi, hệ thống tạo được báo cáo tiếng Việt, biểu đồ khớp dữ liệu gốc và không bịa kết luận khi thiếu bằng chứng.
 
 **Tiêu chí chấp nhận**:
 
-1. Write, rename, delete và command chỉ xảy ra trong worktree và phạm vi được duyệt.
-2. Base commit, file hoặc proposal đổi sau duyệt thì apply phải từ chối và yêu cầu proposal mới.
-3. Dừng hoặc restart không lặp lại thao tác đã hoàn tất và không để tiến trình con chạy sót.
+1. Báo cáo nêu hiện tượng, ảnh hưởng, bằng chứng, giả thuyết, phần chưa chắc chắn và việc nên làm tiếp.
+2. Mọi con số trong bảng hoặc biểu đồ truy ngược được tới nguồn và phép tổng hợp.
+3. Khi dữ liệu không đủ để vẽ biểu đồ có ý nghĩa, hệ thống nói rõ và dùng bảng hoặc mô tả; không tạo biểu đồ trang trí.
+4. Bản nháp được lưu tự động và có thể hoàn tác mà không cần duyệt từng thao tác file.
 
-### US3 — Sử dụng hằng ngày với bằng chứng AIOS (P3)
+### US2 — Rà soát và cải tiến thiết kế công đoạn (P1)
 
-Kỹ sư theo dõi task, quyền, diff, terminal và resume trong Code-OSS; từ Workspace Chat có thể mở hoặc tra cứu hồ sơ `agent_work`. Mọi kết quả được gắn receipt, còn bài học chỉ được tạo từ thay đổi đã duyệt và kiểm chứng.
+Kỹ sư cung cấp SOP, hướng dẫn công việc, tiêu chuẩn, bản vẽ, MOM, báo cáo lỗi và số liệu công đoạn. AIOS đối chiếu các nguồn để chỉ ra chỗ sai, mâu thuẫn, thiếu kiểm soát hoặc khó thực hiện; sau đó tạo bản đề xuất cải tiến.
 
-**Kiểm thử độc lập**: hoàn tất một task qua Code-OSS và một task headless qua cùng protocol; đóng/mở lại ứng dụng, xem đúng trạng thái và bằng chứng mà không chỉnh JSON thủ công.
+**Kiểm thử độc lập**: với một bộ tài liệu giả lập có một mâu thuẫn giới hạn, một bước thiếu điểm kiểm tra và một vấn đề chưa đủ bằng chứng, hệ thống phải tìm đúng ba loại vấn đề, trích đúng nguồn và phân biệt sự thật với đề xuất.
 
 **Tiêu chí chấp nhận**:
 
-1. Code-OSS và CLI/headless dùng cùng contract và cùng quyết định quyền.
-2. Secret, dữ liệu `local_only`, transcript và stdout thô không xuất hiện trong hồ sơ hoặc giao diện thường.
-3. Kết quả bị từ chối hoặc chưa kiểm chứng không được promotion thành bài học.
+1. Mỗi nhận xét phải chỉ rõ vị trí tài liệu hoặc bằng chứng làm căn cứ.
+2. Kết quả tách rõ: điều tài liệu đang quy định, điểm bất hợp lý, ảnh hưởng có thể xảy ra, đề xuất cải tiến và thông tin cần xác minh thêm.
+3. AIOS chỉ tạo bản nháp thiết kế công đoạn; không tự thay tài liệu chính thức, giới hạn sản xuất hay chỉ thị vận hành.
+4. Có thể kèm sơ đồ luồng hiện tại và luồng đề xuất bằng khả năng trực quan hóa đã có của AIOS.
+
+### US3 — Sửa lỗi mã nguồn và kiểm thử thật (P2)
+
+Kỹ sư mô tả lỗi hoặc đưa file báo lỗi. Agent tự đọc, tìm, sửa file và chạy các lệnh kiểm thử cho phép trong vùng làm việc tách biệt. Các thao tác nằm trong phạm vi nhiệm vụ được tự động duyệt.
+
+**Kiểm thử độc lập**: Agent sửa một lỗi trong repo giả lập, chạy kiểm thử thất bại, sửa tiếp tới khi đạt, rồi tạo kết quả có thể dùng hoặc hoàn tác mà workspace chính không bị mất thay đổi có trước.
+
+**Tiêu chí chấp nhận**:
+
+1. Agent được đọc và sửa trong vùng nhiệm vụ; bị chặn khi thoát khỏi vùng, đọc bí mật hoặc chạy lệnh nguy hiểm.
+2. Kết quả kiểm thử lấy từ lần chạy thực tế, không lấy từ lời tự khai của mô hình.
+3. Người dùng thấy bản tóm tắt “đã làm gì, kiểm thử ra sao, file nào bị tác động, còn rủi ro gì” và hai hành động đơn giản “Dùng kết quả” hoặc “Hoàn tác”.
+4. Người dùng không bắt buộc xem `diff`, `hunk`, terminal hoặc mã kỹ thuật; phần đó chỉ mở theo nhu cầu.
+
+### US4 — Giao nhiều việc và theo dõi dễ hiểu (P2)
+
+Người dùng có thể giao thêm việc khi một việc khác đang chạy. AIOS xếp hàng và hiển thị trạng thái ngắn gọn: “Đang chờ”, “Đang làm”, “Cần bạn bổ sung”, “Đã xong”, “Chưa đạt kiểm thử” hoặc “Đã hoàn tác”.
+
+**Kiểm thử độc lập**: tạo ba nhiệm vụ thuộc ba loại khác nhau, đóng rồi mở lại ứng dụng, tiếp tục đúng trạng thái và không ghi đè kết quả của nhau.
+
+**Tiêu chí chấp nhận**:
+
+1. Người dùng giao được ít nhất ba nhiệm vụ mà không phải chờ màn hình hiện tại hoàn tất.
+2. Trong cùng một workspace chỉ có một nhiệm vụ ghi file tại một thời điểm; các việc còn lại được xếp hàng rõ ràng.
+3. Hủy hoặc khởi động lại không làm lặp thao tác đã hoàn tất.
+4. Không cần tạo cấu hình kỹ thuật, sửa JSON hoặc chọn từng quyền nhỏ.
 
 ## 3. Trường hợp biên bắt buộc
 
-- Workspace bẩn sẵn, file đích đổi sau proposal, path traversal và symlink thoát root.
-- Đường dẫn Windows có khoảng trắng hoặc tiếng Việt; output UTF-8 không mojibake.
-- Lệnh dài bị hủy, runtime mất kết nối, UI dừng giữa task và resume sau restart.
-- Prompt injection trong file, secret trong môi trường/stdout và MCP ngoài allowlist.
-- Người dùng từ chối một hunk, từ chối toàn bộ hoặc hủy task.
+- Tài liệu mâu thuẫn, thiếu trang, scan kém hoặc không có số liệu đủ để vẽ biểu đồ.
+- File đích đổi trong lúc Agent đang làm; workspace có thay đổi sẵn của người dùng.
+- Đường dẫn Windows có khoảng trắng hoặc tiếng Việt; nội dung UTF-8 không bị lỗi dấu.
+- Lệnh dài bị hủy, runtime mất kết nối hoặc ứng dụng khởi động lại.
+- Chỉ dẫn độc hại nằm trong tài liệu, bí mật trong môi trường và đường dẫn thoát khỏi vùng nhiệm vụ.
+- Nhiều nhiệm vụ cùng muốn sửa một workspace.
+- Đề xuất thiết kế công đoạn có thể ảnh hưởng an toàn, chất lượng hoặc tài liệu chính thức.
 
 ## 4. Yêu cầu chức năng
 
-- **FR-001**: AIOS phải là nguồn quyết định cuối cho quyền, privacy và phê duyệt.
-- **FR-002**: Runtime phải được pin phiên bản và vượt capability probe trước khi bật ghi.
-- **FR-003**: Task Pack phải khóa workspace, base commit, file, lệnh, budget, privacy và tiêu chí đạt.
-- **FR-004**: Mọi thao tác ghi phải diễn ra trong Git worktree tách biệt ở bản đầu.
-- **FR-005**: Proposal phải bất biến và gắn digest, actor, scope, policy version cùng thời hạn.
-- **FR-006**: Apply phải fail-closed khi workspace hoặc proposal đã đổi.
-- **FR-007**: Lệnh chỉ chạy từ allowlist; command ngoài danh sách cần proposal mới hoặc bị từ chối.
-- **FR-008**: Event và receipt phải append-only, đọc lại được và chống ghi lặp.
-- **FR-009**: Verifier phải dựa trên exit code và trạng thái workspace quan sát được, không tin lời model.
-- **FR-010**: Phiên phải cancel/resume an toàn sau khi UI hoặc runtime restart.
-- **FR-011**: Code-OSS và CLI/headless phải dùng cùng protocol; Workspace Chat chỉ mở và tra cứu hồ sơ.
-- **FR-012**: Không hỗ trợ tự commit, push, merge, deploy, quyền admin hoặc thao tác ngoài workspace ở bản đầu.
-- **FR-013**: Không thêm cơ sở dữ liệu riêng cho transcript/session runtime.
-- **FR-014**: Không gửi dữ liệu `local_only` hoặc secret sang provider/runtime không được phép.
-- **FR-015**: Cline chỉ là chuẩn đối chiếu và fallback sau khi OpenCode không đạt G1 bằng bằng chứng.
-- **FR-016**: Mọi lỗi, gián đoạn, hủy chưa hoàn tất và kiểm thử không đạt phải sinh báo cáo lỗi tiếng Việt đã làm sạch, nêu bước thất bại, sự kiện quan sát được, việc người dùng có thể làm tiếp và liên kết receipt; không lộ traceback, đường dẫn tuyệt đối, secret, transcript hoặc stdout/stderr thô.
-- **FR-017**: Chọn một phần hunk phải tạo quyết định gắn đúng tập hunk và digest; verifier phải kiểm tra lại đúng tập đã chọn trước khi áp dụng, không được dùng kết quả kiểm thử của toàn bộ diff để chứng minh cho diff một phần.
+- **FR-001**: Giữ nguyên cầu nối AI hiện hành của Workspace Chat; việc thay runtime Agent không được làm mất các nguồn AI đang dùng.
+- **FR-002**: Runtime Agent phải được khóa phiên bản và vượt kiểm tra đọc, tìm, tạo file, sửa file, chạy lệnh, tiếp tục phiên và hoàn tác trước khi dùng.
+- **FR-003**: Thao tác hợp lệ trong vùng nhiệm vụ được tự động duyệt; thao tác ngoài vùng, bí mật, quyền quản trị, commit, push, merge hoặc deploy bị từ chối ở vòng đầu.
+- **FR-004**: Mọi thao tác sửa mã nguồn phải diễn ra trong vùng làm việc tách biệt và có checkpoint để hoàn tác.
+- **FR-005**: Báo cáo và đề xuất thiết kế được tự lưu dưới dạng bản nháp; việc ban hành tài liệu chính thức vẫn nằm ngoài vòng đầu.
+- **FR-006**: Mọi kết luận về lỗi hoặc thiết kế công đoạn phải gắn nguồn; phần chưa đủ bằng chứng phải được đánh dấu rõ.
+- **FR-007**: Biểu đồ chỉ được tạo từ dữ liệu có nguồn và phải giữ thông tin phép tổng hợp; thiếu dữ liệu thì không được bịa biểu đồ.
+- **FR-008**: Kiểm thử mã nguồn phải dựa trên kết quả chạy thật và trạng thái file quan sát được.
+- **FR-009**: Giao diện mặc định chỉ hiện mục tiêu, tiến độ, kết quả, rủi ro và bước tiếp theo bằng tiếng Việt; chi tiết kỹ thuật được thu gọn.
+- **FR-010**: Hệ thống phải nhận nhiều nhiệm vụ, xếp hàng thao tác ghi theo từng workspace và tiếp tục được sau khi mở lại ứng dụng.
+- **FR-011**: Không lưu transcript hoặc đầu ra thô vào hồ sơ; chỉ lưu trạng thái, nguồn, tệp đầu ra, kết quả kiểm tra và thông tin đã làm sạch cần để truy vết.
+- **FR-012**: Không gửi dữ liệu `local_only` hoặc bí mật tới nguồn AI không được phép.
+- **FR-013**: Không dựng editor, terminal, cơ sở dữ liệu phiên, scheduler phân tán hoặc nền tảng đa Agent mới trong vòng đầu.
+- **FR-014**: Bản nháp cải tiến công đoạn phải phân biệt rõ quy định hiện tại, phát hiện có bằng chứng, suy luận và đề xuất; không được tự nhận là tài liệu đã phê duyệt.
+- **FR-015**: Mọi kết quả phải có hành động hoàn tác dễ hiểu; hoàn tác không được xóa thay đổi có trước của người dùng.
 
 ## 5. Thực thể chính
 
-- **AgentTaskPack**: nhiệm vụ và toàn bộ ranh giới được phép.
-- **RuntimeSessionBinding**: ánh xạ task với phiên runtime đã pin và trạng thái resume.
-- **ActionProposal**: diff hoặc command bất biến đang chờ quyết định.
-- **ExecutionReceipt**: sự kiện, digest trước/sau, lệnh, exit code, test và checkpoint.
-- **AgentWorkRecord**: siêu dữ liệu và liên kết bằng chứng trong hồ sơ AIOS; không chứa transcript thô.
+- **Nhiệm vụ Agent**: mục tiêu, loại công việc, nguồn được chọn, vùng file, lệnh cho phép và tiêu chí hoàn thành.
+- **Mục hàng đợi**: thứ tự, trạng thái, workspace và khả năng tiếp tục.
+- **Bản nháp đầu ra**: báo cáo lỗi, file hỗ trợ, sơ đồ hoặc đề xuất cải tiến công đoạn.
+- **Nguồn dẫn chứng**: vị trí tài liệu, số liệu và phép tổng hợp đứng sau một nhận xét hoặc biểu đồ.
+- **Kết quả thực thi**: file đã tạo/sửa, kiểm thử đã chạy, trạng thái, rủi ro và checkpoint hoàn tác.
 
 ## 6. Tiêu chí thành công đo được
 
-- **SC-001**: Đạt 12/12 tình huống an toàn và vòng đời tại mục 30.9 của sổ LSU.
-- **SC-002**: Hoàn thành ít nhất 8/10 task benchmark cố định và không thấp hơn baseline OpenCode tốt nhất quá một task khi cùng model, thời gian và quyền.
-- **SC-003**: 100% tình huống permission, privacy, resume, rollback và observed evidence đạt; không bù bằng điểm trung bình.
-- **SC-004**: Không có write/command ngoài proposal đã duyệt và không có PASS chỉ dựa trên lời model.
-- **SC-005**: Người dùng hoàn tất task hằng ngày bằng Code-OSS hoặc CLI mà không sửa JSON thủ công.
-- **SC-006**: Clean-machine Windows E2E và toàn bộ quality gate AIOS đạt trước khi tuyên bố đủ dùng hằng ngày.
-- **SC-007**: 100% tình huống lỗi bắt buộc sinh báo cáo tiếng Việt có reason code nội bộ, bằng chứng quan sát và bước xử lý; dữ liệu cấm không xuất hiện trong hồ sơ hoặc giao diện thường.
+- **SC-001**: Với bộ dữ liệu nghiệm thu, 100% số liệu trên báo cáo và biểu đồ truy ngược được tới nguồn; không có số liệu tự tạo.
+- **SC-002**: Với bộ tài liệu công đoạn nghiệm thu, 100% nhận xét được gắn nguồn hoặc đánh dấu rõ là đề xuất/chưa đủ bằng chứng.
+- **SC-003**: Người dùng không chuyên có thể giao một nhiệm vụ và tìm được kết quả hoặc nút hoàn tác mà không mở `diff`, terminal hay file JSON.
+- **SC-004**: Ba nhiệm vụ liên tiếp được giữ đúng trạng thái qua một lần đóng/mở ứng dụng và không ghi đè nhau.
+- **SC-005**: 100% thao tác ngoài vùng, truy cập bí mật và lệnh bị cấm trong bộ kiểm thử an toàn bị chặn.
+- **SC-006**: Lỗi mã nguồn giả lập được sửa, kiểm thử thật đạt và hoàn tác thành công mà không làm mất thay đổi có trước.
+- **SC-007**: 100% thông báo, lỗi, tiến độ và báo cáo do hệ thống tạo cho người dùng là tiếng Việt dễ hiểu, không lộ traceback hay đường dẫn tuyệt đối.
 
 ## 7. Giả định và ranh giới
 
-- Một người dùng cục bộ; actor do app context cấp, không lấy từ prompt hay biểu mẫu tự khai.
-- OpenCode là ứng viên chính cho G1; phiên bản cụ thể chỉ được khóa sau probe.
-- Code-OSS cung cấp editor, terminal, SCM, LSP và debugger; không dùng tài sản thương hiệu hoặc Marketplace độc quyền.
-- Không mở swarm, scheduler nhiều máy, điều khiển thiết bị hoặc tích hợp dữ liệu nhà máy trong feature này.
-- US5, US10 và US11 không phải điều kiện chặn G1; mỗi miền vẫn giữ quyền riêng.
+- Một người dùng cục bộ; Workspace Chat là giao diện chính.
+- OpenCode là runtime Agent được thử trước; Cline chỉ được đánh giá nếu OpenCode không đáp ứng vòng đọc–sửa–test–hoàn tác.
+- `antigravity_bridge.py` tiếp tục cung cấp tuyến AI cho Workspace Chat và không nằm trong phạm vi loại bỏ.
+- Code-OSS có thể được dùng như công cụ kỹ thuật bên ngoài, nhưng extension riêng không phải điều kiện của vòng đầu.
+- Báo cáo lỗi và đề xuất thiết kế công đoạn là bản nháp hỗ trợ kỹ sư, không tự trở thành quyết định vận hành hoặc tài liệu quy chuẩn.

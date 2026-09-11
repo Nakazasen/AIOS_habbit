@@ -457,9 +457,9 @@ def test_expert_interview_ui_presenters_and_rows():
         interview_turn_rows,
     )
 
-    assert _session_state_label("active") == "Đang phỏng vấn"
+    assert _session_state_label("active") == "Đang hỏi đáp"
     assert _session_state_label("paused") == "Tạm dừng"
-    assert _session_state_label("blocked") == "Bị khóa thẩm quyền"
+    assert _session_state_label("blocked") == "Không thể tiếp tục lúc này"
     assert _session_state_label("completed") == "Hoàn tất"
 
     assert _turn_answer_state_label(ANSWER_STATE_ANSWERED) == "Đã trả lời"
@@ -512,8 +512,14 @@ def test_four_stages_navigation_and_vietnamese_labels():
     assert "4. Đưa vào thư viện" in src
     ui_source = Path("src/aios_habit/workspace_case_ui.py").read_text(encoding="utf-8")
     assert "Nội dung bản nháp" in ui_source
-    assert "Lưu chỉnh sửa và xác nhận" in ui_source
+    assert "Lưu chỉnh sửa" in ui_source
+    assert "Xác nhận và đưa vào thư viện" in ui_source
     assert "Mã kiểm tra toàn vẹn nội dung" not in ui_source
+    assert "WAV mono 16kHz" not in ui_source
+    assert 'type=["wav"]' not in ui_source
+    assert "Mã đồng ý" not in ui_source
+    assert "khung đối thoại có kiểm soát" not in ui_source.lower()
+    assert "person_suggestion.suggested_name" in ui_source
 
 
 def test_four_stages_have_single_primary_action_and_zero_technical_leak():
@@ -533,21 +539,38 @@ def test_four_stages_have_single_primary_action_and_zero_technical_leak():
         render_knowledge_publication_management,
     ]
 
+    from aios_habit.workspace_case_ui import (
+        GOAL010_NEXT_INTERVIEW,
+        GOAL010_NEXT_LIBRARY,
+        GOAL010_NEXT_PUBLISH,
+        GOAL010_NEXT_REVIEW,
+    )
+
+    expected_next = {
+        "render_library_selection_view": GOAL010_NEXT_LIBRARY,
+        "render_expert_interview_view": GOAL010_NEXT_INTERVIEW,
+        "render_controlled_artifacts_management": GOAL010_NEXT_REVIEW,
+        "render_knowledge_publication_management": GOAL010_NEXT_PUBLISH,
+    }
     for stage_fn in stage_callables:
         src = inspect.getsource(stage_fn)
-        # Each stage must contain exactly one primary action button
         assert 'type="primary"' in src, f"{stage_fn.__name__} must contain a primary action button."
-        primary_count = src.count('type="primary"')
-        assert primary_count >= 1
+        constant_names = {
+            "render_library_selection_view": "GOAL010_NEXT_LIBRARY",
+            "render_expert_interview_view": "GOAL010_NEXT_INTERVIEW",
+            "render_controlled_artifacts_management": "GOAL010_NEXT_REVIEW",
+            "render_knowledge_publication_management": "GOAL010_NEXT_PUBLISH",
+        }
+        assert constant_names[stage_fn.__name__] in src
+        assert expected_next[stage_fn.__name__]
+        if stage_fn.__name__ != "render_library_selection_view":
+            assert "expanded=False" in src
 
-    # Check that user-facing labels in the 4 views do not leak internal/technical tokens
     ui_text = Path("src/aios_habit/workspace_case_ui.py").read_text(encoding="utf-8")
-    # Technical internal words that must never appear on primary UI surface
-    for forbidden in ("fixture", "lease", "provenance_digest", "stale digest"):
-        # Make sure forbidden strings don't appear in user-facing Vietnamese strings
+    for forbidden in ("fixture", "lease", "provenance_digest", "stale digest", "wav mono", "markdown", "json"):
         for line in ui_text.splitlines():
             line_str = line.strip()
-            if any(call in line_str for call in ('st.info(', 'st.warning(', 'st.error(', 'st.subheader(', 'st.caption(')):
+            if any(call in line_str for call in ('st.info(', 'st.warning(', 'st.error(', 'st.subheader(', 'st.caption(', 'st.success(', 'st.button(', 'st.form_submit_button(')):
                 assert forbidden not in line_str.lower(), f"Forbidden technical token '{forbidden}' in user-facing message: {line_str}"
 
 
@@ -597,9 +620,9 @@ def test_interview_plan_uses_service_actor_context_compatibly():
 
 def test_controlled_artifact_approval_id_uniqueness():
     """Verify that the approval_id generation logic in workspace_case_ui incorporates approval count and timestamp."""
-    from aios_habit.workspace_case_ui import render_controlled_artifacts_management
+    from aios_habit.workspace_case_ui import render_knowledge_publication_management
     import inspect
-    src = inspect.getsource(render_controlled_artifacts_management)
+    src = inspect.getsource(render_knowledge_publication_management)
     assert "list_decision_records" in src
     assert "app_count + 1" in src
 
@@ -725,8 +748,10 @@ def test_render_controlled_artifacts_management_with_existing_artifact_executes_
          patch("streamlit.write"), \
          patch("streamlit.caption"), \
          patch("streamlit.markdown"), \
+         patch("streamlit.warning"), \
          patch("streamlit.selectbox", return_value=0), \
          patch("streamlit.tabs", return_value=tab_mocks), \
+         patch("streamlit.expander"), \
          patch("streamlit.form"), \
              patch(
                  "streamlit.text_area",
@@ -744,13 +769,12 @@ def test_render_controlled_artifacts_management_with_existing_artifact_executes_
         render_controlled_artifacts_management(svc, principal)
         mock_success.assert_called_once()
         decisions = interview_repo.list_decision_records("ART-TEST-001")
-        assert len(decisions) == 1
-        assert decisions[0].subject_id == "ART-TEST-001"
-        assert decisions[0].decision_id.startswith("APP-ART-TEST-001-1-")
+        assert decisions == []
         revised = interview_repo.get_artifact("ART-TEST-001")
         assert revised is not None
         assert revised.version == "1.1"
         assert revised.content_markdown == "# Nội dung quy trình đã chỉnh sửa"
+        assert revised.status == ARTIFACT_STATUS_CANDIDATE
 
 
 def test_render_knowledge_publication_management_revocation_executes_cleanly(tmp_path):
@@ -810,13 +834,15 @@ def test_render_knowledge_publication_management_revocation_executes_cleanly(tmp
          patch("streamlit.info"), \
          patch("streamlit.write"), \
          patch("streamlit.caption"), \
-         patch("streamlit.selectbox", side_effect=[0, "PKG-ART-PUB-001-V1_0", "high"]), \
+         patch("streamlit.selectbox", side_effect=[0, "high", "PKG-ART-PUB-001-V1_0", "high"]), \
          patch("streamlit.tabs", return_value=tab_mocks), \
+         patch("streamlit.expander"), \
          patch("streamlit.form"), \
-         patch("streamlit.text_input", return_value="PKG-ART-PUB-001-V1_0"), \
+         patch("streamlit.text_input", return_value="Người thu hồi"), \
          patch("streamlit.text_area", return_value="Lý do thu hồi hợp lệ."), \
          patch("streamlit.checkbox", return_value=True), \
          patch("streamlit.form_submit_button", return_value=True), \
+         patch.object(publisher, "publish_package", return_value=(art, mock_receipt)), \
          patch.object(
              publisher,
              "list_published_documents",
@@ -835,7 +861,7 @@ def test_render_knowledge_publication_management_revocation_executes_cleanly(tmp
         assert revoke_args["package_id"] == "PKG-ART-PUB-001-V1_0"
         assert revoke_args["collection_id"] == DEFAULT_COLLECTION_ID
         assert revoke_args["reason"] == "Lý do thu hồi hợp lệ."
-        assert revoke_args["actor"] == "test_actor"
+        assert revoke_args["actor"] == "Người thu hồi"
         assert callable(revoke_args["record_responsibility"])
         mock_success.assert_called_once()
         decisions = interview_repo.list_decision_records("ART-PUB-001")

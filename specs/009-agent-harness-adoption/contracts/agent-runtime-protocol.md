@@ -1,175 +1,136 @@
 # Hợp đồng giao tiếp runtime Agent
 
-## 1. Phạm vi và vai trò
+## 1. Phạm vi
 
-Hợp đồng này là biên duy nhất giữa client, Gateway AIOS và runtime kế thừa. Code-OSS, CLI/headless và Workspace Chat không gọi runtime trực tiếp.
+Hợp đồng này là ranh giới giữa AIOS và runtime OpenCode trong Goal 009.
 
-- AIOS quyết định Task Pack, policy, approval, worktree, idempotency, verifier, receipt, apply và rollback.
-- Runtime thực hiện session, vòng model–tool, event stream và cancel/resume trong worktree đã cấp.
-- Runtime permission là lớp chặn bổ sung, không thay quyền AIOS.
-- Bridge NVIDIA hiện hữu không đáp ứng contract này và không được nối tắt vào đường G1–G4.
+- AIOS quyết định nhiệm vụ, nguồn, vùng file, privacy route, quyền tự động, checkpoint, verifier và kết quả trình bày.
+- Runtime thực hiện session, vòng model–tool, event, thao tác file và command trong vùng đã cấp.
+- Workspace Chat không gọi runtime trực tiếp.
+- `antigravity_bridge.py` tiếp tục là tuyến nguồn AI của Workspace Chat và không bị thay bởi hợp đồng này.
+- Bridge NVIDIA cũ không đáp ứng hợp đồng và không được nối tắt vào đường mới.
 
-## 2. Version và capability handshake
+## 2. Capability bắt buộc ở G1
 
-Mỗi request có `protocol_version`; mỗi adapter khai `adapter_version`, `runtime_kind`, `runtime_version`, `runtime_checksum` và `capability_digest`.
+Adapter chỉ được tạo sau khi bản OpenCode đã pin chứng minh được:
 
-### Capability bắt buộc ở G1
+- health và version;
+- tạo, đọc, tiếp tục và hủy session;
+- event stream hoặc cơ chế theo dõi trạng thái tương đương;
+- read/search trong task root;
+- create/edit file trong task root;
+- chạy lệnh test được phép với timeout và exit code;
+- đọc trạng thái thay đổi để checkpoint/undo;
+- từ chối path ngoài root, secret và command bị cấm trước thực thi.
 
-- health/version và xác thực loopback.
-- tạo session, đọc trạng thái, abort và attach/resume bằng ID ổn định.
-- event stream có upstream ID hoặc cursor đủ để adapter phát hiện duplicate/gap.
-- read/search file chỉ trong worktree root.
-- deny write và deny command trước tool execution.
-- lấy diff/session state để đối chiếu sau reconnect.
+Probe chỉ đọc không đủ điều kiện G1.
 
-Thiếu một capability làm G1 `BLOCKED`. Adapter không giả lập capability để báo đạt. Toàn bộ G2 trở đi bị khóa cho đến khi G1 có receipt.
-
-## 3. Envelope chung
-
-### Request
+## 3. Request chung
 
 ```json
 {
-  "protocol_version": "aios_agent_runtime_v1",
+  "schema_version": "aios_agent_runtime_v1",
   "request_id": "REQ-...",
-  "task_id": "TASK-...",
-  "session_id": "SESSION-...",
-  "action": "read_file",
-  "payload_digest": "sha256:...",
-  "idempotency_key": "IDEMP-...",
-  "sent_at": "2026-09-10T00:00:00Z"
+  "work_id": "WORK-...",
+  "session_id": "RUNTIME-...",
+  "action": "edit_file",
+  "scope_digest": "sha256:...",
+  "idempotency_key": "...",
+  "payload": {}
 }
 ```
 
-### Event
-
-```json
-{
-  "protocol_version": "aios_agent_runtime_v1",
-  "event_id": "EVT-...",
-  "task_id": "TASK-...",
-  "session_id": "SESSION-...",
-  "aios_sequence": 12,
-  "upstream_event_id": "runtime-event-id",
-  "event_kind": "tool_finished",
-  "action_id": "ACT-...",
-  "safe_payload": {},
-  "payload_digest": "sha256:...",
-  "previous_event_digest": "sha256:...",
-  "observed_at": "2026-09-10T00:00:01Z"
-}
-```
-
-`safe_payload` phải qua redaction trước khi persistence/UI. Tool result, environment và lỗi upstream không được chuyển thẳng. Adapter không được truyền toàn bộ `os.environ`; chỉ tạo allowlist biến môi trường tối thiểu và loại secret trước khi khởi động runtime.
-
-## 4. Thao tác tối thiểu
+Action tối thiểu:
 
 ```text
-probe_runtime() -> RuntimeCapabilities
-create_session(task_pack_digest, worktree_ref) -> RuntimeSessionBinding
-get_session(session_id) -> RuntimeSessionState
-resume_session(session_id, runtime_cursor, last_aios_sequence) -> EventStream
-read_file(session_id, relative_path, range) -> ReadReceipt
-search_workspace(session_id, query) -> SearchReceipt
-start_agent_run(session_id, objective_digest) -> EventStream
-propose_patch(session_id) -> ActionProposalRef
-propose_command(session_id, command_spec_digest) -> ActionProposalRef
-record_decision(proposal_id, proposal_digest, selection_digest, decision_ref) -> DecisionReceipt
-execute_approved(decision_ref, idempotency_key) -> EventStream
-cancel_session(session_id, reason_code) -> CancellationReceipt
-snapshot(session_id) -> CheckpointReceipt
-get_diff(session_id) -> ImmutableDiffRef
-get_process_state(session_id) -> ProcessObservation
-close_session(session_id) -> CloseReceipt
+health
+create_session
+get_session
+list_events
+read_file
+search_files
+create_file
+edit_file
+run_test
+get_workspace_state
+abort_session
 ```
 
-Runtime không có thao tác apply trực tiếp vào main workspace. `rollback` main workspace và apply thuộc orchestrator AIOS.
+## 4. Event và receipt
 
-## 5. Tiền điều kiện ghi và chạy lệnh
+Mỗi event AIOS lưu phải có:
 
-Mọi patch/command phải khớp đồng thời:
+- `work_id`, `session_id`, `event_id`, `sequence`;
+- `event_type`, `action`, `status`;
+- `observed_at`, `payload_digest`, `previous_event_digest`;
+- payload đã làm sạch hoặc locator cục bộ khi nội dung không được đưa vào Case.
 
-1. Task Pack và capability digest còn hiệu lực.
-2. Session bind đúng worktree và base snapshot.
-3. Proposal digest/policy version/scope digest còn khớp.
-4. Decision do app context cấp, đúng actor và chưa hết hạn.
-5. `selection_digest` khớp đúng tập hunk hoặc command spec.
-6. Idempotency key chưa được dùng với payload khác.
+Cùng `idempotency_key` và cùng payload trả receipt cũ. Cùng key nhưng payload khác bị từ chối.
 
-Sai một điều kiện phải từ chối trước thực thi, ghi receipt đã làm sạch và sinh báo cáo lỗi theo [agent-error-report-v1.md](agent-error-report-v1.md).
+## 5. Quyền tự động theo vùng
 
-## 6. Patch nhiều file và partial hunk
+Runtime có thể tự động thực hiện action khi tất cả điều kiện đều đúng:
 
-- Adapter chỉ trả diff/session state; AIOS tự đọc worktree và tính manifest/hunk digest.
-- Hunk ID được tính tất định từ relative path, range và nội dung canonical.
-- Decision chứa danh sách hunk được chọn và selection digest; proposal gốc không đổi.
-- AIOS tạo verification worktree sạch, áp đúng selection và chạy required checks.
-- Test của full diff không chứng minh partial diff.
-- Rename/delete/create phải kiểm before/after digest; symlink target phải nằm trong root.
+1. `scope_digest` còn hiệu lực và khớp nhiệm vụ.
+2. Đường dẫn sau chuẩn hóa nằm trong task root.
+3. Action có trong `allowed_actions`.
+4. Command khớp `allowed_commands` nếu là `run_test`.
+5. Privacy route cho phép dữ liệu đi tới provider đang dùng.
+6. Checkpoint trước thao tác ghi đã tồn tại.
 
-## 7. Command job
+Không yêu cầu prompt xác nhận từng action hợp lệ. Các action sau luôn bị từ chối ở MVP:
 
-- Command được biểu diễn bằng argv/cwd logical/env allowlist/timeout/output budget canonical; không dùng raw shell string làm khóa quyền.
-- Command chỉ chạy trong task/verification worktree.
-- Adapter không kế thừa toàn bộ environment của host; credential và biến chưa allowlist bị loại.
-- Stdout/stderr thô không đi vào event/UI/Case. Adapter ghi spool local nếu policy cho phép và chỉ trả digest, byte count, truncation state cùng safe summary.
-- Cancel phải dừng cả process tree. Không xác minh được thì trạng thái là `cancelled_with_residue`, không phải `completed`.
+- đọc `.env`, secret store hoặc vùng dữ liệu ngoài phạm vi;
+- quyền quản trị hoặc sửa hệ thống;
+- commit, push, merge, deploy;
+- gửi dữ liệu qua provider route không hợp lệ;
+- xóa/đổi tên hàng loạt hoặc sửa tài liệu công đoạn chính thức.
 
-## 8. Event ordering, resume và idempotency
+## 6. Thao tác file và command
 
-- AIOS gán `aios_sequence` tăng đơn điệu và `previous_event_digest` trước persistence.
-- Duplicate upstream event cùng digest được bỏ qua; cùng ID khác digest là lỗi integrity.
-- Gap event làm session `interrupted_unknown` cho đến khi đối chiếu runtime/session/worktree.
-- Write/command không tự replay sau reconnect.
-- Cùng idempotency key/cùng payload trả receipt cũ; cùng key/khác payload bị từ chối.
-- Resume không làm sống lại approval hết hạn hoặc proposal mismatch.
+- Path luôn là đường dẫn tương đối đã chuẩn hóa; path traversal và symlink thoát root bị từ chối.
+- Mã nguồn chỉ được ghi trong worktree của nhiệm vụ.
+- Báo cáo và tài liệu chỉ được ghi vào vùng bản nháp đã cấp.
+- Command được biểu diễn bằng executable và danh sách argument chuẩn hóa; không truyền raw shell string từ lời model.
+- Timeout phải dừng cây tiến trình và ghi trạng thái còn sót nếu không xác minh được đã dừng sạch.
 
-## 9. Observed verification
+## 7. Resume và trạng thái chưa rõ
 
-Runtime có thể gửi kết quả tự khai nhưng không tạo `VERIFIED_PASS`. Verifier AIOS phải:
+- Mất kết nối khi đang read/search có thể retry bằng cùng idempotency key.
+- Mất kết nối khi đang write/command chuyển `interrupted_unknown`.
+- Resume phải đối chiếu session, process, workspace digest và receipt trước khi tiếp tục.
+- Không tự lặp write/command chưa rõ kết quả.
 
-1. dựng worktree sạch từ base;
-2. áp đúng selection digest;
-3. lấy command từ Task Pack/decision;
-4. quan sát exit code, timeout, process residue và Git state;
-5. so changed paths/digest với proposal;
-6. tạo `VerificationRun` và `ExecutionReceipt` append-only.
+## 8. Xác minh theo loại đầu ra
 
-UI không được tự tạo observed evidence, không được dùng checkbox để đặt `tests_passed=True` hoặc `worktree_clean=True`, và không được copy changed files từ model report làm quan sát.
+Runtime có thể cung cấp summary, nhưng AIOS tự quan sát:
 
-## 10. Apply và rollback
+- task mã: filesystem/Git, file digest, command, exit code và timeout;
+- task báo cáo: section, citation, dữ liệu bảng/biểu đồ và phép tổng hợp;
+- task thiết kế công đoạn: source location, nhãn evidence và trạng thái bản nháp.
 
-- Trước apply, AIOS so snapshot main workspace hiện tại với snapshot đã bind approval.
-- Mismatch HEAD/status/file digest hoặc approval hết hạn làm apply bị từ chối.
-- Apply dùng đúng payload đã verified; lỗi giữa chừng phục hồi snapshot trước apply và xác minh lại digest.
-- Không gọi `git reset --hard`, không rewrite history và không xóa thay đổi đã có của người dùng.
-- Xóa task worktree chỉ sau close/cancel/rollback receipt và không còn trạng thái `interrupted_unknown`.
+Checkbox UI và lời model không tạo bằng chứng đạt.
 
-## 11. Lỗi và ánh xạ fail-closed
+## 9. Dùng kết quả và hoàn tác
 
-| Điều kiện | Trạng thái | Reason code gợi ý |
-|---|---|---|
-| Runtime mất kết nối khi chưa biết action đã chạy | `interrupted_unknown` | `RUNTIME_CONNECTION_LOST` |
-| Base/file/proposal digest lệch | `failed` | `BASELINE_CHANGED` hoặc `PROPOSAL_MISMATCH` |
-| Approval hết hạn/replay | `failed` | `APPROVAL_EXPIRED` hoặc `APPROVAL_REPLAYED` |
-| Path/symlink thoát root | `failed` | `PATH_OUTSIDE_WORKTREE` |
-| Command ngoài allowlist | `failed` | `COMMAND_NOT_ALLOWED` |
-| Test exit code khác 0 | `failed` | `VERIFICATION_FAILED` |
-| Cancel còn process/file residue | `cancelled_with_residue` | `CANCEL_RESIDUE_DETECTED` |
-| Output vượt budget | `failed` hoặc `cancelled` theo policy | `OUTPUT_BUDGET_EXCEEDED` |
+- Báo cáo và rà soát công đoạn được tự lưu dưới dạng bản nháp sau verification.
+- Kết quả mã chỉ được đưa từ worktree sang workspace chính khi checkpoint, manifest và trạng thái hiện tại không xung đột.
+- Xung đột giữ nguyên kết quả trong worktree và trả hướng dẫn tiếng Việt; không ghi đè.
+- Hoàn tác dùng checkpoint của nhiệm vụ, không gọi `git reset --hard`, không viết lại lịch sử và không xóa thay đổi có trước.
 
-Mỗi điều kiện tạo receipt và error report tiếng Việt; không hiện raw exception hoặc traceback.
+## 10. Ranh giới dữ liệu và transport
 
-## 12. Ranh giới dữ liệu và transport
+- Server chỉ bind loopback và dùng xác thực cục bộ nếu runtime hỗ trợ.
+- Không truyền toàn bộ `os.environ`; adapter chỉ cấp biến cần thiết theo allowlist.
+- Runtime không nhận `local_cases/`, `local_runs/`, `.env`, secret hoặc dữ liệu `local_only` ngoài phạm vi/provider route được phép.
+- Transcript, raw `diff` và stdout/stderr không đi vào hồ sơ Case.
 
-- Server chỉ bind `127.0.0.1`, mDNS tắt, CORS không mở nếu không có nhu cầu được duyệt và có xác thực cục bộ.
-- Runtime chỉ nhận worktree cùng context đã qua policy; không nhận `local_cases/`, `local_runs/` ngoài vùng task, `.env`, secret hoặc dữ liệu `local_only` khi provider route không cho phép.
-- Extension chỉ nhận state, diff và error payload đã làm sạch từ Gateway.
-- Event/receipt persistence không chứa absolute path, raw prompt/transcript, raw output hoặc provider credential.
+## 11. Hợp đồng lỗi
 
-## 13. Tương thích
+Mọi lỗi được ánh xạ theo [hợp đồng báo cáo lỗi](agent-error-report-v1.md). UI chỉ nhận bản tiếng Việt đã làm sạch, trạng thái resume/rollback và hành động tiếp theo; không nhận traceback hoặc đường dẫn tuyệt đối.
 
-- `aios_agent_task_pack_v1` và `aios_agent_report_v1` tiếp tục được reader lịch sử chấp nhận theo semantics cũ.
-- Protocol runtime mới dùng version riêng; adapter phải từ chối version/capability không hỗ trợ.
-- Report v1 nhập thủ công không tự biến thành VerificationRun. Muốn đạt verified phải có verifier receipt mới liên kết đúng task/proposal/decision.
-- Pending action từ bridge RAM cũ hết hiệu lực khi restart và không được migration thành approval.
+## 12. Tương thích
+
+- Reader `aios_agent_task_pack_v1` và `aios_agent_report_v1` tiếp tục đọc artifact lịch sử theo nghĩa cũ.
+- Session/proposal trong RAM từ bridge NVIDIA hết hiệu lực khi restart và không được chuyển thành grant OpenCode.
+- Thêm runtime khác chỉ sau khi OpenCode không đạt G1 hoặc có giới hạn được đo bằng cùng fixture.

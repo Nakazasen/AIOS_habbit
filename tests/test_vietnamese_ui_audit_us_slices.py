@@ -15,6 +15,22 @@ def test_supported_locales_only_vietnamese():
     assert LOCALE_NAMES["vi"] == "Tiếng Việt"
 
 
+def test_shared_library_help_uses_plain_language_actions():
+    help_text = t("shared_library_help", locale="vi")
+
+    for expected_action in (
+        "không cần thay đổi gì",
+        "Chọn thư mục…",
+        "Lưu vị trí thư viện",
+        "tạo sổ",
+        "thêm tài liệu",
+    ):
+        assert expected_action in help_text
+
+    for technical_term in ("aios_thu_vien", "index", "CSV", "WAL"):
+        assert technical_term not in help_text
+
+
 def test_safe_vietnamese_ui_message_redaction():
     raw_error_with_path = "sqlite3.OperationalError: unable to open database file at C:\\Secret\\Data\\db.sqlite"
     safe_msg = safe_vietnamese_ui_message(raw_error_with_path, "Không thể mở cơ sở dữ liệu.")

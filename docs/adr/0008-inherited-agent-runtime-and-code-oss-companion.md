@@ -1,47 +1,48 @@
-# ADR-0008: Runtime Agent kế thừa và mặt bàn Code-OSS
+# ADR-0008: Runtime Agent kế thừa cho trợ lý thực thi công việc
 
 Status: `ACCEPTED`
 Ngày quyết định: 2026-09-07
 Vai trò chủ sở hữu: Project owner / Architecture reviewer
-Xem xét lần cuối: 2026-09-07
+Xem xét lần cuối: 2026-09-11
 Chu kỳ xem xét: Mỗi lần nâng phiên bản runtime hoặc thay đổi ranh giới quyền
 
 ## Bối cảnh
 
-US6 đã có Task Pack, proposal, nhập kết quả và policy nền, nhưng chưa có session/tool lifecycle, worktree, terminal, checkpoint, resume và giao diện lập trình đủ dùng hằng ngày. Tự xây toàn bộ harness sẽ chậm, trùng chức năng và tạo thêm rủi ro quyền.
+US6 đã có Task Pack, nhập kết quả và policy nền, nhưng chưa có vòng đọc–sửa–test, checkpoint, resume và trải nghiệm giao việc đủ dùng hằng ngày. Nhu cầu thực tế không chỉ là sửa code: kỹ sư còn cần tạo file, tạo báo cáo lỗi có biểu đồ và rà soát thiết kế công đoạn dựa trên tài liệu nền. Tự xây toàn bộ harness hoặc IDE sẽ chậm, trùng chức năng và tạo thêm rủi ro quyền.
 
 ## Các phương án
 
-1. Dùng Code-OSS + adapter OpenCode + governance AIOS.
+1. Dùng Workspace Chat + adapter OpenCode + governance AIOS; Code-OSS chỉ là công cụ kỹ thuật tùy chọn.
 2. Fork OpenCode desktop rồi đổi giao diện.
 3. Tiếp tục mở rộng orchestrator hiện có thành một harness mới.
 
 ## Quyết định
 
-Chọn phương án 1. OpenCode là runtime ứng viên chính qua server/adapter; Cline là benchmark và fallback nếu G1 chứng minh OpenCode không đáp ứng permission, session/resume hoặc event stream. Code-OSS là mặt bàn chuyên dụng cho `agent_work`; Workspace Chat vẫn là giao diện AIOS chính.
+Chọn phương án 1. OpenCode là runtime ứng viên chính qua server/adapter; Cline là fallback nếu G1 chứng minh OpenCode không đáp ứng vòng đọc–sửa–test–resume–undo hoặc không chặn được hành động ngoài vùng. Workspace Chat là giao diện chính; không xây extension Code-OSS riêng ở MVP.
 
-AIOS giữ Task Pack, policy, approval, receipt, Case/Evidence, privacy route và learning đã duyệt. Runtime giữ vòng model–tool, session, streaming, cancel/resume và MCP. Code-OSS giữ editor, diff, terminal, SCM, LSP và debugger. Không sao chép thương hiệu, icon, Marketplace hoặc thành phần phân phối độc quyền.
+AIOS giữ Task Pack, policy theo vùng, checkpoint, verifier, receipt, Case/Evidence, privacy route và learning đã duyệt. Runtime giữ vòng model–tool, session, streaming và cancel/resume. `antigravity_bridge.py` tiếp tục là tuyến nguồn AI của Workspace Chat; chỉ bridge NVIDIA lập trình cũ nằm trong phạm vi thay thế.
 
-Bản đầu chỉ tự sửa trong Git worktree. Apply vào workspace thật cần đúng proposal digest đã duyệt. Không hỗ trợ tự commit, push, merge, deploy, quyền admin hoặc thao tác ngoài workspace.
+Bản đầu tự động cho phép đọc, tìm, tạo/sửa file và chạy test trong vùng nhiệm vụ có checkpoint. Mã nguồn chạy trong Git worktree; báo cáo và rà soát công đoạn ghi vào vùng bản nháp. Người dùng không duyệt từng tool call hoặc toàn bộ diff; họ xem kết quả tiếng Việt và có thể dùng hoặc hoàn tác. Không hỗ trợ tự commit, push, merge, deploy, quyền admin, thao tác ngoài workspace hoặc tự thay tài liệu công đoạn chính thức.
 
 ## Hệ quả
 
 - Ít mã tự viết hơn và có đường nâng upstream rõ.
-- Cần adapter versioned, capability handshake và contract test chống drift.
+- Cần adapter mỏng, capability probe và contract test chống drift.
 - OpenCode thất bại G1 thì dừng, ghi blocker và spike Cline theo cùng rubric; không fork ngay.
-- US5 có thể tái sử dụng harness sau G4 qua tool artifact bị giới hạn; US10 không được gọi coding tool.
+- Báo cáo lỗi có biểu đồ là lát cắt đầu tiên; rà soát thiết kế công đoạn và sửa mã dùng lại cùng policy/checkpoint.
+- Hàng đợi chỉ khóa một writer theo workspace; chưa xây scheduler hay nền tảng đa Agent.
 
 ## Bảo mật và quyền riêng tư
 
-- AIOS là nguồn quyết định cuối; runtime deny mặc định.
-- Không có đường từ RAG answer đến tool ghi.
-- Approval bind task, session, base, payload, actor, scope, policy và expiry.
+- AIOS là nguồn quyết định cuối; runtime tự động duyệt action nằm trong grant và deny rõ action ngoài grant.
+- RAG/evidence chỉ có thể tạo bản nháp qua orchestrator đã khóa nguồn, vùng ghi và privacy route; câu trả lời tự do không được gọi tool ghi trực tiếp.
+- Grant bind task, session, workspace, action, command, privacy route, policy và expiry.
 - Secret và `local_only` không vào provider hoặc hồ sơ thường; transcript/stdout thô không sao chép vào Case.
 - Path traversal, symlink thoát root, command ngoài allowlist và approval replay phải bị chặn.
 
 ## Hoàn tác
 
-Tắt feature flag, dừng adapter/extension và giữ US6 foundation hiện có. Không sửa lịch sử Git hoặc xóa dữ liệu người dùng. Runtime session có thể bị bỏ, nhưng receipt/digest đã ghi trong Case vẫn được bảo toàn.
+Tắt feature flag, dừng adapter và giữ nền US6 hiện có. Worktree và bản nháp quay về checkpoint; không sửa lịch sử Git hoặc xóa thay đổi có trước của người dùng. Runtime session có thể bị bỏ, nhưng receipt/digest đã ghi trong Case vẫn được bảo toàn.
 
 ## Bằng chứng
 

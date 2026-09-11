@@ -7,6 +7,7 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 import json
+import re
 from typing import Any, Callable, Optional, Sequence
 from uuid import uuid4
 
@@ -59,6 +60,7 @@ from aios_habit.controlled_knowledge_artifact import (
     ARTIFACT_STATUS_CHANGES_REQUESTED,
     ARTIFACT_STATUS_REJECTED,
     ARTIFACT_STATUS_REVOKED,
+    ARTIFACT_TYPE_LESSON,
     DECISION_CONFIRM,
     DECISION_REJECT,
     DECISION_REQUEST_CHANGE,
@@ -69,7 +71,7 @@ from aios_habit.controlled_knowledge_artifact import (
     DecisionRecord,
     StaleArtifactDigestError,
 )
-from aios_habit.knowledge_claim_extractor import CLAIM_STATUS_CONFLICTED
+from aios_habit.knowledge_claim_extractor import CLAIM_STATUS_CONFLICTED, extract_claim_from_turn
 
 from aios_habit.knowledge_coverage import GAP_STATUS_ACCEPTED, KnowledgeGapCandidate
 from aios_habit.workspace_case_authorization import ActorContext, trusted_local_actor
@@ -460,6 +462,93 @@ class ExpertInterviewService:
         """Create and persist a candidate controlled knowledge artifact."""
         self.interview_repo.save_artifact(artifact, idempotency_key)
         return artifact
+
+    def _draft_artifact_id(self, session_id: str) -> str:
+        safe = re.sub(r"[^A-Za-z0-9_-]", "_", session_id).strip("_")[:40]
+        return f"ART-{safe or 'session'}"
+
+    def create_draft_from_session(self, session_id: str) -> ControlledKnowledgeArtifact:
+        """Build a user-facing draft from answered interview turns without exposing internal tokens."""
+        session = self.interview_repo.get_session(session_id)
+        if session is None:
+            raise ControlledArtifactError("Không tìm thấy buổi hỏi đáp để tạo bản nháp.")
+        artifact_id = self._draft_artifact_id(session_id)
+        existing = self.interview_repo.get_artifact(artifact_id)
+        if existing is not None:
+            return existing
+        turns = [
+            turn
+            for turn in self.interview_repo.list_turns(session_id)
+            if turn.answer_text.strip() and turn.answer_state != ANSWER_STATE_SKIPPED
+        ]
+        if not turns:
+            raise ControlledArtifactError("Chưa có câu trả lời để tạo bản nháp.")
+        plan = self.get_interview_plan(session.plan_id)
+        scope = plan.required_scope if plan else "chia_se_kinh_nghiem"
+        title = "Kiến thức vừa ghi lại"
+        if plan and plan.gap_ids:
+            gap = self.store.get_gap_candidate(plan.gap_ids[0])
+            if gap and gap.title.strip():
+                title = gap.title.strip()
+        claims = []
+        for turn in turns:
+            claim = extract_claim_from_turn(
+                turn,
+                session,
+                scope,
+                require_confirmed_tokens=False,
+            )
+            self.interview_repo.save_claim(claim, f"IDEMP-{claim.claim_id}")
+            claims.append(claim)
+        lines = [
+            f"# {title}",
+            "",
+            "Đây là bản nháp, chưa phải tri thức chính thức.",
+            "",
+            f"Người tham gia: {session.expert_id}",
+            "",
+            "## Nội dung đã ghi lại",
+        ]
+        uncertain_notes: list[str] = []
+        for turn in turns:
+            lines.append(f"**Câu hỏi:** {turn.question_text}")
+            lines.append(turn.answer_text.strip())
+            if turn.answer_state == ANSWER_STATE_UNCERTAIN:
+                lines.append("*Phần này chưa chắc chắn — hãy kiểm tra lại trước khi đưa vào thư viện.*")
+                uncertain_notes.append(turn.answer_text.strip())
+            elif turn.answer_state == ANSWER_STATE_UNKNOWN:
+                lines.append("*Người tham gia chưa rõ phần này.*")
+            lines.append("")
+        if uncertain_notes:
+            lines.append("## Điểm cần kiểm tra")
+            for note in uncertain_notes:
+                lines.append(f"- {note}")
+            lines.append("")
+        lines.extend(["## Nguồn", f"Buổi hỏi đáp với {session.expert_id}."])
+        artifact = ControlledKnowledgeArtifact(
+            artifact_id=artifact_id,
+            artifact_type=ARTIFACT_TYPE_LESSON,
+            title=title,
+            scope=scope,
+            version="1",
+            content_markdown="\n".join(lines),
+            claim_ids=tuple(claim.claim_id for claim in claims),
+            claim_map={claim.claim_id: claim.statement for claim in claims},
+            status=ARTIFACT_STATUS_CANDIDATE,
+            created_by=session.expert_id,
+        )
+        self.interview_repo.save_artifact(artifact, f"IDEMP-{artifact_id}")
+        return artifact
+
+    def ensure_drafts_from_answered_sessions(self) -> list[ControlledKnowledgeArtifact]:
+        """Create missing drafts for sessions that already have answers."""
+        created: list[ControlledKnowledgeArtifact] = []
+        for session in self.interview_repo.list_sessions():
+            try:
+                created.append(self.create_draft_from_session(session.session_id))
+            except ControlledArtifactError:
+                continue
+        return created
 
     def submit_artifact_approval(
         self,
