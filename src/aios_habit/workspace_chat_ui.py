@@ -368,9 +368,8 @@ def render_chat_bubble(
         with st.chat_message("assistant"):
             if is_latest:
                 latest_badge_text = t("latest_answer_badge", locale=locale)
-                st.markdown(
+                st.html(
                     f'<div style="display:inline-flex; align-items:center; gap:6px; background:rgba(14,165,233,0.15); border:1px solid rgba(14,165,233,0.4); color:#38bdf8; font-size:12px; font-weight:600; padding:2px 10px; border-radius:9999px; margin-bottom:10px;">✨ {latest_badge_text}</div>',
-                    unsafe_allow_html=True,
                 )
             st.markdown(msg.content)
 
@@ -489,12 +488,11 @@ def render_right_result_panel(
             st.markdown("\n".join(f"- {src}" for src in proven_sources))
         else:
             items_html = "".join(f"<li style='margin-bottom:4px;'>{src}</li>" for src in proven_sources)
-            st.markdown(
+            st.html(
                 f"<div style='max-height: 280px; overflow-y: auto; padding: 8px 12px; background: rgba(255,255,255,0.03); border-radius: 8px; border: 1px solid rgba(255,255,255,0.08); font-size: 13.5px; line-height: 1.5;'>"
                 f"<ul style='margin: 0; padding-left: 1.2rem;'>"
                 f"{items_html}"
                 f"</ul></div>",
-                unsafe_allow_html=True,
             )
     else:
         st.write(t("no_sources", locale=locale))
@@ -711,7 +709,7 @@ def render_source_library(
                     st.session_state[confirm_key] = True
                     __safe_rerun()
 
-        st.markdown("<hr style='margin: 4px 0; border: 0.5px solid rgba(255,255,255,0.08);'/>", unsafe_allow_html=True)
+        st.divider()
 
 
 def render_source_library_summary(notebook_count: int, temporary_count: int, enabled_count: int, locale: str = "vi") -> None:

@@ -1,9 +1,9 @@
 # Thẻ cổng: AI phỏng vấn chuyên gia và làm giàu tri thức
 
 Status: `REOPENED_FOR_SIMPLIFICATION`
-Mã tính năng: `010-expert-knowledge-acquisition`  
-Chủ sở hữu: Project owner / Process owner / Privacy reviewer  
-Cập nhật: 2026-09-11
+Mã tính năng: `010-expert-knowledge-acquisition`
+Chủ sở hữu: Project owner / Process owner / Privacy reviewer
+Cập nhật: 2026-09-13
 
 ## Mục tiêu
 
@@ -114,6 +114,136 @@ Finding còn mở trước khi đóng Goal:
 - Cờ Goal 010 vẫn fail-closed; chưa bật vận hành.
 - Kiểm toán độc lập 2026-09-11: chưa đóng Goal. Đã xử lý prefill tên OS, không đưa câu lỗi SQLite/digest ra UI, và E2E xuất bản thư viện dùng chung. Scanner UX vẫn chủ yếu quét source, chưa thay cho đi bộ người dùng.
 - Chưa đồng bộ `ARCHITECTURE.md`, `ROADMAP.md`, `PROJECT_HANDOVER.md` vì còn finding mức chặn ở cổng R5.
+
+## Bằng chứng lượt 2026-09-12 — T106/T108 Execution, chưa đóng Goal
+
+Lượt Execution Specialist khi Goal 011 bị chặn cổng T001. Python: 3.11.14. Cờ `expert_knowledge_acquisition` vẫn tắt mặc định. Không đánh dấu T106/T108/T109. Không tự PASS. Cổng Goal 010 còn mở nên không triển khai vòng nhớ Goal 011 (cờ `adaptive_work_memory`, mô hình/service/UI sổ việc, đổi `workspace_chat_ai_answer.py` / `antigravity_bridge.py`).
+
+Nhánh: `gate1-local-case-sqlite`. Cây bẩn RAG sẵn có lúc đầu lượt: `.specify/feature.json`, `src/aios_habit/rag_v2/adaptive_retrieval.py`, `src/aios_habit/rag_v2/pipeline.py`, `src/aios_habit/workspace_chat_app.py` (`git diff --stat` 182), `src/aios_habit/workspace_chat_rag_v2_adapter.py`, `tests/test_non_blocking_rag_and_graceful_degradation.py`. `workspace_chat_app.py` nằm trong assumed scope Goal 011 nên lượt này không thêm vòng nhớ vào file đó; diff 182 là Partial Ready Search bẩn sẵn có, đã khôi phục sau khi hoàn tác bản vá i18n ngoài phạm vi. File người dùng `Lam_viec_thong_minh_nhu_Grokbot.md` không đụng.
+
+### T108 — quality gate và smoke giao diện
+
+| Lệnh | Mã thoát | Phạm vi |
+| --- | ---: | --- |
+| `uv run --no-sync --group dev python --version` | 0 | 3.11.14 |
+| `uv run --no-sync --group dev python scripts/check_docs.py` | 0 | `DOCUMENTATION_CONTRACT=PASS` |
+| `uv run --no-sync --group dev python scripts/check_user_facing_vietnamese.py` | 0 | `VIETNAMESE_UI_POLICY_CHECK=PASS` |
+| `uv run --no-sync --group dev python -m compileall src tests` | 0 | src + tests |
+| `uv run --no-sync --group dev python -m aios_habit.cli audit` | 0 | `"status": "PASS"` |
+| `uv run --no-sync --group dev python -c "import aios_habit.workspace_chat_app"` | 0 | import sạch |
+| `git diff --check` | 0 | không lỗi khoảng trắng |
+| `uv run --no-sync --group dev pytest tests/test_expert_interview_privacy.py -q` | 0 | 14 passed |
+| `uv run --no-sync --group dev pytest tests/test_local_transcription.py -q` | 0 | 14 passed |
+| `uv run --no-sync --group dev pytest tests/test_controlled_knowledge_artifact.py -q` | 0 | 11 passed |
+| `uv run --no-sync --group dev pytest tests/test_knowledge_publication.py tests/test_knowledge_publication_recovery.py -q` | 0 | 23 passed |
+| `uv run --no-sync --group dev pytest tests/test_expert_knowledge_e2e.py -q` | 0 | 2 passed |
+| `uv run --no-sync --group dev pytest tests/test_workspace_chat_app_smoke.py::TestWorkspaceChatAppSmoke::test_smoke_four_stages_goal_010_accessible_from_workspace_chat -q` | 0 | 1 passed, 4.70s |
+| `uv run --no-sync --group dev pytest tests/test_workspace_case_ui.py -q` | 0 | 27 passed |
+| `uv run --no-sync --group dev pytest -q --durations=20` | 1 | 2727 passed, 4 failed; 672.07s. Không treo. |
+
+Bốn fail full suite (không xóa, không đổi assertion):
+
+1. `tests/test_commit_d_wheel_and_packaging.py::TestDesktopPackagingConfiguration::test_desktop_build_prerequisites_function` — ngoài Goal 010.
+2. `tests/test_commit_d_wheel_and_packaging.py::TestCleanMachineSmokeScript::test_clean_machine_full_isolated_venv_installation` — `No space left on device` khi cài RAG vào venv cô lập; ngoài Goal 010.
+3. `tests/test_workspace_chat_source_selection_owner_flow.py::test_app_preparation_gate_is_scoped_to_query_relevant_sources` — chuỗi chuẩn bị nguồn không còn trong `workspace_chat_app.py` bẩn sẵn có; không thuộc Goal 010 và không do lượt này sửa.
+4. `tests/test_workspace_chat_ui_i18n.py::TestWorkspaceChatUIAntiHardcode::test_ast_workspace_chat_app_zero_hardcoded_vietnamese` — 14 chuỗi tiếng Việt hardcode trong `workspace_chat_app.py` bẩn sẵn có; không thuộc Goal 010 và không do lượt này sửa.
+
+Tập trung Goal 010 (privacy, chép lời, artifact, xuất bản, E2E, smoke bốn chặng, UI hồ sơ) đều exit 0. T108 chưa đánh dấu `[x]` vì full suite chưa xanh và kịch bản người không chuyên chưa chạy.
+
+### T106 — kịch bản E người không chuyên
+
+Không có người kiểm thử không chuyên ngồi trước giao diện trong lượt này. Harness không thay thế SC-008.
+
+Finding:
+
+- Smoke AppTest bốn chặng (`library_select`, `interview`, `review_approve`, `library_publish`) chạy được khi bật cờ trong sandbox; không exception. Đây là kiểm thử kỹ thuật T098, không phải đi bộ người dùng.
+- Cờ `expert_knowledge_acquisition` mặc định `False`: người dùng thật không thấy bốn chặng trừ khi bật cờ.
+- Không ghi nhận việc hoàn thành / chỗ hỏi hướng dẫn / từ không hiểu / nút bỏ sót từ một người không đọc tài liệu kỹ thuật.
+- Không tuyên bố SC-008.
+
+T106 giữ `[ ]`. T109 không đánh dấu (Codex). `ARCHITECTURE.md` / `ROADMAP.md` / `PROJECT_HANDOVER.md` không đồng bộ đóng Goal 010.
+
+### T108 bổ sung — dọn đĩa không xóa dữ liệu xưởng
+
+Đã xóa cache/venv test (`npm-cache`, `uv-cache`, `.pytest_cache`, temp RAG e2e, `.tmp_smoke`, `.tmp_verify_venv`). **Không** xóa `local_runs/`, `local_cases/`, `.venv`, mô hình retrieval, tài liệu người dùng.
+
+Đĩa sau dọn: C ~1.5 GB, D ~19 GB.
+
+Lệnh retest (một lần, 709.69s):
+
+```powershell
+uv run --no-sync --group dev pytest -q tests/test_commit_d_wheel_and_packaging.py::TestDesktopPackagingConfiguration::test_desktop_build_prerequisites_function tests/test_commit_d_wheel_and_packaging.py::TestCleanMachineSmokeScript::test_clean_machine_full_isolated_venv_installation tests/test_workspace_chat_ui_i18n.py::TestWorkspaceChatUIAntiHardcode::test_ast_workspace_chat_app_zero_hardcoded_vietnamese tests/test_workspace_chat_source_selection_owner_flow.py::test_app_preparation_gate_is_scoped_to_query_relevant_sources tests/test_workspace_chat_app_smoke.py::TestWorkspaceChatAppSmoke::test_smoke_four_stages_goal_010_accessible_from_workspace_chat
+```
+
+Mã thoát: **1**. Kết quả: **3 failed, 2 passed** in 709.69s. Log đầy đủ: scratch `t108-retest-after-disk.log`.
+
+Ba fail (không xóa test, không đổi assertion):
+
+1. `tests/test_commit_d_wheel_and_packaging.py::TestDesktopPackagingConfiguration::test_desktop_build_prerequisites_function`
+   - File: `tests/test_commit_d_wheel_and_packaging.py:292`
+   - `AssertionError: assert 3 >= 80` — `len(result["verified_wheels"]) >= 80`
+   - Ngoài Goal 010; thiếu wheelhouse đóng gói, **không còn hết đĩa**.
+
+2. `tests/test_commit_d_wheel_and_packaging.py::TestCleanMachineSmokeScript::test_clean_machine_full_isolated_venv_installation`
+   - File: `tests/test_commit_d_wheel_and_packaging.py:631` → `subprocess.py:1630`
+   - `TimeoutExpired`: `['D:\\Sandbox\\AIOS_habbit\\.venv\\Scripts\\python.exe', 'D:\\Sandbox\\AIOS_habbit\\scripts\\desktop_smoke_test.py']` timed out after 600 seconds
+   - Ngoài Goal 010.
+
+3. `tests/test_workspace_chat_app_smoke.py::TestWorkspaceChatAppSmoke::test_smoke_four_stages_goal_010_accessible_from_workspace_chat`
+   - File: `tests/test_workspace_chat_app_smoke.py:321` `at.run()`
+   - Chuỗi: `app_test.py:439` → `element_tree.py:2526` → `app_test.py:383` → `local_script_runner.py:147` → `local_script_runner.py:197`
+   - `RuntimeError: AppTest script run timed out after 30(s)`
+   - stderr: `missing ScriptRunContext` / `Session state does not function when running a script without streamlit run` (cảnh báo Streamlit AppTest).
+   - Cùng test lượt T108 sáng: **exit 0, 1 passed, 4.70s**. Fail này là timeout môi trường, không phải assertion hợp đồng bốn chặng. Không tuyên bố T098/T106 PASS từ lượt timeout.
+
+Hai passed cùng lệnh (i18n zero-hardcode và prep-gate) xảy ra khi working tree còn bản vá ngoài phạm vi; bản vá đó đã hoàn tác. Không dùng 2 passed đó để đóng T108.
+
+Sau hoàn tác chuỗi, remnant còn 60 dòng (ternary `bounded`/`broad_states` của step 477, không phải blob 182). Đã khôi phục cây bẩn 07:55 từ Gemini step 260+266: `src/aios_habit/workspace_chat_app.py | 182` (120 insertions, 62 deletions). `i18n.py` sạch so với HEAD. Retest: i18n **FAIL 14** chuỗi hardcode (khớp T108 đầu lượt); prep-gate `-k prep` 7 passed. Không dùng kết quả này để đóng T108.
+
+T108 vẫn `[ ]`. T106/T109 vẫn chờ người không chuyên và Codex. Independent Codex/user phải đóng T106, T108, T109 và trạng thái canonical trên Gate Card / `ARCHITECTURE.md` / `ROADMAP.md` / `PROJECT_HANDOVER.md` rồi mới được chạy lại Goal 011 từ T001.
+
+## Bằng chứng lượt 2026-09-13 — đơn giản hóa R4 header, chưa đóng Goal
+
+Python: 3.11.14. Cờ `expert_knowledge_acquisition` vẫn tắt mặc định. Không đánh dấu T106/T109. Không tự PASS. Không đồng bộ `ARCHITECTURE.md` / `ROADMAP.md` / `PROJECT_HANDOVER.md`.
+
+Đơn giản hóa trong lượt: khi cờ Goal 010 bật, tiêu đề khu vực không còn «Hồ sơ vụ việc». Dùng `GOAL010_WORKSPACE_TITLE` / `GOAL010_WORKSPACE_CAPTION`: «Phỏng vấn và thư viện kiến thức» và bốn bước đời thường.
+
+Cây làm việc còn thay đổi ngoài Goal 010 (không dùng để đóng Goal): CSS Streamlit 1.60 (`st.markdown` `<style>` thành chữ trên trang → `st.html`), guard Gemini không còn chặn cả sổ chỉ vì có file ảnh trong thư viện, và test huy hiệu câu trả lời mới nhất chuyển sang `st.html`.
+
+### T108 — quality gate
+
+| Lệnh | Mã thoát | Phạm vi |
+| --- | ---: | --- |
+| `uv run --no-sync --group dev python --version` | 0 | 3.11.14 |
+| `uv run --no-sync --group dev python scripts/check_docs.py` | 0 | `DOCUMENTATION_CONTRACT=PASS` |
+| `uv run --no-sync --group dev python scripts/check_user_facing_vietnamese.py` | 0 | `VIETNAMESE_UI_POLICY_CHECK=PASS` |
+| `uv run --no-sync --group dev python -m compileall -q src tests` | 0 | src + tests |
+| `uv run --no-sync --group dev python -m aios_habit.cli audit` | 0 | `"status": "PASS"` |
+| `uv run --no-sync --group dev python -c "import aios_habit.workspace_chat_app"` | 0 | `IMPORT_OK` |
+| `pytest -q` tập trung Goal 010 (hai đợt; đợt gộp bị `MemoryError`) | 0 | 36 + 128 = **164 passed** (thêm 1 test header bốn chặng so với 163 trước đó) |
+| `pytest -q tests/test_workspace_chat_app_smoke.py::...test_smoke_four_stages_goal_010_accessible_from_workspace_chat` | 0 | 1 passed, nằm trong 36 |
+| `pytest -q -m "not desktop_packaging"` trước sửa CSS | 0 | **2774 passed, 29 deselected, 0 failed** in 157.01s |
+| `pytest -q -m "not desktop_packaging"` sau CSS/`st.html` | 1 | **1 failed, 2777 passed, 29 deselected** in 148.51s. Fail: `test_chat_bubble_assistant_is_latest_badge_branch` còn mock `st.markdown` cho huy hiệu. Đã sửa test sang `st.html`. Test đó chạy lại: **1 passed**. |
+| `pytest -q -m "not desktop_packaging"` sau sửa test huy hiệu | (chưa xong) | Log dừng ~75% sau 98s, không có dòng tổng kết. Không tuyên bố full suite xanh trên cây hiện tại. |
+| 29 test `desktop_packaging` | không chạy | Ngoài Goal 010, cùng marker cổng 004. |
+
+Tập trung Goal 010 gồm: privacy, transcription, artifact, publication, E2E, smoke bốn chặng, UI hồ sơ, i18n lát Goal 010, identity, chọn thư viện, phỏng vấn thích ứng, fixture, migration, recovery.
+
+T108 giữ `[ ]` vì lần gated trên cây hiện tại sau sửa test huy hiệu chưa có dòng tổng kết.
+
+### T106 — kịch bản E người không chuyên
+
+Không có người kiểm thử không chuyên ngồi trước giao diện. Harness không thay thế SC-008.
+
+Finding:
+
+- Smoke AppTest bốn chặng (`library_select`, `interview`, `review_approve`, `library_publish`) chạy được khi bật cờ trong sandbox; không exception. Đây là T098, không phải đi bộ người dùng.
+- Dump AppTest chữ hiển thị bị `OpenBLAS` hết bộ nhớ; không lấy được bảng chữ runtime đầy đủ trong lượt này. Kiểm tra nguồn: mỗi chặng một nút chính, audio trong phần thu gọn, không có `fixture`/`digest`/`claim`/`lease` trên `st.info`/`st.caption`/`st.button`.
+- Trước lượt này, tiêu đề khi bật cờ vẫn là «Hồ sơ vụ việc» — lệch bốn chặng. Đã đổi.
+- Cờ mặc định tắt: người dùng thật không thấy bốn chặng.
+- Không ghi nhận chỗ hỏi hướng dẫn / từ không hiểu từ một người không đọc tài liệu kỹ thuật.
+
+T106 giữ `[ ]`. T109 không đánh dấu. Goal giữ `REOPENED_FOR_SIMPLIFICATION`.
 
 ## Liên kết
 

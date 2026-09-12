@@ -228,6 +228,10 @@ GOAL010_NEXT_LIBRARY = "Bước tiếp theo: mở mục Phỏng vấn để bắ
 GOAL010_NEXT_INTERVIEW = "Bước tiếp theo: sau khi hỏi xong, mở mục Kiểm tra bản nháp."
 GOAL010_NEXT_REVIEW = "Bước tiếp theo: mở mục Đưa vào thư viện để xác nhận."
 GOAL010_NEXT_PUBLISH = "Hãy đọc lại nội dung, ghi tên người chịu trách nhiệm rồi đưa vào thư viện."
+GOAL010_WORKSPACE_TITLE = "Phỏng vấn và thư viện kiến thức"
+GOAL010_WORKSPACE_CAPTION = (
+    "Làm lần lượt bốn bước: chọn nơi lưu, hỏi đáp, kiểm tra bản nháp, rồi đưa vào thư viện."
+)
 
 
 def _goal010_error(what: str, next_step: str, *, data_safe: bool = True) -> str:
@@ -1077,8 +1081,12 @@ def render_case_workspace(
     norm_loc = normalize_locale(locale)
     header_col, close_col = st.columns([5, 1])
     with header_col:
-        st.title(t("case_workspace_title", locale=norm_loc))
-        st.caption(t("case_workspace_caption", locale=norm_loc))
+        if is_feature_enabled(FEATURE_EXPERT_KNOWLEDGE_ACQUISITION):
+            st.title(GOAL010_WORKSPACE_TITLE)
+            st.caption(GOAL010_WORKSPACE_CAPTION)
+        else:
+            st.title(t("case_workspace_title", locale=norm_loc))
+            st.caption(t("case_workspace_caption", locale=norm_loc))
     with close_col:
         if on_close and st.button(t("case_btn_back", locale=norm_loc), use_container_width=True):
             on_close()

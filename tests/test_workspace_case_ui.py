@@ -485,6 +485,23 @@ def test_expert_interview_ui_presenters_and_rows():
     assert rows[0]["Độ tin cậy"] == "95%"
 
 
+def test_goal_010_workspace_header_uses_four_stage_language():
+    import inspect
+    from aios_habit.workspace_case_ui import (
+        GOAL010_WORKSPACE_CAPTION,
+        GOAL010_WORKSPACE_TITLE,
+        render_case_workspace,
+    )
+
+    src = inspect.getsource(render_case_workspace)
+    assert "GOAL010_WORKSPACE_TITLE" in src
+    assert "GOAL010_WORKSPACE_CAPTION" in src
+    assert "Hồ sơ vụ việc" not in GOAL010_WORKSPACE_TITLE
+    assert "tham chiếu bằng chứng" not in GOAL010_WORKSPACE_CAPTION
+    assert "bốn bước" in GOAL010_WORKSPACE_CAPTION
+    assert "chọn nơi lưu" in GOAL010_WORKSPACE_CAPTION
+
+
 def test_four_stages_navigation_and_vietnamese_labels():
     """T105: Verify 4 stages navigation labels, single primary action per stage, and zero technical leak."""
     from aios_habit.workspace_case_ui import (

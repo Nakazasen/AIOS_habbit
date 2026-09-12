@@ -459,16 +459,16 @@ class TestChatBubbleBranchExploration:
             trace_id=None,
         )
 
-        # Case 1: is_latest = True
-        with patch("streamlit.chat_message") as mock_cm, patch("streamlit.markdown") as mock_md:
+        # Case 1: is_latest = True — badge is st.html so Streamlit 1.60
+        # does not dump the style block as visible markdown text.
+        with patch("streamlit.chat_message") as mock_cm, patch("streamlit.markdown") as mock_md, patch("streamlit.html") as mock_html:
             mock_cm.return_value.__enter__ = MagicMock()
             mock_cm.return_value.__exit__ = MagicMock()
 
             render_chat_bubble(msg, is_latest=True, locale="ja")
-            # Should have called markdown for latest badge AND for content
-            assert mock_md.call_count == 2
-            # Check latest answer badge string in call
-            badge_call_str = str(mock_md.call_args_list[0])
+            assert mock_html.call_count == 1
+            assert mock_md.call_count == 1
+            badge_call_str = str(mock_html.call_args_list[0])
             assert "最新の回答" in badge_call_str
 
         # Case 2: is_latest = False

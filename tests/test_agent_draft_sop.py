@@ -152,7 +152,7 @@ def test_workspace_ui_exposes_explicit_evidence_draft_approval():
     assert "st.download_button(" in app_source
 
 
-def test_gemini_and_router_still_block_images_gate_c():
+def test_gemini_and_router_still_block_image_files_gate_c():
     assert connector_blocks_image_files("gemini_web") is True
     assert connector_blocks_image_files("nakazasen_router") is True
     assert connector_blocks_image_files("cagent_api") is False

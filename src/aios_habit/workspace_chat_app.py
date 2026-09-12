@@ -38,7 +38,9 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-st.markdown('''
+# Streamlit 1.60 renders <style> inside st.markdown as visible text.
+# Style-only st.html is parked in the event container, not the main pane.
+st.html('''
     <style>
         .stDeployButton {display:none;}
         [data-testid="stHeader"] {
@@ -282,7 +284,7 @@ st.markdown('''
         }
 
     </style>
-''', unsafe_allow_html=True)
+''')
 
 
 from aios_habit.workspace_chat_store import (
@@ -863,6 +865,18 @@ def safe_rerun():
             st.experimental_rerun()
         except AttributeError:
             pass
+
+
+def _start_gemini_web_bridge(*, locale: str, announce_success: bool = False) -> bool:
+    """Start the local Gemini Web sidecar if it is down. Returns True when ready."""
+    startup = ensure_antigravity_bridge_running()
+    check_handoff_request_timeouts()
+    if startup.ok:
+        if announce_success or startup.started:
+            st.session_state.wsc_action_message = t("bridge_connect_success", locale=locale)
+        return True
+    st.session_state.wsc_action_error = t("gemini_web_bridge_unavailable", locale=locale)
+    return False
 
 def set_active_conversation_callback(notebook_id: str, conversation_id: Optional[str]) -> Optional[str]:
     resolved_id = resolve_conversation_id(notebook_id, conversation_id)
@@ -2621,6 +2635,18 @@ else:
                 upload_key = f"wsc_chat_img_{active_conversation.id}_{st.session_state.wsc_upload_version}"
                 if active_action_error:
                     st.error(safe_vietnamese_ui_message(active_action_error, "Không thể hoàn tất thao tác lúc này."))
+                    preview_backend = st.session_state.get(
+                        f"wsc_ai_backend_{active_conversation.id}", "gemini_web"
+                    )
+                    if preview_backend == "gemini_web":
+                        if st.button(
+                            t("reconnect_gemini_web", locale=current_ui_locale),
+                            key=f"wsc_reconnect_gemini_{active_conversation.id}",
+                            type="primary",
+                            help=t("reconnect_gemini_web_help", locale=current_ui_locale),
+                        ):
+                            _start_gemini_web_bridge(locale=current_ui_locale, announce_success=True)
+                            safe_rerun()
                 with st.container(border=True, key=f"wsc-composer-{active_conversation.id}"):
                     uploaded_image = None
                     user_input = st.text_area(
@@ -2814,6 +2840,8 @@ else:
                     if not q_text and not user_attached_image:
                         st.error(t("question_placeholder", locale=current_ui_locale))
                     else:
+                        if ai_backend == "gemini_web" and not _start_gemini_web_bridge(locale=current_ui_locale):
+                            safe_rerun()
                         if user_attached_image is not None and connector_blocks_image_files(ai_backend):
                             st.session_state.wsc_action_error = t("connector_blocks_images", locale=current_ui_locale)
                             safe_rerun()

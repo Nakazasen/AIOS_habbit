@@ -1027,7 +1027,9 @@ class TestAntigravityBridgeFailClosedAndE2E:
         assert badge is None
         assert err is not None
         assert "không khả dụng" in err
-        assert "fail-closed" in err
+        assert "Kết nối lại Gemini Web" in err
+        from aios_habit.ui_safety import safe_vietnamese_ui_message
+        assert safe_vietnamese_ui_message(err, "FALLBACK") == err
 
     def test_ide_handoff_e2e_write_response_and_import(self, tmp_path):
         from aios_habit.case_models import EvidenceItem

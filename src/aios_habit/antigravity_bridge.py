@@ -1085,10 +1085,11 @@ def route_workspace_chat_submission(
     else:
         # Strict Fail-Closed Policy:
         # If the Antigravity IDE Bridge is unavailable, do NOT fallback to Smart Router or mock endpoints.
-        err_detail = health.reason or f"FSM: {health.status}"
+        # Keep this string Vietnamese-only so the UI safety filter does not replace it
+        # with a generic fallback when the health reason contains English diagnostics.
         return (
             False,
             "",
             None,
-            f"Cầu nối Antigravity IDE hiện không khả dụng ({sanitize_reason(err_detail)}). Hệ thống hoạt động ở chế độ fail-closed và không thể gửi yêu cầu.",
+            "Cầu nối Antigravity IDE hiện không khả dụng. Hãy bấm Kết nối lại Gemini Web, rồi gửi lại câu hỏi.",
         )

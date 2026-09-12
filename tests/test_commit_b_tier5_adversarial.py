@@ -807,6 +807,7 @@ class TestAntigravityBridgeCallsAndRouting:
         assert ok is False
         assert badge is None
         assert "Cầu nối Antigravity IDE hiện không khả dụng" in str(err)
+        assert "Kết nối lại" in str(err)
 
 
 # ===========================================================================

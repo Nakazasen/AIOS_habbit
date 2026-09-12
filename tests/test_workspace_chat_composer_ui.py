@@ -9,6 +9,18 @@ def _app_source() -> str:
     return APP_PATH.read_text(encoding="utf-8")
 
 
+def test_gemini_reconnect_button_is_in_the_live_composer_not_legacy_header() -> None:
+    source = _app_source()
+    legacy_marker = "_legacy_connector_panel"
+    live = source.split(legacy_marker, 1)[-1]
+    live = live.split('"""', 2)[-1]
+    assert 't("reconnect_gemini_web"' in live
+    assert 'key=f"wsc_reconnect_gemini_{active_conversation.id}"' in live
+    assert "_start_gemini_web_bridge" in live
+    assert 'ai_backend == "gemini_web" and not _start_gemini_web_bridge' in live
+    assert 'announce_success=True' in live
+
+
 def test_composer_default_state_uses_compact_primary_controls() -> None:
     source = _app_source()
 
@@ -126,6 +138,19 @@ def test_layout_switch_is_a_persistent_right_rail_control() -> None:
     assert "position: fixed !important" in source
     assert "right: 0 !important" in source
     assert 'key="wsc_toggle_layout_btn"' not in source
+
+
+def test_global_theme_css_is_injected_with_st_html() -> None:
+    """Streamlit 1.60 shows markdown <style> as body text; style-only st.html does not."""
+    source = _app_source()
+    marker = ".stDeployButton {display:none;}"
+    deploy = source.find(marker)
+    assert deploy != -1
+    prefix = source[:deploy]
+    assert prefix.rfind("st.html(") > prefix.rfind("st.markdown(")
+    closing = source.find("</style>", deploy)
+    assert closing != -1
+    assert "unsafe_allow_html" not in source[prefix.rfind("st.html(") : closing]
 
 
 def test_evidence_graph_toggle_caches_trace_and_hides_the_canvas_before_rerun() -> None:
