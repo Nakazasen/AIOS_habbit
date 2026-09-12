@@ -30,6 +30,52 @@ def test_identity_plan_only_splits_facets_explicitly_present_in_query_structure(
     ]
     assert plan.facet_ids == ("query", "facet_1", "facet_2", "facet_3")
     assert all(variant.origin == "facet" for variant in plan.variants[1:])
+    assert plan.intent_category == "cross_source_synthesis"
+    assert plan.target_retrieval_limit == 25
+
+
+def test_two_question_clauses_become_cross_source_facets():
+    from aios_habit.rag_v2.query_planning import query_needs_broad_ready_retrieval
+
+    plan = identity_query_plan(
+        "How does data flow between connected systems, and where should an operator verify failures?"
+    )
+    facet_texts = [variant.text.casefold() for variant in plan.variants if variant.origin == "facet"]
+
+    assert plan.intent_category == "cross_source_synthesis"
+    assert plan.target_retrieval_limit == 25
+    assert len(facet_texts) == 2
+    assert any("data flow" in text for text in facet_texts)
+    assert any("verify" in text for text in facet_texts)
+    assert query_needs_broad_ready_retrieval(plan) is True
+
+
+def test_vietnamese_two_clause_question_splits_on_question_cues():
+    plan = identity_query_plan(
+        "Luồng dữ liệu giữa các hệ thống đi như thế nào và chỗ nào kiểm tra lỗi?"
+    )
+    facet_texts = [variant.text.casefold() for variant in plan.variants if variant.origin == "facet"]
+
+    assert plan.intent_category == "cross_source_synthesis"
+    assert len(facet_texts) == 2
+    assert any("luồng" in text or "dữ liệu" in text for text in facet_texts)
+    assert any("kiểm" in text or "lỗi" in text for text in facet_texts)
+
+
+def test_noun_phrase_and_does_not_create_false_facets():
+    query = "Describe the architectural components and how they integrate."
+    plan = identity_query_plan(query)
+
+    assert plan.intent_category == "general"
+    assert [variant.text for variant in plan.variants] == [query]
+
+
+def test_explicit_multi_source_wording_uses_cross_source_budget():
+    plan = identity_query_plan("Tổng hợp từ tất cả các tài liệu đã có")
+
+    assert plan.intent_category == "cross_source_synthesis"
+    assert plan.target_retrieval_limit == 25
+    assert [variant.origin for variant in plan.variants] == ["original"]
 
 
 def test_operational_how_it_works_question_uses_procedure_shape_without_aliases():

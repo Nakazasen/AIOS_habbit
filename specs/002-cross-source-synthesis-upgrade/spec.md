@@ -1,6 +1,6 @@
 # Đặc Tả Tính Năng: Nâng Cấp Tổng Hợp Đa Tài Liệu Xuyên Nguồn (>5 Tài Liệu) (Feature Specification: Cross-Source Multi-Document Synthesis Upgrade)
 
-**Trạng thái**: `IMPLEMENTED_PENDING_CURRENT_FULL_SUITE — 2026-08-16`
+**Trạng thái**: `IMPLEMENTED_PENDING_CURRENT_FULL_SUITE` — lát chất lượng 2026-09-12: planner cục bộ tách câu nhiều vế, bỏ cắt 3 nguồn khi truy xuất đa ý trên tài liệu đã ready, tổng hợp theo `Ý 1`/`Ý 2`. Fixture hai tài liệu phủ đủ hai facet. Chưa đóng cổng (full suite còn 2 fail ngoài 002; chưa đánh giá BQ live; không ngang NotebookLM).
 
 ## Tuyên Bố Vấn Đề (Problem Statement)
 

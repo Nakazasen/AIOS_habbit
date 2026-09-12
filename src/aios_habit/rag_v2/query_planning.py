@@ -22,6 +22,21 @@ _UNSAFE_EXPANSION_RE = re.compile(
     re.IGNORECASE,
 )
 _FACET_SPLIT_RE = re.compile(r"(?:\r?\n|[;；]|\s+[•·]\s+)")
+_COMMA_CLAUSE_SPLIT_RE = re.compile(r"\s*,\s*(?:and|và|đồng thời)\s+", re.IGNORECASE)
+_BARE_CLAUSE_SPLIT_RE = re.compile(r"\s+(?:and|và|đồng thời)\s+", re.IGNORECASE)
+_QUESTION_CUE_RE = re.compile(
+    r"\b(?:how|what|where|when|why|which|who|verify|check|"
+    r"dau|cho nao|lam sao|nhu the nao|lam the nao|kiem|xac minh)\b"
+)
+_RIGHT_QUESTION_START_RE = re.compile(
+    r"^(?:where|how|what|when|why|which|who|verify|check|"
+    r"cho nao|o dau|dau\b|lam sao|nhu the nao|lam the nao|kiem tra|kiem\b|xac minh)\b"
+)
+_CROSS_SOURCE_WORDING_RE = re.compile(
+    r"\b(?:tong hop|nhieu nguon|tat ca cac tai lieu|toan bo tai lieu|"
+    r"xuyen suot|synthesize|synthesis|cross-source|cross source|"
+    r"all sources|all documents|comprehensive)\b"
+)
 _COMMON_STOPWORDS = frozenset({
     "a", "an", "and", "are", "as", "at", "be", "by", "for", "from",
     "how", "in", "is", "it", "of", "on", "or", "that", "the", "this",
@@ -131,6 +146,80 @@ def extract_target_terms(value: str) -> Tuple[str, ...]:
     return extract_content_terms(value)
 
 
+def _ascii_fold(value: str) -> str:
+    folded = unicodedata.normalize("NFD", str(value or "")).casefold()
+    return "".join(
+        character for character in folded
+        if not unicodedata.combining(character)
+    ).replace("đ", "d")
+
+
+def _has_question_cue(value: str) -> bool:
+    return bool(_QUESTION_CUE_RE.search(_ascii_fold(value)))
+
+
+def _right_starts_with_question_cue(value: str) -> bool:
+    return bool(_RIGHT_QUESTION_START_RE.match(_ascii_fold(value).strip()))
+
+
+def _clean_clause(value: str) -> str:
+    return " ".join(value.strip(" -•\t?").split())
+
+
+def _unique_content_parts(parts: Sequence[str], original: str) -> list[str]:
+    cleaned: list[str] = []
+    original_key = original.casefold()
+    seen: set[str] = set()
+    for raw in parts:
+        part = _clean_clause(raw)
+        key = part.casefold()
+        if not part or key == original_key or not extract_content_terms(part) or key in seen:
+            continue
+        seen.add(key)
+        cleaned.append(part)
+        if len(cleaned) >= _MAX_FACETS:
+            break
+    return cleaned
+
+
+def _split_question_clauses(original: str) -> list[str]:
+    """Split only on explicit question structure, never on noun-phrase 'and'."""
+    structural = _unique_content_parts(_FACET_SPLIT_RE.split(original), original)
+    if len(structural) >= 2:
+        return structural
+
+    question_parts = _unique_content_parts(re.split(r"\?\s+", original), original)
+    if len(question_parts) >= 2 and all(_has_question_cue(part) for part in question_parts):
+        return question_parts
+
+    comma_parts = _unique_content_parts(_COMMA_CLAUSE_SPLIT_RE.split(original), original)
+    if (
+        len(comma_parts) >= 2
+        and all(_has_question_cue(part) for part in comma_parts)
+        and _right_starts_with_question_cue(comma_parts[1])
+    ):
+        return comma_parts
+
+    bare_parts = _unique_content_parts(_BARE_CLAUSE_SPLIT_RE.split(original), original)
+    if (
+        len(bare_parts) >= 2
+        and all(_has_question_cue(part) for part in bare_parts)
+        and _right_starts_with_question_cue(bare_parts[1])
+    ):
+        return bare_parts
+    return []
+
+
+def _has_explicit_cross_source_wording(query: str) -> bool:
+    return bool(_CROSS_SOURCE_WORDING_RE.search(_ascii_fold(query)))
+
+
+def query_needs_broad_ready_retrieval(plan: RetrievalQueryPlan) -> bool:
+    """Ready-source retrieval may inspect the full ready set for multi-aspect questions."""
+    extra_facets = tuple(facet_id for facet_id in plan.facet_ids if facet_id != "query")
+    return plan.intent_category == "cross_source_synthesis" or len(extra_facets) >= 2
+
+
 def detect_query_language(query: str) -> str:
     """Classify a query for routing telemetry without using source content.
 
@@ -185,16 +274,7 @@ def _identity_variants(
             facet_id="query",
         )
     ]
-    parts = []
-    for raw_part in _FACET_SPLIT_RE.split(original):
-        part = " ".join(raw_part.strip(" -•\t").split())
-        if not part or part.casefold() == original.casefold() or not extract_content_terms(part):
-            continue
-        if part.casefold() not in {item.casefold() for item in parts}:
-            parts.append(part)
-        if len(parts) >= _MAX_FACETS:
-            break
-
+    parts = _split_question_clauses(original)
     if len(parts) >= 2:
         for position, part in enumerate(parts, 1):
             variants.append(
@@ -219,11 +299,7 @@ def _detect_intent_category(query: str) -> tuple[str, tuple[str, ...]]:
     nào?").  That shape needs a larger same-document evidence window than a
     fact lookup; treating it as generic silently cuts out later manual steps.
     """
-    folded = unicodedata.normalize("NFD", str(query or "")).casefold()
-    ascii_folded = "".join(
-        character for character in folded
-        if not unicodedata.combining(character)
-    ).replace("đ", "d")
+    ascii_folded = _ascii_fold(query)
     procedure_markers = (
         "how does" in ascii_folded and "work" in ascii_folded,
         "how does" in ascii_folded and "operate" in ascii_folded,
@@ -256,6 +332,11 @@ def identity_query_plan(query: str, *, status: str = "identity") -> RetrievalQue
     original = " ".join((query or "").strip().split())
     intent_category, required_obligations = _detect_intent_category(original)
     variants = _identity_variants(original, intent_category)
+    extra_facets = tuple(item.facet_id for item in variants if item.origin == "facet")
+    if intent_category == "general" and (
+        len(extra_facets) >= 2 or _has_explicit_cross_source_wording(original)
+    ):
+        intent_category = "cross_source_synthesis"
     effective_status = "faceted" if status == "identity" and len(variants) > 1 else status
     all_plan_text = " ".join([original, *(v.text for v in variants)])
     return RetrievalQueryPlan(

@@ -33,7 +33,11 @@ from aios_habit.rag_v2.adaptive_retrieval import (
 from aios_habit.rag_v2.bge_subprocess_client import BgeSubprocessWorkerClient
 from aios_habit.rag_v2.index import SearchSummary
 from aios_habit.rag_v2.pipeline import RagV2DevConfig, RagV2DevPipeline, SourceSpec
-from aios_habit.rag_v2.query_planning import build_query_plan, coerce_query_plan
+from aios_habit.rag_v2.query_planning import (
+    build_query_plan,
+    coerce_query_plan,
+    query_needs_broad_ready_retrieval,
+)
 from aios_habit.rag_v2.semantic import (
     SemanticBackendError,
     SemanticBackendUnavailable,
@@ -705,6 +709,17 @@ def _select_semantic_candidate_sources(
     ranked.sort(reverse=True, key=lambda item: (item[0], item[1]))
     best_score = ranked[0][0]
     return tuple(item[2] for item in ranked if item[0] == best_score)[:limit]
+
+
+def _retrieval_source_window(
+    question: str,
+    sources: Tuple[WorkspaceAIContextSource, ...],
+) -> Tuple[WorkspaceAIContextSource, ...]:
+    """Keep the preparation cap, but search every ready source for multi-aspect questions."""
+    plan = coerce_query_plan(question)
+    if query_needs_broad_ready_retrieval(plan):
+        return sources
+    return _select_semantic_candidate_sources(question, sources)
 
 
 def select_workspace_chat_preparation_scope(
@@ -2531,7 +2546,9 @@ def retrieve_workspace_chat_evidence(
         sources = ready_subset
         collection_id = _collection_id_for_sources(sources)
 
-    semantic_sources = _select_semantic_candidate_sources(question, sources)
+    # Retrieval may inspect every already-ready source for multi-aspect questions.
+    # Precise operational lookups still use the small lexical window.
+    semantic_sources = _retrieval_source_window(question, sources)
 
     # Scope every retrieval lane before it does any potentially expensive work.
     # In particular, an operational Manual question must not inspect (or ask a
@@ -2561,6 +2578,7 @@ def retrieve_workspace_chat_evidence(
     rerank_requested = False
     routing_reason_codes: Sequence[str] = ()
     pre_dec = None
+    init_routing = None
 
     if resolved.adaptive_enabled or pref_str == "deep":
         pre_dec = pre_retrieval_gate(plan, user_preference=pref_str, policy=policy)

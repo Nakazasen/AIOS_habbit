@@ -498,7 +498,7 @@ def _citation_first_fallback(
     query_terms = set(extract_content_terms(pack.query))
     selected_texts: list[str] = []
     claims: list[GroundedClaim] = []
-    facet_sections = _facet_sections_for_shape(answer_shape)
+    facet_sections = _facet_sections_for_shape(answer_shape, pack)
     obligation_sections = _sections_for_shape(answer_shape)
 
     def add(item: EvidenceItem, *, facet_id: str = "", obligation_id: str = "") -> bool:
@@ -546,7 +546,11 @@ def _citation_first_fallback(
         return _abstention(pack, (*pack.insufficiency_reasons, "no_citation_first_fallback_claims"))
 
     if facet_sections:
-        rendered = _format_architecture_claims(tuple(claims), facet_sections)
+        rendered = (
+            _format_cross_source_claims(tuple(claims), facet_sections)
+            if answer_shape == "cross_source_synthesis"
+            else _format_architecture_claims(tuple(claims), facet_sections)
+        )
     elif obligation_sections:
         rendered = _format_structured_claims(tuple(claims), obligation_sections)
     else:
@@ -761,7 +765,7 @@ def synthesize_evidence(
         return _abstention(pack, (*pack.insufficiency_reasons, *validation_errors, "no_valid_grounded_claims"))
 
     sections = _sections_for_shape(normalized_shape)
-    facet_sections = _facet_sections_for_shape(normalized_shape)
+    facet_sections = _facet_sections_for_shape(normalized_shape, pack)
     if facet_sections and not any(
         facet_id in claim.facet_ids
         for facet_id in facet_sections.values()
@@ -776,7 +780,11 @@ def synthesize_evidence(
         return _abstention(pack, (*pack.insufficiency_reasons, "no_supported_answer_section"))
 
     if facet_sections:
-        answer = _format_architecture_claims(claims, facet_sections)
+        answer = (
+            _format_cross_source_claims(claims, facet_sections)
+            if normalized_shape == "cross_source_synthesis"
+            else _format_architecture_claims(claims, facet_sections)
+        )
     elif normalized_shape == "state_transition":
         answer = _format_state_transition_claims(claims)
     elif sections:
@@ -1143,7 +1151,7 @@ def _compose_grounded_claims(
     query_terms = set(extract_content_terms(pack.query))
     selected_texts: list[str] = []
     claims: list[GroundedClaim] = []
-    facet_sections = _facet_sections_for_shape(answer_shape)
+    facet_sections = _facet_sections_for_shape(answer_shape, pack)
 
     def add(
         item: EvidenceItem,
@@ -1292,7 +1300,33 @@ def _compose_grounded_claims(
     return tuple(claims)
 
 
-def _facet_sections_for_shape(answer_shape: str) -> dict[str, str]:
+def _cross_source_facet_ids(pack: EvidencePack | None) -> Tuple[str, ...]:
+    if pack is None:
+        return ()
+    planned = tuple(
+        facet_id
+        for facet_id in pack.retrieval_summary.planned_facet_ids
+        if facet_id != "query"
+    )
+    if planned:
+        return planned
+    found: list[str] = []
+    for item in pack.items:
+        for facet_id in item.matched_query_facets:
+            if facet_id != "query" and facet_id not in found:
+                found.append(facet_id)
+    return tuple(found)
+
+
+def _facet_sections_for_shape(
+    answer_shape: str,
+    pack: EvidencePack | None = None,
+) -> dict[str, str]:
+    if answer_shape == "cross_source_synthesis":
+        return {
+            f"Ý {index}:": facet_id
+            for index, facet_id in enumerate(_cross_source_facet_ids(pack), start=1)
+        }
     if answer_shape in {"architecture", "integration"}:
         return {
             "COMPONENTS:": "components",
@@ -1333,6 +1367,29 @@ def _sections_for_shape(answer_shape: str) -> dict[str, str]:
             "DIFFERENCES:": "differences",
         }
     return {}
+
+
+def _format_cross_source_claims(
+    claims: Tuple[GroundedClaim, ...],
+    sections: dict[str, str],
+) -> str:
+    """Render one cited section per question facet without inventing missing ideas."""
+    rendered: list[str] = []
+    missing: list[str] = []
+    for marker, facet_id in sections.items():
+        rendered.append(marker)
+        supported = [claim for claim in claims if facet_id in claim.facet_ids]
+        if supported:
+            rendered.extend(
+                f"- {claim.text} {' '.join(claim.citation_ids)}"
+                for claim in supported
+            )
+        else:
+            missing.append(marker.rstrip(":"))
+            rendered.append("- Chưa tìm thấy bằng chứng cho ý này.")
+    if missing:
+        rendered.append("Còn thiếu: " + ", ".join(missing))
+    return "\n".join(rendered)
 
 
 def _format_architecture_claims(

@@ -957,6 +957,91 @@ def test_citation_first_fallback_groups_claims():
     assert "  * Claim 1" in result.answer
     assert "  * Claim 2" in result.answer
 
+
+def test_cross_source_synthesis_renders_each_facet():
+    from aios_habit.rag_v2.query_planning import identity_query_plan
+
+    query = (
+        "How does data flow between connected systems, and where should an operator verify failures?"
+    )
+    plan = identity_query_plan(query)
+    results = [
+        _make_result(
+            "c1", "d1", 5.0,
+            "Data flows through the interface table to connected systems.",
+            matched_terms=("data", "flow", "systems", "verify", "failures"),
+            matched_facets=("query", "facet_1"),
+        ),
+        _make_result(
+            "c2", "d2", 4.5,
+            "Operators verify failures on the status screen.",
+            matched_terms=("data", "flow", "systems", "verify", "failures"),
+            matched_facets=("query", "facet_2"),
+        ),
+    ]
+    response = SearchResponse(
+        results=tuple(results),
+        summary=SearchSummary(
+            query=query,
+            indexed_chunk_count=2,
+            eligible_chunk_count=2,
+            candidate_count=2,
+            returned_count=2,
+            planned_facet_ids=plan.facet_ids,
+            covered_facet_ids=("query", "facet_1", "facet_2"),
+            missing_facet_ids=(),
+        ),
+    )
+    pack = build_evidence_pack(plan, response)
+    result = synthesize_evidence(pack, answer_shape="cross_source_synthesis")
+
+    assert plan.intent_category == "cross_source_synthesis"
+    assert result.grounded is True
+    assert result.abstained is False
+    assert "Ý 1:" in result.answer
+    assert "Ý 2:" in result.answer
+    assert "[1]" in result.answer
+    assert "[2]" in result.answer
+    assert "Còn thiếu:" not in result.answer
+
+
+def test_cross_source_synthesis_marks_missing_facet():
+    from aios_habit.rag_v2.query_planning import identity_query_plan
+
+    query = (
+        "How does data flow between connected systems, and where should an operator verify failures?"
+    )
+    plan = identity_query_plan(query)
+    results = [
+        _make_result(
+            "c1", "d1", 5.0,
+            "Data flows through the interface table to connected systems.",
+            matched_terms=("data", "flow", "systems", "verify", "failures"),
+            matched_facets=("query", "facet_1"),
+        ),
+    ]
+    response = SearchResponse(
+        results=tuple(results),
+        summary=SearchSummary(
+            query=query,
+            indexed_chunk_count=1,
+            eligible_chunk_count=1,
+            candidate_count=1,
+            returned_count=1,
+            planned_facet_ids=plan.facet_ids,
+            covered_facet_ids=("query", "facet_1"),
+            missing_facet_ids=("facet_2",),
+        ),
+    )
+    pack = build_evidence_pack(plan, response)
+    result = synthesize_evidence(pack, answer_shape="cross_source_synthesis")
+
+    assert result.grounded is True
+    assert "Ý 1:" in result.answer
+    assert "Ý 2:" in result.answer
+    assert "Còn thiếu:" in result.answer
+    assert "Ý 2" in result.answer
+
 def test_provider_limitations_contain_accurate_reasons():
     from aios_habit.rag_v2.evidence import PrivacySummary
     from dataclasses import replace

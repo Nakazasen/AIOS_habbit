@@ -15,6 +15,8 @@ Nguồn trạng thái chuẩn: [ROADMAP.md](ROADMAP.md) là nguồn trạng thá
 
 - **Thanh nhập chat hiện đại (007):** `TECHNICAL_PASS`. Playwright smoke 6/6 PASS ngày 2026-09-12 (`scripts/Chay_Smoke_007.bat` / `scripts/smoke_007_modern_chat_composer.py`; artifact `local_runs/smoke_007/result.json`, không commit). Test composer tập trung `107 passed`. Composer compact có ô nhập, nút đính kèm, chọn mô hình (Gemini Web / C-AGENT / Nakazasen), Ctrl+↵ và mũi tên gửi. Gửi rỗng hiện hướng dẫn; gửi khi chưa có nguồn hiện «Thiếu ngữ cảnh» (Streamlit có thể giữ text trong ô). Đính kèm PNG hiện thumbnail + «Bỏ ảnh». Dán clipboard không tự động hóa được vì trình duyệt đòi thao tác người dùng. Không tuyên bố nghiệm thu xưởng.
 
+- **Tổng hợp đa nguồn (002):** vẫn `IMPLEMENTED_PENDING_CURRENT_FULL_SUITE`. Lát chất lượng 2026-09-12 trên BGE-M3 Hybrid: câu nhiều vế được tách facet cục bộ (không cần cloud), truy xuất không cắt 3 nguồn khi đa ý, câu trả lời extractive theo `Ý 1`/`Ý 2`/`Còn thiếu`. Test tập trung lát này đạt. Câu một vế vẫn có thể bị prefilter 3 lúc chuẩn bị. Full pytest 2778 passed / 2 failed ngoài 002. Không ngang NotebookLM. Không đóng cổng.
+
 - **Sửa lỗi phạm vi câu hỏi chờ (005 follow-up):** Đã gộp vào đóng cổng trên. Retrieval không đọc lại toàn bộ thư viện cho câu hỏi quá rộng; tiến độ chuẩn bị và xóa nguồn đã được smoke trình duyệt xác nhận.
 
 - **Giao diện chính (Primary UI):** Workspace Chat. Các tệp giao diện công khai của Case Cockpit cũ đang được cho dừng (retired), tuy nhiên các dịch vụ dùng chung dựa trên `case_store` vẫn có các luồng gọi trực tiếp và tuyệt đối không được xóa nếu chưa có kế hoạch di chuyển tách biệt.
