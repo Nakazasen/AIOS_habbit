@@ -590,3 +590,50 @@ class KnowledgePublisher:
         if legacy_file.exists():
             immutable_files.append(legacy_file)
         return immutable_files
+
+
+def list_eligible_published_memory_candidates(
+    collection_id: str,
+    *,
+    base_dir: Path | None = None,
+) -> Tuple[Dict[str, Any], ...]:
+    """Read-only Goal 010 published artifacts for Goal 011 recall.
+
+    Goal 010 is an optional source. Missing library, missing table, revoked-only
+    rows, or any read failure returns an empty tuple and never raises.
+    """
+    try:
+        target = (collection_id or "").strip()
+        if not target:
+            return ()
+        publisher = KnowledgePublisher(base_dir=base_dir)
+        documents = publisher.list_published_documents(target)
+    except Exception:
+        return ()
+    candidates: List[Dict[str, Any]] = []
+    for document in documents:
+        doc_id = str(document.get("doc_id") or "").strip()
+        title = str(document.get("title") or "").strip()
+        if not doc_id or not title:
+            continue
+        version = str(document.get("version") or "1")
+        published_at = str(document.get("published_at") or "1970-01-01T00:00:00+00:00")
+        candidates.append(
+            {
+                "memory_key": f"published_artifact:{doc_id}:v{version}",
+                "source_kind": "published_artifact",
+                "source_id": doc_id,
+                "title": title,
+                "statement": title,
+                "applies_when": "",
+                "does_not_apply_when": "",
+                "scope": f"collection:{target}",
+                "status": "published",
+                "evidence_refs": (f"publication:{doc_id}:{version}",),
+                "privacy_classification": "local_only",
+                "export_allowed": False,
+                "updated_at": published_at,
+                "eligible_us1": True,
+            }
+        )
+    return tuple(candidates)

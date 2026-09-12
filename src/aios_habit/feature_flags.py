@@ -24,6 +24,9 @@ FEATURE_EXPERT_PUBLICATION = FEATURE_EXPERT_KNOWLEDGE_ACQUISITION
 # Independent legacy multi-user flag (kept separate to avoid turning on legacy RBAC when Goal 010 is active)
 FEATURE_EXPERT_MULTI_USER = "expert_multi_user"
 
+# Goal 011 adaptive Workspace Chat memory loop (fail-closed; default off)
+FEATURE_ADAPTIVE_WORK_MEMORY = "adaptive_work_memory"
+
 # Consolidated Goal 010 feature set (single flag)
 ALL_010_FEATURES = (
     FEATURE_EXPERT_KNOWLEDGE_ACQUISITION,
@@ -36,6 +39,7 @@ class FeatureFlagState:
 
     expert_knowledge_acquisition: bool = False
     expert_multi_user: bool = False
+    adaptive_work_memory: bool = False
 
     @property
     def expert_knowledge_coverage(self) -> bool:
@@ -58,6 +62,7 @@ class FeatureFlagState:
         return {
             FEATURE_EXPERT_KNOWLEDGE_ACQUISITION: self.expert_knowledge_acquisition,
             FEATURE_EXPERT_MULTI_USER: self.expert_multi_user,
+            FEATURE_ADAPTIVE_WORK_MEMORY: self.adaptive_work_memory,
         }
 
     def is_enabled(self, flag_name: str) -> bool:
@@ -72,6 +77,8 @@ class FeatureFlagState:
             return self.expert_knowledge_acquisition
         if flag_name in (FEATURE_EXPERT_MULTI_USER, "expert_multi_user"):
             return self.expert_multi_user
+        if flag_name in (FEATURE_ADAPTIVE_WORK_MEMORY, "adaptive_work_memory"):
+            return self.adaptive_work_memory
         return False
 
 
@@ -99,6 +106,8 @@ class FeatureFlagRegistry:
             return FEATURE_EXPERT_KNOWLEDGE_ACQUISITION
         if flag_name in (FEATURE_EXPERT_MULTI_USER, "expert_multi_user"):
             return FEATURE_EXPERT_MULTI_USER
+        if flag_name in (FEATURE_ADAPTIVE_WORK_MEMORY, "adaptive_work_memory"):
+            return FEATURE_ADAPTIVE_WORK_MEMORY
         return flag_name
 
     def get_flag(self, flag_name: str) -> bool:
@@ -134,6 +143,7 @@ class FeatureFlagRegistry:
         return FeatureFlagState(
             expert_knowledge_acquisition=self.get_flag(FEATURE_EXPERT_KNOWLEDGE_ACQUISITION),
             expert_multi_user=self.get_flag(FEATURE_EXPERT_MULTI_USER),
+            adaptive_work_memory=self.get_flag(FEATURE_ADAPTIVE_WORK_MEMORY),
         )
 
 

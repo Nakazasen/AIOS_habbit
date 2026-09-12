@@ -1149,3 +1149,27 @@ class TestWorkspaceChatUIAntiHardcode:
             for locale in SUPPORTED_LOCALES:
                 missing = sorted(key for key in keys if key not in TRANSLATIONS[locale])
                 assert not missing, f"{ui_file} thiếu bản dịch {locale}: {missing}"
+
+
+class TestWorkspaceMemoryUiCopy:
+    def test_memory_ui_copy_is_vietnamese_and_path_safe(self) -> None:
+        from aios_habit.workspace_memory_ui import (
+            conflict_choice_labels,
+            correction_action_label,
+            remember_preview_text,
+            why_memory_panel_title,
+        )
+
+        blob = " ".join(
+            [
+                why_memory_panel_title(),
+                correction_action_label(),
+                remember_preview_text("Kiểm tra phớt", "workspace:ws_demo"),
+                *conflict_choice_labels().values(),
+            ]
+        )
+        assert "Vì sao AIOS nhớ" in blob
+        assert "Sửa để AIOS học" in blob
+        assert "D:\\" not in blob
+        assert "traceback" not in blob.lower()
+        assert "graphrag" not in blob.lower()

@@ -623,6 +623,7 @@ def route_workspace_chat_submission(
     backend: str = "gemini_web",
     cagent_endpoint_url: str = "",
     cancellation_event: Any | None = None,
+    consent_memory_fingerprint: str = "",
 ) -> tuple[bool, str, dict[str, Any] | None, str | None]:
     """Route a submission through the explicitly selected Workspace Chat backend.
 
@@ -660,17 +661,40 @@ def route_workspace_chat_submission(
             or "https://kdtvn-ai.cmcts.vn/api/v1/prediction/1881aa32-c996-4e6f-9257-78246177ba9f"
         )
         from aios_habit.cagent_api import call_cagent_prediction
-        from aios_habit.workspace_chat_ai_answer import build_workspace_ai_prompt, _get_ai_disclaimer
+        from aios_habit.workspace_chat_ai_answer import (
+            MEMORY_CONSENT_RECONFIRM_MESSAGE,
+            _get_ai_disclaimer,
+            build_workspace_ai_prompt,
+            memory_consent_requires_reconfirmation,
+        )
 
         prompt_sources = [s for s in packed_sources if getattr(s, "included_chars", len(getattr(s, "text", ""))) > 0]
         if not prompt_sources and packed_sources:
             prompt_sources = list(packed_sources[:5])
 
+        from aios_habit.workspace_chat_ai_answer import recall_memory_for_answer
+        from aios_habit.workspace_chat_ai_answer import WorkspaceAIAnswerRequest as _MemReq
+        from aios_habit.workspace_memory_service import get_workspace_memory_enabled_preference
+
+        memory_result = None
+        if get_workspace_memory_enabled_preference():
+            memory_result = recall_memory_for_answer(
+                _MemReq(
+                    conversation_id=conversation_id,
+                    question=question,
+                    context_sources=tuple(prompt_sources),
+                    privacy_mode=PRIVACY_MODE_CLOUD_ALLOWED,
+                    workspace_id=notebook_id or "default",
+                )
+            )
+        if memory_consent_requires_reconfirmation(memory_result, consent_memory_fingerprint):
+            return (False, "", None, MEMORY_CONSENT_RECONFIRM_MESSAGE)
         system_prompt, user_prompt = build_workspace_ai_prompt(
             question,
             prompt_sources,
             chat_history,
             answer_language=answer_language,
+            memory_result=memory_result,
         )
         cagent_res = call_cagent_prediction(
             endpoint,
@@ -749,6 +773,9 @@ def route_workspace_chat_submission(
             "evidence_items": evidence_items,
             "trace_id": trace.trace_id,
         }
+        from aios_habit.workspace_chat_ai_answer import memory_badge_fields
+
+        badge.update(memory_badge_fields(memory_result))
         return (True, f"Đã nhận câu trả lời từ {provider_name}.", badge, None)
 
     if backend == "nakazasen_router":
@@ -765,6 +792,8 @@ def route_workspace_chat_submission(
             router_enabled=False,
             chat_history=chat_history,
             answer_language=answer_language,
+            workspace_id=notebook_id or "default",
+            consent_memory_fingerprint=consent_memory_fingerprint,
         )
         result = generate_workspace_ai_answer(request, object())
         if was_cancelled():
@@ -835,6 +864,8 @@ def route_workspace_chat_submission(
             "retrieval_summary": retrieval_summary,
             "evidence_items": evidence_items,
             "trace_id": trace.trace_id,
+            "memory_titles": result.memory_titles,
+            "memory_consent_fingerprint": result.memory_consent_fingerprint,
         }
         return (True, f"Đã nhận câu trả lời từ {provider_name}.", badge, None)
 
@@ -851,6 +882,34 @@ def route_workspace_chat_submission(
                 snip_ev = getattr(ev, "extracted_text", None) or getattr(ev, "snippet", None) or getattr(ev, "text", "")
             context_blocks.append(f"[{idx}] {title_ev}:\n{snip_ev}")
         direct_context_text = "\n\n".join(context_blocks)
+        memory_result = None
+        from aios_habit.workspace_chat_ai_answer import (
+            MEMORY_CONSENT_RECONFIRM_MESSAGE,
+            recall_memory_for_answer,
+            WorkspaceAIAnswerRequest as _MemReq,
+            memory_badge_fields,
+            memory_consent_requires_reconfirmation,
+        )
+        from aios_habit.workspace_memory_service import (
+            format_memory_prompt_block,
+            get_workspace_memory_enabled_preference,
+        )
+
+        if get_workspace_memory_enabled_preference():
+            memory_result = recall_memory_for_answer(
+                _MemReq(
+                    conversation_id=conversation_id,
+                    question=question,
+                    context_sources=tuple(packed_sources),
+                    privacy_mode=PRIVACY_MODE_CLOUD_ALLOWED,
+                    workspace_id=notebook_id or "default",
+                )
+            )
+            if memory_consent_requires_reconfirmation(memory_result, consent_memory_fingerprint):
+                return (False, "", None, MEMORY_CONSENT_RECONFIRM_MESSAGE)
+            memory_block = format_memory_prompt_block(memory_result) if memory_result else ""
+            if memory_block:
+                direct_context_text = f"{direct_context_text}\n\n{memory_block}"
 
         try:
             call_kwargs = {
@@ -948,6 +1007,7 @@ def route_workspace_chat_submission(
                     "evidence_items": evidence_items,
                     "trace_id": trace.trace_id,
                 }
+                badge.update(memory_badge_fields(memory_result))
                 return (True, "Đã nhận câu trả lời từ Antigravity IDE (Direct) thành công.", badge, None)
             else:
                 # Strict Fail-Closed: Never fallback to Smart Router

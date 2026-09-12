@@ -1,6 +1,6 @@
 # Biên bản Bàn giao Dự án (Project Handover)
 
-Cập nhật: 2026-09-09
+Cập nhật: 2026-09-12
 Nguồn trạng thái chuẩn: [ROADMAP.md](ROADMAP.md) là nguồn trạng thái chuẩn duy nhất cho vòng đời các Gate; tệp này là ảnh chụp nhanh (snapshot) vận hành và không được tự ý chuyển các tuyên bố lịch sử thành tuyên bố phát hành hiện tại.
 
 ## Ảnh chụp trạng thái hiện tại (Current Snapshot)
@@ -9,6 +9,7 @@ Nguồn trạng thái chuẩn: [ROADMAP.md](ROADMAP.md) là nguồn trạng thá
 - **Feature 009 — Trợ lý thực thi công việc cho kỹ sư:** G0 đã được làm mới ngày 2026-09-11 theo [ADR-0008](docs/adr/0008-inherited-agent-runtime-and-code-oss-companion.md), [đặc tả/kế hoạch](specs/009-agent-harness-adoption/plan.md) và [Gate Card active](docs/roadmap/active/AIOS-AGENT-HARNESS-ADOPTION.md). Phạm vi gồm báo cáo lỗi có biểu đồ, rà soát thiết kế công đoạn có dẫn nguồn, sửa mã có test và hàng đợi nhỏ. Bước kế tiếp là G1 probe OpenCode đọc–sửa–test–resume–undo trong fixture tự động duyệt theo vùng. Chưa có runtime/adapter hay bằng chứng E2E, không được mô tả parity với Cline/OpenCode. `antigravity_bridge.py` vẫn là nguồn AI Workspace Chat và không nằm trong phạm vi xóa.
 - **Feature 010 — AI phỏng vấn chuyên gia:** `REOPENED_FOR_SIMPLIFICATION`. T000–T080 và bằng chứng G0–G10 được giữ làm lịch sử, nhưng kiểm toán lại ngày 2026-09-09 không chấp nhận tuyên bố sẵn sàng vận hành: mô hình phân quyền không có hệ tài khoản chung tạo an toàn giả; dữ liệu bản chép lời, fallback mock, trạng thái xuất bản/thu hồi và hành trình UI còn finding. ADR/spec/plan đã chuyển sang nhóm tin cậy, tên ghi nhận trách nhiệm, chọn thư viện cá nhân/dùng chung và luồng bốn chặng. Cần hoàn tất T083–T109 rồi kiểm toán lại.
 - **Điểm lưu Goal 010 ngày 2026-09-09:** Mã và tài liệu hiện tại chỉ là trạng thái đang làm, chưa nghiệm thu. Ý chí kiểm toán, bằng chứng đã chạy, phạm vi commit và các điểm chặn để tiếp tục được ghi tại [biên bản kế thừa Goal 010](docs/reports/BIEN_BAN_KE_THUA_AUDIT_GOAL_010_2026-09-09.md).
+- **Goal 011 — Vòng trí nhớ công việc thích nghi:** `IMPLEMENTED_PENDING_INDEPENDENT_AUDIT`. Execution T001–T030 và bổ sung UX T030A: Workspace Chat hiện lựa chọn “Cho AIOS ghi nhớ để hỗ trợ tôi tốt hơn”, giữ lựa chọn cục bộ qua lần mở sau và không yêu cầu lệnh PowerShell; khi chưa có lựa chọn thì cờ `adaptive_work_memory` mặc định tắt vẫn là giá trị ban đầu. Hệ thống gọi lại bốn nguồn hiện có; nhớ/quên/sửa sai ghi JSONL append-only ngoài Git; Goal 010 chỉ là nguồn tùy chọn. Ba finding remediation đã sửa: bridge ngoài fail-closed theo fingerprint, lệnh quên từ chối kết quả mơ hồ/khác workspace và block memory không vượt 4.000 ký tự. Thẻ cổng: [AIOS-ADAPTIVE-WORK-MEMORY.md](docs/roadmap/backlog/AIOS-ADAPTIVE-WORK-MEMORY.md). Chưa commit/push; còn kiểm toán độc lập lại và smoke UI thật.
 
 - **Chuẩn bị nguồn tăng dần (005):** Mã đã triển khai và 101 bài kiểm tra liên quan đã PASS:
   nguồn mới được chuẩn bị riêng, câu hỏi chờ tự tiếp tục một lần sau khi nguồn sẵn sàng, và

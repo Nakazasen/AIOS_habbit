@@ -1626,6 +1626,34 @@ else:
         set_query_params(nb=None, conv=None)
         safe_rerun()
 
+    from aios_habit.workspace_memory_service import (
+        get_workspace_memory_enabled_preference,
+        set_workspace_memory_enabled_preference,
+    )
+    from aios_habit.workspace_memory_ui import (
+        memory_toggle_help,
+        memory_toggle_label,
+        memory_toggle_status,
+    )
+
+    current_memory_setting = get_workspace_memory_enabled_preference()
+    requested_memory_setting = st.sidebar.checkbox(
+        memory_toggle_label(),
+        value=current_memory_setting,
+        key="wsc_memory_enabled_setting",
+        help=memory_toggle_help(),
+    )
+    st.sidebar.caption(memory_toggle_status(requested_memory_setting))
+    st.sidebar.caption(memory_toggle_help())
+    if requested_memory_setting != current_memory_setting:
+        set_workspace_memory_enabled_preference(requested_memory_setting)
+        st.session_state.wsc_action_message = (
+            "AIOS sẽ dùng lại những bài học bạn đã xác nhận."
+            if requested_memory_setting
+            else "AIOS đã ngừng dùng các bài học đã lưu."
+        )
+        safe_rerun()
+
     st.sidebar.write("---")
     st.sidebar.subheader(f"💬 {t('conversations', locale=current_ui_locale)}")
 
@@ -2491,6 +2519,21 @@ else:
 
                 if len(messages) >= 50:
                     st.warning(t("conversation_long_warning", locale=current_ui_locale))
+                if get_workspace_memory_enabled_preference():
+                    from aios_habit.workspace_memory_ui import render_workspace_memory_workspace
+
+                    last_user_msg = next((m for m in reversed(messages) if m.role == "user"), None)
+                    last_assistant_msg = next((m for m in reversed(messages) if m.role == "assistant"), None)
+                    render_workspace_memory_workspace(
+                        conversation_id=active_conversation.id,
+                        last_question=last_user_msg.content if last_user_msg else "",
+                        last_assistant_id=last_assistant_msg.id if last_assistant_msg else "",
+                        last_trace_id=getattr(last_assistant_msg, "trace_id", "") if last_assistant_msg else "",
+                        workspace_id=getattr(active_conversation, "notebook_id", "default") or "default",
+                        collection_id=getattr(active_conversation, "collection_id", "tri_thuc") or "tri_thuc",
+                        locale=current_ui_locale,
+                    )
+
                 pending_auto_question = None
                 pending_submission = st.session_state.get(_PENDING_SOURCE_SUBMISSION_KEY)
                 if pending_submission and pending_submission.get("conversation_id") == active_conversation.id:
@@ -2763,6 +2806,11 @@ else:
 
                 if ask_submitted:
                     q_text = user_input.strip()
+                    if q_text and get_workspace_memory_enabled_preference():
+                        from aios_habit.workspace_memory_ui import queue_memory_command_if_present
+
+                        if queue_memory_command_if_present(q_text):
+                            safe_rerun()
                     if not q_text and not user_attached_image:
                         st.error(t("question_placeholder", locale=current_ui_locale))
                     else:

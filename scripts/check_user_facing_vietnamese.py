@@ -32,6 +32,7 @@ USER_FACING_PYTHON_FILES = [
     REPO_ROOT / "src" / "aios_habit" / "prediction_shadow_ui.py",
     REPO_ROOT / "src" / "aios_habit" / "in_app_risk_alert.py",
     REPO_ROOT / "src" / "aios_habit" / "i18n.py",
+    REPO_ROOT / "src" / "aios_habit" / "workspace_memory_ui.py",
 ]
 
 USER_FACING_LAUNCHERS = [

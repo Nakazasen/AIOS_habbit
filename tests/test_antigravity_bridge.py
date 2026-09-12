@@ -1829,3 +1829,179 @@ class TestAntigravityHandoffMultilingualE2E:
         # Source from disabled selection must not be in trace nodes
         source_nodes = [n for n in trace.nodes if n.node_type == "source"]
         assert len(source_nodes) == 0
+
+    def test_route_submission_passes_notebook_id_to_memory_recall(self, tmp_path):
+        """F3 Regression: Provider routes must pass notebook_id to recall so memories in workspace:NB-42 are recalled."""
+        from aios_habit.antigravity_bridge import AntigravityHealthStatus, route_workspace_chat_submission
+        from aios_habit.feature_flags import override_feature_flags
+        from aios_habit.workspace_memory_service import (
+            append_memory_decision,
+            make_memory_decision,
+            override_decisions_path,
+            recall_workspace_memory,
+        )
+        from aios_habit.workspace_memory_models import WorkspaceMemoryRecallRequest
+        from aios_habit.workspace_chat_ai_answer import WorkspaceAIContextSource
+
+        path = tmp_path / "memory_decisions.jsonl"
+        decision = make_memory_decision(
+            action="confirm",
+            statement="Quy tắc an toàn riêng cho notebook 42",
+            scope="workspace:NB-42",
+            evidence_refs=("user_confirm",),
+            privacy_classification="cloud_allowed",
+            export_allowed=True,
+        )
+        append_memory_decision(decision, path=path)
+
+        health = AntigravityHealthStatus(
+            status="direct_ready",
+            mode="direct",
+            reason="",
+        )
+
+        captured_context = {}
+        def fake_call_antigravity_bridge(**kwargs):
+            captured_context.update(kwargs)
+            class _Res:
+                ok = True
+                answer_text = "Câu trả lời an toàn."
+                model = "gemini-test"
+                error_message = ""
+            return _Res()
+
+        import aios_habit.antigravity_bridge as br_mod
+        orig_call = br_mod.call_antigravity_bridge
+        br_mod.call_antigravity_bridge = fake_call_antigravity_bridge
+
+        src = WorkspaceAIContextSource("s1", "notebook", "text", "Nguồn 1", "cloud_allowed", "Nội dung nguồn", 14, False)
+        try:
+            with override_feature_flags(adaptive_work_memory=True), override_decisions_path(path):
+                consent_fingerprint = recall_workspace_memory(
+                    WorkspaceMemoryRecallRequest(
+                        question="Quy tắc an toàn là gì?",
+                        workspace_id="NB-42",
+                        collection_id="tri_thuc",
+                        provider_mode="cloud",
+                    )
+                ).consent_fingerprint
+                blocked, _, _, blocked_error = route_workspace_chat_submission(
+                    question="Quy tắc an toàn là gì?",
+                    evidence_items=[],
+                    packed_sources=(src,),
+                    conversation_id="c_blocked",
+                    notebook_id="NB-42",
+                    retrieval_applied=False,
+                    retrieved_sources=(),
+                    retrieval_summary="",
+                    current_keys=(("notebook", "s1"),),
+                    chat_history=(),
+                    user_raw_input="Quy tắc an toàn là gì?",
+                    health_status=health,
+                    answer_language="vi",
+                    backend="gemini_web",
+                )
+                assert blocked is False
+                assert "xác nhận" in (blocked_error or "")
+                assert captured_context == {}
+
+                # When notebook_id matches NB-42:
+                ok, msg, badge, err = route_workspace_chat_submission(
+                    question="Quy tắc an toàn là gì?",
+                    evidence_items=[{"source_id": "s1", "title": "Nguồn 1", "text": "Nội dung"}],
+                    packed_sources=(src,),
+                    conversation_id="c_42",
+                    notebook_id="NB-42",
+                    retrieval_applied=False,
+                    retrieved_sources=(),
+                    retrieval_summary="",
+                    current_keys=(("notebook", "s1"),),
+                    chat_history=(),
+                    user_raw_input="Quy tắc an toàn là gì?",
+                    health_status=health,
+                    answer_language="vi",
+                    backend="gemini_web",
+                    consent_memory_fingerprint=consent_fingerprint,
+                )
+                assert ok is True
+                assert "Quy tắc an toàn" in captured_context.get("context_text", "")
+                assert any("Quy tắc an toàn" in t for t in badge.get("memory_titles", ()))
+
+                # When notebook_id does NOT match (e.g. NB-99):
+                captured_context.clear()
+                ok2, msg2, badge2, err2 = route_workspace_chat_submission(
+                    question="Quy tắc an toàn là gì?",
+                    evidence_items=[{"source_id": "s1", "title": "Nguồn 1", "text": "Nội dung"}],
+                    packed_sources=(src,),
+                    conversation_id="c_99",
+                    notebook_id="NB-99",
+                    retrieval_applied=False,
+                    retrieved_sources=(),
+                    retrieval_summary="",
+                    current_keys=(("notebook", "s1"),),
+                    chat_history=(),
+                    user_raw_input="Quy tắc an toàn là gì?",
+                    health_status=health,
+                    answer_language="vi",
+                    backend="gemini_web",
+                )
+                assert ok2 is True
+                assert "Quy tắc an toàn" not in captured_context.get("context_text", "")
+                assert badge2.get("memory_titles", ()) == ()
+        finally:
+            br_mod.call_antigravity_bridge = orig_call
+
+    def test_cagent_route_never_sends_local_only_memory(self, tmp_path, monkeypatch):
+        from types import SimpleNamespace
+
+        from aios_habit.antigravity_bridge import route_workspace_chat_submission
+        from aios_habit.feature_flags import override_feature_flags
+        from aios_habit.workspace_chat_ai_answer import WorkspaceAIContextSource
+        from aios_habit.workspace_memory_service import (
+            append_memory_decision,
+            make_memory_decision,
+            override_decisions_path,
+        )
+
+        path = tmp_path / "memory_decisions.jsonl"
+        statement = "Quy tắc zxqlocal chỉ được dùng tại máy"
+        append_memory_decision(
+            make_memory_decision(
+                action="confirm",
+                statement=statement,
+                scope="workspace:NB-42",
+                evidence_refs=("user_confirm",),
+                privacy_classification="local_only",
+                export_allowed=False,
+            ),
+            path=path,
+        )
+        captured = {}
+
+        def fake_call(endpoint, *, system_prompt, user_prompt):
+            captured["user_prompt"] = user_prompt
+            return SimpleNamespace(ok=False, text="", error_message="Dừng sau khi bắt prompt")
+
+        monkeypatch.setattr("aios_habit.cagent_api.call_cagent_prediction", fake_call)
+        source = WorkspaceAIContextSource(
+            "s1", "notebook", "text", "Nguồn", "cloud_allowed", "Nội dung", 8, False
+        )
+        with override_feature_flags(adaptive_work_memory=True), override_decisions_path(path):
+            result = route_workspace_chat_submission(
+                question="zxqlocal là gì?",
+                evidence_items=[],
+                packed_sources=(source,),
+                conversation_id="c_local_only",
+                notebook_id="NB-42",
+                retrieval_applied=False,
+                retrieved_sources=(),
+                retrieval_summary="",
+                current_keys=(("notebook", "s1"),),
+                chat_history=(),
+                user_raw_input="zxqlocal là gì?",
+                backend="cagent_api",
+            )
+
+        assert result[0] is False
+        assert statement not in captured["user_prompt"]
+        assert "MEMORY_CONTENT" not in captured["user_prompt"]

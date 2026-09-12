@@ -12,6 +12,10 @@ Người dùng chọn **thư viện cá nhân** trên máy hoặc **thư viện 
 
 Goal 010 dùng luồng bốn chặng trên Workspace Chat: chọn thư viện, phỏng vấn, kiểm tra bản nháp, xác nhận và đưa vào thư viện. Chi tiết như mã băm, mã gói, câu hỏi nghiệm thu và trạng thái SQLite được ẩn mặc định. Quyết định lưu tên ghi nhận, máy, thời điểm, độ tự tin, căn cứ, nguồn đã kiểm tra và xác nhận trách nhiệm; không kiểm tra vai trò hoặc cấm tự duyệt trong nhóm tin cậy.
 
+### Vòng trí nhớ công việc thích nghi (Goal 011)
+
+Workspace Chat có lớp gọi lại read-only trước câu trả lời. Người dùng bật hoặc tắt bằng lựa chọn “Cho AIOS ghi nhớ để hỗ trợ tôi tốt hơn” trong thanh bên; lựa chọn được giữ tại `local_cases/workspace_memory/settings.json`, còn cờ `adaptive_work_memory` là giá trị triển khai ban đầu khi chưa có lựa chọn. Nguồn gồm MemoryUnit đã verified, SeniorLearningCard đã confirmed, CaseLesson đã approved và artifact Goal 010 còn published. Goal 010 chỉ là nguồn tùy chọn: thiếu artifact hợp lệ thì adapter trả rỗng, không chặn Goal 011. Trí nhớ đưa vào prompt như dữ liệu tham khảo (“Sổ việc đã xác nhận”), không phải chỉ dẫn hệ thống. Mọi bridge ra ngoài dùng lọc cloud và chặn gửi memory khi fingerprint rỗng hoặc không khớp. Từ US2, quyết định nhớ/quên/sửa sai ghi append-only JSONL dưới `local_cases/workspace_memory/` với `LibraryWriterLease` hiện có; không thêm database, vector store hay model. Rollback = tắt lựa chọn trên giao diện hoặc cờ triển khai khi chưa có lựa chọn. Trạng thái Execution: `IMPLEMENTED_PENDING_INDEPENDENT_AUDIT`.
+
 ### Hồ sơ vụ cục bộ từ Workspace Chat
 
 Nút “Lưu vào hồ sơ” chỉ lưu thông tin mô tả cục bộ vào `local_cases/workspace_cases.sqlite`: mã cuộc trò chuyện, mã tin nhắn trả lời, mã `trace` bằng chứng và các tham chiếu nguồn/digest. Kho này tách hoàn toàn khỏi `library.sqlite` và `line_events.sqlite`, không đồng bộ nhiều máy. Schema có version, lịch sử migration, Online Backup, `quick_check` và rollback khi lỗi. Transaction SQLite ghi hồ sơ, tham chiếu, activity có chuỗi digest và đầu chuỗi đáng tin cậy cùng lúc; lỗi giữa chừng không tạo hồ sơ nửa vời.
