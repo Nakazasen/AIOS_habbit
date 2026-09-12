@@ -17,6 +17,8 @@ Nguồn trạng thái chuẩn: [ROADMAP.md](ROADMAP.md) là nguồn trạng thá
 
 - **Tổng hợp đa nguồn (002):** vẫn `IMPLEMENTED_PENDING_CURRENT_FULL_SUITE`. Lát chất lượng 2026-09-12 trên BGE-M3 Hybrid: câu nhiều vế được tách facet cục bộ (không cần cloud), truy xuất không cắt 3 nguồn khi đa ý, câu trả lời extractive theo `Ý 1`/`Ý 2`/`Còn thiếu`. Test tập trung lát này đạt. Câu một vế vẫn có thể bị prefilter 3 lúc chuẩn bị. Full pytest 2778 passed / 2 failed ngoài 002. Không ngang NotebookLM. Không đóng cổng. Commit `db42102` đã push.
 
+- **Quản lý cuộc trò chuyện (004):** `TECHNICAL_PASS`. 2026-09-13: `pytest -q -m "not desktop_packaging"` **2774 passed / 0 failed** (182s). Xóa phiên có xác nhận đúng hội thoại, không để màn hình trắng. Test đóng gói desktop tách marker `desktop_packaging` (không thuộc cổng 004). Không tuyên bố nghiệm thu xưởng.
+
 - **Đánh giá chunk (006):** vẫn `IMPLEMENTED_PENDING_REAL_CORPUS_VALIDATION`. E1/E2 đã xong trên corpus công khai; cắt câu CJK chỉ cho ingest mới, không rebuild index Workspace Chat. 2026-09-12: 79 test harness đạt. Không có bộ case đóng băng trên tài liệu chủ sở hữu nên **không** mở E3/E4 và không giả PASS.
 
 - **Sửa lỗi phạm vi câu hỏi chờ (005 follow-up):** Đã gộp vào đóng cổng trên. Retrieval không đọc lại toàn bộ thư viện cho câu hỏi quá rộng; tiến độ chuẩn bị và xóa nguồn đã được smoke trình duyệt xác nhận.

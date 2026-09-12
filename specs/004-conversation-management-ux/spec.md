@@ -4,7 +4,7 @@
 
 **Created**: 2026-08-22
 
-**Trạng thái**: `IMPLEMENTED_PENDING_CURRENT_FULL_SUITE` — chức năng đã có; còn cần kiểm chứng lại trên cây code hiện tại
+**Trạng thái**: `TECHNICAL_PASS` — 2026-09-13: `pytest -q -m "not desktop_packaging"` 2774 passed / 0 failed. Test đóng gói desktop không thuộc cổng này. Không tuyên bố nghiệm thu xưởng.
 
 **Input**: User description: "Deleting a conversation is difficult to use, does not clearly identify the target conversation, and leaves a blank screen until another conversation is selected."
 

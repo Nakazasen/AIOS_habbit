@@ -21,6 +21,8 @@ import sys
 
 import pytest
 
+pytestmark = pytest.mark.desktop_packaging
+
 REPO_ROOT = Path(__file__).resolve().parent.parent
 VENDOR_WHEELS_DIR = REPO_ROOT / "vendor" / "wheels"
 PYPROJECT_PATH = REPO_ROOT / "pyproject.toml"

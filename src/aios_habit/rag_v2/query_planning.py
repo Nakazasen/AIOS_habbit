@@ -167,7 +167,7 @@ def _clean_clause(value: str) -> str:
     return " ".join(value.strip(" -•\t?").split())
 
 
-def _unique_content_parts(parts: Sequence[str], original: str) -> list[str]:
+def _unique_clause_parts(parts: Sequence[str], original: str) -> list[str]:
     cleaned: list[str] = []
     original_key = original.casefold()
     seen: set[str] = set()
@@ -185,15 +185,15 @@ def _unique_content_parts(parts: Sequence[str], original: str) -> list[str]:
 
 def _split_question_clauses(original: str) -> list[str]:
     """Split only on explicit question structure, never on noun-phrase 'and'."""
-    structural = _unique_content_parts(_FACET_SPLIT_RE.split(original), original)
+    structural = _unique_clause_parts(_FACET_SPLIT_RE.split(original), original)
     if len(structural) >= 2:
         return structural
 
-    question_parts = _unique_content_parts(re.split(r"\?\s+", original), original)
+    question_parts = _unique_clause_parts(re.split(r"\?\s+", original), original)
     if len(question_parts) >= 2 and all(_has_question_cue(part) for part in question_parts):
         return question_parts
 
-    comma_parts = _unique_content_parts(_COMMA_CLAUSE_SPLIT_RE.split(original), original)
+    comma_parts = _unique_clause_parts(_COMMA_CLAUSE_SPLIT_RE.split(original), original)
     if (
         len(comma_parts) >= 2
         and all(_has_question_cue(part) for part in comma_parts)
@@ -201,7 +201,7 @@ def _split_question_clauses(original: str) -> list[str]:
     ):
         return comma_parts
 
-    bare_parts = _unique_content_parts(_BARE_CLAUSE_SPLIT_RE.split(original), original)
+    bare_parts = _unique_clause_parts(_BARE_CLAUSE_SPLIT_RE.split(original), original)
     if (
         len(bare_parts) >= 2
         and all(_has_question_cue(part) for part in bare_parts)

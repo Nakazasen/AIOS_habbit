@@ -78,3 +78,5 @@
 - 2026-08-22: `py -3 -m compileall -q src tests` and the Workspace Chat module import passed (bare-mode Streamlit warnings expected).
 - 2026-08-22: Full `py -3 -m pytest -q` completed: **1289 passed, 10 failed**. Failures are in the separately modified Antigravity bridge tests (9) and RAG v2 deployment checksum fixture (1), outside this feature's files.
 - 2026-08-22: `$env:PYTHONPATH='src'; py -3 -m aios_habit.cli audit` did not complete within 64 seconds and left child processes; those test processes were stopped. Release-quality audit remains **BLOCKED** pending diagnosis of the CLI audit hang.
+- 2026-09-13: `uv run --no-sync --group dev pytest -q --durations=20` → **2800 passed, 3 failed** in 782.82s. CLI audit `"status": "PASS"`. Ba fail ngoài 004 (wheelhouse; hardcode-guard `t_parts` trên `_unique_content_parts`; prep-gate RAG). Không đánh dấu TECHNICAL_PASS.
+- 2026-09-13 (đóng cổng): đổi tên `_unique_clause_parts`; cập nhật test cổng Non-blocking RAG; tách `tests/test_commit_d_wheel_and_packaging.py` bằng marker `desktop_packaging`. `pytest -q -m "not desktop_packaging"` → **2774 passed, 29 deselected, 0 failed** in 182s. `TECHNICAL_PASS`.

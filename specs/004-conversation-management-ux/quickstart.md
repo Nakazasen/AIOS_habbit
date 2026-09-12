@@ -12,8 +12,11 @@
 ## Automated validation
 
 ```powershell
-py -3 -m pytest -q tests/test_workspace_chat_store.py tests/test_workspace_chat_owner_flow.py tests/test_workspace_chat_source_selection_owner_flow.py
-py -3 -m compileall src tests
-$env:PYTHONPATH="src"; py -3 -c "import aios_habit.workspace_chat_app"
+uv run --no-sync --group dev pytest -q tests/test_workspace_chat_store.py tests/test_workspace_chat_owner_flow.py tests/test_workspace_chat_source_selection_owner_flow.py
+uv run --no-sync --group dev pytest -q -m "not desktop_packaging"
+uv run --no-sync --group dev python -m compileall src tests
+uv run --no-sync --group dev python -c "import aios_habit.workspace_chat_app"
 git diff --check
 ```
+
+Cổng 004 không gồm test đóng gói desktop (`marker desktop_packaging`, `verified_wheels`).

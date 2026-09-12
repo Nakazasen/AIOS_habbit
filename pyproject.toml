@@ -75,4 +75,5 @@ testpaths = ["tests"]
 faulthandler_timeout = 900
 markers = [
     "slow: marks tests as slow",
+    "desktop_packaging: offline wheelhouse and desktop bundle checks, not a product UX gate",
 ]
