@@ -35,7 +35,8 @@ _RIGHT_QUESTION_START_RE = re.compile(
 _CROSS_SOURCE_WORDING_RE = re.compile(
     r"\b(?:tong hop|nhieu nguon|tat ca cac tai lieu|toan bo tai lieu|"
     r"xuyen suot|synthesize|synthesis|cross-source|cross source|"
-    r"all sources|all documents|comprehensive)\b"
+    r"all sources|all documents|comprehensive|architecture|"
+    r"kien truc|cau truc tong)\b"
 )
 _COMMON_STOPWORDS = frozenset({
     "a", "an", "and", "are", "as", "at", "be", "by", "for", "from",

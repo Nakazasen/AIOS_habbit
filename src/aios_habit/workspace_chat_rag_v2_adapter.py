@@ -38,7 +38,11 @@ from aios_habit.rag_v2.query_planning import (
     coerce_query_plan,
     query_needs_broad_ready_retrieval,
 )
-from aios_habit.rag_v2.script_family import query_corpus_script_mismatch
+from aios_habit.rag_v2.multilingual_query_expand import expand_question_for_corpus_script
+from aios_habit.rag_v2.script_family import (
+    corpus_needs_cjk_query_expansion,
+    query_corpus_script_mismatch,
+)
 from aios_habit.rag_v2.semantic import (
     SemanticBackendError,
     SemanticBackendUnavailable,
@@ -710,6 +714,32 @@ def _select_semantic_candidate_sources(
     ranked.sort(reverse=True, key=lambda item: (item[0], item[1]))
     best_score = ranked[0][0]
     return tuple(item[2] for item in ranked if item[0] == best_score)[:limit]
+
+
+def _maybe_expand_latin_query_for_cjk_corpus(
+    question: str,
+    sources: Tuple[WorkspaceAIContextSource, ...],
+) -> Optional[Mapping[str, Any]]:
+    """Question-only CJK expansion. Skips when Gemini Web is not already up."""
+    corpus_texts = tuple(
+        f"{source.title}\n{(source.text or '')[:160]}" for source in sources[:80]
+    )
+    if not corpus_needs_cjk_query_expansion(question, corpus_texts):
+        return None
+    try:
+        from aios_habit.antigravity_bridge import get_antigravity_bridge_health
+
+        health = get_antigravity_bridge_health()
+        if not health.is_direct_ready:
+            return None
+        return expand_question_for_corpus_script(
+            question,
+            corpus_script="cjk",
+            gemini_ready=True,
+        )
+    except Exception:
+        LOGGER.debug("CJK query expansion skipped", exc_info=True)
+        return None
 
 
 def _retrieval_source_window(
@@ -2571,7 +2601,14 @@ def retrieve_workspace_chat_evidence(
     if semantic_status != _PREPARATION_READY_STATE:
         return _finish(_quality_search_unavailable(semantic_reason or semantic_status))
 
-    plan = coerce_query_plan(question)
+    if expansion is None:
+        expansion = _maybe_expand_latin_query_for_cjk_corpus(question, semantic_sources)
+
+    plan = (
+        build_query_plan(question, expansion)
+        if expansion is not None
+        else coerce_query_plan(question)
+    )
     policy = AdaptiveRetrievalPolicy(
         version=resolved.policy_version,
         enabled=resolved.adaptive_enabled,

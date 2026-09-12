@@ -164,6 +164,26 @@ def test_multi_aspect_retrieval_keeps_all_ready_sources():
     assert len(adapter._select_semantic_candidate_sources(question, sources)) <= 3
 
 
+def test_latin_only_corpus_does_not_call_cjk_expansion():
+    sources = tuple(
+        WorkspaceAIContextSource(
+            source_id=f"en-{index}",
+            source_scope="notebook",
+            source_type="txt",
+            title=f"English notes {index}",
+            privacy_label="local_only",
+            text="English operating notes without other scripts.",
+            included_chars=40,
+            truncated=False,
+        )
+        for index in range(8)
+    )
+    assert adapter._maybe_expand_latin_query_for_cjk_corpus(
+        "What is the overall system architecture?",
+        sources,
+    ) is None
+
+
 def test_script_mismatch_keeps_all_ready_sources():
     latin_hits = tuple(
         WorkspaceAIContextSource(

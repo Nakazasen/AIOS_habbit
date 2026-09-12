@@ -78,6 +78,14 @@ def test_explicit_multi_source_wording_uses_cross_source_budget():
     assert [variant.origin for variant in plan.variants] == ["original"]
 
 
+def test_architecture_wording_uses_cross_source_budget():
+    plan = identity_query_plan(
+        "What is the overall system architecture for production history registration?"
+    )
+    assert plan.intent_category == "cross_source_synthesis"
+    assert plan.target_retrieval_limit == 25
+
+
 def test_operational_how_it_works_question_uses_procedure_shape_without_aliases():
     query = "Chế độ Manual Matecon ACR/CTU hoạt động như thế nào?"
 
