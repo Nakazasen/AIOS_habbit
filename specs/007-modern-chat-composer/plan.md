@@ -2,6 +2,8 @@
 
 **Branch**: `007-modern-chat-composer` | **Date**: 2026-08-25 | **Spec**: [spec.md](spec.md)
 
+**Trạng thái**: `TECHNICAL_PASS` — smoke Playwright 6/6 và test composer tập trung đạt 2026-09-12.
+
 ## Summary
 
 Replace the tall question form with a compact, rounded Workspace Chat composer inspired by current AI browser and IDE inputs. Add thumbnail-backed image attachment, browser-confirmed clipboard image paste, and an inline Mô hình AI picker that maps to the existing Gemini Web, C-AGENT and Router backends. Retain question processing, image ingestion, search preference, and pending-source safeguards.

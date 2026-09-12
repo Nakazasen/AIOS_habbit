@@ -45,7 +45,7 @@ Tài liệu tham khảo tầm nhìn dài hạn tương lai: [Production Intellig
 | Quản lý cuộc trò chuyện (004) | `IMPLEMENTED_PENDING_CURRENT_FULL_SUITE` — chức năng đã có, chưa ghi bằng chứng đầy đủ hiện tại |
 | Chuẩn bị nguồn tăng dần (005) | `TECHNICAL_PASS` — browser smoke 6/6 PASS 2026-09-12; S4 xác nhận hỏi ngay trên nguồn ready khi file mới còn pending |
 | Đánh giá chunk dựa trên bằng chứng (006) | `IMPLEMENTED_PENDING_REAL_CORPUS_VALIDATION` — đóng băng thay đổi E3/E4 cho đến khi corpus thật chứng minh lợi ích |
-| Thanh nhập chat hiện đại (007) | `IMPLEMENTED_PENDING_VERIFICATION` — còn lượt kiểm chứng trình duyệt và test hiện tại |
+| Thanh nhập chat hiện đại (007) | `TECHNICAL_PASS` — Playwright smoke 6/6 PASS ngày 2026-09-12 (`scripts/smoke_007_modern_chat_composer.py`, `local_runs/smoke_007/result.json`). Composer compact, chọn Gemini Web / C-AGENT / Nakazasen trong thanh chat, gửi câu hỏi, thumbnail ảnh, cửa sổ 360 px. Dán clipboard cần thao tác người dùng. Streamlit có thể giữ text sau gửi. Không tuyên bố nghiệm thu xưởng. |
 
 | A18 | `DONE` — Đã xác minh Chính sách Router thông minh & Sàn so sánh (Comparison Arena) |
 

@@ -45,7 +45,7 @@
 ## Phase 6: Polish and Validation
 
 - [X] T010 Run focused composer, owner-flow, image-upload, and UI-i18n tests from `specs/007-modern-chat-composer/quickstart.md`
-- [ ] T011 Run compilation, import, CLI audit, and `git diff --check` for the modified Workspace Chat files
+- [X] T011 Run compilation, import, CLI audit, and `git diff --check` for the modified Workspace Chat files (2026-09-12: `compileall` sạch, import Workspace Chat, CLI audit `"status": "PASS"`, smoke Playwright 6/6)
 - [X] T012 Refresh the repository graph with `graphify update .` after code changes
 - [X] T013 Move the AI bridge selector and its C-AGENT endpoint configuration into the composer toolbar in `src/aios_habit/workspace_chat_app.py`
 - [X] T014 Add the compact attachment popover, clipboard-image thumbnail, and removal control in `src/aios_habit/workspace_chat_app.py`
