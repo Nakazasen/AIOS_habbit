@@ -11,16 +11,9 @@ Nguồn trạng thái chuẩn: [ROADMAP.md](ROADMAP.md) là nguồn trạng thá
 - **Điểm lưu Goal 010 ngày 2026-09-09:** Mã và tài liệu hiện tại chỉ là trạng thái đang làm, chưa nghiệm thu. Ý chí kiểm toán, bằng chứng đã chạy, phạm vi commit và các điểm chặn để tiếp tục được ghi tại [biên bản kế thừa Goal 010](docs/reports/BIEN_BAN_KE_THUA_AUDIT_GOAL_010_2026-09-09.md).
 - **Goal 011 — Vòng trí nhớ công việc thích nghi:** `IMPLEMENTED_PENDING_INDEPENDENT_AUDIT`. Execution T001–T030 và bổ sung UX T030A: Workspace Chat hiện lựa chọn “Cho AIOS ghi nhớ để hỗ trợ tôi tốt hơn”, giữ lựa chọn cục bộ qua lần mở sau và không yêu cầu lệnh PowerShell; khi chưa có lựa chọn thì cờ `adaptive_work_memory` mặc định tắt vẫn là giá trị ban đầu. Hệ thống gọi lại bốn nguồn hiện có; nhớ/quên/sửa sai ghi JSONL append-only ngoài Git; Goal 010 chỉ là nguồn tùy chọn. Ba finding remediation đã sửa: bridge ngoài fail-closed theo fingerprint, lệnh quên từ chối kết quả mơ hồ/khác workspace và block memory không vượt 4.000 ký tự. Thẻ cổng: [AIOS-ADAPTIVE-WORK-MEMORY.md](docs/roadmap/backlog/AIOS-ADAPTIVE-WORK-MEMORY.md). Chưa commit/push; còn kiểm toán độc lập lại và smoke UI thật.
 
-- **Chuẩn bị nguồn tăng dần (005):** Mã đã triển khai và 101 bài kiểm tra liên quan đã PASS:
-  nguồn mới được chuẩn bị riêng, câu hỏi chờ tự tiếp tục một lần sau khi nguồn sẵn sàng, và
-  câu hỏi quá rộng không kích hoạt đọc lại toàn bộ thư viện. Khi BGE-M3 không có deployment
-  hợp lệ, giao diện phải hiện rõ `BGE-M3 chưa sẵn sàng`, không được báo sẵn sàng giả.
+- **Chuẩn bị nguồn tăng dần (005):** `TECHNICAL_PASS`. Playwright smoke 6/6 PASS ngày 2026-09-12 (`scripts/Chay_Smoke_005.bat` / `scripts/smoke_005_incremental_source_prep.py`; artifact `local_runs/smoke_005/result.json`, không commit). Nguồn mới được chuẩn bị riêng; khi BGE-M3 không có deployment hợp lệ, UI phải hiện rõ thư viện chưa sẵn sàng. S4 trên UI thật xác nhận Non-blocking RAG: hỏi được trên tài liệu đã sẵn sàng trong lúc file mới còn ingest, không khóa cả thư viện.
 
-- **Sửa lỗi phạm vi câu hỏi chờ (005 follow-up):** Sau khi BGE-M3 được kích hoạt, lỗi thực tế
-  được xác định là UI chuẩn bị một phạm vi hẹp nhưng retrieval chọn lại từ toàn bộ nguồn bật.
-  Mã hiện dùng đúng một phạm vi (tối đa một tài liệu) từ chuẩn bị đến truy xuất, hiển thị số
-  lượng đang chuẩn bị và cho phép hủy câu hỏi chờ. 103 test liên quan PASS; browser smoke với
-  tài liệu thật vẫn là bước xác nhận còn lại.
+- **Sửa lỗi phạm vi câu hỏi chờ (005 follow-up):** Đã gộp vào đóng cổng trên. Retrieval không đọc lại toàn bộ thư viện cho câu hỏi quá rộng; tiến độ chuẩn bị và xóa nguồn đã được smoke trình duyệt xác nhận.
 
 - **Giao diện chính (Primary UI):** Workspace Chat. Các tệp giao diện công khai của Case Cockpit cũ đang được cho dừng (retired), tuy nhiên các dịch vụ dùng chung dựa trên `case_store` vẫn có các luồng gọi trực tiếp và tuyệt đối không được xóa nếu chưa có kế hoạch di chuyển tách biệt.
 - **Git:** Nhánh `main...origin/main` hiện có một cây làm việc chưa commit đáng kể, bao gồm RAG, Workspace Chat, Antigravity, tài liệu và các bài kiểm thử. Cần bảo toàn các thay đổi hiện có; phân tách và đánh giá kỹ lưỡng trước khi đưa ra bất kỳ tuyên bố phát hành hoặc chạy benchmark nào.

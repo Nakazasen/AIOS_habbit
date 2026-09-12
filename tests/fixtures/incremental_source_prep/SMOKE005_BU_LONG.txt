@@ -1,0 +1,3 @@
+Hướng dẫn siết bu-lông nắp SMOKE005.
+
+Khi lắp nắp máy, siết bu-lông theo hình sao, mỗi lần một vòng, không siết hết một bu-lông rồi mới sang bu-lông kế. Momen siết tham chiếu 25 N·m. Không dùng súng hơi khi chưa có cữ.

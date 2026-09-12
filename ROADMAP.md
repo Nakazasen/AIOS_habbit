@@ -1,6 +1,6 @@
 # AIOS WorkLens Roadmap
 
-| Chuẩn bị nguồn tăng dần cho Workspace Chat (005) | `IMPLEMENTED_PENDING_BROWSER_SMOKE` — chuẩn bị tối đa một nguồn khớp nhất cho câu hỏi mới; readiness và retrieval dùng cùng phạm vi; câu hỏi chờ có số lượng/hủy được; 103 test liên quan PASS. Browser smoke trên câu hỏi tài liệu thật còn cần xác nhận. |
+| Chuẩn bị nguồn tăng dần cho Workspace Chat (005) | `TECHNICAL_PASS` — Playwright smoke 6/6 PASS ngày 2026-09-12 (`scripts/smoke_005_incremental_source_prep.py`, `local_runs/smoke_005/result.json`). Nguồn mới chuẩn bị riêng; Non-blocking RAG cho hỏi trên tài liệu đã sẵn sàng khi nguồn khác còn ingest. Không tuyên bố nghiệm thu xưởng. |
 
 `ROADMAP.md` là **nguồn trạng thái canonical duy nhất** cho công việc hiện tại.
 Historical design/audit evidence nằm trong `docs/archive/`; không đọc nó như
@@ -43,6 +43,7 @@ Tài liệu tham khảo tầm nhìn dài hạn tương lai: [Production Intellig
 | Vòng trí nhớ công việc thích nghi (011) | `IMPLEMENTED_PENDING_INDEPENDENT_AUDIT`: Execution T001–T030 và bổ sung UX T030A đã có mã; người dùng có lựa chọn “Cho AIOS ghi nhớ để hỗ trợ tôi tốt hơn” được giữ cục bộ, không cần lệnh PowerShell. Ba finding remediation đã sửa, nhưng còn cần kiểm toán độc lập lại và smoke UI thật. Goal 010 không phải cổng; artifact published là nguồn tùy chọn. |
 | Tổng hợp đa nguồn (002) | `IMPLEMENTED_PENDING_CURRENT_FULL_SUITE` — còn lượt xác minh cuối trên cây code hiện tại |
 | Quản lý cuộc trò chuyện (004) | `IMPLEMENTED_PENDING_CURRENT_FULL_SUITE` — chức năng đã có, chưa ghi bằng chứng đầy đủ hiện tại |
+| Chuẩn bị nguồn tăng dần (005) | `TECHNICAL_PASS` — browser smoke 6/6 PASS 2026-09-12; S4 xác nhận hỏi ngay trên nguồn ready khi file mới còn pending |
 | Đánh giá chunk dựa trên bằng chứng (006) | `IMPLEMENTED_PENDING_REAL_CORPUS_VALIDATION` — đóng băng thay đổi E3/E4 cho đến khi corpus thật chứng minh lợi ích |
 | Thanh nhập chat hiện đại (007) | `IMPLEMENTED_PENDING_VERIFICATION` — còn lượt kiểm chứng trình duyệt và test hiện tại |
 

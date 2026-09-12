@@ -1,0 +1,3 @@
+Quy tắc thủy lực SMOKE005.
+
+Khi hệ thống quá tải thủy lực, không tăng áp để “ép” máy chạy. Giảm tải, kiểm tra van an toàn, kiểm tra nhiệt dầu. Chỉ tăng áp khi có lệnh bảo trì ghi rõ.

@@ -4,7 +4,7 @@
 
 **Created**: 2026-08-22
 
-**Trạng thái**: `IMPLEMENTED_PENDING_BROWSER_SMOKE` — code/test đã có; còn cần smoke trình duyệt với nguồn thật
+**Trạng thái**: `TECHNICAL_PASS` — Playwright smoke 6/6 PASS 2026-09-12 (`scripts/smoke_005_incremental_source_prep.py`). S4 ghi nhận hành vi Non-blocking RAG hiện tại: câu hỏi chạy trên nguồn ready khi tài liệu mới còn chuẩn bị, không khóa cả thư viện.
 
 > Checklist cũ trong `tasks.md` của đặc tả này là dấu vết lập kế hoạch, không phải 35 việc cần viết lại. Trạng thái thực thi hiện tại được theo dõi trong `ROADMAP.md` và Đợt 0 của đặc tả 008.
 

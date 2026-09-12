@@ -84,8 +84,8 @@
 
 ## Phase 8: Polish and verification
 
-- [ ] T032 [P] Update readiness/provenance architecture decisions in `ARCHITECTURE.md`, `ROADMAP.md`, and `PROJECT_HANDOVER.md`.
-- [ ] T033 [P] Add the end-to-end manual scenarios from `specs/005-incremental-source-prep/quickstart.md` to the relevant test documentation.
+- [x] T032 [P] Update readiness/provenance architecture decisions in `ARCHITECTURE.md`, `ROADMAP.md`, and `PROJECT_HANDOVER.md`.
+- [x] T033 [P] Add the end-to-end manual scenarios from `specs/005-incremental-source-prep/quickstart.md` to the relevant test documentation.
 - [ ] T034 Run focused queue, UI, bridge, and compression tests with `.venv\Scripts\python.exe -m pytest` and record results in the feature handover.
 - [ ] T035 Run `py -3 -m compileall src tests`, `py -3 -m pytest -q`, `$env:PYTHONPATH="src"; py -3 -m aios_habit.cli audit`, and `graphify update .` before declaring completion.
 
