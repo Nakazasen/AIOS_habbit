@@ -164,6 +164,42 @@ def test_multi_aspect_retrieval_keeps_all_ready_sources():
     assert len(adapter._select_semantic_candidate_sources(question, sources)) <= 3
 
 
+def test_script_mismatch_keeps_all_ready_sources():
+    latin_hits = tuple(
+        WorkspaceAIContextSource(
+            source_id=f"latin-{index}",
+            source_scope="notebook",
+            source_type="txt",
+            title=f"Completion register notes {index}",
+            privacy_label="local_only",
+            text="steps to register completion in the latin workbook.",
+            included_chars=40,
+            truncated=False,
+        )
+        for index in range(2)
+    )
+    cjk_sources = tuple(
+        WorkspaceAIContextSource(
+            source_id=f"cjk-{index}",
+            source_scope="notebook",
+            source_type="txt",
+            title=f"製造手順書 {index}",
+            privacy_label="local_only",
+            text="完工登録の手順と確認事項を記載する。",
+            included_chars=40,
+            truncated=False,
+        )
+        for index in range(4)
+    )
+    sources = latin_hits + cjk_sources
+    question = "What are the steps to register production completion?"
+
+    selected = adapter._retrieval_source_window(question, sources)
+
+    assert selected == sources
+    assert len(adapter._select_semantic_candidate_sources(question, sources)) <= 3
+
+
 def test_preparation_scope_refuses_broad_question_for_large_source_set():
     sources = tuple(
         WorkspaceAIContextSource(

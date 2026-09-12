@@ -21,6 +21,11 @@ from .query_planning import (
     extract_content_terms,
     match_text_obligations,
 )
+from .script_family import (
+    MISMATCH_CHANNEL_WEIGHTS,
+    should_retry_thin_results,
+    uses_script_mismatch_ranking,
+)
 from .semantic import (
     EmbeddingBackend,
     MultiVector,
@@ -1953,11 +1958,21 @@ class LocalChunkIndex:
         reranker: Optional[RerankerBackend] = None,
         use_multivector: bool = False,
         precomputed_only: bool = False,
+        thin_retry: bool = False,
     ) -> SearchResponse:
         """Run bounded hybrid retrieval with optional precomputed MaxSim authority."""
         plan = coerce_query_plan(query)
         if plan.intent_category == "cross_source_synthesis":
             limit = max(limit, getattr(plan, "target_retrieval_limit", limit))
+        if ranking_config is None:
+            source_names = self._sample_source_names()
+            if uses_script_mismatch_ranking(plan.original_query, source_names):
+                lexical_w, dense_w, sparse_w = MISMATCH_CHANNEL_WEIGHTS
+                ranking_config = HybridRankingConfig(
+                    lexical_weight=lexical_w,
+                    dense_weight=dense_w,
+                    sparse_weight=sparse_w,
+                )
 
         options = options or SearchOptions()
         pool_options = replace(
@@ -2028,6 +2043,29 @@ class LocalChunkIndex:
                     summary_ids = {sc.chunk_id for sc in summary_chunks}
                     filtered = tuple(r for r in response.results if r.chunk_id not in summary_ids)
                     response = replace(response, results=tuple(summary_chunks) + filtered)
+
+        unique_docs = {result.document_id for result in response.results}
+        if should_retry_thin_results(
+            unique_document_count=len(unique_docs),
+            indexed_document_count=self._distinct_document_count(),
+            already_retried=thin_retry,
+        ):
+            lexical_w, dense_w, sparse_w = MISMATCH_CHANNEL_WEIGHTS
+            return self.hybrid_search_with_summary(
+                query,
+                limit=max(limit, 25),
+                dense_limit=max(dense_limit, 150),
+                options=options,
+                ranking_config=HybridRankingConfig(
+                    lexical_weight=lexical_w,
+                    dense_weight=dense_w,
+                    sparse_weight=sparse_w,
+                ),
+                reranker=reranker,
+                use_multivector=use_multivector,
+                precomputed_only=precomputed_only,
+                thin_retry=True,
+            )
 
         return SearchResponse(
             results=response.results,
@@ -2843,6 +2881,24 @@ class LocalChunkIndex:
             "SELECT COUNT(*) AS count FROM chunks WHERE retrievable = 1"
         ).fetchone()
         return int(row["count"])
+
+    def _distinct_document_count(self) -> int:
+        row = self._conn.execute(
+            "SELECT COUNT(DISTINCT document_id) AS count FROM chunks WHERE retrievable = 1"
+        ).fetchone()
+        return int(row["count"])
+
+    def _sample_source_names(self, limit: int = 40) -> tuple[str, ...]:
+        rows = self._conn.execute(
+            """
+            SELECT DISTINCT source_name
+            FROM chunks
+            WHERE retrievable = 1
+            LIMIT ?
+            """,
+            (max(1, int(limit)),),
+        ).fetchall()
+        return tuple(str(row["source_name"] or "") for row in rows)
 
     def _candidate_rows(
         self,

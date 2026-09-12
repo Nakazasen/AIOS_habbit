@@ -38,6 +38,7 @@ from aios_habit.rag_v2.query_planning import (
     coerce_query_plan,
     query_needs_broad_ready_retrieval,
 )
+from aios_habit.rag_v2.script_family import query_corpus_script_mismatch
 from aios_habit.rag_v2.semantic import (
     SemanticBackendError,
     SemanticBackendUnavailable,
@@ -715,9 +716,12 @@ def _retrieval_source_window(
     question: str,
     sources: Tuple[WorkspaceAIContextSource, ...],
 ) -> Tuple[WorkspaceAIContextSource, ...]:
-    """Keep the preparation cap, but search every ready source for multi-aspect questions."""
+    """Keep the preparation cap; search every ready source when the query script diverges."""
     plan = coerce_query_plan(question)
     if query_needs_broad_ready_retrieval(plan):
+        return sources
+    corpus_texts = tuple(f"{source.title}\n{(source.text or '')[:800]}" for source in sources)
+    if len(sources) > 3 and query_corpus_script_mismatch(question, corpus_texts):
         return sources
     return _select_semantic_candidate_sources(question, sources)
 
