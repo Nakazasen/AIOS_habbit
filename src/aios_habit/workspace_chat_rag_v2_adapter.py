@@ -438,6 +438,7 @@ _ALLOWED_DEGRADED_REASONS = {
     "reranker_disabled_by_policy",
     "reranker_model_missing",
     "reranker_device_error",
+    "reranker_not_configured",
 }
 
 # Deep search first forms a wider local candidate pool, then keeps the normal
@@ -781,51 +782,6 @@ def _durable_semantic_coverage_ready(
             connection.close()
     except (OSError, RuntimeError, sqlite3.Error):
         return False
-
-
-def _semantic_readiness(
-    sources: Sequence[WorkspaceAIContextSource],
-    config: WorkspaceChatRagV2CanaryConfig,
-) -> tuple[str, str]:
-    """Check readiness of sources for semantic retrieval."""
-    if not config.enabled:
-        return "unavailable", "bge_m3_not_enabled"
-
-    db_path = _get_ledger_db_path(config)
-    ledger_rows = _load_all_ledger_rows(db_path) if db_path.is_file() else {}
-
-    with _PREPARATION_LOCK:
-        for source in sources:
-            if not (source.text or "").strip():
-                continue
-            key = _preparation_key(config, source)
-            entry = _PREPARATION_REGISTRY.get(key)
-            if entry is not None and entry.get("status") == _PREPARATION_READY_STATE:
-                continue
-
-            row = ledger_rows.get((source.source_scope, source.source_id))
-            if (
-                row is not None
-                and row.state == PREP_STATE_READY
-                and row.source_fingerprint == _source_fingerprint(source)
-                and row.model_revision == config.bge_m3_model_revision
-                and _durable_semantic_coverage_ready(source, config)
-            ):
-                _PREPARATION_REGISTRY[key] = _preparation_entry(config, source, _PREPARATION_READY_STATE)
-                continue
-
-            if _durable_semantic_coverage_ready(source, config):
-                _PREPARATION_REGISTRY[key] = _preparation_entry(config, source, _PREPARATION_READY_STATE)
-                continue
-
-            if entry is not None:
-                st = entry.get("status", "pending")
-                return st, entry.get("reason", "")
-            if row is not None:
-                return row.state, row.last_error
-            return "pending", ""
-
-    return _PREPARATION_READY_STATE, ""
 
 
 
@@ -2198,6 +2154,14 @@ def _run_profile(
     post_reason_codes: Sequence[str] = (),
 ) -> dict[str, Any]:
     started = time.perf_counter()
+    statuses = get_workspace_chat_source_preparation_status(tuple(sources), config=config)
+    ready_subset = tuple(
+        s for s in sources
+        if statuses.get(f"{s.source_scope}:{s.source_id}") == _PREPARATION_READY_STATE
+    )
+    if ready_subset:
+        sources = ready_subset
+
     pipe_config = _pipeline_config(
         config,
         profile,
@@ -2281,13 +2245,15 @@ def _serialized_location(item: Mapping[str, Any]) -> str:
 
 
 def _semantic_readiness(
-    sources: Tuple[WorkspaceAIContextSource, ...],
+    sources: Tuple[WorkspaceAIContextSource, ...] | Sequence[WorkspaceAIContextSource],
     config: WorkspaceChatRagV2CanaryConfig,
 ) -> tuple[str, str]:
     """Return the aggregate BGE-M3 preparation state."""
-    statuses = get_workspace_chat_source_preparation_status(sources, config=config)
+    if not sources:
+        return "unavailable", "no_sources"
+    statuses = get_workspace_chat_source_preparation_status(tuple(sources), config=config)
     values = tuple(statuses.values())
-    if values and all(state == _PREPARATION_READY_STATE for state in values):
+    if values and any(state == _PREPARATION_READY_STATE for state in values):
         return _PREPARATION_READY_STATE, ""
     if any(state == "failed" for state in values):
         return "failed", "semantic_preparation_failed"
@@ -2555,6 +2521,16 @@ def retrieve_workspace_chat_evidence(
     if not resolved.enabled:
         return _finish(_quality_search_unavailable("feature_flag_disabled"))
 
+    # Operate strictly on ready sources so pending documents in notebook do not block retrieval
+    statuses = get_workspace_chat_source_preparation_status(sources, config=resolved)
+    ready_subset = tuple(
+        s for s in sources
+        if statuses.get(f"{s.source_scope}:{s.source_id}") == _PREPARATION_READY_STATE
+    )
+    if ready_subset:
+        sources = ready_subset
+        collection_id = _collection_id_for_sources(sources)
+
     semantic_sources = _select_semantic_candidate_sources(question, sources)
 
     # Scope every retrieval lane before it does any potentially expensive work.
@@ -2566,14 +2542,7 @@ def retrieve_workspace_chat_evidence(
 
     pref_str = str(search_preference or "auto").casefold()
 
-    # "Deep" is a user promise, not a cosmetic label.  Do not start a base
-    # hybrid preparation job when the separately pinned reranker is absent.
-    # Returning no evidence makes the caller stop before it forwards an
-    # arbitrary leading slice of the full document to a provider.
-    if pref_str == "deep" and (
-        not resolved.adaptive_enabled
-        or resolved.bge_reranker_model_path is None
-    ):
+    if pref_str == "deep" and not resolved.adaptive_enabled:
         return _finish(_quality_search_unavailable("deep_search_unavailable"))
 
     schedule_workspace_chat_source_preparation(semantic_sources, config=resolved)
@@ -2586,6 +2555,7 @@ def retrieve_workspace_chat_evidence(
         version=resolved.policy_version,
         enabled=resolved.adaptive_enabled,
         deep_timeout_ms=resolved.deep_timeout_ms,
+        reranker_configured=(resolved.bge_reranker_model_path is not None),
     )
 
     rerank_requested = False
@@ -2612,8 +2582,15 @@ def retrieve_workspace_chat_evidence(
             policy_version=resolved.policy_version,
             search_preference=pref_str,
             pre_decision=pre_dec.classification.value if pre_dec else "fast",
-            pre_reason_codes=pre_dec.reason_codes if pre_dec else ("pre_fast",),
         )
+
+        if init_routing is not None and init_routing.degraded:
+            canary = initial_result.setdefault("rag_v2_canary", {})
+            canary["degraded"] = True
+            canary["degraded_reason"] = _sanitize_degraded_reason(init_routing.degraded_reason)
+            canary["effective_path"] = str(getattr(init_routing.effective_path, "value", init_routing.effective_path))
+            canary["fallback_applied"] = True
+            canary["fallback_reason"] = canary["degraded_reason"]
 
         if (
             resolved.adaptive_enabled

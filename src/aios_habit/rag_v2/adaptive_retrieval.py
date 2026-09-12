@@ -71,6 +71,7 @@ ALLOWLISTED_REASON_CODES = frozenset({
     "reranker_oom",
     "circuit_breaker_open",
     "reranker_circuit_open",
+    "reranker_not_configured",
     "structured_excel_handled",
     "structured_excel_bypass",
     "invalid_preference_fallback",
@@ -97,6 +98,7 @@ class AdaptiveRetrievalPolicy:
     deep_timeout_ms: int = 300000
     circuit_breaker_failures: int = 3
     circuit_breaker_cooldown_ms: int = 30000
+    reranker_configured: bool = True
 
 
 @dataclass(frozen=True)
@@ -355,17 +357,27 @@ def decide_initial_route(
         requested_path = RetrievalPath.HYBRID
         rerank_requested = False
 
+    effective_path = requested_path
+    degraded = False
+    degraded_reason = ""
+
+    if rerank_requested and not active_policy.reranker_configured:
+        effective_path = RetrievalPath.HYBRID
+        rerank_requested = False
+        degraded = True
+        degraded_reason = "reranker_not_configured"
+
     return RoutingDecision(
         user_preference=pref_enum,
         pre_decision=pre_decision.classification,
         post_decision=PostDecision.NOT_RUN,
         requested_path=requested_path,
-        effective_path=requested_path,
+        effective_path=effective_path,
         reason_codes=pre_decision.reason_codes,
         reranker_requested=rerank_requested,
         reranker_applied=False,
-        degraded=False,
-        degraded_reason="",
+        degraded=degraded,
+        degraded_reason=degraded_reason,
         policy_version=active_policy.version,
     )
 
@@ -445,8 +457,10 @@ def decide_final_route(
         else RetrievalPath(str(effective_path))
     )
 
-    safe_degraded_reason = degraded_reason if degraded_reason in ALLOWLISTED_REASON_CODES else (
-        "reranker_backend_failed" if degraded else ""
+    effective_degraded = degraded or initial_routing.degraded
+    effective_degraded_reason = degraded_reason or (initial_routing.degraded_reason if initial_routing.degraded else "")
+    safe_degraded_reason = effective_degraded_reason if effective_degraded_reason in ALLOWLISTED_REASON_CODES else (
+        "reranker_backend_failed" if effective_degraded else ""
     )
 
     return RoutingDecision(
@@ -458,7 +472,7 @@ def decide_final_route(
         reason_codes=tuple(all_reasons),
         reranker_requested=initial_routing.reranker_requested,
         reranker_applied=reranker_applied,
-        degraded=degraded,
+        degraded=effective_degraded,
         degraded_reason=safe_degraded_reason,
         policy_version=active_policy.version,
     )

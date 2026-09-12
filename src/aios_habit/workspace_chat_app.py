@@ -2458,10 +2458,39 @@ else:
                 st.write("---")
                 total_enabled = enabled_notebook_count + enabled_temp_count
                 render_ai_source_context_summary(total_enabled, locale=current_ui_locale)
+                if total_enabled > 0:
+                    current_enabled_sels = load_enabled_sources_for_conversation(active_conversation.id)
+                    if current_enabled_sels:
+                        current_all_sources = _workspace_context_sources(
+                            load_notebook_sources(active_nb_id),
+                            load_temporary_sources(active_conversation.id),
+                        )
+                        sel_keys = {(s.source_scope, s.source_id) for s in current_enabled_sels}
+                        active_scoped = [s for s in current_all_sources if (s.source_scope, s.source_id) in sel_keys and (s.text or "").strip()]
+                        if active_scoped:
+                            scope_states = get_workspace_chat_source_preparation_status(tuple(active_scoped))
+                            ready_cnt = sum(1 for st_val in scope_states.values() if st_val == "ready")
+                            unready_cnt = sum(1 for st_val in scope_states.values() if st_val in ("pending", "processing"))
+                            if unready_cnt > 0 and ready_cnt > 0:
+                                st.info(
+                                    t(
+                                        "non_blocking_preparation_partial_info",
+                                        locale=current_ui_locale,
+                                        ready_count=ready_cnt,
+                                        unready_count=unready_cnt,
+                                    )
+                                )
+                            elif unready_cnt > 0 and ready_cnt == 0:
+                                st.info(
+                                    t(
+                                        "non_blocking_preparation_wait_info",
+                                        locale=current_ui_locale,
+                                        unready_count=unready_cnt,
+                                    )
+                                )
 
                 if len(messages) >= 50:
                     st.warning(t("conversation_long_warning", locale=current_ui_locale))
-
                 pending_auto_question = None
                 pending_submission = st.session_state.get(_PENDING_SOURCE_SUBMISSION_KEY)
                 if pending_submission and pending_submission.get("conversation_id") == active_conversation.id:
@@ -2789,74 +2818,126 @@ else:
                                 source_scope = select_workspace_chat_preparation_scope(
                                     packed_question, tuple(non_empty_sources), limit=1
                                 )
-                                query_relevant_sources = source_scope.sources
-                                if not source_scope.bounded:
-                                    broad_states = get_workspace_chat_source_preparation_status(
-                                        tuple(non_empty_sources)
+                                all_states = get_workspace_chat_source_preparation_status(
+                                    tuple(non_empty_sources)
+                                )
+                                ready_sources = tuple(
+                                    s for s in non_empty_sources
+                                    if all_states.get(f"{s.source_scope}:{s.source_id}") == "ready"
+                                )
+                                unready_sources = tuple(
+                                    s for s in non_empty_sources
+                                    if all_states.get(f"{s.source_scope}:{s.source_id}") != "ready"
+                                )
+                                failed_sources = [identity for identity, state in all_states.items() if state == "failed"]
+                                unavailable_sources = [identity for identity, state in all_states.items() if state == "unavailable"]
+                                waiting_sources = [identity for identity, state in all_states.items() if state not in ("ready", "failed", "unavailable")]
+
+                                if unready_sources:
+                                    schedule_workspace_chat_source_preparation(unready_sources)
+
+                                query_relevant_sources = ()
+                                if source_scope.bounded and source_scope.sources:
+                                    ready_in_scope = tuple(
+                                        s for s in source_scope.sources
+                                        if all_states.get(f"{s.source_scope}:{s.source_id}") == "ready"
                                     )
-                                    ready_broad = tuple(
-                                        s for s in non_empty_sources
-                                        if broad_states.get(f"{s.source_scope}:{s.source_id}") == "ready"
-                                    )
-                                    if ready_broad:
-                                        query_relevant_sources = ready_broad
-                                    elif any(state == "unavailable" for state in broad_states.values()):
-                                        st.session_state.wsc_action_error = t("bge_search_unavailable", locale=current_ui_locale)
+                                    if ready_in_scope:
+                                        query_relevant_sources = ready_in_scope
+                                        if unready_sources:
+                                            st.toast(
+                                                t(
+                                                    "non_blocking_search_ready_toast",
+                                                    locale=current_ui_locale,
+                                                    ready_count=len(ready_in_scope),
+                                                    unready_count=len(unready_sources),
+                                                )
+                                            )
+                                    else:
+                                        scoped_waiting = [
+                                            s for s in source_scope.sources
+                                            if all_states.get(f"{s.source_scope}:{s.source_id}") not in ("ready", "failed", "unavailable")
+                                        ]
+                                        if scoped_waiting:
+                                            for src in source_scope.sources:
+                                                promote_workspace_chat_source_priority(src.source_scope, src.source_id, "interactive")
+                                            st.session_state[_PENDING_SOURCE_SUBMISSION_KEY] = _new_pending_source_submission(
+                                                conversation_id=active_conversation.id,
+                                                question=q_text,
+                                                selection_keys=tuple(sorted(
+                                                    (selection.source_scope, selection.source_id)
+                                                    for selection in enabled_selections
+                                                )),
+                                                required_sources=tuple(source_scope.sources),
+                                            )
+                                            st.session_state.wsc_action_message = (
+                                                "AIOS đang chuẩn bị tài liệu liên quan và sẽ tự tiếp tục câu hỏi này khi hoàn tất."
+                                            )
+                                            st.session_state.wsc_last_ai_badge = None
+                                            safe_rerun()
+                                        elif ready_sources:
+                                            query_relevant_sources = ready_sources
+                                            if unready_sources:
+                                                st.toast(
+                                                    t(
+                                                        "non_blocking_search_ready_toast",
+                                                        locale=current_ui_locale,
+                                                        ready_count=len(ready_sources),
+                                                        unready_count=len(unready_sources),
+                                                    )
+                                                )
+                                        elif unavailable_sources:
+                                            st.session_state.wsc_action_error = t(
+                                                "bge_search_unavailable",
+                                                locale=current_ui_locale,
+                                            )
+                                            st.session_state.wsc_last_ai_badge = None
+                                            safe_rerun()
+                                        else:
+                                            st.session_state.wsc_action_error = "Các tài liệu đã chọn gặp lỗi khi chuẩn bị. Hãy bấm “Thử chuẩn bị lại” ở danh sách nguồn trước khi Hỏi."
+                                            st.session_state.wsc_last_ai_badge = None
+                                            safe_rerun()
+                                else:
+                                    # Broad query or multiple documents matched
+                                    if ready_sources:
+                                        query_relevant_sources = ready_sources
+                                        if unready_sources:
+                                            st.toast(
+                                                t(
+                                                    "non_blocking_search_ready_toast",
+                                                    locale=current_ui_locale,
+                                                    ready_count=len(ready_sources),
+                                                    unready_count=len(unready_sources),
+                                                )
+                                            )
+                                    elif unavailable_sources:
+                                        st.session_state.wsc_action_error = t(
+                                            "bge_search_unavailable",
+                                            locale=current_ui_locale,
+                                        )
+                                        st.session_state.wsc_last_ai_badge = None
+                                        safe_rerun()
+                                    elif waiting_sources:
+                                        for src in non_empty_sources:
+                                            promote_workspace_chat_source_priority(src.source_scope, src.source_id, "interactive")
+                                        st.session_state[_PENDING_SOURCE_SUBMISSION_KEY] = _new_pending_source_submission(
+                                            conversation_id=active_conversation.id,
+                                            question=q_text,
+                                            selection_keys=tuple(sorted(
+                                                (selection.source_scope, selection.source_id)
+                                                for selection in enabled_selections
+                                            )),
+                                            required_sources=tuple(non_empty_sources),
+                                        )
+                                        st.session_state.wsc_action_message = (
+                                            "AIOS đang chuẩn bị tài liệu liên quan và sẽ tự tiếp tục câu hỏi này khi hoàn tất."
+                                        )
                                         st.session_state.wsc_last_ai_badge = None
                                         safe_rerun()
                                     else:
-                                        st.session_state.wsc_action_error = t("broad_query_unready_error", locale=current_ui_locale)
+                                        st.session_state.wsc_action_error = "Các tài liệu đã chọn gặp lỗi khi chuẩn bị. Hãy bấm “Thử chuẩn bị lại” ở danh sách nguồn trước khi Hỏi."
                                         st.session_state.wsc_last_ai_badge = None
                                         safe_rerun()
-                                else:
-                                    schedule_workspace_chat_source_preparation(query_relevant_sources)
-
-                                preparation_states = get_workspace_chat_source_preparation_status(
-                                    query_relevant_sources
-                                )
-                                ready_in_scope = tuple(
-                                    s for s in query_relevant_sources
-                                    if preparation_states.get(f"{s.source_scope}:{s.source_id}") == "ready"
-                                )
-                                failed_sources = [identity for identity, state in preparation_states.items() if state == "failed"]
-                                unavailable_sources = [identity for identity, state in preparation_states.items() if state == "unavailable"]
-                                waiting_sources = [identity for identity, state in preparation_states.items() if state != "ready" and state != "failed"]
-
-                                if ready_in_scope:
-                                    # Immediate answer using all sources that are already ready
-                                    query_relevant_sources = ready_in_scope
-                                elif unavailable_sources:
-                                    st.session_state.wsc_action_error = t(
-                                        "bge_search_unavailable",
-                                        locale=current_ui_locale,
-                                    )
-                                    st.session_state.wsc_last_ai_badge = None
-                                    safe_rerun()
-                                elif failed_sources:
-                                    st.session_state.wsc_action_error = "Có nguồn chuẩn bị thất bại. Hãy bấm “Thử chuẩn bị lại” ở danh sách nguồn trước khi Hỏi."
-                                    st.session_state.wsc_last_ai_badge = None
-                                    safe_rerun()
-                                elif waiting_sources:
-                                    for src in query_relevant_sources:
-                                        promote_workspace_chat_source_priority(src.source_scope, src.source_id, "interactive")
-                                    st.session_state[_PENDING_SOURCE_SUBMISSION_KEY] = _new_pending_source_submission(
-                                        conversation_id=active_conversation.id,
-                                        question=q_text,
-                                        selection_keys=tuple(sorted(
-                                            (selection.source_scope, selection.source_id)
-                                            for selection in enabled_selections
-                                        )),
-                                        required_sources=tuple(query_relevant_sources),
-                                    )
-                                    st.session_state.wsc_action_message = (
-                                        "AIOS đang chuẩn bị tài liệu liên quan và sẽ tự tiếp tục câu hỏi này khi hoàn tất."
-                                    )
-                                    st.session_state.wsc_last_ai_badge = None
-                                    safe_rerun()
-                                else:
-                                    st.session_state.wsc_action_error = "Không có tài liệu nào sẵn sàng để trả lời."
-                                    st.session_state.wsc_last_ai_badge = None
-                                    safe_rerun()
 
                                 current_keys = tuple(sorted((s.source_scope, s.source_id) for s in packed_sources))
 

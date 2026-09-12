@@ -374,9 +374,7 @@ def _resolve_reranker_backend(
         if config.bge_reranker_model_path is None:
             if config.retrieval_profile == "bge_m3_hybrid":
                 return None, ""
-            raise SemanticBackendUnavailable(
-                "BGE reranker profile requires bge_reranker_model_path"
-            )
+            return None, "reranker_not_configured"
         if not config.bge_reranker_model_revision.strip():
             raise SemanticBackendUnavailable(
                 "BGE reranker profile requires a pinned model revision"
@@ -488,7 +486,11 @@ class RagV2DevPipeline:
                 capability.reason if capability is not None
                 else "embedding_backend_not_configured"
             )
-        elif not retrieval_lab and self.config.retrieval_profile == "hybrid_rerank" and reranker_reason:
+        elif (
+            self.config.retrieval_profile in {
+                "hybrid_rerank", "bge_m3_hybrid_rerank", "bge_m3_hybrid_rerank_expand"
+            }
+        ) and reranker_reason:
             self._effective_retrieval_profile = "hybrid"
             self._degraded_reason = reranker_reason
         self.circuit_breaker = CircuitBreaker()
@@ -696,7 +698,15 @@ class RagV2DevPipeline:
                     or not reranker.capability.available
                 ):
                     degraded = True
-                    degraded_reason = "reranker_backend_unavailable"
+                    degraded_reason = (
+                        self._degraded_reason
+                        if self._degraded_reason == "reranker_not_configured"
+                        else (
+                            "reranker_not_configured"
+                            if self.config.bge_reranker_model_path is None
+                            else "reranker_backend_unavailable"
+                        )
+                    )
                 else:
                     try:
                         if response.results:
@@ -747,7 +757,12 @@ class RagV2DevPipeline:
             # already-truncated top-N result, which made it effectively the same
             # retrieval as Fast whenever N equalled rerank_limit.
             should_rerank = rerank_requested or (
-                effective_profile in {"hybrid_rerank", "hybrid_rerank_expand"}
+                effective_profile in {
+                    "hybrid_rerank",
+                    "hybrid_rerank_expand",
+                    "bge_m3_hybrid_rerank",
+                    "bge_m3_hybrid_rerank_expand",
+                }
             )
             pre_rerank_limit = self.config.retrieval_limit
             if should_rerank:
@@ -778,7 +793,15 @@ class RagV2DevPipeline:
                     or not reranker.capability.available
                 ):
                     degraded = True
-                    degraded_reason = "reranker_backend_unavailable"
+                    degraded_reason = (
+                        self._degraded_reason
+                        if self._degraded_reason == "reranker_not_configured"
+                        else (
+                            "reranker_not_configured"
+                            if self.config.bge_reranker_model_path is None
+                            else "reranker_backend_unavailable"
+                        )
+                    )
                 else:
                     try:
                         if response.results:
@@ -811,7 +834,7 @@ class RagV2DevPipeline:
                         degraded_reason = _safe_reranker_error_code(rerank_exc)
                         reranker_applied = False
                         effective_path = "hybrid"
-                        if self.config.retrieval_profile in {"hybrid_rerank", "hybrid_rerank_expand"}:
+                        if self.config.retrieval_profile in {"hybrid_rerank", "hybrid_rerank_expand", "bge_m3_hybrid_rerank", "bge_m3_hybrid_rerank_expand"}:
                             self._effective_retrieval_profile = "hybrid"
                             self._degraded_reason = degraded_reason
 
@@ -922,7 +945,7 @@ class RagV2DevPipeline:
                 "capability": "reranker",
                 "available": False,
                 "backend": "not_configured",
-                "reason": self._degraded_reason if requested_profile == "hybrid_rerank" else "",
+                "reason": self._degraded_reason if requested_profile in {"hybrid_rerank", "bge_m3_hybrid_rerank", "bge_m3_hybrid_rerank_expand"} else "",
                 "model": None,
             }
         )

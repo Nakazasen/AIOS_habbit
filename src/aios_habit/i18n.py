@@ -234,6 +234,9 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
         "broad_query_unready_error": "Câu hỏi này còn quá rộng trong khi có tài liệu chưa sẵn sàng. Hãy nêu tên hệ thống/tài liệu hoặc bật riêng nguồn cần hỏi để AIOS chỉ chuẩn bị phần liên quan.",
         "resumed_pending_question": "Tài liệu đã sẵn sàng. AIOS đang tiếp tục câu hỏi của bạn.",
         "cancelled_pending_question_notice": "Đã hủy câu hỏi đang chờ. AIOS vẫn có thể hoàn tất việc chuẩn bị ở nền.",
+        "non_blocking_preparation_partial_info": "ℹ️ AIOS đang chuẩn bị {unready_count} tài liệu ở chế độ nền. Bạn có thể hỏi đáp bình thường với {ready_count} tài liệu đã sẵn sàng.",
+        "non_blocking_preparation_wait_info": "ℹ️ AIOS đang chuẩn bị {unready_count} tài liệu ở chế độ nền. Vui lòng đợi trong giây lát để bắt đầu hỏi đáp.",
+        "non_blocking_search_ready_toast": "AIOS đang tìm kiếm trên {ready_count} tài liệu đã sẵn sàng ({unready_count} tài liệu đang được chuẩn bị ở chế độ nền).",
 
         # Modal & Toast Notifications
         "archive_confirm_prompt": "Sổ này sẽ được ẩn khỏi danh sách chính. Dữ liệu bên trong không bị xóa.",
@@ -891,6 +894,9 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
         "broad_query_unready_error": "一部のドキュメントの準備が完了していないため、この質問は範囲が広すぎます。システム名やドキュメント名を指定するか、必要なソースのみを有効にしてください。",
         "resumed_pending_question": "ドキュメントの準備が完了しました。AIOSは質問の処理を継続しています。",
         "cancelled_pending_question_notice": "待機中の質問をキャンセルしました。AIOSはバックグラウンドで準備を完了できます。",
+        "non_blocking_preparation_partial_info": "ℹ️ AIOSはバックグラウンドで {unready_count} 件の資料を準備中です。準備が完了している {ready_count} 件の資料で通常通り質問できます。",
+        "non_blocking_preparation_wait_info": "ℹ️ AIOSはバックグラウンドで {unready_count} 件の資料を準備中です。質問を開始するまでしばらくお待ちください。",
+        "non_blocking_search_ready_toast": "AIOSは準備完了した {ready_count} 件の資料で検索しています（{unready_count} 件の資料をバックグラウンドで準備中）。",
 
         # Modal & Toast Notifications
         "archive_confirm_prompt": "このノートはメインリストから非表示になります。データは削除されません。",
@@ -1548,6 +1554,9 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
         "broad_query_unready_error": "在文档尚未就绪时，该问题范围过宽。请指明系统/文档名称，或仅启用所需来源以减少准备范围。",
         "resumed_pending_question": "文档已准备就绪。AIOS正在继续处理您的问题。",
         "cancelled_pending_question_notice": "已取消等待中的问题。AIOS仍可在后台完成准备。",
+        "non_blocking_preparation_partial_info": "ℹ️ AIOS正在后台准备 {unready_count} 份资料。您可以针对已就绪的 {ready_count} 份资料正常提问。",
+        "non_blocking_preparation_wait_info": "ℹ️ AIOS正在后台准备 {unready_count} 份资料。请稍候片刻再开始提问。",
+        "non_blocking_search_ready_toast": "AIOS正在对已就绪的 {ready_count} 份资料进行搜索（后台正在准备 {unready_count} 份资料）。",
 
         # Modal & Toast Notifications
         "archive_confirm_prompt": "此笔记本将从主列表中隐藏。内部数据不会被删除。",
