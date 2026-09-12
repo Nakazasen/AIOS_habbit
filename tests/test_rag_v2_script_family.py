@@ -18,6 +18,30 @@ def test_majority_requires_strict_majority():
     assert majority_script(["製造", "手順", "完工", "hello"]) == "cjk"
 
 
+def test_latin_query_needs_cjk_expansion_when_corpus_has_cjk():
+    from aios_habit.rag_v2.script_family import corpus_needs_cjk_query_expansion
+
+    mixed = [
+        "Trang tính: MOM上処理(入庫までのデータ)",
+        "製造手順書 完工登録",
+        "品質管理 検査",
+        "安全規則",
+        "作業手順",
+        "設備メンテナンス",
+        "入庫済みデータ",
+        "Container_Start セクション目的",
+        "english header only",
+    ]
+    assert corpus_needs_cjk_query_expansion(
+        "What are the steps to register production completion?",
+        mixed,
+    )
+    assert not corpus_needs_cjk_query_expansion(
+        "What are the steps to register production completion?",
+        ["english only", "another latin file"],
+    )
+
+
 def test_query_mismatch_latin_against_cjk_corpus():
     corpus = ["製造手順書", "完工登録", "設備メンテナンス", "品質管理", "安全規則", "作業手順"]
     assert query_corpus_script_mismatch("What are the steps to register completion?", corpus) is True

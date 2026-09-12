@@ -437,6 +437,76 @@ def test_facet_aware_retrieval_preserves_coverage_with_tight_budget(tmp_path):
     assert response.results[1].matched_query_facets == ("query", "facet_2")
 
 
+def _result(chunk_id, document_id, source_name, *, target_hits=0.0, text=None):
+    return SearchResult(
+        chunk_id=chunk_id,
+        score=1.0,
+        text=text or f"unique text for {chunk_id}",
+        document_id=document_id,
+        source_path=f"/workspace/{source_name}",
+        source_name=source_name,
+        file_type="txt",
+        metadata={},
+        privacy_labels=("allowed",),
+        ranking_signals={"target_term_match_count": target_hits, "fused_rrf": 1.0},
+        matched_terms=("register", "completion") if target_hits else (),
+    )
+
+
+def test_procedure_script_mismatch_keeps_cjk_chunks():
+    from aios_habit.rag_v2.index import _select_hybrid_results
+    from aios_habit.rag_v2.query_planning import identity_query_plan
+
+    plan = identity_query_plan("What are the steps to register production completion?")
+    assert plan.intent_category == "procedure"
+    ranked = [
+        _result("latin", "doc-latin", "completion notes.txt", target_hits=1.0),
+        _result("cjk-a", "doc-a", "製造手順書.txt"),
+        _result("cjk-b", "doc-b", "完工登録.txt"),
+        _result("cjk-c", "doc-c", "品質管理.txt"),
+        _result("cjk-d", "doc-d", "安全規則.txt"),
+    ]
+    selected, _rejected = _select_hybrid_results(
+        ranked,
+        plan,
+        limit=5,
+        per_document_limit=5,
+        near_duplicate_threshold=0.99,
+    )
+    assert {item.chunk_id for item in selected} >= {"latin", "cjk-a", "cjk-b"}
+
+
+def test_cjk_expansion_skips_english_target_gate_on_hashed_names():
+    from aios_habit.rag_v2.index import _select_hybrid_results
+    from aios_habit.rag_v2.query_planning import build_query_plan
+    from aios_habit.rag_v2.multilingual_query_expand import parse_expansion_payload
+
+    expansion = parse_expansion_payload(
+        '{"variants":[{"text":"生産完了 登録 手順","language_hint":"ja"}]}',
+        original_query="What are the steps to register production completion?",
+        require_script="cjk",
+    )
+    plan = build_query_plan(
+        "What are the steps to register production completion?",
+        expansion,
+    )
+    ranked = [
+        _result("latin", "doc-latin", "wsc-aaaa.txt", target_hits=1.0, text="Container_Start register"),
+        _result("cjk-hit", "doc-cjk", "wsc-bbbb.txt", text="生産完了の登録手順を次に示す。"),
+        _result("cjk-b", "doc-b", "wsc-cccc.txt", text="完工登録の確認事項。"),
+        _result("cjk-c", "doc-c", "wsc-dddd.txt", text="品質管理の手順。"),
+        _result("cjk-d", "doc-d", "wsc-eeee.txt", text="安全規則の要点。"),
+    ]
+    selected, _rejected = _select_hybrid_results(
+        ranked,
+        plan,
+        limit=5,
+        per_document_limit=5,
+        near_duplicate_threshold=0.99,
+    )
+    assert "cjk-hit" in {item.chunk_id for item in selected}
+
+
 def test_generic_planning_does_not_apply_domain_diagnosis_ranking_playbooks(tmp_path):
     from aios_habit.rag_v2.query_planning import identity_query_plan
 

@@ -34,6 +34,19 @@ def majority_script(texts: Sequence[str]) -> Optional[str]:
     return family
 
 
+def plan_has_cjk_variants(plan: object) -> bool:
+    variants = getattr(plan, "variants", ()) or ()
+    return any(script_family(getattr(item, "text", "")) == "cjk" for item in variants)
+
+
+def corpus_needs_cjk_query_expansion(query: str, corpus_texts: Iterable[str]) -> bool:
+    """Latin questions against a CJK-bearing corpus need extra search strings."""
+    if script_family(query) != "latin":
+        return False
+    hits = sum(1 for item in corpus_texts if _CJK_RE.search(str(item or "")))
+    return hits >= 8
+
+
 def query_corpus_script_mismatch(query: str, corpus_texts: Iterable[str]) -> bool:
     query_family = script_family(query)
     majority = majority_script(tuple(corpus_texts))

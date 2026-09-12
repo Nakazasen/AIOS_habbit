@@ -23,6 +23,7 @@ from .query_planning import (
 )
 from .script_family import (
     MISMATCH_CHANNEL_WEIGHTS,
+    plan_has_cjk_variants,
     should_retry_thin_results,
     uses_script_mismatch_ranking,
 )
@@ -430,6 +431,12 @@ def _select_hybrid_results(
     def has_target_support(result: SearchResult) -> bool:
         if semantic_floor is not None:
             return result.ranking_signals.get("multivector_score", -math.inf) >= semantic_floor
+        if plan_has_cjk_variants(plan) or uses_script_mismatch_ranking(
+            plan.original_query,
+            tuple((item.source_name or "") + " " + (item.text or "")[:200] for item in ranked),
+        ):
+            # Latin query terms must not veto CJK procedure manuals.
+            return True
         return (
             plan.intent_category != "procedure"
             or not plan.target_terms
@@ -2679,6 +2686,8 @@ class LocalChunkIndex:
 
         def candidate_has_target_support(candidate: Mapping[str, Any]) -> bool:
             if query_plan.intent_category != "procedure" or not query_plan.target_terms:
+                return True
+            if plan_has_cjk_variants(query_plan):
                 return True
             return (
                 float(candidate.get("target_match_count", 0.0)) > 0.0

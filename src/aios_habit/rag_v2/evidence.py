@@ -20,6 +20,7 @@ from .query_planning import (
     coerce_query_plan,
     extract_content_terms,
 )
+from .script_family import plan_has_cjk_variants, query_corpus_script_mismatch
 
 
 # ---------------------------------------------------------------------------
@@ -534,10 +535,16 @@ def build_evidence_pack(
     target_supported_results = tuple(
         result for result in results if has_direct_target_support(result)
     )
+    script_mismatch = query_corpus_script_mismatch(
+        query_plan.original_query,
+        tuple((result.source_name or "") + " " + (result.text or "")[:200] for result in results),
+    )
     selection_results = (
         target_supported_results
         if query_plan.intent_category in {"procedure", "diagnosis", "compare_change"}
         and target_supported_results
+        and not script_mismatch
+        and not plan_has_cjk_variants(query_plan)
         else results
     )
     uncovered_obligations = set(response.summary.planned_obligation_ids)

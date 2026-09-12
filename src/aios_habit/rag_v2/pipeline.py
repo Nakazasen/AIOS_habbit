@@ -19,6 +19,7 @@ from .index import (
     fuse_ranked_channels,
 )
 from .query_planning import RetrievalQueryPlan, build_query_plan, coerce_query_plan
+from .script_family import query_corpus_script_mismatch
 from .registry import ConverterRegistry
 from .schema import ExtractionStatus
 from .semantic import (
@@ -864,6 +865,16 @@ class RagV2DevPipeline:
                 evidence_config,
                 min_final_evidence_term_coverage=min(0.05, evidence_config.min_final_evidence_term_coverage),
                 min_semantic_support_score=min(0.1, evidence_config.min_semantic_support_score)
+            )
+        result_names = tuple(
+            f"{result.source_name or ''} {(result.text or '')[:200]}"
+            for result in response.results
+        )
+        if query_corpus_script_mismatch(plan.original_query, result_names):
+            evidence_config = replace(
+                evidence_config,
+                min_final_evidence_term_coverage=0.0,
+                min_term_coverage=0.0,
             )
         if (
             plan.intent_category in {"procedure", "actionable_output", "diagnosis"}
