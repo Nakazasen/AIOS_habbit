@@ -9,8 +9,33 @@ from typing import Any, Mapping, Optional, Sequence
 from aios_habit.rag_v2.script_family import script_family
 
 _JSON_OBJECT_RE = re.compile(r"\{.*\}", re.DOTALL)
+_ANCHOR_RE = re.compile(r"\b[A-Za-z][A-Za-z0-9_\-]{1,}\b")
+_ANCHOR_STOP = frozenset({
+    "a", "an", "and", "are", "as", "at", "be", "by", "can", "do", "does", "for",
+    "from", "how", "in", "into", "is", "it", "of", "on", "or", "should", "than",
+    "that", "the", "them", "then", "this", "to", "what", "when", "where", "which",
+    "who", "why", "with", "using", "must", "also", "just", "only", "other",
+})
+_TITLE_SKIP = frozenset({
+    "summarize", "create", "compare", "identify", "describe", "explain", "list",
+    "provide", "available", "documented", "highlight", "including", "connected",
+    "overall", "actionable",
+})
+
+
+def _keep_latin_anchor(token: str) -> bool:
+    key = token.casefold()
+    if key in _ANCHOR_STOP or key in _TITLE_SKIP or len(token) < 2:
+        return False
+    if any(character.isdigit() for character in token):
+        return True
+    if token.isupper():
+        return True
+    if sum(1 for character in token if character.isupper()) >= 2:
+        return True
+    return token[0].isupper() and len(token) >= 4
 _MAX_VARIANTS = 3
-_MAX_VARIANT_CHARS = 160
+_MAX_VARIANT_CHARS = 180
 
 EXPAND_SYSTEM_PROMPT = (
     "You write short search queries for a local factory document index.\n"
@@ -19,10 +44,36 @@ EXPAND_SYSTEM_PROMPT = (
     '{"variants":[{"text":"...","language_hint":"ja"}]}\n'
     "Rules:\n"
     "- 2 or 3 short queries a technician would type in the document script.\n"
+    "- Keep Latin acronyms and CamelCase tokens from the question unchanged.\n"
     "- Do not invent product names, file names, or table names.\n"
     "- Do not repeat the original question unchanged.\n"
     "- Do not include document contents; you only rewrite the question."
 )
+
+
+def latin_query_anchors(original_query: str) -> tuple[str, ...]:
+    """Keep user-typed Latin codes; skip closed-class English words."""
+    found: list[str] = []
+    seen: set[str] = set()
+    for match in _ANCHOR_RE.finditer(original_query or ""):
+        token = match.group(0)
+        key = token.casefold()
+        if not _keep_latin_anchor(token) or key in seen:
+            continue
+        seen.add(key)
+        found.append(token)
+    return tuple(found)
+
+
+def mix_original_anchors(original_query: str, variant_text: str) -> str:
+    mixed = variant_text
+    for token in latin_query_anchors(original_query):
+        if token.casefold() in mixed.casefold():
+            continue
+        candidate = f"{mixed} {token}".strip()
+        if len(candidate) <= _MAX_VARIANT_CHARS:
+            mixed = candidate
+    return mixed
 
 
 def parse_expansion_payload(
@@ -60,6 +111,9 @@ def parse_expansion_payload(
         ):
             continue
         if require_script and script_family(variant_text) != require_script:
+            continue
+        variant_text = mix_original_anchors(original_query, variant_text)
+        if variant_text.casefold() in seen:
             continue
         seen.add(variant_text.casefold())
         hint = str(item.get("language_hint") or require_script or "unknown")[:24]

@@ -59,7 +59,7 @@ STAGE_MANIFEST = (
     / "workspace_stage_manifest.json"
 )
 DEPLOYMENT = PROJECT_ROOT / "config/workspace_chat_rag_v2.local.json"
-OUT_DIR = PROJECT_ROOT / "local_runs" / "bq10_polished_expand3"
+OUT_DIR = PROJECT_ROOT / "local_runs" / "bq10_polished_expand4"
 
 
 def _pack_context(items: list[dict], names: dict[str, str]) -> str:

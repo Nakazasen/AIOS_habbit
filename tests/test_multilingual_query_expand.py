@@ -2,6 +2,23 @@ from aios_habit.rag_v2.multilingual_query_expand import parse_expansion_payload
 from aios_habit.rag_v2.query_planning import build_query_plan
 
 
+def test_latin_codes_from_question_are_mixed_into_cjk_variants():
+    from aios_habit.rag_v2.multilingual_query_expand import mix_original_anchors
+
+    mixed = mix_original_anchors(
+        "Summarize the Matecon material-handling operation procedure",
+        "搬送作業 標準作業手順書",
+    )
+    assert "Matecon" in mixed
+    assert "Summarize" not in mixed
+    assert "How" not in mixed
+    wms = mix_original_anchors(
+        "How does the WMS system connect to production management?",
+        "倉庫管理システム 生産管理 接続方法",
+    )
+    assert "WMS" in wms
+
+
 def test_parse_expansion_keeps_cjk_search_queries():
     raw = """
     ```json

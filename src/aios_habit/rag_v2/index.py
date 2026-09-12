@@ -1971,6 +1971,8 @@ class LocalChunkIndex:
         plan = coerce_query_plan(query)
         if plan.intent_category == "cross_source_synthesis":
             limit = max(limit, getattr(plan, "target_retrieval_limit", limit))
+        if plan_has_cjk_variants(plan):
+            limit = max(limit, 25)
         if ranking_config is None:
             source_names = self._sample_source_names()
             if uses_script_mismatch_ranking(plan.original_query, source_names):
