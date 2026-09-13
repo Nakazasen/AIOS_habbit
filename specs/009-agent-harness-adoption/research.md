@@ -1,5 +1,13 @@
 # Nghiên cứu và quyết định
 
+## 0. Cấm over-engineer; trợ lý hàng ngày chứ không phải khung Agent
+
+**Quyết định**: đo thành công bằng việc người dùng giao một câu và nhận file/kết quả dùng được, rồi muốn làm việc tiếp. Không đo bằng số lớp, schema hay màn hình quyền. Hợp đồng kỹ thuật chỉ cho người viết mã.
+
+**Lý do**: báo cáo lỗi hay rà soát công đoạn mà AI nào cũng viết được thì giá trị nằm ở chỗ **xong ngay trong Chat, đúng nguồn, hoàn tác được, mở lại được** — không nằm ở thêm quy trình ban hành hay harness.
+
+**Phương án đã loại**: nền tảng đa Agent, IDE, duyệt từng bước, «bản nháp chờ ban hành» cho file báo cáo.
+
 ## 1. Giữ cầu nối AI, chỉ thay cầu nối Agent lập trình cũ
 
 **Quyết định**: giữ `antigravity_bridge.py` cùng các tuyến `gemini_web`, `cagent_api` và `nakazasen_router`. Goal 009 chỉ thay `workspace_agent_bridge_client.py`, tức cầu nối NVIDIA thử nghiệm cho thao tác lập trình.
@@ -32,13 +40,13 @@ Nguồn tham khảo: [OpenCode server](https://opencode.ai/docs/server/), [OpenC
 
 **Lý do**: `ask` liên tục làm mất giá trị tự động hóa và gây khó cho người không chuyên. An toàn đến từ giới hạn vùng, checkpoint, kiểm tra kết quả và hoàn tác, không đến từ việc bắt người dùng xác nhận mọi lệnh.
 
-## 4. Người dùng duyệt kết quả, không duyệt toàn bộ diff
+## 4. Người dùng xem kết quả đã xong, không duyệt từng bước
 
-**Quyết định**: màn hình mặc định là thẻ kết quả tiếng Việt gồm mục tiêu, đầu ra, căn cứ, kiểm tra, rủi ro và bước tiếp theo. `diff`, terminal, digest và receipt nằm trong phần chi tiết đóng mặc định.
+**Quyết định**: màn hình mặc định là thẻ kết quả tiếng Việt. Việc US1/US2 hiện «Đã xong» ngay sau verifier. Việc US3 xong trong worktree khi test quan sát được đạt. `diff`, terminal, digest đóng mặc định. Không có cổng duyệt người trên đường chính.
 
-**Lý do**: người dùng không chuyên không thể đánh giá độ đúng chỉ bằng raw diff. AIOS phải chạy kiểm tra thật và dịch kết quả thành tác động công việc. Với báo cáo/bản nháp, lưu tự động và cho hoàn tác. Với mã nguồn, người dùng chọn “Dùng kết quả” hoặc “Hoàn tác” ở cấp kết quả toàn nhiệm vụ.
+**Lý do**: người không chuyên bỏ cuộc nếu phải duyệt lệnh, hunk hay từng finding. An toàn đến từ vùng làm việc, chặn secret/commit/SOP chính thức, provenance số liệu và hoàn tác — không đến từ hàng loạt nút «Xác nhận».
 
-**Phương án đã loại**: partial-hunk approval ở MVP. Nó làm tăng mô hình dữ liệu, verifier và tải nhận thức nhưng không giúp người dùng mục tiêu ra quyết định tốt hơn.
+**Phương án đã loại**: partial-hunk approval; bắt «Dùng kết quả» mới tính hoàn tất; reviewer độc lập là điều kiện ra G6 kỹ thuật.
 
 ## 5. Báo cáo có biểu đồ phải dựa trên số liệu thật
 
@@ -48,9 +56,9 @@ Nguồn tham khảo: [OpenCode server](https://opencode.ai/docs/server/), [OpenC
 
 ## 6. Rà soát thiết kế công đoạn là phân tích có căn cứ, không phải tự phê duyệt
 
-**Quyết định**: dùng evidence pack từ đúng tài liệu người dùng chọn. Đầu ra tách rõ hiện trạng, phát hiện có nguồn, ảnh hưởng, đề xuất và câu hỏi cần xác nhận. Có thể tạo sơ đồ hiện tại/đề xuất nhưng chỉ lưu bản nháp.
+**Quyết định**: gán nguồn `guideline` / `design` / `context` theo hợp đồng US2. Mỗi điều luật có `pass`/`violate`/`insufficient`. Bản nháp tự xong; không ghi đè tài liệu chính thức. Câu hỏi chuyên gia không chặn «Đã xong».
 
-**Lý do**: tài liệu công đoạn có thể mâu thuẫn theo phiên bản hoặc phạm vi. AIOS hữu ích khi chỉ ra chỗ sai/thiếu và lý do, nhưng không được tự thay giới hạn sản xuất, SOP hoặc trách nhiệm phê duyệt.
+**Lý do**: kỹ sư cần biết bản thiết kế có lệch Guideline không, không cần một vòng phê duyệt trên UI. Ban hành SOP vẫn là việc ngoài Goal 009.
 
 ## 7. Worktree cho mã, checkpoint cho artifact
 

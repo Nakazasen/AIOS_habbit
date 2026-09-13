@@ -1,5 +1,7 @@
 # Hợp đồng báo cáo lỗi Agent phiên bản 1
 
+> **Không nhầm với US1.** File này chỉ mô tả khi **chính nhiệm vụ Agent gãy** (runtime, policy, test, rollback). Báo cáo lỗi kỹ thuật xưởng (log, Excel, hiện tượng trên line) nằm ở [agent-factory-error-report-v1.md](agent-factory-error-report-v1.md). Gemini không được dùng schema này để viết báo cáo xưởng.
+
 ## 1. Mục đích
 
 `aios_agent_error_report_v1` là payload duy nhất để persistence, Workspace Chat, Code-OSS và CLI trình bày lỗi của task Agent. Producer phải tạo báo cáo từ event/receipt quan sát được; UI không tự ghép raw exception và không đoán trạng thái.

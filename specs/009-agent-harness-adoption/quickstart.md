@@ -59,7 +59,7 @@ Chạy hai fixture:
 - Fixture đủ log/số liệu: tạo Markdown báo cáo, bảng và ít nhất một biểu đồ/sơ đồ có `source_refs`, cột, đơn vị, phép lọc/tổng hợp và data digest.
 - Fixture thiếu số liệu: vẫn tạo báo cáo và cảnh báo rõ, nhưng không tạo biểu đồ giả.
 
-Xác minh bản nháp được tự lưu, mở được và hoàn tác không làm mất file có trước.
+Xác minh file báo cáo được tự lưu, mở được và hoàn tác không làm mất file có trước.
 
 ## 5. G3 — Rà soát thiết kế công đoạn
 
@@ -87,9 +87,9 @@ Kịch bản tối thiểu:
 1. Agent sửa bug fixture trong worktree.
 2. Test đầu tiên lỗi; Agent sửa tiếp trong budget; test sau đạt.
 3. UI tóm tắt bằng tiếng Việt, không bắt mở `diff`.
-4. “Dùng kết quả” chỉ đổi đúng file trong checkpoint khi workspace không xung đột.
-5. “Hoàn tác” khôi phục trạng thái trước task.
-6. Workspace bẩn hoặc file đổi giữa chừng không bị ghi đè.
+4. Test đạt = việc xong trong worktree; không bắt bấm «Dùng kết quả».
+5. «Hoàn tác» khôi phục trạng thái trước task.
+6. «Đưa vào thư mục đang làm» tùy chọn, chỉ khi không xung đột; workspace bẩn không bị ghi đè.
 
 ## 7. G5 — Hàng đợi và UX không chuyên
 
@@ -124,7 +124,7 @@ Ngoài ra phải kiểm tra:
 - không secret, traceback, đường dẫn tuyệt đối hoặc transcript thô trên UI/Case;
 - đường dẫn Windows có khoảng trắng/tiếng Việt không lỗi;
 - restart không lặp thao tác ghi;
-- reviewer độc lập đối chiếu SC-001–SC-007 trước khi đổi Goal thành `DONE`.
+- SC-001–SC-008 được đối chiếu bằng test/fixture trong các lệnh trên. `TECHNICAL_PASS` khi lệnh xanh. Không chờ người ngồi duyệt. `DONE` vận hành là bước sau, không chặn triển khai cổng.
 
 ## 9. Ma trận kết quả tối thiểu
 

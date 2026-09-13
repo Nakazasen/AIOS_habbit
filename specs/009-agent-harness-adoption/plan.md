@@ -2,19 +2,15 @@
 
 ## 1. Tóm tắt
 
-Goal 009 được thu gọn thành một vòng dọc có ích ngay trong Workspace Chat:
+Goal 009 làm Workspace Chat thành trợ lý việc hằng ngày: nói tiếng Việt, nhận file/kết quả, muốn mở lại. Cảm giác Grokbot; dữ liệu ở máy mình.
 
 ```text
-Người dùng giao việc bằng tiếng Việt
-→ AIOS lấy tài liệu và file được chọn làm tri thức nền
-→ OpenCode đọc, tạo hoặc sửa trong vùng làm việc có checkpoint
-→ AIOS kiểm tra nguồn, biểu đồ, file và kết quả test
-→ hiện kết quả đời thường; cho dùng kết quả hoặc hoàn tác
+Chọn nguồn → nói việc → tự làm → «Đã xong» + mở file + hoàn tác
 ```
 
-Vòng đầu phục vụ ba đầu ra: báo cáo lỗi có bảng/biểu đồ, bản rà soát thiết kế công đoạn có dẫn nguồn và bản sửa mã đã chạy test. Một hàng đợi nhỏ cho phép giao nhiều việc, nhưng mỗi workspace chỉ có một tác vụ ghi file tại một thời điểm.
+Ba việc: báo cáo lỗi dùng được; rà soát Guideline vs thiết kế; sửa mã có test. Hàng đợi nhỏ. Một workspace một việc ghi file tại một thời điểm.
 
-Không dựng editor, terminal, scheduler phân tán, cơ sở dữ liệu phiên hoặc nền tảng đa Agent mới. Không yêu cầu người dùng không chuyên duyệt toàn bộ `diff` hay từng lệnh.
+**Cấm over-engineer.** Dùng Chat, extractors, visual, metadata việc hiện có. Một adapter runtime. Không IDE, terminal, DB phiên, scheduler, đa Agent, màn quyền. Hai cách cùng đạt: ít code hơn.
 
 ## 2. Bối cảnh kỹ thuật
 
@@ -85,31 +81,31 @@ Không dùng `deny` cho mọi thứ. Dùng quyền theo vùng:
 - **Luôn từ chối**: thoát workspace, đọc `.env`/secret/vùng cấm, quyền quản trị, sửa hệ thống, gửi dữ liệu sai tuyến, commit, push, merge và deploy.
 - **Tạm chưa hỗ trợ**: xóa/đổi tên hàng loạt, thay tài liệu công đoạn chính thức, thay thông số vận hành thật.
 
-Người dùng không phê duyệt từng tool call. Báo cáo/bản nháp được tự lưu. Với mã nguồn, Agent hoàn tất trong worktree rồi hiện “Dùng kết quả” hoặc “Hoàn tác”; xem `diff` là tùy chọn dành cho người muốn kiểm tra kỹ thuật.
+Người dùng không phê duyệt từng tool call và không duyệt từng finding. Báo cáo lỗi là file dùng được, tự lưu và hiện «Đã xong». Với mã nguồn, xong trong worktree khi test quan sát được đạt; «Hoàn tác» luôn có; «Đưa vào thư mục đang làm» tùy chọn khi không xung đột. `diff` đóng mặc định.
 
 ### 5.3 Ba loại đầu ra
 
 #### Báo cáo lỗi kỹ thuật
 
-- Dùng mẫu hiện có hoặc mẫu tối thiểu: hiện tượng, phạm vi ảnh hưởng, bằng chứng, phân tích, giả thuyết, hành động tiếp theo.
+- File kết quả dùng được, không phải bản nháp chờ ban hành. Mẫu tối thiểu: hiện tượng, phạm vi ảnh hưởng, bằng chứng, phân tích, giả thuyết, hành động tiếp theo.
 - Tạo bảng và biểu đồ khi dữ liệu có trục, đơn vị, phạm vi và nguồn rõ.
 - Mỗi biểu đồ lưu nguồn dữ liệu, phép lọc/tổng hợp và cảnh báo thiếu dữ liệu.
 - Nếu không đủ số liệu, xuất bảng hoặc mô tả thay vì vẽ biểu đồ trang trí.
 
 #### Rà soát thiết kế công đoạn
 
-- Nhận tài liệu người dùng đã chọn làm phạm vi bằng chứng.
-- So sánh bước công việc, giới hạn, điểm kiểm tra, trách nhiệm và phiên bản tài liệu.
-- Đầu ra tách năm phần: hiện trạng có nguồn; điểm sai/mâu thuẫn/thiếu; ảnh hưởng; đề xuất; câu hỏi cần chuyên gia xác nhận.
-- Có thể tạo sơ đồ Mermaid “hiện tại” và “đề xuất” bằng khả năng trực quan hóa đang có.
-- Chỉ tạo bản nháp; không sửa SOP/JIG/tiêu chuẩn chính thức.
+- Gán nguồn: Guideline/tiêu chuẩn = luật; bản thiết kế/SOP nháp = đối tượng; MOM/log/bản vẽ = ngữ cảnh. Chi tiết [agent-process-design-review-v1.md](contracts/agent-process-design-review-v1.md).
+- Mỗi điều luật: `pass` / `violate` / `insufficient` kèm locator.
+- Năm phần: hiện trạng; phát hiện; ảnh hưởng; đề xuất; câu hỏi cần xác nhận.
+- Sơ đồ Mermaid hiện tại/đề xuất nếu hữu ích.
+- Bản nháp tự xong; không sửa SOP/JIG/tiêu chuẩn chính thức; không chờ người tick.
 
 #### Sửa mã nguồn
 
-- OpenCode đọc và sửa trong worktree; test được phép chạy tự động.
-- AIOS tự đọc trạng thái filesystem/Git và exit code để xác minh.
-- Không cần partial-hunk approval ở MVP. Toàn bộ kết quả của một nhiệm vụ là một checkpoint có thể dùng hoặc hoàn tác.
-- Nếu workspace chính đã đổi xung đột, giữ kết quả trong worktree và giải thích ngắn gọn; không ghi đè.
+- OpenCode đọc và sửa trong worktree; test chạy tự động.
+- AIOS tự đọc filesystem/Git và exit code. Test đạt = việc xong trong worktree, không chờ bấm duyệt.
+- Một checkpoint cho cả nhiệm vụ; hoàn tác một nhịp.
+- Workspace chính xung đột: giữ worktree, giải thích, không ghi đè.
 
 ### 5.4 Hàng đợi tối thiểu
 
@@ -127,7 +123,7 @@ Mặc định chỉ hiện:
 3. Căn cứ chính lấy từ đâu.
 4. Kiểm tra đã đạt hay chưa.
 5. Còn điều gì chưa chắc chắn.
-6. Hành động “Mở kết quả”, “Dùng kết quả”, “Hoàn tác” hoặc “Bổ sung tài liệu”.
+6. Hành động mặc định: “Mở kết quả”, “Hoàn tác”. “Bổ sung tài liệu” chỉ khi thiếu nguồn. “Đưa vào thư mục đang làm” chỉ với mã nguồn, tùy chọn.
 
 `diff`, terminal, digest, receipt và mã lỗi nội bộ nằm trong “Chi tiết kỹ thuật”, đóng mặc định.
 
@@ -137,11 +133,11 @@ Mặc định chỉ hiện:
 |---|---|---|
 | G0 | Đồng bộ đặc tả, kế hoạch, task và tài liệu canonical | Phạm vi mới được ghi nhất quán; không còn read-only MVP hoặc bắt duyệt toàn bộ diff |
 | G1 | Probe OpenCode đã pin trên fixture Windows | Chứng minh read/search/create/edit/test/resume/undo và chặn thao tác ngoài vùng |
-| G2 | Lát cắt báo cáo lỗi có biểu đồ | Tạo bản nháp, kiểm tra nguồn số liệu, mở được và hoàn tác được |
+| G2 | Lát cắt báo cáo lỗi có biểu đồ | Tạo file báo cáo dùng được, kiểm tra nguồn số liệu, mở được và hoàn tác được |
 | G3 | Lát cắt rà soát thiết kế công đoạn | Phát hiện mâu thuẫn/thiếu/sai có nguồn, tạo sơ đồ và không sửa tài liệu chính thức |
 | G4 | Lát cắt sửa mã | Sửa bug fixture, test thật, dùng kết quả/hoàn tác, không mất thay đổi có trước |
 | G5 | Hàng đợi và UX tiếng Việt | Ba việc giữ đúng trạng thái qua restart; chi tiết kỹ thuật đóng mặc định |
-| G6 | Kiểm tra an toàn và quality gate | Privacy, secret, path, Unicode, xung đột và các cổng repo đạt; reviewer độc lập quyết định trạng thái |
+| G6 | Kiểm tra an toàn và quality gate | Privacy, secret, path, Unicode, xung đột và lệnh quality gate repo đạt. `TECHNICAL_PASS` khi lệnh xanh; không chờ người ngồi duyệt hay kiểm toán độc lập để tiếp tục. `DONE` vận hành là việc sau, không chặn Gemini |
 
 Mỗi cổng là một lát cắt dùng được. Không làm G5 thành hệ điều phối tổng quát và không xây extension Code-OSS trước khi G2–G4 chứng minh giá trị.
 

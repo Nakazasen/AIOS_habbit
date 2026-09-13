@@ -100,7 +100,8 @@ draft → verified_draft → used
 draft | verified_draft | used → rolled_back
 ```
 
-`verified_draft` chỉ có nghĩa đã qua kiểm tra kỹ thuật của Goal 009; không có nghĩa báo cáo hay thiết kế công đoạn đã được ban hành chính thức.
+US1 (báo cáo lỗi xưởng): verifier đạt → `completed`, hiện «Đã xong»; đó là file báo cáo dùng được.
+US2 (rà soát công đoạn): verifier đạt → `verified_draft`, hiện «Đã xong»; không ghi đè SOP/JIG/tiêu chuẩn gốc.
 
 ## 7. `GroundedFinding`
 
@@ -109,6 +110,8 @@ Một phát hiện trong báo cáo hoặc rà soát công đoạn.
 ### Trường
 
 - `finding_id`, `artifact_id`, `finding_type`.
+- `source_role` (`guideline`, `design`, `context`) khi thuộc US2.
+- `verdict` (`pass`, `violate`, `insufficient`) khi thuộc US2.
 - `statement_vi`, `source_refs`, `source_locations`.
 - `evidence_status` (`supported`, `conflicting`, `insufficient`, `proposal`).
 - `impact_vi`, `recommendation_vi`, `confidence`, `finding_digest`.
@@ -165,6 +168,7 @@ Payload dành cho thẻ kết quả không chuyên.
 
 - Không có traceback, secret, đường dẫn tuyệt đối, stdout thô hoặc nội dung `local_only`.
 - `technical_detail_ref` đóng mặc định và không phải điều kiện để dùng kết quả.
+- `can_use` mặc định true khi verifier đạt; không cần click phê duyệt.
 - Mọi nhãn và câu giải thích cho người dùng là tiếng Việt.
 
 ## 11. Quan hệ

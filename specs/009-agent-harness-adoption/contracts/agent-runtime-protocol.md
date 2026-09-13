@@ -111,12 +111,13 @@ Runtime có thể cung cấp summary, nhưng AIOS tự quan sát:
 
 Checkbox UI và lời model không tạo bằng chứng đạt.
 
-## 9. Dùng kết quả và hoàn tác
+## 9. Kết quả tự xong và hoàn tác
 
-- Báo cáo và rà soát công đoạn được tự lưu dưới dạng bản nháp sau verification.
-- Kết quả mã chỉ được đưa từ worktree sang workspace chính khi checkpoint, manifest và trạng thái hiện tại không xung đột.
-- Xung đột giữ nguyên kết quả trong worktree và trả hướng dẫn tiếng Việt; không ghi đè.
-- Hoàn tác dùng checkpoint của nhiệm vụ, không gọi `git reset --hard`, không viết lại lịch sử và không xóa thay đổi có trước.
+- Báo cáo xưởng: verification đạt → lưu file báo cáo dùng được → UI «Đã xong». Không chờ người duyệt.
+- Rà soát công đoạn: verification đạt → lưu kết quả → UI «Đã xong». Không ghi đè SOP gốc.
+- Việc mã: test quan sát được đạt → xong trong worktree. Đưa sang workspace chính là tùy chọn, chỉ khi không xung đột.
+- Xung đột: giữ worktree, giải thích tiếng Việt, không ghi đè.
+- Hoàn tác dùng checkpoint nhiệm vụ; không `git reset --hard`; không xóa thay đổi có trước.
 
 ## 10. Ranh giới dữ liệu và transport
 
@@ -127,7 +128,7 @@ Checkbox UI và lời model không tạo bằng chứng đạt.
 
 ## 11. Hợp đồng lỗi
 
-Mọi lỗi được ánh xạ theo [hợp đồng báo cáo lỗi](agent-error-report-v1.md). UI chỉ nhận bản tiếng Việt đã làm sạch, trạng thái resume/rollback và hành động tiếp theo; không nhận traceback hoặc đường dẫn tuyệt đối.
+Khi **nhiệm vụ Agent gãy**, ánh xạ theo [agent-error-report-v1.md](agent-error-report-v1.md). Báo cáo lỗi xưởng US1 dùng [agent-factory-error-report-v1.md](agent-factory-error-report-v1.md). UI chỉ nhận tiếng Việt đã làm sạch; không traceback hay đường dẫn tuyệt đối.
 
 ## 12. Tương thích
 

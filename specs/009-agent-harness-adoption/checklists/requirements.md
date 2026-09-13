@@ -18,7 +18,12 @@
 - [x] Phạm vi bản đầu và phi mục tiêu được khóa.
 - [x] Permission, privacy, rollback và bằng chứng có tiêu chí bắt buộc.
 - [x] Báo cáo lỗi, biểu đồ và rà soát thiết kế công đoạn có quy tắc nguồn rõ ràng.
-- [x] Người dùng không chuyên không bị buộc duyệt `diff`, terminal hoặc từng tool call.
+- [x] Người dùng không chuyên không bị buộc duyệt `diff`, terminal, từng tool call hay từng finding; «Đã xong» sau verifier.
+- [x] Hai schema báo cáo lỗi đã tách: xưởng US1 vs Agent gãy.
+- [x] US2 có hợp đồng Guideline (luật) / bản thiết kế (đối tượng).
+- [x] Có `GEMINI_FLASH_3_8_GOAL.md` để thực thi; G6 kỹ thuật không chờ người ngồi duyệt.
+- [x] Cấm over-engineer đã khóa: trợ lý hàng ngày, không khung Agent, không màn quyền, không schema trên UI.
+- [x] Báo cáo lỗi US1 là file dùng được, không phải bản nháp chờ ban hành.
 
 ## Sẵn sàng lập kế hoạch
 
