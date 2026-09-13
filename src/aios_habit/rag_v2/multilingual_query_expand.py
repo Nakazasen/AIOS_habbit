@@ -65,6 +65,26 @@ def latin_query_anchors(original_query: str) -> tuple[str, ...]:
     return tuple(found)
 
 
+def short_latin_codes(original_query: str) -> tuple[str, ...]:
+    """Uppercase Latin codes typed by the user, including hyphenated pairs.
+
+    Folding a question to ``[a-z0-9]+`` tokens of length >= 3 drops two-letter
+    codes. Those codes must still participate in retrieval.
+    """
+    found: list[str] = []
+    seen: set[str] = set()
+    for token in latin_query_anchors(original_query):
+        compact = token.replace("-", "")
+        if not token.isupper() or not (2 <= len(compact) <= 4):
+            continue
+        key = token.casefold()
+        if key in seen:
+            continue
+        seen.add(key)
+        found.append(token)
+    return tuple(found)
+
+
 def mix_original_anchors(original_query: str, variant_text: str) -> str:
     mixed = variant_text
     for token in latin_query_anchors(original_query):

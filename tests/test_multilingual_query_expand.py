@@ -2,6 +2,14 @@ from aios_habit.rag_v2.multilingual_query_expand import parse_expansion_payload
 from aios_habit.rag_v2.query_planning import build_query_plan
 
 
+def test_short_latin_codes_keep_uppercase_pairs():
+    from aios_habit.rag_v2.multilingual_query_expand import short_latin_codes
+
+    assert short_latin_codes("Luồng đăng ký ST-CO là gì?") == ("ST-CO",)
+    assert set(short_latin_codes("ST CO PLC flow")) >= {"ST", "CO", "PLC"}
+    assert "Matecon" not in short_latin_codes("Summarize the Matecon material-handling operation")
+
+
 def test_latin_codes_from_question_are_mixed_into_cjk_variants():
     from aios_habit.rag_v2.multilingual_query_expand import mix_original_anchors
 

@@ -184,6 +184,60 @@ def test_latin_only_corpus_does_not_call_cjk_expansion():
     ) is None
 
 
+def test_short_latin_codes_keep_two_letter_tokens():
+    from aios_habit.rag_v2.multilingual_query_expand import short_latin_codes
+
+    codes = short_latin_codes("Luồng đăng ký ST CO là gì?")
+    assert "ST" in codes
+    assert "CO" in codes
+
+
+def test_acronym_query_does_not_lock_onto_unrelated_registration_manual():
+    """Vietnamese 'đăng ký' plus two-letter codes must not pick a shelf-map manual."""
+    shelf_manual = WorkspaceAIContextSource(
+        source_id="shelf",
+        source_scope="notebook",
+        source_type="pdf",
+        title="Material handling map",
+        privacy_label="local_only",
+        text="Dang ky vi tri ke ACR, khu vuc giao lo bi chan, dia chi IP, ban do di chuyen.",
+        included_chars=80,
+        truncated=False,
+    )
+    process_doc = WorkspaceAIContextSource(
+        source_id="process",
+        source_scope="notebook",
+        source_type="pdf",
+        title="Production completion register",
+        privacy_label="local_only",
+        text="ST start CO completion Move In handheld serial Opcenter.",
+        included_chars=60,
+        truncated=False,
+    )
+    extras = tuple(
+        WorkspaceAIContextSource(
+            source_id=f"extra-{index}",
+            source_scope="notebook",
+            source_type="txt",
+            title=f"Other notes {index}",
+            privacy_label="local_only",
+            text=f"Unrelated warehouse layout {index}.",
+            included_chars=28,
+            truncated=False,
+        )
+        for index in range(3)
+    )
+    sources = (shelf_manual, process_doc) + extras
+    question = "Luồng đăng ký ST CO là gì?"
+
+    window = adapter._retrieval_source_window(question, sources)
+    assert process_doc in window
+    assert window == sources or process_doc in window
+    selected = adapter._select_semantic_candidate_sources(question, sources, limit=1)
+    assert process_doc in selected
+    assert shelf_manual not in selected or process_doc in selected
+
+
 def test_script_mismatch_keeps_all_ready_sources():
     latin_hits = tuple(
         WorkspaceAIContextSource(

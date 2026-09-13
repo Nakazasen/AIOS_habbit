@@ -38,7 +38,10 @@ from aios_habit.rag_v2.query_planning import (
     coerce_query_plan,
     query_needs_broad_ready_retrieval,
 )
-from aios_habit.rag_v2.multilingual_query_expand import expand_question_for_corpus_script
+from aios_habit.rag_v2.multilingual_query_expand import (
+    expand_question_for_corpus_script,
+    short_latin_codes,
+)
 from aios_habit.rag_v2.script_family import (
     corpus_needs_cjk_query_expansion,
     query_corpus_script_mismatch,
@@ -662,6 +665,11 @@ def _fold_semantic_terms(value: str) -> tuple[str, ...]:
     return tuple(re.findall(r"[a-z0-9]+", folded))
 
 
+def _identity_query_terms(question: str) -> tuple[str, ...]:
+    """Casefolded Latin codes the user typed, including two-letter codes."""
+    return tuple(dict.fromkeys(token.casefold() for token in short_latin_codes(question)))
+
+
 def _select_semantic_candidate_sources(
     question: str,
     sources: Tuple[WorkspaceAIContextSource, ...],
@@ -675,11 +683,12 @@ def _select_semantic_candidate_sources(
     retained.  A precise operational question such as ``Manual Matecon ACR``
     instead prepares only the few documents that actually contain those terms.
     """
+    identity_terms = _identity_query_terms(question)
     terms = tuple(
         term for term in _fold_semantic_terms(question)
         if (len(term) >= 3 and term not in _SEMANTIC_SOURCE_STOP_WORDS)
     )
-    unique_terms = tuple(dict.fromkeys(terms))
+    unique_terms = tuple(dict.fromkeys((*identity_terms, *terms)))
     if len(unique_terms) < 2:
         return sources
 
@@ -711,6 +720,18 @@ def _select_semantic_candidate_sources(
             ranked.append((score, -ordinal, source))
     if not ranked:
         return sources
+    if identity_terms:
+        identity_ranked = [
+            item for item in ranked
+            if all(
+                term in set(_fold_semantic_terms(f"{item[2].title}\n{item[2].text}"))
+                for term in identity_terms
+            )
+        ]
+        if identity_ranked:
+            ranked = identity_ranked
+        else:
+            return sources
     ranked.sort(reverse=True, key=lambda item: (item[0], item[1]))
     best_score = ranked[0][0]
     return tuple(item[2] for item in ranked if item[0] == best_score)[:limit]
@@ -750,6 +771,8 @@ def _retrieval_source_window(
     plan = coerce_query_plan(question)
     if query_needs_broad_ready_retrieval(plan):
         return sources
+    if short_latin_codes(question) and len(sources) > 3:
+        return sources
     corpus_texts = tuple(f"{source.title}\n{(source.text or '')[:800]}" for source in sources)
     if len(sources) > 3 and query_corpus_script_mismatch(question, corpus_texts):
         return sources
@@ -774,9 +797,11 @@ def select_workspace_chat_preparation_scope(
     if len(source_tuple) <= limit:
         return WorkspaceChatSourceScope(selected, True, "small_source_set")
 
+    identity_terms = _identity_query_terms(question)
     terms = tuple(
-        term for term in _fold_semantic_terms(question)
-        if len(term) >= 3 and term not in _SEMANTIC_SOURCE_STOP_WORDS
+        term for term in (*identity_terms, *_fold_semantic_terms(question))
+        if term not in _SEMANTIC_SOURCE_STOP_WORDS
+        and (len(term) >= 3 or term in identity_terms)
     )
     if len(tuple(dict.fromkeys(terms))) < 2:
         return WorkspaceChatSourceScope((), False, "question_too_broad")

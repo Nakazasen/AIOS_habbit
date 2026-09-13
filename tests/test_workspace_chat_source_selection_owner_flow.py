@@ -1454,7 +1454,7 @@ def test_app_preparation_gate_is_scoped_to_query_relevant_sources():
     assert "limit=1" in gate
     assert "get_workspace_chat_source_preparation_status(\n                                    tuple(non_empty_sources)" in gate
     assert "schedule_workspace_chat_source_preparation(unready_sources)" in gate
-    assert "query_relevant_sources = ready_in_scope" in gate
+    assert "query_relevant_sources = ready_sources or ready_in_scope" in gate
     assert "query_relevant_sources = ready_sources" in gate
     assert "non_blocking_search_ready_toast" in gate
     assert "broad_query_unready_error" not in gate
@@ -1462,13 +1462,14 @@ def test_app_preparation_gate_is_scoped_to_query_relevant_sources():
 
 
 def test_app_retrieval_uses_the_exact_scope_that_preparation_checked():
-    """A released pending question must not re-select from the full source library."""
+    """Retrieval searches ready sources; preparation still waits on a narrow set."""
     app_source = Path("src/aios_habit/workspace_chat_app.py").read_text(encoding="utf-8")
     gate_idx = app_source.index("source_scope = select_workspace_chat_preparation_scope(")
     retrieval_idx = app_source.index("ret_res = retrieve_local_evidence(", gate_idx)
     retrieval_call = app_source[retrieval_idx:retrieval_idx + 220]
 
     assert "limit=1" in app_source[gate_idx:retrieval_idx]
+    assert "ready_sources or ready_in_scope" in app_source[gate_idx:retrieval_idx]
     assert "tuple(query_relevant_sources)" in retrieval_call
     assert "packed_sources," not in retrieval_call
 

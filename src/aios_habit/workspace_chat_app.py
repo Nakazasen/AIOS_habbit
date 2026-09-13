@@ -2919,7 +2919,10 @@ else:
                                         if all_states.get(f"{s.source_scope}:{s.source_id}") == "ready"
                                     )
                                     if ready_in_scope:
-                                        query_relevant_sources = ready_in_scope
+                                        # Preparation may wait on one document. Retrieval
+                                        # must still search every already-ready source so
+                                        # two-letter codes are not locked to a false match.
+                                        query_relevant_sources = ready_sources or ready_in_scope
                                         if unready_sources:
                                             st.toast(
                                                 t(
@@ -3056,9 +3059,8 @@ else:
                                         else "📚 Bước 2/3: Đang tìm kiếm đoạn tài liệu phù hợp..."
                                     )
                                     st.toast(search_status_msg)
-                                    # Use the exact scope whose readiness was verified above.
-                                    # Re-selecting from all enabled sources here can otherwise
-                                    # produce a false "ready" message followed by a wait/error.
+                                    # Search already-ready sources. The bounded preparation
+                                    # set is only a wait/priority hint for unindexed files.
                                     ret_res = retrieve_local_evidence(
                                         q_text,
                                         tuple(query_relevant_sources),
