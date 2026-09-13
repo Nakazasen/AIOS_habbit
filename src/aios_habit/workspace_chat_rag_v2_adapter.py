@@ -1823,6 +1823,8 @@ def _drain_preparation_queue(config: WorkspaceChatRagV2CanaryConfig) -> None:
                         PREP_STATE_PENDING,
                         error_reason="library_writer_busy",
                     )
+                    import time
+                    time.sleep(1.0)
                     continue
                 err_reason = _safe_reason(exc)
                 _commit_preparation_result(

@@ -3089,11 +3089,15 @@ else:
                                                 locale=current_ui_locale,
                                             )
                                         st.session_state.wsc_last_ai_badge = None
+                                        if st.session_state.get("wsc_chat_history") and st.session_state["wsc_chat_history"][-1].role == "user":
+                                            st.session_state["wsc_chat_history"].pop()
                                         safe_rerun()
                                     elif ret_res["summary_count"] == 0:
                                         st.error(t("no_matched_segments_error", locale=current_ui_locale))
                                         st.session_state.wsc_action_error = "Chưa tìm thấy đoạn phù hợp trong nguồn đang bật."
                                         st.session_state.wsc_last_ai_badge = None
+                                        if st.session_state.get("wsc_chat_history") and st.session_state["wsc_chat_history"][-1].role == "user":
+                                            st.session_state["wsc_chat_history"].pop()
                                         safe_rerun()
                                     else:
                                         retrieval_applied = True

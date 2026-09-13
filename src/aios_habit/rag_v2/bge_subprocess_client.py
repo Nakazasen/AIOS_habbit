@@ -132,7 +132,9 @@ class BgeSubprocessWorkerClient:
 
     def readiness(self, config: RagV2DevConfig | None = None) -> dict[str, Any]:
         """Return bounded worker health without launching or exposing private data."""
-        with self._lock:
+        if not self._lock.acquire(timeout=0.5):
+            return {"ready": False, "alive": True, "configuration_matches": False, "reason": "worker_busy", "pid": None}
+        try:
             alive = self._process is not None and self._process.poll() is None
             matches = alive and (config is None or self._active_config == config)
             return {
@@ -142,13 +144,19 @@ class BgeSubprocessWorkerClient:
                 "reason": "" if matches else self._last_failure_reason,
                 "pid": self._process.pid if matches and self._process is not None else None,
             }
+        finally:
+            self._lock.release()
 
     def is_ready(self, config: RagV2DevConfig) -> bool:
         return bool(self.readiness(config)["ready"])
 
     def is_alive(self) -> bool:
-        with self._lock:
+        if not self._lock.acquire(timeout=0.5):
+            return True
+        try:
             return self._process is not None and self._process.poll() is None
+        finally:
+            self._lock.release()
 
     def _start_worker_locked(
         self,
@@ -247,7 +255,9 @@ class BgeSubprocessWorkerClient:
         timeout_s: float = _INIT_TIMEOUT_SECONDS,
     ) -> dict[str, Any]:
         """Load the matching model worker before any source preparation begins."""
-        with self._lock:
+        if not self._lock.acquire(timeout=0.5):
+            raise SemanticBackendError("worker_busy")
+        try:
             if (
                 self._process is not None
                 and self._process.poll() is None
@@ -255,6 +265,8 @@ class BgeSubprocessWorkerClient:
             ):
                 return {"status": "ok", "reused": True, "init_latency_ms": 0.0}
             return self._start_worker_locked(config, timeout_s=timeout_s)
+        finally:
+            self._lock.release()
 
     def start_worker(self, config: RagV2DevConfig) -> None:
         """Backward-compatible explicit worker startup entry point."""
@@ -271,7 +283,9 @@ class BgeSubprocessWorkerClient:
         timeout_s: float = _PREPARE_TIMEOUT_SECONDS,
     ) -> dict[str, Any]:
         """Prepare sources only on an already initialized matching worker."""
-        with self._lock:
+        if not self._lock.acquire(timeout=0.5):
+            raise SemanticBackendError("worker_busy")
+        try:
             if self._process is None or self._process.poll() is not None:
                 raise SemanticBackendError("bge_worker_prepare_not_initialized")
             if self._active_config != config:
@@ -297,6 +311,8 @@ class BgeSubprocessWorkerClient:
             if not isinstance(ingest_report, dict):
                 raise RuntimeError("invalid_worker_response_schema")
             return ingest_report
+        finally:
+            self._lock.release()
 
     def prepare_staged_source(
         self,
@@ -316,7 +332,9 @@ class BgeSubprocessWorkerClient:
             raise ValueError("group_size must be positive")
         if source_timeout_s is not None and float(source_timeout_s) <= 0:
             raise ValueError("source_timeout_s must be positive")
-        with self._lock:
+        if not self._lock.acquire(timeout=0.5):
+            raise SemanticBackendError("worker_busy")
+        try:
             if self._process is None or self._process.poll() is not None:
                 raise SemanticBackendError("bge_worker_prepare_not_initialized")
             if self._active_config != config:
@@ -390,6 +408,8 @@ class BgeSubprocessWorkerClient:
                 if isinstance(exc, SemanticBackendError):
                     raise
                 raise SemanticBackendError("bge_worker_staged_prepare_exception") from exc
+        finally:
+            self._lock.release()
 
     def delete_documents(
         self,
@@ -401,7 +421,9 @@ class BgeSubprocessWorkerClient:
         normalized_ids = [str(document_id).strip() for document_id in document_ids if str(document_id).strip()]
         if not normalized_ids:
             return 0
-        with self._lock:
+        if not self._lock.acquire(timeout=0.5):
+            raise SemanticBackendError("worker_busy")
+        try:
             if self._process is None or self._process.poll() is not None:
                 return 0
             response = self._send_request(
@@ -409,6 +431,8 @@ class BgeSubprocessWorkerClient:
                 timeout_s=timeout_s,
                 phase="delete",
             )
+        finally:
+            self._lock.release()
         if response.get("status") != "ok":
             raise SemanticBackendError("bge_worker_delete_failed")
         return int(response.get("removed_chunk_count", 0))
@@ -433,7 +457,9 @@ class BgeSubprocessWorkerClient:
         if len(policy_version) > 64:
             raise SemanticBackendError("invalid_policy_version_length")
 
-        with self._lock:
+        if not self._lock.acquire(timeout=0.5):
+            raise SemanticBackendError("worker_busy")
+        try:
             if self._process is None:
                 self._last_failure_reason = "bge_worker_query_not_ready"
                 raise SemanticBackendError(self._last_failure_reason)
@@ -474,6 +500,8 @@ class BgeSubprocessWorkerClient:
             if not isinstance(query_result, dict):
                 raise RuntimeError("invalid_worker_response_schema")
             return query_result
+        finally:
+            self._lock.release()
 
     def query(
         self,
@@ -508,7 +536,9 @@ class BgeSubprocessWorkerClient:
         expansion: Optional[Mapping[str, Any]] = None,
     ) -> dict[str, Any]:
         """Send ingest_and_query request to worker, auto-relaunching if worker died."""
-        with self._lock:
+        if not self._lock.acquire(timeout=0.5):
+            raise SemanticBackendError("worker_busy")
+        try:
             if self._process is None or self._process.poll() is not None or self._active_config != config:
                 self._start_worker_locked(config)
 
@@ -534,6 +564,8 @@ class BgeSubprocessWorkerClient:
             if not isinstance(query_result, dict):
                 raise RuntimeError("invalid_worker_response_schema")
             return query_result
+        finally:
+            self._lock.release()
 
     def _send_request(
         self,
@@ -625,5 +657,9 @@ class BgeSubprocessWorkerClient:
             stderr_thread.join(timeout=1.0)
 
     def close(self) -> None:
-        with self._lock:
+        acquired = self._lock.acquire(timeout=2.0)
+        try:
             self._close_internal()
+        finally:
+            if acquired:
+                self._lock.release()
