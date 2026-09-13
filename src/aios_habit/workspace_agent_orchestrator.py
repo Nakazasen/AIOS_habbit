@@ -19,14 +19,20 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from aios_habit.agent_result_import import (
+    WorktreeVerificationResult,
+    import_worktree_to_workspace,
+    verify_worktree_result,
+)
+from aios_habit.opencode_runtime_adapter import OpenCodeRuntimeAdapter, RuntimeRequest
 from aios_habit.workspace_agent_bridge_client import WorkspaceAgentBridgeClient, WorkspaceAgentBridgeError
 from aios_habit.workspace_agent_models import (
     WorkspaceAgentPendingAction, WorkspaceAgentRequest, WorkspaceAgentResult,
     WorkspaceAgentToolEvent, new_action_id, new_session_id,
 )
 from aios_habit.workspace_agent_policy import (
-    MAX_TOOL_STEPS, AgentPolicyError, authorize_tool, canonical_task_root,
-    canonical_workspace_root, validate_request,
+    MAX_TOOL_STEPS, AgentPolicyError, TASK_TYPE_CODE_CHANGE, authorize_tool,
+    canonical_task_root, canonical_workspace_root, create_scope_grant, validate_request,
 )
 
 
@@ -411,3 +417,93 @@ class WorkspaceAgentOrchestrator:
             lines.append('- Tệp nên đọc tiếp: ' + ', '.join(f'`{item.get("relPath")}`' for item in files[:8]) + '.')
         lines.append('\nMọi diff/lệnh đều cần review và phê duyệt riêng; Agent không tự áp dụng thay đổi.')
         return '\n'.join(lines)
+
+    def run_code_task(
+        self,
+        *,
+        work_id: str,
+        workspace_root: str,
+        instruction: str,
+        test_command: str,
+        fix_action: Any | None = None,
+        worktree_path: str | Path | None = None,
+    ) -> tuple[WorktreeVerificationResult, WorkCheckpoint]:
+        canonical_ws = canonical_workspace_root(workspace_root)
+        with self.writer_lock.hold(canonical_ws, work_id):
+            if worktree_path is not None:
+                wt = Path(worktree_path).resolve()
+            else:
+                wt = Path(tempfile.mkdtemp(prefix=f"aios_worktree_{work_id}_")).resolve()
+                for item in os.listdir(canonical_ws):
+                    if item.startswith(".") or item in ("local_cases", "local_runs", "__pycache__"):
+                        continue
+                    src = Path(canonical_ws) / item
+                    dst = wt / item
+                    if src.is_dir():
+                        shutil.copytree(src, dst)
+                    else:
+                        shutil.copy2(src, dst)
+
+            checkpoint = self.create_checkpoint(
+                work_id=work_id,
+                workspace_root=canonical_ws,
+                task_root=wt,
+                kind="git_worktree" if (wt / ".git").exists() else "snapshot",
+            )
+
+            grant = create_scope_grant(
+                work_id=work_id,
+                task_root=wt,
+                task_type=TASK_TYPE_CODE_CHANGE,
+                allowed_commands=(test_command,),
+            )
+            adapter = OpenCodeRuntimeAdapter(grant=grant)
+
+            # 1. Run test initially to observe baseline
+            adapter.execute_request(
+                RuntimeRequest(
+                    work_id=work_id,
+                    action="run_test",
+                    payload={"command": test_command},
+                )
+            )
+
+            # 2. Execute fix
+            if callable(fix_action):
+                fix_action(adapter)
+
+            # 3. Run test again to observe fix result
+            final_receipt = adapter.execute_request(
+                RuntimeRequest(
+                    work_id=work_id,
+                    action="run_test",
+                    payload={"command": test_command},
+                )
+            )
+
+            # 4. Verify results
+            verification = verify_worktree_result(
+                worktree_path=wt,
+                baseline_workspace_path=canonical_ws,
+                baseline_manifest=checkpoint.manifest,
+                test_receipt=final_receipt.payload,
+            )
+
+            return verification, checkpoint
+
+    def import_code_result(
+        self,
+        *,
+        work_id: str,
+        workspace_root: str,
+        worktree_path: str | Path,
+        files_to_import: list[str] | tuple[str, ...] | None = None,
+    ) -> tuple[bool, str]:
+        canonical_ws = canonical_workspace_root(workspace_root)
+        with self.writer_lock.hold(canonical_ws, work_id):
+            return import_worktree_to_workspace(
+                worktree_path=worktree_path,
+                target_workspace_path=canonical_ws,
+                files_to_import=files_to_import,
+            )
+

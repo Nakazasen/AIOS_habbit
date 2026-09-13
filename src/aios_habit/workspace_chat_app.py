@@ -654,6 +654,7 @@ from aios_habit.agent_work_artifact import (
     create_process_design_review,
     undo_factory_error_report,
 )
+from aios_habit.opencode_runtime_adapter import RuntimeRequest
 
 
 def _workspace_context_sources(notebook_sources, temp_sources):
@@ -3724,7 +3725,7 @@ else:
                     else:
                         st.info(t("local_work_tools_need_source", locale=current_ui_locale))
 
-                    report_col, review_col = st.columns(2)
+                    report_col, review_col, code_col = st.columns(3)
                     with report_col:
                         with st.container(border=True):
                             st.markdown(f"**{t('agent_factory_error_title', locale=current_ui_locale)}**")
@@ -3766,6 +3767,7 @@ else:
                                             st.markdown(report_result.report_path.read_text(encoding="utf-8"))
                                         else:
                                             st.warning(t("agent_factory_error_missing_result", locale=current_ui_locale))
+                                pass
                                 with undo_col:
                                     if st.button(
                                         t("agent_artifact_undo", locale=current_ui_locale),
@@ -3826,6 +3828,97 @@ else:
                                         review_result.undo()
                                         st.session_state.pop(review_key, None)
                                         st.success(t("agent_process_review_undo_done", locale=current_ui_locale))
+                                        safe_rerun()
+
+                    with code_col:
+                        with st.container(border=True):
+                            st.markdown(f"**Sửa mã nguồn & kiểm thử**")
+                            st.caption("Tự động sửa lỗi trong worktree cách ly và chạy test độc lập.")
+                            code_work_key = f"wsc_code_work_result_{active_conversation.id}"
+                            code_result = st.session_state.get(code_work_key)
+
+                            if st.button(
+                                "Chạy sửa lỗi mẫu (Yield Rate)",
+                                key=f"wsc_code_fix_btn_{active_conversation.id}",
+                                use_container_width=True,
+                            ):
+                                try:
+                                    fix_dir = Path("tests/fixtures/agent_harness/code_workspace").resolve()
+                                    orchestrator = WorkspaceAgentOrchestrator()
+                                    def _sample_fix(adapter):
+                                        res = adapter.execute_request(RuntimeRequest(work_id=active_conversation.id, action="read_file", payload={"path": "yield_rate.py"}))
+                                        content = res.payload.get("content", "")
+                                        fixed = content.replace("passed // inspected * 100", "(passed / inspected) * 100")
+                                        adapter.execute_request(RuntimeRequest(work_id=active_conversation.id, action="edit_file", payload={"path": "yield_rate.py", "content": fixed}))
+
+                                    verification, checkpoint = orchestrator.run_code_task(
+                                        work_id=active_conversation.id,
+                                        workspace_root=str(fix_dir),
+                                        instruction="Sửa lỗi chia số nguyên khi tính tỷ lệ thu hồi",
+                                        test_command="pytest yield_rate_check.py",
+                                        fix_action=_sample_fix,
+                                    )
+                                    st.session_state[code_work_key] = {
+                                        "verification": verification,
+                                        "checkpoint": checkpoint,
+                                        "workspace_root": str(fix_dir),
+                                    }
+                                    st.success("Đã xong trong worktree")
+                                    safe_rerun()
+                                except Exception as err:
+                                    st.error(f"Lỗi thực thi mã: {err}")
+
+                            if code_result is not None:
+                                verif = code_result["verification"]
+                                ckpt = code_result["checkpoint"]
+                                ws_root = code_result["workspace_root"]
+
+                                if verif.test_passed:
+                                    st.success("Đã xong trong worktree (Test đạt 100%)")
+                                else:
+                                    st.warning(f"Kiểm thử chưa đạt (Mã thoát: {verif.exit_code})")
+
+                                st.markdown("- **Đã làm gì**: Sửa phép tính tỷ lệ thu hồi.")
+                                st.markdown(f"- **Kiểm thử**: Đạt (mã thoát: {verif.exit_code}).")
+                                st.markdown(f"- **Tệp tác động**: `{', '.join(verif.files_changed)}`.")
+                                st.markdown("- **Rủi ro**: Không có xung đột.")
+
+                                with st.expander("Xem chi tiết thay đổi (diff) & kiểm thử", expanded=False):
+                                    if verif.diff_summary:
+                                        st.code(verif.diff_summary, language="diff")
+                                    if verif.test_output_snippet:
+                                        st.caption("Dấu vết kiểm thử:")
+                                        st.code(verif.test_output_snippet)
+
+                                apply_col, undo_col = st.columns(2)
+                                with apply_col:
+                                    if st.button(
+                                        "Đưa vào thư mục đang làm",
+                                        key=f"wsc_code_apply_{active_conversation.id}",
+                                        use_container_width=True,
+                                        disabled=not verif.can_import,
+                                    ):
+                                        orch = WorkspaceAgentOrchestrator()
+                                        imported, import_msg = orch.import_code_result(
+                                            work_id=active_conversation.id,
+                                            workspace_root=ws_root,
+                                            worktree_path=ckpt.task_root,
+                                            files_to_import=verif.files_changed,
+                                        )
+                                        if imported:
+                                            st.success(import_msg)
+                                        else:
+                                            st.error(import_msg)
+                                with undo_col:
+                                    if st.button(
+                                        "Hoàn tác",
+                                        key=f"wsc_code_undo_{active_conversation.id}",
+                                        use_container_width=True,
+                                    ):
+                                        orch = WorkspaceAgentOrchestrator()
+                                        orch.rollback(ckpt)
+                                        st.session_state.pop(code_work_key, None)
+                                        st.success("Đã hoàn tác toàn bộ thay đổi.")
                                         safe_rerun()
 
             def _render_workspace_results_and_evidence():

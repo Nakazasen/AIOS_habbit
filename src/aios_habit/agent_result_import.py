@@ -6,6 +6,9 @@ Provides validator and importer for agent reports under the aios_agent_report_v1
 import json
 import hashlib
 import fnmatch
+import os
+import shutil
+import difflib
 from pathlib import Path
 from dataclasses import dataclass
 from typing import Dict, Any, List, Optional
@@ -816,3 +819,150 @@ def load_agent_report_for_task_pack(
         )
 
     return validate_agent_report(report_data, task_pack, observed_evidence)
+
+
+@dataclass(frozen=True)
+class WorktreeVerificationResult:
+    test_passed: bool
+    exit_code: int
+    has_conflict: bool
+    can_import: bool
+    files_changed: tuple[str, ...]
+    conflict_files: tuple[str, ...]
+    diff_summary: str
+    explanation_vi: str
+    test_output_snippet: str = ""
+
+
+def verify_worktree_result(
+    *,
+    worktree_path: str | Path,
+    baseline_workspace_path: str | Path,
+    baseline_manifest: dict[str, str] | None = None,
+    test_receipt: dict[str, Any] | None = None,
+) -> WorktreeVerificationResult:
+    wt_root = Path(worktree_path).resolve()
+    base_root = Path(baseline_workspace_path).resolve()
+
+    # 1. Evaluate test receipt
+    if test_receipt is not None:
+        exit_code = int(test_receipt.get("returncode", -1))
+        test_passed = bool(test_receipt.get("passed", False)) and exit_code == 0
+        raw_out = str(test_receipt.get("stdout") or test_receipt.get("stderr") or "")
+        test_output_snippet = raw_out[-500:].strip()
+    else:
+        exit_code = -1
+        test_passed = False
+        test_output_snippet = ""
+
+    # 2. Compare worktree with baseline
+    files_changed: list[str] = []
+    conflict_files: list[str] = []
+    diff_lines: list[str] = []
+
+    for dirpath, dirs, files in os.walk(wt_root):
+        dirs[:] = [d for d in dirs if not d.startswith(".") and d not in ("local_cases", "local_runs", "__pycache__")]
+        for f in sorted(files):
+            wt_file = Path(dirpath) / f
+            rel = wt_file.relative_to(wt_root).as_posix()
+            wt_bytes = wt_file.read_bytes()
+            wt_hash = hashlib.sha256(wt_bytes).hexdigest()
+
+            base_file = base_root / rel
+            base_exists = base_file.is_file()
+            base_bytes = base_file.read_bytes() if base_exists else b""
+            base_current_hash = hashlib.sha256(base_bytes).hexdigest() if base_exists else ""
+
+            baseline_recorded_hash = baseline_manifest.get(rel) if baseline_manifest is not None else base_current_hash
+
+            if wt_hash != baseline_recorded_hash:
+                files_changed.append(rel)
+                # Check for conflict: if main workspace was concurrently edited since baseline
+                if baseline_manifest is not None and base_current_hash != baseline_recorded_hash:
+                    conflict_files.append(rel)
+
+                # Compute diff
+                try:
+                    wt_text = wt_bytes.decode("utf-8", errors="replace").splitlines(keepends=True)
+                    base_text = base_bytes.decode("utf-8", errors="replace").splitlines(keepends=True) if base_exists else []
+                    file_diff = list(difflib.unified_diff(
+                        base_text,
+                        wt_text,
+                        fromfile=f"a/{rel}",
+                        tofile=f"b/{rel}",
+                    ))
+                    if file_diff:
+                        diff_lines.extend(file_diff)
+                except Exception:
+                    pass
+
+    diff_summary = "".join(diff_lines)
+    has_conflict = len(conflict_files) > 0
+
+    if not test_passed:
+        can_import = False
+        explanation_vi = (
+            f"Kiểm thử tự động chưa đạt (mã thoát: {exit_code}). "
+            "Thay đổi được giữ an toàn trong worktree để tiếp tục sửa lỗi."
+        )
+    elif has_conflict:
+        can_import = False
+        explanation_vi = (
+            f"Phát hiện xung đột với thư mục làm việc chính tại các tệp: {', '.join(conflict_files)}. "
+            "Giữ nguyên kết quả trong worktree để xem xét, không tự động ghi đè."
+        )
+    else:
+        can_import = True
+        explanation_vi = (
+            f"Kiểm thử tự động đã đạt 100% (mã thoát: {exit_code}). "
+            f"Có {len(files_changed)} tệp đã được kiểm chứng và sẵn sàng đưa vào thư mục làm việc."
+        )
+
+    return WorktreeVerificationResult(
+        test_passed=test_passed,
+        exit_code=exit_code,
+        has_conflict=has_conflict,
+        can_import=can_import,
+        files_changed=tuple(files_changed),
+        conflict_files=tuple(conflict_files),
+        diff_summary=diff_summary,
+        explanation_vi=explanation_vi,
+        test_output_snippet=test_output_snippet,
+    )
+
+
+def import_worktree_to_workspace(
+    *,
+    worktree_path: str | Path,
+    target_workspace_path: str | Path,
+    files_to_import: list[str] | tuple[str, ...] | None = None,
+) -> tuple[bool, str]:
+    wt_root = Path(worktree_path).resolve()
+    target_root = Path(target_workspace_path).resolve()
+    if not wt_root.exists() or not wt_root.is_dir():
+        return False, "Thư mục worktree không tồn tại."
+    if not target_root.exists() or not target_root.is_dir():
+        return False, "Thư mục đích không tồn tại."
+
+    if files_to_import is None:
+        target_files = []
+        for dirpath, dirs, files in os.walk(wt_root):
+            dirs[:] = [d for d in dirs if not d.startswith(".") and d not in ("local_cases", "local_runs", "__pycache__")]
+            for f in files:
+                target_files.append(str((Path(dirpath) / f).relative_to(wt_root).as_posix()))
+    else:
+        target_files = list(files_to_import)
+
+    try:
+        count = 0
+        for rel in target_files:
+            src_file = wt_root / rel
+            dest_file = target_root / rel
+            if src_file.is_file():
+                dest_file.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(src_file, dest_file)
+                count += 1
+        return True, f"Đã đưa thành công {count} tệp từ worktree vào thư mục làm việc chính."
+    except Exception as err:
+        return False, f"Lỗi khi sao chép tệp từ worktree: {err}"
+

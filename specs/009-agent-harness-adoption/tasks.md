@@ -49,10 +49,10 @@
 
 **Kiểm thử độc lập**: bug fixture được sửa sau một vòng test lỗi–sửa lại–test đạt; workspace chính không mất thay đổi có trước và thao tác cấm bị chặn.
 
-- [ ] T020 [US3] Viết E2E cho vòng sửa–test–sửa lại–dùng kết quả–hoàn tác trong `tests/test_agent_code_worktree.py`
-- [ ] T021 [US3] Nối OpenCode adapter vào orchestrator cho tác vụ mã nguồn trong `src/aios_habit/workspace_agent_orchestrator.py`
-- [ ] T022 [US3] Xác minh exit code, trạng thái Git và xung đột trước khi dùng kết quả trong `src/aios_habit/agent_result_import.py`
-- [ ] T023 [US3] Thẻ tóm tắt «đã làm gì, test ra sao, file bị tác động, rủi ro»; test đạt = xong trong worktree; `diff` thu gọn; «Đưa vào thư mục đang làm» tùy chọn trong `src/aios_habit/workspace_chat_app.py`
+- [x] T020 [US3] Viết E2E cho vòng sửa–test–sửa lại–dùng kết quả–hoàn tác trong `tests/test_agent_code_worktree.py`
+- [x] T021 [US3] Nối OpenCode adapter vào orchestrator cho tác vụ mã nguồn trong `src/aios_habit/workspace_agent_orchestrator.py`
+- [x] T022 [US3] Xác minh exit code, trạng thái Git và xung đột trước khi dùng kết quả trong `src/aios_habit/agent_result_import.py`
+- [x] T023 [US3] Thẻ tóm tắt «đã làm gì, test ra sao, file bị tác động, rủi ro»; test đạt = xong trong worktree; `diff` thu gọn; «Đưa vào thư mục đang làm» tùy chọn trong `src/aios_habit/workspace_chat_app.py`
 
 ## Giai đoạn 6 — US4: Hàng đợi nhiều việc
 
