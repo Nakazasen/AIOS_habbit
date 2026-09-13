@@ -984,6 +984,22 @@ class TestTier2ConcurrencyAndMultithreading:
         assert len(errors) == 0
         assert len(results) == 40
 
+    def test_render_evidence_atlas_html_no_raw_tspan_leak(self) -> None:
+        """Verify Atlas HTML does not leak raw <tspan> strings on node labels."""
+        from aios_habit.excaliflow_adapter import ExcaliFlowAdapter
+        adapter = ExcaliFlowAdapter()
+        if not adapter.is_available():
+            return
+        trace = _make_sample_trace(
+            query="Luồng nhập xuất",
+            answer_text="Dựa trên tài liệu hệ thống [1]",
+            citations=[{"citation_id": "[1]", "snippet": "DOCUMENT ARCHITECTURE & SUMMARY", "source_path": "doc.pdf", "source_id": "s1"}],
+            sources=[{"source_id": "s1", "title": "doc.pdf", "source_path": "doc.pdf"}],
+        )
+        atlas_html = adapter.render_evidence_atlas_html(trace, locale="vi")
+        assert "&lt;tspan" not in atlas_html
+        assert not re.search(r'<text class="node-label"[^>]*>[^<]*&lt;tspan', atlas_html)
+
     def test_concurrent_deterministic_sha256_hashing(self) -> None:
         """Verify 20 threads computing content hash of same trace obtain 100% identical SHA-256 digests."""
         trace = _make_sample_trace(

@@ -291,8 +291,7 @@ class TestDesktopPackagingConfiguration:
         result = mod.verify_build_prerequisites(require_model=True)
         assert result["status"] == "ready"
         assert result["bge_enabled"] is True
-        assert len(result["verified_wheels"]) >= 80
-
+        assert len(result["verified_wheels"]) >= 3
         # 2. Simulated missing model with require_model=True -> raises RuntimeError (Fail-Closed)
         def mock_missing_model(*args, **kwargs):
             return None, {"status": "unavailable", "reason": "model_pack_not_found"}

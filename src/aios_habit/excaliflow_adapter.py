@@ -17,6 +17,7 @@ from enum import Enum
 import html
 import json
 import logging
+import math
 import re
 from typing import Any, Dict, List, Optional, Union
 
@@ -80,13 +81,15 @@ def _atlas_label_lines(value: Any) -> List[str]:
 def _atlas_relation_label(relation: Any) -> str:
     labels = {
         "supports": "dẫn chứng cho",
+        "supported by": "dẫn chứng cho",
         "cites": "trích từ",
         "extracted_from": "trích từ",
         "derived_from": "suy ra từ",
         "mentions": "liên quan tới",
+        "contains": "chứa đoạn",
     }
-    raw = str(relation or "liên kết")
-    return labels.get(raw, raw.replace("_", " "))
+    raw = str(relation or "liên kết").strip().lower().replace("-", " ").replace("_", " ")
+    return labels.get(raw, raw)
 
 
 def _atlas_positions(graph: Dict[str, Any]) -> Dict[str, tuple[int, int]]:
@@ -108,10 +111,13 @@ def _atlas_positions(graph: Dict[str, Any]) -> Dict[str, tuple[int, int]]:
 
 
 def _polish_evidence_atlas_html(atlas_html: str, graph: Dict[str, Any]) -> str:
-    """Repair interaction and readability shortcomings in upstream Atlas HTML."""
+    """Repair interaction, Dark Mode aesthetics, and readability shortcomings in upstream Atlas HTML."""
     def replace_label(match: re.Match[str]) -> str:
         x, y = match.group("x"), match.group("y")
-        lines = _atlas_label_lines(html.unescape(match.group("label")))
+        raw_label = match.group("label")
+        clean_label = re.sub(r"<[^>]+>", "", raw_label)
+        unescaped_text = html.unescape(clean_label).strip()
+        lines = _atlas_label_lines(unescaped_text)
         tspans = "".join(
             f'<tspan x="{x}" dy="{0 if index == 0 else 17}">{html.escape(line)}</tspan>'
             for index, line in enumerate(lines)
@@ -119,7 +125,7 @@ def _polish_evidence_atlas_html(atlas_html: str, graph: Dict[str, Any]) -> str:
         return f'{match.group("open")}{tspans}</text>'
 
     atlas_html = re.sub(
-        r'(?P<open><text class="node-label" x="(?P<x>[^"]+)" y="(?P<y>[^"]+)">)(?P<label>.*?)</text>',
+        r'(?P<open><text class="node-label" x="(?P<x>[^"]+)" y="(?P<y>[^"]+)">)(?P<label>[\s\S]*?)</text>',
         replace_label,
         atlas_html,
     )
@@ -131,24 +137,350 @@ def _polish_evidence_atlas_html(atlas_html: str, graph: Dict[str, Any]) -> str:
         count=1,
     )
     positions = _atlas_positions(graph)
+
+    # Calculate vertical bounds for each tier (e.g. answer, chunk, document)
+    tier_ranges: Dict[str, List[int]] = {}
+    for n in graph.get("nodes", []):
+        nid = str(n.get("id", ""))
+        ntype = str(n.get("type", ""))
+        p = positions.get(nid)
+        if p:
+            y1, y2 = p[1], p[1] + 84
+            if ntype not in tier_ranges:
+                tier_ranges[ntype] = [y1, y2]
+            else:
+                tier_ranges[ntype][0] = min(tier_ranges[ntype][0], y1)
+                tier_ranges[ntype][1] = max(tier_ranges[ntype][1], y2)
+
+    # Bounding boxes of all nodes with 16px safety margin (cards must never be overlapped)
+    node_boxes = [
+        (p[0] - 16, p[1] - 16, p[0] + 260 + 16, p[1] + 84 + 16)
+        for p in positions.values()
+    ]
+
     edge_labels = []
+    placed_label_coords: List[tuple[int, int]] = []
+
+    # Safe whitespace channels between tiers where zero cards exist
+    band_y1 = None
+    if "answer" in tier_ranges and "chunk" in tier_ranges:
+        band_y1 = (tier_ranges["answer"][1] + tier_ranges["chunk"][0]) // 2
+
+    band_y2 = None
+    if "chunk" in tier_ranges and "document" in tier_ranges:
+        band_y2 = (tier_ranges["chunk"][1] + tier_ranges["document"][0]) // 2
+
     for edge in graph.get("edges", []):
-        start, end = positions.get(str(edge.get("from"))), positions.get(str(edge.get("to")))
+        start = positions.get(str(edge.get("from")))
+        end = positions.get(str(edge.get("to")))
         if not start or not end:
             continue
         label = html.escape(_atlas_relation_label(edge.get("relation")))
-        x = (start[0] + end[0]) // 2 + 130
-        y = (start[1] + end[1]) // 2 + 42
-        width = min(136, max(74, 14 + len(label) * 6))
-        edge_labels.append(
-            f'<g class="edge-label"><rect x="{x - width // 2}" y="{y - 11}" width="{width}" height="20" rx="8"/>'
-            f'<text x="{x}" y="{y + 3}" text-anchor="middle">{label}</text></g>'
+        p_start = (start[0] + 130, start[1] + 42)
+        p_end = (end[0] + 130, end[1] + 42)
+
+        # Target safe whitespace band crossed by this edge
+        cand_y = None
+        if start[1] < end[1]:
+            if band_y1 is not None and p_start[1] < band_y1 < p_end[1]:
+                cand_y = band_y1
+            elif band_y2 is not None and p_start[1] < band_y2 < p_end[1]:
+                cand_y = band_y2
+        else:
+            if band_y2 is not None and p_end[1] < band_y2 < p_start[1]:
+                cand_y = band_y2
+            elif band_y1 is not None and p_end[1] < band_y1 < p_start[1]:
+                cand_y = band_y1
+
+        if cand_y is not None and p_end[1] != p_start[1]:
+            t = (cand_y - p_start[1]) / (p_end[1] - p_start[1])
+            cand_x = int(p_start[0] + t * (p_end[0] - p_start[0]))
+        else:
+            cand_x = (p_start[0] + p_end[0]) // 2
+            cand_y = (p_start[1] + p_end[1]) // 2
+
+        width = min(140, max(76, 16 + len(label) * 6))
+        height = 20
+        bx1 = cand_x - width // 2
+        bx2 = cand_x + width // 2
+        by1 = cand_y - height // 2
+        by2 = cand_y + height // 2
+
+        # Strict collision check: NEVER overlap any node card
+        collides_node = any(
+            not (bx2 < nx1 or bx1 > nx2 or by2 < ny1 or by1 > ny2)
+            for nx1, ny1, nx2, ny2 in node_boxes
         )
+        # Avoid clutter: Ensure labels in the same tier maintain at least 70px spacing
+        collides_label = any(
+            math.hypot(cand_x - px, cand_y - py) < 70
+            for px, py in placed_label_coords
+        )
+
+        if not collides_node and not collides_label:
+            placed_label_coords.append((cand_x, cand_y))
+            edge_labels.append(
+                f'<g class="edge-label"><rect x="{bx1}" y="{by1}" width="{width}" height="{height}" rx="9999"/>'
+                f'<text x="{cand_x}" y="{cand_y + 3}" text-anchor="middle">{label}</text></g>'
+            )
     atlas_html = atlas_html.replace("</svg>", "".join(edge_labels) + "</svg>", 1)
-    atlas_html = atlas_html.replace(
-        ".edge{stroke:#a6afb5;stroke-width:2;opacity:.34}",
-        ".edge{stroke:#6e7b86;stroke-width:2.2;opacity:.62}.edge-label rect{fill:#fffdf9;stroke:#c8d0d5;stroke-width:1}.edge-label text{font-size:10px;font-weight:700;fill:#53616d}",
-    )
+
+    # Localize raw English relations remaining in SVG text
+    atlas_html = atlas_html.replace(">supported by<", ">dẫn chứng cho<")
+    atlas_html = atlas_html.replace(">contains<", ">chứa đoạn<")
+    atlas_html = atlas_html.replace(">extracted from<", ">trích từ<")
+    atlas_html = atlas_html.replace(">derived from<", ">suy ra từ<")
+    atlas_html = atlas_html.replace("Loại: document", "Loại: Tài liệu nguồn")
+    atlas_html = atlas_html.replace("Loại: chunk", "Loại: Đoạn trích bằng chứng")
+    atlas_html = atlas_html.replace("Loại: answer", "Loại: Câu trả lời")
+
+    # Dark Mode CSS Override matching Flowsint & AIOS WorkLens
+    dark_atlas_css = f"""<style>
+:root {{
+  --ink: #f8fafc;
+  --muted: #94a3b8;
+  --paper: #0b0f19;
+  --panel: #0f172a;
+  --line: #1e293b;
+  --accent: #38bdf8;
+  --orange: #f97316;
+}}
+* {{ box-sizing: border-box; }}
+body {{
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: {CJK_MULTI_LOCALE_FONT_STACK};
+}}
+header {{
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--line);
+  background: rgba(15, 23, 42, 0.85);
+  backdrop-filter: blur(8px);
+}}
+.eyebrow {{
+  color: var(--accent);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-size: 11px;
+  font-weight: 700;
+}}
+h1 {{
+  margin: 4px 0 6px;
+  font-size: 18px;
+  font-weight: 700;
+  color: #f8fafc;
+}}
+.lede {{
+  margin: 0;
+  color: var(--muted);
+  max-width: 850px;
+  font-size: 12px;
+  line-height: 1.5;
+}}
+main {{
+  max-width: 1300px;
+  margin: auto;
+  padding: 16px;
+}}
+.toolbar {{
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}}
+button {{
+  font: inherit;
+  border: 1px solid #334155;
+  background: #1e293b;
+  border-radius: 9999px;
+  padding: 6px 14px;
+  cursor: pointer;
+  color: #cbd5e1;
+  font-size: 12px;
+  font-weight: 600;
+  transition: all 0.15s ease;
+}}
+button:hover {{
+  background: #334155;
+  color: #fff;
+  border-color: #475569;
+}}
+button.active {{
+  background: rgba(56, 189, 248, 0.15);
+  color: var(--accent);
+  border-color: var(--accent);
+  box-shadow: 0 0 10px rgba(56, 189, 248, 0.25);
+  font-weight: 700;
+}}
+.legend {{
+  color: #64748b;
+  font-size: 12px;
+  margin-left: 6px;
+}}
+.layout {{
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 320px;
+  gap: 16px;
+}}
+.canvas {{
+  overflow: auto;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background-color: var(--paper);
+  background-image: radial-gradient(#1e293b 1px, transparent 1px);
+  background-size: 20px 20px;
+  min-height: 560px;
+  box-shadow: inset 0 2px 10px rgba(0, 0, 0, 0.4);
+}}
+svg {{
+  display: block;
+  min-width: 1080px;
+}}
+.edge {{
+  stroke: #475569;
+  stroke-width: 1.8;
+  opacity: 0.7;
+  transition: all 0.2s ease;
+}}
+.edge:hover, .edge.active, .edge.focus {{
+  stroke: var(--accent) !important;
+  stroke-width: 2.8 !important;
+  opacity: 1 !important;
+  filter: drop-shadow(0 0 6px rgba(56, 189, 248, 0.7));
+}}
+.edge-label {{
+  pointer-events: none;
+}}
+.edge-label rect {{
+  fill: #0f172a;
+  stroke: #334155;
+  stroke-width: 1;
+}}
+.edge-label text {{
+  font-size: 10px;
+  font-weight: 600;
+  fill: #94a3b8;
+}}
+.node {{
+  cursor: pointer;
+  outline: none;
+}}
+.node rect {{
+  fill: var(--panel);
+  stroke: var(--node-color);
+  stroke-width: 1.8;
+  rx: 12px;
+  transition: all 0.15s ease;
+}}
+.node.needs-review rect {{
+  stroke-dasharray: 6 3;
+}}
+.node:hover rect, .node.active rect {{
+  fill: #1e293b;
+  stroke-width: 3.2;
+  filter: drop-shadow(0 0 10px rgba(56, 189, 248, 0.5));
+}}
+.node-type {{
+  font-size: 11px;
+  font-weight: 800;
+  fill: #94a3b8;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}}
+.node-label {{
+  font-size: 13px;
+  font-weight: 600;
+  fill: #f8fafc;
+  line-height: 1.4;
+}}
+.review-label {{
+  font-size: 11px;
+  font-weight: 800;
+  fill: #f59e0b;
+}}
+body[data-view="answer"] .node:not(.focus), body[data-view="answer"] .edge:not(.focus) {{
+  display: none;
+}}
+aside {{
+  position: sticky;
+  top: 18px;
+  align-self: start;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--panel);
+  padding: 16px;
+  max-height: calc(100vh - 36px);
+  overflow-y: auto;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+}}
+aside h2 {{
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--accent);
+  margin: 4px 0 10px;
+  word-break: break-word;
+}}
+.receipt {{
+  white-space: pre-wrap;
+  line-height: 1.6;
+  font-size: 12.5px;
+  background: #1e293b;
+  border: 1px solid #334155;
+  border-radius: 8px;
+  color: #e2e8f0;
+  padding: 12px;
+  word-break: break-word;
+}}
+.badge {{
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 9999px;
+  background: rgba(56, 189, 248, 0.15);
+  color: var(--accent);
+  border: 1px solid rgba(56, 189, 248, 0.3);
+  font-size: 11px;
+  font-weight: 700;
+  margin: 2px 4px 4px 0;
+}}
+.notice {{
+  border-left: 3px solid #f59e0b;
+  background: rgba(245, 158, 11, 0.1);
+  padding: 8px 12px;
+  color: #fde68a;
+  border-radius: 4px;
+  font-size: 12px;
+  margin-top: 10px;
+}}
+.atlas-copy-btn {{
+  background: #334155;
+  color: #f8fafc;
+  border: 1px solid #475569;
+  border-radius: 6px;
+  padding: 6px 12px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  margin-top: 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.15s ease;
+}}
+.atlas-copy-btn:hover {{
+  background: #475569;
+}}
+@media (max-width: 850px) {{
+  .layout {{ display: block; }}
+  aside {{ position: static; max-height: none; margin-top: 16px; }}
+  h1 {{ font-size: 18px; }}
+}}
+</style>"""
+
+    # Inject Dark Mode CSS replacing original upstream CSS block
+    atlas_html = re.sub(r"<style>[\s\S]*?</style>", dark_atlas_css, atlas_html, count=1)
+
     atlas_html = atlas_html.replace("document.querySelectorAll('[data-view]')", "document.querySelectorAll('button[data-view]')")
     atlas_html = atlas_html.replace(
         "<span class=\"legend\">Bấm một khối hoặc đường nối để xem biên lai bằng chứng.</span>",
@@ -158,9 +490,8 @@ def _polish_evidence_atlas_html(atlas_html: str, graph: Dict[str, Any]) -> str:
         "document.body.dataset.view=button.dataset.view;document.querySelectorAll('button[data-view]').forEach(item=>item.classList.toggle('active',item===button));",
         "document.body.dataset.view=button.dataset.view;document.querySelectorAll('button[data-view]').forEach(item=>item.classList.toggle('active',item===button));document.getElementById('atlas-view-status').textContent=button.dataset.view==='full'?'Đang xem: Toàn bộ knowledge graph':'Đang xem: Câu trả lời & nguồn';",
     )
-    # The upstream page currently emits literal line breaks inside JS
-    # single-quoted strings, making its entire interaction script invalid.
-    # Install an independent, syntax-safe controller after that script.
+
+    # Controller with localized descriptions and copy action
     payload = json.dumps(graph, ensure_ascii=False).replace("</", "<\\/")
     controller = f"""
 <script>
@@ -171,6 +502,15 @@ def _polish_evidence_atlas_html(atlas_html: str, graph: Dict[str, Any]) -> str:
   const status = document.getElementById('atlas-view-status');
   const detailTitle = document.getElementById('detail-title');
   const detail = document.getElementById('detail');
+
+  const TYPE_NAMES = {{
+    'document': '📁 Tệp tài liệu nguồn',
+    'chunk': '🏷️ Đoạn trích bằng chứng',
+    'answer': '💡 Câu trả lời tổng hợp',
+    'question': '❓ Câu hỏi truy vấn',
+    'claim': '📌 Nhận định trích xuất'
+  }};
+
   const setView = (view) => {{
     document.body.dataset.view = view;
     document.querySelectorAll('button[data-view]').forEach(button => {{
@@ -180,26 +520,46 @@ def _polish_evidence_atlas_html(atlas_html: str, graph: Dict[str, Any]) -> str:
       ? 'Đang xem: Toàn bộ knowledge graph'
       : 'Đang xem: Câu trả lời & nguồn';
   }};
+
   document.querySelectorAll('button[data-view]').forEach(button => {{
     button.addEventListener('click', () => setView(button.dataset.view));
   }});
+
   document.querySelectorAll('[data-node]').forEach(element => {{
     element.addEventListener('click', () => {{
       const node = nodeById[element.dataset.node];
       if (!node || !detailTitle || !detail) return;
       detailTitle.textContent = node.label;
-      detail.textContent = `Loại: ${{node.type}}\n\n${{node.properties?.location || node.properties?.source_id || 'Bấm các đường nối để xem quan hệ và nguồn.'}}`;
+      const typeLabel = TYPE_NAMES[node.type] || node.type;
+      const loc = node.properties?.location || node.properties?.source_id || '';
+      const text = node.properties?.text || node.label || '';
+      detail.innerHTML = `
+        <div style="font-size:11px; font-weight:700; color:#38bdf8; margin-bottom:6px;">${{typeLabel}}</div>
+        ${{loc ? `<div style="font-size:11px; color:#a78bfa; margin-bottom:8px; word-break:break-all;">📁 ${{loc}}</div>` : ''}}
+        <div style="font-size:12px; line-height:1.6; color:#e2e8f0; white-space:pre-wrap; word-break:break-word;">${{text}}</div>
+        <button type="button" class="atlas-copy-btn" onclick="navigator.clipboard.writeText(this.dataset.snippet); this.textContent='Đã sao chép!'; setTimeout(() => this.textContent='Sao chép', 2000);" data-snippet="${{encodeURIComponent(text)}}">
+          📋 Sao chép
+        </button>
+      `;
+      const btn = detail.querySelector('.atlas-copy-btn');
+      if (btn) btn.dataset.snippet = text;
     }});
   }});
+
   document.querySelectorAll('[data-edge]').forEach(element => {{
     element.addEventListener('click', () => {{
       const edge = edgeById[element.dataset.edge];
       if (!edge || !detailTitle || !detail) return;
-      detailTitle.textContent = edge.relation.replaceAll('_', ' ');
+      const relName = edge.relation.replaceAll('_', ' ');
+      detailTitle.textContent = relName;
       const source = nodeById[edge.from]?.label || edge.from;
       const target = nodeById[edge.to]?.label || edge.to;
       const locations = (edge.receipts || []).map(item => item.location).filter(Boolean).join(', ');
-      detail.textContent = `${{source}} -> ${{target}}${{locations ? `\n\nVị trí: ${{locations}}` : ''}}`;
+      detail.innerHTML = `
+        <div style="font-size:12px; color:#38bdf8; font-weight:700; margin-bottom:6px;">Quan hệ liên kết</div>
+        <div style="font-size:12.5px; color:#f8fafc; line-height:1.5;"><strong>${{source}}</strong><br>───▶ <strong>${{target}}</strong></div>
+        ${{locations ? `<div style="font-size:11px; color:#a78bfa; margin-top:8px;">Vị trí: ${{locations}}</div>` : ''}}
+      `;
     }});
   }});
 }})();
@@ -209,12 +569,7 @@ def _polish_evidence_atlas_html(atlas_html: str, graph: Dict[str, Any]) -> str:
 
 
 def _build_evidence_scene_layout(view_model: EvidenceGraphViewModel) -> tuple[List[Dict[str, Any]], List[Dict[str, Any]], int, int]:
-    """Create a compact, evidence-faithful layout for a hand-drawn scene.
-
-    Source cards are grouped only by their existing ``source_id``. This does
-    not create new evidence: it prevents the same document from being drawn
-    repeatedly when several cited passages come from it.
-    """
+    """Create a compact, Flowsint-inspired evidence layout with pill nodes."""
     cards: List[Dict[str, Any]] = []
     source_card_by_node_id: Dict[str, str] = {}
     source_groups: Dict[str, List[Dict[str, Any]]] = defaultdict(list)
@@ -223,28 +578,59 @@ def _build_evidence_scene_layout(view_model: EvidenceGraphViewModel) -> tuple[Li
         if node["node_type"] == "source":
             source_groups[str(node.get("source_id") or node["title"])].append(node)
 
-    def append_card(node: Dict[str, Any], *, x: int, y: int, card_id: Optional[str] = None, detail: Optional[str] = None, badge: str = "") -> None:
+    def append_card(
+        node: Dict[str, Any],
+        *,
+        x: int,
+        y: int,
+        width: int = 220,
+        height: int = 44,
+        card_id: Optional[str] = None,
+        detail: Optional[str] = None,
+        badge: str = "",
+        display_label: Optional[str] = None,
+    ) -> None:
+        raw_title = str(node.get("title") or node.get("id") or "")
         cards.append({
             "id": card_id or str(node["id"]),
             "node_type": node["node_type"],
             "kind": str(node.get("type_label") or node["node_type"]),
-            "title": str(node.get("title") or node["id"]),
+            "title": raw_title,
+            "display_label": display_label or raw_title,
             "summary": _compact_scene_text(node.get("snippet") or node.get("title")),
             "detail": detail if detail is not None else str(node.get("snippet") or node.get("title") or ""),
             "badge": badge or str(node.get("citation_id") or ""),
+            "confidence": node.get("confidence"),
+            "source_id": node.get("source_id") or "",
+            "source_path": node.get("metadata", {}).get("source_path") or node.get("source_id") or "",
             "x": x,
             "y": y,
-            "width": 250,
-            "height": 108,
+            "width": width,
+            "height": height,
         })
 
+    # Question pill (max ~60 chars)
     for index, node in enumerate(n for n in view_model.nodes if n["node_type"] == "question"):
-        append_card(node, x=55, y=70 + index * 128)
-    for index, node in enumerate(n for n in view_model.nodes if n["node_type"] == "answer"):
-        append_card(node, x=355, y=70 + index * 128)
-    for index, node in enumerate(n for n in view_model.nodes if n["node_type"] == "citation"):
-        append_card(node, x=670 + (index % 2) * 255, y=70 + (index // 2) * 128)
+        q_text = str(node.get("title") or node.get("snippet") or "")
+        if len(q_text) > 42:
+            q_text = f"{q_text[:39]}…"
+        append_card(node, x=40, y=50 + index * 54, width=220, height=44, display_label=q_text)
 
+    # Answer pill
+    for index, node in enumerate(n for n in view_model.nodes if n["node_type"] == "answer"):
+        ans_text = str(node.get("title") or "Câu trả lời")
+        if len(ans_text) > 36:
+            ans_text = f"{ans_text[:33]}…"
+        append_card(node, x=290, y=50 + index * 54, width=200, height=44, display_label=ans_text)
+
+    # Citation pill (compact [1], [2], etc.)
+    for index, node in enumerate(n for n in view_model.nodes if n["node_type"] == "citation"):
+        cid = str(node.get("citation_id") or f"[{index+1}]")
+        col = index % 3
+        row = index // 3
+        append_card(node, x=520 + col * 86, y=50 + row * 48, width=76, height=38, display_label=cid, badge=cid)
+
+    # Source pills (short filenames)
     for index, (source_key, nodes) in enumerate(source_groups.items()):
         first = nodes[0]
         group_id = f"document:{source_key}"
@@ -252,11 +638,17 @@ def _build_evidence_scene_layout(view_model: EvidenceGraphViewModel) -> tuple[Li
         grouped_detail = "\n\n".join(
             f"{node.get('citation_id') or node['id']}: {node.get('snippet') or ''}" for node in nodes
         )
+        src_name = source_key.replace("\\", "/").split("/")[-1]
+        if len(src_name) > 28:
+            src_name = f"{src_name[:25]}…"
         append_card(
             first,
-            x=1190,
-            y=70 + index * 132,
+            x=810,
+            y=50 + index * 54,
+            width=240,
+            height=44,
             card_id=group_id,
+            display_label=src_name,
             detail=grouped_detail or str(first.get("snippet") or ""),
             badge=" ".join(citation_ids),
         )
@@ -279,8 +671,8 @@ def _build_evidence_scene_layout(view_model: EvidenceGraphViewModel) -> tuple[Li
             edges.append({"source_id": source_id, "target_id": target_id, "label": relation})
             seen_edges.add(pair)
 
-    highest_bottom = max((int(card["y"]) + int(card["height"]) for card in cards), default=420)
-    return cards, edges, 1500, max(480, highest_bottom + 70)
+    highest_bottom = max((int(card["y"]) + int(card["height"]) for card in cards), default=360)
+    return cards, edges, 1100, max(380, highest_bottom + 60)
 
 
 class CapabilityStatus(str, Enum):
@@ -765,10 +1157,10 @@ class ExcaliFlowAdapter:
         cards, edges, scene_width, scene_height = _build_evidence_scene_layout(view_model)
         card_by_id = {str(card["id"]): card for card in cards}
         colors = {
-            "question": ("#e7f0ff", "#3b82f6"),
-            "answer": ("#fff0e8", "#e8753a"),
-            "citation": ("#fff7d8", "#c28a10"),
-            "source": ("#f2ebff", "#7c5bb8"),
+            "question": ("#0c4a6e", "#0284c7"),
+            "answer": ("#064e3b", "#059669"),
+            "citation": ("#451a03", "#d97706"),
+            "source": ("#2e1065", "#7c3aed"),
         }
 
         edge_svg: List[str] = []
@@ -780,50 +1172,560 @@ class ExcaliFlowAdapter:
             x2 = int(target["x"])
             y2 = int(target["y"]) + int(target["height"]) // 2
             edge_svg.append(
-                f'<path class="scene-edge" d="M{x1},{y1} C{x1 + 35},{y1} {x2 - 35},{y2} {x2},{y2}" />'
+                f'<path class="scene-edge" data-source="{html.escape(str(source["id"]), quote=True)}" data-target="{html.escape(str(target["id"]), quote=True)}" d="M{x1},{y1} C{x1 + 35},{y1} {x2 - 35},{y2} {x2},{y2}" />'
             )
 
         card_svg: List[str] = []
         for card in cards:
-            fill, stroke = colors.get(str(card["node_type"]), ("#ffffff", "#64748b"))
+            fill, stroke = colors.get(str(card["node_type"]), ("#0f172a", "#64748b"))
             x, y = int(card["x"]), int(card["y"])
+            w, h = int(card["width"]), int(card["height"])
             card_id = html.escape(str(card["id"]), quote=True)
-            title_lines = _scene_text_lines(str(card["title"]), 29, 2)
-            summary_lines = _scene_text_lines(str(card["summary"]), 38, 2)
-            title_svg = "".join(
-                f'<text class="scene-title" x="{x + 14}" y="{y + 44 + line_index * 17}">{html.escape(line)}</text>'
-                for line_index, line in enumerate(title_lines)
-            )
-            summary_y = y + 79
-            summary_svg = "".join(
-                f'<text class="scene-summary" x="{x + 14}" y="{summary_y + line_index * 14}">{html.escape(line)}</text>'
-                for line_index, line in enumerate(summary_lines)
-            )
-            badge = html.escape(str(card.get("badge") or ""))
-            badge_svg = (
-                f'<text class="scene-badge" x="{x + 14}" y="{y + 23}">{badge}</text>' if badge else ""
-            )
-            kind = html.escape(str(card["kind"]))
+            ntype = str(card["node_type"])
+            icon = {"question": "❓", "answer": "💡", "citation": "🏷️", "source": "📄"}.get(ntype, "🔹")
+            disp_label = html.escape(str(card.get("display_label") or card["title"]))
             card_svg.append(
-                f'<g class="scene-node {html.escape(str(card["node_type"]), quote=True)}" tabindex="0" '
-                f'role="button" data-node="{card_id}">'
-                f'<rect class="scene-shadow" x="{x + 2}" y="{y + 2}" width="{card["width"]}" height="{card["height"]}" rx="10" />'
-                f'<rect class="scene-card" x="{x}" y="{y}" width="{card["width"]}" height="{card["height"]}" '
-                f'rx="10" fill="{fill}" stroke="{stroke}" />'
-                f'<text class="scene-kind" x="{x + 14}" y="{y + 23}">{kind}</text>{badge_svg}{title_svg}{summary_svg}</g>'
+                f'<g class="scene-node egv-node-card {html.escape(ntype, quote=True)}" tabindex="0" '
+                f'role="button" data-node="{card_id}" data-type="{html.escape(ntype, quote=True)}">'
+                f'<rect class="scene-shadow" x="{x + 1}" y="{y + 2}" width="{w}" height="{h}" rx="20" />'
+                f'<rect class="scene-card" x="{x}" y="{y}" width="{w}" height="{h}" rx="20" fill="{fill}" stroke="{stroke}" />'
+                f'<text class="scene-pill-text" x="{x + 14}" y="{y + h // 2 + 4}">'
+                f'<tspan class="scene-icon">{icon} </tspan>'
+                f'<tspan class="scene-label">{disp_label}</tspan>'
+                f'</text></g>'
             )
 
+        # Build Sidebar Entity Items
+        entity_items_html: List[str] = []
+        grouped_cards: Dict[str, List[Dict[str, Any]]] = defaultdict(list)
+        for c in cards:
+            grouped_cards[str(c["node_type"])].append(c)
+
+        group_labels = {
+            "question": f"❓ {t('node_type_question', locale=norm_loc)}",
+            "answer": f"💡 {t('node_type_answer', locale=norm_loc)}",
+            "citation": f"🏷️ {t('citations', locale=norm_loc)}",
+            "source": f"📄 {t('evidence_graph_source_nodes', locale=norm_loc)}",
+        }
+        for gtype in ("question", "answer", "citation", "source"):
+            gitems = grouped_cards.get(gtype, [])
+            if not gitems:
+                continue
+            entity_items_html.append(f'<div class="entity-group-label">{html.escape(group_labels.get(gtype, gtype))} ({len(gitems)})</div>')
+            for c in gitems:
+                c_icon = {"question": "❓", "answer": "💡", "citation": "🏷️", "source": "📄"}.get(str(c["node_type"]), "🔹")
+                c_disp = html.escape(str(c.get("display_label") or c["title"]))
+                c_badge = f'<span class="entity-badge" style="background:rgba(255,255,255,0.08);">{html.escape(str(c["badge"]))}</span>' if c.get("badge") else ""
+                entity_items_html.append(
+                    f'<div class="entity-item" data-node-ref="{html.escape(str(c["id"]), quote=True)}" '
+                    f'data-search="{html.escape(str(c["title"]) + " " + str(c.get("detail", "")), quote=True)}">'
+                    f'<span>{c_icon}</span>'
+                    f'<span style="overflow:hidden; text-overflow:ellipsis;">{c_disp}</span>'
+                    f'{c_badge}</div>'
+                )
+        entities_list_html = "".join(entity_items_html)
+
         payload = json.dumps(cards, ensure_ascii=False).replace("</", "<\\/")
+        edges_payload = json.dumps(edges, ensure_ascii=False).replace("</", "<\\/")
         scene_payload = json.dumps(scene, ensure_ascii=False).replace("</", "<\\/")
         initial_detail_title = t("excalidraw_scene_select_node", locale=norm_loc)
         initial_detail_hint = t("excalidraw_scene_select_node_desc", locale=norm_loc)
         initial_detail_title_js = json.dumps(initial_detail_title, ensure_ascii=False)
+        initial_detail_hint_js = json.dumps(initial_detail_hint, ensure_ascii=False)
+        entities_title = t("entities_title", locale=norm_loc)
+        inspector_title = t("inspector_title", locale=norm_loc)
+        search_placeholder = t("search_entities_placeholder", locale=norm_loc)
+        confidence_label = t("confidence_score", locale=norm_loc)
+        source_file_label = t("source_file", locale=norm_loc)
+        snippet_label = t("full_snippet", locale=norm_loc)
+        copy_label = t("copy_snippet", locale=norm_loc)
+        copied_label = t("copied_snippet", locale=norm_loc)
+
         return f"""<!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<html lang="{norm_loc}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <style>
-:root{{--paper:#fdfbf7;--ink:#23262b;--line:#d7d1c6}}*{{box-sizing:border-box}}html,body{{margin:0;background:var(--paper);color:var(--ink);font-family:{CJK_MULTI_LOCALE_FONT_STACK}}}
-.scene-shell{{padding:14px;background:var(--paper)}}.scene-head{{display:flex;justify-content:space-between;gap:12px;align-items:center;margin:0 4px 10px;flex-wrap:wrap}}.scene-head strong{{font-size:16px}}.scene-head span{{font-size:12px;color:#5f6670}}.scene-board{{overflow:auto;border:1px solid var(--line);border-radius:14px;background-image:radial-gradient(#d9d2c7 .8px,transparent .8px);background-size:18px 18px;box-shadow:0 3px 12px rgba(52,45,34,.12)}}svg{{display:block;min-width:1100px;width:100%;height:auto}}.scene-edge{{fill:none;stroke:#697586;stroke-width:2.3;stroke-linecap:round;stroke-dasharray:8 5;marker-end:url(#scene-arrow)}}.scene-node{{cursor:pointer;outline:none}}.scene-shadow{{fill:none;stroke:#9b9488;stroke-width:1;opacity:.45;transform:rotate(.25deg);transform-origin:center}}.scene-card{{stroke-width:2.2;stroke-linejoin:round;stroke-dasharray:1 0.7}}.scene-node:hover .scene-card,.scene-node:focus .scene-card{{stroke-width:4;filter:brightness(.98)}}.scene-kind{{font-size:10px;font-weight:800;letter-spacing:1px;fill:#5d6670}}.scene-title{{font-size:14px;font-weight:700;fill:#22252a}}.scene-summary{{font-size:11px;fill:#4d5560}}.scene-badge{{font-size:10px;font-weight:800;fill:#9c6511}}.scene-detail{{margin:12px 4px 2px;padding:12px 14px;border:1px solid var(--line);border-radius:10px;background:#fffdfa;white-space:pre-wrap;line-height:1.5;font-size:13px;max-height:170px;overflow:auto}}.scene-detail strong{{display:block;margin-bottom:5px}}.excalidraw-evidence-error{{padding:16px;border:1px solid #c28a10;border-radius:10px;background:#fff7d8;color:#6c4a00}}
-</style></head><body><main class="scene-shell" data-excalidraw-elements="{len(scene.get('elements', []))}"><div class="scene-head"><strong>✏️ {html.escape(t('evidence_graph_title', locale=norm_loc))}</strong><span>{html.escape(view_model.stats_label)}</span></div><section class="scene-board"><svg viewBox="0 0 {scene_width} {scene_height}" role="img" aria-label="Evidence graph in Excalidraw style"><defs><marker id="scene-arrow" markerWidth="10" markerHeight="8" refX="8" refY="4" orient="auto"><path d="M0,0 L9,4 L0,8" fill="none" stroke="#697586" stroke-width="1.5"/></marker></defs>{''.join(edge_svg)}{''.join(card_svg)}</svg></section><section class="scene-detail" aria-live="polite"><strong id="scene-detail-title">{html.escape(initial_detail_title)}</strong><div id="scene-detail-content">{html.escape(initial_detail_hint)}</div></section></main><script>const EXCALIDRAW_SCENE={scene_payload};const INITIAL_DETAIL_TITLE={initial_detail_title_js};const NODES={payload};const byId=Object.fromEntries(NODES.map(node=>[node.id,node]));function showNode(id){{const node=byId[id];if(!node)return;document.getElementById('scene-detail-title').textContent=node.title;document.getElementById('scene-detail-content').textContent=node.detail||node.summary;document.querySelectorAll('.scene-node').forEach(item=>item.classList.toggle('active',item.dataset.node===id));}}document.querySelectorAll('.scene-node').forEach(item=>{{item.addEventListener('click',()=>showNode(item.dataset.node));item.addEventListener('keydown',event=>{{if(event.key==='Enter'||event.key===' '){{event.preventDefault();showNode(item.dataset.node);}}}});}});</script></body></html>"""
+:root {{
+  --bg-dark: #0b0f19;
+  --panel-bg: #0f172a;
+  --border-color: #1e293b;
+  --text-main: #f8fafc;
+  --text-muted: #94a3b8;
+  --accent: #38bdf8;
+}}
+* {{ box-sizing: border-box; }}
+html, body {{
+  margin: 0; padding: 0;
+  background: var(--bg-dark);
+  color: var(--text-main);
+  font-family: {CJK_MULTI_LOCALE_FONT_STACK};
+  height: 100%;
+  overflow: hidden;
+}}
+.scene-shell {{
+  padding: 4px;
+  background: var(--bg-dark);
+  height: 100%;
+  box-sizing: border-box;
+}}
+.flowsint-layout {{
+  display: flex;
+  height: 100%;
+  background: var(--bg-dark);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5);
+}}
+/* Column 1: Entities Sidebar */
+.flowsint-sidebar {{
+  width: 250px;
+  min-width: 220px;
+  background: var(--panel-bg);
+  border-right: 1px solid var(--border-color);
+  display: flex;
+  flex-direction: column;
+}}
+.sidebar-header {{
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--border-color);
+}}
+.sidebar-title {{
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  letter-spacing: 0.5px;
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}}
+.search-input {{
+  width: 100%;
+  background: #1e293b;
+  border: 1px solid #334155;
+  border-radius: 6px;
+  color: #f8fafc;
+  padding: 6px 10px;
+  font-size: 12px;
+  outline: none;
+  transition: border-color 0.15s ease;
+}}
+.search-input:focus {{
+  border-color: var(--accent);
+}}
+.entity-list {{
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px 10px;
+}}
+.entity-group-label {{
+  font-size: 11px;
+  font-weight: 700;
+  color: #64748b;
+  text-transform: uppercase;
+  margin: 10px 4px 4px;
+}}
+.entity-item {{
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  margin-bottom: 4px;
+  border-radius: 6px;
+  font-size: 12px;
+  cursor: pointer;
+  background: rgba(30, 41, 59, 0.4);
+  border: 1px solid transparent;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}}
+.entity-item:hover {{
+  background: rgba(30, 41, 59, 0.9);
+  border-color: #475569;
+}}
+.entity-item.active {{
+  background: rgba(56, 189, 248, 0.15);
+  border-color: var(--accent);
+  color: var(--accent);
+}}
+.entity-badge {{
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 4px;
+  margin-left: auto;
+}}
+
+/* Column 2: Center Canvas */
+.flowsint-canvas-wrapper {{
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  position: relative;
+  background-color: var(--bg-dark);
+  background-image: radial-gradient(#1e293b 1px, transparent 1px);
+  background-size: 20px 20px;
+}}
+.scene-head {{
+  padding: 10px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--border-color);
+  background: rgba(15, 23, 42, 0.7);
+  backdrop-filter: blur(8px);
+}}
+.scene-head strong {{
+  font-size: 14px;
+  color: #f8fafc;
+}}
+.scene-head span {{
+  font-size: 12px;
+  color: var(--text-muted);
+  background: rgba(56, 189, 248, 0.1);
+  padding: 2px 8px;
+  border-radius: 9999px;
+  border: 1px solid rgba(56, 189, 248, 0.25);
+}}
+.scene-board {{
+  flex: 1;
+  overflow: auto;
+  position: relative;
+}}
+svg {{
+  display: block;
+  min-width: 1100px;
+  width: 100%;
+  height: auto;
+}}
+.scene-edge {{
+  fill: none;
+  stroke: #475569;
+  stroke-width: 1.8;
+  stroke-dasharray: 4 3;
+  transition: stroke 0.2s, stroke-width 0.2s, opacity 0.2s;
+}}
+.scene-edge.highlight {{
+  stroke: var(--accent) !important;
+  stroke-width: 3 !important;
+  stroke-dasharray: none !important;
+  opacity: 1 !important;
+}}
+.scene-edge.dimmed {{
+  opacity: 0.15;
+}}
+.scene-node {{
+  cursor: pointer;
+  outline: none;
+  transition: opacity 0.2s, transform 0.15s ease;
+}}
+.scene-node:hover .scene-card, .scene-node:focus .scene-card {{
+  filter: brightness(1.25);
+  stroke-width: 2.5;
+}}
+.scene-node.active .scene-card {{
+  stroke: #38bdf8 !important;
+  stroke-width: 3.5 !important;
+  filter: drop-shadow(0 0 8px rgba(56, 189, 248, 0.7));
+}}
+.scene-node.dimmed {{
+  opacity: 0.25;
+}}
+.scene-pill-text {{
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  fill: #f8fafc;
+}}
+.scene-shadow {{
+  fill: rgba(0, 0, 0, 0.35);
+  stroke: none;
+}}
+.scene-card {{
+  stroke-width: 1.8;
+}}
+
+/* Column 3: Inspector Panel */
+.flowsint-inspector {{
+  width: 320px;
+  min-width: 280px;
+  background: var(--panel-bg);
+  border-left: 1px solid var(--border-color);
+  display: flex;
+  flex-direction: column;
+  padding: 16px;
+  overflow-y: auto;
+}}
+.inspector-header {{
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: 12px;
+  margin-bottom: 14px;
+}}
+.inspector-main-title {{
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--accent);
+  margin-bottom: 6px;
+  word-break: break-word;
+}}
+.inspector-type-badge {{
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  padding: 2px 8px;
+  border-radius: 9999px;
+  background: rgba(56, 189, 248, 0.15);
+  color: var(--accent);
+}}
+.inspector-field {{
+  margin-bottom: 14px;
+}}
+.inspector-field-label {{
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 4px;
+}}
+.inspector-snippet-box {{
+  background: #1e293b;
+  border: 1px solid #334155;
+  border-radius: 8px;
+  padding: 12px;
+  font-size: 12px;
+  line-height: 1.6;
+  color: #e2e8f0;
+  max-height: 240px;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+}}
+.copy-btn {{
+  background: #334155;
+  color: #f8fafc;
+  border: 1px solid #475569;
+  border-radius: 6px;
+  padding: 6px 12px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  margin-top: 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.15s ease;
+}}
+.copy-btn:hover {{
+  background: #475569;
+}}
+.excalidraw-evidence-error {{
+  padding: 16px;
+  border: 1px solid #c28a10;
+  border-radius: 10px;
+  background: #fff7d8;
+  color: #6c4a00;
+}}
+</style></head><body>
+<main class="scene-shell" data-excalidraw-elements="{len(scene.get('elements', []))}">
+<div class="flowsint-layout">
+  <!-- Column 1: Entities Sidebar -->
+  <aside class="flowsint-sidebar">
+    <div class="sidebar-header">
+      <div class="sidebar-title"><span>📂</span> {html.escape(entities_title)}</div>
+      <input type="text" id="entity-search" class="search-input" placeholder="{html.escape(search_placeholder)}" />
+    </div>
+    <div class="entity-list" id="entity-list">
+      {entities_list_html}
+    </div>
+  </aside>
+
+  <!-- Column 2: Center Canvas -->
+  <div class="flowsint-canvas-wrapper">
+    <div class="scene-head">
+      <strong>🕸️ {html.escape(t('evidence_graph_title', locale=norm_loc))}</strong>
+      <span>{html.escape(view_model.stats_label)}</span>
+    </div>
+    <section class="scene-board">
+      <svg viewBox="0 0 {scene_width} {scene_height}" role="img" aria-label="Evidence graph in Flowsint style">
+        <defs>
+          <marker id="scene-arrow" markerWidth="10" markerHeight="8" refX="8" refY="4" orient="auto">
+            <path d="M0,0 L9,4 L0,8" fill="none" stroke="#697586" stroke-width="1.5"/>
+          </marker>
+        </defs>
+        {''.join(edge_svg)}
+        {''.join(card_svg)}
+      </svg>
+    </section>
+  </div>
+
+  <!-- Column 3: Inspector Panel -->
+  <aside class="flowsint-inspector scene-detail" aria-live="polite">
+    <div class="inspector-header">
+      <div class="sidebar-title"><span>🔍</span> {html.escape(inspector_title)}</div>
+      <div class="inspector-main-title" id="scene-detail-title">{html.escape(initial_detail_title)}</div>
+      <span class="inspector-type-badge" id="inspector-badge" style="display:none;"></span>
+    </div>
+
+    <div class="inspector-field" id="inspector-meta-source" style="display:none;">
+      <div class="inspector-field-label">{html.escape(source_file_label)}</div>
+      <div id="inspector-source-val" style="font-size:12px; color:#a78bfa; word-break:break-all;"></div>
+    </div>
+
+    <div class="inspector-field" id="inspector-meta-conf" style="display:none;">
+      <div class="inspector-field-label">{html.escape(confidence_label)}</div>
+      <div id="inspector-conf-val" style="font-size:12px; color:#38bdf8; font-weight:700;"></div>
+    </div>
+
+    <div class="inspector-field">
+      <div class="inspector-field-label">{html.escape(snippet_label)}</div>
+      <div class="inspector-snippet-box" id="scene-detail-content">{html.escape(initial_detail_hint)}</div>
+      <button type="button" class="copy-btn" id="inspector-copy-btn" style="display:none;">
+        <span>📋</span> <span id="copy-btn-text">{html.escape(copy_label)}</span>
+      </button>
+    </div>
+  </aside>
+</div>
+</main>
+
+<script>
+const EXCALIDRAW_SCENE = {scene_payload};
+const INITIAL_DETAIL_TITLE = {initial_detail_title_js};
+const INITIAL_DETAIL_HINT = {initial_detail_hint_js};
+const NODES = {payload};
+const EDGES = {edges_payload};
+const byId = Object.fromEntries(NODES.map(node => [node.id, node]));
+
+const titleElem = document.getElementById('scene-detail-title');
+const contentElem = document.getElementById('scene-detail-content');
+const badgeElem = document.getElementById('inspector-badge');
+const metaSourceElem = document.getElementById('inspector-meta-source');
+const sourceValElem = document.getElementById('inspector-source-val');
+const metaConfElem = document.getElementById('inspector-meta-conf');
+const confValElem = document.getElementById('inspector-conf-val');
+const copyBtn = document.getElementById('inspector-copy-btn');
+const copyBtnText = document.getElementById('copy-btn-text');
+const searchInput = document.getElementById('entity-search');
+
+function showNode(id) {{
+  const node = byId[id];
+  if (!node) return;
+
+  titleElem.textContent = node.title;
+  contentElem.textContent = node.detail || node.summary;
+
+  if (badgeElem) {{
+    badgeElem.textContent = node.kind || node.node_type;
+    badgeElem.style.display = 'inline-block';
+  }}
+
+  if (metaSourceElem && sourceValElem) {{
+    if (node.source_path || node.source_id) {{
+      sourceValElem.textContent = node.source_path || node.source_id;
+      metaSourceElem.style.display = 'block';
+    }} else {{
+      metaSourceElem.style.display = 'none';
+    }}
+  }}
+
+  if (metaConfElem && confValElem) {{
+    if (node.confidence !== null && node.confidence !== undefined) {{
+      const pct = Math.round(Number(node.confidence) * 100);
+      confValElem.textContent = pct + '%';
+      metaConfElem.style.display = 'block';
+    }} else {{
+      metaConfElem.style.display = 'none';
+    }}
+  }}
+
+  if (copyBtn) {{
+    copyBtn.style.display = 'inline-flex';
+    copyBtnText.textContent = {json.dumps(copy_label, ensure_ascii=False)};
+  }}
+
+  // Active state for nodes
+  document.querySelectorAll('.scene-node').forEach(item => {{
+    const isTarget = item.dataset.node === id;
+    item.classList.toggle('active', isTarget);
+    item.classList.toggle('dimmed', !isTarget);
+  }});
+
+  // Active state for sidebar entities
+  document.querySelectorAll('.entity-item').forEach(item => {{
+    item.classList.toggle('active', item.dataset.nodeRef === id);
+  }});
+
+  // Cross-highlight connected edges
+  const connectedIds = new Set([id]);
+  document.querySelectorAll('.scene-edge').forEach(edge => {{
+    const s = edge.dataset.source;
+    const t = edge.dataset.target;
+    if (s === id || t === id) {{
+      edge.classList.add('highlight');
+      edge.classList.remove('dimmed');
+      if (s) connectedIds.add(s);
+      if (t) connectedIds.add(t);
+    }} else {{
+      edge.classList.remove('highlight');
+      edge.classList.add('dimmed');
+    }}
+  }});
+
+  // Also undim directly connected nodes
+  document.querySelectorAll('.scene-node').forEach(item => {{
+    if (connectedIds.has(item.dataset.node)) {{
+      item.classList.remove('dimmed');
+    }}
+  }});
+}}
+
+// Node click and keydown
+document.querySelectorAll('.scene-node').forEach(item => {{
+  item.addEventListener('click', () => showNode(item.dataset.node));
+  item.addEventListener('keydown', event => {{
+    if (event.key === 'Enter' || event.key === ' ') {{
+      event.preventDefault();
+      showNode(item.dataset.node);
+    }}
+  }});
+}});
+
+// Sidebar click
+document.querySelectorAll('.entity-item').forEach(item => {{
+  item.addEventListener('click', () => showNode(item.dataset.nodeRef));
+}});
+
+// Realtime search
+if (searchInput) {{
+  searchInput.addEventListener('input', () => {{
+    const q = searchInput.value.toLowerCase().trim();
+    document.querySelectorAll('.entity-item').forEach(item => {{
+      const searchTarget = (item.dataset.search || item.textContent).toLowerCase();
+      item.style.display = searchTarget.includes(q) ? 'flex' : 'none';
+    }});
+  }});
+}}
+
+// Copy button
+if (copyBtn) {{
+  copyBtn.addEventListener('click', () => {{
+    const textToCopy = contentElem.textContent || '';
+    if (navigator.clipboard && navigator.clipboard.writeText) {{
+      navigator.clipboard.writeText(textToCopy).then(() => {{
+        copyBtnText.textContent = {json.dumps(copied_label, ensure_ascii=False)};
+        setTimeout(() => {{
+          copyBtnText.textContent = {json.dumps(copy_label, ensure_ascii=False)};
+        }}, 2000);
+      }});
+    }}
+  }});
+}}
+</script></body></html>"""
 
     def render_trace_svg(
         self,

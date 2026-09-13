@@ -234,6 +234,10 @@ def _coerce_to_trace(trace_or_dict: Union[EvidenceTrace, Dict[str, Any]]) -> Evi
         if not isinstance(trace_or_dict.nodes, list) or not isinstance(trace_or_dict.edges, list):
             raise TypeError("Trace nodes and edges must be lists")
         return trace_or_dict
+    if hasattr(trace_or_dict, "nodes") and hasattr(trace_or_dict, "edges"):
+        if hasattr(trace_or_dict, "to_dict"):
+            d = trace_or_dict.to_dict()
+            return EvidenceTrace.from_dict(d)
     if isinstance(trace_or_dict, dict):
         nodes = trace_or_dict.get("nodes")
         if nodes is not None and not isinstance(nodes, list):
@@ -243,7 +247,7 @@ def _coerce_to_trace(trace_or_dict: Union[EvidenceTrace, Dict[str, Any]]) -> Evi
             raise TypeError("edges must be a list")
         if isinstance(nodes, list):
             for n in nodes:
-                if not isinstance(n, (dict, EvidenceNode)):
+                if not isinstance(n, (dict, EvidenceNode)) and not hasattr(n, "node_type"):
                     raise TypeError(f"Invalid node type: {type(n)}")
                 if isinstance(n, dict):
                     nt = n.get("node_type")
@@ -465,7 +469,7 @@ def _render_node_card(n: Dict[str, Any]) -> str:
     style = n["style"]
     cid_badge = ""
     if n.get("citation_id"):
-        cid_badge = f'<span style="background:{style["badge_bg"]}; color:{style["color"]}; border:1px solid {style["border"]}; padding:2px 8px; border-radius:6px; font-size:11px; font-weight:700; margin-left:6px;">{_esc(n["citation_id"])}</span>'
+        cid_badge = f'<span style="background:{style["badge_bg"]}; color:{style["color"]}; border:1px solid {style["border"]}; padding:2px 8px; border-radius:9999px; font-size:11px; font-weight:700; margin-left:6px;">{_esc(n["citation_id"])}</span>'
 
     conf_badge = ""
     if n.get("confidence") is not None:
@@ -474,21 +478,29 @@ def _render_node_card(n: Dict[str, Any]) -> str:
 
     snippet_html = ""
     if n.get("snippet"):
-        snippet_html = f'<div style="margin-top:8px; font-size:12px; color:#cbd5e1; line-height:1.5; max-height:120px; overflow-y:auto; word-break:break-word; background:rgba(0,0,0,0.25); padding:6px 10px; border-radius:6px; border:1px solid rgba(255,255,255,0.06); font-family:inherit;">{_esc(n["snippet"])}</div>'
+        snippet_html = (
+            f'<div class="egv-snippet" style="margin-top:6px; font-size:11px; color:#cbd5e1; '
+            f'line-height:1.4; word-break:break-word; background:rgba(0,0,0,0.25); '
+            f'padding:6px 10px; border-radius:8px; border:1px solid rgba(255,255,255,0.06); '
+            f'max-height:100px; overflow-y:auto;" data-snippet="{_esc(n["snippet"])}">'
+            f'{_esc(n["snippet"])}'
+            f'</div>'
+        )
 
     source_id_html = ""
     if n.get("source_id"):
-        source_id_html = f'<div style="margin-top:6px; font-size:11px; color:#a78bfa; word-break:break-all;">📁 {_esc(n["source_id"])}</div>'
+        src_clean = str(n["source_id"]).replace("\\", "/").split("/")[-1]
+        source_id_html = f'<div style="margin-top:4px; font-size:11px; color:#a78bfa; word-break:break-all;">📁 {_esc(src_clean)}</div>'
 
     return f"""
-<div class="egv-node-card" style="background:{style["bg"]}; border:1px solid {style["border"]}; border-radius:8px; padding:12px 14px; margin-bottom:12px; box-shadow:0 4px 12px rgba(0,0,0,0.3); transition:transform 0.15s ease;">
+<div class="egv-node-card" style="background:{style["bg"]}; border:1px solid {style["border"]}; border-radius:12px; padding:10px 14px; margin-bottom:8px; box-shadow:0 2px 8px rgba(0,0,0,0.3); transition:all 0.15s ease; cursor:pointer;" data-node-id="{_esc(n['id'])}">
     <div style="display:flex; align-items:center; gap:8px;">
-        <span style="font-size:16px;">{style["icon"]}</span>
-        <span style="font-size:13px; font-weight:700; color:{style["color"]};">{_esc(n["type_label"])}</span>
+        <span style="font-size:14px;">{style["icon"]}</span>
+        <span style="font-size:12px; font-weight:700; color:{style["color"]};">{_esc(n["type_label"])}</span>
         {cid_badge}
         {conf_badge}
     </div>
-    <div style="margin-top:6px; font-size:13px; font-weight:600; color:#f8fafc; word-break:break-word; line-height:1.4;">
+    <div style="margin-top:4px; font-size:12px; font-weight:600; color:#f8fafc; word-break:break-word; line-height:1.3;">
         {_esc(n["title"])}
     </div>
     {source_id_html}
@@ -699,24 +711,15 @@ body {{ font-family:{CJK_MULTI_LOCALE_FONT_STACK}; }}
 
 
 def _evidence_graph_component_height(view_model: EvidenceGraphViewModel) -> int:
-    """Choose a usable iframe height without making ordinary chats enormous."""
-    column_sizes = (
-        sum(1 for node in view_model.nodes if node["node_type"] in {"question", "answer"}),
-        sum(1 for node in view_model.nodes if node["node_type"] == "citation"),
-        sum(1 for node in view_model.nodes if node["node_type"] == "source"),
-    )
-    tallest_column = max(column_sizes, default=1)
-    return min(960, max(520, 260 + (tallest_column * 140)))
+    """Choose a tight, usable iframe height for the 3-column Flowsint Evidence Graph."""
+    return 580
 
 
 def render_evidence_graph_streamlit(
     trace_or_dict: Union[EvidenceTrace, Dict[str, Any]],
     locale: str = DEFAULT_LOCALE,
 ) -> None:
-    """Render the Evidence Graph Viewer component in Streamlit.
-
-    Renders one readable, responsive graph in an isolated component.
-
+    """Renders one readable, responsive graph in an isolated component.
     The detailed ExcaliFlow Atlas is an explicit secondary action. It is not
     embedded by default because its fixed wide canvas makes the normal chat
     view hard to read and forces horizontal scrolling.
@@ -748,7 +751,7 @@ def render_evidence_graph_streamlit(
         scene_html = adapter.render_excalidraw_scene_html(trace, locale=loc)
         components.html(
             scene_html,
-            height=min(880, max(620, _evidence_graph_component_height(view_model))),
+            height=_evidence_graph_component_height(view_model),
             scrolling=True,
         )
 
@@ -757,7 +760,6 @@ def render_evidence_graph_streamlit(
         if not atlas_open:
             if st.button(
                 t("btn_open_evidence_atlas", locale=loc),
-                key=f"btn_open_evidence_atlas_{trace.trace_id}",
             ):
                 st.session_state[atlas_state_key] = True
                 atlas_open = True

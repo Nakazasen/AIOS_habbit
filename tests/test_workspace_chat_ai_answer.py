@@ -1486,9 +1486,10 @@ def test_cloud_memory_fingerprint_mismatch_fail_closed():
     assert "bài học" in (result.error_message or "")
 
 
-def test_direct_and_bridge_share_recall_helper():
+def test_direct_and_bridge_share_recall_helper(tmp_path):
     from aios_habit.workspace_chat_ai_answer import recall_memory_for_answer
     from aios_habit.feature_flags import reset_feature_flags
+    from aios_habit.workspace_memory_service import override_memory_settings_path
 
     reset_feature_flags()
     req = WorkspaceAIAnswerRequest(
@@ -1497,7 +1498,8 @@ def test_direct_and_bridge_share_recall_helper():
         context_sources=(),
         privacy_mode=PRIVACY_MODE_LOCAL_PREVIEW_ONLY,
     )
-    assert recall_memory_for_answer(req) is None
+    with override_memory_settings_path(tmp_path / "settings.json"):
+        assert recall_memory_for_answer(req) is None
 
 
 def test_cloud_call_fails_closed_when_consent_memory_fingerprint_is_empty():

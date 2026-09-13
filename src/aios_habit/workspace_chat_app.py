@@ -2646,7 +2646,11 @@ else:
                     preview_backend = st.session_state.get(
                         f"wsc_ai_backend_{active_conversation.id}", "gemini_web"
                     )
-                    if preview_backend == "gemini_web":
+                    is_bridge_connection_error = any(
+                        token in str(active_action_error).casefold()
+                        for token in ("gemini_web", "bridge", "cầu nối", "kết nối trực tiếp", "kết nối ai")
+                    )
+                    if preview_backend == "gemini_web" and is_bridge_connection_error:
                         if st.button(
                             t("reconnect_gemini_web", locale=current_ui_locale),
                             key=f"wsc_reconnect_gemini_{active_conversation.id}",
@@ -3079,19 +3083,24 @@ else:
                                     if ret_res.get("status") == "quality_search_unavailable":
                                         unavailable_reason = str(
                                             ret_res.get("rag_v2_canary", {}).get("fallback_reason", "")
-                                        )
+                                        ).casefold()
                                         if unavailable_reason == "deep_search_unavailable":
                                             st.session_state.wsc_action_error = t(
                                                 "deep_search_unavailable",
                                                 locale=current_ui_locale,
                                             )
-                                        elif unavailable_reason == "runtimeerror":
+                                        elif (
+                                            unavailable_reason == "runtimeerror"
+                                            or "worker" in unavailable_reason
+                                            or "eof" in unavailable_reason
+                                            or "timeout" in unavailable_reason
+                                            or not unready_sources
+                                        ):
                                             st.session_state.wsc_action_error = t(
                                                 "search_runtime_unavailable",
                                                 locale=current_ui_locale,
                                             )
                                         else:
-                                            st.error(t("no_evidence_found_error", locale=current_ui_locale))
                                             st.session_state.wsc_action_error = t(
                                                 "search_sources_preparing",
                                                 locale=current_ui_locale,
@@ -3100,9 +3109,11 @@ else:
                                         if st.session_state.get("wsc_chat_history") and st.session_state["wsc_chat_history"][-1].role == "user":
                                             st.session_state["wsc_chat_history"].pop()
                                         safe_rerun()
-                                    elif ret_res["summary_count"] == 0:
-                                        st.error(t("no_matched_segments_error", locale=current_ui_locale))
-                                        st.session_state.wsc_action_error = "Chưa tìm thấy đoạn phù hợp trong nguồn đang bật."
+                                    elif ret_res.get("summary_count", 0) == 0:
+                                        st.session_state.wsc_action_error = t(
+                                            "no_matched_segments_error",
+                                            locale=current_ui_locale,
+                                        )
                                         st.session_state.wsc_last_ai_badge = None
                                         if st.session_state.get("wsc_chat_history") and st.session_state["wsc_chat_history"][-1].role == "user":
                                             st.session_state["wsc_chat_history"].pop()
