@@ -44,7 +44,7 @@ Probe phải chứng minh bằng receipt:
 7. từ chối path traversal, symlink thoát root, `.env`, command ngoài allowlist, commit và push;
 8. auto-approval không hỏi lại với action hợp lệ trong task root.
 
-Thiếu bất kỳ mục nào thì G1 là `BLOCKED`; đánh giá Cline theo cùng fixture, không fork OpenCode ngay.
+Thiếu undo/deny/event: G1 `PARTIAL`, hoãn US3. Vẫn làm US1/US2. Không BLOCK Goal. Không fork. Không bắt Cline.
 
 ## 4. G2 — Báo cáo lỗi có biểu đồ
 

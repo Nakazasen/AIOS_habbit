@@ -7,7 +7,7 @@ Nguồn thực thi: [spec.md](spec.md), [plan.md](plan.md), [tasks.md](tasks.md)
 ```text
 Tiếp tục Goal `009-agent-harness-adoption` trong repo `D:\Sandbox\AIOS_habbit` với vai trò Execution Specialist, Gemini Flash 3.8, suy luận cao.
 
-Đọc `AGENTS.md`, `CONSTITUTION.md`, `AGENT_RULES.md` rồi toàn bộ `specs/009-agent-harness-adoption/`, bắt buộc gồm `GEMINI_FLASH_3_8_GOAL.md`, `tasks.md`, `contracts/agent-factory-error-report-v1.md`, `contracts/agent-process-design-review-v1.md`, `contracts/agent-runtime-protocol.md` và `contracts/agent-error-report-v1.md`. Kiểm tra Git; không reset, không đụng diff người dùng. Bắt đầu từ task `[ ]` ID nhỏ nhất (T000 nếu còn). Làm tuần tự G1→G6. Sau mỗi task: test thật, ghi evidence, đánh `[x]` chỉ khi lệnh đã chạy.
+Đọc `AGENTS.md`, `CONSTITUTION.md`, `AGENT_RULES.md` rồi toàn bộ `specs/009-agent-harness-adoption/`, bắt buộc gồm `GEMINI_FLASH_3_8_GOAL.md`, `tasks.md`, `contracts/agent-factory-error-report-v1.md`, `contracts/agent-process-design-review-v1.md`, `contracts/agent-runtime-protocol.md` và `contracts/agent-error-report-v1.md`. Kiểm tra Git; không reset, không đụng diff người dùng. Bắt đầu từ task `[ ]` ID nhỏ nhất. Hiện tại là **T011** (US1). Bỏ T006–T010 cho đến hết US2. Không BLOCK Goal. G1 PARTIAL chỉ hoãn US3. Sau mỗi task: test thật, ghi evidence, đánh `[x]` chỉ khi lệnh đã chạy.
 
 Hai schema «báo cáo lỗi» khác nhau:
 - `agent-factory-error-report-v1.md` = US1 báo cáo lỗi xưởng (log/Excel).
@@ -52,7 +52,7 @@ Làm T000–T030 để Workspace Chat trở thành trợ lý việc hằng ngày
 
 ## 4. Thứ tự bắt buộc
 
-T000 đọc tài liệu → T001–T005 G1 (dừng sớm nếu probe fail) → T006–T010 nền → T011–T015 US1 → T016–T019 US2 → T020–T023 US3 → T024–T026 US4 → T027–T030 G6.
+T000–T005 đã xong. Tiếp: T011–T015 US1 → T016–T019 US2 → mới T006–T010 + US3. Probe OpenCode thiếu undo không được dừng US1/US2.
 
 ## 5. Việc không làm
 

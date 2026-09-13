@@ -22,6 +22,28 @@ Cập nhật: 2026-09-11
 - Kiểm toán 2026-09-07: 29 test US10/Workspace Chat trọng điểm đạt; `compileall`, CLI audit, import, tài liệu và UI tiếng Việt đạt.
 - Chủ sở hữu đã chấp thuận năm điểm quyết định tại sổ LSU mục 30.14.
 
+## Bản môi trường thực thi khóa cho G1
+
+Ghi nhận cục bộ ngày 2026-09-13. Đây là bản phải dùng cho kiểm tra G1; việc ghi nhận này **không** có nghĩa G1 đã đạt.
+
+- Gói cài cục bộ: `opencode-ai` phiên bản `1.14.33`.
+- Máy G1 không có AVX2, vì vậy lệnh khởi chạy chọn biến thể `opencode-windows-x64-baseline` phiên bản `1.14.33`.
+- Tệp thực thi đã kiểm chứng: `opencode.exe`, 183187336 byte, SHA-256 `C37DD78F32F9636D4D79D0B23FF43E37FCFB5A418602074587B7CB280F8774E4`.
+- Giấy phép: MIT; tệp `LICENSE` đi kèm gói có SHA-256 `625F0F619133F89BBBB2ABE37369613DFA1885EBA1E50D02170DEB62BB42CB6B`.
+- Lệnh khởi động thử nghiệm: `opencode.cmd serve --hostname 127.0.0.1 --port 4096 --pure`. Không dùng `--mdns`; tiến trình chỉ được gắn vào vòng lặp cục bộ và dừng bằng `Ctrl+C` sau kiểm tra.
+
+Trước mỗi kiểm tra, chạy `opencode.cmd --version` và đối chiếu SHA-256 của tệp thực thi biến thể không AVX2 với giá trị trên. Nếu phiên bản, giá trị băm hoặc biến thể phần cứng khác, dừng G1 và ghi lỗi môi trường thực thi; không tạo cầu nối dựa trên bản chưa kiểm chứng.
+
+## Quyết định G1
+
+Status: `PARTIAL` — chỉ ràng US3 (sửa mã). **Goal 009 không BLOCKED.** Cập nhật 2026-09-13 (owner).
+
+Probe OpenCode: đọc / tìm / tạo / sửa / test / resume / hủy **đạt**. Thiếu event/receipt đọc lại, deny-trước-chạy, và hoàn tác chưa sạch digest. Những thiếu đó **chỉ hoãn adapter OpenCode và US3**. Không được dùng để dừng US1/US2.
+
+Cline chưa auth → **bỏ qua**, không cấu hình khóa, không fork.
+
+**Việc tiếp theo bắt buộc: T011 US1** (file báo cáo lỗi trên Workspace Chat, extractors hiện có). Rồi T012–T019 US2. Cấm tạo `opencode_runtime_adapter.py` trước khi US1+US2 có test xanh. Cấm ghi Goal = BLOCKED.
+
 ## Danh sách cho phép G1
 
 - `specs/009-agent-harness-adoption/`
@@ -44,7 +66,7 @@ Mở rộng ngoài allowlist cần cập nhật thẻ cổng trước khi sửa.
 - Read/search/create/edit/test trong task root chạy tự động, không hỏi từng action.
 - Path ngoài root, secret, quyền admin, commit, push, merge và deploy bị deny trước thực thi.
 - Checkpoint hoàn tác fixture về đúng digest ban đầu; session/event đủ để lập receipt và không lặp action.
-- Nếu thiếu một điều kiện: trạng thái `BLOCKED`, ghi bằng chứng và đánh giá Cline; không fork.
+- Thiếu undo/deny/event: ghi `PARTIAL`, **vẫn làm US1/US2**. Không `BLOCKED` cả Goal. Không fork.
 
 ## Quyền riêng tư
 

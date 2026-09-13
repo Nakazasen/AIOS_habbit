@@ -2,25 +2,17 @@
 
 ## Giai đoạn 0 — Đọc khóa phạm vi
 
-- [ ] T000 Đọc `GEMINI_FLASH_3_8_GOAL.md` mục «Cấm over-engineer» và bốn file `contracts/`. Không viết lại hợp đồng. Không trộn hai schema báo cáo lỗi. Không thêm bước duyệt. Không hiện tên kỹ thuật trên UI. Không tạo framework mới.
+- [x] T000 Đọc `GEMINI_FLASH_3_8_GOAL.md` mục «Cấm over-engineer» và bốn file `contracts/`. Không viết lại hợp đồng. Không trộn hai schema báo cáo lỗi. Không thêm bước duyệt. Không hiện tên kỹ thuật trên UI. Không tạo framework mới.
 
 ## Giai đoạn 1 — Khóa phạm vi và runtime
 
-- [ ] T001 Ghi phiên bản, checksum, giấy phép và cách khởi động OpenCode cục bộ vào `docs/roadmap/active/AIOS-AGENT-HARNESS-ADOPTION.md`
-- [ ] T002 Tạo fixture Windows không có dữ liệu thật cho báo cáo, tài liệu công đoạn và repo lỗi mẫu trong `tests/fixtures/agent_harness/`
-- [ ] T003 Viết kiểm thử probe read/search/create/edit/test/resume/undo và deny ngoài vùng trong `tests/test_agent_runtime_capabilities.py`
-- [ ] T004 Viết probe OpenCode theo đúng bản đã pin trong `scripts/probe_opencode_runtime.py`
-- [ ] T005 Ghi quyết định G1 dựa trên output thật vào `docs/roadmap/active/AIOS-AGENT-HARNESS-ADOPTION.md`; chỉ tạo adapter nếu probe đạt
+- [x] T001 Ghi phiên bản, checksum, giấy phép và cách khởi động OpenCode cục bộ vào `docs/roadmap/active/AIOS-AGENT-HARNESS-ADOPTION.md`
+- [x] T002 Tạo fixture Windows không có dữ liệu thật cho báo cáo, tài liệu công đoạn và repo lỗi mẫu trong `tests/fixtures/agent_harness/`
+- [x] T003 Viết kiểm thử probe read/search/create/edit/test/resume/undo và deny ngoài vùng trong `tests/test_agent_runtime_capabilities.py`
+- [x] T004 Viết probe OpenCode theo đúng bản đã pin trong `scripts/probe_opencode_runtime.py`
+- [x] T005 Ghi quyết định G1. Probe thiếu undo/deny/event = `PARTIAL` cho US3, **không BLOCK Goal**. Việc kế là T011, không phải adapter OpenCode.
 
-## Giai đoạn 2 — Nền dùng chung tối thiểu
-
-- [ ] T006 Mở rộng policy theo task root, loại nhiệm vụ, lệnh test và vùng cấm trong `src/aios_habit/workspace_agent_policy.py`
-- [ ] T007 Tạo adapter OpenCode mỏng cho session, event, file và command trong `src/aios_habit/opencode_runtime_adapter.py`
-- [ ] T008 Mở rộng orchestrator cho checkpoint, resume, rollback và một writer theo workspace trong `src/aios_habit/workspace_agent_orchestrator.py`
-- [ ] T009 Mở rộng record `agent_work` bằng migration nhỏ, có backup và rollback trong `src/aios_habit/workspace_case_repository.py`
-- [ ] T010 Kiểm thử chung về path traversal, secret, Unicode, idempotency và restart trong `tests/test_agent_work_foundation.py`
-
-## Giai đoạn 3 — US1: Báo cáo lỗi có biểu đồ
+## Giai đoạn 2 — US1: Báo cáo lỗi (làm ngay, không cần OpenCode)
 
 **Mục tiêu**: kỹ sư giao hồ sơ lỗi và nhận file báo cáo tiếng Việt có bảng/biểu đồ đúng nguồn, dùng được ngay.
 
@@ -32,7 +24,7 @@
 - [ ] T014 [US1] Tạo hoặc cập nhật file báo cáo lỗi và checkpoint hoàn tác trong `src/aios_habit/agent_work_artifact.py`
 - [ ] T015 [US1] Thêm hành động «Tạo báo cáo lỗi» và thẻ «Đã xong» / «Mở kết quả» / «Hoàn tác» trong `src/aios_habit/workspace_chat_app.py`. Không nút duyệt.
 
-## Giai đoạn 4 — US2: Rà soát thiết kế công đoạn
+## Giai đoạn 3 — US2: Rà soát thiết kế công đoạn (sau US1, vẫn không cần OpenCode)
 
 **Mục tiêu**: chỉ ra điểm sai, mâu thuẫn, thiếu kiểm soát và cải tiến nên làm từ tài liệu đã chọn.
 
@@ -42,6 +34,14 @@
 - [ ] T017 [US2] Ghép evidence pack theo phạm vi tài liệu người dùng chọn trong `src/aios_habit/agent_work_artifact.py`
 - [ ] T018 [US2] Tạo bản rà soát năm phần và sơ đồ hiện tại/đề xuất trong `src/aios_habit/agent_work_artifact.py`
 - [ ] T019 [US2] Thêm hành động “Rà soát thiết kế công đoạn” và cảnh báo đây là bản nháp trong `src/aios_habit/workspace_chat_app.py`
+
+## Giai đoạn 4 — Nền OpenCode (chỉ sau US1+US2 xanh)
+
+- [ ] T006 Mở rộng policy theo task root, loại nhiệm vụ, lệnh test và vùng cấm trong `src/aios_habit/workspace_agent_policy.py`
+- [ ] T007 Tạo adapter OpenCode mỏng cho session, event, file và command trong `src/aios_habit/opencode_runtime_adapter.py`
+- [ ] T008 Mở rộng orchestrator cho checkpoint, resume, rollback và một writer theo workspace trong `src/aios_habit/workspace_agent_orchestrator.py`
+- [ ] T009 Mở rộng record `agent_work` bằng migration nhỏ, có backup và rollback trong `src/aios_habit/workspace_case_repository.py`
+- [ ] T010 Kiểm thử chung về path traversal, secret, Unicode, idempotency và restart trong `tests/test_agent_work_foundation.py`
 
 ## Giai đoạn 5 — US3: Sửa mã và chạy test
 
@@ -73,9 +73,9 @@
 
 ## Phụ thuộc và chiến lược triển khai
 
-- T000 không được bỏ. T001–T005 là cổng dừng sớm. Nếu OpenCode không chứng minh được đọc–sửa–test–hoàn tác đúng phạm vi, dừng và đánh giá Cline theo cùng fixture; không fork sâu.
-- T006–T010 là nền chung nhỏ nhất. Không mở thêm abstraction nếu chưa có task nghiệm thu cần nó.
-- US1 là MVP và phải hoàn tất trước: nó chứng minh giá trị tạo file/báo cáo và khả năng trực quan hóa.
-- US2 dùng lại nền nguồn và artifact của US1; US3 dùng lại policy/checkpoint; US4 chỉ bắt đầu sau khi ít nhất US1 và US3 chạy được đơn nhiệm.
+- T000 không được bỏ. T001–T005 đã xong. **Task `[ ]` nhỏ nhất hiện tại là T011.** Cấm làm T006–T010 / US3 trước US1+US2.
+- Probe OpenCode `PARTIAL` không được ghi Goal `BLOCKED` và không được dừng US1/US2.
+- US1+US2 dùng Workspace Chat + extractors + file artifact. Không OpenCode, không Cline, không fork.
+- T006–T010 và US3 chỉ sau khi T011–T019 có test xanh. Không fork OpenCode.
 - T012 và T013 có thể làm song song sau T011. Các story khác thực hiện tuần tự để giữ diff nhỏ và dễ hoàn tác.
 - Extension Code-OSS, partial-hunk approval, scheduler nhiều máy và multi-agent swarm không thuộc danh sách này.

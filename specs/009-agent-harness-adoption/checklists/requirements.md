@@ -28,6 +28,6 @@
 ## Sẵn sàng lập kế hoạch
 
 - [x] Mỗi hành trình có kiểm thử độc lập.
-- [x] G1 kiểm chứng đủ đọc–sửa–test–hoàn tác và có điều kiện dừng sớm rõ ràng.
+- [x] G1 thiếu undo/deny không BLOCK Goal; US1/US2 làm trước, OpenCode chỉ US3.
 - [x] Không tuyên bố parity hoặc production trước benchmark và clean-machine E2E.
 - [x] MVP dùng lại module hiện có, không dựng extension, scheduler hoặc nền tảng đa Agent mới.

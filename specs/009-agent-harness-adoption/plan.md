@@ -132,7 +132,7 @@ Mặc định chỉ hiện:
 | Cổng | Phạm vi | Điều kiện ra |
 |---|---|---|
 | G0 | Đồng bộ đặc tả, kế hoạch, task và tài liệu canonical | Phạm vi mới được ghi nhất quán; không còn read-only MVP hoặc bắt duyệt toàn bộ diff |
-| G1 | Probe OpenCode đã pin trên fixture Windows | Chứng minh read/search/create/edit/test/resume/undo và chặn thao tác ngoài vùng |
+| G1 | Probe OpenCode đã pin trên fixture Windows | Đạt đọc–sửa–test thì ghi nhận. Thiếu undo/deny = `PARTIAL`, hoãn US3, **không BLOCK Goal**. US1/US2 vẫn làm |
 | G2 | Lát cắt báo cáo lỗi có biểu đồ | Tạo file báo cáo dùng được, kiểm tra nguồn số liệu, mở được và hoàn tác được |
 | G3 | Lát cắt rà soát thiết kế công đoạn | Phát hiện mâu thuẫn/thiếu/sai có nguồn, tạo sơ đồ và không sửa tài liệu chính thức |
 | G4 | Lát cắt sửa mã | Sửa bug fixture, test thật, dùng kết quả/hoàn tác, không mất thay đổi có trước |
