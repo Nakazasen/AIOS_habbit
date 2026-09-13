@@ -3727,7 +3727,11 @@ else:
                     else:
                         st.info(t("local_work_tools_need_source", locale=current_ui_locale))
 
-                    report_col, review_col, code_col = st.columns(3)
+                    from aios_habit.workspace_case_repository import WorkspaceCaseRepository
+                    from aios_habit.workspace_case_models import AgentWorkRecord, utc_now_iso
+                    from aios_habit.workspace_agent_orchestrator import WorkspaceAgentOrchestrator
+
+                    report_col, review_col = st.columns(2)
                     with report_col:
                         with st.container(border=True):
                             st.markdown(f"**{t('agent_factory_error_title', locale=current_ui_locale)}**")
@@ -3741,30 +3745,50 @@ else:
                                 disabled=not local_source_paths,
                             ):
                                 try:
-                                    rep_res = create_factory_error_report(
-                                        source_paths=local_source_paths,
-                                        output_dir=Path("local_cases") / "agent_artifacts",
-                                        work_id=active_conversation.id,
+                                    case_repo = WorkspaceCaseRepository()
+                                    orch = WorkspaceAgentOrchestrator()
+                                    work_id = f"WORK-ERR-{int(time.time()*1000)}"
+                                    orch.enqueue_work_item(
+                                        work=AgentWorkRecord(
+                                            work_id=work_id,
+                                            workspace_id=active_conversation.id,
+                                            work_type="error_report",
+                                            goal_vi=t("agent_factory_error_title", locale=current_ui_locale),
+                                            created_at=utc_now_iso(),
+                                            updated_at=utc_now_iso(),
+                                            status="queued",
+                                        ),
+                                        repo=case_repo,
                                     )
-                                    st.session_state[report_key] = rep_res
-                                    try:
-                                        case_repo = WorkspaceCaseRepository()
+                                    target_ws = st.session_state.get("wsc_agent_workspace_root") or str(Path("local_cases").resolve())
+                                    def _run_err(item_record: AgentWorkRecord) -> None:
+                                        rep_res = create_factory_error_report(
+                                            source_paths=local_source_paths,
+                                            output_dir=Path("local_cases") / "agent_artifacts",
+                                            work_id=active_conversation.id,
+                                        )
+                                        st.session_state[report_key] = rep_res
                                         case_repo.save_agent_work(
                                             AgentWorkRecord(
-                                                work_id=f"WORK-ERR-{int(time.time()*1000)}",
-                                                workspace_id=active_conversation.id,
-                                                work_type="error_report",
-                                                goal_vi="Tạo báo cáo lỗi xưởng dây chuyền",
-                                                created_at=rep_res.created_at,
-                                                updated_at=rep_res.created_at,
+                                                work_id=item_record.work_id,
+                                                workspace_id=item_record.workspace_id,
+                                                work_type=item_record.work_type,
+                                                goal_vi=item_record.goal_vi,
+                                                created_at=item_record.created_at,
+                                                updated_at=utc_now_iso(),
                                                 status="completed",
                                                 result_ref=str(rep_res.report_path),
                                                 checkpoint_ref=rep_res.checkpoint_id,
                                             )
                                         )
-                                    except Exception:
-                                        pass
+                                    orch.process_next_work_item(
+                                        workspace_id=active_conversation.id,
+                                        workspace_root=target_ws,
+                                        repo=case_repo,
+                                        runner=_run_err,
+                                    )
                                     st.success(t("agent_artifact_completed", locale=current_ui_locale))
+                                    safe_rerun()
                                 except (OSError, ValueError) as error:
                                     st.error(
                                         safe_vietnamese_ui_message(
@@ -3787,7 +3811,6 @@ else:
                                             st.markdown(report_result.report_path.read_text(encoding="utf-8"))
                                         else:
                                             st.warning(t("agent_factory_error_missing_result", locale=current_ui_locale))
-                                pass
                                 with undo_col:
                                     if st.button(
                                         t("agent_artifact_undo", locale=current_ui_locale),
@@ -3811,30 +3834,50 @@ else:
                                 disabled=not local_source_paths,
                             ):
                                 try:
-                                    rev_res = create_process_design_review(
-                                        source_paths=local_source_paths,
-                                        output_dir=Path("local_cases") / "agent_artifacts",
-                                        work_id=active_conversation.id,
+                                    case_repo = WorkspaceCaseRepository()
+                                    orch = WorkspaceAgentOrchestrator()
+                                    work_id = f"WORK-REV-{int(time.time()*1000)}"
+                                    orch.enqueue_work_item(
+                                        work=AgentWorkRecord(
+                                            work_id=work_id,
+                                            workspace_id=active_conversation.id,
+                                            work_type="process_design_review",
+                                            goal_vi=t("agent_process_review_title", locale=current_ui_locale),
+                                            created_at=utc_now_iso(),
+                                            updated_at=utc_now_iso(),
+                                            status="queued",
+                                        ),
+                                        repo=case_repo,
                                     )
-                                    st.session_state[review_key] = rev_res
-                                    try:
-                                        case_repo = WorkspaceCaseRepository()
+                                    target_ws = st.session_state.get("wsc_agent_workspace_root") or str(Path("local_cases").resolve())
+                                    def _run_rev(item_record: AgentWorkRecord) -> None:
+                                        rev_res = create_process_design_review(
+                                            source_paths=local_source_paths,
+                                            output_dir=Path("local_cases") / "agent_artifacts",
+                                            work_id=active_conversation.id,
+                                        )
+                                        st.session_state[review_key] = rev_res
                                         case_repo.save_agent_work(
                                             AgentWorkRecord(
-                                                work_id=f"WORK-REV-{int(time.time()*1000)}",
-                                                workspace_id=active_conversation.id,
-                                                work_type="process_design_review",
-                                                goal_vi="Rà soát thiết kế công đoạn sản xuất",
-                                                created_at=rev_res.created_at,
-                                                updated_at=rev_res.created_at,
+                                                work_id=item_record.work_id,
+                                                workspace_id=item_record.workspace_id,
+                                                work_type=item_record.work_type,
+                                                goal_vi=item_record.goal_vi,
+                                                created_at=item_record.created_at,
+                                                updated_at=utc_now_iso(),
                                                 status="completed",
                                                 result_ref=str(rev_res.report_path),
                                                 checkpoint_ref=rev_res.checkpoint_id,
                                             )
                                         )
-                                    except Exception:
-                                        pass
+                                    orch.process_next_work_item(
+                                        workspace_id=active_conversation.id,
+                                        workspace_root=target_ws,
+                                        repo=case_repo,
+                                        runner=_run_rev,
+                                    )
                                     st.success(t("agent_artifact_completed", locale=current_ui_locale))
+                                    safe_rerun()
                                 except (OSError, ValueError) as error:
                                     st.error(
                                         safe_vietnamese_ui_message(
@@ -3868,118 +3911,10 @@ else:
                                         st.success(t("agent_process_review_undo_done", locale=current_ui_locale))
                                         safe_rerun()
 
-                    with code_col:
-                        with st.container(border=True):
-                            st.markdown(f"**Sửa mã nguồn & kiểm thử**")
-                            st.caption("Tự động sửa lỗi trong worktree cách ly và chạy test độc lập.")
-                            code_work_key = f"wsc_code_work_result_{active_conversation.id}"
-                            code_result = st.session_state.get(code_work_key)
-
-                            if st.button(
-                                "Chạy sửa lỗi mẫu (Yield Rate)",
-                                key=f"wsc_code_fix_btn_{active_conversation.id}",
-                                use_container_width=True,
-                            ):
-                                try:
-                                    fix_dir = Path("tests/fixtures/agent_harness/code_workspace").resolve()
-                                    orchestrator = WorkspaceAgentOrchestrator()
-                                    def _sample_fix(adapter):
-                                        res = adapter.execute_request(RuntimeRequest(work_id=active_conversation.id, action="read_file", payload={"path": "yield_rate.py"}))
-                                        content = res.payload.get("content", "")
-                                        fixed = content.replace("passed // inspected * 100", "(passed / inspected) * 100")
-                                        adapter.execute_request(RuntimeRequest(work_id=active_conversation.id, action="edit_file", payload={"path": "yield_rate.py", "content": fixed}))
-
-                                    verification, checkpoint = orchestrator.run_code_task(
-                                        work_id=active_conversation.id,
-                                        workspace_root=str(fix_dir),
-                                        instruction="Sửa lỗi chia số nguyên khi tính tỷ lệ thu hồi",
-                                        test_command="pytest yield_rate_check.py",
-                                        fix_action=_sample_fix,
-                                    )
-                                    st.session_state[code_work_key] = {
-                                        "verification": verification,
-                                        "checkpoint": checkpoint,
-                                        "workspace_root": str(fix_dir),
-                                    }
-                                    try:
-                                        case_repo = WorkspaceCaseRepository()
-                                        case_repo.save_agent_work(
-                                            AgentWorkRecord(
-                                                work_id=f"WORK-CODE-{int(time.time()*1000)}",
-                                                workspace_id=active_conversation.id,
-                                                work_type="code_change",
-                                                goal_vi="Sửa phép tính tỷ lệ thu hồi Yield Rate trong worktree",
-                                                created_at=checkpoint.created_at,
-                                                updated_at=checkpoint.created_at,
-                                                status="completed" if verification.test_passed else "failed",
-                                                result_ref=str(checkpoint.task_root),
-                                                checkpoint_ref=checkpoint.checkpoint_id,
-                                            )
-                                        )
-                                    except Exception:
-                                        pass
-                                    st.success("Đã xong trong worktree")
-                                    safe_rerun()
-                                except Exception as err:
-                                    st.error(f"Lỗi thực thi mã: {err}")
-
-                            if code_result is not None:
-                                verif = code_result["verification"]
-                                ckpt = code_result["checkpoint"]
-                                ws_root = code_result["workspace_root"]
-
-                                if verif.test_passed:
-                                    st.success("Đã xong trong worktree (Test đạt 100%)")
-                                else:
-                                    st.warning(f"Kiểm thử chưa đạt (Mã thoát: {verif.exit_code})")
-
-                                st.markdown("- **Đã làm gì**: Sửa phép tính tỷ lệ thu hồi.")
-                                st.markdown(f"- **Kiểm thử**: Đạt (mã thoát: {verif.exit_code}).")
-                                st.markdown(f"- **Tệp tác động**: `{', '.join(verif.files_changed)}`.")
-                                st.markdown("- **Rủi ro**: Không có xung đột.")
-
-                                with st.expander("Xem chi tiết thay đổi (diff) & kiểm thử", expanded=False):
-                                    if verif.diff_summary:
-                                        st.code(verif.diff_summary, language="diff")
-                                    if verif.test_output_snippet:
-                                        st.caption("Dấu vết kiểm thử:")
-                                        st.code(verif.test_output_snippet)
-
-                                apply_col, undo_col = st.columns(2)
-                                with apply_col:
-                                    if st.button(
-                                        "Đưa vào thư mục đang làm",
-                                        key=f"wsc_code_apply_{active_conversation.id}",
-                                        use_container_width=True,
-                                        disabled=not verif.can_import,
-                                    ):
-                                        orch = WorkspaceAgentOrchestrator()
-                                        imported, import_msg = orch.import_code_result(
-                                            work_id=active_conversation.id,
-                                            workspace_root=ws_root,
-                                            worktree_path=ckpt.task_root,
-                                            files_to_import=verif.files_changed,
-                                        )
-                                        if imported:
-                                            st.success(import_msg)
-                                        else:
-                                            st.error(import_msg)
-                                with undo_col:
-                                    if st.button(
-                                        "Hoàn tác",
-                                        key=f"wsc_code_undo_{active_conversation.id}",
-                                        use_container_width=True,
-                                    ):
-                                        orch = WorkspaceAgentOrchestrator()
-                                        orch.rollback(ckpt)
-                                        st.session_state.pop(code_work_key, None)
-                                        st.success("Đã hoàn tác toàn bộ thay đổi.")
-                                        safe_rerun()
-
                     # --- Hàng đợi công việc (Tự động & Bền vững) ---
                     st.markdown("---")
-                    st.markdown("##### Hàng đợi công việc (Tự động & Bền vững)")
-                    st.caption("Theo dõi tiến độ, thứ tự thực thi và trạng thái các tác vụ của Agent.")
+                    st.markdown(t("agent_queue_heading", locale=current_ui_locale))
+                    st.caption(t("agent_queue_caption", locale=current_ui_locale))
 
                     queue_repo = WorkspaceCaseRepository()
                     queue_orch = WorkspaceAgentOrchestrator()
@@ -3995,20 +3930,20 @@ else:
                         pass
 
                     if not queue_items:
-                        st.info("Chưa có nhiệm vụ nào trong hàng đợi của không gian làm việc này.")
+                        st.info(t("agent_queue_empty", locale=current_ui_locale))
                     else:
                         status_labels = {
-                            "queued": "⏳ Đang chờ lượt",
-                            "running": "🔄 Đang xử lý",
-                            "completed": "✅ Đã xong",
-                            "cancelled": "🛑 Đã hủy",
-                            "failed": "❌ Thất bại",
-                            "interrupted_unknown": "⚠️ Bị gián đoạn khi khởi động lại",
+                            "queued": t("agent_queue_status_queued", locale=current_ui_locale),
+                            "running": t("agent_queue_status_running", locale=current_ui_locale),
+                            "completed": t("agent_queue_status_completed", locale=current_ui_locale),
+                            "cancelled": t("agent_queue_status_cancelled", locale=current_ui_locale),
+                            "failed": t("agent_queue_status_failed", locale=current_ui_locale),
+                            "interrupted_unknown": t("agent_queue_status_interrupted", locale=current_ui_locale),
                         }
                         type_labels = {
-                            "error_report": "Báo cáo lỗi xưởng",
-                            "process_design_review": "Rà soát công đoạn",
-                            "code_change": "Sửa mã nguồn",
+                            "error_report": t("agent_queue_type_error_report", locale=current_ui_locale),
+                            "process_design_review": t("agent_queue_type_process_review", locale=current_ui_locale),
+                            "code_change": t("agent_queue_type_code_change", locale=current_ui_locale),
                         }
 
                         for item in queue_items:
@@ -4017,34 +3952,79 @@ else:
                                 with col_info:
                                     display_type = type_labels.get(item.work_type, item.work_type)
                                     st.markdown(f"**[{display_type}]** {item.goal_vi}")
-                                    st.caption(f"Mã: `{item.work_id}` | Vị trí: #{item.queue_position}")
+                                    st.caption(
+                                        t(
+                                            "agent_queue_item_meta",
+                                            locale=current_ui_locale,
+                                            work_id=item.work_id,
+                                            position=item.queue_position,
+                                        )
+                                    )
                                 with col_status:
-                                    st.markdown(f"**Trạng thái:** {status_labels.get(item.status, item.status)}")
+                                    display_st = status_labels.get(item.status, item.status)
+                                    st.markdown(
+                                        t(
+                                            "agent_queue_status_prefix",
+                                            locale=current_ui_locale,
+                                            status=display_st,
+                                        )
+                                    )
                                 with col_actions:
                                     action_cols = st.columns(2)
                                     if item.status in ("queued", "running"):
                                         with action_cols[0]:
-                                            if st.button("Hủy", key=f"wsc_queue_cancel_{item.work_id}", use_container_width=True):
+                                            if st.button(
+                                                t("agent_queue_btn_cancel", locale=current_ui_locale),
+                                                key=f"wsc_queue_cancel_{item.work_id}",
+                                                use_container_width=True,
+                                            ):
+                                                target_ws = st.session_state.get("wsc_agent_workspace_root")
                                                 queue_orch.cancel_work_item(
                                                     work_id=item.work_id,
                                                     repo=queue_repo,
-                                                    workspace_root=st.session_state.wsc_agent_workspace_root,
+                                                    workspace_root=target_ws,
                                                 )
-                                                st.success(f"Đã hủy nhiệm vụ {item.work_id}")
+                                                st.success(
+                                                    t(
+                                                        "agent_queue_cancel_success",
+                                                        locale=current_ui_locale,
+                                                        work_id=item.work_id,
+                                                    )
+                                                )
                                                 safe_rerun()
                                     elif item.status == "completed":
                                         with action_cols[0]:
                                             if item.result_ref and Path(item.result_ref).is_file():
-                                                if st.button("Mở kết quả", key=f"wsc_queue_open_{item.work_id}", use_container_width=True):
+                                                if st.button(
+                                                    t("agent_queue_btn_open", locale=current_ui_locale),
+                                                    key=f"wsc_queue_open_{item.work_id}",
+                                                    use_container_width=True,
+                                                ):
                                                     st.markdown(Path(item.result_ref).read_text(encoding="utf-8"))
                                     if item.checkpoint_ref:
                                         with action_cols[1]:
-                                            if st.button("Hoàn tác", key=f"wsc_queue_undo_{item.work_id}", use_container_width=True):
+                                            if st.button(
+                                                t("agent_queue_btn_undo", locale=current_ui_locale),
+                                                key=f"wsc_queue_undo_{item.work_id}",
+                                                use_container_width=True,
+                                            ):
                                                 rolled_back, msg = queue_orch.rollback(item.checkpoint_ref)
                                                 if rolled_back:
-                                                    st.success(f"Đã hoàn tác nhiệm vụ {item.work_id}")
+                                                    st.success(
+                                                        t(
+                                                            "agent_queue_undo_success",
+                                                            locale=current_ui_locale,
+                                                            work_id=item.work_id,
+                                                        )
+                                                    )
                                                 else:
-                                                    st.info(f"Hoàn tác hoàn tất: {msg}")
+                                                    st.info(
+                                                        t(
+                                                            "agent_queue_undo_done",
+                                                            locale=current_ui_locale,
+                                                            message=msg,
+                                                        )
+                                                    )
                                                 safe_rerun()
 
             def _render_workspace_results_and_evidence():
@@ -4054,7 +4034,6 @@ else:
                 enabled_selections = [sel for sel in selections if sel.enabled]
                 notebook_source_by_id = {s.id: s for s in notebook_sources}
                 temp_source_by_id = {s.id: s for s in temp_sources}
-
 
                 proven_sources = []
                 for selection in enabled_selections:

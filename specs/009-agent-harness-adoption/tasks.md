@@ -49,10 +49,10 @@
 
 **Kiểm thử độc lập**: bug fixture được sửa sau một vòng test lỗi–sửa lại–test đạt; workspace chính không mất thay đổi có trước và thao tác cấm bị chặn.
 
-- [x] T020 [US3] Viết E2E cho vòng sửa–test–sửa lại–dùng kết quả–hoàn tác trong `tests/test_agent_code_worktree.py`
-- [x] T021 [US3] Nối OpenCode adapter vào orchestrator cho tác vụ mã nguồn trong `src/aios_habit/workspace_agent_orchestrator.py`
-- [x] T022 [US3] Xác minh exit code, trạng thái Git và xung đột trước khi dùng kết quả trong `src/aios_habit/agent_result_import.py`
-- [x] T023 [US3] Thẻ tóm tắt «đã làm gì, test ra sao, file bị tác động, rủi ro»; test đạt = xong trong worktree; `diff` thu gọn; «Đưa vào thư mục đang làm» tùy chọn trong `src/aios_habit/workspace_chat_app.py`
+- [ ] T020 [US3] Viết E2E cho vòng sửa–test–sửa lại–dùng kết quả–hoàn tác trong `tests/test_agent_code_worktree.py` (hoãn chờ OpenCode runtime thực tế)
+- [ ] T021 [US3] Nối OpenCode adapter vào orchestrator cho tác vụ mã nguồn trong `src/aios_habit/workspace_agent_orchestrator.py`
+- [ ] T022 [US3] Xác minh exit code, trạng thái Git và xung đột trước khi dùng kết quả trong `src/aios_habit/agent_result_import.py`
+- [ ] T023 [US3] Thẻ tóm tắt thân thiện không lộ thuật ngữ kỹ thuật, không nút sửa mẫu cố định trong `src/aios_habit/workspace_chat_app.py`
 
 ## Giai đoạn 6 — US4: Hàng đợi nhiều việc
 
@@ -61,15 +61,15 @@
 **Kiểm thử độc lập**: ba việc thuộc ba loại giữ đúng thứ tự/trạng thái qua restart; hai việc ghi cùng workspace không chạy đồng thời.
 
 - [x] T024 [US4] Viết kiểm thử hàng đợi, writer lock theo workspace, hủy và resume trong `tests/test_agent_work_queue.py`
-- [x] T025 [US4] Mở rộng orchestrator bằng hàng đợi bền vững tối thiểu dùng record hiện có trong `src/aios_habit/workspace_agent_orchestrator.py`
-- [x] T026 [US4] Hiển thị các trạng thái tiếng Việt và hành động mở/hủy/hoàn tác trong `src/aios_habit/workspace_chat_app.py`
+- [ ] T025 [US4] Mở rộng orchestrator bằng hàng đợi bền vững tối thiểu dùng record hiện có trong `src/aios_habit/workspace_agent_orchestrator.py` (nối luồng thực thi thật)
+- [ ] T026 [US4] Hiển thị các trạng thái tiếng Việt qua i18n t(...) và hành động mở/hủy/hoàn tác trong `src/aios_habit/workspace_chat_app.py`
 
 ## Giai đoạn 7 — Hoàn thiện và kiểm toán độc lập
 
-- [x] T027 Chạy kiểm thử privacy, secret, prompt injection, đường dẫn Windows, mojibake và hồi quy cầu nối Antigravity trong `tests/test_agent_work_foundation.py`
-- [x] T028 Cập nhật threat model và đánh giá riêng tư đúng phần thay đổi trong `docs/security/THREAT_MODEL.md` và `docs/security/PRIVACY_IMPACT_ASSESSMENT.md`
-- [x] T029 Cập nhật trạng thái thực tế và bằng chứng vào `ARCHITECTURE.md`, `ROADMAP.md`, `PROJECT_HANDOVER.md` và `docs/roadmap/active/AIOS-AGENT-HARNESS-ADOPTION.md`
-- [x] T030 Chạy cổng trong `specs/009-agent-harness-adoption/quickstart.md`. Lệnh xanh → ghi `TECHNICAL_PASS`. Không chờ người ngồi duyệt. Không tự tuyên bố `DONE` vận hành.
+- [ ] T027 Chạy kiểm thử privacy, secret, prompt injection, đường dẫn Windows, mojibake và hồi quy cầu nối Antigravity trong `tests/test_agent_work_foundation.py`
+- [ ] T028 Cập nhật threat model và đánh giá riêng tư đúng phần thay đổi trong `docs/security/THREAT_MODEL.md` và `docs/security/PRIVACY_IMPACT_ASSESSMENT.md`
+- [ ] T029 Cập nhật trạng thái thực tế và bằng chứng vào `ARCHITECTURE.md`, `ROADMAP.md`, `PROJECT_HANDOVER.md` và `docs/roadmap/active/AIOS-AGENT-HARNESS-ADOPTION.md`
+- [ ] T030 Chạy cổng trong `specs/009-agent-harness-adoption/quickstart.md`. Lệnh xanh → ghi `TECHNICAL_PASS`. Không chờ người ngồi duyệt. Không tự tuyên bố `DONE` vận hành.
 
 ## Phụ thuộc và chiến lược triển khai
 
