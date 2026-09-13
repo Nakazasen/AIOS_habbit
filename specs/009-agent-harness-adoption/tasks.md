@@ -60,9 +60,9 @@
 
 **Kiểm thử độc lập**: ba việc thuộc ba loại giữ đúng thứ tự/trạng thái qua restart; hai việc ghi cùng workspace không chạy đồng thời.
 
-- [ ] T024 [US4] Viết kiểm thử hàng đợi, writer lock theo workspace, hủy và resume trong `tests/test_agent_work_queue.py`
-- [ ] T025 [US4] Mở rộng orchestrator bằng hàng đợi bền vững tối thiểu dùng record hiện có trong `src/aios_habit/workspace_agent_orchestrator.py`
-- [ ] T026 [US4] Hiển thị các trạng thái tiếng Việt và hành động mở/hủy/hoàn tác trong `src/aios_habit/workspace_chat_app.py`
+- [x] T024 [US4] Viết kiểm thử hàng đợi, writer lock theo workspace, hủy và resume trong `tests/test_agent_work_queue.py`
+- [x] T025 [US4] Mở rộng orchestrator bằng hàng đợi bền vững tối thiểu dùng record hiện có trong `src/aios_habit/workspace_agent_orchestrator.py`
+- [x] T026 [US4] Hiển thị các trạng thái tiếng Việt và hành động mở/hủy/hoàn tác trong `src/aios_habit/workspace_chat_app.py`
 
 ## Giai đoạn 7 — Hoàn thiện và kiểm toán độc lập
 

@@ -17,8 +17,10 @@ from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable, Optional
 
+from aios_habit.workspace_case_models import AgentWorkRecord
+from aios_habit.workspace_case_repository import WorkspaceCaseRepository
 from aios_habit.agent_result_import import (
     WorktreeVerificationResult,
     import_worktree_to_workspace,
@@ -506,4 +508,102 @@ class WorkspaceAgentOrchestrator:
                 target_workspace_path=canonical_ws,
                 files_to_import=files_to_import,
             )
+
+    def enqueue_work_item(
+        self,
+        *,
+        work: AgentWorkRecord,
+        repo: WorkspaceCaseRepository,
+    ) -> AgentWorkRecord:
+        """Enqueues a new work item into the persistent SQLite store with deterministic FIFO ordering."""
+        existing = repo.list_agent_work(workspace_id=work.workspace_id)
+        next_pos = max([w.queue_position for w in existing], default=0) + 1
+        enqueued_work = AgentWorkRecord(
+            work_id=work.work_id,
+            workspace_id=work.workspace_id,
+            work_type=work.work_type,
+            goal_vi=work.goal_vi,
+            created_at=work.created_at,
+            updated_at=work.updated_at,
+            case_id=work.case_id,
+            source_refs=work.source_refs,
+            allowed_roots=work.allowed_roots,
+            allowed_commands=work.allowed_commands,
+            privacy_route=work.privacy_route,
+            status="queued",
+            queue_position=next_pos,
+            runtime_binding_ref=work.runtime_binding_ref,
+            checkpoint_ref=work.checkpoint_ref,
+            result_ref=work.result_ref,
+            error_report_ref=work.error_report_ref,
+            idempotency_key=work.idempotency_key,
+            record_digest=work.record_digest,
+        )
+        repo.save_agent_work(enqueued_work)
+        return enqueued_work
+
+    def cancel_work_item(
+        self,
+        *,
+        work_id: str,
+        repo: WorkspaceCaseRepository,
+        workspace_root: str | None = None,
+    ) -> bool:
+        """Cancels a queued or running work item safely."""
+        work = repo.get_agent_work(work_id)
+        if work is None:
+            return False
+        if work.status in ("completed", "failed", "cancelled"):
+            return False
+        if workspace_root:
+            self.release_workspace_lock(workspace_root, work_id)
+        repo.update_agent_work_status(work_id, "cancelled")
+        return True
+
+    def process_next_work_item(
+        self,
+        *,
+        workspace_id: str,
+        workspace_root: str,
+        repo: WorkspaceCaseRepository,
+        runner: Any | None = None,
+    ) -> Optional[AgentWorkRecord]:
+        """Picks the next queued work item for the workspace and executes it under the single writer lock."""
+        queued_items = repo.list_agent_work(workspace_id=workspace_id, status="queued")
+        if not queued_items:
+            return None
+
+        next_item = queued_items[0]
+        canonical_ws = canonical_workspace_root(workspace_root)
+        if not self.acquire_workspace_lock(canonical_ws, next_item.work_id):
+            return None
+
+        try:
+            repo.update_agent_work_status(next_item.work_id, "running")
+            if callable(runner):
+                runner(next_item)
+                repo.update_agent_work_status(next_item.work_id, "completed")
+            return repo.get_agent_work(next_item.work_id)
+        except Exception:
+            repo.update_agent_work_status(next_item.work_id, "failed")
+            raise
+        finally:
+            self.release_workspace_lock(canonical_ws, next_item.work_id)
+
+    def resume_interrupted_tasks(
+        self,
+        *,
+        repo: WorkspaceCaseRepository,
+        workspace_id: str | None = None,
+    ) -> list[AgentWorkRecord]:
+        """Recovers state after restart/crash: transitions any stranded 'running' items to 'interrupted_unknown'."""
+        running_items = repo.list_agent_work(workspace_id=workspace_id, status="running")
+        interrupted: list[AgentWorkRecord] = []
+        for item in running_items:
+            repo.update_agent_work_status(item.work_id, "interrupted_unknown")
+            updated = repo.get_agent_work(item.work_id)
+            if updated is not None:
+                interrupted.append(updated)
+        return interrupted
+
 
