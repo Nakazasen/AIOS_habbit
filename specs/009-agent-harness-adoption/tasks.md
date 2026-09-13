@@ -66,10 +66,10 @@
 
 ## Giai đoạn 7 — Hoàn thiện và kiểm toán độc lập
 
-- [ ] T027 Chạy kiểm thử privacy, secret, prompt injection, đường dẫn Windows, mojibake và hồi quy cầu nối Antigravity trong `tests/test_agent_work_foundation.py`
-- [ ] T028 Cập nhật threat model và đánh giá riêng tư đúng phần thay đổi trong `docs/security/THREAT_MODEL.md` và `docs/security/PRIVACY_IMPACT_ASSESSMENT.md`
-- [ ] T029 Cập nhật trạng thái thực tế và bằng chứng vào `ARCHITECTURE.md`, `ROADMAP.md`, `PROJECT_HANDOVER.md` và `docs/roadmap/active/AIOS-AGENT-HARNESS-ADOPTION.md`
-- [ ] T030 Chạy cổng trong `specs/009-agent-harness-adoption/quickstart.md`. Lệnh xanh → ghi `TECHNICAL_PASS`. Không chờ người ngồi duyệt. Không tự tuyên bố `DONE` vận hành.
+- [x] T027 Chạy kiểm thử privacy, secret, prompt injection, đường dẫn Windows, mojibake và hồi quy cầu nối Antigravity trong `tests/test_agent_work_foundation.py`
+- [x] T028 Cập nhật threat model và đánh giá riêng tư đúng phần thay đổi trong `docs/security/THREAT_MODEL.md` và `docs/security/PRIVACY_IMPACT_ASSESSMENT.md`
+- [x] T029 Cập nhật trạng thái thực tế và bằng chứng vào `ARCHITECTURE.md`, `ROADMAP.md`, `PROJECT_HANDOVER.md` và `docs/roadmap/active/AIOS-AGENT-HARNESS-ADOPTION.md`
+- [x] T030 Chạy cổng trong `specs/009-agent-harness-adoption/quickstart.md`. Lệnh xanh → ghi `TECHNICAL_PASS`. Không chờ người ngồi duyệt. Không tự tuyên bố `DONE` vận hành.
 
 ## Phụ thuộc và chiến lược triển khai
 

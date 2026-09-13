@@ -47,6 +47,29 @@ Lát cắt cảnh báo sớm Iris LSU đã hoàn thành toàn bộ kiểm chứn
    - Đăng ký 2 bí danh: `KHO_LSU_CUC_BO` (dữ liệu sản xuất thật LSU tại xưởng, nhãn `local_only`) và `GOI_KYOCERA_CUC_BO` (tài liệu/log kiểm kê dòng máy Kyocera cục bộ).
    - 6 nhánh độc lập sẵn sàng kích hoạt khi dữ liệu đạt yêu cầu theo chuẩn `spec.md`: US3 (Học từ bài học đã xác nhận), US4 (Trợ lý điều tra line chủ động), US5 (Agent tạo Báo cáo & SOP có kiểm soát), US6 (Agent hỗ trợ lập trình sandbox tách biệt), US10 (Cảnh báo nguy cơ an toàn trong app), US11 (Thư viện dùng chung đa máy qua NAS/SMB). Các miền mở rộng Kyocera (Drum/DLP) và C-call/Jam được xếp thành task pack riêng sau chuỗi LSU Iris (US7–US10). Không nhánh nào tạo điểm nghẽn cho các nhánh còn lại.
 
+### Trợ lý thực thi công việc cho kỹ sư (Goal 009 — Agent Harness Adoption)
+
+Goal 009 thiết lập nền tảng thực thi tác vụ Agent khép kín, an toàn và có kiểm chứng độc lập:
+1. **Ủy quyền tự động theo vùng (Task Root Scope Grant & Policy)**:
+   - Module `workspace_agent_policy.py` quản lý `AgentScopeGrant` và hàm kiểm tra `validate_path_in_task_root`.
+   - Chặn tuyệt đối thoát vùng (path traversal `..`), tệp chứa bí mật (`.env`, private key, token, passwords) và vùng nhạy cảm (`local_cases`, `local_runs`, `.git`).
+   - Kiểm duyệt lệnh kiểm thử qua `validate_test_command`, ngăn chặn toàn bộ ký tự shell metacharacters và chỉ cho phép danh mục lệnh kiểm thử allowlist (`pytest ...`).
+2. **Runtime Adapter kế thừa (OpenCode Runtime Adapter)**:
+   - Module `opencode_runtime_adapter.py` tuân thủ giao thức `aios_agent_runtime_v1` (session, event stream, file ops, test runner).
+   - Kiểm soát tính lặp lại bằng `idempotency_key` (cùng payload trả receipt cũ, khác payload từ chối).
+   - Cô lập biến môi trường thông qua `safe_environment()`, tuyệt đối không rò rỉ API keys sang tiến trình kiểm thử con.
+3. **Thực thi sửa mã trong Worktree cách ly & Hoàn tác**:
+   - Mọi thao tác sửa đổi mã nguồn (US3) diễn ra trong worktree độc lập (`tempfile.mkdtemp`), có snapshot `WorkCheckpoint` lưu digest SHA-256 ban đầu.
+   - Trình xác minh `verify_worktree_result` chạy kiểm thử thật, phân tích diff và xác định khả năng đưa vào workspace chính (`can_import`).
+   - Hỗ trợ hoàn tác một chạm khôi phục 100% hiện trạng workspace gốc (`rollback_checkpoint`).
+4. **Hàng đợi bền vững & Khóa ghi đơn độc quyền (US4)**:
+   - Kho lưu trữ SQLite `agent_work_items` (schema version 9) lưu trữ trạng thái nhiệm vụ theo thứ tự FIFO.
+   - `WorkspaceWriterLock` bảo đảm mỗi workspace root chỉ có đúng 1 tác vụ ghi tại một thời điểm, tránh xung đột file.
+   - Phục hồi sự cố restart/crash: các tác vụ đang chạy khi sập ứng dụng tự động chuyển FSM sang `interrupted_unknown` khi khởi động lại, không làm mất dữ liệu hàng đợi.
+5. **Giao diện tiếng Việt không phô trương thuật ngữ kỹ thuật**:
+   - Tích hợp 3 khối công cụ: Báo cáo lỗi xưởng (US1), Rà soát thiết kế công đoạn (US2), Sửa mã nguồn & kiểm thử (US3) cùng bảng Hàng đợi công việc (US4) trong `workspace_chat_app.py`.
+   - Tuyệt đối không phô bày các từ ngữ kỹ thuật nội bộ (`OpenCode`, `worktree`, `verifier`, `receipt`) lên giao diện người dùng thường.
+
 ### Lớp trình bày tiếng Việt duy nhất
 
 Mọi nội dung do chương trình hiển thị hoặc xuất cho người dùng/người vận hành phải đi qua lớp trình bày tiếng Việt: giao diện, trạng thái, tiến độ, cảnh báo, lỗi, nhật ký vận hành và báo cáo. Lỗi tiếng Anh từ thư viện, hệ điều hành hoặc dịch vụ bên ngoài không được truyền thẳng ra ngoài; phải đổi thành câu tiếng Việt nói rõ sự cố và bước xử lý. Mã kỹ thuật có thể được lưu nội bộ để tra cứu nhưng không thay thế lời giải thích.

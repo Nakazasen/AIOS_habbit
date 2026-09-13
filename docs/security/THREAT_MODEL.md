@@ -22,8 +22,9 @@ Mô hình này bao quát nền tảng Workspace Chat ưu tiên cục bộ (local
 | Log, kết quả kiểm thử và dữ liệu chẩn đoán | Tính bảo mật, mức chi tiết tối thiểu cần thiết |
 | Âm thanh phỏng vấn chuyên gia (`audio`) và bản chép lời thô | Tính bảo mật tuyệt đối (`local_only`), không lưu BLOB vào DB, cấm rò rỉ đám mây |
 | Nhận định tri thức (`KnowledgeClaim`) và hồ sơ đồng ý (`ConsentRecord`) | Tính toàn vẹn, nguồn gốc xuất xứ, xác thực thông số kỹ thuật |
-| Tài liệu kiểm soát SOP, Bài học và gói xuất bản tri thức | Tính toàn vẹn (digest SHA-256), cấm tự duyệt, chống trôi lệch phiên bản |
 | Thư viện tri thức dùng chung và khóa ghi tiến trình (`LibraryWriterLease`) | Tính toàn vẹn, tính sẵn sàng, sao lưu an toàn trước sửa đổi |
+| Vùng làm việc cô lập (Agent Worktree) và checkpoint hoàn tác | Tính toàn vẹn mã nguồn, cách ly triệt để với workspace chính, khả năng hoàn tác 100% |
+| Bản ghi nhiệm vụ Agent (`agent_work_items`) trong SQLite | Tính toàn vẹn, tính sẵn sàng, khôi phục trạng thái hàng đợi sau khi khởi động lại |
 
 ## Ranh Giới Tin Cậy (Trust Boundaries)
 
@@ -59,6 +60,10 @@ Ranh giới provider là tùy chọn. Các nguồn `local_only` và `confidentia
 | TM-12 | Giả mạo hoặc sửa đổi trái phép nhận định chuyên gia / tài liệu SOP đã duyệt (T/R) | Toàn vẹn bảo chứng qua mã băm SHA-256 (`digest`), quy tắc cấm tự duyệt (`SelfApprovalDeniedError`), phát hiện digest bị lệch (`StaleArtifactDigestError`), kiểm tra claim mâu thuẫn (`ConflictedClaimArtifactError`) | `IMPLEMENTED` | Chuyên gia và người duyệt phải giữ tính xác thực của danh tính khi phê duyệt. |
 | TM-13 | Xuất bản tài liệu hỏng hoặc tranh chấp ghi thư viện làm gián đoạn hệ thống (T/D) | Tự động tạo bản sao lưu `create_library_backup` trước khi xuất bản/thu hồi, chiếm khóa ghi tiến trình độc quyền `LibraryWriterLease`, kiểm tra tính toàn vẹn `sqlite_quick_check` và bộ câu hỏi nghiệm thu truy xuất; tự động hoàn tác khi lỗi | `IMPLEMENTED` | Bản sao lưu được lưu trữ cục bộ để sẵn sàng khôi phục khẩn cấp. |
 | TM-14 | Trích xuất thông số kỹ thuật sai lệch từ bản chép lời (T) | Cơ chế fail-closed với `UnconfirmedCriticalTokenError` khi các số, mã máy, đơn vị đo chưa được xác nhận rõ ràng; hạ độ tin cậy khi trả lời không chắc chắn | `IMPLEMENTED` | Chuyên gia cần chủ động rà soát từ khóa kỹ thuật trên giao diện. |
+| TM-15 | Path traversal và rò rỉ tệp cấu hình bí mật ngoài task root (I/T/E) | Kiểm soát nghiêm ngặt qua `validate_path_in_task_root`, cấm `..`, chặn danh sách tệp nhạy cảm (`.env`, khóa riêng tư, chứng chỉ) và vùng cấm; cô lập biến môi trường API keys qua `safe_environment()` | `IMPLEMENTED` | Người dùng cần bảo vệ an toàn cho hệ thống tệp cục bộ trên máy trạm. |
+| TM-16 | Shell injection và thực thi lệnh tùy ý thông qua lệnh test của Agent (T/E) | Kiểm soát qua `validate_test_command`, cấm toàn bộ ký tự shell metacharacter (`;`, `&`, `|`, `` ` ``, `$`, `>`, `<`), chỉ cho phép các tiền tố lệnh kiểm thử trong allowlist được duyệt | `IMPLEMENTED` | Chỉ các bộ kiểm thử đã định nghĩa trong cấu hình cho phép mới được thực thi. |
+| TM-17 | Tranh chấp ghi đồng thời vào workspace hoặc ghi đè mất mã nguồn người dùng (T/D) | Quản lý độc quyền qua `WorkspaceWriterLock` (1 writer / workspace root), sửa đổi chỉ thực hiện trong worktree cách ly, tự động tạo `WorkCheckpoint` trước khi làm, kiểm tra xung đột trước khi import | `IMPLEMENTED` | Hỗ trợ hoàn tác một chạm khôi phục trạng thái nguyên bản của thư mục. |
+| TM-18 | Sự cố sập tiến trình / restart làm mất trạng thái hoặc lặp lại thao tác cũ (D/T) | Hàng đợi bền vững trong SQLite `agent_work_items`, FSM chuyển tác vụ dang dở sang `interrupted_unknown` khi khởi động lại, phục hồi thứ tự FIFO và bảo toàn checkpoint | `IMPLEMENTED` | Trạng thái các nhiệm vụ đã xong không bị lặp lại khi ứng dụng khởi động lại. |
 
 Chú giải STRIDE: S=giả mạo (spoofing), T=giả mạo sửa đổi (tampering), R=chối bỏ (repudiation), I=tiết lộ thông tin (information disclosure), D=từ chối dịch vụ (denial of service), E=leo thang đặc quyền (elevation of privilege).
 

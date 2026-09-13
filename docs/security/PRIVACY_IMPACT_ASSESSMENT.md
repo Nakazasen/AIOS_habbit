@@ -27,6 +27,8 @@ Review cadence: Before any new external recipient, data class or cloud route
 | Bản chép lời phỏng vấn (`transcript`) | Xử lý offline cục bộ 100% qua adapter Whisper.cpp | Tuyệt đối không | Chỉ xử lý khi có sự đồng ý; thông số kỹ thuật phải được xác nhận trước khi trích xuất | Lưu trữ tệp dưới `local_only/`; metadata và trạng thái lưu trong SQLite; không gửi ra provider ngoài |
 | Nhận định tri thức (`KnowledgeClaim`) và hồ sơ đồng ý (`ConsentRecord`) | SQLite dưới `local_cases/` (bảng `knowledge_claims`, `expert_consents`) | Tuyệt đối không | Bắt buộc có nguồn chứng minh (`source_refs`); phát hiện mâu thuẫn số liệu tự động | Lưu vết kiểm toán append-only và mã băm SHA-256; không tự động chọn bên thắng |
 | Tài liệu chuẩn hóa SOP, Bài học và Gói xuất bản tri thức | Quản lý vòng đời cục bộ và nạp vào SQLite thư viện dùng chung | Cục bộ / Caller chỉ định | Chỉ xuất bản khi đã duyệt độc lập (cấm tự duyệt); tự động sao lưu và khóa ghi `LibraryWriterLease` | Tệp văn bản và bản ghi SQLite thư viện; hỗ trợ thu hồi sạch sẽ (`revoked`) khi có yêu cầu |
+| Tác vụ Agent (`agent_work_items`) | SQLite dưới `local_cases/` (bảng `agent_work_items`) | Mặc định không có | Chỉ metadata nhiệm vụ, mục tiêu tiếng Việt, locator cục bộ, checkpoint ref và mã băm digest; không lưu raw prompt hay output thô | Lưu trữ cục bộ trên máy người dùng, hỗ trợ hủy và hoàn tác |
+| Vùng làm việc cô lập (Agent Worktree) | Thư mục tạm thời cục bộ (`tempfile.mkdtemp`) | Tuyệt đối không | Mã nguồn chỉ được sửa đổi trong worktree cách ly; kiểm tra test đạt mới cho phép đưa vào workspace đích; hỗ trợ hoàn tác 100% | Tự động dọn dẹp hoặc khôi phục qua checkpoint khi hoàn tác |
 
 ## Độ Bao Phủ Chính Sách Theo Tuyến (Route-specific Policy Coverage)
 
@@ -63,6 +65,14 @@ Theo quyết định mặc định đã khóa cho Goal 010:
 - **Thao tác xóa thủ công**: Chỉ chuyên gia sở hữu bản ghi hoặc quản trị viên có thẩm quyền RBAC phù hợp mới được phép thực hiện thao tác xóa thủ công.
 - **Hồ sơ đồng ý (`ConsentRecord`)**: Được lưu trữ dạng append-only phục vụ kiểm toán nguồn gốc xuất xứ (provenance), kể cả khi chuyển sang trạng thái đã rút (`withdrawn`).
 - **Dữ liệu tri thức đã xuất bản**: Tồn tại trong thư viện dùng chung cho đến khi có lệnh thu hồi (`revoked`) chính thức; luôn tự động tạo bản sao lưu an toàn trước khi ghi/sửa đổi.
+
+## Chính Sách Quyền Riêng Tư và An Toàn Đã Duyệt Cho Goal 009 (Approved Agent Harness Policy)
+
+Theo quyết định mặc định đã khóa cho Goal 009:
+- **Ủy quyền tự động theo vùng (Task Root Scope Grant)**: Agent chỉ được thực hiện thao tác trong phạm vi thư mục tác vụ được cấp phép (`task_root`). Từ chối cứng mọi đường dẫn thoát khỏi phạm vi (path traversal `..`) và chặn truy cập tệp cấu hình bí mật (`.env`, khóa SSH, chứng chỉ, mật khẩu).
+- **Cô lập biến môi trường (Environment Isolation)**: Lệnh kiểm thử do Agent khởi chạy được thực thi qua hàm `safe_environment()`, tuyệt đối loại bỏ tất cả các API keys (`OPENAI_API_KEY`, `GEMINI_API_KEY`, v.v.) khỏi môi trường con để tránh rò rỉ secret ra log hoặc công cụ bên ngoài.
+- **Không lưu transcript thô vào cơ sở dữ liệu vụ việc**: Hồ sơ vụ việc (`agent_work_items`) chỉ lưu mã định danh, mục tiêu tiếng Việt, liên kết tệp kết quả và mã băm toàn vẹn SHA-256; tuyệt đối không lưu raw prompt, văn bản trao đổi thô hay traceback hệ thống vào SQLite.
+- **Vùng làm việc cô lập và hoàn tác 100%**: Mọi thao tác sửa đổi mã nguồn đều diễn ra trong worktree cách ly (`tempfile.mkdtemp`), có snapshot checkpoint trước khi thực thi và chỉ đưa vào workspace chính khi kiểm thử đạt và có sự đồng ý của người dùng.
 
 ## Các Chốt Chặn Liên Quan (Related Controls)
 
