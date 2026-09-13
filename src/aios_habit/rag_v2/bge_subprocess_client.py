@@ -179,6 +179,10 @@ class BgeSubprocessWorkerClient:
             env = os.environ.copy()
             env["PYTHONIOENCODING"] = "utf-8"
             env["PYTHONUTF8"] = "1"
+            env["KMP_DUPLICATE_LIB_OK"] = "TRUE"
+            env["OMP_NUM_THREADS"] = "1"
+            env["MKL_NUM_THREADS"] = "1"
+            env["OPENBLAS_NUM_THREADS"] = "1"
             self._process = subprocess.Popen(
                 cmd,
                 stdin=subprocess.PIPE,

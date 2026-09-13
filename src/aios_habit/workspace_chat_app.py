@@ -649,6 +649,11 @@ from aios_habit.agent_draft_sop import (
     approve_draft_document,
     compose_draft_from_evidence,
 )
+from aios_habit.agent_work_artifact import (
+    create_factory_error_report,
+    create_process_design_review,
+    undo_factory_error_report,
+)
 
 
 def _workspace_context_sources(notebook_sources, temp_sources):
@@ -3484,6 +3489,8 @@ else:
                         locale=current_ui_locale,
                     )
 
+                _render_local_work_tools()
+
                 # Follow a new answer to the bottom like modern chat products,
                 # but do not pull a reader away from older history on later reruns.
                 latest_answer = next((m for m in reversed(messages) if m.role == "assistant"), None)
@@ -3683,6 +3690,143 @@ else:
                             mime="text/markdown",
                             key=f"wsc_agent_draft_download_{active_conversation.id}",
                         )
+
+            def _selected_local_work_source_paths() -> list[Path]:
+                selected_source_by_key = {
+                    (SOURCE_SCOPE_NOTEBOOK, source.id): source for source in notebook_sources
+                } | {
+                    (SOURCE_SCOPE_TEMPORARY, source.id): source for source in temp_sources
+                }
+                return [
+                    Path(getattr(selected_source_by_key.get((selection.source_scope, selection.source_id)), "managed_path", ""))
+                    for selection in selections
+                    if selection.enabled
+                    and getattr(selected_source_by_key.get((selection.source_scope, selection.source_id)), "managed_path", "")
+                    and Path(getattr(selected_source_by_key[(selection.source_scope, selection.source_id)], "managed_path", "")).is_file()
+                ]
+
+            def _render_local_work_tools() -> None:
+                local_source_paths = _selected_local_work_source_paths()
+                report_key = f"wsc_factory_error_report_{active_conversation.id}"
+                review_key = f"wsc_process_design_review_{active_conversation.id}"
+
+                with st.container(border=True):
+                    st.markdown(f"#### {t('local_work_tools_title', locale=current_ui_locale)}")
+                    st.caption(t("local_work_tools_intro", locale=current_ui_locale))
+                    if local_source_paths:
+                        st.success(
+                            t(
+                                "local_work_tools_ready_sources",
+                                locale=current_ui_locale,
+                                count=len(local_source_paths),
+                            )
+                        )
+                    else:
+                        st.info(t("local_work_tools_need_source", locale=current_ui_locale))
+
+                    report_col, review_col = st.columns(2)
+                    with report_col:
+                        with st.container(border=True):
+                            st.markdown(f"**{t('agent_factory_error_title', locale=current_ui_locale)}**")
+                            st.caption(t("local_work_tools_error_summary", locale=current_ui_locale))
+                            st.caption(t("local_work_tools_error_preparation", locale=current_ui_locale))
+                            if st.button(
+                                t("agent_factory_error_create", locale=current_ui_locale),
+                                key=f"wsc_factory_error_create_{active_conversation.id}",
+                                type="primary",
+                                use_container_width=True,
+                                disabled=not local_source_paths,
+                            ):
+                                try:
+                                    st.session_state[report_key] = create_factory_error_report(
+                                        source_paths=local_source_paths,
+                                        output_dir=Path("local_cases") / "agent_artifacts",
+                                        work_id=active_conversation.id,
+                                    )
+                                    st.success(t("agent_artifact_completed", locale=current_ui_locale))
+                                except (OSError, ValueError) as error:
+                                    st.error(
+                                        safe_vietnamese_ui_message(
+                                            error,
+                                            t("agent_factory_error_create_failed", locale=current_ui_locale),
+                                        )
+                                    )
+
+                            report_result = st.session_state.get(report_key)
+                            if report_result is not None:
+                                st.success(t("agent_artifact_completed", locale=current_ui_locale))
+                                open_col, undo_col = st.columns(2)
+                                with open_col:
+                                    if st.button(
+                                        t("agent_artifact_open_result", locale=current_ui_locale),
+                                        key=f"wsc_factory_error_open_{active_conversation.id}",
+                                        use_container_width=True,
+                                    ):
+                                        if report_result.report_path.is_file():
+                                            st.markdown(report_result.report_path.read_text(encoding="utf-8"))
+                                        else:
+                                            st.warning(t("agent_factory_error_missing_result", locale=current_ui_locale))
+                                with undo_col:
+                                    if st.button(
+                                        t("agent_artifact_undo", locale=current_ui_locale),
+                                        key=f"wsc_factory_error_undo_{active_conversation.id}",
+                                        use_container_width=True,
+                                    ):
+                                        undo_factory_error_report(report_result)
+                                        st.session_state.pop(report_key, None)
+                                        st.success(t("agent_factory_error_undo_done", locale=current_ui_locale))
+                                        safe_rerun()
+
+                    with review_col:
+                        with st.container(border=True):
+                            st.markdown(f"**{t('agent_process_review_title', locale=current_ui_locale)}**")
+                            st.caption(t("local_work_tools_review_summary", locale=current_ui_locale))
+                            st.caption(t("local_work_tools_review_preparation", locale=current_ui_locale))
+                            if st.button(
+                                t("agent_process_review_create", locale=current_ui_locale),
+                                key=f"wsc_process_review_create_{active_conversation.id}",
+                                use_container_width=True,
+                                disabled=not local_source_paths,
+                            ):
+                                try:
+                                    st.session_state[review_key] = create_process_design_review(
+                                        source_paths=local_source_paths,
+                                        output_dir=Path("local_cases") / "agent_artifacts",
+                                        work_id=active_conversation.id,
+                                    )
+                                    st.success(t("agent_artifact_completed", locale=current_ui_locale))
+                                except (OSError, ValueError) as error:
+                                    st.error(
+                                        safe_vietnamese_ui_message(
+                                            error,
+                                            t("agent_process_review_create_failed", locale=current_ui_locale),
+                                        )
+                                    )
+
+                            review_result = st.session_state.get(review_key)
+                            if review_result is not None:
+                                st.success(t("agent_process_review_completed", locale=current_ui_locale))
+                                open_col, undo_col = st.columns(2)
+                                with open_col:
+                                    if st.button(
+                                        t("agent_artifact_open_result", locale=current_ui_locale),
+                                        key=f"wsc_process_review_open_{active_conversation.id}",
+                                        use_container_width=True,
+                                    ):
+                                        if review_result.report_path.is_file():
+                                            st.markdown(review_result.report_path.read_text(encoding="utf-8"))
+                                        else:
+                                            st.warning(t("agent_process_review_missing_result", locale=current_ui_locale))
+                                with undo_col:
+                                    if st.button(
+                                        t("agent_artifact_undo", locale=current_ui_locale),
+                                        key=f"wsc_process_review_undo_{active_conversation.id}",
+                                        use_container_width=True,
+                                    ):
+                                        review_result.undo()
+                                        st.session_state.pop(review_key, None)
+                                        st.success(t("agent_process_review_undo_done", locale=current_ui_locale))
+                                        safe_rerun()
 
             def _render_workspace_results_and_evidence():
                 last_assistant_msg = next((m for m in reversed(messages) if m.role == "assistant"), None)

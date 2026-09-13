@@ -7,6 +7,7 @@ import datetime
 import os
 import re
 import sqlite3
+import threading
 import unicodedata
 from pathlib import Path
 from typing import Iterable, Sequence
@@ -603,6 +604,33 @@ class ExcelQueryPlanningResult:
     reason: str = ""
 
 
+_SCHEMA_CACHE: dict[tuple[str, float], tuple[ExcelTableSchema, ...]] = {}
+_SCHEMA_CACHE_LOCK = threading.Lock()
+
+
+def query_might_be_structured_excel(question: str) -> bool:
+    """Fast non-blocking pre-check: does question show any sign of tabular/SQL intent?"""
+    norm = _normalize_question(question)
+    if not norm:
+        return False
+    for _, terms in _AGGREGATE_TERMS:
+        if any(term in norm for term in terms):
+            return True
+    if any(term in norm for term in _LIST_TERMS):
+        return True
+    if any(term in norm for term in _TOP_TERMS):
+        return True
+    if any(term in norm for term in _BOTTOM_TERMS):
+        return True
+    if any(term in norm for term in ("excel", "sheet", "bảng", "cột", "dòng")):
+        return True
+    if re.search(r"\b(?:top|bottom|đầu|cuối)\s+\d+\b", norm):
+        return True
+    if re.search(r"[<>=!]", question):
+        return True
+    return False
+
+
 def inspect_excel_schemas(
     path: str | Path,
     *,
@@ -612,6 +640,16 @@ def inspect_excel_schemas(
     workbook = Path(path)
     if workbook.suffix.lower() not in {".xlsx", ".xlsm", ".xls"} or not workbook.is_file():
         return ()
+    try:
+        mtime = workbook.stat().st_mtime
+    except OSError:
+        mtime = 0.0
+    cache_key = (str(workbook.resolve()), mtime)
+    with _SCHEMA_CACHE_LOCK:
+        cached = _SCHEMA_CACHE.get(cache_key)
+        if cached is not None:
+            return cached
+
     elements = ExcelDocumentConverterAdapter().convert(
         str(workbook),
         ConversionContext(document_id=document_id or None, fail_soft=True),
@@ -632,7 +670,10 @@ def inspect_excel_schemas(
                     region_index=index,
                 )
             )
-    return tuple(schemas)
+    result = tuple(schemas)
+    with _SCHEMA_CACHE_LOCK:
+        _SCHEMA_CACHE[cache_key] = result
+    return result
 
 
 def plan_excel_query(

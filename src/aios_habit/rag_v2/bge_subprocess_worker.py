@@ -6,9 +6,16 @@ state from the main Streamlit process.
 """
 from __future__ import annotations
 
+import os
+os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
+os.environ["OMP_NUM_THREADS"] = "1"
+os.environ["MKL_NUM_THREADS"] = "1"
+os.environ["OPENBLAS_NUM_THREADS"] = "1"
+os.environ["VECLIB_MAXIMUM_THREADS"] = "1"
+os.environ["NUMEXPR_NUM_THREADS"] = "1"
+
 from dataclasses import asdict
 import json
-import os
 from pathlib import Path
 import sys
 import time

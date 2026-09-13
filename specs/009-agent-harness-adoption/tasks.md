@@ -18,11 +18,11 @@
 
 **Kiểm thử độc lập**: fixture có log và số liệu tạo được báo cáo; mọi điểm trên biểu đồ truy ngược được, còn fixture thiếu số liệu không sinh biểu đồ giả.
 
-- [ ] T011 [US1] Viết kiểm thử theo `contracts/agent-factory-error-report-v1.md`: nguồn số liệu, không vẽ khi thiếu số, tự hiện «Đã xong» không cần duyệt, trong `tests/test_agent_error_report_artifact.py`
-- [ ] T012 [P] [US1] Dùng lại bộ đọc tài liệu và metadata Excel để tạo bảng dữ liệu biểu đồ trong `src/aios_habit/agent_work_artifact.py`
-- [ ] T013 [P] [US1] Dùng lại khả năng Mermaid/visual hiện có để tạo biểu đồ hoặc sơ đồ kèm provenance trong `src/aios_habit/agent_work_artifact.py`
-- [ ] T014 [US1] Tạo hoặc cập nhật file báo cáo lỗi và checkpoint hoàn tác trong `src/aios_habit/agent_work_artifact.py`
-- [ ] T015 [US1] Thêm hành động «Tạo báo cáo lỗi» và thẻ «Đã xong» / «Mở kết quả» / «Hoàn tác» trong `src/aios_habit/workspace_chat_app.py`. Không nút duyệt.
+- [x] T011 [US1] Viết kiểm thử theo `contracts/agent-factory-error-report-v1.md`: nguồn số liệu, không vẽ khi thiếu số, tự hiện «Đã xong» không cần duyệt, trong `tests/test_agent_error_report_artifact.py`
+- [x] T012 [P] [US1] Dùng lại bộ đọc tài liệu và metadata Excel để tạo bảng dữ liệu biểu đồ trong `src/aios_habit/agent_work_artifact.py`
+- [x] T013 [P] [US1] Dùng lại khả năng Mermaid/visual hiện có để tạo biểu đồ hoặc sơ đồ kèm provenance trong `src/aios_habit/agent_work_artifact.py`
+- [x] T014 [US1] Tạo hoặc cập nhật file báo cáo lỗi và checkpoint hoàn tác trong `src/aios_habit/agent_work_artifact.py`
+- [x] T015 [US1] Thêm hành động «Tạo báo cáo lỗi» và thẻ «Đã xong» / «Mở kết quả» / «Hoàn tác» trong `src/aios_habit/workspace_chat_app.py`. Không nút duyệt.
 
 ## Giai đoạn 3 — US2: Rà soát thiết kế công đoạn (sau US1, vẫn không cần OpenCode)
 
@@ -30,10 +30,10 @@
 
 **Kiểm thử độc lập**: fixture có mâu thuẫn giới hạn, bước thiếu điểm kiểm tra và khoảng trống bằng chứng được phân loại đúng, dẫn đúng nguồn và chỉ tạo bản nháp.
 
-- [ ] T016 [US2] Viết kiểm thử theo `contracts/agent-process-design-review-v1.md`: vai trò guideline/design, `pass`/`violate`/`insufficient`, không chờ tick, trong `tests/test_agent_process_design_review.py`
-- [ ] T017 [US2] Ghép evidence pack theo phạm vi tài liệu người dùng chọn trong `src/aios_habit/agent_work_artifact.py`
-- [ ] T018 [US2] Tạo bản rà soát năm phần và sơ đồ hiện tại/đề xuất trong `src/aios_habit/agent_work_artifact.py`
-- [ ] T019 [US2] Thêm hành động “Rà soát thiết kế công đoạn” và cảnh báo đây là bản nháp trong `src/aios_habit/workspace_chat_app.py`
+- [x] T016 [US2] Viết kiểm thử theo `contracts/agent-process-design-review-v1.md`: vai trò guideline/design, `pass`/`violate`/`insufficient`, không chờ tick, trong `tests/test_agent_process_design_review.py`
+- [x] T017 [US2] Ghép evidence pack theo phạm vi tài liệu người dùng chọn trong `src/aios_habit/agent_work_artifact.py`
+- [x] T018 [US2] Tạo bản rà soát năm phần và sơ đồ hiện tại/đề xuất trong `src/aios_habit/agent_work_artifact.py`
+- [x] T019 [US2] Thêm hành động “Rà soát thiết kế công đoạn” và cảnh báo đây là bản nháp trong `src/aios_habit/workspace_chat_app.py`
 
 ## Giai đoạn 4 — Nền OpenCode (chỉ sau US1+US2 xanh)
 

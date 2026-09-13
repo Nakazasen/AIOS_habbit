@@ -56,6 +56,7 @@ from aios_habit.rag_v2.structured_query import (
     execute_excel_query,
     inspect_excel_schemas,
     plan_excel_query,
+    query_might_be_structured_excel,
 )
 from aios_habit.workspace_chat_ai_answer import WorkspaceAIContextSource
 from aios_habit.workspace_chat_rag_v2_deployment import (
@@ -2252,6 +2253,18 @@ def _run_profile(
     if not specs:
         raise ValueError("no_non_empty_sources")
 
+    if pipe_config.index_path.is_file():
+        try:
+            with sqlite3.connect(pipe_config.index_path) as conn:
+                cursor = conn.cursor()
+                cursor.execute("SELECT DISTINCT document_id FROM chunks")
+                indexed_ids = {row[0] for row in cursor.fetchall()}
+            indexed_specs = [s for s in specs if s.document_id in indexed_ids]
+            if indexed_specs:
+                specs = indexed_specs
+        except Exception:
+            pass
+
     sem_state, sem_reason = _semantic_readiness(sources, config)
     if sem_state != _PREPARATION_READY_STATE:
         raise RuntimeError(sem_reason or "sources_not_ready")
@@ -2394,6 +2407,8 @@ def _try_structured_excel_evidence(
     sources: Tuple[WorkspaceAIContextSource, ...],
 ) -> dict[str, Any] | None:
     """Use bounded SQL analytics only for deterministic, allow-listed plans."""
+    if not query_might_be_structured_excel(question):
+        return None
     for source in sources:
         path = _managed_workbook_path(source)
         if path is None:
