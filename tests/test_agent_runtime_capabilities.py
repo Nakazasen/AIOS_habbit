@@ -108,3 +108,10 @@ def test_probe_denies_actions_outside_the_task_root(tmp_path: Path) -> None:
     ):
         assert denials[action]["status"] == "denied", (action, denials[action])
         assert denials[action]["before_digest"] == denials[action]["after_digest"]
+
+
+def test_probe_without_live_model_does_not_fake_pass(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    """Reflect accurate OpenCode runtime status: with no live model connected, runtime remains blocked/unproved without faking PASS."""
+    monkeypatch.delenv(PROBE_MODEL_ENV, raising=False)
+    with pytest.raises(pytest.skip.Exception):
+        _run_probe(tmp_path)

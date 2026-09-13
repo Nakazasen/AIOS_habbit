@@ -902,19 +902,19 @@ def verify_worktree_result(
     if not test_passed:
         can_import = False
         explanation_vi = (
-            f"Kiểm thử tự động chưa đạt (mã thoát: {exit_code}). "
-            "Thay đổi được giữ an toàn trong worktree để tiếp tục sửa lỗi."
+            f"Kiểm thử tự động chưa đạt (mã kết thúc: {exit_code}). "
+            "Thay đổi được giữ an toàn trong vùng cách ly để tiếp tục sửa lỗi."
         )
     elif has_conflict:
         can_import = False
         explanation_vi = (
             f"Phát hiện xung đột với thư mục làm việc chính tại các tệp: {', '.join(conflict_files)}. "
-            "Giữ nguyên kết quả trong worktree để xem xét, không tự động ghi đè."
+            "Giữ nguyên kết quả trong vùng cách ly để xem xét, không tự động ghi đè."
         )
     else:
         can_import = True
         explanation_vi = (
-            f"Kiểm thử tự động đã đạt 100% (mã thoát: {exit_code}). "
+            f"Kiểm thử tự động đã đạt 100% (mã kết thúc: {exit_code}). "
             f"Có {len(files_changed)} tệp đã được kiểm chứng và sẵn sàng đưa vào thư mục làm việc."
         )
 
@@ -940,7 +940,7 @@ def import_worktree_to_workspace(
     wt_root = Path(worktree_path).resolve()
     target_root = Path(target_workspace_path).resolve()
     if not wt_root.exists() or not wt_root.is_dir():
-        return False, "Thư mục worktree không tồn tại."
+        return False, "Thư mục vùng cách ly không tồn tại."
     if not target_root.exists() or not target_root.is_dir():
         return False, "Thư mục đích không tồn tại."
 
@@ -962,7 +962,7 @@ def import_worktree_to_workspace(
                 dest_file.parent.mkdir(parents=True, exist_ok=True)
                 shutil.copy2(src_file, dest_file)
                 count += 1
-        return True, f"Đã đưa thành công {count} tệp từ worktree vào thư mục làm việc chính."
+        return True, f"Đã đưa thành công {count} tệp từ vùng cách ly vào thư mục làm việc chính."
     except Exception as err:
-        return False, f"Lỗi khi sao chép tệp từ worktree: {err}"
+        return False, f"Lỗi khi sao chép tệp từ vùng cách ly: {err}"
 

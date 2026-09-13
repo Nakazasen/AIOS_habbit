@@ -3748,6 +3748,7 @@ else:
                                     case_repo = WorkspaceCaseRepository()
                                     orch = WorkspaceAgentOrchestrator()
                                     work_id = f"WORK-ERR-{int(time.time()*1000)}"
+                                    target_ws = st.session_state.get("wsc_agent_workspace_root") or str(Path("local_cases").resolve())
                                     orch.enqueue_work_item(
                                         work=AgentWorkRecord(
                                             work_id=work_id,
@@ -3757,39 +3758,35 @@ else:
                                             created_at=utc_now_iso(),
                                             updated_at=utc_now_iso(),
                                             status="queued",
+                                            allowed_roots=(target_ws,),
+                                            source_refs=tuple(str(p) for p in local_source_paths),
                                         ),
                                         repo=case_repo,
                                     )
-                                    target_ws = st.session_state.get("wsc_agent_workspace_root") or str(Path("local_cases").resolve())
                                     def _run_err(item_record: AgentWorkRecord) -> None:
                                         rep_res = create_factory_error_report(
                                             source_paths=local_source_paths,
                                             output_dir=Path("local_cases") / "agent_artifacts",
-                                            work_id=active_conversation.id,
+                                            work_id=item_record.work_id,
                                         )
                                         st.session_state[report_key] = rep_res
-                                        case_repo.save_agent_work(
-                                            AgentWorkRecord(
-                                                work_id=item_record.work_id,
-                                                workspace_id=item_record.workspace_id,
-                                                work_type=item_record.work_type,
-                                                goal_vi=item_record.goal_vi,
-                                                created_at=item_record.created_at,
-                                                updated_at=utc_now_iso(),
-                                                status="completed",
-                                                result_ref=str(rep_res.report_path),
-                                                checkpoint_ref=rep_res.checkpoint_id,
-                                            )
+                                        st.session_state[f"{report_key}_work_id"] = item_record.work_id
+                                        case_repo.update_agent_work_status(
+                                            item_record.work_id,
+                                            "completed",
+                                            result_ref=str(rep_res.report_path),
+                                            checkpoint_ref=str(rep_res.report_path),
                                         )
-                                    orch.process_next_work_item(
+                                    processed = orch.process_next_work_item(
                                         workspace_id=active_conversation.id,
                                         workspace_root=target_ws,
                                         repo=case_repo,
                                         runner=_run_err,
                                     )
-                                    st.success(t("agent_artifact_completed", locale=current_ui_locale))
+                                    if processed is not None and processed.status == "completed":
+                                        st.success(t("agent_artifact_completed", locale=current_ui_locale))
                                     safe_rerun()
-                                except (OSError, ValueError) as error:
+                                except Exception as error:
                                     st.error(
                                         safe_vietnamese_ui_message(
                                             error,
@@ -3818,6 +3815,13 @@ else:
                                         use_container_width=True,
                                     ):
                                         undo_factory_error_report(report_result)
+                                        wid = st.session_state.pop(f"{report_key}_work_id", None)
+                                        if wid:
+                                            try:
+                                                case_repo = WorkspaceCaseRepository()
+                                                case_repo.update_agent_work_status(wid, "rolled_back")
+                                            except Exception:
+                                                pass
                                         st.session_state.pop(report_key, None)
                                         st.success(t("agent_factory_error_undo_done", locale=current_ui_locale))
                                         safe_rerun()
@@ -3837,6 +3841,7 @@ else:
                                     case_repo = WorkspaceCaseRepository()
                                     orch = WorkspaceAgentOrchestrator()
                                     work_id = f"WORK-REV-{int(time.time()*1000)}"
+                                    target_ws = st.session_state.get("wsc_agent_workspace_root") or str(Path("local_cases").resolve())
                                     orch.enqueue_work_item(
                                         work=AgentWorkRecord(
                                             work_id=work_id,
@@ -3846,39 +3851,35 @@ else:
                                             created_at=utc_now_iso(),
                                             updated_at=utc_now_iso(),
                                             status="queued",
+                                            allowed_roots=(target_ws,),
+                                            source_refs=tuple(str(p) for p in local_source_paths),
                                         ),
                                         repo=case_repo,
                                     )
-                                    target_ws = st.session_state.get("wsc_agent_workspace_root") or str(Path("local_cases").resolve())
                                     def _run_rev(item_record: AgentWorkRecord) -> None:
                                         rev_res = create_process_design_review(
                                             source_paths=local_source_paths,
                                             output_dir=Path("local_cases") / "agent_artifacts",
-                                            work_id=active_conversation.id,
+                                            work_id=item_record.work_id,
                                         )
                                         st.session_state[review_key] = rev_res
-                                        case_repo.save_agent_work(
-                                            AgentWorkRecord(
-                                                work_id=item_record.work_id,
-                                                workspace_id=item_record.workspace_id,
-                                                work_type=item_record.work_type,
-                                                goal_vi=item_record.goal_vi,
-                                                created_at=item_record.created_at,
-                                                updated_at=utc_now_iso(),
-                                                status="completed",
-                                                result_ref=str(rev_res.report_path),
-                                                checkpoint_ref=rev_res.checkpoint_id,
-                                            )
+                                        st.session_state[f"{review_key}_work_id"] = item_record.work_id
+                                        case_repo.update_agent_work_status(
+                                            item_record.work_id,
+                                            "completed",
+                                            result_ref=str(rev_res.report_path),
+                                            checkpoint_ref=str(rev_res.report_path),
                                         )
-                                    orch.process_next_work_item(
+                                    processed = orch.process_next_work_item(
                                         workspace_id=active_conversation.id,
                                         workspace_root=target_ws,
                                         repo=case_repo,
                                         runner=_run_rev,
                                     )
-                                    st.success(t("agent_artifact_completed", locale=current_ui_locale))
+                                    if processed is not None and processed.status == "completed":
+                                        st.success(t("agent_artifact_completed", locale=current_ui_locale))
                                     safe_rerun()
-                                except (OSError, ValueError) as error:
+                                except Exception as error:
                                     st.error(
                                         safe_vietnamese_ui_message(
                                             error,
@@ -3907,6 +3908,13 @@ else:
                                         use_container_width=True,
                                     ):
                                         review_result.undo()
+                                        wid = st.session_state.pop(f"{review_key}_work_id", None)
+                                        if wid:
+                                            try:
+                                                case_repo = WorkspaceCaseRepository()
+                                                case_repo.update_agent_work_status(wid, "rolled_back")
+                                            except Exception:
+                                                pass
                                         st.session_state.pop(review_key, None)
                                         st.success(t("agent_process_review_undo_done", locale=current_ui_locale))
                                         safe_rerun()
@@ -3939,6 +3947,7 @@ else:
                             "cancelled": t("agent_queue_status_cancelled", locale=current_ui_locale),
                             "failed": t("agent_queue_status_failed", locale=current_ui_locale),
                             "interrupted_unknown": t("agent_queue_status_interrupted", locale=current_ui_locale),
+                            "rolled_back": t("agent_queue_status_rolled_back", locale=current_ui_locale),
                         }
                         type_labels = {
                             "error_report": t("agent_queue_type_error_report", locale=current_ui_locale),
@@ -3978,7 +3987,7 @@ else:
                                                 key=f"wsc_queue_cancel_{item.work_id}",
                                                 use_container_width=True,
                                             ):
-                                                target_ws = st.session_state.get("wsc_agent_workspace_root")
+                                                target_ws = st.session_state.get("wsc_agent_workspace_root") or str(Path("local_cases").resolve())
                                                 queue_orch.cancel_work_item(
                                                     work_id=item.work_id,
                                                     repo=queue_repo,
@@ -3994,14 +4003,15 @@ else:
                                                 safe_rerun()
                                     elif item.status == "completed":
                                         with action_cols[0]:
-                                            if item.result_ref and Path(item.result_ref).is_file():
+                                            if item.result_ref:
                                                 if st.button(
                                                     t("agent_queue_btn_open", locale=current_ui_locale),
                                                     key=f"wsc_queue_open_{item.work_id}",
                                                     use_container_width=True,
                                                 ):
-                                                    st.markdown(Path(item.result_ref).read_text(encoding="utf-8"))
-                                    if item.checkpoint_ref:
+                                                    st.session_state[f"wsc_queue_view_{item.work_id}"] = not st.session_state.get(f"wsc_queue_view_{item.work_id}", False)
+                                                    safe_rerun()
+                                    if item.status == "completed" and item.checkpoint_ref:
                                         with action_cols[1]:
                                             if st.button(
                                                 t("agent_queue_btn_undo", locale=current_ui_locale),
@@ -4010,6 +4020,14 @@ else:
                                             ):
                                                 rolled_back, msg = queue_orch.rollback(item.checkpoint_ref)
                                                 if rolled_back:
+                                                    queue_repo.update_agent_work_status(item.work_id, "rolled_back")
+                                                    st.session_state.pop(f"wsc_queue_view_{item.work_id}", None)
+                                                    if st.session_state.get(f"{report_key}_work_id") == item.work_id:
+                                                        st.session_state.pop(report_key, None)
+                                                        st.session_state.pop(f"{report_key}_work_id", None)
+                                                    if st.session_state.get(f"{review_key}_work_id") == item.work_id:
+                                                        st.session_state.pop(review_key, None)
+                                                        st.session_state.pop(f"{review_key}_work_id", None)
                                                     st.success(
                                                         t(
                                                             "agent_queue_undo_success",
@@ -4026,6 +4044,12 @@ else:
                                                         )
                                                     )
                                                 safe_rerun()
+                                if st.session_state.get(f"wsc_queue_view_{item.work_id}", False):
+                                    st.divider()
+                                    if item.result_ref and Path(item.result_ref).is_file():
+                                        st.markdown(Path(item.result_ref).read_text(encoding="utf-8"))
+                                    else:
+                                        st.warning(t("agent_factory_error_missing_result", locale=current_ui_locale))
 
             def _render_workspace_results_and_evidence():
                 last_assistant_msg = next((m for m in reversed(messages) if m.role == "assistant"), None)

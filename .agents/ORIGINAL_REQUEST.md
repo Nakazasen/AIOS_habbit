@@ -158,3 +158,38 @@ YÊU CẦU THỰC THI NGAY LẬP TỨC:
    - Blocker 8 (Quy trình nghiệm thu): Chỉ được tick `[x]` từng task sau khi test tương ứng thực sự PASS và Audit Specialist độc lập xác nhận có bằng chứng lệnh. Không mở thêm phạm vi.
 
 Hãy chuyển tiếp chỉ thị này ngay đến Orchestrator và đội ngũ thực thi để khắc phục.
+
+## 2026-09-13T13:04:54Z
+
+This is a single self-contained fix; keep it small and focused.
+Remediate Goal 009 audit findings: downgrade status to `PARTIAL` (US1+US2 proven), eliminate hardcoded strings and forbidden technical jargon from Workspace Chat UI, wire the persistent work queue to real execution calls, and calibrate OpenCode runtime capabilities.
+
+Working directory: d:\Sandbox\AIOS_habbit
+
+## Requirements
+
+### R1. Revert Goal 009 Status to PARTIAL in Canonical Documentation
+Downgrade Goal 009 from `TECHNICAL_PASS` to `PARTIAL` across `ROADMAP.md`, `ARCHITECTURE.md`, `PROJECT_HANDOVER.md`, `docs/roadmap/active/AIOS-AGENT-HARNESS-ADOPTION.md`, and `specs/009-agent-harness-adoption/tasks.md`. Clearly state that only US1 (Factory Error Report), US2 (Process Design Review), and the security policy foundation are verified; US3 and US4 remain partial/in-progress.
+
+### R2. Fix UI i18n Anti-Hardcode and Remove Forbidden Jargon (FR-016 & SC-010)
+Refactor `_render_local_work_tools` in `src/aios_habit/workspace_chat_app.py`:
+- Replace all 28 hardcoded UI strings with centralized `t(...)` i18n dictionary entries across `vi`, `ja`, and `zh-CN` in `src/aios_habit/i18n.py`.
+- Remove all forbidden technical jargon (`worktree`, `diff`, `mã thoát`, `dấu vết test`, `Yield Rate`) from the UI.
+- Ensure `pytest -q tests/test_workspace_chat_ui_i18n.py` passes 100% (35 passed, 0 failed).
+
+### R3. Wire Persistent Work Queue to Real Execution Flow (US4)
+Update `src/aios_habit/workspace_chat_app.py` so that user-initiated agent tasks actually enqueue via `enqueue_work_item()` before execution, and process through `process_next_work_item()`, rather than merely appending history records after local mock execution.
+
+### R4. Honest OpenCode Runtime Verification (G1)
+Reflect accurate OpenCode runtime status: with no live model/binary connected, runtime remains `blocked` / `not_proved` without faking PASS.
+
+## Acceptance Criteria
+
+### Quality & Governance Gates
+- [x] `pytest -q tests/test_workspace_chat_ui_i18n.py` passes with 0 failures and 0 hardcoded strings (35 passed).
+- [x] `uv run --no-sync --group dev python -m compileall src tests` passes with 0 errors.
+- [x] `uv run --no-sync --group dev python -m aios_habit.cli audit` returns `"status": "PASS"`.
+- [x] `uv run --no-sync --group dev python -c "import aios_habit.workspace_chat_app"` executes with exit code 0.
+- [x] `git diff --check` reports 0 whitespace/newline issues.
+- [x] Canonical docs (`ROADMAP.md`, `docs/roadmap/active/AIOS-AGENT-HARNESS-ADOPTION.md`, `ARCHITECTURE.md`, `PROJECT_HANDOVER.md`) accurately reflect `PARTIAL (US1+US2 Proven)`.
+- [x] `pytest tests/test_workspace_chat_app_smoke.py -q` passes 100% (15 passed).

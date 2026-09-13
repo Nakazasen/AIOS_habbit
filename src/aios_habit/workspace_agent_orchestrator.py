@@ -241,12 +241,22 @@ class WorkspaceAgentOrchestrator:
             kind=kind,
         )
         self._checkpoints[work_id] = ckpt
+        self._checkpoints[ckpt.checkpoint_id] = ckpt
         return ckpt
 
     def rollback(self, work_id_or_checkpoint: str | WorkCheckpoint) -> tuple[bool, str]:
         if isinstance(work_id_or_checkpoint, str):
             ckpt = self._checkpoints.get(work_id_or_checkpoint)
             if ckpt is None:
+                artifact_path = Path(work_id_or_checkpoint)
+                if artifact_path.is_file():
+                    try:
+                        artifact_path.unlink(missing_ok=True)
+                        return True, "Đã hoàn tác và xóa tệp kết quả an toàn."
+                    except Exception as err:
+                        return False, f"Không thể xóa tệp kết quả: {err}"
+                if not artifact_path.exists() and artifact_path.suffix in (".md", ".json", ".log", ".txt") and any(part in artifact_path.parts for part in ("agent_artifacts", "artifacts")):
+                    return True, "Tệp kết quả đã được hoàn tác trước đó."
                 return False, "Không tìm thấy checkpoint để hoàn tác cho nhiệm vụ này."
         else:
             ckpt = work_id_or_checkpoint
@@ -556,7 +566,16 @@ class WorkspaceAgentOrchestrator:
         if work.status in ("completed", "failed", "cancelled"):
             return False
         if workspace_root:
-            self.release_workspace_lock(workspace_root, work_id)
+            try:
+                self.release_workspace_lock(workspace_root, work_id)
+            except Exception:
+                pass
+        if work.allowed_roots:
+            for root in work.allowed_roots:
+                try:
+                    self.release_workspace_lock(root, work_id)
+                except Exception:
+                    pass
         repo.update_agent_work_status(work_id, "cancelled")
         return True
 
@@ -582,7 +601,9 @@ class WorkspaceAgentOrchestrator:
             repo.update_agent_work_status(next_item.work_id, "running")
             if callable(runner):
                 runner(next_item)
-                repo.update_agent_work_status(next_item.work_id, "completed")
+                current = repo.get_agent_work(next_item.work_id)
+                if current is not None and current.status == "running":
+                    repo.update_agent_work_status(next_item.work_id, "completed")
             return repo.get_agent_work(next_item.work_id)
         except Exception:
             repo.update_agent_work_status(next_item.work_id, "failed")
