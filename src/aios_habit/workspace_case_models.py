@@ -336,3 +336,27 @@ class TraceResolution:
     status: str
     trace_id: str
     trace: object | None = None
+
+
+@dataclass(frozen=True)
+class AgentWorkRecord:
+    work_id: str
+    workspace_id: str
+    work_type: str
+    goal_vi: str
+    created_at: str
+    updated_at: str
+    case_id: Optional[str] = None
+    source_refs: tuple[str, ...] = ()
+    allowed_roots: tuple[str, ...] = ()
+    allowed_commands: tuple[str, ...] = ()
+    privacy_route: str = "local_only"
+    status: str = "queued"
+    queue_position: int = 0
+    runtime_binding_ref: str = ""
+    checkpoint_ref: str = ""
+    result_ref: str = ""
+    error_report_ref: str = ""
+    idempotency_key: str = ""
+    record_digest: str = ""
+

@@ -6,9 +6,17 @@ managed local bridge process; restarting AIOS invalidates them safely.
 """
 from __future__ import annotations
 
+import hashlib
 import json
+import os
+import shutil
+import tempfile
 import threading
 import time
+from contextlib import contextmanager
+from dataclasses import dataclass
+from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any
 
 from aios_habit.workspace_agent_bridge_client import WorkspaceAgentBridgeClient, WorkspaceAgentBridgeError
@@ -17,8 +25,142 @@ from aios_habit.workspace_agent_models import (
     WorkspaceAgentToolEvent, new_action_id, new_session_id,
 )
 from aios_habit.workspace_agent_policy import (
-    MAX_TOOL_STEPS, AgentPolicyError, authorize_tool, validate_request,
+    MAX_TOOL_STEPS, AgentPolicyError, authorize_tool, canonical_task_root,
+    canonical_workspace_root, validate_request,
 )
+
+
+class WorkspaceWriterLock:
+    """Guarantees strictly one mutable agent operation writes to a workspace at a time."""
+    def __init__(self) -> None:
+        self._locks: dict[str, str] = {}  # canonical_workspace_root -> current_work_id
+        self._mutex = threading.Lock()
+
+    def acquire(self, workspace_root: str, work_id: str) -> bool:
+        root = canonical_workspace_root(workspace_root)
+        with self._mutex:
+            holder = self._locks.get(root)
+            if holder is None or holder == work_id:
+                self._locks[root] = work_id
+                return True
+            return False
+
+    def release(self, workspace_root: str, work_id: str) -> None:
+        root = canonical_workspace_root(workspace_root)
+        with self._mutex:
+            if self._locks.get(root) == work_id:
+                del self._locks[root]
+
+    def get_holder(self, workspace_root: str) -> str | None:
+        root = canonical_workspace_root(workspace_root)
+        with self._mutex:
+            return self._locks.get(root)
+
+    @contextmanager
+    def hold(self, workspace_root: str, work_id: str):
+        if not self.acquire(workspace_root, work_id):
+            holder = self.get_holder(workspace_root)
+            raise AgentPolicyError(
+                f"Workspace đang có một công việc ghi khác đang chạy ({holder}). "
+                "Mỗi thư mục làm việc chỉ cho phép một tác vụ ghi tại một thời điểm."
+            )
+        try:
+            yield
+        finally:
+            self.release(workspace_root, work_id)
+
+
+@dataclass(frozen=True)
+class WorkCheckpoint:
+    checkpoint_id: str
+    work_id: str
+    workspace_root: str
+    task_root: str
+    kind: str
+    created_at: str
+    manifest: dict[str, str]
+    backup_dir: str
+    rollback_status: str = "available"
+
+
+def create_work_checkpoint(
+    *,
+    work_id: str,
+    workspace_root: str,
+    task_root: str | Path,
+    kind: str = "snapshot",
+) -> WorkCheckpoint:
+    root = canonical_task_root(task_root)
+    ws_root = canonical_workspace_root(workspace_root)
+    manifest: dict[str, str] = {}
+    backup_dir = tempfile.mkdtemp(prefix=f"aios_ckpt_{work_id}_")
+
+    for dirpath, dirs, files in os.walk(root):
+        dirs[:] = [d for d in dirs if not d.startswith(".") and d not in ("local_cases", "local_runs", "__pycache__")]
+        for file_name in sorted(files):
+            file_path = Path(dirpath) / file_name
+            rel_posix = file_path.relative_to(root).as_posix()
+            try:
+                content_bytes = file_path.read_bytes()
+                h = hashlib.sha256(content_bytes).hexdigest()
+                manifest[rel_posix] = h
+
+                target_backup = Path(backup_dir) / rel_posix
+                target_backup.parent.mkdir(parents=True, exist_ok=True)
+                target_backup.write_bytes(content_bytes)
+            except Exception:
+                pass
+
+    checkpoint_id = f"CKPT-{work_id}-{int(time.time() * 1000)}"
+    return WorkCheckpoint(
+        checkpoint_id=checkpoint_id,
+        work_id=work_id,
+        workspace_root=ws_root,
+        task_root=str(root),
+        kind=kind,
+        created_at=datetime.now(timezone.utc).isoformat(),
+        manifest=manifest,
+        backup_dir=backup_dir,
+        rollback_status="available",
+    )
+
+
+def rollback_checkpoint(checkpoint: WorkCheckpoint) -> tuple[bool, str]:
+    root = Path(checkpoint.task_root)
+    backup_dir = Path(checkpoint.backup_dir)
+    if not root.exists() or not root.is_dir():
+        return False, "Thư mục tác vụ không tồn tại để hoàn tác."
+
+    try:
+        # 1. Remove files created after checkpoint
+        for dirpath, dirs, files in os.walk(root):
+            dirs[:] = [d for d in dirs if not d.startswith(".") and d not in ("local_cases", "local_runs", "__pycache__")]
+            for file_name in files:
+                f_path = Path(dirpath) / file_name
+                rel_posix = f_path.relative_to(root).as_posix()
+                if rel_posix not in checkpoint.manifest:
+                    try:
+                        f_path.unlink()
+                    except Exception:
+                        pass
+
+        # 2. Restore modified or deleted files from backup
+        for rel_posix in checkpoint.manifest:
+            backup_file = backup_dir / rel_posix
+            target_file = root / rel_posix
+            if backup_file.is_file():
+                target_file.parent.mkdir(parents=True, exist_ok=True)
+                target_file.write_bytes(backup_file.read_bytes())
+
+        return True, "Đã hoàn tác toàn bộ thay đổi về trạng thái ban đầu an toàn."
+    except Exception as error:
+        return False, f"Lỗi trong quá trình hoàn tác: {error}"
+
+
+def cleanup_checkpoint(checkpoint: WorkCheckpoint) -> None:
+    backup_dir = Path(checkpoint.backup_dir)
+    if backup_dir.exists():
+        shutil.rmtree(backup_dir, ignore_errors=True)
 
 
 def _summary(value: Any, limit: int = 420) -> str:
@@ -67,6 +209,60 @@ _PENDING_BRIDGE_SESSIONS = _PendingBridgeSessions()
 class WorkspaceAgentOrchestrator:
     def __init__(self, bridge_client_factory=WorkspaceAgentBridgeClient):
         self._bridge_client_factory = bridge_client_factory
+        self.writer_lock = WorkspaceWriterLock()
+        self._checkpoints: dict[str, WorkCheckpoint] = {}
+
+    def acquire_workspace_lock(self, workspace_root: str, work_id: str) -> bool:
+        return self.writer_lock.acquire(workspace_root, work_id)
+
+    def release_workspace_lock(self, workspace_root: str, work_id: str) -> None:
+        self.writer_lock.release(workspace_root, work_id)
+
+    def create_checkpoint(
+        self,
+        *,
+        work_id: str,
+        workspace_root: str,
+        task_root: str | Path,
+        kind: str = "snapshot",
+    ) -> WorkCheckpoint:
+        ckpt = create_work_checkpoint(
+            work_id=work_id,
+            workspace_root=workspace_root,
+            task_root=task_root,
+            kind=kind,
+        )
+        self._checkpoints[work_id] = ckpt
+        return ckpt
+
+    def rollback(self, work_id_or_checkpoint: str | WorkCheckpoint) -> tuple[bool, str]:
+        if isinstance(work_id_or_checkpoint, str):
+            ckpt = self._checkpoints.get(work_id_or_checkpoint)
+            if ckpt is None:
+                return False, "Không tìm thấy checkpoint để hoàn tác cho nhiệm vụ này."
+        else:
+            ckpt = work_id_or_checkpoint
+
+        return rollback_checkpoint(ckpt)
+
+    def resume_check(self, work_id: str, task_root: str | Path) -> str:
+        ckpt = self._checkpoints.get(work_id)
+        if ckpt is None:
+            return "no_checkpoint"
+        root = Path(task_root)
+        current_manifest: dict[str, str] = {}
+        for dirpath, dirs, files in os.walk(root):
+            dirs[:] = [d for d in dirs if not d.startswith(".") and d not in ("local_cases", "local_runs", "__pycache__")]
+            for file_name in files:
+                f_path = Path(dirpath) / file_name
+                rel_posix = f_path.relative_to(root).as_posix()
+                try:
+                    current_manifest[rel_posix] = hashlib.sha256(f_path.read_bytes()).hexdigest()
+                except Exception:
+                    pass
+        if current_manifest == ckpt.manifest:
+            return "clean"
+        return "interrupted_unknown"
 
     def run(self, request: WorkspaceAgentRequest) -> WorkspaceAgentResult:
         session_id = new_session_id()

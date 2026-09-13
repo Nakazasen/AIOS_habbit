@@ -14,6 +14,7 @@ from aios_habit.knowledge_coverage import CoverageMetric, KnowledgeGapCandidate
 from aios_habit.workspace_case_authorization import RoleGrant
 from aios_habit.workspace_case_migrations import WorkspaceCaseMigrationError, migrate_store
 from aios_habit.workspace_case_models import (
+    AgentWorkRecord,
     CaseActivity,
     CaseArtifactRecord,
     CaseAuditEvent,
@@ -1748,6 +1749,164 @@ class WorkspaceCaseRepository:
         )
         idemp = f"IDEMP-GAP-STATUS-{gap_id}-{new_status}-{utc_now_iso()}"
         self.save_gap_candidate(updated_gap, idemp, actor_id)
+
+    def save_agent_work(self, work: AgentWorkRecord) -> None:
+        self.initialize()
+        with self._connection() as connection:
+            connection.execute("BEGIN IMMEDIATE")
+            connection.execute(
+                """
+                INSERT INTO agent_work_items (
+                    work_id, case_id, workspace_id, work_type, goal_vi,
+                    source_refs_json, allowed_roots_json, allowed_commands_json,
+                    privacy_route, status, queue_position, created_at, updated_at,
+                    runtime_binding_ref, checkpoint_ref, result_ref,
+                    error_report_ref, idempotency_key, record_digest
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(work_id) DO UPDATE SET
+                    case_id = excluded.case_id,
+                    workspace_id = excluded.workspace_id,
+                    work_type = excluded.work_type,
+                    goal_vi = excluded.goal_vi,
+                    source_refs_json = excluded.source_refs_json,
+                    allowed_roots_json = excluded.allowed_roots_json,
+                    allowed_commands_json = excluded.allowed_commands_json,
+                    privacy_route = excluded.privacy_route,
+                    status = excluded.status,
+                    queue_position = excluded.queue_position,
+                    updated_at = excluded.updated_at,
+                    runtime_binding_ref = excluded.runtime_binding_ref,
+                    checkpoint_ref = excluded.checkpoint_ref,
+                    result_ref = excluded.result_ref,
+                    error_report_ref = excluded.error_report_ref,
+                    idempotency_key = excluded.idempotency_key,
+                    record_digest = excluded.record_digest
+                """,
+                (
+                    work.work_id,
+                    work.case_id,
+                    work.workspace_id,
+                    work.work_type,
+                    work.goal_vi,
+                    json.dumps(list(work.source_refs), ensure_ascii=False),
+                    json.dumps(list(work.allowed_roots), ensure_ascii=False),
+                    json.dumps(list(work.allowed_commands), ensure_ascii=False),
+                    work.privacy_route,
+                    work.status,
+                    work.queue_position,
+                    work.created_at,
+                    work.updated_at,
+                    work.runtime_binding_ref,
+                    work.checkpoint_ref,
+                    work.result_ref,
+                    work.error_report_ref,
+                    work.idempotency_key,
+                    work.record_digest,
+                ),
+            )
+            connection.commit()
+
+    def get_agent_work(self, work_id: str) -> Optional[AgentWorkRecord]:
+        self.initialize()
+        with self._connection() as connection:
+            row = connection.execute(
+                "SELECT * FROM agent_work_items WHERE work_id = ?",
+                (work_id,),
+            ).fetchone()
+            if row is None:
+                return None
+            return self._row_to_agent_work(row)
+
+    def list_agent_work(
+        self,
+        workspace_id: Optional[str] = None,
+        status: Optional[str] = None,
+    ) -> list[AgentWorkRecord]:
+        self.initialize()
+        query = "SELECT * FROM agent_work_items WHERE 1=1"
+        params: list[Any] = []
+        if workspace_id is not None:
+            query += " AND workspace_id = ?"
+            params.append(workspace_id)
+        if status is not None:
+            query += " AND status = ?"
+            params.append(status)
+        query += " ORDER BY queue_position ASC, created_at ASC"
+        with self._connection() as connection:
+            rows = connection.execute(query, params).fetchall()
+            return [self._row_to_agent_work(r) for r in rows]
+
+    def update_agent_work_status(
+        self,
+        work_id: str,
+        status: str,
+        *,
+        updated_at: Optional[str] = None,
+        checkpoint_ref: Optional[str] = None,
+        result_ref: Optional[str] = None,
+        error_report_ref: Optional[str] = None,
+    ) -> None:
+        self.initialize()
+        now = updated_at or utc_now_iso()
+        updates = ["status = ?", "updated_at = ?"]
+        params: list[Any] = [status, now]
+        if checkpoint_ref is not None:
+            updates.append("checkpoint_ref = ?")
+            params.append(checkpoint_ref)
+        if result_ref is not None:
+            updates.append("result_ref = ?")
+            params.append(result_ref)
+        if error_report_ref is not None:
+            updates.append("error_report_ref = ?")
+            params.append(error_report_ref)
+        params.append(work_id)
+
+        with self._connection() as connection:
+            connection.execute("BEGIN IMMEDIATE")
+            res = connection.execute(
+                f"UPDATE agent_work_items SET {', '.join(updates)} WHERE work_id = ?",
+                params,
+            )
+            if res.rowcount == 0:
+                raise WorkspaceCaseRepositoryError(f"Không tìm thấy công việc '{work_id}' để cập nhật.")
+            connection.commit()
+
+    @staticmethod
+    def _row_to_agent_work(row: sqlite3.Row) -> AgentWorkRecord:
+        try:
+            source_refs = tuple(json.loads(row["source_refs_json"]))
+        except Exception:
+            source_refs = ()
+        try:
+            allowed_roots = tuple(json.loads(row["allowed_roots_json"]))
+        except Exception:
+            allowed_roots = ()
+        try:
+            allowed_commands = tuple(json.loads(row["allowed_commands_json"]))
+        except Exception:
+            allowed_commands = ()
+
+        return AgentWorkRecord(
+            work_id=str(row["work_id"]),
+            case_id=str(row["case_id"]) if row["case_id"] else None,
+            workspace_id=str(row["workspace_id"]),
+            work_type=str(row["work_type"]),
+            goal_vi=str(row["goal_vi"]),
+            source_refs=source_refs,
+            allowed_roots=allowed_roots,
+            allowed_commands=allowed_commands,
+            privacy_route=str(row["privacy_route"]),
+            status=str(row["status"]),
+            queue_position=int(row["queue_position"]),
+            created_at=str(row["created_at"]),
+            updated_at=str(row["updated_at"]),
+            runtime_binding_ref=str(row["runtime_binding_ref"] or ""),
+            checkpoint_ref=str(row["checkpoint_ref"] or ""),
+            result_ref=str(row["result_ref"] or ""),
+            error_report_ref=str(row["error_report_ref"] or ""),
+            idempotency_key=str(row["idempotency_key"] or ""),
+            record_digest=str(row["record_digest"] or ""),
+        )
 
 
 def hashlib_sha256(value: str) -> str:

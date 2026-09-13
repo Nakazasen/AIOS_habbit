@@ -37,11 +37,11 @@
 
 ## Giai đoạn 4 — Nền OpenCode (chỉ sau US1+US2 xanh)
 
-- [ ] T006 Mở rộng policy theo task root, loại nhiệm vụ, lệnh test và vùng cấm trong `src/aios_habit/workspace_agent_policy.py`
-- [ ] T007 Tạo adapter OpenCode mỏng cho session, event, file và command trong `src/aios_habit/opencode_runtime_adapter.py`
-- [ ] T008 Mở rộng orchestrator cho checkpoint, resume, rollback và một writer theo workspace trong `src/aios_habit/workspace_agent_orchestrator.py`
-- [ ] T009 Mở rộng record `agent_work` bằng migration nhỏ, có backup và rollback trong `src/aios_habit/workspace_case_repository.py`
-- [ ] T010 Kiểm thử chung về path traversal, secret, Unicode, idempotency và restart trong `tests/test_agent_work_foundation.py`
+- [x] T006 Mở rộng policy theo task root, loại nhiệm vụ, lệnh test và vùng cấm trong `src/aios_habit/workspace_agent_policy.py`
+- [x] T007 Tạo adapter OpenCode mỏng cho session, event, file và command trong `src/aios_habit/opencode_runtime_adapter.py`
+- [x] T008 Mở rộng orchestrator cho checkpoint, resume, rollback và một writer theo workspace trong `src/aios_habit/workspace_agent_orchestrator.py`
+- [x] T009 Mở rộng record `agent_work` bằng migration nhỏ, có backup và rollback trong `src/aios_habit/workspace_case_repository.py`
+- [x] T010 Kiểm thử chung về path traversal, secret, Unicode, idempotency và restart trong `tests/test_agent_work_foundation.py`
 
 ## Giai đoạn 5 — US3: Sửa mã và chạy test
 
@@ -73,7 +73,7 @@
 
 ## Phụ thuộc và chiến lược triển khai
 
-- T000 không được bỏ. T001–T005 đã xong. **Task `[ ]` nhỏ nhất hiện tại là T011.** Cấm làm T006–T010 / US3 trước US1+US2.
+- T000–T005 và US1+US2 (T011–T019) đã hoàn thành. Hiện đang triển khai tuần tự Giai đoạn 4 (T006–T010), tiếp theo là Giai đoạn 5 (US3), Giai đoạn 6 (US4) và Giai đoạn 7.
 - Probe OpenCode `PARTIAL` không được ghi Goal `BLOCKED` và không được dừng US1/US2.
 - US1+US2 dùng Workspace Chat + extractors + file artifact. Không OpenCode, không Cline, không fork.
 - T006–T010 và US3 chỉ sau khi T011–T019 có test xanh. Không fork OpenCode.

@@ -17,7 +17,7 @@ from typing import Callable, Optional
 from aios_habit.workspace_case_models import CaseActivity
 
 
-CURRENT_SCHEMA_VERSION = 8
+CURRENT_SCHEMA_VERSION = 9
 FaultInjector = Callable[[str, int], None]
 
 
@@ -42,6 +42,7 @@ _MIGRATION_DESCRIPTIONS = {
     6: "expert_profiles_and_scope_grants",
     7: "knowledge_coverage_and_gaps",
     8: "raw_transcript_local_only_isolation",
+    9: "agent_work_items_store",
 }
 _MIGRATION_CHECKSUMS = {
     version: hashlib.sha256(description.encode("utf-8")).hexdigest()
@@ -593,6 +594,39 @@ def _apply_v8(
             connection.execute(statement)
 
 
+def _apply_v9(connection: sqlite3.Connection) -> None:
+    statements = (
+        """
+        CREATE TABLE IF NOT EXISTS agent_work_items (
+            work_id TEXT PRIMARY KEY,
+            case_id TEXT,
+            workspace_id TEXT NOT NULL,
+            work_type TEXT NOT NULL,
+            goal_vi TEXT NOT NULL,
+            source_refs_json TEXT NOT NULL DEFAULT '[]',
+            allowed_roots_json TEXT NOT NULL DEFAULT '[]',
+            allowed_commands_json TEXT NOT NULL DEFAULT '[]',
+            privacy_route TEXT NOT NULL DEFAULT 'local_only',
+            status TEXT NOT NULL DEFAULT 'queued',
+            queue_position INTEGER NOT NULL DEFAULT 0,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL,
+            runtime_binding_ref TEXT NOT NULL DEFAULT '',
+            checkpoint_ref TEXT NOT NULL DEFAULT '',
+            result_ref TEXT NOT NULL DEFAULT '',
+            error_report_ref TEXT NOT NULL DEFAULT '',
+            idempotency_key TEXT NOT NULL DEFAULT '',
+            record_digest TEXT NOT NULL DEFAULT ''
+        )
+        """,
+        "CREATE INDEX IF NOT EXISTS agent_work_items_workspace_idx ON agent_work_items(workspace_id, status)",
+        "CREATE INDEX IF NOT EXISTS agent_work_items_status_idx ON agent_work_items(status, queue_position)",
+        "CREATE INDEX IF NOT EXISTS agent_work_items_idempotency_idx ON agent_work_items(idempotency_key)",
+    )
+    for statement in statements:
+        connection.execute(statement)
+
+
 def _ensure_migration_table(connection: sqlite3.Connection) -> None:
     connection.execute(
         """
@@ -665,6 +699,8 @@ def migrate_store(
                     _apply_v7(connection)
                 elif version == 8:
                     _apply_v8(connection, created_transcripts)
+                elif version == 9:
+                    _apply_v9(connection)
                 connection.execute(
                     "INSERT INTO schema_migrations VALUES (?, ?, ?, ?)",
                     (version, _MIGRATION_DESCRIPTIONS[version], _MIGRATION_CHECKSUMS[version], _utc_now()),
