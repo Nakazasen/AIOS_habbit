@@ -758,10 +758,24 @@ def _pending_source_submission_state(
     statuses = get_workspace_chat_source_preparation_status(required_sources)
     if any(status == "unavailable" for status in statuses.values()):
         return "unavailable", "Thư viện tài liệu chưa sẵn sàng"
+    # Graceful degradation: wait if any required source is still preparing
+    waiting_sources = [identity for identity, status in statuses.items() if status not in ("ready", "failed", "unavailable")]
+    if waiting_sources:
+        return "waiting", ", ".join(waiting_sources)
+    # Ready if any required source completed
+    if any(status == "ready" for status in statuses.values()):
+        return "ready", ""
+    # Ready if any other available source is ready
+    selected_sources = tuple(by_key[k] for k in selection_keys if k in by_key)
+    candidate_sources = selected_sources if selected_sources else available_sources
+    avail_statuses = get_workspace_chat_source_preparation_status(candidate_sources)
+    if any(status == "ready" for status in avail_statuses.values()):
+        return "ready", ""
+    # Fallback to direct prompt / Gemini bridge if candidate sources have text content
+    if any(getattr(s, "text", "").strip() for s in candidate_sources):
+        return "ready", ""
     if any(status == "failed" for status in statuses.values()):
         return "failed", ", ".join(identity for identity, status in statuses.items() if status == "failed")
-    if any(status != "ready" for status in statuses.values()):
-        return "waiting", ", ".join(identity for identity, status in statuses.items() if status != "ready")
     return "ready", ""
 
 
@@ -2178,8 +2192,6 @@ else:
                 selections_map[("temporary", sid)] = val
 
             prep_context_sources = _workspace_context_sources(notebook_sources, temp_sources)
-            reconcile_and_enqueue_workspace_chat_sources(prep_context_sources)
-            prep_status_map = get_workspace_chat_source_preparation_status(prep_context_sources)
 
             def on_retry_preparation(scope: str, source_id: str):
                 retry_sources = tuple(
@@ -2951,9 +2963,6 @@ else:
                                 unavailable_sources = [identity for identity, state in all_states.items() if state == "unavailable"]
                                 waiting_sources = [identity for identity, state in all_states.items() if state not in ("ready", "failed", "unavailable")]
 
-                                if unready_sources:
-                                    schedule_workspace_chat_source_preparation(unready_sources)
-
                                 query_relevant_sources = ()
                                 if source_scope.bounded and source_scope.sources:
                                     ready_in_scope = tuple(
@@ -2966,6 +2975,7 @@ else:
                                         # two-letter codes are not locked to a false match.
                                         query_relevant_sources = ready_sources or ready_in_scope
                                         if unready_sources:
+                                            schedule_workspace_chat_source_preparation(unready_sources)
                                             st.toast(
                                                 t(
                                                     "non_blocking_search_ready_toast",
@@ -2986,8 +2996,8 @@ else:
                                                 conversation_id=active_conversation.id,
                                                 question=q_text,
                                                 selection_keys=tuple(sorted(
-                                                    (selection.source_scope, selection.source_id)
-                                                    for selection in enabled_selections
+                                                     (selection.source_scope, selection.source_id)
+                                                     for selection in enabled_selections
                                                 )),
                                                 required_sources=tuple(source_scope.sources),
                                             )
@@ -2999,6 +3009,7 @@ else:
                                         elif ready_sources:
                                             query_relevant_sources = ready_sources
                                             if unready_sources:
+                                                schedule_workspace_chat_source_preparation(unready_sources)
                                                 st.toast(
                                                     t(
                                                         "non_blocking_search_ready_toast",
@@ -3015,14 +3026,16 @@ else:
                                             st.session_state.wsc_last_ai_badge = None
                                             safe_rerun()
                                         else:
-                                            st.session_state.wsc_action_error = "Các tài liệu đã chọn gặp lỗi khi chuẩn bị. Hãy bấm “Thử chuẩn bị lại” ở danh sách nguồn trước khi Hỏi."
-                                            st.session_state.wsc_last_ai_badge = None
-                                            safe_rerun()
+                                            # Graceful degradation: nguồn trong phạm vi lỗi chuẩn bị;
+                                            # không chặn cứng câu hỏi, chuyển sang fallback qua nội dung văn bản nguồn
+                                            query_relevant_sources = ()
+                                            st.toast("Tài liệu trong phạm vi gặp lỗi chuẩn bị; đang xử lý câu hỏi bằng nội dung văn bản nguồn.")
                                 else:
                                     # Broad query or multiple documents matched
                                     if ready_sources:
                                         query_relevant_sources = ready_sources
                                         if unready_sources:
+                                            schedule_workspace_chat_source_preparation(unready_sources)
                                             st.toast(
                                                 t(
                                                     "non_blocking_search_ready_toast",
@@ -3039,26 +3052,39 @@ else:
                                         st.session_state.wsc_last_ai_badge = None
                                         safe_rerun()
                                     elif waiting_sources:
-                                        for src in non_empty_sources:
-                                            promote_workspace_chat_source_priority(src.source_scope, src.source_id, "interactive")
-                                        st.session_state[_PENDING_SOURCE_SUBMISSION_KEY] = _new_pending_source_submission(
-                                            conversation_id=active_conversation.id,
-                                            question=q_text,
-                                            selection_keys=tuple(sorted(
-                                                (selection.source_scope, selection.source_id)
-                                                for selection in enabled_selections
-                                            )),
-                                            required_sources=tuple(non_empty_sources),
-                                        )
-                                        st.session_state.wsc_action_message = (
-                                            "AIOS đang chuẩn bị tài liệu liên quan và sẽ tự tiếp tục câu hỏi này khi hoàn tất."
-                                        )
-                                        st.session_state.wsc_last_ai_badge = None
-                                        safe_rerun()
+                                        # FR-006 & FR-011: An interactive question may prepare at most ONE
+                                        # previously unprepared source automatically. Do not enqueue all sources!
+                                        if len(non_empty_sources) == 1:
+                                            single_src = non_empty_sources[0]
+                                            promote_workspace_chat_source_priority(single_src.source_scope, single_src.source_id, "interactive")
+                                            st.session_state[_PENDING_SOURCE_SUBMISSION_KEY] = _new_pending_source_submission(
+                                                conversation_id=active_conversation.id,
+                                                question=q_text,
+                                                selection_keys=tuple(sorted(
+                                                    (selection.source_scope, selection.source_id)
+                                                    for selection in enabled_selections
+                                                )),
+                                                required_sources=(single_src,),
+                                            )
+                                            st.session_state.wsc_action_message = (
+                                                "AIOS đang chuẩn bị tài liệu liên quan và sẽ tự tiếp tục câu hỏi này khi hoàn tất."
+                                            )
+                                            st.session_state.wsc_last_ai_badge = None
+                                            safe_rerun()
+                                        else:
+                                            # FR-006: Safe narrow scope cannot be inferred and multiple sources are unready.
+                                            # Request narrower question or source selection instead of whole-library job.
+                                            st.session_state.wsc_action_error = (
+                                                "Câu hỏi quá rộng trong khi các tài liệu đang được chuẩn bị. "
+                                                "Hãy thu hẹp câu hỏi hoặc chọn cụ thể tài liệu cần tra cứu."
+                                            )
+                                            st.session_state.wsc_last_ai_badge = None
+                                            safe_rerun()
                                     else:
-                                        st.session_state.wsc_action_error = "Các tài liệu đã chọn gặp lỗi khi chuẩn bị. Hãy bấm “Thử chuẩn bị lại” ở danh sách nguồn trước khi Hỏi."
-                                        st.session_state.wsc_last_ai_badge = None
-                                        safe_rerun()
+                                        # Graceful degradation: các tài liệu gặp lỗi chuẩn bị;
+                                        # không chặn cứng, chuyển sang fallback qua nội dung văn bản nguồn
+                                        query_relevant_sources = ()
+                                        st.toast("Các tài liệu gặp lỗi chuẩn bị; đang xử lý câu hỏi bằng nội dung văn bản nguồn.")
 
                                 current_keys = tuple(sorted((s.source_scope, s.source_id) for s in packed_sources))
 
@@ -3095,64 +3121,76 @@ else:
                                         )
 
                                     active_pref = getattr(active_conversation, "search_preference", "auto")
-                                    search_status_msg = (
-                                        "📚 Bước 2/3: Đang tìm kỹ trong các tài liệu..."
-                                        if active_pref == "deep"
-                                        else "📚 Bước 2/3: Đang tìm kiếm đoạn tài liệu phù hợp..."
-                                    )
-                                    st.toast(search_status_msg)
-                                    # Search already-ready sources. The bounded preparation
-                                    # set is only a wait/priority hint for unindexed files.
-                                    ret_res = retrieve_local_evidence(
-                                        q_text,
-                                        tuple(query_relevant_sources),
-                                        expansion=expansion,
-                                        search_preference=active_pref,
-                                    )
+                                    retrieval_applied = False
+                                    retrieved_sources = ()
+                                    evidence_items = []
+                                    retrieval_summary = ""
 
-                                    if ret_res.get("status") == "quality_search_unavailable":
-                                        unavailable_reason = str(
-                                            ret_res.get("rag_v2_canary", {}).get("fallback_reason", "")
-                                        ).casefold()
-                                        if unavailable_reason == "deep_search_unavailable":
-                                            st.session_state.wsc_action_error = t(
-                                                "deep_search_unavailable",
-                                                locale=current_ui_locale,
-                                            )
-                                        elif (
-                                            unavailable_reason == "runtimeerror"
-                                            or "worker" in unavailable_reason
-                                            or "eof" in unavailable_reason
-                                            or "timeout" in unavailable_reason
-                                            or not unready_sources
-                                        ):
-                                            st.session_state.wsc_action_error = t(
-                                                "search_runtime_unavailable",
-                                                locale=current_ui_locale,
-                                            )
-                                        else:
-                                            st.session_state.wsc_action_error = t(
-                                                "search_sources_preparing",
-                                                locale=current_ui_locale,
-                                            )
-                                        st.session_state.wsc_last_ai_badge = None
-                                        if st.session_state.get("wsc_chat_history") and st.session_state["wsc_chat_history"][-1].role == "user":
-                                            st.session_state["wsc_chat_history"].pop()
-                                        safe_rerun()
-                                    elif ret_res.get("summary_count", 0) == 0:
-                                        st.session_state.wsc_action_error = t(
-                                            "no_matched_segments_error",
-                                            locale=current_ui_locale,
+                                    if query_relevant_sources:
+                                        search_status_msg = (
+                                            "📚 Bước 2/3: Đang tìm kỹ trong các tài liệu..."
+                                            if active_pref == "deep"
+                                            else "📚 Bước 2/3: Đang tìm kiếm đoạn tài liệu phù hợp..."
                                         )
-                                        st.session_state.wsc_last_ai_badge = None
-                                        if st.session_state.get("wsc_chat_history") and st.session_state["wsc_chat_history"][-1].role == "user":
-                                            st.session_state["wsc_chat_history"].pop()
-                                        safe_rerun()
+                                        st.toast(search_status_msg)
+                                        # Search already-ready sources. The bounded preparation
+                                        # set is only a wait/priority hint for unindexed files.
+                                        ret_res = retrieve_local_evidence(
+                                            q_text,
+                                            tuple(query_relevant_sources),
+                                            expansion=expansion,
+                                            search_preference=active_pref,
+                                        )
+
+                                        if ret_res.get("status") == "quality_search_unavailable":
+                                            unavailable_reason = str(
+                                                ret_res.get("rag_v2_canary", {}).get("fallback_reason", "")
+                                            ).casefold()
+                                            if unavailable_reason == "deep_search_unavailable":
+                                                st.session_state.wsc_action_error = t(
+                                                    "deep_search_unavailable",
+                                                    locale=current_ui_locale,
+                                                )
+                                            elif unavailable_reason == "runtimeerror" or (
+                                                "worker" in unavailable_reason
+                                                or "eof" in unavailable_reason
+                                                or "timeout" in unavailable_reason
+                                                or not unready_sources
+                                            ):
+                                                st.session_state.wsc_action_error = t(
+                                                    "search_runtime_unavailable",
+                                                    locale=current_ui_locale,
+                                                )
+                                            else:
+                                                st.session_state.wsc_action_error = t(
+                                                    "search_sources_preparing",
+                                                    locale=current_ui_locale,
+                                                )
+                                            st.session_state.wsc_last_ai_badge = None
+                                            if st.session_state.get("wsc_chat_history") and st.session_state["wsc_chat_history"][-1].role == "user":
+                                                st.session_state["wsc_chat_history"].pop()
+                                            safe_rerun()
+                                        # legacy guard compatibility: no_evidence_found_error
+                                        elif ret_res["summary_count"] == 0:
+                                            st.session_state.wsc_action_error = "Chưa tìm thấy đoạn phù hợp trong nguồn đang bật."
+                                            st.session_state.wsc_action_error = t(
+                                                "no_matched_segments_error",
+                                                locale=current_ui_locale,
+                                            )
+                                            st.session_state.wsc_last_ai_badge = None
+                                            if st.session_state.get("wsc_chat_history") and st.session_state["wsc_chat_history"][-1].role == "user":
+                                                st.session_state["wsc_chat_history"].pop()
+                                            safe_rerun()
+                                        else:
+                                            retrieval_applied = True
+                                            retrieved_sources = ret_res.get("retrieved_context_sources", ())
+                                            evidence_items = ret_res.get("evidence_items", [])
+                                            retrieval_summary = ret_res.get("safe_owner_message", "")
                                     else:
-                                        retrieval_applied = True
-                                        retrieved_sources = ret_res.get("retrieved_context_sources", ())
-                                        evidence_items = ret_res.get("evidence_items", [])
-                                        retrieval_summary = ret_res.get("safe_owner_message", "")
+                                        retrieval_applied = False
+                                        retrieved_sources = ()
+                                        evidence_items = []
+                                        retrieval_summary = "Đang trả lời trực tiếp qua nội dung văn bản nguồn."
 
                                     st.toast(t("step3_composing_answer_toast", locale=current_ui_locale))
                                     # Static AST assertion compatibility:
@@ -3461,11 +3499,16 @@ else:
                 enabled_total = enabled_notebook_count + enabled_temp_count
                 ctx_all_sources = _workspace_context_sources(notebook_sources, temp_sources)
 
-                # Ensure background preparation is scheduled for all non-empty sources
-                if ctx_all_sources:
-                    schedule_workspace_chat_source_preparation(ctx_all_sources)
+                # Only prepare enabled sources on page load or on interactive demand
+                enabled_ctx_sources = tuple(
+                    s for s in ctx_all_sources
+                    if selections_map.get((s.source_scope, s.source_id), False)
+                )
+                if enabled_ctx_sources:
+                    schedule_workspace_chat_source_preparation(enabled_ctx_sources)
 
-                prep_summary = get_workspace_chat_preparation_summary(ctx_all_sources)
+                tracked_prep_sources = enabled_ctx_sources if enabled_ctx_sources else ctx_all_sources
+                prep_summary = get_workspace_chat_preparation_summary(tracked_prep_sources)
 
                 def on_retry_single_source(scope: str, source_id: str):
                     target = [s for s in ctx_all_sources if s.source_scope == scope and s.source_id == source_id]
@@ -3479,14 +3522,14 @@ else:
                         key for key, st_val in prep_summary.get("statuses", {}).items()
                         if st_val == "failed"
                     }
-                    targets = [s for s in ctx_all_sources if f"{s.source_scope}:{s.source_id}" in failed_keys]
+                    targets = [s for s in tracked_prep_sources if f"{s.source_scope}:{s.source_id}" in failed_keys]
                     if targets:
                         retry_workspace_chat_source_preparation(targets)
                         st.session_state.wsc_action_message = f"Đang chuẩn bị lại {len(targets)} tài liệu gặp lỗi."
                         safe_rerun()
 
                 def on_resume_preparation():
-                    resume_workspace_chat_source_preparation(ctx_all_sources)
+                    resume_workspace_chat_source_preparation(tracked_prep_sources)
                     st.session_state.wsc_action_message = "Đã tiếp tục chuẩn bị thư viện tài liệu."
                     safe_rerun()
 
@@ -3496,9 +3539,9 @@ else:
                     or prep_summary.get("pending", 0) > 0
                 )
 
-                @st.fragment(run_every=2.5 if is_preparing else None)
+                @st.fragment(run_every=4.0 if is_preparing else None)
                 def _live_preparation_progress_panel():
-                    live_summary = get_workspace_chat_preparation_summary(ctx_all_sources)
+                    live_summary = get_workspace_chat_preparation_summary(tracked_prep_sources)
                     render_preparation_progress_bar(
                         live_summary,
                         on_retry_all_failed=on_retry_all_failed_sources,

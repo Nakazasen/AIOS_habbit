@@ -881,6 +881,12 @@ def route_workspace_chat_submission(
                 title_ev = getattr(ev, "title", f"Nguồn {idx}")
                 snip_ev = getattr(ev, "extracted_text", None) or getattr(ev, "snippet", None) or getattr(ev, "text", "")
             context_blocks.append(f"[{idx}] {title_ev}:\n{snip_ev}")
+        if not context_blocks and packed_sources:
+            for idx, s in enumerate(packed_sources[:5], start=1):
+                title_s = getattr(s, "title", f"Nguồn {idx}")
+                text_s = getattr(s, "text", "")
+                if text_s:
+                    context_blocks.append(f"[{idx}] {title_s}:\n{text_s[:2500]}")
         direct_context_text = "\n\n".join(context_blocks)
         memory_result = None
         from aios_habit.workspace_chat_ai_answer import (
@@ -1051,6 +1057,22 @@ def route_workspace_chat_submission(
                         privacy_level=ev.get("privacy_level", "cloud_allowed"),
                     )
                 )
+        if not ev_models and packed_sources:
+            for idx, s in enumerate(packed_sources[:5], start=1):
+                title_s = getattr(s, "title", f"Nguồn {idx}")
+                text_s = getattr(s, "text", "")
+                if text_s:
+                    ev_models.append(
+                        EvidenceItem(
+                            evidence_id=f"SRC-FALLBACK-{idx}",
+                            case_id=conversation_id,
+                            source_type=getattr(s, "source_type", "plain_text"),
+                            source_path="",
+                            title=title_s,
+                            extracted_text=text_s[:2500],
+                            privacy_level=getattr(s, "privacy_label", "cloud_allowed"),
+                        )
+                    )
 
         try:
             if was_cancelled():

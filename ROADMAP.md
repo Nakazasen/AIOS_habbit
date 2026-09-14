@@ -47,6 +47,7 @@ Tài liệu tham khảo tầm nhìn dài hạn tương lai: [Production Intellig
 | Chuẩn bị nguồn tăng dần (005) | `TECHNICAL_PASS` — browser smoke 6/6 PASS 2026-09-12; S4 xác nhận hỏi ngay trên nguồn ready khi file mới còn pending |
 | Đánh giá chunk dựa trên bằng chứng (006) | `IMPLEMENTED_PENDING_REAL_CORPUS_VALIDATION` — E1/E2 đã đo trên corpus công khai v3; mặc định cắt câu CJK cho ingest mới. 2026-09-12: `tests/test_chunk_evaluation.py` + `tests/test_rag_v2_chunking.py` 79 passed; CLI identity corpus không được gắn nhãn baseline. **Chưa có** bộ câu hỏi–bằng chứng đóng băng trên `tailieugoc`/`local_only`. Không mở E3/E4, không rebuild index, không giả PASS. |
 | Thanh nhập chat hiện đại (007) | `TECHNICAL_PASS` — Playwright smoke 6/6 PASS ngày 2026-09-12 (`scripts/smoke_007_modern_chat_composer.py`, `local_runs/smoke_007/result.json`). Composer compact, chọn Gemini Web / C-AGENT / Nakazasen trong thanh chat, gửi câu hỏi, thumbnail ảnh, cửa sổ 360 px. Dán clipboard cần thao tác người dùng. Streamlit có thể giữ text sau gửi. Không tuyên bố nghiệm thu xưởng. |
+| Chat không chặn trên thư viện lớn (014) | `IMPLEMENTED` — Đặc tả `specs/014-large-library-nonblocking-chat/`: gỡ bỏ eager enqueue 988 nguồn khi tải trang, chuyển All-or-Nothing sang Graceful Degradation (bỏ qua nguồn failed, cho phép hỏi tiếp), tuân thủ FR-006 & FR-011 broad query, tối ưu chu kỳ polling UI 4.0s. |
 
 | A18 | `DONE` — Đã xác minh Chính sách Router thông minh & Sàn so sánh (Comparison Arena) |
 
