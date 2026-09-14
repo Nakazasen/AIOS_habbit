@@ -568,6 +568,7 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
         "showing_top_docs": "Đang hiển thị {count} / {total} tài liệu",
 
         "layout_toggle_help": "Chuyển đổi giữa chế độ đọc rộng và đối chiếu 2 cột",
+        "bridge_status_title": "Cầu nối AI (Gemini Web)",
         "bridge_refresh_help": "Kiểm tra kết nối và cập nhật phản hồi mới từ Antigravity IDE",
         "bridge_connect_refresh": "🔄 Kết nối lại & làm mới",
         "bridge_connect_refresh_help": "Tự khởi động cầu nối cục bộ nếu chưa chạy, rồi kiểm tra trạng thái và phản hồi mới.",
@@ -1288,6 +1289,7 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
         "showing_top_docs": "{total}件中 {count}件を表示中",
 
         "layout_toggle_help": "全幅表示と2カラム対照表示を切り替え",
+        "bridge_status_title": "AIブリッジ (Gemini Web)",
         "bridge_refresh_help": "接続を確認し、Antigravity IDEからの新しい応答を更新",
         "bridge_connect_refresh": "🔄 再接続して更新",
         "bridge_connect_refresh_help": "ローカルブリッジが未起動なら起動し、状態と新しい応答を確認します。",
@@ -2008,6 +2010,7 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
         "showing_top_docs": "正在显示 {total} 篇中的 {count} 篇",
 
         "layout_toggle_help": "在全宽视图与双栏对照视图之间切换",
+        "bridge_status_title": "AI 桥接 (Gemini Web)",
         "bridge_refresh_help": "检查连接并更新来自 Antigravity IDE 的最新响应",
         "bridge_connect_refresh": "🔄 重新连接并刷新",
         "bridge_connect_refresh_help": "本地桥接未运行时将自动启动，然后检查状态和最新响应。",

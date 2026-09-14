@@ -886,6 +886,33 @@ def _start_gemini_web_bridge(*, locale: str, announce_success: bool = False) -> 
     st.session_state.wsc_action_error = t("gemini_web_bridge_unavailable", locale=locale)
     return False
 
+
+def render_sidebar_bridge_status(*, locale: str, key_prefix: str = "wsc_sidebar") -> None:
+    """Render the bridge health status badge and manual refresh/reconnect button in the sidebar."""
+    with st.sidebar:
+        st.write("---")
+        st.markdown(f"### 🌉 {t('bridge_status_title', locale=locale)}")
+        bridge_health = get_antigravity_bridge_health(timeout_seconds=0.4)
+        render_bridge_header_status(bridge_health, locale=locale)
+        if st.button(
+            t("bridge_connect_refresh", locale=locale),
+            key=f"{key_prefix}_refresh_bridge_btn",
+            help=t("bridge_connect_refresh_help", locale=locale),
+            use_container_width=True,
+        ):
+            startup = ensure_antigravity_bridge_running()
+            check_handoff_request_timeouts()
+            if startup.ok:
+                st.session_state.wsc_action_message = t("bridge_connect_success", locale=locale)
+            else:
+                st.session_state.wsc_action_error = t(
+                    "bridge_connect_failed",
+                    locale=locale,
+                    reason=startup.reason or startup.health.reason or "unknown_error",
+                )
+            safe_rerun()
+
+
 def set_active_conversation_callback(notebook_id: str, conversation_id: Optional[str]) -> Optional[str]:
     resolved_id = resolve_conversation_id(notebook_id, conversation_id)
     st.session_state.wsc_active_conversation_id = resolved_id
@@ -1357,6 +1384,7 @@ if active_nb_id is None:
         actor_role=current_role,
         locale=current_ui_locale,
     )
+    render_sidebar_bridge_status(locale=current_ui_locale, key_prefix="wsc_sidebar_home")
 
     with st.expander(t("shared_library_expander", locale=current_ui_locale), expanded=True):
         st.write(t("shared_library_help", locale=current_ui_locale))
@@ -1808,6 +1836,8 @@ else:
             else:
                 if st.sidebar.button(f"🧠 {t('compress_conversation', locale=current_ui_locale)}", key=f"req_compress_conv_{active_conversation.id}", help=t("compress_help", locale=current_ui_locale), use_container_width=True):
                     request_compress_conversation_callback(active_conversation.id)
+
+        render_sidebar_bridge_status(locale=current_ui_locale, key_prefix="wsc_sidebar_chat")
 
         # Load sources & selections
         notebook_sources = load_notebook_sources(active_nb_id)

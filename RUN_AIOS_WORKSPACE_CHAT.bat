@@ -24,16 +24,24 @@ pause
 exit /b 1
 
 :run_uv
+echo [Trinh khoi chay] Kiem tra va khoi dong Antigravity Bridge trong nen...
+uv run --no-sync python -c "from aios_habit.antigravity_bridge import ensure_antigravity_bridge_running; res = ensure_antigravity_bridge_running(); print('[Bridge] San sang.' if res.ok else '[Bridge] Chua the khoi dong: ' + str(res.reason))"
 echo [Trinh khoi chay] Dang khoi dong qua uv...
 uv run --no-sync streamlit run src\aios_habit\workspace_chat_app.py
 goto :launcher_exit
 
 :run_venv_streamlit
+echo [Trinh khoi chay] Kiem tra va khoi dong Antigravity Bridge trong nen...
+if exist ".venv\Scripts\python.exe" (
+    ".venv\Scripts\python.exe" -c "from aios_habit.antigravity_bridge import ensure_antigravity_bridge_running; res = ensure_antigravity_bridge_running(); print('[Bridge] San sang.' if res.ok else '[Bridge] Chua the khoi dong: ' + str(res.reason))"
+)
 echo [Trinh khoi chay] Dang khoi dong qua .venv...
 ".venv\Scripts\streamlit.exe" run src\aios_habit\workspace_chat_app.py
 goto :launcher_exit
 
 :run_venv_python
+echo [Trinh khoi chay] Kiem tra va khoi dong Antigravity Bridge trong nen...
+".venv\Scripts\python.exe" -c "from aios_habit.antigravity_bridge import ensure_antigravity_bridge_running; res = ensure_antigravity_bridge_running(); print('[Bridge] San sang.' if res.ok else '[Bridge] Chua the khoi dong: ' + str(res.reason))"
 echo [Trinh khoi chay] Dang khoi dong qua python .venv...
 ".venv\Scripts\python.exe" -m streamlit run src\aios_habit\workspace_chat_app.py
 goto :launcher_exit
