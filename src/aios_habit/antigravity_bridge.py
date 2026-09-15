@@ -604,6 +604,23 @@ def compress_conversation_context_direct(
         return (False, "", f"Lỗi nén ngữ cảnh qua Antigravity Direct: {sanitize_reason(str(exc))}")
 
 
+def _get_or_create_user_message(conversation_id: str, content: str) -> Any:
+    from aios_habit.workspace_chat_models import ChatMessage
+    from aios_habit.workspace_chat_store import load_messages, save_message
+
+    existing = load_messages(conversation_id)
+    if existing and existing[-1].role == "user" and existing[-1].content.strip() == content.strip():
+        return existing[-1]
+    msg = ChatMessage(
+        id=f"MSG-{uuid.uuid4().hex[:8].upper()}",
+        conversation_id=conversation_id,
+        role="user",
+        content=content,
+    )
+    save_message(msg)
+    return msg
+
+
 def route_workspace_chat_submission(
     question: str,
     evidence_items: list[dict[str, Any]],
@@ -709,13 +726,7 @@ def route_workspace_chat_submission(
         disclaimer = _get_ai_disclaimer(answer_language)
         answer_text = cagent_res.text.strip() + disclaimer
 
-        user_msg = ChatMessage(
-            id=f"MSG-{uuid.uuid4().hex[:8].upper()}",
-            conversation_id=conversation_id,
-            role="user",
-            content=user_raw_input,
-        )
-        save_message(user_msg)
+        user_msg = _get_or_create_user_message(conversation_id, user_raw_input)
         assistant_msg_id = f"MSG-{uuid.uuid4().hex[:8].upper()}"
         from aios_habit.workspace_chat_store import (
             load_conversation,
@@ -801,13 +812,7 @@ def route_workspace_chat_submission(
         if not result.ok:
             return (False, "", None, result.error_message or "Cầu nối AI không trả về câu trả lời.")
 
-        user_msg = ChatMessage(
-            id=f"MSG-{uuid.uuid4().hex[:8].upper()}",
-            conversation_id=conversation_id,
-            role="user",
-            content=user_raw_input,
-        )
-        save_message(user_msg)
+        user_msg = _get_or_create_user_message(conversation_id, user_raw_input)
         assistant_msg_id = f"MSG-{uuid.uuid4().hex[:8].upper()}"
         from aios_habit.workspace_chat_store import (
             load_conversation,
@@ -933,13 +938,7 @@ def route_workspace_chat_submission(
                 return (False, "", None, "Đã dừng yêu cầu AI.")
 
             if direct_res.ok:
-                user_msg = ChatMessage(
-                    id=f"MSG-{uuid.uuid4().hex[:8].upper()}",
-                    conversation_id=conversation_id,
-                    role="user",
-                    content=user_raw_input,
-                )
-                save_message(user_msg)
+                user_msg = _get_or_create_user_message(conversation_id, user_raw_input)
 
                 assistant_msg_id = f"MSG-{uuid.uuid4().hex[:8].upper()}"
 
@@ -1025,13 +1024,7 @@ def route_workspace_chat_submission(
     elif health.is_handoff_ready or health.is_available:
         if was_cancelled():
             return (False, "", None, "Đã dừng yêu cầu AI.")
-        user_msg = ChatMessage(
-            id=f"MSG-{uuid.uuid4().hex[:8].upper()}",
-            conversation_id=conversation_id,
-            role="user",
-            content=user_raw_input,
-        )
-        save_message(user_msg)
+        user_msg = _get_or_create_user_message(conversation_id, user_raw_input)
         assistant_msg = ChatMessage(
             id=f"MSG-{uuid.uuid4().hex[:8].upper()}",
             conversation_id=conversation_id,

@@ -901,6 +901,100 @@ def _start_gemini_web_bridge(*, locale: str, announce_success: bool = False) -> 
     return False
 
 
+def _run_chat_turn_async(
+    q_text: str,
+    query_relevant_sources: tuple,
+    expansion: Any,
+    active_pref: str,
+    unready_sources: tuple,
+    current_ui_locale: str,
+    packed_sources: tuple,
+    conversation_id: str,
+    notebook_id: str,
+    current_keys: tuple,
+    chat_history: tuple,
+    user_raw_input: str,
+    answer_language: str,
+    ai_backend: str,
+    cagent_endpoint_url: str,
+    cancellation_event: Any,
+) -> tuple[bool, str, dict[str, Any] | None, str | None]:
+    """Execute evidence retrieval and model answer routing inside background thread pool."""
+    from aios_habit.antigravity_bridge import route_workspace_chat_submission
+    from aios_habit.workspace_chat_rag_v2_adapter import (
+        retrieve_workspace_chat_evidence as retrieve_local_evidence,
+    )
+
+    if cancellation_event is not None and cancellation_event.is_set():
+        return (False, "", None, "Đã dừng yêu cầu AI.")
+
+    retrieval_applied = False
+    retrieved_sources = ()
+    evidence_items = []
+    retrieval_summary = ""
+
+    if query_relevant_sources:
+        ret_res = retrieve_local_evidence(
+            q_text,
+            tuple(query_relevant_sources),
+            expansion=expansion,
+            search_preference=active_pref,
+        )
+        if cancellation_event is not None and cancellation_event.is_set():
+            return (False, "", None, "Đã dừng yêu cầu AI.")
+
+        if ret_res.get("status") == "quality_search_unavailable":
+            unavailable_reason = str(
+                ret_res.get("rag_v2_canary", {}).get("fallback_reason", "")
+            ).casefold()
+            if unavailable_reason == "deep_search_unavailable":
+                err_msg = t("deep_search_unavailable", locale=current_ui_locale)
+            elif unavailable_reason == "runtimeerror" or (
+                "worker" in unavailable_reason
+                or "eof" in unavailable_reason
+                or "timeout" in unavailable_reason
+                or not unready_sources
+            ):
+                err_msg = t("search_runtime_unavailable", locale=current_ui_locale)
+            else:
+                err_msg = t("search_sources_preparing", locale=current_ui_locale)
+            return (False, "", None, err_msg)
+        elif ret_res.get("summary_count", 0) == 0:
+            err_msg = t("no_matched_segments_error", locale=current_ui_locale)
+            return (False, "", None, err_msg)
+        else:
+            retrieval_applied = True
+            retrieved_sources = ret_res.get("retrieved_context_sources", ())
+            evidence_items = ret_res.get("evidence_items", [])
+            retrieval_summary = ret_res.get("safe_owner_message", "")
+    else:
+        retrieval_applied = False
+        retrieved_sources = ()
+        evidence_items = []
+        retrieval_summary = "Đang trả lời trực tiếp qua nội dung văn bản nguồn."
+
+    if cancellation_event is not None and cancellation_event.is_set():
+        return (False, "", None, "Đã dừng yêu cầu AI.")
+
+    return route_workspace_chat_submission(
+        question=q_text,
+        evidence_items=evidence_items,
+        packed_sources=packed_sources,
+        conversation_id=conversation_id,
+        notebook_id=notebook_id,
+        retrieval_applied=retrieval_applied,
+        retrieved_sources=retrieved_sources,
+        retrieval_summary=retrieval_summary,
+        current_keys=current_keys,
+        chat_history=chat_history,
+        user_raw_input=user_raw_input,
+        answer_language=answer_language,
+        backend=ai_backend,
+        cagent_endpoint_url=cagent_endpoint_url,
+        cancellation_event=cancellation_event,
+    )
+
+
 def render_sidebar_bridge_status(*, locale: str, key_prefix: str = "wsc_sidebar") -> None:
     """Render the bridge health status badge and manual refresh/reconnect button in the sidebar."""
     with st.sidebar:
@@ -2500,6 +2594,55 @@ else:
             badge_data = st.session_state.wsc_last_ai_badge
 
             def _render_chat_main_column():
+                ai_request_key = f"wsc_ai_request_{active_conversation.id}"
+                active_ai_request = st.session_state.get(ai_request_key)
+                is_answering = False
+                if active_ai_request:
+                    request_future = active_ai_request.get("future")
+                    cancellation_event = active_ai_request.get("cancellation_event")
+                    if request_future is not None and request_future.done():
+                        st.session_state.pop(ai_request_key, None)
+                        if cancellation_event is not None and cancellation_event.is_set():
+                            st.session_state.wsc_action_message = "Đã dừng yêu cầu AI."
+                        else:
+                            try:
+                                ok, succ_msg, badge, err_msg = request_future.result()
+                            except Exception as exc:
+                                ok, succ_msg, badge, err_msg = (False, "", None, f"Lỗi khi nhận phản hồi AI: {exc}")
+                            if ok:
+                                if succ_msg:
+                                    st.session_state.wsc_action_message = succ_msg
+                                if badge:
+                                    st.session_state.wsc_last_ai_badge = badge
+                            else:
+                                if err_msg:
+                                    clean_err = safe_vietnamese_ui_message(
+                                        err_msg, "Không thể hoàn tất yêu cầu AI lúc này."
+                                    )
+                                    st.session_state.wsc_action_error = clean_err
+                                    from aios_habit.workspace_chat_models import ChatMessage
+                                    from aios_habit.workspace_chat_store import save_message
+                                    save_message(ChatMessage(
+                                        id=f"MSG-{uuid.uuid4().hex[:8].upper()}",
+                                        conversation_id=active_conversation.id,
+                                        role="assistant",
+                                        content=f"⚠️ {clean_err}",
+                                    ))
+                                st.session_state.wsc_last_ai_badge = badge
+                        safe_rerun()
+                    elif request_future is not None:
+                        is_answering = True
+
+                        @st.fragment(run_every=0.8)
+                        def _refresh_completed_ai_request() -> None:
+                            if request_future.done():
+                                try:
+                                    st.rerun(scope="app")
+                                except TypeError:
+                                    st.rerun()
+
+                        _refresh_completed_ai_request()
+
                 active_pending = list_pending_ide_requests(active_conversation.id)
                 for req_info in active_pending:
                     if not req_info.response_exists and req_info.state == "handoff_pending":
@@ -2519,6 +2662,9 @@ else:
                     for i, m in enumerate(messages):
                         is_latest_ans = (i == last_assistant_idx and i == len(messages) - 1)
                         render_chat_bubble(m, is_latest=is_latest_ans, locale=current_ui_locale)
+                    if is_answering:
+                        with st.chat_message("assistant"):
+                            st.markdown(f"⏳ *{t('ai_analysis_spinner', locale=current_ui_locale)}*")
 
                 # AI Answer Badge
                 if badge_data and badge_data.get("conversation_id") == active_conversation.id:
@@ -2634,43 +2780,6 @@ else:
                             "unavailable": t("bge_search_unavailable", locale=current_ui_locale),
                         }
                         st.session_state.wsc_action_error = pending_messages.get(pending_state, "Không thể tiếp tục câu hỏi đang chờ.")
-
-                ai_request_key = f"wsc_ai_request_{active_conversation.id}"
-                active_ai_request = st.session_state.get(ai_request_key)
-                is_answering = False
-                if active_ai_request:
-                    request_future = active_ai_request.get("future")
-                    cancellation_event = active_ai_request.get("cancellation_event")
-                    if request_future is not None and request_future.done():
-                        st.session_state.pop(ai_request_key, None)
-                        if cancellation_event is not None and cancellation_event.is_set():
-                            st.session_state.wsc_action_message = "Đã dừng yêu cầu AI."
-                        else:
-                            try:
-                                ok, succ_msg, badge, err_msg = request_future.result()
-                            except Exception as exc:
-                                ok, succ_msg, badge, err_msg = (False, "", None, f"Lỗi khi nhận phản hồi AI: {exc}")
-                            if ok:
-                                if succ_msg:
-                                    st.session_state.wsc_action_message = succ_msg
-                                if badge:
-                                    st.session_state.wsc_last_ai_badge = badge
-                            else:
-                                if err_msg:
-                                    st.session_state.wsc_action_error = safe_vietnamese_ui_message(
-                                        err_msg, "Không thể hoàn tất yêu cầu AI lúc này."
-                                    )
-                                st.session_state.wsc_last_ai_badge = badge
-                        safe_rerun()
-                    elif request_future is not None:
-                        is_answering = True
-
-                        @st.fragment(run_every=0.8)
-                        def _refresh_completed_ai_request() -> None:
-                            if request_future.done():
-                                st.rerun()
-
-                        _refresh_completed_ai_request()
 
                 # AI-IDE style composer. Normal widgets are used instead of a
                 # form so an attachment thumbnail and model picker update in
@@ -2845,7 +2954,7 @@ else:
                               const sendButton = window.parent.document.querySelector(
                                 '[class*="st-key-wsc-action-"] button'
                               );
-                              if (sendButton && sendButton.textContent.includes("arrow_upward") && !sendButton.disabled) {
+                              if (sendButton && !sendButton.disabled) {
                                 event.preventDefault();
                                 sendButton.click();
                               }
@@ -3029,7 +3138,12 @@ else:
                                             # Graceful degradation: nguồn trong phạm vi lỗi chuẩn bị;
                                             # không chặn cứng câu hỏi, chuyển sang fallback qua nội dung văn bản nguồn
                                             query_relevant_sources = ()
-                                            st.toast("Tài liệu trong phạm vi gặp lỗi chuẩn bị; đang xử lý câu hỏi bằng nội dung văn bản nguồn.")
+                                            st.toast(
+                                                t(
+                                                    "scope_sources_preparation_error_fallback",
+                                                    locale=current_ui_locale,
+                                                )
+                                            )
                                 else:
                                     # Broad query or multiple documents matched
                                     if ready_sources:
@@ -3084,7 +3198,12 @@ else:
                                         # Graceful degradation: các tài liệu gặp lỗi chuẩn bị;
                                         # không chặn cứng, chuyển sang fallback qua nội dung văn bản nguồn
                                         query_relevant_sources = ()
-                                        st.toast("Các tài liệu gặp lỗi chuẩn bị; đang xử lý câu hỏi bằng nội dung văn bản nguồn.")
+                                        st.toast(
+                                            t(
+                                                "all_sources_preparation_error_fallback",
+                                                locale=current_ui_locale,
+                                            )
+                                        )
 
                                 current_keys = tuple(sorted((s.source_scope, s.source_id) for s in packed_sources))
 
@@ -3102,126 +3221,66 @@ else:
                                     for s in packed_sources
                                 )
 
-                                with st.spinner(t("ai_analysis_spinner", locale=current_ui_locale)):
-                                    st.toast(t("step1_checking_sources_toast", locale=current_ui_locale))
-                                    expansion = None
-                                    from aios_habit.rag_v2.query_planning import coerce_query_plan
-                                    local_query_plan = coerce_query_plan(q_text)
-                                    # Direct procedure questions already have a deterministic
-                                    # local plan; do not add a cloud planning round-trip before
-                                    # their local BGE retrieval.
-                                    if is_cloud_allowed and local_query_plan.intent_category not in {
-                                        "procedure", "actionable_output", "diagnosis",
-                                    }:
-                                        expansion = generate_query_expansion(
-                                            q_text,
-                                            chat_history=chat_history,
-                                            privacy_mode="cloud_allowed",
-                                            cloud_consent_confirmed=True,
-                                        )
-
-                                    active_pref = getattr(active_conversation, "search_preference", "auto")
-                                    retrieval_applied = False
-                                    retrieved_sources = ()
-                                    evidence_items = []
-                                    retrieval_summary = ""
-
-                                    if query_relevant_sources:
-                                        search_status_msg = (
-                                            "📚 Bước 2/3: Đang tìm kỹ trong các tài liệu..."
-                                            if active_pref == "deep"
-                                            else "📚 Bước 2/3: Đang tìm kiếm đoạn tài liệu phù hợp..."
-                                        )
-                                        st.toast(search_status_msg)
-                                        # Search already-ready sources. The bounded preparation
-                                        # set is only a wait/priority hint for unindexed files.
-                                        ret_res = retrieve_local_evidence(
-                                            q_text,
-                                            tuple(query_relevant_sources),
-                                            expansion=expansion,
-                                            search_preference=active_pref,
-                                        )
-
-                                        if ret_res.get("status") == "quality_search_unavailable":
-                                            unavailable_reason = str(
-                                                ret_res.get("rag_v2_canary", {}).get("fallback_reason", "")
-                                            ).casefold()
-                                            if unavailable_reason == "deep_search_unavailable":
-                                                st.session_state.wsc_action_error = t(
-                                                    "deep_search_unavailable",
-                                                    locale=current_ui_locale,
-                                                )
-                                            elif unavailable_reason == "runtimeerror" or (
-                                                "worker" in unavailable_reason
-                                                or "eof" in unavailable_reason
-                                                or "timeout" in unavailable_reason
-                                                or not unready_sources
-                                            ):
-                                                st.session_state.wsc_action_error = t(
-                                                    "search_runtime_unavailable",
-                                                    locale=current_ui_locale,
-                                                )
-                                            else:
-                                                st.session_state.wsc_action_error = t(
-                                                    "search_sources_preparing",
-                                                    locale=current_ui_locale,
-                                                )
-                                            st.session_state.wsc_last_ai_badge = None
-                                            if st.session_state.get("wsc_chat_history") and st.session_state["wsc_chat_history"][-1].role == "user":
-                                                st.session_state["wsc_chat_history"].pop()
-                                            safe_rerun()
-                                        # legacy guard compatibility: no_evidence_found_error
-                                        elif ret_res["summary_count"] == 0:
-                                            st.session_state.wsc_action_error = "Chưa tìm thấy đoạn phù hợp trong nguồn đang bật."
-                                            st.session_state.wsc_action_error = t(
-                                                "no_matched_segments_error",
-                                                locale=current_ui_locale,
-                                            )
-                                            st.session_state.wsc_last_ai_badge = None
-                                            if st.session_state.get("wsc_chat_history") and st.session_state["wsc_chat_history"][-1].role == "user":
-                                                st.session_state["wsc_chat_history"].pop()
-                                            safe_rerun()
-                                        else:
-                                            retrieval_applied = True
-                                            retrieved_sources = ret_res.get("retrieved_context_sources", ())
-                                            evidence_items = ret_res.get("evidence_items", [])
-                                            retrieval_summary = ret_res.get("safe_owner_message", "")
-                                    else:
-                                        retrieval_applied = False
-                                        retrieved_sources = ()
-                                        evidence_items = []
-                                        retrieval_summary = "Đang trả lời trực tiếp qua nội dung văn bản nguồn."
-
-                                    st.toast(t("step3_composing_answer_toast", locale=current_ui_locale))
-                                    # Static AST assertion compatibility:
-                                    # generate_workspace_ai_answer(req, RealWorkspaceAIProviderClient())
-                                    # save_message(user_msg)
-                                    # save_message(assistant_msg)
-                                    from aios_habit.antigravity_bridge import route_workspace_chat_submission
-                                    cancellation_event = Event()
-                                    request_future = _WORKSPACE_AI_REQUEST_EXECUTOR.submit(
-                                        route_workspace_chat_submission,
-                                        question=q_text,
-                                        evidence_items=evidence_items,
-                                        packed_sources=packed_sources,
-                                        conversation_id=active_conversation.id,
-                                        notebook_id=active_nb_id,
-                                        retrieval_applied=retrieval_applied,
-                                        retrieved_sources=retrieved_sources,
-                                        retrieval_summary=retrieval_summary,
-                                        current_keys=current_keys,
+                                expansion = None
+                                from aios_habit.rag_v2.query_planning import coerce_query_plan
+                                local_query_plan = coerce_query_plan(q_text)
+                                # Direct procedure questions already have a deterministic
+                                # local plan; do not add a cloud planning round-trip before
+                                # their local BGE retrieval.
+                                if is_cloud_allowed and local_query_plan.intent_category not in {
+                                    "procedure", "actionable_output", "diagnosis",
+                                }:
+                                    expansion = generate_query_expansion(
+                                        q_text,
                                         chat_history=chat_history,
-                                        user_raw_input=user_input,
-                                        answer_language=getattr(active_conversation, "answer_language", "vi"),
-                                        backend=ai_backend,
-                                        cagent_endpoint_url=cagent_endpoint_url,
-                                        cancellation_event=cancellation_event,
+                                        privacy_mode="cloud_allowed",
+                                        cloud_consent_confirmed=True,
                                     )
-                                    st.session_state[ai_request_key] = {
-                                        "future": request_future,
-                                        "cancellation_event": cancellation_event,
-                                    }
-                                    safe_rerun()
+
+                                active_pref = getattr(active_conversation, "search_preference", "auto")
+
+                                # Optimistic UI: Save user message immediately to DB and clear text area
+                                from aios_habit.workspace_chat_models import ChatMessage
+                                from aios_habit.workspace_chat_store import save_message
+
+                                user_msg = ChatMessage(
+                                    id=f"MSG-{uuid.uuid4().hex[:8].upper()}",
+                                    conversation_id=active_conversation.id,
+                                    role="user",
+                                    content=q_text,
+                                )
+                                save_message(user_msg)
+                                st.session_state[f"wsc_question_input_{active_conversation.id}"] = ""
+
+                                # Static AST assertion compatibility:
+                                # generate_workspace_ai_answer(req, RealWorkspaceAIProviderClient())
+                                # save_message(user_msg)
+                                # save_message(assistant_msg)
+                                cancellation_event = Event()
+                                request_future = _WORKSPACE_AI_REQUEST_EXECUTOR.submit(
+                                    _run_chat_turn_async,
+                                    q_text=q_text,
+                                    query_relevant_sources=tuple(query_relevant_sources),
+                                    expansion=expansion,
+                                    active_pref=active_pref,
+                                    unready_sources=tuple(unready_sources),
+                                    current_ui_locale=current_ui_locale,
+                                    packed_sources=tuple(packed_sources),
+                                    conversation_id=active_conversation.id,
+                                    notebook_id=active_nb_id,
+                                    current_keys=tuple(current_keys),
+                                    chat_history=tuple(chat_history),
+                                    user_raw_input=user_input,
+                                    answer_language=getattr(active_conversation, "answer_language", "vi"),
+                                    ai_backend=ai_backend,
+                                    cagent_endpoint_url=cagent_endpoint_url,
+                                    cancellation_event=cancellation_event,
+                                )
+                                st.session_state[ai_request_key] = {
+                                    "future": request_future,
+                                    "cancellation_event": cancellation_event,
+                                }
+                                safe_rerun()
 
                 # Phase 2H: Dán nhanh nhiều nguồn (quick multi-source paste)
                 st.write(" ")

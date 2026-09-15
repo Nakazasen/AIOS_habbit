@@ -71,3 +71,35 @@ lines = _atlas_label_lines(unescaped_text)
      - Canvas vẽ đường nối sáng màu nối từ Câu trả lời -> `[k]` -> File nguồn.
      - Cột trái tự động cuộn tới thực thể `[k]`.
      - Cột phải lập tức nạp thông tin trích dẫn `[k]`.
+
+---
+
+## 3. Kết Quả Deep Search Internet & Chuẩn Mực UX Đồ Thị Điều Tra Hiện Đại (Flowsint 2.0)
+
+Dựa trên nghiên cứu sâu từ các nền tảng phân tích đồ thị tình báo hàng đầu thế giới (Flowsint, Palantir Foundry Graph, Maltego, Neo4j Bloom, Cytoscape):
+
+### A. Hệ Thống Thẩm Mỹ Màu Sắc & Bề Mặt (Cyber-Intelligence Design System)
+
+1. **Tránh màu đen thuần (#000000)**: Sử dụng tone xám sẫm sâu (`#070b14`, `#0b0f19`, `#0f172a`) để giảm độ chói mắt và tăng độ tương phản mềm mại.
+2. **Lưới tọa độ kỹ thuật số (Subtle Tech Grid)**: Nền canvas kết hợp lưới chấm tròn mờ `radial-gradient(#1e293b 1px, transparent 1px)` hoặc lưới mờ 20px, tạo cảm giác buồng lái điều tra chuyên nghiệp (Ops Center).
+3. **Phân tầng độ nổi (Surface Elevation)**:
+   - Panel & Toolbar: `rgba(15, 23, 42, 0.85)` kết hợp hiệu ứng kính mờ `backdrop-filter: blur(12px)`.
+   - Viền kim loại mờ: `1px solid rgba(56, 189, 248, 0.2)`.
+   - Node dạng viên nang (Capsule/Pill) với gradient nhẹ `linear-gradient(145deg, #1e293b, #0f172a)` và bóng đổ viền phát sáng (neon glow aura).
+
+### B. Điều Khiển Canvas Tương Tác Cấp Cao (Canvas Navigation Engine)
+
+1. **Bộ công cụ nổi (Floating Canvas Toolbar)**:
+   - `Zoom In (+)` và `Zoom Out (-)` mượt mà.
+   - `Fit to View / Auto-Center (⊡)`: Tự động căn chỉnh toàn bộ đồ thị vào trung tâm màn hình.
+   - `Fullscreen Toggle (⛶)`: Cho phép phóng to chiếm trọn màn hình khi cần soi chi tiết.
+   - `Free Drag / Pan`: Cho phép kéo di chuyển canvas tự do bằng chuột không giới hạn.
+2. **Đường cong Bezier & Hiệu ứng Dòng chảy Tri thức (Animated Flowing Edges)**:
+   - Thay thế đường thẳng SVG thô bằng đường uốn lượn mềm mại (Smooth Bezier).
+   - Khi hover hoặc chọn node: Kích hoạt đường nét đứt chuyển động (`stroke-dasharray` animated pulse) mô phỏng dòng dữ liệu được truyền từ nguồn đến câu trả lời.
+
+### C. Bảng Kiểm Tra Thông Minh (Supercharged Inspector Panel)
+
+1. **Collapsible Panel**: Nút thu gọn / mở rộng bảng kiểm tra để nhường 100% không gian cho Canvas khi cần.
+2. **Confidence Gauge**: Thanh đo độ tin cậy đồ họa với mã màu (Xanh lá >80%, Vàng 50-80%, Đỏ <50%).
+3. **Mạng quan hệ hai chiều (Inbound & Outbound Links)**: Liệt kê trực quan các liên kết liên quan kèm nút bấm chuyển tiêu điểm (Quick-focus jump).

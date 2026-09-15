@@ -233,3 +233,195 @@ class TestFlowsintEvidenceAtlas:
                     f"and node card at [{nx1}, {ny1}, {nx2}, {ny2}]"
                 )
 
+    def test_flowsint_floating_canvas_toolbar(self) -> None:
+        """Verify presence of floating toolbar with Zoom, Fit, Fullscreen, and Collapse controls."""
+        adapter = ExcaliFlowAdapter()
+        if not adapter.is_available():
+            pytest.skip("ExcaliFlowAdapter not available in this environment")
+
+        trace = _make_sample_trace(locale="vi")
+
+        # 1. Check in Atlas HTML
+        atlas_html = adapter.render_evidence_atlas_html(trace, locale="vi")
+        assert 'class="atlas-floating-toolbar"' in atlas_html
+        assert 'id="atlas-btn-zoom-in"' in atlas_html
+        assert 'id="atlas-btn-zoom-out"' in atlas_html
+        assert 'id="atlas-btn-fit"' in atlas_html
+        assert 'id="atlas-btn-fullscreen"' in atlas_html
+        assert 'id="atlas-toggle-inspector"' in atlas_html
+
+        # 2. Check in Inline Scene HTML
+        scene_html = adapter.render_excalidraw_scene_html(trace, locale="vi")
+        assert 'class="scene-floating-toolbar"' in scene_html
+        assert 'id="scene-btn-zoom-in"' in scene_html
+        assert 'id="scene-btn-zoom-out"' in scene_html
+        assert 'id="scene-btn-fit"' in scene_html
+        assert 'id="scene-btn-fullscreen"' in scene_html
+        assert 'id="scene-btn-toggle-inspector"' in scene_html
+
+    def test_flowsint_smooth_cubic_bezier_edges_and_neon_marker(self) -> None:
+        """Verify straight lines are replaced with smooth Cubic Bezier paths and neon markers."""
+        import re
+
+        adapter = ExcaliFlowAdapter()
+        if not adapter.is_available():
+            pytest.skip("ExcaliFlowAdapter not available in this environment")
+
+        trace = _make_sample_trace(locale="vi")
+        atlas_html = adapter.render_evidence_atlas_html(trace, locale="vi")
+
+        # 1. No straight <line class="edge..."> remaining
+        assert not re.search(r'<line\s+[^>]*class="[^"]*edge[^"]*"', atlas_html), (
+            "Atlas must not contain rigid straight <line class='edge...'>"
+        )
+
+        # 2. Contains Cubic Bezier <path d="M... C...">
+        bezier_paths = re.findall(r'<path\s+[^>]*d="M\s*[^"]+C\s*[^"]+"[^>]*class="[^"]*edge[^"]*"', atlas_html)
+        assert len(bezier_paths) > 0, "Atlas must contain smooth Cubic Bezier edge paths"
+
+        # 3. Neon marker arrowhead with stroke #38bdf8
+        assert 'marker id="atlas-arrow"' in atlas_html
+        assert 'stroke="#38bdf8"' in atlas_html
+
+        # 4. Animated pulse keyframes in CSS
+        assert "@keyframes flowDash" in atlas_html
+
+    def test_flowsint_collapsible_inspector_with_confidence_gauge_and_connections(self) -> None:
+        """Verify collapsible inspector with graphical confidence gauge and bidirectional connection chips."""
+        adapter = ExcaliFlowAdapter()
+        if not adapter.is_available():
+            pytest.skip("ExcaliFlowAdapter not available in this environment")
+
+        trace = _make_sample_trace(locale="vi")
+
+        # 1. Atlas Inspector
+        atlas_html = adapter.render_evidence_atlas_html(trace, locale="vi")
+        assert 'id="atlas-confidence-box"' in atlas_html
+        assert 'class="gauge-track"' in atlas_html
+        assert 'id="atlas-conf-fill"' in atlas_html
+        assert 'id="atlas-links-box"' in atlas_html
+        assert 'id="atlas-in-chips"' in atlas_html
+        assert 'id="atlas-out-chips"' in atlas_html
+
+        # 2. Scene Inspector
+        scene_html = adapter.render_excalidraw_scene_html(trace, locale="vi")
+        assert 'id="inspector-gauge-container"' in scene_html
+        assert 'id="inspector-gauge-bar"' in scene_html
+        assert 'id="inspector-links-container"' in scene_html
+        assert 'id="scene-inbound-chips"' in scene_html
+        assert 'id="scene-outbound-chips"' in scene_html
+
+    def test_flowsint_realtime_search_and_pan_zoom_controller(self) -> None:
+        """Verify realtime search input and pan/zoom interaction engine in controller."""
+        adapter = ExcaliFlowAdapter()
+        if not adapter.is_available():
+            pytest.skip("ExcaliFlowAdapter not available in this environment")
+
+        trace = _make_sample_trace(locale="vi")
+        atlas_html = adapter.render_evidence_atlas_html(trace, locale="vi")
+
+        # Search box in header toolbar
+        assert 'id="atlas-search-input"' in atlas_html
+        assert 'class="atlas-search-box"' in atlas_html
+
+        # Pan & Zoom events in JS
+        assert "isPanning" in atlas_html
+        assert "updateTransform" in atlas_html
+        assert "wheel" in atlas_html
+        assert "scale" in atlas_html
+
+    def test_flowsint_mini_radar_inspector_ego_graph(self) -> None:
+        """Verify Mini Radar Inspector (Ego Graph / Neighbors Ring) presence and localization."""
+        adapter = ExcaliFlowAdapter()
+        if not adapter.is_available():
+            pytest.skip("ExcaliFlowAdapter not available in this environment")
+
+        trace = _make_sample_trace(locale="vi")
+
+        # 1. Atlas Mini Radar
+        atlas_html = adapter.render_evidence_atlas_html(trace, locale="vi")
+        assert 'id="atlas-mini-radar-container"' in atlas_html
+        assert 'class="mini-radar-card"' in atlas_html
+        assert 'class="radar-orbit"' in atlas_html
+        assert 'id="atlas-radar-rays"' in atlas_html
+        assert 'id="atlas-radar-neighbors"' in atlas_html
+        assert "updateAtlasMiniRadar" in atlas_html
+        assert "Định vị lân cận (Radar)" in atlas_html
+
+        # 2. Scene Mini Radar
+        scene_html = adapter.render_excalidraw_scene_html(trace, locale="vi")
+        assert 'id="mini-radar-container"' in scene_html
+        assert 'class="mini-radar-card"' in scene_html
+        assert 'id="mini-radar-count"' in scene_html
+        assert 'class="radar-orbit"' in scene_html
+        assert 'id="radar-rays"' in scene_html
+        assert 'id="radar-neighbors"' in scene_html
+        assert "updateMiniRadar" in scene_html
+        assert "Định vị lân cận (Radar)" in scene_html
+
+        # 3. Multilingual radar titles
+        scene_ja = adapter.render_excalidraw_scene_html(trace, locale="ja")
+        assert "近傍レーダー" in scene_ja
+
+        scene_zh = adapter.render_excalidraw_scene_html(trace, locale="zh-CN")
+        assert "邻近雷达" in scene_zh
+
+    def test_flowsint_force_directed_galaxy_and_micro_dots(self) -> None:
+        """Verify Force-Directed Galaxy simulation engine, drag physics, and micro-dots LOD."""
+        adapter = ExcaliFlowAdapter()
+        if not adapter.is_available():
+            pytest.skip("ExcaliFlowAdapter not available in this environment")
+
+        trace = _make_sample_trace(locale="vi")
+        scene_html = adapter.render_excalidraw_scene_html(trace, locale="vi")
+
+        # Layout toggle button
+        assert 'id="scene-btn-toggle-layout"' in scene_html
+        assert 'class="scene-tool-btn active-mode"' in scene_html
+
+        # Force simulation physics engine in JS
+        assert "initForceSimulation" in scene_html
+        assert "physicsTick" in scene_html
+        assert "kRepel" in scene_html
+        assert "kSpring" in scene_html
+        assert "kGravity" in scene_html
+        assert "draggedNode" in scene_html
+        assert "switchLayout" in scene_html
+
+        # Micro-dots for citations/chunks
+        assert "micro-dot" in scene_html
+        assert "galaxy-mode" in scene_html
+
+    def test_flowsint_concentric_celestial_orbits_and_mini_radar_containment(self) -> None:
+        """Verify concentric celestial orbit backdrop, AABB box collision, and mini radar containment."""
+        adapter = ExcaliFlowAdapter()
+        if not adapter.is_available():
+            pytest.skip("ExcaliFlowAdapter not available in this environment")
+
+        trace = _make_sample_trace(locale="vi")
+        scene_html = adapter.render_excalidraw_scene_html(trace, locale="vi")
+        atlas_html = adapter.render_evidence_atlas_html(trace, locale="vi")
+
+        # 1. Mini Radar containment & CSS scoping
+        assert "#mini-radar-svg" in scene_html
+        assert "min-width: 0 !important;" in scene_html
+        assert "width: 160px !important;" in scene_html
+        assert ".scene-board svg" in scene_html
+
+        assert "#atlas-mini-radar-svg" in atlas_html
+        assert "min-width: 0 !important;" in atlas_html
+        assert "width: 160px !important;" in atlas_html
+        assert ".atlas-viewport svg" in atlas_html
+
+        # 2. Celestial Concentric Orbits Backdrop in Scene
+        assert 'id="galaxy-backdrop"' in scene_html
+        assert 'class="galaxy-orbit-backdrop"' in scene_html
+        assert 'class="celestial-orbit orbit-core"' in scene_html
+        assert 'class="celestial-orbit orbit-mid"' in scene_html
+        assert 'class="celestial-orbit orbit-outer"' in scene_html
+        assert 'class="celestial-axis"' in scene_html
+
+        # 3. AABB Collision Resolution in Physics Simulation
+        assert "overlapX" in scene_html
+        assert "overlapY" in scene_html
+        assert "idealRadius" in scene_html
