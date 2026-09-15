@@ -340,3 +340,64 @@ def test_antigravity_bridge_non_regression():
     health = get_antigravity_bridge_health("http://127.0.0.1:65530/health")
     assert health.is_ready is False
     assert health.status == "unavailable"
+
+
+def test_rollback_path_containment_and_arbitrary_file_deletion_denied(tmp_path: Path):
+    """Verify rollback fails closed against arbitrary file paths outside safe roots and unsafe extensions."""
+    orch = WorkspaceAgentOrchestrator()
+
+    # 1. Reject path outside safe roots
+    outside_system_file = "C:\\Windows\\System32\\drivers\\etc\\hosts"
+    ok, msg = orch.rollback(outside_system_file)
+    assert ok is False
+    assert "vùng an toàn" in msg
+
+    # 2. Reject unsafe file extensions even if in safe root
+    unsafe_script = tmp_path / "critical_script.py"
+    unsafe_script.write_text("print('cannot delete')", encoding="utf-8")
+    ok, msg = orch.rollback(str(unsafe_script))
+    assert ok is False
+    assert "loại tệp không được phép" in msg
+    assert unsafe_script.exists()
+
+    # 3. Allow valid artifact in safe root (tempdir)
+    safe_artifact = tmp_path / "bao_cao_loi_WORK-SAFE-01.md"
+    safe_artifact.write_text("# Safe report", encoding="utf-8")
+    assert safe_artifact.exists()
+    ok, msg = orch.rollback(str(safe_artifact))
+    assert ok is True
+    assert not safe_artifact.exists()
+
+
+def test_workspace_writer_lock_shared_across_instances(tmp_path: Path):
+    """Verify that WorkspaceWriterLock is shared across different orchestrator instances."""
+    orch1 = WorkspaceAgentOrchestrator()
+    orch2 = WorkspaceAgentOrchestrator()
+
+    ws_path = str(tmp_path)
+
+    # Initially unlocked
+    assert orch1.get_workspace_lock_holder(ws_path) is None
+    assert orch2.get_workspace_lock_holder(ws_path) is None
+
+    # Instance 1 acquires lock
+    acquired = orch1.acquire_workspace_lock(ws_path, "WORK-INSTANCE-1")
+    assert acquired is True
+
+    # Instance 2 immediately sees the lock holder
+    assert orch2.get_workspace_lock_holder(ws_path) == "WORK-INSTANCE-1"
+
+    # Instance 2 fails to acquire while held
+    assert orch2.acquire_workspace_lock(ws_path, "WORK-INSTANCE-2") is False
+
+    # Instance 1 releases
+    orch1.release_workspace_lock(ws_path, "WORK-INSTANCE-1")
+
+    # Instance 2 sees lock freed
+    assert orch2.get_workspace_lock_holder(ws_path) is None
+
+    # Instance 2 can now acquire
+    assert orch2.acquire_workspace_lock(ws_path, "WORK-INSTANCE-2") is True
+    assert orch1.get_workspace_lock_holder(ws_path) == "WORK-INSTANCE-2"
+    orch2.release_workspace_lock(ws_path, "WORK-INSTANCE-2")
+    assert orch1.get_workspace_lock_holder(ws_path) is None

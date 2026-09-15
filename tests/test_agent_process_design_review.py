@@ -101,3 +101,31 @@ def test_process_design_review_marks_unmatched_unit_as_insufficient(tmp_path: Pa
     )
 
     assert any(item["verdict"] == "insufficient" for item in result.payload["checks"])
+
+
+def test_process_design_review_verdicts_localized_to_vietnamese(tmp_path: Path) -> None:
+    from aios_habit.agent_work_artifact import format_artifact_card
+
+    result = create_process_design_review(
+        source_paths=sorted(FIXTURE_DIR.glob("*.md")),
+        output_dir=tmp_path,
+        work_id="WORK-US2-LANG-001",
+    )
+    report_text = result.report_path.read_text(encoding="utf-8")
+    assert "[VI PHẠM]" in report_text or "[THIẾU DỮ LIỆU]" in report_text or "[ĐẠT]" in report_text
+    assert "- violate:" not in report_text
+    assert "- pass:" not in report_text
+    assert "- insufficient:" not in report_text
+
+    card_text = format_artifact_card(
+        work_type="process_design_review",
+        work_id="WORK-US2-LANG-001",
+        result_path=str(result.report_path),
+        checkpoint_path=str(result.report_path),
+        payload=result.payload,
+        status_vi="Đã xong (Bản nháp)",
+    )
+    assert "[VI PHẠM]" in card_text or "[THIẾU DỮ LIỆU]" in card_text or "[ĐẠT]" in card_text
+    assert "[VIOLATE]" not in card_text
+    assert "[PASS]" not in card_text
+    assert "[INSUFFICIENT]" not in card_text

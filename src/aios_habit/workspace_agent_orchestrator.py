@@ -40,9 +40,11 @@ from aios_habit.workspace_agent_policy import (
 
 class WorkspaceWriterLock:
     """Guarantees strictly one mutable agent operation writes to a workspace at a time."""
+    _locks: dict[str, str] = {}  # canonical_workspace_root -> current_work_id
+    _mutex = threading.Lock()
+
     def __init__(self) -> None:
-        self._locks: dict[str, str] = {}  # canonical_workspace_root -> current_work_id
-        self._mutex = threading.Lock()
+        pass
 
     def acquire(self, workspace_root: str, work_id: str) -> bool:
         root = canonical_workspace_root(workspace_root)
@@ -215,10 +217,17 @@ _PENDING_BRIDGE_SESSIONS = _PendingBridgeSessions()
 
 
 class WorkspaceAgentOrchestrator:
+    WorkspaceWriterLock = WorkspaceWriterLock
+    _shared_checkpoints: dict[str, WorkCheckpoint] = {}
+    _checkpoints_lock = threading.Lock()
+
     def __init__(self, bridge_client_factory=WorkspaceAgentBridgeClient):
         self._bridge_client_factory = bridge_client_factory
         self.writer_lock = WorkspaceWriterLock()
-        self._checkpoints: dict[str, WorkCheckpoint] = {}
+        self._checkpoints = self._shared_checkpoints
+
+    def get_workspace_lock_holder(self, workspace_root: str) -> str | None:
+        return self.writer_lock.get_holder(workspace_root)
 
     def acquire_workspace_lock(self, workspace_root: str, work_id: str) -> bool:
         return self.writer_lock.acquire(workspace_root, work_id)
@@ -240,26 +249,68 @@ class WorkspaceAgentOrchestrator:
             task_root=task_root,
             kind=kind,
         )
-        self._checkpoints[work_id] = ckpt
-        self._checkpoints[ckpt.checkpoint_id] = ckpt
+        with self._checkpoints_lock:
+            self._checkpoints[work_id] = ckpt
+            self._checkpoints[ckpt.checkpoint_id] = ckpt
         return ckpt
 
-    def rollback(self, work_id_or_checkpoint: str | WorkCheckpoint) -> tuple[bool, str]:
+    def rollback(
+        self,
+        work_id_or_checkpoint: str | WorkCheckpoint,
+        allowed_roots: tuple[str | Path, ...] = (),
+    ) -> tuple[bool, str]:
         if isinstance(work_id_or_checkpoint, str):
-            ckpt = self._checkpoints.get(work_id_or_checkpoint)
+            target_id = work_id_or_checkpoint.strip()
+            if not target_id:
+                return False, "Đường dẫn hoàn tác không hợp lệ."
+
+            with self._checkpoints_lock:
+                ckpt = self._checkpoints.get(target_id)
+
+            artifact_target_path: str = ""
+            try:
+                from aios_habit.workspace_case_repository import WorkspaceCaseRepository
+                repo = WorkspaceCaseRepository()
+                work_rec = repo.get_agent_work(target_id)
+                if work_rec:
+                    if ckpt is None and work_rec.checkpoint_ref:
+                        with self._checkpoints_lock:
+                            ckpt = self._checkpoints.get(work_rec.checkpoint_ref)
+                    if work_rec.result_ref:
+                        artifact_target_path = work_rec.result_ref
+            except Exception:
+                pass
+
             if ckpt is None:
-                artifact_path = Path(work_id_or_checkpoint)
+                raw_path = artifact_target_path or target_id
+                has_path_sep = "/" in raw_path or "\\" in raw_path
+                is_file_like = has_path_sep or Path(raw_path).suffix in (".md", ".json", ".log", ".txt", ".csv")
+                if not is_file_like and raw_path == target_id:
+                    return False, "Không tìm thấy checkpoint để hoàn tác cho nhiệm vụ này."
+
+                artifact_path = Path(raw_path).resolve()
+
+                # Containment check: prevent arbitrary file deletion
+                from aios_habit.workspace_agent_policy import is_safe_artifact_path
+                if not is_safe_artifact_path(artifact_path, allowed_roots):
+                    return False, "Thao tác bị từ chối: đường dẫn hoàn tác không nằm trong vùng an toàn."
+
+                if artifact_path.suffix not in (".md", ".json", ".log", ".txt", ".csv"):
+                    return False, "Thao tác bị từ chối: loại tệp không được phép hoàn tác."
+
                 if artifact_path.is_file():
                     try:
                         artifact_path.unlink(missing_ok=True)
                         return True, "Đã hoàn tác và xóa tệp kết quả an toàn."
                     except Exception as err:
                         return False, f"Không thể xóa tệp kết quả: {err}"
-                if not artifact_path.exists() and artifact_path.suffix in (".md", ".json", ".log", ".txt") and any(part in artifact_path.parts for part in ("agent_artifacts", "artifacts")):
+                if not artifact_path.exists() and any(part in artifact_path.parts for part in ("agent_artifacts", "artifacts")):
                     return True, "Tệp kết quả đã được hoàn tác trước đó."
                 return False, "Không tìm thấy checkpoint để hoàn tác cho nhiệm vụ này."
-        else:
+        elif isinstance(work_id_or_checkpoint, WorkCheckpoint):
             ckpt = work_id_or_checkpoint
+        else:
+            return False, "Đối tượng hoàn tác không hợp lệ."
 
         return rollback_checkpoint(ckpt)
 

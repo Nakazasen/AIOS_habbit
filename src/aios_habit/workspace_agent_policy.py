@@ -4,6 +4,7 @@ from __future__ import annotations
 import hashlib
 import os
 import re
+import tempfile
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -201,17 +202,70 @@ def validate_test_command(command: str | list[str], allowed_commands: tuple[str,
     matched = False
     for prefix in prefixes:
         prefix_norm = " ".join(prefix.split())
-        if normalized_cmd == prefix_norm or normalized_cmd.startswith(prefix_norm + " "):
-            matched = True
-            break
-        if prefix_norm in normalized_cmd:
-            matched = True
-            break
+        if prefix_norm.endswith("_"):
+            if normalized_cmd.startswith(prefix_norm):
+                matched = True
+                break
+        else:
+            if normalized_cmd == prefix_norm or normalized_cmd.startswith(prefix_norm + " "):
+                matched = True
+                break
 
     if not matched:
         raise AgentPolicyError('Thao tác bị từ chối: lệnh không nằm trong danh sách lệnh kiểm thử được phép.')
 
     return normalized_cmd
+
+
+def is_safe_artifact_path(
+    target_path: str | Path,
+    allowed_roots: tuple[str | Path, ...] | None = None,
+) -> bool:
+    """Validate that target_path resolves strictly within one of the allowed roots."""
+    try:
+        raw = str(target_path).strip()
+        if not raw:
+            return False
+        parts = Path(raw).parts
+        if any(p == ".." for p in parts):
+            return False
+        resolved = Path(raw).resolve()
+
+        # Explicitly authorized caller roots
+        if allowed_roots:
+            for root in allowed_roots:
+                try:
+                    if resolved.is_relative_to(Path(root).resolve()):
+                        return True
+                except (ValueError, AttributeError):
+                    continue
+
+        # Repository-contained safe roots
+        base_roots = [
+            Path("artifacts").resolve(),
+            Path("local_cases").resolve(),
+            Path("tests").resolve(),
+        ]
+        for root in base_roots:
+            try:
+                if resolved.is_relative_to(root):
+                    return True
+            except (ValueError, AttributeError):
+                continue
+
+        # Controlled temporary subdirectories only (never the entire system tempdir)
+        sys_temp = Path(tempfile.gettempdir()).resolve()
+        try:
+            if resolved.is_relative_to(sys_temp):
+                rel_parts = resolved.relative_to(sys_temp).parts
+                if rel_parts and (rel_parts[0].startswith("aios_") or rel_parts[0].startswith("pytest-")):
+                    return True
+        except (ValueError, AttributeError):
+            pass
+
+        return False
+    except Exception:
+        return False
 
 
 def compute_scope_digest(work_id: str, task_root: str, task_type: str, allowed_actions: frozenset[str]) -> str:

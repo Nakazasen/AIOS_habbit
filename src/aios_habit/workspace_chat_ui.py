@@ -376,17 +376,24 @@ def render_chat_bubble(
             from aios_habit.agent_work_artifact import extract_chat_artifact_metadata
             artifact_meta = extract_chat_artifact_metadata(msg.content)
             if artifact_meta:
-                work_id = str(artifact_meta.get("work_id", ""))
-                res_path = Path(artifact_meta.get("result_path", ""))
-                ckpt_path = str(artifact_meta.get("checkpoint_path", ""))
+                work_id = str(artifact_meta.get("work_id", "")).strip()
+                raw_res_path = str(artifact_meta.get("result_path", "")).strip()
+                raw_ckpt_path = str(artifact_meta.get("checkpoint_path", "")).strip()
 
                 is_rolled_back = False
+                verified_result_path: Optional[Path] = None
                 try:
                     from aios_habit.workspace_case_repository import WorkspaceCaseRepository
+                    from aios_habit.workspace_agent_policy import is_safe_artifact_path
                     case_repo = WorkspaceCaseRepository()
                     work_record = case_repo.get_agent_work(work_id) if work_id else None
-                    if work_record and work_record.status == "rolled_back":
-                        is_rolled_back = True
+                    if work_record:
+                        if work_record.status == "rolled_back":
+                            is_rolled_back = True
+                        if work_record.result_ref:
+                            cand = Path(work_record.result_ref)
+                            if is_safe_artifact_path(cand):
+                                verified_result_path = cand
                 except Exception:
                     pass
 
@@ -413,15 +420,16 @@ def render_chat_bubble(
 
                     with col_dl:
                         report_text = ""
-                        if res_path.is_file():
+                        if verified_result_path and verified_result_path.is_file():
                             try:
-                                report_text = res_path.read_text(encoding="utf-8")
+                                report_text = verified_result_path.read_text(encoding="utf-8")
                             except Exception:
                                 report_text = ""
+                        file_name = verified_result_path.name if verified_result_path else f"{work_id}.md"
                         st.download_button(
                             label=f"📥 {t('agent_artifact_download', locale=locale)}",
                             data=report_text,
-                            file_name=res_path.name or f"{work_id}.md",
+                            file_name=file_name,
                             mime="text/markdown",
                             key=f"btn_dl_{work_id}",
                             use_container_width=True,
@@ -435,11 +443,19 @@ def render_chat_bubble(
                                 from aios_habit.workspace_case_repository import WorkspaceCaseRepository
                                 q_repo = WorkspaceCaseRepository()
                                 q_orch = WorkspaceAgentOrchestrator()
-                                rolled_back, msg_str = q_orch.rollback(ckpt_path or str(res_path))
-                                q_repo.update_agent_work_status(work_id, "rolled_back")
-                                if hasattr(st, "session_state") and hasattr(st.session_state, "pop"):
-                                    st.session_state.pop(view_key, None)
-                                st.success(t("agent_queue_undo_success", locale=locale, work_id=work_id))
+                                target_to_rollback = work_id if work_id else (str(verified_result_path) if verified_result_path else "")
+                                if not target_to_rollback:
+                                    st.error(t("agent_queue_undo_failed", locale=locale))
+                                else:
+                                    rolled_back, msg_str = q_orch.rollback(target_to_rollback)
+                                    if rolled_back:
+                                        if work_id:
+                                            q_repo.update_agent_work_status(work_id, "rolled_back")
+                                        if hasattr(st, "session_state") and hasattr(st.session_state, "pop"):
+                                            st.session_state.pop(view_key, None)
+                                        st.success(t("agent_queue_undo_success", locale=locale, work_id=work_id))
+                                    else:
+                                        st.error(t("agent_queue_undo_done", locale=locale, message=msg_str))
                             except Exception as err:
                                 st.error(t("agent_queue_undo_done", locale=locale, message=str(err)))
                             if hasattr(st, "rerun"):
@@ -447,9 +463,9 @@ def render_chat_bubble(
 
                     if is_viewing:
                         with st.container(border=True):
-                            st.markdown(f"**📄 {t('agent_artifact_view_full', locale=locale)} ({res_path.name}):**")
-                            if res_path.is_file():
-                                st.markdown(res_path.read_text(encoding="utf-8"))
+                            if verified_result_path and verified_result_path.is_file():
+                                st.markdown(f"**📄 {t('agent_artifact_view_full', locale=locale)} ({verified_result_path.name}):**")
+                                st.markdown(verified_result_path.read_text(encoding="utf-8"))
                             else:
                                 st.warning(t("agent_factory_error_missing_result", locale=locale))
             else:

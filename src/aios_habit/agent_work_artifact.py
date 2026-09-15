@@ -523,10 +523,15 @@ def create_process_design_review(
     destination.mkdir(parents=True, exist_ok=True)
     report_path = destination / f"ra_soat_thiet_ke_{work_id}.md"
     previous_content = report_path.read_bytes() if report_path.exists() else None
+    verdict_labels = {
+        "pass": "ĐẠT",
+        "violate": "VI PHẠM",
+        "insufficient": "THIẾU DỮ LIỆU",
+    }
     lines = [
         f"# {payload['title_vi']}", "", "Đây là bản nháp đã rà soát, không phải SOP hoặc Guideline đã phê duyệt.", "",
         "## Hiện trạng", payload["as_is_vi"], "", "## Kết quả đối chiếu",
-        *[f"- {item['verdict']}: {item['statement_vi']}" for item in checks], "", "## Ảnh hưởng",
+        *[f"- [{verdict_labels.get(item['verdict'], item['verdict'].upper())}] {item['statement_vi']}" for item in checks], "", "## Ảnh hưởng",
         payload["impacts_vi"], "", "## Đề xuất", *[f"- {item['statement_vi']}" for item in proposals], "",
         "## Câu hỏi cần xác nhận", *[f"- {item}" for item in questions],
     ]
@@ -630,10 +635,16 @@ def format_artifact_card(
         checks = payload.get("checks") or []
         if checks:
             lines.append("\n#### 📋 Chi tiết các điểm kiểm tra")
+            verdict_labels = {
+                "pass": "ĐẠT",
+                "violate": "VI PHẠM",
+                "insufficient": "THIẾU DỮ LIỆU",
+            }
             for chk in checks:
-                verdict = chk.get("verdict", "")
-                icon = "✅" if verdict == "pass" else "⚠️" if verdict == "violate" else "ℹ️"
-                lines.append(f"- {icon} **[{verdict.upper()}]** {chk.get('statement_vi', '')}")
+                verdict = str(chk.get("verdict", "")).strip()
+                icon = "✅" if verdict.lower() == "pass" else "⚠️" if verdict.lower() == "violate" else "ℹ️"
+                verdict_vi = verdict_labels.get(verdict.lower(), verdict.upper())
+                lines.append(f"- {icon} **[{verdict_vi}]** {chk.get('statement_vi', '')}")
 
         proposals = payload.get("proposals") or []
         if proposals:

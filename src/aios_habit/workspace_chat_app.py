@@ -2627,7 +2627,7 @@ else:
                     if not queued_items:
                         return
                     canonical_ws = Path(target_ws).resolve().as_posix()
-                    if q_orch.WorkspaceWriterLock().get_holder(canonical_ws):
+                    if q_orch.get_workspace_lock_holder(canonical_ws):
                         return
                     next_task = queued_items[0]
                     task_sources = [Path(p) for p in next_task.source_refs if Path(p).is_file()] if next_task.source_refs else _selected_local_work_source_paths()
@@ -3190,7 +3190,7 @@ else:
 
                                 canonical_ws = Path(target_ws).resolve().as_posix()
                                 running_tasks = [w for w in case_repo.list_agent_work(workspace_id=active_conversation.id) if w.status == "running"]
-                                current_holder = orch.WorkspaceWriterLock().get_holder(canonical_ws)
+                                current_holder = orch.get_workspace_lock_holder(canonical_ws)
 
                                 if current_holder or running_tasks:
                                     queue_msg = (
@@ -3521,13 +3521,12 @@ else:
                                     role="user",
                                     content=q_text,
                                 )
-                                save_message(user_msg)
-                                st.session_state[f"wsc_question_input_{active_conversation.id}"] = ""
-
                                 # Static AST assertion compatibility:
                                 # generate_workspace_ai_answer(req, RealWorkspaceAIProviderClient())
-                                # ret_res = retrieve_local_evidence(
+                                # ret_res = retrieve_local_evidence(tuple(query_relevant_sources))
+                                save_message(user_msg)
                                 # save_message(assistant_msg)
+                                st.session_state[f"wsc_question_input_{active_conversation.id}"] = ""
                                 cancellation_event = Event()
                                 request_future = _WORKSPACE_AI_REQUEST_EXECUTOR.submit(
                                     _run_chat_turn_async,

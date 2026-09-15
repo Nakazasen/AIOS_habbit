@@ -1,3 +1,6 @@
+import tempfile
+from pathlib import Path
+
 import pytest
 from aios_habit.workspace_agent_policy import (
     AgentPolicyError,
@@ -91,6 +94,43 @@ def test_validate_test_command():
         validate_test_command("git commit -m evil")
     with pytest.raises(AgentPolicyError, match="không nằm trong danh sách"):
         validate_test_command("curl http://example.com")
+    # Substring bypass attempts: containing allowlisted token later in string must fail
+    with pytest.raises(AgentPolicyError, match="không nằm trong danh sách"):
+        validate_test_command("curl evil.com pytest")
+    with pytest.raises(AgentPolicyError, match="không nằm trong danh sách"):
+        validate_test_command("bash -c pytest")
+    with pytest.raises(AgentPolicyError, match="không nằm trong danh sách"):
+        validate_test_command("echo hello uv run pytest")
+
+
+def test_is_safe_artifact_path(tmp_path):
+    from aios_habit.workspace_agent_policy import is_safe_artifact_path
+
+    # Traversal and invalid paths
+    assert is_safe_artifact_path("") is False
+    assert is_safe_artifact_path("   ") is False
+    assert is_safe_artifact_path("../outside.md") is False
+    assert is_safe_artifact_path("sub/../../outside.md") is False
+    assert is_safe_artifact_path("C:\\Windows\\System32\\cmd.exe") is False
+
+    # Default safe roots: pytest tmp_path is allowed (starts with pytest-)
+    temp_file = tmp_path / "report.md"
+    temp_file.write_text("ok", encoding="utf-8")
+    assert is_safe_artifact_path(temp_file) is True
+
+    # Entire OS tempdir must NOT be allowed by default (Finding 4)
+    arbitrary_temp_file = Path(tempfile.gettempdir()) / "secret_os_temp_file.csv"
+    assert is_safe_artifact_path(arbitrary_temp_file) is False
+
+    # AIOS-created temp subdirectories are allowed
+    aios_temp_file = Path(tempfile.gettempdir()) / "aios_ckpt_test" / "report.md"
+    assert is_safe_artifact_path(aios_temp_file) is True
+
+    # Custom allowed roots
+    custom_root = tmp_path / "custom_work"
+    custom_root.mkdir()
+    custom_file = custom_root / "output.json"
+    assert is_safe_artifact_path(custom_file, allowed_roots=(custom_root,)) is True
 
 
 def test_scope_grant_and_action_authorization(tmp_path):
