@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
+import re
 import streamlit as st
 import time
+from pathlib import Path
 from typing import List, Dict, Any, Callable, Optional, Tuple
 from aios_habit.workspace_chat_models import (
     DocumentNotebook,
@@ -371,7 +373,87 @@ def render_chat_bubble(
                 st.html(
                     f'<div style="display:inline-flex; align-items:center; gap:6px; background:rgba(14,165,233,0.15); border:1px solid rgba(14,165,233,0.4); color:#38bdf8; font-size:12px; font-weight:600; padding:2px 10px; border-radius:9999px; margin-bottom:10px;">✨ {latest_badge_text}</div>',
                 )
-            st.markdown(msg.content)
+            from aios_habit.agent_work_artifact import extract_chat_artifact_metadata
+            artifact_meta = extract_chat_artifact_metadata(msg.content)
+            if artifact_meta:
+                work_id = str(artifact_meta.get("work_id", ""))
+                res_path = Path(artifact_meta.get("result_path", ""))
+                ckpt_path = str(artifact_meta.get("checkpoint_path", ""))
+
+                is_rolled_back = False
+                try:
+                    from aios_habit.workspace_case_repository import WorkspaceCaseRepository
+                    case_repo = WorkspaceCaseRepository()
+                    work_record = case_repo.get_agent_work(work_id) if work_id else None
+                    if work_record and work_record.status == "rolled_back":
+                        is_rolled_back = True
+                except Exception:
+                    pass
+
+                clean_content = re.sub(r"<!--\s*aios_chat_artifact:.*?-->", "", msg.content, flags=re.DOTALL).strip()
+                if is_rolled_back:
+                    st.warning(f"↩️ {t('agent_queue_status_rolled_back', locale=locale)}")
+                    st.markdown(clean_content)
+                else:
+                    st.markdown(clean_content)
+
+                    col_view, col_dl, col_undo = st.columns(3)
+                    view_key = f"wsc_card_view_{work_id}"
+                    session_state = getattr(st, "session_state", {})
+                    is_viewing = bool(session_state.get(view_key, False) if hasattr(session_state, "get") else False)
+
+                    with col_view:
+                        # 👁️ Xem toàn văn (mở rộng / thu gọn toàn văn kết quả)
+                        btn_view_label = f"🙈 {t('agent_artifact_hide_full', locale=locale)}" if is_viewing else f"👁️ {t('agent_artifact_view_full', locale=locale)}"
+                        if st.button(btn_view_label, key=f"btn_v_{work_id}", use_container_width=True):
+                            if hasattr(st, "session_state"):
+                                st.session_state[view_key] = not is_viewing
+                            if hasattr(st, "rerun"):
+                                st.rerun()
+
+                    with col_dl:
+                        report_text = ""
+                        if res_path.is_file():
+                            try:
+                                report_text = res_path.read_text(encoding="utf-8")
+                            except Exception:
+                                report_text = ""
+                        st.download_button(
+                            label=f"📥 {t('agent_artifact_download', locale=locale)}",
+                            data=report_text,
+                            file_name=res_path.name or f"{work_id}.md",
+                            mime="text/markdown",
+                            key=f"btn_dl_{work_id}",
+                            use_container_width=True,
+                            disabled=not bool(report_text),
+                        )
+
+                    with col_undo:
+                        if st.button(f"↩️ {t('agent_artifact_undo', locale=locale)}", key=f"btn_u_{work_id}", use_container_width=True):
+                            try:
+                                from aios_habit.workspace_agent_orchestrator import WorkspaceAgentOrchestrator
+                                from aios_habit.workspace_case_repository import WorkspaceCaseRepository
+                                q_repo = WorkspaceCaseRepository()
+                                q_orch = WorkspaceAgentOrchestrator()
+                                rolled_back, msg_str = q_orch.rollback(ckpt_path or str(res_path))
+                                q_repo.update_agent_work_status(work_id, "rolled_back")
+                                if hasattr(st, "session_state") and hasattr(st.session_state, "pop"):
+                                    st.session_state.pop(view_key, None)
+                                st.success(t("agent_queue_undo_success", locale=locale, work_id=work_id))
+                            except Exception as err:
+                                st.error(t("agent_queue_undo_done", locale=locale, message=str(err)))
+                            if hasattr(st, "rerun"):
+                                st.rerun()
+
+                    if is_viewing:
+                        with st.container(border=True):
+                            st.markdown(f"**📄 {t('agent_artifact_view_full', locale=locale)} ({res_path.name}):**")
+                            if res_path.is_file():
+                                st.markdown(res_path.read_text(encoding="utf-8"))
+                            else:
+                                st.warning(t("agent_factory_error_missing_result", locale=locale))
+            else:
+                st.markdown(msg.content)
 
             # On-demand Evidence Graph Action (Commit C)
             if msg.trace_id and str(msg.trace_id).strip():

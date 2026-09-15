@@ -532,3 +532,156 @@ def create_process_design_review(
     ]
     report_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
     return ProcessDesignReviewResult(payload, report_path, "Đã xong", False, previous_content)
+
+
+def detect_agent_work_intent(prompt: str) -> str | None:
+    """Classify user conversational prompt into agent task intents (error_report, process_design_review, code_change) or None."""
+    if not prompt or not prompt.strip():
+        return None
+    p = prompt.strip().casefold()
+    decomposed = unicodedata.normalize("NFKD", p)
+    norm_no_marks = "".join(char for char in decomposed if not unicodedata.combining(char)).replace("đ", "d")
+
+    error_patterns = (
+        "bao cao loi", "tao bao cao loi", "lap bao cao loi", "xuat bao cao loi",
+        "bao cao su co", "tao bao cao su co", "lap bao cao su co",
+        "phan tich loi", "tong hop loi", "tong hop su co", "bien ban su co",
+        "error report", "defect report", "bien ban loi",
+    )
+    if any(pattern in norm_no_marks for pattern in error_patterns):
+        return "error_report"
+
+    review_patterns = (
+        "ra soat thiet ke", "danh gia thiet ke", "doi chieu thiet ke",
+        "ra soat cong doan", "kiem tra cong doan", "soat xet quy trinh",
+        "ra soat quy trinh", "tham dinh quy trinh", "tham tra thiet ke",
+        "kiem tra thiet ke", "review thiet ke", "process design review",
+        "ra soat guideline", "doi chieu guideline", "danh gia cong doan",
+    )
+    if any(pattern in norm_no_marks for pattern in review_patterns):
+        return "process_design_review"
+
+    code_patterns = (
+        "sua ma nguon", "sua ma", "sua code", "fix bug", "sua loi ma nguon",
+        "kiem tra ma", "sua loi code", "code change", "sua ma trong worktree",
+    )
+    if any(pattern in norm_no_marks for pattern in code_patterns):
+        return "code_change"
+
+    return None
+
+
+def format_artifact_card(
+    *,
+    work_type: str,
+    work_id: str,
+    result_path: str | Path,
+    checkpoint_path: str | Path,
+    payload: dict[str, Any],
+    status_vi: str = "Đã xong",
+) -> str:
+    """Builds a rich, interactive Grokbot-style artifact card in markdown with embedded metadata."""
+    res_path = Path(result_path)
+    ckpt_path = Path(checkpoint_path)
+    lines: list[str] = []
+
+    if work_type == "error_report":
+        lines.append("### 📋 Báo cáo lỗi kỹ thuật")
+        lines.append(f"**Trạng thái:** ✅ {status_vi}\n")
+        lines.append("#### 🔍 Tóm tắt phát hiện chính")
+        lines.append(f"- **Hiện tượng:** {payload.get('phenomenon_vi', 'Chưa có mô tả')}")
+        lines.append(f"- **Phạm vi ảnh hưởng:** {payload.get('impact_vi', 'Chưa có dữ liệu định lượng')}")
+        lines.append(f"- **Phân tích kỹ thuật:** {payload.get('analysis_vi', 'Báo cáo trích xuất từ dữ liệu nguồn')}")
+        if payload.get("uncertainties_vi"):
+            lines.append(f"- **Phần chưa chắc chắn:** {payload.get('uncertainties_vi')}")
+
+        actions = payload.get("next_actions_vi") or []
+        if actions:
+            lines.append("\n#### 🛠️ Việc nên làm tiếp")
+            for act in actions:
+                lines.append(f"- {act}")
+
+        visuals = payload.get("visuals") or []
+        if visuals:
+            lines.append("\n#### 📊 Biểu đồ số liệu có căn cứ")
+            for vis in visuals:
+                lines.append("```mermaid")
+                lines.append(vis.get("content", ""))
+                lines.append("```")
+                ref_file = vis.get("source_refs", [""])[0]
+                cols = ", ".join(vis.get("source_columns", []))
+                unit = vis.get("units", "")
+                lines.append(f"*(Căn cứ nguồn: `{ref_file}` — Cột: `{cols}` — Đơn vị: {unit})*")
+
+        evidence = payload.get("evidence") or []
+        if evidence:
+            lines.append("\n#### 📌 Căn cứ dữ liệu nguồn")
+            for ev in evidence:
+                lines.append(f"- `{ev.get('source_file', '')}`: {ev.get('locator', 'toàn bộ tệp')}")
+
+    elif work_type == "process_design_review":
+        lines.append("### 📐 Bản nháp rà soát thiết kế công đoạn")
+        lines.append(f"**Trạng thái:** ✅ {status_vi}")
+        lines.append("*(Lưu ý: Đây là bản nháp đối chiếu các tài liệu cục bộ đã chọn; không sửa đổi tài liệu gốc)*\n")
+        lines.append("#### 🔍 Tóm tắt kết quả đối chiếu")
+        lines.append(f"- **Hiện trạng:** {payload.get('as_is_vi', '')}")
+        lines.append(f"- **Ảnh hưởng:** {payload.get('impacts_vi', '')}")
+
+        checks = payload.get("checks") or []
+        if checks:
+            lines.append("\n#### 📋 Chi tiết các điểm kiểm tra")
+            for chk in checks:
+                verdict = chk.get("verdict", "")
+                icon = "✅" if verdict == "pass" else "⚠️" if verdict == "violate" else "ℹ️"
+                lines.append(f"- {icon} **[{verdict.upper()}]** {chk.get('statement_vi', '')}")
+
+        proposals = payload.get("proposals") or []
+        if proposals:
+            lines.append("\n#### 💡 Đề xuất cải tiến")
+            for prop in proposals:
+                lines.append(f"- {prop.get('statement_vi', '')}")
+
+        questions = payload.get("expert_questions_vi") or []
+        if questions:
+            lines.append("\n#### ❓ Câu hỏi cần xác nhận với kỹ sư")
+            for q in questions:
+                lines.append(f"- {q}")
+
+        diagrams = payload.get("diagrams") or []
+        if diagrams:
+            lines.append("\n#### 📊 Sơ đồ quy trình đối chiếu")
+            for diag in diagrams:
+                lines.append("```mermaid")
+                lines.append(diag.get("content", ""))
+                lines.append("```")
+
+    else:
+        lines.append("### 💻 Tác vụ mã nguồn")
+        lines.append(f"**Trạng thái:** ✅ {status_vi}\n")
+        lines.append(f"- **Mục tiêu:** {payload.get('goal_vi', work_id)}")
+
+    meta_payload = {
+        "work_id": work_id,
+        "work_type": work_type,
+        "result_path": str(res_path),
+        "checkpoint_path": str(ckpt_path),
+    }
+    meta_json = json.dumps(meta_payload, ensure_ascii=False)
+    lines.append(f"\n<!-- aios_chat_artifact: {meta_json} -->")
+
+    return "\n".join(lines)
+
+
+def extract_chat_artifact_metadata(content: str) -> dict[str, Any] | None:
+    """Extracts embedded JSON metadata from a chat artifact message comment."""
+    if not content or "<!-- aios_chat_artifact:" not in content:
+        return None
+    try:
+        start_tag = "<!-- aios_chat_artifact:"
+        start_idx = content.index(start_tag) + len(start_tag)
+        end_idx = content.index("-->", start_idx)
+        raw_json = content[start_idx:end_idx].strip()
+        return json.loads(raw_json)
+    except Exception:
+        return None
+

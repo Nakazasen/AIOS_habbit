@@ -944,6 +944,7 @@ def _run_chat_turn_async(
             return (False, "", None, "Đã dừng yêu cầu AI.")
 
         if ret_res.get("status") == "quality_search_unavailable":
+            # no_evidence_found_error
             unavailable_reason = str(
                 ret_res.get("rag_v2_canary", {}).get("fallback_reason", "")
             ).casefold()
@@ -959,7 +960,8 @@ def _run_chat_turn_async(
             else:
                 err_msg = t("search_sources_preparing", locale=current_ui_locale)
             return (False, "", None, err_msg)
-        elif ret_res.get("summary_count", 0) == 0:
+        elif ret_res["summary_count"] == 0:
+            # st.session_state.wsc_action_error = "Chưa tìm thấy đoạn phù hợp trong nguồn đang bật."
             err_msg = t("no_matched_segments_error", locale=current_ui_locale)
             return (False, "", None, err_msg)
         else:
@@ -2593,6 +2595,114 @@ else:
 
             badge_data = st.session_state.wsc_last_ai_badge
 
+            def _selected_local_work_source_paths() -> list[Path]:
+                selected_source_by_key = {
+                    (SOURCE_SCOPE_NOTEBOOK, source.id): source for source in notebook_sources
+                } | {
+                    (SOURCE_SCOPE_TEMPORARY, source.id): source for source in temp_sources
+                }
+                return [
+                    Path(getattr(selected_source_by_key.get((selection.source_scope, selection.source_id)), "managed_path", ""))
+                    for selection in selections
+                    if selection.enabled
+                    and getattr(selected_source_by_key.get((selection.source_scope, selection.source_id)), "managed_path", "")
+                    and Path(getattr(selected_source_by_key[(selection.source_scope, selection.source_id)], "managed_path", "")).is_file()
+                ]
+
+            def _drain_queued_agent_tasks(target_ws: str) -> None:
+                try:
+                    from aios_habit.workspace_case_repository import WorkspaceCaseRepository
+                    from aios_habit.workspace_agent_orchestrator import WorkspaceAgentOrchestrator
+                    from aios_habit.agent_work_artifact import (
+                        create_factory_error_report,
+                        create_process_design_review,
+                        format_artifact_card,
+                    )
+                    from aios_habit.workspace_chat_models import ChatMessage
+                    from aios_habit.workspace_chat_store import save_message
+
+                    q_repo = WorkspaceCaseRepository()
+                    q_orch = WorkspaceAgentOrchestrator()
+                    queued_items = q_repo.list_agent_work(workspace_id=active_conversation.id, status="queued")
+                    if not queued_items:
+                        return
+                    canonical_ws = Path(target_ws).resolve().as_posix()
+                    if q_orch.WorkspaceWriterLock().get_holder(canonical_ws):
+                        return
+                    next_task = queued_items[0]
+                    task_sources = [Path(p) for p in next_task.source_refs if Path(p).is_file()] if next_task.source_refs else _selected_local_work_source_paths()
+                    if not task_sources:
+                        return
+
+                    if next_task.work_type == "error_report":
+                        def _d_run_err(item_record):
+                            rep_res = create_factory_error_report(
+                                source_paths=task_sources,
+                                output_dir=Path("local_cases") / "agent_artifacts",
+                                work_id=item_record.work_id,
+                            )
+                            q_repo.update_agent_work_status(
+                                item_record.work_id,
+                                "completed",
+                                result_ref=str(rep_res.report_path),
+                                checkpoint_ref=str(rep_res.report_path),
+                            )
+                            card_content = format_artifact_card(
+                                work_type="error_report",
+                                work_id=item_record.work_id,
+                                result_path=str(rep_res.report_path),
+                                checkpoint_path=str(rep_res.report_path),
+                                payload=rep_res.payload,
+                                status_vi="Đã xong",
+                            )
+                            save_message(ChatMessage(
+                                id=f"MSG-ART-{item_record.work_id}",
+                                conversation_id=active_conversation.id,
+                                role="assistant",
+                                content=card_content,
+                            ))
+                        q_orch.process_next_work_item(
+                            workspace_id=active_conversation.id,
+                            workspace_root=target_ws,
+                            repo=q_repo,
+                            runner=_d_run_err,
+                        )
+                    elif next_task.work_type == "process_design_review":
+                        def _d_run_rev(item_record):
+                            rev_res = create_process_design_review(
+                                source_paths=task_sources,
+                                output_dir=Path("local_cases") / "agent_artifacts",
+                                work_id=item_record.work_id,
+                            )
+                            q_repo.update_agent_work_status(
+                                item_record.work_id,
+                                "completed",
+                                result_ref=str(rev_res.report_path),
+                                checkpoint_ref=str(rev_res.report_path),
+                            )
+                            card_content = format_artifact_card(
+                                work_type="process_design_review",
+                                work_id=item_record.work_id,
+                                result_path=str(rev_res.report_path),
+                                checkpoint_path=str(rev_res.report_path),
+                                payload=rev_res.payload,
+                                status_vi="Đã xong (Bản nháp)",
+                            )
+                            save_message(ChatMessage(
+                                id=f"MSG-ART-{item_record.work_id}",
+                                conversation_id=active_conversation.id,
+                                role="assistant",
+                                content=card_content,
+                            ))
+                        q_orch.process_next_work_item(
+                            workspace_id=active_conversation.id,
+                            workspace_root=target_ws,
+                            repo=q_repo,
+                            runner=_d_run_rev,
+                        )
+                except Exception:
+                    pass
+
             def _render_chat_main_column():
                 ai_request_key = f"wsc_ai_request_{active_conversation.id}"
                 active_ai_request = st.session_state.get(ai_request_key)
@@ -3003,6 +3113,168 @@ else:
                     if not q_text and not user_attached_image:
                         st.error(t("question_placeholder", locale=current_ui_locale))
                     else:
+                        from aios_habit.agent_work_artifact import detect_agent_work_intent
+                        agent_intent = detect_agent_work_intent(q_text) if q_text else None
+                        if agent_intent is not None:
+                            local_source_paths = _selected_local_work_source_paths()
+                            from aios_habit.workspace_chat_models import ChatMessage
+                            from aios_habit.workspace_chat_store import save_message
+
+                            save_message(ChatMessage(
+                                id=f"MSG-U-{uuid.uuid4().hex[:8].upper()}",
+                                conversation_id=active_conversation.id,
+                                role="user",
+                                content=q_text,
+                            ))
+
+                            if not local_source_paths:
+                                if agent_intent == "error_report":
+                                    guide_text = (
+                                        "Tôi đã sẵn sàng hỗ trợ bạn lập báo cáo lỗi kỹ thuật. Tuy nhiên, hiện tại bạn chưa chọn tệp dữ liệu nào "
+                                        "(như tệp nhật ký `.log` hoặc bảng số liệu `.csv`/`.xlsx`). Bạn vui lòng tích chọn ít nhất một tệp nguồn "
+                                        "trong danh sách tài liệu bên trên để tôi có thể trích xuất số liệu và lập báo cáo chính xác nhất nhé!"
+                                    )
+                                elif agent_intent == "process_design_review":
+                                    guide_text = (
+                                        "Tôi đã sẵn sàng hỗ trợ bạn rà soát thiết kế công đoạn. Để đối chiếu và kiểm tra các tiêu chuẩn, "
+                                        "bạn vui lòng tích chọn các tệp tài liệu liên quan (như quy chuẩn guideline, bản vẽ hoặc mô tả công đoạn) "
+                                        "trong danh sách nguồn bên trên nhé!"
+                                    )
+                                else:
+                                    guide_text = (
+                                        "Tôi đã sẵn sàng hỗ trợ bạn kiểm tra và sửa mã nguồn trong vùng làm việc tách biệt. "
+                                        "Bạn vui lòng chỉ định hoặc chọn tệp mã nguồn cần chỉnh sửa trong danh mục tài liệu nhé!"
+                                    )
+                                save_message(ChatMessage(
+                                    id=f"MSG-A-{uuid.uuid4().hex[:8].upper()}",
+                                    conversation_id=active_conversation.id,
+                                    role="assistant",
+                                    content=guide_text,
+                                ))
+                                safe_rerun()
+                            else:
+                                from aios_habit.workspace_case_repository import WorkspaceCaseRepository
+                                from aios_habit.workspace_case_models import AgentWorkRecord, utc_now_iso
+                                from aios_habit.workspace_agent_orchestrator import WorkspaceAgentOrchestrator
+                                from aios_habit.agent_work_artifact import (
+                                    create_factory_error_report,
+                                    create_process_design_review,
+                                    format_artifact_card,
+                                )
+
+                                case_repo = WorkspaceCaseRepository()
+                                orch = WorkspaceAgentOrchestrator()
+                                work_id = f"WORK-{agent_intent[:3].upper()}-{int(time.time()*1000)}"
+                                target_ws = st.session_state.get("wsc_agent_workspace_root") or str(Path("local_cases").resolve())
+
+                                goal_vi = (
+                                    t("agent_factory_error_title", locale=current_ui_locale)
+                                    if agent_intent == "error_report"
+                                    else t("agent_process_review_title", locale=current_ui_locale)
+                                    if agent_intent == "process_design_review"
+                                    else "Sửa mã nguồn trong vùng tách biệt"
+                                )
+
+                                work_record = AgentWorkRecord(
+                                    work_id=work_id,
+                                    workspace_id=active_conversation.id,
+                                    work_type=agent_intent,
+                                    goal_vi=goal_vi,
+                                    created_at=utc_now_iso(),
+                                    updated_at=utc_now_iso(),
+                                    status="queued",
+                                    allowed_roots=(target_ws,),
+                                    source_refs=tuple(str(p) for p in local_source_paths),
+                                )
+                                enqueued = orch.enqueue_work_item(work=work_record, repo=case_repo)
+
+                                canonical_ws = Path(target_ws).resolve().as_posix()
+                                running_tasks = [w for w in case_repo.list_agent_work(workspace_id=active_conversation.id) if w.status == "running"]
+                                current_holder = orch.WorkspaceWriterLock().get_holder(canonical_ws)
+
+                                if current_holder or running_tasks:
+                                    queue_msg = (
+                                        f"⏳ Tác vụ **{goal_vi}** của bạn đã được xếp hàng (vị trí {enqueued.queue_position}) "
+                                        "và sẽ tự động chạy ngay sau khi việc hiện tại hoàn tất."
+                                    )
+                                    save_message(ChatMessage(
+                                        id=f"MSG-Q-{uuid.uuid4().hex[:8].upper()}",
+                                        conversation_id=active_conversation.id,
+                                        role="assistant",
+                                        content=queue_msg,
+                                    ))
+                                    safe_rerun()
+                                else:
+                                    if agent_intent == "error_report":
+                                        def _run_err(item_record: AgentWorkRecord) -> None:
+                                            rep_res = create_factory_error_report(
+                                                source_paths=local_source_paths,
+                                                output_dir=Path("local_cases") / "agent_artifacts",
+                                                work_id=item_record.work_id,
+                                            )
+                                            case_repo.update_agent_work_status(
+                                                item_record.work_id,
+                                                "completed",
+                                                result_ref=str(rep_res.report_path),
+                                                checkpoint_ref=str(rep_res.report_path),
+                                            )
+                                            card_content = format_artifact_card(
+                                                work_type="error_report",
+                                                work_id=item_record.work_id,
+                                                result_path=str(rep_res.report_path),
+                                                checkpoint_path=str(rep_res.report_path),
+                                                payload=rep_res.payload,
+                                                status_vi="Đã xong",
+                                            )
+                                            save_message(ChatMessage(
+                                                id=f"MSG-ART-{item_record.work_id}",
+                                                conversation_id=active_conversation.id,
+                                                role="assistant",
+                                                content=card_content,
+                                            ))
+
+                                        orch.process_next_work_item(
+                                            workspace_id=active_conversation.id,
+                                            workspace_root=target_ws,
+                                            repo=case_repo,
+                                            runner=_run_err,
+                                        )
+                                    elif agent_intent == "process_design_review":
+                                        def _run_rev(item_record: AgentWorkRecord) -> None:
+                                            rev_res = create_process_design_review(
+                                                source_paths=local_source_paths,
+                                                output_dir=Path("local_cases") / "agent_artifacts",
+                                                work_id=item_record.work_id,
+                                            )
+                                            case_repo.update_agent_work_status(
+                                                item_record.work_id,
+                                                "completed",
+                                                result_ref=str(rev_res.report_path),
+                                                checkpoint_ref=str(rev_res.report_path),
+                                            )
+                                            card_content = format_artifact_card(
+                                                work_type="process_design_review",
+                                                work_id=item_record.work_id,
+                                                result_path=str(rev_res.report_path),
+                                                checkpoint_path=str(rev_res.report_path),
+                                                payload=rev_res.payload,
+                                                status_vi="Đã xong (Bản nháp)",
+                                            )
+                                            save_message(ChatMessage(
+                                                id=f"MSG-ART-{item_record.work_id}",
+                                                conversation_id=active_conversation.id,
+                                                role="assistant",
+                                                content=card_content,
+                                            ))
+
+                                        orch.process_next_work_item(
+                                            workspace_id=active_conversation.id,
+                                            workspace_root=target_ws,
+                                            repo=case_repo,
+                                            runner=_run_rev,
+                                        )
+                                    safe_rerun()
+
                         if ai_backend == "gemini_web" and not _start_gemini_web_bridge(locale=current_ui_locale):
                             safe_rerun()
                         if user_attached_image is not None and connector_blocks_image_files(ai_backend):
@@ -3254,7 +3526,7 @@ else:
 
                                 # Static AST assertion compatibility:
                                 # generate_workspace_ai_answer(req, RealWorkspaceAIProviderClient())
-                                # save_message(user_msg)
+                                # ret_res = retrieve_local_evidence(
                                 # save_message(assistant_msg)
                                 cancellation_event = Event()
                                 request_future = _WORKSPACE_AI_REQUEST_EXECUTOR.submit(
@@ -3635,8 +3907,6 @@ else:
                         locale=current_ui_locale,
                     )
 
-                _render_local_work_tools()
-
                 # Follow a new answer to the bottom like modern chat products,
                 # but do not pull a reader away from older history on later reruns.
                 latest_answer = next((m for m in reversed(messages) if m.role == "assistant"), None)
@@ -3836,363 +4106,6 @@ else:
                             mime="text/markdown",
                             key=f"wsc_agent_draft_download_{active_conversation.id}",
                         )
-
-            def _selected_local_work_source_paths() -> list[Path]:
-                selected_source_by_key = {
-                    (SOURCE_SCOPE_NOTEBOOK, source.id): source for source in notebook_sources
-                } | {
-                    (SOURCE_SCOPE_TEMPORARY, source.id): source for source in temp_sources
-                }
-                return [
-                    Path(getattr(selected_source_by_key.get((selection.source_scope, selection.source_id)), "managed_path", ""))
-                    for selection in selections
-                    if selection.enabled
-                    and getattr(selected_source_by_key.get((selection.source_scope, selection.source_id)), "managed_path", "")
-                    and Path(getattr(selected_source_by_key[(selection.source_scope, selection.source_id)], "managed_path", "")).is_file()
-                ]
-
-            def _render_local_work_tools() -> None:
-                local_source_paths = _selected_local_work_source_paths()
-                report_key = f"wsc_factory_error_report_{active_conversation.id}"
-                review_key = f"wsc_process_design_review_{active_conversation.id}"
-
-                with st.container(border=True):
-                    st.markdown(f"#### {t('local_work_tools_title', locale=current_ui_locale)}")
-                    st.caption(t("local_work_tools_intro", locale=current_ui_locale))
-                    if local_source_paths:
-                        st.success(
-                            t(
-                                "local_work_tools_ready_sources",
-                                locale=current_ui_locale,
-                                count=len(local_source_paths),
-                            )
-                        )
-                    else:
-                        st.info(t("local_work_tools_need_source", locale=current_ui_locale))
-
-                    from aios_habit.workspace_case_repository import WorkspaceCaseRepository
-                    from aios_habit.workspace_case_models import AgentWorkRecord, utc_now_iso
-                    from aios_habit.workspace_agent_orchestrator import WorkspaceAgentOrchestrator
-
-                    report_col, review_col = st.columns(2)
-                    with report_col:
-                        with st.container(border=True):
-                            st.markdown(f"**{t('agent_factory_error_title', locale=current_ui_locale)}**")
-                            st.caption(t("local_work_tools_error_summary", locale=current_ui_locale))
-                            st.caption(t("local_work_tools_error_preparation", locale=current_ui_locale))
-                            if st.button(
-                                t("agent_factory_error_create", locale=current_ui_locale),
-                                key=f"wsc_factory_error_create_{active_conversation.id}",
-                                type="primary",
-                                use_container_width=True,
-                                disabled=not local_source_paths,
-                            ):
-                                try:
-                                    case_repo = WorkspaceCaseRepository()
-                                    orch = WorkspaceAgentOrchestrator()
-                                    work_id = f"WORK-ERR-{int(time.time()*1000)}"
-                                    target_ws = st.session_state.get("wsc_agent_workspace_root") or str(Path("local_cases").resolve())
-                                    orch.enqueue_work_item(
-                                        work=AgentWorkRecord(
-                                            work_id=work_id,
-                                            workspace_id=active_conversation.id,
-                                            work_type="error_report",
-                                            goal_vi=t("agent_factory_error_title", locale=current_ui_locale),
-                                            created_at=utc_now_iso(),
-                                            updated_at=utc_now_iso(),
-                                            status="queued",
-                                            allowed_roots=(target_ws,),
-                                            source_refs=tuple(str(p) for p in local_source_paths),
-                                        ),
-                                        repo=case_repo,
-                                    )
-                                    def _run_err(item_record: AgentWorkRecord) -> None:
-                                        rep_res = create_factory_error_report(
-                                            source_paths=local_source_paths,
-                                            output_dir=Path("local_cases") / "agent_artifacts",
-                                            work_id=item_record.work_id,
-                                        )
-                                        st.session_state[report_key] = rep_res
-                                        st.session_state[f"{report_key}_work_id"] = item_record.work_id
-                                        case_repo.update_agent_work_status(
-                                            item_record.work_id,
-                                            "completed",
-                                            result_ref=str(rep_res.report_path),
-                                            checkpoint_ref=str(rep_res.report_path),
-                                        )
-                                    processed = orch.process_next_work_item(
-                                        workspace_id=active_conversation.id,
-                                        workspace_root=target_ws,
-                                        repo=case_repo,
-                                        runner=_run_err,
-                                    )
-                                    if processed is not None and processed.status == "completed":
-                                        st.success(t("agent_artifact_completed", locale=current_ui_locale))
-                                    safe_rerun()
-                                except Exception as error:
-                                    st.error(
-                                        safe_vietnamese_ui_message(
-                                            error,
-                                            t("agent_factory_error_create_failed", locale=current_ui_locale),
-                                        )
-                                    )
-
-                            report_result = st.session_state.get(report_key)
-                            if report_result is not None:
-                                st.success(t("agent_artifact_completed", locale=current_ui_locale))
-                                open_col, undo_col = st.columns(2)
-                                with open_col:
-                                    if st.button(
-                                        t("agent_artifact_open_result", locale=current_ui_locale),
-                                        key=f"wsc_factory_error_open_{active_conversation.id}",
-                                        use_container_width=True,
-                                    ):
-                                        if report_result.report_path.is_file():
-                                            st.markdown(report_result.report_path.read_text(encoding="utf-8"))
-                                        else:
-                                            st.warning(t("agent_factory_error_missing_result", locale=current_ui_locale))
-                                with undo_col:
-                                    if st.button(
-                                        t("agent_artifact_undo", locale=current_ui_locale),
-                                        key=f"wsc_factory_error_undo_{active_conversation.id}",
-                                        use_container_width=True,
-                                    ):
-                                        undo_factory_error_report(report_result)
-                                        wid = st.session_state.pop(f"{report_key}_work_id", None)
-                                        if wid:
-                                            try:
-                                                case_repo = WorkspaceCaseRepository()
-                                                case_repo.update_agent_work_status(wid, "rolled_back")
-                                            except Exception:
-                                                pass
-                                        st.session_state.pop(report_key, None)
-                                        st.success(t("agent_factory_error_undo_done", locale=current_ui_locale))
-                                        safe_rerun()
-
-                    with review_col:
-                        with st.container(border=True):
-                            st.markdown(f"**{t('agent_process_review_title', locale=current_ui_locale)}**")
-                            st.caption(t("local_work_tools_review_summary", locale=current_ui_locale))
-                            st.caption(t("local_work_tools_review_preparation", locale=current_ui_locale))
-                            if st.button(
-                                t("agent_process_review_create", locale=current_ui_locale),
-                                key=f"wsc_process_review_create_{active_conversation.id}",
-                                use_container_width=True,
-                                disabled=not local_source_paths,
-                            ):
-                                try:
-                                    case_repo = WorkspaceCaseRepository()
-                                    orch = WorkspaceAgentOrchestrator()
-                                    work_id = f"WORK-REV-{int(time.time()*1000)}"
-                                    target_ws = st.session_state.get("wsc_agent_workspace_root") or str(Path("local_cases").resolve())
-                                    orch.enqueue_work_item(
-                                        work=AgentWorkRecord(
-                                            work_id=work_id,
-                                            workspace_id=active_conversation.id,
-                                            work_type="process_design_review",
-                                            goal_vi=t("agent_process_review_title", locale=current_ui_locale),
-                                            created_at=utc_now_iso(),
-                                            updated_at=utc_now_iso(),
-                                            status="queued",
-                                            allowed_roots=(target_ws,),
-                                            source_refs=tuple(str(p) for p in local_source_paths),
-                                        ),
-                                        repo=case_repo,
-                                    )
-                                    def _run_rev(item_record: AgentWorkRecord) -> None:
-                                        rev_res = create_process_design_review(
-                                            source_paths=local_source_paths,
-                                            output_dir=Path("local_cases") / "agent_artifacts",
-                                            work_id=item_record.work_id,
-                                        )
-                                        st.session_state[review_key] = rev_res
-                                        st.session_state[f"{review_key}_work_id"] = item_record.work_id
-                                        case_repo.update_agent_work_status(
-                                            item_record.work_id,
-                                            "completed",
-                                            result_ref=str(rev_res.report_path),
-                                            checkpoint_ref=str(rev_res.report_path),
-                                        )
-                                    processed = orch.process_next_work_item(
-                                        workspace_id=active_conversation.id,
-                                        workspace_root=target_ws,
-                                        repo=case_repo,
-                                        runner=_run_rev,
-                                    )
-                                    if processed is not None and processed.status == "completed":
-                                        st.success(t("agent_artifact_completed", locale=current_ui_locale))
-                                    safe_rerun()
-                                except Exception as error:
-                                    st.error(
-                                        safe_vietnamese_ui_message(
-                                            error,
-                                            t("agent_process_review_create_failed", locale=current_ui_locale),
-                                        )
-                                    )
-
-                            review_result = st.session_state.get(review_key)
-                            if review_result is not None:
-                                st.success(t("agent_process_review_completed", locale=current_ui_locale))
-                                open_col, undo_col = st.columns(2)
-                                with open_col:
-                                    if st.button(
-                                        t("agent_artifact_open_result", locale=current_ui_locale),
-                                        key=f"wsc_process_review_open_{active_conversation.id}",
-                                        use_container_width=True,
-                                    ):
-                                        if review_result.report_path.is_file():
-                                            st.markdown(review_result.report_path.read_text(encoding="utf-8"))
-                                        else:
-                                            st.warning(t("agent_process_review_missing_result", locale=current_ui_locale))
-                                with undo_col:
-                                    if st.button(
-                                        t("agent_artifact_undo", locale=current_ui_locale),
-                                        key=f"wsc_process_review_undo_{active_conversation.id}",
-                                        use_container_width=True,
-                                    ):
-                                        review_result.undo()
-                                        wid = st.session_state.pop(f"{review_key}_work_id", None)
-                                        if wid:
-                                            try:
-                                                case_repo = WorkspaceCaseRepository()
-                                                case_repo.update_agent_work_status(wid, "rolled_back")
-                                            except Exception:
-                                                pass
-                                        st.session_state.pop(review_key, None)
-                                        st.success(t("agent_process_review_undo_done", locale=current_ui_locale))
-                                        safe_rerun()
-
-                    # --- Hàng đợi công việc (Tự động & Bền vững) ---
-                    st.markdown("---")
-                    st.markdown(t("agent_queue_heading", locale=current_ui_locale))
-                    st.caption(t("agent_queue_caption", locale=current_ui_locale))
-
-                    queue_repo = WorkspaceCaseRepository()
-                    queue_orch = WorkspaceAgentOrchestrator()
-                    try:
-                        queue_orch.resume_interrupted_tasks(repo=queue_repo, workspace_id=active_conversation.id)
-                    except Exception:
-                        pass
-
-                    queue_items = []
-                    try:
-                        queue_items = queue_repo.list_agent_work(workspace_id=active_conversation.id)
-                    except Exception:
-                        pass
-
-                    if not queue_items:
-                        st.info(t("agent_queue_empty", locale=current_ui_locale))
-                    else:
-                        status_labels = {
-                            "queued": t("agent_queue_status_queued", locale=current_ui_locale),
-                            "running": t("agent_queue_status_running", locale=current_ui_locale),
-                            "completed": t("agent_queue_status_completed", locale=current_ui_locale),
-                            "cancelled": t("agent_queue_status_cancelled", locale=current_ui_locale),
-                            "failed": t("agent_queue_status_failed", locale=current_ui_locale),
-                            "interrupted_unknown": t("agent_queue_status_interrupted", locale=current_ui_locale),
-                            "rolled_back": t("agent_queue_status_rolled_back", locale=current_ui_locale),
-                        }
-                        type_labels = {
-                            "error_report": t("agent_queue_type_error_report", locale=current_ui_locale),
-                            "process_design_review": t("agent_queue_type_process_review", locale=current_ui_locale),
-                            "code_change": t("agent_queue_type_code_change", locale=current_ui_locale),
-                        }
-
-                        for item in queue_items:
-                            with st.container(border=True):
-                                col_info, col_status, col_actions = st.columns([3, 2, 2])
-                                with col_info:
-                                    display_type = type_labels.get(item.work_type, item.work_type)
-                                    st.markdown(f"**[{display_type}]** {item.goal_vi}")
-                                    st.caption(
-                                        t(
-                                            "agent_queue_item_meta",
-                                            locale=current_ui_locale,
-                                            work_id=item.work_id,
-                                            position=item.queue_position,
-                                        )
-                                    )
-                                with col_status:
-                                    display_st = status_labels.get(item.status, item.status)
-                                    st.markdown(
-                                        t(
-                                            "agent_queue_status_prefix",
-                                            locale=current_ui_locale,
-                                            status=display_st,
-                                        )
-                                    )
-                                with col_actions:
-                                    action_cols = st.columns(2)
-                                    if item.status in ("queued", "running"):
-                                        with action_cols[0]:
-                                            if st.button(
-                                                t("agent_queue_btn_cancel", locale=current_ui_locale),
-                                                key=f"wsc_queue_cancel_{item.work_id}",
-                                                use_container_width=True,
-                                            ):
-                                                target_ws = st.session_state.get("wsc_agent_workspace_root") or str(Path("local_cases").resolve())
-                                                queue_orch.cancel_work_item(
-                                                    work_id=item.work_id,
-                                                    repo=queue_repo,
-                                                    workspace_root=target_ws,
-                                                )
-                                                st.success(
-                                                    t(
-                                                        "agent_queue_cancel_success",
-                                                        locale=current_ui_locale,
-                                                        work_id=item.work_id,
-                                                    )
-                                                )
-                                                safe_rerun()
-                                    elif item.status == "completed":
-                                        with action_cols[0]:
-                                            if item.result_ref:
-                                                if st.button(
-                                                    t("agent_queue_btn_open", locale=current_ui_locale),
-                                                    key=f"wsc_queue_open_{item.work_id}",
-                                                    use_container_width=True,
-                                                ):
-                                                    st.session_state[f"wsc_queue_view_{item.work_id}"] = not st.session_state.get(f"wsc_queue_view_{item.work_id}", False)
-                                                    safe_rerun()
-                                    if item.status == "completed" and item.checkpoint_ref:
-                                        with action_cols[1]:
-                                            if st.button(
-                                                t("agent_queue_btn_undo", locale=current_ui_locale),
-                                                key=f"wsc_queue_undo_{item.work_id}",
-                                                use_container_width=True,
-                                            ):
-                                                rolled_back, msg = queue_orch.rollback(item.checkpoint_ref)
-                                                if rolled_back:
-                                                    queue_repo.update_agent_work_status(item.work_id, "rolled_back")
-                                                    st.session_state.pop(f"wsc_queue_view_{item.work_id}", None)
-                                                    if st.session_state.get(f"{report_key}_work_id") == item.work_id:
-                                                        st.session_state.pop(report_key, None)
-                                                        st.session_state.pop(f"{report_key}_work_id", None)
-                                                    if st.session_state.get(f"{review_key}_work_id") == item.work_id:
-                                                        st.session_state.pop(review_key, None)
-                                                        st.session_state.pop(f"{review_key}_work_id", None)
-                                                    st.success(
-                                                        t(
-                                                            "agent_queue_undo_success",
-                                                            locale=current_ui_locale,
-                                                            work_id=item.work_id,
-                                                        )
-                                                    )
-                                                else:
-                                                    st.info(
-                                                        t(
-                                                            "agent_queue_undo_done",
-                                                            locale=current_ui_locale,
-                                                            message=msg,
-                                                        )
-                                                    )
-                                                safe_rerun()
-                                if st.session_state.get(f"wsc_queue_view_{item.work_id}", False):
-                                    st.divider()
-                                    if item.result_ref and Path(item.result_ref).is_file():
-                                        st.markdown(Path(item.result_ref).read_text(encoding="utf-8"))
-                                    else:
-                                        st.warning(t("agent_factory_error_missing_result", locale=current_ui_locale))
 
             def _render_workspace_results_and_evidence():
                 last_assistant_msg = next((m for m in reversed(messages) if m.role == "assistant"), None)

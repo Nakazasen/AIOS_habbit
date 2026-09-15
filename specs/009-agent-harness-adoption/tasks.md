@@ -22,7 +22,7 @@
 - [x] T012 [P] [US1] Dùng lại bộ đọc tài liệu và metadata Excel để tạo bảng dữ liệu biểu đồ trong `src/aios_habit/agent_work_artifact.py`
 - [x] T013 [P] [US1] Dùng lại khả năng Mermaid/visual hiện có để tạo biểu đồ hoặc sơ đồ kèm provenance trong `src/aios_habit/agent_work_artifact.py`
 - [x] T014 [US1] Tạo hoặc cập nhật file báo cáo lỗi và checkpoint hoàn tác trong `src/aios_habit/agent_work_artifact.py`
-- [x] T015 [US1] Thêm hành động «Tạo báo cáo lỗi» và thẻ «Đã xong» / «Mở kết quả» / «Hoàn tác» trong `src/aios_habit/workspace_chat_app.py`. Không nút duyệt.
+- [x] T015 [US1] Chuyển đổi từ khối nút bấm tĩnh sang Intent Routing qua khung chat (Conversational Omnibar) và hiển thị thẻ Interactive Artifact Card trực tiếp trong bong bóng chat của Trợ lý kèm cụm nút Xem / Tải .md / Hoàn tác. Không nút duyệt.
 
 ## Giai đoạn 3 — US2: Rà soát thiết kế công đoạn (sau US1, vẫn không cần OpenCode)
 
@@ -33,7 +33,7 @@
 - [x] T016 [US2] Viết kiểm thử theo `contracts/agent-process-design-review-v1.md`: vai trò guideline/design, `pass`/`violate`/`insufficient`, không chờ tick, trong `tests/test_agent_process_design_review.py`
 - [x] T017 [US2] Ghép evidence pack theo phạm vi tài liệu người dùng chọn trong `src/aios_habit/agent_work_artifact.py`
 - [x] T018 [US2] Tạo bản rà soát năm phần và sơ đồ hiện tại/đề xuất trong `src/aios_habit/agent_work_artifact.py`
-- [x] T019 [US2] Thêm hành động “Rà soát thiết kế công đoạn” và cảnh báo đây là bản nháp trong `src/aios_habit/workspace_chat_app.py`
+- [x] T019 [US2] Kích hoạt rà soát thiết kế công đoạn qua câu lệnh chat tự nhiên và render thẻ Interactive Artifact Card trong bong bóng chat kèm cảnh báo bản nháp. Loại bỏ form tĩnh.
 
 ## Giai đoạn 4 — Nền OpenCode (chỉ sau US1+US2 xanh)
 
@@ -62,7 +62,7 @@
 
 - [x] T024 [US4] Viết kiểm thử hàng đợi, writer lock theo workspace, hủy và resume trong `tests/test_agent_work_queue.py`
 - [ ] T025 [US4] Mở rộng orchestrator bằng hàng đợi bền vững tối thiểu dùng record hiện có trong `src/aios_habit/workspace_agent_orchestrator.py` (nối luồng thực thi thật)
-- [ ] T026 [US4] Hiển thị các trạng thái tiếng Việt qua i18n t(...) và hành động mở/hủy/hoàn tác trong `src/aios_habit/workspace_chat_app.py`
+- [x] T026 [US4] Hàng đợi công việc vô hình (Invisible Queue): thông báo trạng thái hàng đợi trực tiếp qua tin nhắn hội thoại; loại bỏ hoàn toàn bảng admin thô kệch ở chân trang `src/aios_habit/workspace_chat_app.py`.
 
 ## Giai đoạn 7 — Hoàn thiện và kiểm toán độc lập
 

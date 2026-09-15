@@ -266,21 +266,20 @@ def test_process_next_work_item_lock_contention(temp_repo, temp_workspace):
 
 
 def test_workspace_chat_app_wires_enqueue_and_process_work_item():
-    """Verify workspace_chat_app user tasks enqueue before execution and run via process_next_work_item."""
+    """Verify workspace_chat_app user tasks enqueue before execution and run via process_next_work_item in Conversational Omnibar."""
     app_source = Path("src/aios_habit/workspace_chat_app.py").read_text(encoding="utf-8")
-    render_tools_start = app_source.index("def _render_local_work_tools() -> None:")
-    render_tools_end = app_source.index("def _render_workspace_results_and_evidence():")
-    render_tools_block = app_source[render_tools_start:render_tools_end]
+    ui_source = Path("src/aios_habit/workspace_chat_ui.py").read_text(encoding="utf-8")
 
-    # Must enqueue via orchestrator before execution
-    assert "orch.enqueue_work_item(" in render_tools_block
-    # Must process through process_next_work_item rather than loose execution
-    assert "orch.process_next_work_item(" in render_tools_block
-    # Must resume interrupted tasks on view
-    assert "queue_orch.resume_interrupted_tasks(" in render_tools_block
-    # Must provide cancel and rollback capabilities
-    assert "queue_orch.cancel_work_item(" in render_tools_block
-    assert "queue_orch.rollback(" in render_tools_block
+    # Static block is eliminated
+    assert "_render_local_work_tools" not in app_source
+
+    # Omnibar wires enqueue, process, and drain via orchestrator
+    assert "orch.enqueue_work_item(" in app_source
+    assert "orch.process_next_work_item(" in app_source
+    assert "_drain_queued_agent_tasks(" in app_source
+
+    # Inline artifact card in chat UI wires rollback
+    assert "q_orch.rollback(" in ui_source or "orch.rollback(" in ui_source
 
 
 def test_factory_error_and_process_review_queue_execution_and_rollback(temp_repo, temp_workspace, tmp_path):

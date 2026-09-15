@@ -98,28 +98,27 @@ def test_factory_error_report_accepts_latin_excel_headers_for_a_provenanced_visu
 
 def test_workspace_chat_wires_autocomplete_artifact_actions_without_approval() -> None:
     app_source = Path("src/aios_habit/workspace_chat_app.py").read_text(encoding="utf-8")
-    artifact_panel = app_source[
-        app_source.index('report_key = f"wsc_factory_error_report_'):
-        app_source.index("# Studio Notes & Citations")
-    ]
+    ui_source = Path("src/aios_habit/workspace_chat_ui.py").read_text(encoding="utf-8")
 
-    assert "create_factory_error_report(" in artifact_panel
-    assert "create_process_design_review(" in artifact_panel
-    assert "agent_factory_error_create" in artifact_panel
-    assert "agent_process_review_create" in artifact_panel
-    assert "agent_artifact_open_result" in artifact_panel
-    assert "agent_artifact_undo" in artifact_panel
-    assert "approval" not in artifact_panel.casefold()
+    assert "detect_agent_work_intent(" in app_source
+    assert "create_factory_error_report(" in app_source
+    assert "create_process_design_review(" in app_source
+    assert "format_artifact_card(" in app_source
+    assert "orch.enqueue_work_item(" in app_source
+    assert "orch.process_next_work_item(" in app_source
+
+    # Interactive artifact card in chat bubble has view, download, undo without approval
+    assert "extract_chat_artifact_metadata(" in ui_source
+    assert "agent_artifact_view_full" in ui_source
+    assert "agent_artifact_download" in ui_source
+    assert "agent_artifact_undo" in ui_source
+    assert "approval" not in app_source.casefold() or "approval_required" not in app_source
 
 
-def test_workspace_chat_renders_work_tools_outside_collapsed_results_panel() -> None:
+def test_workspace_chat_removes_static_local_work_tools_for_conversational_omnibar() -> None:
     app_source = Path("src/aios_habit/workspace_chat_app.py").read_text(encoding="utf-8")
-    main_column = app_source[
-        app_source.index("def _render_chat_main_column()"):
-        app_source.index("def _render_agent_draft_from_evidence()")
-    ]
+    # Verify complete removal of static work tools block and queue table in favor of Conversational Omnibar
+    assert "_render_local_work_tools" not in app_source
+    assert "wsc_factory_error_create_" not in app_source
+    assert "wsc_process_review_create_" not in app_source
 
-    assert "_render_local_work_tools()" in main_column
-    assert main_column.index("_render_local_work_tools()") < app_source.index(
-        'with st.expander(f"📌 {t(\'results_and_evidence\''
-    )

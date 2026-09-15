@@ -26,7 +26,7 @@ Ba việc: báo cáo lỗi dùng được; rà soát Guideline vs thiết kế; 
 ## 3. Khoảng trống hiện tại
 
 | Năng lực | Nền có thể dùng lại | Khoảng trống cần làm |
-|---|---|---|
+| --- | --- | --- |
 | Nguồn AI Workspace Chat | `antigravity_bridge.py`, `ai_provider_bridge.py` | Cần ghi rõ không bị thay bởi runtime Agent |
 | Đọc tài liệu và dẫn nguồn | RAG v2, evidence pack, document extractors | Chưa có hợp đồng đầu ra cho phát hiện thiết kế công đoạn |
 | Báo cáo và sơ đồ | report import, Mermaid, visual map, Excel chart metadata | Chưa có vòng tạo bản nháp báo cáo có biểu đồ và kiểm tra số liệu |
@@ -37,7 +37,7 @@ Ba việc: báo cáo lỗi dùng được; rà soát Guideline vs thiết kế; 
 ## 4. Kiểm tra Hiến chương trước thiết kế
 
 | Cổng | Kết quả |
-|---|---|
+| --- | --- |
 | Bằng chứng trước tuyên bố | Đạt về thiết kế: kết luận và biểu đồ phải có nguồn; test phải do hệ thống quan sát |
 | Ưu tiên cục bộ | Đạt: tài liệu và đầu ra thô ở cục bộ; provider route vẫn phải tuân chính sách dữ liệu |
 | Khả năng thay thế | Đạt: OpenCode là runtime thử trước, không trở thành nguồn tri thức độc quyền |
@@ -114,23 +114,28 @@ Người dùng không phê duyệt từng tool call và không duyệt từng fi
 - Người dùng có thể thêm việc mới khi việc khác đang chạy.
 - Sau restart, việc đang chạy được đối chiếu trạng thái runtime và filesystem; không tự lặp thao tác ghi chưa rõ kết quả.
 
-### 5.5 Trải nghiệm người dùng
+### 5.5 Trải nghiệm người dùng: Triết lý Grokbot (Conversational Omnibar & Interactive Artifact Card)
 
-Mặc định chỉ hiện:
+Loại bỏ hoàn toàn các nút bấm chức năng cố định (`_render_local_work_tools`) và bảng quản trị hàng đợi thô kệch ở chân trang. Giao diện trở về sự tinh giản và hấp dẫn tối đa theo triết lý Grokbot:
 
-1. AIOS đang làm gì.
-2. Đã tạo hoặc sửa gì.
-3. Căn cứ chính lấy từ đâu.
-4. Kiểm tra đã đạt hay chưa.
-5. Còn điều gì chưa chắc chắn.
-6. Hành động mặc định: “Mở kết quả”, “Hoàn tác”. “Bổ sung tài liệu” chỉ khi thiếu nguồn. “Đưa vào thư mục đang làm” chỉ với mã nguồn, tùy chọn.
+1. **Một đầu nhập duy nhất (Single Conversational Omnibar)**:
+   - Khung chat trung tâm tiếp nhận mọi loại yêu cầu: tra cứu tri thức, tạo báo cáo lỗi (US1), rà soát thiết kế công đoạn (US2), hoặc yêu cầu sửa mã nguồn (US3).
+   - Hệ thống tự động nhận diện ý định (Intent Routing) dựa trên từ khóa hành động và tệp đã chọn.
+   - Khi thiếu tệp nguồn cần thiết, Trợ lý phản hồi đối thoại tự nhiên (ví dụ: *"Tôi đã sẵn sàng lập báo cáo lỗi. Bạn vui lòng tích chọn ít nhất một tệp log/Excel trong danh sách tài liệu bên trên nhé!"*), tuyệt đối không đẻ form hay làm tê liệt nút bấm.
 
-`diff`, terminal, digest, receipt và mã lỗi nội bộ nằm trong “Chi tiết kỹ thuật”, đóng mặc định.
+2. **Thẻ tác vụ thông minh trong dòng chat (Inline Interactive Artifact Card)**:
+   - Kết quả công việc hiển thị như một thẻ tương tác trực quan (Interactive Card) ngay tại bong bóng tin nhắn của Trợ lý.
+   - Thẻ bao gồm: Tiêu đề tác vụ kèm biểu tượng, huy hiệu trạng thái `✅ Đã xong`, bản tóm tắt phát hiện chính, bảng dữ liệu / biểu đồ Mermaid trực quan khớp 100% tài liệu gốc.
+   - Tích hợp cụm hành động nhanh ngay trên thẻ: `[👁️ Xem toàn văn]` `[📥 Tải .md]` `[↩️ Hoàn tác]`.
+
+3. **Hàng đợi công việc vô hình (Invisible Queue)**:
+   - Khi người dùng giao việc mới trong lúc việc cũ đang chạy, hệ thống tự động ghi nhận vào hàng đợi bền vững `agent_work` và phản hồi tin nhắn tự nhiên: *"⏳ Tác vụ của bạn đã được xếp hàng (vị trí X) và sẽ tự động chạy ngay sau khi việc hiện tại hoàn tất."*
+   - Toàn bộ chi tiết kỹ thuật (`diff`, terminal, worktree, ID nội bộ) được ẩn hoàn toàn vào phần "Chi tiết kỹ thuật" đóng mặc định.
 
 ## 6. Cổng triển khai rút gọn
 
 | Cổng | Phạm vi | Điều kiện ra |
-|---|---|---|
+| --- | --- | --- |
 | G0 | Đồng bộ đặc tả, kế hoạch, task và tài liệu canonical | Phạm vi mới được ghi nhất quán; không còn read-only MVP hoặc bắt duyệt toàn bộ diff |
 | G1 | Probe OpenCode đã pin trên fixture Windows | Đạt đọc–sửa–test thì ghi nhận. Thiếu undo/deny = `PARTIAL`, hoãn US3, **không BLOCK Goal**. US1/US2 vẫn làm |
 | G2 | Lát cắt báo cáo lỗi có biểu đồ | Tạo file báo cáo dùng được, kiểm tra nguồn số liệu, mở được và hoàn tác được |
@@ -173,7 +178,7 @@ Không tạo package harness mới, extension Code-OSS mới hoặc database m�
 ## 9. Rủi ro và biện pháp
 
 | Rủi ro | Biện pháp |
-|---|---|
+| --- | --- |
 | OpenCode tự động duyệt quá rộng | Allow theo task root và lệnh test; deny rõ secret, ngoài root và hành động phát hành |
 | Biểu đồ gây hiểu nhầm | Bắt buộc provenance số liệu và phép tổng hợp; thiếu dữ liệu thì không vẽ |
 | AI phán thiết kế công đoạn như sự thật | Tách phát hiện có nguồn, suy luận, đề xuất và câu hỏi cần xác nhận |
