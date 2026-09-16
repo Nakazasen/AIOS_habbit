@@ -9,6 +9,7 @@ Tài liệu này quy định các điều luật bị khóa cứng mà toàn b�
 Để ngăn chặn suy thoái mã nguồn, thực thi chắp vá hoặc xác minh PASS giả, nhiệm vụ phát triển được chia theo thế mạnh chuyên môn:
 
 ### A. Chuyên gia kiểm toán và đánh giá
+
 - **Vai trò chính:** Kiểm toán chất lượng mã nguồn, đánh giá bảo mật, kiểm tra chống PASS giả và lập luận phân tích kiến trúc.
 - **Ràng buộc:**
   - Bắt buộc phải kiểm tra tất cả các tệp đã sửa đổi và chạy các lệnh kiểm tra độc lập.
@@ -17,6 +18,7 @@ Tài liệu này quy định các điều luật bị khóa cứng mà toàn b�
 - **Mô hình khuyến nghị hiện tại:** Codex GPT-5.5 hoặc tương đương.
 
 ### B. Chuyên gia thực thi
+
 - **Vai trò chính:** Triển khai tính năng, sửa lỗi, tái cấu trúc mã nguồn và viết kiểm thử đơn vị.
 - **Ràng buộc:**
   - Phải tuân thủ nghiêm ngặt theo bản kế hoạch triển khai đã được người dùng phê duyệt.
@@ -40,6 +42,7 @@ Không một pull request hay thay đổi mã nguồn nào được phép gộp 
 ---
 
 ## 3. Quy tắc bảo mật và quyền riêng tư (bất khả xâm phạm)
+
 - **Không rò lên mây trái phép:** bằng chứng `local_only`, log/bảng tính thô, thẻ học việc chưa xác nhận **không** đưa vào Gemini Web, Nakazasen Router, `gpt`/`copilot`/`notebooklm_safe`, hay gói `cloud_safe`.
 - **C-AGENT (Sonnet 4 công ty):** đường được công ty mua và cam kết bảo mật. Khi người dùng **chọn đúng** cầu nối `cagent_api`, được gửi bản vẽ, sơ đồ mạch, log, gói điều tra. Không tự chuyển gói đó sang Gemini/Router.
 - **Chỉ AI cục bộ khác:** `local_ai` chỉ khi người dùng chỉ định `include_local_only=True`.
@@ -55,6 +58,7 @@ Chi tiết phân loại dữ liệu: `00_governance/DATA_POLICY.md`. Đánh giá
 Áp dụng cho mọi người và mọi agent. Không có ngoại lệ “viết nhanh bằng tiếng Anh rồi dịch sau”.
 
 ### 4.1 Giao diện người dùng
+
 - Tiếng Việt là ngôn ngữ giao diện duy nhất được hỗ trợ. Không để người dùng chọn giao diện tiếng Anh hoặc ngôn ngữ khác.
 - Nhãn, hành động, hướng dẫn, trợ giúp, tiến độ, cảnh báo, trạng thái trống, lỗi, thông báo và báo cáo hiển thị cho người dùng: **100% tiếng Việt dễ hiểu cho người không học công nghệ thông tin**.
 - Nhật ký vận hành, bảng trạng thái và đầu ra dòng lệnh dành cho người dùng cũng phải là tiếng Việt; cấm câu tiếng Anh làm phương án dự phòng.
@@ -64,6 +68,7 @@ Chi tiết phân loại dữ liệu: `00_governance/DATA_POLICY.md`. Đánh giá
 - Tài liệu nguồn có thể giữ nguyên ngôn ngữ gốc để bảo toàn bằng chứng; phần điều khiển, giải thích và kết luận của chương trình vẫn phải là tiếng Việt.
 
 ### 4.2 Tài liệu sản phẩm (mọi file `.md` thuộc repo, trừ mục 4.4)
+
 - **Câu văn, tiêu đề mục, mô tả, bảng giải thích: tiếng Việt.** Cấm viết đoạn văn hay tiêu đề bằng tiếng Anh.
 - Cấm tài liệu song ngữ kiểu “Compilation Check”, “Core Rules”, “Definition of Done” trong tiêu đề.
 - Tài liệu **mới** hoặc **đang sửa** không được thêm câu tiếng Anh.
@@ -71,15 +76,19 @@ Chi tiết phân loại dữ liệu: `00_governance/DATA_POLICY.md`. Đánh giá
 - Sổ thảo luận sống (`Thảo_luận_AI_dự_đoán_lỗi_LSU.md`), README, spec đang mở, ADR, runbook: cùng luật.
 
 ### 4.3 Được giữ nguyên vì là định danh, không phải câu giao diện
+
 Chỉ các **token** sau được để tiếng Anh, và phải có nghĩa tiếng Việt gần đó nếu người đọc không phải lập trình viên:
+
 - Đường dẫn file, tên module/lớp/hàm, lệnh chạy (`pytest`, `compileall`).
 - Nhãn máy mà công cụ đọc được: `Status:`, `PASS` / `FAIL`, hằng `local_only`.
 - Tên sản phẩm đã khóa: Workspace Chat, BGE-M3.
 
 ### 4.4 Không bắt buộc dịch lại trong một lượt
+
 `docs/archive/`, `CHANGELOG.md` (lịch sử), báo cáo cổng đã đóng trong `08_audit/`: bằng chứng cũ. **Không viết thêm tiếng Anh.** Không xóa lịch sử. Khi mở file đó để sửa nội dung vận hành, dịch phần đưa ra vận hành.
 
 ### 4.5 Mã nguồn
+
 Tên định danh, comment kỹ thuật, commit message: tiếng Anh (không phải tài liệu người đọc).
 
 Chi tiết kiểm soát tài liệu: `docs/DOCUMENTATION_GOVERNANCE.md`. Chi tiết UI: `docs/UI_LANGUAGE_POLICY.md`.

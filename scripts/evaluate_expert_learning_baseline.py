@@ -146,4 +146,4 @@ if __name__ == "__main__":
         sys.stdout.reconfigure(encoding="utf-8")
     report = run_expert_learning_baseline_evaluation()
     print("=== BASELINE EVALUATION REPORT ===")
-    print(json.dumps(report, indent=2, ensure_ascii=True))
+    print(json.dumps(report, indent=2, ensure_ascii=False))

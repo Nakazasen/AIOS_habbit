@@ -176,6 +176,21 @@ Chủ sở hữu nghiệm thu NAS/thư viện thật, backup/restore, một writ
 - Nếu thiếu dữ liệu hoặc môi trường thật, trạng thái giữ `PARTIAL`, không dùng test tổng hợp để thay thế.
 - Dữ liệu thật không được commit và không xuất hiện trong report kiểm thử.
 
+### US12 — Cảnh báo thời gian thực qua Omnibar, Email biểu đồ chuẩn Nhật và phân cấp người dùng Zero-UI (P2)
+
+Mở rộng năng lực kết nối và vận hành theo Bước 1 lộ trình Excel `AI_LSU_du_doan_loi.xlsx`:
+1. **Nạp từng dòng log JIG trực tiếp qua Omnibar:** Người dùng dán chuỗi log thô JIG vào khung chat duy nhất; hệ thống tự nhận diện cấu trúc log máy JIG, nạp Data Gate, phân tích EWMA/dung sai và trả về thẻ phân tích tức thì trên dòng chat mà không tạo thêm ô nhập liệu hay nút bấm riêng biệt.
+2. **Cảnh báo Email đính kèm biểu đồ chuẩn Quản lý chất lượng Nhật Bản (Monozukuri / SPC Style):**
+   - Biểu đồ xu hướng (Trend curve) kết xuất server-side định dạng PNG 2x Retina (300 DPI) nhúng trực tiếp vào thân email (Inline CID) kèm tem quản lý thông tin (Stamp: JIG, công đoạn, chỉ số Cpk, người phụ trách, dải màu phân vùng an toàn/cảnh báo/nguy hiểm).
+   - Nội dung email HTML chuyên nghiệp tiếng Việt, tóm tắt thông số, nguyên nhân nghi ngờ và đề xuất kiểm tra.
+   - Cấu hình người nhận, ngưỡng kích hoạt, tần suất giãn cách (cooldown) và chế độ gộp tin (digest) được thực hiện 100% qua hội thoại tự nhiên trên Omnibar thông qua Bảng cấu hình Text trực quan.
+3. **Cổng API Realtime nhận dữ liệu từ Server JIG:**
+   - Dịch vụ HTTP Listener chạy ngầm nhận streaming log từ JIG/Server qua cổng nội bộ.
+   - Giao diện biến đổi theo mô hình "Lắng nghe tĩnh lặng, Cảnh báo theo sự kiện" (Silent Streaming & Event-Driven Alert): dữ liệu bình thường được ghi ngầm vào SQLite mà không làm rác dòng chat; khi phát hiện trôi xu hướng hoặc vi phạm dung sai mới kích hoạt Thẻ Cảnh Báo Realtime nổi bật.
+4. **Phân cấp người dùng Zero-UI (Session Isolation):**
+   - Cô lập theo phiên hội thoại: Không gian chat cá nhân/văn phòng là bất khả xâm phạm, tuyệt đối không bị gián đoạn bởi thông báo máy móc. Cảnh báo JIG chỉ hiển thị trong phiên trực ban công đoạn chuyên biệt hoặc gửi qua kênh email độc lập đến đúng người phụ trách.
+
+
 ## 5. Yêu cầu chức năng
 
 - **FR-001**: Workspace Chat phải có điểm vào “Hồ sơ vụ việc” với danh sách, lọc và màn hình chi tiết.
@@ -206,6 +221,12 @@ Chủ sở hữu nghiệm thu NAS/thư viện thật, backup/restore, một writ
 - **FR-026**: Mỗi mốc phải có gói dữ liệu mẫu đã làm sạch, runtime thử nghiệm tách khỏi dữ liệu người dùng, kiểm thử độc lập và đầu ra kỹ thuật có thể chạy lại trên Python 3.11. Một cổng vận hành thiếu dữ liệu, người duyệt hoặc môi trường thật chỉ chặn việc kích hoạt nhánh phụ thuộc; không được chặn sửa nền, xây giao diện trạng thái, hoàn thiện công cụ kiểm tra hoặc triển khai nhánh độc lập khác.
 - **FR-027**: T011, T022 và T029 phải dùng rubric có version/digest để tự kết luận; tác tử không được đổi ngưỡng sau khi thấy kết quả. T029 phải do tác tử kiểm toán khác tác tử thực thi và được phép tự đóng cổng kỹ thuật sau tối đa hai vòng sửa–kiểm tra lại.
 - **FR-028**: AI được tự đăng ký snapshot hợp lệ, chọn `AUTO_SHADOW` hoặc `LEARNING_SHADOW` và xác nhận outcome từ nguồn máy đủ provenance. AI không được điều khiển máy, sửa PLC, đổi thông số, chặn/xuất hàng hoặc xóa/ghi đè nguồn.
+- **FR-029**: Omnibar phải tự động phát hiện chuỗi log máy JIG thô (dán 1 dòng hoặc nhiều dòng), kiểm tra Data Gate và trả về Thẻ kiểm tra log tức thì (Instant Log Inspection Card) mà không tạo thêm ô Text Area hoặc nút bấm riêng.
+- **FR-030**: Hệ thống cảnh báo email phải sử dụng thư viện chuẩn `smtplib` và `email.mime`, hỗ trợ gửi HTML tiếng Việt kèm ảnh biểu đồ xu hướng Monozukuri/SPC chuẩn Nhật (PNG 2x Retina 300 DPI, Inline CID) có tem thông tin kiểm soát (Stamp).
+- **FR-031**: Toàn bộ cấu hình gửi email (danh sách người nhận, điều kiện kích hoạt theo % dung sai, quy tắc trôi dốc EWMA, giãn cách cooldown chống spam, chế độ gộp tin) phải điều khiển được 100% bằng đối thoại tự nhiên qua Omnibar thông qua Bảng cấu hình Text trực quan.
+- **FR-032**: Cổng API nhận streaming log JIG phải chạy như một dịch vụ nền (Background HTTP Listener) tại cổng nội bộ, áp dụng cơ chế "Lắng nghe tĩnh lặng, Cảnh báo theo sự kiện" để không làm tràn ngập dòng chat.
+- **FR-033**: Phải bảo đảm nguyên tắc Cô lập phiên hội thoại (Session Isolation): Không gian chat cá nhân/văn phòng không bị ngắt quãng bởi cảnh báo máy móc công xưởng. Cảnh báo JIG chỉ xuất hiện trong phiên trực ban công đoạn hoặc gửi qua kênh email độc lập.
+
 
 ## 6. Tiêu chí thành công đo được
 

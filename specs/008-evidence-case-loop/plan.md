@@ -201,8 +201,28 @@ Mốc 5 không phải một cổng lớn bắt mọi nhánh chờ nhau. Nó là 
 4. Task pack và sandbox sẵn sàng → US6 Agent hỗ trợ lập trình trong workspace tách biệt (Sandbox Scripting & Tool Prototyping).
 5. Shadow LSU đạt rubric → US10 cảnh báo trong ứng dụng có duyệt và đề xuất phòng ngừa (In-App Risk Notification).
 6. Thư mục chia sẻ và quy trình sao lưu sẵn sàng → US11 thư viện công ty dùng chung và đa tiến trình/NAS an toàn (Multi-User Shared Library).
+7. Nền tảng phân tích log và shadow đạt chuẩn → US12 Cảnh báo thời gian thực qua Omnibar, Email biểu đồ chuẩn Nhật và Phân cấp Zero-UI (khớp Bước 1 lộ trình Excel).
 
 Nếu một đường chưa đủ đầu vào, chỉ đường đó giữ `PARTIAL`/`BLOCKED`. T028 phải chuẩn bị task pack nhỏ cho đường đã đủ điều kiện; không mở đồng thời tất cả và không bắt đường độc lập chờ nhau.
+
+### 6.1. Mốc 6 — Cảnh báo Realtime, Email biểu đồ chuẩn Nhật và Phân cấp Zero-UI (Khớp Bước 1 lộ trình Excel)
+
+Nhằm hiện thực hóa 100% mục tiêu tại Bước 1 của sheet `"các bước"` trong file `AI_LSU_du_doan_loi.xlsx` theo triết lý giao diện hội thoại thống nhất:
+
+1. **Trụ cột 1: Nạp từng dòng log thô JIG qua Omnibar (Hạn 23/09/2026):**
+   - Không tạo thêm form hay ô Text Area riêng biệt. Người dùng dán chuỗi log thô trực tiếp vào Omnibar.
+   - Omnibar Intent Router tự động nhận diện cấu trúc log máy JIG, nạp Data Gate, đối chiếu dung sai và trả về Thẻ kiểm tra log tức thì (Instant Log Inspection Card) kèm cảnh báo xu hướng EWMA.
+2. **Trụ cột 2: Gửi cảnh báo qua Email đính kèm biểu đồ chuẩn Quản lý chất lượng Nhật Bản (Monozukuri / SPC Style):**
+   - Sinh biểu đồ xu hướng server-side bằng Python thuần (`matplotlib`/`pillow` CPU cục bộ) xuất ảnh PNG 2x Retina (300 DPI) nhúng trực tiếp vào thân email (Inline CID image) tránh bị lỗi font/layout trên Microsoft Outlook.
+   - Bố cục biểu đồ chuẩn phong cách QC Nhật: Phân vùng dải kiểm soát an toàn/chú ý/nguy hiểm (Zones A/B/C), đường giới hạn USL/UCL/CL/LSL, điểm bất thường đánh dấu viền đỏ có nhãn trôi dốc, tem quản lý thông tin (Stamp: JIG ID, công đoạn, người phụ trách, chỉ số năng lực $C_{pk}$, $\sigma$).
+   - Cơ chế gửi an toàn qua `smtplib` + `email.mime`, hỗ trợ Proposal Card duyệt trước khi gửi. Toàn bộ cấu hình (người nhận, điều kiện % dung sai, giãn cách cooldown chống spam) được điều khiển 100% qua đối thoại trên Omnibar qua Text Dashboard.
+3. **Trụ cột 3: Cổng API Realtime nhận dữ liệu từ Server JIG (Bước 1.4 & 1.5):**
+   - Dịch vụ HTTP Listener chạy ngầm nhận streaming log qua POST JSON/NDJSON tại cổng nội bộ.
+   - Giao diện biến đổi theo cơ chế "Lắng nghe tĩnh lặng, Cảnh báo theo sự kiện" (Silent Streaming & Event-Driven Alert): dữ liệu bình thường ghi ngầm vào SQLite mà không làm phiền dòng chat; chỉ đẩy Thẻ Cảnh Báo Realtime khi phát hiện nguy cơ trôi dốc hoặc chạm ngưỡng.
+4. **Trụ cột 4: Phân cấp người dùng Zero-UI & Cô lập theo phiên hội thoại (Session Isolation):**
+   - Bảo vệ tuyệt đối không gian trò chuyện cá nhân/văn phòng: không một cảnh báo máy móc nào được phép tự tiện chen ngang cuộc hội thoại cá nhân.
+   - Phân tách rõ ràng: Kênh Email gửi độc lập dưới nền tới đúng người phụ trách; trên UI chỉ đẩy cảnh báo vào phiên trực ban công đoạn chuyên biệt (JIG Watchdog Channel).
+   - Thiết lập vai trò Zero-UI: Người dùng chỉ cần chat 1 câu trên Omnibar để bật/tắt chế độ trực ban hoặc gắn nhãn vai trò.
 
 ## 7. Định nghĩa MVP LSU hoàn thành
 
@@ -234,6 +254,8 @@ MVP không bắt buộc phải có model học máy. Nếu baseline không tạo
 | US9 | Mốc 4, shadow thủ công |
 | US10 | Sau shadow đạt ngưỡng, cảnh báo trong ứng dụng có duyệt và đề xuất phòng ngừa (In-App Risk Notification) |
 | US11 | Mốc 5, thư viện công ty dùng chung và đa tiến trình/NAS an toàn (Multi-User Shared Library) |
+| US12 | Mốc 6, Cảnh báo Realtime, Email biểu đồ chuẩn Nhật và Phân cấp Zero-UI (Khớp Bước 1 lộ trình Excel) |
+
 
 ## 9. Cách kiểm thử và dừng an toàn
 

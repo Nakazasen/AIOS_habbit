@@ -40,6 +40,8 @@ Bốn việc **không rời**: cùng vòng *vụ việc → bằng chứng → h
 4. **Parser log Jam/C-call — Sol `PASS`.** CSV vào `line_events.sqlite`, không embed, provenance `suspected`.
 5. **RAG chữ:** overlap cắt đoạn ~15%, cửa sổ retrieval/citation rộng hơn, ingest BGE gom lô 8–16. Không dùng LLM để embed. Index cũ không tự rebuild.
 6. **Gói bằng chứng chữ + log — đã lắp:** hỏi điều tra kèm sự kiện `line_events` (nghi ngờ). Agent/LSU prediction vẫn sau.
+7. **Nền LSU Iris & Dự đoán lỗi (Mốc 0–5 `PASS`, Mốc 6 mở rộng US12):** Nạp log JIG qua Omnibar, gửi email kèm biểu đồ SPC Monozukuri chuẩn Nhật, mở cổng API Realtime nhận streaming log JIG, phân cấp Zero-UI bảo vệ luồng chat cá nhân (theo `specs/008-evidence-case-loop`).
+
 
 **Lệnh làm hết (Gemini Flash + Codex):** `D:\Kế hoạch AIOS_habbit\Gemini-Codex_lam_het_he_thong.md`
 

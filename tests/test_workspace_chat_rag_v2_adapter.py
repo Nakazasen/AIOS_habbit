@@ -2526,3 +2526,48 @@ def test_rag_v2_adapter_user_facing_messages_are_vietnamese():
     """Verify status messages presented to users by rag_v2_adapter adhere to Vietnamese UI policy."""
     from aios_habit.i18n import SUPPORTED_UI_LOCALES
     assert SUPPORTED_UI_LOCALES == ("vi",)
+
+
+def test_worker_warming_is_throttled_and_never_raises(tmp_path, monkeypatch):
+    config = adapter.WorkspaceChatRagV2CanaryConfig(enabled=True, runtime_root=tmp_path / "rag")
+    calls = []
+    monkeypatch.setattr(
+        adapter,
+        "initialize_workspace_chat_rag_v2_worker",
+        lambda *args, **kwargs: calls.append(1) or {"status": "ok"},
+    )
+    assert adapter.ensure_workspace_chat_worker_warming(config=config) is True
+    # Streamlit reruns within the TTL must not spawn another warm-up.
+    assert adapter.ensure_workspace_chat_worker_warming(config=config) is False
+    deadline = __import__("time").time() + 5.0
+    while not calls and __import__("time").time() < deadline:
+        __import__("time").sleep(0.05)
+    assert calls
+
+
+def test_worker_warming_returns_false_without_deployment(monkeypatch):
+    monkeypatch.setattr(
+        adapter.WorkspaceChatRagV2CanaryConfig,
+        "from_env",
+        classmethod(lambda cls, env=None: (_ for _ in ()).throw(ValueError("no manifest"))),
+    )
+    assert adapter.ensure_workspace_chat_worker_warming(blocking=True) is False
+    assert adapter.is_workspace_chat_worker_warmed() is False
+
+
+def test_blocking_worker_warming_reports_initializer_outcome(tmp_path, monkeypatch):
+    config = adapter.WorkspaceChatRagV2CanaryConfig(enabled=True, runtime_root=tmp_path / "rag")
+    monkeypatch.setattr(
+        adapter,
+        "initialize_workspace_chat_rag_v2_worker",
+        lambda *args, **kwargs: {"status": "ok"},
+    )
+    assert adapter.ensure_workspace_chat_worker_warming(config=config, blocking=True) is True
+
+    def _boom(*args, **kwargs):
+        raise RuntimeError("preparation_init_bge_worker_model_load_failed")
+
+    monkeypatch.setattr(adapter, "initialize_workspace_chat_rag_v2_worker", _boom)
+    with adapter._WARMUP_LOCK:
+        adapter._WARMUP_LAST_ATTEMPT_MONO = 0.0
+    assert adapter.ensure_workspace_chat_worker_warming(config=config, blocking=True) is False

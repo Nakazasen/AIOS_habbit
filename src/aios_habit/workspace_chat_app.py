@@ -587,6 +587,8 @@ from aios_habit.workspace_chat_rag_v2_adapter import (
     reconcile_and_enqueue_workspace_chat_sources,
     promote_workspace_chat_source_priority,
     forget_workspace_chat_sources,
+    ensure_workspace_chat_worker_warming,
+    is_workspace_chat_worker_warmed,
 )
 from aios_habit.i18n import (
     t,
@@ -791,6 +793,16 @@ def _poll_pending_source_submission() -> None:
 # Tự động khởi tạo kho lưu trữ
 init_chat_store()
 
+# Làm nóng bộ đọc tài liệu nền ngay khi mở app; có chặn chạy trùng theo thời
+# gian nên các lần Streamlit rerun không tốn thêm chi phí. Không bao giờ chặn
+# giao diện và không làm lộ lỗi kỹ thuật ra ngoài. Chỉ chạy khi đúng là
+# Streamlit server, không chạy lúc pytest import module.
+if os.environ.get("STREAMLIT_SERVER_PORT"):
+    try:
+        ensure_workspace_chat_worker_warming()
+    except Exception:
+        pass
+
 def get_query_param(key: str) -> Optional[str]:
     """Retrieve query parameter across Streamlit versions."""
     try:
@@ -935,23 +947,71 @@ def _run_chat_turn_async(
     if cancellation_event is not None and cancellation_event.is_set():
         return (False, "", None, "Đã dừng yêu cầu AI.")
 
+    def _is_worker_startup_reason(reason: str) -> bool:
+        folded = str(reason or "").casefold()
+        return (
+            folded == "runtimeerror"
+            or "worker" in folded
+            or "eof" in folded
+            or "timeout" in folded
+        )
+
+    def _attempt_retrieval() -> dict[str, Any]:
+        return retrieve_local_evidence(
+            q_text,
+            tuple(query_relevant_sources),
+            expansion=expansion,
+            search_preference=active_pref,
+        )
+
     retrieval_applied = False
     retrieved_sources = ()
     evidence_items = []
     retrieval_summary = ""
 
     if query_relevant_sources:
-        ret_res = retrieve_local_evidence(
-            q_text,
-            tuple(query_relevant_sources),
-            expansion=expansion,
-            search_preference=active_pref,
-        )
+        ret_res = _attempt_retrieval()
         if cancellation_event is not None and cancellation_event.is_set():
             return (False, "", None, "Đã dừng yêu cầu AI.")
 
         if ret_res.get("status") == "quality_search_unavailable":
+            unavailable_reason = str(
+                ret_res.get("rag_v2_canary", {}).get("fallback_reason", "")
+            ).casefold()
+            if unavailable_reason != "deep_search_unavailable" and (
+                _is_worker_startup_reason(unavailable_reason) or not unready_sources
+            ):
+                # Lần đầu mở app worker còn lạnh: làm nóng chặn đúng một lần
+                # rồi tự thử lại một lần trong cùng lượt nền. Người dùng chỉ
+                # thấy chờ lâu hơn, không cần khởi động lại hay bấm lại.
+                if cancellation_event is None or not cancellation_event.is_set():
+                    try:
+                        ensure_workspace_chat_worker_warming(
+                            blocking=True, timeout_s=120.0
+                        )
+                    except Exception:
+                        pass
+                if cancellation_event is not None and cancellation_event.is_set():
+                    return (False, "", None, "Đã dừng yêu cầu AI.")
+                retry_res = _attempt_retrieval()
+                if cancellation_event is not None and cancellation_event.is_set():
+                    return (False, "", None, "Đã dừng yêu cầu AI.")
+                if retry_res.get("status") != "quality_search_unavailable":
+                    ret_res = retry_res
+                else:
+                    retry_reason = str(
+                        retry_res.get("rag_v2_canary", {}).get("fallback_reason", "")
+                    ).casefold()
+                    if retry_reason == "deep_search_unavailable":
+                        err_msg = t("deep_search_unavailable", locale=current_ui_locale)
+                    elif _is_worker_startup_reason(retry_reason) or not unready_sources:
+                        err_msg = t("worker_warm_auto_retry", locale=current_ui_locale)
+                    else:
+                        err_msg = t("search_sources_preparing", locale=current_ui_locale)
+                    return (False, "", None, err_msg)
+
             # no_evidence_found_error
+        if ret_res.get("status") == "quality_search_unavailable":
             unavailable_reason = str(
                 ret_res.get("rag_v2_canary", {}).get("fallback_reason", "")
             ).casefold()
@@ -2782,6 +2842,12 @@ else:
                     if is_answering:
                         with st.chat_message("assistant"):
                             st.markdown(f"⏳ *{t('ai_analysis_spinner', locale=current_ui_locale)}*")
+                            try:
+                                _worker_warmed = is_workspace_chat_worker_warmed()
+                            except Exception:
+                                _worker_warmed = True
+                            if not _worker_warmed:
+                                st.caption(t("worker_warming_background", locale=current_ui_locale))
 
                 # AI Answer Badge
                 if badge_data and badge_data.get("conversation_id") == active_conversation.id:

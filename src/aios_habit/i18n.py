@@ -626,7 +626,9 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
         "check_router_help": "Kiểm tra Router đã có cấu hình trên máy; không gửi câu hỏi hay tài liệu ra ngoài.",
         "choose_folder": "📁 Chọn thư mục",
         "search_sources_preparing": "Tìm kiếm tài liệu chưa sẵn sàng. Vui lòng thử lại sau khi các nguồn hoàn tất chuẩn bị.",
-        "search_runtime_unavailable": "Bộ đọc tài liệu trên máy chưa khởi động được ở lần này. Hãy làm mới kết nối hoặc khởi động lại AIOS.",
+        "search_runtime_unavailable": "Bộ đọc tài liệu trên máy đang khởi động (lần đầu có thể mất 1-2 phút). Bạn không cần khởi động lại AIOS — hãy chờ giây lát rồi bấm Hỏi lại.",
+        "worker_warming_background": "AIOS đang làm nóng bộ đọc tài liệu trên máy (chỉ lâu ở lần đầu mở). Bạn cứ để cửa sổ mở, câu hỏi sẽ tự tiếp tục khi xong.",
+        "worker_warm_auto_retry": "AIOS đã tự làm nóng bộ đọc và thử lại một lần nhưng chưa xong. Hãy chờ giây lát rồi bấm Hỏi lại, không cần khởi động lại AIOS.",
 
         # Workspace Case Subsystem (008)
         "case_type_investigation": "Điều tra",
@@ -1370,7 +1372,9 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
         "check_router_help": "ローカルの Router 設定だけを確認します。質問や文書は外部送信しません。",
         "choose_folder": "📁 フォルダーを選択",
         "search_sources_preparing": "文書検索の準備中です。ソースの準備完了後にもう一度お試しください。",
-        "search_runtime_unavailable": "今回、ローカルの資料読取機能を開始できませんでした。接続を更新するか、AIOS を再起動してください。",
+        "search_runtime_unavailable": "端末の資料読取機能を起動しています（初回は1〜2分かかることがあります）。AIOSの再起動は不要です。少し待ってからもう一度お試しください。",
+        "worker_warming_background": "端末の資料読取機能をウォームアップしています（初回のみ時間がかかります）。このままお待ちください。準備ができ次第、質問を自動で続行します。",
+        "worker_warm_auto_retry": "読取機能のウォームアップと再試行を1回行いましたが、まだ完了していません。AIOSの再起動は不要です。少し待ってからもう一度お試しください。",
 
         # Workspace Case Subsystem (008)
         "case_type_investigation": "調査",
@@ -2114,7 +2118,9 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
         "check_router_help": "仅检查本机 Router 配置；不会向外发送问题或文档。",
         "choose_folder": "📁 选择文件夹",
         "search_sources_preparing": "文档搜索尚未就绪。请在来源准备完成后重试。",
-        "search_runtime_unavailable": "本次无法启动本机资料读取功能。请刷新连接或重启 AIOS。",
+        "search_runtime_unavailable": "本机资料读取功能正在启动（首次可能需要1-2分钟）。无需重启 AIOS，请稍等片刻后重新提问。",
+        "worker_warming_background": "AIOS正在预热本机资料读取功能（仅首次较慢）。请保持窗口开启，准备好后会自动继续您的问题。",
+        "worker_warm_auto_retry": "AIOS已预热读取功能并自动重试一次，但尚未完成。无需重启 AIOS，请稍等片刻后重新提问。",
 
         # Workspace Case Subsystem (008)
         "case_type_investigation": "调查",

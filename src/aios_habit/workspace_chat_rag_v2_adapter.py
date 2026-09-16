@@ -611,7 +611,7 @@ def _get_runtime(
 
 def close_workspace_chat_rag_v2_runtimes() -> None:
     """Close cached SQLite indexes and subprocess worker; used by orderly shutdown and tests."""
-    global _PREPARATION_EXECUTOR
+    global _PREPARATION_EXECUTOR, _WARMUP_LAST_ATTEMPT_MONO
     with _PREPARATION_LOCK:
         executor = _PREPARATION_EXECUTOR
         _PREPARATION_EXECUTOR = None
@@ -628,6 +628,8 @@ def close_workspace_chat_rag_v2_runtimes() -> None:
             entry.pipeline.close()
     _document_id.cache_clear()
     _source_fingerprint.cache_clear()
+    with _WARMUP_LOCK:
+        _WARMUP_LAST_ATTEMPT_MONO = 0.0
 
 
 @functools.lru_cache(maxsize=4096)
@@ -978,6 +980,75 @@ def initialize_workspace_chat_rag_v2_worker(
         )
     except Exception as exc:
         raise RuntimeError(f"preparation_init_{_safe_reason(exc)}") from exc
+
+
+_WARMUP_LOCK = threading.Lock()
+_WARMUP_LAST_ATTEMPT_MONO = 0.0
+_WARMUP_TTL_SECONDS = 90.0
+
+
+def is_workspace_chat_worker_warmed(
+    *,
+    config: Optional[WorkspaceChatRagV2CanaryConfig] = None,
+) -> bool:
+    """Return whether the local BGE worker subprocess is already usable."""
+    try:
+        resolved = config or WorkspaceChatRagV2CanaryConfig.from_env()
+    except (DeploymentManifestError, ValueError):
+        return False
+    if not resolved.enabled or not resolved.requested_profile.startswith("bge_m3_"):
+        return False
+    try:
+        pipe_config = _pipeline_config(
+            resolved, resolved.requested_profile, read_only=True
+        )
+    except (SemanticBackendUnavailable, ValueError, OSError):
+        return False
+    try:
+        return bool(_SUBPROCESS_CLIENT.is_ready(pipe_config))
+    except Exception:
+        return False
+
+
+def ensure_workspace_chat_worker_warming(
+    *,
+    config: Optional[WorkspaceChatRagV2CanaryConfig] = None,
+    blocking: bool = False,
+    timeout_s: float = 120.0,
+) -> bool:
+    """Warm the BGE worker once; throttled so Streamlit reruns stay cheap.
+
+    Non-blocking mode never raises and never blocks a UI rerun. Blocking mode
+    returns True only when the worker reports ready.
+    """
+    global _WARMUP_LAST_ATTEMPT_MONO
+    now = time.monotonic()
+    with _WARMUP_LOCK:
+        if not blocking and (now - _WARMUP_LAST_ATTEMPT_MONO) < _WARMUP_TTL_SECONDS:
+            return False
+        _WARMUP_LAST_ATTEMPT_MONO = now
+    try:
+        resolved = config or WorkspaceChatRagV2CanaryConfig.from_env()
+    except (DeploymentManifestError, ValueError):
+        return False
+    if not resolved.enabled or not resolved.requested_profile.startswith("bge_m3_"):
+        return False
+
+    def _warm() -> bool:
+        try:
+            initialize_workspace_chat_rag_v2_worker(
+                resolved, timeout_s=timeout_s
+            )
+            return True
+        except Exception:
+            LOGGER.debug("Workspace Chat BGE worker warm-up failed", exc_info=True)
+            return False
+
+    if blocking:
+        return _warm()
+    worker = threading.Thread(target=_warm, name="wsc_bge_warmup", daemon=True)
+    worker.start()
+    return True
 
 
 def _collection_id_for_sources(context_sources: Iterable[WorkspaceAIContextSource]) -> str | None:
