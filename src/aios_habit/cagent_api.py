@@ -66,6 +66,12 @@ def call_cagent_prediction(
         with urlopen(request, timeout=max(1, int(timeout_seconds))) as response:
             raw = response.read().decode("utf-8")
     except HTTPError as error:
+        try:
+            err_body = error.read().decode("utf-8", errors="replace")
+            import logging
+            logging.getLogger(__name__).warning("C-AGENT API HTTP %s: %s", error.code, err_body[:500])
+        except Exception:
+            pass
         return CAgentResponse(False, error_message=f"C-AGENT API trả về HTTP {error.code}.")
     except URLError:
         return CAgentResponse(False, error_message="Không kết nối được tới C-AGENT API.")

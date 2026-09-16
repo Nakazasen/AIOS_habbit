@@ -1004,7 +1004,48 @@ def render_document_manager(
                 st.session_state[confirm_key] = True
                 __safe_rerun()
 
-        for source in sources:
+        PAGE_SIZE = 15
+        if len(sources) > PAGE_SIZE:
+            search_key = f"wsc_doc_search_{scope}_{conversation_id}"
+            search_query = st.text_input(
+                t("doc_search_label", locale=locale, count=len(sources)),
+                key=search_key,
+                placeholder=t("doc_search_placeholder", locale=locale),
+            ).strip().casefold()
+
+            displayed_sources = [s for s in sources if search_query in getattr(s, "title", "").casefold()] if search_query else sources
+            if search_query:
+                st.caption(t("doc_search_found", locale=locale, matched=len(displayed_sources), total=len(sources)))
+
+            total_pages = max(1, (len(displayed_sources) + PAGE_SIZE - 1) // PAGE_SIZE)
+            page_key = f"wsc_doc_page_{scope}_{conversation_id}"
+            current_page = st.session_state.get(page_key, 1)
+            if current_page > total_pages:
+                current_page = total_pages
+                st.session_state[page_key] = current_page
+            elif current_page < 1:
+                current_page = 1
+                st.session_state[page_key] = current_page
+
+            if total_pages > 1:
+                nav_col1, nav_col2, nav_col3 = st.columns([1, 2, 1])
+                with nav_col1:
+                    if st.button(t("pagination_prev_page", locale=locale), key=f"wsc_doc_prev_{scope}_{conversation_id}", disabled=(current_page <= 1), use_container_width=True):
+                        st.session_state[page_key] = current_page - 1
+                        __safe_rerun()
+                with nav_col2:
+                    st.caption(t("pagination_status", locale=locale, current=current_page, total=total_pages, count=len(displayed_sources)))
+                with nav_col3:
+                    if st.button(t("pagination_next_page", locale=locale), key=f"wsc_doc_next_{scope}_{conversation_id}", disabled=(current_page >= total_pages), use_container_width=True):
+                        st.session_state[page_key] = current_page + 1
+                        __safe_rerun()
+
+            start_idx = (current_page - 1) * PAGE_SIZE
+            items_to_render = displayed_sources[start_idx : start_idx + PAGE_SIZE]
+        else:
+            items_to_render = sources
+
+        for source in items_to_render:
             enabled = selections_map.get((scope, source.id), False)
             icon = get_source_icon(getattr(source, "title", ""), getattr(source, "source_type", ""))
             status_map = preparation_summary.get("statuses", {}) if preparation_summary else {}
@@ -1177,20 +1218,23 @@ def render_grouped_evidence_items(evidence_items: List[Dict[str, Any]], conversa
         grouped.setdefault(title, []).append(item)
 
     with st.expander(f"🔍 {t('evidence_snippets_detail', locale=locale)} ({len(evidence_items)})"):
-        for title, items in grouped.items():
+        global_idx = 0
+        for title_idx, (title, items) in enumerate(grouped.items(), 1):
             count_label = f"{len(items)}"
             st.markdown(f"📄 **{title}** · *{count_label}*")
-            for idx, item in enumerate(items, 1):
+            for sub_idx, item in enumerate(items, 1):
+                global_idx += 1
                 loc = item.get("location_info", "")
                 loc_str = f" ({loc})" if loc else ""
                 snippet_text = item.get("text", item.get("snippet", ""))
-                st.caption(f"#{idx}{loc_str}:")
+                st.caption(f"#{sub_idx}{loc_str}:")
+                unique_key = f"wsc_evd_{conversation_id}_{title_idx}_{sub_idx}_{global_idx}"
                 st.text_area(
-                    f"{idx}_{title}",
+                    f"{title_idx}_{sub_idx}_{global_idx}",
                     value=snippet_text,
                     height=80,
                     disabled=True,
-                    key=f"wsc_evd_{conversation_id}_{item.get('evidence_id', idx)}_{idx}",
+                    key=unique_key,
                     label_visibility="collapsed",
                 )
 

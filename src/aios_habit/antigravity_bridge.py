@@ -621,6 +621,195 @@ def _get_or_create_user_message(conversation_id: str, content: str) -> Any:
     return msg
 
 
+def _extract_top_chunks_lexical(
+    question: str,
+    sources: Sequence[Any],
+    *,
+    max_chunks: int = 20,
+    max_chars_total: int = 14000,
+    target_chunk_size: int = 600,
+) -> tuple[list[dict[str, Any]], tuple[Any, ...]]:
+    """Fast in-memory chunk-level lexical retriever across all candidate sources.
+
+    When BGE-M3 vector preparation is pending or degraded, this splits all
+    documents into paragraphs, scores them on keyword/phrase relevance, and
+    returns the top chunks from anywhere in the library. This prevents
+    truncating whole documents while staying strictly within prompt budget.
+    """
+    from aios_habit.workspace_chat_ai_answer import WorkspaceAIContextSource
+
+    if not sources:
+        return [], ()
+
+    raw_terms = [t for t in re.findall(r"[a-zA-Z0-9_\-]+", question.casefold()) if len(t) >= 2]
+    stop = {
+        "là", "gì", "như", "thế", "nào", "cho", "tôi", "biết", "về", "có", "không",
+        "ở", "đâu", "khi", "các", "những", "the", "what", "how", "is", "are", "and",
+        "for", "with", "của", "và", "được", "trong", "một", "này", "đó", "với", "hãy",
+        "tại", "sao", "làm", "ra", "đã", "sẽ", "đang", "thì", "mà", "bị", "theo",
+    }
+    terms = [t for t in raw_terms if t not in stop] or raw_terms
+    phrases = []
+    if len(terms) >= 2:
+        for i in range(len(terms) - 1):
+            phrases.append(f"{terms[i]} {terms[i+1]}")
+
+    all_chunks: list[dict[str, Any]] = []
+    for src in sources:
+        src_title = getattr(src, "title", None) or (src.get("title", "") if isinstance(src, dict) else "") or "Tài liệu"
+        src_id = getattr(src, "source_id", None) or (src.get("source_id", "") if isinstance(src, dict) else "") or ""
+        src_scope = getattr(src, "source_scope", None) or (src.get("source_scope", "") if isinstance(src, dict) else "") or "workspace"
+        src_privacy = getattr(src, "privacy_label", None) or (src.get("privacy_label", "local_only") if isinstance(src, dict) else "local_only")
+        src_text = getattr(src, "text", None) or getattr(src, "extracted_text", None) or (src.get("text", "") if isinstance(src, dict) else "") or ""
+
+        if not src_text.strip():
+            continue
+
+        raw_paras = [p.strip() for p in re.split(r"\n\s*\n+", src_text) if p.strip()]
+        if not raw_paras:
+            raw_paras = [src_text[:target_chunk_size]]
+
+        cleaned_paras: list[str] = []
+        buf = ""
+        for p in raw_paras:
+            if len(p) > int(target_chunk_size * 1.5):
+                sentences = re.split(r"(?<=[.!?\n])\s+", p)
+                sub_buf = ""
+                for s in sentences:
+                    if len(sub_buf) + len(s) > target_chunk_size:
+                        if sub_buf.strip():
+                            cleaned_paras.append(sub_buf.strip())
+                        sub_buf = s
+                    else:
+                        sub_buf = f"{sub_buf} {s}".strip()
+                if sub_buf.strip():
+                    cleaned_paras.append(sub_buf.strip())
+            elif len(p) < 120 and buf:
+                buf = f"{buf}\n{p}"
+                if len(buf) >= 300:
+                    cleaned_paras.append(buf.strip())
+                    buf = ""
+            else:
+                if buf:
+                    cleaned_paras.append(buf.strip())
+                    buf = ""
+                cleaned_paras.append(p)
+        if buf:
+            cleaned_paras.append(buf.strip())
+
+        title_lower = src_title.casefold()
+        for idx, chunk in enumerate(cleaned_paras, start=1):
+            chunk_lower = chunk.casefold()
+            score = 0
+            distinct_terms = 0
+            for term in terms:
+                cnt = chunk_lower.count(term)
+                if cnt > 0:
+                    score += min(cnt, 4) * 3
+                    distinct_terms += 1
+                if term in title_lower:
+                    score += 6
+            for phrase in phrases:
+                if phrase in chunk_lower:
+                    score += 15
+            if distinct_terms >= 2:
+                score += distinct_terms * 5
+
+            all_chunks.append({
+                "score": score,
+                "title": f"{src_title} (Đoạn {idx})",
+                "text": chunk,
+                "source_id": src_id,
+                "source_scope": src_scope,
+                "privacy_label": src_privacy,
+            })
+
+    if not all_chunks:
+        return [], ()
+
+    scored_chunks = [c for c in all_chunks if c["score"] > 0]
+    if scored_chunks:
+        scored_chunks.sort(key=lambda x: x["score"], reverse=True)
+        selected = scored_chunks
+    else:
+        selected = all_chunks
+
+    final_chunks: list[dict[str, Any]] = []
+    total_chars = 0
+    for c in selected:
+        if len(final_chunks) >= max_chunks:
+            break
+        chunk_len = len(c["text"])
+        if total_chars + chunk_len > max_chars_total:
+            if final_chunks:
+                break
+            trimmed = c["text"][:max(max_chars_total - total_chars, 500)]
+            c = dict(c)
+            c["text"] = trimmed
+        final_chunks.append(c)
+        total_chars += len(c["text"])
+
+    evidence_items = [
+        {
+            "evidence_id": f"lex_chunk_{idx}",
+            "title": c["title"],
+            "text": c["text"],
+            "snippet": c["text"],
+            "score": float(c["score"]),
+            "source_id": c["source_id"],
+            "source_scope": c["source_scope"],
+        }
+        for idx, c in enumerate(final_chunks, 1)
+    ]
+    prompt_sources = tuple(
+        WorkspaceAIContextSource(
+            source_id=c["source_id"],
+            source_scope=c["source_scope"],
+            source_type="file",
+            title=c["title"],
+            text=c["text"],
+            privacy_label=c["privacy_label"],
+            included_chars=len(c["text"]),
+            truncated=False,
+        )
+        for c in final_chunks
+    )
+    return evidence_items, prompt_sources
+
+
+def _rank_sources_for_fallback(
+    question: str,
+    sources: tuple[Any, ...],
+) -> tuple[Any, ...]:
+    """Sort context sources so keyword-relevant ones appear first under budget."""
+    if not sources or len(sources) <= 1:
+        return sources
+    raw_terms = [t for t in re.findall(r"[a-zA-Z0-9_\-]+", question.casefold()) if len(t) >= 2]
+    stop = {
+        "là", "gì", "như", "thế", "nào", "cho", "tôi", "biết", "về", "có", "không",
+        "ở", "đâu", "khi", "các", "những", "the", "what", "how", "is", "are", "and",
+        "for", "with", "của", "và", "được", "trong", "một", "này", "đó",
+    }
+    terms = [t for t in raw_terms if t not in stop]
+    if not terms:
+        terms = raw_terms
+    if not terms:
+        return sources
+
+    def score(src: Any) -> int:
+        title = (getattr(src, "title", "") or "").casefold()
+        text = (getattr(src, "text", "") or "")[:15000].casefold()
+        s = 0
+        for term in terms:
+            if term in title:
+                s += 10
+            if term in text:
+                s += 1
+        return s
+
+    return tuple(sorted(sources, key=score, reverse=True))
+
+
 def route_workspace_chat_submission(
     question: str,
     evidence_items: list[dict[str, Any]],
@@ -680,14 +869,30 @@ def route_workspace_chat_submission(
         from aios_habit.cagent_api import call_cagent_prediction
         from aios_habit.workspace_chat_ai_answer import (
             MEMORY_CONSENT_RECONFIRM_MESSAGE,
+            _cap_and_pack_sources,
             _get_ai_disclaimer,
             build_workspace_ai_prompt,
             memory_consent_requires_reconfirmation,
         )
 
-        prompt_sources = [s for s in packed_sources if getattr(s, "included_chars", len(getattr(s, "text", ""))) > 0]
-        if not prompt_sources and packed_sources:
-            prompt_sources = list(packed_sources[:5])
+        if retrieval_applied and retrieved_sources:
+            candidate_sources = tuple(retrieved_sources)
+        else:
+            raw_pool = packed_sources if packed_sources else candidate_sources
+            lex_evidence, lex_sources = _extract_top_chunks_lexical(question, raw_pool)
+            if lex_sources:
+                candidate_sources = lex_sources
+                if not evidence_items and lex_evidence:
+                    evidence_items = lex_evidence
+            else:
+                candidate_sources = tuple(raw_pool)
+                if len(candidate_sources) > 1:
+                    candidate_sources = _rank_sources_for_fallback(question, candidate_sources)
+
+        q_capped, capped_sources, _ = _cap_and_pack_sources(question, candidate_sources)
+        prompt_sources = [s for s in capped_sources if getattr(s, "included_chars", len(getattr(s, "text", ""))) > 0]
+        if not prompt_sources and candidate_sources:
+            prompt_sources = list(candidate_sources[:5])
 
         from aios_habit.workspace_chat_ai_answer import recall_memory_for_answer
         from aios_habit.workspace_chat_ai_answer import WorkspaceAIAnswerRequest as _MemReq
@@ -887,11 +1092,19 @@ def route_workspace_chat_submission(
                 snip_ev = getattr(ev, "extracted_text", None) or getattr(ev, "snippet", None) or getattr(ev, "text", "")
             context_blocks.append(f"[{idx}] {title_ev}:\n{snip_ev}")
         if not context_blocks and packed_sources:
-            for idx, s in enumerate(packed_sources[:5], start=1):
-                title_s = getattr(s, "title", f"Nguồn {idx}")
-                text_s = getattr(s, "text", "")
-                if text_s:
-                    context_blocks.append(f"[{idx}] {title_s}:\n{text_s[:2500]}")
+            lex_evidence, _ = _extract_top_chunks_lexical(question, tuple(packed_sources))
+            if lex_evidence:
+                for idx, ev in enumerate(lex_evidence, start=1):
+                    context_blocks.append(f"[{idx}] {ev['title']}:\n{ev['text']}")
+                if not evidence_items:
+                    evidence_items = lex_evidence
+            else:
+                fallback_sources = _rank_sources_for_fallback(question, tuple(packed_sources))
+                for idx, s in enumerate(fallback_sources[:5], start=1):
+                    title_s = getattr(s, "title", f"Nguồn {idx}")
+                    text_s = getattr(s, "text", "")
+                    if text_s:
+                        context_blocks.append(f"[{idx}] {title_s}:\n{text_s[:2500]}")
         direct_context_text = "\n\n".join(context_blocks)
         memory_result = None
         from aios_habit.workspace_chat_ai_answer import (

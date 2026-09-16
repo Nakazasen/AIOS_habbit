@@ -2075,6 +2075,42 @@ def test_reconcile_retries_legacy_undiagnosed_failure_once_but_keeps_known_failu
     assert len(executor.submissions) == 1
 
 
+def test_reconcile_retries_transient_environment_failures(tmp_path, monkeypatch):
+    config = _enabled_config(tmp_path)
+    executor = _ImmediateExecutor()
+    monkeypatch.setattr(adapter, "_get_executor", lambda: executor)
+    src_bge_err = _source("Source with previous bge init error")
+    src_txt_err = _source("Source with previous missing text cache")
+    db_path = adapter._get_ledger_db_path(config)
+    adapter._init_preparation_ledger_db(db_path)
+    for src, err in (
+        (src_bge_err, "preparation_init_bge_worker_model_load_failed"),
+        (src_txt_err, "source_text_unavailable"),
+    ):
+        adapter._upsert_ledger_row(
+            db_path,
+            adapter.SourcePreparationLedgerRow(
+                source_scope=src.source_scope,
+                source_id=src.id if hasattr(src, "id") else src.source_id,
+                source_fingerprint=adapter._source_fingerprint(src),
+                model_id="BAAI/bge-m3",
+                model_revision=config.bge_m3_model_revision,
+                state=adapter.PREP_STATE_FAILED,
+                priority=adapter.PREP_PRIORITY_NORMAL,
+                attempt_count=1,
+                last_error=err,
+                document_id=adapter._document_id(src),
+                created_at=10.0,
+                updated_at=10.0,
+            ),
+        )
+
+    enqueued = adapter.reconcile_and_enqueue_workspace_chat_sources((src_bge_err, src_txt_err), config=config)
+    assert enqueued == 2
+    assert adapter._load_ledger_row(db_path, src_bge_err.source_scope, src_bge_err.source_id).state == adapter.PREP_STATE_PENDING
+    assert adapter._load_ledger_row(db_path, src_txt_err.source_scope, src_txt_err.source_id).state == adapter.PREP_STATE_PENDING
+
+
 def test_promote_priority_to_interactive(tmp_path: Path):
     config = _enabled_config(tmp_path)
     db_path = adapter._get_ledger_db_path(config)

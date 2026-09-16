@@ -160,3 +160,19 @@ def test_evidence_graph_toggle_caches_trace_and_hides_the_canvas_before_rerun() 
     assert "wscInstantGraphClose" in source
     assert "button.addEventListener('pointerdown'" in source
     assert "slot.style.display = 'none'" in source
+
+
+def test_composer_text_input_clearing_uses_deferred_reset() -> None:
+    source = _app_source()
+
+    # Deferred clear flag check must precede text_area instantiation
+    assert 'clear_input_key = f"wsc_clear_input_{active_conversation.id}"' in source
+    assert 'st.session_state.pop(clear_input_key, False)' in source
+    assert 'st.session_state[f"wsc_clear_input_{active_conversation.id}"] = True' in source
+
+    # Check that after save_message(user_msg), we use the clear flag, not direct widget mutation
+    post_save = source.split("save_message(user_msg)", 1)[1]
+    pre_executor = post_save.split("_WORKSPACE_AI_REQUEST_EXECUTOR.submit", 1)[0]
+    assert 'st.session_state[f"wsc_clear_input_{active_conversation.id}"] = True' in pre_executor
+    assert 'st.session_state[f"wsc_question_input_{active_conversation.id}"]' not in pre_executor
+

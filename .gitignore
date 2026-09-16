@@ -81,6 +81,7 @@ local_cases/
 *.png
 *.jpg
 *.jpeg
+!AI_LSU_du_doan_loi.xlsx
 !examples/**/*.xlsx
 !examples/**/*.xls
 !examples/**/*.csv

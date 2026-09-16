@@ -817,16 +817,23 @@ def set_query_params(**kwargs):
                 if k in st.query_params:
                     del st.query_params[k]
             else:
-                st.query_params[k] = str(v)
+                if st.query_params.get(k) != str(v):
+                    st.query_params[k] = str(v)
     except Exception:
         try:
             params = st.experimental_get_query_params()
+            changed = False
             for k, v in kwargs.items():
                 if v is None:
-                    params.pop(k, None)
+                    if k in params:
+                        params.pop(k, None)
+                        changed = True
                 else:
-                    params[k] = [str(v)]
-            st.experimental_set_query_params(**params)
+                    if params.get(k) != [str(v)]:
+                        params[k] = [str(v)]
+                        changed = True
+            if changed:
+                st.experimental_set_query_params(**params)
         except Exception:
             pass
 
@@ -903,21 +910,21 @@ def _start_gemini_web_bridge(*, locale: str, announce_success: bool = False) -> 
 
 def _run_chat_turn_async(
     q_text: str,
-    query_relevant_sources: tuple,
-    expansion: Any,
-    active_pref: str,
-    unready_sources: tuple,
-    current_ui_locale: str,
-    packed_sources: tuple,
-    conversation_id: str,
-    notebook_id: str,
-    current_keys: tuple,
-    chat_history: tuple,
-    user_raw_input: str,
-    answer_language: str,
-    ai_backend: str,
-    cagent_endpoint_url: str,
-    cancellation_event: Any,
+    query_relevant_sources: tuple = (),
+    expansion: Any = None,
+    active_pref: str = "auto",
+    unready_sources: tuple = (),
+    current_ui_locale: str = "vi",
+    packed_sources: tuple = (),
+    conversation_id: str = "",
+    notebook_id: str = "",
+    current_keys: tuple = (),
+    chat_history: tuple = (),
+    user_raw_input: str = "",
+    answer_language: str = "vi",
+    ai_backend: str = "cagent",
+    cagent_endpoint_url: str = "",
+    cancellation_event: Any = None,
 ) -> tuple[bool, str, dict[str, Any] | None, str | None]:
     """Execute evidence retrieval and model answer routing inside background thread pool."""
     from aios_habit.antigravity_bridge import route_workspace_chat_submission
@@ -2809,10 +2816,7 @@ else:
                 if total_enabled > 0:
                     current_enabled_sels = load_enabled_sources_for_conversation(active_conversation.id)
                     if current_enabled_sels:
-                        current_all_sources = _workspace_context_sources(
-                            load_notebook_sources(active_nb_id),
-                            load_temporary_sources(active_conversation.id),
-                        )
+                        current_all_sources = prep_context_sources
                         sel_keys = {(s.source_scope, s.source_id) for s in current_enabled_sels}
                         active_scoped = [s for s in current_all_sources if (s.source_scope, s.source_id) in sel_keys and (s.text or "").strip()]
                         if active_scoped:
@@ -2862,10 +2866,7 @@ else:
                         (selection.source_scope, selection.source_id)
                         for selection in pending_enabled
                     ))
-                    pending_sources = _workspace_context_sources(
-                        load_notebook_sources(active_nb_id),
-                        load_temporary_sources(active_conversation.id),
-                    )
+                    pending_sources = prep_context_sources
                     pending_state, pending_detail = _pending_source_submission_state(
                         pending_submission,
                         conversation_id=active_conversation.id,
@@ -2921,6 +2922,9 @@ else:
                             _start_gemini_web_bridge(locale=current_ui_locale, announce_success=True)
                             safe_rerun()
                 with st.container(border=True, key=f"wsc-composer-{active_conversation.id}"):
+                    clear_input_key = f"wsc_clear_input_{active_conversation.id}"
+                    if st.session_state.pop(clear_input_key, False):
+                        st.session_state[f"wsc_question_input_{active_conversation.id}"] = ""
                     uploaded_image = None
                     user_input = st.text_area(
                         labels["question_placeholder"],
@@ -3526,7 +3530,7 @@ else:
                                 # ret_res = retrieve_local_evidence(tuple(query_relevant_sources))
                                 save_message(user_msg)
                                 # save_message(assistant_msg)
-                                st.session_state[f"wsc_question_input_{active_conversation.id}"] = ""
+                                st.session_state[f"wsc_clear_input_{active_conversation.id}"] = True
                                 cancellation_event = Event()
                                 request_future = _WORKSPACE_AI_REQUEST_EXECUTOR.submit(
                                     _run_chat_turn_async,
@@ -3534,7 +3538,7 @@ else:
                                     query_relevant_sources=tuple(query_relevant_sources),
                                     expansion=expansion,
                                     active_pref=active_pref,
-                                    unready_sources=tuple(unready_sources),
+                                    unready_sources=tuple(unready_sources) if "unready_sources" in locals() and unready_sources else (),
                                     current_ui_locale=current_ui_locale,
                                     packed_sources=tuple(packed_sources),
                                     conversation_id=active_conversation.id,
@@ -3860,7 +3864,6 @@ else:
 
                 def on_resume_preparation():
                     resume_workspace_chat_source_preparation(tracked_prep_sources)
-                    st.session_state.wsc_action_message = "Đã tiếp tục chuẩn bị thư viện tài liệu."
                     safe_rerun()
 
                 is_preparing = bool(

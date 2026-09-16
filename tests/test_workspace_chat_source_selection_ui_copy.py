@@ -128,7 +128,7 @@ class MockStreamlit:
         self.calls.append(("progress", int(value), str(text or ""), None))
 
     def text_area(self, label, value="", *args, **kwargs):
-        self.calls.append(("text_area", str(label), value, None))
+        self.calls.append(("text_area", str(label), value, kwargs))
 
 
 @pytest.fixture
@@ -503,6 +503,20 @@ def test_render_grouped_evidence_items_multilingual(mock_st, locale: str):
     assert "Đoạn 1 nội dung quy trình" in text_area_values
     assert "Đoạn 2 nội dung vận hành" in text_area_values
     assert "Đoạn 3 số liệu tài chính" in text_area_values
+
+
+def test_render_grouped_evidence_items_unique_keys(mock_st):
+    """Verifies that evidence items across multiple documents always have strictly unique element keys."""
+    evidence_items = [
+        {"title": "Doc A", "location_info": "P1", "text": "Snippet 1"},
+        {"title": "Doc A", "location_info": "P2", "text": "Snippet 2"},
+        {"title": "Doc B", "location_info": "P1", "text": "Snippet 3"},
+        {"title": "Doc B", "location_info": "P2", "text": "Snippet 4"},
+    ]
+    render_grouped_evidence_items(evidence_items, conversation_id="conv_1", locale="vi")
+    keys = [c[3].get("key") for c in mock_st.calls if c[0] == "text_area"]
+    assert len(keys) == 4
+    assert len(set(keys)) == 4
 
 
 def test_forbidden_words_not_in_owner_facing_ui(mock_st):

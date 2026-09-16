@@ -168,6 +168,12 @@ _SAFE_PREPARATION_REASON_CODES = frozenset({
     "rag_v2_ingestion_incomplete",
 })
 _LEGACY_UNDIAGNOSED_PREPARATION_ERROR = "runtimeerror"
+_RETRYABLE_PREPARATION_ERRORS = frozenset({
+    _LEGACY_UNDIAGNOSED_PREPARATION_ERROR,
+    "preparation_init_bge_worker_model_load_failed",
+    "semanticbackendunavailable",
+    "source_text_unavailable",
+})
 _SEMANTIC_SOURCE_STOP_WORDS = frozenset(
     {
         "cau", "hoi", "che", "do", "hoat", "dong", "nhu", "the", "nao",
@@ -1650,7 +1656,7 @@ def reconcile_and_enqueue_workspace_chat_sources(
             and row.state == PREP_STATE_FAILED
             and row.source_fingerprint == current_fp
             and priority != PREP_PRIORITY_INTERACTIVE
-            and row.last_error != _LEGACY_UNDIAGNOSED_PREPARATION_ERROR
+            and row.last_error not in _RETRYABLE_PREPARATION_ERRORS
         ):
             continue
 

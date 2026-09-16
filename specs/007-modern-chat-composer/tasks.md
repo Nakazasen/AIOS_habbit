@@ -59,4 +59,4 @@
 
 ## Implementation Strategy
 
-Implement and validate the P1 composer first, then add progressive attachment, model selection, and keyboard/responsive refinements. Keep explicit send as the behavioral boundary throughout.
+Implement and validate the P1 composer first, then add progressive attachment, model selection, and keyboard/responsive refinements. Keep explicit send as the behavioral boundary throughout. For widget state management, adhere strictly to Streamlit's lifecycle: never mutate widget-associated keys after widget instantiation in the same run; use deferred reset flags evaluated prior to instantiation.

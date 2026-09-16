@@ -2007,3 +2007,111 @@ class TestAntigravityHandoffMultilingualE2E:
         assert result[0] is False
         assert statement not in captured["user_prompt"]
         assert "MEMORY_CONTENT" not in captured["user_prompt"]
+
+
+def test_extract_top_chunks_lexical_finds_relevant_paragraph():
+    """Verify that in-memory chunking retrieves needle-in-haystack across many sources."""
+    from aios_habit.antigravity_bridge import _extract_top_chunks_lexical
+    from aios_habit.workspace_chat_ai_answer import WorkspaceAIContextSource
+
+    sources = []
+    # Create 15 distractor sources
+    for i in range(1, 16):
+        sources.append(WorkspaceAIContextSource(
+            source_id=f"src_{i}",
+            source_scope="notebook",
+            source_type="text",
+            title=f"Tài liệu hướng dẫn chung {i}",
+            privacy_label="local_only",
+            text=f"Nội dung tài liệu số {i} với các thông tin chung về chính sách và bảo trì hệ thống. Không có thông tin dự án đặc thù.\n\nĐoạn thứ hai của tài liệu {i} mô tả quy trình lưu trữ hồ sơ và cấp quyền truy cập máy chủ.",
+            included_chars=250,
+            truncated=False,
+        ))
+
+    # Add needle in source 12
+    sources.append(WorkspaceAIContextSource(
+        source_id="src_special",
+        source_scope="notebook",
+        source_type="text",
+        title="Báo cáo tiến độ dự án Orchid",
+        privacy_label="local_only",
+        text="Phần 1: Giới thiệu chung dự án.\n\nKỹ sư Minh chịu trách nhiệm chính xử lý ticket ORCHID-731 và hoàn thành kiểm tra chất lượng vào thứ Hai.\n\nPhần 3: Tổng kết tài nguyên.",
+        included_chars=200,
+        truncated=False,
+    ))
+
+    evidence, prompt_sources = _extract_top_chunks_lexical(
+        question="Ai xử lý ticket ORCHID-731?",
+        sources=tuple(sources),
+        max_chunks=5,
+        max_chars_total=5000,
+    )
+
+    assert len(evidence) >= 1
+    top_item = evidence[0]
+    assert "ORCHID-731" in top_item["text"]
+    assert "Minh" in top_item["text"]
+    assert "Báo cáo tiến độ dự án Orchid" in top_item["title"]
+    assert any("ORCHID-731" in s.text for s in prompt_sources)
+
+
+def test_route_workspace_chat_submission_cagent_uses_lexical_chunks_on_fallback(monkeypatch):
+    """When BGE-M3 is unready (fallback mode), C-Agent receives relevant chunks from across library."""
+    from aios_habit.antigravity_bridge import route_workspace_chat_submission
+    from aios_habit.workspace_chat_ai_answer import WorkspaceAIContextSource
+    from types import SimpleNamespace
+
+    captured = {}
+
+    def fake_cagent(endpoint, *, system_prompt, user_prompt):
+        captured["system_prompt"] = system_prompt
+        captured["user_prompt"] = user_prompt
+        return SimpleNamespace(ok=True, text="Minh phụ trách ticket ORCHID-731.")
+
+    monkeypatch.setattr("aios_habit.cagent_api.call_cagent_prediction", fake_cagent)
+
+    # 10 large distractor sources
+    sources = [
+        WorkspaceAIContextSource(
+            source_id=f"distractor_{i}",
+            source_scope="notebook",
+            source_type="text",
+            title=f"Tài liệu ngoài lề {i}",
+            privacy_label="cloud_allowed",
+            text="Nội dung không liên quan đến câu hỏi kiểm thử.\n" * 30,
+            included_chars=1200,
+            truncated=False,
+        )
+        for i in range(1, 11)
+    ]
+    # Source with target answer placed at the very end (index 10)
+    sources.append(WorkspaceAIContextSource(
+        source_id="target_doc",
+        source_scope="notebook",
+        source_type="text",
+        title="Tài liệu chỉ định phân công",
+        privacy_label="cloud_allowed",
+        text="Mục lục hướng dẫn.\n\nChuyên viên Nguyễn Văn An phụ trách điều tra lỗi SAP-9988 trên máy chủ sản xuất.\n\nLời kết tài liệu.",
+        included_chars=200,
+        truncated=False,
+    ))
+
+    ok, msg, badge, err = route_workspace_chat_submission(
+        question="Ai phụ trách điều tra lỗi SAP-9988?",
+        evidence_items=[],
+        packed_sources=tuple(sources),
+        conversation_id="conv_lexical_test",
+        notebook_id="NB-TEST",
+        retrieval_applied=False,
+        retrieved_sources=(),
+        retrieval_summary="",
+        current_keys=(("notebook", "target_doc"),),
+        chat_history=(),
+        user_raw_input="Ai phụ trách điều tra lỗi SAP-9988?",
+        backend="cagent_api",
+    )
+
+    assert ok is True
+    assert "SAP-9988" in captured["user_prompt"]
+    assert "Nguyễn Văn An" in captured["user_prompt"]
+    assert "Tài liệu chỉ định phân công" in captured["user_prompt"]

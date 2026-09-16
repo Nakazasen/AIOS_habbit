@@ -803,6 +803,12 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
         "agent_queue_undo_success": "Đã hoàn tác nhiệm vụ {work_id}",
         "agent_queue_undo_done": "Hoàn tác hoàn tất: {message}",
         "agent_queue_undo_failed": "Thao tác hoàn tác bị từ chối: Đường dẫn hoặc mã công việc không hợp lệ.",
+        "doc_search_label": "🔍 Tìm kiếm tài liệu ({count})",
+        "doc_search_placeholder": "Nhập tên tài liệu để lọc...",
+        "doc_search_found": "Tìm thấy {matched} / {total} tài liệu phù hợp.",
+        "pagination_prev_page": "◀ Trang trước",
+        "pagination_next_page": "Trang sau ▶",
+        "pagination_status": "Trang {current} / {total} (Tổng {count} tài liệu)",
     },
     "ja": {
         # General & App Navigation
@@ -1541,6 +1547,12 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
         "agent_queue_undo_success": "タスク {work_id} を元に戻しました",
         "agent_queue_undo_done": "取り消し完了: {message}",
         "agent_queue_undo_failed": "取り消しが拒否されました: パスまたはタスクIDが無効です。",
+        "doc_search_label": "🔍 ソース検索 ({count})",
+        "doc_search_placeholder": "絞り込むソース名を入力...",
+        "doc_search_found": "一致するソースが {matched} / {total} 件見つかりました。",
+        "pagination_prev_page": "◀ 前のページ",
+        "pagination_next_page": "次のページ ▶",
+        "pagination_status": "ページ {current} / {total} (合計 {count} ソース)",
     },
     "zh-CN": {
         # General & App Navigation
@@ -2279,6 +2291,12 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
         "agent_queue_undo_success": "已撤销任务 {work_id}",
         "agent_queue_undo_done": "撤销完成: {message}",
         "agent_queue_undo_failed": "撤销被拒绝：路径或任务ID无效。",
+        "doc_search_label": "🔍 搜索来源 ({count})",
+        "doc_search_placeholder": "输入来源名称进行筛选...",
+        "doc_search_found": "找到 {matched} / {total} 个匹配的来源。",
+        "pagination_prev_page": "◀ 上一页",
+        "pagination_next_page": "下一页 ▶",
+        "pagination_status": "页码 {current} / {total} (共 {count} 个来源)",
     },
 }
 
