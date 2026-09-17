@@ -256,7 +256,6 @@ MVP không bắt buộc phải có model học máy. Nếu baseline không tạo
 | US11 | Mốc 5, thư viện công ty dùng chung và đa tiến trình/NAS an toàn (Multi-User Shared Library) |
 | US12 | Mốc 6, Cảnh báo Realtime, Email biểu đồ chuẩn Nhật và Phân cấp Zero-UI (Khớp Bước 1 lộ trình Excel) |
 
-
 ## 9. Cách kiểm thử và dừng an toàn
 
 - Mỗi task chạy test tập trung và `git diff --check`.
