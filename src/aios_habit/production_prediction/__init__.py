@@ -10,4 +10,11 @@ from __future__ import annotations
 __all__ = [
     "models",
     "lsu_iris",
+    "jig_log_ingest",
+    "spc_chart",
+    "alert_mailer",
+    "alert_config_chat",
+    "stream_api",
+    "session_isolation",
+    "jig_alert_cards",
 ]

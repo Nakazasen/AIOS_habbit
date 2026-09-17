@@ -1286,3 +1286,50 @@ def render_privacy_block_message(locale: str = "vi"):
 def render_source_changed_message(locale: str = "vi"):
     """Renders source-set-changed warning."""
     st.warning(t("source_changed_warning", locale=locale))
+
+
+def build_jig_instant_card_data(dong_log: Dict[str, Any], ket_qua_ewma: Dict[str, Any]) -> Dict[str, Any]:
+    """Build instant JIG log inspection card data (US12 T059, no Streamlit needed)."""
+    from aios_habit.production_prediction.jig_alert_cards import build_instant_log_card
+
+    return build_instant_log_card(dong_log, ket_qua_ewma)
+
+
+def render_jig_instant_log_card(dong_log: Dict[str, Any], ket_qua_ewma: Dict[str, Any], locale: str = "vi") -> None:
+    """Render instant log inspection card in Vietnamese (US12 T059)."""
+    card = build_jig_instant_card_data(dong_log, ket_qua_ewma)
+    tieu_de = t("jig_instant_card_title", locale=locale, unit=card["ma_unit"], metric=card["thong_so"], status=card["trang_thai"])
+    goi_y = t("jig_instant_card_hint", locale=locale, suggestions=", ".join(card["goi_y"]))
+    st.info(tieu_de)
+    st.write(card["chi_tiet"])
+    st.caption(card["nguong_tham_khao"])
+    st.caption(goi_y)
+
+
+def build_jig_realtime_card_data(jig_id: str, metric: str, chi_tiet: str) -> Dict[str, Any]:
+    """Build realtime alert card data (US12 T064, no Streamlit needed)."""
+    from aios_habit.production_prediction.jig_alert_cards import build_realtime_alert_card
+
+    return build_realtime_alert_card(jig_id, metric, chi_tiet)
+
+
+def render_jig_realtime_alert_card(jig_id: str, metric: str, chi_tiet: str, locale: str = "vi") -> None:
+    """Render prominent realtime alert card in Vietnamese (US12 T064)."""
+    card = build_jig_realtime_card_data(jig_id, metric, chi_tiet)
+    tieu_de = t("jig_realtime_card_title", locale=locale, jig=card["ma_jig"], metric=card["thong_so"])
+    st.error(tieu_de)
+    st.write(card["chi_tiet"])
+    st.caption(card["huong_dan"])
+
+
+def build_jig_live_capsule_data(dang_ket_noi: bool, toc_do: float = 0.0, so_jig: int = 0) -> Dict[str, Any]:
+    """Build header live status capsule data (US12 T064, no Streamlit needed)."""
+    from aios_habit.production_prediction.jig_alert_cards import build_live_status_capsule
+
+    return build_live_status_capsule(dang_ket_noi, toc_do, so_jig)
+
+
+def render_jig_live_status_capsule(dang_ket_noi: bool, toc_do: float = 0.0, so_jig: int = 0) -> None:
+    """Render header live status capsule in Vietnamese (US12 T064)."""
+    capsule = build_jig_live_capsule_data(dang_ket_noi, toc_do, so_jig)
+    st.caption(f"{capsule['trang_thai']}: {capsule['chi_tiet']}")

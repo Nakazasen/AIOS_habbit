@@ -487,43 +487,43 @@ Phần này kích hoạt đợt T030–T057 theo yêu cầu mới của chủ s�
 
 **Đích độc lập**: Hiện thực hóa 100% mục tiêu tại Bước 1 lộ trình Excel `AI_LSU_du_doan_loi.xlsx` theo Luật giao diện hội thoại thống nhất qua Omnibar (Mục 6 `AGENT_RULES.md`).
 
-- [ ] T058 [P] [US12] Viết test hợp đồng cho bộ nhận diện dòng log JIG thô dán trực tiếp vào Omnibar trong `tests/test_omnibar_jig_log_ingest.py`
+- [x] T058 [P] [US12] Viết test hợp đồng cho bộ nhận diện dòng log JIG thô dán trực tiếp vào Omnibar trong `tests/test_omnibar_jig_log_ingest.py`
   - Nhận diện định dạng CSV/tab-delimited log máy JIG: timestamp, unit_serial, jig_id, metric, value, unit, status.
   - Tự động phân luồng: câu chat thông thường ➔ RAG; câu ra lệnh ➔ Agent Work; chuỗi log JIG ➔ Data Gate và bộ tính toán trôi dốc EWMA.
   - Cấm phân mảnh UI: Không tạo thêm nút bấm hoặc ô Text Area riêng biệt.
 
-- [ ] T059 [US12] Triển khai Thẻ kiểm tra dòng log tức thì (Instant Log Inspection Card) trong `src/aios_habit/workspace_chat_ui.py`
+- [x] T059 [US12] Triển khai Thẻ kiểm tra dòng log tức thì (Instant Log Inspection Card) trong `src/aios_habit/workspace_chat_ui.py`
   - Trích xuất serial, tên thông số, giá trị đo, đơn vị và đối chiếu dung sai tiêu chuẩn [USL, LSL].
   - Hiển thị trực quan: Trạng thái Đạt/Cận biên/Vi phạm, tính toán xu hướng EWMA so với các unit trước của cùng JIG.
   - Cung cấp gợi ý hành động nhanh (Gửi email cảnh báo, lưu vào chuỗi theo dõi).
 
-- [ ] T060 [P] [US12] Xây dựng module sinh biểu đồ xu hướng Monozukuri / SPC chuẩn Nhật server-side trong `src/aios_habit/production_prediction/spc_chart.py` và `tests/test_spc_chart.py`
+- [x] T060 [P] [US12] Xây dựng module sinh biểu đồ xu hướng Monozukuri / SPC chuẩn Nhật server-side trong `src/aios_habit/production_prediction/spc_chart.py` và `tests/test_spc_chart.py`
   - Dùng Python thuần CPU (`matplotlib`/`pillow`), xuất ảnh PNG 2x Retina (300 DPI) và bản vector SVG.
   - Chuẩn mực QC Nhật: Phân vùng dải an toàn / chú ý / nguy hiểm (Zones A/B/C), đường giới hạn USL/UCL/CL/LSL.
   - Đánh dấu điểm đo thực tế, đường dự báo xu hướng màu cam đứt nét, nhãn chỉ thị trôi dốc.
   - Tem quản lý thông tin đóng khung (Stamp: JIG ID, công đoạn, ngày giờ, người phụ trách, chỉ số năng lực $C_{pk}$, $\sigma$).
 
-- [ ] T061 [US12] Xây dựng module gửi email cảnh báo qua `smtplib` + `email.mime` trong `src/aios_habit/production_prediction/alert_mailer.py` và `tests/test_alert_mailer.py`
+- [x] T061 [US12] Xây dựng module gửi email cảnh báo qua `smtplib` + `email.mime` trong `src/aios_habit/production_prediction/alert_mailer.py` và `tests/test_alert_mailer.py`
   - Soạn thảo email HTML tiếng Việt chuyên nghiệp, nhúng ảnh biểu đồ inline CID xem được trực tiếp trên Outlook / di động.
   - Đính kèm tệp báo cáo chi tiết Markdown.
   - Áp dụng nguyên tắc chốt duyệt (Human-in-the-loop): Agent tạo Thẻ dự thảo email (Email Proposal Preview) trên chat để người dùng duyệt trước khi gửi.
 
-- [ ] T062 [US12] Xây dựng Text Dashboard cấu hình cảnh báo và nhận lệnh tự nhiên trên Omnibar trong `src/aios_habit/production_prediction/alert_config_chat.py` và `tests/test_alert_config_chat.py`
+- [x] T062 [US12] Xây dựng Text Dashboard cấu hình cảnh báo và nhận lệnh tự nhiên trên Omnibar trong `src/aios_habit/production_prediction/alert_config_chat.py` và `tests/test_alert_config_chat.py`
   - Hiển thị bảng cấu hình dạng văn bản trực quan ngay trong tin nhắn chat (Thông tin chung, Người nhận, Điều kiện % dung sai, Cooldown chống spam, Cơ chế gộp tin).
   - Nhận diện câu lệnh chat tự nhiên để cập nhật cấu hình: thêm/xóa email, đổi ngưỡng %, đổi thời gian giãn cách.
   - Không sinh thêm bất kỳ trang Cài đặt hay form modal riêng rẽ nào.
 
-- [ ] T063 [US12] Xây dựng Background HTTP Listener API nhận streaming log JIG trong `src/aios_habit/production_prediction/stream_api.py` và `tests/test_stream_api.py`
+- [x] T063 [US12] Xây dựng Background HTTP Listener API nhận streaming log JIG trong `src/aios_habit/production_prediction/stream_api.py` và `tests/test_stream_api.py`
   - Dịch vụ HTTP Listener chạy nền lắng nghe tại cổng nội bộ (ví dụ: `POST /api/v1/jig/stream-log`).
   - Tiếp nhận JSON/NDJSON dòng log realtime từ Server nhà máy hoặc thiết bị JIG.
   - Nạp qua Data Gate `lsu_iris.py`, lưu vào SQLite đệm và cập nhật EWMA trong bộ nhớ.
 
-- [ ] T064 [US12] Tích hợp cơ chế "Lắng nghe tĩnh lặng, Cảnh báo theo sự kiện" (Silent Streaming & Event-Driven Alert) vào giao diện Workspace Chat
+- [x] T064 [US12] Tích hợp cơ chế "Lắng nghe tĩnh lặng, Cảnh báo theo sự kiện" (Silent Streaming & Event-Driven Alert) vào giao diện Workspace Chat
   - Dòng log bình thường được lưu ngầm, tuyệt đối không đẩy tin nhắn làm tràn ngập dòng chat.
   - Viên nang trạng thái (Header Live Status Capsule): hiển thị trạng thái kết nối, tốc độ dòng/phút.
   - Khi phát hiện trôi xu hướng hoặc chạm ngưỡng nguy cơ: Kích hoạt Thẻ Cảnh Báo Realtime nổi bật trên luồng chat.
 
-- [ ] T065 [US12] Triển khai phân cấp người dùng Zero-UI & Cô lập theo phiên hội thoại (Session Isolation) trong `src/aios_habit/workspace_chat_app.py` và `tests/test_session_isolation.py`
+- [x] T065 [US12] Triển khai phân cấp người dùng Zero-UI & Cô lập theo phiên hội thoại (Session Isolation) trong `src/aios_habit/workspace_chat_app.py` và `tests/test_session_isolation.py`
   - Phân loại bản chất phiên: Phiên cá nhân/văn phòng yên tĩnh 100%, chặn hoàn toàn cảnh báo máy móc.
   - Cảnh báo realtime chỉ xuất hiện trong phiên trực ban công đoạn chuyên biệt (JIG Watchdog Channel) hoặc qua kênh email độc lập.
   - Hỗ trợ thiết lập Persona/Vai trò 1 chạm qua câu chat tự nhiên trên Omnibar.

@@ -897,6 +897,32 @@ if "wsc_global_answer_language" not in st.session_state:
     st.session_state.wsc_global_answer_language = "vi"
 if "wsc_show_case_workspace" not in st.session_state:
     st.session_state.wsc_show_case_workspace = False
+if "wsc_jig_persona" not in st.session_state:
+    st.session_state.wsc_jig_persona = "ca_nhan"
+
+
+def get_jig_session_type() -> str:
+    """Return current JIG alert session type with Zero-UI isolation (US12 T065)."""
+    try:
+        from aios_habit.production_prediction.session_isolation import classify_session
+
+        persona = str(st.session_state.get("wsc_jig_persona", "ca_nhan"))
+        if persona in ("ca_nhan", "truc_ban"):
+            return persona
+        conv = str(st.session_state.get("wsc_active_conversation_id", ""))
+        return classify_session(conv)
+    except Exception:
+        return "ca_nhan"
+
+
+def apply_jig_persona_command(text: str) -> str:
+    """Apply one-touch persona command from Omnibar (US12 T065)."""
+    from aios_habit.production_prediction.session_isolation import SessionPersona, parse_persona_command
+
+    current = SessionPersona(ten_phien="", che_do=str(st.session_state.get("wsc_jig_persona", "ca_nhan")))
+    updated, reply = parse_persona_command(text, current)
+    st.session_state.wsc_jig_persona = updated.che_do
+    return reply
 
 def safe_rerun():
     try:
@@ -3179,6 +3205,39 @@ else:
                         from aios_habit.workspace_memory_ui import queue_memory_command_if_present
 
                         if queue_memory_command_if_present(q_text):
+                            safe_rerun()
+                    if q_text:
+                        from aios_habit.production_prediction.jig_chat_wire import handle_jig_chat_text
+                        from aios_habit.production_prediction.stream_api import StreamBuffer
+                        from aios_habit.workspace_chat_models import ChatMessage as _JigChatMessage
+                        from aios_habit.workspace_chat_store import save_message as _jig_save_message
+
+                        def _jig_history(jig_id: str, metric: str) -> list:
+                            try:
+                                buffer = StreamBuffer(Path("local_cases") / "jig_stream.sqlite")
+                                return buffer.recent_values(jig_id, metric)
+                            except Exception:
+                                return []
+
+                        if handle_jig_chat_text(
+                            q_text,
+                            conversation_id=active_conversation.id,
+                            locale=current_ui_locale,
+                            session_state=st.session_state,
+                            save_user=lambda content: _jig_save_message(_JigChatMessage(
+                                id=f"MSG-U-{uuid.uuid4().hex[:8].upper()}",
+                                conversation_id=active_conversation.id,
+                                role="user",
+                                content=content,
+                            )),
+                            save_assistant=lambda content: _jig_save_message(_JigChatMessage(
+                                id=f"MSG-A-{uuid.uuid4().hex[:8].upper()}",
+                                conversation_id=active_conversation.id,
+                                role="assistant",
+                                content=content,
+                            )),
+                            history_provider=_jig_history,
+                        ):
                             safe_rerun()
                     if not q_text and not user_attached_image:
                         st.error(t("question_placeholder", locale=current_ui_locale))
