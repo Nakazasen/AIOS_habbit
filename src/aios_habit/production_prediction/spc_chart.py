@@ -14,10 +14,39 @@ from typing import List, Optional, Sequence, Union
 from xml.sax.saxutils import escape
 
 try:
-    from PIL import Image, ImageDraw
+    from PIL import Image, ImageDraw, ImageFont
 except ImportError:  # pragma: no cover - Pillow is a required dependency.
     Image = None  # type: ignore
     ImageDraw = None  # type: ignore
+    ImageFont = None  # type: ignore
+
+
+_FONT_CACHE: dict = {}
+
+
+def _font(scale: int = 1, lon: bool = False):
+    """Load a Vietnamese-capable system font, fallback to Pillow default."""
+    co_chu = (20 if lon else 14) * max(1, int(scale))
+    if co_chu in _FONT_CACHE:
+        return _FONT_CACHE[co_chu]
+    ket_qua = None
+    if ImageFont is not None:
+        import os
+
+        ung_vien = [
+            os.path.join(os.environ.get("SystemRoot", r"C:\Windows"), "Fonts", "arial.ttf"),
+            r"C:\Windows\Fonts\arial.ttf",
+            r"C:\Windows\Fonts\tahoma.ttf",
+            "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+        ]
+        for duong_dan in ung_vien:
+            try:
+                ket_qua = ImageFont.truetype(duong_dan, co_chu)
+                break
+            except (OSError, ValueError):
+                continue
+    _FONT_CACHE[co_chu] = ket_qua
+    return ket_qua
 
 
 @dataclass
@@ -100,7 +129,7 @@ def render_spc_png(chart: SpcChartInput, path: str | Path, scale: int = 2) -> Pa
             continue
         y = y_of(value)
         draw.line([(margin_left, y), (margin_left + plot_w, y)], fill=color, width=max(1, scale))
-        draw.text((margin_left + plot_w + 4, y - 6 * scale), name, fill=color)
+        draw.text((margin_left + plot_w + 4, y - 6 * scale), name, fill=color, font=_font(scale))
 
     # Actual measurements.
     total = len(chart.values)
@@ -116,7 +145,7 @@ def render_spc_png(chart: SpcChartInput, path: str | Path, scale: int = 2) -> Pa
         )
         if is_anomaly:
             draw.ellipse([x - 6 * scale, y - 6 * scale, x + 6 * scale, y + 6 * scale], outline=(183, 28, 28), width=max(2, scale))
-            draw.text((x + 8 * scale, y - 10 * scale), "trôi dốc", fill=(183, 28, 28))
+            draw.text((x + 8 * scale, y - 10 * scale), "trôi dốc", fill=(183, 28, 28), font=_font(scale))
         else:
             draw.ellipse([x - 4 * scale, y - 4 * scale, x + 4 * scale, y + 4 * scale], fill=(21, 101, 192))
 
@@ -133,7 +162,7 @@ def render_spc_png(chart: SpcChartInput, path: str | Path, scale: int = 2) -> Pa
     # Frame and title.
     draw.rectangle([margin_left, margin_top, margin_left + plot_w, margin_top + plot_h], outline=(66, 66, 66))
     title = f"Biểu đồ xu hướng {chart.metric} — {chart.jig_id}".strip(" —")
-    draw.text((margin_left, 18 * scale), title, fill=(33, 33, 33))
+    draw.text((margin_left, 18 * scale), title, fill=(33, 33, 33), font=_font(scale, lon=True))
 
     # Management stamp box.
     stamp_top = margin_top + plot_h + 10 * scale
@@ -145,7 +174,7 @@ def render_spc_png(chart: SpcChartInput, path: str | Path, scale: int = 2) -> Pa
         f"σ: {chart.sigma if chart.sigma is not None else '—'}"
     )
     draw.rectangle([margin_left, stamp_top, margin_left + plot_w, stamp_top + 28 * scale], outline=(66, 66, 66))
-    draw.text((margin_left + 8 * scale, stamp_top + 8 * scale), stamp, fill=(33, 33, 33))
+    draw.text((margin_left + 8 * scale, stamp_top + 8 * scale), stamp, fill=(33, 33, 33), font=_font(scale))
     image.save(out, format="PNG", dpi=(300, 300))
     return out
 
@@ -201,12 +230,13 @@ TEN_LOAI_BIEU_DO = {
 
 
 def _tem_chung(chart: SpcChartInput) -> str:
+    sigma_txt = f"{chart.sigma:.2f}" if chart.sigma is not None else "—"
     return (
         f"JIG: {chart.jig_id} | Công đoạn: {chart.cong_doan or '—'} | "
         f"Ngày giờ: {datetime.now().strftime('%d/%m/%Y %H:%M')} | "
         f"Người phụ trách: {chart.nguoi_phu_trach or '—'} | "
         f"Cpk: {chart.cpk if chart.cpk is not None else '—'} | "
-        f"σ: {chart.sigma if chart.sigma is not None else '—'}"
+        f"σ: {sigma_txt}"
     )
 
 
@@ -253,12 +283,13 @@ def render_phan_bo_png(chart: SpcChartInput, path: str | Path, scale: int = 2, b
         ratio = (value - low) / (high - low) if high != low else 0.5
         x = margin_left + ratio * plot_w
         draw.line([(x, margin_top), (x, margin_top + plot_h)], fill=color, width=max(1, scale))
-        draw.text((x + 4, margin_top + 2 * scale), name, fill=color)
+        draw.text((x + 4, margin_top + 2 * scale), name, fill=color, font=_font(scale))
     draw.rectangle([margin_left, margin_top, margin_left + plot_w, margin_top + plot_h], outline=(66, 66, 66))
-    draw.text((margin_left, 18 * scale), f"Phân bố {chart.metric} — {chart.jig_id}".strip(" —"), fill=(33, 33, 33))
+    draw.text((margin_left, 18 * scale), f"Phân bố {chart.metric} — {chart.jig_id}".strip(" —"), fill=(33, 33, 33),
+                font=_font(scale, lon=True))
     stamp_top = margin_top + plot_h + 10 * scale
     draw.rectangle([margin_left, stamp_top, margin_left + plot_w, stamp_top + 28 * scale], outline=(66, 66, 66))
-    draw.text((margin_left + 8 * scale, stamp_top + 8 * scale), _tem_chung(chart), fill=(33, 33, 33))
+    draw.text((margin_left + 8 * scale, stamp_top + 8 * scale), _tem_chung(chart), fill=(33, 33, 33), font=_font(scale))
     image.save(out, format="PNG", dpi=(300, 300))
     return out
 
@@ -349,7 +380,7 @@ def render_so_sanh_png(charts: Sequence[SpcChartInput], path: str | Path, scale:
             continue
         y = y_of(value)
         draw.line([(margin_left, y), (margin_left + plot_w, y)], fill=color, width=max(1, scale))
-        draw.text((margin_left + plot_w + 4, y - 6 * scale), name, fill=color)
+        draw.text((margin_left + plot_w + 4, y - 6 * scale), name, fill=color, font=_font(scale))
     for idx, chart in enumerate(danh_sach):
         if not chart.values:
             continue
@@ -364,15 +395,23 @@ def render_so_sanh_png(charts: Sequence[SpcChartInput], path: str | Path, scale:
         points = [(x_of(i), y_of(v)) for i, v in enumerate(chart.values)]
         for a, b in zip(points, points[1:]):
             draw.line([a, b], fill=mau, width=max(2, scale))
-        nhan = (chart.metric or chart.jig_id)[:24]
-        draw.rectangle([margin_left + idx * 200 * scale, 34 * scale,
-                        margin_left + idx * 200 * scale + 12 * scale, 44 * scale], fill=mau)
-        draw.text((margin_left + idx * 200 * scale + 16 * scale, 32 * scale), nhan, fill=(33, 33, 33))
+        nhan = (chart.metric or chart.jig_id)
+        upper_nhan = nhan.upper()
+        for ma_mau, ten_mau in (("BLACK", "Đen"), ("MAGENTA", "Hồng"),
+                                ("CYAN", "Xanh"), ("YELLOW", "Vàng")):
+            if ma_mau in upper_nhan:
+                nhan = ten_mau
+                break
+        nhan = nhan[:28]
+        hang_chu_thich = 58 * scale
+        draw.rectangle([margin_left + idx * 200 * scale, hang_chu_thich,
+                        margin_left + idx * 200 * scale + 12 * scale, hang_chu_thich + 10 * scale], fill=mau)
+        draw.text((margin_left + idx * 200 * scale + 16 * scale, hang_chu_thich - 4 * scale), nhan, fill=(33, 33, 33), font=_font(scale))
     draw.rectangle([margin_left, margin_top, margin_left + plot_w, margin_top + plot_h], outline=(66, 66, 66))
-    draw.text((margin_left, 18 * scale), f"So sánh theo màu — {goc.jig_id}", fill=(33, 33, 33))
+    draw.text((margin_left, 18 * scale), f"So sánh theo màu — {goc.jig_id}", fill=(33, 33, 33), font=_font(scale, lon=True))
     stamp_top = margin_top + plot_h + 10 * scale
     draw.rectangle([margin_left, stamp_top, margin_left + plot_w, stamp_top + 28 * scale], outline=(66, 66, 66))
-    draw.text((margin_left + 8 * scale, stamp_top + 8 * scale), _tem_chung(goc), fill=(33, 33, 33))
+    draw.text((margin_left + 8 * scale, stamp_top + 8 * scale), _tem_chung(goc), fill=(33, 33, 33), font=_font(scale))
     image.save(out, format="PNG", dpi=(300, 300))
     return out
 
