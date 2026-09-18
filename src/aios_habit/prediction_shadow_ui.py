@@ -42,6 +42,63 @@ def explain_technical_code(code: str) -> str:
     return TECHNICAL_CODE_EXPLANATIONS.get(code.strip(), code.strip())
 
 
+def lay_danh_sach_jig(cac_hang: Any) -> List[str]:
+    """List distinct JIG codes available for charting, sorted alphabetically."""
+    from aios_habit.production_prediction.chart_selection import la_chi_so_do_duoc  # noqa: F401
+
+    danh_sach: List[str] = []
+    for hang in cac_hang or []:
+        ma_jig = ""
+        if isinstance(hang, dict):
+            ma_jig = str(hang.get("jig_id") or hang.get("ma_jig") or hang.get("JigNumber") or "").strip()
+        if ma_jig and ma_jig not in danh_sach:
+            danh_sach.append(ma_jig)
+    return sorted(danh_sach)
+
+
+def lay_danh_sach_chi_so_ve(cac_hang: Any) -> List[Dict[str, str]]:
+    """List plottable metrics with Vietnamese names, BOW/SKEW first."""
+    from aios_habit.production_prediction.chart_selection import (
+        la_chi_so_do_duoc,
+        sap_xep_chi_so_uu_tien,
+        ten_tieng_viet,
+    )
+
+    ma_chi_so: List[str] = []
+    don_vi_theo_chi_so: Dict[str, str] = {}
+    for hang in cac_hang or []:
+        if not isinstance(hang, dict):
+            continue
+        ten = str(hang.get("metric_name") or hang.get("ten_chi_so") or hang.get("metric") or "").strip()
+        if not ten or not la_chi_so_do_duoc(ten) or ten in ma_chi_so:
+            continue
+        ma_chi_so.append(ten)
+        don_vi = str(hang.get("unit") or hang.get("don_vi") or "").strip()
+        if don_vi and ten not in don_vi_theo_chi_so:
+            don_vi_theo_chi_so[ten] = don_vi
+    ket_qua: List[Dict[str, str]] = []
+    for ten in sap_xep_chi_so_uu_tien(ma_chi_so):
+        ket_qua.append({
+            "ma": ten,
+            "ten_viet": ten_tieng_viet(ten),
+            "don_vi": don_vi_theo_chi_so.get(ten, ""),
+        })
+    return ket_qua
+
+
+def trang_thai_khoi_bieu_do(cac_hang: Any) -> Dict[str, Any]:
+    """Report whether the chart block has data and what to show the user."""
+    if not cac_hang:
+        return {
+            "co_du_lieu": False,
+            "thong_bao": "Chưa có dữ liệu để vẽ biểu đồ. Vui lòng tải tệp ở bước 1 và chờ báo dữ liệu hợp lệ.",
+        }
+    return {
+        "co_du_lieu": True,
+        "thong_bao": "Đã có dữ liệu. Vui lòng chọn mã JIG, chỉ số và loại biểu đồ để xem trước.",
+    }
+
+
 def data_gate_state_summary(state_key: str, detail: Optional[str] = None) -> Dict[str, str]:
     """Provide structured, safe Vietnamese messages and next steps for all data gate states."""
     states = {
@@ -212,6 +269,96 @@ def format_unit_trace_view(trace: Optional[JoinedUnitTrace]) -> Dict[str, Any]:
     }
 
 
+def render_khoi_chon_bieu_do(cac_hang: Any, ma_goi: str = "phien_hien_tai") -> None:
+    """Render the compact chart-selection block (015-csv-chart-selector)."""
+    from aios_habit.production_prediction.chart_selection import (
+        TEN_LOAI_BIEU_DO,
+        dung_du_lieu_bieu_do,
+    )
+    from aios_habit.production_prediction.spc_chart import render_chart_png, render_chart_svg
+
+    st.markdown("---")
+    st.markdown("### 3. Chọn biểu đồ xem trước")
+    trang_thai = trang_thai_khoi_bieu_do(cac_hang)
+    if not trang_thai["co_du_lieu"]:
+        st.info(f"ℹ️ {trang_thai['thong_bao']}")
+        return
+    danh_sach_jig = lay_danh_sach_jig(cac_hang)
+    danh_sach_chi_so = lay_danh_sach_chi_so_ve(cac_hang)
+    if not danh_sach_jig or not danh_sach_chi_so:
+        st.warning("⚠️ Chưa nhận diện được mã JIG hoặc chỉ số để vẽ. Vui lòng kiểm tra lại tệp nguồn.")
+        return
+    cot1, cot2 = st.columns(2)
+    with cot1:
+        chon_jig = st.selectbox("Mã JIG", options=danh_sach_jig, key="wsc_chart_jig")
+        chon_chi_so = st.selectbox(
+            "Chỉ số cần xem",
+            options=[c["ma"] for c in danh_sach_chi_so],
+            format_func=lambda ma: next(
+                (f"{c['ten_viet']} ({c['ma']})" for c in danh_sach_chi_so if c["ma"] == ma), ma
+            ),
+            key="wsc_chart_metric",
+        )
+    with cot2:
+        chon_loai = st.selectbox(
+            "Loại biểu đồ",
+            options=["xu_huong", "phan_bo", "so_sanh_mau"],
+            format_func=lambda ma: TEN_LOAI_BIEU_DO.get(ma, ma),
+            key="wsc_chart_kind",
+        )
+        chon_anh = st.radio("Loại ảnh", options=["PNG", "SVG"], horizontal=True, key="wsc_chart_img")
+    if st.button("📊 Xem biểu đồ", key="wsc_chart_preview_btn", type="secondary"):
+        try:
+            if chon_loai == "so_sanh_mau":
+                cac_dau_vao = []
+                for chi_so in [c["ma"] for c in danh_sach_chi_so[:4]]:
+                    try:
+                        cac_dau_vao.append(dung_du_lieu_bieu_do(chon_jig, chi_so, cac_hang))
+                    except ValueError:
+                        continue
+                if not cac_dau_vao:
+                    st.warning("⚠️ Không đủ dữ liệu để so sánh. Vui lòng chọn loại biểu đồ khác.")
+                    return
+                du_lieu = cac_dau_vao
+            else:
+                du_lieu = dung_du_lieu_bieu_do(chon_jig, chon_chi_so, cac_hang)
+            if chon_anh == "SVG":
+                noi_dung_svg = render_chart_svg(du_lieu, chon_loai)
+                st.session_state["wsc_last_chart_svg"] = noi_dung_svg
+                st.markdown(noi_dung_svg, unsafe_allow_html=True)
+                st.download_button(
+                    "⬇️ Tải ảnh SVG về máy",
+                    data=noi_dung_svg.encode("utf-8"),
+                    file_name=f"bieu_do_{chon_jig}_{chon_loai}.svg",
+                    mime="image/svg+xml",
+                    key="wsc_chart_dl_svg",
+                )
+            else:
+                with tempfile.TemporaryDirectory() as tmp_d:
+                    duong_anh = Path(tmp_d) / f"bieu_do_{chon_loai}.png"
+                    render_chart_png(du_lieu, chon_loai, duong_anh)
+                    du_lieu_anh = duong_anh.read_bytes()
+                st.session_state["wsc_last_chart_png"] = du_lieu_anh
+                st.session_state["wsc_last_chart_meta"] = {
+                    "ma_jig": chon_jig,
+                    "ten_chi_so": chon_chi_so,
+                    "loai_bieu_do": chon_loai,
+                    "ma_goi": ma_goi,
+                }
+                st.image(du_lieu_anh, caption=f"{TEN_LOAI_BIEU_DO.get(chon_loai, chon_loai)} — {chon_jig}")
+                st.download_button(
+                    "⬇️ Tải ảnh PNG về máy",
+                    data=du_lieu_anh,
+                    file_name=f"bieu_do_{chon_jig}_{chon_loai}.png",
+                    mime="image/png",
+                    key="wsc_chart_dl_png",
+                )
+        except ValueError as loi:
+            st.warning(f"⚠️ {loi}")
+        except Exception:
+            st.error("❌ Không vẽ được biểu đồ lúc này. Vui lòng thử lại hoặc chọn chỉ số khác.")
+
+
 def render_lsu_data_gate(
     repository: ProductionPredictionRepository,
     on_close: Callable[[], None],
@@ -322,6 +469,28 @@ def render_lsu_data_gate(
                                 st.success("🎉 Đã đăng ký gói dữ liệu thành công vào cơ sở dữ liệu cục bộ!")
                         except Exception:
                             st.error("❌ Không thể đăng ký gói dữ liệu vào kho lúc này. Vui lòng thử lại.")
+
+                try:
+                    cac_hang_ve: List[Dict[str, Any]] = []
+                    traces_ve = st.session_state.get("wsc_last_lsu_traces")
+                    if isinstance(traces_ve, dict):
+                        danh_sach_trace = list(traces_ve.values())
+                    elif isinstance(traces_ve, list):
+                        danh_sach_trace = traces_ve
+                    else:
+                        danh_sach_trace = []
+                    for trace in danh_sach_trace:
+                        for do_dac in getattr(trace, "jig_measurements", []) or []:
+                            cac_hang_ve.append({
+                                "jig_id": getattr(do_dac, "jig_id", ""),
+                                "metric_name": getattr(do_dac, "metric_name", ""),
+                                "value": getattr(do_dac, "value", None),
+                                "unit": getattr(do_dac, "unit", ""),
+                                "event_time": str(getattr(do_dac, "event_time", "")),
+                            })
+                    render_khoi_chon_bieu_do(cac_hang_ve)
+                except Exception:
+                    st.error("❌ Không mở được khối chọn biểu đồ lúc này. Vui lòng thử lại.")
 
     with tab2:
         st.markdown("### Tra cứu chuỗi truy vết (Lô ➔ Sản phẩm ➔ JIG)")

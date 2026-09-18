@@ -212,6 +212,28 @@ def generate_all_fixtures(base_dir: Path) -> None:
     make_xlsx(ts_dir / "unit_lots.xlsx", unit_headers, ts_unit_rows)
     make_xlsx(ts_dir / "jig_outcomes.xlsx", jig_headers, ts_jig_rows)
 
+    # 8. Chart selector fixtures (015-csv-chart-selector: shared builder + 3 chart kinds)
+    chart_dir = base_dir / "chart_selector"
+    chart_jig_rows = [
+        ["J_001", "SYN_UNIT_001", "2ND-1035", "RUN_001", "2026-08-01T13:16:00+07:00", "BOW_VALUE", "0.10", "um", "v1.0", "p1.0", "OK", "", ""],
+        ["J_002", "SYN_UNIT_002", "2ND-1035", "RUN_002", "2026-08-01T13:20:00+07:00", "BOW_VALUE", "0.11", "um", "v1.0", "p1.0", "OK", "", ""],
+        ["J_003", "SYN_UNIT_003", "2ND-1035", "RUN_003", "2026-08-01T13:25:00+07:00", "BOW_VALUE", "0.12", "um", "v1.0", "p1.0", "OK", "", ""],
+        ["J_004", "SYN_UNIT_004", "2ND-1035", "RUN_004", "2026-08-01T13:30:00+07:00", "BOW_VALUE", "0.13", "um", "v1.0", "p1.0", "OK", "", ""],
+        ["J_005", "SYN_UNIT_005", "2ND-1035", "RUN_005", "2026-08-01T13:35:00+07:00", "BOW_VALUE", "0.16", "um", "v1.0", "p1.0", "OK", "", ""],
+        ["J_006", "SYN_UNIT_006", "2ND-1035", "RUN_006", "2026-08-01T13:40:00+07:00", "BOW_VALUE", "0.20", "um", "v1.0", "p1.0", "NG", "ERR_BOW_EXCEEDED", ""],
+        ["J_007", "SYN_UNIT_007", "2ND-1035", "RUN_007", "2026-08-01T13:45:00+07:00", "SKEW_VALUE", "0.02", "um", "v1.0", "p1.0", "OK", "", ""],
+        ["J_008", "SYN_UNIT_008", "2ND-1035", "RUN_008", "2026-08-01T13:50:00+07:00", "SKEW_VALUE", "0.03", "um", "v1.0", "p1.0", "OK", "", ""],
+    ]
+    make_csv(chart_dir / "jig_outcomes.csv", jig_headers, chart_jig_rows)
+    chart_dir.mkdir(parents=True, exist_ok=True)
+    (chart_dir / "depth_no_header.csv").write_text(
+        "2026.08.01,13:16:08,SYN_DEPTH_001,0.10,0.11,0.12\n"
+        "2026.08.01,13:16:09,SYN_DEPTH_002,0.11,0.12,0.13\n"
+        "2026.08.01,13:16:10,SYN_DEPTH_003,0.12,0.13,0.14\n",
+        encoding="utf-8",
+    )
+    (chart_dir / "empty.csv").write_text("", encoding="utf-8")
+
     print(f"LSU fixtures generated successfully in: {base_dir}")
 
 

@@ -17,6 +17,11 @@ from aios_habit.production_prediction.alert_config_chat import (
     parse_config_command,
     render_text_dashboard,
 )
+from aios_habit.production_prediction.chart_selection import (
+    TEN_LOAI_BIEU_DO,
+    dung_du_lieu_bieu_do,
+    hieu_lenh_ve_bieu_do,
+)
 from aios_habit.production_prediction.jig_alert_cards import build_instant_log_card
 from aios_habit.production_prediction.jig_log_ingest import (
     evaluate_single_log_ewma,
@@ -36,6 +41,7 @@ _CONFIG_VERBS = (
 _CONFIG_DASHBOARD_HINTS = ("cau hinh", "cấu hình", "cai dat", "cài đặt", "bang cau", "bảng cấu hình")
 _CONFIG_SCOPES = ("canh bao", "cảnh báo", "lsu", "jig", "email", "nguong", "ngưỡng")
 _PERSONA_HINTS = ("truc ban", "trực ban", "ca nhan", "cá nhân")
+_CHART_HINTS = ("bieu do", "biểu đồ")
 
 
 def _norm(text: str) -> str:
@@ -58,6 +64,11 @@ def is_persona_intent(text: str) -> bool:
     """Detect one-touch watchdog/personal mode requests."""
     norm = _norm(text)
     return any(hint in norm for hint in _PERSONA_HINTS)
+
+
+def is_chart_intent(text: str) -> bool:
+    """Detect natural-language chart requests for 015-csv-chart-selector."""
+    return any(hint in _norm(text) for hint in _CHART_HINTS)
 
 
 def load_alert_config(path: str | Path) -> AlertConfig:
@@ -111,12 +122,98 @@ def format_instant_card_text(card: Dict[str, Any]) -> str:
     return "\n".join(line for line in lines if line.strip())
 
 
+def _quyet_dinh_ve_bieu_do(
+    text: str,
+    chart_rows_provider: Optional[Callable[[], Any]],
+) -> JigChatOutcome:
+    """Handle a Vietnamese chart request with the shared builder (015)."""
+    cac_hang = _cac_hang_ve(chart_rows_provider)
+    if not cac_hang:
+        return JigChatOutcome(
+            handled=True,
+            assistant_text=(
+                "Chưa có dữ liệu để vẽ biểu đồ. "
+                "Vui lòng mở mục Kiểm tra dữ liệu LSU, tải tệp và chờ báo dữ liệu hợp lệ trước."
+            ),
+        )
+    danh_sach_jig = sorted({str(h.get("jig_id", "")).strip() for h in cac_hang
+                             if isinstance(h, dict) and str(h.get("jig_id", "")).strip()})
+    danh_sach_chi_so = sorted({str(h.get("metric_name", "")).strip() for h in cac_hang
+                                if isinstance(h, dict) and str(h.get("metric_name", "")).strip()})
+    lenh = hieu_lenh_ve_bieu_do(text, danh_sach_jig, danh_sach_chi_so)
+    if lenh.con_thieu:
+        return JigChatOutcome(
+            handled=True,
+            assistant_text=(
+                f"Tôi chưa rõ {', '.join(lenh.con_thieu)}. "
+                "Vui lòng cho biết thêm, ví dụ: vẽ biểu đồ độ lệch cho 2ND-1035."
+            ),
+        )
+    try:
+        from aios_habit.production_prediction.spc_chart import render_chart_png
+
+        if lenh.loai_bieu_do == "so_sanh_mau":
+            cac_dau_vao = []
+            for chi_so in danh_sach_chi_so[:4]:
+                try:
+                    cac_dau_vao.append(dung_du_lieu_bieu_do(lenh.ma_jig, chi_so, cac_hang))
+                except ValueError:
+                    continue
+            if not cac_dau_vao:
+                return JigChatOutcome(
+                    handled=True,
+                    assistant_text="Không đủ dữ liệu để so sánh. Vui lòng chọn loại biểu đồ xu hướng hoặc phân bố.",
+                )
+            du_lieu: Any = cac_dau_vao
+        else:
+            du_lieu = dung_du_lieu_bieu_do(lenh.ma_jig, lenh.ten_chi_so, cac_hang)
+        import tempfile
+        from pathlib import Path as _Path
+
+        with tempfile.TemporaryDirectory() as tmp_d:
+            duong_anh = _Path(tmp_d) / "bieu_do_chat.png"
+            render_chart_png(du_lieu, lenh.loai_bieu_do, duong_anh)
+            anh_bytes = duong_anh.read_bytes()
+    except ValueError as loi:
+        return JigChatOutcome(handled=True, assistant_text=f"⚠️ {loi}")
+    except Exception:
+        return JigChatOutcome(
+            handled=True,
+            assistant_text="Không vẽ được biểu đồ lúc này. Vui lòng thử lại hoặc chọn chỉ số khác ở Thẻ 1.",
+        )
+    ten_loai = TEN_LOAI_BIEU_DO.get(lenh.loai_bieu_do, lenh.loai_bieu_do)
+    return JigChatOutcome(
+        handled=True,
+        assistant_text=(
+            f"Đã vẽ {ten_loai} cho {lenh.ma_jig} — {lenh.ten_chi_so}. "
+            "Ảnh đã lưu vào phiên để xem lại ở Thẻ 1 và dùng cho email cảnh báo."
+        ),
+        chart_png=anh_bytes,
+        chart_meta={"ma_jig": lenh.ma_jig, "ten_chi_so": lenh.ten_chi_so,
+                    "loai_bieu_do": lenh.loai_bieu_do},
+    )
+
+
 @dataclass
 class JigChatOutcome:
     handled: bool = False
     assistant_text: str = ""
     new_persona: Optional[str] = None
     config_changed: bool = False
+    chart_png: Optional[bytes] = None
+    chart_meta: Optional[Dict[str, Any]] = None
+
+
+def _cac_hang_ve(rows_provider: Optional[Callable[[], Any]]) -> List[Any]:
+    if rows_provider is None:
+        return []
+    try:
+        rows = rows_provider()
+    except Exception:
+        return []
+    if not rows:
+        return []
+    return list(rows)
 
 
 def decide_jig_action(
@@ -125,6 +222,7 @@ def decide_jig_action(
     persona_che_do: str = "ca_nhan",
     alert_config: Optional[AlertConfig] = None,
     history_provider: Optional[Callable[[str, str], List[float]]] = None,
+    chart_rows_provider: Optional[Callable[[], Any]] = None,
 ) -> JigChatOutcome:
     """Pure decision: JIG log, config command, persona command, or nothing."""
     config = alert_config or AlertConfig()
@@ -149,6 +247,8 @@ def decide_jig_action(
         if len(parsed) > 1:
             reply += f"\nĐã nhận thêm {len(parsed) - 1} dòng log trong cùng tin nhắn."
         return JigChatOutcome(handled=True, assistant_text=reply)
+    if is_chart_intent(text):
+        return _quyet_dinh_ve_bieu_do(text, chart_rows_provider)
     if is_config_intent(text):
         updated, loi_nhan = parse_config_command(text, config)
         changed = updated.to_dict() != config.to_dict()
@@ -183,6 +283,7 @@ def handle_jig_chat_text(
     save_assistant: Callable[[str], None],
     config_path: str | Path = Path("local_cases") / "jig_alert_config.json",
     history_provider: Optional[Callable[[str, str], List[float]]] = None,
+    chart_rows_provider: Optional[Callable[[], Any]] = None,
 ) -> bool:
     """App entry: persist user message, handle JIG/config/persona, reply.
 
@@ -199,10 +300,17 @@ def handle_jig_chat_text(
         persona_che_do=persona_che_do,
         alert_config=config,
         history_provider=history_provider,
+        chart_rows_provider=chart_rows_provider,
     )
     if not outcome.handled:
         return False
     save_user((text or "").strip())
+    if outcome.chart_png:
+        try:
+            session_state["wsc_last_chart_png"] = outcome.chart_png
+            session_state["wsc_last_chart_meta"] = outcome.chart_meta or {}
+        except Exception:
+            pass
     if outcome.new_persona in ("ca_nhan", "truc_ban"):
         try:
             session_state["wsc_jig_persona"] = outcome.new_persona

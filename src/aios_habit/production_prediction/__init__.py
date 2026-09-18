@@ -12,6 +12,7 @@ __all__ = [
     "lsu_iris",
     "jig_log_ingest",
     "spc_chart",
+    "chart_selection",
     "alert_mailer",
     "alert_config_chat",
     "stream_api",

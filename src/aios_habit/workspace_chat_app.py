@@ -3219,6 +3219,29 @@ else:
                             except Exception:
                                 return []
 
+                        def _chart_rows() -> list:
+                            try:
+                                traces_ve = st.session_state.get("wsc_last_lsu_traces")
+                                if isinstance(traces_ve, dict):
+                                    danh_sach = list(traces_ve.values())
+                                elif isinstance(traces_ve, list):
+                                    danh_sach = traces_ve
+                                else:
+                                    return []
+                                cac_hang: list = []
+                                for trace in danh_sach:
+                                    for do_dac in getattr(trace, "jig_measurements", []) or []:
+                                        cac_hang.append({
+                                            "jig_id": getattr(do_dac, "jig_id", ""),
+                                            "metric_name": getattr(do_dac, "metric_name", ""),
+                                            "value": getattr(do_dac, "value", None),
+                                            "unit": getattr(do_dac, "unit", ""),
+                                            "event_time": str(getattr(do_dac, "event_time", "")),
+                                        })
+                                return cac_hang
+                            except Exception:
+                                return []
+
                         if handle_jig_chat_text(
                             q_text,
                             conversation_id=active_conversation.id,
@@ -3237,6 +3260,7 @@ else:
                                 content=content,
                             )),
                             history_provider=_jig_history,
+                            chart_rows_provider=_chart_rows,
                         ):
                             safe_rerun()
                     if not q_text and not user_attached_image:
