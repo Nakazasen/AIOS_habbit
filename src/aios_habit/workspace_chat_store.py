@@ -1,6 +1,7 @@
 import json
 import logging
 import os
+import re
 import threading
 import uuid
 from dataclasses import asdict
@@ -118,6 +119,56 @@ def save_collection(collection: KnowledgeCollection) -> KnowledgeCollection:
         items.append(collection)
     atomic_write_jsonl(COLLECTIONS_FILE, items)
     return collection
+
+
+def preset_collection_id(name: str) -> str:
+    """Stable collection id for one preset library (one store per preset)."""
+    slug = re.sub(r"[^a-z0-9]+", "-", str(name or "").strip().casefold())
+    slug = re.sub(r"-+", "-", slug).strip("-")[:40] or "kho"
+    return f"kho-{slug}"
+
+
+def ensure_preset_collection(
+    name: str,
+    description: str,
+    folder: str,
+    *,
+    local_fallback_root: Optional[Path] = None,
+) -> KnowledgeCollection:
+    """Create or reuse a dedicated collection for one preset store.
+
+    Each preset owns its collection so joining a second preset never mixes
+    or replaces the first one. Storage checks stay inside
+    ``relocate_collection_storage`` (snapshot + quick_check + conflict).
+    """
+    wanted = str(name or "").strip()
+    if not wanted:
+        raise ValueError("preset_name_required")
+    raw_folder = str(folder or "").strip()
+    if not raw_folder:
+        raise ValueError("storage_root_must_be_absolute")
+    collection_id = preset_collection_id(wanted)
+    existing = load_collection(collection_id)
+    if existing is not None:
+        return existing
+    created = KnowledgeCollection(
+        id=collection_id,
+        title=wanted,
+        description=str(description or "").strip(),
+        kind=COLLECTION_KIND_KNOWLEDGE,
+        storage_root="",
+    )
+    save_collection(created)
+    fallback = (
+        Path(local_fallback_root)
+        if local_fallback_root is not None
+        else Path.cwd() / "local_cases" / "workspace_chat_fallback"
+    )
+    return relocate_collection_storage(
+        collection_id,
+        raw_folder,
+        local_fallback_root=fallback,
+    )
 
 
 COLLECTION_INDEX_BASENAME = "library.sqlite"
