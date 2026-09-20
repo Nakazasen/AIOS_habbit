@@ -1,0 +1,52 @@
+{
+  "version": "v1",
+  "created": "2026-09-19",
+  "note": "5 mạch hội thoại từ NotebookLM (75 nguồn), chuyển câu kể thành câu hỏi, gắn tệp kỳ vọng đúng tên trong sổ MOM/Opcenter. Đo gợi ý bám mạch, không đo BGE.",
+  "threads": [
+    {
+      "thread_id": "ams-manual-supply",
+      "source": "Báo_cáo_lỗi_xuất_kho_AMS.xlsx",
+      "turns": [
+        "Khi xuất kho thủ công bằng Manual Supply Line mà robot ACR không chạy ra gắp thùng thì hệ thống hiểu thế nào?",
+        "Vì sao ô kệ đang có hàng lại thành ô trống trên phần mềm WMS?",
+        "Thùng Oricon mới nhập kho bị chỉ định vào đúng tọa độ trống đó thì chuyện gì xảy ra?"
+      ]
+    },
+    {
+      "thread_id": "seisan-st-co",
+      "source": "生産履歴登録システム_着完工登録システム制作仕様_r2_2025-2-17_-_副本.pdf",
+      "turns": [
+        "Ở công đoạn C-1, quét mã đăng ký ST thì thiết bị HT gửi tín hiệu đi đâu bằng giao thức gì?",
+        "Khi xong công đoạn C-10 và quét đăng ký CO, phần mềm trên HT tổng hợp mốc thời gian thành gì?",
+        "Tập tin CSV tổng hợp được tải lên PLC bằng giao thức gì để kích hoạt việc gì?"
+      ]
+    },
+    {
+      "thread_id": "revup-manual",
+      "source": "MOMのRevUp手作業方法_20260324.pptx",
+      "turns": [
+        "RevUp bắt buộc chuyển đổi thủ công thì phải chỉnh 3 đối tượng Modeling nào trên Opcenter?",
+        "Mở Revision mới rồi tích cờ gì và bấm nút gì để kích hoạt?",
+        "Sau khi bật cờ còn phải cập nhật thủ công ở đâu cho từng đơn sản xuất?"
+      ]
+    },
+    {
+      "thread_id": "matecon-agv",
+      "source": "マテコン操作手順書_v001_生産技術_TV.pdf",
+      "turns": [
+        "Xe AGV kẹt dừng giữa chừng thì di chuyển xe về đâu rồi làm gì để xe tự dò lại vị trí?",
+        "Sau khi xe tự dừng ở địa chỉ xác nhận và Matecon báo khởi động lại thì kiểm tra khu vực nào?",
+        "Xe đỗ trên RFID và trên băng từ thì nhập Start Addr khác nhau thế nào trước khi nhấn START?"
+      ]
+    },
+    {
+      "thread_id": "mom-data-flags",
+      "source": "MOMデータ連携説明_20251220.pdf",
+      "turns": [
+        "Vận chuyển vật tư từ kho ra dây chuyền theo dõi mốc thời gian qua bảng nào?",
+        "Robot ACR gắp thùng và đặt thùng thành công thì cờ nào chuyển sang 1?",
+        "CTU hoặc AGV tiếp quản thùng thì cờ DELIVERY_FIN_FLG ghi nhận thế nào khi đang đi và khi giao xong?"
+      ]
+    }
+  ]
+}

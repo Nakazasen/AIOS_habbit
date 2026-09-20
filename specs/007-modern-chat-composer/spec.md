@@ -70,6 +70,28 @@ Người dùng có thể chọn động cơ AI đang dùng ngay trong thanh hỏ
 1. **Given** composer đang mở, **When** người dùng mở lựa chọn Mô hình AI, **Then** họ thấy các lựa chọn Gemini Web, C-AGENT API và Nakazasen Router.
 2. **Given** người dùng chọn C-AGENT, **When** họ cần cấu hình AgentFlow, **Then** cấu hình URL chỉ hiện trong phần cài đặt gọn, không chiếm vùng hỏi chính.
 
+### Câu chuyện 5 — Gợi ý câu hỏi mở đầu từ tài liệu trong sổ (Ưu tiên: P1)
+
+Người không chuyên mở cuộc trò chuyện mới thấy ngay 3 câu gợi ý sinh từ tài liệu đang bật trong sổ, bấm một câu là gửi luôn, không phải nghĩ câu hỏi.
+
+**Vì sao ưu tiên này**: Ô chat trống làm người mới đứng hình. Gợi ý theo đúng tài liệu trong sổ giúp họ bắt đầu ngay và hỏi trúng kho.
+
+**Kiểm thử độc lập**: Sổ có tài liệu thì hiện đúng 3 gợi ý nhắc tên tài liệu, sổ chưa có nguồn thì không hiện gợi ý mà giữ thông báo thiếu ngữ cảnh hiện có.
+
+**Tình huống nghiệm thu**:
+
+1. **Cho** sổ có tài liệu đang bật, **khi** người dùng mở cuộc trò chuyện mới, **thì** họ thấy 3 câu gợi ý nhắc đúng tên tài liệu trong sổ.
+2. **Cho** người dùng bấm một câu gợi ý, **khi** câu được gửi, **then** câu hỏi gửi đi đúng chữ câu gợi ý đó.
+3. **Cho** sổ chưa có nguồn, **khi** người dùng mở cuộc trò chuyện, **then** không hiện gợi ý mà giữ thông báo thiếu ngữ cảnh.
+
+### Câu chuyện 6 — Gợi ý câu tiếp theo sau mỗi câu trả lời (Ưu tiên: P2)
+
+Người dùng đọc xong câu trả lời thấy tiếp 3 câu gợi ý theo sau dựa trên trích dẫn vừa nhận, bấm là hỏi tiếp.
+
+**Vì sao ưu tiên này**: Giữ mạch tìm hiểu cho người không chuyên, khỏi nghĩ câu tiếp theo.
+
+**Kiểm thử độc lập**: Câu trả lời có trích dẫn thì gợi ý nhắc đúng nhãn trích dẫn, không có trích dẫn thì gợi ý chung chung mà vẫn đúng ngữ cảnh sổ.
+
 ### Edge Cases
 
 - Khi người dùng gửi nội dung trống và không có ảnh, hệ thống vẫn hiển thị thông báo hướng dẫn hiện có.
@@ -92,6 +114,8 @@ Người dùng có thể chọn động cơ AI đang dùng ngay trong thanh hỏ
 - **FR-009**: Cấu hình và kiểm tra kết nối chuyên sâu MUST được thu gọn, không xuất hiện trong tiêu đề cuộc trò chuyện hoặc vùng hỏi mặc định.
 - **FR-010**: Composer MUST hiển thị hành động gửi dưới dạng mũi tên biểu tượng nhỏ nằm trong composer; không hiển thị một nút chữ gửi/hỏi lớn bên ngoài vùng soạn.
 - **FR-011**: Khi câu hỏi đang chờ chuẩn bị tài liệu, hành động mũi tên MUST đổi thành biểu tượng dừng trong chính composer và người dùng có thể hủy câu hỏi chờ đó.
+- **FR-012**: Hệ thống PHẢI hiện tối đa 3 câu gợi ý mở đầu sinh từ tên tài liệu đang bật trong sổ, nếu chưa bật nguồn nào thì dùng tên tài liệu trong sổ, bấm gợi ý PHẢI gửi đúng chữ câu đó.
+- **FR-013**: Sau mỗi câu trả lời có trích dẫn, hệ thống PHẢI hiện tối đa 3 câu gợi ý tiếp theo nối mạch câu đang hỏi và ghi tên tài liệu dễ hiểu thay vì mã trích dẫn, chữ gửi đi PHẢI mang tên tài liệu đầy đủ kèm câu hỏi và ý chính câu trả lời trước để câu trả lời bám đúng mạch.
 
 ## Success Criteria *(mandatory)*
 
@@ -102,6 +126,7 @@ Người dùng có thể chọn động cơ AI đang dùng ngay trong thanh hỏ
 - **SC-003**: Composer vẫn hiển thị đầy đủ vùng nhập và các thao tác chính ở chiều rộng 360 px trở lên.
 - **SC-004**: Kiểm thử giao diện liên quan đến Workspace Chat hiện có tiếp tục vượt qua sau thay đổi.
 - **SC-005**: Người dùng có thể chọn Mô hình AI, thêm hoặc dán ảnh, xem thumbnail và gửi câu hỏi mà không cần rời composer.
+- **SC-006**: Sổ có tài liệu thì 3 gợi ý mở đầu nhắc đúng tên tài liệu, bấm gợi ý gửi đúng chữ, sổ chưa có nguồn thì không hiện gợi ý.
 
 ## Assumptions
 

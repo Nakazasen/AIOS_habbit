@@ -60,3 +60,30 @@
 ## Implementation Strategy
 
 Implement and validate the P1 composer first, then add progressive attachment, model selection, and keyboard/responsive refinements. Keep explicit send as the behavioral boundary throughout. For widget state management, adhere strictly to Streamlit's lifecycle: never mutate widget-associated keys after widget instantiation in the same run; use deferred reset flags evaluated prior to instantiation.
+
+## Mở rộng: Gợi ý câu hỏi mở đầu và câu tiếp theo (phiên 2026-09-19, không tạo spec mới)
+
+**Phạm vi**: Tối đa 3 gợi ý sinh từ tên tài liệu đang bật, bấm là gửi đúng chữ, sổ chưa có nguồn thì không hiện. Sau câu trả lời có trích dẫn thì gợi ý tiếp theo nhắc đúng nhãn trích dẫn.
+
+- [x] T013 Hàm sinh gợi ý mở đầu và gợi ý tiếp theo trong `src/aios_habit/question_suggestions.py`, có test trong `tests/test_question_suggestions.py`
+- [x] T014 Hiện nút gợi ý trên composer và sau câu trả lời trong `src/aios_habit/workspace_chat_app.py`
+- [x] T015 Chạy kiểm chứng `compileall`, kiểm thử liên quan, quét tiếng Việt, `cli audit` đạt `PASS`, `import workspace_chat_app` thành công
+
+**Bằng chứng ngày 2026-09-19**: `compileall` sạch, `test_question_suggestions + test_shared_mailbox + test_shared_library_presets` **12 passed**, quét tiếng Việt **PASS**, `cli audit` **PASS**, `import workspace_chat_app` thành công, `git diff --check` sạch.
+
+## Mở rộng: Bộ đo 5 mạch bám mạch (phiên 2026-09-19, không tạo spec mới)
+
+**Phạm vi**: 5 mạch từ NotebookLM chuyển thành 15 câu hỏi đóng băng kèm tệp kỳ vọng, cả 5 tệp đã đối chiếu có trong sổ. Đo gợi ý bám mạch, không đo BGE.
+
+- [x] T016 Bộ đo đóng băng trong `tests/fixtures/suggestion_threads/v1.json`, 5 mạch 15 câu, cả 5 tệp kỳ vọng đã đối chiếu có trong sổ
+- [x] T017 Chạy bộ đo sau mỗi lần đổi mã gợi ý, ghi đạt hoặc loại theo bám mạch câu 2 và 3
+
+**Bằng chứng T017 ngày 2026-09-19**: `test_suggestion_threads + test_question_suggestions` **14 passed**. Vòng đo bắt được nút thứ ba thiếu nguồn nên đã sửa để cả 3 nút bám nguồn và tên đầy đủ khi gửi.
+
+## Đo chất lượng trả lời 8 mạch (phiên 2026-09-19, không tạo spec mới)
+
+**Phạm vi**: Hệ ta trả lời 24 câu trên văn bản thật trong sổ bằng đường nhẹ lexical, kiểm tra nguồn kỳ vọng có trong trích dẫn. Đo bám nguồn, chưa chấm đúng sai chuyên môn.
+
+- [x] T018 Chạy 24 câu qua `local_runs/run_thread_answers.py`, ghi trúng nguồn và thời gian vào `local_runs/thread_answer_probe/report.json`
+
+**Bằng chứng T018 ngày 2026-09-19**: trúng nguồn **20/24**, mỗi câu **0.05-0.14 giây**. 4 câu trượt đều là câu mở đầu chưa có mạch, các câu sau có mạch đều trúng. Đường lexical chỉ tìm chữ, câu hỏi tiếng Việt hỏi nội dung tiếng Nhật dễ trượt, ca BGE theo nghĩa để nhịp đêm.

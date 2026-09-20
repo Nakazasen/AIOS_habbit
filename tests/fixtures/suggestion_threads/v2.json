@@ -1,0 +1,37 @@
+{
+  "version": "v2",
+  "created": "2026-09-19",
+  "note": "3 mạch bổ sung kiểu so sánh, tra số liệu và tiếng Nhật. Mạch 1 thay tệp tra cứu thiếu bằng bản đã kiểm chứng trong sổ, có ghi rõ thay thế.",
+  "substitutions": [
+    "Không thay thế. Tệp ORICON_STAUS早見表.xlsx có trong sổ, lần đối chiếu trước tìm sai vì thiếu dấu gạch dưới"
+  ],
+  "threads": [
+    {
+      "thread_id": "compare-oricon",
+      "sources": ["ORICON_STAUS早見表.xlsx", "ORICON_STATUS_変換ツール_完成版.xlsx"],
+      "turns": [
+        "Trong tệp ORICON_STAUS早見表.xlsx, bảng tra cứu mã ORICON_STATUS giải thích ý nghĩa các bit lỗi thế nào tại cổng Oricon Gate?",
+        "Còn tệp ORICON_STATUS_変換ツール_完成版.xlsx xử lý chuỗi Hex 0201000040000000 nhập vào ô B3 thế nào để tra cứu các bit lỗi đó?",
+        "So sánh hai tệp này, điểm khác biệt cốt lõi về mục đích và cơ chế giữa bảng tra cứu tĩnh và công cụ chuyển đổi tự động là gì?"
+      ]
+    },
+    {
+      "thread_id": "numeric-flags",
+      "sources": ["生産履歴登録システム_着完工登録システム制作仕様_r2_2025-2-17_-_副本.pdf"],
+      "turns": [
+        "Khi nhập lệnh dừng cấp vật tư trên HT, mã trạng thái nào ghi vào cột STATUS1 của bảng StatusCodeLinkage_Ver00?",
+        "Với mã STATUS1 = SS đó, hệ thống MOM cập nhật cờ MOVE_ORDER_FLG sang số mấy trong bảng T_PARTS_OUT?",
+        "Khi gửi lệnh khôi phục với mã STATUS1 = SR, cờ MOVE_ORDER_FLG chuyển sang số bao nhiêu để kích hoạt lại?"
+      ]
+    },
+    {
+      "thread_id": "japanese-revup",
+      "sources": ["MOMのRevUp手作業方法_20260324.pptx"],
+      "turns": [
+        "Khi RevUp thủ công trên Opcenter, 3 đối tượng Modeling nào cần chỉnh sửa?",
+        "Với 3 đối tượng Workflow, ERP Route và ERP BOM đó, các bước trên giao diện để bật cờ Is ROR cho phiên bản mới là gì?",
+        "Sau khi bật cờ Is ROR, vào màn hình Mfg Order cập nhật thủ công hai mục nào cho từng đơn hàng?"
+      ]
+    }
+  ]
+}
