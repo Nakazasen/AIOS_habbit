@@ -15,6 +15,7 @@ if not os.environ.get("STREAMLIT_SERVER_PORT"):
 import streamlit as st
 import uuid
 import time
+import json
 from concurrent.futures import ThreadPoolExecutor
 from threading import Event
 from io import BytesIO
@@ -1490,6 +1491,18 @@ elif selected_cluster == "advanced" and not is_lsu:
     st.session_state.wsc_show_lsu_data_gate = True
     safe_rerun()
 
+if st.sidebar.button(
+    f"🎓 {t('teach_entry_button', locale=current_ui_locale)}",
+    key="btn_teach_entry",
+    use_container_width=True,
+    help=t("teach_entry_help", locale=current_ui_locale),
+):
+    st.session_state.wsc_show_case_workspace = True
+    st.session_state.wsc_show_lsu_data_gate = False
+    st.session_state["wsc_workspace_view_mode_pending"] = "interview"
+    safe_rerun()
+st.sidebar.caption(t("teach_entry_help", locale=current_ui_locale))
+
 with st.sidebar.expander(t("sidebar_advanced_tools", locale=current_ui_locale), expanded=(selected_cluster == "advanced")):
     st.caption(t("sidebar_advanced_tools_help", locale=current_ui_locale))
     if st.button(t("sidebar_lsu_background_tool", locale=current_ui_locale), key="wsc_open_lsu_data_gate_btn", use_container_width=True):
@@ -1594,7 +1607,10 @@ if active_nb_id is None:
         ensure_default_collection()
         shared_collection = load_collection(DEFAULT_COLLECTION_ID)
         path_key = "wsc_shared_library_path"
-        if path_key not in st.session_state:
+        pending_path = st.session_state.pop("wsc_shared_library_path_pending", None)
+        if pending_path is not None:
+            st.session_state[path_key] = str(pending_path)
+        elif path_key not in st.session_state:
             st.session_state[path_key] = (
                 shared_collection.storage_root if shared_collection is not None else ""
             )
@@ -1631,7 +1647,7 @@ if active_nb_id is None:
             )
 
         if btn_reset:
-            st.session_state[path_key] = ""
+            st.session_state["wsc_shared_library_path_pending"] = ""
             try:
                 from aios_habit.workspace_chat_rag_v2_adapter import (
                     WorkspaceChatRagV2CanaryConfig,
@@ -1707,6 +1723,296 @@ if active_nb_id is None:
                     "shared_library_io_error", locale=current_ui_locale
                 )
             safe_rerun()
+
+        st.markdown("---")
+        st.markdown(t("shared_preset_heading", locale=current_ui_locale))
+        st.caption(t("shared_preset_help", locale=current_ui_locale))
+        try:
+            from aios_habit.shared_library_presets import load_presets
+
+            presets = load_presets(Path("local_cases/shared_presets"))
+        except Exception:
+            presets = []
+        if not presets:
+            st.caption(t("shared_preset_empty", locale=current_ui_locale))
+        for preset in presets:
+            info = preset.name
+            if preset.description:
+                info += f" — {preset.description}"
+            extra = []
+            if preset.doc_count:
+                extra.append(f"{preset.doc_count} tài liệu")
+            if preset.updated_at:
+                extra.append(preset.updated_at)
+            if preset.version:
+                extra.append(preset.version)
+            if extra:
+                info += " (" + ", ".join(extra) + ")"
+            row_name, row_btn = st.columns([3, 1])
+            with row_name:
+                st.write(info)
+            with row_btn:
+                if st.button(
+                    t("shared_preset_join", locale=current_ui_locale),
+                    key=f"btn_join_preset_{preset.name}",
+                    use_container_width=True,
+                ):
+                    try:
+                        from aios_habit.workspace_chat_rag_v2_adapter import (
+                            WorkspaceChatRagV2CanaryConfig,
+                        )
+                        from aios_habit.workspace_chat_store import ensure_preset_collection
+
+                        rag_preset_cfg = WorkspaceChatRagV2CanaryConfig.from_env()
+                        fallback_preset = rag_preset_cfg.runtime_root / rag_preset_cfg.requested_profile
+                        joined = ensure_preset_collection(
+                            preset.name,
+                            preset.description,
+                            preset.folder,
+                            local_fallback_root=fallback_preset,
+                        )
+                        st.session_state.wsc_action_message = (
+                            t("shared_library_joined", locale=current_ui_locale)
+                            + f" ({joined.title})"
+                        )
+                    except ValueError as exc:
+                        reason = str(exc)
+                        preset_errors = {
+                            "preset_name_required": "shared_library_bad_path",
+                            "storage_root_must_be_absolute": "shared_library_need_path",
+                            "storage_root_conflict": "shared_library_conflict",
+                            "library_writer_busy": "shared_library_busy",
+                            "library_invalid": "shared_library_invalid",
+                            "shared_library_remote_wal_unsupported": (
+                                "shared_library_remote_wal_unsupported"
+                            ),
+                            "library_io_error": "shared_library_io_error",
+                        }
+                        st.session_state.wsc_action_error = t(
+                            preset_errors.get(reason, "shared_library_bad_path"),
+                            locale=current_ui_locale,
+                        )
+                    except OSError:
+                        st.session_state.wsc_action_error = t(
+                            "shared_library_io_error", locale=current_ui_locale
+                        )
+                    safe_rerun()
+
+        st.markdown(t("shared_preset_request_heading", locale=current_ui_locale))
+        st.caption(t("shared_preset_request_help", locale=current_ui_locale))
+        try:
+            from aios_habit.shared_library_presets import load_presets as _load_presets
+            from aios_habit.shared_mailbox import (
+                append_request as _mailbox_append,
+                is_local_store_folder as _mailbox_is_local,
+                list_requests as _mailbox_list,
+                mark_done as _mailbox_done,
+            )
+            from aios_habit.workspace_chat_store import load_collections as _load_cols
+
+            _mailbox_presets = _load_presets(Path("local_cases/shared_presets"))
+        except Exception:
+            _mailbox_presets = []
+            _load_cols = None
+        _dest_options: Dict[str, str] = {}
+        for _preset in _mailbox_presets or []:
+            _dest_options.setdefault(_preset.name, _preset.folder)
+        if _load_cols is not None:
+            try:
+                for _col in _load_cols():
+                    _root = str(getattr(_col, "storage_root", "") or "").strip()
+                    if _root:
+                        _dest_options.setdefault(str(_col.title or _col.id), _root)
+            except Exception:
+                pass
+        if _dest_options:
+            _dest_name = st.selectbox(
+                t("shared_mailbox_store_label", locale=current_ui_locale),
+                options=sorted(_dest_options.keys()),
+                key="wsc_mailbox_store",
+            )
+            _dest_folder = _dest_options.get(str(_dest_name), "")
+            try:
+                import getpass as _getpass
+
+                _default_sender = _getpass.getuser()
+            except Exception:
+                _default_sender = ""
+            if "wsc_mailbox_sender" not in st.session_state and _default_sender:
+                st.session_state["wsc_mailbox_sender"] = _default_sender
+            st.text_input(
+                t("shared_mailbox_name_label", locale=current_ui_locale),
+                key="wsc_mailbox_sender",
+            )
+            st.text_input(
+                t("shared_preset_request_heading", locale=current_ui_locale),
+                placeholder=t("shared_preset_request_placeholder", locale=current_ui_locale),
+                key="wsc_preset_request_text",
+                label_visibility="collapsed",
+            )
+            if st.button(
+                t("shared_preset_request_send", locale=current_ui_locale),
+                key="btn_preset_request",
+            ):
+                _request_text = str(st.session_state.get("wsc_preset_request_text") or "").strip()
+                _sender = str(st.session_state.get("wsc_mailbox_sender") or "").strip()
+                if not _request_text:
+                    st.session_state.wsc_action_error = t(
+                        "shared_preset_request_need", locale=current_ui_locale
+                    )
+                elif not _sender:
+                    st.session_state.wsc_action_error = t(
+                        "shared_mailbox_need_name", locale=current_ui_locale
+                    )
+                else:
+                    try:
+                        _mailbox_append(_dest_folder, str(_dest_name), _request_text, _sender)
+                        st.session_state.wsc_action_message = t(
+                            "shared_preset_request_done", locale=current_ui_locale
+                        )
+                    except ValueError as exc:
+                        _reason = str(exc)
+                        st.session_state.wsc_action_error = t(
+                            "shared_library_busy" if _reason == "library_writer_busy" else "shared_preset_request_error",
+                            locale=current_ui_locale,
+                        )
+                    except OSError:
+                        st.session_state.wsc_action_error = t(
+                            "shared_library_io_error", locale=current_ui_locale
+                        )
+                safe_rerun()
+            try:
+                if _dest_folder and _mailbox_is_local(_dest_folder):
+                    st.caption(t("shared_mailbox_local_note", locale=current_ui_locale))
+            except Exception:
+                pass
+            st.markdown(t("shared_mailbox_list_heading", locale=current_ui_locale))
+            try:
+                _requests = _mailbox_list(_dest_folder) if _dest_folder else []
+            except Exception:
+                _requests = []
+            if not _requests:
+                st.caption(t("shared_mailbox_empty", locale=current_ui_locale))
+            for _req in _requests[:20]:
+                _status = (
+                    t("shared_mailbox_status_done", locale=current_ui_locale)
+                    if _req.status == "done"
+                    else t("shared_mailbox_status_open", locale=current_ui_locale)
+                )
+                _line = f"{_req.text} — {_req.requested_by} ({_status})"
+                if _req.status == "done" and _req.handled_by:
+                    _line += f", {t('shared_mailbox_handled_by', locale=current_ui_locale)} {_req.handled_by}"
+                _r_col, _b_col = st.columns([3, 1])
+                with _r_col:
+                    st.write(_line)
+                with _b_col:
+                    if _req.status != "done" and st.button(
+                        t("shared_mailbox_mark_done", locale=current_ui_locale),
+                        key=f"btn_mailbox_done_{_req.request_id}",
+                        use_container_width=True,
+                    ):
+                        _handler = str(st.session_state.get("wsc_mailbox_sender") or "").strip()
+                        if not _handler:
+                            st.session_state.wsc_action_error = t(
+                                "shared_mailbox_need_name", locale=current_ui_locale
+                            )
+                        else:
+                            try:
+                                _mailbox_done(_dest_folder, _req.request_id, _handler)
+                                st.session_state.wsc_action_message = t(
+                                    "shared_preset_request_done", locale=current_ui_locale
+                                )
+                            except ValueError as exc:
+                                _reason = str(exc)
+                                st.session_state.wsc_action_error = t(
+                                    "shared_library_busy" if _reason == "library_writer_busy" else "shared_preset_request_error",
+                                    locale=current_ui_locale,
+                                )
+                            except OSError:
+                                st.session_state.wsc_action_error = t(
+                                    "shared_library_io_error", locale=current_ui_locale
+                                )
+                        safe_rerun()
+        else:
+            st.caption(t("shared_preset_empty", locale=current_ui_locale))
+
+        st.markdown(t("shared_library_create_heading", locale=current_ui_locale))
+        st.caption(t("shared_library_create_help", locale=current_ui_locale))
+        st.text_input(
+            t("shared_library_create_name", locale=current_ui_locale),
+            placeholder=t("shared_library_create_name_placeholder", locale=current_ui_locale),
+            key="wsc_new_library_name",
+        )
+        new_lib_col, new_lib_btn = st.columns([3, 1])
+        with new_lib_col:
+            if st.button(
+                t("shared_library_choose", locale=current_ui_locale),
+                key="btn_pick_new_library",
+                use_container_width=True,
+            ):
+                chosen_new, picker_new_error = choose_local_folder(
+                    title=t("shared_library_choose", locale=current_ui_locale),
+                )
+                if picker_new_error:
+                    st.session_state.wsc_action_error = safe_vietnamese_ui_message(
+                        picker_new_error, "Không thể mở thư mục đã chọn."
+                    )
+                elif chosen_new:
+                    st.session_state["wsc_new_library_folder"] = chosen_new
+                safe_rerun()
+        with new_lib_btn:
+            if st.button(
+                t("shared_library_create_button", locale=current_ui_locale),
+                key="btn_create_library",
+                use_container_width=True,
+            ):
+                new_name = str(st.session_state.get("wsc_new_library_name") or "").strip()
+                new_folder = str(st.session_state.get("wsc_new_library_folder") or "").strip()
+                if not new_name or not new_folder:
+                    st.session_state.wsc_action_error = t(
+                        "shared_library_create_need", locale=current_ui_locale
+                    )
+                else:
+                    try:
+                        from aios_habit.workspace_chat_rag_v2_adapter import (
+                            WorkspaceChatRagV2CanaryConfig,
+                        )
+                        from aios_habit.workspace_chat_store import ensure_preset_collection
+
+                        rag_new_cfg = WorkspaceChatRagV2CanaryConfig.from_env()
+                        fallback_new = rag_new_cfg.runtime_root / rag_new_cfg.requested_profile
+                        created_lib = ensure_preset_collection(
+                            new_name,
+                            "",
+                            new_folder,
+                            local_fallback_root=fallback_new,
+                        )
+                        st.session_state.wsc_action_message = (
+                            t("shared_library_create_done", locale=current_ui_locale)
+                            + f" ({created_lib.title})"
+                        )
+                    except ValueError as exc:
+                        reason = str(exc)
+                        new_errors = {
+                            "preset_name_required": "shared_library_create_need",
+                            "storage_root_must_be_absolute": "shared_library_need_path",
+                            "storage_root_conflict": "shared_library_conflict",
+                            "library_writer_busy": "shared_library_busy",
+                            "library_invalid": "shared_library_invalid",
+                            "shared_library_remote_wal_unsupported": (
+                                "shared_library_remote_wal_unsupported"
+                            ),
+                            "library_io_error": "shared_library_io_error",
+                        }
+                        st.session_state.wsc_action_error = t(
+                            new_errors.get(reason, "shared_library_create_error"),
+                            locale=current_ui_locale,
+                        )
+                    except OSError:
+                        st.session_state.wsc_action_error = t(
+                            "shared_library_io_error", locale=current_ui_locale
+                        )
+                safe_rerun()
 
         st.markdown("---")
         st.markdown(t("shared_library_backup_heading", locale=current_ui_locale))
@@ -1794,12 +2100,19 @@ if active_nb_id is None:
             collections = load_collections()
             collection_labels = {item.id: item.title for item in collections}
             collection_ids = [item.id for item in collections] or [DEFAULT_COLLECTION_ID]
-            new_nb_collection = st.selectbox(
-                t("collection_label", locale=current_ui_locale),
-                options=collection_ids,
-                format_func=lambda cid: collection_labels.get(cid, cid),
-                help=t("collection_help", locale=current_ui_locale),
-            )
+            if len(collection_ids) > 1:
+                new_nb_collection = st.selectbox(
+                    t("collection_label", locale=current_ui_locale),
+                    options=collection_ids,
+                    format_func=lambda cid: collection_labels.get(cid, cid),
+                    help=t("collection_help", locale=current_ui_locale),
+                )
+            else:
+                only_id = collection_ids[0]
+                st.caption(
+                    t("notebook_library_single", locale=current_ui_locale, name=collection_labels.get(only_id, only_id))
+                )
+                new_nb_collection = only_id
             if st.form_submit_button(t("btn_create_notebook", locale=current_ui_locale)):
                 if not new_nb_title.strip():
                     st.session_state.wsc_action_error = "Vui lòng nhập tên sổ tài liệu."
@@ -1879,6 +2192,31 @@ else:
         set_query_params(nb=None, conv=None)
         safe_rerun()
 
+    _nb_libraries = load_collections()
+    _nb_lib_labels = {c.id: (c.title or c.id) for c in _nb_libraries}
+    _nb_current_lib = getattr(notebook, "collection_id", "") or DEFAULT_COLLECTION_ID
+    if _nb_current_lib not in _nb_lib_labels and _nb_libraries:
+        _nb_current_lib = _nb_libraries[0].id
+    st.sidebar.caption(
+        t("notebook_library_using", locale=current_ui_locale, name=_nb_lib_labels.get(_nb_current_lib, _nb_current_lib))
+    )
+    if len(_nb_lib_labels) > 1:
+        _nb_picked = st.sidebar.selectbox(
+            t("notebook_library_change", locale=current_ui_locale),
+            options=sorted(_nb_lib_labels.keys()),
+            index=sorted(_nb_lib_labels.keys()).index(_nb_current_lib),
+            format_func=lambda cid: _nb_lib_labels.get(cid, cid),
+            help=t("notebook_library_help", locale=current_ui_locale),
+            key=f"wsc_nb_collection_{active_nb_id}",
+        )
+        if _nb_picked != _nb_current_lib:
+            notebook.collection_id = str(_nb_picked)
+            save_notebook(notebook)
+            st.session_state.wsc_action_message = t(
+                "notebook_library_changed", locale=current_ui_locale
+            )
+            safe_rerun()
+
     from aios_habit.workspace_memory_service import (
         get_workspace_memory_enabled_preference,
         set_workspace_memory_enabled_preference,
@@ -1906,6 +2244,12 @@ else:
             else "AIOS đã ngừng dùng các bài học đã lưu."
         )
         safe_rerun()
+
+    from aios_habit.workspace_memory_ui import render_ledger_panel, render_ledger_toggle
+
+    render_ledger_toggle()
+    if st.session_state.get("wsc_ledger_open"):
+        render_ledger_panel(getattr(notebook, "collection_id", "") or DEFAULT_COLLECTION_ID)
 
     st.sidebar.write("---")
     st.sidebar.subheader(f"💬 {t('conversations', locale=current_ui_locale)}")
@@ -2893,6 +3237,45 @@ else:
                         st.caption(t("ai_disclaimer", locale=current_ui_locale))
                         if "evidence_items" in badge_data and badge_data["evidence_items"]:
                             render_grouped_evidence_items(badge_data["evidence_items"], active_conversation.id, locale=current_ui_locale)
+                            try:
+                                from aios_habit.question_suggestions import (
+                                    contextual_followups as _followups,
+                                    contextual_send_text as _send_text,
+                                )
+
+                                _last_q = next(
+                                    (
+                                        str(getattr(_m, "content", "") or "").strip()
+                                        for _m in reversed(messages or [])
+                                        if getattr(_m, "role", "") == "user"
+                                    ),
+                                    "",
+                                )
+                                _last_a = next(
+                                    (
+                                        str(getattr(_m, "content", "") or "").strip()
+                                        for _m in reversed(messages or [])
+                                        if getattr(_m, "role", "") == "assistant"
+                                    ),
+                                    "",
+                                )
+                                _followup_qs = _followups(badge_data["evidence_items"], _last_q)
+                            except Exception:
+                                _followup_qs = []
+                            if _followup_qs and not is_answering:
+                                st.caption(t("suggestion_caption", locale=current_ui_locale))
+                                _f_cols = st.columns(len(_followup_qs))
+                                for _fi, _pair in enumerate(_followup_qs):
+                                    _display, _send = _pair
+                                    with _f_cols[_fi]:
+                                        if st.button(
+                                            _display,
+                                            key=f"wsc_followup_{active_conversation.id}_{_fi}",
+                                            use_container_width=True,
+                                        ):
+                                            _to_send = _send_text(_send, _last_q, _last_a)
+                                            st.session_state[f"wsc_suggest_send_{active_conversation.id}"] = _to_send
+                                            safe_rerun()
                     elif badge_data.get("type") == "handoff_pending":
                         st.info(t("waiting_antigravity_banner", locale=current_ui_locale, req_id=badge_data.get("request_id")))
                     elif badge_data.get("type") == "insufficient_context":
@@ -3013,6 +3396,50 @@ else:
                         ):
                             _start_gemini_web_bridge(locale=current_ui_locale, announce_success=True)
                             safe_rerun()
+                try:
+                    from aios_habit.question_suggestions import opening_suggestions as _openings
+
+                    _has_user_msg = any(
+                        getattr(_m, "role", "") == "user" for _m in (messages or [])
+                    )
+                    _open_qs = []
+                    if not _has_user_msg and not is_answering:
+                        _enabled_sels = load_enabled_sources_for_conversation(
+                            active_conversation.id
+                        )
+                        _enabled_keys = {
+                            (s.source_scope, s.source_id)
+                            for s in _enabled_sels
+                            if getattr(s, "enabled", False)
+                        }
+                        _enabled_titles = [
+                            s.title
+                            for s in (prep_context_sources or [])
+                            if (s.source_scope, s.source_id) in _enabled_keys
+                            and (s.text or "").strip()
+                        ]
+                        if not _enabled_titles:
+                            _enabled_titles = [
+                                s.title
+                                for s in (prep_context_sources or [])
+                                if (s.text or "").strip()
+                            ][:3]
+                        _open_qs = _openings(_enabled_titles)
+                except Exception:
+                    _open_qs = []
+                if _open_qs:
+                    st.caption(t("suggestion_caption", locale=current_ui_locale))
+                    _o_cols = st.columns(len(_open_qs))
+                    for _oi, _oq in enumerate(_open_qs):
+                        with _o_cols[_oi]:
+                            if st.button(
+                                _oq,
+                                key=f"wsc_opening_{active_conversation.id}_{_oi}",
+                                use_container_width=True,
+                            ):
+                                st.session_state[f"wsc_suggest_send_{active_conversation.id}"] = _oq
+                                safe_rerun()
+
                 with st.container(border=True, key=f"wsc-composer-{active_conversation.id}"):
                     clear_input_key = f"wsc_clear_input_{active_conversation.id}"
                     if st.session_state.pop(clear_input_key, False):
@@ -3197,6 +3624,13 @@ else:
                 if pending_auto_question:
                     ask_submitted = True
                     user_input = pending_auto_question
+                    user_attached_image = None
+
+                _suggest_send_key = f"wsc_suggest_send_{active_conversation.id}"
+                _suggested_question = st.session_state.pop(_suggest_send_key, "")
+                if _suggested_question and not is_answering:
+                    ask_submitted = True
+                    user_input = _suggested_question
                     user_attached_image = None
 
                 if ask_submitted:

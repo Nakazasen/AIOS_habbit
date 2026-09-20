@@ -84,3 +84,12 @@ Các Gate Card đã hoàn thành hiện có trong cây làm việc là tài li�
 - Lệnh `uv sync --group dev` có thể thất bại trên môi trường Windows `.venv` hiện tại do thư mục metadata cũ bị khóa quyền. Hãy dừng lại, xác định các tiến trình đang chạy và xin phê duyệt trước khi tạo lại môi trường.
 - Toàn bộ bộ kiểm thử chưa được chạy lại đầy đủ trong đợt bàn giao này. Số lượng kiểm thử dự kiến thu thập là 1,143, nhưng chỉ lượt chạy hoàn chỉnh với mã thoát 0 mới được tính là ĐẠT.
 - Tài liệu này không ngụ ý bất kỳ trạng thái worker benchmark/BGE nào đang hoạt động; hãy kiểm tra danh sách tiến trình và các artifact runtime bị bỏ qua ngay trước khi khởi chạy lại.
+
+## Bổ sung ngày 2026-09-19 (chưa commit lúc ghi)
+
+- **006 E5 Lite-CPU**: profiler chọn kiểu chia, cha-con chỉ tài liệu dài, cấu hình theo lần tải, sửa mảnh có hoàn tác, cờ thí điểm, chống trùng và giữ mảnh chi tiết. `T032-T036` xong có kiểm thử, `T037` ca BGE đêm còn mở.
+- **004 kho chung**: đăng ký preset, mỗi kho một thư viện riêng, nút tạo thư viện, hộp thư theo kho, thấy và đổi thư viện trong sổ, sửa lỗi nút quay về. Kiểm thử liên quan đạt.
+- **007 gợi ý**: gợi ý mở đầu và tiếp theo bám mạch kèm tên đầy đủ khi gửi, bộ đo 8 mạch 24 câu đạt, đo trả lời thật trúng nguồn 20/24.
+- **010 phỏng vấn**: nút vào thẳng chặng phỏng vấn, màn phỏng vấn ba ngôn ngữ thí điểm, giọng nói tạm ẩn, đề xuất đa ngôn ngữ đã duyệt thí điểm.
+- **011 trí nhớ**: Sổ bài học xem phân trang, quên từng bài, thước dung lượng và huy hiệu lâu chưa dùng.
+- Toàn bộ mới chỉ qua kiểm thử tập trung, kiểm toán lệnh và quét tiếng Việt. Chưa chạy đủ bộ, chưa smoke trình duyệt, chưa kiểm toán độc lập.
