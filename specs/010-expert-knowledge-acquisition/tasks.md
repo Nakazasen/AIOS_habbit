@@ -174,3 +174,28 @@ Task `[P]` chỉ chạy song song khi không sửa cùng file và task nền c�
 R1 và test của R2 có thể làm song song khi không sửa cùng file. R2 phải xong trước khi nối form xác nhận mới. R3 phải xong trước nút “Xác nhận và đưa vào thư viện”. R4 phải xong trước lượt đi bộ người không chuyên. R5 là cổng cuối và không được kế thừa trạng thái `PASS` của T000–T080.
 
 MVP sửa là R1 + R2 + luồng văn bản cá nhân trong R3/R4. Audio và thư viện dùng chung chỉ bật lại sau khi test ranh giới dữ liệu và ghi an toàn đạt; điều này không chặn trợ lý cá nhân bằng văn bản.
+
+## Mở rộng US6: Cửa vào phỏng vấn cho người không chuyên (phiên 2026-09-19, không tạo spec mới)
+
+**Phạm vi**: Nút gọi theo việc cần làm trên thanh bên vào thẳng chặng phỏng vấn, bốn chặng luôn hiện kèm chặng hiện tại, không đổi tên mục hiện có.
+
+- [x] T110 Nút thanh bên vào thẳng chặng phỏng vấn trong `src/aios_habit/workspace_chat_app.py`, chữ tiếng Việt trong `src/aios_habit/i18n.py`
+- [x] T111 Dải bốn chặng luôn hiện kèm chặng hiện tại trong `src/aios_habit/workspace_case_ui.py`
+- [x] T112 Chạy kiểm chứng `compileall`, kiểm thử liên quan, quét tiếng Việt, `cli audit` đạt `PASS`, `import workspace_chat_app` thành công
+
+**Bằng chứng US6 ngày 2026-09-19**: `compileall` sạch, `test_workspace_case_ui + test_expert_knowledge_e2e` **30 passed**, quét tiếng Việt **PASS**, `cli audit` **PASS**, `import workspace_chat_app` thành công, `git diff --check` sạch. Nút dùng cờ chờ nên bấm từ mọi màn hình không vấp widget.
+
+## Mở rộng: Ẩn giọng nói và kế hoạch Nhật Trung (phiên 2026-09-19, không tạo spec mới)
+
+**Phạm vi**: Giọng nói tạm ẩn sau cờ riêng tắt mặc định vì model `ggml-base` chưa có trên máy và chậm trên CPU. Đa ngôn ngữ giao diện và đo lại CJK chỉ lập kế hoạch, chưa code.
+
+- [x] T113 Ẩn khối ghi âm sau cờ `expert_audio_input` tắt mặc định trong `src/aios_habit/workspace_case_ui.py` và `src/aios_habit/feature_flags.py`, có test
+- [x] T114 Đề xuất sửa luật đa ngôn ngữ (`CONSTITUTION.md` nguyên tắc 6, `AGENT_RULES.md` mục 4, `docs/UI_LANGUAGE_POLICY.md`), phạm vi ưu tiên luồng phỏng vấn 010, chờ chủ sở hữu duyệt mới code
+- [x] T115 Kiểm kê độ phủ dịch Nhật Trung so với 740 khóa tiếng Việt, liệt kê khóa thiếu cho luồng phỏng vấn trước
+
+**Bằng chứng T113-T115 ngày 2026-09-19**: đề xuất nằm ở `specs/010-expert-knowledge-acquisition/multilingual-amendment-proposal.md`, trạng thái ĐÃ DUYỆT thí điểm luồng phỏng vấn. Đã bù đủ bản dịch thiếu, từ điển đạt 740/740/740 khóa Việt Nhật Trung. Chưa gắn chỗ chọn ngôn ngữ vì chữ cố định trong luồng phỏng vấn cần chuyển sang khóa dịch trước, ghi thành T116 T117 dưới đây.
+
+- [x] T116 Chuyển chữ cố định trong luồng phỏng vấn sang khóa dịch và gắn chỗ chọn ngôn ngữ Nhật Trung, mặc định tiếng Việt
+- [ ] T117 Kiểm thử giao diện theo từng ngôn ngữ Nhật Trung với người bản địa trước khi mở rộng ra luồng khác
+
+**Bằng chứng T116 ngày 2026-09-19**: `compileall` sạch, `test_workspace_case_ui + test_expert_knowledge_e2e + test_expert_interview_privacy` **45 passed**, quét tiếng Việt **PASS**, `cli audit` **PASS**, `import workspace_chat_app` thành công. Bảng nhãn trạng thái và toàn bộ màn phỏng vấn chính đã theo ngôn ngữ, test kiểm toán T105 giữ nguyên đạt. Còn lại khối ghi âm ẩn, giá trị logic câu trả lời và các màn duyệt xuất bản để nhịp sau.

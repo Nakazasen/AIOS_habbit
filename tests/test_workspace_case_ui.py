@@ -896,3 +896,29 @@ def test_render_knowledge_publication_management_revocation_executes_cleanly(tmp
         decisions = interview_repo.list_decision_records("ART-PUB-001")
         assert len(decisions) == 1
         assert decisions[0].decision == "revoke"
+
+
+def test_audio_input_hidden_by_default_until_verified():
+    from aios_habit.feature_flags import FEATURE_EXPERT_AUDIO_INPUT, is_feature_enabled
+    import inspect
+    from aios_habit import workspace_case_ui
+
+    assert is_feature_enabled(FEATURE_EXPERT_AUDIO_INPUT) is False
+    src = inspect.getsource(workspace_case_ui.render_expert_interview_view)
+    assert "FEATURE_EXPERT_AUDIO_INPUT" in src
+    assert "Ghi âm đang tạm ẩn" in src
+
+
+def test_interview_labels_cover_vi_ja_zh():
+    from aios_habit.i18n import t
+    from aios_habit.workspace_case_ui import _session_state_label, _turn_answer_state_label
+
+    assert _session_state_label("active", locale="ja") == "質問中"
+    assert _session_state_label("active", locale="zh-CN") == "问答中"
+    assert _turn_answer_state_label("answered", locale="ja") == "回答済み"
+    assert _turn_answer_state_label("answered", locale="zh-CN") == "已回答"
+    assert t("iv_title", locale="vi") == "Phỏng vấn"
+    assert t("iv_title", locale="ja") == "インタビュー"
+    assert t("iv_title", locale="zh-CN") == "访谈"
+    assert t("iv_send", locale="ja") == "回答を送信"
+    assert t("iv_send", locale="zh-CN") == "发送回答"

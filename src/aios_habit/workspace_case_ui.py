@@ -40,6 +40,7 @@ import streamlit as st
 from aios_habit.workspace_chat_models import DEFAULT_COLLECTION_ID
 from aios_habit.workspace_chat_store import get_active_library_mode, select_library_mode
 from aios_habit.feature_flags import (
+    FEATURE_EXPERT_AUDIO_INPUT,
     FEATURE_EXPERT_KNOWLEDGE_ACQUISITION,
     is_feature_enabled,
 )
@@ -215,13 +216,33 @@ _GAP_ERROR_MESSAGES = {
 }
 
 _INTERVIEW_SESSION_STATE_LABELS = {
-    "ready": "Sẵn sàng",
-    "active": "Đang hỏi đáp",
-    "paused": "Tạm dừng",
-    "awaiting_confirmation": "Chờ xác nhận",
-    "completed": "Hoàn tất",
-    "stopped": "Đã dừng",
-    "blocked": "Không thể tiếp tục lúc này",
+    "vi": {
+        "ready": "Sẵn sàng",
+        "active": "Đang hỏi đáp",
+        "paused": "Tạm dừng",
+        "awaiting_confirmation": "Chờ xác nhận",
+        "completed": "Hoàn tất",
+        "stopped": "Đã dừng",
+        "blocked": "Không thể tiếp tục lúc này",
+    },
+    "ja": {
+        "ready": "準備完了",
+        "active": "質問中",
+        "paused": "一時停止中",
+        "awaiting_confirmation": "確認待ち",
+        "completed": "完了",
+        "stopped": "停止済み",
+        "blocked": "今は続けられません",
+    },
+    "zh-CN": {
+        "ready": "就绪",
+        "active": "问答中",
+        "paused": "已暂停",
+        "awaiting_confirmation": "待确认",
+        "completed": "已完成",
+        "stopped": "已停止",
+        "blocked": "目前无法继续",
+    },
 }
 
 GOAL010_NEXT_LIBRARY = "Bước tiếp theo: mở mục Phỏng vấn để bắt đầu hỏi đáp."
@@ -260,20 +281,42 @@ def _interview_choice_label(
         return f"{title} — {person} ({state})"
     return f"{person} ({state})"
 _INTERVIEW_ANSWER_STATE_LABELS = {
-    "answered": "Đã trả lời",
-    "unknown": "Không rõ / Chưa nắm được",
-    "uncertain": "Chưa chắc chắn",
-    "skipped": "Bỏ qua",
-    "corrected": "Đã đính chính",
+    "vi": {
+        "answered": "Đã trả lời",
+        "unknown": "Không rõ / Chưa nắm được",
+        "uncertain": "Chưa chắc chắn",
+        "skipped": "Bỏ qua",
+        "corrected": "Đã đính chính",
+    },
+    "ja": {
+        "answered": "回答済み",
+        "unknown": "不明 / 把握できていない",
+        "uncertain": "不確か",
+        "skipped": "スキップ",
+        "corrected": "訂正済み",
+    },
+    "zh-CN": {
+        "answered": "已回答",
+        "unknown": "不清楚 / 未掌握",
+        "uncertain": "不确定",
+        "skipped": "跳过",
+        "corrected": "已更正",
+    },
 }
 
 
+def _interview_locale_labels(mapping: dict[str, dict[str, str]], key: str, locale: str) -> str:
+    norm = normalize_locale(locale)
+    table = mapping.get(norm) or mapping.get("vi", {})
+    return table.get(key, mapping.get("vi", {}).get(key, key))
+
+
 def _session_state_label(state: str, locale: str = "vi") -> str:
-    return _INTERVIEW_SESSION_STATE_LABELS.get(state, state)
+    return _interview_locale_labels(_INTERVIEW_SESSION_STATE_LABELS, state, locale)
 
 
 def _turn_answer_state_label(state: str, locale: str = "vi") -> str:
-    return _INTERVIEW_ANSWER_STATE_LABELS.get(state, state)
+    return _interview_locale_labels(_INTERVIEW_ANSWER_STATE_LABELS, state, locale)
 
 
 def interview_turn_rows(turns: Sequence[InterviewTurn], locale: str = "vi") -> list[dict[str, Any]]:
@@ -671,9 +714,22 @@ def render_expert_interview_view(
     locale: str = "vi",
 ) -> None:
     norm_loc = normalize_locale(locale)
-    st.subheader("Phỏng vấn")
-    st.caption("Nhập chủ đề rồi trả lời từng câu hỏi bằng lời thường dùng. Có thể tạm dừng và quay lại sau.")
-    st.caption(GOAL010_NEXT_INTERVIEW)
+    _iv_locales = ["vi", "ja", "zh-CN"]
+    _iv_labels = {"vi": "Tiếng Việt", "ja": "日本語", "zh-CN": "中文"}
+    _iv_saved = st.session_state.get("wsc_interview_locale", "vi")
+    if _iv_saved not in _iv_locales:
+        _iv_saved = "vi"
+    norm_loc = st.selectbox(
+        "Ngôn ngữ / 言語 / 语言",
+        options=_iv_locales,
+        index=_iv_locales.index(_iv_saved),
+        format_func=lambda code: _iv_labels.get(code, code),
+        key="wsc_interview_locale",
+    )
+    norm_loc = normalize_locale(norm_loc)
+    st.subheader(t("iv_title", locale=norm_loc))
+    st.caption(t("iv_intro", locale=norm_loc))
+    st.caption(t("iv_next_interview", locale=norm_loc) if norm_loc != "vi" else GOAL010_NEXT_INTERVIEW)
 
     interview_repo = ExpertInterviewRepository(service.store.database_path)
     interview_svc = ExpertInterviewService(store=service.store, interview_repo=interview_repo, actor_context=service.actor)
@@ -684,10 +740,10 @@ def render_expert_interview_view(
     session_options = [item.session_id for item in existing_sessions]
 
     selected_session_id = st.selectbox(
-        "Buổi hỏi đáp",
+        t("iv_session_label", locale=norm_loc),
         options=["new"] + session_options,
         format_func=lambda sid: (
-            "Bắt đầu buổi mới"
+            t("iv_new_session", locale=norm_loc)
             if sid == "new"
             else _interview_choice_label(session_by_id[sid], interview_svc, service)
         ),
@@ -696,37 +752,32 @@ def render_expert_interview_view(
 
     if selected_session_id == "new":
         accepted_gaps = service.list_gap_candidates(status="accepted")
-        st.info("Bạn có thể gõ một chủ đề mới để bắt đầu ngay. Gợi ý bên dưới chỉ là tùy chọn.")
+        st.info(t("iv_new_hint", locale=norm_loc))
 
         with st.form("wsc_create_interview_session_form"):
             topic = st.text_input(
-                "Bạn muốn ghi lại kiến thức về việc gì?",
-                help="Viết ngắn gọn theo cách bạn thường gọi công việc này.",
+                t("iv_topic_label", locale=norm_loc),
+                help=t("iv_topic_help", locale=norm_loc),
             )
             gap_choices = {g.gap_id: g for g in accepted_gaps}
             sel_gap_id = None
             if gap_choices:
-                with st.expander("Gợi ý chủ đề có sẵn", expanded=False):
+                with st.expander(t("iv_gap_suggest", locale=norm_loc), expanded=False):
                     sel_gap_id = st.selectbox(
-                        "Chọn một gợi ý nếu muốn",
+                        t("iv_gap_pick", locale=norm_loc),
                         options=(None, *tuple(gap_choices)),
-                        format_func=lambda gid: "Không chọn" if gid is None else gap_choices[gid].title,
+                        format_func=lambda gid: t("iv_gap_none", locale=norm_loc) if gid is None else gap_choices[gid].title,
                     )
             recorded_name = st.text_input(
-                "Tên người tham gia",
+                t("iv_person_label", locale=norm_loc),
                 value=person_suggestion.suggested_name,
-                help="Tên này chỉ để ghi lại ai đã chia sẻ, không dùng để cấp quyền.",
+                help=t("iv_person_help", locale=norm_loc),
             )
-            create_btn = st.form_submit_button("Bắt đầu phỏng vấn", type="primary")
+            create_btn = st.form_submit_button(t("iv_start", locale=norm_loc), type="primary")
 
             if create_btn:
                 if not recorded_name.strip() or (not topic.strip() and sel_gap_id is None):
-                    st.error(
-                        _goal010_error(
-                            "Chưa đủ thông tin để bắt đầu.",
-                            "Hãy nhập tên người tham gia và chủ đề muốn ghi lại.",
-                        )
-                    )
+                    st.error(t("iv_err_need_info", locale=norm_loc))
                 else:
                     try:
                         if topic.strip():
@@ -767,22 +818,17 @@ def render_expert_interview_view(
                             expert_id=recorded_name.strip(),
                             idempotency_key=f"START-{plan.plan_id}",
                         )
-                        st.success("Đã bắt đầu buổi hỏi đáp. Hãy trả lời câu hỏi bên dưới.")
+                        st.success(t("iv_started", locale=norm_loc))
                         st.session_state["wsc_active_interview_session_id"] = new_sess.session_id
                         st.rerun()
                     except Exception:
-                        st.error(
-                            _goal010_error(
-                                "Chưa bắt đầu được buổi hỏi đáp.",
-                                "Hãy thử lại hoặc đổi chủ đề ngắn hơn.",
-                            )
-                        )
+                        st.error(t("iv_err_start", locale=norm_loc))
         return
 
     # Phiên đang được chọn
     curr_session = interview_repo.get_session(selected_session_id)
     if curr_session is None:
-        st.error("Không tìm thấy dữ liệu của phiên đã chọn.")
+        st.error(t("iv_session_missing", locale=norm_loc))
         return
 
     plan = interview_svc.get_interview_plan(curr_session.plan_id)
@@ -793,15 +839,15 @@ def render_expert_interview_view(
     progress_pct = min(1.0, turns_count / max_turns)
 
     m1, m2, m3 = st.columns(3)
-    m1.metric("Trạng thái", _session_state_label(curr_session.state, locale=norm_loc))
-    m2.metric("Đã trả lời", f"{turns_count} câu")
-    m3.metric("Người tham gia", curr_session.expert_id)
+    m1.metric(t("iv_m_status", locale=norm_loc), _session_state_label(curr_session.state, locale=norm_loc))
+    m2.metric(t("iv_m_answered", locale=norm_loc), t("iv_m_answered_n", locale=norm_loc, count=turns_count))
+    m3.metric(t("iv_m_person", locale=norm_loc), curr_session.expert_id)
 
-    st.progress(progress_pct, text=f"Đã xong {int(progress_pct * 100)}%")
+    st.progress(progress_pct, text=t("iv_progress", locale=norm_loc, pct=int(progress_pct * 100)))
 
     if curr_session.state == SESSION_STATE_PAUSED:
-        st.warning("Buổi hỏi đáp đang tạm dừng. Nội dung đã nhập vẫn còn.")
-        if st.button("Tiếp tục hỏi đáp", type="primary"):
+        st.warning(t("iv_paused", locale=norm_loc))
+        if st.button(t("iv_resume", locale=norm_loc), type="primary"):
             try:
                 principal = VerifiedPrincipal(
                     subject=curr_session.principal_subject_id,
@@ -809,27 +855,22 @@ def render_expert_interview_view(
                     display_name=curr_session.expert_id,
                 )
                 interview_svc.resume_interview_session(curr_session.session_id, principal=principal)
-                st.success("Đã tiếp tục buổi hỏi đáp.")
+                st.success(t("iv_resumed", locale=norm_loc))
                 st.rerun()
             except Exception:
-                st.error(
-                    _goal010_error(
-                        "Chưa tiếp tục được buổi hỏi đáp.",
-                        "Hãy bấm lại sau vài giây.",
-                    )
-                )
+                st.error(t("iv_err_resume", locale=norm_loc))
 
     elif curr_session.state in (SESSION_STATE_COMPLETED, SESSION_STATE_STOPPED, SESSION_STATE_BLOCKED):
         st.info(
-            f"Buổi hỏi đáp đã {_session_state_label(curr_session.state, locale=norm_loc).lower()}. "
-            f"{GOAL010_NEXT_INTERVIEW}"
+            f"{t('iv_completed_notice', locale=norm_loc, state=_session_state_label(curr_session.state, locale=norm_loc))} "
+            f"{t('iv_next_interview', locale=norm_loc)}"
         )
         try:
             interview_svc.create_draft_from_session(curr_session.session_id)
         except ControlledArtifactError:
             pass
 
-    st.markdown("#### Các câu đã hỏi")
+    st.markdown(t("iv_turns_title", locale=norm_loc))
     if turns:
         for t_item in turns:
             with st.chat_message("assistant"):
@@ -838,149 +879,152 @@ def render_expert_interview_view(
                 st.write(t_item.answer_text)
                 st.caption(_turn_answer_state_label(t_item.answer_state, locale=norm_loc))
     else:
-        st.caption("Chưa có câu trả lời nào. Hãy trả lời câu hỏi bên dưới.")
+        st.caption(t("iv_turns_empty", locale=norm_loc))
 
     if curr_session.state == SESSION_STATE_ACTIVE:
         current_consent = interview_repo.get_consent(curr_session.session_id)
         consent_is_granted = current_consent is not None and current_consent.is_active
 
-        with st.expander("Dùng ghi âm (không bắt buộc)", expanded=False):
-            if consent_is_granted:
-                st.write("Đang dùng ghi âm trên máy này. Có thể rút lại bất cứ lúc nào và tiếp tục bằng chữ.")
-                if st.button("Rút lại đồng ý ghi âm", key=f"btn_withdraw_{curr_session.session_id}"):
-                    withdrawn_consent = ConsentRecord(
-                        consent_id=current_consent.consent_id,
-                        session_id=current_consent.session_id,
-                        subject=current_consent.subject,
-                        version=current_consent.version,
-                        state=CONSENT_STATE_WITHDRAWN,
-                        purposes=current_consent.purposes,
-                        retention_policy=current_consent.retention_policy,
-                        granted_at=current_consent.granted_at,
-                        withdrawn_at=datetime.now(timezone.utc).isoformat(),
+        if not is_feature_enabled(FEATURE_EXPERT_AUDIO_INPUT):
+            st.caption("Trả lời bằng chữ. Ghi âm đang tạm ẩn cho đến khi máy chép lời được kiểm chứng.")
+        else:
+            with st.expander("Dùng ghi âm (không bắt buộc)", expanded=False):
+                if consent_is_granted:
+                    st.write("Đang dùng ghi âm trên máy này. Có thể rút lại bất cứ lúc nào và tiếp tục bằng chữ.")
+                    if st.button("Rút lại đồng ý ghi âm", key=f"btn_withdraw_{curr_session.session_id}"):
+                        withdrawn_consent = ConsentRecord(
+                            consent_id=current_consent.consent_id,
+                            session_id=current_consent.session_id,
+                            subject=current_consent.subject,
+                            version=current_consent.version,
+                            state=CONSENT_STATE_WITHDRAWN,
+                            purposes=current_consent.purposes,
+                            retention_policy=current_consent.retention_policy,
+                            granted_at=current_consent.granted_at,
+                            withdrawn_at=datetime.now(timezone.utc).isoformat(),
+                        )
+                        interview_repo.save_consent(withdrawn_consent, f"IDEMP-WITHDRAW-{curr_session.session_id}")
+                        st.warning("Đã rút đồng ý ghi âm. Bạn vẫn trả lời bằng chữ như bình thường.")
+                        st.rerun()
+
+                    uploaded_audio = st.file_uploader(
+                        "Chọn tệp ghi âm nếu muốn",
+                        key=f"audio_upload_{curr_session.session_id}",
                     )
-                    interview_repo.save_consent(withdrawn_consent, f"IDEMP-WITHDRAW-{curr_session.session_id}")
-                    st.warning("Đã rút đồng ý ghi âm. Bạn vẫn trả lời bằng chữ như bình thường.")
-                    st.rerun()
-
-                uploaded_audio = st.file_uploader(
-                    "Chọn tệp ghi âm nếu muốn",
-                    key=f"audio_upload_{curr_session.session_id}",
-                )
-                if st.button("Chép lời từ tệp ghi âm", key=f"btn_transcribe_{curr_session.session_id}"):
-                    audio_file_path = None
-                    if uploaded_audio is not None:
-                        if not str(uploaded_audio.name).lower().endswith(".wav"):
-                            st.error(
-                                _goal010_error(
-                                    "Tệp này chưa dùng được để chép lời.",
-                                    "Hãy chọn tệp ghi âm hoặc nhập câu trả lời bằng chữ.",
+                    if st.button("Chép lời từ tệp ghi âm", key=f"btn_transcribe_{curr_session.session_id}"):
+                        audio_file_path = None
+                        if uploaded_audio is not None:
+                            if not str(uploaded_audio.name).lower().endswith(".wav"):
+                                st.error(
+                                    _goal010_error(
+                                        "Tệp này chưa dùng được để chép lời.",
+                                        "Hãy chọn tệp ghi âm hoặc nhập câu trả lời bằng chữ.",
+                                    )
                                 )
+                            else:
+                                audio_file_path = save_local_audio_upload(
+                                    interview_repo.database_path.parent,
+                                    curr_session.session_id,
+                                    uploaded_audio.name,
+                                    uploaded_audio.getvalue(),
+                                )
+                        if audio_file_path and audio_file_path.exists():
+                            binary_path, model_path = resolve_whisper_cpp_runtime()
+                            adapter = LocalWhisperCppTranscriptionAdapter(
+                                binary_path=binary_path,
+                                model_path=model_path,
                             )
+                            try:
+                                receipt = adapter.transcribe(
+                                    audio_path=audio_file_path,
+                                    session_id=curr_session.session_id,
+                                    consent=current_consent,
+                                )
+                                interview_repo.save_transcription_receipt(receipt, f"IDEMP-TRCP-{receipt.receipt_id}")
+                                st.session_state[f"last_receipt_{curr_session.session_id}"] = receipt
+                                st.success("Đã chép lời. Hãy đọc lại rồi xác nhận các số liệu trước khi dùng.")
+                            except Exception as exc:
+                                st.error(
+                                    _goal010_error(
+                                        "Chưa chép được lời từ tệp ghi âm.",
+                                        "Hãy dùng ô văn bản bên dưới để nhập câu trả lời.",
+                                    )
+                                )
                         else:
-                            audio_file_path = save_local_audio_upload(
-                                interview_repo.database_path.parent,
-                                curr_session.session_id,
-                                uploaded_audio.name,
-                                uploaded_audio.getvalue(),
+                            st.error(
+                                _goal010_error(
+                                    "Chưa có tệp ghi âm để chép lời.",
+                                    "Hãy chọn một tệp hoặc nhập câu trả lời bằng chữ.",
+                                )
                             )
-                    if audio_file_path and audio_file_path.exists():
-                        binary_path, model_path = resolve_whisper_cpp_runtime()
-                        adapter = LocalWhisperCppTranscriptionAdapter(
-                            binary_path=binary_path,
-                            model_path=model_path,
-                        )
-                        try:
-                            receipt = adapter.transcribe(
-                                audio_path=audio_file_path,
+
+                    last_receipt = st.session_state.get(f"last_receipt_{curr_session.session_id}")
+                    if last_receipt:
+                        st.write("**Lời đã chép:**")
+                        st.write(last_receipt.full_text)
+                        if last_receipt.all_critical_tokens:
+                            st.write("Hãy kiểm tra các số, mã máy và đơn vị sau:")
+                            st.write(", ".join(str(tok) for tok in last_receipt.all_critical_tokens))
+                        if st.button("Xác nhận mã máy, thông số và dùng lời đã chép", key=f"btn_confirm_tokens_{curr_session.session_id}"):
+                            try:
+                                confirmed_receipt = confirm_critical_tokens(last_receipt)
+                                interview_repo.replace_transcription_receipt(confirmed_receipt)
+                                st.session_state[f"last_receipt_{curr_session.session_id}"] = confirmed_receipt
+                                st.session_state[f"ans_text_{curr_session.session_id}"] = confirmed_receipt.full_text
+                                st.success("Đã xác nhận mã máy, thông số và điền lời đã chép vào ô trả lời.")
+                                st.rerun()
+                            except Exception:
+                                st.error(
+                                    _goal010_error(
+                                        "Chưa xác nhận được mã máy và thông số.",
+                                        "Hãy thử lại hoặc nhập câu trả lời bằng chữ.",
+                                    )
+                                )
+                else:
+                    st.write("Ghi âm chỉ lưu trên máy này. Không bắt buộc; bạn luôn có thể trả lời bằng chữ.")
+                    col_c1, col_c2 = st.columns(2)
+                    with col_c1:
+                        if st.button("Đồng ý ghi âm trên máy này", key=f"btn_grant_{curr_session.session_id}"):
+                            new_consent = ConsentRecord(
+                                consent_id=f"CSNT-{curr_session.session_id}-{int(datetime.now(timezone.utc).timestamp())}",
                                 session_id=curr_session.session_id,
-                                consent=current_consent,
+                                subject=curr_session.principal_subject_id,
+                                version="1.0",
+                                state=CONSENT_STATE_GRANTED,
+                                purposes=("audio_recording", "local_transcription"),
+                                retention_policy="local_only_retained",
+                                granted_at=datetime.now(timezone.utc).isoformat(),
                             )
-                            interview_repo.save_transcription_receipt(receipt, f"IDEMP-TRCP-{receipt.receipt_id}")
-                            st.session_state[f"last_receipt_{curr_session.session_id}"] = receipt
-                            st.success("Đã chép lời. Hãy đọc lại rồi xác nhận các số liệu trước khi dùng.")
-                        except Exception as exc:
-                            st.error(
-                                _goal010_error(
-                                    "Chưa chép được lời từ tệp ghi âm.",
-                                    "Hãy dùng ô văn bản bên dưới để nhập câu trả lời.",
-                                )
-                            )
-                    else:
-                        st.error(
-                            _goal010_error(
-                                "Chưa có tệp ghi âm để chép lời.",
-                                "Hãy chọn một tệp hoặc nhập câu trả lời bằng chữ.",
-                            )
-                        )
-
-                last_receipt = st.session_state.get(f"last_receipt_{curr_session.session_id}")
-                if last_receipt:
-                    st.write("**Lời đã chép:**")
-                    st.write(last_receipt.full_text)
-                    if last_receipt.all_critical_tokens:
-                        st.write("Hãy kiểm tra các số, mã máy và đơn vị sau:")
-                        st.write(", ".join(str(tok) for tok in last_receipt.all_critical_tokens))
-                    if st.button("Xác nhận mã máy, thông số và dùng lời đã chép", key=f"btn_confirm_tokens_{curr_session.session_id}"):
-                        try:
-                            confirmed_receipt = confirm_critical_tokens(last_receipt)
-                            interview_repo.replace_transcription_receipt(confirmed_receipt)
-                            st.session_state[f"last_receipt_{curr_session.session_id}"] = confirmed_receipt
-                            st.session_state[f"ans_text_{curr_session.session_id}"] = confirmed_receipt.full_text
-                            st.success("Đã xác nhận mã máy, thông số và điền lời đã chép vào ô trả lời.")
+                            interview_repo.save_consent(new_consent, f"IDEMP-GRANT-{curr_session.session_id}")
+                            st.success("Đã đồng ý ghi âm. Bạn vẫn có thể trả lời bằng chữ.")
                             st.rerun()
-                        except Exception:
-                            st.error(
-                                _goal010_error(
-                                    "Chưa xác nhận được mã máy và thông số.",
-                                    "Hãy thử lại hoặc nhập câu trả lời bằng chữ.",
-                                )
+                    with col_c2:
+                        if st.button("Không dùng ghi âm", key=f"btn_decline_{curr_session.session_id}"):
+                            declined_consent = ConsentRecord(
+                                consent_id=f"CSNT-{curr_session.session_id}-{int(datetime.now(timezone.utc).timestamp())}",
+                                session_id=curr_session.session_id,
+                                subject=curr_session.principal_subject_id,
+                                version="1.0",
+                                state=CONSENT_STATE_DECLINED,
+                                purposes=("text_only",),
+                                retention_policy="local_only_retained",
+                                granted_at=None,
+                                withdrawn_at=None,
                             )
-            else:
-                st.write("Ghi âm chỉ lưu trên máy này. Không bắt buộc; bạn luôn có thể trả lời bằng chữ.")
-                col_c1, col_c2 = st.columns(2)
-                with col_c1:
-                    if st.button("Đồng ý ghi âm trên máy này", key=f"btn_grant_{curr_session.session_id}"):
-                        new_consent = ConsentRecord(
-                            consent_id=f"CSNT-{curr_session.session_id}-{int(datetime.now(timezone.utc).timestamp())}",
-                            session_id=curr_session.session_id,
-                            subject=curr_session.principal_subject_id,
-                            version="1.0",
-                            state=CONSENT_STATE_GRANTED,
-                            purposes=("audio_recording", "local_transcription"),
-                            retention_policy="local_only_retained",
-                            granted_at=datetime.now(timezone.utc).isoformat(),
-                        )
-                        interview_repo.save_consent(new_consent, f"IDEMP-GRANT-{curr_session.session_id}")
-                        st.success("Đã đồng ý ghi âm. Bạn vẫn có thể trả lời bằng chữ.")
-                        st.rerun()
-                with col_c2:
-                    if st.button("Không dùng ghi âm", key=f"btn_decline_{curr_session.session_id}"):
-                        declined_consent = ConsentRecord(
-                            consent_id=f"CSNT-{curr_session.session_id}-{int(datetime.now(timezone.utc).timestamp())}",
-                            session_id=curr_session.session_id,
-                            subject=curr_session.principal_subject_id,
-                            version="1.0",
-                            state=CONSENT_STATE_DECLINED,
-                            purposes=("text_only",),
-                            retention_policy="local_only_retained",
-                            granted_at=None,
-                            withdrawn_at=None,
-                        )
-                        interview_repo.save_consent(declined_consent, f"IDEMP-DECLINE-{curr_session.session_id}")
-                        st.info("Đã chọn trả lời bằng chữ.")
-                        st.rerun()
+                            interview_repo.save_consent(declined_consent, f"IDEMP-DECLINE-{curr_session.session_id}")
+                            st.info("Đã chọn trả lời bằng chữ.")
+                            st.rerun()
 
-        next_q = plan.seed_questions[0].text if (plan and plan.seed_questions and not turns) else f"Bạn có thể nói rõ thêm được không?"
-        st.info(f"**Câu hỏi hiện tại:** {next_q}")
+        next_q = plan.seed_questions[0].text if (plan and plan.seed_questions and not turns) else t("iv_clarify", locale=norm_loc)
+        st.info(f"**{t('iv_current_q', locale=norm_loc)}** {next_q}")
 
         with st.form(f"wsc_answer_turn_form_{curr_session.session_id}"):
-            ans_input = st.text_area("Nhập câu trả lời", key=f"ans_text_{curr_session.session_id}")
-            submit_ans = st.form_submit_button("Gửi câu trả lời", type="primary")
-            with st.expander("Việc khác", expanded=False):
-                btn_unknown = st.form_submit_button("Chưa rõ")
-                btn_pause = st.form_submit_button("Tạm dừng")
-                btn_stop = st.form_submit_button("Kết thúc")
+            ans_input = st.text_area(t("iv_answer_label", locale=norm_loc), key=f"ans_text_{curr_session.session_id}")
+            submit_ans = st.form_submit_button(t("iv_send", locale=norm_loc), type="primary")
+            with st.expander(t("iv_other", locale=norm_loc), expanded=False):
+                btn_unknown = st.form_submit_button(t("iv_unknown", locale=norm_loc))
+                btn_pause = st.form_submit_button(t("iv_pause", locale=norm_loc))
+                btn_stop = st.form_submit_button(t("iv_stop", locale=norm_loc))
 
             final_ans = None
             if submit_ans:
@@ -1012,17 +1056,12 @@ def render_expert_interview_view(
                             interview_svc.create_draft_from_session(curr_session.session_id)
                         except ControlledArtifactError:
                             pass
-                        st.success("Đã kết thúc buổi hỏi đáp. Hãy mở mục Kiểm tra bản nháp.")
+                        st.success(t("iv_finished", locale=norm_loc))
                     else:
-                        st.success("Đã ghi nhận câu trả lời.")
+                        st.success(t("iv_saved", locale=norm_loc))
                     st.rerun()
                 except Exception:
-                    st.error(
-                        _goal010_error(
-                            "Chưa ghi được câu trả lời.",
-                            "Hãy thử gửi lại. Nội dung trong ô nhập vẫn còn.",
-                        )
-                    )
+                    st.error(t("iv_err_save", locale=norm_loc))
 
 
 def _case_workspace_modes() -> tuple[str, ...]:
@@ -1092,6 +1131,22 @@ def render_case_workspace(
             on_close()
             return
 
+    pending_mode = st.session_state.pop("wsc_workspace_view_mode_pending", None)
+    if pending_mode in _case_workspace_modes():
+        st.session_state["wsc_workspace_view_mode"] = pending_mode
+    _step_names = {
+        "cases": "Hồ sơ sự vụ",
+        "library_select": "1. Chọn thư viện",
+        "interview": "2. Phỏng vấn",
+        "review_approve": "3. Kiểm tra bản nháp",
+        "library_publish": "4. Đưa vào thư viện",
+    }
+    _current_preview = st.session_state.get("wsc_workspace_view_mode", "cases")
+    _step_order = ["library_select", "interview", "review_approve", "library_publish"]
+    if _current_preview in _step_order:
+        st.caption(
+            f"Bạn đang ở chặng {_step_order.index(_current_preview) + 1}/4: {_step_names[_current_preview]}"
+        )
     view_mode = st.radio(
         "Khu vực làm việc",
         options=_case_workspace_modes(),

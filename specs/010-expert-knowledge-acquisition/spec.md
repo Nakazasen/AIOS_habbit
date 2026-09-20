@@ -5,6 +5,18 @@
 **Sửa theo kiểm toán**: 2026-09-09
 **Trạng thái**: `REOPENED_FOR_SIMPLIFICATION`
 
+## Làm rõ
+
+### Phiên 2026-09-19 (cửa vào cho người không chuyên)
+
+- Hỏi: Người mới không biết Hồ sơ sự vụ thì vào phỏng vấn bằng đường nào? → Đáp: Nút gọi theo việc cần làm ngay trên thanh bên, bấm là vào thẳng chặng phỏng vấn, không đổi tên các mục hiện có.
+- Hỏi: Trong khu phỏng vấn thì biết đang ở chặng nào thế nào? → Đáp: Bốn chặng luôn hiện và chặng hiện tại được đánh dấu rõ.
+
+### Phiên 2026-09-19 (giọng nói và đa ngôn ngữ Nhật Trung)
+
+- Hỏi: Model phiên âm là gì, có chạy được trên i5 không? → Đáp: `whisper.cpp` bản `ggml-base` khoảng 140MB, đa ngôn ngữ nhưng chậm trên CPU và chưa có tệp model trên máy, nên tạm ẩn giọng nói sau cờ riêng tắt mặc định.
+- Hỏi: Mở giao diện Nhật Trung thì sửa luật ở đâu? → Đáp: Luật nằm ở `CONSTITUTION.md` nguyên tắc 6, `AGENT_RULES.md` mục 4 và `docs/UI_LANGUAGE_POLICY.md`, phải có đề xuất sửa luật được chủ sở hữu duyệt trước khi code, ưu tiên luồng phỏng vấn 010 trước.
+
 ## 1. Mục tiêu
 
 Giúp một cá nhân hoặc nhóm nhỏ thu nhận kinh nghiệm thực tế bằng hội thoại, kiểm tra lại nội dung rút ra rồi đưa phần đã xác nhận vào thư viện có thể tìm kiếm. Người dùng cá nhân không phải đăng nhập. Nhóm dùng chung không phải cấu hình tài khoản, vai trò, máy quản lý hay quyền Windows/NAS trong ứng dụng.
@@ -71,7 +83,6 @@ Sau khi xác nhận, người dùng đưa bản hiện tại vào thư viện đ
 ### US5 — Dùng giao diện đơn giản với người không chuyên (P1)
 
 Người dùng đi theo bốn chặng có tên đời thường: chọn thư viện → phỏng vấn → kiểm tra bản nháp → xác nhận và đưa vào thư viện.
-
 **Kiểm thử độc lập**: một người không học công nghệ thông tin hoàn thành các nhiệm vụ chính từ màn hình ứng dụng mà không cần đọc tài liệu kỹ thuật.
 
 **Tiêu chí chấp nhận**:
@@ -81,6 +92,18 @@ Người dùng đi theo bốn chặng có tên đời thường: chọn thư vi�
 3. Mọi lỗi cho biết điều gì xảy ra và người dùng nên làm gì tiếp theo.
 4. Không có màn hình phân quyền chuyên gia trong luồng Goal 010.
 5. Màn hình xác nhận và đưa vào thư viện không bắt người dùng nhập thông tin mà hệ thống có thể tự tạo.
+
+### US6 — Tìm được cửa phỏng vấn từ màn hình chính (P1)
+
+Người không chuyên chưa từng nghe tên Hồ sơ sự vụ vẫn bấm được vào phỏng vấn từ một nút nói theo việc cần làm, thấy ngay mình đang ở chặng nào trong bốn chặng.
+
+**Kiểm thử độc lập**: người chưa dùng bao giờ tìm được nút vào phỏng vấn trong không quá 2 thao tác từ màn hình chính và nêu được đang ở chặng nào.
+
+**Tiêu chí chấp nhận**:
+
+1. Màn hình chính có một nút gọi theo việc cần làm, bấm là vào thẳng chặng phỏng vấn.
+2. Trong khu phỏng vấn luôn thấy bốn chặng và chặng hiện tại được đánh dấu rõ.
+3. Không đổi tên các mục điều hướng hiện có để người dùng cũ khỏi lạc.
 
 ## 3. Trường hợp biên bắt buộc
 
@@ -117,6 +140,7 @@ Người dùng đi theo bốn chặng có tên đời thường: chọn thư vi�
 - **FR-020**: Fixture, tên model/provider, mã băm, mã gói, trạng thái nội bộ và đường dẫn hệ thống không xuất hiện ở luồng người dùng thường.
 - **FR-021**: Không âm thầm dùng kết quả chép lời giả hoặc nguồn thay thế rồi gắn nhãn như kết quả thật.
 - **FR-022**: Fine-tune nằm ngoài Goal 010 và không xuất hiện trên giao diện người dùng.
+- **FR-023**: Thanh bên PHẢI có nút gọi theo việc cần làm để vào thẳng chặng phỏng vấn trong không quá 2 thao tác từ màn hình chính, khu phỏng vấn PHẢI luôn hiện bốn chặng kèm chặng hiện tại được đánh dấu.
 
 ## 5. Thực thể chính
 
@@ -139,6 +163,7 @@ Người dùng đi theo bốn chặng có tên đời thường: chọn thư vi�
 - **SC-006**: Với lỗi mô phỏng giữa lúc xuất bản, bản thư viện dùng được gần nhất vẫn mở được và lịch sử không ghi thành công giả.
 - **SC-007**: 0 từ kỹ thuật bị cấm ở FR-020 xuất hiện trên bề mặt chính của luồng Goal 010.
 - **SC-008**: Một lượt đi bộ giao diện với người không chuyên hoàn thành đủ bốn chặng mà không cần trợ giúp; mọi điểm vướng được ghi thành finding trước khi đóng Goal.
+- **SC-009**: Người chưa dùng bao giờ tìm được cửa phỏng vấn trong không quá 2 thao tác từ màn hình chính và nêu được đang ở chặng nào.
 
 ## 7. Giả định và ranh giới
 

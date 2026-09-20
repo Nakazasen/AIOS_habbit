@@ -24,6 +24,11 @@ FEATURE_EXPERT_PUBLICATION = FEATURE_EXPERT_KNOWLEDGE_ACQUISITION
 # Independent legacy multi-user flag (kept separate to avoid turning on legacy RBAC when Goal 010 is active)
 FEATURE_EXPERT_MULTI_USER = "expert_multi_user"
 
+# Independent audio-input switch for Goal 010 interviews (fail-closed; default
+# off). Voice stays hidden until a real transcription model is verified on the
+# deployment machine. Re-enable with AIOS_FEATURE_EXPERT_AUDIO_INPUT=1.
+FEATURE_EXPERT_AUDIO_INPUT = "expert_audio_input"
+
 # Goal 011 adaptive Workspace Chat memory loop (fail-closed; default off)
 FEATURE_ADAPTIVE_WORK_MEMORY = "adaptive_work_memory"
 
