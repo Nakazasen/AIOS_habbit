@@ -76,3 +76,19 @@ strategy, and a rejected candidate must not change what users see.
 
 - Reuse the active index — rejected because results become irreproducible and
   rollback is unsafe.
+
+## Quyết định 6: Thí điểm Lite-CPU, không dựng đủ bộ WeKnora
+
+**Quyết định**: Giữ `SQLite + FTS5 + sqlite-vec`, luồng nền 2-3, gom lô 8-16, tắt `GraphRAG/Neo4j` mặc định.
+
+**Vì sao**: Máy công ty i5/16GB không GPU không chịu được `Postgres pgvector + Elasticsearch + Milvus + Neo4j + MinIO`. Bản nhẹ của WeKnora cũng dùng đúng đường này.
+
+**Đã cân nhắc**: Dựng Docker đủ bộ song song để thử. Loại vì nặng máy, khó bảo trì, dễ lẫn dữ liệu thật.
+
+## Quyết định 7: Đồ thị chỉ bật tay, không bật mặc định
+
+**Quyết định**: Đồ thị tri thức dùng để trả lời câu nhiều chặng (ví dụ Unit dùng Lot nào, Lot đó có chỉ số nào vượt ngưỡng), không phải chỉ để vẽ đẹp. Đồ thị bằng chứng của `013` dùng để truy vết câu trả lời tới trích dẫn và nguồn.
+
+**Vì sao**: Đồ thị mạnh nhưng tốn RAM và công xây. Đường giữa là mặc định chỉ đổi parser và chia mảnh, đồ thị bật tay, chạy nền 1 luồng, lưu kề SQLite.
+
+**Đã cân nhắc**: Bật đồ thị cho mọi lần tải. Loại vì quá tải i5.

@@ -197,3 +197,16 @@ case and accepted changes satisfy the resource gates.
 **Audit gate**: Fresh-index smoke, selected real-document checks, rollback, and
 full affected test suite pass. Update the project roadmap/handover only after
 this evidence exists.
+
+### Commit E5 — Thí điểm Lite-CPU cho máy công ty (i5/16GB, không GPU)
+
+Phạm vi theo phiên làm rõ 2026-09-19 trong `spec.md`, không phá E1-E4:
+
+- Bộ chọn kiểu chia theo tài liệu: có tiêu đề thì cắt theo tiêu đề, PDF quét thì cắt theo trang, còn lại cắt đệ quy. Có kiểm tra hỏng để tự rơi xuống tầng sau.
+- Quan hệ cha-con chỉ cho tài liệu dài trên 10 trang, tắt cho hỏi đáp ngắn. Mảnh con nhỏ để tìm trúng, mảnh cha lớn để trả lời đủ ngữ cảnh.
+- Cấu hình theo từng lần tải: mặc định chỉ đổi parser và chia mảnh. Phần đồ thị chỉ bật tay khi cần, chạy nền 1 luồng, lưu kề SQLite, không dùng Neo4j.
+- Sửa mảnh tri thức có lịch sử: sửa, xem khác biệt, hoàn tác một chạm, tự đánh chỉ mục lại.
+- Chạy thử có công tắc tắt và đường hoàn tác về baseline. Giữ ngưỡng duyệt cũ: hơn baseline từ 5 điểm hoặc sửa lỗi biên thật, độ trễ và dung lượng không quá 25%.
+- Giới hạn máy yếu: luồng nền 2-3, gom lô ingest 8-16, tìm kiếm `FTS5 + sqlite-vec`, không thêm phụ thuộc GPU.
+
+**Audit gate**: báo cáo so sánh trên corpus công khai đạt ngưỡng, smoke thí điểm trên dữ liệu chủ có cờ tắt và hoàn tác, không tuyên bố ngang NotebookLM.

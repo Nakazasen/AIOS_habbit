@@ -5,6 +5,16 @@
 **Trạng thái**: `IMPLEMENTED_PENDING_REAL_CORPUS_VALIDATION` — 2026-09-12: harness 79 passed; chưa có case đóng băng trên corpus chủ sở hữu. Không mở E3/E4.
 **Input**: User description: "Evaluate and improve RAG chunking only when measured evidence proves a gain; cover Vietnamese, Japanese, and Chinese documents without assuming overlap is automatically better."
 
+## Làm rõ
+
+### Phiên 2026-09-19
+
+- Hỏi: Khi chưa có kho câu hỏi đóng băng của bạn (E3/E4), có cho đổi cách chia mảnh mặc định không? → Đáp: Áp dụng cải tiến tốt nhất cho máy công ty (i5/16GB, không GPU) để câu trả lời tin cậy hơn, cho chạy thử có công tắc tắt và đường hoàn tác, không chờ đủ E3/E4 mới thử.
+- Hỏi: Quan hệ cha-con nên bật cho loại tài liệu nào trên máy i5? → Đáp: Chỉ tài liệu dài trên 10 trang, tắt cho hỏi đáp ngắn để tiết kiệm dung lượng.
+- Hỏi: Mỗi lần tải có cho đổi cấu hình xử lý không? → Đáp: Chọn đường giữa, mặc định chỉ đổi parser và chia mảnh, phần đồ thị chỉ bật tay khi cần và chạy nền ít luồng.
+- Hỏi: Có cho sửa mảnh tri thức kèm lịch sử không? → Đáp: Có, sửa được, xem khác biệt, hoàn tác một chạm, tự đánh chỉ mục lại.
+- Hỏi: Giữ ngưỡng duyệt cải tiến ở mức nào? → Đáp: Giữ chuẩn cũ, hơn baseline từ 5 điểm hoặc sửa lỗi biên thật, độ trễ và dung lượng không quá 25%.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Verify whether a chunking change is worthwhile (Priority: P1)

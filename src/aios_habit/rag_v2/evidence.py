@@ -23,6 +23,46 @@ from .query_planning import (
 from .script_family import plan_has_cjk_variants, query_corpus_script_mismatch
 
 
+def clean_passage(text: str, limit: int = 1500) -> str:
+    """Collapse whitespace for comparison without mutating stored chunks."""
+    cleaned = " ".join((text or "").split())
+    return cleaned[:limit] if len(cleaned) > limit else cleaned
+
+
+def _token_set(text: str) -> set[str]:
+    return set(clean_passage(text).lower().split())
+
+
+def dedup_diverse_results(results: Sequence[SearchResult]) -> Tuple[SearchResult, ...]:
+    """Drop near-duplicate passages, keeping the higher-ranked copy."""
+    kept: List[SearchResult] = []
+    kept_tokens: List[set[str]] = []
+    for result in results:
+        tokens = _token_set(result.text)
+        if not tokens:
+            continue
+        duplicate = False
+        for other in kept_tokens:
+            union = tokens | other
+            if not union:
+                continue
+            if len(tokens & other) / len(union) >= 0.9:
+                duplicate = True
+                break
+        if duplicate:
+            continue
+        kept.append(result)
+        kept_tokens.append(tokens)
+    return tuple(kept)
+
+
+def _is_summary_result(result: SearchResult) -> bool:
+    metadata = result.metadata or {}
+    if bool(metadata.get("is_document_summary")):
+        return True
+    return str(metadata.get("representation_role", "")) == "summary"
+
+
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
@@ -490,7 +530,7 @@ def build_evidence_pack(
 
     query_plan = coerce_query_plan(query)
     query_text = query_plan.original_query
-    results = response.results
+    results = dedup_diverse_results(response.results)
     pack_id = _stable_pack_id(query_text, results)
 
     if query_plan.intent_category == "cross_source_synthesis":
@@ -592,6 +632,15 @@ def build_evidence_pack(
         if len(selected) >= effective_max_items:
             break
         add_result(result)
+
+    if query_plan.intent_category in {"precise", "procedure"} and selected:
+        if all(_is_summary_result(item) for item in selected):
+            detailed = next(
+                (item for item in results if not _is_summary_result(item)),
+                None,
+            )
+            if detailed is not None and detailed.chunk_id not in selected_chunk_ids:
+                selected[-1] = detailed
 
     # Build evidence items
     items: List[EvidenceItem] = []

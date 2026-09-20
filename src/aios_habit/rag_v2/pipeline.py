@@ -9,7 +9,14 @@ from pathlib import Path
 from typing import Any, Iterable, Mapping, Optional, Tuple
 
 from .adapters import ConversionContext
-from .chunking import StructureAwareChunker
+from .chunking import (
+    LitePilotConfig,
+    StructureAwareChunker,
+    apply_lite_pilot_filter,
+    choose_chunk_style,
+    lite_strategy_id,
+    profile_elements,
+)
 from .evidence import EvidencePack, EvidencePackConfig, build_evidence_pack
 from .index import (
     HybridRankingConfig,
@@ -131,6 +138,8 @@ class RagV2DevConfig:
     sqlite_check_same_thread: bool = True
     ensure_embeddings_on_open: bool = True
     index_read_only: bool = False
+    lite_pilot_enabled: bool = False
+    lite_long_doc_pages: int = 10
 
     def __post_init__(self) -> None:
         root = Path(self.runtime_root)
@@ -191,6 +200,8 @@ class RagV2DevConfig:
             raise ValueError("Dev pipeline is local-only; provider synthesis is a separate gate")
         if self.index_read_only and self.ensure_embeddings_on_open:
             raise ValueError("index_read_only requires ensure_embeddings_on_open=False")
+        if self.lite_long_doc_pages < 1:
+            raise ValueError("lite_long_doc_pages must be positive")
 
     @property
     def index_path(self) -> Path:
@@ -210,6 +221,8 @@ class RagV2DevConfig:
             "schema_version": INDEX_BUILD_SCHEMA_VERSION,
             "implementation_fingerprint": _index_build_implementation_fingerprint(),
             "max_chunk_chars": self.max_chunk_chars,
+            "lite_pilot_enabled": self.lite_pilot_enabled,
+            "lite_long_doc_pages": self.lite_long_doc_pages,
             "allowed_privacy_labels": list(self.allowed_privacy_labels),
             "semantic_required": semantic_required,
             "sparse_required": sparse_required,
@@ -565,6 +578,29 @@ class RagV2DevPipeline:
                 continue
 
             chunks = self.chunker.chunk_elements(usable)
+            if self.config.lite_pilot_enabled:
+                profile = profile_elements(usable)
+                style = str(choose_chunk_style(profile).get("style", "recursive"))
+                pages = [getattr(item, "page", None) for item in usable]
+                page_numbers = [page for page in pages if isinstance(page, int)]
+                if page_numbers:
+                    page_count = max(page_numbers) - min(page_numbers) + 1
+                else:
+                    total_chars = sum(len(getattr(item, "text", "") or "") for item in usable)
+                    page_count = total_chars // 3000
+                pilot = LitePilotConfig(
+                    enabled=True,
+                    long_doc_pages=self.config.lite_long_doc_pages,
+                )
+                chunks = apply_lite_pilot_filter(chunks, pilot, page_count=page_count)
+                strategy = lite_strategy_id(pilot, style)
+                tagged = []
+                for chunk in chunks:
+                    metadata = dict(chunk.metadata)
+                    metadata["lite_strategy_id"] = strategy
+                    metadata["lite_chunk_style"] = style
+                    tagged.append(replace(chunk, metadata=metadata))
+                chunks = tagged
             self.index.replace_document_chunks(source.document_id, chunks)
             if not chunks:
                 items.append(IngestionItemReport(

@@ -321,3 +321,27 @@ overlap/summary (E3) defect. E3 stays closed.
 - ❌ Rebuilding or mutating the active Workspace Chat index
 - ❌ Labelling owner `local_only` / `tailieugoc` as measured
 - ❌ Treating `corpus_public_v1.json` / v2 fingerprints as comparable to v3
+
+## E5: Thí điểm Lite-CPU (phiên làm rõ 2026-09-19, máy i5/16GB không GPU)
+
+**Phạm vi**: Bộ chọn kiểu chia theo tài liệu, cha-con chỉ tài liệu dài trên 10 trang, cấu hình theo lần tải (parser và chia mảnh, đồ thị bật tay 1 luồng SQLite), sửa mảnh có hoàn tác, chạy thử có cờ tắt và hoàn tác. Giữ ngưỡng duyệt cũ 5 điểm và 25%.
+
+- [x] T032 Bộ chọn kiểu chia (tiêu đề, trang, đệ quy) kèm kiểm tra hỏng tự rơi tầng trong `src/aios_habit/rag_v2/chunking.py`, có test trong `tests/test_rag_v2_chunking.py`
+- [x] T033 Quan hệ cha-con chỉ tài liệu dài trên 10 trang trong `src/aios_habit/rag_v2/chunking.py`, tắt cho hỏi đáp ngắn, giữ nguồn gốc bảng và trang
+- [x] T034 Cấu hình theo lần tải (parser và chia mảnh, đồ thị bật tay 1 luồng SQLite không Neo4j) trong adapter ingest, có test
+- [x] T035 Sửa mảnh có lịch sử, xem khác biệt, hoàn tác một chạm, tự đánh chỉ mục lại, có test
+- [x] T036 Cờ chạy thử và đường hoàn tác về baseline, hiện tên chiến lược trong chẩn đoán cục bộ, có test
+- [ ] T037 Chạy đánh giá trên `corpus_public_v3.json`, ghi recall, trích dẫn, p95, dung lượng, quyết định đạt hoặc loại theo ngưỡng 5 điểm và 25%
+
+**Bằng chứng E5 ngày 2026-09-19 (Python 3.11 qua uv)**: `compileall` sạch, `pytest tests/test_rag_v2_lite_pilot.py tests/test_rag_v2_chunking.py tests/test_chunk_evaluation.py tests/test_rag_v2_pipeline.py tests/test_rag_v2_synthesis.py` **144 passed**, `cli audit` **PASS**, `import workspace_chat_app` **import-ok**. Chạy trọn BGE v3 trên i5 quá 600s chưa xong, không dùng số cũ để tuyên bố đạt, giữ `T037` mở cho ca chạy đêm.
+
+**Đo tốc độ dùng hằng ngày trên 7 tệp 6thA3 thật (`local_runs/speed_smoke_6tha3.py`, lexical, không BGE)**: nhập xong trong **5.42 giây** được **63 mảnh**, hỏi đáp **0.04 giây** và **0.01 giây**. Đây là bằng chứng tốc độ, không phải bằng chứng chất lượng.
+
+**Cấm trong E5**: đổi mặc định khi chưa có quyết định đạt, đụng index đang dùng, đưa chữ `local_only` ra ngoài, tuyên bố ngang NotebookLM.
+
+## E3: Đo lại biên Nhật Trung trên kho chủ sở hữu (phiên 2026-09-19, không tạo spec mới)
+
+**Phạm vi**: Bộ câu hỏi đóng băng trên tài liệu Nhật Trung thật của xưởng (Iris LSU), chạy E1 rồi ứng viên E2 trên đúng bộ đó, giữ ngưỡng 5 điểm và 25%. Chỉ lập kế hoạch, chưa chạy vì cần chủ sở hữu chốt danh sách tài liệu.
+
+- [ ] T038 Chốt danh sách tài liệu Nhật Trung và câu hỏi biên từ kho chủ sở hữu, ghi fingerprint kho và bộ câu hỏi
+- [ ] T039 Chạy E1 và ứng viên E2 trên bộ đó, ghi recall, trích dẫn, p95, dung lượng, quyết định đạt hoặc loại

@@ -660,3 +660,103 @@ class StructureAwareChunker:
             checksum,
         ])
         return hashlib.sha256(raw.encode("utf-8")).hexdigest()
+
+
+# Lite-CPU pilot additions for E5 (additive only, baseline path unchanged).
+CHUNK_STYLE_HEADING = "heading"
+CHUNK_STYLE_HEURISTIC = "heuristic"
+CHUNK_STYLE_RECURSIVE = "recursive"
+
+_LITE_STRATEGY_VERSION = "lite-e5-v1"
+
+
+@dataclass(frozen=True)
+class LitePilotConfig:
+    """CPU-safe pilot switch with rollback to baseline."""
+
+    enabled: bool = False
+    long_doc_pages: int = 10
+    enable_parent_only_long_docs: bool = True
+    max_workers: int = 1
+    strategy_name: str = _LITE_STRATEGY_VERSION
+
+
+def profile_elements(elements: Iterable[DocumentElement]) -> Dict[str, Any]:
+    """Count structural signals to pick a chunk style without embedding."""
+    heading_hits = 0
+    page_breaks = 0
+    chapter_marks = 0
+    caps_titles = 0
+    separators = 0
+    blank_bursts = 0
+    total = 0
+    for element in elements:
+        total += 1
+        text = getattr(element, "text", "") or ""
+        section = tuple(getattr(element, "section_path", ()) or ())
+        if section:
+            heading_hits += 1
+        if "\f" in text:
+            page_breaks += 1
+        lowered = text.lower()
+        for mark in ("chapter", "chương", "章", "章节", "kapitel"):
+            if mark in lowered:
+                chapter_marks += 1
+                break
+        lines = text.splitlines() or [text]
+        for line in lines[:8]:
+            stripped = line.strip()
+            if len(stripped) >= 8 and stripped.isupper():
+                caps_titles += 1
+                break
+        if "---" in text or "***" in text or "===" in text:
+            separators += 1
+        if "\n\n\n" in text:
+            blank_bursts += 1
+    return {
+        "total": total,
+        "heading_hits": heading_hits,
+        "page_breaks": page_breaks,
+        "chapter_marks": chapter_marks,
+        "caps_titles": caps_titles,
+        "separators": separators,
+        "blank_bursts": blank_bursts,
+    }
+
+
+def choose_chunk_style(profile: Dict[str, Any], *, single_line_chunks: int = 0) -> Dict[str, Any]:
+    """Pick heading/heuristic/recursive with validator fallback to recursive."""
+    if single_line_chunks > 200:
+        return {"style": CHUNK_STYLE_RECURSIVE, "reason": "validator-fallback-too-many-single-line"}
+    if int(profile.get("heading_hits", 0)) >= 3:
+        return {"style": CHUNK_STYLE_HEADING, "reason": "markdown-structure"}
+    structural = (
+        int(profile.get("page_breaks", 0))
+        + int(profile.get("chapter_marks", 0))
+        + int(profile.get("caps_titles", 0))
+        + int(profile.get("separators", 0))
+    )
+    if structural >= 3:
+        return {"style": CHUNK_STYLE_HEURISTIC, "reason": "pdf-structure"}
+    return {"style": CHUNK_STYLE_RECURSIVE, "reason": "fallback-recursive"}
+
+
+def lite_strategy_id(config: LitePilotConfig, style: str) -> str:
+    """Versioned strategy identity for local diagnostics and rollback."""
+    raw = "|".join([_LITE_STRATEGY_VERSION, style, str(config.long_doc_pages)])
+    digest = hashlib.sha256(raw.encode("utf-8")).hexdigest()[:12]
+    return f"{_LITE_STRATEGY_VERSION}:{style}:{digest}"
+
+
+def apply_lite_pilot_filter(
+    chunks: List[DocumentChunk],
+    config: LitePilotConfig,
+    *,
+    page_count: int = 0,
+) -> List[DocumentChunk]:
+    """Keep baseline output unless pilot explicitly limits parent views."""
+    if not config.enabled or not config.enable_parent_only_long_docs:
+        return chunks
+    if page_count >= config.long_doc_pages:
+        return chunks
+    return [chunk for chunk in chunks if chunk.retrievable]
