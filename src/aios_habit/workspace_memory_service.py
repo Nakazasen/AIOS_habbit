@@ -904,3 +904,108 @@ def apply_conflict_choice(
     if conflict_group:
         object.__setattr__(decision, "conflict_group", conflict_group)
     return append_memory_decision(decision, path=path)
+
+
+LEDGER_SOFT_CAP = 200
+LEDGER_WARN_RATIO = 0.8
+LEDGER_STALE_DAYS = 30
+
+
+def _ledger_actor_map(path: Path) -> dict[str, dict[str, str]]:
+    """Latest actor and time per memory id from the decisions log."""
+    info: dict[str, dict[str, str]] = {}
+    for row in _read_jsonl(path):
+        memory_id = str(row.get("memory_id") or "")
+        if memory_id:
+            info[memory_id] = {
+                "actor_label": str(row.get("actor_label") or "người dùng"),
+                "created_at": str(row.get("created_at") or ""),
+            }
+    return info
+
+
+def list_ledger_memories(
+    collection_id: str,
+    *,
+    decisions_path: Path | None = None,
+    published_base_dir: Path | None = None,
+) -> tuple[list[dict[str, Any]], str | None]:
+    """List active lessons for the ledger dashboard, newest first.
+
+    User-taught lessons come from the effective decisions log; system
+    lessons come from the read-only live catalog. Forgotten items stay out.
+    """
+    path = Path(decisions_path) if decisions_path is not None else default_decisions_path()
+    actors = _ledger_actor_map(path)
+    items: list[dict[str, Any]] = []
+    for record in _effective_user_memory_records(path):
+        source_id = str(record.get("source_id") or "")
+        meta = actors.get(source_id, {})
+        refs = record.get("evidence_refs") or ()
+        items.append({
+            "memory_key": str(record.get("memory_key") or source_id),
+            "source_kind": SOURCE_KIND_USER_MEMORY,
+            "source_id": source_id,
+            "title": str(record.get("title") or ""),
+            "statement": str(record.get("statement") or ""),
+            "scope": str(record.get("scope") or "general"),
+            "status": "confirmed",
+            "updated_at": str(record.get("updated_at") or meta.get("created_at") or ""),
+            "evidence_count": len(tuple(refs)),
+            "actor_label": meta.get("actor_label") or "người dùng",
+            "manageable": True,
+            "applies_when": str(record.get("applies_when") or ""),
+            "does_not_apply_when": str(record.get("does_not_apply_when") or ""),
+        })
+    live_rows, fallback = load_live_catalog(collection_id, published_base_dir=published_base_dir)
+    for row in live_rows:
+        status = _normalize_status(str(row.get("status") or ""), str(row.get("source_kind") or ""))
+        if status is None:
+            continue
+        refs = row.get("evidence_refs") or ()
+        items.append({
+            "memory_key": str(row.get("memory_key") or row.get("source_id") or ""),
+            "source_kind": str(row.get("source_kind") or ""),
+            "source_id": str(row.get("source_id") or ""),
+            "title": str(row.get("title") or ""),
+            "statement": str(row.get("statement") or ""),
+            "scope": str(row.get("scope") or "general"),
+            "status": status,
+            "updated_at": str(row.get("updated_at") or ""),
+            "evidence_count": len(tuple(refs)),
+            "actor_label": "kho tri thức",
+            "manageable": False,
+            "applies_when": str(row.get("applies_when") or row.get("category") or ""),
+            "does_not_apply_when": str(row.get("does_not_apply_when") or ""),
+        })
+    items.sort(key=lambda item: str(item.get("updated_at") or ""), reverse=True)
+    return items, fallback
+
+
+def forget_ledger_memory(
+    memory_id: str,
+    actor_label: str,
+    *,
+    decisions_path: Path | None = None,
+) -> MemoryDecision:
+    """Forget one user-taught lesson from the dashboard with audit trail."""
+    wanted = str(memory_id or "").strip()
+    if not wanted:
+        raise ValueError("memory_id must be non-empty")
+    handler = str(actor_label or "").strip() or "người dùng"
+    path = Path(decisions_path) if decisions_path is not None else default_decisions_path()
+    target = next(
+        (row for row in _read_jsonl(path) if str(row.get("memory_id") or "") == wanted),
+        None,
+    )
+    if target is None:
+        raise ValueError("memory lesson not found")
+    decision = make_memory_decision(
+        action="forget",
+        statement=str(target.get("statement") or ""),
+        scope=str(target.get("scope") or "general"),
+        evidence_refs=("dashboard_forget",),
+        actor_label=handler,
+        memory_id=wanted,
+    )
+    return append_memory_decision(decision, path=path)

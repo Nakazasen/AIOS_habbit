@@ -5,6 +5,14 @@
 **Trạng thái**: `IMPLEMENTED_PENDING_INDEPENDENT_AUDIT`  
 **Đầu vào**: Nâng cấp Workspace Chat để càng dùng càng hữu ích như Grokbot, nhưng chỉ học từ tri thức đã được người dùng xác nhận và không thiết kế quá mức.
 
+## Làm rõ
+
+### Phiên 2026-09-19 (Sổ bài học)
+
+- Hỏi: Nút mở Sổ bài học đặt ở đâu? → Đáp: Nút ở thanh bên ngay dưới nút ghi nhớ, đúng ngữ cảnh và một chạm tới được.
+- Hỏi: Có làm gợi ý gộp bài trùng ngay không? → Đáp: Để nhịp sau, nhịp này làm xem, quên, chi tiết và thước dung lượng trước để chắc và nhẹ máy.
+- Nguồn: Bài học production gồm danh sách quản lý từng mục của ChatGPT, thẻ nhớ sửa được kèm thời gian, cảnh báo đầy im lặng phải tránh, và thiết kế quên tốt cũng quan trọng như nhớ.
+
 ## 1. Mục tiêu
 
 Workspace Chat phải nhớ lại đúng các bài học, quyết định và cách làm đã được xác nhận trước khi trả lời một việc liên quan. Người dùng có thể chủ động yêu cầu nhớ, quên hoặc sửa một bài học. Mức “thông minh dần” được đo bằng khả năng tái sử dụng tri thức đáng tin cậy, không phải bằng tự huấn luyện mô hình hoặc tự biến mọi hội thoại thành sự thật.
@@ -60,6 +68,23 @@ Là người dùng, khi sửa một câu trả lời sai, tôi muốn AIOS đề
 2. **Cho trước** người dùng đã xem, chỉnh và xác nhận bài học, **khi** gặp câu hỏi tương tự, **thì** AIOS ưu tiên nhắc bài học đã xác nhận cùng căn cứ.
 3. **Cho trước** bài học mới gần trùng hoặc trái với bài học hiện có, **khi** người dùng xác nhận, **thì** AIOS không tạo bản trùng âm thầm và yêu cầu chọn thay thế, giữ cả hai có cảnh báo hoặc hủy.
 
+---
+
+### Câu chuyện người dùng 4 — Sổ bài học xem được và dọn được (Ưu tiên: P2)
+
+Là người dùng, tôi muốn mở Sổ bài học ngay dưới nút ghi nhớ ở thanh bên để xem toàn bộ bài AIOS đang giữ, lọc theo phạm vi và trạng thái, tìm theo chữ, mở chi tiết xem ai dạy lúc nào, quên từng bài khi không còn đúng, và thấy thước dung lượng báo trước khi đầy.
+
+**Lý do ưu tiên**: Không có chỗ xem thì càng dùng càng mù, bài cũ sai cứ nằm đó. Thước dung lượng tránh lỗi đầy im lặng của các sản phẩm lớn.
+
+**Kiểm thử độc lập**: Chuẩn bị bài ở nhiều phạm vi và trạng thái, bài cũ quá 30 ngày; mở sổ thấy phân trang, lọc, tìm kiếm, huy hiệu bài lâu chưa dùng, thước dung lượng và nút quên từng bài có xác nhận.
+
+**Kịch bản nghiệm thu**:
+
+1. **Cho trước** nhiều bài học ở nhiều phạm vi, **khi** người dùng mở Sổ bài học, **thì** danh sách hiện theo trang 10 bài kèm tên, nội dung rút gọn, phạm vi, trạng thái, nguồn và ngày cập nhật.
+2. **Cho trước** bài cập nhật quá 30 ngày, **khi** người dùng xem danh sách, **thì** bài đó có huy hiệu lâu chưa dùng kèm nút quên.
+3. **Cho trước** người dùng bấm quên một bài, **khi** xác nhận, **thì** bài ngừng được truy xuất ngay, lịch sử quyết định vẫn đủ kiểm toán.
+4. **Cho trước** số bài vượt 80% mức mềm 200 bài, **khi** người dùng mở sổ, **thì** thước dung lượng báo rõ và gợi ý dọn bài cũ.
+
 ### Trường hợp biên bắt buộc
 
 - Tệp trí nhớ hỏng, kho bị khóa hoặc một nguồn đọc không khả dụng: câu hỏi hiện tại vẫn chạy theo luồng cũ và có cảnh báo tiếng Việt ngắn, không lộ traceback.
@@ -94,6 +119,8 @@ Là người dùng, khi sửa một câu trả lời sai, tôi muốn AIOS đề
 - **FR-020**: Toàn bộ nhãn, cảnh báo, lỗi và hướng dẫn người dùng MUST là tiếng Việt dễ hiểu, không lộ tên engine, đường dẫn máy hoặc traceback.
 - **FR-021**: MVP MUST chạy cục bộ trên laptop i5, RAM 16 GB, không GPU và không đòi mô hình, dịch vụ hay cơ sở dữ liệu mới.
 - **FR-022**: Workspace Chat MUST luôn cho người dùng thấy lựa chọn “Cho AIOS ghi nhớ để hỗ trợ tôi tốt hơn”; lựa chọn MUST được giữ cục bộ qua lần khởi động sau và không buộc người dùng nhớ lệnh hoặc biến môi trường.
+- **FR-023**: Hệ thống PHẢI có Sổ bài học mở từ thanh bên ngay dưới nút ghi nhớ, hiện danh sách theo trang 10 bài, lọc theo phạm vi và trạng thái, tìm theo chữ, xem chi tiết ai dạy lúc nào và quên từng bài có xác nhận.
+- **FR-024**: Sổ bài học PHẢI có thước dung lượng theo mức mềm 200 bài, báo rõ khi vượt 80%, và huy hiệu lâu chưa dùng cho bài quá 30 ngày chưa cập nhật.
 
 ## 4. Thực thể chính
 
@@ -101,6 +128,7 @@ Là người dùng, khi sửa một câu trả lời sai, tôi muốn AIOS đề
 - **Quyết định trí nhớ**: Ghi nhận việc người dùng xác nhận nhớ, quên, thu hồi, thay thế hoặc giữ một mục, cùng thời điểm và căn cứ.
 - **Ứng viên bài học từ sửa sai**: Bản đề xuất chưa có hiệu lực, chứa lỗi đã gặp, cách sửa, phạm vi áp dụng và liên kết tới bằng chứng của phiên hiện tại.
 - **Dấu vết gọi lại**: Ghi nhận truy vấn, các mục được chọn hoặc bị loại và lý do ở mức metadata an toàn để kiểm toán chất lượng.
+- **Mục sổ bài học**: Bản nhìn chỉ đọc của một bài trong sổ gồm tên, nội dung rút gọn, phạm vi, trạng thái, nguồn, ngày cập nhật và huy hiệu lâu chưa dùng.
 
 ## 5. Tiêu chí thành công đo được
 
@@ -113,6 +141,7 @@ Là người dùng, khi sửa một câu trả lời sai, tôi muốn AIOS đề
 - **SC-007**: Không có hội thoại thô, bí mật hoặc nội dung `local_only` chưa được đồng ý xuất hiện trong dữ liệu xuất, Git hay dữ liệu gửi nhà cung cấp ngoài ở toàn bộ kiểm thử riêng tư.
 - **SC-008**: Khi công tắc tắt hoặc lớp trí nhớ lỗi, 100% kiểm thử hồi quy xác nhận Workspace Chat vẫn dùng hành vi baseline và hiển thị lỗi an toàn bằng tiếng Việt nếu cần.
 - **SC-009**: Toàn bộ quality gate bắt buộc của repo đạt `PASS`, quickstart đạt, và kiểm toán độc lập không còn finding mức chặn trước khi Goal 011 được đánh dấu hoàn thành.
+- **SC-010**: Sổ bài học mở được trong không quá hai chạm từ thanh bên, phân trang lọc tìm đúng 100% tình huống nghiệm thu, quên một bài có xác nhận thì bài đó ngừng truy xuất ngay.
 
 ## 6. Giả định và ranh giới
 

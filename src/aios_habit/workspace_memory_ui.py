@@ -472,3 +472,166 @@ def _render_correction_form(*, message_id: str, trace_id: str | None, workspace_
                 st.session_state.pop(corr_conflict_key, None)
                 st.session_state.wsc_action_message = confirm_cancelled_message()
                 st.rerun()
+
+
+LEDGER_OPEN_KEY = "wsc_ledger_open"
+LEDGER_PAGE_KEY = "wsc_ledger_page"
+LEDGER_FORGET_KEY = "wsc_ledger_forget"
+LEDGER_PAGE_SIZE = 10
+
+_SOURCE_KIND_LABELS = {
+    "user_memory": "Bạn dạy",
+    "memory_unit": "Bài học",
+    "senior_learning_card": "Thẻ học",
+    "case_lesson": "Bài học vụ việc",
+    "published_artifact": "Tài liệu xuất bản",
+}
+
+
+def ledger_button_label() -> str:
+    return "Sổ bài học"
+
+
+def ledger_title() -> str:
+    return "Sổ bài học AIOS đang giữ"
+
+
+def _ledger_stale(updated_at: str) -> bool:
+    from datetime import datetime, timezone
+
+    from aios_habit.workspace_memory_service import LEDGER_STALE_DAYS
+
+    try:
+        moment = datetime.fromisoformat(str(updated_at).replace("Z", "+00:00"))
+        if moment.tzinfo is None:
+            moment = moment.replace(tzinfo=timezone.utc)
+        return (datetime.now(timezone.utc) - moment).days > LEDGER_STALE_DAYS
+    except (ValueError, TypeError):
+        return False
+
+
+def render_ledger_toggle() -> None:
+    """One-touch button under the memory toggle opening the ledger."""
+    import streamlit as st
+
+    opened = bool(st.session_state.get(LEDGER_OPEN_KEY, False))
+    if st.button(
+        "Đóng Sổ bài học" if opened else ledger_button_label(),
+        key="wsc_ledger_toggle",
+        use_container_width=True,
+    ):
+        st.session_state[LEDGER_OPEN_KEY] = not opened
+        st.session_state.pop(LEDGER_PAGE_KEY, None)
+        st.session_state.pop(LEDGER_FORGET_KEY, None)
+        st.rerun()
+
+
+def render_ledger_panel(collection_id: str) -> None:
+    """Paginated, filterable lesson list with per-item forget and capacity."""
+    import streamlit as st
+
+    from aios_habit.workspace_memory_service import (
+        LEDGER_SOFT_CAP,
+        LEDGER_WARN_RATIO,
+        forget_ledger_memory,
+        list_ledger_memories,
+    )
+
+    try:
+        items, _fallback = list_ledger_memories(collection_id or "tri_thuc")
+    except Exception as exc:
+        st.warning(_safe_error(exc))
+        return
+
+    total = len(items)
+    st.progress(min(1.0, total / LEDGER_SOFT_CAP) if LEDGER_SOFT_CAP else 0.0)
+    st.caption(f"Đang giữ {total}/{LEDGER_SOFT_CAP} bài.")
+    if total >= LEDGER_SOFT_CAP * LEDGER_WARN_RATIO:
+        st.warning("Sổ sắp đầy. Hãy quên bài cũ không còn đúng để dành chỗ cho bài mới.")
+
+    if not items:
+        st.info("Chưa có bài học nào. Bạn dạy AIOS bằng câu “Hãy nhớ: …” trong khung chat.")
+        return
+
+    search = st.text_input("Tìm trong sổ", key="wsc_ledger_search", placeholder="Gõ chữ cần tìm…")
+    scopes = sorted({str(item.get("scope") or "general") for item in items})
+    statuses = sorted({str(item.get("status") or "") for item in items if item.get("status")})
+    scope_pick = st.selectbox("Phạm vi", options=["Tất cả"] + scopes, key="wsc_ledger_scope")
+    status_pick = st.selectbox("Trạng thái", options=["Tất cả"] + statuses, key="wsc_ledger_status")
+
+    needle = search.strip().casefold()
+    shown = [
+        item for item in items
+        if (scope_pick == "Tất cả" or str(item.get("scope")) == scope_pick)
+        and (status_pick == "Tất cả" or str(item.get("status")) == status_pick)
+        and (not needle or needle in f"{item.get('title', '')} {item.get('statement', '')}".casefold())
+    ]
+    if not shown:
+        st.info("Không có bài nào khớp lọc. Hãy đổi từ khóa hoặc bộ lọc.")
+        return
+
+    pages = max(1, (len(shown) + LEDGER_PAGE_SIZE - 1) // LEDGER_PAGE_SIZE)
+    page = int(st.session_state.get(LEDGER_PAGE_KEY, 0) or 0)
+    page = max(0, min(page, pages - 1))
+    st.session_state[LEDGER_PAGE_KEY] = page
+    st.caption(f"Trang {page + 1}/{pages} — {len(shown)} bài.")
+    prev_col, next_col = st.columns(2)
+    with prev_col:
+        if st.button("Trang trước", key="wsc_ledger_prev", disabled=page <= 0):
+            st.session_state[LEDGER_PAGE_KEY] = page - 1
+            st.rerun()
+    with next_col:
+        if st.button("Trang sau", key="wsc_ledger_next", disabled=page >= pages - 1):
+            st.session_state[LEDGER_PAGE_KEY] = page + 1
+            st.rerun()
+
+    try:
+        import getpass as _getpass
+
+        default_actor = _getpass.getuser()
+    except Exception:
+        default_actor = ""
+    if "wsc_ledger_actor" not in st.session_state and default_actor:
+        st.session_state["wsc_ledger_actor"] = default_actor
+    st.text_input("Tên người thao tác", key="wsc_ledger_actor")
+
+    for item in shown[page * LEDGER_PAGE_SIZE:(page + 1) * LEDGER_PAGE_SIZE]:
+        kind_label = _SOURCE_KIND_LABELS.get(str(item.get("source_kind") or ""), "Bài học")
+        head = f"{item.get('title') or '(Chưa đặt tên)'} — {kind_label}"
+        with st.expander(head):
+            st.write(item.get("statement") or "")
+            st.caption(
+                f"Phạm vi: {item.get('scope')} · Trạng thái: {item.get('status')} · "
+                f"Người dạy: {item.get('actor_label')} · Cập nhật: {str(item.get('updated_at') or '')[:10]} · "
+                f"Bằng chứng: {item.get('evidence_count', 0)} mục."
+            )
+            if item.get("applies_when"):
+                st.caption(f"Áp dụng khi: {item.get('applies_when')}")
+            if item.get("does_not_apply_when"):
+                st.caption(f"Không áp dụng khi: {item.get('does_not_apply_when')}")
+            if _ledger_stale(str(item.get("updated_at") or "")):
+                st.warning("Bài này lâu chưa dùng. Hãy kiểm tra còn đúng không, quên nếu đã sai.")
+            if not item.get("manageable"):
+                st.caption("Bài từ kho tri thức, quản lý ở kho gốc.")
+                continue
+            pending = st.session_state.get(LEDGER_FORGET_KEY)
+            if pending == item.get("memory_key"):
+                st.warning(f"Chắc chắn quên bài này: {item.get('title')}?")
+                yes_col, no_col = st.columns(2)
+                with yes_col:
+                    if st.button("Xác nhận quên", key=f"wsc_ledger_forget_yes_{item.get('memory_key')}"):
+                        try:
+                            actor = str(st.session_state.get("wsc_ledger_actor") or "").strip() or "người dùng"
+                            forget_ledger_memory(str(item.get("source_id") or ""), actor)
+                            st.session_state.wsc_action_message = FORGET_SUCCESS
+                        except Exception as exc:
+                            st.session_state.wsc_action_error = _safe_error(exc)
+                        st.session_state.pop(LEDGER_FORGET_KEY, None)
+                        st.rerun()
+                with no_col:
+                    if st.button("Giữ lại", key=f"wsc_ledger_forget_no_{item.get('memory_key')}"):
+                        st.session_state.pop(LEDGER_FORGET_KEY, None)
+                        st.rerun()
+            elif st.button("Quên bài này", key=f"wsc_ledger_forget_{item.get('memory_key')}"):
+                st.session_state[LEDGER_FORGET_KEY] = item.get("memory_key")
+                st.rerun()

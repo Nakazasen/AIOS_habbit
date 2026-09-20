@@ -116,3 +116,14 @@ baseline + kiểm tra nguồn tùy chọn
 - US3: 5 task.
 - Kiểm chứng/bàn giao/audit: 7 task.
 - Grok: T001–T030. Codex: T031–T032.
+
+## Mở rộng US4: Sổ bài học (phiên 2026-09-19, không tạo spec mới)
+
+**Phạm vi**: Nút mở ở thanh bên dưới nút ghi nhớ, danh sách trang 10 bài, lọc phạm vi và trạng thái, tìm theo chữ, chi tiết ai dạy lúc nào, quên từng bài có xác nhận, thước dung lượng mức mềm 200 bài báo ở 80%, huy hiệu lâu chưa dùng quá 30 ngày. Gợi ý gộp trùng để nhịp sau.
+
+- [x] T033 Hàm liệt kê mục sổ từ kho trí nhớ hiệu lực trong `src/aios_habit/workspace_memory_service.py`, có test trong `tests/test_workspace_memory_ledger.py`
+- [x] T034 Màn Sổ bài học trong `src/aios_habit/workspace_memory_ui.py` và chỗ mở ở thanh bên trong `src/aios_habit/workspace_chat_app.py`, chữ tiếng Việt trong `src/aios_habit/i18n.py`
+- [x] T035 Nút quên từng bài dùng luồng quên hiện có, thước dung lượng và huy hiệu lâu chưa dùng, có test
+- [x] T036 Chạy kiểm chứng `compileall`, kiểm thử liên quan, quét tiếng Việt, `cli audit` đạt `PASS`, `import workspace_chat_app` thành công
+
+**Bằng chứng ngày 2026-09-19**: `compileall` sạch, 6 tệp kiểm thử trí nhớ **47 passed** (gồm `test_workspace_memory_ledger` mới), quét tiếng Việt **PASS**, `cli audit` **PASS**, `import workspace_chat_app` thành công, `git diff --check` sạch. Gợi ý gộp trùng để nhịp sau theo quyết định làm rõ.
