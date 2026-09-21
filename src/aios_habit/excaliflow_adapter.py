@@ -1974,6 +1974,8 @@ html, body {{
 .flowsint-layout {{
   display: flex;
   height: 100%;
+  width: 100%;
+  min-width: 0;
   background: var(--bg-dark);
   border: 1px solid var(--border-color);
   border-radius: 12px;
@@ -1983,8 +1985,10 @@ html, body {{
 }}
 /* Column 1: Entities Sidebar */
 .flowsint-sidebar {{
-  width: 250px;
-  min-width: 220px;
+  flex: 0 1 200px;
+  width: 200px;
+  min-width: 148px;
+  max-width: 30%;
   background: var(--panel-bg);
   border-right: 1px solid var(--border-color);
   display: flex;
@@ -2066,7 +2070,8 @@ html, body {{
 
 /* Column 2: Center Canvas */
 .flowsint-canvas-wrapper {{
-  flex: 1;
+  flex: 1 1 360px;
+  min-width: 240px;
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -2080,6 +2085,8 @@ html, body {{
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
   border-bottom: 1px solid var(--border-color);
   background: rgba(15, 23, 42, 0.7);
   backdrop-filter: blur(8px);
@@ -2087,6 +2094,10 @@ html, body {{
 .scene-head strong {{
   font-size: 14px;
   color: #f8fafc;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }}
 .scene-head span {{
   font-size: 12px;
@@ -2149,9 +2160,10 @@ html, body {{
 }}
 .scene-board svg {{
   display: block;
-  min-width: 1100px;
   width: 100%;
-  height: auto;
+  height: 100%;
+  min-width: 0;
+  max-width: 100%;
   transform-origin: 0 0;
   transition: transform 0.05s ease-out;
 }}
@@ -2334,8 +2346,10 @@ html, body {{
 
 /* Column 3: Inspector Panel */
 .flowsint-inspector {{
-  width: 320px;
-  min-width: 280px;
+  flex: 0 1 240px;
+  width: 240px;
+  min-width: 160px;
+  max-width: 34%;
   background: var(--panel-bg);
   border-left: 1px solid var(--border-color);
   display: flex;

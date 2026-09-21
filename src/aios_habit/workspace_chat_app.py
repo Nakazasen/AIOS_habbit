@@ -59,30 +59,29 @@ st.html('''
             top: 50% !important;
             right: 0 !important;
             z-index: 1001 !important;
-            width: 42px !important;
+            width: 44px !important;
+            overflow: hidden !important;
             transform: translateY(-50%) !important;
         }
         [class*="st-key-wsc-layout-rail-toggle"] [data-testid="stButton"] button {
-            width: auto !important;
-            max-width: 11rem !important;
+            width: 44px !important;
             min-width: 44px !important;
-            height: auto !important;
+            height: 68px !important;
             min-height: 44px !important;
-            padding: 0.4rem 0.7rem !important;
+            padding: 0 !important;
             border-radius: 14px 0 0 14px !important;
             border: 1px solid #E2E8F0 !important;
             border-right: 0 !important;
             background: #FFFFFF !important;
             color: #020617 !important;
-            white-space: normal !important;
+            overflow: hidden !important;
             box-shadow: -2px 2px 8px rgba(15, 23, 42, 0.08) !important;
         }
         [class*="st-key-wsc-layout-rail-toggle"] [data-testid="stButton"] button:hover {
             background: #E0F2FE !important;
         }
         [class*="st-key-wsc-layout-rail-toggle"] [data-testid="stButton"] button p {
-            white-space: normal !important;
-            overflow-wrap: anywhere !important;
+            display: none !important;
         }
 
         /* Expand main block container */
@@ -114,10 +113,18 @@ st.html('''
             background: #FFFFFF !important;
             border-left: 3px solid #334155 !important;
         }
-        /* Bề rộng dòng đáp án dễ đọc; nội dung dài hiện đầy đủ, không cắt bớt. */
-        [data-testid="stChatMessageContent"] {
+        /* Bề rộng dòng đáp án dễ đọc; đồ thị bằng chứng không bị ép vào cùng mức đó. */
+        [data-testid="stChatMessageContent"] [data-testid="stMarkdown"] p,
+        [data-testid="stChatMessageContent"] [data-testid="stMarkdown"] li {
             max-width: 75ch !important;
+        }
+        [data-testid="stChatMessageContent"] {
+            max-width: none !important;
             line-height: 1.6 !important;
+        }
+        [data-testid="stChatMessage"] iframe {
+            width: 100% !important;
+            min-width: 0 !important;
         }
 
         /* List and table formatting inside chat message */

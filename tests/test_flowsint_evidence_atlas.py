@@ -105,6 +105,8 @@ class TestFlowsintEvidenceAtlas:
         assert 'class="flowsint-sidebar"' in html_out
         assert 'class="flowsint-canvas-wrapper"' in html_out
         assert 'flowsint-inspector' in html_out
+        assert "min-width: 240px" in html_out
+        assert "min-width: 1100px" not in html_out
 
         # Search bar and entity items
         assert 'class="search-input"' in html_out
