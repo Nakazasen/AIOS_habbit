@@ -245,11 +245,12 @@ st.html('''
         [class*="st-key-wsc-composer-"] [data-testid="stButton"] button[kind="primary"] {
             min-width: 44px !important;
             min-height: 44px !important;
-            height: auto !important;
-            padding: 0.4rem 0.7rem !important;
+            width: auto !important;
+            height: 44px !important;
+            padding: 0 0.85rem !important;
             border-radius: 12px !important;
             font-weight: 700 !important;
-            white-space: normal !important;
+            white-space: nowrap !important;
         }
         [class*="st-key-wsc-action-"] {
             display: flex !important;
@@ -267,23 +268,27 @@ st.html('''
             white-space: nowrap !important;
         }
         [class*="st-key-wsc-action-"] [data-testid="stButton"] button p {
-            white-space: normal !important;
+            white-space: nowrap !important;
+            overflow-wrap: normal !important;
+            word-break: keep-all !important;
         }
         [class*="st-key-wsc-action-"] [data-testid="stButton"] button svg {
             width: 1.15rem !important;
             height: 1.15rem !important;
         }
         [class*="st-key-wsc-attachment-"] [data-testid="stPopover"] button p {
-            white-space: normal !important;
-            overflow-wrap: anywhere !important;
+            white-space: nowrap !important;
+            overflow-wrap: normal !important;
+            word-break: keep-all !important;
         }
         [class*="st-key-wsc-attachment-"] [data-testid="stPopover"] button {
             min-width: 44px !important;
             min-height: 44px !important;
-            height: auto !important;
-            padding: 0.4rem 0.7rem !important;
+            width: auto !important;
+            height: 44px !important;
+            padding: 0 0.75rem !important;
             justify-content: center !important;
-            white-space: normal !important;
+            white-space: nowrap !important;
         }
         [class*="st-key-wsc-attachment-"] [data-testid="stPopover"] button > svg:last-child {
             display: none !important;
@@ -317,10 +322,9 @@ st.html('''
             overflow-x: clip;
         }
         [data-testid="stSidebar"] [data-testid="stMarkdown"] p,
-        [data-testid="stSidebar"] label p,
-        [data-testid="stButton"] button p {
+        [data-testid="stSidebar"] label p {
             white-space: normal;
-            overflow-wrap: anywhere;
+            overflow-wrap: break-word;
         }
         button:focus-visible,
         textarea:focus-visible,
@@ -3553,7 +3557,7 @@ else:
                         label_visibility="visible",
                     )
 
-                    toolbar_attach_col, toolbar_model_col, toolbar_search_col, _toolbar_spacer, toolbar_hint_col, toolbar_action_col = st.columns([0.7, 3.5, 1.8, 5.5, 1.2, 0.8])
+                    toolbar_attach_col, toolbar_model_col, toolbar_search_col, _toolbar_spacer, toolbar_hint_col, toolbar_action_col = st.columns([2.2, 3.4, 2.2, 2.0, 1.2, 1.6], vertical_alignment="center")
                     with toolbar_attach_col:
                         with st.container(key=f"wsc-attachment-{active_conversation.id}"):
                             with st.popover(t("attach_popover", locale=current_ui_locale), help=t("attach_screenshot_help", locale=current_ui_locale), icon=":material/add:"):

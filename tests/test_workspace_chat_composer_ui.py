@@ -97,6 +97,24 @@ def test_composer_model_picker_maps_to_existing_ai_backends() -> None:
     assert 'with st.popover(f"◉' not in source
 
 
+def test_composer_toolbar_labels_stay_on_one_line() -> None:
+    """The attach and send labels must not break into one character per line."""
+    source = _app_source()
+    attach = source.split(
+        '[class*="st-key-wsc-attachment-"] [data-testid="stPopover"] button p',
+        1,
+    )[1][:240]
+    ask = source.split(
+        '[class*="st-key-wsc-action-"] [data-testid="stButton"] button p',
+        1,
+    )[1][:240]
+
+    assert "nowrap" in attach
+    assert "anywhere" not in attach
+    assert "nowrap" in ask
+    assert "st.columns([2.2, 3.4, 2.2, 2.0, 1.2, 1.6]" in source
+
+
 def test_composer_has_narrow_viewport_guard() -> None:
     source = _app_source()
 
