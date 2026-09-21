@@ -243,6 +243,42 @@ def test_khoi_cho_dung_trang_thai_that_trong_app() -> None:
     assert '"dang_xu_ly"' in source
 
 
+def test_khung_sang_khong_tai_font_mang() -> None:
+    """FR-025, FR-028, SC-019: one light surface, offline font, no remote font URL."""
+    source = _app_source()
+    theme = Path(".streamlit/config.toml").read_text(encoding="utf-8")
+
+    assert 'page_title="Hỏi tài liệu"' in source
+    assert "fonts.googleapis.com" not in theme
+    assert "fonts.googleapis.com" not in source
+    assert 'primaryColor = "#0369A1"' in theme
+    assert 'backgroundColor = "#F8FAFC"' in theme
+    assert 'textColor = "#020617"' in theme
+    assert 'redColor = "#DC2626"' in theme
+    assert 'greenColor = "#1A7F37"' in theme
+    assert "[theme.dark]" not in theme
+    assert "font-size: 16px" in source
+    assert "prefers-reduced-motion: reduce" in source
+    assert "button:focus-visible" in source
+    assert "#DC2626" in source
+    assert "background: rgba(15, 23, 42" not in source
+
+
+def test_dieu_huong_chinh_co_ten_tieng_viet_nhin_thay() -> None:
+    """FR-027, SC-015: primary navigation is not identified by emoji alone."""
+    source = _app_source()
+    translations = Path("src/aios_habit/i18n.py").read_text(encoding="utf-8")
+
+    assert '"chat": "Hỏi tài liệu"' in source
+    assert '"cases": "Hồ sơ và tri thức"' in source
+    assert '"advanced": "Công cụ nâng cao"' in source
+    assert "📖 Hỏi tài liệu" not in source.split("_legacy_connector_panel", 1)[-1]
+    assert '"sidebar_navigation_heading": "### Điều hướng"' in translations
+    assert 't("no_conversations_in_notebook"' in source
+    assert 't("workspace_select_prompt"' in source
+    assert "with st.container(border=True):" in source
+
+
 def test_cum_trich_dan_thu_gon_mac_dinh_dong() -> None:
     """FR-024: evidence detail frames must default to collapsed."""
     source = _app_source()

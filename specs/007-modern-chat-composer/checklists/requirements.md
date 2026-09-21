@@ -31,4 +31,5 @@
 
 ## Notes
 
-- Ready for implementation planning. Existing question submission, image processing, and pending-source behavior are explicit regression boundaries.
+- Phần composer tới câu chuyện 11 đã có kiểm thử. Phần câu chuyện 12–14, ngày 2026-09-21, đã có tình huống nghiệm thu, FR-025 tới FR-032 và SC-014 tới SC-019. Không còn mục cần hỏi. Chưa lập việc trong `tasks.md` và chưa viết mã.
+- Mặt sáng, màu việc chính khác màu kết luận, và chữ đủ dấu khi ngắt mạng đã chốt trong spec.

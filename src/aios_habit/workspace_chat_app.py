@@ -33,10 +33,9 @@ _WORKSPACE_AI_REQUEST_EXECUTOR = ThreadPoolExecutor(
 )
 
 st.set_page_config(
-    page_title="AIOS Habit Workspace Chat",
-    page_icon="💬",
+    page_title="Hỏi tài liệu",
     layout="wide",
-    initial_sidebar_state="expanded"
+    initial_sidebar_state="expanded",
 )
 
 # Streamlit 1.60 renders <style> inside st.markdown as visible text.
@@ -64,21 +63,26 @@ st.html('''
             transform: translateY(-50%) !important;
         }
         [class*="st-key-wsc-layout-rail-toggle"] [data-testid="stButton"] button {
-            width: 42px !important;
-            min-width: 42px !important;
-            height: 68px !important;
-            min-height: 68px !important;
-            padding: 0 !important;
+            width: auto !important;
+            max-width: 11rem !important;
+            min-width: 44px !important;
+            height: auto !important;
+            min-height: 44px !important;
+            padding: 0.4rem 0.7rem !important;
             border-radius: 14px 0 0 14px !important;
+            border: 1px solid #E2E8F0 !important;
             border-right: 0 !important;
-            background: rgba(30, 41, 59, 0.95) !important;
-            box-shadow: -4px 6px 18px rgba(0, 0, 0, 0.26) !important;
+            background: #FFFFFF !important;
+            color: #020617 !important;
+            white-space: normal !important;
+            box-shadow: -2px 2px 8px rgba(15, 23, 42, 0.08) !important;
         }
         [class*="st-key-wsc-layout-rail-toggle"] [data-testid="stButton"] button:hover {
-            background: rgba(59, 130, 246, 0.9) !important;
+            background: #E0F2FE !important;
         }
         [class*="st-key-wsc-layout-rail-toggle"] [data-testid="stButton"] button p {
-            display: none !important;
+            white-space: normal !important;
+            overflow-wrap: anywhere !important;
         }
 
         /* Expand main block container */
@@ -95,20 +99,20 @@ st.html('''
             padding: 1.2rem 1.6rem !important;
             border-radius: 12px !important;
             margin-bottom: 1.1rem !important;
-            font-size: 15.5px !important;
-            line-height: 1.68 !important;
-            border: 1px solid rgba(255, 255, 255, 0.08) !important;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15) !important;
+            font-size: 16px !important;
+            line-height: 1.5 !important;
+            border: 1px solid #E2E8F0 !important;
+            box-shadow: none !important;
         }
 
-        /* Bong bóng hỏi đáp: câu hỏi viền xanh dương phải, đáp án viền xanh lá trái. */
+        /* Bong bóng hỏi đáp: câu hỏi viền xanh việc chính bên phải, đáp án viền than bên trái. */
         [data-testid="stChatMessage"]:has([data-testid="stChatMessageAvatarUser"]) {
-            background: rgba(37, 99, 235, 0.10) !important;
-            border-right: 3px solid rgba(37, 99, 235, 0.65) !important;
+            background: rgba(3, 105, 161, 0.10) !important;
+            border-right: 3px solid #0369A1 !important;
         }
         [data-testid="stChatMessage"]:has([data-testid="stChatMessageAvatarAssistant"]) {
-            background: rgba(15, 23, 42, 0.45) !important;
-            border-left: 3px solid rgba(5, 150, 105, 0.65) !important;
+            background: #FFFFFF !important;
+            border-left: 3px solid #334155 !important;
         }
         /* Bề rộng dòng đáp án dễ đọc; nội dung dài hiện đầy đủ, không cắt bớt. */
         [data-testid="stChatMessageContent"] {
@@ -134,17 +138,18 @@ st.html('''
         /* Compact, current-generation AI composer. The marker keeps these
            styles confined to the Workspace Chat question form. */
         [data-testid="stForm"]:has(.wsc-composer) {
-            border: 1px solid rgba(148, 163, 184, 0.28) !important;
+            border: 1px solid #E2E8F0 !important;
             border-radius: 22px !important;
-            background: rgba(15, 23, 42, 0.62) !important;
-            box-shadow: 0 14px 36px rgba(0, 0, 0, 0.16) !important;
+            background: #FFFFFF !important;
+            box-shadow: none !important;
             padding: 0.7rem !important;
         }
         [data-testid="stForm"]:has(.wsc-composer) [data-testid="stTextArea"] textarea {
             min-height: 72px !important;
             border: 0 !important;
             border-radius: 16px !important;
-            background: rgba(30, 41, 59, 0.72) !important;
+            background: #F8FAFC !important;
+            color: #020617 !important;
             box-shadow: none !important;
             padding: 0.85rem 1rem !important;
         }
@@ -161,7 +166,7 @@ st.html('''
             background: transparent !important;
         }
         [data-testid="stForm"]:has(.wsc-composer) summary {
-            color: rgba(226, 232, 240, 0.92) !important;
+            color: #020617 !important;
             font-weight: 600 !important;
         }
         @media (max-width: 360px) {
@@ -182,9 +187,9 @@ st.html('''
         [class*="st-key-wsc-composer-"] {
             position: relative !important;
             border-radius: 22px !important;
-            background: rgba(15, 23, 42, 0.72) !important;
-            border-color: rgba(148, 163, 184, 0.32) !important;
-            box-shadow: 0 16px 42px rgba(0, 0, 0, 0.18) !important;
+            background: #FFFFFF !important;
+            border-color: #E2E8F0 !important;
+            box-shadow: none !important;
             padding: 0.7rem 0.85rem !important;
         }
         [class*="st-key-wsc-composer-"][data-testid="stVerticalBlock"] {
@@ -238,13 +243,13 @@ st.html('''
             border-radius: 10px !important;
         }
         [class*="st-key-wsc-composer-"] [data-testid="stButton"] button[kind="primary"] {
-            width: 44px !important;
             min-width: 44px !important;
-            height: 44px !important;
             min-height: 44px !important;
-            padding: 0 !important;
+            height: auto !important;
+            padding: 0.4rem 0.7rem !important;
             border-radius: 12px !important;
             font-weight: 700 !important;
+            white-space: normal !important;
         }
         [class*="st-key-wsc-action-"] {
             display: flex !important;
@@ -256,29 +261,29 @@ st.html('''
             display: flex !important;
             justify-content: flex-end !important;
             align-items: center !important;
-            color: rgba(148, 163, 184, 0.92) !important;
+            color: #475569 !important;
         }
         [class*="st-key-wsc-shortcut-hint-"] [data-testid="stCaptionContainer"] {
             white-space: nowrap !important;
         }
         [class*="st-key-wsc-action-"] [data-testid="stButton"] button p {
-            display: none !important;
+            white-space: normal !important;
         }
         [class*="st-key-wsc-action-"] [data-testid="stButton"] button svg {
             width: 1.15rem !important;
             height: 1.15rem !important;
         }
         [class*="st-key-wsc-attachment-"] [data-testid="stPopover"] button p {
-            display: none !important;
+            white-space: normal !important;
+            overflow-wrap: anywhere !important;
         }
         [class*="st-key-wsc-attachment-"] [data-testid="stPopover"] button {
-            width: 44px !important;
             min-width: 44px !important;
-            height: 44px !important;
             min-height: 44px !important;
-            padding: 0 !important;
-            gap: 0 !important;
+            height: auto !important;
+            padding: 0.4rem 0.7rem !important;
             justify-content: center !important;
+            white-space: normal !important;
         }
         [class*="st-key-wsc-attachment-"] [data-testid="stPopover"] button > svg:last-child {
             display: none !important;
@@ -297,6 +302,50 @@ st.html('''
             }
             [class*="st-key-wsc-shortcut-hint-"] {
                 display: none !important;
+            }
+        }
+
+        [data-testid="stAppViewContainer"] {
+            background: #F8FAFC;
+            color: #020617;
+            font-size: 16px;
+            line-height: 1.5;
+        }
+        section.stMain,
+        .main .block-container,
+        [data-testid="stSidebar"] {
+            overflow-x: clip;
+        }
+        [data-testid="stSidebar"] [data-testid="stMarkdown"] p,
+        [data-testid="stSidebar"] label p,
+        [data-testid="stButton"] button p {
+            white-space: normal;
+            overflow-wrap: anywhere;
+        }
+        button:focus-visible,
+        textarea:focus-visible,
+        input:focus-visible,
+        [role="radio"]:focus-visible,
+        summary:focus-visible {
+            outline: 2px solid #0369A1 !important;
+            outline-offset: 2px !important;
+        }
+        [class*="st-key-exec_del_"] button,
+        [class*="st-key-wsc_bulk_delete_execute_"] button,
+        [class*="st-key-wsc_document_delete_execute_"] button {
+            background-color: #DC2626 !important;
+            border-color: #DC2626 !important;
+            color: #FFFFFF !important;
+        }
+        @media (prefers-reduced-motion: reduce) {
+            html {
+                scroll-behavior: auto !important;
+            }
+            *, *::before, *::after {
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.01ms !important;
+                scroll-behavior: auto !important;
             }
         }
 
@@ -1509,9 +1558,9 @@ selected_cluster = st.sidebar.radio(
     t("sidebar_workspace_area", locale=current_ui_locale),
     options=["chat", "cases", "advanced"],
     format_func=lambda c: {
-        "chat": "📖 Hỏi tài liệu",
-        "cases": "🗂️ Hồ sơ và tri thức",
-        "advanced": "⚙️ Công cụ nâng cao",
+        "chat": "Hỏi tài liệu",
+        "cases": "Hồ sơ và tri thức",
+        "advanced": "Công cụ nâng cao",
     }.get(c, c),
     index=["chat", "cases", "advanced"].index(current_nav),
     key="wsc_sidebar_nav_cluster",
@@ -1532,9 +1581,10 @@ elif selected_cluster == "advanced" and not is_lsu:
     safe_rerun()
 
 if st.sidebar.button(
-    f"🎓 {t('teach_entry_button', locale=current_ui_locale)}",
+    t("teach_entry_button", locale=current_ui_locale),
+    icon=":material/school:",
     key="btn_teach_entry",
-    use_container_width=True,
+    width="stretch",
     help=t("teach_entry_help", locale=current_ui_locale),
 ):
     st.session_state.wsc_show_case_workspace = True
@@ -1609,8 +1659,9 @@ if active_nb_id is None:
     current_ui_locale = st.session_state.get("wsc_global_ui_locale", "vi")
     current_answer_language = st.session_state.get("wsc_global_answer_language", "vi")
     # MÀN HÌNH 1: Sổ tài liệu của tôi
-    st.sidebar.markdown(f"## 📚 {t('workspace_title', locale=current_ui_locale)}")
-    st.sidebar.info(t("workspace_select_prompt", locale=current_ui_locale))
+    st.sidebar.markdown(f"## {t('workspace_title', locale=current_ui_locale)}")
+    with st.sidebar.container(border=True):
+        st.markdown(t("workspace_select_prompt", locale=current_ui_locale))
 
     render_notebook_header(locale=current_ui_locale)
 
@@ -2965,7 +3016,7 @@ else:
             safe_rerun()
 
     """
-    st.subheader(f"💬 {t('chat_in_notebook', locale=current_ui_locale)}: {notebook.title}")
+    st.subheader(f"{t('chat_in_notebook', locale=current_ui_locale)}: {notebook.title}")
     curr_layout = st.session_state.get("wsc_layout_mode", "full")
     layout_icon = ":material/chevron_left:" if curr_layout == "full" else ":material/chevron_right:"
     layout_help = (
@@ -2983,7 +3034,8 @@ else:
         safe_rerun()
 
     if not active_conversation:
-        st.info(t("no_conversations_in_notebook", locale=current_ui_locale))
+        with st.container(border=True):
+            st.markdown(t("no_conversations_in_notebook", locale=current_ui_locale))
         if st.button(t("create_first_conversation_now", locale=current_ui_locale), key="btn_create_empty_conv", type="primary"):
             create_conversation_callback(active_nb_id)
     else:
@@ -3516,10 +3568,10 @@ else:
                                     st.info(t("clipboard_image_unavailable", locale=current_ui_locale))
                                 else:
                                     paste_result = paste_image_button(
-                                        "📋 Dán ảnh đã copy",
+                                        "Dán ảnh đã copy",
                                         key=f"wsc_paste_image_{active_conversation.id}",
-                                        background_color="#334155",
-                                        hover_background_color="#475569",
+                                        background_color="#0369A1",
+                                        hover_background_color="#075985",
                                         errors="raise",
                                     )
                                     if paste_result.image_data is not None:
@@ -4598,30 +4650,35 @@ else:
                         display: flex;
                         align-items: center;
                         justify-content: center;
-                        width: 52px;
-                        height: 52px;
-                        padding: 0;
-                        color: #f8fafc;
-                        background: rgba(30, 41, 59, 0.96);
-                        border: 1px solid rgba(148, 163, 184, 0.52);
+                        width: auto;
+                        max-width: 16rem;
+                        min-height: 44px;
+                        height: auto;
+                        padding: 0.45rem 0.8rem;
+                        color: #020617;
+                        background: #FFFFFF;
+                        border: 1px solid #E2E8F0;
                         border-radius: 16px;
-                        box-shadow: 0 10px 26px rgba(0, 0, 0, 0.32);
+                        box-shadow: none;
                         cursor: pointer;
-                        transition: transform 140ms ease, background 140ms ease;
+                        gap: 0.35rem;
                     }}
                     #wsc-jump-latest:hover {{
-                        background: #2563eb;
-                        transform: translateY(-2px);
+                        background: #E0F2FE;
+                    }}
+                    #wsc-jump-latest:focus-visible {{
+                        outline: 2px solid #0369A1;
+                        outline-offset: 2px;
                     }}
                     #wsc-jump-latest span {{
-                        font-size: 31px;
-                        font-weight: 700;
-                        line-height: 1;
-                        transform: translateY(-2px);
+                        font-size: 16px;
+                        font-weight: 600;
+                        line-height: 1.5;
                     }}
                     </style>
                     <button id="wsc-jump-latest" type="button" title="{jump_latest_label}" aria-label="{jump_latest_label}">
                       <span aria-hidden="true">⇣</span>
+                      <span>{jump_latest_label}</span>
                     </button>
                     <script>
                     (function () {{

@@ -1,6 +1,36 @@
+# Một mặt sáng cho Workspace Chat. Không khai báo mặt tối, không tải chữ từ internet.
+# Giữ khóa lỗi thô và liên kết trợ giúp ngoài cho người dùng cuối.
+
 [theme]
-base="dark"
-primaryColor="#3b82f6"
+base = "light"
+primaryColor = "#0369A1"
+backgroundColor = "#F8FAFC"
+secondaryBackgroundColor = "#FFFFFF"
+textColor = "#020617"
+linkColor = "#0369A1"
+borderColor = "#E2E8F0"
+codeTextColor = "#020617"
+codeBackgroundColor = "#E8ECF1"
+redColor = "#DC2626"
+greenColor = "#1A7F37"
+orangeColor = "#B45309"
+yellowColor = "#A16207"
+blueColor = "#0369A1"
+grayColor = "#475569"
+font = "'Segoe UI', 'Noto Sans', sans-serif"
+baseFontSize = 16
+baseFontWeight = 400
+baseRadius = "8px"
+buttonRadius = "8px"
+showWidgetBorder = true
+showSidebarBorder = true
+
+[theme.sidebar]
+backgroundColor = "#FFFFFF"
+secondaryBackgroundColor = "#F8FAFC"
+textColor = "#020617"
+borderColor = "#E2E8F0"
+primaryColor = "#0369A1"
 
 [client]
 toolbarMode = "minimal"
@@ -10,3 +40,6 @@ showErrorLinks = false
 
 [server]
 runOnSave = true
+
+[ui]
+hideTopBar = true

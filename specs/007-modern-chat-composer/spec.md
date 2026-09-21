@@ -4,9 +4,17 @@
 
 **Created**: 2026-08-25
 
-**Trạng thái**: `TECHNICAL_PASS` — Playwright smoke 6/6 PASS 2026-09-12 (`scripts/smoke_007_modern_chat_composer.py`). Composer compact, chọn Gemini Web / C-AGENT / Nakazasen trong thanh chat, gửi câu hỏi (sổ chưa có nguồn thì hiện «Thiếu ngữ cảnh»), thumbnail ảnh, cửa sổ 360 px. Dán clipboard cần thao tác người dùng. Streamlit có thể giữ text sau gửi. Không tuyên bố nghiệm thu xưởng.
+**Trạng thái**: Phần composer, gợi ý, thẻ kết luận, bong bóng hỏi đáp, bước chờ và cụm trích dẫn giữ `TECHNICAL_PASS` theo smoke và kiểm thử đã ghi trong `tasks.md`. Phần hình thức toàn khung (câu chuyện 12–14) đã có mã và kiểm thử tĩnh; chưa có smoke trình duyệt, không tính nghiệm thu xưởng.
 
 **Input**: User description: "Thiết kế lại thanh hỏi đáp theo AI IDE hiện đại: thumbnail ảnh đính kèm, dán nhanh ảnh clipboard, chọn Mô hình AI trong composer, và không còn vùng đính kèm choáng chỗ."
+
+## Làm rõ
+
+### Phiên 2026-09-21 (hình thức toàn khung)
+
+- Hỏi: Tạo spec mới vì giao diện cả chương trình xấu, hay làm giàu spec đã có? → Đáp: Làm giàu spec này, vì đây là spec giao diện Workspace Chat đang mở. Không mở số spec mới.
+- Hỏi: Đổi cách hỏi đáp, xóa hội thoại, thư viện hay tìm nguồn? → Đáp: Không. Chỉ đổi hình thức người dùng nhìn thấy. Hành vi đã đạt giữ nguyên.
+- Hỏi: Làm mặt sáng hay giữ mặt tối hiện tại? → Đáp: Một mặt sáng cho đợt này. Mặt tối hiện tại chính là kiểu đang bị chê, và không làm hai mặt song song.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -163,11 +171,57 @@ Người dùng thấy trích dẫn gom trong một cụm thu gọn có đếm s�
 1. **Cho** đáp án có nhiều nguồn trích dẫn, **khi** hiển thị, **thì** các khung chi tiết mặc định đóng.
 2. **Cho** cụm trích dẫn, **khi** nhìn, **thì** thấy số lượng nguồn ngay trên tiêu đề cụm.
 
+### Câu chuyện 12 — Ba vùng trông như một chương trình (Ưu tiên: P1, làm giàu 2026-09-21)
+
+Người dùng mở Hỏi tài liệu, Hồ sơ và tri thức, hoặc Công cụ nâng cao đều thấy cùng một mặt sáng, cùng kiểu tiêu đề, cùng một màu cho việc chính. Không còn cảm giác mỗi màn một kiểu, cũng không còn nút chỉ nhận ra nhờ biểu tượng cảm xúc.
+
+**Vì sao ưu tiên này**: Thanh hỏi và bong bóng đã chỉnh riêng, nhưng khung chương trình vẫn lẫn nền tối, chữ trang trí và biểu tượng cảm xúc. Người dùng nhìn cả chương trình vẫn thấy xấu.
+
+**Kiểm thử độc lập**: Mở lần lượt ba vùng. Nền, tiêu đề và nút việc chính cùng một kiểu. Mỗi mục điều hướng có tên tiếng Việt nhìn thấy.
+
+**Tình huống nghiệm thu**:
+
+1. **Cho** người dùng đang ở một vùng, **khi** chuyển sang hai vùng còn lại, **thì** nền, thẻ, tiêu đề và màu nút việc chính không đổi kiểu.
+2. **Cho** thanh điều hướng, **khi** nhìn, **thì** mỗi mục có tên tiếng Việt nhìn thấy, không phải đoán bằng biểu tượng cảm xúc.
+3. **Cho** một việc chính và một việc nguy hiểm trên cùng màn, **khi** nhìn, **thì** hai việc khác màu, và màu việc chính không trùng màu kết luận Bình thường, Cần kiểm tra hay Nguy cơ.
+
+### Câu chuyện 13 — Chữ tiếng Việt đọc được cả ca (Ưu tiên: P1, làm giàu 2026-09-21)
+
+Người trực ban đọc câu trả lời, nhãn và nút mà không mất dấu, không bị cắt chữ, không phải nheo mắt trên nền tối lẫn sáng. Máy không có mạng thì chữ vẫn đủ dấu.
+
+**Vì sao ưu tiên này**: Chữ là việc người dùng làm cả ca. Kiểu chữ trang trí hoặc chữ tải từ internet sẽ mất dấu hoặc đứng hình trong xưởng.
+
+**Kiểm thử độc lập**: Ngắt mạng, mở một câu trả lời có đủ dấu tiếng Việt và một nhãn dài. Dấu còn đủ, nhãn xuống dòng, chữ thân bài không nhỏ hơn cỡ đọc thông thường.
+
+**Tình huống nghiệm thu**:
+
+1. **Cho** máy không nối mạng, **khi** mở chương trình, **thì** chữ giao diện vẫn đủ dấu tiếng Việt.
+2. **Cho** nhãn tiếng Việt dài và cửa sổ 360 px hoặc chữ được phóng to, **khi** hiển thị, **thì** nhãn xuống dòng, không bị cắt cụt, vùng làm việc không cuộn ngang.
+3. **Cho** chữ thân bài trên nền sáng, **khi** đối chiếu, **thì** tương phản đạt mức đọc được 4.5:1 và nút đang chọn bằng bàn phím có viền nhìn thấy.
+
+### Câu chuyện 14 — Chỗ trống và lỗi nói rõ việc tiếp theo (Ưu tiên: P1, làm giàu 2026-09-21)
+
+Khi chưa có sổ, chưa có hội thoại, đang chờ hoặc gặp lỗi, người dùng thấy một câu tiếng Việt ngay tại chỗ đó: chuyện gì xảy ra và làm gì tiếp. Không có khối cảnh báo chiếm cả trang, không có câu tiếng Anh của khung chương trình.
+
+**Vì sao ưu tiên này**: Màn trống và lỗi hiện giống biểu mẫu mặc định, người không chuyên không biết bước tiếp theo.
+
+**Kiểm thử độc lập**: Mở chương trình khi chưa có sổ, rồi mở sổ chưa có hội thoại. Mỗi màn một câu tiếng Việt kèm việc cần làm, không chiếm cả trang.
+
+**Tình huống nghiệm thu**:
+
+1. **Cho** chưa có sổ, **khi** mở chương trình, **thì** có một câu tiếng Việt nói chưa có sổ và cách tạo sổ.
+2. **Cho** sổ chưa có hội thoại, **khi** mở sổ, **thì** có một câu tiếng Việt nói chưa có cuộc trò chuyện và cách tạo.
+3. **Cho** một lỗi ở vùng đang dùng, **khi** lỗi xảy ra, **thì** câu giải thích nằm tại vùng đó, tiếng Việt, không hiện câu lỗi thô.
+
 ### Edge Cases
 
 - Khi người dùng gửi nội dung trống và không có ảnh, hệ thống vẫn hiển thị thông báo hướng dẫn hiện có.
 - Khi tải ảnh thất bại hoặc người dùng hủy, composer quay về trạng thái sẵn sàng nhập câu hỏi.
 - Khi người dùng gửi câu hỏi đang chờ chuẩn bị nguồn, composer không tạo thêm một lần gửi ngoài ý muốn.
+- Nhãn tiếng Việt dài hơn chữ Anh. Nhãn phải xuống dòng ở cửa sổ hẹp và khi phóng chữ, không cắt cụt nếu không có cách xem đủ chữ.
+- Máy yêu cầu giảm chuyển động. Nội dung và trạng thái nút phải đúng ngay, không chờ hiệu ứng xuất hiện.
+- Màu việc chính không được trùng màu đã dùng cho Bình thường, Cần kiểm tra hoặc Nguy cơ.
+- Máy không có mạng. Chữ giao diện vẫn đủ dấu, không đứng chờ font từ internet.
 
 ## Requirements *(mandatory)*
 
@@ -198,6 +252,14 @@ Người dùng thấy trích dẫn gom trong một cụm thu gọn có đếm s�
 - **FR-022**: Chữ đáp án PHẢI giới hạn bề rộng dòng để dễ đọc; nội dung dài bao nhiêu cũng PHẢI hiện đầy đủ, không cắt bớt.
 - **FR-023**: Lúc chờ PHẢI hiện 3 bước tìm nguồn, đọc trích đoạn, tổng hợp trả lời; bước đang chạy PHẢI theo đúng trạng thái thật, không phần trăm giả.
 - **FR-024**: Trích dẫn PHẢI gom trong cụm thu gọn có đếm số lượng; các khung chi tiết mặc định đóng.
+- **FR-025**: Ba vùng Hỏi tài liệu, Hồ sơ và tri thức, Công cụ nâng cao PHẢI dùng cùng nền sáng, cùng thẻ sáng, cùng kiểu tiêu đề và cùng một màu cho việc chính.
+- **FR-026**: Màu việc chính KHÔNG được trùng màu kết luận Bình thường, Cần kiểm tra hoặc Nguy cơ. Việc nguy hiểm PHẢI dùng một màu hủy riêng.
+- **FR-027**: Mọi nút và mục điều hướng PHẢI có tên tiếng Việt nhìn thấy. Biểu tượng cảm xúc KHÔNG được là cách duy nhất để nhận ra một nút.
+- **FR-028**: Chữ giao diện PHẢI đủ dấu tiếng Việt khi máy không nối mạng. Chữ thân bài KHÔNG nhỏ hơn 16 px, giãn dòng khoảng một lần rưỡi. Nhãn dài PHẢI xuống dòng; nếu buộc rút gọn thì PHẢI có cách xem đủ chữ.
+- **FR-029**: Chữ thường trên nền sáng PHẢI đạt tương phản 4.5:1. Nút đang chọn bằng bàn phím PHẢI có viền nhìn thấy.
+- **FR-030**: KHÔNG có chuyển động trang trí. Khi máy yêu cầu giảm chuyển động, trạng thái cuối của nút và nội dung PHẢI đúng ngay.
+- **FR-031**: Màn chưa có sổ, chưa có hội thoại, đang chờ hoặc lỗi PHẢI có một câu tiếng Việt tại đúng vùng, nói chuyện gì xảy ra và việc làm tiếp theo, không chiếm cả trang bằng một khối cảnh báo chung.
+- **FR-032**: Tiêu đề cửa sổ người dùng thấy PHẢI là tiếng Việt. Vùng làm việc KHÔNG cuộn ngang ở bề rộng 360, 768, 1024 và 1440 px.
 
 ## Success Criteria *(mandatory)*
 
@@ -216,9 +278,18 @@ Người dùng thấy trích dẫn gom trong một cụm thu gọn có đếm s�
 - **SC-011**: Người dùng phân biệt hỏi và đáp bằng mắt thường; đáp án dài hiện đầy đủ, chỉ giới hạn bề rộng dòng.
 - **SC-012**: Lúc chờ thấy 3 bước tiến triển theo đúng trạng thái thật, không phần trăm giả.
 - **SC-013**: Trích dẫn gom trong cụm thu gọn có đếm số lượng, khung chi tiết mặc định đóng.
+- **SC-014**: Người kiểm thử mở lần lượt ba vùng và nhận ra cùng nền, cùng kiểu tiêu đề, cùng màu nút việc chính mà không cần giải thích.
+- **SC-015**: Trên ba vùng không còn nút chính nào chỉ nhận ra bằng biểu tượng cảm xúc.
+- **SC-016**: Ở 360 px và 1280 px, khi phóng chữ, nhãn tiếng Việt không bị cắt và vùng làm việc không cuộn ngang.
+- **SC-017**: Chữ thân bài trên nền sáng đạt tương phản 4.5:1; viền đang chọn nhìn thấy trên điều hướng và nút gửi.
+- **SC-018**: Màn chưa có sổ và màn chưa có hội thoại, mỗi màn một câu tiếng Việt kèm việc cần làm, không một khối cảnh báo chiếm cả trang.
+- **SC-019**: Ngắt mạng, chữ giao diện vẫn đủ dấu tiếng Việt.
 
 ## Assumptions
 
-- Phạm vi chỉ là composer hỏi đáp chính và vị trí lựa chọn cầu nối; không thay đổi thanh bên, trình quản lý nguồn hoặc logic định tuyến.
+- Hành vi hỏi, gửi, xóa, thư viện, tìm nguồn và mail giữ nguyên. Đợt hình thức không đổi các luồng đó.
+- Hình thức mới áp dụng cho cả ba vùng đang mở trong Workspace Chat: Hỏi tài liệu, Hồ sơ và tri thức, Công cụ nâng cao. Không làm trang giới thiệu. Không trang trí lại công cụ đã ngừng hỗ trợ nằm ngoài ba vùng này.
+- Một mặt sáng cho đợt này. Không làm mặt tối song song.
+- Không tải font hay biểu tượng từ internet. Chữ phải đủ dấu bằng font có sẵn trên máy hoặc font đóng gói cùng chương trình.
 - Thao tác dán ảnh cần hành động người dùng vì trình duyệt bảo vệ quyền clipboard.
 - Cầu nối được gọi là “Mô hình AI” trong UI để dễ hiểu, nhưng các lựa chọn vẫn là Gemini Web, C-AGENT API và Nakazasen Router chứ không giả định tên model nội bộ của từng dịch vụ.

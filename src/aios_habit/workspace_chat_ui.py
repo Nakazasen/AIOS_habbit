@@ -209,7 +209,7 @@ def render_language_selector(
 
 
 def render_notebook_header(locale: str = "vi"):
-    st.title(f"📚 {t('notebooks_title', locale=locale)}")
+    st.title(t("notebooks_title", locale=locale))
     st.write(t("notebook_header_desc", locale=locale))
 
 

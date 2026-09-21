@@ -126,3 +126,15 @@ Implement and validate the P1 composer first, then add progressive attachment, m
 
 - US7: người mới nhận ra chỗ nhập/gửi trong 5 giây, gửi trống thấy hướng dẫn cạnh nút, chờ tài liệu bấm dừng được, 360 px không chồng lấp.
 - US8: dán log vượt ngưỡng ra thẻ Nguy cơ kèm JIG và đề xuất, biểu đồ có hình chữ bảng số, tạm dừng không mất dữ liệu ngầm, mail chỉ gửi sau khi duyệt.
+
+## Mở rộng hình thức toàn khung US12–US14 (phiên 2026-09-22, không tạo spec mới)
+
+**Phạm vi**: Câu chuyện 12–14, FR-025 tới FR-032. Một mặt sáng cho ba vùng. Không đổi hành vi hỏi, gửi, xóa, thư viện, tìm nguồn, mail. Không tải chữ từ internet.
+
+**Thứ tự**: kiểm thử hợp đồng trước, rồi cấu hình và lớp màu, rồi xác minh.
+
+- [x] T033 [US12] Bổ sung kiểm thử mặt sáng, chữ không tải từ mạng, và tên điều hướng tiếng Việt trong `tests/test_workspace_chat_composer_ui.py`
+- [x] T034 [US12] Ghi mặt sáng vào `.streamlit/config.toml`: nền `#F8FAFC`, chữ `#020617`, việc chính `#0369A1`, hủy `#DC2626`, chữ hệ thống
+- [x] T035 [US12] Bỏ nền tối trên composer, bong bóng và nút nhảy; hiện tên tiếng Việt trên điều hướng, dạy, sổ và chỗ trống trong `src/aios_habit/workspace_chat_app.py`, `src/aios_habit/workspace_chat_ui.py`, `src/aios_habit/i18n.py`
+- [x] T036 [US13] Thêm viền đang chọn, giảm chuyển động, chữ 16 px và nút xóa màu hủy trong `src/aios_habit/workspace_chat_app.py`
+- [x] T037 Chạy kiểm thử hợp đồng, biên dịch, nhập module và `cli audit`. Bằng chứng 2026-09-22: `test_workspace_chat_composer_ui` và `test_streamlit_error_safety_config` đạt, `compileall` sạch, `import workspace_chat_app` in `IMPORT_OK`, `cli audit` `"status": "PASS"`. Toàn bộ `pytest -q` còn 29 lỗi cũ ngoài phạm vi hình thức (khóa gói, biểu đồ CSV, graphify, RAG, cờ phỏng vấn). Chưa smoke trình duyệt.
