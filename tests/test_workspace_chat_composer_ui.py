@@ -176,3 +176,34 @@ def test_composer_text_input_clearing_uses_deferred_reset() -> None:
     assert 'st.session_state[f"wsc_clear_input_{active_conversation.id}"] = True' in pre_executor
     assert 'st.session_state[f"wsc_question_input_{active_conversation.id}"]' not in pre_executor
 
+
+def test_composer_nontech_has_visible_vietnamese_label() -> None:
+    """FR-014: question input must carry a visible Vietnamese label, not a collapsed one."""
+    source = _app_source()
+    translations = Path("src/aios_habit/i18n.py").read_text(encoding="utf-8")
+
+    assert 't("composer_question_label"' in source
+    assert '"composer_question_label"' in translations
+    text_area_at = source.find("user_input = st.text_area(")
+    assert text_area_at != -1
+    text_area_call = source[text_area_at : text_area_at + 600]
+    assert 't("composer_question_label"' in text_area_call
+    assert 'label_visibility="visible"' in text_area_call
+
+
+def test_composer_action_targets_meet_44px_touch_rule() -> None:
+    """FR-015: send/stop buttons must meet the 44px minimum with 8px spacing."""
+    source = _app_source()
+
+    assert "min-height: 44px !important" in source
+    assert "min-width: 44px !important" in source
+    assert "gap: 8px !important" in source
+
+
+def test_composer_empty_guidance_is_shown_next_to_send_action() -> None:
+    """FR-015: empty-submit guidance must render adjacent to the send action."""
+    source = _app_source()
+
+    assert "wsc_composer_hint_" in source
+    assert 't("composer_empty_hint"' in source
+

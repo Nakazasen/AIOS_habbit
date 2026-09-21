@@ -87,3 +87,23 @@ Implement and validate the P1 composer first, then add progressive attachment, m
 - [x] T018 Chạy 24 câu qua `local_runs/run_thread_answers.py`, ghi trúng nguồn và thời gian vào `local_runs/thread_answer_probe/report.json`
 
 **Bằng chứng T018 ngày 2026-09-19**: trúng nguồn **20/24**, mỗi câu **0.05-0.14 giây**. 4 câu trượt đều là câu mở đầu chưa có mạch, các câu sau có mạch đều trúng. Đường lexical chỉ tìm chữ, câu hỏi tiếng Việt hỏi nội dung tiếng Nhật dễ trượt, ca BGE theo nghĩa để nhịp đêm.
+
+## Mở rộng nontech US7/US8 (phiên 2026-09-21, không tạo spec mới)
+
+**Phạm vi**: Câu chuyện 7 composer siêu thân thiện (P1) và Câu chuyện 8 thẻ JIG, biểu đồ, mail dễ hiểu (P2) theo `spec.md` FR-014 tới FR-020 và SC-007 tới SC-010. Dùng lại luồng gửi, mô đun `production_prediction` và gợi ý hiện có.
+
+**Thứ tự**: US7 trước (MVP), US8 sau. US8 dùng được độc lập sau khi US7 xong.
+
+- [x] T019 [US7] Bổ sung kiểm thử hợp đồng nhãn nhìn thấy, nút 44 px, lỗi cạnh trường trong `tests/test_workspace_chat_composer_ui.py`
+- [x] T020 [US7] Hiện nhãn tiếng Việt, nút gửi/dừng trong composer và hướng dẫn cạnh trường trong `src/aios_habit/workspace_chat_app.py`
+- [x] T021 [US7] Giữ tương đương bản dịch cho chuỗi mới trong `src/aios_habit/i18n.py` và kiểm thử trong `tests/test_workspace_chat_ui_i18n.py`
+- [x] T022 [US8] Bổ sung kiểm thử thẻ JIG một câu kết luận, biểu đồ hình chữ bảng số trong `tests/test_jig_chat_wire.py`
+- [x] T023 [US8] Vẽ thẻ JIG, điểm đánh dấu bất thường và bảng số thay thế trong `src/aios_habit/production_prediction/jig_chat_wire.py`
+- [x] T024 [US8] Nối nút Tạm dừng/Tiếp tục và cô lập phiên trực ban trong `src/aios_habit/workspace_chat_app.py`
+- [x] T025 [US8] Hiện màn hình duyệt mail trước khi gửi trong `src/aios_habit/production_prediction/alert_mailer.py`
+- [x] T026 Chạy kiểm chứng tập trung, biên dịch, kiểm toán và smoke 007 theo `specs/007-modern-chat-composer/quickstart.md`
+
+**Kiểm thử độc lập từng chuyện**:
+
+- US7: người mới nhận ra chỗ nhập/gửi trong 5 giây, gửi trống thấy hướng dẫn cạnh nút, chờ tài liệu bấm dừng được, 360 px không chồng lấp.
+- US8: dán log vượt ngưỡng ra thẻ Nguy cơ kèm JIG và đề xuất, biểu đồ có hình chữ bảng số, tạm dừng không mất dữ liệu ngầm, mail chỉ gửi sau khi duyệt.

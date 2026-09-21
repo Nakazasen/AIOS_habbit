@@ -1333,3 +1333,27 @@ def render_jig_live_status_capsule(dang_ket_noi: bool, toc_do: float = 0.0, so_j
     """Render header live status capsule in Vietnamese (US12 T064)."""
     capsule = build_jig_live_capsule_data(dang_ket_noi, toc_do, so_jig)
     st.caption(f"{capsule['trang_thai']}: {capsule['chi_tiet']}")
+
+
+def render_mail_approval_screen(the_duyet: Dict[str, Any], locale: str = "vi") -> Optional[str]:
+    """Render the mail preview with Gửi/Hủy before sending (007 US8, FR-019).
+
+    Returns "gui" when the user approves, "huy" when cancelled, else None.
+    Approval is stored per proposal code so sending stays human-in-the-loop.
+    """
+    ma_duyet = str(the_duyet.get("ma_duyet", "") or "")
+    st.subheader(str(the_duyet.get("tieu_de", "") or t("mail_approval_title", locale=locale)))
+    st.write(str(the_duyet.get("tom_tat", "")))
+    nguoi_nhan = the_duyet.get("nguoi_nhan", []) or []
+    st.caption(t("mail_approval_recipients", locale=locale, ds=", ".join(str(e) for e in nguoi_nhan)))
+    st.caption(str(the_duyet.get("huong_dan", "") or t("mail_approval_hint", locale=locale)))
+    cot_gui, cot_huy = st.columns(2)
+    with cot_gui:
+        if st.button(t("mail_approval_send", locale=locale), key=f"wsc_mail_approved_{ma_duyet}_gui"):
+            st.session_state[f"wsc_mail_approved_{ma_duyet}"] = True
+            return "gui"
+    with cot_huy:
+        if st.button(t("mail_approval_cancel", locale=locale), key=f"wsc_mail_approved_{ma_duyet}_huy"):
+            st.session_state[f"wsc_mail_approved_{ma_duyet}"] = False
+            return "huy"
+    return None

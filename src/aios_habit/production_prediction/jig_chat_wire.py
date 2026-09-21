@@ -42,6 +42,8 @@ _CONFIG_DASHBOARD_HINTS = ("cau hinh", "cấu hình", "cai dat", "cài đặt", 
 _CONFIG_SCOPES = ("canh bao", "cảnh báo", "lsu", "jig", "email", "nguong", "ngưỡng")
 _PERSONA_HINTS = ("truc ban", "trực ban", "ca nhan", "cá nhân")
 _CHART_HINTS = ("bieu do", "biểu đồ")
+_LUU_Y_TAM_DUNG = ("tạm dừng luồng", "tam dung luong", "dung cap nhat", "dừng cập nhật")
+_LUU_Y_TIEP_TUC = ("tiếp tục luồng", "tiep tuc luong", "bat lai hien thi", "bật lại hiển thị")
 
 
 def _norm(text: str) -> str:
@@ -69,6 +71,16 @@ def is_persona_intent(text: str) -> bool:
 def is_chart_intent(text: str) -> bool:
     """Detect natural-language chart requests for 015-csv-chart-selector."""
     return any(hint in _norm(text) for hint in _CHART_HINTS)
+
+
+def is_stream_pause_intent(text: str) -> Optional[bool]:
+    """Detect pause/resume requests for the live stream display (007 US8)."""
+    norm = _norm(text)
+    if any(hint in norm for hint in _LUU_Y_TAM_DUNG):
+        return True
+    if any(hint in norm for hint in _LUU_Y_TIEP_TUC):
+        return False
+    return None
 
 
 def load_alert_config(path: str | Path) -> AlertConfig:
@@ -110,10 +122,21 @@ def save_alert_config(config: AlertConfig, path: str | Path) -> None:
     )
 
 
+def _muc_ket_luan(trang_thai: str) -> str:
+    """Map an EWMA status to a one-word nontech verdict."""
+    trang_thai = (trang_thai or "").strip().lower()
+    if "vi phạm" in trang_thai:
+        return "Nguy cơ"
+    if "đạt" in trang_thai or "bình thường" in trang_thai:
+        return "Bình thường"
+    return "Cần kiểm tra"
+
+
 def format_instant_card_text(card: Dict[str, Any]) -> str:
     """Render the instant log card as chat message text."""
+    muc = _muc_ket_luan(str(card.get("trang_thai", "")))
     lines = [
-        f"Thẻ kiểm tra log: {card.get('ma_unit', '—')} — {card.get('thong_so', '—')} ({card.get('trang_thai', '')})",
+        f"Kết luận: {muc} — {card.get('ma_unit', '—')} — {card.get('thong_so', '—')} ({card.get('trang_thai', '')})",
         f"Giá trị: {card.get('gia_tri', '—')} {card.get('don_vi', '')} | JIG: {card.get('ma_jig', '—')}",
         str(card.get("chi_tiet", "")),
         str(card.get("nguong_tham_khao", "")),
@@ -182,16 +205,33 @@ def _quyet_dinh_ve_bieu_do(
             assistant_text="Không vẽ được biểu đồ lúc này. Vui lòng thử lại hoặc chọn chỉ số khác ở Thẻ 1.",
         )
     ten_loai = TEN_LOAI_BIEU_DO.get(lenh.loai_bieu_do, lenh.loai_bieu_do)
+    bang_so = _bang_so_van_ban(du_lieu)
     return JigChatOutcome(
         handled=True,
         assistant_text=(
             f"Đã vẽ {ten_loai} cho {lenh.ma_jig} — {lenh.ten_chi_so}. "
             "Ảnh đã lưu vào phiên để xem lại ở Thẻ 1 và dùng cho email cảnh báo."
+            + bang_so
         ),
         chart_png=anh_bytes,
         chart_meta={"ma_jig": lenh.ma_jig, "ten_chi_so": lenh.ten_chi_so,
                     "loai_bieu_do": lenh.loai_bieu_do},
     )
+
+
+def _bang_so_van_ban(du_lieu: Any, so_diem: int = 5) -> str:
+    """Render the last data points as a text table for screen-reader fallback."""
+    try:
+        cac_gia_tri = list(getattr(du_lieu, "values", []) or [])
+        cac_nhan = list(getattr(du_lieu, "nhan_thoi_gian", []) or [])
+        don_vi = str(getattr(du_lieu, "unit", "") or "")
+    except Exception:
+        return ""
+    if not cac_gia_tri:
+        return ""
+    cap = list(zip(cac_nhan, cac_gia_tri))[-so_diem:]
+    dong = [f"- {nhan or 'Điểm'}: {gia_tri:g} {don_vi}".rstrip() for nhan, gia_tri in cap]
+    return "\nBảng số (%d điểm gần nhất):\n" % len(cap) + "\n".join(dong)
 
 
 @dataclass
@@ -202,6 +242,7 @@ class JigChatOutcome:
     config_changed: bool = False
     chart_png: Optional[bytes] = None
     chart_meta: Optional[Dict[str, Any]] = None
+    stream_paused: Optional[bool] = None
 
 
 def _cac_hang_ve(rows_provider: Optional[Callable[[], Any]]) -> List[Any]:
@@ -249,6 +290,17 @@ def decide_jig_action(
         return JigChatOutcome(handled=True, assistant_text=reply)
     if is_chart_intent(text):
         return _quyet_dinh_ve_bieu_do(text, chart_rows_provider)
+    tam_dung = is_stream_pause_intent(text)
+    if tam_dung is not None:
+        return JigChatOutcome(
+            handled=True,
+            assistant_text=(
+                "Đã tạm dừng hiển thị luồng. Dữ liệu JIG vẫn ghi ngầm."
+                if tam_dung
+                else "Đã bật lại hiển thị luồng JIG trực tiếp."
+            ),
+            stream_paused=tam_dung,
+        )
     if is_config_intent(text):
         updated, loi_nhan = parse_config_command(text, config)
         changed = updated.to_dict() != config.to_dict()
@@ -305,6 +357,11 @@ def handle_jig_chat_text(
     if not outcome.handled:
         return False
     save_user((text or "").strip())
+    if outcome.stream_paused is not None:
+        try:
+            session_state[f"wsc_stream_paused_{conversation_id}"] = outcome.stream_paused
+        except Exception:
+            pass
     if outcome.chart_png:
         try:
             session_state["wsc_last_chart_png"] = outcome.chart_png

@@ -92,3 +92,53 @@ def test_dau_noi_app_bo_qua_cau_thuong(tmp_path):
     )
     assert handled is False
     assert saved == []
+
+
+def test_the_kiem_tra_log_mo_dau_bang_ket_luan_mot_cau():
+    """FR-016: instant card text must open with a one-sentence verdict."""
+    from aios_habit.production_prediction.jig_chat_wire import format_instant_card_text
+
+    text = format_instant_card_text({
+        "ma_unit": "UNIT001",
+        "thong_so": "bowskew",
+        "trang_thai": "Vi phạm",
+        "gia_tri": "0.50",
+        "don_vi": "mm",
+        "ma_jig": "JIG-01",
+        "chi_tiet": "Xu hướng EWMA vượt ngưỡng, cần kiểm tra.",
+        "nguong_tham_khao": "Đối chiếu dải dung sai tiêu chuẩn [USL, LSL].",
+        "goi_y": ["Kiểm tra JIG"],
+    })
+    dong_dau = text.strip().splitlines()[0]
+    assert dong_dau.startswith("Kết luận:")
+    assert "UNIT001" in dong_dau
+    assert "bowskew" in dong_dau
+
+
+def test_tra_loi_bieu_do_kem_bang_so_van_ban():
+    """FR-017: chart reply must include a text data table, not only an image."""
+    cac_hang = [
+        {"jig_id": "2ND-1035", "metric_name": "BOW_VALUE", "value": 1.5 + i * 0.1,
+         "unit": "um", "event_time": f"2026-08-0{(i % 9) + 1} 08:00:00"}
+        for i in range(6)
+    ]
+    outcome = decide_jig_action(
+        "vẽ biểu đồ độ lệch cho 2ND-1035",
+        chart_rows_provider=lambda: cac_hang,
+    )
+    assert outcome.handled is True
+    assert outcome.chart_png is not None
+    assert "Bảng số" in outcome.assistant_text
+
+
+def test_ung_dung_co_nut_tam_dung_tiep_tuc_luong_truc_tiep():
+    """FR-018: app must expose pause/resume control for the live stream."""
+    from pathlib import Path
+
+    source = Path("src/aios_habit/workspace_chat_app.py").read_text(encoding="utf-8")
+    translations = Path("src/aios_habit/i18n.py").read_text(encoding="utf-8")
+    assert "wsc_stream_paused_" in source
+    assert 't("jig_stream_pause"' in source
+    assert 't("jig_stream_resume"' in source
+    assert '"jig_stream_pause": "Tạm dừng luồng"' in translations
+    assert '"jig_stream_resume": "Tiếp tục luồng"' in translations

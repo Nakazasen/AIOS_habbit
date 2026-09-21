@@ -92,6 +92,36 @@ Người dùng đọc xong câu trả lời thấy tiếp 3 câu gợi ý theo s
 
 **Kiểm thử độc lập**: Câu trả lời có trích dẫn thì gợi ý nhắc đúng nhãn trích dẫn, không có trích dẫn thì gợi ý chung chung mà vẫn đúng ngữ cảnh sổ.
 
+### Câu chuyện 7 — Composer siêu thân thiện cho người không chuyên (Ưu tiên: P1, làm giàu 2026-09-21)
+
+Người trực ban, kỹ sư line và quản lý xưởng mở Workspace Chat là nhận ra ngay chỗ nhập, chỗ gửi, không cần hướng dẫn riêng. Mọi chữ đều tiếng Việt dễ hiểu, nút đủ to để bấm, lỗi nằm ngay cạnh trường vừa làm.
+
+**Vì sao ưu tiên này**: Giao diện hiện tại khó nhìn, khó hiểu với người không chuyên. Ô nhập là điểm chạm đầu tiên nên phải một thao tác là xong.
+
+**Kiểm thử độc lập**: Mở cuộc trò chuyện mới, người chưa dùng bao giờ chỉ ra được chỗ nhập, chỗ đính kèm, chỗ gửi trong 5 giây; gửi trống thì thấy hướng dẫn ngay cạnh nút gửi.
+
+**Tình huống nghiệm thu**:
+
+1. **Cho** cuộc trò chuyện đang mở, **khi** người dùng nhìn composer, **thì** họ thấy nhãn tiếng Việt nhìn thấy được cho ô nhập, nút đính kèm và nút gửi mũi tên nằm trong cùng một cụm.
+2. **Cho** người dùng gửi nội dung trống, **khi** gửi, **thì** hướng dẫn hiện ngay cạnh nút gửi, không chỉ báo ở đầu trang.
+3. **Cho** câu hỏi đang chờ tài liệu, **khi** chờ, **thì** nút mũi tên đổi thành nút dừng ngay trong composer và bấm là hủy được.
+4. **Cho** màn hình hẹp 360 px hoặc phóng to chữ, **khi** hiển thị, **thì** các nút không chồng lấp, không cuộn ngang, chữ không bị cắt.
+
+### Câu chuyện 8 — Thẻ JIG, biểu đồ và mail dễ hiểu cho mọi ca (Ưu tiên: P2, làm giàu 2026-09-21)
+
+Người dùng dán log JIG vào Omnibar hoặc nhập file CSV thì nhận thẻ kết luận một câu tiếng Việt: Bình thường, Cần kiểm tra, hoặc Nguy cơ, kèm nguyên nhân nghi ngờ và việc cần làm tiếp. Biểu đồ xu hướng đánh dấu điểm bất thường bằng hình và chữ, kèm bảng số gọn. Dữ liệu trực tiếp có nút Tạm dừng/Tiếp tục. Mail cảnh báo luôn duyệt trước khi gửi.
+
+**Vì sao ưu tiên này**: Bước 1 trong sheet các bước đòi hỏi nhập log, chọn biểu đồ, cảnh báo ngưỡng/xu hướng và mail kèm biểu đồ. Người không chuyên chỉ hành động được khi thẻ nói rõ kết luận và bước tiếp theo.
+
+**Kiểm thử độc lập**: Dán một dòng log vượt ngưỡng, thẻ hiện kết luận Nguy cơ kèm ngưỡng vi phạm; biểu đồ có điểm đánh dấu và bảng số; mail thử hiện màn hình duyệt trước khi gửi.
+
+**Tình huống nghiệm thu**:
+
+1. **Cho** log dán vào vượt ngưỡng, **khi** xử lý xong, **thì** thẻ hiện kết luận, tên JIG, thông số vi phạm và đề xuất kiểm tra, toàn bộ tiếng Việt.
+2. **Cho** thẻ có biểu đồ, **khi** xem, **thì** điểm bất thường có hình và chữ kèm theo, có bảng số thay thế, không phân biệt chỉ bằng màu sắc.
+3. **Cho** luồng trực tiếp đang chạy, **khi** người dùng bấm Tạm dừng, **thì** dòng chat ngừng cập nhật nhưng dữ liệu vẫn ghi ngầm.
+4. **Cho** cảnh báo đủ điều kiện gửi mail, **khi** gửi, **thì** hệ thống hiện màn hình duyệt nội dung và biểu đồ trước, chỉ gửi khi người dùng đồng ý.
+
 ### Edge Cases
 
 - Khi người dùng gửi nội dung trống và không có ảnh, hệ thống vẫn hiển thị thông báo hướng dẫn hiện có.
@@ -116,6 +146,13 @@ Người dùng đọc xong câu trả lời thấy tiếp 3 câu gợi ý theo s
 - **FR-011**: Khi câu hỏi đang chờ chuẩn bị tài liệu, hành động mũi tên MUST đổi thành biểu tượng dừng trong chính composer và người dùng có thể hủy câu hỏi chờ đó.
 - **FR-012**: Hệ thống PHẢI hiện tối đa 3 câu gợi ý mở đầu sinh từ tên tài liệu đang bật trong sổ, nếu chưa bật nguồn nào thì dùng tên tài liệu trong sổ, bấm gợi ý PHẢI gửi đúng chữ câu đó.
 - **FR-013**: Sau mỗi câu trả lời có trích dẫn, hệ thống PHẢI hiện tối đa 3 câu gợi ý tiếp theo nối mạch câu đang hỏi và ghi tên tài liệu dễ hiểu thay vì mã trích dẫn, chữ gửi đi PHẢI mang tên tài liệu đầy đủ kèm câu hỏi và ý chính câu trả lời trước để câu trả lời bám đúng mạch.
+- **FR-014**: Composer PHẢI có nhãn tiếng Việt nhìn thấy được cho ô nhập, thao tác đính kèm và thao tác gửi; không dùng gợi ý mờ thay cho nhãn.
+- **FR-015**: Nút gửi và nút dừng PHẢI đủ to để bấm (tối thiểu 44 px) và cách nhau tối thiểu 8 px; lỗi và hướng dẫn PHẢI hiện ngay cạnh trường vừa thao tác.
+- **FR-016**: Thẻ kết quả JIG PHẢI mở đầu bằng một câu kết luận tiếng Việt (Bình thường, Cần kiểm tra, Nguy cơ) kèm tên JIG, thông số vi phạm và việc cần làm tiếp.
+- **FR-017**: Biểu đồ xu hướng PHẢI đánh dấu điểm bất thường bằng hình và chữ kèm theo, kèm bảng số gọn thay thế; không phân biệt trạng thái chỉ bằng màu sắc.
+- **FR-018**: Luồng trực tiếp PHẢI có nút Tạm dừng/Tiếp tục; khi tạm dừng, dòng chat ngừng cập nhật nhưng dữ liệu vẫn ghi ngầm.
+- **FR-019**: Mail cảnh báo PHẢI hiện màn hình duyệt nội dung và biểu đồ trước khi gửi; chỉ gửi khi người dùng đồng ý.
+- **FR-020**: Mọi chữ người dùng đọc trong composer, thẻ JIG, biểu đồ và mail PHẢI là tiếng Việt dễ hiểu; chữ tương phản tối thiểu 4.5:1, giữ thứ tự phím bấm, tôn trọng chế độ giảm chuyển động.
 
 ## Success Criteria *(mandatory)*
 
@@ -127,6 +164,10 @@ Người dùng đọc xong câu trả lời thấy tiếp 3 câu gợi ý theo s
 - **SC-004**: Kiểm thử giao diện liên quan đến Workspace Chat hiện có tiếp tục vượt qua sau thay đổi.
 - **SC-005**: Người dùng có thể chọn Mô hình AI, thêm hoặc dán ảnh, xem thumbnail và gửi câu hỏi mà không cần rời composer.
 - **SC-006**: Sổ có tài liệu thì 3 gợi ý mở đầu nhắc đúng tên tài liệu, bấm gợi ý gửi đúng chữ, sổ chưa có nguồn thì không hiện gợi ý.
+- **SC-007**: Người chưa dùng bao giờ nhận ra chỗ nhập, chỗ đính kèm và chỗ gửi trong 5 giây; gửi trống thì hướng dẫn hiện ngay cạnh nút gửi.
+- **SC-008**: Composer và thẻ JIG dùng được ở 360 px, phóng to chữ không chồng lấp, không cuộn ngang, không cắt chữ.
+- **SC-009**: Thẻ JIG vượt ngưỡng hiện đúng kết luận, tên JIG, thông số vi phạm và đề xuất kiểm tra; biểu đồ có điểm đánh dấu bằng hình và chữ kèm bảng số.
+- **SC-010**: Luồng trực tiếp tạm dừng được mà không mất dữ liệu ngầm; mail cảnh báo chỉ gửi sau khi người dùng duyệt.
 
 ## Assumptions
 

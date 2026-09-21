@@ -97,6 +97,17 @@ def should_send(now_ts: float, last_sent_ts: Optional[float], cooldown_seconds: 
     return (now_ts - last_sent_ts) >= cooldown_seconds
 
 
+def can_send_with_approval(proposal: AlertMailProposal, da_duyet: bool) -> bool:
+    """Gate sending on explicit user approval of the exact proposal (007 US8).
+
+    The proposal must carry a non-empty approval code and the user must
+    have approved it on the preview screen; anything else stays unsent.
+    """
+    if not da_duyet:
+        return False
+    return bool((proposal.ma_duyet or "").strip())
+
+
 def send_via_smtp(
     msg: MIMEMultipart,
     host: str,

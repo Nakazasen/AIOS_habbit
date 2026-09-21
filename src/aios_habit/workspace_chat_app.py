@@ -223,10 +223,10 @@ st.html('''
             border-radius: 10px !important;
         }
         [class*="st-key-wsc-composer-"] [data-testid="stButton"] button[kind="primary"] {
-            width: 42px !important;
-            min-width: 42px !important;
-            height: 42px !important;
-            min-height: 42px !important;
+            width: 44px !important;
+            min-width: 44px !important;
+            height: 44px !important;
+            min-height: 44px !important;
             padding: 0 !important;
             border-radius: 12px !important;
             font-weight: 700 !important;
@@ -235,6 +235,7 @@ st.html('''
             display: flex !important;
             justify-content: flex-end !important;
             align-items: flex-end !important;
+            gap: 8px !important;
         }
         [class*="st-key-wsc-shortcut-hint-"] {
             display: flex !important;
@@ -256,10 +257,10 @@ st.html('''
             display: none !important;
         }
         [class*="st-key-wsc-attachment-"] [data-testid="stPopover"] button {
-            width: 42px !important;
-            min-width: 42px !important;
-            height: 42px !important;
-            min-height: 42px !important;
+            width: 44px !important;
+            min-width: 44px !important;
+            height: 44px !important;
+            min-height: 44px !important;
             padding: 0 !important;
             gap: 0 !important;
             justify-content: center !important;
@@ -276,8 +277,8 @@ st.html('''
                 border-radius: 16px !important;
             }
             [class*="st-key-wsc-composer-"] [data-testid="stButton"] button[kind="primary"] {
-                min-width: 40px !important;
-                min-height: 40px !important;
+                min-width: 44px !important;
+                min-height: 44px !important;
             }
             [class*="st-key-wsc-shortcut-hint-"] {
                 display: none !important;
@@ -924,6 +925,29 @@ def apply_jig_persona_command(text: str) -> str:
     updated, reply = parse_persona_command(text, current)
     st.session_state.wsc_jig_persona = updated.che_do
     return reply
+
+
+def is_jig_stream_paused(conversation_id: str) -> bool:
+    """Return True when the live JIG stream display is paused (007 US8)."""
+    try:
+        return bool(st.session_state.get(f"wsc_stream_paused_{conversation_id}", False))
+    except Exception:
+        return False
+
+
+def render_jig_stream_pause_control(conversation_id: str, locale: str = "vi") -> None:
+    """Render pause/resume toggle for the live JIG stream (007 US8, FR-018)."""
+    key = f"wsc_stream_paused_{conversation_id}"
+    paused = is_jig_stream_paused(conversation_id)
+    if paused:
+        if st.button(t("jig_stream_resume", locale=locale), key=f"{key}_resume", help=t("jig_stream_resume_help", locale=locale)):
+            st.session_state[key] = False
+            safe_rerun()
+        st.caption(t("jig_stream_paused_note", locale=locale))
+    else:
+        if st.button(t("jig_stream_pause", locale=locale), key=f"{key}_pause", help=t("jig_stream_pause_help", locale=locale)):
+            st.session_state[key] = True
+            safe_rerun()
 
 def safe_rerun():
     try:
@@ -3446,11 +3470,11 @@ else:
                         st.session_state[f"wsc_question_input_{active_conversation.id}"] = ""
                     uploaded_image = None
                     user_input = st.text_area(
-                        labels["question_placeholder"],
+                        t("composer_question_label", locale=current_ui_locale),
                         placeholder=t("question_placeholder", locale=current_ui_locale),
                         height=76,
                         key=f"wsc_question_input_{active_conversation.id}",
-                        label_visibility="collapsed",
+                        label_visibility="visible",
                     )
 
                     toolbar_attach_col, toolbar_model_col, toolbar_search_col, _toolbar_spacer, toolbar_hint_col, toolbar_action_col = st.columns([0.7, 3.5, 1.8, 5.5, 1.2, 0.8])
@@ -3615,6 +3639,8 @@ else:
                                 safe_rerun()
                     if not deep_search.available:
                         st.caption(t("deep_search_unavailable", locale=current_ui_locale))
+                    if get_jig_session_type() == "truc_ban" or st.session_state.get("wsc_last_chart_png"):
+                        render_jig_stream_pause_control(active_conversation.id, current_ui_locale)
 
                 if ask_submitted and pending_submission:
                     # A fresh submit intentionally replaces an older waiting
@@ -3698,7 +3724,8 @@ else:
                         ):
                             safe_rerun()
                     if not q_text and not user_attached_image:
-                        st.error(t("question_placeholder", locale=current_ui_locale))
+                        with st.container(key=f"wsc_composer_hint_{active_conversation.id}"):
+                            st.caption(t("composer_empty_hint", locale=current_ui_locale))
                     else:
                         from aios_habit.agent_work_artifact import detect_agent_work_intent
                         agent_intent = detect_agent_work_intent(q_text) if q_text else None

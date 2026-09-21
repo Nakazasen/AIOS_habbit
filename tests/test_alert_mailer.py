@@ -56,3 +56,34 @@ def test_bo_theo_doi_cooldown_theo_khoa():
     tracker.danh_dau_da_gui("JIG-01", now_ts=1000.0)
     assert tracker.duoc_phep_gui("JIG-01", now_ts=1200.0) is False
     assert tracker.duoc_phep_gui("JIG-01", now_ts=2000.0) is True
+
+
+def test_gui_mail_doi_duyet_dung_ma():
+    """FR-019: mail is sendable only after the user approves the exact proposal."""
+    from dataclasses import replace
+
+    from aios_habit.production_prediction.alert_mailer import can_send_with_approval
+
+    proposal = AlertMailProposal(
+        tieu_de="Cảnh báo xu hướng JIG BOWSKEW",
+        tom_tat="Giá trị bowskew đang trôi gần ngưỡng trên.",
+        nguoi_nhan=["to.truong@congty.local"],
+        ma_duyet="DUYET-009",
+    )
+    assert can_send_with_approval(proposal, False) is False
+    assert can_send_with_approval(proposal, True) is True
+    assert can_send_with_approval(replace(proposal, ma_duyet=""), True) is False
+
+
+def test_man_hinh_duyet_mail_co_nut_gui_huy():
+    """FR-019: approval screen shows content with Gửi/Hủy before sending."""
+    from pathlib import Path
+
+    source = Path("src/aios_habit/workspace_chat_ui.py").read_text(encoding="utf-8")
+    translations = Path("src/aios_habit/i18n.py").read_text(encoding="utf-8")
+    assert "def render_mail_approval_screen" in source
+    assert "wsc_mail_approved_" in source
+    assert 't("mail_approval_send"' in source
+    assert 't("mail_approval_cancel"' in source
+    assert '"mail_approval_send": "Gửi"' in translations
+    assert '"mail_approval_cancel": "Hủy"' in translations

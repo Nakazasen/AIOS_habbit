@@ -66,3 +66,21 @@ tests/
 ## Complexity Tracking
 
 No constitution violations or additional complexity are required.
+
+## Làm giàu nontech 2026-09-21 (không tạo spec mới)
+
+**Phạm vi mở rộng đã duyệt**: giữ composer hiện có, thêm Câu chuyện 7 (composer siêu thân thiện) và Câu chuyện 8 (thẻ JIG, biểu đồ, mail dễ hiểu). Không dựng framework mới, không đổi luồng gửi, không thêm kho dữ liệu.
+
+**Bối cảnh kỹ thuật bổ sung**:
+
+- Ngôn ngữ và nền giữ nguyên: Python 3.11, Streamlit 1.60, một module `workspace_chat_app.py`, dùng lại mô đun `production_prediction` cho thẻ JIG và mô đun gợi ý hiện có.
+- Tra cứu `ui-ux-pro-max` đã xác minh: nhãn nhìn thấy, nút bấm tối thiểu 44 px cách nhau 8 px, lỗi cạnh trường, biểu đồ đánh dấu bằng hình và chữ kèm bảng số, luồng trực tiếp có nút Tạm dừng. Tra cứu Streamlit trong skill trả 0 kết quả nên phần triển khai Streamlit dùng mặc định chung và luật repo.
+- Quyết định senior: không lưu `design-system/.../MASTER.md` vào repo để giữ kho sạch; dùng kết quả tra cứu viết thẳng vào spec, kế hoạch và hợp đồng 007.
+
+**Kiểm tra hiến chương bổ sung**:
+
+| Cổng | Trạng thái | Bằng chứng |
+|---|---|---|
+| Tiếng Việt duy nhất cho người không chuyên | Đạt theo thiết kế | FR-014, FR-016, FR-020 bắt buộc nhãn, kết luận và tương phản dễ đọc. |
+| An toàn dữ liệu local-first | Đạt theo thiết kế | Dùng lại đường gửi hiện có, không thêm egress; mail chỉ gửi sau khi duyệt. |
+| Không fake PASS | Đạt theo quy trình | SC-007 tới SC-010 đo được; smoke trình duyệt và test tập trung bắt buộc. |
