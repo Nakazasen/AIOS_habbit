@@ -103,6 +103,25 @@ Implement and validate the P1 composer first, then add progressive attachment, m
 - [x] T025 [US8] Hiện màn hình duyệt mail trước khi gửi trong `src/aios_habit/production_prediction/alert_mailer.py`
 - [x] T026 Chạy kiểm chứng tập trung, biên dịch, kiểm toán và smoke 007 theo `specs/007-modern-chat-composer/quickstart.md`
 
+## Mở rộng màn hình đáp án US-QA1/QA2/QA3 (phiên 2026-09-21, không tạo spec mới)
+
+**Phạm vi**: Câu chuyện 9 bong bóng hỏi đáp (P1), Câu chuyện 10 ba bước chờ (P1) và Câu chuyện 11 cụm trích dẫn gọn (P2) theo `spec.md` FR-021 tới FR-024 và SC-011 tới SC-013. Chỉ CSS và render hiện có; không đổi luồng RAG, không cắt nội dung đáp án.
+
+**Thứ tự**: QA1 trước (MVP), QA2 sau, QA3 cuối.
+
+- [x] T027 [QA1] Bổ sung kiểm thử hợp đồng bong bóng hỏi đáp và bề rộng dòng trong `tests/test_workspace_chat_composer_ui.py`
+- [x] T028 [QA1] Hiện bong bóng hỏi đáp khác màu/khung và giới hạn bề rộng dòng đáp án trong `src/aios_habit/workspace_chat_app.py`
+- [x] T029 [QA2] Bổ sung kiểm thử ba bước chờ theo trạng thái thật trong `tests/test_workspace_chat_composer_ui.py`
+- [x] T030 [QA2] Hiện ba bước tìm nguồn, đọc trích đoạn, tổng hợp trong `src/aios_habit/workspace_chat_ui.py`
+- [x] T031 [QA3] Gộp trích dẫn thành cụm thu gọn có đếm số lượng trong `src/aios_habit/workspace_chat_ui.py`
+- [x] T032 Chạy kiểm chứng tập trung, biên dịch, kiểm toán và smoke 007 theo `specs/007-modern-chat-composer/quickstart.md`
+
+**Kiểm thử độc lập từng chuyện**:
+
+- QA1: hỏi và đáp khác màu/khung bằng mắt thường, đáp án dài hiện đầy đủ.
+- QA2: chờ tài liệu thì bước tìm nguồn sáng, AI xử lý thì bước tổng hợp sáng, không phần trăm giả.
+- QA3: nhiều nguồn trích dẫn gom một cụm có đếm số lượng, khung chi tiết mặc định đóng.
+
 **Kiểm thử độc lập từng chuyện**:
 
 - US7: người mới nhận ra chỗ nhập/gửi trong 5 giây, gửi trống thấy hướng dẫn cạnh nút, chờ tài liệu bấm dừng được, 360 px không chồng lấp.

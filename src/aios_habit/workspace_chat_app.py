@@ -101,6 +101,21 @@ st.html('''
             box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15) !important;
         }
 
+        /* Bong bóng hỏi đáp: câu hỏi viền xanh dương phải, đáp án viền xanh lá trái. */
+        [data-testid="stChatMessage"]:has([data-testid="stChatMessageAvatarUser"]) {
+            background: rgba(37, 99, 235, 0.10) !important;
+            border-right: 3px solid rgba(37, 99, 235, 0.65) !important;
+        }
+        [data-testid="stChatMessage"]:has([data-testid="stChatMessageAvatarAssistant"]) {
+            background: rgba(15, 23, 42, 0.45) !important;
+            border-left: 3px solid rgba(5, 150, 105, 0.65) !important;
+        }
+        /* Bề rộng dòng đáp án dễ đọc; nội dung dài hiện đầy đủ, không cắt bớt. */
+        [data-testid="stChatMessageContent"] {
+            max-width: 75ch !important;
+            line-height: 1.6 !important;
+        }
+
         /* List and table formatting inside chat message */
         [data-testid="stChatMessage"] ul, [data-testid="stChatMessage"] ol {
             margin-top: 0.6rem !important;
@@ -612,6 +627,7 @@ from aios_habit.workspace_chat_ui import (
     render_document_manager,
     render_preparation_progress_bar,
     render_grouped_evidence_items,
+    render_answer_wait_steps,
     render_source_status,
     render_ai_source_context_summary,
     render_ai_answer_header,
@@ -3235,7 +3251,15 @@ else:
                         render_chat_bubble(m, is_latest=is_latest_ans, locale=current_ui_locale)
                     if is_answering:
                         with st.chat_message("assistant"):
-                            st.markdown(f"⏳ *{t('ai_analysis_spinner', locale=current_ui_locale)}*")
+                            treo_nguon = st.session_state.get(_PENDING_SOURCE_SUBMISSION_KEY)
+                            dang_cho_nguon = bool(
+                                isinstance(treo_nguon, dict)
+                                and treo_nguon.get("conversation_id") == active_conversation.id
+                            )
+                            render_answer_wait_steps(
+                                "cho_tai_lieu" if dang_cho_nguon else "dang_xu_ly",
+                                locale=current_ui_locale,
+                            )
                             try:
                                 _worker_warmed = is_workspace_chat_worker_warmed()
                             except Exception:
@@ -4778,9 +4802,9 @@ else:
                 # Studio Notes & Citations
                 if badge_data and badge_data.get("conversation_id") == active_conversation.id and badge_data.get("evidence_items"):
                     doc_refs_title = t("citations_from_docs", locale=current_ui_locale)
-                    st.markdown(f"#### {doc_refs_title}")
+                    st.markdown(f"#### {doc_refs_title} ({len(badge_data['evidence_items'])})")
                     for item in badge_data["evidence_items"]:
-                        with st.expander(f"📌 {item['title']}", expanded=True):
+                        with st.expander(f"📌 {item['title']}", expanded=False):
                             if item.get("location_info"):
                                 st.caption(f"📍 {item['location_info']}")
                             st.info(item["text"])

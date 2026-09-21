@@ -35,3 +35,10 @@
 - Biểu đồ đánh dấu điểm bất thường bằng hình và chữ kèm theo, kèm bảng số gọn; không phân biệt trạng thái chỉ bằng màu sắc.
 - Luồng trực tiếp có nút Tạm dừng/Tiếp tục; khi tạm dừng, dòng chat ngừng cập nhật nhưng dữ liệu vẫn ghi ngầm.
 - Mail cảnh báo luôn hiện màn hình duyệt nội dung và biểu đồ trước khi gửi; chỉ gửi khi người dùng đồng ý.
+
+## Trạng thái màn hình đáp án (làm giàu 2026-09-21)
+
+- Bong bóng hỏi và đáp khác màu/khung rõ rệt; đáp án mới nhất có dấu hiệu nhận biết.
+- Chữ đáp án giới hạn bề rộng dòng bằng CSS; nội dung dài hiện đầy đủ, không cắt bớt.
+- Lúc chờ hiện 3 bước tìm nguồn, đọc trích đoạn, tổng hợp trả lời theo đúng trạng thái thật; không phần trăm giả.
+- Trích dẫn gom trong một cụm thu gọn có đếm số lượng; các khung chi tiết mặc định đóng.

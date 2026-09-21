@@ -122,6 +122,47 @@ Người dùng dán log JIG vào Omnibar hoặc nhập file CSV thì nhận th�
 3. **Cho** luồng trực tiếp đang chạy, **khi** người dùng bấm Tạm dừng, **thì** dòng chat ngừng cập nhật nhưng dữ liệu vẫn ghi ngầm.
 4. **Cho** cảnh báo đủ điều kiện gửi mail, **khi** gửi, **thì** hệ thống hiện màn hình duyệt nội dung và biểu đồ trước, chỉ gửi khi người dùng đồng ý.
 
+### Câu chuyện 9 — Nhìn là biết đâu là hỏi, đâu là đáp (Ưu tiên: P1, làm giàu 2026-09-21)
+
+Người dùng mở hội thoại là phân biệt ngay bằng mắt thường đâu là câu hỏi của mình, đâu là câu trả lời của AI. Chữ đáp án dễ đọc trên màn hình rộng nhờ giới hạn bề rộng dòng, nội dung dài bao nhiêu cũng hiện đầy đủ, không cắt bớt.
+
+**Vì sao ưu tiên này**: Màn hình hiện tại mọi thứ trông giống nhau và chữ dàn full-width nên đọc mệt, người dùng gọi là hỗn độn.
+
+**Kiểm thử độc lập**: Mở hội thoại có sẵn một cặp hỏi đáp, bong bóng hỏi và đáp khác màu/khung rõ rệt; đáp án dài vẫn hiện đầy đủ.
+
+**Tình huống nghiệm thu**:
+
+1. **Cho** hội thoại có câu hỏi và câu trả lời, **khi** nhìn màn hình, **thì** bong bóng hỏi và đáp khác màu/khung rõ rệt.
+2. **Cho** câu trả lời rất dài, **khi** hiển thị, **thì** toàn bộ nội dung hiện đầy đủ, chỉ giới hạn bề rộng dòng để dễ đọc.
+3. **Cho** đáp án mới nhất, **khi** hiển thị, **thì** có dấu hiệu nhận biết đáp án mới nhất.
+
+### Câu chuyện 10 — Lúc chờ biết máy đang làm gì (Ưu tiên: P1, làm giàu 2026-09-21)
+
+Người dùng gửi câu hỏi xong thấy ngay 3 bước tiến triển: tìm nguồn, đọc trích đoạn, tổng hợp trả lời. Bước đang chạy sáng lên theo đúng trạng thái thật của hệ thống, không phần trăm giả.
+
+**Vì sao ưu tiên này**: Lúc chờ chỉ có một dòng xoay vòng nên sốt ruột, không biết tiến triển.
+
+**Kiểm thử độc lập**: Gửi câu hỏi khi tài liệu đang chuẩn bị thì bước tìm nguồn sáng; khi AI đang xử lý thì bước tổng hợp sáng.
+
+**Tình huống nghiệm thu**:
+
+1. **Cho** câu hỏi đang chờ tài liệu, **khi** nhìn, **thì** bước tìm nguồn đang chạy.
+2. **Cho** AI đang xử lý, **khi** nhìn, **thì** bước tổng hợp đang chạy.
+3. **Cho** mọi trạng thái chờ, **khi** hiển thị, **thì** không có phần trăm hay thời gian giả.
+
+### Câu chuyện 11 — Trích dẫn gọn trong một cụm (Ưu tiên: P2, làm giàu 2026-09-21)
+
+Người dùng thấy trích dẫn gom trong một cụm thu gọn có đếm số lượng, bấm mới mở từng nguồn. Nội dung không mất, chỉ gọn màn hình.
+
+**Vì sao ưu tiên này**: Mỗi nguồn một khung mở sẵn kèm hộp xanh xếp chồng làm màn hình dài lê thê.
+
+**Kiểm thử độc lập**: Mở đáp án có 3 nguồn trích dẫn, màn hình chỉ hiện một cụm gọn có đếm số lượng; bấm mở mới thấy từng nguồn.
+
+**Tình huống nghiệm thu**:
+
+1. **Cho** đáp án có nhiều nguồn trích dẫn, **khi** hiển thị, **thì** các khung chi tiết mặc định đóng.
+2. **Cho** cụm trích dẫn, **khi** nhìn, **thì** thấy số lượng nguồn ngay trên tiêu đề cụm.
+
 ### Edge Cases
 
 - Khi người dùng gửi nội dung trống và không có ảnh, hệ thống vẫn hiển thị thông báo hướng dẫn hiện có.
@@ -153,6 +194,10 @@ Người dùng dán log JIG vào Omnibar hoặc nhập file CSV thì nhận th�
 - **FR-018**: Luồng trực tiếp PHẢI có nút Tạm dừng/Tiếp tục; khi tạm dừng, dòng chat ngừng cập nhật nhưng dữ liệu vẫn ghi ngầm.
 - **FR-019**: Mail cảnh báo PHẢI hiện màn hình duyệt nội dung và biểu đồ trước khi gửi; chỉ gửi khi người dùng đồng ý.
 - **FR-020**: Mọi chữ người dùng đọc trong composer, thẻ JIG, biểu đồ và mail PHẢI là tiếng Việt dễ hiểu; chữ tương phản tối thiểu 4.5:1, giữ thứ tự phím bấm, tôn trọng chế độ giảm chuyển động.
+- **FR-021**: Bong bóng hỏi và đáp PHẢI khác màu/khung rõ rệt; đáp án mới nhất PHẢI có dấu hiệu nhận biết.
+- **FR-022**: Chữ đáp án PHẢI giới hạn bề rộng dòng để dễ đọc; nội dung dài bao nhiêu cũng PHẢI hiện đầy đủ, không cắt bớt.
+- **FR-023**: Lúc chờ PHẢI hiện 3 bước tìm nguồn, đọc trích đoạn, tổng hợp trả lời; bước đang chạy PHẢI theo đúng trạng thái thật, không phần trăm giả.
+- **FR-024**: Trích dẫn PHẢI gom trong cụm thu gọn có đếm số lượng; các khung chi tiết mặc định đóng.
 
 ## Success Criteria *(mandatory)*
 
@@ -168,6 +213,9 @@ Người dùng dán log JIG vào Omnibar hoặc nhập file CSV thì nhận th�
 - **SC-008**: Composer và thẻ JIG dùng được ở 360 px, phóng to chữ không chồng lấp, không cuộn ngang, không cắt chữ.
 - **SC-009**: Thẻ JIG vượt ngưỡng hiện đúng kết luận, tên JIG, thông số vi phạm và đề xuất kiểm tra; biểu đồ có điểm đánh dấu bằng hình và chữ kèm bảng số.
 - **SC-010**: Luồng trực tiếp tạm dừng được mà không mất dữ liệu ngầm; mail cảnh báo chỉ gửi sau khi người dùng duyệt.
+- **SC-011**: Người dùng phân biệt hỏi và đáp bằng mắt thường; đáp án dài hiện đầy đủ, chỉ giới hạn bề rộng dòng.
+- **SC-012**: Lúc chờ thấy 3 bước tiến triển theo đúng trạng thái thật, không phần trăm giả.
+- **SC-013**: Trích dẫn gom trong cụm thu gọn có đếm số lượng, khung chi tiết mặc định đóng.
 
 ## Assumptions
 

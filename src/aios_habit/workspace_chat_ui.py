@@ -1335,6 +1335,36 @@ def render_jig_live_status_capsule(dang_ket_noi: bool, toc_do: float = 0.0, so_j
     st.caption(f"{capsule['trang_thai']}: {capsule['chi_tiet']}")
 
 
+_CAC_BUOC_CHO = ("qa_step_find", "qa_step_read", "qa_step_synth")
+
+
+def build_answer_wait_steps(trang_thai: str, locale: str = "vi") -> List[Dict[str, Any]]:
+    """Build the three waiting steps from the real pipeline state (007 QA2).
+
+    Only "cho_tai_lieu" (waiting for sources) and "dang_xu_ly" (AI working)
+    are accepted; anything else raises so callers never show a fake step.
+    """
+    if trang_thai == "cho_tai_lieu":
+        dang_chay = 0
+    elif trang_thai == "dang_xu_ly":
+        dang_chay = 2
+    else:
+        raise ValueError("Trạng thái chờ không hợp lệ.")
+    return [
+        {"nhan": t(khoa, locale=locale), "dang_chay": idx == dang_chay}
+        for idx, khoa in enumerate(_CAC_BUOC_CHO)
+    ]
+
+
+def render_answer_wait_steps(trang_thai: str, locale: str = "vi") -> None:
+    """Render the waiting steps checklist in Vietnamese (007 QA2, FR-023)."""
+    st.markdown(f"⏳ *{t('ai_analysis_spinner', locale=locale)}*")
+    st.caption(t("qa_wait_title", locale=locale))
+    for buoc in build_answer_wait_steps(trang_thai, locale=locale):
+        dau = "●" if buoc["dang_chay"] else "○"
+        st.markdown(f"{dau} {buoc['nhan']}")
+
+
 def render_mail_approval_screen(the_duyet: Dict[str, Any], locale: str = "vi") -> Optional[str]:
     """Render the mail preview with Gửi/Hủy before sending (007 US8, FR-019).
 
@@ -1345,7 +1375,8 @@ def render_mail_approval_screen(the_duyet: Dict[str, Any], locale: str = "vi") -
     st.subheader(str(the_duyet.get("tieu_de", "") or t("mail_approval_title", locale=locale)))
     st.write(str(the_duyet.get("tom_tat", "")))
     nguoi_nhan = the_duyet.get("nguoi_nhan", []) or []
-    st.caption(t("mail_approval_recipients", locale=locale, ds=", ".join(str(e) for e in nguoi_nhan)))
+    danh_sach_nhan = ", ".join(str(nguoi) for nguoi in nguoi_nhan)
+    st.caption(t("mail_approval_recipients", locale=locale, ds=danh_sach_nhan))
     st.caption(str(the_duyet.get("huong_dan", "") or t("mail_approval_hint", locale=locale)))
     cot_gui, cot_huy = st.columns(2)
     with cot_gui:

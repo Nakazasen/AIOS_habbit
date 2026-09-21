@@ -84,3 +84,13 @@ No constitution violations or additional complexity are required.
 | Tiếng Việt duy nhất cho người không chuyên | Đạt theo thiết kế | FR-014, FR-016, FR-020 bắt buộc nhãn, kết luận và tương phản dễ đọc. |
 | An toàn dữ liệu local-first | Đạt theo thiết kế | Dùng lại đường gửi hiện có, không thêm egress; mail chỉ gửi sau khi duyệt. |
 | Không fake PASS | Đạt theo quy trình | SC-007 tới SC-010 đo được; smoke trình duyệt và test tập trung bắt buộc. |
+
+## Làm giàu màn hình đáp án 2026-09-21 (không tạo spec mới)
+
+**Phạm vi mở rộng đã duyệt**: Câu chuyện 9 bong bóng hỏi đáp, Câu chuyện 10 ba bước chờ, Câu chuyện 11 cụm trích dẫn gọn. Chỉ CSS và render hiện có trong `workspace_chat_app.py` và `workspace_chat_ui.py`; không đổi luồng RAG, không cắt nội dung đáp án.
+
+**Bối cảnh kỹ thuật bổ sung**:
+
+- Tra cứu `ui-ux-pro-max` đã xác minh: bề rộng dòng 65–75 chữ, giãn dòng 1.5–1.75, bước tiến triển và phản hồi tải khớp thời gian chờ. Mẫu trích dẫn không có match trong kho skill nên dùng mặc định chung và ghi rõ là fallback.
+- Bước chờ suy từ trạng thái thật: chờ tài liệu thì bước tìm nguồn chạy, AI đang xử lý thì bước tổng hợp chạy; không phần trăm giả.
+- Quyết định senior: trích dẫn gộp một cụm thu gọn có đếm số lượng thay vì nhiều khung mở sẵn; đáp án dài hiện đầy đủ, chỉ giới hạn bề rộng dòng bằng CSS.

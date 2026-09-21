@@ -22,6 +22,13 @@
 5. Mở biểu đồ trong thẻ, xác nhận điểm bất thường có hình và chữ kèm bảng số; bấm Tạm dừng thì dòng chat ngừng cập nhật.
 6. Kích hoạt mail cảnh báo thử, xác nhận màn hình duyệt hiện trước và chỉ gửi khi đồng ý.
 
+## Kiểm tra tay cho màn hình đáp án 2026-09-21
+
+1. Mở hội thoại có sẵn một cặp hỏi đáp, xác nhận bong bóng hỏi và đáp khác màu/khung rõ rệt, đáp án mới nhất có dấu hiệu nhận biết.
+2. Mở đáp án dài, xác nhận toàn bộ nội dung hiện đầy đủ, chữ không dàn full-width khó đọc.
+3. Gửi câu hỏi và xác nhận 3 bước tìm nguồn, đọc trích đoạn, tổng hợp hiện theo đúng trạng thái chờ thật.
+4. Mở đáp án có nhiều nguồn trích dẫn, xác nhận cụm gọn có đếm số lượng, khung chi tiết mặc định đóng.
+
 ## Kiểm tra tự động
 
 ```powershell

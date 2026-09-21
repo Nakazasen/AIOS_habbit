@@ -207,3 +207,45 @@ def test_composer_empty_guidance_is_shown_next_to_send_action() -> None:
     assert "wsc_composer_hint_" in source
     assert 't("composer_empty_hint"' in source
 
+
+def test_qa_bubbles_distinguish_question_and_answer() -> None:
+    """FR-021: question and answer bubbles must differ visually."""
+    source = _app_source()
+
+    assert "Bong bóng hỏi đáp" in source
+    assert '[data-testid="stChatMessageAvatarUser"]' in source
+    assert '[data-testid="stChatMessageAvatarAssistant"]' in source
+
+
+def test_answer_text_has_readable_measure_without_truncation() -> None:
+    """FR-022: answer text measure is capped for readability, never cut."""
+    source = _app_source()
+
+    assert "max-width: 75ch" in source
+
+
+def test_cho_hien_ba_buoc_theo_trang_thai_that() -> None:
+    """FR-023: waiting steps must follow the real pipeline state."""
+    from aios_habit.workspace_chat_ui import build_answer_wait_steps
+
+    cho_nguon = build_answer_wait_steps("cho_tai_lieu")
+    assert [s["dang_chay"] for s in cho_nguon] == [True, False, False]
+    dang_xu_ly = build_answer_wait_steps("dang_xu_ly")
+    assert [s["dang_chay"] for s in dang_xu_ly] == [False, False, True]
+
+
+def test_khoi_cho_dung_trang_thai_that_trong_app() -> None:
+    """FR-023: app must render wait steps from the real waiting state."""
+    source = _app_source()
+
+    assert "render_answer_wait_steps" in source
+    assert '"cho_tai_lieu"' in source
+    assert '"dang_xu_ly"' in source
+
+
+def test_cum_trich_dan_thu_gon_mac_dinh_dong() -> None:
+    """FR-024: evidence detail frames must default to collapsed."""
+    source = _app_source()
+
+    assert 'with st.expander(f"📌 {item[\'title\']}", expanded=False)' in source
+
