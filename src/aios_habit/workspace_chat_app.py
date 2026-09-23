@@ -712,6 +712,7 @@ from aios_habit.antigravity_bridge import (
     get_antigravity_bridge_health,
     ensure_antigravity_bridge_running,
     call_antigravity_bridge,
+    commit_local_grounded_answer,
     sanitize_reason,
 )
 from aios_habit.ide_handoff_bridge import (
@@ -1188,6 +1189,7 @@ def _run_chat_turn_async(
         backend=ai_backend,
         cagent_endpoint_url=cagent_endpoint_url,
         cancellation_event=cancellation_event,
+        local_synthesis=ret_res.get("local_synthesis") if retrieval_applied else None,
     )
 
 
@@ -3270,14 +3272,24 @@ else:
                                         err_msg, "Không thể hoàn tất yêu cầu AI lúc này."
                                     )
                                     st.session_state.wsc_action_error = clean_err
-                                    from aios_habit.workspace_chat_models import ChatMessage
-                                    from aios_habit.workspace_chat_store import save_message
-                                    save_message(ChatMessage(
-                                        id=f"MSG-{uuid.uuid4().hex[:8].upper()}",
-                                        conversation_id=active_conversation.id,
-                                        role="assistant",
-                                        content=f"⚠️ {clean_err}",
-                                    ))
+                                    # A local-fallback offer is not a failed turn:
+                                    # it must stay a pure offer, so the refusal
+                                    # text is shown but never written into the
+                                    # conversation. Writing it would both add a
+                                    # spurious assistant turn and hide the
+                                    # original user message from the commit step.
+                                    is_local_offer = bool(
+                                        badge and badge.get("type") == "local_fallback_offered"
+                                    )
+                                    if not is_local_offer:
+                                        from aios_habit.workspace_chat_models import ChatMessage
+                                        from aios_habit.workspace_chat_store import save_message
+                                        save_message(ChatMessage(
+                                            id=f"MSG-{uuid.uuid4().hex[:8].upper()}",
+                                            conversation_id=active_conversation.id,
+                                            role="assistant",
+                                            content=f"⚠️ {clean_err}",
+                                        ))
                                 st.session_state.wsc_last_ai_badge = badge
                         safe_rerun()
                     elif request_future is not None:
@@ -3332,7 +3344,25 @@ else:
 
                 # AI Answer Badge
                 if badge_data and badge_data.get("conversation_id") == active_conversation.id:
-                    if badge_data.get("type") == "ai_answered":
+                    if (
+                        badge_data.get("type") == "ai_answered"
+                        and badge_data.get("operational_mode") == "local_grounded_fallback"
+                    ):
+                        # Honest local lane: this answer came from excerpts on this
+                        # machine, not from a model. It must not wear the AI header,
+                        # the unverified-model caption, or the AI disclaimer.
+                        st.success(f"📄 **{t('local_fallback_note', locale=current_ui_locale)}**")
+                        _lf_local_count = int(badge_data.get("source_count", 0) or 0)
+                        st.write(f"{t('sources_sent', locale=current_ui_locale)}: {_lf_local_count}")
+                        if badge_data.get("source_titles"):
+                            with st.expander(f"{t('sources_sent', locale=current_ui_locale)}", expanded=False):
+                                for _lf_title in badge_data["source_titles"]:
+                                    st.write(f"- {_lf_title}")
+                        if "evidence_items" in badge_data and badge_data["evidence_items"]:
+                            render_grouped_evidence_items(
+                                badge_data["evidence_items"], active_conversation.id, locale=current_ui_locale
+                            )
+                    elif badge_data.get("type") == "ai_answered":
                         render_ai_answer_header(
                             badge_data.get("source_count", 0),
                             badge_data.get("source_titles", []),
@@ -3389,6 +3419,37 @@ else:
                                             safe_rerun()
                     elif badge_data.get("type") == "handoff_pending":
                         st.info(t("waiting_antigravity_banner", locale=current_ui_locale, req_id=badge_data.get("request_id")))
+                    elif badge_data.get("type") == "local_fallback_offered":
+                        # Provider-free local lane: the error above already told the
+                        # user the bridge is down. This is an offer, not an answer.
+                        _lf_key = f"wsc_local_fallback_{active_conversation.id}"
+                        _lf_mode = str(badge_data.get("local_answer_mode", "") or "")
+                        st.caption(t("local_fallback_note", locale=current_ui_locale))
+                        if _lf_mode == "answer_with_limits" and badge_data.get("local_limitation_reasons"):
+                            st.caption(f"⚠️ {', '.join(badge_data['local_limitation_reasons'])}")
+                        if st.button(
+                            t("local_fallback_offer_button", locale=current_ui_locale),
+                            key=_lf_key,
+                            type="primary",
+                        ):
+                            _lf_ok, _lf_msg, _lf_badge = commit_local_grounded_answer(
+                                question=str(badge_data.get("local_question", "") or ""),
+                                local_answer=str(badge_data.get("local_answer", "") or ""),
+                                local_citation_ids=tuple(badge_data.get("local_citation_ids") or ()),
+                                evidence_items=list(badge_data.get("evidence_items") or []),
+                                notebook_id=active_conversation.notebook_id or active_nb_id or "",
+                                conversation_id=active_conversation.id,
+                                answer_language=getattr(active_conversation, "answer_language", "vi") or "vi",
+                            )
+                            if _lf_ok:
+                                st.session_state.wsc_action_message = t("local_fallback_saved", locale=current_ui_locale)
+                                st.session_state.wsc_last_ai_badge = _lf_badge
+                                st.session_state.wsc_action_error = None
+                            else:
+                                st.session_state.wsc_action_error = _lf_msg or t(
+                                    "local_fallback_empty_error", locale=current_ui_locale
+                                )
+                            safe_rerun()
                     elif badge_data.get("type") == "insufficient_context":
                         render_insufficient_context(badge_data.get("reason", "no_sources"), locale=current_ui_locale)
                     elif badge_data.get("type") == "privacy_block":

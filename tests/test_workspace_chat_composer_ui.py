@@ -303,3 +303,71 @@ def test_cum_trich_dan_thu_gon_mac_dinh_dong() -> None:
 
     assert 'with st.expander(f"📌 {item[\'title\']}", expanded=False)' in source
 
+
+
+def test_local_fallback_label_is_honest_and_vietnamese() -> None:
+    """FR-030 / SC-013: the local answer lane never claims a model produced it."""
+    import sys
+
+    sys.path.insert(0, "src")
+    from aios_habit.antigravity_bridge import LOCAL_GROUNDED_FALLBACK_PROVIDER
+    from aios_habit.i18n import TRANSLATIONS, SUPPORTED_LOCALES
+
+    source = _app_source()
+    keys = (
+        "local_fallback_offer_button",
+        "local_fallback_note",
+        "local_fallback_empty_error",
+        "local_fallback_saved",
+    )
+
+    # Every visible string exists in every shipped locale.
+    for locale in SUPPORTED_LOCALES:
+        table = TRANSLATIONS.get(locale, {})
+        for key in keys:
+            assert key in table, f"{key} missing for {locale}"
+            assert str(table[key]).strip(), f"{key} empty for {locale}"
+
+    # The app wires the offer branch and the commit helper.
+    assert 'badge_data.get("type") == "local_fallback_offered"' in source
+    assert "commit_local_grounded_answer(" in source
+    assert 't("local_fallback_offer_button"' in source
+    assert 't("local_fallback_note"' in source
+
+    # Being local, it must say so plainly and never borrow a model name.
+    assert "chưa qua mô hình" in LOCAL_GROUNDED_FALLBACK_PROVIDER
+    folded = LOCAL_GROUNDED_FALLBACK_PROVIDER.casefold()
+    for forbidden in ("antigravity", "gemini", "gpt", "claude", "sonnet", "api"):
+        assert forbidden not in folded, forbidden
+
+
+def test_local_fallback_answer_never_wears_the_ai_header() -> None:
+    """Audit #2 / FR-030: a committed local answer must not read as an AI answer."""
+    source = _app_source()
+
+    # The app must branch on the honest operational mode before the AI header.
+    local_branch = 'badge_data.get("operational_mode") == "local_grounded_fallback"'
+    assert local_branch in source
+    local_at = source.index(local_branch)
+    ai_header_at = source.index("render_ai_answer_header(", local_at)
+    assert local_at < ai_header_at, "the local branch must precede the AI header"
+    between = source[local_at:ai_header_at]
+    assert "t('local_fallback_note'" in between
+    assert 'render_grouped_evidence_items(' in between
+    # No model attribution or AI disclaimer may appear in the local branch.
+    assert "model_tool_name" not in between
+    assert "ai_disclaimer" not in between
+
+
+def test_local_fallback_offer_is_not_written_as_a_chat_message() -> None:
+    """Audit #1 / FR-026: the offer stays an offer, never an assistant turn."""
+    source = _app_source()
+
+    marker = 'is_local_offer = bool('
+    assert marker in source
+    guard_at = source.index(marker)
+    save_at = source.index("save_message(ChatMessage(", guard_at)
+    assert guard_at < save_at, "the offer guard must precede the error save"
+    guard_block = source[guard_at:save_at]
+    assert 'badge.get("type") == "local_fallback_offered"' in guard_block
+    assert "if not is_local_offer:" in guard_block

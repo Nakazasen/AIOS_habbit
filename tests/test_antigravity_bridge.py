@@ -2115,3 +2115,374 @@ def test_route_workspace_chat_submission_cagent_uses_lexical_chunks_on_fallback(
     assert "SAP-9988" in captured["user_prompt"]
     assert "Nguyễn Văn An" in captured["user_prompt"]
     assert "Tài liệu chỉ định phân công" in captured["user_prompt"]
+
+
+class TestLocalGroundedFallbackContract:
+    """Milestone 6: provider-free local grounded fallback (FR-026..FR-032).
+
+    The one permitted fallback when no bridge is reachable is the extractive
+    answer this machine already computed. It is offered, never auto-written,
+    and it calls no provider.
+    """
+
+    @staticmethod
+    def _unavailable_health() -> AntigravityHealthStatus:
+        return AntigravityHealthStatus(
+            status="unavailable",
+            mode="none",
+            capabilities=[],
+            reason="Daemon not running",
+        )
+
+    @staticmethod
+    def _grounded_synthesis(**overrides) -> dict[str, Any]:
+        payload = {
+            "answer": "Siet bu-long theo hinh sao, siet hai luot. [1]",
+            "citation_ids": ["[1]"],
+            "grounded": True,
+            "abstained": False,
+            "answer_mode": "answer",
+            "limitation_reasons": [],
+        }
+        payload.update(overrides)
+        return payload
+
+    def _route(self, *, local_synthesis=None, health=None):
+        from aios_habit.antigravity_bridge import route_workspace_chat_submission
+
+        return route_workspace_chat_submission(
+            question="Siet bu-long nap may the nao?",
+            evidence_items=[],
+            packed_sources=(),
+            conversation_id="CONV-LOCAL-FALLBACK",
+            notebook_id="NB-LOCAL-FALLBACK",
+            retrieval_applied=True,
+            retrieved_sources=(),
+            retrieval_summary="",
+            current_keys=(),
+            chat_history=(),
+            user_raw_input="Siet bu-long nap may the nao?",
+            health_status=health if health is not None else self._unavailable_health(),
+            local_synthesis=local_synthesis,
+        )
+
+    def test_local_fallback_offered_only_when_grounded(self):
+        """FR-026: offer ONLY for a non-empty, grounded, non-abstained answer."""
+        # Grounded -> offered, and the send still reports failure.
+        ok, msg, badge, err = self._route(local_synthesis=self._grounded_synthesis())
+        assert ok is False
+        assert msg == ""
+        assert "không khả dụng" in err
+        assert badge is not None
+        assert badge["type"] == "local_fallback_offered"
+        assert badge["provider_used"] is False
+        assert badge["local_citation_ids"] == ["[1]"]
+        assert badge["local_question"] == "Siet bu-long nap may the nao?"
+
+        # Every unusable variant must fall back to the plain bridge error.
+        unusable = {
+            "no_parameter": None,
+            "empty_answer": self._grounded_synthesis(answer="   "),
+            "abstained": self._grounded_synthesis(abstained=True, grounded=False),
+            "not_grounded": self._grounded_synthesis(grounded=False),
+        }
+        for label, payload in unusable.items():
+            ok_x, _msg_x, badge_x, err_x = self._route(local_synthesis=payload)
+            assert ok_x is False, label
+            assert badge_x is None, label
+            assert "không khả dụng" in err_x, label
+
+    def test_route_return_shape_is_unchanged(self):
+        """FR-032: the router keeps returning exactly four elements."""
+        result = self._route(local_synthesis=self._grounded_synthesis())
+        assert isinstance(result, tuple)
+        assert len(result) == 4
+
+    def test_commit_refuses_empty_or_uncited_answer(self, tmp_path, monkeypatch):
+        """FR-029: refusals write ZERO messages."""
+        import aios_habit.workspace_chat_store as store_mod
+        from aios_habit.antigravity_bridge import commit_local_grounded_answer
+
+        monkeypatch.setattr(store_mod, "LOCAL_CHAT_DIR", tmp_path)
+        monkeypatch.setattr(store_mod, "MESSAGES_FILE", tmp_path / "messages.jsonl")
+        monkeypatch.setattr(store_mod, "TRACES_FILE", tmp_path / "traces.jsonl")
+        monkeypatch.setattr(store_mod, "CONVERSATIONS_FILE", tmp_path / "conversations.jsonl")
+        monkeypatch.setattr(store_mod, "SOURCE_SELECTIONS_FILE", tmp_path / "selections.jsonl")
+        store_mod.init_chat_store()
+
+        refusals = [
+            {"local_answer": "   ", "local_citation_ids": ("[1]",)},
+            {"local_answer": "Noi dung", "local_citation_ids": ()},
+            {"local_answer": "Noi dung", "local_citation_ids": ("[1]",), "conversation_id": ""},
+        ]
+        for kwargs in refusals:
+            call = {
+                "question": "Cau hoi",
+                "local_answer": kwargs["local_answer"],
+                "local_citation_ids": kwargs["local_citation_ids"],
+                "evidence_items": [],
+                "notebook_id": "NB",
+                "conversation_id": kwargs.get("conversation_id", "CONV-REFUSE"),
+                "answer_language": "vi",
+            }
+            ok, message, badge = commit_local_grounded_answer(**call)
+            assert ok is False, kwargs
+            assert message, kwargs
+            assert badge is None, kwargs
+            # Vietnamese-only user-facing text, never a raw traceback.
+            assert "Traceback" not in message
+
+        assert store_mod.load_all_messages() == []
+
+    def test_commit_local_grounded_answer_writes_valid_trace(self, tmp_path, monkeypatch):
+        """FR-028: a committed local answer yields a valid, citable trace."""
+        import aios_habit.workspace_chat_store as store_mod
+        from aios_habit.antigravity_bridge import commit_local_grounded_answer
+
+        monkeypatch.setattr(store_mod, "LOCAL_CHAT_DIR", tmp_path)
+        monkeypatch.setattr(store_mod, "MESSAGES_FILE", tmp_path / "messages.jsonl")
+        monkeypatch.setattr(store_mod, "TRACES_FILE", tmp_path / "traces.jsonl")
+        monkeypatch.setattr(store_mod, "CONVERSATIONS_FILE", tmp_path / "conversations.jsonl")
+        monkeypatch.setattr(store_mod, "SOURCE_SELECTIONS_FILE", tmp_path / "selections.jsonl")
+        store_mod.init_chat_store()
+
+        evidence_items = [
+            {
+                "source_id": "SRC-1",
+                "title": "Quy trinh siet bu-long",
+                "text": "Siet theo hinh sao, hai luot.",
+                "citation_id": "[1]",
+                "evidence_id": "EVD-1",
+            },
+            {
+                "source_id": "SRC-2",
+                "title": "Kiem tra mo-men",
+                "text": "Kiem tra bang can luc sau 24 gio.",
+                "citation_id": "[2]",
+                "evidence_id": "EVD-2",
+            },
+        ]
+
+        ok, message, badge = commit_local_grounded_answer(
+            question="Siet bu-long nap may the nao?",
+            local_answer="Siet theo hinh sao, hai luot. [1]",
+            local_citation_ids=("[1]",),
+            evidence_items=evidence_items,
+            notebook_id="NB-LF",
+            conversation_id="CONV-LF",
+            answer_language="vi",
+        )
+
+        assert ok is True
+        assert message
+        assert badge is not None
+        # Only the excerpt the answer actually cites is a badge source.
+        assert badge["source_count"] == 1
+        assert badge["source_titles"] == ["Quy trinh siet bu-long"]
+        assert badge["provider_used"] is False
+        assert badge["ai_source"] == ""
+        assert badge["operational_mode"] == "local_grounded_fallback"
+        # No model name may be attributed to a local answer.
+        assert badge["model_tool_name"] == ""
+        assert badge["verified_model"] == ""
+
+        messages = store_mod.load_all_messages()
+        roles = [m.role for m in messages]
+        assert roles.count("assistant") == 1
+        assistant = [m for m in messages if m.role == "assistant"][0]
+        assert assistant.trace_id == badge["trace_id"]
+
+        trace = store_mod.load_evidence_trace(badge["trace_id"])
+        assert trace is not None
+        assert trace.metadata["status"] == "valid"
+        assert trace.metadata["cited_count"] == 1
+        assert trace.provenance["operational_mode"] == "local_grounded_fallback"
+
+    def test_local_fallback_makes_zero_provider_calls(self, tmp_path, monkeypatch):
+        """FR-031 / SC-012: the whole lane stays provider-free."""
+        import aios_habit.workspace_chat_store as store_mod
+        import aios_habit.antigravity_bridge as bridge
+        from aios_habit import workspace_chat_ai_answer as answer_mod
+        from aios_habit import cagent_api
+
+        monkeypatch.setattr(store_mod, "LOCAL_CHAT_DIR", tmp_path)
+        monkeypatch.setattr(store_mod, "MESSAGES_FILE", tmp_path / "messages.jsonl")
+        monkeypatch.setattr(store_mod, "TRACES_FILE", tmp_path / "traces.jsonl")
+        monkeypatch.setattr(store_mod, "CONVERSATIONS_FILE", tmp_path / "conversations.jsonl")
+        monkeypatch.setattr(store_mod, "SOURCE_SELECTIONS_FILE", tmp_path / "selections.jsonl")
+        store_mod.init_chat_store()
+
+        calls: list[str] = []
+
+        def _tripwire(name):
+            def _inner(*args, **kwargs):
+                calls.append(name)
+                raise AssertionError(f"provider lane must not run: {name}")
+            return _inner
+
+        monkeypatch.setattr(cagent_api, "call_cagent_prediction", _tripwire("cagent"))
+        monkeypatch.setattr(bridge, "call_antigravity_bridge", _tripwire("antigravity_direct"))
+        monkeypatch.setattr(answer_mod, "generate_workspace_ai_answer", _tripwire("router"))
+
+        ok, _msg, badge, err = self._route(local_synthesis=self._grounded_synthesis())
+        assert ok is False
+        assert "không khả dụng" in err
+        assert badge is not None
+
+        ok2, _msg2, badge2 = bridge.commit_local_grounded_answer(
+            question="Siet bu-long nap may the nao?",
+            local_answer="Siet theo hinh sao, hai luot. [1]",
+            local_citation_ids=("[1]",),
+            evidence_items=[{
+                "source_id": "SRC-1",
+                "title": "Quy trinh siet bu-long",
+                "text": "Siet theo hinh sao, hai luot.",
+                "citation_id": "[1]",
+                "evidence_id": "EVD-1",
+            }],
+            notebook_id="NB-LF",
+            conversation_id="CONV-LF",
+        )
+        assert ok2 is True
+        assert badge2 is not None
+        assert calls == []
+
+    def test_local_fallback_badge_never_names_a_model(self):
+        """FR-030 / SC-013: the label is honest and provider-free."""
+        ok, _msg, badge, _err = self._route(local_synthesis=self._grounded_synthesis())
+        assert ok is False
+        assert badge is not None
+        from aios_habit.antigravity_bridge import LOCAL_GROUNDED_FALLBACK_PROVIDER
+
+        serialized = json.dumps(badge, ensure_ascii=False).casefold()
+        for forbidden in ("antigravity", "gemini", "gpt", "sonnet", "claude", "model_name"):
+            assert forbidden not in serialized, forbidden
+        assert "chưa qua mô hình" in LOCAL_GROUNDED_FALLBACK_PROVIDER
+
+
+class TestLocalGroundedFallbackAuditRegressions:
+    """Regressions for the four defects an independent audit found in M6.
+
+    Each test fails on the pre-fix code, so the fix cannot silently regress.
+    """
+
+    @staticmethod
+    def _sandbox(monkeypatch, tmp_path):
+        import aios_habit.workspace_chat_store as store_mod
+        monkeypatch.setattr(store_mod, "LOCAL_CHAT_DIR", tmp_path)
+        monkeypatch.setattr(store_mod, "MESSAGES_FILE", tmp_path / "messages.jsonl")
+        monkeypatch.setattr(store_mod, "TRACES_FILE", tmp_path / "traces.jsonl")
+        monkeypatch.setattr(store_mod, "CONVERSATIONS_FILE", tmp_path / "conversations.jsonl")
+        monkeypatch.setattr(store_mod, "SOURCE_SELECTIONS_FILE", tmp_path / "selections.jsonl")
+        store_mod.init_chat_store()
+        return store_mod
+
+    @staticmethod
+    def _items():
+        return [{
+            "source_id": "SRC-1", "title": "Q", "text": "t",
+            "citation_id": "[1]", "evidence_id": "EVD-1",
+        }]
+
+    def test_trace_failure_writes_zero_messages(self, tmp_path, monkeypatch):
+        """Audit #3: a trace-write failure must not leave a stray user message."""
+        store_mod = self._sandbox(monkeypatch, tmp_path)
+        import aios_habit.antigravity_bridge as bridge
+
+        def _boom(*a, **k):
+            raise RuntimeError("disk full")
+
+        monkeypatch.setattr(store_mod, "save_evidence_trace", _boom)
+
+        ok, message, badge = bridge.commit_local_grounded_answer(
+            question="Cau hoi",
+            local_answer="Noi dung [1]",
+            local_citation_ids=("[1]",),
+            evidence_items=self._items(),
+            conversation_id="CONV-TRACE-FAIL",
+        )
+
+        assert ok is False
+        assert badge is None
+        assert "Không lưu được" in message
+        assert store_mod.load_all_messages() == []
+
+    def test_trace_build_failure_writes_zero_messages(self, tmp_path, monkeypatch):
+        """Audit #3 (build half): a trace-build failure is equally clean."""
+        store_mod = self._sandbox(monkeypatch, tmp_path)
+        import aios_habit.antigravity_bridge as bridge
+        import aios_habit.evidence_trace as trace_mod
+
+        def _boom(*a, **k):
+            raise RuntimeError("bad trace")
+
+        monkeypatch.setattr(trace_mod, "build_evidence_trace_from_citations", _boom)
+
+        ok, message, badge = bridge.commit_local_grounded_answer(
+            question="Cau hoi",
+            local_answer="Noi dung [1]",
+            local_citation_ids=("[1]",),
+            evidence_items=self._items(),
+            conversation_id="CONV-TRACE-BUILD-FAIL",
+        )
+
+        assert ok is False
+        assert badge is None
+        assert store_mod.load_all_messages() == []
+
+    def test_commit_refuses_when_trace_loses_its_citations(self, tmp_path, monkeypatch):
+        """Audit #4: an insufficient trace must be refused, never saved as success."""
+        store_mod = self._sandbox(monkeypatch, tmp_path)
+        import aios_habit.antigravity_bridge as bridge
+        from aios_habit.workspace_chat_models import ConversationSourceSelection
+
+        # An enabled selection that excludes the cited source strips the citation.
+        store_mod.save_conversation_source_selection(ConversationSourceSelection(
+            id="SEL-1", conversation_id="CONV-INSUFFICIENT",
+            source_scope="notebook", source_id="SRC-OTHER", enabled=True,
+        ))
+
+        ok, message, badge = bridge.commit_local_grounded_answer(
+            question="Cau hoi",
+            local_answer="Noi dung [1]",
+            local_citation_ids=("[1]",),
+            evidence_items=[{
+                "source_id": "SRC-2", "title": "Khac", "text": "t",
+                "citation_id": "[1]", "evidence_id": "EVD-2",
+            }],
+            conversation_id="CONV-INSUFFICIENT",
+        )
+
+        assert ok is False
+        assert badge is None
+        assert "Không lưu được" in message
+        assert store_mod.load_all_messages() == []
+
+    def test_commit_reuses_the_original_user_turn(self, tmp_path, monkeypatch):
+        """Audit #1: committing after an offer must not add a second question."""
+        store_mod = self._sandbox(monkeypatch, tmp_path)
+        import aios_habit.antigravity_bridge as bridge
+        from aios_habit.workspace_chat_models import ChatMessage
+
+        question = "Siet bu-long nap may the nao?"
+        store_mod.save_message(ChatMessage(
+            id="MSG-ORIGINAL-USER",
+            conversation_id="CONV-REUSE",
+            role="user",
+            content=question,
+        ))
+
+        ok, _message, badge = bridge.commit_local_grounded_answer(
+            question=question,
+            local_answer="Noi dung [1]",
+            local_citation_ids=("[1]",),
+            evidence_items=self._items(),
+            conversation_id="CONV-REUSE",
+        )
+
+        assert ok is True
+        assert badge is not None
+        messages = store_mod.load_all_messages()
+        assert len(messages) == 2
+        assert [m.role for m in messages] == ["user", "assistant"]
+        assert messages[0].id == "MSG-ORIGINAL-USER"

@@ -621,6 +621,187 @@ def _get_or_create_user_message(conversation_id: str, content: str) -> Any:
     return msg
 
 
+# Honest label for a locally extracted answer. It must never carry a model or
+# provider name: this answer did not come from any model.
+LOCAL_GROUNDED_FALLBACK_MODE = "local_grounded_fallback"
+LOCAL_GROUNDED_FALLBACK_PROVIDER = "Tổng hợp cục bộ từ trích đoạn — chưa qua mô hình"
+
+
+def _local_fallback_available(local_synthesis: Mapping[str, Any] | None) -> bool:
+    """True only when a local answer exists AND is grounded AND did not abstain.
+
+    A held local answer that is empty, abstained, or ungrounded must never be
+    offered: the user would get an empty promise instead of an answer.
+    """
+    if not isinstance(local_synthesis, Mapping):
+        return False
+    if not str(local_synthesis.get("answer", "") or "").strip():
+        return False
+    if bool(local_synthesis.get("abstained", False)):
+        return False
+    return bool(local_synthesis.get("grounded", False))
+
+
+def _local_fallback_badge(
+    *,
+    conversation_id: str,
+    question: str,
+    evidence_items: list[dict[str, Any]],
+    local_synthesis: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Build the offer badge carrying everything the commit step needs.
+
+    The user must be able to commit from the button without a second retrieval,
+    so the question and the retrieved excerpts travel with the offer.
+    """
+    return {
+        "conversation_id": conversation_id,
+        "type": "local_fallback_offered",
+        "local_question": str(question or ""),
+        "local_answer": str(local_synthesis.get("answer", "") or ""),
+        "local_citation_ids": [str(c) for c in (local_synthesis.get("citation_ids") or ())],
+        "local_answer_mode": str(local_synthesis.get("answer_mode", "") or ""),
+        "local_limitation_reasons": [str(r) for r in (local_synthesis.get("limitation_reasons") or ())],
+        "evidence_items": list(evidence_items or []),
+        "provider_used": False,
+    }
+
+
+def commit_local_grounded_answer(
+    *,
+    question: str,
+    local_answer: str,
+    local_citation_ids: Sequence[str],
+    evidence_items: list[dict[str, Any]],
+    notebook_id: str = "",
+    conversation_id: str = "",
+    answer_language: str = "vi",
+) -> tuple[bool, str, dict[str, Any] | None]:
+    """Persist a locally extracted answer with a real evidence trace.
+
+    This is a local-only lane: it reads nothing from the network and calls no
+    provider. The trace is built with the same helper the direct and C-AGENT
+    lanes use, so the evidence-graph button works without any new citation
+    mechanism.
+    """
+    text = str(local_answer or "").strip()
+    if not text:
+        return (False, "Không có bản tổng hợp cục bộ để lưu lúc này.", None)
+    cited = tuple(str(c).strip() for c in (local_citation_ids or ()) if str(c).strip())
+    if not cited:
+        return (False, "Bản tổng hợp cục bộ không có trích dẫn nào để lưu.", None)
+    if not conversation_id:
+        return (False, "Thiếu định danh cuộc trò chuyện để lưu câu trả lời.", None)
+
+    from aios_habit.workspace_chat_store import (
+        load_conversation,
+        load_conversation_source_selections,
+        load_messages,
+        save_evidence_trace,
+        save_message,
+    )
+    from aios_habit.workspace_chat_models import ChatMessage
+    from aios_habit.evidence_trace import build_evidence_trace_from_citations
+
+    # Only the excerpts the answer actually cites become badge sources. The
+    # synthesiser cites what it used as grounds, not everything it retrieved.
+    cited_set = set(cited)
+    cited_items = [
+        item for item in (evidence_items or [])
+        if str((item or {}).get("citation_id", "")).strip() in cited_set
+    ]
+
+    # Decide message identities up front but write NOTHING until the trace is
+    # known good: a refusal must leave the conversation untouched, and there is
+    # no message-deletion helper to roll back with.
+    existing = load_messages(conversation_id)
+    reuse_user = bool(
+        existing
+        and existing[-1].role == "user"
+        and existing[-1].content.strip() == str(question or "").strip()
+    )
+    if reuse_user:
+        user_msg_id = existing[-1].id
+    else:
+        user_msg_id = f"MSG-{uuid.uuid4().hex[:8].upper()}"
+    assistant_msg_id = f"MSG-{uuid.uuid4().hex[:8].upper()}"
+
+    selections = load_conversation_source_selections(conversation_id)
+    allowed_source_ids = [item.source_id for item in selections if item.enabled] if selections else None
+    conversation = load_conversation(conversation_id)
+    ui_locale = getattr(conversation, "ui_locale", "vi") if conversation else "vi"
+
+    try:
+        trace = build_evidence_trace_from_citations(
+            query=question,
+            answer_text=text,
+            evidence_items=cited_items,
+            allowed_source_ids=allowed_source_ids,
+            notebook_id=notebook_id,
+            conversation_id=conversation_id,
+            user_message_id=user_msg_id,
+            assistant_message_id=assistant_msg_id,
+            ui_locale=ui_locale,
+            answer_language=answer_language,
+            provenance={
+                "operational_mode": LOCAL_GROUNDED_FALLBACK_MODE,
+                "provider_name": "",
+                "model_name": "",
+            },
+        )
+    except Exception as exc:
+        LOGGER.exception("Could not build the local grounded trace: %s", exc)
+        return (False, "Không lưu được câu trả lời cục bộ. Vui lòng thử lại.", None)
+
+    # A trace that lost its citations cannot drive the evidence graph, and the
+    # contract promises the graph works. Refuse instead of writing a dead end.
+    if str(trace.metadata.get("status", "")) != "valid":
+        return (False, "Không lưu được câu trả lời cục bộ. Vui lòng thử lại.", None)
+
+    try:
+        save_evidence_trace(trace)
+    except Exception as exc:
+        LOGGER.exception("Could not persist the local grounded trace: %s", exc)
+        return (False, "Không lưu được câu trả lời cục bộ. Vui lòng thử lại.", None)
+
+    if not reuse_user:
+        save_message(ChatMessage(
+            id=user_msg_id,
+            conversation_id=conversation_id,
+            role="user",
+            content=question,
+        ))
+    save_message(ChatMessage(
+        id=assistant_msg_id,
+        conversation_id=conversation_id,
+        role="assistant",
+        content=text,
+        trace_id=trace.trace_id,
+    ))
+
+    source_titles = [
+        str((item or {}).get("title", "") or "").strip()
+        for item in cited_items
+    ]
+    source_titles = [title for title in source_titles if title]
+    badge = {
+        "conversation_id": conversation_id,
+        "type": "ai_answered",
+        "source_count": len(cited),
+        "source_titles": source_titles,
+        "ai_source": "",
+        "bridge": "",
+        "provider": LOCAL_GROUNDED_FALLBACK_PROVIDER,
+        "model_tool_name": "",
+        "verified_model": "",
+        "operational_mode": LOCAL_GROUNDED_FALLBACK_MODE,
+        "provider_used": False,
+        "evidence_items": cited_items,
+        "trace_id": trace.trace_id,
+    }
+    return (True, "Đã lưu bản tổng hợp cục bộ từ trích đoạn.", badge)
+
+
 def _extract_top_chunks_lexical(
     question: str,
     sources: Sequence[Any],
@@ -830,8 +1011,13 @@ def route_workspace_chat_submission(
     cagent_endpoint_url: str = "",
     cancellation_event: Any | None = None,
     consent_memory_fingerprint: str = "",
+    local_synthesis: Mapping[str, Any] | None = None,
 ) -> tuple[bool, str, dict[str, Any] | None, str | None]:
     """Route a submission through the explicitly selected Workspace Chat backend.
+
+    ``local_synthesis`` is the already-computed local extractive answer. It is
+    used ONLY to offer a provider-free fallback when no bridge is reachable;
+    passing it never changes the returned tuple shape.
 
     Returns:
         (ok, success_message, badge_data, error_message)
@@ -1315,9 +1501,21 @@ def route_workspace_chat_submission(
         # If the Antigravity IDE Bridge is unavailable, do NOT fallback to Smart Router or mock endpoints.
         # Keep this string Vietnamese-only so the UI safety filter does not replace it
         # with a generic fallback when the health reason contains English diagnostics.
-        return (
-            False,
-            "",
-            None,
-            "Cầu nối Antigravity IDE hiện không khả dụng. Hãy bấm Kết nối lại Gemini Web, rồi gửi lại câu hỏi.",
-        )
+        #
+        # The one permitted fallback is LOCAL and provider-free: the extractive
+        # answer this machine already computed from retrieved evidence. It is
+        # offered, never written here - the user must choose it.
+        error_message = "Cầu nối Antigravity IDE hiện không khả dụng. Hãy bấm Kết nối lại Gemini Web, rồi gửi lại câu hỏi."
+        if _local_fallback_available(local_synthesis):
+            return (
+                False,
+                "",
+                _local_fallback_badge(
+                    conversation_id=conversation_id,
+                    question=question,
+                    evidence_items=evidence_items,
+                    local_synthesis=local_synthesis,
+                ),
+                error_message,
+            )
+        return (False, "", None, error_message)

@@ -643,3 +643,82 @@ class TestTier5AdversarialFailClosedUIRouting:
         assert err is not None
         assert "Lỗi cầu nối Antigravity IDE:" in err
         assert len(fallback_invocations) == 0
+
+
+def test_chat_turn_passes_local_synthesis_to_router(monkeypatch):
+    """FR-027: the retrieval result's local synthesis must reach the router.
+
+    Returns a sentinel instead of a real answer so the test fails if the turn
+    drops the local synthesis, and never touches the network.
+    """
+    import aios_habit.workspace_chat_app as app_mod
+    import aios_habit.antigravity_bridge as bridge_mod
+    import aios_habit.workspace_chat_rag_v2_adapter as adapter_mod
+
+    captured: dict = {}
+    local_payload = {
+        "answer": "Siet theo hinh sao. [1]",
+        "citation_ids": ["[1]"],
+        "grounded": True,
+        "abstained": False,
+        "answer_mode": "answer",
+        "limitation_reasons": [],
+    }
+
+    monkeypatch.setattr(
+        adapter_mod,
+        "retrieve_workspace_chat_evidence",
+        lambda *a, **k: {
+            "retrieval_applied": True,
+            "evidence_items": [{"citation_id": "[1]", "title": "T", "text": "x"}],
+            "retrieved_context_sources": (),
+            "summary_count": 1,
+            "safe_owner_message": "",
+            "local_synthesis": local_payload,
+        },
+    )
+
+    def _fake_route(**kwargs):
+        captured.update(kwargs)
+        return (False, "", None, "sentinel")
+
+    monkeypatch.setattr(bridge_mod, "route_workspace_chat_submission", _fake_route)
+
+    ok, _msg, _badge, err = app_mod._run_chat_turn_async(
+        q_text="Siet bu-long the nao?",
+        query_relevant_sources=(object(),),
+        conversation_id="CONV-WIRE",
+        notebook_id="NB-WIRE",
+        user_raw_input="Siet bu-long the nao?",
+    )
+
+    assert ok is False
+    assert err == "sentinel"
+    assert captured.get("local_synthesis") == local_payload
+    assert captured.get("retrieval_applied") is True
+
+
+def test_chat_turn_omits_local_synthesis_without_retrieval(monkeypatch):
+    """FR-027: no retrieval -> nothing to offer, so the router gets None."""
+    import aios_habit.workspace_chat_app as app_mod
+    import aios_habit.antigravity_bridge as bridge_mod
+
+    captured: dict = {}
+
+    def _fake_route(**kwargs):
+        captured.update(kwargs)
+        return (False, "", None, "sentinel")
+
+    monkeypatch.setattr(bridge_mod, "route_workspace_chat_submission", _fake_route)
+
+    ok, _msg, _badge, _err = app_mod._run_chat_turn_async(
+        q_text="Cau hoi khong co nguon",
+        query_relevant_sources=(),
+        conversation_id="CONV-WIRE-2",
+        notebook_id="NB-WIRE-2",
+        user_raw_input="Cau hoi khong co nguon",
+    )
+
+    assert ok is False
+    assert captured.get("retrieval_applied") is False
+    assert captured.get("local_synthesis") is None
