@@ -32,12 +32,13 @@
 ## Kiểm tra tự động
 
 ```powershell
-uv run --no-sync --group dev pytest tests/test_workspace_chat_composer_ui.py tests/test_workspace_chat_source_selection_owner_flow.py tests/test_workspace_chat_multi_file_uploader.py tests/test_workspace_chat_ui_i18n.py -q
+uv run --no-sync --group dev pytest tests/test_workspace_chat_composer_ui.py tests/test_workspace_chat_source_selection_owner_flow.py tests/test_workspace_chat_multi_file_uploader.py tests/test_workspace_chat_ui_i18n.py tests/test_flowsint_evidence_atlas.py tests/test_streamlit_error_safety_config.py -q
 uv run --no-sync --group dev python -m compileall src tests
 uv run --no-sync --group dev python -c "import aios_habit.workspace_chat_app"
 ```
 
 Kỳ vọng: các test tập trung đều đạt, biên dịch sạch, module Workspace Chat nhập được.
+Bằng chứng 2026-09-23: `135 passed` (21,73 s), `compileall` sạch, `IMPORT_OK`, `cli audit` `"status": "PASS"`.
 
 ## Smoke trình duyệt
 
@@ -47,4 +48,27 @@ Một lệnh, Chromium thật, không giả PASS:
 uv run --with playwright --no-sync python scripts/smoke_007_modern_chat_composer.py --headed
 ```
 
-Hoặc `scripts/Chay_Smoke_007.bat`. Artifact ghi vào `local_runs/smoke_007/` (không commit). Sổ smoke không có tài liệu nên gửi câu hỏi hiện «Thiếu ngữ cảnh»; Streamlit có thể giữ text trong ô sau khi gửi. Dán ảnh clipboard cần thao tác người dùng.
+Hoặc `scripts/Chay_Smoke_007.bat`. Artifact ghi vào `local_runs/smoke_007/` (không commit).
+
+### Mười hai kịch bản
+
+| Kịch bản | Đo gì |
+| --- | --- |
+| S1 composer gọn | ô nhập, nút gửi, nút đính kèm, gợi ý `Ctrl+↵`, bộ chọn Mô hình AI |
+| S2 hướng dẫn gửi rỗng | hướng dẫn hiện sau khi gửi trống |
+| S3 bộ chọn Mô hình | ba lựa chọn Gemini Web / C-AGENT / Nakazasen |
+| S4 gửi câu hỏi | nhánh chưa có nguồn hiện `Thiếu ngữ cảnh` |
+| S5 đính kèm ảnh | chọn PNG, thumbnail, nút `Bỏ ảnh`, không traceback |
+| S6 cửa sổ 360 px | ô nhập và nút gửi vẫn dùng được |
+| S7 mặt sáng và điều hướng | `#F8FAFC` / `#020617`, chữ 16 px, không chữ từ mạng, `prefers-reduced-motion`, ba tên điều hướng tiếng Việt |
+| S8 bong bóng và bề rộng dòng | hỏi khác đáp về nền và viền, huy hiệu `Câu trả lời mới nhất`, đoạn đáp ≤ 75ch, đáp án không cắt |
+| S9 canvas đồ thị bằng chứng | nút `🕸️ Xem đồ thị bằng chứng`, canvas `.flowsint-layout`, SVG hiển thị, sidebar không phủ canvas, đủ nhóm thực thể, có bảng kiểm tra |
+| S10 đóng đồ thị | canvas gỡ đi và nút mở trở lại |
+| S11a giữ câu hỏi chờ nguồn | câu Việt `AIOS đang chuẩn bị tài liệu liên quan`, không phần trăm giả |
+| S11b ba bước chờ | `Đang xử lý câu hỏi` với đúng một bước đang chạy theo trạng thái thật |
+
+Kết quả 2026-09-23: **12/12 PASS** (`local_runs/smoke_007_t037/result.json`, không commit).
+
+### Vì sao S8–S10 gieo dữ liệu trước
+
+Vòng có trích dẫn cần một nhà cung cấp câu trả lời. Trên máy không chạy cầu nối Antigravity (`127.0.0.1:8585`), cả ba đường đều không tới được, nên smoke **gieo sẵn** một sổ, một hội thoại, một đáp án và một `EvidenceTrace` hợp lệ (`status=valid`, `cited_count=2`) vào kho cách ly trong thư mục tạm, rồi mở thẳng bằng `?nb=<sổ>&conv=<hội thoại>`. Nhờ vậy bong bóng, bề rộng dòng và canvas đồ thị được kiểm một cách tất định, không phụ thuộc mạng. Dữ liệu gieo chỉ nằm trong thư mục tạm và bị xóa cùng tiến trình.

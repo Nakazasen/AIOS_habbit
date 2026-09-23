@@ -138,3 +138,16 @@ Implement and validate the P1 composer first, then add progressive attachment, m
 - [x] T035 [US12] Bỏ nền tối trên composer, bong bóng và nút nhảy; hiện tên tiếng Việt trên điều hướng, dạy, sổ và chỗ trống trong `src/aios_habit/workspace_chat_app.py`, `src/aios_habit/workspace_chat_ui.py`, `src/aios_habit/i18n.py`
 - [x] T036 [US13] Thêm viền đang chọn, giảm chuyển động, chữ 16 px và nút xóa màu hủy trong `src/aios_habit/workspace_chat_app.py`
 - [x] T037 Chạy kiểm thử hợp đồng, biên dịch, nhập module và `cli audit`. Bằng chứng 2026-09-22: `test_workspace_chat_composer_ui` và `test_streamlit_error_safety_config` đạt, `compileall` sạch, `import workspace_chat_app` in `IMPORT_OK`, `cli audit` `"status": "PASS"`. Toàn bộ `pytest -q` còn 29 lỗi cũ ngoài phạm vi hình thức (khóa gói, biểu đồ CSV, graphify, RAG, cờ phỏng vấn). Chưa smoke trình duyệt.
+
+**Bổ sung 2026-09-23 — smoke trình duyệt cho US12–US14 và QA1–QA3**: smoke 007 cũ chỉ chạy S1–S6 và tự nó xác nhận nó không kiểm mặt sáng, tên điều hướng, bong bóng hỏi đáp, ba bước chờ hay canvas đồ thị. Đã mở rộng `scripts/smoke_007_modern_chat_composer.py` thêm 6 kịch bản trình duyệt thật, đo bằng DOM và kiểu tính toán thay vì đọc mã nguồn:
+
+- **S7** mặt sáng và điều hướng: `stAppViewContainer` tính ra `#F8FAFC`, chữ `#020617`, cỡ chữ 16 px, không nạp chữ từ mạng (`fonts.googleapis.com`/`gstatic` không có trong DOM lẫn danh sách font đã nạp), có luật `prefers-reduced-motion`, và ba mục điều hướng đọc được chữ Việt `Hỏi tài liệu` / `Hồ sơ và tri thức` / `Công cụ nâng cao`.
+- **S8** bong bóng hỏi đáp và bề rộng dòng: bong bóng hỏi `rgba(3, 105, 161, 0.1)` viền phải 3 px, bong bóng đáp `#FFFFFF` viền trái 3 px; có huy hiệu `Câu trả lời mới nhất`; đoạn đáp dài nhất rộng 596 px (≤ 75ch) và đáp án hiện đủ hai vế, không cắt.
+- **S9** canvas đồ thị bằng chứng trên hội thoại thật: bấm `🕸️ Xem đồ thị bằng chứng`, iframe dựng `.flowsint-layout` với canvas rộng 395 px, SVG rộng 395 px, sidebar **không** phủ canvas, không tràn ngang; sidebar có 6 mục thực thể chia bốn nhóm `Câu hỏi (1)`, `Câu trả lời (1)`, `Trích dẫn (2)`, `Nguồn tài liệu (2)`, có tên tài liệu gieo sẵn, và có khung `flowsint-inspector`.
+- **S10** nút `Đóng đồ thị bằng chứng` gỡ canvas và trả lại nút mở.
+- **S11a** khi nguồn mới còn chuẩn bị: câu hỏi được giữ kèm câu Việt `AIOS đang chuẩn bị tài liệu liên quan`, và **không** có phần trăm giả nào trên trang.
+- **S11b** ba bước chờ theo trạng thái thật: sau khi nguồn `1/1` sẵn sàng, gửi câu hỏi thì thấy `Đang xử lý câu hỏi` cùng `● Tìm nguồn`/`○ Đọc trích đoạn`/`● Tổng hợp trả lời` — đúng một bước đang chạy; không phần trăm giả.
+
+Kết quả: **12/12 kịch bản PASS** (`local_runs/smoke_007_t037/result.json`, không commit). Để kiểm được vòng trích dẫn và đồ thị mà không cần nhà cung cấp câu trả lời, smoke gieo sẵn một sổ, một hội thoại, một đáp án và một `EvidenceTrace` hợp lệ (`status=valid`, `cited_count=2`) vào kho cách ly rồi mở thẳng bằng `?nb=&conv=`; cầu nối Antigravity `127.0.0.1:8585` không chạy trên máy này nên đây là đường duy nhất kiểm được canvas một cách tất định.
+
+Đo riêng hình học canvas ở năm bề rộng (1400/1024/820/560/360 px) xác nhận bản sửa bố cục không lặp lại lỗi cũ: canvas luôn có bề rộng thật (950/574/370/240/240 px), không rail nào phủ lên, không tràn ngang ở mọi cỡ.
