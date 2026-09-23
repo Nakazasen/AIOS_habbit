@@ -2,7 +2,7 @@
 
 **Feature Branch**: `specs/antigravity-truthful-bridge`
 **Created**: 2026-08-22
-**Status**: Ready for Implementation / Verified
+**Status**: `VERIFIED` (US1–US6, 2026-08-22) + `PLANNED` (US7 "Dự phòng tổng hợp cục bộ có trích dẫn", làm giàu 2026-09-23 — xem [plan.md](plan.md) mục 9, [research.md](research.md))
 **Input**: User Request — "Xây dựng cầu nối trung thực (Truthful Bridge) cho Antigravity IDE trong repo D:\Sandbox\AIOS_habbit, loại bỏ hoàn toàn cơ chế facade/giả lập, ưu tiên direct adapter nếu có giao thức xác minh được và tự động chuyển sang handoff bất đồng bộ (Outbox/Inbox) an toàn khi direct không khả dụng."
 
 ---
@@ -98,8 +98,32 @@ As a repository maintainer, I want all Antigravity bridge features fully documen
 
 ---
 
+### User Story 7 - Dự phòng tổng hợp cục bộ có trích dẫn khi cầu nối không tới được (Priority: P1, làm giàu 2026-09-23)
+
+Người dùng mất mạng hoặc cầu nối Antigravity IDE không chạy. Hệ thống vẫn báo đúng lỗi cầu nối, nhưng kèm một lời mời xem đáp án trích xuất đã được tính sẵn từ chính các đoạn tài liệu đã truy xuất trong máy. Người dùng bấm thì nhận đáp án có trích dẫn, biết rõ đây là bản tổng hợp cục bộ chưa qua mô hình, và mở được đồ thị bằng chứng như mọi đáp án khác.
+
+**Vì sao ưu tiên này**: Người dùng xưởng làm việc trong mạng nội bộ, cầu nối chết là chuyện thường. Hiện tại khi đó không có đường trả lời nào có trích dẫn, dù động cơ tổng hợp cục bộ đã tính xong kết quả và kết quả đó đang bị vứt đi. Đây là mất mát thuần tuý, không phải đánh đổi.
+
+**Kiểm thử độc lập**: Tắt cầu nối, hỏi một câu có nguồn đã sẵn sàng. Báo lỗi cầu nối hiện ra kèm nút mời. Bấm nút thì hội thoại có đáp án mang nhãn cục bộ cùng danh sách trích dẫn, và nút `Xem đồ thị bằng chứng` hoạt động. Không có lời gọi mạng nào phát sinh.
+
+**Tình huống nghiệm thu**:
+
+1. **Given** cầu nối không tới được và đáp án cục bộ có căn cứ, **When** người dùng gửi câu hỏi, **Then** hệ thống báo đúng lỗi cầu nối kèm lời mời xem dự phòng, và chưa ghi gì vào hội thoại.
+2. **Given** lời mời đang hiện, **When** người dùng bấm nút, **Then** hội thoại có câu hỏi, đáp án trích xuất, danh sách trích dẫn, và một dấu vết bằng chứng hợp lệ.
+3. **Given** đáp án cục bộ rỗng hoặc động cơ đã tự chối trả lời, **When** người dùng gửi câu hỏi, **Then** chỉ có lỗi cầu nối, không có lời mời rỗng.
+4. **Given** nhánh dự phòng đang chạy, **When** đối chiếu, **Then** không có lời gọi nào ra Smart Router, `RealWorkspaceAIProviderClient`, hay bất kỳ nhà cung cấp nào.
+5. **Given** đáp án cục bộ có giới hạn, **When** hiển thị, **Then** người dùng thấy lý do giới hạn, không bị giấu.
+
+---
+
 ### Edge Cases
 
+- **Cầu nối chết, dự phòng rỗng**: chỉ hiện lỗi cầu nối; không hiện lời mời rỗng.
+- **Cầu nối chết, động cơ tự chối trả lời**: như trên; lý do tự chối không đưa lên như thể là đáp án.
+- **Cầu nối chết, truy xuất chưa chạy**: không có đáp án cục bộ để mời; giữ nguyên lỗi.
+- **Dữ liệu đổi giữa lúc mời và lúc bấm**: từ chối ghi, báo tiếng Việt, không tạo tin nhắn nửa vời.
+- **Bấm nút hai lần**: chỉ một cặp tin nhắn được ghi.
+- **Đáp án cục bộ vượt ngân sách ký tự**: động cơ đã tự chuyển thành từ chối; rơi về nhánh "chỉ hiện lỗi cầu nối".
 - **Sidecar Offline**: `get_antigravity_bridge_health` returns `status="unavailable"`, `mode="none"`, `is_available=False`; UI shows "⚪ Cầu nối chưa kết nối".
 - **Sidecar Internal Crash (HTTP 500)**: Bridge maps response to `status="failed"` with sanitized reason; UI shows "🔴 Cầu nối lỗi: <sanitized_reason>".
 - **Legacy Status String**: If external service returns legacy `"ok"`, bridge normalizes it to `FSM_HANDOFF_READY`.
@@ -149,7 +173,7 @@ As a repository maintainer, I want all Antigravity bridge features fully documen
 - **FR-017**: Workspace Chat submission router MUST route to Handoff bundle creation when health is `handoff_ready` or `handoff_pending`.
 - **FR-018**: When handoff bundle is created, Workspace Chat MUST display assistant pending placeholder `"⏳ Đang chờ Antigravity IDE xử lý..."` and render the active handoff banner.
 - **FR-019**: If direct bridge or handoff creation fails, the system MUST return an explicit error and MUST NOT fallback to Smart Router or `RealWorkspaceAIProviderClient`.
-- **FR-020**: Fallback to Smart Router MUST only occur when the bridge is completely disabled or reported `unavailable` before submission.
+- **FR-020**: Fallback to Smart Router MUST only occur when the bridge is completely disabled or reported `unavailable` before submission. (Phạm vi: lệnh cấm này áp dụng cho dự phòng **ra nhà cung cấp khác**. Nhánh dự phòng **cục bộ trong máy** ở mục R6 không phải dự phòng nhà cung cấp, không gọi mạng, và chỉ chạy khi người dùng chủ động chọn.)
 - **FR-021**: The UI MUST display attribution `"Nguồn AI: Antigravity IDE (direct/handoff)"` only when the response originated from Antigravity.
 - **FR-022**: The UI header status MUST render truthful status badges matching the 6 FSM states.
 - **FR-023**: UI refresh triggers MUST accurately query `/health` and re-evaluate pending handoff requests.
@@ -157,6 +181,18 @@ As a repository maintainer, I want all Antigravity bridge features fully documen
 #### R4: Security, Privacy & Logging Sanitization
 - **FR-024**: The system MUST block any attempt to send `local_only` context or bundles to non-local endpoints (`is_local_endpoint == False`).
 - **FR-025**: The system MUST sanitize error messages and logs using `sanitize_reason`, masking filesystem paths to `<path>` and API tokens to `<redacted_token>`.
+
+#### R6: Dự phòng Tổng hợp Cục bộ có Trích dẫn (làm giàu 2026-09-23)
+
+Mở rộng có kiểm soát cho `FR-019`/`FR-020`: lệnh cấm dự phòng **ra nhà cung cấp khác** giữ nguyên hiệu lực tuyệt đối. Nhánh mới là dự phòng **cục bộ trong máy**, không gọi mạng, và chỉ chạy khi người dùng chủ động chọn.
+
+- **FR-026**: Khi cả ba đường nhà cung cấp không tới được, hàm định tuyến MUST vẫn trả lỗi cầu nối như hiện nay, VÀ nếu có đáp án tổng hợp cục bộ dùng được thì MUST kèm cờ mời người dùng xem dự phòng. Đáp án cục bộ MUST NOT được ghi vào hội thoại ở bước này.
+- **FR-027**: Vòng xử lý câu hỏi MUST chuyển kết quả tổng hợp cục bộ đã có sẵn trong kết quả truy xuất vào hàm định tuyến. Kết quả này MUST NOT bị tính rồi bỏ đi khi đường nhà cung cấp không tới được.
+- **FR-028**: Hệ thống MUST có hàm ghi đáp án cục bộ dùng lại đúng bộ ba đã dùng cho các nhánh khác: ghi tin nhắn người dùng, dựng dấu vết bằng chứng từ trích dẫn, lưu dấu vết, ghi tin nhắn trả lời. Dấu vết MUST đối chiếu trích dẫn với tài liệu đã bật như mọi dấu vết khác.
+- **FR-029**: Hàm ghi đáp án cục bộ MUST từ chối khi đáp án rỗng, khi động cơ đã tự chối trả lời, hoặc khi không có câu nào gắn được trích dẫn. Khi từ chối MUST trả lý do tiếng Việt và MUST NOT tạo tin nhắn nào.
+- **FR-030**: Đáp án cục bộ MUST mang nhãn tiếng Việt nói rõ đây là bản tổng hợp từ trích đoạn chưa qua mô hình. Hệ thống MUST NOT gắn tên `Antigravity IDE`, tên mô hình, hay bất kỳ nhãn nhà cung cấp nào cho đáp án cục bộ. Khi có lý do giới hạn, người dùng MUST thấy lý do đó.
+- **FR-031**: Suốt nhánh dự phòng MUST có đúng 0 lời gọi ra Smart Router, `RealWorkspaceAIProviderClient`, hay bất kỳ nhà cung cấp nào. `SC-006` giữ nguyên hiệu lực và được kiểm ở nhánh mới.
+- **FR-032**: Nhánh dự phòng MUST NOT thay đổi chữ ký trả về của hàm định tuyến, để mọi lời gọi hiện có giữ nguyên hành vi khi không truyền tham số mới.
 
 ---
 
@@ -167,6 +203,7 @@ As a repository maintainer, I want all Antigravity bridge features fully documen
 - **Inbox Response (`ide_handoff_response_v1`)**: JSON document deposited by Antigravity IDE containing `request_id`, `schema_version`, `status`, `answer_markdown`/`answer_text`, `cited_evidence_ids`/`evidence_ids_used`, `limitations`, `confidence`, `privacy_acknowledged`, `used_full_bundle`, and `model_tool_name`.
 - **Request Lifecycle State**: Discrete state in `request_status.json` (`handoff_pending`, `completed`, `failed`) tracking progress timestamps and error reasons.
 - **PastedStrongModelAnswer**: Domain entity representing validated external model responses saved to the evidence vault with full provenance.
+- **LocalGroundedFallback** (làm giàu 2026-09-23): Lời mời dự phòng gắn với một lượt hỏi khi cầu nối không tới được. Thuộc tính: `answer` (đáp án trích xuất), `citation_ids` (nhãn trích dẫn đã đối chiếu), `grounded` (có căn cứ hay không), `abstained` (động cơ tự chối hay không), `answer_mode` (`answer` hoặc `answer_with_limits`), `limitation_reasons` (lý do giới hạn). Không có nhà cung cấp nào gắn với thực thể này; `provider_used` luôn là `False`.
 
 ---
 
@@ -336,6 +373,11 @@ As a repository maintainer, I want all Antigravity bridge features fully documen
 - **SC-006**: In 100% of simulated bridge failure scenarios, zero fallback calls are made to Smart Router / `RealWorkspaceAIProviderClient`.
 - **SC-007**: 0 occurrences of absolute filesystem paths or API tokens in sanitized logs, error messages, and health status reasons.
 - **SC-008**: 100% of automated unit and integration tests pass cleanly.
+- **SC-009**: Với cầu nối không tới được và đáp án cục bộ có căn cứ, 100% lượt gửi câu hỏi trả về lỗi cầu nối kèm đúng một lời mời xem dự phòng, và 0 tin nhắn nào được ghi ở bước đó.
+- **SC-010**: 100% lượt bấm nút dự phòng hợp lệ tạo ra một cặp tin nhắn và một dấu vết bằng chứng có `status="valid"`, đủ để nút đồ thị bằng chứng hoạt động.
+- **SC-011**: 100% lượt bấm nút khi đáp án cục bộ rỗng hoặc đã tự chối trả lời bị từ chối và ghi 0 tin nhắn.
+- **SC-012**: 0 lời gọi ra Smart Router, `RealWorkspaceAIProviderClient`, hay bất kỳ nhà cung cấp nào trong suốt nhánh dự phòng.
+- **SC-013**: 100% đáp án cục bộ mang nhãn tiếng Việt nói rõ chưa qua mô hình, và 0 đáp án cục bộ nào mang tên mô hình hay nhãn `Antigravity IDE`.
 
 ---
 

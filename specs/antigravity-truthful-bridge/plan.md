@@ -200,3 +200,89 @@ local_runs/ide_handoff/
 | **R3** | UI Handoff Pending State & Header Badges | `src/aios_habit/workspace_chat_ui.py`<br>`src/aios_habit/workspace_chat_app.py` | `test_route_workspace_chat_handoff_mode_pending_state`<br>`test_render_bridge_header_status_truthfulness` |
 | **R4** | Privacy Guard (`local_only`) & Log Sanitization | `src/aios_habit/antigravity_bridge.py`<br>`src/aios_habit/ide_handoff_bridge.py` | `TestAntigravityPrivacyAndSanitization::test_sanitize_bridge_error_masks_absolute_paths`<br>`TestAntigravityPrivacyAndSanitization::test_sanitize_bridge_error_masks_api_tokens`<br>`TestAntigravityPrivacyAndSanitization::test_bridge_error_does_not_leak_user_prompt`<br>`TestAntigravityPrivacyAndSanitization::test_local_only_cloud_fail_closed`<br>`test_local_only_cloud_provider_blocked_and_vi_instruction`<br>`test_bridge_manual_step_report_is_utf8_and_not_mojibake` |
 | **R5** | Spec Kit Artifacts & Repository Governance | `specs/antigravity-truthful-bridge/` | Spec Kit validation & `graphify update .` |
+
+---
+
+## 9. Bổ sung 2026-09-23 — Dự phòng Tổng hợp Cục bộ có Trích dẫn
+
+**Spec làm giàu**: [spec.md](spec.md) mục "Câu chuyện 7" và `FR-026..FR-031`
+**Nghiên cứu nền**: [research.md](research.md)
+**Hợp đồng**: [contracts/local-grounded-fallback.md](contracts/local-grounded-fallback.md)
+**Dữ liệu**: [data-model.md](data-model.md)
+
+### 9.1 Mục tiêu
+
+Bịt lỗ hổng: khi cả ba đường nhà cung cấp đều không tới được, người dùng không có đường trả lời có trích dẫn nào, dù động cơ tổng hợp cục bộ đã tính xong kết quả và kết quả đó đang bị vứt đi. Nhánh thứ tư này mời người dùng xem đáp án trích xuất đã có sẵn trong máy, có nhãn trung thực, không gọi mạng.
+
+### 9.2 Bối cảnh Kỹ thuật
+
+- **Ngôn ngữ / Runtime**: Python 3.11 (khóa `>=3.11,<3.12` trong `pyproject.toml`).
+- **Thư viện chính**: `streamlit`; thư viện chuẩn (`dataclasses`, `typing`, `uuid`, `logging`). Không thêm phụ thuộc nào.
+- **Lưu trữ**: JSONL cục bộ qua `workspace_chat_store` (`save_message`, `save_evidence_trace`).
+- **Kiểm thử**: `pytest`, nhóm `dev`, chạy bằng `uv run --no-sync --group dev pytest -q`.
+- **Nền tảng đích**: máy trạm Windows cục bộ, có thể mất mạng.
+- **Ràng buộc**: cấm mọi egress ở nhánh dự phòng; cấm lộ traceback thô; giao diện tiếng Việt.
+- **Phạm vi**: một tham số tuỳ chọn trong hàm định tuyến, một hàm ghi đáp án, một nút giao diện, ba chuỗi i18n nhân ba ngôn ngữ.
+
+### 9.3 Cổng Hiến chương cho phần bổ sung
+
+| Nguyên tắc | Cách thực thi | Cổng |
+| --- | --- | --- |
+| Trung thực (`CONSTITUTION.md` Nguyên tắc 3, 6) | Nhãn nói rõ chưa qua mô hình; không gắn tên mô hình; `provider_used=False`; không bịa trích dẫn | **PASS** |
+| An toàn dữ liệu (Nguyên tắc 5) | Chỉ đọc dữ liệu đã trong máy; 0 lời gọi mạng | **PASS** |
+| Bằng chứng (Nguyên tắc 3, 9) | Mọi câu trích xuất kèm `citation_ids`; dấu vết đối chiếu được | **PASS** |
+| Tiếng Việt (Nguyên tắc 6) | Nhãn, nút, cảnh báo tiếng Việt; ba ngôn ngữ trong `i18n.py` đủ tương đương | **PASS** |
+| Chống thiết kế quá mức (`AGENT_RULES.md` mục 5) | Không thêm thư viện, cơ sở dữ liệu hay cờ cấu hình | **PASS** |
+
+Không có vi phạm cần biện luận.
+
+### 9.4 Luồng
+
+```text
+_run_chat_turn_async()
+  - retrieve_workspace_chat_evidence() -> ret_res["local_synthesis"]  (đã có sẵn)
+  - route_workspace_chat_submission(..., local_synthesis=...)
+        |
+        +-- nhánh nhà cung cấp / handoff: giữ nguyên
+        +-- nhánh unavailable (MỚI):
+              - vẫn trả lỗi cầu nối như hiện nay
+              - nếu local_synthesis dùng được: kèm cờ mời xem dự phòng
+                    |
+                    v người dùng bấm nút
+              commit_local_grounded_answer()
+                - chặn khi rỗng / abstained / không grounded
+                - save_message(user) -> build_evidence_trace_from_citations()
+                  -> save_evidence_trace() -> save_message(assistant)
+                    |
+                    v
+              Hội thoại có đáp án + dấu vết status=valid
+              => nút "Xem đồ thị bằng chứng" hoạt động, không cần cơ chế mới
+```
+
+### 9.5 Ma trận Nhánh Dự phòng
+
+| Trạng thái vào | Điều kiện | Kết quả |
+| --- | --- | --- |
+| `None` hoặc rỗng | không truyền / chưa truy xuất | Lỗi cầu nối, **không** hiện nút |
+| `abstained = True` | động cơ tự chối vì thiếu bằng chứng | Lỗi cầu nối, **không** hiện nút |
+| `grounded = False` | không câu nào gắn được trích dẫn | Lỗi cầu nối, **không** hiện nút |
+| `grounded = True`, `answer` | đáp án đầy đủ | Lỗi cầu nối + nút mời |
+| `grounded = True`, `answer_with_limits` | có `limitation_reasons` | Như trên, đáp án kèm dòng `LIMITATIONS` |
+| Bấm nút nhưng đáp án rỗng | dữ liệu đổi giữa hai lần chạy | Từ chối, báo tiếng Việt, không ghi gì |
+| Bấm nút hợp lệ | — | Ghi cặp tin nhắn + dấu vết, cập nhật huy hiệu |
+| Không bấm | — | Không thay đổi hội thoại |
+
+### 9.6 Truy vết Kiểm thử
+
+| Yêu cầu | Cài đặt chính | Kiểm thử |
+| --- | --- | --- |
+| FR-026 | `antigravity_bridge.route_workspace_chat_submission` | `test_local_fallback_offered_only_when_grounded` |
+| FR-027 | `workspace_chat_app._run_chat_turn_async` | `test_chat_turn_passes_local_synthesis_to_router` |
+| FR-028 | `antigravity_bridge.commit_local_grounded_answer` | `test_commit_local_grounded_answer_writes_valid_trace` |
+| FR-029 | `antigravity_bridge.commit_local_grounded_answer` | `test_commit_refuses_empty_or_abstained_answer` |
+| FR-030 | `workspace_chat_ui`, `i18n` | `test_local_fallback_label_is_honest_and_vietnamese` |
+| FR-031 | toàn nhánh dự phòng | `test_local_fallback_makes_zero_provider_calls` |
+
+### 9.7 Tương thích ngược
+
+`local_synthesis` là tham số tuỳ chọn có mặc định `None`. Hơn ba mươi lời gọi `route_workspace_chat_submission` trong `tests/test_antigravity_bridge.py` và `tests/test_antigravity_handoff_ui_flow.py` giữ nguyên chữ ký bốn tham số trả về, nên **không kiểm thử nào phải sửa**. Chữ ký trả về không đổi.

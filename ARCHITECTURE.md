@@ -550,3 +550,30 @@ Chọn thư viện -> Phỏng vấn bằng chữ hoặc âm thanh cục bộ
 ```
 
 Nếu cần phân quyền bảo mật thật giữa các thành viên, phải mở Goal riêng với dịch vụ danh tính và kho tập trung; không mở rộng Goal 010 bằng một lớp phân quyền không tạo ranh giới bảo mật thực.
+
+## Đường trả lời của Workspace Chat và nhánh dự phòng cục bộ
+
+Workspace Chat có bốn đường trả lời, xét theo thứ tự:
+
+```text
+Câu hỏi
+  -> truy xuất bằng chứng BGE-M3 trên nguồn đã sẵn sàng
+       (động cơ tổng hợp cục bộ luôn chạy ở bước này, độc lập với nhà cung cấp)
+  -> 1. cagent_api        (cần mạng ra endpoint AgentFlow)
+     2. nakazasen_router (cần mạng; nguồn phải được xếp cloud_safe)
+     3. gemini_web       (cần cầu nối Antigravity ở 127.0.0.1:8585)
+     4. dự phòng cục bộ  (không mạng, không nhà cung cấp) — chỉ khi người dùng chọn
+```
+
+Ba đường đầu giữ nguyên chính sách fail-closed: khi cầu nối lỗi hoặc không tới được, hệ thống báo lỗi rõ và **không** tự chuyển sang nhà cung cấp khác.
+
+Đường thứ tư là **dự phòng cục bộ có trích dẫn**. Động cơ `rag_v2/synthesis.py` vốn đã tính một đáp án trích xuất cùng nhãn trích dẫn `[N]` trong mỗi lượt truy xuất; trước đây kết quả đó bị bỏ đi. Nay kết quả được giữ lại và chỉ dùng để **mời** người dùng khi không còn đường nào tới được:
+
+- Hệ thống **không** ghi gì vào hội thoại ở bước mời; người dùng phải bấm nút mới ghi.
+- Việc ghi dùng đúng bộ ba mà các đường khác dùng: ghi tin nhắn người dùng, dựng dấu vết bằng chứng từ trích dẫn, lưu dấu vết, ghi tin nhắn trả lời. Vì nhãn trích dẫn khớp sẵn, dấu vết đạt `status="valid"` và nút xem đồ thị bằng chứng hoạt động mà không cần cơ chế trích dẫn mới.
+- Đáp án cục bộ mang nhãn nói rõ **chưa qua mô hình**; không gắn tên mô hình hay tên nhà cung cấp nào.
+- Suốt nhánh này **không có lời gọi mạng nào**, nên dữ liệu `local_only` không rời máy.
+
+Hệ quả cần nhớ: bộ tổng hợp chỉ trích dẫn đoạn nó thật sự dùng làm căn cứ, không trích dẫn mọi đoạn đã truy xuất. Số nguồn hiển thị của đáp án cục bộ vì vậy có thể nhỏ hơn số đoạn tìm được.
+
+Chi tiết hợp đồng: [specs/antigravity-truthful-bridge/contracts/local-grounded-fallback.md](specs/antigravity-truthful-bridge/contracts/local-grounded-fallback.md).
