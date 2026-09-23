@@ -1,0 +1,3 @@
+jig_result_id,unit_serial,jig_id,run_id,event_time,metric_name,value,unit,jig_version,process_version,target_label,failure_code,retest_outcome
+J_001,SYN_UNIT_001,BOWSKEW_4_BEAM,RUN_001,2026-03-01T10:00:00+07:00,BOW_VALUE,0.12,mrad,v1.2,p2.0,OK,,
+J_001,SYN_UNIT_001,BOWSKEW_4_BEAM,RUN_001,2026-03-01T10:00:00+07:00,BOW_VALUE,0.85,mrad,v1.2,p2.0,NG,ERR_BOW,

@@ -88,6 +88,15 @@ local_cases/
 !examples/**/*.png
 !examples/**/*.jpg
 !examples/**/*.jpeg
+# Synthetic test fixtures are sample data, not real plant data. Without these
+# negations the *.csv/*.xlsx rules above strip them from every clone and the
+# LSU/chart-selector tests fail with FileNotFoundError.
+!tests/fixtures/**/*.csv
+!tests/fixtures/**/*.xlsx
+!tests/fixtures/**/*.xls
+!tests/fixtures/**/*.png
+!tests/fixtures/**/*.jpg
+!tests/fixtures/**/*.jpeg
 # Real-data benchmark runtime outputs
 local_runs/
 config/real_benchmark.local.json
