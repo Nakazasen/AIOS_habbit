@@ -162,7 +162,15 @@
 - [x] T053 Chạy `pytest` hai tệp liên quan, `compileall`, nhập module và `cli audit`; ghi số kiểm thử đạt và mã thoát.
 - [x] T054 Chạy lại smoke 007 (`scripts/smoke_007_modern_chat_composer.py`) vì giao diện đổi; thêm kịch bản cho nhánh dự phòng nếu kiểm được không cần nhà cung cấp.
 - [x] T055 Cập nhật `ARCHITECTURE.md` (đường trả lời có nhánh thứ tư), `ROADMAP.md` và `PROJECT_HANDOVER.md`.
-- [ ] T056 Kiểm toán độc lập: người/vai kiểm toán khác xác nhận `SC-009..SC-013` bằng bằng chứng chạy thật, không dùng báo cáo của người thực thi.
+- [x] T056 Kiểm toán độc lập: người/vai kiểm toán khác xác nhận `SC-009..SC-013` bằng bằng chứng chạy thật, không dùng báo cáo của người thực thi.
+  - 2026-09-23, kiểm toán viên độc lập (vai `reviewer`, phiên riêng, không dùng báo cáo của người thực thi). Lệnh: `uv run --no-sync --group dev pytest tests/test_antigravity_bridge.py tests/test_antigravity_handoff_ui_flow.py tests/test_workspace_chat_composer_ui.py -q` → **128 passed** (26,33 s). Kết luận lượt đầu: `SC-011` VERIFIED, `SC-012` VERIFIED, **`SC-009` FAILED, `SC-010` FAILED, `SC-013` FAILED**.
+  - **Bốn lỗi thật đã tìm ra và đã sửa**:
+    1. Lời mời bị ghi thành tin nhắn: trình xử lý hoàn tất vẫn lưu mọi kết quả `ok=false` kèm lỗi thành một lượt trả lời, nên lượt ghi sau đó tạo cặp hỏi đáp thứ hai thay vì một cặp. Sửa: bỏ qua `save_message` khi huy hiệu là `local_fallback_offered` (`workspace_chat_app.py`).
+    2. Đáp án cục bộ đội nhãn AI: huy hiệu `ai_answered` đi qua `render_ai_answer_header`, hiện `AI đã trả lời`, `Tên mô hình chưa được xác minh` và câu miễn trừ AI, **không** hiện `chưa qua mô hình`. Sửa: rẽ nhánh theo `operational_mode == local_grounded_fallback` để hiện `local_fallback_note` và danh sách trích dẫn, không có tên mô hình (đã kiểm bằng kiểm thử khẳng định nhánh cục bộ đứng trước header AI và không chứa `model_tool_name`/`ai_disclaimer`).
+    3. Lỗi ghi dấu vết để lại tin nhắn mồ côi: hàm ghi tin nhắn người dùng trước khi dựng dấu vết, nên khi lưu dấu vết ném lỗi thì còn lại một tin nhắn. Sửa: **không ghi gì cho tới khi dấu vết được xác nhận hợp lệ** (quyết định mã tin nhắn trước, ghi sau) — không cần hoàn tác vì kho không có hàm xoá tin nhắn.
+    4. Dấu vết thiếu trích dẫn vẫn được lưu như thành công: khi lựa chọn nguồn đang bật loại trừ nguồn được trích dẫn, dấu vết thành `insufficient_evidence` và đồ thị không dựng được, nhưng hàm vẫn trả `ok=true`. Sửa: từ chối khi `trace.metadata["status"] != "valid"`.
+  - **Đã thêm 6 kiểm thử chống tái phát**: `TestLocalGroundedFallbackAuditRegressions` (4 ca: lỗi ghi dấu vết, lỗi dựng dấu vết, dấu vết mất trích dẫn, tái dùng lượt hỏi gốc) và hai kiểm thử tĩnh trong `test_workspace_chat_composer_ui.py` (nhãn không đội header AI; lời mời không bị ghi thành tin nhắn).
+  - **Sau khi sửa**: `183 passed` trên sáu tệp liên quan; probe end-to-end `all_pass=true`; `compileall` sạch; `cli audit` `"status": "PASS"`; `check_docs.py` `DOCUMENTATION_CONTRACT=PASS`; smoke 007 **12/12 PASS**.
 
 ### Phụ thuộc
 

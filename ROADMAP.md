@@ -51,7 +51,7 @@ Tài liệu tham khảo tầm nhìn dài hạn tương lai: [Production Intellig
 
 | A18 | `DONE` — Đã xác minh Chính sách Router thông minh & Sàn so sánh (Comparison Arena) |
 
-| Cầu nối Antigravity IDE AI Brain | `DONE` — 89 test trọng điểm ĐẠT, smoke test an toàn thành công, FSM direct_ready, khởi chạy 1-click qua start_antigravity_bridge.bat. **Bổ sung 2026-09-23 (M6)**: nhánh dự phòng tổng hợp cục bộ có trích dẫn khi cầu nối không tới được — `IMPLEMENTED_PENDING_INDEPENDENT_AUDIT`. Chỉ mời, không tự ghi; 0 lời gọi mạng; đáp án mang nhãn "chưa qua mô hình". Bằng chứng: `test_antigravity_bridge.py` + `test_antigravity_handoff_ui_flow.py` + `test_workspace_chat_composer_ui.py` **177 passed**, probe end-to-end `all_pass=true`, `compileall` sạch, `cli audit` `"status": "PASS"`, smoke 007 **12/12 PASS** (không hồi quy). |
+| Cầu nối Antigravity IDE AI Brain | `DONE` — 89 test trọng điểm ĐẠT, smoke test an toàn thành công, FSM direct_ready, khởi chạy 1-click qua start_antigravity_bridge.bat. **Bổ sung 2026-09-23 (M6)**: nhánh dự phòng tổng hợp cục bộ có trích dẫn khi cầu nối không tới được — `M6_AUDITED_AND_FIXED`. Chỉ mời, không tự ghi; 0 lời gọi mạng; đáp án mang nhãn "chưa qua mô hình"; không ghi gì cho tới khi dấu vết được xác nhận hợp lệ. Kiểm toán độc lập lượt đầu tìm ra **4 lỗi thật** (`SC-009`/`SC-010`/`SC-013` FAILED), đã sửa hết kèm 6 kiểm thử chống tái phát. Bằng chứng sau sửa: **183 passed**, probe end-to-end `all_pass=true`, `compileall` sạch, `cli audit` `"status": "PASS"`, smoke 007 **12/12 PASS**. Chưa có lượt kiểm toán thứ hai đóng chính thức `SC-009..SC-013`. |
 | P1.0 | `DONE` — Gate Production 1.0 đã được phê duyệt và mở khóa |
 
 ### Lưu ý kiểm chứng cây thư mục làm việc hiện tại — 2026-08-16

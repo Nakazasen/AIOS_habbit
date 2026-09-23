@@ -2,7 +2,7 @@
 
 **Feature Branch**: `specs/antigravity-truthful-bridge`
 **Created**: 2026-08-22
-**Status**: `VERIFIED` (US1–US6, 2026-08-22) + `PLANNED` (US7 "Dự phòng tổng hợp cục bộ có trích dẫn", làm giàu 2026-09-23 — xem [plan.md](plan.md) mục 9, [research.md](research.md))
+**Status**: `VERIFIED` (US1–US6, 2026-08-22) + `M6_AUDITED_AND_FIXED` (US7 "Dự phòng tổng hợp cục bộ có trích dẫn", làm giàu 2026-09-23 — xem [plan.md](plan.md) mục 9, [research.md](research.md), [tasks.md](tasks.md) T056)
 **Input**: User Request — "Xây dựng cầu nối trung thực (Truthful Bridge) cho Antigravity IDE trong repo D:\Sandbox\AIOS_habbit, loại bỏ hoàn toàn cơ chế facade/giả lập, ưu tiên direct adapter nếu có giao thức xác minh được và tự động chuyển sang handoff bất đồng bộ (Outbox/Inbox) an toàn khi direct không khả dụng."
 
 ---
