@@ -25,7 +25,7 @@
   - Khoá thực tế là `(jig_id, chi_so, unit_serial)` vì mỗi số sê-ri có dải dung sai riêng.
 - [x] T016-06 Đọc ngưỡng từ tệp nhóm Spec/CamPos để tự điền
   - `doc_nguong_tu_tep_gioi_han()` tra **đúng S/N và đúng thời điểm đo**, chỉ lấy dòng có thời điểm ≤ lúc đo (chống rò rỉ tương lai). Thẻ 1 nhận tệp giới hạn kèm theo và nạp vào `local_cases/metric_limits.json`.
-  - **Phát hiện quan trọng khi đo dữ liệu thật**: `2026_08_Spec.csv` có 5.224 dòng và một S/N lặp lại nhiều lần với ngưỡng khác nhau (`6GL1068C9206` có cặp 50/200 mA, `61C1068E6208` có cặp 370/520 mA). Tra theo dòng mới nhất của cả tệp gây **1/5 Unit OK bị gắn cờ sai**; tra theo đúng S/N còn **0/5**. Vì vậy bắt buộc tra theo S/N.
+  - **Phát hiện quan trọng khi đo dữ liệu thật**: `2026_08_Spec.csv` có 5.224 dòng và một S/N lặp lại nhiều lần với ngưỡng khác nhau (một S/N có cặp 50/200 mA, một S/N khác có cặp 370/520 mA). Tra theo dòng mới nhất của cả tệp gây **1/5 Unit OK bị gắn cờ sai**; tra theo đúng S/N còn **0/5**. Vì vậy bắt buộc tra theo S/N.
 - [x] T016-07 Dùng ngưỡng thật trong `evaluate_single_log_ewma` thay cho trung bình ± 3σ
   - Khi có ngưỡng hiệu lực thì ngưỡng thật quyết định kết luận; độ lệch chuẩn chỉ còn là đường tham khảo trên biểu đồ. Kết quả mang thêm `nguon_nguong` để thẻ chat nói rõ nguồn.
   - **Quy tắc an toàn**: chỉ cặp `:Lower`/`:Upper` tường minh mới tự động có hiệu lực. Dung sai một con số (`Spec:Bow[um] = 25`) vào trạng thái `cho_xac_nhan`, vì đo thật trên 2ND-1004 cho thấy `Bow:Black:0` nằm trong −225…+22 nhưng máy vẫn chấm `OK` — áp thẳng ±25 sẽ báo động giả hàng loạt.
