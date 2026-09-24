@@ -14,6 +14,17 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
+from aios_habit.production_prediction.iris_log_adapter import (
+    BanGhiIris,
+    KetQuaDocIris,
+    la_dong_log_iris,
+    la_dong_tieu_de_iris,
+    nhan_dien_khoi_log_dan,
+    parse_dong_log_iris,
+    parse_khoi_depth_dan,
+    thong_diep_khoi_depth,
+    thong_diep_thieu_cot,
+)
 from aios_habit.production_prediction.lsu_iris import RECOGNIZED_UNITS
 
 # Command keywords that must route to Agent Work, never to JIG ingest.
@@ -116,8 +127,12 @@ def is_jig_log_line(text: str) -> bool:
         pass
     if _looks_like_command(line):
         return False
-    if len(line) > 2000:
+    if len(line) > 2000 and not la_dong_log_iris(line):
         return False
+    # Real Iris wide-matrix rows carry hundreds of cells and take priority
+    # over the legacy 7-column heuristic below.
+    if la_dong_log_iris(line) or la_dong_tieu_de_iris(line):
+        return True
     fields = _split_fields(line)
     if len(fields) < 4:
         return False
@@ -135,8 +150,15 @@ def is_jig_log_line(text: str) -> bool:
 
 
 def parse_jig_log_line(line: str) -> Optional[JigLogLine]:
-    """Parse one raw JIG log line into a structured record."""
+    """Parse one raw JIG log line into a structured record.
+
+    Real Iris wide-matrix rows (hundreds of cells) carry no per-cell metric
+    name on their own, so they are handled by ``parse_dong_log_iris`` and
+    return ``None`` here rather than being mangled by the 7-column heuristic.
+    """
     if not is_jig_log_line(line):
+        return None
+    if la_dong_log_iris(line) or la_dong_tieu_de_iris(line):
         return None
     fields = _split_fields(line.strip())
     if len(fields) < 4:
@@ -175,6 +197,44 @@ def parse_jig_log_line(line: str) -> Optional[JigLogLine]:
     )
 
 
+def la_dong_log_iris_that(line: str) -> bool:
+    """True when a pasted line is a real Iris wide-matrix row or its header."""
+    return la_dong_log_iris(line) or la_dong_tieu_de_iris(line)
+
+
+def parse_dong_log_iris_dan(text: str) -> KetQuaDocIris:
+    """Parse a pasted Iris row (optionally with its header) into records."""
+    return parse_dong_log_iris(text)
+
+
+def ban_ghi_iris_sang_dong_log(ban_ghi: BanGhiIris) -> "JigLogLine":
+    """Convert one adapter record into the legacy chat-card line shape."""
+    thoi_diem = ban_ghi.event_time
+    return JigLogLine(
+        timestamp=thoi_diem.isoformat() if thoi_diem else None,
+        unit_serial=ban_ghi.unit_serial,
+        jig_id=ban_ghi.jig_id or "unknown",
+        metric=ban_ghi.metric_name,
+        value=ban_ghi.value,
+        unit=(ban_ghi.unit or "").lower(),
+        status=ban_ghi.target_label or "unknown",
+        raw=f"{ban_ghi.metric_name}={ban_ghi.value}",
+    )
+
+
+def thong_diep_dong_log_iris(ket_qua: KetQuaDocIris) -> str:
+    """Vietnamese reply for a pasted Iris row: the missing-column list or a count."""
+    if ket_qua.thieu_cot:
+        return thong_diep_thieu_cot(ket_qua)
+    hop_le = ket_qua.ban_ghi_hop_le()
+    if not hop_le:
+        return (
+            "Dòng log Iris không có giá trị đo nào dùng được. "
+            "Các ô mang giá trị canh lỗi 999 (máy không đo được) đã bị bỏ qua."
+        )
+    return f"Đã nhận {len(hop_le)} giá trị đo từ dòng log Iris."
+
+
 def route_omnibar_message(text: str) -> str:
     """Route an Omnibar message to rag, agent work, or JIG log ingest."""
     if not text or not text.strip():
@@ -193,8 +253,15 @@ def evaluate_single_log_ewma(
     history: List[float],
     alpha: float = 0.2,
     limit_std: float = 3.0,
+    nguong: Optional[Any] = None,
 ) -> Dict[str, Any]:
-    """Compare one measurement against history with a light EWMA check."""
+    """Compare one measurement against history with a light EWMA check.
+
+    When a real per-metric threshold is supplied (``nguong``, a
+    ``metric_limits.NguongChiSo``), it takes precedence over the statistical
+    mean ± 3σ band, because the band is only a charting convention while the
+    JIG-declared limits carry the actual specification.
+    """
     clean = [v for v in history if isinstance(v, (int, float))]
     if value is None:
         return {
@@ -202,6 +269,14 @@ def evaluate_single_log_ewma(
             "chi_tiet": "Dòng log không có giá trị số để đối chiếu.",
             "canh_bao": False,
         }
+    if nguong is not None:
+        from aios_habit.production_prediction.metric_limits import phan_loai_theo_nguong
+
+        theo_nguong = phan_loai_theo_nguong(value, nguong)
+        if theo_nguong is not None:
+            theo_nguong["gia_tri"] = value
+            theo_nguong["nguon_nguong"] = nguong.nguon
+            return theo_nguong
     if len(clean) < 5:
         return {
             "trang_thai": "Cận biên",

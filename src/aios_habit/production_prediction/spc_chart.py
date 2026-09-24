@@ -66,6 +66,17 @@ class SpcChartInput:
     sigma: Optional[float] = None
     nguoi_phu_trach: str = ""
     du_bao: List[float] = field(default_factory=list)
+    # True khi biểu đồ chưa có giới hạn thật và chỉ vẽ dải tham khảo.
+    mo_phong: bool = False
+
+    def ghi_chu_mo_phong(self) -> str:
+        """Dòng ghi chú bắt buộc khi biểu đồ là mô phỏng."""
+        if not self.mo_phong:
+            return ""
+        return (
+            "MÔ PHỎNG: chưa có giới hạn trên/dưới thật cho chỉ số này; "
+            "đường giới hạn trên hình chỉ là dải tham khảo (trung bình ± 3 độ lệch chuẩn)."
+        )
 
 
 def _bounds(chart: SpcChartInput) -> tuple[float, float]:
@@ -80,6 +91,37 @@ def _bounds(chart: SpcChartInput) -> tuple[float, float]:
         high = low + 1.0
     padding = (high - low) * 0.15
     return (low - padding, high + padding)
+
+
+def _svg_mo_phong(chart: SpcChartInput) -> str:
+    """Dòng chữ MÔ PHỎNG cho bản SVG khi biểu đồ chưa có giới hạn thật."""
+    if not chart.mo_phong:
+        return ""
+    return (
+        '<text x="90" y="18" fill="#b71c1c" font-size="16" font-weight="bold">'
+        "MÔ PHỎNG — chưa có giới hạn thật; đường trên hình chỉ là dải tham khảo (±3σ)"
+        "</text>"
+    )
+
+
+def _ve_bang_mo_phong(draw, chart: SpcChartInput, width: int, margin_left: int, plot_w: int, scale: int) -> None:
+    """Vẽ băng cảnh báo MÔ PHỎNG ngay dưới tiêu đề để không ai đọc nhầm.
+
+    Băng này là bắt buộc khi biểu đồ chưa có giới hạn thật: nếu chỉ ghi trong
+    chú thích chat thì người nhận ảnh (hoặc email) vẫn có thể tưởng nhầm đường
+    tham khảo là giới hạn kỹ thuật.
+    """
+    if not chart.mo_phong:
+        return
+    y = 46 * scale
+    cao = 26 * scale
+    draw.rectangle([margin_left, y, margin_left + plot_w, y + cao], fill=(255, 235, 238),
+                   outline=(183, 28, 28))
+    draw.text(
+        (margin_left + 8 * scale, y + 6 * scale),
+        "MÔ PHỎNG — chưa có giới hạn thật; đường trên hình chỉ là dải tham khảo (±3σ)",
+        fill=(183, 28, 28), font=_font(scale, lon=False),
+    )
 
 
 def render_spc_png(chart: SpcChartInput, path: str | Path, scale: int = 2) -> Path:
@@ -163,6 +205,7 @@ def render_spc_png(chart: SpcChartInput, path: str | Path, scale: int = 2) -> Pa
     draw.rectangle([margin_left, margin_top, margin_left + plot_w, margin_top + plot_h], outline=(66, 66, 66))
     title = f"Biểu đồ xu hướng {chart.metric} — {chart.jig_id}".strip(" —")
     draw.text((margin_left, 18 * scale), title, fill=(33, 33, 33), font=_font(scale, lon=True))
+    _ve_bang_mo_phong(draw, chart, width, margin_left, plot_w, scale)
 
     # Management stamp box.
     stamp_top = margin_top + plot_h + 10 * scale
@@ -210,7 +253,8 @@ def render_spc_svg(chart: SpcChartInput) -> str:
         + "".join(lines) +
         f'<polyline points="{points}" fill="none" stroke="#1565c0" stroke-width="2" />'
         f'<text x="90" y="30">Biểu đồ xu hướng {escape(chart.metric)} — {escape(chart.jig_id)}</text>'
-        f'<text x="90" y="520">{stamp}</text>'
+        + _svg_mo_phong(chart)
+        + f'<text x="90" y="520">{stamp}</text>'
         f"</svg>"
     )
 
@@ -287,6 +331,7 @@ def render_phan_bo_png(chart: SpcChartInput, path: str | Path, scale: int = 2, b
     draw.rectangle([margin_left, margin_top, margin_left + plot_w, margin_top + plot_h], outline=(66, 66, 66))
     draw.text((margin_left, 18 * scale), f"Phân bố {chart.metric} — {chart.jig_id}".strip(" —"), fill=(33, 33, 33),
                 font=_font(scale, lon=True))
+    _ve_bang_mo_phong(draw, chart, width, margin_left, plot_w, scale)
     stamp_top = margin_top + plot_h + 10 * scale
     draw.rectangle([margin_left, stamp_top, margin_left + plot_w, stamp_top + 28 * scale], outline=(66, 66, 66))
     draw.text((margin_left + 8 * scale, stamp_top + 8 * scale), _tem_chung(chart), fill=(33, 33, 33), font=_font(scale))
@@ -325,7 +370,8 @@ def render_phan_bo_svg(chart: SpcChartInput, bins: int = 12) -> str:
         f'<rect x="0" y="0" width="{width}" height="{height}" fill="white" />'
         + "".join(bars) + "".join(lines) +
         f'<text x="90" y="30">Phân bố {escape(chart.metric)} — {escape(chart.jig_id)}</text>'
-        f'<text x="90" y="520">{escape(_tem_chung(chart))}</text>'
+        + _svg_mo_phong(chart)
+        + f'<text x="90" y="520">{escape(_tem_chung(chart))}</text>'
         f"</svg>"
     )
 
@@ -409,6 +455,7 @@ def render_so_sanh_png(charts: Sequence[SpcChartInput], path: str | Path, scale:
         draw.text((margin_left + idx * 200 * scale + 16 * scale, hang_chu_thich - 4 * scale), nhan, fill=(33, 33, 33), font=_font(scale))
     draw.rectangle([margin_left, margin_top, margin_left + plot_w, margin_top + plot_h], outline=(66, 66, 66))
     draw.text((margin_left, 18 * scale), f"So sánh theo màu — {goc.jig_id}", fill=(33, 33, 33), font=_font(scale, lon=True))
+    _ve_bang_mo_phong(draw, goc, width, margin_left, plot_w, scale)
     stamp_top = margin_top + plot_h + 10 * scale
     draw.rectangle([margin_left, stamp_top, margin_left + plot_w, stamp_top + 28 * scale], outline=(66, 66, 66))
     draw.text((margin_left + 8 * scale, stamp_top + 8 * scale), _tem_chung(goc), fill=(33, 33, 33), font=_font(scale))
@@ -443,7 +490,8 @@ def render_so_sanh_svg(charts: Sequence[SpcChartInput]) -> str:
         f'<rect x="0" y="0" width="{width}" height="{height}" fill="white" />'
         + "".join(duong) +
         f'<text x="90" y="30">So sánh theo màu — {escape(goc.jig_id)}</text>'
-        f'<text x="90" y="520">{escape(_tem_chung(goc))}</text>'
+        + _svg_mo_phong(goc)
+        + f'<text x="90" y="520">{escape(_tem_chung(goc))}</text>'
         f"</svg>"
     )
 

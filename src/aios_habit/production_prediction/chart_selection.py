@@ -128,6 +128,21 @@ def doc_depth_khong_tieu_de(duong_dan: str | Path) -> List[Dict[str, Any]]:
     return ket_qua
 
 
+def _nhan_chi_so(chi_so: str) -> str:
+    """Nhãn chỉ số cho biểu đồ, tránh lặp lại mã chỉ số hai lần.
+
+    Tên chỉ số của log Iris (``BOW:BLACK:0``, ``DEPTH:BEAM:H:LD1:…``) đã đủ rõ và
+    không có tên Việt tương ứng, nên giữ nguyên. Chỉ ghép ``tên (mã)`` cho các mã
+    chỉ số ngắn có bảng tên Việt (``BOW_VALUE``).
+    """
+    if ":" in (chi_so or ""):
+        return chi_so
+    ten_viet = ten_tieng_viet(chi_so)
+    if ten_viet and ten_viet != chi_so:
+        return f"{ten_viet} ({chi_so})"
+    return chi_so
+
+
 def _lay_gia_tri_hang(hang: Any) -> Optional[float]:
     if isinstance(hang, dict):
         for khoa in ("value", "gia_tri", "VALUE"):
@@ -152,17 +167,144 @@ def _lay_chuoi(hang: Any, *cac_khoa: str) -> str:
     return "" if hang is None else str(hang)
 
 
+_BANG_DON_VI_THEO_CHI_SO = {
+    "BOW": "um",
+    "SKEW": "um",
+    "LIGHT_PATH": "mm",
+    "BEAM_DIAMETER:H": "um",
+    "BEAM_DIAMETER:V": "um",
+    "BEAM_POS:X": "um",
+    "BEAM_POS:Y": "um",
+    "APC:CURRENT": "mA",
+    "APC:VOLTAGE": "V",
+}
+
+
+def ma_chi_so_chuan(ten_chi_so: str) -> str:
+    """Quy tên chỉ số của log Iris về mã chỉ số dùng để tra ngưỡng.
+
+    ``BOW:BLACK:0`` → ``BOW``; ``BEAM_DIAMETER:H:BLACK:-140:0:LD1`` →
+    ``BEAM_DIAMETER:H``; ``BEAM_POS:X:BLACK:-140:LD1`` → ``BEAM_POS:X``;
+    ``APC:CURRENT`` → ``APC:CURRENT``.
+
+    Cột ``Current[mA]``/``Voltage[V]`` của log 2ND-1004 là cùng đại lượng mà tệp
+    Spec gọi là ``Spec:Current``/``Spec:Voltage``, nên phải quy về cùng khoá; nếu
+    không, ngưỡng thật sẽ không bao giờ gặp giá trị đo tương ứng.
+    """
+    ten = (ten_chi_so or "").strip().upper()
+    if not ten:
+        return ""
+    ten = re.sub(r"\[[^\]]*\]", "", ten).strip()  # bỏ phần đơn vị
+    if ten.startswith("SPEC:"):
+        ten = ten.split(":", 1)[1]
+    phan = [p for p in ten.split(":") if p]
+    phan = [p for p in phan if p not in ("LOWER", "UPPER")]
+    if not phan:
+        return ""
+    goc = phan[0]
+    if goc == "LIGHTPATH":
+        goc = "LIGHT_PATH"
+    if goc == "BEAMDIAMETER":
+        goc = "BEAM_DIAMETER"
+    if goc == "BEAMPOS":
+        goc = "BEAM_POS"
+    # Dạng camelCase không có dấu hai chấm: ``BeamPosX`` → ``BEAM_POS:X``.
+    hop_pos = re.match(r"^BEAM_?POS([XY])$", goc)
+    if hop_pos:
+        return f"BEAM_POS:{hop_pos.group(1)}"
+    hop_dia = re.match(r"^BEAM_?DIAMETER([HV])$", goc)
+    if hop_dia:
+        return f"BEAM_DIAMETER:{hop_dia.group(1)}"
+    if goc in ("CURRENT", "VOLTAGE"):
+        return f"APC:{goc}"
+    # Chỉ số có hai thành phần phân biệt: hướng/trục của chùm tia, hoặc loại APC.
+    if goc in ("BEAM_DIAMETER", "BEAM_POS", "APC") and len(phan) > 1:
+        return f"{goc}:{phan[1]}"
+    return goc
+
+
+def cac_khoa_nguong(ten_chi_so: str) -> List[str]:
+    """Trả các khoá ngưỡng nên thử, từ **cụ thể nhất tới tổng quát nhất**.
+
+    Chỉ số đo sâu mang cả vị trí trục (``DEPTH:BEAM:H:LD1:IMGHEIGHT:-140:CAM-2``).
+    Người dùng thường đặt ngưỡng cho **cả dòng** (``…:IMGHEIGHT:-140``) chứ không
+    cho từng cột, nên phải thử lần lượt: mã chuẩn → tên đầy đủ → tên bỏ hậu tố
+    trục ``:CAM…`` → tên bỏ cả vị trí cuối. Nhờ vậy một ngưỡng đặt cho dòng vẫn
+    áp được cho mọi cột của dòng đó, mà ngưỡng đặt riêng cho một cột vẫn thắng.
+    """
+    ten = re.sub(r"\[[^\]]*\]", "", (ten_chi_so or "").strip().upper()).strip()
+    if not ten:
+        return []
+    ung_vien: List[str] = []
+
+    def _them(gia_tri: str) -> None:
+        if gia_tri and gia_tri not in ung_vien:
+            ung_vien.append(gia_tri)
+
+    _them(ten)
+    khong_cam = re.sub(r":CAM[+-]?\d+$", "", ten)
+    _them(khong_cam)
+    phan = [p for p in khong_cam.split(":") if p]
+    if len(phan) > 1:
+        _them(":".join(phan[:-1]))
+    _them(ma_chi_so_chuan(ten))
+    return ung_vien
+
+
+def tra_nguong_theo_chi_so(
+    kho_nguong: Any,
+    ma_jig: str,
+    ten_chi_so: str,
+    unit_serial: str = "",
+    luc_do: Any = None,
+) -> Any:
+    """Tra ngưỡng theo thứ tự khoá từ cụ thể tới tổng quát (xem ``cac_khoa_nguong``)."""
+    if kho_nguong is None:
+        return None
+    for khoa in cac_khoa_nguong(ten_chi_so):
+        ket_qua = kho_nguong.lay(ma_jig, khoa, unit_serial, luc_do)
+        if ket_qua is not None:
+            return ket_qua
+    return None
+
+
+def nguong_cho_chi_so(
+    kho_nguong: Any,
+    ma_jig: str,
+    ten_chi_so: str,
+    unit_serial: str = "",
+    luc_do: Any = None,
+) -> Any:
+    """Tra ngưỡng thật cho một tên chỉ số của log Iris (016 T016-08).
+
+    Ưu tiên ngưỡng riêng của đúng ``unit_serial``; chỉ rơi về ngưỡng dùng chung
+    khi Unit chưa được khai báo riêng, vì mỗi S/N có thể có dải dung sai khác.
+    """
+    if kho_nguong is None:
+        return None
+    ma = ma_chi_so_chuan(ten_chi_so)
+    if not ma:
+        return None
+    return tra_nguong_theo_chi_so(kho_nguong, ma_jig, ten_chi_so, unit_serial, luc_do)
+
+
 def dung_du_lieu_bieu_do(
     ma_jig: str,
     ten_chi_so: str,
     cac_hang: Sequence[Any],
     loai_bieu_do: str = "xu_huong",
     nguoi_phu_trach: str = "",
+    kho_nguong: Any = None,
 ) -> SpcChartInput:
     """Build a shared SpcChartInput for one JIG and one metric.
 
     Used by both the select-box UI and the chat command so the preview
     image and the email image never diverge.
+
+    When ``kho_nguong`` (a ``metric_limits.KhoNguong``) carries a real,
+    effective threshold for this metric, it is passed as ``usl``/``lsl`` so the
+    chart draws the actual specification lines instead of only the
+    mean ± 3σ control band.
     """
     if loai_bieu_do not in LOAI_BIEU_DO:
         raise ValueError("Loại biểu đồ chưa hợp lệ. Vui lòng chọn xu hướng, phân bố hoặc so sánh theo màu.")
@@ -208,19 +350,105 @@ def dung_du_lieu_bieu_do(
         do_lech = math.sqrt(phuong_sai)
     else:
         do_lech = 0.0
+    # Mỗi S/N có thể có dải dung sai riêng. Chỉ được lấy Unit của chính các dòng
+    # đã lọc để vẽ (cùng JIG, cùng chỉ số); lấy Unit của dòng đầu danh sách chưa
+    # lọc sẽ vẽ sai dải của Unit khác lên biểu đồ.
+    unit_cua_hang = ""
+    moc_cua_hang = None
+    nhieu_serial = False
+    for hang in cac_hang:
+        if not isinstance(hang, dict):
+            continue
+        jig_hang = _lay_chuoi(hang, "jig_id", "ma_jig", "JigNumber")
+        metric_hang = _lay_chuoi(hang, "metric_name", "ten_chi_so", "metric")
+        if jig_hang and jig_hang.strip() != ma_jig_chuan:
+            continue
+        if metric_hang and metric_hang.strip() != chi_so_chuan:
+            continue
+        sn = _lay_chuoi(hang, "unit_serial", "ma_unit", "serial")
+        if not sn:
+            continue
+        if not unit_cua_hang:
+            unit_cua_hang = sn
+        if sn != unit_cua_hang:
+            # Nhiều S/N trên cùng biểu đồ: không có một dải duy nhất đúng cho
+            # mọi điểm, nên không vẽ đường giới hạn để tránh vẽ sai.
+            unit_cua_hang = ""
+            nhieu_serial = True
+            break
+        moc = _lay_chuoi(hang, "event_time", "ngay_gio", "TIME", "DATE") or None
+        # Dải đang áp dụng là dải có hiệu lực tại lần đo mới nhất.
+        if moc and (moc_cua_hang is None or moc > moc_cua_hang):
+            moc_cua_hang = moc
+    if nhieu_serial:
+        # Không tra ngưỡng nào cả, kể cả ngưỡng dùng chung: một dải chung vẫn
+        # không đúng cho từng S/N riêng trên cùng biểu đồ.
+        nguong = None
+    else:
+        nguong = nguong_cho_chi_so(
+            kho_nguong, ma_jig_chuan, chi_so_chuan, unit_cua_hang, moc_cua_hang
+        )
+    usl = nguong.gioi_han_tren if (nguong is not None and nguong.hieu_luc()) else None
+    lsl = nguong.gioi_han_duoi if (nguong is not None and nguong.hieu_luc()) else None
+    # Chưa có giới hạn thật → biểu đồ là MÔ PHỎNG và phải ghi rõ trên ảnh.
+    mo_phong = usl is None and lsl is None
+    if not don_vi and nguong is not None:
+        don_vi = _BANG_DON_VI_THEO_CHI_SO.get(ma_chi_so_chuan(chi_so_chuan), "")
     return SpcChartInput(
         jig_id=ma_jig_chuan,
         cong_doan="LSU Iris",
-        metric=f"{ten_tieng_viet(chi_so_chuan)} ({chi_so_chuan})",
+        metric=_nhan_chi_so(chi_so_chuan),
         unit=don_vi,
         values=cac_gia_tri,
         nhan_thoi_gian=nhan,
+        usl=usl,
+        lsl=lsl,
         ucl=(trung_binh + 3 * do_lech) if do_lech > 0 else None,
         cl=trung_binh,
         lcl=(trung_binh - 3 * do_lech) if do_lech > 0 else None,
         sigma=(do_lech if do_lech > 0 else None),
         nguoi_phu_trach=nguoi_phu_trach,
+        mo_phong=mo_phong,
     )
+
+
+def huong_dan_thieu_nguong(ten_chi_so: str) -> str:
+    """Câu tiếng Việt nói **rõ thiếu gì** và **nhập gì** để có giới hạn thật.
+
+    Dùng khi biểu đồ chỉ vẽ được dải tham khảo: người dùng cần biết chính xác
+    phải gõ gì trong chat, hoặc phải bổ sung tệp nào.
+    """
+    chi_so = (ten_chi_so or "").strip()
+    # Gợi ý khoá **cấp dòng** (bỏ hậu tố cột ``:CAM…``): đủ cụ thể để không áp
+    # nhầm sang dòng khác, mà vẫn ngắn hơn tên đầy đủ của từng cột. Không dùng
+    # khoá ngắn nhất (ví dụ ``DEPTH``) vì như vậy sẽ áp cho mọi dòng đo sâu.
+    goi_y_khoa = chi_so
+    ma_chuan = ma_chi_so_chuan(chi_so)
+    for khoa in cac_khoa_nguong(chi_so):
+        # Chỉ nhận khoá **cấp dòng** (bỏ hậu tố cột ``:CAM…``) hoặc chính mã
+        # chuẩn của chỉ số; không nhận khoá tổng quát hơn mã chuẩn.
+        if re.search(r":CAM[+-]?\d+$", khoa):
+            goi_y_khoa = khoa
+            continue
+        if khoa == ma_chuan or len(khoa) < len(goi_y_khoa):
+            goi_y_khoa = khoa
+        break
+    dong = [
+        "Chưa vẽ được đường giới hạn thật vì **thiếu ngưỡng trên/dưới** cho chỉ số này.",
+        f"Chỉ số: {chi_so or 'chưa rõ'}",
+        "",
+        "Biểu đồ dưới đây là **MÔ PHỎNG**: đường giới hạn chỉ là dải tham khảo "
+        "(trung bình ± 3 độ lệch chuẩn), không phải tiêu chuẩn kỹ thuật.",
+        "",
+        "Để có giới hạn thật, chọn một trong hai cách:",
+        "1) Nhập ngay trong chat, ví dụ:",
+        f"   - đặt ngưỡng trên 100 cho {goi_y_khoa}",
+        f"   - đặt ngưỡng dưới 10 cho {goi_y_khoa}",
+        "   (đặt được cả hai phía; ngưỡng đặt cho một dòng sẽ áp cho mọi cột của dòng đó)",
+        "2) Bổ sung tệp giới hạn của JIG (Spec/CamPos) vào ô “Tệp giới hạn kèm theo” ở Thẻ 1, "
+        "hệ thống sẽ tự đọc giới hạn theo đúng số sê-ri và thời điểm đo.",
+    ]
+    return "\n".join(dong)
 
 
 @dataclass

@@ -24,9 +24,36 @@ from aios_habit.production_prediction.chart_selection import (
 )
 from aios_habit.production_prediction.jig_alert_cards import build_instant_log_card
 from aios_habit.production_prediction.jig_log_ingest import (
+    ban_ghi_iris_sang_dong_log,
     evaluate_single_log_ewma,
     is_jig_log_line,
+    la_dong_log_iris_that,
+    nhan_dien_khoi_log_dan,
+    parse_dong_log_iris_dan,
     parse_jig_log_line,
+    thong_diep_dong_log_iris,
+)
+from aios_habit.production_prediction.iris_log_adapter import parse_khoi_depth_dan, thong_diep_khoi_depth
+from aios_habit.production_prediction.log_archive import (
+    GIOI_HAN_DONG_MOI_LAN,
+    MAC_DINH_KHO_PATH,
+    bang_tom_tat_kho_van_ban,
+    ghi_ban_ghi,
+    ghi_dong_log_jig,
+    la_lenh_kho_log,
+)
+from aios_habit.production_prediction.chart_selection import (
+    ma_chi_so_chuan,
+    tra_nguong_theo_chi_so,
+)
+from aios_habit.production_prediction.metric_limits import (
+    KhoNguong,
+    MAC_DINH_NGUONG_PATH,
+    bang_nguong_van_ban,
+    doc_nguong,
+    la_lenh_nguong,
+    luu_nguong,
+    xu_ly_lenh_nguong,
 )
 from aios_habit.production_prediction.session_isolation import (
     SessionPersona,
@@ -122,6 +149,19 @@ def save_alert_config(config: AlertConfig, path: str | Path) -> None:
     )
 
 
+def _doi_moc_iso(gia_tri: Any) -> Any:
+    """Đổi mốc ISO của dòng log thành ``datetime`` để tra ngưỡng theo thời điểm."""
+    if not gia_tri:
+        return None
+    try:
+        from datetime import datetime
+
+        moc = datetime.fromisoformat(str(gia_tri))
+    except (TypeError, ValueError):
+        return None
+    return moc.replace(tzinfo=None) if moc.tzinfo else moc
+
+
 def _muc_ket_luan(trang_thai: str) -> str:
     """Map an EWMA status to a one-word nontech verdict."""
     trang_thai = (trang_thai or "").strip().lower()
@@ -148,6 +188,7 @@ def format_instant_card_text(card: Dict[str, Any]) -> str:
 def _quyet_dinh_ve_bieu_do(
     text: str,
     chart_rows_provider: Optional[Callable[[], Any]],
+    kho_nguong: Optional[KhoNguong] = None,
 ) -> JigChatOutcome:
     """Handle a Vietnamese chart request with the shared builder (015)."""
     cac_hang = _cac_hang_ve(chart_rows_provider)
@@ -179,7 +220,7 @@ def _quyet_dinh_ve_bieu_do(
             cac_dau_vao = []
             for chi_so in danh_sach_chi_so[:4]:
                 try:
-                    cac_dau_vao.append(dung_du_lieu_bieu_do(lenh.ma_jig, chi_so, cac_hang))
+                    cac_dau_vao.append(dung_du_lieu_bieu_do(lenh.ma_jig, chi_so, cac_hang, kho_nguong=kho_nguong))
                 except ValueError:
                     continue
             if not cac_dau_vao:
@@ -189,7 +230,7 @@ def _quyet_dinh_ve_bieu_do(
                 )
             du_lieu: Any = cac_dau_vao
         else:
-            du_lieu = dung_du_lieu_bieu_do(lenh.ma_jig, lenh.ten_chi_so, cac_hang)
+            du_lieu = dung_du_lieu_bieu_do(lenh.ma_jig, lenh.ten_chi_so, cac_hang, kho_nguong=kho_nguong)
         import tempfile
         from pathlib import Path as _Path
 
@@ -206,16 +247,31 @@ def _quyet_dinh_ve_bieu_do(
         )
     ten_loai = TEN_LOAI_BIEU_DO.get(lenh.loai_bieu_do, lenh.loai_bieu_do)
     bang_so = _bang_so_van_ban(du_lieu)
+    # Biểu đồ thiếu giới hạn thật: nói rõ thiếu gì, nhập gì, và rằng ảnh là mô phỏng.
+    ghi_chu_thieu_nguong = ""
+    try:
+        from aios_habit.production_prediction.chart_selection import huong_dan_thieu_nguong
+
+        mau_dau = du_lieu
+        if isinstance(du_lieu, (list, tuple)):
+            mau_dau = du_lieu[0] if du_lieu else None
+        if mau_dau is not None and getattr(mau_dau, "mo_phong", False):
+            ghi_chu_thieu_nguong = "\n\n⚠️ " + huong_dan_thieu_nguong(lenh.ten_chi_so)
+    except Exception:
+        ghi_chu_thieu_nguong = ""
     return JigChatOutcome(
         handled=True,
         assistant_text=(
             f"Đã vẽ {ten_loai} cho {lenh.ma_jig} — {lenh.ten_chi_so}. "
             "Ảnh đã lưu vào phiên để xem lại ở Thẻ 1 và dùng cho email cảnh báo."
             + bang_so
+            + ghi_chu_thieu_nguong
         ),
         chart_png=anh_bytes,
         chart_meta={"ma_jig": lenh.ma_jig, "ten_chi_so": lenh.ten_chi_so,
-                    "loai_bieu_do": lenh.loai_bieu_do},
+                    "loai_bieu_do": lenh.loai_bieu_do,
+                    "mo_phong": bool(getattr(du_lieu, "mo_phong", False))
+                    if not isinstance(du_lieu, (list, tuple)) else False},
     )
 
 
@@ -243,6 +299,8 @@ class JigChatOutcome:
     chart_png: Optional[bytes] = None
     chart_meta: Optional[Dict[str, Any]] = None
     stream_paused: Optional[bool] = None
+    nguong_changed: bool = False
+    kho_nguong: Optional[KhoNguong] = None
 
 
 def _cac_hang_ve(rows_provider: Optional[Callable[[], Any]]) -> List[Any]:
@@ -264,10 +322,141 @@ def decide_jig_action(
     alert_config: Optional[AlertConfig] = None,
     history_provider: Optional[Callable[[str, str], List[float]]] = None,
     chart_rows_provider: Optional[Callable[[], Any]] = None,
+    nguong: Optional[KhoNguong] = None,
+    kho_log_path: str | Path = MAC_DINH_KHO_PATH,
 ) -> JigChatOutcome:
     """Pure decision: JIG log, config command, persona command, or nothing."""
     config = alert_config or AlertConfig()
+    kho = nguong or KhoNguong()
     first_line = (text or "").strip().splitlines()[0] if (text or "").strip() else ""
+    # Real Iris wide-matrix rows (optionally pasted with their header) are
+    # parsed by the adapter: one row expands into many named measurements.
+    # Khối đo sâu dán thẳng vào chat: tự nhận diện và tách giá trị.
+    if nhan_dien_khoi_log_dan(text or "") == "depth":
+        ket_qua_depth = parse_khoi_depth_dan(text or "")
+        hop_le_depth = ket_qua_depth.ban_ghi_hop_le()
+        if hop_le_depth:
+            try:
+                ket_qua_ghi_depth = ghi_ban_ghi(
+                    hop_le_depth, nguon="dan_tay", tep="", kho=kho_log_path
+                )
+            except Exception:
+                ket_qua_ghi_depth = {"da_ghi": 0, "bi_cat": 0}
+            # Yêu cầu "log nào cũng có cảnh báo theo ngưỡng": khối đo sâu cũng phải
+            # ra thẻ kết luận như dòng log rộng, không chỉ tóm tắt số lượng.
+            uu_tien_depth = None
+            for ban_ghi in hop_le_depth:
+                ung_vien = tra_nguong_theo_chi_so(
+                    kho,
+                    ban_ghi.jig_id,
+                    ban_ghi.metric_name,
+                    ban_ghi.unit_serial,
+                    ban_ghi.event_time,
+                )
+                if ung_vien is not None and ung_vien.hieu_luc():
+                    uu_tien_depth = ban_ghi
+                    break
+            chon_depth = uu_tien_depth or hop_le_depth[0]
+            first_depth = ban_ghi_iris_sang_dong_log(chon_depth)
+            history_depth: List[float] = []
+            if history_provider is not None:
+                try:
+                    history_depth = list(
+                        history_provider(first_depth.jig_id, first_depth.metric) or []
+                    )
+                except Exception:
+                    history_depth = []
+            nguong_depth = tra_nguong_theo_chi_so(
+                kho,
+                first_depth.jig_id,
+                first_depth.metric,
+                first_depth.unit_serial,
+                _doi_moc_iso(first_depth.timestamp),
+            )
+            ket_luan_depth = evaluate_single_log_ewma(
+                first_depth.value, history_depth, nguong=nguong_depth
+            )
+            the_depth = build_instant_log_card(first_depth.to_dict(), ket_luan_depth)
+            return JigChatOutcome(
+                handled=True,
+                assistant_text=(
+                    format_instant_card_text(the_depth)
+                    + "\n\n"
+                    + thong_diep_khoi_depth(ket_qua_depth)
+                    + f" Đã lưu {ket_qua_ghi_depth['da_ghi']:,} giá trị vào kho log để phân tích lại."
+                    + (
+                        f" Bỏ qua {ket_qua_depth.bo_qua_canh_loi:,} ô canh lỗi."
+                        if ket_qua_depth.bo_qua_canh_loi
+                        else ""
+                    )
+                    + (
+                        f" Lưu ý: kho chỉ nhận {GIOI_HAN_DONG_MOI_LAN:,} dòng mỗi lần, "
+                        f"còn {ket_qua_ghi_depth['bi_cat']:,} giá trị chưa lưu."
+                        if ket_qua_ghi_depth.get("bi_cat")
+                        else ""
+                    )
+                    + (
+                        ""
+                        if uu_tien_depth is not None
+                        else " Chưa có ngưỡng thật cho chỉ số này nên mới đối chiếu xu hướng EWMA."
+                    )
+                ),
+            )
+    if first_line and la_dong_log_iris_that(first_line):
+        ket_qua = parse_dong_log_iris_dan(text or "")
+        if ket_qua.thieu_cot:
+            return JigChatOutcome(handled=True, assistant_text=thong_diep_dong_log_iris(ket_qua))
+        hop_le = ket_qua.ban_ghi_hop_le()
+        if not hop_le:
+            return JigChatOutcome(handled=True, assistant_text=thong_diep_dong_log_iris(ket_qua))
+        # Ưu tiên chỉ số có ngưỡng thật: đó mới là thứ quyết định cảnh báo.
+        def _tra_nguong(ban_ghi: Any) -> Any:
+            return tra_nguong_theo_chi_so(
+                kho,
+                ban_ghi.jig_id,
+                ban_ghi.metric_name,
+                ban_ghi.unit_serial,
+                ban_ghi.event_time,
+            )
+
+        uu_tien = None
+        for ban_ghi in hop_le:
+            ung_vien = _tra_nguong(ban_ghi)
+            if ung_vien is not None and ung_vien.hieu_luc():
+                uu_tien = ban_ghi
+                break
+        chon = uu_tien or hop_le[0]
+        first = ban_ghi_iris_sang_dong_log(chon)
+        # "Cho từng dòng log vào file": lưu ngay mọi giá trị tách được để lần sau
+        # AI còn dữ liệu phân tích, không chỉ nằm trong tin nhắn chat.
+        try:
+            ket_qua_ghi = ghi_ban_ghi(hop_le, nguon="dan_tay", tep="", kho=kho_log_path)
+        except Exception:
+            ket_qua_ghi = {"da_ghi": 0, "bi_cat": 0}
+        history: List[float] = []
+        if history_provider is not None:
+            try:
+                history = list(history_provider(first.jig_id, first.metric) or [])
+            except Exception:
+                history = []
+        nguong_chi_so = _tra_nguong(chon)
+        result = evaluate_single_log_ewma(first.value, history, nguong=nguong_chi_so)
+        card = build_instant_log_card(first.to_dict(), result)
+        reply = format_instant_card_text(card)
+        reply += (
+            f"\nĐã tách {len(hop_le)} giá trị đo từ dòng log Iris "
+            f"({first.unit_serial}, {first.jig_id})."
+        )
+        if ket_qua.bo_qua_canh_loi:
+            reply += f" Bỏ qua {ket_qua.bo_qua_canh_loi} ô mang giá trị canh lỗi (máy không đo được)."
+        if ket_qua_ghi.get("bi_cat"):
+            reply += (
+                f" Lưu ý: kho log chỉ nhận {GIOI_HAN_DONG_MOI_LAN:,} dòng mỗi lần, "
+                f"còn {ket_qua_ghi['bi_cat']:,} giá trị chưa lưu."
+            )
+        if uu_tien is None:
+            reply += " Chưa có ngưỡng thật cho chỉ số này nên mới đối chiếu xu hướng EWMA."
+        return JigChatOutcome(handled=True, assistant_text=reply)
     if first_line and is_jig_log_line(first_line):
         parsed = [p for line in (text or "").splitlines() if (p := parse_jig_log_line(line))]
         if not parsed:
@@ -276,20 +465,31 @@ def decide_jig_action(
                 assistant_text="Dòng log chưa đủ thông tin mã Unit và tên thông số để kiểm tra.",
             )
         first = parsed[0]
+        try:
+            ghi_dong_log_jig(parsed, kho=kho_log_path)
+        except Exception:
+            pass
         history: List[float] = []
         if history_provider is not None:
             try:
                 history = list(history_provider(first.jig_id, first.metric) or [])
             except Exception:
                 history = []
-        result = evaluate_single_log_ewma(first.value, history)
+        nguong_chi_so = tra_nguong_theo_chi_so(
+            kho,
+            first.jig_id,
+            first.metric,
+            first.unit_serial,
+            _doi_moc_iso(first.timestamp),
+        )
+        result = evaluate_single_log_ewma(first.value, history, nguong=nguong_chi_so)
         card = build_instant_log_card(first.to_dict(), result)
         reply = format_instant_card_text(card)
         if len(parsed) > 1:
             reply += f"\nĐã nhận thêm {len(parsed) - 1} dòng log trong cùng tin nhắn."
         return JigChatOutcome(handled=True, assistant_text=reply)
     if is_chart_intent(text):
-        return _quyet_dinh_ve_bieu_do(text, chart_rows_provider)
+        return _quyet_dinh_ve_bieu_do(text, chart_rows_provider, kho_nguong=kho)
     tam_dung = is_stream_pause_intent(text)
     if tam_dung is not None:
         return JigChatOutcome(
@@ -300,6 +500,22 @@ def decide_jig_action(
                 else "Đã bật lại hiển thị luồng JIG trực tiếp."
             ),
             stream_paused=tam_dung,
+        )
+    if la_lenh_kho_log(text):
+        return JigChatOutcome(
+            handled=True,
+            assistant_text=bang_tom_tat_kho_van_ban(kho_log_path),
+        )
+    if la_lenh_nguong(text):
+        # So trên bản sao để phát hiện thay đổi thật: xu_ly_lenh_nguong sửa
+        # trực tiếp kho nên so với chính nó sẽ luôn ra "không đổi".
+        kho_truoc = KhoNguong.from_dict(kho.to_dict())
+        kho_moi, loi_nhan = xu_ly_lenh_nguong(text, kho, jig_id="")
+        return JigChatOutcome(
+            handled=True,
+            assistant_text=loi_nhan,
+            nguong_changed=kho_moi.to_dict() != kho_truoc.to_dict(),
+            kho_nguong=kho_moi,
         )
     if is_config_intent(text):
         updated, loi_nhan = parse_config_command(text, config)
@@ -336,6 +552,8 @@ def handle_jig_chat_text(
     config_path: str | Path = Path("local_cases") / "jig_alert_config.json",
     history_provider: Optional[Callable[[str, str], List[float]]] = None,
     chart_rows_provider: Optional[Callable[[], Any]] = None,
+    limits_path: str | Path = MAC_DINH_NGUONG_PATH,
+    kho_log_path: str | Path = MAC_DINH_KHO_PATH,
 ) -> bool:
     """App entry: persist user message, handle JIG/config/persona, reply.
 
@@ -347,12 +565,15 @@ def handle_jig_chat_text(
     except Exception:
         persona_che_do = "ca_nhan"
     config = load_alert_config(config_path)
+    kho = doc_nguong(limits_path)
     outcome = decide_jig_action(
         text,
         persona_che_do=persona_che_do,
         alert_config=config,
         history_provider=history_provider,
         chart_rows_provider=chart_rows_provider,
+        nguong=kho,
+        kho_log_path=kho_log_path,
     )
     if not outcome.handled:
         return False
@@ -375,5 +596,7 @@ def handle_jig_chat_text(
             pass
     if outcome.config_changed:
         save_alert_config(config, config_path)
+    if outcome.nguong_changed and outcome.kho_nguong is not None:
+        luu_nguong(outcome.kho_nguong, limits_path)
     save_assistant(outcome.assistant_text)
     return True

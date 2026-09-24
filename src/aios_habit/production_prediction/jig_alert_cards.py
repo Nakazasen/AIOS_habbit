@@ -14,7 +14,18 @@ def build_instant_log_card(
     ket_qua_ewma: Dict[str, Any],
     nguong_tham_khao: Optional[str] = None,
 ) -> Dict[str, Any]:
-    """Build the instant log inspection card shown directly on chat."""
+    """Build the instant log inspection card shown directly on chat.
+
+    The reference line reports the real per-metric limits when the verdict was
+    decided by them, instead of the generic "[USL, LSL]" sentence.
+    """
+    if nguong_tham_khao is None and ket_qua_ewma.get("nguon_nguong") is not None:
+        nguon = str(ket_qua_ewma.get("nguon_nguong") or "").strip()
+        nguong_tham_khao = (
+            f"Đối chiếu giới hạn thật khai báo trong tệp của JIG ({nguon})."
+            if nguon
+            else "Đối chiếu giới hạn thật khai báo trong tệp của JIG."
+        )
     return {
         "loai_the": "kiem_tra_log_tuc_thi",
         "ma_unit": dong_log.get("unit_serial", "—"),
