@@ -275,7 +275,13 @@ def render_khoi_chon_bieu_do(cac_hang: Any, ma_goi: str = "phien_hien_tai") -> N
         TEN_LOAI_BIEU_DO,
         dung_du_lieu_bieu_do,
     )
+    from aios_habit.production_prediction.metric_limits import doc_nguong
     from aios_habit.production_prediction.spc_chart import render_chart_png, render_chart_svg
+
+    try:
+        kho_nguong = doc_nguong()
+    except Exception:
+        kho_nguong = None
 
     st.markdown("---")
     st.markdown("### 3. Chọn biểu đồ xem trước")
@@ -313,7 +319,7 @@ def render_khoi_chon_bieu_do(cac_hang: Any, ma_goi: str = "phien_hien_tai") -> N
                 cac_dau_vao = []
                 for chi_so in [c["ma"] for c in danh_sach_chi_so[:4]]:
                     try:
-                        cac_dau_vao.append(dung_du_lieu_bieu_do(chon_jig, chi_so, cac_hang))
+                        cac_dau_vao.append(dung_du_lieu_bieu_do(chon_jig, chi_so, cac_hang, kho_nguong=kho_nguong))
                     except ValueError:
                         continue
                 if not cac_dau_vao:
@@ -321,7 +327,12 @@ def render_khoi_chon_bieu_do(cac_hang: Any, ma_goi: str = "phien_hien_tai") -> N
                     return
                 du_lieu = cac_dau_vao
             else:
-                du_lieu = dung_du_lieu_bieu_do(chon_jig, chon_chi_so, cac_hang)
+                du_lieu = dung_du_lieu_bieu_do(chon_jig, chon_chi_so, cac_hang, kho_nguong=kho_nguong)
+            # Thiếu giới hạn thật → nói rõ thiếu gì và nhập gì để có.
+            if not isinstance(du_lieu, (list, tuple)) and getattr(du_lieu, "mo_phong", False):
+                from aios_habit.production_prediction.chart_selection import huong_dan_thieu_nguong
+
+                st.warning("⚠️ " + huong_dan_thieu_nguong(chon_chi_so))
             if chon_anh == "SVG":
                 noi_dung_svg = render_chart_svg(du_lieu, chon_loai)
                 st.session_state["wsc_last_chart_svg"] = noi_dung_svg
@@ -344,6 +355,7 @@ def render_khoi_chon_bieu_do(cac_hang: Any, ma_goi: str = "phien_hien_tai") -> N
                     "ten_chi_so": chon_chi_so,
                     "loai_bieu_do": chon_loai,
                     "ma_goi": ma_goi,
+                    "mo_phong": bool(getattr(du_lieu, "mo_phong", False)),
                 }
                 st.image(du_lieu_anh, caption=f"{TEN_LOAI_BIEU_DO.get(chon_loai, chon_loai)} — {chon_jig}")
                 st.download_button(
@@ -357,6 +369,87 @@ def render_khoi_chon_bieu_do(cac_hang: Any, ma_goi: str = "phien_hien_tai") -> N
             st.warning(f"⚠️ {loi}")
         except Exception:
             st.error("❌ Không vẽ được biểu đồ lúc này. Vui lòng thử lại hoặc chọn chỉ số khác.")
+
+
+def _render_nguong_that_cho_du_lieu(snap: Any) -> None:
+    """Hiện giới hạn thật đọc được cho các chỉ số đang có trong dữ liệu.
+
+    Chỉ hiện ngưỡng đã hiệu lực. Dung sai một con số của tệp Spec bị nêu riêng
+    là "chờ xác nhận" vì áp thẳng sẽ báo động giả (đo thật trên 2ND-1004 cho
+    thấy Bow nằm ngoài ±25 nhưng máy vẫn chấm OK).
+    """
+    try:
+        from aios_habit.production_prediction.chart_selection import ma_chi_so_chuan
+        from aios_habit.production_prediction.metric_limits import doc_nguong
+
+        kho = doc_nguong()
+        if not kho.danh_sach():
+            return
+        chi_so_du_lieu = {
+            ma_chi_so_chuan(getattr(j, "metric_name", ""))
+            for j in getattr(snap, "jig_outcomes", []) or []
+        }
+        hieu_luc = [n for n in kho.danh_sach() if n.hieu_luc() and n.chi_so in chi_so_du_lieu]
+        cho_xac_nhan = [
+            n for n in kho.danh_sach() if not n.hieu_luc() and n.chi_so in chi_so_du_lieu
+        ]
+        if not hieu_luc and not cho_xac_nhan:
+            return
+        st.markdown("### 3. Giới hạn thật đang áp dụng cho chỉ số có trong dữ liệu")
+        for n in hieu_luc:
+            tren = f"{n.gioi_han_tren:g}" if n.gioi_han_tren is not None else "—"
+            duoi = f"{n.gioi_han_duoi:g}" if n.gioi_han_duoi is not None else "—"
+            pham_vi = f"S/N {n.unit_serial}" if n.unit_serial else "mọi Unit của JIG"
+            st.write(
+                f"- **{n.chi_so}** ({pham_vi}): dưới {duoi} / trên {tren} "
+                f"· mức theo dõi {n.nguong_phan_tram:g}% · nguồn: {n.nguon or 'chưa rõ'}"
+            )
+        for n in cho_xac_nhan:
+            st.info(
+                f"ℹ️ {n.chi_so}: {n.ghi_chu} "
+                "Nhắn trong chat, ví dụ: đặt ngưỡng trên 25 cho Bow."
+            )
+    except Exception:
+        return
+
+
+def _nap_nguong_tu_tep_dinh_kem(cac_tep: Any, snapshot: Any) -> int:
+    """Nạp ngưỡng thật từ các tệp giới hạn người dùng chọn kèm log Iris.
+
+    Mỗi ngưỡng tra đúng số sê-ri và đúng thời điểm đo, nên cùng một JIG có thể
+    có nhiều dải dung sai. Trả về số ngưỡng đã hiệu lực sau khi nạp.
+    """
+    if not cac_tep or snapshot is None:
+        return 0
+    try:
+        from aios_habit.production_prediction.metric_limits import (
+            MAC_DINH_NGUONG_PATH,
+            doc_nguong,
+            luu_nguong,
+            nap_nguong_tu_tep_gioi_han,
+        )
+
+        kho = doc_nguong()
+        with tempfile.TemporaryDirectory() as tmp_d:
+            for tep in cac_tep:
+                duong_dan_tep = Path(tmp_d) / tep.name
+                duong_dan_tep.write_bytes(tep.getvalue())
+                jig_id = ""
+                for do_dac in getattr(snapshot, "jig_outcomes", []) or []:
+                    jig_id = str(getattr(do_dac, "jig_id", "") or "")
+                    if jig_id:
+                        break
+                nap_nguong_tu_tep_gioi_han(
+                    kho,
+                    duong_dan_tep,
+                    getattr(snapshot, "jig_outcomes", []) or [],
+                    jig_id=jig_id,
+                    nguon=tep.name,
+                )
+        luu_nguong(kho, MAC_DINH_NGUONG_PATH)
+        return len([n for n in kho.danh_sach() if n.hieu_luc()])
+    except Exception:
+        return 0
 
 
 def render_lsu_data_gate(
@@ -394,103 +487,218 @@ def render_lsu_data_gate(
 
     with tab1:
         st.markdown("### 1. Chọn tệp dữ liệu kiểm tra")
-        col_c, col_u, col_j = st.columns(3)
-        with col_c:
-            comp_file = st.file_uploader("1. Thông số lô linh kiện", type=["csv", "xlsx"], key="wsc_lsu_comp_file")
-        with col_u:
-            unit_file = st.file_uploader("2. Liên kết sản phẩm - lô linh kiện", type=["csv", "xlsx"], key="wsc_lsu_unit_file")
-        with col_j:
-            jig_file = st.file_uploader("3. Kết quả đo JIG & nhãn đánh giá", type=["csv", "xlsx"], key="wsc_lsu_jig_file")
-
-        if not comp_file or not unit_file or not jig_file:
-            unsel = data_gate_state_summary("unselected")
-            st.info(f"ℹ️ **{unsel['status']}**\n\n{unsel['message']}\n\n*{unsel['next_step']}*")
-        else:
-            if st.button("🚀 Bắt đầu kiểm tra cổng dữ liệu", key="wsc_run_lsu_check", type="primary"):
-                with st.spinner("Đang đọc tệp..."):
+        che_do_nhap = st.radio(
+            "Kiểu tệp bạn có",
+            options=["log_iris", "ba_tep_chuan"],
+            format_func=lambda ma: (
+                "Log JIG Iris (một tệp, xuất thẳng từ máy)"
+                if ma == "log_iris"
+                else "Ba tệp chuẩn (thông số lô, liên kết Unit-lot, kết quả JIG)"
+            ),
+            horizontal=False,
+            key="wsc_lsu_intake_mode",
+        )
+        if che_do_nhap == "log_iris":
+            st.caption(
+                "Chọn tệp log đo xuất từ JIG Iris — **bất kỳ loại nào**: log rộng (UnitTest), "
+                "log đo sâu (Depth/Profile). Hệ thống tự nhận diện định dạng, "
+                "bỏ các ô canh lỗi (999/999.9/9999.9) và lưu lại để phân tích."
+            )
+            iris_files = st.file_uploader(
+                "Tệp log JIG Iris (nhận mọi loại log đo)",
+                type=["csv"],
+                accept_multiple_files=True,
+                key="wsc_lsu_iris_files",
+            )
+            limits_files = st.file_uploader(
+                "Tệp giới hạn kèm theo (tuỳ chọn: 2026_08_Spec.csv, 2026_08_CamPos.csv)",
+                type=["csv"],
+                accept_multiple_files=True,
+                key="wsc_lsu_limits_files",
+            )
+            if not iris_files:
+                unsel = data_gate_state_summary("unselected")
+                st.info(f"ℹ️ **{unsel['status']}**\n\n{unsel['message']}\n\n*{unsel['next_step']}*")
+            elif st.button("🚀 Đọc log Iris và kiểm tra", key="wsc_run_iris_check", type="primary"):
+                with st.spinner("Đang đọc và tách log Iris..."):
                     try:
+                        from aios_habit.production_prediction.iris_log_adapter import (
+                            chuyen_ban_ghi_iris_sang_snapshot,
+                            doc_log_iris_tu_dong,
+                            thong_diep_thieu_cot,
+                        )
+                        from aios_habit.production_prediction.log_archive import (
+                            GIOI_HAN_DONG_MOI_LAN,
+                            ghi_ban_ghi,
+                        )
+
                         with tempfile.TemporaryDirectory() as tmp_d:
                             tmp_path = Path(tmp_d)
-                            p_comp = tmp_path / comp_file.name
-                            p_unit = tmp_path / unit_file.name
-                            p_jig = tmp_path / jig_file.name
-
-                            p_comp.write_bytes(comp_file.getvalue())
-                            p_unit.write_bytes(unit_file.getvalue())
-                            p_jig.write_bytes(jig_file.getvalue())
-
-                            snapshot = read_lsu_source(p_comp, p_unit, p_jig)
+                            cac_ket_qua = []
+                            for tep in iris_files:
+                                duong_dan_tep = tmp_path / tep.name
+                                duong_dan_tep.write_bytes(tep.getvalue())
+                                cac_ket_qua.append(doc_log_iris_tu_dong(duong_dan_tep))
+                        thieu = [k for k in cac_ket_qua if k.thieu_cot]
+                        if thieu:
+                            st.error(f"❌ {thong_diep_thieu_cot(thieu[0], iris_files[0].name)}")
+                        else:
+                            snapshot = chuyen_ban_ghi_iris_sang_snapshot(
+                                cac_ket_qua,
+                                nguon_tep=[t.name for t in iris_files],
+                            )
                             normalized = normalize_records(snapshot)
                             traces = join_lsu_trace(normalized)
                             gate_report = evaluate_data_gate_rubric(snapshot, normalized, traces)
-
                             st.session_state["wsc_last_lsu_snapshot"] = normalized
                             st.session_state["wsc_last_lsu_report"] = gate_report
                             st.session_state["wsc_last_lsu_traces"] = traces
-                    except ValueError:
-                        st.error("❌ Cấu trúc tệp dữ liệu không hợp lệ hoặc thiếu cột bắt buộc. Vui lòng kiểm tra lại định dạng tệp.")
+                            # Lưu mọi giá trị tách được vào kho log để phân tích lại.
+                            so_luu = 0
+                            so_bi_cat = 0
+                            for ket_qua, tep in zip(cac_ket_qua, iris_files):
+                                ket_qua_ghi = ghi_ban_ghi(
+                                    ket_qua.ban_ghi_hop_le(),
+                                    nguon="tep",
+                                    tep=tep.name,
+                                )
+                                so_luu += ket_qua_ghi["da_ghi"]
+                                so_bi_cat += ket_qua_ghi["bi_cat"]
+                            so_bo_qua = sum(k.bo_qua_canh_loi for k in cac_ket_qua)
+                            loai_tep = ", ".join(sorted({k.loai for k in cac_ket_qua}))
+                            st.caption(
+                                f"Đã đọc {len(cac_ket_qua)} tệp ({loai_tep}), "
+                                f"lưu {so_luu:,} giá trị đo vào kho log, "
+                                f"bỏ {so_bo_qua:,} ô canh lỗi."
+                            )
+                            if so_bi_cat:
+                                st.warning(
+                                    f"⚠️ Kho log chỉ nhận {GIOI_HAN_DONG_MOI_LAN:,} dòng mỗi lần nạp, "
+                                    f"nên còn {so_bi_cat:,} giá trị chưa được lưu. "
+                                    "Hãy tải tệp thành nhiều phần nhỏ hơn nếu cần lưu hết."
+                                )
+                            _nap_nguong_tu_tep_dinh_kem(limits_files, normalized)
+                    except ValueError as loi:
+                        st.error(f"❌ {loi}")
                     except Exception:
-                        st.error("❌ Có lỗi xảy ra khi đọc tệp. Hãy kiểm tra định dạng tệp.")
+                        st.error("❌ Có lỗi xảy ra khi đọc tệp log. Hãy kiểm tra lại tệp xuất từ JIG.")
+        else:
+            col_c, col_u, col_j = st.columns(3)
+            with col_c:
+                comp_file = st.file_uploader("1. Thông số lô linh kiện", type=["csv", "xlsx"], key="wsc_lsu_comp_file")
+            with col_u:
+                unit_file = st.file_uploader("2. Liên kết sản phẩm - lô linh kiện", type=["csv", "xlsx"], key="wsc_lsu_unit_file")
+            with col_j:
+                jig_file = st.file_uploader("3. Kết quả đo JIG & nhãn đánh giá", type=["csv", "xlsx"], key="wsc_lsu_jig_file")
 
-            if "wsc_last_lsu_report" in st.session_state:
-                report: DataGateReport = st.session_state["wsc_last_lsu_report"]
-                snap: LsuDatasetSnapshot = st.session_state["wsc_last_lsu_snapshot"]
-
-                st.markdown("---")
-                st.markdown("### 2. Kết quả đánh giá cổng dữ liệu")
-
-                if report.status == DataGateStatus.PASS:
-                    st.success("✅ **Dữ liệu hợp lệ theo tiêu chuẩn LSU Iris**")
-                    st.info("Bước tiếp theo: Bạn có thể nhấn 'Đăng ký gói dữ liệu' bên dưới để lưu vào kho dự đoán cục bộ.")
-                elif report.status == DataGateStatus.PASS_WITH_WARNING:
-                    st.warning("⚠️ **Dữ liệu đạt tiêu chuẩn có cảnh báo**")
-                    st.info("Bước tiếp theo: Xem lại các cảnh báo và tiến hành đăng ký nếu đồng ý.")
-                else:
-                    st.error("🛑 **Dữ liệu chưa đủ điều kiện để đăng ký (BLOCKED_DATA)**")
-                    st.warning("Bước tiếp theo: Khắc phục các lỗi được liệt kê bên dưới trước khi thử lại.")
-
-                m1, m2, m3, m4 = st.columns(4)
-                m1.metric("Tổng số bản ghi", f"{report.total_rows:,}")
-                m2.metric("Tỷ lệ nối chuỗi", f"{report.join_coverage_percent:.1f}%")
-                m3.metric("Số sản phẩm Đạt (OK)", f"{report.ok_count}")
-                m4.metric("Số sản phẩm Lỗi (NG)", f"{report.ng_count}")
-
-                if report.action_items:
-                    st.markdown("#### Các điểm cần lưu ý và hành động khắc phục:")
-                    for act in report.action_items:
-                        st.write(f"- {act}")
-
-                # Register button
-                if report.status in (DataGateStatus.PASS, DataGateStatus.PASS_WITH_WARNING):
-                    if st.button("💾 Đăng ký gói dữ liệu vào kho dự đoán", key="wsc_register_lsu_snap"):
+            if not comp_file or not unit_file or not jig_file:
+                unsel = data_gate_state_summary("unselected")
+                st.info(f"ℹ️ **{unsel['status']}**\n\n{unsel['message']}\n\n*{unsel['next_step']}*")
+            else:
+                if st.button("🚀 Bắt đầu kiểm tra cổng dữ liệu", key="wsc_run_lsu_check", type="primary"):
+                    with st.spinner("Đang đọc tệp..."):
                         try:
-                            ok = repository.register_lsu_snapshot(snap, report)
-                            if ok:
-                                st.success("🎉 Đã đăng ký gói dữ liệu thành công vào cơ sở dữ liệu cục bộ!")
-                        except Exception:
-                            st.error("❌ Không thể đăng ký gói dữ liệu vào kho lúc này. Vui lòng thử lại.")
+                            with tempfile.TemporaryDirectory() as tmp_d:
+                                tmp_path = Path(tmp_d)
+                                p_comp = tmp_path / comp_file.name
+                                p_unit = tmp_path / unit_file.name
+                                p_jig = tmp_path / jig_file.name
 
+                                p_comp.write_bytes(comp_file.getvalue())
+                                p_unit.write_bytes(unit_file.getvalue())
+                                p_jig.write_bytes(jig_file.getvalue())
+
+                                snapshot = read_lsu_source(p_comp, p_unit, p_jig)
+                                normalized = normalize_records(snapshot)
+                                traces = join_lsu_trace(normalized)
+                                gate_report = evaluate_data_gate_rubric(snapshot, normalized, traces)
+
+                                st.session_state["wsc_last_lsu_snapshot"] = normalized
+                                st.session_state["wsc_last_lsu_report"] = gate_report
+                                st.session_state["wsc_last_lsu_traces"] = traces
+                        except ValueError as loi:
+                            st.error(f"❌ {loi}")
+                        except Exception:
+                            st.error("❌ Có lỗi xảy ra khi đọc tệp. Hãy kiểm tra định dạng tệp.")
+
+        if "wsc_last_lsu_report" in st.session_state:
+            report: DataGateReport = st.session_state["wsc_last_lsu_report"]
+            snap: LsuDatasetSnapshot = st.session_state["wsc_last_lsu_snapshot"]
+
+            st.markdown("---")
+            st.markdown("### 2. Kết quả đánh giá cổng dữ liệu")
+
+            if report.status == DataGateStatus.PASS:
+                st.success("✅ **Dữ liệu hợp lệ theo tiêu chuẩn LSU Iris**")
+                st.info("Bước tiếp theo: Bạn có thể nhấn 'Đăng ký gói dữ liệu' bên dưới để lưu vào kho dự đoán cục bộ.")
+            elif report.status == DataGateStatus.PASS_WITH_WARNING:
+                st.warning("⚠️ **Dữ liệu đạt tiêu chuẩn có cảnh báo**")
+                st.info("Bước tiếp theo: Xem lại các cảnh báo và tiến hành đăng ký nếu đồng ý.")
+            else:
+                st.error("🛑 **Dữ liệu chưa đủ điều kiện để đăng ký (BLOCKED_DATA)**")
+                st.warning("Bước tiếp theo: Khắc phục các lỗi được liệt kê bên dưới trước khi thử lại.")
+
+            m1, m2, m3, m4 = st.columns(4)
+            m1.metric("Tổng số bản ghi", f"{report.total_rows:,}")
+            m2.metric("Tỷ lệ nối chuỗi", f"{report.join_coverage_percent:.1f}%")
+            m3.metric("Số sản phẩm Đạt (OK)", f"{report.ok_count}")
+            m4.metric("Số sản phẩm Lỗi (NG)", f"{report.ng_count}")
+
+            if report.action_items:
+                st.markdown("#### Các điểm cần lưu ý và hành động khắc phục:")
+                for act in report.action_items:
+                    st.write(f"- {act}")
+
+            # Register button
+            if report.status in (DataGateStatus.PASS, DataGateStatus.PASS_WITH_WARNING):
+                if st.button("💾 Đăng ký gói dữ liệu vào kho dự đoán", key="wsc_register_lsu_snap"):
+                    try:
+                        ok = repository.register_lsu_snapshot(snap, report)
+                        if ok:
+                            st.success("🎉 Đã đăng ký gói dữ liệu thành công vào cơ sở dữ liệu cục bộ!")
+                    except Exception:
+                        st.error("❌ Không thể đăng ký gói dữ liệu vào kho lúc này. Vui lòng thử lại.")
+
+            _render_nguong_that_cho_du_lieu(snap)
+
+            try:
+                cac_hang_ve: List[Dict[str, Any]] = []
+                traces_ve = st.session_state.get("wsc_last_lsu_traces")
+                if isinstance(traces_ve, dict):
+                    danh_sach_trace = list(traces_ve.values())
+                elif isinstance(traces_ve, list):
+                    danh_sach_trace = traces_ve
+                else:
+                    danh_sach_trace = []
+                for trace in danh_sach_trace:
+                    for do_dac in getattr(trace, "jig_measurements", []) or []:
+                        cac_hang_ve.append({
+                            "jig_id": getattr(do_dac, "jig_id", ""),
+                            "unit_serial": getattr(do_dac, "unit_serial", ""),
+                            "metric_name": getattr(do_dac, "metric_name", ""),
+                            "value": getattr(do_dac, "value", None),
+                            "unit": getattr(do_dac, "unit", ""),
+                            "event_time": str(getattr(do_dac, "event_time", "")),
+                        })
+                render_khoi_chon_bieu_do(cac_hang_ve)
+            except Exception:
+                st.error("❌ Không mở được khối chọn biểu đồ lúc này. Vui lòng thử lại.")
+
+            # Thẻ đề xuất gửi mail cảnh báo: chỉ hiện khi đã có ảnh xem trước,
+            # dùng lại đúng ảnh đó, chỉ gửi khi người dùng bấm nút.
+            if st.session_state.get("wsc_last_chart_png"):
+                st.markdown("---")
+                st.markdown("### 4. Gửi email cảnh báo kèm biểu đồ")
                 try:
-                    cac_hang_ve: List[Dict[str, Any]] = []
-                    traces_ve = st.session_state.get("wsc_last_lsu_traces")
-                    if isinstance(traces_ve, dict):
-                        danh_sach_trace = list(traces_ve.values())
-                    elif isinstance(traces_ve, list):
-                        danh_sach_trace = traces_ve
-                    else:
-                        danh_sach_trace = []
-                    for trace in danh_sach_trace:
-                        for do_dac in getattr(trace, "jig_measurements", []) or []:
-                            cac_hang_ve.append({
-                                "jig_id": getattr(do_dac, "jig_id", ""),
-                                "metric_name": getattr(do_dac, "metric_name", ""),
-                                "value": getattr(do_dac, "value", None),
-                                "unit": getattr(do_dac, "unit", ""),
-                                "event_time": str(getattr(do_dac, "event_time", "")),
-                            })
-                    render_khoi_chon_bieu_do(cac_hang_ve)
+                    from aios_habit.workspace_chat_ui import render_de_xuat_gui_mail_canh_bao
+
+                    render_de_xuat_gui_mail_canh_bao(
+                        "lu_iris_the_1",
+                        locale=locale,
+                        config_path=Path("local_cases") / "jig_alert_config.json",
+                    )
                 except Exception:
-                    st.error("❌ Không mở được khối chọn biểu đồ lúc này. Vui lòng thử lại.")
+                    st.warning("⚠️ Chưa mở được thẻ đề xuất gửi mail lúc này. Vui lòng thử lại.")
 
     with tab2:
         st.markdown("### Tra cứu chuỗi truy vết (Lô ➔ Sản phẩm ➔ JIG)")

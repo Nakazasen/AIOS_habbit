@@ -3789,6 +3789,21 @@ else:
                         st.caption(t("deep_search_unavailable", locale=current_ui_locale))
                     if get_jig_session_type() == "truc_ban" or st.session_state.get("wsc_last_chart_png"):
                         render_jig_stream_pause_control(active_conversation.id, current_ui_locale)
+                    # Thẻ đề xuất gửi mail cảnh báo: dùng lại đúng ảnh đang xem
+                    # trước, chỉ gửi khi người dùng bấm nút và có mã duyệt.
+                    if st.session_state.get("wsc_last_chart_png"):
+                        try:
+                            from aios_habit.workspace_chat_ui import (
+                                render_de_xuat_gui_mail_canh_bao as _render_mail_card,
+                            )
+
+                            _render_mail_card(
+                                f"omnibar_{active_conversation.id}",
+                                locale=current_ui_locale,
+                                config_path=Path("local_cases") / "jig_alert_config.json",
+                            )
+                        except Exception:
+                            pass
 
                 if ask_submitted and pending_submission:
                     # A fresh submit intentionally replaces an older waiting
@@ -3821,6 +3836,18 @@ else:
                         from aios_habit.workspace_chat_store import save_message as _jig_save_message
 
                         def _jig_history(jig_id: str, metric: str) -> list:
+                            # Ưu tiên kho log đã lưu (gồm cả tệp tải lên và dòng
+                            # dán tay), rồi mới tới kho đệm luồng trực tiếp.
+                            try:
+                                from aios_habit.production_prediction.log_archive import (
+                                    lich_su_theo_jig,
+                                )
+
+                                lich_su = lich_su_theo_jig(jig_id=jig_id, metric_name=metric)
+                                if lich_su:
+                                    return lich_su
+                            except Exception:
+                                pass
                             try:
                                 buffer = StreamBuffer(Path("local_cases") / "jig_stream.sqlite")
                                 return buffer.recent_values(jig_id, metric)
@@ -3841,6 +3868,7 @@ else:
                                     for do_dac in getattr(trace, "jig_measurements", []) or []:
                                         cac_hang.append({
                                             "jig_id": getattr(do_dac, "jig_id", ""),
+                                            "unit_serial": getattr(do_dac, "unit_serial", ""),
                                             "metric_name": getattr(do_dac, "metric_name", ""),
                                             "value": getattr(do_dac, "value", None),
                                             "unit": getattr(do_dac, "unit", ""),
