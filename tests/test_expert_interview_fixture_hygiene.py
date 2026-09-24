@@ -27,6 +27,7 @@ from aios_habit.feature_flags import (
     FEATURE_EXPERT_PUBLICATION,
     is_feature_enabled,
     override_feature_flags,
+    reset_feature_flags,
 )
 
 FIXTURES_DIR = Path(__file__).resolve().parent / "fixtures" / "expert_interview"
@@ -164,14 +165,14 @@ def test_fixture_audio_validity():
     assert len(manifest["simulated_transcript"]) >= 2
 
 
-def test_feature_flags_default_fail_closed():
+def test_feature_flags_default_fail_closed(monkeypatch):
     """Verify that Goal 010 feature flag is consolidated into a single flag and disabled by default."""
+    monkeypatch.delenv("AIOS_FEATURE_EXPERT_KNOWLEDGE_ACQUISITION", raising=False)
+    reset_feature_flags()
     assert len(ALL_010_FEATURES) == 1
     assert ALL_010_FEATURES[0] == FEATURE_EXPERT_KNOWLEDGE_ACQUISITION
     for flag in ALL_010_FEATURES:
         assert is_feature_enabled(flag) is False, f"Flag {flag} must be disabled by default"
-
-    assert is_feature_enabled(FEATURE_EXPERT_KNOWLEDGE_ACQUISITION) is False
     assert is_feature_enabled(FEATURE_EXPERT_COVERAGE) is False
     assert is_feature_enabled(FEATURE_EXPERT_INTERVIEW) is False
     assert is_feature_enabled(FEATURE_EXPERT_AUDIO) is False
@@ -179,8 +180,10 @@ def test_feature_flags_default_fail_closed():
     assert is_feature_enabled(FEATURE_EXPERT_MULTI_USER) is False
 
 
-def test_feature_flags_override_context_manager():
+def test_feature_flags_override_context_manager(monkeypatch):
     """Verify that single consolidated feature flag can be temporarily overridden for testing."""
+    monkeypatch.delenv("AIOS_FEATURE_EXPERT_KNOWLEDGE_ACQUISITION", raising=False)
+    reset_feature_flags()
     assert is_feature_enabled(FEATURE_EXPERT_KNOWLEDGE_ACQUISITION) is False
     with override_feature_flags(expert_knowledge_acquisition=True):
         assert is_feature_enabled(FEATURE_EXPERT_KNOWLEDGE_ACQUISITION) is True

@@ -34,7 +34,11 @@ def _token_set(text: str) -> set[str]:
 
 
 def dedup_diverse_results(results: Sequence[SearchResult]) -> Tuple[SearchResult, ...]:
-    """Drop near-duplicate passages, keeping the higher-ranked copy."""
+    """Drop near-duplicate passages, keeping the higher-ranked copy.
+
+    Copies with different privacy labels are not the same evidence: collapsing
+    them would let a cloud-safe twin hide a local-only twin.
+    """
     kept: List[SearchResult] = []
     kept_tokens: List[set[str]] = []
     for result in results:
@@ -42,11 +46,14 @@ def dedup_diverse_results(results: Sequence[SearchResult]) -> Tuple[SearchResult
         if not tokens:
             continue
         duplicate = False
-        for other in kept_tokens:
-            union = tokens | other
+        for other_tokens, kept_result in zip(kept_tokens, kept):
+            union = tokens | other_tokens
             if not union:
                 continue
-            if len(tokens & other) / len(union) >= 0.9:
+            if (
+                len(tokens & other_tokens) / len(union) >= 0.9
+                and result.privacy_labels == kept_result.privacy_labels
+            ):
                 duplicate = True
                 break
         if duplicate:

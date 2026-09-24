@@ -39,6 +39,8 @@ def _make_result(
     metadata=None,
 ):
     fixture_metadata = dict(metadata or {})
+    if text == "sample evidence text":
+        text = f"{text} [{chunk_id}]"
     if matched_terms is None:
         fixture_metadata["fixture_auto_query_support"] = True
         matched_terms = ()
@@ -188,6 +190,32 @@ def test_privacy_summary_local_only_wins():
     ])
     pack = build_evidence_pack("test query", response)
 
+    assert pack.privacy_summary.local_only is True
+    assert pack.privacy_summary.cloud_allowed is False
+    assert pack.privacy_summary.overall_label == "local_only"
+
+def test_identical_passages_with_different_privacy_are_not_collapsed():
+    response = _make_response([
+        _make_result(
+            "c1",
+            "d1",
+            10.0,
+            text="same passage about the limit",
+            privacy_labels=("cloud_safe",),
+            matched_terms=("test", "query"),
+        ),
+        _make_result(
+            "c2",
+            "d2",
+            5.0,
+            text="same passage about the limit",
+            privacy_labels=("local_only",),
+            matched_terms=("test", "query"),
+        ),
+    ])
+    pack = build_evidence_pack("test query", response)
+
+    assert pack.item_count == 2
     assert pack.privacy_summary.local_only is True
     assert pack.privacy_summary.cloud_allowed is False
     assert pack.privacy_summary.overall_label == "local_only"

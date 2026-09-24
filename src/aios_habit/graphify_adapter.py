@@ -20,6 +20,49 @@ from typing import Any, Dict, List, Optional, Sequence, Union
 
 LOGGER = logging.getLogger(__name__)
 
+def _bind_installed_graphify():
+    """Return the installed graphify package, not a namespace shadow.
+
+    A leftover ``site-packages/graphify`` directory with no ``__init__.py``
+    wins the import and hides the editable distribution that actually exports
+    ``build_from_json``.
+    """
+    import importlib.util
+    import sys
+
+    existing = sys.modules.get("graphify")
+    if existing is not None and getattr(existing, "__file__", None):
+        return existing
+
+    spec = None
+    for finder in list(sys.meta_path):
+        find_spec = getattr(finder, "find_spec", None)
+        if find_spec is None:
+            continue
+        try:
+            candidate = find_spec("graphify")
+        except Exception:
+            continue
+        origin = getattr(candidate, "origin", None) if candidate else None
+        if origin and str(origin).endswith("__init__.py"):
+            spec = candidate
+            break
+    if spec is None or spec.loader is None:
+        import graphify
+        return graphify
+
+    module = importlib.util.module_from_spec(spec)
+    sys.modules["graphify"] = module
+    spec.loader.exec_module(module)
+    real_root = str(Path(spec.origin).resolve().parent)
+    for name in list(sys.modules):
+        if not name.startswith("graphify."):
+            continue
+        loaded_file = getattr(sys.modules[name], "__file__", None)
+        if not loaded_file or not str(Path(loaded_file).resolve()).startswith(real_root):
+            del sys.modules[name]
+    return module
+
 
 @dataclass
 class GraphifyCapabilities:
@@ -53,11 +96,11 @@ class GraphifyAdapter:
         self._graph: Any = None
 
     def is_available(self) -> bool:
-        """Check if graphify package is importable in current Python environment."""
+        """Check if the installed graphify package is importable."""
         try:
-            import graphify  # noqa: F401
-            return True
-        except ImportError:
+            module = _bind_installed_graphify()
+            return bool(getattr(module, "__file__", None))
+        except Exception:
             return False
 
     def get_capabilities(self) -> GraphifyCapabilities:
@@ -115,6 +158,7 @@ class GraphifyAdapter:
             NetworkX Graph object.
         """
         self._require_available()
+        _bind_installed_graphify()
         import graphify
 
         target = Path(graph_path).resolve() if graph_path else (self.workspace_dir / "graphify-out" / "graph.json").resolve()
@@ -144,6 +188,7 @@ class GraphifyAdapter:
             NetworkX Graph object.
         """
         self._require_available()
+        _bind_installed_graphify()
         import graphify
 
         if isinstance(json_path_or_dict, (str, Path)):
@@ -177,6 +222,7 @@ class GraphifyAdapter:
             Dict containing 'nodes', 'edges', and metadata.
         """
         self._require_available()
+        _bind_installed_graphify()
         from graphify.extract import extract as _extract
 
         path_list = [Path(f).resolve() for f in files]

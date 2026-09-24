@@ -151,3 +151,11 @@ Bổ sung theo yêu cầu người dùng: *"dù log nào đưa vào cũng vẽ �
 - **Kiểm toán độc lập đã chạy và tìm ra 4 lỗi thật, đã sửa hết**: lượt đầu kiểm toán viên độc lập (vai khác, phiên riêng) kết luận `SC-011`/`SC-012` VERIFIED nhưng **`SC-009`/`SC-010`/`SC-013` FAILED**. Bốn lỗi: (1) lời mời bị ghi thành tin nhắn nên lượt ghi sau tạo cặp hỏi đáp thứ hai; (2) đáp án cục bộ đội header AI (`AI đã trả lời`, `Tên mô hình chưa được xác minh`) thay vì nhãn `chưa qua mô hình`; (3) lỗi lưu dấu vết để lại tin nhắn người dùng mồ côi; (4) dấu vết `insufficient_evidence` vẫn được lưu như thành công. Đã sửa cả bốn, kèm **6 kiểm thử chống tái phát**. Chi tiết và bằng chứng: `specs/antigravity-truthful-bridge/tasks.md` T056.
 - **Còn lại**: chưa có lượt kiểm toán độc lập thứ hai xác nhận các sửa đổi trên chính thức đóng `SC-009..SC-013`; trạng thái ghi `M6_AUDITED_AND_FIXED`, không tuyên bố `VERIFIED` cho US7.
 - **Chưa chạy toàn bộ `pytest -q`** trong lượt này.
+
+## Bổ sung ngày 2026-09-24 (tiếp) — đóng 8 lỗi suite còn lại
+
+- Đã fast-forward `gate1-local-case-sqlite` lên `6c49f89`. Spec 016 đã ở trên remote, không còn việc triển khai mở. Mail thật vẫn dừng: chưa có máy chủ SMTP nội bộ.
+- Tám lỗi `tests/test_rag_v2_evidence.py` do đoạn fixture trùng chữ bị gộp. Fixture mặc định nay gắn `chunk_id` để các kiểm thử đếm trích dẫn, quyền riêng tư và facet đo đúng hợp đồng. Gộp đoạn gần trùng **không** nuốt bản có nhãn quyền riêng tư khác, để bản `cloud_safe` không che bản `local_only`.
+- Sáu lỗi graphify do thư mục rỗng `site-packages/graphify` (không có `__init__.py`) che bản cài editable. Adapter nay gắn đúng gói có `__init__.py`. Không xóa `.venv` (máy từ chối quyền).
+- Hai lỗi cờ Goal 010 do `.env` cục bộ bật `AIOS_FEATURE_EXPERT_KNOWLEDGE_ACQUISITION=1` và tiến trình kiểm thử đầy đủ nhìn thấy biến đó. Kiểm thử mặc định tắt nay xóa biến đó trước khi đo. Không sửa `.env`.
+- **Đã chạy**: `pytest -q -m "not desktop_packaging"` **3085 passed, 2 skipped, 29 deselected, 0 failed** (141,86 s).
