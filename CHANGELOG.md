@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased - 2026-09-25 - Faster Workspace Chat first launch
+
+### Changed
+
+- Workspace Chat launchers no longer import `torch` / `FlagEmbedding` before
+  Streamlit. That import loaded native libraries, then exited, so the first
+  launch after a cold cache sat on the console before the app opened. Package
+  presence is now a spec check. The Antigravity sidecar starts in the
+  background instead of blocking the launcher for its health timeout.
+
 ## Unreleased - 2026-08-16 - Persistence hardening and status synchronization
 
 ### Changed
