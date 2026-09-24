@@ -1080,6 +1080,42 @@ def test_bieu_do_so_sanh_mau_thieu_nguong_van_duoc_danh_dau_mo_phong():
     assert mail["tieu_de"].startswith("[MÔ PHỎNG]")
 
 
+def test_bieu_do_so_sanh_mau_danh_dau_mo_phong_khong_le_thu_tu_chuoi():
+    """Lỗ hổng thật: băng MÔ PHỎNG chỉ xét chuỗi đầu, nên đổi thứ tự là mất dấu.
+
+    Ảnh, câu trả lời chat và tiền tố email phải cùng một kết luận: biểu đồ so
+    sánh là mô phỏng nếu **còn** chuỗi thiếu giới hạn, bất kể thứ tự chuỗi.
+    """
+    from aios_habit.production_prediction.chart_selection import dung_du_lieu_bieu_do
+    from aios_habit.production_prediction.metric_limits import KhoNguong, NguongChiSo
+    from aios_habit.production_prediction.spc_chart import render_chart_svg
+
+    def hang(chi_so: str):
+        return [
+            {"jig_id": "J", "unit_serial": "U", "metric_name": chi_so,
+             "value": 10 + i, "unit": "", "event_time": f"2026-08-0{i % 9 + 1}"}
+            for i in range(3)
+        ]
+
+    kho = KhoNguong()
+    kho.dat(NguongChiSo(jig_id="J", chi_so="BOW", gioi_han_duoi=0, gioi_han_tren=25))
+    co_nguong = dung_du_lieu_bieu_do("J", "BOW", hang("BOW"), kho_nguong=kho)
+    khong_nguong = dung_du_lieu_bieu_do("J", "SKEW:BLACK", hang("SKEW:BLACK"))
+    assert co_nguong.mo_phong is False and khong_nguong.mo_phong is True
+
+    # Đổi thứ tự chuỗi không được đổi kết luận.
+    assert "MÔ PHỎNG" in render_chart_svg([co_nguong, khong_nguong], "so_sanh_mau")
+    assert "MÔ PHỎNG" in render_chart_svg([khong_nguong, co_nguong], "so_sanh_mau")
+    # Cả hai chuỗi đều có giới hạn thì không đánh dấu.
+    kho.dat(NguongChiSo(jig_id="J", chi_so="SKEW", gioi_han_duoi=0, gioi_han_tren=99))
+    day_du = [
+        dung_du_lieu_bieu_do("J", "BOW", hang("BOW"), kho_nguong=kho),
+        dung_du_lieu_bieu_do("J", "SKEW:BLACK", hang("SKEW:BLACK"), kho_nguong=kho),
+    ]
+    assert all(c.mo_phong is False for c in day_du)
+    assert "MÔ PHỎNG" not in render_chart_svg(day_du, "so_sanh_mau")
+
+
 def test_email_mo_phong_duoc_ghi_ro_trong_chu():
     """Người nhận email đọc phần chữ phải biết ảnh là mô phỏng, không chỉ dựa vào ảnh."""
     from aios_habit.production_prediction.metric_limits import KhoNguong

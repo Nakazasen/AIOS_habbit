@@ -93,9 +93,18 @@ def _bounds(chart: SpcChartInput) -> tuple[float, float]:
     return (low - padding, high + padding)
 
 
-def _svg_mo_phong(chart: SpcChartInput) -> str:
+def _co_chuoi_mo_phong(cac_chart: Sequence[SpcChartInput]) -> bool:
+    """True khi **bất kỳ** chuỗi nào chưa có giới hạn thật.
+
+    Biểu đồ so sánh nhiều màu là mô phỏng nếu còn một chuỗi thiếu giới hạn; chỉ
+    xét chuỗi đầu tiên sẽ cho kết quả ngược nhau tuỳ thứ tự chuỗi.
+    """
+    return any(getattr(c, "mo_phong", False) for c in cac_chart)
+
+
+def _svg_mo_phong(chart: SpcChartInput, *, ep_buoc: bool = False) -> str:
     """Dòng chữ MÔ PHỎNG cho bản SVG khi biểu đồ chưa có giới hạn thật."""
-    if not chart.mo_phong:
+    if not (chart.mo_phong or ep_buoc):
         return ""
     return (
         '<text x="90" y="18" fill="#b71c1c" font-size="16" font-weight="bold">'
@@ -104,14 +113,15 @@ def _svg_mo_phong(chart: SpcChartInput) -> str:
     )
 
 
-def _ve_bang_mo_phong(draw, chart: SpcChartInput, width: int, margin_left: int, plot_w: int, scale: int) -> None:
+def _ve_bang_mo_phong(draw, chart: SpcChartInput, width: int, margin_left: int, plot_w: int,
+                      scale: int, *, ep_buoc: bool = False) -> None:
     """Vẽ băng cảnh báo MÔ PHỎNG ngay dưới tiêu đề để không ai đọc nhầm.
 
     Băng này là bắt buộc khi biểu đồ chưa có giới hạn thật: nếu chỉ ghi trong
     chú thích chat thì người nhận ảnh (hoặc email) vẫn có thể tưởng nhầm đường
     tham khảo là giới hạn kỹ thuật.
     """
-    if not chart.mo_phong:
+    if not (chart.mo_phong or ep_buoc):
         return
     y = 46 * scale
     cao = 26 * scale
@@ -455,7 +465,8 @@ def render_so_sanh_png(charts: Sequence[SpcChartInput], path: str | Path, scale:
         draw.text((margin_left + idx * 200 * scale + 16 * scale, hang_chu_thich - 4 * scale), nhan, fill=(33, 33, 33), font=_font(scale))
     draw.rectangle([margin_left, margin_top, margin_left + plot_w, margin_top + plot_h], outline=(66, 66, 66))
     draw.text((margin_left, 18 * scale), f"So sánh theo màu — {goc.jig_id}", fill=(33, 33, 33), font=_font(scale, lon=True))
-    _ve_bang_mo_phong(draw, goc, width, margin_left, plot_w, scale)
+    _ve_bang_mo_phong(draw, goc, width, margin_left, plot_w, scale,
+                      ep_buoc=_co_chuoi_mo_phong(danh_sach))
     stamp_top = margin_top + plot_h + 10 * scale
     draw.rectangle([margin_left, stamp_top, margin_left + plot_w, stamp_top + 28 * scale], outline=(66, 66, 66))
     draw.text((margin_left + 8 * scale, stamp_top + 8 * scale), _tem_chung(goc), fill=(33, 33, 33), font=_font(scale))
@@ -490,7 +501,7 @@ def render_so_sanh_svg(charts: Sequence[SpcChartInput]) -> str:
         f'<rect x="0" y="0" width="{width}" height="{height}" fill="white" />'
         + "".join(duong) +
         f'<text x="90" y="30">So sánh theo màu — {escape(goc.jig_id)}</text>'
-        + _svg_mo_phong(goc)
+        + _svg_mo_phong(goc, ep_buoc=_co_chuoi_mo_phong(danh_sach))
         + f'<text x="90" y="520">{escape(_tem_chung(goc))}</text>'
         f"</svg>"
     )

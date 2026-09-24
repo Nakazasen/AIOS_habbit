@@ -248,14 +248,13 @@ def _quyet_dinh_ve_bieu_do(
     ten_loai = TEN_LOAI_BIEU_DO.get(lenh.loai_bieu_do, lenh.loai_bieu_do)
     bang_so = _bang_so_van_ban(du_lieu)
     # Biểu đồ thiếu giới hạn thật: nói rõ thiếu gì, nhập gì, và rằng ảnh là mô phỏng.
+    # Biểu đồ so sánh nhiều màu là mô phỏng nếu **bất kỳ** chuỗi nào thiếu giới hạn.
     ghi_chu_thieu_nguong = ""
     try:
         from aios_habit.production_prediction.chart_selection import huong_dan_thieu_nguong
 
-        mau_dau = du_lieu
-        if isinstance(du_lieu, (list, tuple)):
-            mau_dau = du_lieu[0] if du_lieu else None
-        if mau_dau is not None and getattr(mau_dau, "mo_phong", False):
+        cac_chuoi = list(du_lieu) if isinstance(du_lieu, (list, tuple)) else [du_lieu]
+        if any(getattr(c, "mo_phong", False) for c in cac_chuoi):
             ghi_chu_thieu_nguong = "\n\n⚠️ " + huong_dan_thieu_nguong(lenh.ten_chi_so)
     except Exception:
         ghi_chu_thieu_nguong = ""
