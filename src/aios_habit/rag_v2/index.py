@@ -6,10 +6,13 @@ from dataclasses import dataclass, field, replace
 from datetime import datetime, timezone
 import hashlib
 import json
+import logging
 import math
+import os
 import re
 import sqlite3
 import struct
+import threading
 from pathlib import Path
 from time import perf_counter
 from typing import Any, Dict, Iterable, List, Mapping, Optional, Sequence, Tuple
@@ -93,6 +96,60 @@ def _unpack_vector(payload: bytes, dimension: int) -> tuple[float, ...]:
         )
     return tuple(float(value) for value in struct.unpack(f"<{dimension}f", payload))
 
+
+LOGGER = logging.getLogger(__name__)
+NUMPY_DENSE_FLAG = "AIOS_RAG_V2_NUMPY_DENSE"
+NUMPY_DENSE_MAX_BYTES_FLAG = "AIOS_RAG_V2_NUMPY_DENSE_MAX_BYTES"
+DEFAULT_NUMPY_DENSE_MAX_BYTES = 2 * 1024 * 1024 * 1024
+# Float32 matmul on this machine disagreed with the Python cosine by at most
+# ~1e-7 on real 1024-d vectors. The band keeps a near-cutoff chunk in the
+# exact-rescore pool so published top-k order stays identical.
+_NUMPY_SCORE_TIE_BAND = 1e-5
+
+
+def numpy_dense_search_enabled() -> bool:
+    """Return whether the in-process numpy dense scan is explicitly enabled."""
+    return os.environ.get(NUMPY_DENSE_FLAG, "").strip().lower() in {"1", "true", "yes", "on"}
+
+
+def numpy_dense_max_bytes() -> int:
+    """Return the float32 matrix budget. Over budget falls back to the Python scan."""
+    raw = os.environ.get(NUMPY_DENSE_MAX_BYTES_FLAG, "").strip()
+    if not raw:
+        return DEFAULT_NUMPY_DENSE_MAX_BYTES
+    try:
+        return max(0, int(raw))
+    except ValueError:
+        LOGGER.warning("Ignoring invalid %s=%r", NUMPY_DENSE_MAX_BYTES_FLAG, raw)
+        return DEFAULT_NUMPY_DENSE_MAX_BYTES
+
+
+@dataclass(frozen=True)
+class _DenseMatrixCache:
+    token: tuple[int, int]
+    fingerprint: str
+    dimension: int
+    matrix: Any
+    chunk_ids: tuple[str, ...]
+    document_ids: tuple[str, ...]
+    source_paths: tuple[str, ...]
+    source_fingerprints: tuple[str | None, ...]
+    privacy_labels: tuple[tuple[str, ...], ...]
+
+
+def _numpy_candidate_pool(scores: Any, candidate_limit: int) -> Any:
+    """Return local indices that can affect the exact top-k, including score ties."""
+    import numpy as np
+
+    count = int(scores.shape[0])
+    if count == 0 or candidate_limit <= 0:
+        return np.empty(0, dtype=np.int64)
+    limit = min(int(candidate_limit), count)
+    if limit == count:
+        return np.arange(count, dtype=np.int64)
+    partitioned = np.argpartition(scores, -limit)[-limit:]
+    cutoff = float(scores[partitioned].min())
+    return np.flatnonzero(scores >= cutoff - _NUMPY_SCORE_TIE_BAND)
 
 def _pack_multivector(vectors: Sequence[Sequence[float]], descriptor: MultiVectorDescriptor) -> bytes:
     matrix = normalize_multivector(
@@ -758,6 +815,8 @@ class LocalChunkIndex:
             self._multivector_backend = selected_multivector
         else:
             self._multivector_backend = None
+        self._dense_matrix_cache: _DenseMatrixCache | None = None
+        self._dense_matrix_lock = threading.Lock()
         if self._read_only:
             self._fts5_available = bool(enable_fts5 and self._conn.execute(
                 "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'chunks_fts'"
@@ -1784,6 +1843,305 @@ class LocalChunkIndex:
             "multivector_complete": multivector_complete,
         }
 
+    def _dense_cache_token(self) -> tuple[int, int]:
+        row = self._conn.execute("PRAGMA data_version").fetchone()
+        return (int(row[0]), int(self._conn.total_changes))
+
+
+    def _load_dense_matrix_cache(self, fingerprint: str, dimension: int) -> _DenseMatrixCache | None:
+        """Load normalized float32 vectors once. None means use the Python scan."""
+        try:
+            import numpy as np
+        except ImportError:
+            LOGGER.warning("rag_v2 numpy dense unavailable: numpy is not installed")
+            return None
+        rows = self._conn.execute(
+            """
+            SELECT c.chunk_id, c.document_id, c.source_path, c.source_fingerprint,
+                   c.privacy_labels_json, e.dimension AS embedding_dimension, e.vector_blob
+            FROM chunks AS c
+            JOIN chunk_embeddings AS e ON e.chunk_id = c.chunk_id
+            WHERE c.retrievable = 1
+              AND e.model_fingerprint = ? AND e.dtype = 'float32-le' AND e.normalized = 1
+            """,
+            (fingerprint,),
+        ).fetchall()
+        kept = [row for row in rows if int(row["embedding_dimension"]) == dimension]
+        count = len(kept)
+        matrix_bytes = count * dimension * 4
+        if matrix_bytes > numpy_dense_max_bytes():
+            LOGGER.info(
+                "rag_v2 numpy dense cache skipped: bytes=%s limit=%s chunks=%s",
+                matrix_bytes,
+                numpy_dense_max_bytes(),
+                count,
+            )
+            return None
+        matrix = np.empty((count, dimension), dtype=np.float32)
+        chunk_ids: list[str] = []
+        document_ids: list[str] = []
+        source_paths: list[str] = []
+        source_fingerprints: list[str | None] = []
+        privacy_labels: list[tuple[str, ...]] = []
+        expected_size = dimension * 4
+        for index, row in enumerate(kept):
+            payload = bytes(row["vector_blob"])
+            if len(payload) != expected_size:
+                raise SemanticBackendError(
+                    f"embedding payload size mismatch: expected {expected_size}, received {len(payload)}"
+                )
+            matrix[index] = np.frombuffer(payload, dtype="<f4", count=dimension)
+            chunk_ids.append(str(row["chunk_id"]))
+            document_ids.append(str(row["document_id"]))
+            source_paths.append(str(row["source_path"]))
+            source_fingerprints.append(row["source_fingerprint"])
+            privacy_labels.append(tuple(json.loads(row["privacy_labels_json"] or "[]")))
+        return _DenseMatrixCache(
+            token=self._dense_cache_token(),
+            fingerprint=fingerprint,
+            dimension=dimension,
+            matrix=matrix,
+            chunk_ids=tuple(chunk_ids),
+            document_ids=tuple(document_ids),
+            source_paths=tuple(source_paths),
+            source_fingerprints=tuple(source_fingerprints),
+            privacy_labels=tuple(privacy_labels),
+        )
+
+    def _dense_matrix_cache_for(self, fingerprint: str, dimension: int) -> _DenseMatrixCache | None:
+        token = self._dense_cache_token()
+        cached = self._dense_matrix_cache
+        if (
+            cached is not None
+            and cached.fingerprint == fingerprint
+            and cached.dimension == dimension
+            and cached.token == token
+        ):
+            return cached
+        with self._dense_matrix_lock:
+            cached = self._dense_matrix_cache
+            token = self._dense_cache_token()
+            if (
+                cached is not None
+                and cached.fingerprint == fingerprint
+                and cached.dimension == dimension
+                and cached.token == token
+            ):
+                return cached
+            loaded = self._load_dense_matrix_cache(fingerprint, dimension)
+            if loaded is not None:
+                self._dense_matrix_cache = loaded
+            return loaded
+
+
+    def _numpy_rank_variant(
+        self,
+        cache: _DenseMatrixCache,
+        eligible: Sequence[int],
+        query_vector: Sequence[float],
+        candidate_limit: int,
+    ) -> list[tuple[float, int]]:
+        import numpy as np
+
+        if not eligible or candidate_limit <= 0:
+            return []
+        positions = np.asarray(eligible, dtype=np.int64)
+        approx = cache.matrix[positions] @ np.asarray(query_vector, dtype=np.float32)
+        pool = _numpy_candidate_pool(approx, candidate_limit)
+        local_indexes = pool.astype(np.int64, copy=False)
+        global_indexes = positions[local_indexes]
+        scores = cache.matrix[global_indexes].astype(np.float64, copy=False) @ np.asarray(
+            query_vector, dtype=np.float64
+        )
+        ranked = [
+            (float(scores[offset]), int(global_indexes[offset]))
+            for offset in range(int(global_indexes.shape[0]))
+        ]
+        ranked.sort(key=lambda item: (
+            -item[0],
+            cache.document_ids[item[1]],
+            cache.source_paths[item[1]],
+            cache.chunk_ids[item[1]],
+        ))
+        ranked = ranked[:candidate_limit]
+        # Float64 dots match the Python cosine to ~1e-15. Exact-rescore only
+        # neighbours close enough that rounding could swap their order.
+        for offset, (similarity, global_index) in enumerate(ranked):
+            previous = ranked[offset - 1][0] if offset else None
+            nxt = ranked[offset + 1][0] if offset + 1 < len(ranked) else None
+            near_previous = previous is not None and abs(previous - similarity) <= _NUMPY_SCORE_TIE_BAND
+            near_next = nxt is not None and abs(nxt - similarity) <= _NUMPY_SCORE_TIE_BAND
+            if not near_previous and not near_next:
+                continue
+            vector = tuple(float(value) for value in cache.matrix[global_index])
+            ranked[offset] = (cosine_similarity(query_vector, vector), global_index)
+        ranked.sort(key=lambda item: (
+            -item[0],
+            cache.document_ids[item[1]],
+            cache.source_paths[item[1]],
+            cache.chunk_ids[item[1]],
+        ))
+        return ranked[:candidate_limit]
+
+
+    def _dense_candidates_numpy(
+        self,
+        query: str | RetrievalQueryPlan,
+        *,
+        limit: int,
+        options: SearchOptions,
+        ensure_embeddings: bool,
+    ) -> List[SearchResult] | None:
+        """Score cached float32 rows with a matrix product, then exact-rescore top-k."""
+        backend = self._embedding_backend
+        if backend is None:
+            raise SemanticBackendError("embedding backend is not configured")
+        backend.capability.require()
+        if limit <= 0:
+            return []
+        plan = coerce_query_plan(query)
+        started = perf_counter()
+        if ensure_embeddings and not self._read_only:
+            self.ensure_embeddings()
+        descriptor = backend.descriptor
+        load_started = perf_counter()
+        cache = self._dense_matrix_cache_for(descriptor.fingerprint, descriptor.dimension)
+        load_ms = (perf_counter() - load_started) * 1000.0
+        if cache is None:
+            return None
+        eligible: list[int] = []
+        for index, privacy_labels in enumerate(cache.privacy_labels):
+            row = {
+                "document_id": cache.document_ids[index],
+                "source_path": cache.source_paths[index],
+                "source_fingerprint": cache.source_fingerprints[index],
+            }
+            if not self._is_selected(row, options):
+                continue
+            if not self._privacy_is_allowed(privacy_labels, options):
+                continue
+            if self._is_stale(row, options):
+                continue
+            eligible.append(index)
+        fused: dict[str, dict[str, Any]] = {}
+        embed_ms = 0.0
+        score_ms = 0.0
+        query_vectors: list[tuple[float, ...]] = []
+        for variant_offset, variant in enumerate(plan.variants):
+            embed_started = perf_counter()
+            query_vector = normalize_vector(
+                backend.embed_query(variant.text),
+                dimension=descriptor.dimension,
+            )
+            query_vectors.append(query_vector)
+            embed_ms += (perf_counter() - embed_started) * 1000.0
+            score_started = perf_counter()
+            ranked = self._numpy_rank_variant(
+                cache,
+                eligible,
+                query_vector,
+                options.candidate_limit,
+            )
+            score_ms += (perf_counter() - score_started) * 1000.0
+            variant_weight = 1.25 if variant.origin == "original" else 1.0
+            for rank, (similarity, global_index) in enumerate(ranked, 1):
+                key = cache.chunk_ids[global_index]
+                record = fused.setdefault(key, {
+                    "rrf_score": 0.0,
+                    "best_similarity": similarity,
+                    "chunk_id": key,
+                    "document_id": cache.document_ids[global_index],
+                    "source_path": cache.source_paths[global_index],
+                    "privacy_labels": cache.privacy_labels[global_index],
+                    "variants": [],
+                    "variant_ids": [],
+                    "facet_ids": [],
+                    "variant_offsets": [],
+                })
+                record["rrf_score"] += variant_weight / (60.0 + rank)
+                record["variants"].append(variant.text)
+                record["variant_ids"].append(variant.variant_id)
+                record["facet_ids"].append(variant.facet_id)
+                record["variant_offsets"].append(variant_offset)
+                if similarity > record["best_similarity"]:
+                    record["best_similarity"] = similarity
+                    record["privacy_labels"] = cache.privacy_labels[global_index]
+        fuse_started = perf_counter()
+        ordered = sorted(fused.values(), key=lambda item: (
+            -item["rrf_score"],
+            -item["best_similarity"],
+            item["document_id"],
+            item["source_path"],
+            item["chunk_id"],
+        ))[:limit]
+        index_by_chunk = {chunk_id: index for index, chunk_id in enumerate(cache.chunk_ids)}
+        for record in ordered:
+            vector = tuple(float(value) for value in cache.matrix[index_by_chunk[record["chunk_id"]]])
+            record["best_similarity"] = max(
+                cosine_similarity(query_vectors[offset], vector)
+                for offset in record["variant_offsets"]
+            )
+        ordered = sorted(ordered, key=lambda item: (
+            -item["rrf_score"],
+            -item["best_similarity"],
+            item["document_id"],
+            item["source_path"],
+            item["chunk_id"],
+        ))
+        by_id = self._chunk_rows_by_id(record["chunk_id"] for record in ordered)
+        results = []
+        for record in ordered:
+            row = by_id[record["chunk_id"]]
+            metadata = json.loads(row["metadata_json"])
+            section_text = " ".join(_text_values(metadata.get("section_path")))
+            obligations = match_text_obligations(
+                plan.intent_category,
+                (str(row["normalized_text"]), section_text),
+                required_obligations=plan.required_obligations,
+            )
+            results.append(SearchResult(
+                chunk_id=row["chunk_id"],
+                score=float(record["best_similarity"]),
+                text=row["text"],
+                document_id=row["document_id"],
+                source_path=row["source_path"],
+                source_name=row["source_name"],
+                file_type=row["file_type"],
+                metadata=metadata,
+                privacy_labels=record["privacy_labels"],
+                ranking_signals={
+                    "dense_cosine": float(record["best_similarity"]),
+                    "dense_multi_variant_rrf": float(record["rrf_score"]),
+                },
+                matched_query_variants=tuple(record["variants"]),
+                matched_query_variant_ids=tuple(dict.fromkeys(record["variant_ids"])),
+                matched_query_facets=tuple(dict.fromkeys(record["facet_ids"])),
+                matched_obligations=tuple(obligations),
+            ))
+        fuse_ms = (perf_counter() - fuse_started) * 1000.0
+        LOGGER.info(
+            "rag_v2.stage search path=numpy chunks=%s variants=%s embed_ms=%.3f load_ms=%.3f score_ms=%.3f fuse_ms=%.3f total_ms=%.3f",
+            cache.matrix.shape[0],
+            len(plan.variants),
+            embed_ms,
+            load_ms,
+            score_ms,
+            fuse_ms,
+            (perf_counter() - started) * 1000.0,
+        )
+        return results
+
+    def _chunk_rows_by_id(self, chunk_ids: Iterable[str]) -> dict[str, sqlite3.Row]:
+        ids = tuple(dict.fromkeys(chunk_ids))
+        if not ids:
+            return {}
+        placeholders = ",".join("?" for _ in ids)
+        rows = self._conn.execute(
+            f"SELECT * FROM chunks WHERE chunk_id IN ({placeholders})",
+            ids,
+        ).fetchall()
+        return {str(row["chunk_id"]): row for row in rows}
+
     def dense_candidates(
         self,
         query: str | RetrievalQueryPlan,
@@ -1793,6 +2151,16 @@ class LocalChunkIndex:
         ensure_embeddings: bool = True,
     ) -> List[SearchResult]:
         """Return filtered local cosine candidates fused only across query variants."""
+        if numpy_dense_search_enabled():
+            numpy_results = self._dense_candidates_numpy(
+                query,
+                limit=limit,
+                options=options or SearchOptions(),
+                ensure_embeddings=ensure_embeddings,
+            )
+            if numpy_results is not None:
+                return numpy_results
+        python_started = perf_counter()
         backend = self._embedding_backend
         if backend is None:
             raise SemanticBackendError("embedding backend is not configured")
@@ -1898,6 +2266,11 @@ class LocalChunkIndex:
                 matched_query_facets=tuple(dict.fromkeys(record["facet_ids"])),
                 matched_obligations=tuple(obligations),
             ))
+        LOGGER.info(
+            "rag_v2.stage search path=python dense_candidates_ms=%.3f variants=%s",
+            (perf_counter() - python_started) * 1000.0,
+            len(plan.variants),
+        )
         return results
 
     def dense_search_with_summary(
@@ -2972,6 +3345,7 @@ class LocalChunkIndex:
         return max(coverages, default=0.0)
 
     def close(self) -> None:
+        self._dense_matrix_cache = None
         self._conn.close()
 
     def _chunk_row(self, chunk: DocumentChunk) -> tuple[Any, ...]:

@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased - 2026-09-25 - Optional numpy dense scan
+
+### Changed
+
+- Dense candidate scoring can load normalized float32 embeddings once and
+  score them with a matrix product. `AIOS_RAG_V2_NUMPY_DENSE` defaults off,
+  so the Python cosine loop remains the active path. The matrix is not cached
+  when it would exceed `AIOS_RAG_V2_NUMPY_DENSE_MAX_BYTES` (default 2 GiB).
+
 ## Unreleased - 2026-09-25 - Faster Workspace Chat first launch
 
 ### Changed
