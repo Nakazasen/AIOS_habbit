@@ -41,11 +41,11 @@ from aios_habit.production_prediction.metric_limits import (
 )
 
 GOI = Path("tests/fixtures/lsu_iris/iris_log")
-LOG_THAT = GOI / "unit_test" / "2ND-0000-1_2026_07_UnitTest.csv"
+LOG_THAT = GOI / "unit_test" / "SYN_UnitTest_572cot.csv"
 LOG_TIEU_DE = GOI / "unit_test" / "header_va_mot_dong.csv"
 LOG_THIEU = GOI / "unit_test" / "thieu_serial.csv"
-TEP_SPEC = GOI / "spec" / "2026_08_Spec.csv"
-TEP_DEPTH = GOI / "depth" / "2026_07_Black_depth.csv"
+TEP_SPEC = GOI / "spec" / "SYN_Spec_gioi_han.csv"
+TEP_DEPTH = GOI / "depth" / "SYN_Black_depth.csv"
 
 
 def _dong_tieu_de(duong_dan: Path) -> str:

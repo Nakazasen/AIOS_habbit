@@ -37,9 +37,9 @@ from aios_habit.production_prediction.log_archive import (
 )
 
 GOI = Path("tests/fixtures/lsu_iris/iris_log")
-LOG_RONG = GOI / "unit_test" / "2ND-0000-1_2026_07_UnitTest.csv"
-TEP_SPEC = GOI / "spec" / "2026_08_Spec.csv"
-TEP_DEPTH = GOI / "depth" / "2026_07_Black_depth.csv"
+LOG_RONG = GOI / "unit_test" / "SYN_UnitTest_572cot.csv"
+TEP_SPEC = GOI / "spec" / "SYN_Spec_gioi_han.csv"
+TEP_DEPTH = GOI / "depth" / "SYN_Black_depth.csv"
 
 
 def _khoi_depth_dan() -> str:
