@@ -1388,3 +1388,205 @@ def render_mail_approval_screen(the_duyet: Dict[str, Any], locale: str = "vi") -
             st.session_state[f"wsc_mail_approved_{ma_duyet}"] = False
             return "huy"
     return None
+
+
+def khoa_gian_cach(chart_meta: Any = None) -> str:
+    """Khóa giãn cách theo JIG và chỉ số, dạng ma_jig|ten_chi_so."""
+    meta = chart_meta if isinstance(chart_meta, dict) else {}
+    ma_jig = str(meta.get("ma_jig") or "").strip()
+    ten_chi_so = str(meta.get("ten_chi_so") or "").strip()
+    return f"{ma_jig}|{ten_chi_so}"
+
+
+def _danh_sach_nhan(alert_config: Any) -> List[str]:
+    if isinstance(alert_config, dict):
+        raw = alert_config.get("nguoi_nhan") or []
+    else:
+        raw = getattr(alert_config, "nguoi_nhan", None) or []
+    return [str(email).strip() for email in raw if str(email).strip()]
+
+
+def _ket_luan_canh_bao(chart_meta: Dict[str, Any]) -> str:
+    for khoa in ("ket_luan", "trang_thai", "verdict", "phan_quyet"):
+        gia_tri = str(chart_meta.get(khoa) or "").strip()
+        if gia_tri:
+            return gia_tri
+    return "Cần kiểm tra"
+
+
+def _gian_cach_phut(alert_config: Any) -> int:
+    if isinstance(alert_config, dict):
+        raw = alert_config.get("gian_cach_phut", 30)
+    else:
+        raw = getattr(alert_config, "gian_cach_phut", 30)
+    try:
+        return int(raw)
+    except (TypeError, ValueError):
+        return 30
+
+
+def _co_byte_anh(anh: Any) -> bool:
+    return isinstance(anh, (bytes, bytearray, memoryview)) and len(anh) > 0
+
+
+def build_de_xuat_mail_data(
+    alert_config: Any,
+    chart_meta: Any,
+    anh_xem_truoc: Optional[bytes] = None,
+) -> Dict[str, Any]:
+    """Dựng thẻ đề xuất email từ cấu hình và metadata biểu đồ, không đụng Streamlit."""
+    from aios_habit.production_prediction.alert_mailer import build_proposal_card, tao_ma_duyet
+
+    meta = chart_meta if isinstance(chart_meta, dict) else {}
+    ma_jig = str(meta.get("ma_jig") or "").strip() or "không rõ"
+    ten_chi_so = str(meta.get("ten_chi_so") or "").strip() or "không rõ"
+    ket_luan = _ket_luan_canh_bao(meta)
+    tieu_de = f"Cảnh báo xu hướng JIG {ma_jig}"
+    tom_tat = (
+        f"JIG {ma_jig} — chỉ số {ten_chi_so} vừa kích hoạt kết luận {ket_luan}. "
+        "Đề xuất gửi email cảnh báo kèm biểu đồ đang xem."
+    )
+    # Biểu đồ chưa có giới hạn thật: người nhận email phải đọc được điều đó ngay
+    # trong phần chữ, không chỉ dựa vào băng cảnh báo trên ảnh.
+    if meta.get("mo_phong"):
+        tieu_de = f"[MÔ PHỎNG] {tieu_de}"
+        tom_tat += (
+            " LƯU Ý: chỉ số này chưa có giới hạn trên/dưới thật, nên biểu đồ là MÔ PHỎNG "
+            "và đường giới hạn trên hình chỉ là dải tham khảo (trung bình ± 3 độ lệch chuẩn)."
+        )
+    the = build_proposal_card(tieu_de, tom_tat, _danh_sach_nhan(alert_config), tao_ma_duyet())
+    anh = anh_xem_truoc if anh_xem_truoc is not None else meta.get("anh_xem_truoc")
+    return {
+        "loai_the": the["loai_the"],
+        "tieu_de": the["tieu_de"],
+        "tom_tat": the["tom_tat"],
+        "nguoi_nhan": list(the["nguoi_nhan"]),
+        "ma_duyet": the["ma_duyet"],
+        "co_anh": _co_byte_anh(anh),
+        "ten_anh": str(meta.get("ten_anh") or "bieu_do_xu_huong.png"),
+    }
+
+
+def render_de_xuat_gui_mail_canh_bao(state_key: str, locale: str = "vi", config_path=None) -> None:
+    """Thẻ duyệt gửi mail: xem lại ảnh đang có, không vẽ lại, chỉ gửi khi người dùng bấm.
+
+    config_path là tệp cấu hình cảnh báo (người nhận, giãn cách). Máy chủ SMTP đọc từ
+    local_cases/smtp_config.json. Sau khi hủy hoặc gửi xong, thẻ ẩn cho đến khi
+    JIG|chỉ số đổi. Khóa phiên: wsc_mail_an_{state_key}, wsc_alert_cooldown_tracker,
+    wsc_mail_approved_{ma_duyet}.
+    """
+    from aios_habit.production_prediction.alert_mailer import (
+        AlertCooldownTracker,
+        AlertMailProposal,
+        build_alert_email,
+        can_send_with_approval,
+    )
+    from aios_habit.production_prediction.jig_chat_wire import load_alert_config
+    from aios_habit.production_prediction.smtp_config import (
+        doc_smtp_config,
+        gui_voi_cau_hinh,
+        thong_bao_loi_gui,
+    )
+
+    anh_png = st.session_state.get("wsc_last_chart_png")
+    chart_meta = st.session_state.get("wsc_last_chart_meta") or {}
+    if not isinstance(chart_meta, dict):
+        chart_meta = {}
+    khoa = khoa_gian_cach(chart_meta)
+    khoa_an = f"wsc_mail_an_{state_key}"
+    da_an = st.session_state.get(khoa_an)
+    if isinstance(da_an, dict) and da_an.get("khoa") == khoa:
+        if da_an.get("ly_do") == "da_gui":
+            st.success(t("mail_alert_sent", locale=locale))
+        else:
+            st.info(t("mail_alert_cancelled", locale=locale))
+        return
+
+    duong_cau_hinh = config_path if config_path is not None else Path("local_cases") / "jig_alert_config.json"
+    cau_hinh = load_alert_config(duong_cau_hinh)
+    khoa_the = f"wsc_de_xuat_mail_{state_key}"
+    ban_ghi = st.session_state.get(khoa_the)
+    if not isinstance(ban_ghi, dict) or ban_ghi.get("_khoa") != khoa:
+        ban_ghi = dict(
+            build_de_xuat_mail_data(
+                cau_hinh,
+                chart_meta,
+                anh_xem_truoc=anh_png if _co_byte_anh(anh_png) else None,
+            )
+        )
+        ban_ghi["_khoa"] = khoa
+        st.session_state[khoa_the] = ban_ghi
+    else:
+        ban_ghi["co_anh"] = _co_byte_anh(anh_png)
+        ban_ghi["nguoi_nhan"] = _danh_sach_nhan(cau_hinh)
+
+    st.subheader(str(ban_ghi.get("tieu_de") or ""))
+    st.write(str(ban_ghi.get("tom_tat") or ""))
+    if _co_byte_anh(anh_png):
+        try:
+            st.image(anh_png, caption=t("mail_alert_preview_caption", locale=locale))
+        except Exception:
+            st.caption(t("mail_alert_no_image", locale=locale))
+    else:
+        st.caption(t("mail_alert_no_image", locale=locale))
+    nguoi_nhan = list(ban_ghi.get("nguoi_nhan") or [])
+    if nguoi_nhan:
+        st.caption(t("mail_approval_recipients", locale=locale, ds=", ".join(nguoi_nhan)))
+    else:
+        st.caption(t("mail_alert_no_recipients", locale=locale))
+    st.caption(t("mail_alert_code", locale=locale, ma=str(ban_ghi.get("ma_duyet") or "")))
+    st.caption(t("mail_alert_hint", locale=locale))
+
+    cot_gui, cot_huy = st.columns(2)
+    with cot_gui:
+        bam_gui = st.button(t("mail_alert_send", locale=locale), key=f"wsc_mail_canh_bao_{state_key}_gui")
+    with cot_huy:
+        bam_huy = st.button(t("mail_alert_cancel", locale=locale), key=f"wsc_mail_canh_bao_{state_key}_huy")
+    if bam_huy:
+        st.session_state[f"wsc_mail_approved_{ban_ghi.get('ma_duyet')}"] = False
+        st.session_state.pop(khoa_the, None)
+        st.session_state[khoa_an] = {"khoa": khoa, "ly_do": "huy"}
+        st.info(t("mail_alert_cancelled", locale=locale))
+        return
+    if not bam_gui:
+        return
+
+    proposal = AlertMailProposal(
+        tieu_de=str(ban_ghi.get("tieu_de") or ""),
+        tom_tat=str(ban_ghi.get("tom_tat") or ""),
+        nguoi_nhan=nguoi_nhan,
+        ten_anh=str(ban_ghi.get("ten_anh") or "bieu_do_xu_huong.png"),
+        ma_duyet=str(ban_ghi.get("ma_duyet") or ""),
+    )
+    da_duyet = True
+    st.session_state[f"wsc_mail_approved_{proposal.ma_duyet}"] = True
+    if not can_send_with_approval(proposal, da_duyet):
+        st.warning(t("mail_alert_need_approval", locale=locale))
+        return
+
+    gian_cach_phut = _gian_cach_phut(cau_hinh)
+    giay_gian_cach = gian_cach_phut * 60
+    tracker = st.session_state.get("wsc_alert_cooldown_tracker")
+    if not isinstance(tracker, AlertCooldownTracker):
+        tracker = AlertCooldownTracker(cooldown_seconds=giay_gian_cach)
+        st.session_state["wsc_alert_cooldown_tracker"] = tracker
+    else:
+        tracker.cooldown_seconds = giay_gian_cach
+    if not tracker.duoc_phep_gui(khoa_gian_cach(chart_meta)):
+        st.warning(t("mail_alert_cooldown", locale=locale))
+        return
+
+    try:
+        anh_dinh_kem = anh_png if _co_byte_anh(anh_png) else None
+        msg = build_alert_email(proposal, anh_png_bytes=anh_dinh_kem)
+        smtp = doc_smtp_config()
+        if smtp.nguoi_gui and not msg.get("From"):
+            msg["From"] = smtp.nguoi_gui
+        gui_voi_cau_hinh(msg, smtp)
+    except Exception as exc:
+        st.error(thong_bao_loi_gui(exc))
+        return
+    tracker.danh_dau_da_gui(khoa)
+    st.session_state.pop(khoa_the, None)
+    st.session_state[khoa_an] = {"khoa": khoa, "ly_do": "da_gui"}
+    st.success(t("mail_alert_sent", locale=locale))

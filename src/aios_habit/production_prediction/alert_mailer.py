@@ -8,6 +8,7 @@ Sending always requires an explicit user-approved proposal card
 from __future__ import annotations
 
 import re
+import secrets
 import smtplib
 from dataclasses import dataclass, field
 from email.mime.image import MIMEImage
@@ -144,3 +145,8 @@ class AlertCooldownTracker:
 
     def danh_dau_da_gui(self, khoa: str, now_ts: Optional[float] = None) -> None:
         self.last_sent[khoa] = now_ts if now_ts is not None else time()
+
+
+def tao_ma_duyet() -> str:
+    """Sinh mã duyệt DUYET- kèm 8 ký tự hex in hoa."""
+    return "DUYET-" + secrets.token_hex(4).upper()
