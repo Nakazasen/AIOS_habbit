@@ -270,8 +270,14 @@ def _quyet_dinh_ve_bieu_do(
         chart_png=anh_bytes,
         chart_meta={"ma_jig": lenh.ma_jig, "ten_chi_so": lenh.ten_chi_so,
                     "loai_bieu_do": lenh.loai_bieu_do,
-                    "mo_phong": bool(getattr(du_lieu, "mo_phong", False))
-                    if not isinstance(du_lieu, (list, tuple)) else False},
+                    # Biểu đồ nhiều chuỗi (so sánh màu) cũng phải giữ cờ mô phỏng
+                    # nếu **bất kỳ** chuỗi nào chưa có giới hạn, nếu không email
+                    # sẽ mất tiền tố [MÔ PHỎNG] và người nhận hiểu nhầm.
+                    "mo_phong": (
+                        any(getattr(c, "mo_phong", False) for c in du_lieu)
+                        if isinstance(du_lieu, (list, tuple))
+                        else bool(getattr(du_lieu, "mo_phong", False))
+                    )},
     )
 
 

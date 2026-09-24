@@ -329,7 +329,9 @@ def render_khoi_chon_bieu_do(cac_hang: Any, ma_goi: str = "phien_hien_tai") -> N
             else:
                 du_lieu = dung_du_lieu_bieu_do(chon_jig, chon_chi_so, cac_hang, kho_nguong=kho_nguong)
             # Thiếu giới hạn thật → nói rõ thiếu gì và nhập gì để có.
-            if not isinstance(du_lieu, (list, tuple)) and getattr(du_lieu, "mo_phong", False):
+            # Biểu đồ nhiều chuỗi (so sánh màu) cũng phải kiểm tra từng chuỗi.
+            _cac_chuoi = list(du_lieu) if isinstance(du_lieu, (list, tuple)) else [du_lieu]
+            if any(getattr(_c, "mo_phong", False) for _c in _cac_chuoi):
                 from aios_habit.production_prediction.chart_selection import huong_dan_thieu_nguong
 
                 st.warning("⚠️ " + huong_dan_thieu_nguong(chon_chi_so))
@@ -355,7 +357,7 @@ def render_khoi_chon_bieu_do(cac_hang: Any, ma_goi: str = "phien_hien_tai") -> N
                     "ten_chi_so": chon_chi_so,
                     "loai_bieu_do": chon_loai,
                     "ma_goi": ma_goi,
-                    "mo_phong": bool(getattr(du_lieu, "mo_phong", False)),
+                    "mo_phong": any(getattr(_c, "mo_phong", False) for _c in _cac_chuoi),
                 }
                 st.image(du_lieu_anh, caption=f"{TEN_LOAI_BIEU_DO.get(chon_loai, chon_loai)} — {chon_jig}")
                 st.download_button(

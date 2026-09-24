@@ -18,6 +18,7 @@ gọi mạng.
 from __future__ import annotations
 
 import json
+import re
 from dataclasses import dataclass
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
@@ -89,9 +90,35 @@ def _ten_an_toan(duong_dan: str) -> str:
     if not duong_dan:
         return ""
     try:
-        return Path(str(duong_dan)).name
+        ten = Path(str(duong_dan)).name
     except (OSError, ValueError):
-        return str(duong_dan)
+        ten = str(duong_dan)
+    # ``Path.name`` không xử lý được dạng ``file:///…`` hoặc đường dẫn chỉ có
+    # dấu ``/``; cắt thêm một lần cho chắc.
+    return ten.rsplit("/", 1)[-1].rsplit("\\", 1)[-1].strip()
+
+
+def _chuoi_an_toan(gia_tri: Any) -> str:
+    """Chuẩn hoá một ô văn bản trước khi ghi vào kho.
+
+    Người dùng có thể dán đường dẫn tuyệt đối vào **bất kỳ** cột nào (Unit, chỉ
+    số, trạng thái…), không chỉ cột JIG. Ô nào trông như đường dẫn thì rút về tên
+    tệp, để kho không bao giờ chứa đường dẫn dữ liệu nhà máy.
+
+    Chỉ coi là đường dẫn khi có dấu hiệu rõ: dấu ``\\``, tiền tố ổ đĩa kiểu
+    ``D:\\``/``D:/``, ``://``, hoặc bắt đầu bằng ``/``. Tên chỉ số thật có chứa
+    ``:`` và đôi khi ``/`` (``takt:UnitSet/Cable[sec]``) nên không được nhận nhầm.
+    """
+    chuoi = str(gia_tri or "").strip()
+    if not chuoi:
+        return ""
+    la_duong_dan = (
+        "\\" in chuoi
+        or "://" in chuoi
+        or re.match(r"^[A-Za-z]:[\\/]", chuoi) is not None
+        or chuoi.startswith("/")
+    )
+    return _ten_an_toan(chuoi) if la_duong_dan else chuoi
 
 
 def ghi_ban_ghi(
@@ -128,12 +155,12 @@ def ghi_ban_ghi(
                 ghi_luc=moc,
                 nguon=nguon,
                 tep=_ten_an_toan(tep) or _ten_an_toan(str(getattr(ban_ghi, "jig_id", "") or "")),
-                unit_serial=str(getattr(ban_ghi, "unit_serial", "") or ""),
+                unit_serial=_chuoi_an_toan(getattr(ban_ghi, "unit_serial", "")),
                 jig_id=_ten_an_toan(str(getattr(ban_ghi, "jig_id", "") or "")),
-                metric_name=str(getattr(ban_ghi, "metric_name", "") or ""),
+                metric_name=_chuoi_an_toan(getattr(ban_ghi, "metric_name", "")),
                 value=float(gia_tri),
-                unit=str(getattr(ban_ghi, "unit", "") or ""),
-                target_label=str(getattr(ban_ghi, "target_label", "") or ""),
+                unit=_chuoi_an_toan(getattr(ban_ghi, "unit", "")),
+                target_label=_chuoi_an_toan(getattr(ban_ghi, "target_label", "")),
             )
         )
     da_ghi = _ghi_dong(cac_dong, Path(kho), luc)
@@ -277,12 +304,12 @@ def ghi_dong_log_jig(
                 ghi_luc=moc,
                 nguon="dan_tay",
                 tep=jig_id,
-                unit_serial=str(getattr(dong, "unit_serial", "") or ""),
+                unit_serial=_chuoi_an_toan(getattr(dong, "unit_serial", "")),
                 jig_id=jig_id,
-                metric_name=str(getattr(dong, "metric", "") or ""),
+                metric_name=_chuoi_an_toan(getattr(dong, "metric", "")),
                 value=float(gia_tri),
-                unit=str(getattr(dong, "unit", "") or ""),
-                target_label=str(getattr(dong, "status", "") or ""),
+                unit=_chuoi_an_toan(getattr(dong, "unit", "")),
+                target_label=_chuoi_an_toan(getattr(dong, "status", "")),
             )
         )
     da_ghi = _ghi_dong(cac_dong, Path(kho), luc)

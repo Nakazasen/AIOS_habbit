@@ -1005,7 +1005,82 @@ def test_chat_ve_bieu_do_thieu_nguong_thi_noi_ro_va_ghi_mo_phong():
     assert "Tệp giới hạn kèm theo" in ket_qua.assistant_text
 
 
-def test_mail_mo_phong_duoc_ghi_ro_trong_chu():
+def test_kho_log_khong_ghi_duong_dan_o_bat_ky_cot_nao(tmp_path):
+    """Lỗ hổng thật: đường dẫn ở cột Unit/metric/status vẫn lọt vào kho.
+
+    Chỉ làm sạch cột JIG là chưa đủ — người dùng có thể dán đường dẫn vào bất kỳ
+    ô nào của dòng log.
+    """
+    from aios_habit.production_prediction.iris_log_adapter import BanGhiIris
+    from aios_habit.production_prediction.jig_chat_wire import decide_jig_action
+    from aios_habit.production_prediction.log_archive import ghi_ban_ghi
+
+    duong_dan = r"D:\Sandbox\Iris LSU\log\secret.csv"
+    for vi_tri, dong in (
+        ("unit", f"2026-09-20T08:00:00,{duong_dan},JIG-01,bowskew,0.12,mm,OK"),
+        ("metric", f"2026-09-20T08:00:00,U1,JIG-01,{duong_dan},0.12,mm,OK"),
+        ("status", f"2026-09-20T08:00:00,U1,JIG-01,bowskew,0.12,mm,{duong_dan}"),
+    ):
+        kho = tmp_path / f"kho_{vi_tri}"
+        decide_jig_action(dong, kho_log_path=kho)
+        raw = list(kho.glob("*.jsonl"))[0].read_text(encoding="utf-8")
+        assert "Iris LSU" not in raw, f"Rò rỉ đường dẫn ở cột {vi_tri}"
+        assert "Sandbox" not in raw
+
+    # Và cả đường ghi trực tiếp với unit_serial là đường dẫn.
+    kho2 = tmp_path / "kho_truc_tiep"
+    ghi_ban_ghi(
+        [BanGhiIris(unit_serial=duong_dan, ngay="2026.07.01", gio="08:00:00",
+                    jig_id="J", metric_name="BOW", value=1.0, unit="um")],
+        nguon="tep", tep="x.csv", kho=kho2,
+    )
+    raw2 = list(kho2.glob("*.jsonl"))[0].read_text(encoding="utf-8")
+    assert "Iris LSU" not in raw2 and "Sandbox" not in raw2
+
+
+def test_ten_chi_so_that_co_hai_cham_va_gach_cheo_khong_bi_nham_la_duong_dan(tmp_path):
+    """Không được nhận nhầm tên chỉ số thật thành đường dẫn."""
+    from aios_habit.production_prediction.jig_log_ingest import parse_jig_log_line
+    from aios_habit.production_prediction.log_archive import (
+        doc_kho,
+        ghi_dong_log_jig,
+    )
+
+    kho = tmp_path / "kho"
+    dong = parse_jig_log_line("2026-09-20T08:00:00,U1,JIG-01,takt:UnitSet/Cable,4.7,sec,OK")
+    assert dong is not None
+    ghi_dong_log_jig([dong], kho=kho)
+    luu = doc_kho(kho)
+    assert luu[0].metric_name == "takt:UnitSet/Cable"
+
+
+def test_bieu_do_so_sanh_mau_thieu_nguong_van_duoc_danh_dau_mo_phong():
+    """Lỗ hổng thật: biểu đồ dạng danh sách bị ép mo_phong=False nên email mất nhãn."""
+    from aios_habit.production_prediction.jig_chat_wire import decide_jig_action
+
+    ten_chi_so = "DEPTH:BEAM:H:LD1:IMGHEIGHT:0"
+    rows = [
+        {"jig_id": "J", "unit_serial": "U", "metric_name": f"{ten_chi_so}:CAM+{k}",
+         "value": 60 + i, "unit": "", "event_time": f"2026-08-0{i % 9 + 1}"}
+        for k in range(4)
+        for i in range(3)
+    ]
+    ket_qua = decide_jig_action(
+        f"vẽ biểu đồ so sánh theo màu cho {ten_chi_so}:CAM+0 trên J",
+        chart_rows_provider=lambda: rows,
+    )
+    assert ket_qua.chart_meta.get("loai_bieu_do") == "so_sanh_mau"
+    assert ket_qua.chart_meta.get("mo_phong") is True
+    assert "MÔ PHỎNG" in ket_qua.assistant_text
+
+    # Và email phải mang tiền tố mô phỏng theo đúng cờ đó.
+    from aios_habit.workspace_chat_ui import build_de_xuat_mail_data
+
+    mail = build_de_xuat_mail_data({"nguoi_nhan": ["a@b.local"]}, ket_qua.chart_meta)
+    assert mail["tieu_de"].startswith("[MÔ PHỎNG]")
+
+
+def test_email_mo_phong_duoc_ghi_ro_trong_chu():
     """Người nhận email đọc phần chữ phải biết ảnh là mô phỏng, không chỉ dựa vào ảnh."""
     from aios_habit.production_prediction.metric_limits import KhoNguong
     from aios_habit.workspace_chat_ui import build_de_xuat_mail_data
