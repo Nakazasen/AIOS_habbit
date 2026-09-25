@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased - 2026-09-25 - Optional BGE-M3 ONNX int8 path
+
+### Changed
+
+- `BGE_BACKEND=onnx_int8` loads a local int8 ONNX session for BGE-M3 dense and
+  learned-sparse vectors, with `max_length` 512 and an ONNX Runtime thread pool
+  sized to the CPU. The flag defaults unset, so FlagEmbedding PyTorch remains
+  the active path. `verify_model_tree` skips a full tree hash when a sibling
+  size/mtime cache still matches the pinned checksum.
+
 ## Unreleased - 2026-09-25 - Optional numpy dense scan
 
 ### Changed

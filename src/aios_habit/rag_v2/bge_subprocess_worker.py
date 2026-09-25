@@ -28,6 +28,10 @@ from aios_habit.rag_v2.pipeline import (
     RagV2QueryResult,
     SourceSpec,
 )
+from aios_habit.rag_v2.bge_onnx_backend import (
+    resolve_bge_backend_name,
+    resolve_onnx_model_path,
+)
 from aios_habit.rag_v2.adapters import ConversionContext
 from aios_habit.rag_v2.schema import ExtractionStatus
 from aios_habit.rag_v2_synthesis_provider import create_synthesis_provider
@@ -242,7 +246,11 @@ def main() -> None:
                         pipeline.close()
                     started = time.perf_counter()
                     init_phase = "model_verify"
-                    model_path = config.bge_m3_model_path
+                    backend_name = resolve_bge_backend_name(config.bge_backend)
+                    if backend_name == "onnx_int8":
+                        model_path = resolve_onnx_model_path()
+                    else:
+                        model_path = config.bge_m3_model_path
                     if config.retrieval_profile.startswith("bge_m3_") and (
                         model_path is None or not Path(model_path).is_dir()
                     ):
@@ -270,11 +278,19 @@ def main() -> None:
                         "status": "ok",
                         "readiness": {
                             **_safe_readiness(pipeline),
+                            "bge_backend": backend_name,
                             "init_latency_ms": round(
                                 (time.perf_counter() - started) * 1000.0, 3
                             ),
                         },
                     }
+                    print(
+                        "bge_worker_stage "
+                        f"backend={backend_name} "
+                        f"init_ms={response['readiness']['init_latency_ms']}",
+                        file=sys.stderr,
+                        flush=True,
+                    )
 
             elif command == "health":
                 if pipeline is None:

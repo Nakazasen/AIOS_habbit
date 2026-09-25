@@ -9,6 +9,7 @@ from __future__ import annotations
 from contextlib import contextmanager
 import hashlib
 import importlib
+import json
 import math
 import os
 from pathlib import Path
@@ -60,8 +61,49 @@ def sha256_model_tree(model_path: str | Path) -> str:
     return f"sha256:{digest.hexdigest()}"
 
 
+def model_verify_cache_path(model_path: str | Path) -> Path:
+    """Return the checksum cache that sits beside a model tree, never inside it."""
+    root = Path(model_path).resolve()
+    return root.parent / f".{root.name}.aios-verify-cache.json"
+
+
+def _model_tree_manifest(root: Path) -> list[dict[str, int | str]]:
+    files = sorted(path for path in root.rglob("*") if path.is_file())
+    manifest: list[dict[str, int | str]] = []
+    for path in files:
+        stat = path.stat()
+        manifest.append({
+            "path": path.relative_to(root).as_posix(),
+            "size": stat.st_size,
+            "mtime_ns": stat.st_mtime_ns,
+        })
+    return manifest
+
+
+def _read_verify_cache(cache_path: Path) -> dict[str, Any] | None:
+    try:
+        payload = json.loads(cache_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError, UnicodeError):
+        return None
+    if (
+        not isinstance(payload, dict)
+        or payload.get("version") != 1
+        or not isinstance(payload.get("sha256"), str)
+        or not isinstance(payload.get("files"), list)
+    ):
+        return None
+    return payload
+
+
 def verify_model_tree(model_path: str | Path, expected_checksum: str) -> str:
-    """Fail closed unless a model tree exactly matches its pinned checksum."""
+    """Fail closed unless a model tree exactly matches its pinned checksum.
+
+    A sibling cache of path, size and mtime skips the full SHA-256 when nothing
+    in the tree has changed. A size-preserving edit that also keeps mtime is
+    not detected until the cache file is removed; that is the quick check the
+    speed ticket asked for. The cache is never hashed, because it lives outside
+    the model directory.
+    """
     digest_text = expected_checksum.removeprefix("sha256:")
     if (
         not expected_checksum.startswith("sha256:")
@@ -71,7 +113,31 @@ def verify_model_tree(model_path: str | Path, expected_checksum: str) -> str:
         raise SemanticBackendUnavailable(
             "a pinned model checksum in sha256:<64 hex characters> form is required"
         )
+    root = Path(model_path).resolve()
+    cache_path = model_verify_cache_path(root)
+    cached = _read_verify_cache(cache_path)
+    manifest: list[dict[str, int | str]] | None = None
+    if cached is not None and cached["sha256"].casefold() == expected_checksum.casefold():
+        try:
+            manifest = _model_tree_manifest(root)
+        except OSError:
+            manifest = None
+        if manifest is not None and cached["files"] == manifest:
+            return str(cached["sha256"])
     actual = sha256_model_tree(model_path)
+    try:
+        if manifest is None:
+            manifest = _model_tree_manifest(root)
+        cache_path.write_text(
+            json.dumps(
+                {"version": 1, "sha256": actual, "files": manifest},
+                ensure_ascii=True,
+                sort_keys=True,
+            ),
+            encoding="utf-8",
+        )
+    except OSError:
+        pass
     if actual.casefold() != expected_checksum.casefold():
         raise SemanticBackendUnavailable(
             f"local model checksum mismatch: expected {expected_checksum}, received {actual}"

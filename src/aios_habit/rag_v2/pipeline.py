@@ -39,6 +39,13 @@ from .semantic import (
     unavailable_embedding_backend,
 )
 from .retrieval_backends import BgeM3Backend, CrossEncoderRerankBackend
+from .bge_onnx_backend import (
+    OnnxInt8BgeM3Backend,
+    onnx_max_length,
+    resolve_bge_backend_name,
+    resolve_onnx_checksum,
+    resolve_onnx_model_path,
+)
 from .adaptive_retrieval import CircuitBreaker
 from .synthesis import (
 
@@ -140,6 +147,7 @@ class RagV2DevConfig:
     index_read_only: bool = False
     lite_pilot_enabled: bool = False
     lite_long_doc_pages: int = 10
+    bge_backend: str = "pytorch"
 
     def __post_init__(self) -> None:
         root = Path(self.runtime_root)
@@ -202,6 +210,10 @@ class RagV2DevConfig:
             raise ValueError("index_read_only requires ensure_embeddings_on_open=False")
         if self.lite_long_doc_pages < 1:
             raise ValueError("lite_long_doc_pages must be positive")
+        backend = self.bge_backend.strip().lower()
+        if backend not in {"pytorch", "onnx_int8"}:
+            raise ValueError("bge_backend must be pytorch or onnx_int8")
+        object.__setattr__(self, "bge_backend", backend)
 
     @property
     def index_path(self) -> Path:
@@ -239,6 +251,9 @@ class RagV2DevConfig:
                     "device": self.retrieval_device,
                     "multivector_schema_version": 1 if multivector_required else 0,
                 }
+                if resolve_bge_backend_name(self.bge_backend) == "onnx_int8":
+                    payload["embedding_model"]["runtime_backend"] = "onnx_int8"
+                    payload["embedding_model"]["max_length"] = onnx_max_length()
             else:
                 payload["embedding_model"] = {
                     "kind": "fastembed",
@@ -331,23 +346,47 @@ def _resolve_embedding_backend(
     elif config.retrieval_profile in {"lexical", "lexical_baseline"}:
         return None
     elif _is_retrieval_lab_profile(config.retrieval_profile):
-        if config.bge_m3_model_path is None:
+        if config.bge_m3_model_path is None and resolve_bge_backend_name(config.bge_backend) != "onnx_int8":
             raise SemanticBackendUnavailable("BGE-M3 profile requires bge_m3_model_path")
         if not config.bge_m3_model_revision.strip():
             raise SemanticBackendUnavailable("BGE-M3 profile requires a pinned model revision")
-        if not config.bge_m3_model_checksum.strip():
+        if (
+            resolve_bge_backend_name(config.bge_backend) != "onnx_int8"
+            and not config.bge_m3_model_checksum.strip()
+        ):
             raise SemanticBackendUnavailable("BGE-M3 profile requires bge_m3_model_checksum")
-        resolved = BgeM3Backend(
-            model_path=config.bge_m3_model_path,
-            revision=config.bge_m3_model_revision,
-            artifact_checksum=config.bge_m3_model_checksum,
-            dimension=config.bge_m3_dimension,
-            device=config.retrieval_device,
-            batch_size=config.bge_m3_batch_size,
-            max_length=config.bge_m3_max_length,
-            use_fp16=config.bge_m3_use_fp16,
-            enable_multivector=config.retrieval_profile == "bge_m3_multivector",
-        )
+        if resolve_bge_backend_name(config.bge_backend) == "onnx_int8":
+            onnx_path = resolve_onnx_model_path()
+            resolved = OnnxInt8BgeM3Backend(
+                model_path=onnx_path,
+                revision=config.bge_m3_model_revision,
+                artifact_checksum=resolve_onnx_checksum(onnx_path),
+                dimension=config.bge_m3_dimension,
+                batch_size=config.bge_m3_batch_size,
+                max_length=onnx_max_length(),
+            )
+            if (
+                config.retrieval_profile in _BGE_SPARSE_PROFILES
+                and not resolved.sparse_capability.available
+            ):
+                raise SemanticBackendUnavailable("onnx_int8_sparse_head_missing")
+            if (
+                config.retrieval_profile == "bge_m3_multivector"
+                and not resolved.multivector_capability.available
+            ):
+                raise SemanticBackendUnavailable("onnx_int8_colbert_not_exported")
+        else:
+            resolved = BgeM3Backend(
+                model_path=config.bge_m3_model_path,
+                revision=config.bge_m3_model_revision,
+                artifact_checksum=config.bge_m3_model_checksum,
+                dimension=config.bge_m3_dimension,
+                device=config.retrieval_device,
+                batch_size=config.bge_m3_batch_size,
+                max_length=config.bge_m3_max_length,
+                use_fp16=config.bge_m3_use_fp16,
+                enable_multivector=config.retrieval_profile == "bge_m3_multivector",
+            )
     else:
         try:
             resolved = FastEmbedEmbeddingBackend(

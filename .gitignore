@@ -107,6 +107,8 @@ Tài liệu của tất cả dòng máy/
 
 graphify-out/
 local_tools/
+# Quantized local model exports from scripts/export_bge_m3_onnx.py
+/models/
 
 # Ephemeral multi-agent workspaces and local scratch investigations
 /.brain/
