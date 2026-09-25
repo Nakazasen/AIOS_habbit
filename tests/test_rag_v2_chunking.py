@@ -261,3 +261,52 @@ def test_sentence_policy_does_not_split_on_decimal_dot():
     parts = chunker._split_text(text, 90)
     assert parts
     assert "12.5" in parts[0]
+
+
+def test_summary_provenance_flag_off_keeps_null_provenance(monkeypatch):
+    monkeypatch.delenv("AIOS_RAG_V2_SUMMARY_PROVENANCE", raising=False)
+    elements = [make_element(element_id=f"e{i}") for i in range(3)]
+    chunks = StructureAwareChunker(max_chars=120).chunk_elements(elements)
+    summary = next(chunk for chunk in chunks if chunk.file_type == "document_summary")
+    assert summary.privacy_labels == ()
+    assert summary.source_fingerprint is None
+
+
+def test_summary_copies_body_provenance_when_flag_is_on(monkeypatch):
+    monkeypatch.setenv("AIOS_RAG_V2_SUMMARY_PROVENANCE", "1")
+    elements = [make_element(element_id=f"e{i}") for i in range(3)]
+    chunks = StructureAwareChunker(max_chars=120).chunk_elements(elements)
+    summary = next(chunk for chunk in chunks if chunk.file_type == "document_summary")
+    assert summary.privacy_labels == ("private",)
+    assert summary.source_fingerprint == "fp1"
+
+
+def test_relaxed_gate_builds_summary_for_one_and_two_elements(monkeypatch):
+    monkeypatch.delenv("AIOS_RAG_V2_SUMMARY_PROVENANCE", raising=False)
+    for count in (1, 2):
+        elements = [make_element(element_id=f"e{i}") for i in range(count)]
+        chunks = StructureAwareChunker(max_chars=120).chunk_elements(elements)
+        assert not any(chunk.file_type == "document_summary" for chunk in chunks), count
+
+    monkeypatch.setenv("AIOS_RAG_V2_SUMMARY_PROVENANCE", "1")
+    for count in (1, 2):
+        elements = [make_element(element_id=f"e{i}") for i in range(count)]
+        chunks = StructureAwareChunker(max_chars=120).chunk_elements(elements)
+        summary = next(chunk for chunk in chunks if chunk.file_type == "document_summary")
+        assert summary.source_fingerprint == "fp1"
+        assert summary.privacy_labels == ("private",)
+
+
+def test_summary_text_does_not_change_when_flag_is_on(monkeypatch):
+    elements = [make_element(element_id=f"e{i}") for i in range(3)]
+    monkeypatch.delenv("AIOS_RAG_V2_SUMMARY_PROVENANCE", raising=False)
+    off = next(
+        chunk for chunk in StructureAwareChunker(max_chars=120).chunk_elements(elements)
+        if chunk.file_type == "document_summary"
+    )
+    monkeypatch.setenv("AIOS_RAG_V2_SUMMARY_PROVENANCE", "1")
+    on = next(
+        chunk for chunk in StructureAwareChunker(max_chars=120).chunk_elements(elements)
+        if chunk.file_type == "document_summary"
+    )
+    assert on.text == off.text

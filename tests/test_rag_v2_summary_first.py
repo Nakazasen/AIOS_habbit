@@ -181,3 +181,43 @@ def test_acceptance_questions_split_general_process_from_coded_lookup():
         assert detect_retrieval_mode(query) == "full", query
     assert detect_retrieval_mode("Làm thế nào để reset máy X200?") == "full"
     assert detect_retrieval_mode("Y302YL93020100") == "full"
+
+
+def test_ingested_summary_survives_production_privacy_and_fingerprint_filters(tmp_path, monkeypatch):
+    """A freshly ingested summary must pass the same filters a real query applies."""
+    from aios_habit.rag_v2.index import SearchOptions
+    from aios_habit.rag_v2.pipeline import _file_fingerprint
+
+    monkeypatch.setenv("AIOS_RAG_V2_SUMMARY_PROVENANCE", "1")
+    single = tmp_path / "single.txt"
+    single.write_text("Pump station moves water between tanks.", encoding="utf-8")
+    multi = tmp_path / "multi.txt"
+    multi.write_text("First paragraph about valves.\n\nSecond paragraph about pumps.", encoding="utf-8")
+    sources = [SourceSpec(single), SourceSpec(multi)]
+    config = RagV2DevConfig(runtime_root=tmp_path / "runtime", retrieval_profile="lexical")
+    with RagV2DevPipeline(config) as pipeline:
+        pipeline.ingest(sources)
+        fingerprints = {
+            str(source.document_id): _file_fingerprint(single if "single" in str(source.path) else multi)
+            for source in sources
+        }
+        rows = pipeline.index._conn.execute(
+            "SELECT chunk_id, document_id, file_type, source_fingerprint, privacy_labels_json FROM chunks"
+        ).fetchall()
+        summaries = [row for row in rows if row[2] == "document_summary"]
+        assert len(summaries) == 2
+        for chunk_id, document_id, _file_type, fingerprint, labels in summaries:
+            assert fingerprint == fingerprints[str(document_id)]
+            assert labels == '["local_only"]'
+        response = pipeline.index.search_summaries_with_summary(
+            "Pump station moves water between tanks",
+            limit=10,
+            options=SearchOptions(
+                allowed_privacy_labels=("local_only", "cloud_safe"),
+                allowed_document_ids=tuple(fingerprints),
+                expected_source_fingerprints=fingerprints,
+            ),
+        )
+    assert response.results
+    assert all(item.file_type == "document_summary" for item in response.results)
+    assert response.summary.insufficiency_reasons == ()

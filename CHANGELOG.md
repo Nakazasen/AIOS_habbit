@@ -1,5 +1,16 @@
 # Changelog
 
+## Unreleased - 2026-09-25 - Optional document-summary provenance
+
+### Changed
+
+- `AIOS_RAG_V2_SUMMARY_PROVENANCE=1` makes a new document summary inherit
+  `source_fingerprint` and `privacy_labels` from its body chunks, and lets a
+  one- or two-element document produce a summary. The flag defaults off, so the
+  old gate and the empty provenance stay in place. A maintenance command can
+  backfill provenance onto existing summaries; it is dry-run by default and
+  refuses to write without the flag.
+
 ## Unreleased - 2026-09-25 - Broader summary-first overview detection
 
 ### Changed

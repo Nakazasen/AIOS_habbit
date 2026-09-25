@@ -8,6 +8,7 @@ import re
 from typing import Any, Dict, Iterable, List, Optional, Tuple
 
 from .schema import DocumentElement, ElementType, ExtractionStatus
+from .summary_provenance import summary_provenance_enabled, with_body_provenance
 
 BOUNDARY_POLICY_LEGACY = "legacy"
 BOUNDARY_POLICY_SENTENCE_PUNCTUATION = "sentence_punctuation_v1"
@@ -150,9 +151,17 @@ class StructureAwareChunker:
         # packs rather than spending hours embedding 70-character fragments.
         chunks = self._compact_short_excel_children(chunks)
 
-        # Build Document Summary Chunk if we have enough elements
-        if len(usable_elements) >= 3 and chunks:
-            summary_chunk = self._build_document_summary(usable_elements, chunks[0].document_id, chunks[0].source_path, chunks[0].source_name)
+        # Build Document Summary Chunk if we have enough elements.
+        # The relaxed gate and provenance copy stay off unless the operator opts in.
+        if chunks and self._summary_gate_open(usable_elements):
+            summary_chunk = self._build_document_summary(
+                usable_elements,
+                chunks[0].document_id,
+                chunks[0].source_path,
+                chunks[0].source_name,
+            )
+            if summary_chunk and summary_provenance_enabled():
+                summary_chunk = with_body_provenance(summary_chunk, chunks)
             if summary_chunk:
                 chunks.append(summary_chunk)
 
@@ -290,6 +299,17 @@ class StructureAwareChunker:
                 pending_size += (2 if len(pending) > 1 else 0) + len(chunk.text)
             flush()
         return output
+
+    def _summary_gate_open(self, usable_elements: List[DocumentElement]) -> bool:
+        if summary_provenance_enabled():
+            return any(
+                element.element_type in {ElementType.TEXT, ElementType.HEADING}
+                and self._element_text(element)
+                for element in usable_elements
+            )
+        return len(usable_elements) >= 3
+
+
 
     def _build_document_summary(self, elements: List[DocumentElement], document_id: str, source_path: str, source_name: str) -> Optional[DocumentChunk]:
         headings = []
