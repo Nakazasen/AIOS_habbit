@@ -2571,3 +2571,96 @@ def test_blocking_worker_warming_reports_initializer_outcome(tmp_path, monkeypat
     with adapter._WARMUP_LOCK:
         adapter._WARMUP_LAST_ATTEMPT_MONO = 0.0
     assert adapter.ensure_workspace_chat_worker_warming(config=config, blocking=True) is False
+
+
+def _pending_ledger_row(config, source: WorkspaceAIContextSource) -> adapter.SourcePreparationLedgerRow:
+    return adapter.SourcePreparationLedgerRow(
+        source_scope=source.source_scope,
+        source_id=source.source_id,
+        source_fingerprint="durable-fallback",
+        model_id="BAAI/bge-m3",
+        model_revision=config.bge_m3_model_revision,
+        state=adapter.PREP_STATE_PENDING,
+        priority=adapter.PREP_PRIORITY_INTERACTIVE,
+        attempt_count=0,
+        last_error="",
+        document_id="wsc-durable-fallback",
+        created_at=1.0,
+        updated_at=1.0,
+    )
+
+
+def test_drain_reloads_durable_text_only_when_flag_is_on(tmp_path: Path, monkeypatch):
+    from aios_habit.workspace_chat_models import NotebookSource, TemporaryConversationSource
+    from aios_habit.workspace_chat_store import save_notebook_source, save_temporary_source
+
+    config = _enabled_config(tmp_path)
+    db_path = adapter._get_ledger_db_path(config)
+    adapter._init_preparation_ledger_db(db_path)
+    adapter._SOURCE_CACHE.clear()
+    prepared = []
+
+    def fake_prepare(sources, *, config=None):
+        prepared.append(tuple(sources))
+        return {"status": "ok", "prepared_count": len(tuple(sources))}
+
+    monkeypatch.setattr(adapter, "prepare_workspace_chat_sources", fake_prepare)
+    save_temporary_source(TemporaryConversationSource(
+        id="SRC-TEMP",
+        conversation_id="CONV-1",
+        source_type="pdf",
+        title="stored.pdf",
+        content_preview="stored body",
+        content_text="stored body from the temporary record",
+    ))
+    save_notebook_source(NotebookSource(
+        id="SRC-NOTE",
+        notebook_id="mom_opcenter",
+        title="stored.pptx",
+        source_type="pptx",
+        content_text="stored body from the notebook record",
+    ))
+    temporary = adapter.WorkspaceAIContextSource(
+        source_id="SRC-TEMP",
+        source_scope="temporary",
+        source_type="pdf",
+        title="stored.pdf",
+        privacy_label="local_only",
+        text="",
+        included_chars=0,
+        truncated=False,
+    )
+    notebook = adapter.WorkspaceAIContextSource(
+        source_id="SRC-NOTE",
+        source_scope="notebook",
+        source_type="pptx",
+        title="stored.pptx",
+        privacy_label="local_only",
+        text="",
+        included_chars=0,
+        truncated=False,
+    )
+
+    monkeypatch.delenv(adapter.DRAIN_DURABLE_FALLBACK_FLAG, raising=False)
+    adapter._upsert_ledger_row(db_path, _pending_ledger_row(config, temporary))
+    adapter._drain_preparation_queue(config)
+    failed = adapter._load_ledger_row(db_path, "temporary", "SRC-TEMP")
+    assert failed is not None
+    assert failed.state == adapter.PREP_STATE_FAILED
+    assert failed.last_error == "source_text_unavailable"
+    assert prepared == []
+
+    monkeypatch.setenv(adapter.DRAIN_DURABLE_FALLBACK_FLAG, "1")
+    adapter._SOURCE_CACHE.clear()
+    adapter._upsert_ledger_row(db_path, _pending_ledger_row(config, temporary))
+    adapter._upsert_ledger_row(db_path, _pending_ledger_row(config, notebook))
+    adapter._drain_preparation_queue(config)
+    assert {item[0].text for item in prepared} == {
+        "stored body from the temporary record",
+        "stored body from the notebook record",
+    }
+    for scope, source_id in (("temporary", "SRC-TEMP"), ("notebook", "SRC-NOTE")):
+        row = adapter._load_ledger_row(db_path, scope, source_id)
+        assert row is not None
+        assert row.state == adapter.PREP_STATE_READY
+        assert row.last_error == ""

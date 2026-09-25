@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased - 2026-09-25 - Optional durable drain fallback
+
+### Changed
+
+- `AIOS_RAG_V2_DRAIN_DURABLE_FALLBACK=1` lets the preparation drain reload
+  extracted text from the notebook or temporary source record when the
+  in-memory cache is empty. The flag defaults off, so a cache miss still
+  fails with `source_text_unavailable`. A durable record with no text still
+  fails the same way.
+
 ## Unreleased - 2026-09-25 - Optional summary-first query routing
 
 ### Changed

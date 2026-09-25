@@ -157,6 +157,7 @@ DEEP_SEARCH_LOCAL_SETTINGS_KEY = "deep_search_enabled"
 _DEFAULT_RUNTIME_ROOT = Path("local_runs/workspace_chat_rag_v2_canary")
 _ALLOWED_PROFILES = frozenset({"bge_m3_hybrid"})
 _TRUE_VALUES = frozenset({"1", "true", "yes", "on"})
+DRAIN_DURABLE_FALLBACK_FLAG = "AIOS_RAG_V2_DRAIN_DURABLE_FALLBACK"
 _SAFE_REASON = re.compile(r"[^a-z0-9_.-]+")
 _SAFE_PREPARATION_REASON_PREFIXES = (
     "bge_worker_",
@@ -1840,6 +1841,72 @@ def start_workspace_chat_background_drain(
             _get_executor().submit(_drain_preparation_queue, config=resolved)
 
 
+def resolve_drain_durable_fallback() -> bool:
+    """Return whether a cache miss may reload text from the durable source record."""
+    raw = str(os.environ.get(DRAIN_DURABLE_FALLBACK_FLAG, "") or "").strip().casefold()
+    return raw in _TRUE_VALUES
+
+
+def _context_source_from_durable_record(source_scope: str, record: Any) -> Optional[WorkspaceAIContextSource]:
+    text = str(getattr(record, "content_text", "") or getattr(record, "content_preview", "") or "").strip()
+    if not text:
+        return None
+    return WorkspaceAIContextSource(
+        source_id=str(getattr(record, "id", "") or ""),
+        source_scope=source_scope,
+        source_type=str(getattr(record, "source_type", "") or "plain_text"),
+        title=str(getattr(record, "title", "") or getattr(record, "id", "") or ""),
+        privacy_label=str(getattr(record, "privacy_label", "") or "local_only"),
+        text=text,
+        included_chars=len(text),
+        truncated=False,
+        managed_path=str(getattr(record, "managed_path", "") or ""),
+    )
+
+
+def _load_durable_context_source(source_scope: str, source_id: str) -> Optional[WorkspaceAIContextSource]:
+    """Reload extracted text from the durable chat store. Does not use the RAM cache."""
+    from aios_habit.workspace_chat_models import SOURCE_SCOPE_NOTEBOOK, SOURCE_SCOPE_TEMPORARY
+    from aios_habit.workspace_chat_store import get_notebook_source, load_all_temporary_sources
+
+    scope = str(source_scope or "")
+    wanted = str(source_id or "")
+    if not wanted:
+        return None
+    if scope == SOURCE_SCOPE_NOTEBOOK:
+        record = get_notebook_source(wanted)
+    elif scope == SOURCE_SCOPE_TEMPORARY:
+        record = next((item for item in load_all_temporary_sources() if item.id == wanted), None)
+    else:
+        return None
+    if record is None:
+        return None
+    return _context_source_from_durable_record(scope, record)
+
+
+def _source_for_drain_item(source_scope: str, source_id: str) -> Optional[WorkspaceAIContextSource]:
+    """Prefer the RAM cache. The durable store is consulted only when the flag is on."""
+    source_key = (source_scope, source_id)
+    with _SOURCE_CACHE_LOCK:
+        cached = _SOURCE_CACHE.get(source_key)
+    if cached is not None and (cached.text or "").strip():
+        return cached
+    if not resolve_drain_durable_fallback():
+        return None
+    durable = _load_durable_context_source(source_scope, source_id)
+    if durable is None or not (durable.text or "").strip():
+        return None
+    with _SOURCE_CACHE_LOCK:
+        _SOURCE_CACHE[source_key] = durable
+    LOGGER.info(
+        "rag_v2.drain durable_fallback scope=%s source_id=%s chars=%s",
+        source_scope,
+        source_id,
+        len(durable.text),
+    )
+    return durable
+
+
 def _drain_preparation_queue(config: WorkspaceChatRagV2CanaryConfig) -> None:
     global _DRAIN_IS_RUNNING
     db_path = _get_ledger_db_path(config)
@@ -1862,9 +1929,7 @@ def _drain_preparation_queue(config: WorkspaceChatRagV2CanaryConfig) -> None:
                         _DRAIN_IS_RUNNING = False
                         break
 
-            source_key = (item.source_scope, item.source_id)
-            with _SOURCE_CACHE_LOCK:
-                source = _SOURCE_CACHE.get(source_key)
+            source = _source_for_drain_item(item.source_scope, item.source_id)
 
             if source is None or not (source.text or "").strip():
                 _commit_preparation_result(
