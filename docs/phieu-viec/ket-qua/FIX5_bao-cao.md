@@ -78,3 +78,25 @@ Không làm trong FIX này. Phase 2.
 Bốn lỗi không nằm trong diff của FIX 5, cùng lớp đã ghi ở FIX 2–4: `uv lock --check`, pin checksum model cục bộ, pip không thấy `streamlit>=1.60.0`, và test OCR phụ thuộc thứ tự.
 
 `scripts/check_docs.py`: `DOCUMENTATION_CONTRACT=PASS`.
+
+## 7. Hướng dẫn chạy trên máy khác (mỗi máy chạy độc lập)
+
+Số liệu ở mục 3 (`summary_count` 10, số trường sẽ điền 20, bỏ qua do mơ hồ 0, bỏ qua do thiếu giá trị ở chunk thân 0) chỉ đúng trên máy đã lập báo cáo này (máy công ty, tên máy `KDTVN-PC0575`). Máy khác ingest tập tài liệu khác nhau nên số liệu có thể khác. Khác số là bình thường, không tự cho là lỗi.
+
+Quy tắc bắt buộc khi sang máy khác:
+
+- Luôn chạy thử chỉ đọc trước (mặc định của lệnh, không ghi gì), đối chiếu số liệu với mục 3, ghi lại sự khác biệt và nguyên nhân (tập tài liệu ingest khác nhau).
+- Tuyệt đối không chạy ghi thật (`--apply`) khi chưa được duyệt riêng.
+- Chỉ ghi thật khi số liệu chạy thử hợp lý (không có ca mơ hồ bất thường), đã sao lưu tệp `library.sqlite` của chính máy đó, và đã bật cờ `AIOS_RAG_V2_SUMMARY_PROVENANCE`.
+- Mỗi máy chạy độc lập trên index của chính máy đó. Không chép tệp `sqlite` từ máy này sang máy khác để áp số liệu.
+- Khi chạy, ghi tên máy (kết quả lệnh `hostname`) cùng đường dẫn index vào sổ làm việc, để sau này đối chiếu biết số liệu thuộc máy nào.
+
+Lệnh chạy thử chỉ đọc (đường dẫn là tham số, dùng đường dẫn tương đối trong kho, thay bằng index của máy đó):
+
+```
+uv run --no-sync --group dev python scripts/backfill_summary_provenance.py local_runs/workspace_chat_rag_v2_canary/bge_m3_hybrid/collections/tri_thuc/library.sqlite --json
+```
+
+Trước khi ghi thật (khi đã được duyệt): sao chép tệp `library.sqlite` sang chỗ khác, ghi lại giờ sao lưu và tên máy, rồi mới chạy thêm cờ `--apply`.
+
+Kết quả đối chiếu ngày 2026-09-25 trên máy `KDTVN-PC0575`: chạy thử chỉ đọc cho đúng `summary_count` 10, số trường sẽ điền 20, bỏ qua do mơ hồ 0, bỏ qua do thiếu giá trị ở chunk thân 0 — khớp mục 3. Không chạy ghi thật.
