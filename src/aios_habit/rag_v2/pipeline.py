@@ -5,7 +5,9 @@ from dataclasses import asdict, dataclass, field, replace
 from datetime import datetime, timezone
 import hashlib
 import json
+import logging
 from pathlib import Path
+from time import perf_counter
 from typing import Any, Iterable, Mapping, Optional, Tuple
 
 from .adapters import ConversionContext
@@ -17,7 +19,7 @@ from .chunking import (
     lite_strategy_id,
     profile_elements,
 )
-from .evidence import EvidencePack, EvidencePackConfig, build_evidence_pack
+from .evidence import EvidenceAnswerMode, EvidencePack, EvidencePackConfig, build_evidence_pack
 from .index import (
     HybridRankingConfig,
     LocalChunkIndex,
@@ -25,7 +27,13 @@ from .index import (
     SearchResponse,
     fuse_ranked_channels,
 )
-from .query_planning import RetrievalQueryPlan, build_query_plan, coerce_query_plan
+from .query_planning import (
+    RetrievalQueryPlan,
+    apply_summary_first_to_plan,
+    build_query_plan,
+    coerce_query_plan,
+    resolve_summary_first_routing,
+)
 from .script_family import query_corpus_script_mismatch
 from .registry import ConverterRegistry
 from .schema import ExtractionStatus
@@ -54,6 +62,62 @@ from .synthesis import (
     synthesize_evidence,
     synthesize_with_provider,
 )
+
+LOGGER = logging.getLogger(__name__)
+_OVERVIEW_NOTE = "Ghi chú: trả lời ở mức tổng quan."
+_OVERVIEW_SOFT_CODES = frozenset({
+    "incomplete_query_term_coverage",
+    "weak_query_term_coverage",
+    "top_score_below_threshold",
+    "too_few_evidence_items",
+    "weak_term_coverage",
+    "missing_required_obligations",
+    "expansion_unavailable",
+    "expansion_rejected",
+    "final_evidence_query_coverage_below_threshold",
+    "no_direct_query_evidence",
+    "no_target_query_evidence",
+    "all_required_obligations_missing",
+    "semantic_score_below_threshold",
+    "missing_dense_channel_provenance",
+    "missing_current_query_variant",
+    "semantic_provenance_not_corroborated",
+})
+
+def _finish_overview_synthesis(pack: EvidencePack, synthesis: LocalSynthesisResult) -> LocalSynthesisResult:
+    """Keep a summary answer instead of abstaining, and mark it as overview."""
+    if not pack.items:
+        return synthesis
+    note_present = _OVERVIEW_NOTE in (synthesis.answer or "")
+    if not synthesis.abstained and note_present:
+        return synthesis
+    if not synthesis.abstained:
+        return replace(
+            synthesis,
+            answer=f"{synthesis.answer.rstrip()}\n{_OVERVIEW_NOTE}",
+            answer_mode=EvidenceAnswerMode.ANSWER_WITH_LIMITS.value,
+            limitation_reasons=tuple(dict.fromkeys((*synthesis.limitation_reasons, "overview_summary_only"))),
+        )
+    lines = ["Trả lời ở mức tổng quan, dựa trên summary tài liệu."]
+    citations: list[str] = []
+    for item in pack.items[:5]:
+        snippet = " ".join((item.snippet or item.text or "").split())[:400]
+        if not snippet:
+            continue
+        lines.append(f"- {snippet} [{item.citation_id}]")
+        citations.append(item.citation_id)
+    lines.append(_OVERVIEW_NOTE)
+    return replace(
+        synthesis,
+        answer="\n".join(lines),
+        citation_ids=tuple(citations),
+        grounded=bool(citations),
+        abstained=False,
+        abstention_reasons=(),
+        answer_mode=EvidenceAnswerMode.ANSWER_WITH_LIMITS.value,
+        limitation_reasons=tuple(dict.fromkeys((*pack.soft_warning_reasons, "overview_summary_only"))),
+        mode="local_overview_summary",
+    )
 
 _CANONICAL_PRIVACY_LABELS = frozenset({
     "local_only", "confidential", "cloud_safe", "public",
@@ -148,6 +212,12 @@ class RagV2DevConfig:
     lite_pilot_enabled: bool = False
     lite_long_doc_pages: int = 10
     bge_backend: str = "pytorch"
+    summary_first_routing: bool = False
+    overview_max_variants: int = 3
+    focused_max_variants: int = 3
+    full_max_variants: int = 8
+    overview_summary_limit: int = 15
+    focused_summary_doc_limit: int = 10
 
     def __post_init__(self) -> None:
         root = Path(self.runtime_root)
@@ -214,6 +284,14 @@ class RagV2DevConfig:
         if backend not in {"pytorch", "onnx_int8"}:
             raise ValueError("bge_backend must be pytorch or onnx_int8")
         object.__setattr__(self, "bge_backend", backend)
+        if (
+            self.overview_max_variants < 1
+            or self.focused_max_variants < 1
+            or self.full_max_variants < 1
+            or self.overview_summary_limit < 1
+            or self.focused_summary_doc_limit < 1
+        ):
+            raise ValueError("summary-first limits must be positive")
 
     @property
     def index_path(self) -> Path:
@@ -689,6 +767,14 @@ class RagV2DevPipeline:
         plan = question if isinstance(question, RetrievalQueryPlan) else (
             build_query_plan(question, expansion) if expansion is not None else coerce_query_plan(question)
         )
+        summary_first = resolve_summary_first_routing(self.config.summary_first_routing)
+        if summary_first:
+            plan = apply_summary_first_to_plan(
+                plan,
+                overview_max=self.config.overview_max_variants,
+                focused_max=self.config.focused_max_variants,
+                full_max=self.config.full_max_variants,
+            )
         expected = {}
         allowed_paths = []
         allowed_documents = []
@@ -755,8 +841,35 @@ class RagV2DevPipeline:
         degraded = False
         degraded_reason = ""
         effective_path = "hybrid"
+        summary_first = resolve_summary_first_routing(self.config.summary_first_routing)
+        if summary_first and plan.retrieval_mode == "focused":
+            select_started = perf_counter()
+            summary_pick = self.index.search_summaries_with_summary(
+                plan,
+                limit=self.config.focused_summary_doc_limit,
+                options=options,
+            )
+            picked_ids = tuple(dict.fromkeys(item.document_id for item in summary_pick.results))
+            LOGGER.info(
+                "rag_v2.stage summary_select mode=focused docs=%s search_ms=%.3f",
+                len(picked_ids),
+                (perf_counter() - select_started) * 1000.0,
+            )
+            if picked_ids:
+                allowed_documents = [item for item in allowed_documents if item in set(picked_ids)]
+                options = replace(
+                    options,
+                    allowed_document_ids=tuple(allowed_documents),
+                )
 
-        if effective_profile == "lexical":
+        if summary_first and plan.retrieval_mode == "overview":
+            response = self.index.search_summaries_with_summary(
+                plan,
+                limit=self.config.overview_summary_limit,
+                options=options,
+            )
+            effective_path = "summary_only"
+        elif effective_profile == "lexical":
             response = self.index.search_with_summary(
                 plan,
                 limit=self.config.retrieval_limit,
@@ -970,7 +1083,18 @@ class RagV2DevPipeline:
                 ),
             )
 
+        if summary_first and plan.retrieval_mode == "overview":
+            evidence_config = replace(
+                evidence_config,
+                min_final_evidence_term_coverage=0.0,
+                min_term_coverage=0.0,
+                min_semantic_support_score=0.0,
+                min_top_score=0.0,
+                soft_warning_codes=frozenset(evidence_config.soft_warning_codes | _OVERVIEW_SOFT_CODES),
+            )
+
         pack = build_evidence_pack(plan, response, config=evidence_config)
+        synthesis_started = perf_counter()
         synthesis = (
             synthesize_with_provider(
                 pack,
@@ -979,6 +1103,14 @@ class RagV2DevPipeline:
             )
             if self.synthesis_provider is not None
             else synthesize_evidence(pack, answer_shape=plan.intent_category)
+        )
+        if summary_first and plan.retrieval_mode == "overview":
+            synthesis = _finish_overview_synthesis(pack, synthesis)
+        LOGGER.info(
+            "rag_v2.stage synthesis mode=%s abstained=%s synthesis_ms=%.3f",
+            plan.retrieval_mode,
+            synthesis.abstained,
+            (perf_counter() - synthesis_started) * 1000.0,
         )
         return RagV2QueryResult(
             query_plan=plan,

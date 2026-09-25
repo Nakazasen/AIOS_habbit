@@ -5,7 +5,8 @@ It never receives documents, source metadata, or evidence text.
 """
 from __future__ import annotations
 
-from dataclasses import dataclass
+import os
+from dataclasses import dataclass, replace
 import hashlib
 import json
 import re
@@ -38,6 +39,28 @@ _CROSS_SOURCE_WORDING_RE = re.compile(
     r"all sources|all documents|comprehensive|architecture|"
     r"kien truc|cau truc tong)\b"
 )
+_OVERVIEW_WORDING_RE = re.compile(
+    r"\b(?:tom tat|tong quan|gioi thieu|overview|summar(?:y|ize)|"
+    r"what is this|about this (?:corpus|document|collection|set)|"
+    r"cac tai lieu|toan bo (?:tai lieu|van ban)|introduce|"
+    r"open[- ]ended|general (?:overview|summary)|khao sat chung|"
+    r"nhin chung|noi dung chinh|main (?:topics|themes)|"
+    r"corpus about|documents (?:about|cover)|tai lieu nay)\b"
+)
+_CONCRETE_ENTITY_RE = re.compile(
+    r"(?:"
+    r"\b[A-Za-z]{1,8}[-_][A-Za-z0-9]{2,}\b|"
+    r"\b[A-Za-z]*\d{2,}[A-Za-z0-9]*\b|"
+    r"\b(?:sheet|cell|row|column|page|trang|sku|sop|error|fault|code)\s*[:#-]?\s*\d+\b|"
+    r"\bversion\s+\d+\b"
+    r")",
+    re.IGNORECASE,
+)
+_SUMMARY_FIRST_TRUE = frozenset({"1", "true", "yes", "on"})
+_SUMMARY_FIRST_FALSE = frozenset({"0", "false", "no", "off"})
+_DEFAULT_OVERVIEW_MAX_VARIANTS = 3
+_DEFAULT_FOCUSED_MAX_VARIANTS = 3
+_DEFAULT_FULL_MAX_VARIANTS = 8
 _COMMON_STOPWORDS = frozenset({
     "a", "an", "and", "are", "as", "at", "be", "by", "for", "from",
     "how", "in", "is", "it", "of", "on", "or", "that", "the", "this",
@@ -77,6 +100,9 @@ class RetrievalQueryPlan:
     required_obligations: Tuple[str, ...] = ("query",)
     target_terms: Tuple[str, ...] = ()
     query_language: str = "unknown"
+    # Runtime routing hint. Omitted from fingerprint so enabling summary-first
+    # does not rewrite stored plan identity for the default full path.
+    retrieval_mode: str = "full"
 
     @property
     def facet_ids(self) -> Tuple[str, ...]:
@@ -213,6 +239,101 @@ def _split_question_clauses(original: str) -> list[str]:
 
 def _has_explicit_cross_source_wording(query: str) -> bool:
     return bool(_CROSS_SOURCE_WORDING_RE.search(_ascii_fold(query)))
+
+def resolve_summary_first_routing(default: bool = False) -> bool:
+    """Return whether summary-first routing is enabled.
+
+    ``AIOS_RAG_V2_SUMMARY_FIRST`` wins when set. Unset keeps ``default`` so the
+    old full-corpus multi-variant path stays active until the operator opts in.
+    """
+    raw = str(os.environ.get("AIOS_RAG_V2_SUMMARY_FIRST", "") or "").strip().casefold()
+    if raw in _SUMMARY_FIRST_TRUE:
+        return True
+    if raw in _SUMMARY_FIRST_FALSE:
+        return False
+    return bool(default)
+
+
+def _has_overview_wording(query: str) -> bool:
+    return bool(_OVERVIEW_WORDING_RE.search(_ascii_fold(query)))
+
+
+def _has_concrete_entity(query: str, target_terms: Sequence[str] = ()) -> bool:
+    text = str(query or "")
+    if _CONCRETE_ENTITY_RE.search(text):
+        return True
+    for term in target_terms:
+        token = str(term or "")
+        if any(character.isdigit() for character in token) and len(token) >= 2:
+            return True
+    return False
+
+
+def detect_retrieval_mode(
+    query: str,
+    intent_category: str = "general",
+    target_terms: Sequence[str] = (),
+) -> str:
+    """Classify query specificity for optional summary-first routing.
+
+    - ``overview``: summarize / open-ended / short vague asks without entities
+    - ``focused``: medium specificity or explicit multi-source synthesis
+    - ``full``: procedures and concrete entity/document lookups
+    """
+    intent = str(intent_category or "general").casefold()
+    if intent in {"procedure", "actionable_output", "diagnosis", "precise_lookup", "excel_native"}:
+        return "full"
+    if _has_concrete_entity(query, target_terms):
+        return "full"
+    if _has_overview_wording(query):
+        return "overview"
+    terms = tuple(target_terms) if target_terms else extract_content_terms(query)
+    token_count = len(str(query or "").split())
+    if intent in {"summarize_document", "open_ended_research"}:
+        return "overview"
+    if token_count <= 8 and len(terms) <= 4 and intent in {"general", "cross_source_synthesis"}:
+        return "overview"
+    if intent == "cross_source_synthesis" or len(terms) >= 4:
+        return "focused"
+    return "full"
+
+
+def max_variants_for_mode(
+    retrieval_mode: str,
+    *,
+    overview_max: int = _DEFAULT_OVERVIEW_MAX_VARIANTS,
+    focused_max: int = _DEFAULT_FOCUSED_MAX_VARIANTS,
+    full_max: int = _DEFAULT_FULL_MAX_VARIANTS,
+) -> int:
+    mode = str(retrieval_mode or "full").casefold()
+    if mode == "overview":
+        return max(1, int(overview_max))
+    if mode == "focused":
+        return max(1, int(focused_max))
+    return max(1, int(full_max))
+
+
+def apply_summary_first_to_plan(
+    plan: RetrievalQueryPlan,
+    *,
+    overview_max: int = _DEFAULT_OVERVIEW_MAX_VARIANTS,
+    focused_max: int = _DEFAULT_FOCUSED_MAX_VARIANTS,
+    full_max: int = _DEFAULT_FULL_MAX_VARIANTS,
+) -> RetrievalQueryPlan:
+    """Attach retrieval_mode and cap variants. Call only when summary-first is on."""
+    mode = detect_retrieval_mode(
+        plan.original_query,
+        plan.intent_category,
+        plan.target_terms,
+    )
+    cap = max_variants_for_mode(
+        mode,
+        overview_max=overview_max,
+        focused_max=focused_max,
+        full_max=full_max,
+    )
+    variants = tuple(plan.variants[:cap]) or plan.variants
+    return replace(plan, retrieval_mode=mode, variants=variants)
 
 
 def query_needs_broad_ready_retrieval(plan: RetrievalQueryPlan) -> bool:

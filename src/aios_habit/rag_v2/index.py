@@ -2871,6 +2871,110 @@ class LocalChunkIndex:
                 ))
         return summaries
 
+    def search_summaries_with_summary(
+        self,
+        query: str | RetrievalQueryPlan,
+        limit: int = 15,
+        options: Optional[SearchOptions] = None,
+    ) -> SearchResponse:
+        """Rank document-summary chunks only. Does not scan body chunks or embed."""
+        options = options or SearchOptions()
+        plan = coerce_query_plan(query)
+        started = perf_counter()
+        indexed_count = self.count()
+        rows = self._conn.execute(
+            "SELECT * FROM chunks WHERE retrievable = 1 AND file_type = ?",
+            ("document_summary",),
+        ).fetchall()
+        eligible: list[sqlite3.Row] = []
+        for row in rows:
+            privacy_labels = tuple(json.loads(row["privacy_labels_json"] or "[]"))
+            if not self._is_selected(row, options):
+                continue
+            if not self._privacy_is_allowed(privacy_labels, options):
+                continue
+            if self._is_stale(row, options):
+                continue
+            eligible.append(row)
+        if limit <= 0 or not eligible:
+            response = self._empty_response(
+                query=plan.original_query,
+                indexed_chunk_count=indexed_count,
+                reason="no_document_summaries" if limit > 0 else "non_positive_limit",
+            )
+            LOGGER.info(
+                "rag_v2.stage search path=summary_only chunks=%s variants=%s search_ms=%.3f",
+                indexed_count,
+                len(plan.variants),
+                (perf_counter() - started) * 1000.0,
+            )
+            return response
+        terms = extract_content_terms(plan.original_query)
+        scored: list[tuple[float, sqlite3.Row, Dict[str, Any], tuple[str, ...], Dict[str, float], tuple[str, ...], float]] = []
+        for row in eligible:
+            candidate = self._score_candidate(row, terms, plan) if terms else None
+            if candidate is None:
+                metadata = json.loads(row["metadata_json"])
+                privacy_labels = tuple(json.loads(row["privacy_labels_json"] or "[]"))
+                scored.append((0.01, row, metadata, privacy_labels, {"summary_fallback": 0.01}, (), 0.0))
+                continue
+            scored.append(candidate)
+        scored.sort(key=lambda item: (
+            -item[0],
+            str(item[1]["document_id"]),
+            str(item[1]["chunk_id"]),
+        ))
+        chosen = scored[: max(1, limit)]
+        variant_ids = tuple(variant.variant_id for variant in plan.variants if variant.variant_id)
+        results: list[SearchResult] = []
+        for score, row, metadata, privacy_labels, signals, matched_terms, coverage in chosen:
+            nested = dict(metadata.get("metadata") or {}) if isinstance(metadata.get("metadata"), dict) else {}
+            nested["is_document_summary"] = True
+            result_metadata = dict(metadata)
+            result_metadata["metadata"] = nested
+            result_metadata["is_document_summary"] = True
+            results.append(SearchResult(
+                chunk_id=str(row["chunk_id"]),
+                score=float(score),
+                text=str(row["text"]),
+                document_id=str(row["document_id"]),
+                source_path=str(row["source_path"]),
+                source_name=str(row["source_name"]),
+                file_type=str(row["file_type"]),
+                metadata=result_metadata,
+                privacy_labels=privacy_labels,
+                ranking_signals=dict(signals),
+                matched_terms=matched_terms,
+                matched_query_variant_ids=variant_ids,
+                matched_query_facets=tuple(dict.fromkeys(variant.facet_id for variant in plan.variants)),
+                matched_obligations=tuple(plan.required_obligations),
+            ))
+        elapsed_ms = (perf_counter() - started) * 1000.0
+        LOGGER.info(
+            "rag_v2.stage search path=summary_only chunks=%s summaries=%s variants=%s search_ms=%.3f",
+            indexed_count,
+            len(eligible),
+            len(plan.variants),
+            elapsed_ms,
+        )
+        return SearchResponse(
+            results=tuple(results),
+            summary=SearchSummary(
+                query=plan.original_query,
+                indexed_chunk_count=indexed_count,
+                eligible_chunk_count=len(eligible),
+                candidate_count=len(scored),
+                returned_count=len(results),
+                query_variant_count=len(plan.variants),
+                query_plan_fingerprint=plan.fingerprint,
+                expansion_status=plan.expansion_status,
+                candidate_backend="summary_only",
+                planned_facet_ids=plan.facet_ids,
+                planned_obligation_ids=plan.required_obligations,
+                lexical_latency_ms=elapsed_ms,
+            ),
+        )
+
     def search(
         self,
         query: str | RetrievalQueryPlan,

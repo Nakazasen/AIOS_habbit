@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased - 2026-09-25 - Optional summary-first query routing
+
+### Changed
+
+- Vague questions can search document-summary chunks first when
+  `AIOS_RAG_V2_SUMMARY_FIRST` is `1`. Overview answers may be synthesized from
+  those summaries and are marked as overview-level. The flag defaults off, so
+  the full multi-variant retrieval path and the existing abstain rules stay
+  active. Procedure and entity lookups are not relaxed.
+
 ## Unreleased - 2026-09-25 - Optional BGE-M3 ONNX int8 path
 
 ### Changed
