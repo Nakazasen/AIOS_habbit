@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased - 2026-09-25 - Broader summary-first overview detection
+
+### Changed
+
+- A general system or process question without a code, file name, or table
+  name can be classified as `overview` when `AIOS_RAG_V2_SUMMARY_FIRST` is
+  on. Questions that name a concrete identifier, and specific procedures,
+  stay on the full path. The flag still defaults off.
+
 ## Unreleased - 2026-09-25 - Optional durable drain fallback
 
 ### Changed

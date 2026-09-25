@@ -51,10 +51,26 @@ _CONCRETE_ENTITY_RE = re.compile(
     r"(?:"
     r"\b[A-Za-z]{1,8}[-_][A-Za-z0-9]{2,}\b|"
     r"\b[A-Za-z]*\d{2,}[A-Za-z0-9]*\b|"
+    r"\b[A-Z][A-Z0-9]*(?:_[A-Z0-9]+){1,}\b|"
+    r"\.(?:exe|pdf|xlsx|xls|pptx|ppt|txt|dll|csv)\b|"
+    r"\b\d{1,4}(?:[/-]\d{1,4}){1,2}\b|"
     r"\b(?:sheet|cell|row|column|page|trang|sku|sop|error|fault|code)\s*[:#-]?\s*\d+\b|"
     r"\bversion\s+\d+\b"
     r")",
     re.IGNORECASE,
+)
+_GENERAL_PROCESS_RE = re.compile(
+    r"(?:"
+    r"nhu the nao|"
+    r"\bra sao\b|"
+    r"gom nhung|"
+    r"thanh phan chinh|"
+    r"dien ra qua|"
+    r"noi chung|"
+    r"phoi hop|"
+    r"buoc co ban|"
+    r"nhung buoc nao"
+    r")"
 )
 _SUMMARY_FIRST_TRUE = frozenset({"1", "true", "yes", "on"})
 _SUMMARY_FIRST_FALSE = frozenset({"0", "false", "no", "off"})
@@ -276,21 +292,21 @@ def detect_retrieval_mode(
 ) -> str:
     """Classify query specificity for optional summary-first routing.
 
-    - ``overview``: summarize / open-ended / short vague asks without entities
+    - ``overview``: general system or process questions, or short vague asks, with no code
     - ``focused``: medium specificity or explicit multi-source synthesis
-    - ``full``: procedures and concrete entity/document lookups
+    - ``full``: a concrete code, file, table, or a specific procedure
     """
     intent = str(intent_category or "general").casefold()
-    if intent in {"procedure", "actionable_output", "diagnosis", "precise_lookup", "excel_native"}:
+    concrete = _has_concrete_entity(query, target_terms)
+    general = bool(_GENERAL_PROCESS_RE.search(_ascii_fold(query))) or _has_overview_wording(query)
+    if concrete:
         return "full"
-    if _has_concrete_entity(query, target_terms):
+    if intent in {"procedure", "actionable_output", "diagnosis", "precise_lookup", "excel_native"} and not general:
         return "full"
-    if _has_overview_wording(query):
+    if general or intent in {"summarize_document", "open_ended_research"}:
         return "overview"
     terms = tuple(target_terms) if target_terms else extract_content_terms(query)
     token_count = len(str(query or "").split())
-    if intent in {"summarize_document", "open_ended_research"}:
-        return "overview"
     if token_count <= 8 and len(terms) <= 4 and intent in {"general", "cross_source_synthesis"}:
         return "overview"
     if intent == "cross_source_synthesis" or len(terms) >= 4:

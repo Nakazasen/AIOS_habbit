@@ -156,3 +156,28 @@ def test_pipeline_overview_answers_from_summaries_only_when_enabled(tmp_path, mo
     assert detailed.query_plan.retrieval_mode == "full"
     assert detailed.effective_path == "lexical"
     assert "trả lời ở mức tổng quan" not in detailed.synthesis_result.answer.casefold()
+
+
+ACCEPTANCE_OVERVIEW = (
+    "Hệ thống điều khiển và quản lý sản xuất này gồm những thành phần chính nào và chúng phối hợp với nhau ra sao?",
+    "Luồng luân chuyển vật tư từ khi nhập kho tự động đến khi cấp phát ra dây chuyền sản xuất diễn ra qua những bước cơ bản nào?",
+    "Quy trình xử lý các sự cố và bất thường phát sinh trong quá trình vận hành và sản xuất nói chung được thực hiện như thế nào?",
+    "Việc ghi nhận tiến độ bắt đầu và hoàn thành công đoạn sản xuất của sản phẩm được thực hiện như thế nào từ dây chuyền lên hệ thống?",
+    "Quy trình quản lý và chuyển đổi khi có sự thay đổi thiết kế hoặc thay đổi quy trình sản xuất diễn ra ra sao?",
+)
+ACCEPTANCE_DETAILED = (
+    "Trong sự cố đâm đụng robot ACR xảy ra vào ngày 16-17/6/2026 khi xuất kho thủ công, mã số của 2 thùng Oricon cũ vẫn nằm thực tế trên giá kệ là gì và mã số của thùng Oricon mới bị robot đẩy đâm vào là gì?",
+    "Khi khởi động thủ công phần mềm điều khiển Matecon trên máy tính, tên tệp thực thi (.exe) dành riêng cho xe ACR và dành riêng cho xe CTU lần lượt là gì?",
+    "Khi liên kết thực tích tiêu hao khoảng 150 item linh kiện từ MOM sang SAP/R3 qua bảng T_IF_PROD_RESULT, lỗi không lưu được dữ liệu phát sinh do kiểu khai báo XML trong stored procedure bị giới hạn ở độ dài bao nhiêu ký tự?",
+    "Mã định danh công đoạn (Spec Name / Compound Operation Name) được sử dụng trong các giao dịch đăng ký ST/CO và Line-Out trên Opcenter MOM có độ dài bao nhiêu ký tự và bắt đầu bằng các ký tự nào?",
+    "Trong cấu trúc bảng dữ liệu nhập kho T_PARTS_RECIEVE, trường thông tin HOUSE_METHOD (mã phương thức cất hàng) định nghĩa 2 giá trị mã hóa nào và ý nghĩa của từng giá trị là gì?",
+)
+
+
+def test_acceptance_questions_split_general_process_from_coded_lookup():
+    for query in ACCEPTANCE_OVERVIEW:
+        assert detect_retrieval_mode(query) == "overview", query
+    for query in ACCEPTANCE_DETAILED:
+        assert detect_retrieval_mode(query) == "full", query
+    assert detect_retrieval_mode("Làm thế nào để reset máy X200?") == "full"
+    assert detect_retrieval_mode("Y302YL93020100") == "full"
