@@ -1,59 +1,58 @@
-# Ticket E4 — Chuyển default backend sang ONNX fp32 trên branch
+# Ticket G1 — Kiểm kê + ingest dữ liệu LSU và case lỗi (theo mẫu D2)
 
 Ngày viết: 2026-09-27 (Muse). Branch: `phieu-viec/rag-fix1`. Không đụng `main`.
 
 ## Bối cảnh
 
-- E3 (`6660e7e`, ĐẠT — Muse review 2026-09-27): extractor dọn XML sau flag
-  `AIOS_DOCUMENT_EXTRACTOR_XML_CLEANUP` (mặc định tắt), 27 test extractor đạt,
-  canary chỉ đọc `xmlns` 67→0, `<p:sld` 42→0, không ghi index.
-- E2 (`a83f8ff4`, ĐẠT): synthesis đã fix claim budget + exact-identifier rescue;
-  B1/B2/B3/B5 read-only ONNX đúng.
-- FIX 2 vòng 3–4 (ĐẠT): ONNX fp32 nhanh 2.92x, recall 1.0, init ~4–10s (PyTorch
-  ~45–97s). Migration bước B (23ca36e): 340/340 chunk đã có vector ONNX
-  fingerprint `016c5255…` (PyTorch `ce7fb53f…` giữ nguyên, không xóa).
-- Bước C (cc12d67): backend ONNX init 3.94s, pending 0, B1–B5+H3 không
-  abstain/timeout, index read-only nguyên vẹn.
+- Chuỗi E đã xong (E1 điều tra, E2 fix synthesis ĐẠT, E3 dọn XML extractor ĐẠT,
+  E4 default ONNX fp32 ĐẠT — Muse review 2026-09-27): index hiện tại 74
+  document / ~1064 chunk retrievable, fingerprint ONNX `016c5255…` / PyTorch
+  `ce7fb53f…`, pending 0, extractor dọn XML sau flag
+  `AIOS_DOCUMENT_EXTRACTOR_XML_CLEANUP` (mặc định tắt).
+- Dữ liệu cần ingest nằm sẵn LOCAL trên máy nhà, OMP đọc trực tiếp, KHÔNG tải Drive:
+  `D:\Sandbox\AIOS_habbit\Tài liệu của tất cả dòng máy` — gồm dữ liệu LSU
+  (log JIG, thử nghiệm 6pcs/TAPE MIRROR, self-diagnosis, pptx đào tạo LSU) và
+  case điều tra lỗi (`Loi KDTPS.xlsx`, `Bang ma loi/`, `SƠ đồ điện/`,
+  UWCA FXXX / SCT error-code xls...).
 - Chế độ tự lái toàn phần (user 2026-09-26): tự quyết mọi quyết định kỹ thuật,
   không hỏi; sai thì revert commit và viết ticket sửa.
 
 ## Việc cần làm
 
-1. **Đổi default backend sang ONNX fp32**: khi `BGE_BACKEND` không set (hoặc
-   set `auto`) → backend mặc định là ONNX fp32 (`bge-m3-onnx-fp32`), không còn
-   PyTorch.
-2. **Giữ override**: `BGE_BACKEND=pytorch|onnx|onnx_int8` vẫn ép backend tường
-   minh như cũ. `onnx_int8` giữ nguyên fingerprint/semantics riêng của nó.
-3. **Fail-closed khi thiếu model**: nếu đường giải default cần ONNX fp32 mà
-   thư mục model/checksum không đạt (file `model.onnx` thiếu, checksum
-   sidecar/env `AIOS_BGE_ONNX_MODEL_CHECKSUM` không khớp) → RAISE lỗi rõ ràng
-   (nói đúng đường model thiếu + cách override về `pytorch`), KHÔNG fallback
-   lặng lẽ, KHÔNG treo, KHÔNG init nửa chừng.
-4. **Fingerprint semantics không đổi**: đổi default không được làm thay đổi
-   fingerprint của vector đã migrate (bước B/C đã verify 340/340 cả hai
-   fingerprint). Kiểm tra: mở index thật ở `mode=ro`, không set
-   `BGE_BACKEND`, đếm `pending == 0` cho backend default — nếu >0 thì DỪNG và
-   báo lại, không tự re-embed hàng loạt.
-5. **Test**: unit test giải backend (default→onnx, override pytorch/onnx_int8,
-   model thiếu→raise fail-closed); chạy pytest liên quan + full suite (ghi
-   trung thực lỗi môi trường cũ nếu có, không PASS giả).
-6. **Đo trên index thật (chỉ đọc)**: init default (không env) đo thời gian;
-   chạy 1–2 câu B (B1, B5) qua đường ONNX, ghi latency + không abstain;
-   `PRAGMA integrity_check` và kích thước file index trước/sau giữ nguyên.
+1. **Kiểm kê local**: đếm file trong `Tài liệu của tất cả dòng máy` theo loại
+   (pdf/xlsx/xls/pptx/ppt/doc/msg/csv...), ghi dung lượng, đối chiếu với index
+   hiện tại → liệt kê file CHƯA có trong index và file ĐÃ có.
+2. **Kiểm tra extractor**: pptx/ppt/msg có được extractor đọc không; nếu không,
+   báo rõ loại nào bị bỏ qua + lý do. KHÔNG tự viết extractor mới trong ticket này.
+3. **Ingest file mới theo đúng quy trình D2**: dry-run trước → backup mới
+   (file sibling, `integrity_check=ok`, fail-closed nếu backup lỗi) → apply theo
+   batch có resume → verify cuối (số doc/chunk/retrievable/pending, fingerprint
+   ONNX/PyTorch, `integrity_check`, kích thước file index trước/sau).
+4. Ingest SAU E3/E4: chunk được dọn XML ngay từ extractor (flag
+   `AIOS_DOCUMENT_EXTRACTOR_XML_CLEANUP` dùng đúng cách E3 đã nghiệm thu),
+   embed bằng backend ONNX fp32 (default sau E4). KHÔNG re-embed hàng loạt vector
+   cũ: kiểm tra pending theo fingerprint trước và sau, số liệu phải khớp logic.
+5. Mọi apply đều dry-run trước + backup mới + batch/resume; thiếu một trong ba
+   thì DỪNG và báo rõ số liệu.
 
 ## Điều cấm
 
-- KHÔNG merge vào `main`. KHÔNG ingest, KHÔNG `--apply`, KHÔNG ghi index thật,
-  KHÔNG backfill — ticket này chỉ đổi default trong code + đo chỉ đọc.
-- KHÔNG bật/tắt các flag khác (XML cleanup giữ mặc định tắt; drain flag giữ tắt).
-- Nếu phát hiện default ONNX gây re-embed hàng loạt hoặc timeout (pending > 0) →
-  DỪNG, revert phạm vi, báo cáo rõ số liệu.
+- KHÔNG merge vào `main`. KHÔNG `--apply` khi chưa có backup mới integrity ok.
+- KHÔNG bật/tắt các flag khác (drain flag giữ tắt như cũ).
+- KHÔNG ingest file không xác định được nguồn → ghi vào danh sách bỏ qua kèm lý do.
+
+## Nghiệm thu
+
+- Số liệu trước/sau rõ ràng: +bao nhiêu doc/chunk/retrievable, pending 0,
+  `integrity_check=ok` trước/sau, kích thước index trước/sau giữ nguyên logic.
+- Báo cáo liệt kê: file đã ingest (nguồn/sheet/dòng) + file bị bỏ qua kèm lý do
+  (loại file extractor không hỗ trợ, trùng, không xác định nguồn...).
 
 ## Bàn giao
 
-- Báo cáo: `docs/phieu-viec/ket-qua/FIX3_backend-E4-default-onnx.md`
-  (hostname, SHA code lúc chạy, chỗ đổi default, kết quả test, số pending
-  before/after, latency init + B1/B5 qua default, integrity index).
+- Báo cáo: `docs/phieu-viec/ket-qua/BUOC0_ingest-G1-lsu-case-loi.md`
+  (hostname, SHA code lúc chạy, số liệu kiểm kê, số liệu ingest trước/sau,
+  danh sách bỏ qua kèm lý do, verify integrity).
 - Commit **riêng** + push `phieu-viec/rag-fix1`, không đụng `main`.
 - Cập nhật `trang-thai.md` → `xong-cho-duyet` (ghi commit SHA + đường dẫn báo cáo),
   rồi **DỪNG**.
