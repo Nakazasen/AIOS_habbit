@@ -5,5 +5,5 @@
 - Ticket trước: E4 — ĐẠT (Muse review 2026-09-27: diff 77c804b6+3aa4280 khớp báo cáo; alias onnx/auto→onnx, onnx_int8 tách riêng dir/checksum/fingerprint; fail-closed khi thiếu model; 63 test liên quan đạt; full suite 3.146 passed + 23 lỗi môi trường cũ, không PASS giả; index chỉ đọc pending 0, integrity ok)
 - Mã nguồn E4: `77c804b6b26dd433f18be39e0770d06e0b559931` (+ sửa worker `3aa4280fe1e968da635e86ba7b28dff760c6dc40`)
 - Báo cáo E4: `docs/phieu-viec/ket-qua/FIX3_backend-E4-default-onnx.md`
-- Ghi chú: OMP hoàn thành dry-run local 20/101 tệp lúc 2026-09-27 05:20 +0700 — 6.760 chunk/6.672 retrievable, cache đủ 20 tệp. Một bảng XLSX tạo 6.503 chunk, giữ để áp dụng theo batch; index vẫn nguyên trạng.
-- Cập nhật lần cuối: 2026-09-27 05:20 +0700 (OMP — dry-run local 20 tệp)
+- Ghi chú: OMP hoàn thành dry-run 30/99 nguồn local đủ điều kiện lúc 2026-09-27 05:28 +0700 — cộng dồn 8.553 chunk/7.887 chunk truy xuất được; đã loại 2 tệp khóa tạm Excel. Một bảng XLSX có 6.503 chunk vẫn dưới ngưỡng nạp 10.000; chỉ mục chưa đổi.
+- Cập nhật lần cuối: 2026-09-27 05:28 +0700 (OMP — dry-run local 30 nguồn)
