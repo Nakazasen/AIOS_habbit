@@ -1,68 +1,56 @@
-# Ticket hiện tại — Migration vector offline sang ONNX fp32 (Bước B: apply)
+# Ticket hiện tại — Verify worker ONNX fp32 hết timeout + chạy lại B1–B5 (Bước C)
 
-> OMP đọc kỹ `QUY-UOC.md` trước. Ticket này CHỈ LÀM Bước B. Xong Bước B thì
-> commit + push + cập nhật `trang-thai.md` thành `xong-cho-duyet`, rồi DỪNG.
-> Bước A đã ĐẠT (commit `ea195c1`, đã review). Không tự ý làm Bước C
-> (chạy worker với `BGE_BACKEND=onnx` để verify hết timeout) — đó là ticket riêng.
+> OMP đọc kỹ `QUY-UOC.md` trước. Ticket này CHỈ LÀM Bước C. Xong thì commit +
+> push + cập nhật `trang-thai.md` thành `xong-cho-duyet`, rồi DỪNG.
+> Bước A ĐẠT (commit `ea195c1`). Bước B ĐẠT (commit `23ca36e`: 340/340 vector
+> đã migrate sang fingerprint ONNX `016c5255…`, pending 0, backup mới
+> `library.sqlite.bak-20260926-1142` integrity ok).
+> Bước C KHÔNG ghi index — chỉ đọc + chạy query. Không chạy script migrate.
 
 ## Bối cảnh
 
 - Branch: `phieu-viec/rag-fix1`. Không đụng `main`.
-- Script: `scripts/migrate_vectors_to_onnx.py` (Bước A). Dry-run đã xong:
-  340 pending / 340 retrievable / 0 đã migrate, fingerprint ONNX `016c5255…`,
-  PyTorch `ce7fb53f…`, index 9.764.864 byte. Ước tính cold ~2,15 giờ,
-  warm ~10,2 phút.
-- User đã duyệt chạy `--apply` trên index thật (2026-09-26).
+- Diagnostic `1488e77`: worker với `BGE_BACKEND=onnx` từng timeout sau 300 s ở
+  init vì `_ensure_embeddings` coi 340 chunk fingerprint PyTorch là pending và
+  re-embed toàn index (1,6–22,8 s/chunk).
+- Sau Bước B, 340 chunk đã có vector ONNX đúng fingerprint → kỳ vọng init
+  không còn re-embed, hết timeout.
+- Baseline PyTorch để đối chiếu: báo cáo `docs/phieu-viec/ket-qua/` của commit
+  `484ac76` (13 câu A/B/H chạy worker PyTorch, init 97,18 s).
 
-## Bước B — Backup mới + --apply, rồi DỪNG chờ duyệt
+## Bước C — Bật worker ONNX, đo init, chạy lại B1–B5, rồi DỪNG chờ duyệt
 
-### B1. Backup mới (bắt buộc, trước mọi lần ghi)
+### C1. Khởi động worker với backend ONNX, đo thời gian init
 
-- Copy index canary thật sang file sibling:
-  `library.sqlite.bak-<YYYYMMDD-HHMM>` (giờ máy local), đặt cạnh index.
-- Chạy `PRAGMA integrity_check` trên file backup → phải ra `ok`.
-  Không `ok` thì DỪNG, báo lỗi, không chạy tiếp.
-- Ghi tên file backup + kết quả integrity vào báo cáo.
+- Lệnh: `BGE_BACKEND=onnx` + lệnh khởi động worker như các lần nghiệm thu trước
+  (cùng index canary máy nhà
+  `local_runs/workspace_chat_rag_v2_canary/bge_m3_hybrid/collections/tri_thuc/library.sqlite`).
+- Ghi lại thời gian init (cold). Tiêu chí: **< 300 s** (không timeout).
+- Nếu init vẫn vượt 300 s: DỪNG NGAY, không retry mù, báo cáo log init
+  (fingerprint backend, pending count nếu có) rồi chờ chỉ đạo.
+- Tuyệt đối không xóa/sửa vector PyTorch cũ trong index.
 
-### B2. Chạy `--apply`
+### C2. Chạy lại 5 câu B1–B5 (và H3 nếu nhanh), đối chiếu với baseline PyTorch
 
-- Lệnh (đúng thứ tự):
-  ```
-  BGE_BACKEND=onnx PYTHONPATH=D:/Sandbox/AIOS_habbit/src \
-  .venv/Scripts/python.exe scripts/migrate_vectors_to_onnx.py \
-  local_runs/workspace_chat_rag_v2_canary/bge_m3_hybrid/collections/tri_thuc/library.sqlite --apply
-  ```
-- Batch 10, commit từng batch, progress từng batch (script đã làm sẵn).
-- Giám sát tốc độ: nếu chậm gấp 2 lần ước tính warm (~20 phút tổng) thì DỪNG,
-  giữ nguyên hiện trạng (resume được), báo cáo tình hình, chờ chỉ đạo.
-- Nếu bị ngắt giữa chừng: chạy lại cùng lệnh, script tự resume bỏ qua chunk
-  đã migrate.
+- Chạy B1–B5 trên worker ONNX (cả hai flag summary-first + provenance bật như
+  lần `484ac76` để so sánh công bằng).
+- Ghi cho mỗi câu: mode (overview/hybrid/full), latency, đáp án tóm tắt,
+  so với đáp án baseline PyTorch ở `484ac76` (giống/khác gì).
+- Không cần so on/off flag — chỉ so backend onnx vs pytorch.
 
-### B3. Verify sau apply
+### C3. Báo cáo + bàn giao
 
-- Chạy lại dry-run (không `--apply`): pending phải = 0.
-- Đếm vector fingerprint ONNX `016c5255…` = 340; vector PyTorch `ce7fb53f…`
-  vẫn còn đủ 340 (không bị ghi đè/xóa).
-- `PRAGMA integrity_check` trên index thật → `ok`.
-
-### B4. Báo cáo + bàn giao
-
-- Báo cáo: `docs/phieu-viec/ket-qua/FIX2_migrate-onnx-apply.md`, gồm:
-  hostname, đường dẫn index, tên file backup + integrity, thời gian chạy từng
-  batch (hoặc tổng), số chunk đã migrate, số liệu verify B3.
-- Commit RIÊNG cho Bước B, push branch `phieu-viec/rag-fix1`, không đụng `main`.
+- Báo cáo: `docs/phieu-viec/ket-qua/FIX2_onnx-worker-verify.md`, gồm:
+  hostname, đường dẫn index, thời gian init ONNX (so với timeout 300 s và
+  init PyTorch 97,18 s), bảng B1–B5 (latency + đáp án onnx vs pytorch),
+  kết luận timeout còn hay hết.
+- Commit RIÊNG cho Bước C, push branch `phieu-viec/rag-fix1`, không đụng `main`.
 - Cập nhật `trang-thai.md`: `xong-cho-duyet` + ghi commit SHA + đường dẫn báo cáo.
-- DỪNG. Chờ review xong mới có Bước C.
+- DỪNG. Chờ review xong mới có ticket tiếp theo (quyết định có bật ONNX
+  mặc định hay không — ngoài phạm vi Bước C).
 
-## Dọn kèm (không bắt buộc, nếu tiện thì làm trong cùng commit)
+## Ngoài phạm vi Bước C
 
-3 nit từ review Bước A:
-- Xóa 2 hằng số chết `BGE_M3_MODEL_PATH` / `BGE_M3_CHECKSUM` trong script
-  (code thực tế dùng `resolve_onnx_checksum`).
-- Thêm comment giải thích chỗ check `resolve_bge_backend_name(...) != "onnx_int8"`
-  (tên nội bộ legacy của backend fp32).
-
-## Ngoài phạm vi Bước B
-
-- Chạy worker/chat với `BGE_BACKEND=onnx` (Bước C, ticket riêng sau duyệt).
-- Mọi thay đổi fingerprint semantics hay runtime.
+- Mọi ghi/sửa/xóa trên index (migration đã xong ở Bước B).
+- Đổi default backend, bật flag cho production, dọn model PyTorch/ONNX.
+- Sửa code runtime vì timeout (nếu còn timeout thì báo, không tự sửa).
