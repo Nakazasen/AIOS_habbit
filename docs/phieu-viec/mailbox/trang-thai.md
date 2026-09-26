@@ -1,13 +1,9 @@
 # Trạng thái mailbox
 
-- Trạng thái: `xong-cho-duyet`
-- Ticket hiện tại: E4 — chuyển bộ xử lý mặc định sang ONNX fp32; giữ lựa chọn `BGE_BACKEND`, dừng an toàn khi thiếu/sai mô hình.
-- Mã nguồn E4: `3aa4280fe1e968da635e86ba7b28dff760c6dc40`
-- Mã báo cáo và bàn giao: `575bdec2a0e8b4936eefaec391231870ac6fdebb`
+- Trạng thái: `moi`
+- Ticket hiện tại: G1 — kiểm kê + ingest dữ liệu LSU và case lỗi theo quy trình D2 (sau E3/E4); báo rõ loại file extractor không hỗ trợ.
+- Ticket trước: E4 — ĐẠT (Muse review 2026-09-27: diff 77c804b6+3aa4280 khớp báo cáo; alias onnx/auto→onnx, onnx_int8 tách riêng dir/checksum/fingerprint; fail-closed khi thiếu model; 63 test liên quan đạt; full suite 3.146 passed + 23 lỗi môi trường cũ, không PASS giả; index chỉ đọc pending 0, integrity ok)
+- Mã nguồn E4: `77c804b6b26dd433f18be39e0770d06e0b559931` (+ sửa worker `3aa4280fe1e968da635e86ba7b28dff760c6dc40`)
 - Báo cáo E4: `docs/phieu-viec/ket-qua/FIX3_backend-E4-default-onnx.md`
-- Ticket trước: E3 — ĐẠT (commit `6660e7e`, Muse review 2026-09-27: extractor dọn XML sau flag `AIOS_DOCUMENT_EXTRACTOR_XML_CLEANUP` mặc định tắt, 27 test extractor đạt, canary chỉ đọc `xmlns` 67→0 / `<p:sld` 42→0 / thẻ XML 79→0, B1/B3/B5 giữ hạng 1/100, không ghi index, full suite 3.134 passed + 23 lỗi môi trường cũ không PASS giả)
-- Báo cáo E1: `docs/phieu-viec/ket-qua/FIX3_synthesis-E1-dieu-tra.md`
-- Báo cáo E2: `docs/phieu-viec/ket-qua/FIX3_synthesis-E2-fix.md`
-- Báo cáo E3: `docs/phieu-viec/ket-qua/FIX3_extractor-E3-xml.md`
-- Ghi chú: OMP 2026-09-27 02:54 +0700 — kiểm thử liên quan 63 đạt; toàn bộ `pytest -q`: 3.146 đạt, 2 bỏ qua, 23 lỗi (chi tiết trong báo cáo). Chỉ mục chỉ đọc, chờ xử lý 0, kích thước không đổi; đã đẩy nhánh, không gộp `main`, dừng chờ Muse duyệt.
-- Cập nhật lần cuối: 2026-09-27 02:54 +0700 (OMP h410asrock)
+- Ghi chú: chuỗi E đã xong cả 4 phiếu (E1 điều tra, E2 synthesis, E3 dọn XML, E4 default ONNX). Tiếp theo: G1 ingest dữ liệu LSU + case lỗi, rồi G2 kiểm thử 10 câu, rồi F1–F5 Bước 0 (hạn 28–30/09).
+- Cập nhật lần cuối: 2026-09-27 ~02:58 +0700 (Muse — phát hành ticket G1)
