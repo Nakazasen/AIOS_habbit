@@ -207,6 +207,91 @@ def test_pptx_adapter_extracts_slide_text_and_notes(tmp_path):
     assert "Speaker note" in res.text
 
 
+def test_xml_cleanup_flag_defaults_off_and_cleans_markup(monkeypatch):
+    from aios_habit.document_extractors import (
+        XML_CLEANUP_FLAG,
+        normalize_extracted_text,
+        xml_cleanup_enabled,
+    )
+
+    monkeypatch.delenv(XML_CLEANUP_FLAG, raising=False)
+    assert xml_cleanup_enabled() is False
+
+    markup = (
+        'Answer <p:sld xmlns:p="http://schemas.openxmlformats.org/'
+        'presentationml/2006/main"><!--private comment-->'
+        '<a:t>PART-402 nvarchar(4000) 0 1</a:t></p:sld>'
+    )
+    monkeypatch.setenv(XML_CLEANUP_FLAG, "1")
+    cleaned = normalize_extracted_text(markup)
+    assert "PART-402 nvarchar(4000) 0 1" in cleaned
+    assert "xmlns" not in cleaned
+    assert "<p:" not in cleaned
+    assert "private comment" not in cleaned
+
+    encoded = markup.replace("<", "&lt;").replace(">", "&gt;")
+    cleaned_encoded = normalize_extracted_text(encoded)
+    assert "PART-402 nvarchar(4000) 0 1" in cleaned_encoded
+    assert "xmlns" not in cleaned_encoded
+    assert "<p:" not in cleaned_encoded
+    assert "private comment" not in cleaned_encoded
+
+    clipped_xml = (
+        'ns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" '
+        'xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main"> 3 36'
+    )
+    cleaned_clipped = normalize_extracted_text(clipped_xml)
+    assert "xmlns" not in cleaned_clipped
+    assert "ns:r" not in cleaned_clipped
+    assert ">" not in cleaned_clipped
+    assert "3 36" in cleaned_clipped
+
+
+def test_pptx_xml_cleanup_keeps_text_facts_and_strips_long_namespaces(monkeypatch, tmp_path):
+    from aios_habit.document_extractors import XML_CLEANUP_FLAG
+
+    namespace = "http://schemas.openxmlformats.org/officeDocument/2006/relationships/" + "nested/" * 30
+    slide_xml = (
+        '<p:sld xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" '
+        'xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" '
+        'xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main">'
+        '<p:sp><p:txBody><!--slide comment--><a:p><a:r><a:t>'
+        'PART-402 nvarchar(4000) 0 1'
+        '</a:t></a:r><p:extLst xmlns:q="' + namespace + '"><q:ext>metadata</q:ext>'
+        '</p:extLst></p:txBody></p:sp></p:sld>'
+    )
+    pptx = tmp_path / "xml-heavy.pptx"
+    _write_zip(pptx, {"ppt/slides/slide1.xml": slide_xml})
+
+    monkeypatch.setenv(XML_CLEANUP_FLAG, "1")
+    chunks = extract_text_chunks_from_file(pptx)
+    assert chunks
+    text = "\n".join(chunk["text"] for chunk in chunks)
+    assert "PART-402" in text
+    assert "nvarchar(4000)" in text
+    assert "0 1" in text
+    assert "xmlns" not in text
+    assert "<p:" not in text
+    assert "slide comment" not in text
+
+
+def test_clean_pptx_chunks_are_unchanged_when_xml_cleanup_is_enabled(monkeypatch, tmp_path):
+    from aios_habit.document_extractors import XML_CLEANUP_FLAG
+
+    pptx = tmp_path / "clean.pptx"
+    _write_zip(pptx, {
+        "ppt/slides/slide1.xml": (
+            '<p:sld xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main">'
+            '<a:t>Slide Title PART-402 nvarchar(4000) 0 1</a:t></p:sld>'
+        ),
+    })
+    monkeypatch.delenv(XML_CLEANUP_FLAG, raising=False)
+    baseline = extract_text_chunks_from_file(pptx)
+    monkeypatch.setenv(XML_CLEANUP_FLAG, "1")
+    cleaned = extract_text_chunks_from_file(pptx)
+    assert cleaned == baseline
+
+
 def test_docx_adapter_extracts_paragraphs_and_tables(tmp_path):
     docx = tmp_path / "doc.docx"
     _write_zip(docx, {"word/document.xml": '<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body><w:p><w:r><w:t>Heading Text</w:t></w:r></w:p><w:tbl><w:tr><w:tc><w:p><w:r><w:t>Cell Value</w:t></w:r></w:p></w:tc></w:tr></w:tbl></w:body></w:document>'})

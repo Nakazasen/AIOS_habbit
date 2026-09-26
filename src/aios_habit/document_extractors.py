@@ -25,8 +25,11 @@ COMMON_TESSERACT_PATHS = (
     r"C:\Program Files (x86)\Tesseract-OCR\tesseract.exe",
     r"D:\Tools\Tesseract-OCR\tesseract.exe",
 )
+XML_CLEANUP_FLAG = "AIOS_DOCUMENT_EXTRACTOR_XML_CLEANUP"
+_XML_CLEANUP_TRUE = frozenset({"1", "true", "yes", "on"})
 USABLE_STATUSES = {"success", "extracted_success", "extracted_partial", "ocr_success", "ocr_partial", "extracted"}
 IMAGE_EXTS = {".png", ".jpg", ".jpeg", ".bmp", ".tif", ".tiff"}
+
 
 
 class PDFDependencyMissingError(RuntimeError):
@@ -240,6 +243,34 @@ def _has_meaningful_text(text: str) -> bool:
     return len(tokens) >= 2
 
 
+def xml_cleanup_enabled() -> bool:
+    """Return whether optional XML markup cleanup is explicitly enabled."""
+    return os.environ.get(XML_CLEANUP_FLAG, "").strip().casefold() in _XML_CLEANUP_TRUE
+
+
+_XML_MARKUP_RE = re.compile(
+    r"<!--.*?-->|<\?.*?\?>|<!\[CDATA\[|\]\]>|<![^>]*>|"
+    r"</?[A-Za-z_][\w.:-]*(?:\s+[^<>]*?)?\s*/?>",
+    flags=re.DOTALL,
+)
+_XML_NAMESPACE_ATTRIBUTE_RE = re.compile(
+    r"\b(?:xmlns(?::[\w.-]+)?|[\w.-]+:[\w.-]+)\s*=\s*(?:\"[^\"<>]*\"|'[^'<>]*')",
+    flags=re.IGNORECASE | re.DOTALL,
+)
+_XML_INCOMPLETE_TAG_RE = re.compile(
+    r"</?[A-Za-z_][\w.:-]*(?:\s+[^<>]*)?$",
+    flags=re.DOTALL,
+)
+
+def _strip_xml_markup(text: str) -> str:
+    """Remove XML markup while retaining decoded text nodes."""
+    decoded = html.unescape(str(text or ""))
+    with_attributes_removed = _XML_NAMESPACE_ATTRIBUTE_RE.sub(" ", decoded)
+    cleaned = _XML_MARKUP_RE.sub(" ", with_attributes_removed)
+    cleaned = _XML_INCOMPLETE_TAG_RE.sub(" ", cleaned)
+    return re.sub(r"^\s*>\s*", " ", cleaned)
+
+
 def _xml_local_name(tag: str) -> str:
     return str(tag or "").rsplit("}", 1)[-1]
 
@@ -252,7 +283,21 @@ def _xml_root_from_zip(archive: zipfile.ZipFile, name: str):
 
 
 def _extract_xml_text(xml_text: str) -> list[str]:
-    values = re.findall(r"<[^>]*t[^>]*>(.*?)</[^>]*t>", str(xml_text or ""), flags=re.IGNORECASE | re.DOTALL)
+    text = str(xml_text or "")
+    if xml_cleanup_enabled():
+        try:
+            root = ET.fromstring(text)
+        except ET.ParseError:
+            return _clean_lines([_strip_xml_markup(text)], limit=200)
+        values = [
+            node.text
+            for node in root.iter()
+            if _xml_local_name(node.tag) == "t" and node.text
+        ]
+        if not values:
+            values = [value for value in root.itertext() if value.strip()]
+        return _clean_lines(values, limit=200)
+    values = re.findall(r"<[^>]*t[^>]*>(.*?)</[^>]*t>", text, flags=re.IGNORECASE | re.DOTALL)
     return _clean_lines([html.unescape(value) for value in values], limit=200)
 
 
@@ -266,6 +311,8 @@ def _text_nodes(element) -> str:
 
 def normalize_extracted_text(text: str, *, max_chars: int = 12000) -> str:
     """Clean noisy extractor output while preserving Vietnamese/Japanese text."""
+    if xml_cleanup_enabled():
+        text = _strip_xml_markup(text)
     lines = []
     for line in str(text or "").splitlines():
         cleaned = re.sub(r"\s+", " ", line).strip()
@@ -278,6 +325,7 @@ def normalize_extracted_text(text: str, *, max_chars: int = 12000) -> str:
         lines.append(cleaned)
     normalized = "\n".join(lines)
     return normalized[:max_chars]
+
 
 
 def _chunk_result(result: ExtractionResult, path: Path, root: Path | None, max_chars_per_chunk: int) -> list[dict[str, Any]]:
