@@ -5,8 +5,15 @@ import pytest
 
 from aios_habit.rag_v2.bge_onnx_backend import (
     BGE_BACKEND_FLAG,
+    ONNX_CHECKSUM_FLAG,
+    ONNX_DIR_NAME,
+    ONNX_MODEL_PATH_FLAG,
+    default_onnx_model_dir,
     lexical_weights_from_hidden,
+    onnx_checksum_sidecar,
     resolve_bge_backend_name,
+    resolve_onnx_checksum,
+    resolve_onnx_model_path,
 )
 from aios_habit.rag_v2.pipeline import RagV2DevConfig, _resolve_embedding_backend
 from aios_habit.rag_v2.retrieval_backends import sha256_model_tree, verify_model_tree
@@ -19,8 +26,27 @@ def test_bge_backend_flag_defaults_to_pytorch(monkeypatch):
 
 
 def test_bge_backend_flag_selects_onnx(monkeypatch):
+    monkeypatch.setenv(BGE_BACKEND_FLAG, "onnx")
+    assert resolve_bge_backend_name("pytorch") == "onnx_int8"
     monkeypatch.setenv(BGE_BACKEND_FLAG, "onnx_int8")
     assert resolve_bge_backend_name("pytorch") == "onnx_int8"
+
+
+def test_onnx_defaults_to_fp32_model_and_checksum_sidecar(tmp_path, monkeypatch):
+    monkeypatch.delenv(ONNX_MODEL_PATH_FLAG, raising=False)
+    monkeypatch.delenv(ONNX_CHECKSUM_FLAG, raising=False)
+    default_path = default_onnx_model_dir()
+    assert ONNX_DIR_NAME == "bge-m3-onnx-fp32"
+    assert default_path.name == "bge-m3-onnx-fp32"
+    assert resolve_onnx_model_path() == default_path
+    assert onnx_checksum_sidecar(default_path).name == "bge-m3-onnx-fp32.sha256"
+
+    model_dir = tmp_path / ONNX_DIR_NAME
+    model_dir.mkdir()
+    checksum = "sha256:" + "9f81075f58fe1d251510d32ba5c9a66102f7420115519d3f720adc2348b11093"
+    sidecar = onnx_checksum_sidecar(model_dir)
+    sidecar.write_text(checksum + "\n", encoding="utf-8")
+    assert resolve_onnx_checksum(model_dir) == checksum
 
 
 def test_verify_model_tree_cache_skips_second_hash(tmp_path, monkeypatch):
