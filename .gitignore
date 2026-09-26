@@ -70,10 +70,6 @@ Thumbs.db
 *.log
 pytest_goal_*/
 
-# Mailbox watcher runtime (local only, khong commit)
-docs/phieu-viec/mailbox/watcher_state.json
-docs/phieu-viec/mailbox/_ticket-moi.md
-
 # Additional AIOS generated libraries
 06_workflow_library/**/*.jsonl
 
