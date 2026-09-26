@@ -6,5 +6,5 @@
 - Báo cáo E1: `docs/phieu-viec/ket-qua/FIX3_synthesis-E1-dieu-tra.md`
 - Báo cáo E2: `docs/phieu-viec/ket-qua/FIX3_synthesis-E2-fix.md`
 - Báo cáo E3: `docs/phieu-viec/ket-qua/FIX3_extractor-E3-xml.md`
-- Ghi chú: OMP 2026-09-27 02:29 +0700 — dry-run migration trên index thật mở `mode=ro`: ONNX `016c5255…`, PyTorch `ce7fb53f…`, retrievable/already ONNX 1064, pending 0; không ghi index. Đang đo khởi tạo/query read-only với code mới; full suite đang chạy.
-- Cập nhật lần cuối: 2026-09-27 02:29 +0700 (OMP h410asrock)
+- Ghi chú: OMP 2026-09-27 02:34 +0700 — khởi tạo ONNX fp32 mặc định trên 74 nguồn mất 2,406s; B1 0,675s và B5 0,677s, đều không abstain; bằng chứng có dữ kiện đích nhưng câu trả lời không nêu đủ mã. Index `integrity_check=ok`, kích thước giữ 29.851.648 byte. Full suite: 3.145 đạt, 2 bỏ qua, 23 lỗi môi trường/tiến trình con; đang hoàn thiện báo cáo và cổng còn lại.
+- Cập nhật lần cuối: 2026-09-27 02:34 +0700 (OMP h410asrock)
