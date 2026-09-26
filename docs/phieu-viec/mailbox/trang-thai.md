@@ -6,5 +6,5 @@
 - Báo cáo E1: `docs/phieu-viec/ket-qua/FIX3_synthesis-E1-dieu-tra.md`
 - Báo cáo E2: `docs/phieu-viec/ket-qua/FIX3_synthesis-E2-fix.md`
 - Báo cáo E3: `docs/phieu-viec/ket-qua/FIX3_extractor-E3-xml.md`
-- Ghi chú: OMP 2026-09-27 02:27 +0700 — tách xong ONNX fp32 mặc định và ONNX int8 riêng (đường dẫn, tệp mô hình, checksum và fingerprint); 47 kiểm thử RAG liên quan đạt; mã `77c804b` đã push; đang chạy full suite và đo chỉ mục thật chỉ đọc.
-- Cập nhật lần cuối: 2026-09-27 02:27 +0700 (OMP h410asrock)
+- Ghi chú: OMP 2026-09-27 02:29 +0700 — dry-run migration trên index thật mở `mode=ro`: ONNX `016c5255…`, PyTorch `ce7fb53f…`, retrievable/already ONNX 1064, pending 0; không ghi index. Đang đo khởi tạo/query read-only với code mới; full suite đang chạy.
+- Cập nhật lần cuối: 2026-09-27 02:29 +0700 (OMP h410asrock)
