@@ -5,5 +5,5 @@
 - Ticket trước: E4 — ĐẠT (Muse review 2026-09-27: diff 77c804b6+3aa4280 khớp báo cáo; alias onnx/auto→onnx, onnx_int8 tách riêng dir/checksum/fingerprint; fail-closed khi thiếu model; 63 test liên quan đạt; full suite 3.146 passed + 23 lỗi môi trường cũ, không PASS giả; index chỉ đọc pending 0, integrity ok)
 - Mã nguồn E4: `77c804b6b26dd433f18be39e0770d06e0b559931` (+ sửa worker `3aa4280fe1e968da635e86ba7b28dff760c6dc40`)
 - Báo cáo E4: `docs/phieu-viec/ket-qua/FIX3_backend-E4-default-onnx.md`
-- Ghi chú: OMP hoàn thành dry-run 90/99 nguồn local lúc 2026-09-27 05:47 +0700 — cộng dồn 77.398 chunk/55.566 chunk truy xuất được; lô mới không có tệp rỗng. Còn 9 nguồn local; phạm vi ZIP đủ điều kiện là 336 mục, gồm cả hai tệp trên 20 MiB. Chỉ mục thật chưa đổi.
-- Cập nhật lần cuối: 2026-09-27 05:47 +0700 (OMP — dry-run local 90 nguồn)
+- Ghi chú: OMP hoàn thành dry-run 99/99 nguồn local lúc 2026-09-27 05:50 +0700 — 81.503 chunk/58.543 chunk truy xuất được. `.xls`, `.ppt`, `.xlsx` thất bại nên không tạo chunk; `openpyxl` cảnh báo có thể mất hình WMF/hình vẽ trong XLSX. ZIP còn 334 nguồn đủ điều kiện; chỉ mục thật chưa đổi.
+- Cập nhật lần cuối: 2026-09-27 05:50 +0700 (OMP — hoàn tất dry-run local)
