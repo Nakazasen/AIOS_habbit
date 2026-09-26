@@ -6,5 +6,5 @@
 - Báo cáo E1: `docs/phieu-viec/ket-qua/FIX3_synthesis-E1-dieu-tra.md`
 - Báo cáo E2: `docs/phieu-viec/ket-qua/FIX3_synthesis-E2-fix.md`
 - Báo cáo E3: `docs/phieu-viec/ket-qua/FIX3_extractor-E3-xml.md`
-- Ghi chú: OMP 2026-09-27 02:34 +0700 — khởi tạo ONNX fp32 mặc định trên 74 nguồn mất 2,406s; B1 0,675s và B5 0,677s, đều không abstain; bằng chứng có dữ kiện đích nhưng câu trả lời không nêu đủ mã. Index `integrity_check=ok`, kích thước giữ 29.851.648 byte. Full suite: 3.145 đạt, 2 bỏ qua, 23 lỗi môi trường/tiến trình con; đang hoàn thiện báo cáo và cổng còn lại.
-- Cập nhật lần cuối: 2026-09-27 02:34 +0700 (OMP h410asrock)
+- Ghi chú: OMP 2026-09-27 02:43 +0700 — sửa tiến trình con để chỉ kiểm tra model ONNX ở hồ sơ BGE; hồ sơ từ khóa không còn phụ thuộc thư mục model, có kiểm thử mới. Bộ backend/migrate/pipeline/worker: 63 đạt; mã đã đẩy ở commit `3aa4280`. Đang chạy lại cổng toàn bộ và hoàn thiện báo cáo.
+- Cập nhật lần cuối: 2026-09-27 02:43 +0700 (OMP h410asrock)
