@@ -212,6 +212,11 @@ def _export_onnx_fp32_optimum(source: Path, work_model: Path) -> None:
         raise SystemExit(
             "optimum export needs the optimum package: see FIX2 report step 1"
         ) from exc
+    # BGE-M3 ships sentence-transformers sidecars (config_sentence_transformers.json,
+    # modules.json), so optimum auto-infers library_name="sentence_transformers"
+    # and imports that package, which segfaults in this venv (pyarrow
+    # C-extension access violation). The model itself is a plain XLM-Roberta
+    # encoder, so force library_name="transformers" to export AutoModel only.
     main_export(
         str(source),
         output=str(work_model),
@@ -220,11 +225,21 @@ def _export_onnx_fp32_optimum(source: Path, work_model: Path) -> None:
         framework="pt",
         local_files_only=True,
         trust_remote_code=False,
-        for_ort=True,
+        library_name="transformers",
         do_validation=False,
     )
     _stage("optimum_export_fp32", started)
 
+
+def _resolve_fp32_model(work_dir: Path) -> Path | None:
+    """Find the fp32 graph. optimum writes a directory (model.onnx inside)."""
+    direct = work_dir / "model_fp32.onnx"
+    if direct.is_file():
+        return direct
+    nested = work_dir / "model_fp32.onnx" / "model.onnx"
+    if nested.is_file():
+        return nested
+    return None
 
 def _quantize(source_model: Path, output_model: Path) -> None:
     started = time.perf_counter()
@@ -256,7 +271,53 @@ def _write_checksum(output: Path) -> str:
     return digest
 
 
-def export_tree(source: Path, output: Path, work_dir: Path, exporter: str = "torchscript") -> str:
+def check_fp32_cosine(source: Path, work_dir: Path, min_cosine: float = 0.999) -> float:
+    """Cosine(ONNX fp32 CLS, PyTorch dense) on probe texts. Gate for quantize."""
+    import numpy as np
+    import onnxruntime as ort
+    from FlagEmbedding import BGEM3FlagModel
+    from transformers import AutoTokenizer
+
+    work_model = _resolve_fp32_model(work_dir)
+    if work_model is None:
+        raise SystemExit(f"missing fp32 export to check: {work_dir}")
+    texts = [
+        "quy trình kiểm tra chất lượng mối hàn laser trên dây chuyền AMS",
+        "BGE-M3 embedding benchmark so sánh ONNX int8 với PyTorch",
+        "đo độ lệch góc nghiêng của jig theo thời gian",
+    ]
+    out = BGEM3FlagModel(
+        str(source), use_fp16=False, devices="cpu", trust_remote_code=False
+    ).encode(texts, batch_size=3, max_length=512, return_dense=True, return_sparse=False)
+    pt = np.array(out["dense_vecs"], dtype=np.float64)
+    pt /= np.linalg.norm(pt, axis=1, keepdims=True)
+    tok = AutoTokenizer.from_pretrained(str(source), local_files_only=True, trust_remote_code=False)
+    enc = tok(texts, padding=True, truncation=True, max_length=512, return_tensors="np")
+    options = ort.SessionOptions()
+    options.intra_op_num_threads = 8
+    options.inter_op_num_threads = 1
+    sess = ort.InferenceSession(str(work_model), sess_options=options, providers=["CPUExecutionProvider"])
+    outs = sess.run(
+        None,
+        {"input_ids": enc["input_ids"].astype(np.int64), "attention_mask": enc["attention_mask"].astype(np.int64)},
+    )
+    cls = np.array(outs[0], dtype=np.float64)[:, 0, :]
+    cls /= np.linalg.norm(cls, axis=1, keepdims=True)
+    worst = min(float(a @ b) for a, b in zip(cls, pt))
+    print(f"[export] fp32 cosine worst={worst:.6f} (need >= {min_cosine})", flush=True)
+    if worst < min_cosine:
+        raise SystemExit(f"export chưa sạch: fp32 cosine {worst:.6f} < {min_cosine}")
+    return worst
+
+
+def export_tree(
+    source: Path,
+    output: Path,
+    work_dir: Path,
+    exporter: str = "torchscript",
+    min_fp32_cosine: float = 0.999,
+    skip_fp32_check: bool = False,
+) -> str:
     if not (source / "pytorch_model.bin").is_file():
         raise SystemExit(f"source tree has no pytorch_model.bin: {source}")
     work_model = work_dir / "model_fp32.onnx"
@@ -265,11 +326,21 @@ def export_tree(source: Path, output: Path, work_dir: Path, exporter: str = "tor
         shutil.rmtree(output)
     work_dir.mkdir(parents=True, exist_ok=True)
     if exporter == "optimum":
+        # optimum treats output as a directory: model_fp32.onnx/model.onnx.
+        if work_model.exists():
+            shutil.rmtree(work_model, ignore_errors=True)
         _export_onnx_fp32_optimum(source, work_model)
+        resolved = _resolve_fp32_model(work_dir)
+        if resolved is None:
+            raise SystemExit(f"optimum wrote no model.onnx under: {work_model}")
+        work_model = resolved
     elif exporter == "torch":
         _export_onnx_fp32_torch(source, work_model)
     else:
         _export_onnx_fp32_torchscript(source, work_model)
+    fp32_cosine = (
+        -1.0 if skip_fp32_check else check_fp32_cosine(source, work_dir, min_fp32_cosine)
+    )
     _copy_tokenizer(source, output)
     _write_sparse_head(source, output)
     _quantize(work_model, quantized)
@@ -277,6 +348,7 @@ def export_tree(source: Path, output: Path, work_dir: Path, exporter: str = "tor
         "source": str(source.resolve()),
         "export": ({"torch": "torch-dynamo-pt-cpu", "torchscript": "torch-tracer-pt-cpu"}.get(exporter, "optimum-feature-extraction-pt-cpu")),
         "quantization": "dynamic-int8",
+        "fp32_cosine_worst": round(fp32_cosine, 6),
         "max_length": 512,
         "providers": ["CPUExecutionProvider"],
         "stages_s": {k: round(v, 3) for k, v in _TIMINGS.items()},
@@ -296,10 +368,15 @@ def main() -> None:
     parser.add_argument("--min-free-gb", type=float, default=6.0)
     parser.add_argument("--exporter", choices=["torch", "torchscript", "optimum"], default="torchscript")
     parser.add_argument("--keep-work", action="store_true")
+    parser.add_argument("--min-fp32-cosine", type=float, default=0.999)
+    parser.add_argument("--skip-fp32-check", action="store_true")
     args = parser.parse_args()
     check_free_ram(args.min_free_gb)
     total = time.perf_counter()
-    digest = export_tree(args.source, args.output, args.work_dir, args.exporter)
+    digest = export_tree(
+        args.source, args.output, args.work_dir, args.exporter,
+        min_fp32_cosine=args.min_fp32_cosine, skip_fp32_check=args.skip_fp32_check,
+    )
     _stage("total", total)
     if not args.keep_work:
         shutil.rmtree(args.work_dir, ignore_errors=True)
