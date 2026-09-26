@@ -1,56 +1,48 @@
-# Ticket hiện tại — Verify worker ONNX fp32 hết timeout + chạy lại B1–B5 (Bước C)
+# Ticket D1 — Điều tra vì sao chỉ 25/108 document được index + dry-run ingest (CHỈ ĐỌC, không ghi)
 
-> OMP đọc kỹ `QUY-UOC.md` trước. Ticket này CHỈ LÀM Bước C. Xong thì commit +
-> push + cập nhật `trang-thai.md` thành `xong-cho-duyet`, rồi DỪNG.
-> Bước A ĐẠT (commit `ea195c1`). Bước B ĐẠT (commit `23ca36e`: 340/340 vector
-> đã migrate sang fingerprint ONNX `016c5255…`, pending 0, backup mới
-> `library.sqlite.bak-20260926-1142` integrity ok).
-> Bước C KHÔNG ghi index — chỉ đọc + chạy query. Không chạy script migrate.
+Ngày viết: 2026-09-26 (Muse). Branch: `phieu-viec/rag-fix1`. Không đụng `main`.
 
 ## Bối cảnh
 
-- Branch: `phieu-viec/rag-fix1`. Không đụng `main`.
-- Diagnostic `1488e77`: worker với `BGE_BACKEND=onnx` từng timeout sau 300 s ở
-  init vì `_ensure_embeddings` coi 340 chunk fingerprint PyTorch là pending và
-  re-embed toàn index (1,6–22,8 s/chunk).
-- Sau Bước B, 340 chunk đã có vector ONNX đúng fingerprint → kỳ vọng init
-  không còn re-embed, hết timeout.
-- Baseline PyTorch để đối chiếu: báo cáo `docs/phieu-viec/ket-qua/` của commit
-  `484ac76` (13 câu A/B/H chạy worker PyTorch, init 97,18 s).
+- Điều tra `b90a94a`: index canary `tri_thuc` có 25 document / 413 chunk (340 vector);
+  `materialized_sources` có 108 file, **83 file không có path trong index**.
+- Hệ quả: B1/B2/B3/B5 thiếu chunk chứa đáp án → trả lời sai toàn bộ trên cả
+  PyTorch (`484ac76`) lẫn ONNX (`cc12d67`, Bước C — ĐẠT).
+- Mục tiêu D1: trả lời "83 file đi đâu" + dry-run kế hoạch ingest.
+  **Ticket này TUYỆT ĐỐI chỉ đọc — không ghi index, không ingest thật.**
 
-## Bước C — Bật worker ONNX, đo init, chạy lại B1–B5, rồi DỪNG chờ duyệt
+## Phạm vi
 
-### C1. Khởi động worker với backend ONNX, đo thời gian init
+- Index: `local_runs/workspace_chat_rag_v2_canary/bge_m3_hybrid/collections/tri_thuc/library.sqlite`
+  (máy `h410asrock`). Mở sqlite ở chế độ **read-only** (`mode=ro`).
+- Không chạy `--apply`, không ingest thật, không sửa file index dưới mọi hình thức.
 
-- Lệnh: `BGE_BACKEND=onnx` + lệnh khởi động worker như các lần nghiệm thu trước
-  (cùng index canary máy nhà
-  `local_runs/workspace_chat_rag_v2_canary/bge_m3_hybrid/collections/tri_thuc/library.sqlite`).
-- Ghi lại thời gian init (cold). Tiêu chí: **< 300 s** (không timeout).
-- Nếu init vẫn vượt 300 s: DỪNG NGAY, không retry mù, báo cáo log init
-  (fingerprint backend, pending count nếu có) rồi chờ chỉ đạo.
-- Tuyệt đối không xóa/sửa vector PyTorch cũ trong index.
+## Việc cần làm
 
-### C2. Chạy lại 5 câu B1–B5 (và H3 nếu nhanh), đối chiếu với baseline PyTorch
+1. Liệt kê 108 file trong `materialized_sources`; đối chiếu với `documents`
+   trong index → bảng 108 dòng, mỗi dòng: `indexed` / `missing`.
+2. Với 83 file missing, phân loại nguyên nhân theo nhóm (không cần từng file
+   nếu cùng một nguyên nhân):
+   - Có manifest/allowlist nào giới hạn ingest chỉ 25 document không?
+   - Có bị filter loại không (định dạng, dung lượng, ngày tháng, cổng
+     `usable_elements`, ...)? Ghi rõ điều kiện filter nào đã loại chúng.
+   - Ingest đã từng thử và fail? (tìm log / error message)
+   - Hay chưa bao giờ được đưa vào pipeline?
+3. Kiểm tra trong 83 file missing có chứa chuỗi đáp án B1–B5 không
+   (grep trực tiếp trên file, không qua index):
+   `11922`, `12860`, `12626`, `YY2-Z151`, `YY2-Z152`, `nvarchar(4000)`,
+   `HOUSE_METHOD`, `Y302YL93020100`.
+   → Kết luận: ingest 83 file có kỳ vọng sửa được B1/B2/B3/B5 không?
+4. Dry-run ingest 83 file (**không ghi**): ước tính số document/chunk sẽ thêm,
+   liệt kê cảnh báo (file lỗi, XML noise, trùng lặp với 25 document cũ...).
+5. Ghi chú: **KHÔNG dọn XML** trong ticket này — dọn sau khi có baseline B
+   trên corpus đầy đủ (theo thứ tự đã chốt).
 
-- Chạy B1–B5 trên worker ONNX (cả hai flag summary-first + provenance bật như
-  lần `484ac76` để so sánh công bằng).
-- Ghi cho mỗi câu: mode (overview/hybrid/full), latency, đáp án tóm tắt,
-  so với đáp án baseline PyTorch ở `484ac76` (giống/khác gì).
-- Không cần so on/off flag — chỉ so backend onnx vs pytorch.
+## Bàn giao
 
-### C3. Báo cáo + bàn giao
-
-- Báo cáo: `docs/phieu-viec/ket-qua/FIX2_onnx-worker-verify.md`, gồm:
-  hostname, đường dẫn index, thời gian init ONNX (so với timeout 300 s và
-  init PyTorch 97,18 s), bảng B1–B5 (latency + đáp án onnx vs pytorch),
-  kết luận timeout còn hay hết.
-- Commit RIÊNG cho Bước C, push branch `phieu-viec/rag-fix1`, không đụng `main`.
-- Cập nhật `trang-thai.md`: `xong-cho-duyet` + ghi commit SHA + đường dẫn báo cáo.
-- DỪNG. Chờ review xong mới có ticket tiếp theo (quyết định có bật ONNX
-  mặc định hay không — ngoài phạm vi Bước C).
-
-## Ngoài phạm vi Bước C
-
-- Mọi ghi/sửa/xóa trên index (migration đã xong ở Bước B).
-- Đổi default backend, bật flag cho production, dọn model PyTorch/ONNX.
-- Sửa code runtime vì timeout (nếu còn timeout thì báo, không tự sửa).
+- Báo cáo: `docs/phieu-viec/ket-qua/FIX3_ingest-D1-dieu-tra.md`
+  (ghi hostname, commit SHA, đầy đủ số liệu 108/83, kết quả grep B1–B5).
+- Commit **riêng** + push branch `phieu-viec/rag-fix1`, không đụng `main`.
+- Cập nhật `trang-thai.md` → `xong-cho-duyet` (ghi commit SHA + đường dẫn báo cáo),
+  rồi **DỪNG chờ duyệt** — quyết định ingest apply thật là việc của ticket D2,
+  sau khi user duyệt (ghi index thật cần dry-run + backup + duyệt rõ ràng).
