@@ -168,3 +168,13 @@ Bổ sung theo yêu cầu người dùng: *"dù log nào đưa vào cũng vẽ �
 - `tests/test_document_extractors.py`: **27 bài đạt**, gồm giữ nguyên đoạn PPTX sạch và giữ mã, số, kiểu dữ liệu, giá trị khi dọn XML. Báo cáo phép đo: [FIX3_extractor-E3-xml.md](docs/phieu-viec/ket-qua/FIX3_extractor-E3-xml.md).
 - Toàn bộ `pytest -q`: **3.134 đạt, 2 bỏ qua, 23 lỗi**. Lỗi nằm ở tiến trình BGE, thiếu gói Graphify, tiến trình con không nạp được `aios_habit`, và `uv.lock` chưa khớp; báo cáo E3 ghi chi tiết. Đã đẩy mã lên nhánh `phieu-viec/rag-fix1` để duyệt từ git (không gộp `main`); kiểm tra lại 2026-09-27: biên dịch đạt, 27 kiểm thử trích xuất đạt, `audit` PASS, nhập `workspace_chat_app` đạt, `diff --check` sạch. Mailbox vẫn `dang-lam`, chờ Muse duyệt.
 - Mã và kiểm thử E3 ở `6079808398c622a66c9f8184b1f5908ad4d1b4f3` và `40b2a04` đã có trên nhánh `phieu-viec/rag-fix1`; không ghi chỉ mục thật.
+
+## Bổ sung ngày 2026-09-27 — Phiếu E4 đổi mặc định sang ONNX fp32
+
+- Khi `BGE_BACKEND` không đặt hoặc là `auto`, luồng RAG dùng ONNX fp32 (`onnx`); `pytorch` và `onnx_int8` còn là lựa chọn tường minh. Int8 dùng thư mục và tệp lượng tử hóa riêng, nên mã kiểm tra và mã định danh vector tách biệt.
+- Thiếu đường dẫn, tệp mô hình hoặc mã kiểm tra thì khởi tạo dừng, nêu đường dẫn và cách chọn PyTorch; không tự chuyển dự phòng. Tiến trình từ khóa không kiểm tra mô hình ONNX nếu hồ sơ không dùng BGE.
+- Chạy dò trước chuyển đổi trên chỉ mục thật ở chế độ chỉ đọc: mã định danh ONNX `016c5255…`, PyTorch `ce7fb53f…`, 1.064 vector đã khớp, không có vector chờ xử lý. Không nạp lại nguồn, không chạy `--apply`, không ghi chỉ mục.
+- Đo mặc định trên 74 nguồn: khởi tạo 2,406 giây; B1 0,675 giây; B5 0,677 giây. Cả hai không từ chối trả lời; bằng chứng có dấu dữ kiện mong đợi nhưng câu trả lời tổng hợp không nêu đủ mọi mã. Kích thước chỉ mục giữ 29.851.648 byte; `integrity_check=ok`.
+- Bộ kiểm thử liên quan (nhúng, di trú, luồng xử lý và tiến trình con): **63 đạt**. Biên dịch, `audit`, nhập `workspace_chat_app`, kiểm tra hợp đồng tài liệu đều đạt.
+- Toàn bộ `pytest -q`: **3.146 đạt, 2 bỏ qua, 23 lỗi**. Trong đó: 9 bài kiểm thử tiến trình BGE gặp `bge_worker_init_stdout_eof` (chạy riêng 16 bài tiến trình với `PYTHONPATH` tuyệt đối thì đạt); 9 bài thiếu `graphifyy==0.9.50`; 1 bài báo `uv.lock` cần cập nhật; 2 bài kiểm thử khói đóng gói và 2 bài `owner-workflow` không nạp được `aios_habit` trong tiến trình con.
+- Mã E4 và sửa tiến trình đã đẩy lên `phieu-viec/rag-fix1`, không gộp `main`. Báo cáo phép đo: `docs/phieu-viec/ket-qua/FIX3_backend-E4-default-onnx.md`. Mailbox chuyển `xong-cho-duyet` sau khi đẩy báo cáo và trạng thái cuối.
