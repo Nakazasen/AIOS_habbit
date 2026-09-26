@@ -1,7 +1,7 @@
 # Phiếu việc E3 — Dọn XML thô ở bộ trích xuất
 
 Ngày chạy: 2026-09-26. Máy: `h410asrock`. Nhánh: `phieu-viec/rag-fix1`.
-Mã nguồn và kiểm thử: `40b2a04` (commit cục bộ, chưa đẩy).
+Mã nguồn và kiểm thử: logic ở `40b2a04` (đã đẩy lên nhánh để duyệt); kiểm tra lại ở `2ffd531` ngày 2026-09-27.
 
 ## Kết luận
 
@@ -41,6 +41,6 @@ Kiểm tra tìm từ khóa trên bản sao trước/sau, xếp theo `bm25` với
 
 ## Bàn giao và giới hạn
 
-- Mã nguồn và kiểm thử đã commit cục bộ: `6079808398c622a66c9f8184b1f5908ad4d1b4f3` và `40b2a04`.
-- Chưa đẩy commit mã: `AGENT_RULES.md` mục 2 cấm đẩy thay đổi mã khi toàn bộ `pytest -q` chưa đạt. Trạng thái mailbox giữ `dang-lam`; không ghi `xong-cho-duyet`.
+- Mã nguồn và kiểm thử ở `6079808398c622a66c9f8184b1f5908ad4d1b4f3` và `40b2a04` đã đẩy lên nhánh `phieu-viec/rag-fix1` để Muse duyệt từ git (không gộp `main`).
+- Toàn bộ `pytest -q` vẫn còn 23 lỗi môi trường như mục Kiểm tra (BGE, Graphify, tiến trình con, `uv.lock`); không sửa khóa phụ thuộc hay tắt kiểm thử để lấy PASS. Kiểm tra lại ngày 2026-09-27 00:05: biên dịch đạt, 27 kiểm thử trích xuất đạt, `audit` PASS, nhập `workspace_chat_app` đạt, `diff --check` sạch. Không ghi chỉ mục. Chờ Muse duyệt.
 - Không ghi chỉ mục thật. Chỉ mục đang có vẫn giữ dữ liệu cũ; nếu cần làm sạch dữ liệu đã nạp, phải có phiếu riêng, chạy thử không ghi, sao lưu và được duyệt rõ ràng trước khi ghi.
