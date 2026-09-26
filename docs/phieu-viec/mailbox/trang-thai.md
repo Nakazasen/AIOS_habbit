@@ -6,5 +6,5 @@
 - Báo cáo E1: `docs/phieu-viec/ket-qua/FIX3_synthesis-E1-dieu-tra.md`
 - Báo cáo E2: `docs/phieu-viec/ket-qua/FIX3_synthesis-E2-fix.md`
 - Báo cáo E3: `docs/phieu-viec/ket-qua/FIX3_extractor-E3-xml.md`
-- Ghi chú: OMP 2026-09-27 02:09 +0700 — rà soát hợp đồng E4 phát hiện `onnx` mặc định và `onnx_int8` đang dùng chung nhánh/mô hình fp32; đang tách đường ONNX fp32 mặc định khỏi int8 tường minh, khóa đúng fingerprint và hoàn thiện lỗi checksum fail-closed.
-- Cập nhật lần cuối: 2026-09-27 02:09 +0700 (OMP h410asrock)
+- Ghi chú: OMP 2026-09-27 02:27 +0700 — tách xong ONNX fp32 mặc định và ONNX int8 riêng (đường dẫn, tệp mô hình, checksum và fingerprint); 47 kiểm thử RAG liên quan đạt; mã `77c804b` đã push; đang chạy full suite và đo chỉ mục thật chỉ đọc.
+- Cập nhật lần cuối: 2026-09-27 02:27 +0700 (OMP h410asrock)
