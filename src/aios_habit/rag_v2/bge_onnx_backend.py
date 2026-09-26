@@ -1,8 +1,8 @@
-"""Optional ONNX Runtime int8 path for BGE-M3 dense and learned-sparse vectors.
+"""Optional ONNX Runtime fp32 path for BGE-M3 dense and learned-sparse vectors.
 
-The PyTorch FlagEmbedding path stays the default. This module is imported only
-when ``BGE_BACKEND=onnx_int8`` is set, and it does not import onnxruntime or
-torch until a session is actually constructed.
+The ONNX fp32 runtime is the default. Set ``BGE_BACKEND=pytorch`` explicitly
+to use the PyTorch FlagEmbedding path. This module does not import
+onnxruntime or torch until a session is actually constructed.
 """
 from __future__ import annotations
 
@@ -33,24 +33,30 @@ ONNX_CHECKSUM_FLAG = "AIOS_BGE_ONNX_MODEL_CHECKSUM"
 ONNX_MAX_LENGTH_FLAG = "AIOS_BGE_ONNX_MAX_LENGTH"
 DEFAULT_ONNX_MAX_LENGTH = 512
 ONNX_DIR_NAME = "bge-m3-onnx-fp32"
+DEFAULT_BGE_BACKEND = "onnx_int8"
 _BACKEND_ALIASES = {
     "pytorch": "pytorch",
     "flagembedding": "pytorch",
     "onnx_int8": "onnx_int8",
     "onnx": "onnx_int8",
+    "auto": "onnx_int8",
 }
 
 
-def resolve_bge_backend_name(configured: str = "pytorch") -> str:
-    """Return the active BGE runtime. An unset flag keeps the PyTorch path."""
+def _onnx_override_hint() -> str:
+    return f"Set {BGE_BACKEND_FLAG}=pytorch to use the PyTorch path explicitly."
+
+
+def resolve_bge_backend_name(configured: str = "onnx_int8") -> str:
+    """Return the active BGE runtime. An unset or auto flag selects ONNX fp32."""
     raw = os.environ.get(BGE_BACKEND_FLAG, "").strip().lower()
     if not raw:
-        raw = (configured or "pytorch").strip().lower()
+        raw = (configured or "onnx_int8").strip().lower()
     try:
         return _BACKEND_ALIASES[raw]
     except KeyError as exc:
         raise SemanticBackendUnavailable(
-            "BGE_BACKEND must be pytorch or onnx_int8"
+            "BGE_BACKEND must be pytorch, onnx, onnx_int8 or auto"
         ) from exc
 
 
@@ -96,6 +102,40 @@ def resolve_onnx_checksum(model_dir: Path) -> str:
     return raw
 
 
+def _model_file(model_dir: Path) -> Path:
+    for name in ("model_quantized.onnx", "model.onnx"):
+        candidate = model_dir / name
+        if candidate.is_file():
+            return candidate
+    raise SemanticBackendUnavailable("onnx_int8_model_file_missing")
+
+
+def require_onnx_model_dir(model_dir: Path | None = None) -> Path:
+    """Fail closed when the default ONNX fp32 model tree is unusable."""
+    resolved = Path(model_dir) if model_dir is not None else resolve_onnx_model_path()
+    problems: list[str] = []
+    if not resolved.is_dir():
+        problems.append(f"model directory is missing: {resolved}")
+    else:
+        try:
+            _model_file(resolved)
+        except SemanticBackendUnavailable:
+            problems.append(
+                f"model file is missing in {resolved} "
+                "(expected model.onnx or model_quantized.onnx)"
+            )
+        try:
+            resolve_onnx_checksum(resolved)
+        except SemanticBackendUnavailable as exc:
+            problems.append(f"checksum is unavailable for {resolved}: {exc}")
+    if problems:
+        detail = "; ".join(problems)
+        raise SemanticBackendUnavailable(
+            f"default ONNX fp32 model is unavailable: {detail}. {_onnx_override_hint()}"
+        )
+    return resolved
+
+
 def lexical_weights_from_hidden(
     hidden: Any,
     input_ids: Sequence[int],
@@ -122,14 +162,6 @@ def lexical_weights_from_hidden(
         if score > result.get(key, 0.0):
             result[key] = float(score)
     return result
-
-
-def _model_file(model_dir: Path) -> Path:
-    for name in ("model_quantized.onnx", "model.onnx"):
-        candidate = model_dir / name
-        if candidate.is_file():
-            return candidate
-    raise SemanticBackendUnavailable("onnx_int8_model_file_missing")
 
 
 def _load_sparse_head(model_dir: Path) -> tuple[Any, float] | None:

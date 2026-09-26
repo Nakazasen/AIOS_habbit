@@ -6,5 +6,5 @@
 - Báo cáo E1: `docs/phieu-viec/ket-qua/FIX3_synthesis-E1-dieu-tra.md`
 - Báo cáo E2: `docs/phieu-viec/ket-qua/FIX3_synthesis-E2-fix.md`
 - Báo cáo E3: `docs/phieu-viec/ket-qua/FIX3_extractor-E3-xml.md`
-- Ghi chú: OMP 2026-09-27 00:39 +0700 — đã nhận ticket E4, đang tìm code BGE_BACKEND để đổi default sang ONNX fp32.
-- Cập nhật lần cuối: 2026-09-27 00:39 +0700 (OMP h410asrock)
+- Ghi chú: OMP 2026-09-27 01:05 +0700 — đã đổi default sang ONNX fp32 (không BGE_BACKEND → onnx_int8), giữ override pytorch/onnx/onnx_int8/auto, fail-closed khi thiếu model/checksum; 16 test backend+migrate đạt, chuẩn bị đo index thật chỉ đọc.
+- Cập nhật lần cuối: 2026-09-27 01:05 +0700 (OMP h410asrock)

@@ -95,10 +95,10 @@ def test_plan_counts_pending_without_writing(tmp_path, monkeypatch):
     ).hexdigest()
 
 
-def test_apply_requires_explicit_onnx_flag(tmp_path, monkeypatch):
+def test_apply_refuses_explicit_pytorch_override(tmp_path, monkeypatch):
     fake = _FakeBackend()
     monkeypatch.setattr(migrate, "_open_backend", lambda: fake)
-    monkeypatch.delenv("BGE_BACKEND", raising=False)
+    monkeypatch.setenv("BGE_BACKEND", "pytorch")
     plan = migrate.MigrationPlan(
         index=tmp_path / "x.sqlite",
         onnx_fingerprint="onnx-fp",
@@ -107,7 +107,7 @@ def test_apply_requires_explicit_onnx_flag(tmp_path, monkeypatch):
         retrievable_chunks=0,
         already_onnx=0,
     )
-    with pytest.raises(SystemExit, match="BGE_BACKEND"):
+    with pytest.raises(SystemExit, match="PyTorch"):
         migrate.apply_migration(plan.index, plan)
 
 

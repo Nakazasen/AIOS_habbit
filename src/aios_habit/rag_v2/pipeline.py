@@ -50,6 +50,7 @@ from .retrieval_backends import BgeM3Backend, CrossEncoderRerankBackend
 from .bge_onnx_backend import (
     OnnxInt8BgeM3Backend,
     onnx_max_length,
+    require_onnx_model_dir,
     resolve_bge_backend_name,
     resolve_onnx_checksum,
     resolve_onnx_model_path,
@@ -211,7 +212,7 @@ class RagV2DevConfig:
     index_read_only: bool = False
     lite_pilot_enabled: bool = False
     lite_long_doc_pages: int = 10
-    bge_backend: str = "pytorch"
+    bge_backend: str = "onnx_int8"
     summary_first_routing: bool = False
     overview_max_variants: int = 3
     focused_max_variants: int = 3
@@ -281,8 +282,10 @@ class RagV2DevConfig:
         if self.lite_long_doc_pages < 1:
             raise ValueError("lite_long_doc_pages must be positive")
         backend = self.bge_backend.strip().lower()
+        if backend == "onnx":
+            backend = "onnx_int8"
         if backend not in {"pytorch", "onnx_int8"}:
-            raise ValueError("bge_backend must be pytorch or onnx_int8")
+            raise ValueError("bge_backend must be pytorch, onnx or onnx_int8")
         object.__setattr__(self, "bge_backend", backend)
         if (
             self.overview_max_variants < 1
@@ -434,7 +437,7 @@ def _resolve_embedding_backend(
         ):
             raise SemanticBackendUnavailable("BGE-M3 profile requires bge_m3_model_checksum")
         if resolve_bge_backend_name(config.bge_backend) == "onnx_int8":
-            onnx_path = resolve_onnx_model_path()
+            onnx_path = require_onnx_model_dir()
             resolved = OnnxInt8BgeM3Backend(
                 model_path=onnx_path,
                 revision=config.bge_m3_model_revision,

@@ -11,6 +11,7 @@ from aios_habit.rag_v2.bge_onnx_backend import (
     default_onnx_model_dir,
     lexical_weights_from_hidden,
     onnx_checksum_sidecar,
+    require_onnx_model_dir,
     resolve_bge_backend_name,
     resolve_onnx_checksum,
     resolve_onnx_model_path,
@@ -20,16 +21,74 @@ from aios_habit.rag_v2.retrieval_backends import sha256_model_tree, verify_model
 from aios_habit.rag_v2.semantic import SemanticBackendUnavailable
 
 
-def test_bge_backend_flag_defaults_to_pytorch(monkeypatch):
+def test_bge_backend_flag_defaults_to_onnx(monkeypatch):
+    monkeypatch.delenv(BGE_BACKEND_FLAG, raising=False)
+    assert resolve_bge_backend_name() == "onnx_int8"
+    assert resolve_bge_backend_name("onnx_int8") == "onnx_int8"
+    assert resolve_bge_backend_name("auto") == "onnx_int8"
+
+
+def test_bge_backend_flag_explicit_pytorch_override(monkeypatch):
+    monkeypatch.setenv(BGE_BACKEND_FLAG, "pytorch")
+    assert resolve_bge_backend_name() == "pytorch"
+    assert resolve_bge_backend_name("onnx_int8") == "pytorch"
     monkeypatch.delenv(BGE_BACKEND_FLAG, raising=False)
     assert resolve_bge_backend_name("pytorch") == "pytorch"
 
 
-def test_bge_backend_flag_selects_onnx(monkeypatch):
+def test_bge_backend_flag_auto_selects_onnx(monkeypatch):
+    monkeypatch.setenv(BGE_BACKEND_FLAG, "auto")
+    assert resolve_bge_backend_name() == "onnx_int8"
+    assert resolve_bge_backend_name("pytorch") == "onnx_int8"
+
+
+def test_bge_backend_flag_rejects_unknown_value(monkeypatch):
+    monkeypatch.setenv(BGE_BACKEND_FLAG, "tensorrt")
+    try:
+        resolve_bge_backend_name()
+    except SemanticBackendUnavailable:
+        pass
+    else:
+        raise AssertionError("unknown BGE_BACKEND value must raise")
+
+
+def test_require_onnx_model_dir_fails_closed_on_missing_model(tmp_path, monkeypatch):
+    missing = tmp_path / "no-such-model"
+    monkeypatch.setenv(ONNX_MODEL_PATH_FLAG, str(missing))
+    try:
+        require_onnx_model_dir()
+    except SemanticBackendUnavailable as exc:
+        message = str(exc)
+        assert "BGE_BACKEND" in message or "pytorch" in message
+        assert str(missing) in message
+    else:
+        raise AssertionError("missing ONNX model must raise fail-closed")
+    finally:
+        monkeypatch.delenv(ONNX_MODEL_PATH_FLAG, raising=False)
+
+
+def test_require_onnx_model_dir_fails_closed_on_missing_file(tmp_path, monkeypatch):
+    model_dir = tmp_path / "empty-model"
+    model_dir.mkdir()
+    checksum = "sha256:" + "ab" * 32
+    monkeypatch.setenv(ONNX_MODEL_PATH_FLAG, str(model_dir))
+    monkeypatch.setenv(ONNX_CHECKSUM_FLAG, checksum)
+    try:
+        require_onnx_model_dir()
+    except SemanticBackendUnavailable as exc:
+        assert "model file is missing" in str(exc)
+    else:
+        raise AssertionError("missing model.onnx must raise fail-closed")
+    finally:
+        monkeypatch.delenv(ONNX_MODEL_PATH_FLAG, raising=False)
+        monkeypatch.delenv(ONNX_CHECKSUM_FLAG, raising=False)
+
+
+def test_bge_backend_flag_selects_onnx_aliases(monkeypatch):
     monkeypatch.setenv(BGE_BACKEND_FLAG, "onnx")
-    assert resolve_bge_backend_name("pytorch") == "onnx_int8"
+    assert resolve_bge_backend_name() == "onnx_int8"
     monkeypatch.setenv(BGE_BACKEND_FLAG, "onnx_int8")
-    assert resolve_bge_backend_name("pytorch") == "onnx_int8"
+    assert resolve_bge_backend_name() == "onnx_int8"
 
 
 def test_onnx_defaults_to_fp32_model_and_checksum_sidecar(tmp_path, monkeypatch):
@@ -151,8 +210,10 @@ def test_onnx_backend_matches_cls_and_sparse_contract(tmp_path, monkeypatch):
     assert backend.multivector_capability.available is False
 
 
-def test_resolver_stays_on_pytorch_until_the_flag_is_set(tmp_path, monkeypatch):
+def test_resolver_defaults_to_onnx_and_keeps_pytorch_override(tmp_path, monkeypatch):
     monkeypatch.delenv(BGE_BACKEND_FLAG, raising=False)
+    monkeypatch.delenv("AIOS_BGE_ONNX_MODEL_PATH", raising=False)
+    monkeypatch.delenv("AIOS_BGE_ONNX_MODEL_CHECKSUM", raising=False)
     created = {}
 
     class Marker:
@@ -163,8 +224,8 @@ def test_resolver_stays_on_pytorch_until_the_flag_is_set(tmp_path, monkeypatch):
             self.multivector_capability = SimpleNamespace(available=False)
 
     monkeypatch.setattr(
-        "aios_habit.rag_v2.pipeline.BgeM3Backend",
-        lambda *args, **kwargs: created.setdefault("backend", Marker("pytorch")),
+        "aios_habit.rag_v2.pipeline.OnnxInt8BgeM3Backend",
+        lambda *args, **kwargs: created.setdefault("backend", Marker("onnx")),
     )
     config = RagV2DevConfig(
         runtime_root=tmp_path / "runtime",
@@ -174,19 +235,25 @@ def test_resolver_stays_on_pytorch_until_the_flag_is_set(tmp_path, monkeypatch):
         bge_m3_model_checksum="sha256:" + "cd" * 32,
     )
     resolved = _resolve_embedding_backend(config, None)
-    assert resolved.kind == "pytorch"
-    assert "runtime_backend" not in config.index_build_compatibility()["embedding_model"]
-
-    monkeypatch.setenv(BGE_BACKEND_FLAG, "onnx_int8")
-    monkeypatch.setenv("AIOS_BGE_ONNX_MODEL_PATH", str(tmp_path / "onnx"))
-    monkeypatch.setenv("AIOS_BGE_ONNX_MODEL_CHECKSUM", "sha256:" + "ef" * 32)
-    monkeypatch.setattr(
-        "aios_habit.rag_v2.pipeline.OnnxInt8BgeM3Backend",
-        lambda *args, **kwargs: Marker("onnx"),
-    )
-    resolved = _resolve_embedding_backend(config, None)
     assert resolved.kind == "onnx"
     compatibility = config.index_build_compatibility()["embedding_model"]
     assert compatibility["runtime_backend"] == "onnx_int8"
     assert compatibility["max_length"] == 512
     assert json.dumps(compatibility)
+
+    monkeypatch.setenv(BGE_BACKEND_FLAG, "pytorch")
+    monkeypatch.setattr(
+        "aios_habit.rag_v2.pipeline.BgeM3Backend",
+        lambda *args, **kwargs: created.setdefault("pytorch", Marker("pytorch")),
+    )
+    pytorch_config = RagV2DevConfig(
+        runtime_root=tmp_path / "runtime",
+        retrieval_profile="bge_m3_hybrid",
+        bge_m3_model_path=tmp_path,
+        bge_m3_model_revision="rev",
+        bge_m3_model_checksum="sha256:" + "cd" * 32,
+        bge_backend="pytorch",
+    )
+    resolved = _resolve_embedding_backend(pytorch_config, None)
+    assert resolved.kind == "pytorch"
+    assert "runtime_backend" not in pytorch_config.index_build_compatibility()["embedding_model"]

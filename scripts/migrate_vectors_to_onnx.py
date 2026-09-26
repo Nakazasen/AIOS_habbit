@@ -1,8 +1,9 @@
 """Migrate stored dense+sparse vectors to the pinned ONNX fp32 fingerprint.
 
-Dry-run by default. Writes only with ``--apply`` and only when
-``BGE_BACKEND=onnx`` (or ``onnx_int8``) is set explicitly. The default runtime
-stays on PyTorch; this script never changes that default.
+Dry-run by default. Writes only with ``--apply`` and an explicit ONNX
+selection (``BGE_BACKEND`` unset, ``auto``, ``onnx`` or ``onnx_int8``).
+Setting ``BGE_BACKEND=pytorch`` refuses to migrate. The default runtime is
+ONNX fp32; this script never changes that default.
 
 Each ``--apply`` batch commits independently, so an interrupted run resumes by
 skipping chunks that already carry the ONNX fingerprint.
@@ -110,12 +111,13 @@ def _require_fresh_backup(index_path: Path) -> Path:
 
 def _require_onnx_backend_selected() -> None:
     # The runtime calls this backend "onnx_int8" for legacy reasons (class and
-    # error-string names predate the fp32 cutover); both "onnx" and "onnx_int8"
-    # select the same pinned fp32 model dir since commit 7c1314f.
-    if resolve_bge_backend_name("pytorch") != "onnx_int8":
+    # error-string names predate the fp32 cutover); unset, "auto", "onnx" and
+    # "onnx_int8" select the same pinned fp32 model dir. Only an explicit
+    # "pytorch" override refuses to migrate.
+    if resolve_bge_backend_name("onnx_int8") != "onnx_int8":
         raise SystemExit(
-            f"refusing to migrate: set {BGE_BACKEND_FLAG}=onnx explicitly "
-            "(the default runtime stays on PyTorch)"
+            f"refusing to migrate: {BGE_BACKEND_FLAG} selects PyTorch "
+            "(unset/auto/onnx selects the default ONNX fp32 runtime)"
         )
 
 

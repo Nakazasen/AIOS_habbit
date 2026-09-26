@@ -29,8 +29,8 @@ from aios_habit.rag_v2.pipeline import (
     SourceSpec,
 )
 from aios_habit.rag_v2.bge_onnx_backend import (
+    require_onnx_model_dir,
     resolve_bge_backend_name,
-    resolve_onnx_model_path,
 )
 from aios_habit.rag_v2.adapters import ConversionContext
 from aios_habit.rag_v2.schema import ExtractionStatus
@@ -248,12 +248,17 @@ def main() -> None:
                     init_phase = "model_verify"
                     backend_name = resolve_bge_backend_name(config.bge_backend)
                     if backend_name == "onnx_int8":
-                        model_path = resolve_onnx_model_path()
+                        model_path = require_onnx_model_dir()
                     else:
                         model_path = config.bge_m3_model_path
                     if config.retrieval_profile.startswith("bge_m3_") and (
                         model_path is None or not Path(model_path).is_dir()
                     ):
+                        if backend_name == "onnx_int8":
+                            raise RuntimeError(
+                                f"pinned_model_unavailable: ONNX fp32 model dir missing: {model_path}. "
+                                "Set BGE_BACKEND=pytorch to use the PyTorch path explicitly."
+                            )
                         raise RuntimeError("pinned_model_unavailable")
                     init_phase = "model_load"
                     synthesis_provider = create_synthesis_provider()
