@@ -227,14 +227,14 @@ def test_xml_cleanup_flag_defaults_off_and_cleans_markup(monkeypatch):
     assert "PART-402 nvarchar(4000) 0 1" in cleaned
     assert "xmlns" not in cleaned
     assert "<p:" not in cleaned
-    assert "private comment" not in cleaned
+    assert "<!--" not in cleaned and "-->" not in cleaned
 
     encoded = markup.replace("<", "&lt;").replace(">", "&gt;")
     cleaned_encoded = normalize_extracted_text(encoded)
     assert "PART-402 nvarchar(4000) 0 1" in cleaned_encoded
     assert "xmlns" not in cleaned_encoded
     assert "<p:" not in cleaned_encoded
-    assert "private comment" not in cleaned_encoded
+    assert "<!--" not in cleaned_encoded and "-->" not in cleaned_encoded
 
     clipped_xml = (
         'ns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" '
@@ -245,6 +245,49 @@ def test_xml_cleanup_flag_defaults_off_and_cleans_markup(monkeypatch):
     assert "ns:r" not in cleaned_clipped
     assert ">" not in cleaned_clipped
     assert "3 36" in cleaned_clipped
+
+    incomplete_facts = normalize_extracted_text(
+        "PART-402 <a:t nvarchar(4000) 0 1"
+    )
+    assert all(value in incomplete_facts for value in ("PART-402", "nvarchar(4000)", "0 1"))
+
+    ambiguous_tokens = normalize_extracted_text("see <PART-402 and <năm remain")
+    assert "PART-402" in ambiguous_tokens
+    assert "năm" in ambiguous_tokens
+
+    split_tag_facts = normalize_extracted_text(
+        "Slide text:\n<a:t\nPART-402 nvarchar(4000) 0 1"
+    )
+    assert all(value in split_tag_facts for value in ("PART-402", "nvarchar(4000)", "0 1"))
+
+    broken_comment_facts = normalize_extracted_text(
+        "PART-402 <!-- broken\nnvarchar(4000) A-->B 0 1"
+    )
+    assert all(value in broken_comment_facts for value in ("PART-402", "nvarchar(4000)", "0 1"))
+    assert "A B 0 1" in broken_comment_facts
+
+    broken_instruction_facts = normalize_extracted_text(
+        "PART-402 <? broken\nnvarchar(4000) 0 1?>"
+    )
+    assert all(value in broken_instruction_facts for value in ("PART-402", "nvarchar(4000)", "0 1"))
+
+
+def test_pptx_xml_cleanup_preserves_text_outside_and_inside_nested_t_nodes(monkeypatch, tmp_path):
+    from aios_habit.document_extractors import XML_CLEANUP_FLAG
+
+    slide_xml = (
+        '<p:sld xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main" '
+        'xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main">'
+        '<p:txBody>nvarchar(4000)<a:t>PART-402<a:br/> trailing-value 0 1</a:t></p:txBody>'
+        '</p:sld>'
+    )
+    pptx = tmp_path / "nested-text.pptx"
+    _write_zip(pptx, {"ppt/slides/slide1.xml": slide_xml})
+
+    monkeypatch.setenv(XML_CLEANUP_FLAG, "1")
+    chunks = extract_text_chunks_from_file(pptx)
+    text = "\n".join(chunk["text"] for chunk in chunks)
+    assert all(value in text for value in ("nvarchar(4000)", "PART-402", "trailing-value", "0 1"))
 
 
 def test_pptx_xml_cleanup_keeps_text_facts_and_strips_long_namespaces(monkeypatch, tmp_path):
@@ -257,7 +300,7 @@ def test_pptx_xml_cleanup_keeps_text_facts_and_strips_long_namespaces(monkeypatc
         'xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main">'
         '<p:sp><p:txBody><!--slide comment--><a:p><a:r><a:t>'
         'PART-402 nvarchar(4000) 0 1'
-        '</a:t></a:r><p:extLst xmlns:q="' + namespace + '"><q:ext>metadata</q:ext>'
+        '</a:t></a:r></a:p><p:extLst xmlns:q="' + namespace + '"><q:ext>metadata</q:ext>'
         '</p:extLst></p:txBody></p:sp></p:sld>'
     )
     pptx = tmp_path / "xml-heavy.pptx"

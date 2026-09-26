@@ -249,26 +249,35 @@ def xml_cleanup_enabled() -> bool:
 
 
 _XML_MARKUP_RE = re.compile(
-    r"<!--.*?-->|<\?.*?\?>|<!\[CDATA\[|\]\]>|<![^>]*>|"
-    r"</?[A-Za-z_][\w.:-]*(?:\s+[^<>]*?)?\s*/?>",
-    flags=re.DOTALL,
+    r"<\?xml[ \t]+[^?\r\n]*\?>|<!--|-->|<\?|\?>|<!\[CDATA\[|\]\]>|"
+    r"<![^>\r\n]*>|</?[A-Za-z_][\w.:-]*(?:[ \t]+[^<>\r\n]*?)?[ \t]*/?>"
 )
+_XML_ATTRIBUTE_MARKER = "\ue000"
 _XML_NAMESPACE_ATTRIBUTE_RE = re.compile(
-    r"\b(?:xmlns(?::[\w.-]+)?|[\w.-]+:[\w.-]+)\s*=\s*(?:\"[^\"<>]*\"|'[^'<>]*')",
-    flags=re.IGNORECASE | re.DOTALL,
+    r"\b(?:xmlns(?::[\w.-]+)?|[\w.-]+:[\w.-]+)[ \t]*=[ \t]*"
+    r"(?:\"[^\"<> \t\r\n]*\"?|'[^'<> \t\r\n]*'?)?",
+    flags=re.IGNORECASE,
 )
-_XML_INCOMPLETE_TAG_RE = re.compile(
-    r"</?[A-Za-z_][\w.:-]*(?:\s+[^<>]*)?$",
-    flags=re.DOTALL,
-)
+_XML_NAMESPACE_NAME_RE = re.compile(r"\bxmlns(?::[\w.-]+)?", flags=re.IGNORECASE)
+_XML_INCOMPLETE_TAG_RE = re.compile(r"</?(?=[A-Za-z_])")
+
 
 def _strip_xml_markup(text: str) -> str:
     """Remove XML markup while retaining decoded text nodes."""
     decoded = html.unescape(str(text or ""))
-    with_attributes_removed = _XML_NAMESPACE_ATTRIBUTE_RE.sub(" ", decoded)
-    cleaned = _XML_MARKUP_RE.sub(" ", with_attributes_removed)
+    with_attributes_removed = _XML_NAMESPACE_ATTRIBUTE_RE.sub(
+        _XML_ATTRIBUTE_MARKER,
+        decoded,
+    )
+    without_namespace_names = _XML_NAMESPACE_NAME_RE.sub(" ", with_attributes_removed)
+    cleaned = _XML_MARKUP_RE.sub(" ", without_namespace_names)
     cleaned = _XML_INCOMPLETE_TAG_RE.sub(" ", cleaned)
-    return re.sub(r"^\s*>\s*", " ", cleaned)
+    cleaned = re.sub(
+        rf"(?:[ \t]*{re.escape(_XML_ATTRIBUTE_MARKER)})+[ \t]*>",
+        " ",
+        cleaned,
+    )
+    return cleaned.replace(_XML_ATTRIBUTE_MARKER, " ")
 
 
 def _xml_local_name(tag: str) -> str:
@@ -289,13 +298,7 @@ def _extract_xml_text(xml_text: str) -> list[str]:
             root = ET.fromstring(text)
         except ET.ParseError:
             return _clean_lines([_strip_xml_markup(text)], limit=200)
-        values = [
-            node.text
-            for node in root.iter()
-            if _xml_local_name(node.tag) == "t" and node.text
-        ]
-        if not values:
-            values = [value for value in root.itertext() if value.strip()]
+        values = [value for value in root.itertext() if value.strip()]
         return _clean_lines(values, limit=200)
     values = re.findall(r"<[^>]*t[^>]*>(.*?)</[^>]*t>", text, flags=re.IGNORECASE | re.DOTALL)
     return _clean_lines([html.unescape(value) for value in values], limit=200)
