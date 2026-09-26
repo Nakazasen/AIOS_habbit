@@ -28,3 +28,15 @@ Branch làm việc: `phieu-viec/rag-fix1`. **Không push/merge trực tiếp, kh
 - Không merge vào `main` khi chưa có đèn xanh rõ ràng của user.
 - OMP chỉ đọc `prompt.md`, không tự sửa file này. Muse chỉ đọc `trang-thai.md` và báo cáo, không sửa.
 - Prompt mới của Muse luôn ghi đè toàn bộ `prompt.md` (mỗi thời điểm chỉ có một việc active).
+
+## Trạng thái `xong` và watcher Windows (vòng khép kín)
+
+- Khi không còn ticket nào (hết việc / hết lỗi), Muse đặt `trang-thai.md`
+  thành `xong` thay vì `moi`. Đây là trạng thái kết thúc, không phải ticket mới.
+- Trên máy nhà chạy script `Watch-Mailbox.ps1` (xem `HUONG-DAN-WATCHER.md`):
+  poll `trang-thai.md` mỗi ~90 s; thấy `moi` mới → popup nhắc OMP đọc
+  `prompt.md` (đồng thời lưu bản local `_ticket-moi.md`); thấy `xong` →
+  popup báo hết việc, vòng lặp dừng.
+- Vòng khép kín: Muse viết ticket (`moi`) → watcher nhắc → OMP làm
+  (`dang-lam` → `xong-cho-duyet`) → cron của Muse review mỗi 30 phút →
+  ĐẠT → Muse viết ticket tiếp (`moi`) … cho đến khi Muse đặt `xong`.
