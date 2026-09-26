@@ -5,6 +5,7 @@ from pathlib import Path
 import tempfile
 import pytest
 
+from aios_habit.rag_v2.bge_onnx_backend import BGE_BACKEND_FLAG, ONNX_MODEL_PATH_FLAG
 from aios_habit.rag_v2 import bge_subprocess_client as worker_client_module
 from aios_habit.rag_v2 import bge_subprocess_worker as worker_module
 from aios_habit.rag_v2.bge_subprocess_client import BgeSubprocessWorkerClient
@@ -15,6 +16,25 @@ from aios_habit.rag_v2.semantic import DeterministicEmbeddingBackend, SemanticBa
 
 def test_bge_worker_cold_start_has_five_minute_fail_closed_deadline() -> None:
     assert worker_client_module._INIT_TIMEOUT_SECONDS == 300.0
+
+
+def test_lexical_worker_does_not_require_default_onnx_model(
+    monkeypatch, tmp_path
+) -> None:
+    monkeypatch.setenv(
+        "PYTHONPATH",
+        str(Path(__file__).resolve().parents[1] / "src"),
+    )
+    monkeypatch.setenv(BGE_BACKEND_FLAG, "onnx")
+    monkeypatch.setenv(ONNX_MODEL_PATH_FLAG, str(tmp_path / "missing-onnx-model"))
+    config = RagV2DevConfig(runtime_root=tmp_path / "runtime", retrieval_profile="lexical")
+    client = BgeSubprocessWorkerClient()
+    try:
+        readiness = client.initialize_worker(config)
+        assert readiness["status"] == "ok"
+        assert readiness["readiness"]["bge_backend"] == "onnx"
+    finally:
+        client.close()
 
 
 def test_bge_subprocess_worker_lifecycle() -> None:
