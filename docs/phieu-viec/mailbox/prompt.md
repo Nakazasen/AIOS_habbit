@@ -1,48 +1,53 @@
-# Ticket D1 — Điều tra vì sao chỉ 25/108 document được index + dry-run ingest (CHỈ ĐỌC, không ghi)
+# Ticket D2 — Ingest apply 83 file + embed vector ONNX (ghi index thật, có backup)
 
 Ngày viết: 2026-09-26 (Muse). Branch: `phieu-viec/rag-fix1`. Không đụng `main`.
 
 ## Bối cảnh
 
-- Điều tra `b90a94a`: index canary `tri_thuc` có 25 document / 413 chunk (340 vector);
-  `materialized_sources` có 108 file, **83 file không có path trong index**.
-- Hệ quả: B1/B2/B3/B5 thiếu chunk chứa đáp án → trả lời sai toàn bộ trên cả
-  PyTorch (`484ac76`) lẫn ONNX (`cc12d67`, Bước C — ĐẠT).
-- Mục tiêu D1: trả lời "83 file đi đâu" + dry-run kế hoạch ingest.
-  **Ticket này TUYỆT ĐỐI chỉ đọc — không ghi index, không ingest thật.**
+- D1 (`e3eafc8`, ĐẠT): 83 file missing = 6 failed + 77 chưa từng ingest.
+  Dry-run +1765 chunk / 1467 retrievable. B1/B2/B3/B5 có đáp án trong file
+  missing; B4 không có mã ví dụ trong bất kỳ file nào (ground truth lệch).
+- User đã duyệt apply (autopilot 2026-09-26: dry-run + backup là đủ, không cần
+  duyệt từng bước).
 
-## Phạm vi
+## Phase 1 — Backup (fail-closed)
 
-- Index: `local_runs/workspace_chat_rag_v2_canary/bge_m3_hybrid/collections/tri_thuc/library.sqlite`
-  (máy `h410asrock`). Mở sqlite ở chế độ **read-only** (`mode=ro`).
-- Không chạy `--apply`, không ingest thật, không sửa file index dưới mọi hình thức.
+1. Backup `library.sqlite` → `library.sqlite.bak-<timestamp>` (file sibling,
+   cùng thư mục với index canary trong D1).
+2. `integrity_check` trên backup phải `ok`, dung lượng > 0.
+   Không đạt → DỪNG ngay, báo lỗi, không làm tiếp.
 
-## Việc cần làm
+## Phase 2 — Ingest text (dedupe)
 
-1. Liệt kê 108 file trong `materialized_sources`; đối chiếu với `documents`
-   trong index → bảng 108 dòng, mỗi dòng: `indexed` / `missing`.
-2. Với 83 file missing, phân loại nguyên nhân theo nhóm (không cần từng file
-   nếu cùng một nguyên nhân):
-   - Có manifest/allowlist nào giới hạn ingest chỉ 25 document không?
-   - Có bị filter loại không (định dạng, dung lượng, ngày tháng, cổng
-     `usable_elements`, ...)? Ghi rõ điều kiện filter nào đã loại chúng.
-   - Ingest đã từng thử và fail? (tìm log / error message)
-   - Hay chưa bao giờ được đưa vào pipeline?
-3. Kiểm tra trong 83 file missing có chứa chuỗi đáp án B1–B5 không
-   (grep trực tiếp trên file, không qua index):
-   `11922`, `12860`, `12626`, `YY2-Z151`, `YY2-Z152`, `nvarchar(4000)`,
-   `HOUSE_METHOD`, `Y302YL93020100`.
-   → Kết luận: ingest 83 file có kỳ vọng sửa được B1/B2/B3/B5 không?
-4. Dry-run ingest 83 file (**không ghi**): ước tính số document/chunk sẽ thêm,
-   liệt kê cảnh báo (file lỗi, XML noise, trùng lặp với 25 document cũ...).
-5. Ghi chú: **KHÔNG dọn XML** trong ticket này — dọn sau khi có baseline B
-   trên corpus đầy đủ (theo thứ tự đã chốt).
+1. Ingest 83 file vào index canary (đường dẫn như D1, máy `h410asrock`).
+2. **Dedupe**: D1 phát hiện 580 chunk trùng text với index cũ (33%) —
+   không insert trùng (so theo text hash). Ghi số đã skip vào báo cáo.
+3. **6 file failed** (`bge_worker_prepare_stdout_eof`, gồm file đáp án B1
+   fail 34 lần): điều tra nguyên nhân, retry với fix; file nào vẫn fail thì
+   liệt kê riêng, không để crash cả batch.
+4. Ca lẻ `wsc-927d7635…` (ledger `ready` nhưng không trong index): đối chiếu
+   khi ingest, ghi kết quả vào báo cáo.
+5. Batch + resume: ngắt giữa chừng chạy lại không ingest trùng.
+
+## Phase 3 — Embed vector cho chunk mới (ONNX fp32)
+
+1. Embed các chunk mới bằng backend ONNX fp32 (`BGE_BACKEND=onnx`,
+   fingerprint `016c5255…`) — khớp với 340 vector đã migrate ở Bước B.
+2. Batch + resume theo mẫu `scripts/migrate_vectors_to_onnx.py`.
+3. Không đụng vector cũ (PyTorch lẫn ONNX).
+
+## Phase 4 — Verify
+
+- Document count ~108 (25 cũ + 83 mới, trừ ca lẻ); chunk/retrievable khớp
+  kỳ vọng D1 (trừ dedupe).
+- Pending vector = 0. `integrity_check` trên live = ok.
+- **Không dọn XML** trong ticket này (lấy baseline B trên corpus đầy đủ trước).
 
 ## Bàn giao
 
-- Báo cáo: `docs/phieu-viec/ket-qua/FIX3_ingest-D1-dieu-tra.md`
-  (ghi hostname, commit SHA, đầy đủ số liệu 108/83, kết quả grep B1–B5).
-- Commit **riêng** + push branch `phieu-viec/rag-fix1`, không đụng `main`.
-- Cập nhật `trang-thai.md` → `xong-cho-duyet` (ghi commit SHA + đường dẫn báo cáo),
-  rồi **DỪNG chờ duyệt** — quyết định ingest apply thật là việc của ticket D2,
-  sau khi user duyệt (ghi index thật cần dry-run + backup + duyệt rõ ràng).
+- Báo cáo: `docs/phieu-viec/ket-qua/FIX3_ingest-D2-apply.md`
+  (hostname, SHA, số liệu từng phase: backup bytes, chunk thêm/skip, file
+  failed còn lại, pending).
+- Commit **riêng** + push `phieu-viec/rag-fix1`, không đụng `main`.
+- Cập nhật `trang-thai.md` → `xong-cho-duyet` (ghi commit SHA + đường dẫn
+  báo cáo), rồi **DỪNG**.
