@@ -36,12 +36,6 @@ BATCH_SIZE = 10
 COLD_SECONDS_PER_CHUNK = 22.8
 WARM_SECONDS_PER_CHUNK = 1.8
 BGE_M3_REVISION = "5617a9f61b028005a4858fdac845db406aefb181"
-BGE_M3_MODEL_PATH = (
-    REPO_ROOT / "local_runs" / "retrieval_models" / "bge-m3-5617a9f"
-)
-BGE_M3_CHECKSUM = (
-    "sha256:b1d887e03f13547609b4c6498ce8f357242edb5079a448c62d31d4caac320b61"
-)
 
 
 def _content_hash(text: str) -> str:
@@ -115,6 +109,9 @@ def _require_fresh_backup(index_path: Path) -> Path:
 
 
 def _require_onnx_backend_selected() -> None:
+    # The runtime calls this backend "onnx_int8" for legacy reasons (class and
+    # error-string names predate the fp32 cutover); both "onnx" and "onnx_int8"
+    # select the same pinned fp32 model dir since commit 7c1314f.
     if resolve_bge_backend_name("pytorch") != "onnx_int8":
         raise SystemExit(
             f"refusing to migrate: set {BGE_BACKEND_FLAG}=onnx explicitly "
