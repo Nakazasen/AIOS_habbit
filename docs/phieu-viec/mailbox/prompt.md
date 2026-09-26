@@ -1,48 +1,42 @@
-# Ticket E2 — Fix khâu tổng hợp theo E1 + chạy lại B1–B5 (B4 loại)
+# Ticket E3 — Dọn XML thô ở extractor (code + test, không ghi index)
 
 Ngày viết: 2026-09-26 (Muse). Branch: `phieu-viec/rag-fix1`. Không đụng `main`.
 
 ## Bối cảnh
 
-- E1 (`069460a5`, ĐẠT — Muse review 2026-09-26): nguyên nhân B1/B3 rớt dữ kiện đã rõ:
-  1. `synthesize_evidence` mặc định tối đa 5 claim; `_compose_grounded_claims` đi theo
-     thứ tự pack → 5 `document_summary` chèn đầu chiếm hết ngân sách trước khi tới
-     chunk thân (file `src/aios_habit/rag_v2/synthesis.py`).
-  2. `hybrid_search_with_summary` chèn summary lên đầu với intent `general`
-     (dòng 2420–2427 `src/aios_habit/rag_v2/index.py`) dù `retrieval_mode=full`.
-  3. `_best_fragment` chấm overlap token cùng ngôn ngữ → câu summary tiếng Việt chung
-     thắng câu tiếng Nhật chứa `nvarchar(4000)`.
-  4. B5: chunk đáp án lexical hạng 467, vượt cửa sổ 100 ứng viên → không vào
-     evidence pack (lỗi thu hồi ứng viên, không phải khâu viết).
-- Chi tiết: `docs/phieu-viec/ket-qua/FIX3_synthesis-E1-dieu-tra.md`.
+- E2 (`a83f8ff4`, ĐẠT — Muse review 2026-09-26): khâu tổng hợp đã fix claim budget +
+  ưu tiên chunk thân + thu hồi exact identifier; B1/B2/B3/B5 read-only ONNX đúng.
+- Điều tra D1/B-sai (đã có trong báo cáo E1): index canary có 33 chunk chứa `xmlns`,
+  23 chunk chứa `<p:sld>` — XML thô lọt vào chunk từ tầng extractor, làm bẩn corpus
+  (đã thấy lẫn XML trong kết quả B3 ở vòng trước). Đây là item thứ 3 trong thứ tự
+  ưu tiên user chốt (sau: diagnostic ONNX timeout ✓, ingest 83 file + chạy lại B ✓).
 - Chế độ tự lái toàn phần (user 2026-09-26): tự quyết mọi quyết định kỹ thuật, không hỏi;
   sai thì revert commit và viết ticket sửa.
 
 ## Việc cần làm
 
-1. **Fix claim budget** (`src/aios_habit/rag_v2/synthesis.py`): với câu hỏi tra cứu chi
-   tiết (`retrieval_mode=full`), không để 5 summary đầu pack chiếm hết ngân sách claim;
-   đảm bảo chunk thân vẫn được chọn; citation giữ trỏ đúng chunk chứa đáp án.
-2. **Giảm summary chen đầu** (`src/aios_habit/rag_v2/index.py::hybrid_search_with_summary`):
-   với `retrieval_mode=full`, không prepend summary trước chunk thân (hoặc chỉ để
-   summary làm bổ sung sau kết quả thân).
-3. **B5 — thu hồi khóa định danh chính xác**: quota/nhánh exact-match cho token định danh
-   (HOUSE_METHOD, T_IF_PROD_RESULT…) trước khi cắt cửa sổ lexical 100; cân nhắc phân loại
-   câu hỏi tra cứu mã/giá trị thành lookup riêng trong `query_planning.py`.
-4. Không làm hại đường summary-first/overview: mode `overview` vẫn summary_only như cũ.
-5. Test read-only (`index_read_only=True`, `BGE_BACKEND=onnx`, 2 flag summary bật như D3):
-   chạy B1/B2/B3/B5 — câu trả lời phải nêu đúng đáp án (B1: 11922/12860/12626;
-   B3: nvarchar(4000)/4000 ký tự; B5: HOUSE_METHOD '0'/'1') và citation trỏ đúng chunk.
-   B4 **LOẠI** khỏi chấm điểm (ground truth không có trong corpus — quyết định của Muse,
-   không bịa đáp án).
-6. Chạy pytest liên quan; full suite nếu sửa chạm lõi. Ticket này **không ghi index thật**
-   (không ingest, không --apply).
+1. **Xác định điểm rò rỉ**: tìm tầng extractor hiện tại (chỗ materialized_sources /
+   chunking chuyển PPTX/DOCX/PDF/XML thành text chunk): XML thô (namespace, thẻ,
+   thuộc tính, comment, `p:sld`...) lọt vào text ở đâu.
+2. **Dọn XML ở tầng extractor**: strip markup, giữ text thuần và DỮ KIỆN
+   (mã, số, kiểu dữ liệu, giá trị) không mất, không biến dạng. Nếu đổi hành vi
+   extractor → mọi code mới nằm sau **feature flag mặc định TẮT** (quy tắc bất biến).
+3. **Test**: unit test với sample input có XML (xmlns, p:sld, namespace, comment) →
+   chunk sạch XML, dữ kiện còn nguyên; regression test đảm bảo file sạch XML vẫn
+   chunk y hệt như cũ. Chạy pytest liên quan + `compileall`; full suite nếu chạm lõi.
+4. **Đo before/after** trên index canary hoặc sample đủ đại diện: số chunk chứa
+   `xmlns`/`<p:sld>`/thẻ XML phải về 0; không làm hại retrieval (không giảm recall
+   lexical trên sample có đáp án đã biết).
+5. Ticket này **KHÔNG ghi index thật** (không ingest, không --apply, không backfill
+   index production). Nếu thấy cần migrate index hiện tại → DỪNG ở phạm vi code +
+   test, chỉ ghi đề xuất vào báo cáo (đề xuất phải kèm dry-run trước + backup trước
+   nếu sau này làm).
 
 ## Bàn giao
 
-- Báo cáo: `docs/phieu-viec/ket-qua/FIX3_synthesis-E2-fix.md`
-  (hostname, SHA code lúc chạy, diff chính, kết quả B1/B2/B3/B5 read-only trước/sau,
-  pytest, bàn giao test case).
+- Báo cáo: `docs/phieu-viec/ket-qua/FIX3_extractor-E3-xml.md`
+  (hostname, SHA code lúc chạy, vị trí extractor sửa, diff chính, kết quả test,
+  số chunk nhiễu XML before/after, bàn giao test case).
 - Commit **riêng** + push `phieu-viec/rag-fix1`, không đụng `main`.
 - Cập nhật `trang-thai.md` → `xong-cho-duyet` (ghi commit SHA + đường dẫn báo cáo),
   rồi **DỪNG**.
