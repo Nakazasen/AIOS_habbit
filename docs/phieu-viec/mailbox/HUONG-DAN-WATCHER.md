@@ -1,4 +1,4 @@
-# Watcher Windows — tự động nhắc/giám sát OMP (v3: vòng lặp cưỡng chế 2 đầu)
+# Watcher Windows — tự động nhắc/giám sát OMP (v4: vòng lặp cưỡng chế 2 đầu)
 
 ## Ý tưởng
 
@@ -13,10 +13,19 @@
   - `dang-lam` + không thấy process → cảnh báo (có thể crash giữa chừng)
   - `dang-lam` quá 20 phút không tiến triển → cảnh báo kẹt
   - `xong-cho-duyet` → popup (Muse sẽ review trong ~5 phút)
-  - `xong` → popup hết việc, vòng lặp dừng
+  - `xong` → **không dừng ngay**: đếm số lần check liên tiếp thấy `xong` ổn
+    định (mặc định 3 lần ≈ 4,5 phút, chỉnh bằng `$idleExitChecks`) để loại trừ
+    ghi nhầm/thoáng qua, rồi popup **tổng kết** (liệt kê ticket đã xong trong
+    đợt) + **tự dừng script**
 
 Người vẫn giữ chốt duyệt: ticket nào cũng "dừng chờ duyệt", Muse hỏi bạn
 trong chat trước khi viết ticket tiếp theo.
+
+Lưu ý: `xong-cho-duyet` KHÔNG tính là "hết việc" để dừng — vì có thể đang
+chờ bạn duyệt ticket tiếp theo (bạn đi vắng vài tiếng là bình thường).
+Script cứ chạy nền nhẹ (1 request GitHub/90s), không tốn gì. Muốn chạy tiếp
+sau khi đã tự dừng (Muse mở ticket mới sau này) thì chạy lại script —
+shortcut trong `shell:startup` vẫn còn đó.
 
 ## Cài đặt (làm 1 lần)
 
@@ -48,7 +57,8 @@ trong chat trước khi viết ticket tiếp theo.
 
 ## Tùy chỉnh
 
-- `$pollSeconds` (90), `$moiWarnMinutes` (15), `$stuckMinutes` (20).
+- `$pollSeconds` (90), `$moiWarnMinutes` (15), `$stuckMinutes` (20),
+  `$idleExitChecks` (3).
 - Poll 60 giây: thêm token fine-grained (Contents: read), bỏ comment dòng
   `$token`. Không commit token lên git.
 - `watcher_state.json` / `watcher.log`: trạng thái + log, không cần commit.
