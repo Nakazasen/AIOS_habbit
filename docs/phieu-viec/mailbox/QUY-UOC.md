@@ -38,5 +38,15 @@ Branch làm việc: `phieu-viec/rag-fix1`. **Không push/merge trực tiếp, kh
   `prompt.md` (đồng thời lưu bản local `_ticket-moi.md`); thấy `xong` →
   popup báo hết việc, vòng lặp dừng.
 - Vòng khép kín: Muse viết ticket (`moi`) → watcher nhắc → OMP làm
-  (`dang-lam` → `xong-cho-duyet`) → cron của Muse review mỗi 30 phút →
+  (`dang-lam` → `xong-cho-duyet`) → cron của Muse review mỗi 5 phút →
   ĐẠT → Muse viết ticket tiếp (`moi`) … cho đến khi Muse đặt `xong`.
+
+## Quy ước báo tiến độ cho OMP (để watcher canh kẹt)
+
+- Nhận ticket: đặt `trang-thai.md` thành `dang-lam` NGAY LẬP TỨC (commit +
+  push), kèm `ghi_chu` có timestamp giờ máy.
+- Mỗi mốc quan trọng (init xong, chạy xong batch/câu hỏi, verify xong):
+  cập nhật `ghi_chu` + timestamp trong `trang-thai.md` rồi push.
+- Watcher Windows coi "`dang-lam` quá 20 phút không đổi `ghi_chu`/commit"
+  là kẹt và popup cảnh báo; "`moi` quá 15 phút không ai nhận" thì popup
+  nhắc OMP `git pull` và đọc mailbox.
