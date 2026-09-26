@@ -21,6 +21,7 @@ from .chunking import DocumentChunk
 from .query_planning import (
     RetrievalQueryPlan,
     coerce_query_plan,
+    detect_retrieval_mode,
     extract_content_terms,
     match_text_obligations,
 )
@@ -52,6 +53,27 @@ _TOKEN_RE = re.compile(r"[\w]+", re.UNICODE)
 # CJK text is not whitespace-delimited. Add searchable overlapping n-grams so
 # Japanese compound terms can match both FTS candidates and local scoring.
 _CJK_RE = re.compile(r"[\u3040-\u30ff\u3400-\u9fff]+")
+_EXACT_IDENTIFIER_RE = re.compile(
+    r"(?<!\w)[A-Za-z][A-Za-z0-9]*(?:[_-][A-Za-z0-9]+)+(?!\w)"
+)
+_EXACT_IDENTIFIER_QUOTA = 8
+
+
+def _identifier_patterns(query: str) -> tuple[re.Pattern[str], ...]:
+    return tuple(
+        re.compile(rf"(?<!\w){re.escape(match.group(0))}(?!\w)", re.IGNORECASE)
+        for match in _EXACT_IDENTIFIER_RE.finditer(query or "")
+    )
+
+
+def _identifier_match_priority(
+    text: str,
+    patterns: Sequence[re.Pattern[str]],
+) -> tuple[int, int]:
+    matches = tuple(pattern.search(text or "") is not None for pattern in patterns)
+    if not matches:
+        return 0, 0
+    return int(matches[-1]), sum(matches)
 
 
 def _tokens(value: str) -> List[str]:
@@ -2342,6 +2364,15 @@ class LocalChunkIndex:
     ) -> SearchResponse:
         """Run bounded hybrid retrieval with optional precomputed MaxSim authority."""
         plan = coerce_query_plan(query)
+        retrieval_mode = (
+            plan.retrieval_mode
+            if plan.retrieval_mode != "full"
+            else detect_retrieval_mode(
+                plan.original_query,
+                plan.intent_category,
+                plan.target_terms,
+            )
+        )
         if plan.intent_category == "cross_source_synthesis":
             limit = max(limit, getattr(plan, "target_retrieval_limit", limit))
         if plan_has_cjk_variants(plan):
@@ -2424,8 +2455,12 @@ class LocalChunkIndex:
                 if summary_chunks:
                     summary_ids = {sc.chunk_id for sc in summary_chunks}
                     filtered = tuple(r for r in response.results if r.chunk_id not in summary_ids)
-                    response = replace(response, results=tuple(summary_chunks) + filtered)
-
+                    combined = (
+                        filtered + tuple(summary_chunks)
+                        if retrieval_mode == "full"
+                        else tuple(summary_chunks) + filtered
+                    )
+                    response = replace(response, results=combined)
         unique_docs = {result.document_id for result in response.results}
         if should_retry_thin_results(
             unique_document_count=len(unique_docs),
@@ -3042,15 +3077,19 @@ class LocalChunkIndex:
         # Filtering is already complete above, so FTS and variants can never bypass
         # privacy, source-selection, or stale-fingerprint constraints.
         per_variant_candidates: list[tuple[Any, list[tuple[float, sqlite3.Row, Dict[str, Any], tuple[str, ...], Dict[str, float], tuple[str, ...], float]]]] = []
+        identifier_patterns = _identifier_patterns(query_plan.original_query)
         candidate_backend = self.retrieval_backend
         for variant in query_plan.variants:
             variant_terms = extract_content_terms(variant.text)
             if not variant_terms:
                 continue
+            rescue_patterns = identifier_patterns if variant.origin == "original" else ()
             candidate_rows, backend = self._candidate_rows(
                 variant.text,
                 eligible_rows,
                 options.candidate_limit,
+                identifier_patterns=rescue_patterns,
+                query_plan=query_plan,
             )
             if backend != "fts5_bm25":
                 candidate_backend = "deterministic_scan"
@@ -3058,9 +3097,15 @@ class LocalChunkIndex:
             for candidate_position, row in enumerate(candidate_rows):
                 candidate = self._score_candidate(row, variant_terms, query_plan=query_plan)
                 if candidate is not None:
-                    ranked.append((candidate_position, candidate))
+                    identifier_priority = _identifier_match_priority(
+                        str(row["normalized_text"] or ""),
+                        rescue_patterns,
+                    )
+                    ranked.append((candidate_position, candidate, identifier_priority))
             ranked.sort(
                 key=lambda item: (
+                    -item[2][0],
+                    -item[2][1],
                     -item[1][0],
                     item[0],
                     item[1][1]["document_id"],
@@ -3068,8 +3113,18 @@ class LocalChunkIndex:
                     item[1][1]["chunk_id"],
                 )
             )
+            exact_matches = [
+                item for item in ranked if item[2][1]
+            ][:_EXACT_IDENTIFIER_QUOTA]
+            exact_ids = {str(item[1][1]["chunk_id"]) for item in exact_matches}
+            selected = [item[1] for item in exact_matches]
+            selected.extend(
+                item[1]
+                for item in ranked
+                if str(item[1][1]["chunk_id"]) not in exact_ids
+            )
             per_variant_candidates.append(
-                (variant, [item[1] for item in ranked[: options.candidate_limit]])
+                (variant, selected[: options.candidate_limit])
             )
 
         fused: dict[str, dict[str, Any]] = {}
@@ -3393,6 +3448,9 @@ class LocalChunkIndex:
         query: str,
         eligible_rows: List[sqlite3.Row],
         limit: int,
+        *,
+        identifier_patterns: Sequence[re.Pattern[str]] = (),
+        query_plan: Optional[RetrievalQueryPlan] = None,
     ) -> tuple[List[sqlite3.Row], str]:
         if not self._fts5_available or not eligible_rows:
             return list(eligible_rows), "deterministic_scan"
@@ -3430,7 +3488,39 @@ class LocalChunkIndex:
             self._fts5_available = False
             return list(eligible_rows), "deterministic_scan"
         by_id = {str(row["chunk_id"]): row for row in eligible_rows}
-        return [by_id[str(row["chunk_id"])] for row in ranked_ids if str(row["chunk_id"]) in by_id], "fts5_bm25"
+        ranked = [
+            by_id[str(row["chunk_id"])]
+            for row in ranked_ids
+            if str(row["chunk_id"]) in by_id
+        ]
+        if not identifier_patterns:
+            return ranked, "fts5_bm25"
+
+        ranked_ids_set = {str(row["chunk_id"]) for row in ranked}
+        exact_matches = []
+        for row in eligible_rows:
+            if str(row["chunk_id"]) in ranked_ids_set:
+                continue
+            match_priority = _identifier_match_priority(
+                str(row["normalized_text"] or ""),
+                identifier_patterns,
+            )
+            if not match_priority[1]:
+                continue
+            candidate = self._score_candidate(row, terms, query_plan=query_plan)
+            if candidate is not None:
+                exact_matches.append((match_priority[0], match_priority[1], candidate[0], row))
+        exact_matches.sort(
+            key=lambda item: (
+                -item[0],
+                -item[1],
+                -item[2],
+                str(item[3]["document_id"]),
+                str(item[3]["chunk_id"]),
+            )
+        )
+        ranked.extend(item[3] for item in exact_matches[:_EXACT_IDENTIFIER_QUOTA])
+        return ranked, "fts5_bm25"
 
     @staticmethod
     def _evidence_set_term_coverage(

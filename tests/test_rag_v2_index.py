@@ -871,3 +871,92 @@ def test_target_equivalence_is_only_supplied_by_external_expansion(tmp_path):
         item.matched_target_equivalent_variant_ids in {(), ("expansion_1",)}
         for item in results
     )
+
+
+def test_exact_identifier_rescue_recovers_candidate_beyond_lexical_window(tmp_path):
+    chunks = [
+        make_ranked_chunk(
+            f"noise-{index:03d}",
+            f"noise-doc-{index:03d}",
+            "warehouse intake storage method code value " * 10,
+        )
+        for index in range(110)
+    ]
+    chunks.append(
+        make_ranked_chunk(
+            "house-method-answer",
+            "house-method-doc",
+            "HOUSE_METHOD varchar '0' storage and '1' inspection.",
+        )
+    )
+    with LocalChunkIndex(tmp_path / "identifier-rescue.sqlite") as index:
+        index.upsert_chunks(chunks)
+        response = index.search_with_summary(
+            "warehouse intake storage method code value HOUSE_METHOD",
+            limit=1,
+        )
+
+    assert [item.chunk_id for item in response.results] == ["house-method-answer"]
+
+
+
+def test_exact_identifier_rescue_prioritizes_last_requested_identifier(tmp_path):
+    decoy_text = "T_PARTS_RECIEVE warehouse receiving field values " * 12
+    chunks = [
+        make_ranked_chunk(
+            f"table-decoy-{index:03d}",
+            f"table-decoy-doc-{index:03d}",
+            decoy_text,
+        )
+        for index in range(140)
+    ]
+    chunks.append(
+        make_ranked_chunk(
+            "house-method-field",
+            "house-method-doc",
+            "HOUSE_METHOD stores the field-level value.",
+        )
+    )
+    with LocalChunkIndex(tmp_path / "last-identifier-rescue.sqlite") as index:
+        index.upsert_chunks(chunks)
+        response = index.search_with_summary(
+            "T_PARTS_RECIEVE HOUSE_METHOD warehouse receiving field values",
+            limit=1,
+        )
+
+    assert [item.chunk_id for item in response.results] == ["house-method-field"]
+
+
+
+def test_full_mode_appends_summary_after_body_results(tmp_path):
+    from dataclasses import replace
+    from aios_habit.rag_v2.semantic import DeterministicEmbeddingBackend
+
+    body = make_ranked_chunk(
+        "body",
+        "doc",
+        "T_IF_PROD_RESULT stores production completion records.",
+    )
+    summary = replace(
+        body,
+        chunk_id="doc-summary",
+        file_type="document_summary",
+        text="General introduction for warehouse operations and production.",
+        normalized_text="general introduction for warehouse operations and production.",
+        metadata={"is_document_summary": True},
+        element_ids=("summary",),
+        checksum="summary-checksum",
+    )
+    with LocalChunkIndex(
+        tmp_path / "summary-order.sqlite",
+        embedding_backend=DeterministicEmbeddingBackend(dimension=8),
+    ) as index:
+        index.upsert_chunks([body, summary])
+        response = index.hybrid_search_with_summary(
+            "What is T_IF_PROD_RESULT?",
+            limit=5,
+            dense_limit=5,
+        )
+
+    assert response.results[0].chunk_id == "body"
+    assert response.results[-1].chunk_id == "doc-summary"

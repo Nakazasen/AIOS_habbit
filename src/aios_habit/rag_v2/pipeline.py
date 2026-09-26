@@ -1095,14 +1095,20 @@ class RagV2DevPipeline:
 
         pack = build_evidence_pack(plan, response, config=evidence_config)
         synthesis_started = perf_counter()
+        prioritize_body_evidence = summary_first and plan.retrieval_mode == "full"
         synthesis = (
             synthesize_with_provider(
                 pack,
                 self.synthesis_provider,
                 answer_shape=plan.intent_category,
+                prioritize_body_evidence=prioritize_body_evidence,
             )
             if self.synthesis_provider is not None
-            else synthesize_evidence(pack, answer_shape=plan.intent_category)
+            else synthesize_evidence(
+                pack,
+                answer_shape=plan.intent_category,
+                prioritize_body_evidence=prioritize_body_evidence,
+            )
         )
         if summary_first and plan.retrieval_mode == "overview":
             synthesis = _finish_overview_synthesis(pack, synthesis)

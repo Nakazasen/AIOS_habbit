@@ -448,7 +448,13 @@ def validate_provider_synthesis_answer(
     )
 
 
-def _fallback_fragment(item: EvidenceItem, *, query_terms: set[str], selected: Iterable[str]) -> str:
+def _fallback_fragment(
+    item: EvidenceItem,
+    *,
+    query_terms: set[str],
+    selected: Iterable[str],
+    prioritize_literals: bool = False,
+) -> str:
     """Return one readable, bounded extract for degraded local synthesis.
 
     Normal composition rejects low-information cells because they are rarely useful
@@ -456,7 +462,12 @@ def _fallback_fragment(item: EvidenceItem, *, query_terms: set[str], selected: I
     compact value (for example, an acronym-only cell), so fall back to normalized
     source text only after the regular fragment picker declines it.
     """
-    fragment = _best_fragment(item, query_terms=query_terms, selected=selected)
+    fragment = _best_fragment(
+        item,
+        query_terms=query_terms,
+        selected=selected,
+        prioritize_literals=prioritize_literals,
+    )
     if fragment:
         return fragment
     raw = " ".join((item.snippet or item.text or "").split())
@@ -486,6 +497,7 @@ def _citation_first_fallback(
     *,
     answer_shape: str,
     max_claims: int,
+    prioritize_body_evidence: bool = False,
 ) -> LocalSynthesisResult:
     """Render useful cited evidence without assigning it to unsupported sections.
 
@@ -495,11 +507,20 @@ def _citation_first_fallback(
     run of headings.  The fallback is intentionally extractive: it never infers
     relationships from a sheet row or an OCR fragment.
     """
-    query_terms = set(extract_content_terms(pack.query))
+    query_terms = _synthesis_query_terms(
+        pack.query,
+        prioritize_literals=prioritize_body_evidence,
+    )
     selected_texts: list[str] = []
     claims: list[GroundedClaim] = []
     facet_sections = _facet_sections_for_shape(answer_shape, pack)
     obligation_sections = _sections_for_shape(answer_shape)
+    fallback_items = _ordered_synthesis_items(
+        pack.items,
+        query=pack.query,
+        query_terms=query_terms,
+        prioritize_body_evidence=prioritize_body_evidence,
+    )
 
     def add(item: EvidenceItem, *, facet_id: str = "", obligation_id: str = "") -> bool:
         if len(claims) >= max_claims:
@@ -508,9 +529,16 @@ def _citation_first_fallback(
             item,
             query_terms=query_terms,
             selected=selected_texts,
+            prioritize_literals=prioritize_body_evidence,
         )
         if not fragment:
             return False
+        if prioritize_body_evidence:
+            fragment = _combine_answer_value_fragments(
+                item,
+                fragment,
+                query_terms=query_terms,
+            )
         claims.append(GroundedClaim(
             text=fragment,
             citation_ids=(item.citation_id,),
@@ -523,16 +551,16 @@ def _citation_first_fallback(
 
     if facet_sections:
         for facet_id in facet_sections.values():
-            for item in pack.items:
+            for item in fallback_items:
                 if facet_id in item.matched_query_facets and add(item, facet_id=facet_id):
                     break
     elif obligation_sections:
         for obligation_id in obligation_sections.values():
-            for item in pack.items:
+            for item in fallback_items:
                 if obligation_id in item.matched_obligations and add(item, obligation_id=obligation_id):
                     break
     else:
-        for item in pack.items:
+        for item in fallback_items:
             add(item)
             if len(claims) >= max_claims:
                 break
@@ -540,8 +568,8 @@ def _citation_first_fallback(
     # Do not fabricate section membership.  If none of the selected evidence was
     # tagged for a structured section, return a compact, clearly labelled evidence
     # note under the required markers so users can still inspect valid citations.
-    if not claims and pack.items:
-        add(pack.items[0])
+    if not claims and fallback_items:
+        add(fallback_items[0])
     if not claims:
         return _abstention(pack, (*pack.insufficiency_reasons, "no_citation_first_fallback_claims"))
 
@@ -606,6 +634,7 @@ def synthesize_with_provider(
     *,
     answer_shape: str = "grounded_summary",
     max_claims: int = 5,
+    prioritize_body_evidence: bool = False,
 ) -> LocalSynthesisResult:
     """Use cloud synthesis for answerable evidence with an auditable local fallback.
 
@@ -618,6 +647,7 @@ def synthesize_with_provider(
         pack,
         answer_shape=answer_shape,
         max_claims=max_claims,
+        prioritize_body_evidence=prioritize_body_evidence,
     )
     if pack.answer_mode == EvidenceAnswerMode.ABSTAIN:
         return replace(local, mode=_PROVIDER_INSUFFICIENT_MODE)
@@ -633,6 +663,7 @@ def synthesize_with_provider(
         pack,
         answer_shape=answer_shape,
         max_claims=max_claims,
+        prioritize_body_evidence=prioritize_body_evidence,
     )
     if not pack.privacy_summary.cloud_allowed:
         return replace(
@@ -727,6 +758,7 @@ def synthesize_evidence(
     *,
     answer_shape: str = "grounded_summary",
     max_claims: int = 5,
+    prioritize_body_evidence: bool = False,
 ) -> LocalSynthesisResult:
     """Build a bounded extractive answer or explicitly abstain when evidence is weak."""
     if max_claims < 1:
@@ -752,6 +784,7 @@ def synthesize_evidence(
         pack,
         answer_shape=normalized_shape,
         max_claims=min(max_claims, _MAX_LOCAL_CLAIMS),
+        prioritize_body_evidence=prioritize_body_evidence,
     )
     validation_errors = validate_grounded_claims(pack, claims)
     if not claims or validation_errors:
@@ -759,6 +792,7 @@ def synthesize_evidence(
             pack,
             answer_shape=normalized_shape,
             max_claims=min(max_claims, _MAX_LOCAL_CLAIMS),
+            prioritize_body_evidence=prioritize_body_evidence,
         )
         if not fallback.abstained:
             return fallback
@@ -892,12 +926,36 @@ def _is_fragment_noise(fragment: str) -> bool:
     return len(terms) < 3
 
 
+def _bounded_fragment_windows(fragment: str) -> Tuple[str, ...]:
+    if len(fragment) <= _MAX_CLAIM_CHARS:
+        return (fragment,)
+
+    windows = []
+    start = 0
+    while start < len(fragment):
+        end = min(start + _MAX_CLAIM_CHARS, len(fragment))
+        if end < len(fragment):
+            boundary = fragment.rfind(" ", start + _MAX_CLAIM_CHARS // 2, end)
+            if boundary > start:
+                end = boundary
+        window = fragment[start:end].strip()
+        if window:
+            windows.append(window)
+        if end >= len(fragment):
+            break
+        start = max(start + 1, end - 80)
+        while start < len(fragment) and fragment[start].isspace():
+            start += 1
+    return tuple(windows)
+
+
 def _candidate_fragments(item: EvidenceItem) -> Tuple[str, ...]:
     """Split an excerpt into bounded human-reviewable fragments, never raw sheets."""
     text = (item.snippet or item.text or "").strip()
     if not text:
         return ()
     fragments = []
+    seen = set()
     for raw in _FRAGMENT_SPLIT_RE.split(text):
         fragment = " ".join(raw.strip(" \t\r\n-*#:").split())
         if not fragment or _MARKDOWN_NOISE_RE.fullmatch(fragment):
@@ -907,10 +965,13 @@ def _candidate_fragments(item: EvidenceItem) -> Tuple[str, ...]:
         fragment = _CELL_REFERENCE_RE.sub("", fragment).strip()
         if len(fragment) < 12 or _is_fragment_noise(fragment):
             continue
-        if len(fragment) > _MAX_CLAIM_CHARS:
-            fragment = fragment[:_MAX_CLAIM_CHARS].rsplit(" ", 1)[0].rstrip(" ,;:")
-        if fragment and fragment.casefold() not in {value.casefold() for value in fragments}:
-            fragments.append(fragment)
+        for window in _bounded_fragment_windows(fragment):
+            if len(window) < 12 or _is_fragment_noise(window):
+                continue
+            key = window.casefold()
+            if key not in seen:
+                seen.add(key)
+                fragments.append(window)
     return tuple(fragments)
 
 
@@ -924,14 +985,112 @@ def _fragment_supports_obligation(fragment: str, obligation_id: str) -> bool:
     return True
 
 
+_EXACT_IDENTIFIER_RE = re.compile(
+    r"(?<!\w)[A-Za-z][A-Za-z0-9]*(?:[_-][A-Za-z0-9]+)+(?!\w)"
+)
+_TYPED_VALUE_RE = re.compile(
+    r"(?<!\w)[A-Za-z][A-Za-z0-9_]*\s*\(\s*\d+\s*\)(?!\w)"
+)
+_LONG_NUMERIC_VALUE_RE = re.compile(r"(?<!\w)\d{3,}(?!\w)")
+_QUOTED_VALUE_RE = re.compile(
+    r"""(?:(?P<quote>['"])(?P<value>[^'"“”]{1,32})(?P=quote)|“(?P<curly_value>[^“”]{1,32})”)"""
+)
+
+
+def _synthesis_query_terms(query: str, *, prioritize_literals: bool) -> set[str]:
+    terms = set(extract_content_terms(query))
+    if prioritize_literals:
+        terms.update(
+            match.group(0).casefold()
+            for match in _EXACT_IDENTIFIER_RE.finditer(query or "")
+        )
+    return terms
+
+def _query_has_exact_values(query_terms: set[str]) -> bool:
+    return any(
+        any(character.isdigit() for character in term) or "_" in term or "-" in term
+        for term in query_terms
+    )
+
+
+def _query_literal_overlap(text: str, query_terms: set[str]) -> int:
+    normalized = text.casefold()
+    return sum(
+        bool(re.search(rf"(?<!\w){re.escape(term)}(?!\w)", normalized))
+        for term in query_terms
+        if any(character.isdigit() for character in term) or "_" in term or "-" in term
+    )
+
+
+def _query_identifier_overlap(text: str, query: str) -> tuple[int, int]:
+    identifiers = tuple(
+        match.group(0).casefold()
+        for match in _EXACT_IDENTIFIER_RE.finditer(query or "")
+    )
+    if not identifiers:
+        return 0, 0
+    normalized = text.casefold()
+    matched = {
+        identifier
+        for identifier in identifiers
+        if re.search(rf"(?<!\w){re.escape(identifier)}(?!\w)", normalized)
+    }
+    return int(identifiers[-1] in matched), len(matched)
+
+
+def _typed_answer_value_count(text: str, query_terms: set[str]) -> int:
+    if not _query_has_exact_values(query_terms):
+        return 0
+    return len({
+        match.group(0).casefold()
+        for match in _TYPED_VALUE_RE.finditer(text or "")
+    })
+
+
+def _answer_value_literals(text: str, query_terms: set[str]) -> set[str]:
+    if not _query_has_exact_values(query_terms):
+        return set()
+    values = {
+        match.group(0).casefold()
+        for pattern in (_EXACT_IDENTIFIER_RE, _LONG_NUMERIC_VALUE_RE)
+        for match in pattern.finditer(text or "")
+    }
+    values.update(
+        value.strip().casefold()
+        for match in _QUOTED_VALUE_RE.finditer(text or "")
+        for value in (match.group("value") or match.group("curly_value"),)
+        if value and value.strip()
+    )
+    return values
+
+
+def _answer_value_count(text: str, query_terms: set[str]) -> int:
+    return len(_answer_value_literals(text, query_terms))
+
+
 def _fragment_score(
     fragment: str,
     query_terms: set[str],
     facet_id: str,
     obligation_id: str = "",
-) -> tuple[int, int]:
+    *,
+    prioritize_literals: bool = False,
+) -> tuple[int, int, int, int, int]:
     terms = set(extract_content_terms(fragment))
-    return len(terms & query_terms), -len(fragment)
+    typed_value_count = (
+        _typed_answer_value_count(fragment, query_terms) if prioritize_literals else 0
+    )
+    answer_value_count = (
+        _answer_value_count(fragment, query_terms) if prioritize_literals else 0
+    )
+    literal_overlap = _query_literal_overlap(fragment, query_terms) if prioritize_literals else 0
+    return (
+        typed_value_count,
+        answer_value_count,
+        literal_overlap,
+        len(terms & query_terms),
+        -len(fragment),
+    )
 
 
 def _is_near_duplicate_claim(fragment: str, selected: Iterable[str]) -> bool:
@@ -953,6 +1112,7 @@ def _best_fragment(
     facet_id: str = "",
     obligation_id: str = "",
     selected: Iterable[str] = (),
+    prioritize_literals: bool = False,
 ) -> str:
     candidates = [
         fragment
@@ -968,8 +1128,52 @@ def _best_fragment(
         return ""
     return max(
         candidates,
-        key=lambda value: _fragment_score(value, query_terms, facet_id, obligation_id),
+        key=lambda value: _fragment_score(
+            value,
+            query_terms,
+            facet_id,
+            obligation_id,
+            prioritize_literals=prioritize_literals,
+        ),
     )
+
+
+def _combine_answer_value_fragments(
+    item: EvidenceItem,
+    first_fragment: str,
+    *,
+    query_terms: set[str],
+) -> str:
+    known_values = _answer_value_literals(first_fragment, query_terms)
+    if not known_values:
+        return first_fragment
+
+    candidates = sorted(
+        _candidate_fragments(item),
+        key=lambda fragment: _fragment_score(
+            fragment,
+            query_terms,
+            "",
+            prioritize_literals=True,
+        ),
+        reverse=True,
+    )
+    combined = [first_fragment]
+    combined_size = len(first_fragment)
+    for fragment in candidates:
+        if fragment.casefold() == first_fragment.casefold():
+            continue
+        new_values = _answer_value_literals(fragment, query_terms) - known_values
+        if not new_values or not set(extract_content_terms(fragment)) & query_terms:
+            continue
+        if combined_size + 1 + len(fragment) > _MAX_CLAIM_CHARS:
+            continue
+        combined.append(fragment)
+        combined_size += 1 + len(fragment)
+        known_values.update(new_values)
+        if len(known_values) >= _MAX_LOCAL_CLAIMS:
+            break
+    return " ".join(combined)
 
 
 def _best_facet_candidate(
@@ -978,6 +1182,8 @@ def _best_facet_candidate(
     query_terms: set[str],
     facet_id: str,
     selected: Iterable[str],
+    prefer_body_evidence: bool = False,
+    prioritize_literals: bool = False,
 ) -> tuple[EvidenceItem, str] | None:
     """Choose a facet claim globally instead of trusting ranked-item order.
 
@@ -993,10 +1199,20 @@ def _best_facet_candidate(
             query_terms=query_terms,
             facet_id=facet_id,
             selected=selected,
+            prioritize_literals=prioritize_literals,
         )
         if not fragment:
             continue
-        candidate_key = (*_fragment_score(fragment, query_terms, facet_id), -item_index)
+        candidate_key = (
+            int(prefer_body_evidence and not _is_summary_evidence(item)),
+            *_fragment_score(
+                fragment,
+                query_terms,
+                facet_id,
+                prioritize_literals=prioritize_literals,
+            ),
+            -item_index,
+        )
         candidate = (candidate_key, item, fragment)
         if best is None or candidate_key > best[0]:
             best = candidate
@@ -1009,6 +1225,8 @@ def _best_obligation_candidate(
     query_terms: set[str],
     obligation_id: str,
     selected: Iterable[str],
+    prefer_body_evidence: bool = False,
+    prioritize_literals: bool = False,
 ) -> tuple[EvidenceItem, str] | None:
     """Choose one source-local fact for a diagnosis/procedure obligation.
 
@@ -1027,12 +1245,20 @@ def _best_obligation_candidate(
             query_terms=query_terms,
             obligation_id=obligation_id,
             selected=selected,
+            prioritize_literals=prioritize_literals,
         )
         if not fragment:
             continue
         coordinate_bonus = int(item.row_range is not None or bool(item.cell_range))
         candidate_key = (
-            *_fragment_score(fragment, query_terms, "", obligation_id),
+            int(prefer_body_evidence and not _is_summary_evidence(item)),
+            *_fragment_score(
+                fragment,
+                query_terms,
+                "",
+                obligation_id,
+                prioritize_literals=prioritize_literals,
+            ),
             coordinate_bonus,
             -item_index,
         )
@@ -1141,17 +1367,60 @@ def _format_state_transition_claims(claims: Tuple[GroundedClaim, ...]) -> str:
     return "\n".join(lines)
 
 
+def _is_summary_evidence(item: EvidenceItem) -> bool:
+    return item.file_type == "document_summary" or bool(
+        item.metadata.get("is_document_summary")
+        or item.metadata.get("representation_role") == "summary"
+    )
+
+def _ordered_synthesis_items(
+    items: Iterable[EvidenceItem],
+    *,
+    query: str,
+    query_terms: set[str],
+    prioritize_body_evidence: bool,
+) -> tuple[EvidenceItem, ...]:
+    evidence_items = tuple(items)
+    if not prioritize_body_evidence:
+        return evidence_items
+
+    def priority(item: EvidenceItem) -> tuple[bool, int, int, int, int, int, int]:
+        text = item.snippet or item.text
+        identifier_priority = _query_identifier_overlap(text, query)
+        return (
+            _is_summary_evidence(item),
+            -identifier_priority[0],
+            -identifier_priority[1],
+            -_typed_answer_value_count(text, query_terms),
+            -min(_answer_value_count(text, query_terms), _MAX_LOCAL_CLAIMS),
+            -_query_literal_overlap(text, query_terms),
+            -len(set(extract_content_terms(text)) & query_terms),
+        )
+
+    return tuple(sorted(evidence_items, key=priority))
+
+
 def _compose_grounded_claims(
     pack: EvidencePack,
     *,
     answer_shape: str,
     max_claims: int,
+    prioritize_body_evidence: bool = False,
 ) -> Tuple[GroundedClaim, ...]:
     """Compose short citation-preserving claims with facet/document diversity."""
-    query_terms = set(extract_content_terms(pack.query))
+    query_terms = _synthesis_query_terms(
+        pack.query,
+        prioritize_literals=prioritize_body_evidence,
+    )
     selected_texts: list[str] = []
     claims: list[GroundedClaim] = []
     facet_sections = _facet_sections_for_shape(answer_shape, pack)
+    claim_items = _ordered_synthesis_items(
+        pack.items,
+        query=pack.query,
+        query_terms=query_terms,
+        prioritize_body_evidence=prioritize_body_evidence,
+    )
 
     def add(
         item: EvidenceItem,
@@ -1166,9 +1435,16 @@ def _compose_grounded_claims(
             facet_id=facet_id,
             obligation_id=obligation_id,
             selected=selected_texts,
+            prioritize_literals=prioritize_body_evidence,
         )
         if not fragment:
             return False
+        if prioritize_body_evidence:
+            fragment = _combine_answer_value_fragments(
+                item,
+                fragment,
+                query_terms=query_terms,
+            )
         claims.append(GroundedClaim(
             text=fragment,
             citation_ids=(item.citation_id,),
@@ -1186,12 +1462,14 @@ def _compose_grounded_claims(
         candidate = _best_facet_candidate(
             (
                 item
-                for item in pack.items
+                for item in claim_items
                 if facet_id in item.matched_query_facets
             ),
             query_terms=query_terms,
             facet_id=facet_id,
             selected=selected_texts,
+            prefer_body_evidence=prioritize_body_evidence,
+            prioritize_literals=prioritize_body_evidence,
         )
         if candidate is not None:
             item, fragment = candidate
@@ -1203,7 +1481,7 @@ def _compose_grounded_claims(
 
     if answer_shape == "state_transition":
         for _heading, facet_id in _STATE_TRANSITION_HEADINGS:
-            for item in pack.items:
+            for item in claim_items:
                 if facet_id not in item.matched_query_facets:
                     continue
                 fragment = _state_transition_claim(item)
@@ -1221,13 +1499,14 @@ def _compose_grounded_claims(
             r"\b(?:value|values|giá\s*trị|値|数値)\b", query, re.IGNORECASE
         ))
 
-        def lookup_anchor_score(item: EvidenceItem) -> tuple[int, int, int]:
+        def lookup_anchor_score(item: EvidenceItem) -> tuple[int, int, int, int]:
             text = " ".join((item.snippet or item.text or "").casefold().split())
             query_overlap = len(
                 set(extract_content_terms(text)) & query_terms
             )
             coordinate_precision = int(bool(item.cell_range)) + int(item.row_range is not None)
-            return query_overlap, coordinate_precision, -item.rank
+            body_preference = int(prioritize_body_evidence and not _is_summary_evidence(item))
+            return body_preference, query_overlap, coordinate_precision, -item.rank
 
         def has_lookup_target_support(item: EvidenceItem) -> bool:
             source_terms = set(extract_content_terms(item.snippet or item.text))
@@ -1243,7 +1522,7 @@ def _compose_grounded_claims(
         lookup_items = sorted(
             (
                 item
-                for item in pack.items
+                for item in claim_items
                 if item.sheet
                 and (item.row_range is not None or item.cell_range)
                 and has_lookup_target_support(item)
@@ -1270,10 +1549,12 @@ def _compose_grounded_claims(
         if any(obligation_id in claim.obligation_ids for claim in claims):
             continue
         candidate = _best_obligation_candidate(
-            pack.items,
+            claim_items,
             query_terms=query_terms,
             obligation_id=obligation_id,
             selected=selected_texts,
+            prefer_body_evidence=prioritize_body_evidence,
+            prioritize_literals=prioritize_body_evidence,
         )
         if candidate is not None:
             item, fragment = candidate
@@ -1288,7 +1569,7 @@ def _compose_grounded_claims(
         if item.evidence_id in claim.evidence_ids
     }
     for prefer_new_document in (True, False):
-        for item in pack.items:
+        for item in claim_items:
             if len(claims) >= max_claims:
                 break
             if any(item.evidence_id in claim.evidence_ids for claim in claims):

@@ -1058,3 +1058,94 @@ def test_provider_limitations_contain_accurate_reasons():
     result_failed = synthesize_with_provider(pack, fail_provider)
     assert "provider_network_error" in result_failed.limitation_reasons
     assert result_failed.mode == "local_citation_first_provider_fallback"
+
+
+def test_full_mode_synthesis_prioritizes_body_chunks_and_answer_literals():
+    query = "T_IF_PROD_RESULT XML 150 item"
+    summaries = [
+        _make_result(
+            f"summary-{index}",
+            f"summary-doc-{index}",
+            10.0 - index,
+            f"Tổng quan nội dung tài liệu vận hành sản xuất, giai đoạn {index}.",
+            file_type="document_summary",
+            metadata={"is_document_summary": True},
+        )
+        for index in range(5)
+    ]
+    body = _make_result(
+        "answer-chunk",
+        "answer-doc",
+        1.0,
+        "T_IF_PROD_RESULT là bảng trung gian nhận dữ liệu thực tích sản xuất. "
+        "Khi có khoảng 150 item tiêu hao, XML của T_IF_PROD_RESULT vượt giới hạn "
+        "nvarchar(4000), khiến thủ tục không lưu được dữ liệu.",
+        matched_terms=("150", "item", "mom", "t_if_prod_result", "xml"),
+    )
+    pack = build_evidence_pack(query, _make_response([*summaries, body]))
+    result = synthesize_evidence(pack, prioritize_body_evidence=True)
+    answer_item = next(item for item in pack.items if item.chunk_id == "answer-chunk")
+
+    assert "nvarchar(4000)" in result.answer
+    assert result.claims[0].citation_ids == (answer_item.citation_id,)
+    assert "nvarchar(4000)" in result.claims[0].text
+
+
+def test_full_mode_synthesis_preserves_values_late_in_a_long_chunk():
+    query = "Mã số Oricon ngày 16/6/2026"
+    summaries = [
+        _make_result(
+            f"summary-{index}",
+            f"summary-doc-{index}",
+            10.0 - index,
+            f"Tổng quan sự cố Oricon ngày 16/6/2026, giai đoạn {index}.",
+            matched_terms=("mã", "số", "oricon", "16", "6", "2026"),
+            file_type="document_summary",
+        )
+        for index in range(5)
+    ]
+    body = _make_result(
+        "long-answer",
+        "incident",
+        1.0,
+        "Ghi chú quy trình vận hành thủ công và trạng thái thiết bị trong kho " * 18
+        + "Trong sự cố ngày 16/6/2026, thùng Oricon cũ mang mã 11922 và 12860; "
+        "thùng mới mã 12626.",
+        matched_terms=("mã", "số", "oricon", "16", "6", "2026"),
+    )
+    pack = build_evidence_pack(query, _make_response([*summaries, body]))
+    result = synthesize_evidence(pack, prioritize_body_evidence=True)
+    answer_item = next(item for item in pack.items if item.chunk_id == "long-answer")
+
+    assert result.claims[0].citation_ids == (answer_item.citation_id,)
+    assert all(code in result.claims[0].text for code in ("11922", "12860", "12626"))
+
+
+def test_full_mode_synthesis_prioritizes_last_requested_field_identifier():
+    query = "T_PARTS_RECIEVE HOUSE_METHOD value"
+    general_chunks = [
+        _make_result(
+            f"general-{index}",
+            f"general-doc-{index}",
+            10.0 - index,
+            "T_PARTS_RECIEVE stores general warehouse and receiving information.",
+            matched_terms=("t_parts_recieve", "value"),
+        )
+        for index in range(5)
+    ]
+    target = _make_result(
+        "house-method",
+        "field-definition",
+        1.0,
+        "T_PARTS_RECIEVE defines HOUSE_METHOD as “0” for warehouse storage. "
+        "The field value “1” means inspection.",
+        matched_terms=("t_parts_recieve", "house_method", "value"),
+    )
+    pack = build_evidence_pack(query, _make_response([*general_chunks, target]))
+    result = synthesize_evidence(pack, prioritize_body_evidence=True)
+    target_item = next(item for item in pack.items if item.chunk_id == "house-method")
+
+    assert result.claims[0].citation_ids == (target_item.citation_id,)
+    assert "HOUSE_METHOD" in result.claims[0].text
+    assert "“0”" in result.claims[0].text
+    assert "“1”" in result.claims[0].text
