@@ -6,5 +6,5 @@
 - Báo cáo E1: `docs/phieu-viec/ket-qua/FIX3_synthesis-E1-dieu-tra.md`
 - Báo cáo E2: `docs/phieu-viec/ket-qua/FIX3_synthesis-E2-fix.md`
 - Báo cáo E3: `docs/phieu-viec/ket-qua/FIX3_extractor-E3-xml.md`
-- Ghi chú: OMP 2026-09-27 01:25 +0700 — đo index thật chỉ đọc xong: pending 0/1064, init default 2.4s (PyTorch 49.7s), B1/B5 không abstain, index giữ nguyên 29.851.648 byte integrity ok; đang viết báo cáo E4.
-- Cập nhật lần cuối: 2026-09-27 01:25 +0700 (OMP h410asrock)
+- Ghi chú: OMP 2026-09-27 02:09 +0700 — rà soát hợp đồng E4 phát hiện `onnx` mặc định và `onnx_int8` đang dùng chung nhánh/mô hình fp32; đang tách đường ONNX fp32 mặc định khỏi int8 tường minh, khóa đúng fingerprint và hoàn thiện lỗi checksum fail-closed.
+- Cập nhật lần cuối: 2026-09-27 02:09 +0700 (OMP h410asrock)
