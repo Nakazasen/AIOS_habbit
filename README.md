@@ -1,87 +1,38 @@
-# AIOS WorkLens
+# Vong lap giao viec qua mailbox (Muse <-> OMP)
 
-AIOS WorkLens là Workspace Chat ưu tiên cục bộ: người dùng nạp tài liệu công việc,
-hỏi bằng ngôn ngữ tự nhiên và kiểm tra bằng chứng đã dùng trong câu trả lời.
+Repo nay tach tu `AIOS_habbit` (`docs/phieu-viec/mailbox/`): toan bo phia
+tu dong hoa vong lap giao viec giua Muse (remote: viet ticket + review) va
+OMP (local: lam ticket) qua GitHub. Repo goc (du an AIOS_habbit) khong con
+chua cac file nay.
 
-Tài liệu sản phẩm viết **tiếng Việt**. Tên file, lệnh và hằng kỹ thuật giữ nguyên
-tiếng Anh. Lối vào cho agent: [`AGENTS.md`](AGENTS.md).
+## Co gi trong nay
 
-## Chức năng hiện có
+- `QUY-UOC.md` — ban sao quy uoc dieu phoi (ban chinh nam trong repo du an).
+- `HUONG-DAN-WATCHER.md` — huong dan cai + kiem tra watcher.
+- `Watch-Mailbox.ps1` — poll mailbox moi ~90 giay + giam sat process OMP,
+  popup nhac / canh ket / tu dung khi `xong`. Ban nay da fix 2 loi chan
+  (xem `HUONG-DAN-WATCHER.md` muc "Lich su sua loi").
+- `Watchdog-Mailbox.ps1` — chay moi 10 phut: khong thay watcher thi mo lai.
+- `Install-MailboxTasks.ps1` — dang ky 2 Task Scheduler (`MailboxWatcher`,
+  `MailboxWatchdog`) bang 1 lenh. Chay lai bat cu luc nao de cap nhat.
 
-- Workspace Chat quản lý nguồn theo sổ tài liệu và từng cuộc trò chuyện.
-- Tìm kiếm hybrid BGE-M3 cục bộ khi máy có gói model đã được xác thực.
-- Giao diện và ngôn ngữ vận hành: 100% Tiếng Việt chuẩn mực, thân thiện với người dùng.
-- Lưu vết bằng chứng `rag-trace/v1` gắn với tin nhắn trả lời.
-- Nút xem đồ thị bằng chứng khi câu trả lời có trích dẫn hợp lệ.
-- Mã đóng gói Desktop/VPS với Graphify và ExcaliFlow được ghim phiên bản.
+## Cai dat (lam 1 lan)
 
-Đồ thị bằng chứng giúp xem AI đã dựa vào những đoạn nào. Nó không biến một câu
-trả lời không có trích dẫn thành câu đã được kiểm chứng.
+1. Sua khoi **CAU HINH** trong `Watch-Mailbox.ps1`:
+   `$ompProcessName` (ten process OMP trong Task Manager > Details),
+   giu `$AUTO_LAUNCH = $false`.
+   (2026-09-26: OMP xac nhan KHONG co CLI/headless de Task Scheduler goi truc
+   tiep - no chi chay trong phien chat qua API/harness. Vi du `omp -p "..."`
+   la cua tool khac, khong dung duoc. Dau OMP dung o muc popup nhac + nguoi
+   paste ticket; khong thu huong auto-launch voi OMP nay nua.)
+2. Mo PowerShell, chay:
+   `powershell -ExecutionPolicy Bypass -File Install-MailboxTasks.ps1`
+3. Kiem tra theo `HUONG-DAN-WATCHER.md` muc "Kiem tra".
 
-## Trạng thái và giới hạn
+## Yeu cau
 
-- `Workspace Chat` là giao diện dành cho người dùng. Case Cockpit và Habit Studio
-  cũ không còn thuộc luồng thông thường.
-- Bộ wheel offline Windows/Linux lưu qua Git LFS. Cần `git lfs pull` trước khi
-  cài hoặc build offline.
-- Model BGE-M3 không nằm trong Git. Khi build Desktop, chương trình kiểm tra
-  revision và checksum; thiếu hoặc hỏng thì dừng rõ, không giả vờ đã tìm được tài liệu.
-- Mã và test đóng gói đã có trong repo. Trước khi dùng production, kiểm tra gói
-  cuối trên đúng máy/VPS đích.
-
-## Bắt đầu nhanh trên Windows
-
-Cần Git, Git LFS, Python **3.11** và `uv`.
-
-```powershell
-git clone https://github.com/Nakazasen/AIOS_habbit.git
-cd AIOS_habbit
-git lfs install
-git lfs pull
-uv sync --group dev
-```
-
-Mở Workspace Chat:
-
-```powershell
-.\RUN_AIOS_WORKSPACE_CHAT.bat
-```
-
-Hoặc:
-
-```powershell
-.\scripts\run_workspace_chat.ps1
-```
-
-Nếu BGE-M3 chưa sẵn sàng, làm theo runbook model pack trước khi kỳ vọng tìm được
-câu trả lời từ tài liệu. Ứng dụng phải báo tình trạng này, không âm thầm giả vờ đã tìm.
-
-## Kiểm tra dành cho developer
-
-```powershell
-uv run --no-sync --group dev python -m compileall src tests
-uv run --no-sync --group dev pytest -q
-uv run --no-sync --group dev python -m aios_habit.cli audit
-git diff --check
-git status --short
-```
-
-## Tài liệu
-
-- [Hiến chương](CONSTITUTION.md)
-- [Lối vào agent](AGENTS.md)
-- [Roadmap](ROADMAP.md)
-- [Bàn giao](PROJECT_HANDOVER.md)
-- [Kiến trúc](ARCHITECTURE.md)
-- [Bản đồ tài liệu](docs/PROFESSIONALIZATION_INDEX.md)
-- [Đóng gói Desktop](packaging/desktop/README.md)
-- [Triển khai VPS](packaging/vps/README.md)
-- [Runbook vận hành](docs/runbooks/operator.md)
-- [Runbook developer](docs/runbooks/developer.md)
-
-## An toàn dữ liệu cục bộ
-
-Không commit dữ liệu runtime hoặc nguồn riêng tư: `local_cases/`, `local_runs/`,
-JSONL bằng chứng/bộ nhớ, tài liệu đã tải lên, ảnh chụp, `.env`, credentials,
-tokens hoặc cache. Trước khi gửi tài liệu nội bộ ra ngoài máy, phải kiểm tra cấu
-hình nhà cung cấp AI và cầu nối đang chọn.
+- Windows PowerShell 5.1, Task Scheduler, quyen dang ky task cho user hien tai.
+- Mailbox nam tren repo GitHub public (hoac token `Contents: read` neu repo
+  private / muon poll nhanh — xem ghi chu `$token` trong script).
+- File runtime (`watcher_state.json`, `_ticket-moi.md`, `*.log`) chi nam local,
+  khong commit (da co `.gitignore`).
