@@ -74,6 +74,8 @@ def _seed(path, backend):
 
 
 def test_plan_counts_pending_without_writing(tmp_path, monkeypatch):
+    import hashlib
+
     from aios_habit.rag_v2.semantic import DeterministicEmbeddingBackend
 
     old_backend = DeterministicEmbeddingBackend(dimension=4, model_id="test/old")
@@ -81,11 +83,16 @@ def test_plan_counts_pending_without_writing(tmp_path, monkeypatch):
     fake = _FakeBackend()
     monkeypatch.setattr(migrate, "_open_backend", lambda: fake)
     before = path.stat().st_mtime_ns
+    before_bytes = path.read_bytes()
     plan = migrate.plan_migration(path)
     assert plan.retrievable_chunks == 2
     assert plan.already_onnx == 0
     assert len(plan.pending) == 2
+    assert plan.pytorch_fingerprint == old_backend.descriptor.fingerprint
     assert path.stat().st_mtime_ns == before
+    assert hashlib.sha256(path.read_bytes()).hexdigest() == hashlib.sha256(
+        before_bytes
+    ).hexdigest()
 
 
 def test_apply_requires_explicit_onnx_flag(tmp_path, monkeypatch):
@@ -95,6 +102,7 @@ def test_apply_requires_explicit_onnx_flag(tmp_path, monkeypatch):
     plan = migrate.MigrationPlan(
         index=tmp_path / "x.sqlite",
         onnx_fingerprint="onnx-fp",
+        pytorch_fingerprint="old-fp",
         pending=(),
         retrievable_chunks=0,
         already_onnx=0,
@@ -103,11 +111,27 @@ def test_apply_requires_explicit_onnx_flag(tmp_path, monkeypatch):
         migrate.apply_migration(plan.index, plan)
 
 
+def test_apply_requires_sibling_backup(tmp_path, monkeypatch):
+    from aios_habit.rag_v2.semantic import DeterministicEmbeddingBackend
+
+    old_backend = DeterministicEmbeddingBackend(dimension=4, model_id="test/old")
+    path = _seed(tmp_path / "nobackup.sqlite", old_backend)
+    fake = _FakeBackend()
+    monkeypatch.setattr(migrate, "_open_backend", lambda: fake)
+    monkeypatch.setenv("BGE_BACKEND", "onnx")
+    plan = migrate.plan_migration(path)
+    with pytest.raises(SystemExit, match="no backup"):
+        migrate.apply_migration(path, plan)
+
+
 def test_apply_migrates_and_resumes(tmp_path, monkeypatch):
+    import shutil
+
     from aios_habit.rag_v2.semantic import DeterministicEmbeddingBackend
 
     old_backend = DeterministicEmbeddingBackend(dimension=4, model_id="test/old")
     path = _seed(tmp_path / "resume.sqlite", old_backend)
+    shutil.copy2(path, tmp_path / "resume.sqlite.bak-test")
     fake = _FakeBackend()
     monkeypatch.setattr(migrate, "_open_backend", lambda: fake)
     monkeypatch.setenv("BGE_BACKEND", "onnx")

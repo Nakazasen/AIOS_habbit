@@ -57,6 +57,7 @@ def _pack_vector(vector: object, dimension: int) -> bytes:
 class MigrationPlan:
     index: Path
     onnx_fingerprint: str
+    pytorch_fingerprint: str
     pending: tuple[tuple[str, str], ...]
     retrievable_chunks: int
     already_onnx: int
@@ -65,10 +66,52 @@ class MigrationPlan:
         return {
             "index": str(self.index),
             "onnx_fingerprint": self.onnx_fingerprint,
+            "pytorch_fingerprint": self.pytorch_fingerprint,
             "retrievable_chunks": self.retrievable_chunks,
             "already_onnx": self.already_onnx,
             "pending_chunks": len(self.pending),
         }
+
+
+def _other_fingerprint(conn: sqlite3.Connection, fingerprint: str) -> str:
+    rows = conn.execute(
+        "SELECT DISTINCT model_fingerprint FROM chunk_embeddings "
+        "WHERE model_fingerprint != ?",
+        (fingerprint,),
+    ).fetchall()
+    if len(rows) != 1:
+        return ""
+    return str(rows[0][0])
+
+
+def _backup_candidates(index_path: Path) -> list[Path]:
+    parent = index_path.resolve().parent
+    return sorted(
+        parent.glob(f"{index_path.name}.bak-*"),
+        key=lambda candidate: candidate.stat().st_mtime_ns,
+    )
+
+
+def _require_fresh_backup(index_path: Path) -> Path:
+    """Refuse writes unless a sibling backup of this index exists and reads ok."""
+    path = index_path.resolve()
+    backups = [item for item in _backup_candidates(path) if item.is_file()]
+    if not backups:
+        raise SystemExit(
+            f"refusing to migrate: no backup {path.name}.bak-* next to the index; "
+            "copy the index and verify PRAGMA integrity_check first"
+        )
+    backup = backups[-1]
+    conn = sqlite3.connect(f"file:{backup.as_posix()}?mode=ro", uri=True)
+    try:
+        status = conn.execute("PRAGMA integrity_check").fetchone()
+    finally:
+        conn.close()
+    if not status or str(status[0]).casefold() != "ok":
+        raise SystemExit(
+            f"refusing to migrate: backup {backup.name} failed integrity_check"
+        )
+    return backup
 
 
 def _require_onnx_backend_selected() -> None:
@@ -125,6 +168,7 @@ def plan_migration(index_path: Path | str) -> MigrationPlan:
         return MigrationPlan(
             index=path.resolve(),
             onnx_fingerprint=fingerprint,
+            pytorch_fingerprint=_other_fingerprint(conn, fingerprint),
             pending=pending,
             retrievable_chunks=int(retrievable),
             already_onnx=int(already),
@@ -154,9 +198,11 @@ def apply_migration(
 ) -> int:
     """Embed pending chunks with ONNX and upsert dense+sparse rows per batch."""
     _require_onnx_backend_selected()
+    path = Path(index_path)
+    backup = _require_fresh_backup(path)
+    print(f"backup: {backup.name} (integrity ok)")
     if batch_size < 1:
         raise ValueError("batch_size must be positive")
-    path = Path(index_path)
     backend = _open_backend()
     if backend.descriptor.fingerprint != plan.onnx_fingerprint:
         raise ValueError("plan fingerprint does not match the pinned ONNX model")
@@ -302,6 +348,7 @@ def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     if args.apply:
         _require_onnx_backend_selected()
+        _require_fresh_backup(Path(args.index))
     plan = plan_migration(args.index)
     payload = plan.to_dict()
     cold_s = len(plan.pending) * COLD_SECONDS_PER_CHUNK
@@ -312,7 +359,9 @@ def main(argv: list[str] | None = None) -> int:
         sys.stdout.write(json.dumps(payload, ensure_ascii=False, indent=2) + "\n")
     else:
         print(f"index: {plan.index}")
+        print(f"index_bytes: {plan.index.stat().st_size}")
         print(f"onnx_fingerprint: {plan.onnx_fingerprint}")
+        print(f"pytorch_fingerprint: {plan.pytorch_fingerprint or '(none/ambiguous)'}")
         print(f"retrievable_chunks: {plan.retrievable_chunks}")
         print(f"already_onnx: {plan.already_onnx}")
         print(f"pending_chunks: {len(plan.pending)}")
