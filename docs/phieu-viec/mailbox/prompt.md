@@ -1,53 +1,44 @@
-# Ticket D2 — Ingest apply 83 file + embed vector ONNX (ghi index thật, có backup)
+# Ticket D3 — Baseline B1–B5 (+H3) trên corpus đầy đủ, worker ONNX fp32 (chỉ đọc)
 
 Ngày viết: 2026-09-26 (Muse). Branch: `phieu-viec/rag-fix1`. Không đụng `main`.
 
 ## Bối cảnh
 
-- D1 (`e3eafc8`, ĐẠT): 83 file missing = 6 failed + 77 chưa từng ingest.
-  Dry-run +1765 chunk / 1467 retrievable. B1/B2/B3/B5 có đáp án trong file
-  missing; B4 không có mã ví dụ trong bất kỳ file nào (ground truth lệch).
-- User đã duyệt apply (autopilot 2026-09-26: dry-run + backup là đủ, không cần
-  duyệt từng bước).
+- D2 (`20bce54`, ĐẠT, Muse review 2026-09-26): index thật máy `h410asrock`
+  đã đầy đủ — **74 document / 1.272 chunk / 1.064 retrievable**, pending vector
+  = 0, dense/sparse ONNX fp32 `016c5255…` × 1.064 (PyTorch cũ giữ × 340),
+  `integrity_check` live ok.
+- Chuỗi đáp án B1/B2/B3/B5 đã có trong index (D1 xác nhận qua grep);
+  B4 vẫn không có mã ví dụ trong bất kỳ nguồn nào → **B4 loại trừ khỏi
+  đánh giá đúng/sai** (ground truth lệch với tài liệu hiện có, đã xác nhận).
+- Mục tiêu D3: đo baseline đầy đủ trên corpus sau ingest — mỗi câu chạy với
+  worker ONNX fp32, so đáp án với ground truth và so latency với baseline
+  PyTorch (báo cáo commit `484ac76`).
 
-## Phase 1 — Backup (fail-closed)
+## Việc cần làm
 
-1. Backup `library.sqlite` → `library.sqlite.bak-<timestamp>` (file sibling,
-   cùng thư mục với index canary trong D1).
-2. `integrity_check` trên backup phải `ok`, dung lượng > 0.
-   Không đạt → DỪNG ngay, báo lỗi, không làm tiếp.
-
-## Phase 2 — Ingest text (dedupe)
-
-1. Ingest 83 file vào index canary (đường dẫn như D1, máy `h410asrock`).
-2. **Dedupe**: D1 phát hiện 580 chunk trùng text với index cũ (33%) —
-   không insert trùng (so theo text hash). Ghi số đã skip vào báo cáo.
-3. **6 file failed** (`bge_worker_prepare_stdout_eof`, gồm file đáp án B1
-   fail 34 lần): điều tra nguyên nhân, retry với fix; file nào vẫn fail thì
-   liệt kê riêng, không để crash cả batch.
-4. Ca lẻ `wsc-927d7635…` (ledger `ready` nhưng không trong index): đối chiếu
-   khi ingest, ghi kết quả vào báo cáo.
-5. Batch + resume: ngắt giữa chừng chạy lại không ingest trùng.
-
-## Phase 3 — Embed vector cho chunk mới (ONNX fp32)
-
-1. Embed các chunk mới bằng backend ONNX fp32 (`BGE_BACKEND=onnx`,
-   fingerprint `016c5255…`) — khớp với 340 vector đã migrate ở Bước B.
-2. Batch + resume theo mẫu `scripts/migrate_vectors_to_onnx.py`.
-3. Không đụng vector cũ (PyTorch lẫn ONNX).
-
-## Phase 4 — Verify
-
-- Document count ~108 (25 cũ + 83 mới, trừ ca lẻ); chunk/retrievable khớp
-  kỳ vọng D1 (trừ dedupe).
-- Pending vector = 0. `integrity_check` trên live = ok.
-- **Không dọn XML** trong ticket này (lấy baseline B trên corpus đầy đủ trước).
+1. `git pull origin phieu-viec/rag-fix1`. Đọc báo cáo D2
+   (`docs/phieu-viec/ket-qua/FIX3_ingest-D2-apply.md`) để lấy đúng đường dẫn
+   index thật trên máy này.
+2. Chạy worker với `BGE_BACKEND=onnx` (backend ONNX fp32 đã migrate xong ở
+   Bước B + D2). Worker init phải < 300 s (lần đo Bước C: 3,94 s).
+   Nếu init treo/quá 300 s → DỪNG ngay, báo hiện tượng, không chạy tiếp.
+3. Chạy lại đúng bộ câu hỏi **B1, B2, B3, B4, B5, H3** với bộ đáp án tham chiếu
+   đã dùng ở baseline PyTorch (`484ac76`) — không đổi câu hỏi, không đổi
+   ground truth.
+4. Với mỗi câu ghi: mode (overview/focused/full/hybrid), latency worker,
+   có abstain/timeout không, các fact trong đáp án so với ground truth
+   (đủ/thiếu/sai ở điểm nào). B4 vẫn chạy nhưng không tính đúng/sai.
+5. Ghi nhận nhiễu XML nếu thấy (ví dụ B3 từng lẫn `xmlns` slide) — chỉ ghi
+   nhận, KHÔNG dọn trong ticket này.
+6. **Chỉ đọc**: không ghi thêm vector, không ingest, không `--apply` bất cứ
+   thứ gì vào index. (Query không được làm đổi số liệu verify của D2.)
 
 ## Bàn giao
 
-- Báo cáo: `docs/phieu-viec/ket-qua/FIX3_ingest-D2-apply.md`
-  (hostname, SHA, số liệu từng phase: backup bytes, chunk thêm/skip, file
-  failed còn lại, pending).
+- Báo cáo: `docs/phieu-viec/ket-qua/FIX3_baseline-D3-onnx.md`
+  (hostname, SHA, bảng từng câu: mode, latency, so đáp án với ground truth,
+  chênh lệch latency so với baseline PyTorch `484ac76`, nhận xét nhiễu XML).
 - Commit **riêng** + push `phieu-viec/rag-fix1`, không đụng `main`.
-- Cập nhật `trang-thai.md` → `xong-cho-duyet` (ghi commit SHA + đường dẫn
-  báo cáo), rồi **DỪNG**.
+- Cập nhật `docs/phieu-viec/mailbox/trang-thai.md` → `xong-cho-duyet`
+  (ghi commit SHA + đường dẫn báo cáo), rồi **DỪNG**.
