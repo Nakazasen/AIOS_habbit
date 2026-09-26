@@ -48,12 +48,12 @@ from .semantic import (
 )
 from .retrieval_backends import BgeM3Backend, CrossEncoderRerankBackend
 from .bge_onnx_backend import (
+    DEFAULT_BGE_BACKEND,
     OnnxInt8BgeM3Backend,
     onnx_max_length,
     require_onnx_model_dir,
     resolve_bge_backend_name,
     resolve_onnx_checksum,
-    resolve_onnx_model_path,
 )
 from .adaptive_retrieval import CircuitBreaker
 from .synthesis import (
@@ -212,7 +212,7 @@ class RagV2DevConfig:
     index_read_only: bool = False
     lite_pilot_enabled: bool = False
     lite_long_doc_pages: int = 10
-    bge_backend: str = "onnx_int8"
+    bge_backend: str = DEFAULT_BGE_BACKEND
     summary_first_routing: bool = False
     overview_max_variants: int = 3
     focused_max_variants: int = 3
@@ -282,9 +282,7 @@ class RagV2DevConfig:
         if self.lite_long_doc_pages < 1:
             raise ValueError("lite_long_doc_pages must be positive")
         backend = self.bge_backend.strip().lower()
-        if backend == "onnx":
-            backend = "onnx_int8"
-        if backend not in {"pytorch", "onnx_int8"}:
+        if backend not in {"pytorch", "onnx", "onnx_int8"}:
             raise ValueError("bge_backend must be pytorch, onnx or onnx_int8")
         object.__setattr__(self, "bge_backend", backend)
         if (
@@ -332,8 +330,9 @@ class RagV2DevConfig:
                     "device": self.retrieval_device,
                     "multivector_schema_version": 1 if multivector_required else 0,
                 }
-                if resolve_bge_backend_name(self.bge_backend) == "onnx_int8":
-                    payload["embedding_model"]["runtime_backend"] = "onnx_int8"
+                backend_name = resolve_bge_backend_name(self.bge_backend)
+                if backend_name in {"onnx", "onnx_int8"}:
+                    payload["embedding_model"]["runtime_backend"] = backend_name
                     payload["embedding_model"]["max_length"] = onnx_max_length()
             else:
                 payload["embedding_model"] = {
@@ -427,25 +426,32 @@ def _resolve_embedding_backend(
     elif config.retrieval_profile in {"lexical", "lexical_baseline"}:
         return None
     elif _is_retrieval_lab_profile(config.retrieval_profile):
-        if config.bge_m3_model_path is None and resolve_bge_backend_name(config.bge_backend) != "onnx_int8":
+        backend_name = resolve_bge_backend_name(config.bge_backend)
+        onnx_selected = backend_name in {"onnx", "onnx_int8"}
+        if config.bge_m3_model_path is None and not onnx_selected:
             raise SemanticBackendUnavailable("BGE-M3 profile requires bge_m3_model_path")
         if not config.bge_m3_model_revision.strip():
             raise SemanticBackendUnavailable("BGE-M3 profile requires a pinned model revision")
-        if (
-            resolve_bge_backend_name(config.bge_backend) != "onnx_int8"
-            and not config.bge_m3_model_checksum.strip()
-        ):
+        if not onnx_selected and not config.bge_m3_model_checksum.strip():
             raise SemanticBackendUnavailable("BGE-M3 profile requires bge_m3_model_checksum")
-        if resolve_bge_backend_name(config.bge_backend) == "onnx_int8":
-            onnx_path = require_onnx_model_dir()
-            resolved = OnnxInt8BgeM3Backend(
-                model_path=onnx_path,
-                revision=config.bge_m3_model_revision,
-                artifact_checksum=resolve_onnx_checksum(onnx_path),
-                dimension=config.bge_m3_dimension,
-                batch_size=config.bge_m3_batch_size,
-                max_length=onnx_max_length(),
-            )
+        if onnx_selected:
+            onnx_path = require_onnx_model_dir(backend_name=backend_name)
+            try:
+                resolved = OnnxInt8BgeM3Backend(
+                    model_path=onnx_path,
+                    backend_name=backend_name,
+                    revision=config.bge_m3_model_revision,
+                    artifact_checksum=resolve_onnx_checksum(onnx_path),
+                    dimension=config.bge_m3_dimension,
+                    batch_size=config.bge_m3_batch_size,
+                    max_length=onnx_max_length(),
+                )
+            except Exception as exc:
+                label = "default ONNX fp32" if backend_name == "onnx" else "ONNX int8"
+                raise SemanticBackendUnavailable(
+                    f"{label} model is unavailable at {onnx_path}: {exc}. "
+                    "Set BGE_BACKEND=pytorch to use the PyTorch path explicitly."
+                ) from exc
             if (
                 config.retrieval_profile in _BGE_SPARSE_PROFILES
                 and not resolved.sparse_capability.available

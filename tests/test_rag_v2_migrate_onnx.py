@@ -95,10 +95,11 @@ def test_plan_counts_pending_without_writing(tmp_path, monkeypatch):
     ).hexdigest()
 
 
-def test_apply_refuses_explicit_pytorch_override(tmp_path, monkeypatch):
+@pytest.mark.parametrize("backend_name", ["pytorch", "onnx_int8"])
+def test_apply_refuses_non_fp32_backend_overrides(tmp_path, monkeypatch, backend_name):
     fake = _FakeBackend()
     monkeypatch.setattr(migrate, "_open_backend", lambda: fake)
-    monkeypatch.setenv("BGE_BACKEND", "pytorch")
+    monkeypatch.setenv("BGE_BACKEND", backend_name)
     plan = migrate.MigrationPlan(
         index=tmp_path / "x.sqlite",
         onnx_fingerprint="onnx-fp",
@@ -107,9 +108,8 @@ def test_apply_refuses_explicit_pytorch_override(tmp_path, monkeypatch):
         retrievable_chunks=0,
         already_onnx=0,
     )
-    with pytest.raises(SystemExit, match="PyTorch"):
+    with pytest.raises(SystemExit, match="must select the ONNX fp32"):
         migrate.apply_migration(plan.index, plan)
-
 
 def test_apply_requires_sibling_backup(tmp_path, monkeypatch):
     from aios_habit.rag_v2.semantic import DeterministicEmbeddingBackend

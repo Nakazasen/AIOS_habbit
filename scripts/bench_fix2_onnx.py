@@ -149,11 +149,11 @@ def main() -> None:
         resolve_onnx_model_path,
     )
 
-    onnx_path = resolve_onnx_model_path()
+    onnx_path = resolve_onnx_model_path("onnx_int8")
     onnx_checksum = resolve_onnx_checksum(onnx_path)
     t0 = time.perf_counter()
     onnx_be = OnnxInt8BgeM3Backend(
-        model_path=onnx_path, revision=REVISION,
+        model_path=onnx_path, backend_name="onnx_int8", revision=REVISION,
         artifact_checksum=onnx_checksum, batch_size=8,
     )
     onnx_init_s = time.perf_counter() - t0

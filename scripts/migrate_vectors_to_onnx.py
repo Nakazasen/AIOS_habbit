@@ -1,9 +1,8 @@
 """Migrate stored dense+sparse vectors to the pinned ONNX fp32 fingerprint.
 
-Dry-run by default. Writes only with ``--apply`` and an explicit ONNX
-selection (``BGE_BACKEND`` unset, ``auto``, ``onnx`` or ``onnx_int8``).
-Setting ``BGE_BACKEND=pytorch`` refuses to migrate. The default runtime is
-ONNX fp32; this script never changes that default.
+Dry-run by default. Writes only with ``--apply`` and an ONNX fp32 selection
+(``BGE_BACKEND`` unset, ``auto`` or ``onnx``). The ``onnx_int8`` and PyTorch
+overrides refuse writes. This script never changes its ONNX fp32 target.
 
 Each ``--apply`` batch commits independently, so an interrupted run resumes by
 skipping chunks that already carry the ONNX fingerprint.
@@ -27,9 +26,9 @@ sys.path.insert(0, str(REPO_ROOT / "src"))
 from aios_habit.rag_v2.bge_onnx_backend import (  # noqa: E402
     BGE_BACKEND_FLAG,
     OnnxInt8BgeM3Backend,
+    require_onnx_model_dir,
     resolve_bge_backend_name,
     resolve_onnx_checksum,
-    resolve_onnx_model_path,
 )
 from aios_habit.rag_v2.semantic import normalize_sparse_vector, normalize_vector  # noqa: E402
 
@@ -110,21 +109,18 @@ def _require_fresh_backup(index_path: Path) -> Path:
 
 
 def _require_onnx_backend_selected() -> None:
-    # The runtime calls this backend "onnx_int8" for legacy reasons (class and
-    # error-string names predate the fp32 cutover); unset, "auto", "onnx" and
-    # "onnx_int8" select the same pinned fp32 model dir. Only an explicit
-    # "pytorch" override refuses to migrate.
-    if resolve_bge_backend_name("onnx_int8") != "onnx_int8":
+    if resolve_bge_backend_name() != "onnx":
         raise SystemExit(
-            f"refusing to migrate: {BGE_BACKEND_FLAG} selects PyTorch "
-            "(unset/auto/onnx selects the default ONNX fp32 runtime)"
+            f"refusing to migrate: {BGE_BACKEND_FLAG} must select the ONNX fp32 "
+            "runtime (unset, auto or onnx); onnx_int8 and pytorch are separate backends"
         )
 
 
 def _open_backend() -> OnnxInt8BgeM3Backend:
-    onnx_path = resolve_onnx_model_path()
+    onnx_path = require_onnx_model_dir(backend_name="onnx")
     return OnnxInt8BgeM3Backend(
         model_path=onnx_path,
+        backend_name="onnx",
         revision=BGE_M3_REVISION,
         artifact_checksum=resolve_onnx_checksum(onnx_path),
         batch_size=8,

@@ -33,13 +33,14 @@ ONNX_CHECKSUM_FLAG = "AIOS_BGE_ONNX_MODEL_CHECKSUM"
 ONNX_MAX_LENGTH_FLAG = "AIOS_BGE_ONNX_MAX_LENGTH"
 DEFAULT_ONNX_MAX_LENGTH = 512
 ONNX_DIR_NAME = "bge-m3-onnx-fp32"
-DEFAULT_BGE_BACKEND = "onnx_int8"
+INT8_ONNX_DIR_NAME = "bge-m3-onnx-int8"
+DEFAULT_BGE_BACKEND = "onnx"
 _BACKEND_ALIASES = {
     "pytorch": "pytorch",
     "flagembedding": "pytorch",
     "onnx_int8": "onnx_int8",
-    "onnx": "onnx_int8",
-    "auto": "onnx_int8",
+    "onnx": "onnx",
+    "auto": "onnx",
 }
 
 
@@ -47,11 +48,11 @@ def _onnx_override_hint() -> str:
     return f"Set {BGE_BACKEND_FLAG}=pytorch to use the PyTorch path explicitly."
 
 
-def resolve_bge_backend_name(configured: str = "onnx_int8") -> str:
+def resolve_bge_backend_name(configured: str = DEFAULT_BGE_BACKEND) -> str:
     """Return the active BGE runtime. An unset or auto flag selects ONNX fp32."""
     raw = os.environ.get(BGE_BACKEND_FLAG, "").strip().lower()
     if not raw:
-        raw = (configured or "onnx_int8").strip().lower()
+        raw = (configured or DEFAULT_BGE_BACKEND).strip().lower()
     try:
         return _BACKEND_ALIASES[raw]
     except KeyError as exc:
@@ -64,9 +65,17 @@ def default_onnx_model_dir() -> Path:
     return Path(__file__).resolve().parents[3] / "models" / ONNX_DIR_NAME
 
 
-def resolve_onnx_model_path() -> Path:
+def default_onnx_int8_model_dir() -> Path:
+    return Path(__file__).resolve().parents[3] / "models" / INT8_ONNX_DIR_NAME
+
+
+def resolve_onnx_model_path(backend_name: str = DEFAULT_BGE_BACKEND) -> Path:
     raw = os.environ.get(ONNX_MODEL_PATH_FLAG, "").strip()
-    return Path(raw) if raw else default_onnx_model_dir()
+    if raw:
+        return Path(raw)
+    if backend_name == "onnx_int8":
+        return default_onnx_int8_model_dir()
+    return default_onnx_model_dir()
 
 
 def onnx_max_length() -> int:
@@ -95,43 +104,62 @@ def resolve_onnx_checksum(model_dir: Path) -> str:
     if not raw:
         sidecar = onnx_checksum_sidecar(model_dir)
         if not sidecar.is_file():
-            raise SemanticBackendUnavailable("onnx_int8_checksum_missing")
-        raw = sidecar.read_text(encoding="utf-8").strip().split()[0]
+            raise SemanticBackendUnavailable("onnx_model_checksum_missing")
+        try:
+            raw = sidecar.read_text(encoding="utf-8").strip().split()[0]
+        except (OSError, IndexError, UnicodeError) as exc:
+            raise SemanticBackendUnavailable("onnx_model_checksum_unreadable") from exc
     if not raw.startswith("sha256:"):
         raw = f"sha256:{raw}"
+    digest = raw.removeprefix("sha256:")
+    if (
+        len(digest) != 64
+        or any(character not in "0123456789abcdefABCDEF" for character in digest)
+    ):
+        raise SemanticBackendUnavailable("onnx_model_checksum_invalid")
     return raw
 
 
-def _model_file(model_dir: Path) -> Path:
-    for name in ("model_quantized.onnx", "model.onnx"):
-        candidate = model_dir / name
-        if candidate.is_file():
-            return candidate
-    raise SemanticBackendUnavailable("onnx_int8_model_file_missing")
+def _model_file(
+    model_dir: Path,
+    backend_name: str = DEFAULT_BGE_BACKEND,
+) -> Path:
+    filename = "model_quantized.onnx" if backend_name == "onnx_int8" else "model.onnx"
+    candidate = model_dir / filename
+    if candidate.is_file():
+        return candidate
+    raise SemanticBackendUnavailable(f"{backend_name}_model_file_missing")
 
 
-def require_onnx_model_dir(model_dir: Path | None = None) -> Path:
-    """Fail closed when the default ONNX fp32 model tree is unusable."""
-    resolved = Path(model_dir) if model_dir is not None else resolve_onnx_model_path()
+def require_onnx_model_dir(
+    model_dir: Path | None = None,
+    *,
+    backend_name: str = DEFAULT_BGE_BACKEND,
+) -> Path:
+    """Fail closed when the selected ONNX model tree is unusable."""
+    resolved = (
+        Path(model_dir).resolve()
+        if model_dir is not None
+        else resolve_onnx_model_path(backend_name)
+    )
+    expected_model_file = (
+        "model_quantized.onnx" if backend_name == "onnx_int8" else "model.onnx"
+    )
     problems: list[str] = []
     if not resolved.is_dir():
         problems.append(f"model directory is missing: {resolved}")
+    elif not (resolved / expected_model_file).is_file():
+        problems.append(f"model file {expected_model_file} is missing in {resolved}")
     else:
         try:
-            _model_file(resolved)
-        except SemanticBackendUnavailable:
-            problems.append(
-                f"model file is missing in {resolved} "
-                "(expected model.onnx or model_quantized.onnx)"
-            )
-        try:
             resolve_onnx_checksum(resolved)
-        except SemanticBackendUnavailable as exc:
+        except (SemanticBackendUnavailable, OSError) as exc:
             problems.append(f"checksum is unavailable for {resolved}: {exc}")
     if problems:
         detail = "; ".join(problems)
+        label = "default ONNX fp32" if backend_name == "onnx" else "ONNX int8"
         raise SemanticBackendUnavailable(
-            f"default ONNX fp32 model is unavailable: {detail}. {_onnx_override_hint()}"
+            f"{label} model is unavailable: {detail}. {_onnx_override_hint()}"
         )
     return resolved
 
@@ -183,6 +211,7 @@ class OnnxInt8BgeM3Backend:
         self,
         model_path: str | Path | None = None,
         *,
+        backend_name: str = DEFAULT_BGE_BACKEND,
         revision: str,
         artifact_checksum: str = "",
         model_id: str = BGE_M3_MODEL_ID,
@@ -195,13 +224,20 @@ class OnnxInt8BgeM3Backend:
         tokenizer: Any = None,
     ) -> None:
         del enable_multivector
+        if backend_name not in {"onnx", "onnx_int8"}:
+            raise SemanticBackendUnavailable("unsupported_onnx_backend")
         if not revision.strip():
             raise SemanticBackendUnavailable("a pinned BGE-M3 model revision is required")
         if dimension < 1:
             raise SemanticBackendUnavailable("BGE-M3 dimension must be positive")
         if batch_size < 1:
             raise ValueError("BGE-M3 batch_size must be positive")
-        self._model_path = Path(model_path).resolve() if model_path is not None else resolve_onnx_model_path()
+        self._backend_name = backend_name
+        self._model_path = (
+            Path(model_path).resolve()
+            if model_path is not None
+            else resolve_onnx_model_path(backend_name)
+        )
         self._max_length = onnx_max_length() if max_length is None else max_length
         if self._max_length < 1:
             raise ValueError("BGE-M3 max_length must be positive")
@@ -397,7 +433,7 @@ class OnnxInt8BgeM3Backend:
         options.graph_optimization_level = ort.GraphOptimizationLevel.ORT_ENABLE_ALL
         try:
             return ort.InferenceSession(
-                str(_model_file(self._model_path)),
+                str(_model_file(self._model_path, self._backend_name)),
                 sess_options=options,
                 providers=["CPUExecutionProvider"],
             )

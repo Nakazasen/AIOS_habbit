@@ -247,16 +247,16 @@ def main() -> None:
                     started = time.perf_counter()
                     init_phase = "model_verify"
                     backend_name = resolve_bge_backend_name(config.bge_backend)
-                    if backend_name == "onnx_int8":
-                        model_path = require_onnx_model_dir()
+                    if backend_name in {"onnx", "onnx_int8"}:
+                        model_path = require_onnx_model_dir(backend_name=backend_name)
                     else:
                         model_path = config.bge_m3_model_path
                     if config.retrieval_profile.startswith("bge_m3_") and (
                         model_path is None or not Path(model_path).is_dir()
                     ):
-                        if backend_name == "onnx_int8":
+                        if backend_name in {"onnx", "onnx_int8"}:
                             raise RuntimeError(
-                                f"pinned_model_unavailable: ONNX fp32 model dir missing: {model_path}. "
+                                f"pinned_model_unavailable: ONNX model dir missing: {model_path}. "
                                 "Set BGE_BACKEND=pytorch to use the PyTorch path explicitly."
                             )
                         raise RuntimeError("pinned_model_unavailable")
