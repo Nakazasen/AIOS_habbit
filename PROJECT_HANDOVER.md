@@ -159,3 +159,12 @@ Bổ sung theo yêu cầu người dùng: *"dù log nào đưa vào cũng vẽ �
 - Sáu lỗi graphify do thư mục rỗng `site-packages/graphify` (không có `__init__.py`) che bản cài editable. Adapter nay gắn đúng gói có `__init__.py`. Không xóa `.venv` (máy từ chối quyền).
 - Hai lỗi cờ Goal 010 do `.env` cục bộ bật `AIOS_FEATURE_EXPERT_KNOWLEDGE_ACQUISITION=1` và tiến trình kiểm thử đầy đủ nhìn thấy biến đó. Kiểm thử mặc định tắt nay xóa biến đó trước khi đo. Không sửa `.env`.
 - **Đã chạy**: `pytest -q -m "not desktop_packaging"` **3085 passed, 2 skipped, 29 deselected, 0 failed** (141,86 s).
+
+## Bổ sung ngày 2026-09-26 — Phiếu E3 dọn XML ở bộ trích xuất
+
+- `src/aios_habit/document_extractors.py` có cờ `AIOS_DOCUMENT_EXTRACTOR_XML_CLEANUP`, mặc định tắt. Khi bật, XML PPTX và hình vẽ Excel hợp lệ được đọc bằng `ElementTree`, giữ văn bản nút và phần đuôi, không đưa nút chú thích ra kết quả. Với đoạn trộn hoặc XML không phân tích được, bộ chuẩn hóa bỏ dấu thẻ, thuộc tính không gian tên và dấu phân cách chú thích/hướng dẫn nhưng giữ nội dung bên trong để tránh mất dữ kiện. Khi cờ tắt, đường đọc cũ giữ nguyên.
+- Đo trên bản sao trong RAM của chỉ mục thử, gồm 1.272 đoạn: đoạn có `xmlns` từ **67 xuống 0**, có `<p:sld` từ **42 xuống 0**, có thẻ XML từ **79 xuống 0**. Ba cụm từ đáp án B1/B3/B5 đều xếp hạng 1 trong 100 kết quả tìm từ khóa đầu, trước và sau. Kích thước, ngày sửa và kiểm tra toàn vẹn chỉ mục không đổi.
+- Không nạp lại nguồn, không chạy `--apply`, không ghi chỉ mục. Xử lý chỉ mục cũ cần việc riêng: chạy thử không ghi, sao lưu và được duyệt rõ ràng trước mọi lần ghi.
+- `tests/test_document_extractors.py`: **27 bài đạt**, gồm giữ nguyên đoạn PPTX sạch và giữ mã, số, kiểu dữ liệu, giá trị khi dọn XML. Báo cáo phép đo: [FIX3_extractor-E3-xml.md](docs/phieu-viec/ket-qua/FIX3_extractor-E3-xml.md).
+- Toàn bộ `pytest -q`: **3.134 đạt, 2 bỏ qua, 23 lỗi**. Lỗi nằm ở tiến trình BGE, thiếu gói Graphify, tiến trình con không nạp được `aios_habit`, và `uv.lock` chưa khớp; báo cáo E3 ghi chi tiết. Vì cổng toàn bộ kiểm thử chưa đạt, chưa đẩy mã và mailbox vẫn `dang-lam`.
+- Mã và kiểm thử E3 đã commit cục bộ ở `6079808398c622a66c9f8184b1f5908ad4d1b4f3` và `40b2a04`; không ghi chỉ mục thật.
