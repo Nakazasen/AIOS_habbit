@@ -5,5 +5,5 @@
 - Ticket trước: E4 — ĐẠT (Muse review 2026-09-27: diff 77c804b6+3aa4280 khớp báo cáo; alias onnx/auto→onnx, onnx_int8 tách riêng dir/checksum/fingerprint; fail-closed khi thiếu model; 63 test liên quan đạt; full suite 3.146 passed + 23 lỗi môi trường cũ, không PASS giả; index chỉ đọc pending 0, integrity ok)
 - Mã nguồn E4: `77c804b6b26dd433f18be39e0770d06e0b559931` (+ sửa worker `3aa4280fe1e968da635e86ba7b28dff760c6dc40`)
 - Báo cáo E4: `docs/phieu-viec/ket-qua/FIX3_backend-E4-default-onnx.md`
-- Ghi chú: OMP đã đối chiếu nguồn với chỉ mục 2026-09-27 05:03 +0700 — 890/890 tệp local và 2.147/2.147 mục trong ZIP chưa có đường dẫn trong 74 tài liệu chỉ mục. Chính sách tách 783 CSV/log khỏi thư viện chữ; ZIP loại log/txt thô, tệp lồng/định dạng lạ. Dry-run toàn bộ cũ timeout 60 phút, chỉ đọc. Runner đã chia lô có checkpoint; 5/10 tệp local đầu đã xử lý, chưa ghi chỉ mục.
-- Cập nhật lần cuối: 2026-09-27 05:03 +0700 (OMP — đối chiếu nguồn và chia lô dry-run)
+- Ghi chú: OMP kiểm kê hoàn tất 2026-09-27 05:06 +0700 — local 890 file, ZIP 2.147 mục, tổng dung lượng giải nén 936.853.642 byte; chưa file nào có đường dẫn nguồn trùng 74 doc trong index. Dry-run batch ảnh đầu 10/61: 132 chunk/93 retrievable; OCR Tesseract hiện chỉ chọn `eng`. Không ghi index.
+- Cập nhật lần cuối: 2026-09-27 05:06 +0700 (OMP — kiểm kê đầy đủ, dry-run lô ảnh đầu)
