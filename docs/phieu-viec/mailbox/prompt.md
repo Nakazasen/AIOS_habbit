@@ -1,44 +1,40 @@
-# Ticket D3 — Baseline B1–B5 (+H3) trên corpus đầy đủ, worker ONNX fp32 (chỉ đọc)
+# Ticket E1 — Điều tra khâu "viết câu trả lời" làm rớt dữ kiện (chỉ đọc, không sửa code)
 
 Ngày viết: 2026-09-26 (Muse). Branch: `phieu-viec/rag-fix1`. Không đụng `main`.
 
 ## Bối cảnh
 
-- D2 (`20bce54`, ĐẠT, Muse review 2026-09-26): index thật máy `h410asrock`
-  đã đầy đủ — **74 document / 1.272 chunk / 1.064 retrievable**, pending vector
-  = 0, dense/sparse ONNX fp32 `016c5255…` × 1.064 (PyTorch cũ giữ × 340),
-  `integrity_check` live ok.
-- Chuỗi đáp án B1/B2/B3/B5 đã có trong index (D1 xác nhận qua grep);
-  B4 vẫn không có mã ví dụ trong bất kỳ nguồn nào → **B4 loại trừ khỏi
-  đánh giá đúng/sai** (ground truth lệch với tài liệu hiện có, đã xác nhận).
-- Mục tiêu D3: đo baseline đầy đủ trên corpus sau ingest — mỗi câu chạy với
-  worker ONNX fp32, so đáp án với ground truth và so latency với baseline
-  PyTorch (báo cáo commit `484ac76`).
+- D3 (`fc024d2`, ĐẠT): kho đã đủ — B1/B3 có đáp án trong evidence truy xuất được,
+  nhưng câu trả lời cuối KHÔNG nêu ra. B5: evidence truy xuất về thiếu định nghĩa
+  `HOUSE_METHOD` (lỗi ở khâu tìm/xếp hạng, không phải khâu viết).
+- Chi tiết trong `docs/phieu-viec/ket-qua/FIX3_baseline-D3-onnx.md` (bảng dòng 15–22,
+  phân tích dòng 30–33).
+- Chế độ tự lái toàn phần (user 2026-09-26): tự quyết, không hỏi; có lỗi thì điều tra
+  tiếp trong repo.
 
-## Việc cần làm
+## Việc cần làm (TẤT CẢ chỉ đọc — không sửa code, không ghi index)
 
-1. `git pull origin phieu-viec/rag-fix1`. Đọc báo cáo D2
-   (`docs/phieu-viec/ket-qua/FIX3_ingest-D2-apply.md`) để lấy đúng đường dẫn
-   index thật trên máy này.
-2. Chạy worker với `BGE_BACKEND=onnx` (backend ONNX fp32 đã migrate xong ở
-   Bước B + D2). Worker init phải < 300 s (lần đo Bước C: 3,94 s).
-   Nếu init treo/quá 300 s → DỪNG ngay, báo hiện tượng, không chạy tiếp.
-3. Chạy lại đúng bộ câu hỏi **B1, B2, B3, B4, B5, H3** với bộ đáp án tham chiếu
-   đã dùng ở baseline PyTorch (`484ac76`) — không đổi câu hỏi, không đổi
-   ground truth.
-4. Với mỗi câu ghi: mode (overview/focused/full/hybrid), latency worker,
-   có abstain/timeout không, các fact trong đáp án so với ground truth
-   (đủ/thiếu/sai ở điểm nào). B4 vẫn chạy nhưng không tính đúng/sai.
-5. Ghi nhận nhiễu XML nếu thấy (ví dụ B3 từng lẫn `xmlns` slide) — chỉ ghi
-   nhận, KHÔNG dọn trong ticket này.
-6. **Chỉ đọc**: không ghi thêm vector, không ingest, không `--apply` bất cứ
-   thứ gì vào index. (Query không được làm đổi số liệu verify của D2.)
+1. Chạy lại B1 và B3 (read-only: `index_read_only=True`, `ensure_embeddings_on_open=False`,
+   `BGE_BACKEND=onnx`, 2 flag summary bật như D3), log đầy đủ:
+   - evidence/chunk truy xuất được (id + text),
+   - prompt gửi vào khâu viết câu trả lời cuối (đầy đủ, không cắt),
+   - câu trả lời cuối.
+2. Mổ xẻ vì sao dữ kiện có trong evidence lại rớt khỏi câu trả lời:
+   - Prompt có yêu cầu trích dữ kiện không, hay chỉ bảo "tóm tắt"?
+   - Evidence có bị cắt bớt (truncate) trước khi đưa vào prompt không?
+   - Có tầng lọc/rerank nào sau retrieval làm mất chunk chứa đáp án không?
+   - Dữ kiện nằm ở vị trí nào trong evidence (đầu/cuối/giữa) — có mẫu hình không?
+3. Với B5: evidence thiếu định nghĩa `HOUSE_METHOD` — do chunking cắt mất,
+   do lexical/rerank không đưa chunk đúng lên, hay chunk đáp án không tồn tại?
+   (D2 đã xác nhận đáp án B5 có trong file đã ingest.)
+4. Đề xuất fix CỤ THỂ cho từng ca (sửa prompt? sửa thứ tự evidence? sửa chunking?),
+   kèm file/hàm cần đụng. Không cần viết code trong ticket này.
 
 ## Bàn giao
 
-- Báo cáo: `docs/phieu-viec/ket-qua/FIX3_baseline-D3-onnx.md`
-  (hostname, SHA, bảng từng câu: mode, latency, so đáp án với ground truth,
-  chênh lệch latency so với baseline PyTorch `484ac76`, nhận xét nhiễu XML).
+- Báo cáo: `docs/phieu-viec/ket-qua/FIX3_synthesis-E1-dieu-tra.md`
+  (hostname, SHA code lúc chạy, log evidence/prompt/answer của B1+B3, kết luận
+  nguyên nhân từng ca, đề xuất fix cụ thể).
 - Commit **riêng** + push `phieu-viec/rag-fix1`, không đụng `main`.
-- Cập nhật `docs/phieu-viec/mailbox/trang-thai.md` → `xong-cho-duyet`
-  (ghi commit SHA + đường dẫn báo cáo), rồi **DỪNG**.
+- Cập nhật `trang-thai.md` → `xong-cho-duyet` (ghi commit SHA + đường dẫn báo cáo),
+  rồi **DỪNG**.
