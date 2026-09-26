@@ -1,4 +1,4 @@
-# Watch-Mailbox.ps1 (v4) — watcher + giám sát OMP, vòng lặp cưỡng chế 2 đầu
+﻿# Watch-Mailbox.ps1 (v4) — watcher + giám sát OMP, vòng lặp cưỡng chế 2 đầu
 #
 # Đầu 1 (Muse, trên VM): viết ticket -> poll 5 phút -> review.
 # Đầu 2 (script này, máy Windows): poll mailbox mỗi ~90s, và:
@@ -51,7 +51,7 @@ if (-not $mutex.WaitOne(0)) { exit }
 
 function Get-MailboxFile {
     param([string]$path)
-    $url = "https://api.github.com/repos/$owner/$repo/contents/$path?ref=" + [uri]::EscapeDataString($branch)
+    $url = "https://api.github.com/repos/$owner/$repo/contents/${path}?ref=" + [uri]::EscapeDataString($branch)
     $headers = @{"Accept" = "application/vnd.github+json"; "User-Agent" = "mailbox-watcher"}
     if ($token) { $headers["Authorization"] = "Bearer $token" }
     $data = Invoke-RestMethod -Uri $url -Headers $headers -TimeoutSec 30
