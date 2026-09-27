@@ -5,5 +5,5 @@
 - Ticket trước: E4 — ĐẠT (Muse review 2026-09-27: diff 77c804b6+3aa4280 khớp báo cáo; alias onnx/auto→onnx, onnx_int8 tách riêng dir/checksum/fingerprint; fail-closed khi thiếu model; 63 test liên quan đạt; full suite 3.146 passed + 23 lỗi môi trường cũ, không PASS giả; index chỉ đọc pending 0, integrity ok)
 - Mã nguồn E4: `77c804b6b26dd433f18be39e0770d06e0b559931` (+ sửa worker `3aa4280fe1e968da635e86ba7b28dff760c6dc40`)
 - Báo cáo E4: `docs/phieu-viec/ket-qua/FIX3_backend-E4-default-onnx.md`
-- Ghi chú: OMP hoàn thành `dry-run` 433/433 nguồn (164.589/131.863 `chunk`/truy xuất); đủ cache 425/425 nguồn có chunk. `dry-run` lô đầu 100 nguồn: 81.503/58.543; chỉ mục chưa đổi. Bước tiếp theo tạo và kiểm tra bản sao sibling trước khi nạp theo checkpoint.
-- Cập nhật lần cuối: 2026-09-27 07:33 +0700 (OMP — chuẩn bị nạp lô 1/5)
+- Ghi chú: Lô nạp 1/5: 95 nguồn mới, 1 nguồn trùng; chỉ mục 169 tài liệu / 72.987 `chunk` / 53.212 truy xuất được, ONNX pending `52.148`, `integrity_check=ok`. Bản sao sibling `library.sqlite.bak-20260927-073411-497891` đạt `ok`; checkpoint `next_start=100`.
+- Cập nhật lần cuối: 2026-09-27 07:36 +0700 (OMP — lô nạp 1/5)
