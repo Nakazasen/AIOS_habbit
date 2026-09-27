@@ -4,7 +4,7 @@
 - Ticket hiện tại: Vé 0.3 — Chuyển index sang ổ C (SSD) + resume migration GPU (cấm ghi ổ D vĩnh viễn)
 - Ticket trước: Vé 0.2 — chẩn đoán disk I/O (ĐÃ DUYỆT 2026-09-27 ~18:42, báo cáo `docs/phieu-viec/ket-qua/VE0_2_chan-doan-disk-io-error.md`)
 - Ticket trước nữa: Vé 0 — điều tra nhịp rơi (ĐÃ DUYỆT 2026-09-27 ~18:15, báo cáo `docs/phieu-viec/ket-qua/VE0_dieu-tra-nhip-roi.md`)
-- Commit mới nhất: `2b73b97`
+- Commit mới nhất: `54a4edc`
 - Báo cáo: `docs/phieu-viec/ket-qua/VE0_3_khac-phuc-disk-io-resume.md` (chưa có)
 - Ghi chú: OMP h410asrock 2026-09-27 18:38 +07 — SMART tươi ổ D: 05 Reallocated 769 (tăng từ 513), C4 Event 10 (tăng từ 9), C5 Pending 0, C6 0, C7 UDMA CRC 200, Health Chú ý (vàng), 38°C; SSD C còn 91% life. Theo quyết định user 19:04, bỏ chkdsk và tuyệt đối không ghi D.
 - Ghi chú: Muse 2026-09-27 19:04 +07 — index chuyển sang C; copy + integrity_check đạt mới tiếp tục; mẻ ghi ngoài 10–20 (đề xuất 16), batch GPU trong giữ 2; mẫu theo dõi 3 mốc, integrity và I/O.
