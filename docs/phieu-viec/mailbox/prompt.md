@@ -1,62 +1,74 @@
-# Vé V1.4 — tải zip Drive (đường mới) rồi chạy nốt 10 test F4 trên Windows
+# Vé P1 — Đóng dấu kho thử thành kho thật (máy nhà)
 
-Ngày viết: 2026-09-28 (Muse). Chế độ: Muse ra vé → OMP thực hiện độc lập trên Windows (luật "không vừa đá vừa thổi còi").
-Branch: `phieu-viec/rag-fix1`. Không đụng `main`. Hostname: `h410asrock` (Win 10 Pro).
+Ngày viết: 2026-09-28 (Muse). Chế độ tự lái: Muse ra vé → OMP thực hiện độc lập
+trên Windows (luật "không vừa đá vừa thổi còi").
+Nhánh: `phieu-viec/rag-fix1`. Không đụng `main`. Máy: `h410asrock` (Win 10 Pro).
 
-## Verdict Vé V1.3: CHƯA ĐẠT về số liệu — nhưng báo cáo TRUNG THỰC, không phải lỗi code
+## Verdict Vé V1.4: ĐẠT (2026-09-28 ~04:53)
 
-- OMP chạy đúng bước 6 của vé: 3 lần tải zip thất bại (gdown bản cũ không có `--fuzzy`; gdown trực tiếp bị chặn sign-in vì file Drive ở chế độ restricted; cookie Chrome bị Windows chặn; trình duyệt điều khiển chưa kết nối) → dừng đúng quy định, không bịa dữ liệu, không ghi index, không ghi ổ D.
-- Đối chiếu diff độc lập `fb97f6a...885569a`: chỉ sửa `docs/phieu-viec/mailbox/trang-thai.md` (+4/-4), không đụng code, không đụng `main`. Báo cáo trung thực, verdict độc lập giữ nguyên.
-- Gốc rễ của block: file zip trên Drive ở chế độ restricted → mọi cách tải ẩn danh đều chết. Vé này sửa đúng chỗ đó.
+- Tải zip đường mới thành công ngay lần 1 (858.190.286 byte); 4/4 file khớp
+  kích thước + sha256 đúng bảng vé; manifest 6/6 + error_cases 26/26 pass trên
+  Windows; mọi thao tác trên ổ C; không ghi index, không ghi ổ D.
+- Diff độc lập commit `c9148e5`: chỉ thêm báo cáo
+  `docs/phieu-viec/ket-qua/VE_V1_4_F4-windows.md` (+61) và sửa
+  `docs/phieu-viec/mailbox/trang-thai.md` (+4/-4). Không đụng code, không đụng
+  `main`. OMP không sửa code/test để "cho qua".
+- Quyền anyone-with-link trên file zip đã được Muse thu hồi sau khi OMP báo tải xong.
+- Vé V1 (verify F1–F4 trên Windows) xong → phát hành Vé P1.
 
-## Đường tải mới (Muse đã mở — OMP chỉ việc tải, KHÔNG đổi quyền share)
+## Bối cảnh / tiền điều kiện (từ báo cáo Vé 0.3, commit `9f243ec`)
 
-- 2026-09-28 ~04:35 +07: Muse đã bật **tạm** quyền "anyone with link → reader" (tắt discover công khai) cho file zip `1jJpYPMgyPPRt2tPmuOuKEb8rWtwxB1eP`. Muse đã xác minh ẩn danh: link dưới trả về được (đi qua trang xác nhận virus-scan của Drive — gdown tự xử lý).
-- Link tải trực tiếp: `https://drive.google.com/uc?export=download&id=1jJpYPMgyPPRt2tPmuOuKEb8rWtwxB1eP`
-- OMP **không** thay đổi quyền share của file dưới mọi hình thức. Muse thu hồi quyền ngay sau khi OMP báo tải xong (poll kế tiếp).
+- Kho canary: `C:\AIOS_habit_index_ve03\library.sqlite` — migration GPU hoàn tất
+  99.003/99.003 khối, `pending=0`, ONNX dense và sparse cùng 107.331/107.331,
+  `PRAGMA integrity_check=ok`.
+- Backup mới nhất trên C:
+  `C:\AIOS_habit_index_ve03\library.sqlite.bak-20260927-223834-ve03-retry`
+  (integrity_check=ok).
+- App production đang đọc kho `workspace_chat_rag_v2_production/workspace_chat.sqlite`.
+- **CẤM** app đọc kho đang nhúng dở — chỉ kho đã "đóng dấu" mới được coi là
+  kho chạy thật.
 
-## 4 file nguồn (giữ nguyên từ Vé V1.3 — đã xác minh byte trên VM ngày 27/09)
+## Cách làm (đúng thứ tự)
 
-Sau giải nén, 4 file nằm trong cây `dieu_tra_loi/Điều chỉnh/`:
+1. Kiểm toàn vẹn kho canary `C:\AIOS_habit_index_ve03\library.sqlite`:
+   - `PRAGMA integrity_check` = `ok`.
+   - Đếm vector ONNX dense = 107.331 và sparse = 107.331; `pending` = 0.
+   - Fingerprint ONNX
+     `016c5255d0cec1fcb75b99f71f3c6a47a6e67b6087c3eb943b039cf8ac6274fb` khớp.
+   - Thiếu bất kỳ dấu nào → DỪNG, báo nguyên vẹn, không đi tiếp (fail-closed).
+2. Backup kho production HIỆN TẠI (file sibling cạnh nó, `integrity_check=ok`)
+   TRƯỚC khi thay — có điểm quay lui dù bước sau đạt hay không.
+3. Copy kho canary → `workspace_chat_rag_v2_production/workspace_chat.sqlite`
+   (đúng thư mục mà app đang đọc). Copy xong so sha256 + kích thước hai bản —
+   phải khớp 100% mới đi tiếp. Nếu không chắc đường dẫn thật của kho production
+   trên máy này: ghi rõ vị trí đã tìm vào báo cáo, hỏi lại Muse trong báo cáo,
+   KHÔNG tự đoán chỗ khác.
+4. App trỏ sang kho mới, chạy thử B1–B5 (B4 loại khỏi chấm điểm theo kế hoạch E):
+   đạt, không abstain/timeout bất thường; ghi nhận latency từng câu.
+5. Chỉ khi B1–B5 đạt → **đóng dấu**: ghi commit SHA + sha256 file index mới
+   + ngày giờ vào báo cáo → từ đây mới coi là "kho chạy thật".
 
-| File (GIỮ NGUYÊN tên, kể cả ký tự Nhật) | Kích thước (byte) | sha256 |
-|---|---|---|
-| `Bang ma loi/02XC_自己診断表示一覧表-Iris2020 VN.xls` | 1.278.976 | `031bbe3e447de2f2d5367a8f10fb875df7a3b7ecd5a9d3330860d15b38b20cc4` |
-| `UWCAシステムエラー(FXXX)概要.xls` | 303.104 | `81c43cd46496d8f0069f7f40806ff6d6a3e9e5d14af26a5cf2d477709b94a458` |
-| `SCT自動調整エラーコード一覧_140221.xls` | 294.400 | `6fe738d0d7ef00a45f881f9deb2354798aec0f840a2ce60948544164801f7749` |
-| `Bang ma loi/02XC_機能定義書_JAM一覧 (1).xls` | 782.336 | `6c40012e780dbf83caaaeef5d50e9fbfdc5c387136c5b262a84edf2159088195` |
+## Cấm kỵ
 
-## Cách làm
-
-1. Nâng cấp gdown trước (bản trên máy cũ, thiếu `--fuzzy`): `pip install -U gdown`.
-2. Tải zip (~858 MB) bằng link trực tiếp ở trên, lưu vào `C:/tmp/aios-data-v14.zip`:
-   `gdown "https://drive.google.com/uc?id=1jJpYPMgyPPRt2tPmuOuKEb8rWtwxB1eP" -O C:/tmp/aios-data-v14.zip`
-3. Giải nén RA Ổ C vào thư mục tạm mới `C:\tmp\aios-data-v14` (không bao giờ ghi ổ D). Nếu tên tiếng Nhật bung sai ký tự, giải nén lại bằng 7-Zip chế độ UTF-8 cho đến khi tên khớp y hệt bảng trên.
-4. Đối chiếu 4 file: kích thước + sha256 PHẢI khớp bảng. **Lệch bất kỳ file nào → dừng, báo nguyên vẹn, không dùng file đó** (fail-closed, cấm bịa).
-5. Đặt biến môi trường `AIOS_DATA_DIR` trỏ tới thư mục CHA của `dieu_tra_loi` (ví dụ `C:\tmp\aios-data-v14`), sao cho tồn tại `AIOS_DATA_DIR\dieu_tra_loi\Điều chỉnh\...` đúng cấu trúc zip.
-6. Dùng lại môi trường Python 3.11.14 + pytest 8.4.2 của Vé V1 (venv trên C, TMP/TEMP trên C):
-   - `pytest tests/test_rag_v2_ingest_manifest.py -q` → kỳ vọng 6/6.
-   - `pytest tests/test_error_cases_f1.py tests/test_error_cases_f4.py -q` → kỳ vọng 26/26.
-7. Nếu KHÔNG tải được zip sau 3 lần thử (tối đa): dừng, ghi rõ "không tải được nguồn" trong báo cáo — chờ Muse lo đường khác. Không thử lần 4.
-
-## Cấm kỵ (fail-closed)
-
-- CHỈ đọc + chạy test. Cấm ghi index, cấm embed/apply/ingest thật.
-- Cấm vĩnh viễn GHI ổ D (chỉ tải và giải nén trên C).
+- Không ghi đè kho production khi chưa đủ dấu toàn vẹn ở bước 1.
+- Cấm vĩnh viễn GHI ổ D. Mọi thao tác trên ổ C.
 - Không `git pull` tạo merge — `git fetch` + checkout commit rõ ràng. Không đụng `main`.
-- Không sửa code/test để "cho qua" — fail thì báo nguyên vẹn kèm traceback.
-- Không đưa 4 file xls vào Git (báo cáo chỉ ghi đường dẫn + sha256).
-- Không thay đổi quyền share của file Drive (Muse quản, sẽ thu hồi).
+- Không sửa code/test để "cho qua" — fail thì báo nguyên vẹn kèm số đo.
+- Không embed/index lại gì thêm trong vé này — vé này chỉ đóng dấu.
 
 ## Nghiệm thu
 
-Báo cáo `docs/phieu-viec/ket-qua/VE_V1_4_F4-windows.md` gồm:
-1. Commit checkout + ngày giờ, OS, Python.
-2. Cách tải zip (công cụ nào, gdown phiên bản mấy), 4 dòng đối chiếu kích thước + sha256 (khớp/lệch từng file).
-3. Kết quả từng suite (6/6 manifest; 26/26 error_cases) với log tóm tắt; khác biệt nào so với kết quả trên VM (VM: F4 11/11 pass trên Linux).
+Báo cáo `docs/phieu-viec/ket-qua/VE_P1_dong-dau-kho-that.md` gồm:
+1. integrity_check, số vector dense/sparse, pending, fingerprint của kho canary.
+2. Đường dẫn + sha256 + kích thước của bản backup production và của index mới sau copy (so hai bản).
+3. Kết quả B1–B5 + latency từng câu, khác biệt nào so với kỳ vọng.
+4. Thời điểm đóng dấu, hostname máy chạy.
 
-Tiêu chí ĐẠT: 26/26 error_cases + 6/6 manifest pass 100% trên Windows, 4 sha256 khớp, không ghi index, mọi thao tác trên branch riêng (không đụng main).
+Tiêu chí ĐẠT: đủ dấu toàn vẹn bước 1, copy khớp 100%, B1–B5 đạt trên kho mới,
+báo cáo đóng dấu đầy đủ.
 
 ## Sau vé này
 
-Vé V1.4 đạt → Muse phát hành Vé P1 "đóng dấu kho thử thành kho thật". Không tự mở P1 trước verdict.
+Vé P1 đạt → Muse phát hành Vé P2 "mang sang máy công ty KDTVN-PC0575"
+(theo mẫu `docs/phieu-viec/VE_P2_ve-mau-may-cong-ty.md` và tiêu chí G2
+`docs/phieu-viec/G2_tieu-chi-nghiem-thu.md`). Không tự mở P2 trước verdict.
