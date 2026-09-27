@@ -18,6 +18,10 @@ from .glossary import (
     lookup as glossary_lookup,
     norm_code,
 )
+from .import_history import (
+    SHEET_NAME as HISTORY_SHEET_NAME,
+    import_history,
+)
 from .store import (
     batch_stats,
     connect,
@@ -46,6 +50,8 @@ __all__ = [
     "init_glossary",
     "glossary_lookup",
     "norm_code",
+    "HISTORY_SHEET_NAME",
+    "import_history",
     "batch_stats",
     "connect",
     "count_cases",

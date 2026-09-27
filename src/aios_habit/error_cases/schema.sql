@@ -51,6 +51,11 @@ CREATE INDEX IF NOT EXISTS idx_error_cases_no_dvd ON error_cases (no_dvd);
 CREATE INDEX IF NOT EXISTS idx_error_cases_line ON error_cases (line);
 CREATE INDEX IF NOT EXISTS idx_error_cases_batch ON error_cases (batch_id);
 
+-- F2: re-importing an unchanged source file is skipped ("vất lại file cũ
+-- thì bỏ qua") — the importer checks this key before opening a batch.
+CREATE UNIQUE INDEX IF NOT EXISTS uq_import_batches_file
+    ON import_batches (source_file, file_sha256, sheet_name);
+
 -- Wider dedup key for the 29-column history format, where (year, NO)
 -- alone is not unique (same NO. reused for different machine/line).
 CREATE UNIQUE INDEX IF NOT EXISTS uq_error_cases_history
