@@ -5,5 +5,5 @@
 - Ticket trước: E4 — ĐẠT (Muse review 2026-09-27: diff 77c804b6+3aa4280 khớp báo cáo; alias onnx/auto→onnx, onnx_int8 tách riêng dir/checksum/fingerprint; fail-closed khi thiếu model; 63 test liên quan đạt; full suite 3.146 passed + 23 lỗi môi trường cũ, không PASS giả; index chỉ đọc pending 0, integrity ok)
 - Mã nguồn E4: `77c804b6b26dd433f18be39e0770d06e0b559931` (+ sửa worker `3aa4280fe1e968da635e86ba7b28dff760c6dc40`)
 - Báo cáo E4: `docs/phieu-viec/ket-qua/FIX3_backend-E4-default-onnx.md`
-- Ghi chú: Nạp văn bản hoàn tất 433/433: 422 nguồn mới, 3 nguồn trùng toàn bộ, 8 nguồn trống nội dung; chỉ mục 496 tài liệu / 133.144 `chunk` / 107.331 truy xuất được, `integrity_check=ok`. Dry-run ONNX xác nhận 106.267 vector mới pending, 1.064 vector ONNX cũ đã có; không tái nhúng vectors cũ. Tiếp theo áp dụng embedding ONNX.
-- Cập nhật lần cuối: 2026-09-27 08:27 +0700 (OMP — dry-run embedding)
+- Ghi chú: Nạp văn bản hoàn tất 433/433: 422 nguồn mới, 3 nguồn trùng toàn bộ, 8 nguồn trống nội dung. Dry-run ONNX ghi nhận 106.267 vector mới pending; tiến trình áp dụng embedding đang chạy, không tái nhúng vectors cũ.
+- Cập nhật lần cuối: 2026-09-27 12:03 +0700 (OMP — bắt đầu áp dụng ONNX)
