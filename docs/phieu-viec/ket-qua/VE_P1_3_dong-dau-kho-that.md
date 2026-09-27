@@ -71,3 +71,12 @@ Cổng nghiệm thu yêu cầu B1/B2/B3/B5 đúng và toàn bộ B1–B5 chạy 
 - Cần một tuyến chạy B1–B5 được người dùng cho phép rõ ràng và không gửi dữ liệu `local_only` tới bên ngoài; sau đó mới có thể hoàn tất báo cáo và đóng vé.
 - Production hiện vẫn nằm trên ổ D đã được cảnh báo hỏng dần. Việc di chuyển sang C và cập nhật manifest cần vé riêng; không thực hiện trong P1.3.
 - Không chạy `compileall`, `pytest` hoặc audit vì không sửa mã; không chạy thêm thao tác có thể ghi lên D ngoài ngoại lệ một lần của vé.
+
+## 6. Lần nhận lại vé — kiểm tra điều kiện chạy an toàn
+
+- Thời điểm: 2026-09-28, khoảng 06:41 giờ `+07`. Máy: `h410asrock`; nhánh: `phieu-viec/rag-fix1`.
+- Không chạy lại backup/copy, không gửi câu hỏi, không sửa mã, manifest, `.env`, biến môi trường hoặc kho. Không có thao tác ghi mới lên ổ D.
+- Kiểm tra trạng thái cầu nối cục bộ trả `direct_ready`; Workspace Chat gửi đoạn nguồn truy xuất tới cầu nối khi trạng thái này bật. Vé không chỉ định nhà cung cấp; chưa có lựa chọn `cagent_api` rõ ràng từ người dùng.
+- Lối trích xuất cục bộ trong `src/aios_habit/antigravity_bridge.py` chỉ được đưa ra khi cầu nối không sẵn sàng và cần người dùng chọn. Vì cầu nối đang `direct_ready`, không dùng lối này để lách lựa chọn nhà cung cấp.
+- `retrieve_workspace_chat_evidence` trong `src/aios_habit/workspace_chat_rag_v2_adapter.py` gọi lập lịch chuẩn bị nguồn. Lập lịch mở sổ SQLite tại `<runtime_root>/workspace_chat.sqlite` và có thể khởi tạo/cập nhật sổ hoặc đưa nguồn vào hàng đợi. Runtime production trên D; vé chỉ cho phép một lần ghi là chép tệp kho. Không chạy truy vấn khi chưa loại trừ được lần ghi phụ này.
+- B1–B5 vẫn chưa chạy; không có kết quả, thời gian hay xác nhận backend từ lượt mới. Vé chưa đạt nghiệm thu. Cần quyết định được chủ sở hữu cho phép về tuyến trả lời và kế hoạch bảo đảm không ghi thêm lên D trước khi chạy tiếp.
