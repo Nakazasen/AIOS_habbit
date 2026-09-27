@@ -1,6 +1,7 @@
 # Vé 0.3 — Chuyển index sang ổ C (SSD) + resume migration GPU (CẤM ghi ổ D vĩnh viễn)
 
 Ngày viết: 2026-09-27 (Muse). Sửa lần 2 lúc 19:04 theo QUYẾT ĐỊNH CỦA USER (bỏ phương án ổ mới).
+Sửa lần 3 lúc 20:11 theo QUYẾT ĐỊNH CỦA USER: mẫu sạch → resume ngay tối nay, không đo thêm; báo ETA ngay khi resume chạy.
 Branch: `phieu-viec/rag-fix1`. Không đụng `main`.
 
 ## Bối cảnh
@@ -32,7 +33,7 @@ SMART tươi đã có (trang-thai.md, OMP 18:38). `chkdsk D: /scan` BỎ QUA the
 1. Backup tươi của index TRÊN Ổ C (file sibling), `integrity_check` của backup phải `ok` — fail-closed nếu không ok.
 2. Cấu hình batch theo toa VE0: mẻ ghi NGOÀI 10–20 khối (đề xuất 16), batch GPU TRONG giữ nguyên 2 (không đổi).
 3. Chạy MẪU trên ổ C: đo nhịp ở 3 mốc (đầu / giữa / cuối mẫu), `integrity_check` sau mẫu, theo dõi I/O error trong log suốt mẫu.
-4. Mẫu SẠCH (nhịp ổn định qua 3 mốc, integrity ok, không I/O error) → resume 92.875 khối còn lại (99.003 − 6.128), ghi nhịp mới + ETA mới.
+4. Mẫu SẠCH (nhịp ổn định qua 3 mốc, integrity ok, không I/O error) → RESUME NGAY TRONG TỐI NAY, không đo thêm gì nữa. 92.875 khối còn lại (99.003 − 6.128). Báo ETA mới NGAY KHI resume bắt đầu chạy (ghi vào báo cáo + cập nhật trang-thai.md).
 5. RỚT MỐC NÀO → DỪNG NGAY, giữ nguyên trạng, báo cáo chi tiết mốc rớt — KHÔNG cố retry mù, không tự ý đổi tham số chạy tiếp.
 
 ## Nghiệm thu
