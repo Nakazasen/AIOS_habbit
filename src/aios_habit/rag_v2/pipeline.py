@@ -27,6 +27,7 @@ from .index import (
     SearchResponse,
     fuse_ranked_channels,
 )
+from .ingest_manifest import IngestManifest
 from .query_planning import (
     RetrievalQueryPlan,
     apply_summary_first_to_plan,
@@ -591,6 +592,15 @@ class RagV2DevPipeline:
             read_only=self.config.index_read_only,
         )
         self._owns_index = index is None
+        # Durable per-file ingest manifest (sổ file chống trùng): lets ingest
+        # skip unchanged source files without reading them. Disabled in
+        # read-only mode so a read-only open never writes beside the index.
+        if self.config.index_read_only:
+            self._ingest_manifest: Optional[IngestManifest] = None
+        else:
+            self._ingest_manifest = IngestManifest(
+                IngestManifest.default_path_for_index(self.config.index_path)
+            )
         capability = self.index.semantic_capability
         retrieval_lab = _is_retrieval_lab_profile(self.config.retrieval_profile)
         if (self.config.strict_semantic or retrieval_lab) and self.config.retrieval_profile not in {
@@ -635,6 +645,18 @@ class RagV2DevPipeline:
             self._degraded_reason = reranker_reason
         self.circuit_breaker = CircuitBreaker()
 
+    @staticmethod
+    def _unchanged_item(
+        source: SourceSpec, fingerprint: str, chunk_count: int
+    ) -> IngestionItemReport:
+        return IngestionItemReport(
+            document_id=source.document_id,
+            source_name=source.path.name,
+            status="unchanged",
+            source_fingerprint=fingerprint,
+            chunk_count=chunk_count,
+        )
+
     def ingest(self, sources: Iterable[SourceSpec]) -> RagV2IngestionReport:
 
         items = []
@@ -655,16 +677,46 @@ class RagV2DevPipeline:
                 ))
                 continue
 
-            fingerprint = _file_fingerprint(source.path)
+            manifest = self._ingest_manifest
+            manifest_key = IngestManifest.key_for(source.path) if manifest else ""
+            entry = manifest.lookup(manifest_key) if manifest else None
+            try:
+                file_stat = source.path.stat()
+            except OSError:
+                file_stat = None
+
+            fingerprint: Optional[str] = None
+            if entry is not None and file_stat is not None and entry.matches_stat(file_stat):
+                # Fast path: mtime+size unchanged since last ingest. Cross-check
+                # the index, then skip without reading the file at all.
+                current = self.index.document_state(source.document_id)
+                if (
+                    current["chunk_count"]
+                    and entry.document_id == source.document_id
+                    and current["source_fingerprint"] == entry.sha256
+                ):
+                    items.append(self._unchanged_item(
+                        source, entry.sha256, int(current["chunk_count"])))
+                    continue
+                # Manifest hit but the index diverged (wiped/changed behind our
+                # back): fall through and re-verify by content.
+
+            if fingerprint is None:
+                fingerprint = _file_fingerprint(source.path)
             current = self.index.document_state(source.document_id)
             if current["chunk_count"] and current["source_fingerprint"] == fingerprint:
-                items.append(IngestionItemReport(
-                    document_id=source.document_id,
-                    source_name=source.path.name,
-                    status="unchanged",
-                    source_fingerprint=fingerprint,
-                    chunk_count=int(current["chunk_count"]),
-                ))
+                # Same content (only file metadata may have changed): refresh the
+                # manifest entry so the next run takes the fast path.
+                if manifest is not None and file_stat is not None:
+                    manifest.record(
+                        manifest_key,
+                        sha256=fingerprint,
+                        mtime_ns=file_stat.st_mtime_ns,
+                        size=file_stat.st_size,
+                        document_id=source.document_id,
+                    )
+                items.append(self._unchanged_item(
+                    source, fingerprint, int(current["chunk_count"])))
                 continue
 
             context = ConversionContext(
@@ -739,6 +791,14 @@ class RagV2DevPipeline:
                 ))
                 continue
             warning_codes = ("partial_conversion",) if failed else ()
+            if manifest is not None and file_stat is not None:
+                manifest.record(
+                    manifest_key,
+                    sha256=fingerprint,
+                    mtime_ns=file_stat.st_mtime_ns,
+                    size=file_stat.st_size,
+                    document_id=source.document_id,
+                )
             items.append(IngestionItemReport(
                 document_id=source.document_id,
                 source_name=source.path.name,
@@ -748,6 +808,9 @@ class RagV2DevPipeline:
                 chunk_count=len(chunks),
                 warning_codes=warning_codes,
             ))
+
+        if self._ingest_manifest is not None:
+            self._ingest_manifest.save()
 
         return RagV2IngestionReport(
             items=tuple(items),
@@ -1210,6 +1273,8 @@ class RagV2DevPipeline:
         }
 
     def close(self) -> None:
+        if self._ingest_manifest is not None:
+            self._ingest_manifest.save()
         if self._owns_index:
             self.index.close()
 
