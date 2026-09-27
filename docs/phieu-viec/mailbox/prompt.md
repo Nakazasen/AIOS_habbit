@@ -1,18 +1,22 @@
-# Vé V1.3 — tải 4 file nguồn từ Drive rồi chạy nốt 10 test F4 trên Windows
+# Vé V1.4 — tải zip Drive (đường mới) rồi chạy nốt 10 test F4 trên Windows
 
 Ngày viết: 2026-09-28 (Muse). Chế độ: Muse ra vé → OMP thực hiện độc lập trên Windows (luật "không vừa đá vừa thổi còi").
 Branch: `phieu-viec/rag-fix1`. Không đụng `main`. Hostname: `h410asrock` (Win 10 Pro).
 
-## Verdict Vé V1.2: CHƯA ĐẠT (không phải lỗi code)
+## Verdict Vé V1.3: CHƯA ĐẠT về số liệu — nhưng báo cáo TRUNG THỰC, không phải lỗi code
 
-- Vé V1.2 chạy đúng kịch bản "không tìm thấy nguồn thì dừng" (bước 6): quét `C:/Users`, `D:/`, `C:/tmp` — 0/4 file; không dùng file gần giống; 0 bịa dữ liệu; không ghi index, không ghi D.
-- Kết quả: manifest 6/6 ✓, F1 15/15 ✓, F4 1/11 + 10 ERROR ở fixture `assert path.exists()` (thiếu nguồn). 0 test FAILED.
-- Đã đối chiếu diff độc lập `de11b647...8c10f8c6`: chỉ 2 file báo cáo mới + mailbox, không đụng code, không đụng main. Báo cáo trung thực.
-- Gốc rễ: 4 file nguồn xls không còn trên máy nhà. Muse đã đối chiếu bản Drive tải về VM (27/09) — đủ 4 file, đúng tên/kích thước, có sha256 xác minh dưới đây.
+- OMP chạy đúng bước 6 của vé: 3 lần tải zip thất bại (gdown bản cũ không có `--fuzzy`; gdown trực tiếp bị chặn sign-in vì file Drive ở chế độ restricted; cookie Chrome bị Windows chặn; trình duyệt điều khiển chưa kết nối) → dừng đúng quy định, không bịa dữ liệu, không ghi index, không ghi ổ D.
+- Đối chiếu diff độc lập `fb97f6a...885569a`: chỉ sửa `docs/phieu-viec/mailbox/trang-thai.md` (+4/-4), không đụng code, không đụng `main`. Báo cáo trung thực, verdict độc lập giữ nguyên.
+- Gốc rễ của block: file zip trên Drive ở chế độ restricted → mọi cách tải ẩn danh đều chết. Vé này sửa đúng chỗ đó.
 
-## 4 file nguồn (tải từ link Drive user đã cung cấp — nguồn hợp lệ)
+## Đường tải mới (Muse đã mở — OMP chỉ việc tải, KHÔNG đổi quyền share)
 
-Link file zip (user upload ngày 2026-09-27): `https://drive.google.com/file/d/1jJpYPMgyPPRt2tPmuOuKEb8rWtwxB1eP/view?usp=drive_link`
+- 2026-09-28 ~04:35 +07: Muse đã bật **tạm** quyền "anyone with link → reader" (tắt discover công khai) cho file zip `1jJpYPMgyPPRt2tPmuOuKEb8rWtwxB1eP`. Muse đã xác minh ẩn danh: link dưới trả về được (đi qua trang xác nhận virus-scan của Drive — gdown tự xử lý).
+- Link tải trực tiếp: `https://drive.google.com/uc?export=download&id=1jJpYPMgyPPRt2tPmuOuKEb8rWtwxB1eP`
+- OMP **không** thay đổi quyền share của file dưới mọi hình thức. Muse thu hồi quyền ngay sau khi OMP báo tải xong (poll kế tiếp).
+
+## 4 file nguồn (giữ nguyên từ Vé V1.3 — đã xác minh byte trên VM ngày 27/09)
+
 Sau giải nén, 4 file nằm trong cây `dieu_tra_loi/Điều chỉnh/`:
 
 | File (GIỮ NGUYÊN tên, kể cả ký tự Nhật) | Kích thước (byte) | sha256 |
@@ -24,14 +28,16 @@ Sau giải nén, 4 file nằm trong cây `dieu_tra_loi/Điều chỉnh/`:
 
 ## Cách làm
 
-1. Tải zip từ link Drive trên (thử `gdown`/công cụ tải Drive trước; bị chặn sign-in thì tải bằng trình duyệt khi đã đăng nhập tài khoản user). Zip ~858 MB.
-2. Giải nén RA Ổ C (không bao giờ ghi ổ D) vào thư mục tạm mới, ví dụ `C:\tmp\aios-data-v13`. Nếu tên tiếng Nhật bị bung sai ký tự, giải nén lại bằng 7-Zip chế độ UTF-8 cho đến khi tên khớp y hệt bảng trên.
-3. Đối chiếu 4 file: kích thước + sha256 PHẢI khớp bảng. **Lệch bất kỳ file nào → dừng, báo nguyên vẹn, không dùng file đó** (fail-closed, cấm bịa).
-4. Đặt biến môi trường `AIOS_DATA_DIR` trỏ tới thư mục CHA của `dieu_tra_loi` (ví dụ `C:\tmp\aios-data-v13`), sao cho tồn tại `AIOS_DATA_DIR\dieu_tra_loi\Điều chỉnh\...` đúng cấu trúc zip.
-5. Dùng lại môi trường Python 3.11.14 + pytest 8.4.2 của Vé V1 (venv trên C, TMP/TEMP trên C):
+1. Nâng cấp gdown trước (bản trên máy cũ, thiếu `--fuzzy`): `pip install -U gdown`.
+2. Tải zip (~858 MB) bằng link trực tiếp ở trên, lưu vào `C:/tmp/aios-data-v14.zip`:
+   `gdown "https://drive.google.com/uc?id=1jJpYPMgyPPRt2tPmuOuKEb8rWtwxB1eP" -O C:/tmp/aios-data-v14.zip`
+3. Giải nén RA Ổ C vào thư mục tạm mới `C:\tmp\aios-data-v14` (không bao giờ ghi ổ D). Nếu tên tiếng Nhật bung sai ký tự, giải nén lại bằng 7-Zip chế độ UTF-8 cho đến khi tên khớp y hệt bảng trên.
+4. Đối chiếu 4 file: kích thước + sha256 PHẢI khớp bảng. **Lệch bất kỳ file nào → dừng, báo nguyên vẹn, không dùng file đó** (fail-closed, cấm bịa).
+5. Đặt biến môi trường `AIOS_DATA_DIR` trỏ tới thư mục CHA của `dieu_tra_loi` (ví dụ `C:\tmp\aios-data-v14`), sao cho tồn tại `AIOS_DATA_DIR\dieu_tra_loi\Điều chỉnh\...` đúng cấu trúc zip.
+6. Dùng lại môi trường Python 3.11.14 + pytest 8.4.2 của Vé V1 (venv trên C, TMP/TEMP trên C):
    - `pytest tests/test_rag_v2_ingest_manifest.py -q` → kỳ vọng 6/6.
    - `pytest tests/test_error_cases_f1.py tests/test_error_cases_f4.py -q` → kỳ vọng 26/26.
-6. Nếu KHÔNG tải được zip sau 3 lần thử (tối đa): dừng, ghi rõ "không tải được nguồn" trong báo cáo — chờ Muse lo đường khác.
+7. Nếu KHÔNG tải được zip sau 3 lần thử (tối đa): dừng, ghi rõ "không tải được nguồn" trong báo cáo — chờ Muse lo đường khác. Không thử lần 4.
 
 ## Cấm kỵ (fail-closed)
 
@@ -40,16 +46,17 @@ Sau giải nén, 4 file nằm trong cây `dieu_tra_loi/Điều chỉnh/`:
 - Không `git pull` tạo merge — `git fetch` + checkout commit rõ ràng. Không đụng `main`.
 - Không sửa code/test để "cho qua" — fail thì báo nguyên vẹn kèm traceback.
 - Không đưa 4 file xls vào Git (báo cáo chỉ ghi đường dẫn + sha256).
+- Không thay đổi quyền share của file Drive (Muse quản, sẽ thu hồi).
 
 ## Nghiệm thu
 
-Báo cáo `docs/phieu-viec/ket-qua/VE_V1_3_F4-voi-du-lieu-drive.md` gồm:
+Báo cáo `docs/phieu-viec/ket-qua/VE_V1_4_F4-windows.md` gồm:
 1. Commit checkout + ngày giờ, OS, Python.
-2. Cách tải zip (công cụ nào), 4 dòng đối chiếu kích thước + sha256 (khớp/lệch từng file).
+2. Cách tải zip (công cụ nào, gdown phiên bản mấy), 4 dòng đối chiếu kích thước + sha256 (khớp/lệch từng file).
 3. Kết quả từng suite (6/6 manifest; 26/26 error_cases) với log tóm tắt; khác biệt nào so với kết quả trên VM (VM: F4 11/11 pass trên Linux).
 
 Tiêu chí ĐẠT: 26/26 error_cases + 6/6 manifest pass 100% trên Windows, 4 sha256 khớp, không ghi index, mọi thao tác trên branch riêng (không đụng main).
 
 ## Sau vé này
 
-Vé V1.3 đạt → Muse phát hành Vé P1 "đóng dấu kho thử thành kho thật". Không tự mở P1 trước verdict.
+Vé V1.4 đạt → Muse phát hành Vé P1 "đóng dấu kho thử thành kho thật". Không tự mở P1 trước verdict.
