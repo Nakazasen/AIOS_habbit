@@ -11,6 +11,13 @@ from .column_map import (
     normalize_history_row,
     normalize_row,
 )
+from .glossary import (
+    PARSERS,
+    import_glossary,
+    init_glossary,
+    lookup as glossary_lookup,
+    norm_code,
+)
 from .store import (
     batch_stats,
     connect,
@@ -34,6 +41,11 @@ __all__ = [
     "is_positive_mark",
     "normalize_history_row",
     "normalize_row",
+    "PARSERS",
+    "import_glossary",
+    "init_glossary",
+    "glossary_lookup",
+    "norm_code",
     "batch_stats",
     "connect",
     "count_cases",
