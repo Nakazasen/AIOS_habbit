@@ -1,37 +1,31 @@
-# Vé 0 — Điều tra nhịp rơi (KHẨN, làm trước mọi thứ — CHỈ ĐỌC, không sửa)
+# Vé 0.2 — Chẩn đoán lỗi `sqlite3.OperationalError: disk I/O error` (KHẨN, CHỈ ĐỌC, không sửa)
 
 Ngày viết: 2026-09-27 (Muse). Branch: `phieu-viec/rag-fix1`. Không đụng `main`.
 
 ## Bối cảnh
 
-- Mẻ migration GPU (Vé B) đang chạy trên máy nhà (h410asrock), ghi vector bằng GPU theo mẻ 2.
-- Số liệu commit tiến độ 16:04–16:34 cho thấy: **nhịp 10 phút rơi một nửa trong nửa tiếng**.
-- Vé B vẫn chạy nền. Vé này CHỈ TÌM BỆNH, KHÔNG SỬA. Sửa là vé khác.
+- Vé 0 (ĐÃ DUYỆT): nhịp rơi 4,2× do chi phí SQLite lặp lại ở mỗi batch 2 (2 kết nối/batch: kiểm tra từng hàng rồi ghi dense+sparse trong 1 giao dịch, đồng hồ batch không tính overhead). Batch cuối chết ở `_upsert_batch` với `sqlite3.OperationalError: disk I/O error` lúc 16:48:24; mẻ đã dừng (6.128/99.003 = 6,19%).
+- **Chưa được giải thích:** nguyên nhân của `disk I/O error`. CẤM cho ghi tiếp (kể cả chạy mẫu) cho đến khi nguyên nhân rõ. Vé này CHỈ CHẨN ĐOÁN, không sửa. Sửa là vé khác.
+- Ghi nhận: Vé 0 có một lần `git pull` tạo merge `839ceea` dù prompt cấm — đã nhắc, lần này KHÔNG lặp lại.
 
-## Nghi phạm (điều tra theo đúng thứ tự ưu tiên)
+## Cách làm — CHỈ ĐỌC, CẤM TUYỆT ĐỐI ghi DB
 
-1. DB phình làm upsert chậm
-2. Nóng máy giảm xung (thermal throttling)
-3. Batch nghẽn
-4. Overhead kiểm tra mỗi batch
-5. VRAM cạn
+Cấm: ghi `library.sqlite` (kể cả qua script migration), vacuum, restart/pause bất cứ tiến trình nào, `git pull`, sửa code, đụng backup.
 
-## Cách làm — CHỈ ĐỌC, CẤM ĐỤNG MẺ ĐANG CHẠY
+Điều tra theo đúng thứ tự:
 
-- `nvidia-smi`: nhiệt độ, xung nhịp, VRAM đã dùng/trống — ghi số liệu theo thời gian, không chỉ chụp 1 điểm.
-- Kích thước file DB theo giờ (dir / `ls -la` kèm timestamp).
-- Timing từng batch trong log migration: thời gian/batch, batch size, xu hướng chậm dần hay rơi đột ngột.
-- CẤM TUYỆT ĐỐI: restart/pause mẻ, sửa code, vacuum DB, pull code mới, ghi index, đụng backup.
+1. **System log quanh 16:48:24**: Event Viewer → Windows Logs → System, lọc lỗi/warning từ nguồn `disk`, `Ntfs`, `nvstor`/`storahci`/`iaStorAC` trong khung 16:40–17:00. Ghi mã sự kiện + nội dung.
+2. **Sức khỏe ổ đĩa**: SMART (CrystalDiskInfo chụp số liệu hoặc `smartctl -a`), đặc biệt Reallocated Sector Count / Pending Sector / UDMA CRC Error Count. Ghi model ổ + % health.
+3. **Filesystem/thư mục index**: dung lượng trống còn lại; thư mục chứa `library.sqlite` có còn file `-wal`/`-shm`/`-journal` tồn đọng không (tên + kích thước + mtime).
+4. **SQLite chỉ-đọc** (mở kết nối `mode=ro` hoặc `PRAGMA query_only=ON`): `PRAGMA page_count;`, `PRAGMA freelist_count;`, `PRAGMA page_size;`, `PRAGMA journal_mode;`, `SELECT COUNT(*)` trên bảng vector dense ONNX. Không chạy `integrity_check` lại (Vé 0 đã làm, kết quả `ok`).
+5. **Test ghi kiểm soát**: tạo 1 file test tạm ~1MB trong cùng thư mục chứa index (không phải file DB), ghi/xóa ngay, đo có lỗi không. Đây là file test tạm duy nhất được phép tạo; xóa ngay sau khi đo.
 
 ## Nghiệm thu
 
-Báo cáo `docs/phieu-viec/ket-qua/VE0_dieu-tra-nhip-roi.md` gồm đúng 3 mục:
-1. Chỉ mặt nguyên nhân (1 nghi phạm chính + bằng chứng số liệu, loại trừ các nghi phạm còn lại bằng số).
-2. Cách sửa/giảm đề xuất (để vé sau làm — vé này KHÔNG sửa).
-3. Nhịp đã hồi lại hay chưa; nếu chưa, ETA mới cho mẻ migration.
+Báo cáo `docs/phieu-viec/ket-qua/VE0_2_chan-doan-disk-io-error.md` gồm:
 
-## Ràng buộc
+1. Chỉ mặt nguyên nhân `disk I/O error` (phần cứng / filesystem / quyền / phần mềm chặn ghi như AV — kèm số liệu và log trích dẫn).
+2. Đề xuất khắc phục cho vé sau (vé này KHÔNG sửa; nếu nguyên nhân phần cứng thì nêu phương án đổi nơi đặt index).
+3. Cập nhật nhịp/ETA hiện tại (mẻ vẫn dừng).
 
-- Commit riêng trên branch `phieu-viec/rag-fix1`, không đụng `main`.
-- Không embed thêm, không ghi index, không chạy `--apply` bất cứ thứ gì.
-- Số liệu từ lần đo thật trên máy h410asrock, ghi hostname + thời gian đo.
+Số liệu từ lần đo thật trên máy h410asrock, ghi hostname + thời gian đo.
