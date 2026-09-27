@@ -12,3 +12,4 @@
 - Ghi chú: OMP h410asrock 2026-09-27 19:36 +07 — mốc dry-run: 107.331 khối truy xuất, 14.456 vector ONNX hiện có, còn 92.875 cần migrate; `dry_run: no changes written`. Runtime đặt batch GPU 2, mẻ ngoài 16.
 - Ghi chú: OMP h410asrock 2026-09-27 19:39 +07 — backup C `C:\AIOS_habit_index_ve03\library.sqlite.bak-20260927-1936-ve03` (1.750.740.992 byte), SHA-256 trùng index; backup `PRAGMA integrity_check=ok`. C còn 2.203.815.936 byte; bắt đầu mẫu 5 mẻ (đầu/giữa/cuối), không ghi D.
 - Cập nhật lần cuối: 2026-09-27 19:39 +07 (OMP — backup đạt, sắp chạy mẫu Vé 0.3)
+- Ghi chú: 2026-09-27 20:11 +07 (USER QUYẾT ĐỊNH, Muse đã sửa prompt) — Mẻ thử trên C sạch thì RESUME NGAY TRONG TỐI NAY, không đo thêm gì nữa. Báo ETA mới ngay khi resume bắt đầu chạy.
