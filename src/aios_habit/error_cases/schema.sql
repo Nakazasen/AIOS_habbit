@@ -50,3 +50,8 @@ CREATE TABLE IF NOT EXISTS error_cases (
 CREATE INDEX IF NOT EXISTS idx_error_cases_no_dvd ON error_cases (no_dvd);
 CREATE INDEX IF NOT EXISTS idx_error_cases_line ON error_cases (line);
 CREATE INDEX IF NOT EXISTS idx_error_cases_batch ON error_cases (batch_id);
+
+-- Wider dedup key for the 29-column history format, where (year, NO)
+-- alone is not unique (same NO. reused for different machine/line).
+CREATE UNIQUE INDEX IF NOT EXISTS uq_error_cases_history
+    ON error_cases (no_dvd, machine_type, line);

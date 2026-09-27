@@ -98,22 +98,40 @@ def upsert_case(
     source_row: int,
     fields: Dict[str, Any],
     skip_cells: Optional[List[str]] = None,
+    format: str = "legacy",
 ) -> str:
     """Insert or update one case. Returns 'inserted' or 'updated'.
 
     Dedup key (legacy rule): UNIQUE(no_dvd, sheet_type, department).
+    History-29 format: UNIQUE(no_dvd, machine_type, line), because
+    (year, NO) alone is not unique in the history sheet (same NO.
+    reused for different machine/line).
     Green-skipped columns are recorded but never overwrite stored values:
     on conflict-update, columns listed in skip_cells keep their old value.
     """
     no_dvd = (fields.get("no_dvd") or "").strip()
-    if not no_dvd:
+    if not no_dvd or no_dvd == "/":
         raise ValueError("no_dvd (column A) is required")
     sheet_type = fields.get("sheet_type")
-    if sheet_type not in column_map.SHEET_TYPES:
-        raise ValueError(f"sheet_type must be one of {column_map.SHEET_TYPES}")
-
-    # Probe before write: timestamp comparison is unreliable within one second.
-    existed = get_case(conn, no_dvd, sheet_type, fields.get("department")) is not None
+    if format == "legacy":
+        if sheet_type not in column_map.SHEET_TYPES:
+            raise ValueError(f"sheet_type must be one of {column_map.SHEET_TYPES}")
+        conflict = "(no_dvd, sheet_type, department)"
+        existed = get_case(conn, no_dvd, sheet_type, fields.get("department")) is not None
+    elif format == "history_29":
+        if not (fields.get("machine_type") and fields.get("line")):
+            raise ValueError("history_29 requires machine_type (D) and line (E)")
+        conflict = "(no_dvd, machine_type, line)"
+        existed = (
+            conn.execute(
+                """SELECT id FROM error_cases
+                   WHERE no_dvd = ? AND machine_type = ? AND line = ?""",
+                (no_dvd, fields.get("machine_type"), fields.get("line")),
+            ).fetchone()
+            is not None
+        )
+    else:
+        raise ValueError(f"unknown format: {format}")
 
     raw_json = json.dumps(fields.get("raw") or {}, ensure_ascii=False, default=str)
     skip_json = json.dumps(skip_cells or [], ensure_ascii=False)
@@ -164,7 +182,7 @@ def upsert_case(
                     :machine_type, :line, :error_code_c, :error_code_h,
                     :investigation, :handler, :is_completed, :needs_jp_support,
                     :raw_json, :skip_cells)
-            ON CONFLICT (no_dvd, sheet_type, department) DO UPDATE SET
+            ON CONFLICT {conflict} DO UPDATE SET
             {", ".join(update_sets)}""",
         params,
     )

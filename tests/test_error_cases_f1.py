@@ -186,3 +186,80 @@ def test_validation_errors(conn):
 
 def test_sheet_types():
     assert set(SHEET_TYPES) == {"Máy in", "KIT"}
+
+
+# ---------------------------------------------------------------------------
+# history_29 format profile (recon 2026-09-27 on Loi KDTPS.xlsx)
+# ---------------------------------------------------------------------------
+from aios_habit.error_cases import (  # noqa: E402
+    HISTORY_29_MAP,
+    history_no_dvd,
+    normalize_history_row,
+)
+
+
+def make_history_row(over=None):
+    cells = [None] * 29
+    base = {
+        0: 2024, 1: 3422, 3: "Sirius 2", 4: "C23", 6: "SER123",
+        7: "ERROR", 13: "JP text", 14: "VN text", 15: "ME",
+        21: "×", 24: "2024-01-01",
+    }
+    base.update(over or {})
+    for i, v in base.items():
+        cells[i] = v
+    return cells
+
+
+def test_history_29_map_columns():
+    assert HISTORY_29_MAP[3] == "machine_type"   # D, not C
+    assert HISTORY_29_MAP[4] == "line"           # E is the true line
+    assert HISTORY_29_MAP[7] == "error_code_h"   # H category
+    assert HISTORY_29_MAP[15] == "department"    # P
+    assert history_no_dvd(2024, 3422) == "2024/3422"
+
+
+def test_normalize_history_row():
+    f = normalize_history_row(make_history_row())
+    assert f["no_dvd"] == "2024/3422"
+    assert f["machine_type"] == "Sirius 2"
+    assert f["line"] == "C23"
+    assert f["error_code_h"] == "ERROR"
+    assert f["investigation"] == "VN text"   # VN preferred
+    assert f["department"] == "ME"
+    assert f["handler"] is None              # no person column in this format
+    assert f["is_completed"] == ""           # V is LKATQT, not completion
+    assert f["needs_jp_support"] == ""       # Y is unhold date, not JP support
+    assert len(f["raw"]) == 29
+    # VN empty -> fallback to JP
+    f2 = normalize_history_row(make_history_row({14: ""}))
+    assert f2["investigation"] == "JP text"
+
+
+def test_history_29_dedup_wider_key(conn):
+    """Same (year, NO) with different machine/line are distinct cases."""
+    b = start_batch(
+        conn, source_file="Loi KDTPS.xlsx", file_sha256="h29",
+        sheet_name="History KDTPS", sheet_type="Máy in",
+    )
+    r1 = normalize_history_row(make_history_row())
+    r2 = normalize_history_row(make_history_row({3: "6th A4", 4: "C25"}))
+    assert upsert_case(conn, batch_id=b, source_row=5, fields=r1,
+                       format="history_29") == "inserted"
+    assert upsert_case(conn, batch_id=b, source_row=6, fields=r2,
+                       format="history_29") == "inserted"
+    assert count_cases(conn) == 2
+    # Same triple -> update, not a third row
+    r3 = normalize_history_row(make_history_row({14: "VN moi"}))
+    assert upsert_case(conn, batch_id=b, source_row=5, fields=r3,
+                       format="history_29") == "updated"
+    assert count_cases(conn) == 2
+
+
+def test_history_29_requires_machine_and_line(conn):
+    b = start_batch(conn, source_file="x.xlsx", file_sha256="s",
+                    sheet_name="s", sheet_type="KIT")
+    bad = normalize_history_row(make_history_row({4: None}))
+    with pytest.raises(ValueError):
+        upsert_case(conn, batch_id=b, source_row=5, fields=bad,
+                    format="history_29")

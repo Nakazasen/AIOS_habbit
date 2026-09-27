@@ -2,10 +2,13 @@
 from .column_map import (
     COLUMN_MAP,
     GREEN_SKIP_RGB,
+    HISTORY_29_MAP,
     SHEET_TYPES,
     col_letter,
+    history_no_dvd,
     is_green_skip,
     is_positive_mark,
+    normalize_history_row,
     normalize_row,
 )
 from .store import (
@@ -23,10 +26,13 @@ from .store import (
 __all__ = [
     "COLUMN_MAP",
     "GREEN_SKIP_RGB",
+    "HISTORY_29_MAP",
     "SHEET_TYPES",
     "col_letter",
+    "history_no_dvd",
     "is_green_skip",
     "is_positive_mark",
+    "normalize_history_row",
     "normalize_row",
     "batch_stats",
     "connect",
