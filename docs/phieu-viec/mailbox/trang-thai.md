@@ -1,9 +1,10 @@
 # Trạng thái mailbox
 
-- Trạng thái: `dang-lam`
-- Ticket hiện tại: Vé A — chốt điểm dừng G1 (verify integrity index ~1,7GB + ghi điểm resume chính xác, chỉ đọc) → Vé B — đường GPU (khảo sát onnxruntime-gpu + CUDA cho GTX 1060 3GB, mẻ thử 20 chunk; đạt thì resume pending bằng GPU, không đạt thì báo chạy CPU tiếp)
-- Ticket trước: G1 — TẠM DỪNG theo lệnh user 2026-09-27 (đã dừng mẻ embed CPU; file index ~1,7GB nguyên vẹn; nạp văn bản 433/433 xong, embedding chạy dở giữa chừng)
-- Commit: `b223d3d` (Vé B: đang tiếp tục ghi vector bằng GPU theo mẻ 2)
-- Báo cáo: `docs/phieu-viec/ket-qua/G1_checkpoint_diem-dung.md`
-- Ghi chú: 2026-09-27 16:34 +0700 (máy h410asrock) — 5398/99003 khối còn thiếu đã được ghi bằng GPU, mẻ 2; bản sao lưu mới đã integrity_check=ok. Đang tiếp tục ghi vector bằng gpu theo mẻ 2.
-- Cập nhật lần cuối: 2026-09-27 16:34 +0700 (OMP — đang tiếp tục ghi vector bằng GPU theo mẻ 2)
+- Trạng thái: `moi`
+- Ticket hiện tại: Vé 0 — Điều tra nhịp rơi (KHẨN, CHỈ ĐỌC — cấm đụng mẻ đang chạy)
+- Ticket trước: Vé B — đường GPU (mẻ 2 đang chạy nền trên máy nhà, 5398/99003 khối lúc 16:34; Vé 0 không được restart/pause/sửa/vacuum mẻ này)
+- Ticket trước nữa: Vé A — chốt điểm dừng G1 (xong, báo cáo `docs/phieu-viec/ket-qua/G1_checkpoint_diem-dung.md`)
+- Commit: ``
+- Báo cáo: ``
+- Ghi chú: Vé 0 làm trước mọi thứ. Vé B tiếp tục chạy nền, không ai được đụng vào cho đến khi Vé 0 có báo cáo.
+- Cập nhật lần cuối: 2026-09-27 16:39 +0700 (Muse — phát hành Vé 0 khẩn)
