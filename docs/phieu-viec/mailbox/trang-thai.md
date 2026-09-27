@@ -1,9 +1,7 @@
 # Trạng thái mailbox
 
-- Trạng thái: `dang-lam`
-- Ticket hiện tại: G1 — kiểm kê + ingest dữ liệu LSU và case lỗi theo quy trình D2 (sau E3/E4); báo rõ loại file extractor không hỗ trợ.
-- Ticket trước: E4 — ĐẠT (Muse review 2026-09-27: diff 77c804b6+3aa4280 khớp báo cáo; alias onnx/auto→onnx, onnx_int8 tách riêng dir/checksum/fingerprint; fail-closed khi thiếu model; 63 test liên quan đạt; full suite 3.146 passed + 23 lỗi môi trường cũ, không PASS giả; index chỉ đọc pending 0, integrity ok)
-- Mã nguồn E4: `77c804b6b26dd433f18be39e0770d06e0b559931` (+ sửa worker `3aa4280fe1e968da635e86ba7b28dff760c6dc40`)
-- Báo cáo E4: `docs/phieu-viec/ket-qua/FIX3_backend-E4-default-onnx.md`
-- Ghi chú: Nạp văn bản hoàn tất 433/433: 422 nguồn mới, 3 nguồn trùng toàn bộ, 8 nguồn trống nội dung. Dry-run ONNX ghi nhận 106.267 vector mới pending; tiến trình áp dụng embedding đang chạy, không tái nhúng vectors cũ.
-- Cập nhật lần cuối: 2026-09-27 12:03 +0700 (OMP — bắt đầu áp dụng ONNX)
+- Trạng thái: `moi`
+- Ticket hiện tại: Vé A — chốt điểm dừng G1 (verify integrity index ~1,7GB + ghi điểm resume chính xác, chỉ đọc) → Vé B — đường GPU (khảo sát onnxruntime-gpu + CUDA cho GTX 1060 3GB, mẻ thử 20 chunk; đạt thì resume pending bằng GPU, không đạt thì báo chạy CPU tiếp)
+- Ticket trước: G1 — TẠM DỪNG theo lệnh user 2026-09-27 (đã dừng mẻ embed CPU; file index ~1,7GB nguyên vẹn; nạp văn bản 433/433 xong, embedding chạy dở giữa chừng)
+- Ghi chú: Gate cứng (user 2026-09-27): không code thật thì không vé mới. Luật verify: Muse làm → OMP (hoặc user) verify lại, không vừa đá vừa thổi còi. Dữ liệu/model phía Muse tự kéo, không bắt máy nhà upload.
+- Cập nhật lần cuối: 2026-09-27 (Muse — viết vé A + vé B)
