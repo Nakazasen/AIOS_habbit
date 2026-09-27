@@ -1,92 +1,78 @@
-# Vé P1.2 — Xác định kho production thật của collection tri_thuc (chỉ đọc)
+# Vé P1.3 — Đóng dấu kho thật: backup + chép canary đè production + chạy B1–B5
 
 Ngày viết: 2026-09-28 (Muse). Chế độ tự lái: Muse ra vé → OMP thực hiện độc lập
 trên Windows (luật "không vừa đá vừa thổi còi").
 Nhánh: `phieu-viec/rag-fix1`. Không đụng `main`. Máy: `h410asrock` (Win 10 Pro).
-Thuộc chuỗi P1 (đóng dấu kho thật); bước 1 của P1 đã đạt, không làm lại.
 
-## Verdict Vé P1.1: CHƯA ĐẠT đóng dấu — nhưng KHÔNG phải lỗi OMP
+## Bối cảnh (đã đạt, không làm lại)
 
-- OMP dừng đúng theo vé (fail-closed): `storage_root` của collection `tri_thuc`
-  rỗng, chưa có bằng chứng xác định runtime/profile production; không bịa đường
-  dẫn, không backup mù, không chép đè, không chạy B1–B5, không ghi index nào.
-  Báo cáo `docs/phieu-viec/ket-qua/VE_P1_1_dong-dau-kho-that.md` (commit `bdda73c`).
-- Lỗi ở phía Muse: vé P1.1 bảo OMP "mở app → xem storage root" mà không cho chuỗi
-  phân giải chính xác. Vé này đính chính bằng code thật (đã tra độc lập).
+- Vé P1 bước 1 (ĐẠT): kho canary `C:\AIOS_habit_index_ve03\library.sqlite` —
+  integrity_check=ok, ONNX dense/sparse 107.331/107.331,
+  fingerprint `016c5255d0cec1fcb75b99f71f3c6a47a6e67b6087c3eb943b039cf8ac6274fb`
+  khớp E1, pending=0. Đây là file NGUỒN.
+- Vé P1.2 (ĐẠT, commit `5647df3`): đường dẫn production thật của collection `tri_thuc`:
+  `D:\Sandbox\AIOS_habbit\local_runs\workspace_chat_rag_v2_production\bge_m3_hybrid\collections\tri_thuc\library.sqlite`
+  (file cũ 32.452.608 byte, quick_check=ok). Repo root `D:/Sandbox/AIOS_habbit` đã xác nhận.
+  Manifest `config\workspace_chat_rag_v2.local.json` activated →
+  runtime_root=`..._production`, profile=`bge_m3_hybrid`. App mở bình thường là đọc
+  đúng production, KHÔNG cần đổi config.
 
-## Sự thật từ code (Muse đã verify từ repo + test, không đoán)
+## Lệnh cấm ghi ổ D — ngoại lệ một lần có giới hạn
 
-1. App chạy từ repo root: `RUN_AIOS_WORKSPACE_CHAT.bat` làm `cd /d "%~dp0"`
-   → cwd = thư mục repo mà user thật sự mở app.
-2. `WorkspaceChatRagV2CanaryConfig.from_env()`
-   (`src/aios_habit/workspace_chat_rag_v2_adapter.py`):
-   - Deployment manifest: env `AIOS_WORKSPACE_RAG_V2_MANIFEST`, nếu không có thì
-     `<repo_root>/config/workspace_chat_rag_v2.local.json`. Nếu tồn tại VÀ activated
-     thì `runtime_root`/`requested_profile` lấy từ manifest.
-   - Nếu không: env `AIOS_WORKSPACE_RAG_V2_RUNTIME_ROOT` (mặc định
-     `local_runs/workspace_chat_rag_v2_canary`, tương đối so với cwd) và
-     `AIOS_WORKSPACE_RAG_V2_PROFILE` (mặc định `bge_m3_hybrid`).
-   - `.env` local cũng được nạp (`load_env_file()` trong `workspace_paths.py`).
-3. Collection `tri_thuc` = `DEFAULT_COLLECTION_ID` (`workspace_chat_models.py`),
-   `storage_root` rỗng → `collection_runtime_layout("tri_thuc", profile_root)`
-   (`workspace_chat_store.py`) trả về `<profile_root>/collections/tri_thuc`,
-   file = `library.sqlite`. Test `test_default_collection_uses_dedicated_folder`
-   trong `tests/test_workspace_chat_store.py` khẳng định đúng công thức này.
-4. Với mặc định và cwd = repo root:
-   `<repo_root>\local_runs\workspace_chat_rag_v2_canary\bge_m3_hybrid\collections\tri_thuc\library.sqlite`
-5. Gợi ý từ lượt dò trước: `collections.jsonl` nằm ở
-   `C:\c\AIOS_ve03_worktree\local_cases\workspace_chat\collections.jsonl`
-   → repo root nghi vấn là `C:\c\AIOS_ve03_worktree`. CẦN XÁC NHẬN đây có phải
-   checkout mà user mở app hay không (`git worktree list` + shortcut mở app).
-   LƯU Ý: vẫn có khả năng user mở app từ checkout khác — xác nhận, không đoán.
+- Ổ D (HDD WDC WD2500AAKX) hỏng dần mặt đĩa; lệnh "cấm ghi ổ D vĩnh viễn" của user
+  vẫn hiệu lực cho mọi hoạt động index thường xuyên (embed, migration, vacuum,
+  benchmark ghi).
+- Nhưng kế hoạch P1 (user chốt 22:43 ngày 27/09, SAU lệnh cấm) yêu cầu đóng dấu kho
+  canary thành kho production, mà production nằm trên D. Vì vậy vé này cho phép
+  NGOẠI LỆ MỘT LẦN: đúng 1 lần copy 1 file (~1,75GB) từ C sang D theo bước 2 dưới.
+  Mọi ghi khác lên D trong vé này đều cấm.
+- Fail-closed: backup nằm trên ổ C nên dữ liệu an toàn dù D có hỏng giữa chừng.
+  Bất kỳ lỗi I/O nào trên D trong vé này → DỪNG NGAY, báo nguyên văn, giữ nguyên
+  mọi file, không thử lại lần 2.
+- Sau vé này (ghi chú cho P2/P3): production vẫn nằm trên ổ hỏng dần — cần vé di
+  chuyển production sang ổ C + cập nhật manifest. Ghi nhận trong báo cáo, không
+  làm trong vé này.
 
-## Cách làm (chỉ đọc, đúng thứ tự)
+## Cách làm (đúng thứ tự)
 
-1. Xác nhận checkout app: `git worktree list` trên máy; đối chiếu với shortcut/
-   cách user mở app (file .bat nào được bấm). Ghi rõ repo root được xác nhận.
-2. Từ repo root đã xác nhận, chạy one-liner CHỈ ĐỌC bằng `.venv` của repo
-   (cwd = repo root, KHÔNG mở Streamlit):
-   ```python
-   from pathlib import Path
-   from aios_habit.workspace_chat_rag_v2_adapter import WorkspaceChatRagV2CanaryConfig
-   from aios_habit.workspace_chat_store import collection_runtime_layout, DEFAULT_COLLECTION_ID
-   cfg = WorkspaceChatRagV2CanaryConfig.from_env()
-   profile_root = cfg.runtime_root / cfg.requested_profile
-   root, name = collection_runtime_layout(DEFAULT_COLLECTION_ID, profile_root)
-   print("runtime_root:", cfg.runtime_root)
-   print("requested_profile:", cfg.requested_profile)
-   print("library:", root / name)
-   print("exists:", (root / name).is_file())
-   ```
-   Ghi nguyên output vào báo cáo.
-3. Ghi rõ chuỗi override nào đã kích hoạt: manifest tồn tại + activated?
-   (đường dẫn manifest nào), env nào được set (kiểm tra cả `.env` local)?
-   Hay toàn bộ mặc định?
-4. Nếu file library tồn tại: kiểm tra read-only `PRAGMA quick_check` + kích thước,
-   ghi vào báo cáo. Nếu KHÔNG tồn tại: DỪNG fail-closed, báo lại, không suy đoán
-   sang đường dẫn khác.
+1. Backup: copy file production trên D →
+   `C:\AIOS_backup_production_2026-09-28\library.sqlite.backup` (đọc D, ghi C;
+   tạo thư mục C nếu chưa có). `PRAGMA quick_check` trên file backup (mode=ro)
+   phải = `ok`. Ghi sha256 + kích thước file D cũ vào báo cáo.
+2. Copy: `C:\AIOS_habit_index_ve03\library.sqlite` → chép đè lên đường dẫn
+   production trên D. MỘT lần duy nhất. I/O error → DỪNG theo mục trên.
+3. Verify: sha256(file đích trên D) == sha256(file nguồn canary trên C); kích
+   thước khớp; `PRAGMA quick_check` file đích (mode=ro) = `ok`.
+4. Smoke test trên app thật: mở app bình thường (không sửa config — manifest đã
+   trỏ production). In đường dẫn library app thật sự mở (one-liner của P1.2) để
+   xác nhận đúng file vừa chép. Chạy B1–B5 (B4 LOẠI khỏi chấm điểm theo kế hoạch
+   chuỗi E vì ground truth không có trong corpus — không bịa đáp án). Ghi nguyên
+   văn kết quả từng câu, thời gian chạy, backend dùng (kỳ vọng default ONNX).
+5. Không làm gì thêm: không embed, không vacuum, không đổi manifest/env,
+   không sửa code.
 
 ## Cấm kỵ
 
-- Chỉ đọc. Không backup, không copy, không chép đè, không chạy B1–B5 trong vé này
-  (đó là P1.3 sau khi đường dẫn được xác nhận).
-- Cấm vĩnh viễn GHI ổ D. Mọi thao tác trên ổ C.
-- Không `git pull` tạo merge — `git fetch` + checkout commit rõ ràng. Không đụng `main`.
+- Ngoại trừ bước 2, cấm mọi ghi lên ổ D.
+- Không `git pull` tạo merge — `git fetch` + làm trên nhánh vé. Không đụng `main`.
 - Không sửa code/test để "cho qua" — fail thì báo nguyên vẹn kèm số đo.
 
 ## Nghiệm thu
 
-Báo cáo `docs/phieu-viec/ket-qua/VE_P1_2_xac-dinh-kho-production.md` gồm:
-1. Repo root đã xác nhận + bằng chứng (worktree list / shortcut).
-2. Output nguyên văn của one-liner + chuỗi override kích hoạt (manifest/env/mặc định).
-3. Kết quả tồn tại + quick_check + kích thước của `library.sqlite` production.
-4. Hostname máy chạy, thời điểm kiểm tra.
+Báo cáo `docs/phieu-viec/ket-qua/VE_P1_3_dong-dau-kho-that.md` gồm:
+1. sha256 + kích thước: file nguồn canary, file D cũ, file backup trên C,
+   file đích trên D (sau chép).
+2. quick_check của 3 file (backup, nguồn, đích) — đều phải `ok`.
+3. Thời gian copy + có/không I/O error trên D.
+4. Đường dẫn library app thật sự mở + kết quả B1–B5 nguyên văn (B4 loại),
+   backend, thời gian chạy.
+5. Hostname máy chạy, thời điểm kiểm tra, nhánh.
 
-Tiêu chí ĐẠT: đường dẫn production được xác định bằng chuỗi phân giải đầy đủ
-(repo root → manifest/env → runtime_root/profile → collections/tri_thuc/library.sqlite),
-có bằng chứng từng bước. Không cần đoán.
+Tiêu chí ĐẠT: backup ok trên C + sha256 đích == nguồn + quick_check đích ok +
+app mở đúng kho production mới + B1/B2/B3/B5 đúng nội dung (không bịa),
+B1–B5 chạy không lỗi.
 
 ## Sau vé này
 
-Vé P1.2 đạt → Muse phát hành Vé P1.3 "backup + chép canary đè production +
-B1–B5 + đóng dấu". Không tự mở P1.3 trước verdict.
+P1.3 đạt → P1 hoàn tất (kho thật đã đóng dấu) → Muse phát hành Vé P2
+(mang sang máy công ty KDTVN-PC0575). Không tự mở P2 trước verdict.
