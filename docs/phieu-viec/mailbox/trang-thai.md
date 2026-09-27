@@ -14,3 +14,4 @@
 - Cập nhật lần cuối: 2026-09-27 20:45 +07 (OMP — nhận vé sau khi đồng bộ nhánh)
 - Ghi chú: 2026-09-27 20:11 +07 (USER QUYẾT ĐỊNH, Muse đã sửa prompt) — Mẻ thử trên C sạch thì RESUME NGAY TRONG TỐI NAY, không đo thêm gì nữa. Báo ETA mới ngay khi resume bắt đầu chạy.
 - Ghi chú: OMP h410asrock 2026-09-27 20:45 +07 — đã kéo nhánh theo yêu cầu, đọc quy ước và prompt Vé 0.3; tiếp tục kiểm tra mẫu trên C trước quyết định resume. Các thay đổi mã nguồn đang có sẵn được giữ nguyên.
+- Ghi chú: 2026-09-27 20:54 +07 (USER QUYẾT ĐỊNH, Muse đã sửa prompt) — Mẻ ghi ngoài TỐI ĐA 50–100 khối/chốt (batch GPU trong giữ 2). Mẫu = 1 mẻ to: integrity đạt + nhịp ổn → resume ngay toàn bộ 92.875 khối, khỏi đo 3 mốc. Chấp nhận rủi ro chạy lại cả mẻ nếu sập (ổ C khỏe, backup mới có); chỉ dừng khi sập do I/O error.
