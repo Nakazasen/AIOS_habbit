@@ -94,6 +94,89 @@ _PREPARATION_ACTIVE_STATES = PREP_ACTIVE_STATES
 _PREPARATION_READY_STATE = PREP_STATE_READY
 
 
+def _expected_backend_fingerprint(config: WorkspaceChatRagV2CanaryConfig) -> str:
+    """Fingerprint of the embedding backend the E-chain currently selects.
+
+    Mirrors exactly how ``rag_v2/pipeline.py`` constructs the embedding
+    backend (``BGE_BACKEND`` env wins, otherwise the default ONNX fp32
+    backend) and copies the ``SemanticModelDescriptor`` arguments 1:1 from
+    ``OnnxInt8BgeM3Backend`` / ``BgeM3Backend``, so this matches the
+    ``model_fingerprint`` stamped on vectors at embed time. The model itself
+    is never loaded: only env, sidecar files, and package metadata are read.
+
+    Returns "" when the expected fingerprint cannot be determined (missing
+    pinned revision/checksum, unknown backend name, or model directory
+    unavailable). Callers must treat "" as NOT READY (fail closed): the
+    prepare gate must never claim vectors are trustworthy when the backend
+    identity is unknown. A backend switch therefore marks sources pending
+    and the worker re-embeds them (self-healing) instead of silently serving
+    vectors produced by a different backend.
+    """
+    try:
+        from aios_habit.rag_v2.bge_onnx_backend import (
+            BGE_M3_DIMENSION,
+            BGE_M3_MODEL_ID,
+            DEFAULT_BGE_BACKEND,
+            _onnxruntime_version,
+            require_onnx_model_dir,
+            resolve_bge_backend_name,
+            resolve_onnx_checksum,
+        )
+        from aios_habit.rag_v2.semantic import SemanticModelDescriptor
+    except Exception:
+        return ""
+    revision = (config.bge_m3_model_revision or "").strip()
+    if not revision:
+        return ""
+    try:
+        backend_name = resolve_bge_backend_name(DEFAULT_BGE_BACKEND)
+    except Exception:
+        return ""
+    try:
+        if backend_name in ("onnx", "onnx_int8"):
+            # Same construction as pipeline.py -> OnnxInt8BgeM3Backend:
+            # checksum comes from the ONNX sidecar, device is hardcoded.
+            model_dir = require_onnx_model_dir(backend_name=backend_name)
+            checksum = resolve_onnx_checksum(model_dir)
+            descriptor = SemanticModelDescriptor(
+                model_id=BGE_M3_MODEL_ID,
+                revision=revision,
+                runtime="onnxruntime-int8",
+                runtime_version=_onnxruntime_version(),
+                dimension=BGE_M3_DIMENSION,
+                normalized=True,
+                artifact_checksum=checksum,
+                device="cpu",
+            )
+        elif backend_name == "pytorch":
+            # Same construction as pipeline.py -> BgeM3Backend: the pinned
+            # checksum IS the verified tree hash (verify_model_tree raises on
+            # mismatch), device comes from the retrieval config.
+            from aios_habit.rag_v2.retrieval_backends import _flag_embedding_version
+
+            digest = (config.bge_m3_model_checksum or "").strip().removeprefix("sha256:")
+            if len(digest) != 64 or any(
+                c not in "0123456789abcdefABCDEF" for c in digest
+            ):
+                return ""
+            descriptor = SemanticModelDescriptor(
+                model_id=BGE_M3_MODEL_ID,
+                revision=revision,
+                runtime="flagembedding-pytorch",
+                runtime_version=_flag_embedding_version(),
+                dimension=BGE_M3_DIMENSION,
+                normalized=True,
+                artifact_checksum=f"sha256:{digest.lower()}",
+                device=(config.retrieval_device or "cpu").strip() or "cpu",
+            )
+        else:
+            return ""
+        fingerprint = descriptor.fingerprint
+    except Exception:
+        return ""
+    return fingerprint if len(fingerprint) == 64 else ""
+
+
 @dataclass(frozen=True)
 class SourcePreparationLedgerRow:
     """Persistent ledger record for document preparation and embedding readiness."""
@@ -110,6 +193,9 @@ class SourcePreparationLedgerRow:
     document_id: str = ""
     created_at: float = 0.0
     updated_at: float = 0.0
+    # Fingerprint of the embedding backend (see _expected_backend_fingerprint)
+    # that produced the vectors. "" = stamped before the backend-aware gate.
+    model_fingerprint: str = ""
 
 
 _PREPARATION_REGISTRY: dict[str, dict[str, Any]] = {}
@@ -499,9 +585,23 @@ def sanitize_citation_title(title: str) -> str:
 
 
 def _runtime_key(config: WorkspaceChatRagV2CanaryConfig, profile: str) -> str:
+    # G2: the backend name is part of the runtime identity. A backend switch
+    # (onnx <-> pytorch) must invalidate cached pipelines and in-memory READY
+    # entries, otherwise the gate would report READY for vectors the current
+    # backend cannot use.
+    try:
+        from aios_habit.rag_v2.bge_onnx_backend import (
+            DEFAULT_BGE_BACKEND,
+            resolve_bge_backend_name,
+        )
+
+        backend_name = resolve_bge_backend_name(DEFAULT_BGE_BACKEND)
+    except Exception:
+        backend_name = ""
     payload = {
         "runtime_root": str(config.runtime_root.resolve()),
         "profile": profile,
+        "bge_backend": backend_name,
         "model_path": (
             str(config.bge_m3_model_path.resolve()) if config.bge_m3_model_path else ""
         ),
@@ -824,7 +924,13 @@ def _durable_semantic_coverage_ready(
     source: WorkspaceAIContextSource,
     config: WorkspaceChatRagV2CanaryConfig,
 ) -> bool:
-    """Check an existing local BGE index without loading the model again."""
+    """Check an existing local BGE index without loading the model again.
+
+    G2 backend-aware prepare gate: vectors only count when their
+    ``model_fingerprint`` matches the embedding backend the E-chain currently
+    selects. A backend switch therefore fails closed here instead of silently
+    trusting vectors produced by a different backend.
+    """
     from aios_habit.workspace_chat_store import collection_runtime_layout
 
     collection_id = _collection_id_for_sources((source,))
@@ -832,6 +938,9 @@ def _durable_semantic_coverage_ready(
     collection_root, index_filename = collection_runtime_layout(collection_id, profile_root)
     index_path = collection_root / index_filename
     if not index_path.is_file() or not config.bge_m3_model_revision:
+        return False
+    expected_fingerprint = _expected_backend_fingerprint(config)
+    if not expected_fingerprint:
         return False
     document_id = _document_id(source)
     try:
@@ -848,8 +957,9 @@ def _durable_semantic_coverage_ready(
                 """SELECT COUNT(DISTINCT c.chunk_id)
                    FROM chunks c JOIN chunk_embeddings e ON e.chunk_id=c.chunk_id
                    WHERE c.document_id=? AND c.retrievable=1
-                     AND e.model_id='BAAI/bge-m3' AND e.model_revision=?""",
-                (document_id, config.bge_m3_model_revision),
+                     AND e.model_id='BAAI/bge-m3' AND e.model_revision=?
+                     AND e.model_fingerprint=?""",
+                (document_id, config.bge_m3_model_revision, expected_fingerprint),
             ).fetchone()[0])
             sparse = int(connection.execute(
                 """SELECT COUNT(DISTINCT c.chunk_id)
@@ -858,14 +968,80 @@ def _durable_semantic_coverage_ready(
                    JOIN chunk_sparse_embeddings s
                      ON s.chunk_id=c.chunk_id AND s.model_fingerprint=d.model_fingerprint
                    WHERE c.document_id=? AND c.retrievable=1
-                     AND d.model_id='BAAI/bge-m3' AND d.model_revision=?""",
-                (document_id, config.bge_m3_model_revision),
+                     AND d.model_id='BAAI/bge-m3' AND d.model_revision=?
+                     AND d.model_fingerprint=?""",
+                (document_id, config.bge_m3_model_revision, expected_fingerprint),
             ).fetchone()[0])
             return dense == retrievable and sparse == retrievable
         finally:
             connection.close()
     except (OSError, RuntimeError, sqlite3.Error):
         return False
+
+
+def _backfill_ledger_fingerprint(
+    db_path: Path,
+    row: SourcePreparationLedgerRow,
+    fingerprint: str,
+) -> None:
+    """Stamp a legacy ledger row after the index itself validated its vectors.
+
+    Best-effort: failures leave the row unstamped and the next gate call
+    simply re-validates against the index.
+    """
+    if not fingerprint:
+        return
+    try:
+        conn = sqlite3.connect(db_path, timeout=10.0)
+        try:
+            with conn:
+                conn.execute(
+                    f"""UPDATE {PREPARATION_LEDGER_TABLE}
+                        SET model_fingerprint=?, updated_at=?
+                        WHERE source_scope=? AND source_id=?
+                          AND (model_fingerprint IS NULL OR model_fingerprint='')""",
+                    (fingerprint, time.time(), row.source_scope, row.source_id),
+                )
+        finally:
+            conn.close()
+    except sqlite3.Error:
+        pass
+
+
+def _ledger_fingerprint_ready(
+    *,
+    db_path: Path,
+    row: SourcePreparationLedgerRow,
+    source: WorkspaceAIContextSource,
+    config: WorkspaceChatRagV2CanaryConfig,
+    expected_fingerprint: str,
+) -> bool:
+    """Backend-aware READY check for one ledger row (G2 prepare gate).
+
+    A row counts as ready only when its vectors were produced by the embedding
+    backend the E-chain currently selects. ``expected_fingerprint`` is computed
+    once per gate call; "" means the backend identity is unknown -> never
+    ready (fail closed).
+
+    Rows written before this gate existed carry an empty ``model_fingerprint``.
+    For those, the index itself is the authority: ``_durable_semantic_coverage_ready``
+    (now fingerprint-aware) validates the vectors and the stamp is backfilled,
+    so the next call takes the fast path. A backend switch therefore marks
+    sources pending and the worker re-embeds them (self-healing) instead of
+    serving vectors from the wrong backend.
+    """
+    if not expected_fingerprint:
+        return False
+    if row.model_fingerprint == expected_fingerprint:
+        return True
+    if row.model_fingerprint:
+        # Stamped by a different backend -> stale, needs re-embedding.
+        return False
+    # Legacy row: validate against the index, then backfill the stamp.
+    if _durable_semantic_coverage_ready(source, config):
+        _backfill_ledger_fingerprint(db_path, row, expected_fingerprint)
+        return True
+    return False
 
 
 
@@ -1297,6 +1473,21 @@ def _init_preparation_ledger_db(db_path: Path) -> None:
                     f"""CREATE INDEX IF NOT EXISTS idx_prep_ledger_state_priority
                         ON {PREPARATION_LEDGER_TABLE} (state, priority, updated_at)"""
                 )
+                # G2 backend-aware prepare gate: older ledgers lack the column.
+                try:
+                    existing_columns = {
+                        info[1]
+                        for info in conn.execute(
+                            f"PRAGMA table_info({PREPARATION_LEDGER_TABLE})"
+                        ).fetchall()
+                    }
+                    if "model_fingerprint" not in existing_columns:
+                        conn.execute(
+                            f"""ALTER TABLE {PREPARATION_LEDGER_TABLE}
+                                ADD COLUMN model_fingerprint TEXT NOT NULL DEFAULT ''"""
+                        )
+                except sqlite3.Error:
+                    pass
                 if recover_interrupted_work:
                     # Only a newly started application can reclaim a row left
                     # behind by an interrupted earlier process.
@@ -1324,7 +1515,8 @@ def _load_ledger_row(db_path: Path, source_scope: str, source_id: str) -> Source
     try:
         cur = conn.execute(
             f"""SELECT source_scope, source_id, source_fingerprint, model_id, model_revision,
-                       state, priority, attempt_count, last_error, document_id, created_at, updated_at
+                       state, priority, attempt_count, last_error, document_id, created_at, updated_at,
+                       model_fingerprint
                 FROM {PREPARATION_LEDGER_TABLE}
                 WHERE source_scope = ? AND source_id = ?""",
             (source_scope, source_id),
@@ -1346,7 +1538,8 @@ def _load_all_ledger_rows(db_path: Path) -> dict[tuple[str, str], SourcePreparat
     try:
         cur = conn.execute(
             f"""SELECT source_scope, source_id, source_fingerprint, model_id, model_revision,
-                       state, priority, attempt_count, last_error, document_id, created_at, updated_at
+                       state, priority, attempt_count, last_error, document_id, created_at, updated_at,
+                       model_fingerprint
                 FROM {PREPARATION_LEDGER_TABLE}"""
         )
         rows = {}
@@ -1368,8 +1561,9 @@ def _upsert_ledger_row(db_path: Path, row: SourcePreparationLedgerRow) -> None:
             conn.execute(
                 f"""INSERT INTO {PREPARATION_LEDGER_TABLE} (
                     source_scope, source_id, source_fingerprint, model_id, model_revision,
-                    state, priority, attempt_count, last_error, document_id, created_at, updated_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    state, priority, attempt_count, last_error, document_id, created_at, updated_at,
+                    model_fingerprint
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT(source_scope, source_id) DO UPDATE SET
                     source_fingerprint=excluded.source_fingerprint,
                     model_id=excluded.model_id,
@@ -1379,7 +1573,8 @@ def _upsert_ledger_row(db_path: Path, row: SourcePreparationLedgerRow) -> None:
                     attempt_count=excluded.attempt_count,
                     last_error=excluded.last_error,
                     document_id=excluded.document_id,
-                    updated_at=excluded.updated_at""",
+                    updated_at=excluded.updated_at,
+                    model_fingerprint=excluded.model_fingerprint""",
                 (
                     row.source_scope,
                     row.source_id,
@@ -1393,6 +1588,7 @@ def _upsert_ledger_row(db_path: Path, row: SourcePreparationLedgerRow) -> None:
                     row.document_id,
                     row.created_at,
                     row.updated_at,
+                    row.model_fingerprint,
                 ),
             )
     finally:
@@ -1409,7 +1605,8 @@ def _claim_next_preparation_item(db_path: Path, model_id: str, model_revision: s
             # current worker.  It exits and lets the owner commit the result.
             cur = conn.execute(
                 f"""SELECT source_scope, source_id, source_fingerprint, model_id, model_revision,
-                           state, priority, attempt_count, last_error, document_id, created_at, updated_at
+                           state, priority, attempt_count, last_error, document_id, created_at, updated_at,
+                           model_fingerprint
                     FROM {PREPARATION_LEDGER_TABLE}
                     WHERE state = '{PREP_STATE_PROCESSING}'
                     LIMIT 1"""
@@ -1420,7 +1617,8 @@ def _claim_next_preparation_item(db_path: Path, model_id: str, model_revision: s
 
             cur = conn.execute(
                 f"""SELECT source_scope, source_id, source_fingerprint, model_id, model_revision,
-                           state, priority, attempt_count, last_error, document_id, created_at, updated_at
+                           state, priority, attempt_count, last_error, document_id, created_at, updated_at,
+                           model_fingerprint
                     FROM {PREPARATION_LEDGER_TABLE}
                     WHERE state = '{PREP_STATE_PENDING}' AND model_id = ? AND model_revision = ?
                     ORDER BY CASE priority
@@ -1460,6 +1658,7 @@ def _claim_next_preparation_item(db_path: Path, model_id: str, model_revision: s
                     document_id=row[9],
                     created_at=row[10],
                     updated_at=now,
+                    model_fingerprint=row[12] if len(row) > 12 else "",
                 )
             return None
     except sqlite3.Error:
@@ -1474,6 +1673,8 @@ def _commit_preparation_result(
     source_id: str,
     state: str,
     error_reason: str = "",
+    *,
+    model_fingerprint: str = "",
 ) -> None:
     if not db_path.is_file():
         return
@@ -1481,12 +1682,20 @@ def _commit_preparation_result(
     conn = sqlite3.connect(db_path, timeout=10.0)
     try:
         with conn:
-            conn.execute(
-                f"""UPDATE {PREPARATION_LEDGER_TABLE}
-                    SET state = ?, last_error = ?, updated_at = ?
-                    WHERE source_scope = ? AND source_id = ?""",
-                (state, error_reason, now, source_scope, source_id),
-            )
+            if state == PREP_STATE_READY and model_fingerprint:
+                conn.execute(
+                    f"""UPDATE {PREPARATION_LEDGER_TABLE}
+                        SET state = ?, model_fingerprint = ?, last_error = ?, updated_at = ?
+                        WHERE source_scope = ? AND source_id = ?""",
+                    (state, model_fingerprint, error_reason, now, source_scope, source_id),
+                )
+            else:
+                conn.execute(
+                    f"""UPDATE {PREPARATION_LEDGER_TABLE}
+                        SET state = ?, last_error = ?, updated_at = ?
+                        WHERE source_scope = ? AND source_id = ?""",
+                    (state, error_reason, now, source_scope, source_id),
+                )
     except sqlite3.Error:
         pass
     finally:
@@ -1553,6 +1762,8 @@ def get_workspace_chat_preparation_summary(
     db_path = _get_ledger_db_path(resolved)
     _init_preparation_ledger_db(db_path)
     ledger_rows = _load_all_ledger_rows(db_path)
+    # G2 backend-aware prepare gate, computed once per summary call.
+    expected_fingerprint = _expected_backend_fingerprint(resolved)
 
     statuses: dict[str, str] = {}
     errors: dict[str, str] = {}
@@ -1575,12 +1786,29 @@ def get_workspace_chat_preparation_summary(
         # If a ledger row exists in pending/processing, in-memory registry ready MUST NOT preempt uncommitted ledger.
         # If no ledger row exists, in-memory registry or durable coverage applies.
         if row is not None:
-            if row.state == PREP_STATE_READY and row.source_fingerprint == _source_fingerprint(source) and row.model_revision == resolved.bge_m3_model_revision:
+            content_ready = (
+                row.state == PREP_STATE_READY
+                and row.source_fingerprint == _source_fingerprint(source)
+                and row.model_revision == resolved.bge_m3_model_revision
+            )
+            if content_ready and _ledger_fingerprint_ready(
+                db_path=db_path,
+                row=row,
+                source=source,
+                config=resolved,
+                expected_fingerprint=expected_fingerprint,
+            ):
                 state = PREP_STATE_READY
             elif row.state == PREP_STATE_FAILED:
                 state = PREP_STATE_FAILED
             elif row.state == PREP_STATE_PROCESSING:
                 state = PREP_STATE_PROCESSING
+            elif content_ready:
+                # Ledger says READY but the vectors were not produced by the
+                # backend the E-chain currently selects: report pending so the
+                # scheduler (reconcile) re-prepares them; never the memory
+                # fast path.
+                state = PREP_STATE_PENDING
             else:
                 # Ledger is pending or stale fingerprint/revision
                 if mem_status == PREP_STATE_PROCESSING:
@@ -1671,6 +1899,12 @@ def reconcile_and_enqueue_workspace_chat_sources(
     _init_preparation_ledger_db(db_path)
     existing_rows = _load_all_ledger_rows(db_path)
 
+    # G2 backend-aware prepare gate: only a row stamped with the backend the
+    # E-chain currently selects counts as prepared. Rows stamped by another
+    # backend (or legacy rows whose vectors do not match) are re-prepared, so a
+    # backend switch self-recovers instead of serving stale vectors.
+    expected_fingerprint = _expected_backend_fingerprint(resolved)
+
     enqueued_count = 0
     now = time.time()
 
@@ -1695,11 +1929,25 @@ def reconcile_and_enqueue_workspace_chat_sources(
             and row.source_fingerprint == current_fp
             and row.model_revision == resolved.bge_m3_model_revision
         ):
-            with _PREPARATION_LOCK:
-                _PREPARATION_REGISTRY[_preparation_key(resolved, source)] = (
-                    _preparation_entry(resolved, source, PREP_STATE_READY)
-                )
-            continue
+            if _ledger_fingerprint_ready(
+                db_path=db_path,
+                row=row,
+                source=source,
+                config=resolved,
+                expected_fingerprint=expected_fingerprint,
+            ):
+                with _PREPARATION_LOCK:
+                    _PREPARATION_REGISTRY[_preparation_key(resolved, source)] = (
+                        _preparation_entry(resolved, source, PREP_STATE_READY)
+                    )
+                continue
+            if not expected_fingerprint:
+                # Backend identity unknown: preserve the row untouched (the
+                # worker cannot validate or rebuild it), but do not claim
+                # ready. The summary gate reports pending (fail closed).
+                continue
+            # Stale backend (or legacy row the index cannot validate):
+            # fall through and re-enqueue for self-healing.
 
         if _durable_semantic_coverage_ready(source, resolved):
             with _PREPARATION_LOCK:
@@ -1719,6 +1967,9 @@ def reconcile_and_enqueue_workspace_chat_sources(
                 document_id=doc_id,
                 created_at=now,
                 updated_at=now,
+                # _durable_semantic_coverage_ready only passes when the index
+                # vectors match the current backend, so the stamp is valid.
+                model_fingerprint=expected_fingerprint,
             )
             _upsert_ledger_row(db_path, ready_row)
             continue
@@ -1910,6 +2161,9 @@ def _source_for_drain_item(source_scope: str, source_id: str) -> Optional[Worksp
 def _drain_preparation_queue(config: WorkspaceChatRagV2CanaryConfig) -> None:
     global _DRAIN_IS_RUNNING
     db_path = _get_ledger_db_path(config)
+    # G2 backend-aware prepare gate: stamp READY rows with the backend that
+    # actually produced the vectors (computed once per drain run).
+    drain_fingerprint = _expected_backend_fingerprint(config)
     try:
         while True:
             item = _claim_next_preparation_item(
@@ -1956,6 +2210,7 @@ def _drain_preparation_queue(config: WorkspaceChatRagV2CanaryConfig) -> None:
                     item.source_scope,
                     item.source_id,
                     PREP_STATE_READY,
+                    model_fingerprint=drain_fingerprint,
                 )
             except Exception as exc:
                 if str(exc) == "library_writer_busy":

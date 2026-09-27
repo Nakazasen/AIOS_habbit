@@ -341,6 +341,9 @@ def test_existing_complete_semantic_index_is_ready_after_process_restart(monkeyp
     executor = _ImmediateExecutor()
     monkeypatch.setattr(adapter, "_get_executor", lambda: executor)
     monkeypatch.setattr(adapter, "_durable_semantic_coverage_ready", lambda *_args: True)
+    # G2 backend-aware gate: the pre-existing index was built by the backend
+    # this config selects.
+    monkeypatch.setattr(adapter, "_expected_backend_fingerprint", lambda config: "restart-fp")
 
     adapter.schedule_workspace_chat_source_preparation((source,), config=config)
 
@@ -1387,6 +1390,9 @@ def test_shared_library_matching_source_skips_embed_worker(monkeypatch, tmp_path
     shared = tmp_path / "share"
     store.set_collection_storage_root(DEFAULT_COLLECTION_ID, str(shared))
     config = _semantic_config(tmp_path)
+    # The copied index was built by the same backend this machine selects;
+    # _write_coverage_index stamps its vectors with 'fp'.
+    monkeypatch.setattr(adapter, "_expected_backend_fingerprint", lambda config: "fp")
     source = _sources(1)[0]
     document_id = adapter._document_id(source)
     index = shared / store.COLLECTION_RUNTIME_DIRNAME / store.COLLECTION_INDEX_BASENAME
@@ -1411,6 +1417,9 @@ def test_shared_library_same_content_different_source_id_skips_embed(monkeypatch
     shared = tmp_path / "share"
     store.set_collection_storage_root(DEFAULT_COLLECTION_ID, str(shared))
     config = _semantic_config(tmp_path)
+    # The copied index was built by the same backend this machine selects;
+    # _write_coverage_index stamps its vectors with 'fp'.
+    monkeypatch.setattr(adapter, "_expected_backend_fingerprint", lambda config: "fp")
     body = "Tài liệu dùng chung đã lập chỉ mục trên máy A."
     machine_a = WorkspaceAIContextSource(
         source_id="src-machine-a",
@@ -2142,7 +2151,7 @@ def test_promote_priority_to_interactive(tmp_path: Path):
     assert row.priority == adapter.PREP_PRIORITY_INTERACTIVE
 
 
-def test_get_workspace_chat_preparation_summary_aggregate(tmp_path: Path):
+def test_get_workspace_chat_preparation_summary_aggregate(tmp_path: Path, monkeypatch):
     config = _enabled_config(tmp_path)
     db_path = adapter._get_ledger_db_path(config)
     adapter._init_preparation_ledger_db(db_path)
@@ -2182,7 +2191,14 @@ def test_get_workspace_chat_preparation_summary_aggregate(tmp_path: Path):
             document_id=adapter._document_id(src1),
             created_at=10.0,
             updated_at=10.0,
+            # G2 backend-aware gate: a READY row only counts when stamped
+            # with the backend the E-chain currently selects.
+            model_fingerprint="agg-fp",
         ),
+    )
+    # The seeded READY row was embedded by the backend this config selects.
+    monkeypatch.setattr(
+        adapter, "_expected_backend_fingerprint", lambda config: "agg-fp"
     )
     adapter._upsert_ledger_row(
         db_path,

@@ -1598,6 +1598,9 @@ def test_e2e_sandbox_upload_new_source_transitions_from_pending_to_ready(tmp_pat
 
     monkeypatch.setattr(adapter, "prepare_workspace_chat_sources", fake_prepare)
     monkeypatch.setattr(adapter, "_durable_semantic_coverage_ready", lambda *a, **kw: False)
+    # G2 backend-aware gate: the fake worker's vectors are stamped with the
+    # backend this config selects, so the drained READY row validates.
+    monkeypatch.setattr(adapter, "_expected_backend_fingerprint", lambda config: "e2e-fp")
 
     # 2. Schedule source preparation (which triggers real background drain thread)
     adapter.schedule_workspace_chat_source_preparation(ctx_sources, config=config)
