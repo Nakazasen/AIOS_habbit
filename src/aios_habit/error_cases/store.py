@@ -45,20 +45,25 @@ def start_batch(
     source_file: str,
     file_sha256: str,
     sheet_name: str,
-    sheet_type: str,
+    sheet_type: Optional[str] = None,
     department: Optional[str] = None,
     line_filter: Optional[List[str]] = None,
     header_row: Optional[int] = None,
     notes: str = "",
 ) -> int:
-    """Open a new import batch; returns its id (provenance anchor)."""
-    if sheet_type not in column_map.SHEET_TYPES:
+    """Open a new import batch; returns its id (provenance anchor).
+
+    sheet_type may be None for formats without the legacy Máy in/KIT
+    distinction (e.g. the 29-column history sheet).
+    """
+    if sheet_type is not None and sheet_type not in column_map.SHEET_TYPES:
         raise ValueError(f"sheet_type must be one of {column_map.SHEET_TYPES}")
     cur = conn.execute(
         """INSERT INTO import_batches
            (source_file, file_sha256, sheet_name, sheet_type, department,
             line_filter, header_row, notes)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+           ON CONFLICT (source_file, file_sha256, sheet_name) DO NOTHING""",
         (
             source_file,
             file_sha256,
@@ -70,8 +75,19 @@ def start_batch(
             notes,
         ),
     )
+    if cur.rowcount == 1:
+        batch_id = int(cur.lastrowid)
+    else:
+        # Unchanged re-run: reuse the existing batch row.
+        # (lastrowid is stale after ON CONFLICT DO NOTHING, so rowcount decides.)
+        row = conn.execute(
+            """SELECT id FROM import_batches
+               WHERE source_file = ? AND file_sha256 = ? AND sheet_name = ?""",
+            (source_file, file_sha256, sheet_name),
+        ).fetchone()
+        batch_id = int(row["id"])
     conn.commit()
-    return int(cur.lastrowid)
+    return batch_id
 
 
 def finish_batch(

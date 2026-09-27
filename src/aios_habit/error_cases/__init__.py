@@ -11,12 +11,21 @@ from .column_map import (
     normalize_history_row,
     normalize_row,
 )
+from .completeness import (
+    F3B_THRESHOLD,
+    measure as measure_completeness,
+    report as completeness_report,
+)
 from .glossary import (
     PARSERS,
     import_glossary,
     init_glossary,
     lookup as glossary_lookup,
     norm_code,
+)
+from .import_history import (
+    SHEET_NAME as HISTORY_SHEET_NAME,
+    import_history,
 )
 from .store import (
     batch_stats,
@@ -41,11 +50,16 @@ __all__ = [
     "is_positive_mark",
     "normalize_history_row",
     "normalize_row",
+    "F3B_THRESHOLD",
+    "measure_completeness",
+    "completeness_report",
     "PARSERS",
     "import_glossary",
     "init_glossary",
     "glossary_lookup",
     "norm_code",
+    "HISTORY_SHEET_NAME",
+    "import_history",
     "batch_stats",
     "connect",
     "count_cases",
