@@ -38,3 +38,10 @@ Máy đo: `h410asrock`. Thời gian: 2026-09-27 19:15 đến 2026-09-28 03:01 +0
 ## 6. Ghi chú về giới hạn ghi ổ D
 
 Repo làm việc ban đầu nằm trên D. Trước khi nhận ra lệnh cấm áp dụng cả repo, đã chạy `git pull` theo yêu cầu và commit tiến độ `6bbd75f` trong repo gốc; thao tác Git này đã ghi metadata trên D. Index SQLite gốc trên D không bị ghi. Sau khi phát hiện, mọi commit và push tiếp theo chạy từ worktree riêng trên C; các thay đổi mã nguồn có sẵn trong repo gốc được giữ nguyên, không đưa vào commit.
+
+## 7. Kiểm tra phần mềm
+
+- Python 3.11.14; `compileall src tests` thành công; `aios_habit.cli audit` trả `PASS`; import `aios_habit.workspace_chat_app` thành công.
+- `pytest -q`: 3.194 đạt, 4 bỏ qua, 14 thất bại, 10 lỗi. Môi trường thử thiếu `xlrd`; đã dùng đúng bản khóa 2.0.2 trong thư mục tạm trên C để chạy hết suite, rồi xóa thư mục đó.
+- Các nguyên nhân được in ra: `uv lock --check` báo `uv.lock` cần cập nhật; checksum của nguồn `src-quality-process` không khớp manifest; kiểm thử đóng gói thiếu `torch` và gói Graphify tương thích; 10 lỗi thiếu tệp Excel cục bộ ngoài repo (`/home/hatch/workspace/aios_data/...xls`).
+- Không sửa mã nguồn, `uv.lock`, manifest hay dữ liệu kiểm thử để né các lỗi ngoài phạm vi Vé 0.3.
