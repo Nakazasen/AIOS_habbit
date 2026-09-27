@@ -1,50 +1,41 @@
-# Vé 0.3 — Chuyển index sang ổ C (SSD) + resume migration GPU (CẤM ghi ổ D vĩnh viễn)
+# Vé V1 — Verify F1–F4 (schema error_cases + glossary mã lỗi + sổ chống trùng) trên Windows máy nhà
 
-Ngày viết: 2026-09-27 (Muse). Sửa lần 2 lúc 19:04 theo QUYẾT ĐỊNH CỦA USER (bỏ phương án ổ mới).
-Sửa lần 3 lúc 20:11 theo QUYẾT ĐỊNH CỦA USER: mẫu sạch → resume ngay tối nay, không đo thêm; báo ETA ngay khi resume chạy.
-Sửa lần 4 lúc 20:54 theo QUYẾT ĐỊNH CỦA USER: mẻ ghi ngoài tối đa 50–100 khối/chốt (batch GPU trong giữ 2); mẫu = 1 mẻ to, sạch thì resume toàn bộ 92.875, khỏi đo 3 mốc; sập thì chạy lại cả mẻ (trừ I/O error thì dừng).
-Branch: `phieu-viec/rag-fix1`. Không đụng `main`.
+Ngày viết: 2026-09-28 (Muse). Chế độ: Muse code trên VM → OMP verify độc lập trên Windows (luật "không vừa đá vừa thổi còi").
+Branch: `phieu-viec/rag-fix1`. Không đụng `main`. Hostname: `h410asrock` (Win 10 Pro).
 
 ## Bối cảnh
 
-- Vé 0.2 (ĐÃ DUYỆT): ổ D (HDD WDC WD2500AAKX) hỏng dần mặt đĩa. Số SMART tươi (Bước 1 đã xong, xem trang-thai.md 18:38): 05 Reallocated 769 (tăng từ 513), C4 Event 10 (tăng từ 9), C5 Pending 0, C6 0, C7 UDMA CRC 200 (chuẩn), Health "Chú ý" (vàng), 38°C; SSD ổ C tốt 91% life.
-- Mẻ migration GPU dừng ở 6.128/99.003 (6,19%); index 1.750.740.992 byte đóng băng từ 16:48:22, nguyên vẹn.
-- Báo cáo Vé 0.2: `docs/phieu-viec/ket-qua/VE0_2_chan-doan-disk-io-error.md`
+- Vé 0.3 ĐÃ DUYỆT (2026-09-28): migration GPU hoàn tất 99.003/99.003 khối trên index ổ C, `pending=0`, `integrity_check=ok`.
+- Muse code trên VM (luôn nhẹ-CPU, test SQLite `:memory:`, KHÔNG embed):
+  - F1 commit `179180a6d75e`: module `src/aios_habit/error_cases/` (schema.sql, column_map.py, store.py; ô xanh 146,208,80 không ghi đè).
+  - F1 bổ sung commit `52d3e00`: HISTORY_29_MAP + normalize_history_row + dedup rộng `UNIQUE(no_dvd, machine_type, line)` theo file thật (29 cột).
+  - F4 commit `3d1dfbf`: `glossary.py` + `glossary_schema.sql` — 4 họ mã: C_CALL 226 (JP+VN, chuẩn hóa full-width NFKC), F_SYSTEM 129 (JP+EN, giữ wildcard X), JAM 3115 unique (validate ký tự đầu mã = unit; trùng chéo sheet thì bản chính thắng), SCT_ADJ 37 (trùng ErrNo=03 giữ cả 2 qua code_sub). JAM còn tên tiếng Nhật chưa dịch — để batch dịch sau, không chặn vé này.
+  - Vé 1 commit `e07ce45`: sổ file chống trùng `ingest_manifest.py` (sha256 + mtime_ns + size; skip khi vất lại file cũ; manifest hỏng → fail open).
+- Trên VM (Linux, Python 3.12.3): `test_rag_v2_ingest_manifest.py` 6/6 passed; suite error_cases 26/26 passed (F1 15 + F4 11).
 
-## Cấm kỵ (user chốt 19:04)
+## Cấm kỵ (fail-closed)
 
-- CẤM VĨNH VIỄN ghi bất cứ byte nào lên ổ D. Ổ D từ nay CHỈ ĐỌC để cứu dữ liệu cũ khi cần — không ghi, không sửa, không chkdsk /f.
-- Không `git pull` (Vé 0 đã có lần merge `839ceea` dù prompt cấm — không lặp lại).
-- Không đụng `main`; mọi commit riêng trên `phieu-viec/rag-fix1`.
+- CHỈ đọc + chạy test. Cấm ghi index, cấm chạy batch embed/apply, cấm bất kỳ ingest thật nào.
+- Cấm vĩnh viễn ghi ổ D (chỉ đọc cứu dữ liệu cũ khi cần).
+- Không `git pull` tạo merge — dùng `git fetch` + `git reset --hard origin/phieu-viec/rag-fix1` (hoặc checkout commit rõ ràng). Không đụng `main`.
 
-## Cách làm (theo đúng thứ tự)
+## Cách làm
 
-### Bước 1 — ĐÃ XONG
-SMART tươi đã có (trang-thai.md, OMP 18:38). `chkdsk D: /scan` BỎ QUA theo quyết định user (ổ D chuyển sang chỉ đọc, không cần quét nữa).
-
-### Bước 2 — Chuyển index sang ổ C (SSD)
-
-1. Kiểm tra dung lượng trống ổ C (hiện ~5,8GB). Cần: index 1,75GB + backup tươi 1,75GB ≈ 3,5GB. Nếu thiếu → DỌN CHỖ TRƯỚC (xóa file tạm, cache, thùng rác; KHÔNG xóa dữ liệu dự án/code/index), ghi rõ đã dọn gì và dung lượng trước/sau.
-2. Copy `library.sqlite` từ D sang C (robocopy có verify, hoặc copy rồi so kích thước + sha256 hai bản — phải khớp 100%).
-3. Trên BẢN SAO Ở Ổ C: mở bằng sqlite3, chạy `PRAGMA integrity_check;` → phải đạt `ok`. CHƯA ok thì DỪNG NGAY, báo cáo — không làm tiếp bước nào.
-4. Chỉ sau khi integrity_check đạt ở ổ C: đổi đường dẫn index trong script migration sang ổ C. Bản trên ổ D giữ nguyên làm sao lưu lạnh (không xóa, không ghi).
-
-### Bước 3 — Backup mới + thử mẫu trên ổ C
-
-1. Backup tươi của index TRÊN Ổ C (file sibling), `integrity_check` của backup phải `ok` — fail-closed nếu không ok.
-2. Cấu hình batch (user chốt 20:54): mẻ ghi NGOÀI TỐI ĐA 50–100 khối mỗi chốt (đề xuất 100), batch GPU TRONG giữ nguyên 2 (không đổi).
-3. Chạy MẪU = 1 MẺ TO trên ổ C (50–100 khối): đo nhịp mẻ + `integrity_check` sau mẻ + theo dõi I/O error trong log. Không cần đo 3 mốc.
-4. Mẫu SẠCH (integrity ok, nhịp ổn, không I/O error) → RESUME NGAY TRONG TỐI NAY toàn bộ 92.875 khối còn lại (99.003 − 6.128), không đo thêm gì nữa. Báo ETA mới NGAY KHI resume bắt đầu chạy (ghi vào báo cáo + cập nhật trang-thai.md).
-5. Mẻ sập giữa chừng (process chết, mất điện...) → CHẠY LẠI CẢ MẺ từ checkpoint — user chấp nhận rủi ro này (ổ C khỏe, backup mới đã có). Chỉ DỪNG NGAY + báo cáo khi sập do disk I/O error.
+1. `git fetch origin`; checkout đúng HEAD của `phieu-viec/rag-fix1`; GHI RÕ mã commit đã checkout (ít nhất 7 ký tự) vào trang-thai.md.
+2. Dùng Python trên Windows (ghi rõ phiên bản, đề xuất 3.12): tạo venv mới, `pip install -e .` (hoặc `PYTHONPATH=src`), cài pytest.
+3. Chạy: `pytest tests/test_rag_v2_ingest_manifest.py -q` → kỳ vọng 6/6 passed.
+4. Chạy toàn bộ suite `error_cases`: `pytest tests/ -q -k error_cases` (hoặc đường dẫn test cụ thể) → kỳ vọng 26/26 passed; nếu tên test/thư mục khác, ghi rõ lệnh đã chạy.
+5. Ghi vào báo cáo: mã commit checkout, OS + Python, số đỗ/trượt độc lập từng suite, bất kỳ fail/error nào (kèm traceback). Không sửa code để "cho qua" — fail thì báo nguyên vẹn.
 
 ## Nghiệm thu
 
-Báo cáo `docs/phieu-viec/ket-qua/VE0_3_khac-phuc-disk-io-resume.md` gồm:
+Báo cáo `docs/phieu-viec/ket-qua/VE_V1_verify-F1-F4-windows.md` gồm:
+1. Commit checkout + ngày giờ, OS, Python.
+2. Kết quả từng suite (6/6 manifest; 26/26 error_cases) với log tóm tắt.
+3. Bất kỳ khác biệt nào so với kết quả trên VM (nếu có).
 
-1. Dung lượng ổ C trước/sau dọn (nếu có dọn, liệt kê đã dọn gì).
-2. Kích thước + sha256 hai bản copy (D và C) — phải khớp; `integrity_check` trên ổ C (`ok`); đường dẫn index mới.
-3. Backup tươi (đường dẫn + integrity `ok`).
-4. Kết quả mẫu: nhịp mẻ to, integrity sau mẫu, có/không I/O error → quyết định resume toàn bộ / dừng (ghi rõ lý do nếu dừng hoặc phải chạy lại).
-5. Nếu resume: nhịp ổn định + ETA cập nhật; số khối đã migrate / tổng (6.128 + số mới / 99.003).
+Tiêu chí ĐẠT: cả 3 suite pass 100% trên Windows, không ghi index, mọi thao tác trên branch riêng (không đụng main).
 
-Số liệu từ lần đo thật trên máy h410asrock, ghi hostname + thời gian đo.
+## Sau vé này
+
+Vé V1 đạt → Muse phát hành Vé P1 "đóng dấu kho thử thành kho thật" (integrity → copy sang production → app đọc thử B1–B5). Không tự mở P1 trước verdict.
