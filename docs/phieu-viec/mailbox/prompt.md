@@ -1,31 +1,49 @@
-# Vé 0.2 — Chẩn đoán lỗi `sqlite3.OperationalError: disk I/O error` (KHẨN, CHỈ ĐỌC, không sửa)
+# Vé 0.3 — Xử lý nguyên nhân disk I/O + resume migration GPU (cấm ghi ổ D hiện tại)
 
 Ngày viết: 2026-09-27 (Muse). Branch: `phieu-viec/rag-fix1`. Không đụng `main`.
 
 ## Bối cảnh
 
-- Vé 0 (ĐÃ DUYỆT): nhịp rơi 4,2× do chi phí SQLite lặp lại ở mỗi batch 2 (2 kết nối/batch: kiểm tra từng hàng rồi ghi dense+sparse trong 1 giao dịch, đồng hồ batch không tính overhead). Batch cuối chết ở `_upsert_batch` với `sqlite3.OperationalError: disk I/O error` lúc 16:48:24; mẻ đã dừng (6.128/99.003 = 6,19%).
-- **Chưa được giải thích:** nguyên nhân của `disk I/O error`. CẤM cho ghi tiếp (kể cả chạy mẫu) cho đến khi nguyên nhân rõ. Vé này CHỈ CHẨN ĐOÁN, không sửa. Sửa là vé khác.
-- Ghi nhận: Vé 0 có một lần `git pull` tạo merge `839ceea` dù prompt cấm — đã nhắc, lần này KHÔNG lặp lại.
+- Vé 0.2 (ĐÃ DUYỆT 2026-09-27): nghi phạm số 1 = mặt đĩa ổ D hỏng dần (`WDC WD2500AAKX-083CA1`: 513 cung tái cấp phát + 9 lần tái cấp phát + 1 cung chờ xử lý — số từ bộ nhớ đệm CrystalDiskInfo tháng 12/2025, CHƯA có số tươi). Đã loại đĩa đầy / quyền / Defender / log hệ thống bằng số. Lỗi I/O rời rạc, test ghi 1MB OK. Lệnh cấm ghi vẫn giữ.
+- Mẻ migration GPU dừng ở 6.128/99.003 (6,19%); index 1.750.740.992 byte đóng băng từ 16:48:22, nguyên vẹn.
+- Báo cáo: `docs/phieu-viec/ket-qua/VE0_2_chan-doan-disk-io-error.md`
 
-## Cách làm — CHỈ ĐỌC, CẤM TUYỆT ĐỐI ghi DB
+## Cấm kỵ
 
-Cấm: ghi `library.sqlite` (kể cả qua script migration), vacuum, restart/pause bất cứ tiến trình nào, `git pull`, sửa code, đụng backup.
+- CẤM ghi bất cứ thứ gì lên ổ D (HDD chứa index cũ) cho đến khi bước 2 xác nhận ổ mới an toàn. Mọi test ghi chỉ làm trên ổ đích.
+- Không `git pull` (Vé 0 đã có lần merge `839ceea` dù prompt cấm — lần này không lặp lại).
+- Không đụng `main`; mọi commit riêng trên `phieu-viec/rag-fix1`.
+- Luật vòng tròn: migration GPU là việc OMP giữ index làm trên máy nhà — đúng vai OMP.
 
-Điều tra theo đúng thứ tự:
+## Cách làm (theo đúng thứ tự)
 
-1. **System log quanh 16:48:24**: Event Viewer → Windows Logs → System, lọc lỗi/warning từ nguồn `disk`, `Ntfs`, `nvstor`/`storahci`/`iaStorAC` trong khung 16:40–17:00. Ghi mã sự kiện + nội dung.
-2. **Sức khỏe ổ đĩa**: SMART (CrystalDiskInfo chụp số liệu hoặc `smartctl -a`), đặc biệt Reallocated Sector Count / Pending Sector / UDMA CRC Error Count. Ghi model ổ + % health.
-3. **Filesystem/thư mục index**: dung lượng trống còn lại; thư mục chứa `library.sqlite` có còn file `-wal`/`-shm`/`-journal` tồn đọng không (tên + kích thước + mtime).
-4. **SQLite chỉ-đọc** (mở kết nối `mode=ro` hoặc `PRAGMA query_only=ON`): `PRAGMA page_count;`, `PRAGMA freelist_count;`, `PRAGMA page_size;`, `PRAGMA journal_mode;`, `SELECT COUNT(*)` trên bảng vector dense ONNX. Không chạy `integrity_check` lại (Vé 0 đã làm, kết quả `ok`).
-5. **Test ghi kiểm soát**: tạo 1 file test tạm ~1MB trong cùng thư mục chứa index (không phải file DB), ghi/xóa ngay, đo có lỗi không. Đây là file test tạm duy nhất được phép tạo; xóa ngay sau khi đo.
+### Bước 1 — Xác nhận số tươi về ổ D (chỉ đọc, chưa ghi gì)
+
+1. SMART tươi: mở CrystalDiskInfo chụp màn hình tab ổ `WDC WD2500AAKX-083CA1`, hoặc cài `smartctl -a` (gsmartcontrol) cho Disk 0. Ghi số: 05 (Reallocated Sector Count), C4 (Reallocation Event Count), C5 (Current Pending Sector), C6 (Uncorrectable Sector Count), C7 (UDMA CRC Error Count), % health.
+2. `chkdsk D: /scan` ở PowerShell quyền nâng cao (quét trực tuyến, không cần khởi động lại). Ghi kết quả: có lỗi hệ tệp không.
+3. Nếu SMART tươi xấu hơn hẳn (Reallocated tăng so với 513, hoặc C6 > 0) → ghi rõ trong báo cáo, vẫn làm bước 2 ngay (không cần hỏi).
+
+### Bước 2 — Đổi nơi đặt index sang ổ khỏe
+
+1. Chọn ổ đích: SSD 120GB (ổ C) hoặc ổ khác có sẵn trên máy. Lưu ý: ổ C còn ~5,85 GiB; file index 1,75 GiB + bản backup 1,75 GiB = ~3,5 GiB. Tính dung lượng trước khi chọn; nếu không đủ, đề xuất phương án (dọn chỗ / ổ khác) và ghi rõ trong báo cáo — KHÔNG tự quyết mua/tháo ổ cứng.
+2. Copy `library.sqlite` sang ổ đích (robocopy có kiểm tra, hoặc copy rồi so sánh kích thước + sha256 hai bản).
+3. Trên bản sao ở ổ mới: mở bằng sqlite3, chạy `PRAGMA integrity_check;` → phải đạt `ok`.
+4. Chỉ sau khi integrity_check đạt ở ổ mới: đổi đường dẫn index trong script migration sang ổ mới. Bản trên ổ D giữ nguyên làm sao lưu lạnh (không xóa).
+
+### Bước 3 — Backup mới + resume migration (dry-run/mẫu nhỏ trước)
+
+1. Trước resume: tạo backup tươi của index trên ổ mới (file sibling), kiểm tra integrity của backup đạt `ok` — fail-closed nếu không ok.
+2. Resume migration từ checkpoint với `batch_size = 16` (theo đề xuất Vé 0; không để 2 như cũ).
+3. Chạy mẫu trước: 5 batch đầu, đo timing từng batch + xác nhận không lỗi I/O. Nếu mẫu sạch → resume toàn bộ 92.875 khối còn lại. Ghi nhịp mới + ETA mới.
+4. Nếu `disk I/O error` tái diễn trên ổ mới → DỪNG mẻ ngay, giữ nguyên trạng, báo cáo (vé sau điều tra tiếp — không tự retry mù).
 
 ## Nghiệm thu
 
-Báo cáo `docs/phieu-viec/ket-qua/VE0_2_chan-doan-disk-io-error.md` gồm:
+Báo cáo `docs/phieu-viec/ket-qua/VE0_3_khac-phuc-disk-io-resume.md` gồm:
 
-1. Chỉ mặt nguyên nhân `disk I/O error` (phần cứng / filesystem / quyền / phần mềm chặn ghi như AV — kèm số liệu và log trích dẫn).
-2. Đề xuất khắc phục cho vé sau (vé này KHÔNG sửa; nếu nguyên nhân phần cứng thì nêu phương án đổi nơi đặt index).
-3. Cập nhật nhịp/ETA hiện tại (mẻ vẫn dừng).
+1. Số SMART tươi (05/C4/C5/C6/C7) + kết quả `chkdsk D: /scan`.
+2. Ổ đích đã chọn + dung lượng còn lại; kết quả `integrity_check` trên ổ mới (`ok`); đường dẫn index mới.
+3. Backup tươi (đường dẫn + integrity `ok`).
+4. Kết quả mẫu 5 batch (timing, không lỗi) → quyết định resume toàn bộ / dừng; nhịp mới + ETA mới; số khối đã migrate / tổng.
 
 Số liệu từ lần đo thật trên máy h410asrock, ghi hostname + thời gian đo.
