@@ -81,6 +81,7 @@ from .pipeline import (
     RagV2QueryResult,
     SourceSpec,
 )
+from .ingest_manifest import IngestManifest, IngestManifestEntry
 
 __all__ = [
     "DocumentElement",
@@ -157,6 +158,8 @@ __all__ = [
     "format_benchmark_summary",
     "benchmark_summary_to_dict",
     "IngestionItemReport",
+    "IngestManifest",
+    "IngestManifestEntry",
     "RagV2DevConfig",
     "RagV2DevPipeline",
     "RagV2IngestionReport",
