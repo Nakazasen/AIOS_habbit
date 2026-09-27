@@ -30,4 +30,7 @@ Chưa sửa hay chạy lại gì trong Vé 0. Vé tiếp theo nên kiểm tra ng
 
 Nhịp **chưa hồi**: công việc không còn chạy. Đã ghi 6.128/99.003 khối (6,19%); còn 92.875 khối. Lần ghi cuối trong nhật ký là 16:48:24. Mốc GPU và tiến trình lúc 16:57/17:03 đều cho thấy trạng thái dừng, không có lần ghi mới sau đó.
 
+Đo xác minh lại trên `h410asrock` lúc 18:05:18–18:05:48 +0700 bằng `nvidia-smi` qua bốn mẫu: nhiệt độ 51°C; xung đồ họa/bộ nhớ 607/405 MHz; VRAM dùng 500–515 MiB; tải 2–6%; công suất 11,42–11,44 W. Đây là trạng thái rỗi, không đại diện cho lúc giảm tốc. Khi kiểm tra, các tiến trình Python là Graphify, sidecar/MCP và Streamlit; không thấy tiến trình migration. `library.sqlite` vẫn 1.750.740.992 byte, sửa lần cuối 16:48:22; log `_g1_gpu_apply.log` có 243.449 byte, sửa lần cuối 16:48:24. Các mốc này khớp kết luận mẻ đã dừng; không ghi DB.
+
+
 Nếu được phép chạy lại sau khi xử lý lỗi I/O, ngoại suy theo nhịp cuối quan sát được là 162 khối/224 giây = 0,723 khối/giây; 92.875 khối còn lại cần khoảng **128.420 giây, tức 35,7 giờ**. Đây chỉ là ETA có điều kiện nếu nhịp không giảm thêm; hiện tại không có ETA hoàn tất khi tiến trình đang dừng.
