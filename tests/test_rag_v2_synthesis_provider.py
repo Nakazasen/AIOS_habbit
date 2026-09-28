@@ -4,6 +4,8 @@ from __future__ import annotations
 from types import SimpleNamespace
 from unittest.mock import patch
 
+import os
+
 import pytest
 
 from aios_habit.ai_router import RouterProviderConfig, RouterResult, RouterAttempt
@@ -11,6 +13,7 @@ from aios_habit.rag_v2.evidence import EvidenceAnswerMode, PrivacySummary
 from aios_habit.rag_v2.synthesis import ProviderSynthesisRequest, SynthesisPlan
 from aios_habit.rag_v2_synthesis_provider import (
     RouterSynthesisProvider,
+    SYNTHESIS_CLOUD_OPT_IN_ENV,
     _format_evidence_context,
     _format_question,
     create_synthesis_provider,
@@ -273,8 +276,31 @@ class TestCreateSynthesisProvider:
         assert create_synthesis_provider() is None
 
     @patch("aios_habit.rag_v2_synthesis_provider.provider_configs_from_env")
-    def test_returns_provider_when_keys_exist(self, mock_env):
+    def test_fail_closed_with_keys_but_no_opt_in(self, mock_env):
+        """P1.4: env keys alone must NOT build a cloud provider."""
         mock_env.return_value = MOCK_CONFIGS
-        provider = create_synthesis_provider()
+        with patch.dict(os.environ, {}, clear=False):
+            os.environ.pop(SYNTHESIS_CLOUD_OPT_IN_ENV, None)
+            assert create_synthesis_provider() is None
+
+    @patch("aios_habit.rag_v2_synthesis_provider.provider_configs_from_env")
+    def test_returns_provider_when_explicitly_allowed(self, mock_env):
+        mock_env.return_value = MOCK_CONFIGS
+        with patch.dict(os.environ, {}, clear=False):
+            os.environ.pop(SYNTHESIS_CLOUD_OPT_IN_ENV, None)
+            provider = create_synthesis_provider(allow_cloud=True)
         assert provider is not None
         assert isinstance(provider, RouterSynthesisProvider)
+
+    @patch("aios_habit.rag_v2_synthesis_provider.provider_configs_from_env")
+    def test_returns_provider_when_env_opt_in(self, mock_env):
+        mock_env.return_value = MOCK_CONFIGS
+        with patch.dict(os.environ, {SYNTHESIS_CLOUD_OPT_IN_ENV: "1"}):
+            provider = create_synthesis_provider()
+        assert provider is not None
+        assert isinstance(provider, RouterSynthesisProvider)
+
+    @patch("aios_habit.rag_v2_synthesis_provider.provider_configs_from_env")
+    def test_returns_none_when_opt_in_but_no_keys(self, mock_env):
+        mock_env.return_value = []
+        assert create_synthesis_provider(allow_cloud=True) is None

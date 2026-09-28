@@ -8,6 +8,7 @@ without reimplementing any of them.
 from __future__ import annotations
 
 import logging
+import os
 from typing import Optional
 
 from aios_habit.ai_router import (
@@ -21,6 +22,20 @@ from aios_habit.rag_v2.synthesis import ProviderSynthesisRequest
 from aios_habit.safety_modes import SAFETY_MODE_COMPANY, SAFETY_MODE_NORMAL
 
 logger = logging.getLogger(__name__)
+
+# Explicit opt-in for letting the synthesis factory build cloud providers from
+# environment keys. Default is OFF (fail-closed): a local_only evidence pack
+# must never leave the machine just because API keys exist in the OS env.
+SYNTHESIS_CLOUD_OPT_IN_ENV = "AIOS_SYNTHESIS_ALLOW_CLOUD_PROVIDERS"
+_CLOUD_OPT_IN_VALUES = {"1", "true", "yes", "on"}
+
+
+def cloud_synthesis_opted_in() -> bool:
+    """Return True when the operator explicitly allowed cloud synthesis."""
+    return (
+        os.environ.get(SYNTHESIS_CLOUD_OPT_IN_ENV, "").strip().lower()
+        in _CLOUD_OPT_IN_VALUES
+    )
 
 # ---------------------------------------------------------------------------
 # Prompt formatting
@@ -190,16 +205,23 @@ class RouterSynthesisProvider:
 
 def create_synthesis_provider(
     *,
+    allow_cloud: bool = False,
     session_id: str = "",
     health_store: Optional[ProviderHealthStore] = None,
     max_attempts: int = 3,
 ) -> Optional[RouterSynthesisProvider]:
-    """Create a provider if any API keys are configured; return None otherwise.
+    """Create a provider only under explicit cloud opt-in; otherwise None.
 
-    This is the intended entry point for wiring synthesis into the pipeline.
-    Returning ``None`` preserves the current local-only behavior when no
-    providers are available.
+    Fail-closed by default: environment API keys alone no longer build a cloud
+    synthesis provider (see P1.4: the app worker once auto-built providers from
+    OS env keys and attempted cloud calls with local_only evidence, violating
+    DATA_POLICY.md).  Cloud synthesis requires either ``allow_cloud=True`` or
+    the ``AIOS_SYNTHESIS_ALLOW_CLOUD_PROVIDERS`` environment variable set to a
+    truthy value (1/true/yes/on).  Returning ``None`` preserves the current
+    local-only behavior when no providers are available or allowed.
     """
+    if not (allow_cloud or cloud_synthesis_opted_in()):
+        return None
     configs = provider_configs_from_env()
     if not configs:
         return None
