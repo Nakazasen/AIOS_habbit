@@ -117,7 +117,7 @@ runner, shim, tiến trình uv, worker).
 | SHA-256 bản copy trên C | Trùng khớp nguồn (2.552.659.968 byte, 42,5 giây) |
 | SHA-256 index production trên D **sau** toàn bộ các lượt chạy (kể cả lượt lấy mẫu mạng) | `062ec090…` — không đổi |
 | Ảnh chụp trước/sau các gốc dữ liệu D (production runtime, canary runtime, `models`, `retrieval_models`, `src`) | 2.182 → 2.186 file, **0 file thay đổi** trong các gốc dữ liệu |
-| File đổi ngoài gốc dữ liệu | 5 file mới trong `scratch/` + `docs/phieu-viec/ket-qua/VE_P1_4_smoke-test-noi-bo.md` + `docs/phieu-viec/mailbox/trang-thai.md` (do chính vé này ghi); 1 file khóa tạm của Excel `~$AI_LSU_du_doan_loi.xlsx` biến mất (tiến trình khác của người dùng, không thuộc lượt chạy) |
+| File đổi ngoài gốc dữ liệu | 4 script mới trong `scratch/` + file báo cáo này + `docs/phieu-viec/mailbox/trang-thai.md` (do chính vé này ghi); 1 file khóa tạm của Excel `~$AI_LSU_du_doan_loi.xlsx` biến mất (tiến trình khác của người dùng, không thuộc lượt chạy) |
 
 Chi tiết diff: `C:\AIOS_p1_4\out\snap_diff_final.json` (`data_roots_clean: true`).
 
