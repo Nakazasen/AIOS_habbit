@@ -1096,6 +1096,68 @@ _LONG_NUMERIC_VALUE_RE = re.compile(r"(?<!\w)\d{3,}(?!\w)")
 _QUOTED_VALUE_RE = re.compile(
     r"""(?:(?P<quote>['"])(?P<value>[^'"“”]{1,32})(?P=quote)|“(?P<curly_value>[^“”]{1,32})”)"""
 )
+# Field-code tokens named in the question (HOUSE_METHOD, ORICON_STATUS): a
+# question that names a field code asks for that field's definition, so the
+# fragment holding it must outrank prose that merely shares vocabulary — even
+# when the rest of the fragment is Japanese with no term overlap.
+_FIELD_CODE_RE = re.compile(r"(?<!\w)[A-Z][A-Z0-9_]{3,}(?!\w)")
+# File-type identifiers named in the question (YY2-Z151.exe): these are exact
+# lookup anchors and must not be demoted by generic value-count scoring.
+_FILE_IDENTIFIER_RE = re.compile(r"(?<!\w)[A-Za-z][A-Za-z0-9_-]*\.exe(?!\w)", re.IGNORECASE)
+
+
+def _extract_field_codes(query: str) -> Tuple[str, ...]:
+    """Return distinct field-code tokens (HOUSE_METHOD, ORICON_STATUS) from the question."""
+    seen: set[str] = set()
+    codes: list[str] = []
+    for match in _FIELD_CODE_RE.finditer(query or ""):
+        code = match.group(0).casefold()
+        if code not in seen:
+            seen.add(code)
+            codes.append(code)
+    return tuple(codes)
+
+
+def _extract_file_identifiers(query: str) -> Tuple[str, ...]:
+    """Return distinct *.exe file identifiers (YY2-Z151.exe) from the question."""
+    seen: set[str] = set()
+    names: list[str] = []
+    for match in _FILE_IDENTIFIER_RE.finditer(query or ""):
+        name = match.group(0).casefold()
+        if name not in seen:
+            seen.add(name)
+            names.append(name)
+    return tuple(names)
+
+
+def _token_overlap_count(text: str, tokens: Tuple[str, ...]) -> int:
+    """Count distinct tokens appearing as whole words in the text (case-insensitive)."""
+    if not tokens:
+        return 0
+    normalized = (text or "").casefold()
+    return sum(
+        bool(re.search(rf"(?<!\w){re.escape(token)}(?!\w)", normalized))
+        for token in tokens
+    )
+
+
+def _file_identifier_overlap(text: str, file_identifiers: Tuple[str, ...]) -> int:
+    """Count question *.exe identifiers present in the text.
+
+    Accepts the full file name (YY2-Z151.exe) or its stem (YY2-Z151) so a chunk
+    that names the file without the extension still counts.
+    """
+    if not file_identifiers:
+        return 0
+    normalized = (text or "").casefold()
+    hits = 0
+    for name in file_identifiers:
+        stem = name[:-4] if name.endswith(".exe") else name
+        if _token_overlap_count(normalized, (name,)) or (
+            stem != name and _token_overlap_count(normalized, (stem,))
+        ):
+            hits += 1
+    return hits
 
 
 def _synthesis_query_terms(query: str, *, prioritize_literals: bool) -> set[str]:
@@ -1200,7 +1262,9 @@ def _fragment_score(
     obligation_id: str = "",
     *,
     prioritize_literals: bool = False,
-) -> tuple[int, int, int, int, int]:
+    field_codes: Tuple[str, ...] = (),
+    file_identifiers: Tuple[str, ...] = (),
+) -> tuple[int, int, int, int, int, int, int]:
     terms = set(extract_content_terms(fragment))
     typed_value_count = (
         _typed_answer_value_count(fragment, query_terms) if prioritize_literals else 0
@@ -1210,6 +1274,8 @@ def _fragment_score(
     )
     literal_overlap = _query_literal_overlap(fragment, query_terms) if prioritize_literals else 0
     return (
+        _token_overlap_count(fragment, field_codes),
+        _file_identifier_overlap(fragment, file_identifiers),
         typed_value_count,
         answer_value_count,
         literal_overlap,
@@ -1238,6 +1304,8 @@ def _best_fragment(
     obligation_id: str = "",
     selected: Iterable[str] = (),
     prioritize_literals: bool = False,
+    field_codes: Tuple[str, ...] = (),
+    file_identifiers: Tuple[str, ...] = (),
 ) -> str:
     candidates = [
         fragment
@@ -1259,6 +1327,8 @@ def _best_fragment(
             facet_id,
             obligation_id,
             prioritize_literals=prioritize_literals,
+            field_codes=field_codes,
+            file_identifiers=file_identifiers,
         ),
     )
 
@@ -1309,6 +1379,8 @@ def _best_facet_candidate(
     selected: Iterable[str],
     prefer_body_evidence: bool = False,
     prioritize_literals: bool = False,
+    field_codes: Tuple[str, ...] = (),
+    file_identifiers: Tuple[str, ...] = (),
 ) -> tuple[EvidenceItem, str] | None:
     """Choose a facet claim globally instead of trusting ranked-item order.
 
@@ -1325,6 +1397,8 @@ def _best_facet_candidate(
             facet_id=facet_id,
             selected=selected,
             prioritize_literals=prioritize_literals,
+            field_codes=field_codes,
+            file_identifiers=file_identifiers,
         )
         if not fragment:
             continue
@@ -1335,6 +1409,8 @@ def _best_facet_candidate(
                 query_terms,
                 facet_id,
                 prioritize_literals=prioritize_literals,
+                field_codes=field_codes,
+                file_identifiers=file_identifiers,
             ),
             -item_index,
         )
@@ -1352,6 +1428,8 @@ def _best_obligation_candidate(
     selected: Iterable[str],
     prefer_body_evidence: bool = False,
     prioritize_literals: bool = False,
+    field_codes: Tuple[str, ...] = (),
+    file_identifiers: Tuple[str, ...] = (),
 ) -> tuple[EvidenceItem, str] | None:
     """Choose one source-local fact for a diagnosis/procedure obligation.
 
@@ -1371,6 +1449,8 @@ def _best_obligation_candidate(
             obligation_id=obligation_id,
             selected=selected,
             prioritize_literals=prioritize_literals,
+            field_codes=field_codes,
+            file_identifiers=file_identifiers,
         )
         if not fragment:
             continue
@@ -1383,6 +1463,8 @@ def _best_obligation_candidate(
                 "",
                 obligation_id,
                 prioritize_literals=prioritize_literals,
+                field_codes=field_codes,
+                file_identifiers=file_identifiers,
             ),
             coordinate_bonus,
             -item_index,
@@ -1530,15 +1612,23 @@ def _claim_value_score(
     fragment: str,
     query: str,
     query_terms: set[str],
-) -> tuple[int, int, int, int, int]:
+    *,
+    field_codes: Tuple[str, ...] = (),
+    file_identifiers: Tuple[str, ...] = (),
+) -> tuple[int, int, int, int, int, int, int]:
     """Score a claim candidate by evidence value, not retrieval rank.
 
-    Literal/code/number overlap with the question outranks generic prose, and
-    body chunks outrank document summaries so a concrete answer is not starved
-    by overview text sitting at the head of the pack.
+    Field codes (HOUSE_METHOD) and file identifiers (YY2-Z151.exe) named in the
+    question outrank generic literal overlap, so a Japanese table row defining
+    the asked field is not buried by prose that merely shares vocabulary.
+    Literal/code/number overlap with the question still outranks generic prose,
+    and body chunks outrank document summaries so a concrete answer is not
+    starved by overview text sitting at the head of the pack.
     """
     terms = set(extract_content_terms(fragment))
     return (
+        _token_overlap_count(fragment, field_codes),
+        _file_identifier_overlap(fragment, file_identifiers),
         _query_literal_overlap(fragment, query_terms),
         _answer_value_count(fragment, query_terms),
         _query_identifier_overlap(fragment, query)[1],
@@ -1559,6 +1649,11 @@ def _compose_grounded_claims(
         pack.query,
         prioritize_literals=prioritize_body_evidence,
     )
+    # Field codes (HOUSE_METHOD) and file identifiers (YY2-Z151.exe) named in
+    # the question are exact lookup anchors: rank any fragment holding them
+    # above prose that merely shares vocabulary.
+    field_codes = _extract_field_codes(pack.query)
+    file_identifiers = _extract_file_identifiers(pack.query)
     selected_texts: list[str] = []
     claims: list[GroundedClaim] = []
     summary_claims = 0
@@ -1587,6 +1682,8 @@ def _compose_grounded_claims(
             obligation_id=obligation_id,
             selected=selected_texts,
             prioritize_literals=prioritize_body_evidence,
+            field_codes=field_codes,
+            file_identifiers=file_identifiers,
         )
         if not fragment:
             return False
@@ -1632,6 +1729,8 @@ def _compose_grounded_claims(
                     selected=selected_texts,
                     prefer_body_evidence=prioritize_body_evidence,
                     prioritize_literals=prioritize_body_evidence,
+                    field_codes=field_codes,
+                    file_identifiers=file_identifiers,
                 )
                 if candidate is not None:
                     item, fragment = candidate
@@ -1719,6 +1818,8 @@ def _compose_grounded_claims(
             selected=selected_texts,
             prefer_body_evidence=prioritize_body_evidence,
             prioritize_literals=prioritize_body_evidence,
+            field_codes=field_codes,
+            file_identifiers=file_identifiers,
         )
         if candidate is not None:
             item, fragment = candidate
@@ -1738,11 +1839,20 @@ def _compose_grounded_claims(
             query_terms=query_terms,
             selected=selected_texts,
             prioritize_literals=prioritize_body_evidence,
+            field_codes=field_codes,
+            file_identifiers=file_identifiers,
         )
         if not fragment:
             continue
         scored_candidates.append((
-            _claim_value_score(item, fragment, pack.query, query_terms),
+            _claim_value_score(
+                item,
+                fragment,
+                pack.query,
+                query_terms,
+                field_codes=field_codes,
+                file_identifiers=file_identifiers,
+            ),
             candidate_index,
             item,
         ))
