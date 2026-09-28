@@ -1104,14 +1104,33 @@ _FIELD_CODE_RE = re.compile(r"(?<!\w)[A-Z][A-Z0-9_]{3,}(?!\w)")
 # File-type identifiers named in the question (YY2-Z151.exe): these are exact
 # lookup anchors and must not be demoted by generic value-count scoring.
 _FILE_IDENTIFIER_RE = re.compile(r"(?<!\w)[A-Za-z][A-Za-z0-9_-]*\.exe(?!\w)", re.IGNORECASE)
+# Table-name tokens (T_<NAME>): they match the field-code shape but name
+# tables, not fields. Treating them as field codes lets a table-overview
+# fragment tie with the definition row of the field the question actually
+# asks about (E2v2 B5).
+_TABLE_NAME_RE = re.compile(r"^T_[A-Z0-9_]+$")
+# The question signals an executable file without naming it ("tệp thực thi",
+# ".exe", "executable"): E2v2 B2 asked for the installer *.exe files by
+# description only, so no identifier was extracted from the question.
+_EXE_SIGNAL_RE = re.compile(
+    r"\.exe\b|tệp thực thi|tep thuc thi|tập tin thực thi|tap tin thuc thi"
+    r"|file thực thi|file thuc thi|executable",
+    re.IGNORECASE,
+)
 
 
 def _extract_field_codes(query: str) -> Tuple[str, ...]:
-    """Return distinct field-code tokens (HOUSE_METHOD, ORICON_STATUS) from the question."""
+    """Return distinct field-code tokens (HOUSE_METHOD, ORICON_STATUS) from the question.
+
+    Table-name tokens (T_*) are skipped: they name tables, not fields.
+    """
     seen: set[str] = set()
     codes: list[str] = []
     for match in _FIELD_CODE_RE.finditer(query or ""):
-        code = match.group(0).casefold()
+        raw = match.group(0)
+        if _TABLE_NAME_RE.match(raw):
+            continue
+        code = raw.casefold()
         if code not in seen:
             seen.add(code)
             codes.append(code)
@@ -1128,6 +1147,46 @@ def _extract_file_identifiers(query: str) -> Tuple[str, ...]:
             seen.add(name)
             names.append(name)
     return tuple(names)
+
+
+def _pack_file_identifiers(pack: EvidencePack) -> Tuple[str, ...]:
+    """Collect distinct *.exe identifiers found anywhere in the pack.
+
+    Used when the question asks about an executable file in general terms
+    (no specific name extracted): the pack's own *.exe names become the
+    lookup anchor so the fragment holding them is not buried by generic
+    value counting (E2v2 B2). Bounded to keep one noisy pack from
+    dominating the score.
+    """
+    seen: set[str] = set()
+    names: list[str] = []
+    for item in pack.items:
+        text = item.snippet or item.text or ""
+        for match in _FILE_IDENTIFIER_RE.finditer(text):
+            name = match.group(0).casefold()
+            if name not in seen:
+                seen.add(name)
+                names.append(name)
+                if len(names) >= 8:
+                    return tuple(names)
+    return tuple(names)
+
+
+def _definition_shaped_field_overlap(
+    text: str, field_codes: Tuple[str, ...]
+) -> int:
+    """Count field codes appearing in definition-row shape (code + encoded value).
+
+    A question naming a field code asks for that field's definition. A
+    fragment that merely mentions the code (prose, table overview) must not
+    outrank the fragment that actually defines it — the code alongside
+    quoted/'0'/'1'-style encoded values.
+    """
+    if not field_codes:
+        return 0
+    if not _QUOTED_VALUE_RE.search(text or ""):
+        return 0
+    return _token_overlap_count(text, field_codes)
 
 
 def _token_overlap_count(text: str, tokens: Tuple[str, ...]) -> int:
@@ -1275,6 +1334,7 @@ def _fragment_score(
     literal_overlap = _query_literal_overlap(fragment, query_terms) if prioritize_literals else 0
     return (
         _token_overlap_count(fragment, field_codes),
+        _definition_shaped_field_overlap(fragment, field_codes),
         _file_identifier_overlap(fragment, file_identifiers),
         typed_value_count,
         answer_value_count,
@@ -1628,6 +1688,7 @@ def _claim_value_score(
     terms = set(extract_content_terms(fragment))
     return (
         _token_overlap_count(fragment, field_codes),
+        _definition_shaped_field_overlap(fragment, field_codes),
         _file_identifier_overlap(fragment, file_identifiers),
         _query_literal_overlap(fragment, query_terms),
         _answer_value_count(fragment, query_terms),
@@ -1654,6 +1715,11 @@ def _compose_grounded_claims(
     # above prose that merely shares vocabulary.
     field_codes = _extract_field_codes(pack.query)
     file_identifiers = _extract_file_identifiers(pack.query)
+    if not file_identifiers and _EXE_SIGNAL_RE.search(pack.query or ""):
+        # The question asks about an executable file without naming it
+        # (E2v2 B2): anchor on whatever *.exe identifiers the pack holds so
+        # the fragment holding them is not buried by generic value counting.
+        file_identifiers = _pack_file_identifiers(pack)
     selected_texts: list[str] = []
     claims: list[GroundedClaim] = []
     summary_claims = 0
