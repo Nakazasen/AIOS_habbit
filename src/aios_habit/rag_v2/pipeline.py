@@ -61,6 +61,7 @@ from .synthesis import (
 
     LocalSynthesisResult,
     ProviderSynthesisProvider,
+    query_requests_exact_values,
     synthesize_evidence,
     synthesize_with_provider,
 )
@@ -1167,7 +1168,11 @@ class RagV2DevPipeline:
 
         pack = build_evidence_pack(plan, response, config=evidence_config)
         synthesis_started = perf_counter()
-        prioritize_body_evidence = summary_first and plan.retrieval_mode == "full"
+        prioritize_body_evidence = (
+            (summary_first and plan.retrieval_mode == "full")
+            or plan.intent_category in {"lookup", "diagnosis"}
+            or query_requests_exact_values(plan.original_query)
+        )
         synthesis = (
             synthesize_with_provider(
                 pack,

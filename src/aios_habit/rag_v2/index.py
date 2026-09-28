@@ -59,8 +59,19 @@ _EXACT_IDENTIFIER_RE = re.compile(
 _EXACT_IDENTIFIER_QUOTA = 8
 
 
-def _identifier_patterns(query: str) -> tuple[re.Pattern[str], ...]:
-    return tuple(
+def _query_carries_exact_values(query: str) -> bool:
+    """Return True when the query contains an identifier/code/number token.
+
+    Such queries ask for a concrete value, so document summaries must not be
+    prepended ahead of the body chunks that hold the literal answer.
+    """
+    text = query or ""
+    if _EXACT_IDENTIFIER_RE.search(text):
+        return True
+    return bool(re.search(r"(?<!\w)\d+(?:[.,]\d+)?(?!\w)", text))
+
+
+def _identifier_patterns(query: str) -> tuple[re.Pattern[str], ...]:    return tuple(
         re.compile(rf"(?<!\w){re.escape(match.group(0))}(?!\w)", re.IGNORECASE)
         for match in _EXACT_IDENTIFIER_RE.finditer(query or "")
     )
@@ -2455,9 +2466,16 @@ class LocalChunkIndex:
                 if summary_chunks:
                     summary_ids = {sc.chunk_id for sc in summary_chunks}
                     filtered = tuple(r for r in response.results if r.chunk_id not in summary_ids)
+                    # A query carrying an identifier/code/number asks for a concrete
+                    # value: keep summaries after the body chunks (as in full mode)
+                    # so overview text cannot starve the literal answer of budget.
+                    summary_after_body = (
+                        retrieval_mode == "full"
+                        or _query_carries_exact_values(plan.original_query)
+                    )
                     combined = (
                         filtered + tuple(summary_chunks)
-                        if retrieval_mode == "full"
+                        if summary_after_body
                         else tuple(summary_chunks) + filtered
                     )
                     response = replace(response, results=combined)

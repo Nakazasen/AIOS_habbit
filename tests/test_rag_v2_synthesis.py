@@ -7,6 +7,7 @@ from aios_habit.rag_v2.index import SearchResponse, SearchResult, SearchSummary
 from aios_habit.rag_v2.synthesis import (
     build_synthesis_plan,
     format_provider_synthesis_contract,
+    format_provider_synthesis_repair_contract,
     provider_validation_is_repairable,
     synthesize_evidence,
     synthesize_with_provider,
@@ -456,7 +457,14 @@ def test_architecture_synthesis_ranks_facet_candidates_across_evidence_items():
     result = synthesize_evidence(build_evidence_pack(query, response), answer_shape="architecture")
 
     assert "platform registration component stores production records" in result.answer
-    assert "system interface is documented for operators" not in result.answer
+    # Facets may now carry several claims within budget; the ranking contract is
+    # that the strong candidate is selected before the weak one for the same facet.
+    components_section = result.answer.split("INTERFACES_AND_VERIFICATION:")[0]
+    strong_pos = components_section.find(
+        "platform registration component stores production records"
+    )
+    weak_pos = components_section.find("system interface is documented for operators")
+    assert strong_pos != -1 and (weak_pos == -1 or strong_pos < weak_pos)
 
 
 def test_provider_synthesis_accepts_only_validated_cloud_safe_answer():
@@ -773,7 +781,11 @@ def test_supply_instruction_lookup_abstains_without_target_anchor():
     assert result.citation_ids == ("[1]",)
 
 
-def test_provider_repairs_shape_only_failure_once_before_accepting_answer():
+def test_provider_drops_single_uncited_line_and_keeps_valid_lines():
+    """A single uncited line is dropped surgically; valid lines are kept.
+
+    E2 item 5: one bad line must not discard the whole provider answer.
+    """
     pack = build_evidence_pack(
         "How to deploy service?",
         _make_response([
@@ -798,26 +810,20 @@ def test_provider_repairs_shape_only_failure_once_before_accepting_answer():
 
     def provider(request):
         calls.append(request)
-        if len(calls) == 1:
-            return (
-                "PRECHECKS:\n- Verify access\n"
-                "STEPS:\n- Deploy the release package [2]\n"
-                "POSTCHECKS:\n- Validate service availability [3]"
-            )
         return (
-            "PRECHECKS:\n- Verify access [1]\n"
+            "PRECHECKS:\n- Verify access\n"
             "STEPS:\n- Deploy the release package [2]\n"
             "POSTCHECKS:\n- Validate service availability [3]"
         )
 
     result = synthesize_with_provider(pack, provider, answer_shape="procedure", max_claims=3)
 
-    assert len(calls) == 2
-    assert calls[1].repair_candidate
-    assert "provider_answer_uncited_material_claim" in calls[1].repair_errors
+    assert len(calls) == 1
     assert result.provider_used is True
-    assert result.mode == "provider_validated_after_repair"
-    assert "PRECHECKS:" in result.answer
+    assert result.mode == "provider_validated"
+    assert "Verify access\n" not in result.answer
+    assert "Deploy the release package [2]" in result.answer
+    assert "Validate service availability [3]" in result.answer
 
 
 def test_provider_never_repairs_unknown_or_uncited_factual_output():
@@ -1149,3 +1155,219 @@ def test_full_mode_synthesis_prioritizes_last_requested_field_identifier():
     assert "HOUSE_METHOD" in result.claims[0].text
     assert "“0”" in result.claims[0].text
     assert "“1”" in result.claims[0].text
+
+
+def test_e2_value_based_selection_beats_pack_order_by_default():
+    """E1 A1: five summaries head the pack, the real answer sits last.
+
+    E2 item 1+3: without any explicit flag, the claim carrying the literal
+    answer codes must be selected instead of the first five pack items.
+    """
+    query = "Mã thùng Oricon trong sự cố ngày 16/6/2026"
+    summaries = [
+        _make_result(
+            f"summary-{index}",
+            f"summary-doc-{index}",
+            10.0 - index,
+            f"Tổng quan nội dung tài liệu vận hành, giai đoạn {index}.",
+            file_type="document_summary",
+            metadata={"is_document_summary": True},
+        )
+        for index in range(5)
+    ]
+    body = [
+        _make_result(
+            "answer-a",
+            "incident-doc",
+            1.0,
+            "Trong sự cố ngày 16/6/2026, thùng Oricon cũ mang mã 11922 và 12860.",
+            matched_terms=("mã", "oricon", "16", "6", "2026"),
+        ),
+        _make_result(
+            "answer-b",
+            "incident-doc",
+            0.9,
+            "Thùng mới trong cùng sự cố mang mã 12626, đã thay thế thùng cũ.",
+            matched_terms=("mã", "oricon", "16", "6", "2026"),
+        ),
+    ]
+    pack = build_evidence_pack(query, _make_response([*summaries, *body]))
+    result = synthesize_evidence(pack)
+
+    assert result.grounded is True
+    assert "11922" in result.answer
+    assert "12860" in result.answer or "12626" in result.answer
+
+
+def test_e2_summary_claim_quota_bounds_overview_claims():
+    """E2 item 1: at most two summary claims may occupy the claim budget."""
+    query = "Mã thùng Oricon trong sự cố ngày 16/6/2026"
+    summaries = [
+        _make_result(
+            f"summary-{index}",
+            f"summary-doc-{index}",
+            10.0 - index,
+            f"Tổng quan sự cố Oricon ngày 16/6/2026, giai đoạn {index}.",
+            matched_terms=("mã", "oricon", "16", "6", "2026"),
+            file_type="document_summary",
+            metadata={"is_document_summary": True},
+        )
+        for index in range(5)
+    ]
+    pack = build_evidence_pack(query, _make_response(summaries))
+    result = synthesize_evidence(pack, max_claims=5)
+
+    summary_claims = sum(
+        1
+        for claim in result.claims
+        if next(
+            item for item in pack.items if item.evidence_id in claim.evidence_ids
+        ).file_type == "document_summary"
+    )
+    assert summary_claims <= 2
+
+
+def test_e2_repair_contract_instructs_compression_not_deletion():
+    """E2 item 4: the repair contract must say compress, never drop cited facts."""
+    pack = build_evidence_pack(
+        "release procedure",
+        _make_response([_make_result(
+            "release", "d1", 5.0, "Verify access, deploy, then validate.",
+            matched_terms=("release", "procedure"),
+        )]),
+    )
+    plan = build_synthesis_plan(pack, max_claims=3)
+    contract = format_provider_synthesis_repair_contract(
+        plan, "draft", ("provider_answer_claim_budget_exceeded",)
+    )
+
+    assert "COMPRESS" in contract
+    assert "keeping every cited value" in contract
+    assert "do not drop cited facts" in contract
+
+
+def test_e2_provider_validation_drops_only_offending_lines():
+    """E2 item 5: one line with an unknown citation is dropped; the rest stays."""
+    pack = build_evidence_pack(
+        "release procedure",
+        _make_response([
+            _make_result(
+                "release-a", "d1", 5.0, "Verify access before release.",
+                matched_terms=("release", "procedure"),
+            ),
+            _make_result(
+                "release-b", "d1", 4.0, "Deploy the release package.",
+                matched_terms=("release", "procedure"),
+            ),
+        ]),
+    )
+    calls = []
+
+    def provider(request):
+        calls.append(request)
+        return (
+            "- Verify access before release [1]\n"
+            "- Invented step without a source [99]\n"
+            "- Deploy the release package [2]"
+        )
+
+    result = synthesize_with_provider(pack, provider, answer_shape="grounded_summary")
+
+    assert len(calls) == 1
+    assert result.provider_used is True
+    assert "[99]" not in result.answer
+    assert "Verify access before release [1]" in result.answer
+    assert "Deploy the release package [2]" in result.answer
+
+
+def test_e2_facet_sections_allow_multiple_claims_within_budget():
+    """E2 item 6: a facet may carry more than one claim inside the budget."""
+    query = "Map the platform components and their external interfaces."
+    results = [
+        _make_result(
+            "component-a", "doc-a", 9.0,
+            "The registration service stores production records.",
+            matched_terms=("platform", "components"),
+            matched_facets=("components",),
+        ),
+        _make_result(
+            "component-b", "doc-b", 8.0,
+            "The terminal gateway forwards history records to the warehouse.",
+            matched_terms=("platform", "components"),
+            matched_facets=("components",),
+        ),
+        _make_result(
+            "interface", "doc-c", 7.0,
+            "The MOM interface exposes the production API to operators.",
+            matched_terms=("external", "interfaces"),
+            matched_facets=("interfaces",),
+        ),
+    ]
+    response = SearchResponse(
+        results=tuple(results),
+        summary=SearchSummary(
+            query=query,
+            indexed_chunk_count=len(results),
+            eligible_chunk_count=len(results),
+            candidate_count=len(results),
+            returned_count=len(results),
+            planned_facet_ids=("query", "components", "interfaces"),
+            covered_facet_ids=("components", "interfaces"),
+            missing_facet_ids=("query",),
+        ),
+    )
+    result = synthesize_evidence(
+        build_evidence_pack(query, response),
+        answer_shape="architecture",
+        max_claims=5,
+    )
+
+    assert "registration service stores production records" in result.answer
+    assert "terminal gateway forwards history records" in result.answer
+    assert "MOM interface exposes the production API" in result.answer
+
+
+def test_e2_b3_keeps_nvarchar_literal_for_length_question():
+    """P1.4 B3 evidence: a '4000 ký tự' question must keep the nvarchar(4000)
+    literal from the evidence instead of only naming the 4000 limit."""
+    query = "Độ dài tối đa cho phép của trường dữ liệu là 4000 ký tự?"
+    general = _make_result(
+        "general-doc", "overview", 9.0,
+        "Tài liệu MOM mô tả giới hạn độ dài cho các trường dữ liệu, "
+        "vượt quá 4000 ký tự sẽ bị từ chối.",
+        matched_terms=("độ", "dài", "4000", "ký", "tự"),
+    )
+    precise = _make_result(
+        "field-def", "spec", 1.0,
+        "Trường RESULT_TEXT có kiểu nvarchar(4000); vượt quá 4000 ký tự "
+        "thì thủ tục không lưu được dữ liệu.",
+        matched_terms=("độ", "dài", "4000", "ký", "tự"),
+    )
+    pack = build_evidence_pack(query, _make_response([general, precise]))
+    result = synthesize_evidence(pack)
+
+    assert result.grounded is True
+    assert "nvarchar(4000)" in result.answer
+
+
+def test_e2_b5_selects_house_method_definition_line():
+    """P1.4 B5 evidence: the HOUSE_METHOD definition line present in the pack
+    must be selected by the extractive composer."""
+    query = "HOUSE_METHOD được định nghĩa như thế nào?"
+    noise = _make_result(
+        "noise", "glossary", 9.0,
+        "Bảng thuật ngữ kho liệt kê các trường dữ liệu chung của hệ thống.",
+        matched_terms=("house_method", "được", "định", "nghĩa", "như", "thế", "nào"),
+    )
+    definition = _make_result(
+        "def-12", "glossary", 1.0,
+        "Định nghĩa HOUSE_METHOD: '0':倉庫へ格納 (nhập kho), "
+        "'1':検査 (kiểm tra).",
+        matched_terms=("house_method", "được", "định", "nghĩa", "như", "thế", "nào"),
+    )
+    pack = build_evidence_pack(query, _make_response([noise, definition]))
+    result = synthesize_evidence(pack)
+
+    assert result.grounded is True
+    assert "HOUSE_METHOD" in result.answer
+    assert "倉庫へ格納" in result.answer
