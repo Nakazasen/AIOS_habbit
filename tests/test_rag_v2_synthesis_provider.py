@@ -235,6 +235,37 @@ class TestRouterSynthesisProvider:
         assert router_request.session_id == "sess-123"
 
 
+    @patch("aios_habit.rag_v2_synthesis_provider.route_answer")
+    def test_safety_mode_label_normal_when_cloud_allowed(self, mock_route):
+        """RouterRequest must carry an explicit safety mode, never AUTO.
+
+        Regression: with the AUTO default the router blocks every provider
+        (auto:blocked) and synthesis falls back to an empty answer.
+        """
+        from aios_habit.safety_modes import SAFETY_MODE_NORMAL
+
+        mock_route.return_value = _make_router_result()
+        provider = RouterSynthesisProvider(provider_configs=MOCK_CONFIGS)
+        provider(_make_request(cloud_allowed=True))
+        router_request = mock_route.call_args[0][0]
+        assert router_request.safety_mode_label == SAFETY_MODE_NORMAL
+
+    @patch("aios_habit.rag_v2_synthesis_provider.route_answer")
+    def test_safety_mode_label_company_when_local_only(self, mock_route):
+        from aios_habit.safety_modes import SAFETY_MODE_COMPANY
+
+        local_config = RouterProviderConfig(
+            "ollama_local", "Ollama Local",
+            "http://localhost:11434/v1/chat/completions",
+            "llama3.1", "", True, True, 10, 30,
+        )
+        mock_route.return_value = _make_router_result()
+        provider = RouterSynthesisProvider(provider_configs=[local_config])
+        provider(_make_request(cloud_allowed=False))
+        router_request = mock_route.call_args[0][0]
+        assert router_request.safety_mode_label == SAFETY_MODE_COMPANY
+
+
 class TestCreateSynthesisProvider:
     @patch("aios_habit.rag_v2_synthesis_provider.provider_configs_from_env")
     def test_returns_none_when_no_keys(self, mock_env):

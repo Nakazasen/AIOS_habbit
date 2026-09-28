@@ -18,6 +18,7 @@ from aios_habit.ai_router import (
 )
 from aios_habit.provider_health import ProviderHealthStore
 from aios_habit.rag_v2.synthesis import ProviderSynthesisRequest
+from aios_habit.safety_modes import SAFETY_MODE_COMPANY, SAFETY_MODE_NORMAL
 
 logger = logging.getLogger(__name__)
 
@@ -147,6 +148,7 @@ class RouterSynthesisProvider:
             deterministic_answer="",
             max_attempts=self._max_attempts,
             privacy_label="cloud_safe" if cloud_allowed else "local_only",
+            safety_mode_label=SAFETY_MODE_NORMAL if cloud_allowed else SAFETY_MODE_COMPANY,
             session_id=self._session_id,
             task_type="rag_v2_synthesis",
         )
