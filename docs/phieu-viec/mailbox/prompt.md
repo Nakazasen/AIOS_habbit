@@ -1,31 +1,44 @@
-# Vé KHẨN — Dừng P1.3; commit 3 fix retrieval + push ngay
+# Vé P1.4 — B1–B5 smoke test kho production (tuyến nội bộ)
 
-Ngày viết: 2026-09-28 (Muse VM). Lệnh TRỰC TIẾP của user lúc 06:51 +07: dừng mọi việc trên máy nhà.
-Chế độ tự lái: Muse ra vé → OMP thực hiện độc lập trên Windows (luật "không vừa đá vừa thổi còi").
-Nhánh: `phieu-viec/rag-fix1`. Không đụng `main`. Không force-push. Máy: `h410asrock` (Win 10 Pro).
+Ngày viết: 2026-09-28 (Muse VM). Quyết định tuyến do user (chủ dữ liệu) ủy quyền cho Muse chốt lúc 20:55 +07.
+Nhánh: `phieu-viec/rag-fix1`. Máy: `h410asrock` (Win 10 Pro). Không đụng `main`. Không force-push.
 
-## 1. Dừng P1.3 ngay
-- P1.3 (đóng dấu kho thật) DỪNG NGAY ở bước hiện tại. Cấm chép canary đè production. Bước smoke test B1–B5 để vé sau.
-- Đã an toàn trước khi dừng (không mất dữ liệu): backup production D→C xong — 32.452.608 byte, SHA-256 khớp file D cũ, `quick_check=ok`; file nguồn canary 2.552.659.968 byte, `quick_check=ok`. Backup nằm trên ổ C.
-- Cấm ghi ổ D (lệnh cấm vĩnh viễn của user vẫn hiệu lực) — vé này không có ngoại lệ ghi nào.
+## Bối cảnh (review P1.3)
+- P1.3 sao lưu + chép kho: **ĐẠT**. Backup production cũ D→C (32.452.608 byte, SHA `eedf4bf2…`, quick_check ok). Canary → production D (2.552.659.968 byte, SHA `062ec090…` khớp nguồn, quick_check ok, không lỗi I/O). App mở được, manifest phân giải đúng production.
+- P1.3 **CHƯA ĐẠT** nghiệm thu vì B1–B5 chưa chạy. OMP dừng đúng (báo cáo `docs/phieu-viec/ket-qua/VE_P1_3_dong-dau-kho-that.md` mục 4+6).
+- Vé này giải quyết 2 blocker còn lại. **ĐẠT vé này = P1.3 đóng.**
 
-## 2. Commit fix retrieval còn treo + push NGAY (CẬP NHẬT 2026-09-28 ~12:05 +07)
+## Quyết định tuyến: NỘI BỘ (user chốt 1 trong 2, Muse chọn)
+- **Cấm gọi AI ngoài.** Lý do: `00_governance/DATA_POLICY.md` dòng 39 — nhãn `local_only` "tuyệt đối không được gửi tới provider". Kho `tri_thuc` là tài liệu công ty (MOM/LSU/Điều-tra-lỗi), nhãn local_only. Không có ngoại lệ cho smoke test.
+- User (chủ dữ liệu) **cho phép rõ ràng tuyến nội bộ** cho B1–B5 — giải quyết blocker "cần user chọn rõ nhà cung cấp".
 
-**Fix số 3 (`safety_mode_label`) ĐÃ CÓ trên branch — không commit lại.** Muse đã implement trên VM và push: commit `491f53c` ("fix(rag): pass explicit safety_mode_label to RouterRequest", 2 test mới, 104 test liên quan pass). Lý do: máy nhà tắt từ 7h sáng, user cần máy công ty chạy B1–B5 trong hôm nay nên không thể chờ tối.
+## 1. Tuyến synthesis (chỉ nội bộ)
+- Được dùng: `openai_compatible_local` (qua `AIOS_LOCAL_AI_ENDPOINT`/`AIOS_LOCAL_AI_MODEL`), Ollama local, hoặc deterministic fallback (chỉ dựng câu trả lời từ bằng chứng, không gọi AI).
+- Cấm tuyệt đối: cầu nối Gemini Web, Nakazasen Router, Groq, mọi provider cloud.
+- Trước khi chạy B1–B5: liệt kê provider thực tế sẽ dùng, xác nhận không có cloud. Ghi vào báo cáo.
 
-Khi mở máy, OMP làm theo thứ tự:
-1. `git fetch origin` rồi kiểm tra: `git log --oneline origin/phieu-viec/rag-fix1 -1` phải thấy `491f53c`.
-2. BỎ các thay đổi local chưa commit của đúng 2 nhóm file sau (vì branch đã có bản fix + test của Muse, commit đè sẽ gây conflict vô ích):
-   - `src/aios_habit/rag_v2_synthesis_provider.py`
-   - các file test của fix số 3 (kiểm tra bằng `git status --short`)
-   Lệnh: `git checkout -- <các file trên>`
-3. Chỉ commit fix số 1 còn lại: `bge_subprocess_client.py` (spawn worker kèm `PYTHONPATH=<root>/src`) thành commit RIÊNG. Fix số 2 (`.env` thêm `BGE_BACKEND=pytorch`) là file local, không commit.
-4. `git pull --rebase` trước push (branch đã có `491f53c`), cấm force-push. Push nhánh NGAY sau commit.
-- Không chạy thêm bất cứ việc gì khác: không B1–B5, không chép file, không embed, không benchmark.
+## 2. Không ghi lên D
+- Production `runtime_root` đang trên D (ổ đã cảnh báo hỏng vật lý). Vé này **cấm mọi ghi lên D**.
+- Chạy B1–B5 với file index mở ở chế độ chỉ đọc (`mode=ro`), hoặc copy production sang C rồi chạy trên bản copy.
+- Ledger/scheduler (`workspace_chat.sqlite`): không được khởi tạo/cập nhật trên D. Nếu scheduler đòi ghi, chuyển ledger sang C hoặc vô hiệu scheduler cho lượt test. Ghi rõ cách đã làm vào báo cáo.
 
-## 3. Báo xong
-Cập nhật `docs/phieu-viec/mailbox/trang-thai.md`: Trạng thái `xong-cho-duyet`, ghi SHA commit của 3 fix. Không cần báo cáo dài — commit + push là đủ.
+## 3. Chạy B1–B5
+- Câu hỏi: `docs/phieu-viec/ket-qua/FIX3_dieu-tra-B-sai.md`.
+- B4 **loại khỏi chấm điểm** (ground truth không có trong corpus — không bịa đáp án).
+- Ghi nguyên văn kết quả từng câu + thời gian chạy + provider/backend thực tế.
 
-## Ghi chú kỹ thuật (để vé sau)
-- OMP báo lúc 06:45 +07 (ghi chú từng bị mất do sự cố commit `d2e2458`, đã khôi phục trong `trang-thai.md`): chưa chạy B1–B5 vì (1) chưa rõ tuyến trả lời nào được phép cho B1–B5 khi cầu nối Gemini Web `direct_ready` nhưng quy tắc dữ liệu cấm đưa `local_only` ra ngoài và C-AGENT cần user chọn rõ; (2) `runtime_root` production vẫn nằm trên ổ D — cần cách bảo đảm scheduler không ghi thêm lên D. Báo cáo OMP ở commit `b196d38` ("document safe-route blockers").
-- Fingerprint ONNX ghim `onnxruntime==1.28.0` (xác nhận 2026-09-27): copy index sang máy khác phải đồng bộ đúng bản runtime.
+## 4. Tiêu chí ĐẠT
+- B1/B2/B3/B5 chạy xong, không lỗi, không timeout.
+- Câu trả lời có căn cứ từ bằng chứng truy xuất (không bịa).
+- Không có byte nào ghi lên D trong suốt lượt chạy (kiểm chứng được).
+- Không có dữ liệu nào rời khỏi máy.
+
+## 5. Báo cáo
+- Viết `docs/phieu-viec/ket-qua/VE_P1_4_smoke-test-noi-bo.md`: provider đã dùng, cách chống ghi D, kết quả B1–B5 nguyên văn + latency.
+- Cập nhật mailbox `trang-thai.md`: `xong-cho-duyet`, ghi SHA commit báo cáo.
+
+## Cấm kỵ
+- Không gọi AI ngoài dưới mọi hình thức (kể cả "thử một câu").
+- Không ghi lên D (kể cả log, cache, ledger).
+- Không sửa code để "cho qua". Không `--apply`, không vacuum, không embed.
+- Không đụng `main`. Không force-push.
