@@ -1,6 +1,6 @@
 # Trạng thái mailbox — KDTVN-PC0575
 
-Trạng thái: `moi`
+Trạng thái: `dang-lam`
 Ticket hiện tại: pc0575-test-cleanup
 `prompt`: `docs/phieu-viec/mailbox-pc0575/prompt.md`
 
@@ -12,4 +12,5 @@ Báo cáo: `docs/phieu-viec/ket-qua/pc0575-gui-verify.md` (commit `8998fa1`). V�
 16 test cũ + 2 điểm code chết theo chính sách mới; P5 (mang cây ONNX) vẫn tạm dừng chờ
 user upload model.
 
-Tiến độ: [2026-09-29 ~18:40 +07] Nhận vé mới (chế độ tự lái) — chờ OMP pull và làm.
+Tiến độ: [2026-09-29 18:39 +07] OMP nhận vé `pc0575-test-cleanup` (đã pull `bb964df..b73d0fa`,
+HEAD có commit verdict vé trước). Bắt đầu sửa 16 test cũ + dọn 2 điểm code chết.
