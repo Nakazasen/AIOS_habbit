@@ -1,10 +1,10 @@
 # Trạng thái mailbox
 
-- Trạng thái: `moi`
+- Trạng thái: `dang-lam`
 - Ticket hiện tại: Ticket xếp hàng 7 — `TOOL-1`: kiểm kê tool chưa nối vào chat (chỉ đọc + báo cáo, không sửa code).
 - `commit`: (chưa có)
-- `bao_cao`: (chưa có)
-- `ghi_chu`: 2026-09-30 ~03:05 +07 — Vé `buoc0-deploy` ĐẠT (Muse verify độc lập, commit `94d2194` — xem `verdict_buoc0-deploy`). Phát hành vé xếp hàng 7 (`TOOL-1`) theo đúng thứ tự `hang-cho`; còn lại TOOL-2..TOOL-5. Chờ watcher/OMP nhận vé.
+- `bao_cao`: `docs/phieu-viec/ket-qua/tool1-kiem-ke.md`
+- `ghi_chu`: 2026-09-30 03:08 +07 — OMP nhận vé `TOOL-1` (chỉ đọc + báo cáo, không sửa code, không đụng ổ D). Cổng gate: watcher tự mở OMP **LAUNCH 1/4** lúc 03:06:47 (`launchStallCount=1`, chưa chạm ngưỡng 4); **điều kiện mở ĐÃ CÓ → cổng MỞ**: cây nguồn `src/aios_habit` (155 tệp .py + 3 gói con) đọc được tại chỗ, vé thuần đọc không phụ thuộc dữ liệu hay Drive → không chuyển `cho-muse`, không no-op. Bắt đầu kiểm kê module + đối chiếu nối chat.
 - `prompt`: `docs/phieu-viec/mailbox/prompt.md`
 - `verdict_buoc0-deploy`: **ĐẠT** (Muse verify độc lập 2026-09-30 ~03:05 +07, commit `94d2194`): commit báo cáo chỉ thêm 1 file `docs/phieu-viec/ket-qua/buoc0-deploy.md` (87 dòng thêm, 0 dòng xóa, 0 dòng code/test đổi); HEAD `dbb053a` chỉ sửa `trang-thai.md` (3 thêm/3 bớt); chưa merge `main`. Báo cáo: 79/79 test vé (đủ bộ error_cases 93/93) pass trên Windows Python 3.11.14; pipeline Bước 0–5 E2E trên dữ liệu thật chạy xong không lỗi (112s, exit 0; 15.737 dòng → 15.707 ca; gate F3b FAIL đúng thiết kế ở `fix` 56,7% ≈ dự báo 56,8%); full suite nền 3.276 đạt/2 bỏ qua/37 lỗi/0 error (37 lỗi đúng nhóm có sẵn E3/E4); hoàn tất ~02:47 trước deadline 30/09 23:59; ràng buộc giữ: không merge `main`, không ghi index production, không đụng ổ D.
 
