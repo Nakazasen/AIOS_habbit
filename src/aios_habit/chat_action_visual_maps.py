@@ -7,18 +7,18 @@ Wires the visual-map group of the TOOL-1 inventory into the chat through the
   knowledge map from the local notebook/case stores (read-only).
 - `knowledge_map_html` supplies the board vocabulary used by the chat output:
   the zone titles (`ZONE_DEFS`) and the Vietnamese relation labels
-  (`RELATION_LABELS`); its full-page HTML board cannot be embedded in a
-  markdown bubble, so the chat shows the same zones/relations as a diagram and
-  tables.
+  (`RELATION_LABELS`); the map image is grouped by the same zones.
 - `visual_knowledge_map` builds the map of one case/profile (evidence, strong
-  answers, lesson cards) with its own Mermaid export and metrics.
+  answers, lesson cards) with its own metrics.
 - `evidence_graph_viewer.build_evidence_graph_view_model` builds the evidence
   graph of the latest answer trace of the conversation (the bubble keeps its
   own on-demand "Xem đồ thị bằng chứng" button; this action adds the typed
   question path).
 
-`workspace_chat_ui.render_assistant_content` draws ```mermaid fences as real
-diagrams (`st.mermaid_chart`), so the maps below render right in the answer.
+The map itself is rendered as a PNG by `visual_map_image.render_map_png` and
+carried by the proven `chart` block (data URI, capped), so it shows right in
+the answer and persists with the message. Streamlit's Mermaid element was not
+used: on the app page it cuts the diagram (see the TOOL-5 report).
 
 Read-only: no index writes, no store writes, no new files.
 """
@@ -28,6 +28,7 @@ from __future__ import annotations
 from typing import Any, List, Mapping, Optional, Sequence, Tuple
 
 from aios_habit.chat_action import (
+    BLOCK_CHART,
     BLOCK_MARKDOWN,
     BLOCK_TABLE,
     ChatAction,
@@ -69,7 +70,6 @@ _PUNCTUATION = " \t\r\n.,:;!?…\"'“”‘’()[]"
 # Caps keep the bubble light and the persisted message small.
 _MAX_MAP_NODES = 60
 _MAX_MAP_EDGES = 120
-_MAX_MERMAID_NODES = 40
 _MAX_FOCUS_NODES = 30
 _MAX_FOCUS_EDGES = 60
 _MAX_ZONE_ROWS = 8
@@ -77,6 +77,22 @@ _MAX_NODE_ROWS = 20
 _MAX_EDGE_ROWS = 15
 _MAX_CASE_ROWS = 10
 _MAX_LABEL = 60
+_MAX_IMAGE_NODES = 15
+_MAX_IMAGE_EDGES = 24
+
+_CASE_ZONE_LABELS = {
+    "case": "Hồ sơ",
+    "evidence": "Bằng chứng",
+    "answer": "Trả lời mạnh",
+    "lesson": "Bài học",
+}
+
+_CASE_RELATION_LABELS = {
+    "case_has_evidence": "có bằng chứng",
+    "case_has_answer": "có câu trả lời",
+    "answer_cites_evidence": "trích dẫn bằng chứng",
+    "action_creates_lesson": "rút ra bài học",
+}
 
 
 def _message(text: str, action: str, title: str) -> ChatActionOutcome:
@@ -222,6 +238,8 @@ def _relation_label(raw: Any) -> str:
     relation = str(raw or "").strip()
     if not relation:
         return "liên quan đến"
+    if relation in _CASE_RELATION_LABELS:
+        return _CASE_RELATION_LABELS[relation]
     return RELATION_LABELS.get(relation, relation.replace("_", " "))
 
 
@@ -269,11 +287,79 @@ def _focus_subgraph(
     return kept_nodes, kept_edges, dropped
 
 
-def _mermaid_block(graph: Mapping[str, Any]) -> ChatActionBlock:
-    from aios_habit.knowledge_map_view import graph_to_pretty_mermaid
+def _chart_block(nodes: Sequence[Mapping[str, Any]], edges: Sequence[Mapping[str, Any]], caption: str) -> ChatActionBlock:
+    """Draw the map with `visual_map_image` and wrap it in a chart block."""
+    from aios_habit.visual_map_image import (
+        MapEdgeSpec,
+        MapImageSpec,
+        MapNodeSpec,
+        render_map_png,
+    )
 
-    body = graph_to_pretty_mermaid(dict(graph), max_nodes=_MAX_MERMAID_NODES)
-    return ChatActionBlock(BLOCK_MARKDOWN, text=f"```mermaid\n{body}\n```")
+    picked = _pick_image_nodes(nodes)
+    node_specs = []
+    for node in picked:
+        node_specs.append(
+            MapNodeSpec(
+                node_id=str(node.get("id")),
+                label=_clip(node.get("label") or node.get("id"), 48),
+                zone=_node_zone_label(node),
+                kind=str(node.get("type") or "other"),
+            )
+        )
+    image_ids = {spec.node_id for spec in node_specs}
+    edge_specs = [
+        MapEdgeSpec(
+            source=str(edge.get("from")),
+            target=str(edge.get("to")),
+            label=_relation_label(edge.get("relation")),
+        )
+        for edge in edges
+        if str(edge.get("from")) in image_ids and str(edge.get("to")) in image_ids
+    ][:_MAX_IMAGE_EDGES]
+    png = render_map_png(
+        MapImageSpec(title="", nodes=tuple(node_specs), edges=tuple(edge_specs))
+    )
+    return ChatActionBlock(BLOCK_CHART, image_png=png, caption=caption, alt="Bản đồ tri thức")
+
+
+def _node_zone_label(node: Mapping[str, Any]) -> str:
+    zone_hint = node.get("zone")
+    if zone_hint:
+        return str(zone_hint)
+    return _zone_title(node.get("type"))
+
+
+# Nodes that carry the story (case/evidence/lessons) win the limited image slots.
+_IMAGE_KIND_ORDER = {
+    "case": 0,
+    "evidence": 1,
+    "answer": 1,
+    "learning": 2,
+    "lesson": 2,
+    "cause": 2,
+    "error": 2,
+    "action": 2,
+    "setting": 2,
+    "process": 3,
+    "system": 3,
+    "document": 4,
+    "source": 4,
+    "question": 1,
+    "citation": 2,
+    "other": 5,
+}
+
+
+def _pick_image_nodes(nodes: Sequence[Mapping[str, Any]]) -> List[Mapping[str, Any]]:
+    indexed = list(enumerate(nodes))
+    indexed.sort(
+        key=lambda pair: (
+            _IMAGE_KIND_ORDER.get(str(pair[1].get("type") or "other").lower(), 5),
+            pair[0],
+        )
+    )
+    return [node for _index, node in indexed[:_MAX_IMAGE_NODES]]
 
 
 def _zone_table(nodes: Sequence[Mapping[str, Any]]) -> ChatActionBlock:
@@ -383,7 +469,14 @@ def _tri_thuc_handler(request: ChatActionRequest) -> Optional[ChatActionOutcome]
                 f"(chỉ đọc).\n\n{_meta_note(meta)}"
             ),
         ),
-        _mermaid_block({"nodes": nodes, "edges": edges}),
+        _chart_block(
+            nodes,
+            edges,
+            caption=(
+                f"Bản đồ tri thức — ảnh vẽ tối đa {_MAX_IMAGE_NODES} nút, "
+                f"{_MAX_IMAGE_EDGES} quan hệ; bảng dưới liệt kê đầy đủ."
+            ),
+        ),
     ]
     if truncated_focus:
         blocks.append(
@@ -504,13 +597,24 @@ def _ho_so_handler(request: ChatActionRequest) -> Optional[ChatActionOutcome]:
 
     from aios_habit.visual_knowledge_map import (
         build_visual_knowledge_graph,
-        export_mermaid_graph,
         summarize_map_metrics,
     )
 
     graph = build_visual_knowledge_graph(case, case_evidence, lesson_dtos, answers)
     metrics = summarize_map_metrics(graph)
-    body = export_mermaid_graph(graph)
+    image_nodes = [
+        {
+            "id": node.id,
+            "label": node.label,
+            "type": node.type,
+            "zone": _CASE_ZONE_LABELS.get(node.type, "Khác"),
+        }
+        for node in graph.nodes.values()
+    ]
+    image_edges = [
+        {"from": edge.source, "to": edge.target, "relation": edge.relation}
+        for edge in graph.edges
+    ]
 
     blocks = [
         ChatActionBlock(
@@ -520,7 +624,11 @@ def _ho_so_handler(request: ChatActionRequest) -> Optional[ChatActionOutcome]:
                 f"{metrics['node_count']} nút, {metrics['edge_count']} quan hệ (chỉ đọc)."
             ),
         ),
-        ChatActionBlock(BLOCK_MARKDOWN, text=f"```mermaid\n{body}\n```"),
+        _chart_block(
+            image_nodes,
+            image_edges,
+            caption=f"Bản đồ hồ sơ — ảnh vẽ tối đa {_MAX_IMAGE_NODES} nút (chỉ đọc).",
+        ),
         ChatActionBlock(
             BLOCK_TABLE,
             headers=("Chỉ số", "Giá trị"),
@@ -571,32 +679,18 @@ def _ho_so_handler(request: ChatActionRequest) -> Optional[ChatActionOutcome]:
 # --------------------------------------------------------------------------
 
 
-def _mermaid_evidence(nodes: Sequence[Mapping[str, Any]], edges: Sequence[Mapping[str, Any]]) -> str:
-    from aios_habit.knowledge_map_view import escape_label, sanitize_id
-
-    lines = ["flowchart LR"]
-    id_map: dict = {}
-    used: set = set()
-    for index, node in enumerate(nodes, start=1):
-        raw_id = str(node.get("id") or f"node_{index}")
-        mermaid_id = sanitize_id(raw_id) or f"node_{index}"
-        while mermaid_id in used:
-            mermaid_id = f"{mermaid_id}_{index}"
-        used.add(mermaid_id)
-        id_map[raw_id] = mermaid_id
-        label = escape_label(_clip(node.get("title") or raw_id, 45))
-        lines.append(f'    {mermaid_id}["{label}"]')
-    for edge in edges:
-        source = id_map.get(str(edge.get("source_id")))
-        target = id_map.get(str(edge.get("target_id")))
-        if not source or not target:
-            continue
-        label = escape_label(_clip(edge.get("display_label") or edge.get("label") or "", 32))
-        if label:
-            lines.append(f"    {source} -->|{label}| {target}")
-        else:
-            lines.append(f"    {source} --> {target}")
-    return "\n".join(lines)
+def _evidence_image_edges(
+    nodes: Sequence[Mapping[str, Any]], edges: Sequence[Mapping[str, Any]]
+) -> List[Mapping[str, Any]]:
+    """Normalize the view-model edges for the PNG renderer."""
+    return [
+        {
+            "from": edge.get("source_id"),
+            "to": edge.get("target_id"),
+            "relation": edge.get("display_label") or edge.get("label") or edge.get("relation"),
+        }
+        for edge in edges
+    ]
 
 
 def _bang_chung_handler(request: ChatActionRequest) -> Optional[ChatActionOutcome]:
@@ -643,6 +737,15 @@ def _bang_chung_handler(request: ChatActionRequest) -> Optional[ChatActionOutcom
 
     nodes = list(view.nodes or [])
     edges = list(view.edges or [])
+    image_nodes = [
+        {
+            "id": node.get("id"),
+            "label": node.get("title") or node.get("id"),
+            "type": node.get("node_type") or "other",
+            "zone": node.get("type_label") or "Khác",
+        }
+        for node in nodes
+    ]
     blocks = [
         ChatActionBlock(
             BLOCK_MARKDOWN,
@@ -651,7 +754,11 @@ def _bang_chung_handler(request: ChatActionRequest) -> Optional[ChatActionOutcom
                 "(chỉ đọc, bám đúng dấu vết)."
             ),
         ),
-        ChatActionBlock(BLOCK_MARKDOWN, text=f"```mermaid\n{_mermaid_evidence(nodes, edges)}\n```"),
+        _chart_block(
+            image_nodes,
+            _evidence_image_edges(nodes, edges),
+            caption=f"Đồ thị bằng chứng — ảnh vẽ tối đa {_MAX_IMAGE_NODES} nút (chỉ đọc).",
+        ),
     ]
     rows = []
     for index, node in enumerate(nodes[:_MAX_NODE_ROWS], start=1):

@@ -2,14 +2,14 @@
 
 from __future__ import annotations
 
+import base64
+import io
 from types import SimpleNamespace
-from unittest.mock import MagicMock, patch
-
 import pytest
 
 from aios_habit import chat_action
 from aios_habit import chat_action_visual_maps as visual
-from aios_habit.chat_action import ChatActionRequest
+from aios_habit.chat_action import BLOCK_CHART, ChatActionRequest
 from aios_habit.feature_flags import reset_feature_flags
 
 
@@ -105,6 +105,13 @@ def _render(outcome) -> str:
     return chat_action.render_outcome(outcome)
 
 
+def _chart_block(outcome):
+    for block in outcome.blocks:
+        if block.kind == BLOCK_CHART:
+            return block
+    return None
+
+
 # --------------------------------------------------------------------------
 # Registration and matching
 # --------------------------------------------------------------------------
@@ -184,12 +191,16 @@ def _knowledge_map_fixture():
     return notebooks, sources, cases, evidence, []
 
 
-def test_tri_thuc_renders_mermaid_zones_and_relations(monkeypatch):
+def test_tri_thuc_renders_map_image_zones_and_relations(monkeypatch):
     monkeypatch.setattr(visual, "_load_graph_inputs", _knowledge_map_fixture)
-    rendered = _render(_dispatch("vẽ bản đồ tri thức"))
+    outcome = _dispatch("vẽ bản đồ tri thức")
+    rendered = _render(outcome)
 
-    assert "```mermaid" in rendered
-    assert "flowchart LR" in rendered
+    chart = _chart_block(outcome)
+    assert chart is not None
+    assert chart.image_png.startswith(b"\x89PNG")
+    assert "data:image/png;base64," in rendered
+    assert "ảnh vẽ tối đa" in rendered
     # Zone titles come from knowledge_map_html.ZONE_DEFS.
     assert "| Case trung tâm |" in rendered
     assert "| Bằng chứng |" in rendered
@@ -216,14 +227,14 @@ def test_tri_thuc_unknown_topic_guides_without_map(monkeypatch):
 
     assert "Chưa tìm thấy" in rendered
     assert "máy phát điện" in rendered
-    assert "```mermaid" not in rendered
+    assert "data:image/png" not in rendered
 
 
 def test_tri_thuc_empty_store_guides(monkeypatch):
     monkeypatch.setattr(visual, "_load_graph_inputs", lambda: ([], [], [], [], []))
     rendered = _render(_dispatch("vẽ bản đồ tri thức"))
     assert "Chưa có dữ liệu" in rendered
-    assert "```mermaid" not in rendered
+    assert "data:image/png" not in rendered
 
 
 def test_tri_thuc_store_error_guides(monkeypatch):
@@ -257,7 +268,7 @@ def test_ho_so_lists_cases_when_no_topic(monkeypatch):
     assert "Máy nén khí" in rendered
 
 
-def test_ho_so_renders_case_graph_metrics_and_nodes(monkeypatch):
+def test_ho_so_renders_case_map_metrics_and_nodes(monkeypatch):
     case = _case("CASE-1", "Hệ thống làm mát")
     evidence = [
         _evidence("EV-1", "CASE-1", "Quạt làm mát hỏng", source_type="note"),
@@ -273,10 +284,13 @@ def test_ho_so_renders_case_graph_metrics_and_nodes(monkeypatch):
     monkeypatch.setattr(
         visual, "_load_case_lessons", lambda case_id: [_lesson("L-1", case_id, "Kiểm tra quạt định kỳ")]
     )
-    rendered = _render(_dispatch("vẽ bản đồ hồ sơ CASE-1"))
+    outcome = _dispatch("vẽ bản đồ hồ sơ CASE-1")
+    rendered = _render(outcome)
 
-    assert "```mermaid" in rendered
-    assert "graph TD" in rendered
+    chart = _chart_block(outcome)
+    assert chart is not None
+    assert chart.image_png.startswith(b"\x89PNG")
+    assert "data:image/png;base64," in rendered
     assert "Quạt làm mát hỏng" in rendered
     assert "Trả lời mạnh: thay quạt" in rendered
     assert "Bài học" in rendered
@@ -290,7 +304,7 @@ def test_ho_so_unknown_case_guides(monkeypatch):
     )
     rendered = _render(_dispatch("vẽ bản đồ hồ sơ CASE-9"))
     assert "Chưa tìm thấy hồ sơ" in rendered
-    assert "```mermaid" not in rendered
+    assert "data:image/png" not in rendered
 
 
 def test_ho_so_empty_store_guides(monkeypatch):
@@ -344,20 +358,23 @@ def test_bang_chung_without_trace_guides(monkeypatch):
         _dispatch("vẽ đồ thị bằng chứng", conversation_id="CONV-1")
     )
     assert "chưa có câu trả lời nào kèm dấu vết bằng chứng" in rendered
-    assert "```mermaid" not in rendered
+    assert "data:image/png" not in rendered
 
 
-def test_bang_chung_renders_mermaid_and_stats(monkeypatch):
+def test_bang_chung_renders_map_image_and_stats(monkeypatch):
     from aios_habit.evidence_trace_schema import EvidenceTrace
 
     trace = EvidenceTrace.from_dict(_trace_dict())
     monkeypatch.setattr(
         visual, "_latest_conversation_trace", lambda conversation_id: trace
     )
-    rendered = _render(_dispatch("vẽ đồ thị bằng chứng", conversation_id="CONV-1"))
+    outcome = _dispatch("vẽ đồ thị bằng chứng", conversation_id="CONV-1")
+    rendered = _render(outcome)
 
-    assert "```mermaid" in rendered
-    assert "flowchart LR" in rendered
+    chart = _chart_block(outcome)
+    assert chart is not None
+    assert chart.image_png.startswith(b"\x89PNG")
+    assert "data:image/png;base64," in rendered
     assert "SOP-han.pdf" in rendered
     assert "Thống kê đồ thị: 4 nút" in rendered
     assert "Câu trả lời tổng hợp" in rendered
@@ -380,7 +397,7 @@ def test_bang_chung_insufficient_trace_guides(monkeypatch):
     rendered = _render(_dispatch("vẽ đồ thị bằng chứng", conversation_id="CONV-1"))
 
     assert "Chưa đủ bằng chứng để vẽ đồ thị" in rendered
-    assert "```mermaid" not in rendered
+    assert "data:image/png" not in rendered
 
 
 def test_bang_chung_trace_loader_error_guides(monkeypatch):
@@ -393,101 +410,92 @@ def test_bang_chung_trace_loader_error_guides(monkeypatch):
 
 
 # --------------------------------------------------------------------------
-# Chat bubble rendering: mermaid fences become real diagrams
+# Map PNG renderer (visual_map_image)
 # --------------------------------------------------------------------------
 
 
-def test_render_assistant_content_draws_mermaid_fence():
-    from aios_habit.workspace_chat_ui import render_assistant_content
+def _image_size(png: bytes):
+    from PIL import Image
 
-    content = "**Bản đồ tri thức**\n\n```mermaid\nflowchart LR\n    A-->B\n```\n\nCuối."
-    with patch("streamlit.markdown") as mock_markdown, patch(
-        "streamlit.mermaid_chart"
-    ) as mock_mermaid:
-        render_assistant_content(content, locale="vi")
-
-    mock_mermaid.assert_called_once_with("flowchart LR\n    A-->B")
-    rendered_parts = [call.args[0] for call in mock_markdown.call_args_list]
-    assert any("**Bản đồ tri thức**" in part for part in rendered_parts)
-    assert any("Cuối." in part for part in rendered_parts)
-    assert all("```mermaid" not in part for part in rendered_parts)
+    with Image.open(io.BytesIO(png)) as image:
+        return image.size
 
 
-def test_render_assistant_content_plain_text_uses_markdown_only():
-    from aios_habit.workspace_chat_ui import render_assistant_content
-
-    with patch("streamlit.markdown") as mock_markdown, patch(
-        "streamlit.mermaid_chart"
-    ) as mock_mermaid:
-        render_assistant_content("Không có sơ đồ nào ở đây.", locale="vi")
-
-    mock_mermaid.assert_not_called()
-    mock_markdown.assert_called_once_with("Không có sơ đồ nào ở đây.")
-
-
-def test_render_assistant_content_falls_back_without_mermaid_api():
-    from aios_habit.workspace_chat_ui import render_assistant_content
-
-    content = "```mermaid\nflowchart LR\n    A-->B\n```"
-    with patch("streamlit.markdown") as mock_markdown, patch(
-        "streamlit.mermaid_chart", None
-    ):
-        render_assistant_content(content, locale="vi")
-
-    mock_markdown.assert_called_once_with(content)
-
-
-def test_render_assistant_content_falls_back_when_diagram_fails():
-    from aios_habit.workspace_chat_ui import render_assistant_content
-
-    content = "```mermaid\nflowchart LR\n    A-->B\n```"
-    with patch("streamlit.markdown") as mock_markdown, patch(
-        "streamlit.mermaid_chart", MagicMock(side_effect=RuntimeError("mermaid lỗi"))
-    ) as mock_mermaid:
-        render_assistant_content(content, locale="vi")
-
-    mock_mermaid.assert_called_once()
-    mock_markdown.assert_called_once_with(content)
-
-
-def test_chat_bubble_draws_map_for_assistant_message():
-    from aios_habit.workspace_chat_models import ChatMessage
-    from aios_habit.workspace_chat_ui import render_chat_bubble
-
-    msg = ChatMessage(
-        id="msg_map_001",
-        conversation_id="conv_001",
-        role="assistant",
-        content="Bản đồ tri thức\n\n```mermaid\nflowchart LR\n    A-->B\n```",
-        trace_id=None,
+def test_render_map_png_returns_valid_small_png():
+    from aios_habit.visual_map_image import (
+        MapEdgeSpec,
+        MapImageSpec,
+        MapNodeSpec,
+        render_map_png,
     )
-    with patch("streamlit.chat_message") as mock_chat_message, patch(
-        "streamlit.markdown"
-    ) as mock_markdown, patch("streamlit.mermaid_chart") as mock_mermaid:
-        mock_chat_message.return_value.__enter__ = MagicMock()
-        mock_chat_message.return_value.__exit__ = MagicMock()
-        render_chat_bubble(msg, is_latest=False, locale="vi", trace_loader=MagicMock())
 
-    mock_mermaid.assert_called_once_with("flowchart LR\n    A-->B")
-    assert any("Bản đồ tri thức" in call.args[0] for call in mock_markdown.call_args_list)
-
-
-def test_chat_bubble_user_message_keeps_plain_markdown():
-    from aios_habit.workspace_chat_models import ChatMessage
-    from aios_habit.workspace_chat_ui import render_chat_bubble
-
-    msg = ChatMessage(
-        id="msg_user_002",
-        conversation_id="conv_001",
-        role="user",
-        content="vẽ bản đồ tri thức",
+    spec = MapImageSpec(
+        title="Bản đồ thử",
+        nodes=(
+            MapNodeSpec("CASE-1", "Hệ thống làm mát quá nhiệt", zone="Hồ sơ", kind="case"),
+            MapNodeSpec("EV-1", "Log nhiệt độ ca đêm", zone="Bằng chứng", kind="evidence"),
+            MapNodeSpec("ANS-1", "Trả lời mạnh: vệ sinh quạt", zone="Trả lời mạnh", kind="answer"),
+            MapNodeSpec("L-1", "Vệ sinh quạt định kỳ", zone="Bài học", kind="lesson"),
+        ),
+        edges=(
+            MapEdgeSpec("CASE-1", "EV-1", "có bằng chứng"),
+            MapEdgeSpec("CASE-1", "ANS-1", "có câu trả lời"),
+            MapEdgeSpec("ANS-1", "EV-1", "trích dẫn bằng chứng"),
+        ),
     )
-    with patch("streamlit.chat_message") as mock_chat_message, patch(
-        "streamlit.markdown"
-    ) as mock_markdown, patch("streamlit.mermaid_chart") as mock_mermaid:
-        mock_chat_message.return_value.__enter__ = MagicMock()
-        mock_chat_message.return_value.__exit__ = MagicMock()
-        render_chat_bubble(msg, is_latest=False, locale="vi")
+    png = render_map_png(spec)
 
-    mock_mermaid.assert_not_called()
-    mock_markdown.assert_called_once_with("vẽ bản đồ tri thức")
+    assert png.startswith(b"\x89PNG")
+    assert len(png) < chat_action.CHART_MAX_BYTES
+    width, height = _image_size(png)
+    assert width <= 1400
+    assert height <= 1000
+    assert width > 500
+    assert height > 150
+
+
+def test_render_map_png_empty_spec_is_valid():
+    from aios_habit.visual_map_image import MapImageSpec, render_map_png
+
+    png = render_map_png(MapImageSpec(title="", nodes=(), edges=()))
+    assert png.startswith(b"\x89PNG")
+    assert _image_size(png)[0] > 0
+
+
+def test_render_map_png_caps_image_dimensions():
+    from aios_habit.visual_map_image import (
+        MapImageSpec,
+        MapNodeSpec,
+        render_map_png,
+    )
+
+    nodes = tuple(
+        MapNodeSpec(
+            f"N-{index}",
+            f"Nút số {index} với nhãn dài để kiểm tra xuống dòng trong khung",
+            zone=f"Khu {index % 3}",
+            kind="other",
+        )
+        for index in range(30)
+    )
+    png = render_map_png(MapImageSpec(title="Bản đồ lớn", nodes=nodes, edges=()))
+    width, height = _image_size(png)
+    assert width <= 1400
+    assert height <= 1000
+    # Six columns max => the 30 nodes are truncated, the image stays bounded.
+    assert width <= 28 * 2 + 6 * 240 + 5 * 76
+
+
+def test_render_map_png_decodes_embedded_data_uri():
+    from aios_habit.visual_map_image import (
+        MapImageSpec,
+        MapNodeSpec,
+        render_map_png,
+    )
+
+    png = render_map_png(
+        MapImageSpec(nodes=(MapNodeSpec("A", "Nút A", zone="Khu", kind="case"),))
+    )
+    data_uri = "data:image/png;base64," + base64.b64encode(png).decode("ascii")
+    raw = base64.b64decode(data_uri.split(",", 1)[1])
+    assert raw == png
