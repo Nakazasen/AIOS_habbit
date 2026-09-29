@@ -1,4 +1,4 @@
-# Watch-Mailbox.ps1 (v4) — watcher + giám sát OMP, vòng lặp cưỡng chế 2 đầu
+# Watch-Mailbox.ps1 (v4.1) — watcher + giám sát OMP, vòng lặp cưỡng chế 2 đầu
 #
 # Đầu 1 (Muse, trên VM): viết ticket -> poll 5 phút -> review.
 # Đầu 2 (script này, máy Windows): poll mailbox mỗi ~90s, và:
@@ -12,7 +12,16 @@
 #   - `xong` ổn định đủ $idleExitChecks lần check liên tiếp -> popup tổng kết
 #     + TỰ DỪNG script (vòng lặp kết thúc thật sự)
 #
+# Phân vé theo máy (v4.1): mỗi máy poll RIÊNG một thư mục mailbox qua -MailboxDir.
+#   Máy nhà:  -MailboxDir "docs/phieu-viec/mailbox"          (mặc định)
+#   Máy công ty: -MailboxDir "docs/phieu-viec/mailbox-pc0575"
+# Hai watcher không bao giờ nhìn vào mailbox của nhau -> không nhặt nhầm vé.
+#
 # Cài đặt: xem HUONG-DAN-WATCHER.md.
+
+param(
+    [string]$MailboxDir = "docs/phieu-viec/mailbox"
+)
 
 $ErrorActionPreference = "SilentlyContinue"
 
@@ -34,19 +43,22 @@ $ompProcessName = "omp"
 #          chạy kèm prompt từ dòng lệnh, và bạn chấp nhận OMP tự chạy).
 $AUTO_LAUNCH = $false
 # $ompLaunchCommand = "C:\tools\omp.exe"
-# $ompLaunchArgs    = @("run", "doc docs/phieu-viec/mailbox/prompt.md va lam theo, tuan thu QUY-UOC.md")
+# $ompLaunchArgs    = @("run", "doc $MailboxDir/prompt.md va lam theo, tuan thu QUY-UOC.md")
+# (Ví dụ máy công ty: "doc docs/phieu-viec/mailbox-pc0575/prompt.md va lam theo")
 $ompLaunchCommand = ""
 $ompLaunchArgs    = @()
 # =====================================================================
 
-$stateFile  = Join-Path $PSScriptRoot "watcher_state.json"
-$ticketFile = Join-Path $PSScriptRoot "_ticket-moi.md"
-$logFile    = Join-Path $PSScriptRoot "watcher.log"
+$stateFile  = Join-Path $PSScriptRoot ("watcher_state_" + ($MailboxDir -replace '[^a-zA-Z0-9]', '_') + ".json")
+$ticketFile = Join-Path $PSScriptRoot ("_ticket-moi_" + ($MailboxDir -replace '[^a-zA-Z0-9]', '_') + ".md")
+$logFile    = Join-Path $PSScriptRoot ("watcher_" + ($MailboxDir -replace '[^a-zA-Z0-9]', '_') + ".log")
+$statusApiPath = "$MailboxDir/trang-thai.md"
+$promptApiPath = "$MailboxDir/prompt.md"
 # Muon poll moi 60 giay: tao token fine-grained (quyen Contents: read),
 # bo comment dong duoi va dan token vao. KHONG commit token len git.
 # $token = "DAN_TOKEN_VAO_DAY"
 
-$mutex = New-Object System.Threading.Mutex($false, "Global\MailboxWatcher")
+$mutex = New-Object System.Threading.Mutex($false, ("Global\MailboxWatcher_" + ($MailboxDir -replace '[^a-zA-Z0-9]', '_')))
 if (-not $mutex.WaitOne(0)) { exit }
 
 function Get-MailboxFile {
@@ -91,7 +103,7 @@ $ticketsDone    = @(St-Get "ticketsDone" @())
 
 while ($true) {
     try {
-        $text       = Get-MailboxFile "docs/phieu-viec/mailbox/trang-thai.md"
+        $text       = Get-MailboxFile $statusApiPath
         $status     = Parse-Field $text 'Trạng thái:\s*`([^`]+)`'
         $ticket     = Parse-Field $text 'Ticket hiện tại:\s*([^\r\n]+)'
         $note       = Parse-Field $text '(?m)^\s*-\s*[Gg]hi ch[uú][:\s]`?([^`\r\n]+)'
@@ -125,7 +137,7 @@ while ($true) {
                 $isNewTicket = ($ticket -ne $lastTicket -or $lastStatus -ne "moi")
                 if ($isNewTicket) {
                     try {
-                        $prompt = Get-MailboxFile "docs/phieu-viec/mailbox/prompt.md"
+                        $prompt = Get-MailboxFile $promptApiPath
                         $prompt | Out-File -FilePath $ticketFile -Encoding utf8
                     } catch {}
                     $firstSeenMoi = $now.ToString("s")
@@ -148,7 +160,7 @@ while ($true) {
                     }
                 } else {
                     if ($isNewTicket -and -not $warnedIdle) {
-                        Show-Popup "Mailbox: ticket moi" ("Co ticket moi cho OMP:`n$ticket`n`nDa luu ban local: _ticket-moi.md`nBao OMP doc va lam theo prompt.")
+                        Show-Popup "Mailbox: ticket moi" ("Co ticket moi cho OMP:`n$ticket`n`nDa luu ban local: $(Split-Path $ticketFile -Leaf)`nBao OMP doc va lam theo prompt.")
                         $warnedIdle = $true
                     }
                 }
