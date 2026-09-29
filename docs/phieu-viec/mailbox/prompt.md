@@ -1,23 +1,20 @@
-# Ticket XẾP HÀNG: Deploy Bước 0 lên máy nhà (DEADLINE 2026-09-30 23:59)
+# Ticket XẾP HÀNG: TOOL-1 — Kiểm kê tool chưa nối vào chat
 
 ## Bối cảnh
-Code/test Bước 0–5 xong từ 28/09 (commit f8eb879, 79 test pass trên Linux).
-Chưa deploy lên máy nào. Deadline: 2026-09-30 23:59.
+Tầm nhìn: 1 ô nhập + 1 vùng trả lời, mọi tính năng chui vào câu trả lời.
+Nhiều module còn đứng riêng lẻ.
 
 ## Việc cần làm
-1. Pull branch `phieu-viec/rag-fix1` mới nhất (đã gồm E3, E4 nếu xong).
-2. Chạy lại 79 test trên Windows Python 3.11, tất cả phải pass.
-3. Chạy pipeline Bước 0–5 với dữ liệu thật từ Drive (LSU + điều tra lỗi):
-   - Dữ liệu mô phỏng PHẢI dựa trên dữ liệu thật, gắn mác `SIMULATED_*`, không bịa.
-4. Kiểm tra output: đúng format, đủ 5 bước, không lỗi.
-5. Ghi báo cáo nghiệm thu.
+1. Quét toàn bộ `src/aios_habit/`: liệt kê mọi module tính năng.
+2. Với mỗi module: đã nối vào chat (`workspace_chat_ui.py` / `workspace_chat_app.py`)
+   hay chưa. Kiểm tra bằng import/reference thực tế, không đoán.
+3. Phân nhóm: RAG, benchmark, interview, prediction, visual, extract, memory, khác.
+4. Báo cáo bảng: module | nhóm | đã nối (có/không) | ghi chú.
 
 ## Cấm
-- Không merge `main` (chờ E-series xong, user đã duyệt merge sau khi verify).
-- Không đụng index production RAG.
+- Chỉ đọc và báo cáo. Không sửa code.
 - Không đụng ổ D.
 
 ## Báo cáo
-`docs/phieu-viec/ket-qua/buoc0-deploy.md`: số test pass/fail trên Windows,
-kết quả chạy với dữ liệu thật, xác nhận đạt deadline.
-Commit lên `phieu-viec/rag-fix1`, `trang-thai.md` → `xong-cho-duyet`.
+`docs/phieu-viec/ket-qua/tool1-kiem-ke.md`. Commit lên `phieu-viec/rag-fix1`,
+`trang-thai.md` → `xong-cho-duyet`.
