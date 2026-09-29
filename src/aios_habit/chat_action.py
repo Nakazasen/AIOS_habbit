@@ -32,7 +32,10 @@ _BLOCK_KINDS = (BLOCK_MARKDOWN, BLOCK_TABLE, BLOCK_CHART)
 CHART_MAX_BYTES = 400_000
 
 # Action modules imported once by `load_builtin_actions` so they self-register.
-BUILTIN_ACTION_MODULES: Tuple[str, ...] = ("aios_habit.chat_action_next_actions",)
+BUILTIN_ACTION_MODULES: Tuple[str, ...] = (
+    "aios_habit.chat_action_next_actions",
+    "aios_habit.chat_action_answer_quality",
+)
 
 
 def normalize_text(text: str) -> str:
