@@ -1,10 +1,10 @@
 # Trạng thái mailbox
 
-- Trạng thái: `dang-lam`
+- Trạng thái: `xong-cho-duyet`
 - Ticket hiện tại: Ticket xếp hàng 3 — `onnx-upload-drive`: nén + upload cây ONNX bge-m3-onnx-fp32 lên Google Drive (user yêu cầu 2026-09-29 ~18:50 +07). Làm sau khi don-o-c đã lấy lại chỗ trống ổ C.
-- `commit`: (chưa có)
-- `bao_cao`: (chưa có)
-- `ghi_chu`: 2026-09-30 01:52 +07 — Tải lên HOÀN TẤT: `bge-m3-onnx-fp32.zip` trong thư mục AIOS_Data, link `https://drive.google.com/file/d/1CnTrdYLfv1ZpbZMo8zivSOxuD1cVDIrG/view?usp=sharing`, file ID `1CnTrdYLfv1ZpbZMo8zivSOxuD1cVDIrG`; đã mở quyền "Bất kỳ ai có liên kết" (theo tiền lệ vé V1.4) và xác nhận link mới. Đang tải lại file bằng ẩn danh để đối chiếu SHA-256 + chứng minh PC0575 tải được.
+- `commit`: 09768ec (báo cáo)
+- `bao_cao`: `docs/phieu-viec/ket-qua/onnx-upload-drive.md`
+- `ghi_chu`: 2026-09-30 02:05 +07 — XONG vé `onnx-upload-drive`: cây model khớp ghim `9f81075f…b11093`; zip `C:\temp\bge-m3-onnx-fp32.zip` 1.326.939.447 byte SHA-256 `4239479b…8bf2f3c`; đã tải lên thư mục AIOS_Data — link `https://drive.google.com/file/d/1CnTrdYLfv1ZpbZMo8zivSOxuD1cVDIrG/view?usp=sharing`, file ID `1CnTrdYLfv1ZpbZMo8zivSOxuD1cVDIrG`, quyền "Bất kỳ ai có liên kết" (theo tiền lệ V1.4). Xác minh đầu-cuối: tải lại ẩn danh không cookie đúng 1.326.939.447 byte, SHA-256 trùng bản gốc. Không copy credential, không cài thêm gì, không ghi ổ D, không đụng index. Chờ Muse duyệt báo cáo.
 - `prompt`: `docs/phieu-viec/mailbox/prompt.md`
 - `verdict_stale-check`: **ĐẠT** (Muse verify độc lập 2026-09-29 ~23:1x +07 trên báo cáo `stale-check.md`, commit `76ba99d`): 0/496 document stale cần embed lại — 107.331/107.331 chunk `retrievable=1` đủ dense+sparse ONNX fingerprint `016c5255…`, 0 thiếu row, 0 hash lệch; đếm bằng 2 cách độc lập (SQL LEFT JOIN + quét Python) trùng khớp; 496/496 doc có ≥1 chunk retrievable; 340 row PyTorch cũ trùng chunk_id 100% (dead weight vô hại). Mở bản copy C `C:\\AIOS_p1_4\\tri_thuc\\library.sqlite` ở `mode=ro`, SHA `062ec090…` khớp ghim P1.3 — không đụng ổ D, không ghi index, không embed, không sửa code, không `functions.find`/mạng ngoài. Commit `76ba99d` chỉ thêm 1 file báo cáo, commit `9375c14` chỉ sửa `trang-thai.md`.
 - `verdict_don-o-c`: **ĐẠT** (Muse verify độc lập 2026-09-30 ~00:1x +07, HEAD `8136376d` → parent `7fbe3a35` chỉ thêm 1 file báo cáo): 4 bước đúng thứ tự liệt kê→xác minh→xóa; B4 chạy `integrity_check=ok` trên cả 2 bản giữ lại trước khi xóa backup cũ; 4 file `.bak-*` đã xóa đều có SHA-256 ghi lại trước khi xóa; sau xóa vẫn còn ≥1 bản backup index production (bản giữ 32 MB SHA `eedf4bf…` + bản copy truy vấn C + production trên D); SHA bản canary giữ lại `062ec090…` khớp ghim P1.3 (băm lại trong vé); worktree vé 0.3 là clone độc lập, HEAD `c6aa083` là tổ tiên của origin, không commit chưa push/stash, dữ liệu cục bộ đã lưu zip; venv xóa chỉ trên ổ C, venv đang dùng giữ nguyên; không đụng ổ D, không ghi index, không embed, không sửa code. Thu hồi 9.352 MiB (~9,1 GiB) vượt mục tiêu ~8 GB; ổ C trống 12.884,6 MiB (từ 3.532,5 MiB).
@@ -18,4 +18,4 @@
   9. `TOOL-3` (`prompt-queue-tool3.md`) — nối benchmark vào chat.
   10. `TOOL-4` (`prompt-queue-tool4.md`) — nối interview + prediction vào chat.
   11. `TOOL-5` (`prompt-queue-tool5.md`) — nối visual maps vào chat.
-  (Mục 1 `stale-check` ĐẠT — báo cáo `docs/phieu-viec/ket-qua/stale-check.md`; mục 2 `don-o-c` ĐẠT — báo cáo `docs/phieu-viec/ket-qua/don-o-c-may-nha.md`; mục 3 `onnx-upload-drive` đang phát vé — file `prompt-queue-onnx-upload.md`.)
+  (Mục 1 `stale-check` ĐẠT — báo cáo `docs/phieu-viec/ket-qua/stale-check.md`; mục 2 `don-o-c` ĐẠT — báo cáo `docs/phieu-viec/ket-qua/don-o-c-may-nha.md`; mục 3 `onnx-upload-drive` OMP báo XONG 2026-09-30 02:05 +07, chờ Muse duyệt — báo cáo `docs/phieu-viec/ket-qua/onnx-upload-drive.md`.)
