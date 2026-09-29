@@ -1,0 +1,128 @@
+{
+  "status": "REPRODUCED",
+  "target": "016c5255d0cec1fcb75b99f71f3c6a47a6e67b6087c3eb943b039cf8ac6274fb",
+  "sealed_from_index": {
+    "ok": true,
+    "rows": [
+      {
+        "fingerprint": "016c5255d0cec1fcb75b99f71f3c6a47a6e67b6087c3eb943b039cf8ac6274fb",
+        "n": 107331
+      },
+      {
+        "fingerprint": "ce7fb53f797f0973e2cbf51d6a6ffef4de9a32b659b979f45663c6c360c8e43c",
+        "n": 340
+      }
+    ]
+  },
+  "installed_onnxruntime": "1.28.0",
+  "checked_combos": 648,
+  "winners_count": 2,
+  "winners": [
+    {
+      "artifact_checksum": "sha256:9f81075f58fe1d251510d32ba5c9a66102f7420115519d3f720adc2348b11093",
+      "artifact_checksum_source": "sha256:9f81075f…b11093 (sidecar FIX2 may nha: models/bge-m3-onnx-fp32.sha256)",
+      "device": "cpu",
+      "dimension": 1024,
+      "distance": "cosine",
+      "model_id": "BAAI/bge-m3",
+      "normalized": true,
+      "revision": "5617a9f61b028005a4858fdac845db406aefb181",
+      "runtime": "onnxruntime-int8",
+      "runtime_version": "1.28.0"
+    },
+    {
+      "artifact_checksum": "sha256:9f81075f58fe1d251510d32ba5c9a66102f7420115519d3f720adc2348b11093",
+      "artifact_checksum_source": "sha256:9f81075f…b11093 (sidecar FIX2 may nha: models/bge-m3-onnx-fp32.sha256)",
+      "device": "",
+      "dimension": 1024,
+      "distance": "cosine",
+      "model_id": "BAAI/bge-m3",
+      "normalized": true,
+      "revision": "5617a9f61b028005a4858fdac845db406aefb181",
+      "runtime": "onnxruntime-int8",
+      "runtime_version": "1.28.0"
+    }
+  ],
+  "counterfactuals": [
+    {
+      "label": "cay onnx PC0575 8 file truoc sparse head (dad14a24)",
+      "artifact_checksum": "sha256:dad14a2492262ad3259a0be58b6b8c517897d71141685b97c2af924c520e4bd4",
+      "fingerprint": "0585bb9832edd15695e211e78c8de8a26c179cb9ce6e34ea63dc5bcd5942bde4",
+      "matches_target": false
+    },
+    {
+      "label": "cay onnx PC0575 10 file sau sparse head (728c9eb7)",
+      "artifact_checksum": "sha256:728c9eb7ee48a66ac4b6d567e3408433398911a6abcce9685d8a048eb8766baa",
+      "fingerprint": "8274fbb05ec3ad6895bfc7a4a8cdd835d28317acf66b34e49f816ba5cab9bc3f",
+      "matches_target": false
+    },
+    {
+      "label": "khong checksum (rong)",
+      "artifact_checksum": "",
+      "fingerprint": "f6aff1c9fece53b4dbac856f28a86b6935fcd1d632afda99364641de0d37d89f",
+      "matches_target": false
+    },
+    {
+      "label": "manifest pack PyTorch pin (b1d887e0)",
+      "artifact_checksum": "sha256:b1d887e03f13547609b4c6498ce8f357242edb5079a448c62d31d4caac320b61",
+      "fingerprint": "93c722cc7a79bfb92d30a84098480402c816c5c666e04f35a289c5fcff576fab",
+      "matches_target": false
+    }
+  ],
+  "candidates": {
+    "artifact_checksum": [
+      "sha256:9f81075f…b11093 (sidecar FIX2 may nha: models/bge-m3-onnx-fp32.sha256)",
+      "sha256:b1d887e0…320b61 (manifest pin: src/aios_habit/bge_m3_manifest.json)",
+      "sha256:697a97c3…d40fda (manifest approved #2 / FIX2 bao cao)",
+      "sha256:dad14a24…4bd4 (cay onnx PC0575, 8 file truoc sparse head)",
+      "sha256:728c9eb7…76baa (cay onnx PC0575, 10 file sau sparse head)",
+      "rong"
+    ],
+    "device": [
+      "cpu",
+      "cuda",
+      ""
+    ],
+    "model_id": [
+      "BAAI/bge-m3"
+    ],
+    "runtime": [
+      "onnxruntime-int8",
+      "onnxruntime",
+      ""
+    ],
+    "runtime_version": [
+      "1.28.0",
+      "1.29.0",
+      ""
+    ],
+    "revision": [
+      "5617a9f61b028005a4858fdac845db406aefb181",
+      ""
+    ],
+    "dimension": [
+      1024
+    ],
+    "distance": [
+      "cosine"
+    ],
+    "normalized": [
+      true,
+      false
+    ]
+  },
+  "winner": {
+    "artifact_checksum": "sha256:9f81075f58fe1d251510d32ba5c9a66102f7420115519d3f720adc2348b11093",
+    "artifact_checksum_source": "sha256:9f81075f…b11093 (sidecar FIX2 may nha: models/bge-m3-onnx-fp32.sha256)",
+    "device": "cpu",
+    "dimension": 1024,
+    "distance": "cosine",
+    "model_id": "BAAI/bge-m3",
+    "normalized": true,
+    "revision": "5617a9f61b028005a4858fdac845db406aefb181",
+    "runtime": "onnxruntime-int8",
+    "runtime_version": "1.28.0"
+  },
+  "payload_preimage": "{\"artifact_checksum\":\"sha256:9f81075f58fe1d251510d32ba5c9a66102f7420115519d3f720adc2348b11093\",\"device\":\"cpu\",\"dimension\":1024,\"distance\":\"cosine\",\"model_id\":\"BAAI/bge-m3\",\"normalized\":true,\"revision\":\"5617a9f61b028005a4858fdac845db406aefb181\",\"runtime\":\"onnxruntime-int8\",\"runtime_version\":\"1.28.0\"}",
+  "sha256_of_preimage": "016c5255d0cec1fcb75b99f71f3c6a47a6e67b6087c3eb943b039cf8ac6274fb"
+}
