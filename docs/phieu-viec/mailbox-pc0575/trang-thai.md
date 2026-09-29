@@ -1,10 +1,7 @@
-# Trạng thái mailbox — máy công ty KDTVN-PC0575
+# Trạng thái mailbox — KDTVN-PC0575
 
-- Máy: `KDTVN-PC0575`
-- Trạng thái: `xong`
-- Ticket hiện tại: `p2-b7b-smoke-ticket.md` (P2 B7b — smoke test, sparse head)
-- `prompt`: `docs/phieu-viec/mailbox-pc0575/prompt.md`
-
-Mailbox này chỉ dành cho máy công ty KDTVN-PC0575 (CPU-only, máy deploy LAN).
-Watcher trên PC0575 poll riêng thư mục này; watcher máy nhà không nhìn vào đây.
-Muse viết vé vào đây khi có việc cho máy công ty (verify deploy, smoke test, kiểm tra).
+Trạng thái: `moi`
+Ticket hiện tại: p3-app-readiness
+Ghi chú: `Ve P3: chan doan app Streamlit bao 0/171 tai lieu san sang (user bao 2026-09-29 16:46 +07)`
+Commit mới nhất: ``
+Đường dẫn báo cáo: `docs/phieu-viec/ket-qua/p3-bao-cao.md` (OMP sẽ ghi)
