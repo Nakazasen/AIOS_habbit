@@ -56,3 +56,17 @@ Trong mọi cách: hash cây giải nén **phải** bằng `9f81075f…b11093`; 
   nhánh `phieu-viec/rag-fix1`; **KHÔNG** đụng `main`, không force-push.
 - Không tạo `models\`, không tải/giải nén, không đặt sidecar, không đổi env, không restart app,
   không chạm index/worker (đúng "dừng đúng gate, không làm gì thêm" của vé).
+
+## Lần mở 2/4 — kiểm lại (2026-09-29 17:52 +07)
+
+- Watcher tự mở OMP lần 2 lúc 17:50 (dòng `LAUNCH 2/4` trong
+  `D:\Sandbox\agent-mailbox\watcher-mailbox-pc0575.log`; state `launchStallCount=2`,
+  sig giữ nguyên `moi|p5-mang-cay-onnx||…`).
+- Kiểm lại chỉ-đọc: **cổng vẫn đóng, không có tín hiệu mới** — `prompt.md` chưa có
+  link/URL Drive (vẫn chỉ là câu mô tả); `local_runs\p5-upload\` chưa tồn tại;
+  `models\` chưa tồn tại; không có file zip/sha256 model mới trong `D:\Sandbox`,
+  Downloads, Desktop; `rclone` chưa có config; ổ đĩa vẫn chỉ `C:`, `D:`, `Z:`;
+  nhánh remote chưa có push mới.
+- Phạm vi lượt này: chỉ ghi markdown (1 dòng tiến độ trong `trang-thai.md` + mục này);
+  không tạo `models\`, không tải/giải nén, không đặt sidecar, không đổi env, không chạm
+  index/app. Giữ nguyên sig để bộ đếm N=4 escalate được; lượt 3/4 kiểm lại tương tự.
