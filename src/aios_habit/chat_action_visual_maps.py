@@ -680,7 +680,7 @@ def _ho_so_handler(request: ChatActionRequest) -> Optional[ChatActionOutcome]:
 
 
 def _evidence_image_edges(
-    nodes: Sequence[Mapping[str, Any]], edges: Sequence[Mapping[str, Any]]
+    edges: Sequence[Mapping[str, Any]],
 ) -> List[Mapping[str, Any]]:
     """Normalize the view-model edges for the PNG renderer."""
     return [
@@ -756,7 +756,7 @@ def _bang_chung_handler(request: ChatActionRequest) -> Optional[ChatActionOutcom
         ),
         _chart_block(
             image_nodes,
-            _evidence_image_edges(nodes, edges),
+            _evidence_image_edges(edges),
             caption=f"Đồ thị bằng chứng — ảnh vẽ tối đa {_MAX_IMAGE_NODES} nút (chỉ đọc).",
         ),
     ]
@@ -797,7 +797,7 @@ def register() -> Tuple[ChatAction, ...]:
                 handler=_tri_thuc_handler,
                 description=(
                     "Vẽ bản đồ tri thức cục bộ (sổ, tài liệu, hồ sơ, bằng chứng) "
-                    "thành sơ đồ Mermaid kèm bảng theo khu — nối worklens_semantic_map "
+                    "thành ảnh bản đồ kèm bảng theo khu — nối worklens_semantic_map "
                     "+ knowledge_map_html, chỉ đọc."
                 ),
             )
@@ -810,7 +810,7 @@ def register() -> Tuple[ChatAction, ...]:
                 handler=_ho_so_handler,
                 description=(
                     "Vẽ bản đồ một hồ sơ (bằng chứng, câu trả lời mạnh, bài học) "
-                    "thành sơ đồ Mermaid kèm bảng chỉ số — nối visual_knowledge_map, chỉ đọc."
+                    "thành ảnh bản đồ kèm bảng chỉ số — nối visual_knowledge_map, chỉ đọc."
                 ),
             )
         ),
