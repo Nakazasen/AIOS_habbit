@@ -29,4 +29,5 @@
   3. `onnx-upload-drive` (`prompt-queue-onnx-upload.md`, user yêu cầu ~18:50 +07) — nén + upload model.
   4. `E3` (`prompt-queue-e3.md`) — dọn XML thô ở extractor (code + test).
   5. `E4` (`prompt-queue-e4.md`) — default backend ONNX fp32 (giữ BGE_BACKEND override, fail-closed).
+  6. `buoc0-deploy` (`prompt-queue-buoc0-deploy.md`) — deploy Bước 0–5 lên máy nhà (DEADLINE 30/09 23:59).
   Khi E2v3 xong, phát hành theo đúng thứ tự trên.
