@@ -1,20 +1,20 @@
-# Ticket XẾP HÀNG: TOOL-1 — Kiểm kê tool chưa nối vào chat
+# Ticket XẾP HÀNG: TOOL-2 — Khung action trong chat
 
 ## Bối cảnh
-Tầm nhìn: 1 ô nhập + 1 vùng trả lời, mọi tính năng chui vào câu trả lời.
-Nhiều module còn đứng riêng lẻ.
+Theo kết quả TOOL-1. Cần khung chung để mọi tool chui vào câu trả lời chat
+thay vì phơi nút riêng.
 
 ## Việc cần làm
-1. Quét toàn bộ `src/aios_habit/`: liệt kê mọi module tính năng.
-2. Với mỗi module: đã nối vào chat (`workspace_chat_ui.py` / `workspace_chat_app.py`)
-   hay chưa. Kiểm tra bằng import/reference thực tế, không đoán.
-3. Phân nhóm: RAG, benchmark, interview, prediction, visual, extract, memory, khác.
-4. Báo cáo bảng: module | nhóm | đã nối (có/không) | ghi chú.
+1. Thiết kế `chat_action` framework: tool đăng ký action → chat gọi theo ngữ cảnh
+   câu hỏi → render kết quả giàu (bảng, biểu đồ) trong vùng trả lời.
+2. Viết code khung + 1 tool mẫu tích hợp thử (chọn tool đơn giản nhất từ TOOL-1).
+3. Test: hỏi thử → action kích hoạt đúng → kết quả render đúng.
+4. Không mỗi tính năng thêm một nút — đúng luật UI đã chốt.
 
 ## Cấm
-- Chỉ đọc và báo cáo. Không sửa code.
-- Không đụng ổ D.
+- Không ghi index. Chỉ code + test.
+- Không merge `main`. Không đụng ổ D.
 
 ## Báo cáo
-`docs/phieu-viec/ket-qua/tool1-kiem-ke.md`. Commit lên `phieu-viec/rag-fix1`,
+`docs/phieu-viec/ket-qua/tool2-khung-action.md`. Commit lên `phieu-viec/rag-fix1`,
 `trang-thai.md` → `xong-cho-duyet`.
