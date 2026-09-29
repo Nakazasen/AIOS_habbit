@@ -1,9 +1,10 @@
 # Trạng thái mailbox
 
-- Trạng thái: `dang-lam`
+- Trạng thái: `xong-cho-duyet`
 - Ticket hiện tại: Ticket xếp hàng 4 — `E3`: dọn XML thô ở extractor (code + test, không ghi index).
-- `commit`: 58c4b67 (mã + test; báo cáo tiếp theo)
-- `ghi_chu`: 2026-09-30 01:18 +07 — E3 mốc 2: xong fix + test, đã push. Fix trong `document_extractors.py`: `_XML_MARKUP_RE` nay dọn được tag trải nhiều dòng, attribute chứa `>` (giá trị trong nháy) và DOCTYPE nội bộ; giữ mặc định TẮT cờ. Test mới: 2 test extractor (lồng nhau/CDATA/entity/tag nhiều dòng/attr `>`/DOCTYPE; PPTX XML truncated nhiều dòng) + 1 test luật "vất lại file cũ thì bỏ qua" khi bật dọn XML. Đã chứng minh đỏ-trước-xanh-sau: bỏ fix → 2 test đỏ; `pytest tests/test_document_extractors.py tests/test_workspace_chat_folder_import.py` → 57 pass. Tiếp: chạy cổng đầy đủ (compileall + pytest -q + audit + import).
+- `commit`: 0ec4c78 (báo cáo) — mã `58c4b67`, thêm test `77d4616`
+- `bao_cao`: `docs/phieu-viec/ket-qua/e3-don-xml-extractor.md`
+- `ghi_chu`: 2026-09-30 01:37 +07 — XONG vé E3, chờ Muse duyệt. Kết quả: rà 3 tệp, chỉ `document_extractors.py` có đường lọt XML thô; siết `_strip_xml_markup` (thẻ trải nhiều dòng, attribute giá trị trong nháy chứa `>`, `<!DOCTYPE ... [ ... ]>`); cờ `AIOS_DOCUMENT_EXTRACTOR_XML_CLEANUP` giữ mặc định TẮT, đường mặc định chứng minh không đổi (spy: 0 lần gọi). 4 test mới: lồng nhau/CDATA/entity/thẻ nhiều dòng/DOCTYPE, PPTX + XLSX XML truncated, luật "vất lại file cũ thì bỏ qua" khi bật cờ. Đỏ-trước-xanh-sau: lùi fix → đúng 3 test XML đỏ. Cổng: `compileall` đạt, `audit` PASS, import `workspace_chat_app` OK, 3 tệp liên quan 73 đạt, `pytest -q` toàn bộ 3.262 đạt/3 bỏ qua/37 lỗi/10 error (đối chứng A/B lùi fix: 40 lỗi → 37 lỗi còn lại có sẵn ở `HEAD`). Không ghi index/embed, không merge `main`, không ghi ổ D.
 - `prompt`: `docs/phieu-viec/mailbox/prompt.md`
 - `verdict_onnx-upload-drive`: **ĐẠT** (Muse verify độc lập 2026-09-30 ~03:0x +07, HEAD `b44258b`): cây model khớp ghim `9f81075f…b11093`; commit `09768ec` chỉ thêm 1 file báo cáo (0 dòng xóa); zip 1.326.939.447 byte SHA-256 `4239479b…8bf2f3c` đúng 9/9 file, trích thử 3 file nhỏ SHA khớp; file công khai trên Drive với đúng tên `bge-m3-onnx-fp32.zip` (kiểm độc lập qua trang chia sẻ); xác minh đầu-cuối ẩn danh: tải đúng 1.326.939.447 byte, SHA trùng bản gốc. Ràng buộc vé: không ghi ổ D, không ghi index, không merge `main` — đều giữ.
 - `verdict_stale-check`: **ĐẠT** (Muse verify độc lập 2026-09-29 ~23:1x +07 trên báo cáo `stale-check.md`, commit `76ba99d`): 0/496 document stale cần embed lại — 107.331/107.331 chunk `retrievable=1` đủ dense+sparse ONNX fingerprint `016c5255…`, 0 thiếu row, 0 hash lệch; đếm bằng 2 cách độc lập (SQL LEFT JOIN + quét Python) trùng khớp; 496/496 doc có ≥1 chunk retrievable; 340 row PyTorch cũ trùng chunk_id 100% (dead weight vô hại). Mở bản copy C `C:\\AIOS_p1_4\\tri_thuc\\library.sqlite` ở `mode=ro`, SHA `062ec090…` khớp ghim P1.3 — không đụng ổ D, không ghi index, không embed, không sửa code, không `functions.find`/mạng ngoài. Commit `76ba99d` chỉ thêm 1 file báo cáo, commit `9375c14` chỉ sửa `trang-thai.md`.
@@ -17,4 +18,4 @@
   9. `TOOL-3` (`prompt-queue-tool3.md`) — nối benchmark vào chat.
   10. `TOOL-4` (`prompt-queue-tool4.md`) — nối interview + prediction vào chat.
   11. `TOOL-5` (`prompt-queue-tool5.md`) — nối visual maps vào chat.
-  (Mục 1 `stale-check` ĐẠT; mục 2 `don-o-c` ĐẠT; mục 3 `onnx-upload-drive` ĐẠT 2026-09-30 ~03:0x +07 — báo cáo `docs/phieu-viec/ket-qua/onnx-upload-drive.md`; mục 4 `E3` phát hành, OMP đang chờ làm.)
+  (Mục 1 `stale-check` ĐẠT; mục 2 `don-o-c` ĐẠT; mục 3 `onnx-upload-drive` ĐẠT 2026-09-30 ~03:0x +07 — báo cáo `docs/phieu-viec/ket-qua/onnx-upload-drive.md`; mục 4 `E3` OMP báo XONG 2026-09-30 01:37 +07, chờ Muse duyệt — báo cáo `docs/phieu-viec/ket-qua/e3-don-xml-extractor.md`.)
