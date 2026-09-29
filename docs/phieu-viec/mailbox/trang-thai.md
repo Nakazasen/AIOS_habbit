@@ -24,4 +24,16 @@
 - Verdict E2 vòng 1 (Muse, 2026-09-29 00:35 +07): **CHƯA ĐẠT** (rớt 1 trong 2 dòng kiểm then chốt: B5 không nêu được định nghĩa HOUSE_METHOD; điểm mới: B2 thoái lui so với P1.4 — mất YY2-Z151.exe/YY2-Z152.exe). B3 đã qua (nvarchar(4000)). Các tiêu chí còn lại ĐẠT: chạy xong 52,75/21,55/17,51/24,92s, grounded, provider_used=false, không ghi D (SHA 062ec090… không đổi, 2 snapshot 0 thay đổi), fail-closed chứng minh được (6 khóa cloud còn trong env, create_synthesis_provider() → None, 44 mẫu mạng = 0 kết nối).
 - Ticket trước: E2 — Fix synthesis theo E1 + chạy lại B1–B5 (B4 loại), verdict CHƯA ĐẠT (báo cáo `docs/phieu-viec/ket-qua/VE_E2_fix-synthesis.md`, commit `4aa6d68`).
 
-- `hang-cho`: vé `onnx-upload-drive` xếp hàng sau E2v3 (file `docs/phieu-viec/mailbox/prompt-queue-onnx-upload.md`, user yêu cầu 2026-09-29 ~18:50 +07). Khi E2v3 xong, phát hành vé này TRƯỚC khi quay lại chuỗi E.
+- `hang-cho` (theo thứ tự, user yêu cầu 2026-09-29):
+  1. `stale-check` (`prompt-queue-stale-check.md`) — kiểm tra nhanh chỉ đọc, ~5 phút.
+  2. `don-o-c` (`prompt-queue-don-o-c.md`) — dọn ổ C lấy chỗ trống TRƯỚC.
+  3. `onnx-upload-drive` (`prompt-queue-onnx-upload.md`, user yêu cầu ~18:50 +07) — nén + upload model.
+  4. `E3` (`prompt-queue-e3.md`) — dọn XML thô ở extractor (code + test).
+  5. `E4` (`prompt-queue-e4.md`) — default backend ONNX fp32 (giữ BGE_BACKEND override, fail-closed).
+  6. `buoc0-deploy` (`prompt-queue-buoc0-deploy.md`) — deploy Bước 0–5 lên máy nhà (DEADLINE 30/09 23:59).
+  7. `TOOL-1` (`prompt-queue-tool1.md`) — kiểm kê tool chưa nối vào chat.
+  8. `TOOL-2` (`prompt-queue-tool2.md`) — khung action trong chat.
+  9. `TOOL-3` (`prompt-queue-tool3.md`) — nối benchmark vào chat.
+  10. `TOOL-4` (`prompt-queue-tool4.md`) — nối interview + prediction vào chat.
+  11. `TOOL-5` (`prompt-queue-tool5.md`) — nối visual maps vào chat.
+  Khi E2v3 xong, phát hành theo đúng thứ tự trên.
