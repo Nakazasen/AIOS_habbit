@@ -30,4 +30,9 @@
   4. `E3` (`prompt-queue-e3.md`) — dọn XML thô ở extractor (code + test).
   5. `E4` (`prompt-queue-e4.md`) — default backend ONNX fp32 (giữ BGE_BACKEND override, fail-closed).
   6. `buoc0-deploy` (`prompt-queue-buoc0-deploy.md`) — deploy Bước 0–5 lên máy nhà (DEADLINE 30/09 23:59).
+  7. `TOOL-1` (`prompt-queue-tool1.md`) — kiểm kê tool chưa nối vào chat.
+  8. `TOOL-2` (`prompt-queue-tool2.md`) — khung action trong chat.
+  9. `TOOL-3` (`prompt-queue-tool3.md`) — nối benchmark vào chat.
+  10. `TOOL-4` (`prompt-queue-tool4.md`) — nối interview + prediction vào chat.
+  11. `TOOL-5` (`prompt-queue-tool5.md`) — nối visual maps vào chat.
   Khi E2v3 xong, phát hành theo đúng thứ tự trên.
