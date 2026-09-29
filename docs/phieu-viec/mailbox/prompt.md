@@ -1,27 +1,23 @@
-# Ticket XẾP HÀNG: E4 — Chuyển default backend sang ONNX fp32
+# Ticket XẾP HÀNG: Deploy Bước 0 lên máy nhà (DEADLINE 2026-09-30 23:59)
 
 ## Bối cảnh
-Chuỗi E hoàn thiện trả lời. E4 chuyển backend mặc định sang ONNX fp32.
+Code/test Bước 0–5 xong từ 28/09 (commit f8eb879, 79 test pass trên Linux).
+Chưa deploy lên máy nào. Deadline: 2026-09-30 23:59.
 
 ## Việc cần làm
-1. Đổi default backend trong config/code sang `onnx_fp32` (hoặc tên tương đương
-   trong `aios_habit.rag_v2.bge_onnx_backend`).
-2. GIỮ nguyên biến môi trường `BGE_BACKEND` làm override — nếu user đặt thì dùng
-   theo user, không ép.
-3. Fail-closed: nếu thiếu model ONNX thì báo lỗi rõ ràng, KHÔNG fallback lén
-   sang backend khác.
-4. Viết test:
-   - Test default là ONNX fp32 khi không đặt `BGE_BACKEND`.
-   - Test override `BGE_BACKEND` có hiệu lực.
-   - Test fail-closed khi thiếu model (không crash mù, message rõ).
-   - Test "tắt GPU đi vẫn chạy" (CPU-only, theo ràng buộc 2026-09-27).
-5. Chạy full test liên quan, tất cả pass.
+1. Pull branch `phieu-viec/rag-fix1` mới nhất (đã gồm E3, E4 nếu xong).
+2. Chạy lại 79 test trên Windows Python 3.11, tất cả phải pass.
+3. Chạy pipeline Bước 0–5 với dữ liệu thật từ Drive (LSU + điều tra lỗi):
+   - Dữ liệu mô phỏng PHẢI dựa trên dữ liệu thật, gắn mác `SIMULATED_*`, không bịa.
+4. Kiểm tra output: đúng format, đủ 5 bước, không lỗi.
+5. Ghi báo cáo nghiệm thu.
 
 ## Cấm
-- Không ghi index, không embed. Chỉ code + test.
-- Không merge `main`. Không đụng ổ D.
-- Không hardcode GPU.
+- Không merge `main` (chờ E-series xong, user đã duyệt merge sau khi verify).
+- Không đụng index production RAG.
+- Không đụng ổ D.
 
 ## Báo cáo
-`docs/phieu-viec/ket-qua/e4-default-onnx-fp32.md`: mô tả đổi + số test pass/fail.
+`docs/phieu-viec/ket-qua/buoc0-deploy.md`: số test pass/fail trên Windows,
+kết quả chạy với dữ liệu thật, xác nhận đạt deadline.
 Commit lên `phieu-viec/rag-fix1`, `trang-thai.md` → `xong-cho-duyet`.
