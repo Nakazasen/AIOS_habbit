@@ -1,55 +1,67 @@
-# Vé P3 — Chẩn đoán app Streamlit báo "0/171 tài liệu sẵn sàng" (KDTVN-PC0575)
+# Vé P4 — Chốt "bộ hằng số deploy" tái tạo đúng fingerprint `016c5255…` (KDTVN-PC0575)
 
-## Hiện tượng (user báo 2026-09-29 ~16:46 +07, kèm screenshot localhost:8501)
+## Bối cảnh (verdict P3 của Muse, 2026-09-29)
 
-App chat hiển thị:
+- P3 **ĐẠT** ở vai chẩn đoán: app đọc **đúng** index production
+  (`local_runs\workspace_chat_rag_v2_production\bge_m3_hybrid\collections\tri_thuc\library.sqlite`,
+  SHA-256 `062ec090…ef8ca` khớp P2); readiness 0/171 do thiếu biến môi trường ONNX
+  (`AIOS_BGE_ONNX_MODEL_PATH`, `AIOS_BGE_ONNX_MODEL_CHECKSUM`) khiến BGE worker không
+  khởi động được → cổng fail-closed → mọi nguồn `failed` (`preparation_init_bge_worker_model_verify_failed`).
+- "68 tài liệu cần xử lý" là ảnh chụp **giữa lượt chạy** (16:45→16:48 hỏng dần 68→171,
+  cùng một đợt lỗi). 171 nguồn `temporary` **thật sự chưa có vector** trong index
+  (`retrievable=1` = 0) — không liên quan 25.813 chunk `retrievable=0` đã biết ở P2.
+- **Nguy cơ lớn (P3 mục 6):** vector ONNX trong index mang định danh `016c5255…`;
+  đặt env "cho chạy được" bừa thì `_expected_backend_fingerprint` ra `8274fbb0…`
+  (khác) → app coi **toàn bộ 107.331 vector cũ là hết hạn** → embed lại hàng loạt,
+  ghi vào production index. **Cấm đặt env trước khi chốt được hằng số đúng.**
+- OMP đã thử {checksum manifest `b1d887e0…`, checksum cây hiện tại `728c9eb7…`, rỗng}
+  × {onnxruntime `1.28.0`, `1.29.0`} → **không tổ hợp nào tái tạo được `016c5255…`**.
+  Lưu ý: hàm `SemanticModelDescriptor.fingerprint`
+  (`src/aios_habit/rag_v2/semantic.py`) băm **9 trường**
+  (artifact_checksum, device, dimension, distance, model_id, normalized,
+  revision, runtime, runtime_version) — OMP mới chỉ quét 2 trường.
 
-> 📚 Đã chuẩn bị xong 0/171 tài liệu (0%) · Tài liệu sẵn sàng để tìm kiếm: 0/171
-> · Có 68 tài liệu cần xử lý. Tìm kiếm đầy đủ chưa sẵn sàng.
+## Nhiệm vụ OMP — CHỈ ĐỌC + TÍNH TOÁN, CẤM ĐỔI ENV MÁY, CẤM GHI INDEX, CẤM EMBED
 
-Trong khi P2 (vừa nghiệm thu ĐẠT, commit `07061b70d21b`) đã chứng minh production
-index trên chính máy này hoạt động: 107.331 chunk có embedding ONNX, smoke B7b
-exit 0, B1/B2/B3/B5 pass.
-
-## Nhận định sơ bộ của Muse
-
-Engine retrieval OK, vấn đề nằm ở tầng app UI: hoặc app đang đọc sai file sqlite
-(không phải production index đã verify), hoặc bảng trạng thái document của app
-lệch với số chunk thực tế trong index.
-
-## Nhiệm vụ OMP — CHỈ ĐỌC, CẤM GHI INDEX, CẤM EMBED trong vé này
-
-1. Xác định app Streamlit (localhost:8501) đang đọc file sqlite nào: kiểm tra
-   config, biến môi trường, hoặc code khởi tạo đường dẫn DB.
-2. So sánh với đường dẫn production index đã verify P2:
-   `local_runs\workspace_chat_rag_v2_production\bge_m3_hybrid\collections\tri_thuc\library.sqlite`
-   (SHA-256: `062EC090644FB4EC09D2FB6388F3175E988E48D63061B04E6C27BBED334EF8CA`).
-3. Trong DB app đang đọc, kiểm tra bảng documents/manifest: tại sao readiness =
-   0/171? Đếm số chunk thực tế có embedding ONNX trong DB đó.
-4. Làm rõ "68 tài liệu cần xử lý": là thật sự chưa có embedding, hay chỉ là
-   status tracking sai? (Đối chiếu với 25.813 chunk `retrievable=0` đã biết ở P2 —
-   chunk không retrieve được không tính là "cần xử lý".)
-5. Nếu app đọc sai DB: sửa config trỏ đúng production index, restart app,
-   chụp màn hình dòng readiness sau khi sửa.
-6. Ghi báo cáo vào `docs/phieu-viec/ket-qua/p3-bao-cao.md`, gồm: nguyên nhân gốc,
-   đã sửa gì (file nào, dòng nào), screenshot trước/sau, số tài liệu sẵn sàng mới.
+1. Đọc fingerprint **đầy đủ** (64 ký tự hex) từ một dòng đã seal
+   (`model_fingerprint = '016c5255%'`) trong production index — truy vấn **read-only**
+   (`mode=ro`), không chạm index.
+2. Tìm provenance lịch sử FIX2: kiểm tra các bảng metadata/manifest trong
+   `library.sqlite` (read-only) xem có lưu `artifact_checksum` / `device` /
+   `runtime_version` / `model_id` / `revision` của lượt migration không.
+   Nếu không có → ghi rõ "không có provenance trong DB", không đoán.
+3. Tái tạo bằng `SemanticModelDescriptor.fingerprint` (thuần tính toán Python,
+   không cần model): quét các ứng viên cho từng trường —
+   `artifact_checksum` ∈ {`sha256:b1d887e0…`, `sha256:728c9eb7…`, rỗng, mọi checksum
+   tìm được ở bước 2}, `runtime_version` ∈ {`1.28.0`, `1.29.0`, rỗng, version thực tế
+   của `onnxruntime` đang cài}, `device` ∈ {`cpu`, `cuda`, rỗng},
+   `model_id` ∈ {`BAAI/bge-m3`, các biến thể trong code},
+   `revision` ∈ {đầy đủ `5617a9f61b028005a4858fdac845db406aefb181`, rút gọn, rỗng},
+   `dimension` = 1024, `distance`/`normalized` mặc định.
+   Mục tiêu: ra **đúng chuỗi 64 ký tự** ở bước 1. Ghi lại tổ hợp thắng + script.
+4. Làm rõ mâu thuẫn manifest: `src/aios_habit/bge_m3_manifest.json` và
+   `packaging/models/bge_m3_manifest.json` đang giữ `b1d887e0…` trong khi cây onnx
+   hiện tại checksum `728c9eb7…` (đổi sau khi P2-B7b thêm `sparse_linear.npy`) —
+   manifest này là của bản int8 hay fp32? Ghi rõ trong báo cáo.
+5. **Không đổi bất kỳ biến môi trường nào trên máy; không restart app; không ghi
+   index; không embed; không merge `main`.**
 
 ## Tiêu chí ĐẠT
 
-- App báo số tài liệu sẵn sàng > 0 và khớp với production index đã verify,
-  HOẶC báo cáo chứng minh 68 tài liệu thật sự chưa được embed (khi đó việc embed
-  là ticket tiếp theo, thuộc OMP, không làm trong vé này).
-
-## Ràng buộc
-
-- Không ghi bất kỳ byte nào lên production index trong vé này.
-- Không chạy embed.
-- Không merge `main`.
-- Nếu screenshot của user thực ra chụp trên máy nhà (không phải KDTVN-PC0575),
-  ghi rõ trong báo cáo và dừng vé.
+- Báo cáo `docs/phieu-viec/ket-qua/p4-bao-cao.md` gồm:
+  - bộ hằng số deploy đầy đủ: {đường dẫn thư mục onnx, checksum đúng định dạng
+    `sha256:<hex>`, phiên bản onnxruntime, device, model_id/revision} **đã chứng minh
+    tái tạo đúng fingerprint 64 ký tự** (kèm script + output);
+  - cơ chế đặt checksum sẽ dùng ở vé sau: env `AIOS_BGE_ONNX_MODEL_CHECKSUM`
+    hay sidecar `local_runs\retrieval_models\bge-m3-5617a9f\onnx.sha256`
+    (ưu tiên cách khớp sẵn cơ chế sidecar của mã);
+  - kết luận manifest ở bước 4.
+- Nếu không tìm được provenance và quét hết không ra: báo cáo ghi rõ đã thử
+  những gì, kết luận "chưa xác định được", đề xuất bước tiếp theo (ví dụ lấy log
+  FIX2 từ máy nhà) — **không được đoán một checksum "cho chạy được"**.
 
 ## Xong việc
 
 OMP cập nhật `docs/phieu-viec/mailbox-pc0575/trang-thai.md`:
-`Trạng thái: \`xong-cho-duyet\``, `Ticket hiện tại: p3-app-readiness`,
+`Trạng thái: \`xong-cho-duyet\``, `Ticket hiện tại: p4-deploy-constants`,
 đường dẫn báo cáo, commit SHA. Cron Muse sẽ review.

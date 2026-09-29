@@ -1,7 +1,8 @@
 # Trạng thái mailbox — KDTVN-PC0575
 
-Trạng thái: `xong-cho-duyet`
-Ticket hiện tại: p3-app-readiness
-Ghi chú: [2026-09-29 17:08 +07] P3 xong (chỉ đọc, không sửa gì): app đọc ĐÚNG index production (SHA 062ec090…ef8ca khớp P2, index không bị ghi). Nguyên nhân 0/171: thiếu env ONNX nên worker BGE chết → 171/171 ledger `failed`. CẢNH BÁO: đặt env 'cho chạy được' sẽ làm định danh kỳ vọng 8274fbb0… khác định danh vector trong index 016c5255… ⇒ nguy cơ embed lại toàn bộ 107.331 vector; cần Muse chốt bộ hằng số deploy trước.
+Trạng thái: `moi`
+Ticket hiện tại: p4-deploy-constants
+Ghi chú: [2026-09-29 17:14 +07] Verdict P3 của Muse: ĐẠT (chẩn đoán). Nguyên nhân gốc 0/171 = thiếu env ONNX → BGE worker chết → fail-closed; app đọc đúng index production (SHA 062ec090… khớp P2); 171 nguồn temporary thật sự chưa có vector; "68" là ảnh chụp giữa lượt. CẤM đặt env bừa: sai fingerprint → app coi 107.331 vector cũ hết hạn → embed lại hàng loạt. P4 (mới): chốt bộ hằng số deploy tái tạo đúng 016c5255… — chỉ đọc + tính toán, cấm đổi env máy, cấm ghi index, cấm embed.
 Commit mới nhất: `489f3ff`
-Đường dẫn báo cáo: `docs/phieu-viec/ket-qua/p3-bao-cao.md`
+Đường dẫn báo cáo P3: `docs/phieu-viec/ket-qua/p3-bao-cao.md`
+Đường dẫn prompt P4: `docs/phieu-viec/mailbox-pc0575/prompt.md`
