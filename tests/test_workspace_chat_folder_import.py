@@ -323,6 +323,61 @@ class TestBatchIngestion:
         assert summary.fail_count == 0
         assert summary.item_results == []
 
+    def test_old_file_reimport_still_skipped_when_xml_cleanup_enabled(
+        self, tmp_path, monkeypatch
+    ):
+        """E3: bật dọn XML thô không được phá luật "vất lại file cũ thì bỏ qua"."""
+        import zipfile
+
+        from aios_habit import workspace_chat_folder_import as folder_import
+
+        monkeypatch.setenv("AIOS_DOCUMENT_EXTRACTOR_XML_CLEANUP", "1")
+        monkeypatch.setattr(
+            folder_import,
+            "FOLDER_IMPORT_PROGRESS_FILE",
+            tmp_path / "folder_import_progress.json",
+        )
+
+        pptx = tmp_path / "xml-heavy.pptx"
+        with zipfile.ZipFile(pptx, "w") as archive:
+            archive.writestr(
+                "ppt/slides/slide1.xml",
+                '<p:sld xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main" '
+                'xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main">'
+                "<a:t>PART-402 nvarchar(4000) 0 1</a:t></p:sld>",
+            )
+
+        real_extract = folder_import.ingest_and_extract_bytes
+        extract_calls = {"count": 0}
+
+        def counting_extract(*args, **kwargs):
+            extract_calls["count"] += 1
+            return real_extract(*args, **kwargs)
+
+        monkeypatch.setattr(folder_import, "ingest_and_extract_bytes", counting_extract)
+
+        first = ingest_scanned_files_batch(
+            files=[pptx],
+            conversation_id="conv_e3_skip",
+            privacy_choice="Chỉ dùng trên máy / không gửi AI",
+        )
+        assert first.success_count == 1
+        assert extract_calls["count"] == 1
+        extracted_text = load_temporary_sources("conv_e3_skip")[0].content_text
+        assert "PART-402" in extracted_text and "nvarchar(4000)" in extracted_text
+        assert "xmlns" not in extracted_text and "<a:t>" not in extracted_text
+
+        second = ingest_scanned_files_batch(
+            files=[pptx],
+            conversation_id="conv_e3_skip",
+            privacy_choice="Chỉ dùng trên máy / không gửi AI",
+        )
+        assert second.skipped_count == 1
+        assert second.success_count == 0
+        assert second.item_results[0].error_code == "already_imported"
+        assert extract_calls["count"] == 1, "file cũ phải bị bỏ qua trước khi trích xuất"
+        assert len(load_temporary_sources("conv_e3_skip")) == 1
+
     def test_ingest_scanned_files_batch_success_and_failures(self, tmp_path, monkeypatch):
         doc_dir = tmp_path / "batch_docs"
         doc_dir.mkdir()

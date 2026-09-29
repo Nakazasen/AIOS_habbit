@@ -248,10 +248,6 @@ def xml_cleanup_enabled() -> bool:
     return os.environ.get(XML_CLEANUP_FLAG, "").strip().casefold() in _XML_CLEANUP_TRUE
 
 
-_XML_MARKUP_RE = re.compile(
-    r"<\?xml[ \t]+[^?\r\n]*\?>|<!--|-->|<\?|\?>|<!\[CDATA\[|\]\]>|"
-    r"<![^>\r\n]*>|</?[A-Za-z_][\w.:-]*(?:[ \t]+[^<>\r\n]*?)?[ \t]*/?>"
-)
 _XML_ATTRIBUTE_MARKER = "\ue000"
 _XML_NAMESPACE_ATTRIBUTE_RE = re.compile(
     r"\b(?:xmlns(?::[\w.-]+)?|[\w.-]+:[\w.-]+)[ \t]*=[ \t]*"
@@ -260,6 +256,31 @@ _XML_NAMESPACE_ATTRIBUTE_RE = re.compile(
 )
 _XML_NAMESPACE_NAME_RE = re.compile(r"\bxmlns(?::[\w.-]+)?", flags=re.IGNORECASE)
 _XML_INCOMPLETE_TAG_RE = re.compile(r"</?(?=[A-Za-z_])")
+
+# A tag may carry ``name="value"`` attributes. XML legally allows ``>`` inside a
+# quoted value, and pretty-printed XML puts newlines between attributes; both
+# forms are matched here so the remnant (``a:t``, ``id="x"``, stray ``>``) does
+# not leak into extracted text. Namespace declarations already replaced by
+# ``_XML_ATTRIBUTE_MARKER`` are accepted as an attribute slot too.
+_XML_TAG_ATTRIBUTE_RE = (
+    r"(?:[A-Za-z_][\w.:-]*[ \t\r\n]*=[ \t\r\n]*(?:\"[^\"<]*\"|'[^'<]*')"
+    rf"|{re.escape(_XML_ATTRIBUTE_MARKER)})"
+)
+_XML_TAG_MULTILINE_RE = re.compile(
+    r"</?[A-Za-z_][\w.:-]*(?:[ \t\r\n]+"
+    + _XML_TAG_ATTRIBUTE_RE
+    + r")*[ \t\r\n]*/?>"
+)
+_XML_TAG_SINGLE_LINE_RE = re.compile(
+    r"</?[A-Za-z_][\w.:-]*(?:[ \t]+[^<>\r\n]*?)?[ \t]*/?>"
+)
+_XML_MARKUP_RE = re.compile(
+    r"<\?xml[ \t\r\n]+[^?]*\?>|<!--|-->|<\?|\?>|<!\[CDATA\[|\]\]>|"
+    r"<!DOCTYPE(?:[^>[]|\[[^\]]*\])*>|<![^>\r\n]*>|"
+    + _XML_TAG_MULTILINE_RE.pattern
+    + r"|"
+    + _XML_TAG_SINGLE_LINE_RE.pattern
+)
 
 
 def _strip_xml_markup(text: str) -> str:
@@ -273,7 +294,7 @@ def _strip_xml_markup(text: str) -> str:
     cleaned = _XML_MARKUP_RE.sub(" ", without_namespace_names)
     cleaned = _XML_INCOMPLETE_TAG_RE.sub(" ", cleaned)
     cleaned = re.sub(
-        rf"(?:[ \t]*{re.escape(_XML_ATTRIBUTE_MARKER)})+[ \t]*>",
+        rf"(?:[ \t\r\n]*{re.escape(_XML_ATTRIBUTE_MARKER)})+[ \t\r\n]*>",
         " ",
         cleaned,
     )

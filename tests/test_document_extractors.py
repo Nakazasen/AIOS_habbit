@@ -335,6 +335,71 @@ def test_clean_pptx_chunks_are_unchanged_when_xml_cleanup_is_enabled(monkeypatch
     assert cleaned == baseline
 
 
+def test_xml_cleanup_handles_nested_cdata_entities_and_multiline_tags(monkeypatch):
+    """E3: XML lồng nhau, CDATA, entity và tag trải nhiều dòng đều phải sạch."""
+    from aios_habit.document_extractors import XML_CLEANUP_FLAG
+
+    monkeypatch.setenv(XML_CLEANUP_FLAG, "1")
+
+    nested = normalize_extracted_text("<a:x>outer <a:y>inner</a:y> after</a:x>")
+    assert nested == "outer inner after"
+
+    cdata = normalize_extracted_text("<a:t>pre <![CDATA[Zwei & Dinge]]> post</a:t>")
+    assert cdata == "pre Zwei & Dinge post"
+    assert "<![CDATA[" not in cdata and "]]>" not in cdata
+
+    cdata_with_markup_like_text = normalize_extracted_text(
+        "<a:t>pre <![CDATA[Zwei & <Dinge>]]> post</a:t>"
+    )
+    assert "<![CDATA[" not in cdata_with_markup_like_text
+    assert "]]>" not in cdata_with_markup_like_text
+    assert all(value in cdata_with_markup_like_text for value in ("pre", "Zwei", "&", "post"))
+
+    entities = normalize_extracted_text(
+        "<a:t>Caf&eacute; &amp; luu &#253; &lt;b&gt;nhan&lt;/b&gt;</a:t>"
+    )
+    assert "Café" in entities
+    assert "&" in entities
+    assert "ý" in entities
+    assert "nhan" in entities
+    assert all(marker not in entities for marker in ("&eacute;", "&amp;", "&#253;", "&lt;", "<b>"))
+
+    multiline_tag = normalize_extracted_text('<a:t\n  id="x"\n>text</a:t>')
+    assert multiline_tag == "text"
+    assert normalize_extracted_text(multiline_tag) == multiline_tag
+
+    quoted_gt = normalize_extracted_text('<a:t foo="a>b">text</a:t>')
+    assert quoted_gt == "text"
+
+    doctype = normalize_extracted_text('<!DOCTYPE a [ <!ENTITY x "y"> ]>real text')
+    assert doctype == "real text"
+
+
+def test_pptx_xml_cleanup_strips_pretty_printed_truncated_markup(monkeypatch, tmp_path):
+    """E3: XML hỏng/truncated nhiều dòng không được để lại mảnh thẻ hay xmlns."""
+    from aios_habit.document_extractors import XML_CLEANUP_FLAG
+
+    slide_xml = (
+        '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n'
+        '<p:sld xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main"\n'
+        '    xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main">\n'
+        '  <p:cSld><p:spTree><p:sp><p:txBody><a:p><a:r>\n'
+        '    <a:t>PART-402 nvarchar(4000) 0 1</a:t>\n'
+    )
+    pptx = tmp_path / "truncated-markup.pptx"
+    _write_zip(pptx, {"ppt/slides/slide1.xml": slide_xml})
+
+    monkeypatch.setenv(XML_CLEANUP_FLAG, "1")
+    chunks = extract_text_chunks_from_file(pptx)
+    assert chunks
+    text = "\n".join(chunk["text"] for chunk in chunks)
+    assert all(value in text for value in ("PART-402", "nvarchar(4000)", "0 1"))
+    assert all(
+        residue not in text
+        for residue in ("xmlns", "p:sld", "<p:", "</", "<a:", "a:t", "<?xml", 'id="')
+    )
+
+
 def test_docx_adapter_extracts_paragraphs_and_tables(tmp_path):
     docx = tmp_path / "doc.docx"
     _write_zip(docx, {"word/document.xml": '<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body><w:p><w:r><w:t>Heading Text</w:t></w:r></w:p><w:tbl><w:tr><w:tc><w:p><w:r><w:t>Cell Value</w:t></w:r></w:p></w:tc></w:tr></w:tbl></w:body></w:document>'})
