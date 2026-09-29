@@ -1,4 +1,5 @@
 import json
+import sys
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -386,3 +387,134 @@ def test_default_onnx_checksum_failure_reports_path_and_override(tmp_path, monke
         _resolve_embedding_backend(config, None)
     assert str(model_path) in str(exc_info.value)
     assert "BGE_BACKEND=pytorch" in str(exc_info.value)
+
+
+def test_onnx_default_backend_runs_on_cpu_when_no_gpu_provider_exists(tmp_path, monkeypatch):
+    pytest.importorskip("numpy")
+    import numpy as np
+
+    from aios_habit.rag_v2 import bge_onnx_backend as onnx_module
+
+    model_dir = tmp_path / "bge-m3-onnx-fp32"
+    model_dir.mkdir()
+    (model_dir / "model.onnx").write_bytes(b"stub-onnx")
+    monkeypatch.setattr(onnx_module, "verify_model_tree", lambda _path, checksum: checksum)
+    captured: dict[str, object] = {}
+
+    class StubSessionOptions:
+        intra_op_num_threads = 0
+        inter_op_num_threads = 0
+        graph_optimization_level = 0
+
+    class RecordingSession:
+        """CPU-only stand-in for an onnxruntime session on a GPU-less machine."""
+
+        def __init__(self, path, sess_options=None, providers=None):
+            captured["path"] = path
+            captured["providers"] = list(providers or [])
+
+        def get_inputs(self):
+            return [SimpleNamespace(name="input_ids"), SimpleNamespace(name="attention_mask")]
+
+        def get_outputs(self):
+            return [SimpleNamespace(name="last_hidden_state")]
+
+        def run(self, _names, feeds):
+            batch, seq = feeds["input_ids"].shape
+            hidden = np.zeros((batch, seq, 4), dtype=np.float32)
+            hidden[:, 0, 0] = 3.0
+            return [hidden]
+
+    monkeypatch.setitem(
+        sys.modules,
+        "onnxruntime",
+        SimpleNamespace(
+            SessionOptions=StubSessionOptions,
+            GraphOptimizationLevel=SimpleNamespace(ORT_ENABLE_ALL=0),
+            InferenceSession=RecordingSession,
+        ),
+    )
+
+    class StubTokenizer:
+        def encode_batch(self, texts):
+            return [SimpleNamespace(ids=[0, 7, 1], attention_mask=[1, 1, 0]) for _ in texts]
+
+        def token_to_id(self, _token):
+            return None
+
+    monkeypatch.setattr(
+        onnx_module.OnnxInt8BgeM3Backend, "_open_tokenizer", lambda self: StubTokenizer()
+    )
+
+    backend = onnx_module.OnnxInt8BgeM3Backend(
+        model_dir,
+        backend_name="onnx",
+        revision="rev",
+        artifact_checksum="sha256:" + "ab" * 32,
+        dimension=4,
+    )
+
+    # GPU is off in this environment (no CUDA provider anywhere in the stub), yet
+    # the default backend must open an explicit CPU-only session and produce
+    # vectors instead of failing or depending on a GPU runtime.
+    assert str(captured["path"]).endswith("model.onnx")
+    assert captured["providers"] == ["CPUExecutionProvider"]
+    assert backend.descriptor.device == "cpu"
+    assert backend.embed_documents(["alpha"]) == ((1.0, 0.0, 0.0, 0.0),)
+
+
+def test_onnx_default_backend_load_failure_is_fail_closed_with_clear_message(tmp_path, monkeypatch):
+    from aios_habit.rag_v2 import bge_onnx_backend as onnx_module
+
+    model_dir = tmp_path / "bge-m3-onnx-fp32"
+    model_dir.mkdir()
+    (model_dir / "model.onnx").write_bytes(b"corrupt-onnx")
+    monkeypatch.setattr(onnx_module, "verify_model_tree", lambda _path, checksum: checksum)
+
+    class StubSessionOptions:
+        intra_op_num_threads = 0
+        inter_op_num_threads = 0
+        graph_optimization_level = 0
+
+    def failing_session(*_args, **_kwargs):
+        raise OSError("protobuf parse error")
+
+    monkeypatch.setitem(
+        sys.modules,
+        "onnxruntime",
+        SimpleNamespace(
+            SessionOptions=StubSessionOptions,
+            GraphOptimizationLevel=SimpleNamespace(ORT_ENABLE_ALL=0),
+            InferenceSession=failing_session,
+        ),
+    )
+
+    with pytest.raises(SemanticBackendUnavailable) as exc_info:
+        onnx_module.OnnxInt8BgeM3Backend(
+            model_dir,
+            backend_name="onnx",
+            revision="rev",
+            artifact_checksum="sha256:" + "ab" * 32,
+            dimension=4,
+        )
+    assert "failed to load" in str(exc_info.value)
+
+
+def test_onnx_default_backend_reports_missing_onnxruntime_clearly(tmp_path, monkeypatch):
+    from aios_habit.rag_v2 import bge_onnx_backend as onnx_module
+
+    model_dir = tmp_path / "bge-m3-onnx-fp32"
+    model_dir.mkdir()
+    (model_dir / "model.onnx").write_bytes(b"stub-onnx")
+    monkeypatch.setattr(onnx_module, "verify_model_tree", lambda _path, checksum: checksum)
+    monkeypatch.setitem(sys.modules, "onnxruntime", None)
+
+    with pytest.raises(SemanticBackendUnavailable) as exc_info:
+        onnx_module.OnnxInt8BgeM3Backend(
+            model_dir,
+            backend_name="onnx",
+            revision="rev",
+            artifact_checksum="sha256:" + "ab" * 32,
+            dimension=4,
+        )
+    assert "onnxruntime is unavailable" in str(exc_info.value)
