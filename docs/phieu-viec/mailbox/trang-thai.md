@@ -1,10 +1,10 @@
 # Trạng thái mailbox
 
-- Trạng thái: `moi`
+- Trạng thái: `dang-lam`
 - Ticket hiện tại: Ticket xếp hàng 9 — `TOOL-3`: nối benchmark vào chat (code + test).
-- `commit`: ``
+- `commit`: (chưa có)
 - `bao_cao`: `docs/phieu-viec/ket-qua/tool3-benchmark-chat.md`
-- `ghi_chu`: 2026-09-30 04:36 +07 — Muse verify ĐẠT `TOOL-2` (17/17 test pass độc lập trên VM; diff sạch; không ghi index/D, không merge main). Đã phát hành vé xếp hàng 9 — `TOOL-3` (nối benchmark vào chat): `prompt.md` ← `prompt-queue-tool3.md`, `trang-thai.md` → `moi`.
+- `ghi_chu`: 2026-09-30 04:31 +07 — OMP nhận vé `TOOL-3` (nối benchmark `mom_benchmark`/`rag_benchmark`/`rag_evaluator` vào chat theo khung TOOL-2; code + test; không ghi index production, không merge `main`, không đụng ổ D). Cổng gate: điều kiện mở ĐÃ CÓ — HEAD `589d8fe` = origin/phieu-viec/rag-fix1, `prompt.md` là vé `TOOL-3`, `trang-thai` = `moi` → cổng MỞ, không chuyển `cho-muse`, không no-op. Bắt đầu: đọc khung `chat_action` + 3 module benchmark, chốt thiết kế action.
 - `prompt`: `docs/phieu-viec/mailbox/prompt.md`
 - `verdict_tool1`: **ĐẠT** (Muse verify độc lập 2026-09-30 ~03:2x +07 trên HEAD `30a2c6e`): commit báo cáo `a9ca933` chỉ thêm 1 file `docs/phieu-viec/ket-qua/tool1-kiem-ke.md` (+310/−0); các commit mốc chỉ sửa `trang-thai.md`; không sửa code/test, không ghi index, không đụng ổ D, không merge `main`. Báo cáo đạt đủ 4 yêu cầu vé: quét AST 218 tệp `src/aios_habit/`, kiểm chứng động (import thật 2 entry chat, 100 module nạp thật), phân nhóm RAG/benchmark/interview/prediction/visual/extract/memory/khác, bảng 217 module | nhóm | đã nối | ghi chú (136 đã nối / 81 chưa nối). Phát hiện quan trọng cho vé sau: `evidence_graph_viewer` ĐÃ nối (khác giả định prompt TOOL-5); `error_cases` 11/11 chưa nối; benchmark 11/11 chưa nối.
 
