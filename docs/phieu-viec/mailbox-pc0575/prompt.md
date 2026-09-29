@@ -1,67 +1,82 @@
-# Vé P4 — Chốt "bộ hằng số deploy" tái tạo đúng fingerprint `016c5255…` (KDTVN-PC0575)
+# Vé P5 — Mang cây ONNX fp32 từ máy nhà sang PC0575 + bật readiness (KDTVN-PC0575)
 
-## Bối cảnh (verdict P3 của Muse, 2026-09-29)
+## Bối cảnh (verdict P4 của Muse, 2026-09-29 ~17:35 +07)
 
-- P3 **ĐẠT** ở vai chẩn đoán: app đọc **đúng** index production
-  (`local_runs\workspace_chat_rag_v2_production\bge_m3_hybrid\collections\tri_thuc\library.sqlite`,
-  SHA-256 `062ec090…ef8ca` khớp P2); readiness 0/171 do thiếu biến môi trường ONNX
-  (`AIOS_BGE_ONNX_MODEL_PATH`, `AIOS_BGE_ONNX_MODEL_CHECKSUM`) khiến BGE worker không
-  khởi động được → cổng fail-closed → mọi nguồn `failed` (`preparation_init_bge_worker_model_verify_failed`).
-- "68 tài liệu cần xử lý" là ảnh chụp **giữa lượt chạy** (16:45→16:48 hỏng dần 68→171,
-  cùng một đợt lỗi). 171 nguồn `temporary` **thật sự chưa có vector** trong index
-  (`retrievable=1` = 0) — không liên quan 25.813 chunk `retrievable=0` đã biết ở P2.
-- **Nguy cơ lớn (P3 mục 6):** vector ONNX trong index mang định danh `016c5255…`;
-  đặt env "cho chạy được" bừa thì `_expected_backend_fingerprint` ra `8274fbb0…`
-  (khác) → app coi **toàn bộ 107.331 vector cũ là hết hạn** → embed lại hàng loạt,
-  ghi vào production index. **Cấm đặt env trước khi chốt được hằng số đúng.**
-- OMP đã thử {checksum manifest `b1d887e0…`, checksum cây hiện tại `728c9eb7…`, rỗng}
-  × {onnxruntime `1.28.0`, `1.29.0`} → **không tổ hợp nào tái tạo được `016c5255…`**.
-  Lưu ý: hàm `SemanticModelDescriptor.fingerprint`
-  (`src/aios_habit/rag_v2/semantic.py`) băm **9 trường**
-  (artifact_checksum, device, dimension, distance, model_id, normalized,
-  revision, runtime, runtime_version) — OMP mới chỉ quét 2 trường.
+- P4 **ĐẠT**: bộ hằng số deploy đã chứng minh tái tạo đúng fingerprint
+  `016c5255d0cec1fcb75b99f71f3c6a47a6e67b6087c3eb943b039cf8ac6274fb`
+  (Muse verify độc lập: recompute sha256 tiền ảnh JSON khớp chuỗi mục tiêu;
+  commit `1c74ea6` chứa báo cáo + script + output; chuỗi commit tuyến tính).
+- Bộ hằng số: checksum `sha256:9f81075f58fe1d251510d32ba5c9a66102f7420115519d3f720adc2348b11093`,
+  cây `models/bge-m3-onnx-fp32` (máy nhà `h410asrock`, FIX2 vòng 3), onnxruntime `1.28.0`
+  (PC0575 đang cài đúng bản này), device `cpu`, model `BAAI/bge-m3` rev `5617a9f6…81`;
+  cơ chế đặt checksum = sidecar `models\bge-m3-onnx-fp32.sha256` (khớp sẵn mã,
+  không cần đụng env).
+- **Sự thật quan trọng:** cây đúng hiện **CHỈ có trên máy nhà**. Bản cây mà Muse kiểm
+  được trên Drive (`hf_models/bge-m3-5617a9f/onnx`) hash `6a8d3a65…` — **khác**;
+  cây local PC0575 hash `728c9eb7…` — **khác**. BẮT BUỘC mang đúng bytes từ máy nhà.
+  **Cấm** "cho chạy được" bằng checksum cây local (`728c9eb7…` → fingerprint
+  `8274fbb0…` ≠ sealed → app coi 107.331 vector hết hạn → embed lại hàng loạt
+  ~74 giờ, ghi lên production index).
 
-## Nhiệm vụ OMP — CHỈ ĐỌC + TÍNH TOÁN, CẤM ĐỔI ENV MÁY, CẤM GHI INDEX, CẤM EMBED
+## Nhiệm vụ OMP
 
-1. Đọc fingerprint **đầy đủ** (64 ký tự hex) từ một dòng đã seal
-   (`model_fingerprint = '016c5255%'`) trong production index — truy vấn **read-only**
-   (`mode=ro`), không chạm index.
-2. Tìm provenance lịch sử FIX2: kiểm tra các bảng metadata/manifest trong
-   `library.sqlite` (read-only) xem có lưu `artifact_checksum` / `device` /
-   `runtime_version` / `model_id` / `revision` của lượt migration không.
-   Nếu không có → ghi rõ "không có provenance trong DB", không đoán.
-3. Tái tạo bằng `SemanticModelDescriptor.fingerprint` (thuần tính toán Python,
-   không cần model): quét các ứng viên cho từng trường —
-   `artifact_checksum` ∈ {`sha256:b1d887e0…`, `sha256:728c9eb7…`, rỗng, mọi checksum
-   tìm được ở bước 2}, `runtime_version` ∈ {`1.28.0`, `1.29.0`, rỗng, version thực tế
-   của `onnxruntime` đang cài}, `device` ∈ {`cpu`, `cuda`, rỗng},
-   `model_id` ∈ {`BAAI/bge-m3`, các biến thể trong code},
-   `revision` ∈ {đầy đủ `5617a9f61b028005a4858fdac845db406aefb181`, rút gọn, rỗng},
-   `dimension` = 1024, `distance`/`normalized` mặc định.
-   Mục tiêu: ra **đúng chuỗi 64 ký tự** ở bước 1. Ghi lại tổ hợp thắng + script.
-4. Làm rõ mâu thuẫn manifest: `src/aios_habit/bge_m3_manifest.json` và
-   `packaging/models/bge_m3_manifest.json` đang giữ `b1d887e0…` trong khi cây onnx
-   hiện tại checksum `728c9eb7…` (đổi sau khi P2-B7b thêm `sparse_linear.npy`) —
-   manifest này là của bản int8 hay fp32? Ghi rõ trong báo cáo.
-5. **Không đổi bất kỳ biến môi trường nào trên máy; không restart app; không ghi
-   index; không embed; không merge `main`.**
+### Phase 0 — Gate nhận cây (nhanh, chỉ đọc/tải)
+
+1. User sẽ upload lên Drive AIOS_Data hai thứ (lấy từ máy nhà):
+   - `model/bge-m3-onnx-fp32.zip` — nén từ thư mục `models\bge-m3-onnx-fp32`
+     trên máy nhà (gồm `model.onnx`, `model.onnx_data`, tokenizer,
+     `sparse_linear.npy` + bias — nguồn FIX2 vòng 3);
+   - `model/bge-m3-onnx-fp32.sha256` — file text chứa
+     `sha256:9f81075f58fe1d251510d32ba5c9a66102f7420115519d3f720adc2348b11093`.
+2. Kiểm tra Drive: nếu **CHƯA có** → cập nhật mailbox
+   `Trạng thái: \`cho-muse\``, ghi chú "P5 Phase 0: chờ user upload cây ONNX từ
+   máy nhà lên Drive AIOS_Data/model/; dừng đúng gate, không làm gì thêm",
+   rồi **DỪNG**. (Cron Muse sẽ thấy cờ và báo user.)
+3. Nếu có: tải về, giải nén vào `models\bge-m3-onnx-fp32` trong repo
+   `D:\Sandbox\AIOS_habbit` (tạo thư mục `models\` nếu chưa có), rồi tính
+   `sha256_model_tree` của cây vừa giải nén — **PHẢI** bằng
+   `9f81075f58fe1d251510d32ba5c9a66102f7420115519d3f720adc2348b11093`.
+   Lệch → **DỪNG** + `cho-muse` (cấm đặt checksum bừa).
+
+### Phase 1 — Đặt sidecar + bật readiness
+
+4. Kiểm tra env **CHỈ ĐỌC** (`[Environment]::GetEnvironmentVariable(...,"Machine")`
+   và `"User"`): nếu `AIOS_BGE_ONNX_MODEL_PATH` / `AIOS_BGE_ONNX_MODEL_CHECKSUM`
+   đang được đặt ở mức Machine/User → **DỪNG ở gate**, báo `cho-muse` kèm giá trị
+   đọc được. (Env thắng sidecar trong `resolve_onnx_checksum` — không tự
+   xóa/sửa env persistent của máy.)
+5. Đặt sidecar `models\bge-m3-onnx-fp32.sha256` chứa đúng
+   `sha256:9f81075f58fe1d251510d32ba5c9a66102f7420115519d3f720adc2348b11093`.
+   Không đặt/không sửa bất kỳ biến môi trường nào khác.
+6. Snapshot SHA-256 file index production
+   (`local_runs\workspace_chat_rag_v2_production\...\library.sqlite`) **trước**
+   khi chạm app.
+7. Khởi động lại app/worker (vé này **được phép restart** — mục tiêu là bật
+   readiness), kiểm tra:
+   - BGE worker khởi động được (`verify_model_tree` pass, không
+     `local model checksum mismatch`);
+   - `_expected_backend_fingerprint` trong log/config PHẢI =
+     `016c5255…` (khớp sealed). Nếu ra mã khác → **DỪNG NGAY**, cấm mọi embed,
+     báo `cho-muse`.
+   - readiness: mong **171/171** nguồn `temporary` chuyển `ready` (ghi số thực
+     tế; chênh thì giải thích).
+8. Snapshot SHA-256 index **sau**: PHẢI khớp trước (chứng minh không ghi ngoài
+   ý muốn khi bật readiness). Nếu app ingest thêm chunk mới trong lúc readiness
+   → ghi rõ số lượng + lý do, không giấu.
+9. Báo cáo `docs/phieu-viec/ket-qua/p5-bao-cao.md` (gồm: hash cây đo được, nội
+   dung sidecar, log worker + fingerprint kỳ vọng, readiness trước/sau, SHA
+   index trước/sau), commit riêng trên `phieu-viec/rag-fix1`, **KHÔNG** merge
+   `main`.
 
 ## Tiêu chí ĐẠT
 
-- Báo cáo `docs/phieu-viec/ket-qua/p4-bao-cao.md` gồm:
-  - bộ hằng số deploy đầy đủ: {đường dẫn thư mục onnx, checksum đúng định dạng
-    `sha256:<hex>`, phiên bản onnxruntime, device, model_id/revision} **đã chứng minh
-    tái tạo đúng fingerprint 64 ký tự** (kèm script + output);
-  - cơ chế đặt checksum sẽ dùng ở vé sau: env `AIOS_BGE_ONNX_MODEL_CHECKSUM`
-    hay sidecar `local_runs\retrieval_models\bge-m3-5617a9f\onnx.sha256`
-    (ưu tiên cách khớp sẵn cơ chế sidecar của mã);
-  - kết luận manifest ở bước 4.
-- Nếu không tìm được provenance và quét hết không ra: báo cáo ghi rõ đã thử
-  những gì, kết luận "chưa xác định được", đề xuất bước tiếp theo (ví dụ lấy log
-  FIX2 từ máy nhà) — **không được đoán một checksum "cho chạy được"**.
+- Cây đúng hash `9f81075f…`; sidecar đúng vị trí + nội dung; worker khởi động;
+  fingerprint kỳ vọng = sealed `016c5255…`; readiness 171/171 (hoặc chênh có
+  giải thích); SHA index trước/sau khớp (mọi thay đổi được giải thích); không
+  đổi env máy; không merge `main`.
 
 ## Xong việc
 
 OMP cập nhật `docs/phieu-viec/mailbox-pc0575/trang-thai.md`:
-`Trạng thái: \`xong-cho-duyet\``, `Ticket hiện tại: p4-deploy-constants`,
+`Trạng thái: \`xong-cho-duyet\``, `Ticket hiện tại: p5-mang-cay-onnx`,
 đường dẫn báo cáo, commit SHA. Cron Muse sẽ review.

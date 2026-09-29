@@ -1,8 +1,19 @@
 # Trạng thái mailbox — KDTVN-PC0575
 
-Trạng thái: `xong-cho-duyet`
-Ticket hiện tại: p4-deploy-constants
-Ghi chú: [2026-09-29 17:28 +07] MỐC 3 (XONG): báo cáo `docs/phieu-viec/ket-qua/p4-bao-cao.md` + script `p4-tai-tao-fingerprint.py` + output `p4-ket-qua-tai-tao.json` đã commit. Bộ hằng số deploy tái tạo `016c5255…6274fb`: checksum `sha256:9f81075f58fe1d251510d32ba5c9a66102f7420115519d3f720adc2348b11093` (sidecar cây ONNX fp32 máy nhà), device cpu, dim 1024, cosine, model_id BAAI/bge-m3, normalized true, revision 5617a9f6…81, runtime onnxruntime-int8, runtime_version 1.28.0 (bản đang cài trên PC0575). Cơ chế đặt: sidecar `onnx.sha256` cạnh thư mục model (khớp sẵn cơ chế mã; không cần env). CẢNH BÁO: cây onnx PC0575 hiện hash 728c9eb7 → fingerprint 8274fbb0 (khác) → vé sau PHẢI mang đúng cây máy nhà `models/bge-m3-onnx-fp32` sang (verify 9f81075f), không đặt checksum bừa. Manifest pin b1d887e0 = gói PyTorch fp32 (không phải int8, không phải cây ONNX). | MỐC 1+2: [2026-09-29 17:27 +07] fingerprint đầy đủ `016c5255d0cec1fcb75b99f71f3c6a47a6e67b6087c3eb943b039cf8ac6274fb` lấy từ index (mode=ro, 107.331 dense + 107.331 sparse; DB có runtime/runtime_version/model_id/revision nhưng KHÔNG lưu artifact_checksum/device); quét 648 tổ hợp 9 trường → đúng 1 bộ giá trị hiệu dụng tái tạo khớp.
+Trạng thái: `moi`
+Ticket hiện tại: p5-mang-cay-onnx
+`prompt`: `docs/phieu-viec/mailbox-pc0575/prompt.md`
+`verdict_p4`: **ĐẠT** (Muse verify độc lập 2026-09-29 ~17:35 +07 trên commit `1c74ea6`):
+recompute sha256 tiền ảnh JSON khớp `016c5255d0cec1fcb75b99f71f3c6a47a6e67b6087c3eb943b039cf8ac6274fb`;
+script dùng đúng `SemanticModelDescriptor` của repo; output `REPRODUCED`,
+648 tổ hợp → đúng 1 bộ giá trị hiệu dụng; các checksum "gần" đều trượt;
+chuỗi commit tuyến tính `b767e35 → 1c74ea6 → a6fba85`; tuân thủ chỉ-đọc
+(truy vấn `mode=ro`, không đổi env, không embed, không merge `main`).
+Ghi chú: [2026-09-29 17:35 +07] Vé P5 đã viết (prompt.md trong push này).
+P5 Phase 0 cần user upload `model/bge-m3-onnx-fp32.zip` +
+`model/bge-m3-onnx-fp32.sha256` từ máy nhà lên Drive AIOS_Data
+(cây đúng chỉ có trên máy nhà; bản cây trên Drive Muse kiểm được hash
+`6a8d3a65…` — khác; cây local PC0575 hash `728c9eb7…` — khác).
 Commit mới nhất: `1c74ea6`
 Đường dẫn báo cáo P4: `docs/phieu-viec/ket-qua/p4-bao-cao.md`
-Đường dẫn prompt P4: `docs/phieu-viec/mailbox-pc0575/prompt.md`
+Đường dẫn prompt P5: `docs/phieu-viec/mailbox-pc0575/prompt.md`
