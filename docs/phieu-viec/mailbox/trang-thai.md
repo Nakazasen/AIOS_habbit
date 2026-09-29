@@ -1,10 +1,10 @@
 # Trạng thái mailbox
 
-- Trạng thái: `dang-lam`
+- Trạng thái: `xong-cho-duyet`
 - Ticket hiện tại: Ticket xếp hàng 7 — `TOOL-1`: kiểm kê tool chưa nối vào chat (chỉ đọc + báo cáo, không sửa code).
-- `commit`: (chưa có)
+- `commit`: `a9ca933`
 - `bao_cao`: `docs/phieu-viec/ket-qua/tool1-kiem-ke.md`
-- `ghi_chu`: 2026-09-30 03:14 +07 — Mốc 1: quét xong 218 tệp .py (217 module + gói gốc), dựng đồ thị import (AST, kể cả `from X import y`) từ 2 entry chat, kiểm chứng động bằng import thật (venv Python 3.11.14, 100 module nạp thật khớp closure), phân nhóm xong: **136 nối / 81 chưa nối** (RAG 40/13, benchmark 0/11, interview 11/1, prediction 23/1, visual 2/10, extract 10/1, memory 3/3, khác 47/41). Đang viết báo cáo `tool1-kiem-ke.md`.
+- `ghi_chu`: 2026-09-30 03:16 +07 — `TOOL-1` XONG, chờ Muse duyệt. Báo cáo `tool1-kiem-ke.md` (310 dòng, chỉ thêm 1 file): quét AST 218 tệp .py + kiểm chứng động (import thật 2 entry chat, 100 module nạp thật) → **217 module: 136 đã nối / 81 chưa nối**; nhóm chưa nối đáng chú ý: benchmark 11/11, visual 10/12 (evidence_graph_viewer đã nối — khác prompt TOOL-5), error_cases 11/11, notebook/study 8, RAG hạ tầng index/ingest 13; interview 11/12 + prediction 23/24 đã nối một phần (qua workspace_case_ui / jig_chat_wire). Không sửa code/test, không ghi index, không đụng ổ D. Mốc: `7f25517` (nhận vé) → `6a56206` (mốc 1) → `a9ca933` (báo cáo).
 - `prompt`: `docs/phieu-viec/mailbox/prompt.md`
 - `verdict_buoc0-deploy`: **ĐẠT** (Muse verify độc lập 2026-09-30 ~03:05 +07, commit `94d2194`): commit báo cáo chỉ thêm 1 file `docs/phieu-viec/ket-qua/buoc0-deploy.md` (87 dòng thêm, 0 dòng xóa, 0 dòng code/test đổi); HEAD `dbb053a` chỉ sửa `trang-thai.md` (3 thêm/3 bớt); chưa merge `main`. Báo cáo: 79/79 test vé (đủ bộ error_cases 93/93) pass trên Windows Python 3.11.14; pipeline Bước 0–5 E2E trên dữ liệu thật chạy xong không lỗi (112s, exit 0; 15.737 dòng → 15.707 ca; gate F3b FAIL đúng thiết kế ở `fix` 56,7% ≈ dự báo 56,8%); full suite nền 3.276 đạt/2 bỏ qua/37 lỗi/0 error (37 lỗi đúng nhóm có sẵn E3/E4); hoàn tất ~02:47 trước deadline 30/09 23:59; ràng buộc giữ: không merge `main`, không ghi index production, không đụng ổ D.
 
