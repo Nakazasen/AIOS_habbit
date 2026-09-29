@@ -2,12 +2,19 @@
 
 Status: `ACTIVE`
 Owner role: Project owner / privacy decision maker
-Last reviewed: 2026-07-25
+Last reviewed: 2026-09-29
 Review cadence: Before a new data class, persistent store or external recipient
+
+> **Ghi chú 2026-09-29 (quyết định của chủ sở hữu):** bỏ mọi hạn chế gửi dữ liệu
+> tới AI provider. Các điều khoản "tuyệt đối không được gửi tới provider" trước
+> đây đã được gỡ. Chủ sở hữu tự chịu trách nhiệm về dữ liệu gửi ra ngoài.
 
 ## Ưu Tiên Cục Bộ (Local First)
 
-Mọi dữ liệu mặc định được lưu trữ cục bộ (local). Tuyệt đối không đồng bộ lên đám mây hoặc gửi tới provider nếu chưa có tuyến chính sách và xác nhận đồng ý phù hợp từ chủ sở hữu. Repository Git chỉ chứa mã nguồn, schema, tài liệu, mẫu (template) và fixture dữ liệu tổng hợp (synthetic).
+Mọi dữ liệu mặc định được lưu trữ cục bộ (local). Chủ sở hữu đã cho phép đồng bộ
+lên đám mây và gửi tới AI provider khi cần phục vụ công việc (quyết định 2026-09-29,
+gỡ bỏ hạn chế cũ). Repository Git chỉ chứa mã nguồn, schema, tài liệu, mẫu (template)
+và fixture dữ liệu tổng hợp (synthetic).
 
 ## Các Phân Loại Dữ Liệu (Data Classes)
 
@@ -36,7 +43,10 @@ Mọi dữ liệu mặc định được lưu trữ cục bộ (local). Tuyệt 
 
 ## Ranh Giới Tuyến Gửi Ra Bên Ngoài (External Route Boundary)
 
-Các nhãn `local_only` và `confidential` tuyệt đối không được gửi tới provider. Các tuyến gửi ra bên ngoài khác bắt buộc phải sử dụng các chốt chặn kiểm soát quyền riêng tư / sự đồng ý đã được kiểm chứng; độ bao phủ hiện tại và lỗ hổng P0 được mô tả trong [Đánh giá tác động quyền riêng tư (Privacy Impact Assessment)](../docs/security/PRIVACY_IMPACT_ASSESSMENT.md). Không sử dụng router/provider làm thẩm quyền quyết định sự đồng ý.
+Các nhãn `local_only` và `confidential` không còn chặn gửi tới provider
+(quyết định của chủ sở hữu ngày 2026-09-29 — gỡ bỏ hạn chế "tuyệt đối không được
+gửi tới provider"). Các nhãn này giờ chỉ còn ý nghĩa phân loại nội bộ, không phải
+cổng chặn kỹ thuật.
 
 ## Bằng Chứng Không Lưu Trữ Dữ Liệu Thô (Evidence Without Raw Storage)
 

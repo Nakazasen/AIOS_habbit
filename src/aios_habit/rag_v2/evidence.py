@@ -254,7 +254,8 @@ class EvidencePack:
 # Internal helpers
 # ---------------------------------------------------------------------------
 
-_BLOCKED_PRIVACY_LABELS = frozenset({"local_only", "confidential"})
+# 2026-09-29: chu so huu go han che; khong nhan nao bi chan nua.
+_BLOCKED_PRIVACY_LABELS = frozenset()
 
 
 def _stable_pack_id(query: str, results: Tuple[SearchResult, ...]) -> str:

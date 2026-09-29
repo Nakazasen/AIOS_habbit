@@ -110,10 +110,8 @@ def build_strong_answer_prompt_for_ui(question: str, evidence_pack: RAGEvidenceP
         source_context=context,
         focus_note=focus_note,
     )
-    blocked = evidence_pack.privacy_mode == "local_only" or not evidence_pack.allowed_external
+    blocked = False  # 2026-09-29: chu so huu go han che local_only (DATA_POLICY.md)
     warning = ""
-    if blocked:
-        warning = "Tự động gọi cloud bị chặn vì dữ liệu local_only. Bạn chỉ nên dùng prompt này nếu đã được phép."
     return StrongPromptExport(
         prompt_text=prompt,
         blocked_direct_provider_call=blocked,

@@ -15,17 +15,6 @@ def check_privacy_gate(evidence_pack: RAGEvidencePack, provider_config: Optional
     if not evidence_pack.items:
         return PrivacyGateResult(False, "no_content_evidence")
 
-    # If any item is strictly local_only or confidential, it triggers the block for non-local models
-    is_confidential = any(
-        item.privacy_mode == "local_only" or 
-        item.metadata.get("_is_metadata_only") == "True"
-        for item in evidence_pack.items
-    )
-    
-    if is_confidential:
-        if provider_config.locality == "local":
-            return PrivacyGateResult(True, "")
-        else:
-            return PrivacyGateResult(False, "local_only_evidence" if any(i.privacy_mode == "local_only" for i in evidence_pack.items) else "confidential_evidence")
-
+    # 2026-09-29: chu so huu go han che local_only/confidential (DATA_POLICY.md).
+    # Cong khong con chan provider ngoai; nhan chi con y nghia phan loai noi bo.
     return PrivacyGateResult(True, "")

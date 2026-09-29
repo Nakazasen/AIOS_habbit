@@ -208,20 +208,8 @@ def answer_notebook_question(
     used_chunks_list = [hit.chunk for hit in hits]
     
     # Locality and privacy checks
+    # 2026-09-29: chu so huu go han che local_only (DATA_POLICY.md) - khong chan nua.
     if config.locality == "cloud":
-        if export_mode == "local":
-            has_local_only = any(chunk.privacy_level == "local_only" for chunk in used_chunks_list)
-            if has_local_only:
-                return NotebookAnswerResult(
-                    answer_text="",
-                    prompt_text="",
-                    used_chunks=used_chunks_list,
-                    provider=config.provider,
-                    model=config.model,
-                    privacy_mode=export_mode,
-                    blocked=True,
-                    block_reason="Không thể gửi dữ liệu local_only lên AI Cloud ở chế độ xuất local. Vui lòng chuyển sang Chế độ xuất cloud_safe hoặc sử dụng local_ai."
-                )
         effective_export_mode = "cloud_safe" if export_mode == "local" else export_mode
     else:
         effective_export_mode = export_mode
