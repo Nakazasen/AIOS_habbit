@@ -70,3 +70,27 @@ Trong mọi cách: hash cây giải nén **phải** bằng `9f81075f…b11093`; 
 - Phạm vi lượt này: chỉ ghi markdown (1 dòng tiến độ trong `trang-thai.md` + mục này);
   không tạo `models\`, không tải/giải nén, không đặt sidecar, không đổi env, không chạm
   index/app. Giữ nguyên sig để bộ đếm N=4 escalate được; lượt 3/4 kiểm lại tương tự.
+
+## Lần mở 3/4 — kiểm lại (2026-09-29 18:05 +07)
+
+- Watcher tự mở OMP lần 3 lúc 18:00:26 (dòng `LAUNCH 3/4` trong
+  `D:\Sandbox\agent-mailbox\watcher-mailbox-pc0575.log`; state `launchStallCount = 3`,
+  sig giữ nguyên `moi|p5-mang-cay-onnx||1c74ea6`).
+- Kiểm lại chỉ-đọc (18:01–18:04): **cổng vẫn đóng, không có tín hiệu mới**
+  - `prompt.md` (cả `mailbox-pc0575/` và `mailbox/`): không có URL/link Drive nào;
+  - `local_runs\p5-upload\` chưa tồn tại; `models\` chưa tồn tại;
+  - không có file zip/sha256 model nào trong `D:\Sandbox` (mtime ≤ 90 phút),
+    `Downloads`, `Desktop`;
+  - rclone chưa có `rclone.conf` (cả `~/.config/rclone` và `%APPDATA%\rclone`);
+  - ổ đĩa vẫn chỉ `C:`, `D:`, `Z:`; xác nhận lại **không có Google Drive client**
+    (`%LOCALAPPDATA%\Google` chỉ có Chrome / Chrome for Testing / Gemini / GoogleUpdater;
+    không `DriveFS`, không "Drive File Stream", registry không có mục cài đặt Google Drive);
+  - nhánh `origin/phieu-viec/rag-fix1` = `4a72151`, không có push mới.
+- Phạm vi lượt này: chỉ ghi markdown (1 dòng tiến độ trong `trang-thai.md` + mục này),
+  commit + push nhánh `phieu-viec/rag-fix1`; không tạo `models\`, không tải/giải nén,
+  không đặt sidecar, không đổi env, không chạm index/app, không đụng `main`.
+- Bước kế tiếp (không cần OMP làm gì): lượt watcher kế tiếp (~18:10, sau khi phiên OMP này
+  thoát) đếm đủ `launchStallCount = 4` với sig không đổi → watcher tự ghi
+  `Trạng thái: cho-muse` + commit + push (code-level `$maxStallLaunches = 4`), rồi im lặng
+  chờ Muse. Đó chính là điểm dừng theo luật "4 lần watcher tự mở OMP liên tiếp mà cổng
+  không mở → chuyển `cho-muse`, không quay no-op".
