@@ -24,7 +24,9 @@
 - Ticket trước: E2 — Fix synthesis theo E1 + chạy lại B1–B5 (B4 loại), verdict CHƯA ĐẠT (báo cáo `docs/phieu-viec/ket-qua/VE_E2_fix-synthesis.md`, commit `4aa6d68`).
 
 - `hang-cho` (theo thứ tự, user yêu cầu 2026-09-29):
-  1. `stale-check` (file `docs/phieu-viec/mailbox/prompt-queue-stale-check.md`) — kiểm tra nhanh chỉ đọc, ~5 phút.
-  2. `don-o-c` (file `docs/phieu-viec/mailbox/prompt-queue-don-o-c.md`) — dọn ổ C lấy chỗ trống TRƯỚC.
-  3. `onnx-upload-drive` (file `docs/phieu-viec/mailbox/prompt-queue-onnx-upload.md`, user yêu cầu ~18:50 +07) — nén + upload model.
-  Khi E2v3 xong, phát hành theo đúng thứ tự trên, rồi mới quay lại chuỗi E.
+  1. `stale-check` (`prompt-queue-stale-check.md`) — kiểm tra nhanh chỉ đọc, ~5 phút.
+  2. `don-o-c` (`prompt-queue-don-o-c.md`) — dọn ổ C lấy chỗ trống TRƯỚC.
+  3. `onnx-upload-drive` (`prompt-queue-onnx-upload.md`, user yêu cầu ~18:50 +07) — nén + upload model.
+  4. `E3` (`prompt-queue-e3.md`) — dọn XML thô ở extractor (code + test).
+  5. `E4` (`prompt-queue-e4.md`) — default backend ONNX fp32 (giữ BGE_BACKEND override, fail-closed).
+  Khi E2v3 xong, phát hành theo đúng thứ tự trên.
