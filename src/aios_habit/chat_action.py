@@ -37,6 +37,7 @@ BUILTIN_ACTION_MODULES: Tuple[str, ...] = (
     "aios_habit.chat_action_answer_quality",
     "aios_habit.chat_action_expert_interview",
     "aios_habit.chat_action_prediction",
+    "aios_habit.chat_action_visual_maps",
 )
 
 
