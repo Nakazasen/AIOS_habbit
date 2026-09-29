@@ -2,7 +2,7 @@
 
 Implements T071 of Goal 010-expert-knowledge-acquisition.
 Guards:
-- Must not use raw audio, raw transcript, or local_only data.
+- Must not use raw audio, raw transcript, or PII/secrets (local_only no longer blocks since 2026-09-29).
 - Must not spawn any training jobs or background training processes.
 - Must return NOT_APPLICABLE when RAG baseline is adequate or sample volume is low.
 """
@@ -24,7 +24,11 @@ from aios_habit.fine_tune_eligibility import (
 
 
 def test_privacy_violation_disqualifies_fine_tune():
-    """Test invariant: Presence of raw audio, transcripts, or local_only assets blocks fine-tuning."""
+    """Test invariant: Presence of raw audio or raw transcripts blocks fine-tuning.
+
+    2026-09-29 owner decision: has_local_only_data is no longer a privacy violation
+    (local_only is an internal classification only), so it must not block fine-tuning.
+    """
     # 1. Has raw audio
     meta_audio = FineTuneDatasetMetadata(
         total_samples=1000,
@@ -39,7 +43,7 @@ def test_privacy_violation_disqualifies_fine_tune():
     assert rep1.verdict == VERDICT_BLOCKED_PRIVACY
     assert "âm thanh thô" in rep1.primary_reason
 
-    # 2. Has local_only data
+    # 2. Has local_only data -> no longer a privacy violation (2026-09-29 owner decision)
     meta_local = FineTuneDatasetMetadata(
         total_samples=1000,
         has_raw_audio=False,
@@ -49,9 +53,9 @@ def test_privacy_violation_disqualifies_fine_tune():
         baseline_rag_accuracy=0.60,
     )
     rep2 = evaluate_fine_tune_eligibility(meta_local)
-    assert rep2.is_eligible is False
-    assert rep2.verdict == VERDICT_BLOCKED_PRIVACY
-    assert "local_only" in rep2.primary_reason
+    assert rep2.is_eligible is True
+    assert rep2.verdict == VERDICT_ELIGIBLE
+    assert "local_only" not in rep2.primary_reason
 
 
 def test_insufficient_samples_returns_not_applicable():

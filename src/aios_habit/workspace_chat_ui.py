@@ -1277,11 +1277,6 @@ def render_insufficient_context(reason: str = "no_sources", locale: str = "vi"):
     st.write(t("no_sources", locale=locale))
 
 
-def render_privacy_block_message(locale: str = "vi"):
-    """Renders friendly privacy block message."""
-    st.error(t("privacy_ai_hard_block_copy", locale=locale))
-
-
 def render_source_changed_message(locale: str = "vi"):
     """Renders source-set-changed warning."""
     st.warning(t("source_changed_warning", locale=locale))

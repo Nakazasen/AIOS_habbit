@@ -692,7 +692,6 @@ from aios_habit.workspace_chat_ui import (
     render_ai_source_context_summary,
     render_ai_answer_header,
     render_insufficient_context,
-    render_privacy_block_message,
     render_source_changed_message,
     render_privacy_choice,
     owner_choice_to_privacy_label,
@@ -3452,8 +3451,6 @@ else:
                             safe_rerun()
                     elif badge_data.get("type") == "insufficient_context":
                         render_insufficient_context(badge_data.get("reason", "no_sources"), locale=current_ui_locale)
-                    elif badge_data.get("type") == "privacy_block":
-                        render_privacy_block_message(locale=current_ui_locale)
                     elif badge_data.get("type") == "source_changed":
                         render_source_changed_message(locale=current_ui_locale)
 

@@ -31,11 +31,12 @@ def test_ui_helper_returns_local_draft_not_final():
     assert prep.local_draft.answer_kind == "local_evidence_draft"
 
 
-def test_ui_prompt_export_blocks_direct_provider_call_for_local_only():
+def test_ui_prompt_export_allows_direct_provider_call_for_local_only():
+    """2026-09-29 owner decision: local_only no longer blocks direct provider calls from the UI."""
     prep = prepare_local_evidence_answer("manual shipping", [_ev("E1", "ManualShipping.xlsx", "ManualShipping ExistingLine Workflow")])
     export = build_strong_answer_prompt_for_ui(prep.question, prep.evidence_pack, prep.local_draft.answer_text)
-    assert export.blocked_direct_provider_call is True
-    assert "cloud bị chặn" in export.privacy_warning
+    assert export.blocked_direct_provider_call is False
+    assert export.privacy_warning == ""
 
 
 def test_ui_prompt_contains_focus_instruction_from_source_aware_retrieval():

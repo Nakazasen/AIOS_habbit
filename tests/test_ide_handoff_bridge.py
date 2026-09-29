@@ -121,10 +121,10 @@ def test_metadata_only_evidence_is_included_but_flagged(tmp_path):
     assert "Metadata-only evidence" in text
 
 
-def test_local_only_privacy_warning_and_prompt_instruction(tmp_path):
+def test_local_only_note_and_prompt_instruction(tmp_path):
     req = write_ide_handoff_bundle("CASE-1", "question", "active_case_all", fake_items(), root=tmp_path)
     assert req.manifest["allowed_external"] is False
-    assert "local_only evidence" in req.ide_instruction
+    assert "local_only-classified evidence" in req.ide_instruction
     prompt = (req.bundle_dir / "prompt.md").read_text(encoding="utf-8")
     assert "Read every file" in prompt
     assert "evidence_ids_used" in prompt

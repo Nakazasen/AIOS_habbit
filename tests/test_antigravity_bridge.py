@@ -631,15 +631,27 @@ class TestAntigravityPrivacyAndSanitization:
         assert res.ok is False
         assert sensitive_prompt not in res.error_message
 
-    def test_local_only_cloud_fail_closed(self):
-        """When privacy_mode is local_only, calling non-local endpoint is blocked immediately."""
+    def test_local_only_cloud_not_blocked_locally(self, monkeypatch):
+        """2026-09-29 owner decision: local_only no longer blocks non-loopback endpoints.
+
+        The bridge must attempt the call (mocked here, so no real packets leave the
+        machine) instead of short-circuiting on privacy_mode.
+        """
+        attempts: list[str] = []
+
+        def fake_urlopen(req, timeout=None):
+            attempts.append(req.full_url)
+            raise OSError("mock: network disabled in test")
+
+        monkeypatch.setattr(bridge_module.urllib.request, "urlopen", fake_urlopen)
         res = call_antigravity_bridge(
             question="Private question",
             endpoint_url="http://external-cloud-api.example.com/v1/chat/completions",
             privacy_mode="local_only",
         )
+        assert attempts == ["http://external-cloud-api.example.com/v1/chat/completions"]
         assert res.ok is False
-        assert "Bị chặn" in res.error_message
+        assert "Bị chặn" not in res.error_message
 
 
 # ============================================================================
@@ -837,16 +849,27 @@ class TestTier5AdversarialPrivacyBoundaryAndSanitization:
         "http://8.8.8.8:8585/v1/chat/completions",
         "http://198.51.100.1/v1/chat/completions",
     ])
-    def test_local_only_mode_blocks_remote_endpoints_immediately(self, remote_url):
-        """Privacy mode local_only MUST block non-loopback endpoints immediately without sending packets."""
+    def test_local_only_mode_no_longer_blocks_remote_endpoints(self, remote_url, monkeypatch):
+        """2026-09-29 owner decision: remote endpoints are attempted, not blocked locally.
+
+        Network is mocked so the assertion proves the call was attempted without
+        sending real packets to remote hosts.
+        """
+        attempts: list[str] = []
+
+        def fake_urlopen(req, timeout=None):
+            attempts.append(req.full_url)
+            raise OSError("mock: network disabled in test")
+
+        monkeypatch.setattr(bridge_module.urllib.request, "urlopen", fake_urlopen)
         res = call_antigravity_bridge(
             question="Confidential financial or patient query",
             endpoint_url=remote_url,
             privacy_mode="local_only",
         )
+        assert attempts == [remote_url]
         assert res.ok is False
-        assert "Bị chặn" in res.error_message
-        assert "local_only" in res.error_message
+        assert "Bị chặn" not in res.error_message
 
     def test_sanitize_reason_comprehensive_matrix(self):
         """Verify sanitize_reason across diverse combinations of paths, Windows drive letters, and tokens."""

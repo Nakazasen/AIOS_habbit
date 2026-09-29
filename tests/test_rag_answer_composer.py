@@ -46,12 +46,13 @@ def test_compose_local_answer_insufficient_evidence_warning():
 
 
 def test_compose_local_answer_local_only_privacy_warning():
+    """2026-09-29 owner decision: local_only is an internal classification, no longer a block."""
     pack = _pack("local_only")
     draft = compose_local_answer(pack)
     assert draft.privacy_mode == "local_only"
-    assert draft.allowed_external is False
+    assert draft.allowed_external is True
     assert any("local_only" in warning for warning in draft.warnings)
-    assert "must not be exported externally" in draft.answer_text
+    assert "owner allows provider use" in draft.answer_text
 
 
 def test_compose_local_answer_metadata_only():

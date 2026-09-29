@@ -44,10 +44,11 @@ def test_stable_ids_and_order_sensitivity():
     assert pack1.pack_id != pack4.pack_id
     assert stable_evidence_id(pack1.pack_id, results[0].chunk_id, 1) == pack1.items[0].evidence_id
 
-def test_privacy_normalization_and_external_guard():
+def test_privacy_normalization_and_external_policy():
     mixed = build_evidence_pack("mixed", _create_mock_results(2, "cloud_safe") + _create_mock_results(1, "local_only"))
     assert mixed.privacy_mode == "local_only"
-    assert mixed.allowed_external is False
+    # 2026-09-29 owner decision: local_only packs are allowed to reach providers.
+    assert mixed.allowed_external is True
     assert mixed.route_hint == "local_only"
     allowed = build_evidence_pack("q", _create_mock_results(2, "cloud_safe"), EvidencePackConfig(allow_external_for_cloud_safe=True))
     blocked = build_evidence_pack("q", _create_mock_results(2, "cloud_safe"), EvidencePackConfig(allow_external_for_cloud_safe=False))
@@ -83,7 +84,7 @@ def test_snippet_prompt_and_path_safety():
     assert "D:/" not in prompt
     assert "Sandbox" not in prompt
     assert "passwords.txt" in prompt
-    assert "External export NOT allowed" in prompt
+    assert "owner allows provider use" in prompt
     assert "local_only" in prompt
 
 def test_json_serialization_and_prompt_sections():
@@ -107,7 +108,8 @@ def test_search_integration():
     pack = build_evidence_pack("wolf", search_rag_chunks(conn, "wolf"))
     assert len(pack.items) == 2
     assert pack.privacy_mode == "local_only"
-    assert pack.allowed_external is False
+    # 2026-09-29 owner decision: local_only no longer blocks external/provider use.
+    assert pack.allowed_external is True
 
 def test_old_search_notebook_chunks_compatibility(monkeypatch):
     chunk = SourceChunk(chunk_id="old-1", notebook_id="nb", source_id="src", source_title="Legacy Guide", original_filename="legacy.txt", text="legacy notebook search still works", chunk_index=0, privacy_level="local_only", keywords=[], created_at="2026-01-01T00:00:00")

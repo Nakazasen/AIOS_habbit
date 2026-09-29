@@ -183,16 +183,17 @@ def test_snippet_truncation_preserves_citation():
 
 # --- Privacy summary strictest-wins -----------------------------------------
 
-def test_privacy_summary_local_only_wins():
+def test_privacy_summary_local_only_label_recorded_but_cloud_allowed():
+    """2026-09-29 owner decision: local_only labels are recorded but no longer block provider use."""
     response = _make_response([
         _make_result("c1", "d1", 10.0, privacy_labels=("cloud_safe",)),
         _make_result("c2", "d2", 5.0, privacy_labels=("local_only",)),
     ])
     pack = build_evidence_pack("test query", response)
 
-    assert pack.privacy_summary.local_only is True
-    assert pack.privacy_summary.cloud_allowed is False
-    assert pack.privacy_summary.overall_label == "local_only"
+    assert "local_only" in pack.privacy_summary.labels_present
+    assert pack.privacy_summary.cloud_allowed is True
+    assert pack.privacy_summary.overall_label == "cloud_safe"
 
 def test_identical_passages_with_different_privacy_are_not_collapsed():
     response = _make_response([
@@ -216,9 +217,8 @@ def test_identical_passages_with_different_privacy_are_not_collapsed():
     pack = build_evidence_pack("test query", response)
 
     assert pack.item_count == 2
-    assert pack.privacy_summary.local_only is True
-    assert pack.privacy_summary.cloud_allowed is False
-    assert pack.privacy_summary.overall_label == "local_only"
+    assert "local_only" in pack.privacy_summary.labels_present
+    assert pack.privacy_summary.cloud_allowed is True
 
 
 def test_privacy_summary_all_cloud_safe():

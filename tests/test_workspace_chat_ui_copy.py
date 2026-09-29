@@ -244,7 +244,6 @@ def test_phase2h_required_copy():
     # App uses labels from ui
     assert "render_ai_answer_header" in app_source
     assert "render_insufficient_context" in app_source
-    assert "render_privacy_block_message" in app_source
 
     # Advanced expanders must be removed from production UI
     assert "Quản lý nguồn nâng cao" not in app_source

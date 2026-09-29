@@ -171,10 +171,8 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
         "privacy_help_copy": "Chỉ chọn gửi AI ngoài khi nội dung được phép chia sẻ. Bạn vẫn cần bấm Hỏi để gửi.",
         "privacy_editor_label": "Quyền riêng tư nguồn",
         "privacy_sendable_status": "Nội dung có thể gửi AI ngoài khi bạn bấm Hỏi",
-        "privacy_blocked_status": "Nguồn phân loại nội bộ",
         "privacy_save_button": "Lưu lựa chọn",
         "privacy_saved_feedback": "Đã cập nhật quyền riêng tư nguồn.",
-        "privacy_ai_hard_block_copy": "Có nguồn không được gửi AI. Hãy tắt nguồn đó hoặc đổi lựa chọn quyền riêng tư.",
 
         # Chat, Answers & Badges
         "question_placeholder": "Nhập câu hỏi bạn muốn AI hỗ trợ...",
@@ -1030,10 +1028,8 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
         "privacy_help_copy": "共有が許可されている場合のみ外部送信を選択してください。送信するには「質問する」を押す必要があります。",
         "privacy_editor_label": "ソースのプライバシー",
         "privacy_sendable_status": "質問時に外部AIへ送信可能",
-        "privacy_blocked_status": "内部分類のソース",
         "privacy_save_button": "設定を保存",
         "privacy_saved_feedback": "ソースのプライバシー設定を更新しました。",
-        "privacy_ai_hard_block_copy": "送信不可のソースが含まれています。無効化するかプライバシーを変更してください。",
 
         # Chat, Answers & Badges
         "question_placeholder": "AIに質問を入力してください...",
@@ -1889,10 +1885,8 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
         "privacy_help_copy": "仅在允许共享时选择发送至外部AI。仍需点击“提问”以发送。",
         "privacy_editor_label": "来源隐私权限",
         "privacy_sendable_status": "提问时可发送至外部AI",
-        "privacy_blocked_status": "内部分类来源",
         "privacy_save_button": "保存选项",
         "privacy_saved_feedback": "已更新来源隐私权限。",
-        "privacy_ai_hard_block_copy": "存在禁止发送至AI的来源。请关闭该来源或修改隐私设置。",
 
         # Chat, Answers & Badges
         "question_placeholder": "输入您希望AI协助的问题...",
