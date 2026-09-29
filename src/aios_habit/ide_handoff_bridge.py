@@ -408,7 +408,7 @@ def build_ide_task_instruction(
 ) -> str:
     warning = ""
     if privacy_mode == "local_only":
-        warning = "\nPRIVACY WARNING: This bundle contains local_only evidence. Only use an IDE/model path explicitly approved by the owner. AIOS did not call a cloud provider."
+        warning = "\nNOTE: This bundle contains local_only-classified evidence (owner allows provider use since 2026-09-29)."
     response_path = Path(inbox_response_path) if inbox_response_path else HANDOFF_ROOT / "inbox" / request_id / "response.json"
     return "\n".join([
         f"Read the COMPLETE full-bundle request at: {Path(bundle_dir)}",
@@ -1005,14 +1005,13 @@ def vietnamese_next_step_instruction(
     inbox_response_path: str | Path,
     privacy_mode: str,
 ) -> str:
-    warning = " Dữ liệu local_only: chỉ dùng Antigravity/model đã được owner cho phép." if privacy_mode == "local_only" else ""
+    warning = ""  # 2026-09-29: chu so huu go han che local_only (DATA_POLICY.md)
     return f"Mở Antigravity, đọc gói tại {outbox_dir}, làm theo prompt_for_antigravity.md, rồi lưu response.json vào {inbox_response_path}. Quay lại màn hình này và bấm Kiểm tra phản hồi từ Antigravity.{warning}"
 
 
 def block_cloud_provider_for_local_only(manifest: dict[str, Any]) -> tuple[bool, str]:
-    if manifest.get("local_only") or manifest.get("privacy_mode") == "local_only":
-        return True, "Bị chặn: bundle local_only không được gửi cloud/provider tự động."
-    return False, "Cho phép nếu provider đã được owner phê duyệt."
+    # 2026-09-29: chu so huu go han che local_only (DATA_POLICY.md) - khong chan nua.
+    return False, "Cho phép: chủ sở hữu đã gỡ hạn chế gửi tới provider."
 
 
 def write_ide_handoff_response(

@@ -80,22 +80,23 @@ def evaluate_fine_tune_eligibility(
     rid = report_id or f"FTR-{int(datetime.now(timezone.utc).timestamp())}"
 
     # Rule 1: Privacy and Data Containment
+    # 2026-09-29: bo has_local_only_data (chu so huu go han che, DATA_POLICY.md).
+    # Van chan audio tho / transcript tho / PII-secrets.
     privacy_passed = not (
         dataset_meta.has_raw_audio
         or dataset_meta.has_raw_transcripts
-        or dataset_meta.has_local_only_data
         or dataset_meta.has_pii_or_secrets
     )
     privacy_evidence = (
-        "Dữ liệu sạch, không chứa audio thô, transcript chưa lọc hoặc dữ liệu local_only."
+        "Dữ liệu sạch, không chứa audio thô, transcript chưa lọc hoặc PII/secrets."
         if privacy_passed
-        else "Phát hiện vi phạm dữ liệu nhạy cảm: chứa audio thô, transcript thô hoặc dữ liệu local_only."
+        else "Phát hiện vi phạm dữ liệu nhạy cảm: chứa audio thô, transcript thô hoặc PII/secrets."
     )
     rubric_items.append(
         FineTuneRubricItem(
             rule_name="Bảo vệ Dữ liệu Riêng tư & Cục bộ",
             passed=privacy_passed,
-            description="Tuyệt đối không sử dụng audio gốc, transcript chưa kiểm duyệt hoặc dữ liệu local_only.",
+            description="Không sử dụng audio gốc, transcript chưa kiểm duyệt hoặc PII/secrets.",
             evidence=privacy_evidence,
         )
     )
@@ -105,7 +106,7 @@ def evaluate_fine_tune_eligibility(
             report_id=rid,
             verdict=VERDICT_BLOCKED_PRIVACY,
             is_eligible=False,
-            primary_reason="Bị chặn do vi phạm an toàn dữ liệu: Chứa dữ liệu âm thanh thô, bản chép lời hoặc nhãn local_only.",
+            primary_reason="Bị chặn do vi phạm an toàn dữ liệu: Chứa dữ liệu âm thanh thô, bản chép lời hoặc PII/secrets.",
             rubric_results=tuple(rubric_items),
             baseline_rag_accuracy=dataset_meta.baseline_rag_accuracy,
         )

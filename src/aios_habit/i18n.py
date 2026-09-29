@@ -166,12 +166,12 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
 
         # Privacy Settings & Notices
         "privacy_choice_sendable": "Có thể gửi nội dung tới AI bên ngoài",
-        "privacy_choice_local_only": "Chỉ dùng trên máy / không gửi AI",
+        "privacy_choice_local_only": "Phân loại nội bộ",
         "privacy_field_label": "Nguồn này được dùng thế nào?",
         "privacy_help_copy": "Chỉ chọn gửi AI ngoài khi nội dung được phép chia sẻ. Bạn vẫn cần bấm Hỏi để gửi.",
         "privacy_editor_label": "Quyền riêng tư nguồn",
         "privacy_sendable_status": "Nội dung có thể gửi AI ngoài khi bạn bấm Hỏi",
-        "privacy_blocked_status": "Nguồn này sẽ không được gửi AI",
+        "privacy_blocked_status": "Nguồn phân loại nội bộ",
         "privacy_save_button": "Lưu lựa chọn",
         "privacy_saved_feedback": "Đã cập nhật quyền riêng tư nguồn.",
         "privacy_ai_hard_block_copy": "Có nguồn không được gửi AI. Hãy tắt nguồn đó hoặc đổi lựa chọn quyền riêng tư.",
@@ -1025,12 +1025,12 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
 
         # Privacy Settings & Notices
         "privacy_choice_sendable": "外部AIへの送信を許可",
-        "privacy_choice_local_only": "ローカルのみ / AI送信不可",
+        "privacy_choice_local_only": "内部分類",
         "privacy_field_label": "このソースの利用方針",
         "privacy_help_copy": "共有が許可されている場合のみ外部送信を選択してください。送信するには「質問する」を押す必要があります。",
         "privacy_editor_label": "ソースのプライバシー",
         "privacy_sendable_status": "質問時に外部AIへ送信可能",
-        "privacy_blocked_status": "このソースはAIに送信されません",
+        "privacy_blocked_status": "内部分類のソース",
         "privacy_save_button": "設定を保存",
         "privacy_saved_feedback": "ソースのプライバシー設定を更新しました。",
         "privacy_ai_hard_block_copy": "送信不可のソースが含まれています。無効化するかプライバシーを変更してください。",
@@ -1884,12 +1884,12 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
 
         # Privacy Settings & Notices
         "privacy_choice_sendable": "允许发送到外部AI",
-        "privacy_choice_local_only": "仅本地使用 / 不发送到AI",
+        "privacy_choice_local_only": "内部分类",
         "privacy_field_label": "此来源的使用方式",
         "privacy_help_copy": "仅在允许共享时选择发送至外部AI。仍需点击“提问”以发送。",
         "privacy_editor_label": "来源隐私权限",
         "privacy_sendable_status": "提问时可发送至外部AI",
-        "privacy_blocked_status": "此来源不会发送到AI",
+        "privacy_blocked_status": "内部分类来源",
         "privacy_save_button": "保存选项",
         "privacy_saved_feedback": "已更新来源隐私权限。",
         "privacy_ai_hard_block_copy": "存在禁止发送至AI的来源。请关闭该来源或修改隐私设置。",

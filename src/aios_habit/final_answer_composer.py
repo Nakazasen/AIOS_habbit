@@ -217,7 +217,7 @@ def compose_final_owner_answer(
 
     warnings: List[str] = routed.route_warnings.copy()
     if pack.privacy_mode == "local_only":
-        warnings.append("Privacy: local_only evidence stays local; no cloud/provider call was made.")
+        warnings.append("Privacy: local_only-classified evidence (owner allows provider use since 2026-09-29).")
     if pack.insufficient_evidence or not ordered_items:
         warnings.append("Evidence is insufficient; treat this as a bounded answer with explicit gaps.")
     if routed.missing_required_source_types:

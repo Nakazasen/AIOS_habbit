@@ -527,7 +527,7 @@ def build_mom_qa_prompt(question: str, hits: list[MomSearchHit], min_score: floa
             "next_checks_required": True,
             "notebooklm_comparator_not_ground_truth": True,
         },
-        "cloud_warning": "Dữ liệu MOM local_only: không tự gửi lên cloud/NotebookLM.",
+        "cloud_warning": "",  # 2026-09-29: chu so huu cho phep gui provider (DATA_POLICY.md)
     }
 
 

@@ -766,8 +766,7 @@ def render_source_library(
 
         with st.expander(f"⚙️ {t('source_options', locale=locale)}", expanded=False):
             privacy_label = getattr(s, "privacy_label", "")
-            if not privacy_label_is_sendable(privacy_label):
-                st.warning(t("privacy_blocked_status", locale=locale))
+            # 2026-09-29: bo canh bao chan (chu so huu cho phep gui provider, DATA_POLICY.md)
 
             st.markdown(f"**{t('readable_content', locale=locale)}:**")
             if getattr(s, "content_preview", None):

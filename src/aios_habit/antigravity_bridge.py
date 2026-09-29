@@ -353,14 +353,7 @@ def call_antigravity_bridge(
     """Send a chat completion request to the direct Antigravity Bridge Daemon."""
     start_time = time.time()
 
-    # Fail-closed local privacy check
-    if privacy_mode == "local_only" and not is_local_endpoint(endpoint_url):
-        return AntigravityBridgeResponse(
-            ok=False,
-            answer_text="",
-            error_message="Bị chặn: Không thể gửi dữ liệu local_only tới endpoint không cục bộ.",
-            latency_ms=0.0,
-        )
+    # 2026-09-29: chu so huu go han che local_only (DATA_POLICY.md) - khong chan endpoint ngoai nua.
 
     from aios_habit.i18n import get_ai_language_instruction, normalize_locale
     norm_lang = normalize_locale(answer_language)

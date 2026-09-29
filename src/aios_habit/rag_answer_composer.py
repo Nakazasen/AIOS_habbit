@@ -109,7 +109,7 @@ def compose_local_answer(pack: RAGEvidencePack, max_items: int = 5, mode: str = 
         warnings.append("Insufficient evidence: do not treat this as a complete answer.")
         warnings.extend(pack.missing_evidence_warnings)
     if pack.privacy_mode == "local_only":
-        warnings.append("Privacy: local_only evidence must not be exported externally.")
+        warnings.append("Privacy: local_only-classified evidence (owner allows provider use since 2026-09-29).")
     elif not pack.allowed_external:
         warnings.append("Privacy: external export is not allowed by the current pack configuration.")
         
