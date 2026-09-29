@@ -1,8 +1,8 @@
 # Trạng thái mailbox — máy công ty KDTVN-PC0575
 
 - Máy: `KDTVN-PC0575`
-- Trạng thái: `trong`
-- Ticket hiện tại: (chưa có)
+- Trạng thái: `moi`
+- Ticket hiện tại: `p2-b7b-smoke-ticket.md` (P2 B7b — smoke test, sparse head)
 - `prompt`: `docs/phieu-viec/mailbox-pc0575/prompt.md`
 
 Mailbox này chỉ dành cho máy công ty KDTVN-PC0575 (CPU-only, máy deploy LAN).
