@@ -3896,6 +3896,36 @@ else:
                             chart_rows_provider=_chart_rows,
                         ):
                             safe_rerun()
+                    # Khung chat_action (TOOL-2): tool đăng ký action, chat gọi theo
+                    # ngữ cảnh câu hỏi, kết quả render giàu trong vùng trả lời.
+                    # Mặc định TẮT sau feature flag để không đổi hành vi hiện có.
+                    if q_text and not user_attached_image:
+                        from aios_habit.chat_action import chat_action_enabled, handle_chat_text
+                        if chat_action_enabled():
+                            from aios_habit.workspace_chat_models import ChatMessage as _ActionChatMessage
+                            from aios_habit.workspace_chat_store import load_notebook, save_message as _action_save_message
+
+                            def _action_save(role: str, content: str) -> None:
+                                _action_save_message(_ActionChatMessage(
+                                    id=f"MSG-{role[0].upper()}-{uuid.uuid4().hex[:8].upper()}",
+                                    conversation_id=active_conversation.id,
+                                    role=role,
+                                    content=content,
+                                ))
+
+                            _action_nb_id = active_conversation.notebook_id or active_nb_id or ""
+                            _action_notebook = load_notebook(_action_nb_id) if _action_nb_id else None
+                            if handle_chat_text(
+                                q_text,
+                                conversation_id=active_conversation.id,
+                                notebook_id=_action_nb_id,
+                                workspace_id=_action_nb_id or "default",
+                                locale=current_ui_locale,
+                                context={"notebook_title": getattr(_action_notebook, "title", "") or ""},
+                                save_user=lambda content: _action_save("user", content),
+                                save_assistant=lambda content: _action_save("assistant", content),
+                            ):
+                                safe_rerun()
                     if not q_text and not user_attached_image:
                         with st.container(key=f"wsc_composer_hint_{active_conversation.id}"):
                             st.caption(t("composer_empty_hint", locale=current_ui_locale))

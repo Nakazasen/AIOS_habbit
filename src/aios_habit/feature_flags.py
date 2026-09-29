@@ -32,6 +32,10 @@ FEATURE_EXPERT_AUDIO_INPUT = "expert_audio_input"
 # Goal 011 adaptive Workspace Chat memory loop (fail-closed; default off)
 FEATURE_ADAPTIVE_WORK_MEMORY = "adaptive_work_memory"
 
+# Goal 012 Workspace Chat chat_action framework + builtin actions (fail-closed;
+# default off). Enable with AIOS_FEATURE_CHAT_ACTION=1.
+FEATURE_CHAT_ACTION = "chat_action"
+
 # Consolidated Goal 010 feature set (single flag)
 ALL_010_FEATURES = (
     FEATURE_EXPERT_KNOWLEDGE_ACQUISITION,
@@ -45,6 +49,7 @@ class FeatureFlagState:
     expert_knowledge_acquisition: bool = False
     expert_multi_user: bool = False
     adaptive_work_memory: bool = False
+    chat_action: bool = False
 
     @property
     def expert_knowledge_coverage(self) -> bool:
@@ -68,6 +73,7 @@ class FeatureFlagState:
             FEATURE_EXPERT_KNOWLEDGE_ACQUISITION: self.expert_knowledge_acquisition,
             FEATURE_EXPERT_MULTI_USER: self.expert_multi_user,
             FEATURE_ADAPTIVE_WORK_MEMORY: self.adaptive_work_memory,
+            FEATURE_CHAT_ACTION: self.chat_action,
         }
 
     def is_enabled(self, flag_name: str) -> bool:
@@ -84,6 +90,8 @@ class FeatureFlagState:
             return self.expert_multi_user
         if flag_name in (FEATURE_ADAPTIVE_WORK_MEMORY, "adaptive_work_memory"):
             return self.adaptive_work_memory
+        if flag_name in (FEATURE_CHAT_ACTION, "chat_action"):
+            return self.chat_action
         return False
 
 
@@ -113,6 +121,8 @@ class FeatureFlagRegistry:
             return FEATURE_EXPERT_MULTI_USER
         if flag_name in (FEATURE_ADAPTIVE_WORK_MEMORY, "adaptive_work_memory"):
             return FEATURE_ADAPTIVE_WORK_MEMORY
+        if flag_name in (FEATURE_CHAT_ACTION, "chat_action"):
+            return FEATURE_CHAT_ACTION
         return flag_name
 
     def get_flag(self, flag_name: str) -> bool:
@@ -149,6 +159,7 @@ class FeatureFlagRegistry:
             expert_knowledge_acquisition=self.get_flag(FEATURE_EXPERT_KNOWLEDGE_ACQUISITION),
             expert_multi_user=self.get_flag(FEATURE_EXPERT_MULTI_USER),
             adaptive_work_memory=self.get_flag(FEATURE_ADAPTIVE_WORK_MEMORY),
+            chat_action=self.get_flag(FEATURE_CHAT_ACTION),
         )
 
 
