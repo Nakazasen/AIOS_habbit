@@ -24,15 +24,23 @@ from aios_habit.production_prediction.models import (
 class ProductionPredictionRepository:
     """Safe SQLite repository for LSU Iris dataset snapshots and trace retrieval."""
 
-    def __init__(self, db_path: Path) -> None:
-        self.db_path = db_path
-        self._ensure_migrated()
+    def __init__(self, db_path: Path, *, read_only: bool = False) -> None:
+        self.db_path = Path(db_path)
+        self.read_only = read_only
+        if not read_only:
+            self._ensure_migrated()
 
     def _ensure_migrated(self) -> None:
         migrate_database(self.db_path, target_version=CURRENT_SCHEMA_VERSION)
 
     def _get_connection(self) -> sqlite3.Connection:
-        conn = sqlite3.connect(self.db_path)
+        if self.read_only:
+            # Read-only preview paths (e.g. chat actions) must not migrate or
+            # back up the production store just to read it.
+            uri = Path(self.db_path).resolve().as_uri() + "?mode=ro"
+            conn = sqlite3.connect(uri, uri=True)
+        else:
+            conn = sqlite3.connect(self.db_path)
         conn.row_factory = sqlite3.Row
         return conn
 

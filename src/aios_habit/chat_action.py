@@ -35,6 +35,8 @@ CHART_MAX_BYTES = 400_000
 BUILTIN_ACTION_MODULES: Tuple[str, ...] = (
     "aios_habit.chat_action_next_actions",
     "aios_habit.chat_action_answer_quality",
+    "aios_habit.chat_action_expert_interview",
+    "aios_habit.chat_action_prediction",
 )
 
 
