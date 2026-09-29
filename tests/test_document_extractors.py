@@ -400,6 +400,39 @@ def test_pptx_xml_cleanup_strips_pretty_printed_truncated_markup(monkeypatch, tm
     )
 
 
+def test_excel_drawing_xml_cleanup_strips_truncated_multiline_markup(monkeypatch, tmp_path):
+    """E3: chữ trong hình vẽ Excel bị truncated nhiều dòng cũng phải sạch."""
+    from aios_habit.document_extractors import XML_CLEANUP_FLAG
+
+    workbook_path = tmp_path / "truncated-drawing.xlsx"
+    workbook = openpyxl.Workbook()
+    workbook.active["A1"] = "Cell Text"
+    workbook.save(workbook_path)
+    workbook.close()
+
+    drawing_xml = (
+        '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n'
+        '<xdr:wsDr xmlns:xdr="http://schemas.openxmlformats.org/drawingml/2006/spreadsheetDrawing"\n'
+        '    xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main">\n'
+        '  <xdr:twoCellAnchor><xdr:sp><xdr:txBody><a:p><a:r>\n'
+        '    <a:t>Shape PART-402 nvarchar(4000) 0 1</a:t>\n'
+    )
+    with zipfile.ZipFile(workbook_path, "a") as archive:
+        archive.writestr("xl/drawings/drawing1.xml", drawing_xml)
+
+    monkeypatch.setenv(XML_CLEANUP_FLAG, "1")
+    results = _extract_excel(workbook_path)
+    drawing_text = "\n".join(
+        result.text for result in results if result.element_type == "excel_drawing_text"
+    )
+    assert drawing_text
+    assert all(value in drawing_text for value in ("PART-402", "nvarchar(4000)", "0 1"))
+    assert all(
+        residue not in drawing_text
+        for residue in ("xmlns", "xdr:", "a:t", "<?xml", "<xdr", 'id="')
+    )
+
+
 def test_docx_adapter_extracts_paragraphs_and_tables(tmp_path):
     docx = tmp_path / "doc.docx"
     _write_zip(docx, {"word/document.xml": '<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body><w:p><w:r><w:t>Heading Text</w:t></w:r></w:p><w:tbl><w:tr><w:tc><w:p><w:r><w:t>Cell Value</w:t></w:r></w:p></w:tc></w:tr></w:tbl></w:body></w:document>'})
