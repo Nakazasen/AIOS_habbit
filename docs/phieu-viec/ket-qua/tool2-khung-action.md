@@ -63,6 +63,8 @@ script tạm `scratch/check_chart_datauri.py` (gitignore) dựng `ChatActionOutc
 **d) Cổng kiểm tra:**
 - `uv run --no-sync --group dev python -m compileall src tests` → sạch.
 - `uv run --no-sync --group dev python -m aios_habit.cli audit` → `"status": "PASS"` (0 lỗi, 0 cảnh báo).
+- `uv run --no-sync --group dev python scripts/check_docs.py` → `DOCUMENTATION_CONTRACT=PASS`.
+- `git diff --check` → sạch.
 - `PYTHONPATH=src uv run --no-sync --group dev python -c "import aios_habit.workspace_chat_app"` → OK (môi trường này cần `PYTHONPATH=src`, giống mọi lượt trước).
 - `pytest -q` toàn bộ — hai lượt:
   - **Lượt A (đúng lệnh chuẩn, không workaround)**: `3220 đạt, 2 bỏ qua, 37 lỗi, 7 error` — 7 error là collection error do venv thiếu `xlrd` (nhóm `error_cases`), lỗi môi trường đã biết (các lượt E3/E4 cũng phải vá tạm cùng kiểu).
