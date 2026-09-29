@@ -357,39 +357,6 @@ def render_archived_notebook_card(
         st.write("---")
 
 
-_MERMAID_FENCE_PATTERN = re.compile(r"```mermaid[ \t]*\r?\n(.*?)```", re.DOTALL)
-
-
-def render_assistant_content(content: str, locale: str = "vi") -> None:
-    """Render assistant bubble text, drawing ```mermaid fences as real diagrams.
-
-    Streamlit >= 1.60 ships `st.mermaid_chart`; the local assets render the
-    diagram offline. When the API is missing (older Streamlit) or a diagram
-    fails to draw, the original markdown fence is kept so no content is lost.
-    """
-    text = str(content or "")
-    if "```mermaid" not in text:
-        st.markdown(text)
-        return
-    segments = _MERMAID_FENCE_PATTERN.split(text)
-    for index, segment in enumerate(segments):
-        if index % 2 == 0:
-            if segment.strip():
-                st.markdown(segment)
-            continue
-        body = segment.strip()
-        if not body:
-            continue
-        renderer = getattr(st, "mermaid_chart", None)
-        if renderer is None:
-            st.markdown(f"```mermaid\n{body}\n```")
-            continue
-        try:
-            renderer(body)
-        except Exception:
-            st.markdown(f"```mermaid\n{body}\n```")
-
-
 def render_chat_bubble(
     msg: ChatMessage,
     is_latest: bool = False,
@@ -433,9 +400,9 @@ def render_chat_bubble(
                 clean_content = re.sub(r"<!--\s*aios_chat_artifact:.*?-->", "", msg.content, flags=re.DOTALL).strip()
                 if is_rolled_back:
                     st.warning(f"↩️ {t('agent_queue_status_rolled_back', locale=locale)}")
-                    render_assistant_content(clean_content, locale=locale)
+                    st.markdown(clean_content)
                 else:
-                    render_assistant_content(clean_content, locale=locale)
+                    st.markdown(clean_content)
 
                     col_view, col_dl, col_undo = st.columns(3)
                     view_key = f"wsc_card_view_{work_id}"
@@ -498,11 +465,11 @@ def render_chat_bubble(
                         with st.container(border=True):
                             if verified_result_path and verified_result_path.is_file():
                                 st.markdown(f"**📄 {t('agent_artifact_view_full', locale=locale)} ({verified_result_path.name}):**")
-                                render_assistant_content(verified_result_path.read_text(encoding="utf-8"), locale=locale)
+                                st.markdown(verified_result_path.read_text(encoding="utf-8"))
                             else:
                                 st.warning(t("agent_factory_error_missing_result", locale=locale))
             else:
-                render_assistant_content(msg.content, locale=locale)
+                st.markdown(msg.content)
 
             # On-demand Evidence Graph Action (Commit C)
             if msg.trace_id and str(msg.trace_id).strip():
