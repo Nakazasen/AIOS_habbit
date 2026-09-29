@@ -137,6 +137,9 @@ def test_expected_fingerprint_empty_without_revision(tmp_path, clean_env, onnx_m
 
 
 def test_expected_fingerprint_empty_without_model(tmp_path, clean_env):
+    # The repo default model tree may exist on a dev machine; point the ONNX
+    # model path at a missing directory so "no model" is deterministic.
+    clean_env.setenv("AIOS_BGE_ONNX_MODEL_PATH", str(tmp_path / "no-model"))
     config = _config(tmp_path)
     assert adapter._expected_backend_fingerprint(config) == ""
 
@@ -315,6 +318,8 @@ def test_reconcile_reenqueues_row_stamped_by_another_backend(
 def test_reconcile_preserves_row_when_backend_unknown(tmp_path, clean_env):
     """Backend unknown: the READY row is preserved untouched (not clobbered),
     but the gate still reports pending (fail closed)."""
+    # No model on this machine: point the ONNX model path at a missing dir.
+    clean_env.setenv("AIOS_BGE_ONNX_MODEL_PATH", str(tmp_path / "no-model"))
     config = _config(tmp_path)  # revision set, but no model dir
     source = _source()
     assert adapter._expected_backend_fingerprint(config) == ""
