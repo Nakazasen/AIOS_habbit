@@ -187,3 +187,13 @@ Bổ sung theo yêu cầu người dùng: *"dù log nào đưa vào cũng vẽ �
 - Test mới: XML lồng nhau/CDATA/entity/thẻ nhiều dòng/attribute `>`/DOCTYPE; PPTX và XLSX có XML truncated nhiều dòng; luật "vất lại file cũ thì bỏ qua" khi bật cờ (nhập lại đúng file cũ → `already_imported`, không trích xuất lại). Đỏ-trước-xanh-sau: lùi mã nguồn về trước fix → đúng 3 test XML đỏ, không thêm bài nào khác.
 - Cổng trên máy `h410asrock`: `compileall` đạt, `cli audit` PASS, nhập `workspace_chat_app` đạt; `pytest -q`: **3.262 đạt, 3 bỏ qua, 37 lỗi, 10 error** (đối chứng A/B khi lùi fix: 40 lỗi — 37 lỗi và 10 error còn lại có sẵn ở `HEAD`, không do fix). Nhóm lỗi có sẵn: thiếu `graphifyy`, tiến trình BGE/ONNX worker, `uv.lock`/đóng gói, thiếu dữ liệu `test_error_cases_f4`, nhóm workspace-chat, eval/mom pilot.
 - Không ghi chỉ mục, không embed, không gộp `main`. Báo cáo: [e3-don-xml-extractor.md](docs/phieu-viec/ket-qua/e3-don-xml-extractor.md).
+
+## Bổ sung ngày 2026-09-30 — E4 vòng chuỗi E: kiểm chứng default ONNX fp32 + bù test fail-closed/CPU-only
+
+- Rà xác nhận default ONNX fp32 và fail-closed đã đúng nguyên từ phiếu E4 trước (`d202c1d` + `77c804b`); vé này **không đổi mã nguồn**, chỉ bù test và siết 2 test cũ.
+- Giữ nguyên tên backend `onnx` (tên tương đương theo vé); không đổi literal sang `onnx_fp32` vì sẽ lệch fingerprint chỉ mục thật (107.331 chunk) và phải embed lại.
+- Test mới (`9de4cac`): session ghim `providers=["CPUExecutionProvider"]` và chạy khi máy không có provider GPU; load model hỏng → lời lỗi rõ; thiếu `onnxruntime` → lời lỗi rõ. Đỏ-trước-xanh-sau: lật provider/thông báo → đúng 3 test đỏ; hoàn nguyên 20/20.
+- Siết 2 test fingerprint-gate (`26a2d2b`): trỏ `AIOS_BGE_ONNX_MODEL_PATH` vào thư mục thiếu cho tất định trên máy có cây model thật — giữ nguyên assertion, không đổi mã nguồn.
+- Smoke thật CPU-only trên cây `models/bge-m3-onnx-fp32`: session `['CPUExecutionProvider']`, máy chỉ có Azure+CPU provider, query 0,44 giây.
+- Cổng: `compileall` đạt, `cli audit` PASS, nhập `workspace_chat_app` đạt; `pytest -q` toàn bộ: **3.265 đạt, 3 bỏ qua, 37 lỗi, 10 error** (lần chạy E3 gần nhất: 3.262 đạt/37 lỗi/10 error → +3 test mới; lỗi còn lại có sẵn, không thuộc vùng E4).
+- Không ghi chỉ mục, không embed, không gộp `main`. Báo cáo: [e4-default-onnx-fp32.md](docs/phieu-viec/ket-qua/e4-default-onnx-fp32.md).
