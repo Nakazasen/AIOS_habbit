@@ -178,3 +178,12 @@ Bổ sung theo yêu cầu người dùng: *"dù log nào đưa vào cũng vẽ �
 - Bộ kiểm thử liên quan (nhúng, di trú, luồng xử lý và tiến trình con): **63 đạt**. Biên dịch, `audit`, nhập `workspace_chat_app`, kiểm tra hợp đồng tài liệu đều đạt.
 - Toàn bộ `pytest -q`: **3.146 đạt, 2 bỏ qua, 23 lỗi**. Trong đó: 9 bài kiểm thử tiến trình BGE gặp `bge_worker_init_stdout_eof` (chạy riêng 16 bài tiến trình với `PYTHONPATH` tuyệt đối thì đạt); 9 bài thiếu `graphifyy==0.9.50`; 1 bài báo `uv.lock` cần cập nhật; 2 bài kiểm thử khói đóng gói và 2 bài `owner-workflow` không nạp được `aios_habit` trong tiến trình con.
 - Mã E4 và sửa tiến trình đã đẩy lên `phieu-viec/rag-fix1`, không gộp `main`. Báo cáo phép đo: `docs/phieu-viec/ket-qua/FIX3_backend-E4-default-onnx.md`. Mailbox chuyển `xong-cho-duyet` sau khi đẩy báo cáo và trạng thái cuối.
+
+## Bổ sung ngày 2026-09-30 — E3 vòng chuỗi E: siết bộ dọn XML ở extractor
+
+- Rà ba tệp `document_extractors.py`, `excel_extractors.py`, `deep_document_parsers.py`: chỉ `document_extractors.py` có đường lọt XML thô; hai tệp còn lại không tự sinh markup.
+- Siết bộ dọn `_strip_xml_markup`: xoá trọn thẻ trải nhiều dòng, attribute có giá trị trong nháy chứa `>`, và `<!DOCTYPE ... [ ... ]>`; giữ nguyên hành vi đã duyệt (giải mã entity trước khi bỏ thẻ, giữ nội dung CDATA, giữ dữ kiện khi thẻ bị cắt cụt).
+- Cờ `AIOS_DOCUMENT_EXTRACTOR_XML_CLEANUP` giữ **mặc định tắt**; khi tắt, bộ dọn không được gọi lần nào (đếm bằng spy) nên đường mặc định không đổi. Muốn dọn ở đường mặc định phải có vé riêng.
+- Test mới: XML lồng nhau/CDATA/entity/thẻ nhiều dòng/attribute `>`/DOCTYPE; PPTX và XLSX có XML truncated nhiều dòng; luật "vất lại file cũ thì bỏ qua" khi bật cờ (nhập lại đúng file cũ → `already_imported`, không trích xuất lại). Đỏ-trước-xanh-sau: lùi mã nguồn về trước fix → đúng 3 test XML đỏ, không thêm bài nào khác.
+- Cổng trên máy `h410asrock`: `compileall` đạt, `cli audit` PASS, nhập `workspace_chat_app` đạt; `pytest -q`: **3.262 đạt, 3 bỏ qua, 37 lỗi, 10 error** (đối chứng A/B khi lùi fix: 40 lỗi — 37 lỗi và 10 error còn lại có sẵn ở `HEAD`, không do fix). Nhóm lỗi có sẵn: thiếu `graphifyy`, tiến trình BGE/ONNX worker, `uv.lock`/đóng gói, thiếu dữ liệu `test_error_cases_f4`, nhóm workspace-chat, eval/mom pilot.
+- Không ghi chỉ mục, không embed, không gộp `main`. Báo cáo: [e3-don-xml-extractor.md](docs/phieu-viec/ket-qua/e3-don-xml-extractor.md).
