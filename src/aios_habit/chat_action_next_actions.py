@@ -73,7 +73,7 @@ def _handler(request: ChatActionRequest) -> Optional[ChatActionOutcome]:
         blocks=(
             ChatActionBlock(
                 BLOCK_MARKDOWN,
-                text="Dựa trên trạng thái sổ tri thức đang mở, đây là các việc nên làm tiếp:",
+                text="Gợi ý các việc nên làm tiếp cho sổ này:",
             ),
             table,
         ),
