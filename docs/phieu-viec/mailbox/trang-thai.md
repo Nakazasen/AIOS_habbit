@@ -2,9 +2,9 @@
 
 - Trạng thái: `dang-lam`
 - Ticket hiện tại: Ticket xếp hàng 2 — `don-o-c`: dọn ổ C máy nhà lấy chỗ trống (user đã cho phép 2026-09-29 ~20:10 +07). OMP nhận vé khi máy nhà bật lại.
-- `commit`: 6f71b9b (nhận vé)
+- `commit`: 342885e (mốc thăm dò)
 - `bao_cao`: `docs/phieu-viec/ket-qua/don-o-c-may-nha.md` (chưa ghi xong)
-- `ghi_chu`: 2026-09-29 23:39 +07 — Nhận vé xong; cổng gate CHƯA kích hoạt (watcher mới tự mở OMP 1/4 lần cho vé này, các lần trước đều tiến triển thật). Thăm dò ổ C: trống 3.49GB; AIOS_habit_index_ve03 9.1GB; C:\tmp 7.9GB; C:\c 2.6GB; AIOS_p1_4 2.7GB (giữ nguyên); %TEMP% 430MB. Đang kiểm kê chi tiết trước khi dọn Bước 1.
+- `ghi_chu`: 2026-09-29 23:53 +07 — Xong Bước 1 (0 byte: không file nào quá 7 ngày theo luật vé), Bước 2 (+56 MB: xóa 3 venv rác trong C:\tmp), Bước 3 (+2.61 GB: xóa checkout vé 0.3 C:\c\AIOS_ve03_worktree, đã lưu zip dữ liệu cục bộ). Ổ C trống 6.19 GB (từ 3.53 GB). Đang chạy integrity_check + SHA 4 bản .bak cho Bước 4.
 - `prompt`: `docs/phieu-viec/mailbox/prompt.md`
 - `verdict_stale-check`: **ĐẠT** (Muse verify độc lập 2026-09-29 ~23:1x +07 trên báo cáo `stale-check.md`, commit `76ba99d`): 0/496 document stale cần embed lại — 107.331/107.331 chunk `retrievable=1` đủ dense+sparse ONNX fingerprint `016c5255…`, 0 thiếu row, 0 hash lệch; đếm bằng 2 cách độc lập (SQL LEFT JOIN + quét Python) trùng khớp; 496/496 doc có ≥1 chunk retrievable; 340 row PyTorch cũ trùng chunk_id 100% (dead weight vô hại). Mở bản copy C `C:\AIOS_p1_4\tri_thuc\library.sqlite` ở `mode=ro`, SHA `062ec090…` khớp ghim P1.3 — không đụng ổ D, không ghi index, không embed, không sửa code, không `functions.find`/mạng ngoài. Commit `76ba99d` chỉ thêm 1 file báo cáo, commit `9375c14` chỉ sửa `trang-thai.md`.
 
