@@ -6,7 +6,8 @@ format (e.g. cause/fix/date in legacy A-Y rows) are reported as n/a and
 excluded from the F3b gate.
 
 Row format is detected per row from raw_json keys: history rows carry
-letters Z..AC (29 columns), legacy rows only A..Y (25 columns).
+letters Z..AC (29 columns), LSU log rows carry ``format="lsu_log"``,
+legacy rows only A..Y (25 columns).
 
 F3b gate: when any CORE field is filled in less than F3B_THRESHOLD (90%)
 of its applicable rows, needs_f3b=True — open ticket F3b (backfill
@@ -61,15 +62,18 @@ _FIELD_SPECS: Dict[str, Dict[str, Any]] = {
     "source_row": {"column": "source_row"},
     # History sheet: C = production date, AA = cause, AB = kaizen/fix.
     # (recon 2026-09-27; AB filled only ~56.8% in the real file.)
-    "date": {"raw": {"legacy": None, "history_29": "C"}},
-    "cause": {"raw": {"legacy": None, "history_29": "AA"}},
-    "fix": {"raw": {"legacy": None, "history_29": "AB"}},
+    # LSU log rows (import_lsu_logs): date is the log timestamp; cause/fix
+    # have no source in logs and are measured as unfilled (0%) on purpose —
+    # the F3b gate must expose that, not hide it as n/a.
+    "date": {"raw": {"legacy": None, "history_29": "C", "lsu_log": "date"}},
+    "cause": {"raw": {"legacy": None, "history_29": "AA", "lsu_log": "cause"}},
+    "fix": {"raw": {"legacy": None, "history_29": "AB", "lsu_log": "fix"}},
 }
 
 # Raw letters that only exist in the 29-column history format.
 _HISTORY_LETTERS = frozenset({"Z", "AA", "AB", "AC"})
 
-FORMATS = ("legacy", "history_29")
+FORMATS = ("legacy", "history_29", "lsu_log")
 
 
 def _filled(value: Any) -> bool:
@@ -82,9 +86,12 @@ def _filled(value: Any) -> bool:
 
 
 def _detect_format(raw: Dict[str, Any]) -> str:
-    """history_29 when raw_json carries letters Z..AC, else legacy."""
+    """history_29 when raw_json carries letters Z..AC; lsu_log when marked
+    by the LSU log importer; else legacy."""
     if not isinstance(raw, dict):
         return "legacy"
+    if raw.get("format") == "lsu_log":
+        return "lsu_log"
     return "history_29" if (set(raw) & _HISTORY_LETTERS) else "legacy"
 
 

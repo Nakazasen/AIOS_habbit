@@ -134,9 +134,9 @@ def upsert_case(
             raise ValueError(f"sheet_type must be one of {column_map.SHEET_TYPES}")
         conflict = "(no_dvd, sheet_type, department)"
         existed = get_case(conn, no_dvd, sheet_type, fields.get("department")) is not None
-    elif format == "history_29":
+    elif format in ("history_29", "lsu_log"):
         if not (fields.get("machine_type") and fields.get("line")):
-            raise ValueError("history_29 requires machine_type (D) and line (E)")
+            raise ValueError(f"{format} requires machine_type and line")
         conflict = "(no_dvd, machine_type, line)"
         existed = (
             conn.execute(
