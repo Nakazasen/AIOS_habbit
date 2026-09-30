@@ -211,6 +211,9 @@ def read_lsu_events(csv_path: str | Path) -> LsuLogParseResult:
             ng_raw_names = [header[i] for i in ng_indexes if cells[i].upper() == "NG"]
             columns = {header[i]: cells[i] for i in key_indexes}
             columns_lookup = {names[i]: cells[i] for i in key_indexes}
+            # Digest của dòng nguồn: toàn bộ ô đọc được từ CSV (kể cả ô vượt quá
+            # số cột header — log thật có dòng dài hơn header), đã strip, join \x1f.
+            raw_cells = ["" if cell is None else str(cell).strip() for cell in row]
             parsed.events.append(
                 {
                     "row_no": row_no,
@@ -219,7 +222,7 @@ def read_lsu_events(csv_path: str | Path) -> LsuLogParseResult:
                     "investigation": _describe(dialect, columns_lookup, ng_raw_names),
                     "stage": _first(columns_lookup, ("jignumber", "jigno", "jig")),
                     "key_columns": columns,
-                    "row_sha256": _row_digest(cells),
+                    "row_sha256": _row_digest(raw_cells),
                 }
             )
     return parsed

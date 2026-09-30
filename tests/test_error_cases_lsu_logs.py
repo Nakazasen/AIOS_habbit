@@ -127,6 +127,16 @@ def test_read_result_color_ng(tmp_path):
     assert "S/N=61C1068E6205" in parsed.events[0]["investigation"]
 
 
+def test_read_digest_covers_cells_beyond_header(tmp_path):
+    """Log thật có dòng dài hơn header (6thA3: 71 ô vs 64 cột); digest dòng
+    nguồn phải phủ các ô vượt cột header, nếu không sẽ mất khả năng đối chiếu."""
+    base = "SelNo,Date,Time,JigNo,FinTest\nSN-1,2021/4/20,7:26:24,#1,NG,TAIL-A\n"
+    other = base.replace("TAIL-A", "TAIL-B")
+    first = read_lsu_events(_write(tmp_path, "a.csv", base))
+    second = read_lsu_events(_write(tmp_path, "b.csv", other))
+    assert first.events[0]["row_sha256"] != second.events[0]["row_sha256"]
+
+
 # ---------------------------------------------------------------------------
 # Import + provenance
 # ---------------------------------------------------------------------------
