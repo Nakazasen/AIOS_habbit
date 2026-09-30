@@ -2,7 +2,7 @@
 
 - Trạng thái: `dang-lam`
 - Ticket hiện tại: `GPU-262` — nhúng GPU 52.979 chunk (262 nguồn LSU) + đóng gói delta cho PC0575. Ưu tiên tối 30/09 theo lệnh user trực tiếp.
-- `commit`: `9b74fd3` (mốc bắt đầu staging đã push)
+- `commit`: `8b54c31`
 - `bao_cao`: `docs/phieu-viec/ket-qua/gpu-262.md`
 - `ghi_chu`: 2026-09-30 21:55 +07 — Staging khởi tạo xong: schema khớp 19/19 đối tượng; 52.979 chunk / 262 ID, retrievable/FTS đủ, `integrity_check=ok`, 834.904.064 byte. Dense/sparse đang trống; bước kế là backup C và dry-run CUDA. JSONL thiếu nhãn privacy nên staging gắn `local_only` để fail-closed.
 - `prompt`: `docs/phieu-viec/mailbox/prompt.md`
