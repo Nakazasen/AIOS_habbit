@@ -7,12 +7,12 @@
 ## Điều kiện phát hành
 1. Vé `hodap-lsu-loi` trên PC0575 đã `xong-cho-duyet` + có verdict của Muse
    (KHÔNG merge giữa lúc PC0575 đang test hỏi đáp — tránh đổi corpus giữa chừng).
-2. File delta đã có trên PC0575:
+2. File delta đã có trên Drive (vé `upload-delta-drive` trên máy nhà đã đẩy + verify ẩn danh; link trong báo cáo `docs/phieu-viec/ket-qua/upload-delta-drive.md`, thư mục AIOS_Data):
    `D:\Sandbox\AIOS_habbit\scratch\gpu-262b-delta-20261001.zip`
    (20.867.536 byte,
    SHA-256 `5bd7c56d93b50d8415320ce37295d7be503ace99b912e375055025b844099a85`).
-   Máy nhà chuyển file này sang PC0575 (LAN/USB) trước. Nếu đến giờ chạy mà
-   file chưa có → mailbox `cho-muse`, ghi rõ "chưa nhận được delta".
+   Tải file từ Drive về máy (thư mục scratch), verify SHA-256 khớp ghim trên mới làm tiếp. Nếu đến giờ chạy mà
+   file chưa có trên Drive → mailbox `cho-muse`, ghi rõ "chưa nhận được delta".
 
 ## Bối cảnh
 Máy nhà đã nhúng GPU 19 tài liệu phi-CSV (2.883 chunk, fingerprint `016c5255…`,
