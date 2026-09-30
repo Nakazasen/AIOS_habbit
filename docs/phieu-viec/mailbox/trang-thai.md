@@ -2,7 +2,7 @@
 
 - Trạng thái: `xong-cho-duyet`
 - Ticket hiện tại: `GPU-262b` — DỪNG GPU-262, nhúng GPU 19 tài liệu phi-CSV (2.883 chunk) + đóng gói delta cho PC0575. Thay thế GPU-262 theo lệnh user trực tiếp (~00:10 +07 01/10/2026, chọn "cách 2").
-- `commit`: `96fcabb`
+- `commit`: `d62a995`
 - `bao_cao`: `docs/phieu-viec/ket-qua/gpu-262b.md`
 - `ghi_chu`: 2026-10-01 ~00:15 +07 — User chốt cách 2 sau audit của Muse: 50.096/52.979 chunk (94,6%) của export là 87 file CSV số đo thô, giá trị hỏi-đáp ≈ 0. LỆNH DỪNG KHẨN: OMP dừng ngay worker GPU-262 ở `C:\AIOS_staging_262` (ghi lại dừng ở chunk thứ mấy, KHÔNG xóa staging cũ), rồi làm vé GPU-262b: lọc export giữ 19 document_id phi-CSV (2.883 chunk, bảng trong prompt) → staging mới `C:\AIOS_staging_262b` → verify 19/19 ID + fingerprint `016c5255…` + cosine GPU/CPU ≥0,999 → đóng gói delta (merge SKIP 5 ID đã có trong production PC0575).
 - `ghi_chu_gpu262_cu`: 2026-10-01 ~00:06 +07 — Lượt cuối dừng do hết giới hạn 900 giây; truy vấn chỉ đọc lúc 00:06:47 xác nhận 20.300/52.979 mảnh có đủ vector đặc và vector thưa. Lượt này chậm hơn trước (144,3–181,8 giây/100 mảnh), nguyên nhân chưa xác định; giữ nguyên `C:\AIOS_staging_262`, không khởi chạy lại.
