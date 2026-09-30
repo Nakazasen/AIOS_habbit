@@ -2,9 +2,9 @@
 
 - Trạng thái: `dang-lam`
 - Ticket hiện tại: `GPU-262` — nhúng GPU 52.979 chunk (262 nguồn LSU) + đóng gói delta cho PC0575. Ưu tiên tối 30/09 theo lệnh user trực tiếp.
-- `commit`: `8b54c31`
+- `commit`: `c1bb0ac` (mốc staging + dry-run trước nhúng)
 - `bao_cao`: `docs/phieu-viec/ket-qua/gpu-262.md`
-- `ghi_chu`: 2026-09-30 21:55 +07 — Staging khởi tạo xong: schema khớp 19/19 đối tượng; 52.979 chunk / 262 ID, retrievable/FTS đủ, `integrity_check=ok`, 834.904.064 byte. Dense/sparse đang trống; bước kế là backup C và dry-run CUDA. JSONL thiếu nhãn privacy nên staging gắn `local_only` để fail-closed.
+- `ghi_chu`: 2026-09-30 22:03 +07 — Dry-run đạt: fingerprint `016c5255…`, 52.979 pending; session provider CUDA đứng đầu. Backup staging đạt `integrity_check=ok` (834.904.064 byte). Bắt đầu nhúng GPU theo batch 3.000 chunk, cập nhật sau từng batch.
 - `prompt`: `docs/phieu-viec/mailbox/prompt.md`
 - `ghi_chu_ke_hoach`: 2026-09-30 ~20:00 +07 — Muse lập kế hoạch làm hết `docs/dich-den-du-an.md`: 14 vé mới (B0-FORM/DICT/MEASURE, B1-FEAT, B2, B3, B4, B5, J1-CSV, J1-RT, J2–J5), chi tiết trong `docs/ke-hoach-dich-den.md`. Lane [VM] = Muse code+test (OMP chờ, chỉ verify khi Muse báo xong); [NHÀ] = OMP làm; J2–J5 cần người dùng công ty tham gia.
 - `verdict_tool5`: **ĐẠT** (Muse verify độc lập 2026-09-30 ~06:55 +07 trên VM Linux Python 3.12.3, HEAD `6042e3a`): chuỗi commit đúng như báo cáo (`1be7002` → `7483c5a` → `a6ab4a4` → `f69d5c9` → `f08521e` → `ca73a7d` → `3cdb4d2` báo cáo chỉ thêm docs → `6042e3a`); diff code chỉ 2 module mới (`chat_action_visual_maps.py` +832, `visual_map_image.py` +311) + test mới 501 dòng + đúng 1 dòng đăng ký `BUILTIN_ACTION_MODULES` (đường cờ fail-closed sẵn có từ TOOL-2); grep 0 hit `D:` và 0 thao tác ghi/embed/sqlite trong code mới (chỉ đọc JSONL cục bộ + trace); không merge `main` (main không phải ancestor); test vé 29/29 pass độc lập + hồi quy liên quan 157 bài pass (action 64 + visual/knowledge 85 + omnibar 8); compileall sạch; full suite OMP báo 3.363/2/35/0 = +29 đúng số test vé mới, 35 lỗi giữ nguyên bộ có sẵn (tin theo log OMP như các vé trước, VM không chạy full suite). Hạn chế đã ghi trong báo cáo (ảnh tối đa 4 cột/24 nút, quan hệ hồ sơ ánh xạ cục bộ 4 mục, worklens chưa gồm bridge import, lỗi Mermaid là hạn chế upstream Streamlit) — không chặn.
