@@ -1,6 +1,8 @@
 # Trạng thái mailbox — KDTVN-PC0575
 
-Trạng thái: `xong-cho-duyet`
+Trạng thái: `xong`
+
+- `verdict_p5`: **ĐẠT** (Muse verify độc lập 2026-09-30 ~09:5x +07 trên VM): cây ONNX `9f81075f…b11093` khớp seal (zip 1.326.939.447 B, SHA `4239479b…bf2f3c` đo chéo 3 cách; verify bằng chính hàm của mã, chỉ đọc); fingerprint `016c5255…` khớp 107.331 vector dense → không embed lại; env `AIOS_BGE_ONNX_MODEL_CHECKSUM` (User scope) + sidecar đúng giá trị; index production SHA `062ec090…` trước = sau smoke + test UI (mtime không đổi — không ghi); smoke B1–B5 (B4 loại) PASS 4/4, exit 0, `index_read_only=true`, `provider_guard=None`; app LAN `0.0.0.0:8501` LISTENING (PID 1632), HTTP 200 qua `127.0.0.1` và `192.168.1.41`, kiểm UI bằng Chromium ẩn; backup `C:\AIOS_p5\library.sqlite.bak-20260930` cùng SHA. Commit `27f1591` chỉ thêm báo cáo (+162/−0); commit `b423211` chỉ sửa `trang-thai.md` (+17/−3); không merge `main` (merge_base = tip main), không đụng ổ D máy nhà, không sửa mã nguồn sản phẩm, không đặt env khác. Hai việc chờ quyết (KHÔNG chặn): (a) firewall máy công ty `BlockInbound` — cần rule admin mới truy cập được từ máy khác; (b) 171 nguồn tài liệu của app chưa có vector + sổ “MOM / Opcenter” 146 nguồn có thể tự enqueue embed khi bị mở — vé cấm embed nên OMP không bấm, cần vé “chuẩn bị tài liệu” riêng hoặc tạm không mở sổ đó. P5 là vé CUỐI cho máy công ty (LỆNH DỪNG 2026-09-29 ~20:16) → đóng mailbox ở `xong`, KHÔNG viết ticket tiếp theo.
 Ticket hiện tại: p5-deploy-onnx
 `prompt`: `docs/phieu-viec/mailbox-pc0575/prompt.md`
 `commit`: `27f1591` (báo cáo P5) — nhận vé ở `4597dcd`
