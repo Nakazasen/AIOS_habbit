@@ -133,6 +133,19 @@
 - Nếu file Drive có dấu hiệu không đúng (integrity fail, thiếu hẳn LSU/lỗi,
   fingerprint lệch) → dừng, đặt `cho-muse`, không tự xử lý tiếp.
 
+## TIẾP TỤC — 2026-09-30 ~16:33 +07 (file Drive đã có sẵn, user tải tay)
+
+- User đã tải `library.sqlite` vào đúng
+  `D:\Sandbox\AIOS_habbit\scratch\drive_index_check\library.sqlite`
+  (xác nhận qua ảnh chụp màn hình 16:31 +07: 2.492.832 KB = 2.552.659.968 byte —
+  KHỚP CHÍNH XÁC dung lượng tham chiếu index GPU máy nhà; sửa cuối 9/30/2026 16:17).
+- **BỎ QUA Bước 1** (không tải lại, không ghi đè file đã có).
+- **Tiếp tục từ Bước 2**: xác minh file (SHA256, `integrity_check`, schema, số
+  document/chunk/vector ĐO THỰC TẾ, fingerprint `016c5255…`) → áp gate document
+  BỔ SUNG 2.1/2.2 (so số ĐO ĐƯỢC của file Drive với 501 của production;
+  < 501 → dừng + `cho-muse` + liệt kê `document_id` thiếu).
+- Không đụng production cho tới khi qua hết gate.
+
 ## GHI CHÚ MỞ KẸT — 2026-09-30 ~16:05 +07 (trạng thái `cho-muse` lúc 15:58)
 
 ### Kẹt 1: OMP không tải được file Drive (Chrome policy)
