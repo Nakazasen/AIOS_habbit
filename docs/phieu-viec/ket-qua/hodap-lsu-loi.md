@@ -1,7 +1,7 @@
 # Vé `hodap-lsu-loi` — Thông luồng hỏi đáp LSU + lỗi trên chat (máy `KDTVN-PC0575`)
 
-- Trạng thái báo cáo: **TẠM — chưa nghiệm thu hỏi đáp.** Vé chuyển `cho-muse` vì OMP không thể tải index Drive qua Chrome trên PC0575; cần Muse/user xử lý quyền tải hoặc chính sách trình duyệt.
-- Chưa xác minh file Drive, chưa thay production, chưa chạy bộ 6 câu; đang chờ mở nút thắt ở mục 9.
+- Trạng thái báo cáo: **TẠM — chưa nghiệm thu hỏi đáp.** Vé chuyển `cho-muse` (lần 2) vì Bước 2 xác minh file Drive **KHÔNG ĐẠT gate số document** (496 < 501) và bằng chứng bổ sung cho thấy file Drive **không chứa vector của bất kỳ nguồn nào trong sổ LSU** (0/262) → nếu thay index sẽ làm app mất 5 tài liệu đang ready. Chi tiết mục 10.
+- Chưa thay production, chưa chạy bộ 6 câu; đang chờ Muse/user quyết định ở mục 10.
 - Ngày làm: 2026-09-30 (13:35–15:54 +07), máy `KDTVN-PC0575` (OMP). Nhánh: `phieu-viec/rag-fix1`.
 - Phạm vi: chỉ đọc chẩn đoán + bật nguồn + chuẩn bị nền + dừng nhúng theo lệnh. **Không sửa code,
   không merge `main`, không xóa nguồn/tài liệu.**
@@ -206,3 +206,74 @@ Sau khi copy: mở lại app (hoặc để app tự rerun) → `reconcile_and_en
 - BỔ SUNG 2.1 (15:58 +07): đo production hiện tại được **501 `document_id` riêng biệt** trong `chunks`; prompt ghi tham chiếu file Drive là **496 document**. Mốc tham chiếu này thấp hơn production nên **chưa đủ điều kiện thay index**. File Drive chưa tải được nên số thật của file chưa kiểm chứng; cần bản đúng có ≥501 document hoặc Muse làm rõ chênh lệch trước khi tiếp tục.
 - App vẫn phục vụ: `localhost:8501` và IP hiện tại `192.168.1.41:8501` → HTTP 200; `/_stcore/health` → `ok`. Không có tiến trình `bge_subprocess_worker`.
 - Bước tiếp theo cần Muse/user mở cách tải hợp lệ ngay trên PC0575 và giải quyết gate số document: cho phép relay extension theo chính sách quản trị hoặc tải trực tiếp từ Chrome đã đăng nhập vào `scratch/drive_index_check/library.sqlite`; file phải có ≥501 document (hoặc Muse xác nhận số tham chiếu/cách đếm). Sau khi đủ hai điều kiện mới tiếp tục xác minh Bước 2; không đổi file production trước khi mọi gate đạt.
+
+## 10. BƯỚC 2 — Xác minh file Drive tải tay: GATE KHÔNG ĐẠT → `cho-muse` (2026-09-30 16:35–17:10 +07)
+
+### 10.1 Số đo thực tế (chỉ đọc)
+
+| Chỉ tiêu | File Drive `scratch/drive_index_check/library.sqlite` | Production `…/collections/tri_thuc/library.sqlite` |
+| --- | --- | --- |
+| Dung lượng | 2.552.659.968 byte (mtime 2026-09-30 16:17) | 2.565.955.584 byte (mtime 2026-09-30 14:37) |
+| SHA-256 | `062ec090644fb4ec09d2fb6388f3175e988e48d63061b04e6c27bbed334ef8ca` **khớp ghim tham chiếu** | `5260c0430013981672b4e82cf3e967886b5a1d543ad3cad08e6016ca1b0b512b` |
+| `PRAGMA integrity_check` | `ok` | `ok` |
+| Document / chunk | **496** / 133.144 | **501** / 133.880 |
+| Chunk `retrievable=1` | 107.331 | 108.007 |
+| Dense khớp fingerprint `016c5255…` | 107.331 | 108.007 |
+| Sparse khớp fingerprint `016c5255…` | 107.331 | 108.007 |
+| Document có ≥1 chunk retrievable | 496/496 | 501/501 |
+| Fingerprint app PC0575 yêu cầu | `016c5255d0cec1fcb75b99f71f3c6a47a6e67b6087c3eb943b039cf8ac6274fb` (đo bằng chính hàm `_expected_backend_fingerprint` của app) → **khớp** | — |
+
+- File Drive qua được mọi cổng kỹ thuật (SHA ghim, integrity, schema, fingerprint dense+sparse) **trừ cổng số document**.
+- Cả hai index đều còn 340 dòng fingerprint PyTorch cũ `ce7fb53f…` (dead weight vô hại, đã biết từ vé `stale-check`).
+
+### 10.2 Gate số document: KHÔNG ĐẠT
+
+- Đo được: Drive **496** < production **501** → theo BỔ SUNG 2.1/2.2 (GHI CHÚ MỞ KẸT mục "Kẹt 2"), **dừng, không thay index, đặt `cho-muse`**.
+- 5 `document_id` của production thiếu trong bản Drive (so theo tập ID, đúng 5 ID đã được nhúng CPU chiều nay trên PC0575):
+
+| `document_id` thiếu trong bản Drive | Tên nguồn trong sổ | Chunk trong production |
+| --- | --- | --- |
+| `wsc-154101d384acc2d01009025d` | `Tài_liệu_đào_tạo_LSU_2019.01.18_K.pptx` | 52 |
+| `wsc-58589483c646877fdb341f46` | `Dữ_liệu_tổng_hợp.xlsx` | 54 |
+| `wsc-9e3e7cbc01ed57332c1384eb` | `RE__Iris_LSU_Beam径NG多発_異常品質会議2回目.msg` | 45 |
+| `wsc-a1a89391eee709a956a46130` | `tổng_hợp_dữ_liệu_dán_tape.xlsx` | 312 |
+| `wsc-cc7d383bb6f7b9127bcaef00` | `dữ_liệu_tổng_hợp_CaV2__1240_.xlsx` | 213 |
+
+(Tổng 676 chunk mới = 108.007 − 107.331, khớp đúng 5 tài liệu trên.)
+
+### 10.3 Bằng chứng bổ sung (quyết định): bản Drive KHÔNG phủ nguồn sổ LSU
+
+Đo độ phủ thật theo đúng danh tính `document_id` của app (`wsc-<sha256(text)[:24]>`), chỉ đọc:
+
+| Tập nguồn | Số nguồn | Số `document_id` | Production: có/ready | **Drive: có/ready** |
+| --- | --- | --- | --- | --- |
+| Cả sổ "Điều tra lỗi LSU" (`NB-E35A7BEE`) | 494 | 262 | 5 / 5 | **0 / 0** |
+| Nhóm đang **bật** cho hội thoại `CONV-9C730D76` | 35 | 19 | 5 / 5 | **0 / 0** |
+
+- Nội dung file Drive trùng corpus cũ đã biết: cùng danh sách tên nguồn + số chunk với production (chỉ khác 5 tài liệu nhúng chiều nay), gồm `Loi KDTPS.xlsx` (39.870 chunk), các bản vẽ `【Iris2020】全体配線図…`, và các bản `.msg` phiên bản trích xuất cũ (ví dụ `RE_ Iris LSU Beam径NG多発　異常品質会議2回目.msg` 47 chunk — **khác** `document_id` với nguồn cùng tên trong sổ). SHA `062ec090…` này chính là bản ghim P1.3 đã gặp ở vé `don-o-c`/`stale-check`.
+- Kết luận đo được: file Drive **không phải** index đã nhúng cho bộ nguồn sổ LSU. Nếu thay, app mất 5 tài liệu đang `ready` (676 chunk LSU/lỗi) và **tụt về 0 tài liệu ready** → cổng "Tìm kiếm tài liệu chưa sẵn sàng" sẽ chặn lại như Pha 1. Vì vậy kể cả khi Muse miễn cổng số document, **thay index là bước đi ngược** với tiêu chí ĐẠT của vé.
+- Giả thuyết khớp với số đo: máy nhà chưa từng nhúng bộ nguồn của sổ này (index máy nhà = corpus điều tra lỗi cũ), hoặc dữ liệu được nhập/trích xuất khác đường nên `document_id` không giao nhau.
+
+### 10.4 Đã KHÔNG làm trong phiên này
+
+- Không thay/bổ sung file production; không tạo backup (không cần vì chưa ghi); production vẫn 2.565.955.584 byte, `mtime` 2026-09-30 14:37, SHA `5260c043…`.
+- Không bấm "🔄 Thử chuẩn bị lại"; không nhúng CPU; không sinh `bge_subprocess_worker` (kiểm tra: 0 tiến trình worker).
+- Không sửa code, không đụng ổ D ngoài thư mục app, không merge `main`, không force-push.
+- Không xóa file Drive trong `scratch/` (giữ làm bằng chứng; `scratch/` git-ignore).
+
+### 10.5 Trạng thái app sau phiên (đo lúc 17:0x +07)
+
+- `127.0.0.1:8501` → HTTP 200; `/_stcore/health` → `ok`; tiến trình `0.0.0.0:8501` LISTENING (PID 21016).
+- Ledger (`mode=ro`): **9 `ready` / 25 `failed` (lý do `paused_shared_index_from_home_machine`) / 0 `processing`** — không đổi so với 15:58.
+- 0 tiến trình `bge_subprocess_worker`.
+
+### 10.6 Đề xuất để Muse/user quyết (OMP không tự quyết)
+
+1. **Nếu mục tiêu vẫn là hỏi đáp đủ 494 nguồn sổ LSU:** máy nhà (GPU) phải nhúng đúng bộ nguồn của sổ (262 `document_id`) từ chính dữ liệu đã nhập trên máy công ty, rồi copy index sang PC0575 — lúc đó số document sẽ ≥ 501 và cổng phủ sẽ đạt. Cần Muse xác nhận dữ liệu nhập của sổ trên máy nhà (danh sách nguồn + text trích xuất) khớp máy công ty trước khi tốn công nhúng.
+2. **Nếu chấp nhận phạm vi tạm:** giữ nguyên production hiện tại (5 tài liệu đã ready: LSU pptx + biên bản lỗi kỳ 2 + 3 xlsx dữ liệu) và cho phép chạy **6 câu hỏi mẫu** để nghiệm thu phần đã có (câu trả lời chỉ dựa trong 5 tài liệu đó). Đây là đường duy nhất hiện có thể thu được bằng chứng ĐẠT cho tiêu chí "trả lời có căn cứ".
+3. Nhánh còn lại (nhúng tiếp bằng CPU trên PC0575) vẫn bị cấm theo BỔ SUNG KHẨN.
+
+### 10.7 Trạng thái vé
+
+- `trang-thai.md` → `cho-muse`; dừng, **không quay no-op**; hiện không còn việc OMP được phép làm tiếp trên vé này cho tới khi Muse/user trả lời mục 10.6.
+- Bộ đếm kẹt "watcher tự mở 4 lần" không áp dụng: phiên này là việc thật (Bước 2) và đã kết luận bằng gate của vé.
