@@ -1,10 +1,10 @@
 # Trạng thái mailbox — KDTVN-PC0575
 
-Trạng thái: `dang-lam`
+Trạng thái: `xong-cho-duyet`
 Ticket hiện tại: p5-deploy-onnx
 `prompt`: `docs/phieu-viec/mailbox-pc0575/prompt.md`
-`commit`: `6f96e9e` (báo cáo) — code/test ở `d8e7470`
-`bao_cao`: `docs/phieu-viec/ket-qua/pc0575-test-cleanup.md`
+`commit`: `27f1591` (báo cáo P5) — nhận vé ở `4597dcd`
+`bao_cao`: `docs/phieu-viec/ket-qua/p5-bao-cao.md`
 
 Ghi chú: [2026-09-29 ~18:40 +07] Vé trước `pc0575-gui-verify`: **ĐẠT** (3/3 mục, Muse verify
 độc lập trên HEAD `bb964df2`). Hệ quả còn tồn đã dọn xong ở vé này: 16 test cũ ở 8 file
@@ -38,3 +38,17 @@ dense trong index → **không cần embed lại**. Đặt env `AIOS_BGE_ONNX_MO
 (User scope) theo bước 3 của vé. Index production trước test: `062ec090…` (2.552.659.968 byte, khớp seal P2).
 Mốc 3 [2026-09-30 08:42 +07] (chặng 4): chạy smoke B1–B5 (B4 loại) bằng `scratch\p2_b7_smoke.py`
 (đọc-only, `index_read_only=true`); sau đó chặng 5 mở LAN cho cả phòng.
+Mốc 4 [2026-09-30 09:15 +07] (chặng 4 XONG): smoke **PASS cả 4 câu** (exit 0, tổng 1816 s):
+B1 533,8 s / B2 343,5 s / B3 433,7 s / B5 459,8 s — không câu nào thiếu chuỗi bắt buộc
+(`11922/12860/12626`, `YY2-Z151/Z152`, `nvarchar(4000)`, `HOUSE_METHOD '0'/'1'`),
+`candidate_count` 210–274, `filtered_as_stale_count=0`, `provider_guard=None` (không gọi AI ngoài).
+Report: `scratch\p2_b7_report.json` (chỉ đọc, không ghi index). Tiếp: backup index + mở LAN.
+Mốc 5 [2026-09-30 09:38 +07] CHỐT VÉ: app đã mở LAN — `0.0.0.0:8501` LISTENING (PID 1632), HTTP 200 qua
+`127.0.0.1` và `192.168.1.41`; kiểm UI bằng Chromium ẩn (màn chọn sổ OK; gửi thử 1 câu hỏi trong sổ
+"Điều tra lỗi LSU" → app báo đúng "Tìm kiếm tài liệu chưa sẵn sàng…" + nút thử lại; index/ledger **không đổi**).
+Backup index: `C:\AIOS_p5\library.sqlite.bak-20260930` (cùng SHA-256 `062ec090…`). Báo cáo:
+`docs/phieu-viec/ket-qua/p5-bao-cao.md` (commit `27f1591`).
+Hai điểm chờ Muse/user quyết (báo cáo mục 5.3 + 6): (a) firewall máy công ty `BlockInbound` — cần rule admin
+(lệnh kèm trong báo cáo) mới truy cập được từ máy khác; (b) 171 nguồn tài liệu của app chưa có vector trong
+index — muốn app tự trả lời phải "chuẩn bị" (embed) trên máy này, vé **cấm embed lại** nên OMP không bấm;
+sổ "MOM / Opcenter" (CONV-EEA591C6, 146 nguồn chưa có dòng ledger) sẽ tự xếp hàng embed nếu bị mở.
