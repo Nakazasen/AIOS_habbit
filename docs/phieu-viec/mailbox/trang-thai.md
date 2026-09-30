@@ -2,7 +2,7 @@
 
 - Trạng thái: `dang-lam`
 - Ticket hiện tại: `GPU-262` — nhúng GPU 52.979 chunk (262 nguồn LSU) + đóng gói delta cho PC0575. Ưu tiên tối 30/09 theo lệnh user trực tiếp.
-- `commit`: `a15bded`
+- `commit`: `eec7655`
 - `bao_cao`: `docs/phieu-viec/ket-qua/gpu-262.md`
 - `ghi_chu`: 2026-09-30 23:49 +07 — Lượt 2.000 mảnh dừng ở giới hạn 900 giây sau 10 lượt con; truy vấn chỉ đọc xác nhận 1.000 mảnh mới, tổng 19.900 vector đặc và vector thưa. Mỗi lượt con mất 57,0–85,5 giây/100 mảnh; nguyên nhân chậm chưa xác định. Tiếp tục theo lượt 500 mảnh.
 - `prompt`: `docs/phieu-viec/mailbox/prompt.md`
