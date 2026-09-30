@@ -38,6 +38,11 @@ CREATE TABLE IF NOT EXISTS error_cases (
     is_completed     TEXT NOT NULL DEFAULT '',  -- V: 'o' = done
     needs_jp_support TEXT NOT NULL DEFAULT '',  -- Y: 'o' = needs JP support
 
+    -- Event time: the real occurrence date when the source carries one
+    -- (history_29 column C "生産日 / Ngày tháng sản xuất", ISO 'YYYY-MM-DD').
+    -- NULL = unknown; trend/recurrence then fall back to created_at (import time).
+    occurred_at      TEXT,
+
     raw_json         TEXT NOT NULL,  -- all A–Y values as JSON (full fidelity)
     skip_cells       TEXT NOT NULL DEFAULT '[]',  -- JSON list of green-skipped columns
 

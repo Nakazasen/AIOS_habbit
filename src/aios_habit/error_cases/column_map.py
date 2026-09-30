@@ -14,7 +14,8 @@ Business rules sourced from the legacy kdtps-error-manager
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Tuple
+from datetime import date, datetime
+from typing import Any, Dict, List, Optional, Tuple
 
 # 0-based column index -> semantic field name (legacy config.py)
 COLUMN_MAP: Dict[int, str] = {
@@ -99,8 +100,49 @@ HISTORY_29_MAP: Dict[int, str] = {
 }
 
 # Columns with no semantic slot in error_cases; kept in raw_json only.
-# G serial, I defect description, J occurrences, X/Y hold dates,
-# Z reproducibility, AA cause, AB kaizen, AC report link.
+# G serial, I defect description, J occurrences, X/Y HOLD dates, Z
+# reproducibility, AA cause, AB kaizen, AC report link.
+
+#: Real occurrence date for the 29-column history sheet. Recon 2026-10-01
+#: (ticket `date-map`): C "生産日 / Ngày tháng sản xuất" is a real date in
+#: 100% of the 15.737 data rows (datetime 00:00), year always matching
+#: column A. X ("HOLD日 / Ngày Hold") and Y ("HOLD解除日 / Ngày giải Hold")
+#: are hold dates, not occurrence dates, and 97.9% / 98.5% of them are the
+#: empty placeholder "ー" in the source -- they stay in raw_json only.
+HISTORY_29_DATE_INDEX: int = 2  # column C
+
+#: Source placeholder values meaning "no date given".
+DATE_NA_MARKS: Tuple[str, ...] = ("ー", "－", "—", "–", "-", "--", "/", "//")
+
+
+def parse_date_cell(value: Any) -> Optional[str]:
+    """Parse a source date cell into an ISO 'YYYY-MM-DD' string, or None.
+
+    Accepts the types/formats that occur in the workbook: datetime/date
+    objects (openpyxl) and written text (ISO, YYYY/M/D, YYYY.M.D,
+    YYYY年M月D日, with an optional trailing 日). Placeholders ('ー', ...)
+    and unparseable text return None -- never guesses a date.
+    """
+    if value is None:
+        return None
+    if isinstance(value, datetime):
+        return value.date().isoformat()
+    if isinstance(value, date):
+        return value.isoformat()
+    text = str(value).strip()
+    if not text or text in DATE_NA_MARKS:
+        return None
+    text = text.rstrip("日")
+    try:
+        return datetime.fromisoformat(text).date().isoformat()
+    except ValueError:
+        pass
+    for fmt in ("%Y/%m/%d", "%Y.%m.%d", "%Y年%m月%d"):
+        try:
+            return datetime.strptime(text, fmt).date().isoformat()
+        except ValueError:
+            continue
+    return None
 
 
 def history_no_dvd(year: Any, no: Any) -> str:
@@ -115,12 +157,15 @@ def normalize_history_row(cells: List[Any]) -> Dict[str, Any]:
 
     Investigation prefers the Vietnamese column O, falling back to
     Japanese column N. ``no_dvd`` is derived as 'year/NO' from A+B.
+    ``occurred_at`` is the ISO occurrence date parsed from column C
+    (None when the source cell is empty/unparseable).
     """
     out: Dict[str, Any] = {
         "no_dvd": None, "machine_type": None, "line": None,
         "error_code_c": None, "error_code_h": None, "investigation": None,
         "department": None, "handler": None,
         "is_completed": "", "needs_jp_support": "",
+        "occurred_at": None,
     }
     raw: Dict[str, Any] = {}
     for i in range(29):
@@ -131,6 +176,7 @@ def normalize_history_row(cells: List[Any]) -> Dict[str, Any]:
         if field is not None:
             out[field] = value
     out["no_dvd"] = history_no_dvd(raw.get("A"), raw.get("B"))
+    out["occurred_at"] = parse_date_cell(raw.get("C"))
     vn = raw.get("O")
     jp = raw.get("N")
     out["investigation"] = vn if vn not in (None, "") else jp

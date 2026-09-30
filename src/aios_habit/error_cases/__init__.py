@@ -10,6 +10,7 @@ from .backfill_fix import (
 from .column_map import (
     COLUMN_MAP,
     GREEN_SKIP_RGB,
+    HISTORY_29_DATE_INDEX,
     HISTORY_29_MAP,
     SHEET_TYPES,
     col_letter,
@@ -18,6 +19,7 @@ from .column_map import (
     is_positive_mark,
     normalize_history_row,
     normalize_row,
+    parse_date_cell,
 )
 from .completeness import (
     F3B_THRESHOLD,
@@ -33,6 +35,7 @@ from .glossary import (
 )
 from .import_history import (
     SHEET_NAME as HISTORY_SHEET_NAME,
+    fill_occurred_at,
     import_history,
 )
 from .import_lsu_logs import (
@@ -104,6 +107,7 @@ from .feedback_loop import (
 __all__ = [
     "COLUMN_MAP",
     "GREEN_SKIP_RGB",
+    "HISTORY_29_DATE_INDEX",
     "HISTORY_29_MAP",
     "SHEET_TYPES",
     "col_letter",
@@ -112,6 +116,7 @@ __all__ = [
     "is_positive_mark",
     "normalize_history_row",
     "normalize_row",
+    "parse_date_cell",
     "F3B_THRESHOLD",
     "measure_completeness",
     "completeness_report",
@@ -127,6 +132,7 @@ __all__ = [
     "glossary_lookup",
     "norm_code",
     "HISTORY_SHEET_NAME",
+    "fill_occurred_at",
     "import_history",
     "LSU_LOG_DIALECTS",
     "detect_lsu_dialect",

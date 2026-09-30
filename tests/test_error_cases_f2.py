@@ -16,7 +16,9 @@ from openpyxl.styles import PatternFill
 from aios_habit.error_cases import (
     HISTORY_SHEET_NAME,
     column_map,
+    fill_occurred_at,
     import_history,
+    parse_date_cell,
     store,
 )
 
@@ -151,6 +153,103 @@ def test_force_reimport_refreshes(conn, fixture_xlsx):
     assert r["batch_id"] == first["batch_id"]  # same batch row refreshed
     assert r["rows_imported"] == 4
     assert store.count_cases(conn) == 4  # upserts, no duplicates
+
+
+# ---------------------------------------------------------------------------
+# date-map (ticket): occurred_at from column C (production date)
+# ---------------------------------------------------------------------------
+
+def test_parse_date_cell_formats_and_placeholders():
+    from datetime import datetime
+    assert parse_date_cell(datetime(2024, 1, 5)) == "2024-01-05"
+    assert parse_date_cell("2024-01-05") == "2024-01-05"
+    assert parse_date_cell("2024/1/5") == "2024-01-05"
+    assert parse_date_cell("2024.01.05") == "2024-01-05"
+    assert parse_date_cell("2024年1月5日") == "2024-01-05"
+    assert parse_date_cell("2024/1/5日") == "2024-01-05"
+    for empty in (None, "", "  ", "ー", "-", "abc", "2/15日"):
+        assert parse_date_cell(empty) is None, empty
+
+
+def test_occurred_at_extracted_from_column_c(conn, fixture_xlsx):
+    r = import_history(conn, fixture_xlsx)
+    assert r["rows_with_occurred_at"] == 4  # every importable fixture row has C
+    row = conn.execute(
+        "SELECT occurred_at, created_at FROM error_cases"
+        " WHERE no_dvd='2024/1' AND machine_type='Virgo'"
+    ).fetchone()
+    assert row["occurred_at"] == "2024-01-05"          # C, not X/Y
+    assert row["created_at"] != row["occurred_at"]     # import time untouched
+
+
+def test_occurred_at_null_when_source_date_missing(conn, tmp_path):
+    from openpyxl import Workbook
+    path = tmp_path / "Loi KDTPS.xlsx"
+    wb = Workbook()
+    ws = wb.active
+    ws.title = HISTORY_SHEET_NAME
+    for c in range(29):
+        ws.cell(row=4, column=c + 1, value=f"COL{c}")
+    cells = make_row()
+    cells[2] = None  # C missing in the source
+    for c, v in enumerate(cells):
+        ws.cell(row=5, column=c + 1, value=v)
+    wb.save(path)
+    wb.close()
+    r = import_history(conn, path)
+    assert r["rows_with_occurred_at"] == 0
+    row = conn.execute("SELECT occurred_at FROM error_cases").fetchone()
+    assert row["occurred_at"] is None
+
+
+def test_fill_occurred_at_plan_apply_idempotent(conn, fixture_xlsx):
+    import_history(conn, fixture_xlsx)
+    conn.execute("UPDATE error_cases SET occurred_at = NULL")  # DB built pre-migration
+    conn.commit()
+
+    plan = fill_occurred_at(conn, fixture_xlsx)  # dry-run by default
+    assert plan["status"] == "planned"
+    assert plan["would_update"] == 4 and plan["updated"] == 0
+    assert conn.execute(
+        "SELECT COUNT(*) n FROM error_cases WHERE occurred_at IS NULL").fetchone()["n"] == 4
+
+    applied = fill_occurred_at(conn, fixture_xlsx, apply=True)
+    assert applied["status"] == "applied"
+    assert applied["updated"] == 4
+    assert conn.execute(
+        "SELECT COUNT(*) n FROM error_cases WHERE occurred_at IS NULL").fetchone()["n"] == 0
+    row = conn.execute(
+        "SELECT occurred_at FROM error_cases WHERE no_dvd='2024/3'").fetchone()
+    assert row["occurred_at"] == "2024-01-05"
+
+    again = fill_occurred_at(conn, fixture_xlsx, apply=True)
+    assert again["would_update"] == 0 and again["no_change"] == 4
+
+
+def test_fill_occurred_at_never_touches_mismatched_rows(conn, fixture_xlsx):
+    import_history(conn, fixture_xlsx)
+    conn.execute("UPDATE error_cases SET occurred_at = NULL")
+    conn.execute(
+        "UPDATE error_cases SET line = 'CHANGED'"
+        " WHERE no_dvd='2024/1' AND machine_type='Virgo'"
+    )
+    conn.commit()
+    r = fill_occurred_at(conn, fixture_xlsx, apply=True)
+    assert r["mismatch"] == 1
+    assert r["updated"] == 3
+    row = conn.execute(
+        "SELECT occurred_at FROM error_cases"
+        " WHERE no_dvd='2024/1' AND machine_type='Virgo'").fetchone()
+    assert row["occurred_at"] is None  # mismatched row untouched
+
+
+def test_fill_occurred_at_unknown_file_reports_no_batch(conn, fixture_xlsx, tmp_path):
+    import_history(conn, fixture_xlsx)
+    other = tmp_path / "other_name.xlsx"
+    other.write_bytes(fixture_xlsx.read_bytes())
+    r = fill_occurred_at(conn, other)
+    assert r["status"] == "no_batch"
+    assert r["batch_id"] is None
 
 
 REAL_FILE = (

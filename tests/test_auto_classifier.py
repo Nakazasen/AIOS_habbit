@@ -229,6 +229,38 @@ def test_detect_recurrence_without_remedy_in_history():
     conn.close()
 
 
+def test_detect_recurrence_window_uses_occurred_at_simulated():
+    """date-map: cửa sổ tái phát tính theo ngày phát sinh thật khi có."""
+    conn = sqlite3.connect(":memory:")
+    conn.row_factory = sqlite3.Row
+    init_db(conn)
+    batch = start_batch(conn, source_file=SIMULATED_SOURCE,
+                        file_sha256="3" * 64, sheet_name="SIMULATED",
+                        sheet_type="Máy in")
+    ref = datetime.now(timezone.utc)
+    rows = [
+        # (no_dvd, created_at, occurred_at)
+        ("SIM-DATE/001", _ts(30), ref.strftime("%Y-%m-%d")),                 # nhập lâu, ngày thật hôm nay -> tính
+        ("SIM-DATE/002", _ts(0), (ref - timedelta(days=200)).strftime("%Y-%m-%d")),  # nhập mới, ngày thật cũ -> không tính
+        ("SIM-DATE/003", _ts(2), None),                                       # không có ngày thật -> fallback created_at -> tính
+    ]
+    for i, (no_dvd, created, occurred) in enumerate(rows, start=1):
+        upsert_case(conn, batch_id=batch, source_row=i, fields={
+            "no_dvd": no_dvd, "sheet_type": "Máy in",
+            "error_code_c": "C0777", "investigation": f"SIMULATED {no_dvd}",
+        })
+        conn.execute(
+            "UPDATE error_cases SET created_at = ?, occurred_at = ? WHERE no_dvd = ?",
+            (created, occurred, no_dvd),
+        )
+    conn.commit()
+    alert = ac.detect_recurrence(conn, "C0777", window_hours=12.0, threshold=2, now=ref)
+    assert alert is not None
+    assert alert.count == 3  # 001 + 003 + ca mới; 002 bị loại vì ngày thật nằm ngoài cửa sổ
+    assert "3 lần" in alert.message_vi
+    conn.close()
+
+
 # ---------------------------------------------------------------------------
 # 4. Accuracy is measurable on a SIMULATED labeled set
 # ---------------------------------------------------------------------------

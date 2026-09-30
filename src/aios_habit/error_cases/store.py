@@ -26,9 +26,21 @@ def connect(db_path: str | Path) -> sqlite3.Connection:
 
 
 def init_db(conn: sqlite3.Connection) -> None:
-    """Create tables/indexes idempotently."""
+    """Create tables/indexes idempotently (plus additive column migrations)."""
     conn.executescript(_SCHEMA_PATH.read_text(encoding="utf-8"))
+    _migrate(conn)
     conn.commit()
+
+
+def _migrate(conn: sqlite3.Connection) -> None:
+    """Additive migrations for DBs created before a column existed.
+
+    CREATE TABLE IF NOT EXISTS never alters an existing table, so DBs built
+    by an older version lack newer columns; add them here, idempotently.
+    """
+    cols = {row[1] for row in conn.execute("PRAGMA table_info(error_cases)")}
+    if "occurred_at" not in cols:
+        conn.execute("ALTER TABLE error_cases ADD COLUMN occurred_at TEXT")
 
 
 def sha256_file(path: str | Path) -> str:
@@ -166,6 +178,7 @@ def upsert_case(
         "handler": fields.get("handler"),
         "is_completed": fields.get("is_completed") or "",
         "needs_jp_support": fields.get("needs_jp_support") or "",
+        "occurred_at": fields.get("occurred_at"),
         "raw_json": raw_json,
         "skip_cells": skip_json,
     }
@@ -181,7 +194,8 @@ def upsert_case(
     for key in (
         "batch_id", "source_row", "department", "machine_type", "line",
         "error_code_c", "error_code_h", "investigation", "handler",
-        "is_completed", "needs_jp_support", "raw_json", "skip_cells",
+        "is_completed", "needs_jp_support", "occurred_at", "raw_json",
+        "skip_cells",
     ):
         if key in skip_fields:
             update_sets.append(f"{key} = error_cases.{key}")
@@ -193,11 +207,11 @@ def upsert_case(
         f"""INSERT INTO error_cases
             (batch_id, source_row, no_dvd, sheet_type, department, machine_type,
              line, error_code_c, error_code_h, investigation, handler,
-             is_completed, needs_jp_support, raw_json, skip_cells)
+             is_completed, needs_jp_support, occurred_at, raw_json, skip_cells)
             VALUES (:batch_id, :source_row, :no_dvd, :sheet_type, :department,
                     :machine_type, :line, :error_code_c, :error_code_h,
                     :investigation, :handler, :is_completed, :needs_jp_support,
-                    :raw_json, :skip_cells)
+                    :occurred_at, :raw_json, :skip_cells)
             ON CONFLICT {conflict} DO UPDATE SET
             {", ".join(update_sets)}""",
         params,

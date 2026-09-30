@@ -80,24 +80,27 @@ def fetch_records(
 
     Maps schema columns to dimensions (machine_type -> model,
     line -> line); extra dimensions (stage/paper/machine) are picked up
-    from raw_json when the importer stored them there. ``since``/``until``
-    are ISO date strings filtering on created_at.
+    from raw_json when the importer stored them there. ``occurred_at``
+    is the real occurrence date when the source carried one, falling
+    back to ``created_at`` (import time) otherwise. ``since``/``until``
+    are ISO date strings filtering on that same occurrence time.
     """
+    ts_expr = "COALESCE(occurred_at, created_at)"
     query = (
         "SELECT machine_type, line, error_code_c, error_code_h,"
-        " investigation, created_at, raw_json FROM error_cases"
+        " investigation, created_at, raw_json, occurred_at FROM error_cases"
     )
     clauses: List[str] = []
     params: List[Any] = []
     if since is not None:
-        clauses.append("created_at >= ?")
+        clauses.append(f"{ts_expr} >= ?")
         params.append(since)
     if until is not None:
-        clauses.append("created_at < ?")
+        clauses.append(f"{ts_expr} < ?")
         params.append(until)
     if clauses:
         query += " WHERE " + " AND ".join(clauses)
-    query += " ORDER BY created_at"
+    query += f" ORDER BY {ts_expr}"
 
     import json as _json
 
@@ -117,7 +120,7 @@ def fetch_records(
                 "paper": raw.get("paper") or raw.get("loai_giay") or MISSING_GROUP,
                 "machine": raw.get("machine") or raw.get("may") or MISSING_GROUP,
                 "error_code": error_code,
-                "occurred_at": row[5],
+                "occurred_at": row[7] or row[5],
             }
         )
     return records

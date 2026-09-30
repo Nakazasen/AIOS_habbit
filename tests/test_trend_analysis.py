@@ -302,3 +302,47 @@ def test_run_periodic_report_from_sqlite_simulated():
         assert "2026-W36" in md
     finally:
         conn.close()
+
+
+# ---------------------------------------------------------------------------
+# date-map (ticket): trend buckets by the real occurrence date
+# ---------------------------------------------------------------------------
+
+def _simulated_db_with_occurrence():
+    """DB :memory: có occurred_at thật (SIMULATED), created_at khác xa."""
+    conn = sqlite3.connect(":memory:")
+    conn.row_factory = sqlite3.Row
+    conn.executescript(_SCHEMA_PATH.read_text(encoding="utf-8"))
+    conn.execute(
+        "INSERT INTO import_batches (source_file, file_sha256, sheet_name)"
+        " VALUES ('SIMULATED_date.xlsx', 'simulated-sha-date', 'Sheet1')"
+    )
+    conn.execute(
+        "INSERT INTO error_cases (batch_id, source_row, no_dvd, sheet_type,"
+        " machine_type, line, error_code_c, created_at, occurred_at, raw_json)"
+        " VALUES (1, 2, 'SIM-D/001', 'Máy in', 'Virgo', 'C33', 'C0030',"
+        " '2026-09-01 10:00:00', '2023-05-05', '{}')"
+    )
+    conn.commit()
+    return conn
+
+
+def test_fetch_records_prefers_occurred_at_simulated():
+    conn = _simulated_db_with_occurrence()
+    try:
+        records = ta.fetch_records(conn)
+        assert records[0]["occurred_at"] == "2023-05-05"  # không phải created_at
+        assert list(ta.bucketize(records, "week")) == ["2023-W18"]
+    finally:
+        conn.close()
+
+
+def test_fetch_records_since_until_filters_on_occurrence_simulated():
+    conn = _simulated_db_with_occurrence()
+    try:
+        inside = ta.fetch_records(conn, since="2023-05-01", until="2023-06-01")
+        assert len(inside) == 1
+        outside = ta.fetch_records(conn, since="2026-09-01", until="2026-09-02")
+        assert outside == []  # created_at (import time) không còn quyết định
+    finally:
+        conn.close()

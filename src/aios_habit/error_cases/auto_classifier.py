@@ -341,23 +341,36 @@ def detect_recurrence(
 ) -> Optional[RecurrenceAlert]:
     """Alert when the same code reappears inside the time window.
 
-    Counts historical records with created_at inside the window; the new
-    case being entered counts as +1. Fires when total >= threshold
-    (default 2 = the error is recurring).
+    The window ends at ``now`` (default: current time) and counts
+    historical records by their occurrence time: ``occurred_at`` when the
+    source carried a real date, else ``created_at`` (import time). Rows
+    with a real date are day-granular in the source, so their window
+    widens to the calendar days touched by [now - window, now]; rows
+    without keep the exact timestamp window. The new case being entered
+    counts as +1. Fires when total >= threshold (default 2 = recurring).
     """
     code = norm_code(error_code)
     ref = now or _utcnow()
     if ref.tzinfo is None:
         ref = ref.replace(tzinfo=timezone.utc)
-    cutoff = (ref - timedelta(hours=window_hours)).strftime("%Y-%m-%d %H:%M:%S")
+    start = ref - timedelta(hours=window_hours)
     try:
         rows = conn.execute(
             """SELECT no_dvd, error_code_c, error_code_h, investigation,
-                      created_at
+                      created_at, occurred_at
                FROM error_cases
-               WHERE created_at >= ?
-               ORDER BY created_at DESC""",
-            (cutoff,),
+               WHERE (occurred_at IS NOT NULL
+                      AND date(occurred_at) >= date(?)
+                      AND date(occurred_at) <= date(?))
+                  OR (occurred_at IS NULL
+                      AND created_at >= ? AND created_at <= ?)
+               ORDER BY COALESCE(occurred_at, created_at) DESC""",
+            (
+                start.strftime("%Y-%m-%d"),
+                ref.strftime("%Y-%m-%d"),
+                start.strftime("%Y-%m-%d %H:%M:%S"),
+                ref.strftime("%Y-%m-%d %H:%M:%S"),
+            ),
         ).fetchall()
     except sqlite3.Error:
         return None
