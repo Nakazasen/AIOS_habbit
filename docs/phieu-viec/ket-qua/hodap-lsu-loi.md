@@ -1,8 +1,9 @@
 # Vé `hodap-lsu-loi` — Thông luồng hỏi đáp LSU + lỗi trên chat (máy `KDTVN-PC0575`)
 
-- Trạng thái báo cáo: **TẠM — chưa nghiệm thu hỏi đáp.** Vé chuyển `cho-muse` (lần 2) vì Bước 2 xác minh file Drive **KHÔNG ĐẠT gate số document** (496 < 501) và bằng chứng bổ sung cho thấy file Drive **không chứa vector của bất kỳ nguồn nào trong sổ LSU** (0/262) → nếu thay index sẽ làm app mất 5 tài liệu đang ready. Chi tiết mục 10.
+- Trạng thái báo cáo: **TẠM — chưa nghiệm thu hỏi đáp.** Vé chuyển `cho-muse` (lần 3) vì BỔ SUNG 5.3 **nhánh B**: worker BGE không hỏng (log init sạch) nhưng truy vấn retrieval vượt bức tường 30 s **nằm trong code** (`bge_subprocess_client.py:31`, `…adapter.py:2688`) và một phần lớn thời gian bị ăn bởi query dense quét toàn bảng `chunk_embeddings` (`…adapter.py:956-963`, đo 71,9 s/tài liệu 15 chunk) → tổng 211,2 s/câu rồi lỗi "Tìm kiếm tài liệu chưa sẵn sàng". Số đo đầy đủ + file/dòng cần sửa: **mục 11**.
+- Trước đó: `cho-muse` (lần 2) vì Bước 2 xác minh file Drive **KHÔNG ĐẠT gate số document** (496 < 501) và file Drive **không chứa vector của bất kỳ nguồn nào trong sổ LSU** (0/262) → nếu thay index sẽ làm app mất 5 tài liệu đang ready. Chi tiết mục 10.
 - Chưa thay production, chưa chạy bộ 6 câu; đang chờ Muse/user quyết định ở mục 10.
-- Ngày làm: 2026-09-30 (13:35–15:54 +07), máy `KDTVN-PC0575` (OMP). Nhánh: `phieu-viec/rag-fix1`.
+- Ngày làm: 2026-09-30 (13:35–15:54 +07, tiếp 16:33–18:45 +07), máy `KDTVN-PC0575` (OMP). Nhánh: `phieu-viec/rag-fix1`.
 - Phạm vi: chỉ đọc chẩn đoán + bật nguồn + chuẩn bị nền + dừng nhúng theo lệnh. **Không sửa code,
   không merge `main`, không xóa nguồn/tài liệu.**
 
@@ -277,3 +278,76 @@ Sau khi copy: mở lại app (hoặc để app tự rerun) → `reconcile_and_en
 
 - `trang-thai.md` → `cho-muse`; dừng, **không quay no-op**; hiện không còn việc OMP được phép làm tiếp trên vé này cho tới khi Muse/user trả lời mục 10.6.
 - Bộ đếm kẹt "watcher tự mở 4 lần" không áp dụng: phiên này là việc thật (Bước 2) và đã kết luận bằng gate của vé.
+
+## 11. BỔ SUNG 5 + 5.1 — Dừng thí nghiệm 600s, chẩn đoán "worker hỏng hay chậm", đo thật 3 chặng (2026-09-30 18:23–18:45 +07)
+
+### 11.1 Đã dừng thí nghiệm 600s (theo BỔ SUNG 5.1)
+
+- Kiểm tiến trình lúc 18:23 +07: **0** tiến trình đo (script `scratch/hodap_query_timing.py` không còn chạy) và **0** `bge_subprocess_worker` → không còn gì để kill; thí nghiệm đã tự dừng trước đó, phiên này không chờ thêm giây nào.
+- Không có tiến trình nền nào của phiên trước còn sót (kiểm bằng `Get-CimInstance Win32_Process` lọc `bge|hodap`).
+
+### 11.2 Chẩn đoán bằng log (BỔ SUNG 5.2)
+
+- Log worker (`…/collections/tri_thuc/logs/bge_worker.stderr.log`, chỉ đọc). **Nguyên văn** dòng mới nhất:
+  `bge_worker_stage backend=onnx init_ms=17860.928` (lần spawn 18:07) và `bge_worker_stage backend=onnx init_ms=18783.22` (lần spawn 18:41:49).
+- Kết luận từ log: worker **khởi động được**, backend ONNX, nạp model + mở index xong trong ~18–19 s; **không có traceback** nào trong log ⇒ worker không tự chết.
+- Lưu ý về bằng chứng: client mở log bằng chế độ ghi đè (`bge_subprocess_client.py:202`, `stderr_path.open("w")`) nên log của lần spawn lúc 17:24–17:27 (câu L1 của user) **đã bị ghi đè**; chỉ còn log của các lần spawn sau.
+- Nguyên văn lỗi phía app, đo lại trực tiếp bằng probe chỉ đọc (`scratch/hodap_probe5e.py`, câu L1, 18:36–18:40):
+
+```
+aios_habit.rag_v2.semantic.SemanticBackendError: bge_worker_query_timeout   (bge_subprocess_client.py:612)
+The above exception was the direct cause of the following exception:
+aios_habit.rag_v2.semantic.SemanticBackendError: bge_subprocess_worker_crashed   (bge_subprocess_client.py:497)
+→ Workspace Chat BGE-M3 retrieval unavailable: semanticbackenderror
+→ canary: {"backend": "unavailable", "fallback_reason": "semanticbackenderror"}
+```
+
+### 11.3 Số đo thật theo 3 chặng (BỔ SUNG 5.1) — câu L1, đường app, chỉ đọc
+
+| Chặng | Việc đo | Số đo thực tế (PC0575) |
+| --- | --- | --- |
+| 0 (chuẩn bị, trước mọi chặng) | `load_notebook_sources` (494 nguồn) | 2,1 s (cache ấm) – 13,8 s (nguội) |
+| 0 | quét trạng thái `get_workspace_chat_source_preparation_status` (35 nguồn bật) | **27,0 s – 67,7 s mỗi lần**; đường app gọi **4–5 lần mỗi câu** = **152,3 s** (4 lần trong `retrieve_workspace_chat_evidence`) |
+| 1 (nhúng câu hỏi — BGE worker) + 2 (search index) | `initialize_worker` (nguội) rồi `query_ready` | init **19,4–27,1 s**; query **dừng ở bức tường 30 s** (`bge_worker_query_timeout`, đo 31,6 s) ⇒ **không có kết quả search** |
+| 3 (LLM sinh đáp án) | không chạy | không tới được vì chặng 1+2 lỗi |
+| Tổng | `retrieve_workspace_chat_evidence` (L1) | **211,2 s** rồi trả `quality_search_unavailable` → UI hiện "⚠️ Tìm kiếm tài liệu chưa sẵn sàng" |
+
+- Đo bổ sung (chỉ đọc, SQLite `mode=ro`), **cùng một file index production**:
+  - `SELECT COUNT(*) FROM chunks WHERE document_id=? AND retrievable=1` → 0,00 s (dùng `idx_chunks_retrievable`).
+  - Query dense của cổng phủ (`_durable_semantic_coverage_ready`): **71,9 s cho một tài liệu chỉ 15 chunk**. `EXPLAIN QUERY PLAN`: `SEARCH e USING INDEX idx_chunk_embeddings_model (model_fingerprint=?)` → quét **toàn bộ 108.347 dòng** `chunk_embeddings` (BLOB dense ~4 KB/dòng) rồi dò `chunks` từng dòng (đọc cả BLOB text của 133.880 chunk).
+  - Query sparse cùng chức năng (cùng file, cùng tài liệu): 0,01 s (plan đúng: đi từ `chunks` theo `document_id` trước).
+- Tài liệu kích hoạt chi phí trên: nguồn **`SRC-CCD87663`** (`Tài_liệu_đào_tạo_LSU_2019.01.18_K.pptx`, `document_id = wsc-154101d384acc2d01009025d`, 22 chunk / 15 retrievable) — nguồn này **không có dòng ledger** nên mỗi lần quét trạng thái đều rơi vào đường "kiểm tra phủ vector" đắt đỏ trên. Chi phí **không phụ thuộc kích thước tài liệu** mà phụ thuộc bảng embeddings bị quét toàn bộ.
+
+### 11.4 Kết luận nguyên nhân gốc (đo được, không đoán)
+
+1. **Worker không hỏng** — nó khởi động và nạp model bình thường (11.2).
+2. **Nút thắt là tầng index/SQLite trên máy này**: (a) query dense trong cổng phủ vector bị plan thành **quét toàn bảng embeddings** → 27–72 s mỗi lần gọi, mà đường app gọi 4–5 lần mỗi câu; (b) chính truy vấn retrieval trong worker cũng **vượt 30 s** trên index này (probe nới cap 240 s không trả về trong ~11 phút ở trạng thái máy hiện tại; đã dừng theo lệnh "không chờ"), trong khi lần duy nhất app trả lời được hôm nay (L3, 18:09) chỉ mất 10 s — theo mã, đó là **đường trả lời trực tiếp bằng văn bản nguồn** (`antigravity_bridge.py:1274` trích chunk từ `packed_sources` khi không có `evidence_items`), không phải đường retrieval BGE.
+3. Cổng thời gian cứng 30 s không có đường chỉnh bằng env ⇒ theo BỔ SUNG 5.3 là **nhánh B** và phải dừng, không tự sửa code.
+4. Hệ quả mục tiêu: **211 s/câu** (đo được) ≫ mục tiêu "tra cứu < 1 phút" (Bước 1 lộ trình `docs/dich-den-du-an.md`) → bị đe dọa rõ ràng trên máy CPU-only (ghi theo BỔ SUNG 5.4).
+
+### 11.5 Đúng file/dòng cần sửa (Muse gửi qua commit; OMP không tự sửa)
+
+| # | Vị trí | Vấn đề | Hướng sửa đề xuất |
+| --- | --- | --- | --- |
+| 1 | `src/aios_habit/workspace_chat_rag_v2_adapter.py:956-963` | Query dense `COUNT(DISTINCT …)` của `_durable_semantic_coverage_ready` bị plan thành quét toàn bảng `chunk_embeddings` (đo 71,9 s cho 15 chunk) | Ép plan đi từ `chunks` theo `document_id` trước (như query sparse cùng hàm, dòng 965-973) hoặc `EXISTS … LIMIT 1` / bỏ `COUNT(DISTINCT)` vì chỉ cần biết "đủ hay không"; cân nhắc thêm index `(chunk_id, model_fingerprint, model_revision)` cho `chunk_embeddings` |
+| 2 | `src/aios_habit/rag_v2/bge_subprocess_client.py:31` (+ mặc định ở dòng 422/449/515) | `_QUERY_TIMEOUT_SECONDS = 30.0` cứng, không có env ghi đè (chỉ `AIOS_BGE_PREPARE_TIMEOUT` cho pha prepare) | Cho timeout truy vấn đọc từ env/config có mặc định an toàn; đây là chỗ chặn hỏi đáp hiện tại |
+| 3 | `src/aios_habit/workspace_chat_rag_v2_adapter.py:2688` | `timeout_s=(config.deep_timeout_ms/1000.0 if rerank_requested else 30.0)` — nhánh thường vẫn là literal 30,0 | Dùng cùng một nguồn cấu hình timeout cho cả nhánh thường (đo được ~211 s/câu khi máy nguội; nếu chỉ nới timeout thì vẫn rất chậm, xem #1) |
+| 4 | Gọi lặp cổng phủ: adapter `3013`, `3039`, `2665`; app `786`, `838`, `851`, `3467`, `4149` | Cùng một câu hỏi quét trạng thái 4–5 lần (mỗi lần 27–72 s) | Cache theo lượt (một lần mỗi câu) hoặc gộp 3 lần gọi trong `retrieve_workspace_chat_evidence` |
+| 5 | Ghi chú dữ liệu: nguồn `SRC-CCD87663` không có dòng ledger nên luôn rơi vào đường đắt (#1) | Có thể seed/backfill ledger cho nguồn đã có vector đúng (app đã có `_upsert_ledger_row` trong `reconcile_*`) | — |
+
+### 11.6 Đã KHÔNG làm trong phiên này
+
+- Không sửa một dòng code nào; không ghi index; **không nhúng CPU**; không bấm "🔄 Thử chuẩn bị lại"; không xóa nguồn/tài liệu nào; không merge `main`; không force-push.
+- Không chạy 6 câu hỏi mẫu: chặng 1+2 chưa qua được bức tường 30 s nên không thể thu bằng chứng hỏi đáp (đúng thứ tự "sau fix" của BỔ SUNG 5.5). Bước 8/9 (xuất 262 nguồn cho vé GPU) **chưa chạy**, vẫn treo chờ quyết định của Muse/user vì BỔ SUNG 4 xếp sau Bước 6.
+- Ghi chú thêm về chất lượng câu trả lời (để Muse tính khi ra vé tối ưu): câu trả lời duy nhất hôm nay (L3, đường trực tiếp bằng văn bản nguồn) bị chính app đánh dấu `insufficient_evidence` — "No valid citations found in answer text from enabled sources" — nên **tiêu chí ĐẠT (có nguồn trích dẫn) chưa đạt kể cả khi app trả lời được**.
+
+### 11.7 Trạng thái app sau phiên (đo lúc 18:23–18:44 +07)
+
+- `127.0.0.1:8501` → HTTP 200; `/_stcore/health` → `ok`; LAN IP hiện tại `10.170.157.79`.
+- Ledger: **9 `ready` / 25 `failed` (`paused_shared_index_from_home_machine`) / 0 `processing`** (không đổi).
+- Production index **không đụng**: 2.565.955.584 byte, SHA `5260c043…` (đọc lại lúc 18:2x).
+- Các tiến trình đo của phiên này đều đã được dừng; còn **0** `bge_subprocess_worker`.
+
+### 11.8 Trạng thái vé
+
+- `trang-thai.md` → **`cho-muse`** theo đúng BỔ SUNG 5.3 (nhánh B, timeout nằm trong code) — dừng, không quay no-op, chờ Muse gửi bản sửa qua commit rồi OMP `git pull` + restart app + chạy lại 6 câu.
