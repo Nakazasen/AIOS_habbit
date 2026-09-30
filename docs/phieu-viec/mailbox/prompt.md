@@ -1,31 +1,27 @@
-# Ticket LSU-1 — Chạy pipeline Bước 0–5 trên list LSU thật (dữ liệu thật)
+# Ticket XẾP HÀNG: f3b-backfill — backfill trường `fix` (gate F3b đang mở)
 
 ## Bối cảnh
-Vé `buoc0-deploy` (ĐẠT) đã chạy pipeline Bước 0–5 E2E trên list điều tra lỗi thật
-(15.707 ca từ `Loi KDTPS.xlsx`, 4 bảng mã lỗi thật 3.820 mục). List LSU
-(log jig, log 6 pcs theo chuỗi, tài liệu LSU) chưa chạy qua pipeline lần nào.
-Báo cáo mẫu làm đúng độ kỹ: `docs/phieu-viec/ket-qua/buoc0-deploy.md`.
+Vé `buoc0-deploy` (ĐẠT, báo cáo `docs/phieu-viec/ket-qua/buoc0-deploy.md`):
+gate F3b FAIL đúng thiết kế — trường lõi `fix` chỉ 56,7% < 90%
+(đúng dự báo từ 27/09). Cần vé backfill riêng.
 
 ## Việc cần làm
-1. Chuẩn bị dữ liệu: kiểm tra `C:/tmp/aios-v14-data/` đã có gói LSU chưa.
-   Nếu chưa: tải từ Drive AIOS_Data (thư mục LSU), đối chiếu SHA-256 từng file,
-   ghi SHA vào báo cáo (theo mẫu Vé V1.4 đã làm với gói điều tra lỗi).
-2. Chạy pipeline Bước 0–5 trên dữ liệu LSU thật: DB + output + log đặt trên ổ C
-   (vd `C:/tmp/lsu1-deploy/`); tuyệt đối không ghi ổ D; không ghi index production RAG.
-3. Nếu importer hiện tại chưa hỗ trợ định dạng log LSU (log jig / log 6 pcs):
-   mở rộng importer (code + test, commit riêng), rồi chạy lại pipeline.
-4. Kiểm tra output đúng format, đủ 6 mốc (Bước 0→5), không exception.
+1. Phân tích 43,3% ca thiếu `fix`: thiếu thật hay trích được từ cột khác
+   (mô tả/đối sách/ghi chú) của `Loi KDTPS.xlsx`.
+2. Viết script backfill (code + test; dry-run trước; backup DB + integrity ok
+   trước apply): điền `fix` từ nguồn phụ, ghi rõ nguồn từng giá trị.
+3. Chạy lại gate F3b trên DB đã backfill; báo cáo tỉ lệ mới.
 
 ## Tiêu chí ĐẠT
-- Pipeline exit 0, đủ Bước 0→5, số liệu thật từng bước ghi trong báo cáo
-  (số dòng đọc/nhập, số ca, gate, cảnh báo).
-- Bộ test error_cases (93 bài) vẫn pass trên Windows Python 3.11.
-- Dữ liệu mô phỏng (nếu cần) gắn mác `SIMULATED_*`; dữ liệu thật không commit vào Git.
+- Tỉ lệ `fix` ≥ 90% HOẶC báo cáo chứng minh phần còn thiếu là thiếu thật
+  (không trích được từ dữ liệu hiện có) + đề xuất thu thập bổ sung.
+- Mọi giá trị backfill có nguồn gốc rõ ràng, không bịa.
 
 ## Cấm
-- Không ghi index production. Không đụng ổ D (mọi ghi trên ổ C).
+- Làm trên DB copy ổ C; chưa có backup mới + integrity ok thì chưa apply.
+  Không đụng ổ D, không ghi index production.
 - Không merge `main`. Không force-push.
 
 ## Báo cáo
-`docs/phieu-viec/ket-qua/lsu1-deploy.md`. Commit lên `phieu-viec/rag-fix1`,
+`docs/phieu-viec/ket-qua/f3b-backfill.md`. Commit lên `phieu-viec/rag-fix1`,
 `trang-thai.md` → `xong-cho-duyet`.
