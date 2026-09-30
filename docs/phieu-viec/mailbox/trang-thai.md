@@ -1,8 +1,8 @@
 # Trạng thái mailbox
 
-- Trạng thái: `xong-cho-duyet`
-- Ticket hiện tại: `LSU-1` — chạy pipeline Bước 0–5 trên list LSU thật (log jig, log 6 pcs, tài liệu LSU; vé #1 hàng chờ còn lại, phát hành sau verdict ĐẠT GPU-DC).
-- `commit`: `276d7d7` (fix digest importer; trước đó `38f7e05` = báo cáo + trang-thai `xong-cho-duyet`)
+- Trạng thái: `moi`
+- Ticket hiện tại: `f3b-backfill` — backfill trường `fix` (gate F3b đang mở ở 56,7%; vé #1 hàng chờ, phát hành sau verdict ĐẠT LSU-1).
+- `commit`: `4e63cb6` (verdict LSU-1 ĐẠT, phát hành `f3b-backfill`)
 - `ghi_chu`: 2026-10-01 04:12 +07 — **Hoàn tất vé `LSU-1`, chờ Muse review.** Báo cáo: `docs/phieu-viec/ket-qua/lsu1-deploy.md`. Tóm tắt: dữ liệu LSU **888 file / 1.211.572.574 B** ra ổ C + manifest SHA-256 + **đối chiếu Drive AIOS_Data 7/7 mẫu khớp**; importer log LSU (4 định dạng: cam_error/jig_result/unit_judge/unit_result — commit `c0cbd5b` + fix `276d7d7`) + 12 test mới (bộ error_cases **105/105 đạt**); pipeline Bước 0–5 trên dữ liệu thật **exit 0, đủ 6 mốc**: từ điển 3.820 mục, **23.112 ca** từ 137.498 dòng log, gate F3b **FAIL thật** (cause/fix 0% — log không mang nguyên nhân/đối sách), 6 cảnh báo xu hướng, accuracy SIMULATED 1,00; full suite **3.389 đạt / 2 bỏ qua / 36 lỗi / 4 error** (không bài nào thuộc error_cases; 5 bài error thuộc `test_chat_action_error_lookup` của B1-FEAT lane VM). Không ghi index production, không đụng ổ D, không merge `main`.
 - `ghi_chu_moc4`: 2026-10-01 04:10 +07 — **Mốc 4+5 xong (cổng + báo cáo)**: `compileall` OK, `check_docs` PASS, CLI audit `status=PASS`, `import workspace_chat_app` OK; bộ error_cases 104/104 (sau đó thêm 1 test hồi quy cùng fix `276d7d7` → **105/105**); full suite 3.389/2/36/4 (đối chiếu nền: +11 đúng test vé; nhóm lỗi có sẵn + 5 bài B1-FEAT hardcode đường dẫn VM); báo cáo `docs/phieu-viec/ket-qua/lsu1-deploy.md` + cập nhật `PROJECT_HANDOVER.md`.
 - `ghi_chu_moc3`: 2026-10-01 04:02 +07 — **Mốc 3 xong (pipeline)**: chạy `run_lsu_pipeline.py` → **exit 0, đủ 6 mốc Bước 0→5**. Bước 0: từ điển 4 bảng thật = **3.820 mục** (C_CALL 226 + F_SYSTEM 127 + SCT_ADJ 37 + JAM 3.430). Bước 1: **238/783 file nhận dạng → 23.112 ca** (jig_result 7.535 / unit_judge 12.893 / unit_result 2.683 / cam_error 1; 6thA3 7.535, Iris 8.993, Sirius 6.584; 137.498 dòng đọc, 114.386 dòng đo OK không phải sự kiện); **gate F3b FAIL đúng thực tế dữ liệu**: cause/fix = 0% (log không mang nguyên nhân/đối sách), các trường lõi còn lại 100%. Bước 2: 3 ca feedback (coverage 1,0; chặn đúng khi thiếu đối sách; 1 ca đóng có nhãn SIMULATED_*). Bước 3: cây điều tra 4M (4 nhánh/16 checklist) + Why-Why 5 cấp từ hiện tượng thật "Lỗi JIG BEAM: FinTest=NG…". Bước 4: 23.112 bản ghi, **6 dòng cảnh báo**. Bước 5: accuracy tập SIMULATED 1,00/1,00/1,00; phân loại mã thật `-1306` → nhóm `linh_kien` (conf 0,55, 5 match); cảnh báo tái phát `-1306`. DB+output+`tong_ket.json` trên ổ C (SHA trong báo cáo).
@@ -42,20 +42,21 @@
 
 - `verdict_gpu-dc`: **ĐẠT** (Muse verify 2026-10-01 ~03:25 +07 trên báo cáo `gpu-dc.md`, commit `805392f`): ZIP ổ D 858.190.286 B, SHA-256 `f18bbae2…18b7` khớp ghim; lọc+bung đúng **344/344 file / 650.894.980 B** (231 xlsx, 88 pdf, 8 msg, 6 csv, 5 xls, 3 png, 2 bmp, 1 html), `Loi KDTPS.xlsx` loại đúng; pipeline đúng code app → **329 document_id / 12.720 chunk** (10.077 child / 2.482 parent / 161 summary, 0 rỗng), SHA JSONL `1d300c3a…0526` (16.048.605 B) upload Drive + tải ẩn danh khớp SHA; 9 file loại có lý do (5 ảnh + 1 PDF scan thiếu OCR, 2 file khóa `~$`, 1 workbook rỗng) + 6 đường dẫn trùng nội dung → 1 document_id; staging mới `C:\\AIOS_staging_dc` schema khớp production copy `C:\\AIOS_p1_4`, `integrity_check=ok`, backup pre-embed SHA `1a2a9aac…`; nhúng GPU **10.238/10.238** fingerprint `016c5255…` rev `5617a9f` onnxruntime 1.28.0 (CUDA đầu, CPU dự phòng), 8,35 chunk/s; verify: map 12.720/12.720, dense+sparse đủ, 240 mẫu cosine GPU/CPU min=1.000000 ≥ 0,999; delta `gpu-dc-delta-20261001.zip` 74.065.213 B SHA `31afe1e3…63e3` (2 member, CRC đạt), manifest skip_ids=0 → merge toàn bộ 329 ID; cổng code pass (compileall/check_docs/CLI audit/import); pytest 3.376 đạt/27 fail/14 lỗi toàn nhóm có sẵn (vé không sửa code); không đụng production/staging khác/ổ D, không merge `main`.
 
+- `verdict_lsu1`: **ĐẠT** (Muse verify độc lập 2026-10-01 ~04:25 +07, HEAD `4e63cb6`): pipeline Bước 0–5 trên dữ liệu LSU thật **exit 0, đủ 6 mốc** (888 file/1,21 GB ra ổ C + manifest SHA-256 + đối chiếu Drive AIOS_Data 7/7 mẫu khớp; importer 4 định dạng log LSU commit `c0cbd5b` + fix digest `276d7d7` phủ toàn bộ ô dòng nguồn + test hồi quy; 12 test mới, bộ error_cases **105/105 đạt**; 23.112 ca từ 137.498 dòng log; gate F3b **FAIL thật** (cause/fix 0% — log vận hành không mang nguyên nhân/đối sách); 6 cảnh báo xu hướng; accuracy SIMULATED 1,00). Cổng pass (compileall/check_docs/CLI audit/import); full suite 3.389 đạt/2 bỏ qua/36 lỗi/4 error — chỉ nhóm có sẵn + 5 bài `test_chat_action_error_lookup` của B1-FEAT lane VM (hardcode đường dẫn VM, ngoài phạm vi vé). Ràng buộc giữ: không ghi index production, không đụng ổ D, không merge `main`, dữ liệu thật không vào Git, SIMULATED_* đúng mác. → phát hành vé xếp hàng tiếp theo `f3b-backfill` (chế độ tự lái: copy `prompt-queue-f3b-backfill.md` vào `prompt.md`).
+
 - `hang-cho` (theo thứ tự — chi tiết `docs/ke-hoach-dich-den.md`):
-  1. `f3b-backfill` (`prompt-queue-f3b-backfill.md`) — backfill trường `fix`, gate F3b đang mở ở 56,7%.
-  2. `date-map` (`prompt-queue-date-map.md`) — map cột ngày thật X/Y cho xu hướng/tái phát theo ngày phát sinh.
-  3. `B0-FORM` (`prompt-queue-b0-form.md`) — [VM] form nhập liệu chuẩn Bước 0.
-  4. `B0-DICT` (`prompt-queue-b0-dict.md`) — [VM] từ điển thuật ngữ + số hóa bảng mã lỗi.
-  5. `B0-MEASURE` (`prompt-queue-b0-measure.md`) — [NHÀ] đo ≥90% đủ 5 trường bắt buộc.
-  6. `B1-FEAT` (`prompt-queue-b1-feat.md`) — [VM] Bước 1 thành tính năng hoàn chỉnh.
-  7. `B2` (`prompt-queue-b2.md`) — [VM] vòng phản hồi.
-  8. `B3` (`prompt-queue-b3.md`) — [VM] gợi ý hướng điều tra 4M + Why-Why.
-  9. `B4` (`prompt-queue-b4.md`) — [VM] phân tích xu hướng & cảnh báo sớm.
-  10. `B5` (`prompt-queue-b5.md`) — [VM] phân loại tự động + cảnh báo tái phát.
-  11. `J1-CSV` (`prompt-queue-j1-csv.md`) — [VM] JIG: nhập cả file CSV + chọn biểu đồ + tự gửi mail.
-  12. `J1-RT` (`prompt-queue-j1-rt.md`) — [VM+cty] JIG realtime: spec API + prototype + yêu cầu hạ tầng.
-  13. `J2` (`prompt-queue-j2.md`) — [NHÀ+người dùng] JIG: xác nhận chức năng trước khi đưa thử.
-  14. `J3` (`prompt-queue-j3.md`) — [người dùng] JIG: dùng thử, thu thập cải tiến.
-  15. `J4` (`prompt-queue-j4.md`) — [NHÀ+người dùng] JIG: chạy thử nghiệm.
-  16. `J5` (`prompt-queue-j5.md`) — [người dùng] JIG: chạy thật.
+  1. `date-map` (`prompt-queue-date-map.md`) — map cột ngày thật X/Y cho xu hướng/tái phát theo ngày phát sinh.
+  2. `B0-FORM` (`prompt-queue-b0-form.md`) — [VM] form nhập liệu chuẩn Bước 0.
+  3. `B0-DICT` (`prompt-queue-b0-dict.md`) — [VM] từ điển thuật ngữ + số hóa bảng mã lỗi.
+  4. `B0-MEASURE` (`prompt-queue-b0-measure.md`) — [NHÀ] đo ≥90% đủ 5 trường bắt buộc.
+  5. `B1-FEAT` (`prompt-queue-b1-feat.md`) — [VM] Bước 1 thành tính năng hoàn chỉnh.
+  6. `B2` (`prompt-queue-b2.md`) — [VM] vòng phản hồi.
+  7. `B3` (`prompt-queue-b3.md`) — [VM] gợi ý hướng điều tra 4M + Why-Why.
+  8. `B4` (`prompt-queue-b4.md`) — [VM] phân tích xu hướng & cảnh báo sớm.
+  9. `B5` (`prompt-queue-b5.md`) — [VM] phân loại tự động + cảnh báo tái phát.
+  10. `J1-CSV` (`prompt-queue-j1-csv.md`) — [VM] JIG: nhập cả file CSV + chọn biểu đồ + tự gửi mail.
+  11. `J1-RT` (`prompt-queue-j1-rt.md`) — [VM+cty] JIG realtime: spec API + prototype + yêu cầu hạ tầng.
+  12. `J2` (`prompt-queue-j2.md`) — [NHÀ+người dùng] JIG: xác nhận chức năng trước khi đưa thử.
+  13. `J3` (`prompt-queue-j3.md`) — [người dùng] JIG: dùng thử, thu thập cải tiến.
+  14. `J4` (`prompt-queue-j4.md`) — [NHÀ+người dùng] JIG: chạy thử nghiệm.
+  15. `J5` (`prompt-queue-j5.md`) — [người dùng] JIG: chạy thật.
