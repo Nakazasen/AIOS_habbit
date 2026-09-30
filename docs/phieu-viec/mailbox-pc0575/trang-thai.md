@@ -3,9 +3,9 @@
 Trạng thái: `dang-lam`
 Ticket hiện tại: dieutra-banner-0494
 `prompt`: `docs/phieu-viec/mailbox-pc0575/prompt.md`
-`commit`: (cap nhat o buoc dau tien)
+`commit`: `642e17a`
 `bao_cao`: `docs/phieu-viec/ket-qua/dieutra-banner-0494.md`
-`ghi_chu`: 2026-09-30 12:15 +07 — nhan ve, dang dieu tra banner "0/494 tai lieu" (chi dieu tra, khong sua code, khong bam nut chuan bi lai).
+`ghi_chu`: 2026-09-30 12:22 +07 — da tai hien banner tren trinh duyet that (moi hoan toan), F5 van con: "0/494 tai lieu" · "Quan ly tai lieu · 494 tai lieu · 0 dang bat". Ledger production = 0 row (16/20 trang free → tung co row bi xoa). Dang chuan bi restart app.
 
 Lịch sử:
 - P5 (deploy model ONNX + mở LAN) **ĐẠT** 2026-09-30 ~09:5x +07 (commit `97207d5`).
