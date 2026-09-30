@@ -310,3 +310,31 @@ Vì vậy OMP đo TÁCH RIÊNG 3 chặng cho mỗi câu hỏi mẫu, ghi thời 
 
 Báo cáo cuối ghi đủ: thời gian từng chặng của từng câu + kết luận chặng nào là
 nút thắt + đã fix gì.
+
+## BỔ SUNG 6 — 2026-09-30 ~19:20 +07 (LỆNH CƯỠNG CHẾ EXPORT — user sắp về, máy tắt qua đêm)
+
+### 1. DỪNG mọi việc khác NGAY
+- Dừng probe 6 câu hỏi đang chạy. Dừng mọi đo đạc, thử timeout.
+- Việc set env `AIOS_BGE_QUERY_TIMEOUT` + restart app + chạy lại 6 câu hỏi:
+  DỜI SANG MAI khi user đến công ty. Không làm tối nay.
+
+### 2. ƯU TIÊN CAO NHẤT: chạy Bước 8 → Bước 9, xuất `text_export.jsonl` NGAY
+- Chạy `step8_groups.py`: tra 262 `document_id`, chia nhóm A/B/C.
+- Chạy `step9_export.py`: xuất JSONL ra
+  `D:\Sandbox\AIOS_habbit\scratch\export_262\text_export.jsonl`
+  (mỗi dòng: `document_id`, `source_name`, `chunk_index`, `text`).
+- Nếu nhóm C > 0 (thiếu nguồn): KHÔNG dừng — xuất nhóm A+B có được, ghi rõ
+  coverage x/262 + danh sách nhóm C vào báo cáo. (Ngoại lệ cưỡng chế tối nay;
+  mai xử lý nhóm C.)
+- Nếu script lỗi: sửa nhanh cho chạy được, không refactor, không làm việc khác.
+
+### 3. Báo ngay khi file xong (user đang đợi để về)
+- Ghi vào `trang-thai.md` (ghi chú mới nhất) + báo cáo: đường dẫn file, số
+  `document_id` xuất được/262, tổng chunk, dung lượng, SHA-256.
+- KHÔNG thử upload Drive tối nay — user copy bằng USB trực tiếp cho nhanh.
+- Giữ vé ở `dang-lam`, ghi rõ: "tạm dừng qua đêm — mai tiếp Bước 6
+  (set env timeout + restart + 6 câu hỏi) rồi Bước 7 đóng vé".
+
+### 4. User tắt máy sau khi copy USB xong
+- Sau khi OMP báo file xong và user copy xong: user tắt máy. OMP không cần
+  làm gì thêm. Sáng mai máy bật lại, watcher tự tiếp tục vé từ trạng thái này.
