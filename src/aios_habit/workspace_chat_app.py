@@ -4654,7 +4654,11 @@ else:
                 if enabled_ctx_sources:
                     schedule_workspace_chat_source_preparation(enabled_ctx_sources)
 
-                tracked_prep_sources = enabled_ctx_sources if enabled_ctx_sources else ctx_all_sources
+                # Track only enabled sources. Falling back to all sources here
+                # showed a misleading "0/N" banner (and offered "resume",
+                # which would enqueue every disabled source) after the user
+                # disabled every source (dieutra-banner-0494).
+                tracked_prep_sources = enabled_ctx_sources
                 prep_summary = get_workspace_chat_preparation_summary(tracked_prep_sources)
 
                 def on_retry_single_source(scope: str, source_id: str):

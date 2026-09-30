@@ -175,8 +175,11 @@ def test_app_source_code_guards_for_large_library():
     assert "query_relevant_sources = ready_sources or ready_in_scope" in app_source
     assert "query_relevant_sources = ready_sources" in app_source
     assert "if query_relevant_sources:" in app_source
-    assert "Đang trả lời trực tiếp qua nội dung văn bản nguồn." in app_source
-    assert "vector" not in "Đang trả lời trực tiếp qua nội dung văn bản nguồn."
+    # 6. Banner must track only enabled sources: no fallback to all sources
+    # when none are enabled (dieutra-banner-0494 showed a misleading "0/494"
+    # banner after the user disabled every source).
+    assert "tracked_prep_sources = enabled_ctx_sources\n" in app_source
+    assert "enabled_ctx_sources if enabled_ctx_sources else ctx_all_sources" not in app_source
 
 
 def test_pending_state_fails_when_all_sources_failed_and_no_text(monkeypatch):
