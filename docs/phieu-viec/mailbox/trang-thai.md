@@ -2,7 +2,7 @@
 
 - Trạng thái: `xong-cho-duyet`
 - Ticket hiện tại: `don-canary` — dọn kho canary 2,4GB + rác tmp trên ổ C (vé #1 trong hàng chờ; user yêu cầu dọn 01/10 vì ổ C chỉ còn ~2,4GB — CHẠY TRƯỚC GPU-DC để có chỗ bung ZIP 858MB + staging).
-- `commit`: (báo cáo don-canary — SHA cập nhật ở commit kế)
+- `commit`: `6417506`
 - `bao_cao`: `docs/phieu-viec/ket-qua/don-canary.md`
 - `ghi_chu_moc0`: 2026-10-01 01:45 +07 — OMP nhận vé don-canary (máy nhà h410asrock, ổ C còn ~406 MiB). Bắt đầu bước 0: liệt kê nội dung `C:\tmp`, `C:\temp`, `C:\c`, `C:\nonexistent`, chỉ xóa mục KHÔNG chứa index/library.sqlite/production/backup (không chắc → bỏ qua + ghi báo cáo). Sau đó bước 1: băm SHA + integrity_check production trước khi đụng canary.
 - `ghi_chu_moc1`: 2026-10-01 01:50 +07 — Mốc 1: xong bước 0 dọn rác. Thu hồi 11.432.612.441 byte (~10,65 GiB): 3 clone worker (`omp-ve-v1`, `omp-ve-v1-clean`, `gpu-262`), bản giải nén trùng `aios-data-v14` + zip trùng nguồn D: `aios-data-v14.zip`, `pytest-of-Vinh`, `e3-ab`, 47 dir scratch `aios_ckpt_*`/`aios_worktree_*`, zip model `C:\temp\bge-m3-onnx-fp32.zip` (bản gốc D: + Drive còn, tạo lại được). Ổ C: 414.445.568 → 11.884.261.376 byte trống. Giữ: `aios-v14-data`, `buoc0-deploy`, `gpu-262b`, `e3-py311`, `uv-cache`, `sessions`, `iii-*`, `deep-dev-*`, `C:\temp\ui`, archive `C:\c` (lý do trong báo cáo). Sang bước 1: băm SHA-256 + integrity_check production.
