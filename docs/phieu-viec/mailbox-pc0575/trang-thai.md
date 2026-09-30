@@ -1,8 +1,11 @@
 # Trạng thái mailbox — KDTVN-PC0575
 
-Trạng thái: `moi`
+Trạng thái: `dang-lam`
 Ticket hiện tại: hodap-lsu-loi
 `prompt`: `docs/phieu-viec/mailbox-pc0575/prompt.md`
+`commit`: (cap nhat theo moc)
+`bao_cao`: `docs/phieu-viec/ket-qua/hodap-lsu-loi.md`
+`ghi_chu`: 2026-09-30 13:35 +07 — nhan ve (watcher mo 1/4), bat dau Pha 1 chan doan luong hoi dap trong so "Dieu tra loi LSU" (app dang chay PID 21016, cong 8501).
 
 Lịch sử:
 - P5 (deploy model ONNX + mở LAN) **ĐẠT** 2026-09-30 ~09:5x +07 (commit `97207d5`).
