@@ -1,16 +1,40 @@
-# Ticket deploy-fix-banner-0494 — Pull fix + restart app (máy công ty)
+# Ticket hodap-lsu-loi — Thông luồng hỏi đáp LSU + lỗi trên chat (máy công ty)
 
 ## Bối cảnh
-- Vé dieutra-banner-0494 đã ĐẠT: banner "0/494" là do code fallback ở `workspace_chat_app.py:4657`.
-- Muse đã sửa trên VM: banner chỉ theo dõi nguồn ĐANG BẬT; 0 nguồn bật → banner ẩn, nút "Tiếp tục" không còn đường enqueue 494 tài liệu đã tắt.
-- Commit fix: `e5d37fc` trên nhánh `phieu-viec/rag-fix1` (đã push; test 44/44 pass trên VM).
+- App đang chạy LAN bình thường (P5/P5b ĐẠT, fix banner 0/494 ĐẠT).
+- User (thợ máy công ty) báo: **chưa hỏi đáp được trên chat** — muốn hỏi đáp về LSU và về lỗi.
+- Hiện trạng dữ liệu (theo vé dieutra-banner-0494): sổ "Điều tra lỗi LSU" có 494 notebook sources
+  (262 document_id duy nhất), 0 nguồn đang bật, 0/262 có vector trong index đang chạy; ledger trống.
 
 ## Việc cần làm
-1. Trên `D:\Sandbox\AIOS_habbit`: `git fetch` + `git pull --rebase` nhánh `phieu-viec/rag-fix1`. Verify `git log --oneline -1` ra `e5d37fc`.
-2. Restart app bằng đúng script LAN của vé P5 (`scratch/p5_run_lan.ps1`, giữ nguyên env `AIOS_BGE_ONNX_MODEL_CHECKSUM`). Xác nhận app listen `0.0.0.0:8501`, HTTP 200.
-3. Mở sổ "Điều tra lỗi LSU" (0 nguồn đang bật): verify banner "0/494 tài liệu" **không còn hiện**, không còn nút "Tiếp tục chuẩn bị". Chụp màn hình.
-4. Báo cáo: `docs/phieu-viec/ket-qua/deploy-fix-banner-0494.md` — HEAD commit, thời gian restart, ảnh chụp verify, app vẫn phục vụ LAN bình thường.
+
+### Pha 1 — Chẩn đoán (chỉ đọc, làm nhanh)
+1. Xác định đúng luồng user dùng: chat trong sổ "Điều tra lỗi LSU" (workspace chat).
+2. Kiểm tra: index production hiện chạy chứa tri thức gì (có LSU/lỗi không?);
+   494 notebook sources ở trạng thái nào (có nội dung? enabled? vector?);
+   thử hỏi 2–3 câu mẫu (1 câu LSU, 1 câu về lỗi) và ghi lại CHÍNH XÁC app trả lời gì /
+   báo lỗi gì / có dùng nguồn nào không.
+3. Kết luận nguyên nhân gốc: thiếu nguồn bật? thiếu vector? hay lỗi khác.
+
+### Pha 2 — Thông luồng (làm theo kết quả Pha 1, OMP tự quyết kỹ thuật)
+- Nếu nguyên nhân là nguồn chưa bật / chưa chuẩn bị: bật các nguồn LSU + lỗi cho cuộc
+  trò chuyện rồi chạy chuẩn bị. Lưu ý máy CPU-only: ước tính thời gian trước khi chạy,
+  chạy nền, không làm sập app đang phục vụ LAN.
+- Nếu nguyên nhân khác: sửa đúng lỗi, không đoán mò, không sửa bừa.
+
+## Tiêu chí ĐẠT
+- Bộ câu hỏi mẫu (tối thiểu 3 câu LSU + 3 câu về lỗi) đều được trả lời **có căn cứ từ
+  tài liệu** (báo cáo ghi rõ từng câu hỏi + đáp án + nguồn trích dẫn), không bịa đáp án.
+- App vẫn phục vụ LAN bình thường sau khi xong.
 
 ## Cấm
-- Không bấm "Thử chuẩn bị lại" / "Tiếp tục chuẩn bị" / "Bật tất cả".
-- Không sửa code thêm, không merge `main`. Không đụng ổ D máy nhà.
+- Không merge `main`. Không force-push.
+- Không xóa nguồn/tài liệu nào khi chưa có lệnh user. (User từng bảo xóa vì tưởng trùng
+  LSU máy nhà, nhưng vé này là làm cho hỏi đáp ĐƯỢC — nếu chẩn đoán thấy cần dọn thì ghi
+  đề xuất vào báo cáo, không tự xóa.)
+- Mọi ghi chép chỉ trong thư mục app `D:\Sandbox\AIOS_habbit` và báo cáo GitHub;
+  không đụng ổ D máy nhà.
+
+## Báo cáo
+`docs/phieu-viec/ket-qua/hodap-lsu-loi.md`. Commit lên `phieu-viec/rag-fix1`,
+`trang-thai.md` → `xong-cho-duyet`.
