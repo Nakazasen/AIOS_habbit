@@ -207,9 +207,14 @@ def fill_occurred_at(
     intact on purpose: the f3b backfill keeps its provenance inside
     ``raw_json._backfill`` and a force re-import would wipe it.
 
-    Dry-run by default (nothing written); ``apply=True`` writes and
-    commits. Returns counters for the report.
+    Dry-run by default: case data is never written; the additive
+    ``occurred_at`` column is ensured to exist first (schema only).
+    ``apply=True`` writes the values and commits. Returns counters for
+    the report.
     """
+    # DBs built before the column existed need the additive migration
+    # first; init_db is idempotent and touches no data.
+    store.init_db(conn)
     path = Path(xlsx_path)
     sha = store.sha256_file(path)
     source_file = path.name
@@ -234,6 +239,15 @@ def fill_occurred_at(
         "not_in_db": 0,
         "mismatch": 0,
     }
+    # One scan per batch instead of one SELECT per source row (15k+ rows).
+    existing = {
+        int(r["source_row"]): r
+        for r in conn.execute(
+            """SELECT id, source_row, occurred_at, no_dvd, machine_type, line
+               FROM error_cases WHERE batch_id = ? AND source_row IS NOT NULL""",
+            (batch_id,),
+        )
+    }
     samples: List[Dict[str, Any]] = []
     wb = openpyxl.load_workbook(path, read_only=True, data_only=True)
     try:
@@ -252,11 +266,7 @@ def fill_occurred_at(
                 continue  # row the importer skipped -> no case
             if not (fields.get("machine_type") and fields.get("line")):
                 continue  # row the importer skipped -> no case
-            row = conn.execute(
-                """SELECT id, occurred_at, no_dvd, machine_type, line
-                   FROM error_cases WHERE batch_id = ? AND source_row = ?""",
-                (batch_id, excel_row),
-            ).fetchone()
+            row = existing.get(excel_row)
             if row is None:
                 counters["not_in_db"] += 1
                 continue
