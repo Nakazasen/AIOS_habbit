@@ -1,7 +1,7 @@
 # Vé GPU-262b — Báo cáo tiến độ
 
-- Trạng thái: `dang-lam`; bộ lọc phi-CSV đã khớp bảng vé; staging mới chưa tạo.
-- Mốc cập nhật: 2026-10-01 00:29 +07.
+- Trạng thái: `dang-lam`; staging GPU-262b đã tạo, schema khớp, chưa nhúng.
+- Mốc cập nhật: 2026-10-01 00:34 +07.
 
 ## 1. Dừng lượt GPU-262 cũ
 
@@ -15,7 +15,13 @@
 - Kết quả: **52.979 dòng nguồn**; loại **50.096 dòng CSV / 87 tên tệp**; giữ **2.883 dòng / 19 `document_id` / 19 tên nguồn**. Số dòng từng tài liệu và toàn bộ tên nguồn khớp bảng trong prompt.
 - Tệp lọc: `C:\tmp\gpu-262b\export_19.jsonl`, **2.925.790 byte**, SHA-256 `0d1907c3e4cf21eaced480f35443cc7f9d6c7874e8edf904f765a4ec8a165ed2`. Nội dung chỉ lưu cục bộ, không đưa vào Git.
 
-## 3. Bước kế
+## 3. Tạo staging mới
 
-- Chưa tạo `C:\AIOS_staging_262b\library.sqlite`; chưa bắt đầu nhúng GPU-262b.
-- Tiếp theo: tạo chỉ mục tạm mới với lược đồ tương thích, đối chiếu mô hình/runtime/CUDA theo prompt rồi mới nhúng 2.883 mảnh. Không ghi production hoặc ổ D.
+- Đã tạo `C:\AIOS_staging_262b\library.sqlite`; toàn bộ định nghĩa lược đồ SQLite khớp collection `tri_thuc` hiện tại.
+- Kiểm tra: `integrity_check=ok`, không có lỗi khóa ngoại; 2.883 mảnh / 19 tài liệu, tất cả `retrievable=1`, chỉ mục FTS có 2.883 dòng; dense và sparse đều bằng 0.
+- Kích thước tệp: **34.512.896 byte**. Nội dung văn bản lấy nguyên từ tệp lọc; đường dẫn nguồn là metadata logic do export thiếu `source_path` và nhãn riêng tư. Nhãn `local_only` chỉ để phân loại nội bộ, không tự chặn định tuyến.
+- Không ghi vào production, staging cũ hoặc ổ D.
+
+## 4. Bước kế
+
+- Đối chiếu trước khi nhúng: phiên bản ONNX Runtime, revision mô hình, mã băm cây ONNX và việc backend tự chọn CUDA; sau đó nhúng 2.883 mảnh.
