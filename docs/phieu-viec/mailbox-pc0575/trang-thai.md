@@ -1,6 +1,6 @@
 # Trạng thái mailbox — KDTVN-PC0575
 
-Trạng thái: `xong-cho-duyet`
+Trạng thái: `xong`
 Ticket hiện tại: deploy-fix-banner-0494
 `prompt`: `docs/phieu-viec/mailbox-pc0575/prompt.md`
 `commit`: `68bd5a0`
@@ -17,4 +17,4 @@ Lịch sử:
 - P5b (kiểm tra lại truy cập trên mạng mới) **ĐẠT** 2026-09-30 ~11:1x +07 (commit `5e049a5f`); user xác nhận thiết bị khác vào được app qua LAN (commit `b854cd8`).
 - Vé chuan-bi-tai-lieu-lsu: **HỦY** theo lệnh user 2026-09-30 ~11:54 +07 (commit `63cc350`).
 - Vé dieutra-banner-0494: **ĐẠT** 2026-09-30 ~12:31 +07 (commit `329524c`).
-- Vé này (deploy-fix-banner-0494): xong-chờ-duyệt — pull `e5d37fc` + restart app + verify banner đã ẩn, LAN vẫn phục vụ.
+- Vé deploy-fix-banner-0494: **ĐẠT** 2026-09-30 ~12:58 +07 — Muse verify độc lập: fix `e5d37fcc` đúng spec (workspace_chat_app.py +5/−1: banner chỉ theo dõi nguồn đang bật, bỏ fallback toàn bộ nguồn; test +5/−2); 3 commit vé chỉ chạm trạng thái + báo cáo (961f8f4, 17c350a, 68bd5a0); banner "0/494" ẩn trên phiên thường + F5 + phiên mới, liệt kê 19 nút sạch, ledger không đổi (0 row, mở mode=ro); LAN 0.0.0.0:8501 HTTP 200 (localhost + 192.168.1.41); không merge `main`, không đụng ổ D máy nhà. Mailbox PC0575 hết việc → trạng thái `xong`.
