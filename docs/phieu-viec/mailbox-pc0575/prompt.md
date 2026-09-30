@@ -1,23 +1,16 @@
-# Ticket dieutra-banner-0494 — Điều tra: banner "0/494 tài liệu" vẫn hiện sau khi xóa/tắt hết nguồn
+# Ticket deploy-fix-banner-0494 — Pull fix + restart app (máy công ty)
 
-## Hiện tượng (user báo 2026-09-30 ~12:10 +07, có ảnh chụp màn hình)
-- User đã xóa 494 nguồn tạm trong cuộc trò chuyện (mục "Nguồn tạm" hiện "Chưa có nguồn nào").
-- Trong sổ còn "494 tài liệu · 0 đang bật" (tất cả đã tắt).
-- Banner vẫn hiện: "Đã chuẩn bị xong 0/494 tài liệu (0%) · Tài liệu sẵn sàng để tìm kiếm: 0/494 · Việc chuẩn bị đang tạm dừng. Bấm 'Tiếp tục chuẩn bị' để chạy lại."
+## Bối cảnh
+- Vé dieutra-banner-0494 đã ĐẠT: banner "0/494" là do code fallback ở `workspace_chat_app.py:4657`.
+- Muse đã sửa trên VM: banner chỉ theo dõi nguồn ĐANG BẬT; 0 nguồn bật → banner ẩn, nút "Tiếp tục" không còn đường enqueue 494 tài liệu đã tắt.
+- Commit fix: `e5d37fc` trên nhánh `phieu-viec/rag-fix1` (đã push; test 44/44 pass trên VM).
 
-## Đầu mối từ code (Muse đã tra cứu trên VM, cần kiểm chứng trên máy thật)
-- `src/aios_habit/workspace_chat_app.py` dòng ~4657:
-  `tracked_prep_sources = enabled_ctx_sources if enabled_ctx_sources else ctx_all_sources`
-  → khi không còn nguồn nào đang bật, banner chuyển sang theo dõi TẤT CẢ nguồn, nên hiện 0/494 thay vì ẩn đi.
-- Nút "Tiếp tục chuẩn bị" gọi `on_resume_preparation` → `resume_workspace_chat_source_preparation(tracked_prep_sources)` → có nguy cơ enqueue cả 494 nguồn đã tắt để embed trên máy CPU-only.
-
-## Việc cần làm (CHỈ điều tra, KHÔNG sửa)
-1. Refresh trang (F5), rồi restart app: banner còn hiện không? (loại trừ session Streamlit cũ)
-2. Chụp màn hình banner + mục "Quản lý tài liệu" sau refresh/restart.
-3. Tìm file ledger `workspace_chat.sqlite` trong thư mục runtime của app, mở bảng ledger chuẩn bị nguồn: đếm có bao nhiêu row ở trạng thái pending/processing thuộc 494 nguồn này.
-4. **TUYỆT ĐỐI KHÔNG bấm "Tiếp tục chuẩn bị" / "Thử chuẩn bị lại"** trong lúc điều tra (tránh enqueue 494 tài liệu lên máy CPU).
-5. Báo cáo: `docs/phieu-viec/ket-qua/dieutra-banner-0494.md` — từng bước đã làm, kết quả quan sát, ảnh chụp màn hình, kết luận banner có tái hiện sau restart không.
+## Việc cần làm
+1. Trên `D:\Sandbox\AIOS_habbit`: `git fetch` + `git pull --rebase` nhánh `phieu-viec/rag-fix1`. Verify `git log --oneline -1` ra `e5d37fc`.
+2. Restart app bằng đúng script LAN của vé P5 (`scratch/p5_run_lan.ps1`, giữ nguyên env `AIOS_BGE_ONNX_MODEL_CHECKSUM`). Xác nhận app listen `0.0.0.0:8501`, HTTP 200.
+3. Mở sổ "Điều tra lỗi LSU" (0 nguồn đang bật): verify banner "0/494 tài liệu" **không còn hiện**, không còn nút "Tiếp tục chuẩn bị". Chụp màn hình.
+4. Báo cáo: `docs/phieu-viec/ket-qua/deploy-fix-banner-0494.md` — HEAD commit, thời gian restart, ảnh chụp verify, app vẫn phục vụ LAN bình thường.
 
 ## Cấm
-- Không sửa code, không bấm nút chuẩn bị lại dưới mọi hình thức.
-- Không merge `main`. Không đụng ổ D máy nhà.
+- Không bấm "Thử chuẩn bị lại" / "Tiếp tục chuẩn bị" / "Bật tất cả".
+- Không sửa code thêm, không merge `main`. Không đụng ổ D máy nhà.
