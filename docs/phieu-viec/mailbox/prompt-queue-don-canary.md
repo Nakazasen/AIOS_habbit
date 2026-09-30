@@ -7,6 +7,10 @@ Production `C:\AIOS_p1_4\tri_thuc\library.sqlite` chạy ổn định từ P1.3/
 User đã duyệt dọn sau khi xác minh bản giữ lại an toàn.
 
 ## Việc cần làm
+0. Dọn rác trước (user yêu cầu 01/10 — ổ C chỉ còn ~2,4GB trống): liệt kê nội dung
+   `C:\tmp`, `C:\temp`, `C:\c`, `C:\nonexistent`; chỉ xóa các thư mục trong đó
+   KHÔNG chứa index/library.sqlite/production/backup. Ghi lại đã xóa gì + dung
+   lượng thu hồi. Không chắc → bỏ qua, ghi vào báo cáo.
 1. Băm SHA-256 `C:\AIOS_p1_4\tri_thuc\library.sqlite`, đối chiếu khớp ghim trên;
    chạy `PRAGMA integrity_check` → phải `ok`.
 2. Chỉ khi cả hai đạt: xóa toàn bộ `C:\AIOS_habit_index_ve03\`

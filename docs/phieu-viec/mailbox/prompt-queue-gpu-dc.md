@@ -33,9 +33,13 @@ Chạy SAU khi GPU-262b `xong-cho-duyet`. KHÔNG chạy song song với GPU-262b
 - Production PC0575 — vé này KHÔNG ĐỤNG tới. Merge là vé khác sau review độc lập.
 
 ## Việc cần làm
-1. Lấy dữ liệu: kiểm tra máy nhà đã có cây `Điều chỉnh` (2.147 file) chưa.
-   Chưa có → tải ZIP Drive về ổ C, verify size 858.190.286 byte + SHA-256 trên,
-   giải nén ra ổ C. CẤM ghi ổ D (hỏng vật lý).
+1. Lấy dữ liệu: file ZIP đã có sẵn trên máy nhà tại
+   `D:\Sandbox\AIOS_habbit\Tài liệu của tất cả dòng máy\Điều chỉnh-20260905T053942Z-1-001.zip`
+   (user xác nhận 01/10/2026). CHỈ ĐỌC từ ổ D — CẤM ghi ổ D (hỏng vật lý).
+   Verify size 858.190.286 byte + SHA-256
+   `f18bbae2c0c472fe063cd80543802e8677512012a8aa4606d8c3d09ca8ca18b7`;
+   khớp → giải nén ra ổ C. Không khớp → báo `cho-muse` (phương án dự phòng:
+   tải từ Drive `https://drive.google.com/file/d/1jJpYPMgyPPRt2tPmuOuKEb8rWtwxB1eP/view`).
 2. Lọc file theo quy tắc: extension (hoa/thường) trong
    {`.xlsx`, `.xls`, `.pdf`, `.msg`, `.png`, `.bmp`, `.html`, `.csv`}
    VÀ tên file khác `Loi KDTPS.xlsx`.
