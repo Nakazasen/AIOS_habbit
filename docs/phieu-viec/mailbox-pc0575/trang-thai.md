@@ -3,19 +3,13 @@
 Trạng thái: `dang-lam`
 Ticket hiện tại: hodap-lsu-loi
 `prompt`: `docs/phieu-viec/mailbox-pc0575/prompt.md`
-`commit`: `d154188` (tiếp tục — file Drive đã có sẵn, bỏ qua Bước 1, tiếp tục từ Bước 2)
+`commit`: `1988341` (mốc "tiếp tục từ Bước 2" — cập nhật SHA mốc mới ở dòng Mốc dưới)
 `bao_cao`: `docs/phieu-viec/ket-qua/hodap-lsu-loi.md` (báo cáo TẠM; mục 9 ghi blocker tải Drive; chưa thay production, chưa verify 6 câu)
 `collection_id`: **`tri_thuc`** (sổ "Điều tra lỗi LSU" = `NB-E35A7BEE` không có trường `collection_id` trong bản ghi → dùng mặc định `DEFAULT_COLLECTION_ID = "tri_thuc"`; index production: `local_runs/workspace_chat_rag_v2_production/bge_m3_hybrid/collections/tri_thuc/library.sqlite`, profile `bge_m3_hybrid`)
-`ghi_chu`: 2026-09-30 16:33 +07 — **Tiếp tục từ Bước 2**: user đã tải tay `library.sqlite`
-vào đúng `D:\Sandbox\AIOS_habbit\scratch\drive_index_check\` (ảnh chụp màn hình 16:31:
-2.492.832 KB = 2.552.659.968 byte, khớp chính xác dung lượng tham chiếu index GPU máy nhà).
-Bỏ qua Bước 1, không tải lại; OMP xác minh file (SHA/integrity/schema/số liệu đo thực tế/
-fingerprint `016c5255…`) rồi áp gate document (số đo được ≥ 501 production). Chưa đụng
-production, chưa thay index; app LAN vẫn phục vụ bình thường.
+`ghi_chu`: 2026-09-30 16:40 +07 — **Bước 2 đang chạy**: file tải về đúng 2.552.659.968 byte (khớp tham chiếu); đang băm SHA-256 + `integrity_check` + đếm document/chunk/vector/fingerprint trên **cả** file Drive và production, kèm so tập `document_id` (gate: file Drive ≥ 501 document của production). Chưa đụng production; app LAN giữ nguyên.
 
 Mốc:
-- ghi chú: 2026-09-30 16:33 +07 — **Mở lại vé**: `cho-muse` → `dang-lam` sau khi user tải
-  tay file Drive xong; watcher sẽ tự mở OMP tiếp tục từ Bước 2 (xác minh). Xem "TIẾP TỤC" trong prompt.
+- ghi chú: 2026-09-30 16:40 +07 — **Bắt đầu Bước 2 (xác minh)**: chạy `scratch/verify_drive_index.py` trên `scratch/drive_index_check/library.sqlite` và bản production (chỉ đọc `mode=ro`): SHA-256, `PRAGMA integrity_check`, tổng document/chunk/retrievable, dense+sparse khớp fingerprint `016c5255…`, đối chiếu tập `document_id` với production (501). Cổng gate: số document file Drive **≥ 501** mới được sang Bước 3; nếu < 501 → dừng + `cho-muse` + liệt kê ID thiếu. Không tải lại file, không ghi production.
 - ghi chú: 2026-09-30 15:58 +07 — **BỔ SUNG 2.1: thêm gate số document**. Production đo được 501 `document_id`; tham chiếu Drive 496 → thấp hơn 5, chưa được thay index. Chưa tải nên chưa biết số thật; `cho-muse` giữ nguyên cho tới khi có đường tải và giải quyết gate. Xem mục 9 báo cáo.
 - ghi chú: 2026-09-30 15:54 +07 — **BỔ SUNG 2 bị chặn → `cho-muse`**. Chrome/CDP báo `Loading of unpacked extensions is disabled by the administrator`; tải ẩn danh và profile junction đều bị chuyển về đăng nhập. Dừng ở đây, không quay no-op. Chưa tải index/chưa verify/chưa thay production; app vẫn phục vụ ở localhost và `192.168.1.41`. Xem mục 9 báo cáo; cần Muse/user chọn cách tải hợp lệ trên PC0575.
 - ghi chú: 2026-09-30 15:17 +07 — **Mốc 1 (nhận việc)**: đã `git pull --ff-only` lên `fd2e89d` (BỔ SUNG 2); cổng gate **ĐÃ MỞ** (ticket có việc tải index Drive trên PC0575) → bộ đếm kẹt no-op hết hiệu lực. Bắt đầu **Bước 1**: tải `library.sqlite` từ Drive `1cbydCaMAvO9eBRJg5YhZ1T2tj66C10hv` về `scratch/drive_index_check/` (kỳ vọng ~2,5 GB). Đĩa `D:` còn 9,2 GB, `C:` còn 73 GB; chưa đụng production.
