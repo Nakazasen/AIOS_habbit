@@ -1,8 +1,9 @@
 # Trạng thái mailbox — KDTVN-PC0575
 
-Trạng thái: `cho-muse`
+Trạng thái: `moi`
 Ticket hiện tại: hodap-lsu-loi (tiếp — BỔ SUNG 5.3 **nhánh B**: worker KHÔNG hỏng, nhưng truy vấn vượt bức tường 30 s **nằm trong code** → theo lệnh vé: DỪNG, chờ Muse gửi bản sửa qua commit; OMP không tự sửa code. Sau fix: `git pull` + restart app + chạy 6 câu L1–L3/E1–E3, rồi Bước 8/9/7)
 `prompt`: `docs/phieu-viec/mailbox-pc0575/prompt.md`
+- `ghi_chu`: 2026-09-30 18:5x +07 — **Muse đã gửi bản sửa qua commit `5cb5c94`** (fix 3 điểm theo đúng mục 11.5 báo cáo: (1) `workspace_chat_rag_v2_adapter.py` — query dense/sparse dùng `CROSS JOIN` để SQLite đi từ `chunks` theo `document_id` trước thay vì quét toàn bảng `chunk_embeddings` (71,9 s → ms), giữ nguyên ngữ nghĩa fail-closed; (2) `bge_subprocess_client.py` — timeout truy vấn đọc từ env `AIOS_BGE_QUERY_TIMEOUT` (mặc định 30,0 s như cũ, kẹp >= 1,0 s), adapter dùng chung thay vì literal 30,0; (3) cache kết quả cổng phủ 60 s để gộp 4–5 lần gọi mỗi câu hỏi. Test: 8 test mới `tests/test_hodap_worker_timeout_fix.py` pass + 98 test adapter/fingerprint pass trên VM Linux Python 3.12.3; 25 fail ở bge_subprocess_worker/packaging là hỏng sẵn trên VM, không do fix. OMP: `git pull` + restart app + chạy lại 6 câu L1–L3/E1–E3 theo BỔ SUNG 5.5, rồi Bước 8/9/7. KHÔNG cần set env (mặc định giữ 30 s); chỉ set `AIOS_BGE_QUERY_TIMEOUT` nếu sau fix vẫn chạm tường timeout.
 `commit`: `c4d8bf6` (Mốc 4 — chẩn đoán xong; `fc79d45` = Mốc 3)
 `bao_cao`: `docs/phieu-viec/ket-qua/hodap-lsu-loi.md` (mục 11 = BỔ SUNG 5/5.1: chẩn đoán worker + đo 3 chặng + file/dòng cần sửa; Bước 6 hỏi đáp chưa chạy vì chờ fix)
 `collection_id`: **`tri_thuc`** (sổ "Điều tra lỗi LSU" = `NB-E35A7BEE` không có trường `collection_id` trong bản ghi → dùng mặc định `DEFAULT_COLLECTION_ID = "tri_thuc"`; index production: `local_runs/workspace_chat_rag_v2_production/bge_m3_hybrid/collections/tri_thuc/library.sqlite`, profile `bge_m3_hybrid`)
