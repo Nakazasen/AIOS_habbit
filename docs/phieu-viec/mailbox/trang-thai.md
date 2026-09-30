@@ -90,3 +90,4 @@
   12. `J3` (`prompt-queue-j3.md`) — [người dùng] JIG: dùng thử, thu thập cải tiến.
   13. `J4` (`prompt-queue-j4.md`) — [NHÀ+người dùng] JIG: chạy thử nghiệm.
   14. `J5` (`prompt-queue-j5.md`) — [người dùng] JIG: chạy thật.
+- `ghi_chu`: 2026-10-01 06:10 +07 — **Muse báo code xong vé `B0-FORM`.** Commit `cf730d7` trên `phieu-viec/rag-fix1` (7 file, toàn thêm mới, không sửa/xóa): form 12 trường + validate (5 bắt buộc chặn, ngày đóng < ngày phát sinh chặn, mã lạ chỉ cảnh báo) + chống trùng (model, line, error code, ngày phát sinh) + chat action trong khung trả lời; 34/34 test đỗ (Linux, Python 3.12.3). **OMP verify trên máy nhà theo vé:** form chạy được với DB thật, nhập thử 3 ca thật không lỗi; không cần code thêm.
