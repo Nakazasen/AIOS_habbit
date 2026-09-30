@@ -79,6 +79,8 @@ FIX_MARKERS_VN: Tuple[str, ...] = (
     "bổ sung",
     "cho máy",
     "làm biểu",
+    "lập biểu",
+    "viết biểu",
     "đơn phát",
 )
 

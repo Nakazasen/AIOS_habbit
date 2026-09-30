@@ -133,6 +133,12 @@ def test_extract_value_is_exact_tail_of_source():
     assert seg["value"] == "Xử lý lỗi đơn phát."
 
 
+def test_extract_covers_report_writing_variants():
+    for variant in ("Lập biểu không tái hiện cho máy đi", "Viết biểu không tái hiện"):
+        seg = extract_fix_segment(f"Lay log\n{variant}", FIX_MARKERS_VN)
+        assert seg is not None and seg["value"] == variant, variant
+
+
 # ---------------------------------------------------------------------------
 # plan_backfill (dry-run)
 # ---------------------------------------------------------------------------
