@@ -1,8 +1,9 @@
 # Trạng thái mailbox
 
-- Trạng thái: `moi`
+- Trạng thái: `dang-lam`
 - Ticket hiện tại: `GPU-DC` — nhúng GPU 344 tài liệu "Điều chỉnh" + đóng gói delta cho PC0575 (vé #1 trong hàng chờ còn lại; chạy SAU don-canary vì cần ổ C trống để bung ZIP 858MB + staging).
-- `commit`: (OMP ghi khi nhận vé)
+- `commit`: (đang làm — cập nhật theo mốc)
+- `ghi_chu`: 2026-10-01 02:12 +07 — OMP nhận vé GPU-DC (máy nhà h410asrock). **Cổng gate ĐẠT** — không phải dùng nhánh "4 lần watcher": điều kiện mở đã thoả (GPU-262b đã ĐẠT + don-canary xong + ZIP trên ổ D đúng size 858.190.286 B + ổ C trống 13,45 GB). Bước 1–2: đã lọc danh sách file trong ZIP — **344 file / 650.894.980 byte (~621 MiB), đúng kỳ vọng** (231 xlsx, 88 pdf, 8 msg, 6 csv, 5 xls, 3 png, 2 bmp, 1 html; loại đúng 1 `Loi KDTPS.xlsx`). Đang verify SHA-256 ZIP + bung giải nén ra ổ C.
 - `bao_cao`: `docs/phieu-viec/ket-qua/gpu-dc.md`
 - `phat_hanh`: 2026-10-01 ~02:05 +07 — Muse verdict don-canary **ĐẠT** (review độc lập trên HEAD `c53a73c`: commit `6417506` chỉ thêm báo cáo + trang-thai, docs-only; đủ 3 bước vé: dọn rác 11.432.612.441 B trong 4 thư mục cho phép (mục không chắc đều giữ) + verify SHA production `062ec090…` khớp ghim + integrity_check=ok (mode=ro) + xóa canary `C:\AIOS_habit_index_ve03\` 2.552.751.295 B (SHA canary trùng production = bản copy); tổng thu hồi ~13,0 GiB; ổ C 414.445.568 → 14.435.442.688 B; không đụng production/backup 28-09/staging 262/262b/ổ D; không merge `main`) → phát hành vé xếp hàng tiếp theo GPU-DC (chế độ tự lái: copy `prompt-queue-gpu-dc.md` vào `prompt.md`).
 - `prompt`: `docs/phieu-viec/mailbox/prompt.md`
