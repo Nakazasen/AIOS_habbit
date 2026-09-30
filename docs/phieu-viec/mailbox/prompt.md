@@ -1,22 +1,27 @@
-# Vé B0-FORM — Form nhập liệu chuẩn Bước 0
-
-LANE: [VM] — Muse thực hiện code+test trên VM. OMP KHÔNG làm vé này, chỉ verify trên máy nhà với dữ liệu thật khi Muse báo code xong + commit rõ ràng.
+# Vé UPLOAD-DELTA-DRIVE — Đẩy 2 gói delta lên Drive cho PC0575 tải về merge
 
 ## Bối cảnh
-Bước 0 yêu cầu: không còn file rời theo FY; mọi báo cáo mới nhập trực tiếp theo form
-chuẩn với 12 trường: Model / Line / Công đoạn / Tên lỗi / Error code / Hiện tượng /
-Nội dung điều tra / Nguyên nhân / Đối sách / Bộ phận PT / Ngày phát sinh – ngày đóng /
-Link báo cáo.
+2 gói delta đang nằm trên ổ C máy nhà; PC0575 (máy công ty) không lấy qua LAN/USB được.
+User đang ở máy công ty, yêu cầu bridge qua Google Drive. Đẩy 2 file zip lên thư mục
+AIOS_Data trên Drive (nơi đã có file JSONL Điều chỉnh), đặt quyền xem cho ai có link.
 
 ## Việc cần làm
-1. Xây form nhập liệu ghi thẳng vào DB Bước 0 (không qua file trung gian).
-   UI nằm trong vùng trả lời của chat (đúng luật: 1 ô nhập + 1 vùng trả lời), không thêm toolbar/nút riêng.
-2. Validate: 5 trường bắt buộc (error code, hiện tượng, nguyên nhân, đối sách, công đoạn)
-   không được trống; ngày đóng ≥ ngày phát sinh; error code đối chiếu từ điển (vé B0-DICT).
-3. Chống trùng: cùng (model, line, error code, ngày phát sinh) → cảnh báo trùng, không cho nhập đúp.
-4. Code + test trên VM; test dùng fixture trích từ dữ liệu thật, gắn mác SIMULATED_* nếu mô phỏng.
+1. Verify SHA-256 2 file local khớp ghim dưới đây. Lệch → DỪNG, mailbox `cho-muse`.
+2. Upload lên thư mục AIOS_Data trên Drive:
+   - `C:\AIOS_staging_262b\gpu-262b-delta-20261001.zip` — 20.867.536 byte,
+     SHA-256 `5bd7c56d93b50d8415320ce37295d7be503ace99b912e375055025b844099a85`
+   - `C:\AIOS_staging_dc\gpu-dc-delta-20261001.zip` — 74.065.213 byte,
+     SHA-256 `31afe1e3bf7767379cce30588670db61f21a919ec5484b173c94961d97b063e3`
+3. Đặt quyền chia sẻ: bất kỳ ai có link = Người xem (như tiền lệ file JSONL Điều chỉnh).
+4. Verify độc lập: tải ẩn danh (không cookie) qua
+   `https://drive.usercontent.google.com/download?id=<FILE_ID>&export=download&confirm=t`,
+   kiểm tra đủ byte + SHA-256 khớp ghim. Lệch → upload lại, không báo xong.
+5. KHÔNG xóa bản local trên ổ C.
 
 ## Tiêu chí ĐẠT
-- Nhập 1 báo cáo mới qua form → đủ 12 trường trong DB, không sinh file rời.
-- Test: thiếu trường bắt buộc → bị chặn; trùng → cảnh báo; error code lạ → cảnh báo (không chặn).
-- OMP verify trên máy nhà: form chạy được với DB thật, nhập thử 3 ca thật không lỗi.
+- Báo cáo `docs/phieu-viec/ket-qua/upload-delta-drive.md`: 2 link Drive + xác nhận
+  verify ẩn danh (đủ byte, SHA khớp từng file).
+- 2 file local còn nguyên.
+
+## Cấm
+- Không đụng production, staging, ổ D. Không merge `main`.
