@@ -1,13 +1,15 @@
 # Trạng thái mailbox
 
-- Trạng thái: `xong-cho-duyet`
-- Ticket hiện tại: `GPU-262b` — DỪNG GPU-262, nhúng GPU 19 tài liệu phi-CSV (2.883 chunk) + đóng gói delta cho PC0575. Thay thế GPU-262 theo lệnh user trực tiếp (~00:10 +07 01/10/2026, chọn "cách 2").
-- `commit`: `d62a995`
-- `bao_cao`: `docs/phieu-viec/ket-qua/gpu-262b.md`
+- Trạng thái: `moi`
+- Ticket hiện tại: `don-canary` — dọn kho canary 2,4GB + rác tmp trên ổ C (vé #1 trong hàng chờ; user yêu cầu dọn 01/10 vì ổ C chỉ còn ~2,4GB — CHẠY TRƯỚC GPU-DC để có chỗ bung ZIP 858MB + staging).
+- `commit`: `ISSUANCE_A`
+- `bao_cao`: `docs/phieu-viec/ket-qua/don-canary.md`
 - `ghi_chu`: 2026-10-01 ~00:15 +07 — User chốt cách 2 sau audit của Muse: 50.096/52.979 chunk (94,6%) của export là 87 file CSV số đo thô, giá trị hỏi-đáp ≈ 0. LỆNH DỪNG KHẨN: OMP dừng ngay worker GPU-262 ở `C:\AIOS_staging_262` (ghi lại dừng ở chunk thứ mấy, KHÔNG xóa staging cũ), rồi làm vé GPU-262b: lọc export giữ 19 document_id phi-CSV (2.883 chunk, bảng trong prompt) → staging mới `C:\AIOS_staging_262b` → verify 19/19 ID + fingerprint `016c5255…` + cosine GPU/CPU ≥0,999 → đóng gói delta (merge SKIP 5 ID đã có trong production PC0575).
 - `ghi_chu_gpu262_cu`: 2026-10-01 ~00:06 +07 — Lượt cuối dừng do hết giới hạn 900 giây; truy vấn chỉ đọc lúc 00:06:47 xác nhận 20.300/52.979 mảnh có đủ vector đặc và vector thưa. Lượt này chậm hơn trước (144,3–181,8 giây/100 mảnh), nguyên nhân chưa xác định; giữ nguyên `C:\AIOS_staging_262`, không khởi chạy lại.
 - `ghi_chu_gpu262b`: 2026-10-01 01:34 +07 — Hoàn tất lọc, staging mới, nhúng 2.883/2.883 mảnh, xác minh 19/19 tài liệu, đóng gói delta; chưa nhập production. Cổng kho mã: compileall, check_docs, CLI audit và import đạt; full pytest 3.377 đạt, 4 bỏ qua, 25 thất bại, 14 lỗi (14 lỗi do 2 tệp Excel cục bộ thiếu); toàn bộ suite chưa đạt. Bàn giao chờ duyệt.
 - `prompt`: `docs/phieu-viec/mailbox/prompt.md`
+- `verdict_gpu262b`: **ĐẠT** (Muse verify độc lập 2026-10-01 ~01:45 +07, HEAD `d62a995` → branch head `d6de3ab8`): 2 commit chỉ sửa docs (`d62a995` báo cáo+trang-thai 23+/12-, `d6de3ab` trang-thai 1+/1-), không sửa code. Bằng chứng theo 6 yêu cầu vé: (1) dừng GPU-262: truy vấn chỉ đọc 00:06:47 xác nhận 20.300/52.979 mảnh đủ dense+sparse, giữ nguyên `C:\AIOS_staging_262`; (2) lọc: 52.979 dòng → loại 50.096 dòng CSV/87 tên, giữ 2.883 dòng / 19 document_id / 19 tên khớp bảng prompt, SHA nguồn `95aecf07…` khớp, file lọc 2.925.790 byte SHA `0d1907c3…`; (3) staging mới `C:\AIOS_staging_262b`: integrity ok, 2.883 mảnh/19 doc retrievable=1, FTS 2.883, backup pre-embed SHA `e6222918…`; (4) nhúng GPU 00:46:33–00:53:36: 2.883/2.883, 422,7s, 6,82 mảnh/s, 29 mẻ, CUDA đầu, onnxruntime 1.28.0, cây `9f81075f…`, rev `5617a9f`; (5) verify chỉ đọc: 19/19 ID, dense+sparse 2.883/2.883, fingerprint `016c5255…` cả 2 bảng, cosine min/max 1.000000 ≥ 0,999 (57 mẫu); (6) đóng gói: delta sqlite 57.020.416 byte SHA `b4b6f0bf…`, zip 20.867.536 byte SHA `5bd7c56d…` CRC đạt, manifest 14 ID mới + 5 ID SKIP đúng 5 ID trong prompt. Chưa nhập production; không ghi production/staging cũ/ổ D. Cổng kho mã: compileall, check_docs, CLI audit, import đạt; full pytest 3.377/4/25/14 — báo cáo ghi rõ nguyên nhân môi trường (2 file Excel cục bộ thiếu…), vé không đụng code → không chặn (cùng chuẩn các vé trước).
+- `ghi_chu_merge_pc0575`: 2026-10-01 ~01:45 +07 — Vé merge delta GPU-262b vào production PC0575 đã soạn sẵn tại `docs/phieu-viec/mailbox-pc0575/prompt-queue-merge-gpu262b.md` (CHƯA phát hành, chờ đúng thời điểm). CHỜ vé `hodap-lsu-loi` trên PC0575 xong-cho-duyet (hiện dang-lam, tạm dừng qua đêm) mới phát hành — tránh đổi corpus giữa lúc PC0575 test hỏi đáp sáng mai. Trước khi phát hành, máy nhà phải chuyển file zip `C:\AIOS_staging_262b\gpu-262b-delta-20261001.zip` (20.867.536 byte, SHA-256 `5bd7c56d93b50d8415320ce37295d7be503ace99b912e375055025b844099a85`) sang PC0575 (LAN/USB) — poll sau sẽ lo phần chuyển file này.
 - `ghi_chu_ke_hoach`: 2026-09-30 ~20:00 +07 — Muse lập kế hoạch làm hết `docs/dich-den-du-an.md`: 14 vé mới (B0-FORM/DICT/MEASURE, B1-FEAT, B2, B3, B4, B5, J1-CSV, J1-RT, J2–J5), chi tiết trong `docs/ke-hoach-dich-den.md`. Lane [VM] = Muse code+test (OMP chờ, chỉ verify khi Muse báo xong); [NHÀ] = OMP làm; J2–J5 cần người dùng công ty tham gia.
 - `verdict_tool5`: **ĐẠT** (Muse verify độc lập 2026-09-30 ~06:55 +07 trên VM Linux Python 3.12.3, HEAD `6042e3a`): chuỗi commit đúng như báo cáo (`1be7002` → `7483c5a` → `a6ab4a4` → `f69d5c9` → `f08521e` → `ca73a7d` → `3cdb4d2` báo cáo chỉ thêm docs → `6042e3a`); diff code chỉ 2 module mới (`chat_action_visual_maps.py` +832, `visual_map_image.py` +311) + test mới 501 dòng + đúng 1 dòng đăng ký `BUILTIN_ACTION_MODULES` (đường cờ fail-closed sẵn có từ TOOL-2); grep 0 hit `D:` và 0 thao tác ghi/embed/sqlite trong code mới (chỉ đọc JSONL cục bộ + trace); không merge `main` (main không phải ancestor); test vé 29/29 pass độc lập + hồi quy liên quan 157 bài pass (action 64 + visual/knowledge 85 + omnibar 8); compileall sạch; full suite OMP báo 3.363/2/35/0 = +29 đúng số test vé mới, 35 lỗi giữ nguyên bộ có sẵn (tin theo log OMP như các vé trước, VM không chạy full suite). Hạn chế đã ghi trong báo cáo (ảnh tối đa 4 cột/24 nút, quan hệ hồ sơ ánh xạ cục bộ 4 mục, worklens chưa gồm bridge import, lỗi Mermaid là hạn chế upstream Streamlit) — không chặn.
 - `merge_main_done`: 2026-09-30 ~07:05 +07 — đã fast-forward `phieu-viec/rag-fix1` → `main` (`9a9a0a3` → `2870b09e`) qua Git Data API (`force:false`), không force-push (user duyệt từ 2026-09-29). Đính chính ghi chú `merge_main_blocked` trước đó: kết luận "không fast-forward được" là SAI do phân tích trên clone shallow; GitHub compare API xác nhận branch ahead 636 / behind 0, merge_base = tip của main.
@@ -27,25 +29,22 @@
 
 
 - `hang-cho` (theo thứ tự — chi tiết `docs/ke-hoach-dich-den.md`):
-  1. `don-canary` (`prompt-queue-don-canary.md`) — dọn kho canary 2,4GB + rác tmp
-     (user đã duyệt; user yêu cầu dọn 01/10 vì ổ C chỉ còn ~2,4GB — CHẠY TRƯỚC
-     GPU-DC để có chỗ bung ZIP 858MB + staging).
-  2. `GPU-DC` (`prompt-queue-gpu-dc.md`) — SAU don-canary: nhúng GPU 344 tài liệu Điều chỉnh (bảng mã lỗi, manual, C Call, sơ đồ điện) + đóng gói delta cho PC0575. Nguồn: ZIP đã có sẵn trên máy nhà `D:\Sandbox\AIOS_habbit\Tài liệu của tất cả dòng máy\Điều chỉnh-20260905T053942Z-1-001.zip` (chỉ đọc, verify SHA). 1.803 file log/archive/định dạng máy KHÔNG nhúng (lý do trong vé); `Loi KDTPS.xlsx` không nhúng (đã có trong DB error_cases).
+  1. `GPU-DC` (`prompt-queue-gpu-dc.md`) — SAU don-canary: nhúng GPU 344 tài liệu Điều chỉnh (bảng mã lỗi, manual, C Call, sơ đồ điện) + đóng gói delta cho PC0575. Nguồn: ZIP đã có sẵn trên máy nhà `D:\Sandbox\AIOS_habbit\Tài liệu của tất cả dòng máy\Điều chỉnh-20260905T053942Z-1-001.zip` (chỉ đọc, verify SHA). 1.803 file log/archive/định dạng máy KHÔNG nhúng (lý do trong vé); `Loi KDTPS.xlsx` không nhúng (đã có trong DB error_cases).
   2. `LSU-1` (`prompt-queue-lsu-1.md`) — TIẾP TỤC sau GPU-DC (đang ở bước khảo sát dữ liệu LSU trên ổ C).
-  2. `don-canary` (`prompt-queue-don-canary.md`) — dọn kho canary 2,4GB sau verify SHA production (user đã duyệt).
-  3. `f3b-backfill` (`prompt-queue-f3b-backfill.md`) — backfill trường `fix`, gate F3b đang mở ở 56,7%.
-  4. `date-map` (`prompt-queue-date-map.md`) — map cột ngày thật X/Y cho xu hướng/tái phát theo ngày phát sinh.
-  5. `B0-FORM` (`prompt-queue-b0-form.md`) — [VM] form nhập liệu chuẩn Bước 0.
-  6. `B0-DICT` (`prompt-queue-b0-dict.md`) — [VM] từ điển thuật ngữ + số hóa bảng mã lỗi.
-  7. `B0-MEASURE` (`prompt-queue-b0-measure.md`) — [NHÀ] đo ≥90% đủ 5 trường bắt buộc.
-  8. `B1-FEAT` (`prompt-queue-b1-feat.md`) — [VM] Bước 1 thành tính năng hoàn chỉnh.
-  9. `B2` (`prompt-queue-b2.md`) — [VM] vòng phản hồi.
-  10. `B3` (`prompt-queue-b3.md`) — [VM] gợi ý hướng điều tra 4M + Why-Why.
-  11. `B4` (`prompt-queue-b4.md`) — [VM] phân tích xu hướng & cảnh báo sớm.
-  12. `B5` (`prompt-queue-b5.md`) — [VM] phân loại tự động + cảnh báo tái phát.
-  13. `J1-CSV` (`prompt-queue-j1-csv.md`) — [VM] JIG: nhập cả file CSV + chọn biểu đồ + tự gửi mail.
-  14. `J1-RT` (`prompt-queue-j1-rt.md`) — [VM+cty] JIG realtime: spec API + prototype + yêu cầu hạ tầng.
-  15. `J2` (`prompt-queue-j2.md`) — [NHÀ+người dùng] JIG: xác nhận chức năng trước khi đưa thử.
-  16. `J3` (`prompt-queue-j3.md`) — [người dùng] JIG: dùng thử, thu thập cải tiến.
-  17. `J4` (`prompt-queue-j4.md`) — [NHÀ+người dùng] JIG: chạy thử nghiệm.
-  18. `J5` (`prompt-queue-j5.md`) — [người dùng] JIG: chạy thật.
+  3. `don-canary` (`prompt-queue-don-canary.md`) — dọn kho canary 2,4GB sau verify SHA production (user đã duyệt).
+  4. `f3b-backfill` (`prompt-queue-f3b-backfill.md`) — backfill trường `fix`, gate F3b đang mở ở 56,7%.
+  5. `date-map` (`prompt-queue-date-map.md`) — map cột ngày thật X/Y cho xu hướng/tái phát theo ngày phát sinh.
+  6. `B0-FORM` (`prompt-queue-b0-form.md`) — [VM] form nhập liệu chuẩn Bước 0.
+  7. `B0-DICT` (`prompt-queue-b0-dict.md`) — [VM] từ điển thuật ngữ + số hóa bảng mã lỗi.
+  8. `B0-MEASURE` (`prompt-queue-b0-measure.md`) — [NHÀ] đo ≥90% đủ 5 trường bắt buộc.
+  9. `B1-FEAT` (`prompt-queue-b1-feat.md`) — [VM] Bước 1 thành tính năng hoàn chỉnh.
+  10. `B2` (`prompt-queue-b2.md`) — [VM] vòng phản hồi.
+  11. `B3` (`prompt-queue-b3.md`) — [VM] gợi ý hướng điều tra 4M + Why-Why.
+  12. `B4` (`prompt-queue-b4.md`) — [VM] phân tích xu hướng & cảnh báo sớm.
+  13. `B5` (`prompt-queue-b5.md`) — [VM] phân loại tự động + cảnh báo tái phát.
+  14. `J1-CSV` (`prompt-queue-j1-csv.md`) — [VM] JIG: nhập cả file CSV + chọn biểu đồ + tự gửi mail.
+  15. `J1-RT` (`prompt-queue-j1-rt.md`) — [VM+cty] JIG realtime: spec API + prototype + yêu cầu hạ tầng.
+  16. `J2` (`prompt-queue-j2.md`) — [NHÀ+người dùng] JIG: xác nhận chức năng trước khi đưa thử.
+  17. `J3` (`prompt-queue-j3.md`) — [người dùng] JIG: dùng thử, thu thập cải tiến.
+  18. `J4` (`prompt-queue-j4.md`) — [NHÀ+người dùng] JIG: chạy thử nghiệm.
+  19. `J5` (`prompt-queue-j5.md`) — [người dùng] JIG: chạy thật.
