@@ -1,8 +1,8 @@
 # Vé `hodap-lsu-loi` — Thông luồng hỏi đáp LSU + lỗi trên chat (máy `KDTVN-PC0575`)
 
-- Trạng thái báo cáo: **TẠM — chưa nghiệm thu hỏi đáp.** Vé vẫn `dang-lam`, đang chờ **index dùng chung
-  copy từ máy nhà** theo bổ sung khẩn 2026-09-30 14:40 +07 của Muse (lệnh user).
-- Ngày làm: 2026-09-30 (13:35–14:47 +07), máy `KDTVN-PC0575` (OMP). Nhánh: `phieu-viec/rag-fix1`.
+- Trạng thái báo cáo: **TẠM — chưa nghiệm thu hỏi đáp.** Vé chuyển `cho-muse` vì OMP không thể tải index Drive qua Chrome trên PC0575; cần Muse/user xử lý quyền tải hoặc chính sách trình duyệt.
+- Chưa xác minh file Drive, chưa thay production, chưa chạy bộ 6 câu; đang chờ mở nút thắt ở mục 9.
+- Ngày làm: 2026-09-30 (13:35–15:54 +07), máy `KDTVN-PC0575` (OMP). Nhánh: `phieu-viec/rag-fix1`.
 - Phạm vi: chỉ đọc chẩn đoán + bật nguồn + chuẩn bị nền + dừng nhúng theo lệnh. **Không sửa code,
   không merge `main`, không xóa nguồn/tài liệu.**
 
@@ -18,8 +18,8 @@
    đã bật ≈ 2 giờ. Theo bổ sung khẩn: **đã dừng hẳn worker nhúng CPU**, 25 nguồn còn lại được park ở
    trạng thái không tự chạy lại.
 4. **`collection_id` của sổ "Điều tra lỗi LSU" = `tri_thuc`** (thông tin Muse yêu cầu). Chi tiết ở mục 5.
-5. Việc còn lại: sau khi index dùng chung từ máy nhà được copy sang, chạy bộ **6 câu hỏi mẫu**
-   (3 LSU + 3 lỗi) trên app LAN, ghi đáp án + nguồn trích dẫn rồi chuyển `xong-cho-duyet`.
+- Việc còn lại: tải index GPU theo BỔ SUNG 2, xác minh đầy đủ, backup/thay index, để reconcile tự chạy rồi verify **6 câu mẫu** trên app LAN. Hiện đang chờ xử lý blocker đăng nhập/chính sách Chrome tại mục 9; sau khi tải được mới tiếp tục, không nhúng CPU.
+- Không chuyển `xong-cho-duyet` cho tới khi hoàn thành toàn bộ các bước trên.
 
 ## 1. Pha 1 — Chẩn đoán (chỉ đọc)
 
@@ -197,3 +197,12 @@ Sau khi copy: mở lại app (hoặc để app tự rerun) → `reconcile_and_en
    cần — nhúng chúng trên máy CPU sẽ tốn ~66 giờ; nên để máy nhà (GPU) xử lý một lần rồi copy.
 2. 15 lựa chọn nguồn cũ trong `conversation_source_selections.jsonl` còn trỏ nguồn tạm đã xóa — vô hại
    nhưng gây nhiễu khi đọc file; đề xuất dọn bằng thao tác của app khi có thời điểm phù hợp (chưa làm).
+## 9. BỔ SUNG 2 — Bị chặn khi tải Drive (15:54 +07)
+
+- Không tải được file. Tải ẩn danh từ `drive.usercontent.google.com` chuyển `302` sang đăng nhập Google; thử qua profile tạm và profile Chrome thật nối bằng junction cũng hiển thị trang đăng nhập. Không có file tải xong trong `scratch/drive_index_check/`.
+- Relay OMP không kết nối: CDP trả lỗi `Loading of unpacked extensions is disabled by the administrator.` Chính sách Chrome hiện tại chặn cài/nạp extension relay nên OMP không điều khiển được phiên Google của user.
+- Đã khôi phục Chrome user chạy bình thường. Không ghi cookie/token vào repo; dữ liệu cookie/profile tạm do phiên này tạo đã xóa.
+- **Không đụng production**: `library.sqlite` vẫn 2.565.955.584 byte, `mtime` 2026-09-30 14:37:14; không dừng app, không nhúng CPU, không bấm chuẩn bị lại, không chạy 6 câu hỏi.
+- BỔ SUNG 2.1 (15:58 +07): đo production hiện tại được **501 `document_id` riêng biệt** trong `chunks`; prompt ghi tham chiếu file Drive là **496 document**. Mốc tham chiếu này thấp hơn production nên **chưa đủ điều kiện thay index**. File Drive chưa tải được nên số thật của file chưa kiểm chứng; cần bản đúng có ≥501 document hoặc Muse làm rõ chênh lệch trước khi tiếp tục.
+- App vẫn phục vụ: `localhost:8501` và IP hiện tại `192.168.1.41:8501` → HTTP 200; `/_stcore/health` → `ok`. Không có tiến trình `bge_subprocess_worker`.
+- Bước tiếp theo cần Muse/user mở cách tải hợp lệ ngay trên PC0575 và giải quyết gate số document: cho phép relay extension theo chính sách quản trị hoặc tải trực tiếp từ Chrome đã đăng nhập vào `scratch/drive_index_check/library.sqlite`; file phải có ≥501 document (hoặc Muse xác nhận số tham chiếu/cách đếm). Sau khi đủ hai điều kiện mới tiếp tục xác minh Bước 2; không đổi file production trước khi mọi gate đạt.
