@@ -1,6 +1,7 @@
 # Vé `hodap-lsu-loi` — Thông luồng hỏi đáp LSU + lỗi trên chat (máy `KDTVN-PC0575`)
 
-- Trạng thái báo cáo: **TẠM — chưa nghiệm thu hỏi đáp.** Vé chuyển `cho-muse` (lần 3) vì BỔ SUNG 5.3 **nhánh B**: worker BGE không hỏng (log init sạch) nhưng truy vấn retrieval vượt bức tường 30 s **nằm trong code** (`bge_subprocess_client.py:31`, `…adapter.py:2688`) và một phần lớn thời gian bị ăn bởi query dense quét toàn bảng `chunk_embeddings` (`…adapter.py:956-963`, đo 71,9 s/tài liệu 15 chunk) → tổng 211,2 s/câu rồi lỗi "Tìm kiếm tài liệu chưa sẵn sàng". Số đo đầy đủ + file/dòng cần sửa: **mục 11**.
+- Trạng thái báo cáo: **TẠM — chưa nghiệm thu hỏi đáp.** Diễn biến mới nhất: Muse đã gửi bản sửa (`5cb5c94`), OMP đã `git pull` + restart app (18:55) và probe L1 (mục 13 bổ sung, 19:0x): cổng phủ nhanh (0,02 s/5 lần) nhưng `worker.query_ready` vẫn 32,5 s > 30 s ở query đầu → theo BỔ SUNG 6 dời việc set env `AIOS_BGE_QUERY_TIMEOUT` + chạy 6 câu sang **mai**; tối nay ưu tiên **Bước 8/9**: đã xuất `scratch/export_262/text_export.jsonl` (262/262 nguồn, 52.979 chunk, SHA `95aecf07…` — mục 12). Vé giữ `dang-lam`, tạm dừng qua đêm.
+- Trước đó: `cho-muse` (lần 3) vì BỔ SUNG 5.3 **nhánh B**: worker BGE không hỏng (log init sạch) nhưng truy vấn retrieval vượt bức tường 30 s **nằm trong code** (`bge_subprocess_client.py:31`, `…adapter.py:2688`) và một phần lớn thời gian bị ăn bởi query dense quét toàn bảng `chunk_embeddings` (`…adapter.py:956-963`, đo 71,9 s/tài liệu 15 chunk) → tổng 211,2 s/câu rồi lỗi "Tìm kiếm tài liệu chưa sẵn sàng". Số đo đầy đủ + file/dòng cần sửa: **mục 11**.
 - Trước đó: `cho-muse` (lần 2) vì Bước 2 xác minh file Drive **KHÔNG ĐẠT gate số document** (496 < 501) và file Drive **không chứa vector của bất kỳ nguồn nào trong sổ LSU** (0/262) → nếu thay index sẽ làm app mất 5 tài liệu đang ready. Chi tiết mục 10.
 - Chưa thay production, chưa chạy bộ 6 câu; đang chờ Muse/user quyết định ở mục 10.
 - Ngày làm: 2026-09-30 (13:35–15:54 +07, tiếp 16:33–18:45 +07), máy `KDTVN-PC0575` (OMP). Nhánh: `phieu-viec/rag-fix1`.
@@ -351,3 +352,65 @@ aios_habit.rag_v2.semantic.SemanticBackendError: bge_subprocess_worker_crashed  
 ### 11.8 Trạng thái vé
 
 - `trang-thai.md` → **`cho-muse`** theo đúng BỔ SUNG 5.3 (nhánh B, timeout nằm trong code) — dừng, không quay no-op, chờ Muse gửi bản sửa qua commit rồi OMP `git pull` + restart app + chạy lại 6 câu.
+
+## 12. BỔ SUNG 6 — Bước 8/9: phân nhóm 262 nguồn + xuất `text_export.jsonl` (2026-09-30 19:22–19:35 +07)
+
+### 12.1 Bước 8 — phân nhóm 262 `document_id` (chỉ đọc)
+
+Script: `scratch/hodap_step8_groups.py` → `scratch/hodap-step8-groups.json`. Không ghi index, không nhúng.
+
+- Sổ `NB-E35A7BEE`: **494 nguồn → 262 `document_id`** (khớp con số của vé).
+- **Nhóm A = 5** (đã có vector dense + sparse đủ trong production):
+  | `document_id` | Tài liệu | chunk retrievable |
+  |---|---|---|
+  | `wsc-154101d384acc2d01009025d` | `Tài_liệu_đào_tạo_LSU_2019.01.18_K.pptx` | 15 |
+  | `wsc-58589483c646877fdb341f46` | `Dữ_liệu_tổng_hợp.xlsx` | 11 |
+  | `wsc-9e3e7cbc01ed57332c1384eb` | biên bản lỗi kỳ 2 (.msg) | 345 |
+  | `wsc-a1a89391eee709a956a46130` | `tổng_hợp_dữ_liệu_dán_tape.xlsx` | 274 |
+  | `wsc-cc7d383bb6f7b9127bcaef00` | `dữ_liệu_tổng_hợp_CaV2__1240_.xlsx` | 31 |
+- **Nhóm B = 257** (chưa có vector; tất cả còn `content_text` đã trích xuất sẵn; chỉ 9/257 còn file gốc `.xlsx` trên đĩa — 248 nguồn không còn file gốc).
+- **Nhóm C = 0** → không có nguồn mất text; theo BỔ SUNG 6 không phải dừng.
+
+### 12.2 Cách xuất — dùng ĐÚNG đường text mà app đưa cho worker (chứng minh bằng code)
+
+- `document_id` của app = `wsc-sha256(content_text.strip())[:24]` (`workspace_chat_rag_v2_adapter.py:740-750`, ghép từ `content_text` tại `:2153`) → script dùng đúng công thức này; `text.strip()` ghi ra `.txt` giống `_materialize_sources` (`:2452-2495`) rồi chạy `ConverterRegistry.convert_document` + `StructureAwareChunker.chunk_elements` — đúng chuỗi mà worker nhúng thật (`bge_subprocess_worker.py:190-207`).
+- Vì vậy text trong JSONL là **đúng loại text app sẽ đưa vào BGE** cho từng nguồn, không trích xuất lại kiểu khác.
+- Giới hạn cần biết cho vé máy nhà: `content_text` bị app cắt ở `WORKSPACE_CHAT_SOURCE_TEXT_LIMIT_BYTES = 200 KiB/nguồn` (`workspace_chat_models.py:19`, `:166`) — export phản ánh đúng phần text app đang có.
+
+### 12.3 Bước 9 — kết quả file export
+
+| Chỉ số | Giá trị |
+|---|---|
+| Đường dẫn | `D:\Sandbox\AIOS_habbit\scratch\export_262\text_export.jsonl` |
+| `document_id` xuất được | **262 / 262** (coverage 100%) |
+| Tổng chunk | **52.979** |
+| Dung lượng | **81.531.448 byte** (77,8 MiB) |
+| SHA-256 file | `95aecf07297bfdf2e4f7462fd477fa052a89aa3eaaa462c53cbce40d341bb505` |
+| Lỗi | `failed: []` (0 nguồn lỗi) |
+
+Format mỗi dòng: `{"document_id","source_name","chunk_index","text"}`.
+
+Kiểm tra sau xuất (chỉ đọc, độc lập với script xuất):
+- 52.979 dòng; 262 `document_id` đúng bằng tập của sổ; 0 dòng lạ id; 0 text rỗng; mỗi nguồn 1–568 chunk; chunk dài nhất 6.000 ký tự.
+- Nhóm A đối chiếu ngược với production: text khớp **100%** (2 nguồn kiểm: 15/15 và 11/11 chunk giống hệt theo thứ tự `rowid`).
+
+### 12.4 Đã KHÔNG làm (đúng lệnh cấm)
+
+- Không nhúng CPU, không ghi index, không bấm "🔄 Thử chuẩn bị lại", không đụng production, không xóa nguồn/tài liệu nào.
+- **Không upload Drive tối nay** (theo BỔ SUNG 6.3) — user copy bằng USB.
+- Không set env timeout / không chạy 6 câu hỏi tối nay (dời sang mai theo BỔ SUNG 6.1).
+- File nằm trong `scratch/` (đã bị `.gitignore` che) → không commit vào git; user copy trực tiếp.
+
+### 12.5 Trạng thái vé
+
+- Giữ `dang-lam`, **tạm dừng qua đêm**: mai tiếp **Bước 6** (set env `AIOS_BGE_QUERY_TIMEOUT` sau khi đo cold/warm + restart app + chạy 6 câu L1–L3/E1–E3 trên UI LAN, hội thoại `CONV-9C730D76`) rồi **Bước 7** (báo cáo bỏ chữ "TẠM" + `xong-cho-duyet`).
+- App LAN vẫn phục vụ bình thường; không bấm gì thêm.
+
+## 13. Mốc 5–6 — nhận bản sửa `5cb5c94`, restart app, probe câu L1 (2026-09-30 18:5x–19:05 +07)
+
+- **Mốc 5 (18:5x):** `git pull` → HEAD `72a6f85` đã chứa bản sửa của Muse `5cb5c94` (query dense/sparse đi từ `chunks` theo `document_id` bằng `CROSS JOIN`; timeout đọc từ env `AIOS_BGE_QUERY_TIMEOUT`; cache cổng phủ 60 s). Chưa chạy gì trong bước này.
+- **Mốc 6 (19:00):** restart app lúc 18:55:54 với code mới (PID `21176`), `/_stcore/health` = `ok`, bind `0.0.0.0:8501`; **8 test mới `tests/test_hodap_worker_timeout_fix.py` pass trên chính PC0575**; 98 test adapter/fingerprint pass (Muse chạy trên VM; OMP chỉ chạy nhóm test của bản sửa).
+- Probe chỉ đọc câu L1 (`scratch/hodap_probe6.py`):
+  - `_durable_semantic_coverage_ready`: **5 lần gọi tổng 0,02 s** (trước fix 27–72 s/lần) → fix #1 và #3 đã diệt đúng chỗ chậm nhất.
+  - Nhưng `worker.query_ready` **32,5 s > 30 s** ở query đầu (worker vừa init 20,2 s) → vẫn chạm `bge_worker_query_timeout`.
+- Theo BỔ SUNG 6.1: **không set env / không đổi timeout / không chạy 6 câu tối nay** — dời sang mai (đo cold/warm rồi đặt `AIOS_BGE_QUERY_TIMEOUT` = số đo + margin, restart, rồi chạy L1–L3/E1–E3).
