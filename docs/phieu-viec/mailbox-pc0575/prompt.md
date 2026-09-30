@@ -169,3 +169,42 @@
   - Nếu < 501 → DỪNG, đặt `cho-muse`, báo cả hai con số + liệt kê `document_id`
     nào của production thiếu trong bản Drive (so theo tập ID, không chỉ đếm số).
     Không tự quyết thay hay không.
+
+## BỔ SUNG 3 — 2026-09-30 17:13 +07 (Muse xử lý cờ `cho-muse` — QUYẾT ĐỊNH KỸ THUẬT)
+
+### 1. Quyết định: KHÔNG thay index production bằng file Drive
+- Bằng chứng (báo cáo mục 10): file Drive SHA khớp ghim `062ec090…`, integrity `ok`,
+  fingerprint `016c5255…` đúng — NHƯNG chỉ 496 document < production 501, và phủ
+  **0/262** `document_id` của sổ "Điều tra lỗi LSU" (production 5/262).
+- File Drive là corpus cũ (bản ghim P1.3), không phải index đã nhúng bộ nguồn sổ.
+  Thay vào = app mất 5 tài liệu đang ready (676 chunk), tụt về 0 tài liệu ready —
+  trái trực tiếp tiêu chí ĐẠT của vé ("user hỏi đáp ĐƯỢC").
+- Giữ nguyên production: SHA `5260c043…`, 501 document / 108.007 retrievable,
+  fingerprint `016c5255…`.
+
+### 2. Bước tiếp theo: BỎ QUA Bước 3–5, làm thẳng Bước 6
+- **BỎ QUA Bước 3 (backup), Bước 4 (thay index), Bước 5 (reconcile)** — không còn
+  áp dụng vì không thay index.
+- **Bước 6 — verify hỏi đáp (chỉ đọc) trên production hiện tại:**
+  - Chạy bộ 6 câu hỏi mẫu (L1–L3, E1–E3 trong báo cáo mục 6) trên UI LAN,
+    đúng hội thoại `CONV-9C730D76`.
+  - Phạm vi căn cứ: 5 tài liệu đang ready (LSU pptx, 3 xlsx dữ liệu, biên bản lỗi kỳ 2).
+  - Ghi lại từng câu hỏi + đáp án + nguồn trích dẫn.
+  - Câu nào không trả lời được có căn cứ trong phạm vi hiện tại → ghi rõ
+    "không có căn cứ trong 5 tài liệu hiện có", KHÔNG bịa.
+- **Bước 7** như cũ: cập nhật báo cáo (bỏ chữ "TẠM", ghi đầy đủ bằng chứng),
+  `trang-thai.md` → `xong-cho-duyet`.
+
+### 3. Những việc KHÔNG đụng
+- Không nhúng CPU thêm (BỔ SUNG KHẨN vẫn hiệu lực).
+- 25 nguồn đang park (`paused_shared_index_from_home_machine`) GIỮ NGUYÊN —
+  chờ index dùng chung thật từ máy nhà.
+- File Drive trong `scratch/` giữ nguyên làm bằng chứng, không xóa.
+- Không bấm "Thử chuẩn bị lại".
+
+### 4. Follow-up (không làm trong vé này)
+- Vé máy nhà sau khi LSU-1 + hàng chờ xong: nhúng GPU đúng bộ nguồn sổ
+  (262 `document_id`) từ chính dữ liệu đã nhập; verify danh sách nguồn + text
+  trích xuất khớp PC0575 TRƯỚC khi tốn công nhúng; rồi copy index sang PC0575
+  và chạy verify hỏi đáp full scope.
+- Muse sẽ phát hành vé này khi máy nhà xong LSU-1 (poll tự ghi vào hàng chờ).
