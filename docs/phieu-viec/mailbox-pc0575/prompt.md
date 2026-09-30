@@ -1,17 +1,18 @@
-# Ticket XẾP HÀNG: P5 — Deploy máy công ty với model ONNX đúng
+# Ticket P5b — Kiểm tra lại truy cập app trên mạng mới
 
 ## Bối cảnh
-Model ONNX chuẩn (`9f81075f…`) đã upload lên Drive AIOS_Data từ máy nhà.
+- Vé P5 đã ĐẠT trên mạng công ty cũ (app mở ở `192.168.1.41:8501`, máy khác truy cập được).
+- Máy đã chuyển sang mạng ngoài → IP đổi, Windows Firewall có thể áp luật khác → cần kiểm tra lại truy cập từ máy khác.
 
 ## Việc cần làm
-1. Tải file zip model từ Drive về, giải nén vào `models\bge-m3-onnx-fp32`.
-2. Verify checksum = `9f81075f58fe1d251510d32ba5c9a66102f7420115519d3f720adc2348b11093`
-   bằng `resolve_onnx_checksum`. Lệch → dừng, đặt `cho-muse`.
-3. Đặt env `AIOS_BGE_ONNX_MODEL_CHECKSUM=sha256:9f81075f…`.
-4. Copy index production từ máy nhà (hoặc Drive) — KHÔNG embed lại.
-5. Smoke test B1–B5 (B4 loại). Mở LAN cho cả phòng dùng.
-6. Báo cáo: link LAN, kết quả B1–B5.
+1. Ghi lại mạng hiện tại: tên WiFi/mạng + địa chỉ IP hiện tại của máy (chạy `ipconfig`, lấy dòng IPv4).
+2. Kiểm tra app còn chạy không: mở trình duyệt ngay trên máy, vào `http://127.0.0.1:8501`.
+   - Vào được → ghi nhận. Không vào được → khởi động lại app theo runbook cũ rồi làm tiếp.
+3. Từ một máy khác (điện thoại hoặc máy tính khác, **cùng mạng mới**): mở `http://<IP-của-máy>:8501`.
+   - Vào được → chụp màn hình. Không vào được → ghi rõ thông báo lỗi hiện ra.
+4. Nếu máy khác không vào được: kiểm tra Windows Firewall đã có rule mở port 8501 chưa. Không tự tắt firewall diện rộng.
+5. Báo cáo: `docs/phieu-viec/ket-qua/p5b-mang-moi.md` — IP mới, link truy cập, kết quả từ máy khác, ảnh chụp màn hình.
 
 ## Cấm
-- Không embed lại trên PC0575 (CPU yếu).
-- Không merge `main`. Không đụng ổ D máy nhà.
+- Không tải lại model, không embed lại, không ghi/sửa index production.
+- Không merge `main`. Không đụng ổ D máy nhà. Không tắt hẳn firewall.
