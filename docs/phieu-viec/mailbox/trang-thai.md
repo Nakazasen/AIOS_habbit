@@ -2,7 +2,7 @@
 
 - Trạng thái: `dang-lam`
 - Ticket hiện tại: `GPU-262` — nhúng GPU 52.979 chunk (262 nguồn LSU) + đóng gói delta cho PC0575. Ưu tiên tối 30/09 theo lệnh user trực tiếp.
-- `commit`: `c1bb0ac` (mốc staging + dry-run trước nhúng)
+- `commit`: `9cfd94f`
 - `bao_cao`: `docs/phieu-viec/ket-qua/gpu-262.md`
 - `ghi_chu`: 2026-09-30 22:03 +07 — Dry-run đạt: fingerprint `016c5255…`, 52.979 pending; session provider CUDA đứng đầu. Backup staging đạt `integrity_check=ok` (834.904.064 byte). Bắt đầu nhúng GPU theo batch 3.000 chunk, cập nhật sau từng batch.
 - `prompt`: `docs/phieu-viec/mailbox/prompt.md`
