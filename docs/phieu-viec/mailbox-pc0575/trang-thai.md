@@ -4,7 +4,7 @@ Trạng thái: `dang-lam`
 Ticket hiện tại: hodap-lsu-loi
 `prompt`: `docs/phieu-viec/mailbox-pc0575/prompt.md`
 `commit`: `06118e3` (mốc 3 — 9/34 nguồn ready)
-`bao_cao`: `docs/phieu-viec/ket-qua/hodap-lsu-loi.md` (chưa tạo — sẽ viết sau bước verify 6 câu hỏi)
+`bao_cao`: `docs/phieu-viec/ket-qua/hodap-lsu-loi.md` (đã có **báo cáo TẠM**: chẩn đoán + việc đã làm + lệnh dừng nhúng + thông tin index; sẽ bỏ chữ "TẠM" sau bước verify 6 câu hỏi)
 `collection_id`: **`tri_thuc`** (sổ "Điều tra lỗi LSU" = `NB-E35A7BEE` không có trường `collection_id` trong bản ghi → dùng mặc định `DEFAULT_COLLECTION_ID = "tri_thuc"`; index production: `local_runs/workspace_chat_rag_v2_production/bge_m3_hybrid/collections/tri_thuc/library.sqlite`, profile `bge_m3_hybrid`)
 `ghi_chu`: 2026-09-30 14:47 +07 — Theo bổ sung khẩn 14:40: ĐÃ DỪNG nhúng CPU (kill worker `bge_subprocess_worker` PID 2764/17368); 25 nguồn chưa chuẩn bị được park `failed` với lý do `paused_shared_index_from_home_machine` → không tự nhúng lại (đã F5 kiểm chứng 40 giây: ledger đứng yên, không sinh worker mới); 9 nguồn đã ready giữ nguyên; app vẫn phục vụ LAN (HTTP 200, `/_stcore/health` ok). Chờ index dùng chung từ máy nhà để tiếp tục bước verify 6 câu hỏi.
 

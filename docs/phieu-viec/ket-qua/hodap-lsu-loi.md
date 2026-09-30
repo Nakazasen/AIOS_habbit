@@ -1,0 +1,156 @@
+# Vé `hodap-lsu-loi` — Thông luồng hỏi đáp LSU + lỗi trên chat (máy `KDTVN-PC0575`)
+
+- Trạng thái báo cáo: **TẠM — chưa nghiệm thu hỏi đáp.** Vé vẫn `dang-lam`, đang chờ **index dùng chung
+  copy từ máy nhà** theo bổ sung khẩn 2026-09-30 14:40 +07 của Muse (lệnh user).
+- Ngày làm: 2026-09-30 (13:35–14:47 +07), máy `KDTVN-PC0575` (OMP). Nhánh: `phieu-viec/rag-fix1`.
+- Phạm vi: chỉ đọc chẩn đoán + bật nguồn + chuẩn bị nền + dừng nhúng theo lệnh. **Không sửa code,
+  không merge `main`, không xóa nguồn/tài liệu.**
+
+## 0. Kết luận ngắn (tạm)
+
+1. Nguyên nhân gốc đúng như chẩn đoán: hội thoại `CONV-9C730D76` (sổ "Điều tra lỗi LSU") có **0 nguồn
+   đang bật** (15 lựa chọn cũ trỏ nguồn tạm đã xóa) và 494 tài liệu của sổ **chưa có vector** trong
+   index production đang chạy → app chặn ở cổng tìm kiếm: "⚠️ Tìm kiếm tài liệu chưa sẵn sàng."
+2. Đã bật 35/494 nguồn (nhóm không-CSV: 24 xlsx + 8 pptx + 3 msg) và chạy chuẩn bị nền đúng thiết kế
+   của app; **9 nguồn (5 tài liệu duy nhất) đã `ready`**, gồm `Tài_liệu_đào_tạo_LSU_2019.01.18_K.pptx`
+   và biên bản họp lỗi `Beam径NG多発` kỳ 2.
+3. Máy CPU-only nhúng thật chỉ **0,31–0,35 chunk/s** → 494 nguồn ≈ 68 giờ (bất khả thi) và 19 tài liệu
+   đã bật ≈ 2 giờ. Theo bổ sung khẩn: **đã dừng hẳn worker nhúng CPU**, 25 nguồn còn lại được park ở
+   trạng thái không tự chạy lại.
+4. **`collection_id` của sổ "Điều tra lỗi LSU" = `tri_thuc`** (thông tin Muse yêu cầu). Chi tiết ở mục 5.
+5. Việc còn lại: sau khi index dùng chung từ máy nhà được copy sang, chạy bộ **6 câu hỏi mẫu**
+   (3 LSU + 3 lỗi) trên app LAN, ghi đáp án + nguồn trích dẫn rồi chuyển `xong-cho-duyet`.
+
+## 1. Pha 1 — Chẩn đoán (chỉ đọc)
+
+### 1.1 Luồng user dùng
+
+Sổ **"Điều tra lỗi LSU"** = notebook `NB-E35A7BEE` (494 tài liệu trong sổ) → hội thoại duy nhất
+**`CONV-9C730D76`** ("Cuộc trò chuyện 25/08 18:01"), hội thoại này có 35 nguồn đang bật sau Pha 2.
+Trả lời chỉ dùng **nguồn đang bật → lọc `document_id` đã `ready` → LLM**.
+
+### 1.2 Tái hiện lỗi (trước khi sửa)
+
+Trên app LAN đang chạy, hỏi "LSU là gì?" → app trả:
+
+```
+⚠️ Tìm kiếm tài liệu chưa sẵn sàng. Vui lòng thử lại sau khi các nguồn hoàn tất chuẩn bị.
+Nguồn đang bật: 35
+ℹ️ AIOS đang chuẩn bị 33 tài liệu ở chế độ nền. Vui lòng đợi trong giây lát để bắt đầu hỏi đáp.
+```
+
+(Ảnh: `scratch/hodap-00-hien-trang.png` — thư mục `scratch/` git-ignore, không commit.)
+
+### 1.3 Số đo index production (đầu phiên này)
+
+| Chỉ tiêu | Giá trị |
+| --- | --- |
+| Đường dẫn index | `local_runs/workspace_chat_rag_v2_production/bge_m3_hybrid/collections/tri_thuc/library.sqlite` |
+| Tổng chunk / chunk có embedding | 133.144 / 107.671 (đầu phiên) → 133.503 / 107.987 (14:26) |
+| Số `document_id` trong index | 496 |
+| `document_id` của 494 nguồn sổ có vector trong index | **0/262** (khớp vé `dieutra-banner-0494`) |
+| Ledger chuẩn bị nguồn | trống → sau Pha 2 có 35 dòng |
+
+### 1.4 Tốc độ nhúng thật (ONNX fp32, CPU)
+
+- Đo sống trong phiên này (2 mốc liên tiếp): 312 chunk trong ~16,9 phút → **0,31 chunk/s**; tài liệu nhỏ
+  17 chunk trong 49 giây → **0,35 chunk/s** (khớp số Pha 1: 0,32 chunk/s = 3,1 s/chunk).
+- Suy ra: 19 tài liệu đã bật (≈ 1.993 chunk theo `content_text`) ≈ **1,7–2 giờ**; cả 494 nguồn ≈ **68 giờ**.
+
+## 2. Pha 2 — Việc đã làm trước bổ sung khẩn
+
+1. **Bật 35/494 nguồn** cho hội thoại `CONV-9C730D76` bằng API store của app (`scratch/hodap_enable_sources.py`
+   của phiên trước): 24 xlsx + 8 pptx + 3 msg; **bỏ 459 CSV log** (nhúng sẽ mất ~66 giờ).
+2. **Chuẩn bị nền**: worker `bge_subprocess_worker` (ONNX fp32, PID 2764) chạy trong app LAN, không chặn UI;
+   ledger `source_preparation_ledger` theo dõi từng nguồn.
+3. **Đẩy 5 nguồn trọng tâm lên ưu tiên `interactive`** (`scratch/hodap_promote_priority.py`, dry-run + apply):
+   tài liệu đào tạo LSU + 3 biên bản họp lỗi `Beam径NG多発`. Mục đích: kiểm chứng sớm đúng 2 nhóm tri thức
+   user cần (LSU + lỗi).
+4. **Kết quả tới lúc dừng: 9 nguồn `ready` trên 5 tài liệu duy nhất**:
+
+| Tài liệu (`document_id`) | Nguồn ready | Ghi chú |
+| --- | --- | --- |
+| `wsc-154101d384acc2d01009025d` | `SRC-6618270A`, `SRC-8A0501D5` | `Tài_liệu_đào_tạo_LSU_2019.01.18_K.pptx` (tri thức LSU) |
+| `wsc-9e3e7cbc01ed57332c1384eb` | `SRC-28DACBC8` | biên bản họp lỗi `Beam径NG多発` kỳ 2 (`local_only`) |
+| `wsc-a1a89391eee709a956a46130` | `SRC-4D52CBBA`, `SRC-F303840C` | `tổng_hợp_dữ_liệu_dán_tape.xlsx` (312 chunk) |
+| `wsc-58589483c646877fdb341f46` | `SRC-41D0A83F`, `SRC-638E2C36` | `Dữ_liệu_tổng_hợp.xlsx` |
+| `wsc-cc7d383bb6f7b9127bcaef00` | `SRC-B9269C50`, `SRC-86285084` | `dữ_liệu_tổng_hợp_CaV2__1240_.xlsx` |
+
+5. **Sự cố và cách chữa**: nguồn `SRC-8A0501D5` từng `failed` với lý do
+   `preparation_batch_001_document_9983dcbf05d5_bge_worker_staged_commit_invalid_res…`
+   (phản hồi commit của worker không hợp lệ — lỗi **tạm thời** đúng lúc worker khởi động lại, không phải
+   lỗi dữ liệu). Bấm nút **"🔄 Thử chuẩn bị lại"** của app → nguồn tự chữa thành `ready`; đường
+   `_durable_semantic_coverage_ready` xác nhận lại vector trong index (không nhúng lại từ đầu).
+
+## 3. Bổ sung khẩn — DỪNG nhúng CPU (2026-09-30 14:40 +07)
+
+1. **Dừng worker**: `Stop-Process` PID `2764` (worker) + `17368` (launcher). Kiểm chứng: 0 tiến trình
+   `bge_subprocess_worker` còn sống.
+2. **Park hàng đợi để không tự nhúng lại**: `scratch/hodap_pause_prep.py` (dry-run + apply) chuyển
+   24 nguồn `pending` + 1 nguồn `processing` → `failed` với lý do
+   `paused_shared_index_from_home_machine`, đồng thời hạ ưu tiên `interactive` → `normal`.
+   Lý do chọn cách này: lý do này **không** nằm trong `_RETRYABLE_PREPARATION_ERRORS` nên
+   `reconcile_and_enqueue_workspace_chat_sources` sẽ **bỏ qua** các dòng đó (không xếp lại hàng đợi,
+   không khởi động lại drain).
+3. **Kiểm chứng không tự chạy lại**: F5 app (rerun đầy đủ) rồi đo 40 giây → ledger đứng yên
+   (`9 ready / 25 parked`, 0 `processing`), không sinh worker mới.
+4. Trạng thái cuối: app vẫn phục vụ LAN — `localhost:8501` → **HTTP 200**, `/_stcore/health` → `ok`.
+   Lưu ý vận hành: **không bấm "🔄 Thử chuẩn bị lại"** cho tới khi index dùng chung được copy sang,
+   vì bấm sẽ nhúng lại bằng CPU.
+
+## 4. App đã trả lời được chưa (chưa kiểm chứng bằng câu hỏi thật)
+
+Theo mã nguồn `_semantic_readiness`: chỉ cần **≥1 nguồn `ready`** là cổng tìm kiếm mở (không còn chặn
+"Tìm kiếm tài liệu chưa sẵn sàng"). Hiện đã có 9 nguồn `ready` (5 tài liệu) nên cổng mở trong phạm vi
+5 tài liệu đó — gồm tài liệu đào tạo LSU và biên bản họp lỗi kỳ 2.
+
+`[INFERENCE]` Chưa chạy câu hỏi thật để xác nhận chất lượng trả lời trong phiên này: đúng lệnh của
+bổ sung khẩn, bước verify hỏi đáp (6 câu hỏi) được hoãn lại cho tới khi index dùng chung từ máy nhà
+được copy sang, để kết quả phản ánh đủ toàn bộ 494 tài liệu chứ không phải 5 tài liệu tạm.
+
+## 5. Thông tin cho vé index máy nhà
+
+| Mục | Giá trị |
+| --- | --- |
+| `collection_id` của sổ "Điều tra lỗi LSU" | **`tri_thuc`** (bản ghi `NB-E35A7BEE` không có trường `collection_id` → dùng mặc định `DEFAULT_COLLECTION_ID = "tri_thuc"`) |
+| Thư viện tương ứng | `tri_thuc` — tên hiển thị "Tri thức" (`local_cases/workspace_chat/collections.jsonl`) |
+| `requested_profile` | `bge_m3_hybrid` (`AIOS_WORKSPACE_RAG_V2_PROFILE`) |
+| Runtime root | `local_runs/workspace_chat_rag_v2_production` (mặc định, không override) |
+| Đường dẫn index trên máy công ty | `local_runs/workspace_chat_rag_v2_production/bge_m3_hybrid/collections/tri_thuc/library.sqlite` |
+| `model_id` / `model_revision` | `BAAI/bge-m3` / `5617a9f61b028005a4858fdac845db406aefb181` |
+| `model_fingerprint` đang được E-chain chấp nhận | `016c5255d0cec1fcb75b99f71f3c6a47a6e67b6087c3eb943b039cf8ac6274fb` (runtime `onnxruntime-int8`, `float32-le`, dim 1024) |
+| Bản PyTorch cũ còn trong index | fingerprint `ce7fb53f797f0973e2cbf51d6a6ffef4de9a32b659b979f45663c6c360c8e43c` (340 dòng, dead weight vô hại — xem vé `stale-check`) |
+
+## 6. Việc còn lại (sau khi index dùng chung được copy sang)
+
+1. Copy index vào đúng đường dẫn ở mục 5 (hoặc theo hướng dẫn của vé máy nhà), mở app lại/để app
+   reconcile: các nguồn có vector sẵn sẽ tự thành `ready` qua `_durable_semantic_coverage_ready`
+   (không nhúng lại).
+2. Chạy bộ 6 câu hỏi mẫu trên UI LAN (đúng hội thoại `CONV-9C730D76`, ghi lại đáp án + nguồn trích dẫn):
+
+| # | Nhóm | Câu hỏi dự kiến |
+| --- | --- | --- |
+| L1 | LSU | "LSU là gì và gồm những bộ phận quang học chính nào?" |
+| L2 | LSU | "Hiện tượng đai đen trong hình ảnh liên quan thế nào tới đường kính BEAM?" |
+| L3 | LSU | "Đường kính BEAM bao nhiêu là đạt, và khi nào gây lỗi hình ảnh?" |
+| E1 | Lỗi | "Lỗi Beam径 NG trên Iris LSU là gì, nguyên nhân và hướng xử lý?" |
+| E2 | Lỗi | "Dán SIM vào LD BLOCK ASSY có tác dụng gì khi xử lý lỗi beam?" |
+| E3 | Lỗi | "Khi beam diameter NG thì cần kiểm tra những hạng mục nào (LD mirror, trục quang, độ sâu chỉnh)?" |
+
+3. Cập nhật báo cáo này (bỏ chữ "TẠM") + `trang-thai.md` → `xong-cho-duyet`.
+4. Kiểm app vẫn phục vụ LAN sau khi xong (HTTP 200 trên `localhost` và IP LAN).
+
+## 7. Đã KHÔNG làm (theo lệnh cấm của vé)
+
+- Không merge `main`; không force-push (có 1 lần `git pull --rebase` + push thường khi remote nhận commit mới).
+- Không xóa nguồn/tài liệu/sổ nào. Thao tác ghi duy nhất ngoài file trạng thái: **bật nguồn** cho hội thoại
+  (35/494), cập nhật `priority` rồi park hàng đợi chuẩn bị — đều là trạng thái vận hành của app, không xóa dữ liệu.
+- Không sửa một dòng code nào; không đụng ổ D máy nhà (chỉ `D:\Sandbox\AIOS_habbit` của `KDTVN-PC0575`).
+- Không đưa nội dung tài liệu `local_only` vào báo cáo/commit (chỉ nêu tên tài liệu).
+
+## 8. Rủi ro / đề xuất
+
+1. **Đề xuất (không tự làm)**: sau khi index dùng chung ổn định, 459 CSV log của sổ chỉ nên nạp nếu thật
+   cần — nhúng chúng trên máy CPU sẽ tốn ~66 giờ; nên để máy nhà (GPU) xử lý một lần rồi copy.
+2. 15 lựa chọn nguồn cũ trong `conversation_source_selections.jsonl` còn trỏ nguồn tạm đã xóa — vô hại
+   nhưng gây nhiễu khi đọc file; đề xuất dọn bằng thao tác của app khi có thời điểm phù hợp (chưa làm).
