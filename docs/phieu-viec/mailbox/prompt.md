@@ -1,27 +1,27 @@
-# Ticket XẾP HÀNG: f3b-backfill — backfill trường `fix` (gate F3b đang mở)
+# Ticket XẾP HÀNG: date-map — map cột ngày thật cho phân tích xu hướng
 
 ## Bối cảnh
-Vé `buoc0-deploy` (ĐẠT, báo cáo `docs/phieu-viec/ket-qua/buoc0-deploy.md`):
-gate F3b FAIL đúng thiết kế — trường lõi `fix` chỉ 56,7% < 90%
-(đúng dự báo từ 27/09). Cần vé backfill riêng.
+Vé `buoc0-deploy` (ĐẠT) ghi nhận hạn chế: xu hướng/tái phát dùng `created_at`
+(= lúc nhập) nên mọi bản ghi nằm cùng 1 bucket; chiều "Công đoạn" gom "(không rõ)".
+Muốn phân tích theo ngày phát sinh thật cần map cột ngày X/Y của history_29.
 
 ## Việc cần làm
-1. Phân tích 43,3% ca thiếu `fix`: thiếu thật hay trích được từ cột khác
-   (mô tả/đối sách/ghi chú) của `Loi KDTPS.xlsx`.
-2. Viết script backfill (code + test; dry-run trước; backup DB + integrity ok
-   trước apply): điền `fix` từ nguồn phụ, ghi rõ nguồn từng giá trị.
-3. Chạy lại gate F3b trên DB đã backfill; báo cáo tỉ lệ mới.
+1. Khảo sát cột ngày trong `Loi KDTPS.xlsx` (cột X/Y theo ghi chú buoc0-deploy):
+   định dạng, độ phủ, giá trị bất thường.
+2. Mở rộng importer (code + test): trích ngày phát sinh thật vào trường riêng
+   (vd `occurred_at`), giữ nguyên `created_at`.
+3. Chạy lại Bước 4 (xu hướng) + tái phát Bước 5 trên DB đã có ngày thật;
+   báo cáo so sánh trước/sau.
 
 ## Tiêu chí ĐẠT
-- Tỉ lệ `fix` ≥ 90% HOẶC báo cáo chứng minh phần còn thiếu là thiếu thật
-  (không trích được từ dữ liệu hiện có) + đề xuất thu thập bổ sung.
-- Mọi giá trị backfill có nguồn gốc rõ ràng, không bịa.
+- ≥95% bản ghi có `occurred_at` hợp lệ HOẶC báo cáo chứng minh phần thiếu
+  là thiếu thật trong nguồn.
+- Xu hướng theo ngày phát sinh render đúng, không gom 1 bucket.
 
 ## Cấm
-- Làm trên DB copy ổ C; chưa có backup mới + integrity ok thì chưa apply.
-  Không đụng ổ D, không ghi index production.
-- Không merge `main`. Không force-push.
+- Làm trên DB copy ổ C; backup + integrity trước apply. Không đụng ổ D,
+  không ghi index production. Không merge `main`. Không force-push.
 
 ## Báo cáo
-`docs/phieu-viec/ket-qua/f3b-backfill.md`. Commit lên `phieu-viec/rag-fix1`,
+`docs/phieu-viec/ket-qua/date-map.md`. Commit lên `phieu-viec/rag-fix1`,
 `trang-thai.md` → `xong-cho-duyet`.

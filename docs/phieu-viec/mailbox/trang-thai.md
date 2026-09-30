@@ -1,8 +1,10 @@
 # Trạng thái mailbox
 
-- Trạng thái: `xong-cho-duyet`
-- Ticket hiện tại: `f3b-backfill` — backfill trường `fix` (gate F3b đang mở ở 56,7%; vé #1 hàng chờ, phát hành sau verdict ĐẠT LSU-1).
-- `commit`: `48289d9` (báo cáo nghiệm thu + handover; code `3919aba` ← module `9b4baef`)
+- Trạng thái: `moi`
+- Ticket hiện tại: `date-map` — map cột ngày thật X/Y của history_29 cho xu hướng/tái phát theo ngày phát sinh. Vé #2 hàng chờ, phát hành sau verdict ĐẠT f3b-backfill.
+- `prompt`: `docs/phieu-viec/mailbox/prompt.md`
+- `bao_cao`: `docs/phieu-viec/ket-qua/date-map.md`
+- `ghi_chu`: 2026-10-01 04:52 +07 — **Muse verdict vé `f3b-backfill`: ĐẠT.** Verify độc lập trên branch `phieu-viec/rag-fix1` (HEAD `d40ab4d`): chuỗi commit đúng như báo cáo — `9b4baef` module mới `src/aios_habit/error_cases/backfill_fix.py` (+337), test mới `tests/test_error_cases_backfill_fix.py` (+322), `completeness.py` (+51/-12), `__init__.py` (+14); `3919aba` bổ sung biến thể marker `lập biểu/viết biểu` (+2/+6); `48289d9` chỉ thêm báo cáo + 6 dòng `PROJECT_HANDOVER.md`, không sửa code. Bằng chứng: dry-run 6.795 ca AB trống → trích được 5.461 (O 5.049 / N 412); backup SHA `fa9efeba…46d8` + integrity ok trước apply trên DB copy ổ C; apply ghi 5.461 ca chỉ vào `raw_json._backfill.fix` (provenance value/source/marker/rule/line/chars/at từng giá trị, AB gốc 8.912 ca không đổi); gate F3b: fix 56,74% → **91,51% (14.373/15.707 ≥ 90%), needs_f3b=False**; verify độc lập ô gốc xlsx **95/95 mẫu khớp nguyên văn**; idempotent (chạy lại 0 ca mới); bộ error_cases **121/121 đạt**; full suite 3.406/2/36/4 trùng từng bài nền LSU-1 (không bài nào thuộc vé); 1.334 ca còn lại đa số đang điều tra + đề xuất nhà máy điền cột 改造/link cho 2025–2026 — đúng tiêu chí 'thiếu thật'. Ràng buộc giữ: không ghi index production, không đụng ổ D, không merge `main` (branch ahead 159 / behind 0), không force-push. → phát hành vé xếp hàng tiếp theo `date-map` (chế độ tự lái: copy `prompt-queue-date-map.md` vào `prompt.md`).
 - `ghi_chu`: 2026-10-01 04:49 +07 — **Hoàn tất vé `f3b-backfill`, chờ Muse review.** Báo cáo: `docs/phieu-viec/ket-qua/f3b-backfill.md`. Tóm tắt: phân tích 43,3% ca thiếu `fix` (6.795 ca; 2025: 86,7%, 2026: 72,1%) — N/O đầy 99,5–100% và **chứa câu đối sách/kết luận xử lý ghi thật**; module `backfill_fix` (commit `9b4baef` + `3919aba`; 16 test; trích nguyên văn từ dòng khớp marker cuối → hết ô O/N; provenance từng giá trị trong `raw_json._backfill.fix`; CLI dry-run/apply) — chạy trên DB copy ổ C (SHA gốc `fa9efeba…46d8`; backup + integrity ok trước/sau): **ghi 5.461 ca** (O 5.049 / N 412) → **gate F3b: fix 56,74% → 91,51% (14.373/15.707), needs_f3b=False**; 1.334 ca còn lại đa số đang điều tra (đề xuất nhà máy điền cột 改造/link cho 2025–2026); verify độc lập ô gốc xlsx **95/95 mẫu nguyên văn** + idempotent (chạy lại 0 ca mới); bộ error_cases **121/121**; full suite 3.406/2/36/4 (trùng từng bài nền LSU-1). Cổng pass (compileall/check_docs/CLI audit/import). Không ghi index production, không đụng ổ D, không merge `main`, không force-push.
 - `ghi_chu`: 2026-10-01 04:16 +07 — OMP nhận vé `f3b-backfill` (máy nhà h410asrock). **Cổng gate ĐẠT** — không phải dùng nhánh "4 lần watcher" (watcher tự mở lần 1/4 lúc 04:14:52, `launchStallCount=1`): điều kiện mở đã thoả (verdict LSU-1 **ĐẠT**; dữ liệu thật còn nguyên trên ổ C: `Loi KDTPS.xlsx` 10.006.929 B + 4 bảng mã lỗi thật trong `C:/tmp/aios-v14-data/dieu_tra_loi/Điều chỉnh/`; DB `C:/tmp/buoc0-deploy/error_cases_deploy.db` 49.881.088 B; Python 3.11 sẵn). Kế hoạch 5 mốc: (1) phân tích 43,3% ca thiếu `fix` (thiếu thật hay trích được từ cột khác của xlsx); (2) script backfill + test — commit riêng; (3) dry-run + backup + integrity trước apply trên DB copy ổ C; (4) chạy lại gate F3b; (5) cổng test + báo cáo `docs/phieu-viec/ket-qua/f3b-backfill.md`.
 - `ghi_chu_moc3`: 2026-10-01 04:37 +07 — **Mốc 3 xong (dry-run + backup + apply trên DB copy ổ C)**: bản copy `C:/tmp/f3b-backfill/error_cases_f3b.db` (SHA gốc `fa9efeba…46d8` = DB buoc0-deploy); dry-run 6.795 ca trống → **5.461 trích được** (O 5.049 / N 412), 1.334 không trích; backup `error_cases_f3b.db.bak-20261001-preapply` + integrity ok trước apply; **apply ghi 5.461 ca** (chỉ raw_json, có provenance từng giá trị); integrity ok sau apply; gate F3b: **fix 14.373/15.707 = 91,51%, needs_f3b=False**; verify độc lập nguyên văn với ô gốc xlsx: 40/40 ngẫu nhiên + 40/40 stratified (O/N) + 15/15 nhóm marker mới. Bổ sung biến thể marker `lập biểu/viết biểu` (commit `3919aba`). Tiếp: full suite + báo cáo.
@@ -50,18 +52,17 @@
 - `verdict_lsu1`: **ĐẠT** (Muse verify độc lập 2026-10-01 ~04:25 +07, HEAD `4e63cb6`): pipeline Bước 0–5 trên dữ liệu LSU thật **exit 0, đủ 6 mốc** (888 file/1,21 GB ra ổ C + manifest SHA-256 + đối chiếu Drive AIOS_Data 7/7 mẫu khớp; importer 4 định dạng log LSU commit `c0cbd5b` + fix digest `276d7d7` phủ toàn bộ ô dòng nguồn + test hồi quy; 12 test mới, bộ error_cases **105/105 đạt**; 23.112 ca từ 137.498 dòng log; gate F3b **FAIL thật** (cause/fix 0% — log vận hành không mang nguyên nhân/đối sách); 6 cảnh báo xu hướng; accuracy SIMULATED 1,00). Cổng pass (compileall/check_docs/CLI audit/import); full suite 3.389 đạt/2 bỏ qua/36 lỗi/4 error — chỉ nhóm có sẵn + 5 bài `test_chat_action_error_lookup` của B1-FEAT lane VM (hardcode đường dẫn VM, ngoài phạm vi vé). Ràng buộc giữ: không ghi index production, không đụng ổ D, không merge `main`, dữ liệu thật không vào Git, SIMULATED_* đúng mác. → phát hành vé xếp hàng tiếp theo `f3b-backfill` (chế độ tự lái: copy `prompt-queue-f3b-backfill.md` vào `prompt.md`).
 
 - `hang-cho` (theo thứ tự — chi tiết `docs/ke-hoach-dich-den.md`):
-  1. `date-map` (`prompt-queue-date-map.md`) — map cột ngày thật X/Y cho xu hướng/tái phát theo ngày phát sinh.
-  2. `B0-FORM` (`prompt-queue-b0-form.md`) — [VM] form nhập liệu chuẩn Bước 0.
-  3. `B0-DICT` (`prompt-queue-b0-dict.md`) — [VM] từ điển thuật ngữ + số hóa bảng mã lỗi.
-  4. `B0-MEASURE` (`prompt-queue-b0-measure.md`) — [NHÀ] đo ≥90% đủ 5 trường bắt buộc.
-  5. `B1-FEAT` (`prompt-queue-b1-feat.md`) — [VM] Bước 1 thành tính năng hoàn chỉnh.
-  6. `B2` (`prompt-queue-b2.md`) — [VM] vòng phản hồi.
-  7. `B3` (`prompt-queue-b3.md`) — [VM] gợi ý hướng điều tra 4M + Why-Why.
-  8. `B4` (`prompt-queue-b4.md`) — [VM] phân tích xu hướng & cảnh báo sớm.
-  9. `B5` (`prompt-queue-b5.md`) — [VM] phân loại tự động + cảnh báo tái phát.
-  10. `J1-CSV` (`prompt-queue-j1-csv.md`) — [VM] JIG: nhập cả file CSV + chọn biểu đồ + tự gửi mail.
-  11. `J1-RT` (`prompt-queue-j1-rt.md`) — [VM+cty] JIG realtime: spec API + prototype + yêu cầu hạ tầng.
-  12. `J2` (`prompt-queue-j2.md`) — [NHÀ+người dùng] JIG: xác nhận chức năng trước khi đưa thử.
-  13. `J3` (`prompt-queue-j3.md`) — [người dùng] JIG: dùng thử, thu thập cải tiến.
-  14. `J4` (`prompt-queue-j4.md`) — [NHÀ+người dùng] JIG: chạy thử nghiệm.
-  15. `J5` (`prompt-queue-j5.md`) — [người dùng] JIG: chạy thật.
+  1. `B0-FORM` (`prompt-queue-b0-form.md`) — [VM] form nhập liệu chuẩn Bước 0.
+  2. `B0-DICT` (`prompt-queue-b0-dict.md`) — [VM] từ điển thuật ngữ + số hóa bảng mã lỗi.
+  3. `B0-MEASURE` (`prompt-queue-b0-measure.md`) — [NHÀ] đo ≥90% đủ 5 trường bắt buộc.
+  4. `B1-FEAT` (`prompt-queue-b1-feat.md`) — [VM] Bước 1 thành tính năng hoàn chỉnh.
+  5. `B2` (`prompt-queue-b2.md`) — [VM] vòng phản hồi.
+  6. `B3` (`prompt-queue-b3.md`) — [VM] gợi ý hướng điều tra 4M + Why-Why.
+  7. `B4` (`prompt-queue-b4.md`) — [VM] phân tích xu hướng & cảnh báo sớm.
+  8. `B5` (`prompt-queue-b5.md`) — [VM] phân loại tự động + cảnh báo tái phát.
+  9. `J1-CSV` (`prompt-queue-j1-csv.md`) — [VM] JIG: nhập cả file CSV + chọn biểu đồ + tự gửi mail.
+  10. `J1-RT` (`prompt-queue-j1-rt.md`) — [VM+cty] JIG realtime: spec API + prototype + yêu cầu hạ tầng.
+  11. `J2` (`prompt-queue-j2.md`) — [NHÀ+người dùng] JIG: xác nhận chức năng trước khi đưa thử.
+  12. `J3` (`prompt-queue-j3.md`) — [người dùng] JIG: dùng thử, thu thập cải tiến.
+  13. `J4` (`prompt-queue-j4.md`) — [NHÀ+người dùng] JIG: chạy thử nghiệm.
+  14. `J5` (`prompt-queue-j5.md`) — [người dùng] JIG: chạy thật.
