@@ -2,7 +2,7 @@
 
 - Trạng thái: `dang-lam`
 - Ticket hiện tại: `GPU-262` — nhúng GPU 52.979 chunk (262 nguồn LSU) + đóng gói delta cho PC0575. Ưu tiên tối 30/09 theo lệnh user trực tiếp.
-- `commit`: `417343b` (mốc sửa báo cáo đã push)
+- `commit`: `132cfc3`
 - `bao_cao`: `docs/phieu-viec/ket-qua/gpu-262.md`
 - `ghi_chu`: 2026-09-30 21:28 +07 — Nhận BỔ SUNG 1 của Muse, tiếp tục với cây `9f81075f…` + ONNX Runtime `1.28.0` → fingerprint mục tiêu `016c5255…`. Nguồn đã đạt size/SHA; bắt đầu dựng index staging mới trên C. Từ đây thao tác Git chỉ trên checkout C.
 - `prompt`: `docs/phieu-viec/mailbox/prompt.md`
