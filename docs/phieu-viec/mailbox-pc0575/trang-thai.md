@@ -1,8 +1,11 @@
 # Trạng thái mailbox — KDTVN-PC0575
 
-Trạng thái: `moi`
+Trạng thái: `dang-lam`
 Ticket hiện tại: dieutra-banner-0494
 `prompt`: `docs/phieu-viec/mailbox-pc0575/prompt.md`
+`commit`: (cap nhat o buoc dau tien)
+`bao_cao`: `docs/phieu-viec/ket-qua/dieutra-banner-0494.md`
+`ghi_chu`: 2026-09-30 12:15 +07 — nhan ve, dang dieu tra banner "0/494 tai lieu" (chi dieu tra, khong sua code, khong bam nut chuan bi lai).
 
 Lịch sử:
 - P5 (deploy model ONNX + mở LAN) **ĐẠT** 2026-09-30 ~09:5x +07 (commit `97207d5`).
