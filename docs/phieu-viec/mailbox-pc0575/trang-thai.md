@@ -6,3 +6,4 @@ Trạng thái: `xong`
 - Việc còn lại cần người/IT (máy không có quyền admin): chạy mục 5 của `docs/phieu-viec/ket-qua/p5b-mang-moi.md` (PowerShell admin: xóa 2 rule Block python 3.11.15 + thêm rule allow 8501 gồm profile `public`), rồi test 10 giây từ điện thoại cùng Wi-Fi.
 
 Lịch sử: P5 (deploy model ONNX + mở LAN) **ĐẠT** 2026-09-30 ~09:5x +07 (commit `97207d5`).
+- `xac-nhan-user` 2026-09-30 ~11:48 +07: user mở app từ thiết bị khác cùng Wi-Fi `KT_CHETAO` tại `http://192.168.1.41:8501` — **vào được**, render đúng trang "Sổ tài liệu của tôi" (có ảnh chụp màn hình). Truy cập LAN từ máy khác: OK. Chuỗi P5/P5b trên PC0575 coi như hoàn tất.
