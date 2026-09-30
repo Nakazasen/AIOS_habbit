@@ -29,3 +29,12 @@ Ghi chú: [2026-09-29 ~18:55 +07] Muse review ĐẠT vé `pc0575-test-cleanup` (
 Tiến độ: [2026-09-30 08:28 +07] OMP nhận vé `p5-deploy-onnx` (P5, watcher tự mở 1/4 lúc 08:25). Cổng đã mở:
 báo cáo `docs/phieu-viec/ket-qua/onnx-upload-drive.md` xác nhận zip model trên Drive AIOS_Data đã
 được tải lại ẩn danh khớp SHA-256. Bắt đầu chặng 1: tải zip + giải nén + verify cây ONNX.
+Mốc 1 [2026-09-30 08:29 +07] (chặng 1): tải zip model từ Drive (link trong `onnx-upload-drive.md`) —
+1.326.939.447 byte; SHA-256 zip = `4239479b…bf2f3c` khớp báo cáo (đo chéo sha256sum + certutil + Python).
+Mốc 2 [2026-09-30 08:36 +07] (chặng 1–2): giải nén `models\bge-m3-onnx-fp32` (9 file, 2.289.625.694 byte);
+`sha256_model_tree` = `sha256:9f81075f…b11093` **KHỚP seal**; `resolve_onnx_checksum` (sidecar
+`models\bge-m3-onnx-fp32.sha256`) trả đúng chuỗi; fingerprint tái tạo `016c5255…` khớp 107.331 vector
+dense trong index → **không cần embed lại**. Đặt env `AIOS_BGE_ONNX_MODEL_CHECKSUM` = `sha256:9f81075f…`
+(User scope) theo bước 3 của vé. Index production trước test: `062ec090…` (2.552.659.968 byte, khớp seal P2).
+Mốc 3 [2026-09-30 08:42 +07] (chặng 4): chạy smoke B1–B5 (B4 loại) bằng `scratch\p2_b7_smoke.py`
+(đọc-only, `index_read_only=true`); sau đó chặng 5 mở LAN cho cả phòng.
