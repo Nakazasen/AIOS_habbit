@@ -3,8 +3,8 @@
 Trạng thái: `cho-muse`
 Ticket hiện tại: hodap-lsu-loi (tiếp — BỔ SUNG 5.3 **nhánh B**: worker KHÔNG hỏng, nhưng truy vấn vượt bức tường 30 s **nằm trong code** → theo lệnh vé: DỪNG, chờ Muse gửi bản sửa qua commit; OMP không tự sửa code. Sau fix: `git pull` + restart app + chạy 6 câu L1–L3/E1–E3, rồi Bước 8/9/7)
 `prompt`: `docs/phieu-viec/mailbox-pc0575/prompt.md`
-`commit`: `ccc00b3` (nhận vé) → cập nhật khi xong Bước 6
-`bao_cao`: `docs/phieu-viec/ket-qua/hodap-lsu-loi.md` (mục 11 = Bước 6 hỏi đáp trên production hiện tại)
+`commit`: `c4d8bf6` (Mốc 4 — chẩn đoán xong; `fc79d45` = Mốc 3)
+`bao_cao`: `docs/phieu-viec/ket-qua/hodap-lsu-loi.md` (mục 11 = BỔ SUNG 5/5.1: chẩn đoán worker + đo 3 chặng + file/dòng cần sửa; Bước 6 hỏi đáp chưa chạy vì chờ fix)
 `collection_id`: **`tri_thuc`** (sổ "Điều tra lỗi LSU" = `NB-E35A7BEE` không có trường `collection_id` trong bản ghi → dùng mặc định `DEFAULT_COLLECTION_ID = "tri_thuc"`; index production: `local_runs/workspace_chat_rag_v2_production/bge_m3_hybrid/collections/tri_thuc/library.sqlite`, profile `bge_m3_hybrid`)
 `ghi_chu`: 2026-09-30 17:13 +07 — **Muse xử lý cờ `cho-muse` (ngay trong SLA): QUYẾT ĐỊNH KHÔNG THAY INDEX.** File Drive = corpus cũ (0/262 `document_id` sổ "Điều tra lỗi LSU") — thay vào app mất 5 tài liệu ready, tụt về 0, trái tiêu chí ĐẠT. Giữ production (SHA `5260c043…`, 501 doc / 108.007 retrievable, fingerprint `016c5255…`). BỎ QUA Bước 3–5; làm thẳng Bước 6 (BỔ SUNG 3): chạy 6 câu hỏi mẫu (L1–L3, E1–E3) trên UI LAN, hội thoại `CONV-9C730D76`, phạm vi 5 tài liệu ready; ghi câu hỏi + đáp án + citation; câu nào không có căn cứ thì ghi rõ, không bịa. 25 nguồn park giữ nguyên, file Drive trong `scratch/` giữ làm bằng chứng. Follow-up máy nhà GPU (phát hành khi LSU-1 + hàng chờ xong): nhúng đúng 262 `document_id` sổ rồi copy index sang PC0575.
 Mốc:
