@@ -2,7 +2,7 @@
 
 - Trạng thái: `dang-lam`
 - Ticket hiện tại: `GPU-262` — nhúng GPU 52.979 chunk (262 nguồn LSU) + đóng gói delta cho PC0575. Ưu tiên tối 30/09 theo lệnh user trực tiếp.
-- `commit`: `428fb38`
+- `commit`: `162249d`
 - `bao_cao`: `docs/phieu-viec/ket-qua/gpu-262.md`
 - `ghi_chu`: 2026-09-30 22:46 +07 — Đính chính báo cáo theo `DATA_POLICY`: `local_only` chỉ là nhãn nội bộ, không phải chốt chặn kỹ thuật. Tiến độ gần nhất đã xác nhận 5.900 dense + 5.900 sparse; lượt GPU kế đang chạy.
 - `prompt`: `docs/phieu-viec/mailbox/prompt.md`
