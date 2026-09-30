@@ -164,6 +164,25 @@ Sau khi copy: mở lại app (hoặc để app tự rerun) → `reconcile_and_en
 3. Cập nhật báo cáo này (bỏ chữ "TẠM") + `trang-thai.md` → `xong-cho-duyet`.
 4. Kiểm app vẫn phục vụ LAN sau khi xong (HTTP 200 trên `localhost` và IP LAN).
 
+### 6.1 Kiểm cổng lúc 15:08 +07 (vé `dang-lam`, chờ index dùng chung)
+
+- Kết luận: **điều kiện mở chưa tới** — chưa có bản index dùng chung nào được copy sang máy này.
+- Bằng chứng (phiên watcher tự mở, chỉ đọc):
+  - `local_runs/workspace_chat_rag_v2_production/bge_m3_hybrid/collections/tri_thuc/library.sqlite`:
+    `mtime` **2026-09-30 14:37:14** (đúng mốc dừng nhúng CPU), 2.565.955.584 byte, **133.880 chunk** —
+    không đổi kể từ 14:37.
+  - Quét file >50 MB sửa trong 14 giờ ở `D:\`, `D:\Sandbox`, `D:\tmp`, `C:\temp`, `~/Downloads`:
+    không có file mới nào (không có zip/bản copy index).
+  - Ledger (`workspace_chat.sqlite`, mở `mode=ro`): **9 `ready` / 25 `failed` (lý do
+    `paused_shared_index_from_home_machine`) / 0 `processing`**; không có tiến trình `bge_subprocess_worker`.
+  - App LAN vẫn phục vụ: `127.0.0.1:8501` và `10.170.157.79:8501` → HTTP 200, `/_stcore/health` → `ok`
+    (PID 21016, `0.0.0.0:8501`).
+- Cổng gate của watcher: `launchStallCount = 1/4` (lần tự mở 15:01:47 vẫn cùng `sig` với mốc 14:59) →
+  **chưa đủ 4 lần nên không đặt `cho-muse`**; phiên này chỉ thêm 1 dòng tiến độ, **không sửa** 4 trường
+  watcher parse để bộ đếm chạy tiếp (1/4 → 4/4). Đủ 4/4 watcher tự ghi `cho-muse` + commit + push rồi ngừng mở lại.
+- Không thực hiện trong phiên này (giữ đúng lệnh hoãn): không nhúng CPU, không bấm "Thử chuẩn bị lại",
+  không chạy 6 câu hỏi mẫu.
+
 ## 7. Đã KHÔNG làm (theo lệnh cấm của vé)
 
 - Không merge `main`; không force-push (có 1 lần `git pull --rebase` + push thường khi remote nhận commit mới).
