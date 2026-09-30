@@ -46,6 +46,16 @@ CREATE TABLE IF NOT EXISTS error_cases (
     raw_json         TEXT NOT NULL,  -- all A–Y values as JSON (full fidelity)
     skip_cells       TEXT NOT NULL DEFAULT '[]',  -- JSON list of green-skipped columns
 
+    -- B0-FORM: standard 12-field manual entry form (additive; old DBs gain
+    -- these through store._migrate).
+    process_stage    TEXT,           -- Cong doan (process stage)
+    error_name       TEXT,           -- Ten loi (error name)
+    phenomenon       TEXT,           -- Hien tuong (phenomenon)
+    cause            TEXT,           -- Nguyen nhan (cause)
+    countermeasure   TEXT,           -- Doi sach (countermeasure)
+    closed_at        TEXT,           -- Ngay dong, ISO 'YYYY-MM-DD'
+    report_link      TEXT,           -- link bao cao
+
     created_at       TEXT NOT NULL DEFAULT (datetime('now')),
     updated_at       TEXT NOT NULL DEFAULT (datetime('now')),
 

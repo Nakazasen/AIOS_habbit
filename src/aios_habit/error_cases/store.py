@@ -41,6 +41,18 @@ def _migrate(conn: sqlite3.Connection) -> None:
     cols = {row[1] for row in conn.execute("PRAGMA table_info(error_cases)")}
     if "occurred_at" not in cols:
         conn.execute("ALTER TABLE error_cases ADD COLUMN occurred_at TEXT")
+    # B0-FORM: standard 12-field manual entry form (additive columns).
+    for _col_name, _col_ddl in (
+        ("process_stage", "TEXT"),
+        ("error_name", "TEXT"),
+        ("phenomenon", "TEXT"),
+        ("cause", "TEXT"),
+        ("countermeasure", "TEXT"),
+        ("closed_at", "TEXT"),
+        ("report_link", "TEXT"),
+    ):
+        if _col_name not in cols:
+            conn.execute(f"ALTER TABLE error_cases ADD COLUMN {_col_name} {_col_ddl}")
 
 
 def sha256_file(path: str | Path) -> str:
