@@ -1,7 +1,7 @@
 # Vé GPU-262b — Báo cáo tiến độ
 
 - Trạng thái: `dang-lam`; staging GPU-262b đã tạo, schema khớp, chưa nhúng.
-- Mốc cập nhật: 2026-10-01 00:34 +07.
+- Mốc cập nhật: 2026-10-01 00:41 +07.
 
 ## 1. Dừng lượt GPU-262 cũ
 
@@ -21,7 +21,9 @@
 - Kiểm tra: `integrity_check=ok`, không có lỗi khóa ngoại; 2.883 mảnh / 19 tài liệu, tất cả `retrievable=1`, chỉ mục FTS có 2.883 dòng; dense và sparse đều bằng 0.
 - Kích thước tệp: **34.512.896 byte**. Nội dung văn bản lấy nguyên từ tệp lọc; đường dẫn nguồn là metadata logic do export thiếu `source_path` và nhãn riêng tư. Nhãn `local_only` chỉ để phân loại nội bộ, không tự chặn định tuyến.
 - Không ghi vào production, staging cũ hoặc ổ D.
+- Bản sao dự phòng trước nhúng: `C:\AIOS_staging_262b\library.sqlite.bak-20261001-gpu262b-preembed`, `integrity_check=ok`, 2.883 mảnh / 19 tài liệu, SHA-256 `e6222918005ea42477f8fa48361e19d98f339b6b32099fe0316143c7aa9996a4`.
 
 ## 4. Bước kế
-
-- Đối chiếu trước khi nhúng: phiên bản ONNX Runtime, revision mô hình, mã băm cây ONNX và việc backend tự chọn CUDA; sau đó nhúng 2.883 mảnh.
+- Kiểm tra khô lúc 00:41:23 +07: ONNX Runtime và siêu dữ liệu gói đều `1.28.0`; cây mô hình khớp checksum đã ghim `9f81075f…b11093`; revision dùng `5617a9f61b028005a4858fdac845db406aefb181`; fingerprint `016c5255d0cec1fcb75b99f71f3c6a47a6e67b6087c3eb943b039cf8ac6274fb`; `pending=2883`, `retrievable=2883`, `already_onnx=0`. Phiên mở với `CUDAExecutionProvider` đứng đầu, `CPUExecutionProvider` dự phòng; `dry_run=không ghi dữ liệu`.
+- Cache kiểm tra cây mô hình được chuyển sang `C:\tmp\gpu-262b\model-verify-cache-20261001.json` trên C; không ghi ổ D. Chưa nhúng mảnh nào trong lượt chạy khô.
+- Kiểm tra khô đạt; bắt đầu nhúng 2.883 mảnh bằng runner Vé 0.3 sau khi đẩy mốc này.
