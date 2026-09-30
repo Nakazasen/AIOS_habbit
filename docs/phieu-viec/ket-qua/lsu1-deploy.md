@@ -2,7 +2,7 @@
 
 - Trạng thái: **Pipeline chạy xong, exit 0 — chờ Muse duyệt** (toàn bộ số liệu trong báo cáo là đo thật).
 - Máy: `h410asrock` — Windows 10 Pro `10.0.18363` x64; Python `3.11.14` (`.venv` của repo, `uv 0.10.6`).
-- Nhánh: `phieu-viec/rag-fix1`. Mốc commit: `d68ccef` (nhận vé) → `c0cbd5b` (code importer) → `b4e2250` (mốc 1) → `ef26681` (mốc 2) → `0efa91a` (mốc 3) → (mốc 4 + báo cáo này).
+- Nhánh: `phieu-viec/rag-fix1`. Mốc commit: `d68ccef` (nhận vé) → `c0cbd5b` (code importer) → `b4e2250` (mốc 1) → `ef26681` (mốc 2) → `0efa91a` (mốc 3) → `38f7e05` (báo cáo + trang-thai) → `276d7d7` (fix digest dòng nguồn).
 - Phạm vi ghi: dữ liệu + DB + output + log trên ổ C (`C:/tmp/lsu1-deploy/`); repo chỉ nhận code + test + báo cáo + `trang-thai.md`. **Không ghi ổ D, không ghi index production RAG, không merge `main`.**
 
 ## 0. Cổng gate + cách hiểu “list LSU” (đối chiếu vé)
@@ -38,7 +38,7 @@ Chưa thấy “gói LSU” trong `C:/tmp/aios-v14-data/`; nguồn Drive đã d�
 
 ## 2. Bước 2 — Mở rộng importer cho định dạng log LSU (code + test, commit riêng)
 
-Commit code: **`c0cbd5b`** — module mới `src/aios_habit/error_cases/import_lsu_logs.py` (+ mở rộng additive `completeness.py` / `store.py` / `__init__.py`). Quy tắc sự kiện và ánh xạ:
+Commit code: **`c0cbd5b`** + fix **`276d7d7`** (digest dòng nguồn phủ toàn bộ ô đọc được — log thật có dòng dài hơn header; kèm test hồi quy) — module mới `src/aios_habit/error_cases/import_lsu_logs.py` (+ mở rộng additive `completeness.py` / `store.py` / `__init__.py`). Quy tắc sự kiện và ánh xạ:
 
 | Định dạng | Nhận diện header | Sự kiện = | Ghi chú |
 |---|---|---|---|
@@ -50,7 +50,7 @@ Commit code: **`c0cbd5b`** — module mới `src/aios_habit/error_cases/import_l
 - Ánh xạ vào `error_cases` (provenance-first): `no_dvd = "LSU/{đường_dẫn_tương_đối_bỏ_đuôi}/{dòng}"` (log không có số phiếu); `machine_type = "LSU"`; `line` = họ sản phẩm theo thư mục gốc (`6thA3` / `Iris` / `Sirius`); `investigation` = mô tả hiện tượng tiếng Việt (cột nào NG / FinTest / CamError); `cause/fix/department/handler` để trống đúng thực tế.
 - `raw_json` gọn (`format=lsu_log`, dialect, ngày, cột khoá + cột kết quả, `columns_total`, **`row_sha256`** = digest toàn dòng nguồn join `\x1f`) — không nhân bản ma trận tới 992 cột (ước tính +563 MB vô ích); tệp gốc còn nguyên trên đĩa nên tái lập được từng dòng. Header thật có khoảng trắng đầu cột không nhất quán (`' DATE'`, `' S/N'`) — mọi ánh xạ đi qua chuẩn hoá.
 - Chống nhập trùng: cùng (tệp, sha256, dialect) bị bỏ qua, `force=True` ghi lại vào đúng batch; ghi vào đúng batch gốc nếu chạy lại.
-- Test mới (fixture tổng hợp, **không dùng dữ liệu công ty**): `tests/test_error_cases_lsu_logs.py` — 11 bài. Bộ `error_cases` đầy đủ: **104/104 đạt** (93 bài cũ + 11 bài mới) trên Windows Python 3.11 với `AIOS_DATA_DIR=C:/tmp/aios-v14-data`, `PYTHONPATH=C:/tmp/e3-py311`.
+- Test mới (fixture tổng hợp, **không dùng dữ liệu công ty**): `tests/test_error_cases_lsu_logs.py` — 12 bài. Bộ `error_cases` đầy đủ: **105/105 đạt** (93 bài cũ + 12 bài mới) trên Windows Python 3.11 với `AIOS_DATA_DIR=C:/tmp/aios-v14-data`, `PYTHONPATH=C:/tmp/e3-py311`.
 - Smoke trên dữ liệu thật: 238 file nhận dạng / **23.112 sự kiện**; 3/3 mẫu đối chiếu digest dòng nguồn khớp lại từ tệp gốc.
 
 ## 3. Bước 3 — Chạy pipeline Bước 0–5 trên dữ liệu LSU thật
@@ -88,7 +88,7 @@ Output trên ổ C (SHA-256 để Muse audit):
 - `compileall src tests` → OK; `scripts/check_docs.py` → `DOCUMENTATION_CONTRACT=PASS`.
 - `python -m aios_habit.cli audit` → `"status": "PASS"`, errors/warnings rỗng.
 - `import aios_habit.workspace_chat_app` → `IMPORT_OK`.
-- Bộ `error_cases` (đúng phạm vi vé): **104/104 đạt** trên Windows Python 3.11 (93 bài cũ gồm đủ bộ F1–F4 + 11 bài importer LSU mới).
+- Bộ `error_cases` (đúng phạm vi vé): **105/105 đạt** trên Windows Python 3.11 (93 bài cũ gồm đủ bộ F1–F4 + 12 bài importer LSU mới; bài thứ 12 = test hồi quy digest dòng dài hơn header, thêm cùng fix `276d7d7` và chạy lại nhanh sau fix).
 - Full suite nền (đúng môi trường buoc0-deploy: `AIOS_DATA_DIR=C:/tmp/aios-v14-data`, `PYTHONPATH="src;C:/tmp/e3-py311"`, `TMP=TEMP=C:/tmp`): **3.389 đạt, 2 bỏ qua, 36 lỗi, 4 error** (458,87s).
   - Đối chiếu nền TOOL-5 (`3.363/2/35/0`): **+11 đạt đúng bằng test vé** — không rớt bài nào của `error_cases` hay module mới; phần chênh lệch còn lại đến từ đợt **B1-FEAT của Muse** (`a0bb289` — 12 test: 7 đạt/1 rớt/4 error) và biến động môi trường của các bài lẻ.
   - 36 lỗi + 4 error **không thuộc phạm vi vé**: 9 `graphify_adapter`, 9 BGE worker/client, 4 đóng gói (`test_commit_d_wheel_and_packaging`), 4 `rag_v2` (eval/cli/synthesis), 9 bài lẻ workspace-chat/mom/notebook/owner-pilot/antigravity (đúng nhóm có sẵn), cộng **5 bài `test_chat_action_error_lookup`** — file này hardcode đường dẫn VM `/home/hatch/workspace/aios_data/...` (lane [VM] của vé B1-FEAT) nên không chạy được trên máy nhà.
@@ -116,4 +116,4 @@ Watcher tự mở OMP **1/4** lúc 03:25:44 (`launchStallCount=1`); điều ki�
 
 ## Kết luận
 
-Vé `LSU-1` **hoàn tất phần thực thi**: dữ liệu LSU 888 file/1,21 GB ra ổ C có manifest + đối chiếu Drive 7/7; importer log LSU mở rộng đúng chuẩn (code `c0cbd5b`, 11 test, đủ bộ 104/104); **pipeline Bước 0→5 chạy end-to-end trên dữ liệu thật, exit 0**, 23.112 ca, gate F3b FAIL đúng thực tế (cause/fix 0%), 6 cảnh báo, độ chính xác 1,00 trên tập `SIMULATED_*`. Chờ Muse review + verdict.
+Vé `LSU-1` **hoàn tất phần thực thi**: dữ liệu LSU 888 file/1,21 GB ra ổ C có manifest + đối chiếu Drive 7/7; importer log LSU mở rộng đúng chuẩn (code `c0cbd5b` + fix `276d7d7`, 12 test, đủ bộ 105/105); **pipeline Bước 0→5 chạy end-to-end trên dữ liệu thật, exit 0**, 23.112 ca, gate F3b FAIL đúng thực tế (cause/fix 0%), 6 cảnh báo, độ chính xác 1,00 trên tập `SIMULATED_*`. Chờ Muse review + verdict.
