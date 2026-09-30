@@ -1,7 +1,7 @@
 # Vé GPU-262b — Báo cáo tiến độ
 
-- Trạng thái: `dang-lam`; staging GPU-262b đã tạo, schema khớp, chưa nhúng.
-- Mốc cập nhật: 2026-10-01 00:41 +07.
+- Trạng thái: `dang-lam`; đã nhúng GPU 2.883/2.883 mảnh, đang xác minh và chuẩn bị delta.
+- Mốc cập nhật: 2026-10-01 00:53 +07.
 
 ## 1. Dừng lượt GPU-262 cũ
 
@@ -23,7 +23,12 @@
 - Không ghi vào production, staging cũ hoặc ổ D.
 - Bản sao dự phòng trước nhúng: `C:\AIOS_staging_262b\library.sqlite.bak-20261001-gpu262b-preembed`, `integrity_check=ok`, 2.883 mảnh / 19 tài liệu, SHA-256 `e6222918005ea42477f8fa48361e19d98f339b6b32099fe0316143c7aa9996a4`.
 
-## 4. Bước kế
+## 4. Kiểm tra và nhúng GPU
 - Kiểm tra khô lúc 00:41:23 +07: ONNX Runtime và siêu dữ liệu gói đều `1.28.0`; cây mô hình khớp checksum đã ghim `9f81075f…b11093`; revision dùng `5617a9f61b028005a4858fdac845db406aefb181`; fingerprint `016c5255d0cec1fcb75b99f71f3c6a47a6e67b6087c3eb943b039cf8ac6274fb`; `pending=2883`, `retrievable=2883`, `already_onnx=0`. Phiên mở với `CUDAExecutionProvider` đứng đầu, `CPUExecutionProvider` dự phòng; `dry_run=không ghi dữ liệu`.
 - Cache kiểm tra cây mô hình được chuyển sang `C:\tmp\gpu-262b\model-verify-cache-20261001.json` trên C; không ghi ổ D. Chưa nhúng mảnh nào trong lượt chạy khô.
-- Kiểm tra khô đạt; bắt đầu nhúng 2.883 mảnh bằng runner Vé 0.3 sau khi đẩy mốc này.
+- Lần gọi đầu sau lượt khô dừng vì guard cache C đã tồn tại; staging không bị thay đổi. Lượt nhúng kiểm tra lại cache qua `verify_model_tree` trước khi chạy.
+- Lượt nhúng chính: 00:46:33–00:53:36 +07, **2.883/2.883 mảnh**, 422,7 giây, **6,8203 mảnh/giây**, 29 mẻ ghi. `CUDAExecutionProvider` đứng đầu phiên; `CPUExecutionProvider` dự phòng. Backup trước nhúng được tooling chọn, `integrity_check=ok`.
+
+## 5. Xác minh và đóng gói
+
+- Bước kế: kiểm tra chỉ đọc đối chiếu toàn bộ mảnh với tệp lọc, đủ 19 mã tài liệu, `retrievable=1`, dense/sparse đủ fingerprint; cosine GPU/CPU trên 57 mẫu (3 mẫu/tài liệu).
