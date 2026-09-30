@@ -1,8 +1,9 @@
 # Trạng thái mailbox
 
-- Trạng thái: `xong-cho-duyet`
-- Ticket hiện tại: `GPU-DC` — nhúng GPU 344 tài liệu "Điều chỉnh" + đóng gói delta cho PC0575 (vé #1 trong hàng chờ còn lại; chạy SAU don-canary vì cần ổ C trống để bung ZIP 858MB + staging).
-- `commit`: `805392f` (báo cáo + trang-thai `xong-cho-duyet`; trước đó mốc 4 `1b23b6f`)
+- Trạng thái: `moi`
+- Ticket hiện tại: `LSU-1` — chạy pipeline Bước 0–5 trên list LSU thật (log jig, log 6 pcs, tài liệu LSU; vé #1 hàng chờ còn lại, phát hành sau verdict ĐẠT GPU-DC).
+
+- `commit`: `` (chờ OMP nhận vé `LSU-1`; trước đó GPU-DC `805392f` verdict ĐẠT)
 - `ghi_chu_moc0`: 2026-10-01 02:12 +07 — OMP nhận vé GPU-DC (máy nhà h410asrock). **Cổng gate ĐẠT** — không phải dùng nhánh "4 lần watcher": điều kiện mở đã thoả (GPU-262b đã ĐẠT + don-canary xong + ZIP trên ổ D đúng size 858.190.286 B + ổ C trống 13,45 GB).
 - `ghi_chu_moc1`: 2026-10-01 02:28 +07 — **Mốc 1 xong**: (a) SHA-256 ZIP khớp ghim `f18bbae2…18b7`, size 858.190.286 B; (b) lọc + bung đúng **344/344 file, 650.894.980 B** ra `C:\tmp\gpu-dc\extract` (0 lỗi; 231 xlsx, 88 pdf, 8 msg, 6 csv, 5 xls, 3 png, 2 bmp, 1 html); (c) probe pipeline: PDF 158 MB trích được (999 trang, ~1,52 M ký tự), workbook 40 MB vượt guard 10 MB của extractor chat → sẽ nhúng bằng nhánh registry trực tiếp; OCR không có trên máy (5 file ảnh + 2 file khoá `~$` sẽ báo rõ).
 - `ghi_chu`: 2026-10-01 03:22 +07 — **Hoàn tất vé GPU-DC, chờ Muse review.** Báo cáo: `docs/phieu-viec/ket-qua/gpu-dc.md`. Tóm tắt: ZIP nguồn verify khớp ghim; lọc+bung đúng 344 file / 650.894.980 B; export **329 tài liệu / 12.720 chunk** (child 10.077 / parent 2.482 / summary 161; 0 rỗng) SHA `1d300c3a…0526`, đã upload Drive (link trong báo cáo; tải ẩn danh khớp SHA); staging `C:\AIOS_staging_dc` **10.238 retrievable** (parent giữ `retrievable=0` như production), backup pre-embed SHA `1a2a9aac…`; nhúng GPU **10.238/10.238** (8,35 chunk/s, CUDA phiên đầu); verify PASS (12.720 dòng map đủ, dense+sparse đúng fingerprint `016c5255…`, 240 mẫu cosine CPU/GPU min=1.000000); delta `gpu-dc-delta-20261001.zip` 74.065.213 B SHA `31afe1e3…63e3` + manifest **skip_ids=0 → merge 329 ID**. Cổng: compileall/check_docs/CLI audit/import đạt; pytest **3.376 đạt / 3 bỏ qua / 27 thất bại / 14 lỗi** (toàn nhóm lỗi có sẵn: worker BGE subprocess, mạng, thiếu torch/FlagEmbedding, fixture VM, checksum manifest — vé không sửa code). Không đụng production/staging khác/ổ D; không merge `main`.
@@ -34,21 +35,22 @@
 - `verdict_e4`: **ĐẠT** (Muse verify độc lập 2026-09-30 ~02:1x +07, báo cáo `cd1f1c3`, test `9de4cac` + `26a2d2b`): `DEFAULT_BGE_BACKEND = "onnx"` (fp32) đúng nguyên từ FIX3, `BGE_BACKEND` override giữ nguyên (probe: unset/auto→onnx, pytorch/onnx_int8 theo env, bogus→lỗi rõ); fail-closed qua 17 điểm `SemanticBackendUnavailable` (thiếu model/checksum/hỏng load/thiếu onnxruntime); 4 test theo vé: default + override (test cũ), fail-closed + CPU-only (3 test mới, đỏ-trước-xanh-sau 3/3, 20/20); siết 2 test fingerprint-gate cho tất định (18/18); không đổi mã nguồn; không ghi index/D, không merge main, không hardcode GPU.
 - `verdict_e3`: **ĐẠT** (Muse verify độc lập 2026-09-30 ~01:4x +07 trên VM Linux Python 3.12.3, commit `77d4616`): diff `58c4b67` chỉ đổi regex dọn XML (26 thêm/5 bớt ở `src/aios_habit/document_extractors.py`), cơ chế cờ không đổi; commit báo cáo `0ec4c78` chỉ thêm báo cáo + 9 dòng cập nhật `PROJECT_HANDOVER.md`; `tests/test_document_extractors.py` 30/30 pass (gồm 4 test mới); đỏ-trước-xanh-sau: lùi mã nguồn về trước fix → đúng 3 test XML đỏ; hiệu năng 272.000 ký tự/0,027s không cặn; cờ `AIOS_DOCUMENT_EXTRACTOR_XML_CLEANUP` mặc định TẮT; không ghi index/embed, không merge `main`, không đụng ổ D (test không chứa `D:`). Lỗi suite môi trường trên VM (thiếu `local_cases/.../collections.jsonl`) không liên quan fix.
 
+- `verdict_gpu-dc`: **ĐẠT** (Muse verify 2026-10-01 ~03:25 +07 trên báo cáo `gpu-dc.md`, commit `805392f`): ZIP ổ D 858.190.286 B, SHA-256 `f18bbae2…18b7` khớp ghim; lọc+bung đúng **344/344 file / 650.894.980 B** (231 xlsx, 88 pdf, 8 msg, 6 csv, 5 xls, 3 png, 2 bmp, 1 html), `Loi KDTPS.xlsx` loại đúng; pipeline đúng code app → **329 document_id / 12.720 chunk** (10.077 child / 2.482 parent / 161 summary, 0 rỗng), SHA JSONL `1d300c3a…0526` (16.048.605 B) upload Drive + tải ẩn danh khớp SHA; 9 file loại có lý do (5 ảnh + 1 PDF scan thiếu OCR, 2 file khóa `~$`, 1 workbook rỗng) + 6 đường dẫn trùng nội dung → 1 document_id; staging mới `C:\\AIOS_staging_dc` schema khớp production copy `C:\\AIOS_p1_4`, `integrity_check=ok`, backup pre-embed SHA `1a2a9aac…`; nhúng GPU **10.238/10.238** fingerprint `016c5255…` rev `5617a9f` onnxruntime 1.28.0 (CUDA đầu, CPU dự phòng), 8,35 chunk/s; verify: map 12.720/12.720, dense+sparse đủ, 240 mẫu cosine GPU/CPU min=1.000000 ≥ 0,999; delta `gpu-dc-delta-20261001.zip` 74.065.213 B SHA `31afe1e3…63e3` (2 member, CRC đạt), manifest skip_ids=0 → merge toàn bộ 329 ID; cổng code pass (compileall/check_docs/CLI audit/import); pytest 3.376 đạt/27 fail/14 lỗi toàn nhóm có sẵn (vé không sửa code); không đụng production/staging khác/ổ D, không merge `main`.
+
 - `hang-cho` (theo thứ tự — chi tiết `docs/ke-hoach-dich-den.md`):
-  1. `LSU-1` (`prompt-queue-lsu-1.md`) — TIẾP TỤC sau GPU-DC (đang ở bước khảo sát dữ liệu LSU trên ổ C).
-  2. `f3b-backfill` (`prompt-queue-f3b-backfill.md`) — backfill trường `fix`, gate F3b đang mở ở 56,7%.
-  3. `date-map` (`prompt-queue-date-map.md`) — map cột ngày thật X/Y cho xu hướng/tái phát theo ngày phát sinh.
-  4. `B0-FORM` (`prompt-queue-b0-form.md`) — [VM] form nhập liệu chuẩn Bước 0.
-  5. `B0-DICT` (`prompt-queue-b0-dict.md`) — [VM] từ điển thuật ngữ + số hóa bảng mã lỗi.
-  6. `B0-MEASURE` (`prompt-queue-b0-measure.md`) — [NHÀ] đo ≥90% đủ 5 trường bắt buộc.
-  7. `B1-FEAT` (`prompt-queue-b1-feat.md`) — [VM] Bước 1 thành tính năng hoàn chỉnh.
-  8. `B2` (`prompt-queue-b2.md`) — [VM] vòng phản hồi.
-  9. `B3` (`prompt-queue-b3.md`) — [VM] gợi ý hướng điều tra 4M + Why-Why.
-  10. `B4` (`prompt-queue-b4.md`) — [VM] phân tích xu hướng & cảnh báo sớm.
-  11. `B5` (`prompt-queue-b5.md`) — [VM] phân loại tự động + cảnh báo tái phát.
-  12. `J1-CSV` (`prompt-queue-j1-csv.md`) — [VM] JIG: nhập cả file CSV + chọn biểu đồ + tự gửi mail.
-  13. `J1-RT` (`prompt-queue-j1-rt.md`) — [VM+cty] JIG realtime: spec API + prototype + yêu cầu hạ tầng.
-  14. `J2` (`prompt-queue-j2.md`) — [NHÀ+người dùng] JIG: xác nhận chức năng trước khi đưa thử.
-  15. `J3` (`prompt-queue-j3.md`) — [người dùng] JIG: dùng thử, thu thập cải tiến.
-  16. `J4` (`prompt-queue-j4.md`) — [NHÀ+người dùng] JIG: chạy thử nghiệm.
-  17. `J5` (`prompt-queue-j5.md`) — [người dùng] JIG: chạy thật.
+  1. `f3b-backfill` (`prompt-queue-f3b-backfill.md`) — backfill trường `fix`, gate F3b đang mở ở 56,7%.
+  2. `date-map` (`prompt-queue-date-map.md`) — map cột ngày thật X/Y cho xu hướng/tái phát theo ngày phát sinh.
+  3. `B0-FORM` (`prompt-queue-b0-form.md`) — [VM] form nhập liệu chuẩn Bước 0.
+  4. `B0-DICT` (`prompt-queue-b0-dict.md`) — [VM] từ điển thuật ngữ + số hóa bảng mã lỗi.
+  5. `B0-MEASURE` (`prompt-queue-b0-measure.md`) — [NHÀ] đo ≥90% đủ 5 trường bắt buộc.
+  6. `B1-FEAT` (`prompt-queue-b1-feat.md`) — [VM] Bước 1 thành tính năng hoàn chỉnh.
+  7. `B2` (`prompt-queue-b2.md`) — [VM] vòng phản hồi.
+  8. `B3` (`prompt-queue-b3.md`) — [VM] gợi ý hướng điều tra 4M + Why-Why.
+  9. `B4` (`prompt-queue-b4.md`) — [VM] phân tích xu hướng & cảnh báo sớm.
+  10. `B5` (`prompt-queue-b5.md`) — [VM] phân loại tự động + cảnh báo tái phát.
+  11. `J1-CSV` (`prompt-queue-j1-csv.md`) — [VM] JIG: nhập cả file CSV + chọn biểu đồ + tự gửi mail.
+  12. `J1-RT` (`prompt-queue-j1-rt.md`) — [VM+cty] JIG realtime: spec API + prototype + yêu cầu hạ tầng.
+  13. `J2` (`prompt-queue-j2.md`) — [NHÀ+người dùng] JIG: xác nhận chức năng trước khi đưa thử.
+  14. `J3` (`prompt-queue-j3.md`) — [người dùng] JIG: dùng thử, thu thập cải tiến.
+  15. `J4` (`prompt-queue-j4.md`) — [NHÀ+người dùng] JIG: chạy thử nghiệm.
+  16. `J5` (`prompt-queue-j5.md`) — [người dùng] JIG: chạy thật.
