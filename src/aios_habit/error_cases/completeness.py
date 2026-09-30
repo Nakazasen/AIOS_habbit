@@ -13,6 +13,12 @@ F3b gate: when any CORE field is filled in less than F3B_THRESHOLD (90%)
 of its applicable rows, needs_f3b=True — open ticket F3b (backfill
 campaign) instead of silently shipping thin data.
 
+A blank raw value of a BACKFILL_FIELDS entry counts as filled when the
+row carries ``raw_json["_backfill"][field]`` recorded by
+``backfill_fix`` (per-value provenance: source column, matched marker,
+rule). ``backfilled`` in the result reports how many of the filled
+values came from that recorded backfill.
+
 This module never touches the RAG index.
 """
 
@@ -34,6 +40,13 @@ CORE_FIELDS: Tuple[str, ...] = (
     "cause",
     "fix",
 )
+
+#: Fields whose blank raw value may be filled by a provenance-tracked
+#: backfill recorded in raw_json[BACKFILL_KEY][field] (see backfill_fix).
+BACKFILL_FIELDS: Tuple[str, ...] = ("fix",)
+
+#: raw_json key holding per-value backfill records written by backfill_fix.
+BACKFILL_KEY: str = "_backfill"
 
 #: Fields measured, in report order.
 MEASURED_FIELDS: Tuple[str, ...] = (
@@ -76,7 +89,7 @@ _HISTORY_LETTERS = frozenset({"Z", "AA", "AB", "AC"})
 FORMATS = ("legacy", "history_29", "lsu_log")
 
 
-def _filled(value: Any) -> bool:
+def is_filled(value: Any) -> bool:
     """A field counts as filled when non-null and non-blank."""
     if value is None:
         return False
@@ -85,7 +98,18 @@ def _filled(value: Any) -> bool:
     return True
 
 
-def _detect_format(raw: Dict[str, Any]) -> str:
+def backfill_value(raw: Dict[str, Any], field: str) -> Any:
+    """Recorded backfill value for one field, or None (see backfill_fix)."""
+    entry = raw.get(BACKFILL_KEY)
+    if not isinstance(entry, dict):
+        return None
+    record = entry.get(field)
+    if not isinstance(record, dict):
+        return None
+    return record.get("value")
+
+
+def detect_format(raw: Dict[str, Any]) -> str:
     """history_29 when raw_json carries letters Z..AC; lsu_log when marked
     by the LSU log importer; else legacy."""
     if not isinstance(raw, dict):
@@ -97,19 +121,26 @@ def _detect_format(raw: Dict[str, Any]) -> str:
 
 def _field_value(
     row: sqlite3.Row, raw: Dict[str, Any], row_format: str, field: str
-) -> Tuple[bool, Any]:
-    """(applicable, value) for one field on one row.
+) -> Tuple[bool, Any, bool]:
+    """(applicable, value, from_backfill) for one field on one row.
 
     applicable=False when the field has no mapping for the row's format
-    (reported as n/a, excluded from the F3b gate).
+    (reported as n/a, excluded from the F3b gate). from_backfill=True
+    when the raw slot is blank and the value came from a recorded
+    backfill entry instead.
     """
     spec = _FIELD_SPECS[field]
     if "column" in spec:
-        return True, row[spec["column"]]
+        return True, row[spec["column"]], False
     letter = spec["raw"].get(row_format)
     if letter is None:
-        return False, None
-    return True, raw.get(letter)
+        return False, None, False
+    value = raw.get(letter)
+    if field in BACKFILL_FIELDS and not is_filled(value):
+        backfilled = backfill_value(raw, field)
+        if is_filled(backfilled):
+            return True, backfilled, True
+    return True, value, False
 
 
 def measure(
@@ -138,29 +169,37 @@ def measure(
 
     filled = {f: 0 for f in MEASURED_FIELDS}
     applicable = {f: 0 for f in MEASURED_FIELDS}
+    backfilled = {f: 0 for f in MEASURED_FIELDS}
     total = 0
     for row in conn.execute(sql, params):
         try:
             raw = json.loads(row["raw_json"] or "{}")
         except (ValueError, TypeError):
             raw = {}
-        row_format = _detect_format(raw)
+        row_format = detect_format(raw)
         if format is not None and row_format != format:
             continue
         total += 1
         for field in MEASURED_FIELDS:
-            ok, value = _field_value(row, raw, row_format, field)
+            ok, value, from_backfill = _field_value(row, raw, row_format, field)
             if not ok:
                 continue
             applicable[field] += 1
-            if _filled(value):
+            if is_filled(value):
                 filled[field] += 1
+                if from_backfill:
+                    backfilled[field] += 1
 
     fields: Dict[str, Dict[str, Any]] = {}
     for field in MEASURED_FIELDS:
         n_app = applicable[field]
         rate = (filled[field] / n_app * 100.0) if n_app else None
-        fields[field] = {"filled": filled[field], "applicable": n_app, "rate": rate}
+        fields[field] = {
+            "filled": filled[field],
+            "applicable": n_app,
+            "rate": rate,
+            "backfilled": backfilled[field],
+        }
 
     f3b_fields = [
         f

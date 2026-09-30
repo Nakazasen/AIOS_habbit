@@ -1,4 +1,12 @@
 """F1: error_cases public API."""
+from .backfill_fix import (
+    FIX_BACKFILL_RULE,
+    FIX_MARKERS_JP,
+    FIX_MARKERS_VN,
+    apply_backfill as apply_fix_backfill,
+    extract_fix_segment,
+    plan_backfill as plan_fix_backfill,
+)
 from .column_map import (
     COLUMN_MAP,
     GREEN_SKIP_RGB,
@@ -107,6 +115,12 @@ __all__ = [
     "F3B_THRESHOLD",
     "measure_completeness",
     "completeness_report",
+    "FIX_BACKFILL_RULE",
+    "FIX_MARKERS_VN",
+    "FIX_MARKERS_JP",
+    "extract_fix_segment",
+    "plan_fix_backfill",
+    "apply_fix_backfill",
     "PARSERS",
     "import_glossary",
     "init_glossary",
