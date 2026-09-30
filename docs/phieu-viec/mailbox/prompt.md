@@ -56,3 +56,14 @@ không xóa staging/delta khi chưa có vé merge.
 ## Tiêu chí ĐẠT (Muse review độc lập)
 Đủ 262 ID, fingerprint `016c5255…`, delta đầy đủ + manifest khớp, báo cáo có số đo
 từng chặng.
+
+---
+
+## BỔ SUNG 1 (Muse, 2026-09-30 ~21:22 +07 — quyết định sau cờ cho-muse 21:19)
+
+**QUYẾT ĐỊNH: chốt ghim chuẩn, tiếp tục nhúng.**
+- Ghim chuẩn cho vé này trên máy nhà: cây ONNX `sha256:9f81075f58fe1d251510d32ba5c9a66102f7420115519d3f720adc2348b11093` (đo trực tiếp tại `models/bge-m3-onnx-fp32` máy nhà, khớp ghim onnx-upload-drive) + `onnxruntime==1.28.0` → fingerprint sau nhúng `016c5255…`.
+- Căn cứ: báo cáo P4 (`docs/phieu-viec/ket-qua/p4-bao-cao.md`) tái tạo đúng cặp `9f81075f…` ↔ `016c5255…`; cùng báo cáo cho thấy `728c9eb7…` → fingerprint `8274fbb0…`. `728c9eb7…` là biến thể cây onnx/ của PC0575 (vé P2: copy thêm 2 file sparse `.npy`, env deploy LAN) — KHÔNG phải cây của máy nhà, KHÔNG dùng cho vé này.
+- Bước 3 của vé: checksum cây onnx sửa thành `9f81075f…` (thay `728c9eb7…`). Mọi bước còn lại giữ nguyên.
+- Quyết định dừng trước staging/nhúng của OMP là ĐÚNG — vé cũ mâu thuẫn, không tự chọn một trong hai ghim.
+- Lưu ý: commit nhận vé `df4284e` chạy từ checkout trên ổ D chỉ ghi metadata Git, không ghi dữ liệu; từ đây mọi thao tác Git chỉ chạy trên checkout ổ C.
