@@ -1,10 +1,10 @@
 # Trạng thái mailbox
 
-- Trạng thái: `moi`
+- Trạng thái: `dang-lam`
 - Ticket hiện tại: `LSU-1` — chạy pipeline Bước 0–5 trên list LSU thật (dữ liệu thật).
-- `commit`: (chờ OMP)
+- `commit`: (đang làm — cập nhật theo mốc)
 - `bao_cao`: (chờ OMP — dự kiến `docs/phieu-viec/ket-qua/lsu1-deploy.md`)
-- `ghi_chu`: 2026-09-30 ~07:15 +07 — phát hành vé `LSU-1` (pipeline Bước 0–5 trên list LSU thật). List điều tra lỗi đã xong ở buoc0-deploy (15.707 ca thật, ĐẠT); list LSU chưa chạy qua pipeline lần nào.
+- `ghi_chu`: 2026-09-30 07:02 +07 — OMP đã nhận vé `LSU-1`, bắt đầu khảo sát dữ liệu LSU trên ổ C và đường chạy pipeline Bước 0–5.
 - `prompt`: `docs/phieu-viec/mailbox/prompt.md`
 - `verdict_tool5`: **ĐẠT** (Muse verify độc lập 2026-09-30 ~06:55 +07 trên VM Linux Python 3.12.3, HEAD `6042e3a`): chuỗi commit đúng như báo cáo (`1be7002` → `7483c5a` → `a6ab4a4` → `f69d5c9` → `f08521e` → `ca73a7d` → `3cdb4d2` báo cáo chỉ thêm docs → `6042e3a`); diff code chỉ 2 module mới (`chat_action_visual_maps.py` +832, `visual_map_image.py` +311) + test mới 501 dòng + đúng 1 dòng đăng ký `BUILTIN_ACTION_MODULES` (đường cờ fail-closed sẵn có từ TOOL-2); grep 0 hit `D:` và 0 thao tác ghi/embed/sqlite trong code mới (chỉ đọc JSONL cục bộ + trace); không merge `main` (main không phải ancestor); test vé 29/29 pass độc lập + hồi quy liên quan 157 bài pass (action 64 + visual/knowledge 85 + omnibar 8); compileall sạch; full suite OMP báo 3.363/2/35/0 = +29 đúng số test vé mới, 35 lỗi giữ nguyên bộ có sẵn (tin theo log OMP như các vé trước, VM không chạy full suite). Hạn chế đã ghi trong báo cáo (ảnh tối đa 4 cột/24 nút, quan hệ hồ sơ ánh xạ cục bộ 4 mục, worklens chưa gồm bridge import, lỗi Mermaid là hạn chế upstream Streamlit) — không chặn.
 - `merge_main_done`: 2026-09-30 ~07:05 +07 — đã fast-forward `phieu-viec/rag-fix1` → `main` (`9a9a0a3` → `2870b09e`) qua Git Data API (`force:false`), không force-push (user duyệt từ 2026-09-29). Đính chính ghi chú `merge_main_blocked` trước đó: kết luận "không fast-forward được" là SAI do phân tích trên clone shallow; GitHub compare API xác nhận branch ahead 636 / behind 0, merge_base = tip của main.
