@@ -208,3 +208,43 @@
   trích xuất khớp PC0575 TRƯỚC khi tốn công nhúng; rồi copy index sang PC0575
   và chạy verify hỏi đáp full scope.
 - Muse sẽ phát hành vé này khi máy nhà xong LSU-1 (poll tự ghi vào hàng chờ).
+
+## BỔ SUNG 4 — 2026-09-30 ~17:46 +07 (xuất text 262 nguồn sổ LSU cho vé GPU máy nhà)
+
+Mục đích: chuẩn bị đầu vào cho vé GPU — xuất (document_id, chunk_text) đúng
+262 `document_id` của sổ "Điều tra lỗi LSU" (`NB-E35A7BEE`). Máy nhà sẽ nhúng
+ĐÚNG text này (cùng text → cùng document_id), không trích xuất lại, không đánh
+cược khớp ID. User không biết file nguồn ở đâu — OMP tự tra từ registry/notebook
+của app, không hỏi user.
+
+### Thứ tự mới: Bước 6 → Bước 8 → Bước 9 → Bước 7 (đóng vé)
+- Bước 6 giữ nguyên (verify 6 câu hỏi + chẩn đoán worker timeout ở Mốc 2).
+- Bước 8 và 9 dưới đây làm SAU Bước 6, TRƯỚC Bước 7.
+- Bước 7 (báo cáo + `xong-cho-duyet`) chỉ làm sau khi Bước 9 xong.
+
+### Bước 8 — Tra cứu nguồn và đối chiếu (chỉ đọc, không ghi)
+1. Từ registry/notebook của app, lấy danh sách 262 `document_id` + tên nguồn +
+   đường dẫn file gốc của sổ.
+2. Đối chiếu với production `library.sqlite` (chỉ đọc), chia 3 nhóm:
+   - Nhóm A (đã có vector trong index): xuất thẳng chunk text từ index.
+   - Nhóm B (chưa có vector, còn file gốc): trích xuất text bằng đúng
+     extractor/chunker của app (code hiện tại trên máy này).
+   - Nhóm C (không tra được text / mất file gốc): liệt kê, KHÔNG bịa.
+3. Báo cáo 3 nhóm (số lượng + danh sách nhóm C nếu có). Nhóm C > 0 → dừng,
+   đặt `cho-muse` kèm danh sách thiếu.
+
+### Bước 9 — Trích xuất và đóng gói (chỉ khi nhóm C = 0)
+1. Nhóm A: đọc (`document_id`, `source_name`, `chunk_index`, `chunk_text`) từ production.
+2. Nhóm B: chạy extractor/chunker → chunk text; kiểm tra `sha256(text)[:24]`
+   khớp `document_id` của sổ — lệch thì chuyển sang nhóm C, không xuất bừa.
+3. Đóng gói 1 file JSONL, mỗi dòng 1 chunk:
+   `{"document_id": "...", "source_name": "...", "chunk_index": n, "text": "..."}`
+   Đặt tại `D:\Sandbox\AIOS_habbit\scratch\export_262\text_export.jsonl`
+4. Báo cáo: số `document_id` xuất được / 262, tổng số chunk, dung lượng file,
+   SHA-256 của file. Thử upload lên Drive AIOS_Data; không được thì để nguyên
+   tại `scratch` và báo đường dẫn (user sẽ copy về máy nhà bằng USB).
+
+### Ràng buộc
+- Chỉ đọc production và file nguồn; không ghi index, không nhúng vector
+  (export không đụng tới BGE worker), không bấm "Thử chuẩn bị lại".
+- Không bịa text, không đoán `document_id`.
