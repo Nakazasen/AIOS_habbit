@@ -1,10 +1,11 @@
 # Trạng thái mailbox
 
-- Trạng thái: `moi`
+- Trạng thái: `dang-lam`
 - Ticket hiện tại: `don-canary` — dọn kho canary 2,4GB + rác tmp trên ổ C (vé #1 trong hàng chờ; user yêu cầu dọn 01/10 vì ổ C chỉ còn ~2,4GB — CHẠY TRƯỚC GPU-DC để có chỗ bung ZIP 858MB + staging).
-- `commit`: `0949000`
+- `commit`: (đang làm — cập nhật theo mốc)
 - `bao_cao`: `docs/phieu-viec/ket-qua/don-canary.md`
-- `ghi_chu`: 2026-10-01 ~00:15 +07 — User chốt cách 2 sau audit của Muse: 50.096/52.979 chunk (94,6%) của export là 87 file CSV số đo thô, giá trị hỏi-đáp ≈ 0. LỆNH DỪNG KHẨN: OMP dừng ngay worker GPU-262 ở `C:\AIOS_staging_262` (ghi lại dừng ở chunk thứ mấy, KHÔNG xóa staging cũ), rồi làm vé GPU-262b: lọc export giữ 19 document_id phi-CSV (2.883 chunk, bảng trong prompt) → staging mới `C:\AIOS_staging_262b` → verify 19/19 ID + fingerprint `016c5255…` + cosine GPU/CPU ≥0,999 → đóng gói delta (merge SKIP 5 ID đã có trong production PC0575).
+- `ghi_chu`: 2026-10-01 01:45 +07 — OMP nhận vé don-canary (máy nhà h410asrock, ổ C còn ~406 MiB). Bắt đầu bước 0: liệt kê nội dung `C:\tmp`, `C:\temp`, `C:\c`, `C:\nonexistent`, chỉ xóa mục KHÔNG chứa index/library.sqlite/production/backup (không chắc → bỏ qua + ghi báo cáo). Sau đó bước 1: băm SHA + integrity_check production trước khi đụng canary.
+- `ghi_chu_cu_00:15`: 2026-10-01 ~00:15 +07 — User chốt cách 2 sau audit của Muse: 50.096/52.979 chunk (94,6%) của export là 87 file CSV số đo thô, giá trị hỏi-đáp ≈ 0. LỆNH DỪNG KHẨN: OMP dừng ngay worker GPU-262 ở `C:\AIOS_staging_262` (ghi lại dừng ở chunk thứ mấy, KHÔNG xóa staging cũ), rồi làm vé GPU-262b: lọc export giữ 19 document_id phi-CSV (2.883 chunk, bảng trong prompt) → staging mới `C:\AIOS_staging_262b` → verify 19/19 ID + fingerprint `016c5255…` + cosine GPU/CPU ≥0,999 → đóng gói delta (merge SKIP 5 ID đã có trong production PC0575).
 - `ghi_chu_gpu262_cu`: 2026-10-01 ~00:06 +07 — Lượt cuối dừng do hết giới hạn 900 giây; truy vấn chỉ đọc lúc 00:06:47 xác nhận 20.300/52.979 mảnh có đủ vector đặc và vector thưa. Lượt này chậm hơn trước (144,3–181,8 giây/100 mảnh), nguyên nhân chưa xác định; giữ nguyên `C:\AIOS_staging_262`, không khởi chạy lại.
 - `ghi_chu_gpu262b`: 2026-10-01 01:34 +07 — Hoàn tất lọc, staging mới, nhúng 2.883/2.883 mảnh, xác minh 19/19 tài liệu, đóng gói delta; chưa nhập production. Cổng kho mã: compileall, check_docs, CLI audit và import đạt; full pytest 3.377 đạt, 4 bỏ qua, 25 thất bại, 14 lỗi (14 lỗi do 2 tệp Excel cục bộ thiếu); toàn bộ suite chưa đạt. Bàn giao chờ duyệt.
 - `prompt`: `docs/phieu-viec/mailbox/prompt.md`
