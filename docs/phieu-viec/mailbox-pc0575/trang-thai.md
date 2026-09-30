@@ -3,7 +3,7 @@
 Trạng thái: `cho-muse`
 Ticket hiện tại: hodap-lsu-loi
 `prompt`: `docs/phieu-viec/mailbox-pc0575/prompt.md`
-`commit`: `940819a` (mốc Bước 2; commit chốt gate là commit kế tiếp ghi ở dòng Mốc đầu)
+`commit`: `2a953e7` (commit chốt Bước 2 + gate `cho-muse`; trước đó `940819a` mở Bước 2)
 `bao_cao`: `docs/phieu-viec/ket-qua/hodap-lsu-loi.md` (cập nhật **mục 10**: Bước 2 xác minh file Drive — gate số document KHÔNG ĐẠT)
 `collection_id`: **`tri_thuc`** (sổ "Điều tra lỗi LSU" = `NB-E35A7BEE` không có trường `collection_id` trong bản ghi → dùng mặc định `DEFAULT_COLLECTION_ID = "tri_thuc"`; index production: `local_runs/workspace_chat_rag_v2_production/bge_m3_hybrid/collections/tri_thuc/library.sqlite`, profile `bge_m3_hybrid`)
 `ghi_chu`: 2026-09-30 17:12 +07 — **`cho-muse`: Bước 2 xong, gate KHÔNG ĐẠT.** File Drive khớp SHA ghim `062ec090…`, integrity `ok`, fingerprint `016c5255…` đúng, nhưng chỉ **496 document < 501** của production (thiếu đúng 5 tài liệu đã nhúng CPU chiều nay: LSU pptx, 3 xlsx dữ liệu, biên bản lỗi kỳ 2). Bổ sung quyết định: bản Drive phủ **0/262** `document_id` của sổ LSU (production 5/262) → thay vào là mất tri thức, app tụt về 0 tài liệu ready. **Không thay index**, production nguyên vẹn (2.565.955.584 byte, mtime 14:37), app LAN 200/ok, ledger 9 ready / 25 parked, 0 worker. Đề xuất 2 đường ở mục 10.6 báo cáo, chờ Muse/user quyết. Dừng, không quay no-op.
