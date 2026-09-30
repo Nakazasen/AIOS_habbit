@@ -248,3 +248,44 @@ của app, không hỏi user.
 - Chỉ đọc production và file nguồn; không ghi index, không nhúng vector
   (export không đụng tới BGE worker), không bấm "Thử chuẩn bị lại".
 - Không bịa text, không đoán `document_id`.
+
+## BỔ SUNG 5 — 2026-09-30 ~18:20 +07 (LỆNH DỪNG thí nghiệm 600s + vé fix BGE worker)
+
+### 1. DỪNG NGAY
+- Kill/dừng tiến trình đang đo worker với timeout 600s. Không chờ hết 10 phút,
+  không chạy thêm câu hỏi nào.
+- Lý do: chẩn đoán "chậm hay hỏng" làm nhanh bằng đọc log (vài phút), không cần
+  chờ 10 phút/câu.
+
+### 2. Chẩn đoán nhanh (chỉ đọc log, không chờ)
+- Đọc log của `bge_subprocess_worker` ở lần crash gần nhất (lúc query câu L1):
+  worker có khởi động được không, chết ở bước nào?
+- Ghi lại NGUYÊN VĂN dòng lỗi vào báo cáo.
+
+### 3. Fix theo đúng bệnh (OMP tự quyết nhánh theo bằng chứng, không hỏi user)
+- **Nhánh A — worker HỎNG** (log báo lỗi khởi động: thiếu env, sai đường dẫn model,
+  checksum lệch...): sửa đúng nguyên nhân đó → verify worker sống ổn định
+  (restart app nếu cần, kiểm tra `/_stcore/health`) → chạy lại 6 câu L1–L3/E1–E3.
+- **Nhánh B — worker SỐNG nhưng chậm** (embed được nhưng quá 30s trên CPU):
+  đo thời gian query thật 1–2 câu → đặt timeout = số đo thực + margin an toàn
+  (OMP tự chọn theo số đo; CẤM để 600s thành mặc định).
+  - Nếu timeout chỉnh được bằng env/config → OMP tự chỉnh, restart app, verify.
+  - Nếu timeout nằm trong code (`_QUERY_TIMEOUT_SECONDS`) → DỪNG, đặt `cho-muse`,
+    báo đúng file/dòng cần sửa. **Không tự sửa code** (luật user chốt từ P2) —
+    Muse gửi bản sửa qua commit, OMP `git pull` rồi restart app.
+  - Sau đó chạy lại 6 câu L1–L3/E1–E3 trên UI LAN, hội thoại `CONV-9C730D76`.
+
+### 4. Báo cáo + cảnh báo mục tiêu
+- Ghi: kết luận chậm/hỏng + nguyên văn lỗi (nếu có) + thời gian thực tế từng câu
+  trong 6 câu + timeout cuối cùng đã đặt.
+- Nếu thời gian trung bình > 60s/câu → ghi rõ trong báo cáo: mục tiêu
+  "tra cứu dưới 1 phút" (Bước 1 lộ trình, `docs/dich-den-du-an.md`) bị đe dọa
+  trên máy CPU-only → Muse ra vé tối ưu tiếp.
+
+### 5. Sau fix → tiếp tục đúng thứ tự BỔ SUNG 4
+Bước 6 (xong) → Bước 8 → Bước 9 (export 262) → Bước 7 (báo cáo + `xong-cho-duyet`).
+
+### Cấm (nhắc lại)
+- Không nhúng CPU, không ghi index, không bấm "Thử chuẩn bị lại".
+- Không tự sửa code — cần sửa code thì `cho-muse`.
+- Không merge `main`. Không force-push.
