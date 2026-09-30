@@ -89,6 +89,10 @@
 6. Kiểm tra nội dung có LSU + điều tra lỗi (đếm document/chunk theo tên nguồn
    đã biết: `Tài_liệu_đào_tạo_LSU`, biên bản lỗi các kỳ, bảng mã lỗi...).
    Không đọc sâu nội dung tài liệu vào báo cáo.
+7. So số document với production hiện tại (496 document — OMP đo lại con số
+   thực tế trên máy rồi so): file Drive phải có số document **≥** production.
+   Nếu ít hơn → **DỪNG**, đặt `cho-muse` (nguy cơ thay nhầm bản thiếu dữ liệu,
+   làm mất tri thức khác của collection `tri_thuc`).
 
 ### Bước 3 — Backup production hiện tại
 - Copy production sang
