@@ -12,8 +12,8 @@
    đang bật** (15 lựa chọn cũ trỏ nguồn tạm đã xóa) và 494 tài liệu của sổ **chưa có vector** trong
    index production đang chạy → app chặn ở cổng tìm kiếm: "⚠️ Tìm kiếm tài liệu chưa sẵn sàng."
 2. Đã bật 35/494 nguồn (nhóm không-CSV: 24 xlsx + 8 pptx + 3 msg) và chạy chuẩn bị nền đúng thiết kế
-   của app; **9 nguồn (5 tài liệu duy nhất) đã `ready`**, gồm `Tài_liệu_đào_tạo_LSU_2019.01.18_K.pptx`
-   và biên bản họp lỗi `Beam径NG多発` kỳ 2.
+   của app; **9 dòng `ready` trong ledger** (banner UI ghi "10/35 nguồn ready" vì có 3 nguồn trùng chung
+   1 tài liệu), gồm `Tài_liệu_đào_tạo_LSU_2019.01.18_K.pptx` và biên bản họp lỗi `Beam径NG多発` kỳ 2.
 3. Máy CPU-only nhúng thật chỉ **0,31–0,35 chunk/s** → 494 nguồn ≈ 68 giờ (bất khả thi) và 19 tài liệu
    đã bật ≈ 2 giờ. Theo bổ sung khẩn: **đã dừng hẳn worker nhúng CPU**, 25 nguồn còn lại được park ở
    trạng thái không tự chạy lại.
@@ -94,19 +94,26 @@ Nguồn đang bật: 35
    không khởi động lại drain).
 3. **Kiểm chứng không tự chạy lại**: F5 app (rerun đầy đủ) rồi đo 40 giây → ledger đứng yên
    (`9 ready / 25 parked`, 0 `processing`), không sinh worker mới.
-4. Trạng thái cuối: app vẫn phục vụ LAN — `localhost:8501` → **HTTP 200**, `/_stcore/health` → `ok`.
-   Lưu ý vận hành: **không bấm "🔄 Thử chuẩn bị lại"** cho tới khi index dùng chung được copy sang,
-   vì bấm sẽ nhúng lại bằng CPU.
+4. Trạng thái cuối: app vẫn phục vụ LAN — `10.170.157.79:8501` → **HTTP 200**, `localhost:8501` → **HTTP 200**,
+   `/_stcore/health` → `ok`; tiến trình `0.0.0.0:8501` LISTENING (PID 21016). Lưu ý vận hành:
+   **không bấm "🔄 Thử chuẩn bị lại"** cho tới khi index dùng chung được copy sang, vì bấm sẽ nhúng lại
+   bằng CPU. Trong phiên này có 1 dòng `processing` bị ngắt bởi lệnh dừng nên mang lý do crash
+   (`…_bge_worker_prepare_stdout_eof`); đã chuẩn hoá lại thành `paused_shared_index_from_home_machine`
+   cho đồng nhất (lý do này không nằm trong `_RETRYABLE_PREPARATION_ERRORS` nên reconcile bỏ qua).
+   Trạng thái cuối cùng: **25 dòng `failed` (parked, lý do `paused_shared_index_from_home_machine`) /
+   9 dòng `ready` / 0 `processing`**.
 
-## 4. App đã trả lời được chưa (chưa kiểm chứng bằng câu hỏi thật)
+## 4. Kiểm chứng hỏi đáp: CHƯA chạy (đúng lệnh hoãn)
 
-Theo mã nguồn `_semantic_readiness`: chỉ cần **≥1 nguồn `ready`** là cổng tìm kiếm mở (không còn chặn
-"Tìm kiếm tài liệu chưa sẵn sàng"). Hiện đã có 9 nguồn `ready` (5 tài liệu) nên cổng mở trong phạm vi
-5 tài liệu đó — gồm tài liệu đào tạo LSU và biên bản họp lỗi kỳ 2.
+- `[INFERENCE]` Theo mã nguồn `_semantic_readiness`: chỉ cần **≥1 nguồn `ready`** là cổng tìm kiếm mở
+  (không còn chặn "Tìm kiếm tài liệu chưa sẵn sàng"). Hiện có 9 dòng `ready` (5 tài liệu) nên cổng đã mở
+  trong phạm vi 5 tài liệu đó. **Chưa xác nhận bằng câu hỏi thật trong phiên này** — bước verify 6 câu hỏi
+  được hoãn theo bổ sung khẩn cho tới khi index dùng chung từ máy nhà được copy sang (để kết quả phản ánh
+  đủ 494 tài liệu, không phải 5 tài liệu tạm).
+- Thử nghiệm sớm bằng trình duyệt tự động trong phiên này **không gửi được câu hỏi** (ô soạn câu hỏi nằm
+  trong rail bị thu gọn, sau khi mở rail thì thao tác điền/gửi tự động không đăng ký được với Streamlit).
+  Không dùng kết quả này làm bằng chứng ĐẠT hay KHÔNG ĐẠT; bước verify sẽ do người/phiên sau thực hiện trên UI.
 
-`[INFERENCE]` Chưa chạy câu hỏi thật để xác nhận chất lượng trả lời trong phiên này: đúng lệnh của
-bổ sung khẩn, bước verify hỏi đáp (6 câu hỏi) được hoãn lại cho tới khi index dùng chung từ máy nhà
-được copy sang, để kết quả phản ánh đủ toàn bộ 494 tài liệu chứ không phải 5 tài liệu tạm.
 
 ## 5. Thông tin cho vé index máy nhà
 
@@ -120,6 +127,23 @@ bổ sung khẩn, bước verify hỏi đáp (6 câu hỏi) được hoãn lại
 | `model_id` / `model_revision` | `BAAI/bge-m3` / `5617a9f61b028005a4858fdac845db406aefb181` |
 | `model_fingerprint` đang được E-chain chấp nhận | `016c5255d0cec1fcb75b99f71f3c6a47a6e67b6087c3eb943b039cf8ac6274fb` (runtime `onnxruntime-int8`, `float32-le`, dim 1024) |
 | Bản PyTorch cũ còn trong index | fingerprint `ce7fb53f797f0973e2cbf51d6a6ffef4de9a32b659b979f45663c6c360c8e43c` (340 dòng, dead weight vô hại — xem vé `stale-check`) |
+
+### 5.1 Điều kiện để index copy sang được chấp nhận (cổng fail-closed)
+
+Đọc từ mã (`_document_id`, `_durable_semantic_coverage_ready`, `_expected_backend_fingerprint`) — **quan trọng
+cho vé máy nhà**, vì nếu lệch thì máy công ty sẽ coi là "chưa chuẩn bị" và **nhúng lại bằng CPU**:
+
+| Điều kiện | Giá trị máy công ty đang chấp nhận |
+| --- | --- |
+| `document_id` mỗi nguồn | `wsc-<sha256(content_text đã strip)[:24]>` — **theo nội dung văn bản**, không theo tên file/đường dẫn (text rỗng mới rơi về `scope:source_id`) |
+| `model_id` / `model_revision` của vector | `BAAI/bge-m3` / `5617a9f61b028005a4858fdac845db406aefb181` |
+| `model_fingerprint` của vector | `016c5255d0cec1fcb75b99f71f3c6a47a6e67b6087c3eb943b039cf8ac6274fb` (backend ONNX fp32 — nhãn runtime `onnxruntime-int8` theo tên lớp di sản) |
+| Yêu cầu khác | mỗi `document_id` phải có ≥1 chunk `retrievable=1`, đủ cả dense **và** sparse embedding mang đúng fingerprint trên; thiếu là fail-closed |
+| Hệ quả | Nếu máy nhà nhúng bằng backend khác (PyTorch/GPU, int8 khác cấu hình) thì fingerprint khác → index copy **không** được nhận, app sẽ xếp hàng nhúng lại (CPU) |
+
+Sau khi copy: mở lại app (hoặc để app tự rerun) → `reconcile_and_enqueue_workspace_chat_sources` gọi
+`_durable_semantic_coverage_ready` cho từng nguồn đang bật, thấy vector đúng fingerprint thì **tự tạo dòng
+`ready`** (đè lên dòng đang park) — **không nhúng lại**. Đây là đường phục hồi dự kiến của vé.
 
 ## 6. Việc còn lại (sau khi index dùng chung được copy sang)
 
