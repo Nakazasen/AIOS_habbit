@@ -1,18 +1,16 @@
-# Ticket P5b — Kiểm tra lại truy cập app trên mạng mới
+# Ticket chuan-bi-tai-lieu-lsu — Chuẩn bị tài liệu cho sổ "Điều tra lỗi LSU" (171 nguồn)
 
 ## Bối cảnh
-- Vé P5 đã ĐẠT trên mạng công ty cũ (app mở ở `192.168.1.41:8501`, máy khác truy cập được).
-- Máy đã chuyển sang mạng ngoài → IP đổi, Windows Firewall có thể áp luật khác → cần kiểm tra lại truy cập từ máy khác.
+- App trên PC0575 báo "Đã chuẩn bị xong 0/171 tài liệu (0%)" trong sổ "Điều tra lỗi LSU": 171 nguồn đang bật chưa có vector nên tìm kiếm đầy đủ chưa sẵn sàng. Đây là việc tồn (b) từ vé P5.
+- P5/P5b đã ĐẠT và đóng; vé này xử lý nốt phần tài liệu.
 
 ## Việc cần làm
-1. Ghi lại mạng hiện tại: tên WiFi/mạng + địa chỉ IP hiện tại của máy (chạy `ipconfig`, lấy dòng IPv4).
-2. Kiểm tra app còn chạy không: mở trình duyệt ngay trên máy, vào `http://127.0.0.1:8501`.
-   - Vào được → ghi nhận. Không vào được → khởi động lại app theo runbook cũ rồi làm tiếp.
-3. Từ một máy khác (điện thoại hoặc máy tính khác, **cùng mạng mới**): mở `http://<IP-của-máy>:8501`.
-   - Vào được → chụp màn hình. Không vào được → ghi rõ thông báo lỗi hiện ra.
-4. Nếu máy khác không vào được: kiểm tra Windows Firewall đã có rule mở port 8501 chưa. Không tự tắt firewall diện rộng.
-5. Báo cáo: `docs/phieu-viec/ket-qua/p5b-mang-moi.md` — IP mới, link truy cập, kết quả từ máy khác, ảnh chụp màn hình.
+1. Mở app `http://127.0.0.1:8501`, vào sổ "Điều tra lỗi LSU".
+2. Bấm nút "Thử chuẩn bị lại". Để app chạy — không tắt app, không tắt máy. Máy này chỉ có CPU nên bước này có thể mất hàng chục phút, cứ để nó chạy hết.
+3. Theo dõi tiến độ "Đã chuẩn bị xong x/171" cho đến khi đạt 171/171 và thông báo "chưa sẵn sàng" biến mất.
+4. Chụp màn hình kết quả cuối. Báo cáo: `docs/phieu-viec/ket-qua/chuan-bi-tai-lieu-lsu.md` — số tài liệu hoàn tất, thời gian chạy, ảnh chụp màn hình.
 
 ## Cấm
-- Không tải lại model, không embed lại, không ghi/sửa index production.
-- Không merge `main`. Không đụng ổ D máy nhà. Không tắt hẳn firewall.
+- Chỉ làm với 171 nguồn đang bật của sổ này; không bật thêm nguồn mới (đặc biệt chưa mở sổ "MOM / Opcenter" khi chưa được duyệt).
+- Không embed lại / không ghi đè index production (`C:\AIOS_p1_4\tri_thuc\library.sqlite`).
+- Không merge `main`. Không đụng ổ D máy nhà.
