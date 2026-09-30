@@ -6,19 +6,20 @@
 - `phat_hanh`: 2026-10-01 ~05:55 +07 — Muse verdict `date-map` **ĐẠT** → phát hành vé xếp hàng tiếp theo `B0-FORM` (LANE [VM]: Muse code+test trên VM; OMP KHÔNG làm vé này, chỉ verify trên máy nhà khi Muse báo code xong + commit rõ ràng).
 - `verdict_date-map`: **ĐẠT** (Muse verify độc lập 2026-10-01 ~05:55 +07, HEAD `e95a106`): chuỗi commit trên branch `phieu-viec/rag-fix1` đúng như báo cáo — `fa58d26` code occurred_at+test (+occurred_at, migration idempotent, parse_date_cell, fill_occurred_at dry-run/apply), `b86dab0` fix hiệu năng N+1 (452s → ~5s), `4a283bf` báo cáo + handover, `e95a106` trạng thái; tuyến tính, không merge `main`, không force-push. Tiêu chí vé: **occurred_at 15.707/15.707 = 100%** ≥ 95% (cột C `生産日` datetime 100%; X/Y thiếu thật 97,9%/98,5% ô là `ー` — chứng minh trong báo cáo); **Bước 4: 1 bucket → 174 bucket** (`2023-W01` → `2026-W35`); **Bước 5** tái phát theo ngày thật (mã ERROR 16 lần quanh 2026-08-21, thay vì "3.569 lần" vô nghĩa theo lúc nhập). Ràng buộc giữ: DB copy ổ C + backup SHA `44079ad5…` khớp gốc + integrity ok trước/sau; `created_at` không đổi; `raw_json._backfill.fix` còn nguyên 5.461 (provenance f3b); verify độc lập 25/25 mẫu khớp Excel; idempotent (chạy lại no_change=15.707); bộ error_cases **127/127 đạt**; full suite **3.415/2/36/4** = nền f3b `3.406/2/36/4` + đúng 9 test mới, danh sách lỗi/error trùng khít nền từng bài; compileall OK, check_docs PASS, CLI audit PASS, import OK. Không đụng ổ D, không ghi index production, không merge `main`.
 - `hang-cho` (theo thứ tự — chi tiết `docs/ke-hoach-dich-den.md`):
-  1. `B0-DICT` (`prompt-queue-b0-dict.md`) — [VM] từ điển thuật ngữ + số hóa bảng mã lỗi.
-  2. `B0-MEASURE` (`prompt-queue-b0-measure.md`) — [NHÀ] đo ≥90% đủ 5 trường bắt buộc.
-  3. `B1-FEAT` (`prompt-queue-b1-feat.md`) — [VM] Bước 1 thành tính năng hoàn chỉnh.
-  4. `B2` (`prompt-queue-b2.md`) — [VM] vòng phản hồi.
-  5. `B3` (`prompt-queue-b3.md`) — [VM] gợi ý hướng điều tra 4M + Why-Why.
-  6. `B4` (`prompt-queue-b4.md`) — [VM] phân tích xu hướng & cảnh báo sớm.
-  7. `B5` (`prompt-queue-b5.md`) — [VM] phân loại tự động + cảnh báo tái phát.
-  8. `J1-CSV` (`prompt-queue-j1-csv.md`) — [VM] JIG: nhập cả file CSV + chọn biểu đồ + tự gửi mail.
-  9. `J1-RT` (`prompt-queue-j1-rt.md`) — [VM+cty] JIG realtime: spec API + prototype + yêu cầu hạ tầng.
-  10. `J2` (`prompt-queue-j2.md`) — [NHÀ+người dùng] JIG: xác nhận chức năng trước khi đưa thử.
-  11. `J3` (`prompt-queue-j3.md`) — [người dùng] JIG: dùng thử, thu thập cải tiến.
-  12. `J4` (`prompt-queue-j4.md`) — [NHÀ+người dùng] JIG: chạy thử nghiệm.
-  13. `J5` (`prompt-queue-j5.md`) — [người dùng] JIG: chạy thật.
+  1. `upload-delta-drive` (`prompt-queue-upload-delta-drive.md`) — [NHÀ] đẩy 2 gói delta (262b + DC) lên Drive cho PC0575 tải về merge. Chèn khẩn 2026-10-01 ~06:15 +07 theo yêu cầu user (user ở máy công ty, cần bridge qua Drive).
+  2. `B0-DICT` (`prompt-queue-b0-dict.md`) — [VM] từ điển thuật ngữ + số hóa bảng mã lỗi.
+  3. `B0-MEASURE` (`prompt-queue-b0-measure.md`) — [NHÀ] đo ≥90% đủ 5 trường bắt buộc.
+  4. `B1-FEAT` (`prompt-queue-b1-feat.md`) — [VM] Bước 1 thành tính năng hoàn chỉnh.
+  5. `B2` (`prompt-queue-b2.md`) — [VM] vòng phản hồi.
+  6. `B3` (`prompt-queue-b3.md`) — [VM] gợi ý hướng điều tra 4M + Why-Why.
+  7. `B4` (`prompt-queue-b4.md`) — [VM] phân tích xu hướng & cảnh báo sớm.
+  8. `B5` (`prompt-queue-b5.md`) — [VM] phân loại tự động + cảnh báo tái phát.
+  9. `J1-CSV` (`prompt-queue-j1-csv.md`) — [VM] JIG: nhập cả file CSV + chọn biểu đồ + tự gửi mail.
+  10. `J1-RT` (`prompt-queue-j1-rt.md`) — [VM+cty] JIG realtime: spec API + prototype + yêu cầu hạ tầng.
+  11. `J2` (`prompt-queue-j2.md`) — [NHÀ+người dùng] JIG: xác nhận chức năng trước khi đưa thử.
+  12. `J3` (`prompt-queue-j3.md`) — [người dùng] JIG: dùng thử, thu thập cải tiến.
+  13. `J4` (`prompt-queue-j4.md`) — [NHÀ+người dùng] JIG: chạy thử nghiệm.
+  14. `J5` (`prompt-queue-j5.md`) — [người dùng] JIG: chạy thật.
 
 - `ghi_chu`: 2026-10-01 05:46 +07 — **Kiểm cổng gate vé `B0-FORM` (watcher tự mở OMP lần 1/4 lúc 05:41:11, `launchStallCount=1`): điều kiện mở CHƯA tới** — vé lane [VM], Muse chưa xong code+test nên nhánh chưa có bản cập nhật mã nào cho form (đỉnh nhánh vẫn là bản phát hành vé `6dd0caa`). Phiên này chỉ thêm 1 dòng tiến độ, không đụng 4 trường watcher parse để bộ đếm chạy tiếp 1/4 → 4/4; **chưa đặt `cho-muse`** (chưa đủ 4 lần) và không quay no-op — chờ Muse báo code xong + bản cập nhật rõ ràng để verify trên máy nhà.
 - `ghi_chu`: 2026-10-01 05:52 +07 — **Hoàn tất vé `date-map`, chờ Muse review.** Báo cáo: `docs/phieu-viec/ket-qua/date-map.md`. Tóm tắt: X/Y là ngày hold (97,9%/98,5% chỉ có `ー` — thiếu thật), ngày phát sinh thật là **cột C `生産日` datetime 100%**; thêm cột `occurred_at` + migration + `fill_occurred_at` (dry-run/apply, không đụng `raw_json`); áp trên DB copy ổ C (backup + integrity ok, SHA gốc `44079ad5…6bf7`): **15.707/15.707 = 100%**, 25/25 mẫu khớp Excel, `created_at` không đổi, `_backfill` f3b còn 5.461, idempotent; **Bước 4: 1 bucket → 174 bucket**, Bước 5 tái phát theo mốc thật (16 lần quanh 2026-08-21). Cổng: compileall OK, check_docs PASS, CLI audit PASS, import OK; full suite **3.415 đạt/2 bỏ qua/36 lỗi/4 error** — danh sách lỗi/error theo ID trùng khít nền f3b `3.406/2/36/4` (+9 = 9 test mới, **đính chính**: mốc 2 ghi nhầm 10). Bộ error_cases 127/127.
