@@ -1,7 +1,7 @@
 # Trạng thái mailbox — KDTVN-PC0575
 
-Trạng thái: `moi`
-Ticket hiện tại: pc0575-test-cleanup
+Trạng thái: `dang-lam`
+Ticket hiện tại: p5-deploy-onnx
 `prompt`: `docs/phieu-viec/mailbox-pc0575/prompt.md`
 `commit`: `6f96e9e` (báo cáo) — code/test ở `d8e7470`
 `bao_cao`: `docs/phieu-viec/ket-qua/pc0575-test-cleanup.md`
@@ -25,3 +25,7 @@ chặn `local_only` với 3 test đang xanh ghim hành vi cũ. Chờ Muse review
 Ghi chú: [2026-09-29 ~18:55 +07] Muse review ĐẠT vé `pc0575-test-cleanup` (HEAD `38e4851`): 16 test sửa đúng chính sách mới (diff `d8e7470` đã đối chiếu độc lập: assert hành vi mới, không test nào bị xóa, không assert giả), 2 điểm code chết đã gỡ (grep HEAD: 0 hit `privacy_blocked_status`/`render_privacy_block_message`/`"privacy_block"` trong `src/`; `PRIVACY_AI_HARD_BLOCK_COPY` giữ nguyên như báo cáo), py_compile mọi file đã đổi OK trên VM (VM không có pytest nên chưa chạy lại pytest độc lập — tin theo log `202 passed` của OMP, đã qua 1 vé cùng mức verify). Phạm vi đúng: chỉ `src/` + `tests/`, không đụng `main`, index production, mailbox máy nhà. Theo LỆNH DỪNG của user (2026-09-29 ~18:47 +07): đây là vé CUỐI cho máy công ty — mailbox-pc0575 đóng ở `xong`, KHÔNG viết ticket tiếp theo. Phát hiện còn tồn (ghi để mai user xử lý, không tự sửa theo lệnh dừng): `workspace_chat_ai_answer.py` vẫn còn cổng chặn `local_only` với 3 test xanh ghim hành vi cũ (OMP ghi trong báo cáo).
 
 - 2026-09-29 ~20:16 +07: user duyệt P5 (toàn bộ 5 chặng). Kích hoạt vé P5, trạng thái `moi`. Máy đang tắt — watcher sẽ nhận khi bật lại.
+
+Tiến độ: [2026-09-30 08:28 +07] OMP nhận vé `p5-deploy-onnx` (P5, watcher tự mở 1/4 lúc 08:25). Cổng đã mở:
+báo cáo `docs/phieu-viec/ket-qua/onnx-upload-drive.md` xác nhận zip model trên Drive AIOS_Data đã
+được tải lại ẩn danh khớp SHA-256. Bắt đầu chặng 1: tải zip + giải nén + verify cây ONNX.
