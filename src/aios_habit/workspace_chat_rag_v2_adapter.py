@@ -30,7 +30,10 @@ from aios_habit.rag_v2.adaptive_retrieval import (
     post_retrieval_gate,
     pre_retrieval_gate,
 )
-from aios_habit.rag_v2.bge_subprocess_client import BgeSubprocessWorkerClient
+from aios_habit.rag_v2.bge_subprocess_client import (
+    BgeSubprocessWorkerClient,
+    default_query_timeout_seconds,
+)
 from aios_habit.rag_v2.index import SearchSummary
 from aios_habit.rag_v2.pipeline import RagV2DevConfig, RagV2DevPipeline, SourceSpec
 from aios_habit.rag_v2.query_planning import (
@@ -920,8 +923,61 @@ def select_workspace_chat_preparation_scope(
     return WorkspaceChatSourceScope(selected, True, "matched_sources")
 
 
-def _durable_semantic_coverage_ready(
-    source: WorkspaceAIContextSource,
+# Coverage queries for the durable-index prepare gate. ``CROSS JOIN`` is
+# deliberate: it pins the join order so SQLite drives from ``chunks`` (tens
+# of rows via ``idx_chunks_document_id``) into the embedding tables by
+# ``chunk_id`` (PRIMARY KEY / model index) instead of scanning the whole
+# 100k+ row embeddings table on ``model_fingerprint`` first. Measured on
+# PC0575 (2026-09-30): the unpinned dense query planned a full scan of
+# ``chunk_embeddings`` and took 71.9 s for a 15-chunk document; the same
+# check against the sparse table planned correctly at 0.01 s.
+_DENSE_COVERAGE_SQL = """SELECT COUNT(DISTINCT c.chunk_id)
+   FROM chunks c CROSS JOIN chunk_embeddings e ON e.chunk_id = c.chunk_id
+   WHERE c.document_id = ? AND c.retrievable = 1
+     AND e.model_id = 'BAAI/bge-m3' AND e.model_revision = ?
+     AND e.model_fingerprint = ?"""
+
+_SPARSE_COVERAGE_SQL = """SELECT COUNT(DISTINCT c.chunk_id)
+   FROM chunks c
+   CROSS JOIN chunk_embeddings d ON d.chunk_id = c.chunk_id
+   CROSS JOIN chunk_sparse_embeddings s
+     ON s.chunk_id = c.chunk_id AND s.model_fingerprint = d.model_fingerprint
+   WHERE c.document_id = ? AND c.retrievable = 1
+     AND d.model_id = 'BAAI/bge-m3' AND d.model_revision = ?
+     AND d.model_fingerprint = ?"""
+
+# Short-lived cache for the expensive per-source coverage check. One user
+# question re-enters this gate several times (status scan + readiness check
+# + pre-query check); without caching each pass re-runs the SQLite queries.
+# TTL 60 s: short enough that a source becoming ready (or unready) is picked
+# up by the next question, long enough to collapse repeated calls within one
+# question. Fail-closed: only successful lookups are cached; exceptions are
+# never cached and still return False.
+_COVERAGE_CACHE_TTL_SECONDS = 60.0
+_COVERAGE_CACHE: dict[tuple[str, str, str, str], tuple[float, bool]] = {}
+_COVERAGE_CACHE_LOCK = threading.Lock()
+
+
+def _cached_coverage_result(
+    key: tuple[str, str, str, str],
+) -> bool | None:
+    with _COVERAGE_CACHE_LOCK:
+        entry = _COVERAGE_CACHE.get(key)
+        if entry is None:
+            return None
+        expires_at, value = entry
+        if time.monotonic() >= expires_at:
+            del _COVERAGE_CACHE[key]
+            return None
+        return value
+
+
+def _store_coverage_result(key: tuple[str, str, str, str], value: bool) -> None:
+    with _COVERAGE_CACHE_LOCK:
+        _COVERAGE_CACHE[key] = (time.monotonic() + _COVERAGE_CACHE_TTL_SECONDS, value)
+
+
+def _durable_semantic_coverage_ready(    source: WorkspaceAIContextSource,
     config: WorkspaceChatRagV2CanaryConfig,
 ) -> bool:
     """Check an existing local BGE index without loading the model again.
@@ -943,6 +999,15 @@ def _durable_semantic_coverage_ready(
     if not expected_fingerprint:
         return False
     document_id = _document_id(source)
+    cache_key = (
+        index_path.resolve().as_posix(),
+        document_id,
+        config.bge_m3_model_revision,
+        expected_fingerprint,
+    )
+    cached = _cached_coverage_result(cache_key)
+    if cached is not None:
+        return cached
     try:
         uri = f"file:{index_path.resolve().as_posix()}?mode=ro"
         connection = sqlite3.connect(uri, uri=True)
@@ -953,26 +1018,12 @@ def _durable_semantic_coverage_ready(
             ).fetchone()[0])
             if retrievable <= 0:
                 return False
-            dense = int(connection.execute(
-                """SELECT COUNT(DISTINCT c.chunk_id)
-                   FROM chunks c JOIN chunk_embeddings e ON e.chunk_id=c.chunk_id
-                   WHERE c.document_id=? AND c.retrievable=1
-                     AND e.model_id='BAAI/bge-m3' AND e.model_revision=?
-                     AND e.model_fingerprint=?""",
-                (document_id, config.bge_m3_model_revision, expected_fingerprint),
-            ).fetchone()[0])
-            sparse = int(connection.execute(
-                """SELECT COUNT(DISTINCT c.chunk_id)
-                   FROM chunks c
-                   JOIN chunk_embeddings d ON d.chunk_id=c.chunk_id
-                   JOIN chunk_sparse_embeddings s
-                     ON s.chunk_id=c.chunk_id AND s.model_fingerprint=d.model_fingerprint
-                   WHERE c.document_id=? AND c.retrievable=1
-                     AND d.model_id='BAAI/bge-m3' AND d.model_revision=?
-                     AND d.model_fingerprint=?""",
-                (document_id, config.bge_m3_model_revision, expected_fingerprint),
-            ).fetchone()[0])
-            return dense == retrievable and sparse == retrievable
+            params = (document_id, config.bge_m3_model_revision, expected_fingerprint)
+            dense = int(connection.execute(_DENSE_COVERAGE_SQL, params).fetchone()[0])
+            sparse = int(connection.execute(_SPARSE_COVERAGE_SQL, params).fetchone()[0])
+            result = dense == retrievable and sparse == retrievable
+            _store_coverage_result(cache_key, result)
+            return result
         finally:
             connection.close()
     except (OSError, RuntimeError, sqlite3.Error):
@@ -2685,7 +2736,7 @@ def _run_profile(
         rerank_requested=rerank_requested,
         routing_reason_codes=routing_reason_codes,
         policy_version=policy_version,
-        timeout_s=(config.deep_timeout_ms / 1000.0 if rerank_requested else 30.0),
+        timeout_s=(config.deep_timeout_ms / 1000.0 if rerank_requested else default_query_timeout_seconds()),
     )
     mapped = _map_serialized_query_result(
         query_res_dict,

@@ -28,7 +28,28 @@ LOGGER = logging.getLogger(__name__)
 # but retain a hard fail-closed process deadline.
 _INIT_TIMEOUT_SECONDS = 300.0
 _PREPARE_TIMEOUT_SECONDS = float(os.environ.get("AIOS_BGE_PREPARE_TIMEOUT", "300.0"))
-_QUERY_TIMEOUT_SECONDS = 30.0
+_QUERY_TIMEOUT_ENV_VAR = "AIOS_BGE_QUERY_TIMEOUT"
+
+
+def default_query_timeout_seconds() -> float:
+    """Interactive BGE worker query timeout, in seconds.
+
+    The default 30.0 s keeps the fail-closed per-question budget. On slow
+    CPU-only hosts where a cold ONNX retrieval legitimately exceeds that
+    budget (see PC0575 field report 2026-09-30: ~211 s/question when the
+    coverage gate full-scanned the embeddings table), operators may raise it
+    via the ``AIOS_BGE_QUERY_TIMEOUT`` environment variable. The value is
+    read at import time, like ``AIOS_BGE_PREPARE_TIMEOUT``; it is clamped to
+    a minimum of 1.0 s so a bad value cannot disable the budget entirely.
+    """
+    try:
+        value = float(os.environ.get(_QUERY_TIMEOUT_ENV_VAR, "30.0"))
+    except (TypeError, ValueError):
+        return 30.0
+    return max(value, 1.0)
+
+
+_QUERY_TIMEOUT_SECONDS = default_query_timeout_seconds()
 _WORKER_PROTOCOL_VERSION = "1"
 
 
