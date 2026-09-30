@@ -289,3 +289,24 @@ Bước 6 (xong) → Bước 8 → Bước 9 (export 262) → Bước 7 (báo c�
 - Không nhúng CPU, không ghi index, không bấm "Thử chuẩn bị lại".
 - Không tự sửa code — cần sửa code thì `cho-muse`.
 - Không merge `main`. Không force-push.
+
+### BỔ SUNG 5.1 — 2026-09-30 ~18:25 +07 (đo tách 3 chặng — user chỉ đúng điểm kiến trúc)
+
+User nói đúng: đã có index thì lúc hỏi máy user không cần mạnh. Mỗi câu hỏi chỉ gồm
+3 chặng nhẹ: (1) nhúng 1 câu ngắn, (2) search trong index có sẵn, (3) LLM sinh đáp án.
+Vì vậy OMP đo TÁCH RIÊNG 3 chặng cho mỗi câu hỏi mẫu, ghi thời gian từng chặng:
+
+- **Chặng 1 — nhúng câu hỏi (BGE worker):** bao nhiêu giây? Kiểm tra worker có bị
+  khởi động lạnh mỗi lần hỏi không (nạp lại model ~2,2 GB từ đĩa rồi mới nhúng).
+  Nếu có → đây là thủ phạm chính (không phải máy yếu mà là kiến trúc sai):
+  fix = giữ worker sống thường trực (warm), nạp model 1 lần duy nhất.
+- **Chặng 2 — search trong index:** phải ở mức mili giây đến vài giây (vector đã có
+  sẵn, chỉ so sánh). Nếu chặng này chậm → DỪNG, đặt `cho-muse` (index có vấn đề,
+  không phải chuyện timeout).
+- **Chặng 3 — LLM sinh đáp án:** đang dùng provider/model gì, mất bao nhiêu giây?
+  Nếu chặng này ngốn hàng phút vì chạy local trên CPU laptop → ghi rõ vào báo cáo,
+  KHÔNG tự đổi provider. Muse ra vé riêng (hướng: gọi API ngoài — DATA_POLICY đã
+  được user mở từ 2026-09-28 — hoặc model local nhẹ hơn; user quyết).
+
+Báo cáo cuối ghi đủ: thời gian từng chặng của từng câu + kết luận chặng nào là
+nút thắt + đã fix gì.
