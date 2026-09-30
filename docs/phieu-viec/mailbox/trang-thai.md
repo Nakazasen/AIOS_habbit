@@ -26,7 +26,8 @@
 
 
 - `hang-cho` (theo thứ tự — chi tiết `docs/ke-hoach-dich-den.md`):
-  1. `LSU-1` (`prompt-queue-lsu-1.md`) — TIẾP TỤC sau GPU-262 (đang ở bước khảo sát dữ liệu LSU trên ổ C).
+  1. `GPU-DC` (`prompt-queue-gpu-dc.md`) — SAU GPU-262b: nhúng GPU 344 tài liệu Điều chỉnh (bảng mã lỗi, manual, C Call, sơ đồ điện) + đóng gói delta cho PC0575. 1.803 file log/archive/định dạng máy KHÔNG nhúng (lý do trong vé); `Loi KDTPS.xlsx` không nhúng (đã có trong DB error_cases).
+  2. `LSU-1` (`prompt-queue-lsu-1.md`) — TIẾP TỤC sau GPU-DC (đang ở bước khảo sát dữ liệu LSU trên ổ C).
   2. `don-canary` (`prompt-queue-don-canary.md`) — dọn kho canary 2,4GB sau verify SHA production (user đã duyệt).
   3. `f3b-backfill` (`prompt-queue-f3b-backfill.md`) — backfill trường `fix`, gate F3b đang mở ở 56,7%.
   4. `date-map` (`prompt-queue-date-map.md`) — map cột ngày thật X/Y cho xu hướng/tái phát theo ngày phát sinh.
