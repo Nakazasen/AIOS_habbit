@@ -6,6 +6,7 @@
 - `bao_cao`: (chờ OMP — dự kiến `docs/phieu-viec/ket-qua/gpu-262.md`)
 - `ghi_chu`: 2026-09-30 19:45 +07 — Muse phát hành vé GPU-262 làm vé hiện tại (ưu tiên tối nay). LSU-1 tạm nhường: mới tới bước khảo sát (chỉ đọc, 07:02), 12h chưa có mốc ghi nào → chuyển không mất việc; LSU-1 về đầu hàng chờ, tiếp tục sau GPU-262.
 - `prompt`: `docs/phieu-viec/mailbox/prompt.md`
+- `ghi_chu_ke_hoach`: 2026-09-30 ~20:00 +07 — Muse lập kế hoạch làm hết `docs/dich-den-du-an.md`: 14 vé mới (B0-FORM/DICT/MEASURE, B1-FEAT, B2, B3, B4, B5, J1-CSV, J1-RT, J2–J5), chi tiết trong `docs/ke-hoach-dich-den.md`. Lane [VM] = Muse code+test (OMP chờ, chỉ verify khi Muse báo xong); [NHÀ] = OMP làm; J2–J5 cần người dùng công ty tham gia.
 - `verdict_tool5`: **ĐẠT** (Muse verify độc lập 2026-09-30 ~06:55 +07 trên VM Linux Python 3.12.3, HEAD `6042e3a`): chuỗi commit đúng như báo cáo (`1be7002` → `7483c5a` → `a6ab4a4` → `f69d5c9` → `f08521e` → `ca73a7d` → `3cdb4d2` báo cáo chỉ thêm docs → `6042e3a`); diff code chỉ 2 module mới (`chat_action_visual_maps.py` +832, `visual_map_image.py` +311) + test mới 501 dòng + đúng 1 dòng đăng ký `BUILTIN_ACTION_MODULES` (đường cờ fail-closed sẵn có từ TOOL-2); grep 0 hit `D:` và 0 thao tác ghi/embed/sqlite trong code mới (chỉ đọc JSONL cục bộ + trace); không merge `main` (main không phải ancestor); test vé 29/29 pass độc lập + hồi quy liên quan 157 bài pass (action 64 + visual/knowledge 85 + omnibar 8); compileall sạch; full suite OMP báo 3.363/2/35/0 = +29 đúng số test vé mới, 35 lỗi giữ nguyên bộ có sẵn (tin theo log OMP như các vé trước, VM không chạy full suite). Hạn chế đã ghi trong báo cáo (ảnh tối đa 4 cột/24 nút, quan hệ hồ sơ ánh xạ cục bộ 4 mục, worklens chưa gồm bridge import, lỗi Mermaid là hạn chế upstream Streamlit) — không chặn.
 - `merge_main_done`: 2026-09-30 ~07:05 +07 — đã fast-forward `phieu-viec/rag-fix1` → `main` (`9a9a0a3` → `2870b09e`) qua Git Data API (`force:false`), không force-push (user duyệt từ 2026-09-29). Đính chính ghi chú `merge_main_blocked` trước đó: kết luận "không fast-forward được" là SAI do phân tích trên clone shallow; GitHub compare API xác nhận branch ahead 636 / behind 0, merge_base = tip của main.
 
@@ -23,8 +24,22 @@
 - `verdict_e3`: **ĐẠT** (Muse verify độc lập 2026-09-30 ~01:4x +07 trên VM Linux Python 3.12.3, commit `77d4616`): diff `58c4b67` chỉ đổi regex dọn XML (26 thêm/5 bớt ở `src/aios_habit/document_extractors.py`), cơ chế cờ không đổi; commit báo cáo `0ec4c78` chỉ thêm báo cáo + 9 dòng cập nhật `PROJECT_HANDOVER.md`; `tests/test_document_extractors.py` 30/30 pass (gồm 4 test mới); đỏ-trước-xanh-sau: lùi mã nguồn về trước fix → đúng 3 test XML đỏ; hiệu năng 272.000 ký tự/0,027s không cặn; cờ `AIOS_DOCUMENT_EXTRACTOR_XML_CLEANUP` mặc định TẮT; không ghi index/embed, không merge `main`, không đụng ổ D (test không chứa `D:`). Lỗi suite môi trường trên VM (thiếu `local_cases/.../collections.jsonl`) không liên quan fix.
 
 
-- `hang-cho` (theo thứ tự):
-  1. `LSU-1` — TIẾP TỤC sau GPU-262 (đang ở bước khảo sát dữ liệu LSU trên ổ C; vé gốc `docs/phieu-viec/mailbox/prompt-queue-lsu-1.md` nếu còn, nội dung như ticket cũ).
+- `hang-cho` (theo thứ tự — chi tiết `docs/ke-hoach-dich-den.md`):
+  1. `LSU-1` (`prompt-queue-lsu-1.md`) — TIẾP TỤC sau GPU-262 (đang ở bước khảo sát dữ liệu LSU trên ổ C).
   2. `don-canary` (`prompt-queue-don-canary.md`) — dọn kho canary 2,4GB sau verify SHA production (user đã duyệt).
   3. `f3b-backfill` (`prompt-queue-f3b-backfill.md`) — backfill trường `fix`, gate F3b đang mở ở 56,7%.
   4. `date-map` (`prompt-queue-date-map.md`) — map cột ngày thật X/Y cho xu hướng/tái phát theo ngày phát sinh.
+  5. `B0-FORM` (`prompt-queue-b0-form.md`) — [VM] form nhập liệu chuẩn Bước 0.
+  6. `B0-DICT` (`prompt-queue-b0-dict.md`) — [VM] từ điển thuật ngữ + số hóa bảng mã lỗi.
+  7. `B0-MEASURE` (`prompt-queue-b0-measure.md`) — [NHÀ] đo ≥90% đủ 5 trường bắt buộc.
+  8. `B1-FEAT` (`prompt-queue-b1-feat.md`) — [VM] Bước 1 thành tính năng hoàn chỉnh.
+  9. `B2` (`prompt-queue-b2.md`) — [VM] vòng phản hồi.
+  10. `B3` (`prompt-queue-b3.md`) — [VM] gợi ý hướng điều tra 4M + Why-Why.
+  11. `B4` (`prompt-queue-b4.md`) — [VM] phân tích xu hướng & cảnh báo sớm.
+  12. `B5` (`prompt-queue-b5.md`) — [VM] phân loại tự động + cảnh báo tái phát.
+  13. `J1-CSV` (`prompt-queue-j1-csv.md`) — [VM] JIG: nhập cả file CSV + chọn biểu đồ + tự gửi mail.
+  14. `J1-RT` (`prompt-queue-j1-rt.md`) — [VM+cty] JIG realtime: spec API + prototype + yêu cầu hạ tầng.
+  15. `J2` (`prompt-queue-j2.md`) — [NHÀ+người dùng] JIG: xác nhận chức năng trước khi đưa thử.
+  16. `J3` (`prompt-queue-j3.md`) — [người dùng] JIG: dùng thử, thu thập cải tiến.
+  17. `J4` (`prompt-queue-j4.md`) — [NHÀ+người dùng] JIG: chạy thử nghiệm.
+  18. `J5` (`prompt-queue-j5.md`) — [người dùng] JIG: chạy thật.
