@@ -2,7 +2,7 @@
 
 - Trạng thái: `dang-lam`
 - Ticket hiện tại: `GPU-262` — nhúng GPU 52.979 chunk (262 nguồn LSU) + đóng gói delta cho PC0575. Ưu tiên tối 30/09 theo lệnh user trực tiếp.
-- `commit`: `162249d`
+- `commit`: `7fe3c8d`
 - `bao_cao`: `docs/phieu-viec/ket-qua/gpu-262.md`
 - `ghi_chu`: 2026-09-30 22:50 +07 — Lượt GPU hoàn tất 3.000 chunk trong 487,7 giây (6,1518 chunk/giây), `CUDAExecutionProvider` đứng đầu. Truy vấn chỉ đọc xác nhận tổng 8.900 vector đặc + 8.900 vector thưa đúng dấu vân tay; còn 44.079/52.979 chunk.
 - `prompt`: `docs/phieu-viec/mailbox/prompt.md`
