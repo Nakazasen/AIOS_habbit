@@ -2,7 +2,7 @@
 
 - Trạng thái: `dang-lam`
 - Ticket hiện tại: `GPU-262` — nhúng GPU 52.979 chunk (262 nguồn LSU) + đóng gói delta cho PC0575. Ưu tiên tối 30/09 theo lệnh user trực tiếp.
-- `commit`: `9cfd94f`
+- `commit`: `3962ee6`
 - `bao_cao`: `docs/phieu-viec/ket-qua/gpu-262.md`
 - `ghi_chu`: 2026-09-30 22:19 +07 — Batch đầu xác nhận 2.900/52.979 dòng embedding dense tại fingerprint mục tiêu; lệnh dừng ở giới hạn 600 giây sau 29 lượt con. Tiếp tục từ pending, tăng giới hạn chạy mỗi lượt 3.000 chunk lên 1.200 giây.
 - `prompt`: `docs/phieu-viec/mailbox/prompt.md`
