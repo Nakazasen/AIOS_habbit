@@ -132,3 +132,27 @@
 - Không xóa nguồn/tài liệu nào.
 - Nếu file Drive có dấu hiệu không đúng (integrity fail, thiếu hẳn LSU/lỗi,
   fingerprint lệch) → dừng, đặt `cho-muse`, không tự xử lý tiếp.
+
+## GHI CHÚ MỞ KẸT — 2026-09-30 ~16:05 +07 (trạng thái `cho-muse` lúc 15:58)
+
+### Kẹt 1: OMP không tải được file Drive (Chrome policy)
+- OMP đã thử: Chrome/CDP báo `Loading of unpacked extensions is disabled by the
+  administrator`; tải ẩn danh và profile junction đều bị chuyển về trang đăng nhập.
+  Đã dừng thử, không quay no-op.
+- **Cách mở:** USER tự tải bằng Chrome đã đăng nhập Google trên PC0575:
+  1. Mở link Drive của file `1cbydCaMAvO9eBRJg5YhZ1T2tj66C10hv`.
+  2. Tải `library.sqlite` về, chuyển vào đúng đường dẫn:
+     `D:\Sandbox\AIOS_habbit\scratch\drive_index_check\library.sqlite`
+     (tạo thư mục nếu chưa có; ổ D còn 9,2 GB — đủ chỗ cho file ~2,5 GB).
+- Khi file đã nằm đúng đường dẫn, OMP **tiếp tục từ Bước 2** (xác minh),
+  không cần vé mới; đặt `trang-thai.md` lại → `dang-lam` khi tiếp tục.
+
+### Kẹt 2: gate số document — làm rõ
+- Con số "496" trong BỔ SUNG 2.1 là **tham chiếu chưa kiểm chứng** (từ máy nhà),
+  KHÔNG phải số đo của file Drive (file chưa tải được nên chưa đo).
+- Production đo thực tế trên PC0575: **501 `document_id`** riêng biệt.
+- Gate đúng: so số document **đo được từ file Drive đã tải** với 501.
+  - Nếu ≥ 501 → qua gate, làm tiếp.
+  - Nếu < 501 → DỪNG, đặt `cho-muse`, báo cả hai con số + liệt kê `document_id`
+    nào của production thiếu trong bản Drive (so theo tập ID, không chỉ đếm số).
+    Không tự quyết thay hay không.
