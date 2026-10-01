@@ -23,12 +23,15 @@ from .case_form import (
     validate_form,
 )
 from .column_map import (
+    CODE_SCAN_COLUMNS,
     COLUMN_MAP,
     GREEN_SKIP_RGB,
     HISTORY_29_DATE_INDEX,
     HISTORY_29_MAP,
     SHEET_TYPES,
+    analyze_row_codes,
     col_letter,
+    extract_code_from_row,
     extract_code_from_text,
     history_no_dvd,
     is_green_skip,
@@ -36,6 +39,7 @@ from .column_map import (
     normalize_history_row,
     normalize_row,
     parse_date_cell,
+    scan_free_text_codes,
 )
 from .completeness import (
     F3B_THRESHOLD,
@@ -59,9 +63,17 @@ from .glossary import (
 )
 from .import_history import (
     SHEET_NAME as HISTORY_SHEET_NAME,
+    SRC_EXTRACTED,
+    SRC_KTD,
+    SRC_MANUAL,
     backfill_error_code_i,
+    backfill_error_code_i_extended,
     fill_occurred_at,
     import_history,
+    list_ktd_dossiers,
+    match_ktd_dossiers,
+    parse_ktd_filename,
+    write_manual_csv,
 )
 from .import_lsu_logs import (
     DIALECTS as LSU_LOG_DIALECTS,
@@ -130,12 +142,16 @@ from .feedback_loop import (
 )
 
 __all__ = [
+    "CODE_SCAN_COLUMNS",
     "COLUMN_MAP",
     "GREEN_SKIP_RGB",
     "HISTORY_29_DATE_INDEX",
     "HISTORY_29_MAP",
     "SHEET_TYPES",
+    "analyze_row_codes",
     "col_letter",
+    "extract_code_from_row",
+    "scan_free_text_codes",
     "history_no_dvd",
     "is_green_skip",
     "is_positive_mark",
@@ -180,8 +196,16 @@ __all__ = [
     "suggest_terms",
     "HISTORY_SHEET_NAME",
     "backfill_error_code_i",
+    "backfill_error_code_i_extended",
     "fill_occurred_at",
     "import_history",
+    "list_ktd_dossiers",
+    "match_ktd_dossiers",
+    "parse_ktd_filename",
+    "write_manual_csv",
+    "SRC_EXTRACTED",
+    "SRC_KTD",
+    "SRC_MANUAL",
     "LSU_LOG_DIALECTS",
     "detect_lsu_dialect",
     "import_lsu_log",

@@ -26,8 +26,12 @@ This module never touches the RAG index.
 from __future__ import annotations
 
 import argparse
+import csv
 import json
+import os
+import re
 import sqlite3
+import unicodedata
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -373,6 +377,240 @@ def backfill_error_code_i(
         **counters,
         "samples": samples,
     }
+
+
+# ---------------------------------------------------------------------------
+# BK-ERRCODE: extended backfill — scan N/O/L/M/R + KTD dossier matching.
+# ---------------------------------------------------------------------------
+
+#: Code shapes accepted in the KTD filename code slot. The slot position
+#: itself is the prior that this is a code, so the J-family (J4002) is
+#: accepted here even though free-text extraction stays with the
+#: B0-DICT families. Never guesses: tails like 'error80' / 'NG Fax' /
+#: 'Eva-' do not match and the dossier is skipped for code purposes.
+_RE_KTD_CODE = re.compile(r"(JAM\d{4}|J\d{4}|C\d{4}|F[0-9A-F]{3,4})$", re.IGNORECASE)
+
+#: Provenance values written to error_cases.error_code_i_src.
+SRC_EXTRACTED = "extracted_them"
+SRC_KTD = "ktd_matched"
+SRC_MANUAL = "manual"
+
+
+def parse_ktd_filename(name: str) -> Optional[Dict[str, Any]]:
+    """Parse a KTD dossier filename.
+
+    Format: ``KTD-YYYY-MM-SEQ-MACHINE-LINE-STAGE-LAST.xlsx``
+    (e.g. ``KTD-2026-08-0872-Iris2024-C33-A1-C4001.xlsx``).
+    Returns ``{"ym", "machine", "line", "code", "file"}`` or None when the
+    name does not follow the pattern. ``code`` is None when the LAST
+    segment is not code-shaped (e.g. 'error80', 'NG Fax') — never forced.
+    """
+    base = name[:-5] if name.lower().endswith(".xlsx") else name
+    parts = base.split("-")
+    if len(parts) < 7 or parts[0] != "KTD":
+        return None
+    try:
+        ym = f"{int(parts[1]):04d}-{int(parts[2]):02d}"
+    except ValueError:
+        return None
+    last = "-".join(parts[6:])
+    m = _RE_KTD_CODE.search(unicodedata.normalize("NFKC", last).upper())
+    return {
+        "ym": ym,
+        "machine": parts[4],
+        "line": parts[5],
+        "code": m.group(1).upper() if m else None,
+        "file": name,
+    }
+
+
+def _norm(s: Any) -> str:
+    return unicodedata.normalize("NFKC", str(s or "")).upper()
+
+
+def list_ktd_dossiers(ktd_dir: str | Path) -> List[Dict[str, Any]]:
+    """Parse every KTD-*.xlsx name in a directory (names only, never opened)."""
+    out = []
+    for name in sorted(os.listdir(ktd_dir)):
+        if not name.upper().startswith("KTD-") or not name.lower().endswith(".xlsx"):
+            continue
+        parsed = parse_ktd_filename(name)
+        if parsed and parsed["code"]:
+            out.append(parsed)
+    return out
+
+
+def match_ktd_dossiers(
+    dossiers: List[Dict[str, Any]],
+    *,
+    machine_type: Any,
+    line: Any,
+    occurred_at: Any,
+) -> List[Dict[str, Any]]:
+    """Dossiers matching a case by line + month + machine (ticket rule).
+
+    Machine matches by substring (history D holds 'Iris2024\\n下位'),
+    line by exact token, month by occurred_at's YYYY-MM prefix.
+    """
+    ym = str(occurred_at or "")[:7]
+    if len(ym) != 7:
+        return []
+    mach = _norm(machine_type)
+    ln = _norm(line).strip()
+    return [
+        d
+        for d in dossiers
+        if d["ym"] == ym
+        and _norm(d["machine"]) in mach
+        and _norm(d["line"]).strip() == ln
+    ]
+
+
+def _snippet_for(analysis: Dict[str, Any], code: str, letter: str) -> str:
+    for cand in analysis.get("candidates", []):
+        if cand["code"] == code and cand["letter"] == letter and cand["confident"]:
+            return cand["snippet"][:120]
+    return ""
+
+
+def backfill_error_code_i_extended(
+    conn: sqlite3.Connection,
+    *,
+    apply: bool = False,
+    ktd_dir: Optional[str | Path] = None,
+    migrate: bool = True,
+) -> Dict[str, Any]:
+    """Backfill ``error_code_i`` from extended sources (BK-ERRCODE).
+
+    For each row with empty ``error_code_i``:
+      1. strict row scan (columns I/N/O/L/M/R, high-confidence only) ->
+         source ``extracted_them``;
+      2. else, when ``ktd_dir`` is given, exactly-one KTD dossier match
+         (line + YYYY-MM + machine) -> source ``ktd_matched``;
+      3. else the row goes to the manual-review list (no code is ever
+         invented).
+
+    Rows that already have a code but no ``error_code_i_src`` are stamped
+    ``extracted_them`` / 'cột I (B0-DICT)' so the before/after report is
+    complete. Dry-run by default; ``apply=True`` writes everything in one
+    transaction and commits. ``migrate=False`` skips the additive schema
+    migration (for read-only dry-run connections). Returns counters,
+    samples and the manual list.
+    """
+    if migrate:
+        store.init_db(conn)  # idempotent; ensures error_code_i_src/note exist
+    dossiers = list_ktd_dossiers(ktd_dir) if ktd_dir else []
+    counters: Dict[str, Any] = {
+        "rows_read": 0,
+        "missing_code": 0,
+        "extracted_auto": 0,
+        "ktd_auto": 0,
+        "manual_list": 0,
+        "src_stamped": 0,
+        "updated": 0,
+        "no_change": 0,
+    }
+    samples: List[Dict[str, Any]] = []
+    manual: List[Dict[str, Any]] = []
+    has_src_col = "error_code_i_src" in {
+        row[1] for row in conn.execute("PRAGMA table_info(error_cases)")
+    }
+    for row in conn.execute(
+        "SELECT id, no_dvd, source_row, machine_type, line, occurred_at,"
+        "       error_code_c, error_code_h, error_code_i, error_code_i_src,"
+        "       raw_json FROM error_cases"
+    ):
+        (row_id, no_dvd, source_row, machine_type, line, occurred_at,
+         _ecc, ech, eci, eci_src, raw_json) = tuple(row)
+        counters["rows_read"] += 1
+        if eci:
+            if has_src_col and not eci_src:
+                counters["src_stamped"] += 1
+                if apply:
+                    conn.execute(
+                        "UPDATE error_cases SET error_code_i_src = ?,"
+                        " error_code_i_note = ? WHERE id = ?",
+                        (SRC_EXTRACTED, "cột I (B0-DICT)", row_id),
+                    )
+            else:
+                counters["no_change"] += 1
+            continue
+        counters["missing_code"] += 1
+        try:
+            raw = json.loads(raw_json or "{}")
+        except (ValueError, TypeError):
+            raw = {}
+        analysis = column_map.analyze_row_codes(raw if isinstance(raw, dict) else {})
+        code = analysis["code"]
+        src = note = None
+        if code:
+            src = SRC_EXTRACTED
+            snip = _snippet_for(analysis, code, analysis["letter"] or "")
+            note = f"cột {analysis['letter']}" + (f": {snip}" if snip else "")
+            counters["extracted_auto"] += 1
+        elif dossiers:
+            matches = match_ktd_dossiers(
+                dossiers, machine_type=machine_type, line=line,
+                occurred_at=occurred_at,
+            )
+            if len(matches) == 1:
+                code = matches[0]["code"]
+                src = SRC_KTD
+                note = matches[0]["file"]
+                counters["ktd_auto"] += 1
+        if code and src:
+            if len(samples) < 15:
+                samples.append({"id": row_id, "no_dvd": no_dvd,
+                                "error_code_i": code, "src": src, "note": note})
+            if apply:
+                conn.execute(
+                    "UPDATE error_cases SET error_code_i = ?,"
+                    " error_code_i_src = ?, error_code_i_note = ?,"
+                    " updated_at = datetime('now') WHERE id = ?",
+                    (code, src, note, row_id),
+                )
+                counters["updated"] += 1
+        else:
+            counters["manual_list"] += 1
+            entry = {
+                "id": row_id, "no_dvd": no_dvd, "source_row": source_row,
+                "machine_type": machine_type, "line": line,
+                "occurred_at": occurred_at, "error_group": ech,
+                "phenomenon": (raw.get("I") if isinstance(raw, dict) else None),
+                "candidates": json.dumps(analysis["candidates"], ensure_ascii=False),
+                "conflicts": json.dumps(analysis["conflicts"], ensure_ascii=False),
+            }
+            if len(manual) < 10000:
+                manual.append(entry)
+    if apply:
+        conn.commit()
+    return {
+        "status": "applied" if apply else "planned",
+        **counters,
+        "samples": samples,
+        "manual": manual,
+    }
+
+
+def write_manual_csv(path: str | Path, entries: List[Dict[str, Any]]) -> int:
+    """Write the manual-review list (rows no code could be found for)."""
+    path = Path(path)
+    cols = ("id", "no_dvd", "source_row", "machine_type", "line",
+            "occurred_at", "error_group", "phenomenon",
+            "candidates", "conflicts")
+    with path.open("w", encoding="utf-8-sig", newline="") as f:
+        w = csv.DictWriter(f, fieldnames=cols, extrasaction="ignore")
+        w.writeheader()
+        for e in entries:
+            w.writerow(e)
+    return len(entries)
+
+
+def _main(argv=None):
+    _fill_occurred_at_main(argv)
+
+
+def _fill_occurred_at_main(argv=None):
     parser = argparse.ArgumentParser(
         description="Fill error_cases.occurred_at from the history sheet (dry-run by default)."
     )

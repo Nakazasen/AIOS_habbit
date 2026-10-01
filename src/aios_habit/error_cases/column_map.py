@@ -128,6 +128,39 @@ DATE_NA_MARKS: Tuple[str, ...] = ("ー", "－", "—", "–", "-", "--", "/", "/
 # of a longer digit run.
 _RE_REAL_CODE = re.compile(r"(JAM\d{4}|C\d{4}|F[0-9A-F]{3,4})(?!\d)")
 
+# BK-ERRCODE: stricter variant for free investigation text (columns
+# N/O/L/M/R of the 29-column history sheet). The plain shape regex
+# misfires there on systematic false positives observed in the real
+# workbook (Loi KDTPS.xlsx):
+#   - 'OFF15' from 電源ON/OFF15回 (the Japanese word OFF, not a code);
+#   - 'C2797' from serial 'D8V102ZC2797';
+#   - 'F7816' from part number 'FQA1533F7816-1702TA7US0'.
+# The left boundary (?<![A-Z0-9]) kills all three: a real displayed code
+# is never glued to a longer alphanumeric run.
+_RE_CODE_FREE = re.compile(r"(?<![A-Z0-9])(JAM\d{4}|C\d{4}|F[0-9A-F]{3,4})(?!\d)")
+
+# A candidate token only counts as an error code when the surrounding
+# text talks about a displayed/reported fault (window +-30 chars).
+# Without this, fuse designators ('F401ヒューズ') and hex dumps read as
+# codes. Matched against NFKC/upper text.
+_CODE_CONTEXT_RE = re.compile(
+    r"(表示|エラー|ERROR|異常|発生|コード|画面|現象|障害|警告"
+    r"|JAMCODE|JAM CODE|FAULT|ALARM|ERR"
+    r"|BÁO|LỖI|MÃ|HIỂN THỊ|MÀN HÌNH)"
+)
+
+# Right-after context that disqualifies the token: it names a fuse
+# (ヒューズ/FUSE/cầu chì), i.e. a PCB designator, not a fault code.
+_CODE_NEG_RE = re.compile(r"(ヒューズ|FUSE|CẦU CHÌ|CAU CHI)")
+
+#: History-sheet columns scanned for a real code, in priority order.
+#: I (phenomenon) keeps the original B0-DICT semantics; N/O are the
+#: investigation text (JP/VN), L/M the work content at occurrence
+#: (JP/VN), R the related part/unit/jig names.
+CODE_SCAN_COLUMNS: Tuple[str, ...] = ("I", "N", "O", "L", "M", "R")
+
+_CONTEXT_WINDOW = 30
+
 # Real F-family codes without any digit (wildcard templates from the
 # UWCA workbook). Anything else F+hex-letters-only is an English word
 # ('FEED', 'FACE', 'FADE'), not a code.
@@ -153,6 +186,101 @@ def extract_code_from_text(value: Any) -> Optional[str]:
                 continue  # English word, not an error code
         return tok
     return None
+
+
+def _is_real_code_token(tok: str) -> bool:
+    """Shared F-family guard: F + hex letters without any digit is an
+    English word ('FEED'), not a code, unless it is a real no-digit
+    template from the UWCA workbook."""
+    if tok.startswith("F") and not any(ch.isdigit() for ch in tok):
+        return tok in _F_NO_DIGIT_TEMPLATES
+    return True
+
+
+def scan_free_text_codes(value: Any) -> List[Dict[str, Any]]:
+    """Find code-shaped tokens in free investigation text (N/O/L/M/R).
+
+    Stricter than :func:`extract_code_from_text`: requires a left word
+    boundary (kills 'OFF15'/'C2797'-in-serial/'F7816'-in-part-number) and
+    marks each hit ``confident`` only when the +-30 char window carries a
+    fault/display keyword and the token is not a fuse designator
+    ('F401ヒューズ'). Returns a list of dicts with ``code``,
+    ``confident`` and ``snippet``; empty list when nothing matches.
+    Never guesses: low-confidence hits are for manual review, not
+    auto-backfill.
+    """
+    if value is None:
+        return []
+    text = unicodedata.normalize("NFKC", str(value)).upper()
+    out: List[Dict[str, Any]] = []
+    for m in _RE_CODE_FREE.finditer(text):
+        tok = m.group(1)
+        if not _is_real_code_token(tok):
+            continue
+        start, end = m.span()
+        if _CODE_NEG_RE.search(text[end:end + 8]):
+            continue  # fuse/PCB designator, not a fault code
+        window = text[max(0, start - _CONTEXT_WINDOW):end + _CONTEXT_WINDOW]
+        out.append({
+            "code": tok,
+            "confident": bool(_CODE_CONTEXT_RE.search(window)),
+            "snippet": str(value)[max(0, start - 40):end + 40].replace("\n", " "),
+        })
+    return out
+
+
+def analyze_row_codes(raw: Any) -> Dict[str, Any]:
+    """Pick the real error code for a history row from columns I/N/O/L/M/R.
+
+    ``raw`` is the letter-keyed dict from ``normalize_history_row``.
+    Priority: column I first with the original B0-DICT semantics
+    (:func:`extract_code_from_text`, unchanged); then N/O/L/M/R with the
+    strict free-text scan. Returns::
+
+        {"code": "C0180" | None, "letter": "N" | None,
+         "conflicts": [..], "candidates": [..]}
+
+    ``code`` is set only for a single high-confidence winner. Two
+    different confident codes in different columns -> ``conflicts`` is
+    non-empty and ``code`` stays None (manual review, never guess).
+    ``candidates`` lists every strict hit (letter/code/confident/snippet)
+    for the manual-review CSV.
+    """
+    result: Dict[str, Any] = {
+        "code": None, "letter": None, "conflicts": [], "candidates": [],
+    }
+    if not isinstance(raw, dict):
+        return result
+    code_i = extract_code_from_text(raw.get("I"))
+    if code_i:
+        result["code"] = code_i
+        result["letter"] = "I"
+        return result
+    confident: Dict[str, str] = {}  # code -> first letter, in priority order
+    for letter in CODE_SCAN_COLUMNS[1:]:  # N, O, L, M, R
+        for hit in scan_free_text_codes(raw.get(letter)):
+            result["candidates"].append({"letter": letter, **hit})
+            if hit["confident"] and hit["code"] not in confident:
+                confident[hit["code"]] = letter
+    if len(confident) == 1:
+        code = next(iter(confident))
+        result["code"] = code
+        result["letter"] = confident[code]
+    elif len(confident) > 1:
+        result["conflicts"] = [
+            {"code": c, "letter": confident[c]} for c in confident
+        ]
+    return result
+
+
+def extract_code_from_row(raw: Any) -> Tuple[Optional[str], Optional[str]]:
+    """(code, source_letter) for a history row, or (None, None).
+
+    Thin wrapper over :func:`analyze_row_codes` for call sites that only
+    need the auto-backfill winner.
+    """
+    r = analyze_row_codes(raw)
+    return r["code"], r["letter"]
 
 
 def parse_date_cell(value: Any) -> Optional[str]:

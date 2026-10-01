@@ -38,6 +38,14 @@ CREATE TABLE IF NOT EXISTS error_cases (
     -- text the real code is embedded in, e.g. LCD画面にF000表示, while
     -- column H only holds the group 'F CALL'). NULL = not extracted.
     error_code_i     TEXT,
+    -- BK-ERRCODE: provenance of error_code_i — how the real code was
+    -- obtained. One of 'extracted_them' (text extraction, incl. the
+    -- original B0-DICT column-I pass), 'ktd_matched' (matched against a
+    -- KTD-*.xlsx dossier by line + date + machine), 'manual' (human
+    -- reviewed). error_code_i_note carries the detail (source column +
+    -- snippet, or the KTD file name).
+    error_code_i_src  TEXT,
+    error_code_i_note TEXT,
     investigation    TEXT,           -- N: investigation content
     handler          TEXT,           -- S: person in charge
     is_completed     TEXT NOT NULL DEFAULT '',  -- V: 'o' = done

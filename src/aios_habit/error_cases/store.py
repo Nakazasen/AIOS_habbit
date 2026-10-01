@@ -44,6 +44,12 @@ def _migrate(conn: sqlite3.Connection) -> None:
     # B0-DICT: real code extracted from the phenomenon text (column I).
     if "error_code_i" not in cols:
         conn.execute("ALTER TABLE error_cases ADD COLUMN error_code_i TEXT")
+    # BK-ERRCODE: provenance of the real code (extracted_them /
+    # ktd_matched / manual) plus a free-text detail (source column +
+    # snippet, or the KTD file name).
+    for _col_name in ("error_code_i_src", "error_code_i_note"):
+        if _col_name not in cols:
+            conn.execute(f"ALTER TABLE error_cases ADD COLUMN {_col_name} TEXT")
     # B0-FORM: standard 12-field manual entry form (additive columns).
     for _col_name, _col_ddl in (
         ("process_stage", "TEXT"),
