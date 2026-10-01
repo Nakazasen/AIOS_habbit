@@ -124,8 +124,8 @@ round 2 chỉnh lại 2 câu để lấy câu trả lời grounded.
   (nghĩa là mảnh mới được search bình thường, không bị loại).
 - Tóm tắt câu trả lời (từ bằng chứng trích dẫn):
   - **LSU-1**: sau họp chất lượng lần 2 có nhiều nội dung thực hiện theo biên bản; phía KDC bổ sung nội dung
-    thực hiện mới; chuẩn bị tổ chức họp chất lượng lần 3 để phân chia công việc; mail ngày 26/06/2026 của
-    Saito (KDTVN) gửi Kurihara (KDC) cùng danh sách liên quan.
+    thực hiện mới; chuẩn bị tổ chức họp chất lượng lần 3 để phân chia công việc; danh sách trao đổi ngày
+    26/06/2026 giữa các bên liên quan KDTVN/KDC (nội dung gốc nằm trong tài liệu .msg của kho, không dán vào Git).
   - **LSU-2b**: ảnh chuẩn khi đường kính BEAM 60 μm (pitch 42 μm, khoảng cách BEAM đều); khi đường kính BEAM
     ~100 μm thì khoảng cách giữa các BEAM chỉ còn ~20 μm → khoảng cách quá hẹp nên ảnh bị chèn ép, và tại vị
     trí đường kính BEAM lớn xuất hiện **đai đen**.
