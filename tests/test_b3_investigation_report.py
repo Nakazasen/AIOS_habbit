@@ -1,9 +1,15 @@
 """B3 tests: investigation plan from the company KTD report template.
 
-DỮ LIỆU THẬT — REAL DATA (verbatim).
-The three phenomena below are copied VERBATIM from column I
+DỮ LIỆU THẬT — REAL DATA.
+The three phenomena below are copied from column I
 ("不具合現象 / Hiện trạng lỗi") of the real "History KDTPS" sheet in
-Loi KDTPS.xlsx (the 15,707 real error cases), rows 20 / 34 / 16:
+Loi KDTPS.xlsx (the 15,707 real error cases), rows 20 / 34 / 16.
+They are content-verbatim with ONE deliberate whitespace difference:
+the real cell for REAL_PHENOMENON_CODED holds a line break between the
+panel text and the code ("LCD画面に2340表示\\nC2340：…"); the constant
+below renders that break as a space so the string stays single-line
+(see docs/phieu-viec/ket-qua/b3.md section 3.2). Everything else is
+byte-identical to the source cells.
 
 - REAL_PHENOMENON_CODED: C CALL case, panel shows C2340
   (定着圧解除モータエラー/timeout).
@@ -110,11 +116,31 @@ def test_b3_report_uses_verbatim_company_fields():
     for label in labels:
         if label.startswith("Investigation content"):
             continue
-        assert label in md, label
+        # Two-line KTD labels render their "\n" as <br> inside the table.
+        assert label.replace("\n", "<br>") in md, label
     # The plan lands in the Investigation content and results section.
     assert "Investigation content and results" in md
     assert "Cây điều tra 4M" in md
     assert REAL_PHENOMENON_CODED in md  # Contents of defect seeded
+
+
+def test_b3_labels_byte_match_real_ktd_cells():
+    # Byte-exact labels vs the real KTD "Bao cao dieu tra" cells, reprs
+    # copied from docs/phieu-viec/ket-qua/b3.md section 3.1 (verified on
+    # all 215 real KTD files): U+3000 ideographic spaces, real "\n" in the
+    # two-line labels, space before ")" and trailing ":" restored.
+    real_cells = {
+        "machine_no": "Machine\u3000No.／仕上げ-マシンNo.",
+        "occurrence_date": "Occurrence\u3000Date／発生日",
+        "status_at_line": "Status of occurrence at Line\nラインでの発生状況",
+        "reappear_rate": "Reappear rate(%)\n(Describe the reappear environment )",
+        "investigation": "Investigation content and results\n調査内容と結果:",
+    }
+    labels = dict(REPORT_FIELDS)
+    assert set(real_cells) <= set(labels)
+    for key, real in real_cells.items():
+        assert labels[key] == real, key
+        assert labels[key].encode("utf-8") == real.encode("utf-8"), key
 
 
 def test_b3_report_meta_fills_header_fields():
@@ -165,6 +191,11 @@ def test_b3_export_docx_has_company_layout(tmp_path):
     flat = " ".join(c.text for row in table.rows for c in row.cells)
     assert "Contents of defect" in flat
     assert REAL_PHENOMENON_CODED in flat
+    # Two-line KTD labels keep a real line break inside the docx cell
+    # (byte-exact with the form), not a flattened "／".
+    label_cells = [table.cell(r, 0).text for r in range(1, len(table.rows))]
+    assert "Status of occurrence at Line\nラインでの発生状況" in label_cells
+    assert "Machine\u3000No.／仕上げ-マシンNo." in label_cells
 
 
 def test_b3_export_report_docx_dispatch(tmp_path):

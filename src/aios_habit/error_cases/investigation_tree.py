@@ -323,20 +323,25 @@ REPORT_DATE_LABEL = "Ngày lập作成日："
 REPORT_TABLE_HEAD = ("Item／項目", "Details／詳細")
 
 #: (meta key, verbatim Item label) in report-sheet order.
+#: Byte-exact with the real KTD "Bao cao dieu tra" cells (verified on all
+#: 215 KTD files, see docs/phieu-viec/ket-qua/b3.md section 3.1): two
+#: labels use the ideographic space U+3000, three labels are two-line
+#: cells (real "\n"). Markdown renders the newline as <br> inside the
+#: table; docx keeps it as a real line break in the cell.
 REPORT_FIELDS: Tuple[Tuple[str, str], ...] = (
     ("model", "Model/モデル"),
     ("item_code", "Item code - Rev／品番 - Rev"),
     ("item_name", "Item name／品名"),
     ("serial_lot", "S.No (Lot)／シリアル番号（ロット）"),
     ("supplier", "Supplier/サプライヤー"),
-    ("machine_no", "Machine No.／仕上げ-マシンNo."),
-    ("occurrence_date", "Occurrence Date／発生日"),
+    ("machine_no", "Machine　No.／仕上げ-マシンNo."),
+    ("occurrence_date", "Occurrence　Date／発生日"),
     ("defect_contents", "Contents of defect／不具合内容"),
     ("line", "Line／ライン"),
     ("quantity", "Quantity／数量"),
-    ("status_at_line", "Status of occurrence at Line／ラインでの発生状況"),
-    ("reappear_rate", "Reappear rate(%)／(Describe the reappear environment)"),
-    ("investigation", "Investigation content and results／調査内容と結果"),
+    ("status_at_line", "Status of occurrence at Line\nラインでの発生状況"),
+    ("reappear_rate", "Reappear rate(%)\n(Describe the reappear environment )"),
+    ("investigation", "Investigation content and results\n調査内容と結果:"),
 )
 
 
@@ -413,11 +418,15 @@ def render_report(tree: InvestigationTree,
         value = fields[key]
         if key == "investigation":
             continue  # rendered as its own section below
+        # Two-line KTD labels carry a real "\n"; Markdown tables need <br>.
+        label_cell = label.replace("\n", "<br>")
         cell = value.replace("\n", "<br>") if value else ""
-        L.append(f"| {label} | {cell} |")
+        L.append(f"| {label_cell} | {cell} |")
     L.append("")
     inv_label = dict(REPORT_FIELDS)["investigation"]
-    L.append(f"## {inv_label}")
+    # Two-line KTD label: keep the line break in the heading like the table.
+    inv_heading = inv_label.replace("\n", "<br>")
+    L.append(f"## {inv_heading}")
     L.append("")
     L.append("```")
     L.append(plan)
@@ -438,6 +447,21 @@ def export_report(tree: InvestigationTree, path: str | Path,
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(render_report(tree, meta), encoding="utf-8")
     return out
+
+
+def _set_cell_text(cell, text: str) -> None:
+    """Set a docx table cell's text, keeping real line breaks.
+
+    The KTD form uses two-line label cells; assigning ``cell.text`` would
+    flatten the newline into the text run, so newlines become Word line
+    breaks (<w:br/>) instead.
+    """
+    cell.text = ""
+    paragraph = cell.paragraphs[0]
+    for index, line in enumerate(text.split("\n")):
+        if index:
+            paragraph.add_run().add_break()
+        paragraph.add_run(line)
 
 
 def export_docx(tree: InvestigationTree, path: str | Path,
@@ -477,11 +501,11 @@ def export_docx(tree: InvestigationTree, path: str | Path,
         if key == "investigation":
             continue
         row = table.add_row().cells
-        row[0].text = label
-        row[1].text = fields[key]
+        _set_cell_text(row[0], label)
+        _set_cell_text(row[1], fields[key])
 
     inv_label = dict(REPORT_FIELDS)["investigation"]
-    doc.add_heading(inv_label, level=2)
+    doc.add_heading(inv_label.replace("\n", " "), level=2)
 
     doc.add_heading("Cây điều tra 4M", level=3)
     for branch in tree.branch_order:
