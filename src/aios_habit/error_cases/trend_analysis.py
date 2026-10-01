@@ -43,6 +43,27 @@ PERIODS = ("day", "week", "month")
 Record = Dict[str, Any]
 MISSING_GROUP = "(không rõ)"
 
+# history_29 raw_json is letter-keyed (see column_map.HISTORY_29_MAP):
+# F = "生産工程 / Công đoạn sản xuất", R = "関連部品名/UNIT名/治具名/設備名"
+# (tên linh kiện/Unit/Jig/thiết bị — the concrete machine/unit).
+_RAW_STAGE_LETTER = "F"
+_RAW_MACHINE_LETTER = "R"
+
+# Source placeholder marks meaning "no value given" — grouped as missing
+# instead of becoming their own noise group (e.g. 8.774 "ー" in column R
+# of the real History KDTPS sheet).
+_PLACEHOLDER_MARKS = frozenset(
+    {"ー", "－", "—", "–", "-", "--", "/", "//", "_", "―", ""}
+)
+
+
+def _clean_group(value: Any) -> str:
+    """Normalize a dimension value; placeholders become MISSING_GROUP."""
+    text = str(value).strip() if value is not None else ""
+    if text in _PLACEHOLDER_MARKS:
+        return MISSING_GROUP
+    return text or MISSING_GROUP
+
 
 def _parse_dt(value: Any) -> datetime:
     """Parse an occurred_at value into a datetime."""
@@ -88,7 +109,8 @@ def fetch_records(
     ts_expr = "COALESCE(occurred_at, created_at)"
     query = (
         "SELECT machine_type, line, error_code_c, error_code_h,"
-        " investigation, created_at, raw_json, occurred_at FROM error_cases"
+        " investigation, created_at, raw_json, occurred_at, process_stage"
+        " FROM error_cases"
     )
     clauses: List[str] = []
     params: List[Any] = []
@@ -105,20 +127,37 @@ def fetch_records(
     import json as _json
 
     records: List[Record] = []
-    for row in conn.execute(query, params):
+    try:
+        rows = conn.execute(query, params)
+    except sqlite3.OperationalError:
+        # DBs created before the B0-FORM migration lack process_stage;
+        # retry without it (stage then comes from raw_json only).
+        query = query.replace(", process_stage", "")
+        rows = conn.execute(query, params)
+    for row in rows:
         raw: Dict[str, Any] = {}
         try:
             raw = _json.loads(row[6] or "{}")
         except ValueError:
             raw = {}
         error_code = row[2] or row[3] or ""
+        process_stage = row[8] if len(row) > 8 else None
         records.append(
             {
                 "model": row[0] or MISSING_GROUP,
                 "line": row[1] or MISSING_GROUP,
-                "stage": raw.get("stage") or raw.get("cong_doan") or MISSING_GROUP,
-                "paper": raw.get("paper") or raw.get("loai_giay") or MISSING_GROUP,
-                "machine": raw.get("machine") or raw.get("may") or MISSING_GROUP,
+                # Named keys first (importer aliases / B0-FORM), then the
+                # history_29 letter columns (F = công đoạn), then the
+                # B0-FORM process_stage column. "ー"/"_" placeholders and
+                # blanks collapse to MISSING_GROUP.
+                "stage": _clean_group(
+                    raw.get("stage") or raw.get("cong_doan")
+                    or process_stage or raw.get(_RAW_STAGE_LETTER)),
+                "paper": _clean_group(
+                    raw.get("paper") or raw.get("loai_giay")),
+                "machine": _clean_group(
+                    raw.get("machine") or raw.get("may")
+                    or raw.get(_RAW_MACHINE_LETTER)),
                 "error_code": error_code,
                 "occurred_at": row[7] or row[5],
             }
