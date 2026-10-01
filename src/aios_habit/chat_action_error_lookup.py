@@ -174,6 +174,35 @@ def _has_error_code_i(conn: sqlite3.Connection) -> bool:
     )
 
 
+def _has_code_missing_col(conn: sqlite3.Connection) -> bool:
+    """True once the BK-ERRCODE backfill adds the code_missing flag column."""
+    return any(
+        row[1] == "code_missing"
+        for row in conn.execute("PRAGMA table_info(error_cases)")
+    )
+
+
+def _has_real_code(row: sqlite3.Row, has_missing_col: bool) -> bool:
+    """QD1: a case "has a real code" for ranking purposes.
+
+    True when the row carries an extracted real code (error_code_c /
+    error_code_i) and is not flagged code_missing=1 by the BK-ERRCODE
+    backfill. Groups without a code system in source (JAM, 外観, ...)
+    identify through classification H instead, so they are never flagged
+    as missing — they simply sort below rows that carry a real code.
+    """
+    if has_missing_col:
+        try:
+            if row["code_missing"]:
+                return False
+        except (KeyError, IndexError, TypeError):
+            pass
+    return bool(
+        (row["error_code_c"] or "").strip()
+        or (row["error_code_i"] or "").strip()
+    )
+
+
 def _candidate_rows(
     conn: sqlite3.Connection, codes: Sequence[str], keywords: Sequence[str]
 ) -> List[sqlite3.Row]:
@@ -250,8 +279,11 @@ def _score_row(
         if kw in text:
             score += 5
     # Prefer actionable cards: a real countermeasure recorded.
+    # QD2: the immediate action (M/O) that stands in for an empty
+    # countermeasure cell counts as actionable too.
     ab = str(raw.get("AB") or "").strip()
-    if ab and ab not in ("-", "—", "ー"):
+    immediate = str(raw.get("M") or "").strip() or str(raw.get("O") or "").strip()
+    if (ab and ab not in ("-", "—", "ー")) or immediate:
         score += 10
     return score
 
@@ -270,13 +302,18 @@ def search_similar(
     codes = extract_codes(question)
     keywords = extract_keywords(question, extra_keywords)
     rows = _candidate_rows(conn, codes, keywords)
-    scored: List[Tuple[int, sqlite3.Row]] = []
+    has_missing_col = _has_code_missing_col(conn)
+    scored: List[Tuple[bool, int, sqlite3.Row]] = []
     for row in rows:
         s = _score_row(row, codes, keywords)
         if s > 0:
-            scored.append((s, row))
-    scored.sort(key=lambda item: item[0], reverse=True)
-    return [_case_dict(r) for _, r in scored[:top_n]], codes, int(total)
+            scored.append((_has_real_code(row, has_missing_col), s, row))
+    if codes:
+        # QD1: on a code lookup, cases carrying a real code rank first.
+        scored.sort(key=lambda item: (item[0], item[1]), reverse=True)
+    else:
+        scored.sort(key=lambda item: item[1], reverse=True)
+    return [_case_dict(r, has_missing_col) for _, _, r in scored[:top_n]], codes, int(total)
 
 
 def lookup_glossary(
@@ -334,13 +371,16 @@ def _clip(value: Any, limit: int = _CLIP) -> str:
     return text
 
 
-def _case_dict(row: sqlite3.Row) -> Dict[str, Any]:
+def _case_dict(row: sqlite3.Row, has_missing_col: bool = False) -> Dict[str, Any]:
     raw = _raw_json(row)
     hien_tuong = raw.get("I") or row["investigation"] or raw.get("O") or ""
     nguyen_nhan = raw.get("AA") or row["investigation"] or ""
     doi_sach = raw.get("AB") or ""
     if str(doi_sach).strip() in ("", "-", "—", "ー"):
-        doi_sach = ""
+        # QD2: an empty countermeasure cell whose row records an immediate
+        # action (M/O) means "no formal countermeasure needed".
+        immediate = str(raw.get("M") or "").strip() or str(raw.get("O") or "").strip()
+        doi_sach = "Không cần đối sách chính thức" if immediate else ""
     machine = " ".join(str(row["machine_type"] or "").split())
     line = " ".join(str(row["line"] or "").split())
     where = " / ".join(p for p in (machine, line) if p)
@@ -358,6 +398,7 @@ def _case_dict(row: sqlite3.Row) -> Dict[str, Any]:
         "no_dvd": row["no_dvd"] or "",
         "where": where,
         "category": str(category),
+        "co_ma_that": _has_real_code(row, has_missing_col),
         "hien_tuong": _clip(hien_tuong),
         "nguyen_nhan": _clip(nguyen_nhan),
         "doi_sach": _clip(doi_sach),

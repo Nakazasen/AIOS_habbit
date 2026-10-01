@@ -212,3 +212,120 @@ def test_db_is_real_not_simulated(real_db):
         assert count_cases(conn) > 15000
     finally:
         conn.close()
+
+
+# --------------------------------------------------------------------------
+# QD1 (2026-10-01): on a code lookup, cases carrying a real code rank first
+# --------------------------------------------------------------------------
+
+
+def _real_conn(real_db):
+    return connect(str(real_db))
+
+
+def test_code_lookup_prefers_real_code_cases(real_db):
+    conn = _real_conn(real_db)
+    try:
+        cases, codes, _total = lookup.search_similar(conn, "F000")
+        assert codes == ["F000"]
+        assert 3 <= len(cases) <= 5
+        flags = [c["co_ma_that"] for c in cases]
+        assert any(flags), "expected real-code cases in top results"
+        # All real-code cases come before any code-missing case.
+        seen_missing = False
+        for flag in flags:
+            if not flag:
+                seen_missing = True
+            elif seen_missing:
+                pytest.fail("a real-code case ranked below a code-missing case")
+    finally:
+        conn.close()
+
+
+def test_symptom_search_keeps_score_order(real_db):
+    conn = _real_conn(real_db)
+    try:
+        cases, codes, _total = lookup.search_similar(conn, "kẹt giấy")
+        assert codes == []
+        assert len(cases) >= 3
+    finally:
+        conn.close()
+
+
+def test_code_missing_column_respected(real_db, tmp_path):
+    import shutil
+    import sqlite3
+
+    flagged = tmp_path / "flagged.db"
+    shutil.copy(str(real_db), flagged)
+    conn = sqlite3.connect(str(flagged))
+    conn.row_factory = sqlite3.Row
+    try:
+        conn.execute("ALTER TABLE error_cases ADD COLUMN code_missing INTEGER DEFAULT 0")
+        target = conn.execute(
+            "SELECT id FROM error_cases "
+            "WHERE error_code_i IS NOT NULL AND error_code_i <> '' LIMIT 1"
+        ).fetchone()
+        assert target is not None
+        conn.execute("UPDATE error_cases SET code_missing = 1 WHERE id = ?", (target["id"],))
+        conn.commit()
+        row = conn.execute("SELECT * FROM error_cases WHERE id = ?", (target["id"],)).fetchone()
+        assert lookup._has_code_missing_col(conn)
+        assert not lookup._has_real_code(row, True)
+        # Same row counts as a real code once the flag column is ignored.
+        assert lookup._has_real_code(row, False)
+    finally:
+        conn.close()
+
+
+# --------------------------------------------------------------------------
+# QD2 (2026-10-01): empty countermeasure + recorded immediate action (M/O)
+# means "no formal countermeasure needed"
+# --------------------------------------------------------------------------
+
+
+_QD2_SELECT = (
+    "SELECT ec.*, b.source_file, b.sheet_name FROM error_cases ec "
+    "LEFT JOIN import_batches b ON b.id = ec.batch_id"
+)
+
+
+def test_qd2_empty_countermeasure_with_immediate_action(real_db):
+    import json
+
+    conn = _real_conn(real_db)
+    try:
+        found = None
+        for r in conn.execute(_QD2_SELECT):
+            d = json.loads(r["raw_json"] or "{}")
+            ab = str(d.get("AB") or "").strip()
+            mo = str(d.get("M") or "").strip() or str(d.get("O") or "").strip()
+            if ab in ("", "-", "—", "ー") and mo:
+                found = r
+                break
+        assert found is not None, "no QD2-style row in real data"
+        card = lookup._case_dict(found)
+        assert card["doi_sach"] == "Không cần đối sách chính thức"
+    finally:
+        conn.close()
+
+
+def test_qd2_empty_countermeasure_without_immediate_action(real_db):
+    import json
+
+    conn = _real_conn(real_db)
+    try:
+        found = None
+        for r in conn.execute(_QD2_SELECT):
+            d = json.loads(r["raw_json"] or "{}")
+            ab = str(d.get("AB") or "").strip()
+            mo = str(d.get("M") or "").strip() or str(d.get("O") or "").strip()
+            if ab in ("", "-", "—", "ー") and not mo:
+                found = r
+                break
+        if found is None:
+            pytest.skip("real data has no fully-empty countermeasure row")
+        card = lookup._case_dict(found)
+        assert card["doi_sach"] == ""
+    finally:
+        conn.close()
