@@ -5,8 +5,8 @@ matching against the F1 ``error_cases`` store, and recurrence detection
 inside a time window. No ML, no external calls; everything runs on
 SQLite + in-process rules.
 
-Ticket labels (Vietnamese):
-  nhom_nguyen_nhan: 'lap_lai' (recurring) | 'thiet_ke' (design) |
+Ticket labels (Vietnamese) — per ve B5 (lắp ráp – thiết kế – linh kiện – khác):
+  nhom_nguyen_nhan: 'lap_rap' (assembly) | 'thiet_ke' (design) |
                     'linh_kien' (component) | 'khac' (other)
   cong_doan: production stage label (may be None when unknown)
   bo_phan: responsible department label (may be None when unknown)
@@ -34,10 +34,10 @@ from .glossary import (
 # Label tables
 # ---------------------------------------------------------------------------
 
-CAUSE_GROUPS = ("lap_lai", "thiet_ke", "linh_kien", "khac")
+CAUSE_GROUPS = ("lap_rap", "thiet_ke", "linh_kien", "khac")
 
 CAUSE_LABEL_VI = {
-    "lap_lai": "Lặp lại",
+    "lap_rap": "Lắp ráp",
     "thiet_ke": "Thiết kế",
     "linh_kien": "Linh kiện",
     "khac": "Khác",
@@ -46,20 +46,35 @@ CAUSE_LABEL_VI = {
 # keyword -> cause group. Matched against the lowercased, NFKC-normalized
 # concatenation of error code + phenomenon + investigation (+ glossary text
 # when available). Scoring counts hits per group; the max wins.
+# Table order = tie-break priority: lap_rap first, then thiet_ke, linh_kien.
+#
+# Term selection (B5, 2026-10-01): every term below was precision-gated on
+# the TRAIN split (80%) of the 15,707 real History KDTPS cases, ground truth
+# = column AA (要因/Nguyen nhan) mapped to the 4 ticket groups. Only terms
+# with train precision >= 0.60 and support >= 8 were kept:
+#   linh_kien: 交換で再現 0.72, サプライヤー 0.66, ベンダー 0.77,
+#              発生基板 0.60, supplier 0.75,
+#              サプライヤーに調査依頼 0.88, ベンダーに調査依頼 0.91,
+#              単品部品確認 0.83, 部品のエラー 0.75, 外製品質管理 0.86,
+#              に連携し選別 0.93, 調査依頼済み 0.92
+#   thiet_ke:  設計要因 0.73
+# Deliberately excluded: generic part words (部品/交換/基板/linh kiện/
+# sensor/hỏng/...) — train precision 0.14-0.30, they fire on process
+# boilerplate (lien he/dieu tra/水平展開) and collapse khac accuracy.
+#
+# Known limitation (documented, not hidden): no text term predicts the
+# 'lap_rap' (組立) group with usable precision on real data (best candidate
+# 外れた: 0.38). Assembly cause is determined during physical investigation,
+# not from the phenomenon text, so the keyword table has no lap_rap entry:
+# such cases fall back to 'khac' with low confidence and the entry form
+# asks the reporter to confirm the group by hand.
 CAUSE_KEYWORDS: Dict[str, List[str]] = {
-    "lap_lai": [
-        "lặp lại", "tái phát", "tái diễn", "lại xảy ra", "lại bị",
-        "lại xuất hiện", "recur", "repeat", "again",
-    ],
-    "thiet_ke": [
-        "thiết kế", "bản vẽ", "design", "drawing", "dung sai",
-        "tolerance", "kích thước sai", "sai spec", "spec sai",
-    ],
+    "lap_rap": [],
+    "thiet_ke": ["設計要因"],
     "linh_kien": [
-        "linh kiện", "component", "hỏng", "vỡ", "gãy", "mòn", "nứt",
-        "cháy", "thay thế", "thay mới", "sensor", "cảm biến", "motor",
-        "động cơ", "board", "mạch", "vòng bi", "bearing", "bánh răng",
-        "gear", "dây đai", "belt", "hết hạn sử dụng",
+        "交換で再現", "サプライヤー", "ベンダー", "発生基板", "supplier",
+        "サプライヤーに調査依頼", "ベンダーに調査依頼", "単品部品確認",
+        "部品のエラー", "外製品質管理", "に連携し選別", "調査依頼済み",
     ],
 }
 
@@ -72,7 +87,7 @@ DEPT_KEYWORDS: Dict[str, List[str]] = {
         "cơ khí", "trục", "bánh răng", "vít", "ốc", "khớp nối",
         "vòng bi", "bearing", "dây đai", "belt", "kẹt cơ",
     ],
-    "Thiết kế": ["thiết kế", "bản vẽ", "design"],
+    "Thiết kế": ["thiết kế", "thiet ke", "設計", "bản vẽ", "ban ve", "design"],
     "Chất lượng": ["chất lượng", "qc", "không đạt", "ng ", "ngoại quan"],
     "Kỹ thuật": ["kỹ thuật", "căn chỉnh", "calibration", "hiệu chuẩn"],
     "Vận hành": ["vận hành", "thao tác", "operation", "người vận hành"],
@@ -314,7 +329,11 @@ def match_history(
         matched_on: List[str] = []
         row_c = norm_code(row.get("error_code_c"))
         row_h = norm_code(row.get("error_code_h"))
-        if code and (code == row_c or code == row_h):
+        # B5: history_29 rows keep the REAL code in error_code_i (extracted
+        # from the phenomenon text); error_code_c is NULL and error_code_h
+        # only holds the category ('F CALL', 'JAM', ...). Match it too.
+        row_i = norm_code(row.get("error_code_i"))
+        if code and (code == row_c or code == row_h or code == row_i):
             score += 10.0
             matched_on.append("mã lỗi trùng khớp")
         elif code and row_c and code[:1] == row_c[:1]:
@@ -373,8 +392,8 @@ def detect_recurrence(
     start = ref - timedelta(hours=window_hours)
     try:
         rows = conn.execute(
-            """SELECT no_dvd, error_code_c, error_code_h, investigation,
-                      created_at, occurred_at
+            """SELECT no_dvd, error_code_c, error_code_h, error_code_i,
+                      investigation, created_at, occurred_at
                FROM error_cases
                WHERE (occurred_at IS NOT NULL
                       AND date(occurred_at) >= date(?)
@@ -394,8 +413,11 @@ def detect_recurrence(
 
     hits = [
         dict(r) for r in rows
+        # B5: also match error_code_i — history_29 rows keep the real code
+        # there (see match_history).
         if norm_code(r["error_code_c"]) == code
         or norm_code(r["error_code_h"]) == code
+        or norm_code(r["error_code_i"]) == code
     ]
     total = len(hits) + 1  # +1 = the new case being entered
     if total < threshold:
