@@ -22,8 +22,10 @@ Vé này lấp đúng khoảng trống đó.
 2. Chuẩn bị DB ca lỗi cho các tính năng B0–B5: code tìm DB theo thứ tự
    `AIOS_ERROR_CASES_DB` → `C:/tmp/buoc0-deploy/error_cases_deploy.db`
    (`chat_action_case_form.py:resolve_db_path`, fail-closed nếu không có).
-   Nếu PC0575 chưa có DB thật: **DỪNG + báo `cho-muse`** — cấm tự bịa DB;
-   DB thật do user copy từ máy nhà (USB/Drive), Muse không tự tạo dữ liệu.
+   Lấy DB thật **đúng cách máy nhà đã làm**: copy file `C:/tmp/b0-dict/error_cases_dict.db`
+   từ máy nhà sang PC0575 (USB/Drive), verify SHA-256 khớp `6bd41a8c…2369`, rồi trỏ
+   `AIOS_ERROR_CASES_DB` vào đó. Cấm tự bịa DB / tự chế dữ liệu — chỉ DỪNG + báo
+   `cho-muse` khi không lấy được DB thật bằng cách nào.
 3. Restart app CPU-only (`RUN_AIOS_WORKSPACE_CHAT.bat`, env như hiện tại),
    verify `/_stcore/health` = `ok`, LAN vào được từ thiết bị khác.
 4. Verify từng tính năng với dữ liệu thật (không insert ca giả vào DB thật;
@@ -50,6 +52,6 @@ Vé này lấp đúng khoảng trống đó.
 
 ## Cấm
 
-- Cấm tự bịa DB ca lỗi; thiếu DB thật thì dừng và báo, không tự chế dữ liệu.
+- Cấm tự bịa DB ca lỗi; lấy đúng DB thật từ máy nhà (verify SHA `6bd41a8c…2369`), chỉ dừng và báo khi không lấy được.
 - Cấm ghi vào production `library.sqlite` (mọi ghi của B0-FORM đi vào DB ca lỗi).
 - Cấm chạy `--apply`/migrate nào không có trong vé.
