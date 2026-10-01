@@ -268,6 +268,20 @@ class TestRouterSynthesisProvider:
         router_request = mock_route.call_args[0][0]
         assert router_request.safety_mode_label == SAFETY_MODE_COMPANY
 
+    @patch("aios_habit.rag_v2_synthesis_provider.route_answer")
+    def test_opt_in_keeps_cloud_providers_for_local_only(self, mock_route, monkeypatch):
+        """Owner opt-in: local_only pack keeps cloud configs, NORMAL label."""
+        from aios_habit.safety_modes import SAFETY_MODE_NORMAL
+
+        monkeypatch.setenv(SYNTHESIS_CLOUD_OPT_IN_ENV, "1")
+        mock_route.return_value = _make_router_result()
+        provider = RouterSynthesisProvider(provider_configs=MOCK_CONFIGS)
+        provider(_make_request(cloud_allowed=False))
+        passed_configs = mock_route.call_args[0][1]
+        assert len(passed_configs) == len(MOCK_CONFIGS)
+        router_request = mock_route.call_args[0][0]
+        assert router_request.safety_mode_label == SAFETY_MODE_NORMAL
+
 
 class TestCreateSynthesisProvider:
     @patch("aios_habit.rag_v2_synthesis_provider.provider_configs_from_env")

@@ -556,12 +556,37 @@ def test_provider_failure_uses_citation_first_fallback_for_compact_evidence():
 
 
 
-def test_provider_synthesis_never_calls_provider_for_local_only_or_insufficient_pack():
+def test_provider_synthesis_insufficient_pack_never_calls_provider():
     calls = []
 
     def provider(_request):
         calls.append(True)
         return "- Must not be used [1]"
+
+    insufficient_pack = build_evidence_pack(
+        "missing evidence",
+        _make_response([]),
+    )
+
+    insufficient = synthesize_with_provider(insufficient_pack, provider)
+
+    assert calls == []
+    assert insufficient.provider_used is False
+    assert insufficient.mode == "local_extractive_provider_not_called"
+
+
+def test_provider_synthesis_local_only_labels_do_not_block_provider():
+    """Ingest-time labels are provenance only (DATA_POLICY 2026-09-29).
+
+    A pack whose items carry only local_only labels no longer blocks the
+    provider route; the operator opt-in at the factory/provider layer is
+    the gate, not the label. Owner re-confirmed 2026-10-02.
+    """
+    calls = []
+
+    def provider(_request):
+        calls.append(True)
+        return "- Error code E01 requires system restart [1]"
 
     local_pack = build_evidence_pack(
         "Summarize the restart requirement",
@@ -576,19 +601,105 @@ def test_provider_synthesis_never_calls_provider_for_local_only_or_insufficient_
             )
         ]),
     )
-    insufficient_pack = build_evidence_pack(
-        "missing evidence",
-        _make_response([]),
-    )
 
     local = synthesize_with_provider(local_pack, provider)
-    insufficient = synthesize_with_provider(insufficient_pack, provider)
+
+    assert len(calls) == 1
+    assert local.provider_used is True
+    assert local.mode == "provider_validated"
+
+
+def test_provider_synthesis_unlabeled_pack_stays_blocked_without_opt_in(monkeypatch):
+    """Fail-closed default: unlabeled pack never reaches a provider."""
+    monkeypatch.delenv("AIOS_SYNTHESIS_ALLOW_CLOUD_PROVIDERS", raising=False)
+    calls = []
+
+    def provider(request):
+        calls.append(request)
+        return "- Error code E01 requires system restart [1]"
+
+    pack = build_evidence_pack(
+        "Summarize the restart requirement",
+        _make_response([
+            _make_result(
+                "c1",
+                "d1",
+                5.0,
+                "Error code E01 requires system restart.",
+                matched_terms=("restart", "requirement"),
+                privacy_labels=(),
+            )
+        ]),
+    )
+
+    result = synthesize_with_provider(pack, provider)
 
     assert calls == []
-    assert local.provider_used is False
-    assert local.mode == "local_extractive_provider_privacy_blocked"
-    assert insufficient.provider_used is False
-    assert insufficient.mode == "local_extractive_provider_not_called"
+    assert result.provider_used is False
+    assert result.mode == "local_extractive_provider_privacy_blocked"
+
+
+def test_provider_synthesis_opt_in_calls_provider_for_unlabeled_pack(monkeypatch):
+    """Owner opt-in overrides an unlabeled (cloud_allowed=False) pack.
+
+    Without labels the evidence layer marks the pack local_only /
+    cloud_allowed=False. AIOS_SYNTHESIS_ALLOW_CLOUD_PROVIDERS=1 is the
+    operator switch that opens the provider route anyway.
+    """
+    monkeypatch.setenv("AIOS_SYNTHESIS_ALLOW_CLOUD_PROVIDERS", "1")
+    calls = []
+
+    def provider(request):
+        calls.append(request)
+        return "- Error code E01 requires system restart [1]"
+
+    pack = build_evidence_pack(
+        "Summarize the restart requirement",
+        _make_response([
+            _make_result(
+                "c1",
+                "d1",
+                5.0,
+                "Error code E01 requires system restart.",
+                matched_terms=("restart", "requirement"),
+                privacy_labels=(),
+            )
+        ]),
+    )
+
+    result = synthesize_with_provider(pack, provider)
+
+    assert result.provider_used is True
+    assert result.mode == "provider_validated"
+    assert result.citation_ids == ("[1]",)
+    assert len(calls) == 1
+
+
+def test_provider_synthesis_opt_in_provider_error_falls_back_locally(monkeypatch):
+    """Under the opt-in, a provider failure still falls back locally."""
+    monkeypatch.setenv("AIOS_SYNTHESIS_ALLOW_CLOUD_PROVIDERS", "1")
+    pack = build_evidence_pack(
+        "Summarize the restart requirement",
+        _make_response([
+            _make_result(
+                "c1",
+                "d1",
+                5.0,
+                "Error code E01 requires system restart.",
+                matched_terms=("restart", "requirement"),
+                privacy_labels=(),
+            )
+        ]),
+    )
+
+    def failing_provider(_request):
+        raise RuntimeError("network down")
+
+    result = synthesize_with_provider(pack, failing_provider)
+
+    assert result.provider_used is False
+    assert result.mode == "local_extractive_provider_fallback"
+    assert "cloud_privacy_blocked" not in result.limitation_reasons
 
 
 def test_provider_failure_renders_compare_sections_from_facet_tagged_evidence():
