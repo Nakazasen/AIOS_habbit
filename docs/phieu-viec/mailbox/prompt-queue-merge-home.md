@@ -1,47 +1,53 @@
-# Ve MERGE-HOME - Gop 2 goi delta vao kho may nha de user hoi dap ngay
+# Vé MERGE-HOME — Gộp 2 gói delta vào kho app máy nhà (phát hành lại lần 2)
 
-## Boi canh
-User dang o may nha, muon hoi dap RAG ngay tren du lieu moi nhung dem qua
-(19 tai lieu LSU + 344 tai lieu Dieu chinh). 2 goi delta dang nam tren o C:
-- `C:\AIOS_staging_262b\gpu-262b-delta-20261001.zip` - 20.867.536 byte,
-  SHA-256 `5bd7c56d93b50d8415320ce37295d7be503ace99b912e375055025b844099a85`
-- `C:\AIOS_staging_dc\gpu-dc-delta-20261001.zip` - 74.065.213 byte,
-  SHA-256 `31afe1e3bf7767379cce30588670db61f21a919ec5484b173c94961d97b063e3`
-Fingerprint vector `016c5255...` (tuong thich moi kho cung model).
+## Bối cảnh cập nhật (2026-10-01 ~08:20 +07)
+Vé `move-index-c` đã ĐẠT (verdict Muse): kho app `localhost:8501` hiện đọc trên **ổ C**:
+`C:\AIOS_workspace_chat_rag_v2_production\bge_m3_hybrid\collections\tri_thuc\library.sqlite`
+(manifest `config/workspace_chat_rag_v2.local.json` → `runtime.root` = `C:\AIOS_workspace_chat_rag_v2_production`,
+backup `.bak-20261001-move-index-c`; bản D giữ nguyên = ghim `062ec090644fb4ec09d2fb6388f3175e988e48d63061b04e6c27bbed334ef8ca` làm fallback).
+Bản `C:\AIOS_p1_4\` KHÔNG còn file (đã move vào layout app).
 
-## Viec can lam
-### Pha 0 - Khao sat chi doc (khong ghi gi ca)
-1. Xac dinh app may nha (localhost:8501) dang doc kho index nao (duong dan `library.sqlite`).
-2. Kiem tra 2 file delta: SHA-256 khop ghim tren; moi file la full DB hay chi diff;
-   base cua no la gi; fingerprint co dung `016c5255...` khong.
-3. Kiem tra dung luong trong o C (phai du cho 1 ban backup + merge).
-4. Ghi nhan: kho app dang dung co nam tren o D khong.
+**CẢNH BÁO — kho C là nguồn thay đổi:** app có cơ chế nền "chuẩn bị nguồn" tự nhúng tài liệu
+(sau move-index-c tự nhúng +3 tài liệu/+116 chunk, đúng fingerprint `016c5255…`).
+Vì vậy trong vé này:
+- Đo LẠI SHA-256 + size kho C ngay đầu Pha 1, ghi làm baseline trong báo cáo.
+- KHÔNG dùng ghim `062ec090…4ef8ca` để so kho C (ghim cũ chỉ còn đúng cho bản D).
+- **DỪNG app trước khi backup + merge**, restart sau khi merge xong (tránh race với worker nền).
 
-### Pha 1 - Merge (chi lam khi kho app KHONG nam tren o D)
-1. Dry-run: liet ke ID se them tu 2 delta. Rieng 5 ID skip cua goi 262b
-   (`wsc-154101d384acc2d01009025d`, `wsc-9e3e7cbc01ed57332c1384eb`,
-   `wsc-58589483c646877fdb341f46`, `wsc-a1a89391eee709a956a46130`,
-   `wsc-cc7d383bb6f7b9127bcaef00`): kiem tra tung ID da co trong kho may nha chua -
-   co roi thi skip (tuyet doi khong ghi de), chua co thi nhap.
-2. Backup kho app hien tai: copy sang file backup co timestamp, SHA-256 +
-   `PRAGMA integrity_check` phai `ok` truoc khi merge.
-3. Merge: nhap ID moi tu 2 delta vao kho. Luat cung: KHONG ghi de bat ky dong
-   nao da ton tai - phat hien trung `chunk_id` thi DUNG, mailbox `cho-muse`.
-4. Verify sau merge (chi doc): `integrity_check=ok`, fingerprint `016c5255...`
-   tren bang vector, dem so ID moi dung nhu dry-run.
+Khảo sát chi tiết Pha 0 lần 1 đã có trong `docs/phieu-viec/ket-qua/merge-home.md` (commit `561014b`):
+2 gói delta SHA khớp ghim, ZIP CRC đạt, SQLite standalone (không phải diff), fingerprint
+`016c5255…` đủ 100% dense+sparse cả 2 gói, `quick_check` ok. Lần này tái kiểm nhanh số đo tươi
+(kho C đã đổi), không cần khảo sát lại toàn bộ.
 
-### Pha 2 - Tro app sang kho da merge + hoi dap thu
-1. Chuyen app sang doc kho da merge bang co che chinh thuc cua app (config/UI/bien
-   moi truong) - khong sua code app.
-2. Restart app, hoi thu 2-3 cau ve noi dung moi (it nhat 1 cau ve LSU, 1 cau ve
-   Dieu chinh), ghi cau hoi + cau tra loi tom tat vao bao cao.
+2 gói delta (trên ổ C; đã upload lên Drive qua vé `upload-delta-drive` — link dự phòng):
+- `C:\AIOS_staging_262b\gpu-262b-delta-20261001.zip` — 20.867.536 B, SHA `5bd7c56d93b50d8415320ce37295d7be503ace99b912e375055025b844099a85`; Drive: https://drive.google.com/file/d/1TE6mHBAE0CzD5I4pleO-23zVYaspnsVz/view?usp=sharing
+- `C:\AIOS_staging_dc\gpu-dc-delta-20261001.zip` — 74.065.213 B, SHA `31afe1e3bf7767379cce30588670db61f21a919ec5484b173c94961d97b063e3`; Drive: https://drive.google.com/file/d/1Smteq_Iyjx2uZjh2RlrK1wvASFjXJ3yZ/view?usp=sharing
+- 262b: 19 tài liệu/2.883 chunk (14 ID mới + 5 ID SKIP của PC0575); DC: 329 tài liệu/12.720 chunk (10.238 dense+sparse), toàn ID mới.
+Fingerprint vector `016c5255…` (tương thích mọi kho cùng model).
 
-## Cam
-- KHONG ghi bat ky thu gi len o D (o hong vat ly). Neu Pha 0 phat hien kho app
-  dang nam tren o D -> DUNG ngay o Pha 0, mailbox `cho-muse`, bao ro.
-- Khong dung kho production cua PC0575, khong dung staging cua ve khac, khong merge `main`.
-- Fingerprint lech -> DUNG, `cho-muse`.
+## Việc cần làm
+### Pha 0 — Xác minh tươi (chỉ đọc)
+1. Xác định app (`localhost:8501`) đang đọc kho nào: đường resolve `library.sqlite` phải là bản C trên (bằng code app, chỉ đọc). Nếu quay lại đường D → DỪNG, mailbox `cho-muse`, báo rõ.
+2. SHA-256 2 file delta local khớp ghim trên (nếu lệch → lấy lại từ Drive link trên, verify rồi mới tiếp).
+3. Đo SHA-256 + size hiện tại của kho C (baseline trước merge) + dung lượng trống ổ C (phải đủ 1 bản backup ~2,6–2,8 GB + ~0,3 GB tăng trưởng).
 
-## Tieu chi DAT
-- Bao cao `docs/phieu-viec/ket-qua/merge-home.md`: duong dan kho truoc/sau,
-  SHA backup, so ID da nhap/skip tung goi, ket qua hoi dap thu.
+### Pha 1 — Merge
+1. **DỪNG app** trước mọi thao tác ghi.
+2. Dry-run: liệt kê ID sẽ thêm từ 2 delta. 5 ID skip của gói 262b (`wsc-154101d384acc2d01009025d`, `wsc-9e3e7cbc01ed57332c1384eb`, `wsc-58589483c646877fdb341f46`, `wsc-a1a89391eee709a956a46130`, `wsc-cc7d383bb6f7b9127bcaef00`): đối chiếu LẠI với kho C hiện tại (kho đã đổi từ lần khảo sát cũ) — có rồi thì skip (tuyệt đối không ghi đè), chưa có thì nhập.
+3. Backup kho C hiện tại: copy sang file backup có timestamp trên C; SHA-256 + `PRAGMA integrity_check` phải `ok` trước khi merge.
+4. Merge: nhập ID mới từ 2 delta vào kho C. Luật cứng: KHÔNG ghi đè bất kỳ dòng nào đã tồn tại — phát hiện trùng `chunk_id` → DỪNG, mailbox `cho-muse`.
+5. Verify sau merge (chỉ đọc): `integrity_check=ok`, fingerprint `016c5255…` trên bảng vector, đếm số ID mới đúng như dry-run.
+
+### Pha 2 — Restart app + hỏi đáp thử
+1. Restart app bằng `RUN_AIOS_WORKSPACE_CHAT.bat`; health `ok`; verify app vẫn đọc kho C (đường resolve + lock/info trong layout C).
+2. Hỏi thử 2–3 câu về nội dung mới (ít nhất 1 câu LSU, 1 câu Điều chỉnh); ghi câu hỏi + câu trả lời tóm tắt vào báo cáo.
+
+## Cấm
+- KHÔNG ghi/xóa bất kỳ thứ gì trên ổ D (chỉ đọc). Bản D là fallback rollback.
+- Không dùng kho production của PC0575, không dùng staging của vé khác, không merge `main`, không force-push.
+- Fingerprint lệch → DỪNG, `cho-muse`.
+
+## Tiêu chí ĐẠT
+Báo cáo `docs/phieu-viec/ket-qua/merge-home.md` (ghi đè bản lần 1 — báo cáo lần 2): đường kho trước/sau, SHA baseline trước merge + SHA sau merge, SHA backup, số ID đã nhập/skip từng gói, kết quả hỏi đáp thử.
+
+Xong → `trang-thai.md` = `xong-cho-duyet`, đính kèm đường dẫn báo cáo.
