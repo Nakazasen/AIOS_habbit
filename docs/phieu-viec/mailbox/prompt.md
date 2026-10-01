@@ -1,18 +1,19 @@
-# Vé B0-MEASURE — Đo ≥90% đủ 5 trường bắt buộc (đóng Bước 0)
+# Vé B1-FEAT — Bước 1 thành tính năng hoàn chỉnh
 
-LANE: [NHÀ] — OMP thực hiện toàn bộ trên máy nhà.
+LANE: [VM] — Muse thực hiện code+test trên VM. OMP KHÔNG làm vé này, chỉ verify trên máy nhà với dữ liệu thật khi Muse báo code xong + commit rõ ràng.
 
 ## Bối cảnh
-Điều kiện hoàn thành Bước 0 trong file đích: ≥90% bản ghi đủ 5 trường bắt buộc
-(error code, hiện tượng, nguyên nhân, đối sách, công đoạn).
+Lõi RAG chạy được (chuỗi E/TOOL xong ở tầng code+test). Còn thiếu để thành tính năng
+Bước 1: nhập error code / hiện tượng → Top 3–5 lỗi tương tự kèm nguyên nhân & đối sách
+đã áp dụng, có link báo cáo gốc; thời gian <1 phút; AI không hỏi ngược lại.
 
 ## Việc cần làm
-1. Chạy đo trên DB thật: cả list điều tra lỗi (15.707 ca, vé buoc0-deploy) và list LSU
-   (sau vé LSU-1). Đếm % bản ghi đủ 5 trường, chi tiết từng trường thiếu bao nhiêu %.
-2. Nếu <90%: liệt kê trường thiếu nhiều nhất + nguồn nào bù được / nguồn nào chịu
-   (đề xuất backfill cụ thể, không chung chung).
-3. Ghi kết quả vào báo cáo `docs/phieu-viec/ket-qua/b0-measure.md`, commit riêng.
+1. Nối RAG với DB ca lỗi Bước 0 (15.707 ca thật + 262 nguồn LSU sau vé GPU-262).
+2. Render trong vùng trả lời: top 3–5 thẻ, mỗi thẻ gồm hiện tượng, nguyên nhân, đối sách,
+   link báo cáo gốc (mở được). Có error code → trả lời ngay, không hỏi ngược.
+3. Đo latency đầu-cuối <1 phút trên máy nhà (sau fix coverage gate đã ở mức ms).
+4. Code + test trên VM: 5 error code thật → đủ top 3–5 + link gốc mở được.
 
 ## Tiêu chí ĐẠT
-- Có con số % đo được trên dữ liệu thật. ≥90% → Bước 0 đóng; <90% → có danh sách
-  backfill cụ thể để ra vé tiếp theo (Muse quyết).
+- OMP verify trên máy nhà: nhập 5 error code thật → mỗi cái ra top 3–5, link gốc đúng,
+  thời gian <1 phút, không bị hỏi ngược.
