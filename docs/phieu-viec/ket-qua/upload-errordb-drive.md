@@ -13,12 +13,13 @@
 | Bản | Đường dẫn | Dung lượng | SHA-256 |
 |---|---|---:|---|
 | Nguồn cục bộ | `C:/tmp/b0-dict/error_cases_dict.db` | 54.480.896 byte | `6bd41a8cdad66a06789df3ebcfed6e9fc90e77093a0052bef38624a7dd012369` |
-| Tải lại ẩn danh từ Drive | `C:/tmp/error_cases_recheck.db` | 54.480.896 byte | `6bd41a8cdad66a06789df3ebcfed6e9fc90e77093a0052bef38624a7dd012369` |
+| Tải lại ẩn danh từ Drive | `C:/tmp/error_cases_dict_recheck.db` | 54.480.896 byte | `6bd41a8cdad66a06789df3ebcfed6e9fc90e77093a0052bef38624a7dd012369` |
 | Fingerprint ghim trong báo cáo B5 | `docs/phieu-viec/ket-qua/b5.md` | — | `6bd41a8c…2369` |
 
 - Lệnh tải dùng `curl.exe -q -L --silent --show-error --fail --max-time 300`; tùy chọn `-q` bỏ qua cấu hình người dùng, không gửi cookie hay thông tin xác thực. Kết quả: **HTTP 200**, `54.480.896` byte.
+- Đính chính đường dẫn theo vé: lượt tải kiểm chứng đầu tiên dùng tên thiếu `dict`; lúc `2026-10-01 22:20 +07` đã tải lại đúng `C:/tmp/error_cases_dict_recheck.db` (HTTP 200, đúng 54.480.896 byte và SHA-256 đầy đủ). Bản tạm sai tên `C:/tmp/error_cases_recheck.db` do OMP tạo đã được xóa.
 - SHA-256 bản nguồn trước và sau upload vẫn trùng fingerprint B5; thời điểm sửa của DB nguồn không đổi. So sánh SHA đầy đủ giữa nguồn, bản tải ẩn danh và fingerprint B5 đều khớp.
-- DB và bản tải kiểm chứng ở ngoài repo; **không đưa dữ liệu DB vào Git**. Bản tải kiểm chứng được giữ ở `C:/tmp/error_cases_recheck.db` theo đường dẫn của vé.
+- DB và bản tải kiểm chứng ở ngoài repo; **không đưa dữ liệu DB vào Git**. Bản tải được giữ tại `C:/tmp/error_cases_dict_recheck.db`, đúng đường dẫn yêu cầu của vé.
 
 ## Tiếp theo
 
