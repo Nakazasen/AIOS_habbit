@@ -330,3 +330,88 @@ def test_init_db_creates_feedback_tables(conn):
     assert {"suggestion_calls", "suggestion_ratings", "case_closures"} <= tables
     cols = {r[1] for r in conn.execute("PRAGMA table_info(error_cases)")}
     assert "hientuong_missing" in cols
+
+
+def test_init_feedback_loop_on_legacy_db_without_conversation_id(tmp_path):
+    # Hồi quy: DB cũ (Bước 2) có bảng suggestion_calls nhưng thiếu cột
+    # conversation_id. init phải thêm cột TRƯỚC khi tạo index, không được
+    # nổ OperationalError "no such column: conversation_id".
+    import sqlite3
+
+    db = tmp_path / "legacy_schema_simulated.sqlite"
+    raw = sqlite3.connect(db)
+    raw.execute(
+        "CREATE TABLE error_cases ("
+        " id INTEGER PRIMARY KEY, no_dvd TEXT, sheet_type TEXT, raw_json TEXT)"
+    )
+    raw.execute(
+        """CREATE TABLE suggestion_calls (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            case_id INTEGER NOT NULL,
+            suggested_at TEXT NOT NULL DEFAULT (datetime('now')),
+            suggested_refs TEXT NOT NULL DEFAULT '[]',
+            note TEXT NOT NULL DEFAULT '')"""
+    )
+    raw.execute(
+        "INSERT INTO suggestion_calls (case_id, suggested_refs)"
+        " VALUES (1, '[\"SIMULATED-legacy-001\"]')"
+    )
+    raw.commit()
+    raw.close()
+
+    legacy = connect(db)
+    init_feedback_loop(legacy)  # must not raise
+
+    cols = {r[1] for r in legacy.execute("PRAGMA table_info(suggestion_calls)")}
+    assert "conversation_id" in cols
+    # Dòng cũ giữ nguyên + cột mới điền giá trị rỗng.
+    old_rows = legacy.execute(
+        "SELECT suggested_refs, conversation_id FROM suggestion_calls"
+    ).fetchall()
+    assert old_rows[0]["suggested_refs"] == '["SIMULATED-legacy-001"]'
+    assert old_rows[0]["conversation_id"] == ""
+    # Vòng B2 chạy được trên DB đã migrate: log + đánh giá + truy vấn.
+    call_id = log_suggestion_call(
+        legacy, 1, suggested_refs=["SIMULATED-legacy-001"], conversation_id="SIMULATED-conv"
+    )
+    record_rating(legacy, call_id, RATING_CORRECT, rater="SIMULATED-reviewer")
+    latest = latest_suggestion_call(legacy, conversation_id="SIMULATED-conv")
+    assert latest is not None and latest["id"] == call_id
+    assert latest["conversation_id"] == "SIMULATED-conv"
+    legacy.close()
+
+
+def test_init_feedback_loop_on_db_without_feedback_tables(tmp_path):
+    # DB trắng chưa có bảng suggestion_calls: migration phải bỏ qua êm,
+    # schema script tạo bảng đã có cột conversation_id ngay từ đầu.
+    import sqlite3
+
+    db = tmp_path / "no_feedback_tables_simulated.sqlite"
+    raw = sqlite3.connect(db)
+    raw.execute(
+        "CREATE TABLE error_cases ("
+        " id INTEGER PRIMARY KEY, no_dvd TEXT, sheet_type TEXT, raw_json TEXT)"
+    )
+    raw.commit()
+    raw.close()
+
+    fresh = connect(db)
+    init_feedback_loop(fresh)  # guard: không ALTER bảng chưa tồn tại
+    init_feedback_loop(fresh)  # idempotent
+    cols = {r[1] for r in fresh.execute("PRAGMA table_info(suggestion_calls)")}
+    assert "conversation_id" in cols
+    fresh.close()
+
+
+def test_rating_coverage_counts_rerated_call_once(conn):
+    # Hồi quy: đánh giá lại một lượt gợi ý là hành vi có thiết kế; mẫu số
+    # `calls` phải đếm mỗi lượt 1 lần (COUNT(DISTINCT c.id)), không phồng
+    # theo số dòng rating sau LEFT JOIN.
+    case_id = _simulated_case(conn, "SIMULATED-rerate-001")
+    call_id = log_suggestion_call(conn, case_id, suggested_refs=["SIMULATED-001"])
+    record_rating(conn, call_id, RATING_CORRECT, rater="SIMULATED-a")
+    record_rating(conn, call_id, RATING_PARTIAL, rater="SIMULATED-b")  # đánh giá lại
+    cov = rating_coverage(conn)
+    assert cov["calls"] == 1
+    assert cov["rated"] == 1
+    assert cov["coverage"] == pytest.approx(1.0)

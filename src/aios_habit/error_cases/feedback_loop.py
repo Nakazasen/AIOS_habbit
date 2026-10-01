@@ -107,6 +107,13 @@ def _is_blank_text(value: object) -> bool:
 
 def _ensure_feedback_migrations(conn: sqlite3.Connection) -> None:
     """Additive migrations for feedback tables created by an older version."""
+    table_exists = conn.execute(
+        "SELECT 1 FROM sqlite_master WHERE type='table' AND name='suggestion_calls'"
+    ).fetchone()
+    if not table_exists:
+        # Fresh DB (or schema script not run yet): CREATE TABLE IF NOT EXISTS
+        # in _FEEDBACK_SCHEMA carries the latest columns already.
+        return
     cols = {
         row[1] for row in conn.execute("PRAGMA table_info(suggestion_calls)")
     }
@@ -120,9 +127,14 @@ def _ensure_feedback_migrations(conn: sqlite3.Connection) -> None:
 
 
 def init_feedback_loop(conn: sqlite3.Connection) -> None:
-    """Create feedback tables idempotently (requires error_cases schema first)."""
-    conn.executescript(_FEEDBACK_SCHEMA)
+    """Create feedback tables idempotently (requires error_cases schema first).
+
+    Migrations run BEFORE the schema script: the script creates an index on
+    suggestion_calls(conversation_id), which old DBs lack — the migration adds
+    that column first so the index creation cannot fail.
+    """
     _ensure_feedback_migrations(conn)
+    conn.executescript(_FEEDBACK_SCHEMA)
     conn.commit()
 
 
@@ -463,7 +475,7 @@ def rating_coverage(conn: sqlite3.Connection) -> Dict[str, float]:
     Returns {"calls": n, "rated": m, "coverage": m/n}.
     """
     row = conn.execute(
-        """SELECT COUNT(*) AS calls,
+        """SELECT COUNT(DISTINCT c.id) AS calls,
                   COUNT(DISTINCT r.call_id) AS rated
            FROM suggestion_calls c
            LEFT JOIN suggestion_ratings r ON r.call_id = c.id"""
