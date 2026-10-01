@@ -158,6 +158,88 @@ def test_import_ccall_diag_inserts_codes_missing_from_02xc():
 
 
 # ---------------------------------------------------------------------------
+# Backfill: the older 2024 C-call table (10 codes the VN table dropped)
+# ---------------------------------------------------------------------------
+
+_MISSING_OLD_CODES = {
+    "C1420", "C1760",
+    "C7631", "C7632", "C7633", "C7634",
+    "C7641", "C7642", "C7643", "C7644",
+}
+
+
+def test_parse_ccall_old_recovers_dropped_codes():
+    import re
+
+    entries = {e["code"]: e for e in parse_ccall_old(CCALL_OLD_FILE)}
+    assert _MISSING_OLD_CODES <= set(entries)
+    e = entries["C1420"]
+    assert "インナーシフトトレイ異常" in e["name_ja"]  # real name from the sheet
+    assert e["remedy"]  # check method present
+    assert e["cause"]  # detection content present
+    for code in entries:
+        assert re.fullmatch(r"C\d{4}", code), code
+
+
+def test_import_ccall_old_inserts_only_missing():
+    c = _glossary_conn()
+    try:
+        import_glossary(c, CCALL_FILE, "C_CALL")  # newer VN table, authoritative
+        before = c.execute(
+            "SELECT name_vi, remedy FROM error_glossary "
+            "WHERE code_family='C_CALL' AND code='C0030' AND code_sub=''"
+        ).fetchone()
+        res = import_ccall_old(c, CCALL_OLD_FILE)
+        assert res["status"] == "imported"
+        assert res["inserted"] == len(_MISSING_OLD_CODES), res
+        after = c.execute(
+            "SELECT name_vi, remedy FROM error_glossary "
+            "WHERE code_family='C_CALL' AND code='C0030' AND code_sub=''"
+        ).fetchone()
+        assert tuple(after) == tuple(before)  # VN row untouched
+        row = c.execute(
+            "SELECT name_ja, cause, remedy, source_file FROM error_glossary "
+            "WHERE code_family='C_CALL' AND code='C1420' AND code_sub=''"
+        ).fetchone()
+        assert row is not None
+        assert "インナーシフトトレイ異常" in row[0]
+        assert "02XC_自己診断表示一覧表.xls" in (row[3] or "")
+        # Re-import of the unchanged file is skipped.
+        assert import_ccall_old(c, CCALL_OLD_FILE)["status"] == "skipped"
+    finally:
+        c.close()
+
+
+# ---------------------------------------------------------------------------
+# Term normalization: JAM family-prefix form (history writes 'JAM4709',
+# the workbook stores bare numbers like '4709')
+# ---------------------------------------------------------------------------
+
+def test_canonical_term_resolves_jam_prefix():
+    c = _glossary_conn()
+    try:
+        import_glossary(c, JAM_FILE, "JAM")
+        assert canonical_term(c, "JAM4709") == ("JAM", "4709")
+        assert canonical_term(c, "4709") == ("JAM", "4709")
+        assert canonical_term(c, "JAM9999") is None
+    finally:
+        c.close()
+
+
+def test_lookup_error_code_resolves_jam_prefix():
+    c = _glossary_conn()
+    try:
+        import_glossary(c, JAM_FILE, "JAM")
+        hit = lookup_error_code(c, "JAM4709")
+        assert hit is not None
+        assert hit["code_family"] == "JAM" and hit["code"] == "4709"
+        assert hit["source_file"]  # ticket: nghĩa + link nguồn
+        assert lookup_error_code(c, "SIMULATED_Z9999") is None
+    finally:
+        c.close()
+
+
+# ---------------------------------------------------------------------------
 # Term normalization: variant spellings -> one canonical code
 # ---------------------------------------------------------------------------
 
