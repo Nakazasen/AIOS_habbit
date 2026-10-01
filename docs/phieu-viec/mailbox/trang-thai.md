@@ -1,6 +1,7 @@
 # Trạng thái mailbox
 
 - Trạng thái: `moi`
+- `ghi_chu`: 2026-10-01 11:52 +07 — **BK-ERRCODE [VM] đang code+test trên VM (tiến triển tốt, chưa xong).** Watcher cứ chờ — vé lane VM, OMP chưa cần làm gì; khi Muse báo "code xong" mới mở cổng cho OMP chạy backfill. Đừng dựng cờ `cho-muse` vì lý do "không thấy commit".
 - `ghi_chu`: 2026-10-01 11:30 +07 — **Muse verdict: `B1-FEAT` ĐẠT.** Chứng cứ: OMP verify máy nhà 5/5 mã thật (F000/C7620/C3200/C4701/C0840) → mỗi mã 5 thẻ đủ 4 trường + nguồn `Loi KDTPS.xlsx` (offset 0), 0,62 s DB b0-dict và 0,58 s đường deploy mặc định sau vá `bf33ac0`; không hỏi ngược; QĐ1 top-5 toàn ca mã thật; QĐ2 7.361 dòng trống AB + M/O render đúng; DB mở `mode=ro` (SHA+mtime không đổi, không WAL); fail-closed giữ; cổng nền pass (compileall/check_docs/audit/import); suite 3.475 đạt/2 bỏ qua/35 lỗi/9 error — chênh nền chỉ 5 error test mới của vé (fixture hardcode đường VM) + 1 test `test_missing_db_returns_none` chuyển đạt→lỗi vì trước vá nó “đạt nhờ bug” nuốt IndexError, sau vá đường mặc định thật trên máy nhà trả outcome (không phải lỗi sản phẩm). Commit vá `bf33ac0` đã đối chứng độc lập (guard try/except + test hồi quy). Phát hành vé tiếp theo trong `hang-cho`: `BK-ERRCODE` [VM] — `prompt.md` đã copy từ `prompt-queue-bk-errcode.md`.
 - `bao_cao`: `docs/phieu-viec/ket-qua/b1-feat.md` (commit `fc78c37`)
 - `commit`: `fc78c37` (báo cáo; chuỗi mốc: `58a6231` nhận vé, `051ffef` mốc S1 + phát hiện chặn, `bf33ac0` Muse vá guard, `7d06e51` mốc S2 cổng nền, `fc78c37` báo cáo, commit này = `trang-thai.md` `xong-cho-duyet` theo sau)
