@@ -1,17 +1,17 @@
-# Vé J2 — JIG: xác nhận chức năng trước khi đưa người dùng thử
+# Vé J3 — JIG: triển khai dùng thử, thu thập cải tiến
 
-LANE: [NHÀ] — OMP thực hiện toàn bộ trên máy nhà. (+ Muse hỗ trợ review)
+LANE: [NGƯỜI DÙNG] — cần người dùng công ty dùng thử thật. OMP/Muse chỉ chuẩn bị + ghi nhận.
 
 ## Bối cảnh
-Pha kiểm tra lại toàn bộ chức năng đã triển khai ở Bước 1 JIG trước khi đưa cho người
-dùng thử. Cần: J1-CSV và J1-RT (prototype) xong.
+Đưa tool JIG cho người dùng công ty dùng thử, thu thập thông tin cải tiến.
 
 ## Việc cần làm
-1. Lập checklist từ spec các vé J1: import CSV, 9 biểu đồ, cảnh báo ngưỡng/xu hướng,
-   mail kèm biểu đồ, API realtime prototype.
-2. Chạy lại từng mục trên dữ liệu thật, ghi PASS/FAIL từng mục.
-3. Lỗi phát hiện → liệt kê cụ thể để ra vé sửa (không tự sửa ngoài vé).
+1. Chuẩn bị bản dùng thử (đóng gói từ code đã verify J2) + hướng dẫn sử dụng ngắn
+   (theo luật UI: 1 ô nhập + 1 vùng trả lời, không đống nút).
+2. Người dùng công ty dùng thử trên công việc thật → thu thập phản hồi, gom thành
+   backlog cải tiến có thứ tự ưu tiên.
+3. Ghi biên bản: ai dùng, dùng vào việc gì, phản hồi gì, backlog gì.
 
 ## Tiêu chí ĐẠT
-- Biên bản checklist đầy đủ PASS/FAIL trên dữ liệu thật, commit báo cáo
-  `docs/phieu-viec/ket-qua/j2.md`.
+- Có biên bản dùng thử + backlog cải tiến được user xác nhận. Không xong bằng vé kỹ
+  thuật đơn thuần — vé này là vé chuẩn bị và ghi nhận.
