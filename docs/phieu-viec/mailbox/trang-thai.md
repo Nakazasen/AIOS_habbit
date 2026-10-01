@@ -145,11 +145,12 @@
   10. `B5` (`prompt-queue-b5.md`) — [VM] phân loại tự động + cảnh báo tái phát. — **ĐÃ XONG, verdict ĐẠT 2026-10-01 ~17:50 +07** (accuracy holdout thật 85,25% n=3.125; E2E đường chat: 3 lỗi mới → FORM-0001/0002/0003 + đối chiếu lịch sử, ca thứ 4 C6950 → cảnh báo tái phát N=2 + đối sách từ FORM-0002; SQL đối chứng 251/189/162; full suite 3.561/2/35/9 không thoái lui; báo cáo `ket-qua/b5.md` commit `20f17ac`).
   11. `J1-CSV` (`prompt-queue-j1-csv.md`) — [VM] JIG: nhập cả file CSV + chọn biểu đồ + tự gửi mail. — **ĐÃ XONG, verdict ĐẠT 2026-10-01 ~18:55 +07** (test vé 15/15 + 149/149; E2E: nhập CSV thật 50k giá trị + 3 loại biểu đồ PNG + cảnh báo test → mail đính kèm đúng `phan_bo`; cổng nền PASS, suite 3.581/6/26/9 không hồi quy; báo cáo `ket-qua/j1-csv.md` commit `060b97e`).
   12. `J1-RT` (`prompt-queue-j1-rt.md`) — [VM+cty] JIG realtime: spec API + prototype + yêu cầu hạ tầng.
-  13. `upload-errordb-drive` (`prompt-queue-upload-errordb-drive.md`) — [NHÀ] đưa DB error_cases lên Drive cho PC0575 demo 10:00 02/10 (chạy sau J1-RT).
-  14. `J2` (`prompt-queue-j2.md`) — [NHÀ+người dùng] JIG: xác nhận chức năng trước khi đưa thử.
-  15. `J3` (`prompt-queue-j3.md`) — [người dùng] JIG: dùng thử, thu thập cải tiến.
-  16. `J4` (`prompt-queue-j4.md`) — [NHÀ+người dùng] JIG: chạy thử nghiệm.
-  17. `J5` (`prompt-queue-j5.md`) — [người dùng] JIG: chạy thật.
+  13. `upload-errordb-drive` (`prompt-queue-upload-errordb-drive.md`) — [NHÀ] đưa DB error_cases lên Drive cho PC0575 demo 10:00 02/10. — **ĐÃ XONG, verdict ĐẠT 2026-10-01 ~22:30 +07** (chạy trước J1-RT theo chỉ dẫn Muse; file lên Drive AIOS_Data, tải ẩn danh HTTP 200 đúng 54.480.896 byte, SHA-256 khớp nguồn + fingerprint B5; báo cáo `ket-qua/upload-errordb-drive.md`).
+  14. `hodap-home` (`prompt-queue-hodap-home.md`) — [NHÀ] hỏi đáp 6 câu L1–E3 trên index máy nhà (như PC0575).
+  15. `J2` (`prompt-queue-j2.md`) — [NHÀ+người dùng] JIG: xác nhận chức năng trước khi đưa thử.
+  16. `J3` (`prompt-queue-j3.md`) — [người dùng] JIG: dùng thử, thu thập cải tiến.
+  17. `J4` (`prompt-queue-j4.md`) — [NHÀ+người dùng] JIG: chạy thử nghiệm.
+  18. `J5` (`prompt-queue-j5.md`) — [người dùng] JIG: chạy thật.
 
 - ghi_chu: 2026-10-01 07:19 +07 — **DỪNG ở Pha 0 theo đúng mục Cấm của vé: kho app (localhost:8501) nằm trên ổ D** — `D:\Sandbox\AIOS_habbit\local_runs\workspace_chat_rag_v2_production\bge_m3_hybrid\collections\tri_thuc\library.sqlite` (2.552.659.968 B, SHA `062ec090…4ef8ca` khớp ghim P1.3; bản copy C `C:\AIOS_p1_4\tri_thuc\library.sqlite` trùng SHA byte-đối-byte). Pha 0 đủ dữ kiện: 2 gói delta SHA khớp ghim (262b `5bd7c56d…9a85`, DC `31afe1e3…63e3`), ZIP CRC đạt, SQLite standalone (không phải diff), fingerprint `016c5255d0cec1fcb75b99f71f3c6a47…` đủ 100% dense/sparse cả 2 gói, quick_check ok; C: trống 8,84 GiB (đủ backup + merge nhưng không dùng). **KHÔNG merge, không tạo backup, không ghi ổ D, không đụng app**; Pha 1 + Pha 2 không chạy. Chuyển `cho-muse` để Muse/user quyết (đề xuất: vé chuyển kho sang C + cập nhật manifest rồi merge trên C). Báo cáo: `docs/phieu-viec/ket-qua/merge-home.md` (commit `561014b`).
 - ghi_chu: 2026-10-01 07:15 +07 — OMP nhận vé `merge-home` (máy nhà h410asrock; watcher tự mở LAUNCH 1/4 lúc 07:09:47). Cổng gate: ĐẠT — điều kiện mở thoả (2 gói delta trên ổ C đúng tên/kích thước; vé đúng lane [NHÀ]); chưa dùng nhánh "4 lần watcher". Bắt đầu Pha 0 (chỉ đọc): xác định kho app đang đọc, băm SHA-256 2 gói delta, kiểm dung lượng ổ C, kiểm điều kiện dừng "kho app nằm trên ổ D".
