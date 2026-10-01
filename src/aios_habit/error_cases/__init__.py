@@ -85,13 +85,21 @@ from .import_lsu_logs import (
 from .investigation_tree import (
     BRANCH_LABELS_VI,
     BRANCHES,
+    REPORT_AUTHOR_LABEL,
+    REPORT_DATE_LABEL,
+    REPORT_FIELDS,
+    REPORT_TABLE_HEAD,
+    REPORT_TITLE,
     ChecklistItem,
     InvestigationTree,
     WhyNode,
     build_tree,
     build_why_chain,
+    export_docx,
     export_markdown,
+    export_report,
     render_markdown,
+    render_report,
 )
 from .store import (
     batch_stats,

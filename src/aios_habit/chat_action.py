@@ -39,6 +39,8 @@ BUILTIN_ACTION_MODULES: Tuple[str, ...] = (
     "aios_habit.chat_action_prediction",
     "aios_habit.chat_action_visual_maps",
     "aios_habit.chat_action_case_form",
+    # B3: investigation-plan commands outrank the bare-code lookup fallback.
+    "aios_habit.chat_action_dieu_tra",
     # B2: explicit feedback commands outrank the bare-code lookup fallback,
     # while tra_cuu_loi_tuong_tu stays last (lowest match priority).
     "aios_habit.chat_action_phan_hoi",

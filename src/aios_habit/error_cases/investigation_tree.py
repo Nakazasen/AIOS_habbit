@@ -305,3 +305,210 @@ def export_markdown(tree: InvestigationTree, path: str | Path) -> Path:
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(render_markdown(tree), encoding="utf-8")
     return out
+
+
+# ---------------------------------------------------------------------------
+# Company report template (extracted from real KTD investigation reports)
+# ---------------------------------------------------------------------------
+# Field labels verbatim from the "Bao cao dieu tra" sheet of the real KTD
+# reports shipped with the company data (e.g.
+# "Lịch sử lỗi/C Call/KTD-2026-08-0872-Iris2024-C33-A1-C4001.xlsx"),
+# in sheet order. The generated investigation plan goes into the
+# "Investigation content and results" row so the exported file pastes
+# straight into the company report form.
+
+REPORT_TITLE = "Báo cáo điều tra lỗi/調査報告書"
+REPORT_AUTHOR_LABEL = "Người Lập作成者："
+REPORT_DATE_LABEL = "Ngày lập作成日："
+REPORT_TABLE_HEAD = ("Item／項目", "Details／詳細")
+
+#: (meta key, verbatim Item label) in report-sheet order.
+REPORT_FIELDS: Tuple[Tuple[str, str], ...] = (
+    ("model", "Model/モデル"),
+    ("item_code", "Item code - Rev／品番 - Rev"),
+    ("item_name", "Item name／品名"),
+    ("serial_lot", "S.No (Lot)／シリアル番号（ロット）"),
+    ("supplier", "Supplier/サプライヤー"),
+    ("machine_no", "Machine No.／仕上げ-マシンNo."),
+    ("occurrence_date", "Occurrence Date／発生日"),
+    ("defect_contents", "Contents of defect／不具合内容"),
+    ("line", "Line／ライン"),
+    ("quantity", "Quantity／数量"),
+    ("status_at_line", "Status of occurrence at Line／ラインでの発生状況"),
+    ("reappear_rate", "Reappear rate(%)／(Describe the reappear environment)"),
+    ("investigation", "Investigation content and results／調査内容と結果"),
+)
+
+
+def _report_meta(tree: InvestigationTree, meta: Optional[Dict[str, str]]) -> Dict[str, str]:
+    """Merge caller meta over defaults. Unfilled fields stay blank for the
+    investigator; the phenomenon seeds 'Contents of defect'."""
+    merged = {key: "" for key, _ in REPORT_FIELDS}
+    merged["defect_contents"] = tree.phenomenon
+    if tree.code:
+        code_line = f"{tree.code_family} {tree.code}".strip()
+        if tree.code_name:
+            code_line += f" — {tree.code_name}"
+        merged["defect_contents"] += f" [{code_line}]"
+    if meta:
+        for key in merged:
+            if key in meta and meta[key] is not None:
+                merged[key] = str(meta[key])
+    return merged
+
+
+def _plan_as_text(tree: InvestigationTree) -> str:
+    """The investigation plan as plain text (for the 'Investigation content
+    and results' row and the docx body)."""
+    L: List[str] = []
+    L.append("KẾ HOẠCH ĐIỀU TRA (Cây điều tra 4M)")
+    for branch in tree.branch_order:
+        label = BRANCH_LABELS_VI.get(branch, branch)
+        L.append(f"[{label}]")
+        for it in tree.branches.get(branch, []):
+            star = " (ưu tiên)" if it.priority else ""
+            L.append(f"  - {it.question}{star}")
+            L.append(f"    Thu thập: {it.data_to_collect}")
+    L.append("CHUỖI WHY-WHY")
+    for node in tree.why_chain:
+        L.append(f"  {node.level}. {node.question}")
+        L.append(f"     Gợi ý: {node.hint}")
+        L.append("     Trả lời: ___")
+    L.append("DỮ LIỆU/HIỆN VẬT CẦN THU THẬP")
+    seen = set()
+    for it in tree.all_items():
+        key = it.data_to_collect.strip()
+        if key and key not in seen:
+            seen.add(key)
+            L.append(f"  - [ ] {key}")
+    return "\n".join(L)
+
+
+def render_report(tree: InvestigationTree,
+                  meta: Optional[Dict[str, str]] = None) -> str:
+    """Render the plan in the company KTD report layout (Markdown).
+
+    Header (title + report id, author, date), the Item/Details table with
+    the verbatim company field labels, then the 4M + Why-Why plan in the
+    'Investigation content and results' row. Blank fields are left for
+    the investigator to fill by hand.
+    """
+    fields = _report_meta(tree, meta)
+    plan = _plan_as_text(tree)
+    report_id = (meta or {}).get("report_id", "")
+    author = (meta or {}).get("author", "")
+    date = (meta or {}).get("date", "")
+
+    L: List[str] = []
+    title = REPORT_TITLE + (f" — {report_id}" if report_id else "")
+    L.append(f"# {title}")
+    L.append("")
+    L.append(f"{REPORT_AUTHOR_LABEL} {author}")
+    L.append("")
+    L.append(f"{REPORT_DATE_LABEL} {date}")
+    L.append("")
+    L.append(f"| {REPORT_TABLE_HEAD[0]} | {REPORT_TABLE_HEAD[1]} |")
+    L.append("| --- | --- |")
+    for key, label in REPORT_FIELDS:
+        value = fields[key]
+        if key == "investigation":
+            continue  # rendered as its own section below
+        cell = value.replace("\n", "<br>") if value else ""
+        L.append(f"| {label} | {cell} |")
+    L.append("")
+    inv_label = dict(REPORT_FIELDS)["investigation"]
+    L.append(f"## {inv_label}")
+    L.append("")
+    L.append("```")
+    L.append(plan)
+    L.append("```")
+    L.append("")
+    return "\n".join(L)
+
+
+def export_report(tree: InvestigationTree, path: str | Path,
+                  meta: Optional[Dict[str, str]] = None) -> Path:
+    """Write the company-format report. Dispatches on suffix:
+    ``.md`` -> :func:`render_report`, ``.docx`` -> :func:`export_docx`."""
+    out = Path(path)
+    suffix = out.suffix.lower()
+    if suffix == ".docx":
+        return export_docx(tree, out, meta)
+    out = out if suffix == ".md" else out.with_suffix(".md")
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(render_report(tree, meta), encoding="utf-8")
+    return out
+
+
+def export_docx(tree: InvestigationTree, path: str | Path,
+                meta: Optional[Dict[str, str]] = None) -> Path:
+    """Write the company-format report as a Word document.
+
+    Layout mirrors the KTD "Bao cao dieu tra" sheet: title, author/date,
+    an Item/Details table, then the 4M tree, the Why-Why chain and the
+    data/artifact checklist. Requires the ``python-docx`` package.
+    """
+    try:
+        from docx import Document
+        from docx.shared import Pt
+    except ImportError as exc:  # pragma: no cover - dependency declared
+        raise RuntimeError("python-docx is required for docx export") from exc
+
+    fields = _report_meta(tree, meta)
+    report_id = (meta or {}).get("report_id", "")
+    author = (meta or {}).get("author", "")
+    date = (meta or {}).get("date", "")
+
+    doc = Document()
+    for para in doc.paragraphs:
+        for run in para.runs:
+            run.font.size = Pt(11)
+
+    title = REPORT_TITLE + (f" — {report_id}" if report_id else "")
+    doc.add_heading(title, level=1)
+    doc.add_paragraph(f"{REPORT_AUTHOR_LABEL} {author}")
+    doc.add_paragraph(f"{REPORT_DATE_LABEL} {date}")
+
+    table = doc.add_table(rows=1, cols=2)
+    table.style = "Table Grid"
+    hdr = table.rows[0].cells
+    hdr[0].text, hdr[1].text = REPORT_TABLE_HEAD
+    for key, label in REPORT_FIELDS:
+        if key == "investigation":
+            continue
+        row = table.add_row().cells
+        row[0].text = label
+        row[1].text = fields[key]
+
+    inv_label = dict(REPORT_FIELDS)["investigation"]
+    doc.add_heading(inv_label, level=2)
+
+    doc.add_heading("Cây điều tra 4M", level=3)
+    for branch in tree.branch_order:
+        doc.add_heading(BRANCH_LABELS_VI.get(branch, branch), level=4)
+        for it in tree.branches.get(branch, []):
+            star = " (ưu tiên)" if it.priority else ""
+            doc.add_paragraph(f"{it.question}{star}", style="List Bullet")
+            doc.add_paragraph(f"Thu thập: {it.data_to_collect}",
+                              style="List Bullet 2")
+
+    doc.add_heading("Chuỗi Why-Why", level=3)
+    for node in tree.why_chain:
+        doc.add_paragraph(f"{node.question}", style="List Number")
+        doc.add_paragraph(f"Gợi ý: {node.hint}")
+        doc.add_paragraph("Trả lời: ___")
+
+    doc.add_heading("Dữ liệu/hiện vật cần thu thập", level=3)
+    seen = set()
+    for it in tree.all_items():
+        key = it.data_to_collect.strip()
+        if key and key not in seen:
+            seen.add(key)
+            doc.add_paragraph(key, style="List Bullet")
+
+    out = Path(path)
+    if out.suffix.lower() != ".docx":
+        out = out.with_suffix(".docx")
+    out.parent.mkdir(parents=True, exist_ok=True)
+    doc.save(str(out))
+    return out
