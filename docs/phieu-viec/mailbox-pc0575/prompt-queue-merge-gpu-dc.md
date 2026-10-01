@@ -41,10 +41,17 @@ Production đích:
 4. Apply: import 329 ID từ delta vào production, kèm 2.482 parent chunk giữ ngữ cảnh.
    Luật cứng: nếu phát hiện trùng `document_id`/`chunk_id` với production thì DỪNG
    (không skip lặng lẽ, không ghi đè), mailbox `cho-muse`.
-5. Verify sau merge (chỉ đọc): 329/329 ID mới `retrievable=1` đủ dense+sparse,
+5. Stamp `source_fingerprint` cho các dòng vừa merge (bài học từ merge-gpu262b 13:14
+   2026-10-01: delta xuất thiếu trường này → app chặn truy vấn ở cổng phủ
+   `document_identity_mismatch`). Cách làm an toàn đã kiểm chứng: UPDATE chỉ các
+   dòng `source_fingerprint IS NULL` thuộc đúng 329 ID mới (không đụng dòng cũ);
+   trước UPDATE tạm DROP trigger `chunks_fts_update` (trigger này AFTER UPDATE mọi
+   cột nên buộc dựng lại FTS từng dòng — rất chậm), UPDATE xong tạo lại trigger
+   **đúng nguyên văn DDL gốc** và kiểm khớp. Verify: `NULL=0`.
+6. Verify sau merge (chỉ đọc): 329/329 ID mới `retrievable=1` đủ dense+sparse,
    2.482 parent `retrievable=0`; fingerprint `016c5255…`; `integrity_check=ok`;
-   ghi SHA production mới. Restart app + smoke 1 câu hỏi trên UI LAN.
-6. Mailbox → `xong-cho-duyet` + báo cáo `docs/phieu-viec/ket-qua/merge-gpu-dc.md`
+   cổng phủ `valid=True`; ghi SHA production mới. Restart app + smoke 1 câu hỏi trên UI LAN.
+7. Mailbox → `xong-cho-duyet` + báo cáo `docs/phieu-viec/ket-qua/merge-gpu-dc.md`
    (ghi rõ: SHA zip/sqlite đã verify, SHA backup, 329 ID đã nhập, kết quả smoke).
 
 ## Cấm
