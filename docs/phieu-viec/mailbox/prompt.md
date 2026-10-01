@@ -1,22 +1,20 @@
-# Vé J1-RT — JIG realtime: spec API + prototype + yêu cầu hạ tầng
+# Vé hodap-home — Hỏi đáp 6 câu L1–E3 trên máy nhà
 
-LANE: [VM] — Muse thực hiện code+test trên VM. OMP KHÔNG làm vé này, chỉ verify trên máy nhà với dữ liệu thật khi Muse báo code xong + commit rõ ràng. (phần hạ tầng thật cần phía công ty — xem mục 3)
+LANE: [NHÀ] — OMP thực hiện toàn bộ trên máy nhà h410asrock. Chạy SAU khi J1-RT xong (không chen ngang verify đang chạy).
 
 ## Bối cảnh
-Mục tiêu cuối của tool JIG: AI phân tích dữ liệu realtime từ server và cảnh báo khi có
-xu hướng dẫn đến phát sinh NG. Cần: cổng API (đầu nhận/chuyển thông tin) để jig đẩy
-dữ liệu lên server realtime; server đẩy về AI realtime. Hạ tầng cần chuẩn bị:
-(1) log jig đẩy dòng/cột dữ liệu lên server; (2) server đẩy ngược dữ liệu về AI.
+User muốn hỏi đáp RAG trên máy nhà như máy công ty. Vé `hodap-lsu-loi-rerun` đã chạy 6 câu (L1–L3/E1–E3) trên PC0575; chạy lại đúng 6 câu đó trên index máy nhà.
 
 ## Việc cần làm
-1. Thiết kế spec API: endpoint nhận dòng log jig (format bản tin, tần suất, auth),
-   endpoint server→AI (push/pull, format, retry).
-2. Prototype AI nhận realtime: mô phỏng bằng dữ liệu jig thật phát lại theo đúng dòng
-   thời gian, gắn mác SIMULATED_REALTIME (không bịa dữ liệu).
-3. Liệt kê yêu cầu hạ tầng phía công ty (server, mạng, agent thu log trên jig) thành
-   danh sách cụ thể để user quyết.
-4. Code + test prototype trên VM.
+1. Ghi nhận định danh index máy nhà: đường dẫn file, SHA-256/dung lượng, số chunk/document, các delta đã merge.
+2. Lấy đúng 6 câu hỏi L1–L3/E1–E3 từ vé `hodap-lsu-loi-rerun` (`docs/phieu-viec/mailbox-pc0575/prompt-queue-hodap-lsu-loi-rerun.md`).
+3. Chạy từng câu, ghi: thời gian/câu, câu trả lời, top-15, citation/trace (valid/insufficient_evidence).
+4. Báo cáo `docs/phieu-viec/ket-qua/hodap-home.md`.
+
+## Ràng buộc
+- Index máy nhà KHÁC production PC0575 → kết quả chỉ để tham khảo và phục vụ hỏi đáp tại nhà, KHÔNG so trực tiếp với số đo PC0575.
+- Vé này chỉ đọc + hỏi đáp, không ghi index.
+- Không đụng `main`, ổ D.
 
 ## Tiêu chí ĐẠT
-- Spec API hoàn chỉnh + prototype chạy được với dữ liệu phát lại + danh sách yêu cầu
-  hạ tầng rõ ràng. Triển khai hạ tầng thật là việc khác, không thuộc vé này.
+- 6/6 câu có trả lời; báo cáo đầy đủ thời gian + trace/citation từng câu; định danh index rõ ràng.
