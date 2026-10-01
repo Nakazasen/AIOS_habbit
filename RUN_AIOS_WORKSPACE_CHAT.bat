@@ -15,13 +15,13 @@ rem Bat duong search numpy cho kho tri thuc lon (mac dinh trong code la tat).
 rem Do tren PC0575 (2026-10-01): vong cosine Python thuan >60 giay/truy van;
 rem bat numpy thi truy van ve mili giay. Khong set = giu mac dinh tat.
 set "AIOS_RAG_V2_NUMPY_DENSE=1"
-rem Timeout truy van BGE worker: do that tren PC0575 ngay 2026-10-01 (index
-rem 108k chunk, CPU-only, worker that + shim log INFO): cau L2 = 727s (dense
-rem numpy 166s + phan con lai lexical/sparse/assembly), cau L3 am = 508s.
-rem Dat 900s = so do lon nhat + margin. Mac dinh trong code van la 30s khi
-rem khong set. Day la timeout tam cho may CPU-only; Muse se toi uu 3 vong
-rem Python trong rag_v2/index.py roi ha xuong.
-set "AIOS_BGE_QUERY_TIMEOUT=900"
+rem Timeout truy van BGE worker: do that tren PC0575 ngay 2026-10-01 bang
+rem worker that + shim log INFO. Truoc merge (108k chunk): L2 = 727s. Sau merge
+rem GPU-262b (110.214 retrievable): cau E1 = 891,6s (dense numpy 181s + 3 vong
+rem Python lexical/sparse/assembly ~700s). Dat 1200s = so do + margin.
+rem Mac dinh trong code van la 30s khi khong set. Day la timeout tam cho may
+rem CPU-only; Muse se toi uu 3 vong Python trong rag_v2/index.py roi ha xuong.
+set "AIOS_BGE_QUERY_TIMEOUT=1200"
 rem Lan mo dau tien tung cham vi preflight "import torch, FlagEmbedding"
 rem nap DLL native roi thoat, sau do moi mo Streamlit. Chi can biet goi da
 rem cai. Sidecar cung khong duoc chan cua so nay: app van ket noi khi san sang.
