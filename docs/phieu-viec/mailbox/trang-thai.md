@@ -1,7 +1,8 @@
 # Trạng thái mailbox
 
-- Trạng thái: `xong-cho-duyet`
-- Ticket hiện tại: `B5` — phân loại tự động + cảnh báo tái phát (phát hành 2026-10-01 16:38 +07, sau verdict B4 ĐẠT).
+- Trạng thái: `moi`
+- `ghi_chu`: 2026-10-01 ~17:50 +07 — **Muse verdict: `B5` ĐẠT.** Đối chứng độc lập báo cáo `docs/phieu-viec/ket-qua/b5.md` (commit `20f17ac`, đơn-parent, blob SHA trùng khít ở head `5f8724a`, không đụng `main`): (1) accuracy holdout thật **85,25% ≥ 80%** (n=3.125, nhãn cột AA, workbook SHA `ee97eaf5…` khớp ghim, đo 2 cách độc lập trùng khớp); (2) E2E đúng đường chat `handle_chat_text` trên bản copy DB thật (SHA `6bd41a8c…2369` không đổi): 3 lỗi mới F000/C6950/C0980 → phiếu FORM-20261001-0001/0002/0003 + "đã đối chiếu lịch sử: tìm thấy 5 ca tương tự", ca thứ 4 cùng mã C6950 → **cảnh báo tái phát N=2** + đối sách từ FORM-20261001-0002 (cửa sổ 168 giờ); DB rỗng → nhánh "không thấy ca tương tự"; SQL đối chứng detect_recurrence = SQL+1 = 251/189/162; (3) cổng nền PASS 4/4 (compileall EXIT=0 sau vá PEP 701 `605204d`; check_docs/audit/import OK); full suite **3.561/2/35/9** — +5 node = đúng 4 test `test_b5_accuracy` + 1 test byte-exact nhãn B3, **44 mục FAILED/ERROR trùng khít từng node nền B4** (diff rỗng); (4) ràng buộc: DB thật chỉ đọc (bản copy), không ghi index, không đụng ổ D/`main`, cờ `AIOS_FEATURE_CHAT_ACTION` fail-closed. Ghi nhận không chặn: nhóm `lap_rap` chưa nhận diện được từ văn bản → rơi về `khac` conf thấp (limitation ghi sẵn trong code); thụt lề cosmetic dòng cảnh báo phụ. → Phát hành vé tiếp theo trong `hang-cho`: `J1-CSV` [VM] — `prompt.md` đã copy từ `prompt-queue-j1-csv.md`; Muse code+test trên VM, OMP verify trên máy nhà khi Muse báo code xong + commit rõ ràng.
+- Ticket hiện tại: `J1-CSV` — JIG: nhập cả file CSV + chọn biểu đồ, tự gửi mail (phát hành 2026-10-01 ~17:50 +07, sau verdict B5 ĐẠT).
 - `prompt`: `docs/phieu-viec/mailbox/prompt.md`
 - `commit`: `20f17ac`
 - `bao_cao`: `docs/phieu-viec/ket-qua/b5.md`
@@ -109,7 +110,7 @@
   7. `B2` (`prompt-queue-b2.md`) — [VM] vòng phản hồi. — **ĐÃ XONG, verdict ĐẠT 2026-10-01 ~15:22 +07** (smoke 30/30 sau vá `e34c43e`; full suite 3.520/2/35/9 không thoái lui; báo cáo `ket-qua/b2.md` commit `6ca4db7`).
   8. `B3` (`prompt-queue-b3.md`) — [VM] gợi ý hướng điều tra 4M + Why-Why — **ĐÃ XONG, verdict ĐẠT 2026-10-01 ~15:59 +07** (3 hiện tượng thật → cây 4M + Why-Why 5 tầng; test 21/21; suite 3.541/2/35/9 không thoái lui; báo cáo `ket-qua/b3.md` commit `c039dad`; phát hiện nhãn: Muse quyết vá byte-exact 5 nhãn, gộp vào lượt code B4).
   9. `B4` (`prompt-queue-b4.md`) — [VM] phân tích xu hướng & cảnh báo sớm — **ĐÃ XONG, verdict ĐẠT 2026-10-01 ~16:38 +07** (3 tiêu chí: biểu đồ xu hướng trên DB thật 15.707 ca/41 kỳ + cảnh báo bắn đúng ngưỡng test + báo cáo định kỳ 466KB/8 chart/mail stub; test 36/36; suite 3.556/2/35/9 không thoái lui; báo cáo `ket-qua/b4.md` commit `d0e5660`).
-  10. `B5` (`prompt-queue-b5.md`) — [VM] phân loại tự động + cảnh báo tái phát.
+  10. `B5` (`prompt-queue-b5.md`) — [VM] phân loại tự động + cảnh báo tái phát. — **ĐÃ XONG, verdict ĐẠT 2026-10-01 ~17:50 +07** (accuracy holdout thật 85,25% n=3.125; E2E đường chat: 3 lỗi mới → FORM-0001/0002/0003 + đối chiếu lịch sử, ca thứ 4 C6950 → cảnh báo tái phát N=2 + đối sách từ FORM-0002; SQL đối chứng 251/189/162; full suite 3.561/2/35/9 không thoái lui; báo cáo `ket-qua/b5.md` commit `20f17ac`).
   11. `J1-CSV` (`prompt-queue-j1-csv.md`) — [VM] JIG: nhập cả file CSV + chọn biểu đồ + tự gửi mail.
   12. `J1-RT` (`prompt-queue-j1-rt.md`) — [VM+cty] JIG realtime: spec API + prototype + yêu cầu hạ tầng.
   13. `J2` (`prompt-queue-j2.md`) — [NHÀ+người dùng] JIG: xác nhận chức năng trước khi đưa thử.

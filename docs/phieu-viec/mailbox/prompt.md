@@ -1,23 +1,19 @@
-# Vé B5 — Phân loại tự động + cảnh báo tái phát
+# Vé J1-CSV — JIG: nhập cả file CSV + chọn biểu đồ, tự gửi mail
 
 LANE: [VM] — Muse thực hiện code+test trên VM. OMP KHÔNG làm vé này, chỉ verify trên máy nhà với dữ liệu thật khi Muse báo code xong + commit rõ ràng.
 
 ## Bối cảnh
-Khi nhập lỗi mới, AI tự gán: công đoạn / phân loại nguyên nhân
-(lắp ráp – thiết kế – linh kiện – khác) / bộ phận phụ trách, rồi đối chiếu lịch sử để
-cảnh báo "lỗi này đã phát sinh N lần, đã có đối sách X".
-Điều kiện hoàn thành: độ chính xác phân loại ≥80% trên tập kiểm tra;
-100% lỗi mới được đối chiếu với lịch sử.
-Phụ thuộc: vé f3b-backfill (chất lượng trường fix/đối sách).
+Bước 1 JIG (phần tay) đã chạy thật: CSV→SQLite chống trùng, 9 biểu đồ, cảnh báo
+ngưỡng/xu hướng, mail kèm biểu đồ, 21 vi phạm ngưỡng trên dữ liệu Iris thật (jig 1035).
+Còn thiếu: nhập cả file CSV log jig một lần + cho phép chọn biểu đồ (áp dụng luôn);
+tự chọn biểu đồ user đã setup → tự động gửi email đính kèm biểu đồ đó khi cảnh báo.
 
 ## Việc cần làm
-1. Bộ phân loại trên dữ liệu thật có nhãn (15.707 ca): rule-based trước, đo accuracy
-   trên tập kiểm tra giữ lại (không dùng tập train để chấm).
-2. Đối chiếu tái phát: lỗi mới → tìm lịch sử cùng (error code/hiện tượng) → đếm N lần
-   + đối sách đã áp dụng.
-3. Tích hợp vào form B0-FORM: nhập xong hiện tượng → hiện cảnh báo tái phát ngay nếu có.
-4. Code + test trên VM.
+1. Kiểm kê code hiện tại: phần nào đã có thì không làm lại (ghi rõ trong báo cáo).
+2. Bổ sung phần thiếu: import cả file CSV một lần; UI chọn biểu đồ; cấu hình
+   "biểu đồ nào gửi kèm mail khi cảnh báo".
+3. Code + test trên VM với file log jig thật.
 
 ## Tiêu chí ĐẠT
-- Số đo accuracy thật ≥80% trên tập kiểm tra; demo nhập 3 lỗi mới → cảnh báo tái phát
-  đúng N lần + đối sách X. OMP verify trên máy nhà.
+- OMP verify: nhập 1 file CSV log jig thật → chọn biểu đồ → ra biểu đồ đúng;
+  bắn cảnh báo test → mail đi kèm đúng biểu đồ đã setup.
