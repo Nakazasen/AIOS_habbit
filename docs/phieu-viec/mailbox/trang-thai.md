@@ -1,6 +1,7 @@
 # Trạng thái mailbox
 
-- Trạng thái: `xong-cho-duyet`
+- Trạng thái: `moi`
+- `ghi_chu`: 2026-10-01 11:30 +07 — **Muse verdict: `B1-FEAT` ĐẠT.** Chứng cứ: OMP verify máy nhà 5/5 mã thật (F000/C7620/C3200/C4701/C0840) → mỗi mã 5 thẻ đủ 4 trường + nguồn `Loi KDTPS.xlsx` (offset 0), 0,62 s DB b0-dict và 0,58 s đường deploy mặc định sau vá `bf33ac0`; không hỏi ngược; QĐ1 top-5 toàn ca mã thật; QĐ2 7.361 dòng trống AB + M/O render đúng; DB mở `mode=ro` (SHA+mtime không đổi, không WAL); fail-closed giữ; cổng nền pass (compileall/check_docs/audit/import); suite 3.475 đạt/2 bỏ qua/35 lỗi/9 error — chênh nền chỉ 5 error test mới của vé (fixture hardcode đường VM) + 1 test `test_missing_db_returns_none` chuyển đạt→lỗi vì trước vá nó “đạt nhờ bug” nuốt IndexError, sau vá đường mặc định thật trên máy nhà trả outcome (không phải lỗi sản phẩm). Commit vá `bf33ac0` đã đối chứng độc lập (guard try/except + test hồi quy). Phát hành vé tiếp theo trong `hang-cho`: `BK-ERRCODE` [VM] — `prompt.md` đã copy từ `prompt-queue-bk-errcode.md`.
 - `bao_cao`: `docs/phieu-viec/ket-qua/b1-feat.md` (commit `fc78c37`)
 - `commit`: `fc78c37` (báo cáo; chuỗi mốc: `58a6231` nhận vé, `051ffef` mốc S1 + phát hiện chặn, `bf33ac0` Muse vá guard, `7d06e51` mốc S2 cổng nền, `fc78c37` báo cáo, commit này = `trang-thai.md` `xong-cho-duyet` theo sau)
 - `ghi_chu`: 2026-10-01 11:24 +07 — **OMP báo XONG-CHỜ-DUYỆT vé `B1-FEAT`.** Kết quả verify máy nhà: (1) DB b0-dict — **5/5 mã thật** (F000 / C7620 / C3200 / C4701 / C0840) → mỗi mã **5 thẻ** đủ Hiện tượng/Nguyên nhân/Đối sách/Báo cáo gốc + nguồn `Loi KDTPS.xlsx` (khớp dòng thật của sheet, offset 0), **0,62 s** (<1 phút, không hỏi ngược); QĐ1 top-5 đều ca mã thật; QĐ2 7.361 dòng ô trống + M/O render đúng. (2) **Đường mặc định deploy — sau vá `bf33ac0` cũng 5/5 mã → 5 thẻ/0,58 s** (trước vá 0 thẻ do `IndexError` dòng 202 — đã báo ở Mốc S1 và được Muse vá đúng, không đổi hành vi DB mới). (3) `mode=ro` (SHA+mtime 3 DB không đổi, không WAL) + fail-closed giữ; cổng nền đạt (compileall/check_docs/audit/import PASS; suite sau vá **3.475 đạt / 2 bỏ qua / 35 lỗi / 9 error** — chênh nền chỉ gồm 5 error test mới của vé + 1 bài `test_missing_db_returns_none` fail do test không portable sang máy nhà [đạt “nhờ bug” trước vá], không phải lỗi sản phẩm; chi tiết + đối chứng cây cha trong báo cáo). Chờ Muse verdict.
@@ -48,8 +49,8 @@
   1. `merge-home` — **ĐÃ XONG, verdict ĐẠT 2026-10-01 ~08:52 +07** (348 doc/15.603 chunk vào kho C; bản ghi verdict đầy đủ ở commit phát hành B0-DICT).
   2. `B0-DICT` (`prompt-queue-b0-dict.md`) — [VM] từ điển thuật ngữ + số hóa bảng mã lỗi — **ĐÃ XONG, verdict ĐẠT 2026-10-01 ~09:47 +07**.
   3. `B0-MEASURE` (`prompt-queue-b0-measure.md`) — [NHÀ] đo ≥90% đủ 5 trường bắt buộc — **ĐÃ XONG, verdict ĐẠT 2026-10-01 ~10:10 +07** (KDTPS 52,96%/9,84%, LSU 0% — 2 quyết định chính sách đã chốt QĐ1+QĐ2 (`docs/phieu-viec/ket-qua/b0-measure-quyet-dinh.md`); KDTPS 99,48% ≥90% → Bước 0 ĐÓNG cho list điều tra lỗi (LSU 0%, cần người rà soát)).
-  4. `B1-FEAT` (`prompt-queue-b1-feat.md`) — [VM] Bước 1 thành tính năng hoàn chỉnh — **ĐANG PHÁT HÀNH** (Muse code+test trên VM; OMP verify trên máy nhà khi Muse báo xong).
-  5. `BK-ERRCODE` (`prompt-queue-bk-errcode.md`) — [VM] backfill mã thật 3.537 ca nhóm ERROR (nợ chính xác QĐ1).
+  4. `B1-FEAT` (`prompt-queue-b1-feat.md`) — [VM] Bước 1 thành tính năng hoàn chỉnh — **ĐÃ XONG, verdict ĐẠT 2026-10-01 ~11:30 +07**.
+  5. `BK-ERRCODE` (`prompt-queue-bk-errcode.md`) — [VM] backfill mã thật 3.537 ca nhóm ERROR (nợ chính xác QĐ1) — **ĐANG PHÁT HÀNH** (Muse code+test trên VM; OMP chạy backfill + verify trên máy nhà khi Muse báo xong).
   6. `BK-82` (`prompt-queue-bk-82.md`) — [NHÀ] rà soát tay 82 dòng thiếu hiện tượng/nguyên nhân/công đoạn.
   7. `B2` (`prompt-queue-b2.md`) — [VM] vòng phản hồi.
   8. `B3` (`prompt-queue-b3.md`) — [VM] gợi ý hướng điều tra 4M + Why-Why.
