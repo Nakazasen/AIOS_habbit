@@ -1,6 +1,6 @@
 # Trạng thái mailbox
 
-- Trạng thái: `moi`
+- Trạng thái: `dang-lam`
 - Ticket hiện tại: `merge-home` — [NHÀ] gộp 2 gói delta (262b + DC) vào kho máy nhà để user hỏi đáp ngay trên dữ liệu mới. Vé #1 hàng chờ (chèn khẩn 2026-10-01 ~06:55 +07 theo yêu cầu user).
 - `prompt`: `docs/phieu-viec/mailbox/prompt.md` (copy từ `prompt-queue-merge-home.md`)
 - `phat_hanh`: 2026-10-01 ~07:15 +07 — Muse verdict `upload-delta-drive` **ĐẠT** → phát hành vé xếp hàng tiếp theo `merge-home` (chế độ tự lái: copy `prompt-queue-merge-home.md` vào `prompt.md`).
@@ -22,6 +22,7 @@
   12. `J4` (`prompt-queue-j4.md`) — [NHÀ+người dùng] JIG: chạy thử nghiệm.
   13. `J5` (`prompt-queue-j5.md`) — [người dùng] JIG: chạy thật.
 
+- ghi_chu: 2026-10-01 07:15 +07 — OMP nhận vé `merge-home` (máy nhà h410asrock; watcher tự mở LAUNCH 1/4 lúc 07:09:47). Cổng gate: ĐẠT — điều kiện mở thoả (2 gói delta trên ổ C đúng tên/kích thước; vé đúng lane [NHÀ]); chưa dùng nhánh "4 lần watcher". Bắt đầu Pha 0 (chỉ đọc): xác định kho app đang đọc, băm SHA-256 2 gói delta, kiểm dung lượng ổ C, kiểm điều kiện dừng "kho app nằm trên ổ D".
 - ghi_chu: 2026-10-01 07:06 +07 — Hoàn tất vé upload-delta-drive, chờ Muse review. Báo cáo: docs/phieu-viec/ket-qua/upload-delta-drive.md (commit 66e0e23). Kết quả: 2 zip đã nằm trong AIOS_Data; quyền "Bất kỳ ai có đường liên kết = Người xem" (xác nhận trong hộp thoại Chia sẻ từng file); verify tải ẩn danh không cookie: 262b nhận đủ 20.867.536 B + SHA khớp ghim `5bd7c56d…9a85`; DC nhận đủ 74.065.213 B + SHA khớp ghim `31afe1e3…63e3`; link bàn giao trong báo cáo; bản local trên ổ C giữ nguyên (SHA/mtime không đổi).
 - ghi_chu: 2026-10-01 07:05 +07 — Mốc B xong: cả 2 file nằm trong AIOS_Data với quyền "Bất kỳ ai có đường liên kết = Người xem" (xác nhận ngay trong hộp thoại Chia sẻ của từng file; đã sao chép link: 262b → file id 1TE6mHBAE0CzD5I4pleO-23zVYaspnsVz; DC → file id 1Smteq_Iyjx2uZjh2RlrK1wvASFjXJ3yZ). Tiếp: tải ẩn danh không cookie, verify đủ byte + SHA-256. (sau commit c740fa8)
 - ghi_chu: 2026-10-01 06:57 +07 — Mốc A xong: **đã tải 2 gói delta lên thư mục AIOS_Data trên Drive** (UI xác nhận "Đã tải 2 mục lên"; dòng gpu-262b-delta-20261001.zip và gpu-dc-delta-20261001.zip xuất hiện trong danh sách; khớp từng file 20.867.536 B / 74.065.213 B theo SHA đã băm). Tiếp: mở Chia sẻ từng file → đặt "Bất kỳ ai có đường liên kết = Người xem" → sao chép link → verify tải ẩn danh đủ byte + SHA-256. (commit nhận vé 68e434b)
