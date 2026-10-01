@@ -1,21 +1,21 @@
-# Vé B2 — Vòng phản hồi (feedback loop)
+# Vé B3 — Gợi ý hướng điều tra (cây 4M + Why-Why)
 
 LANE: [VM] — Muse thực hiện code+test trên VM. OMP KHÔNG làm vé này, chỉ verify trên máy nhà với dữ liệu thật khi Muse báo code xong + commit rõ ràng.
 
 ## Bối cảnh
-Sau mỗi lần gợi ý, người dùng bấm đánh giá: đúng / sai / một phần. Khi lỗi được đóng,
-bắt buộc nhập nguyên nhân thật + đối sách thật → cập nhật ngược vào kho dữ liệu.
-Mục tiêu: ≥80% lượt gợi ý có đánh giá; tỉ lệ "đúng/một phần" tăng dần theo quý (có số đo).
+Nhập hiện tượng → AI sinh cây điều tra theo 4M + Why-Why, kèm hạng mục cần xác nhận
+và dữ liệu/hiện vật cần thu thập. Output khớp đúng format báo cáo điều tra hiện dùng
+(xuất ra file để dán thẳng vào báo cáo). Mong muốn: người mới (G3 trở xuống) tự chạy
+được bước điều tra đầu tiên.
 
 ## Việc cần làm
-1. Schema: bảng `feedback` (gợi ý nào, đánh giá nào, khi nào, ai) + cập nhật record ca lỗi
-   khi đóng (nguyên nhân thật, đối sách thật).
-2. Luật cứng: không đóng được phiếu lỗi nếu chưa nhập nguyên nhân thật & đối sách thật.
-3. UI: 3 nút đánh giá (đúng / sai / một phần) nằm trong câu trả lời chứa gợi ý
-   (đúng luật 1 ô chat, không toolbar riêng).
-4. Báo cáo tỉ lệ: % lượt gợi ý có đánh giá, tỉ lệ đúng/một phần theo quý.
-5. Code + test trên VM.
+1. Trích format báo cáo điều tra thật từ dữ liệu Bước 0 (trường Nội dung điều tra /
+   Nguyên nhân / Đối sách trong 15.707 ca thật) → làm template xuất file.
+2. Sinh cây điều tra: đủ 4M (Man/Machine/Material/Method) + Why-Why sâu ≥3 tầng,
+   hạng mục cần xác nhận cụ thể, danh sách dữ liệu/hiện vật cần thu thập.
+3. Xuất file đúng template (md/docx) để dán thẳng vào báo cáo.
+4. Code + test trên VM: 3 hiện tượng thật → cây đủ 4M, why-why ≥3 tầng, hạng mục cụ thể
+   (không chung chung kiểu "kiểm tra lại máy").
 
 ## Tiêu chí ĐẠT
-- Test: đóng phiếu thiếu nguyên nhân → bị chặn; bấm đánh giá → ghi log; báo cáo tỉ lệ chạy ra số.
-- OMP verify trên máy nhà với DB thật.
+- OMP verify: 3 hiện tượng thật → cây điều tra + file xuất đúng format báo cáo công ty.
