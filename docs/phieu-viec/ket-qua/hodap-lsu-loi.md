@@ -1,27 +1,31 @@
 # Vé `hodap-lsu-loi` — Thông luồng hỏi đáp LSU + lỗi trên chat (máy `KDTVN-PC0575`)
 
-- Trạng thái báo cáo: **TẠM — chưa nghiệm thu hỏi đáp.** Bước 6 dừng theo cổng BỔ SUNG 5.1: nhúng câu hỏi riêng mất 0,205–0,272 giây, nhưng truy vấn retrieval L1 không trả kết quả trong giới hạn chẩn đoán 60 giây; mục 14 ghi số đo và lý do chuyển `cho-muse`. Không chạy LLM hoặc sáu câu để tránh vượt cổng.
-- Trước đó: `cho-muse` (lần 3) vì BỔ SUNG 5.3 **nhánh B**: worker BGE không hỏng (log init sạch) nhưng truy vấn retrieval vượt bức tường 30 s **nằm trong code** (`bge_subprocess_client.py:31`, `…adapter.py:2688`) và một phần lớn thời gian bị ăn bởi query dense quét toàn bảng `chunk_embeddings` (`…adapter.py:956-963`, đo 71,9 s/tài liệu 15 chunk) → tổng 211,2 s/câu rồi lỗi "Tìm kiếm tài liệu chưa sẵn sàng". Số đo đầy đủ + file/dòng cần sửa: **mục 11**.
-- Trước đó: `cho-muse` (lần 2) vì Bước 2 xác minh file Drive **KHÔNG ĐẠT gate số document** (496 < 501) và file Drive **không chứa vector của bất kỳ nguồn nào trong sổ LSU** (0/262) → nếu thay index sẽ làm app mất 5 tài liệu đang ready. Chi tiết mục 10.
-- Chưa thay production, chưa chạy đủ sáu câu; truy vấn retrieval sau bản sửa vẫn quá chậm nên đã dừng theo BỔ SUNG 5.1 và chuyển `cho-muse` ở mục 14.
-- Ngày làm: 2026-09-30 (13:35–15:54 +07, tiếp 16:33–18:45 +07) và 2026-10-01 (08:46–09:16 +07), máy `KDTVN-PC0575` (OMP). Nhánh: `phieu-viec/rag-fix1`.
-- Phạm vi: chỉ đọc chẩn đoán + bật nguồn + chuẩn bị nền + dừng nhúng theo lệnh. **Không sửa code,
+- Trạng thái báo cáo: **HOÀN TẤT — đã nghiệm thu hỏi đáp ngày 2026-10-01.** Rerun đủ 6 câu L1–L3/E1–E3 trên index đầy đủ (2 delta GPU đã merge) trong hội thoại `CONV-9C730D76`: **5/6 câu `valid` có nhãn trích dẫn**, 1 câu (L1) nội dung khớp tài liệu nhưng thiếu nhãn (app tự gắn `insufficient_evidence`); app LAN vẫn phục vụ bình thường sau khi xong. Bằng chứng đầy đủ + tách chặng: **mục 16**.
+- Lịch sử các mốc dừng (đã xử lý bằng bản vá + vé merge delta): `cho-muse` lần 3 — retrieval vượt 30 s nằm trong code, số đo ở **mục 11**; `cho-muse` lần 2 — gate số document file Drive 496 < 501, **mục 10**; lần dừng theo cổng 60 giây của BỔ SUNG 5.1, **mục 14**.
+- Ngày làm: 2026-09-30 (13:35–15:54 +07, tiếp 16:33–18:45 +07); 2026-10-01 (08:46–09:16, merge delta 11:35–16:07, **rerun 16:25–18:02 +07**), máy `KDTVN-PC0575` (OMP). Nhánh: `phieu-viec/rag-fix1`.
+- Phạm vi: chỉ đọc chẩn đoán + bật nguồn + chuẩn bị nền + dừng nhúng theo lệnh; rerun chạy hỏi đáp qua UI LAN, đo bằng log worker qua shim env (không sửa code). **Không sửa code,
   không merge `main`, không xóa nguồn/tài liệu.**
 
-## 0. Kết luận ngắn (tạm)
+## 0. Kết luận ngắn
 
-1. Nguyên nhân gốc đúng như chẩn đoán: hội thoại `CONV-9C730D76` (sổ "Điều tra lỗi LSU") có **0 nguồn
-   đang bật** (15 lựa chọn cũ trỏ nguồn tạm đã xóa) và 494 tài liệu của sổ **chưa có vector** trong
-   index production đang chạy → app chặn ở cổng tìm kiếm: "⚠️ Tìm kiếm tài liệu chưa sẵn sàng."
-2. Đã bật 35/494 nguồn (nhóm không-CSV: 24 xlsx + 8 pptx + 3 msg) và chạy chuẩn bị nền đúng thiết kế
-   của app; **9 dòng `ready` trong ledger** (banner UI ghi "10/35 nguồn ready" vì có 3 nguồn trùng chung
-   1 tài liệu), gồm `Tài_liệu_đào_tạo_LSU_2019.01.18_K.pptx` và biên bản họp lỗi `Beam径NG多発` kỳ 2.
-3. Máy CPU-only nhúng thật chỉ **0,31–0,35 chunk/s** → 494 nguồn ≈ 68 giờ (bất khả thi) và 19 tài liệu
-   đã bật ≈ 2 giờ. Theo bổ sung khẩn: **đã dừng hẳn worker nhúng CPU**, 25 nguồn còn lại được park ở
-   trạng thái không tự chạy lại.
-4. **`collection_id` của sổ "Điều tra lỗi LSU" = `tri_thuc`** (thông tin Muse yêu cầu). Chi tiết ở mục 5.
-- Việc còn lại: Muse xử lý nút thắt trong truy vấn retrieval (mục 14); sau khi có hướng sửa và cổng tìm kiếm đạt mới chạy sáu câu L1–L3/E1–E3 trên UI LAN. Không thay index, không tự tăng timeout và không nhúng CPU.
-- Không chuyển `xong-cho-duyet` cho tới khi hoàn thành toàn bộ các bước trên.
+1. **Hỏi đáp đã thông trên index đầy đủ.** Ngày 2026-10-01 chiều, sau khi merge 2 delta GPU (262b + DC) vào
+   production, chạy lại đúng 6 câu L1–L3/E1–E3 trong hội thoại `CONV-9C730D76`: **6/6 câu trả lời có căn cứ
+   tài liệu**, **5/6 câu có nhãn trích dẫn hợp lệ** (L2 = 3 nhãn, L3 = 1, E1 = 4, E2 = 1, E3 = 3), riêng L1
+   nội dung khớp tài liệu nhưng app không gắn nhãn (tự đánh `insufficient_evidence`). Thời gian mỗi câu
+   27–757 giây. Chi tiết từng câu + nguồn: **mục 16**.
+2. **Câu E1 từng bị chặn nay chạy được** — không còn lỗi `invalid_routing_reason_code`; bản vá allowlist
+   của Muse (`0a5f8d2`) có hiệu lực trong app đang chạy.
+3. **Nút thắt còn lại là tốc độ trên máy CPU-only**, không phải thiếu dữ liệu: mỗi câu tốn 400–760 giây
+   (trừ câu đi lane Excel có cấu trúc 26,6 giây); phần lớn nằm ở đường retrieval (nạp ma trận dense
+   0–307 giây cho mỗi bước search + các vòng Python chưa gắn log) và ~11–14 giây cho LLM; các bước app-side
+   đo được chỉ ≈1,8 giây (probe `scratch/rerun_prep_timing.py`). Mục tiêu "tra cứu dưới 1 phút" tiếp tục bị
+   đe dọa trên máy CPU-only → đúng đích vé `OPT-RAGV2-PYLOOPS` (hàng chờ #2).
+4. **Phạm vi căn cứ hiện tại:** 19/262 `document_id` của sổ đã có vector trong index đầy đủ (2.883 chunk,
+   đúng delta GPU-262b); 243 ID còn lại chưa có vector (giữ nguyên, không nhúng CPU theo lệnh vé);
+   329 tài liệu Điều chỉnh (delta GPU-DC) nằm trong index nhưng chưa gắn nguồn sổ nên chưa dùng khi hỏi đáp.
+5. **`collection_id` của sổ "Điều tra lỗi LSU" = `tri_thuc`** (thông tin Muse yêu cầu). Chi tiết ở mục 5.
+- App LAN phục vụ bình thường sau khi xong: `/_stcore/health` = `ok`, `localhost:8501` và
+  `10.170.157.180:8501` → HTTP 200, listener `0.0.0.0:8501` (PID 17416).
 
 ## 1. Pha 1 — Chẩn đoán (chỉ đọc)
 
@@ -450,3 +454,114 @@ Ghi chú về bảng:
 - Nhưng (a) **ma trận numpy không được tái dùng giữa 2 câu trong cùng worker**: `load_ms` lặp lại mỗi câu (L2 160,8 s; L3 69,3 s); (b) ba vòng Python trong `src/aios_habit/rag_v2/index.py` vẫn là nút thắt: `search_with_summary` (lexical) **81,2 s**, `dense_candidates` **69,2 s**, `sparse_candidates` **115,4 s** — tổng một truy vấn `pipeline.query` đo in-process = **266,8 s**; thời gian từng câu trên app = **310–415 s** (gồm worker init + cổng phủ + LLM).
 - Vì vậy OMP đã đặt `AIOS_BGE_QUERY_TIMEOUT=900` (= số đo lớn nhất 727 s + margin) trong `RUN_AIOS_WORKSPACE_CHAT.bat`. **Mục tiêu "tra cứu dưới 1 phút" (Bước 1 lộ trình) đang bị đe dọa rõ trên máy CPU-only** — cần vé tối ưu 3 vòng Python (fetchall `SELECT * FROM chunks` + chấm điểm sparse bằng Python + cache ma trận dense), không chỉ timeout.
 - App vẫn phục vụ LAN trong suốt quá trình (`0.0.0.0:8501`, `/_stcore/health` = `ok`, `localhost` + `10.170.157.180` → HTTP 200).
+
+## 16. RERUN trên index đầy đủ — đúng 6 câu L1–L3/E1–E3 (2026-10-01 16:25–18:02 +07)
+
+Vé `hodap-lsu-loi-rerun` (phát hành 16:20 sau verdict `merge-gpu-dc` ĐẠT; lệnh user 11:35: merge 2 delta
+trước, chạy lại hỏi đáp sau). Toàn bộ phiên này **chỉ đọc/đo** — không sửa code, không ghi index,
+không nhúng CPU, không bật/tắt/xóa nguồn nào.
+
+### 16.1 Cổng kiểm trước khi chạy (chỉ đọc)
+
+- Production index: `local_runs/workspace_chat_rag_v2_production/bge_m3_hybrid/collections/tri_thuc/library.sqlite`
+  SHA-256 `e54c7745b86cb360d903c5e211827126b6c8d69606c8809bcdd7f90737c47fe7` — **2.842.415.104 B**, mtime 15:46:42,
+  **148.807 chunk / 120.452 retrievable / 844 `document_id`** (khớp chốt sau `merge-gpu-dc`).
+- Phạm vi căn cứ của sổ "Điều tra lỗi LSU" (`NB-E35A7BEE`, 494 nguồn / **262** `document_id`):
+  **19/262** ID có vector đủ trong index đầy đủ (**2.883 chunk**, `retrievable = dense = sparse = 2.883`,
+  fingerprint `016c5255…`) — đúng delta GPU-262b (19 tài liệu / 2.883 mảnh); **243 ID còn lại chưa có
+  vector** (giữ nguyên, không nhúng CPU theo lệnh vé).
+- Hội thoại `CONV-9C730D76`: 135 lựa chọn nguồn (50 đang bật — phủ đủ 19 tài liệu đã ready), `search_preference = auto`.
+- Ledger `workspace_chat.sqlite` (mode=ro): **32 `ready` / 2 `failed`** (2 dòng park
+  `paused_shared_index_from_home_machine`); mốc cập nhật cuối **12:30:23** — không đổi suốt phiên rerun.
+- App: khởi động lại 16:27:41 bằng `RUN_AIOS_WORKSPACE_CHAT.bat` + shim log worker **chỉ qua env**
+  (`AIOS_WORKER_LOG_SHIM=1`, `PYTHONPATH` trỏ `scratch/worker_log_shim`) để gắn log từng chặng; env giữ nguyên
+  `AIOS_RAG_V2_NUMPY_DENSE=1`, `AIOS_BGE_QUERY_TIMEOUT=1200`. PID 17416, listener `0.0.0.0:8501`.
+- Cổng watcher: `launchStallCount = 1/4` (tự mở 16:14:09) và **điều kiện mở đã tới** (2 delta đã merge,
+  index đúng SHA, app phục vụ) → không dùng nhánh "4 lần watcher"/`cho-muse`.
+
+### 16.2 Kết quả 6 câu (chạy trên UI LAN, đúng hội thoại `CONV-9C730D76`)
+
+| # | Câu hỏi | Gửi → trả lời (+07) | Thời gian | Đáp án (tóm tắt nội dung) | Trace | Nguồn trích dẫn |
+| --- | --- | --- | --- | --- | --- | --- |
+| L1 | LSU là gì và gồm những bộ phận quang học chính nào? | 16:30:04 → 16:41:46 | **701,3 s** | LSU = khối quét laser lên trống quang; các bộ phận quang học: **Lens CYLINDRICAL, POLYGON, Lens F**, LD/LD mirror, nguồn laser **Multi (Monolithic)**; sai lệch vị trí → biến đổi trục tia/đai đen | `trc_cd1d7e27fd06` — `insufficient_evidence` | đáp án **không chèn nhãn `[n]`**; đối chiếu từ khóa trong 19 tài liệu đã ready: `Lens CYLINDRICAL` 1 chunk, `POLYGON` 2, `Lens F` 4, `Multi Laser` 3, `Monolithic` 3 |
+| L2 | Hiện tượng đai đen trong hình ảnh liên quan thế nào tới đường kính BEAM? | 16:45:17 → 16:57:54 | **757,2 s** | Đai đen do BEAM quá lớn: **100 µm** so chuẩn **60 µm** → khoảng cách giữa các BEAM còn **20 µm**, tia bị chèn ép | `trc_28bed0a521e9` — **`valid`**, `cited_count = 3` | `[1] [2] [3]` → `Tài_liệu_đào_tạo_LSU_2019.01.18_K.pptx` |
+| L3 | Đường kính BEAM bao nhiêu là đạt, và khi nào gây lỗi hình ảnh? | 17:28:21 → 17:28:48 | **26,6 s** | BEAM đạt chuẩn **60 µm** (khoảng cách đều); khi lên **100 µm** → khoảng cách 20 µm → **đai đen** | `trc_f03680151f1c` — **`valid`**, `cited_count = 1` | `[1]` → `sirius2_beam径確認_240202.xlsx` (đi **lane Excel có cấu trúc**, không gọi BGE worker) |
+| E1 | Lỗi Beam径 NG trên Iris LSU là gì, nguyên nhân và hướng xử lý? | 17:30:25 → 17:38:22 | **477,1 s** | Hiện tượng: beam diameter không đạt (quá lớn so 60 µm) → đai đen. Nguyên nhân: lệch Lens CYLINDRICAL/POLYGON/Lens F/LD mirror; chênh lệch giữa **JIG BEAM 1002** và **NanoScan** / `SettingFile` / mức quang lượng LD. Xử lý: so chuẩn thiết bị đo, đo 3D LD mirror, kẹp **SIM**, đổi trục quang bằng **JIG BEAM** | `trc_0f56c418b8a3` — **`valid`**, `cited_count = 4` | `[1] [2] [3]` → `RE__Iris_LSU_Beam径NG多発_異常品質会議2回目.msg`; `[4]` → `dữ_liệu_tổng_hợp_CaV2__1240_.xlsx` |
+| E2 | Dán SIM vào LD BLOCK ASSY có tác dụng gì khi xử lý lỗi beam? | 17:39:56 → 17:46:38 | **399,9 s** | Kẹp/dán SIM vào LD mirror / LD BLOCK ASSY (máy NG ASSY) để kiểm tra độ nghiêng, vị trí LD mirror và xem **xu hướng đường kính Beam có đổi** → phân tích nguyên nhân gốc cơ khí | `trc_8cc110566763` — **`valid`**, `cited_count = 1` | `[4]` → `RE__Iris_LSU_Beam径NG多発_異常品質会議2回目.msg` |
+| E3 | Khi beam diameter NG thì cần kiểm tra những hạng mục nào (LD mirror, trục quang, độ sâu chỉnh)? | 17:47:43 → 17:55:38 | **471,4 s** | (1) Đo nghiêng **LD mirror** bằng máy 3D (so OK/NG) + kẹp **SIM**; (2) đổi **trục quang** bằng **JIG BEAM**; (3) kiểm **Lens CYLINDRICAL / POLYGON / Lens F** | `trc_d1898a593328` — **`valid`**, `cited_count = 3` | `[1]` `Tài_liệu_đào_tạo_LSU_2019.01.18_K.pptx`, `[2]` `Dữ_liệu_tổng_hợp.xlsx`, `[3]` `RE__Iris_LSU_Beam径NG多発_異常品質会議2回目.msg` |
+
+- **5/6 câu có nhãn trích dẫn hợp lệ do chính app xác nhận** (`valid`); L1 không nhãn nhưng nội dung khớp
+  tài liệu (đối chiếu từ khóa ở bảng) — cùng hành vi với baseline cũ (§15: L1/L2/L3 khi đó đều thiếu nhãn).
+- Bản nguyên văn đáp án nằm trong app store cục bộ (`local_cases/workspace_chat/messages.jsonl`, không commit);
+  bản thu thập từng câu: `scratch/rerun-<L1|L2|L3|E1|E2|E3>.json`.
+- **Ghi nhận ngoài kế hoạch:** 17:17:20 có thêm **1 lượt hỏi lặp đúng câu L1** trong cùng hội thoại
+  (→ 17:27:16 = **596,4 s**, `trc_977e08861f13` `insufficient_evidence`, nội dung đáp án tương đương L1).
+  Phiên OMP chạy vé **không gửi lượt này** (kiểm tra danh sách tiến trình: chỉ có 1 phiên OMP trên máy);
+  ghi lại nguyên trạng, không tính vào 6 câu.
+
+### 16.3 Tách chặng (đo thật từng chặng)
+
+Nguồn số: mốc gửi/trả lời từ app store; chặng worker từ `bge_worker.stderr.log` (shim env, INFO);
+"adapter latency" từ telemetry `workspace_chat_rag_v2` của app; "app-side prep" đo riêng bằng probe chỉ đọc
+`scratch/rerun_prep_timing.py`.
+
+| # | Worker init | Nhúng câu hỏi | Search (numpy) | Adapter latency | LLM (số dư) |
+| --- | --- | --- | --- | --- | --- |
+| L1 | **31,74 s** (lạnh) | 3 biến thể: 7,80 + 0,58 + 0,55 s | `total 224,28 s` — **load 213,49** / score 0,36 / fuse 1,04 | 687,41 s | ≈ 13,9 s |
+| L2 | — (worker ấm) | 8,10 + 2,03 + 0,86 s | `total 320,27 s` — **load 307,48** / score 0,33 / fuse 0,99 | 744,58 s | ≈ 12,6 s |
+| L3 | — (không gọi worker) | — | — (lane Excel có cấu trúc, KHÔNG có dòng adapter) | — | (tổng 26,6 s) |
+| E1 | — (worker ấm) | 1 biến thể: 7,05 s | 2 bước (deep): **9,91 s** + **0,70 s** (`load ≈ 0` — ma trận dense đã ấm) | 466,19 s | ≈ 11,0 s |
+| E2 | — (worker ấm) | 6,67 s | `total 142,99 s` — **load 131,31** / score 0,04 / fuse 4,70 | 389,06 s | ≈ 10,8 s |
+| E3 | — (worker ấm) | 4,88 s | `total 135,84 s` — **load 130,06** / score 0,14 / fuse 0,48 | 458,67 s | ≈ 12,7 s |
+| L1dup | — (worker ấm) | 10,95 + 0,67 s | `total 213,41 s` — **load 193,45** / score 3,98 / fuse 4,03 | 583,47 s | ≈ 12,9 s |
+
+- **Kết luận nút thắt:** mỗi lượt hỏi tốn 400–760 giây; **chặng nhúng câu hỏi rất nhẹ** (4,9–11,6 giây cho
+  1–3 biến thể) và **chặng LLM chỉ ~11–14 giây**. Thời gian nằm ở **đường retrieval**: (a) nạp ma trận dense
+  numpy 0–307 giây mỗi bước search (lặp lại giữa các câu — đúng phát hiện §15.1), (b) phần lớn số dư
+  `adapter latency − các stage có log` = **246–448 giây/lượt** nằm ở các vòng Python chưa gắn log
+  (`search_with_summary` / `dense_candidates` / `sparse_candidates` — đo trước merge ở §15.1 là 81,2 / 69,2 /
+  115,4 giây mỗi vòng). `[INFERENCE]` vị trí số dư; không đo lại in-process lượt này để tránh tranh RAM/CPU với
+  app đang phục vụ LAN (máy chỉ còn ~2 GB RAM trống).
+- **Các bước app-side (cổng phủ, pack nguồn, materialize, kiểm `document_id`) chỉ ≈ 1,8 giây** — đo bằng probe
+  chỉ đọc trên đúng 50 nguồn bật của hội thoại: nạp nguồn 0,42 s · pack 0,04 s · chọn scope 0,69 s ·
+  cổng phủ 0,07 s (+0,03 s lần hai) · materialize 0,09 s/0,03 s · quét `document_id` 0,45 s · semantic 0,02 s.
+  ⇒ **không phải nút thắt**; nút thắt nằm trong đường retrieval của worker/`rag_v2`.
+- **Cảnh báo mục tiêu:** mục tiêu "tra cứu dưới 1 phút" (Bước 1 lộ trình) **tiếp tục bị đe dọa** trên máy
+  CPU-only — cần vé `OPT-RAGV2-PYLOOPS` (đang ở hàng chờ #2) đúng như Muse đã xếp.
+
+### 16.4 Trạng thái sau rerun (bằng chứng không đụng dữ liệu)
+
+- **Index production không đổi:** SHA-256 vẫn `e54c7745…47fe7`, 2.842.415.104 B, mtime 15:46:42 (đo lại sau
+  khi xong 6 câu).
+- **Ledger không đổi:** 32 `ready` / 2 `failed`; `updated_at` lớn nhất vẫn 12:30:23 ⇒ **không nhúng CPU,
+  không đổi trạng thái nguồn** (khớp lệnh cấm của vé).
+- Log worker chỉ có **1** dòng `bge_worker_stage backend=onnx init_ms=31738.306` (lần hỏi L1) và **không có**
+  dòng prepare/embed-source nào ⇒ không sinh tiến trình nhúng mới.
+- **App LAN phục vụ bình thường sau khi xong:** `/_stcore/health` = `ok`; `localhost:8501` → HTTP 200;
+  `10.170.157.180:8501` → HTTP 200; listener `0.0.0.0:8501` (PID 17416).
+- Không bấm "Thử chuẩn bị lại"; không dừng/xóa nguồn; không sửa code (shim chỉ là env khi khởi động lại app).
+
+### 16.5 Việc chưa làm / đề xuất (không tự làm trong vé này)
+
+1. **243/262 `document_id`** của sổ vẫn chưa có vector → muốn hỏi đáp full scope phải nhúng GPU ở máy nhà rồi
+   copy index sang (đầu vào text đã xuất sẵn: `scratch/export_262/text_export.jsonl`, 262/262 nguồn,
+   52.979 chunk, 81.531.448 B — theo BỔ SUNG 4/6). Không nhúng CPU trên máy công ty.
+2. **329 tài liệu Điều chỉnh** (delta GPU-DC) đã nằm trong index nhưng **chưa gắn nguồn sổ nào** → muốn hỏi đáp
+   trên bộ này cần bật nguồn (việc của người dùng/Muse; ngoài phạm vi vé).
+3. **L1 không được LLM chèn nhãn trích dẫn** dù đúng nội dung — hạn chế prompt sinh đáp án (đã ghi ở §15);
+   nên gộp vào vé tối ưu chất lượng trả lời, không phải lỗi retrieval.
+4. Nút thắt tốc độ: vé `OPT-RAGV2-PYLOOPS` (hàng chờ #2) — ưu tiên (a) tái dùng ma trận dense giữa các câu
+   trong cùng worker, (b) bỏ 3 vòng Python trong `rag_v2/index.py`, (c) sau đó hạ `AIOS_BGE_QUERY_TIMEOUT`
+   về theo số đo mới.
+
+### 16.6 Bằng chứng cục bộ của phiên (không commit — thư mục `scratch/`)
+
+`rerun-scope.json` (độ phủ 19/262 + nguồn bật) · `rerun-<label>.json` (từng câu: mốc thời gian, trace,
+adapter telemetry, đáp án) · `rerun-logs/<label>-worker.log` (log worker từng câu) ·
+`rerun_prep_timing.py` (probe đo app-side) · `rerun_collect.py`, `wait_answer.py` (thu thập) ·
+`restart_lan_app_shim.ps1` (khởi động lại app kèm shim env) · `app_lan_rerun_20261001.log` (log app).
+
+## 17. Trạng thái vé
+
+- `docs/phieu-viec/mailbox-pc0575/trang-thai.md` → `xong-cho-duyet` (commit cuối của vé này).
+- Không merge `main`; không force-push; mọi commit trên `phieu-viec/rag-fix1`.
