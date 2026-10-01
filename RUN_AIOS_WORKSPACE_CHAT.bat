@@ -15,6 +15,11 @@ rem Bat duong search numpy cho kho tri thuc lon (mac dinh trong code la tat).
 rem Do tren PC0575 (2026-10-01): vong cosine Python thuan >60 giay/truy van;
 rem bat numpy thi truy van ve mili giay. Khong set = giu mac dinh tat.
 set "AIOS_RAG_V2_NUMPY_DENSE=1"
+rem Timeout truy van BGE worker: do that tren PC0575 ngay 2026-10-01 (index
+rem 108k chunk, CPU-only) cho mot cau hoi = ~267s (lexical 81s + dense numpy
+rem 69s + sparse 115s, deu la vong Python trong rag_v2/index.py). Dat 420s =
+rem so do + margin. Mac dinh trong code van la 30s khi khong set.
+set "AIOS_BGE_QUERY_TIMEOUT=420"
 rem Lan mo dau tien tung cham vi preflight "import torch, FlagEmbedding"
 rem nap DLL native roi thoat, sau do moi mo Streamlit. Chi can biet goi da
 rem cai. Sidecar cung khong duoc chan cua so nay: app van ket noi khi san sang.
