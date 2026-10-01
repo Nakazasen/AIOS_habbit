@@ -36,6 +36,12 @@ FEATURE_ADAPTIVE_WORK_MEMORY = "adaptive_work_memory"
 # default off). Enable with AIOS_FEATURE_CHAT_ACTION=1.
 FEATURE_CHAT_ACTION = "chat_action"
 
+# Investigation report agent: chat command builds a .docx investigation
+# report for one error case from the Step 0-5 DB (fail-closed; default off).
+# Sits on top of FEATURE_CHAT_ACTION; enable with
+# AIOS_FEATURE_INVESTIGATION_REPORT=1.
+FEATURE_INVESTIGATION_REPORT = "investigation_report"
+
 # Consolidated Goal 010 feature set (single flag)
 ALL_010_FEATURES = (
     FEATURE_EXPERT_KNOWLEDGE_ACQUISITION,
@@ -50,6 +56,7 @@ class FeatureFlagState:
     expert_multi_user: bool = False
     adaptive_work_memory: bool = False
     chat_action: bool = False
+    investigation_report: bool = False
 
     @property
     def expert_knowledge_coverage(self) -> bool:
@@ -74,6 +81,7 @@ class FeatureFlagState:
             FEATURE_EXPERT_MULTI_USER: self.expert_multi_user,
             FEATURE_ADAPTIVE_WORK_MEMORY: self.adaptive_work_memory,
             FEATURE_CHAT_ACTION: self.chat_action,
+            FEATURE_INVESTIGATION_REPORT: self.investigation_report,
         }
 
     def is_enabled(self, flag_name: str) -> bool:
@@ -92,6 +100,8 @@ class FeatureFlagState:
             return self.adaptive_work_memory
         if flag_name in (FEATURE_CHAT_ACTION, "chat_action"):
             return self.chat_action
+        if flag_name in (FEATURE_INVESTIGATION_REPORT, "investigation_report"):
+            return self.investigation_report
         return False
 
 
@@ -123,6 +133,8 @@ class FeatureFlagRegistry:
             return FEATURE_ADAPTIVE_WORK_MEMORY
         if flag_name in (FEATURE_CHAT_ACTION, "chat_action"):
             return FEATURE_CHAT_ACTION
+        if flag_name in (FEATURE_INVESTIGATION_REPORT, "investigation_report"):
+            return FEATURE_INVESTIGATION_REPORT
         return flag_name
 
     def get_flag(self, flag_name: str) -> bool:
@@ -160,6 +172,7 @@ class FeatureFlagRegistry:
             expert_multi_user=self.get_flag(FEATURE_EXPERT_MULTI_USER),
             adaptive_work_memory=self.get_flag(FEATURE_ADAPTIVE_WORK_MEMORY),
             chat_action=self.get_flag(FEATURE_CHAT_ACTION),
+            investigation_report=self.get_flag(FEATURE_INVESTIGATION_REPORT),
         )
 
 
