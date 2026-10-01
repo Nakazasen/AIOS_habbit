@@ -1,19 +1,22 @@
-# Vé J1-CSV — JIG: nhập cả file CSV + chọn biểu đồ, tự gửi mail
+# Vé J1-RT — JIG realtime: spec API + prototype + yêu cầu hạ tầng
 
-LANE: [VM] — Muse thực hiện code+test trên VM. OMP KHÔNG làm vé này, chỉ verify trên máy nhà với dữ liệu thật khi Muse báo code xong + commit rõ ràng.
+LANE: [VM] — Muse thực hiện code+test trên VM. OMP KHÔNG làm vé này, chỉ verify trên máy nhà với dữ liệu thật khi Muse báo code xong + commit rõ ràng. (phần hạ tầng thật cần phía công ty — xem mục 3)
 
 ## Bối cảnh
-Bước 1 JIG (phần tay) đã chạy thật: CSV→SQLite chống trùng, 9 biểu đồ, cảnh báo
-ngưỡng/xu hướng, mail kèm biểu đồ, 21 vi phạm ngưỡng trên dữ liệu Iris thật (jig 1035).
-Còn thiếu: nhập cả file CSV log jig một lần + cho phép chọn biểu đồ (áp dụng luôn);
-tự chọn biểu đồ user đã setup → tự động gửi email đính kèm biểu đồ đó khi cảnh báo.
+Mục tiêu cuối của tool JIG: AI phân tích dữ liệu realtime từ server và cảnh báo khi có
+xu hướng dẫn đến phát sinh NG. Cần: cổng API (đầu nhận/chuyển thông tin) để jig đẩy
+dữ liệu lên server realtime; server đẩy về AI realtime. Hạ tầng cần chuẩn bị:
+(1) log jig đẩy dòng/cột dữ liệu lên server; (2) server đẩy ngược dữ liệu về AI.
 
 ## Việc cần làm
-1. Kiểm kê code hiện tại: phần nào đã có thì không làm lại (ghi rõ trong báo cáo).
-2. Bổ sung phần thiếu: import cả file CSV một lần; UI chọn biểu đồ; cấu hình
-   "biểu đồ nào gửi kèm mail khi cảnh báo".
-3. Code + test trên VM với file log jig thật.
+1. Thiết kế spec API: endpoint nhận dòng log jig (format bản tin, tần suất, auth),
+   endpoint server→AI (push/pull, format, retry).
+2. Prototype AI nhận realtime: mô phỏng bằng dữ liệu jig thật phát lại theo đúng dòng
+   thời gian, gắn mác SIMULATED_REALTIME (không bịa dữ liệu).
+3. Liệt kê yêu cầu hạ tầng phía công ty (server, mạng, agent thu log trên jig) thành
+   danh sách cụ thể để user quyết.
+4. Code + test prototype trên VM.
 
 ## Tiêu chí ĐẠT
-- OMP verify: nhập 1 file CSV log jig thật → chọn biểu đồ → ra biểu đồ đúng;
-  bắn cảnh báo test → mail đi kèm đúng biểu đồ đã setup.
+- Spec API hoàn chỉnh + prototype chạy được với dữ liệu phát lại + danh sách yêu cầu
+  hạ tầng rõ ràng. Triển khai hạ tầng thật là việc khác, không thuộc vé này.
