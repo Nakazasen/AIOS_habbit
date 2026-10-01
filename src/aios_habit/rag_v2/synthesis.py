@@ -2,11 +2,31 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, replace
+import os
 import re
 from typing import Iterable, Protocol, Tuple
 
 from .evidence import EvidenceAnswerMode, EvidenceItem, EvidencePack
 from .query_planning import extract_content_terms
+
+
+# Operator-level policy switch for cloud synthesis. Evidence packs keep their
+# ingest-time privacy labels as provenance; this switch carries the data
+# owner's standing decision (00_governance/DATA_POLICY.md, 2026-09-29, owner
+# re-confirmed 2026-10-02): local_only/confidential labels are internal
+# classification only and no longer form a technical block on sending evidence
+# to an AI provider. Default OFF (fail-closed): without the opt-in, a pack
+# that is not cloud_allowed never leaves the machine.
+SYNTHESIS_CLOUD_OPT_IN_ENV = "AIOS_SYNTHESIS_ALLOW_CLOUD_PROVIDERS"
+_CLOUD_OPT_IN_VALUES = {"1", "true", "yes", "on"}
+
+
+def cloud_synthesis_opted_in() -> bool:
+    """Return True when the operator explicitly allowed cloud synthesis."""
+    return (
+        os.environ.get(SYNTHESIS_CLOUD_OPT_IN_ENV, "").strip().lower()
+        in _CLOUD_OPT_IN_VALUES
+    )
 
 
 @dataclass(frozen=True)
@@ -744,7 +764,7 @@ def synthesize_with_provider(
         max_claims=max_claims,
         prioritize_body_evidence=prioritize,
     )
-    if not pack.privacy_summary.cloud_allowed:
+    if not (pack.privacy_summary.cloud_allowed or cloud_synthesis_opted_in()):
         return replace(
             fallback,
             limitation_reasons=tuple(dict.fromkeys((*fallback.limitation_reasons, "cloud_privacy_blocked"))),

@@ -8,7 +8,6 @@ without reimplementing any of them.
 from __future__ import annotations
 
 import logging
-import os
 from typing import Optional
 
 from aios_habit.ai_router import (
@@ -18,24 +17,20 @@ from aios_habit.ai_router import (
     route_answer,
 )
 from aios_habit.provider_health import ProviderHealthStore
-from aios_habit.rag_v2.synthesis import ProviderSynthesisRequest
+from aios_habit.rag_v2.synthesis import (
+    SYNTHESIS_CLOUD_OPT_IN_ENV,
+    ProviderSynthesisRequest,
+    cloud_synthesis_opted_in,
+)
 from aios_habit.safety_modes import SAFETY_MODE_COMPANY, SAFETY_MODE_NORMAL
 
 logger = logging.getLogger(__name__)
 
-# Explicit opt-in for letting the synthesis factory build cloud providers from
-# environment keys. Default is OFF (fail-closed): a local_only evidence pack
-# must never leave the machine just because API keys exist in the OS env.
-SYNTHESIS_CLOUD_OPT_IN_ENV = "AIOS_SYNTHESIS_ALLOW_CLOUD_PROVIDERS"
-_CLOUD_OPT_IN_VALUES = {"1", "true", "yes", "on"}
-
-
-def cloud_synthesis_opted_in() -> bool:
-    """Return True when the operator explicitly allowed cloud synthesis."""
-    return (
-        os.environ.get(SYNTHESIS_CLOUD_OPT_IN_ENV, "").strip().lower()
-        in _CLOUD_OPT_IN_VALUES
-    )
+# The cloud opt-in switch itself lives in aios_habit.rag_v2.synthesis and is
+# re-exported here. Default OFF (fail-closed): a local_only evidence pack
+# never leaves the machine just because API keys exist in the OS env. The
+# data owner enables it per machine (00_governance/DATA_POLICY.md,
+# 2026-09-29; re-confirmed 2026-10-02).
 
 # ---------------------------------------------------------------------------
 # Prompt formatting
@@ -141,7 +136,9 @@ class RouterSynthesisProvider:
     def __call__(self, request: ProviderSynthesisRequest) -> str:
         """Implement ``ProviderSynthesisProvider.__call__``."""
         pack = request.evidence_pack
-        cloud_allowed = pack.privacy_summary.cloud_allowed
+        cloud_allowed = (
+            pack.privacy_summary.cloud_allowed or cloud_synthesis_opted_in()
+        )
         configs = self._resolve_configs(cloud_allowed)
 
         if not configs:
