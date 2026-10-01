@@ -1,8 +1,21 @@
 # Vé `J1-RT` — JIG realtime: kết quả kiểm chứng trên máy nhà
 
-- Trạng thái: **CHƯA ĐẠT; giữ `dang-lam` chờ Muse sửa các sai lệch hợp đồng.** Luồng phát lại cơ bản chạy được, nhưng API hiện có thể báo nhận đủ khi âm thầm bỏ dữ liệu, và còn các điểm không khớp đặc tả về JSON, xác thực, thử lại và tiếp tục cursor.
-- Nhánh: `phieu-viec/rag-fix1`. Mã Muse kiểm: `3fd332c` (chuỗi `c2e99da` → `71d3500` → `3fd332c`); mốc ghi nhận OMP mới nhất trước báo cáo: `e37071b`.
+- Trạng thái: **CHƯA ĐẠT; kiểm lại thấy lỗ hổng xác thực với JIG chưa cấu hình.** Bộ test vé 24/24 và các cổng biên dịch/audit/import đạt, nhưng mã token hợp lệ vẫn ghi được bản tin cho `jig_id` không có trong cấu hình; chờ Muse sửa trên lane `[VM]` và OMP kiểm lại.
+- Nhánh: `phieu-viec/rag-fix1`. Mã Muse kiểm lại: `f02a9e9` + `edf6f23`; mốc báo cáo OMP trước lượt kiểm này: `ef45353`.
 - Máy: Windows 10 x64, Python 3.11.14. Đúng lane `[VM]`: OMP chỉ kiểm chứng, không sửa mã. CSV nguồn được đọc qua bản mirror cục bộ chỉ-đọc; mọi tệp phát sinh ở `C:/tmp/j1-rt-verify/`, không đưa dữ liệu hoặc SQLite vào repo, không đụng DB gốc, ổ D hay `main`.
+
+## Mốc kiểm lại sau bản sửa Muse
+
+- Mã Muse được kiểm: `f02a9e9` + `edf6f23`; đã `git pull --rebase origin phieu-viec/rag-fix1` trước khi chạy. Máy Windows 10 x64, Python 3.11.14. Chạy từ `C:/tmp` để kiểm thử dùng đúng mirror CSV cục bộ tại `C:/home/hatch/workspace/aios_data/lsu/Iris LSU/thu nghiem 6pcs do thong so va log/2ND-1035/IRIS_LSU_BOWSKEW_4_2026_08_Sub.csv`; `PYTHONPATH` trỏ tới `D:/Sandbox/AIOS_habbit/src`.
+- Lệnh `uv run --project D:/Sandbox/AIOS_habbit --no-sync --group dev python -m pytest -q D:/Sandbox/AIOS_habbit/tests/test_j1_rt.py` → **24 passed in 12.11s**.
+- Sáu nhóm probe hồi quy trong bộ trên đều đạt: (1) lô 105 dòng → lưu/ACK 100, báo cắt 5; (2) JSON object/mảng pretty-print và NDJSON được nhận; (3) lô có dòng sai trả 400, không ghi một phần; (4) gửi lại lô không tạo dòng trùng; (5) token POST theo từng JIG, token khác/thiếu/sai bị từ chối cho JIG đã cấu hình; (6) sender thử lại với backoff, báo lỗi tiếng Việt khi hết lượt và consumer khôi phục cursor từ tệp sau restart. Các nhóm (3), (4), (6) có nhiều test riêng; toàn bộ test vé chạy trong lệnh nêu trên.
+- Cổng nền: `uv run --no-sync --group dev python -m compileall -q src tests` chạy xong; `PYTHONPATH=src uv run --no-sync --group dev python -m aios_habit.cli audit` → `status: PASS`, không lỗi/cảnh báo; import `aios_habit.workspace_chat_app` → `IMPORT=OK`. Full suite `uv run --no-sync --group dev pytest -q` đã bắt đầu; kết quả sẽ ghi bổ sung sau khi tiến trình hoàn tất.
+
+### Blocker xác thực mới
+
+- Đặc tả mục 1 yêu cầu mỗi JIG có Bearer token riêng; thiếu/sai token phải trả 401. Probe HTTP độc lập cấu hình `StreamListener(auth_token=None, jig_tokens={"J-A": "token-a", "J-B": "token-b"})`, rồi gửi `jig_id="J-UNKNOWN"` bằng `Bearer token-a`: máy chủ trả **HTTP 200**, `so_dong=1`; SQLite ghi **1** dòng của JIG chưa cấu hình.
+- Nguyên nhân: `_token_cho_jig()` trả `None` cho JIG không nằm trong map; `_kiem_tra_auth_post()` bỏ qua kiểm tra khi token yêu cầu là `None`. Test mới chỉ thử dùng nhầm token của J-B để gửi cho J-A, chưa thử JIG không có khóa cấu hình.
+- Chưa sửa mã theo ranh giới lane `[VM]`. Muse cần xử lý trường hợp JIG chưa cấu hình và thêm kiểm thử từ chối; sau commit OMP chạy lại probe này cùng test vé. Giữ `dang-lam`; chưa báo đạt.
 
 ## 1. Mốc 1 — test vé và nhóm liên quan
 
