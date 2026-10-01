@@ -6,8 +6,8 @@ Commit nhận vé: `f6a0714`. Không đụng `main`, không force-push, không m
 ## Kết luận
 
 **DỪNG Ở PHA 0 theo đúng mục Cấm của vé: kho app máy nhà nằm trên ổ D → mailbox chuyển `cho-muse`.**
-Không chạy Pha 1 (dry-run/backup/merge), không chạy Pha 2 (chuyển app + hỏi thử), không ghi byte nào
-lên ổ D, không tạo backup, không đụng app đang chạy. Tiêu chí ĐẠT của vé (báo cáo có số ID nhập/skip
+Không chạy Pha 1 (dry-run/backup/merge), không chạy Pha 2 (chuyển app + hỏi thử), không ghi dữ liệu
+nào lên ổ D, không tạo backup, không đụng app đang chạy. Tiêu chí ĐẠT của vé (báo cáo có số ID nhập/skip
 + kết quả hỏi đáp thử) **chưa thể hoàn thành ở thời điểm này** — cần Muse/quyết định người dùng trước.
 
 ## Cổng gate (theo yêu cầu watcher)
@@ -129,7 +129,8 @@ Mục Cấm của vé ghi: *"KHÔNG ghi bất kỳ thứ gì lên ổ D (ổ h�
 ## Đã KHÔNG làm (đúng Cấm)
 
 - Không merge, không chạy dry-run Pha 1, không tạo backup, không chèn dòng nào vào bất kỳ kho nào.
-- Không ghi byte nào lên ổ D bởi lượt này (mọi thao tác chỉ đọc; script chạy `-B`, tạm đặt trên C).
+- Không ghi dữ liệu nào lên ổ D bởi lượt này (mọi thao tác dữ liệu chỉ đọc; chỉ commit/push git trên
+  repo D như quy ước mailbox; script chạy `-B`, tạm đặt trên C).
 - Không đụng app đang chạy (PID 3440, khởi động 06:14:36 hôm nay), không restart, không đổi config.
 - Không dùng kho production PC0575, không dùng staging của vé khác ngoài 2 gói delta này (chỉ đọc).
 - Không merge `main`, không force-push.
