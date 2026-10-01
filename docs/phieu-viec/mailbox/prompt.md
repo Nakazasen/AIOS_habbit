@@ -1,20 +1,21 @@
-# Vé BK-82 — Rà soát tay 82 dòng thiếu hiện tượng/nguyên nhân/công đoạn
+# Vé B2 — Vòng phản hồi (feedback loop)
 
-LANE: [NHÀ] — OMP thực hiện trên máy nhà (cần đối chiếu workbook gốc).
+LANE: [VM] — Muse thực hiện code+test trên VM. OMP KHÔNG làm vé này, chỉ verify trên máy nhà với dữ liệu thật khi Muse báo code xong + commit rõ ràng.
 
 ## Bối cảnh
-Báo cáo B0-MEASURE (mục 3.3, log `C:/tmp/b0-measure/scan4.out.txt`): 82 dòng thiếu
-một trong ba trường — hiện tượng 33 dòng (chủ yếu 2026/2xxx), nguyên nhân 8 dòng,
-công đoạn 39 dòng. Không tự động bù được, cần người đối chiếu.
+Sau mỗi lần gợi ý, người dùng bấm đánh giá: đúng / sai / một phần. Khi lỗi được đóng,
+bắt buộc nhập nguyên nhân thật + đối sách thật → cập nhật ngược vào kho dữ liệu.
+Mục tiêu: ≥80% lượt gợi ý có đánh giá; tỉ lệ "đúng/một phần" tăng dần theo quý (có số đo).
 
 ## Việc cần làm
-1. Lấy danh sách 82 dòng từ `C:/tmp/b0-measure/scan4.out.txt`.
-2. Đối chiếu từng dòng với workbook gốc `Loi KDTPS.xlsx` sheet `History KDTPS`;
-   bổ sung được thì bổ sung vào **bản copy** DB (`C:/tmp/b0-dict/error_cases_dict.db` —
-   backup + `integrity_check` trước/sau, KHÔNG đụng DB gốc).
-3. Dòng nào không bổ sung được: ghi rõ lý do vào báo cáo (không bịa).
+1. Schema: bảng `feedback` (gợi ý nào, đánh giá nào, khi nào, ai) + cập nhật record ca lỗi
+   khi đóng (nguyên nhân thật, đối sách thật).
+2. Luật cứng: không đóng được phiếu lỗi nếu chưa nhập nguyên nhân thật & đối sách thật.
+3. UI: 3 nút đánh giá (đúng / sai / một phần) nằm trong câu trả lời chứa gợi ý
+   (đúng luật 1 ô chat, không toolbar riêng).
+4. Báo cáo tỉ lệ: % lượt gợi ý có đánh giá, tỉ lệ đúng/một phần theo quý.
+5. Code + test trên VM.
 
 ## Tiêu chí ĐẠT
-- 82/82 dòng được xử lý (đã bổ sung hoặc có lý do rõ ràng).
-- Báo cáo `docs/phieu-viec/ket-qua/bk-82.md`, commit riêng trên `phieu-viec/rag-fix1`.
-- Không ghi DB gốc, không đụng ổ D, không merge `main`.
+- Test: đóng phiếu thiếu nguyên nhân → bị chặn; bấm đánh giá → ghi log; báo cáo tỉ lệ chạy ra số.
+- OMP verify trên máy nhà với DB thật.
