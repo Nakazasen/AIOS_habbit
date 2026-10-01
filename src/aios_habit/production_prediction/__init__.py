@@ -16,6 +16,8 @@ __all__ = [
     "alert_mailer",
     "alert_config_chat",
     "stream_api",
+    "rt_consumer",
+    "rt_replay",
     "session_isolation",
     "jig_alert_cards",
 ]
