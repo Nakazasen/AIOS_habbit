@@ -100,7 +100,13 @@ Preload lỗi không bao giờ làm fail init (log warning, query vẫn chạy �
 - Mới: `tests/test_rag_v2_opt_pyloops.py` — **18/18 pass**.
 - Liên quan: `test_rag_v2_index.py` + `test_rag_v2_numpy_dense.py` +
   `test_rag_v2_semantic.py` — pass hết (77 test cùng file mới).
-- Full suite: đang chạy, so với nền sau (kết quả sẽ bổ sung trước khi đóng vé).
+- Full suite (VM, 2 lần chạy sạch so song song): baseline `57db840` = 78 failed /
+  3.479 passed / 61 errors; nhánh vé `b9ec37a` = 79 failed / 3.496 passed /
+  61 errors. So tập FAILED+ERROR từng dòng: **y hệt nhau (139/139)** — chênh
+  ±1 failed giữa các lần chạy là flaky có sẵn, **không thoái lui**. 0 failure
+  trong `test_rag_v2_opt_pyloops.py` và các file rag_v2 liên quan. (Một lần chạy
+  giữa chừng cho số fail cao bất thường đã được chứng minh là nhiễu do thao tác
+  git đồng thời, không phải do code — chạy lại sạch thì tập lỗi trùng baseline.)
 - Quét PEP 701 (multiline f-string, máy đích Python 3.11): sạch.
 - `test_bge_subprocess_worker.py` rớt 6/11 — **rớt sẵn từ nền** (VM không spawn
   được worker thật), đã đối chiếu bằng worktree ở commit `2480ba0`: y hệt 6/11.
