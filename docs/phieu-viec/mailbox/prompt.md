@@ -1,26 +1,20 @@
-# Vé BK-ERRCODE — Backfill mã thật cho 3.537 ca nhóm ERROR (nợ chính xác QĐ1)
+# Vé BK-82 — Rà soát tay 82 dòng thiếu hiện tượng/nguyên nhân/công đoạn
 
-LANE: [VM] — Muse code+test trên VM; OMP chạy backfill + verify trên máy nhà khi Muse báo xong.
+LANE: [NHÀ] — OMP thực hiện trên máy nhà (cần đối chiếu workbook gốc).
 
 ## Bối cảnh
-Quyết định QĐ1 (`docs/phieu-viec/ket-qua/b0-measure-quyet-dinh.md`): 3.537 ca nhóm
-ERROR thiếu mã thật (cờ `code_missing=1`). Ca vẫn đủ chuẩn tra cứu nhờ hiện tượng +
-nguyên nhân, nhưng thiếu mã làm giảm độ chính xác tra cứu theo mã (B0-DICT đã map
-185/272 mã). Báo cáo B0-MEASURE đã xác định +531 dòng trích thêm được từ cột N/O/L/M/R.
+Báo cáo B0-MEASURE (mục 3.3, log `C:/tmp/b0-measure/scan4.out.txt`): 82 dòng thiếu
+một trong ba trường — hiện tượng 33 dòng (chủ yếu 2026/2xxx), nguyên nhân 8 dòng,
+công đoạn 39 dòng. Không tự động bù được, cần người đối chiếu.
 
 ## Việc cần làm
-1. [VM] Mở rộng `extract_code_from_text` quét thêm cột N/O/L/M/R (nội dung điều tra /
-   thao tác); test trên mẫu dữ liệu thật (không bịa).
-2. [VM] Viết script backfill: đọc DB copy, dry-run đếm số ca match trước, apply có
-   ghi nguồn từng mã: `extracted_them` / `ktd_matched` / `manual`; ca không tìm được
-   mã → xuất danh sách (không bịa mã).
-3. [NHÀ] OMP chạy script trên bản copy `C:/tmp/b0-dict/error_cases_dict.db`
-   (backup + `integrity_check` trước/sau; KHÔNG đụng DB gốc).
-4. Đối chiếu 217 file `KTD-*.xlsx` trong `Lịch sử lỗi/C Call/` (+ thư mục mã trong
-   `C Call`/`Log`): mã trong tên file (vd `...-C7901.xlsx`) khớp ca theo line + ngày + máy.
+1. Lấy danh sách 82 dòng từ `C:/tmp/b0-measure/scan4.out.txt`.
+2. Đối chiếu từng dòng với workbook gốc `Loi KDTPS.xlsx` sheet `History KDTPS`;
+   bổ sung được thì bổ sung vào **bản copy** DB (`C:/tmp/b0-dict/error_cases_dict.db` —
+   backup + `integrity_check` trước/sau, KHÔNG đụng DB gốc).
+3. Dòng nào không bổ sung được: ghi rõ lý do vào báo cáo (không bịa).
 
 ## Tiêu chí ĐẠT
-- Số ca ERROR còn thiếu mã thật giảm có đo được (báo cáo số trước/sau).
-- Test mới cho extractor mở rộng pass; full suite không thoái lui so với nền.
-- Báo cáo `docs/phieu-viec/ket-qua/bk-errcode.md`, commit riêng trên `phieu-viec/rag-fix1`.
-- Không ghi DB gốc, không đụng ổ D, không merge `main`, không force-push.
+- 82/82 dòng được xử lý (đã bổ sung hoặc có lý do rõ ràng).
+- Báo cáo `docs/phieu-viec/ket-qua/bk-82.md`, commit riêng trên `phieu-viec/rag-fix1`.
+- Không ghi DB gốc, không đụng ổ D, không merge `main`.
