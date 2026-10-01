@@ -96,6 +96,37 @@ def _template_outcome() -> ChatActionOutcome:
     )
 
 
+def _render_auto_section(auto: Optional[dict]) -> list:
+    """B5: render AI suggestion + recurrence alert (Vietnamese, no traceback)."""
+    if not auto:
+        return []
+    lines = ["", "### 🤖 Phân loại tự động (AI gợi ý — người nhập xác nhận)", ""]
+    grp = auto.get("nhom_nguyen_nhan_vi") or auto.get("nhom_nguyen_nhan")
+    conf = auto.get("confidence") or 0.0
+    stage = auto.get("cong_doan") or "—"
+    dept = auto.get("bo_phan") or "—"
+    lines.append(f"- Nhóm nguyên nhân: **{grp}** (độ tin cậy {conf:.0%})")
+    lines.append(f"- Công đoạn gợi ý: {stage} · Bộ phận gợi ý: {dept}")
+    if conf < 0.5:
+        lines.append("- AI chưa chắc chắn — người nhập kiểm tra lại nhóm nguyên nhân.")
+    n_hist = auto.get("history_match_count") or 0
+    lines.append(
+        f"- Đã đối chiếu lịch sử: {'tìm thấy ' + str(n_hist) + ' ca tương tự'
+                                  if n_hist else 'không thấy ca tương tự'}."
+    )
+    rec = auto.get("recurrence")
+    if rec:
+        lines += [
+            "",
+            "### ⚠️ Cảnh báo tái phát",
+            "",
+            f"- {rec['message_vi']}",
+        ]
+        if rec.get("suggested_from"):
+            lines.append(f"  (đối sách lấy từ phiếu {rec['suggested_from']})")
+    return lines
+
+
 def _render_result(result: dict) -> ChatActionOutcome:
     status = result.get("status")
     if status == "inserted":
@@ -107,6 +138,7 @@ def _render_result(result: dict) -> ChatActionOutcome:
         ]
         for w in result.get("warnings", []):
             lines.append(f"- ⚠️ {w}")
+        lines += _render_auto_section(result.get("auto"))
         kind = BLOCK_MARKDOWN
         text = "\n".join(lines)
     elif status == "duplicate":

@@ -43,6 +43,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 from . import column_map
 from . import glossary as _glossary
+from . import auto_classifier as _auto_classifier
 from aios_habit.chat_action import normalize_text
 
 # ---------------------------------------------------------------------------
@@ -344,6 +345,63 @@ def _clean(value: Any) -> Optional[str]:
     return text or None
 
 
+# ---------------------------------------------------------------------------
+# B5: phan loai tu dong + canh bao tai phat
+# ---------------------------------------------------------------------------
+
+#: Recurrence window for the entry form: 7 days — a recurrence across
+#: shifts/days is what the reporter needs ("loi nay da phat sinh N lan").
+_FORM_RECURRENCE_WINDOW_HOURS = 168.0
+
+
+def _auto_classify_new_case(
+    conn: sqlite3.Connection, data: Dict[str, Any], error_code: str
+) -> Optional[Dict[str, Any]]:
+    """B5: classify + compare against history + detect recurrence.
+
+    Best-effort: never raises, never blocks the insert. Returns None when
+    the lookup cannot run. Runs BEFORE the INSERT so detect_recurrence's
+    "+1 = the new case" counting stays correct.
+    """
+    try:
+        out = _auto_classifier.classify_new_error(
+            conn,
+            error_code,
+            phenomenon=str(data.get("hien_tuong") or ""),
+            investigation=str(data.get("noi_dung_dieu_tra") or ""),
+            machine_type=_clean(data.get("model")),
+            line=_clean(data.get("line")),
+            window_hours=_FORM_RECURRENCE_WINDOW_HOURS,
+        )
+    except Exception:
+        return None
+    cls = out["classification"]
+    rec = out["recurrence_alert"]
+    return {
+        "nhom_nguyen_nhan": cls.nhom_nguyen_nhan,
+        "nhom_nguyen_nhan_vi": _auto_classifier.CAUSE_LABEL_VI.get(
+            cls.nhom_nguyen_nhan, cls.nhom_nguyen_nhan
+        ),
+        "cong_doan": cls.cong_doan,
+        "bo_phan": cls.bo_phan,
+        "confidence": cls.confidence,
+        "reasons": list(cls.reasons),
+        "history_checked": bool(out.get("history_checked")),
+        "history_match_count": len(out.get("history_matches") or []),
+        "recurrence": (
+            {
+                "count": rec.count,
+                "window_hours": rec.window_hours,
+                "message_vi": rec.message_vi,
+                "suggested_remedy": rec.suggested_remedy,
+                "suggested_from": rec.suggested_from,
+            }
+            if rec is not None
+            else None
+        ),
+    }
+
+
 def submit_case(
     conn: sqlite3.Connection, data: Dict[str, Any]
 ) -> Dict[str, Any]:
@@ -388,6 +446,10 @@ def submit_case(
     closed = column_map.parse_date_cell(data.get("ngay_dong"))
     batch_id = ensure_form_batch(conn)
     no_dvd = _next_no_dvd(conn)
+
+    # B5: run BEFORE the INSERT — detect_recurrence counts the new case
+    # itself as +1, so the row must not be in the DB yet.
+    auto = _auto_classify_new_case(conn, data, error_code)
 
     form_snapshot = {
         f["key"]: _clean(data.get(f["key"])) for f in FIELDS
@@ -438,6 +500,9 @@ def submit_case(
         "no_dvd": no_dvd,
         "errors": [],
         "warnings": validation.warnings,
+        # B5: phan loai tu dong + doi chieu lich su + canh bao tai phat
+        # (None when the best-effort lookup could not run).
+        "auto": auto,
     }
 
 
