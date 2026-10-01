@@ -147,6 +147,66 @@ def cjk_prefilter_enabled() -> bool:
     shorter variant terms, so divergence is possible by design).
     """
     return os.environ.get(CJK_PREFILTER_FLAG, "1") != "0"
+
+
+# --- OPT-RAGV2-LEXICAL Phase B2: optional lexical hot-path optimizations ---
+# Master kill-switch: AIOS_RAGV2_LEXICAL_V2=1 enables the V2 code paths.
+# Each optimization below has its own sub-toggle so OMP can A/B them
+# independently on PC0575. V2=0 (default) keeps the pre-B2 code path intact.
+_LEX_V2_MASTER_ENV = "AIOS_RAGV2_LEXICAL_V2"
+
+
+def _lexical_v2_flags() -> Optional[Dict[str, bool]]:
+    """Read Phase-B2 toggles once per search.
+
+    Returns None when the master switch is off; otherwise a dict of
+    sub-toggle name -> enabled.
+    """
+    if os.environ.get(_LEX_V2_MASTER_ENV, "0") != "1":
+        return None
+
+    def _opt(name: str, default: str = "1") -> bool:
+        return os.environ.get(f"AIOS_RAGV2_LEX_V2_{name}", default) == "1"
+
+    return {
+        # (a) explicit single transaction around the temp-table build.
+        "TEMP_TXN": _opt("TEMP_TXN"),
+        # (b) skip the temp table + JOIN when eligibility covers every
+        # retrievable chunk; MATCH directly with JOIN chunks(retrievable=1).
+        "SKIP_FULL_ELIGIBLE": _opt("SKIP_FULL_ELIGIBLE"),
+        # Narrow eligibility SELECT (filter columns only); full rows are
+        # fetched lazily for candidates only.
+        "NARROW_ELIGIBILITY": _opt("NARROW_ELIGIBILITY"),
+        # Skip the per-row privacy_labels_json parse when no privacy filter
+        # is configured (_privacy_is_allowed returns True unconditionally).
+        "PRIVACY_LAZY": _opt("PRIVACY_LAZY"),
+        # (c) hoist per-search invariants out of _score_candidate.
+        "SCORE_HOIST": _opt("SCORE_HOIST"),
+        # (c) cache term-independent per-row work across query variants.
+        "SCORE_CACHE": _opt("SCORE_CACHE"),
+        # CJK: trigram-FTS prefilter instead of LIKE; needs a
+        # chunks_fts_trigram table built by OMP (index write lane).
+        # Default 0: falls back to the LIKE prefilter when the table is
+        # missing, so enabling it early is harmless but useless.
+        "CJK_TRIGRAM": _opt("CJK_TRIGRAM", "0"),
+    }
+
+
+# Intent word sets hoisted out of _score_candidate (B2 SCORE_HOIST).
+# Same elements as the per-call literals they replace.
+_LEX_ACTION_WORDS = frozenset(
+    {
+        "check", "verify", "action", "handle", "handling", "step", "steps",
+        "fix", "resolution", "solution", "xử", "khắc", "bước", "kiểm",
+        "quản", "thực",
+    }
+)
+_LEX_PROBLEM_WORDS = frozenset(
+    {
+        "error", "errors", "fault", "faults", "failure", "failures",
+        "exception", "symptom", "issue", "lỗi", "sự", "hỏng", "thất",
+    }
+)
 # Float32 matmul on this machine disagreed with the Python cosine by at most
 # ~1e-7 on real 1024-d vectors. The band keeps a near-cutoff chunk in the
 # exact-rescore pool so published top-k order stays identical.
@@ -3431,6 +3491,10 @@ class LocalChunkIndex:
         """Run filter, candidate, ranking, and diversity stages locally."""
         options = options or SearchOptions()
         query_plan = coerce_query_plan(query)
+        # OPT-RAGV2-LEXICAL B2: read the kill-switch + sub-toggles once per
+        # search. None when V2 is off -> pre-B2 code path runs unchanged.
+        lex_v2 = _lexical_v2_flags()
+        identifier_patterns = _identifier_patterns(query_plan.original_query)
         if query_plan.intent_category == "cross_source_synthesis":
             effective_limit = max(limit, getattr(query_plan, "target_retrieval_limit", limit))
             effective_per_doc_limit = max(
@@ -3447,9 +3511,25 @@ class LocalChunkIndex:
         # SearchSummary.lexical_breakdown_ms on PC0575.
         lex_timings: Dict[str, float] = {}
         eligibility_start = perf_counter()
-        indexed_rows = self._conn.execute(
-            "SELECT * FROM chunks WHERE retrievable = 1"
-        ).fetchall()
+        # OPT-RAGV2-LEXICAL B2 NARROW_ELIGIBILITY: the filter loop below only
+        # needs these columns; full rows are fetched lazily for candidates.
+        # Identifier queries keep the full-row path (the rescue scan needs
+        # normalized_text for every eligible row).
+        narrow_eligibility = (
+            lex_v2 is not None
+            and lex_v2["NARROW_ELIGIBILITY"]
+            and not identifier_patterns
+        )
+        if narrow_eligibility:
+            indexed_rows = self._conn.execute(
+                "SELECT chunk_id, document_id, source_path,"
+                " privacy_labels_json, source_fingerprint"
+                " FROM chunks WHERE retrievable = 1"
+            ).fetchall()
+        else:
+            indexed_rows = self._conn.execute(
+                "SELECT * FROM chunks WHERE retrievable = 1"
+            ).fetchall()
         lex_timings["indexed_rows"] = float(len(indexed_rows))
 
         if not terms:
@@ -3470,39 +3550,79 @@ class LocalChunkIndex:
         filtered_by_privacy = 0
         filtered_as_stale = 0
         for row in indexed_rows:
-            privacy_labels = tuple(json.loads(row["privacy_labels_json"] or "[]"))
             if not self._is_selected(row, options):
                 filtered_by_source += 1
                 continue
-            if not self._privacy_is_allowed(privacy_labels, options):
-                filtered_by_privacy += 1
-                continue
+            # OPT-RAGV2-LEXICAL B2 PRIVACY_LAZY: skip the per-row JSON parse
+            # when no privacy filter is configured -- _privacy_is_allowed
+            # returns True unconditionally then, so counts are unchanged.
+            if (
+                lex_v2 is not None
+                and lex_v2["PRIVACY_LAZY"]
+                and options.allowed_privacy_labels is None
+            ):
+                pass
+            else:
+                privacy_labels = tuple(json.loads(row["privacy_labels_json"] or "[]"))
+                if not self._privacy_is_allowed(privacy_labels, options):
+                    filtered_by_privacy += 1
+                    continue
             if self._is_stale(row, options):
                 filtered_as_stale += 1
                 continue
             eligible_rows.append(row)
         lex_timings["eligibility_ms"] = (perf_counter() - eligibility_start) * 1000.0
         lex_timings["eligible_rows"] = float(len(eligible_rows))
+        # OPT-RAGV2-LEXICAL B2: ids + completeness flag for the V2 path.
+        eligible_ids = [str(row["chunk_id"]) for row in eligible_rows]
+        eligible_complete = (
+            filtered_by_source == 0
+            and filtered_by_privacy == 0
+            and filtered_as_stale == 0
+        )
 
         # Rank each validated query variant independently, then fuse by rank.
         # Filtering is already complete above, so FTS and variants can never bypass
         # privacy, source-selection, or stale-fingerprint constraints.
         per_variant_candidates: list[tuple[Any, list[tuple[float, sqlite3.Row, Dict[str, Any], tuple[str, ...], Dict[str, float], tuple[str, ...], float]]]] = []
-        identifier_patterns = _identifier_patterns(query_plan.original_query)
         candidate_backend = self.retrieval_backend
+        # OPT-RAGV2-LEXICAL B2: per-search hoisted values (SCORE_HOIST) and a
+        # per-row bundle cache shared across variants (SCORE_CACHE).
+        score_hoisted = None
+        if lex_v2 is not None and lex_v2["SCORE_HOIST"]:
+            score_hoisted = (
+                frozenset(query_plan.target_terms)
+                if query_plan.target_terms
+                else frozenset(extract_content_terms(query_plan.original_query)),
+                query_plan.intent_category,
+            )
+        use_score_cache = lex_v2 is not None and lex_v2["SCORE_CACHE"]
+        row_bundle_cache: Dict[str, Dict[str, Any]] = {}
         for variant in query_plan.variants:
             variant_terms = extract_content_terms(variant.text)
             if not variant_terms:
                 continue
             rescue_patterns = identifier_patterns if variant.origin == "original" else ()
-            candidate_rows, backend = self._candidate_rows(
-                variant.text,
-                eligible_rows,
-                options.candidate_limit,
-                identifier_patterns=rescue_patterns,
-                query_plan=query_plan,
-                timings=lex_timings,
-            )
+            # V2 implements no identifier-rescue path; identifier queries stay
+            # on _candidate_rows so rescue behavior is untouched.
+            if lex_v2 is not None and not rescue_patterns:
+                candidate_rows, backend = self._candidate_rows_v2(
+                    variant.text,
+                    eligible_ids,
+                    options.candidate_limit,
+                    timings=lex_timings,
+                    eligible_complete=eligible_complete,
+                    lex_v2=lex_v2,
+                )
+            else:
+                candidate_rows, backend = self._candidate_rows(
+                    variant.text,
+                    eligible_rows,
+                    options.candidate_limit,
+                    identifier_patterns=rescue_patterns,
+                    query_plan=query_plan,
+                    timings=lex_timings,
+                )
             if backend != "fts5_bm25":
                 candidate_backend = "deterministic_scan"
             ranked = []
@@ -3510,7 +3630,26 @@ class LocalChunkIndex:
             score_start = perf_counter()
             score_calls = 0
             for candidate_position, row in enumerate(candidate_rows):
-                candidate = self._score_candidate(row, variant_terms, query_plan=query_plan)
+                if use_score_cache:
+                    cache_key = str(row["chunk_id"])
+                    bundle = row_bundle_cache.get(cache_key)
+                    if bundle is None:
+                        bundle = LocalChunkIndex._score_candidate_bundle(row)
+                        row_bundle_cache[cache_key] = bundle
+                    candidate = self._score_candidate(
+                        row,
+                        variant_terms,
+                        query_plan=query_plan,
+                        _bundle=bundle,
+                        _hoisted=score_hoisted,
+                    )
+                else:
+                    candidate = self._score_candidate(
+                        row,
+                        variant_terms,
+                        query_plan=query_plan,
+                        _hoisted=score_hoisted,
+                    )
                 score_calls += 1
                 if candidate is not None:
                     identifier_priority = _identifier_match_priority(
@@ -3808,14 +3947,17 @@ class LocalChunkIndex:
             identity for identity in candidate_identities if identity[0] not in returned_ids
         )
         # OPT-RAGV2-LEXICAL B1: expose the per-part split in a fixed order.
+        # B2 adds temp_build_skipped / trigram_match_ms when the V2 path runs.
         breakdown_order = (
             "eligibility_ms",
             "indexed_rows",
             "eligible_rows",
             "temp_build_ms",
+            "temp_build_skipped",
             "temp_inserted_rows",
             "fts_match_ms",
             "like_prefilter_ms",
+            "trigram_match_ms",
             "identifier_rescue_ms",
             "python_score_ms",
             "score_candidate_calls",
@@ -3827,6 +3969,11 @@ class LocalChunkIndex:
             "rag_v2 lexical breakdown ms: %s",
             ", ".join(f"{key}={value:.1f}" for key, value in lexical_breakdown),
         )
+        if lex_v2 is not None:
+            LOGGER.debug(
+                "rag_v2 lexical v2 flags: %s",
+                ", ".join(f"{key}={int(value)}" for key, value in lex_v2.items()),
+            )
         summary = SearchSummary(
             query=query_text,
             indexed_chunk_count=len(indexed_rows),
@@ -3893,6 +4040,60 @@ class LocalChunkIndex:
             term.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
         )
 
+    def _cjk_like_prefilter_ids(
+        self,
+        eligible_ids: List[str],
+        terms: tuple[str, ...],
+        timings: Optional[Dict[str, float]] = None,
+    ) -> Optional[List[str]]:
+        """Ids version of the V1-A2 CJK LIKE prefilter (OPT-RAGV2-LEXICAL B2).
+
+        Returns the eligible chunk ids (in eligible order) whose searchable
+        text contains one of the 1-2 longest query terms, or None under the
+        same conditions as _cjk_like_prefilter_rows. Same match set and order
+        as the row version; lets the V2 path avoid materializing full rows.
+        """
+        if not cjk_prefilter_enabled():
+            return None
+        usable_terms = sorted(
+            {term for term in terms if term}, key=lambda term: (-len(term), term)
+        )[:2]
+        if not usable_terms or not eligible_ids:
+            return None
+        search_expression = (
+            "COALESCE(normalized_text, '') || ' ' || COALESCE(source_name, '')"
+            " || ' ' || COALESCE(source_path, '')"
+            " || ' ' || COALESCE(metadata_json, '')"
+        )
+        clauses = []
+        parameters: list[str] = []
+        for term in usable_terms:
+            clauses.append("((" + search_expression + ") LIKE ? ESCAPE '\\')")
+            parameters.append("%" + self._escape_like_term(term) + "%")
+        start = perf_counter()
+        try:
+            matched_ids = {
+                str(row["chunk_id"])
+                for row in self._conn.execute(
+                    "SELECT chunk_id FROM chunks WHERE retrievable = 1 AND ("
+                    + " OR ".join(clauses)
+                    + ")",
+                    parameters,
+                ).fetchall()
+            }
+        except sqlite3.Error:
+            LOGGER.warning(
+                "rag_v2 CJK LIKE prefilter failed; using full scan",
+                exc_info=True,
+            )
+            return None
+        finally:
+            if timings is not None:
+                timings["like_prefilter_ms"] = timings.get("like_prefilter_ms", 0.0) + (
+                    perf_counter() - start
+                ) * 1000.0
+        return [chunk_id for chunk_id in eligible_ids if chunk_id in matched_ids]
+
     def _cjk_like_prefilter_rows(
         self,
         eligible_rows: List[sqlite3.Row],
@@ -3920,42 +4121,13 @@ class LocalChunkIndex:
         verified by test. If the prefilter ever diverges from the baseline
         on production, set ``AIOS_RAG_V2_CJK_PREFILTER=0`` to disable it.
         """
-        if not cjk_prefilter_enabled():
-            return None
-        usable_terms = sorted(
-            {term for term in terms if term}, key=lambda term: (-len(term), term)
-        )[:2]
-        if not usable_terms or not eligible_rows:
-            return None
-        search_expression = (
-            "COALESCE(normalized_text, '') || ' ' || COALESCE(source_name, '')"
-            " || ' ' || COALESCE(source_path, '')"
-            " || ' ' || COALESCE(metadata_json, '')"
+        ids = self._cjk_like_prefilter_ids(
+            [str(row["chunk_id"]) for row in eligible_rows], terms
         )
-        clauses = []
-        parameters: list[str] = []
-        for term in usable_terms:
-            clauses.append("((" + search_expression + ") LIKE ? ESCAPE '\\')")
-            parameters.append("%" + self._escape_like_term(term) + "%")
-        try:
-            matched_ids = {
-                str(row["chunk_id"])
-                for row in self._conn.execute(
-                    "SELECT chunk_id FROM chunks WHERE retrievable = 1 AND ("
-                    + " OR ".join(clauses)
-                    + ")",
-                    parameters,
-                ).fetchall()
-            }
-        except sqlite3.Error:
-            LOGGER.warning(
-                "rag_v2 CJK LIKE prefilter failed; using full scan",
-                exc_info=True,
-            )
+        if ids is None:
             return None
-        return [
-            row for row in eligible_rows if str(row["chunk_id"]) in matched_ids
-        ]
+        by_id = {str(row["chunk_id"]): row for row in eligible_rows}
+        return [by_id[chunk_id] for chunk_id in ids if chunk_id in by_id]
 
     def _candidate_rows(
         self,
@@ -4072,6 +4244,277 @@ class LocalChunkIndex:
             ) * 1000.0
         return ranked, "fts5_bm25"
 
+    # --- OPT-RAGV2-LEXICAL Phase B2 helpers (V2 paths only) ---
+
+    def _fetch_chunk_rows(self, chunk_ids: Sequence[str]) -> List[sqlite3.Row]:
+        """Fetch full chunk rows for ids, preserving the given id order.
+
+        Used by the V2 narrow-eligibility path: the eligibility scan only
+        reads filter columns, and full rows are materialized lazily for the
+        (much smaller) candidate set. Batches stay under
+        SQLITE_MAX_VARIABLE_NUMBER.
+        """
+        ids = [str(chunk_id) for chunk_id in chunk_ids]
+        if not ids:
+            return []
+        by_id: Dict[str, sqlite3.Row] = {}
+        for start in range(0, len(ids), 500):
+            batch = ids[start : start + 500]
+            placeholders = ", ".join(["?"] * len(batch))
+            for row in self._conn.execute(
+                f"SELECT * FROM chunks WHERE chunk_id IN ({placeholders})", batch
+            ).fetchall():
+                by_id[str(row["chunk_id"])] = row
+        return [by_id[chunk_id] for chunk_id in ids if chunk_id in by_id]
+
+    def _cjk_trigram_candidate_ids(
+        self,
+        terms: tuple[str, ...],
+        eligible_ids: List[str],
+        timings: Optional[Dict[str, float]] = None,
+    ) -> Optional[List[str]]:
+        """Trigram-FTS replacement for the CJK LIKE prefilter (B2, opt-in).
+
+        Returns None when the ``chunks_fts_trigram`` table does not exist --
+        the caller then falls back to the LIKE prefilter, so enabling
+        ``AIOS_RAGV2_LEX_V2_CJK_TRIGRAM=1`` before OMP builds the table is
+        harmless. Otherwise returns eligible ids (in eligible order) whose
+        trigram-indexed text contains one of the 1-2 longest terms.
+
+        Expected table (built by OMP in the index-write lane; read-only here):
+        ``CREATE VIRTUAL TABLE chunks_fts_trigram USING
+        fts5(chunk_id UNINDEXED, text, tokenize='trigram')`` where ``text`` is
+        the same concatenated searchable expression the LIKE prefilter uses:
+        ``COALESCE(normalized_text,'') || ' ' || COALESCE(source_name,'') ||
+        ' ' || COALESCE(source_path,'') || ' ' || COALESCE(metadata_json,'')``.
+        """
+        try:
+            table = self._conn.execute(
+                "SELECT name FROM sqlite_master"
+                " WHERE type = 'table' AND name = 'chunks_fts_trigram'"
+            ).fetchone()
+        except sqlite3.Error:
+            return None
+        if table is None:
+            return None
+        usable_terms = sorted(
+            {term for term in terms if term}, key=lambda term: (-len(term), term)
+        )[:2]
+        if not usable_terms or not eligible_ids:
+            return None
+        match_query = " OR ".join(
+            f'"{term.replace(chr(34), chr(34) * 2)}"' for term in usable_terms
+        )
+        start = perf_counter()
+        try:
+            rows = self._conn.execute(
+                "SELECT chunk_id FROM chunks_fts_trigram"
+                " WHERE chunks_fts_trigram MATCH ?",
+                (match_query,),
+            ).fetchall()
+        except sqlite3.Error:
+            LOGGER.warning(
+                "rag_v2 CJK trigram prefilter failed; using LIKE fallback",
+                exc_info=True,
+            )
+            return None
+        if timings is not None:
+            timings["trigram_match_ms"] = timings.get("trigram_match_ms", 0.0) + (
+                perf_counter() - start
+            ) * 1000.0
+        matched_ids = {str(row["chunk_id"]) for row in rows}
+        return [chunk_id for chunk_id in eligible_ids if chunk_id in matched_ids]
+
+    def _fts_ranked_ids_v2(
+        self,
+        match_query: str,
+        eligible_ids: List[str],
+        limit: int,
+        timings: Optional[Dict[str, float]] = None,
+        use_txn: bool = True,
+    ) -> Optional[List[str]]:
+        """V2 FTS branch: temp-table build (+ optional explicit txn) + MATCH.
+
+        Returns the ranked chunk ids, or None when FTS5 is unavailable (the
+        caller falls back to the deterministic scan, mirroring _candidate_rows).
+        """
+        try:
+            self._conn.execute(
+                "CREATE TEMP TABLE IF NOT EXISTS rag_v2_eligible_chunks (chunk_id TEXT PRIMARY KEY)"
+            )
+            began_txn = bool(use_txn) and not self._conn.in_transaction
+            if began_txn:
+                self._conn.execute("BEGIN")
+            try:
+                self._conn.execute("DELETE FROM rag_v2_eligible_chunks")
+                build_start = perf_counter()
+                self._conn.executemany(
+                    "INSERT INTO rag_v2_eligible_chunks(chunk_id) VALUES (?)",
+                    ((chunk_id,) for chunk_id in eligible_ids),
+                )
+                build_ms = (perf_counter() - build_start) * 1000.0
+            except Exception:
+                if began_txn:
+                    self._conn.execute("ROLLBACK")
+                raise
+            if began_txn:
+                self._conn.execute("COMMIT")
+            match_start = perf_counter()
+            ranked = self._conn.execute(
+                """
+                SELECT f.chunk_id
+                FROM chunks_fts AS f
+                JOIN rag_v2_eligible_chunks AS eligible ON eligible.chunk_id = f.chunk_id
+                WHERE chunks_fts MATCH ?
+                ORDER BY bm25(chunks_fts, 0.0, 1.0, 2.0, 1.0, 0.75), f.chunk_id
+                LIMIT ?
+                """,
+                (match_query, limit),
+            ).fetchall()
+            match_ms = (perf_counter() - match_start) * 1000.0
+        except sqlite3.OperationalError:
+            self._fts5_available = False
+            return None
+        if timings is not None:
+            timings["temp_build_ms"] = timings.get("temp_build_ms", 0.0) + build_ms
+            timings["temp_inserted_rows"] = timings.get("temp_inserted_rows", 0.0) + float(
+                len(eligible_ids)
+            )
+            timings["fts_match_ms"] = timings.get("fts_match_ms", 0.0) + match_ms
+        return [str(row["chunk_id"]) for row in ranked]
+
+    def _candidate_rows_v2(
+        self,
+        query: str,
+        eligible_ids: List[str],
+        limit: int,
+        *,
+        timings: Optional[Dict[str, float]] = None,
+        eligible_complete: bool = False,
+        lex_v2: Dict[str, bool],
+    ) -> tuple[List[sqlite3.Row], str]:
+        """Phase-B2 candidate path: same results as _candidate_rows.
+
+        Works from eligible chunk ids (narrow eligibility) and fetches full
+        rows lazily for candidates only. The identifier-rescue path is NOT
+        replicated here; callers use _candidate_rows for identifier queries.
+        Every optimization is gated by its own lex_v2 sub-toggle.
+        """
+        if not self._fts5_available or not eligible_ids:
+            return self._fetch_chunk_rows(eligible_ids), "deterministic_scan"
+        terms = extract_content_terms(query)
+        if not terms:
+            return [], "fts5_bm25"
+        if _CJK_RE.search(query):
+            if lex_v2["CJK_TRIGRAM"]:
+                trigram_ids = self._cjk_trigram_candidate_ids(
+                    terms, eligible_ids, timings
+                )
+                if trigram_ids is not None:
+                    return (
+                        self._fetch_chunk_rows(trigram_ids),
+                        "deterministic_scan",
+                    )
+            like_ids = self._cjk_like_prefilter_ids(eligible_ids, terms, timings)
+            target_ids = like_ids if like_ids is not None else eligible_ids
+            return self._fetch_chunk_rows(target_ids), "deterministic_scan"
+        match_query = " OR ".join(
+            f'"{term.replace(chr(34), chr(34) * 2)}"' for term in terms
+        )
+        ranked_ids: Optional[List[str]]
+        if lex_v2["SKIP_FULL_ELIGIBLE"] and eligible_complete:
+            # Eligible covers every retrievable chunk, so the temp-table JOIN
+            # is a no-op: join chunks directly on retrievable = 1 instead.
+            # Same MATCH, same bm25 weights, same ORDER BY/LIMIT -> identical
+            # ranking, without building the temp table.
+            try:
+                match_start = perf_counter()
+                fts_rows = self._conn.execute(
+                    """
+                    SELECT f.chunk_id
+                    FROM chunks_fts AS f
+                    JOIN chunks AS c ON c.chunk_id = f.chunk_id AND c.retrievable = 1
+                    WHERE chunks_fts MATCH ?
+                    ORDER BY bm25(chunks_fts, 0.0, 1.0, 2.0, 1.0, 0.75), f.chunk_id
+                    LIMIT ?
+                    """,
+                    (match_query, limit),
+                ).fetchall()
+                if timings is not None:
+                    timings["fts_match_ms"] = timings.get("fts_match_ms", 0.0) + (
+                        perf_counter() - match_start
+                    ) * 1000.0
+                    timings["temp_build_skipped"] = (
+                        timings.get("temp_build_skipped", 0.0) + 1.0
+                    )
+            except sqlite3.OperationalError:
+                self._fts5_available = False
+                return self._fetch_chunk_rows(eligible_ids), "deterministic_scan"
+            ranked_ids = [str(row["chunk_id"]) for row in fts_rows]
+        else:
+            ranked_ids = self._fts_ranked_ids_v2(
+                match_query,
+                eligible_ids,
+                limit,
+                timings,
+                use_txn=lex_v2["TEMP_TXN"],
+            )
+            if ranked_ids is None:
+                return self._fetch_chunk_rows(eligible_ids), "deterministic_scan"
+        return self._fetch_chunk_rows(ranked_ids), "fts5_bm25"
+
+    @staticmethod
+    def _score_candidate_bundle(row: sqlite3.Row) -> Dict[str, Any]:
+        """Term-independent per-row precomputations for _score_candidate (B2).
+
+        The expensive parts of scoring a row -- JSON parsing, full-text
+        tokenization (_tokens, incl. CJK n-grams), Counters, lower() -- depend
+        only on the row, not on the query variant. With SCORE_CACHE the
+        variant loop builds each row's bundle once and reuses it across
+        variants. Values are identical to the inline computations in
+        _score_candidate.
+        """
+        metadata = json.loads(row["metadata_json"])
+        privacy_labels = tuple(json.loads(row["privacy_labels_json"] or "[]"))
+        text = row["normalized_text"]
+        source_name = row["source_name"]
+        source_path = row["source_path"]
+        section_text = " ".join(_text_values(metadata.get("section_path")))
+        sheet_text = " ".join(_text_values(metadata.get("sheet_names")))
+        element_types = tuple(
+            value.lower() for value in _text_values(metadata.get("element_types"))
+        )
+        all_tokens = _tokens(text)
+        text_counts = Counter(all_tokens)
+        title_tokens = set(_tokens(source_name))
+        path_tokens = set(_tokens(source_path))
+        section_tokens = set(_tokens(section_text))
+        sheet_tokens = set(_tokens(sheet_text))
+        return {
+            "metadata": metadata,
+            "privacy_labels": privacy_labels,
+            "text": text,
+            "source_name": source_name,
+            "source_path": source_path,
+            "section_text": section_text,
+            "sheet_text": sheet_text,
+            "element_types": element_types,
+            "all_tokens": all_tokens,
+            "text_counts": text_counts,
+            "title_tokens": title_tokens,
+            "path_tokens": path_tokens,
+            "section_tokens": section_tokens,
+            "sheet_tokens": sheet_tokens,
+            "searchable_tokens": (
+                set(text_counts)
+                | title_tokens
+                | path_tokens
+                | section_tokens
+                | sheet_tokens
+            ),
+            "normalized_text": text.lower(),
+        }
+
     @staticmethod
     def _evidence_set_term_coverage(
         candidates: List[Dict[str, Any]],
@@ -4186,24 +4629,31 @@ class LocalChunkIndex:
         row: sqlite3.Row,
         terms: tuple[str, ...],
         query_plan: Optional[RetrievalQueryPlan] = None,
+        _bundle: Optional[Dict[str, Any]] = None,
+        _hoisted: Optional[tuple[frozenset, str]] = None,
     ) -> Optional[tuple[float, sqlite3.Row, Dict[str, Any], tuple[str, ...], Dict[str, float], tuple[str, ...], float]]:
-        metadata = json.loads(row["metadata_json"])
-        privacy_labels = tuple(json.loads(row["privacy_labels_json"] or "[]"))
-        text = row["normalized_text"]
-        source_name = row["source_name"]
-        source_path = row["source_path"]
-        section_text = " ".join(_text_values(metadata.get("section_path")))
-        sheet_text = " ".join(_text_values(metadata.get("sheet_names")))
-        element_types = tuple(value.lower() for value in _text_values(metadata.get("element_types")))
-
-        all_tokens = _tokens(text)
-        text_counts = Counter(all_tokens)
-        title_tokens = set(_tokens(source_name))
-        path_tokens = set(_tokens(source_path))
-        section_tokens = set(_tokens(section_text))
-        sheet_tokens = set(_tokens(sheet_text))
-        searchable_tokens = set(text_counts) | title_tokens | path_tokens | section_tokens | sheet_tokens
-        normalized_text = text.lower()
+        # OPT-RAGV2-LEXICAL B2: with SCORE_CACHE the caller passes a
+        # precomputed per-row bundle (see _score_candidate_bundle); otherwise
+        # the bundle is built inline -- identical values, identical order.
+        # With SCORE_HOIST the caller passes (target_terms, intent_category)
+        # computed once per search instead of once per row.
+        b = _bundle if _bundle is not None else LocalChunkIndex._score_candidate_bundle(row)
+        metadata = b["metadata"]
+        privacy_labels = b["privacy_labels"]
+        text = b["text"]
+        source_name = b["source_name"]
+        source_path = b["source_path"]
+        section_text = b["section_text"]
+        sheet_text = b["sheet_text"]
+        element_types = b["element_types"]
+        all_tokens = b["all_tokens"]
+        text_counts = b["text_counts"]
+        title_tokens = b["title_tokens"]
+        path_tokens = b["path_tokens"]
+        section_tokens = b["section_tokens"]
+        sheet_tokens = b["sheet_tokens"]
+        searchable_tokens = b["searchable_tokens"]
+        normalized_text = b["normalized_text"]
         matched_terms = tuple(
             term
             for term in terms
@@ -4215,11 +4665,14 @@ class LocalChunkIndex:
 
         phrase = " ".join(terms)
         signals: Dict[str, float] = {}
-        original_target_terms = set(
-            query_plan.target_terms
-            if query_plan and query_plan.target_terms
-            else extract_content_terms(query_plan.original_query if query_plan else "")
-        )
+        if _hoisted is not None:
+            original_target_terms = _hoisted[0]
+        else:
+            original_target_terms = set(
+                query_plan.target_terms
+                if query_plan and query_plan.target_terms
+                else extract_content_terms(query_plan.original_query if query_plan else "")
+            )
         target_matches = tuple(term for term in matched_terms if term in original_target_terms)
         raw_lexical_count = float(sum(
             text_counts[term]
@@ -4262,9 +4715,14 @@ class LocalChunkIndex:
             signals["metadata_only_penalty"] = -3.0
 
         # Domain-neutral intent & obligation scoring
-        intent = query_plan.intent_category if query_plan else "general"
-        action_words = {"check", "verify", "action", "handle", "handling", "step", "steps", "fix", "resolution", "solution", "xử", "khắc", "bước", "kiểm", "quản", "thực"}
-        problem_words = {"error", "errors", "fault", "faults", "failure", "failures", "exception", "symptom", "issue", "lỗi", "sự", "hỏng", "thất"}
+        if _hoisted is not None:
+            intent = _hoisted[1]
+            action_words = _LEX_ACTION_WORDS
+            problem_words = _LEX_PROBLEM_WORDS
+        else:
+            intent = query_plan.intent_category if query_plan else "general"
+            action_words = {"check", "verify", "action", "handle", "handling", "step", "steps", "fix", "resolution", "solution", "xử", "khắc", "bước", "kiểm", "quản", "thực"}
+            problem_words = {"error", "errors", "fault", "faults", "failure", "failures", "exception", "symptom", "issue", "lỗi", "sự", "hỏng", "thất"}
 
         has_problem = bool(set(text_counts) & problem_words) or any(w in section_text.lower() for w in problem_words)
         has_action = bool(set(text_counts) & action_words) or any(w in section_text.lower() for w in action_words)
