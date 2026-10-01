@@ -13,8 +13,7 @@
 3. Kiểm chứng nhanh 1 câu bất kỳ: đáp án phải có bằng chứng provider ngoài thật sự được gọi (tên provider/model trong trace hoặc tóm tắt tuyến, không phải local fallback). Nếu đường AI lỗi: ghi đúng lỗi gốc, giữ fallback cục bộ chạy, không bịa kết quả.
 4. Đo đủ 6 câu NGUYÊN VĂN như báo cáo `hodap-home` (L1–L3, E1–E3; lấy đúng văn bản câu hỏi trong `docs/phieu-viec/ket-qua/hodap-home.md`). Mỗi câu ghi: thời gian khởi tạo (chỉ câu đầu), thời gian tìm kiếm, thời gian viết đáp án (phần LLM), thời gian tổng; provider + model thật đã gọi; toàn văn đáp án; trích dẫn có khớp nguồn không; trace hợp lệ không.
 5. Đối chứng chất lượng từng câu với đáp án lượt `hodap-home` (lane cục bộ): câu nào hay hơn / kém hơn, có chi tiết nào ngoài bằng chứng không.
-6. Đo thêm 1 câu khi TẮT biến môi trường (restart app không có biến) để chứng minh fail-closed còn nguyên: đáp án phải quay về lane cục bộ.
-7. Index chỉ đọc: SHA-256 của `library.sqlite` trước và sau phải khớp nhau; không ghi index dưới bất kỳ hình thức nào.
+6. Index chỉ đọc: SHA-256 của `library.sqlite` trước và sau phải khớp nhau; không ghi index dưới bất kỳ hình thức nào.
 
 ## Báo cáo
 
