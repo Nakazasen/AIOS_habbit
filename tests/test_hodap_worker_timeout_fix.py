@@ -292,3 +292,28 @@ def test_coverage_cache_does_not_mask_unready(tmp_path, clean_env, onnx_model_di
     _make_index(config, source, fingerprint=fingerprint, chunk_count=15, missing_dense=1)
     assert adapter._durable_semantic_coverage_ready(source, config) is False
     assert adapter._durable_semantic_coverage_ready(source, config) is False
+
+
+def test_routing_allowlist_covers_all_producer_codes():
+    """Regression 2026-10-01 (E1 blocked: invalid_routing_reason_code).
+
+    bge_subprocess_client kept a hand-copied allowlist that drifted from
+    adaptive_retrieval.ALLOWLISTED_REASON_CODES (the producer): e.g. a
+    causality question emits causality_intent, which the stale copy
+    rejected before the worker was even called. The client must accept
+    every code the producer can emit.
+    """
+    from aios_habit.rag_v2 import bge_subprocess_client as client
+    from aios_habit.rag_v2.adaptive_retrieval import ALLOWLISTED_REASON_CODES
+
+    missing = set(ALLOWLISTED_REASON_CODES) - set(
+        client.ALLOWLISTED_ROUTING_REASON_CODES
+    )
+    assert not missing, f"client allowlist missing producer codes: {sorted(missing)}"
+    for code in (
+        "causality_intent",
+        "contradiction_intent",
+        "temporal_change_intent",
+        "multi_part_query",
+    ):
+        assert code in client.ALLOWLISTED_ROUTING_REASON_CODES

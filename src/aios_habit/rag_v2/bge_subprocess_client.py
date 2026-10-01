@@ -19,6 +19,9 @@ from typing import Any, Mapping, Optional, Sequence
 
 from aios_habit.rag_v2.pipeline import RagV2DevConfig, SourceSpec
 from aios_habit.rag_v2.semantic import SemanticBackendError
+from aios_habit.rag_v2.adaptive_retrieval import (
+    ALLOWLISTED_REASON_CODES as _ADAPTIVE_ALLOWLISTED_REASON_CODES,
+)
 
 LOGGER = logging.getLogger(__name__)
 
@@ -87,35 +90,12 @@ def _default_worker_python_executable() -> str:
         return str(project_python)
     return sys.executable
 
-ALLOWLISTED_ROUTING_REASON_CODES = {
-    "user_requested_deep",
-    "user_preference_auto",
-    "pre_fast",
-    "pre_deep",
-    "pre_uncertain",
-    "post_sufficient",
-    "post_insufficient",
-    "post_uncertain",
-    "multi_facet",
-    "cross_source_intent",
-    "comparison_intent",
-    "verification_requested",
-    "insufficient_structure_signal",
-    "missing_facets",
-    "missing_obligations",
-    "low_evidence_coverage",
-    "insufficient_source_diversity",
-    "insufficient_candidates",
-    "ranking_ambiguous",
-    "retrieval_report_incomplete",
-    "reranker_backend_unavailable",
-    "reranker_backend_timeout",
-    "reranker_backend_failed",
-    "circuit_breaker_open",
-    "structured_excel_handled",
-    "structured_excel_bypass",
-    "invalid_preference_fallback",
-}
+# Single source of truth lives in adaptive_retrieval (the producer of these
+# codes). This used to be a hand-copied set that drifted: pre_retrieval_gate
+# can emit causality_intent / contradiction_intent / temporal_change_intent /
+# multi_part_query, which the stale copy rejected with
+# invalid_routing_reason_code (E1 blocked, 2026-10-01).
+ALLOWLISTED_ROUTING_REASON_CODES = frozenset(_ADAPTIVE_ALLOWLISTED_REASON_CODES)
 
 
 def _config_to_dict(config: RagV2DevConfig) -> dict[str, Any]:
