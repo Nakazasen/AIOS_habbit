@@ -14,6 +14,8 @@ Business rules sourced from the legacy kdtps-error-manager
 
 from __future__ import annotations
 
+import re
+import unicodedata
 from datetime import date, datetime
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -100,8 +102,14 @@ HISTORY_29_MAP: Dict[int, str] = {
 }
 
 # Columns with no semantic slot in error_cases; kept in raw_json only.
-# G serial, I defect description, J occurrences, X/Y HOLD dates, Z
-# reproducibility, AA cause, AB kaizen, AC report link.
+# G serial, J occurrences, X/Y HOLD dates, Z reproducibility, AA cause,
+# AB kaizen, AC report link.
+#
+# B0-DICT: column I (\"不具合現象 / Hiện trạng lỗi\", the phenomenon text)
+# usually embeds the REAL error code, e.g. LCD画面にF000表示, while column H
+# only carries the group ('F CALL'). The first code-shaped token of I is
+# extracted into error_cases.error_code_i at import time
+# (see extract_code_from_text) so the form-vs-history dedup can match on it.
 
 #: Real occurrence date for the 29-column history sheet. Recon 2026-10-01
 #: (ticket `date-map`): C "生産日 / Ngày tháng sản xuất" is a real date in
@@ -113,6 +121,38 @@ HISTORY_29_DATE_INDEX: int = 2  # column C
 
 #: Source placeholder values meaning "no date given".
 DATE_NA_MARKS: Tuple[str, ...] = ("ー", "－", "—", "–", "-", "--", "/", "//")
+
+# B0-DICT: code shapes as they appear embedded in the phenomenon text
+# (history_29 column I). Order matters: JAMxxxx before the bare hex-4
+# family so 'JAM4012' is not truncated; (?!\d) avoids matching a prefix
+# of a longer digit run.
+_RE_REAL_CODE = re.compile(r"(JAM\d{4}|C\d{4}|F[0-9A-F]{3,4})(?!\d)")
+
+# Real F-family codes without any digit (wildcard templates from the
+# UWCA workbook). Anything else F+hex-letters-only is an English word
+# ('FEED', 'FACE', 'FADE'), not a code.
+_F_NO_DIGIT_TEMPLATES = frozenset({"FCAX", "FCFX", "FDEX", "FEEX"})
+
+
+def extract_code_from_text(value: Any) -> Optional[str]:
+    """Extract the real error code embedded in free text (e.g. column I).
+
+    Returns the first code-shaped token (JAM4012, C4701, F000), NFKC/upper
+    normalized, or None when the text carries no code. Never guesses: only
+    exact shape matches count. F-family candidates with no digit at all
+    (e.g. the English word 'FEED') are skipped unless they are one of the
+    real no-digit templates from the UWCA workbook.
+    """
+    if value is None:
+        return None
+    text = unicodedata.normalize("NFKC", str(value)).upper()
+    for m in _RE_REAL_CODE.finditer(text):
+        tok = m.group(1)
+        if tok.startswith("F") and not any(ch.isdigit() for ch in tok):
+            if tok not in _F_NO_DIGIT_TEMPLATES:
+                continue  # English word, not an error code
+        return tok
+    return None
 
 
 def parse_date_cell(value: Any) -> Optional[str]:
@@ -162,7 +202,8 @@ def normalize_history_row(cells: List[Any]) -> Dict[str, Any]:
     """
     out: Dict[str, Any] = {
         "no_dvd": None, "machine_type": None, "line": None,
-        "error_code_c": None, "error_code_h": None, "investigation": None,
+        "error_code_c": None, "error_code_h": None, "error_code_i": None,
+        "investigation": None,
         "department": None, "handler": None,
         "is_completed": "", "needs_jp_support": "",
         "occurred_at": None,
@@ -177,6 +218,8 @@ def normalize_history_row(cells: List[Any]) -> Dict[str, Any]:
             out[field] = value
     out["no_dvd"] = history_no_dvd(raw.get("A"), raw.get("B"))
     out["occurred_at"] = parse_date_cell(raw.get("C"))
+    # B0-DICT: real code embedded in the phenomenon text (column I).
+    out["error_code_i"] = extract_code_from_text(raw.get("I"))
     vn = raw.get("O")
     jp = raw.get("N")
     out["investigation"] = vn if vn not in (None, "") else jp

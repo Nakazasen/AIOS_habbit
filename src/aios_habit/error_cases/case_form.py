@@ -160,7 +160,9 @@ def _glossary_table_exists(conn: sqlite3.Connection) -> bool:
 def lookup_error_code(conn: sqlite3.Connection, code: str) -> Optional[Dict[str, Any]]:
     """Look up an error code in the glossary (all families). None = unknown / no glossary.
 
-    Exact match first; F_SYSTEM additionally supports the X wildcard stored
+    Exact match first; B0-DICT: falls back to the term-alias index
+    (variant name spellings -> canonical code, JAM family-prefix form
+    like 'JAM4709'); F_SYSTEM additionally supports the X wildcard stored
     in the dictionary (e.g. 'F10X' matches 'F100').
     """
     if not _glossary_table_exists(conn):
@@ -168,6 +170,11 @@ def lookup_error_code(conn: sqlite3.Connection, code: str) -> Optional[Dict[str,
     norm = _glossary.norm_code(code)
     for family in _glossary.CODE_FAMILIES:
         hit = _glossary.lookup(conn, family, norm)
+        if hit:
+            return hit
+    resolved = _glossary.canonical_term(conn, norm)
+    if resolved:
+        hit = _glossary.lookup(conn, resolved[0], resolved[1])
         if hit:
             return hit
     # F_SYSTEM wildcard: 'F10X' ~ 'F100'.
@@ -234,7 +241,7 @@ def validate_form(data: Dict[str, Any], conn: Optional[sqlite3.Connection] = Non
     if not _blank(get("error_code")) and conn is not None:
         if lookup_error_code(conn, str(get("error_code"))) is None:
             res.warnings.append(
-                f"Mã lỗi '{str(get('error_code')).strip()}' lạ — không có trong "
+                f"Mã lỗi '{str(get('error_code')).strip()}' lạ — chưa có trong "
                 "từ điển. Vẫn ghi nhận, nên bổ sung từ điển sau (vé B0-DICT)."
             )
 
@@ -245,6 +252,14 @@ def validate_form(data: Dict[str, Any], conn: Optional[sqlite3.Connection] = Non
 # Chống trùng
 # ---------------------------------------------------------------------------
 
+def _has_error_code_i(conn: sqlite3.Connection) -> bool:
+    """True when the DB was built/migrated with the B0-DICT error_code_i column."""
+    return any(
+        row[1] == "error_code_i"
+        for row in conn.execute("PRAGMA table_info(error_cases)")
+    )
+
+
 def find_duplicate(
     conn: sqlite3.Connection,
     *,
@@ -253,30 +268,40 @@ def find_duplicate(
     error_code: str,
     ngay_phat_sinh: Optional[str],
 ) -> Optional[Dict[str, Any]]:
-    """Find an existing case with the same (model, line, error code, occurred date)."""
+    """Find an existing case with the same (model, line, error code, occurred date).
+
+    The error code matches against error_code_c, error_code_h AND
+    error_code_i (B0-DICT): history rows store the group in column H
+    ('C CALL') while the real code (e.g. C4701) was embedded in the
+    phenomenon text (column I) — extracted into error_code_i at import.
+    """
     norm = _glossary.norm_code(error_code)
     occurred = (
         column_map.parse_date_cell(ngay_phat_sinh)
         if not _blank(ngay_phat_sinh)
         else None
     )
+    code_clauses = ["error_code_c = ?", "error_code_h = ?"]
+    params: List[Any] = [
+        None if _blank(model) else str(model).strip(),
+        None if _blank(line) else str(line).strip(),
+        norm,
+        norm,
+    ]
+    if _has_error_code_i(conn):
+        code_clauses.append("error_code_i = ?")
+        params.append(norm)
+    params.extend([occurred, occurred])
     row = conn.execute(
-        """SELECT id, no_dvd, machine_type, line, error_code_c, error_code_h,
-                  occurred_at
+        f"""SELECT id, no_dvd, machine_type, line, error_code_c, error_code_h,
+                   occurred_at
            FROM error_cases
            WHERE COALESCE(machine_type, '') = COALESCE(?, '')
              AND COALESCE(line, '') = COALESCE(?, '')
-             AND (error_code_c = ? OR error_code_h = ?)
+             AND ({' OR '.join(code_clauses)})
              AND ((occurred_at = ?) OR (occurred_at IS NULL AND ? IS NULL))
            LIMIT 1""",
-        (
-            None if _blank(model) else str(model).strip(),
-            None if _blank(line) else str(line).strip(),
-            norm,
-            norm,
-            occurred,
-            occurred,
-        ),
+        params,
     ).fetchone()
     return dict(row) if row else None
 

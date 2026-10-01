@@ -319,7 +319,60 @@ def fill_occurred_at(
     }
 
 
-def _main(argv: Optional[List[str]] = None) -> int:
+def backfill_error_code_i(
+    conn: sqlite3.Connection, *, apply: bool = False
+) -> Dict[str, Any]:
+    """Fill ``error_cases.error_code_i`` for rows imported before B0-DICT.
+
+    Reads the phenomenon text from the stored ``raw_json`` (letter-keyed,
+    column I) and extracts the embedded real code — no source file needed.
+    Only rows whose ``error_code_i`` is NULL/empty are touched; ``raw_json``
+    is never modified.
+
+    Dry-run by default: case data is never written. ``apply=True`` writes
+    the values and commits. Returns counters for the report.
+    """
+    store.init_db(conn)  # idempotent; ensures the column exists (schema only)
+    counters: Dict[str, Any] = {
+        "rows_read": 0,
+        "would_update": 0,
+        "updated": 0,
+        "no_change": 0,
+        "no_code_in_text": 0,
+    }
+    samples: List[Dict[str, Any]] = []
+    for row in conn.execute(
+        "SELECT id, no_dvd, error_code_i, raw_json FROM error_cases"
+    ):
+        row_id, no_dvd, error_code_i, raw_json = row[0], row[1], row[2], row[3]
+        counters["rows_read"] += 1
+        if error_code_i:
+            counters["no_change"] += 1
+            continue
+        try:
+            raw = json.loads(raw_json or "{}")
+        except (ValueError, TypeError):
+            raw = {}
+        code = column_map.extract_code_from_text(raw.get("I") if isinstance(raw, dict) else None)
+        if not code:
+            counters["no_code_in_text"] += 1
+            continue
+        counters["would_update"] += 1
+        if len(samples) < 10:
+            samples.append({"id": row_id, "no_dvd": no_dvd, "error_code_i": code})
+        if apply:
+            conn.execute(
+                "UPDATE error_cases SET error_code_i = ? WHERE id = ?",
+                (code, row_id),
+            )
+            counters["updated"] += 1
+    if apply:
+        conn.commit()
+    return {
+        "status": "applied" if apply else "planned",
+        **counters,
+        "samples": samples,
+    }
     parser = argparse.ArgumentParser(
         description="Fill error_cases.occurred_at from the history sheet (dry-run by default)."
     )

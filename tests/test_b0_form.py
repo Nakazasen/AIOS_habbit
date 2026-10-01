@@ -464,7 +464,13 @@ Hiện tượng: màn hình báo lỗi
         conn.close()
 
 
-def test_action_no_db_returns_none_and_creates_nothing(tmp_path):
+def test_action_no_db_returns_none_and_creates_nothing(tmp_path, monkeypatch):
+    # Hermetic: the real machine may have a deploy DB in the default
+    # candidates (home-machine env); the "no DB anywhere" premise must be
+    # forced, otherwise the action legitimately falls back to that DB.
+    import aios_habit.chat_action_case_form as case_form_action
+
+    monkeypatch.setattr(case_form_action, "_DEFAULT_DB_CANDIDATES", ())
     missing = tmp_path / "khong-co-db.db"
     chat_action.reset_actions()
     register()

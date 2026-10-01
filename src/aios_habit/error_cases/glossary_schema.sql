@@ -26,6 +26,24 @@ CREATE TABLE IF NOT EXISTS error_glossary (
 
 CREATE INDEX IF NOT EXISTS idx_glossary_code ON error_glossary (code_family, code);
 
+-- Term normalization (B0-DICT): variant names / spellings of the same
+-- phenomenon map to one canonical glossary code. The original names stay
+-- untouched in error_glossary for traceability; this table is the alias
+-- index on top. Seeded from the real parallel JP/VN sources (no invented
+-- terms): seed_term_aliases() in glossary.py.
+CREATE TABLE IF NOT EXISTS term_aliases (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    alias TEXT NOT NULL,                -- normalized lookup key (NFKC, upper)
+    code_family TEXT NOT NULL
+        CHECK (code_family IN ('C_CALL', 'F_SYSTEM', 'JAM', 'SCT_ADJ')),
+    code TEXT NOT NULL,                 -- canonical glossary code
+    lang TEXT NOT NULL DEFAULT '',      -- 'ja' / 'vi' / 'en' / ''
+    source_file TEXT NOT NULL,          -- where this name spelling came from
+    UNIQUE (alias, code_family, code)
+);
+
+CREATE INDEX IF NOT EXISTS idx_alias_alias ON term_aliases (alias);
+
 -- Import log: re-importing an unchanged source file is skipped ("vất lại
 -- file cũ thì bỏ qua"), unless force=True.
 CREATE TABLE IF NOT EXISTS glossary_imports (

@@ -166,11 +166,20 @@ def extract_keywords(question: str, extra: Sequence[str] = ()) -> List[str]:
 # ---------------------------------------------------------------------------
 
 
+def _has_error_code_i(conn: sqlite3.Connection) -> bool:
+    """True when the DB was built/migrated with the B0-DICT error_code_i column."""
+    return any(
+        row[1] == "error_code_i"
+        for row in conn.execute("PRAGMA table_info(error_cases)")
+    )
+
+
 def _candidate_rows(
     conn: sqlite3.Connection, codes: Sequence[str], keywords: Sequence[str]
 ) -> List[sqlite3.Row]:
     clauses: List[str] = []
     params: List[Any] = []
+    has_i = _has_error_code_i(conn)
     if codes:
         ors: List[str] = []
         for code in codes:
@@ -178,6 +187,11 @@ def _candidate_rows(
             params.append(code)
             ors.append("UPPER(ec.error_code_h) = ?")
             params.append(code)
+            if has_i:
+                # B0-DICT: the real code lives in error_code_i for history
+                # rows whose column H only holds the group ('C CALL').
+                ors.append("UPPER(ec.error_code_i) = ?")
+                params.append(code)
             ors.append("ec.raw_json LIKE ?")
             params.append(f"%{code}%")
             fam = _CODE_FAMILY.get(code[0])
@@ -268,15 +282,23 @@ def search_similar(
 def lookup_glossary(
     conn: sqlite3.Connection, codes: Sequence[str]
 ) -> Dict[str, Dict[str, Any]]:
-    """Glossary meaning per code (first family hit wins). Empty when absent."""
+    """Glossary meaning per code (first family hit wins). Empty when absent.
+
+    B0-DICT: when the raw token is not a direct code hit, resolve it
+    through the term-alias index (variant spellings -> canonical code),
+    e.g. a Japanese name from the source workbook.
+    """
     found: Dict[str, Dict[str, Any]] = {}
     has_table = conn.execute(
         "SELECT 1 FROM sqlite_master WHERE type='table' AND name='error_glossary'"
     ).fetchone()
     if not has_table:
         return found
+    from aios_habit.error_cases import glossary as _glossary
+
     for code in codes:
         families = [_CODE_FAMILY[code[0]][0]] if code[0] in _CODE_FAMILY else []
+        resolved = code
         for fam in list(families) + [f for f in _GLOSSARY_FAMILIES if f not in families]:
             row = conn.execute(
                 "SELECT * FROM error_glossary "
@@ -286,6 +308,17 @@ def lookup_glossary(
             if row:
                 found[code] = dict(row)
                 break
+        else:
+            alias = _glossary.canonical_term(conn, code)
+            if alias:
+                fam, resolved = alias
+                row = conn.execute(
+                    "SELECT * FROM error_glossary "
+                    "WHERE code_family = ? AND code = ? AND code_sub = ''",
+                    (fam, resolved),
+                ).fetchone()
+                if row:
+                    found[code] = dict(row)
     return found
 
 
@@ -353,10 +386,12 @@ def _render_cards(
             )
             cause = _clip(entry.get("cause"), 160)
             remedy = _clip(entry.get("remedy"), 160)
+            source = entry.get("source_file") or ""
             gloss = f"_Từ điển mã lỗi ({fam or 'glossary'}): {meaning}_"
             extra = " · ".join(
                 p for p in (f"Nguyên nhân: {cause}" if cause else "",
-                            f"Khắc phục: {remedy}" if remedy else "") if p
+                            f"Khắc phục: {remedy}" if remedy else "",
+                            f"Nguồn: {source}" if source else "") if p
             )
             lines.append(gloss + (f" — {extra}" if extra else ""))
     for i, case in enumerate(cases, 1):

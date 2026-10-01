@@ -24,7 +24,11 @@ from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional
 
-from .glossary import lookup as glossary_lookup, norm_code
+from .glossary import (
+    canonical_term as glossary_canonical_term,
+    lookup as glossary_lookup,
+    norm_code,
+)
 
 # ---------------------------------------------------------------------------
 # Label tables
@@ -187,20 +191,33 @@ def classify_error(
     reasons: List[str] = []
 
     glossary_text = ""
-    if glossary_conn is not None and family is not None:
-        entry = glossary_lookup(glossary_conn, family, code)
-        if entry:
-            glossary_text = " ".join(
-                str(entry.get(k) or "")
-                for k in ("name_vi", "name_en", "name_ja", "cause", "remedy")
-            )
-            reasons.append(
-                f"Tra cứu glossary: {family} {code} có trong từ điển mã lỗi."
-            )
+    if glossary_conn is not None:
+        if family is None:
+            # B0-DICT: the token may be a variant name spelling rather than
+            # a code (e.g. copied from a workbook); resolve via the alias
+            # index before giving up.
+            alias = glossary_canonical_term(glossary_conn, error_code)
+            if alias is not None:
+                family, code = alias
+                reasons.append(
+                    f"Chuẩn hóa tên gọi: '{error_code}' -> {family} {code}."
+                )
+        if family is not None:
+            entry = glossary_lookup(glossary_conn, family, code)
+            if entry:
+                glossary_text = " ".join(
+                    str(entry.get(k) or "")
+                    for k in ("name_vi", "name_en", "name_ja", "cause", "remedy")
+                )
+                reasons.append(
+                    f"Tra cứu glossary: {family} {code} có trong từ điển mã lỗi."
+                )
+            else:
+                reasons.append(
+                    f"Mã {code} (nhóm {family}) không có trong từ điển mã lỗi."
+                )
         else:
-            reasons.append(
-                f"Mã {code} (nhóm {family}) không có trong từ điển mã lỗi."
-            )
+            reasons.append(f"Không nhận dạng được nhóm mã từ '{error_code}'.")
     elif family is not None:
         reasons.append(f"Nhận dạng nhóm mã: {family} (theo hình thức mã).")
     else:

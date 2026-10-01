@@ -33,6 +33,11 @@ CREATE TABLE IF NOT EXISTS error_cases (
     line             TEXT,           -- D: production line
     error_code_c     TEXT,           -- G: Cxxx error code
     error_code_h     TEXT,           -- H: Jxxx/Fxxx error code
+    -- B0-DICT: the REAL code when the source splits group from code
+    -- (history_29 column I "不具合現象 / Hiện trạng lỗi" holds the phenomenon
+    -- text the real code is embedded in, e.g. LCD画面にF000表示, while
+    -- column H only holds the group 'F CALL'). NULL = not extracted.
+    error_code_i     TEXT,
     investigation    TEXT,           -- N: investigation content
     handler          TEXT,           -- S: person in charge
     is_completed     TEXT NOT NULL DEFAULT '',  -- V: 'o' = done

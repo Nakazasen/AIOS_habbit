@@ -41,6 +41,9 @@ def _migrate(conn: sqlite3.Connection) -> None:
     cols = {row[1] for row in conn.execute("PRAGMA table_info(error_cases)")}
     if "occurred_at" not in cols:
         conn.execute("ALTER TABLE error_cases ADD COLUMN occurred_at TEXT")
+    # B0-DICT: real code extracted from the phenomenon text (column I).
+    if "error_code_i" not in cols:
+        conn.execute("ALTER TABLE error_cases ADD COLUMN error_code_i TEXT")
     # B0-FORM: standard 12-field manual entry form (additive columns).
     for _col_name, _col_ddl in (
         ("process_stage", "TEXT"),
@@ -186,6 +189,7 @@ def upsert_case(
         "line": fields.get("line"),
         "error_code_c": fields.get("error_code_c"),
         "error_code_h": fields.get("error_code_h"),
+        "error_code_i": fields.get("error_code_i"),
         "investigation": fields.get("investigation"),
         "handler": fields.get("handler"),
         "is_completed": fields.get("is_completed") or "",
@@ -205,7 +209,7 @@ def upsert_case(
     update_sets = []
     for key in (
         "batch_id", "source_row", "department", "machine_type", "line",
-        "error_code_c", "error_code_h", "investigation", "handler",
+        "error_code_c", "error_code_h", "error_code_i", "investigation", "handler",
         "is_completed", "needs_jp_support", "occurred_at", "raw_json",
         "skip_cells",
     ):
@@ -218,12 +222,12 @@ def upsert_case(
     cur = conn.execute(
         f"""INSERT INTO error_cases
             (batch_id, source_row, no_dvd, sheet_type, department, machine_type,
-             line, error_code_c, error_code_h, investigation, handler,
+             line, error_code_c, error_code_h, error_code_i, investigation, handler,
              is_completed, needs_jp_support, occurred_at, raw_json, skip_cells)
             VALUES (:batch_id, :source_row, :no_dvd, :sheet_type, :department,
                     :machine_type, :line, :error_code_c, :error_code_h,
-                    :investigation, :handler, :is_completed, :needs_jp_support,
-                    :occurred_at, :raw_json, :skip_cells)
+                    :error_code_i, :investigation, :handler, :is_completed,
+                    :needs_jp_support, :occurred_at, :raw_json, :skip_cells)
             ON CONFLICT {conflict} DO UPDATE SET
             {", ".join(update_sets)}""",
         params,
