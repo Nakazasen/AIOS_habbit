@@ -1,8 +1,8 @@
 # Vé `BK-ERRCODE` — Backfill mã thật cho ca thiếu mã: kết quả chạy trên máy nhà
 
-- Trạng thái: **Chạy xong trên bản copy, chờ Muse duyệt.** Kết luận sơ bộ: **ĐẠT tiêu chí vé** — số ca thiếu mã thật giảm đo được (12.651 → 11.674; nhóm `ERROR` 3.537 → 3.196), test mới của vé 17/17 đạt, cổng nền đạt, full suite không thoái lui so với nền (mục 6).
+- Trạng thái: **Chạy xong trên bản copy, chờ Muse duyệt.** Kết luận sơ bộ: **ĐẠT tiêu chí vé** — số ca thiếu mã thật giảm đo được (12.651 → 11.674; nhóm `ERROR` 3.537 → 3.196), test vé 18/18 đạt (17 bài gốc + 1 bài hồi quy của bản vá dry-run), cổng nền đạt, full suite không thoái lui so với nền (mục 6).
 - Máy: `h410asrock` — Windows 10 Pro `10.0.18363` x64; Python `3.11.14` (`.venv` repo qua `uv 0.10.6`).
-- Nhánh: `phieu-viec/rag-fix1`. Mốc: `6d7bf56` (nhận vé, chuyển `dang-lam`) → `8645e2a` (Mốc 2: backfill xong) → (báo cáo này) → (mốc `xong-cho-duyet` theo sau).
+- Nhánh: `phieu-viec/rag-fix1`. Mốc: `6d7bf56` (nhận vé, `dang-lam`) → `8645e2a` (Mốc 2: backfill xong — kèm báo lỗi dry-run) → `8b813db` + `fe0376b` (Muse vá dry-run + ghi chú, ~5 phút sau Mốc 2) → `4acf66f` (Mốc 3: test/cổng nền) → `105bd62` (báo cáo này) → (cập nhật nghiệm thu bản vá + mốc `xong-cho-duyet` theo sau).
 - Phạm vi ghi: DB copy `C:/tmp/b0-dict/error_cases_dict.db` + file phụ trong `C:/tmp/bk-errcode/`; repo chỉ nhận báo cáo này + `trang-thai.md`. **Không ghi DB gốc, không đụng dữ liệu ổ D, không merge `main`, không force-push, dữ liệu thật không vào Git.**
 
 ## 0. Cổng gate (vòng khép kín)
@@ -46,12 +46,12 @@
 - Kết quả khớp: **24 file → 632 ca** (luật: đúng-1 dossier theo line + `YYYY-MM` + máy). Top khớp: `C0363` (47 ca), `C6950` (42 + 42), `JAM4709` (40), `JAM4012` (37), `C0980` (35).
 - File ví dụ trong vé `KTD-2024-11-1537-Iris2020-C34-A1-C7901.xlsx`: **khớp 0 ca** (không ca thiếu mã nào đủ điều kiện đúng-1) — ghi nhận khách quan, không cưỡng khớp.
 
-## 4. Phát hiện lỗi code [VM] — dry-run trên DB chưa migrate (đề nghị Muse sửa)
+## 4. Lỗi dry-run [VM] — phát hiện, Muse vá, OMP nghiệm thu
 
-- Đường dry-run của `scripts/backfill_errcode.py` gọi `backfill_error_code_i_extended(conn, apply=False, migrate=False)`, nhưng hàm **luôn** SELECT kèm `error_code_i_src` — khi DB chưa có cột (đúng ca "dry-run trước trên DB chưa migrate"), SQLite ném `sqlite3.OperationalError: no such column: error_code_i_src`. Đã tái hiện trên bản copy sạch.
-- Tác động: chặn đúng quy trình vé ("dry-run trước báo số, rồi `--apply`") trên DB chưa migrate; trên DB đã migrate thì không lỗi nên test/VM không thấy.
-- Xử lý của OMP (không sửa code lane [VM]): lấy toàn bộ số liệu "trước khi ghi bản chính" bằng cách apply trên **bản scratch** byte-identical (`scratch-migrate-test.db`, rủi ro 0) rồi mới apply lên bản copy chính — số 2 lần trùng khít (345/632/3.056/977/11.674). Bản copy chính luôn có backup trước khi ghi.
-- Đề xuất sửa (1 dòng): khi `has_src_col` là `False` thì chọn `NULL AS error_code_i_src` (hoặc dựng SELECT theo `has_src_col`); kèm 1 test hồi quy dry-run trên DB chưa migrate.
+- **Phát hiện (OMP, Mốc 2)**: đường dry-run của `scripts/backfill_errcode.py` gọi `backfill_error_code_i_extended(conn, apply=False, migrate=False)`, nhưng hàm **luôn** SELECT kèm `error_code_i_src` — trên DB chưa có cột (đúng ca "dry-run trước rồi mới `--apply`") thì SQLite ném `sqlite3.OperationalError: no such column: error_code_i_src`. Đã tái hiện trên bản copy sạch.
+- **Muse vá `8b813db`** (12:19 — ~5 phút sau ghi chú Mốc 2; ghi chú `fe0376b` "OMP pull rồi chạy lại"): SELECT tự nhận diện cột — thiếu cột thì chọn NULL thay vì crash; kèm test hồi quy fail-trên-code-cũ / pass-trên-code-mới. Đường `--apply` (có migrate) không đổi.
+- **OMP nghiệm thu bản vá (chỉ đọc)**: chạy lại đúng lệnh dry-run trên bản **chưa migrate** (`C:/tmp/bk-errcode/error_cases_dict.db.bak-20261001-bk-errcode`) — `rc=0`, số liệu khớp apply (345 / 632 / 11.674; đóng dấu nguồn 0; đã ghi 0), in `DRY-RUN: chưa ghi gì vào DB`; SHA bản copy **không đổi** sau lượt (`3dad67fe…` → `3dad67fe…`). Quy trình chuẩn của vé ("dry-run trước + backup trước") nay chạy đủ.
+- Xử lý tạm của OMP lúc chưa có bản vá (để không chặn vé): lấy số liệu "trước khi ghi bản chính" bằng apply trên bản scratch byte-identical (`scratch-migrate-test.db`) rồi mới apply bản chính — số 2 lần trùng khít (345/632/3.056/977/11.674). Bản copy chính luôn có backup trước khi ghi.
 
 ## 5. Ràng buộc đã giữ
 
@@ -61,11 +61,11 @@
 
 ## 6. Test & cổng nền
 
-- Test mới của vé: `tests/test_bk_errcode.py` — **17/17 đạt** trên máy nhà (Python 3.11.14).
-- Bộ liên quan (bk_errcode + b0_dict + error_cases F1–F4 + backfill_fix + lsu_logs): **120/120 đạt** (8,36 s).
-- Full suite (đúng lệnh nền `AIOS_DATA_DIR='C:/tmp/aios-v14-data' PYTHONPATH='src;C:/tmp/e3-py311' TMP=TEMP='C:/tmp'`; junit: `C:/tmp/bk-errcode/junit_bk.xml`): **3.493 đạt / 2 bỏ qua / 35 lỗi / 9 error** (534,69 s). Nền `B1-FEAT` tại `7d06e51` (log `C:/tmp/b1-feat/pytest_full3.log`): 3.475 / 2 / 35 / 9 (522,80 s).
+- Test vé: `tests/test_bk_errcode.py` — **18/18 đạt** trên máy nhà sau bản vá dry-run (17 bài gốc + 1 bài hồi quy của `8b813db`; trước vá đo 17/17).
+- Bộ liên quan (bk_errcode + b0_dict + error_cases F1–F4 + backfill_fix + lsu_logs): **121/121 đạt** sau vá (6,31 s; trước vá 120/120, 8,36 s).
+- Full suite cuối trên cây sau vá (đúng lệnh nền `AIOS_DATA_DIR='C:/tmp/aios-v14-data' PYTHONPATH='src;C:/tmp/e3-py311' TMP=TEMP='C:/tmp'`; junit: `C:/tmp/bk-errcode/junit_bk2.xml`): **3.494 đạt / 2 bỏ qua / 35 lỗi / 9 error** (511,09 s). Nền `B1-FEAT` tại `7d06e51` (log `C:/tmp/b1-feat/pytest_full3.log`): 3.475 / 2 / 35 / 9 (522,80 s). Lượt giữa (cây trước bản vá nhỏ): 3.493 / 2 / 35 / 9 (`junit_bk.xml`).
   - **Không thoái lui**: 44 mục lỗi/error hiện tại **trùng khít từng node** với nền (đối chiếu junit ↔ log nền; 9 error đều là fixture hardcode đường VM `/home/hatch/...` của test vé `B1-FEAT` — ngoài phạm vi vé này); số bỏ qua giữ nguyên 2.
-  - Node thu thập 3.521 → **3.539 (+18)**: 17 test mới của vé (đạt cả 17) + 1 test `tests/test_hodap_worker_timeout_fix.py::test_routing_allowlist_covers_all_producer_codes` của lane `pc0575` (đã có trên nhánh từ `0a5f8d2`, trước phiên này); **không node nào biến mất** (đối chiếu danh sách node bằng worktree tạm — `collect_baseline.txt` ↔ `collect_current.txt`, worktree đã dọn).
+  - Node thu thập 3.521 → **3.540 (+19)**: 17 test của vé + 1 test hồi quy bản vá dry-run (`8b813db`) + 1 test lane `pc0575` (`0a5f8d2`, có trước phiên này); **không node nào biến mất** (đối chiếu danh sách node bằng worktree tạm — `collect_baseline.txt` ↔ `collect_current.txt`, đã dọn).
 - Cổng nhanh: `scripts/check_docs.py` **DOCUMENTATION_CONTRACT=PASS** · `compileall -q src tests` **PASS** · `aios_habit.cli audit` **`"status": "PASS"`** (errors/warnings rỗng) · import `workspace_chat_app` **OK** · `git diff --check` + `--cached --check` sạch.
 
 ## 7. Kết luận & đề xuất
@@ -77,5 +77,6 @@
 
 - Log apply + phiên: `C:/tmp/bk-errcode/apply_target.log`; CSV: `manual.csv`, `manual_rerun.csv` (idempotent), `manual_scratch.csv`; backup `error_cases_dict.db.bak-20261001-bk-errcode`; scratch DB `scratch-migrate-test.db`.
 - SHA bản copy trước apply `3dad67fe…9e3d97` → sau apply `6bd41a8c…2369`; `integrity_check` = `ok` cả 2 mốc.
-- Full suite: junit `C:/tmp/bk-errcode/junit_bk.xml`; danh sách node đối chiếu `collect_baseline.txt` (nền `7d06e51`, worktree tạm đã dọn) ↔ `collect_current.txt`.
-- Code Muse được verify: `5dc0d08` (extractor N/O/L/M/R + KTD matching + CLI) + `0570cbc` (17 test); ghi chú phát hành `c9d26c7`.
+- Full suite: junit `C:/tmp/bk-errcode/junit_bk.xml` (cây trước bản vá nhỏ) + `junit_bk2.xml` (cây cuối); danh sách node đối chiếu `collect_baseline.txt` (nền `7d06e51`, worktree tạm đã dọn) ↔ `collect_current.txt`.
+- Nghiệm thu bản vá dry-run (chỉ đọc): chạy trên `…bak-20261001-bk-errcode` (chưa migrate), CSV `manual_dryrun_fixed.csv`, SHA bản copy không đổi trước/sau (`3dad67fe…`).
+- Code Muse được verify: `5dc0d08` (extractor N/O/L/M/R + KTD matching + CLI) + `0570cbc` (17 test) + `8b813db` (vá dry-run + test hồi quy); ghi chú phát hành `c9d26c7`, `fe0376b`.
