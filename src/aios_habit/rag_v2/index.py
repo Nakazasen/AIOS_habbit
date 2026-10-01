@@ -903,6 +903,14 @@ class LocalChunkIndex:
         self._dense_matrix_lock = threading.Lock()
         self._sparse_vector_cache: _SparseVectorCache | None = None
         self._sparse_vector_lock = threading.Lock()
+        # OPT-RAGV2-LEXICAL Phase A: so thu tu cac lan ghi bang main (chunks /
+        # chunk_*_embeddings) thuc hien qua instance nay. PRAGMA data_version ma
+        # connection tu doc KHONG BAO GIO doi sau write cua chinh no (da kiem
+        # chung tren SQLite 3.45.1: chi doi khi connection KHAC commit) -> can
+        # bo dem rieng de write cung-connection van invalidate cache.
+        # Ghi bang TEMP (vd rag_v2_eligible_chunks cua nhanh lexical FTS) khong
+        # cham vao bo dem nay.
+        self._main_write_seq = 0
         if self._read_only:
             self._fts5_available = bool(enable_fts5 and self._conn.execute(
                 "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'chunks_fts'"
@@ -1069,6 +1077,7 @@ class LocalChunkIndex:
         with self._conn:
             self._upsert_rows(rows)
             self._ensure_embeddings(tuple(chunk.chunk_id for chunk in prepared))
+        self._note_main_db_write()
         return sum(1 for chunk in prepared if chunk.retrievable)
 
     def replace_document_chunks(
@@ -1096,6 +1105,7 @@ class LocalChunkIndex:
                 self._ensure_embeddings(chunk_ids)
             else:
                 self._conn.execute("DELETE FROM chunks WHERE document_id = ?", (normalized_id,))
+        self._note_main_db_write()
         return sum(1 for chunk in prepared if chunk.retrievable)
 
     def replace_document_chunks_with_embeddings(
@@ -1212,6 +1222,7 @@ class LocalChunkIndex:
                 )
             else:
                 self._conn.execute("DELETE FROM chunks WHERE document_id = ?", (normalized_id,))
+                self._note_main_db_write()
                 return 0
             self._conn.executemany(
                 """
@@ -1257,6 +1268,7 @@ class LocalChunkIndex:
                     """,
                     multivector_records,
                 )
+        self._note_main_db_write()
         return len(retrievable)
 
     def delete_document(self, document_id: str) -> int:
@@ -1271,6 +1283,8 @@ class LocalChunkIndex:
         retrievable_count = int(row["count"] or 0)
         with self._conn:
             self._conn.execute("DELETE FROM chunks WHERE document_id = ?", (normalized_id,))
+        if retrievable_count:
+            self._note_main_db_write()
         return retrievable_count
 
     def document_state(self, document_id: str) -> Dict[str, Any]:
@@ -1342,7 +1356,10 @@ class LocalChunkIndex:
     def ensure_embeddings(self) -> int:
         """Persist only missing or stale vectors for the configured local model."""
         with self._conn:
-            return self._ensure_embeddings()
+            written = self._ensure_embeddings()
+        if written:
+            self._note_main_db_write()
+        return written
 
     def _ensure_embeddings(self, chunk_ids: Sequence[str] = ()) -> int:
         backend = self._embedding_backend
@@ -1929,9 +1946,28 @@ class LocalChunkIndex:
             "multivector_complete": multivector_complete,
         }
 
+    def _note_main_db_write(self) -> None:
+        """Ghi nhan 1 lan ghi bang main qua instance nay (OPT-RAGV2-LEXICAL Phase A).
+
+        Chi goi sau khi transaction ghi that su commit. Ghi bang TEMP khong goi.
+        """
+        self._main_write_seq += 1
+
     def _index_cache_token(self) -> tuple[int, int]:
+        # OPT-RAGV2-LEXICAL Phase A: token = (data_version, write_seq).
+        # - data_version cua DB chinh: bat duoc write tu connection/process khac
+        #   (mo hinh merge production: process rieng + restart app). Ghi bang
+        #   TEMP khong lam data_version cua main nhay.
+        # - write_seq: bat duoc write tren chinh connection nay, vi data_version
+        #   ma connection tu doc khong doi sau write cua chinh no.
+        # Bo `connection.total_changes`: no dem ca ghi bang TEMP giua query
+        # (DELETE+INSERT ~120k dong vao rag_v2_eligible_chunks o nhanh lexical
+        # FTS) lam cache dense/sparse am bi vo hieu va nap lai ma tran 100+s
+        # vo ich ngay trong query do.
+        # GIA DINH AN TOAN (da chot trong ve): worker khong bao gio ghi cac bang
+        # embedding giua query; moi merge deu restart app nen cache duoc xay lai.
         row = self._conn.execute("PRAGMA data_version").fetchone()
-        return (int(row[0]), int(self._conn.total_changes))
+        return (int(row[0]), self._main_write_seq)
 
 
     def _load_dense_matrix_cache(self, fingerprint: str, dimension: int) -> _DenseMatrixCache | None:
@@ -3781,6 +3817,7 @@ class LocalChunkIndex:
     def clear(self) -> None:
         self._conn.execute("DELETE FROM chunks")
         self._conn.commit()
+        self._note_main_db_write()
 
     def count(self) -> int:
         row = self._conn.execute(
