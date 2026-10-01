@@ -1,10 +1,10 @@
 # Vé `hodap-lsu-loi` — Thông luồng hỏi đáp LSU + lỗi trên chat (máy `KDTVN-PC0575`)
 
-- Trạng thái báo cáo: **TẠM — chưa nghiệm thu hỏi đáp.** Diễn biến mới nhất: Muse đã gửi bản sửa (`5cb5c94`), OMP đã `git pull` + restart app (18:55) và probe L1 (mục 13 bổ sung, 19:0x): cổng phủ nhanh (0,02 s/5 lần) nhưng `worker.query_ready` vẫn 32,5 s > 30 s ở query đầu → theo BỔ SUNG 6 dời việc set env `AIOS_BGE_QUERY_TIMEOUT` + chạy 6 câu sang **mai**; tối nay ưu tiên **Bước 8/9**: đã xuất `scratch/export_262/text_export.jsonl` (262/262 nguồn, 52.979 chunk, SHA `95aecf07…` — mục 12). Vé giữ `dang-lam`, tạm dừng qua đêm.
+- Trạng thái báo cáo: **TẠM — chưa nghiệm thu hỏi đáp.** Bước 6 dừng theo cổng BỔ SUNG 5.1: nhúng câu hỏi riêng mất 0,205–0,272 giây, nhưng truy vấn retrieval L1 không trả kết quả trong giới hạn chẩn đoán 60 giây; mục 14 ghi số đo và lý do chuyển `cho-muse`. Không chạy LLM hoặc sáu câu để tránh vượt cổng.
 - Trước đó: `cho-muse` (lần 3) vì BỔ SUNG 5.3 **nhánh B**: worker BGE không hỏng (log init sạch) nhưng truy vấn retrieval vượt bức tường 30 s **nằm trong code** (`bge_subprocess_client.py:31`, `…adapter.py:2688`) và một phần lớn thời gian bị ăn bởi query dense quét toàn bảng `chunk_embeddings` (`…adapter.py:956-963`, đo 71,9 s/tài liệu 15 chunk) → tổng 211,2 s/câu rồi lỗi "Tìm kiếm tài liệu chưa sẵn sàng". Số đo đầy đủ + file/dòng cần sửa: **mục 11**.
 - Trước đó: `cho-muse` (lần 2) vì Bước 2 xác minh file Drive **KHÔNG ĐẠT gate số document** (496 < 501) và file Drive **không chứa vector của bất kỳ nguồn nào trong sổ LSU** (0/262) → nếu thay index sẽ làm app mất 5 tài liệu đang ready. Chi tiết mục 10.
-- Chưa thay production, chưa chạy bộ 6 câu; đang chờ Muse/user quyết định ở mục 10.
-- Ngày làm: 2026-09-30 (13:35–15:54 +07, tiếp 16:33–18:45 +07), máy `KDTVN-PC0575` (OMP). Nhánh: `phieu-viec/rag-fix1`.
+- Chưa thay production, chưa chạy đủ sáu câu; truy vấn retrieval sau bản sửa vẫn quá chậm nên đã dừng theo BỔ SUNG 5.1 và chuyển `cho-muse` ở mục 14.
+- Ngày làm: 2026-09-30 (13:35–15:54 +07, tiếp 16:33–18:45 +07) và 2026-10-01 (08:46–09:16 +07), máy `KDTVN-PC0575` (OMP). Nhánh: `phieu-viec/rag-fix1`.
 - Phạm vi: chỉ đọc chẩn đoán + bật nguồn + chuẩn bị nền + dừng nhúng theo lệnh. **Không sửa code,
   không merge `main`, không xóa nguồn/tài liệu.**
 
@@ -20,7 +20,7 @@
    đã bật ≈ 2 giờ. Theo bổ sung khẩn: **đã dừng hẳn worker nhúng CPU**, 25 nguồn còn lại được park ở
    trạng thái không tự chạy lại.
 4. **`collection_id` của sổ "Điều tra lỗi LSU" = `tri_thuc`** (thông tin Muse yêu cầu). Chi tiết ở mục 5.
-- Việc còn lại: tải index GPU theo BỔ SUNG 2, xác minh đầy đủ, backup/thay index, để reconcile tự chạy rồi verify **6 câu mẫu** trên app LAN. Hiện đang chờ xử lý blocker đăng nhập/chính sách Chrome tại mục 9; sau khi tải được mới tiếp tục, không nhúng CPU.
+- Việc còn lại: Muse xử lý nút thắt trong truy vấn retrieval (mục 14); sau khi có hướng sửa và cổng tìm kiếm đạt mới chạy sáu câu L1–L3/E1–E3 trên UI LAN. Không thay index, không tự tăng timeout và không nhúng CPU.
 - Không chuyển `xong-cho-duyet` cho tới khi hoàn thành toàn bộ các bước trên.
 
 ## 1. Pha 1 — Chẩn đoán (chỉ đọc)
@@ -414,3 +414,14 @@ Kiểm tra sau xuất (chỉ đọc, độc lập với script xuất):
   - `_durable_semantic_coverage_ready`: **5 lần gọi tổng 0,02 s** (trước fix 27–72 s/lần) → fix #1 và #3 đã diệt đúng chỗ chậm nhất.
   - Nhưng `worker.query_ready` **32,5 s > 30 s** ở query đầu (worker vừa init 20,2 s) → vẫn chạm `bge_worker_query_timeout`.
 - Theo BỔ SUNG 6.1: **không set env / không đổi timeout / không chạy 6 câu tối nay** — dời sang mai (đo cold/warm rồi đặt `AIOS_BGE_QUERY_TIMEOUT` = số đo + margin, restart, rồi chạy L1–L3/E1–E3).
+
+## 14. Bước 6 tiếp tục — truy vấn retrieval vượt cổng thời gian, dừng chờ Muse (2026-10-01 08:59–09:13 +07)
+
+- Trước khi kiểm tra: `localhost:8501` không kết nối; không có tiến trình Workspace Chat hoặc BGE worker. Runtime production dùng Python 3.11.15, ONNX trên CPU; index `tri_thuc` giữ nguyên. Probe thấy **35 nguồn bật, 10 nguồn `ready`, 5 tài liệu**.
+- **Khởi động worker lạnh:** probe chỉ đọc `scratch/hodap_query_time.py` đo worker khởi tạo trong **15,5 giây** (`init_ms=15516.271`, `reused=False`); log nguyên văn: `bge_worker_stage backend=onnx init_ms=15053.44`.
+- **Chặng 1 — nhúng câu hỏi:** đo riêng bằng cùng backend ONNX CPU, không đọc/trả nội dung nguồn: khởi tạo model **10,396 giây**; nhúng L1 **0,205 giây**, nhúng L2 **0,272 giây**. Mỗi câu cho vector dày 1024 chiều; vector thưa có lần lượt 14 và 16 mục.
+- **Truy vấn retrieval L1 (gồm nhúng + tìm kiếm):** không có kết quả trong **60 giây**; tổng thời gian tới lúc client báo lỗi là **61,6 giây**, lỗi `bge_subprocess_worker_crashed`. Probe giới hạn lời gọi ở 60 giây; dòng “cap 240s” của script cũ chỉ in giới hạn nội bộ cũ, không phải giới hạn thực tế của lượt này. Log worker chỉ có dòng init nêu trên, không có traceback hay số đo tách riêng truy vấn.
+- **Kết luận:** thời gian nhúng đo riêng dưới 0,3 giây, còn truy vấn retrieval không xong trong 60 giây. `[INFERENCE]` phần còn lại của chặng retrieval, nhiều khả năng là tìm kiếm/index, là nút thắt; log hiện có chưa tách chính xác thời gian SQL/search nên không khẳng định chi tiết hơn. Theo BỔ SUNG 5.1, chặng tìm kiếm phải ở mức mili giây đến vài giây; vì vậy **dừng tại đây và chuyển `cho-muse`**, không nới timeout để che chậm.
+- **Không gọi chặng 3 (LLM), không chạy sáu câu hỏi, không ghi đáp án/citation:** retrieval chưa trả evidence; không bịa câu trả lời hoặc nguồn. Biến `AIOS_BGE_QUERY_TIMEOUT` chưa được đặt, không tăng timeout. Không nhúng CPU, không ghi index, không đổi nguồn hay ledger.
+- **Khôi phục dịch vụ LAN:** khởi động app bằng `RUN_AIOS_WORKSPACE_CHAT.bat`; listener `0.0.0.0:8501`, `localhost` và IP LAN `10.170.157.180` đều trả HTTP 200, `/_stcore/health` trả `ok`. Sau khởi động không thấy `bge_subprocess_worker`; app tiếp tục phục vụ dù vé đang chờ Muse.
+- Trạng thái: `cho-muse`; chờ Muse xử lý/đưa hướng cho truy vấn search chậm. Chỉ tiếp tục sáu câu sau khi có truy vấn retrieval hoàn tất trong cổng thời gian.
