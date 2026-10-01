@@ -9,7 +9,9 @@ chiếu: `src/aios_habit/production_prediction/stream_api.py` (server),
 
 - **Địa chỉ:** `POST /api/v1/jig/stream-log`
 - **Định dạng:** JSON — một object, một mảng object, hoặc NDJSON (mỗi dòng một
-  object JSON). `Content-Type: application/json`.
+  object JSON). `Content-Type: application/json`. Server thử parse toàn bộ
+  body trước (kể cả JSON pretty-print nhiều dòng) rồi mới rơi về NDJSON từng
+  dòng — object JSON hợp lệ không bao giờ bị 400 chỉ vì xuống dòng.
 - **Format bản tin** (mỗi dòng):
 
 | Trường | Bắt buộc | Mô tả |
@@ -24,15 +26,22 @@ chiếu: `src/aios_habit/production_prediction/stream_api.py` (server),
 | `nguon` | Không | `that` (mặc định) hoặc `SIMULATED_REALTIME` (phát lại mô phỏng) |
 
 - **Tần suất:** agent trên jig gom theo lô — mỗi 5–30 giây hoặc mỗi 20–50 đơn
-  vị đo gửi một lô; tối đa **100 bản tin/lô** (server cắt bớt phần thừa).
+  vị đo gửi một lô; tối đa **100 bản tin/lô**. Lô vượt 100: server chỉ xử lý
+  100 dòng đầu, `so_dong` trong ACK phản ánh đúng số dòng đã xử lý và
+  `bi_cat_bot` cho biết số dòng bị cắt.
 - **Xác thực:** header `Authorization: Bearer <token>`. Mỗi jig một token riêng,
-  cấu hình phía server (`StreamListener(auth_token=...)`). Sai/thiếu → **401**
+  cấu hình phía server (`StreamListener(jig_tokens={"JIG-1": "token-1", ...})`;
+  `auth_token` dùng chung giữ để tương thích ngược). POST kiểm tra token theo
+  từng `jig_id` trong lô — sai/thiếu → **401**
   `{"trang_thai": "Thiếu hoặc sai mã truy cập."}`. Không đặt token thì server
   chấp nhận mọi request (chỉ dùng trong mạng nội bộ tin cậy).
 - **Retry:** lỗi mạng/timeout → gửi lại với backoff mũ (0,5s → 1s → 2s, tối đa
   3 lần). Nhận **200** `{"trang_thai": "Đã ghi nhận", "so_dong": N}` mới coi là
-  xong; không gửi lại lô đã được 200 (tránh trùng — server không khử trùng lặp,
-  trách nhiệm thuộc về agent gửi).
+  xong; không gửi lại lô đã được 200. Server ingestion **idempotent**: mỗi bản
+  tin có khóa định danh (`event_id` do jig gửi, hoặc fingerprint nội dung) —
+  gửi lại cùng lô không ghi trùng (`trung_lap` trong response cho biết số dòng
+  đã có). Lô có dòng sai format → **400 và không ghi dòng nào** (nguyên tử);
+  sửa dữ liệu rồi gửi lại toàn lô.
 - **Mã lỗi:** 400 bản tin sai format (kèm lý do tiếng Việt), 401 sai auth,
   404 sai địa chỉ.
 
@@ -60,7 +69,10 @@ chiếu: `src/aios_habit/production_prediction/stream_api.py` (server),
   phát lại).
 - **Retry:** consumer KHÔNG tiến cursor khi gặp lỗi; thử lại backoff mũ rồi mới
   báo lỗi tiếng Việt. Resume luôn từ cursor cuối đã lưu — sự kiện lưu bền trong
-  SQLite nên không mất khi server/AI khởi động lại.
+  SQLite nên không mất khi server/AI khởi động lại. Đặt
+  `RtConsumer(..., duong_dan_cursor="duong/dan/cursor.txt")` để consumer tự lưu
+  cursor xuống đĩa (ghi atomic) sau mỗi vòng poll thành công và tự khôi phục khi
+  khởi động lại.
 - **Xác thực:** cùng Bearer token như endpoint 1.
 - **Nhịp poll gợi ý:** mỗi 5–10 giây; `limit` tối đa 500/lần.
 

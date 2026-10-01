@@ -8,6 +8,8 @@ khong bia. Test du lieu that tu bo qua neu may khong co du lieu.
 from __future__ import annotations
 
 import json
+import time
+import urllib.error
 import urllib.request
 from pathlib import Path
 
@@ -16,11 +18,13 @@ import pytest
 from aios_habit.production_prediction.rt_consumer import RtConsumer, dinh_dang_canh_bao
 from aios_habit.production_prediction.rt_replay import (
     NHAN_MO_PHONG,
+    _gui_mot_lo,
     gui_lo_len_server,
     phat_lai_csv_iris,
 )
 from aios_habit.production_prediction.stream_api import (
     EVENTS_PATH,
+    GIOI_HAN_BAN_TIN_MOI_LO,
     NGUON_PHAT_LAI_MO_PHONG,
     STREAM_PATH,
     StreamBuffer,
@@ -295,5 +299,261 @@ def test_e2e_phat_lai_den_canh_bao_drift(tmp_path):
         assert cac_canh_bao[0]["noi_dung"]["nguon"] == "SIMULATED_REALTIME"
         the = dinh_dang_canh_bao(cac_canh_bao[0])
         assert the["ma_jig"] == "2ND-1035"
+    finally:
+        lang_nghe.stop()
+
+
+# ---------------------------------------------------------------------------
+# Hoi quy cho 6 loi chan OMP phat hien (J1-RT CHUA DAT 2026-10-01).
+# ---------------------------------------------------------------------------
+
+def _post_raw(url, du_lieu: bytes, tieu_de):
+    """POST raw, tra ve (status, body_dict). Khong raise voi HTTPError."""
+    yeu_cau = urllib.request.Request(url, data=du_lieu, headers=tieu_de, method="POST")
+    try:
+        with urllib.request.urlopen(yeu_cau, timeout=10) as tra_loi:
+            return tra_loi.status, json.loads(tra_loi.read().decode("utf-8"))
+    except urllib.error.HTTPError as exc:
+        try:
+            than = json.loads(exc.read().decode("utf-8") or "{}")
+        except ValueError:
+            than = {}
+        return exc.code, than
+
+
+def _dem_log(bo_dem, jig_id):
+    with bo_dem._connect() as conn:
+        return conn.execute(
+            "SELECT COUNT(*) FROM jig_stream_logs WHERE jig_id = ?", (jig_id,)
+        ).fetchone()[0]
+
+
+def _ban_tin(i, jig_id="J-FIX"):
+    return {
+        "unit_serial": "U%d" % i, "jig_id": jig_id, "metric": "m",
+        "value": float(i),
+    }
+
+
+def test_fix1_ack_phan_anh_dung_so_dong_persist_that(tmp_path):
+    """Gui 105 dong (vuot gioi han 100): ACK phai bao dung 100, khong phai 105."""
+    assert GIOI_HAN_BAN_TIN_MOI_LO == 100
+    bo_dem = StreamBuffer(tmp_path / "fix1.sqlite")
+    lang_nghe = StreamListener(host="127.0.0.1", port=18811, buffer=bo_dem)
+    lang_nghe.start()
+    try:
+        lo = [_ban_tin(i) for i in range(105)]
+        status, than = _post_raw(
+            "http://127.0.0.1:18811" + STREAM_PATH,
+            json.dumps(lo).encode("utf-8"),
+            {"Content-Type": "application/json"},
+        )
+        assert status == 200
+        assert than["so_dong"] == 100, "ACK phai phan anh so dong persist that"
+        assert than["bi_cat_bot"] == 5
+        assert _dem_log(bo_dem, "J-FIX") == 100
+    finally:
+        lang_nghe.stop()
+
+
+def test_fix2_chap_nhan_json_object_nhieu_dong(tmp_path):
+    """Pretty JSON 1 object (nhieu dong) phai duoc chap nhan, khong 400."""
+    bo_dem = StreamBuffer(tmp_path / "fix2.sqlite")
+    lang_nghe = StreamListener(host="127.0.0.1", port=18812, buffer=bo_dem)
+    lang_nghe.start()
+    try:
+        pretty = json.dumps(_ban_tin(1, "J-JSON"), indent=2, ensure_ascii=False)
+        assert "\n" in pretty
+        status, than = _post_raw(
+            "http://127.0.0.1:18812" + STREAM_PATH,
+            pretty.encode("utf-8"),
+            {"Content-Type": "application/json"},
+        )
+        assert status == 200, "JSON object nhieu dong hop le phai duoc chap nhan"
+        assert than["so_dong"] == 1
+        # Mang pretty-print nhieu dong cung phai duoc.
+        pretty_arr = json.dumps(
+            [_ban_tin(2, "J-JSON"), _ban_tin(3, "J-JSON")], indent=2
+        )
+        status, than = _post_raw(
+            "http://127.0.0.1:18812" + STREAM_PATH,
+            pretty_arr.encode("utf-8"),
+            {"Content-Type": "application/json"},
+        )
+        assert status == 200 and than["so_dong"] == 2
+        # NDJSON van chay nhu cu.
+        ndjson = "\n".join(
+            json.dumps(_ban_tin(i, "J-JSON")) for i in (4, 5)
+        )
+        status, than = _post_raw(
+            "http://127.0.0.1:18812" + STREAM_PATH,
+            ndjson.encode("utf-8"),
+            {"Content-Type": "application/x-ndjson"},
+        )
+        assert status == 200 and than["so_dong"] == 2
+        assert _dem_log(bo_dem, "J-JSON") == 5
+    finally:
+        lang_nghe.stop()
+
+
+def test_fix3a_lo_loi_nguyen_tu_khong_ghi_mot_phan(tmp_path):
+    """Lo tron dong hop le + dong sai: 400 ma KHONG ghi dong nao."""
+    bo_dem = StreamBuffer(tmp_path / "fix3a.sqlite")
+    lang_nghe = StreamListener(host="127.0.0.1", port=18813, buffer=bo_dem)
+    lang_nghe.start()
+    try:
+        lo = [_ban_tin(1, "J-ATOM"), {"unit_serial": "", "metric": ""}]
+        status, _than = _post_raw(
+            "http://127.0.0.1:18813" + STREAM_PATH,
+            json.dumps(lo).encode("utf-8"),
+            {"Content-Type": "application/json"},
+        )
+        assert status == 400
+        assert _dem_log(bo_dem, "J-ATOM") == 0, "Lo loi phai nguyen tu: khong ghi mot phan"
+    finally:
+        lang_nghe.stop()
+
+
+def test_fix3b_gui_lai_lo_khong_ghi_trung(tmp_path):
+    """Gui lai cung lo (retry sau loi mang): khong trung du lieu."""
+    bo_dem = StreamBuffer(tmp_path / "fix3b.sqlite")
+    lang_nghe = StreamListener(host="127.0.0.1", port=18814, buffer=bo_dem)
+    lang_nghe.start()
+    try:
+        lo = [_ban_tin(i, "J-IDEM") for i in range(3)]
+        for lan in range(2):
+            status, than = _post_raw(
+                "http://127.0.0.1:18814" + STREAM_PATH,
+                json.dumps(lo).encode("utf-8"),
+                {"Content-Type": "application/json"},
+            )
+            assert status == 200
+            assert than["so_dong"] == 3
+            if lan == 1:
+                assert than["trung_lap"] == 3
+        assert _dem_log(bo_dem, "J-IDEM") == 3, "Retry khong duoc ghi trung"
+        # event_id tuong minh cung duoc khử trung.
+        lo2 = [dict(_ban_tin(i, "J-EID"), event_id="EVT-%d" % i) for i in range(2)]
+        for _ in range(2):
+            status, _than = _post_raw(
+                "http://127.0.0.1:18814" + STREAM_PATH,
+                json.dumps(lo2).encode("utf-8"),
+                {"Content-Type": "application/json"},
+            )
+            assert status == 200
+        assert _dem_log(bo_dem, "J-EID") == 2
+    finally:
+        lang_nghe.stop()
+
+
+def test_fix4_auth_token_rieng_tung_jig(tmp_path):
+    """Moi jig 1 token rieng theo dac ta; token jig khac khong dung duoc."""
+    bo_dem = StreamBuffer(tmp_path / "fix4.sqlite")
+    lang_nghe = StreamListener(
+        host="127.0.0.1", port=18815, buffer=bo_dem,
+        jig_tokens={"J-A": "token-a", "J-B": "token-b"},
+    )
+    lang_nghe.start()
+    try:
+        url = "http://127.0.0.1:18815" + STREAM_PATH
+        du_lieu = json.dumps([_ban_tin(1, "J-A")]).encode("utf-8")
+
+        def post(token):
+            tieu_de = {"Content-Type": "application/json"}
+            if token is not None:
+                tieu_de["Authorization"] = "Bearer " + token
+            return _post_raw(url, du_lieu, tieu_de)[0]
+
+        assert post("token-a") == 200
+        assert post("token-b") == 401, "Token cua jig B khong gui duoc cho jig A"
+        assert post(None) == 401
+        assert post("sai") == 401
+
+        def get(token):
+            tieu_de = {}
+            if token is not None:
+                tieu_de["Authorization"] = "Bearer " + token
+            yeu_cau = urllib.request.Request(
+                "http://127.0.0.1:18815" + EVENTS_PATH + "?since=0",
+                headers=tieu_de, method="GET",
+            )
+            try:
+                with urllib.request.urlopen(yeu_cau, timeout=5) as tra_loi:
+                    return tra_loi.status
+            except urllib.error.HTTPError as exc:
+                return exc.code
+
+        assert get("token-a") == 200
+        assert get("token-b") == 200, "GET chap nhan bat ky token nao da cau hinh"
+        assert get("sai") == 401
+        assert get(None) == 401
+    finally:
+        lang_nghe.stop()
+
+
+def test_fix5_sender_retry_backoff_roi_thanh_cong(monkeypatch):
+    """Loi mang 2 lan dau -> retry voi backoff 0.5s, 1s -> thanh cong lan 3."""
+    cac_lan_nghi = []
+    monkeypatch.setattr(time, "sleep", lambda s: cac_lan_nghi.append(s))
+    dem = {"n": 0}
+
+    class _TraLoiGia:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            return False
+
+        def read(self):
+            return b'{"so_dong": 2}'
+
+    def gia_urlopen(yeu_cau, timeout=None):
+        dem["n"] += 1
+        if dem["n"] < 3:
+            raise urllib.error.URLError("mang loi gia lap")
+        return _TraLoiGia()
+
+    monkeypatch.setattr(urllib.request, "urlopen", gia_urlopen)
+    ket_qua = _gui_mot_lo(
+        "http://127.0.0.1:1", {}, [_ban_tin(1), _ban_tin(2)], 5,
+        so_lan_thu_toi_da=3,
+    )
+    assert ket_qua == 2
+    assert dem["n"] == 3
+    assert cac_lan_nghi == [0.5, 1.0]
+
+
+def test_fix5_sender_het_lan_thu_bao_loi_tieng_viet(monkeypatch):
+    """Mang chet han -> thu du 3 lan roi bao loi tieng Viet."""
+    monkeypatch.setattr(time, "sleep", lambda s: None)
+    dem = {"n": 0}
+
+    def gia_urlopen(yeu_cau, timeout=None):
+        dem["n"] += 1
+        raise urllib.error.URLError("mang chet")
+
+    monkeypatch.setattr(urllib.request, "urlopen", gia_urlopen)
+    with pytest.raises(ValueError, match="sau 3 lần thử"):
+        _gui_mot_lo("http://127.0.0.1:1", {}, [_ban_tin(1)], 5)
+    assert dem["n"] == 3
+
+
+def test_fix6_consumer_luu_cursor_xuong_dia_va_resume(tmp_path):
+    """Cursor duoc luu file sau moi vong; consumer moi resume tu file."""
+    bo_dem = StreamBuffer(tmp_path / "fix6.sqlite")
+    bo_dem.ghi_su_kien("thong_tin", "J-CUR", "m", {"ghi_chu": "mot"})
+    bo_dem.ghi_su_kien("thong_tin", "J-CUR", "m", {"ghi_chu": "hai"})
+    lang_nghe = StreamListener(host="127.0.0.1", port=18816, buffer=bo_dem)
+    lang_nghe.start()
+    try:
+        tep_cursor = tmp_path / "cursor.txt"
+        nguoi_dung = RtConsumer("http://127.0.0.1:18816", duong_dan_cursor=tep_cursor)
+        assert nguoi_dung.chay_mot_vong(lambda s: None) == 2
+        assert nguoi_dung.cursor > 0
+        assert tep_cursor.read_text(encoding="utf-8").strip() == str(nguoi_dung.cursor)
+        # Consumer moi (gia lap restart) doc cursor tu file, khong doc lai.
+        nguoi_moi = RtConsumer("http://127.0.0.1:18816", duong_dan_cursor=tep_cursor)
+        assert nguoi_moi.cursor == nguoi_dung.cursor
+        assert nguoi_moi.chay_mot_vong(lambda s: None) == 0
     finally:
         lang_nghe.stop()
