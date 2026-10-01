@@ -11,6 +11,10 @@ set "PYTHONPATH=%~dp0src;%PYTHONPATH%"
 set KMP_DUPLICATE_LIB_OK=TRUE
 set OMP_NUM_THREADS=1
 set MKL_NUM_THREADS=1
+rem Bat duong search numpy cho kho tri thuc lon (mac dinh trong code la tat).
+rem Do tren PC0575 (2026-10-01): vong cosine Python thuan >60 giay/truy van;
+rem bat numpy thi truy van ve mili giay. Khong set = giu mac dinh tat.
+set "AIOS_RAG_V2_NUMPY_DENSE=1"
 rem Lan mo dau tien tung cham vi preflight "import torch, FlagEmbedding"
 rem nap DLL native roi thoat, sau do moi mo Streamlit. Chi can biet goi da
 rem cai. Sidecar cung khong duoc chan cua so nay: app van ket noi khi san sang.
