@@ -110,10 +110,10 @@ def _render_auto_section(auto: Optional[dict]) -> list:
     if conf < 0.5:
         lines.append("- AI chưa chắc chắn — người nhập kiểm tra lại nhóm nguyên nhân.")
     n_hist = auto.get("history_match_count") or 0
-    lines.append(
-        f"- Đã đối chiếu lịch sử: {'tìm thấy ' + str(n_hist) + ' ca tương tự'
-                                  if n_hist else 'không thấy ca tương tự'}."
-    )
+    # NOTE: no nested / multiline f-string expressions (PEP 701, Python >= 3.12
+    # only) - home machine runs Python 3.11 and raises SyntaxError here.
+    hist_txt = f"tìm thấy {n_hist} ca tương tự" if n_hist else "không thấy ca tương tự"
+    lines.append(f"- Đã đối chiếu lịch sử: {hist_txt}.")
     rec = auto.get("recurrence")
     if rec:
         lines += [
