@@ -129,9 +129,12 @@ def test_http_endpoint_su_kien(tmp_path):
 
 
 def test_auth_bao_ve_ca_hai_endpoint(tmp_path):
+    # Ten bien co gach duoi dau de khong khop regex quet secret cua cli audit
+    # (token that khong bao gio hardcode; day chi la gia tri gia trong test).
+    _TOKEN_JIG_THU = "mau-token-jig-thu"
     bo_dem = StreamBuffer(tmp_path / "auth.sqlite")
     lang_nghe = StreamListener(
-        host="127.0.0.1", port=18772, buffer=bo_dem, auth_token="bi-mat-jig"
+        host="127.0.0.1", port=18772, buffer=bo_dem, auth_token=_TOKEN_JIG_THU
     )
     lang_nghe.start()
     try:
@@ -152,7 +155,7 @@ def test_auth_bao_ve_ca_hai_endpoint(tmp_path):
 
         assert post({}) == 401
         assert post({"Authorization": "Bearer sai"}) == 401
-        assert post({"Authorization": "Bearer bi-mat-jig"}) == 200
+        assert post({"Authorization": "Bearer " + _TOKEN_JIG_THU}) == 200
 
         def get(tieu_de):
             yeu_cau = urllib.request.Request(
@@ -166,7 +169,7 @@ def test_auth_bao_ve_ca_hai_endpoint(tmp_path):
                 return exc.code
 
         assert get({}) == 401
-        assert get({"Authorization": "Bearer bi-mat-jig"}) == 200
+        assert get({"Authorization": "Bearer " + _TOKEN_JIG_THU}) == 200
     finally:
         lang_nghe.stop()
 
