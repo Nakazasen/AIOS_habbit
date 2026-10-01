@@ -148,3 +148,185 @@ def test_positive_rate_by_quarter(conn):
     assert by_q["2026-Q2"]["rated"] == 2
     assert by_q["2026-Q2"]["positive"] == 1
     assert by_q["2026-Q2"]["rate"] == pytest.approx(0.5)
+
+
+# --------------------------------------------------------------------------
+# B2 (2026-10-01): hard close rules QD-BK82-1, conversation-scoped ratings,
+# hientuong_missing flag (QD-BK82-2)
+# --------------------------------------------------------------------------
+
+import json as _json
+
+from aios_habit.error_cases.feedback_loop import (
+    flag_hientuong_missing,
+    get_ratings,
+    latest_suggestion_call,
+    latest_unrated_suggestion_call,
+    phenomenon_state,
+)
+
+
+def _form_case(conn, no_dvd="FORM-20261001-0001"):
+    """A NEW case as created by the B0-FORM entry form (no_dvd FORM-*)."""
+    cur = conn.execute(
+        """INSERT INTO error_cases (no_dvd, sheet_type, raw_json)
+           VALUES (?, 'Máy in', '{}')""",
+        (no_dvd,),
+    )
+    conn.commit()
+    return int(cur.lastrowid)
+
+
+def _history_case(conn, no_dvd, raw):
+    """A history-imported case with a raw_json letter map (I/M/O/F/AA/AB)."""
+    cur = conn.execute(
+        """INSERT INTO error_cases (no_dvd, sheet_type, raw_json)
+           VALUES (?, 'Máy in', ?)""",
+        (no_dvd, _json.dumps(raw, ensure_ascii=False)),
+    )
+    conn.commit()
+    return int(cur.lastrowid)
+
+
+def test_close_new_case_blocked_without_phenomenon_and_process_stage(conn):
+    # QD-BK82-1: a NEW case cannot be closed on actuals alone.
+    case_id = _form_case(conn)
+    with pytest.raises(ClosureBlockedError) as exc:
+        close_case(conn, case_id, actual_cause=SIMULATED_CAUSE,
+                   actual_countermeasure=SIMULATED_COUNTERMEASURE)
+    assert "Hiện tượng" in str(exc.value)
+    assert "Công đoạn" in str(exc.value)
+    assert get_closure(conn, case_id) is None
+
+
+def test_close_new_case_accepts_supplied_fields_and_writes_back(conn):
+    case_id = _form_case(conn)
+    cid = close_case(
+        conn, case_id,
+        actual_cause=SIMULATED_CAUSE,
+        actual_countermeasure=SIMULATED_COUNTERMEASURE,
+        phenomenon="SIMULATED hiện tượng: kẹt giấy ở cụm sấy",
+        process_stage="SIMULATED công đoạn: sấy",
+        closed_by="SIMULATED-tech",
+    )
+    assert get_closure(conn, case_id)["id"] == cid
+    row = conn.execute(
+        "SELECT phenomenon, process_stage, cause, countermeasure, "
+        "closed_at, is_completed FROM error_cases WHERE id = ?",
+        (case_id,),
+    ).fetchone()
+    assert row["phenomenon"] == "SIMULATED hiện tượng: kẹt giấy ở cụm sấy"
+    assert row["process_stage"] == "SIMULATED công đoạn: sấy"
+    assert row["cause"] == SIMULATED_CAUSE
+    assert row["countermeasure"] == SIMULATED_COUNTERMEASURE
+    assert row["closed_at"]  # ISO date stamped at close
+    assert row["is_completed"] == "o"
+
+
+def test_close_new_case_reads_stored_phenomenon_without_resupply(conn):
+    # Phenomenon/process stage already on the row: no need to re-supply.
+    case_id = _form_case(conn)
+    conn.execute(
+        "UPDATE error_cases SET phenomenon = ?, process_stage = ? WHERE id = ?",
+        ("SIMULATED hiện tượng có sẵn", "SIMULATED công đoạn có sẵn", case_id),
+    )
+    conn.commit()
+    cid = close_case(conn, case_id, actual_cause=SIMULATED_CAUSE,
+                     actual_countermeasure=SIMULATED_COUNTERMEASURE)
+    assert get_closure(conn, case_id)["id"] == cid
+
+
+def test_close_legacy_case_needs_only_actuals(conn):
+    # 2023 history row: legacy rule — actuals suffice, no auto-fill.
+    case_id = _history_case(conn, "2023/461", {"AA": "", "I": "SIMULATED I"})
+    cid = close_case(conn, case_id, actual_cause=SIMULATED_CAUSE,
+                     actual_countermeasure=SIMULATED_COUNTERMEASURE)
+    assert get_closure(conn, case_id)["id"] == cid
+    row = conn.execute(
+        "SELECT phenomenon FROM error_cases WHERE id = ?", (case_id,)
+    ).fetchone()
+    assert not row["phenomenon"]  # not backfilled automatically
+
+
+def test_close_new_2026_history_ticket_requires_fields(conn):
+    # The BK-82 "42 rows": 2026/NNNN history tickets are NEW cases.
+    case_id = _history_case(conn, "2026/2422", {"I": "", "F": "-"})
+    with pytest.raises(ClosureBlockedError):
+        close_case(conn, case_id, actual_cause=SIMULATED_CAUSE,
+                   actual_countermeasure=SIMULATED_COUNTERMEASURE)
+    # ... and close fine once the closer supplies them.
+    close_case(conn, case_id, actual_cause=SIMULATED_CAUSE,
+               actual_countermeasure=SIMULATED_COUNTERMEASURE,
+               phenomenon="SIMULATED bổ sung hiện tượng",
+               process_stage="SIMULATED bổ sung công đoạn")
+    assert get_closure(conn, case_id) is not None
+
+
+def test_close_never_overwrites_stored_values(conn):
+    case_id = _form_case(conn)
+    conn.execute(
+        "UPDATE error_cases SET cause = ?, phenomenon = ?, process_stage = ? "
+        "WHERE id = ?",
+        ("nguyên nhân đã chốt", "hiện tượng đã chốt", "công đoạn đã chốt",
+         case_id),
+    )
+    conn.commit()
+    close_case(conn, case_id, actual_cause=SIMULATED_CAUSE,
+               actual_countermeasure=SIMULATED_COUNTERMEASURE,
+               phenomenon="SIMULATED ghi đè?", process_stage="SIMULATED ghi đè?")
+    row = conn.execute(
+        "SELECT cause, phenomenon, process_stage FROM error_cases WHERE id = ?",
+        (case_id,),
+    ).fetchone()
+    assert row["cause"] == "nguyên nhân đã chốt"
+    assert row["phenomenon"] == "hiện tượng đã chốt"
+    assert row["process_stage"] == "công đoạn đã chốt"
+
+
+def test_latest_unrated_call_is_conversation_scoped(conn):
+    c1 = _simulated_case(conn, "SIMULATED-LSU-R1")
+    c2 = _simulated_case(conn, "SIMULATED-LSU-R2")
+    call_a = log_suggestion_call(conn, c1, conversation_id="conv-A")
+    call_b = log_suggestion_call(conn, c2, conversation_id="conv-B")
+    assert int(latest_unrated_suggestion_call(conn, "conv-A")["id"]) == call_a
+    assert int(latest_unrated_suggestion_call(conn, "conv-B")["id"]) == call_b
+    record_rating(conn, call_a, RATING_CORRECT)
+    assert latest_unrated_suggestion_call(conn, "conv-A") is None
+    # ... but the rated call is still findable as "latest".
+    assert int(latest_suggestion_call(conn, "conv-A")["id"]) == call_a
+    assert len(get_ratings(conn, call_a)) == 1
+
+
+def test_phenomenon_state_and_flag(conn):
+    blank_id = _history_case(conn, "2026/2423",
+                             {"I": "", "M": "SIMULATED thao tác M", "O": ""})
+    full_id = _history_case(conn, "2026/2424", {"I": "SIMULATED hiện tượng I"})
+    st = phenomenon_state(conn, blank_id)
+    assert st["missing"] is True
+    assert st["source"] is None
+    assert st["suggested_text"] == "SIMULATED thao tác M"
+    assert st["suggested_source"] == "M"
+    st2 = phenomenon_state(conn, full_id)
+    assert st2["missing"] is False
+    assert st2["source"] == "raw_I"
+    flagged = flag_hientuong_missing(conn)
+    assert flagged == 1
+    row = conn.execute(
+        "SELECT hientuong_missing FROM error_cases WHERE id = ?", (blank_id,)
+    ).fetchone()
+    assert row["hientuong_missing"] == "1"
+    row2 = conn.execute(
+        "SELECT hientuong_missing FROM error_cases WHERE id = ?", (full_id,)
+    ).fetchone()
+    assert not row2["hientuong_missing"]
+
+
+def test_init_db_creates_feedback_tables(conn):
+    # store.init_db now wires the feedback schema in (B2).
+    tables = {
+        r[0] for r in conn.execute(
+            "SELECT name FROM sqlite_master WHERE type = 'table'")
+    }
+    assert {"suggestion_calls", "suggestion_ratings", "case_closures"} <= tables
+    cols = {r[1] for r in conn.execute("PRAGMA table_info(error_cases)")}
+    assert "hientuong_missing" in cols

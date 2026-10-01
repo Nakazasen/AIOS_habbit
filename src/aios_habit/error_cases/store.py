@@ -14,6 +14,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from . import column_map
+from .feedback_loop import init_feedback_loop
 
 _SCHEMA_PATH = Path(__file__).with_name("schema.sql")
 
@@ -26,9 +27,15 @@ def connect(db_path: str | Path) -> sqlite3.Connection:
 
 
 def init_db(conn: sqlite3.Connection) -> None:
-    """Create tables/indexes idempotently (plus additive column migrations)."""
+    """Create tables/indexes idempotently (plus additive column migrations).
+
+    Also creates the B2 feedback tables (suggestion_calls /
+    suggestion_ratings / case_closures) so every error_cases DB carries
+    the feedback loop schema.
+    """
     conn.executescript(_SCHEMA_PATH.read_text(encoding="utf-8"))
     _migrate(conn)
+    init_feedback_loop(conn)
     conn.commit()
 
 
@@ -62,6 +69,11 @@ def _migrate(conn: sqlite3.Connection) -> None:
     ):
         if _col_name not in cols:
             conn.execute(f"ALTER TABLE error_cases ADD COLUMN {_col_name} {_col_ddl}")
+    # B2 (QD-BK82-2): flag for cases with no recorded phenomenon
+    # ('1' = missing, needs a human; '' = recorded). Set by
+    # feedback_loop.flag_hientuong_missing, never auto-filled.
+    if "hientuong_missing" not in cols:
+        conn.execute("ALTER TABLE error_cases ADD COLUMN hientuong_missing TEXT")
 
 
 def sha256_file(path: str | Path) -> str:

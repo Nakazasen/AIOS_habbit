@@ -378,6 +378,37 @@ def _clip(value: Any, limit: int = _CLIP) -> str:
     return text
 
 
+def _phenomenon_flag(row: sqlite3.Row, raw: Dict[str, Any]) -> Tuple[bool, str, str]:
+    """QD-BK82-2: hientuong_missing flag for one card.
+
+    Returns (missing, suggested_text, suggested_source). The suggestion is
+    the M/O investigation text WITH provenance (column letter) — surfaced
+    for the user, never auto-filled into the phenomenon field.
+    """
+    from aios_habit.error_cases.feedback_loop import BLANK_MARKS
+
+    def _blank(value: Any) -> bool:
+        text = " ".join(str(value or "").split())
+        return not text or text in BLANK_MARKS
+
+    try:
+        col = str(row["phenomenon"] or "")
+    except (KeyError, IndexError, TypeError):
+        # Old-schema DBs (pre-B0-FORM migration): treat as empty, like the
+        # error_code_i guard in _has_real_code (B1-FEAT Mốc S1 lesson).
+        col = ""
+    i_text = str(raw.get("I") or "")
+    missing = _blank(col) and _blank(i_text)
+    suggestion, source = "", ""
+    if missing:
+        for key in ("M", "O"):
+            text = str(raw.get(key) or "").strip()
+            if not _blank(text):
+                suggestion, source = _clip(text, 160), key
+                break
+    return missing, suggestion, source
+
+
 def _case_dict(row: sqlite3.Row, has_missing_col: bool = False) -> Dict[str, Any]:
     raw = _raw_json(row)
     hien_tuong = raw.get("I") or row["investigation"] or raw.get("O") or ""
@@ -401,7 +432,9 @@ def _case_dict(row: sqlite3.Row, has_missing_col: bool = False) -> Dict[str, Any
         )
         if p
     )
+    thieu_hien_tuong, goi_y_hien_tuong, goi_y_nguon = _phenomenon_flag(row, raw)
     return {
+        "id": row["id"],
         "no_dvd": row["no_dvd"] or "",
         "where": where,
         "category": str(category),
@@ -410,6 +443,10 @@ def _case_dict(row: sqlite3.Row, has_missing_col: bool = False) -> Dict[str, Any
         "nguyen_nhan": _clip(nguyen_nhan),
         "doi_sach": _clip(doi_sach),
         "bao_cao_goc": provenance,
+        # B2 / QD-BK82-2: missing-phenomenon flag + M/O suggestion.
+        "thieu_hien_tuong": thieu_hien_tuong,
+        "goi_y_hien_tuong": goi_y_hien_tuong,
+        "goi_y_nguon": goi_y_nguon,
     }
 
 
@@ -449,7 +486,17 @@ def _render_cards(
             head += " · " + " · ".join(bits)
         lines.append("")
         lines.append(head)
-        lines.append(f"- **Hiện tượng:** {case['hien_tuong'] or '—'}")
+        if case.get("thieu_hien_tuong"):
+            # QD-BK82-2: flag the missing phenomenon; the M/O text below is
+            # a suggestion with provenance, not an auto-filled value.
+            lines.append("- **Hiện tượng:** ⚠️ chưa được ghi nhận")
+            if case.get("goi_y_hien_tuong"):
+                lines.append(
+                    f"  - _Gợi ý từ biên bản (cột {case['goi_y_nguon']}): "
+                    f"{case['goi_y_hien_tuong']}_"
+                )
+        else:
+            lines.append(f"- **Hiện tượng:** {case['hien_tuong'] or '—'}")
         lines.append(f"- **Nguyên nhân:** {case['nguyen_nhan'] or '—'}")
         lines.append(f"- **Đối sách:** {case['doi_sach'] or '—'}")
         lines.append(f"- **Báo cáo gốc:** {case['bao_cao_goc'] or '—'}")
@@ -458,12 +505,50 @@ def _render_cards(
         "_Nguồn: DB ca lỗi Bước 0–5 (lịch sử KDTPS thật). "
         "Muốn đào sâu một ca, hỏi theo mã phiếu (VD: `phiếu 2023/5`)._"
     )
+    # B2: the 3 rating "buttons" live inside this answer bubble (chat-first:
+    # typed in the single chat box, no separate toolbar).
+    lines.append("")
+    lines.append("---")
+    lines.append(
+        "**Đánh giá gợi ý này:** `đánh giá đúng` · `đánh giá sai` · "
+        "`đánh giá một phần`"
+    )
+    lines.append("_Gõ ngay trong ô chat — không cần mở thêm gì._")
     return "\n".join(lines)
 
 
 # ---------------------------------------------------------------------------
 # Action wiring
 # ---------------------------------------------------------------------------
+
+
+def _log_suggestion_call(
+    db_path: Path, cases: Sequence[Dict[str, Any]], conversation_id: str
+) -> None:
+    """B2: record one suggestion call per lookup answer (best-effort).
+
+    A logging failure must never break the answer, so every error is
+    swallowed here — the suggestion cards are the product, the log is
+    the feedback loop's bookkeeping.
+    """
+    try:
+        from aios_habit.error_cases import feedback_loop as _feedback
+        from aios_habit.error_cases import store as _store
+
+        conn = _store.connect(db_path)
+        try:
+            _feedback.init_feedback_loop(conn)
+            _feedback.log_suggestion_call(
+                conn,
+                int(cases[0]["id"]),
+                suggested_refs=[c["no_dvd"] for c in cases if c.get("no_dvd")],
+                note="tra_cuu_loi_tuong_tu",
+                conversation_id=conversation_id or "",
+            )
+        finally:
+            conn.close()
+    except Exception:
+        pass
 
 
 class _ErrorLookupAction(ChatAction):
@@ -504,6 +589,9 @@ def _handler(request: ChatActionRequest) -> Optional[ChatActionOutcome]:
         if not cases:
             return None
         text = _render_cards(cases, codes, glossary, total)
+        # B2: log the suggestion call so "đánh giá đúng/sai/một phần" has
+        # something to rate. Best-effort: never breaks the answer.
+        _log_suggestion_call(db_path, cases, request.conversation_id or "")
     except Exception:
         return None
     finally:
