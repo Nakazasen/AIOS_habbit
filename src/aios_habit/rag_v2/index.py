@@ -1,6 +1,7 @@
 """Local SQLite index and generic local retrieval for RAG v2 chunks."""
 from __future__ import annotations
 
+from array import array
 from collections import Counter
 from dataclasses import dataclass, field, replace
 from datetime import datetime, timezone
@@ -134,6 +135,18 @@ LOGGER = logging.getLogger(__name__)
 NUMPY_DENSE_FLAG = "AIOS_RAG_V2_NUMPY_DENSE"
 NUMPY_DENSE_MAX_BYTES_FLAG = "AIOS_RAG_V2_NUMPY_DENSE_MAX_BYTES"
 DEFAULT_NUMPY_DENSE_MAX_BYTES = 2 * 1024 * 1024 * 1024
+CJK_PREFILTER_FLAG = "AIOS_RAG_V2_CJK_PREFILTER"
+
+
+def cjk_prefilter_enabled() -> bool:
+    """Return whether the V1-A2 CJK LIKE prefilter is enabled.
+
+    Kill-switch for OPT-RAGV2-PYLOOPS V1-A2: set to "0" to fall back to the
+    full deterministic scan if the prefilter's top-15 ever diverges from the
+    baseline on production (the prefilter drops chunks that match only
+    shorter variant terms, so divergence is possible by design).
+    """
+    return os.environ.get(CJK_PREFILTER_FLAG, "1") != "0"
 # Float32 matmul on this machine disagreed with the Python cosine by at most
 # ~1e-7 on real 1024-d vectors. The band keeps a near-cutoff chunk in the
 # exact-rescore pool so published top-k order stays identical.
@@ -157,6 +170,22 @@ def numpy_dense_max_bytes() -> int:
         return DEFAULT_NUMPY_DENSE_MAX_BYTES
 
 
+SPARSE_CACHE_MAX_BYTES_FLAG = "AIOS_RAG_V2_SPARSE_MAX_BYTES"
+DEFAULT_SPARSE_CACHE_MAX_BYTES = 1_500_000_000
+
+
+def sparse_cache_max_bytes() -> int:
+    """Return the sparse inverted-index budget. Over budget keeps the Python scan."""
+    raw = os.environ.get(SPARSE_CACHE_MAX_BYTES_FLAG, "").strip()
+    if not raw:
+        return DEFAULT_SPARSE_CACHE_MAX_BYTES
+    try:
+        return max(0, int(raw))
+    except ValueError:
+        LOGGER.warning("Ignoring invalid %s=%r", SPARSE_CACHE_MAX_BYTES_FLAG, raw)
+        return DEFAULT_SPARSE_CACHE_MAX_BYTES
+
+
 @dataclass(frozen=True)
 class _DenseMatrixCache:
     token: tuple[int, int]
@@ -168,6 +197,28 @@ class _DenseMatrixCache:
     source_paths: tuple[str, ...]
     source_fingerprints: tuple[str | None, ...]
     privacy_labels: tuple[tuple[str, ...], ...]
+
+
+@dataclass(frozen=True)
+class _SparseVectorCache:
+    """Parsed sparse vectors as an inverted index (OPT-RAGV2-PYLOOPS V3-A).
+
+    ``postings`` maps each term to ``(doc_positions, weights)``: parallel
+    ``array("I")`` / ``array("d")`` posting lists. Scoring a query variant only
+    touches documents sharing at least one query term; a document with no
+    shared term has an exact dot of 0 and is filtered out either way, so the
+    ranked output is identical to the full Python scan. Weights stay float64
+    so dots match the legacy path bit-for-bit in the common case.
+    """
+
+    token: tuple[int, int]
+    fingerprint: str
+    chunk_ids: tuple[str, ...]
+    document_ids: tuple[str, ...]
+    source_paths: tuple[str, ...]
+    source_fingerprints: tuple[str | None, ...]
+    privacy_labels: tuple[tuple[str, ...], ...]
+    postings: dict[str, tuple[array, array]]
 
 
 def _numpy_candidate_pool(scores: Any, candidate_limit: int) -> Any:
@@ -850,6 +901,8 @@ class LocalChunkIndex:
             self._multivector_backend = None
         self._dense_matrix_cache: _DenseMatrixCache | None = None
         self._dense_matrix_lock = threading.Lock()
+        self._sparse_vector_cache: _SparseVectorCache | None = None
+        self._sparse_vector_lock = threading.Lock()
         if self._read_only:
             self._fts5_available = bool(enable_fts5 and self._conn.execute(
                 "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'chunks_fts'"
@@ -1876,7 +1929,7 @@ class LocalChunkIndex:
             "multivector_complete": multivector_complete,
         }
 
-    def _dense_cache_token(self) -> tuple[int, int]:
+    def _index_cache_token(self) -> tuple[int, int]:
         row = self._conn.execute("PRAGMA data_version").fetchone()
         return (int(row[0]), int(self._conn.total_changes))
 
@@ -1930,7 +1983,7 @@ class LocalChunkIndex:
             source_fingerprints.append(row["source_fingerprint"])
             privacy_labels.append(tuple(json.loads(row["privacy_labels_json"] or "[]")))
         return _DenseMatrixCache(
-            token=self._dense_cache_token(),
+            token=self._index_cache_token(),
             fingerprint=fingerprint,
             dimension=dimension,
             matrix=matrix,
@@ -1942,7 +1995,7 @@ class LocalChunkIndex:
         )
 
     def _dense_matrix_cache_for(self, fingerprint: str, dimension: int) -> _DenseMatrixCache | None:
-        token = self._dense_cache_token()
+        token = self._index_cache_token()
         cached = self._dense_matrix_cache
         if (
             cached is not None
@@ -1953,7 +2006,7 @@ class LocalChunkIndex:
             return cached
         with self._dense_matrix_lock:
             cached = self._dense_matrix_cache
-            token = self._dense_cache_token()
+            token = self._index_cache_token()
             if (
                 cached is not None
                 and cached.fingerprint == fingerprint
@@ -1965,6 +2018,287 @@ class LocalChunkIndex:
             if loaded is not None:
                 self._dense_matrix_cache = loaded
             return loaded
+
+    def preload_dense_matrix_cache(self) -> tuple[int, float]:
+        """Eagerly load the numpy dense matrix cache (OPT-RAGV2-PYLOOPS V2-A).
+
+        Moves the first-load cost out of the first ("cold") query's timeout and
+        into worker init. Returns ``(chunk_count, elapsed_ms)``; ``(0, 0.0)``
+        when the numpy dense path is disabled or the cache cannot be built.
+        A preload failure never raises: the lazy query-time load still applies,
+        so retrieval semantics never change.
+        """
+        started = perf_counter()
+        if not numpy_dense_search_enabled():
+            return 0, 0.0
+        backend = self._embedding_backend
+        if backend is None:
+            return 0, 0.0
+        try:
+            backend.capability.require()
+        except Exception:
+            LOGGER.warning("rag_v2 dense preload skipped: embedding backend unavailable")
+            return 0, 0.0
+        descriptor = backend.descriptor
+        try:
+            cache = self._dense_matrix_cache_for(descriptor.fingerprint, descriptor.dimension)
+        except Exception:
+            LOGGER.warning("rag_v2 dense preload failed", exc_info=True)
+            return 0, 0.0
+        elapsed_ms = (perf_counter() - started) * 1000.0
+        count = len(cache.chunk_ids) if cache is not None else 0
+        LOGGER.info(
+            "rag_v2 dense matrix preloaded: chunks=%s elapsed_ms=%.1f",
+            count,
+            elapsed_ms,
+        )
+        return count, elapsed_ms
+
+    def _load_sparse_vector_cache(self, fingerprint: str) -> _SparseVectorCache | None:
+        """Parse every sparse vector once and build a term inverted index.
+
+        None means keep the legacy per-query Python scan. Posting lists use
+        compact ``array("I")`` / ``array("d")`` storage so ~108k documents stay
+        within the ``AIOS_RAG_V2_SPARSE_MAX_BYTES`` budget.
+        """
+        rows = self._conn.execute(
+            """
+            SELECT c.chunk_id, c.document_id, c.source_path, c.source_fingerprint,
+                   c.privacy_labels_json, s.sparse_json
+            FROM chunks AS c
+            JOIN chunk_sparse_embeddings AS s ON s.chunk_id = c.chunk_id
+            WHERE c.retrievable = 1 AND s.model_fingerprint = ?
+            """,
+            (fingerprint,),
+        ).fetchall()
+        posting_positions: dict[str, array] = {}
+        posting_weights: dict[str, array] = {}
+        chunk_ids: list[str] = []
+        document_ids: list[str] = []
+        source_paths: list[str] = []
+        source_fingerprints: list[str | None] = []
+        privacy_labels: list[tuple[str, ...]] = []
+        for doc_index, row in enumerate(rows):
+            vector = normalize_sparse_vector(json.loads(row["sparse_json"]))
+            for term, weight in vector.items():
+                positions = posting_positions.get(term)
+                if positions is None:
+                    positions = posting_positions[term] = array("I")
+                    weights = posting_weights[term] = array("d")
+                else:
+                    weights = posting_weights[term]
+                positions.append(doc_index)
+                weights.append(weight)
+            chunk_ids.append(str(row["chunk_id"]))
+            document_ids.append(str(row["document_id"]))
+            source_paths.append(str(row["source_path"]))
+            source_fingerprints.append(row["source_fingerprint"])
+            privacy_labels.append(tuple(json.loads(row["privacy_labels_json"] or "[]")))
+        estimated_bytes = sum(
+            len(positions) * positions.itemsize + len(weights) * weights.itemsize
+            for positions, weights in zip(
+                posting_positions.values(), posting_weights.values()
+            )
+        )
+        # Per-term dict/array/tuple overhead allowance on top of raw postings.
+        estimated_bytes += len(posting_positions) * 512
+        if estimated_bytes > sparse_cache_max_bytes():
+            LOGGER.info(
+                "rag_v2 sparse cache skipped: bytes=%s limit=%s chunks=%s terms=%s",
+                estimated_bytes,
+                sparse_cache_max_bytes(),
+                len(chunk_ids),
+                len(posting_positions),
+            )
+            return None
+        postings = {
+            term: (posting_positions[term], posting_weights[term])
+            for term in posting_positions
+        }
+        return _SparseVectorCache(
+            token=self._index_cache_token(),
+            fingerprint=fingerprint,
+            chunk_ids=tuple(chunk_ids),
+            document_ids=tuple(document_ids),
+            source_paths=tuple(source_paths),
+            source_fingerprints=tuple(source_fingerprints),
+            privacy_labels=tuple(privacy_labels),
+            postings=postings,
+        )
+
+    def _sparse_vector_cache_for(self, fingerprint: str) -> _SparseVectorCache | None:
+        token = self._index_cache_token()
+        cached = self._sparse_vector_cache
+        if (
+            cached is not None
+            and cached.fingerprint == fingerprint
+            and cached.token == token
+        ):
+            return cached
+        with self._sparse_vector_lock:
+            cached = self._sparse_vector_cache
+            token = self._index_cache_token()
+            if (
+                cached is not None
+                and cached.fingerprint == fingerprint
+                and cached.token == token
+            ):
+                return cached
+            loaded = self._load_sparse_vector_cache(fingerprint)
+            if loaded is not None:
+                self._sparse_vector_cache = loaded
+            return loaded
+
+    def preload_sparse_vector_cache(self) -> tuple[int, float]:
+        """Eagerly build the sparse inverted-index cache (OPT-RAGV2-PYLOOPS V3-A).
+
+        Returns ``(chunk_count, elapsed_ms)``; ``(0, 0.0)`` when sparse search
+        is unavailable or the cache does not fit the budget. Never raises: the
+        legacy per-query scan still applies, so retrieval semantics never
+        change.
+        """
+        started = perf_counter()
+        backend = self._sparse_backend
+        embedding_backend = self._embedding_backend
+        if backend is None or embedding_backend is None:
+            return 0, 0.0
+        try:
+            backend.sparse_capability.require()
+        except Exception:
+            LOGGER.warning("rag_v2 sparse preload skipped: sparse backend unavailable")
+            return 0, 0.0
+        try:
+            cache = self._sparse_vector_cache_for(embedding_backend.descriptor.fingerprint)
+        except Exception:
+            LOGGER.warning("rag_v2 sparse preload failed", exc_info=True)
+            return 0, 0.0
+        elapsed_ms = (perf_counter() - started) * 1000.0
+        count = len(cache.chunk_ids) if cache is not None else 0
+        LOGGER.info(
+            "rag_v2 sparse vectors preloaded: chunks=%s terms=%s elapsed_ms=%.1f",
+            count,
+            len(cache.postings) if cache is not None else 0,
+            elapsed_ms,
+        )
+        return count, elapsed_ms
+
+    def _sparse_candidates_cached(
+        self,
+        plan: RetrievalQueryPlan,
+        *,
+        cache: _SparseVectorCache,
+        limit: int,
+        options: SearchOptions,
+    ) -> List[SearchResult]:
+        """Score sparse candidates through the inverted index (V3-A).
+
+        Only documents sharing at least one query term are scored; a document
+        with no shared term has an exact dot of 0 and is filtered out either
+        way, so the ranked output is identical to the legacy full scan.
+        Per-document dots accumulate in query-term order, matching
+        ``sparse_dot_similarity`` whenever the query vector is the smaller
+        side (the common case for short questions).
+        """
+        backend = self._sparse_backend
+        assert backend is not None
+        eligible: list[int] = []
+        for index in range(len(cache.chunk_ids)):
+            row = {
+                "document_id": cache.document_ids[index],
+                "source_path": cache.source_paths[index],
+                "source_fingerprint": cache.source_fingerprints[index],
+            }
+            if not self._is_selected(row, options):
+                continue
+            if not self._privacy_is_allowed(cache.privacy_labels[index], options):
+                continue
+            if self._is_stale(row, options):
+                continue
+            eligible.append(index)
+        eligible_mask = bytearray(len(cache.chunk_ids))
+        for index in eligible:
+            eligible_mask[index] = 1
+        fused: dict[str, dict[str, Any]] = {}
+        for variant in plan.variants:
+            query_vector = normalize_sparse_vector(backend.sparse_query(variant.text))
+            scores: dict[int, float] = {}
+            for term, query_weight in query_vector.items():
+                posting = cache.postings.get(term)
+                if posting is None:
+                    continue
+                positions, weights = posting
+                for doc_index, doc_weight in zip(positions, weights):
+                    if eligible_mask[doc_index]:
+                        scores[doc_index] = (
+                            scores.get(doc_index, 0.0) + query_weight * doc_weight
+                        )
+            ranked = [
+                (score, doc_index)
+                for doc_index, score in scores.items()
+                if score > 0.0
+            ]
+            ranked.sort(key=lambda item: (
+                -item[0],
+                cache.document_ids[item[1]],
+                cache.source_paths[item[1]],
+                cache.chunk_ids[item[1]],
+            ))
+            variant_weight = 1.25 if variant.origin == "original" else 1.0
+            for rank, (similarity, doc_index) in enumerate(
+                ranked[: options.candidate_limit], 1
+            ):
+                key = cache.chunk_ids[doc_index]
+                record = fused.setdefault(key, {
+                    "rrf_score": 0.0,
+                    "best_similarity": similarity,
+                    "doc_index": doc_index,
+                    "privacy_labels": cache.privacy_labels[doc_index],
+                    "variants": [],
+                    "variant_ids": [],
+                    "facet_ids": [],
+                })
+                record["rrf_score"] += variant_weight / (60.0 + rank)
+                record["variants"].append(variant.text)
+                record["variant_ids"].append(variant.variant_id)
+                record["facet_ids"].append(variant.facet_id)
+                record["best_similarity"] = max(record["best_similarity"], similarity)
+        ordered = sorted(fused.values(), key=lambda item: (
+            -item["rrf_score"],
+            -item["best_similarity"],
+            cache.document_ids[item["doc_index"]],
+            cache.source_paths[item["doc_index"]],
+            cache.chunk_ids[item["doc_index"]],
+        ))[:limit]
+        by_id = self._chunk_rows_by_id(
+            cache.chunk_ids[record["doc_index"]] for record in ordered
+        )
+        results = []
+        for record in ordered:
+            chunk_id = cache.chunk_ids[record["doc_index"]]
+            row = by_id[chunk_id]
+            metadata = json.loads(row["metadata_json"])
+            section_text = " ".join(_text_values(metadata.get("section_path")))
+            obligations = match_text_obligations(
+                plan.intent_category,
+                (str(row["normalized_text"]), section_text),
+                required_obligations=plan.required_obligations,
+            )
+            results.append(SearchResult(
+                chunk_id=row["chunk_id"], score=float(record["best_similarity"]),
+                text=row["text"], document_id=row["document_id"],
+                source_path=row["source_path"], source_name=row["source_name"],
+                file_type=row["file_type"], metadata=metadata,
+                privacy_labels=record["privacy_labels"],
+                ranking_signals={
+                    "sparse_dot": float(record["best_similarity"]),
+                    "sparse_multi_variant_rrf": float(record["rrf_score"]),
+                },
+                matched_query_variants=tuple(record["variants"]),
+                matched_query_variant_ids=tuple(dict.fromkeys(record["variant_ids"])),
+                matched_query_facets=tuple(dict.fromkeys(record["facet_ids"])),
+                matched_obligations=tuple(obligations),
+            ))
+        return results
 
 
     def _numpy_rank_variant(
@@ -2715,9 +3049,15 @@ class LocalChunkIndex:
         if ensure_embeddings and not self._read_only:
             self.ensure_embeddings()
         descriptor = embedding_backend.descriptor
+        cache = self._sparse_vector_cache_for(descriptor.fingerprint)
+        if cache is not None:
+            return self._sparse_candidates_cached(
+                plan, cache=cache, limit=limit, options=options
+            )
         rows = self._conn.execute(
             """
-            SELECT c.*, s.sparse_json
+            SELECT c.chunk_id, c.document_id, c.source_path, c.source_fingerprint,
+                   c.privacy_labels_json, s.sparse_json
             FROM chunks AS c
             JOIN chunk_sparse_embeddings AS s ON s.chunk_id = c.chunk_id
             WHERE c.retrievable = 1 AND s.model_fingerprint = ?
@@ -2770,9 +3110,14 @@ class LocalChunkIndex:
             -item["rrf_score"], -item["best_similarity"], item["row"]["document_id"],
             item["row"]["source_path"], item["row"]["chunk_id"],
         ))[:limit]
+        # The scan above only fetched narrow rows (no text/metadata blobs);
+        # refetch the full rows for the finalists, like the numpy dense path.
+        by_id = self._chunk_rows_by_id(
+            str(record["row"]["chunk_id"]) for record in ordered
+        )
         results = []
         for record in ordered:
-            row = record["row"]
+            row = by_id[str(record["row"]["chunk_id"])]
             metadata = json.loads(row["metadata_json"])
             section_text = " ".join(_text_values(metadata.get("section_path")))
             obligations = match_text_obligations(
@@ -3461,6 +3806,76 @@ class LocalChunkIndex:
         ).fetchall()
         return tuple(str(row["source_name"] or "") for row in rows)
 
+    @staticmethod
+    def _escape_like_term(term: str) -> str:
+        return (
+            term.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+        )
+
+    def _cjk_like_prefilter_rows(
+        self,
+        eligible_rows: List[sqlite3.Row],
+        terms: tuple[str, ...],
+    ) -> Optional[List[sqlite3.Row]]:
+        """Narrow CJK deterministic-scan candidates with SQL LIKE (V1-A2).
+
+        Returns the eligible rows (in their original order) whose searchable
+        text contains one of the 1-2 longest query terms, or None when the
+        prefilter cannot run (the caller then falls back to the full scan).
+
+        ``LIKE '%term%'`` over
+        ``(normalized_text, source_name, source_path, metadata_json)`` is a
+        superset of each kept term's match condition in ``_score_candidate``
+        (substring match for CJK terms, token occurrence for latin terms --
+        a token is always a substring of the column it came from), and
+        ``_score_candidate`` remains the final scorer, so ranking among the
+        kept rows is unchanged.
+
+        Accepted tradeoff (per the ticket): only the 1-2 longest terms are
+        used because they are the most selective -- that is what makes the
+        scan cheaper. Rows matching *only* shorter variant terms are dropped
+        by the prefilter. The ticket's acceptance bar is top-15 agreement
+        with the full scan on the six sample questions (L1-L3/E1-E3),
+        verified by test. If the prefilter ever diverges from the baseline
+        on production, set ``AIOS_RAG_V2_CJK_PREFILTER=0`` to disable it.
+        """
+        if not cjk_prefilter_enabled():
+            return None
+        usable_terms = sorted(
+            {term for term in terms if term}, key=lambda term: (-len(term), term)
+        )[:2]
+        if not usable_terms or not eligible_rows:
+            return None
+        search_expression = (
+            "COALESCE(normalized_text, '') || ' ' || COALESCE(source_name, '')"
+            " || ' ' || COALESCE(source_path, '')"
+            " || ' ' || COALESCE(metadata_json, '')"
+        )
+        clauses = []
+        parameters: list[str] = []
+        for term in usable_terms:
+            clauses.append("((" + search_expression + ") LIKE ? ESCAPE '\\')")
+            parameters.append("%" + self._escape_like_term(term) + "%")
+        try:
+            matched_ids = {
+                str(row["chunk_id"])
+                for row in self._conn.execute(
+                    "SELECT chunk_id FROM chunks WHERE retrievable = 1 AND ("
+                    + " OR ".join(clauses)
+                    + ")",
+                    parameters,
+                ).fetchall()
+            }
+        except sqlite3.Error:
+            LOGGER.warning(
+                "rag_v2 CJK LIKE prefilter failed; using full scan",
+                exc_info=True,
+            )
+            return None
+        return [
+            row for row in eligible_rows if str(row["chunk_id"]) in matched_ids
+        ]
+
     def _candidate_rows(
         self,
         query: str,
@@ -3479,7 +3894,16 @@ class LocalChunkIndex:
         # compact named-procedure query, a deterministic local scan is both
         # bounded and safer: _score_candidate's CJK n-grams then evaluate every
         # eligible chunk instead of silently dropping an exact Japanese match.
+        # OPT-RAGV2-PYLOOPS V1-A2: narrow that scan with a SQL LIKE prefilter
+        # first, on the 1-2 longest variant terms (the most selective ones;
+        # see _cjk_like_prefilter_rows for the accepted tradeoff).
+        # _score_candidate remains the final scorer, so ranking among the kept
+        # rows is unchanged while chunks that cannot match skip the expensive
+        # per-row Python tokenization.
         if _CJK_RE.search(query):
+            prefiltered = self._cjk_like_prefilter_rows(eligible_rows, terms)
+            if prefiltered is not None:
+                return prefiltered, "deterministic_scan"
             return list(eligible_rows), "deterministic_scan"
         match_query = " OR ".join(f'"{term.replace(chr(34), chr(34) * 2)}"' for term in terms)
         try:
@@ -3558,6 +3982,7 @@ class LocalChunkIndex:
 
     def close(self) -> None:
         self._dense_matrix_cache = None
+        self._sparse_vector_cache = None
         self._conn.close()
 
     def _chunk_row(self, chunk: DocumentChunk) -> tuple[Any, ...]:

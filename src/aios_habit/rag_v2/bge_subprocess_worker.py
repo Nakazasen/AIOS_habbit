@@ -269,6 +269,30 @@ def main() -> None:
                     # Force a harmless schema read now so index failures are
                     # attributed during readiness rather than the first query.
                     pipeline.index.embedding_status()
+                    # OPT-RAGV2-PYLOOPS V2-A: warm the numpy dense matrix cache
+                    # now so the first ("cold") query does not pay the ~90s
+                    # first-load inside its query timeout. A preload failure
+                    # never fails init: the lazy query-time load still applies.
+                    init_phase = "cache_preload"
+                    try:
+                        dense_chunks, dense_ms = (
+                            pipeline.index.preload_dense_matrix_cache()
+                        )
+                        sparse_chunks, sparse_ms = (
+                            pipeline.index.preload_sparse_vector_cache()
+                        )
+                        print(
+                            "bge_worker_stage "
+                            f"dense_preload_chunks={dense_chunks} "
+                            f"dense_preload_ms={dense_ms:.1f} "
+                            f"sparse_preload_chunks={sparse_chunks} "
+                            f"sparse_preload_ms={sparse_ms:.1f}",
+                            file=sys.stderr,
+                            flush=True,
+                        )
+                    except Exception:
+                        traceback.print_exc(file=sys.stderr)
+                        sys.stderr.flush()
                 except Exception:
                     traceback.print_exc(file=sys.stderr)
                     sys.stderr.flush()
