@@ -197,7 +197,7 @@ def _render_summary(data, docx_path: Path, chart_path: Optional[Path]) -> str:
     if data.classification is not None:
         c = data.classification
         lines.append(
-            f"- **Phân loại tự động gợi ý:** {c.cause_group_vi or MISSING} "
+            f"- **Phân loại tự động gợi ý:** {c.nhom_nguyen_nhan or MISSING} "
             f"(độ tin cậy {c.confidence:.0%}) — cần người điều tra xác nhận"
         )
     else:

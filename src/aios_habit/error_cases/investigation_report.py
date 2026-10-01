@@ -28,15 +28,18 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 from .auto_classifier import (
-    ClassificationResult,
+    Classification,
     detect_family,
     classify_error,
     detect_recurrence,
 )
 from .case_form import FIELDS as CASE_FIELDS
-from .glossary import canonical_term
 from .glossary import lookup as glossary_lookup
-from .investigation_tree import InvestigationTree, build_tree
+from .investigation_tree import (
+    BRANCH_LABELS_VI,
+    InvestigationTree,
+    build_tree,
+)
 from .trend_analysis import _parse_dt
 
 MISSING = "Chưa có dữ liệu"
@@ -85,6 +88,13 @@ def _has_column(conn: sqlite3.Connection, table: str, column: str) -> bool:
     return column in cols
 
 
+def _has_glossary_table(conn: sqlite3.Connection) -> bool:
+    row = conn.execute(
+        "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'error_glossary'"
+    ).fetchone()
+    return row is not None
+
+
 # ---------------------------------------------------------------------------
 # Data assembly
 # ---------------------------------------------------------------------------
@@ -98,7 +108,7 @@ class InvestigationReportData:
     similar: List[Dict[str, Any]] = field(default_factory=list)
     countermeasures: List[Tuple[str, str]] = field(default_factory=list)
     tree: Optional[InvestigationTree] = None
-    classification: Optional[ClassificationResult] = None
+    classification: Optional[Classification] = None
     recurrence: Optional[Dict[str, Any]] = None
     trend_weeks: List[Tuple[str, int]] = field(default_factory=list)
     total_same_code: int = 0
@@ -196,17 +206,20 @@ def assemble_report_data(conn: sqlite3.Connection, case: Dict[str, Any]) -> Inve
     code = case_error_code(case)
     phenomenon = case_phenomenon(case)
 
-    glossary_entry: Optional[Dict[str, Any]] = None
-    if code:
+    glossary_entry = None
+    glossary_conn = conn if _has_glossary_table(conn) else None
+    if code and glossary_conn is not None:
         try:
-            glossary_entry = glossary_lookup(conn, detect_family(code), code)
+            glossary_entry = glossary_lookup(glossary_conn, detect_family(code), code)
         except Exception:
             glossary_entry = None
 
     similar = _similar_cases(conn, case, code, phenomenon)
     tree = None
     if phenomenon or code:
-        tree = build_tree(phenomenon, code=code, code_family=detect_family(code), conn=conn)
+        tree = build_tree(
+            phenomenon, code=code, code_family=detect_family(code), conn=glossary_conn
+        )
 
     classification = None
     if code or phenomenon:
@@ -216,7 +229,7 @@ def assemble_report_data(conn: sqlite3.Connection, case: Dict[str, Any]) -> Inve
             investigation=_text(case.get("investigation")),
             machine_type=_text(case.get("machine_type")) or None,
             line=_text(case.get("line")) or None,
-            glossary_conn=conn,
+            glossary_conn=glossary_conn,
         )
 
     total_same_code = 0
@@ -266,8 +279,6 @@ def render_trend_chart(data: InvestigationReportData, path: str | Path) -> Optio
         metric=f"Số ca mỗi tuần của mã {data.code or '(không mã)'}",
         values=values,
         nhan_thoi_gian=labels,
-        nguong_tren=None,
-        nguong_duoi=None,
     )
     render_spc_png(chart, out)
     return out
@@ -298,7 +309,7 @@ def _section_case_info(doc: Any, data: InvestigationReportData) -> None:
     hdr[1].text = "Nội dung"
     for spec in CASE_FIELDS:
         label = spec["label"]
-        if spec["id"] == "error_code":
+        if spec["key"] == "error_code":
             value = data.code
         else:
             column = spec.get("column") or ""
@@ -379,16 +390,29 @@ def _section_tree(doc: Any, data: InvestigationReportData) -> None:
         doc.add_paragraph(f"Mã lỗi: {tree.code} (họ {tree.code_family or '—'})")
         if tree.code_name:
             doc.add_paragraph(f"Mô tả mã: {tree.code_name}")
-    for branch in tree.branches:
-        doc.add_heading(f"Nhánh {branch.label}", level=2)
-        for cause in branch.causes:
-            doc.add_paragraph(f"- {cause}", style="List Bullet")
+        if tree.code_cause:
+            doc.add_paragraph(f"Nguyên nhân thường gặp (từ điển): {tree.code_cause}")
+        if tree.code_remedy:
+            doc.add_paragraph(f"Khắc phục (từ điển): {tree.code_remedy}")
+    for branch in tree.branch_order:
+        _add_heading(doc, BRANCH_LABELS_VI.get(branch, branch), level=2)
+        items = tree.branches.get(branch, [])
+        if not items:
+            doc.add_paragraph(MISSING_DETAIL)
+            continue
+        for item in items:
+            star = " ⭐" if item.priority else ""
+            doc.add_paragraph(
+                f"- [ ] {item.question}{star} — Thu thập: {item.data_to_collect}",
+                style="List Bullet",
+            )
     _add_heading(doc, "Chuỗi Why-Why", level=2)
     if not tree.why_chain:
         doc.add_paragraph(MISSING_DETAIL)
         return
-    for level, question in tree.why_chain:
-        doc.add_paragraph(f"- Why {level}: {question}", style="List Bullet")
+    for node in tree.why_chain:
+        hint = f" (Gợi ý: {node.hint})" if node.hint else ""
+        doc.add_paragraph(f"- Why {node.level}: {node.question}{hint}", style="List Bullet")
     doc.add_paragraph("Lưu ý: cây này là khung gợi ý để người điều tra xác nhận ngoài hiện trường, không phải kết luận nguyên nhân.")
 
 
@@ -404,11 +428,10 @@ def _section_classification(doc: Any, data: InvestigationReportData) -> None:
     hdr[0].text = "Mục"
     hdr[1].text = "Kết quả"
     rows = (
-        ("Nhóm nguyên nhân (4M)", _text(result.cause_group_vi)),
-        ("Công đoạn", _text(result.process_stage_vi)),
-        ("Bộ phận phụ trách", _text(result.responsible_dept)),
+        ("Nhóm nguyên nhân (4M)", _text(result.nhom_nguyen_nhan)),
+        ("Công đoạn", _text(result.cong_doan)),
+        ("Bộ phận phụ trách", _text(result.bo_phan)),
         ("Độ tin cậy", f"{result.confidence:.0%}"),
-        ("Phương pháp", _text(result.method)),
     )
     for label, value in rows:
         row = table.add_row().cells
