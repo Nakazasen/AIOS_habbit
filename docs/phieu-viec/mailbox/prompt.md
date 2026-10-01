@@ -1,21 +1,18 @@
-# Vé B0-DICT — Từ điển thuật ngữ + số hóa bảng mã lỗi còn thiếu
+# Vé B0-MEASURE — Đo ≥90% đủ 5 trường bắt buộc (đóng Bước 0)
 
-LANE: [VM] — Muse thực hiện code+test trên VM. OMP KHÔNG làm vé này, chỉ verify trên máy nhà với dữ liệu thật khi Muse báo code xong + commit rõ ràng.
+LANE: [NHÀ] — OMP thực hiện toàn bộ trên máy nhà.
 
 ## Bối cảnh
-Bước 0 yêu cầu 1 database duy nhất + từ điển thuật ngữ; số hóa bảng mã lỗi, thông số
-thiết kế, sơ đồ mạch điện / báo cáo lỗi hiện có. Vé buoc0-deploy đã số hóa 4 bảng mã lỗi
-(3.820 mục) — còn phần chưa số hóa.
+Điều kiện hoàn thành Bước 0 trong file đích: ≥90% bản ghi đủ 5 trường bắt buộc
+(error code, hiện tượng, nguyên nhân, đối sách, công đoạn).
 
 ## Việc cần làm
-1. Rà soát thư mục Drive Dieu-tra-loi: bảng mã / thông số nào chưa vào từ điển → số hóa
-   bổ sung (lấy đúng mã thật, không bịa).
-2. Chuẩn hóa tên gọi: cùng 1 hiện tượng viết nhiều kiểu → ánh xạ về 1 thuật ngữ chuẩn,
-   giữ lại tên gốc để truy vết.
-3. Từ điển phục vụ 3 nơi: gợi ý khi nhập form (B0-FORM), tra cứu Bước 1, phân loại Bước 5.
-4. Code + test trên VM.
+1. Chạy đo trên DB thật: cả list điều tra lỗi (15.707 ca, vé buoc0-deploy) và list LSU
+   (sau vé LSU-1). Đếm % bản ghi đủ 5 trường, chi tiết từng trường thiếu bao nhiêu %.
+2. Nếu <90%: liệt kê trường thiếu nhiều nhất + nguồn nào bù được / nguồn nào chịu
+   (đề xuất backfill cụ thể, không chung chung).
+3. Ghi kết quả vào báo cáo `docs/phieu-viec/ket-qua/b0-measure.md`, commit riêng.
 
 ## Tiêu chí ĐẠT
-- Đo được: % mã lỗi xuất hiện trong DB tra được trong từ điển (báo con số).
-- Test: tra mã có → ra nghĩa + link nguồn; tra mã chưa có → báo "chưa có trong từ điển".
-- OMP verify trên máy nhà với DB thật.
+- Có con số % đo được trên dữ liệu thật. ≥90% → Bước 0 đóng; <90% → có danh sách
+  backfill cụ thể để ra vé tiếp theo (Muse quyết).
