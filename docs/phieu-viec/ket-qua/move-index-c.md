@@ -134,7 +134,9 @@ Ghi chú: lượt đầu (không tăng ngân sách) worker khởi tạo xong nh�
 ## 9. Phạm vi và commit
 
 - Commit nhận vé: `9863cc2`; mốc Pha 0: `87747b0`; mốc Pha 1: `0f9eb5d`; mốc kiểm chứng app: `0c748aa`;
-  báo cáo này là commit riêng sau đó.
+  báo cáo: `4e88143`; trạng thái `xong-cho-duyet`: `15780a0` (chỉ sửa `trang-thai.md`).
+- Cổng tài liệu: `python scripts/check_docs.py` → `DOCUMENTATION_CONTRACT=PASS`. Vé **không đổi mã nguồn**
+  (chỉ manifest máy + docs) nên không chạy full suite.
 - Script smoke (git-ignore, không commit): `scratch/move_index_c_smoke.py`.
 - Ghi chú nhỏ: log worker dùng chung đường dẫn `…\collections\tri_thuc\logs\bge_worker.stderr.log` — lượt smoke
   có spawn worker riêng nên log bị ghi đè; dòng log gốc của app (`init_ms=96044.313`) đã ghi lại trong mục 4.
