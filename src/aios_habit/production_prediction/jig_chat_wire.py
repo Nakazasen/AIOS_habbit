@@ -8,9 +8,10 @@ config path; tests pass fakes.
 from __future__ import annotations
 
 import json
+import re
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional, Tuple
 
 from aios_habit.production_prediction.alert_config_chat import (
     AlertConfig,
@@ -18,9 +19,15 @@ from aios_habit.production_prediction.alert_config_chat import (
     render_text_dashboard,
 )
 from aios_habit.production_prediction.chart_selection import (
+    DANH_SACH_LOAI_BIEU_DO,
+    LOAI_BIEU_DO,
     TEN_LOAI_BIEU_DO,
+    chi_so_kha_dung,
+    chon_va_ve_bieu_do,
     dung_du_lieu_bieu_do,
+    goi_y_loai_bieu_do,
     hieu_lenh_ve_bieu_do,
+    sap_xep_chi_so_uu_tien,
 )
 from aios_habit.production_prediction.jig_alert_cards import build_instant_log_card
 from aios_habit.production_prediction.jig_log_ingest import (
@@ -63,7 +70,7 @@ from aios_habit.production_prediction.session_isolation import (
 _CONFIG_VERBS = (
     "them email", "thêm email", "xoa email", "xóa email",
     "nguong", "ngưỡng", "gian cach", "giãn cách",
-    "gop tin", "gộp tin",
+    "gop tin", "gộp tin", "bieu do gui mail", "biểu đồ gửi mail",
 )
 _CONFIG_DASHBOARD_HINTS = ("cau hinh", "cấu hình", "cai dat", "cài đặt", "bang cau", "bảng cấu hình")
 _CONFIG_SCOPES = ("canh bao", "cảnh báo", "lsu", "jig", "email", "nguong", "ngưỡng")
@@ -96,8 +103,15 @@ def is_persona_intent(text: str) -> bool:
 
 
 def is_chart_intent(text: str) -> bool:
-    """Detect natural-language chart requests for 015-csv-chart-selector."""
-    return any(hint in _norm(text) for hint in _CHART_HINTS)
+    """Detect natural-language chart requests for 015-csv-chart-selector.
+
+    Lenh cau hinh "bieu do gui mail" khong phai lenh ve bieu do:
+    no thuoc ve parse_config_command.
+    """
+    norm = _norm(text)
+    if "gửi mail" in norm or "gui mail" in norm:
+        return False
+    return any(hint in norm for hint in _CHART_HINTS)
 
 
 def is_stream_pause_intent(text: str) -> Optional[bool]:
@@ -130,12 +144,19 @@ def load_alert_config(path: str | Path) -> AlertConfig:
         cooldown = int(data.get("gian_cach_phut", 30))
     except (ValueError, TypeError):
         cooldown = 30
+    raw_charts = data.get("bieu_do_dinh_kem", ["xu_huong"])
+    if not isinstance(raw_charts, list):
+        raw_charts = ["xu_huong"]
+    charts = [str(b).strip() for b in raw_charts if str(b).strip() in LOAI_BIEU_DO]
+    if not charts and "bieu_do_dinh_kem" not in data:
+        charts = ["xu_huong"]
     return AlertConfig(
         nguoi_nhan=recipients,
         nguong_phan_tram=threshold,
         gian_cach_phut=cooldown,
         gop_tin=bool(data.get("gop_tin", True)),
         theo_doi_ewma=bool(data.get("theo_doi_ewma", True)),
+        bieu_do_dinh_kem=charts,
     )
 
 
@@ -147,6 +168,88 @@ def save_alert_config(config: AlertConfig, path: str | Path) -> None:
         json.dumps(config.to_dict(), ensure_ascii=False, indent=2),
         encoding="utf-8",
     )
+
+
+def bieu_do_tu_dong_cho_canh_bao(
+    cau_hinh: AlertConfig,
+    ma_jig: str,
+    ten_chi_so: str,
+    cac_hang: Any,
+    kho_nguong: Optional[KhoNguong] = None,
+) -> List[Tuple[str, bytes, Dict[str, Any]]]:
+    """Ve san cac bieu do user da cau hinh de dinh kem vao mail canh bao.
+
+    Tra ve danh sach ``(ma_loai, anh_png_bytes, meta)`` theo dung thu tu
+    ``cau_hinh.bieu_do_dinh_kem``; loai nao ve loi thi bo qua thay vi lam
+    hong ca chuoi. Mail chi dinh kem duoc khi it nhat mot bieu do ve xong.
+    """
+    ket_qua: List[Tuple[str, bytes, Dict[str, Any]]] = []
+    for ma_loai in (cau_hinh.bieu_do_dinh_kem or []):
+        try:
+            anh, meta = chon_va_ve_bieu_do(
+                ma_loai, ma_jig, ten_chi_so, cac_hang, kho_nguong=kho_nguong
+            )
+        except Exception:
+            continue
+        ket_qua.append((ma_loai, anh, meta))
+    return ket_qua
+
+
+_NHAP_TEP_HINTS = ("nhap tep", "nhập tệp", "nhap file", "nhập file")
+_MAU_DUONG_DAN_CSV = re.compile(r'"([^"]+\.csv)"|(\S+\.csv)', re.IGNORECASE)
+
+
+def is_import_csv_intent(text: str) -> bool:
+    """Nhan dien lenh nhap nguyen tep CSV log JIG (J1-CSV)."""
+    norm = _norm(text)
+    return any(hint in norm for hint in _NHAP_TEP_HINTS) and (
+        "csv" in norm or "log" in norm
+    )
+
+
+def _xu_ly_lenh_nhap_tep(
+    text: str, kho_log_path: str | Path
+) -> JigChatOutcome:
+    """Thuc hien lenh nhap tep CSV, tra loi tieng Viet, khong bao gio crash."""
+    from aios_habit.production_prediction.jig_csv_import import (
+        nhap_tep_csv_log,
+        thong_diep_nhap_tep,
+    )
+
+    hop = _MAU_DUONG_DAN_CSV.search(text or "")
+    if not hop:
+        return JigChatOutcome(
+            handled=True,
+            assistant_text=(
+                "Để nhập cả tệp log một lần, bạn nhắn kèm đường dẫn tệp .csv, "
+                "ví dụ: nhập tệp log C:\\DuLieu\\log_jig.csv "
+                "(đặt trong dấu ngoặc kép nếu đường dẫn có dấu cách). "
+                "Tệp đã nhập rồi mà nội dung không đổi sẽ được bỏ qua."
+            ),
+        )
+    duong_dan = hop.group(1) or hop.group(2)
+    try:
+        ket_qua = nhap_tep_csv_log(duong_dan, kho=kho_log_path)
+    except ValueError as loi:
+        return JigChatOutcome(handled=True, assistant_text=str(loi))
+    except OSError:
+        return JigChatOutcome(
+            handled=True,
+            assistant_text=(
+                "Không đọc được tệp. Vui lòng kiểm tra đường dẫn và quyền đọc tệp rồi thử lại."
+            ),
+        )
+    return JigChatOutcome(
+        handled=True, assistant_text=thong_diep_nhap_tep(ket_qua)
+    )
+
+
+def _la_lenh_chon_bieu_do(text: str) -> bool:
+    """True khi user chon loai bieu do de ve ngay (khac lenh cau hinh mail)."""
+    norm = _norm(text)
+    if "gửi mail" in norm or "gui mail" in norm:
+        return False
+    return "chọn biểu đồ" in norm or "chon bieu do" in norm
 
 
 def _doi_moc_iso(gia_tri: Any) -> Any:
@@ -204,6 +307,44 @@ def _quyet_dinh_ve_bieu_do(
                              if isinstance(h, dict) and str(h.get("jig_id", "")).strip()})
     danh_sach_chi_so = sorted({str(h.get("metric_name", "")).strip() for h in cac_hang
                                 if isinstance(h, dict) and str(h.get("metric_name", "")).strip()})
+    # J1-CSV: lenh "chon bieu do <loai>" ve ngay, khong hoi lai (ap dung luon).
+    if _la_lenh_chon_bieu_do(text):
+        ma_loai = goi_y_loai_bieu_do(text)
+        if ma_loai is None:
+            lua_chon = ", ".join(ten for _, ten in DANH_SACH_LOAI_BIEU_DO)
+            return JigChatOutcome(
+                handled=True,
+                assistant_text=(
+                    "Bạn muốn chọn loại biểu đồ nào? Hiện có: " + lua_chon + ". "
+                    "Ví dụ: chọn biểu đồ phân bố."
+                ),
+            )
+        lenh_chon = hieu_lenh_ve_bieu_do(text, danh_sach_jig, danh_sach_chi_so)
+        ma_jig_chon = lenh_chon.ma_jig or (danh_sach_jig[0] if danh_sach_jig else "")
+        chi_so_uu_tien = sap_xep_chi_so_uu_tien(danh_sach_chi_so)
+        ten_chi_so_chon = lenh_chon.ten_chi_so or (chi_so_uu_tien[0] if chi_so_uu_tien else "")
+        try:
+            anh_chon, meta_chon = chon_va_ve_bieu_do(
+                ma_loai, ma_jig_chon, ten_chi_so_chon, cac_hang, kho_nguong=kho_nguong
+            )
+        except ValueError as loi:
+            return JigChatOutcome(handled=True, assistant_text="⚠️ " + str(loi))
+        except Exception:
+            return JigChatOutcome(
+                handled=True,
+                assistant_text="Không vẽ được biểu đồ lúc này. Vui lòng thử lại hoặc chọn chỉ số khác ở Thẻ 1.",
+            )
+        ten_loai = TEN_LOAI_BIEU_DO.get(ma_loai, ma_loai)
+        return JigChatOutcome(
+            handled=True,
+            assistant_text=(
+                "Đã chọn " + ten_loai + " cho " + meta_chon["ma_jig"] + " — "
+                + meta_chon["ten_chi_so"] + " (áp dụng ngay). "
+                "Ảnh đã lưu vào phiên để xem lại ở Thẻ 1 và dùng cho email cảnh báo."
+            ),
+            chart_png=anh_chon,
+            chart_meta=meta_chon,
+        )
     lenh = hieu_lenh_ve_bieu_do(text, danh_sach_jig, danh_sach_chi_so)
     if lenh.con_thieu:
         return JigChatOutcome(
@@ -318,6 +459,42 @@ def _cac_hang_ve(rows_provider: Optional[Callable[[], Any]]) -> List[Any]:
     if not rows:
         return []
     return list(rows)
+
+
+def _bieu_do_canh_bao_tu_dong(
+    config: AlertConfig,
+    kho: KhoNguong,
+    chart_rows_provider: Optional[Callable[[], Any]],
+    ma_jig: str,
+    ten_chi_so: str,
+) -> Tuple[Optional[bytes], Optional[Dict[str, Any]]]:
+    """Ve san bieu do da cau hinh khi canh bao kich hoat (J1-CSV).
+
+    Tra ve ``(anh_png, meta)`` cua bieu do dau tien ve duoc, hoac
+    ``(None, None)`` khi khong co du lieu / khong ve duoc.
+    """
+    if chart_rows_provider is None:
+        return None, None
+    cac_hang = _cac_hang_ve(chart_rows_provider)
+    if not cac_hang:
+        return None, None
+    tu_dong = bieu_do_tu_dong_cho_canh_bao(
+        config, ma_jig, ten_chi_so, cac_hang, kho_nguong=kho
+    )
+    if not tu_dong:
+        return None, None
+    _, anh, meta = tu_dong[0]
+    return anh, meta
+
+
+def _cau_tu_dong_dinh_kem(meta: Optional[Dict[str, Any]]) -> str:
+    if not meta:
+        return ""
+    ten_loai = TEN_LOAI_BIEU_DO.get(str(meta.get("loai_bieu_do") or ""), "biểu đồ")
+    return (
+        "\n\nĐã tự động vẽ " + ten_loai + " theo cấu hình để đính kèm "
+        "vào email cảnh báo."
+    )
 
 
 def decide_jig_action(
@@ -461,7 +638,21 @@ def decide_jig_action(
             )
         if uu_tien is None:
             reply += " Chưa có ngưỡng thật cho chỉ số này nên mới đối chiếu xu hướng EWMA."
-        return JigChatOutcome(handled=True, assistant_text=reply)
+        anh_canh_bao, meta_canh_bao = None, None
+        if result.get("canh_bao"):
+            anh_canh_bao, meta_canh_bao = _bieu_do_canh_bao_tu_dong(
+                config, kho, chart_rows_provider, first.jig_id, first.metric
+            )
+            reply += _cau_tu_dong_dinh_kem(meta_canh_bao)
+        return JigChatOutcome(
+            handled=True,
+            assistant_text=reply,
+            chart_png=anh_canh_bao,
+            chart_meta=meta_canh_bao,
+        )
+    # J1-CSV: lenh nhap nguyen tep CSV duoc uu tien truoc moi nhan dien dong log.
+    if is_import_csv_intent(text):
+        return _xu_ly_lenh_nhap_tep(text or "", kho_log_path)
     if first_line and is_jig_log_line(first_line):
         parsed = [p for line in (text or "").splitlines() if (p := parse_jig_log_line(line))]
         if not parsed:
@@ -492,7 +683,18 @@ def decide_jig_action(
         reply = format_instant_card_text(card)
         if len(parsed) > 1:
             reply += f"\nĐã nhận thêm {len(parsed) - 1} dòng log trong cùng tin nhắn."
-        return JigChatOutcome(handled=True, assistant_text=reply)
+        anh_canh_bao, meta_canh_bao = None, None
+        if result.get("canh_bao"):
+            anh_canh_bao, meta_canh_bao = _bieu_do_canh_bao_tu_dong(
+                config, kho, chart_rows_provider, first.jig_id, first.metric
+            )
+            reply += _cau_tu_dong_dinh_kem(meta_canh_bao)
+        return JigChatOutcome(
+            handled=True,
+            assistant_text=reply,
+            chart_png=anh_canh_bao,
+            chart_meta=meta_canh_bao,
+        )
     if is_chart_intent(text):
         return _quyet_dinh_ve_bieu_do(text, chart_rows_provider, kho_nguong=kho)
     tam_dung = is_stream_pause_intent(text)
@@ -530,6 +732,7 @@ def decide_jig_action(
         config.gian_cach_phut = updated.gian_cach_phut
         config.gop_tin = updated.gop_tin
         config.theo_doi_ewma = updated.theo_doi_ewma
+        config.bieu_do_dinh_kem = list(updated.bieu_do_dinh_kem)
         return JigChatOutcome(
             handled=True,
             assistant_text=loi_nhan + "\n\n" + render_text_dashboard(config),

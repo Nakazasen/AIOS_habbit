@@ -13,7 +13,7 @@ import math
 import re
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Sequence
+from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 from aios_habit.production_prediction.spc_chart import SpcChartInput
 
@@ -516,3 +516,116 @@ def hieu_lenh_ve_bieu_do(
     if not chi_so_tim:
         con_thieu.append("tên chỉ số")
     return KetQuaLenhVe(ma_jig=ma_jig_tim, ten_chi_so=chi_so_tim, loai_bieu_do=loai, con_thieu=con_thieu)
+
+
+# --- Chon bieu do (J1-CSV): UI chon loai bieu do, ap dung ngay ---
+
+DANH_SACH_LOAI_BIEU_DO = (
+    ("xu_huong", "Xu hướng theo thời gian"),
+    ("phan_bo", "Phân bố giá trị"),
+    ("so_sanh_mau", "So sánh theo màu"),
+)
+"""Danh sach chon loai bieu do cho UI (select-box / lenh chat).
+
+Giu dung mot nguon that voi ``TEN_LOAI_BIEU_DO`` de anh xem truoc
+va anh dinh kem mail khong bao gio lech nhau.
+"""
+
+
+def liet_ke_loai_bieu_do() -> str:
+    """Chuoi tieng Viet liet ke cac loai bieu do de hien trong chat/UI."""
+    return ", ".join(ten + " (" + ma + ")" for ma, ten in DANH_SACH_LOAI_BIEU_DO)
+
+
+def goi_y_loai_bieu_do(cau_chat: str) -> Optional[str]:
+    """Nhan dien ma loai bieu do tu cau tieng Viet, None khi khong ro."""
+    text = (cau_chat or "").strip().lower()
+    if not text:
+        return None
+    for cum_tu, ma_loai in _LOAI_TU_KHOA:
+        if any(cum in text for cum in cum_tu):
+            return ma_loai
+    if "xu huong" in text or "xu hướng" in text or "trend" in text:
+        return "xu_huong"
+    return None
+
+
+def chi_so_kha_dung(cac_hang: Sequence[Any], ma_jig: str = "") -> List[str]:
+    """Danh sach ten chi so co du lieu, uu tien BOW/SKEW truoc."""
+    thay: List[str] = []
+    for hang in cac_hang or []:
+        if ma_jig:
+            jig_hang = _lay_chuoi(hang, "jig_id", "ma_jig", "JigNumber")
+            if jig_hang and jig_hang.strip() != ma_jig.strip():
+                continue
+        ten = _lay_chuoi(hang, "metric_name", "ten_chi_so", "metric")
+        if ten and ten not in thay:
+            thay.append(ten)
+    return sap_xep_chi_so_uu_tien(thay)
+
+
+def chon_va_ve_bieu_do(
+    ma_loai: str,
+    ma_jig: str,
+    ten_chi_so: str,
+    cac_hang: Sequence[Any],
+    *, 
+    cac_chi_so: Optional[Sequence[str]] = None,
+    kho_nguong: Any = None,
+) -> Tuple[bytes, Dict[str, Any]]:
+    """Chon loai bieu do va ve ngay (ap dung luon, khong hoi lai).
+
+    Tra ve ``(anh_png_bytes, meta)``; ``meta`` co dang
+    ``{"ma_jig", "ten_chi_so", "loai_bieu_do", "mo_phong", "ten_anh"}``
+    de duong mail canh bao dung lai nguyen ven.
+    Nem ``ValueError`` tieng Viet khi ma loai khong hop le hoac thieu du lieu.
+    """
+    from aios_habit.production_prediction.spc_chart import render_chart_png
+
+    ma = (ma_loai or "").strip()
+    if ma not in LOAI_BIEU_DO:
+        raise ValueError(
+            "Loại biểu đồ chưa hợp lệ. Vui lòng chọn một trong: "
+            + liet_ke_loai_bieu_do()
+            + "."
+        )
+    import tempfile
+
+    if ma == "so_sanh_mau":
+        danh_sach = list(cac_chi_so) if cac_chi_so else chi_so_kha_dung(cac_hang, ma_jig)[:4]
+        cac_dau_vao = []
+        for chi_so in danh_sach:
+            try:
+                cac_dau_vao.append(
+                    dung_du_lieu_bieu_do(
+                        ma_jig, chi_so, cac_hang, loai_bieu_do=ma,
+                        kho_nguong=kho_nguong,
+                    )
+                )
+            except ValueError:
+                continue
+        if not cac_dau_vao:
+            raise ValueError(
+                "Không đủ dữ liệu để so sánh. "
+                "Vui lòng chọn loại biểu đồ xu hướng hoặc phân bố."
+            )
+        du_lieu: Any = cac_dau_vao
+        ten_hien_thi = ", ".join(danh_sach[: len(cac_dau_vao)])
+    else:
+        du_lieu = dung_du_lieu_bieu_do(
+            ma_jig, ten_chi_so, cac_hang, loai_bieu_do=ma, kho_nguong=kho_nguong
+        )
+        ten_hien_thi = ten_chi_so
+    with tempfile.TemporaryDirectory() as tmp_d:
+        duong_anh = Path(tmp_d) / ("bieu_do_" + ma + ".png")
+        render_chart_png(du_lieu, ma, duong_anh)
+        anh_bytes = duong_anh.read_bytes()
+    cac_chuoi = list(du_lieu) if isinstance(du_lieu, (list, tuple)) else [du_lieu]
+    meta = {
+        "ma_jig": (ma_jig or "").strip(),
+        "ten_chi_so": (ten_hien_thi or "").strip(),
+        "loai_bieu_do": ma,
+        "mo_phong": any(bool(getattr(c, "mo_phong", False)) for c in cac_chuoi),
+        "ten_anh": "bieu_do_" + ma + ".png",
+    }
+    return anh_bytes, meta

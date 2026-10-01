@@ -274,12 +274,15 @@ def ghi_dong_log_jig(
     cac_dong_log: Iterable[Any],
     *,
     kho: str | Path = MAC_DINH_KHO_PATH,
+    nguon: str = "dan_tay",
     ghi_luc: Optional[datetime] = None,
 ) -> Dict[str, Any]:
     """Ghi các dòng log dán tay (``jig_log_ingest.JigLogLine``) vào kho.
 
     Tách riêng khỏi ``ghi_ban_ghi`` vì dòng dán tay không có thuộc tính
     ``event_time`` dạng ``datetime`` mà là ``timestamp`` dạng chuỗi ISO.
+    ``nguon`` mặc định là ``"dan_tay"``; đường nhập nguyên tệp (J1-CSV)
+    truyền ``nguon="tep"`` để phân biệt nguồn trong kho.
     """
     cac_dong: List[DongKhoLog] = []
     bo_qua_rong = 0
@@ -302,7 +305,7 @@ def ghi_dong_log_jig(
             DongKhoLog(
                 ts=str(ts) if ts else None,
                 ghi_luc=moc,
-                nguon="dan_tay",
+                nguon=nguon,
                 tep=jig_id,
                 unit_serial=_chuoi_an_toan(getattr(dong, "unit_serial", "")),
                 jig_id=jig_id,
