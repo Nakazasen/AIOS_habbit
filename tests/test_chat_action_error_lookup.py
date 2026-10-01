@@ -329,3 +329,46 @@ def test_qd2_empty_countermeasure_without_immediate_action(real_db):
         assert card["doi_sach"] == ""
     finally:
         conn.close()
+
+
+# --------------------------------------------------------------------------
+# Regression (2026-10-01): old-schema DB without the error_code_i column
+# (B1-FEAT verify Mốc S1 — search_similar raised IndexError at _has_real_code,
+# swallowed upstream -> 0 cards on the default deploy path).
+# --------------------------------------------------------------------------
+
+
+def test_search_similar_old_schema_without_error_code_i(tmp_path):
+    import json
+    import sqlite3
+
+    db_path = tmp_path / "old_schema.db"
+    conn = sqlite3.connect(str(db_path))
+    conn.row_factory = sqlite3.Row
+    try:
+        init_db(conn)
+        # Simulate a pre-B0-DICT deploy DB: drop the column entirely.
+        conn.execute("ALTER TABLE error_cases DROP COLUMN error_code_i")
+        assert not lookup._has_error_code_i(conn)
+        conn.execute(
+            "INSERT INTO error_cases (no_dvd, error_code_c, phenomenon, cause, "
+            "countermeasure, raw_json) VALUES (?, ?, ?, ?, ?, ?)",
+            (
+                "SIMULATED_20261001",
+                "C4701",
+                "Hiện tượng kẹt",
+                "Nguyên nhân motor",
+                "Đối sách thay motor",
+                json.dumps({"I": "Hiện tượng kẹt C4701", "AB": "Đối sách thay motor"}),
+            ),
+        )
+        conn.commit()
+        # Must not raise; the error_code_c row still counts as a real code.
+        cases, codes, total = lookup.search_similar(conn, "C4701")
+        assert total == 1
+        assert codes and "C4701" in codes
+        assert len(cases) == 1
+        assert cases[0]["co_ma_that"] is True
+        assert "Hiện tượng kẹt" in cases[0]["hien_tuong"]
+    finally:
+        conn.close()

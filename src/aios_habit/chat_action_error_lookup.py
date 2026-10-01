@@ -197,10 +197,17 @@ def _has_real_code(row: sqlite3.Row, has_missing_col: bool) -> bool:
                 return False
         except (KeyError, IndexError, TypeError):
             pass
-    return bool(
-        (row["error_code_c"] or "").strip()
-        or (row["error_code_i"] or "").strip()
-    )
+    # Old-schema DBs (pre-B0-DICT) lack the error_code_i column entirely;
+    # treat as empty instead of raising IndexError (caught silently upstream).
+    try:
+        code_c = (row["error_code_c"] or "").strip()
+    except (KeyError, IndexError, TypeError):
+        code_c = ""
+    try:
+        code_i = (row["error_code_i"] or "").strip()
+    except (KeyError, IndexError, TypeError):
+        code_i = ""
+    return bool(code_c or code_i)
 
 
 def _candidate_rows(
