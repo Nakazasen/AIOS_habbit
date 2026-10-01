@@ -491,6 +491,40 @@ def test_fix4_auth_token_rieng_tung_jig(tmp_path):
         lang_nghe.stop()
 
 
+def test_fix4_auth_tu_choi_jig_chua_cau_hinh(tmp_path):
+    """Jig khong co trong jig_tokens bi tu choi 401 du token hop le (fail-closed)."""
+    bo_dem = StreamBuffer(tmp_path / "fix4-chua-cau-hinh.sqlite")
+    lang_nghe = StreamListener(
+        host="127.0.0.1", port=18816, buffer=bo_dem,
+        jig_tokens={"J-A": "token-a", "J-B": "token-b"},
+    )
+    lang_nghe.start()
+    try:
+        url = "http://127.0.0.1:18816" + STREAM_PATH
+        du_lieu_la = json.dumps([_ban_tin(1, "J-UNKNOWN")]).encode("utf-8")
+
+        def post(du_lieu, token):
+            tieu_de = {"Content-Type": "application/json"}
+            if token is not None:
+                tieu_de["Authorization"] = "Bearer " + token
+            return _post_raw(url, du_lieu, tieu_de)[0]
+
+        # Token hop le cua jig khac cung khong mo cua cho jig chua cau hinh.
+        assert post(du_lieu_la, "token-a") == 401, (
+            "Jig chua cau hinh phai bi tu choi du token hop le"
+        )
+        assert post(du_lieu_la, "token-b") == 401
+        assert _dem_log(bo_dem, "J-UNKNOWN") == 0, (
+            "Khong duoc ghi dong nao cho jig bi tu choi"
+        )
+        # Jig da cau hinh voi dung token van nhan nhu thuong.
+        du_lieu_ok = json.dumps([_ban_tin(1, "J-A")]).encode("utf-8")
+        assert post(du_lieu_ok, "token-a") == 200
+        assert _dem_log(bo_dem, "J-A") == 1
+    finally:
+        lang_nghe.stop()
+
+
 def test_fix5_sender_retry_backoff_roi_thanh_cong(monkeypatch):
     """Loi mang 2 lan dau -> retry voi backoff 0.5s, 1s -> thanh cong lan 3."""
     cac_lan_nghi = []
@@ -555,5 +589,41 @@ def test_fix6_consumer_luu_cursor_xuong_dia_va_resume(tmp_path):
         nguoi_moi = RtConsumer("http://127.0.0.1:18816", duong_dan_cursor=tep_cursor)
         assert nguoi_moi.cursor == nguoi_dung.cursor
         assert nguoi_moi.chay_mot_vong(lambda s: None) == 0
+    finally:
+        lang_nghe.stop()
+
+def test_fix2_lo_co_phan_tu_khong_phai_object_bi_tu_choi(tmp_path):
+    """Mang / NDJSON co phan tu khong phai object: 400, khong ghi dong nao."""
+    bo_dem = StreamBuffer(tmp_path / "fix2-khong-phai-object.sqlite")
+    lang_nghe = StreamListener(host="127.0.0.1", port=18817, buffer=bo_dem)
+    lang_nghe.start()
+    try:
+        url = "http://127.0.0.1:18817" + STREAM_PATH
+
+        # Probe cua OMP: mang [object hop le, "not-an-object"].
+        du_lieu = json.dumps(
+            [_ban_tin(1, "J-A"), "not-an-object"], ensure_ascii=False
+        ).encode("utf-8")
+        status, _ = _post_raw(
+            url, du_lieu, {"Content-Type": "application/json"}
+        )
+        assert status == 400, "Lo co phan tu khong phai object phai bi tu choi"
+        assert _dem_log(bo_dem, "J-A") == 0, "Khong duoc ghi mot phan lo loi"
+
+        # NDJSON co dong khong phai object cung bi tu choi tuong tu.
+        ndjson = json.dumps(_ban_tin(2, "J-A")) + '\n"not-an-object"'
+        status, _ = _post_raw(
+            url, ndjson.encode("utf-8"), {"Content-Type": "application/x-ndjson"}
+        )
+        assert status == 400
+        assert _dem_log(bo_dem, "J-A") == 0
+
+        # Lo toan object van nhan nhu thuong.
+        du_lieu_ok = json.dumps([_ban_tin(3, "J-A")]).encode("utf-8")
+        status, than = _post_raw(
+            url, du_lieu_ok, {"Content-Type": "application/json"}
+        )
+        assert status == 200 and than["so_dong"] == 1
+        assert _dem_log(bo_dem, "J-A") == 1
     finally:
         lang_nghe.stop()

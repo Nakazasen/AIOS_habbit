@@ -317,6 +317,9 @@ def _tach_cac_ban_tin(raw: str) -> List[Dict[str, Any]]:
     Chap nhan ca 3 dang theo dac ta: 1 object JSON (ke ca pretty-print nhieu
     dong), 1 mang JSON, hoac NDJSON (moi dong 1 object JSON). Thu parse toan
     bo body truoc; neu khong phai JSON tron ven thi roi ve NDJSON tung dong.
+    Moi phan tu trong mang / moi dong NDJSON PHAI la object JSON; phan tu
+    khong phai object -> raise ``json.JSONDecodeError`` -> 400, khong ghi
+    mot phan lo (nguyen tu theo dac ta muc 1).
     Raise ``json.JSONDecodeError`` khi khong hieu duoc.
     """
     text = raw.strip()
@@ -329,15 +332,23 @@ def _tach_cac_ban_tin(raw: str) -> List[Dict[str, Any]]:
     if isinstance(item, dict):
         return [item]
     if isinstance(item, list):
-        return [r for r in item if isinstance(r, dict)]
+        for phan_tu in item:
+            if not isinstance(phan_tu, dict):
+                raise json.JSONDecodeError(
+                    "Phan tu trong mang phai la object JSON", text, 0
+                )
+        return list(item)
     records: List[Dict[str, Any]] = []
     for line in text.splitlines():
         line = line.strip()
         if not line:
             continue
         obj = json.loads(line)
-        if isinstance(obj, dict):
-            records.append(obj)
+        if not isinstance(obj, dict):
+            raise json.JSONDecodeError(
+                "Moi dong NDJSON phai la object JSON", line, 0
+            )
+        records.append(obj)
     return records
 
 
@@ -349,9 +360,10 @@ class StreamListener:
     # Token xac thuc Bearer. Hai che do (J1-RT fix):
     # - auth_token: 1 token dung chung (tuong thich nguoc; dung cho ca 2 endpoint).
     # - jig_tokens: dict jig_id -> token RIENG tung jig (theo dac ta muc 1).
-    #   POST stream-log doi token theo tung jig_id trong lo; GET events chap
-    #   nhan bat ky token nao da cau hinh. Ca hai deu None = khong yeu cau
-    #   auth (chi dung trong mang noi bo tin cay).
+    #   POST stream-log doi token theo tung jig_id trong lo; jig khong co trong
+    #   map bi tu choi 401 (fail-closed), khong roi ve token chung.
+    #   GET events chap nhan bat ky token nao da cau hinh. Ca hai deu None = khong
+    #   yeu cau auth (chi dung trong mang noi bo tin cay).
     auth_token: Optional[str] = None
     jig_tokens: Optional[Dict[str, str]] = None
     _server: Optional[ThreadingHTTPServer] = field(default=None, init=False)
@@ -365,11 +377,12 @@ class StreamListener:
         return None
 
     def _token_cho_jig(self, jig_id: str) -> Optional[str]:
-        """Token yeu cau cho 1 jig cu the. None = jig nay khong yeu cau auth."""
+        """Token yeu cau cho 1 jig cu the. None = jig chua duoc cau hinh (tu choi)."""
         if self.jig_tokens:
-            token = self.jig_tokens.get(jig_id)
-            if token:
-                return token
+            # Da cau hinh map token theo jig: chi nhan token rieng cua chinh jig.
+            # Jig khong co trong map bi tu choi (fail-closed), khong roi ve
+            # token chung, dung dac ta muc 1 "sai/thieu -> 401".
+            return self.jig_tokens.get(jig_id)
         return self.auth_token
 
     def _kiem_tra_auth(self, handler: BaseHTTPRequestHandler) -> bool:
@@ -400,7 +413,8 @@ class StreamListener:
             return False
         for jig_id in cac_jig_id:
             yeu_cau = self._token_cho_jig(jig_id)
-            if yeu_cau is not None and token != yeu_cau:
+            # Fail-closed: jig chua cau hinh token hoac token sai deu tu choi.
+            if yeu_cau is None or token != yeu_cau:
                 return False
         return True
 
