@@ -1,76 +1,70 @@
 # Vé `J1-RT` — JIG realtime: kết quả kiểm chứng trên máy nhà
 
-- Trạng thái: **CHƯA ĐẠT; kiểm lại phát hiện hai blocker chưa được bộ test vé bắt.** Probe JIG không cấu hình vượt xác thực; phần tử JSON không phải object bị bỏ âm thầm và ghi lô một phần. Chờ Muse sửa trên lane `[VM]`, sau đó OMP kiểm lại.
-- Nhánh: `phieu-viec/rag-fix1`. Mã Muse kiểm lại: `f02a9e9` + `edf6f23`; mốc báo cáo OMP trước lượt kiểm này: `ef45353`.
-- Máy: Windows 10 x64, Python 3.11.14. Đúng lane `[VM]`: OMP chỉ kiểm chứng, không sửa mã. CSV nguồn được đọc qua bản mirror cục bộ chỉ-đọc; mọi tệp phát sinh ở `C:/tmp/j1-rt-verify/`, không đưa dữ liệu hoặc SQLite vào repo, không đụng DB gốc, ổ D hay `main`.
+- Trạng thái: **ĐẠT** — hai blocker của lượt kiểm trước đã được Muse vá (`5bb837e`) và OMP kiểm lại độc lập trên máy nhà: test vé **26/26**, probe độc lập **39/39**, E2E dữ liệu thật đạt, cổng nền + full suite ghi ở mục 4. Chờ Muse review.
+- Nhánh: `phieu-viec/rag-fix1`. Mã được kiểm: `5bb837e` (bản vá 2 blocker). Mốc báo cáo: `543c4c5` (Mốc 2) + commit báo cáo này.
+- Máy: Windows 10 x64, Python 3.11.14. Đúng lane `[VM]`: OMP chỉ kiểm chứng, không sửa mã. CSV nguồn đọc qua bản mirror cục bộ chỉ-đọc; mọi tệp phát sinh ở `C:/tmp/j1-rt-verify/r3/`, không đưa dữ liệu hoặc SQLite vào repo, không đụng DB gốc, ổ D hay `main`.
 
-## Mốc kiểm lại sau bản sửa Muse
+## 1. Bản vá của Muse và phạm vi kiểm lại
 
-- Mã Muse được kiểm: `f02a9e9` + `edf6f23`; đã `git pull --rebase origin phieu-viec/rag-fix1` trước khi chạy. Máy Windows 10 x64, Python 3.11.14. Chạy từ `C:/tmp` để kiểm thử dùng đúng mirror CSV cục bộ tại `C:/home/hatch/workspace/aios_data/lsu/Iris LSU/thu nghiem 6pcs do thong so va log/2ND-1035/IRIS_LSU_BOWSKEW_4_2026_08_Sub.csv`; `PYTHONPATH` trỏ tới `D:/Sandbox/AIOS_habbit/src`.
-- Lệnh `uv run --project D:/Sandbox/AIOS_habbit --no-sync --group dev python -m pytest -q D:/Sandbox/AIOS_habbit/tests/test_j1_rt.py` → **24 passed in 12.11s**.
-- Sáu nhóm probe hồi quy trong bộ trên đều đạt: (1) lô 105 dòng → lưu/ACK 100, báo cắt 5; (2) JSON object/mảng pretty-print và NDJSON được nhận; (3) lô có dòng sai trả 400, không ghi một phần; (4) gửi lại lô không tạo dòng trùng; (5) token POST theo từng JIG, token khác/thiếu/sai bị từ chối cho JIG đã cấu hình; (6) sender thử lại với backoff, báo lỗi tiếng Việt khi hết lượt và consumer khôi phục cursor từ tệp sau restart. Các nhóm (3), (4), (6) có nhiều test riêng; toàn bộ test vé chạy trong lệnh nêu trên.
-- Cổng nền: `uv run --no-sync --group dev python -m compileall -q src tests` chạy xong; `PYTHONPATH=src uv run --no-sync --group dev python -m aios_habit.cli audit` → `status: PASS`, không lỗi/cảnh báo; import `aios_habit.workspace_chat_app` → `IMPORT=OK`. Full suite `uv run --no-sync --group dev pytest -q` → **3.572 đạt / 36 bỏ qua / 37 lỗi / 19 error**, exit 1, 516,77 giây. Cả 19 error báo thiếu fixture XLS/XLSX cục bộ; các lỗi còn lại gồm BGE worker/Graphify không sẵn có, kiểm thử cần mạng/provider, `uv.lock`/import package và các assertion RAG/privacy. Không có bài `test_j1_rt.py` trong danh sách lỗi; bộ test vé 24/24 vẫn đạt. Lượt trước ghi nhận 3.564 đạt / 36 bỏ qua / 37 lỗi / 19 error; so số đếm cho thấy thêm 8 đạt, nhưng không kết luận danh tính toàn bộ lỗi giữ nguyên.
+Commit `5bb837e` (22:23:07) trả lời trực tiếp báo cáo blocker `2c19869`:
 
-### Blocker 1 — JIG chưa cấu hình vượt xác thực
+- **Fail-closed theo từng JIG:** `_token_cho_jig` giờ trả `None` cho JIG không có trong `jig_tokens`; `_kiem_tra_auth_post` từ chối khi token yêu cầu là `None` hoặc không khớp (`yeu_cau is None or token != yeu_cau`) — JIG chưa cấu hình bị **401**, không rơi về token chung.
+- **Từ chối phần tử không phải object:** `_tach_cac_ban_tin` ném `json.JSONDecodeError` cho mọi phần tử không phải object ở **cả** nhánh mảng JSON lẫn NDJSON, trước bước kiểm định/ghi → **400**, lô giữ nguyên tử (không ghi một phần).
+- Test hồi quy mới: `test_fix4_auth_tu_choi_jig_chua_cau_hinh`, `test_fix2_lo_co_phan_tu_khong_phai_object_bi_tu_choi` (bộ vé 24 → **26 bài**).
 
-- Đặc tả mục 1 yêu cầu mỗi JIG có Bearer token riêng; thiếu/sai token phải trả 401. Probe HTTP độc lập cấu hình `StreamListener(auth_token=None, jig_tokens={"J-A": "token-a", "J-B": "token-b"})`, rồi gửi `jig_id="J-UNKNOWN"` bằng `Bearer token-a`: máy chủ trả **HTTP 200**, `so_dong=1`; SQLite ghi **1** dòng của JIG chưa cấu hình.
-- Nguyên nhân: `_token_cho_jig()` trả `None` cho JIG không nằm trong map; `_kiem_tra_auth_post()` bỏ qua kiểm tra khi token yêu cầu là `None`. Test mới chỉ thử dùng nhầm token của J-B để gửi cho J-A, chưa thử JIG không có khóa cấu hình.
-- Chưa sửa mã theo ranh giới lane `[VM]`. Muse cần xử lý trường hợp JIG chưa cấu hình và thêm kiểm thử từ chối; sau commit OMP chạy lại probe này cùng test vé. Giữ `dang-lam`; chưa báo đạt.
+Muse đã review độc lập trên clone mới (tip `5bb837e`): 26/26 đỗ, và ghi verdict trong `trang-thai.md` yêu cầu OMP chạy lại 2 probe + test vé. Đúng điều kiện mở gate (không dùng nhánh "4 lần watcher"/`cho-muse`; phiên này là `RELAUNCH 2/4`).
 
-### Blocker 2 — phần tử sai định dạng bị âm thầm bỏ qua
-
-- Đặc tả mục 1 yêu cầu lô có dòng sai format trả 400 và không ghi dòng nào. Probe HTTP độc lập gửi mảng `[{"unit_serial":"U1","jig_id":"J-A","metric":"m","value":1}, "not-an-object"]` với `Content-Type: application/json`: máy chủ trả **HTTP 200**, `so_dong=1`; SQLite ghi **1** dòng hợp lệ trước đó thay vì từ chối toàn lô.
-- Nguyên nhân: nhánh mảng trong `_tach_cac_ban_tin()` chỉ giữ phần tử kiểu object, loại phần tử khác trước khi kiểm định; vì vậy lô không còn biểu hiện lỗi khi vào bước phân tích bản ghi.
-- Chưa sửa mã theo ranh giới lane `[VM]`. Muse cần từ chối phần tử không phải object và thêm kiểm thử chứng minh lô không ghi một phần; sau commit OMP chạy lại probe này cùng test vé. Giữ `dang-lam`; chưa báo đạt.
-
-## 1. Mốc 1 — test vé và nhóm liên quan
+## 2. Mốc 1 — test vé và nhóm hồi quy
 
 | Lệnh / phạm vi | Kết quả |
 |---|---|
-| `tests/test_j1_rt.py` từ repo, không có mirror CSV | **13 đạt / 3 bỏ qua**; các bài cần dữ liệu thật bỏ qua đúng do thiếu đường dẫn trên máy. |
-| Cùng test vé, chạy bằng Python 3.11.14 từ `C:/tmp` với mirror CSV Iris cục bộ | **16/16 đạt**. |
-| Nhóm hồi quy `test_stream_api.py`, `test_iris_any_log_and_archive.py`, `test_iris_log_intake.py`, `test_j1_csv.py` từ gốc repo | **99 đạt / 4 bỏ qua**. |
+| `tests/test_j1_rt.py` chạy từ `C:/tmp` với mirror CSV thật (`C:/home/hatch/...`, 24.375.633 B, SHA-256 `6ebf2930…441c` khớp ghim LSU-1) | **26/26 đạt** (11,88 s), không bài nào skip |
+| Chạy lại xác nhận lúc 23:19 (cùng máy, cùng mirror) | **26/26 đạt** (11,85 s), log `C:/tmp/j1-rt-verify/r3/pytest_j1rt_r3_final.log` |
+| Nhóm hồi quy từ gốc repo: `test_stream_api`, `test_iris_any_log_and_archive`, `test_iris_log_intake`, `test_j1_csv` | **99 đạt / 4 bỏ qua** (4 skip là cổng dữ liệu thật hardcode path Linux — đúng thiết kế) |
 
-Một lượt nhóm hồi quy chạy nhầm `cwd=C:/tmp` làm lệch fixture tương đối; chạy lại từ gốc repo cho kết quả nêu trên. Không dùng kết quả lỗi do sai `cwd` làm kết luận về mã.
+## 3. Mốc 2 — probe độc lập (39/39 đạt, 0 FAIL)
 
-## 2. Mốc 2 — E2E phát lại qua HTTP
+Script `C:/tmp/j1-rt-verify/r3/probes_j1rt_r3.py` chạy trên Python 3.11.14, mỗi nhóm dùng listener + SQLite riêng. Tổng kết: **39 PASS / 0 FAIL** (`probe_r3_summary.json`).
 
-- Từ CSV JIG thật, lấy **60 dòng `SKEW:BLACK` theo thứ tự thời gian**; thêm **12 điểm đuôi mô phỏng** tính từ thống kê nền để kích hoạt drift. Không sửa nội dung 60 dòng nguồn. Gửi 72 bản tin qua `gui_lo_len_server` đến `StreamListener` cục bộ bằng Bearer token.
-- Kết quả: **72/72 dòng được lưu**; `RtConsumer` nhận **2 sự kiện `canh_bao_drift`**; thẻ cảnh báo hiển thị nhãn `SIMULATED_REALTIME` bằng tiếng Việt. GET thiếu token trả **401**.
-- SQLite giữ sự kiện sau khi khởi động lại listener. Lưu cursor `2` ra tệp scratch rồi khởi tạo consumer mới với cursor đó cho kết quả 0 sự kiện mới; consumer mặc định cursor `0` đọc lại 2 sự kiện. Như vậy kho sự kiện bền, còn việc lưu/khôi phục cursor hiện do bên gọi tự làm.
-- Kiểm tra giới hạn: gửi **105** dòng trong một lô; server lưu **100** nhưng trả HTTP 200 với `so_dong=105`. Năm dòng bị bỏ mà bên gửi được xác nhận đã nhận đủ — **lỗi mất dữ liệu chặn ĐẠT**.
-- Kiểm tra lỗi lô: lô có dòng hợp lệ trước rồi đến dòng không hợp lệ trả **400**, nhưng dòng hợp lệ đứng trước đã được ghi SQLite. Đây là ghi một phần trên phản hồi lỗi; gửi lại lô có thể ghi trùng.
-- Kiểm tra JSON: object `application/json` được định dạng nhiều dòng (pretty JSON) trả **400**, dù đặc tả cho phép một object JSON. Bộ phân nhánh hiện coi mọi newline là NDJSON.
-
-## 3. Đối chiếu hợp đồng đặc tả ↔ mã
-
-| Hợp đồng | Chứng cứ | Kết luận |
+| Nhóm | Nội dung | Kết quả |
 |---|---|---|
-| JSON object, array hoặc NDJSON hợp lệ | `j1-rt-api-spec.md` mục 1 cho phép cả ba; `stream_api.py` chọn NDJSON chỉ vì body có newline. Pretty JSON một object đã thử và bị 400. | Sai định dạng hợp lệ; cần sửa trước ĐẠT. |
-| Tối đa 100 dòng/lô, phần thừa bị cắt | Đặc tả mô tả cắt phần thừa; mã chỉ append `records[:100]` nhưng phản hồi `so_dong=len(records)`. Probe 105 dòng xác nhận 100 lưu, 105 báo nhận. | Mất dữ liệu và ACK sai; blocker. |
-| Lỗi 400 không tạo trạng thái nhập khó đoán | Probe lô trộn hợp lệ/sai trả 400 sau khi dòng hợp lệ đầu tiên đã commit. Đặc tả chưa nêu rõ tính nguyên tử của lô; đây là rủi ro toàn vẹn dữ liệu cần Muse quyết và xử lý. | Ghi một phần; gửi lại có thể trùng. |
-| Token riêng từng JIG | Đặc tả mục 1 và checklist hạ tầng yêu cầu token riêng; `StreamListener` chỉ có một `auth_token` dùng chung cho listener. | Chưa đáp ứng phân quyền theo JIG. |
-| Replay sender thử lại lỗi mạng/timeout theo backoff | Đặc tả mục 1 yêu cầu tối đa 3 lần; `_gui_mot_lo` đổi lỗi mạng/timeout thành `ValueError` ngay, không thử lại. | Thiếu cơ chế retry của sender. |
-| Consumer tiếp tục từ cursor đã lưu | Đặc tả mục 2 yêu cầu resume từ cursor cuối đã lưu; `RtConsumer.cursor` chỉ là trường RAM, không có lưu bền trong consumer. Consumer có retry backoff và chỉ tiến cursor sau khi xử lý hết lô sự kiện. | Cần bên gọi tự lưu/khôi phục; chưa có hợp đồng lưu cursor bền ở consumer. |
-
-Các điểm khớp đã kiểm: sự kiện được lưu SQLite và còn sau khi listener khởi động lại; truy vấn sự kiện giữ thứ tự cursor và giới hạn `limit` tối đa 500; consumer có retry lỗi poll; dòng phát lại được gắn nhãn `SIMULATED_REALTIME`. Checklist hạ tầng nêu rõ máy chủ, LAN, agent trên JIG, token, vận hành và thứ tự triển khai. Triển khai hạ tầng thật thuộc vé khác theo phạm vi vé.
+| P1 | Lô **105 dòng** | HTTP 200, ACK `so_dong=100` + `bi_cat_bot=5`; DB đúng **100 dòng** — không mất dữ liệu, ACK trung thực |
+| P2 | JSON object pretty-print nhiều dòng + NDJSON | Nhận đúng cả hai (200; `so_dong=1` và `2`) |
+| P3 | Lô có dòng sai, dòng hợp lệ đứng **trước** | **400**, DB **0 dòng** — batch nguyên tử, không ghi một phần |
+| P4 | Gửi lại y nguyên lô (retry) | `trung_lap=2`, DB vẫn 2 dòng; lặp cả với `event_id` gửi kèm — không ghi trùng |
+| P5 | Token riêng từng JIG | Đúng token → 200; dùng nhầm token jig khác → 401; thiếu token → 401; **JIG chưa cấu hình + token hợp lệ → 401 và 0 dòng ghi** (blocker 1 đã hết); GET: token bất kỳ đã cấu hình → 200, thiếu/sai → 401 |
+| P6 | Phần tử không phải object (blocker 2) | Mảng `[{...}, "not-an-object"]` → **400**, DB 0 dòng; NDJSON có dòng chuỗi → **400**, DB 0 dòng; lô toàn object → 200 và ghi đủ — blocker 2 đã hết |
+| P7 | E2E dữ liệu thật | 60 dòng `SKEW:BLACK` thật từ CSV mirror + 12 điểm drift mô phỏng (tb+4σ tính từ chính 60 giá trị thật, gắn `SIMULATED_REALTIME`) → gửi 2 lô qua HTTP: **72/72 dòng lưu**; consumer nhận **2 cảnh báo `canh_bao_drift`**; thẻ cảnh báo hiện "[Dữ liệu phát lại mô phỏng]"; sự kiện giữ nguồn `SIMULATED_REALTIME`; GET thiếu token → 401; cursor lưu đĩa, consumer mới nạp lại → **0 sự kiện mới**; sự kiện bền qua restart listener |
+| P8 | Sender retry | Lỗi mạng → thử lại 3 lần có backoff rồi báo lỗi tiếng Việt; lỗi HTTP 400 → báo ngay, không thử lại |
 
 ## 4. Mốc 3 — cổng nền và full suite
 
 - `uv run --no-sync --group dev python -m compileall -q src tests` → **EXIT=0**.
 - `uv run --no-sync --group dev python scripts/check_docs.py` → **DOCUMENTATION_CONTRACT=PASS**.
-- CLI audit với `PYTHONPATH=src` → **`status: PASS`**, không lỗi/cảnh báo; import `aios_habit.workspace_chat_app` với cùng `PYTHONPATH` → **OK**. Lệnh không đặt `PYTHONPATH` ban đầu không tìm thấy package theo bố cục `src`; chạy lại đúng đường dẫn đã đạt.
-- `uv run --no-sync --group dev pytest -q` → **3.564 đạt / 36 bỏ qua / 37 lỗi / 19 error**, exit 1, 561,88 giây. Log: `C:/tmp/j1-rt-verify/pytest_full_j1rt.log`.
-- Lượt full suite này không đặt `AIOS_DATA_DIR` hoặc `AIOS_B5_WORKBOOK`; khác môi trường báo cáo J1-CSV (**3.581/6/26/9**), vì vậy không kết luận tăng/giảm hồi quy theo phép trừ số lượng. Các lỗi hiện tại gồm thiếu fixture dữ liệu cục bộ, Graphify không có trong môi trường, không có kết nối mạng/provider, lỗi tiến trình BGE và một số kiểm thử CLI/lock/quyền riêng tư. Nhóm vé J1-RT và nhóm hồi quy liên quan đã đạt độc lập ở Mốc 1.
-- `git diff --check` và `git diff --cached --check` sạch trước commit Mốc 3. Lượt `git status --short --ignored` báo cảnh báo quyền truy cập ở một số thư mục ignored; không stage dữ liệu ignored.
+- CLI audit (`PYTHONPATH=src`) → **`"status": "PASS"`**, `errors`/`warnings` rỗng; import `aios_habit.workspace_chat_app` → **OK**.
+- Log cổng: `C:/tmp/j1-rt-verify/r3/gates_r3.log`.
+- Full suite: `uv run --no-sync --group dev pytest -q` → **3.574 đạt / 36 bỏ qua / 37 lỗi / 19 error**, exit 1, 620,32 giây; log `C:/tmp/j1-rt-verify/r3/pytest_full_r3.log` (kết thúc 23:14:16). Cây chạy: `543c4c5` = mã `5bb837e` + docs (không gồm commit LEXICAL `4a796ac` — vé khác, vào nhánh sau khi lượt suite bắt đầu). 19 error do thiếu fixture XLS/XLSX cục bộ; các lỗi còn lại gồm BGE worker/Graphify không sẵn có, kiểm thử cần mạng/provider, `uv.lock`/import và assertion RAG/privacy. **Không có bài `test_j1_rt.py`/`test_stream_api.py` trong danh sách lỗi**; đối chiếu lượt full suite liền trước cùng máy (mã tiền-vá `edf6f23`, 3.572/36/37/19): **+2 đạt đúng bằng 2 test hồi quy mới**, số lỗi/error/bỏ qua không đổi.
 
 ## 5. Đối chiếu tiêu chí vé
 
-- [x] Có tài liệu đặc tả endpoint, định dạng, tần suất, xác thực, retry, cursor, drift và giới hạn.
-- [x] Prototype phát lại CSV thật theo thời gian, đi qua HTTP và consumer; nhãn mô phỏng được giữ rõ.
-- [x] Có danh sách yêu cầu hạ tầng phía công ty; triển khai thật được xác định ngoài phạm vi vé.
-- [ ] **Chưa đạt tổng thể:** triển khai không tuân thủ một số hợp đồng trong chính đặc tả; đặc biệt ACK sai làm mất 5/105 dòng, JSON hợp lệ bị từ chối, xác thực chưa tách token từng JIG, sender thiếu retry, cursor không được lưu bền. Cần Muse sửa trên lane `[VM]`, sau đó OMP chạy lại probe giới hạn, JSON, lô lỗi, token, retry/cursor và test vé trước khi chuyển trạng thái.
+- [x] **Spec API hoàn chỉnh** — `docs/phieu-viec/ket-qua/j1-rt-api-spec.md`: endpoint nhận log (`POST /api/v1/jig/stream-log`), endpoint server→AI (`GET /api/v1/jig/events`), định dạng bản tin (object/mảng/NDJSON), trần 100 bản tin/lô, auth Bearer theo từng JIG, retry/backoff, cursor bền, drift 40+10/3σ và nhãn mô phỏng.
+- [x] **Prototype chạy được với dữ liệu phát lại** — phát lại CSV JIG thật theo đúng dòng thời gian, gắn `SIMULATED_REALTIME`, đi qua HTTP thật tới consumer AI (mục 3, P7); không bịa dữ liệu.
+- [x] **Danh sách yêu cầu hạ tầng** — `docs/phieu-viec/ket-qua/j1-rt-yeu-cau-ha-tang.md`: máy chủ, mạng LAN, agent thu log trên JIG, token, vận hành và thứ tự triển khai. Triển khai hạ tầng thật thuộc việc khác, ngoài phạm vi vé (đúng ghi chú của vé).
+- [x] **Hợp đồng đặc tả ↔ mã** — toàn bộ điểm từng bị lệch ở lượt 1–2 (ACK cắt lô, JSON nhiều dòng, ghi một phần, token dùng chung, thiếu retry, cursor chỉ RAM, JIG chưa cấu hình qua mặt auth, phần tử non-object bị bỏ âm thầm) đã được vá và kiểm lại độc lập đạt.
 
-## 6. Bằng chứng cục bộ
+## 6. Lịch sử các lượt kiểm (rút gọn)
 
-Các bản CSV thử, SQLite, cursor và log nằm ngoài repo trong `C:/tmp/j1-rt-verify/`. Không đưa dữ liệu CSV, nội dung đo hoặc DB vào commit. Commit OMP chỉ cập nhật báo cáo và mailbox; không sửa mã vé.
+| Lượt | Mã | Kết luận |
+|---|---|---|
+| 1 | `3fd332c` | CHƯA ĐẠT — 6 lỗi chặn: ACK lệch 105/100, JSON nhiều dòng 400, ghi một phần lô lỗi, token dùng chung, sender thiếu retry, cursor chỉ ở RAM |
+| 2 (sau `f02a9e9` + `edf6f23`) | `edf6f23` | Test vé 24/24 nhưng còn **2 blocker** phát hiện bằng probe độc lập: JIG chưa cấu hình vượt auth; phần tử non-object bị bỏ âm thầm (ghi một phần, HTTP 200) |
+| 3 (sau `5bb837e`) | `5bb837e` | **ĐẠT** — test vé 26/26, probe 39/39, E2E dữ liệu thật đạt; cổng nền + full suite ghi ở mục 4 |
+
+## 7. Bằng chứng cục bộ
+
+- `C:/tmp/j1-rt-verify/r3/probes_j1rt_r3.py` — script probe độc lập.
+- `C:/tmp/j1-rt-verify/r3/probe_r3_summary.json` — 39 mục PASS/FAIL kèm chi tiết.
+- `C:/tmp/j1-rt-verify/r3/*.sqlite`, `p7-cursor.json` — DB tạm từng nhóm probe.
+- `C:/tmp/j1-rt-verify/r3/gates_r3.log`, `C:/tmp/j1-rt-verify/r3/pytest_full_r3.log`, `C:/tmp/j1-rt-verify/r3/pytest_j1rt_r3_final.log` — log cổng nền + full suite + lượt chạy lại test vé.
+
+Commit OMP chỉ cập nhật báo cáo và mailbox; không sửa mã vé.
