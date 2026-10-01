@@ -15,6 +15,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
 from .jig_alert_cards import build_realtime_alert_card
@@ -30,10 +31,34 @@ class RtConsumer:
     timeout_giay: float = 10.0
     so_lan_thu_toi_da: int = 3
     cursor: int = 0
+    # Duong dan file luu cursor (tuy chon). Neu dat, consumer tu tai cursor
+    # khi khoi tao va tu luu sau moi vong poll thanh cong -> restart van
+    # resume dung cho (dac ta J1-RT muc 2). Ghi kieu atomic (file tam + doi ten).
+    duong_dan_cursor: Optional[str | Path] = None
     _so_lan_loi_lien_tiep: int = field(default=0, init=False)
 
     def __post_init__(self) -> None:
         self.base_url = self.base_url.rstrip("/")
+        if self.duong_dan_cursor:
+            self._tai_cursor_tu_dia()
+
+    def _tai_cursor_tu_dia(self) -> None:
+        """Khoi phuc cursor tu file da luu; giu cursor hien tai neu file loi."""
+        try:
+            duong_dan = Path(self.duong_dan_cursor) if self.duong_dan_cursor else None
+            if duong_dan is not None and duong_dan.is_file():
+                self.cursor = max(0, int(duong_dan.read_text(encoding="utf-8").strip() or 0))
+        except (OSError, ValueError):
+            pass
+
+    def _luu_cursor_xuong_dia(self) -> None:
+        if not self.duong_dan_cursor:
+            return
+        duong_dan = Path(self.duong_dan_cursor)
+        duong_dan.parent.mkdir(parents=True, exist_ok=True)
+        tam = duong_dan.with_name(duong_dan.name + ".tmp")
+        tam.write_text(str(int(self.cursor)), encoding="utf-8")
+        tam.replace(duong_dan)
 
     def _tieu_de(self) -> Dict[str, str]:
         tieu_de = {"Accept": "application/json"}
@@ -93,6 +118,7 @@ class RtConsumer:
         for mot in su_kien:
             xu_ly(mot)
         self.cursor = cursor_moi
+        self._luu_cursor_xuong_dia()
         return len(su_kien)
 
 

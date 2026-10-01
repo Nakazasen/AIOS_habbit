@@ -8,6 +8,7 @@ threading, urllib.
 
 from __future__ import annotations
 
+import hashlib
 import json
 import sqlite3
 import threading
@@ -145,52 +146,106 @@ class StreamBuffer:
                 )
                 """
             )
+            # Idempotency cho ingestion (J1-RT fix): khoa dinh danh moi ban tin
+            # de retry khong ghi trung. event_id do jig gui (neu co); con lai
+            # dung fingerprint tu noi dung ban tin.
+            if "event_key" not in cac_cot:
+                conn.execute("ALTER TABLE jig_stream_logs ADD COLUMN event_key TEXT")
+            if "event_id" not in cac_cot:
+                conn.execute("ALTER TABLE jig_stream_logs ADD COLUMN event_id TEXT")
+            conn.execute(
+                "CREATE UNIQUE INDEX IF NOT EXISTS idx_jig_stream_logs_event_key"
+                " ON jig_stream_logs(event_key)"
+            )
             conn.commit()
 
+    @staticmethod
+    def _khoa_su_kien(record: StreamRecord, event_id: Optional[str]) -> str:
+        """Khoa dinh danh duy nhat cua ban tin de khử trùng khi retry.
+
+        Uu tien ``event_id`` do jig gui; neu khong co thi fingerprint SHA-256
+        tu toan bo noi dung ban tin (xac dinh, khong doi khi gui lai).
+        """
+        if event_id:
+            return "id:" + record.jig_id + ":" + event_id
+        noi_dung = {
+            "timestamp": record.timestamp,
+            "unit_serial": record.unit_serial,
+            "jig_id": record.jig_id,
+            "metric": record.metric,
+            "value": record.value,
+            "unit": record.unit,
+            "status": record.status,
+            "nguon": record.nguon,
+        }
+        raw = json.dumps(noi_dung, ensure_ascii=False, sort_keys=True)
+        return "fp:" + hashlib.sha256(raw.encode("utf-8")).hexdigest()
+
+    def _cap_nhat_drift(self, record: StreamRecord) -> Dict[str, Any]:
+        """Cap nhat lich su EWMA va sinh su kien drift (neu bat dau dot vi pham)."""
+        key = (record.jig_id, record.metric)
+        history = self._histories.setdefault(key, [])
+        if record.value is not None:
+            history.append(record.value)
+            if len(history) > 200:
+                del history[:-200]
+        ket_qua: Dict[str, Any] = {"trang_thai": "Đã ghi nhận", "so_diem_nen": len(history)}
+        # Tu sinh su kien canh bao drift de AI consumer nhan qua events endpoint.
+        # Dung phat_hien_drift (nen cu vs cua so moi); ewma_status cu giu lai
+        # cho tuong thich nguoc nhung khong du nhay de bat dich chuyen that.
+        kiem_drift = phat_hien_drift(self.recent_values(record.jig_id, record.metric, 50))
+        if kiem_drift["canh_bao"]:
+            ket_qua["canh_bao"] = True
+            if key not in self._dang_canh_bao:
+                self._dang_canh_bao.add(key)
+                cursor = self.ghi_su_kien(
+                    "canh_bao_drift",
+                    record.jig_id,
+                    record.metric,
+                    {
+                        "unit_serial": record.unit_serial,
+                        "gia_tri": record.value,
+                        "don_vi": record.unit,
+                        "nguon": record.nguon,
+                        "z": round(kiem_drift["z"], 2),
+                        "trung_binh_nen": round(kiem_drift["trung_binh_nen"], 4),
+                        "trung_binh_moi": round(kiem_drift["trung_binh_moi"], 4),
+                        "chi_tiet": "Thông số trôi khỏi nền (z=%.2f) — có thể dẫn đến phát sinh NG." % kiem_drift["z"],
+                    },
+                )
+                ket_qua["cursor_su_kien"] = cursor
+        else:
+            self._dang_canh_bao.discard(key)
+        return ket_qua
+
     def append(self, record: StreamRecord) -> Dict[str, Any]:
+        """Ghi 1 ban tin (giu de tuong thich nguoc). Nen dung append_idempotent."""
+        return self.append_idempotent(record)
+
+    def append_idempotent(
+        self, record: StreamRecord, event_id: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """Ghi 1 ban tin, bo qua neu da co (retry an toan, khong trung).
+
+        Tra ve dict co ``trung_lap=True`` khi ban tin da ton tai truoc do;
+        truong hop nay KHONG chay lai phat hien drift (diem do da xu ly o
+        lan nhan dau tien).
+        """
+        khoa = self._khoa_su_kien(record, event_id)
         with self._lock:
             with self._connect() as conn:
-                conn.execute(
-                    "INSERT INTO jig_stream_logs (timestamp, unit_serial, jig_id, metric, value, unit, status, nguon)"
-                    " VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                cur = conn.execute(
+                    "INSERT OR IGNORE INTO jig_stream_logs"
+                    " (timestamp, unit_serial, jig_id, metric, value, unit, status, nguon, event_key, event_id)"
+                    " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                     (record.timestamp, record.unit_serial, record.jig_id, record.metric,
-                     record.value, record.unit, record.status, record.nguon),
+                     record.value, record.unit, record.status, record.nguon, khoa, event_id),
                 )
                 conn.commit()
-            key = (record.jig_id, record.metric)
-            history = self._histories.setdefault(key, [])
-            if record.value is not None:
-                history.append(record.value)
-                if len(history) > 200:
-                    del history[:-200]
-            ket_qua = {"trang_thai": "Đã ghi nhận", "so_diem_nen": len(history)}
-            # Tu sinh su kien canh bao drift de AI consumer nhan qua events endpoint.
-            # Dung phat_hien_drift (nen cu vs cua so moi); ewma_status cu giu lai
-            # cho tuong thich nguoc nhung khong du nhay de bat dich chuyen that.
-            kiem_drift = phat_hien_drift(self.recent_values(record.jig_id, record.metric, 50))
-            if kiem_drift["canh_bao"]:
-                ket_qua["canh_bao"] = True
-                if key not in self._dang_canh_bao:
-                    self._dang_canh_bao.add(key)
-                    cursor = self.ghi_su_kien(
-                        "canh_bao_drift",
-                        record.jig_id,
-                        record.metric,
-                        {
-                            "unit_serial": record.unit_serial,
-                            "gia_tri": record.value,
-                            "don_vi": record.unit,
-                            "nguon": record.nguon,
-                            "z": round(kiem_drift["z"], 2),
-                            "trung_binh_nen": round(kiem_drift["trung_binh_nen"], 4),
-                            "trung_binh_moi": round(kiem_drift["trung_binh_moi"], 4),
-                            "chi_tiet": "Thông số trôi khỏi nền (z=%.2f) — có thể dẫn đến phát sinh NG." % kiem_drift["z"],
-                        },
-                    )
-                    ket_qua["cursor_su_kien"] = cursor
-            else:
-                self._dang_canh_bao.discard(key)
-            return ket_qua
+                da_ghi = cur.rowcount == 1
+            if not da_ghi:
+                return {"trang_thai": "Đã ghi nhận (trùng lặp, bỏ qua)", "trung_lap": True}
+            return self._cap_nhat_drift(record)
 
     def ghi_su_kien(self, loai: str, jig_id: str, metric: str, noi_dung: Dict[str, Any]) -> int:
         """Ghi mot su kien len bang events, tra ve cursor (id tu tang)."""
@@ -256,23 +311,98 @@ class StreamBuffer:
         return {"trang_thai": "Đạt", "canh_bao": False}
 
 
+def _tach_cac_ban_tin(raw: str) -> List[Dict[str, Any]]:
+    """Tach body thanh list cac ban tin dict.
+
+    Chap nhan ca 3 dang theo dac ta: 1 object JSON (ke ca pretty-print nhieu
+    dong), 1 mang JSON, hoac NDJSON (moi dong 1 object JSON). Thu parse toan
+    bo body truoc; neu khong phai JSON tron ven thi roi ve NDJSON tung dong.
+    Raise ``json.JSONDecodeError`` khi khong hieu duoc.
+    """
+    text = raw.strip()
+    if not text:
+        return []
+    try:
+        item = json.loads(text)
+    except json.JSONDecodeError:
+        item = None
+    if isinstance(item, dict):
+        return [item]
+    if isinstance(item, list):
+        return [r for r in item if isinstance(r, dict)]
+    records: List[Dict[str, Any]] = []
+    for line in text.splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        obj = json.loads(line)
+        if isinstance(obj, dict):
+            records.append(obj)
+    return records
+
+
 @dataclass
 class StreamListener:
     host: str = "127.0.0.1"
     port: int = 8765
     buffer: Optional[StreamBuffer] = None
-    # Token xac thuc Bearer cho moi jig. None = khong yeu cau auth (tuong thich
-    # nguoc voi ban cu); dat token de bat buoc moi request phai co header
-    # "Authorization: Bearer <token>".
+    # Token xac thuc Bearer. Hai che do (J1-RT fix):
+    # - auth_token: 1 token dung chung (tuong thich nguoc; dung cho ca 2 endpoint).
+    # - jig_tokens: dict jig_id -> token RIENG tung jig (theo dac ta muc 1).
+    #   POST stream-log doi token theo tung jig_id trong lo; GET events chap
+    #   nhan bat ky token nao da cau hinh. Ca hai deu None = khong yeu cau
+    #   auth (chi dung trong mang noi bo tin cay).
     auth_token: Optional[str] = None
+    jig_tokens: Optional[Dict[str, str]] = None
     _server: Optional[ThreadingHTTPServer] = field(default=None, init=False)
     _thread: Optional[threading.Thread] = field(default=None, init=False)
 
+    def _trich_bearer_token(self, handler: BaseHTTPRequestHandler) -> Optional[str]:
+        nhan = handler.headers.get("Authorization", "").strip()
+        if nhan.startswith("Bearer "):
+            token = nhan[len("Bearer "):].strip()
+            return token or None
+        return None
+
+    def _token_cho_jig(self, jig_id: str) -> Optional[str]:
+        """Token yeu cau cho 1 jig cu the. None = jig nay khong yeu cau auth."""
+        if self.jig_tokens:
+            token = self.jig_tokens.get(jig_id)
+            if token:
+                return token
+        return self.auth_token
+
     def _kiem_tra_auth(self, handler: BaseHTTPRequestHandler) -> bool:
-        if not self.auth_token:
+        """Kiem tra auth don token (tuong thich nguoc)."""
+        if not self.auth_token and not self.jig_tokens:
             return True
-        nhan = handler.headers.get("Authorization", "")
-        return nhan.strip() == "Bearer " + self.auth_token
+        return self._trich_bearer_token(handler) == self.auth_token
+
+    def _kiem_tra_auth_get(self, handler: BaseHTTPRequestHandler) -> bool:
+        """GET events chap nhan bat ky token nao da cau hinh (chung hoac rieng jig)."""
+        hop_le = set()
+        if self.auth_token:
+            hop_le.add(self.auth_token)
+        if self.jig_tokens:
+            hop_le.update(self.jig_tokens.values())
+        if not hop_le:
+            return True
+        return self._trich_bearer_token(handler) in hop_le
+
+    def _kiem_tra_auth_post(
+        self, handler: BaseHTTPRequestHandler, cac_jig_id: List[str]
+    ) -> bool:
+        """POST stream-log: token phai dung voi TUNG jig_id trong lo."""
+        if not self.auth_token and not self.jig_tokens:
+            return True
+        token = self._trich_bearer_token(handler)
+        if token is None:
+            return False
+        for jig_id in cac_jig_id:
+            yeu_cau = self._token_cho_jig(jig_id)
+            if yeu_cau is not None and token != yeu_cau:
+                return False
+        return True
 
     def start(self) -> Dict[str, Any]:
         if self.buffer is None:
@@ -292,8 +422,8 @@ class StreamListener:
                 self.end_headers()
                 self.wfile.write(body)
 
-            def _tu_choi_neu_thieu_auth(self) -> bool:
-                if not listener._kiem_tra_auth(self):
+            def _tu_choi_neu_thieu_auth_get(self) -> bool:
+                if not listener._kiem_tra_auth_get(self):
                     self._send_json(401, {"trang_thai": "Thiếu hoặc sai mã truy cập."})
                     return True
                 return False
@@ -303,7 +433,7 @@ class StreamListener:
                 if duong_dan != EVENTS_PATH:
                     self._send_json(404, {"trang_thai": "Không tìm thấy địa chỉ lấy sự kiện."})
                     return
-                if self._tu_choi_neu_thieu_auth():
+                if self._tu_choi_neu_thieu_auth_get():
                     return
                 tham_so = parse_qs(urlsplit(self.path).query)
                 try:
@@ -326,8 +456,6 @@ class StreamListener:
                 if self.path != STREAM_PATH:
                     self._send_json(404, {"trang_thai": "Không tìm thấy địa chỉ nhận log."})
                     return
-                if self._tu_choi_neu_thieu_auth():
-                    return
                 try:
                     length = int(self.headers.get("Content-Length", "0") or 0)
                 except ValueError:
@@ -336,34 +464,51 @@ class StreamListener:
                     self._send_json(400, {"trang_thai": "Nội dung gửi lên trống hoặc quá lớn."})
                     return
                 raw = self.rfile.read(length).decode("utf-8", errors="replace")
-                records: List[Dict[str, Any]] = []
-                content_type = self.headers.get("Content-Type", "")
                 try:
-                    if "ndjson" in content_type or "\n" in raw.strip():
-                        for line in raw.splitlines():
-                            if line.strip():
-                                item = json.loads(line)
-                                if isinstance(item, dict):
-                                    records.append(item)
-                    else:
-                        item = json.loads(raw)
-                        if isinstance(item, dict):
-                            records = [item]
-                        elif isinstance(item, list):
-                            records = [r for r in item if isinstance(r, dict)]
+                    items = _tach_cac_ban_tin(raw)
                 except json.JSONDecodeError:
                     self._send_json(400, {"trang_thai": "Nội dung gửi lên không phải JSON hợp lệ."})
                     return
-                if not records:
+                if not items:
                     self._send_json(400, {"trang_thai": "Không có dòng log hợp lệ để ghi nhận."})
                     return
+                # Validate TOAN BO lo truoc khi ghi bat ky dong nao: lo loi thi
+                # 400 ma khong de lai trang thai ghi mot phan (nguyen tu).
+                da_phan_tich: List[StreamRecord] = []
+                cac_event_id: List[Optional[str]] = []
                 try:
-                    for item in records[:GIOI_HAN_BAN_TIN_MOI_LO]:
-                        buffer.append(parse_stream_record(item))
+                    for item in items:
+                        da_phan_tich.append(parse_stream_record(item))
+                        eid = item.get("event_id")
+                        cac_event_id.append(
+                            str(eid).strip() if eid not in (None, "") else None
+                        )
                 except ValueError as exc:
                     self._send_json(400, {"trang_thai": str(exc)})
                     return
-                self._send_json(200, {"trang_thai": "Đã ghi nhận", "so_dong": len(records)})
+                # Auth theo tung jig (can jig_id tu body nen kiem tra sau khi parse).
+                if not listener._kiem_tra_auth_post(
+                    self, [rec.jig_id for rec in da_phan_tich]
+                ):
+                    self._send_json(401, {"trang_thai": "Thiếu hoặc sai mã truy cập."})
+                    return
+                # Cat lo theo gioi han; ACK chi phan anh so dong xu ly that.
+                xu_ly = da_phan_tich[:GIOI_HAN_BAN_TIN_MOI_LO]
+                bi_cat_bot = len(da_phan_tich) - len(xu_ly)
+                so_moi = 0
+                so_trung_lap = 0
+                for rec, eid in zip(xu_ly, cac_event_id):
+                    ket_qua = buffer.append_idempotent(rec, event_id=eid)
+                    if ket_qua.get("trung_lap"):
+                        so_trung_lap += 1
+                    else:
+                        so_moi += 1
+                self._send_json(200, {
+                    "trang_thai": "Đã ghi nhận",
+                    "so_dong": so_moi + so_trung_lap,
+                    "bi_cat_bot": bi_cat_bot,
+                    "trung_lap": so_trung_lap,
+                })
 
         self._server = ThreadingHTTPServer((self.host, self.port), Handler)
         self._thread = threading.Thread(target=self._server.serve_forever, daemon=True)

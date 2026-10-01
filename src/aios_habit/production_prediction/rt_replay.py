@@ -80,8 +80,16 @@ def gui_lo_len_server(
     kich_co_lo: int = 50,
     nghi_giua_lo_giay: float = 0.0,
     timeout_giay: float = 15.0,
+    so_lan_thu_toi_da: int = 3,
 ) -> Dict[str, Any]:
-    """Gui cac ban tin len server theo lo (JSON). Tra ve tong ket tieng Viet."""
+    """Gui cac ban tin len server theo lo (JSON). Tra ve tong ket tieng Viet.
+
+    Moi lo duoc thu lai khi gap loi mang/timeout (backoff mu 0,5s -> 1s ->
+    2s, toi da ``so_lan_thu_toi_da`` lan) theo dac ta J1-RT muc 1. Loi HTTP
+    (400/401/...) khong thu lai vi gui lai du lieu sai khong co tac dung.
+    Nho ingestion idempotent phia server, gui lai 1 lo sau loi mang khong
+    gay trung du lieu.
+    """
     base_url = base_url.rstrip("/")
     tieu_de = {"Content-Type": "application/json"}
     if auth_token:
@@ -92,13 +100,13 @@ def gui_lo_len_server(
     for ban_tin in cac_ban_tin:
         lo.append(ban_tin)
         if len(lo) >= kich_co_lo:
-            tong_gui += _gui_mot_lo(base_url, tieu_de, lo, timeout_giay)
+            tong_gui += _gui_mot_lo(base_url, tieu_de, lo, timeout_giay, so_lan_thu_toi_da)
             tong_lo += 1
             lo = []
             if nghi_giua_lo_giay > 0:
                 time.sleep(nghi_giua_lo_giay)
     if lo:
-        tong_gui += _gui_mot_lo(base_url, tieu_de, lo, timeout_giay)
+        tong_gui += _gui_mot_lo(base_url, tieu_de, lo, timeout_giay, so_lan_thu_toi_da)
         tong_lo += 1
     return {"trang_thai": "Đã gửi xong", "tong_ban_tin": tong_gui, "tong_lo": tong_lo}
 
@@ -108,16 +116,25 @@ def _gui_mot_lo(
     tieu_de: Dict[str, str],
     lo: List[Dict[str, Any]],
     timeout_giay: float,
+    so_lan_thu_toi_da: int = 3,
 ) -> int:
     than = json.dumps(lo, ensure_ascii=False).encode("utf-8")
     yeu_cau = urllib.request.Request(
         base_url + STREAM_PATH, data=than, headers=tieu_de, method="POST"
     )
-    try:
-        with urllib.request.urlopen(yeu_cau, timeout=timeout_giay) as tra_loi:
-            ket_qua = json.loads(tra_loi.read().decode("utf-8"))
-    except urllib.error.HTTPError as exc:
-        raise ValueError("Máy chủ từ chối lô dữ liệu (HTTP %d)." % exc.code) from None
-    except (urllib.error.URLError, TimeoutError, OSError) as exc:
-        raise ValueError("Không gửi được lô dữ liệu tới máy chủ.") from exc
-    return int(ket_qua.get("so_dong", len(lo)))
+    loi_cuoi: Optional[Exception] = None
+    so_lan = max(1, int(so_lan_thu_toi_da))
+    for lan in range(so_lan):
+        try:
+            with urllib.request.urlopen(yeu_cau, timeout=timeout_giay) as tra_loi:
+                ket_qua = json.loads(tra_loi.read().decode("utf-8"))
+            return int(ket_qua.get("so_dong", len(lo)))
+        except urllib.error.HTTPError as exc:
+            raise ValueError("Máy chủ từ chối lô dữ liệu (HTTP %d)." % exc.code) from None
+        except (urllib.error.URLError, TimeoutError, OSError) as exc:
+            loi_cuoi = exc
+            if lan < so_lan - 1:
+                time.sleep(0.5 * (2 ** lan))  # 0,5s -> 1s -> 2s
+    raise ValueError(
+        "Không gửi được lô dữ liệu tới máy chủ sau %d lần thử." % so_lan
+    ) from loi_cuoi
