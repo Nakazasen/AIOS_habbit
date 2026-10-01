@@ -112,12 +112,14 @@ def gloss_conn():
 # ---------------------------------------------------------------------------
 
 def test_classify_cause_groups_simulated():
+    # SIMULATED inputs using the precision-gated keyword table (B5):
+    # linh_kien via supplier/vendor/exchange terms, thiet_ke via 設計要因.
     cases = [
-        ("C0031", "Lỗi tái phát sau khi reset JIG, hiện tượng lặp lại nhiều lần",
-         "lap_lai"),
-        ("C0032", "Bản vẽ thiết kế linh kiện nhựa sai kích thước, dung sai không đạt",
+        ("C0031", "発生基板のエラー、サプライヤーに調査依頼済み (SIMULATED)",
+         "linh_kien"),
+        ("C0032", "調査の結果、設計要因と判断 (SIMULATED)",
          "thiet_ke"),
-        ("C0033", "Sensor cảm biến hỏng, cần thay thế linh kiện mới",
+        ("C0033", "ベンダーに調査依頼、交換で再現あり (SIMULATED)",
          "linh_kien"),
         ("XYZ999", "Hiện tượng lạ chưa xác định, cần theo dõi thêm", "khac"),
     ]
@@ -126,6 +128,17 @@ def test_classify_cause_groups_simulated():
         assert result.nhom_nguyen_nhan == expected, (code, phenomenon)
         assert 0.0 < result.confidence <= 1.0
         assert result.reasons  # Vietnamese audit trail is never empty
+
+
+def test_cause_taxonomy_matches_ticket_b5():
+    # Ticket B5 contract: exactly these 4 groups, Vietnamese labels.
+    assert ac.CAUSE_GROUPS == ("lap_rap", "thiet_ke", "linh_kien", "khac")
+    assert ac.CAUSE_LABEL_VI == {
+        "lap_rap": "Lắp ráp",
+        "thiet_ke": "Thiết kế",
+        "linh_kien": "Linh kiện",
+        "khac": "Khác",
+    }
 
 
 def test_classify_unknown_code_falls_back_safely():
@@ -267,27 +280,27 @@ def test_detect_recurrence_window_uses_occurred_at_simulated():
 
 SIMULATED_LABELED = [
     {"error_code": "C0031",
-     "phenomenon": "Lỗi tái phát sau khi reset JIG, hiện tượng lặp lại nhiều lần",
-     "expected": {"nhom_nguyen_nhan": "lap_lai",
-                  "cong_doan": None, "bo_phan": None}},
+     "phenomenon": "発生基板のエラー、サプライヤーに調査依頼済み (SIMULATED)",
+     "expected": {"nhom_nguyen_nhan": "linh_kien",
+                  "cong_doan": None, "bo_phan": "Bảo trì"}},
     {"error_code": "C0032",
-     "phenomenon": "Bản vẽ thiết kế linh kiện nhựa sai kích thước, dung sai không đạt",
+     "phenomenon": "調査の結果、設計要因と判断 (SIMULATED)",
      "expected": {"nhom_nguyen_nhan": "thiet_ke",
                   "cong_doan": None, "bo_phan": "Thiết kế"}},
     {"error_code": "C0033",
-     "phenomenon": "Sensor cảm biến hỏng, cần thay thế linh kiện mới",
+     "phenomenon": "ベンダーに調査依頼、交換で再現あり (SIMULATED)",
      "expected": {"nhom_nguyen_nhan": "linh_kien",
-                  "cong_doan": None, "bo_phan": "Điện"}},
+                  "cong_doan": None, "bo_phan": "Bảo trì"}},
     {"error_code": "XYZ999",
      "phenomenon": "Hiện tượng lạ chưa xác định, cần theo dõi thêm",
      "expected": {"nhom_nguyen_nhan": "khac",
                   "cong_doan": None, "bo_phan": None}},
     {"error_code": "C0034",
-     "phenomenon": "Chập mạch điện board nguồn gây mất nguồn đột ngột",
+     "phenomenon": "Chập mạch điện board nguồn gây mất nguồn, 交換で再現 (SIMULATED)",
      "expected": {"nhom_nguyen_nhan": "linh_kien",
                   "cong_doan": None, "bo_phan": "Điện"}},
     {"error_code": "C0035",
-     "phenomenon": "Vít lỏng, bánh răng mòn gây rung",
+     "phenomenon": "Bánh răng mòn gây rung, 外製品質管理に連携し選別依頼 (SIMULATED)",
      "expected": {"nhom_nguyen_nhan": "linh_kien",
                   "cong_doan": None, "bo_phan": "Cơ khí"}},
     {"error_code": "C0036",
@@ -303,13 +316,13 @@ SIMULATED_LABELED = [
      "expected": {"nhom_nguyen_nhan": "khac",
                   "cong_doan": "Điều chỉnh", "bo_phan": "Kỹ thuật"}},
     {"error_code": "F1001",
-     "phenomenon": "Board mạch cháy, chập điện",
+     "phenomenon": "Board mạch cháy, サプライヤーに調査依頼 (SIMULATED)",
      "expected": {"nhom_nguyen_nhan": "linh_kien",
                   "cong_doan": None, "bo_phan": "Điện"}},
     {"error_code": "C0041",
-     "phenomenon": "Lỗi tái phát, hiện tượng lặp lại đúng như lần trước",
-     "expected": {"nhom_nguyen_nhan": "lap_lai",
-                  "cong_doan": None, "bo_phan": None}},
+     "phenomenon": "13金型修正に伴う設計要因の確認 (SIMULATED)",
+     "expected": {"nhom_nguyen_nhan": "thiet_ke",
+                  "cong_doan": None, "bo_phan": "Thiết kế"}},
     {"error_code": "C0042",
      "phenomenon": "Bảo dưỡng định kỳ, vệ sinh máy",
      "expected": {"nhom_nguyen_nhan": "khac",
