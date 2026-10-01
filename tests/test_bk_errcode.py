@@ -253,6 +253,34 @@ def test_backfill_extended_dry_run_then_apply(tmp_path):
         conn.close()
 
 
+def test_backfill_dry_run_unmigrated_db_missing_src_column(tmp_path):
+    """Regression: dry-run (migrate=False) on a DB that has error_code_i but
+    no error_code_i_src must NOT raise 'no such column: error_code_i_src'.
+    Simulates the BK-ERRCODE dry-run on a copy that was never migrated."""
+    db = tmp_path / "bk_nomigrate.db"
+    conn = connect(db)
+    try:
+        init_db(conn)
+        conn.execute(
+            "INSERT INTO import_batches (source_file, file_sha256, sheet_name)"
+            " VALUES ('t.xlsx', 'x', 'History KDTPS')"
+        )
+        _insert(conn, no_dvd="2024/1", occurred_at="2024-10-05",
+                raw={"I": "LCD画面にTIME OUT表示", "N": N_C0180})
+        # Simulate an unmigrated DB: provenance column was never added.
+        conn.execute("ALTER TABLE error_cases DROP COLUMN error_code_i_src")
+        result = backfill_error_code_i_extended(conn, migrate=False)
+        assert result["status"] == "planned"
+        assert result["rows_read"] == 1
+        assert result["extracted_auto"] == 1, result
+        assert result["manual_list"] == 0, result
+        assert result["updated"] == 0
+        # dry-run writes nothing
+        assert conn.execute("SELECT error_code_i FROM error_cases").fetchall()[0][0] is None
+    finally:
+        conn.close()
+
+
 def test_backfill_extended_multi_ktd_goes_manual(tmp_path):
     db = tmp_path / "bk2.db"
     conn = connect(db)

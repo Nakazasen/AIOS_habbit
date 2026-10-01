@@ -515,9 +515,13 @@ def backfill_error_code_i_extended(
     has_src_col = "error_code_i_src" in {
         row[1] for row in conn.execute("PRAGMA table_info(error_cases)")
     }
+    # Dry-run on an unmigrated DB (migrate=False): the provenance column may
+    # not exist yet. Select NULL in that case instead of failing with
+    # "no such column: error_code_i_src".
+    src_select = "error_code_i_src" if has_src_col else "NULL AS error_code_i_src"
     for row in conn.execute(
         "SELECT id, no_dvd, source_row, machine_type, line, occurred_at,"
-        "       error_code_c, error_code_h, error_code_i, error_code_i_src,"
+        f"       error_code_c, error_code_h, error_code_i, {src_select},"
         "       raw_json FROM error_cases"
     ):
         (row_id, no_dvd, source_row, machine_type, line, occurred_at,
