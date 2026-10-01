@@ -1,9 +1,20 @@
 import pytest
+from dataclasses import replace as _dc_replace
 
 from aios_habit.rag_v2 import DocumentElement, ElementType, ExtractionStatus
 from aios_habit.rag_v2.chunking import StructureAwareChunker
 from aios_habit.rag_v2.index import LocalChunkIndex, SearchResult, _rerank_hybrid_window
 from aios_habit.rag_v2.semantic import SemanticCapability
+
+
+def _summary_without_wallclock(summary):
+    """Zero the Phase-B1 timing breakdown for determinism comparisons.
+
+    ``lexical_breakdown_ms`` holds wall-clock milliseconds, so two identical
+    searches never produce equal values. Determinism here means identical
+    *ranking*; timings are excluded explicitly rather than weakening the check.
+    """
+    return _dc_replace(summary, lexical_breakdown_ms=())
 
 
 def make_chunk(text="alpha beta beta", labels=("private",)):
@@ -225,7 +236,10 @@ def test_hybrid_search_diversifies_and_is_deterministic(tmp_path):
         second = index.search_with_summary("signal", limit=3)
         tokenless = index.search_with_summary("!?.,")
 
-    assert first == second
+    assert first.results == second.results
+    assert _summary_without_wallclock(first.summary) == _summary_without_wallclock(
+        second.summary
+    )
     assert [result.document_id for result in first.results] == ["one", "one", "two"]
     assert first.summary.diversity_limited_count == 1
     assert tokenless.results == ()
@@ -275,7 +289,10 @@ def test_query_plan_is_deterministic_and_filters_apply_before_variants(tmp_path)
         first = index.search_with_summary(plan, options=SearchOptions(allowed_privacy_labels=("allowed",)))
         second = index.search_with_summary(plan, options=SearchOptions(allowed_privacy_labels=("allowed",)))
 
-    assert first == second
+    assert first.results == second.results
+    assert _summary_without_wallclock(first.summary) == _summary_without_wallclock(
+        second.summary
+    )
     assert [result.chunk_id for result in first.results] == ["allowed"]
     assert first.summary.filtered_by_privacy_count == 1
 

@@ -377,6 +377,10 @@ class SearchSummary:
     expanded_pool: tuple[tuple[str, str, str], ...] = field(default_factory=tuple)
     assembly_rejected_pool: tuple[tuple[str, str, str], ...] = field(default_factory=tuple)
     lexical_latency_ms: float = 0.0
+    # OPT-RAGV2-LEXICAL Phase B1: per-part lexical timings as
+    # ((part_name, milliseconds), ...). Wall-clock metadata only; excluded from
+    # determinism comparisons in tests. Empty when the lexical channel is idle.
+    lexical_breakdown_ms: Tuple[Tuple[str, float], ...] = ()
     dense_latency_ms: float = 0.0
     sparse_latency_ms: float = 0.0
     multivector_load_latency_ms: float = 0.0
@@ -3438,9 +3442,15 @@ class LocalChunkIndex:
             effective_per_doc_limit = options.per_document_limit
         query_text = query_plan.original_query
         terms = extract_content_terms(query_text)
+        # OPT-RAGV2-LEXICAL B1: per-part lexical timings. Always-on and light
+        # (a few perf_counter calls); OMP reads the split from
+        # SearchSummary.lexical_breakdown_ms on PC0575.
+        lex_timings: Dict[str, float] = {}
+        eligibility_start = perf_counter()
         indexed_rows = self._conn.execute(
             "SELECT * FROM chunks WHERE retrievable = 1"
         ).fetchall()
+        lex_timings["indexed_rows"] = float(len(indexed_rows))
 
         if not terms:
             return self._empty_response(
@@ -3471,6 +3481,8 @@ class LocalChunkIndex:
                 filtered_as_stale += 1
                 continue
             eligible_rows.append(row)
+        lex_timings["eligibility_ms"] = (perf_counter() - eligibility_start) * 1000.0
+        lex_timings["eligible_rows"] = float(len(eligible_rows))
 
         # Rank each validated query variant independently, then fuse by rank.
         # Filtering is already complete above, so FTS and variants can never bypass
@@ -3489,18 +3501,29 @@ class LocalChunkIndex:
                 options.candidate_limit,
                 identifier_patterns=rescue_patterns,
                 query_plan=query_plan,
+                timings=lex_timings,
             )
             if backend != "fts5_bm25":
                 candidate_backend = "deterministic_scan"
             ranked = []
+            # OPT-RAGV2-LEXICAL B1: (c) per-row Python scoring.
+            score_start = perf_counter()
+            score_calls = 0
             for candidate_position, row in enumerate(candidate_rows):
                 candidate = self._score_candidate(row, variant_terms, query_plan=query_plan)
+                score_calls += 1
                 if candidate is not None:
                     identifier_priority = _identifier_match_priority(
                         str(row["normalized_text"] or ""),
                         rescue_patterns,
                     )
                     ranked.append((candidate_position, candidate, identifier_priority))
+            lex_timings["python_score_ms"] = lex_timings.get("python_score_ms", 0.0) + (
+                perf_counter() - score_start
+            ) * 1000.0
+            lex_timings["score_candidate_calls"] = lex_timings.get("score_candidate_calls", 0.0) + float(
+                score_calls
+            )
             ranked.sort(
                 key=lambda item: (
                     -item[2][0],
@@ -3784,6 +3807,26 @@ class LocalChunkIndex:
         assembly_rejected = tuple(
             identity for identity in candidate_identities if identity[0] not in returned_ids
         )
+        # OPT-RAGV2-LEXICAL B1: expose the per-part split in a fixed order.
+        breakdown_order = (
+            "eligibility_ms",
+            "indexed_rows",
+            "eligible_rows",
+            "temp_build_ms",
+            "temp_inserted_rows",
+            "fts_match_ms",
+            "like_prefilter_ms",
+            "identifier_rescue_ms",
+            "python_score_ms",
+            "score_candidate_calls",
+        )
+        lexical_breakdown = tuple(
+            (key, lex_timings[key]) for key in breakdown_order if key in lex_timings
+        )
+        LOGGER.debug(
+            "rag_v2 lexical breakdown ms: %s",
+            ", ".join(f"{key}={value:.1f}" for key, value in lexical_breakdown),
+        )
         summary = SearchSummary(
             query=query_text,
             indexed_chunk_count=len(indexed_rows),
@@ -3811,6 +3854,7 @@ class LocalChunkIndex:
             fused_pool=candidate_identities,
             ranked_pool=candidate_identities,
             assembly_rejected_pool=assembly_rejected,
+            lexical_breakdown_ms=lexical_breakdown,
         )
         return SearchResponse(results=tuple(results), summary=summary)
 
@@ -3921,6 +3965,7 @@ class LocalChunkIndex:
         *,
         identifier_patterns: Sequence[re.Pattern[str]] = (),
         query_plan: Optional[RetrievalQueryPlan] = None,
+        timings: Optional[Dict[str, float]] = None,
     ) -> tuple[List[sqlite3.Row], str]:
         if not self._fts5_available or not eligible_rows:
             return list(eligible_rows), "deterministic_scan"
@@ -3938,7 +3983,13 @@ class LocalChunkIndex:
         # rows is unchanged while chunks that cannot match skip the expensive
         # per-row Python tokenization.
         if _CJK_RE.search(query):
+            # OPT-RAGV2-LEXICAL B1: time the CJK LIKE prefilter separately.
+            prefilter_start = perf_counter()
             prefiltered = self._cjk_like_prefilter_rows(eligible_rows, terms)
+            if timings is not None:
+                timings["like_prefilter_ms"] = timings.get("like_prefilter_ms", 0.0) + (
+                    perf_counter() - prefilter_start
+                ) * 1000.0
             if prefiltered is not None:
                 return prefiltered, "deterministic_scan"
             return list(eligible_rows), "deterministic_scan"
@@ -3948,10 +3999,20 @@ class LocalChunkIndex:
                 "CREATE TEMP TABLE IF NOT EXISTS rag_v2_eligible_chunks (chunk_id TEXT PRIMARY KEY)"
             )
             self._conn.execute("DELETE FROM rag_v2_eligible_chunks")
+            # OPT-RAGV2-LEXICAL B1: (a) temp-table build vs (b) FTS MATCH+bm25.
+            build_start = perf_counter()
             self._conn.executemany(
                 "INSERT INTO rag_v2_eligible_chunks(chunk_id) VALUES (?)",
                 ((row["chunk_id"],) for row in eligible_rows),
             )
+            if timings is not None:
+                timings["temp_build_ms"] = timings.get("temp_build_ms", 0.0) + (
+                    perf_counter() - build_start
+                ) * 1000.0
+                timings["temp_inserted_rows"] = timings.get("temp_inserted_rows", 0.0) + float(
+                    len(eligible_rows)
+                )
+            match_start = perf_counter()
             ranked_ids = self._conn.execute(
                 """
                 SELECT f.chunk_id
@@ -3963,6 +4024,10 @@ class LocalChunkIndex:
                 """,
                 (match_query, limit),
             ).fetchall()
+            if timings is not None:
+                timings["fts_match_ms"] = timings.get("fts_match_ms", 0.0) + (
+                    perf_counter() - match_start
+                ) * 1000.0
         except sqlite3.OperationalError:
             self._fts5_available = False
             return list(eligible_rows), "deterministic_scan"
@@ -3977,6 +4042,8 @@ class LocalChunkIndex:
 
         ranked_ids_set = {str(row["chunk_id"]) for row in ranked}
         exact_matches = []
+        # OPT-RAGV2-LEXICAL B1: identifier-rescue scan is part of (c).
+        rescue_start = perf_counter()
         for row in eligible_rows:
             if str(row["chunk_id"]) in ranked_ids_set:
                 continue
@@ -3999,6 +4066,10 @@ class LocalChunkIndex:
             )
         )
         ranked.extend(item[3] for item in exact_matches[:_EXACT_IDENTIFIER_QUOTA])
+        if timings is not None:
+            timings["identifier_rescue_ms"] = timings.get("identifier_rescue_ms", 0.0) + (
+                perf_counter() - rescue_start
+            ) * 1000.0
         return ranked, "fts5_bm25"
 
     @staticmethod
