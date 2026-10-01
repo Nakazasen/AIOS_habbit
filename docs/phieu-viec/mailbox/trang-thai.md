@@ -39,18 +39,20 @@
 - `hang-cho` (theo thứ tự — chi tiết `docs/ke-hoach-dich-den.md`):
   1. `merge-home` — **ĐÃ XONG, verdict ĐẠT 2026-10-01 ~08:52 +07** (348 doc/15.603 chunk vào kho C; bản ghi verdict đầy đủ ở commit phát hành B0-DICT).
   2. `B0-DICT` (`prompt-queue-b0-dict.md`) — [VM] từ điển thuật ngữ + số hóa bảng mã lỗi — **ĐÃ XONG, verdict ĐẠT 2026-10-01 ~09:47 +07**.
-  3. `B0-MEASURE` (`prompt-queue-b0-measure.md`) — [NHÀ] đo ≥90% đủ 5 trường bắt buộc — **ĐÃ XONG, verdict ĐẠT 2026-10-01 ~10:10 +07** (KDTPS 52,96%/9,84%, LSU 0% — cả 2 list <90%, chưa đóng Bước 0; backfill 5 nhóm + tài liệu bù + 3 kịch bản quy ước trong báo cáo; 2 quyết định chính sách chờ user).
+  3. `B0-MEASURE` (`prompt-queue-b0-measure.md`) — [NHÀ] đo ≥90% đủ 5 trường bắt buộc — **ĐÃ XONG, verdict ĐẠT 2026-10-01 ~10:10 +07** (KDTPS 52,96%/9,84%, LSU 0% — 2 quyết định chính sách đã chốt QĐ1+QĐ2 (`docs/phieu-viec/ket-qua/b0-measure-quyet-dinh.md`); KDTPS 99,48% ≥90% → Bước 0 ĐÓNG cho list điều tra lỗi (LSU 0%, cần người rà soát)).
   4. `B1-FEAT` (`prompt-queue-b1-feat.md`) — [VM] Bước 1 thành tính năng hoàn chỉnh — **ĐANG PHÁT HÀNH** (Muse code+test trên VM; OMP verify trên máy nhà khi Muse báo xong).
-  5. `B2` (`prompt-queue-b2.md`) — [VM] vòng phản hồi.
-  6. `B3` (`prompt-queue-b3.md`) — [VM] gợi ý hướng điều tra 4M + Why-Why.
-  7. `B4` (`prompt-queue-b4.md`) — [VM] phân tích xu hướng & cảnh báo sớm.
-  8. `B5` (`prompt-queue-b5.md`) — [VM] phân loại tự động + cảnh báo tái phát.
-  9. `J1-CSV` (`prompt-queue-j1-csv.md`) — [VM] JIG: nhập cả file CSV + chọn biểu đồ + tự gửi mail.
-  10. `J1-RT` (`prompt-queue-j1-rt.md`) — [VM+cty] JIG realtime: spec API + prototype + yêu cầu hạ tầng.
-  11. `J2` (`prompt-queue-j2.md`) — [NHÀ+người dùng] JIG: xác nhận chức năng trước khi đưa thử.
-  12. `J3` (`prompt-queue-j3.md`) — [người dùng] JIG: dùng thử, thu thập cải tiến.
-  13. `J4` (`prompt-queue-j4.md`) — [NHÀ+người dùng] JIG: chạy thử nghiệm.
-  14. `J5` (`prompt-queue-j5.md`) — [người dùng] JIG: chạy thật.
+  5. `BK-ERRCODE` (`prompt-queue-bk-errcode.md`) — [VM] backfill mã thật 3.537 ca nhóm ERROR (nợ chính xác QĐ1).
+  6. `BK-82` (`prompt-queue-bk-82.md`) — [NHÀ] rà soát tay 82 dòng thiếu hiện tượng/nguyên nhân/công đoạn.
+  7. `B2` (`prompt-queue-b2.md`) — [VM] vòng phản hồi.
+  8. `B3` (`prompt-queue-b3.md`) — [VM] gợi ý hướng điều tra 4M + Why-Why.
+  9. `B4` (`prompt-queue-b4.md`) — [VM] phân tích xu hướng & cảnh báo sớm.
+  10. `B5` (`prompt-queue-b5.md`) — [VM] phân loại tự động + cảnh báo tái phát.
+  11. `J1-CSV` (`prompt-queue-j1-csv.md`) — [VM] JIG: nhập cả file CSV + chọn biểu đồ + tự gửi mail.
+  12. `J1-RT` (`prompt-queue-j1-rt.md`) — [VM+cty] JIG realtime: spec API + prototype + yêu cầu hạ tầng.
+  13. `J2` (`prompt-queue-j2.md`) — [NHÀ+người dùng] JIG: xác nhận chức năng trước khi đưa thử.
+  14. `J3` (`prompt-queue-j3.md`) — [người dùng] JIG: dùng thử, thu thập cải tiến.
+  15. `J4` (`prompt-queue-j4.md`) — [NHÀ+người dùng] JIG: chạy thử nghiệm.
+  16. `J5` (`prompt-queue-j5.md`) — [người dùng] JIG: chạy thật.
 
 - ghi_chu: 2026-10-01 07:19 +07 — **DỪNG ở Pha 0 theo đúng mục Cấm của vé: kho app (localhost:8501) nằm trên ổ D** — `D:\Sandbox\AIOS_habbit\local_runs\workspace_chat_rag_v2_production\bge_m3_hybrid\collections\tri_thuc\library.sqlite` (2.552.659.968 B, SHA `062ec090…4ef8ca` khớp ghim P1.3; bản copy C `C:\AIOS_p1_4\tri_thuc\library.sqlite` trùng SHA byte-đối-byte). Pha 0 đủ dữ kiện: 2 gói delta SHA khớp ghim (262b `5bd7c56d…9a85`, DC `31afe1e3…63e3`), ZIP CRC đạt, SQLite standalone (không phải diff), fingerprint `016c5255d0cec1fcb75b99f71f3c6a47…` đủ 100% dense/sparse cả 2 gói, quick_check ok; C: trống 8,84 GiB (đủ backup + merge nhưng không dùng). **KHÔNG merge, không tạo backup, không ghi ổ D, không đụng app**; Pha 1 + Pha 2 không chạy. Chuyển `cho-muse` để Muse/user quyết (đề xuất: vé chuyển kho sang C + cập nhật manifest rồi merge trên C). Báo cáo: `docs/phieu-viec/ket-qua/merge-home.md` (commit `561014b`).
 - ghi_chu: 2026-10-01 07:15 +07 — OMP nhận vé `merge-home` (máy nhà h410asrock; watcher tự mở LAUNCH 1/4 lúc 07:09:47). Cổng gate: ĐẠT — điều kiện mở thoả (2 gói delta trên ổ C đúng tên/kích thước; vé đúng lane [NHÀ]); chưa dùng nhánh "4 lần watcher". Bắt đầu Pha 0 (chỉ đọc): xác định kho app đang đọc, băm SHA-256 2 gói delta, kiểm dung lượng ổ C, kiểm điều kiện dừng "kho app nằm trên ổ D".
