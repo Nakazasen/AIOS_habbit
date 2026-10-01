@@ -1,27 +1,48 @@
-# Vé UPLOAD-DELTA-DRIVE — Đẩy 2 gói delta lên Drive cho PC0575 tải về merge
+# Ve MERGE-HOME - Gop 2 goi delta vao kho may nha de user hoi dap ngay
 
-## Bối cảnh
-2 gói delta đang nằm trên ổ C máy nhà; PC0575 (máy công ty) không lấy qua LAN/USB được.
-User đang ở máy công ty, yêu cầu bridge qua Google Drive. Đẩy 2 file zip lên thư mục
-AIOS_Data trên Drive (nơi đã có file JSONL Điều chỉnh), đặt quyền xem cho ai có link.
+## Boi canh
+User dang o may nha, muon hoi dap RAG ngay tren du lieu moi nhung dem qua
+(19 tai lieu LSU + 344 tai lieu Dieu chinh). 2 goi delta dang nam tren o C:
+- `C:\AIOS_staging_262b\gpu-262b-delta-20261001.zip` - 20.867.536 byte,
+  SHA-256 `5bd7c56d93b50d8415320ce37295d7be503ace99b912e375055025b844099a85`
+- `C:\AIOS_staging_dc\gpu-dc-delta-20261001.zip` - 74.065.213 byte,
+  SHA-256 `31afe1e3bf7767379cce30588670db61f21a919ec5484b173c94961d97b063e3`
+Fingerprint vector `016c5255...` (tuong thich moi kho cung model).
 
-## Việc cần làm
-1. Verify SHA-256 2 file local khớp ghim dưới đây. Lệch → DỪNG, mailbox `cho-muse`.
-2. Upload lên thư mục AIOS_Data trên Drive:
-   - `C:\AIOS_staging_262b\gpu-262b-delta-20261001.zip` — 20.867.536 byte,
-     SHA-256 `5bd7c56d93b50d8415320ce37295d7be503ace99b912e375055025b844099a85`
-   - `C:\AIOS_staging_dc\gpu-dc-delta-20261001.zip` — 74.065.213 byte,
-     SHA-256 `31afe1e3bf7767379cce30588670db61f21a919ec5484b173c94961d97b063e3`
-3. Đặt quyền chia sẻ: bất kỳ ai có link = Người xem (như tiền lệ file JSONL Điều chỉnh).
-4. Verify độc lập: tải ẩn danh (không cookie) qua
-   `https://drive.usercontent.google.com/download?id=<FILE_ID>&export=download&confirm=t`,
-   kiểm tra đủ byte + SHA-256 khớp ghim. Lệch → upload lại, không báo xong.
-5. KHÔNG xóa bản local trên ổ C.
+## Viec can lam
+### Pha 0 - Khao sat chi doc (khong ghi gi ca)
+1. Xac dinh app may nha (localhost:8501) dang doc kho index nao (duong dan `library.sqlite`).
+2. Kiem tra 2 file delta: SHA-256 khop ghim tren; moi file la full DB hay chi diff;
+   base cua no la gi; fingerprint co dung `016c5255...` khong.
+3. Kiem tra dung luong trong o C (phai du cho 1 ban backup + merge).
+4. Ghi nhan: kho app dang dung co nam tren o D khong.
 
-## Tiêu chí ĐẠT
-- Báo cáo `docs/phieu-viec/ket-qua/upload-delta-drive.md`: 2 link Drive + xác nhận
-  verify ẩn danh (đủ byte, SHA khớp từng file).
-- 2 file local còn nguyên.
+### Pha 1 - Merge (chi lam khi kho app KHONG nam tren o D)
+1. Dry-run: liet ke ID se them tu 2 delta. Rieng 5 ID skip cua goi 262b
+   (`wsc-154101d384acc2d01009025d`, `wsc-9e3e7cbc01ed57332c1384eb`,
+   `wsc-58589483c646877fdb341f46`, `wsc-a1a89391eee709a956a46130`,
+   `wsc-cc7d383bb6f7b9127bcaef00`): kiem tra tung ID da co trong kho may nha chua -
+   co roi thi skip (tuyet doi khong ghi de), chua co thi nhap.
+2. Backup kho app hien tai: copy sang file backup co timestamp, SHA-256 +
+   `PRAGMA integrity_check` phai `ok` truoc khi merge.
+3. Merge: nhap ID moi tu 2 delta vao kho. Luat cung: KHONG ghi de bat ky dong
+   nao da ton tai - phat hien trung `chunk_id` thi DUNG, mailbox `cho-muse`.
+4. Verify sau merge (chi doc): `integrity_check=ok`, fingerprint `016c5255...`
+   tren bang vector, dem so ID moi dung nhu dry-run.
 
-## Cấm
-- Không đụng production, staging, ổ D. Không merge `main`.
+### Pha 2 - Tro app sang kho da merge + hoi dap thu
+1. Chuyen app sang doc kho da merge bang co che chinh thuc cua app (config/UI/bien
+   moi truong) - khong sua code app.
+2. Restart app, hoi thu 2-3 cau ve noi dung moi (it nhat 1 cau ve LSU, 1 cau ve
+   Dieu chinh), ghi cau hoi + cau tra loi tom tat vao bao cao.
+
+## Cam
+- KHONG ghi bat ky thu gi len o D (o hong vat ly). Neu Pha 0 phat hien kho app
+  dang nam tren o D -> DUNG ngay o Pha 0, mailbox `cho-muse`, bao ro.
+- Khong dung kho production cua PC0575, khong dung staging cua ve khac, khong merge `main`.
+- Fingerprint lech -> DUNG, `cho-muse`.
+
+## Tieu chi DAT
+- Bao cao `docs/phieu-viec/ket-qua/merge-home.md`: duong dan kho truoc/sau,
+  SHA backup, so ID da nhap/skip tung goi, ket qua hoi dap thu.
+

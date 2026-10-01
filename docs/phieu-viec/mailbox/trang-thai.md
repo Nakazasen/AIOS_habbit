@@ -1,26 +1,26 @@
 # Trạng thái mailbox
 
-- Trạng thái: `xong-cho-duyet`
-- Ticket hiện tại: `upload-delta-drive` — [NHÀ] đẩy 2 gói delta (262b + DC) lên Drive cho PC0575 tải về merge. Vé #2 hàng chờ, phát hành sau verdict ĐẠT B0-FORM.
-- `prompt`: `docs/phieu-viec/mailbox/prompt.md` (copy từ `prompt-queue-upload-delta-drive.md`)
-- `phat_hanh`: 2026-10-01 ~06:40 +07 — Muse verdict `B0-FORM` **ĐẠT** → phát hành vé xếp hàng tiếp theo `upload-delta-drive` (chế độ tự lái: copy `prompt-queue-upload-delta-drive.md` vào `prompt.md`).
+- Trạng thái: `moi`
+- Ticket hiện tại: `merge-home` — [NHÀ] gộp 2 gói delta (262b + DC) vào kho máy nhà để user hỏi đáp ngay trên dữ liệu mới. Vé #1 hàng chờ (chèn khẩn 2026-10-01 ~06:55 +07 theo yêu cầu user).
+- `prompt`: `docs/phieu-viec/mailbox/prompt.md` (copy từ `prompt-queue-merge-home.md`)
+- `phat_hanh`: 2026-10-01 ~07:15 +07 — Muse verdict `upload-delta-drive` **ĐẠT** → phát hành vé xếp hàng tiếp theo `merge-home` (chế độ tự lái: copy `prompt-queue-merge-home.md` vào `prompt.md`).
+- `verdict_upload-delta-drive`: **ĐẠT** (Muse verify độc lập 2026-10-01 ~07:10 +07, HEAD `529d716`): 2 commit trên branch `phieu-viec/rag-fix1` tuyến tính — `66e0e23` chỉ thêm báo cáo `docs/phieu-viec/ket-qua/upload-delta-drive.md` (+82/−0), `529d716` chỉ sửa `trang-thai.md` (+4/−3); đều 1 parent; compare `main...phieu-viec/rag-fix1`: `ahead`, ahead_by 190, behind_by 0, merge_base = `2870b09` (main tip) → không merge `main`, không force-push. Tiêu chí vé đủ cả: (1) SHA-256 local khớp ghim (`5bd7c56d…9a85` = 20.867.536 B; `31afe1e3…63e3` = 74.065.213 B); (2) 2 file đã lên thư mục AIOS_Data; (3) quyền "Bất kỳ ai có đường liên kết = Người xem"; (4) verify độc lập ẩn danh: đủ byte + SHA khớp từng file; (5) 2 bản local còn nguyên trên ổ C. Muse verify độc lập: tải range ẩn danh (không cookie) qua link direct — HTTP 206, tên file + tổng byte khớp từng file. Ràng buộc giữ: không đụng production/staging/ổ D, không merge `main`.
 - `verdict_b0-form`: **ĐẠT** (Muse verify độc lập 2026-10-01 ~06:40 +07, compare API `c19e9cf`...`8e25212`: status `ahead`, ahead_by 2, behind_by 0, merge_base = `c19e9cf`; tuyến tính, 2 commit đều 1 parent, không merge `main`, không force-push): `9d6c370` chỉ thêm `docs/phieu-viec/ket-qua/b0-form.md` (+83/−0), `8e25212` chỉ sửa `trang-thai.md`; code vé `cf730d7` đã review độc lập trước đó (7 file toàn thêm mới, logic validate/dedup đúng spec vé). Tiêu chí vé đủ cả 5: (1) 3 ca thật (C4701, F000, JAM4012) nhập qua form → đủ 12 trường trong DB, **15.707 → 15.711 ca, không sinh file rời** (`files_new=[]`), bản copy ổ C + backup + integrity ok trước/sau; (2) thiếu `Đối sách` → chặn đúng; (3) gửi lại ca A → "Không nhập đúp" (chống trùng form↔form đúng); (4) mã lạ C9999 → vẫn ghi + cảnh báo (không chặn), JAM4012 cảnh báo mã lạ đúng thiết kế chờ B0-DICT; (5) ngày đóng < ngày phát sinh → chặn. Test **33/34** trên Windows: 1 đỏ `test_action_no_db_returns_none_and_creates_nothing` là va chạm môi trường máy nhà (DB thật `C:/tmp/buoc0-deploy/error_cases_deploy.db` nằm trong `_DEFAULT_DB_CANDIDATES` nên rơi vào fallback đúng thiết kế; phần "creates nothing" vẫn đúng) — KHÔNG phải lỗi logic, không chặn verdict. Full suite **3.449 đạt/2 bỏ qua/36 lỗi/4 error** = nền date-map 3.415 + đúng 34 test mới (33 đạt + 1 đỏ); đối chiếu ID danh sách lỗi/error với nền chỉ khác 1+1 (bài vé mới đỏ + 1 bài nền flaky tự xanh), **không bài nền nào thoái lui**. Migration `ensure_form_schema` tự thêm 7 cột idempotent trên DB cũ thật. Ràng buộc giữ: không ghi index production, không đụng ổ D, không merge `main`, cờ `AIOS_FEATURE_CHAT_ACTION` mặc định TẮT. Hai follow-up Muse ghi nhận (không chặn): (a) test hermetic cho bài đỏ — lane [VM], Muse sẽ làm (monkeypatch `chat_action_case_form._DEFAULT_DB_CANDIDATES = ()`) trong vé [VM] sau; (b) hạn chế dedup form↔lịch sử: lịch sử lưu cột H dạng nhóm ('C CALL'), mã thật cột I chưa được import → nhập lại ca lịch sử bằng mã thật không bị cảnh báo trùng — **B0-DICT ([VM]) cân nhắc map cột I vào cột mã**, tối thiểu đã ghi nhận là hạn chế đã biết.
 - `verdict_date-map`: **ĐẠT** (Muse verify độc lập 2026-10-01 ~05:55 +07, HEAD `e95a106`): chuỗi commit trên branch `phieu-viec/rag-fix1` đúng như báo cáo — `fa58d26` code occurred_at+test (+occurred_at, migration idempotent, parse_date_cell, fill_occurred_at dry-run/apply), `b86dab0` fix hiệu năng N+1 (452s → ~5s), `4a283bf` báo cáo + handover, `e95a106` trạng thái; tuyến tính, không merge `main`, không force-push. Tiêu chí vé: **occurred_at 15.707/15.707 = 100%** ≥ 95% (cột C `生産日` datetime 100%; X/Y thiếu thật 97,9%/98,5% ô là `ー` — chứng minh trong báo cáo); **Bước 4: 1 bucket → 174 bucket** (`2023-W01` → `2026-W35`); **Bước 5** tái phát theo ngày thật (mã ERROR 16 lần quanh 2026-08-21, thay vì "3.569 lần" vô nghĩa theo lúc nhập). Ràng buộc giữ: DB copy ổ C + backup SHA `44079ad5…` khớp gốc + integrity ok trước/sau; `created_at` không đổi; `raw_json._backfill.fix` còn nguyên 5.461 (provenance f3b); verify độc lập 25/25 mẫu khớp Excel; idempotent (chạy lại no_change=15.707); bộ error_cases **127/127 đạt**; full suite **3.415/2/36/4** = nền f3b `3.406/2/36/4` + đúng 9 test mới, danh sách lỗi/error trùng khít nền từng bài; compileall OK, check_docs PASS, CLI audit PASS, import OK. Không đụng ổ D, không ghi index production, không merge `main`.
 - `hang-cho` (theo thứ tự — chi tiết `docs/ke-hoach-dich-den.md`):
-  1. `merge-home` (`prompt-queue-merge-home.md`) — [NHÀ] gộp 2 gói delta (262b + DC) vào kho máy nhà để user hỏi đáp ngay. Chèn khẩn 2026-10-01 ~06:55 +07 theo yêu cầu user.
-  2. `B0-DICT` (`prompt-queue-b0-dict.md`) — [VM] từ điển thuật ngữ + số hóa bảng mã lỗi.
-  3. `B0-MEASURE` (`prompt-queue-b0-measure.md`) — [NHÀ] đo ≥90% đủ 5 trường bắt buộc.
-  4. `B1-FEAT` (`prompt-queue-b1-feat.md`) — [VM] Bước 1 thành tính năng hoàn chỉnh.
-  5. `B2` (`prompt-queue-b2.md`) — [VM] vòng phản hồi.
-  6. `B3` (`prompt-queue-b3.md`) — [VM] gợi ý hướng điều tra 4M + Why-Why.
-  7. `B4` (`prompt-queue-b4.md`) — [VM] phân tích xu hướng & cảnh báo sớm.
-  8. `B5` (`prompt-queue-b5.md`) — [VM] phân loại tự động + cảnh báo tái phát.
-  9. `J1-CSV` (`prompt-queue-j1-csv.md`) — [VM] JIG: nhập cả file CSV + chọn biểu đồ + tự gửi mail.
-  10. `J1-RT` (`prompt-queue-j1-rt.md`) — [VM+cty] JIG realtime: spec API + prototype + yêu cầu hạ tầng.
-  11. `J2` (`prompt-queue-j2.md`) — [NHÀ+người dùng] JIG: xác nhận chức năng trước khi đưa thử.
-  12. `J3` (`prompt-queue-j3.md`) — [người dùng] JIG: dùng thử, thu thập cải tiến.
-  13. `J4` (`prompt-queue-j4.md`) — [NHÀ+người dùng] JIG: chạy thử nghiệm.
-  14. `J5` (`prompt-queue-j5.md`) — [người dùng] JIG: chạy thật.
+  1. `B0-DICT` (`prompt-queue-b0-dict.md`) — [VM] từ điển thuật ngữ + số hóa bảng mã lỗi.
+  2. `B0-MEASURE` (`prompt-queue-b0-measure.md`) — [NHÀ] đo ≥90% đủ 5 trường bắt buộc.
+  3. `B1-FEAT` (`prompt-queue-b1-feat.md`) — [VM] Bước 1 thành tính năng hoàn chỉnh.
+  4. `B2` (`prompt-queue-b2.md`) — [VM] vòng phản hồi.
+  5. `B3` (`prompt-queue-b3.md`) — [VM] gợi ý hướng điều tra 4M + Why-Why.
+  6. `B4` (`prompt-queue-b4.md`) — [VM] phân tích xu hướng & cảnh báo sớm.
+  7. `B5` (`prompt-queue-b5.md`) — [VM] phân loại tự động + cảnh báo tái phát.
+  8. `J1-CSV` (`prompt-queue-j1-csv.md`) — [VM] JIG: nhập cả file CSV + chọn biểu đồ + tự gửi mail.
+  9. `J1-RT` (`prompt-queue-j1-rt.md`) — [VM+cty] JIG realtime: spec API + prototype + yêu cầu hạ tầng.
+  10. `J2` (`prompt-queue-j2.md`) — [NHÀ+người dùng] JIG: xác nhận chức năng trước khi đưa thử.
+  11. `J3` (`prompt-queue-j3.md`) — [người dùng] JIG: dùng thử, thu thập cải tiến.
+  12. `J4` (`prompt-queue-j4.md`) — [NHÀ+người dùng] JIG: chạy thử nghiệm.
+  13. `J5` (`prompt-queue-j5.md`) — [người dùng] JIG: chạy thật.
 
 - ghi_chu: 2026-10-01 07:06 +07 — Hoàn tất vé upload-delta-drive, chờ Muse review. Báo cáo: docs/phieu-viec/ket-qua/upload-delta-drive.md (commit 66e0e23). Kết quả: 2 zip đã nằm trong AIOS_Data; quyền "Bất kỳ ai có đường liên kết = Người xem" (xác nhận trong hộp thoại Chia sẻ từng file); verify tải ẩn danh không cookie: 262b nhận đủ 20.867.536 B + SHA khớp ghim `5bd7c56d…9a85`; DC nhận đủ 74.065.213 B + SHA khớp ghim `31afe1e3…63e3`; link bàn giao trong báo cáo; bản local trên ổ C giữ nguyên (SHA/mtime không đổi).
 - ghi_chu: 2026-10-01 07:05 +07 — Mốc B xong: cả 2 file nằm trong AIOS_Data với quyền "Bất kỳ ai có đường liên kết = Người xem" (xác nhận ngay trong hộp thoại Chia sẻ của từng file; đã sao chép link: 262b → file id 1TE6mHBAE0CzD5I4pleO-23zVYaspnsVz; DC → file id 1Smteq_Iyjx2uZjh2RlrK1wvASFjXJ3yZ). Tiếp: tải ẩn danh không cookie, verify đủ byte + SHA-256. (sau commit c740fa8)
@@ -103,3 +103,4 @@
   13. `J4` (`prompt-queue-j4.md`) — [NHÀ+người dùng] JIG: chạy thử nghiệm.
   14. `J5` (`prompt-queue-j5.md`) — [người dùng] JIG: chạy thật.
 - `ghi_chu`: 2026-10-01 06:10 +07 — **Muse báo code xong vé `B0-FORM`.** Commit `cf730d7` trên `phieu-viec/rag-fix1` (7 file, toàn thêm mới, không sửa/xóa): form 12 trường + validate (5 bắt buộc chặn, ngày đóng < ngày phát sinh chặn, mã lạ chỉ cảnh báo) + chống trùng (model, line, error code, ngày phát sinh) + chat action trong khung trả lời; 34/34 test đỗ (Linux, Python 3.12.3). **OMP verify trên máy nhà theo vé:** form chạy được với DB thật, nhập thử 3 ca thật không lỗi; không cần code thêm.
+
