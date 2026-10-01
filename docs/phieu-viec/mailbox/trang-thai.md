@@ -1,7 +1,8 @@
 # Trạng thái mailbox
 
-- Trạng thái: `moi`
+- Trạng thái: `dang-lam`
 - Ticket hiện tại: `move-index-c` — [NHÀ] chuyển kho production app sang ổ C + cập nhật manifest (vé tiền đề cho merge-home; phát hành khẩn 2026-10-01 ~07:30 +07 khi Muse xử lý cờ `cho-muse` trong SLA).
+- `ghi_chu`: 2026-10-01 07:27 +07 — **OMP nhận vé `move-index-c`** (máy nhà, watcher tự mở OMP). **Cổng gate ĐẠT** — điều kiện mở thoả (vé đúng lane [NHÀ]; kho app đang trên ổ D đúng mô tả vé; bản C `C:\AIOS_p1_4\tri_thuc\library.sqlite` sẵn có 2.552.659.968 B; app đang chạy PID 3440 cổng 8501). Bắt đầu Pha 0 (chỉ đọc): SHA-256 bản C + bản D, integrity_check bản C, xác định chính xác file/key trỏ D, dung lượng trống ổ C.
 - `prompt`: `docs/phieu-viec/mailbox/prompt.md` (copy từ `prompt-queue-move-index-c.md`)
 - `phat_hanh`: 2026-10-01 ~07:15 +07 — Muse verdict `upload-delta-drive` **ĐẠT** → phát hành vé xếp hàng tiếp theo `merge-home` (chế độ tự lái: copy `prompt-queue-merge-home.md` vào `prompt.md`).
 - `xu_ly_cho_muse`: 2026-10-01 ~07:30 +07 — Muse thấy cờ `cho-muse` (commit `e2dd94c`, OMP dừng Pha 0 đúng mục Cấm: kho app nằm trên ổ D) → xử lý ngay trong SLA: quyết định kỹ thuật theo chế độ tự lái (thuộc thẩm quyền, thao tác đảo ngược được, không cần user): phát hành vé tiền đề `move-index-c` (verify SHA C=D=`062ec090…4ef8ca`, cập nhật manifest trỏ sang C, giữ bản D nguyên vẹn làm fallback, cấm ghi/xóa D); `merge-home` tạm lùi về đầu hàng chờ, phát hành lại khi move-index-c ĐẠT.
