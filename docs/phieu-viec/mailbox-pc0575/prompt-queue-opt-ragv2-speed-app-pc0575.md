@@ -1,5 +1,7 @@
 # Vé: OPT-RAGV2-SPEED-APP-PC0575 — đo tốc độ hỏi đáp app thật + hồ sơ nút thắt còn lại
 
+> **BỔ SUNG KHẨN — 2026-10-02 13:21 +07:** chỉ ở máy công ty mới nối được AI C-Agent, nên phải đo thêm đường đầu-cuối có C-Agent ngay trong phiên PC0575 này. Tách thời gian tìm kiếm nội bộ, thời gian C-Agent viết, và tổng người dùng chờ. Nếu C-Agent kẹt đăng nhập/mạng/hạn mức thì báo đúng điểm kẹt, không bịa số.
+
 Lane: [CTY] OMP đo và báo cáo trên KDTVN-PC0575 (CPU-only, index production chỉ đọc). Muse dùng báo cáo này để code tối ưu trên VM; OMP không tự sửa code trong vé này.
 Không merge `main`; không force-push; không ghi index production; không chạy `--apply`; không tạo bảng/index mới trong production.
 
