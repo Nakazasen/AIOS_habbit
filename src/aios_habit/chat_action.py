@@ -45,6 +45,8 @@ BUILTIN_ACTION_MODULES: Tuple[str, ...] = (
     "aios_habit.chat_action_prediction",
     "aios_habit.chat_action_visual_maps",
     "aios_habit.chat_action_case_form",
+    # UX-CHAT-CORE: pasted log/CSV is analyzed + charted inline, no command needed.
+    "aios_habit.chat_action_data_paste",
     # Report agent: "lap bao cao dieu tra cho ca <ma>" must outrank both the
     # Buoc 3 plan hints ("4m", ...) and the bare-code lookup fallback below.
     "aios_habit.chat_action_bao_cao_dieu_tra",
