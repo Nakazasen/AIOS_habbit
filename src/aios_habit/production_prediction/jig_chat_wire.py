@@ -412,7 +412,7 @@ def _quyet_dinh_ve_bieu_do(
                     "loai_bieu_do": lenh.loai_bieu_do,
                     # Biểu đồ nhiều chuỗi (so sánh màu) cũng phải giữ cờ mô phỏng
                     # nếu **bất kỳ** chuỗi nào chưa có giới hạn, nếu không email
-                    # sẽ mất tiền tố [MÔ PHỎNG] và người nhận hiểu nhầm.
+                    # sẽ mất tiền tố [Giới hạn tham khảo] và người nhận hiểu nhầm.
                     "mo_phong": (
                         any(getattr(c, "mo_phong", False) for c in du_lieu)
                         if isinstance(du_lieu, (list, tuple))

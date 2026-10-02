@@ -70,12 +70,13 @@ class SpcChartInput:
     mo_phong: bool = False
 
     def ghi_chu_mo_phong(self) -> str:
-        """Dòng ghi chú bắt buộc khi biểu đồ là mô phỏng."""
+        """Dòng ghi chú bắt buộc khi dải giới hạn là tham khảo (dữ liệu vẫn là thật)."""
         if not self.mo_phong:
             return ""
         return (
-            "MÔ PHỎNG: chưa có giới hạn trên/dưới thật cho chỉ số này; "
-            "đường giới hạn trên hình chỉ là dải tham khảo (trung bình ± 3 độ lệch chuẩn)."
+            "LƯU Ý: chỉ số này chưa có giới hạn trên/dưới thật nên dải giới hạn "
+            "trên hình chỉ là tham khảo (trung bình ± 3 độ lệch chuẩn); "
+            "đường dữ liệu là số liệu thật."
         )
 
 
@@ -103,19 +104,20 @@ def _co_chuoi_mo_phong(cac_chart: Sequence[SpcChartInput]) -> bool:
 
 
 def _svg_mo_phong(chart: SpcChartInput, *, ep_buoc: bool = False) -> str:
-    """Dòng chữ MÔ PHỎNG cho bản SVG khi biểu đồ chưa có giới hạn thật."""
+    """Dòng chữ cảnh báo cho bản SVG khi dải giới hạn chỉ là tham khảo."""
     if not (chart.mo_phong or ep_buoc):
         return ""
     return (
         '<text x="90" y="18" fill="#b71c1c" font-size="16" font-weight="bold">'
-        "MÔ PHỎNG — chưa có giới hạn thật; đường trên hình chỉ là dải tham khảo (±3σ)"
+        "DẢI GIỚI HẠN LÀ THAM KHẢO — chưa có giới hạn thật (±3σ); dữ liệu là số liệu thật"
         "</text>"
     )
 
 
 def _ve_bang_mo_phong(draw, chart: SpcChartInput, width: int, margin_left: int, plot_w: int,
                       scale: int, *, ep_buoc: bool = False) -> None:
-    """Vẽ băng cảnh báo MÔ PHỎNG ngay dưới tiêu đề để không ai đọc nhầm.
+    """Vẽ băng cảnh báo ngay dưới tiêu đề để không ai đọc nhầm dải tham khảo
+    thành giới hạn kỹ thuật.
 
     Băng này là bắt buộc khi biểu đồ chưa có giới hạn thật: nếu chỉ ghi trong
     chú thích chat thì người nhận ảnh (hoặc email) vẫn có thể tưởng nhầm đường
@@ -129,7 +131,7 @@ def _ve_bang_mo_phong(draw, chart: SpcChartInput, width: int, margin_left: int, 
                    outline=(183, 28, 28))
     draw.text(
         (margin_left + 8 * scale, y + 6 * scale),
-        "MÔ PHỎNG — chưa có giới hạn thật; đường trên hình chỉ là dải tham khảo (±3σ)",
+        "DẢI GIỚI HẠN LÀ THAM KHẢO — chưa có giới hạn thật (±3σ); dữ liệu là số liệu thật",
         fill=(183, 28, 28), font=_font(scale, lon=False),
     )
 

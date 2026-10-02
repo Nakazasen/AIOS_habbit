@@ -1440,13 +1440,14 @@ def build_de_xuat_mail_data(
         f"JIG {ma_jig} — chỉ số {ten_chi_so} vừa kích hoạt kết luận {ket_luan}. "
         "Đề xuất gửi email cảnh báo kèm biểu đồ đang xem."
     )
-    # Biểu đồ chưa có giới hạn thật: người nhận email phải đọc được điều đó ngay
-    # trong phần chữ, không chỉ dựa vào băng cảnh báo trên ảnh.
+    # Biểu đồ dùng dải giới hạn tham khảo: người nhận email phải đọc được điều đó
+    # ngay trong phần chữ — dữ liệu là thật, chỉ dải giới hạn là tham khảo.
     if meta.get("mo_phong"):
-        tieu_de = f"[MÔ PHỎNG] {tieu_de}"
+        tieu_de = f"[Giới hạn tham khảo] {tieu_de}"
         tom_tat += (
-            " LƯU Ý: chỉ số này chưa có giới hạn trên/dưới thật, nên biểu đồ là MÔ PHỎNG "
-            "và đường giới hạn trên hình chỉ là dải tham khảo (trung bình ± 3 độ lệch chuẩn)."
+            " LƯU Ý: chỉ số này chưa có giới hạn trên/dưới thật nên dải giới hạn "
+            "trên hình chỉ là tham khảo (trung bình ± 3 độ lệch chuẩn); "
+            "đường dữ liệu là số liệu thật."
         )
     the = build_proposal_card(tieu_de, tom_tat, _danh_sach_nhan(alert_config), tao_ma_duyet())
     anh = anh_xem_truoc if anh_xem_truoc is not None else meta.get("anh_xem_truoc")

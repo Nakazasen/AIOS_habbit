@@ -932,14 +932,18 @@ def _hang_depth(so_diem: int = 6):
 
 
 def test_thieu_nguong_thi_bieu_do_duoc_danh_dau_mo_phong():
-    """Yêu cầu: thiếu ngưỡng thì vẫn vẽ được nhưng phải nói rõ là mô phỏng."""
+    """Yêu cầu: thiếu ngưỡng thì vẫn vẽ được nhưng phải nói rõ dải giới hạn chỉ là tham khảo."""
     from aios_habit.production_prediction.chart_selection import dung_du_lieu_bieu_do
     from aios_habit.production_prediction.spc_chart import render_chart_png, render_chart_svg
 
     du_lieu = dung_du_lieu_bieu_do("J", "DEPTH:BEAM:H:LD1:IMGHEIGHT:0:CAM0", _hang_depth())
     assert du_lieu.mo_phong is True
-    assert du_lieu.ghi_chu_mo_phong() and "MÔ PHỎNG" in du_lieu.ghi_chu_mo_phong()
-    # Ảnh PNG vẫn vẽ được (không chặn người dùng) và SVG mang dòng MÔ PHỎNG.
+    ghi_chu = du_lieu.ghi_chu_mo_phong()
+    assert ghi_chu and "tham khảo" in ghi_chu
+    # Nhan phai trung thuc: du lieu la that, chi dai gioi han la tham khao.
+    assert "MÔ PHỎNG" not in ghi_chu
+    assert "số liệu thật" in ghi_chu
+    # Ảnh PNG vẫn vẽ được (không chặn người dùng) và SVG mang dòng cảnh báo.
     import tempfile
     from pathlib import Path as _Path
 
@@ -947,7 +951,7 @@ def test_thieu_nguong_thi_bieu_do_duoc_danh_dau_mo_phong():
         out = _Path(tmp) / "a.png"
         render_chart_png(du_lieu, "xu_huong", out)
         assert out.stat().st_size > 0
-    assert "MÔ PHỎNG" in render_chart_svg(du_lieu, "xu_huong")
+    assert "THAM KHẢO" in render_chart_svg(du_lieu, "xu_huong")
 
 
 def test_co_nguong_that_thi_khong_con_la_mo_phong():
@@ -971,7 +975,8 @@ def test_huong_dan_thieu_nguong_neu_dung_viec_can_lam():
 
     huong_dan = huong_dan_thieu_nguong("DEPTH:BEAM:H:LD1:IMGHEIGHT:0:CAM0")
     assert "thiếu ngưỡng trên/dưới" in huong_dan
-    assert "MÔ PHỎNG" in huong_dan
+    assert "tham khảo" in huong_dan
+    assert "MÔ PHỎNG" not in huong_dan
     assert "đặt ngưỡng trên 100 cho DEPTH:BEAM:H:LD1:IMGHEIGHT:0" in huong_dan
     assert "đặt ngưỡng dưới 10 cho DEPTH:BEAM:H:LD1:IMGHEIGHT:0" in huong_dan
     assert "Tệp giới hạn kèm theo" in huong_dan
@@ -1000,7 +1005,8 @@ def test_chat_ve_bieu_do_thieu_nguong_thi_noi_ro_va_ghi_mo_phong():
     assert ket_qua.handled is True
     assert ket_qua.chart_png is not None
     assert ket_qua.chart_meta.get("mo_phong") is True
-    assert "MÔ PHỎNG" in ket_qua.assistant_text
+    assert "tham khảo" in ket_qua.assistant_text
+    assert "MÔ PHỎNG" not in ket_qua.assistant_text
     assert "đặt ngưỡng trên" in ket_qua.assistant_text
     assert "Tệp giới hạn kèm theo" in ket_qua.assistant_text
 
@@ -1071,13 +1077,14 @@ def test_bieu_do_so_sanh_mau_thieu_nguong_van_duoc_danh_dau_mo_phong():
     )
     assert ket_qua.chart_meta.get("loai_bieu_do") == "so_sanh_mau"
     assert ket_qua.chart_meta.get("mo_phong") is True
-    assert "MÔ PHỎNG" in ket_qua.assistant_text
+    assert "tham khảo" in ket_qua.assistant_text
+    assert "MÔ PHỎNG" not in ket_qua.assistant_text
 
-    # Và email phải mang tiền tố mô phỏng theo đúng cờ đó.
+    # Và email phải mang tiền tố giới hạn tham khảo theo đúng cờ đó.
     from aios_habit.workspace_chat_ui import build_de_xuat_mail_data
 
     mail = build_de_xuat_mail_data({"nguoi_nhan": ["a@b.local"]}, ket_qua.chart_meta)
-    assert mail["tieu_de"].startswith("[MÔ PHỎNG]")
+    assert mail["tieu_de"].startswith("[Giới hạn tham khảo]")
 
 
 def test_bieu_do_so_sanh_mau_danh_dau_mo_phong_khong_le_thu_tu_chuoi():
@@ -1104,8 +1111,8 @@ def test_bieu_do_so_sanh_mau_danh_dau_mo_phong_khong_le_thu_tu_chuoi():
     assert co_nguong.mo_phong is False and khong_nguong.mo_phong is True
 
     # Đổi thứ tự chuỗi không được đổi kết luận.
-    assert "MÔ PHỎNG" in render_chart_svg([co_nguong, khong_nguong], "so_sanh_mau")
-    assert "MÔ PHỎNG" in render_chart_svg([khong_nguong, co_nguong], "so_sanh_mau")
+    assert "THAM KHẢO" in render_chart_svg([co_nguong, khong_nguong], "so_sanh_mau")
+    assert "THAM KHẢO" in render_chart_svg([khong_nguong, co_nguong], "so_sanh_mau")
     # Cả hai chuỗi đều có giới hạn thì không đánh dấu.
     kho.dat(NguongChiSo(jig_id="J", chi_so="SKEW", gioi_han_duoi=0, gioi_han_tren=99))
     day_du = [
@@ -1117,7 +1124,7 @@ def test_bieu_do_so_sanh_mau_danh_dau_mo_phong_khong_le_thu_tu_chuoi():
 
 
 def test_email_mo_phong_duoc_ghi_ro_trong_chu():
-    """Người nhận email đọc phần chữ phải biết ảnh là mô phỏng, không chỉ dựa vào ảnh."""
+    """Người nhận email đọc phần chữ phải biết dải giới hạn chỉ là tham khảo, không chỉ dựa vào ảnh."""
     from aios_habit.production_prediction.metric_limits import KhoNguong
     from aios_habit.workspace_chat_ui import build_de_xuat_mail_data
 
@@ -1125,8 +1132,9 @@ def test_email_mo_phong_duoc_ghi_ro_trong_chu():
         {"nguoi_nhan": ["a@b.local"]},
         {"ma_jig": "J", "ten_chi_so": "DEPTH:X:Y", "mo_phong": True},
     )
-    assert mo_phong["tieu_de"].startswith("[MÔ PHỎNG]")
-    assert "MÔ PHỎNG" in mo_phong["tom_tat"]
+    assert mo_phong["tieu_de"].startswith("[Giới hạn tham khảo]")
+    assert "tham khảo" in mo_phong["tom_tat"]
+    assert "MÔ PHỎNG" not in mo_phong["tieu_de"]
     assert "chưa có giới hạn trên/dưới thật" in mo_phong["tom_tat"]
 
     that = build_de_xuat_mail_data(

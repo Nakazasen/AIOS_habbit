@@ -390,7 +390,7 @@ def dung_du_lieu_bieu_do(
         )
     usl = nguong.gioi_han_tren if (nguong is not None and nguong.hieu_luc()) else None
     lsl = nguong.gioi_han_duoi if (nguong is not None and nguong.hieu_luc()) else None
-    # Chưa có giới hạn thật → biểu đồ là MÔ PHỎNG và phải ghi rõ trên ảnh.
+    # Chưa có giới hạn thật → dải giới hạn chỉ là tham khảo và phải ghi rõ trên ảnh.
     mo_phong = usl is None and lsl is None
     if not don_vi and nguong is not None:
         don_vi = _BANG_DON_VI_THEO_CHI_SO.get(ma_chi_so_chuan(chi_so_chuan), "")
@@ -437,8 +437,8 @@ def huong_dan_thieu_nguong(ten_chi_so: str) -> str:
         "Chưa vẽ được đường giới hạn thật vì **thiếu ngưỡng trên/dưới** cho chỉ số này.",
         f"Chỉ số: {chi_so or 'chưa rõ'}",
         "",
-        "Biểu đồ dưới đây là **MÔ PHỎNG**: đường giới hạn chỉ là dải tham khảo "
-        "(trung bình ± 3 độ lệch chuẩn), không phải tiêu chuẩn kỹ thuật.",
+        "Biểu đồ dưới đây dùng dải giới hạn **tham khảo** (trung bình ± 3 độ lệch chuẩn), "
+        "không phải tiêu chuẩn kỹ thuật; đường dữ liệu là số liệu thật.",
         "",
         "Để có giới hạn thật, chọn một trong hai cách:",
         "1) Nhập ngay trong chat, ví dụ:",
