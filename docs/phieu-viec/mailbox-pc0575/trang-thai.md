@@ -2,6 +2,7 @@
 
 Trạng thái: `dang-lam`
 - `ghi_chu` (tiến độ OMP): 2026-10-02 12:46 +07 — OMP nhận vé (watcher LAUNCH 1/4 lúc 12:43; điều kiện mở đã tới: verdict DEPLOY-BUOC05 **ĐẠT** + app CPU-only đang chạy `/_stcore/health`=ok). Bắt đầu đo tốc độ 6 câu L1–L3/E1–E3.
+- `ghi_chu` (tiến độ OMP): 2026-10-02 13:12 +07 — Mốc as-deploy: 2 câu lạnh liên tiếp qua UI đều trả lỗi "AIOS đã tự làm nóng bộ đọc… chưa xong" sau ~265 s (worker init vượt cửa sổ 120 s của app). Đang đo init worker thật + probe cùng pipeline cho 6 câu (v2off/v2on).
 - Ticket hiện tại: `OPT-RAGV2-SPEED-APP-PC0575` — [CTY] đo tốc độ hỏi đáp app thật + hồ sơ nút thắt còn lại (phát hành 2026-10-02 sau verdict ĐẠT vé DEPLOY-BUOC05-PC0575).
 - `prompt`: `docs/phieu-viec/mailbox-pc0575/prompt.md`
 - `bao_cao`: `docs/phieu-viec/ket-qua/opt-ragv2-speed-app-pc0575.md`
@@ -11,4 +12,4 @@ Trạng thái: `dang-lam`
   2. `OPT-RAGV2-PYLOOPS` — **ĐÃ XONG, verdict Muse ĐẠT 2026-10-02 ~09:26 +07**
   3. `OPT-RAGV2-LEXICAL` — **ĐÃ XONG, verdict Muse ĐẠT 2026-10-02 11:25 +07 (stretch <60s/câu chưa đạt, ghi rõ)**
   4. `DEPLOY-BUOC05-PC0575` — **ĐÃ XONG, verdict Muse ĐẠT 2026-10-02 (6/6 B0–B5 chạy thật; LAN treo chờ admin)**
-  5. `OPT-RAGV2-SPEED-APP-PC0575` (`prompt-queue-opt-ragv2-speed-app-pc0575.md`) — **ĐANG PHÁT HÀNH (moi)**
+  5. `OPT-RAGV2-SPEED-APP-PC0575` (`prompt-queue-opt-ragv2-speed-app-pc0575.md`) — **ĐANG LÀM (OMP nhận 2026-10-02 12:46 +07)**
