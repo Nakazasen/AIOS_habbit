@@ -75,3 +75,11 @@ Cách chạy tiếp khi cầu nối Gemini Web hết 405:
 Cách chạy tiếp khi cầu nối hết 405: kiểm health + một lượt JSON, rồi chạy lại runner. Checkpoint giữ 180 mục. Khi `done=889` mới xuất sổ tay, manifest, và probe so với lane RAG.
 
 Muse review file này. Cầu nối cần hết HTTP 405 trước khi resume.
+
+## 8. Vé R1 — lần mở lại 05:04, cổng vẫn 405
+
+- Watcher `RELAUNCH 1/4` lúc 04:59:59 (`launchStallCount=1`). Chưa đủ 4 lần. Không đặt `cho-muse`. Không quay no-op.
+- Sidecar đã tắt (connection refused). Bật lại `--mode direct`. `GET /health` = `direct_ready`.
+- Một lượt tóm tắt thử ngoài batch: HTTP 502 sau 2,2 giây. Thân: `Gemini Web generation failed: HTTP Error 405: Method Not Allowed`. Không chạy batch.
+- Checkpoint vẫn 180/889. Sổ tay chưa xuất. Probe 12 câu chưa chạy. Không tự đánh ĐẠT.
+
