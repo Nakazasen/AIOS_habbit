@@ -55,6 +55,8 @@ BUILTIN_ACTION_MODULES: Tuple[str, ...] = (
     # B2: explicit feedback commands outrank the bare-code lookup fallback,
     # while tra_cuu_loi_tuong_tu stays last (lowest match priority).
     "aios_habit.chat_action_phan_hoi",
+    # UX-INTERVIEW-FEEDBACK: vong lap cai thien goi y (bao cao cham cua chuyen gia).
+    "aios_habit.chat_action_suggestion_review",
     "aios_habit.chat_action_error_lookup",
 )
 

@@ -375,7 +375,7 @@ def render_answer_feedback_row(
     if not conversation_id or not message_id:
         return
     if answer_feedback.get_feedback(conversation_id, message_id) is not None:
-        st.caption("Đã ghi nhận đánh giá của bạn cho câu trả lời này. Cảm ơn!")
+        st.caption(t("answer_feedback_thanks_rated", locale=locale))
         return
     key_base = f"wsc_answer_fb_{message_id}"
     rating = st.feedback("thumbs", key=key_base)
@@ -386,13 +386,13 @@ def render_answer_feedback_row(
             conversation_id, message_id, question, answer, "huu_ich"
         )
         if result.get("ok"):
-            st.caption("Cảm ơn bạn đã đánh giá!")
+            st.caption(t("answer_feedback_thanks", locale=locale))
         return
     reason = st.text_input(
-        "Câu trả lời chưa ổn ở điểm nào? (nhập lý do để tụi mình cải thiện)",
+        t("answer_feedback_reason_prompt", locale=locale),
         key=key_base + "_reason",
     )
-    if st.button("Gửi đánh giá", key=key_base + "_send"):
+    if st.button(t("answer_feedback_send", locale=locale), key=key_base + "_send"):
         result = answer_feedback.record_feedback(
             conversation_id,
             message_id,
@@ -402,9 +402,14 @@ def render_answer_feedback_row(
             reason=reason,
         )
         if result.get("ok"):
-            st.caption("Đã ghi nhận. Cảm ơn bạn!")
+            st.caption(t("answer_feedback_recorded", locale=locale))
         else:
-            st.warning(str(result.get("error_vi") or "Không ghi được đánh giá."))
+            st.warning(
+                str(
+                    result.get("error_vi")
+                    or t("answer_feedback_save_failed", locale=locale)
+                )
+            )
 
 
 def render_chat_bubble(
