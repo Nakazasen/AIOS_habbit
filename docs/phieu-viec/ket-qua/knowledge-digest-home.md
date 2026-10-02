@@ -90,3 +90,10 @@ Muse review file này. Cầu nối cần hết HTTP 405 trước khi resume.
 - Sidecar tắt (connection refused). Bật lại `--mode direct`. `GET /health` = `direct_ready`.
 - Một lượt tóm tắt thử ngoài batch: HTTP 502 sau 2,3 giây. Nhật ký sidecar: Gemini HTTP 405, làm mới BL không cứu được. Không chạy batch.
 - Checkpoint vẫn 180 mục (`saved_local` 2026-10-03 04:51:15). Sổ tay chưa xuất. Probe 12 câu chưa chạy. Không tự đánh ĐẠT.
+
+## 10. Vé R1 — lần mở lại 05:22, cổng vẫn đóng
+
+- Watcher `RELAUNCH 3/4` lúc 05:22:04 (`launchStallCount=3`). Cách lần 2/4 (05:11:05) khoảng 11 phút. Chưa đủ 4 lần. Không đặt `cho-muse`. Không quay no-op.
+- Sidecar tắt (connection refused). Bật lại `--mode direct`. `GET /health` = `direct_ready`.
+- Một lượt tóm tắt thử ngoài batch: HTTP 502 sau 11,0 giây. Nhật ký sidecar: Gemini HTTP 302 vòng lặp chuyển hướng, không trả JSON. Không chạy batch.
+- Checkpoint vẫn 180 mục (`saved_local` 2026-10-03 04:51:15). Sổ tay chưa xuất. Probe 12 câu chưa chạy. Không tự đánh ĐẠT.
