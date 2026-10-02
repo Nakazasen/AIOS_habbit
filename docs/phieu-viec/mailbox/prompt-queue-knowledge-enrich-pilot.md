@@ -47,3 +47,10 @@ Không merge `main`; code tương thích Python 3.11; không force-push.
 - Nhãn duy nhất đúng `kiến thức đã được đào tạo bổ sung`; không có bản chưa qua vòng chuyên gia nào lọt vào luồng trả lời chính.
 - Bộ đo trước/sau chạy được; index production `library.sqlite` không đổi.
 - Commit riêng trên branch `phieu-viec/rag-fix1`, không đụng `main`.
+
+## Phụ lục: phương án khi không có Copilot (user hỏi 2026-10-02 ~22:00)
+
+- Ở máy không có Copilot 365 (ví dụ máy nhà): được phép dùng **Gemini Web qua cầu nối sẵn có (`127.0.0.1:8585`)** hoặc **Nakazasen Router** để soạn thảo đáp án theo đúng schema/form, thay cho Copilot. File batch xuất ra dùng chung, ai soạn cũng điền cùng một form.
+- **Không dùng tài khoản ChatGPT cá nhân cho dữ liệu công ty** khi chưa rõ quy định công ty: Copilot 365 đã được công ty cho phép; ChatGPT cá nhân thì chưa. User có thể gỡ rào này bằng quyết định rõ ràng sau.
+- Đính chính cách gọi "auto train": ChatGPT/Gemini **không huấn luyện** trên dữ liệu của mình — chúng chỉ đọc file đính kèm trong phiên/project để soạn thảo. Tri thức thật vẫn nằm trong kho AIOS.
+- Rào trung thực giữ nguyên: đáp án do LLM soạn chỉ là **bản thảo**, bắt buộc qua chuyên gia duyệt (trạng thái `cho_chuyen_gia_phan_hoi` → `chuyen_gia_da_phan_hoi`) mới được gắn nhãn `kiến thức đã được đào tạo bổ sung`. Cấm gắn nhãn chuyên gia cho bản thảo chưa duyệt.
