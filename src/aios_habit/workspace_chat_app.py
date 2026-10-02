@@ -2877,16 +2877,29 @@ else:
     connector_status_key = f"wsc_connector_check_status_{active_conversation_id}"
     bridge_health = get_antigravity_bridge_health()
     with top_col2:
-        selected_ai_backend = st.selectbox(
-            t("ai_connector_label", locale=current_ui_locale),
-            options=("gemini_web", "cagent_api", "nakazasen_router"),
-            format_func=lambda value: {
-                "gemini_web": t("ai_connector_gemini", locale=current_ui_locale),
-                "cagent_api": t("ai_connector_cagent", locale=current_ui_locale),
-                "nakazasen_router": t("ai_connector_router", locale=current_ui_locale),
-            }[value],
-            key=f"wsc_ai_backend_{active_conversation_id}",
-            help=t("ai_connector_help", locale=current_ui_locale),
+        # UX-CHAT-CORE #3: lane tu dong chon — khong bat user doi tay moi lan.
+        # Lua chon duoc ghi nho theo cuoc hoi thoai; chi hien dong trang thai nho.
+        from aios_habit.ai_lane import auto_backend_for_conversation, backend_label_vi
+        from aios_habit.ai_router import provider_env_presence
+
+        _cagent_endpoint_probe = (
+            os.environ.get("AIOS_CAGENT_API_URL", "").strip()
+            or "https://kdtvn-ai.cmcts.vn/api/v1/prediction/1881aa32-c996-4e6f-9257-78246177ba9f"
+        )
+        _lane_decision = auto_backend_for_conversation(
+            f"wsc_ai_lane_{active_conversation_id}",
+            st.session_state,
+            bridge_available=bool(getattr(bridge_health, "is_available", False)),
+            cagent_endpoint=_cagent_endpoint_probe,
+            router_keys_present=any(provider_env_presence(os.environ).values()),
+            manual_override=os.environ.get("AIOS_AI_BACKEND", ""),
+        )
+        selected_ai_backend = _lane_decision.backend
+        st.caption(
+            "Đang dùng: "
+            + backend_label_vi(selected_ai_backend)
+            + (" (tự động)" if _lane_decision.automatic else " (ghim tay)")
+            + " — " + _lane_decision.reason_vi
         )
         cagent_endpoint = ""
         if selected_ai_backend == "cagent_api":
@@ -3550,20 +3563,15 @@ else:
                         st.session_state.wsc_action_error = pending_messages.get(pending_state, "Không thể tiếp tục câu hỏi đang chờ.")
 
                 # AI-IDE style composer. Normal widgets are used instead of a
-                # form so an attachment thumbnail and model picker update in
-                # place before the user sends the question.
-                backend_key = f"wsc_ai_backend_{active_conversation.id}"
-                backend_labels = {
-                    "gemini_web": t("ai_connector_gemini", locale=current_ui_locale),
-                    "cagent_api": t("ai_connector_cagent", locale=current_ui_locale),
-                    "nakazasen_router": t("ai_connector_router", locale=current_ui_locale),
-                }
+                # form so an attachment thumbnail updates in place before the
+                # user sends the question. (UX-CHAT-CORE #3: lane AI do he thong
+                # tu chon, khong con selectbox tay o day.)
                 pasted_image_key = f"wsc_pasted_image_{active_conversation.id}"
                 upload_key = f"wsc_chat_img_{active_conversation.id}_{st.session_state.wsc_upload_version}"
                 if active_action_error:
                     st.error(safe_vietnamese_ui_message(active_action_error, "Không thể hoàn tất thao tác lúc này."))
                     preview_backend = st.session_state.get(
-                        f"wsc_ai_backend_{active_conversation.id}", "gemini_web"
+                        f"wsc_ai_lane_{active_conversation.id}", "gemini_web"
                     )
                     is_bridge_connection_error = any(
                         token in str(active_action_error).casefold()
@@ -3664,13 +3672,29 @@ else:
                                         )
                                         safe_rerun()
                     with toolbar_model_col:
-                        selected_ai_backend = st.selectbox(
-                            t("ai_connector_label", locale=current_ui_locale),
-                            options=("gemini_web", "cagent_api", "nakazasen_router"),
-                            format_func=lambda value: backend_labels[value],
-                            key=backend_key,
-                            help=t("ai_connector_help", locale=current_ui_locale),
-                            label_visibility="collapsed",
+                        # UX-CHAT-CORE #3: lane tu dong chon (giong header legacy).
+                        from aios_habit.ai_lane import auto_backend_for_conversation as _auto_lane
+                        from aios_habit.ai_lane import backend_label_vi as _lane_label
+                        from aios_habit.ai_router import provider_env_presence as _env_presence
+
+                        _toolbar_lane = _auto_lane(
+                            f"wsc_ai_lane_{active_conversation.id}",
+                            st.session_state,
+                            bridge_available=bool(
+                                getattr(get_antigravity_bridge_health(), "is_available", False)
+                            ),
+                            cagent_endpoint=(
+                                os.environ.get("AIOS_CAGENT_API_URL", "").strip()
+                                or "https://kdtvn-ai.cmcts.vn/api/v1/prediction/1881aa32-c996-4e6f-9257-78246177ba9f"
+                            ),
+                            router_keys_present=any(_env_presence(os.environ).values()),
+                            manual_override=os.environ.get("AIOS_AI_BACKEND", ""),
+                        )
+                        selected_ai_backend = _toolbar_lane.backend
+                        st.caption(
+                            "Đang dùng: "
+                            + _lane_label(selected_ai_backend)
+                            + (" (tự động)" if _toolbar_lane.automatic else " (ghim tay)")
                         )
                         if selected_ai_backend == "cagent_api":
                             with st.popover(t("cagent_config_popover", locale=current_ui_locale), icon=":material/settings:"):
@@ -3688,7 +3712,8 @@ else:
                                 ).strip()
                                 if cagent_endpoint:
                                     os.environ["AIOS_CAGENT_API_URL"] = cagent_endpoint
-                    selected_ai_backend = st.session_state.get(backend_key, "gemini_web")
+                    # UX-CHAT-CORE #3: selected_ai_backend da do lane tu dong quyet dinh
+                    # o tren; khong doc lai tu session key cua selectbox cu (da bo).
                     cagent_endpoint_url = (
                         str(st.session_state.get(f"wsc_cagent_endpoint_{active_conversation.id}", "")).strip()
                         or os.environ.get("AIOS_CAGENT_API_URL", "").strip()
