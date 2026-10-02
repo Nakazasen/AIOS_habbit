@@ -5,6 +5,7 @@
 - `prompt`: `docs/phieu-viec/mailbox/prompt.md`
 - `commit`: `4eeffcc`
 - `bao_cao`: `docs/phieu-viec/ket-qua/knowledge-digest-home.md`
+- `ghi_chu`: 2026-10-03 05:04 +07 — **OMP nhận lại vé (`RELAUNCH 1/4` lúc 04:59:59, `launchStallCount=1`).** Chưa đủ 4 lần, không đặt `cho-muse`. Cổng mở CHƯA tới: `127.0.0.1:8585` connection refused (sidecar tắt sau 8 lỗi 502 lúc 04:56). Checkpoint giữ 180/889. Đang bật lại sidecar `--mode direct` rồi thử health + 1 lượt tóm tắt. Không chạy batch, không quay no-op.
 - `ghi_chu`: 2026-10-03 04:58 +07 — **Dừng phiên vì 405 trở lại.** Cổng mở đạt lúc 04:42 (JSON 2,8 s). Batch resume 92→180/889 rồi 8 lỗi HTTP 502 liên tiếp (thân 405), dừng 04:56, không quay vòng. Thử lại ngay sau dừng: 502 sau 2,3 s. Checkpoint 180 mục JSON, SHA index không đổi. Sổ tay chưa xuất, probe chưa chạy. Không tự đánh ĐẠT. `LAUNCH 1/4`, không đặt `cho-muse`. Resume: hết 405 thì chạy lại runner, checkpoint giữ 180.
 - `ghi_chu`: 2026-10-03 04:50 +07 — Moc tom tat 167/889 document. Checkpoint moi tai lieu. Khong ghi index. Tiep tuc batch Gemini Web.
 - `ghi_chu`: 2026-10-03 03:41 +07 — **Backoff 30 phút vẫn 405.** Health `direct_ready`, lượt thử HTTP 502 sau 10,8 s. Checkpoint 92/889. Không chạy batch. `LAUNCH 1/4`, không đặt `cho-muse`. Backoff cuối 60 phút.
