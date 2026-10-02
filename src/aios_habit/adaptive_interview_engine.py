@@ -499,3 +499,35 @@ def propose_next_action(
         expected_evidence=("confirmation",),
         confidence=0.95,
     )
+
+
+def generate_seed_questions_with_golden(
+    gap: KnowledgeGapCandidate,
+    golden_questions: Sequence[Any],
+) -> tuple[SeedQuestion, ...]:
+    """Seed questions for a gap, preferring golden questions first.
+
+    Wire-in for the golden-question pilot: scored GoldenQuestion entries become
+    seed questions for the adaptive interview engine, keyed by the existing
+    gap system (GoldenQuestion.target_gap_id == KnowledgeGapCandidate.gap_id).
+    Legacy deterministic seeds fill whatever the golden set does not cover.
+
+    The import is local on purpose: golden_question_generator imports this
+    module, so a top-level import would create a cycle.
+    """
+    from aios_habit.golden_question_generator import golden_to_seed_questions
+
+    golden_seeds = [
+        seed
+        for seed in golden_to_seed_questions(golden_questions)
+        if seed.target_gap_id == gap.gap_id
+    ]
+    legacy = list(generate_seed_questions(gap))
+    seen = {seed.text.strip().lower() for seed in golden_seeds}
+    merged = list(golden_seeds)
+    for seed in legacy:
+        normalized = seed.text.strip().lower()
+        if normalized not in seen:
+            seen.add(normalized)
+            merged.append(seed)
+    return tuple(merged)
