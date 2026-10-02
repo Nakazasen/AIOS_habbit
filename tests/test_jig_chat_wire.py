@@ -158,3 +158,24 @@ def test_ung_dung_co_nut_tam_dung_tiep_tuc_luong_truc_tiep():
     assert 't("jig_stream_resume"' in source
     assert '"jig_stream_pause": "Tạm dừng luồng"' in translations
     assert '"jig_stream_resume": "Tiếp tục luồng"' in translations
+
+
+def test_xu_huong_xau_kem_phan_doan_va_de_xuat():
+    history = [0.10] * 40 + [0.50, 0.52, 0.51]
+    outcome = decide_jig_action(
+        "2026-09-20T08:00:00,UNIT001,JIG-01,bowskew,0.53,mm,OK",
+        history_provider=lambda jig, metric: history,
+    )
+    assert outcome.handled is True
+    assert "Phán đoán nguyên nhân (giả thuyết)" in outcome.assistant_text
+    assert "Đề xuất điều tra:" in outcome.assistant_text
+    assert "giả thuyết" in outcome.assistant_text.lower()
+
+
+def test_khong_co_xu_huong_thi_khong_phan_doan():
+    outcome = decide_jig_action(
+        "2026-09-20T08:00:00,UNIT001,JIG-01,bowskew,0.11,mm,OK",
+        history_provider=lambda jig, metric: [0.10] * 40,
+    )
+    assert outcome.handled is True
+    assert "Phán đoán nguyên nhân" not in outcome.assistant_text

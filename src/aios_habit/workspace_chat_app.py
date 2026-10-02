@@ -1587,8 +1587,10 @@ selected_cluster = st.sidebar.radio(
         "cases": "Hồ sơ và tri thức",
         "advanced": "Công cụ nâng cao",
     }.get(c, c),
+    # Khong dat key: index tinh tu nav state that moi lan render. Neu giu key,
+    # widget se giu value cu trong session_state (vd van hien "Hoi tai lieu"
+    # du gate LSU dang mo) khien bam vao khong co tac dung (no demo).
     index=["chat", "cases", "advanced"].index(current_nav),
-    key="wsc_sidebar_nav_cluster",
     label_visibility="collapsed",
 )
 

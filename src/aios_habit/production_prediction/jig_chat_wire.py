@@ -288,6 +288,13 @@ def format_instant_card_text(card: Dict[str, Any]) -> str:
     xu_huong = str(card.get("xu_huong_sma", "") or "").strip()
     if xu_huong:
         lines.append(f"Xu hướng SMA(20): {xu_huong}")
+    phan_doan = str(card.get("phan_doan_nguyen_nhan", "") or "").strip()
+    if phan_doan:
+        lines.append(f"Phán đoán nguyên nhân (giả thuyết): {phan_doan}")
+    de_xuat = card.get("de_xuat_dieu_tra") or []
+    if de_xuat:
+        lines.append("Đề xuất điều tra:")
+        lines.extend(f"  • {str(b).strip()}" for b in de_xuat if str(b).strip())
     return "\n".join(line for line in lines if line.strip())
 
 
@@ -567,11 +574,21 @@ def decide_jig_action(
                 danh_gia_xu_huong_sma,
                 gate_canh_bao_theo_xu_huong,
             )
+            from aios_habit.production_prediction.trend_response import (
+                dinh_kem_phan_ung,
+            )
 
             xu_huong_depth = danh_gia_xu_huong_sma(
                 history_depth + [first_depth.value], nguong=nguong_depth
             )
             gate_canh_bao_theo_xu_huong(ket_luan_depth, xu_huong_depth)
+            dinh_kem_phan_ung(
+                ket_luan_depth,
+                first_depth.jig_id,
+                first_depth.metric,
+                history_depth + [first_depth.value],
+                xu_huong_depth,
+            )
             the_depth = build_instant_log_card(first_depth.to_dict(), ket_luan_depth)
             return JigChatOutcome(
                 handled=True,
@@ -642,11 +659,18 @@ def decide_jig_action(
             danh_gia_xu_huong_sma,
             gate_canh_bao_theo_xu_huong,
         )
+        from aios_habit.production_prediction.trend_response import (
+            dinh_kem_phan_ung,
+        )
 
         xu_huong_iris = danh_gia_xu_huong_sma(
             history + [first.value], nguong=nguong_chi_so
         )
         gate_canh_bao_theo_xu_huong(result, xu_huong_iris)
+        dinh_kem_phan_ung(
+            result, first.jig_id, first.metric,
+            history + [first.value], xu_huong_iris,
+        )
         card = build_instant_log_card(first.to_dict(), result)
         reply = format_instant_card_text(card)
         reply += (
@@ -708,10 +732,15 @@ def decide_jig_action(
             danh_gia_xu_huong_sma,
             gate_canh_bao_theo_xu_huong,
         )
+        from aios_habit.production_prediction.trend_response import (
+            dinh_kem_phan_ung,
+        )
 
-        gate_canh_bao_theo_xu_huong(
-            result,
-            danh_gia_xu_huong_sma(history + [first.value], nguong=nguong_chi_so),
+        _xu_huong = danh_gia_xu_huong_sma(history + [first.value], nguong=nguong_chi_so)
+        gate_canh_bao_theo_xu_huong(result, _xu_huong)
+        dinh_kem_phan_ung(
+            result, first.jig_id, first.metric,
+            history + [first.value], _xu_huong,
         )
         card = build_instant_log_card(first.to_dict(), result)
         reply = format_instant_card_text(card)
