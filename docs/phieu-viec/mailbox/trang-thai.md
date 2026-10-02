@@ -3,8 +3,9 @@
 - Trạng thái: `dang-lam`
 - Ticket hiện tại: `KNOWLEDGE-DIGEST-HOME-R1` — [NHÀ] resume batch tóm tắt từ checkpoint 92/889 khi cầu nối hết HTTP 405; xuất sổ tay + probe so sánh RAG.
 - `prompt`: `docs/phieu-viec/mailbox/prompt.md`
-- `commit`: `f5140a3`
+- `commit`: `8768370`
 - `bao_cao`: `docs/phieu-viec/ket-qua/knowledge-digest-home.md`
+- `ghi_chu`: 2026-10-03 03:09 +07 — **Backoff 15 phút vẫn 405.** Health `direct_ready`, lượt thử HTTP 502 sau 10,4 s. Checkpoint 92/889. Không chạy batch. `LAUNCH 1/4`, không đặt `cho-muse`. Backoff tiếp 30 phút.
 - `ghi_chu`: 2026-10-03 02:52 +07 — **Backoff 5 phút vẫn 405.** Health vẫn `direct_ready`, lượt thử lại HTTP 502 sau 14,4 s. Checkpoint 92/889 không đổi. Không chạy batch. `LAUNCH 1/4`, không đặt `cho-muse`. Backoff tiếp 15 phút.
 - `ghi_chu`: 2026-10-03 02:46 +07 — **Mốc cổng cầu nối CHƯA đạt.** Sidecar bật lại, `GET /health` = `direct_ready`, nhưng 1 lượt tóm tắt thử HTTP 502 (thân: Gemini HTTP 405) sau 12,3 s. Làm mới BL vẫn HTTP 302 vòng lặp. Checkpoint giữ 92/889. Không chạy batch. `LAUNCH 1/4`, không đặt `cho-muse`. Backoff 5 phút rồi thử lại 1 lần.
 - `ghi_chu`: 2026-10-03 02:41 +07 — **OMP nhận vé `KNOWLEDGE-DIGEST-HOME-R1` (`dang-lam`).** Watcher `LAUNCH 1/4` lúc 02:33:16, chưa đủ 4 lần, không đặt `cho-muse`. Cổng mở CHƯA xác nhận: `127.0.0.1:8585` connection refused. Đang bật lại sidecar `--mode direct`, rồi mới thử health + 1 lượt tóm tắt. Không chạy batch, không quay no-op.
