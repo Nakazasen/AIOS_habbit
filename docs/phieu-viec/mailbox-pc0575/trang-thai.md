@@ -1,6 +1,7 @@
 # Trạng thái mailbox — KDTVN-PC0575
 
-Trạng thái: `xong`
+Trạng thái: `moi`
+- `ghi_chu` (điều phối Muse): 2026-10-02 ~17:40 +07 — Phát hành vé xếp hàng #1 `SPEED-COLDSTART-PC0575` (copy `prompt-queue-speed-coldstart-pc0575.md` → `prompt.md`), `trang-thai` → `moi` theo hướng đi 17:39 (verdict OPT-RAGV2-SPEED-APP ĐẠT 15:47 đã có). Còn lại hàng chờ: `KNOWLEDGE-ENRICH-PILOT` (file vé nằm ở `docs/phieu-viec/mailbox/`, không có trong `mailbox-pc0575/`).
 - `ghi_chu` (verdict Muse): 2026-10-02 15:47 +07 — **ĐẠT** (commit `a746693`). Đủ 5 tiêu chí vé: (1) số đo app thật PC0575, tách lạnh/ấm, không dùng số máy khác; (2) số đo C-Agent 6/6 câu 16,5–45,8 s, tách tìm kiếm/viết/tổng, có điểm kẹt app-UI→C-Agent báo đúng; (3) parity top-15 100% cả 6 câu/2 chế độ, E1 15/15 đúng thứ tự; (4) index production không đổi (SHA `e54c7745…` y nguyên), health `ok`; (5) hồ sơ nút thắt bằng số đo + EXPLAIN QUERY PLAN (eligibility 120.452 dòng + chunks_fts MATCH). Phát hiện chặn: câu RAG lạnh qua UI sau restart luôn lỗi ~265 s vì init worker thật 180,9 s > cửa sổ 120 s của app, đường warm-up dùng sai collection — đề xuất vé code tiếp theo (a) sửa warm-up/init, (b) tối ưu eligibility + FTS. Hàng chờ đã cạn (5/5 vé ĐẠT) → mailbox `xong`.
 - `ghi_chu` (tiến độ OMP): 2026-10-02 15:40 +07 — **XONG (đã gồm phần C-Agent), chờ Muse duyệt**. Báo cáo: `docs/phieu-viec/ket-qua/opt-ragv2-speed-app-pc0575.md`. Điểm chính: parity **100% cả 6 câu/2 chế độ + E1 15/15**; app as-deploy **lỗi câu RAG lạnh sau restart** (~265 s) vì init worker thật **180,9 s > 120 s** (và warm-up dùng sai cấu hình); **C-Agent nối được, viết thành công 6/6 câu 16,5–45,8 s** (tổng đầu-cuối 79,9–292,5 s khi đĩa bận; app-UI chưa tới được bước C-Agent vì retrieval lạnh chặn trước); câu ấm khi đĩa rảnh 10–55 s (v2on 4/6 câu <60 s); nút thắt còn lại: quét eligibility 120.452 dòng + `chunks_fts MATCH` bm25; index production không đổi (`e54c7745…`), health `ok`.
 - `ghi_chu` (tiến độ OMP): 2026-10-02 15:15 +07 — Báo cáo chính đã viết xong (parity 100% cả 6 câu/2 chế độ, app as-deploy lỗi câu lạnh ~265 s, nút thắt eligibility + `chunks_fts`, index production không đổi) — nhưng vé có **bổ sung khẩn 13:21 về C-Agent**, OMP quay lại `dang-lam` để đo đường đầu-cuối C-Agent trên PC0575 trước khi chốt `xong-cho-duyet`.
@@ -8,7 +9,7 @@ Trạng thái: `xong`
 - `ghi_chu` (tiến độ OMP): 2026-10-02 13:24 +07 — Init worker thật (đúng client + config app, qua subprocess ONNX) = **180,9 s** (dense preload 83,9 s + sparse 85,6 s) > 120 s ⇒ app không tự làm ấm kịp sau restart. Probe cùng pipeline đang chạy 6 câu v2off/v2on; L1 v2off = 86,3 s (eligibility 68,2 s + fts_match 12,7 s).
 - `ghi_chu` (tiến độ OMP): 2026-10-02 13:12 +07 — Mốc as-deploy: 2 câu lạnh liên tiếp qua UI đều trả lỗi "AIOS đã tự làm nóng bộ đọc… chưa xong" sau ~265 s (worker init vượt cửa sổ 120 s của app). Đang đo init worker thật + probe cùng pipeline cho 6 câu (v2off/v2on).
 - `ghi_chu` (tiến độ OMP): 2026-10-02 12:46 +07 — OMP nhận vé (watcher LAUNCH 1/4 lúc 12:43; điều kiện mở đã tới: verdict DEPLOY-BUOC05 **ĐẠT** + app CPU-only đang chạy `/_stcore/health`=ok). Bắt đầu đo tốc độ 6 câu L1–L3/E1–E3.
-- Ticket hiện tại: `OPT-RAGV2-SPEED-APP-PC0575` — [CTY] đo tốc độ hỏi đáp app thật + hồ sơ nút thắt còn lại (phát hành 2026-10-02 sau verdict ĐẠT vé DEPLOY-BUOC05-PC0575).
+- Ticket hiện tại: `SPEED-COLDSTART-PC0575` — [CTY] sửa câu hỏi lạnh qua UI ~265 s (bộ đọc khởi động 180,9 s > cửa sổ 120 s của app; warm-up làm nóng nhầm collection).
 - `prompt`: `docs/phieu-viec/mailbox-pc0575/prompt.md`
 - `bao_cao`: `docs/phieu-viec/ket-qua/opt-ragv2-speed-app-pc0575.md`
 - `ghi_chu`: 2026-10-02 — Muse verdict DEPLOY-BUOC05-PC0575: **ĐẠT** (6/6 B0–B5 chạy trên app thật CPU-only, B1-FEAT 1,6 s/câu ×3 mã, index production `e54c7745…` không đổi; LAN treo theo chỉ đạo 12:07 chờ admin/IT). Phát hiện 5.1 (ưu tiên action B3 bị `tra_cuu_loi_tuong_tu` cướp phrasing chuẩn, nguồn `b330020`): Muse tự vá trên VM, không giao OMP. Phát hành vé xếp hàng tiếp theo `OPT-RAGV2-SPEED-APP-PC0575` theo chỉ đạo 12:07.
@@ -31,5 +32,4 @@ Trạng thái: `xong`
 **Nguyên tắc:** Muse ôm việc nền song song trên VM, không ngồi chờ OMP/user; OMP chỉ làm hàng chờ mailbox; J3 chờ user nên để sau.
 
 - `hang-cho` (mới, 2026-10-02 ~17:39):
-  1. `SPEED-COLDSTART-PC0575` (`prompt-queue-speed-coldstart-pc0575.md`) — [CTY] sửa câu lạnh ~265 s (init worker 180,9 s > 120 s app, warm-up nhầm collection)
-  2. `KNOWLEDGE-ENRICH-PILOT` (`prompt-queue-knowledge-enrich-pilot.md`) — [CTY] pilot làm giàu tri thức 5 hiện tượng F CALL (Copilot → staging, nhãn `kiến thức đã được đào tạo bổ sung`)
+  1. `KNOWLEDGE-ENRICH-PILOT` (`docs/phieu-viec/mailbox/prompt-queue-knowledge-enrich-pilot.md`) — [CTY] pilot làm giàu tri thức 5 hiện tượng F CALL (Copilot → staging, nhãn `kiến thức đã được đào tạo bổ sung`) — (vé #1 `SPEED-COLDSTART-PC0575` đã phát hành 17:40)

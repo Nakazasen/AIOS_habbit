@@ -1,36 +1,29 @@
-# Vé: OPT-RAGV2-SPEED-APP-PC0575 — đo tốc độ hỏi đáp app thật + hồ sơ nút thắt còn lại
+# Vé SPEED-COLDSTART-PC0575 — Sửa câu hỏi lạnh qua UI (~265 giây, bộ đọc khởi động 180,9 giây)
 
-> **BỔ SUNG KHẨN — 2026-10-02 13:21 +07 (user chỉ đạo qua Muse):** chỉ ở **máy công ty** mới nối được **AI C-Agent**, nên phải tranh thủ ngay trong phiên này. Ngoài đo tìm kiếm nội bộ, OMP phải đo thêm đường **đầu-cuối có C-Agent viết câu trả lời** nếu C-Agent đang cấu hình được trên PC0575/mạng công ty. Làm phần C-Agent sớm, không để cuối phiên mới thử. Tách rõ 3 số cho từng câu đo được: (a) thời gian tìm kiếm nội bộ, (b) thời gian C-Agent viết/tổng hợp, (c) tổng thời gian người dùng chờ. Ghi tên agent/model nếu hệ thống hiển thị, trạng thái thành công/lỗi, và lỗi hạn mức nếu có. Không ghi mật khẩu/token vào Git/chat; không bịa số nếu C-Agent chưa nối được — nếu kẹt đăng nhập/mạng/hạn mức thì báo đúng điểm kẹt và vẫn hoàn thành phần đo nội bộ.
+**Mức ưu tiên:** cao nhất (user chốt tốc độ phản hồi là ưu tiên số 1).
+**Máy thực hiện:** [CTY] KDTVN-PC0575 (CPU-only).
+**Xếp hàng:** đứng ĐẦU hàng chờ `mailbox-pc0575` — trước vé KNOWLEDGE-ENRICH-PILOT.
 
-Lane: [CTY] OMP đo và báo cáo trên KDTVN-PC0575 (CPU-only, index production chỉ đọc). Muse dùng báo cáo này để code tối ưu trên VM; OMP không tự sửa code trong vé này.
-Không merge `main`; không force-push; không ghi index production; không chạy `--apply`; không tạo bảng/index mới trong production.
+## Bối cảnh (số liệu đã đo, đã verify)
 
-## Lý do phát hành
+- Vé OPT-RAGV2-SPEED-APP-PC0575 đã ĐẠT; C-Agent đo 6/6 câu: 16,5–45,8 giây/câu.
+- NHƯNG câu hỏi LẠNH qua UI (bộ đọc chưa khởi động): người dùng chờ khoảng **265 giây**.
+- Bộ đọc khởi động mất **180,9 giây**, vượt cửa sổ chờ **120 giây** của app.
+- Luồng warm-up hiện tại **làm nóng sai collection** (không phải collection đang dùng).
+- Trong phần tìm kiếm, `eligibility scan` + `chunks_fts MATCH` vẫn là đoạn chậm.
 
-User chốt 2026-10-02 12:07 +07: **tốc độ phản hồi câu hỏi là ưu tiên số 1**. Mở LAN/tường lửa không làm câu trả lời nhanh hơn, nên hoãn sau vé này.
+## Yêu cầu
 
-Vé `OPT-RAGV2-LEXICAL` đã ĐẠT parity nhưng mốc stretch <60s/câu chưa đạt. Số đo probe gần nhất trên PC0575: E2 55,4s; L1 61,7s; các câu còn lại khoảng 129–146s. Nút thắt đã tách được: quét eligibility trên 120.452 dòng + `chunks_fts MATCH` bm25 khoảng 19–52s/câu. Dense/sparse không còn nạp lại giữa câu.
+1. **Đo chi tiết** 180,9 giây khởi động gồm những thành phần nào (nạp model, mở index/SQLite, khởi tạo embedding runtime, …). Ghi bảng thời gian từng bước.
+2. **Sửa warm-up làm nóng đúng collection** production (`workspace_chat_rag_v2_production`, index SHA `e54c7745…`). Cấm để cơ chế warm-up trỏ nhầm collection như hiện tại.
+3. **Đồng bộ cửa sổ chờ:** hoặc app chờ đủ lâu để bộ đọc sẵn sàng (đồng bộ readiness), hoặc rút khởi động xuống dưới 120 giây, hoặc giữ worker sống giữa các câu hỏi (không khởi động lại mỗi lần). Mục tiêu: **câu hỏi lạnh đầu tiên < 60 giây**.
+4. Đo lại đầy đủ 6 câu hỏi L1–E3 từ trạng thái lạnh hoàn toàn (khởi động app sạch → hỏi ngay), ghi thời gian từng câu, so với mốc 265 giây cũ.
+5. Không được đổi index (SHA `e54c7745…` phải giữ nguyên), không được giảm chất lượng đáp án (parity 100%, E1 khớp 15/15).
 
-## Việc cần làm
+## Điều kiện nghiệm thu
 
-1. Chạy trên chính PC0575 ở chế độ local, không cần LAN và không chờ admin mở tường lửa.
-2. Đo tốc độ hỏi đáp bằng đúng đường app đang chạy sau deploy Bước 0–5. Ghi rõ cách đo là qua giao diện app thật hay probe cùng pipeline; không gọi probe là app thật nếu không đi qua giao diện.
-3. Bộ câu: 6 câu L1–L3/E1–E3 đã dùng ở các vé PYLOOPS/LEXICAL. Đo câu lạnh sau restart và câu ấm lặp lại. Ghi từng câu: tổng thời gian, phần tìm kiếm, phần viết trả lời nếu tách được, và trạng thái cache.
-4. Đo thêm đường có **AI C-Agent** ngay trên PC0575 khi còn ở máy công ty: trước hết kiểm tra kết nối bằng 1 câu ngắn, sau đó đo các câu trong bộ 6 câu ở mức tối thiểu đủ kết luận (ưu tiên đủ 6 câu nếu hạn mức cho phép). Với mỗi câu ghi riêng thời gian tìm kiếm, thời gian C-Agent viết, tổng đầu-cuối, và có dùng lại ngữ cảnh/cache của C-Agent hay không nếu quan sát được.
-5. So hai chế độ nếu app cho phép đổi an toàn bằng biến môi trường khi restart: `AIOS_RAGV2_LEXICAL_V2=0` và `AIOS_RAGV2_LEXICAL_V2=1`. Nếu không đổi được qua app thật, ghi rõ và dùng probe cùng cấu hình để đối chứng.
-6. Kiểm parity top-15 so với baseline `opt_ragv2_verify_new.json`: phải khớp 100%, riêng E1 phải đủ 15/15 đúng thứ tự. Nếu lệch, dừng và báo rõ câu lệch.
-7. Nếu còn câu trên 60s, lập hồ sơ nút thắt bằng số đo: thời gian eligibility, `chunks_fts MATCH`, phần khác; kèm `EXPLAIN QUERY PLAN` hoặc bằng chứng tương đương cho truy vấn chậm nhất. Không tự sửa code, không tự tạo index mới.
-8. Đo SHA-256 và mtime của index production trước/sau; phải không đổi. Kiểm `/_stcore/health` = `ok` trước/sau.
+- Câu lạnh đầu tiên ≤ 60 giây, các câu sau giữ trong biên 16,5–45,8 giây/câu đã đạt.
+- Parity 100% trước/sau; đáp án 15/15 E1 khớp với đáp án của vé SPEED đã duyệt.
+- Bảng thời gian từng bước khởi động trước/sau.
 
-## Đầu ra
-
-- Báo cáo `docs/phieu-viec/ket-qua/opt-ragv2-speed-app-pc0575.md` gồm bảng 6 câu lạnh/ấm, so sánh v2off/v2on nếu đo được, bảng đo có C-Agent (tìm kiếm / C-Agent viết / tổng đầu-cuối) nếu nối được, parity, nút thắt lớn nhất kèm bằng chứng, và đề xuất hướng tối ưu cho Muse code.
-- Cập nhật `docs/phieu-viec/mailbox-pc0575/trang-thai.md` thành `xong-cho-duyet`.
-
-## Tiêu chí ĐẠT của vé đo này
-
-- Có số đo app thật trên PC0575, tách lạnh/ấm, không dùng số của máy khác.
-- Có số đo đường C-Agent trên PC0575, hoặc bằng chứng điểm kẹt cụ thể nếu C-Agent chưa nối được trên máy công ty.
-- Parity top-15 giữ nguyên; E1 đủ 15/15.
-- Index production không đổi; health `ok`.
-- Nếu chưa câu nào về dưới 60s ngoài E2, báo cáo phải chỉ rõ nút thắt còn lại bằng số đo để Muse viết vé code tiếp theo. Không tuyên bố đã đạt tốc độ chỉ vì parity đạt.
+**Verdict:** Muse review trên bằng chứng độc lập. Nếu khởi động vật lý không rút xuống dưới cửa sổ được (giới hạn máy), phải chứng minh cơ chế giữ worker sống + readiness probe hoạt động ổn định qua nhiều lần khởi động app.
