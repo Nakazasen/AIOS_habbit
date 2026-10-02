@@ -1,43 +1,57 @@
-# Vé: OPT-RAGV2-LEXICAL — khâu lexical 75–177s + sửa token cache bị vô hiệu giữa query
+# Vé DEPLOY-BUOC05-PC0575 — Deploy tính năng Bước 0–5 lên máy công ty + mở LAN cho người dùng
 
-Lane: [VM] Muse code+test trên VM → [CTY] OMP verify trên KDTVN-PC0575 (CPU-only, index production).
-Không merge `main`; code tương thích Python 3.11; không force-push.
+LANE: [CTY] — OMP làm toàn bộ trên KDTVN-PC0575 (CPU-only). Muse KHÔNG làm vé này.
 
-## Bối cảnh (số đo verify OPT-RAGV2-PYLOOPS, vòng 2 cache ấm, 2026-10-01 +07)
-- L1 266s, L2 ~426s, L3 297s, E1 455s, E2 405s, E3 303s.
-- Kết quả vòng 2 (`opt_ragv2_verify_new.json` trên PC0575) = **baseline** của vé này.
-- Dense/sparse khi ấm: ~0,3–1,5s (E1: dense 0,5s / sparse 0,3s) — numpy + preload đã phát huy tối đa.
-- Lexical: 75–177s/câu — **nút thắt duy nhất còn lại**.
-- Phát hiện chặn (micro-probe OMP đã chứng minh): câu non-CJK đi nhánh FTS, ghi ~120k dòng vào bảng tạm
-  `rag_v2_eligible_chunks` trên cùng connection → `total_changes` nhảy → token cache
-  `(data_version, total_changes)` đổi → dense/sparse tưởng DB đổi → nạp lại ma trận 100+s
-  (`load_ms` 106–162s ở L1–L3) ngay trong chính query đó. E1 (câu CJK duy nhất, nhánh
-  `deterministic_scan` không ghi temp) giữ nguyên cache.
+XẾP HÀNG: phát hành sau khi **cả hai** điều kiện tới —
+(a) `OPT-RAGV2-PYLOOPS` verdict ĐẠT trên PC0575 (app đã nhanh), và
+(b) `B5` verdict ĐẠT trên máy nhà (đủ bộ tính năng Bước 0–5).
+Không phát hành sớm hơn: deploy app chậm hoặc thiếu tính năng đều không đạt đích.
 
-## Phase A — sửa token cache (spec chính xác, làm trước)
-1. `src/aios_habit/rag_v2/index.py::_index_cache_token()` (~dòng 1932): **bỏ `total_changes` khỏi token,
-   chỉ giữ `PRAGMA data_version`** — token chỉ invalidate khi file DB đổi thật.
-2. Điều kiện an toàn (probe 30s trên PC0575 trước khi chấp nhận): ghi bảng TEMP không làm
-   `data_version` của main nhảy. Ghi rõ giả định vào comment: worker không bao giờ ghi bảng
-   embedding giữa query (mọi merge đều restart app).
-3. Test hồi quy: seed cache → ghi bảng TEMP trên cùng connection → assert
-   `_dense_matrix_cache_for` / `_sparse_vector_cache_for` trả về đúng object cũ, không gọi loader.
-4. Hiệu quả kỳ vọng: câu ấm bỏ 100–260s nạp lại ma trận (số đo preload: dense 114–248s, sparse 102–141s).
+## Bối cảnh
 
-## Phase B — tối ưu lexical (đo trước, đoán sau)
-1. Profile: tách thời gian lexical thành 3 phần — (a) build bảng tạm (DELETE + INSERT ~120k dòng),
-   (b) `chunks_fts MATCH` + bm25 + JOIN, (c) vòng Python `_score_candidate`/tokenize.
-2. Tối ưu theo số đo, không đoán:
-   - (a) nặng → thay temp table bằng subquery/CTE eligibility ngay trong MATCH, hoặc gom INSERT 1 transaction;
-   - (b) nặng → xem lại thứ tự JOIN / cách dùng bm25;
-   - (c) nặng → vectorize/batch scoring, cắt top-k sớm.
-   - Nhánh CJK (`_cjk_like_prefilter_rows`, LIKE quét ~120k chunk): đánh giá `chunks_fts MATCH`
-     hoặc cấu trúc index phù hợp — **giữ nguyên top-15**, đặc biệt câu E1.
-3. Kill-switch `AIOS_RAGV2_LEXICAL_V2` (giữ đường cũ khi =0); default theo kết quả verify.
+Các tính năng Bước 0–5 (B0-FORM form nhập chuẩn, B1-FEAT tra cứu, B2 vòng phản hồi,
+B3 cây điều tra 4M + Why-Why, B4 xu hướng + cảnh báo, B5 phân loại tự động + cảnh báo
+tái phát) do Muse code trên VM và OMP verify trên máy nhà — nhưng **chưa bao giờ được
+deploy và kiểm tra chạy thật trên PC0575**, là máy LAN người dùng công ty sẽ dùng
+(theo `docs/dich-den-du-an.md`: đích cuối là người dùng công ty dùng được).
+Vé này lấp đúng khoảng trống đó.
 
-## Tiêu chí nghiệm thu (OMP verify trên PC0575)
-1. Phase A: test mới đỗ; câu ấm không còn `load_ms` hàng trăm giây ở dense/sparse.
-2. Phase B: chạy lại 6 câu — **top-15 khớp baseline 100%** (đặc biệt E1), citation/trace không thoái lui,
-   lexical giảm có số đo (mục tiêu stretch: tổng <60s/câu).
-3. Full suite không regression mới so với nền.
-4. E1 (chữ Nhật/Hàn): nếu top-15 lệch → đặt kill-switch về 0, không đóng vé.
+## Việc cần làm (theo thứ tự)
+
+1. `git pull` branch `phieu-viec/rag-fix1` trên PC0575 → ghi SHA code deploy.
+2. Chuẩn bị DB ca lỗi cho các tính năng B0–B5: code tìm DB theo thứ tự
+   `AIOS_ERROR_CASES_DB` → `C:/tmp/buoc0-deploy/error_cases_deploy.db`
+   (`chat_action_case_form.py:resolve_db_path`, fail-closed nếu không có).
+   Lấy DB thật **đúng cách máy nhà đã làm**: copy file `C:/tmp/b0-dict/error_cases_dict.db`
+   từ máy nhà sang PC0575 (USB/Drive), verify SHA-256 khớp `6bd41a8c…2369`, rồi trỏ
+   `AIOS_ERROR_CASES_DB` vào đó. Cấm tự bịa DB / tự chế dữ liệu — chỉ DỪNG + báo
+   `cho-muse` khi không lấy được DB thật bằng cách nào.
+3. Restart app CPU-only (`RUN_AIOS_WORKSPACE_CHAT.bat`, env như hiện tại),
+   verify `/_stcore/health` = `ok`, LAN vào được từ thiết bị khác.
+4. Verify từng tính năng với dữ liệu thật (không insert ca giả vào DB thật;
+   nếu cần thử insert thì gắn tiền tố `SIMULATED_` và xóa ngay sau khi xong):
+   - B0-FORM: mở form, render đủ 12 trường, validate chặn đúng 5 trường bắt buộc.
+   - B1-FEAT: nhập 1 error code thật → ra top 3–5 + nguyên nhân/đối sách/link gốc,
+     đo thời gian (kỳ vọng <1 phút sau OPT-RAGV2-PYLOOPS).
+   - B2: bấm đánh giá đúng/sai/một phần trên 1 gợi ý → log ghi nhận.
+   - B3: nhập 1 hiện tượng thật → ra cây 4M + Why-Why + xuất file đúng format.
+   - B4: mở biểu đồ xu hướng + sinh báo cáo định kỳ được.
+   - B5: nhập hiện tượng → hiện gợi ý phân loại + cảnh báo tái phát (nếu có lịch sử).
+5. An toàn dữ liệu: đo SHA-256 production `collections/tri_thuc/library.sqlite`
+   **trước và sau** deploy — phải **không đổi** (tính năng Bước 0–5 không được ghi
+   vào index RAG; B0-FORM chỉ ghi DB ca lỗi, không ghi index).
+6. Báo cáo `docs/phieu-viec/ket-qua/deploy-buoc05-pc0575.md` + `xong-cho-duyet`.
+
+## Tiêu chí ĐẠT
+
+- Đủ 6 tính năng B0–B5 mở được và chạy được trên PC0575 CPU-only với dữ liệu thật.
+- B1-FEAT trả lời <1 phút (sau OPT-RAGV2-PYLOOPS).
+- App LAN truy cập được từ thiết bị khác (như P5b đã làm).
+- SHA production `library.sqlite` không đổi suốt vé.
+- Commit riêng trên branch `phieu-viec/rag-fix1`, không đụng `main`, không force-push.
+
+## Cấm
+
+- Cấm tự bịa DB ca lỗi; lấy đúng DB thật từ máy nhà (verify SHA `6bd41a8c…2369`), chỉ dừng và báo khi không lấy được.
+- Cấm ghi vào production `library.sqlite` (mọi ghi của B0-FORM đi vào DB ca lỗi).
+- Cấm chạy `--apply`/migrate nào không có trong vé.
