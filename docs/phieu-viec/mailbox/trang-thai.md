@@ -1,8 +1,11 @@
 # Trạng thái mailbox
 
-- Trạng thái: `dang-lam`
+- Trạng thái: `xong-cho-duyet`
 - Ticket hiện tại: `KNOWLEDGE-ENRICH-PILOT` — [NHÀ + USER] pilot làm giàu tri thức 5 hiện tượng F CALL: AIOS sinh câu hỏi vàng → batch cho Copilot 365 (Work IQ + Think deeper) → ghi đáp án vào staging `local_cases/staging_enrichment.sqlite`, nhãn duy nhất `kiến thức đã được đào tạo bổ sung` (không lưu nguồn LLM). Lane: [VM] Muse code+test → [USER] chạy batch Copilot → [NHÀ] OMP verify trên dữ liệu thật, chỉ đọc DB chính.
 - `prompt`: `docs/phieu-viec/mailbox/prompt.md`
+- `commit`: `30c7893`
+- `bao_cao`: `docs/phieu-viec/ket-qua/knowledge-enrich-pilot.md`
+- `ghi_chu`: 2026-10-03 01:41 +07 — **Mốc xong phần [NHÀ], `xong-cho-duyet`.** 25 bản thảo vào staging, nhãn đúng, `cho_chuyen_gia_phan_hoi`, SHA `library.sqlite` không đổi. Bộ đo chạy được; M2/M3 đạt ngưỡng hàm đo, M1/M4 chưa đạt (không tự đánh ĐẠT toàn vé). Báo cáo `30c7893`.
 - `ghi_chu`: 2026-10-03 01:15 +07 — **Mốc soạn đáp án tiếp.** Cầu nối tắt, đã bật lại `127.0.0.1:8585` = `direct_ready`. Cache đạt schema: F000 (4/4), F257 (5/5). Còn gọi live: F186 (6 câu, cache thiếu id), F010, F040. Không sửa mã sản phẩm.
 - `ghi_chu`: 2026-10-03 01:13 +07 — **OMP nhận lại vé (`RELAUNCH 2/4` lúc 01:11:43, `launchStallCount=2`).** Chưa đủ 4 lần kẹt, không đặt `cho-muse`. Điều kiện mở ĐÃ TỚI (lane Gemini Web, batch `KB-20261003-FCALL-01` đã xuất). Raw dở: F000/F186/F257 có file, F010/F040 chưa có, chưa có answers.jsonl, chưa có staging. Tiếp: soạn nốt đáp án qua `127.0.0.1:8585`.
 - `ghi_chu`: 2026-10-03 00:44 +07 — **Mốc xuất batch xong.** CLI `--error-db` không thấy F CALL (nhóm nằm ở `error_code_h`, không có cột tên group) nên dùng `--phenomena-json` trích từ bản copy chỉ đọc của `error_cases_dict.db`: 5 mã thật F000/F257/F186/F010/F040, 25 câu, ràng buộc chọn top-K đạt sau khi gắn giả thuyết nguyên văn. File ở `C:/tmp/knowledge-enrich-pilot/batch/`. Tiếp: soạn đáp án qua cầu nối Gemini Web.
