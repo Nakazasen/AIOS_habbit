@@ -1,11 +1,11 @@
 # Trạng thái mailbox
 
-- Trạng thái: `dang-lam`
+- Trạng thái: `xong-cho-duyet`
 - Ticket hiện tại: `LLM-ENABLE-DO-NHA-R1` — [NHÀ] cứu trợ vé đường AI ngoài sau escalate `cho-muse` 23:04 (giữ nguyên mục tiêu vé gốc: bật `AIOS_SYNTHESIS_ALLOW_CLOUD_PROVIDERS=1`, đấu Nakazasen Router / Gemini Web, đo lại 6 câu L1–E3 so với lượt hodap-home lane cục bộ).
 - `prompt`: `docs/phieu-viec/mailbox/prompt.md`
 - `bao_cao`: `docs/phieu-viec/ket-qua/llm-enable-do-nha.md`
 - `ghi_chu` (điều phối Muse): 2026-10-02 23:09 +07 — **RESCUE sau escalate:** Phase A điều tra cho thấy từ 22:32 (mốc 0 kiểm công gate ĐẠT) đến 23:04 không có commit tiến triển nào, file báo cáo chưa tồn tại → escalate là hợp lệ. Viết lại vé thành R1 với 4 phase + checkpoint bắt buộc mỗi phase (cấm >45 phút không commit). Quyết định session: nếu session OMP cũ (PID 10792, từ 21:39) còn sống thì dừng ngay, chỉ một OMP chạy cho mailbox này. Vé gốc LLM-ENABLE-DO-NHA coi như bị thay thế, không quay lại bản cũ.
-- `ghi_chu`: 2026-10-02 23:36 +07 — Phase 2 lô 1 xong: E2 `provider_validated_after_repair` (`gemini-web`, 23983ms, trace valid). L1–L3, E1, E3 có gọi Gemini nhưng rơi local vì thiếu nhãn `[n]` / literal không khớp. Đang chạy lại 5 câu đó với nhắc định dạng chặt hơn. Tip `3f9bf21`.
+- `ghi_chu`: 2026-10-02 23:32 +07 — Xong R1, chờ duyệt. 6/6 câu `provider_used=true` model `gemini-web`, trace `valid`. Router cloud lỗi `unknown_error`/`auth_error`, dùng cầu nối. SHA index trước/sau khớp `45eb0e07…65b7c0`. Chất lượng không đồng đều so với lane cục bộ — ghi trong báo cáo, không PASS chất lượng. Tip `41f791a`.
 - `hang-cho` (thứ tự do user duyệt 2026-10-02 ~22:05 +07):
   1. `SPEED-COLDSTART-HOME` (`prompt-queue-speed-coldstart-home.md`) — **XẾP HÀNG SAU LLM-ENABLE-DO-NHA: nghiệm thu cold-start trên máy nhà (GPU) bằng lane 1 (Gemini) / lane 3 (Router) vì C-Agent ở nhà không dùng được; Phase 0 chốt trạng thái LLM-ENABLE-DO-NHA trước.**
   2. `KNOWLEDGE-ENRICH-PILOT` (`prompt-queue-knowledge-enrich-pilot.md`) — làm giàu tri thức theo lô bằng Copilot 365 (thí điểm 5 hiện tượng F CALL); form Q&A chuẩn + xuất/nhập batch + đo trước/sau. Đã bổ sung phụ lục: máy không có Copilot thì dùng Gemini Web qua cầu nối / Nakazasen Router soạn thảo, không dùng ChatGPT cá nhân cho dữ liệu công ty.
