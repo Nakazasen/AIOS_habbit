@@ -17,4 +17,19 @@ Trạng thái: `xong`
   2. `OPT-RAGV2-PYLOOPS` — **ĐÃ XONG, verdict Muse ĐẠT 2026-10-02 ~09:26 +07**
   3. `OPT-RAGV2-LEXICAL` — **ĐÃ XONG, verdict Muse ĐẠT 2026-10-02 11:25 +07 (stretch <60s/câu chưa đạt, ghi rõ)**
   4. `DEPLOY-BUOC05-PC0575` — **ĐÃ XONG, verdict Muse ĐẠT 2026-10-02 (6/6 B0–B5 chạy thật; LAN treo chờ admin)**
-  5. `OPT-RAGV2-SPEED-APP-PC0575` (`prompt-queue-opt-ragv2-speed-app-pc0575.md`) — **ĐÃ XONG (gồm bổ sung khẩn C-Agent), chờ Muse duyệt 2026-10-02 15:40 +07**
+  5. `OPT-RAGV2-SPEED-APP-PC0575` (`prompt-queue-opt-ragv2-speed-app-pc0575.md`) — **ĐÃ XONG (gồm bổ sung khẩn C-Agent), verdict Muse ĐẠT 2026-10-02 ~15:47 +07**
+
+## 2026-10-02 ~17:39 +07 — Chốt hướng đi tiếp theo (Muse quyết theo ủy quyền "đừng bắt tao quyết định")
+
+**Hướng đi (theo thứ tự ưu tiên):**
+
+1. **[CTY] `SPEED-COLDSTART-PC0575`** — câu hỏi lạnh qua UI ~265 giây (bộ đọc khởi động 180,9 giây > cửa sổ 120 giây của app, warm-up làm nóng nhầm collection). User chốt tốc độ phản hồi là ưu tiên số 1 → đây là việc tiếp theo phải làm. Vé `prompt-queue-speed-coldstart-pc0575.md` đã phát hành, đứng ĐẦU hàng chờ.
+2. **[CTY] `KNOWLEDGE-ENRICH-PILOT`** — pilot làm giàu tri thức 5 hiện tượng F CALL thật: bộ sinh câu hỏi vàng AIOS → file batch cho Copilot → ghi đáp án vào staging với nhãn `kiến thức đã được đào tạo bổ sung`. Đứng thứ 2 trong hàng chờ.
+3. **[VM] Muse tự code (song song, không chờ OMP):** schema form chuẩn + bộ sinh/chấm điểm câu hỏi vàng + exporter batch JSONL/Markdown + importer vào staging + bộ đo chất lượng trước/sau — cho pilot và cho feedback theo từng gợi ý/câu trả lời (nợ sau demo).
+4. **[NHÀ] `LLM-ENABLE-DO-NHA`** vẫn `dang-lam`, chờ báo cáo `xong-cho-duyet` — khi xong mới xếp vé verify và J3 [NGƯỜI DÙNG] (đã phát hành lại nguyên văn, bản sao bền ở `~/workspace/aios_mailbox_backup/`).
+
+**Nguyên tắc:** Muse ôm việc nền song song trên VM, không ngồi chờ OMP/user; OMP chỉ làm hàng chờ mailbox; J3 chờ user nên để sau.
+
+- `hang-cho` (mới, 2026-10-02 ~17:39):
+  1. `SPEED-COLDSTART-PC0575` (`prompt-queue-speed-coldstart-pc0575.md`) — [CTY] sửa câu lạnh ~265 s (init worker 180,9 s > 120 s app, warm-up nhầm collection)
+  2. `KNOWLEDGE-ENRICH-PILOT` (`prompt-queue-knowledge-enrich-pilot.md`) — [CTY] pilot làm giàu tri thức 5 hiện tượng F CALL (Copilot → staging, nhãn `kiến thức đã được đào tạo bổ sung`)
