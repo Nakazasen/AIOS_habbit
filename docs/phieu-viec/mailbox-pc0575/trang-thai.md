@@ -1,9 +1,10 @@
 # Trạng thái mailbox — KDTVN-PC0575
 
-Trạng thái: `moi`
+Trạng thái: `dang-lam`
 - Ticket hiện tại: `DEPLOY-BUOC05-PC0575` — [CTY] deploy tính năng Bước 0–5 lên KDTVN-PC0575 + verify chạy thật CPU-only + mở LAN cho người dùng công ty.
 - `prompt`: `docs/phieu-viec/mailbox-pc0575/prompt.md`
 - `bao_cao`: `docs/phieu-viec/ket-qua/deploy-buoc05-pc0575.md`
+- `ghi_chu`: 2026-10-02 11:36 +07 — **OMP NHẬN VÉ `DEPLOY-BUOC05-PC0575` (`dang-lam` theo quy ước): điều kiện mở ĐÃ TỚI** — (a) PYLOOPS ĐẠT trên PC0575 2026-10-02 09:26 +07, (b) B5 ĐẠT máy nhà 2026-10-01 ~17:50 +07; watcher tự mở OMP `LAUNCH 1/4` lúc 11:30:21 (`launchStallCount=1`; KHÔNG dùng nhánh "4 lần watcher"/`cho-muse`). SHA code deploy: `52cd29e2`. DB ca lỗi thật trên Drive `AIOS_Data` (file ID `1ooa5RBApWuOW0L4Ubm5KOEkQwFn6ZEGy`, SHA ghim `6bd41a8c…2369`) → tải về PC0575 + verify SHA trước khi dùng. Bắt đầu Bước 1.
 - `ghi_chu`: 2026-10-02 11:25 +07 — Muse verdict `OPT-RAGV2-LEXICAL`: **ĐẠT** tiêu chí 1–4 (Phase A probe TEMP/`data_version` PASS + token `(1,0)` giữ nguyên 6/6, dense/sparse hết nạp lại 100+s; Phase B parity top-15 100% cả 6 câu ở cả `v2off`/`v2on`, E1 15/15 đúng thứ tự; full suite 3.641 passed, đối chứng nền khớp 19/19 fail môi trường, không regression mới; index production không đổi, health `ok`). Mốc stretch <60s/câu **CHƯA đạt** (chỉ E2 55,4s, còn lại 61,7–145,7s do quét eligibility + `chunks_fts MATCH` I/O-bound) — ghi rõ, không coi là đạt tốc độ <60s. Theo `hang-cho`, phát hành vé `DEPLOY-BUOC05-PC0575` (điều kiện đã tới: PYLOOPS ĐẠT 2026-10-02 ~09:26 +07, B5 ĐẠT trên máy nhà 2026-10-01 ~17:50 +07). Đề xuất bật default `AIOS_RAGV2_LEXICAL_V2=1` và vé riêng `CJK_TRIGRAM` (cần ghi index production) để sau, không gộp vào vé deploy này.
 - `hang-cho` (thứ tự do user duyệt 2026-10-01 ~16:45 +07):
   1. `hodap-lsu-loi-rerun` — **ĐÃ XONG, verdict ĐẠT 2026-10-01 ~18:07 +07**
