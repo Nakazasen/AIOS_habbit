@@ -2041,6 +2041,7 @@ class LocalChunkIndex:
         except ImportError:
             LOGGER.warning("rag_v2 numpy dense unavailable: numpy is not installed")
             return None
+        fetch_started = perf_counter()
         rows = self._conn.execute(
             """
             SELECT c.chunk_id, c.document_id, c.source_path, c.source_fingerprint,
@@ -2052,6 +2053,7 @@ class LocalChunkIndex:
             """,
             (fingerprint,),
         ).fetchall()
+        fetch_ms = (perf_counter() - fetch_started) * 1000.0
         kept = [row for row in rows if int(row["embedding_dimension"]) == dimension]
         count = len(kept)
         matrix_bytes = count * dimension * 4
@@ -2063,6 +2065,7 @@ class LocalChunkIndex:
                 count,
             )
             return None
+        build_started = perf_counter()
         matrix = np.empty((count, dimension), dtype=np.float32)
         chunk_ids: list[str] = []
         document_ids: list[str] = []
@@ -2082,6 +2085,12 @@ class LocalChunkIndex:
             source_paths.append(str(row["source_path"]))
             source_fingerprints.append(row["source_fingerprint"])
             privacy_labels.append(tuple(json.loads(row["privacy_labels_json"] or "[]")))
+        LOGGER.info(
+            "rag_v2 dense cache load timings: fetch_ms=%.1f build_ms=%.1f chunks=%s",
+            fetch_ms,
+            (perf_counter() - build_started) * 1000.0,
+            count,
+        )
         return _DenseMatrixCache(
             token=self._index_cache_token(),
             fingerprint=fingerprint,
@@ -2161,6 +2170,7 @@ class LocalChunkIndex:
         compact ``array("I")`` / ``array("d")`` storage so ~108k documents stay
         within the ``AIOS_RAG_V2_SPARSE_MAX_BYTES`` budget.
         """
+        fetch_started = perf_counter()
         rows = self._conn.execute(
             """
             SELECT c.chunk_id, c.document_id, c.source_path, c.source_fingerprint,
@@ -2171,6 +2181,7 @@ class LocalChunkIndex:
             """,
             (fingerprint,),
         ).fetchall()
+        fetch_ms = (perf_counter() - fetch_started) * 1000.0
         posting_positions: dict[str, array] = {}
         posting_weights: dict[str, array] = {}
         chunk_ids: list[str] = []
@@ -2215,6 +2226,13 @@ class LocalChunkIndex:
             term: (posting_positions[term], posting_weights[term])
             for term in posting_positions
         }
+        LOGGER.info(
+            "rag_v2 sparse cache load timings: fetch_ms=%.1f build_ms=%.1f chunks=%s terms=%s",
+            fetch_ms,
+            (perf_counter() - fetch_started) * 1000.0 - fetch_ms,
+            len(chunk_ids),
+            len(posting_positions),
+        )
         return _SparseVectorCache(
             token=self._index_cache_token(),
             fingerprint=fingerprint,

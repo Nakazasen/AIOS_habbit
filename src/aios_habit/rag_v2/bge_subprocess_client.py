@@ -32,6 +32,24 @@ LOGGER = logging.getLogger(__name__)
 _INIT_TIMEOUT_SECONDS = 300.0
 _PREPARE_TIMEOUT_SECONDS = float(os.environ.get("AIOS_BGE_PREPARE_TIMEOUT", "300.0"))
 _QUERY_TIMEOUT_ENV_VAR = "AIOS_BGE_QUERY_TIMEOUT"
+_INIT_TIMEOUT_ENV_VAR = "AIOS_BGE_INIT_TIMEOUT"
+
+
+def default_init_timeout_seconds() -> float:
+    """Bounded worker init timeout, in seconds.
+
+    The default 300.0 s matches the fail-closed cold-start deadline above. On
+    slow CPU-only hosts the physical BGE-M3 init (dense + sparse preloads) can
+    exceed the historical 120 s caller window (KDTVN-PC0575: 180.9 s), which
+    used to abandon the loading worker and respawn a fresh one per attempt.
+    Operators may raise or lower this via ``AIOS_BGE_INIT_TIMEOUT``; it is
+    clamped to a minimum of 1.0 s so a bad value cannot disable the budget.
+    """
+    try:
+        value = float(os.environ[_INIT_TIMEOUT_ENV_VAR])
+    except (KeyError, TypeError, ValueError):
+        return _INIT_TIMEOUT_SECONDS
+    return max(value, 1.0)
 
 
 def default_query_timeout_seconds() -> float:
@@ -130,6 +148,10 @@ class BgeSubprocessWorkerClient:
         self._active_config: RagV2DevConfig | None = None
         self._stderr_thread: threading.Thread | None = None
         self._last_failure_reason = "not_initialized"
+        # In-flight or completed-but-unconsumed init request. Keeping this lets
+        # a caller that timed out wait for the same loading worker instead of
+        # killing it and spawning a duplicate (PC0575 cold-start finding).
+        self._pending_init: dict[str, Any] | None = None
 
     def readiness(self, config: RagV2DevConfig | None = None) -> dict[str, Any]:
         """Return bounded worker health without launching or exposing private data."""
@@ -137,12 +159,21 @@ class BgeSubprocessWorkerClient:
             return {"ready": False, "alive": True, "configuration_matches": False, "reason": "worker_busy", "pid": None}
         try:
             alive = self._process is not None and self._process.poll() is None
+            pending = (
+                alive
+                and self._pending_init is not None
+                and (config is None or self._pending_init["config"] == config)
+            )
             matches = alive and (config is None or self._active_config == config)
             return {
                 "ready": bool(matches),
                 "alive": bool(alive),
                 "configuration_matches": bool(matches),
-                "reason": "" if matches else self._last_failure_reason,
+                "reason": (
+                    ""
+                    if matches
+                    else ("bge_worker_init_pending" if pending else self._last_failure_reason)
+                ),
                 "pid": self._process.pid if matches and self._process is not None else None,
             }
         finally:
@@ -163,9 +194,25 @@ class BgeSubprocessWorkerClient:
         self,
         config: RagV2DevConfig,
         *,
-        timeout_s: float = _INIT_TIMEOUT_SECONDS,
+        timeout_s: float | None = None,
     ) -> dict[str, Any]:
-        """Launch and initialize a fresh worker under the held lock."""
+        """Launch, resume, or await a worker init under the held lock.
+
+        A caller that times out leaves the loading process tracked in
+        ``_pending_init``; the next caller with the same config keeps waiting
+        on that same process instead of spawning a duplicate (the PC0575 cold
+        start lost ~4.4 minutes per question to the old abandon/close cycle).
+        """
+        timeout = default_init_timeout_seconds() if timeout_s is None else float(timeout_s)
+        pending = self._pending_init
+        if (
+            pending is not None
+            and pending["config"] == config
+            and self._process is not None
+            and self._process.poll() is None
+        ):
+            return self._await_pending_init(timeout_s=timeout, config=config)
+
         self._close_internal()
         cmd = [
             self._python_executable,
@@ -221,43 +268,99 @@ class BgeSubprocessWorkerClient:
 
         started = time.perf_counter()
         try:
-            res = self._send_request(
-                {"command": "init", "config": _config_to_dict(config)},
-                timeout_s=timeout_s,
-                phase="init",
-            )
-            if res.get("status") != "ok":
-                worker_phase = str(res.get("error_phase", "init"))
-                safe_phase = worker_phase if worker_phase in {"model_verify", "model_load", "index_open", "init"} else "init"
-                raise SemanticBackendError(f"bge_worker_{safe_phase}_failed")
-            readiness = res.get("readiness")
-            if not isinstance(readiness, dict):
-                raise SemanticBackendError("bge_worker_init_invalid_response")
-            self._active_config = config
-            self._last_failure_reason = ""
-            report = {
-                "status": "ok",
-                "reused": False,
-                "init_latency_ms": round((time.perf_counter() - started) * 1000.0, 3),
-                "readiness": readiness,
-            }
-            LOGGER.info("BGE worker initialized successfully (PID %s)", readiness.get("pid"))
-            return report
+            if proc.stdin is None:
+                raise SemanticBackendError("bge_worker_process_not_available")
+            proc.stdin.write(json.dumps({"command": "init", "config": _config_to_dict(config)}) + "\n")
+            proc.stdin.flush()
         except Exception as exc:
-            if isinstance(exc, SemanticBackendError):
-                self._last_failure_reason = str(exc)
-            else:
-                self._last_failure_reason = "bge_worker_init_exception"
+            self._last_failure_reason = "bge_worker_stdin_closed"
             self._close_internal(preserve_failure=True)
-            if isinstance(exc, SemanticBackendError):
-                raise
             raise SemanticBackendError(self._last_failure_reason) from exc
+
+        init_result: list[tuple[str, Any]] = []
+
+        def await_init_response() -> None:
+            try:
+                line = proc.stdout.readline() if proc.stdout is not None else ""
+                if not line:
+                    init_result.append(("eof", None))
+                    return
+                init_result.append(("response", json.loads(line.strip())))
+            except Exception as exc:  # defensive: reader failures surface as init errors
+                init_result.append(("error", exc))
+
+        init_reader = threading.Thread(
+            target=await_init_response,
+            name="bge-worker-init",
+            daemon=True,
+        )
+        self._pending_init = {
+            "config": config,
+            "thread": init_reader,
+            "result": init_result,
+            "started": started,
+            "process": proc,
+        }
+        init_reader.start()
+        return self._await_pending_init(timeout_s=timeout, config=config)
+
+    def _await_pending_init(
+        self,
+        *,
+        timeout_s: float,
+        config: RagV2DevConfig,
+    ) -> dict[str, Any]:
+        """Wait for a tracked worker init, keeping it alive on timeout."""
+        pending = self._pending_init
+        if pending is None or pending["config"] != config or pending["process"] is not self._process:
+            raise SemanticBackendError("bge_worker_init_not_pending")
+        thread = pending["thread"]
+        thread.join(timeout=max(0.0, float(timeout_s)))
+        if thread.is_alive():
+            # Do not kill the loading process; a later caller resumes waiting.
+            self._last_failure_reason = "bge_worker_init_timeout"
+            raise SemanticBackendError(self._last_failure_reason)
+        self._pending_init = None
+        result = pending["result"]
+        if not result:
+            self._close_internal(preserve_failure=True)
+            self._last_failure_reason = "bge_worker_init_no_response"
+            raise SemanticBackendError(self._last_failure_reason)
+        kind, payload = result[0]
+        if kind != "response":
+            self._close_internal(preserve_failure=True)
+            self._last_failure_reason = (
+                "bge_worker_init_exception" if kind == "error" else "bge_worker_init_stdout_eof"
+            )
+            raise SemanticBackendError(self._last_failure_reason)
+        res = payload if isinstance(payload, dict) else {}
+        if res.get("status") != "ok":
+            worker_phase = str(res.get("error_phase", "init"))
+            safe_phase = worker_phase if worker_phase in {"model_verify", "model_load", "index_open", "init"} else "init"
+            self._close_internal(preserve_failure=True)
+            self._last_failure_reason = f"bge_worker_{safe_phase}_failed"
+            raise SemanticBackendError(self._last_failure_reason)
+        readiness = res.get("readiness")
+        if not isinstance(readiness, dict):
+            self._close_internal(preserve_failure=True)
+            self._last_failure_reason = "bge_worker_init_invalid_response"
+            raise SemanticBackendError(self._last_failure_reason)
+        self._active_config = config
+        self._last_failure_reason = ""
+        report = {
+            "status": "ok",
+            "reused": False,
+            "init_latency_ms": round((time.perf_counter() - pending["started"]) * 1000.0, 3),
+            "readiness": readiness,
+        }
+        LOGGER.info("BGE worker initialized successfully (PID %s)", readiness.get("pid"))
+        return report
 
     def initialize_worker(
         self,
         config: RagV2DevConfig,
         *,
-        timeout_s: float = _INIT_TIMEOUT_SECONDS,
+        timeout_s: float | None = None,
     ) -> dict[str, Any]:
         """Load the matching model worker before any source preparation begins."""
         if not self._lock.acquire(timeout=0.5):
@@ -624,6 +727,7 @@ class BgeSubprocessWorkerClient:
         proc = self._process
         self._process = None
         self._active_config = None
+        self._pending_init = None
         if not preserve_failure:
             self._last_failure_reason = "not_initialized"
         if proc is not None:

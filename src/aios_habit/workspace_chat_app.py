@@ -871,11 +871,25 @@ def _poll_pending_source_submission() -> None:
 # Tự động khởi tạo kho lưu trữ
 init_chat_store()
 
+def _running_under_streamlit() -> bool:
+    """Chỉ đúng khi đang chạy trong phiên Streamlit thật (không phải pytest)."""
+    if os.environ.get("STREAMLIT_SERVER_PORT"):
+        return True
+    try:
+        from streamlit import runtime
+
+        return bool(runtime.exists())
+    except Exception:
+        return False
+
+
 # Làm nóng bộ đọc tài liệu nền ngay khi mở app; có chặn chạy trùng theo thời
 # gian nên các lần Streamlit rerun không tốn thêm chi phí. Không bao giờ chặn
 # giao diện và không làm lộ lỗi kỹ thuật ra ngoài. Chỉ chạy khi đúng là
-# Streamlit server, không chạy lúc pytest import module.
-if os.environ.get("STREAMLIT_SERVER_PORT"):
+# Streamlit server, không chạy lúc pytest import module. Lần chạy deploy
+# trước đây không set STREAMLIT_SERVER_PORT nên nhánh này bị bỏ qua — kiểm tra
+# thêm runtime.exists() để bộ đọc luôn được làm nóng đúng collection.
+if _running_under_streamlit():
     try:
         ensure_workspace_chat_worker_warming()
     except Exception:
@@ -1108,14 +1122,13 @@ def _run_chat_turn_async(
             if unavailable_reason != "deep_search_unavailable" and (
                 _is_worker_startup_reason(unavailable_reason) or not unready_sources
             ):
-                # Lần đầu mở app worker còn lạnh: làm nóng chặn đúng một lần
-                # rồi tự thử lại một lần trong cùng lượt nền. Người dùng chỉ
-                # thấy chờ lâu hơn, không cần khởi động lại hay bấm lại.
+                # Lần đầu mở app worker còn lạnh: chờ bộ đọc sẵn sàng đúng một
+                # lần (AIOS_BGE_INIT_TIMEOUT, mặc định 300 s) rồi tự thử lại
+                # một lần trong cùng lượt nền. Người dùng chỉ thấy chờ lâu hơn,
+                # không cần khởi động lại hay bấm lại.
                 if cancellation_event is None or not cancellation_event.is_set():
                     try:
-                        ensure_workspace_chat_worker_warming(
-                            blocking=True, timeout_s=120.0
-                        )
+                        ensure_workspace_chat_worker_warming(blocking=True)
                     except Exception:
                         pass
                 if cancellation_event is not None and cancellation_event.is_set():

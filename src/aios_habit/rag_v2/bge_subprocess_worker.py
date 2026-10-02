@@ -16,6 +16,7 @@ os.environ["NUMEXPR_NUM_THREADS"] = "1"
 
 from dataclasses import asdict
 import json
+import logging
 from pathlib import Path
 import sys
 import time
@@ -35,6 +36,11 @@ from aios_habit.rag_v2.bge_onnx_backend import (
 from aios_habit.rag_v2.adapters import ConversionContext
 from aios_habit.rag_v2.schema import ExtractionStatus
 from aios_habit.rag_v2_synthesis_provider import create_synthesis_provider
+
+
+def _elapsed_ms(started: float) -> float:
+    """Return elapsed milliseconds since ``started`` rounded to 0.1 ms."""
+    return round((time.perf_counter() - started) * 1000.0, 1)
 
 
 def _config_from_dict(payload: Mapping[str, Any]) -> RagV2DevConfig:
@@ -217,6 +223,13 @@ def _stage_source(pipeline: RagV2DevPipeline, source: SourceSpec) -> dict[str, A
 
 
 def main() -> None:
+    # Init phase timings and index preload telemetry are emitted at INFO; the
+    # parent redirects this worker's stderr to logs/bge_worker.stderr.log.
+    logging.basicConfig(
+        level=logging.INFO,
+        stream=sys.stderr,
+        format="%(asctime)s %(levelname)s %(name)s: %(message)s",
+    )
     pipeline: RagV2DevPipeline | None = None
     staged: dict[str, dict[str, Any]] = {}
 
@@ -240,11 +253,15 @@ def main() -> None:
             if command == "init":
                 config_dict = request.get("config", {})
                 init_phase = "init"
+                started = 0.0
+                phase_started = 0.0
+                phases_ms: dict[str, float] = {}
                 try:
                     config = _config_from_dict(config_dict)
                     if pipeline is not None:
                         pipeline.close()
                     started = time.perf_counter()
+                    phase_started = started
                     init_phase = "model_verify"
                     backend_name = resolve_bge_backend_name(config.bge_backend)
                     if config.retrieval_profile.startswith("bge_m3_"):
@@ -259,16 +276,22 @@ def main() -> None:
                                     "Set BGE_BACKEND=pytorch to use the PyTorch path explicitly."
                                 )
                             raise RuntimeError("pinned_model_unavailable")
+                    phases_ms["model_verify"] = _elapsed_ms(phase_started)
+                    phase_started = time.perf_counter()
                     init_phase = "model_load"
                     synthesis_provider = create_synthesis_provider()
                     pipeline = RagV2DevPipeline(
                         config,
                         synthesis_provider=synthesis_provider,
                     )
+                    phases_ms["model_load"] = _elapsed_ms(phase_started)
+                    phase_started = time.perf_counter()
                     init_phase = "index_open"
                     # Force a harmless schema read now so index failures are
                     # attributed during readiness rather than the first query.
                     pipeline.index.embedding_status()
+                    phases_ms["index_open"] = _elapsed_ms(phase_started)
+                    phase_started = time.perf_counter()
                     # OPT-RAGV2-PYLOOPS V2-A: warm the numpy dense matrix cache
                     # now so the first ("cold") query does not pay the ~90s
                     # first-load inside its query timeout. A preload failure
@@ -281,6 +304,8 @@ def main() -> None:
                         sparse_chunks, sparse_ms = (
                             pipeline.index.preload_sparse_vector_cache()
                         )
+                        phases_ms["dense_preload"] = round(dense_ms, 1)
+                        phases_ms["sparse_preload"] = round(sparse_ms, 1)
                         print(
                             "bge_worker_stage "
                             f"dense_preload_chunks={dense_chunks} "
@@ -293,6 +318,7 @@ def main() -> None:
                     except Exception:
                         traceback.print_exc(file=sys.stderr)
                         sys.stderr.flush()
+                    phases_ms["cache_preload"] = _elapsed_ms(phase_started)
                 except Exception:
                     traceback.print_exc(file=sys.stderr)
                     sys.stderr.flush()
@@ -300,6 +326,7 @@ def main() -> None:
                         "status": "error",
                         "error": "worker_initialization_failed",
                         "error_phase": init_phase,
+                        "phases_ms": dict(phases_ms),
                     }
                 else:
                     response = {
@@ -310,12 +337,22 @@ def main() -> None:
                             "init_latency_ms": round(
                                 (time.perf_counter() - started) * 1000.0, 3
                             ),
+                            "phases_ms": dict(phases_ms),
                         },
                     }
                     print(
                         "bge_worker_stage "
                         f"backend={backend_name} "
                         f"init_ms={response['readiness']['init_latency_ms']}",
+                        file=sys.stderr,
+                        flush=True,
+                    )
+                    print(
+                        "bge_worker_stage init_phases "
+                        + " ".join(
+                            f"{name}_ms={value:.1f}"
+                            for name, value in phases_ms.items()
+                        ),
                         file=sys.stderr,
                         flush=True,
                     )

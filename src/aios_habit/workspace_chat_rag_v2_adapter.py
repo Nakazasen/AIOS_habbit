@@ -32,6 +32,7 @@ from aios_habit.rag_v2.adaptive_retrieval import (
 )
 from aios_habit.rag_v2.bge_subprocess_client import (
     BgeSubprocessWorkerClient,
+    default_init_timeout_seconds,
     default_query_timeout_seconds,
 )
 from aios_habit.rag_v2.index import SearchSummary
@@ -1173,7 +1174,22 @@ def _safe_init_report(report: Mapping[str, Any]) -> dict[str, Any]:
         "reused": bool(report.get("reused", False)),
         "init_latency_ms": float(report.get("init_latency_ms", 0.0)),
         "readiness": safe_readiness,
+        "phases_ms": _safe_phase_timings(readiness),
     }
+
+
+def _safe_phase_timings(readiness: Any) -> dict[str, float]:
+    """Keep numeric init phase timings only (no paths, no model text)."""
+    if not isinstance(readiness, Mapping):
+        return {}
+    raw = readiness.get("phases_ms")
+    if not isinstance(raw, Mapping):
+        return {}
+    timings: dict[str, float] = {}
+    for key, value in raw.items():
+        if isinstance(key, str) and isinstance(value, (int, float)):
+            timings[key] = float(value)
+    return timings
 
 
 def _batch_failure_reason(batch_ordinal: int, batch: tuple[SourceSpec, ...], error: BaseException) -> str:
@@ -1181,6 +1197,34 @@ def _batch_failure_reason(batch_ordinal: int, batch: tuple[SourceSpec, ...], err
     document_ids = "|".join(spec.document_id for spec in batch)
     opaque_document_id = hashlib.sha256(document_ids.encode("utf-8")).hexdigest()[:12]
     return f"preparation_batch_{batch_ordinal:03d}_document_{opaque_document_id}_{_safe_reason(error)}"
+
+
+def _warmup_collection_id() -> str | None:
+    """Production collection that knowledge questions resolve to, if any.
+
+    Warm-up used to omit the collection id, so it initialized the legacy
+    profile-root index while real questions ran on ``collections/<id>``; the
+    two configs never matched and every question respawned the worker (PC0575
+    SPEED-APP finding, 2026-10-02).
+    """
+    from aios_habit.workspace_chat_models import DEFAULT_COLLECTION_ID
+    from aios_habit.workspace_chat_store import load_collection
+
+    if load_collection(DEFAULT_COLLECTION_ID) is not None:
+        return DEFAULT_COLLECTION_ID
+    return None
+
+
+def _warmup_pipeline_config(
+    config: WorkspaceChatRagV2CanaryConfig,
+) -> RagV2DevConfig:
+    """Read-only pipeline config identical to the interactive query path."""
+    return _pipeline_config(
+        config,
+        config.requested_profile,
+        read_only=True,
+        collection_id=_warmup_collection_id(),
+    )
 
 
 def initialize_workspace_chat_rag_v2_worker(
@@ -1199,7 +1243,7 @@ def initialize_workspace_chat_rag_v2_worker(
     if not profile.startswith("bge_m3_"):
         return {"status": "not_required"}
     try:
-        effective_config = pipe_config or _pipeline_config(config, profile)
+        effective_config = pipe_config or _warmup_pipeline_config(config)
         return _safe_init_report(
             _SUBPROCESS_CLIENT.initialize_worker(
                 effective_config,
@@ -1227,9 +1271,7 @@ def is_workspace_chat_worker_warmed(
     if not resolved.enabled or not resolved.requested_profile.startswith("bge_m3_"):
         return False
     try:
-        pipe_config = _pipeline_config(
-            resolved, resolved.requested_profile, read_only=True
-        )
+        pipe_config = _warmup_pipeline_config(resolved)
     except (SemanticBackendUnavailable, ValueError, OSError):
         return False
     try:
@@ -1242,12 +1284,15 @@ def ensure_workspace_chat_worker_warming(
     *,
     config: Optional[WorkspaceChatRagV2CanaryConfig] = None,
     blocking: bool = False,
-    timeout_s: float = 120.0,
+    timeout_s: float | None = None,
 ) -> bool:
     """Warm the BGE worker once; throttled so Streamlit reruns stay cheap.
 
     Non-blocking mode never raises and never blocks a UI rerun. Blocking mode
-    returns True only when the worker reports ready.
+    returns True only when the worker reports ready. The warm-up uses the same
+    read-only production-collection config as the query path, and waits for an
+    in-flight init instead of spawning a duplicate when ``timeout_s`` is left
+    at its default (``AIOS_BGE_INIT_TIMEOUT`` or 300 s).
     """
     global _WARMUP_LAST_ATTEMPT_MONO
     now = time.monotonic()
@@ -1264,8 +1309,14 @@ def ensure_workspace_chat_worker_warming(
 
     def _warm() -> bool:
         try:
+            try:
+                pipe_config = _warmup_pipeline_config(resolved)
+            except (SemanticBackendUnavailable, ValueError, OSError):
+                pipe_config = None
             initialize_workspace_chat_rag_v2_worker(
-                resolved, timeout_s=timeout_s
+                resolved,
+                timeout_s=timeout_s,
+                pipe_config=pipe_config,
             )
             return True
         except Exception:
@@ -2725,7 +2776,7 @@ def _run_profile(
     if pipeline_factory is RagV2DevPipeline:
         initialize_workspace_chat_rag_v2_worker(
             config,
-            timeout_s=120.0,
+            timeout_s=default_init_timeout_seconds(),
             pipe_config=pipe_config,
         )
     query_res_dict = _SUBPROCESS_CLIENT.query_ready(
