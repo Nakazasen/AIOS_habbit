@@ -1,27 +1,56 @@
-# Vé: SPEED-COLDSTART-HOME-R1 — chạy lại câu E3 qua lane 1 (bù tiêu chí 6/6)
+# Vé: KNOWLEDGE-ENRICH-PILOT — làm giàu tri thức theo lô bằng Copilot (thí điểm 5 hiện tượng F CALL)
 
-Lane: [NHÀ] OMP đo trên máy nhà. Không merge `main`; code tương thích Python 3.11; không force-push; không ghi index.
+Lane: [VM] Muse code+test trên VM → [USER] chạy batch Copilot trên máy công ty (Copilot 365 Premium) → [NHÀ] OMP verify trên máy nhà (dữ liệu thật, chỉ đọc DB chính).
+Không merge `main`; code tương thích Python 3.11; không force-push.
 
-## Bối cảnh
+## Bối cảnh (user chốt 2026-10-02)
 
-- Vé `SPEED-COLDSTART-HOME` verdict **CHƯA ĐẠT toàn vé** (2/3 tiêu chí, báo cáo `docs/phieu-viec/ket-qua/speed-coldstart-home.md`, SHA `b88938e274`):
-  - ✅ 3/3 lần restart gắn lại worker cũ (PID 11896), không nạp lại model; config lệch bị chặn đúng thiết kế P3+P4.
-  - ✅ Init lạnh 112,1 s; bảng thời gian 6 câu đầy đủ; parity 5 câu nhận được; SHA index production không đổi.
-  - ❌ Chỉ **5/6** câu qua lane 1: câu **E3** gọi Gemini 3 lần nhưng đáp án thiếu nhãn trích dẫn `[n]` → cổng kiểm từ chối (`provider_answer_missing_citations` / `provider_answer_uncited_material_claim`) → rơi về tổng hợp cục bộ, không tính lane 1. Không nới cổng.
-- Cổng trích dẫn làm đúng việc (từ chối đáp án không nhãn). Vé `LLM-ENABLE-DO-NHA-R1` trước đó đã chứng minh E3 qua được lane 1 với trace valid → nhiều khả năng probe lần này thiếu nhắc định dạng trích dẫn, không phải hệ thống hỏng.
+- Dùng Copilot/LLM làm "đào tạo đi tắt" cho AIOS: Copilot 365 đóng vai chuyên gia vì luồng phỏng vấn chuyên gia chưa vận hành; chuyên gia thật phản hồi sau.
+- Copilot 365 Premium không trần hạn mức → khai thác theo lô, càng tự động càng tốt.
+- **Không lưu vết LLM nào trong kho.** Nhãn duy nhất: `kiến thức đã được đào tạo bổ sung`. Quản lý phản hồi của chuyên gia thật bằng trạng thái nghiệp vụ riêng (`cho_chuyen_gia_phan_hoi` / `chuyen_gia_da_phan_hoi`), không ghi nguồn LLM.
+- AIOS hiện tại dùng Sonnet 4 qua gói C-Agent trả phí của công ty.
 
-## Việc OMP làm [NHÀ]
+## Việc Muse làm trên VM
 
-1. Worker BGE persist (PID 11896) vẫn sống — gắn lại qua named pipe, không nạp lại model.
-2. Chạy lại **câu E3** bằng đúng đường đo cũ (`search_with_summary`, `allowed_document_ids=None`, `limit=15`, `per_document_limit=3`; `synthesize_with_provider` + cầu nối `gemini-web`; `AIOS_SYNTHESIS_ALLOW_CLOUD_PROVIDERS=1` trong tiến trình đo), ghi 3 mốc retrieval/synthesis/tổng.
-3. Trong probe nhắc **rõ định dạng trích dẫn `[n]`** cho mọi khẳng định vật liệu (điểm khác duy nhất so với lượt trước; không sửa mã sản phẩm, không nới cổng kiểm).
-4. Tối đa 3 lần gọi như lượt trước. Nếu vẫn không qua cổng → dừng, báo rõ, đặt `cho-muse` (không tự nới cổng, không tự bịa đáp án).
+1. **Form chuẩn Q&A điều tra nhân quả** (schema, có test): mỗi form gồm
+   - định danh: `gap_id`, mã lỗi, hiện tượng, model/line/công đoạn;
+   - câu hỏi + mục tiêu câu hỏi / khía cạnh cần lấp;
+   - câu trả lời;
+   - giả thuyết nguyên nhân, cơ chế gây lỗi, nhóm 4M (Man/Machine/Material/Method);
+   - bằng chứng cần thu thập, tiêu chí xác nhận/bác bỏ, cách phân biệt với giả thuyết khác;
+   - ngưỡng/đơn vị/dung sai, ngoại lệ;
+   - đối sách tạm thời / lâu dài, điều kiện tái phát;
+   - ca/tài liệu liên quan, chỗ cần chuyên gia phản hồi, độ tự tin.
+   - Form dùng chung cho cả 3 việc: Copilot trả lời theo lô, chuyên gia phản hồi, và nạp vào kho.
+   - Cấm form chung chung kiểu chỉ có `answer`/`confidence` — trả lời mà thiếu nhân quả/bằng chứng thì từ chối.
+2. **Bộ sinh + chấm điểm câu hỏi vàng**: từ knowledge gaps 6 loại (`missing_threshold`, `missing_condition`, `missing_exception`, `missing_example`, `conflict`, `stale_knowledge`) + tập giả thuyết từ ca lỗi → sinh câu hỏi, chấm theo 6 tiêu chí (nặng nhất: khả năng phân biệt giả thuyết nguyên nhân; tiếp: lấp gap quan trọng, yêu cầu bằng chứng đo được, đào Why-Why/4M, tính mới, khả thi), chọn top-K mỗi hiện tượng (≥1 câu phân biệt giả thuyết, ≥1 câu bằng chứng đo được, phủ ≥3 nhánh 4M). Tái dùng guardrail hiện có (chống câu hỏi dẫn dắt, chống trùng Jaccard ≥ 0.85, chống vượt budget).
+3. **Script xuất batch**: file JSONL (câu hỏi + ngữ cảnh ca + schema form) + phiếu Markdown đọc được cho người (mỗi hiện tượng một section, mỗi câu kèm form trống đúng schema). Thí điểm: **5 hiện tượng F CALL thật** lấy từ DB lỗi (không tự bịa).
+4. **Script nhập batch**: đọc file câu trả lời → validate schema → dedup SHA-256 → ghi vào staging DB riêng (`local_cases/staging_enrichment.sqlite`, tách khỏi DB chính và index production) với nhãn duy nhất `kiến thức đã được đào tạo bổ sung`. Cấm nhập thẳng vào DB chính / luồng trả lời chính khi chưa qua vòng phản hồi chuyên gia. Merge kho thật là vé riêng.
+5. **Nối câu hỏi vàng vào interview engine**: bộ câu hỏi từ form trở thành seed questions cho `adaptive_interview_engine` (theo loại gap đã có).
+6. **Bộ đo trước/sau**: cùng một bộ câu hỏi về 5 hiện tượng — đo độ phủ tri thức (gap high giảm ≥60%), truy hồi (chunk mới vào top-5 ≥4/5), độ đầy form (≥80%), khả năng phân biệt giả thuyết (≥70% cặp), và thời gian trả lời.
+7. Test + `compileall` + `pytest` + `cli audit` PASS theo luật repo; không ghi index production; không đụng ổ D.
+
+## Việc user làm (máy công ty, Copilot 365 Premium)
+
+- **BẮT BUỘC trước khi hỏi:** đặt chế độ **Work IQ** và chế độ suy nghĩ **Think deeper** trên thanh chat Copilot (ảnh user gửi 2026-10-02). Đây là chế độ suy luận sâu + truy cập tri thức công việc, cho đáp án chuyên gia chất lượng cao nhất.
+- Chạy batch 5 hiện tượng F CALL: mỗi hiện tượng một lượt chat, paste nguyên phiếu câu hỏi từ file Markdown, nhận đáp án theo đúng schema form, lưu file câu trả lời về.
+- Duyệt nhanh đợt đầu: đánh dấu mục nào đạt / mục nào cần sửa (chuyên gia thật phản hồi sau, ghi vào trạng thái nghiệp vụ).
+
+## Việc OMP verify [NHÀ]
+
+- Chạy script xuất/nhập trên dữ liệu thật: staging DB đúng schema, nhãn đúng (`kiến thức đã được đào tạo bổ sung`), DB chính và index production không đổi (đo SHA trước/sau).
+- Báo cáo `docs/phieu-viec/ket-qua/knowledge-enrich-pilot.md` + `xong-cho-duyet`.
 
 ## Tiêu chí ĐẠT
 
-- E3 nhận `provider_validated` qua lane 1, trace valid → đủ **6/6** câu lạnh qua lane 1/3.
-- SHA index production trước/sau không đổi.
+- Form schema có test bao phủ; xuất/nhập batch chạy được trên dữ liệu thật.
+- Nhãn duy nhất đúng `kiến thức đã được đào tạo bổ sung`; không có bản chưa qua vòng chuyên gia nào lọt vào luồng trả lời chính.
+- Bộ đo trước/sau chạy được; index production `library.sqlite` không đổi.
+- Commit riêng trên branch `phieu-viec/rag-fix1`, không đụng `main`.
 
-## Báo cáo
+## Phụ lục: phương án khi không có Copilot (user hỏi 2026-10-02 ~22:00)
 
-- Bổ sung vào `docs/phieu-viec/ket-qua/speed-coldstart-home.md` (hoặc file `speed-coldstart-home-r1.md` mới) + `xong-cho-duyet`.
+- Ở máy không có Copilot 365 (ví dụ máy nhà): được phép dùng **Gemini Web qua cầu nối sẵn có (`127.0.0.1:8585`)** hoặc **Nakazasen Router** để soạn thảo đáp án theo đúng schema/form, thay cho Copilot. File batch xuất ra dùng chung, ai soạn cũng điền cùng một form.
+- **Không dùng tài khoản ChatGPT cá nhân cho dữ liệu công ty** khi chưa rõ quy định công ty: Copilot 365 đã được công ty cho phép; ChatGPT cá nhân thì chưa. User có thể gỡ rào này bằng quyết định rõ ràng sau.
+- Đính chính cách gọi "auto train": ChatGPT/Gemini **không huấn luyện** trên dữ liệu của mình — chúng chỉ đọc file đính kèm trong phiên/project để soạn thảo. Tri thức thật vẫn nằm trong kho AIOS.
+- Rào trung thực giữ nguyên: đáp án do LLM soạn chỉ là **bản thảo**, bắt buộc qua chuyên gia duyệt (trạng thái `cho_chuyen_gia_phan_hoi` → `chuyen_gia_da_phan_hoi`) mới được gắn nhãn `kiến thức đã được đào tạo bổ sung`. Cấm gắn nhãn chuyên gia cho bản thảo chưa duyệt.
