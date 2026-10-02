@@ -3,7 +3,7 @@
 - Trạng thái: `dang-lam`
 - Ticket hiện tại: `SPEED-COLDSTART-HOME` — [NHÀ] nghiệm thu cold-start trên máy nhà (GPU) bằng lane 1 (Gemini qua cầu nối) / lane 3 (Nakazasen Router) vì C-Agent ở nhà không dùng được; Phase 0 chốt trạng thái LLM-ENABLE-DO-NHA trước.
 - `prompt`: `docs/phieu-viec/mailbox/prompt.md`
-- `ghi_chu`: 2026-10-02 23:54 +07 — 3/3 gắn lại cùng PID 11896, không nạp lại model (0,01–0,06 s). Config lệch bị chặn, PID không đổi. SHA index trước khớp `45eb0e07…`. Đang hỏi 6 câu lạnh lane 1. Không ghi index.
+- `ghi_chu`: 2026-10-03 00:01 +07 — lượt hỏi đầu: L2/L3/E2 `provider_validated` lane 1; L1/E1/E3 Gemini có trả lời nhưng rơi local (thiếu nhãn). Đang hỏi lại 3 câu đó, không nới cổng kiểm. Không ghi index.
 - `hang-cho` (thứ tự do user duyệt 2026-10-02 ~22:05 +07):
   1. `KNOWLEDGE-ENRICH-PILOT` (`prompt-queue-knowledge-enrich-pilot.md`) — làm giàu tri thức theo lô bằng Copilot 365 (thí điểm 5 hiện tượng F CALL); form Q&A chuẩn + xuất/nhập batch + đo trước/sau. Đã bổ sung phụ lục: máy không có Copilot thì dùng Gemini Web qua cầu nối / Nakazasen Router soạn thảo, không dùng ChatGPT cá nhân cho dữ liệu công ty.
   2. `UX-CHAT-CORE` (`prompt-queue-ux-chat-core.md`) — [VM code + NHÀ verify] chat nhiều ý định trong một câu, nhúng log + vẽ biểu đồ ngay trong câu trả lời, lane tự động (hết đổi tay), hết báo lỗi ảo.
