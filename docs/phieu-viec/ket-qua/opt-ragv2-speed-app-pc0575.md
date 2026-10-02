@@ -7,7 +7,8 @@
 
 ## 0. Cổng gate (vòng khép kín)
 
-- Watcher PC0575 (`D:\Sandbox\agent-mailbox\`) tự mở OMP `LAUNCH 1/4` lúc **12:44:08** (`launchStallCount=1`) khi thấy vé `moi`; **điều kiện mở đã tới**: verdict `DEPLOY-BUOC05-PC0575` **ĐẠT** (2026-10-02) + app CPU-only đang chạy, `/_stcore/health`=`ok` → OMP nhận vé (`dang-lam`, commit `ae7919c` 12:46 +07) — **không dùng nhánh “4 lần watcher”/`cho-muse`, không quay no-op**. Các mốc tiến độ được cập nhật + push đúng quy ước (`f76de2e`, `a431325`).
+- Watcher PC0575 (`D:\Sandbox\agent-mailbox\`) tự mở OMP `LAUNCH 1/4` lúc **12:44:08** (`launchStallCount=1`) khi thấy vé `moi`; **điều kiện mở đã tới**: verdict `DEPLOY-BUOC05-PC0575` **ĐẠT** (2026-10-02) + app CPU-only đang chạy, `/_stcore/health`=`ok` → OMP nhận vé (`dang-lam`, commit `ae7919c` 12:46 +07) — **không dùng nhánh “4 lần watcher”/`cho-muse`, không quay no-op**. Các mốc tiến độ được cập nhật + push đúng quy ước (`f76de2e`, `a431325`, `ea8e9ee`, `f5f5ea1`).
+- **Bổ sung khẩn 13:21 +07 của Muse** (`908b70b`: đo thêm đường C-Agent) được đẩy giữa phiên; OMP phát hiện khi push bị từ chối (15:05) → đã rebase và **làm phần C-Agent ngay** (mục 4c) thay vì kết thúc sớm. Ghi nhận bài học quy ước: phiên dài nên `git fetch`/đọc lại `prompt.md` định kỳ, không chỉ lúc nhận vé.
 
 ## 1. Phương pháp đo (nói thẳng cái nào là app thật, cái nào là probe)
 
@@ -16,6 +17,7 @@
 | **UI app thật (Chromium thật)** — mở sổ `Điều tra lỗi LSU` → hội thoại `CONV-9C730D76` (19 tài liệu ready), gõ câu hỏi vào ô “Câu hỏi gửi AI”, gửi bằng `Ctrl+↵`, đo từ lúc gửi đến khi bong bóng trả lời hiện | **Có** | Hành vi lạnh sau restart (mục 2) |
 | **Probe cùng pipeline** — `scratch/speed_app/probe_worker_init.py`: đúng `WorkspaceChatRagV2CanaryConfig.from_env()` → `_pipeline_config(read_only=True, collection=tri_thuc)` → `initialize_workspace_chat_rag_v2_worker()` → `_SUBPROCESS_CLIENT.query_ready()` — tức **đúng client + subprocess worker + index production mà app dùng**, chỉ khác là gọi từ tiến trình đo chứ không qua UI | **Không** (ghi rõ: không gọi là app thật) | Thời gian init worker thật + 1 câu qua worker (mục 3) |
 | **Probe cùng pipeline (in-process)** — `scratch/opt_ragv2_lexical_verify_probe.py` (đúng script đã dùng ở vé LEXICAL/PYLOOPS): dựng `RagV2DevPipeline` trên index production, chạy 6 câu qua `RagV2DevPipeline.query` | **Không** | Bảng 6 câu lạnh/ấm, breakdown từng kênh, parity top-15 (mục 4–6) |
+| **Probe đầu-cuối có C-Agent** — `scratch/speed_app/probe_cagent_e2e.py`: gọi đúng các hàm app (`retrieve_workspace_chat_evidence` → `_cap_and_pack_sources`/`build_workspace_ai_prompt` → `call_cagent_prediction` tới endpoint công ty) | **Không** (ghi rõ) | Tách (a) tìm kiếm nội bộ / (b) C-Agent viết / (c) tổng (mục 4c) |
 
 **Vì sao không có số hỏi–đáp RAG “qua giao diện app thật”:** đường app thật **không trả lời được câu RAG nào sau restart trên máy này** — nguyên nhân đo được ở mục 2. Đây là phát hiện chặn của vé, không phải OMP bỏ qua yêu cầu “đo app thật”.
 
@@ -111,6 +113,25 @@ Hai lượt chạy độc lập, mỗi lượt một tiến trình (preload xong
 - Top-15 của lượt ấm **trùng 100 %** lượt lạnh ở cả hai chế độ (parity không đổi theo trạng thái cache).
 - **Cảnh báo nhiễu I/O (đọc kèm số lượt A)**: lượt đo này trùng thời điểm đĩa bận — preload `v2on` 370 s so với 268 s ở lượt A; chính các câu `v2on` cũng chậm 3–10 lần (E1 lạnh 483,9 s). Cùng chế độ `v2on`, lượt A (13:39–13:49) cho L1 44,3 / L2 31,7 / L3 10,7 / E1 35,9; lượt này (14:22–14:57) cho 104–277 s. Vì vậy **kết luận tốc độ phải đọc theo dải**, không lấy một con số: khi đĩa rảnh, câu ấm rơi vào **10–55 s**; khi đĩa bận, cùng câu lên **100–280 s**. Đây là đặc tính máy CPU-only + HDD, không phải khác biệt do mã.
 
+### 4c. Đường đầu-cuối có C-Agent viết câu trả lời (bổ sung khẩn 13:21 +07)
+
+- Endpoint công ty: `https://kdtvn-ai.cmcts.vn/api/v1/prediction/1881aa32-…` (env `AIOS_CAGENT_API_URL`), client `cagent_api.call_cagent_prediction` (POST `{"question": "<system>\n\n<user>"}`, không session id ⇒ không cache theo phiên).
+- **Kiểm tra kết nối (câu ngắn)**: **ĐẠT** — trả lời “Xin chào! Kết nối thành công.” sau **14,4 s**; gọi lặp cùng câu: 11,0 s rồi 41,6 s (dao động theo tải server; **không** thấy dùng lại cache). Không gặp lỗi đăng nhập/mạng/hạn mức trong 9 lượt gọi.
+- **Đo đầu-cuối 6 câu** (`scratch/speed_app/probe_cagent_e2e.py`, `AIOS_RAGV2_LEXICAL_V2=1`, chạy đúng các hàm app: `retrieve_workspace_chat_evidence` → `_cap_and_pack_sources`/`build_workspace_ai_prompt` → `call_cagent_prediction`). Worker init trong phiên đo: 323,1 s (đĩa đang bận).
+
+| Câu | (a) Tìm kiếm nội bộ (s) | (b) C-Agent viết (s) | (c) Tổng người dùng chờ (s) | Nguồn đưa vào prompt | candidates |
+|---|---:|---:|---:|---:|---:|
+| L1 | 201,1 | 16,5 | 217,7 | 12 | 34 |
+| L2 | 270,7 | 21,8 | 292,5 | 17 | 52 |
+| L3 | 34,1 | 45,8 | 79,9 | 1 (nhánh fallback lexical của khối C-Agent) | — |
+| E1 | 69,8 | 22,2 | 92,0 | 10 | 38 |
+| E2 | 50,8 | 30,9 | 81,7 | 9 | 37 |
+| E3 | 103,5 | 20,5 | 124,0 | 12 | 44 |
+
+- **C-Agent viết thành công cả 6/6 câu** (16,5–45,8 s; không lỗi hạn mức/HTTP). Câu trả lời bám nguồn (“Dựa trên các nguồn tài liệu được cung cấp…”) — ví dụ E3 liệt kê đúng các hạng mục LD mirror/trục quang/độ sâu chỉnh.
+- Phần (a) chiếm phần lớn tổng thời gian (34–271 s trong lượt đĩa bận này); nếu đọc kèm dải lạnh/ấm ở mục 4b (10–55 s khi đĩa rảnh) thì tổng đầu-cuối kỳ vọng **~30–100 s/câu**, và C-Agent không phải nút thắt.
+- **Điểm kẹt cụ thể của đường app-UI → C-Agent (báo đúng thay vì bịa số)**: trong app, câu hỏi đi qua retrieval trước rồi mới tới `route_workspace_chat_submission` (khối `backend == "cagent_api"`); vì đường retrieval lạnh hỏng như mục 2, app **không bao giờ tới được bước gọi C-Agent** sau restart trên PC0575. Vì vậy bảng trên đo bằng đúng các hàm app (không qua UI) — đúng tinh thần “probe cùng pipeline”, không gọi là app thật.
+
 ## 5. Parity top-15 so với baseline `scratch/opt_ragv2_verify_new.json`
 
 Lệnh: `python scratch/opt_ragv2_lexical_compare.py scratch/opt_ragv2_verify_new.json scratch/opt_ragv2_lexical_speed-v2off.json scratch/opt_ragv2_lexical_speed-v2on.json` (exit code **0**).
@@ -180,16 +201,19 @@ Phần Python thuần (`python_score_ms` 0,09–1,02 s) và fusion/assembly (≤
    - Lượt A (13:22–13:49, đĩa rảnh): `v2on` **4/6 câu <60 s** (L1 44,3 · L2 31,7 · L3 10,7 · E1 35,9), `v2off` chỉ E2 55,5 s.
    - Lượt B (14:05–14:57, đĩa bận): `v2off` ấm **5/6 câu <60 s** (52,2 · 50,8 · 54,3 · 13,3 · 29,6; E1 61,0), `v2on` ấm lại 102–277 s.
    - ⇒ Nút thắt là **I/O đĩa của hai truy vấn SQL ở mục 6**, không phải logic; trạng thái tốt: câu ấm 10–55 s, trạng thái xấu: 100–480 s. **Không tuyên bố đạt tốc độ chỉ vì parity đạt.**
-3. **Nút thắt còn lại là 2 truy vấn SQL đọc trên DB 2,84 GB** (không còn là Python): quét eligibility 120.452 dòng (11,5–112,9 s) và `chunks_fts MATCH`+bm25 (3,6–60,1 s); CJK thêm LIKE prefilter ~10,5 s. Đây là nơi cần tối ưu tiếp (mục 6).
-4. **Parity ĐẠT 100% cả 6 câu ở cả hai chế độ, E1 đủ 15/15 đúng thứ tự** ⇒ số đo ủng hộ **bật `AIOS_RAGV2_LEXICAL_V2=1`** làm mặc định (quyết định thuộc Muse/user).
-5. Index production **không đổi**; health `ok`; không ghi index; không merge `main`; không sửa `src/`/`tests/`.
-6. **Kiến nghị vé tiếp theo cho Muse**: (a) vé code sửa đường warm-up/init của app (mục 2) để người dùng PC0575 hỏi được ngay sau restart; (b) vé tối ưu eligibility + FTS (mục 6) để kéo E2/E3 dưới 60 s.
+3. **C-Agent (bổ sung khẩn 13:21) — ĐẠT phần đo**: nối được từ PC0575 (câu ngắn 14,4 s; không lỗi hạn mức), viết thành công **6/6 câu** với **16,5–45,8 s/câu** (không cache theo phiên). Tổng đầu-cuối đo được 79,9–292,5 s trong lượt đĩa bận; ghép với dải tìm kiếm khi đĩa rảnh (10–55 s) ⇒ kỳ vọng **~30–100 s/câu**. **Điểm kẹt cụ thể**: qua app UI thì app không tới được bước gọi C-Agent vì retrieval lạnh chặn trước (mục 4c) — cần vá mục 1 trước.
+4. **Nút thắt còn lại là 2 truy vấn SQL đọc trên DB 2,84 GB** (không còn là Python): quét eligibility 120.452 dòng (11,5–112,9 s) và `chunks_fts MATCH`+bm25 (3,6–60,1 s); CJK thêm LIKE prefilter ~10,5 s. Đây là nơi cần tối ưu tiếp (mục 6).
+5. **Parity ĐẠT 100% cả 6 câu ở cả hai chế độ, E1 đủ 15/15 đúng thứ tự** ⇒ số đo ủng hộ **bật `AIOS_RAGV2_LEXICAL_V2=1`** làm mặc định (quyết định thuộc Muse/user).
+6. Index production **không đổi**; health `ok`; không ghi index; không merge `main`; không sửa `src/`/`tests/`.
+7. **Kiến nghị vé tiếp theo cho Muse**: (a) vé code sửa đường warm-up/init của app (mục 2) để người dùng PC0575 hỏi được ngay sau restart (đây cũng là điều kiện để đo được đường app-UI → C-Agent); (b) vé tối ưu eligibility + FTS (mục 6) để kéo các câu còn lại xuống dưới 60 s ổn định.
 
 ## 9. Bằng chứng (git-ignore, trong `scratch/speed_app/`)
 
 - `probe_worker_init.py`, `worker_init_init_v2off.json` — init worker + 1 câu qua worker (mục 3).
 - `probe_speed_v2off.out`, `probe_speed_v2on.out`, `opt_ragv2_lexical_speed-v2off.json|v2on.json` — 6 câu probe (mục 4–5).
-- `probe_cold_warm.py`, `coldwarm_*.json` — 2 lượt lạnh/ấm trong cùng tiến trình.
+- `probe_cold_warm.py`, `coldwarm_coldwarm-v2off.json`, `coldwarm_coldwarm-v2on.json` — 2 lượt lạnh/ấm trong cùng tiến trình (mục 4b).
+- `probe_cagent_e2e.py`, `cagent_cagent-v2on.json`, `cagent_v2on.out` — đầu-cuối có C-Agent (mục 4c).
 - `explain_bottleneck.py`, `explain_bottleneck.json` — EXPLAIN QUERY PLAN + timing thô (mục 6).
 - `pc0575_speed_restart.ps1`, `sitehooks/sitecustomize.py` — công cụ restart đo (không dùng để sửa mã).
+- Parse lại số đo (đọc-only): `scratch/speed_app/summarize_runs.py`; so parity: `scratch/opt_ragv2_lexical_compare.py`.
 - Ảnh chụp / DOM của 2 lượt UI hỏng: log phiên đo trong hội thoại + `local_cases/workspace_chat/messages.jsonl` (mốc 12:58–13:08).
