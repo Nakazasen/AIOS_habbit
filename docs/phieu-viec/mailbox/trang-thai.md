@@ -3,7 +3,7 @@
 - Trạng thái: `dang-lam`
 - Ticket hiện tại: `KNOWLEDGE-DIGEST-HOME-R1` — [NHÀ] resume batch tóm tắt từ checkpoint 92/889 khi cầu nối hết HTTP 405; xuất sổ tay + probe so sánh RAG.
 - `prompt`: `docs/phieu-viec/mailbox/prompt.md`
-- `commit`: `12b511c`
+- `commit`: `0f91bbb`
 - `bao_cao`: `docs/phieu-viec/ket-qua/knowledge-digest-home.md`
 - `ghi_chu`: 2026-10-03 05:15 +07 — **Cổng mở CHƯA tới (`RELAUNCH 2/4` lúc 05:11:05, `launchStallCount=2`).** Sidecar bật lại, `GET /health` = `direct_ready`, 1 lượt tóm tắt thử HTTP 502 sau 2,3 s (thân: Gemini HTTP 405, làm mới BL không cứu được). Checkpoint giữ 180/889. Không chạy batch, không backoff trong phiên, không quay no-op. Chưa đủ 4 lần, không đặt `cho-muse`. Resume: hết 405 thì chạy lại runner, checkpoint giữ 180.
 - `ghi_chu`: 2026-10-03 05:06 +07 — **Cổng mở CHƯA tới (`RELAUNCH 1/4`).** Sidecar bật lại, `GET /health` = `direct_ready`, nhưng 1 lượt tóm tắt thử HTTP 502 sau 2,2 s (thân: Gemini HTTP 405). Checkpoint giữ 180/889. Không chạy batch, không backoff trong phiên, không quay no-op. Chưa đủ 4 lần, không đặt `cho-muse`. Resume: hết 405 thì chạy lại runner, checkpoint giữ 180.
