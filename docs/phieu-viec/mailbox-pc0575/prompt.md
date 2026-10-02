@@ -1,5 +1,12 @@
 # Vé DEPLOY-BUOC05-PC0575 — Deploy tính năng Bước 0–5 lên máy công ty + mở LAN cho người dùng
 
+> **CHỈ ĐẠO ĐIỀU PHỐI BỔ SUNG — 2026-10-02 12:07 +07 (user chốt qua Muse):**
+> Ưu tiên số 1 hiện tại là **tốc độ phản hồi câu hỏi**. Việc mở LAN/tường lửa chỉ phục vụ cho người khác truy cập app, **không làm câu trả lời nhanh hơn**, nên từ mốc này:
+> 1. **Không tốn thêm thời gian vào LAN/tường lửa/admin** trong vé này. Ghi nhận trạng thái hiện tại (app chạy local, LAN từ thiết bị khác đang bị rule Domain/Public chặn, cần admin) là **việc treo để sau**, không coi là điểm chặn cho phần kiểm chứng chạy tại máy.
+> 2. Tiếp tục verify B0–B5 **ngay trên PC0575 ở chế độ local**; riêng B1-FEAT phải đo thời gian thật và ghi rõ số giây/câu. Nếu B1-FEAT hoặc hỏi đáp còn chậm, ghi số đo vào báo cáo và chuyển trọng tâm sang vé tốc độ đã xếp hàng, không chờ mở LAN.
+> 3. Không đổi tiêu chí an toàn: DB thật phải khớp SHA, index production `library.sqlite` không đổi, không ghi index, không merge `main`.
+> 4. Sau khi báo cáo vé này `xong-cho-duyet`, vé tiếp theo của PC0575 là `OPT-RAGV2-SPEED-APP-PC0575` (đo tốc độ app thật + hồ sơ nút thắt còn lại) trước khi quay lại mở LAN cho người dùng.
+
 LANE: [CTY] — OMP làm toàn bộ trên KDTVN-PC0575 (CPU-only). Muse KHÔNG làm vé này.
 
 XẾP HÀNG: phát hành sau khi **cả hai** điều kiện tới —
