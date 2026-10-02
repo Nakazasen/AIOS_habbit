@@ -1,64 +1,32 @@
-# Vé DEPLOY-BUOC05-PC0575 — Deploy tính năng Bước 0–5 lên máy công ty + mở LAN cho người dùng
+# Vé: OPT-RAGV2-SPEED-APP-PC0575 — đo tốc độ hỏi đáp app thật + hồ sơ nút thắt còn lại
 
-> **CHỈ ĐẠO ĐIỀU PHỐI BỔ SUNG — 2026-10-02 12:07 +07 (user chốt qua Muse):**
-> Ưu tiên số 1 hiện tại là **tốc độ phản hồi câu hỏi**. Việc mở LAN/tường lửa chỉ phục vụ cho người khác truy cập app, **không làm câu trả lời nhanh hơn**, nên từ mốc này:
-> 1. **Không tốn thêm thời gian vào LAN/tường lửa/admin** trong vé này. Ghi nhận trạng thái hiện tại (app chạy local, LAN từ thiết bị khác đang bị rule Domain/Public chặn, cần admin) là **việc treo để sau**, không coi là điểm chặn cho phần kiểm chứng chạy tại máy.
-> 2. Tiếp tục verify B0–B5 **ngay trên PC0575 ở chế độ local**; riêng B1-FEAT phải đo thời gian thật và ghi rõ số giây/câu. Nếu B1-FEAT hoặc hỏi đáp còn chậm, ghi số đo vào báo cáo và chuyển trọng tâm sang vé tốc độ đã xếp hàng, không chờ mở LAN.
-> 3. Không đổi tiêu chí an toàn: DB thật phải khớp SHA, index production `library.sqlite` không đổi, không ghi index, không merge `main`.
-> 4. Sau khi báo cáo vé này `xong-cho-duyet`, vé tiếp theo của PC0575 là `OPT-RAGV2-SPEED-APP-PC0575` (đo tốc độ app thật + hồ sơ nút thắt còn lại) trước khi quay lại mở LAN cho người dùng.
+Lane: [CTY] OMP đo và báo cáo trên KDTVN-PC0575 (CPU-only, index production chỉ đọc). Muse dùng báo cáo này để code tối ưu trên VM; OMP không tự sửa code trong vé này.
+Không merge `main`; không force-push; không ghi index production; không chạy `--apply`; không tạo bảng/index mới trong production.
 
-LANE: [CTY] — OMP làm toàn bộ trên KDTVN-PC0575 (CPU-only). Muse KHÔNG làm vé này.
+## Lý do phát hành
 
-XẾP HÀNG: phát hành sau khi **cả hai** điều kiện tới —
-(a) `OPT-RAGV2-PYLOOPS` verdict ĐẠT trên PC0575 (app đã nhanh), và
-(b) `B5` verdict ĐẠT trên máy nhà (đủ bộ tính năng Bước 0–5).
-Không phát hành sớm hơn: deploy app chậm hoặc thiếu tính năng đều không đạt đích.
+User chốt 2026-10-02 12:07 +07: **tốc độ phản hồi câu hỏi là ưu tiên số 1**. Mở LAN/tường lửa không làm câu trả lời nhanh hơn, nên hoãn sau vé này.
 
-## Bối cảnh
+Vé `OPT-RAGV2-LEXICAL` đã ĐẠT parity nhưng mốc stretch <60s/câu chưa đạt. Số đo probe gần nhất trên PC0575: E2 55,4s; L1 61,7s; các câu còn lại khoảng 129–146s. Nút thắt đã tách được: quét eligibility trên 120.452 dòng + `chunks_fts MATCH` bm25 khoảng 19–52s/câu. Dense/sparse không còn nạp lại giữa câu.
 
-Các tính năng Bước 0–5 (B0-FORM form nhập chuẩn, B1-FEAT tra cứu, B2 vòng phản hồi,
-B3 cây điều tra 4M + Why-Why, B4 xu hướng + cảnh báo, B5 phân loại tự động + cảnh báo
-tái phát) do Muse code trên VM và OMP verify trên máy nhà — nhưng **chưa bao giờ được
-deploy và kiểm tra chạy thật trên PC0575**, là máy LAN người dùng công ty sẽ dùng
-(theo `docs/dich-den-du-an.md`: đích cuối là người dùng công ty dùng được).
-Vé này lấp đúng khoảng trống đó.
+## Việc cần làm
 
-## Việc cần làm (theo thứ tự)
+1. Chạy trên chính PC0575 ở chế độ local, không cần LAN và không chờ admin mở tường lửa.
+2. Đo tốc độ hỏi đáp bằng đúng đường app đang chạy sau deploy Bước 0–5. Ghi rõ cách đo là qua giao diện app thật hay probe cùng pipeline; không gọi probe là app thật nếu không đi qua giao diện.
+3. Bộ câu: 6 câu L1–L3/E1–E3 đã dùng ở các vé PYLOOPS/LEXICAL. Đo câu lạnh sau restart và câu ấm lặp lại. Ghi từng câu: tổng thời gian, phần tìm kiếm, phần viết trả lời nếu tách được, và trạng thái cache.
+4. So hai chế độ nếu app cho phép đổi an toàn bằng biến môi trường khi restart: `AIOS_RAGV2_LEXICAL_V2=0` và `AIOS_RAGV2_LEXICAL_V2=1`. Nếu không đổi được qua app thật, ghi rõ và dùng probe cùng cấu hình để đối chứng.
+5. Kiểm parity top-15 so với baseline `opt_ragv2_verify_new.json`: phải khớp 100%, riêng E1 phải đủ 15/15 đúng thứ tự. Nếu lệch, dừng và báo rõ câu lệch.
+6. Nếu còn câu trên 60s, lập hồ sơ nút thắt bằng số đo: thời gian eligibility, `chunks_fts MATCH`, phần khác; kèm `EXPLAIN QUERY PLAN` hoặc bằng chứng tương đương cho truy vấn chậm nhất. Không tự sửa code, không tự tạo index mới.
+7. Đo SHA-256 và mtime của index production trước/sau; phải không đổi. Kiểm `/_stcore/health` = `ok` trước/sau.
 
-1. `git pull` branch `phieu-viec/rag-fix1` trên PC0575 → ghi SHA code deploy.
-2. Chuẩn bị DB ca lỗi cho các tính năng B0–B5: code tìm DB theo thứ tự
-   `AIOS_ERROR_CASES_DB` → `C:/tmp/buoc0-deploy/error_cases_deploy.db`
-   (`chat_action_case_form.py:resolve_db_path`, fail-closed nếu không có).
-   Lấy DB thật **đúng cách máy nhà đã làm**: copy file `C:/tmp/b0-dict/error_cases_dict.db`
-   từ máy nhà sang PC0575 (USB/Drive), verify SHA-256 khớp `6bd41a8c…2369`, rồi trỏ
-   `AIOS_ERROR_CASES_DB` vào đó. Cấm tự bịa DB / tự chế dữ liệu — chỉ DỪNG + báo
-   `cho-muse` khi không lấy được DB thật bằng cách nào.
-3. Restart app CPU-only (`RUN_AIOS_WORKSPACE_CHAT.bat`, env như hiện tại),
-   verify `/_stcore/health` = `ok`, LAN vào được từ thiết bị khác.
-4. Verify từng tính năng với dữ liệu thật (không insert ca giả vào DB thật;
-   nếu cần thử insert thì gắn tiền tố `SIMULATED_` và xóa ngay sau khi xong):
-   - B0-FORM: mở form, render đủ 12 trường, validate chặn đúng 5 trường bắt buộc.
-   - B1-FEAT: nhập 1 error code thật → ra top 3–5 + nguyên nhân/đối sách/link gốc,
-     đo thời gian (kỳ vọng <1 phút sau OPT-RAGV2-PYLOOPS).
-   - B2: bấm đánh giá đúng/sai/một phần trên 1 gợi ý → log ghi nhận.
-   - B3: nhập 1 hiện tượng thật → ra cây 4M + Why-Why + xuất file đúng format.
-   - B4: mở biểu đồ xu hướng + sinh báo cáo định kỳ được.
-   - B5: nhập hiện tượng → hiện gợi ý phân loại + cảnh báo tái phát (nếu có lịch sử).
-5. An toàn dữ liệu: đo SHA-256 production `collections/tri_thuc/library.sqlite`
-   **trước và sau** deploy — phải **không đổi** (tính năng Bước 0–5 không được ghi
-   vào index RAG; B0-FORM chỉ ghi DB ca lỗi, không ghi index).
-6. Báo cáo `docs/phieu-viec/ket-qua/deploy-buoc05-pc0575.md` + `xong-cho-duyet`.
+## Đầu ra
 
-## Tiêu chí ĐẠT
+- Báo cáo `docs/phieu-viec/ket-qua/opt-ragv2-speed-app-pc0575.md` gồm bảng 6 câu lạnh/ấm, so sánh v2off/v2on nếu đo được, parity, nút thắt lớn nhất kèm bằng chứng, và đề xuất hướng tối ưu cho Muse code.
+- Cập nhật `docs/phieu-viec/mailbox-pc0575/trang-thai.md` thành `xong-cho-duyet`.
 
-- Đủ 6 tính năng B0–B5 mở được và chạy được trên PC0575 CPU-only với dữ liệu thật.
-- B1-FEAT trả lời <1 phút (sau OPT-RAGV2-PYLOOPS).
-- App LAN truy cập được từ thiết bị khác (như P5b đã làm).
-- SHA production `library.sqlite` không đổi suốt vé.
-- Commit riêng trên branch `phieu-viec/rag-fix1`, không đụng `main`, không force-push.
+## Tiêu chí ĐẠT của vé đo này
 
-## Cấm
-
-- Cấm tự bịa DB ca lỗi; lấy đúng DB thật từ máy nhà (verify SHA `6bd41a8c…2369`), chỉ dừng và báo khi không lấy được.
-- Cấm ghi vào production `library.sqlite` (mọi ghi của B0-FORM đi vào DB ca lỗi).
-- Cấm chạy `--apply`/migrate nào không có trong vé.
+- Có số đo app thật trên PC0575, tách lạnh/ấm, không dùng số của máy khác.
+- Parity top-15 giữ nguyên; E1 đủ 15/15.
+- Index production không đổi; health `ok`.
+- Nếu chưa câu nào về dưới 60s ngoài E2, báo cáo phải chỉ rõ nút thắt còn lại bằng số đo để Muse viết vé code tiếp theo. Không tuyên bố đã đạt tốc độ chỉ vì parity đạt.
