@@ -5,7 +5,7 @@
 - `prompt`: `docs/phieu-viec/mailbox/prompt.md`
 - `commit`: `747714e`
 - `bao_cao`: `docs/phieu-viec/ket-qua/knowledge-digest-home.md`
-- `ghi_chu`: 2026-10-03 04:46 +07 — Moc tom tat 117/889 document. Checkpoint moi tai lieu. Khong ghi index. Tiep tuc batch Gemini Web.
+- `ghi_chu`: 2026-10-03 04:48 +07 — Moc tom tat 142/889 document. Checkpoint moi tai lieu. Khong ghi index. Tiep tuc batch Gemini Web.
 - `ghi_chu`: 2026-10-03 03:41 +07 — **Backoff 30 phút vẫn 405.** Health `direct_ready`, lượt thử HTTP 502 sau 10,8 s. Checkpoint 92/889. Không chạy batch. `LAUNCH 1/4`, không đặt `cho-muse`. Backoff cuối 60 phút.
 - `ghi_chu`: 2026-10-03 03:09 +07 — **Backoff 15 phút vẫn 405.** Health `direct_ready`, lượt thử HTTP 502 sau 10,4 s. Checkpoint 92/889. Không chạy batch. `LAUNCH 1/4`, không đặt `cho-muse`. Backoff tiếp 30 phút.
 - `ghi_chu`: 2026-10-03 02:52 +07 — **Backoff 5 phút vẫn 405.** Health vẫn `direct_ready`, lượt thử lại HTTP 502 sau 14,4 s. Checkpoint 92/889 không đổi. Không chạy batch. `LAUNCH 1/4`, không đặt `cho-muse`. Backoff tiếp 15 phút.
