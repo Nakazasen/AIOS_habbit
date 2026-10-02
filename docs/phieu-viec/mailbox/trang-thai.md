@@ -1,10 +1,12 @@
 # Trạng thái mailbox
 
-- Trạng thái: `xong-cho-duyet`
-- Ticket hiện tại: `KNOWLEDGE-DIGEST-HOME` — [VM code + NHÀ chạy full] nén toàn bộ kho thành sổ tay tri thức Markdown cho LLM context dài (vòng hỏi đáp cải thiện, song song với RAG); bản thảo LLM, chưa qua chuyên gia duyệt.
+- Trạng thái: `moi`
+- Ticket hiện tại: `KNOWLEDGE-DIGEST-HOME-R1` — [NHÀ] resume batch tóm tắt từ checkpoint 92/889 khi cầu nối hết HTTP 405; xuất sổ tay + probe so sánh RAG.
 - `prompt`: `docs/phieu-viec/mailbox/prompt.md`
 - `commit`: `56838d9`
 - `bao_cao`: `docs/phieu-viec/ket-qua/knowledge-digest-home.md`
+- `ghi_chu` (verdict Muse): 2026-10-03 ~02:30 +07 — **CHƯA ĐẠT** (báo cáo `56838d9`). Tóm tắt dừng 92/889 vì cầu nối Gemini Web HTTP 405 từ 02:03; sổ tay chưa xuất, probe chưa chạy — tiêu chí phủ 100% chưa đạt. Ghi nhận trung thực của OMP: đếm thật 889 document (149.800 chunk), checkpoint giữ 92 mục không làm lại, SHA index production `45eb0e07…b7c0` không đổi, không bản thảo lọt vào kho. Lỗi 405 là rào ngoài (cầu nối), không phải lỗi code vé.
+- `ghi_chu` (điều phối Muse): 2026-10-03 ~02:30 +07 — Phát hành vé **KNOWLEDGE-DIGEST-HOME-R1** [NHÀ] (resume từ checkpoint khi cầu nối hết 405; có cổng kiểm tra health trước khi chạy batch, backoff nếu 405 tái diễn), `trang-thai` → `moi`. Hàng chờ giữ nguyên: UX-CHAT-CORE → UX-INTERVIEW-FEEDBACK → UX-AGENT-REPORT → UX-E2E-APP → SCAN-O-D.
 - `ghi_chu`: 2026-10-03 02:26 +07 — Dung batch vi Gemini Web HTTP 405 tu 02:03. Checkpoint 92/889 JSON, SHA index khong doi. Chua xuat so tay, chua probe. Khong tu danh DAT. Bao cao 56838d9. Resume: het 405 roi chay lai runner, checkpoint giu 92 muc.
 - `ghi_chu` (verdict Muse): 2026-10-03 ~01:45 +07 — **ĐẠT** (báo cáo `30c7893`). Đủ 5 tiêu chí vé: (1) xuất/nhập batch chạy được trên dữ liệu thật, 25/25 form validate schema; (2) 5 mã F CALL thật từ bản copy chỉ đọc của `error_cases_dict.db` (SHA `6bd41a8c…2369` khớp); (3) staging 25 bản thảo, nhãn duy nhất `kiến thức đã được đào tạo bổ sung`, toàn bộ `cho_chuyen_gia_phan_hoi`, 0 expert_reviews; (4) bộ đo trước/sau chạy được, `library.sqlite` SHA `45eb0e07…b7c0` không đổi; (5) commit riêng trên nhánh, không đụng main. Ghi nhận trung thực của OMP: M1 (gap high giảm ≥60%) và M4 (phân biệt giả thuyết ≥70%) **chưa đạt** theo hàm đo — không tự đánh ĐẠT toàn vé; đây là dữ kiện để cải thiện, không phải fail gate vé.
 - `ghi_chu` (điều phối Muse): 2026-10-03 ~01:45 +07 — Phát hành vé hàng chờ #1 `KNOWLEDGE-DIGEST-HOME` (copy `prompt-queue-knowledge-digest-home.md` → `prompt.md`), `trang-thai` → `moi`. Còn lại hàng chờ: UX-CHAT-CORE → UX-INTERVIEW-FEEDBACK → UX-AGENT-REPORT → UX-E2E-APP → SCAN-O-D.
