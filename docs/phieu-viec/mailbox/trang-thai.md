@@ -3,7 +3,7 @@
 - Trạng thái: `dang-lam`
 - Ticket hiện tại: `KNOWLEDGE-DIGEST-HOME-R1` — [NHÀ] resume batch tóm tắt từ checkpoint 92/889 khi cầu nối hết HTTP 405; xuất sổ tay + probe so sánh RAG.
 - `prompt`: `docs/phieu-viec/mailbox/prompt.md`
-- `commit`: `17584db`
+- `commit`: `4eeffcc`
 - `bao_cao`: `docs/phieu-viec/ket-qua/knowledge-digest-home.md`
 - `ghi_chu`: 2026-10-03 04:58 +07 — **Dừng phiên vì 405 trở lại.** Cổng mở đạt lúc 04:42 (JSON 2,8 s). Batch resume 92→180/889 rồi 8 lỗi HTTP 502 liên tiếp (thân 405), dừng 04:56, không quay vòng. Thử lại ngay sau dừng: 502 sau 2,3 s. Checkpoint 180 mục JSON, SHA index không đổi. Sổ tay chưa xuất, probe chưa chạy. Không tự đánh ĐẠT. `LAUNCH 1/4`, không đặt `cho-muse`. Resume: hết 405 thì chạy lại runner, checkpoint giữ 180.
 - `ghi_chu`: 2026-10-03 04:50 +07 — Moc tom tat 167/889 document. Checkpoint moi tai lieu. Khong ghi index. Tiep tuc batch Gemini Web.
