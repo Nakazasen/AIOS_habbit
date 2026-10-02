@@ -1169,12 +1169,14 @@ def _safe_init_report(report: Mapping[str, Any]) -> dict[str, Any]:
                 value = model.get(key)
                 if isinstance(value, str):
                     safe_readiness.setdefault("model", {})[key] = value
+    phase_timings = _safe_phase_timings(readiness)
+    if phase_timings:
+        safe_readiness = {**safe_readiness, "phases_ms": phase_timings}
     return {
         "status": "ok",
         "reused": bool(report.get("reused", False)),
         "init_latency_ms": float(report.get("init_latency_ms", 0.0)),
         "readiness": safe_readiness,
-        "phases_ms": _safe_phase_timings(readiness),
     }
 
 

@@ -25,6 +25,11 @@ set "AIOS_BGE_QUERY_TIMEOUT=1200"
 rem Lan mo dau tien tung cham vi preflight "import torch, FlagEmbedding"
 rem nap DLL native roi thoat, sau do moi mo Streamlit. Chi can biet goi da
 rem cai. Sidecar cung khong duoc chan cua so nay: app van ket noi khi san sang.
+set "AIOS_BGE_INIT_TIMEOUT=300"
+rem SPEED-COLDSTART-PC0575 (2026-10-02): giu worker BGE song qua restart app
+rem bang named pipe (khong phai nap lai 180,9 s moi lan mo app). Worker tu tat
+rem sau 6 gio khong dung (AIOS_RAGV2_WORKER_IDLE_EXIT_SECONDS).
+set "AIOS_RAGV2_WORKER_PERSIST=1"
 set STREAMLIT_BROWSER_GATHER_USAGE_STATS=false
 set STREAMLIT_SERVER_FILE_WATCHER_TYPE=none
 set STREAMLIT_SERVER_RUN_ON_SAVE=false

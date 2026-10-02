@@ -19,6 +19,7 @@ import json
 import logging
 from pathlib import Path
 import sys
+import threading
 import time
 import traceback
 from typing import Any, Mapping, Sequence
@@ -222,35 +223,71 @@ def _stage_source(pipeline: RagV2DevPipeline, source: SourceSpec) -> dict[str, A
     }
 
 
-def main() -> None:
+def _configure_worker_logging() -> None:
     # Init phase timings and index preload telemetry are emitted at INFO; the
-    # parent redirects this worker's stderr to logs/bge_worker.stderr.log.
+    # parent redirects this worker's stderr to logs/.
     logging.basicConfig(
         level=logging.INFO,
         stream=sys.stderr,
         format="%(asctime)s %(levelname)s %(name)s: %(message)s",
     )
-    pipeline: RagV2DevPipeline | None = None
-    staged: dict[str, dict[str, Any]] = {}
 
-    # Line-buffered stdin/stdout reading loop
-    for line in sys.stdin:
-        line_str = line.strip()
-        if not line_str:
-            continue
 
-        try:
-            request = json.loads(line_str)
-        except json.JSONDecodeError as err:
-            response = {"status": "error", "error": f"json_decode_error: {err}"}
-            sys.stdout.write(json.dumps(response) + "\n")
-            sys.stdout.flush()
-            continue
+class _WorkerSession:
+    """Holds pipeline/staged state for one worker process (stdio or serve)."""
 
-        command = request.get("command", "")
+    def __init__(self, *, mode: str) -> None:
+        self.mode = mode
+        self.pipeline: RagV2DevPipeline | None = None
+        self.staged: dict[str, dict[str, Any]] = {}
+        self.busy = False
+        self.last_activity = time.monotonic()
 
+    def close_pipeline(self) -> None:
+        if self.pipeline is not None:
+            try:
+                self.pipeline.close()
+            except Exception:
+                pass
+            self.pipeline = None
+
+    def handle(self, request: Mapping[str, Any]) -> tuple[dict[str, Any], str]:
+        """Dispatch one request; returns ``(response, action)``.
+
+        ``action`` is ``continue``, ``close`` (end this session without killing
+        a serve-mode process), or ``shutdown`` (stop the process).
+        """
+        command = str(request.get("command", "")) if isinstance(request, Mapping) else ""
+        pipeline = self.pipeline
+        staged = self.staged
+        action = "continue"
         try:
             if command == "init":
+                if self.mode == "serve" and pipeline is not None:
+                    requested = None
+                    try:
+                        requested = _config_from_dict(request.get("config", {}) or {})
+                    except Exception:
+                        requested = None
+                    if requested is not None and requested == pipeline.config:
+                        self.pipeline = pipeline
+                        self.staged = staged
+                        return (
+                            {
+                                "status": "ok",
+                                "readiness": {**_safe_readiness(pipeline), "reused": True},
+                            },
+                            "continue",
+                        )
+                    self.pipeline = pipeline
+                    self.staged = staged
+                    return (
+                        {
+                            "status": "error",
+                            "error": "persistent_worker_configuration_mismatch",
+                        },
+                        "continue",
+                    )
                 config_dict = request.get("config", {})
                 init_phase = "init"
                 started = 0.0
@@ -322,6 +359,7 @@ def main() -> None:
                 except Exception:
                     traceback.print_exc(file=sys.stderr)
                     sys.stderr.flush()
+                    pipeline = None
                     response = {
                         "status": "error",
                         "error": "worker_initialization_failed",
@@ -358,9 +396,29 @@ def main() -> None:
                     )
 
             elif command == "health":
-                if pipeline is None:
-                    raise RuntimeError("worker_not_initialized")
-                response = {"status": "ok", "readiness": _safe_readiness(pipeline)}
+                if self.mode == "serve":
+                    requested = None
+                    if isinstance(request.get("config"), Mapping):
+                        try:
+                            requested = _config_from_dict(request["config"])
+                        except Exception:
+                            requested = None
+                    matches = bool(
+                        pipeline is not None
+                        and requested is not None
+                        and requested == pipeline.config
+                    )
+                    response = {
+                        "status": "ok",
+                        "readiness": _safe_readiness(pipeline) if pipeline is not None else {},
+                        "initialized": pipeline is not None,
+                        "configuration_matches": matches,
+                        "pid": os.getpid(),
+                    }
+                else:
+                    if pipeline is None:
+                        raise RuntimeError("worker_not_initialized")
+                    response = {"status": "ok", "readiness": _safe_readiness(pipeline)}
 
             elif command == "stage_source":
                 if pipeline is None:
@@ -587,10 +645,15 @@ def main() -> None:
                 if pipeline is not None:
                     pipeline.close()
                     pipeline = None
+                self.pipeline = None
+                self.staged = staged
                 response = {"status": "ok"}
-                sys.stdout.write(json.dumps(response) + "\n")
-                sys.stdout.flush()
-                break
+                return response, "close"
+
+            elif command == "shutdown":
+                self.pipeline = pipeline
+                self.staged = staged
+                return {"status": "ok"}, "shutdown"
 
             else:
                 response = {"status": "error", "error": f"unknown_command_{command}"}
@@ -604,15 +667,146 @@ def main() -> None:
                 "error_type": exc.__class__.__name__,
             }
 
+        self.pipeline = pipeline
+        self.staged = staged
+        return response, action
+
+
+def _idle_exit_seconds() -> float:
+    """Serve-mode idle lifetime; <=0 disables the watchdog."""
+    try:
+        return float(os.environ.get("AIOS_RAGV2_WORKER_IDLE_EXIT_SECONDS", "21600"))
+    except (TypeError, ValueError):
+        return 21600.0
+
+
+def main() -> None:
+    """Line-buffered stdin/stdout loop (legacy per-request worker)."""
+    _configure_worker_logging()
+    session = _WorkerSession(mode="stdio")
+    for line in sys.stdin:
+        line_str = line.strip()
+        if not line_str:
+            continue
+
+        try:
+            request = json.loads(line_str)
+        except json.JSONDecodeError as err:
+            response = {"status": "error", "error": f"json_decode_error: {err}"}
+            sys.stdout.write(json.dumps(response) + "\n")
+            sys.stdout.flush()
+            continue
+
+        if not isinstance(request, Mapping):
+            response, action = {"status": "error", "error": "invalid_request"}, "continue"
+        else:
+            response, action = session.handle(request)
         sys.stdout.write(json.dumps(response) + "\n")
         sys.stdout.flush()
+        if action in {"close", "shutdown"}:
+            break
+    session.close_pipeline()
 
-    if pipeline is not None:
+
+def serve_main(pipe_name: str) -> None:
+    """Serve requests over a named pipe and outlive client restarts.
+
+    The persistent worker keeps the pinned model, the dense matrix cache, and
+    the sparse inverted index warm; a Streamlit restart re-attaches instead of
+    paying the ~3-7 minute cold init again (SPEED-COLDSTART-PC0575).
+    """
+    import multiprocessing.connection as mpc
+
+    from aios_habit.rag_v2.bge_worker_protocol import (
+        authkey_for_worker,
+        worker_code_fingerprint,
+    )
+
+    _configure_worker_logging()
+    session = _WorkerSession(mode="serve")
+    listener = mpc.Listener(pipe_name, family="AF_PIPE", authkey=authkey_for_worker())
+    print(
+        "bge_worker_serve "
+        f"pipe={pipe_name} pid={os.getpid()} code={worker_code_fingerprint()}",
+        file=sys.stderr,
+        flush=True,
+    )
+    idle_exit_seconds = _idle_exit_seconds()
+
+    def idle_watchdog() -> None:
+        if idle_exit_seconds <= 0:
+            return
+        while True:
+            time.sleep(30.0)
+            if session.busy:
+                continue
+            if (time.monotonic() - session.last_activity) >= idle_exit_seconds:
+                print(
+                    f"bge_worker_serve idle_exit seconds={idle_exit_seconds}",
+                    file=sys.stderr,
+                    flush=True,
+                )
+                session.close_pipeline()
+                os._exit(0)
+
+    watchdog = threading.Thread(target=idle_watchdog, name="bge-worker-idle", daemon=True)
+    watchdog.start()
+
+    exiting = False
+    while not exiting:
         try:
-            pipeline.close()
+            conn = listener.accept()
+        except KeyboardInterrupt:
+            break
+        except Exception:
+            traceback.print_exc(file=sys.stderr)
+            sys.stderr.flush()
+            continue
+        action = "continue"
+        while True:
+            try:
+                request = conn.recv()
+            except (EOFError, OSError):
+                break
+            if not isinstance(request, Mapping):
+                response, action = {"status": "error", "error": "invalid_request"}, "continue"
+            else:
+                session.busy = True
+                try:
+                    response, action = session.handle(request)
+                finally:
+                    session.busy = False
+                    session.last_activity = time.monotonic()
+            try:
+                conn.send(response)
+            except (BrokenPipeError, OSError):
+                break
+            if action in {"close", "shutdown"}:
+                break
+        try:
+            conn.close()
         except Exception:
             pass
+        if action == "shutdown":
+            print("bge_worker_serve shutdown", file=sys.stderr, flush=True)
+            exiting = True
+    session.close_pipeline()
+    try:
+        listener.close()
+    except Exception:
+        pass
 
 
 if __name__ == "__main__":
-    main()
+    if "--serve" in sys.argv:
+        _pipe = ""
+        if "--pipe" in sys.argv:
+            _index = sys.argv.index("--pipe")
+            if _index + 1 < len(sys.argv):
+                _pipe = sys.argv[_index + 1]
+        if not _pipe:
+            print("bge_worker_serve missing --pipe <name>", file=sys.stderr, flush=True)
+            raise SystemExit(2)
+        serve_main(_pipe)
+    else:
+        main()

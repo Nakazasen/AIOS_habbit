@@ -1999,6 +1999,10 @@ def test_sqlite_preparation_priority_ordering_and_atomic_claim(tmp_path: Path):
 
 def test_reconcile_and_enqueue_preserves_ready_and_deduplicates(tmp_path: Path, monkeypatch):
     config = _enabled_config(tmp_path)
+    # G2 gate: a READY row only counts when its vector stamp matches the
+    # backend the E-chain selects. Pin the fingerprint so the check is
+    # machine-independent (established convention in this file).
+    monkeypatch.setattr(adapter, "_expected_backend_fingerprint", lambda _config: "ready-fp")
     executor = _ImmediateExecutor()
     monkeypatch.setattr(adapter, "_get_executor", lambda: executor)
     source_ready = _source("Ready source content", privacy_label="local_only")
@@ -2025,6 +2029,7 @@ def test_reconcile_and_enqueue_preserves_ready_and_deduplicates(tmp_path: Path, 
             source_fingerprint=adapter._source_fingerprint(source_ready),
             model_id="BAAI/bge-m3",
             model_revision=config.bge_m3_model_revision,
+            model_fingerprint="ready-fp",
             state=adapter.PREP_STATE_READY,
             priority=adapter.PREP_PRIORITY_NORMAL,
             document_id=adapter._document_id(source_ready),
@@ -2587,6 +2592,50 @@ def test_blocking_worker_warming_reports_initializer_outcome(tmp_path, monkeypat
     with adapter._WARMUP_LOCK:
         adapter._WARMUP_LAST_ATTEMPT_MONO = 0.0
     assert adapter.ensure_workspace_chat_worker_warming(config=config, blocking=True) is False
+
+
+def test_warmup_pipeline_config_targets_default_collection_read_only(tmp_path, monkeypatch):
+    from types import SimpleNamespace
+
+    config = _enabled_config(tmp_path)
+    monkeypatch.setattr(
+        "aios_habit.workspace_chat_store.load_collection",
+        lambda collection_id: SimpleNamespace(id=collection_id, storage_root=""),
+    )
+
+    pipe_config = adapter._warmup_pipeline_config(config)
+
+    assert pipe_config.index_read_only is True
+    assert pipe_config.ensure_embeddings_on_open is False
+    assert pipe_config.runtime_root == (
+        tmp_path / "bge_m3_hybrid" / "collections" / "tri_thuc"
+    )
+    assert pipe_config.index_filename == "library.sqlite"
+
+
+def test_warmup_uses_collection_scoped_config_for_initializer(tmp_path, monkeypatch):
+    from types import SimpleNamespace
+
+    config = _enabled_config(tmp_path)
+    monkeypatch.setattr(
+        "aios_habit.workspace_chat_store.load_collection",
+        lambda collection_id: SimpleNamespace(id=collection_id, storage_root=""),
+    )
+    seen = {}
+
+    def _fake_initialize(_config, *, timeout_s=None, pipe_config=None):
+        seen["timeout_s"] = timeout_s
+        seen["pipe_config"] = pipe_config
+        return {"status": "ok"}
+
+    monkeypatch.setattr(adapter, "initialize_workspace_chat_rag_v2_worker", _fake_initialize)
+    with adapter._WARMUP_LOCK:
+        adapter._WARMUP_LAST_ATTEMPT_MONO = 0.0
+
+    assert adapter.ensure_workspace_chat_worker_warming(config=config, blocking=True) is True
+    assert seen["timeout_s"] is None
+    assert seen["pipe_config"].index_read_only is True
+    assert seen["pipe_config"].runtime_root.name == "tri_thuc"
 
 
 def _pending_ledger_row(config, source: WorkspaceAIContextSource) -> adapter.SourcePreparationLedgerRow:

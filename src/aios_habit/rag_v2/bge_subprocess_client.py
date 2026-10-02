@@ -18,6 +18,11 @@ import time
 from typing import Any, Mapping, Optional, Sequence
 
 from aios_habit.rag_v2.pipeline import RagV2DevConfig, SourceSpec
+from aios_habit.rag_v2.bge_worker_protocol import (
+    authkey_for_worker,
+    persistent_worker_enabled,
+    pipe_name_for_config,
+)
 from aios_habit.rag_v2.semantic import SemanticBackendError
 from aios_habit.rag_v2.adaptive_retrieval import (
     ALLOWLISTED_REASON_CODES as _ADAPTIVE_ALLOWLISTED_REASON_CODES,
@@ -72,6 +77,9 @@ def default_query_timeout_seconds() -> float:
 
 _QUERY_TIMEOUT_SECONDS = default_query_timeout_seconds()
 _WORKER_PROTOCOL_VERSION = "1"
+_PERSIST_PROBE_TIMEOUT_SECONDS = 4.0
+_PERSIST_SPAWN_WAIT_SECONDS = 120.0
+_PERSIST_QUERY_CONNECT_SECONDS = 20.0
 
 
 def _current_interpreter_supports_bge_runtime() -> bool:
@@ -155,6 +163,8 @@ class BgeSubprocessWorkerClient:
 
     def readiness(self, config: RagV2DevConfig | None = None) -> dict[str, Any]:
         """Return bounded worker health without launching or exposing private data."""
+        if config is not None and self._persistent_applies(config):
+            return self._persistent_readiness(config)
         if not self._lock.acquire(timeout=0.5):
             return {"ready": False, "alive": True, "configuration_matches": False, "reason": "worker_busy", "pid": None}
         try:
@@ -190,28 +200,23 @@ class BgeSubprocessWorkerClient:
         finally:
             self._lock.release()
 
-    def _start_worker_locked(
-        self,
-        config: RagV2DevConfig,
-        *,
-        timeout_s: float | None = None,
-    ) -> dict[str, Any]:
-        """Launch, resume, or await a worker init under the held lock.
+    def _start_worker_locked(self, config: RagV2DevConfig) -> None:
+        """Track an init request for ``config``: keep a pending one or spawn.
 
-        A caller that times out leaves the loading process tracked in
-        ``_pending_init``; the next caller with the same config keeps waiting
-        on that same process instead of spawning a duplicate (the PC0575 cold
-        start lost ~4.4 minutes per question to the old abandon/close cycle).
+        Called with the lock held. Waiting happens in ``_await_pending_init``
+        OUTSIDE the lock so concurrent callers (UI warm-up thread + question
+        thread) can wait on the same loading worker instead of failing with
+        ``worker_busy``.
         """
-        timeout = default_init_timeout_seconds() if timeout_s is None else float(timeout_s)
         pending = self._pending_init
         if (
             pending is not None
             and pending["config"] == config
+            and pending["process"] is self._process
             and self._process is not None
             and self._process.poll() is None
         ):
-            return self._await_pending_init(timeout_s=timeout, config=config)
+            return
 
         self._close_internal()
         cmd = [
@@ -302,59 +307,94 @@ class BgeSubprocessWorkerClient:
             "process": proc,
         }
         init_reader.start()
-        return self._await_pending_init(timeout_s=timeout, config=config)
 
     def _await_pending_init(
         self,
         *,
-        timeout_s: float,
+        timeout_s: float | None,
         config: RagV2DevConfig,
     ) -> dict[str, Any]:
-        """Wait for a tracked worker init, keeping it alive on timeout."""
-        pending = self._pending_init
-        if pending is None or pending["config"] != config or pending["process"] is not self._process:
-            raise SemanticBackendError("bge_worker_init_not_pending")
+        """Wait for a tracked worker init; keep it alive on timeout.
+
+        The join happens WITHOUT holding the client lock; finalization runs
+        under the lock so concurrent waiters converge on one outcome.
+        """
+        timeout = default_init_timeout_seconds() if timeout_s is None else float(timeout_s)
+        if not self._lock.acquire(timeout=10.0):
+            raise SemanticBackendError("worker_busy")
+        try:
+            pending = self._pending_init
+            if (
+                pending is None
+                or pending["config"] != config
+                or pending["process"] is not self._process
+            ):
+                if (
+                    self._active_config == config
+                    and self._process is not None
+                    and self._process.poll() is None
+                ):
+                    return {"status": "ok", "reused": True, "init_latency_ms": 0.0}
+                raise SemanticBackendError("bge_worker_init_not_pending")
+        finally:
+            self._lock.release()
         thread = pending["thread"]
-        thread.join(timeout=max(0.0, float(timeout_s)))
+        thread.join(timeout=max(0.0, timeout))
         if thread.is_alive():
             # Do not kill the loading process; a later caller resumes waiting.
             self._last_failure_reason = "bge_worker_init_timeout"
             raise SemanticBackendError(self._last_failure_reason)
-        self._pending_init = None
-        result = pending["result"]
-        if not result:
-            self._close_internal(preserve_failure=True)
-            self._last_failure_reason = "bge_worker_init_no_response"
-            raise SemanticBackendError(self._last_failure_reason)
-        kind, payload = result[0]
-        if kind != "response":
-            self._close_internal(preserve_failure=True)
-            self._last_failure_reason = (
-                "bge_worker_init_exception" if kind == "error" else "bge_worker_init_stdout_eof"
-            )
-            raise SemanticBackendError(self._last_failure_reason)
-        res = payload if isinstance(payload, dict) else {}
-        if res.get("status") != "ok":
-            worker_phase = str(res.get("error_phase", "init"))
-            safe_phase = worker_phase if worker_phase in {"model_verify", "model_load", "index_open", "init"} else "init"
-            self._close_internal(preserve_failure=True)
-            self._last_failure_reason = f"bge_worker_{safe_phase}_failed"
-            raise SemanticBackendError(self._last_failure_reason)
-        readiness = res.get("readiness")
-        if not isinstance(readiness, dict):
-            self._close_internal(preserve_failure=True)
-            self._last_failure_reason = "bge_worker_init_invalid_response"
-            raise SemanticBackendError(self._last_failure_reason)
-        self._active_config = config
-        self._last_failure_reason = ""
-        report = {
-            "status": "ok",
-            "reused": False,
-            "init_latency_ms": round((time.perf_counter() - pending["started"]) * 1000.0, 3),
-            "readiness": readiness,
-        }
-        LOGGER.info("BGE worker initialized successfully (PID %s)", readiness.get("pid"))
-        return report
+        if not self._lock.acquire(timeout=10.0):
+            raise SemanticBackendError("worker_busy")
+        try:
+            if self._pending_init is not pending:
+                # Another waiter consumed this init first.
+                if (
+                    self._active_config == config
+                    and self._process is not None
+                    and self._process.poll() is None
+                ):
+                    return {"status": "ok", "reused": True, "init_latency_ms": 0.0}
+                raise SemanticBackendError(
+                    self._last_failure_reason or "bge_worker_init_superseded"
+                )
+            self._pending_init = None
+            result = pending["result"]
+            if not result:
+                self._close_internal(preserve_failure=True)
+                self._last_failure_reason = "bge_worker_init_no_response"
+                raise SemanticBackendError(self._last_failure_reason)
+            kind, payload = result[0]
+            if kind != "response":
+                self._close_internal(preserve_failure=True)
+                self._last_failure_reason = (
+                    "bge_worker_init_exception" if kind == "error" else "bge_worker_init_stdout_eof"
+                )
+                raise SemanticBackendError(self._last_failure_reason)
+            res = payload if isinstance(payload, dict) else {}
+            if res.get("status") != "ok":
+                worker_phase = str(res.get("error_phase", "init"))
+                safe_phase = worker_phase if worker_phase in {"model_verify", "model_load", "index_open", "init"} else "init"
+                self._close_internal(preserve_failure=True)
+                self._last_failure_reason = f"bge_worker_{safe_phase}_failed"
+                raise SemanticBackendError(self._last_failure_reason)
+            readiness = res.get("readiness")
+            if not isinstance(readiness, dict):
+                self._close_internal(preserve_failure=True)
+                self._last_failure_reason = "bge_worker_init_invalid_response"
+                raise SemanticBackendError(self._last_failure_reason)
+            self._active_config = config
+            self._last_failure_reason = ""
+            report = {
+                "status": "ok",
+                "reused": False,
+                "init_latency_ms": round((time.perf_counter() - pending["started"]) * 1000.0, 3),
+                "readiness": readiness,
+            }
+            LOGGER.info("BGE worker initialized successfully (PID %s)", readiness.get("pid"))
+            return report
+        finally:
+            self._lock.release()
 
     def initialize_worker(
         self,
@@ -363,6 +403,8 @@ class BgeSubprocessWorkerClient:
         timeout_s: float | None = None,
     ) -> dict[str, Any]:
         """Load the matching model worker before any source preparation begins."""
+        if self._persistent_applies(config):
+            return self._initialize_worker_persistent(config, timeout_s=timeout_s)
         if not self._lock.acquire(timeout=0.5):
             raise SemanticBackendError("worker_busy")
         try:
@@ -372,9 +414,10 @@ class BgeSubprocessWorkerClient:
                 and self._active_config == config
             ):
                 return {"status": "ok", "reused": True, "init_latency_ms": 0.0}
-            return self._start_worker_locked(config, timeout_s=timeout_s)
+            self._start_worker_locked(config)
         finally:
             self._lock.release()
+        return self._await_pending_init(timeout_s=timeout_s, config=config)
 
     def start_worker(self, config: RagV2DevConfig) -> None:
         """Backward-compatible explicit worker startup entry point."""
@@ -565,6 +608,18 @@ class BgeSubprocessWorkerClient:
         if len(policy_version) > 64:
             raise SemanticBackendError("invalid_policy_version_length")
 
+        if self._persistent_applies(config):
+            return self._query_ready_persistent(
+                question,
+                specs,
+                config,
+                timeout_s=timeout_s,
+                expansion=expansion,
+                rerank_requested=rerank_requested,
+                routing_reason_codes=routing_reason_codes,
+                policy_version=policy_version,
+            )
+
         if not self._lock.acquire(timeout=0.5):
             raise SemanticBackendError("worker_busy")
         try:
@@ -649,6 +704,7 @@ class BgeSubprocessWorkerClient:
         try:
             if self._process is None or self._process.poll() is not None or self._active_config != config:
                 self._start_worker_locked(config)
+                self._await_pending_init(timeout_s=None, config=config)
 
             req = {
                 "command": "ingest_and_query",
@@ -772,3 +828,288 @@ class BgeSubprocessWorkerClient:
         finally:
             if acquired:
                 self._lock.release()
+
+    # ------------------------------------------------------------------
+    # Persistent named-pipe worker transport (SPEED-COLDSTART-PC0575).
+    # Enabled by AIOS_RAGV2_WORKER_PERSIST; read-only query configs only, so a
+    # warm worker outlives Streamlit restarts while write-mode preparation
+    # keeps using the legacy ephemeral subprocess.
+    # ------------------------------------------------------------------
+
+    def _persistent_applies(self, config: RagV2DevConfig | None) -> bool:
+        return bool(
+            config is not None
+            and getattr(config, "index_read_only", False)
+            and persistent_worker_enabled()
+            and os.name == "nt"
+        )
+
+    def _persistent_readiness(self, config: RagV2DevConfig) -> dict[str, Any]:
+        try:
+            response = self._persistent_exchange(
+                config,
+                {"command": "health", "config": _config_to_dict(config)},
+                timeout_s=_PERSIST_PROBE_TIMEOUT_SECONDS,
+                connect_timeout_s=_PERSIST_PROBE_TIMEOUT_SECONDS,
+                allow_spawn=False,
+            )
+        except Exception as exc:
+            return {
+                "ready": False,
+                "alive": False,
+                "configuration_matches": False,
+                "reason": str(exc) or "bge_worker_persist_unavailable",
+                "pid": None,
+            }
+        initialized = bool(response.get("initialized"))
+        matches = bool(response.get("configuration_matches"))
+        ready = initialized and matches
+        return {
+            "ready": ready,
+            "alive": True,
+            "configuration_matches": matches,
+            "reason": (
+                ""
+                if ready
+                else (
+                    "worker_not_initialized"
+                    if not initialized
+                    else "bge_worker_configuration_mismatch"
+                )
+            ),
+            "pid": response.get("pid"),
+        }
+
+    def _initialize_worker_persistent(
+        self,
+        config: RagV2DevConfig,
+        *,
+        timeout_s: float | None,
+    ) -> dict[str, Any]:
+        timeout = default_init_timeout_seconds() if timeout_s is None else float(timeout_s)
+        started = time.perf_counter()
+        try:
+            response = self._persistent_exchange(
+                config,
+                {"command": "init", "config": _config_to_dict(config)},
+                timeout_s=timeout,
+                connect_timeout_s=min(timeout, _PERSIST_SPAWN_WAIT_SECONDS),
+                allow_spawn=True,
+            )
+        except SemanticBackendError:
+            raise
+        except Exception as exc:
+            raise SemanticBackendError("bge_worker_persist_init_exception") from exc
+        if response.get("status") != "ok":
+            raise SemanticBackendError(str(response.get("error", "bge_worker_init_failed")))
+        readiness = response.get("readiness")
+        if not isinstance(readiness, dict):
+            raise SemanticBackendError("bge_worker_init_invalid_response")
+        return {
+            "status": "ok",
+            "reused": bool(readiness.get("reused", False)),
+            "init_latency_ms": round((time.perf_counter() - started) * 1000.0, 3),
+            "readiness": readiness,
+        }
+
+    def _query_ready_persistent(
+        self,
+        question: str,
+        specs: Sequence[SourceSpec],
+        config: RagV2DevConfig,
+        *,
+        timeout_s: float,
+        expansion: Optional[Mapping[str, Any]],
+        rerank_requested: bool,
+        routing_reason_codes: Sequence[str],
+        policy_version: str,
+    ) -> dict[str, Any]:
+        request: dict[str, Any] = {
+            "command": "query",
+            "question": question,
+            "specs": [_spec_to_dict(s) for s in specs],
+            "routing": {
+                "schema_version": 1,
+                "rerank_requested": bool(rerank_requested),
+                "reason_codes": list(routing_reason_codes),
+                "policy_version": str(policy_version),
+            },
+        }
+        if expansion is not None:
+            request["expansion"] = expansion
+        try:
+            response = self._persistent_exchange(
+                config,
+                request,
+                timeout_s=timeout_s,
+                connect_timeout_s=min(float(timeout_s), _PERSIST_QUERY_CONNECT_SECONDS),
+                allow_spawn=False,
+            )
+        except SemanticBackendError:
+            raise
+        except Exception as exc:
+            raise SemanticBackendError("bge_worker_persist_query_exception") from exc
+        if response.get("status") != "ok":
+            raise SemanticBackendError("bge_worker_query_failed")
+        query_result = response.get("query_result")
+        if not isinstance(query_result, dict):
+            raise RuntimeError("invalid_worker_response_schema")
+        return query_result
+
+    def shutdown_persistent_worker(self, config: RagV2DevConfig) -> bool:
+        """Ask the persistent worker to exit (test/maintenance helper)."""
+        if not self._persistent_applies(config):
+            return False
+        try:
+            response = self._persistent_exchange(
+                config,
+                {"command": "shutdown"},
+                timeout_s=10.0,
+                connect_timeout_s=2.0,
+                allow_spawn=False,
+            )
+        except Exception:
+            return False
+        return response.get("status") == "ok"
+
+    def _persistent_exchange(
+        self,
+        config: RagV2DevConfig,
+        payload: Mapping[str, Any],
+        *,
+        timeout_s: float,
+        connect_timeout_s: float,
+        allow_spawn: bool,
+    ) -> dict[str, Any]:
+        """One request/response over the config-bound named pipe.
+
+        The whole session (optional detached spawn, connect, send, receive)
+        runs in a helper thread joined with ``timeout_s``; waiting never holds
+        the client lock, so concurrent callers can queue behind one loading
+        worker instead of failing with ``worker_busy``.
+        """
+        pipe_name = pipe_name_for_config(config)
+        authkey = authkey_for_worker()
+        result: list[tuple[str, Any]] = []
+
+        def _session() -> None:
+            try:
+                import multiprocessing.connection as mpc
+
+                spawned = False
+                connect_deadline = time.monotonic() + max(float(connect_timeout_s), 0.5)
+                while True:
+                    try:
+                        conn = mpc.Client(pipe_name, family="AF_PIPE", authkey=authkey)
+                        break
+                    except OSError as exc:
+                        if (
+                            allow_spawn
+                            and not spawned
+                            and not _pipe_instance_available(pipe_name)
+                        ):
+                            self._spawn_persistent_worker(config, pipe_name)
+                            spawned = True
+                        if (
+                            not allow_spawn
+                            and not _pipe_instance_available(pipe_name)
+                        ):
+                            raise SemanticBackendError(
+                                "bge_worker_persist_unavailable"
+                            ) from exc
+                        if time.monotonic() >= connect_deadline:
+                            raise SemanticBackendError(
+                                "bge_worker_persist_unavailable"
+                            ) from exc
+                        time.sleep(0.25)
+                try:
+                    conn.send(dict(payload))
+                    response = conn.recv()
+                finally:
+                    try:
+                        conn.close()
+                    except Exception:
+                        pass
+                result.append(("ok", response))
+            except Exception as exc:
+                result.append(("error", exc))
+
+        thread = threading.Thread(target=_session, name="bge-worker-pipe", daemon=True)
+        thread.start()
+        thread.join(timeout=max(0.0, float(timeout_s)))
+        if thread.is_alive():
+            raise SemanticBackendError("bge_worker_persist_timeout")
+        if not result:
+            raise SemanticBackendError("bge_worker_persist_no_response")
+        kind, value = result[0]
+        if kind == "error":
+            if isinstance(value, SemanticBackendError):
+                raise value
+            raise SemanticBackendError("bge_worker_persist_failed") from value
+        if not isinstance(value, dict):
+            raise SemanticBackendError("bge_worker_persist_invalid_response")
+        return value
+
+    def _spawn_persistent_worker(self, config: RagV2DevConfig, pipe_name: str) -> None:
+        """Start the detached named-pipe worker; it outlives this process."""
+        logs_dir = Path(config.runtime_root) / "logs"
+        try:
+            logs_dir.mkdir(parents=True, exist_ok=True)
+        except OSError:
+            return
+        log_path = logs_dir / "bge_worker_daemon.stderr.log"
+        cmd = [
+            self._python_executable,
+            "-X",
+            "faulthandler",
+            "-m",
+            "aios_habit.rag_v2.bge_subprocess_worker",
+            "--serve",
+            "--pipe",
+            pipe_name,
+        ]
+        env = os.environ.copy()
+        env["PYTHONIOENCODING"] = "utf-8"
+        env["PYTHONUTF8"] = "1"
+        env["KMP_DUPLICATE_LIB_OK"] = "TRUE"
+        env["OMP_NUM_THREADS"] = "1"
+        env["MKL_NUM_THREADS"] = "1"
+        env["OPENBLAS_NUM_THREADS"] = "1"
+        creationflags = 0
+        if os.name == "nt":
+            creationflags = subprocess.DETACHED_PROCESS | subprocess.CREATE_NEW_PROCESS_GROUP
+        cwd = (
+            str(Path(config.runtime_root).parent.parent.resolve())
+            if Path(config.runtime_root).is_absolute()
+            else str(Path.cwd())
+        )
+        try:
+            with log_path.open("a", encoding="utf-8") as log_handle:
+                subprocess.Popen(
+                    cmd,
+                    stdin=subprocess.DEVNULL,
+                    stdout=log_handle,
+                    stderr=log_handle,
+                    env=env,
+                    cwd=cwd,
+                    creationflags=creationflags,
+                    close_fds=True,
+                )
+        except Exception as exc:
+            LOGGER.warning("Persistent BGE worker spawn failed: %s", type(exc).__name__)
+
+
+def _pipe_instance_available(pipe_name: str) -> bool:
+    """Windows WaitNamedPipe probe; False when the pipe is absent (or busy)."""
+    if os.name != "nt":
+        return False
+    try:
+        import ctypes
+
+        kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+        probe = kernel32.WaitNamedPipeW
+        probe.argtypes = [ctypes.c_wchar_p, ctypes.c_uint32]
+        probe.restype = ctypes.c_int
+        return bool(probe(pipe_name, 0))
+    except Exception:
+        return False
