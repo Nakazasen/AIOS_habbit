@@ -83,3 +83,10 @@ Muse review file này. Cầu nối cần hết HTTP 405 trước khi resume.
 - Một lượt tóm tắt thử ngoài batch: HTTP 502 sau 2,2 giây. Thân: `Gemini Web generation failed: HTTP Error 405: Method Not Allowed`. Không chạy batch.
 - Checkpoint vẫn 180/889. Sổ tay chưa xuất. Probe 12 câu chưa chạy. Không tự đánh ĐẠT.
 
+
+## 9. Vé R1 — lần mở lại 05:11, cổng vẫn 405
+
+- Watcher `RELAUNCH 2/4` lúc 05:11:05 (`launchStallCount=2`). Cách lần 1/4 (04:59:59) khoảng 11 phút. Chưa đủ 4 lần. Không đặt `cho-muse`. Không quay no-op.
+- Sidecar tắt (connection refused). Bật lại `--mode direct`. `GET /health` = `direct_ready`.
+- Một lượt tóm tắt thử ngoài batch: HTTP 502 sau 2,3 giây. Nhật ký sidecar: Gemini HTTP 405, làm mới BL không cứu được. Không chạy batch.
+- Checkpoint vẫn 180 mục (`saved_local` 2026-10-03 04:51:15). Sổ tay chưa xuất. Probe 12 câu chưa chạy. Không tự đánh ĐẠT.
