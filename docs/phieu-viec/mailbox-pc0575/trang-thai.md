@@ -1,6 +1,7 @@
 # Trạng thái mailbox — KDTVN-PC0575
 
-Trạng thái: `moi`
+Trạng thái: `dang-lam`
+- `ghi_chu` (tiến độ OMP): 2026-10-02 12:46 +07 — OMP nhận vé (watcher LAUNCH 1/4 lúc 12:43; điều kiện mở đã tới: verdict DEPLOY-BUOC05 **ĐẠT** + app CPU-only đang chạy `/_stcore/health`=ok). Bắt đầu đo tốc độ 6 câu L1–L3/E1–E3.
 - Ticket hiện tại: `OPT-RAGV2-SPEED-APP-PC0575` — [CTY] đo tốc độ hỏi đáp app thật + hồ sơ nút thắt còn lại (phát hành 2026-10-02 sau verdict ĐẠT vé DEPLOY-BUOC05-PC0575).
 - `prompt`: `docs/phieu-viec/mailbox-pc0575/prompt.md`
 - `bao_cao`: `docs/phieu-viec/ket-qua/opt-ragv2-speed-app-pc0575.md`
