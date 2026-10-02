@@ -57,6 +57,8 @@ BUILTIN_ACTION_MODULES: Tuple[str, ...] = (
     "aios_habit.chat_action_phan_hoi",
     # UX-INTERVIEW-FEEDBACK: vong lap cai thien goi y (bao cao cham cua chuyen gia).
     "aios_habit.chat_action_suggestion_review",
+    # LOG-STREAM: nap file log lon theo stream, khong cat 50k dong.
+    "aios_habit.chat_action_log_stream",
     "aios_habit.chat_action_error_lookup",
 )
 

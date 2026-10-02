@@ -42,7 +42,6 @@ from aios_habit.production_prediction.jig_log_ingest import (
 )
 from aios_habit.production_prediction.iris_log_adapter import parse_khoi_depth_dan, thong_diep_khoi_depth
 from aios_habit.production_prediction.log_archive import (
-    GIOI_HAN_DONG_MOI_LAN,
     MAC_DINH_KHO_PATH,
     bang_tom_tat_kho_van_ban,
     ghi_ban_ghi,
@@ -529,8 +528,16 @@ def decide_jig_action(
         hop_le_depth = ket_qua_depth.ban_ghi_hop_le()
         if hop_le_depth:
             try:
-                ket_qua_ghi_depth = ghi_ban_ghi(
-                    hop_le_depth, nguon="dan_tay", tep="", kho=kho_log_path
+                from aios_habit.production_prediction.log_stream_ingest import (
+                    nap_stream,
+                )
+
+                # Nap HET theo tung dot — khong cat bo 50k dong nhu truoc.
+                ket_qua_ghi_depth = nap_stream(
+                    hop_le_depth,
+                    ghi_chunk=lambda dot: ghi_ban_ghi(
+                        dot, nguon="dan_tay", tep="", kho=kho_log_path
+                    ),
                 )
             except Exception:
                 ket_qua_ghi_depth = {"da_ghi": 0, "bi_cat": 0}
@@ -603,9 +610,9 @@ def decide_jig_action(
                         else ""
                     )
                     + (
-                        f" Lưu ý: kho chỉ nhận {GIOI_HAN_DONG_MOI_LAN:,} dòng mỗi lần, "
-                        f"còn {ket_qua_ghi_depth['bi_cat']:,} giá trị chưa lưu."
-                        if ket_qua_ghi_depth.get("bi_cat")
+                        f" Đã nạp hết {ket_qua_ghi_depth['da_ghi']:,} giá trị "
+                        f"theo {ket_qua_ghi_depth.get('dot', 1)} đợt (không cắt bỏ)."
+                        if ket_qua_ghi_depth.get("da_ghi")
                         else ""
                     )
                     + (
@@ -642,8 +649,18 @@ def decide_jig_action(
         first = ban_ghi_iris_sang_dong_log(chon)
         # "Cho từng dòng log vào file": lưu ngay mọi giá trị tách được để lần sau
         # AI còn dữ liệu phân tích, không chỉ nằm trong tin nhắn chat.
+        # Nap HET theo tung dot — khong cat bo 50k dong nhu truoc.
         try:
-            ket_qua_ghi = ghi_ban_ghi(hop_le, nguon="dan_tay", tep="", kho=kho_log_path)
+            from aios_habit.production_prediction.log_stream_ingest import (
+                nap_stream,
+            )
+
+            ket_qua_ghi = nap_stream(
+                hop_le,
+                ghi_chunk=lambda dot: ghi_ban_ghi(
+                    dot, nguon="dan_tay", tep="", kho=kho_log_path
+                ),
+            )
         except Exception:
             ket_qua_ghi = {"da_ghi": 0, "bi_cat": 0}
         history: List[float] = []
@@ -679,10 +696,10 @@ def decide_jig_action(
         )
         if ket_qua.bo_qua_canh_loi:
             reply += f" Bỏ qua {ket_qua.bo_qua_canh_loi} ô mang giá trị canh lỗi (máy không đo được)."
-        if ket_qua_ghi.get("bi_cat"):
+        if ket_qua_ghi.get("da_ghi"):
             reply += (
-                f" Lưu ý: kho log chỉ nhận {GIOI_HAN_DONG_MOI_LAN:,} dòng mỗi lần, "
-                f"còn {ket_qua_ghi['bi_cat']:,} giá trị chưa lưu."
+                f" Đã nạp hết {ket_qua_ghi['da_ghi']:,} giá trị "
+                f"theo {ket_qua_ghi.get('dot', 1)} đợt (không cắt bỏ)."
             )
         if uu_tien is None:
             reply += " Chưa có ngưỡng thật cho chỉ số này nên mới đối chiếu xu hướng EWMA."
@@ -710,8 +727,17 @@ def decide_jig_action(
             )
         first = parsed[0]
         try:
-            ghi_dong_log_jig(parsed, kho=kho_log_path)
+            # Nap HET theo tung dot — khong cat bo 50k dong nhu truoc.
+            from aios_habit.production_prediction.log_stream_ingest import (
+                nap_stream,
+            )
+
+            ket_qua_ghi_jig = nap_stream(
+                parsed,
+                ghi_chunk=lambda dot: ghi_dong_log_jig(dot, kho=kho_log_path),
+            )
         except Exception:
+            ket_qua_ghi_jig = {"da_ghi": 0}
             pass
         history: List[float] = []
         if history_provider is not None:
@@ -746,6 +772,11 @@ def decide_jig_action(
         reply = format_instant_card_text(card)
         if len(parsed) > 1:
             reply += f"\nĐã nhận thêm {len(parsed) - 1} dòng log trong cùng tin nhắn."
+        if ket_qua_ghi_jig.get("da_ghi"):
+            reply += (
+                f" Đã nạp hết {ket_qua_ghi_jig['da_ghi']:,} giá trị "
+                f"theo {ket_qua_ghi_jig.get('dot', 1)} đợt (không cắt bỏ)."
+            )
         anh_canh_bao, meta_canh_bao = None, None
         if result.get("canh_bao"):
             anh_canh_bao, meta_canh_bao = _bieu_do_canh_bao_tu_dong(
