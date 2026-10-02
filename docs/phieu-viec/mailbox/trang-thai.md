@@ -1,10 +1,11 @@
 # Trạng thái mailbox
 
-- Trạng thái: `moi`
+- Trạng thái: `dang-lam`
 - Ticket hiện tại: `KNOWLEDGE-DIGEST-HOME-R1` — [NHÀ] resume batch tóm tắt từ checkpoint 92/889 khi cầu nối hết HTTP 405; xuất sổ tay + probe so sánh RAG.
 - `prompt`: `docs/phieu-viec/mailbox/prompt.md`
 - `commit`: `56838d9`
 - `bao_cao`: `docs/phieu-viec/ket-qua/knowledge-digest-home.md`
+- `ghi_chu`: 2026-10-03 02:41 +07 — **OMP nhận vé `KNOWLEDGE-DIGEST-HOME-R1` (`dang-lam`).** Watcher `LAUNCH 1/4` lúc 02:33:16, chưa đủ 4 lần, không đặt `cho-muse`. Cổng mở CHƯA xác nhận: `127.0.0.1:8585` connection refused. Đang bật lại sidecar `--mode direct`, rồi mới thử health + 1 lượt tóm tắt. Không chạy batch, không quay no-op.
 - `ghi_chu` (verdict Muse): 2026-10-03 ~02:30 +07 — **CHƯA ĐẠT** (báo cáo `56838d9`). Tóm tắt dừng 92/889 vì cầu nối Gemini Web HTTP 405 từ 02:03; sổ tay chưa xuất, probe chưa chạy — tiêu chí phủ 100% chưa đạt. Ghi nhận trung thực của OMP: đếm thật 889 document (149.800 chunk), checkpoint giữ 92 mục không làm lại, SHA index production `45eb0e07…b7c0` không đổi, không bản thảo lọt vào kho. Lỗi 405 là rào ngoài (cầu nối), không phải lỗi code vé.
 - `ghi_chu` (điều phối Muse): 2026-10-03 ~02:30 +07 — Phát hành vé **KNOWLEDGE-DIGEST-HOME-R1** [NHÀ] (resume từ checkpoint khi cầu nối hết 405; có cổng kiểm tra health trước khi chạy batch, backoff nếu 405 tái diễn), `trang-thai` → `moi`. Hàng chờ giữ nguyên: UX-CHAT-CORE → UX-INTERVIEW-FEEDBACK → UX-AGENT-REPORT → UX-E2E-APP → SCAN-O-D.
 - `ghi_chu`: 2026-10-03 02:26 +07 — Dung batch vi Gemini Web HTTP 405 tu 02:03. Checkpoint 92/889 JSON, SHA index khong doi. Chua xuat so tay, chua probe. Khong tu danh DAT. Bao cao 56838d9. Resume: het 405 roi chay lai runner, checkpoint giu 92 muc.
