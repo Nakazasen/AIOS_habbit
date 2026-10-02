@@ -1,13 +1,19 @@
 """Framework `chat_action`: tools register actions, the chat calls them by question context.
 
-Design (TOOL-2):
+Design (TOOL-2, extended by UX-CHAT-CORE for multi-intent):
 - A tool registers one `ChatAction` (name, Vietnamese title, match hints, handler).
-- On submit the Workspace Chat calls `handle_chat_text`: the first registered action
-  whose hint appears in the normalized question wins; its handler receives a
-  `ChatActionRequest` (question + active notebook/workspace context) and returns a
-  `ChatActionOutcome` of rich blocks (markdown / GFM table / PNG chart).
-- `render_outcome` turns the outcome into assistant bubble markdown; charts are
+- On submit the Workspace Chat calls `handle_chat_text`: every registered action
+  whose hint appears in the normalized question runs; their handlers each receive
+  a `ChatActionRequest` (question + active notebook/workspace context) and return
+  a `ChatActionOutcome` of rich blocks (markdown / GFM table / PNG chart).
+- `dispatch_multi` merges the outcomes into one structured answer (one section per
+  action) rendered by `render_outcome` into the assistant bubble; charts are
   embedded as base64 data URIs so they persist with the message (size capped).
+- Actions marked `fallback=True` (generic catch-alls such as the bare-code error
+  lookup) never piggyback on a specific action: when at least one non-fallback
+  action matches, fallbacks are skipped.
+- `match_action` / `dispatch` keep the legacy first-match behaviour for callers
+  and tests that depend on registration priority.
 - No extra UI controls: the single chat composer stays the only entry point.
   Fail-closed behind `AIOS_FEATURE_CHAT_ACTION` (default off).
 
@@ -130,6 +136,7 @@ class ChatAction:
     hints: Sequence[str]
     handler: ChatActionHandler
     description: str = ""
+    fallback: bool = False
 
     def __post_init__(self) -> None:
         if not str(self.name or "").strip():
@@ -198,6 +205,69 @@ def match_action(request: ChatActionRequest) -> Optional[ChatAction]:
         if action.matches(request):
             return action
     return None
+
+
+def match_all_actions(request: ChatActionRequest) -> Tuple[ChatAction, ...]:
+    """Return every registered action whose hints match, in priority order.
+
+    Unlike `match_action`, this does not stop at the first hit: one chat
+    message may carry several intents ("paste this log, draw a chart and set
+    a threshold") and each matching action gets to run.
+    """
+    return tuple(action for action in registered_actions() if action.matches(request))
+
+
+def _merge_outcomes(
+    matched: Sequence[Tuple[ChatAction, ChatActionOutcome]],
+) -> ChatActionOutcome:
+    """Merge several action outcomes into one structured answer.
+
+    Each action becomes its own section headed by its title, so the single
+    assistant bubble carries every requested result without extra UI.
+    """
+    blocks: list[ChatActionBlock] = []
+    for action, outcome in matched:
+        title = outcome.title.strip() or action.title.strip()
+        blocks.append(ChatActionBlock(kind=BLOCK_MARKDOWN, text=f"### {title}"))
+        blocks.extend(outcome.blocks)
+    return ChatActionOutcome(
+        action="+".join(action.name for action, _ in matched),
+        title=f"Đã xử lý {len(matched)} việc trong một câu trả lời",
+        blocks=tuple(blocks),
+    )
+
+
+def dispatch_multi(request: ChatActionRequest) -> Optional[ChatActionOutcome]:
+    """Match every intent in the question and run all matching handlers.
+
+    A failing handler only drops its own section; the remaining actions still
+    answer, and no raw traceback ever reaches the chat. Returns `None` when
+    nothing matches (or every handler failed), so the chat keeps its normal
+    answer flow.
+    """
+    try:
+        load_builtin_actions()
+        matched = [action for action in registered_actions() if action.matches(request)]
+        if not matched:
+            return None
+        # Generic fallbacks must not piggyback on a specific action's answer.
+        specific = [action for action in matched if not action.fallback]
+        actions = specific or matched
+        done: list[Tuple[ChatAction, ChatActionOutcome]] = []
+        for action in actions:
+            try:
+                outcome = action.handler(request)
+            except Exception:
+                outcome = None
+            if outcome is not None:
+                done.append((action, outcome))
+        if not done:
+            return None
+        if len(done) == 1:
+            return done[0][1]
+        return _merge_outcomes(done)
+    except Exception:
+        return None
 
 
 def dispatch(request: ChatActionRequest) -> Optional[ChatActionOutcome]:
@@ -286,7 +356,7 @@ def handle_chat_text(
     clean = str(question or "").strip()
     if not clean:
         return False
-    outcome = dispatch(
+    outcome = dispatch_multi(
         ChatActionRequest(
             question=clean,
             locale=locale,

@@ -613,6 +613,9 @@ def register() -> None:
             title=TITLE,
             hints=_HINTS,
             handler=_handler,
+            # Generic catch-all: never piggyback on a specific action's answer
+            # in multi-intent dispatch (UX-CHAT-CORE).
+            fallback=True,
             description=(
                 "Tra cứu ca lỗi tương tự trong DB Bước 0–5: nhập mã lỗi "
                 "(C0030, F000, ...) hoặc mô tả hiện tượng, nhận top 3–5 ca "
