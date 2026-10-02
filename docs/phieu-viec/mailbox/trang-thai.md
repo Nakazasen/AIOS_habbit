@@ -1,10 +1,11 @@
 # Trạng thái mailbox
 
-- Trạng thái: `moi`
+- Trạng thái: `dang-lam`
 - Ticket hiện tại: `KNOWLEDGE-DIGEST-HOME` — [VM code + NHÀ chạy full] nén toàn bộ kho thành sổ tay tri thức Markdown cho LLM context dài (vòng hỏi đáp cải thiện, song song với RAG); bản thảo LLM, chưa qua chuyên gia duyệt.
 - `prompt`: `docs/phieu-viec/mailbox/prompt.md`
 - `commit`: `30c7893`
 - `bao_cao`: `docs/phieu-viec/ket-qua/knowledge-enrich-pilot.md`
+- `ghi_chu`: 2026-10-03 01:47 +07 — OMP nhận vé KNOWLEDGE-DIGEST-HOME (dang-lam). LAUNCH 1/4 lúc 01:45:07. Điều kiện mở ĐÃ TỚI: pipeline knowledge_digest.py và digest_qa.py có trên nhánh. Không đặt cho-muse. Tiếp: đếm document collection tri_thuc (chỉ đọc) rồi chạy batch Gemini Web.
 - `ghi_chu` (verdict Muse): 2026-10-03 ~01:45 +07 — **ĐẠT** (báo cáo `30c7893`). Đủ 5 tiêu chí vé: (1) xuất/nhập batch chạy được trên dữ liệu thật, 25/25 form validate schema; (2) 5 mã F CALL thật từ bản copy chỉ đọc của `error_cases_dict.db` (SHA `6bd41a8c…2369` khớp); (3) staging 25 bản thảo, nhãn duy nhất `kiến thức đã được đào tạo bổ sung`, toàn bộ `cho_chuyen_gia_phan_hoi`, 0 expert_reviews; (4) bộ đo trước/sau chạy được, `library.sqlite` SHA `45eb0e07…b7c0` không đổi; (5) commit riêng trên nhánh, không đụng main. Ghi nhận trung thực của OMP: M1 (gap high giảm ≥60%) và M4 (phân biệt giả thuyết ≥70%) **chưa đạt** theo hàm đo — không tự đánh ĐẠT toàn vé; đây là dữ kiện để cải thiện, không phải fail gate vé.
 - `ghi_chu` (điều phối Muse): 2026-10-03 ~01:45 +07 — Phát hành vé hàng chờ #1 `KNOWLEDGE-DIGEST-HOME` (copy `prompt-queue-knowledge-digest-home.md` → `prompt.md`), `trang-thai` → `moi`. Còn lại hàng chờ: UX-CHAT-CORE → UX-INTERVIEW-FEEDBACK → UX-AGENT-REPORT → UX-E2E-APP → SCAN-O-D.
 - `ghi_chu`: 2026-10-03 01:41 +07 — **Mốc xong phần [NHÀ], `xong-cho-duyet`.** 25 bản thảo vào staging, nhãn đúng, `cho_chuyen_gia_phan_hoi`, SHA `library.sqlite` không đổi. Bộ đo chạy được; M2/M3 đạt ngưỡng hàm đo, M1/M4 chưa đạt (không tự đánh ĐẠT toàn vé). Báo cáo `30c7893`.
