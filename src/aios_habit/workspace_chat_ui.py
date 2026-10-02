@@ -357,11 +357,63 @@ def render_archived_notebook_card(
         st.write("---")
 
 
+def render_answer_feedback_row(
+    *,
+    conversation_id: str,
+    message_id: str,
+    question: str,
+    answer: str,
+    locale: str = "vi",
+) -> None:
+    """Hang feedback nho duoi moi cau tra loi cua assistant (vong lap cai thien).
+
+    Thumbs up -> ghi nhan ngay. Thumbs down -> bat buoc nhap ly do (che thi
+    phai noi ro che gi) roi moi ghi. Luu o local_cases, khong vao kho tri thuc.
+    """
+    from aios_habit import answer_feedback
+
+    if not conversation_id or not message_id:
+        return
+    if answer_feedback.get_feedback(conversation_id, message_id) is not None:
+        st.caption("Đã ghi nhận đánh giá của bạn cho câu trả lời này. Cảm ơn!")
+        return
+    key_base = f"wsc_answer_fb_{message_id}"
+    rating = st.feedback("thumbs", key=key_base)
+    if rating is None:
+        return
+    if int(rating) == 1:
+        result = answer_feedback.record_feedback(
+            conversation_id, message_id, question, answer, "huu_ich"
+        )
+        if result.get("ok"):
+            st.caption("Cảm ơn bạn đã đánh giá!")
+        return
+    reason = st.text_input(
+        "Câu trả lời chưa ổn ở điểm nào? (nhập lý do để tụi mình cải thiện)",
+        key=key_base + "_reason",
+    )
+    if st.button("Gửi đánh giá", key=key_base + "_send"):
+        result = answer_feedback.record_feedback(
+            conversation_id,
+            message_id,
+            question,
+            answer,
+            "chua_huu_ich",
+            reason=reason,
+        )
+        if result.get("ok"):
+            st.caption("Đã ghi nhận. Cảm ơn bạn!")
+        else:
+            st.warning(str(result.get("error_vi") or "Không ghi được đánh giá."))
+
+
 def render_chat_bubble(
     msg: ChatMessage,
     is_latest: bool = False,
     locale: str = "vi",
     trace_loader: Optional[Callable[[str], Optional[EvidenceTrace]]] = None,
+    conversation_id: str = "",
+    feedback_question: str = "",
 ):
     if msg.role == "user":
         with st.chat_message("user"):
@@ -567,6 +619,15 @@ def render_chat_bubble(
                         st.warning(t("evidence_trace_not_found", locale=locale))
 
                 _render_graph_control()
+
+            # Vong lap cai thien lien tuc: feedback cau tra loi ngay tren khung chat.
+            render_answer_feedback_row(
+                conversation_id=conversation_id,
+                message_id=str(msg.id or ""),
+                question=feedback_question,
+                answer=msg.content or "",
+                locale=locale,
+            )
     else:
         st.info(msg.content)
 

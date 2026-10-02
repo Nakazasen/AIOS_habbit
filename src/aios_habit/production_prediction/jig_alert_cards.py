@@ -35,6 +35,7 @@ def build_instant_log_card(
         "don_vi": dong_log.get("unit", ""),
         "trang_thai": ket_qua_ewma.get("trang_thai", "Cận biên"),
         "chi_tiet": ket_qua_ewma.get("chi_tiet", ""),
+        "xu_huong_sma": ket_qua_ewma.get("xu_huong_sma", ""),
         "nguong_tham_khao": nguong_tham_khao or "Đối chiếu dải dung sai tiêu chuẩn [USL, LSL].",
         "goi_y": ["Gửi email cảnh báo", "Lưu vào chuỗi theo dõi"],
     }

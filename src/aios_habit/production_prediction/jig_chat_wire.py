@@ -285,6 +285,9 @@ def format_instant_card_text(card: Dict[str, Any]) -> str:
         str(card.get("nguong_tham_khao", "")),
         "Gợi ý: " + ", ".join(str(g) for g in card.get("goi_y", [])),
     ]
+    xu_huong = str(card.get("xu_huong_sma", "") or "").strip()
+    if xu_huong:
+        lines.append(f"Xu hướng SMA(20): {xu_huong}")
     return "\n".join(line for line in lines if line.strip())
 
 
@@ -558,6 +561,17 @@ def decide_jig_action(
             ket_luan_depth = evaluate_single_log_ewma(
                 first_depth.value, history_depth, nguong=nguong_depth
             )
+            # User chot 2026-10-03: chi canh bao khi co XU HUONG (SMA(20)),
+            # khong bao tu mot diem xau don le.
+            from aios_habit.production_prediction.trend_alerts import (
+                danh_gia_xu_huong_sma,
+                gate_canh_bao_theo_xu_huong,
+            )
+
+            xu_huong_depth = danh_gia_xu_huong_sma(
+                history_depth + [first_depth.value], nguong=nguong_depth
+            )
+            gate_canh_bao_theo_xu_huong(ket_luan_depth, xu_huong_depth)
             the_depth = build_instant_log_card(first_depth.to_dict(), ket_luan_depth)
             return JigChatOutcome(
                 handled=True,
@@ -623,6 +637,16 @@ def decide_jig_action(
                 history = []
         nguong_chi_so = _tra_nguong(chon)
         result = evaluate_single_log_ewma(first.value, history, nguong=nguong_chi_so)
+        # User chot 2026-10-03: chi canh bao khi co XU HUONG (SMA(20)).
+        from aios_habit.production_prediction.trend_alerts import (
+            danh_gia_xu_huong_sma,
+            gate_canh_bao_theo_xu_huong,
+        )
+
+        xu_huong_iris = danh_gia_xu_huong_sma(
+            history + [first.value], nguong=nguong_chi_so
+        )
+        gate_canh_bao_theo_xu_huong(result, xu_huong_iris)
         card = build_instant_log_card(first.to_dict(), result)
         reply = format_instant_card_text(card)
         reply += (
@@ -679,6 +703,16 @@ def decide_jig_action(
             _doi_moc_iso(first.timestamp),
         )
         result = evaluate_single_log_ewma(first.value, history, nguong=nguong_chi_so)
+        # User chot 2026-10-03: chi canh bao khi co XU HUONG (SMA(20)).
+        from aios_habit.production_prediction.trend_alerts import (
+            danh_gia_xu_huong_sma,
+            gate_canh_bao_theo_xu_huong,
+        )
+
+        gate_canh_bao_theo_xu_huong(
+            result,
+            danh_gia_xu_huong_sma(history + [first.value], nguong=nguong_chi_so),
+        )
         card = build_instant_log_card(first.to_dict(), result)
         reply = format_instant_card_text(card)
         if len(parsed) > 1:

@@ -51,12 +51,28 @@ def test_lenh_truc_ban_doi_persona():
 
 
 def test_di_lich_su_ewma_cho_danh_gia_xu_huong():
+    # User chot 2026-10-03: 1 diem xau don le KHONG kich hoat canh bao.
+    # Phan loai diem giu nguyen (trung thuc), them ghi chu xu huong SMA(20).
     outcome = decide_jig_action(
         "2026-09-20T08:00:00,UNIT001,JIG-01,bowskew,0.50,mm,OK",
         history_provider=lambda jig, metric: [0.10] * 30,
     )
     assert outcome.handled is True
     assert "Vi phạm" in outcome.assistant_text
+    assert "SMA(20)" in outcome.assistant_text
+    assert "đơn lẻ" in outcome.assistant_text
+
+
+def test_xu_huong_lien_tiep_thi_canh_bao():
+    # 3 diem xau lien tiep cuoi lich su -> co xu huong -> giu canh bao.
+    history = [0.10] * 30 + [0.50, 0.52, 0.51]
+    outcome = decide_jig_action(
+        "2026-09-20T08:00:00,UNIT001,JIG-01,bowskew,0.53,mm,OK",
+        history_provider=lambda jig, metric: history,
+    )
+    assert outcome.handled is True
+    assert "Vi phạm" in outcome.assistant_text
+    assert "liên tiếp" in outcome.assistant_text
 
 
 def test_dau_noi_app_luu_tin_nhan_va_cau_hinh(tmp_path):

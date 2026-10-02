@@ -3348,7 +3348,15 @@ else:
                     last_assistant_idx = max((i for i, m in enumerate(messages) if m.role == "assistant"), default=-1)
                     for i, m in enumerate(messages):
                         is_latest_ans = (i == last_assistant_idx and i == len(messages) - 1)
-                        render_chat_bubble(m, is_latest=is_latest_ans, locale=current_ui_locale)
+                        _fb_question = ""
+                        if m.role == "assistant":
+                            for _prev in reversed(messages[:i]):
+                                if _prev.role == "user":
+                                    _fb_question = _prev.content or ""
+                                    break
+                        render_chat_bubble(m, is_latest=is_latest_ans, locale=current_ui_locale,
+                                           conversation_id=active_conversation.id,
+                                           feedback_question=_fb_question)
                     if is_answering:
                         with st.chat_message("assistant"):
                             treo_nguon = st.session_state.get(_PENDING_SOURCE_SUBMISSION_KEY)

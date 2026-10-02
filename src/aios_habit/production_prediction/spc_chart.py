@@ -203,6 +203,35 @@ def render_spc_png(chart: SpcChartInput, path: str | Path, scale: int = 2) -> Pa
         else:
             draw.ellipse([x - 4 * scale, y - 4 * scale, x + 4 * scale, y + 4 * scale], fill=(21, 101, 192))
 
+    # Duong trung binh dong SMA(20): diem bat thuong = lech xa duong nay.
+    try:
+        from aios_habit.production_prediction.trend_alerts import sma as _sma20
+        _sma_vals = _sma20([float(v) for v in chart.values], 20)
+    except Exception:
+        _sma_vals = []
+    _sma_points = [
+        (x_of(i, total), y_of(v))
+        for i, v in enumerate(_sma_vals)
+        if v is not None
+    ]
+    for a, b in zip(_sma_points, _sma_points[1:]):
+        # Net dut mau tim: 10 on, 6 off.
+        _ax, _ay = a
+        _bx, _by = b
+        _dx, _dy = _bx - _ax, _by - _ay
+        _seg = max(1, int((_dx ** 2 + _dy ** 2) ** 0.5 // (8 * scale)))
+        for _s in range(_seg):
+            if _s % 2 == 0:
+                _t0, _t1 = _s / _seg, (_s + 1) / _seg
+                draw.line(
+                    [(_ax + _dx * _t0, _ay + _dy * _t0), (_ax + _dx * _t1, _ay + _dy * _t1)],
+                    fill=(123, 31, 162),
+                    width=max(2, scale),
+                )
+    if _sma_points:
+        _lx, _ly = _sma_points[-1]
+        draw.text((_lx - 72 * scale, _ly - 12 * scale), "SMA(20)", fill=(123, 31, 162), font=_font(scale))
+
     # Dashed orange forecast trend.
     if chart.du_bao:
         start = points[-1] if points else (margin_left, margin_top + plot_h // 2)
@@ -251,6 +280,23 @@ def render_spc_svg(chart: SpcChartInput) -> str:
         return 90 + index / (total - 1) * 840
 
     points = " ".join(f"{x_of(i, len(chart.values)):.1f},{y_of(v):.1f}" for i, v in enumerate(chart.values))
+    try:
+        from aios_habit.production_prediction.trend_alerts import sma as _sma20
+        _sma_vals = _sma20([float(v) for v in chart.values], 20)
+    except Exception:
+        _sma_vals = []
+    _sma_points = " ".join(
+        f"{x_of(i, len(chart.values)):.1f},{y_of(v):.1f}"
+        for i, v in enumerate(_sma_vals)
+        if v is not None
+    )
+    _sma_polyline = (
+        f'<polyline points="{_sma_points}" fill="none" stroke="#7b1fa2" '
+        f'stroke-width="2" stroke-dasharray="10,6" />'
+        f'<text x="934" y="60" fill="#7b1fa2">SMA(20)</text>'
+        if _sma_points
+        else ""
+    )
     lines = []
     for value, name in ((chart.usl, "USL"), (chart.ucl, "UCL"), (chart.cl, "CL"), (chart.lcl, "LCL"), (chart.lsl, "LSL")):
         if value is None:
@@ -264,6 +310,7 @@ def render_spc_svg(chart: SpcChartInput) -> str:
         f'<rect x="0" y="0" width="{width}" height="{height}" fill="white" />'
         + "".join(lines) +
         f'<polyline points="{points}" fill="none" stroke="#1565c0" stroke-width="2" />'
+        + _sma_polyline +
         f'<text x="90" y="30">Biểu đồ xu hướng {escape(chart.metric)} — {escape(chart.jig_id)}</text>'
         + _svg_mo_phong(chart)
         + f'<text x="90" y="520">{stamp}</text>'
