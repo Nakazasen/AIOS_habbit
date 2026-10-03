@@ -170,3 +170,39 @@ phương án thì chỉ việc nối UI vào, không sửa backend.
 - Dữ liệu vận hành (feedback, bài học, metric) nằm ở `local_cases/*.jsonl` — theo bài học
   2026-10-03, không ghi vào kho tri thức chính; nhãn `local_only` nội bộ, không commit.
 - Commit: xem `git log` nhánh `phieu-viec/rag-fix1`.
+
+## 7. Verify máy nhà (OMP, 2026-10-03 14:11 +07)
+
+Lane [NHÀ]. Không sửa mã Phase A. Không merge `main`. Không force-push.
+Watcher tự mở OMP `LAUNCH 1/4` lúc 14:04:36 (`launchStallCount=1`, chữ ký mới `||f02802f`). Điều kiện mở đã tới (mã `c7d2191`, báo cáo `b68fc17`). Không đặt `cho-muse`.
+
+Lệch SHA: ghi chú Muse nói commit `f02802f`. SHA đó không có trên nhánh. Mã backend thật là `c7d2191`; báo cáo Phase A là `b68fc17`.
+
+### 7.1 Phiên trên dữ liệu thật
+
+- Nguồn: bản copy `C:/tmp/b0-dict/error_cases_dict.db` → `C:/tmp/ux-interview-feedback/error_cases_dict.copy.db`. SHA-256 gốc trước và sau: `6bd41a8cdad66a06789df3ebcfed6e9fc90e77093a0052bef38624a7dd012369` (54.480.896 byte). Không mở DB gốc để ghi.
+- `extract_phenomena_from_error_db` **không đọc được** DB này: cột `phenomenon` rỗng (0/15.707), không có cột nhóm lỗi, hàm báo không thấy F CALL. Đây là lệch schema máy nhà, không phải dữ liệu giả.
+- OMP lấy 1 dòng thật bằng cách khác, chỉ đọc: `error_cases.id=2`, mã `error_code_i=F000`, hiện tượng lấy từ cột `investigation` (556 ký tự, SHA-256 rút gọn `a6de94113e5d`). Không dán nội dung hồ sơ vào báo cáo.
+- `start_session` → 3 câu (`m4_man`, `m4_machine`, `m4_material`), phiên `IS-FF62685A`. Trả lời đủ 3 câu (nội dung đánh dấu là kiểm schema, chưa phải kết luận chuyên gia) → `complete_session`.
+- Staging `C:/tmp/ux-interview-feedback/staging_enrichment.sqlite` (cùng tên `staging_enrichment.sqlite`, thư mục tách bằng `AIOS_LOCAL_CASES_DIR`, không commit): 3 dòng, cột đủ `answer_id/question_id/batch_id/payload_json/answer_sha/enrichment_label/reviewer_status/version/supersedes_answer_id/created_at`. `reviewer_status` chỉ có `cho_chuyen_gia_phan_hoi`. Nhãn `kiến thức đã được đào tạo bổ sung`. `batch_id=UX-IF-HOME-01`.
+- Đường `workspace_chat.sqlite` bị `ProductionWriteRefusedError` (là `ValueError`). Đường staging thì được phép.
+
+### 7.2 Feedback và vòng nhắc bài học
+
+- `record_feedback_strict` chấm `mot_phan` thiếu nguyên nhân thật → `SuggestionFeedbackStrictError`, thông báo có chữ "nguyên nhân thật". Không ghi dòng nào.
+- Đủ 3 trường (lý do, nguyên nhân thật, nội dung nắn lại) thì lưu 1 dòng, đủ `reason` / `true_cause` / `correction`.
+- Bài học từ feedback đó. Hỏi lại tình huống cùng mã `F000` + "board điều khiển" → `consult_lessons` trả 1 bài, điểm Jaccard 0.6, có `cach_sua`. Tình huống khác (nhiệt độ buồng sấy) → 0 bài.
+- Metric ghi 2 kỳ mẫu trong lúc verify (không phải số liệu nhiều tuần của xưởng): kỳ 2026-09-01 tỉ lệ 0.8, kỳ 2026-09-08 tỉ lệ 0.2, `xu_huong=giam_dan`. Cơ chế đo chạy. Chưa có chuỗi tỉ lệ thật theo thời gian vận hành.
+
+### 7.3 Cổng và những gì chưa chạy trong app
+
+- Python 3.11.14 (`D:/Sandbox/AIOS_habbit/.venv/Scripts/python.exe`).
+- `compileall src tests`: xong, có biên dịch 3 file mới.
+- `pytest` 5 file liên quan (`test_interview_feedback_loop`, `test_suggestion_feedback`, `test_golden_question_export`, `test_golden_question_schema`, `test_answer_feedback`): **65/65 pass**.
+- `cli audit` với `PYTHONPATH=src`: `{"status": "PASS", "errors": [], "warnings": []}`. Lệnh trần không có `PYTHONPATH` thì thiếu module `aios_habit` vì venv chưa cài gói (máy nhà, không phải lỗi vé).
+- `import aios_habit.workspace_chat_app`: được.
+- Index production `local_runs/workspace_chat_rag_v2_production/.../library.sqlite`: 2.552.659.968 byte, mtime 2026-09-28 05:55:03, không đổi. DB app `C:/tmp/buoc0-deploy/error_cases_deploy.db`: 49.885.184 byte, mtime 2026-10-03 12:52:32, không đổi.
+- **Chưa chạy trong khung chat.** `workspace_chat_app.py` không gọi `start_session` / `expert_interview_session`. Item 4 (UI) vẫn chờ user gật, đúng mục 5 của báo cáo Muse. Vòng phỏng vấn và feedback hiện là API, chưa phải nút trong app.
+
+Kết luận OMP: backend items 1–3 chạy được trên 1 hiện tượng thật và đủ tiêu chí staging / 3 trường / nhắc bài học. Chưa đủ để nói "chạy được trong app" cho đến khi user gật phương án UI và có vé nối giao diện.
+
