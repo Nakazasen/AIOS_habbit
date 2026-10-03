@@ -199,6 +199,7 @@ Lệch SHA: ghi chú Muse nói commit `f02802f`. SHA đó không có trên nhán
 - Python 3.11.14 (`D:/Sandbox/AIOS_habbit/.venv/Scripts/python.exe`).
 - `compileall src tests`: xong, có biên dịch 3 file mới.
 - `pytest` 5 file liên quan (`test_interview_feedback_loop`, `test_suggestion_feedback`, `test_golden_question_export`, `test_golden_question_schema`, `test_answer_feedback`): **65/65 pass**.
+- `pytest -q` toàn bộ (14:12–14:23, 624 giây): footer `9 failed, 3835 passed, 39 skipped, 19 errors`. Không phải PASS sạch. Không có test mới của vé trong danh sách fail. 19 error là thiếu file nguồn đường `/home/hatch/...` (máy nhà không có). Các fail còn lại thuộc nền máy nhà (worker BGE, graphify, packaging, chữ Việt cứng trong `workspace_chat_app.py`) — không do vé này.
 - `cli audit` với `PYTHONPATH=src`: `{"status": "PASS", "errors": [], "warnings": []}`. Lệnh trần không có `PYTHONPATH` thì thiếu module `aios_habit` vì venv chưa cài gói (máy nhà, không phải lỗi vé).
 - `import aios_habit.workspace_chat_app`: được.
 - Index production `local_runs/workspace_chat_rag_v2_production/.../library.sqlite`: 2.552.659.968 byte, mtime 2026-09-28 05:55:03, không đổi. DB app `C:/tmp/buoc0-deploy/error_cases_deploy.db`: 49.885.184 byte, mtime 2026-10-03 12:52:32, không đổi.
