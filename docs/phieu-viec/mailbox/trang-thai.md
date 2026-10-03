@@ -5,7 +5,7 @@
 - `prompt`: `docs/phieu-viec/mailbox/prompt.md`
 - `commit`: `42ad5cd`
 - `bao_cao`: `docs/phieu-viec/ket-qua/knowledge-digest-home.md`
-- `ghi_chu`: 2026-10-03 09:50 +07 — Moc tom tat 469/889 document. Provider deepseek/deepseek-v4-flash. Checkpoint moi tai lieu. Khong ghi index.
+- `ghi_chu`: 2026-10-03 09:52 +07 — Moc tom tat 494/889 document. Provider deepseek/deepseek-v4-flash. Checkpoint moi tai lieu. Khong ghi index.
 - `ghi_chu`: 2026-10-03 07:46 +07 — Batch dừng 195 vì Gemini 429 rồi DeepSeek cắt JSON. Đã bỏ 12 mục hỏng, còn 183 hợp lệ. Tắt thinking Gemini Flash và resume, không đổi sang DeepSeek khi chỉ bị 429.
 - `ghi_chu`: 2026-10-03 07:18 +07 — OMP nhận vé `KNOWLEDGE-DIGEST-PROVIDER-SWITCH`. Bắt đầu probe cầu nối Gemini (health + 1 câu thử), chưa đụng batch.
 - `ghi_chu`: 2026-10-03 05:32 watcher auto-escalate: 4 lan tu mo OMP (moi lan cach ~10 phut) ma mailbox khong tien trien. Chuyen sang cho-muse de Muse xu ly. Ticket: `KNOWLEDGE-DIGEST-HOME-R1` — [NHÀ] resume batch tóm tắt từ checkpoint 92/889 khi cầu nối hết HTTP 405; xuất sổ tay + probe so sánh RAG.
