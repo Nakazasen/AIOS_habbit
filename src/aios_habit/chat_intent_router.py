@@ -16,6 +16,7 @@ from typing import Dict, Optional, Tuple
 
 # Recognized intents. "hoi_tai_lieu" is the default fallback.
 CANH_BAO_NGUONG = "canh_bao_nguong"      # threshold alert request
+VE_BIEU_DO = "ve_bieu_do"                # chart request (runs the JIG chart branch)
 TAO_SO = "tao_so"                        # create a notebook
 MO_SO = "mo_so"                          # open a notebook
 HO_SO_DIEU_TRA = "ho_so_dieu_tra"        # open the investigation case workspace
@@ -26,6 +27,7 @@ DU_LIEU_DAN = "du_lieu_dan"              # pasted CSV/log block in the message
 
 TAT_CA_Y_DINH = (
     CANH_BAO_NGUONG,
+    VE_BIEU_DO,
     TAO_SO,
     MO_SO,
     HO_SO_DIEU_TRA,
@@ -52,6 +54,12 @@ _QUY_TAC: Tuple[Tuple[str, Tuple[str, ...]], ...] = (
             "canh bao khi", "dat nguong", "thiet lap nguong",
             "thiet lap canh bao", "canh bao vuot", "nguong canh bao",
             "liet ke canh bao", "xoa canh bao", "tat canh bao",
+        ),
+    ),
+    (
+        VE_BIEU_DO,
+        (
+            "ve bieu do",
         ),
     ),
     (
@@ -124,6 +132,9 @@ def classify_all_intents(text: str) -> list:
     for y_dinh, cum_tu in _QUY_TAC:
         if y_dinh in (HO_SO_DIEU_TRA, CONG_CU_NANG_CAO) and not ngan:
             continue
+        if y_dinh == VE_BIEU_DO and "gui mail" in norm:
+            # "bieu do gui mail" belongs to alert-config commands, not charting.
+            continue
         for cum in cum_tu:
             if cum in norm:
                 # Avoid "mo so" misfiring on "mo ho so".
@@ -170,6 +181,7 @@ def giai_thich_y_dinh(intent: str) -> str:
     """Short Vietnamese note shown in chat so the user sees what the app understood."""
     return {
         CANH_BAO_NGUONG: "Tôi hiểu đây là yêu cầu cảnh báo ngưỡng.",
+        VE_BIEU_DO: "Tôi hiểu bạn muốn vẽ biểu đồ.",
         TAO_SO: "Tôi hiểu bạn muốn tạo sổ tài liệu mới.",
         MO_SO: "Tôi hiểu bạn muốn mở một sổ tài liệu.",
         HO_SO_DIEU_TRA: "Tôi hiểu bạn muốn mở hồ sơ điều tra.",
@@ -184,6 +196,7 @@ def nhan_y_dinh(intent: str) -> str:
     """Short Vietnamese label for one intent (section header in a merged reply)."""
     return {
         CANH_BAO_NGUONG: "Cảnh báo ngưỡng",
+        VE_BIEU_DO: "Vẽ biểu đồ",
         TAO_SO: "Tạo sổ",
         MO_SO: "Mở sổ",
         HO_SO_DIEU_TRA: "Hồ sơ điều tra",

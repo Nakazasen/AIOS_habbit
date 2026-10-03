@@ -82,6 +82,20 @@ _MAU_XOA = re.compile(r"(?:xóa|hủy|tắt)\s+cảnh báo\s+(\S+)", re.IGNORECA
 _PHEP_TREN = {"vượt", "vuot", "lớn hơn", "lon hon", "cao hơn", "cao hon", ">", ">="}
 _PHEP_DUOI = {"dưới", "duoi", "nhỏ hơn", "nho hon", "thấp hơn", "thap hon", "<", "<="}
 
+# Param names that are really comparator/filler words leaking from the
+# sentence (e.g. "đặt ngưỡng trên 12" -> "trên"). A rule with one of these
+# names is never saved: the chat asks the user to clarify instead.
+_TEN_THONG_SO_RAC = {
+    "tren", "duoi", "vuot",
+    "lon hon", "cao hon", "nho hon", "thap hon",
+}
+
+
+def _la_ten_thong_so_rac(ten: str) -> bool:
+    """True when the extracted param name is a filler word, not a real metric."""
+    n = _khong_dau(ten or "")
+    return not n or n in _TEN_THONG_SO_RAC
+
 
 def _chuan_hoa_phep(tu: str) -> Optional[str]:
     n = _khong_dau(tu)
@@ -269,6 +283,14 @@ def xu_ly_cau_lenh(
     parsed = parse_lenh_canh_bao(clean)
     if parsed is None:
         return None
+
+    if _la_ten_thong_so_rac(parsed["thong_so"]):
+        # Do NOT persist a rule with a garbage param name (user decision:
+        # a threshold command missing a valid metric name must ask back).
+        return (
+            "Bạn muốn đặt ngưỡng cho thông số nào? Tôi chưa hiểu rõ tên thông số "
+            "trong câu của bạn — bạn gõ lại ví dụ: đặt ngưỡng nhiệt độ 80"
+        )
 
     rule = kho.them(parsed["thong_so"], parsed["phep_so_sanh"], parsed["nguong"])
     tra_loi = ["Đã lưu quy tắc {}: {}.".format(rule.id, rule.mo_ta())]

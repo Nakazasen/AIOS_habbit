@@ -1466,6 +1466,35 @@ def _luu_cap_tin_nhan_chat(conversation_id: str, cau_hoi: str, tra_loi: str) -> 
     ))
 
 
+def _hang_ve_tu_lsu_gate() -> list:
+    """Doc du lieu ve bieu do tu phien LSU gate (wsc_last_lsu_traces).
+
+    Dung chung cho nhanh chart cua router chat-first va luong jig cu.
+    """
+    try:
+        traces_ve = st.session_state.get("wsc_last_lsu_traces")
+        if isinstance(traces_ve, dict):
+            danh_sach = list(traces_ve.values())
+        elif isinstance(traces_ve, list):
+            danh_sach = traces_ve
+        else:
+            return []
+        cac_hang: list = []
+        for trace in danh_sach:
+            for do_dac in getattr(trace, "jig_measurements", []) or []:
+                cac_hang.append({
+                    "jig_id": getattr(do_dac, "jig_id", ""),
+                    "unit_serial": getattr(do_dac, "unit_serial", ""),
+                    "metric_name": getattr(do_dac, "metric_name", ""),
+                    "value": getattr(do_dac, "value", None),
+                    "unit": getattr(do_dac, "unit", ""),
+                    "event_time": str(getattr(do_dac, "event_time", "")),
+                })
+        return cac_hang
+    except Exception:
+        return []
+
+
 def _xu_ly_mot_y_dinh(y_dinh: str, slots, q_text: str, *, active_conversation, active_nb_id):
     """Xu ly MOT y dinh trong cau chat.
 
@@ -1480,6 +1509,7 @@ def _xu_ly_mot_y_dinh(y_dinh: str, slots, q_text: str, *, active_conversation, a
         HO_SO_DIEU_TRA,
         MO_SO,
         TAO_SO,
+        VE_BIEU_DO,
     )
 
     if y_dinh == HO_SO_DIEU_TRA:
@@ -1521,6 +1551,31 @@ def _xu_ly_mot_y_dinh(y_dinh: str, slots, q_text: str, *, active_conversation, a
             return render_outcome(outcome) or None
         except Exception:
             return None
+    if y_dinh == VE_BIEU_DO:
+        # Nhanh ve bieu do JIG chay doc lap trong luong gop (UX-E2E-APP muc a):
+        # cung logic voi luong jig cu, doc du lieu tu phien LSU gate.
+        try:
+            from aios_habit.production_prediction.jig_chat_wire import (
+                _quyet_dinh_ve_bieu_do,
+            )
+
+            ket_qua = _quyet_dinh_ve_bieu_do(
+                q_text, _hang_ve_tu_lsu_gate, kho_nguong=None
+            )
+        except Exception:
+            return None
+        if ket_qua is None or not ket_qua.handled:
+            return None
+        van_ban = ket_qua.assistant_text or ""
+        if ket_qua.chart_png:
+            try:
+                import base64
+
+                ma_hoa = base64.b64encode(ket_qua.chart_png).decode("ascii")
+                van_ban += "\n\n![biểu đồ](data:image/png;base64,{})".format(ma_hoa)
+            except Exception:
+                pass
+        return van_ban or None
     if y_dinh == CANH_BAO_NGUONG:
         from aios_habit.threshold_alert_chat import xu_ly_cau_lenh
 
@@ -4115,28 +4170,7 @@ else:
                                 return []
 
                         def _chart_rows() -> list:
-                            try:
-                                traces_ve = st.session_state.get("wsc_last_lsu_traces")
-                                if isinstance(traces_ve, dict):
-                                    danh_sach = list(traces_ve.values())
-                                elif isinstance(traces_ve, list):
-                                    danh_sach = traces_ve
-                                else:
-                                    return []
-                                cac_hang: list = []
-                                for trace in danh_sach:
-                                    for do_dac in getattr(trace, "jig_measurements", []) or []:
-                                        cac_hang.append({
-                                            "jig_id": getattr(do_dac, "jig_id", ""),
-                                            "unit_serial": getattr(do_dac, "unit_serial", ""),
-                                            "metric_name": getattr(do_dac, "metric_name", ""),
-                                            "value": getattr(do_dac, "value", None),
-                                            "unit": getattr(do_dac, "unit", ""),
-                                            "event_time": str(getattr(do_dac, "event_time", "")),
-                                        })
-                                return cac_hang
-                            except Exception:
-                                return []
+                            return _hang_ve_tu_lsu_gate()
 
                         if handle_jig_chat_text(
                             q_text,

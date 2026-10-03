@@ -104,3 +104,30 @@ def test_xu_ly_cau_lenh_tron_vong(tmp_path):
 
     tra_loi3 = xu_ly_cau_lenh("xin chào bạn", base_dir=tmp_path)
     assert tra_loi3 is None
+
+
+def test_dat_nguong_thieu_ten_thong_so_hoi_lai_khong_luu(tmp_path):
+    # UX-E2E-APP muc (a): "dat nguong tren 12" -> ten "tren" la rac,
+    # phai hoi lai, KHONG luu quy tac.
+    from aios_habit.threshold_alert_chat import KhoQuyTacCanhBao
+
+    tra_loi = xu_ly_cau_lenh("đặt ngưỡng trên 12", base_dir=tmp_path)
+    assert tra_loi is not None
+    assert "thông số nào" in tra_loi
+    assert "Đã lưu quy tắc" not in tra_loi
+    assert KhoQuyTacCanhBao(tmp_path).liet_ke() == []
+
+
+def test_canh_bao_khi_ten_rac_hoi_lai(tmp_path):
+    from aios_habit.threshold_alert_chat import KhoQuyTacCanhBao
+
+    tra_loi = xu_ly_cau_lenh("cảnh báo khi trên vượt 80", base_dir=tmp_path)
+    assert tra_loi is not None
+    assert "thông số nào" in tra_loi
+    assert KhoQuyTacCanhBao(tmp_path).liet_ke() == []
+
+
+def test_dat_nguong_ten_hop_le_van_luu(tmp_path):
+    tra_loi = xu_ly_cau_lenh("đặt ngưỡng nhiệt độ 80", base_dir=tmp_path)
+    assert tra_loi is not None
+    assert "Đã lưu quy tắc" in tra_loi

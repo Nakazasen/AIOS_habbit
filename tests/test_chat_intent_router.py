@@ -100,3 +100,45 @@ def test_classify_all_intents_rong():
 
     assert classify_all_intents("")[0][0] == HOI_DAP_CHUNG
     assert classify_all_intents("lỗi FXXX là gì?")[0][0] == HOI_TAI_LIEU
+
+
+def test_ve_bieu_do_intent_don():
+    from aios_habit.chat_intent_router import VE_BIEU_DO, classify_intent
+
+    assert classify_intent("vẽ biểu đồ bowskew JIG-01") == VE_BIEU_DO
+    assert classify_intent("VẼ BIỂU ĐỒ độ rung") == VE_BIEU_DO
+
+
+def test_ve_bieu_do_gop_voi_canh_bao_nguong():
+    # UX-E2E-APP muc (a): cau gop phai ra DU ca 2 y dinh, phan chart
+    # khong duoc bi bo khi cau con chua y dinh khac.
+    from aios_habit.chat_intent_router import (
+        VE_BIEU_DO,
+        classify_all_intents,
+    )
+
+    intents = classify_all_intents("vẽ biểu đồ bowskew JIG-01 và đặt ngưỡng trên 12")
+    ten_y = [y for y, _ in intents]
+    assert CANH_BAO_NGUONG in ten_y
+    assert VE_BIEU_DO in ten_y
+
+
+def test_bieu_do_gui_mail_khong_phai_ve_bieu_do():
+    # "bieu do gui mail" thuoc lenh cau hinh canh bao, khong phai ve bieu do.
+    from aios_habit.chat_intent_router import VE_BIEU_DO, classify_all_intents
+
+    ten_y = [y for y, _ in classify_all_intents("vẽ biểu đồ gửi mail tuần")]
+    assert VE_BIEU_DO not in ten_y
+
+
+def test_nhan_va_giai_thich_ve_bieu_do():
+    from aios_habit.chat_intent_router import (
+        TAT_CA_Y_DINH,
+        VE_BIEU_DO,
+        giai_thich_y_dinh,
+        nhan_y_dinh,
+    )
+
+    assert nhan_y_dinh(VE_BIEU_DO) == "Vẽ biểu đồ"
+    assert giai_thich_y_dinh(VE_BIEU_DO) != ""
+    assert VE_BIEU_DO in TAT_CA_Y_DINH
