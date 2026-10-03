@@ -38,3 +38,8 @@ Yêu cầu: cập nhật assertion theo UI mới; CẤM xóa test để cho qua.
 - Commit riêng trên nhánh `phieu-viec/rag-fix1`, không đụng `main`.
 
 Rào: không ghi index production, không merge main, không gửi dữ liệu công ty ra ngoài, code tương thích Python 3.11.
+
+## Bổ sung 2026-10-03 ~12:45 — code [VM] ĐÃ XONG, OMP verify
+- Commit `a75a1ee`: multi-intent (classify_all_intents, chạy hết ý, gộp trả lời), matplotlib vào pyproject + wrapper không ném lỗi (fallback Pillow), bật `AIOS_FEATURE_CHAT_ACTION=1` trong `RUN_AIOS_WORKSPACE_CHAT.bat`, cập nhật 3 test cũ theo UI mới.
+- Commit `6f9e0b9`: `docs/phieu-viec/ket-qua/bao-loi-ao-da-sua.md` — 5 case báo lỗi ảo để đối chiếu.
+- OMP verify: chạy app bằng `RUN_AIOS_WORKSPACE_CHAT.bat`; câu gộp "dán log + vẽ biểu đồ + cảnh báo" phải ra đủ 3 phần; dán CSV giả lập phải có biểu đồ (không cần matplotlib cài tay); đối chiếu 5 case báo lỗi ảo; `py_compile` Python 3.11.
