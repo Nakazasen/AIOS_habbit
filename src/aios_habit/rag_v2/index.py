@@ -1020,6 +1020,10 @@ class LocalChunkIndex:
             self._conn.execute(
                 "ALTER TABLE chunks ADD COLUMN retrievable INTEGER NOT NULL DEFAULT 1"
             )
+        # Knowledge-domain label (lsu / dieu_tra_loi / mom). Nullable so legacy
+        # rows stay valid; populated by _upsert_rows via index_domain.
+        if "domain" not in chunk_columns:
+            self._conn.execute("ALTER TABLE chunks ADD COLUMN domain TEXT")
         self._conn.execute("CREATE INDEX IF NOT EXISTS idx_chunks_document_id ON chunks(document_id)")
         self._conn.execute(
             "CREATE INDEX IF NOT EXISTS idx_chunks_retrievable ON chunks(retrievable, document_id)"
@@ -1371,13 +1375,54 @@ class LocalChunkIndex:
         }
 
     def _upsert_rows(self, rows: Iterable[tuple[Any, ...]]) -> None:
+        # Label each chunk with its knowledge domain at ingest time. The label
+        # comes from index_domain.classify_document (source_name/source_path +
+        # chunk text sample); re-ingests recompute it, legacy rows keep NULL.
+        from aios_habit.index_domain import classify_document
+
+        labeled: list[tuple[Any, ...]] = []
+        for row in rows:
+            (
+                chunk_id,
+                document_id,
+                source_path,
+                source_name,
+                file_type,
+                text,
+                normalized_text,
+                metadata_json,
+                privacy_labels_json,
+                source_fingerprint,
+                checksum,
+                retrievable,
+            ) = row[:12]
+            domain = classify_document(
+                str(source_name or ""), str(source_path or ""), str(text or "")[:2000]
+            ).domain
+            labeled.append(
+                (
+                    chunk_id,
+                    document_id,
+                    source_path,
+                    source_name,
+                    file_type,
+                    text,
+                    normalized_text,
+                    metadata_json,
+                    privacy_labels_json,
+                    source_fingerprint,
+                    checksum,
+                    retrievable,
+                    domain,
+                )
+            )
         self._conn.executemany(
             """
             INSERT INTO chunks (
                 chunk_id, document_id, source_path, source_name, file_type,
                 text, normalized_text, metadata_json, privacy_labels_json,
-                source_fingerprint, checksum, retrievable
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                source_fingerprint, checksum, retrievable, domain
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(chunk_id) DO UPDATE SET
                 document_id=excluded.document_id,
                 source_path=excluded.source_path,
@@ -1389,9 +1434,10 @@ class LocalChunkIndex:
                 privacy_labels_json=excluded.privacy_labels_json,
                 source_fingerprint=excluded.source_fingerprint,
                 checksum=excluded.checksum,
-                retrievable=excluded.retrievable
+                retrievable=excluded.retrievable,
+                domain=excluded.domain
             """,
-            rows,
+            labeled,
         )
         self._conn.execute(
             """

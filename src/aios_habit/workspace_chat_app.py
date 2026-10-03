@@ -1176,6 +1176,22 @@ def _run_chat_turn_async(
             retrieved_sources = ret_res.get("retrieved_context_sources", ())
             evidence_items = ret_res.get("evidence_items", [])
             retrieval_summary = ret_res.get("safe_owner_message", "")
+            # Domain routing transparency: state which knowledge block was
+            # searched. Ambiguous questions name the most plausible block.
+            domain_info = ret_res.get("domain_routing") or {}
+            if (
+                isinstance(domain_info, dict)
+                and domain_info.get("enabled")
+                and domain_info.get("applied")
+            ):
+                block_name = str(domain_info.get("domain_display") or "").strip()
+                if block_name:
+                    block_line = "Đang tra cứu khối %s." % block_name
+                    if domain_info.get("ambiguous"):
+                        block_line += " (Câu hỏi chưa rõ lĩnh vực — đã chọn khối khả dĩ nhất.)"
+                    retrieval_summary = block_line + (
+                        " " + retrieval_summary if retrieval_summary else ""
+                    )
     else:
         retrieval_applied = False
         retrieved_sources = ()

@@ -2730,6 +2730,7 @@ def _run_profile(
     pre_reason_codes: Sequence[str] = (),
     post_decision: str = "not_run",
     post_reason_codes: Sequence[str] = (),
+    domain_collection_id: str | None = None,
 ) -> dict[str, Any]:
     started = time.perf_counter()
     statuses = get_workspace_chat_source_preparation_status(tuple(sources), config=config)
@@ -2748,7 +2749,10 @@ def _run_profile(
         # fresh worker silently embed every unrelated legacy chunk.
         read_only=True,
         include_reranker=rerank_requested,
-        collection_id=_collection_id_for_sources(sources),
+        # Domain routing (feature-flagged) overrides the collection with the
+        # question's knowledge-domain collection; otherwise the legacy
+        # source-based collection resolution applies.
+        collection_id=domain_collection_id or _collection_id_for_sources(sources),
     )
     specs, originals = _materialize_sources(sources, config.runtime_root)
     if not specs:
@@ -3087,6 +3091,60 @@ def _attach_line_log_evidence(
     return payload
 
 
+def _select_domain_route(
+    question: str, sources: Tuple["WorkspaceAIContextSource", ...]
+):
+    """Pick a domain collection for the question (feature-flagged).
+
+    Returns an ``index_domain.DomainRoute`` or ``None`` when routing is
+    disabled. Never raises: a classification failure must not break
+    retrieval, it only falls back to the legacy collection.
+    """
+    try:
+        from aios_habit import index_domain
+        from aios_habit.workspace_chat_store import load_collection
+
+        if not index_domain.domain_routing_enabled():
+            return None
+        base_collection_id = _collection_id_for_sources(sources)
+        detected = index_domain.detect_domain_from_question(question)
+
+        def _collection_exists(collection_id: str) -> bool:
+            collection = load_collection(collection_id)
+            return (
+                collection is not None
+                and str(getattr(collection, "storage_root", "") or "").strip() != ""
+            )
+
+        return index_domain.select_domain_collection(
+            detected, base_collection_id, collection_exists=_collection_exists
+        )
+    except Exception as error:  # routing must never break retrieval
+        LOGGER.warning("Domain routing skipped: %s", _safe_reason(error))
+        return None
+
+
+def _domain_routing_payload(route) -> dict[str, Any] | None:
+    """Render a DomainRoute into the retrieval payload for UI transparency."""
+    if route is None:
+        return None
+    from aios_habit import index_domain
+
+    detected = route.detected
+    confidence = float(detected.confidence) if detected is not None else 0.0
+    return {
+        "enabled": True,
+        "applied": bool(route.applied),
+        "domain": route.domain,
+        "domain_display": index_domain.DOMAIN_DISPLAY.get(route.domain, route.domain),
+        "confidence": round(confidence, 3),
+        "reason": detected.reason if detected is not None else "",
+        "ambiguous": confidence < index_domain.CONFIDENCE_LOW_THRESHOLD,
+        "collection_id": route.collection_id,
+        "note": route.note,
+    }
+
+
 def retrieve_workspace_chat_evidence(
     question: str,
     context_sources: Iterable[WorkspaceAIContextSource],
@@ -3099,8 +3157,12 @@ def retrieve_workspace_chat_evidence(
     """Retrieve evidence only through the pinned local BGE-M3 hybrid pipeline."""
     sources = tuple(context_sources)
     collection_id = _collection_id_for_sources(sources)
+    domain_route = None
 
     def _finish(payload: dict[str, Any]) -> dict[str, Any]:
+        domain_payload = _domain_routing_payload(domain_route)
+        if domain_payload is not None:
+            payload = {**payload, "domain_routing": domain_payload}
         return _attach_line_log_evidence(question, payload, collection_id)
 
     try:
@@ -3122,6 +3184,15 @@ def retrieve_workspace_chat_evidence(
     if ready_subset:
         sources = ready_subset
         collection_id = _collection_id_for_sources(sources)
+
+    # Domain routing (feature-flagged): detect the question's knowledge domain
+    # and search that domain's collection instead of the legacy mixed one.
+    domain_route = _select_domain_route(question, sources)
+    domain_collection_id = (
+        domain_route.collection_id
+        if domain_route is not None and domain_route.applied
+        else None
+    )
 
     # Retrieval may inspect every already-ready source for multi-aspect questions.
     # Precise operational lookups still use the small lexical window.
@@ -3184,6 +3255,7 @@ def retrieve_workspace_chat_evidence(
             policy_version=resolved.policy_version,
             search_preference=pref_str,
             pre_decision=pre_dec.classification.value if pre_dec else "fast",
+            domain_collection_id=domain_collection_id,
         )
 
         if init_routing is not None and init_routing.degraded:
@@ -3247,6 +3319,7 @@ def retrieve_workspace_chat_evidence(
                     pre_reason_codes=pre_dec.reason_codes if pre_dec else ("pre_fast",),
                     post_decision=post_dec.classification.value,
                     post_reason_codes=post_dec.reason_codes,
+                    domain_collection_id=domain_collection_id,
                 )
                 return _finish(escalated_result)
 
