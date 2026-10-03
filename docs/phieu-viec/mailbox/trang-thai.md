@@ -3,7 +3,7 @@
 - Trạng thái: `dang-lam`
 - Ticket hiện tại: `UX-CHAT-CORE` — [VM] Muse code+test trên VM → [NHÀ] OMP verify trên app thật: chat nhiều ý định, biểu đồ trong chat, hết đổi luồng tay, hết báo lỗi ảo.
 - `prompt`: `docs/phieu-viec/mailbox/prompt.md`
-- `ghi_chu`: 2026-10-03 11:33 +07 — Mốc kiểm mã: py_compile 3.11 OK. Test liên quan 52 pass, 3 fail vì máy nhà thiếu matplotlib nên biểu đồ CSV không vẽ. Router nuốt câu gộp thành mỗi cảnh báo. App cổng 8501 mở từ 11:04 là code cũ — sắp mở bản mới để chụp UI. Chưa đụng index production.
+- `ghi_chu`: 2026-10-03 11:45 +07 — App mã mới cổng 8515: hết radio Điều hướng; tạo sổ BaoCaoTuan một dòng sẵn sàng; cảnh báo ngưỡng lưu được, không báo ảo. Câu gộp vẫn chỉ ra cảnh báo. Audit PASS khi có PYTHONPATH. pytest đầy đủ bị cắt ở 51% sau 10 phút, đang chạy lại. Index production không đổi.
 - `commit`: `7aa5218`
 - `bao_cao`: `docs/phieu-viec/ket-qua/ux-chat-core.md`
 - `ghi_chu` (verdict Muse): 2026-10-03 ~11:10 +07 — **ĐẠT** (báo cáo `5269d8c`). Đủ tiêu chí vé PI-SPIKE-HOME: pi 1.0.0; đường sống Gemini Flash Lite, 7 đường chết có lý do; tạo file ĐẠT, sửa file ĐẠT ở lần 2 (lần 1 model hỏi lại nội dung — ghi nhận trung thực); RPC 15 event ổn định 1 lệnh, chưa thử hàng đợi/ngắt giữa chừng; rào giữ (không dữ liệu công ty, không đụng index production, không merge main, telemetry tắt). Digest batch tạm đỗ, checkpoint 847/889 còn nguyên.
