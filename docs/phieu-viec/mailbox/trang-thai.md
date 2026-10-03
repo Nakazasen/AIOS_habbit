@@ -1,6 +1,6 @@
-# Trạng thái mailbox
+﻿# Trạng thái mailbox
 
-- Trạng thái: `moi`
+- Trạng thái: `cho-muse`
 - Ticket hiện tại: `UX-INTERVIEW-FEEDBACK` — [VM code + NHÀ verify] phỏng vấn chuyên gia chạy được trong app + feedback theo từng gợi ý (sai/một phần bắt buộc nhập lý do, nguyên nhân thật, nội dung nắn lại) + vòng lặp tự cải thiện.
 - `prompt`: `docs/phieu-viec/mailbox/prompt.md`
 - `commit`: ``
@@ -20,7 +20,8 @@
   5. `DON-O-C` (`prompt-queue-don-o-c.md`) — [NHÀ] dọn ổ C (rác tmp → venv trùng → worktree → backup cũ sau kiểm toàn vẹn); XÓA BACKUP phải có danh sách GB từng mục để user gật trước khi xóa.
 
 - `ghi_chu` (Muse): 2026-10-03 ~07:20 +07 — user quyết đổi provider (không chờ cầu nối). Phát hành vé PROVIDER-SWITCH: thứ tự probe cầu nối → sửa khóa Router → resume batch. Giữ nguyên rào bản thảo/không nhập kho.
-- `ghi_chu`: 2026-10-03 12:52 +07 — App thật cổng 8515 (cùng cờ file .bat, cổng 8501 đang bận): câu gộp giả lập ra đủ phân tích + biểu đồ PNG + quy tắc trong một câu trả lời. py_compile, compileall, audit PASS, pytest liên quan 94 passed. Index không đổi. Đang chạy pytest đầy đủ.
+- `ghi_chu`: 2026-10-03 13:51 watcher auto-escalate: 4 lan tu mo OMP (moi lan cach ~10 phut) ma mailbox khong tien trien. Chuyen sang cho-muse de Muse xu ly. Ticket: `UX-INTERVIEW-FEEDBACK` — [VM code + NHÀ verify] phỏng vấn chuyên gia chạy được trong app + feedback theo từng gợi ý (sai/một phần bắt buộc nhập lý do, nguyên nhân thật, nội dung nắn lại) + vòng lặp tự cải thiện.
 - `ghi_chu` (Muse): 2026-10-03 ~13:10 +07 — Phase A [VM] bổ sung, commit `8400f45` (đã push lên remote, sau `45aee0d`): (1) F1 — ý định không xử lý được trong câu gộp giờ được ghi rõ trong câu trả lời (trước đây bỏ qua im lặng); ý định chỉ chuyển view không còn lưu bong bóng trả lời rỗng; (2) F2 — vẽ biểu đồ hỏng thì câu trả lời có dòng "Không vẽ được biểu đồ vì \<lý do\>"; (3) báo cáo vé đầy đủ `docs/phieu-viec/ket-qua/ux-chat-core-fix1.md` (F1–F5: vị trí file/hàm, biểu hiện cũ, cách sửa, test tương ứng); (4) 6 test mới (3 test câu gộp đa ý định qua `_xu_ly_y_dinh_chat`, 3 test mô phỏng thiếu matplotlib). Test trên VM: 38/38 test liên quan PASS, `cli audit` PASS, rà tay tương thích Python 3.11 (VM không có python3.11 — OMP verify lại `py_compile` 3.11). OMP pull code mới rồi verify lại câu gộp + dán CSV trên app thật khi tiện. Giữ nguyên `dang-lam` vì OMP đang verify dở, không đảo trạng thái.
-- `ghi_chu`: 2026-10-03 13:09 +07 — UX-CHAT-CORE-FIX1 xong-cho-duyet sau verify lại `8400f45`. Câu gộp giả lập vẫn đủ phân tích + PNG + quy tắc trong một câu trả lời. py_compile 3.11 đạt, test mới 69 passed. Báo cáo `docs/phieu-viec/ket-qua/ux-chat-core-fix1.md`. Index không đổi.
+- `ghi_chu`: 2026-10-03 13:51 watcher auto-escalate: 4 lan tu mo OMP (moi lan cach ~10 phut) ma mailbox khong tien trien. Chuyen sang cho-muse de Muse xu ly. Ticket: `UX-INTERVIEW-FEEDBACK` — [VM code + NHÀ verify] phỏng vấn chuyên gia chạy được trong app + feedback theo từng gợi ý (sai/một phần bắt buộc nhập lý do, nguyên nhân thật, nội dung nắn lại) + vòng lặp tự cải thiện.
+
 
