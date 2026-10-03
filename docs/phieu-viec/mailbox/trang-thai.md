@@ -15,5 +15,5 @@
   5. `DON-O-C` (`prompt-queue-don-o-c.md`) — [NHÀ] dọn ổ C (rác tmp → venv trùng → worktree → backup cũ sau kiểm toàn vẹn); XÓA BACKUP phải có danh sách GB từng mục để user gật trước khi xóa.
 
 - `ghi_chu` (Muse): 2026-10-03 ~07:20 +07 — user quyết đổi provider (không chờ cầu nối). Phát hành vé PROVIDER-SWITCH: thứ tự probe cầu nối → sửa khóa Router → resume batch. Giữ nguyên rào bản thảo/không nhập kho.
-- `ghi_chu`: 2026-10-03 12:45 +07 — OMP nhận UX-CHAT-CORE-FIX1. Gate ĐẠT: Muse đã đẩy mã `a75a1ee` + `6f9e0b9` và mở lại `moi` (`51eda62`). Bắt đầu verify app thật bằng `RUN_AIOS_WORKSPACE_CHAT.bat`. Không đặt `cho-muse`.
+- `ghi_chu`: 2026-10-03 12:52 +07 — App thật cổng 8515 (cùng cờ file .bat, cổng 8501 đang bận): câu gộp giả lập ra đủ phân tích + biểu đồ PNG + quy tắc trong một câu trả lời. py_compile, compileall, audit PASS, pytest liên quan 94 passed. Index không đổi. Đang chạy pytest đầy đủ.
 
