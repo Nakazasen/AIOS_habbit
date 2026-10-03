@@ -205,3 +205,48 @@ Không code cho đến khi user gật phương án.
 - Commit: `54e2ba7` (backend) trên nhánh `phieu-viec/rag-fix1`; báo cáo này commit riêng.
 
 ## 7. Verify máy nhà (OMP điền)
+
+Lane [NHÀ]. Không sửa mã Phase A. Không merge `main`. Không force-push.
+Watcher tự mở OMP `LAUNCH 1/4` lúc 14:41:01 (`launchStallCount=1`, `launchedAt=2026-10-03T14:40:35`, chữ ký `||54e2ba7`). Điều kiện mở đã tới (mã `54e2ba7`, báo cáo Phase A, mailbox `d4c0261`). Không đặt `cho-muse`.
+
+### 7.1 Cách chạy
+
+- Python 3.11.14. Lệnh lời đi qua `handle_chat_text` — đúng hàm app gọi ở `workspace_chat_app.py` khi `AIOS_FEATURE_CHAT_ACTION=1` (file `RUN_AIOS_WORKSPACE_CHAT.bat` đã bật cờ này).
+- App đang mở cổng 8501 (PID 5828, khởi động 11:04, `fileWatcherType=none`) là bản cũ, trước mã `54e2ba7`. OMP không tắt app của người dùng. Vì vậy chưa bấm ô chat trên cửa sổ đang chạy; đường kiểm là hàm chat mà app sẽ gọi sau khi mở lại.
+- Máy nhà thiếu `python-pptx` dù `pyproject.toml` đã khai báo. OMP cài `python-pptx==1.0.2` vào `.venv` để mở và sửa `.pptx`. Không commit gói này.
+- File thử nằm ở `C:/tmp/ux-agent-report/` (ngoài repo). Không ghi index production. SHA DB gốc `C:/tmp/b0-dict/error_cases_dict.db` trước và sau: `6bd41a8cdad66a06789df3ebcfed6e9fc90e77093a0052bef38624a7dd012369` (54.480.896 byte). Index `library.sqlite` 2.552.659.968 byte, mtime 2026-09-28 05:55:03, không đổi.
+
+### 7.2 Tạo .docx từ dữ liệu thật
+
+- Câu: `tạo báo cáo tuan.docx: …` với số đếm thật từ bản copy (15.707 dòng; 5 mã đông nhất, không dán nội dung hồ sơ).
+- Chat trả thẻ đính kèm `ARE-C5EA0C16`, `work_type=agent_report_edit`. File mở được bằng `python-docx`: 7 đoạn, có đúng các dòng đếm (kể cả mã trống 11.674 ca, `F000` 250 ca).
+
+### 7.3 Sửa .pptx đúng slide + backup
+
+- File có sẵn 3 slide (OMP chuẩn bị trước lệnh sửa, đúng mục 4 của Muse): slide 1 `SLIDE-1-GIU`, slide 2 `SLIDE-2-GOC`, slide 3 `SLIDE-3-GIU`.
+- Câu có cụm gợi ý: `sửa báo cáo tuan-slide.pptx: thêm vào slide 2: bảng số ca | nhóm trống 11674 | nhóm còn lại 4033`.
+- Kết quả: chỉ slide 2 thêm dòng chữ đó; slide 1 và 3 giữ nguyên. File mở được, vẫn 3 slide. Bản `tuan-slide.pptx.bak-20261003-074627` khớp SHA bản gốc và mở lại đúng 3 marker cũ.
+- **Chưa phải bảng PowerPoint.** `has_table` cả 3 slide vẫn 0. Engine chỉ thêm đoạn chữ (`append_to_slide`), không có thao tác tạo bảng. Vé yêu cầu "thêm 1 bảng đúng slide" — phần "đúng slide" đạt, phần "bảng" chưa đạt.
+- Câu không có cụm "báo cáo" (`sửa tuan-slide.pptx: thêm vào slide 3: …`) thì `handle_chat_text` trả không xử lý, file không đổi. Gợi ý action chỉ có `sua bao cao` / `tao bao cao` / `tao slide`, không nhận "sửa tên-file.pptx".
+- Câu có mã lỗi (`F000`, `C6950`) bị action tra cứu lỗi trả lời, action báo cáo không chạy. Không dùng câu đó để kết luận sửa slide.
+
+### 7.4 Markdown và câu thay không thấy
+
+- `tạo báo cáo tuan.md: …` tạo được file. `sửa báo cáo tuan.md: thêm vào mục Kết luận: Bổ sung số liệu tháng 10 từ bản copy.` chèn đúng dưới mục, có backup `tuan.md.bak-20261003-074627`.
+- `sửa báo cáo tuan.docx: thay KHONG-CO-DOAN-NAY thành Y` → chat báo `Không tìm thấy đoạn cần thay: 'KHONG-CO-DOAN-NAY'.` SHA file không đổi.
+- `thêm biểu đồ X vào slide 3` không vào action (không có câu hướng dẫn diễn đạt lại trong chat). Parser nếu gọi trực tiếp thì trả lời làm rõ, nhưng chat không gọi parser vì thiếu cụm gợi ý.
+
+### 7.5 Feedback
+
+- Chấm `sai` thiếu nguyên nhân thật và nội dung nắn lại → `ReportFeedbackError` (là `ValueError`), thông báo tiếng Việt có chữ "nguyên nhân thật". File log không dài thêm.
+- Đủ 3 trường thì lưu được. `feedback_metrics()` có `redo_rate` (1 bản ghi chê / 1 bản ghi = 1.0 trên dữ liệu thử, không phải số vận hành nhiều tuần).
+
+### 7.6 Cổng lệnh
+
+- `compileall src tests`: xong.
+- Test vé + liên quan sau khi cài `python-pptx`: **86 passed** (trước khi cài: 81 passed, 5 skipped vì thiếu thư viện pptx).
+- `cli audit` với `PYTHONPATH=src`: `{"status": "PASS", "errors": [], "warnings": []}`. Lệnh trần thiếu `PYTHONPATH` thì không thấy module `aios_habit` (venv máy nhà, không phải lỗi vé).
+- `import aios_habit.workspace_chat_app`: được.
+- `pytest -q` toàn bộ (14:47–14:54, 534 giây): `41 failed, 3862 passed, 37 skipped, 19 errors`. Không phải PASS sạch. Không có test mới của vé trong danh sách fail. 19 error là thiếu file nguồn đường `/home/hatch/...`. Các fail còn lại thuộc nền máy nhà (worker BGE, graphify, packaging/`uv lock`, chữ Việt cứng trong `workspace_chat_app.py`) — không do vé này. Lệch so với lượt UX-INTERVIEW-FEEDBACK (`9 failed, 3835 passed`) vì cây test đã thêm vé mới và nền máy nhà không cố định.
+
+Kết luận OMP: tạo `.docx` từ số liệu thật và sửa đúng slide / đúng mục markdown thì chạy được khi câu có cụm "tạo/sửa báo cáo", và file cũ được backup. Chưa đủ vé nếu hiểu "bảng" là bảng PowerPoint, và câu nói tự nhiên không có chữ "báo cáo" thì chat không nhận. Item 3 (nút tải file nhị phân) vẫn chờ user gật, đúng mục 5.
