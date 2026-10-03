@@ -1,10 +1,10 @@
 # Trạng thái mailbox
 
-- Trạng thái: `dang-lam`
+- Trạng thái: `xong-cho-duyet`
 - Ticket hiện tại: `UX-AGENT-UI-FIX2-VERIFY` — [NHÀ] verify lần 4 sau vá `0a0716f`. Prompt: `docs/phieu-viec/mailbox/prompt.md`.
-- `commit`: `a44338a`
-- `bao_cao`: `docs/phieu-viec/ket-qua/ux-agent-ui-a.md` (sẽ bổ sung mục verify lần 4)
-- `ghi_chu` (OMP): 2026-10-03 19:46 +07 — Mục 2 PASS. Sửa `tuan.docx` thêm câu hoàn tác, SHA `858096d3…ef4e`; bấm Hoàn tác thẻ `ARE-31A7A62B` đưa SHA về đúng `53b03252…932a`, câu thêm biến mất. Đang verify mục 3.
+- `commit`: `16d4100`
+- `bao_cao`: `docs/phieu-viec/ket-qua/ux-agent-ui-a.md` (mục 9, verify lần 4)
+- `ghi_chu` (OMP): 2026-10-03 19:49 +07 — Verify lần 4 ĐẠT cả 5 mục. Nút Tải về bấm được, Word mở `tuan.docx`. Hoàn tác về đúng SHA. `.md` xem/thu được; `.docx` nút Xem toàn văn mờ. Index không đổi. 63 passed, audit PASS. Chờ Muse duyệt.
 - `ghi_chu` (lịch sử): Verify lần 4 phát hành ~19:30 sau vá `0a0716f`; lần 3 CHƯA ĐẠT 19:19 (thẻ ARE-* không có dòng việc) → `cho-muse`; lần 2 CHƯA ĐẠT 18:59; lần 1 CHƯA ĐẠT 18:32 (đã vá `f1dc433`); trước đó UX-INTERVIEW-UI-FIX1-VERIFY ĐẠT ~18:25.
 - `prompt`: `docs/phieu-viec/mailbox/prompt.md`
 - `hang-cho` (thứ tự do user duyệt 2026-10-02 ~22:05 +07; #5 `UX-AGENT-UI` đang verify lại):
