@@ -1,4 +1,108 @@
-# Báo cáo vé `don-o-c` — Dọn ổ C máy nhà lấy chỗ trống
+# Báo cáo vé `DON-O-C` — lần phát hành lại 2026-10-03
+
+## Tóm tắt
+
+- Vé phát hành lại sau verdict `SCAN-O-D` ĐẠT (20:33 +07). Prompt là bản copy `prompt-queue-don-o-c.md`.
+- **Không xóa file nào.** Thu hồi do xóa: **0 byte**.
+- Ổ C lúc 20:39:30 trống **6.104.203.264 byte** (5.821,4 MiB). Lúc 20:46:30 trống **4.399.620.096 byte** (4.195,8 MiB). Chênh lệch là chỗ trống bị tiến trình khác chiếm trong lúc chỉ đọc, không phải do vé này xóa.
+- Mục tiêu ~8 GB của vé **không lấy lại thêm** trong lần này: các mục an toàn đã dọn ngày 2026-09-29 (phụ lục). Phần lớn còn lại là kho đang chạy, bản backup rollback duy nhất, hoặc nằm ngoài 4 đường vé cho phép.
+- Không đụng ổ D. Không đụng index production. Không đụng cây model ONNX. Không sửa code. Không merge `main`.
+- Cổng gate: watcher `LAUNCH 1/4` lúc 2026-10-03 20:35:12. Điều kiện mở đã có (user cho phép dọn 2026-09-29 ~20:10 +07, lane [NHÀ]). Không chuyển `cho-muse`, không quay no-op.
+
+## Máy và phạm vi
+
+- Máy `h410asrock`, nhánh `phieu-viec/rag-fix1`, 20:36–20:46 +07 ngày 2026-10-03.
+- Mỗi bước: liệt kê → xác minh → chỉ xóa khi chắc → đo dung lượng. Không chắc thì dừng, không xóa.
+
+## Bước 1 — Rác tmp: thu hồi 0
+
+Ngưỡng “quá 7 ngày”: `LastWriteTime` trước 2026-09-26 20:39:30.
+
+- `C:\Windows\Temp`: 0 file.
+- `%TEMP%` = `C:\Users\Admin\AppData\Local\Temp`: 2.999 file / 246.404.551 byte, **0 file** quá 7 ngày. Không xóa.
+- `local_runs\**\tmp` dưới `D:\Sandbox\AIOS_habbit\local_runs`: 0 thư mục tên `tmp`.
+- `scratch\` trên D: 963 file / 123.890.447 byte. Có 6 file `.py` cũ (11.361 byte, tên `fix2_onnx_probe.py`, `reproduce_oricon_query.py`, `test_*.py`). Đây là script, không phải tmp/log/cache, và nằm trên ổ D. **Không xóa.**
+
+Danh sách đã xóa: không có.
+
+## Bước 2 — Venv trùng: thu hồi 0
+
+`sys.prefix` của Python dự án: `D:\Sandbox\AIOS_habbit\.venv`. OMP là binary native, không phải tiến trình Python; venv đang dùng lấy theo `sys.prefix` này.
+
+| Venv | Byte | Quyết định |
+| --- | ---: | --- |
+| `D:\Sandbox\AIOS_habbit\.venv` | 2.263.914.512 | **GIỮ** — đang dùng |
+| `D:\Sandbox\AIOS_habbit\.venv-rag` | 1.326.346.716 | **GIỮ** — ổ D, cấm đụng; không phải bản trùng của `.venv` |
+| `D:\Sandbox\AIOS_habbit\.venv-rag-compat` | 1.674.487.483 | **GIỮ** — cùng lý do |
+| 3 thư mục `C:\tmp\pytest-of-Vinh\...\ .venv` | 0 (chỉ có `Scripts\python.exe` 0 byte) | **GIỮ** — không phải venv thật, không so được `pip freeze`; mtime 2026-10-01, chưa quá 7 ngày |
+
+Ba venv tạm trên C đã xóa ngày 2026-09-29 (`omp-ve-v1-py311`, `omp-ve-v1-venv`, `omp-ve-v14-gdown`) không còn. Không có venv trùng trên ổ C để xóa.
+
+Danh sách đã xóa: không có.
+
+## Bước 3 — Worktree vé 0.3: thu hồi 0
+
+- `C:\c\AIOS_ve03_worktree` và `C:\AIOS_ve03_worktree`: không còn (đã xóa ngày 2026-09-29).
+- `git worktree list` không có worktree vé 0.3. Có 2 mục khác, **không thuộc vé này**, không gỡ:
+  - `C:\Users\Admin\AppData\Local\deep-dev\worktrees\aios_habbit_895eea08\...` nhánh `deep-dev/...`, đánh dấu `prunable`
+  - `D:\Sandbox\AIOS_habbit_gate_f_live_baseline` — ổ D, cấm đụng
+
+Danh sách đã xóa: không có.
+
+## Bước 4 — Backup cũ: thu hồi 0
+
+`C:\AIOS_habit_index_ve03` không còn. Bốn file `.bak-*` của vé 0.3 đã xóa ngày 2026-09-29.
+
+Bản **đang chạy**, cấm xóa, đo lại chỉ đọc (`mode=ro`):
+
+| Mục | Giá trị |
+| --- | --- |
+| Đường dẫn | `C:\AIOS_workspace_chat_rag_v2_production\bge_m3_hybrid\collections\tri_thuc\library.sqlite` |
+| Byte | 2.942.201.856 |
+| mtime | 2026-10-01 08:27:27 |
+| SHA-256 | `45eb0e072893f802d71ab201cfbb2b29c36e2b0a31313fa79fc55a025b65b7c0` — khớp ghim |
+| `PRAGMA integrity_check` | `ok` |
+
+Không có backup cũ nào đủ điều kiện xóa:
+
+| Tệp | Byte | Quyết định |
+| --- | ---: | --- |
+| `C:\AIOS_backup_library_c_2026-10-01_merge-home\library.sqlite.bak-20261001-merge-home` | 2.576.191.488 | **GIỮ** — bản rollback duy nhất của kho trước merge (SHA ghim `aa7eac3b…6f0c` trong báo cáo `merge-home`). Xóa là vi phạm “không xóa nếu chỉ còn 1 bản backup”. Không băm lại vì không xóa; size khớp ghim. |
+| `C:\AIOS_backup_production_2026-09-28\library.sqlite.backup` | 32.452.608 | **GIỮ** — lần trước đã giữ vì là backup production cũ; không chắc đây là “2 backup cũ” của lần phát hành lại. |
+| `C:\AIOS_staging_262\library.sqlite.bak-20260930-gpu262-preembed` và các `.bak` staging `262b` / `dc` | 834.904.064 và nhỏ hơn | **GIỮ** — staging GPU, không phải backup index production kiểu `C:\AIOS_habit_index_*`. Không chắc nên dừng. |
+| `C:\AIOS_staging_262`, `262b`, `dc` (file `library.sqlite` đang dùng của staging) | 1.005.621.248 / 57.020.416 / 228.937.728 | **GIỮ** — không phải backup cũ. |
+
+Danh sách đã xóa: không có.
+
+## Bước 5 — `tri_thuc`: bỏ qua
+
+Đúng vé: chưa làm, chờ E2v3 đóng hẳn. `C:\AIOS_p1_4\tri_thuc\library.sqlite` không còn (đã chuyển vào kho production ngày 2026-10-01). Không đụng `collections\tri_thuc` của kho đang chạy.
+
+## Bảng dung lượng
+
+| Bước | Trống trước (byte) | Trống sau (byte) | Thu hồi do xóa |
+| --- | ---: | ---: | ---: |
+| 1 — rác tmp | 6.104.203.264 | 6.104.203.264 | 0 |
+| 2 — venv trùng | cùng mức liệt kê | cùng mức | 0 |
+| 3 — worktree vé 0.3 | cùng mức | cùng mức | 0 |
+| 4 — backup cũ | cùng mức | 4.399.620.096 lúc 20:46:30 | 0 |
+| **Tổng xóa** | 6.104.203.264 | 4.399.620.096 | **0** |
+
+Chỗ trống giảm ~1,59 GiB trong lúc chạy `integrity_check` chỉ đọc và các tiến trình khác ghi tạm. Không có file vé này xóa.
+
+## Cấm — đã giữ
+
+- Kho production `workspace_chat_rag_v2_production`: băm một lần trong phiên, khớp ghim `45eb0e07…b7c0`; mtime vẫn 2026-10-01 08:27:27.
+- Cây model ONNX `models\bge-m3-onnx-fp32`: không mở, không xóa.
+- Ổ D: chỉ đọc tên/size/mtime của `scratch` và tên venv. Không xóa, không sửa.
+
+## Ngoài phạm vi — đề xuất vé riêng, không làm trong vé này
+
+`C:\tmp` còn nhiều thư mục không nằm trong 4 đường bước 1 (checkpoint/worktree tạm ngày 2026-10-01, `uv-cache`, `deep-dev-*` tháng 8, dữ liệu vé cũ). Muốn lấy lại ~8 GB cần vé mới nêu rõ đường được xóa. Không tự nới luật.
+
+---
+
+# Phụ lục — lần dọn 2026-09-29 (đã xong trước vé phát hành lại)
 
 ## Tóm tắt
 
