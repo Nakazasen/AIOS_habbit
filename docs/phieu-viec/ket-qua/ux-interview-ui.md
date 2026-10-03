@@ -103,3 +103,47 @@ markdown kèm marker để UI vẽ widget. Không có mã thì hỏi lại mã l
   cho tới khi hoàn thành).
 - `select_top_k` có ràng buộc cứng (≥1 câu discriminator, phủ 4M) nên số câu
   thực tế có thể nhiều hơn số yêu cầu.
+
+## 6. Verify [NHÀ] — 2026-10-03 16:35–16:50 +07
+
+Máy `h410asrock`, Python `3.11.14` (`.venv`). App thử cổng `8515` (đúng biến môi trường `RUN_AIOS_WORKSPACE_CHAT.bat`, `AIOS_FEATURE_CHAT_ACTION=1`). Không đụng app người dùng cổng `8501`. Sổ `E2EUxApp`. Không sửa code sản phẩm. Không merge `main`.
+
+Cổng gate: watcher tự mở lần 1/4 lúc 16:32:11. SHA vé ghi `4b6b4c2` **không có** trên nhánh. Mã UI thật `ad14a3e` là tổ tiên của HEAD lúc nhận (`f195eb8`). Điều kiện mở đã tới, không chờ thêm 3 lần watcher.
+
+Index production (`local_runs/workspace_chat_rag_v2_production/bge_m3_hybrid/collections/tri_thuc/library.sqlite`): trước và sau giống hệt — size `2552659968`, SHA-256 `062ec090644fb4ec09d2fb6388f3175e988e48d63061b04e6c27bbed334ef8ca`.
+
+### Kết quả từng mục
+
+| Mục | Kết quả | Bằng chứng rút gọn |
+|---|---|---|
+| 1. Mở phiên F000, câu 1 + ô ngay dưới, không đổi màn | **PASS** | `IS-BD970A26`, "Câu 1/3" + 5 ô + "Gửi đáp án" trong bong bóng chat; ô chat vẫn còn |
+| 2. Đáp án thiếu cơ chế bị chặn, không qua câu mới | **PASS** (chữ nhắc hẹp hơn vé) | Vẫn "Câu 1/3". Nhắc: "Còn thiếu phần nguyên nhân — bổ sung rồi gửi lại nhé." Chi tiết nêu thiếu `causal_mechanism`. Không có cụm "/ bằng chứng" vì ô bằng chứng đã điền |
+| 3. Điền đủ → hết câu → "Đã lưu nháp chờ duyệt" + sqlite | **CHƯA ĐẠT phần chữ trên màn** | Sqlite đúng (bên dưới). Màn hình ổn định sau câu cuối: "Phiên phỏng vấn đã hết hạn trong bộ nhớ." Poll 150 ms không thấy cụm "Đã lưu nháp chờ duyệt" |
+| 4. 3 nút chấm; bỏ trống 1 ô bị chặn; đủ thì ghi nhận | **PASS** | "👎 Sai" hiện 3 ô. Lưu thiếu: "Chấm 'sai' thì phải nhập đủ: nguyên nhân thật, nội dung nắn lại." Đủ 3 ô: "Đã ghi nhận đánh giá cho gợi ý này. Cảm ơn chuyên gia." |
+| 5. Hỏi lại việc tương tự thấy dòng lưu ý | **PASS** | "💡 Lưu ý: tình huống này từng bị chê vì “Goi y qua chung, khong noi ro cach nap tai lieu.” — cách đúng là “Chi ro buoc nap file vao so truoc khi hoi tiep.”." đứng trước "💡 Gợi ý 1" |
+| 6. Báo cáo có tỉ lệ lặp lại lỗi | **PASS** | "📉 Tỉ lệ lặp lại lỗi: 0.0% (kỳ 2026-10-03: 1 lượt bị chê, 0 lượt lặp lại) — xu hướng chưa đủ dữ liệu." |
+
+### Sqlite mục 3 (đúng dữ liệu, sai chữ trên màn)
+
+Hai phiên hoàn thành đều ghi 3 đáp án, `reviewer_status` = `cho_chuyen_gia_phan_hoi`:
+
+- `IS-BD970A26` lúc 16:42 +07: `GA-GQ-1-06`, `GA-GQ-1-07`, `GA-GQ-1-13`
+- `IS-B0E4FA28` lúc 16:47 +07: cùng 3 `question_id` (lượt bắt flash, vẫn không thấy câu thành công)
+
+Hiện tượng tra được cho `F000` là chữ `F010` (kho có `F000` trong `raw_json`, không có `error_code_c='F000'`). Phiên vẫn mở đúng lệnh.
+
+### Cổng lệnh
+
+- `compileall src tests`: OK.
+- `pytest` liên quan (`test_chat_interview_ui`, `test_interview_feedback_loop`, `test_suggestion_feedback`, `test_chat_action`, `test_chat_action_agent_report`, `test_agent_report_artifact`): **109 passed**.
+- `uv run --no-sync --group dev python -m aios_habit.cli audit` **không chạy được**: `ModuleNotFoundError: No module named 'aios_habit'` (gói chưa cài vào `.venv`). Chạy lại `PYTHONPATH=src` thì `cli audit` = `"status": "PASS"`, `import aios_habit.workspace_chat_app` được.
+
+### Ghi nhận thêm (không phải lý do dừng chính)
+
+Câu "tiếp theo nên làm gì?" và "báo cáo cải thiện gợi ý" bị gộp thêm mục "Phiên phỏng vấn trong chat / Cho mình mã lỗi để mở phiên phỏng vấn" (caption "Đã xử lý 2 việc" / "3 việc"). Ô chat và nút thumbs cũ vẫn còn, không traceback.
+
+### Kết luận vé
+
+**CHƯA ĐẠT** mục 3 theo chữ vé: app không báo ổn định "Đã lưu nháp chờ duyệt" sau khi trả lời hết; widget báo phiên hết hạn trong bộ nhớ dù sqlite đã ghi. Đặt `cho-muse`. Không tự sửa code.
+
+Dữ liệu test để lại (không commit): `local_cases/staging_enrichment.sqlite` (6 dòng trên), `local_cases/suggestion_feedback.jsonl`, `local_cases/improvement_lessons.jsonl`, hội thoại sổ `E2EUxApp` lúc 16:40 và 16:46. App thử `8515` tắt sau báo cáo. App `8501` không đụng.
