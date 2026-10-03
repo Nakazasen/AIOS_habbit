@@ -130,14 +130,21 @@ def test_split_counts_disjointness_vectors_and_manifest(tmp_path):
     assert manifest["overall"] == "DAT"
 
     # Every document classified into exactly one expected domain.
-    for doc_id, _name, _path, _text, expected in DOCS:
-        assert manifest["documents"][doc_id]["domain"] == expected
+    # d-amb has no keyword signal (confidence 0.0) and lands in the "tong_hop"
+    # fallback block instead of being forced into the error block.
+    expected_d = {doc_id: domain for doc_id, _n, _p, _t, domain in DOCS}
+    expected_d["d-amb"] = "tong_hop"
+    for doc_id, _name, _path, _text, _domain in DOCS:
+        assert manifest["documents"][doc_id]["domain"] == expected_d[doc_id]
 
-    # Chunk totals preserved, documents disjoint across the three blocks.
-    total = sum(manifest["domains"][d]["chunks"] for d in ("lsu", "dieu_tra_loi", "mom"))
+    # Chunk totals preserved, documents disjoint across the four blocks.
+    total = sum(
+        manifest["domains"][d]["chunks"]
+        for d in ("lsu", "dieu_tra_loi", "mom", "tong_hop")
+    )
     assert total == 12
     seen: set[str] = set()
-    for domain in ("lsu", "dieu_tra_loi", "mom"):
+    for domain in ("lsu", "dieu_tra_loi", "mom", "tong_hop"):
         conn = sqlite3.connect(str(out / domain / "library.sqlite"))
         try:
             doc_ids = {r[0] for r in conn.execute("SELECT DISTINCT document_id FROM chunks")}
@@ -314,3 +321,58 @@ def test_dry_run_on_production_path_needs_no_flag(tmp_path):
     out = tmp_path / "out"
     assert split_main(_split_args(source, out, ("--dry-run",))) == 0
     assert not out.exists()
+
+
+# --- Phase A3: tong_hop fallback domain for low-confidence documents ---
+
+
+def test_low_confidence_fallback_marks_manifest_fields(tmp_path):
+    source = tmp_path / "lib" / "library.sqlite"
+    out = tmp_path / "out"
+    _build_fixture_db(source)
+    assert split_main(_split_args(source, out)) == 0
+    manifest = json.loads((out / "domain_manifest.json").read_text(encoding="utf-8"))
+
+    amb = manifest["documents"]["d-amb"]
+    assert amb["domain"] == "tong_hop"
+    assert amb["low_confidence"] is True
+    assert amb["assigned_domain"] == "dieu_tra_loi"  # classifier's original assignment kept
+    assert "Tổng hợp" in amb["reason"]
+
+    for doc_id in ("d-lsu", "d-dtl", "d-mom"):
+        entry = manifest["documents"][doc_id]
+        assert entry["low_confidence"] is False
+        assert entry["assigned_domain"] == entry["domain"]
+    assert manifest["domains"]["tong_hop"]["documents"] == 1
+    assert manifest["domains"]["tong_hop"]["chunks"] == 3
+
+
+def test_no_fallback_domain_flag_keeps_three_blocks(tmp_path):
+    source = tmp_path / "lib" / "library.sqlite"
+    out = tmp_path / "out"
+    _build_fixture_db(source)
+    assert split_main(_split_args(source, out, ("--no-fallback-domain",))) == 0
+    manifest = json.loads((out / "domain_manifest.json").read_text(encoding="utf-8"))
+    assert not (out / "tong_hop").exists()
+    # Old behaviour: the opaque document stays in the classifier's domain.
+    assert manifest["documents"]["d-amb"]["domain"] == "dieu_tra_loi"
+    assert "low_confidence" not in manifest["documents"]["d-amb"]
+    assert manifest["overall"] == "DAT"
+
+
+def test_fallback_threshold_zero_keeps_everything_but_creates_empty_block(tmp_path):
+    source = tmp_path / "lib" / "library.sqlite"
+    out = tmp_path / "out"
+    _build_fixture_db(source)
+    assert split_main(_split_args(source, out, ("--fallback-threshold", "0.0"))) == 0
+    manifest = json.loads((out / "domain_manifest.json").read_text(encoding="utf-8"))
+    # Nothing is below 0.0, so nothing moves, but the empty tong_hop
+    # collection must still be created and verify cleanly.
+    assert manifest["documents"]["d-amb"]["domain"] == "dieu_tra_loi"
+    tong = manifest["domains"]["tong_hop"]
+    assert tong["documents"] == 0
+    assert tong["chunks"] == 0
+    assert manifest["verification"]["tong_hop"]["ok"] is True
+    assert manifest["verification"]["tong_hop"]["checks"]["documents_match"] is True
+    assert manifest["overall"] == "DAT"
+    assert manifest["verification"]["cross_domain"]["ok"] is True

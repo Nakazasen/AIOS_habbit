@@ -2,12 +2,19 @@
 
 Reads the source database strictly read-only, classifies every document with
 ``aios_habit.index_domain.classify_document`` (each document lands in exactly
-one domain, none are dropped), then copies the filtered tables into three new
-collections::
+one domain, none are dropped), then copies the filtered tables into one new
+collection per domain::
 
     <out>/lsu/library.sqlite
     <out>/dieu_tra_loi/library.sqlite
     <out>/mom/library.sqlite
+    <out>/tong_hop/library.sqlite
+
+Documents whose final confidence stays below the fallback threshold are not
+forced into the three main blocks: they go to the ``tong_hop`` ("Tổng hợp")
+fallback collection with ``low_confidence=True`` in the manifest, keeping the
+classifier's original assignment in ``assigned_domain`` for audit. Use
+``--no-fallback-domain`` to keep the old three-block behaviour.
 
 Chunk vectors are copied as-is (dense + sparse + multivector); nothing is
 re-embedded. A ``domain_manifest.json`` records every document's domain,
@@ -44,6 +51,24 @@ EMBEDDING_TABLES = (
 LEDGER_TABLE = "source_preparation_ledger"
 MANIFEST_NAME = "domain_manifest.json"
 PRODUCTION_PATH_MARKER = "workspace_chat_rag_v2_production"
+
+# Fallback collection for documents the classifier cannot place confidently.
+# Low-signal documents (lost original filenames, OCR-less images, mail blobs)
+# are parked here instead of being forced into a main block they do not
+# belong to. The manifest keeps the classifier's original assignment so the
+# decision stays auditable.
+FALLBACK_DOMAIN_ID = "tong_hop"
+FALLBACK_DOMAIN_DISPLAY = "Tổng hợp"
+
+
+def _domain_display(domain: str) -> str:
+    return DOMAIN_DISPLAY.get(domain, FALLBACK_DOMAIN_DISPLAY)
+
+
+def _split_domains(no_fallback_domain: bool) -> tuple[str, ...]:
+    if no_fallback_domain:
+        return DOMAINS
+    return DOMAINS + (FALLBACK_DOMAIN_ID,)
 
 
 def _quote_identifier(name: str) -> str:
@@ -272,6 +297,33 @@ def apply_centroid_fallback(
     return manifest
 
 
+def apply_low_confidence_fallback(
+    manifest: dict[str, dict],
+    threshold: float,
+) -> dict[str, dict]:
+    """Move sub-threshold documents into the ``tong_hop`` fallback domain.
+
+    Every manifest entry is preserved -- no document is dropped. Entries with
+    confidence strictly below ``threshold`` are reassigned to the fallback
+    domain with ``low_confidence=True``; the classifier's original domain
+    stays in ``assigned_domain`` and the reason line records the move.
+    Entries at or above the threshold get ``low_confidence=False`` with
+    ``assigned_domain`` equal to ``domain``.
+    """
+    for entry in manifest.values():
+        original = entry["domain"]
+        low = entry["confidence"] < threshold
+        entry["assigned_domain"] = original
+        entry["low_confidence"] = bool(low)
+        if low:
+            entry["domain"] = FALLBACK_DOMAIN_ID
+            entry["reason"] = (
+                "%s | chuyển sang khối Tổng hợp: độ tin cậy %.3f < %.2f (khối gán gốc: %s)"
+                % (entry["reason"], entry["confidence"], threshold, _domain_display(original))
+            )
+    return manifest
+
+
 def _table_columns(conn: sqlite3.Connection, table: str) -> dict[str, str]:
     return {
         str(row[1]): str(row[2] or "")
@@ -319,6 +371,11 @@ def _copy_domain_tables(
             "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'"
         ).fetchall()
     }
+    if not domain_doc_ids:
+        # Empty block (e.g. nobody fell below the fallback threshold): still a
+        # valid collection, just nothing to copy. "IN ()" is a syntax error,
+        # so skip the inserts entirely.
+        return {"chunks": 0}
     placeholders = ",".join("?" for _ in domain_doc_ids)
     copied: dict[str, int] = {}
 
@@ -371,7 +428,8 @@ def _verify_domain(
     report["documents"] = len(target_docs)
 
     # No vector row may be lost: every chunk keeps at least as many dense /
-    # sparse / multivector rows as it had in the source.
+    # sparse / multivector rows as it had in the source. Skipped for an empty
+    # block ("IN ()" would be a syntax error; there is nothing to lose).
     chunk_ids = [str(row[0]) for row in target.execute("SELECT chunk_id FROM chunks").fetchall()]
     placeholders = ",".join("?" for _ in chunk_ids)
     lost: list[str] = []
@@ -410,39 +468,54 @@ def _verify_domain(
     return report
 
 
-def _print_distribution(manifest: dict[str, dict], low_threshold: float) -> None:
-    by_domain: dict[str, list[dict]] = {d: [] for d in DOMAINS}
+def _print_distribution(
+    manifest: dict[str, dict],
+    low_threshold: float,
+    domains: tuple[str, ...] = DOMAINS,
+) -> None:
+    by_domain: dict[str, list[dict]] = {d: [] for d in domains}
     for doc_id, entry in manifest.items():
         by_domain[entry["domain"]].append(entry)
     print("Phân bố tài liệu theo lĩnh vực:")
     print("  %-14s %8s %10s %12s" % ("lĩnh vực", "tài liệu", "chunk", "độ tin cậy TB"))
-    for domain in DOMAINS:
+    for domain in domains:
         entries = by_domain[domain]
         chunks = sum(e["chunk_count"] for e in entries)
         avg_conf = sum(e["confidence"] for e in entries) / len(entries) if entries else 0.0
-        print("  %-14s %8d %10d %12.3f" % (DOMAIN_DISPLAY[domain], len(entries), chunks, avg_conf))
+        print("  %-14s %8d %10d %12.3f" % (_domain_display(domain), len(entries), chunks, avg_conf))
     low = sorted(
         ((doc_id, e) for doc_id, e in manifest.items() if e["confidence"] < low_threshold),
         key=lambda item: item[1]["confidence"],
     )
     print("\nTài liệu độ tin cậy thấp (< %.2f): %d" % (low_threshold, len(low)))
     for doc_id, entry in low[:50]:
-        print("  - %s | %s | %.3f | %s" % (doc_id, DOMAIN_DISPLAY[entry["domain"]], entry["confidence"], entry["source_name"]))
+        print("  - %s | %s | %.3f | %s" % (doc_id, _domain_display(entry["domain"]), entry["confidence"], entry["source_name"]))
     if len(low) > 50:
         print("  ... và %d tài liệu nữa (xem manifest)" % (len(low) - 50))
 
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        description="Tách library.sqlite thành 3 kho theo lĩnh vực (LSU / Điều tra lỗi / MOM).",
+        description="Tách library.sqlite thành các kho theo lĩnh vực (LSU / Điều tra lỗi / MOM / Tổng hợp).",
     )
     parser.add_argument("--source", required=True, help="Đường dẫn library.sqlite nguồn (chỉ đọc).")
-    parser.add_argument("--out", required=True, help="Thư mục gốc chứa 3 kho mới.")
+    parser.add_argument("--out", required=True, help="Thư mục gốc chứa các kho mới.")
     parser.add_argument("--dry-run", action="store_true", help="Chỉ in phân bố, không ghi file.")
     parser.add_argument("--ledger-db", default=None, help="DB có bảng source_preparation_ledger (tùy chọn).")
     parser.add_argument("--sample-chunks", type=int, default=3, help="Số chunk đầu mỗi tài liệu dùng phân loại.")
     parser.add_argument("--sample-chars", type=int, default=6000, help="Số ký tự tối đa của mẫu văn bản.")
     parser.add_argument("--low-threshold", type=float, default=CONFIDENCE_LOW_THRESHOLD)
+    parser.add_argument(
+        "--fallback-threshold",
+        type=float,
+        default=CONFIDENCE_LOW_THRESHOLD,
+        help="Tài liệu độ tin cậy dưới ngưỡng này vào khối dự phòng Tổng hợp (mặc định %.2f)." % CONFIDENCE_LOW_THRESHOLD,
+    )
+    parser.add_argument(
+        "--no-fallback-domain",
+        action="store_true",
+        help="Không dùng khối dự phòng Tổng hợp (giữ hành vi 3 khối cũ).",
+    )
     parser.add_argument("--overwrite", action="store_true", help="Ghi đè kho đích đã tồn tại.")
     parser.add_argument(
         "--allow-production",
@@ -477,11 +550,17 @@ def main(argv: list[str] | None = None) -> int:
         # Vector fallback: reassign keyword-missed documents by nearest
         # domain centroid (dense vectors already in the DB, no re-embedding).
         manifest_docs = apply_centroid_fallback(source_conn, manifest_docs)
+        # Fallback domain: park sub-threshold documents in "tong_hop" instead
+        # of forcing them into a main block they do not belong to.
+        if not args.no_fallback_domain:
+            manifest_docs = apply_low_confidence_fallback(manifest_docs, args.fallback_threshold)
     finally:
         source_conn.close()
 
+    split_domains = _split_domains(args.no_fallback_domain)
+
     if args.dry_run:
-        _print_distribution(manifest_docs, args.low_threshold)
+        _print_distribution(manifest_docs, args.low_threshold, split_domains)
         print("\nChế độ dry-run: không ghi file nào.")
         return 0
 
@@ -495,7 +574,7 @@ def main(argv: list[str] | None = None) -> int:
         )
         return 2
 
-    by_domain: dict[str, list[str]] = {d: [] for d in DOMAINS}
+    by_domain: dict[str, list[str]] = {d: [] for d in split_domains}
     for doc_id, entry in manifest_docs.items():
         by_domain[entry["domain"]].append(doc_id)
 
@@ -516,7 +595,7 @@ def main(argv: list[str] | None = None) -> int:
     finally:
         src_probe.close()
 
-    for domain in DOMAINS:
+    for domain in split_domains:
         doc_ids = sorted(by_domain[domain])
         target_dir = out_root / domain
         target_db = target_dir / "library.sqlite"
@@ -526,7 +605,7 @@ def main(argv: list[str] | None = None) -> int:
         target_dir.mkdir(parents=True, exist_ok=True)
         if target_db.exists():
             target_db.unlink()
-        print("Đang tách kho %s: %d tài liệu..." % (DOMAIN_DISPLAY[domain], len(doc_ids)))
+        print("Đang tách kho %s: %d tài liệu..." % (_domain_display(domain), len(doc_ids)))
 
         target = sqlite3.connect(str(target_db), timeout=60.0)
         try:
@@ -549,7 +628,7 @@ def main(argv: list[str] | None = None) -> int:
 
         verification[domain] = report
         copied_tables = set(copied) | {"chunks_fts"}
-        if domain == DOMAINS[0]:
+        if domain == split_domains[0]:
             fts_shadow = {t for t in source_tables if t.startswith("chunks_fts_")}
             skipped_tables = sorted(
                 t
@@ -563,13 +642,16 @@ def main(argv: list[str] | None = None) -> int:
             "copied_tables": copied,
         }
         status = "ĐẠT" if report["ok"] else "CHƯA ĐẠT"
-        print("  %s: %d tài liệu, %d chunk — tự kiểm: %s" % (DOMAIN_DISPLAY[domain], report["documents"], report["chunks"], status))
+        print("  %s: %d tài liệu, %d chunk — tự kiểm: %s" % (_domain_display(domain), report["documents"], report["chunks"], status))
         overall_ok = overall_ok and report["ok"]
 
     # Cross-domain checks: chunk totals and document disjointness.
-    chunk_sum = sum(domain_stats[d]["chunks"] for d in DOMAINS)
-    doc_sets = [set(by_domain[d]) for d in DOMAINS]
-    overlap = (doc_sets[0] & doc_sets[1]) | (doc_sets[0] & doc_sets[2]) | (doc_sets[1] & doc_sets[2])
+    chunk_sum = sum(domain_stats[d]["chunks"] for d in split_domains)
+    doc_sets = [set(by_domain[d]) for d in split_domains]
+    overlap: set[str] = set()
+    for i in range(len(doc_sets)):
+        for j in range(i + 1, len(doc_sets)):
+            overlap |= doc_sets[i] & doc_sets[j]
     cross_ok = chunk_sum == total_chunks and not overlap and sum(len(s) for s in doc_sets) == len(manifest_docs)
     verification["cross_domain"] = {
         "ok": bool(cross_ok),
