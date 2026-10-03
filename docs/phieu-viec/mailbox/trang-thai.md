@@ -1,6 +1,6 @@
-# Trạng thái mailbox
+﻿# Trạng thái mailbox
 
-- Trạng thái: `moi`
+- Trạng thái: `cho-muse`
 - Ticket hiện tại: `UX-CHAT-CORE-FIX1` — [VM] Muse code+test trên VM → [NHÀ] OMP verify trên app thật: sửa 5 điểm chặn sau verify lần 1 (câu gộp đa ý định chỉ chạy ý đầu, biểu đồ CSV mất cả phân tích khi thiếu matplotlib, cờ chat_action tắt khi mở app bằng .bat thường, thiếu danh sách báo lỗi ảo đã sửa, test cũ bám UI đã bỏ).
 - `prompt`: `docs/phieu-viec/mailbox/prompt.md`
 - `ghi_chu` (verdict Muse): 2026-10-03 ~12:00 +07 — **CHƯA ĐẠT** (báo cáo `9142fff`, Muse verify độc lập code trên nhánh). Giữ phần đạt: bỏ radio "Điều hướng", dòng trạng thái sổ 1 dòng, cảnh báo ngưỡng + SMA(20) đúng trên app thật, py_compile 3.11 + compileall + audit PASS, index production không đổi. 5 điểm chặn có bằng chứng code: (1) `classify_intent` chỉ trả 1 ý định, `_dieu_huong_chat_first` return True sau ý đầu → câu gộp chỉ chạy cảnh báo ngưỡng; (2) cờ `AIOS_FEATURE_CHAT_ACTION` tắt + .bat không bật → đường dán log không chạy khi mở app thường; (3) `_analyze_csv_block` gọi `_draw_line_chart` (import matplotlib trong hàm, không try/except) → thiếu matplotlib thì mất cả bảng thống kê; (4) pytest 48 failed / 3793 passed / 19 errors (3 test CSV matplotlib + test UI cũ + tên hàm cũ); (5) chưa có danh sách báo lỗi ảo đã sửa. Đã viết vé sửa UX-CHAT-CORE-FIX1; hàng chờ giữ nguyên thứ tự.
@@ -14,3 +14,5 @@
   5. `DON-O-C` (`prompt-queue-don-o-c.md`) — [NHÀ] dọn ổ C (rác tmp → venv trùng → worktree → backup cũ sau kiểm toàn vẹn); XÓA BACKUP phải có danh sách GB từng mục để user gật trước khi xóa.
 
 - `ghi_chu` (Muse): 2026-10-03 ~07:20 +07 — user quyết đổi provider (không chờ cầu nối). Phát hành vé PROVIDER-SWITCH: thứ tự probe cầu nối → sửa khóa Router → resume batch. Giữ nguyên rào bản thảo/không nhập kho.
+- `ghi_chu`: 2026-10-03 12:33 watcher auto-escalate: 4 lan tu mo OMP (moi lan cach ~10 phut) ma mailbox khong tien trien. Chuyen sang cho-muse de Muse xu ly. Ticket: `UX-CHAT-CORE-FIX1` — [VM] Muse code+test trên VM → [NHÀ] OMP verify trên app thật: sửa 5 điểm chặn sau verify lần 1 (câu gộp đa ý định chỉ chạy ý đầu, biểu đồ CSV mất cả phân tích khi thiếu matplotlib, cờ chat_action tắt khi mở app bằng .bat thường, thiếu danh sách báo lỗi ảo đã sửa, test cũ bám UI đã bỏ).
+
