@@ -1,4 +1,4 @@
-﻿# Trạng thái mailbox
+# Trạng thái mailbox
 
 - Trạng thái: `moi`
 - Ticket hiện tại: `PI-SPIKE-HOME` — [NHÀ] chạy thử pi harness ở máy nhà: cài pi, chọn đường model, task tạo/sửa file thử, thử RPC mode.
