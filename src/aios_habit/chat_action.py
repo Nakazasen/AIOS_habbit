@@ -50,6 +50,10 @@ BUILTIN_ACTION_MODULES: Tuple[str, ...] = (
     # Report agent: "lap bao cao dieu tra cho ca <ma>" must outrank both the
     # Buoc 3 plan hints ("4m", ...) and the bare-code lookup fallback below.
     "aios_habit.chat_action_bao_cao_dieu_tra",
+    # UX-AGENT-REPORT: tao/sua bao cao .docx/.pptx/.md bang loi trong chat.
+    # Dang ky sau bao_cao_dieu_tra de lenh "bao cao dieu tra" ve dung action
+    # chuyen biet (handler tu nhuong khi gap "dieu tra").
+    "aios_habit.chat_action_agent_report",
     # B3: investigation-plan commands outrank the bare-code lookup fallback.
     "aios_habit.chat_action_dieu_tra",
     # B2: explicit feedback commands outrank the bare-code lookup fallback,

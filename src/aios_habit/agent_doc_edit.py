@@ -11,8 +11,14 @@ Nguyen tac:
 Operations:
 - {"op": "append_text", "text": "..."}            (md/txt: noi vao cuoi)
 - {"op": "replace", "old": "...", "new": "...", "count": 1}
+- {"op": "insert_under_heading", "heading": "...", "text": "..."}  (md/txt:
+  chen duoi de muc khop)
 - {"op": "append_paragraph", "text": "..."}        (docx)
 - {"op": "append_slide", "title": "...", "bullets": ["..."]}  (pptx)
+- {"op": "append_to_slide", "slide": 3, "text": "..."}         (pptx: them vao
+  slide theo so thu tu 1-based)
+- {"op": "append_to_slide", "slide_title": "...", "text": "..."}  (pptx: them
+  vao slide co tieu de chua cum tu)
 
 Tuong thich Python 3.11.
 """
@@ -101,6 +107,38 @@ def _apply_text_ops(target: Path, operations: List[Dict[str, Any]]) -> int:
             if occurrences == 0:
                 raise ValueError(f"Không tìm thấy đoạn cần thay: {old[:60]!r}.")
             text = text.replace(old, new, int(count) if int(count) > 0 else occurrences)
+            applied += 1
+        elif kind == "insert_under_heading":
+            heading = str(op.get("heading", "")).strip()
+            addition = str(op.get("text", ""))
+            if not heading:
+                raise ValueError("Thiếu 'heading' cho thao tác insert_under_heading.")
+            lines = text.split("\n")
+            target_idx = -1
+            target_level = 0
+            for i, line in enumerate(lines):
+                stripped = line.lstrip()
+                if not stripped.startswith("#"):
+                    continue
+                level = len(stripped) - len(stripped.lstrip("#"))
+                title = stripped[level:].strip()
+                if title.lower() == heading.lower():
+                    target_idx = i
+                    target_level = level
+                    break
+            if target_idx < 0:
+                raise ValueError(f"Không tìm thấy đề mục: {heading[:60]!r}.")
+            insert_at = len(lines)
+            for i in range(target_idx + 1, len(lines)):
+                stripped = lines[i].lstrip()
+                if stripped.startswith("#"):
+                    level = len(stripped) - len(stripped.lstrip("#"))
+                    if level <= target_level:
+                        insert_at = i
+                        break
+            block = addition if addition.endswith("\n") else addition + "\n"
+            lines.insert(insert_at, block.rstrip("\n"))
+            text = "\n".join(lines)
             applied += 1
         else:
             raise ValueError(f"Thao tác không hỗ trợ cho text: {kind}.")
@@ -191,6 +229,56 @@ def _apply_pptx_ops(target: Path, operations: List[Dict[str, Any]]) -> int:
                                 replaced += 1
             if replaced == 0:
                 raise ValueError(f"Không tìm thấy đoạn cần thay: {old[:60]!r}.")
+            applied += 1
+        elif kind == "append_to_slide":
+            text_add = str(op.get("text", ""))
+            if not text_add:
+                raise ValueError("Thiếu 'text' cho thao tác append_to_slide.")
+            slide_ref = op.get("slide")
+            slide_title = str(op.get("slide_title", "") or "").strip().lower()
+            chosen = None
+            if slide_ref is not None:
+                try:
+                    index = int(slide_ref) - 1
+                except (TypeError, ValueError):
+                    raise ValueError("Số slide phải là số nguyên (bắt đầu từ 1).")
+                if index < 0 or index >= len(presentation.slides):
+                    raise ValueError(
+                        "Slide %s không tồn tại (file có %d slide)."
+                        % (slide_ref, len(presentation.slides))
+                    )
+                chosen = presentation.slides[index]
+            elif slide_title:
+                for slide in presentation.slides:
+                    hay = " ".join(
+                        shape.text
+                        for shape in slide.shapes
+                        if shape.has_text_frame
+                    ).lower()
+                    if slide_title in hay:
+                        chosen = slide
+                        break
+                if chosen is None:
+                    raise ValueError(
+                        "Không tìm thấy slide chứa: %r." % op.get("slide_title")
+                    )
+            else:
+                raise ValueError("Thiếu 'slide' hoặc 'slide_title' cho append_to_slide.")
+            placed = False
+            for shape in _iter_text_shapes(chosen):
+                if shape == chosen.shapes.title:
+                    continue
+                frame = shape.text_frame
+                para = frame.add_paragraph()
+                para.text = text_add
+                para.level = 0
+                placed = True
+                break
+            if not placed:
+                box = chosen.shapes.add_textbox(
+                    Inches(0.5), Inches(1.5), Inches(9), Inches(2)
+                )
+                box.text_frame.text = text_add
             applied += 1
         else:
             raise ValueError(f"Thao tác không hỗ trợ cho pptx: {kind}.")

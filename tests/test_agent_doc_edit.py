@@ -117,6 +117,66 @@ def test_pptx_create_append_slide(tmp_path):
     assert "Tieu de" in all_text and "y 1" in all_text
 
 
+def test_insert_under_heading_md(tmp_path):
+    target = tmp_path / "b.md"
+    target.write_text(
+        "# Báo cáo\n\n## Mở đầu\nChào.\n\n## Kết luận\nXong.\n", encoding="utf-8"
+    )
+    result = edit_document(
+        target,
+        [{"op": "insert_under_heading", "heading": "Kết luận", "text": "Line 1 đạt 98%."}],
+    )
+    assert result["ok"] is True
+    text = target.read_text(encoding="utf-8")
+    assert "Line 1 đạt 98%." in text
+    assert text.index("Line 1 đạt 98%.") > text.index("## Kết luận")
+    assert text.index("## Mở đầu") < text.index("Chào.")
+
+
+def test_insert_under_heading_missing_fails_and_keeps_backup(tmp_path):
+    target = tmp_path / "b.md"
+    target.write_text("# T\nNội dung.\n", encoding="utf-8")
+    result = edit_document(
+        target, [{"op": "insert_under_heading", "heading": "Không có", "text": "x"}]
+    )
+    assert result["ok"] is False
+    assert "đề mục" in result["error_vi"]
+    assert target.read_text(encoding="utf-8") == "# T\nNội dung.\n"
+
+
+def test_pptx_append_to_slide_by_number(tmp_path):
+    pytest.importorskip("pptx")
+    target = tmp_path / "sl2.pptx"
+    edit_document(target, [{"op": "append_slide", "title": "Một"}], create=True)
+    edit_document(target, [{"op": "append_slide", "title": "Hai"}], create=True)
+    result = edit_document(
+        target, [{"op": "append_to_slide", "slide": 2, "text": "Thêm vào slide 2"}]
+    )
+    assert result["ok"] is True
+    from pptx import Presentation
+
+    prs = Presentation(str(target))
+    texts = [
+        shape.text for shape in prs.slides[1].shapes if shape.has_text_frame
+    ]
+    assert any("Thêm vào slide 2" in t for t in texts)
+    texts_slide1 = [
+        shape.text for shape in prs.slides[0].shapes if shape.has_text_frame
+    ]
+    assert not any("Thêm vào slide 2" in t for t in texts_slide1)
+
+
+def test_pptx_append_to_slide_bad_number_fails(tmp_path):
+    pytest.importorskip("pptx")
+    target = tmp_path / "sl3.pptx"
+    edit_document(target, [{"op": "append_slide", "title": "Một"}], create=True)
+    result = edit_document(
+        target, [{"op": "append_to_slide", "slide": 9, "text": "x"}]
+    )
+    assert result["ok"] is False
+    assert "Slide" in result["error_vi"]
+
+
 def test_pptx_backup_before_overwrite(tmp_path):
     pytest.importorskip("pptx")
     target = tmp_path / "sl.pptx"
