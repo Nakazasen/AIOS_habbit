@@ -1,25 +1,34 @@
-# Vé: UX-AGENT-REPORT — agent sửa/tạo báo cáo bằng lời trong chat
+# Vé: UX-E2E-APP — kiểm thử đầu-cuối app thật sau loạt UX mới
 
-Lane: [VM] Muse code+test trên VM → [NHÀ] OMP verify trên app thật. Không merge `main`; code tương thích Python 3.11; không force-push.
+Lane: [NHÀ] OMP chạy E2E trên app thật (máy nhà h410asrock). Không merge `main`; không ghi index production.
 
-## Bối cảnh (user yêu cầu 2026-10-02 ~22:00)
+## Bối cảnh
 
-User muốn: trong chat, ra lệnh bằng lời để agent tạo mới hoặc sửa báo cáo — ví dụ "thêm biểu đồ X vào slide 3", "sửa bảng này thành..." — thay vì mở file sửa tay.
+Đêm 2026-10-03 Muse code xong trên VM một loạt tính năng UX (commit `846713e`, `07913b1`, `82698a5`, `928e242` trên nhánh `phieu-viec/rag-fix1`):
+multi-intent, dán log/CSV vẽ biểu đồ inline, lane AI tự động, nhãn trung thực dải giới hạn,
+feedback câu trả lời trên khung chat, SMA(20) + cảnh báo theo xu hướng, engine sửa docx/pptx/md có backup.
+Cần OMP chạy E2E trên app thật để xác nhận chạy được, trước khi coi là xong.
 
-## Việc Muse làm trên VM
+## Việc OMP làm [NHÀ]
 
-1. **Chat action tạo/sửa báo cáo:** hiểu lệnh bằng lời → tạo mới hoặc mở file báo cáo có sẵn → sửa đúng chỗ user chỉ → trả file đính kèm ngay trong câu trả lời, mở được ngay.
-2. **Định dạng hỗ trợ tối thiểu:** Word (.docx), PowerPoint (.pptx), Markdown. Mọi thao tác sửa file có sẵn phải backup/phiên bản trước khi ghi — cấm ghi đè mất nội dung cũ.
-3. Theo `AGENTS.md` 4.1: phương án UI trình user duyệt trước khi code (ghi vào báo cáo vé, chờ user gật).
-
-## Việc OMP verify [NHÀ]
-
-- Bằng lời trong chat: tạo 1 báo cáo .docx mới từ dữ liệu thật; sửa 1 file .pptx có sẵn (thêm 1 bảng đúng slide user chỉ). File mở được, nội dung đúng chỗ, bản gốc được backup.
-- Báo cáo `docs/phieu-viec/ket-qua/ux-agent-report.md` + `xong-cho-duyet`.
+1. Pull nhánh `phieu-viec/rag-fix1` mới nhất, chạy app Streamlit thật.
+2. Kịch bản E2E (ghi PASS/FAIL từng mục):
+   a. Chat 1 câu 2–3 ý định (ví dụ: "vẽ biểu đồ bowskew JIG-01 và đặt ngưỡng trên 12") → ra đủ kết quả trong một câu trả lời.
+   b. Dán đoạn CSV/log thật → phân tích + biểu đồ hiện ngay trong câu trả lời.
+   c. Lane AI tự chọn (không còn selectbox đổi tay); ngắt cầu nối Gemini thử → lane tự rơi về lane khác, app không báo lỗi ảo.
+   d. Dưới một câu trả lời assistant có hàng thumbs up/down; bấm down → bắt nhập lý do → file `local_cases/answer_feedback.jsonl` có dòng mới.
+   e. Dán dòng log JIG có 1 điểm xấu đơn lẻ → thẻ hiện "Cận biên", có dòng "Xu hướng SMA(20)", KHÔNG đề xuất gửi email cảnh báo.
+   f. Dán 3–4 dòng log xấu liên tiếp → thẻ hiện "Vi phạm" + "Phán đoán nguyên nhân (giả thuyết)" + "Đề xuất điều tra".
+   g. Mở biểu đồ SPC → thấy đường SMA(20) nét đứt tím có nhãn.
+   h. Sidebar: mở "Công cụ nâng cao" (LSU gate) rồi bấm "Hỏi tài liệu" → gate tự đóng, radio hiển thị đúng mục đang chọn.
+3. Ghi thời gian chạy mỗi kịch bản, chụp màn hình mục (g), (e), (f) nếu được.
 
 ## Tiêu chí ĐẠT
 
-- Lệnh bằng lời tạo/sửa đúng vị trí trên cả 3 định dạng (docx/pptx/md).
-- Sửa file có sẵn luôn có backup; không mất nội dung cũ.
-- `compileall` + `pytest` + `cli audit` PASS.
-- Commit riêng trên nhánh `phieu-viec/rag-fix1`, không đụng `main`.
+- 8/8 mục PASS trên app thật; mục nào FAIL ghi rõ log và dừng vé, báo `cho-muse`.
+- Không ghi index production; SHA index nhà không đổi trước/sau.
+- Báo cáo `docs/phieu-viec/ket-qua/ux-e2e-app.md` + `xong-cho-duyet`.
+
+## Tiêu chí CHƯA ĐẠT
+
+- Bất kỳ mục nào FAIL, hoặc app crash/mất kết nối lane mà không tự hồi phục.
