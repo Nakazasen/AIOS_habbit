@@ -1,58 +1,31 @@
-# Vé: UX-AGENT-UI-FIX2-VERIFY — verify lại sau khi Muse vá fallback thẻ đính kèm
+# Vé: INDEX-NGUON-KIEM-KE — kiểm kê document trong index production theo thư mục nguồn (chỉ đọc)
 
-Lane: [NHÀ] OMP verify trên app thật. Không merge `main`; code tương thích Python 3.11; không force-push.
+Lane: [NHÀ] OMP chạy trên máy nhà. TUYỆT ĐỐI chỉ đọc: mở SQLite bằng `mode=ro`, không ingest, không embed, không sửa/ghi bất kỳ file index nào. Không merge `main`.
 
 ## Bối cảnh
 
-- Verify lần 3 **CHƯA ĐẠT** (19:19 +07, `cho-muse`): tạo file đã được
-  (SHA `35b2d708…ea50`, Word mở được trên đĩa), mục 2 Hoàn tác **PASS**
-  (SHA về đúng `0e3ffa4b…bd48`), nhưng **mục 1 FAIL** (nút Tải về vẫn mờ)
-  và **mục 3 FAIL** (Xem toàn văn `.docx` không mờ; cả `.md` và `.docx`
-  báo "không còn trên máy" dù file còn trên đĩa).
-- Nguyên nhân (OMP chẩn đoán, Muse xác nhận độc lập trên code): luồng tạo
-  báo cáo trong chat (`ARE-*`) **không ghi dòng `agent_work_items`**; thẻ
-  đính kèm trong `render_chat_bubble` chỉ bật nút khi
-  `get_agent_work(work_id)` có dòng → `verified_result_path` luôn trống
-  với thẻ ARE-* → nút Tải về tắt, Xem toàn văn báo sai. Vá `ab70e69`
-  đúng với hàm cổng nhưng thẻ không đi tới chỗ đó.
-- Muse đã vá (commit `0a0716f`): trích helper mới `verify_card_result_path`
-  trong `agent_report_artifact.py` — thẻ ưu tiên `result_ref` của dòng việc
-  (luồng orchestrator), **fallback sang kiểm đúng `result_path` ghi trong
-  comment metadata** (luồng ARE-*) bằng cổng an toàn với
-  `allowed_roots=(default_doc_root(),)` — **vẫn chặn `..` và file ngoài
-  gốc** như cũ. Kiểm chứng VM: **63 passed** (5 file test liên quan, gồm
-  4 regression test mới cho helper: ưu tiên dòng việc / fallback comment /
-  chặn traversal + file ngoài gốc / không gì hợp lệ → None), `compileall`
-  OK, `cli audit` PASS, `import aios_habit.workspace_chat_app` được,
-  tương thích Python 3.11.
+User hỏi: dữ liệu 3 nguồn (thư mục LSU trên Drive, file zip "Điều chỉnh"/Điều-tra-lỗi, thư mục MOM) có đang bị trộn chung trong một index production không. Điều tra trên VM cho thấy:
 
-## Việc OMP verify [NHÀ]
+- Index production là MỘT file duy nhất: `C:\AIOS_habit_index_ve03\library.sqlite` (collection `tri_thuc`), ~107k chunk / 889 document.
+- Schema chunk có `source_path`/`source_name`/`document_id` nhưng KHÔNG có trường `domain`; retrieval không lọc theo lĩnh vực kiến thức.
+- Tài liệu MOM đã xác nhận nằm trong index này (báo cáo `MOM_INGEST_KHAO_SAT.md`, `MOM_INGEST_BO_SUNG.md`).
+- Log LSU và `Loi KDTPS.xlsx` nằm trong DB `error_cases` riêng, không phải index RAG — nhưng chưa rõ các file còn lại của 2 nguồn kia.
 
-Điều kiện mở: `0a0716f` là tổ tiên của HEAD
-(`git merge-base --is-ancestor 0a0716f HEAD`). App thử **8515**, đúng biến môi
-trường của `RUN_AIOS_WORKSPACE_CHAT.bat` (kể cả `AIOS_FEATURE_CHAT_ACTION=1`,
-**không** đặt `AIOS_DOC_ROOT` — giữ nguyên để test đúng kịch bản đã lỗi).
-Không đụng app 8501 và cầu nối 8585.
+Cần con số chính xác từ index thật để thiết kế việc tách thành 3 khối.
 
-1. Trong chat, gõ "tạo báo cáo tuan.docx: ..." (nội dung tùy ý): thẻ đính kèm
-   hiện 3 nút; bấm **Tải về** → nút **bấm được**, file `.docx` tải về **mở
-   được ngay bằng Word**, nội dung đúng. (Đây là mục FAIL lần 3.)
-2. Gõ "sửa báo cáo tuan.docx: thêm ..." (file đã có): sau khi sửa, bấm
-   **Hoàn tác** → file trở về đúng nội dung trước khi sửa (so bằng mắt hoặc SHA).
-   (Đã PASS lần 3 — verify nhanh lại để chắc fix không vỡ.)
-3. Tạo báo cáo `.md`: nút **Xem toàn văn** mở/thu gọn được, nội dung đúng;
-   với `.docx`, nút Xem toàn văn **bị mờ** (không bấm được). (Đây là mục FAIL lần 3.)
-4. Ghi SHA index production trước/sau (phải không đổi).
-5. Kiểm cổng: `compileall` + `pytest` các test liên quan
-   (`test_agent_report_artifact.py`, `test_chat_action_agent_report.py`,
-   `test_workspace_chat_ui_copy.py`, `test_workspace_agent_policy.py`)
-   + `cli audit` PASS + import `workspace_chat_app` được, trên Python 3.11.
+## Việc OMP làm
+
+1. Mở `C:\AIOS_habit_index_ve03\library.sqlite` ở chế độ chỉ đọc (`mode=ro`). Ghi lại SHA-256 (hoặc kích thước + mtime) của file TRƯỚC và SAU để chứng minh không bị sửa.
+2. Truy vấn bảng `chunks`: đếm số document phân biệt (`document_id`) và số chunk, NHÓM THEO thư mục nguồn (lấy từ `source_path`, gom theo thư mục gốc cấp 1–2, ví dụ `D:\Sandbox\MOM_QLLSSX_WMS\...`, thư mục LSU, thư mục Điều-tra-lỗi...).
+3. Liệt kê mọi collection khác ngoài `tri_thuc` nếu có (đường dẫn `collections/<id>/`).
+4. Xuất bảng: thư mục nguồn → số document → số chunk. Không cần trích nội dung chunk.
 
 ## Tiêu chí ĐẠT
 
-- Đủ 5 mục trên đều đúng như mô tả; không vỡ thẻ đính kèm loại khác
-  (thẻ interview, thẻ workflow... nếu có trên app 8515).
-- Commit riêng trên nhánh `phieu-viec/rag-fix1`, không đụng `main`.
-- Báo cáo kết quả: bổ sung **mục verify lần 4** vào
-  `docs/phieu-viec/ket-qua/ux-agent-ui-a.md` rồi `xong-cho-duyet`.
-  Nếu còn FAIL → ghi đúng mục + bằng chứng, đặt lại `cho-muse`, không sửa code.
+- Bảng kiểm kê đầy đủ 889 document (hoặc tổng số thực tế tại thời điểm chạy, ghi rõ), khớp tổng chunk với `PRAGMA` đếm độc lập.
+- SHA/kích thước/mtime file index trước = sau (chứng minh chỉ đọc).
+- Báo cáo `docs/phieu-viec/ket-qua/index-nguon-kiem-ke.md` + `xong-cho-duyet`.
+
+## Không làm
+
+- Không ingest/embed/sửa index. Không chạy bất kỳ lệnh ghi nào vào `C:\AIOS_habit_index_ve03\`.
