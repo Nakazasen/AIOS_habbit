@@ -342,7 +342,7 @@ def test_gate_1c_source_library_copy():
     ui_source = Path("src/aios_habit/workspace_chat_ui.py").read_text(encoding="utf-8")
     app_source = Path("src/aios_habit/workspace_chat_app.py").read_text(encoding="utf-8")
     required_ui = [
-        "📚 Thư viện nguồn",
+        "📚 Nguồn tham khảo",
         "Xác nhận xóa nguồn này?",
         "Xác nhận xóa",
         "Đã bật",

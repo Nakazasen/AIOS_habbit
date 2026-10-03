@@ -683,7 +683,6 @@ from aios_habit.workspace_chat_ui import (
     render_chat_bubble,
     render_right_result_panel,
     render_source_library,
-    render_source_library_summary,
     render_document_manager,
     render_preparation_progress_bar,
     render_grouped_evidence_items,
@@ -3132,10 +3131,286 @@ else:
                 safe_rerun()
 
             st.write("---")
-            render_source_library_summary(
-                notebook_count=len(notebook_sources),
-                temporary_count=len(temp_sources),
-                enabled_count=enabled_notebook_count + enabled_temp_count,
+            # Add-source form lives here (moved from under the composer):
+            # one-shot image attach stays in the composer; persistent sources live here.
+            with st.expander(f"＋ {t('add_source_button', locale=current_ui_locale)}", expanded=False):
+                st.caption(t("add_sources_explainer", locale=current_ui_locale))
+                pending_duplicate_upload = st.session_state.get("wsc_pending_duplicate_upload")
+                if pending_duplicate_upload:
+                    duplicate_names = ", ".join(pending_duplicate_upload["duplicates"].keys())
+                    scope_copy = "sổ tài liệu này" if pending_duplicate_upload["target_scope"] == SOURCE_SCOPE_NOTEBOOK else "cuộc trò chuyện này"
+                    st.warning(f"{t('duplicate_source_title_warning', locale=current_ui_locale)}: {duplicate_names}.")
+                    st.caption(t("duplicate_source_help", locale=current_ui_locale))
+                    keep_col, replace_col, cancel_col = st.columns(3)
+                    with keep_col:
+                        if st.button(t("keep_both_versions", locale=current_ui_locale), key=f"wsc_duplicate_keep_{active_conversation.id}", use_container_width=True):
+                            _complete_pending_workspace_upload(pending_duplicate_upload, replace_existing=False)
+                    with replace_col:
+                        if st.button(t("replace_old_version", locale=current_ui_locale), key=f"wsc_duplicate_replace_{active_conversation.id}", type="primary", use_container_width=True):
+                            _complete_pending_workspace_upload(pending_duplicate_upload, replace_existing=True)
+                    with cancel_col:
+                        if st.button(t("cancel_upload", locale=current_ui_locale), key=f"wsc_duplicate_cancel_{active_conversation.id}", use_container_width=True):
+                            st.session_state.pop("wsc_pending_duplicate_upload", None)
+                            safe_rerun()
+
+                tab_quick, tab_paste, tab_upload, tab_folder = st.tabs([
+                    t("tab_quick_paste", locale=current_ui_locale),
+                    t("tab_long_text", locale=current_ui_locale),
+                    t("tab_upload_file", locale=current_ui_locale),
+                    t("tab_folder_import", locale=current_ui_locale),
+                ])
+
+                with tab_quick:
+                    with st.form("quick_paste_form", clear_on_submit=True):
+                        quick_title = st.text_input(t("group_name_optional", locale=current_ui_locale), placeholder=t("group_name_optional", locale=current_ui_locale))
+                        quick_content = st.text_area(t("paste_content_here", locale=current_ui_locale), placeholder=t("paste_content_here", locale=current_ui_locale), height=120)
+                        quick_privacy_choice = render_privacy_choice(f"wsc_quick_privacy_{active_conversation.id}")
+                        quick_save_to_notebook = st.checkbox(t("save_permanently_to_notebook", locale=current_ui_locale), value=True)
+                        if st.form_submit_button(labels["quick_paste_add"]):
+                             if quick_content.strip():
+                                 final_title = quick_title.strip() or f"{t('tab_quick_paste', locale=current_ui_locale)} {datetime.now().strftime('%d/%m %H:%M')}"
+                                 _submit_pasted_source(
+                                     final_title,
+                                     quick_content,
+                                     quick_privacy_choice,
+                                     enable_now=False,
+                                     save_to_notebook=quick_save_to_notebook,
+                                 )
+                             else:
+                                 st.error(t("content_cannot_be_empty", locale=current_ui_locale))
+
+                # Khung dán nhật ký/email/đoạn chat dài
+                with tab_paste:
+                    with st.form("paste_log_form"):
+                        paste_title = st.text_input(t("temp_source_title", locale=current_ui_locale), placeholder=t("temp_source_title", locale=current_ui_locale))
+                        paste_content = st.text_area(t("long_text_content", locale=current_ui_locale), placeholder=t("paste_content_here", locale=current_ui_locale), height=120)
+                        paste_privacy_choice = render_privacy_choice(f"wsc_paste_privacy_{active_conversation.id}")
+                        paste_enable_now = st.checkbox(t("use_content_in_answer", locale=current_ui_locale), value=False)
+                        paste_save_to_notebook = st.checkbox(t("save_permanently_to_notebook", locale=current_ui_locale), value=True, key=f"paste_save_{active_conversation.id}")
+                        if st.form_submit_button(t("btn_add_to_temp_source", locale=current_ui_locale)):
+                            if not paste_content.strip():
+                                st.error(t("content_cannot_be_empty", locale=current_ui_locale))
+                            else:
+                                final_title = paste_title.strip() if paste_title.strip() else f"{t('tab_long_text', locale=current_ui_locale)} {datetime.now().strftime('%H:%M:%S')}"
+                                _submit_pasted_source(
+                                     final_title,
+                                     paste_content,
+                                     paste_privacy_choice,
+                                     enable_now=paste_enable_now,
+                                     save_to_notebook=paste_save_to_notebook,
+                                 )
+
+
+                with tab_upload:
+                    st.write(t("upload_docs_help", locale=current_ui_locale))
+                    st.write(t("upload_multi_docs_help", locale=current_ui_locale))
+                    st.write(t("upload_supported_formats", locale=current_ui_locale))
+                    with st.form(f"wsc_doc_upload_form_{active_conversation.id}"):
+                        uploaded_files = st.file_uploader(
+                            t("select_docs_for_conv", locale=current_ui_locale),
+                            type=["txt", "md", "markdown", "xlsx", "xls", "docx", "pptx", "pdf", "png", "jpg", "jpeg", "webp", "bmp", "tif", "tiff"],
+                            key=f"wsc_doc_upload_{active_conversation.id}_{st.session_state.wsc_upload_version}",
+                            accept_multiple_files=True,
+                        )
+                        doc_privacy_choice = render_privacy_choice(f"wsc_doc_privacy_{active_conversation.id}")
+                        enable_now = st.checkbox(t("use_docs_in_answer", locale=current_ui_locale), value=False)
+                        upload_save_to_notebook = st.checkbox(t("save_permanently_to_notebook", locale=current_ui_locale), value=True, key=f"upload_save_{active_conversation.id}")
+                        if st.form_submit_button(t("btn_read_add_temp_source", locale=current_ui_locale)):
+                            if not uploaded_files:
+                                st.error(t("select_file_before_adding", locale=current_ui_locale))
+                            else:
+                                _submit_workspace_upload(
+                                    uploaded_files,
+                                    doc_privacy_choice,
+                                    enable_now,
+                                    upload_save_to_notebook,
+                                )
+
+                with tab_folder:
+                    st.write(t("folder_path_help", locale=current_ui_locale))
+                    st.caption(t("folder_supported_formats", locale=current_ui_locale))
+
+                    scan_key = f"wsc_folder_scan_{active_conversation.id}"
+                    path_key = f"wsc_folder_path_input_{active_conversation.id}"
+                    rec_key = f"wsc_folder_rec_{active_conversation.id}"
+
+                    col_path, col_picker, col_btn = st.columns([3, 1.2, 1])
+                    # Run the picker before creating the text field so its
+                    # chosen path can safely populate Streamlit state.
+                    with col_picker:
+                        if st.button(t("choose_folder", locale=current_ui_locale), key=f"btn_pick_folder_{active_conversation.id}", use_container_width=True):
+                            chosen_folder, picker_error = choose_local_folder()
+                            if picker_error:
+                                st.session_state.wsc_action_error = safe_vietnamese_ui_message(
+                                    picker_error, "Không thể mở thư mục đã chọn."
+                                )
+                            elif chosen_folder:
+                                st.session_state[path_key] = chosen_folder
+                                st.session_state.pop(scan_key, None)
+                            safe_rerun()
+                    with col_path:
+                        folder_path_input = st.text_input(t("folder_path_input", locale=current_ui_locale), placeholder="D:\\TaiLieu\\DuAn", key=path_key, label_visibility="collapsed")
+                    with col_btn:
+                        folder_recursive = st.checkbox(t("scan_subfolders", locale=current_ui_locale), value=True, key=rec_key)
+                        btn_scan = st.button(t("scan_folder_button", locale=current_ui_locale), key=f"btn_scan_{active_conversation.id}", use_container_width=True)
+
+                    if btn_scan:
+                        if not folder_path_input or not folder_path_input.strip():
+                            st.session_state.pop(scan_key, None)
+                            st.error(t("enter_folder_path_before_scan", locale=current_ui_locale))
+                        else:
+                            scan_res = scan_local_directory(folder_path_input.strip(), recursive=folder_recursive)
+                            st.session_state[scan_key] = scan_res
+
+                    current_scan = st.session_state.get(scan_key)
+                    if current_scan is not None:
+                        if not current_scan.ok:
+                            st.error(
+                                safe_vietnamese_ui_message(
+                                    current_scan.error_message,
+                                    "Không thể quét thư mục đã chọn.",
+                                )
+                            )
+                        else:
+                            mcol1, mcol2, mcol3 = st.columns(3)
+                            with mcol1:
+                                st.metric(t("metric_total_files", locale=current_ui_locale), current_scan.total_files)
+                            with mcol2:
+                                st.metric(
+                                    t("metric_supported_files", locale=current_ui_locale),
+                                    f"{len(current_scan.supported_files)} ({current_scan.formatted_supported_size()})",
+                                )
+                            with mcol3:
+                                st.metric(t("metric_unsupported_skipped", locale=current_ui_locale), len(current_scan.unsupported_files))
+
+                            if current_scan.supported_files:
+                                existing_titles = [source.title for source in notebook_sources] + [source.title for source in temp_sources]
+                                migrated_count = seed_completed_folder_files_from_titles(current_scan.supported_files, existing_titles)
+                                already_imported = count_completed_folder_files(current_scan.supported_files)
+                                if migrated_count:
+                                    st.info(t("folder_migrated_legacy_files", locale=current_ui_locale, count=migrated_count))
+                                if already_imported:
+                                    st.info(t("folder_already_imported", locale=current_ui_locale, count=already_imported))
+                                st.markdown(t("scanned_files_header", locale=current_ui_locale))
+                                table_data = [
+                                    {
+                                        "Tên tập tin": f.filename,
+                                        "Thư mục con / Đường dẫn": f.relative_path,
+                                        "Định dạng": f.extension.upper(),
+                                        "Dung lượng": format_size_bytes(f.size_bytes),
+                                    }
+                                    for f in current_scan.supported_files[:100]
+                                ]
+                                st.dataframe(table_data, use_container_width=True)
+                                if len(current_scan.supported_files) > 100:
+                                    st.caption(f"({t('showing_top_docs', locale=current_ui_locale, count=100, total=len(current_scan.supported_files))})")
+
+                                st.divider()
+                                folder_privacy_choice = render_privacy_choice(f"wsc_folder_privacy_{active_conversation.id}")
+                                folder_enable_now = st.checkbox(t("use_docs_in_answer", locale=current_ui_locale), value=False, key=f"folder_enable_{active_conversation.id}")
+                                folder_save_to_notebook = st.checkbox(t("save_permanently_to_notebook", locale=current_ui_locale), value=True, key=f"folder_save_{active_conversation.id}")
+
+                                import_label = t("import_remaining_files", locale=current_ui_locale) if already_imported else t("import_all_to_notebook", locale=current_ui_locale)
+                                if st.button(import_label, type="primary", key=f"btn_ingest_{active_conversation.id}", use_container_width=True):
+                                    prog_bar = st.progress(0, text=t("start_ingesting_progress", locale=current_ui_locale))
+                                    status_text = st.empty()
+
+                                    def update_progress(current_idx: int, total_count: int, filename: str):
+                                        pct = current_idx / max(total_count, 1)
+                                        prog_bar.progress(
+                                            pct,
+                                            text=t(
+                                                "ingest_processing_progress",
+                                                locale=current_ui_locale,
+                                                current=current_idx,
+                                                total=total_count,
+                                                filename=filename,
+                                            ),
+                                        )
+                                        status_text.caption(f"{t('loading', locale=current_ui_locale)}: {filename}")
+
+                                    batch_summary = ingest_scanned_files_batch(
+                                        files=current_scan.supported_files,
+                                        conversation_id=active_conversation.id,
+                                        privacy_choice=folder_privacy_choice,
+                                        enable_now=folder_enable_now,
+                                        save_to_notebook=folder_save_to_notebook,
+                                        notebook_id=active_nb_id,
+                                        progress_callback=update_progress,
+                                    )
+
+                                    prog_bar.empty()
+                                    status_text.empty()
+
+                                    dest = "vào Sổ tài liệu" if folder_save_to_notebook else "như nguồn tạm"
+                                    if batch_summary.success_count > 0:
+                                        st.session_state.wsc_upload_version += 1
+                                        msg = f"Đã nhập thành công {batch_summary.success_count}/{batch_summary.total_files} tài liệu {dest}."
+                                        if folder_enable_now:
+                                            msg += " Nguồn mới đã được bật cho câu trả lời."
+                                        st.session_state.wsc_action_message = msg
+                                    if batch_summary.skipped_count > 0:
+                                        st.session_state.wsc_action_message = (st.session_state.get("wsc_action_message", "") + f" Đã bỏ qua {batch_summary.skipped_count} file đã nhập.").strip()
+
+                                    if batch_summary.fail_count > 0:
+                                        st.session_state.wsc_action_error = f"Có {batch_summary.fail_count} tài liệu gặp lỗi khi trích xuất."
+
+                                    st.session_state.pop(scan_key, None)
+                                    safe_rerun()
+
+                            else:
+                                st.info(t("no_matching_docs_in_folder", locale=current_ui_locale))
+
+                            log_files = [
+                                item for item in current_scan.unsupported_files
+                                if item.unsupported_reason == LINE_LOG_SCAN_REASON
+                            ]
+                            if log_files:
+                                st.caption(t("line_logs_help", locale=current_ui_locale))
+                                if st.button(
+                                    t("ingest_line_logs_button", locale=current_ui_locale),
+                                    key=f"wsc_ingest_line_logs_{active_conversation.id}",
+                                ):
+                                    from aios_habit.line_log_parser import ingest_line_log_files
+                                    from aios_habit.workspace_chat_models import DEFAULT_COLLECTION_ID
+                                    from aios_habit.workspace_chat_store import load_notebook
+
+                                    notebook = load_notebook(active_nb_id)
+                                    collection_id = (
+                                        getattr(notebook, "collection_id", "") or DEFAULT_COLLECTION_ID
+                                    )
+                                    summary = ingest_line_log_files(
+                                        [item.path for item in log_files],
+                                        collection_id=collection_id,
+                                    )
+                                    if summary.ok:
+                                        st.session_state.wsc_action_message = summary.owner_message
+                                    else:
+                                        st.session_state.wsc_action_error = summary.owner_message
+                                    safe_rerun()
+
+                            if current_scan.unsupported_files:
+                                with st.expander(t("unsupported_files_expander", locale=current_ui_locale, count=len(current_scan.unsupported_files)), expanded=False):
+                                    unsupported_table = [
+                                        {
+                                            "Tên tập tin": f.filename,
+                                            "Đường dẫn": f.relative_path,
+                                            "Định dạng": f.extension or "(không có đuôi)",
+                                            "Lý do": f.unsupported_reason,
+                                        }
+                                        for f in current_scan.unsupported_files[:50]
+                                    ]
+                                    st.dataframe(unsupported_table, use_container_width=True)
+            render_source_library(
+                notebook_sources=notebook_sources,
+                temp_sources=temp_sources,
+                selections_map=selections_map,
+                conversation_id=active_conversation.id,
+                on_toggle_source=on_toggle_source,
+                on_promote_temporary=on_promote_temporary,
+                on_privacy_save=on_privacy_save,
+                on_delete_source=on_delete_source,
+                on_retry_preparation=on_retry_preparation,
                 locale=current_ui_locale,
             )
 
@@ -4682,277 +4957,6 @@ else:
                                     "cancellation_event": cancellation_event,
                                 }
                                 safe_rerun()
-
-                # Phase 2H: Dán nhanh nhiều nguồn (quick multi-source paste)
-                st.write(" ")
-                with st.expander(f"➕ {t('add_sources_expander', locale=current_ui_locale)}", expanded=False):
-                    st.caption(t("add_sources_explainer", locale=current_ui_locale))
-                    pending_duplicate_upload = st.session_state.get("wsc_pending_duplicate_upload")
-                    if pending_duplicate_upload:
-                        duplicate_names = ", ".join(pending_duplicate_upload["duplicates"].keys())
-                        scope_copy = "sổ tài liệu này" if pending_duplicate_upload["target_scope"] == SOURCE_SCOPE_NOTEBOOK else "cuộc trò chuyện này"
-                        st.warning(f"{t('duplicate_source_title_warning', locale=current_ui_locale)}: {duplicate_names}.")
-                        st.caption(t("duplicate_source_help", locale=current_ui_locale))
-                        keep_col, replace_col, cancel_col = st.columns(3)
-                        with keep_col:
-                            if st.button(t("keep_both_versions", locale=current_ui_locale), key=f"wsc_duplicate_keep_{active_conversation.id}", use_container_width=True):
-                                _complete_pending_workspace_upload(pending_duplicate_upload, replace_existing=False)
-                        with replace_col:
-                            if st.button(t("replace_old_version", locale=current_ui_locale), key=f"wsc_duplicate_replace_{active_conversation.id}", type="primary", use_container_width=True):
-                                _complete_pending_workspace_upload(pending_duplicate_upload, replace_existing=True)
-                        with cancel_col:
-                            if st.button(t("cancel_upload", locale=current_ui_locale), key=f"wsc_duplicate_cancel_{active_conversation.id}", use_container_width=True):
-                                st.session_state.pop("wsc_pending_duplicate_upload", None)
-                                safe_rerun()
-
-                    tab_quick, tab_paste, tab_upload, tab_folder = st.tabs([
-                        t("tab_quick_paste", locale=current_ui_locale),
-                        t("tab_long_text", locale=current_ui_locale),
-                        t("tab_upload_file", locale=current_ui_locale),
-                        t("tab_folder_import", locale=current_ui_locale),
-                    ])
-
-                    with tab_quick:
-                        with st.form("quick_paste_form", clear_on_submit=True):
-                            quick_title = st.text_input(t("group_name_optional", locale=current_ui_locale), placeholder=t("group_name_optional", locale=current_ui_locale))
-                            quick_content = st.text_area(t("paste_content_here", locale=current_ui_locale), placeholder=t("paste_content_here", locale=current_ui_locale), height=120)
-                            quick_privacy_choice = render_privacy_choice(f"wsc_quick_privacy_{active_conversation.id}")
-                            quick_save_to_notebook = st.checkbox(t("save_permanently_to_notebook", locale=current_ui_locale), value=True)
-                            if st.form_submit_button(labels["quick_paste_add"]):
-                                 if quick_content.strip():
-                                     final_title = quick_title.strip() or f"{t('tab_quick_paste', locale=current_ui_locale)} {datetime.now().strftime('%d/%m %H:%M')}"
-                                     _submit_pasted_source(
-                                         final_title,
-                                         quick_content,
-                                         quick_privacy_choice,
-                                         enable_now=False,
-                                         save_to_notebook=quick_save_to_notebook,
-                                     )
-                                 else:
-                                     st.error(t("content_cannot_be_empty", locale=current_ui_locale))
-
-                    # Khung dán nhật ký/email/đoạn chat dài
-                    with tab_paste:
-                        with st.form("paste_log_form"):
-                            paste_title = st.text_input(t("temp_source_title", locale=current_ui_locale), placeholder=t("temp_source_title", locale=current_ui_locale))
-                            paste_content = st.text_area(t("long_text_content", locale=current_ui_locale), placeholder=t("paste_content_here", locale=current_ui_locale), height=120)
-                            paste_privacy_choice = render_privacy_choice(f"wsc_paste_privacy_{active_conversation.id}")
-                            paste_enable_now = st.checkbox(t("use_content_in_answer", locale=current_ui_locale), value=False)
-                            paste_save_to_notebook = st.checkbox(t("save_permanently_to_notebook", locale=current_ui_locale), value=True, key=f"paste_save_{active_conversation.id}")
-                            if st.form_submit_button(t("btn_add_to_temp_source", locale=current_ui_locale)):
-                                if not paste_content.strip():
-                                    st.error(t("content_cannot_be_empty", locale=current_ui_locale))
-                                else:
-                                    final_title = paste_title.strip() if paste_title.strip() else f"{t('tab_long_text', locale=current_ui_locale)} {datetime.now().strftime('%H:%M:%S')}"
-                                    _submit_pasted_source(
-                                         final_title,
-                                         paste_content,
-                                         paste_privacy_choice,
-                                         enable_now=paste_enable_now,
-                                         save_to_notebook=paste_save_to_notebook,
-                                     )
-
-
-                    with tab_upload:
-                        st.write(t("upload_docs_help", locale=current_ui_locale))
-                        st.write(t("upload_multi_docs_help", locale=current_ui_locale))
-                        st.write(t("upload_supported_formats", locale=current_ui_locale))
-                        with st.form(f"wsc_doc_upload_form_{active_conversation.id}"):
-                            uploaded_files = st.file_uploader(
-                                t("select_docs_for_conv", locale=current_ui_locale),
-                                type=["txt", "md", "markdown", "xlsx", "xls", "docx", "pptx", "pdf", "png", "jpg", "jpeg", "webp", "bmp", "tif", "tiff"],
-                                key=f"wsc_doc_upload_{active_conversation.id}_{st.session_state.wsc_upload_version}",
-                                accept_multiple_files=True,
-                            )
-                            doc_privacy_choice = render_privacy_choice(f"wsc_doc_privacy_{active_conversation.id}")
-                            enable_now = st.checkbox(t("use_docs_in_answer", locale=current_ui_locale), value=False)
-                            upload_save_to_notebook = st.checkbox(t("save_permanently_to_notebook", locale=current_ui_locale), value=True, key=f"upload_save_{active_conversation.id}")
-                            if st.form_submit_button(t("btn_read_add_temp_source", locale=current_ui_locale)):
-                                if not uploaded_files:
-                                    st.error(t("select_file_before_adding", locale=current_ui_locale))
-                                else:
-                                    _submit_workspace_upload(
-                                        uploaded_files,
-                                        doc_privacy_choice,
-                                        enable_now,
-                                        upload_save_to_notebook,
-                                    )
-
-                    with tab_folder:
-                        st.write(t("folder_path_help", locale=current_ui_locale))
-                        st.caption(t("folder_supported_formats", locale=current_ui_locale))
-
-                        scan_key = f"wsc_folder_scan_{active_conversation.id}"
-                        path_key = f"wsc_folder_path_input_{active_conversation.id}"
-                        rec_key = f"wsc_folder_rec_{active_conversation.id}"
-
-                        col_path, col_picker, col_btn = st.columns([3, 1.2, 1])
-                        # Run the picker before creating the text field so its
-                        # chosen path can safely populate Streamlit state.
-                        with col_picker:
-                            if st.button(t("choose_folder", locale=current_ui_locale), key=f"btn_pick_folder_{active_conversation.id}", use_container_width=True):
-                                chosen_folder, picker_error = choose_local_folder()
-                                if picker_error:
-                                    st.session_state.wsc_action_error = safe_vietnamese_ui_message(
-                                        picker_error, "Không thể mở thư mục đã chọn."
-                                    )
-                                elif chosen_folder:
-                                    st.session_state[path_key] = chosen_folder
-                                    st.session_state.pop(scan_key, None)
-                                safe_rerun()
-                        with col_path:
-                            folder_path_input = st.text_input(t("folder_path_input", locale=current_ui_locale), placeholder="D:\\TaiLieu\\DuAn", key=path_key, label_visibility="collapsed")
-                        with col_btn:
-                            folder_recursive = st.checkbox(t("scan_subfolders", locale=current_ui_locale), value=True, key=rec_key)
-                            btn_scan = st.button(t("scan_folder_button", locale=current_ui_locale), key=f"btn_scan_{active_conversation.id}", use_container_width=True)
-
-                        if btn_scan:
-                            if not folder_path_input or not folder_path_input.strip():
-                                st.session_state.pop(scan_key, None)
-                                st.error(t("enter_folder_path_before_scan", locale=current_ui_locale))
-                            else:
-                                scan_res = scan_local_directory(folder_path_input.strip(), recursive=folder_recursive)
-                                st.session_state[scan_key] = scan_res
-
-                        current_scan = st.session_state.get(scan_key)
-                        if current_scan is not None:
-                            if not current_scan.ok:
-                                st.error(
-                                    safe_vietnamese_ui_message(
-                                        current_scan.error_message,
-                                        "Không thể quét thư mục đã chọn.",
-                                    )
-                                )
-                            else:
-                                mcol1, mcol2, mcol3 = st.columns(3)
-                                with mcol1:
-                                    st.metric(t("metric_total_files", locale=current_ui_locale), current_scan.total_files)
-                                with mcol2:
-                                    st.metric(
-                                        t("metric_supported_files", locale=current_ui_locale),
-                                        f"{len(current_scan.supported_files)} ({current_scan.formatted_supported_size()})",
-                                    )
-                                with mcol3:
-                                    st.metric(t("metric_unsupported_skipped", locale=current_ui_locale), len(current_scan.unsupported_files))
-
-                                if current_scan.supported_files:
-                                    existing_titles = [source.title for source in notebook_sources] + [source.title for source in temp_sources]
-                                    migrated_count = seed_completed_folder_files_from_titles(current_scan.supported_files, existing_titles)
-                                    already_imported = count_completed_folder_files(current_scan.supported_files)
-                                    if migrated_count:
-                                        st.info(t("folder_migrated_legacy_files", locale=current_ui_locale, count=migrated_count))
-                                    if already_imported:
-                                        st.info(t("folder_already_imported", locale=current_ui_locale, count=already_imported))
-                                    st.markdown(t("scanned_files_header", locale=current_ui_locale))
-                                    table_data = [
-                                        {
-                                            "Tên tập tin": f.filename,
-                                            "Thư mục con / Đường dẫn": f.relative_path,
-                                            "Định dạng": f.extension.upper(),
-                                            "Dung lượng": format_size_bytes(f.size_bytes),
-                                        }
-                                        for f in current_scan.supported_files[:100]
-                                    ]
-                                    st.dataframe(table_data, use_container_width=True)
-                                    if len(current_scan.supported_files) > 100:
-                                        st.caption(f"({t('showing_top_docs', locale=current_ui_locale, count=100, total=len(current_scan.supported_files))})")
-
-                                    st.divider()
-                                    folder_privacy_choice = render_privacy_choice(f"wsc_folder_privacy_{active_conversation.id}")
-                                    folder_enable_now = st.checkbox(t("use_docs_in_answer", locale=current_ui_locale), value=False, key=f"folder_enable_{active_conversation.id}")
-                                    folder_save_to_notebook = st.checkbox(t("save_permanently_to_notebook", locale=current_ui_locale), value=True, key=f"folder_save_{active_conversation.id}")
-
-                                    import_label = t("import_remaining_files", locale=current_ui_locale) if already_imported else t("import_all_to_notebook", locale=current_ui_locale)
-                                    if st.button(import_label, type="primary", key=f"btn_ingest_{active_conversation.id}", use_container_width=True):
-                                        prog_bar = st.progress(0, text=t("start_ingesting_progress", locale=current_ui_locale))
-                                        status_text = st.empty()
-
-                                        def update_progress(current_idx: int, total_count: int, filename: str):
-                                            pct = current_idx / max(total_count, 1)
-                                            prog_bar.progress(
-                                                pct,
-                                                text=t(
-                                                    "ingest_processing_progress",
-                                                    locale=current_ui_locale,
-                                                    current=current_idx,
-                                                    total=total_count,
-                                                    filename=filename,
-                                                ),
-                                            )
-                                            status_text.caption(f"{t('loading', locale=current_ui_locale)}: {filename}")
-
-                                        batch_summary = ingest_scanned_files_batch(
-                                            files=current_scan.supported_files,
-                                            conversation_id=active_conversation.id,
-                                            privacy_choice=folder_privacy_choice,
-                                            enable_now=folder_enable_now,
-                                            save_to_notebook=folder_save_to_notebook,
-                                            notebook_id=active_nb_id,
-                                            progress_callback=update_progress,
-                                        )
-
-                                        prog_bar.empty()
-                                        status_text.empty()
-
-                                        dest = "vào Sổ tài liệu" if folder_save_to_notebook else "như nguồn tạm"
-                                        if batch_summary.success_count > 0:
-                                            st.session_state.wsc_upload_version += 1
-                                            msg = f"Đã nhập thành công {batch_summary.success_count}/{batch_summary.total_files} tài liệu {dest}."
-                                            if folder_enable_now:
-                                                msg += " Nguồn mới đã được bật cho câu trả lời."
-                                            st.session_state.wsc_action_message = msg
-                                        if batch_summary.skipped_count > 0:
-                                            st.session_state.wsc_action_message = (st.session_state.get("wsc_action_message", "") + f" Đã bỏ qua {batch_summary.skipped_count} file đã nhập.").strip()
-
-                                        if batch_summary.fail_count > 0:
-                                            st.session_state.wsc_action_error = f"Có {batch_summary.fail_count} tài liệu gặp lỗi khi trích xuất."
-
-                                        st.session_state.pop(scan_key, None)
-                                        safe_rerun()
-
-                                else:
-                                    st.info(t("no_matching_docs_in_folder", locale=current_ui_locale))
-
-                                log_files = [
-                                    item for item in current_scan.unsupported_files
-                                    if item.unsupported_reason == LINE_LOG_SCAN_REASON
-                                ]
-                                if log_files:
-                                    st.caption(t("line_logs_help", locale=current_ui_locale))
-                                    if st.button(
-                                        t("ingest_line_logs_button", locale=current_ui_locale),
-                                        key=f"wsc_ingest_line_logs_{active_conversation.id}",
-                                    ):
-                                        from aios_habit.line_log_parser import ingest_line_log_files
-                                        from aios_habit.workspace_chat_models import DEFAULT_COLLECTION_ID
-                                        from aios_habit.workspace_chat_store import load_notebook
-
-                                        notebook = load_notebook(active_nb_id)
-                                        collection_id = (
-                                            getattr(notebook, "collection_id", "") or DEFAULT_COLLECTION_ID
-                                        )
-                                        summary = ingest_line_log_files(
-                                            [item.path for item in log_files],
-                                            collection_id=collection_id,
-                                        )
-                                        if summary.ok:
-                                            st.session_state.wsc_action_message = summary.owner_message
-                                        else:
-                                            st.session_state.wsc_action_error = summary.owner_message
-                                        safe_rerun()
-
-                                if current_scan.unsupported_files:
-                                    with st.expander(t("unsupported_files_expander", locale=current_ui_locale, count=len(current_scan.unsupported_files)), expanded=False):
-                                        unsupported_table = [
-                                            {
-                                                "Tên tập tin": f.filename,
-                                                "Đường dẫn": f.relative_path,
-                                                "Định dạng": f.extension or "(không có đuôi)",
-                                                "Lý do": f.unsupported_reason,
-                                            }
-                                            for f in current_scan.unsupported_files[:50]
-                                        ]
-                                        st.dataframe(unsupported_table, use_container_width=True)
 
                 current_undo_state = _get_source_undo_state()
                 document_total = len(notebook_sources) + len(temp_sources)

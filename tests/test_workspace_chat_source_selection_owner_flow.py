@@ -175,13 +175,15 @@ def test_rerun_restores_from_store_source_of_truth(mock_streamlit_app):
     # Check that reload gets current selection state
     assert selections_map.get((SOURCE_SCOPE_NOTEBOOK, "src_direct")) is True
 
-def test_source_summary_stays_in_sidebar_and_manager_moves_to_main_chat():
+def test_source_library_lives_in_sidebar_and_manager_stays_in_main_chat():
+    """Sidebar hosts the full source library (NotebookLM pattern); the add-source
+    form moved there too, replacing the old summary-only panel."""
     import ast
     app_path = Path("src/aios_habit/workspace_chat_app.py")
     source = app_path.read_text(encoding="utf-8")
     tree = ast.parse(source)
 
-    target_helpers = {"render_source_library_summary"}
+    target_helpers = {"render_source_library"}
     found_calls = {helper: False for helper in target_helpers}
 
     class SidebarCallChecker(ast.NodeVisitor):
@@ -493,9 +495,11 @@ def test_phase2d_submit_order_save_user_resolve_build_save_assistant_rerun():
 
 def test_phase2d_app_does_not_reparse_xlsx_or_update_source_use_metadata_on_submit():
     source = Path("src/aios_habit/workspace_chat_app.py").read_text(encoding="utf-8")
-    # Phase 2H: AI-first flow uses ask_submitted pattern
+    # Phase 2H: AI-first flow uses ask_submitted pattern.
+    # The add-source form moved to the sidebar; the submit block now ends
+    # where the source undo state is read.
     start = source.index("if ask_submitted")
-    end = source.index("# Phase 2H: Dán nhanh", start)
+    end = source.index("current_undo_state = _get_source_undo_state()", start)
     block = source[start:end]
     assert "extract_xlsx_text" not in block
     assert "openpyxl" not in block

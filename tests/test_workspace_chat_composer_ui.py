@@ -379,3 +379,44 @@ def test_local_fallback_offer_is_not_written_as_a_chat_message() -> None:
     guard_block = source[guard_at:save_at]
     assert 'badge.get("type") == "local_fallback_offered"' in guard_block
     assert "if not is_local_offer:" in guard_block
+
+
+def test_one_shot_attach_label_distinguishes_from_persistent_sources() -> None:
+    """Attach-in-composer is one-shot; its label must say so and point to the sidebar."""
+    source = _app_source()
+    translations = Path("src/aios_habit/i18n.py").read_text(encoding="utf-8")
+
+    assert 'with st.popover(t("attach_popover"' in source
+    assert '"attach_popover": "🖼️ Ảnh cho câu hỏi này"' in translations
+    # Help text states the one-shot lifetime and redirects persistent needs.
+    assert "gửi xong là hết" in translations
+    assert "Nguồn tham khảo" in translations
+
+
+def test_confusing_add_sources_expander_removed_from_composer() -> None:
+    """The old 'Thêm tài liệu/ảnh để AI tham khảo' expander must not sit under the composer."""
+    source = _app_source()
+
+    assert 't("add_sources_expander"' not in source
+
+
+def test_add_source_form_lives_in_sidebar_next_to_source_list() -> None:
+    """Persistent-source adding + toggling live in the sidebar (NotebookLM pattern)."""
+    source = _app_source()
+    translations = Path("src/aios_habit/i18n.py").read_text(encoding="utf-8")
+
+    assert "\"add_source_button\": \"＋ Thêm nguồn\"" in translations
+    assert 't(\'add_source_button\'' in source
+    # Full source list with per-source toggles is rendered (was summary-only before).
+    assert "render_source_library(" in source
+    assert "render_source_library_summary(" not in source
+    # Sidebar panel wires the real management callbacks.
+    assert "on_promote_temporary=on_promote_temporary" in source
+    assert "on_delete_source=on_delete_source" in source
+    assert "on_retry_preparation=on_retry_preparation" in source
+
+
+def test_source_library_renamed_to_nguon_tham_khao() -> None:
+    translations = Path("src/aios_habit/i18n.py").read_text(encoding="utf-8")
+
+    assert '"source_library": "Nguồn tham khảo"' in translations
