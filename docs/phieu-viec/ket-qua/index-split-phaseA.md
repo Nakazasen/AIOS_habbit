@@ -38,7 +38,8 @@
 - `tests/test_split_index_by_domain.py` (6 test): `--dry-run` không ghi file; tách thật trên fixture (đếm khớp, không trùng document, vector đủ, FTS dựng lại, manifest `DAT`); chốt production; chốt ghi đè; manifest liệt kê tài liệu confidence thấp.
 - Tổng: **26 test mới pass**; `tests/test_rag_v2_index.py` (38 test cũ) vẫn pass — cột `domain` không vỡ ingest cũ.
 - `python -m compileall src tests`: OK. `python -m aios_habit.cli audit`: `{"status": "PASS"}`. `import aios_habit.workspace_chat_app`: OK.
-- Full suite `pytest -q`: đang chạy trên VM tại thời điểm viết báo cáo (kết quả cập nhật sau khi xong).
+- Hồi quy có chọn lọc (những test chạy được trên VM): `test_workspace_chat_rag_v2_adapter` + `test_workspace_chat_store` + `test_line_log_parser` (135 test) pass; `test_workspace_chat_source_ingest` pass.
+- Full suite `pytest -q` trên VM: **không chạy sạch được do thiếu dependency nhóm dev** (`nakazasen_ai_router`…) — VM không có `uv`/nhóm dev theo quy ước repo. So sánh base (7824379, chưa có code mới) với nhánh có code mới: cùng **46 failed** (tập fail trùng hệt nhau, đều do thiếu dependency/môi trường), không có fail mới nào do thay đổi này gây ra. Toàn bộ 26 test mới pass trong full run.
 
 ## 3. OMP cần làm ở Phase B (vé `prompt-queue-index-split-home.md`)
 
