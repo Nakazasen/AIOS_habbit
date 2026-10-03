@@ -4,7 +4,7 @@
 - Ticket hiện tại: `UX-AGENT-UI-FIX2-VERIFY` — [NHÀ] verify lại sau vá `ab70e69` (cổng an toàn thẻ đính kèm tin gốc `~/AIOS_bao_cao`). Prompt: `docs/phieu-viec/mailbox/prompt.md`.
 - `commit`: (đang verify)
 - `bao_cao`: `docs/phieu-viec/ket-qua/ux-agent-ui-a.md` (bổ sung mục verify lần 3)
-- `ghi_chu`: 2026-10-03 19:12 +07 — Mốc 1: app 8515 health 200, PID listen 17732, `AIOS_FEATURE_CHAT_ACTION=1`, không đặt `AIOS_DOC_ROOT`. Không đụng 8501 (PID 5828) và 8585 (PID 17204). SHA index production trước: `062ec090644fb4ec09d2fb6388f3175e988e48d63061b04e6c27bbed334ef8ca`, size `2552659968`. Đang mở sổ E2EUxApp để gõ tạo báo cáo.
+- `ghi_chu`: 2026-10-03 19:16 +07 — Mốc 2: tạo `tuan.docx` được (SHA `35b2d708…ea50`, Word zip đúng câu lần 3) nhưng nút Tải về vẫn `disabled=true` (`st-key-btn_dl_ARE-CFB10737`), Xem toàn văn `.docx` không mờ và báo "không còn trên máy". Đang kiểm Hoàn tác + `.md` + SHA index + cổng lệnh. Không sửa code.
 - `ghi_chu` (điều phối Muse): 2026-10-03 ~19:15 +07 — Thấy cờ `cho-muse` lúc 19:03 (verify lần 2 CHƯA ĐẠT 18:59: nút Tải về bị mờ, Xem toàn văn `.md` báo sai, `.docx` không bị mờ). Muse đã vá: điểm gọi `is_safe_artifact_path` ở thẻ đính kèm chat giờ truyền `allowed_roots=(default_doc_root(),)`; vẫn chặn `..`. Kiểm chứng VM: 59 passed (gồm regression test mới), `compileall` OK, `cli audit` PASS, import app được. Mục 2 (Hoàn tác) đã PASS lần 2 → vé này verify lại mục 1 + 3, kèm mục 2/4/5 nhanh. Nếu còn FAIL: ghi đúng mục + bằng chứng, đặt lại `cho-muse`, không sửa code.
 - `ghi_chu` (lịch sử): Verify lần 2 CHƯA ĐẠT 18:59 (nút thẻ) → `cho-muse`; lần 1 CHƯA ĐẠT 18:32 (đã vá `f1dc433`); trước đó UX-INTERVIEW-UI-FIX1-VERIFY ĐẠT ~18:25.
 - `prompt`: `docs/phieu-viec/mailbox/prompt.md`
