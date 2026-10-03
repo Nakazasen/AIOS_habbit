@@ -34,6 +34,9 @@ rem UX-CHAT-CORE-FIX1 (2026-10-03): bat khung chat_action de duong dan log/CSV
 rem trong o chat chay ngay khi mo app bang file nay (mac dinh trong code van
 rem tat de giu che do fail-closed cho cac duong mo app khac).
 set "AIOS_FEATURE_CHAT_ACTION=1"
+rem INDEX-SWITCH-APP (2026-10-03): bat dinh tuyen 3 kho linh vuc.
+rem Xoa dong nay va mo lai app de ve kho tri_thuc cu.
+set "AIOS_DOMAIN_ROUTING_ENABLED=1"
 set STREAMLIT_BROWSER_GATHER_USAGE_STATS=false
 set STREAMLIT_SERVER_FILE_WATCHER_TYPE=none
 set STREAMLIT_SERVER_RUN_ON_SAVE=false

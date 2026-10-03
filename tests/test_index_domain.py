@@ -140,6 +140,59 @@ def test_select_domain_missing_collection_falls_back(monkeypatch):
     assert route.note
 
 
+def test_domain_index_ready_sees_profile_collection_file(tmp_path, monkeypatch):
+    from aios_habit.workspace_chat_rag_v2_adapter import (
+        WorkspaceChatRagV2CanaryConfig,
+        _domain_index_ready,
+    )
+
+    monkeypatch.setattr(
+        "aios_habit.workspace_chat_store.load_collection",
+        lambda collection_id: None,
+    )
+    library = tmp_path / "bge_m3_hybrid" / "collections" / "lsu" / "library.sqlite"
+    library.parent.mkdir(parents=True)
+    library.write_bytes(b"not-a-real-db")
+    config = WorkspaceChatRagV2CanaryConfig(runtime_root=tmp_path)
+    assert _domain_index_ready(config, "lsu") is True
+    assert _domain_index_ready(config, "mom") is False
+
+
+def test_domain_index_ready_follows_storage_root(tmp_path, monkeypatch):
+    from types import SimpleNamespace
+
+    from aios_habit.workspace_chat_rag_v2_adapter import (
+        WorkspaceChatRagV2CanaryConfig,
+        _domain_index_ready,
+    )
+
+    shared = tmp_path / "shared-lsu"
+    library = shared / "aios_thu_vien" / "library.sqlite"
+    library.parent.mkdir(parents=True)
+    library.write_bytes(b"not-a-real-db")
+    monkeypatch.setattr(
+        "aios_habit.workspace_chat_store.load_collection",
+        lambda collection_id: SimpleNamespace(id=collection_id, storage_root=str(shared)),
+    )
+    config = WorkspaceChatRagV2CanaryConfig(runtime_root=tmp_path / "runtime")
+    assert _domain_index_ready(config, "lsu") is True
+
+
+def test_domain_index_ready_empty_storage_root_needs_file(tmp_path, monkeypatch):
+    from types import SimpleNamespace
+
+    from aios_habit.workspace_chat_rag_v2_adapter import (
+        WorkspaceChatRagV2CanaryConfig,
+        _domain_index_ready,
+    )
+
+    monkeypatch.setattr(
+        "aios_habit.workspace_chat_store.load_collection",
+        lambda collection_id: SimpleNamespace(id=collection_id, storage_root=""),
+    )
+    config = WorkspaceChatRagV2CanaryConfig(runtime_root=tmp_path)
+    assert _domain_index_ready(config, "lsu") is False
+
 def _make_ledger_db(path, rows):
     conn = sqlite3.connect(str(path))
     conn.execute(

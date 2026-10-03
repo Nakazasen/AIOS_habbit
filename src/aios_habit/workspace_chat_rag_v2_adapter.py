@@ -2760,15 +2760,48 @@ def _run_profile(
 
     if pipe_config.index_path.is_file():
         try:
-            with sqlite3.connect(pipe_config.index_path) as conn:
-                cursor = conn.cursor()
-                cursor.execute("SELECT DISTINCT document_id FROM chunks")
-                indexed_ids = {row[0] for row in cursor.fetchall()}
-            indexed_specs = [s for s in specs if s.document_id in indexed_ids]
-            if indexed_specs:
+            from aios_habit.rag_v2.pipeline import _file_fingerprint
+
+            uri = "file:" + Path(pipe_config.index_path).resolve().as_posix() + "?mode=ro"
+            with sqlite3.connect(uri, uri=True) as conn:
+                rows = conn.execute(
+                    """
+                    SELECT document_id,
+                           MIN(source_fingerprint) AS min_fp,
+                           MAX(source_fingerprint) AS max_fp
+                    FROM chunks
+                    WHERE retrievable = 1
+                    GROUP BY document_id
+                    HAVING min_fp = max_fp
+                       AND min_fp IS NOT NULL
+                       AND min_fp != ''
+                    """
+                ).fetchall()
+            covered = {str(row[0]): str(row[1]) for row in rows}
+            indexed_specs = []
+            for spec in specs:
+                stored = covered.get(spec.document_id)
+                if not stored:
+                    continue
+                try:
+                    actual = _file_fingerprint(Path(spec.path))
+                except OSError:
+                    continue
+                if actual == stored:
+                    indexed_specs.append(spec)
+            # Domain blocks only contain their own documents. Sending the
+            # notebook's other documents makes the worker fail closed with
+            # semantic_index_coverage_incomplete. Legacy search keeps the old
+            # looser filter so an empty fingerprint match cannot hide the
+            # mixed index.
+            if domain_collection_id:
+                specs = indexed_specs
+            elif indexed_specs:
                 specs = indexed_specs
         except Exception:
             pass
+    if not specs:
+        raise ValueError("no_non_empty_sources")
 
     sem_state, sem_reason = _semantic_readiness(sources, config)
     if sem_state != _PREPARATION_READY_STATE:
@@ -3091,8 +3124,28 @@ def _attach_line_log_evidence(
     return payload
 
 
+def _domain_index_ready(config: WorkspaceChatRagV2CanaryConfig, collection_id: str) -> bool:
+    """Return whether the app can open this collection's library.sqlite.
+
+    Domain split mounts live beside the legacy index at
+    ``<profile>/collections/<id>/library.sqlite`` (including NTFS junctions).
+    A non-empty ``storage_root`` still wins via ``collection_runtime_layout``.
+    A registry row with an empty storage root is not enough: the file must exist.
+    """
+    from aios_habit.workspace_chat_store import collection_runtime_layout
+
+    profile_root = Path(config.runtime_root) / str(config.requested_profile)
+    runtime_root, index_name = collection_runtime_layout(collection_id, profile_root)
+    try:
+        return (Path(runtime_root) / index_name).is_file()
+    except OSError:
+        return False
+
+
 def _select_domain_route(
-    question: str, sources: Tuple["WorkspaceAIContextSource", ...]
+    question: str,
+    sources: Tuple["WorkspaceAIContextSource", ...],
+    config: WorkspaceChatRagV2CanaryConfig,
 ):
     """Pick a domain collection for the question (feature-flagged).
 
@@ -3102,7 +3155,6 @@ def _select_domain_route(
     """
     try:
         from aios_habit import index_domain
-        from aios_habit.workspace_chat_store import load_collection
 
         if not index_domain.domain_routing_enabled():
             return None
@@ -3110,11 +3162,7 @@ def _select_domain_route(
         detected = index_domain.detect_domain_from_question(question)
 
         def _collection_exists(collection_id: str) -> bool:
-            collection = load_collection(collection_id)
-            return (
-                collection is not None
-                and str(getattr(collection, "storage_root", "") or "").strip() != ""
-            )
+            return _domain_index_ready(config, collection_id)
 
         return index_domain.select_domain_collection(
             detected, base_collection_id, collection_exists=_collection_exists
@@ -3187,16 +3235,20 @@ def retrieve_workspace_chat_evidence(
 
     # Domain routing (feature-flagged): detect the question's knowledge domain
     # and search that domain's collection instead of the legacy mixed one.
-    domain_route = _select_domain_route(question, sources)
+    domain_route = _select_domain_route(question, sources, resolved)
     domain_collection_id = (
         domain_route.collection_id
         if domain_route is not None and domain_route.applied
         else None
     )
 
-    # Retrieval may inspect every already-ready source for multi-aspect questions.
-    # Precise operational lookups still use the small lexical window.
-    semantic_sources = _retrieval_source_window(question, sources)
+    # Domain routing already picked one block. Search every ready source that
+    # lives in that block; the narrow lexical window would hide them.
+    semantic_sources = (
+        sources
+        if domain_collection_id
+        else _retrieval_source_window(question, sources)
+    )
 
     # Scope every retrieval lane before it does any potentially expensive work.
     # In particular, an operational Manual question must not inspect (or ask a
