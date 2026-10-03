@@ -1,9 +1,9 @@
 # Trạng thái mailbox
 
-- Trạng thái: `moi`
+- Trạng thái: `dang-lam`
 - Ticket hiện tại: `UX-CHAT-CORE` — [VM] Muse code+test trên VM → [NHÀ] OMP verify trên app thật: chat nhiều ý định, biểu đồ trong chat, hết đổi luồng tay, hết báo lỗi ảo.
 - `prompt`: `docs/phieu-viec/mailbox/prompt.md`
-- `ghi_chu`: 2026-10-03 11:15 +07 — **Kiểm cổng gate vé `UX-CHAT-CORE` (watcher tự mở OMP lần 1/4 lúc 11:11:56, `launchStallCount=1`): điều kiện mở CHƯA tới.** Lane [VM]: chưa có thông báo Muse "code xong" + bảo OMP verify; ghi chú điều phối 11:10 vẫn giao phase [VM] cho Muse trước, gồm phương án UI công khai chờ user gật (AGENTS.md 4.1) — mailbox chưa thấy user gật. Trên nhánh đã có SHA `90d1270` `84fce40` `6190f32` (00:46–00:50) nhưng chưa phải tín hiệu mở chính thức. Phiên này chỉ thêm 1 dòng tiến độ, không đụng 4 trường watcher parse, không đặt `cho-muse`, không nhận vé, không quay no-op.
+- `ghi_chu`: 2026-10-03 11:24 +07 — OMP nhận UX-CHAT-CORE. Gate ĐẠT (watcher LAUNCH 2/4 lúc 11:22:55, không cho-muse): Muse đã đẩy mã `9298ee6` và phụ lục verify `601a3be` bảo kiểm trên app thật. Bắt đầu py_compile 3.11 + test, chưa đụng index production.
 - `commit`: `7aa5218`
 - `bao_cao`: `docs/phieu-viec/ket-qua/ux-chat-core.md`
 - `ghi_chu` (verdict Muse): 2026-10-03 ~11:10 +07 — **ĐẠT** (báo cáo `5269d8c`). Đủ tiêu chí vé PI-SPIKE-HOME: pi 1.0.0; đường sống Gemini Flash Lite, 7 đường chết có lý do; tạo file ĐẠT, sửa file ĐẠT ở lần 2 (lần 1 model hỏi lại nội dung — ghi nhận trung thực); RPC 15 event ổn định 1 lệnh, chưa thử hàng đợi/ngắt giữa chừng; rào giữ (không dữ liệu công ty, không đụng index production, không merge main, telemetry tắt). Digest batch tạm đỗ, checkpoint 847/889 còn nguyên.
