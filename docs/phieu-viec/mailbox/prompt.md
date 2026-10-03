@@ -29,3 +29,18 @@ Trải nghiệm chat hiện tại rất tệ, 4 lỗi cụ thể user liệt kê
 - Test đa ý định (2–3 ý định/câu) pass; test hồi quy 1 ý định/câu vẫn pass.
 - `compileall` + `pytest` + `cli audit` PASS; không ghi index production.
 - Commit riêng trên nhánh `phieu-viec/rag-fix1`, không đụng `main`.
+
+## Phụ lục verify — đại tu vỏ chat V2 (Muse làm trên VM, commit 9298ee6, 2026-10-03)
+
+Ngoài spec gốc, OMP kiểm thêm trên app thật (Streamlit máy nhà):
+
+1. **Radio "Điều hướng" 3 nhánh đã biến mất.** Chỉ còn 1 ô chat + 1 vùng trả lời. Gõ thử các câu sau, chương trình tự điều phối đúng chỗ, không hỏi lại user đang ở nhánh nào:
+   - "cảnh báo khi nhiệt độ vượt 80" → tạo quy tắc cảnh báo (không chui tab)
+   - "tạo sổ BaoCaoTuan" / "mở sổ BaoCaoTuan" → sổ mở ra
+   - câu hỏi tài liệu thường → trả lời RAG như cũ
+2. **Sổ (notebook):** sidebar mỗi sổ chỉ hiện ĐÚNG 1 dòng "Sổ X — sẵn sàng, N tài liệu". Thoát app vào lại: không bắt "chuẩn bị tài liệu" lại, không còn text % khó hiểu.
+3. **Cảnh báo ngưỡng qua chat:** đặt "cảnh báo khi X vượt Y" → quy tắc lưu được; kiểm tra ngay: 1 điểm xấu đơn lẻ KHÔNG báo, có xu hướng vượt ngưỡng mới báo (SMA20).
+4. **Python 3.11:** chạy `py_compile` toàn bộ file mới/sửa trên Python 3.11 máy nhà trước khi đóng vé (VM chỉ có 3.12).
+5. Chụp 2 ảnh màn hình: (a) giao diện chat sau khi bỏ radio, (b) dòng trạng thái sổ. Đính kèm báo cáo.
+
+Rào: không đụng index production, không merge main, không gửi dữ liệu công ty ra ngoài.
