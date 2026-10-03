@@ -68,3 +68,55 @@ sửa nút "Tải về" nhận biết định dạng; không thêm nút mới.
 
 - Muốn xem/sửa tiếp vẫn phải tải về máy — chưa sửa trực tiếp trong chat
   (phương án B để dành theo quyết định của user).
+
+## 6. Verify [NHÀ] — CHƯA ĐẠT, dừng `cho-muse`
+
+Ngày: 2026-10-03 18:21–18:32 +07. Người làm: OMP (máy nhà). Không sửa code. Không merge `main`. Không force-push.
+
+### 6.1 Cổng gate
+
+- Watcher tự mở OMP lần 1/4 lúc 18:19:14 (`launchStallCount=1`). Không phải chuỗi 4 lần. Không dừng vì kẹt cổng.
+- SHA vé ghi `98a2a65` **không có** trên nhánh. Mã Phase A thật `d5d3250` là tổ tiên của HEAD lúc nhận (`7183fef`). File `src/aios_habit/agent_report_artifact.py` có trên HEAD. Điều kiện mở đã tới.
+
+### 6.2 Cách chạy
+
+- Python `3.11.14` (`.venv`).
+- App thử `http://127.0.0.1:8515`, đúng biến môi trường của `RUN_AIOS_WORKSPACE_CHAT.bat`, kể cả `AIOS_FEATURE_CHAT_ACTION=1`. File `.bat` **không** đặt `AIOS_DOC_ROOT`.
+- Không đụng app người dùng cổng `8501` (PID `5828` giữ nguyên). Cầu nối `8585` (PID `17204`) không tắt.
+- Sổ `E2EUxApp`. Hội thoại mới `Cuộc trò chuyện 03/10 18:28`.
+- Gõ đúng câu: `tạo báo cáo tuan.docx: Nội dung verify UX-AGENT-UI. Dòng một để mở bằng Word.` rồi bấm `Hỏi`.
+
+### 6.3 Kết quả
+
+| Mục | Kết quả | Bằng chứng |
+|---|---|---|
+| 1. Tạo `tuan.docx`, thẻ 3 nút, Tải về mở được bằng Word | **FAIL** | App trả: "Tạo / sửa báo cáo — Chưa làm được: Đường dẫn nằm ngoài thư mục làm việc, từ chối." Không có thẻ đính kèm. Không có file `tuan.docx`. |
+| 2. Sửa rồi Hoàn tác | **chưa chạy** | Không có file để sửa. |
+| 3. Nút Xem toàn văn của `.md` / nút mờ của `.docx` | **chưa chạy** | Không có thẻ. |
+| 4. SHA index production | **không đổi** | Trước và sau cùng `062ec090644fb4ec09d2fb6388f3175e988e48d63061b04e6c27bbed334ef8ca`, size `2552659968`. |
+
+Thư mục `C:\\Users\\Admin\\AIOS_bao_cao` được tạo lúc 18:29 và **trống** (không có `tuan.docx`).
+
+### 6.4 Nguyên nhân (để Muse vá, OMP không sửa)
+
+Hai chỗ tính thư mục báo cáo khác nhau khi không có `AIOS_DOC_ROOT`:
+
+- `chat_action_agent_report._default_doc_root()` ghi vào `~/AIOS_bao_cao` (`C:\\Users\\Admin\\AIOS_bao_cao`).
+- `agent_doc_edit._safe_path()` chỉ cho phép đường dẫn nằm trong `cwd` (`D:\\Sandbox\\AIOS_habbit`).
+
+File đích nằm ngoài `cwd` nên `edit_document` ném đúng câu "Đường dẫn nằm ngoài thư mục làm việc, từ chối." App thật mở bằng `.bat` không đặt `AIOS_DOC_ROOT`, nên mục 1 gãy trước khi có thẻ nút.
+
+### 6.5 Cổng lệnh (không cứu mục 1)
+
+- `compileall src tests`: OK.
+- `pytest` `tests/test_agent_report_artifact.py` + `tests/test_chat_action_agent_report.py` + `tests/test_workspace_chat_ui_copy.py`: **52 passed**.
+- `cli audit`: `"status": "PASS"`, `warnings` rỗng.
+- `import aios_habit.workspace_chat_app`: được.
+
+Test đỗ vì test tự đặt `AIOS_DOC_ROOT` vào thư mục tạm. App người dùng không có biến đó.
+
+### 6.6 Kết luận
+
+Vé **CHƯA ĐẠT**. Dừng `cho-muse`. Không đặt `xong-cho-duyet`. Không sửa code.
+
+Đề xuất Muse: hai hàm phải dùng cùng một gốc thư mục (gốc `~/AIOS_bao_cao` khi không đặt `AIOS_DOC_ROOT`, đúng như báo cáo Phase A). Sau khi vá, OMP verify lại 4 mục trên app 8515.
