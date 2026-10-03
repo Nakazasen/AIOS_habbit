@@ -140,6 +140,42 @@ def drop_session(session_id: str) -> None:
 
 
 # ---------------------------------------------------------------------------
+# Completion note that survives st.rerun
+# ---------------------------------------------------------------------------
+
+
+def _completed_message_key(session_id: str) -> str:
+    return "wsc_iv_completed_" + re.sub(r"\W+", "_", str(session_id or ""))
+
+
+def _remember_completion(st: Any, session_id: str, message: str) -> None:
+    """Keep the success note in session_state so it survives st.rerun.
+
+    ``complete_session()`` drops the session from the store, so the next
+    render can no longer tell "just completed" from "long expired". Without
+    this, the rerun below erases the st.success output and the screen only
+    shows "expired from memory" even though the answers were stored.
+    """
+    state = getattr(st, "session_state", None)
+    if state is None:
+        return
+    try:
+        state[_completed_message_key(session_id)] = str(message or "")
+    except Exception:
+        pass
+
+
+def _completed_message(st: Any, session_id: str) -> str:
+    state = getattr(st, "session_state", None)
+    if state is None:
+        return ""
+    try:
+        return str(state.get(_completed_message_key(session_id), "") or "")
+    except Exception:
+        return ""
+
+
+# ---------------------------------------------------------------------------
 # Interview answer: field spec + pure submit logic (UI calls the backend)
 # ---------------------------------------------------------------------------
 
@@ -254,6 +290,12 @@ def render_interview_widget(st: Any, session_id: str) -> None:
 
     session = get_session(session_id)
     if session is None:
+        completed = _completed_message(st, session_id)
+        if completed:
+            # Session finished and left the store: show the completion note
+            # instead of "expired from memory".
+            st.success(completed)
+            return
         st.info(
             "Phiên phỏng vấn đã hết hạn trong bộ nhớ. "
             "Mở phiên mới bằng lệnh “mở phiên phỏng vấn <mã lỗi>”."
@@ -268,6 +310,8 @@ def render_interview_widget(st: Any, session_id: str) -> None:
     remaining = unanswered_questions(session)
     if not remaining:
         ok, message = submit_interview_answer(session, "", {})
+        if ok and message:
+            _remember_completion(st, session.session_id, message)
         if message:
             (st.success if ok else st.warning)(message)
         return
@@ -304,6 +348,10 @@ def render_interview_widget(st: Any, session_id: str) -> None:
             st.warning(message)
         else:
             if message:
+                # Non-empty message means the session just completed:
+                # remember the note so it survives the st.rerun below
+                # (the session has already been dropped from the store).
+                _remember_completion(st, session.session_id, message)
                 st.success(message)
             if hasattr(st, "rerun"):
                 st.rerun()

@@ -259,6 +259,74 @@ def test_render_interview_widget_expired_session():
     assert any("hết hạn" in t for t in infos)
 
 
+def _answer_all_questions_via_widget(shared):
+    """Drive the widget through every question until the session completes.
+
+    Returns (session_id, fake) where fake is the final render — the one on
+    which rerun() was called after complete_session() dropped the session.
+    """
+    session = _make_session(n_questions=1)
+    session_id = session.session_id
+    fake = None
+    for _ in range(10):
+        if ui.get_session(session_id) is None:
+            break
+        fake = FakeSt(session_state=shared)
+        ui.render_interview_widget(fake, session_id)
+        if ui.get_session(session_id) is None:
+            break  # completed via the no-remaining fallback path
+        send_key = _send_key(fake)
+        base = send_key[: -len("_send")]
+        for payload_key, _label, _kind in ui.ANSWER_FIELDS:
+            field_key = base + "_" + payload_key
+            value = _FULL_ANSWER[payload_key]
+            if isinstance(value, list):
+                fake.multiselect_values[field_key] = value
+            else:
+                fake.text_area_values[field_key] = value
+        disc_key = base + "_discriminate_notes"
+        if disc_key in [c[2].get("key") for c in fake.called("text_area")]:
+            fake.text_area_values[disc_key] = _FULL_ANSWER["discriminate_notes"]
+        fake.button_presses.add(send_key)
+        ui.render_interview_widget(fake, session_id)
+        # Next iteration uses a fresh FakeSt (output wiped), like a rerun.
+    assert ui.get_session(session_id) is None, "session did not complete"
+    assert fake is not None
+    return session_id, fake
+
+
+def test_render_interview_widget_completion_note_survives_rerun():
+    """Bug UX-INTERVIEW-UI muc 3: tra loi het cau cuoi -> complete_session
+    drop phien khoi store, rerun xoa st.success; lan ve sau van phai hien
+    "Đã lưu nháp chờ duyệt" thay vi "hết hạn trong bộ nhớ"."""
+    shared = {}
+    session_id, fake = _answer_all_questions_via_widget(shared)
+    assert fake.rerun_called is True
+    assert any(
+        "Đã lưu nháp chờ duyệt" in c[1][0] for c in fake.called("success")
+    )
+
+    # Gia lap lan chay moi sau rerun: output st.success cu da mat (FakeSt
+    # moi, chi con chung session_state nhu streamlit that).
+    fake_rerun = FakeSt(session_state=shared)
+    ui.render_interview_widget(fake_rerun, session_id)
+    assert any(
+        "Đã lưu nháp chờ duyệt" in c[1][0] for c in fake_rerun.called("success")
+    )
+    assert not fake_rerun.called("info")
+
+
+def test_render_interview_widget_completed_note_is_per_session():
+    """Phien khac chua tung hoan thanh van bao 'het han', khong an ke chu."""
+    shared = {}
+    _answer_all_questions_via_widget(shared)
+
+    fake_other = FakeSt(session_state=shared)
+    ui.render_interview_widget(fake_other, "IS-KHONG-TON-TAI")
+    assert any("hết hạn" in c[1][0] for c in fake_other.called("info"))
+    assert not fake_other.called("success")
+
+
 # ---------------------------------------------------------------------------
 # Suggestion cards + feedback widget
 # ---------------------------------------------------------------------------
