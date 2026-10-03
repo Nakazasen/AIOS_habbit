@@ -1,6 +1,6 @@
 ﻿# Trạng thái mailbox
 
-- Trạng thái: `moi`
+- Trạng thái: `dang-lam`
 - Ticket hiện tại: `UX-CHAT-CORE-FIX1` — [NHÀ] OMP verify trên app thật: sửa 5 điểm chặn sau verify lần 1 (câu gộp đa ý định chỉ chạy ý đầu, biểu đồ CSV mất cả phân tích khi thiếu matplotlib, cờ chat_action tắt khi mở app bằng .bat thường, thiếu danh sách báo lỗi ảo đã sửa, test cũ bám UI đã bỏ).
 - `prompt`: `docs/phieu-viec/mailbox/prompt.md`
 - `ghi_chu` (Muse xử lý cho-muse): 2026-10-03 ~12:45 +07 — Cờ `cho-muse` của watcher (4 lần tự mở OMP không tiến triển) là **báo nhầm**: vé này phase [VM] Muse code trước, OMP chờ đúng quy trình chứ không kẹt. Code đã xong trên VM: commit `a75a1ee` (multi-intent, pillow fallback, bật cờ trong .bat, cập nhật test cũ) + `6f9e0b9` (danh sách báo lỗi ảo). Đặt lại `moi` để OMP verify. OMP chạy app bằng `RUN_AIOS_WORKSPACE_CHAT.bat`, case 4–5 dùng dữ liệu giả lập.
@@ -15,5 +15,5 @@
   5. `DON-O-C` (`prompt-queue-don-o-c.md`) — [NHÀ] dọn ổ C (rác tmp → venv trùng → worktree → backup cũ sau kiểm toàn vẹn); XÓA BACKUP phải có danh sách GB từng mục để user gật trước khi xóa.
 
 - `ghi_chu` (Muse): 2026-10-03 ~07:20 +07 — user quyết đổi provider (không chờ cầu nối). Phát hành vé PROVIDER-SWITCH: thứ tự probe cầu nối → sửa khóa Router → resume batch. Giữ nguyên rào bản thảo/không nhập kho.
-- `ghi_chu`: 2026-10-03 12:33 watcher auto-escalate: 4 lan tu mo OMP (moi lan cach ~10 phut) ma mailbox khong tien trien. Chuyen sang cho-muse de Muse xu ly. Ticket: `UX-CHAT-CORE-FIX1` — [VM] Muse code+test trên VM → [NHÀ] OMP verify trên app thật: sửa 5 điểm chặn sau verify lần 1 (câu gộp đa ý định chỉ chạy ý đầu, biểu đồ CSV mất cả phân tích khi thiếu matplotlib, cờ chat_action tắt khi mở app bằng .bat thường, thiếu danh sách báo lỗi ảo đã sửa, test cũ bám UI đã bỏ).
+- `ghi_chu`: 2026-10-03 12:45 +07 — OMP nhận UX-CHAT-CORE-FIX1. Gate ĐẠT: Muse đã đẩy mã `a75a1ee` + `6f9e0b9` và mở lại `moi` (`51eda62`). Bắt đầu verify app thật bằng `RUN_AIOS_WORKSPACE_CHAT.bat`. Không đặt `cho-muse`.
 
