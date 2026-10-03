@@ -207,3 +207,90 @@ không force-push, code tương thích Python 3.11.
   `pytest-of-root` 501MB từ lần chạy trước → hàng loạt lỗi `Errno 28`.
   Đã dọn `/tmp` và chạy lại baseline với `TMPDIR` trỏ sang ổ đĩa chính.
   (Chi tiết số liệu ở handoff cho parent.)
+
+---
+
+# Vé UX-CHAT-CORE-FIX1 — báo cáo máy nhà (lần 1, mã trước `8400f45`)
+
+- Ngày: 2026-10-03, khoảng 12:45–13:00 +07.
+- Máy: `h410asrock`. Python `3.11.14` (`.venv` của repo).
+- Nhánh: `phieu-viec/rag-fix1`. Không merge `main`. Không force-push.
+- Mã Muse kiểm: `a75a1ee` (đa ý định, biểu đồ Pillow, bật cờ trong file `.bat`, cập nhật test cũ) và `6f9e0b9` (danh sách báo lỗi ảo). OMP không sửa code sản phẩm.
+- Index production `local_runs/workspace_chat_rag_v2_production/bge_m3_hybrid/collections/tri_thuc/library.sqlite`: kích thước `2552659968`, mtime `2026-09-28 05:55:03` — không đổi trước/sau. Không ghi index.
+
+## 0. Cổng gate
+
+- Lần mở này điều kiện mở **đã tới**. Muse đã đẩy mã `a75a1ee` + `6f9e0b9` và mở lại `moi` ở `51eda62` (ghi chú: cờ `cho-muse` trước đó là báo nhầm vì vé đang ở phase [VM]).
+- OMP nhận vé `dang-lam` (`5d4c969`). Không đặt `cho-muse`. Không quay no-op.
+
+## 1. Kết luận ngắn
+
+**Verify lần 1 trên mã `a75a1ee`/`6f9e0b9`, trước bổ sung `8400f45`.** Câu gộp giả lập trên app thật trả về đủ 3 kết quả trong một câu trả lời. Muse vừa đẩy `8400f45`. OMP đang verify lại trên head mới, chưa chốt ĐẠT.
+
+## 2. App thật
+
+Cổng `8501` đang có app khác (không tắt, không đụng phiên người dùng). OMP không chạy nguyên file `.bat` vì file đó mở cổng mặc định `8501`. Bản verify dùng **đúng các biến môi trường của** `RUN_AIOS_WORKSPACE_CHAT.bat`, kể cả `AIOS_FEATURE_CHAT_ACTION=1` (dòng cờ UX-CHAT-CORE-FIX1 trong file `.bat`), tại `http://127.0.0.1:8515`.
+
+Dữ liệu dán vào chat là CSV giả lập, không phải log công ty (đúng ghi chú Muse: case 4–5 dùng dữ liệu giả lập).
+
+Ảnh (không có nội dung công ty):
+
+- `docs/phieu-viec/ket-qua/ux-chat-core-fix1-anh/01-cau-gop.png` — bảng thống kê + biểu đồ PNG trong câu trả lời.
+- `docs/phieu-viec/ket-qua/ux-chat-core-fix1-anh/02-canh-bao.png` — cùng câu trả lời, phần cảnh báo ngưỡng ở cuối bong bóng.
+
+### 2.1 Câu gộp — đạt
+
+Sổ thử cũ `BaoCaoTuan` (`NB-67DB7EFE`), cuộc trò chuyện mới `CONV-F5C7EA3A`. Một câu:
+
+```
+thoi_gian,nhiet_do_gia_lap
+10:00,70
+10:01,71
+10:02,72
+10:03,74
+10:04,76
+10:05,78
+vẽ biểu đồ và cảnh báo khi nhiet_do_gia_lap vượt 80
+```
+
+Một bong bóng trả lời có đủ 3 phần:
+
+1. **Phân tích dữ liệu vừa dán** — 6 dòng, 2 cột, bảng thống kê `min 70 / max 78 / trung bình 73.50`.
+2. **Biểu đồ PNG** — ảnh `800×420`, nhúng `data:image/png`, chú thích «Biểu đồ từ dữ liệu bạn vừa dán». Máy này `matplotlib` không cài (`find_spec` = không), `Pillow` có. Ảnh vẫn hiện.
+3. **Cảnh báo ngưỡng** — đã lưu `CB-E8B276`, chữ «Chưa có dữ liệu cho thông số 'nhiet_do_gia_lap'». Không báo động giả.
+
+OMP đã xóa quy tắc thử ngay sau đó. File quy tắc chỉ có đúng quy tắc này, nên file đã được gỡ.
+
+### 2.2 Đối chiếu từng case báo lỗi ảo
+
+Nguồn: `docs/phieu-viec/ket-qua/bao-loi-ao-da-sua.md`.
+
+| Case | Kết quả lần này |
+|---|---|
+| 1. Radio giữ lựa chọn cũ | Trang chủ và trang sổ không còn chữ «Điều hướng», không còn radio điều hướng. Dòng trạng thái đúng một dòng: `Sổ BaoCaoTuan — sẵn sàng, 0 tài liệu`. |
+| 2. Một điểm xấu kích hoạt cảnh báo | Không bơm chuỗi vào kho thật. Mã xu hướng không nằm trong diff vé này. `tests/test_trend_alerts.py` nằm trong 94 bài đạt. Lần verify trước (`ux-chat-core.md` §2.5) đã thấy SMA(20) trên app. |
+| 3. Đặt quy tắc khi chưa có lịch sử | App trả «chưa có dữ liệu», không cảnh báo giả. Đã xóa quy tắc thử. |
+| 4. Thiếu matplotlib làm rơi bảng thống kê | Không có matplotlib. Vẫn có tóm tắt, bảng thống kê, preview và biểu đồ PNG. |
+| 5. Một câu nhiều ý chỉ chạy ý đầu | Cùng một câu trả lời có cả phân tích/biểu đồ và cảnh báo ngưỡng. Không im lặng bỏ ý. |
+
+## 3. Cổng lệnh
+
+- `py_compile` Python 3.11 trên `chat_action_data_paste.py`, `chat_intent_router.py`, `workspace_chat_app.py`: đạt.
+- `compileall` `src` và `tests`: đạt.
+- Test liên quan (router, dán CSV, đa ý định, composer, ngưỡng, xu hướng, sổ, 2 test UI cũ): **94 passed** trong 7 giây.
+- `python -m aios_habit.cli audit` với `PYTHONPATH=src`: `"status": "PASS"`, không warning.
+- Pytest đầy đủ, 555 giây: **27 failed, 3818 passed, 39 skipped, 19 errors**. Không phải PASS toàn bộ. So với baseline lần trước (48 failed / 3793 passed / 19 errors) thì ít lỗi hơn, không thêm lỗi do vé FIX1.
+
+### 3.1 Lỗi pytest không do vé này
+
+Sáu lỗi lần trước gắn đúng vé (3 bài CSV thiếu matplotlib, `test_workspace_chat_composer_ui`, `test_workspace_chat_app_wires_lsu_data_gate`, `test_save_case_callback_uses_only_the_existing_trace_and_no_provider`) **không còn** trong danh sách fail.
+
+27 failed + 19 errors còn lại là nền máy nhà, cùng kiểu lần trước: thiếu file VM `/home/hatch/...`, graphify chưa cài, worker BGE, mạng (`getaddrinfo` / cổng từ chối), `uv.lock`, smoke desktop, privacy/RAG không liên quan diff FIX1.
+
+Một fail có chữ trong `workspace_chat_app.py` nhưng **không phải mã FIX1**: `test_ast_workspace_chat_app_zero_hardcoded_vietnamese` bắt hai câu sidebar «Trợ lý AIOS» / «gõ vào ô chat». `git blame` ra commit `9298ee6` (vé UX-CHAT-CORE trước), không phải `a75a1ee`. Lần pytest trước đã chạy sau commit đó nên đây là nợ cũ, không phải lỗi mới của FIX1.
+
+## 4. Việc OMP để lại trên máy
+
+- Sổ thử `BaoCaoTuan` (`NB-67DB7EFE`) thêm một cuộc trò chuyện giả lập `CONV-F5C7EA3A`. Người dùng xóa nếu không cần.
+- Quy tắc `CB-E8B276` đã xóa. Không gửi dữ liệu công ty ra ngoài. Không đụng `main`.
+- App verify cổng `8515` đã tắt sau khi chụp ảnh. App cổng `8501` không tắt.
