@@ -1447,6 +1447,123 @@ def save_current_answer_to_case(
     safe_rerun()
     return True
 
+def _luu_cap_tin_nhan_chat(conversation_id: str, cau_hoi: str, tra_loi: str) -> None:
+    """Luu cap user/assistant vao kho hoi thoai (dung chung cho router)."""
+    from aios_habit.workspace_chat_models import ChatMessage
+    from aios_habit.workspace_chat_store import save_message
+
+    save_message(ChatMessage(
+        id=f"MSG-U-{uuid.uuid4().hex[:8].upper()}",
+        conversation_id=conversation_id,
+        role="user",
+        content=cau_hoi,
+    ))
+    save_message(ChatMessage(
+        id=f"MSG-A-{uuid.uuid4().hex[:8].upper()}",
+        conversation_id=conversation_id,
+        role="assistant",
+        content=tra_loi,
+    ))
+
+
+def _xu_ly_y_dinh_chat(q_text: str, *, active_conversation, active_nb_id) -> bool:
+    """Bo dinh tuyen y dinh chat-first (UX-CHAT-CORE).
+
+    Tra ve True neu cau chat da duoc xu ly tron (caller rerun),
+    False neu de luong hien co (jig/chat_action/RAG) xu ly tiep.
+    """
+    from aios_habit.chat_intent_router import (
+        CANH_BAO_NGUONG,
+        CONG_CU_NANG_CAO,
+        HO_SO_DIEU_TRA,
+        MO_SO,
+        TAO_SO,
+        route,
+    )
+
+    y_dinh, slots = route(q_text)
+    conv_id = getattr(active_conversation, "id", "") or ""
+
+    if y_dinh == HO_SO_DIEU_TRA:
+        st.session_state.wsc_show_case_workspace = True
+        st.session_state.wsc_show_lsu_data_gate = False
+        return True
+    if y_dinh == CONG_CU_NANG_CAO:
+        st.session_state.wsc_show_lsu_data_gate = True
+        st.session_state.wsc_show_case_workspace = False
+        return True
+    if y_dinh == CANH_BAO_NGUONG:
+        from aios_habit.threshold_alert_chat import xu_ly_cau_lenh
+
+        def _lich_su(thong_so: str):
+            try:
+                from aios_habit.production_prediction.log_archive import lich_su_theo_jig
+                return [float(v) for v in (lich_su_theo_jig(jig_id="", metric_name=thong_so) or [])]
+            except Exception:
+                return []
+
+        tra_loi = xu_ly_cau_lenh(q_text, history_provider=_lich_su)
+        if tra_loi is None:
+            return False
+        if conv_id:
+            _luu_cap_tin_nhan_chat(conv_id, q_text, tra_loi)
+        else:
+            st.session_state.wsc_action_message = tra_loi
+        return True
+    if y_dinh == TAO_SO:
+        ten_so = (slots.get("ten_so") or "").strip() or "Sổ mới"
+        ensure_default_collection()
+        collections = load_collections()
+        collection_id = collections[0].id if collections else DEFAULT_COLLECTION_ID
+        new_nb = DocumentNotebook(
+            id=f"NB-{uuid.uuid4().hex[:8].upper()}",
+            title=ten_so,
+            description="",
+            collection_id=str(collection_id),
+        )
+        save_notebook(new_nb)
+        from aios_habit.notebook_readiness import NotebookReadinessStore, dong_trang_thai_so
+        NotebookReadinessStore().cap_nhat(new_nb.id, san_sang=True, so_tai_lieu=0)
+        tra_loi = (
+            "Đã tạo sổ \"{}\". Sổ đã trỏ vào thư viện chung, bạn hỏi ngay được.\n{}".format(
+                ten_so, dong_trang_thai_so(ten_so, 0)
+            )
+        )
+        if conv_id:
+            _luu_cap_tin_nhan_chat(conv_id, q_text, tra_loi)
+        else:
+            st.session_state.wsc_action_message = tra_loi
+        st.session_state.wsc_active_notebook_id = new_nb.id
+        st.session_state.wsc_active_conversation_id = None
+        set_query_params(nb=new_nb.id, conv=None)
+        return True
+    if y_dinh == MO_SO:
+        ten_can_tim = (slots.get("ten_so") or "").strip().lower()
+        danh_sach = load_active_notebooks()
+        trung = None
+        if ten_can_tim:
+            for nb in danh_sach:
+                if ten_can_tim in (nb.title or "").lower():
+                    trung = nb
+                    break
+        if trung is None and len(danh_sach) == 1 and not ten_can_tim:
+            trung = danh_sach[0]
+        if trung is None:
+            if conv_id:
+                ten_hien_co = ", ".join("\"{}\"".format(nb.title) for nb in danh_sach[:5])
+                goi_y = "Tôi chưa tìm thấy sổ phù hợp."
+                if ten_hien_co:
+                    goi_y += " Các sổ hiện có: {}.".format(ten_hien_co)
+                goi_y += " Bạn gõ: tạo sổ <tên sổ>"
+                _luu_cap_tin_nhan_chat(conv_id, q_text, goi_y)
+            return True
+        st.session_state.wsc_active_notebook_id = trung.id
+        st.session_state.wsc_active_conversation_id = None
+        set_query_params(nb=trung.id, conv=None)
+        return True
+    return False
+
+
 def open_notebook_callback(notebook_id: str):
     notebook = next((nb for nb in load_active_notebooks() if nb.id == notebook_id), None)
     if notebook is None:
@@ -1572,40 +1689,16 @@ def update_temporary_source_privacy_for_active_conversation(conversation_id: str
 active_nb_id = st.session_state.wsc_active_notebook_id
 current_ui_locale = "vi"
 
-# 3 cụm điều hướng chính của Workspace Chat (R4)
-st.sidebar.markdown(t("sidebar_navigation_heading", locale=current_ui_locale))
+# UX-CHAT-CORE: bo radio "Dieu huong" 3 nhanh. Moi chuc nang mo qua y dinh
+# trong cau chat (chat_intent_router) - nguoi dung khong bao gio phai chon nhanh.
+st.sidebar.markdown("### 💬 Trợ lý AIOS")
+st.sidebar.caption(
+    "Bạn chỉ cần gõ vào ô chat — AIOS tự hiểu và mở đúng chức năng "
+    "(hỏi tài liệu, hồ sơ điều tra, phân tích JIG, cảnh báo ngưỡng...)."
+)
 
 is_case = bool(st.session_state.get("wsc_show_case_workspace", False))
 is_lsu = bool(st.session_state.get("wsc_show_lsu_data_gate", False))
-current_nav = "cases" if is_case else ("advanced" if is_lsu else "chat")
-
-selected_cluster = st.sidebar.radio(
-    t("sidebar_workspace_area", locale=current_ui_locale),
-    options=["chat", "cases", "advanced"],
-    format_func=lambda c: {
-        "chat": "Hỏi tài liệu",
-        "cases": "Hồ sơ và tri thức",
-        "advanced": "Công cụ nâng cao",
-    }.get(c, c),
-    # Khong dat key: index tinh tu nav state that moi lan render. Neu giu key,
-    # widget se giu value cu trong session_state (vd van hien "Hoi tai lieu"
-    # du gate LSU dang mo) khien bam vao khong co tac dung (no demo).
-    index=["chat", "cases", "advanced"].index(current_nav),
-    label_visibility="collapsed",
-)
-
-if selected_cluster == "chat" and (is_case or is_lsu):
-    st.session_state.wsc_show_case_workspace = False
-    st.session_state.wsc_show_lsu_data_gate = False
-    safe_rerun()
-elif selected_cluster == "cases" and not is_case:
-    st.session_state.wsc_show_case_workspace = True
-    st.session_state.wsc_show_lsu_data_gate = False
-    safe_rerun()
-elif selected_cluster == "advanced" and not is_lsu:
-    st.session_state.wsc_show_case_workspace = False
-    st.session_state.wsc_show_lsu_data_gate = True
-    safe_rerun()
 
 if st.sidebar.button(
     t("teach_entry_button", locale=current_ui_locale),
@@ -1619,15 +1712,6 @@ if st.sidebar.button(
     st.session_state["wsc_workspace_view_mode_pending"] = "interview"
     safe_rerun()
 st.sidebar.caption(t("teach_entry_help", locale=current_ui_locale))
-
-with st.sidebar.expander(t("sidebar_advanced_tools", locale=current_ui_locale), expanded=(selected_cluster == "advanced")):
-    st.caption(t("sidebar_advanced_tools_help", locale=current_ui_locale))
-    if st.button(t("sidebar_lsu_background_tool", locale=current_ui_locale), key="wsc_open_lsu_data_gate_btn", use_container_width=True):
-        st.session_state.wsc_show_lsu_data_gate = True
-        st.session_state.wsc_show_case_workspace = False
-        safe_rerun()
-    st.caption(t("sidebar_parameter_monitoring", locale=current_ui_locale))
-    st.caption(t("sidebar_agent_workspace", locale=current_ui_locale))
 
 st.sidebar.write("---")
 
@@ -2318,6 +2402,27 @@ else:
     st.sidebar.caption(
         t("notebook_library_using", locale=current_ui_locale, name=_nb_lib_labels.get(_nb_current_lib, _nb_current_lib))
     )
+    # UX-CHAT-CORE: 1 dong trang thai ro rang, luu ben vung - khong bat
+    # "chuan bi tai lieu" lai moi lan vao, khong text % kho hieu.
+    try:
+        from aios_habit.notebook_readiness import (
+            NotebookReadinessStore,
+            dong_trang_thai_tu_snapshot,
+        )
+        _nb_nguon = load_notebook_sources(active_nb_id)
+        _nb_ready_store = NotebookReadinessStore()
+        _nb_snap = _nb_ready_store.lay(active_nb_id)
+        # Lam moi snapshot khi so tai lieu doi (them/xoa nguon).
+        if _nb_snap is None or _nb_snap.so_tai_lieu != len(_nb_nguon):
+            _nb_snap = _nb_ready_store.cap_nhat(
+                active_nb_id,
+                san_sang=True,
+                so_tai_lieu=len(_nb_nguon),
+                ten_thu_vien=str(_nb_lib_labels.get(_nb_current_lib, _nb_current_lib)),
+            )
+        st.sidebar.success(dong_trang_thai_tu_snapshot(_nb_snap, notebook.title))
+    except Exception:
+        pass
     if len(_nb_lib_labels) > 1:
         _nb_picked = st.sidebar.selectbox(
             t("notebook_library_change", locale=current_ui_locale),
@@ -3874,6 +3979,14 @@ else:
 
                         if queue_memory_command_if_present(q_text):
                             safe_rerun()
+                    # UX-CHAT-CORE: bo dinh tuyen y dinh chat-first. Nguoi dung chi
+                    # go cau tieng Viet, app tu dieu phoi (khong con radio nhanh).
+                    if q_text and _xu_ly_y_dinh_chat(
+                        q_text,
+                        active_conversation=active_conversation,
+                        active_nb_id=active_nb_id,
+                    ):
+                        safe_rerun()
                     if q_text:
                         from aios_habit.production_prediction.jig_chat_wire import handle_jig_chat_text
                         from aios_habit.production_prediction.stream_api import StreamBuffer
