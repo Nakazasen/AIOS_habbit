@@ -1,7 +1,7 @@
 # Trạng thái mailbox
 
-- Trạng thái: `moi`
+- Trạng thái: `dang-lam`
 - Ticket hiện tại: `SCAN-O-D` — [NHÀ] kiểm kê + quét thao tác ổ D (chỉ đọc metadata/SHA, không xóa/sửa). Prompt: `docs/phieu-viec/mailbox/prompt.md`.
-- `ghi_chu` (verdict Muse): 2026-10-03 ~20:06 +07 — **ĐẠT** vé `INDEX-NGUON-KIEM-KE` (commit `18a0ab4`). Đủ 3 tiêu chí: (1) bảng kiểm kê 889 document / 149.800 chunk khớp tổng `COUNT(*)` và `COUNT(DISTINCT document_id)`, không document_id nào nằm 2 nhóm; (2) chỉ đọc có chứng minh — kích thước/mtime/SHA-256 (`45eb0e07…b7c0`) trước=sau, không file -wal/-shm/-journal; (3) báo cáo `docs/phieu-viec/ket-qua/index-nguon-kiem-ke.md` đúng vị trí. Sai lệch đường dẫn vé ghi (`C:\AIOS_habit_index_ve03` đã bị xóa bởi `don-canary` 2026-10-01) — OMP xử lý đúng: resolve kho đang chạy thật từ `config/workspace_chat_rag_v2.local.json` (key `runtime.root`) và kiểm kê file đó, không tạo lại đường cũ, không ghi vào index đang chạy. Phát hiện để thiết kế tách kho: bốn nhóm đường dẫn nằm chung một collection `tri_thuc`; khối 496 canary mất thư mục gốc MOM/LSU/Điều-tra trong `source_path` (chỉ còn `materialized_sources` của canary) → không tách được 3 khối chỉ bằng cột này, cần sổ nguồn khác.
+- `ghi_chu`: 2026-10-03 20:09:26 +07 — OMP nhận vé. Cổng gate ĐẠT: máy `h410asrock`, ổ D có, watcher `LAUNCH 1/4` lúc 20:08:16 (`launchStallCount=1`). Chỉ đọc metadata/SHA, không xóa/sửa/di chuyển.
 - `hang-cho` (thứ tự do user duyệt 2026-10-02 ~22:05 +07; còn lại sau khi phát hành `SCAN-O-D`):
   8. `DON-O-C` (`prompt-queue-don-o-c.md`) — [NHÀ] dọn ổ C (rác tmp → venv trùng → worktree → backup cũ sau kiểm toàn vẹn); XÓA BACKUP phải có danh sách GB từng mục để user gật trước khi xóa.
