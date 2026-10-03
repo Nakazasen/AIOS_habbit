@@ -1,8 +1,10 @@
 # Trạng thái mailbox
 
-- Trạng thái: `moi`
+- Trạng thái: `dang-lam`
 - Ticket hiện tại: `UX-AGENT-UI-FIX1-VERIFY` — [NHÀ] verify lại 4 mục UX-AGENT-UI trên app thật sau khi Muse vá lỗi gốc doc root (commit `f1dc433`). Prompt: `docs/phieu-viec/mailbox/prompt.md`.
-- `commit`: `f1dc433` (mã cần verify; watcher kiểm tra là tổ tiên của HEAD khi mở vé)
+- `commit`: (đang verify)
+- `bao_cao`: `docs/phieu-viec/ket-qua/ux-agent-ui-a.md` (bổ sung mục verify lần 2)
+- `ghi_chu`: 2026-10-03 18:41 +07 — Nhận vé `UX-AGENT-UI-FIX1-VERIFY`. Watcher tự mở OMP lần 1/4 lúc 18:39:24 (`launchStallCount=1`). Điều kiện mở ĐÃ TỚI: `f1dc433` là tổ tiên của HEAD `2e9393d` (`merge-base --is-ancestor` exit 0). Không đặt `cho-muse`, không rơi nhánh 4-lần-watcher. Bắt đầu verify app 8515, không đặt `AIOS_DOC_ROOT`.
 - `ghi_chu` (điều phối Muse): 2026-10-03 ~18:45 +07 — Nhận cờ `cho-muse` 18:32+07 (verify lần 1 CHƯA ĐẠT: mục 1 FAIL — app 8515 từ chối "Đường dẫn nằm ngoài thư mục làm việc" vì `chat_action_agent_report._default_doc_root()` → `~/AIOS_bao_cao` nhưng `agent_doc_edit._safe_path()` → `cwd` khi thiếu `AIOS_DOC_ROOT`). Muse đã vá độc lập trên VM: hàm dùng chung `default_doc_root()` → cả hai lớp cùng gốc `~/AIOS_bao_cao`, cổng `_safe_path` giữ nguyên (commit `f1dc433`); kiểm chứng VM 51 test pass + `cli audit` PASS + import app OK + Python 3.11-compatible. Phát hành vé verify lại, giữ nguyên `hang-cho` 6–8.
 - `ghi_chu` (lịch sử): UX-AGENT-UI verify lần 1 CHƯA ĐẠT 18:32 (mục 1 FAIL, đã vá `f1dc433`); trước đó UX-INTERVIEW-UI-FIX1-VERIFY ĐẠT ~18:25, UX-INTERVIEW-UI ĐẠT ~16:55, UX-E2E-APP-R2 ĐẠT ~16:33.
 - `prompt`: `docs/phieu-viec/mailbox/prompt.md`
