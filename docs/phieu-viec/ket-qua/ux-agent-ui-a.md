@@ -120,3 +120,44 @@ Test đỗ vì test tự đặt `AIOS_DOC_ROOT` vào thư mục tạm. App ngư�
 Vé **CHƯA ĐẠT**. Dừng `cho-muse`. Không đặt `xong-cho-duyet`. Không sửa code.
 
 Đề xuất Muse: hai hàm phải dùng cùng một gốc thư mục (gốc `~/AIOS_bao_cao` khi không đặt `AIOS_DOC_ROOT`, đúng như báo cáo Phase A). Sau khi vá, OMP verify lại 4 mục trên app 8515.
+
+## 7. Verify lần 2 [NHÀ] — CHƯA ĐẠT, dừng `cho-muse`
+
+Ngày: 2026-10-03 18:41–18:58 +07. Người làm: OMP (máy nhà). Không sửa code. Không merge `main`. Không force-push.
+
+### 7.1 Cổng gate
+
+- Watcher tự mở OMP lần 1/4 lúc 18:39:24 (`launchStallCount=1`). Không phải chuỗi 4 lần. Không dừng vì kẹt cổng.
+- Điều kiện mở ĐÃ TỚI: `f1dc433` là tổ tiên của HEAD lúc nhận (`2e9393d`, `git merge-base --is-ancestor` exit 0).
+
+### 7.2 Cách chạy
+
+- Python `3.11.14` (`.venv`). Không đặt `AIOS_DOC_ROOT` (biến này không có trong môi trường).
+- App thử `http://127.0.0.1:8515`, đúng biến môi trường của `RUN_AIOS_WORKSPACE_CHAT.bat`, kể cả `AIOS_FEATURE_CHAT_ACTION=1`. Health 200. PID listen `3960`.
+- Không đụng app người dùng cổng `8501` (PID `5828` giữ nguyên). Cầu nối `8585` (PID `17204` giữ nguyên).
+- Sổ `E2EUxApp` (`NB-922E3730`). Hội thoại mới `CONV-1DFEBF40` (`Cuộc trò chuyện 03/10 18:45`).
+- Gõ câu tạo: `tạo báo cáo tuan.docx: Nội dung verify UX-AGENT-UI lần 2. Dòng một để mở bằng Word.`
+
+### 7.3 Kết quả
+
+| Mục | Kết quả | Bằng chứng |
+|---|---|---|
+| 1. Tạo `tuan.docx`, bấm Tải về, mở bằng Word | **FAIL** | Lệnh tạo **đã chạy** (hết lỗi đường dẫn lần 1). File `C:\\Users\\Admin\\AIOS_bao_cao\\tuan.docx` là zip docx, Word COM mở được (`Documents.Open`, tên `tuan.docx`). Nội dung XML đúng câu đã gõ. Nhưng nút **Tải về bị mờ**, không bấm được. Nhãn thật là `📥 Tải về .md`, `disabled=true` trên mọi thẻ (`st-key-btn_dl_*`). |
+| 2. Sửa rồi Hoàn tác | **PASS** | Câu `sửa báo cáo tuan.docx: thêm Dòng hoàn tác verify lần 2.` đổi SHA `0e3ffa4b…bd48` → `8e4dd6da…490f` (thêm đúng câu). Bấm Hoàn tác trên thẻ `ARE-E8313DB4` đưa SHA về đúng `0e3ffa4b…bd48`, câu thêm biến mất. |
+| 3. Xem toàn văn `.md` mở/thu; `.docx` bị mờ | **FAIL** | `.md` `tuan-verify.md` tạo được (53 byte, đúng dòng). Nút Xem toàn văn **bấm được** và đổi thành `Ẩn toàn văn`, nhưng thẻ hiện `Báo cáo vừa tạo không còn trên máy này.` dù file còn trên đĩa. `.docx` nút Xem toàn văn **không mờ** (`disabled=false`), bấm vào cũng hiện cùng câu sai. |
+| 4. SHA index production | **không đổi** | Trước và sau cùng `062ec090644fb4ec09d2fb6388f3175e988e48d63061b04e6c27bbed334ef8ca`, size `2552659968`. |
+| 5. Cổng lệnh | **PASS** | `compileall` OK. `pytest` 3 file liên quan **51 passed**. `cli audit` `"status": "PASS"`, `warnings` rỗng. `import aios_habit.workspace_chat_app` được. |
+
+Sổ hành động `local_cases/agent_report_actions.jsonl`: lần 1 (18:29) `ok=false` lỗi đường dẫn; lần này `ARE-A87460D2` `ok=true` lúc 18:49. Vá `f1dc433` đã sửa được bước ghi file.
+
+### 7.4 Nguyên nhân (để Muse vá, OMP không sửa)
+
+File nằm ở `C:\\Users\\Admin\\AIOS_bao_cao\\tuan.docx`. Thẻ chat chỉ bật nút Tải về và chỉ nhận file khi `is_safe_artifact_path()` trả về đúng. Hàm này chỉ cho `artifacts/`, `local_cases/`, `tests/` và thư mục tạm `aios_*` / `pytest-*`. Không có `~/AIOS_bao_cao`.
+
+Đo trên máy nhà: `is_safe_artifact_path` với cả `tuan.docx` và `tuan-verify.md` đều `False`. Vì vậy `verified_result_path` trống, nút Tải về bị tắt, nút Xem toàn văn không bị coi là file nhị phân nên không mờ, và khi mở thì báo file không còn trên máy.
+
+### 7.5 Kết luận
+
+Vé **CHƯA ĐẠT**. Dừng `cho-muse`. Không đặt `xong-cho-duyet`. Không sửa code.
+
+Đề xuất Muse: cổng an toàn của thẻ đính kèm phải cho phép đúng gốc `default_doc_root()` (`~/AIOS_bao_cao` khi không đặt `AIOS_DOC_ROOT`), vẫn chặn `..`. Sau khi vá, OMP verify lại mục 1 và mục 3 trên app 8515. Mục 2 (Hoàn tác) lần này đã đúng SHA.
