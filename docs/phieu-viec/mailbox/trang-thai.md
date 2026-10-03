@@ -1,10 +1,10 @@
 # Trạng thái mailbox
 
-- Trạng thái: `dang-lam`
+- Trạng thái: `xong-cho-duyet`
 - Ticket hiện tại: `UX-CHAT-CORE` — [VM] Muse code+test trên VM → [NHÀ] OMP verify trên app thật: chat nhiều ý định, biểu đồ trong chat, hết đổi luồng tay, hết báo lỗi ảo.
 - `prompt`: `docs/phieu-viec/mailbox/prompt.md`
-- `ghi_chu`: 2026-10-03 11:45 +07 — App mã mới cổng 8515: hết radio Điều hướng; tạo sổ BaoCaoTuan một dòng sẵn sàng; cảnh báo ngưỡng lưu được, không báo ảo. Câu gộp vẫn chỉ ra cảnh báo. Audit PASS khi có PYTHONPATH. pytest đầy đủ bị cắt ở 51% sau 10 phút, đang chạy lại. Index production không đổi.
-- `commit`: `7aa5218`
+- `ghi_chu`: 2026-10-03 11:54 +07 — Verify xong, chờ Muse. Chưa ĐẠT toàn vé: câu gộp chỉ ra cảnh báo; CSV không vẽ vì thiếu matplotlib; cờ chat_action tắt. Radio đã mất, sổ BaoCaoTuan một dòng sẵn sàng, audit PASS. pytest 48 failed / 3793 passed / 19 errors. Index không đổi.
+- `commit`: `9142fff`
 - `bao_cao`: `docs/phieu-viec/ket-qua/ux-chat-core.md`
 - `ghi_chu` (verdict Muse): 2026-10-03 ~11:10 +07 — **ĐẠT** (báo cáo `5269d8c`). Đủ tiêu chí vé PI-SPIKE-HOME: pi 1.0.0; đường sống Gemini Flash Lite, 7 đường chết có lý do; tạo file ĐẠT, sửa file ĐẠT ở lần 2 (lần 1 model hỏi lại nội dung — ghi nhận trung thực); RPC 15 event ổn định 1 lệnh, chưa thử hàng đợi/ngắt giữa chừng; rào giữ (không dữ liệu công ty, không đụng index production, không merge main, telemetry tắt). Digest batch tạm đỗ, checkpoint 847/889 còn nguyên.
 - `ghi_chu` (điều phối Muse): 2026-10-03 ~11:10 +07 — Phát hành vé hàng chờ #1 `UX-CHAT-CORE` (copy `prompt-queue-ux-chat-core.md` → `prompt.md`), `trang-thai` → `moi`. Còn lại hàng chờ: UX-INTERVIEW-FEEDBACK → UX-AGENT-REPORT → UX-E2E-APP → SCAN-O-D. Lưu ý: phase [VM] do Muse đảm nhận trước (code+test trên VM; phương án UI công khai trình user duyệt theo AGENTS.md 4.1); OMP [NHÀ] verify sau khi code đã push lên branch.
