@@ -2762,7 +2762,9 @@ def _run_profile(
         try:
             from aios_habit.rag_v2.pipeline import _file_fingerprint
 
-            uri = "file:" + Path(pipe_config.index_path).resolve().as_posix() + "?mode=ro"
+            # as_uri() -> file:///C:/... on Windows; the hand-built
+            # "file:C:/...?mode=ro" form fails there (colon after drive).
+            uri = Path(pipe_config.index_path).resolve().as_uri() + "?mode=ro"
             with sqlite3.connect(uri, uri=True) as conn:
                 rows = conn.execute(
                     """

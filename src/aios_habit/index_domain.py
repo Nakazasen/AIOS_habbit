@@ -335,7 +335,7 @@ def lookup_ledger_hint(db_path: str | Path, document_id: str) -> Optional[dict[s
         path = Path(db_path)
         if not path.is_file():
             return None
-        uri = "file:%s?mode=ro" % path.as_posix()
+        uri = path.resolve().as_uri() + "?mode=ro"
         conn = sqlite3.connect(uri, uri=True, timeout=5.0)
         try:
             conn.execute("PRAGMA query_only=ON")

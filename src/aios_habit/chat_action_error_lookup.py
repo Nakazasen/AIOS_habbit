@@ -119,7 +119,9 @@ def resolve_db_path(request: ChatActionRequest) -> Optional[Path]:
 
 
 def _open_ro(path: Path) -> sqlite3.Connection:
-    uri = "file:" + path.as_posix() + "?mode=ro"
+    # as_uri() -> file:///C:/... on Windows; hand-built "file:C:/...?mode=ro"
+    # fails there (colon after the drive letter).
+    uri = path.resolve().as_uri() + "?mode=ro"
     conn = sqlite3.connect(uri, uri=True)
     conn.row_factory = sqlite3.Row
     return conn

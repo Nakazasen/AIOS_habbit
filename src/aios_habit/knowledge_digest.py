@@ -97,8 +97,8 @@ class DigestEntry:
 
 def open_index_readonly(index_path: str | Path) -> sqlite3.Connection:
     """Mo library.sqlite o che do chi doc (mode=ro)."""
-    path = str(index_path)
-    conn = sqlite3.connect("file:" + path + "?mode=ro", uri=True)
+    path = Path(index_path).resolve()
+    conn = sqlite3.connect(path.as_uri() + "?mode=ro", uri=True)
     conn.row_factory = sqlite3.Row
     return conn
 
