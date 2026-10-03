@@ -1,12 +1,11 @@
 # Trạng thái mailbox
 
-- Trạng thái: `cho-muse`
-- Ticket hiện tại: `UX-AGENT-UI-FIX2-VERIFY` — [NHÀ] verify lại sau vá `ab70e69`. Verify lần 3 CHƯA ĐẠT. Prompt: `docs/phieu-viec/mailbox/prompt.md`.
-- `commit`: `4006b0e`
+- Trạng thái: `moi`
+- Ticket hiện tại: `UX-AGENT-UI-FIX2-VERIFY` — [NHÀ] verify lại sau vá `0a0716f` (verify lần 4). Prompt: `docs/phieu-viec/mailbox/prompt.md`.
+- `commit`: `0a0716f`
 - `bao_cao`: `docs/phieu-viec/ket-qua/ux-agent-ui-a.md` (mục 8, verify lần 3)
-- `ghi_chu`: 2026-10-03 19:19 +07 — Verify lần 3 CHƯA ĐẠT, dừng `cho-muse`. Tạo file được. Mục 2 Hoàn tác PASS (SHA về `0e3ffa4b…bd48`). Mục 1 FAIL: nút Tải về vẫn mờ (`disabled=true`). Mục 3 FAIL: Xem toàn văn `.docx` không mờ; cả `.md` và `.docx` báo file không còn dù file còn trên đĩa. `is_safe_artifact_path` kèm `default_doc_root()` trả đúng, nhưng thẻ không có dòng `agent_work_items` nên không dùng đường dẫn đó. Index không đổi. Cổng lệnh PASS (59 test, audit PASS). Không sửa code.
-- `ghi_chu` (điều phối Muse): 2026-10-03 ~19:15 +07 — Thấy cờ `cho-muse` lúc 19:03 (verify lần 2 CHƯA ĐẠT 18:59: nút Tải về bị mờ, Xem toàn văn `.md` báo sai, `.docx` không bị mờ). Muse đã vá: điểm gọi `is_safe_artifact_path` ở thẻ đính kèm chat giờ truyền `allowed_roots=(default_doc_root(),)`; vẫn chặn `..`. Kiểm chứng VM: 59 passed (gồm regression test mới), `compileall` OK, `cli audit` PASS, import app được. Mục 2 (Hoàn tác) đã PASS lần 2 → vé này verify lại mục 1 + 3, kèm mục 2/4/5 nhanh. Nếu còn FAIL: ghi đúng mục + bằng chứng, đặt lại `cho-muse`, không sửa code.
-- `ghi_chu` (lịch sử): Verify lần 3 CHƯA ĐẠT 19:19 (nút thẻ vẫn mờ, không có dòng việc) → `cho-muse`; lần 2 CHƯA ĐẠT 18:59; lần 1 CHƯA ĐẠT 18:32 (đã vá `f1dc433`); trước đó UX-INTERVIEW-UI-FIX1-VERIFY ĐẠT ~18:25.
+- `ghi_chu` (điều phối Muse): 2026-10-03 ~19:30 +07 — Thấy cờ `cho-muse` 19:19 (verify lần 3 CHƯA ĐẠT). Muse đã vá (commit `0a0716f`): thẻ đính kèm giờ fallback sang kiểm đúng `result_path` trong comment metadata khi không có dòng `agent_work_items` (helper mới `verify_card_result_path` trong `agent_report_artifact.py`); vẫn chặn `..` và file ngoài gốc. Kiểm chứng VM: 63 passed (4 regression test mới), `compileall` OK, `cli audit` PASS, import app được, code tương thích Python 3.11. Vé verify lần 4 phát hành; mục 2 đã PASS lần 3 → verify lại mục 1 + 3, kèm 2/4/5 nhanh. Nếu còn FAIL: ghi đúng mục + bằng chứng, đặt lại `cho-muse`, không sửa code.
+- `ghi_chu` (lịch sử): Verify lần 4 phát hành ~19:30 sau vá `0a0716f`; lần 3 CHƯA ĐẠT 19:19 (thẻ ARE-* không có dòng việc) → `cho-muse`; lần 2 CHƯA ĐẠT 18:59; lần 1 CHƯA ĐẠT 18:32 (đã vá `f1dc433`); trước đó UX-INTERVIEW-UI-FIX1-VERIFY ĐẠT ~18:25.
 - `prompt`: `docs/phieu-viec/mailbox/prompt.md`
 - `hang-cho` (thứ tự do user duyệt 2026-10-02 ~22:05 +07; #5 `UX-AGENT-UI` đang verify lại):
   6. `INDEX-NGUON-KIEM-KE` (`prompt-queue-index-nguon-kiem-ke.md`) — [NHÀ] kiểm kê document trong index production theo thư mục nguồn, CHỈ ĐỌC (mode=ro), làm căn cứ tách index thành 3 khối LSU / Điều-tra-lỗi / MOM theo yêu cầu user 2026-10-03.
