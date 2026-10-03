@@ -1,48 +1,31 @@
-# Vé: PI-SPIKE-HOME — chạy thử pi harness ở máy nhà (thả cửa, chưa gắn gate)
+# Vé: UX-CHAT-CORE — chat nhiều ý định, biểu đồ trong chat, hết đổi luồng tay, hết báo lỗi ảo
 
-Lane: [NHÀ] OMP chạy trên máy nhà h410asrock.
-Mục tiêu: chứng minh pi cài được, gọi model làm 1 task tạo/sửa file thật, thử RPC mode.
-Không merge `main`; không đụng index production; chỉ làm trong `C:\tmp\pi-spike\`.
+Lane: [VM] Muse code+test trên VM → [NHÀ] OMP verify trên app thật (dữ liệu thật). Không merge `main`; code tương thích Python 3.11; không force-push.
 
-## Bước 1 — Cài pi
+## Bối cảnh (user phản hồi 2026-10-02 ~22:00)
 
-- `npm install -g --ignore-scripts @earendil-works/pi-coding-agent` (chưa có npm thì cài Node LTS trước).
-- Kiểm tra: `pi --version`, ghi version vào báo cáo.
-- Tắt telemetry ngay sau cài (dữ liệu công ty không cho ping ra ngoài): set env máy
-  `PI_TELEMETRY=0` và `PI_SKIP_VERSION_CHECK=1`.
+Trải nghiệm chat hiện tại rất tệ, 4 lỗi cụ thể user liệt kê:
 
-## Bước 2 — Chọn đường model (thử theo thứ tự, dừng ở đường đầu tiên sống)
+1. Dán log/CSV vào ô chat chưa phân tích và vẽ biểu đồ được ngay trong câu trả lời.
+2. Mỗi câu chat chỉ nhận 1 lệnh: khung chat quét theo thứ tự (dán log, nhập tệp, vẽ biểu đồ, đặt ngưỡng), gặp ý nào trước làm đúng ý đó rồi dừng — user phải tách nhỏ từng câu, rất phiền.
+3. Phải đổi qua lại nhiều luồng (lane) bằng tay.
+4. Báo lỗi ảo: báo lỗi nhưng thực tế không lỗi (hoặc lỗi đã tự khỏi).
 
-1. **Model có sẵn nhanh nhất:** dùng model pi hỗ trợ mà máy đã đăng nhập sẵn
-   (xem `~/.pi/agent/`, lệnh `/login` trong pi). Mục tiêu là pi chạy được task,
-   chưa cần đúng đường chiến lược.
-2. **Cầu nối Gemini Web** (`http://127.0.0.1:8585/health`): nếu sống, thử cấu hình
-   pi custom provider trỏ vào bridge — code tham khảo
-   `src/aios_habit/gemini_web_engine.py::generate_gemini_web_reply` trong repo
-   (nhánh `phieu-viec/rag-fix1`). Bridge cần extension TypeScript riêng; spike này
-   chỉ cần kết luận "làm được / khó ở đâu", chưa bắt xong.
-3. Ghi rõ vào báo cáo: đường nào sống, đường nào chết, vì sao.
+## Việc Muse làm trên VM
 
-## Bước 3 — Task thử (thả cửa, chưa gắn policy gate)
+1. **Intent đa ý định:** một câu chat có thể chứa nhiều ý định (ví dụ vừa dán log vừa yêu cầu vẽ biểu đồ và đặt ngưỡng) → tách tất cả ý định, thực hiện hết, trả lời gộp có cấu trúc trong một vùng trả lời. Không còn "gặp ý nào trước làm đúng ý đó rồi dừng".
+2. **Nhúng log + sinh biểu đồ trong hỏi đáp:** dán log/CSV vào ô chat → phân tích + vẽ biểu đồ ngay trong câu trả lời, không bắt chuyển luồng/công cụ khác.
+3. **Lane tự động:** hệ thống tự chọn lane phù hợp (C-Agent / Gemini / Router / cục bộ) theo tình huống và ghi nhớ lựa chọn; chỉ hỏi user khi thật sự mơ hồ. Không bắt đổi tay mỗi lần.
+4. **Rà soát báo lỗi ảo:** liệt kê các chỗ báo lỗi nhưng không có lỗi thật; sửa thành chỉ báo khi chắc chắn, kèm nguyên nhân và cách xử lý bằng tiếng Việt, không lộ traceback thô.
+5. Theo `AGENTS.md` 4.1: phần thay đổi hành vi UI công khai trình phương án cho user duyệt trước khi code (ghi phương án vào báo cáo vé, chờ user gật).
 
-Trong `C:\tmp\pi-spike\`:
+## Việc OMP verify [NHÀ]
 
-1. `pi "tạo file bao-cao-thu.md: báo cáo tuần 3 dòng có 1 bảng"`
-2. `pi "sửa file bao-cao-thu.md: thêm 1 dòng kết luận ở cuối"`
-3. Mở file kiểm tra bằng mắt: nội dung đúng yêu cầu không, có rác không.
-
-## Bước 4 — RPC mode (đường app Streamlit sẽ dùng)
-
-- Thử `pi --mode rpc`: gửi 1 lệnh prompt JSON qua stdin, đọc event JSONL trả về.
-- Nhận xét: ổn định không, có mất message không.
-
-## Rào
-
-- Không gửi dữ liệu công ty thật vào model ngoài trong spike này (chỉ dùng nội dung giả định).
-- Không cài gì ra ngoài `C:\tmp\pi-spike\` + thư mục cài pi.
+- Chạy app thật: 1 câu nhiều ý định (dán log thật + vẽ biểu đồ + đặt ngưỡng) ra đủ 3 kết quả trong một câu trả lời; lane tự chọn đúng; các case báo lỗi ảo đã liệt kê không còn tái diễn.
+- Báo cáo `docs/phieu-viec/ket-qua/ux-chat-core.md` + `xong-cho-duyet`.
 
 ## Tiêu chí ĐẠT
 
-- Báo cáo `docs/phieu-viec/ket-qua/pi-spike-home.md`: pi version, đường model nào
-  sống/chết + lý do, task thử ĐẠT/CHƯA ĐẠT kèm log, nhận xét RPC mode, đề xuất bước tiếp.
-- `trang-thai.md` → `xong-cho-duyet`.
+- Test đa ý định (2–3 ý định/câu) pass; test hồi quy 1 ý định/câu vẫn pass.
+- `compileall` + `pytest` + `cli audit` PASS; không ghi index production.
+- Commit riêng trên nhánh `phieu-viec/rag-fix1`, không đụng `main`.
