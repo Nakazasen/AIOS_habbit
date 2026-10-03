@@ -22,7 +22,9 @@ from __future__ import annotations
 import argparse
 import datetime as _dt
 import json
+import math
 import sqlite3
+import struct
 import sys
 from pathlib import Path
 
@@ -107,6 +109,163 @@ def classify_all(
             "source_path": doc["source_path"],
             "chunk_count": doc["chunk_count"],
         }
+    return manifest
+
+
+CENTROID_HIGH_THRESHOLD = 0.7
+CENTROID_MAX_CHUNKS_PER_DOC = 50
+CENTROID_MAX_CONFIDENCE = 0.85
+
+
+def _decode_float32_le(blob: bytes, dimension: int) -> list[float] | None:
+    """Decode one ``float32-le`` vector blob. Returns None on any mismatch."""
+    if not isinstance(blob, (bytes, bytearray, memoryview)):
+        return None
+    raw = bytes(blob)
+    if len(raw) != dimension * 4:
+        return None
+    try:
+        return list(struct.unpack("<%df" % dimension, raw))
+    except struct.error:
+        return None
+
+
+def _mean_vector(vecs: list[list[float]]) -> list[float] | None:
+    if not vecs:
+        return None
+    dim = len(vecs[0])
+    mean = [0.0] * dim
+    for vec in vecs:
+        if len(vec) != dim:
+            continue
+        for i, value in enumerate(vec):
+            mean[i] += value
+    count = len(vecs)
+    mean = [value / count for value in mean]
+    norm = math.sqrt(sum(value * value for value in mean))
+    if norm <= 0:
+        return None
+    return [value / norm for value in mean]
+
+
+def _cosine(a: list[float], b: list[float]) -> float:
+    # Inputs are L2-normalized, so cosine == dot product.
+    return sum(x * y for x, y in zip(a, b))
+
+
+def _doc_centroid(
+    conn: sqlite3.Connection,
+    document_id: str,
+    model_fingerprint: str,
+    *,
+    max_chunks: int,
+) -> list[float] | None:
+    """Mean of a document's dense chunk vectors (sampled, L2-normalized)."""
+    rows = conn.execute(
+        """
+        SELECT vector_blob, dimension FROM chunk_embeddings
+        WHERE model_fingerprint = ?
+          AND dtype = 'float32-le'
+          AND chunk_id IN (
+              SELECT chunk_id FROM chunks WHERE document_id = ?
+              ORDER BY rowid LIMIT ?
+          )
+        """,
+        (model_fingerprint, document_id, max_chunks),
+    ).fetchall()
+    vecs: list[list[float]] = []
+    for blob, dimension in rows:
+        vec = _decode_float32_le(blob, int(dimension))
+        if vec is None:
+            continue
+        norm = math.sqrt(sum(value * value for value in vec))
+        if norm > 0:
+            vecs.append([value / norm for value in vec])
+    return _mean_vector(vecs)
+
+
+def apply_centroid_fallback(
+    conn: sqlite3.Connection,
+    manifest: dict[str, dict],
+    *,
+    low_threshold: float = CONFIDENCE_LOW_THRESHOLD,
+    high_threshold: float = CENTROID_HIGH_THRESHOLD,
+    max_chunks_per_doc: int = CENTROID_MAX_CHUNKS_PER_DOC,
+) -> dict[str, dict]:
+    """Reassign low-confidence documents by nearest domain centroid.
+
+    Uses the dense vectors already stored in ``chunk_embeddings`` -- nothing
+    is re-embedded. Domain centroids are built from documents the keyword
+    classifier already trusts (confidence >= ``high_threshold``). Each
+    document below ``low_threshold`` is assigned the nearest centroid; its
+    confidence is margin-based (best minus second-best cosine) and capped at
+    :data:`CENTROID_MAX_CONFIDENCE` so vector assignments never outrank
+    strong keyword evidence.
+
+    Never raises for missing tables/columns or unusable vectors: without a
+    usable vector store the manifest is returned unchanged.
+    """
+    try:
+        tables = {
+            str(row[0])
+            for row in conn.execute(
+                "SELECT name FROM sqlite_master WHERE type='table'"
+            ).fetchall()
+        }
+        if "chunk_embeddings" not in tables or "chunks" not in tables:
+            return manifest
+        columns = {
+            str(row[1]) for row in conn.execute("PRAGMA table_info(chunk_embeddings)").fetchall()
+        }
+        if not {"chunk_id", "vector_blob", "dimension", "dtype", "model_fingerprint"} <= columns:
+            return manifest
+        fp_row = conn.execute(
+            "SELECT model_fingerprint FROM chunk_embeddings "
+            "GROUP BY model_fingerprint ORDER BY COUNT(*) DESC LIMIT 1"
+        ).fetchone()
+        if fp_row is None:
+            return manifest
+        fingerprint = str(fp_row[0])
+
+        trusted: dict[str, list[str]] = {domain: [] for domain in DOMAINS}
+        for doc_id, entry in manifest.items():
+            if entry["confidence"] >= high_threshold:
+                trusted[entry["domain"]].append(doc_id)
+        if not all(trusted[domain] for domain in DOMAINS):
+            return manifest
+
+        centroids: dict[str, list[float]] = {}
+        for domain in DOMAINS:
+            vecs = [
+                vec
+                for doc_id in trusted[domain]
+                if (vec := _doc_centroid(conn, doc_id, fingerprint, max_chunks=max_chunks_per_doc))
+                is not None
+            ]
+            centroid = _mean_vector(vecs)
+            if centroid is None:
+                return manifest
+            centroids[domain] = centroid
+
+        for doc_id, entry in manifest.items():
+            if entry["confidence"] >= low_threshold:
+                continue
+            vec = _doc_centroid(conn, doc_id, fingerprint, max_chunks=max_chunks_per_doc)
+            if vec is None:
+                continue
+            sims = {domain: _cosine(vec, centroids[domain]) for domain in DOMAINS}
+            ranked = sorted(DOMAINS, key=lambda d: sims[d], reverse=True)
+            best, second = ranked[0], ranked[1]
+            margin = sims[best] - sims[second]
+            confidence = round(min(CENTROID_MAX_CONFIDENCE, max(0.0, margin * 4.0)), 3)
+            entry["domain"] = best
+            entry["confidence"] = confidence
+            entry["reason"] = (
+                "%s | centroid vector: gần nhất %s (cos %.3f, chênh %.3f)"
+                % (entry["reason"], DOMAIN_DISPLAY[best], sims[best], margin)
+            )
+    except sqlite3.Error:
+        pass
     return manifest
 
 
@@ -297,13 +456,6 @@ def main(argv: list[str] | None = None) -> int:
     if not source.is_file():
         print("Lỗi: không tìm thấy file nguồn: %s" % source, file=sys.stderr)
         return 2
-    if PRODUCTION_PATH_MARKER in source.as_posix() and not args.allow_production:
-        print(
-            "Lỗi: --source trỏ vào kho production đang chạy. "
-            "Thêm --allow-production nếu thật sự muốn tách trên kho này.",
-            file=sys.stderr,
-        )
-        return 2
 
     source_conn = _open_read_only(source)
     try:
@@ -319,6 +471,9 @@ def main(argv: list[str] | None = None) -> int:
             sample_chunks=args.sample_chunks,
             sample_chars=args.sample_chars,
         )
+        # Vector fallback: reassign keyword-missed documents by nearest
+        # domain centroid (dense vectors already in the DB, no re-embedding).
+        manifest_docs = apply_centroid_fallback(source_conn, manifest_docs)
     finally:
         source_conn.close()
 
@@ -326,6 +481,16 @@ def main(argv: list[str] | None = None) -> int:
         _print_distribution(manifest_docs, args.low_threshold)
         print("\nChế độ dry-run: không ghi file nào.")
         return 0
+
+    # The production guard only gates real splits. A dry-run only reads, so it
+    # must not require --allow-production.
+    if PRODUCTION_PATH_MARKER in source.as_posix() and not args.allow_production:
+        print(
+            "Lỗi: --source trỏ vào kho production đang chạy. "
+            "Thêm --allow-production nếu thật sự muốn tách trên kho này.",
+            file=sys.stderr,
+        )
+        return 2
 
     by_domain: dict[str, list[str]] = {d: [] for d in DOMAINS}
     for doc_id, entry in manifest_docs.items():
