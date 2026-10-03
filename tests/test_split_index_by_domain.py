@@ -376,3 +376,49 @@ def test_fallback_threshold_zero_keeps_everything_but_creates_empty_block(tmp_pa
     assert manifest["verification"]["tong_hop"]["checks"]["documents_match"] is True
     assert manifest["overall"] == "DAT"
     assert manifest["verification"]["cross_domain"]["ok"] is True
+
+
+def _attached_path(conn, name):
+    return [r[2] for r in conn.execute("PRAGMA database_list").fetchall() if r[1] == name]
+
+
+def test_attach_readonly_uri_requires_uri_enabled_connection(tmp_path):
+    """Hồi quy bug Windows (INDEX-SPLIT-R3): ATTACH 'file:...?mode=ro' trên
+    kết nối không bật uri=True bị coi là tên file thường ('file:' còn nguyên
+    trong đường dẫn đã gắn); trên Windows dấu ':' sau ổ C còn làm mở thất bại
+    với 'unable to open database'."""
+    from aios_habit.split_index_by_domain import _open_read_only
+
+    source = tmp_path / "lib" / "library.sqlite"
+    source.parent.mkdir(parents=True)
+    conn = sqlite3.connect(str(source))
+    conn.execute("CREATE TABLE t (id INTEGER PRIMARY KEY, v TEXT)")
+    conn.execute("INSERT INTO t VALUES (1, 'x')")
+    conn.commit()
+    conn.close()
+
+    # _open_read_only phải đọc được qua URI chuẩn (file:///...?mode=ro).
+    ro = _open_read_only(source)
+    try:
+        assert ro.execute("SELECT v FROM t").fetchone()[0] == "x"
+    finally:
+        ro.close()
+
+    # Dạng ATTACH mà code dùng: as_uri() + uri=True -> gắn đúng file thật.
+    target = sqlite3.connect(str(tmp_path / "target.sqlite"), uri=True)
+    try:
+        target.execute("ATTACH DATABASE '%s?mode=ro' AS srcdb" % source.as_uri())
+        attached = _attached_path(target, "srcdb")
+        assert attached and "file:" not in attached[0], attached
+        assert attached[0].endswith("library.sqlite"), attached
+        assert target.execute("SELECT v FROM srcdb.t").fetchone()[0] == "x"
+        target.execute("DETACH DATABASE srcdb")
+    finally:
+        target.close()
+
+    # Chốt hồi quy: code không còn dựng URI kiểu cũ "file:C:/...?mode=ro"
+    # (dấu ':' sau ổ đĩa làm Windows mở thất bại ở INDEX-SPLIT-R3).
+    import aios_habit.split_index_by_domain as mod
+
+    src_text = Path(mod.__file__).read_text(encoding="utf-8")
+    assert '"file:%s?mode=ro"' not in src_text, "URI cu kieu file:C:/... van con"

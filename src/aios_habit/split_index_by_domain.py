@@ -30,6 +30,7 @@ import argparse
 import datetime as _dt
 import json
 import math
+import os
 import sqlite3
 import struct
 import sys
@@ -76,7 +77,9 @@ def _quote_identifier(name: str) -> str:
 
 
 def _open_read_only(path: Path) -> sqlite3.Connection:
-    uri = "file:%s?mode=ro" % path.as_posix()
+    # Path.as_uri() gives file:///C:/... on Windows (drive letter handled),
+    # unlike the hand-built "file:C:/..." form which SQLite misparses.
+    uri = path.as_uri() + "?mode=ro"
     conn = sqlite3.connect(uri, uri=True, timeout=30.0)
     conn.execute("PRAGMA query_only=ON")
     return conn
@@ -607,12 +610,17 @@ def main(argv: list[str] | None = None) -> int:
             target_db.unlink()
         print("Đang tách kho %s: %d tài liệu..." % (_domain_display(domain), len(doc_ids)))
 
-        target = sqlite3.connect(str(target_db), timeout=60.0)
+        # The ATTACH below uses URI syntax (file:///...?mode=ro), so this
+        # connection must parse URIs. A plain Windows path does not start
+        # with "file:" so it is still treated as a filename -- safe.
+        target = sqlite3.connect(str(target_db), uri=True, timeout=60.0)
         try:
             src = _open_read_only(source)
             try:
                 _copy_schema(src, target)
-                target.execute("ATTACH DATABASE 'file:%s?mode=ro' AS srcdb" % source.as_posix())
+                # as_uri() -> file:///C:/... on Windows; the old hand-built
+                # "file:C:/...?mode=ro" failed there (colon after drive).
+                target.execute("ATTACH DATABASE '%s?mode=ro' AS srcdb" % source.as_uri())
                 copied = _copy_domain_tables(target, src, doc_ids)
                 target.execute("DETACH DATABASE srcdb")
             finally:
