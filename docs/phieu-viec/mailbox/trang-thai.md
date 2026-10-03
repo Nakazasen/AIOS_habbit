@@ -1,11 +1,11 @@
 # Trạng thái mailbox
 
-- Trạng thái: `dang-lam`
+- Trạng thái: `xong-cho-duyet`
 - Ticket hiện tại: `PI-SPIKE-HOME` — [NHÀ] chạy thử pi harness ở máy nhà: cài pi, chọn đường model, task tạo/sửa file thử, thử RPC mode.
 - `prompt`: `docs/phieu-viec/mailbox/prompt.md`
-- `commit`: ``
+- `commit`: `5b9014b`
 - `bao_cao`: `docs/phieu-viec/ket-qua/pi-spike-home.md`
-- `ghi_chu`: 2026-10-03 11:02 +07 — OMP nhận PI-SPIKE-HOME. Digest tạm đỗ ở checkpoint 847/889, không resume. Bắt đầu cài pi, chưa đụng index.
+- `ghi_chu`: 2026-10-03 11:08 +07 — PI-SPIKE-HOME xong chờ duyệt. pi 1.0.0. Đường sống: Gemini Flash Lite. Tạo file ĐẠT, sửa file ĐẠT ở lần 2. RPC 15 event, không mất message. Cầu nối tắt. Digest vẫn đỗ 847/889.
 - `ghi_chu`: 2026-10-03 05:32 watcher auto-escalate: 4 lan tu mo OMP (moi lan cach ~10 phut) ma mailbox khong tien trien. Chuyen sang cho-muse de Muse xu ly. Ticket: `KNOWLEDGE-DIGEST-HOME-R1` — [NHÀ] resume batch tóm tắt từ checkpoint 92/889 khi cầu nối hết HTTP 405; xuất sổ tay + probe so sánh RAG.
 - `ghi_chu`: 2026-10-03 05:32 watcher auto-escalate: 4 lan tu mo OMP (moi lan cach ~10 phut) ma mailbox khong tien trien. Chuyen sang cho-muse de Muse xu ly. Ticket: `KNOWLEDGE-DIGEST-HOME-R1` — [NHÀ] resume batch tóm tắt từ checkpoint 92/889 khi cầu nối hết HTTP 405; xuất sổ tay + probe so sánh RAG.
 - `ghi_chu`: 2026-10-03 05:32 watcher auto-escalate: 4 lan tu mo OMP (moi lan cach ~10 phut) ma mailbox khong tien trien. Chuyen sang cho-muse de Muse xu ly. Ticket: `KNOWLEDGE-DIGEST-HOME-R1` — [NHÀ] resume batch tóm tắt từ checkpoint 92/889 khi cầu nối hết HTTP 405; xuất sổ tay + probe so sánh RAG.
