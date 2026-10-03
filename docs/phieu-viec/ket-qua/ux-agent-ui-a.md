@@ -202,3 +202,42 @@ Vá `ab70e69` đúng với hàm `is_safe_artifact_path`: đo trên máy nhà, c�
 Vé **CHƯA ĐẠT**. Dừng `cho-muse`. Không đặt `xong-cho-duyet`. Không sửa code.
 
 Đề xuất Muse: thẻ đính kèm phải kiểm đúng đường dẫn báo cáo đã ghi trong comment (gốc `default_doc_root()`), hoặc lớp tạo báo cáo phải ghi dòng `agent_work_items` mà thẻ đang đọc. Vẫn chặn `..` và file ngoài gốc. Mục 2 (Hoàn tác) lần này vẫn đúng SHA.
+
+## 9. Verify lần 4 [NHÀ] — ĐẠT, chờ duyệt
+
+Ngày: 2026-10-03 19:27–19:49 +07. Người làm: OMP (máy nhà). Không sửa code. Không merge `main`. Không force-push.
+
+### 9.1 Cổng gate
+
+- Watcher tự mở OMP lần 1/4 lúc 19:26:07 (`LAUNCH 1/4`, log `D:\Sandbox\Vong_lap_giao_viec\watcher.log`). Không phải chuỗi 4 lần. Không dừng vì kẹt cổng.
+- Điều kiện mở ĐÃ TỚI ngay: `0a0716f` là tổ tiên của HEAD lúc nhận (`a44338a`, `git merge-base --is-ancestor` exit 0).
+
+### 9.2 Cách chạy
+
+- Python `3.11.14` (`.venv`). Không đặt `AIOS_DOC_ROOT` (in lúc mở app: `AIOS_DOC_ROOT=[]`).
+- App thử `http://127.0.0.1:8515`, đúng biến môi trường của `RUN_AIOS_WORKSPACE_CHAT.bat`, kể cả `AIOS_FEATURE_CHAT_ACTION=1`. Health 200. PID listen `12764`.
+- Không đụng app người dùng cổng `8501` (PID `5828` giữ nguyên). Cầu nối `8585` (PID `17204` giữ nguyên).
+- Sổ `E2EUxApp` (`NB-922E3730`). Hội thoại mới `CONV-E230A413` (`Cuộc trò chuyện 03/10 19:34`).
+- Gõ câu tạo: `tạo báo cáo tuan.docx: Nội dung verify UX-AGENT-UI lần 4. Dòng một để mở bằng Word.`
+
+### 9.3 Kết quả
+
+| Mục | Kết quả | Bằng chứng |
+|---|---|---|
+| 1. Tạo `tuan.docx`, bấm Tải về, mở bằng Word | **PASS** | Thẻ `ARE-F84108E0` có 3 nút. Nút Tải về **bấm được** (`st-key-btn_dl_ARE-F84108E0`, `disabled=false`). File tải về `C:\tmp\fix4-dl\tuan.docx` là zip docx, SHA `53b032521d6272b9c8b8e208256113a1098bfcf45d89bb7e5fb07e007970932a`, khớp từng byte file trên đĩa `C:\Users\Admin\AIOS_bao_cao\tuan.docx`. Word COM mở được (`Documents.Open`, tên `tuan.docx`, 8 đoạn). Có đúng câu lần 4. |
+| 2. Sửa rồi Hoàn tác | **PASS** | Câu đúng `sửa báo cáo tuan.docx: thêm Dòng hoàn tác verify lần 4.` (thẻ `ARE-31A7A62B`, sổ hành động `kind=edit`, 9 đoạn). SHA đổi `53b03252…932a` → `858096d3cc33342bbe92f6c0bbf2d32d1a1e5e67c9a543225e803fb8c1e5ef4e` (thêm đúng câu). Bấm Hoàn tác đưa SHA về đúng `53b032521d6272b9c8b8e208256113a1098bfcf45d89bb7e5fb07e007970932a`. Câu thêm biến mất. |
+| 3. Xem toàn văn `.md` mở/thu, nội dung đúng; `.docx` bị mờ | **PASS** | `.docx` thẻ `ARE-F84108E0`: nút Xem toàn văn **mờ** (`disabled=true`). `.md` `tuan-verify4.md` (54 byte, đúng dòng lần 4), thẻ `ARE-F185B031`: nút Xem toàn văn bấm được, đổi thành `Ẩn toàn văn`, hiện đúng `Dòng xem toàn văn verify lần 4.`; bấm lại thì thu gọn. Không còn câu "không còn trên máy". |
+| 4. SHA index production | **không đổi** | Trước và sau cùng `062ec090644fb4ec09d2fb6388f3175e988e48d63061b04e6c27bbed334ef8ca`, size `2552659968`. |
+| 5. Cổng lệnh | **PASS** | `compileall` OK. `pytest` 4 file liên quan **63 passed**. `cli audit` `"status": "PASS"`, `warnings` rỗng. `import aios_habit.workspace_chat_app` được. |
+
+Thẻ phỏng vấn cũ trong hội thoại `CONV-42A698D7` vẫn hiện `Phiên phỏng vấn trong chat` (`IS-B0E4FA28`), không có traceback. Không thấy thẻ loại khác bị vỡ trong lượt này.
+
+### 9.4 Ghi chú (không làm mục 1 thành FAIL)
+
+- Nhãn nút vẫn là `📥 Tải về .md` (chuỗi giao diện cũ), nhưng file tải về tên `tuan.docx`, URL media kết thúc bằng `.docx`, Word mở được ngay. Lần 3 nút này bị mờ (`disabled=true`); lần này bấm được.
+- File `tuan.docx` đã có từ các lần verify trước, nên bản tạo lần 4 vẫn còn vài đoạn cũ của lần 2, cộng thêm đúng câu lần 4. Tiêu chí vé là nội dung vừa gõ có trong file và Word mở được — đúng.
+- Giữa chừng ô chat bị dính chữ cũ nên có 2 lệnh gõ lỗi (`ARE-E11DF77C`, `ARE-484C998D`). Cả hai đã Hoàn tác về SHA `53b03252…932a` trước khi chạy lại câu sửa đúng. Không dùng hai lệnh lỗi đó làm bằng chứng mục 2.
+
+### 9.5 Kết luận
+
+Vé **ĐẠT** 5 mục. Đặt `xong-cho-duyet`. Không sửa code.
