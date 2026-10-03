@@ -204,3 +204,41 @@ def improvement_report(limit: int = 50) -> Dict:
         "can_nan_lai": corrections[:limit],
         "so_muc_can_xem_lai": len(corrections),
     }
+
+
+class SuggestionFeedbackStrictError(ValueError):
+    """Validation failure of the strict per-suggestion feedback API."""
+
+
+def record_feedback_strict(
+    suggestion_id: str,
+    expert: str,
+    verdict: str,
+    *,
+    reason: str = "",
+    true_cause: str = "",
+    correction: str = "",
+    ly_do: str = "",
+    nguyen_nhan_that: str = "",
+    noi_dung_nan_lai: str = "",
+) -> Dict:
+    """Giong record_feedback nhung raise thay vi tra {"ok": False}.
+
+    Chuyen gia cham "sai" hoac "mot_phan" ma thieu mot trong 3 truong
+    (ly do, nguyen nhan that, noi dung nan lai) thi raise
+    SuggestionFeedbackStrictError (subclass cua ValueError) voi thong bao
+    tieng Viet ro rang — dung cho UI chat muon chan ngay tai cho nhap.
+    Nhan ca ten truong tieng Viet (ly_do, nguyen_nhan_that,
+    noi_dung_nan_lai) lan ten tieng Anh (reason, true_cause, correction).
+    """
+    result = record_feedback(
+        suggestion_id,
+        expert,
+        verdict,
+        reason=ly_do or reason,
+        true_cause=nguyen_nhan_that or true_cause,
+        correction=noi_dung_nan_lai or correction,
+    )
+    if not result.get("ok"):
+        raise SuggestionFeedbackStrictError(str(result.get("error_vi", "Feedback không hợp lệ.")))
+    return result
