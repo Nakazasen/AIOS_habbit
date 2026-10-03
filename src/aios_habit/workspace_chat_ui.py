@@ -449,6 +449,7 @@ def render_chat_bubble(
                 try:
                     from aios_habit.workspace_case_repository import WorkspaceCaseRepository
                     from aios_habit.workspace_agent_policy import is_safe_artifact_path
+                    from aios_habit.agent_doc_edit import default_doc_root
                     case_repo = WorkspaceCaseRepository()
                     work_record = case_repo.get_agent_work(work_id) if work_id else None
                     if work_record:
@@ -456,7 +457,11 @@ def render_chat_bubble(
                             is_rolled_back = True
                         if work_record.result_ref:
                             cand = Path(work_record.result_ref)
-                            if is_safe_artifact_path(cand):
+                            # Fix 2026-10-03 (verify lan 2 cho-muse): bao cao
+                            # agent ghi duoi default_doc_root() (~/AIOS_bao_cao
+                            # khi khong dat AIOS_DOC_ROOT); cong an toan cua
+                            # the dinh kem phai tin goc nay, van chan "..".
+                            if is_safe_artifact_path(cand, allowed_roots=(default_doc_root(),)):
                                 verified_result_path = cand
                 except Exception:
                     pass

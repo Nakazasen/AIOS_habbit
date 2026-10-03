@@ -133,6 +133,36 @@ def test_is_safe_artifact_path(tmp_path):
     assert is_safe_artifact_path(custom_file, allowed_roots=(custom_root,)) is True
 
 
+def test_is_safe_artifact_path_allows_agent_doc_root(tmp_path, monkeypatch):
+    """Hoi quy 2026-10-03 (verify lan 2 cho-muse): cong an toan cua the dinh
+    kem trong chat phai tin goc mac dinh cua bao cao agent
+    (default_doc_root(): ~/AIOS_bao_cao khi khong dat AIOS_DOC_ROOT), neu
+    khong nut Tai ve bi mo, nut Xem toan van bao sai. Traversal van bi chan."""
+    from aios_habit.agent_doc_edit import default_doc_root
+    from aios_habit.workspace_agent_policy import is_safe_artifact_path
+
+    monkeypatch.setenv("AIOS_DOC_ROOT", str(tmp_path / "AIOS_bao_cao"))
+    root = default_doc_root()
+    report = root / "tuan.docx"
+    report.write_bytes(b"PK fake docx")
+    md_file = root / "tuan-verify.md"
+    md_file.write_text("ok", encoding="utf-8")
+
+    # File duoi goc bao cao: the dinh kem tin (duoc phep)
+    assert is_safe_artifact_path(report, allowed_roots=(root,)) is True
+    assert is_safe_artifact_path(md_file, allowed_roots=(root,)) is True
+    # (Khong assert False khi thieu allowed_roots o day vi tmp_path cua
+    # pytest von la thu muc tam duoc kiem soat, tu nhien duoc phep.)
+
+    # Traversal ".." ra khoi goc: chan
+    assert is_safe_artifact_path(str(root / ".." / "secret.md"), allowed_roots=(root,)) is False
+
+    # File ngoai goc: chan (dung file ngay duoi thu muc tam he thong,
+    # khong thuoc bat ky goc mac dinh nao)
+    outside = Path(tempfile.gettempdir()) / "secret_outside_doc_root.md"
+    assert is_safe_artifact_path(outside, allowed_roots=(root,)) is False
+
+
 def test_scope_grant_and_action_authorization(tmp_path):
     worktree = tmp_path / "worktree"
     worktree.mkdir()
