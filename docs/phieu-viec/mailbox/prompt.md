@@ -1,34 +1,24 @@
-# Vé: UX-INTERVIEW-UI — verify UI phiên phỏng vấn trong chat trên app thật
+# Vé: UX-INTERVIEW-UI-FIX1-VERIFY — verify fix chữ "Đã lưu nháp chờ duyệt" trên app thật
 
-Lane: [NHÀ] OMP verify trên app thật. Không merge `main`; code tương thích Python 3.11; không force-push.
+Lane: [NHÀ] OMP verify trên app thật. Không merge `main`; không sửa code (fix đã có); không force-push.
 
 ## Bối cảnh
 
-User đã gật phương án UI (2026-10-03 ~16:10). Muse code xong Phase A [VM]:
-backend giữ nguyên, chỉ nối UI vào (commit `4b6b4c2`, báo cáo
-`docs/phieu-viec/ket-qua/ux-interview-ui.md`, 24/24 test mới pass, audit PASS).
+Vé `UX-INTERVIEW-UI` verify [NHÀ]: mục 1, 2, 4, 5, 6 PASS; mục 3 CHƯA ĐẠT — trả lời hết câu thì sqlite ghi đúng nhưng màn không hiện "Đã lưu nháp chờ duyệt" (OMP đặt `cho-muse` 2026-10-03 16:50 +07, báo cáo `docs/phieu-viec/ket-qua/ux-interview-ui.md` mục 6).
 
-## Việc OMP verify [NHÀ] (theo mục 4 của báo cáo)
+Muse vá Phase A [VM], commit `f521566` (xác nhận độc lập: chỉ sửa UI `src/aios_habit/chat_interview_ui.py` +48 và `tests/test_chat_interview_ui.py` +68): khi phiên hoàn thành, chữ "Đã lưu nháp chờ duyệt" được lưu vào `st.session_state` trước `st.rerun`, nên widget vẫn hiện đúng dù phiên đã `drop_session`. Test 111 passed, audit PASS, tương thích Python 3.11.
 
-1. Mở app, gõ "mở phiên phỏng vấn F000" (mã lỗi thật trong kho): phiên mở ra,
-   **câu hỏi 1 hiện kèm các ô trả lời ngay dưới**, không chuyển màn hình.
-2. Gửi đáp án thiếu (bỏ trống cơ chế gây lỗi): app **nhắc "Còn thiếu phần
-   nguyên nhân / bằng chứng"** và không qua câu mới.
-3. Điền đủ → qua câu tiếp theo; trả lời hết → app báo **"Đã lưu nháp chờ duyệt"**;
-   kiểm tra `local_cases/staging_enrichment.sqlite` có đáp án mới,
-   `reviewer_status` = `cho_chuyen_gia_phan_hoi`.
-4. Gõ "tiếp theo nên làm gì?" (mở sổ tri thức trước): mỗi gợi ý có **3 nút**
-   👍/😐/👎; bấm 👎 → hiện 3 ô ngay dưới gợi ý; bỏ trống 1 ô rồi lưu → bị chặn;
-   điền đủ → ghi nhận.
-5. Chê 1 gợi ý "sai", rồi hỏi lại việc tương tự: thấy dòng
-   **"💡 Lưu ý: tình huống này từng bị chê vì …"** đứng trước gợi ý.
-6. Gõ "báo cáo cải thiện gợi ý": thấy dòng **"📉 Tỉ lệ lặp lại lỗi"**.
-7. Ghi SHA index production trước/sau (phải không đổi).
+## Việc OMP verify [NHÀ]
+
+1. Điều kiện mở: commit fix `f521566` là tổ tiên của HEAD nhánh `phieu-viec/rag-fix1`; mở app thử cổng 8515 (không đụng app user 8501), sổ `E2EUxApp`; ghi SHA index production trước.
+2. Gõ "mở phiên phỏng vấn F000": phiên mở ra, câu 1 + ô trả lời ngay dưới, không đổi màn.
+3. Trả lời ĐẦY ĐỦ hết các câu (KHÔNG F5 giữa chừng): app báo **"Đã lưu nháp chờ duyệt" ổn định trên màn** (chữ không biến mất sau rerun); kiểm tra `local_cases/staging_enrichment.sqlite` có đáp án mới, `reviewer_status` = `cho_chuyen_gia_phan_hoi`.
+4. Chấm regression nhanh các mục 1, 2, 4, 5, 6 (không vỡ luồng chat cũ). Sau khi hoàn thành rồi reload trang: chấp nhận widget báo hết hạn (chữ chỉ sống trong cùng browser session — giới hạn đã ghi, hành vi Streamlit bình thường).
+5. `compileall src tests` OK + pytest các test liên quan đỗ; SHA index production trước/sau không đổi.
+6. Viết báo cáo `docs/phieu-viec/ket-qua/ux-interview-ui-fix1.md`, commit lên nhánh, rồi đặt `xong-cho-duyet`.
 
 ## Tiêu chí ĐẠT
 
-- Đủ 6 mục trên đều đúng như mô tả; không vỡ luồng chat cũ.
-- `compileall` + `pytest` các test liên quan + `cli audit` PASS trên Python 3.11.
-- Commit riêng trên nhánh `phieu-viec/rag-fix1`, không đụng `main`.
-- Báo cáo kết quả vào `docs/phieu-viec/ket-qua/ux-interview-ui.md` (bổ sung mục
-  verify [NHÀ]) rồi `xong-cho-duyet`.
+- Mục 3 đúng: chữ "Đã lưu nháp chờ duyệt" hiện ổn định sau khi trả lời hết + sqlite đúng; các mục khác không vỡ.
+- Commit fix `f521566` là tổ tiên của HEAD; test đỗ; index production không đổi.
+- Mục nào FAIL → dừng vé, đặt `cho-muse` theo luật.
