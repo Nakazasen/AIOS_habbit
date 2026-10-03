@@ -71,6 +71,10 @@ _KEYWORD_RULES: Mapping[str, Sequence[tuple[str, float, str]]] = {
     DOMAIN_LSU: (
         (r"\blsu\b", 2.0, "LSU"),
         (r"\bjig\b", 2.0, "jig"),
+        ("治具", 2.5, "治具"),  # jig (kanji) -- log jig belongs to LSU
+        (r"tape", 2.0, "tape"),  # tape attachment data belongs to LSU
+        (r"\bmirror\b", 2.0, "mirror"),  # polygon mirror: core LSU part
+        (r"log", 1.5, "log"),  # bare "log" leans LSU (log jig)
         (r"fintest", 2.0, "fintest"),
         (r"fin\s*test", 2.0, "fin test"),
         (r"\bselno\b", 2.0, "SelNo"),
@@ -84,6 +88,37 @@ _KEYWORD_RULES: Mapping[str, Sequence[tuple[str, float, str]]] = {
     ),
     DOMAIN_DIEU_TRA_LOI: (
         (r"\bkdtps\b", 2.0, "KDTPS"),
+        (r"ktd[-_]", 3.0, "KTD-"),  # error-case list filename prefix
+        (r"(?<!wsc)[_\-]c\d{4}", 2.5, "mã Cxxxx"),  # _C0650 style (no leading \b: hex names)
+        (r"jam\d*", 2.5, "JAM"),  # paper jam codes: JAM4709, Jam0501...
+        (r"error\d*", 2.0, "error"),  # Error56, Error80, ERROR 0801...
+        ("エラー", 2.5, "エラー"),
+        ("自己診断", 2.5, "自己診断"),  # self-diagnosis
+        ("不具合", 2.5, "不具合"),  # defect/failure
+        ("異常", 2.0, "異常"),  # abnormality
+        ("エラーコード", 2.5, "エラーコード"),
+        ("エラコード", 2.0, "エラコード"),  # common misspelling variant
+        ("調査報告", 2.5, "調査報告"),  # investigation report (ja)
+        ("调查报告", 2.5, "调查报告"),  # investigation report (zh)
+        ("一覧表", 1.0, "一覧表"),  # list/table (error lists in this corpus)
+        ("DRBFM", 2.5, "DRBFM"),  # Design Review Based on Failure Mode
+        (r"maintenance[\s_\-]*mode", 2.0, "maintenance mode"),
+        ("信号", 1.0, "信号"),  # signal (error signal docs)
+        ("発生", 1.5, "発生"),  # occurred (ja)
+        ("发生", 1.5, "发生"),  # occurred (zh)
+        (r"\bng\b", 1.0, "NG"),
+        # Hardware reference docs live in the error-investigation corpus
+        # (user's Drive folder "Sơ đồ điện", error-code lists).
+        ("回路図", 1.5, "回路図"),  # circuit diagram
+        ("配線図", 1.5, "配線図"),  # wiring diagram
+        ("ブロック図", 1.5, "ブロック図"),  # block diagram
+        (r"30[23][a-z]{1,2}\d", 1.5, "part 30x"),  # Kyocera part numbers: 302XC, 302ND, 303V...
+        (r"3v2[a-z]", 1.5, "part 3V2"),  # 3V2XC/XD/XF/ND...
+        (r"7pa\w+", 1.5, "part 7PA"),
+        (r"pa\d+[a-z]", 1.0, "part PA"),
+        (r"\bassy", 1.0, "ASSY"),
+        (r"pwb", 1.0, "PWB"),  # printed wiring board
+        ("出荷検査", 1.5, "出荷検査"),  # shipping inspection (QA hold)
         (r"\bf\d{3}\b", 2.0, "mã Fxxx"),
         (r"hiện tượng", 1.5, "hiện tượng"),
         (r"nguyên nhân", 1.5, "nguyên nhân"),
