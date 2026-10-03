@@ -3,6 +3,6 @@
 - Trạng thái: `dang-lam`
 - Ticket hiện tại: `INDEX-SWITCH-APP` — [NHÀ] chuyển app sang 3 khối lĩnh vực + bật định tuyến (junction sang ổ D, không tốn chỗ ổ C). Prompt: `docs/phieu-viec/mailbox/prompt.md` (copy nguyên văn `prompt-queue-index-switch-app.md`).
 - `hang-cho`: hết.
-- `commit`: `22ae49f`
-- `bao_cao`: (chưa có — đang làm)
-- `ghi_chu`: 2026-10-03 22:41:09 nhận vé. Cổng watcher LAUNCH 1/4 (`launchStallCount=1`, 22:39:36). Điều kiện mở đã tới (đúng máy nhà h410asrock, R5 ĐẠT, kho tách còn trên D). Không dùng nhánh 4 lần / `cho-muse`.
+- `commit`: `2b6be16`
+- `bao_cao`: (chưa có — đang hỏi đáp thử)
+- `ghi_chu`: 2026-10-03 22:47 junction xong, không copy. 4 kho mở được qua đường app: lsu 92, dieu_tra_loi 681, mom 44, tong_hop 72 — khớp manifest. Kho cũ SHA `45eb0e07…b7c0` chưa đổi. Đã dừng streamlit+worker, sắp bật cờ và hỏi 4 câu.
