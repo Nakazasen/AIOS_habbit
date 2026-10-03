@@ -13,7 +13,7 @@ Python 3.11 compatible.
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any, Dict, Tuple
+from typing import Any, Dict, Optional, Tuple
 
 from aios_habit.agent_doc_edit import ALLOWED_SUFFIXES
 
@@ -82,6 +82,36 @@ def artifact_download_payload(path: Any) -> Dict[str, Any]:
         "is_binary": is_binary,
         "error_vi": "",
     }
+
+
+def verify_card_result_path(work_record: Any, raw_result_path: str) -> Optional[Path]:
+    """Resolve the attachment card's verified result path (pure logic).
+
+    Hoi quy 2026-10-03 (verify lan 3 cho-muse): luong tao bao cao trong chat
+    (ARE-*) khong ghi dong agent_work_items; the dinh kem chi lay duoc duong
+    dan tu comment metadata trong tin nhan. Uu tien result_ref cua dong viec
+    (luong hang doi orchestrator); neu khong co dong viec, fallback sang kiem
+    dung result_path ghi trong comment.
+
+    Ca hai ung vien deu phai qua cong an toan voi goc bao cao cua agent duoc
+    phep (default_doc_root(): ~/AIOS_bao_cao khi khong dat AIOS_DOC_ROOT);
+    van chan ".." va file ngoai goc. Tra None neu khong co duong dan nao
+    hop le.
+    """
+    from aios_habit.agent_doc_edit import default_doc_root
+    from aios_habit.workspace_agent_policy import is_safe_artifact_path
+
+    allowed_roots = (default_doc_root(),)
+    candidates = []
+    if work_record is not None and getattr(work_record, "result_ref", None):
+        candidates.append(str(work_record.result_ref))
+    if raw_result_path:
+        candidates.append(str(raw_result_path))
+    for raw in candidates:
+        cand = Path(raw.strip())
+        if is_safe_artifact_path(cand, allowed_roots=allowed_roots):
+            return cand
+    return None
 
 
 def _safe_same_dir(result: Path, checkpoint: Path) -> bool:

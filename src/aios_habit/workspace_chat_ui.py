@@ -447,22 +447,17 @@ def render_chat_bubble(
                 is_rolled_back = False
                 verified_result_path: Optional[Path] = None
                 try:
+                    from aios_habit.agent_report_artifact import verify_card_result_path
                     from aios_habit.workspace_case_repository import WorkspaceCaseRepository
-                    from aios_habit.workspace_agent_policy import is_safe_artifact_path
-                    from aios_habit.agent_doc_edit import default_doc_root
                     case_repo = WorkspaceCaseRepository()
                     work_record = case_repo.get_agent_work(work_id) if work_id else None
-                    if work_record:
-                        if work_record.status == "rolled_back":
-                            is_rolled_back = True
-                        if work_record.result_ref:
-                            cand = Path(work_record.result_ref)
-                            # Fix 2026-10-03 (verify lan 2 cho-muse): bao cao
-                            # agent ghi duoi default_doc_root() (~/AIOS_bao_cao
-                            # khi khong dat AIOS_DOC_ROOT); cong an toan cua
-                            # the dinh kem phai tin goc nay, van chan "..".
-                            if is_safe_artifact_path(cand, allowed_roots=(default_doc_root(),)):
-                                verified_result_path = cand
+                    if work_record and work_record.status == "rolled_back":
+                        is_rolled_back = True
+                    # Fix 2026-10-03 (verify lan 3 cho-muse): luong tao bao cao
+                    # trong chat (ARE-*) khong ghi dong agent_work_items; the
+                    # fallback sang kiem dung result_path trong comment metadata
+                    # voi cong an toan + goc bao cao cua agent, van chan "..".
+                    verified_result_path = verify_card_result_path(work_record, raw_res_path)
                 except Exception:
                     pass
 

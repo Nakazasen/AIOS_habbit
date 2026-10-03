@@ -189,3 +189,68 @@ def test_e2e_docx_edit_then_undo_restores_binary(tmp_path, monkeypatch):
     import hashlib
 
     assert hashlib.sha256(Path(edited["path"]).read_bytes()).hexdigest() == original_sha
+
+
+# ---------------------------------------------------------------------------
+# verify_card_result_path (hoi quy verify lan 3 cho-muse, 2026-10-03)
+# ---------------------------------------------------------------------------
+
+
+def _doc_root_env(tmp_path, monkeypatch):
+    monkeypatch.setenv("AIOS_DOC_ROOT", str(tmp_path / "AIOS_bao_cao"))
+
+
+def test_verify_card_prefers_work_record_result_ref(tmp_path, monkeypatch):
+    """Dong viec orchestrator co result_ref hop le -> dung duong dan do."""
+    _doc_root_env(tmp_path, monkeypatch)
+    from aios_habit.agent_report_artifact import verify_card_result_path
+
+    root = tmp_path / "AIOS_bao_cao"
+    root.mkdir(parents=True, exist_ok=True)
+    report = root / "bao-cao.docx"
+    report.write_bytes(b"PK fake")
+
+    class FakeWork:
+        result_ref = str(report)
+
+    got = verify_card_result_path(FakeWork(), str(root / "khac.md"))
+    assert got == report
+
+
+def test_verify_card_falls_back_to_comment_path_when_no_work_row(tmp_path, monkeypatch):
+    """Khong co dong agent_work_items (luong ARE-* trong chat) -> the kiem
+    dung result_path trong comment metadata, van qua cong an toan."""
+    _doc_root_env(tmp_path, monkeypatch)
+    from aios_habit.agent_report_artifact import verify_card_result_path
+
+    root = tmp_path / "AIOS_bao_cao"
+    root.mkdir(parents=True, exist_ok=True)
+    report = root / "tuan.docx"
+    report.write_bytes(b"PK fake docx")
+
+    got = verify_card_result_path(None, str(report))
+    assert got == report
+
+
+def test_verify_card_fallback_blocks_traversal_and_outside(tmp_path, monkeypatch):
+    """Fallback van chan ".." va file ngoai goc bao cao."""
+    import tempfile
+
+    _doc_root_env(tmp_path, monkeypatch)
+    from aios_habit.agent_report_artifact import verify_card_result_path
+
+    root = tmp_path / "AIOS_bao_cao"
+    root.mkdir(parents=True, exist_ok=True)
+    assert verify_card_result_path(None, str(root / ".." / "secret.md")) is None
+    # File ngay duoi thu muc tam he thong, khong thuoc goc nao duoc phep.
+    outside = Path(tempfile.gettempdir()) / "secret_outside_card_root.md"
+    assert verify_card_result_path(None, str(outside)) is None
+
+
+def test_verify_card_none_when_nothing_valid(tmp_path, monkeypatch):
+    """Khong dong viec, khong duong dan -> None (nut Tai ve tiep tuc tat)."""
+    _doc_root_env(tmp_path, monkeypatch)
+    from aios_habit.agent_report_artifact import verify_card_result_path
+
+    assert verify_card_result_path(None, "") is None
+    assert verify_card_result_path(None, "   ") is None
