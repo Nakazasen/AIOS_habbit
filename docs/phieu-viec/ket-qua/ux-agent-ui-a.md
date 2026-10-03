@@ -161,3 +161,44 @@ File nằm ở `C:\\Users\\Admin\\AIOS_bao_cao\\tuan.docx`. Thẻ chat chỉ b�
 Vé **CHƯA ĐẠT**. Dừng `cho-muse`. Không đặt `xong-cho-duyet`. Không sửa code.
 
 Đề xuất Muse: cổng an toàn của thẻ đính kèm phải cho phép đúng gốc `default_doc_root()` (`~/AIOS_bao_cao` khi không đặt `AIOS_DOC_ROOT`), vẫn chặn `..`. Sau khi vá, OMP verify lại mục 1 và mục 3 trên app 8515. Mục 2 (Hoàn tác) lần này đã đúng SHA.
+
+## 8. Verify lần 3 [NHÀ] — CHƯA ĐẠT, dừng `cho-muse`
+
+Ngày: 2026-10-03 19:09–19:18 +07. Người làm: OMP (máy nhà). Không sửa code. Không merge `main`. Không force-push.
+
+### 8.1 Cổng gate
+
+- Watcher tự mở OMP lần 1/4 lúc 19:07:34 (`launchStallCount=1`, log `D:\Sandbox\Vong_lap_giao_viec\watcher.log`). Không phải chuỗi 4 lần. Không dừng vì kẹt cổng.
+- Điều kiện mở ĐÃ TỚI: `ab70e69` là tổ tiên của HEAD lúc nhận (`64022a9`, `git merge-base --is-ancestor` exit 0).
+
+### 8.2 Cách chạy
+
+- Python `3.11.14` (`.venv`). Không đặt `AIOS_DOC_ROOT`.
+- App thử `http://127.0.0.1:8515`, đúng biến môi trường của `RUN_AIOS_WORKSPACE_CHAT.bat`, kể cả `AIOS_FEATURE_CHAT_ACTION=1`. Health 200. PID listen `17732`.
+- Không đụng app người dùng cổng `8501` (PID `5828` giữ nguyên). Cầu nối `8585` (PID `17204` giữ nguyên).
+- Sổ `E2EUxApp` (`NB-922E3730`). Hội thoại mới `CONV-0366F89C` (`Cuộc trò chuyện 03/10 19:13`).
+- Gõ câu tạo: `tạo báo cáo tuan.docx: Nội dung verify UX-AGENT-UI lần 3. Dòng một để mở bằng Word.`
+
+### 8.3 Kết quả
+
+| Mục | Kết quả | Bằng chứng |
+|---|---|---|
+| 1. Tạo `tuan.docx`, bấm Tải về, mở bằng Word | **FAIL** | Lệnh tạo đã chạy. File `C:\\Users\\Admin\\AIOS_bao_cao\\tuan.docx` là zip docx, SHA `35b2d708fe0697cc5fe0d61769be62d4d8b887ad7968ca32fc4969a9c5f6ea50`. XML trong file có đúng câu lần 3. Word COM mở được file **trên đĩa** (`Documents.Open`, tên `tuan.docx`). Nhưng nút **Tải về bị mờ**, không bấm được (`st-key-btn_dl_ARE-CFB10737`, `disabled=true`, nhãn `📥 Tải về .md`). Không có file tải về để mở. |
+| 2. Sửa rồi Hoàn tác | **PASS** | Bấm Hoàn tác trên thẻ `ARE-CFB10737` đưa SHA về đúng `0e3ffa4b04ec5f344f337d9e8a5253f72a68f3c8731123e507c182f80357bd48` (bản trước khi tạo lần 3). Câu lần 3 biến mất khỏi XML. |
+| 3. Xem toàn văn `.md` mở/thu, nội dung đúng; `.docx` bị mờ | **FAIL** | `.docx`: nút Xem toàn văn **không mờ** (`disabled=false`). Bấm vào đổi thành `Ẩn toàn văn` và hiện `Báo cáo vừa tạo không còn trên máy này.` dù file còn trên đĩa. `.md` `tuan-verify3.md` tạo được (155 byte, có dòng verify lần 3). Nút Xem toàn văn của thẻ `ARE-80F23505` cũng bấm được và báo cùng câu sai. Nút Tải về của thẻ `.md` cũng mờ. |
+| 4. SHA index production | **không đổi** | Trước và sau cùng `062ec090644fb4ec09d2fb6388f3175e988e48d63061b04e6c27bbed334ef8ca`, size `2552659968`. |
+| 5. Cổng lệnh | **PASS** | `compileall` OK. `pytest` 4 file liên quan **59 passed**. `cli audit` `"status": "PASS"`, `warnings` rỗng. `import aios_habit.workspace_chat_app` được. |
+
+Thẻ phỏng vấn cũ trong hội thoại `CONV-42A698D7` vẫn hiện `Phiên phỏng vấn trong chat`, không có traceback. Không thấy thẻ loại khác bị vỡ trong lượt này.
+
+### 8.4 Nguyên nhân (để Muse vá, OMP không sửa)
+
+Vá `ab70e69` đúng với hàm `is_safe_artifact_path`: đo trên máy nhà, cùng file `tuan.docx`, gọi kèm `allowed_roots=(default_doc_root(),)` thì trả về đúng; gọi không kèm gốc thì vẫn sai. Nhưng thẻ trên app thật **không đi tới chỗ đó**.
+
+`render_chat_bubble` chỉ gán đường dẫn đã kiểm khi `WorkspaceCaseRepository.get_agent_work(work_id)` có dòng và `result_ref` qua cổng an toàn. Bảng `agent_work_items` trong `local_cases/workspace_cases.sqlite` chỉ có 1 dòng cũ `WORK-REV-1789307272197` (2026-09-13). Không có `ARE-CFB10737` hay `ARE-80F23505`. Hàm tạo báo cáo không ghi dòng việc đó. Comment trong tin nhắn có `result_path` đúng `C:\\Users\\Admin\\AIOS_bao_cao\\tuan.docx`, nhưng thẻ không dùng đường dẫn này để bật nút. Vì vậy `verified_result_path` vẫn trống: nút Tải về tắt, nút Xem toàn văn không bị coi là file nhị phân, và khi mở thì báo file không còn.
+
+### 8.5 Kết luận
+
+Vé **CHƯA ĐẠT**. Dừng `cho-muse`. Không đặt `xong-cho-duyet`. Không sửa code.
+
+Đề xuất Muse: thẻ đính kèm phải kiểm đúng đường dẫn báo cáo đã ghi trong comment (gốc `default_doc_root()`), hoặc lớp tạo báo cáo phải ghi dòng `agent_work_items` mà thẻ đang đọc. Vẫn chặn `..` và file ngoài gốc. Mục 2 (Hoàn tác) lần này vẫn đúng SHA.
