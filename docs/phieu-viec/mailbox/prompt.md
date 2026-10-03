@@ -1,24 +1,29 @@
-# Vé: UX-INTERVIEW-UI-FIX1-VERIFY — verify fix chữ "Đã lưu nháp chờ duyệt" trên app thật
+# Vé: UX-AGENT-UI — verify nút Tải về / Hoàn tác thẻ đính kèm trên app thật
 
-Lane: [NHÀ] OMP verify trên app thật. Không merge `main`; không sửa code (fix đã có); không force-push.
+Lane: [NHÀ] OMP verify trên app thật. Không merge `main`; code tương thích Python 3.11; không force-push.
 
 ## Bối cảnh
 
-Vé `UX-INTERVIEW-UI` verify [NHÀ]: mục 1, 2, 4, 5, 6 PASS; mục 3 CHƯA ĐẠT — trả lời hết câu thì sqlite ghi đúng nhưng màn không hiện "Đã lưu nháp chờ duyệt" (OMP đặt `cho-muse` 2026-10-03 16:50 +07, báo cáo `docs/phieu-viec/ket-qua/ux-interview-ui.md` mục 6).
+User đã chọn **phương án A** (2026-10-03 ~16:10): sửa nút "Tải về" nhận biết
+định dạng, không thêm nút mới. Muse code xong Phase A [VM] (commit `98a2a65`,
+báo cáo `docs/phieu-viec/ket-qua/ux-agent-ui-a.md`, 11/11 test mới pass,
+audit PASS).
 
-Muse vá Phase A [VM], commit `f521566` (xác nhận độc lập: chỉ sửa UI `src/aios_habit/chat_interview_ui.py` +48 và `tests/test_chat_interview_ui.py` +68): khi phiên hoàn thành, chữ "Đã lưu nháp chờ duyệt" được lưu vào `st.session_state` trước `st.rerun`, nên widget vẫn hiện đúng dù phiên đã `drop_session`. Test 111 passed, audit PASS, tương thích Python 3.11.
+## Việc OMP verify [NHÀ] (theo mục 4 của báo cáo)
 
-## Việc OMP verify [NHÀ]
-
-1. Điều kiện mở: commit fix `f521566` là tổ tiên của HEAD nhánh `phieu-viec/rag-fix1`; mở app thử cổng 8515 (không đụng app user 8501), sổ `E2EUxApp`; ghi SHA index production trước.
-2. Gõ "mở phiên phỏng vấn F000": phiên mở ra, câu 1 + ô trả lời ngay dưới, không đổi màn.
-3. Trả lời ĐẦY ĐỦ hết các câu (KHÔNG F5 giữa chừng): app báo **"Đã lưu nháp chờ duyệt" ổn định trên màn** (chữ không biến mất sau rerun); kiểm tra `local_cases/staging_enrichment.sqlite` có đáp án mới, `reviewer_status` = `cho_chuyen_gia_phan_hoi`.
-4. Chấm regression nhanh các mục 1, 2, 4, 5, 6 (không vỡ luồng chat cũ). Sau khi hoàn thành rồi reload trang: chấp nhận widget báo hết hạn (chữ chỉ sống trong cùng browser session — giới hạn đã ghi, hành vi Streamlit bình thường).
-5. `compileall src tests` OK + pytest các test liên quan đỗ; SHA index production trước/sau không đổi.
-6. Viết báo cáo `docs/phieu-viec/ket-qua/ux-interview-ui-fix1.md`, commit lên nhánh, rồi đặt `xong-cho-duyet`.
+1. Trong chat, gõ "tạo báo cáo tuan.docx: ..." (nội dung tùy ý): thẻ đính kèm
+   hiện 3 nút; bấm **Tải về** → file `.docx` tải về **mở được ngay bằng Word**,
+   nội dung đúng.
+2. Gõ "sửa báo cáo tuan.docx: thêm ..." (file đã có): sau khi sửa, bấm
+   **Hoàn tác** → file trở về đúng nội dung trước khi sửa (so bằng mắt hoặc SHA).
+3. Tạo báo cáo `.md`: nút **Xem toàn văn** vẫn mở/thu gọn được trong thẻ;
+   với `.docx`, nút Xem toàn văn **bị mờ** (không bấm được).
+4. Ghi SHA index production trước/sau (phải không đổi).
 
 ## Tiêu chí ĐẠT
 
-- Mục 3 đúng: chữ "Đã lưu nháp chờ duyệt" hiện ổn định sau khi trả lời hết + sqlite đúng; các mục khác không vỡ.
-- Commit fix `f521566` là tổ tiên của HEAD; test đỗ; index production không đổi.
-- Mục nào FAIL → dừng vé, đặt `cho-muse` theo luật.
+- Đủ 4 mục trên đều đúng như mô tả; không vỡ thẻ đính kèm loại khác.
+- `compileall` + `pytest` các test liên quan + `cli audit` PASS trên Python 3.11.
+- Commit riêng trên nhánh `phieu-viec/rag-fix1`, không đụng `main`.
+- Báo cáo kết quả vào `docs/phieu-viec/ket-qua/ux-agent-ui-a.md` (bổ sung mục
+  verify [NHÀ]) rồi `xong-cho-duyet`.
