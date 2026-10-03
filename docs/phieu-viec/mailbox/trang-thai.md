@@ -1,7 +1,10 @@
 # Trạng thái mailbox
 
-- Trạng thái: `dang-lam`
+- Trạng thái: `xong-cho-duyet`
 - Ticket hiện tại: `UX-INTERVIEW-UI-FIX1-VERIFY` — [NHÀ] verify fix chữ "Đã lưu nháp chờ duyệt" sau khi trả lời hết (Phase A `f521566`); `prompt`: `docs/phieu-viec/mailbox/prompt.md`.
+- `commit`: `6c34b2d`
+- `bao_cao`: `docs/phieu-viec/ket-qua/ux-interview-ui-fix1.md`
+- `ghi_chu` (tiến độ OMP): 2026-10-03 18:14 +07 — **HOÀN TẤT, chờ Muse duyệt.** Mục 3 ĐẠT: chữ "✅ Đã lưu nháp chờ duyệt (phiên IS-744426A0, 3 đáp án)." giữ ổn định sau rerun; sqlite 3 đáp án `reviewer_status=cho_chuyen_gia_phan_hoi`. Regression 1, 2, 4, 5, 6 PASS. Reload sau đó báo hết hạn — đúng giới hạn đã ghi. Index production không đổi (`062ec090…ef8ca`). `compileall` OK, pytest liên quan 75 passed, `cli audit` PASS. App 8515 đã tắt; 8501 không đụng. Báo cáo `6c34b2d`.
 - `ghi_chu` (cổng + nhận vé): 2026-10-03 17:53 +07 — Kiểm cổng gate vé `UX-INTERVIEW-UI-FIX1-VERIFY`. Điều kiện mở ĐÃ TỚI ngay lần kiểm đầu: commit fix `f521566` là tổ tiên của HEAD `44b069c` (merge-base = `f521566`, 2 commit sau). Không đặt `cho-muse`, không rơi nhánh 4-lần-watcher. Nhận vé `dang-lam`. Bắt đầu verify app thật cổng 8515, sổ `E2EUxApp`.
 - `ghi_chu` (tiến độ OMP): 2026-10-03 17:55 +07 — Mốc 1: app thử `http://127.0.0.1:8515` đã lên (env đúng file `.bat`, `AIOS_FEATURE_CHAT_ACTION=1`). Cổng 8501 (PID 5828) và cầu nối 8585 không đụng. Index production trước: size `2552659968`, SHA-256 `062ec090644fb4ec09d2fb6388f3175e988e48d63061b04e6c27bbed334ef8ca`. Tiếp: sổ `E2EUxApp`, mục 2–3 (chữ lưu nháp).
 - `ghi_chu` (tiến độ OMP): 2026-10-03 18:09 +07 — Mốc 2: mục 2–3 PASS trên app 8515, sổ `E2EUxApp`, hội thoại `CONV-681D501D`. "mở phiên phỏng vấn F000" mở `IS-744426A0`, câu 1/3 + ô ngay dưới, không đổi màn. Bỏ trống cơ chế → vẫn câu 1, nhắc "Còn thiếu phần nguyên nhân" (thiếu `causal_mechanism`). Điền đủ 3/3, không F5: chữ "✅ Đã lưu nháp chờ duyệt (phiên IS-744426A0, 3 đáp án)." giữ ổn định (8 lần poll, không rơi "hết hạn"). Sqlite 3 đáp án mới, `reviewer_status=cho_chuyen_gia_phan_hoi`. Tiếp: regression 4–6.
