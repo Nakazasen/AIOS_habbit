@@ -73,6 +73,16 @@ def _handler(request: ChatActionRequest) -> Optional[ChatActionOutcome]:
         "_Ghi chú: đây là dữ liệu vận hành cho vòng cải thiện, "
         "không phải tri thức đã duyệt._"
     )
+    # Vong lap cai thien lien tuc (UI da duyet): hien metric "ti le lap lai loi".
+    try:
+        from aios_habit.chat_interview_ui import repetition_metric_line
+
+        metric_line = repetition_metric_line()
+    except Exception:
+        metric_line = ""
+    if metric_line:
+        lines.append("")
+        lines.append(metric_line)
     return _message("\n".join(lines))
 
 

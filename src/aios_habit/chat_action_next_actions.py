@@ -40,6 +40,16 @@ def _message(text: str) -> ChatActionOutcome:
     )
 
 
+def _suggestion_id_for(notebook_id: str, item: str) -> str:
+    """Stable suggestion id so ratings map to the same suggestion on reruns."""
+    import hashlib
+
+    digest = hashlib.sha1(
+        ("%s|%s" % (notebook_id, item)).encode("utf-8")
+    ).hexdigest()[:10].upper()
+    return "SG-NEXT-%s" % digest
+
+
 def _handler(request: ChatActionRequest) -> Optional[ChatActionOutcome]:
     from aios_habit.daily_next_actions import suggest_next_actions
 
@@ -67,16 +77,38 @@ def _handler(request: ChatActionRequest) -> Optional[ChatActionOutcome]:
         rows=[(str(index), item) for index, item in enumerate(actions, start=1)],
         caption=caption,
     )
+    blocks = [
+        ChatActionBlock(
+            BLOCK_MARKDOWN,
+            text="Gợi ý các việc nên làm tiếp cho sổ này:",
+        ),
+        table,
+    ]
+    # UX-INTERVIEW-FEEDBACK (UI da duyet): moi goi y la mot the co nut cham
+    # Dung / Mot phan / Sai ngay duoi — backend log + vong cai thien chay ngam.
+    try:
+        from aios_habit.chat_interview_ui import emit_suggestion_card
+
+        cards: list[str] = []
+        for index, item in enumerate(actions, start=1):
+            card = emit_suggestion_card(
+                _suggestion_id_for(notebook_id, item),
+                "Gợi ý %d" % index,
+                item,
+                context=caption,
+                source="goi_y_viec_tiep_theo",
+            )
+            cards.append(card)
+        if cards:
+            blocks.append(
+                ChatActionBlock(BLOCK_MARKDOWN, text="\n\n---\n\n".join(cards))
+            )
+    except Exception:
+        pass
     return ChatActionOutcome(
         action=ACTION_NAME,
         title=ACTION_TITLE,
-        blocks=(
-            ChatActionBlock(
-                BLOCK_MARKDOWN,
-                text="Gợi ý các việc nên làm tiếp cho sổ này:",
-            ),
-            table,
-        ),
+        blocks=tuple(blocks),
     )
 
 

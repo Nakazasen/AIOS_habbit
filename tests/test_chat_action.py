@@ -33,6 +33,7 @@ def _clean_state():
 def _isolated_stores(tmp_path, monkeypatch):
     """Point the daily_next_actions stores at a temp dir (same pattern as
     tests/test_daily_next_actions.py) so nothing touches real local_cases data."""
+    monkeypatch.setenv("AIOS_LOCAL_CASES_DIR", str(tmp_path))
     monkeypatch.setattr("aios_habit.source_ingest.LOCAL_CASES_DIR", tmp_path)
     monkeypatch.setattr("aios_habit.source_ingest.SOURCES_FILE", tmp_path / "sources.jsonl")
     monkeypatch.setattr("aios_habit.source_ingest.NOTEBOOK_ASSETS_DIR", tmp_path / "notebook_assets")

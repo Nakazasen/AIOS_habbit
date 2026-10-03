@@ -431,7 +431,14 @@ def render_chat_bubble(
                     f'<div style="display:inline-flex; align-items:center; gap:6px; background:rgba(14,165,233,0.15); border:1px solid rgba(14,165,233,0.4); color:#38bdf8; font-size:12px; font-weight:600; padding:2px 10px; border-radius:9999px; margin-bottom:10px;">✨ {latest_badge_text}</div>',
                 )
             from aios_habit.agent_work_artifact import extract_chat_artifact_metadata
-            artifact_meta = extract_chat_artifact_metadata(msg.content)
+            from aios_habit import chat_interview_ui as _chat_interview_ui
+            raw_content = str(msg.content or "")
+            # Interactive markers (interview session / suggestion feedback) are
+            # rendered as widgets below; strip them from the markdown body.
+            display_content = _chat_interview_ui.strip_interactive_markers(raw_content)
+            interview_session_id = _chat_interview_ui.extract_interview_session_id(raw_content)
+            suggestion_cards = _chat_interview_ui.extract_suggestion_markers(raw_content)
+            artifact_meta = extract_chat_artifact_metadata(raw_content)
             if artifact_meta:
                 work_id = str(artifact_meta.get("work_id", "")).strip()
                 raw_res_path = str(artifact_meta.get("result_path", "")).strip()
@@ -454,7 +461,7 @@ def render_chat_bubble(
                 except Exception:
                     pass
 
-                clean_content = re.sub(r"<!--\s*aios_chat_artifact:.*?-->", "", msg.content, flags=re.DOTALL).strip()
+                clean_content = re.sub(r"<!--\s*aios_chat_artifact:.*?-->", "", display_content, flags=re.DOTALL).strip()
                 if is_rolled_back:
                     st.warning(f"↩️ {t('agent_queue_status_rolled_back', locale=locale)}")
                     st.markdown(clean_content)
@@ -526,7 +533,7 @@ def render_chat_bubble(
                             else:
                                 st.warning(t("agent_factory_error_missing_result", locale=locale))
             else:
-                st.markdown(msg.content)
+                st.markdown(display_content)
 
             # On-demand Evidence Graph Action (Commit C)
             if msg.trace_id and str(msg.trace_id).strip():
@@ -625,12 +632,23 @@ def render_chat_bubble(
 
                 _render_graph_control()
 
+            # UX-INTERVIEW-FEEDBACK (UI da duyet): widget phien phong van
+            # (hoi/dap tung cau ngay duoi cau hoi) + nut cham tung goi y.
+            if interview_session_id:
+                _chat_interview_ui.render_interview_widget(st, interview_session_id)
+            for _card in suggestion_cards:
+                _chat_interview_ui.render_suggestion_widget(
+                    st,
+                    _card.get("suggestion_id", ""),
+                    expert=_card.get("expert", ""),
+                )
+
             # Vong lap cai thien lien tuc: feedback cau tra loi ngay tren khung chat.
             render_answer_feedback_row(
                 conversation_id=conversation_id,
                 message_id=str(msg.id or ""),
                 question=feedback_question,
-                answer=msg.content or "",
+                answer=display_content,
                 locale=locale,
             )
     else:
