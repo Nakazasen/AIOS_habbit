@@ -3,8 +3,9 @@
 - Trạng thái: `dang-lam`
 - Ticket hiện tại: `UX-E2E-APP-R2` — [NHÀ] verify fix cho-muse (commit `58d1245`) trên app thật + chạy nốt các mục E2E (c)–(h); user ủy quyền tự lái (không hỏi).
 - `prompt`: `docs/phieu-viec/mailbox/prompt.md`
-- `commit`:
+- `commit`: `ba7b01e`
 - `bao_cao`:
+- `ghi_chu` (tiến độ OMP): 2026-10-03 15:41 +07 — Mốc 1: mở app 8515 (đúng env `RUN_AIOS_WORKSPACE_CHAT.bat`, không đụng app user 8501); index production trước khớp `062ec090…ef8ca`; cầu nối Gemini xanh (`direct_ready`); vào sổ `E2EUxApp` + tạo cuộc trò chuyện mới. Mục (a) chạy lại **PASS 3/3**: câu trả lời gộp đủ 2 phần — "Cảnh báo ngưỡng" (HỎI LẠI tên thông số, không lưu) + "Vẽ biểu đồ" (thông điệp hướng dẫn, không lỗi/không im lặng); `threshold_rules.json` vẫn KHÔNG tồn tại (không có quy tắc `trên`). Tiếp: 3 câu kiểm riêng (bước 4) rồi (c)–(h).
 - `ghi_chu` (cổng + nhận vé): 2026-10-03 15:30 +07 — Kiểm cổng gate vé `UX-E2E-APP-R2`: commit `58d1245` là tổ tiên của HEAD `f21542c` → điều kiện mở ĐÃ TỚI ngay lần kiểm đầu, không đặt `cho-muse`, không rơi nhánh 4-lần-watcher. Nhận vé `dang-lam`, bắt đầu mở app thật cổng 8515.
 - `ghi_chu` (điều phối Muse): 2026-10-03 ~16:05 +07 — **cho-muse UX-E2E-APP đã xử lý**: Muse code fix Phase A trên VM (commit `58d1245`, báo cáo `docs/phieu-viec/ket-qua/ux-e2e-app-fixa.md`, test 39/39 pass: router thêm ý định `ve_bieu_do`, nhánh chart chạy trong luồng gộp, lệnh ngưỡng thiếu tên thông số hợp lệ thì hỏi lại không lưu quy tắc rác). Phát hành vé Phase B `UX-E2E-APP-R2` [NHÀ] verify fix trên app thật + chạy nốt (c)–(h). Giữ nguyên `hang-cho` #4 SCAN-O-D, #5 DON-O-C.
 - `ghi_chu` (cho-muse): 2026-10-03 15:30 +07 — **Dừng vé theo luật "mục nào FAIL thì dừng vé, báo cho-muse"**: E2E máy nhà chạy trên app thật cổng 8515 (không đụng app user 8501). (a) **FAIL** — "vẽ biểu đồ bowskew JIG-01 và đặt ngưỡng trên 12" chỉ lưu quy tắc `CB-D0EDE6`, tách sai thông số thành 'trên', không vẽ biểu đồ; (b) **PASS** — dán CSV log thật ra phân tích + biểu đồ PNG; các mục (c)–(h) chưa chạy. Index production không đổi (SHA `062ec090…ef8ca` trước/sau). Đề xuất Muse: thêm ý định chart vào router + vá tách tên thông số ngưỡng (chi tiết mục 4–5 báo cáo).
