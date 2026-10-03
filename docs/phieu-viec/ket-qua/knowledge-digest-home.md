@@ -97,3 +97,15 @@ Muse review file này. Cầu nối cần hết HTTP 405 trước khi resume.
 - Sidecar tắt (connection refused). Bật lại `--mode direct`. `GET /health` = `direct_ready`.
 - Một lượt tóm tắt thử ngoài batch: HTTP 502 sau 11,0 giây. Nhật ký sidecar: Gemini HTTP 302 vòng lặp chuyển hướng, không trả JSON. Không chạy batch.
 - Checkpoint vẫn 180 mục (`saved_local` 2026-10-03 04:51:15). Sổ tay chưa xuất. Probe 12 câu chưa chạy. Không tự đánh ĐẠT.
+
+## 11. Vé PROVIDER-SWITCH — probe và đổi đường (2026-10-03 09:12–09:18 +07)
+
+- Watcher `RELAUNCH 1/4` lúc 09:09:51 (`launchStallCount=1`). Điều kiện mở đã có (vé [NHÀ] đang làm, checkpoint còn). Không đặt `cho-muse`. Không quay no-op.
+- Cầu nối `127.0.0.1:8585`: từ chối kết nối (không có process). Không chạy batch trên cầu nối.
+- Gemini API `gemini-2.5-flash`: HTTP 429, thông báo hết quota gói (không phải thiếu khóa; khóa có trong env). Đợi ~80 phút sau lần 429 lúc 07:53 vẫn 429. Không resume Gemini.
+- Router Nakazasen không có khóa riêng. Mã đọc khóa cloud trong env. OpenRouter HTTP 402 hết credit — classifier không có gợi ý `402` nên lần 02/10 ghi `unknown_error`. Groq HTTP 403 mã 1010. NVIDIA model cũ HTTP 410 hết đời. Mistral HTTP 429. Không nhập lại khóa vì không có khóa mới từ user.
+- DeepSeek `deepseek-v4-flash` bật thinking: HTTP 200 nhưng `content` rỗng, hết token ở phần suy luận — đúng lỗi cắt JSON lúc 07:45. Tắt thinking: HTTP 200, JSON đúng schema, 0,5 giây, không phần suy luận.
+- Quyết định: runner ngoài Git chỉ gọi DeepSeek Flash, tắt thinking, resume từ checkpoint 194/889. Không làm lại mục đã có. Backup checkpoint: `digest_checkpoint.before-deepseek-20261003-0915.json`.
+- SHA `library.sqlite` trước khi resume: `45eb0e072893f802d71ab201cfbb2b29c36e2b0a31313fa79fc55a025b65b7c0`, 2.942.201.856 byte. Chỉ đọc.
+- Sổ tay chưa xuất. Probe 12 câu chưa chạy. Không tự đánh ĐẠT.
+

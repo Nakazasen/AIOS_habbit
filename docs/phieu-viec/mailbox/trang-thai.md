@@ -3,9 +3,9 @@
 - Trạng thái: `dang-lam`
 - Ticket hiện tại: `KNOWLEDGE-DIGEST-PROVIDER-SWITCH` — [NHÀ] đổi provider cho batch tóm tắt: probe cầu nối Gemini → sửa khóa cloud Router → resume batch từ checkpoint.
 - `prompt`: `docs/phieu-viec/mailbox/prompt.md`
-- `commit`: `0264dd5`
+- `commit`: `42ad5cd`
 - `bao_cao`: `docs/phieu-viec/ket-qua/knowledge-digest-home.md`
-- `ghi_chu`: 2026-10-03 09:12 +07 — RELAUNCH 1/4 lúc 09:09. Điều kiện mở đã có (vé [NHÀ] đang làm, checkpoint 194/889). Không đặt cho-muse. Cầu nối 8585 từ chối kết nối. Đang probe Gemini Flash rồi resume, không làm lại mục đã có.
+- `ghi_chu`: 2026-10-03 09:18 +07 — Cầu nối tắt. Gemini Flash HTTP 429 hết quota. OpenRouter 402 hết credit (unknown_error cũ). Resume DeepSeek Flash tắt thinking từ checkpoint 194/889. SHA index trước 45eb0e07…b7c0.
 - `ghi_chu`: 2026-10-03 07:46 +07 — Batch dừng 195 vì Gemini 429 rồi DeepSeek cắt JSON. Đã bỏ 12 mục hỏng, còn 183 hợp lệ. Tắt thinking Gemini Flash và resume, không đổi sang DeepSeek khi chỉ bị 429.
 - `ghi_chu`: 2026-10-03 07:18 +07 — OMP nhận vé `KNOWLEDGE-DIGEST-PROVIDER-SWITCH`. Bắt đầu probe cầu nối Gemini (health + 1 câu thử), chưa đụng batch.
 - `ghi_chu`: 2026-10-03 05:32 watcher auto-escalate: 4 lan tu mo OMP (moi lan cach ~10 phut) ma mailbox khong tien trien. Chuyen sang cho-muse de Muse xu ly. Ticket: `KNOWLEDGE-DIGEST-HOME-R1` — [NHÀ] resume batch tóm tắt từ checkpoint 92/889 khi cầu nối hết HTTP 405; xuất sổ tay + probe so sánh RAG.
