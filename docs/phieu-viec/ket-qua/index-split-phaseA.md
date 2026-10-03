@@ -54,3 +54,14 @@
 
 - 496 document lõi canary mất dấu thư mục gốc: phân loại 100% bằng từ khóa nội dung; tài liệu ít chữ/không tín hiệu sẽ rơi vào fallback (confidence 0) — cần người rà danh sách này ở Phase B trước khi coi là xong.
 - Từ khóa "lỗi"/"jig" có thể gây lẫn giữa khối LSU và Điều-tra-lỗi ở tài liệu biên (VD: điều tra lỗi của jig). Cơ chế margin + confidence thấp đã ghi nhận trường hợp này trong manifest để rà tay.
+
+## 5. Phase A2 — sửa classifier sau dry-run (2026-10-03 ~21:30 +07)
+
+Dry-run trên máy nhà: 453/889 document confidence < 0,40 (451 bằng 0) bị gán mặc định vào Điều-tra-lỗi. Nguyên nhân: taxonomy từ khóa bỏ sót từ vựng thật trong kho (tiền tố `KTD-`, thuật ngữ Nhật về lỗi, số part Kyocera...). File `index-split-lowconf-453-names.txt` (372 tên duy nhất) được dùng làm fixture hồi quy.
+
+Thay đổi:
+- `index_domain.py`: thêm ~30 rule — `KTD-` (0.9), mã lỗi `Cxxxx`/`JAM`/`Error\d*`/`エラー`, `DRBFM`, `自己診断`/`不具合`/`異常`, `エラーコード`, `調査報告`/`调查报告`, `maintenance mode`, `NG`, `回路図`/`配線図`/`ブロック図`/`ASSY`/số part (`30x…`, `3V2…`, `7PA…`), `治具`/`tape`/`mirror`/`log` → LSU. `tổng hợp`/`matome` cố tình KHÔNG gán theo tên — đi đường nội dung/centroid.
+- `split_index_by_domain.py`: fallback centroid bằng vector dense sẵn có (không embed lại) — centroid mỗi lĩnh vực từ document confidence ≥ 0,7; document < 0,4 được gán centroid gần nhất khi margin > 0, confidence = min(0,85, margin×4). Không có bảng vector → giữ nguyên manifest.
+- Sửa bug: `--dry-run` không còn đòi `--allow-production` (dry-run chỉ đọc).
+- Kết quả trên fixture 372 tên: 75,8% đạt confidence ≥ 0,4 bằng tên; 212/212 tên có nhãn kỳ vọng phân loại đúng; ~90 tên còn lại (wsc-*.txt, tổng hợp...) đi đường nội dung/centroid trên máy nhà.
+- Test mới: 15 test rule trong `test_index_domain.py`, `test_index_domain_fixture_names.py` (3 test), 4 test centroid/guard trong `test_split_index_by_domain.py`. Tổng 47 test pass; `test_rag_v2_index.py` 36 pass; `compileall` OK; `cli audit` PASS; tương thích Python 3.11 (AST feature_version).

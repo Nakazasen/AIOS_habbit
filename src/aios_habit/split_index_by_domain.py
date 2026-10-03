@@ -257,6 +257,9 @@ def apply_centroid_fallback(
             ranked = sorted(DOMAINS, key=lambda d: sims[d], reverse=True)
             best, second = ranked[0], ranked[1]
             margin = sims[best] - sims[second]
+            if margin <= 0:
+                # No discriminative vector signal: keep the keyword result.
+                continue
             confidence = round(min(CENTROID_MAX_CONFIDENCE, max(0.0, margin * 4.0)), 3)
             entry["domain"] = best
             entry["confidence"] = confidence

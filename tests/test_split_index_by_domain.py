@@ -185,3 +185,132 @@ def test_low_confidence_documents_listed_in_manifest(tmp_path):
     assert split_main(_split_args(source, out)) == 0
     manifest = json.loads((out / "domain_manifest.json").read_text(encoding="utf-8"))
     assert manifest["documents"]["d-amb"]["confidence"] == 0.0
+
+
+# --- Phase A2: centroid fallback + dry-run guard ---
+
+
+def _build_centroid_fixture_db(path: Path) -> None:
+    """Docs with known vector clusters: one trusted doc per domain plus one
+    opaque-named doc whose vectors sit near the LSU cluster."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    if path.exists():
+        path.unlink()
+    conn = sqlite3.connect(str(path))
+    conn.executescript(
+        """
+        CREATE TABLE chunks (
+            chunk_id TEXT PRIMARY KEY, document_id TEXT NOT NULL,
+            source_path TEXT NOT NULL, source_name TEXT NOT NULL,
+            file_type TEXT NOT NULL, text TEXT NOT NULL,
+            normalized_text TEXT NOT NULL, metadata_json TEXT NOT NULL,
+            privacy_labels_json TEXT NOT NULL, source_fingerprint TEXT,
+            checksum TEXT,
+            retrievable INTEGER NOT NULL DEFAULT 1 CHECK (retrievable IN (0, 1))
+        );
+        CREATE TABLE chunk_embeddings (
+            chunk_id TEXT NOT NULL, model_fingerprint TEXT NOT NULL,
+            content_hash TEXT NOT NULL, model_id TEXT NOT NULL,
+            model_revision TEXT NOT NULL, runtime TEXT NOT NULL,
+            runtime_version TEXT NOT NULL, dimension INTEGER NOT NULL,
+            dtype TEXT NOT NULL, normalized INTEGER NOT NULL,
+            vector_blob BLOB NOT NULL, created_at TEXT NOT NULL,
+            PRIMARY KEY (chunk_id, model_fingerprint));
+        """
+    )
+    docs = [
+        ("d-lsu", "LSU_log_jig.xlsx", "SelNo bowskew log jig", (1.0, 0.0, 0.0, 0.0)),
+        (
+            "d-dtl",
+            "Bang ma loi KDTPS.xlsx",
+            "F123 hien tuong nguyen nhan doi sach",
+            (0.0, 1.0, 0.0, 0.0),
+        ),
+        ("d-mom", "MOM_AGV_spec.pdf", "AGV WMS MOM Opcenter", (0.0, 0.0, 1.0, 0.0)),
+        ("d-opaque", "wsc-zzz000.txt", "ghi chu linh tinh khong ro", (0.9, 0.1, 0.0, 0.05)),
+    ]
+    for doc_id, name, text, vec in docs:
+        for i in range(2):
+            cid = "%s-c%d" % (doc_id, i)
+            conn.execute(
+                "INSERT INTO chunks VALUES (?,?,?,?,?,?,?,?,?,?,?,1)",
+                (cid, doc_id, "/x/" + name, name, "txt", text, text.lower(), "{}", "[]", "fp", "ck"),
+            )
+            conn.execute(
+                "INSERT INTO chunk_embeddings VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
+                (
+                    cid, "016c5255", "h", "bge-m3", "rev", "cpu", "1.28",
+                    4, "float32-le", 1, struct.pack("4f", *vec), "t",
+                ),
+            )
+    conn.commit()
+    conn.close()
+
+
+def test_centroid_fallback_reassigns_opaque_document(tmp_path):
+    from aios_habit.split_index_by_domain import (
+        _open_read_only,
+        apply_centroid_fallback,
+        classify_all,
+    )
+
+    source = tmp_path / "lib" / "library.sqlite"
+    _build_centroid_fixture_db(source)
+    conn = _open_read_only(source)
+    try:
+        manifest = classify_all(conn, ledger_db=None, sample_chunks=3, sample_chars=6000)
+    finally:
+        conn.close()
+    assert manifest["d-opaque"]["confidence"] == 0.0
+
+    conn = _open_read_only(source)
+    try:
+        manifest = apply_centroid_fallback(conn, manifest)
+    finally:
+        conn.close()
+
+    entry = manifest["d-opaque"]
+    assert entry["domain"] == "lsu"
+    assert entry["confidence"] >= 0.4
+    assert "centroid" in entry["reason"]
+    # Trusted keyword classifications are untouched.
+    assert manifest["d-lsu"]["domain"] == "lsu"
+    assert manifest["d-dtl"]["domain"] == "dieu_tra_loi"
+    assert manifest["d-mom"]["domain"] == "mom"
+
+
+def test_centroid_fallback_skips_without_embedding_table(tmp_path):
+    from aios_habit.split_index_by_domain import (
+        _open_read_only,
+        apply_centroid_fallback,
+        classify_all,
+    )
+
+    source = tmp_path / "lib" / "library.sqlite"
+    source.parent.mkdir(parents=True, exist_ok=True)
+    conn = sqlite3.connect(str(source))
+    conn.execute(
+        "CREATE TABLE chunks (chunk_id TEXT PRIMARY KEY, document_id TEXT NOT NULL,"
+        " source_path TEXT NOT NULL, source_name TEXT NOT NULL, text TEXT NOT NULL)"
+    )
+    conn.execute(
+        "INSERT INTO chunks VALUES ('c1', 'd1', '/x/notes.txt', 'notes.txt', 'ghi chu')"
+    )
+    conn.commit()
+    conn.close()
+
+    conn = _open_read_only(source)
+    try:
+        manifest = classify_all(conn, ledger_db=None, sample_chunks=3, sample_chars=6000)
+        manifest = apply_centroid_fallback(conn, manifest)
+    finally:
+        conn.close()
+    assert manifest["d1"]["confidence"] == 0.0  # unchanged, no vector store
+
+
+def test_dry_run_on_production_path_needs_no_flag(tmp_path):
+    source = tmp_path / "workspace_chat_rag_v2_production" / "library.sqlite"
+    _build_fixture_db(source)
+    out = tmp_path / "out"
+    assert split_main(_split_args(source, out, ("--dry-run",))) == 0
+    assert not out.exists()

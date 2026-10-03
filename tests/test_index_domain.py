@@ -255,3 +255,111 @@ def test_ingest_labels_reupsert_updates_domain(tmp_path):
         assert conn.execute("SELECT domain FROM chunks").fetchone()[0] == DOMAIN_MOM
     finally:
         conn.close()
+
+
+# --- Phase A2: rules learned from the production dry-run (453 low-conf docs) ---
+
+
+def test_classify_ktd_prefix():
+    result = classify_document(
+        "KTD-2025-05-0447-Iris2024-C33-A2-C6770.xlsx", "", ""
+    )
+    assert result.domain == DOMAIN_DIEU_TRA_LOI
+    assert result.confidence >= 0.85
+
+
+def test_classify_japanese_self_diagnosis_list():
+    result = classify_document("02XC_自己診断表示一覧表.xls", "", "")
+    assert result.domain == DOMAIN_DIEU_TRA_LOI
+    assert result.confidence >= 0.8
+
+
+def test_classify_japanese_error_code_list():
+    result = classify_document("SCT自動調整エラーコード一覧_140221.xls", "", "")
+    assert result.domain == DOMAIN_DIEU_TRA_LOI
+    assert result.confidence >= 0.8
+
+
+def test_classify_drbfm():
+    result = classify_document(
+        "【DRBFM】Iris2020_C6610_coupling_new.xlsx", "", ""
+    )
+    assert result.domain == DOMAIN_DIEU_TRA_LOI
+    assert result.confidence >= 0.8
+
+
+def test_classify_circuit_diagram_to_dieu_tra_loi():
+    result = classify_document(
+        "2XC_PA1166B_FRONT DRIVE_HIGH_回路図_190717.pdf", "", ""
+    )
+    assert result.domain == DOMAIN_DIEU_TRA_LOI
+    assert result.confidence >= 0.4
+
+
+def test_classify_part_number_to_dieu_tra_loi():
+    result = classify_document("302L745040.pdf", "", "")
+    assert result.domain == DOMAIN_DIEU_TRA_LOI
+    assert result.confidence >= 0.4
+
+
+def test_classify_tape_image_to_lsu():
+    result = classify_document("234 5simtape.png", "", "")
+    assert result.domain == DOMAIN_LSU
+    assert result.confidence >= 0.8
+
+
+def test_classify_japanese_jig_to_lsu():
+    result = classify_document("Cy用治具の修理_6778_CyCav_F.xlsm", "", "")
+    assert result.domain == DOMAIN_LSU
+    assert result.confidence >= 0.8
+
+
+def test_classify_log_csv_to_lsu():
+    result = classify_document("dvu_prt_engpage_info_log.csv", "", "")
+    assert result.domain == DOMAIN_LSU
+    assert result.confidence >= 0.4
+
+
+def test_classify_maintenance_mode():
+    result = classify_document("Maintenance mode 3.xlsx", "", "")
+    assert result.domain == DOMAIN_DIEU_TRA_LOI
+    assert result.confidence >= 0.8
+
+
+def test_classify_underscore_error_code():
+    result = classify_document(
+        "FW    IRIS2020 (High Model) QA_C0650_08_Dec.msg", "", ""
+    )
+    assert result.domain == DOMAIN_DIEU_TRA_LOI
+    assert result.confidence >= 0.8
+
+
+def test_classify_opaque_hex_name_stays_zero_confidence():
+    # wsc-*.txt names carry no signal; they must go through the content /
+    # centroid path instead of getting a spurious name-based label.
+    result = classify_document("wsc-c7377cc9661005aa4d35d54e.txt", "", "")
+    assert result.confidence == 0.0
+
+
+def test_classify_tong_hop_has_no_name_signal():
+    # "tổng hợp"/matome docs are classified by content, never by name.
+    for name in ("Dữ liệu tổng hợp.xlsx", "matome.xlsx"):
+        result = classify_document(name, "", "")
+        assert result.confidence == 0.0
+
+
+def test_classify_content_sample_scores():
+    # Opaque name, but the chunk text is clearly error-investigation content.
+    result = classify_document(
+        "wsc-015067b75dc12e2770b7d8cb.txt",
+        "",
+        "C6900 エラー発生 原因: モータ回転異常 対策: 交換",
+    )
+    assert result.domain == DOMAIN_DIEU_TRA_LOI
+    assert result.confidence >= 0.4
+
+
+def test_classify_mirror_to_lsu():
+    result = classify_document("MIRROR cũ.png", "", "")
+    assert result.domain == DOMAIN_LSU
+    assert result.confidence >= 0.8
