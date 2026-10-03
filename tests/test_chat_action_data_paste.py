@@ -122,3 +122,51 @@ def test_multi_intent_paste_plus_another_action():
     assert outcome is not None
     # Ca dan du lieu phai co mat trong cau tra loi gop.
     assert "phan_tich_du_lieu_dan" in outcome.action
+
+
+def _chan_matplotlib(monkeypatch):
+    """Gia lap may khong cai matplotlib: moi lenh import deu bao ImportError."""
+    import sys
+
+    for ten_module in ("matplotlib", "matplotlib.pyplot"):
+        monkeypatch.setitem(sys.modules, ten_module, None)
+
+
+def _chan_pillow(monkeypatch):
+    import sys
+
+    monkeypatch.setitem(sys.modules, "PIL", None)
+
+
+def test_csv_handler_ve_bang_pillow_khi_thieu_matplotlib(monkeypatch):
+    """F2: khong co matplotlib -> bieu do ve bang Pillow, bang thong ke du."""
+    _chan_matplotlib(monkeypatch)
+    chat_action.load_builtin_actions()
+    outcome = chat_action.dispatch_multi(ChatActionRequest(question=CSV_SAMPLE))
+    assert outcome is not None
+    kinds = [block.kind for block in outcome.blocks]
+    assert BLOCK_TABLE in kinds  # bang thong ke mo ta van du
+    assert BLOCK_CHART in kinds  # bieu do duoc ve bang Pillow
+    assert outcome.action == "phan_tich_du_lieu_dan"
+
+
+def test_csv_handler_ghi_ly_do_khi_ca_hai_duong_ve_deu_hong(monkeypatch):
+    """F2: ve hong van tra du bang + preview, kem dong ly do ro rang."""
+    _chan_matplotlib(monkeypatch)
+    _chan_pillow(monkeypatch)
+    chat_action.load_builtin_actions()
+    outcome = chat_action.dispatch_multi(ChatActionRequest(question=CSV_SAMPLE))
+    assert outcome is not None
+    kinds = [block.kind for block in outcome.blocks]
+    assert BLOCK_TABLE in kinds  # bang thong ke + preview van du
+    assert BLOCK_CHART not in kinds
+    text = chat_action.render_outcome(outcome)
+    assert "Không vẽ được biểu đồ vì" in text
+
+
+def test_draw_line_chart_khong_bao_gio_nem_loi_ra_ngoai(monkeypatch):
+    """F2: duong ve khong duoc lam roi ca khoi phan tich."""
+    _chan_matplotlib(monkeypatch)
+    _chan_pillow(monkeypatch)
+    headers, data = _parse_csv_block(CSV_SAMPLE)
+    assert _draw_line_chart(headers, data, [1, 2]) == b""

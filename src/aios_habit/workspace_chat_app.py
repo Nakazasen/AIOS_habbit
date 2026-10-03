@@ -1492,6 +1492,8 @@ def _xu_ly_mot_y_dinh(y_dinh: str, slots, q_text: str, *, active_conversation, a
         return ""
     if y_dinh == DU_LIEU_DAN:
         # Khoi du lieu dan chay qua khung chat_action (ton trong feature flag).
+        # Dung dispatch_multi nhu luong cu khi co bat: giu nguyen hanh vi
+        # (error_lookup la fallback nen thuc te chi action dan du lieu chay).
         from aios_habit.chat_action import (
             ChatActionRequest,
             chat_action_enabled,
@@ -1590,6 +1592,7 @@ def _xu_ly_y_dinh_chat(q_text: str, *, active_conversation, active_nb_id) -> boo
     False neu de luong hien co (jig/chat_action/RAG) xu ly tiep.
     """
     from aios_habit.chat_intent_router import (
+        HOI_DAP_CHUNG,
         HOI_TAI_LIEU,
         classify_all_intents,
         nhan_y_dinh,
@@ -1600,9 +1603,16 @@ def _xu_ly_y_dinh_chat(q_text: str, *, active_conversation, active_nb_id) -> boo
         return False
     cac_phan = []
     da_xu_ly = False
+    co_hoi_tai_lieu = False
+    y_dinh_loi = []
     for y_dinh, slots in cac_y_dinh:
         if y_dinh == HOI_TAI_LIEU:
-            continue  # fallback: de luong RAG xu ly
+            # RAG khong chay trong dieu phoi nay; ghi chu ro thay vi bo qua
+            # im lang (dieu phoi tra ve True nen luong RAG ben duoi khong chay).
+            co_hoi_tai_lieu = True
+            continue
+        if y_dinh == HOI_DAP_CHUNG:
+            continue  # loi chao kem y dinh that: khong can phan rieng
         try:
             phan = _xu_ly_mot_y_dinh(
                 y_dinh,
@@ -1614,10 +1624,29 @@ def _xu_ly_y_dinh_chat(q_text: str, *, active_conversation, active_nb_id) -> boo
         except Exception:
             phan = None
         if phan is None:
+            # UX-CHAT-CORE-FIX1: y dinh khong xu ly duoc phai duoc ghi ro
+            # trong cau tra loi gop, khong im lang bo qua.
+            y_dinh_loi.append(y_dinh)
             continue
         da_xu_ly = True
         if phan:
             cac_phan.append((y_dinh, phan))
+    for y_dinh in y_dinh_loi:
+        cac_phan.append(
+            (
+                y_dinh,
+                "_Tôi chưa xử lý được phần này trong câu gộp "
+                "— bạn thử tách thành câu riêng nhé._",
+            )
+        )
+    if co_hoi_tai_lieu:
+        cac_phan.append(
+            (
+                HOI_TAI_LIEU,
+                "_Phần hỏi tài liệu trong câu gộp này chưa được chạy "
+                "— bạn hỏi lại riêng câu đó ở lượt chat sau nhé._",
+            )
+        )
     if not da_xu_ly:
         return False
     if len(cac_phan) == 1:
@@ -1627,6 +1656,8 @@ def _xu_ly_y_dinh_chat(q_text: str, *, active_conversation, active_nb_id) -> boo
             "**{}**\n\n{}".format(nhan_y_dinh(y_dinh) or y_dinh, phan)
             for y_dinh, phan in cac_phan
         )
+    if not tra_loi.strip():
+        return True  # chi chuyen view, khong co gi de luu
     conv_id = getattr(active_conversation, "id", "") or ""
     if conv_id:
         _luu_cap_tin_nhan_chat(conv_id, q_text, tra_loi)

@@ -312,6 +312,33 @@ def _draw_line_chart_pillow(
     return bo_dem.getvalue()
 
 
+def _ve_bieu_do_ket_qua(
+    headers: List[str], data: List[List[str]], numeric_cols: List[int]
+) -> Tuple[bytes, str]:
+    """Ve bieu do, tra ve (png_bytes, ly_do_loi).
+
+    Uu tien matplotlib; thieu thi dung Pillow (may nha co san). Khong bao gio
+    nem loi ra ngoai. ly_do_loi rong nghia la: ve duoc, hoac khong co gi de
+    ve (khong co cot so hop le) — truong hop sau khong can ghi chu.
+    """
+    try:
+        png = _draw_line_chart_matplotlib(headers, data, numeric_cols)
+        if png:
+            return png, ""
+        return b"", ""
+    except ImportError as exc:
+        ly_do_thieu = "thiếu thư viện matplotlib ({})".format(exc)
+    except Exception as exc:
+        return b"", "matplotlib báo lỗi: {}".format(exc)
+    try:
+        png = _draw_line_chart_pillow(headers, data, numeric_cols)
+        if png:
+            return png, ""
+        return b"", ""
+    except Exception as exc:
+        return b"", ly_do_thieu + "; Pillow báo lỗi: {}".format(exc)
+
+
 def _draw_line_chart(
     headers: List[str], data: List[List[str]], numeric_cols: List[int]
 ) -> bytes:
@@ -320,16 +347,8 @@ def _draw_line_chart(
     Uu tien matplotlib; thieu thi dung Pillow (may nha co san). Ve hong thi
     tra ve rong — bang thong ke van duoc giu nguyen trong cau tra loi.
     """
-    try:
-        return _draw_line_chart_matplotlib(headers, data, numeric_cols)
-    except ImportError:
-        pass  # thieu matplotlib -> thu Pillow
-    except Exception:
-        return b""
-    try:
-        return _draw_line_chart_pillow(headers, data, numeric_cols)
-    except Exception:
-        return b""
+    png, _ly_do = _ve_bieu_do_ket_qua(headers, data, numeric_cols)
+    return png
 
 
 def _analyze_log_block(block: str) -> ChatActionOutcome:
@@ -396,10 +415,14 @@ def _analyze_csv_block(block: str) -> Optional[ChatActionOutcome]:
             )
         )
     # Ve bieu do: loi ve KHONG duoc lam roi bang thong ke phia tren.
-    try:
-        png = _draw_line_chart(headers, data, numeric_cols)
-    except Exception:
-        png = b""
+    # Ve hong van giu du bang + preview, kem ly do ro rang.
+    png = b""
+    ly_do_khong_ve = ""
+    if numeric_cols:
+        try:
+            png, ly_do_khong_ve = _ve_bieu_do_ket_qua(headers, data, numeric_cols)
+        except Exception as exc:
+            png, ly_do_khong_ve = b"", "lỗi không ngờ khi vẽ: {}".format(exc)
     if png:
         blocks.append(
             ChatActionBlock(
@@ -407,6 +430,13 @@ def _analyze_csv_block(block: str) -> Optional[ChatActionOutcome]:
                 image_png=png,
                 alt="Biểu đồ từ dữ liệu bạn vừa dán",
                 caption="Biểu đồ từ dữ liệu bạn vừa dán (không phải mô phỏng).",
+            )
+        )
+    elif ly_do_khong_ve:
+        blocks.append(
+            ChatActionBlock(
+                kind=BLOCK_MARKDOWN,
+                text="Không vẽ được biểu đồ vì " + ly_do_khong_ve + ".",
             )
         )
     preview = data[:10]
