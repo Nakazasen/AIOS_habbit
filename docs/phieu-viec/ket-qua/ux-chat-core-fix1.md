@@ -225,7 +225,7 @@ không force-push, code tương thích Python 3.11.
 
 ## 1. Kết luận ngắn
 
-**Verify lần 1 trên mã `a75a1ee`/`6f9e0b9`, trước bổ sung `8400f45`.** Câu gộp giả lập trên app thật trả về đủ 3 kết quả trong một câu trả lời. Muse vừa đẩy `8400f45`. OMP đang verify lại trên head mới, chưa chốt ĐẠT.
+**Đủ để đề nghị ĐẠT.** Lần 1 trên `a75a1ee` và lần 2 trên `8400f45` đều ra đủ 3 kết quả trong một câu trả lời, máy không có matplotlib vẫn có PNG.
 
 ## 2. App thật
 
@@ -294,3 +294,14 @@ Một fail có chữ trong `workspace_chat_app.py` nhưng **không phải mã FI
 - Sổ thử `BaoCaoTuan` (`NB-67DB7EFE`) thêm một cuộc trò chuyện giả lập `CONV-F5C7EA3A`. Người dùng xóa nếu không cần.
 - Quy tắc `CB-E8B276` đã xóa. Không gửi dữ liệu công ty ra ngoài. Không đụng `main`.
 - App verify cổng `8515` đã tắt sau khi chụp ảnh. App cổng `8501` không tắt.
+
+## 5. Verify lại trên head `8400f45` (13:09 +07)
+
+- `py_compile` Python 3.11 trên 3 file sửa: đạt.
+- Test mới + test liên quan (`test_chat_multi_intent_router_app.py`, dán CSV, router, composer, 2 test UI cũ): **69 passed**.
+- App lại mở cổng `8515`, cùng biến môi trường file `.bat`, kể cả `AIOS_FEATURE_CHAT_ACTION=1`. Cổng `8501` vẫn không đụng.
+- Cuộc trò chuyện mới `CONV-99A1D381`. Câu gộp CSV giả lập `nhiet_do_gia_lap2` + «vẽ biểu đồ và cảnh báo khi nhiet_do_gia_lap2 vượt 90».
+- Một câu trả lời có đủ: tóm tắt 6 dòng / trung bình 75, biểu đồ PNG `800×420`, quy tắc `CB-3A6EE5` và chữ chưa có dữ liệu (không báo động giả). Không có dòng «chưa xử lý» vì cả hai ý đều chạy được — đúng mã mới.
+- Ảnh: `docs/phieu-viec/ket-qua/ux-chat-core-fix1-anh/03-cau-gop-head-moi.png`.
+- Quy tắc `CB-3A6EE5` đã xóa. Index vẫn `2552659968`, mtime `2026-09-28 05:55:03`.
+- App cổng `8515` đã tắt sau ảnh. Sổ `BaoCaoTuan` còn thêm cuộc `CONV-99A1D381`.
