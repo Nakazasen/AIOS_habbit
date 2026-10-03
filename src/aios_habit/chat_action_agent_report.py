@@ -21,7 +21,6 @@ Tuong thich Python 3.11: khong f-string nhieu dong (PEP 701), khong `type` stmt.
 from __future__ import annotations
 
 import json
-import os
 import re
 import uuid
 from dataclasses import dataclass, field
@@ -29,7 +28,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from aios_habit.agent_doc_edit import ALLOWED_SUFFIXES, edit_document
+from aios_habit.agent_doc_edit import ALLOWED_SUFFIXES, default_doc_root, edit_document
 from aios_habit.agent_report_feedback import log_report_action
 from aios_habit.chat_action import (
     BLOCK_MARKDOWN,
@@ -119,13 +118,9 @@ def _slugify(text: str, limit: int = 40) -> str:
 
 
 def _default_doc_root() -> Path:
-    override = os.environ.get("AIOS_DOC_ROOT", "").strip()
-    if override:
-        root = Path(override).expanduser()
-    else:
-        root = Path.home() / "AIOS_bao_cao"
-    root.mkdir(parents=True, exist_ok=True)
-    return root
+    # Dung chung goc voi agent_doc_edit de hai lop khong bao gio tinh goc
+    # khac nhau (hoi quy 2026-10-03: edit tung tu choi ~/AIOS_bao_cao).
+    return default_doc_root()
 
 
 def _doc_root_for(request: Optional[ChatActionRequest] = None) -> Path:

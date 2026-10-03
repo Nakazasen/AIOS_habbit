@@ -185,3 +185,33 @@ def test_pptx_backup_before_overwrite(tmp_path):
     result = edit_document(target, [{"op": "append_slide", "title": "B"}])
     assert result["ok"] is True
     assert _sha(tmp_path / result["backup"].split("/")[-1]) == original_sha
+
+
+def test_default_doc_root_shared_without_env(tmp_path, monkeypatch):
+    """Hoi quy 2026-10-03: khong co AIOS_DOC_ROOT, lop edit va lop action phai
+    dung chung goc ~/AIOS_bao_cao; edit_document duoi goc mac dinh khong bi
+    tu choi (kich ban OMP: app .bat khong dat AIOS_DOC_ROOT)."""
+    from pathlib import Path
+
+    from aios_habit import chat_action_agent_report
+    from aios_habit.agent_doc_edit import _doc_root, default_doc_root
+
+    monkeypatch.delenv("AIOS_DOC_ROOT", raising=False)
+    fake_home = tmp_path / "home-gia"
+    monkeypatch.setattr(Path, "home", classmethod(lambda cls: fake_home))
+
+    expected = (fake_home / "AIOS_bao_cao").resolve()
+    assert _doc_root() == expected
+    assert default_doc_root() == expected
+    assert chat_action_agent_report._default_doc_root() == expected
+
+    result = edit_document(
+        expected / "tuan.md",
+        [{"op": "append_text", "text": "Dong verify UX-AGENT-UI."}],
+        create=True,
+    )
+    assert result["ok"] is True, result
+    assert "nằm ngoài thư mục làm việc" not in result.get("error_vi", "")
+    assert (expected / "tuan.md").read_text(encoding="utf-8").strip().endswith(
+        "Dong verify UX-AGENT-UI."
+    )

@@ -3,7 +3,7 @@
 Nguyen tac:
 - Moi ghi de file da ton tai BAT BUOC backup truoc; backup phai khop SHA-256
   voi ban goc thi moi cho ghi tiep.
-- Chi cho phep trong goc lam viec (AIOS_DOC_ROOT hoac thu muc hien tai) —
+- Chi cho phep trong goc lam viec (AIOS_DOC_ROOT hoac ~/AIOS_bao_cao) —
   chan path traversal.
 - Hieu NL -> operations do lane LLM dam nhan luc chay; day la lop thuc thi
   xac dinh, test duoc tren VM.
@@ -35,9 +35,18 @@ ALLOWED_SUFFIXES = {".md", ".txt", ".docx", ".pptx"}
 _BACKUP_SUFFIX = ".bak"
 
 
+def default_doc_root() -> Path:
+    """Goc mac dinh cho bao cao agent: AIOS_DOC_ROOT, neu khong dat thi
+    ~/AIOS_bao_cao. Dung chung cho ca lop thuc thi (edit) va lop action de
+    hai noi khong bao gio tinh goc khac nhau (hoi quy 2026-10-03)."""
+    override = os.environ.get("AIOS_DOC_ROOT", "").strip()
+    root = Path(override).expanduser() if override else Path.home() / "AIOS_bao_cao"
+    root.mkdir(parents=True, exist_ok=True)
+    return root
+
+
 def _doc_root() -> Path:
-    root = os.environ.get("AIOS_DOC_ROOT", "")
-    return Path(root).resolve() if root else Path.cwd().resolve()
+    return default_doc_root().resolve()
 
 
 def _safe_path(path: str | Path) -> Path:
