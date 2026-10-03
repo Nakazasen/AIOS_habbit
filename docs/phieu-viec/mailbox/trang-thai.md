@@ -1,18 +1,14 @@
 # Trạng thái mailbox
 
-- Trạng thái: `xong-cho-duyet`
-- Ticket hiện tại: `UX-CHAT-CORE` — [VM] Muse code+test trên VM → [NHÀ] OMP verify trên app thật: chat nhiều ý định, biểu đồ trong chat, hết đổi luồng tay, hết báo lỗi ảo.
+- Trạng thái: `moi`
+- Ticket hiện tại: `UX-CHAT-CORE-FIX1` — [VM] Muse code+test trên VM → [NHÀ] OMP verify trên app thật: sửa 5 điểm chặn sau verify lần 1 (câu gộp đa ý định chỉ chạy ý đầu, biểu đồ CSV mất cả phân tích khi thiếu matplotlib, cờ chat_action tắt khi mở app bằng .bat thường, thiếu danh sách báo lỗi ảo đã sửa, test cũ bám UI đã bỏ).
 - `prompt`: `docs/phieu-viec/mailbox/prompt.md`
-- `ghi_chu`: 2026-10-03 11:54 +07 — Verify xong, chờ Muse. Chưa ĐẠT toàn vé: câu gộp chỉ ra cảnh báo; CSV không vẽ vì thiếu matplotlib; cờ chat_action tắt. Radio đã mất, sổ BaoCaoTuan một dòng sẵn sàng, audit PASS. pytest 48 failed / 3793 passed / 19 errors. Index không đổi.
-- `commit`: `9142fff`
-- `bao_cao`: `docs/phieu-viec/ket-qua/ux-chat-core.md`
-- `ghi_chu` (verdict Muse): 2026-10-03 ~11:10 +07 — **ĐẠT** (báo cáo `5269d8c`). Đủ tiêu chí vé PI-SPIKE-HOME: pi 1.0.0; đường sống Gemini Flash Lite, 7 đường chết có lý do; tạo file ĐẠT, sửa file ĐẠT ở lần 2 (lần 1 model hỏi lại nội dung — ghi nhận trung thực); RPC 15 event ổn định 1 lệnh, chưa thử hàng đợi/ngắt giữa chừng; rào giữ (không dữ liệu công ty, không đụng index production, không merge main, telemetry tắt). Digest batch tạm đỗ, checkpoint 847/889 còn nguyên.
-- `ghi_chu` (điều phối Muse): 2026-10-03 ~11:10 +07 — Phát hành vé hàng chờ #1 `UX-CHAT-CORE` (copy `prompt-queue-ux-chat-core.md` → `prompt.md`), `trang-thai` → `moi`. Còn lại hàng chờ: UX-INTERVIEW-FEEDBACK → UX-AGENT-REPORT → UX-E2E-APP → SCAN-O-D. Lưu ý: phase [VM] do Muse đảm nhận trước (code+test trên VM; phương án UI công khai trình user duyệt theo AGENTS.md 4.1); OMP [NHÀ] verify sau khi code đã push lên branch.
+- `ghi_chu` (verdict Muse): 2026-10-03 ~12:00 +07 — **CHƯA ĐẠT** (báo cáo `9142fff`, Muse verify độc lập code trên nhánh). Giữ phần đạt: bỏ radio "Điều hướng", dòng trạng thái sổ 1 dòng, cảnh báo ngưỡng + SMA(20) đúng trên app thật, py_compile 3.11 + compileall + audit PASS, index production không đổi. 5 điểm chặn có bằng chứng code: (1) `classify_intent` chỉ trả 1 ý định, `_dieu_huong_chat_first` return True sau ý đầu → câu gộp chỉ chạy cảnh báo ngưỡng; (2) cờ `AIOS_FEATURE_CHAT_ACTION` tắt + .bat không bật → đường dán log không chạy khi mở app thường; (3) `_analyze_csv_block` gọi `_draw_line_chart` (import matplotlib trong hàm, không try/except) → thiếu matplotlib thì mất cả bảng thống kê; (4) pytest 48 failed / 3793 passed / 19 errors (3 test CSV matplotlib + test UI cũ + tên hàm cũ); (5) chưa có danh sách báo lỗi ảo đã sửa. Đã viết vé sửa UX-CHAT-CORE-FIX1; hàng chờ giữ nguyên thứ tự.
+- `ghi_chu` (lịch sử): UX-CHAT-CORE phát hành 2026-10-03 ~11:10 +07 (phase [VM] Muse code commit `9298ee6` + `601a3be` → [NHÀ] OMP verify báo cáo `9142fff`). Trước đó PI-SPIKE-HOME verdict ĐẠT (báo cáo `5269d8c`).
 - `hang-cho` (thứ tự do user duyệt 2026-10-02 ~22:05 +07; user chèn thêm KNOWLEDGE-DIGEST-HOME 2026-10-03 ~00:45 +07 — ưu tiên làm trong 2 ngày cuối tuần):
   1. `UX-INTERVIEW-FEEDBACK` (`prompt-queue-ux-interview-feedback.md`) — [VM code + NHÀ verify] phỏng vấn chuyên gia chạy được trong app + feedback theo từng gợi ý (sai/một phần bắt buộc nhập lý do, nguyên nhân thật, nội dung nắn lại) + vòng lặp tự cải thiện.
   2. `UX-AGENT-REPORT` (`prompt-queue-ux-agent-report.md`) — [VM code + NHÀ verify] agent tạo/sửa báo cáo (docx/pptx/md) bằng lệnh lời trong chat, có backup trước khi ghi đè.
   3. `UX-E2E-APP` (`prompt-queue-ux-e2e-app.md`) — [NHÀ] kiểm thử đầu-cuối app thật sau loạt UX mới đêm 2026-10-03 (multi-intent, lane tự động, feedback chat, SMA(20)/trend, radio LSU gate); user duyệt viết vé 2026-10-03.
   4. `SCAN-O-D` (`prompt-queue-scan-o-d.md`) — [NHÀ] kiểm kê + quét thao tác ổ D (chỉ đọc metadata/SHA, không xóa/sửa); user duyệt viết vé 2026-10-03.
-
 
 - `ghi_chu` (Muse): 2026-10-03 ~07:20 +07 — user quyết đổi provider (không chờ cầu nối). Phát hành vé PROVIDER-SWITCH: thứ tự probe cầu nối → sửa khóa Router → resume batch. Giữ nguyên rào bản thảo/không nhập kho.
