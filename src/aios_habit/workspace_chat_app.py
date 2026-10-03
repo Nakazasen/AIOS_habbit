@@ -1466,32 +1466,59 @@ def _luu_cap_tin_nhan_chat(conversation_id: str, cau_hoi: str, tra_loi: str) -> 
     ))
 
 
-def _xu_ly_y_dinh_chat(q_text: str, *, active_conversation, active_nb_id) -> bool:
-    """Bo dinh tuyen y dinh chat-first (UX-CHAT-CORE).
+def _xu_ly_mot_y_dinh(y_dinh: str, slots, q_text: str, *, active_conversation, active_nb_id):
+    """Xu ly MOT y dinh trong cau chat.
 
-    Tra ve True neu cau chat da duoc xu ly tron (caller rerun),
-    False neu de luong hien co (jig/chat_action/RAG) xu ly tiep.
+    Tra ve doan tra loi cua y dinh do; "" neu y dinh da xu ly nhung khong
+    can doan van ban (vd chi chuyen view); None neu y dinh nay khong xu ly
+    duoc (de dieu phoi thu y dinh khac / de luong cu xu ly tiep).
     """
     from aios_habit.chat_intent_router import (
         CANH_BAO_NGUONG,
         CONG_CU_NANG_CAO,
+        DU_LIEU_DAN,
         HO_SO_DIEU_TRA,
         MO_SO,
         TAO_SO,
-        route,
     )
-
-    y_dinh, slots = route(q_text)
-    conv_id = getattr(active_conversation, "id", "") or ""
 
     if y_dinh == HO_SO_DIEU_TRA:
         st.session_state.wsc_show_case_workspace = True
         st.session_state.wsc_show_lsu_data_gate = False
-        return True
+        return ""
     if y_dinh == CONG_CU_NANG_CAO:
         st.session_state.wsc_show_lsu_data_gate = True
         st.session_state.wsc_show_case_workspace = False
-        return True
+        return ""
+    if y_dinh == DU_LIEU_DAN:
+        # Khoi du lieu dan chay qua khung chat_action (ton trong feature flag).
+        from aios_habit.chat_action import (
+            ChatActionRequest,
+            chat_action_enabled,
+            dispatch_multi,
+            render_outcome,
+        )
+
+        if not chat_action_enabled():
+            return None
+        try:
+            outcome = dispatch_multi(
+                ChatActionRequest(
+                    question=q_text,
+                    locale="vi",
+                    conversation_id=getattr(active_conversation, "id", "") or "",
+                    notebook_id=active_nb_id or "",
+                    workspace_id=active_nb_id or "default",
+                )
+            )
+        except Exception:
+            return None
+        if outcome is None:
+            return None
+        try:
+            return render_outcome(outcome) or None
+        except Exception:
+            return None
     if y_dinh == CANH_BAO_NGUONG:
         from aios_habit.threshold_alert_chat import xu_ly_cau_lenh
 
@@ -1503,13 +1530,7 @@ def _xu_ly_y_dinh_chat(q_text: str, *, active_conversation, active_nb_id) -> boo
                 return []
 
         tra_loi = xu_ly_cau_lenh(q_text, history_provider=_lich_su)
-        if tra_loi is None:
-            return False
-        if conv_id:
-            _luu_cap_tin_nhan_chat(conv_id, q_text, tra_loi)
-        else:
-            st.session_state.wsc_action_message = tra_loi
-        return True
+        return tra_loi  # None -> y dinh nay khong xu ly duoc
     if y_dinh == TAO_SO:
         ten_so = (slots.get("ten_so") or "").strip() or "Sổ mới"
         ensure_default_collection()
@@ -1529,14 +1550,10 @@ def _xu_ly_y_dinh_chat(q_text: str, *, active_conversation, active_nb_id) -> boo
                 ten_so, dong_trang_thai_so(ten_so, 0)
             )
         )
-        if conv_id:
-            _luu_cap_tin_nhan_chat(conv_id, q_text, tra_loi)
-        else:
-            st.session_state.wsc_action_message = tra_loi
         st.session_state.wsc_active_notebook_id = new_nb.id
         st.session_state.wsc_active_conversation_id = None
         set_query_params(nb=new_nb.id, conv=None)
-        return True
+        return tra_loi
     if y_dinh == MO_SO:
         ten_can_tim = (slots.get("ten_so") or "").strip().lower()
         danh_sach = load_active_notebooks()
@@ -1549,19 +1566,73 @@ def _xu_ly_y_dinh_chat(q_text: str, *, active_conversation, active_nb_id) -> boo
         if trung is None and len(danh_sach) == 1 and not ten_can_tim:
             trung = danh_sach[0]
         if trung is None:
-            if conv_id:
-                ten_hien_co = ", ".join("\"{}\"".format(nb.title) for nb in danh_sach[:5])
-                goi_y = "Tôi chưa tìm thấy sổ phù hợp."
-                if ten_hien_co:
-                    goi_y += " Các sổ hiện có: {}.".format(ten_hien_co)
-                goi_y += " Bạn gõ: tạo sổ <tên sổ>"
-                _luu_cap_tin_nhan_chat(conv_id, q_text, goi_y)
-            return True
+            ten_hien_co = ", ".join("\"{}\"".format(nb.title) for nb in danh_sach[:5])
+            goi_y = "Tôi chưa tìm thấy sổ phù hợp."
+            if ten_hien_co:
+                goi_y += " Các sổ hiện có: {}.".format(ten_hien_co)
+            goi_y += " Bạn gõ: tạo sổ <tên sổ>"
+            return goi_y
         st.session_state.wsc_active_notebook_id = trung.id
         st.session_state.wsc_active_conversation_id = None
         set_query_params(nb=trung.id, conv=None)
-        return True
-    return False
+        return ""
+    return None
+
+
+def _xu_ly_y_dinh_chat(q_text: str, *, active_conversation, active_nb_id) -> bool:
+    """Bo dinh tuyen y dinh chat-first (UX-CHAT-CORE).
+
+    Mot cau chat co the chua NHIEU y dinh (vd dan CSV + ve bieu do + dat
+    nguong canh bao): chay HET cac y dinh nhan dien duoc, gop cac doan tra
+    loi thanh mot cau tra loi duy nhat.
+
+    Tra ve True neu cau chat da duoc xu ly tron (caller rerun),
+    False neu de luong hien co (jig/chat_action/RAG) xu ly tiep.
+    """
+    from aios_habit.chat_intent_router import (
+        HOI_TAI_LIEU,
+        classify_all_intents,
+        nhan_y_dinh,
+    )
+
+    cac_y_dinh = classify_all_intents(q_text)
+    if len(cac_y_dinh) == 1 and cac_y_dinh[0][0] == HOI_TAI_LIEU:
+        return False
+    cac_phan = []
+    da_xu_ly = False
+    for y_dinh, slots in cac_y_dinh:
+        if y_dinh == HOI_TAI_LIEU:
+            continue  # fallback: de luong RAG xu ly
+        try:
+            phan = _xu_ly_mot_y_dinh(
+                y_dinh,
+                slots,
+                q_text,
+                active_conversation=active_conversation,
+                active_nb_id=active_nb_id,
+            )
+        except Exception:
+            phan = None
+        if phan is None:
+            continue
+        da_xu_ly = True
+        if phan:
+            cac_phan.append((y_dinh, phan))
+    if not da_xu_ly:
+        return False
+    if len(cac_phan) == 1:
+        tra_loi = cac_phan[0][1]
+    else:
+        tra_loi = "\n\n---\n\n".join(
+            "**{}**\n\n{}".format(nhan_y_dinh(y_dinh) or y_dinh, phan)
+            for y_dinh, phan in cac_phan
+        )
+    conv_id = getattr(active_conversation, "id", "") or ""
+    if conv_id:
+        _luu_cap_tin_nhan_chat(conv_id, q_text, tra_loi)
+    else:
+        st.session_state.wsc_action_message = tra_loi
+    return True
 
 
 def open_notebook_callback(notebook_id: str):

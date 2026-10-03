@@ -86,15 +86,16 @@ def test_composer_uses_an_icon_action_and_a_real_stop_for_pending_work() -> None
 
 
 def test_composer_model_picker_maps_to_existing_ai_backends() -> None:
+    # UX-CHAT-CORE: khong con selectbox doi lane tay — lane tu chon va hien
+    # "Dang dung: ... (tu dong)". Test khang dinh hanh vi MOI thay vi tim
+    # selectbox cu.
     source = _app_source()
 
-    assert '"gemini_web", "cagent_api", "nakazasen_router"' in source
-    assert "ai_connector_gemini" in source
-    assert "ai_connector_cagent" in source
-    assert "ai_connector_router" in source
-    assert "cagent_endpoint_url" in source
-    assert 'key=backend_key' in source
-    assert 'with st.popover(f"◉' not in source
+    assert "key=backend_key" not in source
+    assert '"gemini_web", "cagent_api", "nakazasen_router"' not in source
+    assert "auto_backend_for_conversation" in source
+    assert '"Đang dùng: "' in source or '"Đang dùng:"' in source
+    assert "(tự động)" in source
 
 
 def test_composer_toolbar_labels_stay_on_one_line() -> None:
@@ -283,15 +284,22 @@ def test_khung_sang_khong_tai_font_mang() -> None:
 
 
 def test_dieu_huong_chinh_co_ten_tieng_viet_nhin_thay() -> None:
-    """FR-027, SC-015: primary navigation is not identified by emoji alone."""
-    source = _app_source()
-    translations = Path("src/aios_habit/i18n.py").read_text(encoding="utf-8")
+    """FR-027, SC-015: primary navigation is not identified by emoji alone.
 
-    assert '"chat": "Hỏi tài liệu"' in source
-    assert '"cases": "Hồ sơ và tri thức"' in source
-    assert '"advanced": "Công cụ nâng cao"' in source
-    assert "📖 Hỏi tài liệu" not in source.split("_legacy_connector_panel", 1)[-1]
-    assert '"sidebar_navigation_heading": "### Điều hướng"' in translations
+    UX-CHAT-CORE: radio "Dieu huong" 3 nhanh da bi bo — sidebar gio huong dan
+    nguoi dung go tieng Viet vao o chat. Test khang dinh huong dan MOI co ten
+    tieng Viet nhin thay, thay vi tim nhan radio cu.
+    """
+    source = _app_source()
+
+    assert "st.radio(" not in source
+    assert '"chat": "Hỏi tài liệu"' not in source
+    assert '"cases": "Hồ sơ và tri thức"' not in source
+    assert '"advanced": "Công cụ nâng cao"' not in source
+    assert "### 💬 Trợ lý AIOS" in source
+    assert "Bạn chỉ cần gõ vào ô chat" in source
+    assert "hỏi tài liệu" in source
+    assert "cảnh báo ngưỡng" in source
     assert 't("no_conversations_in_notebook"' in source
     assert 't("workspace_select_prompt"' in source
     assert "with st.container(border=True):" in source

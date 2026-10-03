@@ -65,3 +65,38 @@ def test_extract_ten_so():
 def test_diacritics_insensitive():
     assert classify_intent("canh bao khi nhiet do vuot 80") == CANH_BAO_NGUONG
     assert classify_intent("tao so moi") == TAO_SO
+
+
+def test_classify_all_intents_mot_cau_nhieu_y():
+    from aios_habit.chat_intent_router import DU_LIEU_DAN, classify_all_intents
+
+    csv_block = "nhiet_do,ap_suat\n70,5\n72,5\n74,6\n"
+    cau = csv_block + "vẽ biểu đồ và cảnh báo khi nhiệt độ vượt 80"
+    intents = classify_all_intents(cau)
+    ten_y = [y for y, _ in intents]
+    assert DU_LIEU_DAN in ten_y
+    assert CANH_BAO_NGUONG in ten_y
+    # single-intent entry point keeps old behaviour: first match wins
+    assert classify_intent("cảnh báo khi nhiệt độ vượt 80") == CANH_BAO_NGUONG
+
+
+def test_classify_all_intents_khong_khoi_du_lieu():
+    from aios_habit.chat_intent_router import classify_all_intents
+
+    intents = classify_all_intents("cảnh báo khi nhiệt độ vượt 80")
+    assert [(y, s) for y, s in intents] == [(CANH_BAO_NGUONG, {})]
+
+
+def test_classify_all_intents_chi_co_du_lieu_dan():
+    from aios_habit.chat_intent_router import DU_LIEU_DAN, classify_all_intents
+
+    csv_block = "thoi_gian,nhiet_do\n10:00,70\n10:01,72\n"
+    intents = classify_all_intents("phân tích giúp tôi:\n" + csv_block)
+    assert intents[0][0] == DU_LIEU_DAN
+
+
+def test_classify_all_intents_rong():
+    from aios_habit.chat_intent_router import classify_all_intents
+
+    assert classify_all_intents("")[0][0] == HOI_DAP_CHUNG
+    assert classify_all_intents("lỗi FXXX là gì?")[0][0] == HOI_TAI_LIEU

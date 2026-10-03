@@ -30,6 +30,10 @@ rem SPEED-COLDSTART-PC0575 (2026-10-02): giu worker BGE song qua restart app
 rem bang named pipe (khong phai nap lai 180,9 s moi lan mo app). Worker tu tat
 rem sau 6 gio khong dung (AIOS_RAGV2_WORKER_IDLE_EXIT_SECONDS).
 set "AIOS_RAGV2_WORKER_PERSIST=1"
+rem UX-CHAT-CORE-FIX1 (2026-10-03): bat khung chat_action de duong dan log/CSV
+rem trong o chat chay ngay khi mo app bang file nay (mac dinh trong code van
+rem tat de giu che do fail-closed cho cac duong mo app khac).
+set "AIOS_FEATURE_CHAT_ACTION=1"
 set STREAMLIT_BROWSER_GATHER_USAGE_STATS=false
 set STREAMLIT_SERVER_FILE_WATCHER_TYPE=none
 set STREAMLIT_SERVER_RUN_ON_SAVE=false

@@ -117,12 +117,21 @@ def test_format_unit_trace_view_found_and_not_found():
 
 
 def test_workspace_chat_app_wires_lsu_data_gate():
-    """Verify workspace_chat_app source code integrates LSU data gate entry point without second app route."""
+    """Verify workspace_chat_app source code integrates LSU data gate entry point without second app route.
+
+    UX-CHAT-CORE: the old radio key ``wsc_open_lsu_data_gate`` is gone with the
+    navigation radio; the gate now opens through the chat intent router
+    (CONG_CU_NANG_CAO -> wsc_show_lsu_data_gate).
+    """
     app_text = Path("src/aios_habit/workspace_chat_app.py").read_text(encoding="utf-8")
     assert "render_lsu_data_gate" in app_text
-    assert "wsc_open_lsu_data_gate" in app_text
     assert "wsc_show_lsu_data_gate" in app_text
     assert "lsu_data_gate" in app_text
+    # New wiring: chat intent opens the gate (no manual radio key anymore).
+    assert "wsc_open_lsu_data_gate" not in app_text
+    assert "CONG_CU_NANG_CAO" in app_text
+    router_text = Path("src/aios_habit/chat_intent_router.py").read_text(encoding="utf-8")
+    assert "CONG_CU_NANG_CAO" in router_text
 
 
 def test_shadow_state_summary_covers_all_7_contract_states():

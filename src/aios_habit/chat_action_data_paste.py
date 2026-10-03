@@ -71,10 +71,46 @@ def _looks_like_log(lines: Sequence[str]) -> bool:
     return stamped >= max(2, len(lines[:20]) // 3)
 
 
+def _khoi_csv_lien_tuc(lines: Sequence[str]) -> Optional[str]:
+    """Tim khoi CSV lien tuc dai nhat trong tin nhan.
+
+    Nguoi dung thuong dan CSV kem cau lenh ("ve bieu do", "canh bao khi...")
+    o dau/cuoi; chi can khoi du lieu lien tuc co cung so cot, khong doi ca
+    tin nhan phai dong nhat.
+    """
+    if len(lines) < 2:
+        return None
+    tot_nhat: List[str] = []
+    for delimiter in (",", ";", "\t"):
+        counts = [ln.count(delimiter) for ln in lines]
+        i = 0
+        while i < len(lines):
+            if counts[i] < 1:
+                i += 1
+                continue
+            run = [lines[i]]
+            j = i + 1
+            while j < len(lines) and counts[j] == counts[i]:
+                run.append(lines[j])
+                j += 1
+            # Khoi o dau tin nhan chap nhan tu 2 dong; khoi giua tin nhan can
+            # it nhat 3 dong de tranh nhan nham 2 dong van xuoi trung co.
+            nguong = 2 if i == 0 else 3
+            if len(run) >= nguong and len(run) > len(tot_nhat):
+                tot_nhat = run
+            i = j
+    if len(tot_nhat) >= 2:
+        return "\n".join(tot_nhat)
+    return None
+
+
 def extract_pasted_block(question: str) -> Optional[str]:
     """Tach khoi du lieu duoc dan ra khoi cau chat. None neu khong thay."""
     lines = _candidate_lines(question)
-    if _looks_like_csv(lines) or _looks_like_log(lines):
+    khoi_csv = _khoi_csv_lien_tuc(lines)
+    if khoi_csv is not None:
+        return khoi_csv
+    if _looks_like_log(lines):
         return "\n".join(lines)
     return None
 
@@ -147,10 +183,40 @@ def _fmt(value: float) -> str:
     return f"{value:.2f}"
 
 
-def _draw_line_chart(
+_FONT_UNG_HO_TIENG_VIET = (
+    "C:/Windows/Fonts/arial.ttf",
+    "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+)
+
+
+def _font_bieu_do(size: int):
+    """Font ve chu tieng Viet len bieu do Pillow.
+
+    Tra ve (font, can_bo_dau): uu tien font he thong co dau; khong co thi
+    dung font mac dinh cua Pillow va bo dau de khoi o vuong.
+    """
+    from PIL import ImageFont
+
+    for duong_dan in _FONT_UNG_HO_TIENG_VIET:
+        try:
+            return ImageFont.truetype(duong_dan, size), False
+        except Exception:
+            continue
+    return ImageFont.load_default(), True
+
+
+def _bo_dau_chu(text: str) -> str:
+    import unicodedata
+
+    text = unicodedata.normalize("NFD", text)
+    text = "".join(ch for ch in text if unicodedata.category(ch) != "Mn")
+    return text.replace("đ", "d").replace("Đ", "D")
+
+
+def _draw_line_chart_matplotlib(
     headers: List[str], data: List[List[str]], numeric_cols: List[int]
 ) -> bytes:
-    """Ve bieu do duong cho toi da 3 cot so. Tra ve PNG bytes (rong neu ve hong)."""
+    """Ve bieu do duong bang matplotlib. Tra ve PNG bytes (rong neu ve hong)."""
     import matplotlib
 
     matplotlib.use("Agg")
@@ -179,6 +245,91 @@ def _draw_line_chart(
     fig.savefig(buffer, format="png", dpi=110)
     plt.close(fig)
     return buffer.getvalue()
+
+
+def _draw_line_chart_pillow(
+    headers: List[str], data: List[List[str]], numeric_cols: List[int]
+) -> bytes:
+    """Ve bieu do duong don gian bang Pillow (fallback khi thieu matplotlib)."""
+    from PIL import Image, ImageDraw
+
+    series = []
+    for col in numeric_cols[:MAX_CHART_SERIES]:
+        values = []
+        for row in data:
+            number = _to_float(row[col]) if col < len(row) else None
+            if number is not None:
+                values.append(number)
+        if values:
+            series.append((headers[col], values))
+    if not series:
+        return b""
+    rong, cao = 800, 420
+    le_trai, le_phai, le_tren, le_duoi = 64, 24, 60, 48
+    tat_ca = [v for _, day in series for v in day]
+    nho_nhat, lon_nhat = min(tat_ca), max(tat_ca)
+    if lon_nhat == nho_nhat:
+        lon_nhat = nho_nhat + 1.0
+    dem = (lon_nhat - nho_nhat) * 0.08
+    nho_nhat, lon_nhat = nho_nhat - dem, lon_nhat + dem
+    n = max(len(day) for _, day in series)
+    anh = Image.new("RGB", (rong, cao), "white")
+    ve = ImageDraw.Draw(anh)
+    font, can_bo_dau = _font_bieu_do(15)
+
+    def chu(s: str) -> str:
+        return _bo_dau_chu(s) if can_bo_dau else s
+
+    vung_rong, vung_cao = rong - le_trai - le_phai, cao - le_tren - le_duoi
+
+    def toa_do(i: int, v: float):
+        x = le_trai + (i / max(1, n - 1)) * vung_rong
+        y = le_tren + vung_cao - ((v - nho_nhat) / (lon_nhat - nho_nhat)) * vung_cao
+        return x, y
+
+    for k in range(6):
+        v = nho_nhat + (lon_nhat - nho_nhat) * k / 5
+        _, y = toa_do(0, v)
+        ve.line([(le_trai, y), (rong - le_phai, y)], fill=(230, 230, 230))
+        ve.text((6, y - 9), chu(_fmt(v)), font=font, fill=(80, 80, 80))
+    ve.line([(le_trai, le_tren), (le_trai, cao - le_duoi)], fill=(60, 60, 60), width=2)
+    ve.line([(le_trai, cao - le_duoi), (rong - le_phai, cao - le_duoi)], fill=(60, 60, 60), width=2)
+    mau_sac = [(31, 119, 180), (214, 39, 40), (44, 160, 44)]
+    for chi_so, (nhan, day_so) in enumerate(series):
+        mau = mau_sac[chi_so % len(mau_sac)]
+        diem = [toa_do(i, v) for i, v in enumerate(day_so)]
+        if len(diem) >= 2:
+            ve.line(diem, fill=mau, width=2)
+        for p in diem:
+            ve.ellipse([p[0] - 3, p[1] - 3, p[0] + 3, p[1] + 3], fill=mau)
+        gx = le_trai + 8 + chi_so * 210
+        ve.rectangle([gx, 14, gx + 26, 28], fill=mau)
+        ve.text((gx + 32, 12), chu(nhan[:20]), font=font, fill=(40, 40, 40))
+    ve.text((le_trai, cao - 32), chu("dòng"), font=font, fill=(80, 80, 80))
+    ve.text((le_trai, 36), chu("Biểu đồ từ dữ liệu bạn vừa dán"), font=font, fill=(30, 30, 30))
+    bo_dem = io.BytesIO()
+    anh.save(bo_dem, format="PNG")
+    return bo_dem.getvalue()
+
+
+def _draw_line_chart(
+    headers: List[str], data: List[List[str]], numeric_cols: List[int]
+) -> bytes:
+    """Ve bieu do duong, tra ve PNG bytes. KHONG bao gio nem loi ra ngoai.
+
+    Uu tien matplotlib; thieu thi dung Pillow (may nha co san). Ve hong thi
+    tra ve rong — bang thong ke van duoc giu nguyen trong cau tra loi.
+    """
+    try:
+        return _draw_line_chart_matplotlib(headers, data, numeric_cols)
+    except ImportError:
+        pass  # thieu matplotlib -> thu Pillow
+    except Exception:
+        return b""
+    try:
+        return _draw_line_chart_pillow(headers, data, numeric_cols)
+    except Exception:
+        return b""
 
 
 def _analyze_log_block(block: str) -> ChatActionOutcome:
@@ -244,7 +395,11 @@ def _analyze_csv_block(block: str) -> Optional[ChatActionOutcome]:
                 caption="Thống kê mô tả các cột số.",
             )
         )
-    png = _draw_line_chart(headers, data, numeric_cols)
+    # Ve bieu do: loi ve KHONG duoc lam roi bang thong ke phia tren.
+    try:
+        png = _draw_line_chart(headers, data, numeric_cols)
+    except Exception:
+        png = b""
     if png:
         blocks.append(
             ChatActionBlock(

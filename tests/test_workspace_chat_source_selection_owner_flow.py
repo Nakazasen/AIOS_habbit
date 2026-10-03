@@ -745,7 +745,11 @@ def test_save_case_callback_creates_case_from_existing_trace_and_reruns(monkeypa
 def test_save_case_callback_uses_only_the_existing_trace_and_no_provider():
     app_source = Path("src/aios_habit/workspace_chat_app.py").read_text(encoding="utf-8")
     helper_start = app_source.index("def save_current_answer_to_case(")
-    helper_end = app_source.index("def open_notebook_callback", helper_start)
+    # UX-CHAT-CORE: chi quet DUNG than ham save_current_answer_to_case (den def
+    # cap module tiep theo). Ham _xu_ly_y_dinh_chat dung giua co goi
+    # save_notebook( cho y dinh TAO_SO — do la ghi so chat, khong phai luong
+    # luu case, khong duoc tinh la vi pham.
+    helper_end = app_source.index("\ndef ", helper_start)
     helper_block = app_source[helper_start:helper_end]
     callback_start = app_source.index("def on_save_case_cb():")
     callback_end = app_source.index("def on_explain_cb():", callback_start)

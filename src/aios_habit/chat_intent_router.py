@@ -22,6 +22,7 @@ HO_SO_DIEU_TRA = "ho_so_dieu_tra"        # open the investigation case workspace
 CONG_CU_NANG_CAO = "cong_cu_nang_cao"    # open the advanced JIG analysis tools
 HOI_DAP_CHUNG = "hoi_dap_chung"          # small talk / greeting
 HOI_TAI_LIEU = "hoi_tai_lieu"            # document Q&A (RAG) fallback
+DU_LIEU_DAN = "du_lieu_dan"              # pasted CSV/log block in the message
 
 TAT_CA_Y_DINH = (
     CANH_BAO_NGUONG,
@@ -31,6 +32,7 @@ TAT_CA_Y_DINH = (
     CONG_CU_NANG_CAO,
     HOI_DAP_CHUNG,
     HOI_TAI_LIEU,
+    DU_LIEU_DAN,
 )
 
 
@@ -85,13 +87,40 @@ _QUY_TAC: Tuple[Tuple[str, Tuple[str, ...]], ...] = (
 
 def classify_intent(text: str) -> str:
     """Classify one chat sentence. Always returns a valid intent."""
-    norm = _khong_dau(text or "")
+    intents = classify_all_intents(text)
+    return intents[0][0] if intents else HOI_TAI_LIEU
+
+
+def _co_khoi_du_lieu_dan(text: str) -> bool:
+    """True when the message carries a pasted CSV/log block.
+
+    Imported lazily so this router stays dependency-free for unit tests.
+    """
+    try:
+        from aios_habit.chat_action_data_paste import extract_pasted_block
+    except Exception:
+        return False
+    try:
+        return extract_pasted_block(text or "") is not None
+    except Exception:
+        return False
+
+
+def classify_all_intents(text: str) -> list:
+    """Classify ALL intents present in one chat message.
+
+    A single message may carry several intents (e.g. pasted CSV + a chart
+    request + a threshold alert). Returns a list of (intent, slots) in
+    priority order; the caller is expected to run every one of them.
+    The single-intent ``classify_intent`` keeps returning the first entry,
+    so existing callers are unaffected.
+    """
+    clean = text or ""
+    norm = _khong_dau(clean)
     if not norm:
-        return HOI_DAP_CHUNG
-    # View-opening intents only fire on short pure commands: a long message
-    # (e.g. pasted logs + "phân tích giúp tôi") must reach the analysis
-    # pipeline, not open a view.
+        return [(HOI_DAP_CHUNG, {})]
     ngan = len(norm) < 80
+    found: list = []
     for y_dinh, cum_tu in _QUY_TAC:
         if y_dinh in (HO_SO_DIEU_TRA, CONG_CU_NANG_CAO) and not ngan:
             continue
@@ -100,8 +129,15 @@ def classify_intent(text: str) -> str:
                 # Avoid "mo so" misfiring on "mo ho so".
                 if y_dinh == MO_SO and "mo ho so" in norm:
                     continue
-                return y_dinh
-    return HOI_TAI_LIEU
+                found.append((y_dinh, extract_slots(clean, y_dinh)))
+                break
+    # Pasted data is orthogonal to keywords: a pasted CSV/log block is its
+    # own intent even when the sentence also asks for an alert or a chart.
+    if _co_khoi_du_lieu_dan(clean):
+        found.insert(0, (DU_LIEU_DAN, {}))
+    if not found:
+        found.append((HOI_TAI_LIEU, {}))
+    return found
 
 
 def extract_slots(text: str, intent: str) -> Dict[str, str]:
@@ -138,6 +174,21 @@ def giai_thich_y_dinh(intent: str) -> str:
         MO_SO: "Tôi hiểu bạn muốn mở một sổ tài liệu.",
         HO_SO_DIEU_TRA: "Tôi hiểu bạn muốn mở hồ sơ điều tra.",
         CONG_CU_NANG_CAO: "Tôi hiểu bạn muốn mở công cụ phân tích JIG.",
+        DU_LIEU_DAN: "Tôi thấy bạn đã dán dữ liệu, tôi sẽ phân tích ngay.",
         HOI_DAP_CHUNG: "",
         HOI_TAI_LIEU: "",
+    }.get(intent, "")
+
+
+def nhan_y_dinh(intent: str) -> str:
+    """Short Vietnamese label for one intent (section header in a merged reply)."""
+    return {
+        CANH_BAO_NGUONG: "Cảnh báo ngưỡng",
+        TAO_SO: "Tạo sổ",
+        MO_SO: "Mở sổ",
+        HO_SO_DIEU_TRA: "Hồ sơ điều tra",
+        CONG_CU_NANG_CAO: "Công cụ JIG",
+        DU_LIEU_DAN: "Phân tích dữ liệu vừa dán",
+        HOI_DAP_CHUNG: "Trò chuyện",
+        HOI_TAI_LIEU: "Hỏi tài liệu",
     }.get(intent, "")
