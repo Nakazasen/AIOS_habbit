@@ -1,8 +1,11 @@
 # Trạng thái mailbox
 
-- Trạng thái: `dang-lam`
+- Trạng thái: `cho-muse`
 - Ticket hiện tại: `UX-E2E-APP` — [NHÀ] kiểm thử đầu-cuối app thật sau loạt UX mới đêm 2026-10-03 (multi-intent, lane tự động, feedback chat, SMA(20)/trend, radio LSU gate); user duyệt viết vé 2026-10-03.
 - `prompt`: `docs/phieu-viec/mailbox/prompt.md`
+- `commit`: `e22d3ec`
+- `bao_cao`: `docs/phieu-viec/ket-qua/ux-e2e-app.md`
+- `ghi_chu` (cho-muse): 2026-10-03 15:30 +07 — **Dừng vé theo luật "mục nào FAIL thì dừng vé, báo cho-muse"**: E2E máy nhà chạy trên app thật cổng 8515 (không đụng app user 8501). (a) **FAIL** — "vẽ biểu đồ bowskew JIG-01 và đặt ngưỡng trên 12" chỉ lưu quy tắc `CB-D0EDE6`, tách sai thông số thành 'trên', không vẽ biểu đồ; (b) **PASS** — dán CSV log thật ra phân tích + biểu đồ PNG; các mục (c)–(h) chưa chạy. Index production không đổi (SHA `062ec090…ef8ca` trước/sau). Đề xuất Muse: thêm ý định chart vào router + vá tách tên thông số ngưỡng (chi tiết mục 4–5 báo cáo).
 - `hang-cho` (thứ tự do user duyệt 2026-10-02 ~22:05 +07; UX-AGENT-REPORT ĐẠT ~14:57, đã phát hành #3):
   4. `SCAN-O-D` (`prompt-queue-scan-o-d.md`) — [NHÀ] kiểm kê + quét thao tác ổ D (chỉ đọc metadata/SHA, không xóa/sửa); user duyệt viết vé 2026-10-03.
   5. `DON-O-C` (`prompt-queue-don-o-c.md`) — [NHÀ] dọn ổ C (rác tmp → venv trùng → worktree → backup cũ sau kiểm toàn vẹn); XÓA BACKUP phải có danh sách GB từng mục để user gật trước khi xóa.
