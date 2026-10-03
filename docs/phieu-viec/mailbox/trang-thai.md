@@ -1,7 +1,7 @@
 ﻿# Trạng thái mailbox
 
-- Trạng thái: `cho-muse`
-- Ticket hiện tại: `KNOWLEDGE-DIGEST-HOME-R1` — [NHÀ] resume batch tóm tắt từ checkpoint 92/889 khi cầu nối hết HTTP 405; xuất sổ tay + probe so sánh RAG.
+- Trạng thái: `moi`
+- Ticket hiện tại: `KNOWLEDGE-DIGEST-PROVIDER-SWITCH` — [NHÀ] đổi provider cho batch tóm tắt: probe cầu nối Gemini → sửa khóa cloud Router → resume batch từ checkpoint.
 - `prompt`: `docs/phieu-viec/mailbox/prompt.md`
 - `commit`: `150d1e2`
 - `bao_cao`: `docs/phieu-viec/ket-qua/knowledge-digest-home.md`
@@ -28,7 +28,7 @@
 - `ghi_chu`: 2026-10-03 05:32 watcher auto-escalate: 4 lan tu mo OMP (moi lan cach ~10 phut) ma mailbox khong tien trien. Chuyen sang cho-muse de Muse xu ly. Ticket: `KNOWLEDGE-DIGEST-HOME-R1` — [NHÀ] resume batch tóm tắt từ checkpoint 92/889 khi cầu nối hết HTTP 405; xuất sổ tay + probe so sánh RAG.
 - `ghi_chu`: 2026-10-03 05:32 watcher auto-escalate: 4 lan tu mo OMP (moi lan cach ~10 phut) ma mailbox khong tien trien. Chuyen sang cho-muse de Muse xu ly. Ticket: `KNOWLEDGE-DIGEST-HOME-R1` — [NHÀ] resume batch tóm tắt từ checkpoint 92/889 khi cầu nối hết HTTP 405; xuất sổ tay + probe so sánh RAG.
 - `ghi_chu`: 2026-10-03 05:32 watcher auto-escalate: 4 lan tu mo OMP (moi lan cach ~10 phut) ma mailbox khong tien trien. Chuyen sang cho-muse de Muse xu ly. Ticket: `KNOWLEDGE-DIGEST-HOME-R1` — [NHÀ] resume batch tóm tắt từ checkpoint 92/889 khi cầu nối hết HTTP 405; xuất sổ tay + probe so sánh RAG.
-- `ghi_chu` (điều phối): 2026-10-03 ~00:47 +07 — **Sửa chữa trạng thái:** commit `60f5506` (chèn vé KNOWLEDGE-DIGEST-HOME vào `hang-cho`) đã vô tình ghi đè `- Trạng thái: `cho-muse`moi` và xoá 2 dòng `ghi_chu` 00:33/00:36. Khôi phục về `dang-lam` (OMP vẫn đang làm PILOT, lane máy nhà qua cầu nối Gemini Web theo `e81ede0`). Không đổi `prompt.md`, không đổi vé hiện tại.
+- `ghi_chu` (điều phối): 2026-10-03 ~00:47 +07 — **Sửa chữa trạng thái:** commit `60f5506` (chèn vé KNOWLEDGE-DIGEST-HOME vào `hang-cho`) đã vô tình ghi đè `- Trạng thái: `moi`moi` và xoá 2 dòng `ghi_chu` 00:33/00:36. Khôi phục về `dang-lam` (OMP vẫn đang làm PILOT, lane máy nhà qua cầu nối Gemini Web theo `e81ede0`). Không đổi `prompt.md`, không đổi vé hiện tại.
 - `ghi_chu`: 2026-10-03 05:32 watcher auto-escalate: 4 lan tu mo OMP (moi lan cach ~10 phut) ma mailbox khong tien trien. Chuyen sang cho-muse de Muse xu ly. Ticket: `KNOWLEDGE-DIGEST-HOME-R1` — [NHÀ] resume batch tóm tắt từ checkpoint 92/889 khi cầu nối hết HTTP 405; xuất sổ tay + probe so sánh RAG.
 - `ghi_chu` (điều phối): **phần [VM] code+test của vé này ĐÃ XONG trên VM đêm 2026-10-02** (commit `cbb54ab`, push remote `63cf68c`: schema form nhân quả, generator, scorer, exporter JSONL+Markdown, importer staging, metrics M1–M5; 48/48 test pass, Python 3.11 OK) — OMP không cần chờ Muse code lại; nếu cần đồng bộ code thì pull commit đó. Việc tiếp theo của vé: [USER] chạy batch 5 hiện tượng qua Copilot 365 (Work IQ + Think deeper) → [NHÀ] OMP verify trên dữ liệu thật.
 - `hang-cho` (thứ tự do user duyệt 2026-10-02 ~22:05 +07; user chèn thêm KNOWLEDGE-DIGEST-HOME 2026-10-03 ~00:45 +07 — ưu tiên làm trong 2 ngày cuối tuần):
@@ -38,3 +38,5 @@
   4. `UX-E2E-APP` (`prompt-queue-ux-e2e-app.md`) — [NHÀ] kiểm thử đầu-cuối app thật sau loạt UX mới đêm 2026-10-03 (multi-intent, lane tự động, feedback chat, SMA(20)/trend, radio LSU gate); user duyệt viết vé 2026-10-03.
   5. `SCAN-O-D` (`prompt-queue-scan-o-d.md`) — [NHÀ] kiểm kê + quét thao tác ổ D (chỉ đọc metadata/SHA, không xóa/sửa); user duyệt viết vé 2026-10-03.
 
+
+- `ghi_chu` (Muse): 2026-10-03 ~07:20 +07 — user quyết đổi provider (không chờ cầu nối). Phát hành vé PROVIDER-SWITCH: thứ tự probe cầu nối → sửa khóa Router → resume batch. Giữ nguyên rào bản thảo/không nhập kho.
