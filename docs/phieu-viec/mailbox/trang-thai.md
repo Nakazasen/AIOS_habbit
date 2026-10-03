@@ -1,10 +1,11 @@
 # Trạng thái mailbox
 
-- Trạng thái: `cho-muse`
-- Ticket hiện tại: `UX-E2E-APP` — [NHÀ] kiểm thử đầu-cuối app thật sau loạt UX mới đêm 2026-10-03 (multi-intent, lane tự động, feedback chat, SMA(20)/trend, radio LSU gate); user duyệt viết vé 2026-10-03.
+- Trạng thái: `moi`
+- Ticket hiện tại: `UX-E2E-APP-R2` — [NHÀ] verify fix cho-muse (commit `58d1245`) trên app thật + chạy nốt các mục E2E (c)–(h); user ủy quyền tự lái (không hỏi).
 - `prompt`: `docs/phieu-viec/mailbox/prompt.md`
-- `commit`: `e22d3ec`
-- `bao_cao`: `docs/phieu-viec/ket-qua/ux-e2e-app.md`
+- `commit`:
+- `bao_cao`:
+- `ghi_chu` (điều phối Muse): 2026-10-03 ~16:05 +07 — **cho-muse UX-E2E-APP đã xử lý**: Muse code fix Phase A trên VM (commit `58d1245`, báo cáo `docs/phieu-viec/ket-qua/ux-e2e-app-fixa.md`, test 39/39 pass: router thêm ý định `ve_bieu_do`, nhánh chart chạy trong luồng gộp, lệnh ngưỡng thiếu tên thông số hợp lệ thì hỏi lại không lưu quy tắc rác). Phát hành vé Phase B `UX-E2E-APP-R2` [NHÀ] verify fix trên app thật + chạy nốt (c)–(h). Giữ nguyên `hang-cho` #4 SCAN-O-D, #5 DON-O-C.
 - `ghi_chu` (cho-muse): 2026-10-03 15:30 +07 — **Dừng vé theo luật "mục nào FAIL thì dừng vé, báo cho-muse"**: E2E máy nhà chạy trên app thật cổng 8515 (không đụng app user 8501). (a) **FAIL** — "vẽ biểu đồ bowskew JIG-01 và đặt ngưỡng trên 12" chỉ lưu quy tắc `CB-D0EDE6`, tách sai thông số thành 'trên', không vẽ biểu đồ; (b) **PASS** — dán CSV log thật ra phân tích + biểu đồ PNG; các mục (c)–(h) chưa chạy. Index production không đổi (SHA `062ec090…ef8ca` trước/sau). Đề xuất Muse: thêm ý định chart vào router + vá tách tên thông số ngưỡng (chi tiết mục 4–5 báo cáo).
 - `hang-cho` (thứ tự do user duyệt 2026-10-02 ~22:05 +07; UX-AGENT-REPORT ĐẠT ~14:57, đã phát hành #3):
   4. `SCAN-O-D` (`prompt-queue-scan-o-d.md`) — [NHÀ] kiểm kê + quét thao tác ổ D (chỉ đọc metadata/SHA, không xóa/sửa); user duyệt viết vé 2026-10-03.
