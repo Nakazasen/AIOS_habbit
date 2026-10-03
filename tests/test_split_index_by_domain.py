@@ -422,3 +422,56 @@ def test_attach_readonly_uri_requires_uri_enabled_connection(tmp_path):
 
     src_text = Path(mod.__file__).read_text(encoding="utf-8")
     assert '"file:%s?mode=ro"' not in src_text, "URI cu kieu file:C:/... van con"
+
+
+def test_verify_domain_batches_over_sqlite_variable_limit(tmp_path, monkeypatch):
+    """Hồi quy bug INDEX-SPLIT-R4: _verify_domain dựng IN (...) với một
+    placeholder mỗi chunk_id; khối LSU ~76k chunk vượt MAX_VARIABLE_NUMBER
+    của SQLite trên máy nhà (32766) -> OperationalError, fail-closed giữa
+    chừng. Test hạ giới hạn biến của SQLite và thu nhỏ mẻ để tái hiện
+    cơ chế mà không cần 76k chunk thật."""
+    import aios_habit.split_index_by_domain as mod
+
+    monkeypatch.setattr(mod, "_VERIFY_BATCH", 100)
+    n = 350  # vượt giới hạn 200 đặt bên dưới
+    src_path = tmp_path / "src.sqlite"
+    dst_path = tmp_path / "dst.sqlite"
+    for p in (src_path, dst_path):
+        conn = sqlite3.connect(str(p))
+        conn.execute(
+            "CREATE TABLE chunks (chunk_id TEXT PRIMARY KEY, document_id TEXT NOT NULL)"
+        )
+        # Bảng vector phải tồn tại thì _verify_domain mới đi vào nhánh
+        # IN (...)/chunk_id (đúng bug R4); chỉ cần cột chunk_id.
+        conn.execute("CREATE TABLE chunk_embeddings (chunk_id TEXT NOT NULL)")
+        conn.executemany(
+            "INSERT INTO chunks VALUES (?, 'd-big')",
+            [("c-%d" % i,) for i in range(n)],
+        )
+        conn.executemany(
+            "INSERT INTO chunk_embeddings VALUES (?)",
+            [("c-%d" % i,) for i in range(n)],
+        )
+        conn.commit()
+        conn.close()
+
+    src = sqlite3.connect(str(src_path))
+    dst = sqlite3.connect(str(dst_path))
+    src.setlimit(sqlite3.SQLITE_LIMIT_VARIABLE_NUMBER, 200)
+    dst.setlimit(sqlite3.SQLITE_LIMIT_VARIABLE_NUMBER, 200)
+    try:
+        # Logic cũ (một IN (...) cho cả 350 chunk) phải gãy ở giới hạn 200.
+        with pytest.raises(sqlite3.OperationalError):
+            dst.execute(
+                "SELECT COUNT(*) FROM chunk_embeddings WHERE chunk_id IN (%s)"
+                % ",".join("?" for _ in range(n)),
+                ["c-%d" % i for i in range(n)],
+            ).fetchone()
+        # Code đã vá (chia mẻ 100) phải qua được.
+        report = mod._verify_domain(dst, src, "lsu", {"d-big"})
+    finally:
+        src.close()
+        dst.close()
+    assert report["checks"]["documents_match"] is True
+    assert report["chunks"] == n
+    assert report["ok"] is True

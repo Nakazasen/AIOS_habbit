@@ -61,6 +61,10 @@ PRODUCTION_PATH_MARKER = "workspace_chat_rag_v2_production"
 FALLBACK_DOMAIN_ID = "tong_hop"
 FALLBACK_DOMAIN_DISPLAY = "Tổng hợp"
 
+# Số chunk tối đa mỗi mẻ khi verify vector: phải dưới giới hạn
+# MAX_VARIABLE_NUMBER=32766 của SQLite (khối LSU có ~76k chunk).
+_VERIFY_BATCH = 10000
+
 
 def _domain_display(domain: str) -> str:
     return DOMAIN_DISPLAY.get(domain, FALLBACK_DOMAIN_DISPLAY)
@@ -433,8 +437,9 @@ def _verify_domain(
     # No vector row may be lost: every chunk keeps at least as many dense /
     # sparse / multivector rows as it had in the source. Skipped for an empty
     # block ("IN ()" would be a syntax error; there is nothing to lose).
+    # SQLite giới hạn MAX_VARIABLE_NUMBER=32766 biến/câu lệnh; khối LSU có
+    # ~76k chunk nên phải chia mẻ (bug INDEX-SPLIT-R4: fail-closed giữa chừng).
     chunk_ids = [str(row[0]) for row in target.execute("SELECT chunk_id FROM chunks").fetchall()]
-    placeholders = ",".join("?" for _ in chunk_ids)
     lost: list[str] = []
     for table in EMBEDDING_TABLES:
         in_source = source.execute(
@@ -446,22 +451,23 @@ def _verify_domain(
         if not in_source or not in_target or not chunk_ids:
             continue
         quoted = _quote_identifier(table)
-        src_counts = {
-            str(row[0]): int(row[1])
+        src_counts: dict[str, int] = {}
+        dst_counts: dict[str, int] = {}
+        for start in range(0, len(chunk_ids), _VERIFY_BATCH):
+            batch = chunk_ids[start:start + _VERIFY_BATCH]
+            placeholders = ",".join("?" for _ in batch)
             for row in source.execute(
                 "SELECT chunk_id, COUNT(*) FROM %s WHERE chunk_id IN (%s) GROUP BY chunk_id"
                 % (quoted, placeholders),
-                chunk_ids,
-            ).fetchall()
-        }
-        dst_counts = {
-            str(row[0]): int(row[1])
+                batch,
+            ).fetchall():
+                src_counts[str(row[0])] = int(row[1])
             for row in target.execute(
                 "SELECT chunk_id, COUNT(*) FROM %s WHERE chunk_id IN (%s) GROUP BY chunk_id"
                 % (quoted, placeholders),
-                chunk_ids,
-            ).fetchall()
-        }
+                batch,
+            ).fetchall():
+                dst_counts[str(row[0])] = int(row[1])
         bad = [cid for cid in chunk_ids if dst_counts.get(cid, 0) < src_counts.get(cid, 0)]
         if bad:
             lost.append("%s: %d chunk mất vector (vd %s)" % (table, len(bad), bad[0]))
