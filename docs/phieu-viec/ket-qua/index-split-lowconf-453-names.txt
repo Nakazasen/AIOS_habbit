@@ -1,0 +1,372 @@
+02XC_機能定義書_JAM一覧 (1).xls
+02XC_自己診断表示一覧表-Iris2020 VN.xls
+02XC_自己診断表示一覧表.xls
+20260310 KDTVN IRIS2024 文字顯示異常03.30 (1).pdf
+234 5simtape.png
+234 l1.1.png
+234 l2.png
+234 master.png
+234.png
+235 l1.png
+235 l2.png
+235 master.png
+235.png
+235l2.png
+238 l1.png
+238 l2.png
+238 master.png
+238.png
+239.png
+2ND-7002_Iris OPTION検査_ブロック図Ver.2.2_201223.pdf
+2XC_PA1166B_FRONT DRIVE_HIGH_回路図_190717.pdf
+302L745040.pdf
+302XC45030 full.pdf
+302XC47060-03.pdf
+302XC47090-02.pdf
+302XC47100_03.pdf
+302XC47120-06.pdf
+302XC47150_03.pdf
+302XC47210-01.pdf
+302XC47220-04.pdf
+302XC47250-01.pdf
+302XC47260-03.pdf
+302XD45010-full.pdf
+302XD47060-04.pdf
+302XD47070-04.pdf
+302XD47250-01.pdf
+302XD47260-03.pdf
+302XF47060-04.pdf
+302XF47250-01.pdf
+303V401010_main PF.pdf
+3V2ND19040-MOUNT LD BLOCK  LOT 18.8.2026.xlsx
+3V2ND19040-MOUNT_LD_BLOCK__LOT_18.8.2026.xlsx
+3V2XC01141.pdf
+3V2XC47080-01.pdf
+3V2XD47050-02.pdf
+3V2XD47090_01.pdf
+3V2XF47050-06.pdf
+3V3TC01010_Drive Assy.pdf
+6778_CyCav_F_2025.11.13.xlsm
+6778_CyCav_G_2025.11.13.xlsm
+7PA0547CJF_回路図20181113_KUIO.pdf
+7PA1111B_回路図_180423.pdf
+7PA1187DCZ 回路図.pdf
+7PA1204BDS.pdf
+7PA1216A_回路図_190729.pdf
+ALPHARD2_2N4_CURRENTAVE_PP_01_最新回路図_302N401190.pdf
+AllItems.html
+Bong_TAPE_COVER_GLASS_Rev.00_VN.pptx
+Copy of 【DRBFM】Iris2020_C6610_coupling_new.xlsx
+Cy用治具の修理_6778_CyCav_F.xlsm
+DP IF ASSY_7PA1153CJF.pdf
+Dữ liệu tổng hợp.xlsx
+ENGINE_3V2XC47020_03.pdf
+ENGINE_3V2XD47020_03.pdf
+ENGINE_3V2XF47020_03.pdf
+FEED_3V2XC47030-02.pdf
+FW    IRIS2020 (High Model) QA_C0650_08_Dec.msg
+FW  2021 11 20週報.msg
+FW  IRIS2020 A-6工程打印RCG画像时发生C2103  2台.msg
+IMAGE DRIVE_HIGH_20211105.pdf
+IMAGE_3V2XD47040-02.pdf
+IMAGE_V2XC47040-02.pdf
+IRIS2_2V8_HUMAN DETECT_PP_01基板回路図.pdf
+Iris 2ND IH PP 01 302ND47250 20160205.pdf
+Iris 2ND IH PP 01 302ND47260 20160205.pdf
+Iris2020High_302XC45010_D級アンプモジュール.pdf
+Iris2020High_302XC45010_Ver2.0.pdf
+Iris2020High_302XC45010_Ver2.1.pdf
+Iris2020High_302XC45010_縦基板_Ver2.0.pdf
+Iris2020High_302XC45010立て基板_Ver2.1.pdf
+Iris2020Low_302L745040.pdf
+Iris2020Mono_302XF45010Ver2.1.pdf
+Iris2020_302XC45020(転写)_Ver1.1.pdf
+Iris2020_302XC45020(転写)_Ver1.2.pdf
+Iris2020_LED DRIVE基板回路図_190624.pdf
+Iris2024 PMT 上位机C2103调查报告20240927.xlsx
+Iris_2ND_IH_MP_01基板回路図_302ND47250_20170116.pdf
+Iris_2ND_IH_MP_01基板回路図_302ND47260_20170116.pdf
+Iris_2ND_IH_MP_01基板回路図_302ND47341_20170116.pdf
+Iris_FUSER_PP_01基板回路図.pdf
+KTD-2024-10-1275-Iris2020-C34-A1-Maintance front is close.xlsx
+KTD-2024-11-1610-Iris2020-C35-A1-C3200.xlsx
+KTD-2024-12-1698-Iris2020-C34-Operation-Màn hình hiển thị bất thường.xlsx
+KTD-2024-12-1752-Iris2020-C35-Operation-Vỡ linh kiện.xlsx
+KTD-2024-8-Iris2020-C33 T101 UHV FUSER SHORT .xlsx
+KTD-2024-9-1227-Iris 2020-C34-C6950.xlsx
+KTD-2025-01-0019-IRIS2024-C34-operation màn hình xanh bất thường.xlsx
+KTD-2025-01-0100-Iris2020-kaizo-C35-A1-Màn hình không sáng.xlsx
+KTD-2025-01-0109-Iris2024-C34-HONTAI-Connector NG.xlsx
+KTD-2025-02-0140-Iris2024-C35-Hontai1-Kênh chân connector.xlsx
+KTD-2025-02-0148-Iris2024-C34-A1-C0980.xlsx
+KTD-2025-02-0169-Iris2024-C35-A1-C6930.xlsx
+KTD-2025-02-1000-Iris2024-WASE TONNER BOX IS NOT INSTALL.xlsx
+KTD-2025-03-0215-Iris2024-C35-C4709-.xlsx
+KTD-2025-03-0230-Iris2024-C34-Operation-Cảm ứng bất thường.xlsx
+KTD-2025-03-0239-Iris2024-C35-A7-C0980.xlsx
+KTD-2025-03-0262-Iris2024-C33-A1-Không lên nguồn.xlsx
+KTD-2025-03-0275-Iris2024-C35-Hontai-Thiếc hàn dính trên cuộn cảm L3..xlsx
+KTD-2025-03-0280-Iris2024-C35-Màn hình không sáng.xlsx
+KTD-2025-03-0315-Iris2024-C34-A6-C0980.xlsx
+KTD-2025-03-0316-Iris2024-C35-DLP- toner sensor lắp khó.xlsx
+KTD-2025-03-0332-Iris2024-C33-A5-Máy sập nguồn.xlsx
+KTD-2025-03-0341-Iris2024-C35-A6-Không nhận biết size giấy.xlsx
+KTD-2025-04-0363-Iris2024-C34-ASSY-Bong linh kiện.xlsx
+KTD-2025-04-0364-Iris2024-C34-A1-C6950.xlsx
+KTD-2025-04-0399-Iris2024-C33-A1-C7904.xlsx
+KTD-2025-04-0402-Iris2024-C35-A3-C6950.xlsx
+KTD-2025-04-0435-Iris2024-C33-A1-C0980.xlsx
+KTD-2025-05-0447-Iris2024-C33-A2-C6770.xlsx
+KTD-2025-05-0456-Iris2024-C34-A2-C6770.xlsx
+KTD-2025-05-0469-Iris2024-C34-A2-Không lên nguồn.xlsx
+KTD-2025-05-0482-Iris2024-C33-A1.2-C0980.xlsx
+KTD-2025-05-0525-Iris2024-C33-A1-C6760.xlsx
+KTD-2025-05-0536-Iris2024-C33-A2-C6770.xlsx
+KTD-2025-05-0538-Iris2024-C35-A1- C6950.xlsx
+KTD-2025-05-0539-Iris2024-C35-A6- C6770.xlsx
+KTD-2025-05-0540-Iris2024-C34-A1- C6770.xlsx
+KTD-2025-05-0541-Iris2024-C35-A6-Error56.xlsx
+KTD-2025-06-0570-Iris2024-C34-A1-C6950.xlsx
+KTD-2025-06-0572-Iris2024-C35-A2-C6000.xlsx
+KTD-2025-06-0578-Iris2024-C33-A2-C6770.xlsx
+KTD-2025-06-0582-Iris2024-C35-A8-C6770.xlsx
+KTD-2025-06-0599-Iris2024-C35-A2-Màn hình hiển thị bất thường.xlsx
+KTD-2025-06-0606-Iris2024-C33-Operation-Màn hình hiển thị bất thường.xlsx
+KTD-2025-06-0639-Iris2024-C35-A1-Không lên nguồn.xlsx
+KTD-2025-06-0650-Iris2024-C35-A6-Error80.xlsx
+KTD-2025-07-0664-Iris2024-C35-A2-C6770.xlsx
+KTD-2025-07-0671-Iris2024-C35-A2-C6770.xlsx
+KTD-2025-07-0673-Iris2024-C33-A11-C6770.xlsx
+KTD-2025-07-0677-Iris2024-C33-A1-không vào trạng thái Upsoft.xlsx
+KTD-2025-07-0678-Iris2024-C33-A1-C6770.xlsx
+KTD-2025-07-0680-Iris2024-C34-Operation-Màn hình hiển thị bất thường.xlsx
+KTD-2025-07-0683-Iris2024-C34-A6-Scan SITC NG.xlsx
+KTD-2025-07-0710-Iris2024-C33-A5-C4101.xlsx
+KTD-2025-07-0733-Iris2024-C33-A11-C6950.xlsx
+KTD-2025-07-0743-DP Iris2020-C2E-Connector NG.xlsx
+KTD-2025-07-0745-Iris2024-C35-A8.5-Hình ảnh bất thường.xlsx
+KTD-2025-07-0764-Iris2024-C33-A1-C6770.xlsx
+KTD-2025-07-0784-Iris2024-C33-A1-Không lên nguồn.xlsx
+KTD-2025-07-0785-Iris2024-C33-ISU-.xlsx
+KTD-2025-07-0786-PF Iris2020-A2D-Kênh chân connector.xlsx
+KTD-2025-07-0787-Iris2024-C34-A6-Error56.xlsx
+KTD-2025-07-0788-Iris2024-C33-A9-C6770.xlsx
+KTD-2025-07-0789-Iris2024-C35-A6-C6950.xlsx
+KTD-2025-07-0802-Iris2024-C34-A6-Không nhận biết size giấy.xlsx
+KTD-2025-07-0805-DP Iris2020-C2D-C9080.xlsx
+KTD-2025-08-0831-Iris2024-C35-A8.6-Scan tự động NG.xlsx
+KTD-2025-08-0841-Iris2024-C35-A8-C0980.xlsx
+KTD-2025-08-0853-Iris2024-C34-A8.5- Jam4709.xlsx
+KTD-2025-08-0854-Iris2024-C34-A1-The cover is open.xlsx
+KTD-2025-08-0860-Iris2024-C34-A8-Hình ảnh bất thường.xlsx
+KTD-2025-08-0866-DP Iris2020-C2B- Write DP Serial NG.xlsx
+KTD-2025-08-0869-Iris2024-C33-A1-TLBĐ NG.xlsx
+KTD-2025-08-0871-Iris2024-C35-A1-C6770.xlsx
+KTD-2025-08-0902-Iris2024-C35-A6-Error56.xlsx
+KTD-2025-08-0905-Iris2024-C35-A8-Hình ảnh bất thường.xlsx
+KTD-2025-08-0907-Iris2024-C33-A8-Không lên  nguồn..xlsx
+KTD-2025-08-0912-Iris2024-C34-A1-Màn hình không sáng.xlsx
+KTD-2025-08-0914-Iris2024-C35-A7-Error80.xlsx
+KTD-2025-08-0924-Iris2024-C33-A3-C6770.xlsx
+KTD-2025-08-0931-DP Iris2020-C2B-Jam9002.xlsx
+KTD-2025-09-0932-DP Iris2020-C2E-NG Fax.xlsx
+KTD-2025-09-0937-Iris2020-C35-ASSY2-Bong linh kiện.xlsx
+KTD-2025-09-0941-Iris2024-C33-A3-C6770.xlsx
+KTD-2025-09-0952-Iris2024-C35-A6-Hình ảnh bất thường.xlsx
+KTD-2025-09-0953-Iris2024-C2B-NG Fax.xlsx
+KTD-2025-09-0965-Iris2024-C35-A1-C9540.xlsx
+KTD-2025-09-0986-Iris2024-C34-A1-C0350.xlsx
+KTD-2025-09-1009-DP Iris2020-C2D-A1-C9080.xlsx
+KTD-2025-09-1015-Iris2024-C33-A8.2-C6770.xlsx
+KTD-2025-10-1024-Iris2024-C33-A8.4-JAM4012.xlsx
+KTD-2025-10-1050-Iris2024-C35-A7-Hình ảnh bất thường.xlsx
+KTD-2025-10-1074-Iris2024-C33-ISU-Dính hàn.xlsx
+KTD-2025-10-1075-DP Iris2020-C2D-Scan tự động NG.xlsx
+KTD-2025-10-1089-DP Iris2020-C2D-A16-C9080.xlsx
+KTD-2025-10-1091-Iris2024-C33-Hontai-Chịu áp cách điện NG.xlsx
+KTD-2025-10-1095-DP Iris2020-C2D-A9-Vạch tờ Gray.xlsx
+KTD-2025-10-1119-Iris2024-C34-A8.5-Màn hình hiển thị bất thường.xlsx
+KTD-2025-10-1122-Iris2024-C3A-K2-.xlsx
+KTD-2025-10-1148-DP Iris2020-C2D-Assy-.xlsx
+KTD-2025-11-1150-Iris2024-C35-A8-C6770.xlsx
+KTD-2025-11-1163-DP Iris2020-C2D-C9080.xlsx
+KTD-2025-11-1165-Iris2024-C33-Assy2-Vỡ linh kiện.xlsx
+KTD-2025-11-1170-Iris2024-C35-8.2-Hình ảnh bất thường.xlsx
+KTD-2025-11-1181-Iris2024-C35-A5-Màn hình không sáng.xlsx
+KTD-2025-11-1196-Iris2024-C33-A2-C6030.xlsx
+KTD-2025-11-1198-DP Iris2020-C2D-A10-C9080.xlsx
+KTD-2025-11-1232-DP Iris2020-C2D-C9080.xlsx
+KTD-2025-12-1288-DP Iris2020-C2D-A2-Scan SITC NG.xlsx
+KTD-2025-12-1310-Iris2024-C35-A1-C0980.xlsx
+KTD-2025-12-1314-Iris2024-C33-A1-C6760.xlsx
+KTD-2025-12-1325-DP Iris2020-C2D-A6-C9080.xlsx
+KTD-2025-12-1326-Iris2024-C33-A11-JAM4212.xlsx
+KTD-2025-12-1332-Iris2024-C33-A2-C0350.xlsx
+KTD-2025-12-1353-Iris2024-C35-assy2-Bong linh kiện.xlsx
+KTD-2025-12-1384-Iris2024-C35-A6-Không nhận biết size giấy.xlsx
+KTD-2025-12-1389-Iris2024-C33-A7-Error56.xlsx
+KTD-2025-12-1390-Iris2024-C34-A7-Error56.xlsx
+KTD-2025-12-1398-Iris2024-C35-A6-Hình ảnh bất thường.xlsx
+KTD-2026-01-0005-Iris2024-C34-A1-C2840.xlsx
+KTD-2026-01-0011-Iris2024-Eva-.xlsx
+KTD-2026-01-0030-Iris2024-C34-A4-C6000.xlsx
+KTD-2026-01-0067-Iris2020-C34-A1-C4701.xlsx
+KTD-2026-01-0087-Iris2024-C34-A1-C0350.xlsx
+KTD-2026-01-0096-Iris2024-C34-A1-C6770.xlsx
+KTD-2026-01-0104-Iris2024-C35-A7-J4002.xlsx
+KTD-2026-01-0114-Iris2024-C33-A6-Error80.xlsx
+KTD-2026-02-0115-Iris2024-C34-Assy-Lắp khó.xlsx
+KTD-2026-02-0117-Iris2024-C35-A1-C9540.xlsx
+KTD-2026-02-0137-Iris2024-C33-K4 Operation-âm bàn phím không kêu.xlsx
+KTD-2026-02-0150-Iris2024-C34-A1-C0840.xlsx
+KTD-2026-02-0152-Iris2024-C33-A2-TLBĐ NG RFID.xlsx
+KTD-2026-02-0154-Iris2024-C34-A7-C2950.xlsx
+KTD-2026-02-0167-Iris2024-C35-A8-Jam0501.xlsx
+KTD-2026-03-0199-Iris2024-C34-A1-Scan SITC NG.xlsx
+KTD-2026-03-0232-Iris2024-C35-Drum-Bản mạch bị nứt.xlsx
+KTD-2026-03-0245-Iris2024-C35-A1-TLBĐ NG RFID.xlsx
+KTD-2026-03-0252-Iris2024-C34-A3-Led Job Separator không sáng.xlsx
+KTD-2026-03-0262-Iris2024-C35-A1-The Toner Container Is not Properly Installed.xlsx
+KTD-2026-04-0313-Iris2024-C35-A1-C4801.xlsx
+KTD-2026-04-0331-Iris2024-C35-A6-Hình ảnh bất thường.xlsx
+KTD-2026-04-0334-Iris2024-C34-Operation-Màn hình hiển thị bất thường.xlsx
+KTD-2026-04-0359-DP Iris2020-C2C-A4-Không nhận biết size giấy.xlsx
+KTD-2026-04-0383-Iris2024-C34-A11-Màn hình hiển thị bất thường.xlsx
+KTD-2026-04-0397-Iris2024-C35-A1-C0980.xlsx
+KTD-2026-04-0400-Iris2024-C35-A5-Hình ảnh bất thường.xlsx
+KTD-2026-04-0401-Iris2024-C36-A6-JAM4202.xlsx
+KTD-2026-04-Iris2024-C33-Operation- Góc trên bên trái bị sáng bất thường.xlsx
+KTD-2026-05-0410-Iris2024-C35-A7-error80.xlsx
+KTD-2026-05-0419-Iris2024-C34-A8.4-Hình ảnh bất thường.xlsx
+KTD-2026-05-0428-Iris2024-C35-A1-C6950.xlsx
+KTD-2026-05-0459-Iris2024-C34-A8.4-Hình ảnh bất thường.xlsx
+KTD-2026-05-0460-Iris2024-C33-A11-TLXH NG.xlsx
+KTD-2026-05-0460-Iris2024-C34-A1-TLBĐ NG.xlsx
+KTD-2026-05-0469-Iris2024-C33-A5-Màn hình trắng.xlsx
+KTD-2026-05-0477-Iris2024-C33-A1-C6950.xlsx
+KTD-2026-05-0523-Iris2024-C33-A6-Scan tự động NG.xlsx
+KTD-2026-06-0525-Iris2024-C35-A6-Không nhận biết size giấy.xlsx
+KTD-2026-06-0526-Iris2024-C35-A8.4-Hình ảnh bất thường.xlsx
+KTD-2026-06-0527-Iris2024-C33-A1.2-C3100.xlsx
+KTD-2026-06-0532-Iris2024-C35-A6-Không nhận biết size giấy.xlsx
+KTD-2026-06-0540-Iris2024-C35-A2-NG Fax.xlsx
+KTD-2026-06-0547-Iris2024-C35-A1-Không lên nguồn.xlsx
+KTD-2026-06-0555-Iris2024-C33-A1-Không lên nguồn.xlsx
+KTD-2026-06-0575-Iris2024-C34-A1-C7902.xlsx
+KTD-2026-06-0606-Iris2024-C33-A2-C6770.xlsx
+KTD-2026-06-0613-Iris2024-C34-operation-Tablet xước.xlsx
+KTD-2026-06-0639-Iris2024-C34-C35-Error56.xlsx
+KTD-2026-06-0647-Iris2024-C33-A-JAM4212.xlsx
+KTD-2026-06-0649-Iris2024-C34-A7-C2203.xlsx
+KTD-2026-07-0669-Iris2024-C33-A1-C6960.xlsx
+KTD-2026-07-0680-Iris2024-C33-ISU-Điều chỉnh độ quang trục NG.xlsx
+KTD-2026-07-0726-Iris2024-C33-A1.1-ERROR 0801.xlsx
+KTD-2026-07-0783-Iris2024-C33-A1-C6960.xlsx
+KTD-2026-08-0790-Iris2024-C35-A1-C6770.xlsx
+KTD-2026-08-0803-Iris2024-C33-A1.1-C9540.xlsx
+KTD-2026-08-0816-Iris2024-C35-A1-C1950.xlsx
+KTD-2026-08-0857-Iris2024-C33-Hontai1-Kiểm tra thông mạch NG.xlsx
+KTD-2026-08-0858-Iris2024-C34-A8.1-Hình ảnh bất thường.xlsx
+KTD-2026-08-0861-Iris2024-C34-FUSER-đứt vỏ.xlsx
+KTD-2026-08-0872-Iris2024-C33-A1-C4001.xlsx
+KTD-2026-08-0876-Iris2024-C33-Drum-xước dây.xlsx
+KTD-2026-08-0877-Iris2024-C34-A1-C0363.xlsx
+LCD 302V845023.pdf
+MAIN_3V2XC47010_04.pdf
+MAIN_3V2XD47010_04.pdf
+MAIN_3V2XF47010_04.pdf
+MIRROR cũ.png
+MIRROR mới.png
+Maintenance mode 3.xlsx
+N00137687_実行.pdf
+PA0893D_circuit.pdf
+PA1203A_Inner Shift Tray_回路図_20190622.pdf
+PWB DRIVE DP.pdf
+RE    IRIS2020(Low model) -C22 A1- Upsoft OK initial setting - LCD displayed C3501.msg
+RE  C7303エラー  IRIS2020 .msg
+RE  PP生産不具合_C6620IHコアモータ回転異常.msg
+RE  「Iris2020下位」　C6900 エラー発生RE  Log C6900_QA.msg
+RE_ 【出荷検査】Iris2024  _HOLD_.msg
+RX ASSY_303TD01010.pdf
+SCT自動調整エラーコード一覧_140221.xls
+SHD_7PA1334A.pdf
+T02XC47110_PWB VIDEO ASSY_DMT回路図.pdf
+TEK00001.BMP
+TEK00002.BMP
+Tab led cam ung.pdf
+USB HUB_3V2XC47160.pdf
+dvu_prt_engpage_info_log.csv
+dvu_prt_vdbg_docpg.csv
+dữ liệu tổng hợp.xlsx
+matome.xlsx
+tape 2 (27) master.png
+tape 2 (27).png
+tape 2 (40).png
+tape 3 (27).png
+tape 40 (go duoi).png
+tổng hợp dữ liệu dán tape.xlsx
+wsc-015067b75dc12e2770b7d8cb.txt
+wsc-037c28842e209b28625d6157.txt
+wsc-08d8d7616f71e6b9ae67940f.txt
+wsc-097fe6a008b410dc299a0948.txt
+wsc-0a49389b70f1e9592670c5e9.txt
+wsc-118d0600a2a94d418f2880ac.txt
+wsc-11f5fbf5720d445b40967b4f.txt
+wsc-149cac9d8b129f8244b616ef.txt
+wsc-1526cbd0e45f7c07240030b8.txt
+wsc-18c17803678e5d71f0cbb2ba.txt
+wsc-1b661fb170798e66bb7de3a1.txt
+wsc-1b737eb997502d0f546982dc.txt
+wsc-1d6a06690fd87180c59240d0.txt
+wsc-1d6dc72ebb72350e220dfb07.txt
+wsc-2d62e0b3a3ca889c7679ed93.txt
+wsc-38c83e012535c1c00a21b3a5.txt
+wsc-42843eb6ca4459ae3af6b657.txt
+wsc-431e31fbbc3df5fc16f444cb.txt
+wsc-4600afa0ca80041712e8c65f.txt
+wsc-492485e50bac291bf4c81cc4.txt
+wsc-4cbd21f3ccab9c9ea52161fa.txt
+wsc-4cc1bf837aa6c9844d67eb4c.txt
+wsc-4e59cb5f495278f0be7fa444.txt
+wsc-4ed67081b49075eed077ebf7.txt
+wsc-51548ca220d6ccc9ec419c8c.txt
+wsc-5b78db8c9cc2ad9844a9a0d7.txt
+wsc-5d2f610a69cf193a6d06c754.txt
+wsc-5f2696c9a22072e7d4873267.txt
+wsc-5f357714c9ab95fe58b8fff6.txt
+wsc-624b7034af500a849305d8bf.txt
+wsc-65074328893666b1fbd9b4aa.txt
+wsc-6c84807638a179552dd437ce.txt
+wsc-71abdd06f47c205da102e908.txt
+wsc-750990be3801b81970805644.txt
+wsc-762cd98f79d4ad1a0c235393.txt
+wsc-8782bf3e41a80998543bc9dd.txt
+wsc-8ce71e2a14d81de80d196655.txt
+wsc-8f9caa49cee9d05bb1f76bd2.txt
+wsc-90597a45cd475fa1a42d442d.txt
+wsc-989a0376f54d1fc7ebc90698.txt
+wsc-9abe0b8f8e644d009d771d5a.txt
+wsc-9e9831c8c58795058809bf95.txt
+wsc-a36e39c1d9713f21dc65bcaf.txt
+wsc-aa48e2b47a8c52c66c835e70.txt
+wsc-b2fb28663b5d62bab155737c.txt
+wsc-be0e15bdc0524321e7587d7c.txt
+wsc-bfbdd33cacd73c3e69d1ca2b.txt
+wsc-c4f19c08de138e4dfeeceacc.txt
+wsc-c7377cc9661005aa4d35d54e.txt
+wsc-d320e16fa80ee7e311b42fb7.txt
+wsc-d489e437c9abecd020ee12ba.txt
+wsc-d51ca7a46bac26fe55714eba.txt
+wsc-da1844282c07cff93145d49f.txt
+wsc-db6bb8495e13e16cd73fe9aa.txt
+wsc-ddff4330d33132af9cde8bcf.txt
+wsc-e5f2338de8fbfdbd4faefe63.txt
+wsc-e9d27b6c728c286f2cf0ef93.txt
+wsc-eab6e69c0a9795201f575c88.txt
+wsc-edb70d31441621a7baaa28c2.txt
+wsc-ef469ab3d32e4c1060e9f947.txt
+wsc-f5e16c8261a4f585e58dd705.txt
+wsc-fb5c095f5d8bcfa80db7805b.txt
+【DRBFM】Iris2020_C6610対応_hook_fuser_release_r.xlsx
+【Iris2020】PF全体配線図.xlsx
+信号　7303.xlsx
