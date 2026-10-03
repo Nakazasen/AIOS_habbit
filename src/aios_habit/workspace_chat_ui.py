@@ -468,6 +468,28 @@ def render_chat_bubble(
                 else:
                     st.markdown(clean_content)
 
+                    # UX-AGENT-REPORT (phuong an A da duyet): nut "Tai ve" nhan
+                    # biet dinh dang — .docx/.pptx tai dang nhi phan de mo ngay
+                    # bang Word/PowerPoint; .md giu xem truoc trong the.
+                    from aios_habit.agent_report_artifact import (
+                        artifact_download_payload,
+                        restore_report_backup,
+                    )
+                    dl_payload = (
+                        artifact_download_payload(verified_result_path)
+                        if verified_result_path
+                        else {
+                            "ok": False,
+                            "data": b"",
+                            "mime": "text/plain",
+                            "file_name": f"{work_id}.md",
+                            "is_binary": False,
+                            "error_vi": "",
+                        }
+                    )
+                    dl_is_binary = bool(dl_payload.get("is_binary"))
+                    work_type = str(artifact_meta.get("work_type", "")).strip()
+
                     col_view, col_dl, col_undo = st.columns(3)
                     view_key = f"wsc_card_view_{work_id}"
                     session_state = getattr(st, "session_state", {})
@@ -476,58 +498,68 @@ def render_chat_bubble(
                     with col_view:
                         # 👁️ Xem toàn văn (mở rộng / thu gọn toàn văn kết quả)
                         btn_view_label = f"🙈 {t('agent_artifact_hide_full', locale=locale)}" if is_viewing else f"👁️ {t('agent_artifact_view_full', locale=locale)}"
-                        if st.button(btn_view_label, key=f"btn_v_{work_id}", use_container_width=True):
+                        if st.button(btn_view_label, key=f"btn_v_{work_id}", use_container_width=True, disabled=dl_is_binary):
                             if hasattr(st, "session_state"):
                                 st.session_state[view_key] = not is_viewing
                             if hasattr(st, "rerun"):
                                 st.rerun()
 
                     with col_dl:
-                        report_text = ""
-                        if verified_result_path and verified_result_path.is_file():
-                            try:
-                                report_text = verified_result_path.read_text(encoding="utf-8")
-                            except Exception:
-                                report_text = ""
-                        file_name = verified_result_path.name if verified_result_path else f"{work_id}.md"
                         st.download_button(
                             label=f"📥 {t('agent_artifact_download', locale=locale)}",
-                            data=report_text,
-                            file_name=file_name,
-                            mime="text/markdown",
+                            data=dl_payload.get("data") or b"",
+                            file_name=str(dl_payload.get("file_name") or f"{work_id}.md"),
+                            mime=str(dl_payload.get("mime") or "text/plain"),
                             key=f"btn_dl_{work_id}",
                             use_container_width=True,
-                            disabled=not bool(report_text),
+                            disabled=not bool(dl_payload.get("ok")),
                         )
 
                     with col_undo:
                         if st.button(f"↩️ {t('agent_artifact_undo', locale=locale)}", key=f"btn_u_{work_id}", use_container_width=True):
-                            try:
-                                from aios_habit.workspace_agent_orchestrator import WorkspaceAgentOrchestrator
-                                from aios_habit.workspace_case_repository import WorkspaceCaseRepository
-                                q_repo = WorkspaceCaseRepository()
-                                q_orch = WorkspaceAgentOrchestrator()
-                                target_to_rollback = work_id if work_id else (str(verified_result_path) if verified_result_path else "")
-                                if not target_to_rollback:
-                                    st.error(t("agent_queue_undo_failed", locale=locale))
+                            if work_type == "agent_report_edit":
+                                # Phuong an A: hoan tac mot cham tu file sao luu
+                                # backend da tao (checkpoint_path), khong qua
+                                # hang doi orchestrator.
+                                undone, undo_msg = restore_report_backup(
+                                    verified_result_path if verified_result_path else raw_res_path,
+                                    raw_ckpt_path,
+                                )
+                                if undone:
+                                    if hasattr(st, "session_state") and hasattr(st.session_state, "pop"):
+                                        st.session_state.pop(view_key, None)
+                                    st.success(undo_msg)
                                 else:
-                                    rolled_back, msg_str = q_orch.rollback(target_to_rollback)
-                                    if rolled_back:
-                                        if work_id:
-                                            q_repo.update_agent_work_status(work_id, "rolled_back")
-                                        if hasattr(st, "session_state") and hasattr(st.session_state, "pop"):
-                                            st.session_state.pop(view_key, None)
-                                        st.success(t("agent_queue_undo_success", locale=locale, work_id=work_id))
+                                    st.error(undo_msg)
+                            else:
+                                try:
+                                    from aios_habit.workspace_agent_orchestrator import WorkspaceAgentOrchestrator
+                                    from aios_habit.workspace_case_repository import WorkspaceCaseRepository
+                                    q_repo = WorkspaceCaseRepository()
+                                    q_orch = WorkspaceAgentOrchestrator()
+                                    target_to_rollback = work_id if work_id else (str(verified_result_path) if verified_result_path else "")
+                                    if not target_to_rollback:
+                                        st.error(t("agent_queue_undo_failed", locale=locale))
                                     else:
-                                        st.error(t("agent_queue_undo_done", locale=locale, message=msg_str))
-                            except Exception as err:
-                                st.error(t("agent_queue_undo_done", locale=locale, message=str(err)))
+                                        rolled_back, msg_str = q_orch.rollback(target_to_rollback)
+                                        if rolled_back:
+                                            if work_id:
+                                                q_repo.update_agent_work_status(work_id, "rolled_back")
+                                            if hasattr(st, "session_state") and hasattr(st.session_state, "pop"):
+                                                st.session_state.pop(view_key, None)
+                                            st.success(t("agent_queue_undo_success", locale=locale, work_id=work_id))
+                                        else:
+                                            st.error(t("agent_queue_undo_done", locale=locale, message=msg_str))
+                                except Exception as err:
+                                    st.error(t("agent_queue_undo_done", locale=locale, message=str(err)))
                             if hasattr(st, "rerun"):
                                 st.rerun()
 
                     if is_viewing:
                         with st.container(border=True):
-                            if verified_result_path and verified_result_path.is_file():
+                            if dl_is_binary:
+                                st.info("File nhị phân — bấm nút Tải về để mở bằng Word/PowerPoint.")
+                            elif verified_result_path and verified_result_path.is_file():
                                 st.markdown(f"**📄 {t('agent_artifact_view_full', locale=locale)} ({verified_result_path.name}):**")
                                 st.markdown(verified_result_path.read_text(encoding="utf-8"))
                             else:
