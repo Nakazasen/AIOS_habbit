@@ -1,31 +1,24 @@
-# Vé: INDEX-NGUON-KIEM-KE — kiểm kê document trong index production theo thư mục nguồn (chỉ đọc)
+# Vé: SCAN-O-D — kiểm kê và quét các thao tác trên ổ D
 
-Lane: [NHÀ] OMP chạy trên máy nhà. TUYỆT ĐỐI chỉ đọc: mở SQLite bằng `mode=ro`, không ingest, không embed, không sửa/ghi bất kỳ file index nào. Không merge `main`.
+Lane: [NHÀ] OMP chạy trên máy nhà h410asrock (ổ D). Chỉ đọc/kiểm kê, KHÔNG xóa, KHÔNG di chuyển file. Không merge `main`.
 
 ## Bối cảnh
 
-User hỏi: dữ liệu 3 nguồn (thư mục LSU trên Drive, file zip "Điều chỉnh"/Điều-tra-lỗi, thư mục MOM) có đang bị trộn chung trong một index production không. Điều tra trên VM cho thấy:
+Backlog master còn mục "quét sạch thao tác ổ D" chưa có vé: cần biết trên ổ D đang có những gì liên quan dự án (kho index, backup, file tạm, model), chỗ nào trùng lặp, chỗ nào có thể dọn — nhưng quyết định xóa/dọn là của user (luật tự lái: Muse không gật thay việc xóa backup).
 
-- Index production là MỘT file duy nhất: `C:\AIOS_habit_index_ve03\library.sqlite` (collection `tri_thuc`), ~107k chunk / 889 document.
-- Schema chunk có `source_path`/`source_name`/`document_id` nhưng KHÔNG có trường `domain`; retrieval không lọc theo lĩnh vực kiến thức.
-- Tài liệu MOM đã xác nhận nằm trong index này (báo cáo `MOM_INGEST_KHAO_SAT.md`, `MOM_INGEST_BO_SUNG.md`).
-- Log LSU và `Loi KDTPS.xlsx` nằm trong DB `error_cases` riêng, không phải index RAG — nhưng chưa rõ các file còn lại của 2 nguồn kia.
+## Việc OMP làm [NHÀ]
 
-Cần con số chính xác từ index thật để thiết kế việc tách thành 3 khối.
-
-## Việc OMP làm
-
-1. Mở `C:\AIOS_habit_index_ve03\library.sqlite` ở chế độ chỉ đọc (`mode=ro`). Ghi lại SHA-256 (hoặc kích thước + mtime) của file TRƯỚC và SAU để chứng minh không bị sửa.
-2. Truy vấn bảng `chunks`: đếm số document phân biệt (`document_id`) và số chunk, NHÓM THEO thư mục nguồn (lấy từ `source_path`, gom theo thư mục gốc cấp 1–2, ví dụ `D:\Sandbox\MOM_QLLSSX_WMS\...`, thư mục LSU, thư mục Điều-tra-lỗi...).
-3. Liệt kê mọi collection khác ngoài `tri_thuc` nếu có (đường dẫn `collections/<id>/`).
-4. Xuất bảng: thư mục nguồn → số document → số chunk. Không cần trích nội dung chunk.
+1. Liệt kê cây thư mục cấp 1–2 của ổ D, dung lượng từng nhánh lớn (>1GB).
+2. Kiểm kê các mục liên quan AIOS: file `*.sqlite` (kho index — ghi rõ đường dẫn + SHA-256 + dung lượng), thư mục backup, file zip/tar, thư mục model, file log lớn.
+3. Đối chiếu với danh mục đã biết (kho production máy nhà SHA `45eb0e07…b7c0`, staging GPU-262 giữ nguyên theo lệnh user) — đánh dấu mục nào lạ/chưa từng ghi nhận.
+4. Đề xuất danh sách dọn (theo thứ tự an toàn: rác tmp → venv trùng → worktree cũ → backup cũ sau kiểm toàn vẹn) — CHỈ ĐỀ XUẤT, không thực hiện.
+5. Tuyệt đối không mở/sửa file dữ liệu công ty ngoài việc đọc metadata (tên, size, SHA).
 
 ## Tiêu chí ĐẠT
 
-- Bảng kiểm kê đầy đủ 889 document (hoặc tổng số thực tế tại thời điểm chạy, ghi rõ), khớp tổng chunk với `PRAGMA` đếm độc lập.
-- SHA/kích thước/mtime file index trước = sau (chứng minh chỉ đọc).
-- Báo cáo `docs/phieu-viec/ket-qua/index-nguon-kiem-ke.md` + `xong-cho-duyet`.
+- Báo cáo `docs/phieu-viec/ket-qua/scan-o-d.md` gồm: cây thư mục + dung lượng, bảng kiểm kê sqlite (đường dẫn/SHA/size), danh sách đề xuất dọn có thứ tự — rồi `xong-cho-duyet`.
+- Không có file nào bị xóa/sửa/di chuyển trong quá trình quét.
 
-## Không làm
+## Tiêu chí CHƯA ĐẠT
 
-- Không ingest/embed/sửa index. Không chạy bất kỳ lệnh ghi nào vào `C:\AIOS_habit_index_ve03\`.
+- Thiếu SHA của bất kỳ file sqlite nào, hoặc có thao tác ghi/xóa lên ổ D.
