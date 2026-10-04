@@ -1,15 +1,17 @@
 # Trạng thái mailbox-opencode (thợ opencode — model free muse-spark-1.3 / space-bunny)
 
-- Trạng thái: `xong-cho-duyet`
-- Ticket hiện tại: `IMPORT-STAGING-ENRICH` — nhập 2.398 cặp MOM+LSU đã audit vào DB staging. Prompt: `docs/phieu-viec/mailbox-opencode/prompt.md`. (Vé cũ: `AUDIT-ENRICH-LSU` ĐẠT 22:50) — audit 1.790 cặp LSU (chuyển từ hàng chờ OMP 22:45, opencode đã ĐẠT vé MOM). Prompt: `docs/phieu-viec/mailbox-opencode/prompt.md`.
+- Trạng thái: `moi`
+- Ticket hiện tại: `ENRICH-STAGING-FILESTORE` — chốt kho bản thảo cặp enrichment bằng file (không qua importer), quyết định phương án B sau verdict vé trước. Prompt: `docs/phieu-viec/mailbox-opencode/prompt.md`. Role gợi ý: SMOL/TINY (~5 phút).
 - `ghi_chu`: 2026-10-04 23:03 +07 — đã nhận vé IMPORT-STAGING-ENRICH (điều kiện mở đã đủ: 2 audit ĐẠT; không rơi nhánh 4 lần watcher). Bắt đầu bước 1: xác minh rào staging của `golden_answer_importer.py`, chưa ghi gì.
 - `ghi_chu`: 2026-10-04 23:06 +07 — mốc 1 xong: rào staging-only ĐẠT (nhận `staging_enrichment.sqlite`, từ chối 4 đường production). Chưa ghi DB. Kế tiếp: kiểm tra dữ liệu fixed có đủ dạng nhập không.
 - `ghi_chu`: 2026-10-04 23:10 +07 — mốc 2 xong: đếm fixed đủ 2.398 cặp (15 file MOM + 39 file LSU, thiếu Q639–Q648 có chủ đích); KHÔNG có file JSONL/manifest cho importer nên chưa nhập staging (staging giữ 34 đáp án cũ, SHA `4ECC3D7A`, đã sao lưu). Kế tiếp: chạy trùng lặp + đo M3/M4 ánh xạ.
 - `hang-cho`: chưa có
-- `commit`: 88309aa (báo cáo import-staging-enrich PARTIAL + merge batch-58 raw từ remote)
-- `bao_cao`: `docs/phieu-viec/ket-qua/import-staging-enrich.md`
+- `commit`: `-`
+- `bao_cao`: `-`
 - `ghi_chu`: 2026-10-04 23:20 +07 — xong vé IMPORT-STAGING-ENRICH ở mức PARTIAL: rào staging ĐẠT, trùng lặp 0 nhóm, M3/M4 100%, smoke 8 câu đúng nhãn, kho không đổi (SHA `4ECC3D7A`); 0 cặp nhập staging vì thiếu JSONL/manifest + mâu thuẫn nhãn importer, chờ duyệt phương án A/B trong báo cáo.
 - `ghi_chu`: 2026-10-04 22:58 +07 — xong audit 1.790 cặp LSU (sửa 7 điểm/6 câu + 1 ghi chú Q1124, 0 loại, vòng xem lại 0 trùng Hỏi+Đáp), báo cáo audit-enrich-lsu.md, chờ Muse duyệt.
 - `ghi_chu` (verdict Muse): 2026-10-04 ~22:40 +07 — **ĐẠT** (tích tạm, chờ user nghiệm thu). Kiểm chứng độc lập bằng script: 608 cặp Q1–608 liên tục, đủ 6 trường (0 lỗi), 0 cặp trùng nguyên văn sau sửa; raw không bị đụng; Q183 sửa đúng spec vé; M3 608/608, M4 608/608, M1/M2/M5 chưa đo được (ghi nhận trung thực); repo chỉ có 5 module golden_question (vé ghi 6). mailbox → `xong`, hết vé xếp hàng.
 
 - `ghi_chu` (verdict Muse): 2026-10-04 ~22:50 +07 — **ĐẠT** (tích tạm, chờ user nghiệm thu). Kiểm chứng độc lập: 1.790 cặp Q609–Q2408 (trừ Q639–Q648), đủ 6 trường, 0 cặp trùng nguyên văn Hỏi+Đáp; 7 điểm sửa/6 câu + 1 ghi chú audit đã đối chiếu raw khớp; raw không bị đụng; M3/M4 100%, M1/M2/M5 ghi rõ chưa đo được; compileall + 48 golden tests + cli audit PASS trên worktree 9e79b4e. Hết hàng chờ → mailbox `xong`.
+
+- `ghi_chu` (verdict Muse): 2026-10-04 ~23:3x +07 — **CHƯA ĐẠT cho mục nhập staging, chấp nhận PARTIAL trung thực** (vé `IMPORT-STAGING-ENRICH`). Kiểm chứng độc lập qua GitHub API: diff `3efb172...dd3663e` chỉ thêm báo cáo + sửa `trang-thai.md`, không code, không secret, không merge `main`. Rào cứng ĐẠT: rào staging-only của importer đã verify khô (nhận `staging_enrichment.sqlite`, từ chối 4 đường production), 0 ghi DB, SHA staging `4ECC3D7A` không đổi. Dedup ĐẠT (0 nhóm trùng Hỏi+Đáp; 51 nhóm trùng Hỏi giữ lại có lý do). M3/M4 100%, smoke đọc 8 câu ĐẠT, M1/M2/M5 ghi rõ chưa đo được (trung thực). **Lý do CHƯA ĐẠT:** 0/2.398 cặp được nhập — importer bắt buộc schema `GoldenAnswer` (JSONL + manifest + trường bằng chứng) mà cặp fixed 6 trường không có; kiểm chứng độc lập đọc `golden_answer_importer.py`: CLI bắt buộc 3 arg `--answers/--manifest/--staging` (dòng 516–518), docstring dòng 8 ép nhãn hệ thống `kiến thức đã được đào tạo bổ sung` trái rào vé. Tự điền trường bằng chứng = bịa bằng chứng nên thợ dừng đúng. **Quyết định kỹ thuật (chế độ tự lái): phương án B** — không nhập qua importer; 54 file `.md` đã audit chính là kho bản thảo (nhãn đúng, dedup xong, versioned trong git, đầu vào trực tiếp pipeline digest). Đã phát hành vé tiếp theo `ENRICH-STAGING-FILESTORE` (chỉ đọc + kiểm cuối, không ghi DB, không sửa code, không đụng module dùng chung). Mâu thuẫn nhãn importer ghi nhận để Muse chính xem xét riêng.

@@ -1,19 +1,21 @@
-# Ticket: IMPORT-STAGING-ENRICH — Nhập cặp đã audit vào staging (chuyển từ hàng chờ OMP sang opencode 22:55)
+# Ticket: ENRICH-STAGING-FILESTORE — Chốt kho bản thảo cặp enrichment bằng file (không qua importer)
 
-> Điều kiện đã đủ: AUDIT-ENRICH-MOM ĐẠT (608 cặp) và AUDIT-ENRICH-LSU ĐẠT (1.790 cặp) — cả hai đều do opencode audit.
-> Nguồn: `docs/phieu-viec/chatgpt-enrichment-fixed/mom/` + `lsu/` (CHỈ file đã audit, không dùng thư mục raw).
+> Verdict vé trước (`IMPORT-STAGING-ENRICH`, xem `docs/phieu-viec/ket-qua/import-staging-enrich.md`): PARTIAL trung thực — rào staging-only ĐẠT, dedup ĐẠT (0 trùng nguyên văn), M3/M4 ánh xạ 100%, smoke đọc 8 câu ĐẠT, kho không đổi; **0 cặp nhập staging** vì `golden_answer_importer` bắt buộc schema `GoldenAnswer` (JSONL + manifest, các trường bằng chứng `gap_id`, `case_ids`, `error_code`, `error_group`, `phenomenon`, `hypotheses`, `causal_mechanism`, `m4_branches`, `evidence_to_collect`, `confirm_criteria`) mà cặp fixed (6 trường: Khối, Ngôn ngữ, Bối cảnh, Cách hỏi, Hỏi, Đáp kèm nguồn) không có, và importer ép nhãn hệ thống `kiến thức đã được đào tạo bổ sung` trái rào cứng của vé.
 
-## Rào cứng (đọc kỹ trước khi làm)
-- Chỉ nhập vào **DB staging**. TUYỆT ĐỐI KHÔNG nhập vào kho tri thức chính / DB production.
-- Mỗi cặp nhập kèm nhãn `MOM` hoặc `LSU` + `Bản thảo — chưa qua chuyên gia duyệt`.
-- Không gắn nhãn "kiến thức đã được đào tạo bổ sung".
-- Không merge `main`.
+## Quyết định kỹ thuật (Muse chốt theo bằng chứng, chế độ tự lái)
 
-## Việc cần làm
-1. Dùng `src/aios_habit/golden_answer_importer.py` (chỉ ghi staging — module đã có rào này, xác nhận lại trước khi chạy) để nhập toàn bộ cặp đã audit vào DB staging.
-2. Chạy dedup lần cuối trên staging (phòng cặp trùng lọt qua audit).
-3. Chạy bộ metric M1–M5 (`golden_question_quality.py`) trên staging, báo số cặp/cụm và phân bố điểm.
-4. Smoke test: truy vấn thử 5–10 câu trên staging, xác nhận cặp bản thảo trả về đúng nhãn (không lẫn vào luồng trả lời chính của app).
+- **Phương án B (chốt):** KHÔNG nhập cặp enrichment draft qua `golden_answer_importer`. Lý do: (1) tự điền trường bằng chứng = bịa bằng chứng, trái chính sách "không bịa đáp án/evidence"; (2) ép nhãn importer trái rào "không gắn nhãn khi chưa duyệt"; (3) 54 file `.md` đã audit trong `docs/phieu-viec/chatgpt-enrichment-fixed/` (MOM 15 file/608 cặp, LSU 39 file/1.790 cặp, trừ Q639–Q648 có chủ đích) ĐÃ là kho bản thảo: có nhãn `MOM`/`LSU` + `Bản thảo — chưa qua chuyên gia duyệt` đúng rào, đã dedup, M3/M4 100%, versioned trong git, và là đầu vào trực tiếp của pipeline digest (sổ tay tri thức Markdown → context LLM). Nhập qua importer chỉ thêm rủi ro đụng chạm module dùng chung (golden pipeline, 48 test) mà không thêm giá trị.
+- **Không đụng `golden_answer_importer.py`** trong vé này. Mâu thuẫn nhãn (importer ép nhãn `kiến thức đã được đào tạo bổ sung`) ghi nhận để Muse chính xem xét riêng — thợ không tự sửa module dùng chung.
 
-## Báo cáo
-`docs/phieu-viec/ket-qua/import-staging-enrich.md`: số cặp đã nhập (MOM/LSU), metric M1–M5, kết quả smoke test, xác nhận DB production không đổi (ghi SHA hoặc mốc kiểm tra đã dùng). Commit lên `phieu-viec/rag-fix1`, `trang-thai.md` → `xong-cho-duyet`.
+## Việc cần làm (chỉ đọc + kiểm, không ghi DB, không sửa code)
+
+1. Kiểm đếm cuối `docs/phieu-viec/chatgpt-enrichment-fixed/mom/` + `lsu/`: đủ 54 file, 2.398 cặp (MOM Q1–Q608, LSU Q609–Q2408 trừ Q639–Q648), mỗi cặp đủ 6 trường.
+2. Kiểm nhãn: mỗi file có dòng `Bản thảo — chưa qua chuyên gia duyệt`; khối đúng `MOM`/`LSU`; KHÔNG có nhãn `kiến thức đã được đào tạo bổ sung` ở file nào.
+3. Xác nhận thư mục `chatgpt-enrichment-raw/` không bị đụng (so manifest/kích thước với báo cáo audit).
+4. Ghi báo cáo `docs/phieu-viec/ket-qua/enrich-staging-filestore.md`: kết quả 3 kiểm trên + ghi rõ quyết định phương án B và lý do. Commit lên `phieu-viec/rag-fix1`, `trang-thai.md` → `xong-cho-duyet`.
+
+## Rào cứng
+
+- Chỉ đọc, không ghi DB nào (staging hay production), không sửa code, không merge `main`.
+- Không tạo file JSONL/manifest, không tự sinh trường bằng chứng cho cặp draft.
+- Role gợi ý: SMOL/TINY (kiểm nhanh ~5 phút).
