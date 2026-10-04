@@ -3,6 +3,7 @@
 - Trạng thái: `dang-lam`
 - Ticket hiện tại: `ANSWER-DRAFT-FALLBACK` — RAG trả lời trước, bản thảo enrichment làm dự bị có nhãn (user chốt phương án 1). Prompt: `docs/phieu-viec/mailbox-opencode/prompt.md`. Role gợi ý: PLAN (thiết kế trước) rồi code.
 - `ghi_chu`: 2026-10-04 23:48 +07 — đã nhận vé ANSWER-DRAFT-FALLBACK (điều kiện mở đủ: trạng thái `moi` + prompt đúng vé; không rơi nhánh 4 lần watcher). Bắt đầu bước 1: khảo sát lane RAG, chưa sửa code.
+- `ghi_chu`: 2026-10-04 23:52 +07 — mốc khảo sát xong: lane RAG qua `workspace_chat_rag_v2_adapter` → `pipeline.query` → `synthesize_evidence` → `generate_workspace_ai_answer`; ngưỡng hiện tại là phân loại giới hạn + `confidence_label`, chưa có ngưỡng số; feedback tại chỗ đã có (`answer_feedback` + UI); kho bản thảo 54 file `chatgpt-enrichment-fixed/mom+lsu` dạng `## CÂU HỎI` + `Hỏi:/Đáp:`. Kế tiếp: thiết kế luồng a→b→c.
 - Trạng thái: `xong`  (verdict ĐẠT 2026-10-04 ~23:35 +07: kho bản thảo 54 file/2.398 cặp đúng rào, raw không đụng, diff sạch — chỉ báo cáo + trạng thái)
 - Ticket hiện tại: `ENRICH-STAGING-FILESTORE` — chốt kho bản thảo cặp enrichment bằng file (không qua importer), quyết định phương án B sau verdict vé trước. Prompt: `docs/phieu-viec/mailbox-opencode/prompt.md`. Role gợi ý: SMOL/TINY (~5 phút).
 - `ghi_chu`: 2026-10-04 23:16 +07 — đã nhận vé ENRICH-STAGING-FILESTORE (điều kiện mở đủ: trạng thái `moi` + prompt phương án B). Bắt đầu kiểm đếm cuối 54 file fixed, chưa ghi DB, chưa sửa code.
