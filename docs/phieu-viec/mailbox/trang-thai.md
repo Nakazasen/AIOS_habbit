@@ -1,16 +1,15 @@
 # Trạng thái mailbox
 
-- Trạng thái: `xong-cho-duyet`
-- Ticket hiện tại: `ROUTER-FIX` — [NHÀ] chẩn đoán + sửa lỗi khóa cloud Router (`unknown_error` từ tối 2/10), verify 6 câu lạnh lane 3. Prompt: `docs/phieu-viec/mailbox/prompt.md`.
-- `hang-cho` (còn lại sau khi phát hành ROUTER-FIX lúc 2026-10-04 21:20 +07; lịch sử xếp: Muse xếp 2026-10-04 16:15 +07 theo chỉ đạo "làm song song" của user; bổ sung 18:10 +07; đẩy ROUTER-FIX lên số 1 theo lệnh user 19:05 +07; chuyển TOOL-1 sang agy và AUDIT-ENRICH-MOM sang opencode 19:50 +07 để 3 thợ cùng làm):
-  1. `OMP-MODEL-REPORT` (`prompt-queue-omp-model-report.md`) — thợ OMP tự báo cáo model đang chạy (provider/model/mức/mapping roles). Role gợi ý: SMOL/TINY (~2 phút).
-  2. `TOOL-2` (`prompt-queue-tool2.md`) — khung `chat_action`: tool đăng ký action → chat gọi theo ngữ cảnh, render giàu trong vùng trả lời. Role gợi ý: DEFAULT.
-  3. `TOOL-3` (`prompt-queue-tool3.md`) — nối `mom_benchmark`, `rag_benchmark`, `rag_evaluator` vào chat qua khung TOOL-2. Role gợi ý: DEFAULT.
-  4. `TOOL-4` (`prompt-queue-tool4.md`) — nối `expert_interview*`, `production_prediction`, `prediction_shadow_ui` vào chat. Role gợi ý: DEFAULT.
-  5. `TOOL-5` (`prompt-queue-tool5.md`) — nối `visual_knowledge_map`, `knowledge_map_html`, `evidence_graph_viewer`, `worklens_semantic_map` vào chat. Role gợi ý: DEFAULT.
-  6. `AUDIT-ENRICH-LSU` — CHUYỂN cho opencode 22:45 +07 (đã ĐẠT vé MOM, đúng thế mạnh audit; số liệu đã cập nhật 1.790 cặp/Q2408 trong prompt opencode).
-  7. `IMPORT-STAGING-ENRICH` — CHUYỂN cho opencode 22:55 +07 (cả 2 audit ĐẠT, đủ điều kiện chạy; opencode vừa làm xong 2 vé audit nên nắm dữ liệu).
+- Trạng thái: `moi`
+- Ticket hiện tại: `OMP-MODEL-REPORT` — [NHÀ] thợ OMP tự báo cáo model đang chạy (provider/model/mức/mapping roles). Prompt: `docs/phieu-viec/mailbox/prompt.md`. Role gợi ý: SMOL/TINY (~2 phút). Không code.
+- `hang-cho` (còn lại sau khi phát hành OMP-MODEL-REPORT lúc 2026-10-04 23:06 +07; lịch sử xếp: Muse xếp 2026-10-04 16:15 +07 theo chỉ đạo "làm song song" của user; bổ sung 18:10 +07; đẩy ROUTER-FIX lên số 1 theo lệnh user 19:05 +07; chuyển TOOL-1 sang agy và AUDIT-ENRICH-MOM sang opencode 19:50 +07 để 3 thợ cùng làm; ROUTER-FIX ĐẠT 23:06 +07 → phát hành vé xếp hàng #1 OMP-MODEL-REPORT):
+  1. `TOOL-2` (`prompt-queue-tool2.md`) — khung `chat_action`: tool đăng ký action → chat gọi theo ngữ cảnh, render giàu trong vùng trả lời. Role gợi ý: DEFAULT.
+  2. `TOOL-3` (`prompt-queue-tool3.md`) — nối `mom_benchmark`, `rag_benchmark`, `rag_evaluator` vào chat qua khung TOOL-2. Role gợi ý: DEFAULT.
+  3. `TOOL-4` (`prompt-queue-tool4.md`) — nối `expert_interview*`, `production_prediction`, `prediction_shadow_ui` vào chat. Role gợi ý: DEFAULT.
+  4. `TOOL-5` (`prompt-queue-tool5.md`) — nối `visual_knowledge_map`, `knowledge_map_html`, `evidence_graph_viewer`, `worklens_semantic_map` vào chat. Role gợi ý: DEFAULT.
+  5. `AUDIT-ENRICH-LSU` — CHUYỂN cho opencode 22:45 +07 (opencode đã ĐẠT vé LSU 22:50; đang làm IMPORT-STAGING-ENRICH).
+  6. `IMPORT-STAGING-ENRICH` — CHUYỂN cho opencode 22:55 +07 (cả 2 audit ĐẠT, đủ điều kiện chạy; opencode đang làm, mốc-1 rào-staging ĐẠT).
 - Vé audit/import ChatGPT enrichment ĐÃ xếp (user duyệt commit batch lên repo public 2026-10-04 18:11 +07). Dữ liệu thô: `docs/phieu-viec/chatgpt-enrichment-raw/` (45 file, 1.998 cặp) — chỉ dùng để audit, không import trực tiếp.
-- `commit`: 6140fd0 (báo cáo router-fix + xong-cho-duyet)
-- `bao_cao`: `docs/phieu-viec/ket-qua/router-fix.md`
-- `ghi_chu`: 2026-10-04 23:00 +07 — ROUTER-FIX xong-cho-duyet: hết unknown_error (model mới Gemini 2.5-flash), 6 câu lạnh lane 3 có số đo (2/6 provider_validated, 4/6 fallback do thiếu nhãn — không nới cổng), SHA khớp, lane 1 OK.
+- `commit`: `-`
+- `bao_cao`: `-`
+- `ghi_chu` (verdict Muse): 2026-10-04 23:06 +07 — ROUTER-FIX **ĐẠT**. Kiểm chứng độc lập qua GitHub API: commit `e7da3b9` chỉ thêm `docs/phieu-viec/ket-qua/router-fix.md` (+124) và sửa `trang-thai.md`, không code, không secret; `b223e8e` chỉ điền SHA báo cáo. (1) Router trả lời được qua `RouterSynthesisProvider` (Gemini 2.5-flash, `used_fallback=false`), hết `unknown_error`; nguyên nhân gốc: model `gemini-2.5-pro` bị Google ngừng (404) → rơi vào `unknown_error` vì `classify_provider_error` thiếu nhánh 404/402; key còn sống nên chỉ đổi env model, không refresh key. (2) 6 câu lạnh lane 3 có đủ số đo từng câu; parity lane 1 đúng ở L1 (đủ hơn) và E2 (khớp); 4 câu còn lại cổng trả về fallback cục bộ do đáp thô thiếu nhãn `[n]` — không nới cổng, ghi trung thực. (3) SHA index khớp trước/sau, không secret trong commit. Ghi nhận trung thực: trường `commit` OMP ghi `6140fd0` là SHA local trước push, không khớp SHA push `e7da3b9` (đúng hiện tượng push qua Git Data API đổi SHA — đã ghi AGENTS.md); điểm chưa làm: restart app 2 lần cho regression lane 1 = 0 lần (mới kiểm bridge trực tiếp = `direct_ready`; thay đổi chỉ là env model cloud). Việc còn lại: (a) cải thiện nhắc nhãn `[n]` để 6/6 `provider_validated`; (b) bổ sung restart app ×2 kiểm lane 1; (c) đề xuất `classify_provider_error` thêm nhánh 404/402 (model-ngừng/hết-tiền).
