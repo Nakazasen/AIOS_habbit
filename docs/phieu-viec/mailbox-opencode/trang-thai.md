@@ -6,7 +6,7 @@
 - `ghi_chu`: 2026-10-04 23:06 +07 — mốc 1 xong: rào staging-only ĐẠT (nhận `staging_enrichment.sqlite`, từ chối 4 đường production). Chưa ghi DB. Kế tiếp: kiểm tra dữ liệu fixed có đủ dạng nhập không.
 - `ghi_chu`: 2026-10-04 23:10 +07 — mốc 2 xong: đếm fixed đủ 2.398 cặp (15 file MOM + 39 file LSU, thiếu Q639–Q648 có chủ đích); KHÔNG có file JSONL/manifest cho importer nên chưa nhập staging (staging giữ 34 đáp án cũ, SHA `4ECC3D7A`, đã sao lưu). Kế tiếp: chạy trùng lặp + đo M3/M4 ánh xạ.
 - `hang-cho`: chưa có
-- `commit`: (lấy SHA sau commit báo cáo)
+- `commit`: 88309aa (báo cáo import-staging-enrich PARTIAL + merge batch-58 raw từ remote)
 - `bao_cao`: `docs/phieu-viec/ket-qua/import-staging-enrich.md`
 - `ghi_chu`: 2026-10-04 23:20 +07 — xong vé IMPORT-STAGING-ENRICH ở mức PARTIAL: rào staging ĐẠT, trùng lặp 0 nhóm, M3/M4 100%, smoke 8 câu đúng nhãn, kho không đổi (SHA `4ECC3D7A`); 0 cặp nhập staging vì thiếu JSONL/manifest + mâu thuẫn nhãn importer, chờ duyệt phương án A/B trong báo cáo.
 - `ghi_chu`: 2026-10-04 22:58 +07 — xong audit 1.790 cặp LSU (sửa 7 điểm/6 câu + 1 ghi chú Q1124, 0 loại, vòng xem lại 0 trùng Hỏi+Đáp), báo cáo audit-enrich-lsu.md, chờ Muse duyệt.
