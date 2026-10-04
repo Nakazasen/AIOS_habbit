@@ -1,47 +1,48 @@
-# Vé: TOOL-1-FIX — Sửa mục 4 báo cáo kiểm kê cho khớp bảng
-
-> Thợ agy (máy nhà, chế độ 4 watcher song song). Model: gemini-3.8-flash-high.
-> Mailbox này: `docs/phieu-viec/mailbox-agy/`. Sửa báo cáo `docs/phieu-viec/ket-qua/tool1-kiem-ke.md`
-> (KHÔNG tạo file mới), commit + push lên `phieu-viec/rag-fix1`.
+# Ticket: DON-O-C-AGY — Dọn ổ C máy nhà (user đã cho phép 2026-09-29 ~20:10 +07)
 
 ## Bối cảnh
-- Vé TOOL-1 đã xong, verdict: **ĐẠT phần bảng kiểm kê** (267 module, nhất quán, spot-check đúng).
-- Mục 4 "Phân tích các module chưa nối & Kiến nghị lộ trình" **không khớp bảng**:
-  - Liệt kê 7 module mà bảng ghi ĐÃ nối: `mom_benchmark`, `rag_benchmark`, `rag_rerank`,
-    `index_domain`, `visual_knowledge_map`, `chat_action_visual_maps`, `evidence_graph_viewer`.
-  - Dùng tên sai (thêm hậu tố `.py` không có trong bảng): `cli.py`, `audit.py`, `case_audit.py`,
-    `phase_gate.py`, `gemini_web_engine.py` → sửa thành tên đúng trong bảng.
-  - Bỏ sót nhiều module bảng ghi CHƯA nối (vd: `digest_qa`, `knowledge_digest`,
-    `golden_question_export`, `golden_question_quality`, `production_prediction.reporting`,
-    `production_prediction.rt_consumer`, `production_prediction.rt_replay`, `visual_map_models`,
-    `extraction`, `memory`, `study_store`, `audit`, `case_audit`, `case_prompt`, `claim_guard`,
-    `cli`, `discovery`, `evidence`, `export_pack`, `gemini_web_engine`, `handover`, `ide_bridge`,
-    `models`, `notebook_bridge`, `notebook_case_actions`, `notebook_qa`, `owner_workflow_state`,
-    `paths`, `phase_gate`, `profiles`, `provider_safety`, `route_log_ui`,
-    `router_synth_redaction`, `storage`, `workflow`).
+Ổ C máy nhà vừa được dọn khẩn cấp ~1.4GB (lúc cứu opencode 22:00), giờ còn trống
+khoảng 2.9GB — vẫn quá ít. User cho phép dọn sâu, mục tiêu lấy lại thêm ~5–8GB.
+Thợ agy làm vé này (việc nhẹ, đọc/liệt kê/xóa có kiểm chứng — đúng thế mạnh agy).
 
-## Việc cần làm
-1. Viết script nhỏ đối chiếu: với mỗi module trong mục 4, kiểm tra cột "đã nối" trong bảng —
-   chỉ giữ module bảng ghi CHƯA nối.
-2. Bổ sung đầy đủ các module bảng ghi CHƯA nối còn thiếu vào đúng nhóm (Benchmark / RAG v2
-   chuyên sâu / Visual / Khác).
-3. Sửa tên sai (bỏ `.py`), đếm lại tổng số module chưa nối (bảng: 60), cập nhật câu mở đầu mục 4.
-4. Chạy lại script đối chiếu sau khi sửa: mục 4 phải khớp 100% với bảng.
+## Các bước (làm theo đúng thứ tự, dừng ngay nếu bước nào không chắc chắn)
 
-## Cấm
-- Chỉ sửa file báo cáo. Không sửa code.
+### Bước 0: Kiểm tra đối tượng mới phình (user đã duyệt dọn, từ tổng kết cứu opencode 22:00)
+- `opencode state` ~434MB (`C:\Users\Admin\AppData\Local\Temp\opencode` hoặc thư mục state opencode) — CHỈ xóa session state cũ, GIỮ session đang chạy của opencode hiện tại.
+- `.codex` ~4.9GB, `.gemini` ~7.7GB — liệt kê, xác minh là cache/log cũ không cần thiết, không xóa config đang dùng.
+- Với mỗi mục: liệt kê nội dung → xác minh an toàn → xóa → báo dung lượng.
+
+### Bước 1: Rác tmp (an toàn nhất)
+- Quét `C:\Windows\Temp`, `%TEMP%`, `local_runs\**\tmp`, `scratch\` các file
+  quá 7 ngày không đụng tới.
+- Chỉ xóa file tmp/log/cache. KHÔNG xóa file đang mở/lock (đặc biệt: opencode
+  đang chạy — không đụng session/state của nó).
+
+### Bước 2: venv trùng lặp
+- Liệt kê tất cả venv (`venv`, `.venv`, `env*`) trong `D:\Sandbox\AIOS_habbit` và ổ C.
+- Giữ lại 1 venv đang dùng. Xóa venv trùng không dùng (so `pip freeze` trước).
+
+### Bước 3: Worktree vé 0.3
+- Vé 0.3 đã đóng. Nếu worktree còn tồn tại: xác nhận mọi commit đã push/merge,
+  rồi `git worktree remove`.
+
+### Bước 4: 2 backup cũ (CẦN XÁC MINH TRƯỚC KHI XÓA)
+- Liệt kê backup index trên ổ C.
+- Với mỗi backup định xóa: chạy `PRAGMA integrity_check` trên bản GIỮ LẠI,
+  phải trả về `ok` mới được xóa bản cũ.
+- KHÔNG xóa nếu chỉ còn 1 bản backup duy nhất của index production.
+
+### Bước 5: tri_thuc — CHƯA LÀM (chờ E2v3 đóng hẳn)
+- Bỏ qua bước này trong vé hiện tại.
+
+## Cấm tuyệt đối
+- Không xóa index production đang dùng (`workspace_chat_rag_v2_production`).
+- Không xóa cây model ONNX (`models\bge-m3-onnx-fp32`).
+- Không xóa file khi chưa liệt kê và xác minh.
 - Không đụng ổ D.
-
-## Tiêu chí ĐẠT
-- Mọi module trong mục 4 đều có trong bảng và bảng ghi CHƯA nối.
-- Mọi module bảng ghi CHƯA nối đều có mặt trong mục 4 (đúng nhóm).
-- Số lượng mục 4 = 60 = số module chưa nối trong bảng.
+- Không đụng session/state của opencode đang chạy vé AUDIT-ENRICH-MOM.
 
 ## Báo cáo
-Cập nhật cùng file `docs/phieu-viec/ket-qua/tool1-kiem-ke.md` (ghi thêm dòng "Sửa mục 4 ngày ...:
-đồng bộ với bảng, kiểm tra bằng script"). Commit lên `phieu-viec/rag-fix1`,
-`docs/phieu-viec/mailbox-agy/trang-thai.md` → `xong-cho-duyet`.
-
-## Quy ước watcher (bắt buộc)
-- Nhận vé: đặt `trang-thai.md` thành `dang-lam` NGAY LẬP TỨC (commit + push), kèm `ghi_chu` có timestamp giờ máy.
-- Trước mỗi push: `git pull --rebase origin phieu-viec/rag-fix1` trước. Không force-push.
+Ghi vào `docs/phieu-viec/ket-qua/don-o-c-may-nha.md`: từng bước đã làm,
+dung lượng trước/sau mỗi bước, danh sách file đã xóa. Commit lên
+`phieu-viec/rag-fix1`, `trang-thai.md` → `xong-cho-duyet`.
