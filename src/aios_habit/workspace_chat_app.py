@@ -4418,17 +4418,6 @@ else:
                     user_attached_image = None
 
                 if ask_submitted:
-                    # Nguồn một lần từ ảnh đính kèm của lượt hỏi trước: tắt
-                    # trước khi nạp ngữ cảnh cho câu mới, để câu không đính
-                    # kèm không dùng lại nội dung ảnh cũ.
-                    _one_shot_ids = st.session_state.pop("wsc_one_shot_source_ids", None) or []
-                    for _sid in _one_shot_ids:
-                        try:
-                            set_source_enabled(
-                                active_conversation.id, SOURCE_SCOPE_TEMPORARY, _sid, False
-                            )
-                        except Exception:
-                            pass
                     q_text = user_input.strip()
                     if q_text and get_workspace_memory_enabled_preference():
                         from aios_habit.workspace_memory_ui import queue_memory_command_if_present
@@ -4691,25 +4680,35 @@ else:
                         if ai_backend == "gemini_web" and not _start_gemini_web_bridge(locale=current_ui_locale):
                             safe_rerun()
                         image_ocr_failed = False
+                        one_shot_image_text = ""
                         if user_attached_image is not None:
-                            # Ảnh đính kèm luôn được OCR thành nguồn chữ trước khi
-                            # tới lane AI, nên mọi lane (kể cả Gemini Web) đều đọc
-                            # được. Chỉ chặn khi nguồn thật sự mang byte ảnh thô
-                            # (guard ở antigravity_bridge, fail-closed).
-                            img_batch = process_workspace_upload_batch(
-                                [user_attached_image],
-                                active_conversation.id,
-                                "cloud_safe",
-                                enable_now=True,
-                                save_to_notebook=False,
-                                notebook_id=active_nb_id,
+                            # Ảnh đính kèm một lần: OCR thành chữ rồi gộp thẳng
+                            # vào câu hỏi. KHÔNG tạo nguồn tạm trong sổ → câu sau
+                            # không đính kèm thì không thể dùng lại (one-shot theo
+                            # cấu trúc, không cần cơ chế tắt sau). Mọi lane đều
+                            # đọc được vì chỉ còn chữ, không còn byte ảnh thô
+                            # (guard ở antigravity_bridge vẫn fail-closed).
+                            try:
+                                _img_bytes = user_attached_image.getvalue()
+                                _img_name = user_attached_image.name
+                            except Exception:
+                                _img_bytes, _img_name = b"", ""
+                            _ocr_res = (
+                                ingest_and_extract_bytes(_img_bytes, _img_name, "cloud_safe")
+                                if _img_bytes
+                                else {"ok": False}
                             )
-                            if img_batch.get("success_count", 0) > 0:
+                            _ocr_text = str(_ocr_res.get("text", "") or "").strip()
+                            if _ocr_res.get("ok") and _ocr_text:
                                 st.session_state.wsc_upload_version += 1
-                                # Nguồn một lần: ghi nhớ để tắt sau lượt hỏi này,
-                                # câu sau không đính kèm thì không dùng lại.
-                                st.session_state["wsc_one_shot_source_ids"] = list(
-                                    img_batch.get("created_temporary_source_ids", [])
+                                if len(_ocr_text) > 3000:
+                                    _ocr_text = (
+                                        _ocr_text[:3000]
+                                        + "\n[...nội dung ảnh đã được rút gọn...]"
+                                    )
+                                one_shot_image_text = (
+                                    "[Nội dung chữ đọc được từ ảnh đính kèm "
+                                    f"\"{_img_name}\"]:\n{_ocr_text}"
                                 )
                             else:
                                 image_ocr_failed = True
@@ -4717,17 +4716,19 @@ else:
                                     "attached_image_unreadable",
                                     locale=current_ui_locale,
                                 )
-                            # Xóa ảnh khỏi composer sau khi đã nạp (cả 2 đường
+                            # Xóa ảnh khỏi composer sau khi đã xử lý (cả 2 đường
                             # tải file và dán từ clipboard).
                             st.session_state.pop(pasted_image_key, None)
                             if not q_text:
                                 q_text = "Phân tích và giải thích nội dung trong ảnh chụp màn hình đính kèm."
+                            if one_shot_image_text:
+                                q_text = f"{q_text}\n\n---\n{one_shot_image_text}"
 
                         enabled_selections = load_enabled_sources_for_conversation(active_conversation.id)
                         current_notebook_sources = load_notebook_sources(active_nb_id)
                         current_temp_sources = load_temporary_sources(active_conversation.id)
 
-                        if not enabled_selections:
+                        if not enabled_selections and not one_shot_image_text:
                             st.session_state.wsc_last_ai_badge = {
                                 "conversation_id": active_conversation.id,
                                 "type": "insufficient_context",
@@ -4745,7 +4746,7 @@ else:
                             )
 
                             non_empty_sources = [s for s in packed_sources if s.text and s.text.strip()]
-                            if not non_empty_sources:
+                            if not non_empty_sources and not one_shot_image_text:
                                 st.session_state.wsc_last_ai_badge = {
                                     "conversation_id": active_conversation.id,
                                     "type": "insufficient_context",

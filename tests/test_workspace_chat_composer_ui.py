@@ -430,24 +430,40 @@ def test_attached_image_is_ocr_first_never_hard_blocked_before_ingest() -> None:
 
     # The premature gate is gone: no "attached image + blocking backend => error".
     assert "if user_attached_image is not None and connector_blocks_image_files" not in source
-    # The image still flows through ingest (OCR) in the ask path.
-    assert "img_batch = process_workspace_upload_batch(" in source
+    # The image still flows through ingest (OCR) in the ask path — now directly,
+    # without creating a persistent temporary source.
+    assert "ingest_and_extract_bytes(_img_bytes, _img_name" in source
     # Fail-closed guard for REAL image payloads stays downstream (bridge level).
     assert "image_files_blocked_message" in Path(
         "src/aios_habit/antigravity_bridge.py"
     ).read_text(encoding="utf-8")
 
 
-def test_one_shot_image_source_is_disabled_for_the_next_question() -> None:
-    """One-shot promise: temp sources created from an attached image are
-    recorded and disabled when the next question is asked."""
+def test_one_shot_image_is_inline_ocr_text_never_a_persistent_source() -> None:
+    """Regression (UX-ATTACH-SOURCES vòng 3, 04/10): the attached image is OCR'd
+    and inlined into the question text. No temporary source is created in the
+    store, so a later question cannot reuse it — one-shot by construction,
+    immune to session-state timing."""
     source = _app_source()
 
-    assert 'st.session_state["wsc_one_shot_source_ids"]' in source
-    assert 'st.session_state.pop("wsc_one_shot_source_ids"' in source
-    assert "SOURCE_SCOPE_TEMPORARY" in source
+    # Direct OCR without store side effects (no process_workspace_upload_batch
+    # for the one-shot composer image, no wsc_one_shot_source_ids bookkeeping).
+    assert "ingest_and_extract_bytes(_img_bytes, _img_name" in source
+    assert "wsc_one_shot_source_ids" not in source
+    # The OCR text is merged into the question for this turn only.
+    assert "one_shot_image_text" in source
+    assert "Nội dung chữ đọc được từ ảnh đính kèm" in source
     # Pasted (clipboard) image is cleared from the composer after ingest too.
     assert "st.session_state.pop(pasted_image_key, None)" in source
+
+
+def test_image_only_question_passes_the_no_sources_gate() -> None:
+    """A question carrying only an attached image must not die at the
+    'insufficient_context' gates — the image text IS the context."""
+    source = _app_source()
+
+    assert "if not enabled_selections and not one_shot_image_text:" in source
+    assert "if not non_empty_sources and not one_shot_image_text:" in source
 
 
 def test_add_source_expander_label_has_single_plus() -> None:
