@@ -4,6 +4,7 @@
 - Ticket hiện tại: `IMPORT-STAGING-ENRICH` — nhập 2.398 cặp MOM+LSU đã audit vào DB staging. Prompt: `docs/phieu-viec/mailbox-opencode/prompt.md`. (Vé cũ: `AUDIT-ENRICH-LSU` ĐẠT 22:50) — audit 1.790 cặp LSU (chuyển từ hàng chờ OMP 22:45, opencode đã ĐẠT vé MOM). Prompt: `docs/phieu-viec/mailbox-opencode/prompt.md`.
 - `ghi_chu`: 2026-10-04 23:03 +07 — đã nhận vé IMPORT-STAGING-ENRICH (điều kiện mở đã đủ: 2 audit ĐẠT; không rơi nhánh 4 lần watcher). Bắt đầu bước 1: xác minh rào staging của `golden_answer_importer.py`, chưa ghi gì.
 - `ghi_chu`: 2026-10-04 23:06 +07 — mốc 1 xong: rào staging-only ĐẠT (nhận `staging_enrichment.sqlite`, từ chối 4 đường production). Chưa ghi DB. Kế tiếp: kiểm tra dữ liệu fixed có đủ dạng nhập không.
+- `ghi_chu`: 2026-10-04 23:10 +07 — mốc 2 xong: đếm fixed đủ 2.398 cặp (15 file MOM + 39 file LSU, thiếu Q639–Q648 có chủ đích); KHÔNG có file JSONL/manifest cho importer nên chưa nhập staging (staging giữ 34 đáp án cũ, SHA `4ECC3D7A`, đã sao lưu). Kế tiếp: chạy trùng lặp + đo M3/M4 ánh xạ.
 - `hang-cho`: chưa có
 - `commit`: 0741d31 (fixed/lsu 39 file) + báo cáo này
 - `bao_cao`: `docs/phieu-viec/ket-qua/audit-enrich-lsu.md`
