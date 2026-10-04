@@ -53,3 +53,22 @@ Nguyên nhân gốc OMP bắt được: app chặn câu hỏi ngay khi thấy �
 2. Hỏi tiếp câu thứ 2 KHÔNG đính kèm → câu trả lời không dùng nội dung ảnh cũ; thumbnail ảnh đã biến khỏi composer sau câu 1.
 3. Thanh bên: expander hiện đúng `＋ Thêm nguồn` (một dấu cộng).
 4. SHA kho `tri_thuc` không đổi (vé này chỉ đụng UI + luồng hỏi).
+
+## Vòng 3: cài Tesseract OCR + code báo lỗi trung thực (Muse fix commit `8e5e59b`, đã push)
+
+**Nguyên nhân gốc OMP tìm ra (verify vòng 2, 07:53):** máy nhà KHÔNG có bộ đọc OCR nào (không Tesseract, không rapidocr/paddleocr) → ảnh đính kèm không đọc được thành chữ → không tạo được nguồn tạm → app dừng ở "Thiếu ngữ cảnh". Đây là thiếu sót môi trường, không phải lỗi logic: code Python (`pytesseract`) đã có sẵn trong requirements của app, chỉ thiếu chương trình Tesseract trên Windows.
+
+### Phần A — OMP cài môi trường (một lần duy nhất) [NHÀ]
+
+1. Tải Tesseract OCR bản UB Mannheim: https://github.com/UB-Mannheim/tesseract/wiki (file `tesseract-ocr-w64-setup-*.exe`).
+2. Cài vào đúng `C:\Program Files\Tesseract-OCR\` (đường dẫn mặc định — app tự phát hiện, không cần cấu hình). **Lúc cài nhớ tick thêm ngôn ngữ Vietnamese** (gói ngôn ngữ) để đọc được ảnh chụp màn hình tiếng Việt.
+3. Kiểm tra: mở cmd chạy `tesseract --version` → phải hiện số version. Nếu cài chỗ khác: đặt biến môi trường `AIOS_TESSERACT_CMD` = đường dẫn đầy đủ tới `tesseract.exe`.
+4. Không cần cài rapidocr/paddleocr (nặng, không cần thiết khi đã có Tesseract).
+
+### Phần B — Verify lại 3 điểm trên app thật [NHÀ]
+
+1. Pull `8e5e59b`, restart app. Đính kèm **ảnh chụp màn hình lỗi THẬT có chữ** (không dùng ảnh giả) + hỏi "lỗi này là gì?" trên lane Gemini tự động → câu hỏi CHẠY, câu trả lời đọc được chữ trong ảnh.
+2. Hỏi tiếp câu thứ 2 KHÔNG đính kèm → câu trả lời không dùng nội dung ảnh cũ; thumbnail ảnh đã biến khỏi composer sau câu 1.
+3. Thanh bên: expander hiện đúng `＋ Thêm nguồn` (một dấu cộng).
+4. (Phụ) Thử gỡ Tesseract tạm thời KHÔNG cần — code mới đã có đường báo lỗi rõ ràng (`image_ocr_failed`) thay cho "Thiếu ngữ cảnh" chung chung khi OCR thất bại.
+5. SHA kho `tri_thuc` không đổi (vé này chỉ đụng UI + luồng hỏi + môi trường OCR).
