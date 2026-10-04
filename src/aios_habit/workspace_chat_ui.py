@@ -412,6 +412,133 @@ def render_answer_feedback_row(
             )
 
 
+def render_draft_approval_row(
+    *,
+    conversation_id: str,
+    message_id: str,
+    question: str,
+    answer: str,
+    locale: str = "vi",
+    pair_id: str = "",
+    source_file: str = "",
+) -> None:
+    """Hang duyet ban thao ngay duoi cau tra loi (chi hien khi du dieu kien).
+
+    Hien khi co du: co duyet bat + cau tra loi la ban thao + PIN da mo khoa.
+    Duyet chi doi nhan, cap van nam o kho ban thao, khong nhap kho chinh.
+    """
+    from aios_habit import draft_approval
+
+    if not draft_approval.draft_approval_enabled():
+        return
+    if not conversation_id or not message_id:
+        return
+    text = str(answer or "")
+    if not draft_approval.is_draft_answer(text) and not draft_approval.is_approved_answer(text):
+        return
+    unlock_key = "wsc_draft_approval_unlock_until"
+    try:
+        unlocked_until = float((getattr(st, "session_state", {}) or {}).get(unlock_key, 0.0) or 0.0)
+    except (TypeError, ValueError):
+        unlocked_until = 0.0
+    if not draft_approval.unlock_valid(unlocked_until):
+        st.caption(t("draft_approval_need_unlock", locale=locale))
+        pin_key = f"wsc_draft_pin_{message_id}"
+        pin_value = st.text_input(
+            t("draft_approval_pin_label", locale=locale),
+            key=pin_key,
+            type="password",
+        )
+        if st.button(t("draft_approval_unlock", locale=locale), key=pin_key + "_open"):
+            checked = draft_approval.verify_pin(str(pin_value or ""))
+            if checked.get("ok"):
+                if hasattr(st, "session_state"):
+                    st.session_state[unlock_key] = draft_approval.new_unlock_until()
+                st.caption(t("draft_approval_unlocked", locale=locale))
+            else:
+                st.warning(str(checked.get("error_vi") or t("answer_feedback_save_failed", locale=locale)))
+        return
+    st.caption(t("draft_approval_unlocked", locale=locale))
+    base_key = f"wsc_draft_appr_{message_id}"
+    reviewer = st.text_input(
+        t("draft_approval_reviewer_name", locale=locale),
+        key=base_key + "_name",
+    )
+    reason = st.text_input(
+        t("draft_approval_reason_label", locale=locale),
+        key=base_key + "_reason",
+    )
+    revised = st.text_area(
+        t("draft_approval_revise_label", locale=locale),
+        key=base_key + "_revise",
+    )
+    resolved_pair = str(pair_id or "").strip() or f"{conversation_id}:{message_id}"
+    col_ok, col_fix, col_no = st.columns(3)
+    with col_ok:
+        if st.button(t("draft_approval_approve", locale=locale), key=base_key + "_ok"):
+            labeled = draft_approval.apply_approval_label(text, str(reviewer or ""))
+            if not labeled.get("ok"):
+                st.warning(str(labeled.get("error_vi")))
+            else:
+                saved = draft_approval.record_decision(
+                    resolved_pair,
+                    str(reviewer or ""),
+                    "approved",
+                    source_file=str(source_file or ""),
+                )
+                if saved.get("ok"):
+                    st.success(str(t("draft_approval_approved_ok", locale=locale, label=str(labeled.get("label", "")))))
+                else:
+                    st.warning(str(saved.get("error_vi")))
+    with col_fix:
+        if st.button(t("draft_approval_revise_approve", locale=locale), key=base_key + "_fix"):
+            revised_text = str(revised or "").strip()
+            if not revised_text:
+                st.warning(str(t("draft_approval_revise_label", locale=locale)))
+            else:
+                kept = draft_approval.create_revised_version(
+                    resolved_pair, text, revised_text, str(reviewer or ""),
+                    source_file=str(source_file or ""),
+                )
+                if not kept.get("ok"):
+                    st.warning(str(kept.get("error_vi")))
+                else:
+                    saved = draft_approval.record_decision(
+                        resolved_pair,
+                        str(reviewer or ""),
+                        "revised",
+                        source_file=str(source_file or ""),
+                    )
+                    if saved.get("ok"):
+                        st.success(t("draft_approval_revised_ok", locale=locale))
+                    else:
+                        st.warning(str(saved.get("error_vi")))
+    with col_no:
+        if st.button(t("draft_approval_reject", locale=locale), key=base_key + "_no"):
+            saved = draft_approval.record_decision(
+                resolved_pair,
+                str(reviewer or ""),
+                "rejected",
+                reason=str(reason or ""),
+                source_file=str(source_file or ""),
+            )
+            if saved.get("ok"):
+                st.success(t("draft_approval_rejected_ok", locale=locale))
+            else:
+                st.warning(str(saved.get("error_vi")))
+    if draft_approval.is_approved_answer(text):
+        if st.button(t("draft_approval_unapprove", locale=locale), key=base_key + "_undo"):
+            saved = draft_approval.record_decision(
+                resolved_pair, str(reviewer or ""), "unapproved",
+                reason=str(reason or ""),
+                source_file=str(source_file or ""),
+            )
+            if saved.get("ok"):
+                st.success(t("draft_approval_unapproved_ok", locale=locale))
+            else:
+                st.warning(str(saved.get("error_vi")))
+
+
 def render_chat_bubble(
     msg: ChatMessage,
     is_latest: bool = False,
@@ -677,6 +804,15 @@ def render_chat_bubble(
 
             # Vong lap cai thien lien tuc: feedback cau tra loi ngay tren khung chat.
             render_answer_feedback_row(
+                conversation_id=conversation_id,
+                message_id=str(msg.id or ""),
+                question=feedback_question,
+                answer=display_content,
+                locale=locale,
+            )
+            # DRAFT-APPROVAL (co duyet TAT mac dinh): 3 nut duyet ngay duoi
+            # cau tra loi ban thao, chi hien khi da mo khoa PIN.
+            render_draft_approval_row(
                 conversation_id=conversation_id,
                 message_id=str(msg.id or ""),
                 question=feedback_question,
