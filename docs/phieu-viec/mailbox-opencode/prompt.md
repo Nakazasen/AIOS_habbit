@@ -1,31 +1,24 @@
-# Vé: AUDIT-ENRICH-MOM — Audit 608 cặp MOM (thợ opencode)
+# Ticket: AUDIT-ENRICH-LSU — Audit 1.790 cặp LSU (chuyển từ hàng chờ OMP sang opencode 22:45)
 
-> Thợ opencode (máy nhà, chế độ 4 watcher song song). Model: free muse-spark-1.3 / space-bunny.
-> Mailbox này: `docs/phieu-viec/mailbox-opencode/`. Báo cáo của thợ vào `docs/phieu-viec/ket-qua/`,
-> cập nhật `trang-thai.md` của mailbox này (không đụng mailbox khác).
-> Nguồn: `docs/phieu-viec/chatgpt-enrichment-raw/mom/` (15 file, 608 cặp).
-> Đích: `docs/phieu-viec/chatgpt-enrichment-fixed/mom/` (cùng cấu trúc file).
+> opencode đã làm tốt vé AUDIT-ENRICH-MOM (verdict ĐẠT) nên nhận tiếp vé audit LSU.
+> Nguồn: `docs/phieu-viec/chatgpt-enrichment-raw/lsu/` (54 file batch-01..54, 1.790 cặp, Q609–Q2408).
+> Đích: `docs/phieu-viec/chatgpt-enrichment-fixed/lsu/` (cùng cấu trúc file).
 
 ## Rào cứng
 - Chỉ sửa file trong `chatgpt-enrichment-fixed/`, không sửa thư mục raw.
-- Mọi cặp giữ nhãn `MOM` + `Bản thảo — chưa qua chuyên gia duyệt`.
+- Mọi cặp giữ nhãn `LSU` + `Bản thảo — chưa qua chuyên gia duyệt`.
+- Giá trị `999`/`9999`/`0`/`--` chỉ giữ là Raw value, không tự gán nghĩa OK/NG (đã đúng từ nguồn, kiểm tra lại không để lọt diễn giải sai).
 - TUYỆT ĐỐI KHÔNG nhập vào kho tri thức chính. Không merge `main`.
 
 ## Việc cần làm
-1. **Sửa lỗi đã biết** (ghi nhận từ quá trình thu thập):
-   - `batch-04.md` Q183 → Hỏi: `Spec Name và WorkCenter Name được dùng khác nhau thế nào?` / Đáp: `Spec Name dùng cho 着完工/Line-Out; WorkCenter Name dùng cho xuất kho manual.`
-   - Q853, Q1034, Q1076 → trường `Cách hỏi` sửa thành `直接`.
-   - Q1128, Q1131, Q1132, Q1136 → các trường bị diễn giải lại khi thu hồi, khôi phục nguyên văn từ nguồn ChatGPT.
-   - Q1124 → đáp án bổ sung đủ số liệu còn thiếu.
-2. **Kiểm tra numbering/format toàn bộ 15 file**: mỗi file đủ số cặp, Q liên tục không trùng/khuyết, đủ 6 trường (Khối/Ngôn ngữ/Bối cảnh/Cách hỏi/Hỏi/Đáp + Nguồn file).
-3. **Dedup theo nội dung**: các chủ đề đã biết trùng — Matecon, AGV communication, ERD, ORICON_STATUS, manual truyền phiếu, map/version, thống kê màu, CamError một record. Giữ bản đầy đủ nhất, loại bản trùng, ghi log các cặp bị loại.
-4. **Chấm M1–M5** bằng 6 module `src/aios_habit/golden_question_*.py` (scorer + quality). Cặp điểm thấp: sửa rồi chấm lại; không sửa được thì loại. Ghi metric trước/sau.
-5. **Vòng xem lại**: sau khi sửa, chạy lại scorer một lượt nữa để xác nhận không còn cặp điểm thấp.
+1. **Kiểm tra numbering/format toàn bộ 54 file**: Q liên tục từ Q609 đến Q2408 (lưu ý Q639–648 bỏ trống có chủ đích vì `Thumbs.db`), đủ 6 trường + Nguồn file mỗi cặp.
+2. **Dedup mạnh theo nội dung** — các nhóm đã biết trùng nhiều:
+   - ~30/50 cặp mẻ 39 lặp ý "Raw value 0" (Yellow/Magenta Profile toàn waveform 0);
+   - các batch Sirius2 chỉ có `999`, `0` hoặc `--`;
+   - các cặp hỏi cùng một record/ngưỡng chỉ khác cách diễn đạt.
+   Giữ bản đầy đủ nhất, loại bản trùng, ghi log các cặp bị loại.
+3. **Chấm M1–M5** bằng các module `src/aios_habit/golden_question_*.py` (repo hiện có 5 module, vé MOM ghi 6 — dùng đúng số module có thật, ghi rõ nếu thiếu). Cặp điểm thấp: sửa rồi chấm lại; không sửa được thì loại. Ghi metric trước/sau. (Rút kinh nghiệm vé MOM: M1/M2/M5 chưa đo được thì ghi rõ lý do, không bịa số.)
+4. **Vòng xem lại**: chạy lại scorer một lượt sau sửa để xác nhận không còn cặp điểm thấp.
 
 ## Báo cáo
-`docs/phieu-viec/ket-qua/audit-enrich-mom.md`: số cặp trước/sau, số cặp sửa, số cặp loại (+lý do), metric M1–M5 trước/sau, danh sách file đã fix. Commit lên `phieu-viec/rag-fix1`, `docs/phieu-viec/mailbox-opencode/trang-thai.md` → `xong-cho-duyet`.
-
-## Quy ước watcher (bắt buộc)
-- Nhận vé: đặt `trang-thai.md` thành `dang-lam` NGAY LẬP TỨC (commit + push), kèm `ghi_chu` có timestamp giờ máy.
-- Mỗi mốc quan trọng: cập nhật `ghi_chu` + timestamp rồi push. `dang-lam` quá 20 phút không tiến triển = kẹt.
-- **Trước mỗi push: `git pull --rebase origin phieu-viec/rag-fix1` trước** (3 thợ cùng push một nhánh; pull --rebase để tự nối, tránh báo lỗi non-fast-forward). Không force-push.
+`docs/phieu-viec/ket-qua/audit-enrich-lsu.md`: số cặp trước/sau, số cặp sửa, số cặp loại (+lý do), metric M1–M5 trước/sau, danh sách file đã fix. Commit lên `phieu-viec/rag-fix1`, `trang-thai.md` → `xong-cho-duyet`.
