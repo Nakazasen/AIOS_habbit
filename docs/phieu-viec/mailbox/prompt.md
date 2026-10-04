@@ -1,20 +1,18 @@
-# Ticket XẾP HÀNG: TOOL-2 — Khung action trong chat
+# Ticket XẾP HÀNG: TOOL-3 — Nối benchmark vào chat
 
 ## Bối cảnh
-Theo kết quả TOOL-1. Cần khung chung để mọi tool chui vào câu trả lời chat
-thay vì phơi nút riêng.
+Theo khung TOOL-2. Nối `mom_benchmark`, `rag_benchmark`, `rag_evaluator` vào chat.
 
 ## Việc cần làm
-1. Thiết kế `chat_action` framework: tool đăng ký action → chat gọi theo ngữ cảnh
-   câu hỏi → render kết quả giàu (bảng, biểu đồ) trong vùng trả lời.
-2. Viết code khung + 1 tool mẫu tích hợp thử (chọn tool đơn giản nhất từ TOOL-1).
-3. Test: hỏi thử → action kích hoạt đúng → kết quả render đúng.
-4. Không mỗi tính năng thêm một nút — đúng luật UI đã chốt.
+1. Đăng ký benchmark làm chat action theo khung TOOL-2.
+2. User hỏi "đánh giá chất lượng trả lời" → chạy benchmark → hiện bảng điểm
+   trong câu trả lời.
+3. Test đầy đủ.
 
 ## Cấm
-- Không ghi index. Chỉ code + test.
+- Không ghi index production. Chỉ code + test.
 - Không merge `main`. Không đụng ổ D.
 
 ## Báo cáo
-`docs/phieu-viec/ket-qua/tool2-khung-action.md`. Commit lên `phieu-viec/rag-fix1`,
+`docs/phieu-viec/ket-qua/tool3-benchmark-chat.md`. Commit lên `phieu-viec/rag-fix1`,
 `trang-thai.md` → `xong-cho-duyet`.
