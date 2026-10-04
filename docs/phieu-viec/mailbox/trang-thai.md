@@ -11,5 +11,5 @@
   6. `IMPORT-STAGING-ENRICH` — CHUYỂN cho opencode 22:55 +07 (cả 2 audit ĐẠT, đủ điều kiện chạy; opencode đang làm, mốc-1 rào-staging ĐẠT).
 - Vé audit/import ChatGPT enrichment ĐÃ xếp (user duyệt commit batch lên repo public 2026-10-04 18:11 +07). Dữ liệu thô: `docs/phieu-viec/chatgpt-enrichment-raw/` (45 file, 1.998 cặp) — chỉ dùng để audit, không import trực tiếp.
 - `commit`: `f37fe1d` (điểm nhận vé sau pull)
-- `bao_cao`: (đang làm — chưa có)
-- `ghi_chu`: 2026-10-04 23:25 +07 — OMP máy nhà đã nhận vé OMP-MODEL-REPORT, máy `h410asrock`, OMP đang chạy, bắt đầu đọc cấu hình model.
+- `bao_cao`: `docs/phieu-viec/ket-qua/omp-model-report.md` (đang viết — chưa xong)
+- `ghi_chu`: 2026-10-04 23:35 +07 — OMP đã đọc xong `config.yml` (55 dòng, đủ 11 roles + fallback), đang ghi báo cáo model.
