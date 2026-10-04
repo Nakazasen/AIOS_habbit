@@ -37,3 +37,7 @@
 - `ghi_chu`: 2026-10-05 05:55 +07 — mốc đếm xong: raw 33 file batch-55..87 (không có batch-88), 980 cặp Q2409–Q3391, thiếu đúng Q3206–Q3208 có chủ đích, 0 trùng số hiệu. Kế tiếp: đối chiếu 3 lỗi chép tay.
 - `ghi_chu`: 2026-10-05 06:05 +07 — mốc audit xong: 3 lỗi vé nêu đều có thật trong raw (Q2571 `02YT`, Q2632 `+AH01`, Q2691 `XD`); format: đủ 6 trường + Nguồn file 980/980, Khối đúng 100%, 1 nhãn sai (Q3196), 28 file thiếu nhãn Bản thảo ở đầu file, 0 trùng Hỏi+Đáp, 9 nhóm trùng Hỏi (8 nhóm giữ vì case khác nhau, 1 cặp Q3214 trùng nội dung Q3124 sẽ loại), OK/NG đều từ nguồn (264 đáp quét hết, không đáp nào tự gán). Kế tiếp: tạo fixed + sửa. (Dòng này bị push `d4a5597` của Muse xóa nhầm, đã khôi phục nguyên văn.)
 - `ghi_chu`: 2026-10-05 06:20 +07 — mốc fix + vòng xem lại xong: fixed 33 file/979 cặp (loại Q3214 trùng Q3124), 3 lỗi vé sửa đúng, Q3196 nhãn đúng, 33/33 đủ nhãn Bản thảo, 0 lỗi format, 0 trùng nội dung, raw không đụng. Kế tiếp: ghi báo cáo + xin duyệt.
+- Trạng thái: `xong-cho-duyet`
+- `commit`: `bc08f1c` (fixed 33 file + báo cáo audit)
+- `bao_cao`: `docs/phieu-viec/ket-qua/audit-enrich-dieuchinh.md`
+- `ghi_chu`: 2026-10-05 06:45 +07 — xong vé AUDIT-ENRICH-DIEU-TRA-LOI ở mức chờ duyệt: raw 980 cặp Q2409–Q3391 (thiếu Q3206–Q3208 có chủ đích) → fixed 979 cặp (loại Q3214 trùng Q3124, có nhật ký); sửa 3 lỗi vé + 1 nhãn Q3196 + nhãn Bản thảo 28 file; M3 đủ trường 100%, M4 100%, M1/M2/M5 chưa đo được (ghi rõ lý do); raw không đụng, không nhập kho chính, không merge main.
