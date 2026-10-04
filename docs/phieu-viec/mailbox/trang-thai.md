@@ -16,4 +16,4 @@
 - Vé audit/import ChatGPT enrichment ĐÃ xếp (user duyệt commit batch lên repo public 2026-10-04 18:11 +07). Dữ liệu thô: `docs/phieu-viec/chatgpt-enrichment-raw/` (45 file, 1.998 cặp) — chỉ dùng để audit, không import trực tiếp.
 - `commit`: 12f1744
 - `bao_cao`: 
-- `ghi_chu`: 2026-10-04 19:00 +07 — Đã commit fix tràn nhãn nút (12f1744: cắt chữ ellipsis + cột [4.0,4.9,2.1], test 93 pass) + push. App thật đang chạy cổng 8501, chuẩn bị chụp ảnh 1440/1100 nghiệm thu.
+- `ghi_chu`: 2026-10-04 19:10 +07 — Ép khối chạy thật OK (LSU applied + badge đúng, tong_hop bị chặn, Tự động giữ cũ), SHA tri_thuc không đổi 45eb0e07. Cổng watcher: không cho-muse. Tiếp theo: viết báo cáo ket-qua rồi chốt.
