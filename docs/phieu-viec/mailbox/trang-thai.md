@@ -5,4 +5,4 @@
 - `hang-cho`: hết.
 - `commit`: (đang làm)
 - `bao_cao`: `docs/phieu-viec/ket-qua/ux-attach-sources.md` (báo cáo cũ `cho-muse` giữ để đối chiếu; báo cáo vòng này ghi đè khi xong)
-- `ghi_chu`: 2026-10-04 07:39 +07 app đã mở lại cổng 8501 (cùng biến `RUN_AIOS_WORKSPACE_CHAT.bat`). Đang kiểm 3 điểm: hỏi kèm ảnh `MA-UX-7741`, ảnh một lần, nhãn `＋ Thêm nguồn`.
+- `ghi_chu`: 2026-10-04 07:45 +07 đã đính `anh-mot-lan.png` (chữ MA-UX-7741) và gửi "lỗi này là gì?" trên lane Gemini tự động, cuộc `CONV-77E1085A`. Nhãn sidebar đúng `＋ Thêm nguồn`. Đang chờ câu trả lời.
