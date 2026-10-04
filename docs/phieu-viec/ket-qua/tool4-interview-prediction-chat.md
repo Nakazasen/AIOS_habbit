@@ -84,3 +84,18 @@
 - Vé riêng cho xung đột “ngưỡng” giữa `jig_chat_wire` và câu hỏi thường (mục 6.1).
 - Cân nhắc hiển thị lịch sử chạy bóng đã lưu trong action prediction (mục 6.3).
 - TOOL-5 dùng lại khung: thêm 1 module + 1 dòng `BUILTIN_ACTION_MODULES` (như vé này), lưu ý `evidence_graph_viewer` đã nối sẵn theo TOOL-1.
+
+## 8. Kiểm lại ngày 2026-10-05 (vé tái phát hành 2026-10-05 ~01:50 +07)
+
+- Lý do kiểm lại: vé `TOOL-4` đã làm xong ngày 2026-09-30 và chờ duyệt (`59448e1`), nhưng ngày 2026-10-05 Muse phát hành lại vé này sau verdict `TOOL-3` ĐẠT. OMP kiểm cổng gate lúc 2026-10-05 01:55 +07: cổng MỞ (`HEAD` = `origin` = `f25816c`, `prompt.md` đúng vé `TOOL-4`, trạng thái `moi` mới ~01:50, watcher `LAUNCH 1/4` lúc 01:51 `launchStallCount=1` chưa chạm ngưỡng 4 lần `cho-muse`). Vé thuộc lane NHÀ (code + test), code đã có → chỉ kiểm lại, không viết lại code.
+- Phạm vi rà: từ bản phát hành lại (`f25816c`) tới `HEAD` không đổi mã `src`/`tests` (`git diff f25816c..HEAD -- src tests` rỗng; chỉ thêm batch enrichment `chatgpt-enrichment-raw` và dòng tiến độ `trang-thai.md`). Code gốc 30/09 còn nguyên: `chat_action_expert_interview.py` (404 dòng), `chat_action_prediction.py` (353 dòng), `tests/test_chat_action_expert_interview.py` (201 dòng, 12 bài), `tests/test_chat_action_prediction.py` (198 dòng, 15 bài), `ARCHITECTURE.md` + `PROJECT_HANDOVER.md` đã có mục TOOL-4.
+- Kiểm cổng gate lần 2 lúc 2026-10-05 02:01 +07: cổng MỞ (watcher ngoài working copy `D:/Sandbox/Vong_lap_giao_viec/watcher_state.json` ghi `launchStallCount=1`, `LAUNCH 1/4` lúc 01:51, `status` đã sang `dang-lam` sau khi OMP nhận vé 01:55; chưa chạm ngưỡng 4 lần `cho-muse`; `prompt.md` đúng vé TOOL-4). Không đặt `cho-muse`, không quay no-op.
+- Bằng chứng chạy lại trên máy `h410asrock` (Windows, Python `3.11.14`, `uv 0.10.6`):
+  - `python -m compileall src tests` → sạch.
+  - `pytest -q tests/test_chat_action_expert_interview.py tests/test_chat_action_prediction.py` → **27 passed** (đúng 27 bài vé gốc).
+  - `pytest -q tests/test_chat_action.py tests/test_chat_action_answer_quality.py tests/test_chat_action_expert_interview.py tests/test_chat_action_prediction.py` → **56 passed** (17 TOOL-2 + 12 TOOL-3 + 27 TOOL-4).
+  - Hồi quy prediction cũ (đã sửa `repository.py` ở vé gốc): 8 file (`test_lsu_prediction_repository`, `test_lsu_manual_shadow`, `test_prediction_shadow_ui`, `test_stream_api`, `test_lsu_prediction_evaluation`, `test_lsu_prediction_reporting`, `test_lsu_audit_fixes`, `test_iris_log_intake`) → **117 passed**.
+  - `PYTHONPATH=src python -m aios_habit.cli audit` → `"status": "PASS"` (0 lỗi, 0 cảnh báo); `import aios_habit.workspace_chat_app` → OK; `chat_action_enabled()` → `False` (cờ mặc định TẮT); 2 module vé đã đăng ký trong `BUILTIN_ACTION_MODULES` (tổng 15 module); `scripts/check_docs.py` → `DOCUMENTATION_CONTRACT=PASS`; `git diff --check` → sạch.
+  - Ràng buộc vé giữ nguyên: không nút mới (`st.button`/`st.expander`/`st.tabs` = 0 trong 2 tệp action), có `register_action`, không tham chiếu ổ D (0 kết quả `D:`), không merge `main`, không ghi index (test read-only vé gốc khẳng định byte store không đổi; prediction chạy `mode=ro` không sinh `.bak_*`).
+  - Full suite toàn bộ chưa chạy lại lượt này; dựa vào kết quả gốc 30/09 trong mục 5e (lượt B đủ môi trường: **3.334 đạt, 2 bỏ qua, 35 lỗi, 0 error**, +27 đạt đúng bằng 27 test vé mới, 35 lỗi toàn ngoài vùng vé) + hồi quy 56/56 và 117/117 xanh hiện tại — code không đổi nên kết quả gốc còn giá trị.
+- Kết luận: giữ nguyên code 30/09, chỉ thêm mục kiểm lại này. Đề nghị Muse duyệt `xong-cho-duyet`.
