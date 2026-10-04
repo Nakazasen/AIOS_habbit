@@ -36,3 +36,6 @@ Trạng thái: `dang-lam`
 
 - `hang-cho` (mới, 2026-10-02 ~17:39):
   1. `KNOWLEDGE-ENRICH-PILOT` (`docs/phieu-viec/mailbox/prompt-queue-knowledge-enrich-pilot.md`) — [CTY] pilot làm giàu tri thức 5 hiện tượng F CALL (Copilot → staging, nhãn `kiến thức đã được đào tạo bổ sung`) — (vé #1 `SPEED-COLDSTART-PC0575` đã phát hành 17:40)
+- `hang-cho` (bổ sung 2026-10-05 ~07:05 +07, theo chốt của user: C-Agent là đường sống ở công ty, làm tiếp sổ tay + nối dữ liệu hỏi đáp trong hôm nay):
+  2. `WIRE-QA-CAGENT-PC0575` (`docs/phieu-viec/mailbox-pc0575/prompt-queue-wire-qa-cagent-pc0575.md`) — [CTY] nối 3.393 cặp hỏi đáp ChatGPT vào giao diện để hỏi đáp qua lane C-Agent (kiểm C-Agent sống, nhãn bản thảo, demo 3 câu)
+  3. `DIGEST-CTY-RESUME` (`docs/phieu-viec/mailbox-pc0575/prompt-queue-digest-cty-resume.md`) — [CTY] làm tiếp sổ tay tri thức ở máy công ty bằng lane C-Agent (kiểm tra tiến độ máy nhà trước, không làm trùng; rào bản thảo)
