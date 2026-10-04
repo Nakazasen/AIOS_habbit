@@ -1,49 +1,51 @@
-# Vé ROUND4B-DOUBLE-BUBBLE [NHÀ] — Sửa lỗi 2 bubble khi hỏi kèm ảnh
+# Vé ROUND5-UX-COMPOSER [NHÀ] — Sửa xô lệch composer + công tắc chọn khối tri thức
 
-> Vé CODE (thợ OMP máy nhà implement + verify app thật). Phát hành bằng cách
-> copy file này vào `prompt.md`, reset `trang-thai.md` về `moi`.
-> Role OMP gợi ý: DEFAULT (code + verify). Không cần PLAN (thiết kế đã chốt).
+> Vé CODE (thợ OMP máy nhà implement + verify app thật). Làm SAU khi vòng 4
+> UX-ATTACH-SOURCES xong. Phát hành bằng cách copy file này vào `prompt.md`,
+> reset `trang-thai.md` về `moi`.
+> Role OMP gợi ý: DEFAULT (code + verify). Không cần PLAN (thiết kế đã chốt
+> sẵn dưới đây). Vé verify nhanh sau này dùng SMOL/TINY cho rẻ.
 
 ## Bối cảnh
-- Vòng 4 UX-ATTACH-SOURCES (one-shot-inline, commit c317d84) CHƯA ĐẠT:
-  4 điểm Phần B đều đạt, nhưng một lần gửi câu hỏi kèm ảnh tạo **hai bubble**
-  (bubble 1 = câu hỏi + khối OCR đúng thiết kế; bubble 2 = câu thô trùng lặp).
-  Tái hiện 2/2, bằng chứng: ảnh 23, `messages.jsonl`, `traces.jsonl` trong
-  `docs/phieu-viec/ket-qua/ux-attach-sources.md` (mục "Lỗi mới").
+- Vòng 4 (one-shot-inline, commit c317d84) tách ảnh 1 lần / nguồn lâu dài.
+- User gửi ảnh chụp: hàng điều khiển dưới ô nhập bị xô lệch — chữ nút
+  "🖼️ Ảnh cho câu hỏi này" đè lên dòng "Đang dùng: Gemini qua cầu nối
+  (tự động)" vì 6 phần tử ([+], nút ảnh, trạng thái lane, dropdown Tìm nhanh,
+  gợi ý phím Ctrl+↵, nút Hỏi) bị nhồi trong một hàng.
 
-## Chẩn đoán đã xác nhận (Muse audit độc lập)
-- Composer (`workspace_chat_app.py` ~dòng 4952) lưu bubble user với nội dung
-  **đã gộp OCR** (`q_text` = câu thô + khối OCR).
-- Tầng cầu nối (`antigravity_bridge.py` dòng 600)
-  `_get_or_create_user_message(conversation_id, user_raw_input)` chỉ tái dùng
-  tin nhắn cuối khi nội dung khớp **chính xác** câu thô → không khớp bản đã
-  gộp → tự tạo thêm một tin nhắn mới bằng câu thô → bubble thứ hai. Trace còn
-  gán nhầm `user_message_id` vào bubble trơn này.
+## Việc 1 — Sửa xô lệch (bắt buộc)
+- Ô nhập full-width một hàng riêng.
+- Hàng dưới chỉ còn: nút [+] đính kèm bên trái, nút Hỏi bên phải.
+- Dòng trạng thái lane ("Đang dùng: ...") dời xuống một dòng mờ riêng,
+  không chen ngang.
+- Thanh tiến trình "Đã chuẩn bị xong..." giữ khoảng cách rõ với cụm nút.
+- Bằng chứng: chụp ảnh composer sau sửa, không còn chữ đè chữ ở các độ rộng
+  cửa sổ thông thường.
 
-## Hướng sửa CHỐT (Muse quyết — cấm làm khác)
-- **Truyền thẳng id tin nhắn đã lưu xuống tầng cầu nối.** Không dùng so khớp
-  tiền tố (đề xuất (a) của OMP bị loại: hai câu hỏi liên tiếp giống nhau, câu
-  sau không kèm ảnh, sẽ bị nhận nhầm vào bubble đã gộp OCR của câu trước).
-- Cụ thể:
-  1. Composer khi submit: truyền thêm `user_message_id=user_msg.id` vào
-     `_run_chat_turn_async` (param mới, optional).
-  2. `_run_chat_turn_async` (dòng 1063) nhận param và chuyển tiếp vào
-     `route_workspace_chat_submission` (dòng 987, param mới optional).
-  3. `_get_or_create_user_message` thêm param optional `reuse_message_id`:
-     nếu có và tìm thấy tin nhắn đó trong cuộc trò chuyện → trả về luôn,
-     không tạo mới; các đường gọi cũ không truyền id giữ nguyên hành vi
-     (4 điểm gọi dòng 1113/1199/1333/1419 chỉ đổi khi có id).
-- Không đổi thiết kế one-shot-inline: bubble 1 vẫn hiện câu hỏi + khối OCR
-  như đã verify ở vòng 4.
+## Việc 2 — Công tắc chọn khối tri thức (bắt buộc)
+- Một dòng chữ mờ dưới ô nhập, mặc định "Tự động" (giữ nguyên hành vi
+  router hiện tại). Bấm vào bung ra 4 lựa chọn: Tự động / LSU / Điều tra lỗi
+  / MOM. Không thêm toolbar, không thêm tab.
+- Khi ép khối: câu trả lời hiện badge "Đang tra cứu khối X" đúng khối đã
+  chọn; chỉ tìm trong khối đó (không vào tong_hop).
+- Khi để Tự động: hành vi y như hiện tại.
 
-## Ràng buộc cứng
-- Python 3.11. Không đụng index (SHA các khối giữ nguyên).
-- Test cũ pass; bổ sung test: đã có id → không tạo tin nhắn mới;
-  không id → hành vi cũ.
+## Việc 3 — Dòng thư viện chung ở sidebar (bắt buộc)
+- Thêm đúng một dòng gập sẵn: "Thư viện chung · 3 khối · luôn bật".
+- Bấm mới mở ra xem 3 khối + trạng thái; mặc định gập.
 
-## Nghiệm thu (app thật)
-1. Gửi 1 câu hỏi kèm ảnh → đúng **1 bubble** (câu hỏi + khối OCR). Làm 2 lần độc lập.
-2. Câu hỏi không kèm ảnh → 1 bubble như cũ.
-3. Hai câu hỏi liên tiếp giống nhau (câu 2 không kèm ảnh) → 2 bubble riêng, không gộp nhầm.
-4. Trace `user_message_id` trỏ đúng bubble đã gộp OCR.
-5. Bằng chứng: ảnh chụp + đoạn `messages.jsonl`/`traces.jsonl` liên quan.
+## Ràng buộc cứng (cấm regression)
+- GIỮ NGUYÊN thiết kế one-shot-inline vòng 4: ảnh OCR gộp vào câu hỏi,
+  không tạo nguồn tạm, câu sau không dùng lại.
+- Code tương thích Python 3.11.
+- Test hiện có phải pass: test_workspace_chat_composer_ui.py,
+  test_workspace_chat_connector_guard.py, test_workspace_chat_ui_i18n.py
+  (trừ 2 anti-hardcode đã biết fail từ trước).
+- Bổ sung test cho công tắc khối (ép khối → badge đúng; Tự động → router như cũ).
+
+## Nghiệm thu
+1. Ảnh chụp composer: không xô lệch, tối giản.
+2. Ép từng khối → badge đúng + kết quả chỉ từ khối đó.
+3. Tự động → hành vi cũ.
+4. Sidebar có dòng thư viện chung, mặc định gập.
+5. SHA kho tri_thuc không đổi (vé chỉ đụng UI).
