@@ -121,6 +121,19 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
         "search_pref_deep": "Tìm kỹ hơn",
         "search_level": "Mức độ tìm kiếm",
 
+        # Knowledge blocks (shared library) & composer block switch
+        "knowledge_block_label": "Khối tri thức",
+        "knowledge_block_auto": "Tự động",
+        "knowledge_block_lsu": "LSU",
+        "knowledge_block_dieu_tra_loi": "Điều tra lỗi",
+        "knowledge_block_mom": "MOM",
+        "knowledge_block_help": "Chọn khối tri thức cần tra cứu cho câu hỏi này. Để “Tự động”, AIOS tự chọn khối theo nội dung câu hỏi.",
+        "knowledge_block_missing_error": "Khối tri thức {name} chưa có dữ liệu trên máy này. Hãy chọn khối khác hoặc để “Tự động”.",
+        "shared_blocks_expander": "Thư viện chung · 3 khối · luôn bật",
+        "shared_blocks_help": "Ba khối tri thức dùng chung, luôn được bật cho mọi câu hỏi trong sổ này.",
+        "shared_block_ready": "sẵn sàng",
+        "shared_block_missing": "chưa có dữ liệu trên máy này",
+
         # Sources & Document Management
         "source_library": "Nguồn tham khảo",
         "temp_sources": "Nguồn tạm trong cuộc trò chuyện",
@@ -987,6 +1000,19 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
         "search_pref_deep": "詳細検索",
         "search_level": "検索深度",
 
+        # Knowledge blocks (shared library) & composer block switch
+        "knowledge_block_label": "知識ブロック",
+        "knowledge_block_auto": "自動",
+        "knowledge_block_lsu": "LSU",
+        "knowledge_block_dieu_tra_loi": "エラー調査",
+        "knowledge_block_mom": "MOM",
+        "knowledge_block_help": "この質問で調べる知識ブロックを選びます。「自動」の場合はAIOSが質問内容に応じてブロックを選びます。",
+        "knowledge_block_missing_error": "選択した知識ブロック {name} はこのPCにデータがありません。別のブロックを選ぶか「自動」に戻してください。",
+        "shared_blocks_expander": "共有ライブラリ · 3ブロック · 常時有効",
+        "shared_blocks_help": "3つの共有知識ブロックは常に有効で、このノートブックのすべての質問に使われます。",
+        "shared_block_ready": "準備完了",
+        "shared_block_missing": "このPCにデータなし",
+
         # Sources & Document Management
         "source_library": "ソースライブラリ",
         "temp_sources": "会話内の一時ソース",
@@ -1852,6 +1878,19 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
         "search_pref_auto": "快速搜索",
         "search_pref_deep": "深度搜索",
         "search_level": "搜索层级",
+
+        # Knowledge blocks (shared library) & composer block switch
+        "knowledge_block_label": "知识区块",
+        "knowledge_block_auto": "自动",
+        "knowledge_block_lsu": "LSU",
+        "knowledge_block_dieu_tra_loi": "故障调查",
+        "knowledge_block_mom": "MOM",
+        "knowledge_block_help": "选择本次提问要查询的知识区块。选择“自动”时，AIOS 会根据问题内容自动挑选区块。",
+        "knowledge_block_missing_error": "所选知识区块 {name} 在本机暂无数据。请改选其他区块或恢复“自动”。",
+        "shared_blocks_expander": "共享知识库 · 3 个区块 · 始终启用",
+        "shared_blocks_help": "三个共享知识区块始终启用，适用于本笔记本的所有提问。",
+        "shared_block_ready": "已就绪",
+        "shared_block_missing": "本机暂无数据",
 
         # Sources & Document Management
         "source_library": "来源库",

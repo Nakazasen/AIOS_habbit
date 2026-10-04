@@ -3144,12 +3144,58 @@ def _domain_index_ready(config: WorkspaceChatRagV2CanaryConfig, collection_id: s
         return False
 
 
+def workspace_chat_domain_block_status() -> tuple[dict[str, Any], ...]:
+    """Read-only readiness of the three shared knowledge blocks (sidebar).
+
+    Never raises: a missing deployment config or index only reports
+    ``ready=False`` so the sidebar can state the block status honestly.
+    """
+    from aios_habit.index_domain import DOMAINS, DOMAIN_DISPLAY
+    from aios_habit.workspace_chat_store import collection_runtime_layout
+
+    profile_root: Optional[Path] = None
+    try:
+        config = WorkspaceChatRagV2CanaryConfig.from_env()
+        profile_root = Path(config.runtime_root) / str(config.requested_profile)
+    except Exception:
+        profile_root = None
+
+    blocks: list[dict[str, Any]] = []
+    for domain in DOMAINS:
+        ready = False
+        size_bytes = 0
+        if profile_root is not None:
+            try:
+                runtime_root, index_name = collection_runtime_layout(domain, profile_root)
+                index_path = Path(runtime_root) / index_name
+                ready = index_path.is_file()
+                if ready:
+                    size_bytes = int(index_path.stat().st_size)
+            except Exception:
+                ready, size_bytes = False, 0
+        blocks.append(
+            {
+                "domain": domain,
+                "display": DOMAIN_DISPLAY.get(domain, domain),
+                "ready": ready,
+                "size_bytes": size_bytes,
+            }
+        )
+    return tuple(blocks)
+
+
 def _select_domain_route(
     question: str,
     sources: Tuple["WorkspaceAIContextSource", ...],
     config: WorkspaceChatRagV2CanaryConfig,
+    forced_domain: Optional[str] = None,
 ):
     """Pick a domain collection for the question (feature-flagged).
+
+    ``forced_domain`` is the knowledge block the user explicitly picked in the
+    composer. It wins over question detection and the routing flag (the user
+    asked for that block) and is whitelisted to the three blocks, so it can
+    never select ``tong_hop``.
 
     Returns an ``index_domain.DomainRoute`` or ``None`` when routing is
     disabled. Never raises: a classification failure must not break
@@ -3158,9 +3204,33 @@ def _select_domain_route(
     try:
         from aios_habit import index_domain
 
+        base_collection_id = _collection_id_for_sources(sources)
+        forced = str(forced_domain or "").strip().lower()
+        if forced and forced != "auto":
+            if forced not in index_domain.DOMAINS:
+                return None
+            detected = index_domain.Classification(
+                forced,
+                1.0,
+                "người dùng chọn khối %s" % index_domain.DOMAIN_DISPLAY.get(forced, forced),
+            )
+            target = index_domain.DOMAIN_COLLECTION_IDS.get(forced)
+            if target is None:
+                return None
+            if not _domain_index_ready(config, target):
+                return index_domain.DomainRoute(
+                    base_collection_id,
+                    forced,
+                    False,
+                    "khối được chọn chưa có kho trên máy này",
+                    detected,
+                )
+            return index_domain.DomainRoute(
+                target, forced, True, "người dùng chọn khối", detected
+            )
+
         if not index_domain.domain_routing_enabled():
             return None
-        base_collection_id = _collection_id_for_sources(sources)
         detected = index_domain.detect_domain_from_question(question)
 
         def _collection_exists(collection_id: str) -> bool:
@@ -3203,6 +3273,7 @@ def retrieve_workspace_chat_evidence(
     pipeline_factory: Callable[[RagV2DevConfig], RagV2DevPipeline] = RagV2DevPipeline,
     expansion: Optional[Mapping[str, Any]] = None,
     search_preference: str = "auto",
+    forced_domain: Optional[str] = None,
 ) -> dict[str, Any]:
     """Retrieve evidence only through the pinned local BGE-M3 hybrid pipeline."""
     sources = tuple(context_sources)
@@ -3237,7 +3308,17 @@ def retrieve_workspace_chat_evidence(
 
     # Domain routing (feature-flagged): detect the question's knowledge domain
     # and search that domain's collection instead of the legacy mixed one.
-    domain_route = _select_domain_route(question, sources, resolved)
+    # A block explicitly chosen in the composer (forced_domain) overrides
+    # detection; if that block has no index, fail with an honest reason instead
+    # of silently searching the mixed legacy library.
+    domain_route = _select_domain_route(question, sources, resolved, forced_domain)
+    if (
+        str(forced_domain or "").strip()
+        and str(forced_domain or "").strip().lower() != "auto"
+        and domain_route is not None
+        and not domain_route.applied
+    ):
+        return _finish(_quality_search_unavailable("domain_block_missing"))
     domain_collection_id = (
         domain_route.collection_id
         if domain_route is not None and domain_route.applied

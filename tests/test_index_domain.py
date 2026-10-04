@@ -140,6 +140,60 @@ def test_select_domain_missing_collection_falls_back(monkeypatch):
     assert route.note
 
 
+def _forced_route(monkeypatch, forced, exists_map, *, base="tri_thuc"):
+    from aios_habit import workspace_chat_rag_v2_adapter as adapter
+
+    monkeypatch.setattr(adapter, "_collection_id_for_sources", lambda sources: base)
+    monkeypatch.setattr(
+        adapter, "_domain_index_ready", lambda config, cid: exists_map.get(cid, False)
+    )
+    return adapter._select_domain_route("câu hỏi bất kỳ", (), None, forced_domain=forced)
+
+
+def test_forced_block_routes_even_when_routing_flag_off(monkeypatch):
+    monkeypatch.delenv("AIOS_DOMAIN_ROUTING_ENABLED", raising=False)
+    route = _forced_route(monkeypatch, "lsu", {"lsu": True})
+    assert route.applied is True
+    assert route.collection_id == "lsu"
+    assert route.domain == "lsu"
+    assert route.detected is not None
+    assert route.detected.domain == "lsu"
+    assert route.detected.confidence == 1.0
+
+
+def test_forced_block_never_selects_tong_hop(monkeypatch):
+    route = _forced_route(monkeypatch, "tong_hop", {"tong_hop": True})
+    assert route is None
+
+
+def test_forced_block_missing_index_reports_not_applied(monkeypatch):
+    route = _forced_route(monkeypatch, "mom", {"lsu": True})
+    assert route.applied is False
+    assert route.collection_id == "tri_thuc"
+    assert route.note
+    assert route.detected is not None
+    assert route.detected.domain == "mom"
+
+
+def test_auto_mode_with_flag_off_keeps_router_behavior(monkeypatch):
+    monkeypatch.delenv("AIOS_DOMAIN_ROUTING_ENABLED", raising=False)
+    route = _forced_route(monkeypatch, None, {"lsu": True})
+    assert route is None
+
+
+def test_auto_mode_with_flag_on_still_detects_from_question(monkeypatch):
+    from aios_habit import workspace_chat_rag_v2_adapter as adapter
+
+    monkeypatch.setenv("AIOS_DOMAIN_ROUTING_ENABLED", "1")
+    monkeypatch.setattr(adapter, "_collection_id_for_sources", lambda sources: "tri_thuc")
+    monkeypatch.setattr(
+        adapter, "_domain_index_ready", lambda config, cid: cid == "dieu_tra_loi"
+    )
+    route = adapter._select_domain_route("mã lỗi F123 đối sách?", (), None)
+    assert route.applied is True
+    assert route.collection_id == "dieu_tra_loi"
+
+
 def test_domain_index_ready_sees_profile_collection_file(tmp_path, monkeypatch):
     from aios_habit.workspace_chat_rag_v2_adapter import (
         WorkspaceChatRagV2CanaryConfig,

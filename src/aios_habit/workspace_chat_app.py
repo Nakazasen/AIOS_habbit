@@ -198,6 +198,7 @@ st.html('''
             border-color: #E2E8F0 !important;
             box-shadow: none !important;
             padding: 0.7rem 0.85rem !important;
+            margin-bottom: 0.75rem !important;
         }
         [class*="st-key-wsc-composer-"][data-testid="stVerticalBlock"] {
             gap: 4px !important;
@@ -299,6 +300,25 @@ st.html('''
         }
         [class*="st-key-wsc-attachment-"] [data-testid="stPopover"] button > svg:last-child {
             display: none !important;
+        }
+        /* Công tắc khối tri thức: một dòng mờ dưới ô nhập, không nổi như nút. */
+        [class*="st-key-wsc-block-"] [data-testid="stPopover"] button {
+            min-height: 1.9rem !important;
+            height: 1.9rem !important;
+            padding: 0 0.4rem !important;
+            border: 0 !important;
+            background: transparent !important;
+            color: #475569 !important;
+            font-weight: 500 !important;
+        }
+        [class*="st-key-wsc-block-"] [data-testid="stPopover"] button p {
+            font-size: 0.82rem !important;
+            white-space: nowrap !important;
+        }
+        [class*="st-key-wsc-search_pref_"] [data-baseweb="select"] > div {
+            min-height: 1.9rem !important;
+            height: 1.9rem !important;
+            font-size: 0.82rem !important;
         }
         [class*="st-key-wsc-composer-"] [data-testid="stImage"] img {
             border-radius: 10px !important;
@@ -666,6 +686,7 @@ from aios_habit.workspace_chat_rag_v2_adapter import (
     forget_workspace_chat_sources,
     ensure_workspace_chat_worker_warming,
     is_workspace_chat_worker_warmed,
+    workspace_chat_domain_block_status,
 )
 from aios_habit.i18n import (
     t,
@@ -1060,6 +1081,32 @@ def _start_gemini_web_bridge(*, locale: str, announce_success: bool = False) -> 
     return False
 
 
+def _prefix_domain_block_badge(retrieval_summary: str, domain_info: Any) -> str:
+    """Prepend the "Đang tra cứu khối X." badge when a block was really searched."""
+    if (
+        not isinstance(domain_info, dict)
+        or not domain_info.get("enabled")
+        or not domain_info.get("applied")
+    ):
+        return retrieval_summary
+    block_name = str(domain_info.get("domain_display") or "").strip()
+    if not block_name:
+        return retrieval_summary
+    block_line = "Đang tra cứu khối %s." % block_name
+    if domain_info.get("ambiguous"):
+        block_line += " (Câu hỏi chưa rõ lĩnh vực — đã chọn khối khả dĩ nhất.)"
+    return block_line + (" " + retrieval_summary if retrieval_summary else "")
+
+
+def _knowledge_block_missing_message(ret_res: Any, locale: str) -> str:
+    """Vietnamese notice when the composer-forced block has no index on this machine."""
+    domain_info = ret_res.get("domain_routing") if isinstance(ret_res, dict) else None
+    block_name = ""
+    if isinstance(domain_info, dict):
+        block_name = str(domain_info.get("domain_display") or "").strip()
+    return t("knowledge_block_missing_error", locale=locale, name=block_name or "?")
+
+
 def _run_chat_turn_async(
     q_text: str,
     query_relevant_sources: tuple = (),
@@ -1078,6 +1125,7 @@ def _run_chat_turn_async(
     cagent_endpoint_url: str = "",
     cancellation_event: Any = None,
     user_message_id: str = "",
+    forced_domain: Optional[str] = None,
 ) -> tuple[bool, str, dict[str, Any] | None, str | None]:
     """Execute evidence retrieval and model answer routing inside background thread pool."""
     from aios_habit.antigravity_bridge import route_workspace_chat_submission
@@ -1103,6 +1151,7 @@ def _run_chat_turn_async(
             tuple(query_relevant_sources),
             expansion=expansion,
             search_preference=active_pref,
+            forced_domain=forced_domain,
         )
 
     retrieval_applied = False
@@ -1119,6 +1168,8 @@ def _run_chat_turn_async(
             unavailable_reason = str(
                 ret_res.get("rag_v2_canary", {}).get("fallback_reason", "")
             ).casefold()
+            if unavailable_reason == "domain_block_missing":
+                return (False, "", None, _knowledge_block_missing_message(ret_res, current_ui_locale))
             if unavailable_reason != "deep_search_unavailable" and (
                 _is_worker_startup_reason(unavailable_reason) or not unready_sources
             ):
@@ -1142,6 +1193,8 @@ def _run_chat_turn_async(
                     retry_reason = str(
                         retry_res.get("rag_v2_canary", {}).get("fallback_reason", "")
                     ).casefold()
+                    if retry_reason == "domain_block_missing":
+                        return (False, "", None, _knowledge_block_missing_message(retry_res, current_ui_locale))
                     if retry_reason == "deep_search_unavailable":
                         err_msg = t("deep_search_unavailable", locale=current_ui_locale)
                     elif _is_worker_startup_reason(retry_reason) or not unready_sources:
@@ -1178,20 +1231,9 @@ def _run_chat_turn_async(
             retrieval_summary = ret_res.get("safe_owner_message", "")
             # Domain routing transparency: state which knowledge block was
             # searched. Ambiguous questions name the most plausible block.
-            domain_info = ret_res.get("domain_routing") or {}
-            if (
-                isinstance(domain_info, dict)
-                and domain_info.get("enabled")
-                and domain_info.get("applied")
-            ):
-                block_name = str(domain_info.get("domain_display") or "").strip()
-                if block_name:
-                    block_line = "Đang tra cứu khối %s." % block_name
-                    if domain_info.get("ambiguous"):
-                        block_line += " (Câu hỏi chưa rõ lĩnh vực — đã chọn khối khả dĩ nhất.)"
-                    retrieval_summary = block_line + (
-                        " " + retrieval_summary if retrieval_summary else ""
-                    )
+            retrieval_summary = _prefix_domain_block_badge(
+                retrieval_summary, ret_res.get("domain_routing")
+            )
     else:
         retrieval_applied = False
         retrieved_sources = ()
@@ -3403,6 +3445,26 @@ else:
                                         for f in current_scan.unsupported_files[:50]
                                     ]
                                     st.dataframe(unsupported_table, use_container_width=True)
+            # Thư viện chung: 3 khối tri thức luôn bật, mặc định gập.
+            with st.expander(t("shared_blocks_expander", locale=current_ui_locale), expanded=False):
+                st.caption(t("shared_blocks_help", locale=current_ui_locale))
+                _shared_block_label_keys = {
+                    "lsu": "knowledge_block_lsu",
+                    "dieu_tra_loi": "knowledge_block_dieu_tra_loi",
+                    "mom": "knowledge_block_mom",
+                }
+                for _shared_block in workspace_chat_domain_block_status():
+                    _label_key = _shared_block_label_keys.get(str(_shared_block["domain"]), "")
+                    _shared_label = (
+                        t(_label_key, locale=current_ui_locale)
+                        if _label_key
+                        else str(_shared_block["display"])
+                    )
+                    _shared_state = t(
+                        "shared_block_ready" if _shared_block["ready"] else "shared_block_missing",
+                        locale=current_ui_locale,
+                    )
+                    st.markdown(f"• **{_shared_label}** · {_shared_state}")
             render_source_library(
                 notebook_sources=notebook_sources,
                 temp_sources=temp_sources,
@@ -4208,35 +4270,10 @@ else:
                         label_visibility="visible",
                     )
 
-                    toolbar_attach_col, toolbar_model_col, toolbar_search_col, _toolbar_spacer, toolbar_hint_col, toolbar_action_col = st.columns([2.2, 3.4, 2.2, 2.0, 1.2, 1.6], vertical_alignment="center")
-                    with toolbar_attach_col:
-                        with st.container(key=f"wsc-attachment-{active_conversation.id}"):
-                            with st.popover(t("attach_popover", locale=current_ui_locale), help=t("attach_screenshot_help", locale=current_ui_locale), icon=":material/add:"):
-                                uploaded_image = st.file_uploader(
-                                    t("attach_screenshot_label", locale=current_ui_locale),
-                                    type=["png", "jpg", "jpeg", "webp", "bmp"],
-                                    key=upload_key,
-                                    help=t("attach_screenshot_help", locale=current_ui_locale),
-                                    label_visibility="collapsed",
-                                )
-                                if paste_image_button is None:
-                                    st.info(t("clipboard_image_unavailable", locale=current_ui_locale))
-                                else:
-                                    paste_result = paste_image_button(
-                                        "Dán ảnh đã copy",
-                                        key=f"wsc_paste_image_{active_conversation.id}",
-                                        background_color="#0369A1",
-                                        hover_background_color="#075985",
-                                        errors="raise",
-                                    )
-                                    if paste_result.image_data is not None:
-                                        image_buffer = BytesIO()
-                                        paste_result.image_data.save(image_buffer, format="PNG")
-                                        st.session_state[pasted_image_key] = BufferedWorkspaceUpload(
-                                            "clipboard-image.png", image_buffer.getvalue()
-                                        )
-                                        safe_rerun()
-                    with toolbar_model_col:
+                    # Dòng mờ dưới ô nhập (không chen vào hàng nút):
+                    # trạng thái lane AI · công tắc khối tri thức · mức tìm kiếm.
+                    lane_status_col, block_switch_col, search_level_col = st.columns([5.2, 2.6, 2.4], vertical_alignment="center")
+                    with lane_status_col:
                         # UX-CHAT-CORE #3: lane tu dong chon (giong header legacy).
                         from aios_habit.ai_lane import auto_backend_for_conversation as _auto_lane
                         from aios_habit.ai_lane import backend_label_vi as _lane_label
@@ -4277,6 +4314,46 @@ else:
                                 ).strip()
                                 if cagent_endpoint:
                                     os.environ["AIOS_CAGENT_API_URL"] = cagent_endpoint
+                    with block_switch_col:
+                        # Công tắc chọn khối tri thức: mặc định "Tự động" (router
+                        # như cũ); bấm mới bung 4 lựa chọn, không thêm toolbar/tab.
+                        from aios_habit.index_domain import (
+                            DOMAINS as _DOMAINS,
+                            DOMAIN_LSU as _DOMAIN_LSU,
+                            DOMAIN_DIEU_TRA_LOI as _DOMAIN_DIEU_TRA_LOI,
+                            DOMAIN_MOM as _DOMAIN_MOM,
+                        )
+
+                        knowledge_block_key = f"wsc_knowledge_block_{active_conversation.id}"
+                        knowledge_block_value = str(
+                            st.session_state.get(knowledge_block_key, "auto") or "auto"
+                        )
+                        block_choices = {
+                            "auto": t("knowledge_block_auto", locale=current_ui_locale),
+                            _DOMAIN_LSU: t("knowledge_block_lsu", locale=current_ui_locale),
+                            _DOMAIN_DIEU_TRA_LOI: t("knowledge_block_dieu_tra_loi", locale=current_ui_locale),
+                            _DOMAIN_MOM: t("knowledge_block_mom", locale=current_ui_locale),
+                        }
+                        if knowledge_block_value not in block_choices:
+                            knowledge_block_value = "auto"
+                        with st.container(key=f"wsc-block-{active_conversation.id}"):
+                            with st.popover(
+                                f"{t('knowledge_block_label', locale=current_ui_locale)}: {block_choices[knowledge_block_value]}",
+                                help=t("knowledge_block_help", locale=current_ui_locale),
+                            ):
+                                for _block_value in ("auto", *_DOMAINS):
+                                    if st.button(
+                                        block_choices[_block_value],
+                                        key=f"wsc_block_pick_{active_conversation.id}_{_block_value}",
+                                        use_container_width=True,
+                                        type=(
+                                            "primary"
+                                            if _block_value == knowledge_block_value
+                                            else "secondary"
+                                        ),
+                                    ):
+                                        st.session_state[knowledge_block_key] = _block_value
+                                        safe_rerun()
                     # UX-CHAT-CORE #3: selected_ai_backend da do lane tu dong quyet dinh
                     # o tren; khong doc lai tu session key cua selectbox cu (da bo).
                     cagent_endpoint_url = (
@@ -4298,7 +4375,7 @@ else:
                         "auto": t("search_preference_auto", locale=current_ui_locale),
                         "deep": t("search_preference_deep", locale=current_ui_locale),
                     }
-                    with toolbar_search_col:
+                    with search_level_col:
                         chosen_pref = st.selectbox(
                             t("search_level", locale=current_ui_locale),
                             options=pref_options,
@@ -4311,6 +4388,36 @@ else:
                     if chosen_pref != current_pref:
                         update_conversation_search_preference(active_conversation.id, chosen_pref)
                         active_conversation.search_preference = chosen_pref
+                    # Hàng dưới cùng chỉ còn nút [+] đính kèm bên trái và nút
+                    # Hỏi bên phải; gợi ý phím nằm sát nút gửi, không chen nhau.
+                    toolbar_attach_col, toolbar_hint_col, toolbar_action_col = st.columns([2.4, 7.4, 1.6], vertical_alignment="center")
+                    with toolbar_attach_col:
+                        with st.container(key=f"wsc-attachment-{active_conversation.id}"):
+                            with st.popover(t("attach_popover", locale=current_ui_locale), help=t("attach_screenshot_help", locale=current_ui_locale), icon=":material/add:"):
+                                uploaded_image = st.file_uploader(
+                                    t("attach_screenshot_label", locale=current_ui_locale),
+                                    type=["png", "jpg", "jpeg", "webp", "bmp"],
+                                    key=upload_key,
+                                    help=t("attach_screenshot_help", locale=current_ui_locale),
+                                    label_visibility="collapsed",
+                                )
+                                if paste_image_button is None:
+                                    st.info(t("clipboard_image_unavailable", locale=current_ui_locale))
+                                else:
+                                    paste_result = paste_image_button(
+                                        "Dán ảnh đã copy",
+                                        key=f"wsc_paste_image_{active_conversation.id}",
+                                        background_color="#0369A1",
+                                        hover_background_color="#075985",
+                                        errors="raise",
+                                    )
+                                    if paste_result.image_data is not None:
+                                        image_buffer = BytesIO()
+                                        paste_result.image_data.save(image_buffer, format="PNG")
+                                        st.session_state[pasted_image_key] = BufferedWorkspaceUpload(
+                                            "clipboard-image.png", image_buffer.getvalue()
+                                        )
+                                        safe_rerun()
                     with toolbar_hint_col:
                         with st.container(key=f"wsc-shortcut-hint-{active_conversation.id}"):
                             st.caption("Ctrl+↵")
@@ -4981,6 +5088,10 @@ else:
                                     ai_backend=ai_backend,
                                     cagent_endpoint_url=cagent_endpoint_url,
                                     cancellation_event=cancellation_event,
+                                    forced_domain=str(
+                                        st.session_state.get(f"wsc_knowledge_block_{active_conversation.id}", "auto")
+                                        or "auto"
+                                    ),
                                 )
                                 st.session_state[ai_request_key] = {
                                     "future": request_future,

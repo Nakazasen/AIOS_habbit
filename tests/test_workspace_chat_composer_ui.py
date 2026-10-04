@@ -113,7 +113,60 @@ def test_composer_toolbar_labels_stay_on_one_line() -> None:
     assert "nowrap" in attach
     assert "anywhere" not in attach
     assert "nowrap" in ask
-    assert "st.columns([2.2, 3.4, 2.2, 2.0, 1.2, 1.6]" in source
+    # ROUND5-UX-COMPOSER: dim meta line under the input (lane status | block
+    # switch | search level) and a bottom row that only carries [+] and Hỏi.
+    assert "st.columns([5.2, 2.6, 2.4]" in source
+    assert "st.columns([2.4, 7.4, 1.6]" in source
+
+
+def test_composer_toolbar_row_keeps_only_attach_and_send_buttons() -> None:
+    """ROUND5-UX-COMPOSER: the lane caption and search dropdown must not sit in
+    the same row as the attach/send buttons again (that caused text overlap)."""
+    source = _app_source()
+    toolbar = source.split(
+        "toolbar_attach_col, toolbar_hint_col, toolbar_action_col = st.columns(",
+        1,
+    )[1]
+    toolbar = toolbar.split("st.html(", 1)[0]
+
+    assert 'with st.container(key=f"wsc-attachment-' in toolbar
+    assert 'with st.container(key=f"wsc-action-' in toolbar
+    assert '"Đang dùng: "' not in toolbar
+    assert "st.selectbox" not in toolbar
+
+
+def test_composer_knowledge_block_switch_defaults_to_auto_with_four_choices() -> None:
+    """ROUND5-UX-COMPOSER: one dim line under the input; auto by default; four
+    choices; no new toolbar or tab strip."""
+    source = _app_source()
+    translations = Path("src/aios_habit/i18n.py").read_text(encoding="utf-8")
+
+    assert 'with st.container(key=f"wsc-block-{active_conversation.id}"):' in source
+    assert 'st.session_state.get(knowledge_block_key, "auto")' in source
+    assert 'for _block_value in ("auto", *_DOMAINS):' in source
+    assert 'st.session_state[knowledge_block_key] = _block_value' in source
+    assert "forced_domain=str(" in source
+    assert "st.tabs" not in source.split('key=f"wsc-block-', 1)[1][:1200]
+    for key in (
+        "knowledge_block_label",
+        "knowledge_block_auto",
+        "knowledge_block_lsu",
+        "knowledge_block_dieu_tra_loi",
+        "knowledge_block_mom",
+        "knowledge_block_help",
+        "knowledge_block_missing_error",
+    ):
+        assert f'"{key}"' in translations
+
+
+def test_sidebar_shared_library_line_is_collapsed_and_lists_three_blocks() -> None:
+    """ROUND5-UX-COMPOSER: one collapsed line 'Thư viện chung · 3 khối · luôn bật'."""
+    source = _app_source()
+    translations = Path("src/aios_habit/i18n.py").read_text(encoding="utf-8")
+
+    assert '"shared_blocks_expander": "Thư viện chung · 3 khối · luôn bật"' in translations
+    assert 't("shared_blocks_expander", locale=current_ui_locale), expanded=False' in source
+    assert "workspace_chat_domain_block_status()" in source
 
 
 def test_composer_has_narrow_viewport_guard() -> None:
