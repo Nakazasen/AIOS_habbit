@@ -116,7 +116,7 @@ def test_composer_toolbar_labels_stay_on_one_line() -> None:
     # ROUND5-UX-COMPOSER: dim meta line under the input (lane status | block
     # switch | search level) and a bottom row that only carries [+] and Hỏi.
     assert "st.columns([4.2, 2.8, 3.2]" in source
-    assert "st.columns([2.0, 6.9, 2.1]" in source
+    assert "st.columns([4.0, 4.9, 2.1]" in source
 
 
 def test_composer_toolbar_row_keeps_only_attach_and_send_buttons() -> None:
@@ -133,6 +133,37 @@ def test_composer_toolbar_row_keeps_only_attach_and_send_buttons() -> None:
     assert 'with st.container(key=f"wsc-action-' in toolbar
     assert '"Đang dùng: "' not in toolbar
     assert "st.selectbox" not in toolbar
+
+
+def test_attach_button_label_is_clipped_inside_its_column() -> None:
+    """ROUND5 verify 04/10: at a 1100px window the nowrap attach label was
+    173px wide inside a 101px column, and centred overflow spilled the "+"
+    icon outside the composer border. The label must be clipped instead."""
+    source = _app_source()
+    attach = source.split(
+        '[class*="st-key-wsc-attachment-"] [data-testid="stPopover"] button p',
+        1,
+    )[1][:320]
+    button = source.split(
+        '[class*="st-key-wsc-attachment-"] [data-testid="stPopover"] button {',
+        1,
+    )[1][:320]
+
+    # Keep the label on one line (no character-per-line wrap), but clip it.
+    assert "nowrap" in attach
+    assert "overflow: hidden" in attach
+    assert "text-overflow: ellipsis" in attach
+    assert "min-width: 0" in attach
+    # The button itself may never grow past its column.
+    assert "max-width: 100%" in button
+    assert "overflow: hidden" in button
+    # Intermediate flex wrappers must be allowed to shrink, otherwise the
+    # label pushes the icon out of the button box.
+    wrappers = source.split(
+        '[class*="st-key-wsc-attachment-"] [data-testid="stPopover"] button * {',
+        1,
+    )[1][:120]
+    assert "min-width: 0" in wrappers
 
 
 def test_composer_knowledge_block_switch_defaults_to_auto_with_four_choices() -> None:

@@ -289,19 +289,30 @@ st.html('''
             width: 1.15rem !important;
             height: 1.15rem !important;
         }
+        /* Nhãn nút gắn không bao giờ tràn ra ngoài khung composer: cột hẹp ở
+           cửa sổ hẹp làm chữ nowrap tràn cả hai phía (ROUND5 verify 04/10). */
         [class*="st-key-wsc-attachment-"] [data-testid="stPopover"] button p {
             white-space: nowrap !important;
             overflow-wrap: normal !important;
             word-break: keep-all !important;
+            overflow: hidden !important;
+            text-overflow: ellipsis !important;
+            min-width: 0 !important;
         }
         [class*="st-key-wsc-attachment-"] [data-testid="stPopover"] button {
             min-width: 44px !important;
-            min-height: 44px !important;
             width: auto !important;
+            max-width: 100% !important;
             height: 44px !important;
             padding: 0 0.75rem !important;
             justify-content: center !important;
             white-space: nowrap !important;
+            overflow: hidden !important;
+        }
+        /* Các vỏ flex giữa nút và chữ phải co lại được, nếu không nhãn dài
+           đẩy nội dung vượt bề ngang của nút. */
+        [class*="st-key-wsc-attachment-"] [data-testid="stPopover"] button * {
+            min-width: 0 !important;
         }
         [class*="st-key-wsc-attachment-"] [data-testid="stPopover"] button > svg:last-child {
             display: none !important;
@@ -4407,7 +4418,7 @@ else:
                         active_conversation.search_preference = chosen_pref
                     # Hàng dưới cùng chỉ còn nút [+] đính kèm bên trái và nút
                     # Hỏi bên phải; gợi ý phím nằm sát nút gửi, không chen nhau.
-                    toolbar_attach_col, toolbar_hint_col, toolbar_action_col = st.columns([2.0, 6.9, 2.1], vertical_alignment="center")
+                    toolbar_attach_col, toolbar_hint_col, toolbar_action_col = st.columns([4.0, 4.9, 2.1], vertical_alignment="center")
                     with toolbar_attach_col:
                         with st.container(key=f"wsc-attachment-{active_conversation.id}"):
                             with st.popover(t("attach_popover", locale=current_ui_locale), help=t("attach_screenshot_help", locale=current_ui_locale), icon=":material/add:"):
