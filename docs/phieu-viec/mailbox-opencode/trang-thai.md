@@ -1,7 +1,7 @@
 # Trạng thái mailbox-opencode (thợ opencode — model free muse-spark-1.3 / space-bunny)
 
-- Trạng thái: `xong`
-- Ticket hiện tại: `AUDIT-ENRICH-LSU` — audit 1.790 cặp LSU (chuyển từ hàng chờ OMP 22:45, opencode đã ĐẠT vé MOM). Prompt: `docs/phieu-viec/mailbox-opencode/prompt.md`.
+- Trạng thái: `moi`
+- Ticket hiện tại: `IMPORT-STAGING-ENRICH` — nhập 2.398 cặp MOM+LSU đã audit vào DB staging. Prompt: `docs/phieu-viec/mailbox-opencode/prompt.md`. (Vé cũ: `AUDIT-ENRICH-LSU` ĐẠT 22:50) — audit 1.790 cặp LSU (chuyển từ hàng chờ OMP 22:45, opencode đã ĐẠT vé MOM). Prompt: `docs/phieu-viec/mailbox-opencode/prompt.md`.
 - `hang-cho`: chưa có
 - `commit`: 0741d31 (fixed/lsu 39 file) + báo cáo này
 - `bao_cao`: `docs/phieu-viec/ket-qua/audit-enrich-lsu.md`
