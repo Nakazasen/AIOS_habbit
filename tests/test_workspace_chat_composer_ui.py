@@ -115,8 +115,8 @@ def test_composer_toolbar_labels_stay_on_one_line() -> None:
     assert "nowrap" in ask
     # ROUND5-UX-COMPOSER: dim meta line under the input (lane status | block
     # switch | search level) and a bottom row that only carries [+] and Hỏi.
-    assert "st.columns([5.2, 2.6, 2.4]" in source
-    assert "st.columns([2.4, 7.4, 1.6]" in source
+    assert "st.columns([4.2, 2.8, 3.2]" in source
+    assert "st.columns([2.0, 6.9, 2.1]" in source
 
 
 def test_composer_toolbar_row_keeps_only_attach_and_send_buttons() -> None:

@@ -320,10 +320,22 @@ st.html('''
             font-size: 0.82rem !important;
             white-space: nowrap !important;
         }
-        [class*="st-key-wsc-search_pref_"] [data-baseweb="select"] > div {
+        [class*="st-key-wsc_search_pref_"] [data-baseweb="select"] > div {
             min-height: 1.9rem !important;
             height: 1.9rem !important;
             font-size: 0.82rem !important;
+        }
+        [class*="st-key-wsc_search_pref_"] [data-baseweb="select"] div,
+        [class*="st-key-wsc_search_pref_"] [data-baseweb="select"] span {
+            font-size: 0.8rem !important;
+            white-space: nowrap !important;
+        }
+        [class*="st-key-wsc_search_pref_"] [data-baseweb="select"] > div {
+            min-width: 0 !important;
+        }
+        [class*="st-key-wsc_search_pref_"] [data-baseweb="select"] div[title] {
+            overflow: hidden !important;
+            text-overflow: ellipsis !important;
         }
         [class*="st-key-wsc-composer-"] [data-testid="stImage"] img {
             border-radius: 10px !important;
@@ -4277,7 +4289,7 @@ else:
 
                     # Dòng mờ dưới ô nhập (không chen vào hàng nút):
                     # trạng thái lane AI · công tắc khối tri thức · mức tìm kiếm.
-                    lane_status_col, block_switch_col, search_level_col = st.columns([5.2, 2.6, 2.4], vertical_alignment="center")
+                    lane_status_col, block_switch_col, search_level_col = st.columns([4.2, 2.8, 3.2], vertical_alignment="center")
                     with lane_status_col:
                         # UX-CHAT-CORE #3: lane tu dong chon (giong header legacy).
                         from aios_habit.ai_lane import auto_backend_for_conversation as _auto_lane
@@ -4395,7 +4407,7 @@ else:
                         active_conversation.search_preference = chosen_pref
                     # Hàng dưới cùng chỉ còn nút [+] đính kèm bên trái và nút
                     # Hỏi bên phải; gợi ý phím nằm sát nút gửi, không chen nhau.
-                    toolbar_attach_col, toolbar_hint_col, toolbar_action_col = st.columns([2.4, 7.4, 1.6], vertical_alignment="center")
+                    toolbar_attach_col, toolbar_hint_col, toolbar_action_col = st.columns([2.0, 6.9, 2.1], vertical_alignment="center")
                     with toolbar_attach_col:
                         with st.container(key=f"wsc-attachment-{active_conversation.id}"):
                             with st.popover(t("attach_popover", locale=current_ui_locale), help=t("attach_screenshot_help", locale=current_ui_locale), icon=":material/add:"):
