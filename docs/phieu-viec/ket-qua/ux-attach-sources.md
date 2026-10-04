@@ -1,32 +1,36 @@
-# Báo cáo UX-ATTACH-SOURCES — máy nhà, vòng verify lại
+# Báo cáo UX-ATTACH-SOURCES — vòng 3, máy nhà
 
 - Trạng thái: **chưa đạt**, chuyển `cho-muse`. Không merge `main`. Không sửa code.
-- Máy: `h410asrock`. Nhánh: `phieu-viec/rag-fix1`. Mã kiểm: `26a71c2` (HEAD khi nhận vé `e6aeac8`).
-- Ngày: 2026-10-04, khoảng 07:36–07:52 +07.
-- Cổng gate: watcher `LAUNCH 1/4` lúc 07:34:30 (`launchStallCount=1`). Điều kiện mở đã tới (mã `26a71c2` có trên nhánh). Không dùng nhánh 4 lần watcher.
-- Sổ thử: `UX-ATTACH-SOURCES` (`NB-19FB596C`), cuộc mới `CONV-77E1085A`. Không đụng sổ công ty.
+- Máy: `h410asrock`. Nhánh: `phieu-viec/rag-fix1`. Mã kiểm: `8e5e59b`.
+- Ngày: 2026-10-04, khoảng 08:03–08:25 +07.
+- Cổng gate: watcher `LAUNCH 1/4` lúc 08:02:06 (`launchStallCount=1`). Điều kiện mở đã tới (mã `8e5e59b` có trên nhánh). Không dùng nhánh 4 lần watcher.
+- Sổ thử: `UX-ATTACH-SOURCES` (`NB-19FB596C`). Câu hỏi kèm ảnh chạy trên cuộc `CONV-868EBB6B`. Không đụng sổ công ty.
 
 ## Kết luận
 
-Nhãn expander đã đúng một dấu `＋`. Câu hỏi kèm ảnh **vẫn không chạy** trên lane Gemini. App không còn chặn bằng câu “không được gửi ảnh”, nhưng OCR không đọc được ảnh, không tạo nguồn tạm, rồi dừng ở `Thiếu ngữ cảnh` / `Chưa có nguồn nào`. Không có câu trả lời, không có chữ `MA-UX-7741`.
+Phần A đạt: Tesseract đã cài đúng chỗ, có tiếng Việt. Điểm 1 và điểm 3 của Phần B đạt. Điểm 2 chưa đạt: sau câu 1, thumbnail đã biến, nhưng câu 2 không đính kèm vẫn dùng lại nội dung ảnh cũ.
 
-## 3 điểm verify lại
+## Phần A — cài Tesseract
 
-1. **Chưa đạt.** Lane đúng `Đang dùng: Gemini qua cầu nối (tự động)`, cầu nối xanh. Đính `anh-mot-lan.png` (chữ rõ `MA-UX-7741`) rồi bấm Hỏi với câu `lỗi này là gì?`. App hiện một dòng: `Chưa đọc được nội dung ảnh (có thể thiếu bộ đọc OCR hoặc ảnh mờ). Câu hỏi vẫn được gửi dựa trên chữ bạn nhập.` Ngay sau đó khung chat vẫn là `Hãy bắt đầu cuộc trò chuyện...` và banner đỏ `Thiếu ngữ cảnh` / `Chưa có nguồn nào`. Không có tin nhắn user, không có câu trả lời, không có `MA-UX-7741`. Ảnh `06-thumbnail.png`, `07-cau1-ocr-fail.png`.
-2. **Chưa kiểm được.** Thumbnail `anh-mot-lan.png` và nút `Bỏ ảnh` còn trong composer sau lần bấm Hỏi. Câu 1 không được gửi nên không có câu 2 để xem ảnh cũ có bị dùng lại không.
-3. **Đạt.** Thanh bên hiện đúng `＋ Thêm nguồn` (một dấu cộng, đúng chữ trong i18n). Bên dưới là `📚 Nguồn tham khảo`. Không còn `＋ ＋ Thêm nguồn`. Ảnh `05b-sidebar-nhan.png`.
+- File cài: `tesseract-ocr-w64-setup-5.5.3.20260724.exe` (đúng bản trên wiki UB Mannheim).
+- Cài im lặng vào `C:\Program Files\Tesseract-OCR\` (cần quyền quản trị, đã chạy được).
+- `tesseract --version` ra `tesseract v5.5.3.20260724`.
+- Gói tiếng Việt: bộ cài im lặng không có ô tick ngôn ngữ, nên tải `vie.traineddata` (kho tessdata chuẩn) vào `tessdata`, đúng cách B trên wiki. `tesseract --list-langs` có `vie`.
+- Đã thêm thư mục cài vào PATH của user để lệnh `tesseract` chạy được trong cmd mới.
 
-## Vì sao OCR fail
+## Phần B — 3 điểm trên app thật
 
-Chạy cùng hàm đọc ảnh của app trên đúng file thử, không qua giao diện:
+App mở lại bằng cùng bộ biến của `RUN_AIOS_WORKSPACE_CHAT.bat`, cổng 8501. Lane đúng `Đang dùng: Gemini qua cầu nối (tự động)`, cầu nối xanh.
 
-- trạng thái: `unsupported_no_local_ocr`
-- cảnh báo: `rapidocr_unavailable; paddleocr_unavailable; local OCR unavailable: tesseract executable not found; set AIOS_TESSERACT_CMD or add Tesseract to PATH`
-- chữ đọc được: rỗng
+1. **Đạt.** Đính ảnh lỗi thật `07-cau1-ocr-fail.png` (ảnh chụp màn hình app vòng trước, có chữ, không phải ảnh giả) rồi hỏi `lỗi này là gì?`. Câu hỏi chạy, không bị chặn. Câu trả lời trên Gemini đọc được chữ trong ảnh: trích `Thiếu ngữ cảnh` và `Chưa có nguồn nào`, có tên file ảnh. Ảnh `11-cau1-doc-duoc-chu.png`.
+2. **Chưa đạt.** Thumbnail và nút `Bỏ ảnh` đã biến khỏi composer sau câu 1 (ảnh `12-composer-sau-cau1.png`). Hỏi tiếp câu không đính kèm: `Trong anh vua roi co cum Thieu ngu canh khong? Chi tra loi co hoac khong.` Câu trả lời vẫn là `Có`, huy hiệu vẫn `Nguồn gửi cùng câu hỏi: 2`, gợi ý vẫn gọi tên `07-cau1-ocr-fail.png`, thanh bên vẫn còn nguồn tạm đó đang bật. Nguồn một lần không tự tắt. Ảnh `14-cau2-van-dung-anh.png`, `15-cau2-goi-y-van-anh.png`.
+3. **Đạt.** Expander thanh bên đúng một dấu `＋ Thêm nguồn`, bên dưới là `📚 Nguồn tham khảo`. Không còn `＋ ＋`. Ảnh `13-sidebar-mot-dau.png`.
 
-`AIOS_TESSERACT_CMD` trống. `tesseract` không có trên PATH, không thấy ở `C:\Program Files\Tesseract-OCR`. Máy nhà không có bộ đọc chữ cho ảnh.
+## Ghi chú thêm, không phải lỗi cài đặt
 
-Hệ quả trên app: lượt OCR thất bại không tăng `wsc_upload_version`, không tạo nguồn tạm, rồi nhánh `not enabled_selections` gọi rerun. Câu hỏi không tới lane Gemini, dù dòng cảnh báo nói câu hỏi vẫn được gửi.
+App vẫn OCR bằng ngôn ngữ mặc định `eng` (không tự chọn `vie` dù gói đã cài). Bản chữ lưu trong nguồn tạm bị mất dấu. Gemini vẫn đọc lại được cụm `Thiếu ngữ cảnh`. Muốn ảnh tiếng Việt sạch hơn, Muse cần cho app gọi `vie+eng` (biến `AIOS_OCR_LANG` đã có sẵn, launcher thường không đặt).
+
+Câu trả lời câu 1 còn kéo thêm một sự kiện log điều tra khác ngoài ảnh. Không chép nội dung log đó vào báo cáo này.
 
 ## Kho tri thức
 
@@ -37,12 +41,16 @@ Hệ quả trên app: lượt OCR thất bại không tăng `wsc_upload_version`
 | mtime | 2026-10-01 08:27:27 | 2026-10-01 08:27:27 |
 | SHA-256 | `45eb0e072893f802d71ab201cfbb2b29c36e2b0a31313fa79fc55a025b65b7c0` | cùng SHA |
 
-Không ghi index production. Không merge `main`.
+Không ghi index production bằng tay. Không merge `main`.
 
-## Ảnh
+## Ảnh vòng này
 
-- `docs/phieu-viec/ket-qua/ux-attach-sources-anh/05b-sidebar-nhan.png` — nhãn một dấu `＋`
-- `docs/phieu-viec/ket-qua/ux-attach-sources-anh/06-thumbnail.png` — ảnh đã vào composer, lane Gemini tự động
-- `docs/phieu-viec/ket-qua/ux-attach-sources-anh/07-cau1-ocr-fail.png` — sau khi hỏi: chưa có hội thoại, `Thiếu ngữ cảnh`
+- `docs/phieu-viec/ket-qua/ux-attach-sources-anh/09-thumbnail-anh-loi-that.png` — ảnh lỗi đã vào khung đính kèm
+- `docs/phieu-viec/ket-qua/ux-attach-sources-anh/10-truoc-khi-hoi.png` — câu hỏi trên lane Gemini tự động
+- `docs/phieu-viec/ket-qua/ux-attach-sources-anh/11-cau1-doc-duoc-chu.png` — câu trả lời đọc được `Thiếu ngữ cảnh`
+- `docs/phieu-viec/ket-qua/ux-attach-sources-anh/12-composer-sau-cau1.png` — composer sau câu 1, không còn thumbnail
+- `docs/phieu-viec/ket-qua/ux-attach-sources-anh/13-sidebar-mot-dau.png` — một dấu `＋`
+- `docs/phieu-viec/ket-qua/ux-attach-sources-anh/14-cau2-van-dung-anh.png` — câu 2 vẫn trả lời `Có`
+- `docs/phieu-viec/ket-qua/ux-attach-sources-anh/15-cau2-goi-y-van-anh.png` — nguồn ảnh vẫn còn trong sổ
 
-Ảnh vòng trước (`01`–`04`) giữ nguyên để đối chiếu.
+Ảnh vòng trước (`01`–`07`) giữ để đối chiếu.

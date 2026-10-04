@@ -1,8 +1,8 @@
 # Trạng thái mailbox
 
-- Trạng thái: `dang-lam`
+- Trạng thái: `cho-muse`
 - Ticket hiện tại: `UX-ATTACH-SOURCES` (vòng 3: cài Tesseract + verify) — [NHÀ] cài Tesseract OCR cho Windows (Phần A, một lần), rồi verify lại 3 điểm trên app thật (Phần B). Prompt: `docs/phieu-viec/mailbox/prompt.md`.
 - `hang-cho`: hết.
-- `commit`: (đang làm)
-- `bao_cao`: `docs/phieu-viec/ket-qua/ux-attach-sources.md` (báo cáo vòng 2 giữ để đối chiếu; báo cáo vòng này ghi đè khi xong)
-- `ghi_chu`: 2026-10-04 08:16 +07 app cổng 8501 đã mở lại. Ảnh lỗi thật đã vào composer, OCR tạo nguồn tạm và đang chuẩn bị. Nhãn thanh bên đúng `＋ Thêm nguồn`. SHA kho trước verify `45eb0e07…b7c0` không đổi. Đang chờ câu trả lời.
+- `commit`: (ghi khi push báo cáo)
+- `bao_cao`: `docs/phieu-viec/ket-qua/ux-attach-sources.md`
+- `ghi_chu`: 2026-10-04 08:34 +07 chưa đạt. Tesseract 5.5.3 đã cài, có `vie`. Câu 1 đọc được chữ ảnh. Câu 2 không đính kèm vẫn dùng lại ảnh cũ. Nhãn `＋` đúng. SHA `tri_thuc` không đổi. Chờ Muse.
