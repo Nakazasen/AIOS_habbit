@@ -1,6 +1,6 @@
 # Trạng thái mailbox
 
-- Trạng thái: `moi`
+- Trạng thái: `dang-lam`
 - Ticket hiện tại: `TOOL-5` — [NHÀ] nối visual maps vào chat: đăng ký `visual_knowledge_map`, `knowledge_map_html`, `evidence_graph_viewer`, `worklens_semantic_map` làm chat action theo khung TOOL-2; user hỏi "vẽ bản đồ tri thức về X" → render map ngay trong câu trả lời. Prompt: `docs/phieu-viec/mailbox/prompt.md`. Role gợi ý: DEFAULT. Không ghi index production, chỉ code + test.
 - `hang-cho` (còn lại sau khi phát hành TOOL-5 lúc 2026-10-05 ~02:07 +07; TOOL-4 verdict ĐẠT ~02:07):
   1. `AUDIT-ENRICH-LSU` — CHUYỂN cho opencode 22:45 +07 (opencode đã ĐẠT vé LSU 22:50; đang làm IMPORT-STAGING-ENRICH).
@@ -23,3 +23,5 @@
 - `ghi_chu`: 2026-10-05 02:00 +07 — OMP mốc-1 TOOL-4 xong: compile sạch, test vé 27/27 đạt, hồi quy chat_action 56/56 (17 TOOL-2 + 12 TOOL-3 + 27 TOOL-4), hồi quy prediction cũ 117/117, audit PASS, import app OK, cờ mặc định TẮT, docs PASS, diff-check sạch, 2 module đã đăng ký trong BUILTIN_ACTION_MODULES, không nút mới, không ghi index; đang viết báo cáo.
 - `ghi_chu`: 2026-10-05 02:02 +07 — OMP xong TOOL-4 chờ duyệt: code 30/09 còn nguyên (diff src/tests rỗng), báo cáo thêm mục 8 kiểm lại; test vé 27/27, hồi quy 56/56, prediction cũ 117/117, audit PASS, import app OK, cờ TẮT, docs PASS, diff-check sạch, không nút/index, gate MỞ (stall 1/4).
 - `ghi_chu` (verdict Muse): 2026-10-05 ~02:07 +07 — **ĐẠT** vé `TOOL-4` (tích tạm, chờ user nghiệm thu). Kiểm chứng độc lập qua GitHub API: commit `ae17c13` chỉ +15/-0 báo cáo `tool4-interview-prediction-chat.md` (mục 8 kiểm lại 05/10), không code, không secret, không merge `main`; `diff f25816c..ae17c13` không chạm `src/tests` (chỉ MANIFEST + batch-72 enrichment của opencode); 2 module `chat_action_expert_interview.py`/`chat_action_prediction.py` tồn tại trên nhánh, đủ `register_action`, prediction dùng `mode=ro`, `BUILTIN_ACTION_MODULES` = 15 module; test vé 27/27, hồi quy chat_action 56/56, prediction cũ 117/117, audit PASS, cờ mặc định TẮT, docs PASS, diff-check sạch, không ghi index, không đụng ổ D. Phát hành vé xếp hàng tiếp theo `TOOL-5` theo đúng thứ tự hang-cho.
+- `ghi_chu`: 2026-10-05 02:18 +07 — OMP nhận vé TOOL-5, kiểm cổng gate: cổng MỞ (HEAD=origin=00a4bd7, prompt đúng vé TOOL-5, trạng thái moi mới ~02:07, watcher LAUNCH 1/4 lúc 02:09 launchStallCount=1 chưa chạm ngưỡng 4 lần cho-muse, không có file watcher tự mở trong mailbox). Vé lane NHÀ code+test, code đã có từ 30/09 → kiểm lại rồi báo cáo, không viết lại.
+
