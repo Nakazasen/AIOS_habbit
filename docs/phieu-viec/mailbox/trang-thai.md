@@ -13,4 +13,4 @@
 - Vé audit/import ChatGPT enrichment ĐÃ xếp (user duyệt commit batch lên repo public 2026-10-04 18:11 +07). Dữ liệu thô: `docs/phieu-viec/chatgpt-enrichment-raw/` (45 file, 1.998 cặp) — chỉ dùng để audit, không import trực tiếp.
 - `commit`: 1511955 (điểm nhận vé sau pull)
 - `bao_cao`: (đang làm — chưa có)
-- `ghi_chu`: 2026-10-04 22:37 +07 — SHA index khớp 45eb0e07, cầu nối lane 1 direct_ready; đang chạy 6 câu lạnh lane 3 (mỗi câu process mới).
+- `ghi_chu`: 2026-10-04 22:46 +07 — lane 3 xong 3/6 câu lạnh qua Gemini 2.5-flash (L1 provider_validated; L2+L3 Gemini trả lời nhưng cổng kiểm trả về local_extractive_provider_fallback); đang chạy E1-E3.
