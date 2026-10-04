@@ -1,3 +1,106 @@
+# Báo cáo vé `DON-O-C-AGY` — Dọn ổ C máy nhà (2026-10-04)
+
+## Tóm tắt
+
+- Vé: `DON-O-C-AGY` — Thợ agy thực hiện (model: gemini-3.8-flash-high).
+- Phát hành: 2026-10-04 22:07 +07; Nhận vé và thực hiện: 22:29–23:30 +07.
+- **Ổ C ban đầu:** trống **1.184.849.920 byte (~1,10 GB)** (nguy cơ tràn ổ rất cao).
+- **Ổ C sau khi dọn:** trống **7.871.266.816 byte (~7,33 GB)**.
+- **Tổng dung lượng thu hồi thực tế:** **+6.686.416.896 byte (~6,23 GB)** — hoàn thành xuất sắc mục tiêu vé (~5–8 GB).
+- An toàn tuyệt đối: Không đụng ổ D, không đụng index production, không đụng session đang hoạt động của OpenCode (đang chạy ENRICH-STAGING-FILESTORE).
+- Toàn bộ cổng kiểm tra chất lượng đều ĐẠT: `compileall` PASS, `cli audit` PASS, import `workspace_chat_app` PASS, pytest 12/12 PASS.
+- Cổng gate: Điều kiện mở đầy đủ (user cho phép 2026-09-29 ~20:10 và duyệt thêm lúc 22:00 ngày 2026-10-04). agy hoàn thành ngay lượt 1, không quay no-op.
+
+## Máy và phạm vi
+
+- Máy `h410asrock`, nhánh `phieu-viec/rag-fix1`.
+- Trình tự thực hiện: Liệt kê chi tiết → Xác minh an toàn & `PRAGMA integrity_check` → Xóa có kiểm soát → Đo đạc bằng chứng thực tế trước/sau mỗi bước.
+
+## Chi tiết từng bước
+
+### Bước 0 — Đối tượng mới phình (user duyệt 22:00): thu hồi ~6,85 GB
+
+1. **`.codex` (sessions cũ):**
+   - Đã xóa toàn bộ session chat cũ tháng 9/2026 trong `C:\Users\Admin\.codex\sessions\2026\09` (ngày 01–26/09).
+   - Giữ nguyên toàn bộ session tháng 10/2026 và các file cấu hình quan trọng (`config.toml`, `auth.json`, `models_cache.json`).
+   - Dung lượng thu hồi: **2,49 GB** (2.677.502.976 byte).
+
+2. **`.gemini` (conversations & brain cũ > 7 ngày):**
+   - Đã xóa 165 tập tin `.db` hội thoại cũ (> 7 ngày) trong `C:\Users\Admin\.gemini\antigravity\conversations` (thu hồi 3,42 GB).
+   - Đã xóa 255 thư mục brain cũ (> 7 ngày) trong `C:\Users\Admin\.gemini\antigravity\brain` (thu hồi 0,88 GB).
+   - Giữ nguyên toàn bộ các hội thoại và brain tháng 10/2026 đang hoạt động.
+   - Dung lượng thu hồi: **4,30 GB** (4.617.089.024 byte).
+
+3. **`opencode state`:**
+   - Đã xóa 4 bản snapshot cũ không dùng từ tháng 02, 05, 08, 09/2026 trong `C:\Users\Admin\.local\share\opencode\snapshot` (`049b6230...`, `44793d2b...`, `864bcde8...`, `9acfc829...`).
+   - Giữ nguyên bản snapshot mới nhất `a3583dcc...` (29/09).
+   - Tuyệt đối giữ nguyên `opencode.db` và session đang chạy của OpenCode (đang làm vé song song).
+   - Dung lượng thu hồi: **60,46 MB** (63.397.888 byte).
+
+### Bước 1 — Rác tmp: thu hồi 41,76 MB
+
+- `C:\Windows\Temp`: 0 file.
+- `%TEMP%` (`C:\Users\Admin\AppData\Local\Temp`): Không có file cũ > 7 ngày.
+- `C:\tmp`: Quét và xóa 33 tập tin/thư mục rác và file test cũ từ tháng 3 đến tháng 8/2026 (`check_db.py`, `convert_docx_to_epub*`, `deep-dev-*`, `presenton`, `iii-0.11.2-*`, `test_supabase.py`...).
+- Giữ nguyên các thư mục chrome profiles tạm và dữ liệu thử nghiệm gần đây.
+- Dung lượng thu hồi: **41,76 MB** (43.788.288 byte).
+
+### Bước 2 — Venv trùng lặp: thu hồi 0 byte
+
+- Ổ C: Không có virtualenv trùng lặp nào tồn tại trong `C:\Users\Admin` hoặc ổ C.
+- Ổ D: Có 3 môi trường trong `D:\Sandbox\AIOS_habbit` (`.venv`, `.venv-rag`, `.venv-rag-compat`).
+- Quyết định: Tuân thủ nghiêm ngặt điều khoản "Cấm tuyệt đối: Không đụng ổ D", giữ nguyên toàn bộ các venv trên ổ D.
+
+### Bước 3 — Worktree vé 0.3: thu hồi 0 byte (dọn sạch git metadata)
+
+- Kiểm tra `git worktree list`: Phát hiện 1 worktree mồ côi (prunable) trỏ về `C:/Users/Admin/AppData/Local/deep-dev/worktrees/...`.
+- Thư mục vật lý trên ổ C đã được dọn sạch từ trước (`Test-Path` trả về `False`).
+- Đã chạy `git worktree prune` gỡ bỏ hoàn toàn bản ghi thừa trong metadata của git.
+
+### Bước 4 — Backup cũ trên ổ C: thu hồi 30,95 MB
+
+- Kiểm tra toàn vẹn `PRAGMA integrity_check` (chế độ chỉ đọc `mode=ro`) trước khi thực hiện xóa:
+  - Bản GIỮ LẠI: `C:\AIOS_backup_library_c_2026-10-01_merge-home\library.sqlite.bak-20261001-merge-home` (2,57 GB) → kết quả: **`ok`**.
+  - Tất cả các database production đang hoạt động tại `C:\AIOS_workspace_chat_rag_v2_production`:
+    - `rag_v2_dev.sqlite` → **`ok`**
+    - `workspace_chat.sqlite` (root) → **`ok`**
+    - `bge_m3_hybrid\workspace_chat.sqlite` → **`ok`**
+    - `collections\dieu_tra_loi\library.sqlite` → **`ok`**
+    - `collections\lsu\library.sqlite` → **`ok`**
+    - `collections\mom\library.sqlite` → **`ok`**
+    - `collections\tong_hop\library.sqlite` → **`ok`**
+    - `collections\tri_thuc\library.sqlite` → **`ok`**
+- Đã xóa bản backup cũ pre-merge ngày 28/09: `C:\AIOS_backup_production_2026-09-28\library.sqlite.backup` (30,95 MB / 32.452.608 byte).
+- Sau khi xóa, vẫn còn đầy đủ bản backup toàn vẹn của index production (`library.sqlite.bak-20261001-merge-home`).
+
+### Bước 5 — `tri_thuc`: Bỏ qua
+
+- Đúng theo yêu cầu của ticket: Bỏ qua bước này trong vé hiện tại (chờ E2v3 đóng hẳn).
+
+## Bảng tổng kết dung lượng
+
+| Bước | Mục dọn dẹp | Dung lượng thu hồi | Ghi chú |
+| :--- | :--- | :---: | :--- |
+| **0** | `.codex` (sessions 09/2026) | **2,49 GB** | Xóa sạch chat log cũ tháng 9, giữ config & sessions tháng 10 |
+| **0** | `.gemini` (convs & brain > 7 ngày) | **4,30 GB** | 165 file conv .db và 255 thư mục brain cũ |
+| **0** | `opencode state` (snapshots cũ) | **60,46 MB** | 4 snapshot cũ từ tháng 2-9; bảo vệ session opencode đang chạy |
+| **1** | Rác `C:\tmp` cũ > 7 ngày | **41,76 MB** | 33 file/thư mục scratch và test script cũ |
+| **2** | Venv trùng lặp | **0 byte** | Ổ C không có venv trùng; ổ D giữ nguyên theo luật Cấm |
+| **3** | Worktree vé 0.3 | **0 byte** | Đã dọn metadata bằng `git worktree prune` |
+| **4** | Backup cũ trên ổ C | **30,95 MB** | Xóa backup cũ 28/09 sau khi test `integrity_check` bản giữ lại ĐẠT |
+| **5** | `tri_thuc` | **Bỏ qua** | Chờ E2v3 đóng theo quy định |
+| **TỔNG** | **Toàn bộ vé DON-O-C-AGY** | **+6,23 GB** | **Free tăng từ 1,10 GB lên 7,33 GB (đạt mục tiêu 5–8 GB)** |
+
+## Bằng chứng kiểm tra an toàn hệ thống (Evidence)
+
+1. `PRAGMA integrity_check` trên toàn bộ DB production và bản backup giữ lại: **100% `ok`**.
+2. Biên dịch mã nguồn: `uv run --no-sync --group dev python -m compileall src tests` → **PASS (mã thoát 0)**.
+3. Kiểm toán mã nguồn: `uv run --no-sync --group dev python -m aios_habit.cli audit` → **`{"status": "PASS", "errors": [], "warnings": []}`**.
+4. Import ứng dụng: `import aios_habit.workspace_chat_app` → **Thành công**.
+5. Unit tests: `pytest -q tests/test_adaptive_retrieval.py` → **12 passed**.
+
+---
+
 # Báo cáo vé `DON-O-C` — lần phát hành lại 2026-10-03
 
 ## Tóm tắt
