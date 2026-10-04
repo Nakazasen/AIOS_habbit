@@ -2,7 +2,7 @@
 
 - Trạng thái: `dang-lam`
 - Ticket hiện tại: `SCAN-O-D` — [NHÀ] kiểm kê ổ D chỉ đọc (cây thư mục, SHA sqlite, đề xuất dọn — không thực hiện). Prompt: `docs/phieu-viec/mailbox-agy/prompt.md`. Role gợi ý: SMOL. Không ghi/xóa ổ D.
-- `ghi_chu`: 2026-10-05 05:49 +07 — OMP/agy nhận vé SCAN-O-D, bắt đầu quét cây thư mục cấp 1-2 ổ D và kiểm kê kho index sqlite.
+- `ghi_chu`: 2026-10-05 06:27 +07 — Đã quét xong cây thư mục cấp 1-2 ổ D và hoàn tất tính SHA-256 cho toàn bộ file sqlite trong D:\Sandbox; đang đối chiếu kho production máy nhà và lập báo cáo scan-o-d.md.
 - `hang-cho`: chưa có
 - `commit`: 7dad2b0
 - `bao_cao`: `docs/phieu-viec/ket-qua/don-o-c-may-nha.md`
