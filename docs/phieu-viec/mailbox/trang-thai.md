@@ -15,4 +15,4 @@
 - Vé audit/import ChatGPT enrichment ĐÃ xếp (user duyệt commit batch lên repo public 2026-10-04 18:11 +07). Dữ liệu thô: `docs/phieu-viec/chatgpt-enrichment-raw/` (45 file, 1.998 cặp) — chỉ dùng để audit, không import trực tiếp.
 - `commit`: 92bdab5
 - `bao_cao`: 
-- `ghi_chu`: 2026-10-04 13:14 +07 — Mã + test xong tại 92bdab5: composer tách 2 hàng (dòng mờ trạng thái/công tắc/mức tìm kiếm + hàng nút [+]/Hỏi), công tắc khối 4 lựa chọn mặc định Tự động, cờ `forced_domain` xuyên composer→adapter (ép khối bỏ qua cờ env, chặn tong_hop, thiếu kho thì báo rõ), dòng "Thư viện chung · 3 khối · luôn bật" gập sẵn ở sidebar, i18n 3 locale. Đang mở app thật để nghiệm thu + chụp ảnh.
+- `ghi_chu`: 2026-10-04 18:40 +07 — Đã pull nhánh + đọc vé ROUND5. Đang kiểm tra code cũ (92bdab5 + tune db3d4ed) và sửa tràn nhãn nút ở cửa sổ hẹp, chuẩn bị chạy test bắt buộc.
