@@ -11,6 +11,6 @@
   6. `AUDIT-ENRICH-LSU` — CHUYỂN cho opencode 22:45 +07 (đã ĐẠT vé MOM, đúng thế mạnh audit; số liệu đã cập nhật 1.790 cặp/Q2408 trong prompt opencode).
   7. `IMPORT-STAGING-ENRICH` — CHUYỂN cho opencode 22:55 +07 (cả 2 audit ĐẠT, đủ điều kiện chạy; opencode vừa làm xong 2 vé audit nên nắm dữ liệu).
 - Vé audit/import ChatGPT enrichment ĐÃ xếp (user duyệt commit batch lên repo public 2026-10-04 18:11 +07). Dữ liệu thô: `docs/phieu-viec/chatgpt-enrichment-raw/` (45 file, 1.998 cặp) — chỉ dùng để audit, không import trực tiếp.
-- `commit`: (lấy SHA sau commit báo cáo)
+- `commit`: 6140fd0 (báo cáo router-fix + xong-cho-duyet)
 - `bao_cao`: `docs/phieu-viec/ket-qua/router-fix.md`
 - `ghi_chu`: 2026-10-04 23:00 +07 — ROUTER-FIX xong-cho-duyet: hết unknown_error (model mới Gemini 2.5-flash), 6 câu lạnh lane 3 có số đo (2/6 provider_validated, 4/6 fallback do thiếu nhãn — không nới cổng), SHA khớp, lane 1 OK.
