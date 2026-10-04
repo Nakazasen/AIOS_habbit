@@ -38,3 +38,18 @@ User duyệt phương án: khung chat gọn kiểu Antigravity/Cursor (1 ô nh�
 
 - Đây là vé UI-verify, không phải vé code: OMP không sửa code trong vé này. Lỗi UI → báo `cho-muse`, Muse sửa trên VM.
 - Phân biệt với vé UX-CHAT-CORE trước đây (xong 03/10): vé này chỉ về phân định đính kèm/nguồn, không đụng logic hỏi đáp.
+
+## Sửa sau `cho-muse` (Muse fix trên VM, commit `26a71c2`, đã push)
+
+Nguyên nhân gốc OMP bắt được: app chặn câu hỏi ngay khi thấy ảnh đính kèm, TRƯỚC cả khi ảnh được đọc thành chữ — trong khi thiết kế đúng là ảnh luôn được OCR thành nguồn chữ trước khi tới lane AI (mọi lane đều đọc được chữ). Ba chỗ sửa:
+
+1. **Hỏi kèm ảnh không còn bị chặn:** bỏ block cứng ở ask flow; ảnh đính kèm được OCR thành nguồn tạm rồi câu hỏi chạy bình thường trên mọi lane (kể cả Gemini qua cầu nối). Guard chặn byte ảnh thô ở tầng cầu nối vẫn giữ nguyên (fail-closed). Nếu OCR không đọc được ảnh: báo nhẹ một dòng, câu hỏi vẫn gửi theo chữ đã nhập.
+2. **Vòng đời một lần đúng nghĩa:** sau khi gửi, ảnh dán từ clipboard cũng bị xóa khỏi composer (trước đây chỉ reset đường tải file); nguồn tạm sinh ra từ ảnh được ghi nhớ và TỰ TẮT khi câu hỏi tiếp theo được gửi — câu sau không đính kèm thì không dùng lại nội dung ảnh.
+3. **Nhãn expander:** hết `＋ ＋ Thêm nguồn` (dấu ＋ chỉ còn một, nằm trong i18n).
+
+## Verify lại [NHÀ] (chỉ 3 điểm còn lại)
+
+1. Pull `26a71c2`, restart app. Đính kèm ảnh `MA-UX-7741` + hỏi "lỗi này là gì?" trên lane Gemini tự động → câu hỏi CHẠY (không còn bị chặn), câu trả lời đọc được chữ trong ảnh.
+2. Hỏi tiếp câu thứ 2 KHÔNG đính kèm → câu trả lời không dùng nội dung ảnh cũ; thumbnail ảnh đã biến khỏi composer sau câu 1.
+3. Thanh bên: expander hiện đúng `＋ Thêm nguồn` (một dấu cộng).
+4. SHA kho `tri_thuc` không đổi (vé này chỉ đụng UI + luồng hỏi).
