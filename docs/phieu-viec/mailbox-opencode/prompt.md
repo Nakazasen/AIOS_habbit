@@ -28,3 +28,4 @@
 ## Quy ước watcher (bắt buộc)
 - Nhận vé: đặt `trang-thai.md` thành `dang-lam` NGAY LẬP TỨC (commit + push), kèm `ghi_chu` có timestamp giờ máy.
 - Mỗi mốc quan trọng: cập nhật `ghi_chu` + timestamp rồi push. `dang-lam` quá 20 phút không tiến triển = kẹt.
+- **Trước mỗi push: `git pull --rebase origin phieu-viec/rag-fix1` trước** (3 thợ cùng push một nhánh; pull --rebase để tự nối, tránh báo lỗi non-fast-forward). Không force-push.
