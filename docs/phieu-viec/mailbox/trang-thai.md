@@ -13,6 +13,6 @@
   8. `AUDIT-ENRICH-LSU` (`prompt-queue-audit-enrich-lsu.md`) — audit 1.390 cặp LSU (dedup mạnh mẻ 39 + batch 999/0/--, chấm M1–M5, vòng sửa). Role gợi ý: DEFAULT.
   9. `IMPORT-STAGING-ENRICH` (`prompt-queue-import-staging-enrich.md`) — nhập cặp đã audit vào DB staging (không nhập kho chính), metric + smoke test. Role gợi ý: DEFAULT.
 - Vé audit/import ChatGPT enrichment ĐÃ xếp (user duyệt commit batch lên repo public 2026-10-04 18:11 +07). Dữ liệu thô: `docs/phieu-viec/chatgpt-enrichment-raw/` (45 file, 1.998 cặp) — chỉ dùng để audit, không import trực tiếp.
-- `commit`: 92bdab5
+- `commit`: 12f1744
 - `bao_cao`: 
-- `ghi_chu`: 2026-10-04 18:55 +07 — Gate xong: composer/knowledge/domain 93 pass, audit PASS (PYTHONPATH=src), import app OK, 2 fail cũ đã biết đúng vé. Cổng watcher: đang làm thật, không cho-muse. Tiếp theo: mở app thật chụp ảnh nghiệm thu.
+- `ghi_chu`: 2026-10-04 19:00 +07 — Đã commit fix tràn nhãn nút (12f1744: cắt chữ ellipsis + cột [4.0,4.9,2.1], test 93 pass) + push. App thật đang chạy cổng 8501, chuẩn bị chụp ảnh 1440/1100 nghiệm thu.
