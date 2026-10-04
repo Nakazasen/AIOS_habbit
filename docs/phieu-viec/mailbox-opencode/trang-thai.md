@@ -1,8 +1,8 @@
 # Trạng thái mailbox-opencode (thợ opencode — model free muse-spark-1.3 / space-bunny)
 
-- Trạng thái: `moi`
+- Trạng thái: `dang-lam`
 - Ticket hiện tại: `ANSWER-DRAFT-FALLBACK` — RAG trả lời trước, bản thảo enrichment làm dự bị có nhãn (user chốt phương án 1). Prompt: `docs/phieu-viec/mailbox-opencode/prompt.md`. Role gợi ý: PLAN (thiết kế trước) rồi code.
-- `ghi_chu`: 2026-10-04 23:41 +07 — Muse phát vé mới ANSWER-DRAFT-FALLBACK sau verdict ĐẠT ENRICH-STAGING-FILESTORE (mailbox đã `xong`, hang-cho trống).
+- `ghi_chu`: 2026-10-04 23:48 +07 — đã nhận vé ANSWER-DRAFT-FALLBACK (điều kiện mở đủ: trạng thái `moi` + prompt đúng vé; không rơi nhánh 4 lần watcher). Bắt đầu bước 1: khảo sát lane RAG, chưa sửa code.
 - Trạng thái: `xong`  (verdict ĐẠT 2026-10-04 ~23:35 +07: kho bản thảo 54 file/2.398 cặp đúng rào, raw không đụng, diff sạch — chỉ báo cáo + trạng thái)
 - Ticket hiện tại: `ENRICH-STAGING-FILESTORE` — chốt kho bản thảo cặp enrichment bằng file (không qua importer), quyết định phương án B sau verdict vé trước. Prompt: `docs/phieu-viec/mailbox-opencode/prompt.md`. Role gợi ý: SMOL/TINY (~5 phút).
 - `ghi_chu`: 2026-10-04 23:16 +07 — đã nhận vé ENRICH-STAGING-FILESTORE (điều kiện mở đủ: trạng thái `moi` + prompt phương án B). Bắt đầu kiểm đếm cuối 54 file fixed, chưa ghi DB, chưa sửa code.
