@@ -271,9 +271,14 @@ st.html('''
             justify-content: flex-end !important;
             align-items: center !important;
             color: #475569 !important;
+            width: 100% !important;
+        }
+        [class*="st-key-wsc-shortcut-hint-"] > [data-testid="stElementContainer"] {
+            width: auto !important;
         }
         [class*="st-key-wsc-shortcut-hint-"] [data-testid="stCaptionContainer"] {
             white-space: nowrap !important;
+            text-align: right !important;
         }
         [class*="st-key-wsc-action-"] [data-testid="stButton"] button p {
             white-space: nowrap !important;
