@@ -1,13 +1,13 @@
 # Trạng thái mailbox
 
-- Trạng thái: `dang-lam`
+- Trạng thái: `xong-cho-duyet`
 - Ticket hiện tại: `TOOL-5` — [NHÀ] nối visual maps vào chat: đăng ký `visual_knowledge_map`, `knowledge_map_html`, `evidence_graph_viewer`, `worklens_semantic_map` làm chat action theo khung TOOL-2; user hỏi "vẽ bản đồ tri thức về X" → render map ngay trong câu trả lời. Prompt: `docs/phieu-viec/mailbox/prompt.md`. Role gợi ý: DEFAULT. Không ghi index production, chỉ code + test.
 - `hang-cho` (còn lại sau khi phát hành TOOL-5 lúc 2026-10-05 ~02:07 +07; TOOL-4 verdict ĐẠT ~02:07):
   1. `AUDIT-ENRICH-LSU` — CHUYỂN cho opencode 22:45 +07 (opencode đã ĐẠT vé LSU 22:50; đang làm IMPORT-STAGING-ENRICH).
   2. `IMPORT-STAGING-ENRICH` — CHUYỂN cho opencode 22:55 +07 (cả 2 audit ĐẠT, đủ điều kiện chạy; opencode đang làm, mốc-1 rào-staging ĐẠT).
 - Vé audit/import ChatGPT enrichment ĐÃ xếp (user duyệt commit batch lên repo public 2026-10-04 18:11 +07). Dữ liệu thô: `docs/phieu-viec/chatgpt-enrichment-raw/` (45 file, 1.998 cặp) — chỉ dùng để audit, không import trực tiếp.
-- `commit`: `a97f8442` (phát hành TOOL-5)
-- `bao_cao`: `docs/phieu-viec/ket-qua/tool5-visual-chat.md` (vé TOOL-5 — chưa có)
+- `commit`: `27f0603` (TOOL-5 báo cáo kiểm lại 05/10)
+- `bao_cao`: `docs/phieu-viec/ket-qua/tool5-visual-chat.md` (vé TOOL-5 — kiểm lại 05/10, mục 7)
 - `ghi_chu` (verdict Muse): 2026-10-04 ~23:41 +07 — **ĐẠT** vé `OMP-MODEL-REPORT` (tích tạm, chờ user nghiệm thu). Kiểm chứng độc lập qua GitHub API: diff `4a83762` chỉ +44/-0 báo cáo `omp-model-report.md` và +2/-2 `trang-thai.md`, không code, không secret, không merge `main`. Báo cáo đủ spec vé: đọc trực tiếp `C:/Users/Admin/.omp/agent/config.yml` (55 dòng), liệt kê đầy đủ ánh xạ roles (default/smol/tiny/plan/advisor/...) + chuỗi fallback. **Thay đổi đáng chú ý:** DEFAULT hiện là `commandcode/meta/muse-spark-1.3-contributor:xhigh` (khác ghi chú OMP 02/10: `xai-oauth/grok-4.7:medium` — OMP đã đổi cấu hình, không phải Muse).
 - `ghi_chu`: 2026-10-05 00:55 +07 — OMP xong TOOL-2 chờ duyệt: khung chat_action 30/09 còn nguyên (test vé 17/17, audit PASS, cờ tắt, không nút/index), chỉ thêm mục 8 kiểm lại; full suite 3998 đạt/48 lỗi/37 bỏ qua/19 error toàn ngoài vùng vé.
 - `ghi_chu` (verdict Muse): 2026-10-05 ~00:56 +07 — **ĐẠT** vé `TOOL-2` (tích tạm, chờ user nghiệm thu). Kiểm chứng độc lập qua GitHub API: commit `116f443c` chỉ +12/-0 báo cáo `tool2-khung-action.md` và +4/-4 `trang-thai.md`, không code, không secret, không merge `main`; 3 tệp khung tồn tại đủ marker (`register_action`, `normalize_text`, `dispatch` fail-closed, `BUILTIN_ACTION_MODULES`, `handle_chat_text`); `git diff e60e621..116f443c` không chạm mã khung; cờ `chat_action` mặc định TẮT; không `st.button`/`st.expander`/`st.tabs` trong tệp khung; không ghi index (smoke chỉ đọc store chat JSONL); không đụng ổ D. Full suite 3998 đạt/48 lỗi/37 bỏ qua/19 error — OMP phân loại toàn ngoài vùng vé, 17/17 test vé xanh. Phát hành vé xếp hàng tiếp theo `TOOL-3` theo đúng thứ tự hang-cho.
@@ -26,6 +26,8 @@
 - `ghi_chu`: 2026-10-05 02:18 +07 — OMP nhận vé TOOL-5, kiểm cổng gate: cổng MỞ (HEAD=origin=00a4bd7, prompt đúng vé TOOL-5, trạng thái moi mới ~02:07, watcher LAUNCH 1/4 lúc 02:09 launchStallCount=1 chưa chạm ngưỡng 4 lần cho-muse, không có file watcher tự mở trong mailbox). Vé lane NHÀ code+test, code đã có từ 30/09 → kiểm lại rồi báo cáo, không viết lại.
 - `ghi_chu`: 2026-10-05 02:24 +07 — OMP mốc-1 TOOL-5 xong: compile sạch, test vé 29/29 đạt (5.78s), code 30/09 còn nguyên (`diff a97f844..HEAD -- src tests` rỗng, module visual_maps 832 dòng + renderer PNG 311 dòng + test 501 dòng, 3 action đã đăng ký trong BUILTIN_ACTION_MODULES); đang chạy cổng kiểm tra rồi viết báo cáo.
 - `ghi_chu`: 2026-10-05 02:28 +07 — OMP mốc verify lõi TOOL-5 xong: hồi quy chat_action 85/85 đạt (17 TOOL-2 + 12 TOOL-3 + 27 TOOL-4 + 29 TOOL-5), audit PASS, import app OK, cờ mặc định TẮT, docs PASS, diff-check sạch, không nút mới, không ghi index, không đụng ổ D; đang viết báo cáo rồi chốt xong-chờ-duyệt.
+- `ghi_chu`: 2026-10-05 02:32 +07 — OMP xong TOOL-5 chờ duyệt: code 30/09 còn nguyên (diff src/tests rỗng), báo cáo thêm mục 7 kiểm lại; test vé 29/29, hồi quy 85/85, audit PASS, import app OK, cờ TẮT, docs PASS, diff-check sạch, không nút/index, không đụng ổ D, gate MỞ (stall 1/4).
+
 
 
 
