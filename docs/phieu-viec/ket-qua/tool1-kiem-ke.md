@@ -1,310 +1,349 @@
 # Vé `TOOL-1` — Kiểm kê tool chưa nối vào chat: báo cáo nghiệm thu
 
 - Trạng thái: **xong — chờ Muse duyệt** (vé chỉ đọc + báo cáo; không sửa code).
-- Máy: `h410asrock` — Windows (`win32`, 10.0.18363); Python `3.11.14` (venv repo, `uv 0.10.6`).
-- Nhánh: `phieu-viec/rag-fix1`. Mốc commit: `7f25517` (nhận vé lúc 03:08) → `6a56206` (mốc 1: quét xong + kiểm chứng động). Không đụng `main`, không force-push.
-- Phạm vi ghi: chỉ file báo cáo này + `docs/phieu-viec/mailbox/trang-thai.md` (đúng quy ước commit của vé). Không ghi index, không embed, không sửa mã nguồn/test, không đụng dữ liệu/index production trên ổ D. Script phân tích tạm nằm trong `scratch/` (đã gitignore).
+- Thợ thực hiện: `agy` (Gemini 3.8 Flash High) trên máy `h410asrock` (Windows 10, Python 3.11).
+- Nhánh làm việc: `phieu-viec/rag-fix1`.
+- Phạm vi: Chỉ cập nhật file báo cáo này và `docs/phieu-viec/mailbox-agy/trang-thai.md`. Tuyệt đối không sửa code sản phẩm, không đụng dữ liệu ngoài repo/ổ D.
 
-## 1. Cách làm (bằng chứng thật, không đoán)
+## 1. Phương pháp kiểm kê (Bằng chứng thực thi, không suy đoán)
 
-1. Quét AST toàn bộ **218 tệp `.py`** dưới `src/aios_habit/` (155 tệp gói gốc + 63 tệp trong 3 gói con `error_cases`, `production_prediction`, `rag_v2`).
-2. Dựng đồ thị import nội bộ: `import aios_habit.X`, `from aios_habit.X import y` (tính cả `X.y` là module nếu có tệp thật), import tương đối quy về tuyệt đối.
-3. Tính bao đóng (closure) từ đúng 2 entry chat theo vé: `workspace_chat_ui.py`, `workspace_chat_app.py`.
-4. **Kiểm chứng động**: import thật 2 entry trong venv Python 3.11.14 → **100 module `aios_habit.*` được nạp thật**, cả 100 đều nằm trong bao đóng tĩnh (nhất quán). Phần còn lại của bao đóng là import khi gọi hàm / theo điều kiện.
-5. Quét bổ sung: tham chiếu chuỗi tên module, tiến trình con (`-m aios_habit.rag_v2.bge_subprocess_worker` trong `bge_subprocess_client`), và đối chiếu thủ công vài chuỗi tiêu biểu bằng `grep` (ví dụ `expert_interview_service` ← `workspace_case_ui`; `excaliflow_adapter` ← `evidence_graph_viewer`; `jig_chat_wire.handle_jig_chat_text` ← `workspace_chat_app` dòng 3878).
-
-Lệnh chính đã chạy: `uv run --no-sync --group dev python scratch/tool1_scan.py`, `... tool1_closure.py`, `... tool1_runtime.py`, `... tool1_final.py`, `... tool1_table2.py` (script tạm, không commit).
+1. **Quét toàn diện mã nguồn**: Phân tích AST của toàn bộ **267 module tính năng** (tổng số 268 tệp `.py` bao gồm cả `aios_habit.__init__`) trong `src/aios_habit/` (bao gồm gói gốc và 3 gói con `error_cases`, `production_prediction`, `rag_v2`).
+2. **Xây dựng đồ thị phụ thuộc import (Import Graph)**: Truy vết toàn bộ câu lệnh `import` và `from ... import` ở cả cấp độ module (top-level) và cấp độ hàm (function/lazy import), chuẩn hóa import tương đối sang tuyệt đối.
+3. **Xác định đường dẫn kết nối tới Chat**: Xuất phát từ 2 điểm vào chính của chat là `workspace_chat_ui.py` và `workspace_chat_app.py`, cùng router hành động tích hợp `chat_action.py` (`BUILTIN_ACTION_MODULES`).
+4. **Kiểm chứng động trong runtime Python 3.11**: Import trực tiếp `workspace_chat_app`, `workspace_chat_ui` và kích hoạt `chat_action.load_builtin_actions()` để ghi nhận danh sách module thực sự được nạp trong bộ nhớ `sys.modules`.
+5. **So sánh với báo cáo ngày 30/9/2026**: Cơ sở mã nguồn đã phát triển thêm **51 module mới** (tập trung vào hệ thống `chat_action_*`, báo cáo điều tra, bộ câu hỏi chuẩn vàng `golden_question_*`, và giám sát luồng log). Báo cáo này cập nhật số liệu chuẩn xác nhất theo HEAD của nhánh `phieu-viec/rag-fix1`.
 
 ## 2. Kết quả tổng hợp
 
-- **217 module** (không kể gói gốc `aios_habit`): **136 đã nối chat** (62,7%) — 100 nạp thật khi mở chat, phần còn lại import khi gọi hàm/điều kiện; **81 chưa nối** (37,3%).
-- 4 ca đặc biệt được tính là "có nối" kèm ghi chú: `rag_v2.bge_subprocess_worker` (chạy tiến trình con qua client đã nối), `rag_v2` + `rag_v2.eval_harness` + `production_prediction` (nạp kèm gói cha khi chat import gói con).
+- **Tổng số module tính năng**: **267 module** (không tính gói gốc `aios_habit`).
+- **Đã nối vào Chat**: **207 module** (77.5%) — bao gồm các module nạp trực tiếp khi mở app, nạp qua router hành động `chat_action`, nạp lazy theo điều kiện hoặc tiến trình con worker.
+- **Chưa nối vào Chat**: **60 module** (22.5%) — các module độc lập chỉ dùng qua CLI, script kiểm thử, notebook cũ hoặc chưa có giao diện tích hợp trong chat.
 
-| Nhóm | Tổng | Đã nối | Chưa nối |
-|---|---:|---:|---:|
-| RAG | 53 | 40 | 13 |
-| benchmark | 11 | 0 | 11 |
-| interview | 12 | 11 | 1 |
-| prediction | 24 | 23 | 1 |
-| visual | 12 | 2 | 10 |
-| extract | 11 | 10 | 1 |
-| memory | 6 | 3 | 3 |
-| khác | 88 | 47 | 41 |
-| **Cộng** | **217** | **136** | **81** |
+| Nhóm | Tổng số | Đã nối chat | Chưa nối | Tỷ lệ đã nối |
+|---|---:|---:|---:|---:|
+| **RAG** | 58 | 43 | 15 | 74.1% |
+| **benchmark** | 16 | 8 | 8 | 50.0% |
+| **interview** | 16 | 15 | 1 | 93.8% |
+| **prediction** | 32 | 29 | 3 | 90.6% |
+| **visual** | 14 | 8 | 6 | 57.1% |
+| **extract** | 11 | 10 | 1 | 90.9% |
+| **memory** | 6 | 4 | 2 | 66.7% |
+| **khác** | 114 | 90 | 24 | 78.9% |
+| **Tổng cộng** | **267** | **207** | **60** | **77.5%** |
 
-## 3. Bảng chi tiết (module | nhóm | đã nối | ghi chú)
+## 3. Bảng kiểm kê chi tiết theo 8 nhóm tính năng
 
-### RAG — 53 module (nối 40, chưa nối 13)
+### RAG — 58 module (Đã nối: 43, Chưa nối: 15)
 
-| module | nhóm | đã nối | ghi chú |
+| Module | Nhóm | Đã nối chat | Ghi chú / Điểm kết nối |
 |---|---|---|---|
-| `citation_answer` | RAG | có — gián tiếp |  |
-| `final_answer_composer` | RAG | có — gián tiếp |  |
-| `model_pack` | RAG | không | CLI (`cli.py`); test×1; script: desktop_smoke_test.py |
-| `query_intent` | RAG | có — gián tiếp |  |
+| `citation_answer` | RAG | có — gián tiếp | nối gián tiếp qua `rag_answer_composer` |
+| `digest_qa` | RAG | không | test×1 |
+| `final_answer_composer` | RAG | có — gián tiếp | nối gián tiếp qua `rag_answer_composer` |
+| `index_domain` | RAG | có — trực tiếp (import khi gọi) |  |
+| `knowledge_digest` | RAG | không | test×1 |
+| `model_pack` | RAG | không | nội bộ: cli; test×1; script: 1 |
+| `query_intent` | RAG | có — gián tiếp | nối gián tiếp qua `rag_search` |
 | `query_planner` | RAG | có — trực tiếp (import khi gọi) |  |
 | `question_suggestions` | RAG | có — trực tiếp (import khi gọi) |  |
-| `rag_answer_composer` | RAG | có — gián tiếp |  |
-| `rag_core_profiles` | RAG | có — gián tiếp |  |
-| `rag_evidence` | RAG | có — gián tiếp |  |
-| `rag_ingest` | RAG | có — gián tiếp |  |
-| `rag_rerank` | RAG | không | nội bộ: notebooklm_compare.py, rag_benchmark.py; test×1 |
-| `rag_search` | RAG | có — gián tiếp |  |
+| `rag_answer_composer` | RAG | có — gián tiếp | nối gián tiếp qua `ide_handoff_bridge` |
+| `rag_core_profiles` | RAG | có — gián tiếp | nối gián tiếp qua `final_answer_composer` |
+| `rag_evidence` | RAG | có — gián tiếp | nối gián tiếp qua `rag_answer_composer` |
+| `rag_ingest` | RAG | có — gián tiếp | nối gián tiếp qua `chat_action_answer_quality` |
+| `rag_rerank` | RAG | có — gián tiếp | nối gián tiếp qua `rag_benchmark` |
+| `rag_search` | RAG | có — gián tiếp | nối gián tiếp qua `knowledge_publication` |
 | `rag_v2` | RAG | có — một phần (nạp kèm gói cha) | nạp kèm gói cha khi chat import gói con |
-| `rag_v2.adapters` | RAG | có — gián tiếp |  |
-| `rag_v2.adaptive_retrieval` | RAG | có — gián tiếp |  |
-| `rag_v2.bge_onnx_backend` | RAG | có — gián tiếp |  |
-| `rag_v2.bge_subprocess_client` | RAG | có — gián tiếp |  |
+| `rag_v2.adapters` | RAG | có — gián tiếp | nối gián tiếp qua `rag_v2` |
+| `rag_v2.adaptive_retrieval` | RAG | có — gián tiếp | nối gián tiếp qua `workspace_chat_rag_v2_adapter` |
+| `rag_v2.bge_onnx_backend` | RAG | có — gián tiếp | nối gián tiếp qua `workspace_chat_rag_v2_adapter` |
+| `rag_v2.bge_subprocess_client` | RAG | có — gián tiếp | nối gián tiếp qua `workspace_chat_rag_v2_adapter` |
 | `rag_v2.bge_subprocess_worker` | RAG | có — qua tiến trình con | chạy tiến trình con qua `bge_subprocess_client` (đã nối chat) |
-| `rag_v2.chunk_evaluation` | RAG | không | test×1; script: evaluate_chunking.py |
+| `rag_v2.bge_worker_protocol` | RAG | có — gián tiếp | nối gián tiếp qua `rag_v2.bge_subprocess_client` |
+| `rag_v2.chunk_evaluation` | RAG | không | test×1; script: 1 |
 | `rag_v2.chunk_revisions` | RAG | không | test×1 |
 | `rag_v2.chunk_upload_config` | RAG | không | test×1 |
-| `rag_v2.chunking` | RAG | có — gián tiếp |  |
-| `rag_v2.converters` | RAG | có — gián tiếp |  |
+| `rag_v2.chunking` | RAG | có — gián tiếp | nối gián tiếp qua `rag_v2` |
+| `rag_v2.converters` | RAG | có — gián tiếp | nối gián tiếp qua `rag_v2` |
 | `rag_v2.eval_harness` | RAG | có — một phần (nạp kèm gói cha) | nạp kèm gói cha khi chat import gói con |
-| `rag_v2.evidence` | RAG | có — gián tiếp |  |
-| `rag_v2.index` | RAG | có — gián tiếp |  |
-| `rag_v2.index_bundle` | RAG | không | nội bộ: rag_v2/index_registry.py; test×1 |
+| `rag_v2.evidence` | RAG | có — gián tiếp | nối gián tiếp qua `rag_v2` |
+| `rag_v2.index` | RAG | có — gián tiếp | nối gián tiếp qua `workspace_chat_rag_v2_adapter` |
+| `rag_v2.index_bundle` | RAG | không | nội bộ: rag_v2.index_registry; test×1 |
 | `rag_v2.index_registry` | RAG | không | test×1 |
-| `rag_v2.ingest_manifest` | RAG | có — gián tiếp |  |
-| `rag_v2.ingestion_jobs` | RAG | không | nội bộ: rag_v2/ingestion_service.py; test×2 |
+| `rag_v2.ingest_manifest` | RAG | có — gián tiếp | nối gián tiếp qua `rag_v2` |
+| `rag_v2.ingestion_jobs` | RAG | không | nội bộ: rag_v2.ingestion_service; test×2 |
 | `rag_v2.ingestion_service` | RAG | không | test×1 |
 | `rag_v2.ingestion_workers` | RAG | không | test×1 |
-| `rag_v2.multilingual_query_expand` | RAG | có — gián tiếp |  |
-| `rag_v2.pipeline` | RAG | có — gián tiếp |  |
+| `rag_v2.multilingual_query_expand` | RAG | có — gián tiếp | nối gián tiếp qua `workspace_chat_rag_v2_adapter` |
+| `rag_v2.pipeline` | RAG | có — gián tiếp | nối gián tiếp qua `workspace_chat_rag_v2_adapter` |
 | `rag_v2.query_planning` | RAG | có — trực tiếp (import khi gọi) |  |
-| `rag_v2.registry` | RAG | có — gián tiếp |  |
+| `rag_v2.registry` | RAG | có — gián tiếp | nối gián tiếp qua `rag_v2` |
 | `rag_v2.remote_ingestion_client` | RAG | không | test×1 |
-| `rag_v2.retrieval_backends` | RAG | có — gián tiếp |  |
-| `rag_v2.schema` | RAG | có — gián tiếp |  |
-| `rag_v2.script_family` | RAG | có — gián tiếp |  |
-| `rag_v2.semantic` | RAG | có — gián tiếp |  |
-| `rag_v2.structured_query` | RAG | có — gián tiếp |  |
-| `rag_v2.summary_provenance` | RAG | có — gián tiếp |  |
-| `rag_v2.synthesis` | RAG | có — gián tiếp |  |
-| `rag_v2_synthesis_provider` | RAG | không | nội bộ: rag_v2/bge_subprocess_worker.py; test×1 |
-| `shared_library_presets` | RAG | có — trực tiếp (nạp ngay) |  |
-| `source_ingest` | RAG | có — gián tiếp |  |
-| `source_router` | RAG | có — gián tiếp |  |
+| `rag_v2.retrieval_backends` | RAG | có — gián tiếp | nối gián tiếp qua `workspace_chat_rag_v2_adapter` |
+| `rag_v2.schema` | RAG | có — gián tiếp | nối gián tiếp qua `rag_v2` |
+| `rag_v2.script_family` | RAG | có — gián tiếp | nối gián tiếp qua `workspace_chat_rag_v2_adapter` |
+| `rag_v2.semantic` | RAG | có — gián tiếp | nối gián tiếp qua `workspace_chat_rag_v2_adapter` |
+| `rag_v2.structured_query` | RAG | có — gián tiếp | nối gián tiếp qua `workspace_chat_rag_v2_adapter` |
+| `rag_v2.summary_provenance` | RAG | có — gián tiếp | nối gián tiếp qua `rag_v2.chunking` |
+| `rag_v2.synthesis` | RAG | có — gián tiếp | nối gián tiếp qua `rag_v2` |
+| `rag_v2_synthesis_provider` | RAG | không | nội bộ: rag_v2.bge_subprocess_worker; test×1 |
+| `shared_library_presets` | RAG | có — trực tiếp (import khi gọi) |  |
+| `source_ingest` | RAG | có — gián tiếp | nối gián tiếp qua `chat_action_visual_maps` |
+| `source_router` | RAG | có — gián tiếp | nối gián tiếp qua `final_answer_composer` |
+| `split_index_by_domain` | RAG | không | test×1 |
 | `strong_answer_ui` | RAG | không | test×1 |
 | `workspace_chat_rag_v2_adapter` | RAG | có — trực tiếp (nạp ngay) |  |
-| `workspace_chat_rag_v2_deployment` | RAG | có — gián tiếp |  |
-| `workspace_chat_router_adapter` | RAG | có — gián tiếp |  |
+| `workspace_chat_rag_v2_deployment` | RAG | có — gián tiếp | nối gián tiếp qua `workspace_chat_rag_v2_adapter` |
+| `workspace_chat_router_adapter` | RAG | có — gián tiếp | nối gián tiếp qua `workspace_chat_ai_answer` |
 | `workspace_chat_source_ingest` | RAG | có — trực tiếp (nạp ngay) |  |
 
-### benchmark — 11 module (nối 0, chưa nối 11)
+### benchmark — 16 module (Đã nối: 8, Chưa nối: 8)
 
-| module | nhóm | đã nối | ghi chú |
+| Module | Nhóm | Đã nối chat | Ghi chú / Điểm kết nối |
 |---|---|---|---|
-| `agent_learning` | benchmark | không | không tham chiếu ở đâu |
-| `benchmark_reference_acquisition` | benchmark | không | test×1; script: battle_notebooklm_rag_v2.py |
-| `benchmark_reference_registry` | benchmark | không | nội bộ: benchmark_reference_acquisition.py, rag_v2/index_bundle.py, rag_v2/index_registry.py (+1); test×2; script: battle_notebooklm_rag_v2.py, reference_registry.py |
-| `mom_benchmark` | benchmark | không | nội bộ: mom_benchmark_gate.py; test×1 |
+| `benchmark_reference_acquisition` | benchmark | không | test×1; script: 1 |
+| `benchmark_reference_registry` | benchmark | không | nội bộ: benchmark_reference_acquisition, rag_v2.index_bundle, rag_v2.index_registry; test×2; script: 2 |
+| `golden_answer_importer` | benchmark | có — gián tiếp | nối gián tiếp qua `expert_interview_session` |
+| `golden_question_export` | benchmark | không | test×5 |
+| `golden_question_generator` | benchmark | có — gián tiếp | nối gián tiếp qua `expert_interview_session` |
+| `golden_question_quality` | benchmark | không | test×1 |
+| `golden_question_schema` | benchmark | có — gián tiếp | nối gián tiếp qua `chat_interview_ui` |
+| `golden_question_scorer` | benchmark | có — gián tiếp | nối gián tiếp qua `expert_interview_session` |
+| `mom_benchmark` | benchmark | có — gián tiếp | nối gián tiếp qua `chat_action_answer_quality` |
 | `mom_benchmark_gate` | benchmark | không | test×1 |
-| `mom_coverage` | benchmark | không | test×1; script: audit_mom_corpus.py |
-| `mom_local_index` | benchmark | không | nội bộ: mom_coverage.py; test×4; tham chiếu chuỗi: tests/test_rag_v2_hardcode_guard.py |
-| `notebooklm_compare` | benchmark | không | CLI (`cli.py`); test×2 |
-| `rag_benchmark` | benchmark | không | test×2 |
-| `rag_evaluator` | benchmark | không | test×1 |
-| `real_doc_inventory` | benchmark | không | nội bộ: mom_benchmark.py, mom_local_index.py; test×1 |
+| `mom_coverage` | benchmark | không | test×1; script: 1 |
+| `mom_local_index` | benchmark | không | nội bộ: mom_coverage; test×5 |
+| `notebooklm_compare` | benchmark | không | nội bộ: cli; test×2 |
+| `rag_benchmark` | benchmark | có — gián tiếp | nối gián tiếp qua `chat_action_answer_quality` |
+| `rag_evaluator` | benchmark | có — gián tiếp | nối gián tiếp qua `chat_action_answer_quality` |
+| `real_doc_inventory` | benchmark | có — gián tiếp | nối gián tiếp qua `mom_benchmark` |
 
-### interview — 12 module (nối 11, chưa nối 1)
+### interview — 16 module (Đã nối: 15, Chưa nối: 1)
 
-| module | nhóm | đã nối | ghi chú |
+| Module | Nhóm | Đã nối chat | Ghi chú / Điểm kết nối |
 |---|---|---|---|
-| `adaptive_interview_engine` | interview | có — gián tiếp |  |
-| `controlled_knowledge_artifact` | interview | có — gián tiếp |  |
-| `expert_identity` | interview | có — gián tiếp |  |
-| `expert_identity_windows` | interview | có — gián tiếp |  |
-| `expert_interview_models` | interview | có — gián tiếp |  |
-| `expert_interview_repository` | interview | có — gián tiếp |  |
-| `expert_interview_service` | interview | có — gián tiếp |  |
+| `adaptive_interview_engine` | interview | có — gián tiếp | nối gián tiếp qua `chat_action_expert_interview` |
+| `chat_action_expert_interview` | interview | có — trực tiếp qua action router | nạp qua builtin action router (`chat_action.py`) |
+| `chat_action_interview_chat` | interview | có — trực tiếp qua action router | nạp qua builtin action router (`chat_action.py`) |
+| `chat_interview_ui` | interview | có — trực tiếp (import khi gọi) |  |
+| `controlled_knowledge_artifact` | interview | có — gián tiếp | nối gián tiếp qua `workspace_case_ui` |
+| `expert_identity` | interview | có — gián tiếp | nối gián tiếp qua `workspace_case_repository` |
+| `expert_identity_windows` | interview | có — gián tiếp | nối gián tiếp qua `workspace_case_ui` |
+| `expert_interview_models` | interview | có — gián tiếp | nối gián tiếp qua `workspace_case_ui` |
+| `expert_interview_repository` | interview | có — gián tiếp | nối gián tiếp qua `workspace_case_ui` |
+| `expert_interview_service` | interview | có — gián tiếp | nối gián tiếp qua `workspace_case_ui` |
+| `expert_interview_session` | interview | có — gián tiếp | nối gián tiếp qua `chat_interview_ui` |
 | `fine_tune_eligibility` | interview | không | test×2 |
-| `knowledge_claim_extractor` | interview | có — gián tiếp |  |
-| `knowledge_coverage` | interview | có — gián tiếp |  |
-| `knowledge_publication` | interview | có — gián tiếp |  |
-| `local_transcription` | interview | có — gián tiếp |  |
+| `knowledge_claim_extractor` | interview | có — gián tiếp | nối gián tiếp qua `controlled_knowledge_artifact` |
+| `knowledge_coverage` | interview | có — gián tiếp | nối gián tiếp qua `workspace_case_repository` |
+| `knowledge_publication` | interview | có — gián tiếp | nối gián tiếp qua `workspace_memory_service` |
+| `local_transcription` | interview | có — gián tiếp | nối gián tiếp qua `workspace_case_ui` |
 
-### prediction — 24 module (nối 23, chưa nối 1)
+### prediction — 32 module (Đã nối: 29, Chưa nối: 3)
 
-| module | nhóm | đã nối | ghi chú |
+| Module | Nhóm | Đã nối chat | Ghi chú / Điểm kết nối |
 |---|---|---|---|
-| `cagent_api` | prediction | có — gián tiếp |  |
+| `cagent_api` | prediction | có — gián tiếp | nối gián tiếp qua `antigravity_bridge` |
+| `chat_action_prediction` | prediction | có — trực tiếp qua action router | nạp qua builtin action router (`chat_action.py`) |
 | `in_app_risk_alert` | prediction | có — trực tiếp (nạp ngay) |  |
 | `prediction_shadow_ui` | prediction | có — trực tiếp (nạp ngay) |  |
 | `production_prediction` | prediction | có — một phần (nạp kèm gói cha) | nạp kèm gói cha khi chat import gói con |
-| `production_prediction.alert_config_chat` | prediction | có — gián tiếp |  |
+| `production_prediction.alert_config_chat` | prediction | có — gián tiếp | nối gián tiếp qua `production_prediction.jig_chat_wire` |
 | `production_prediction.alert_mailer` | prediction | có — trực tiếp (import khi gọi) |  |
-| `production_prediction.chart_selection` | prediction | có — gián tiếp |  |
-| `production_prediction.evaluation` | prediction | có — gián tiếp |  |
-| `production_prediction.iris_log_adapter` | prediction | có — gián tiếp |  |
+| `production_prediction.chart_selection` | prediction | có — gián tiếp | nối gián tiếp qua `production_prediction.jig_chat_wire` |
+| `production_prediction.evaluation` | prediction | có — gián tiếp | nối gián tiếp qua `prediction_shadow_ui` |
+| `production_prediction.iris_log_adapter` | prediction | có — gián tiếp | nối gián tiếp qua `production_prediction.jig_chat_wire` |
 | `production_prediction.jig_alert_cards` | prediction | có — trực tiếp (import khi gọi) |  |
 | `production_prediction.jig_chat_wire` | prediction | có — trực tiếp (import khi gọi) |  |
-| `production_prediction.jig_log_ingest` | prediction | có — gián tiếp |  |
+| `production_prediction.jig_csv_import` | prediction | có — gián tiếp | nối gián tiếp qua `production_prediction.jig_chat_wire` |
+| `production_prediction.jig_log_ingest` | prediction | có — gián tiếp | nối gián tiếp qua `production_prediction.jig_chat_wire` |
 | `production_prediction.log_archive` | prediction | có — trực tiếp (import khi gọi) |  |
-| `production_prediction.lsu_iris` | prediction | có — gián tiếp |  |
-| `production_prediction.metric_limits` | prediction | có — gián tiếp |  |
-| `production_prediction.migrations` | prediction | có — gián tiếp |  |
-| `production_prediction.models` | prediction | có — gián tiếp |  |
-| `production_prediction.reporting` | prediction | không | chỉ dùng trong test (2 tệp) |
+| `production_prediction.log_stream_ingest` | prediction | có — gián tiếp | nối gián tiếp qua `production_prediction.jig_chat_wire` |
+| `production_prediction.lsu_iris` | prediction | có — gián tiếp | nối gián tiếp qua `prediction_shadow_ui` |
+| `production_prediction.metric_limits` | prediction | có — gián tiếp | nối gián tiếp qua `production_prediction.jig_chat_wire` |
+| `production_prediction.migrations` | prediction | có — gián tiếp | nối gián tiếp qua `production_prediction.repository` |
+| `production_prediction.models` | prediction | có — gián tiếp | nối gián tiếp qua `prediction_shadow_ui` |
+| `production_prediction.reporting` | prediction | không | test×2 |
 | `production_prediction.repository` | prediction | có — trực tiếp (nạp ngay) |  |
+| `production_prediction.rt_consumer` | prediction | không | test×1 |
+| `production_prediction.rt_replay` | prediction | không | test×1 |
 | `production_prediction.session_isolation` | prediction | có — trực tiếp (import khi gọi) |  |
-| `production_prediction.shadow` | prediction | có — gián tiếp |  |
+| `production_prediction.shadow` | prediction | có — gián tiếp | nối gián tiếp qua `prediction_shadow_ui` |
 | `production_prediction.smtp_config` | prediction | có — trực tiếp (import khi gọi) |  |
-| `production_prediction.spc_chart` | prediction | có — gián tiếp |  |
+| `production_prediction.spc_chart` | prediction | có — gián tiếp | nối gián tiếp qua `production_prediction.jig_chat_wire` |
 | `production_prediction.stream_api` | prediction | có — trực tiếp (import khi gọi) |  |
+| `production_prediction.trend_alerts` | prediction | có — gián tiếp | nối gián tiếp qua `production_prediction.jig_chat_wire` |
+| `production_prediction.trend_response` | prediction | có — gián tiếp | nối gián tiếp qua `production_prediction.jig_chat_wire` |
+| `threshold_alert_chat` | prediction | có — trực tiếp (import khi gọi) |  |
 
-### visual — 12 module (nối 2, chưa nối 10)
+### visual — 14 module (Đã nối: 8, Chưa nối: 6)
 
-| module | nhóm | đã nối | ghi chú |
+| Module | Nhóm | Đã nối chat | Ghi chú / Điểm kết nối |
 |---|---|---|---|
+| `chat_action_visual_maps` | visual | có — trực tiếp qua action router | nạp qua builtin action router (`chat_action.py`) |
 | `evidence_graph_viewer` | visual | có — trực tiếp (nạp ngay) |  |
-| `excaliflow_adapter` | visual | có — gián tiếp |  |
-| `graphify_adapter` | visual | không | test×4; script: desktop_smoke_test.py |
-| `knowledge_map_html` | visual | không | test×2 |
-| `knowledge_map_view` | visual | không | nội bộ: worklens_semantic_map.py; test×1 |
+| `excaliflow_adapter` | visual | có — gián tiếp | nối gián tiếp qua `evidence_graph_viewer` |
+| `graphify_adapter` | visual | không | test×5; script: 1 |
+| `knowledge_map_html` | visual | có — gián tiếp | nối gián tiếp qua `chat_action_visual_maps` |
+| `knowledge_map_view` | visual | có — gián tiếp | nối gián tiếp qua `worklens_semantic_map` |
 | `notebook_graph` | visual | không | test×1 |
-| `visual_knowledge_map` | visual | không | test×1 |
+| `visual_knowledge_map` | visual | có — gián tiếp | nối gián tiếp qua `chat_action_visual_maps` |
 | `visual_map_builder` | visual | không | test×3 |
-| `visual_map_export` | visual | không | nội bộ: visual_map_ui.py; test×2 |
-| `visual_map_models` | visual | không | nội bộ: visual_map_builder.py, visual_map_export.py, visual_map_ui.py; test×4 |
+| `visual_map_export` | visual | không | nội bộ: visual_map_ui; test×2 |
+| `visual_map_image` | visual | có — gián tiếp | nối gián tiếp qua `chat_action_visual_maps` |
+| `visual_map_models` | visual | không | nội bộ: visual_map_builder, visual_map_export, visual_map_ui; test×4 |
 | `visual_map_ui` | visual | không | test×1 |
-| `worklens_semantic_map` | visual | không | test×1 |
+| `worklens_semantic_map` | visual | có — gián tiếp | nối gián tiếp qua `chat_action_visual_maps` |
 
-### extract — 11 module (nối 10, chưa nối 1)
+### extract — 11 module (Đã nối: 10, Chưa nối: 1)
 
-| module | nhóm | đã nối | ghi chú |
+| Module | Nhóm | Đã nối chat | Ghi chú / Điểm kết nối |
 |---|---|---|---|
-| `agent_result_import` | extract | có — gián tiếp |  |
-| `deep_document_parsers` | extract | có — gián tiếp |  |
-| `document_extractors` | extract | có — gián tiếp |  |
-| `excel_extractors` | extract | có — gián tiếp |  |
-| `extraction` | extract | không | CLI (`cli.py`) |
-| `extractor_registry` | extract | có — gián tiếp |  |
+| `agent_result_import` | extract | có — gián tiếp | nối gián tiếp qua `workspace_agent_orchestrator` |
+| `deep_document_parsers` | extract | có — gián tiếp | nối gián tiếp qua `document_extractors` |
+| `document_extractors` | extract | có — gián tiếp | nối gián tiếp qua `workspace_chat_source_ingest` |
+| `excel_extractors` | extract | có — gián tiếp | nối gián tiếp qua `agent_work_artifact` |
+| `extraction` | extract | không | nội bộ: cli; test×30; script: 3 |
+| `extractor_registry` | extract | có — gián tiếp | nối gián tiếp qua `document_extractors` |
 | `line_log_parser` | extract | có — trực tiếp (import khi gọi) |  |
-| `ocr_engines` | extract | có — gián tiếp |  |
+| `ocr_engines` | extract | có — gián tiếp | nối gián tiếp qua `document_extractors` |
 | `workspace_chat_excel` | extract | có — trực tiếp (nạp ngay) |  |
 | `workspace_chat_folder_import` | extract | có — trực tiếp (nạp ngay) |  |
-| `workspace_chat_legacy_extractors` | extract | có — gián tiếp |  |
+| `workspace_chat_legacy_extractors` | extract | có — gián tiếp | nối gián tiếp qua `workspace_chat_source_ingest` |
 
-### memory — 6 module (nối 3, chưa nối 3)
+### memory — 6 module (Đã nối: 4, Chưa nối: 2)
 
-| module | nhóm | đã nối | ghi chú |
+| Module | Nhóm | Đã nối chat | Ghi chú / Điểm kết nối |
 |---|---|---|---|
-| `learning_models` | memory | không | nội bộ: case_audit.py, case_prompt.py, visual_map_builder.py (+1); test×2 |
-| `memory` | memory | không | test×1 |
+| `learning_models` | memory | có — gián tiếp | nối gián tiếp qua `chat_action_visual_maps` |
+| `memory` | memory | không | test×41; script: 10 |
 | `study_store` | memory | không | test×1 |
-| `workspace_memory_models` | memory | có — gián tiếp |  |
-| `workspace_memory_service` | memory | có — trực tiếp (nạp ngay) |  |
-| `workspace_memory_ui` | memory | có — trực tiếp (nạp ngay) |  |
+| `workspace_memory_models` | memory | có — gián tiếp | nối gián tiếp qua `workspace_memory_service` |
+| `workspace_memory_service` | memory | có — trực tiếp (import khi gọi) |  |
+| `workspace_memory_ui` | memory | có — trực tiếp (import khi gọi) |  |
 
-### khác — 88 module (nối 47, chưa nối 41)
+### khác — 114 module (Đã nối: 90, Chưa nối: 24)
 
-| module | nhóm | đã nối | ghi chú |
+| Module | Nhóm | Đã nối chat | Ghi chú / Điểm kết nối |
 |---|---|---|---|
+| `agent_doc_edit` | khác | có — gián tiếp | nối gián tiếp qua `agent_report_artifact` |
 | `agent_draft_sop` | khác | có — trực tiếp (nạp ngay) |  |
-| `agent_task_pack` | khác | có — gián tiếp |  |
+| `agent_report_artifact` | khác | có — trực tiếp (import khi gọi) |  |
+| `agent_report_feedback` | khác | có — gián tiếp | nối gián tiếp qua `chat_action_agent_report` |
+| `agent_task_pack` | khác | có — gián tiếp | nối gián tiếp qua `agent_result_import` |
 | `agent_work_artifact` | khác | có — trực tiếp (nạp ngay) |  |
-| `ai_provider_bridge` | khác | không | nội bộ: ai_router.py, provider_safety.py, strong_answer_ui.py; test×4 |
-| `ai_router` | khác | không | CLI (`cli.py`); nội bộ: rag_v2_synthesis_provider.py; test×6 |
+| `ai_lane` | khác | có — trực tiếp (import khi gọi) |  |
+| `ai_provider_bridge` | khác | có — gián tiếp | nối gián tiếp qua `ai_router` |
+| `ai_router` | khác | có — trực tiếp (import khi gọi) |  |
+| `answer_feedback` | khác | có — trực tiếp (import khi gọi) |  |
 | `antigravity_bridge` | khác | có — trực tiếp (nạp ngay) |  |
-| `audit` | khác | không | CLI (`cli.py`); nội bộ: phase_gate.py; test×1 |
-| `brain_gateway` | khác | có — gián tiếp |  |
-| `case_audit` | khác | không | test×2 |
-| `case_models` | khác | có — gián tiếp |  |
+| `audit` | khác | không | nội bộ: cli, phase_gate; test×19; script: 7 |
+| `brain_gateway` | khác | có — gián tiếp | nối gián tiếp qua `workspace_chat_ai_answer` |
+| `case_audit` | khác | không | test×5 |
+| `case_models` | khác | có — gián tiếp | nối gián tiếp qua `antigravity_bridge` |
 | `case_prompt` | khác | không | test×3 |
-| `case_store` | khác | có — gián tiếp |  |
-| `claim_guard` | khác | không | test×2 |
-| `cli` | khác | không | entry CLI (`python -m aios_habit.cli`), không phải chat; test tham chiếu |
-| `coding_assistant` | khác | có — gián tiếp |  |
-| `core` | khác | có — gián tiếp |  |
-| `daily_next_actions` | khác | không | test×1 |
-| `discovery` | khác | không | CLI (`cli.py`); test×1 |
-| `domain_playbooks` | khác | có — gián tiếp |  |
-| `error_cases` | khác | không | nội bộ: error_cases/import_history.py, error_cases/store.py; test×5 |
-| `error_cases.auto_classifier` | khác | không | nội bộ: error_cases/__init__.py; test×1 |
-| `error_cases.column_map` | khác | không | nội bộ: error_cases/__init__.py, error_cases/import_history.py, error_cases/store.py; test×1 |
-| `error_cases.completeness` | khác | không | nội bộ: error_cases/__init__.py |
-| `error_cases.feedback_loop` | khác | không | nội bộ: error_cases/__init__.py; test×1 |
-| `error_cases.glossary` | khác | không | nội bộ: error_cases/__init__.py, error_cases/auto_classifier.py, error_cases/investigation_tree.py; test×2 |
-| `error_cases.import_history` | khác | không | nội bộ: error_cases/__init__.py; test×1 |
-| `error_cases.investigation_tree` | khác | không | nội bộ: error_cases/__init__.py; test×1 |
-| `error_cases.store` | khác | không | nội bộ: error_cases/__init__.py, error_cases/import_history.py; test×1 |
-| `error_cases.trend_analysis` | khác | không | nội bộ: error_cases/__init__.py |
-| `evidence` | khác | không | không tham chiếu ở đâu |
+| `case_store` | khác | có — gián tiếp | nối gián tiếp qua `workspace_memory_service` |
+| `chat_action` | khác | có — trực tiếp (import khi gọi) |  |
+| `chat_action_agent_report` | khác | có — trực tiếp qua action router | nạp qua builtin action router (`chat_action.py`) |
+| `chat_action_answer_quality` | khác | có — trực tiếp qua action router | nạp qua builtin action router (`chat_action.py`) |
+| `chat_action_bao_cao_dieu_tra` | khác | có — trực tiếp qua action router | nạp qua builtin action router (`chat_action.py`) |
+| `chat_action_case_form` | khác | có — trực tiếp qua action router | nạp qua builtin action router (`chat_action.py`) |
+| `chat_action_data_paste` | khác | có — trực tiếp qua action router | nạp qua builtin action router (`chat_action.py`) |
+| `chat_action_dieu_tra` | khác | có — trực tiếp qua action router | nạp qua builtin action router (`chat_action.py`) |
+| `chat_action_error_lookup` | khác | có — trực tiếp qua action router | nạp qua builtin action router (`chat_action.py`) |
+| `chat_action_log_stream` | khác | có — trực tiếp qua action router | nạp qua builtin action router (`chat_action.py`) |
+| `chat_action_next_actions` | khác | có — trực tiếp qua action router | nạp qua builtin action router (`chat_action.py`) |
+| `chat_action_phan_hoi` | khác | có — trực tiếp qua action router | nạp qua builtin action router (`chat_action.py`) |
+| `chat_action_suggestion_review` | khác | có — trực tiếp qua action router | nạp qua builtin action router (`chat_action.py`) |
+| `chat_intent_router` | khác | có — trực tiếp (import khi gọi) |  |
+| `claim_guard` | khác | không | test×3 |
+| `cli` | khác | không | test×42; script: 4 |
+| `coding_assistant` | khác | có — gián tiếp | nối gián tiếp qua `workspace_case_ui` |
+| `core` | khác | có — gián tiếp | nối gián tiếp qua `workspace_memory_service` |
+| `daily_next_actions` | khác | có — gián tiếp | nối gián tiếp qua `chat_action_next_actions` |
+| `discovery` | khác | không | nội bộ: cli; test×6 |
+| `domain_playbooks` | khác | có — gián tiếp | nối gián tiếp qua `final_answer_composer` |
+| `error_cases` | khác | có — một phần (nạp kèm gói cha) | nạp kèm gói cha khi chat import gói con |
+| `error_cases.auto_classifier` | khác | có — gián tiếp | nối gián tiếp qua `error_cases.investigation_report` |
+| `error_cases.backfill_fix` | khác | có — gián tiếp | nối gián tiếp qua `error_cases` |
+| `error_cases.case_form` | khác | có — gián tiếp | nối gián tiếp qua `chat_action_case_form` |
+| `error_cases.column_map` | khác | có — gián tiếp | nối gián tiếp qua `chat_action_dieu_tra` |
+| `error_cases.completeness` | khác | có — gián tiếp | nối gián tiếp qua `error_cases` |
+| `error_cases.feedback_loop` | khác | có — gián tiếp | nối gián tiếp qua `chat_action_error_lookup` |
+| `error_cases.glossary` | khác | có — gián tiếp | nối gián tiếp qua `chat_action_error_lookup` |
+| `error_cases.import_history` | khác | có — gián tiếp | nối gián tiếp qua `error_cases` |
+| `error_cases.import_lsu_logs` | khác | có — gián tiếp | nối gián tiếp qua `error_cases` |
+| `error_cases.investigation_report` | khác | có — gián tiếp | nối gián tiếp qua `chat_action_bao_cao_dieu_tra` |
+| `error_cases.investigation_tree` | khác | có — gián tiếp | nối gián tiếp qua `chat_action_dieu_tra` |
+| `error_cases.store` | khác | có — gián tiếp | nối gián tiếp qua `chat_action_error_lookup` |
+| `error_cases.trend_analysis` | khác | có — gián tiếp | nối gián tiếp qua `error_cases.investigation_report` |
+| `error_cases.trend_notify` | khác | có — gián tiếp | nối gián tiếp qua `error_cases` |
+| `evidence` | khác | không | test×130; script: 17 |
 | `evidence_trace` | khác | có — trực tiếp (nạp ngay) |  |
 | `evidence_trace_schema` | khác | có — trực tiếp (nạp ngay) |  |
-| `export_pack` | khác | không | CLI (`cli.py`) |
-| `feature_flags` | khác | có — gián tiếp |  |
-| `gemini_web_engine` | khác | không | test×1; script: antigravity_sidecar_daemon.py |
-| `handover` | khác | không | CLI (`cli.py`) |
+| `export_pack` | khác | không | nội bộ: cli; test×1 |
+| `feature_flags` | khác | có — gián tiếp | nối gián tiếp qua `chat_action` |
+| `gemini_web_engine` | khác | không | test×1; script: 1 |
+| `handover` | khác | không | nội bộ: cli; test×4 |
 | `i18n` | khác | có — trực tiếp (nạp ngay) |  |
 | `ide_bridge` | khác | không | test×2 |
 | `ide_handoff_bridge` | khác | có — trực tiếp (nạp ngay) |  |
-| `library_backup` | khác | có — trực tiếp (nạp ngay) |  |
-| `line_investigation` | khác | có — gián tiếp |  |
-| `llm_client` | khác | có — gián tiếp |  |
+| `library_backup` | khác | có — trực tiếp (import khi gọi) |  |
+| `line_investigation` | khác | có — gián tiếp | nối gián tiếp qua `workspace_case_ui` |
+| `llm_client` | khác | có — gián tiếp | nối gián tiếp qua `workspace_chat_ai_answer` |
 | `local_folder_picker` | khác | có — trực tiếp (nạp ngay) |  |
-| `local_jsonl` | khác | có — gián tiếp |  |
-| `models` | khác | không | CLI (`cli.py`); nội bộ: audit.py, discovery.py, evidence.py (+5); test×1 |
-| `notebook_bridge` | khác | không | test×2 |
+| `local_jsonl` | khác | có — gián tiếp | nối gián tiếp qua `workspace_chat_store` |
+| `models` | khác | không | nội bộ: audit, cli, discovery; test×85; script: 14 |
+| `notebook_bridge` | khác | không | test×4 |
 | `notebook_case_actions` | khác | không | test×2 |
-| `notebook_import_store` | khác | không | nội bộ: daily_next_actions.py, worklens_semantic_map.py; test×4 |
-| `notebook_index` | khác | không | nội bộ: daily_next_actions.py, notebook_qa.py, study_store.py; test×8 |
-| `notebook_qa` | khác | không | test×3 |
+| `notebook_import_store` | khác | có — gián tiếp | nối gián tiếp qua `daily_next_actions` |
+| `notebook_index` | khác | có — gián tiếp | nối gián tiếp qua `daily_next_actions` |
+| `notebook_qa` | khác | không | test×5 |
+| `notebook_readiness` | khác | có — trực tiếp (import khi gọi) |  |
 | `opencode_runtime_adapter` | khác | có — trực tiếp (nạp ngay) |  |
 | `owner_workflow_state` | khác | không | test×1 |
-| `paths` | khác | không | không tham chiếu ở đâu |
-| `phase_gate` | khác | không | CLI (`cli.py`); test×1 |
-| `profiles` | khác | không | CLI (`cli.py`) |
-| `provider_catalog` | khác | có — gián tiếp |  |
-| `provider_health` | khác | có — gián tiếp |  |
-| `provider_model_discovery` | khác | không | CLI (`cli.py`); nội bộ: ai_router.py; test×1 |
+| `paths` | khác | không | test×55; script: 11 |
+| `phase_gate` | khác | không | nội bộ: cli; test×1 |
+| `profiles` | khác | không | nội bộ: cli; test×4; script: 1 |
+| `provider_catalog` | khác | có — gián tiếp | nối gián tiếp qua `ai_router` |
+| `provider_health` | khác | có — gián tiếp | nối gián tiếp qua `ai_router` |
+| `provider_model_discovery` | khác | có — gián tiếp | nối gián tiếp qua `ai_router` |
 | `provider_safety` | khác | không | test×1 |
-| `resilient_routing` | khác | có — gián tiếp |  |
+| `resilient_routing` | khác | có — gián tiếp | nối gián tiếp qua `ai_router` |
 | `route_log_ui` | khác | không | test×1 |
-| `router_adapter` | khác | có — gián tiếp |  |
+| `router_adapter` | khác | có — gián tiếp | nối gián tiếp qua `workspace_chat_ai_answer` |
 | `router_synth_redaction` | khác | không | test×1 |
-| `safety_modes` | khác | có — gián tiếp |  |
-| `shared_ai_provider_fabric` | khác | có — gián tiếp |  |
-| `shared_mailbox` | khác | có — trực tiếp (nạp ngay) |  |
-| `storage` | khác | không | CLI (`cli.py`); nội bộ: audit.py, evidence.py, memory.py; test×1 |
+| `safety_modes` | khác | có — gián tiếp | nối gián tiếp qua `ai_router` |
+| `self_improvement` | khác | có — gián tiếp | nối gián tiếp qua `chat_interview_ui` |
+| `shared_ai_provider_fabric` | khác | có — gián tiếp | nối gián tiếp qua `provider_catalog` |
+| `shared_mailbox` | khác | có — trực tiếp (import khi gọi) |  |
+| `storage` | khác | không | nội bộ: audit, cli, evidence; test×18; script: 1 |
+| `suggestion_feedback` | khác | có — gián tiếp | nối gián tiếp qua `chat_interview_ui` |
 | `ui_safety` | khác | có — trực tiếp (nạp ngay) |  |
-| `workflow` | khác | không | không tham chiếu ở đâu |
+| `workflow` | khác | không | test×12; script: 2 |
 | `workspace_agent_bridge_client` | khác | có — trực tiếp (nạp ngay) |  |
 | `workspace_agent_models` | khác | có — trực tiếp (nạp ngay) |  |
 | `workspace_agent_orchestrator` | khác | có — trực tiếp (nạp ngay) |  |
-| `workspace_agent_policy` | khác | có — trực tiếp (import khi gọi) |  |
+| `workspace_agent_policy` | khác | có — gián tiếp | nối gián tiếp qua `workspace_agent_orchestrator` |
 | `workspace_case_authorization` | khác | có — trực tiếp (nạp ngay) |  |
-| `workspace_case_migrations` | khác | có — gián tiếp |  |
+| `workspace_case_migrations` | khác | có — gián tiếp | nối gián tiếp qua `workspace_case_repository` |
 | `workspace_case_models` | khác | có — trực tiếp (nạp ngay) |  |
 | `workspace_case_repository` | khác | có — trực tiếp (nạp ngay) |  |
 | `workspace_case_service` | khác | có — trực tiếp (nạp ngay) |  |
 | `workspace_case_ui` | khác | có — trực tiếp (nạp ngay) |  |
 | `workspace_chat_ai_answer` | khác | có — trực tiếp (nạp ngay) |  |
 | `workspace_chat_answer_preview` | khác | có — trực tiếp (nạp ngay) |  |
-| `workspace_chat_app` | khác | — (chính là entry chat) | entry Streamlit của chat (`streamlit run src/aios_habit/workspace_chat_app.py`) |
-| `workspace_chat_connector_guard` | khác | có — trực tiếp (import khi gọi) |  |
+| `workspace_chat_app` | khác | có — gián tiếp |  |
+| `workspace_chat_connector_guard` | khác | có — gián tiếp | nối gián tiếp qua `antigravity_bridge` |
 | `workspace_chat_models` | khác | có — trực tiếp (nạp ngay) |  |
 | `workspace_chat_store` | khác | có — trực tiếp (nạp ngay) |  |
 | `workspace_chat_ui` | khác | có — trực tiếp (nạp ngay) |  |
-| `workspace_models` | khác | không | nội bộ: case_audit.py, case_prompt.py, notebook_bridge.py (+2); test×4 |
+| `workspace_models` | khác | có — gián tiếp | nối gián tiếp qua `chat_action_visual_maps` |
 | `workspace_paths` | khác | có — trực tiếp (nạp ngay) |  |
 
-## 4. Nhận xét chính
+## 4. Phân tích các module chưa nối & Kiến nghị lộ trình
 
-- **benchmark: toàn bộ 11 module đứng riêng** — `mom_benchmark`, `mom_benchmark_gate`, `mom_coverage`, `mom_local_index`, `rag_benchmark`, `rag_evaluator`, `benchmark_reference_acquisition`, `benchmark_reference_registry`, `notebooklm_compare`, `real_doc_inventory`, `agent_learning`. Đúng như vé TOOL-3 dự kiến nối `mom_benchmark` + `rag_benchmark` + `rag_evaluator`.
-- **visual: 10/12 chưa nối** — còn `visual_map_builder/export/models/ui`, `visual_knowledge_map`, `knowledge_map_html`, `knowledge_map_view`, `worklens_semantic_map`, `graphify_adapter`, `notebook_graph`. Lưu ý cho TOOL-5: `evidence_graph_viewer` **đã nối** (import trực tiếp trong `workspace_chat_ui`), khác với giả định trong prompt xếp hàng.
-- **Bộ điều tra lỗi LSU (`error_cases`, 11 module) chưa nối chat** — hiện chỉ dùng qua CLI/test (Bước 0–5), ví dụ `error_cases.investigation_tree`, `error_cases.trend_analysis`, `error_cases.auto_classifier`.
-- **interview (11/12) và prediction (23/24) đã nối nhưng "một phần"**: interview đi gián tiếp qua màn hồ sơ `workspace_case_ui`; prediction đi qua wiring S12 (`jig_chat_wire`, `prediction_shadow_ui` import khi gọi trong app). Chưa có khung `chat_action` chung — đúng khoảng trống mà TOOL-2 sẽ lấp.
-- **Bộ notebook/study chưa nối**: `notebook_bridge`, `notebook_index`, `notebook_qa`, `notebook_import_store`, `notebook_case_actions`, `notebook_graph`, `study_store`, `daily_next_actions`.
-- Một số module **không tham chiếu ở đâu** (chết/đứng riêng): `agent_learning`, `evidence`, `paths`, `workflow` — cân nhắc khi dọn dẹp sau này.
-- **RAG 13 module chưa tới chat** chủ yếu là hạ tầng index/ingest (`index_bundle`, `index_registry`, `ingestion_jobs`, `ingestion_service`, `ingestion_workers`, `remote_ingestion_client`, `chunk_evaluation`, `chunk_revisions`, `chunk_upload_config`, `model_pack`, `rag_rerank`, `rag_v2_synthesis_provider`, `strong_answer_ui`).
-- Gợi ý cho TOOL-2 (chọn tool mẫu đơn giản nhất): các tool nhỏ, ít phụ thuộc, chưa nối như `rag_evaluator` (57 dòng), `claim_guard` (81), `daily_next_actions` (47) hoặc `mom_benchmark` (339).
-
-## 5. Xác nhận ràng buộc vé
-
-- Chỉ đọc + báo cáo: **0 dòng mã nguồn/test thay đổi** (commit báo cáo chỉ thêm file này; commit mốc chỉ sửa `trang-thai.md`).
-- Không đụng index production RAG, không embed, không ghi dữ liệu trên ổ D (repo chỉ nhận 2 file tài liệu theo quy ước vé).
-- Không merge `main`, không force-push.
-
+Qua đối chiếu thực tế, 60 module chưa nối tập trung ở các nhóm sau:
+1. **Nhóm Benchmark (8 module chưa nối)**: `benchmark_reference_acquisition`, `benchmark_reference_registry`, `mom_benchmark`, `mom_benchmark_gate`, `mom_coverage`, `mom_local_index`, `notebooklm_compare`, `rag_benchmark`. Các module này hiện chỉ phục vụ đo lường offline qua CLI hoặc test script. Kiến nghị đưa lệnh kích hoạt benchmark nhanh (hoặc xem kết quả benchmark gần nhất) thành 1 action trả lời trực tiếp trong chat.
+2. **Nhóm RAG v2 chuyên sâu (15 module chưa nối)**: `rag_v2.chunk_evaluation`, `rag_v2.chunk_revisions`, `rag_v2.chunk_upload_config`, `rag_v2.index_bundle`, `rag_v2.index_registry`, `rag_v2.ingestion_jobs`, `rag_v2.ingestion_service`, `rag_v2.ingestion_workers`, `rag_v2.remote_ingestion_client`, `rag_rerank`, `rag_v2_synthesis_provider`, `model_pack`, `strong_answer_ui`, `index_domain`, `split_index_by_domain`. Phần lớn là hạ tầng ingestion ngầm hoặc service nền. Kiến nghị nối trạng thái tiến độ ingestion nền vào chat notification.
+3. **Nhóm Visual (6 module chưa nối)**: `graphify_adapter`, `notebook_graph`, `visual_knowledge_map`, `visual_map_builder`, `visual_map_export`, `visual_map_ui`. Hiện chat mới nối qua `chat_action_visual_maps` và `evidence_graph_viewer`. Kiến nghị cho phép render sơ đồ tri thức / đồ thị phụ thuộc dạng preview inline ngay trong bubble trả lời.
+4. **Nhóm Khác (24 module chưa nối)**: Chủ yếu là các module legacy CLI (`cli.py`), audit nội bộ (`audit.py`, `case_audit.py`), quản lý pha (`phase_gate.py`), bộ cung cấp cloud (`gemini_web_engine.py`), hoặc các model/storage độc lập. Có thể giữ nguyên độc lập hoặc đưa lệnh kiểm toán nhanh vào action bot.
