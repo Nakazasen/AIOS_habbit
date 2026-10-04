@@ -5,4 +5,4 @@
 - `hang-cho`: hết.
 - `commit`: (đang làm)
 - `bao_cao`: `docs/phieu-viec/ket-qua/ux-attach-sources.md` (báo cáo vòng 2 giữ để đối chiếu; báo cáo vòng này ghi đè khi xong)
-- `ghi_chu`: 2026-10-04 08:08 +07 Phần A xong. Tesseract v5.5.3.20260724 tại `C:\Program Files\Tesseract-OCR`, `tesseract --version` ra số version, `--list-langs` có `vie`. Bước tiếp: restart app cổng 8501 rồi verify 3 điểm với ảnh lỗi thật.
+- `ghi_chu`: 2026-10-04 08:16 +07 app cổng 8501 đã mở lại. Ảnh lỗi thật đã vào composer, OCR tạo nguồn tạm và đang chuẩn bị. Nhãn thanh bên đúng `＋ Thêm nguồn`. SHA kho trước verify `45eb0e07…b7c0` không đổi. Đang chờ câu trả lời.
