@@ -86,3 +86,15 @@ script tạm `scratch/check_chart_datauri.py` (gitignore) dựng `ChatActionOutc
 - TOOL-3/4/5 dùng lại khung: thêm 1 module action + 1 dòng vào `BUILTIN_ACTION_MODULES` (và bật cờ khi duyệt).
 - Vé riêng chuyển `daily_next_actions` sang store hiện hành (mục 6.1).
 - Cân nhắc trần ảnh biểu đồ và phương án “lưu tệp + `st.image`” nếu tool sau này trả ảnh lớn (hiện đã chốt data-URI + trần 400.000 byte).
+
+## 8. Kiểm lại ngày 2026-10-05 (vé tái phát hành 2026-10-04 23:41 +07)
+
+- Lý do kiểm lại: vé `TOOL-2` đã làm xong ngày 2026-09-30 và được verdict ĐẠT (`589d8fe`), nhưng ngày 2026-10-04 Muse phát hành lại vé này sau vé `OMP-MODEL-REPORT`. OMP kiểm cổng gate lúc 2026-10-05 00:25 +07: cổng MỞ (`HEAD` = `origin` = `0e06937`, `prompt.md` đúng vé `TOOL-2`, trạng thái `dang-lam` do OMP giữ từ 23:43, không có tệp watcher tự mở nào, `launchStallCount=0`). Vé thuộc lane NHÀ (code + test), khung đã có → chỉ kiểm lại, không viết lại code.
+- Phạm vi rà: từ bản phát hành lại (`e60e621`) tới `HEAD` không đổi mã `chat_action` (`git diff e60e621..HEAD -- src/aios_habit/chat_action.py src/aios_habit/chat_action_next_actions.py` rỗng; chỉ thêm báo cáo `answer-draft-fallback`, dữ liệu thô enrichment và dòng tiến độ). Khung gốc 30/09 còn nguyên, chỉ mở rộng danh sách `BUILTIN_ACTION_MODULES` (1 → 19 module) nhờ các vé sau TOOL-3/4/5 — đúng hướng đã nêu ở mục 7.
+- Bằng chứng chạy lại trên máy `h410asrock` (Windows, Python `3.11.14`):
+  - `python -m compileall src tests` → sạch.
+  - `pytest -q tests/test_chat_action.py` → **17 passed** (đúng 17 bài vé gốc).
+  - `cli audit` → `"status": "PASS"` (0 lỗi, 0 cảnh báo); `import aios_habit.workspace_chat_app` → OK; `chat_action_enabled()` mặc định → `False` (cờ tắt); `scripts/check_docs.py` → `DOCUMENTATION_CONTRACT=PASS`; `git diff --check` → sạch.
+  - `pytest -q` toàn bộ → **3998 đạt, 48 lỗi, 37 bỏ qua, 19 error** (lượt `bg_3`). Danh sách đỏ toàn nằm ngoài vùng vé: nhóm `BGE worker/client` (thiếu tiến trình con), `graphify` (thiếu gói), `error_cases_f4` + `chat_action_error_lookup` (thiếu tệp dữ liệu `/home/hatch/...`), đóng gói/mạng (`uv lock --check`, smoke thiếu module, `getaddrinfo failed`) — không bài nào thuộc `tests/test_chat_action.py` (17/17 vẫn xanh).
+  - Ràng buộc vé giữ nguyên: không nút mới (`grep st.button/st.expander/st.tabs` trong 2 tệp khung rỗng), không ghi index (chỉ khớp chữ + đọc store chat JSONL, không mở `library.sqlite`/ingest/embed), không merge `main`, không đụng ổ D.
+- Kết luận: giữ nguyên code 30/09, chỉ thêm mục kiểm lại này. Đề nghị Muse duyệt `xong-cho-duyet`.
