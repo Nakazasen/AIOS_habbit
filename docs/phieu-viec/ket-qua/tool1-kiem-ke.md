@@ -4,6 +4,7 @@
 - Thợ thực hiện: `agy` (Gemini 3.8 Flash High) trên máy `h410asrock` (Windows 10, Python 3.11).
 - Nhánh làm việc: `phieu-viec/rag-fix1`.
 - Phạm vi: Chỉ cập nhật file báo cáo này và `docs/phieu-viec/mailbox-agy/trang-thai.md`. Tuyệt đối không sửa code sản phẩm, không đụng dữ liệu ngoài repo/ổ D.
+- Sửa mục 4 ngày 2026-10-04: đồng bộ với bảng, kiểm tra bằng script.
 
 ## 1. Phương pháp kiểm kê (Bằng chứng thực thi, không suy đoán)
 
@@ -342,8 +343,16 @@
 
 ## 4. Phân tích các module chưa nối & Kiến nghị lộ trình
 
-Qua đối chiếu thực tế, 60 module chưa nối tập trung ở các nhóm sau:
-1. **Nhóm Benchmark (8 module chưa nối)**: `benchmark_reference_acquisition`, `benchmark_reference_registry`, `mom_benchmark`, `mom_benchmark_gate`, `mom_coverage`, `mom_local_index`, `notebooklm_compare`, `rag_benchmark`. Các module này hiện chỉ phục vụ đo lường offline qua CLI hoặc test script. Kiến nghị đưa lệnh kích hoạt benchmark nhanh (hoặc xem kết quả benchmark gần nhất) thành 1 action trả lời trực tiếp trong chat.
-2. **Nhóm RAG v2 chuyên sâu (15 module chưa nối)**: `rag_v2.chunk_evaluation`, `rag_v2.chunk_revisions`, `rag_v2.chunk_upload_config`, `rag_v2.index_bundle`, `rag_v2.index_registry`, `rag_v2.ingestion_jobs`, `rag_v2.ingestion_service`, `rag_v2.ingestion_workers`, `rag_v2.remote_ingestion_client`, `rag_rerank`, `rag_v2_synthesis_provider`, `model_pack`, `strong_answer_ui`, `index_domain`, `split_index_by_domain`. Phần lớn là hạ tầng ingestion ngầm hoặc service nền. Kiến nghị nối trạng thái tiến độ ingestion nền vào chat notification.
-3. **Nhóm Visual (6 module chưa nối)**: `graphify_adapter`, `notebook_graph`, `visual_knowledge_map`, `visual_map_builder`, `visual_map_export`, `visual_map_ui`. Hiện chat mới nối qua `chat_action_visual_maps` và `evidence_graph_viewer`. Kiến nghị cho phép render sơ đồ tri thức / đồ thị phụ thuộc dạng preview inline ngay trong bubble trả lời.
-4. **Nhóm Khác (24 module chưa nối)**: Chủ yếu là các module legacy CLI (`cli.py`), audit nội bộ (`audit.py`, `case_audit.py`), quản lý pha (`phase_gate.py`), bộ cung cấp cloud (`gemini_web_engine.py`), hoặc các model/storage độc lập. Có thể giữ nguyên độc lập hoặc đưa lệnh kiểm toán nhanh vào action bot.
+*(Sửa mục 4 ngày 2026-10-04: đồng bộ với bảng, kiểm tra bằng script)*
+
+Qua đối chiếu thực tế với bảng kiểm kê, có đúng 60 module chưa nối vào giao diện chat, phân bổ theo các nhóm chức năng như sau:
+
+1. **Nhóm Benchmark (8 module chưa nối)**: `benchmark_reference_acquisition`, `benchmark_reference_registry`, `golden_question_export`, `golden_question_quality`, `mom_benchmark_gate`, `mom_coverage`, `mom_local_index`, `notebooklm_compare`. Các module này hiện chỉ phục vụ đo lường benchmark offline qua dòng lệnh hoặc kịch bản kiểm thử. Kiến nghị đưa lệnh kích hoạt benchmark nhanh (hoặc xem kết quả benchmark gần nhất) thành hành động trả lời trực tiếp trong chat.
+2. **Nhóm RAG v2 chuyên sâu (15 module chưa nối)**: `digest_qa`, `knowledge_digest`, `model_pack`, `rag_v2.chunk_evaluation`, `rag_v2.chunk_revisions`, `rag_v2.chunk_upload_config`, `rag_v2.index_bundle`, `rag_v2.index_registry`, `rag_v2.ingestion_jobs`, `rag_v2.ingestion_service`, `rag_v2.ingestion_workers`, `rag_v2.remote_ingestion_client`, `rag_v2_synthesis_provider`, `split_index_by_domain`, `strong_answer_ui`. Phần lớn là hạ tầng nạp dữ liệu (ingestion) ngầm, đánh giá chất lượng chunk hoặc service nền. Kiến nghị nối trạng thái tiến độ ingestion nền vào thông báo chat.
+3. **Nhóm Visual (6 module chưa nối)**: `graphify_adapter`, `notebook_graph`, `visual_map_builder`, `visual_map_export`, `visual_map_models`, `visual_map_ui`. Các module xây dựng và kết xuất sơ đồ trực quan. Kiến nghị cho phép hiển thị sơ đồ tri thức hoặc đồ thị phụ thuộc dạng xem trước trực tiếp trong khung hội thoại chat.
+4. **Nhóm Khác & các nhóm chức năng chuyên biệt (31 module chưa nối)**:
+   - **Phân nhóm Khác (24 module)**: `audit`, `case_audit`, `case_prompt`, `claim_guard`, `cli`, `discovery`, `evidence`, `export_pack`, `gemini_web_engine`, `handover`, `ide_bridge`, `models`, `notebook_bridge`, `notebook_case_actions`, `notebook_qa`, `owner_workflow_state`, `paths`, `phase_gate`, `profiles`, `provider_safety`, `route_log_ui`, `router_synth_redaction`, `storage`, `workflow`. Chủ yếu là các module dòng lệnh CLI cũ, kiểm toán nội bộ, quản lý pha cổng kiểm tra chất lượng, bộ cung cấp web engine hoặc các mô hình/kho lưu trữ độc lập. Có thể giữ nguyên độc lập hoặc đưa lệnh kiểm toán nhanh vào hành động của bot.
+   - **Phân nhóm Prediction (3 module)**: `production_prediction.reporting`, `production_prediction.rt_consumer`, `production_prediction.rt_replay`. Các module tạo báo cáo dự đoán sự cố, tiêu thụ log và phát lại luồng sự kiện sản xuất thời gian thực. Kiến nghị tích hợp xem báo cáo dự đoán theo yêu cầu vào giao diện chat.
+   - **Phân nhóm Memory (2 module)**: `memory`, `study_store`. Module quản lý bộ nhớ tiến trình và lưu trữ ca học sâu độc lập. Có thể giữ nguyên độc lập hoặc đồng bộ vào dịch vụ bộ nhớ workspace chat.
+   - **Phân nhóm Extract (1 module)**: `extraction`. Module trích xuất đa định dạng mức thấp qua dòng lệnh CLI. Hệ thống chat hiện đã có bộ trích xuất riêng; có thể nối thêm các parser còn thiếu nếu cần mở rộng định dạng tệp.
+   - **Phân nhóm Interview (1 module)**: `fine_tune_eligibility`. Module kiểm tra điều kiện dữ liệu phục vụ huấn luyện tinh chỉnh mô hình ngoại tuyến. Kiến nghị tích hợp thành bước kiểm tra tự động trước khi xuất gói dữ liệu phỏng vấn chuyên gia.
