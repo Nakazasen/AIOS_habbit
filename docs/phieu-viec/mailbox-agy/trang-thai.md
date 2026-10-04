@@ -1,8 +1,8 @@
 # Trạng thái mailbox-agy (thợ agy — model gemini-3.8-flash-high, việc khó chuyển claude-sonnet/opus-5.5-medium)
 
-- Trạng thái: `moi`
+- Trạng thái: `dang-lam`
 - Ticket hiện tại: `SCAN-O-D` — [NHÀ] kiểm kê ổ D chỉ đọc (cây thư mục, SHA sqlite, đề xuất dọn — không thực hiện). Prompt: `docs/phieu-viec/mailbox-agy/prompt.md`. Role gợi ý: SMOL. Không ghi/xóa ổ D.
-- `ghi_chu` (điều phối Muse): 2026-10-05 ~05:55 +07 — Phát hành vé `SCAN-O-D` theo lệnh user "điều phối 3 thợ, đừng để thợ đứng chơi". Watchdog sẽ dựng watcher trong ~10 phút.
+- `ghi_chu`: 2026-10-05 05:49 +07 — OMP/agy nhận vé SCAN-O-D, bắt đầu quét cây thư mục cấp 1-2 ổ D và kiểm kê kho index sqlite.
 - `hang-cho`: chưa có
 - `commit`: 7dad2b0
 - `bao_cao`: `docs/phieu-viec/ket-qua/don-o-c-may-nha.md`
