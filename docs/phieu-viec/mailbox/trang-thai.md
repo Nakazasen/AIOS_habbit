@@ -5,4 +5,4 @@
 - `hang-cho`: hết.
 - `commit`: (đang làm)
 - `bao_cao`: `docs/phieu-viec/ket-qua/ux-attach-sources.md` (báo cáo cũ `cho-muse` giữ để đối chiếu; báo cáo vòng này ghi đè khi xong)
-- `ghi_chu`: 2026-10-04 07:36 +07 nhận vé. Gate LAUNCH 1/4 lúc 07:34:30, mã `26a71c2` đã có trên nhánh (HEAD `e6aeac8`) — điều kiện mở đã tới, không `cho-muse`. Bước tiếp: restart app cổng 8501 rồi verify 3 điểm.
+- `ghi_chu`: 2026-10-04 07:39 +07 app đã mở lại cổng 8501 (cùng biến `RUN_AIOS_WORKSPACE_CHAT.bat`). Đang kiểm 3 điểm: hỏi kèm ảnh `MA-UX-7741`, ảnh một lần, nhãn `＋ Thêm nguồn`.
