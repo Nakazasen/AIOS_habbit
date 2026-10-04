@@ -2,7 +2,9 @@
 
 - Trạng thái: `moi`
 - Ticket hiện tại: `KNOWLEDGE-DIGEST-HOME-R2` — [NHÀ] resume sổ tay tri thức từ checkpoint 180/889 (escalation cho-muse 03/10 đã gỡ: cầu nối Gemini Web direct_ready, ROUTER-FIX 04/10 kiểm 6 câu đạt). Prompt: `docs/phieu-viec/mailbox/prompt.md`. Role gợi ý: DEFAULT. Index production chỉ đọc, không merge `main`.
-- `hang-cho`: hết — 2 vé đã chuyển cho opencode đều đã đóng (AUDIT-ENRICH-LSU ĐẠT 22:50 04/10; IMPORT-STAGING-ENRICH PARTIAL → phương án B, chốt bằng ENRICH-STAGING-FILESTORE).
+- `hang-cho`:
+  1. `DRAFT-APPROVAL` — [NHÀ] cơ chế duyệt bản thảo (Bước 2 vòng phản hồi): PIN chuyên gia + duyệt ngay dưới câu trả lời trong chat + đổi nhãn 2 bước tách riêng (chưa nhập kho chính). User chốt thiết kế 2026-10-05 ~05:47 +07 ("PIN thay tài khoản, duyệt trong chat thay màn hình riêng, đổi nhãn thay vì nhập kho ngay"). Prompt: `docs/phieu-viec/mailbox/prompt-queue-draft-approval.md`. Role gợi ý: PLAN. Phát hành sau khi KNOWLEDGE-DIGEST-HOME-R2 verdict ĐẠT.
+  (2 vé cũ đã chuyển cho opencode đều đã đóng: AUDIT-ENRICH-LSU ĐẠT 22:50 04/10; IMPORT-STAGING-ENRICH PARTIAL → phương án B, chốt bằng ENRICH-STAGING-FILESTORE.)
 - `ghi_chu` (điều phối Muse): 2026-10-05 ~05:55 +07 — Phát hành vé `KNOWLEDGE-DIGEST-HOME-R2` theo lệnh user "điều phối 3 thợ, đừng để thợ đứng chơi". Watchdog sẽ dựng watcher trong ~10 phút.
 - Vé audit/import ChatGPT enrichment ĐÃ xếp (user duyệt commit batch lên repo public 2026-10-04 18:11 +07). Dữ liệu thô: `docs/phieu-viec/chatgpt-enrichment-raw/` (45 file, 1.998 cặp) — chỉ dùng để audit, không import trực tiếp.
 - `commit`: `27f0603` (TOOL-5 báo cáo kiểm lại 05/10)
