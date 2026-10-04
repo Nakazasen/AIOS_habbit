@@ -41,3 +41,4 @@
 - `commit`: `bc08f1c` (fixed 33 file + báo cáo audit)
 - `bao_cao`: `docs/phieu-viec/ket-qua/audit-enrich-dieuchinh.md`
 - `ghi_chu`: 2026-10-05 06:45 +07 — xong vé AUDIT-ENRICH-DIEU-TRA-LOI ở mức chờ duyệt: raw 980 cặp Q2409–Q3391 (thiếu Q3206–Q3208 có chủ đích) → fixed 979 cặp (loại Q3214 trùng Q3124, có nhật ký); sửa 3 lỗi vé + 1 nhãn Q3196 + nhãn Bản thảo 28 file; M3 đủ trường 100%, M4 100%, M1/M2/M5 chưa đo được (ghi rõ lý do); raw không đụng, không nhập kho chính, không merge main.
+- `ghi_chu`: 2026-10-05 06:01 +07 — kiểm lại vé AUDIT-ENRICH-DIEU-TRA-LOI (lượt watcher mở): raw 33 file/980 cặp Q2409–Q3391 thiếu Q3206–Q3208 đúng, fixed 33 file/979 cặp (đã loại Q3214), 3 lỗi vé đã sửa đúng + Q3196 đúng + raw không đụng + cây sạch; cổng gate: 0 file watcher, HEAD=origin=b67caa7, trạng thái mới nhất `xong-cho-duyet` (không phải `moi`) nên không có điều kiện mở vé mới, chưa chạm ngưỡng 4 lần nên không đặt `cho-muse`, giữ chờ Muse duyệt.
