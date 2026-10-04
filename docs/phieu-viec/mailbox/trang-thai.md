@@ -13,4 +13,4 @@
 - Vé audit/import ChatGPT enrichment ĐÃ xếp (user duyệt commit batch lên repo public 2026-10-04 18:11 +07). Dữ liệu thô: `docs/phieu-viec/chatgpt-enrichment-raw/` (45 file, 1.998 cặp) — chỉ dùng để audit, không import trực tiếp.
 - `commit`: 1511955 (điểm nhận vé sau pull)
 - `bao_cao`: (đang làm — chưa có)
-- `ghi_chu`: 2026-10-04 21:42 +07 — OMP máy nhà đã nhận vé ROUTER-FIX, bắt đầu chẩn đoán unknown_error.
+- `ghi_chu`: 2026-10-04 22:27 +07 — OMP đã chẩn đoán xong (model cũ chết, key còn sống) + sửa env máy (Gemini 2.5-flash, OpenRouter free mới) + probe route_answer OK qua Gemini; đang verify 6 câu lạnh lane 3.
