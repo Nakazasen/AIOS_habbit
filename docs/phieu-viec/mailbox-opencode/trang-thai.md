@@ -1,6 +1,6 @@
 # Trạng thái mailbox-opencode (thợ opencode — model free muse-spark-1.3 / space-bunny)
 
-- Trạng thái: `dang-lam`
+- Trạng thái: `xong-cho-duyet`
 - Ticket hiện tại: `ENRICH-STAGING-FILESTORE` — chốt kho bản thảo cặp enrichment bằng file (không qua importer), quyết định phương án B sau verdict vé trước. Prompt: `docs/phieu-viec/mailbox-opencode/prompt.md`. Role gợi ý: SMOL/TINY (~5 phút).
 - `ghi_chu`: 2026-10-04 23:16 +07 — đã nhận vé ENRICH-STAGING-FILESTORE (điều kiện mở đủ: trạng thái `moi` + prompt phương án B). Bắt đầu kiểm đếm cuối 54 file fixed, chưa ghi DB, chưa sửa code.
 - `ghi_chu`: 2026-10-04 23:22 +07 — mốc kiểm đếm + nhãn xong: 54 file (MOM 15 + LSU 39), 2.398 cặp Q1–Q2408 thiếu Q639–Q648 có chủ đích, đủ 6 trường 100%; 54/54 có nhãn Bản thảo, khối đúng, 0 nhãn importer. Kế tiếp: xác nhận raw + ghi báo cáo.
@@ -8,8 +8,9 @@
 - `ghi_chu`: 2026-10-04 23:06 +07 — mốc 1 xong: rào staging-only ĐẠT (nhận `staging_enrichment.sqlite`, từ chối 4 đường production). Chưa ghi DB. Kế tiếp: kiểm tra dữ liệu fixed có đủ dạng nhập không.
 - `ghi_chu`: 2026-10-04 23:10 +07 — mốc 2 xong: đếm fixed đủ 2.398 cặp (15 file MOM + 39 file LSU, thiếu Q639–Q648 có chủ đích); KHÔNG có file JSONL/manifest cho importer nên chưa nhập staging (staging giữ 34 đáp án cũ, SHA `4ECC3D7A`, đã sao lưu). Kế tiếp: chạy trùng lặp + đo M3/M4 ánh xạ.
 - `hang-cho`: chưa có
-- `commit`: `-`
-- `bao_cao`: `-`
+- `commit`: `694023f`
+- `bao_cao`: `docs/phieu-viec/ket-qua/enrich-staging-filestore.md`
+- `ghi_chu`: 2026-10-04 23:19 +07 — xong vé ENRICH-STAGING-FILESTORE ở mức ĐẠT chờ duyệt: 54 file fixed (MOM 15 + LSU 39), 2.398 cặp Q1–Q2408 thiếu Q639–Q648 có chủ đích, đủ 6 trường 100%; 54/54 nhãn Bản thảo đúng khối, 0 nhãn importer; raw không đụng (git diff trống); chốt phương án B theo prompt, chỉ đọc không ghi DB không sửa code.
 - `ghi_chu`: 2026-10-04 23:20 +07 — xong vé IMPORT-STAGING-ENRICH ở mức PARTIAL: rào staging ĐẠT, trùng lặp 0 nhóm, M3/M4 100%, smoke 8 câu đúng nhãn, kho không đổi (SHA `4ECC3D7A`); 0 cặp nhập staging vì thiếu JSONL/manifest + mâu thuẫn nhãn importer, chờ duyệt phương án A/B trong báo cáo.
 - `ghi_chu`: 2026-10-04 22:58 +07 — xong audit 1.790 cặp LSU (sửa 7 điểm/6 câu + 1 ghi chú Q1124, 0 loại, vòng xem lại 0 trùng Hỏi+Đáp), báo cáo audit-enrich-lsu.md, chờ Muse duyệt.
 - `ghi_chu` (verdict Muse): 2026-10-04 ~22:40 +07 — **ĐẠT** (tích tạm, chờ user nghiệm thu). Kiểm chứng độc lập bằng script: 608 cặp Q1–608 liên tục, đủ 6 trường (0 lỗi), 0 cặp trùng nguyên văn sau sửa; raw không bị đụng; Q183 sửa đúng spec vé; M3 608/608, M4 608/608, M1/M2/M5 chưa đo được (ghi nhận trung thực); repo chỉ có 5 module golden_question (vé ghi 6). mailbox → `xong`, hết vé xếp hàng.
