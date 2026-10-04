@@ -32,3 +32,4 @@
 
 - Trạng thái: `dang-lam`
 - `ghi_chu`: 2026-10-05 05:49 +07 — đã nhận vé AUDIT-ENRICH-DIEU-TRA-LOI (điều kiện mở đủ: trạng thái `moi` + prompt đúng vé; không rơi nhánh 4 lần watcher). Bắt đầu bước 1: đếm thực tế raw dieuchinh, chưa sửa gì.
+- `ghi_chu`: 2026-10-05 05:55 +07 — mốc đếm xong: raw 33 file batch-55..87 (không có batch-88), 980 cặp Q2409–Q3391, thiếu đúng Q3206–Q3208 có chủ đích, 0 trùng số hiệu. Kế tiếp: đối chiếu 3 lỗi chép tay.
