@@ -420,3 +420,49 @@ def test_source_library_renamed_to_nguon_tham_khao() -> None:
     translations = Path("src/aios_habit/i18n.py").read_text(encoding="utf-8")
 
     assert '"source_library": "Nguồn tham khảo"' in translations
+
+
+def test_attached_image_is_ocr_first_never_hard_blocked_before_ingest() -> None:
+    """Regression (UX-ATTACH-SOURCES cho-muse 04/10): an attached image must be
+    OCR'd into a text source first; the ask flow must not hard-block merely
+    because an image is attached on an image-blocking lane."""
+    source = _app_source()
+
+    # The premature gate is gone: no "attached image + blocking backend => error".
+    assert "if user_attached_image is not None and connector_blocks_image_files" not in source
+    # The image still flows through ingest (OCR) in the ask path.
+    assert "img_batch = process_workspace_upload_batch(" in source
+    # Fail-closed guard for REAL image payloads stays downstream (bridge level).
+    assert "image_files_blocked_message" in Path(
+        "src/aios_habit/antigravity_bridge.py"
+    ).read_text(encoding="utf-8")
+
+
+def test_one_shot_image_source_is_disabled_for_the_next_question() -> None:
+    """One-shot promise: temp sources created from an attached image are
+    recorded and disabled when the next question is asked."""
+    source = _app_source()
+
+    assert 'st.session_state["wsc_one_shot_source_ids"]' in source
+    assert 'st.session_state.pop("wsc_one_shot_source_ids"' in source
+    assert "SOURCE_SCOPE_TEMPORARY" in source
+    # Pasted (clipboard) image is cleared from the composer after ingest too.
+    assert "st.session_state.pop(pasted_image_key, None)" in source
+
+
+def test_add_source_expander_label_has_single_plus() -> None:
+    """Regression (UX-ATTACH-SOURCES cho-muse 04/10): the sidebar expander must
+    not render '＋ ＋ Thêm nguồn' (plus baked into i18n AND prepended in code)."""
+    source = _app_source()
+
+    assert "f\"＋ {t('add_source_button'" not in source
+
+
+def test_attached_image_unreadable_message_exists_in_all_locales() -> None:
+    """Gentle notice (not a hard error) when OCR cannot read the attached image."""
+    translations = Path("src/aios_habit/i18n.py").read_text(encoding="utf-8")
+
+    assert '"attached_image_unreadable"' in translations
+    assert "Chưa đọc được nội dung ảnh" in translations
+    assert "画像の内容を読み取れませんでした" in translations  # ja
+    assert "无法读取图片内容" in translations  # zh

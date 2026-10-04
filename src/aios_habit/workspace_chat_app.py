@@ -3133,7 +3133,7 @@ else:
             st.write("---")
             # Add-source form lives here (moved from under the composer):
             # one-shot image attach stays in the composer; persistent sources live here.
-            with st.expander(f"＋ {t('add_source_button', locale=current_ui_locale)}", expanded=False):
+            with st.expander(t('add_source_button', locale=current_ui_locale), expanded=False):
                 st.caption(t("add_sources_explainer", locale=current_ui_locale))
                 pending_duplicate_upload = st.session_state.get("wsc_pending_duplicate_upload")
                 if pending_duplicate_upload:
@@ -4369,9 +4369,6 @@ else:
                         unsafe_allow_javascript=True,
                     )
                     user_attached_image = uploaded_image or st.session_state.get(pasted_image_key)
-                    from aios_habit.workspace_chat_connector_guard import connector_blocks_image_files
-                    if user_attached_image is not None and connector_blocks_image_files(selected_ai_backend):
-                        st.warning(t("connector_blocks_images", locale=current_ui_locale))
                     if user_attached_image is not None:
                         preview_col, preview_text_col, preview_remove_col = st.columns([1, 8, 2])
                         with preview_col:
@@ -4421,6 +4418,17 @@ else:
                     user_attached_image = None
 
                 if ask_submitted:
+                    # Nguồn một lần từ ảnh đính kèm của lượt hỏi trước: tắt
+                    # trước khi nạp ngữ cảnh cho câu mới, để câu không đính
+                    # kèm không dùng lại nội dung ảnh cũ.
+                    _one_shot_ids = st.session_state.pop("wsc_one_shot_source_ids", None) or []
+                    for _sid in _one_shot_ids:
+                        try:
+                            set_source_enabled(
+                                active_conversation.id, SOURCE_SCOPE_TEMPORARY, _sid, False
+                            )
+                        except Exception:
+                            pass
                     q_text = user_input.strip()
                     if q_text and get_workspace_memory_enabled_preference():
                         from aios_habit.workspace_memory_ui import queue_memory_command_if_present
@@ -4682,10 +4690,11 @@ else:
 
                         if ai_backend == "gemini_web" and not _start_gemini_web_bridge(locale=current_ui_locale):
                             safe_rerun()
-                        if user_attached_image is not None and connector_blocks_image_files(ai_backend):
-                            st.session_state.wsc_action_error = t("connector_blocks_images", locale=current_ui_locale)
-                            safe_rerun()
-                        elif user_attached_image is not None:
+                        if user_attached_image is not None:
+                            # Ảnh đính kèm luôn được OCR thành nguồn chữ trước khi
+                            # tới lane AI, nên mọi lane (kể cả Gemini Web) đều đọc
+                            # được. Chỉ chặn khi nguồn thật sự mang byte ảnh thô
+                            # (guard ở antigravity_bridge, fail-closed).
                             img_batch = process_workspace_upload_batch(
                                 [user_attached_image],
                                 active_conversation.id,
@@ -4696,6 +4705,19 @@ else:
                             )
                             if img_batch.get("success_count", 0) > 0:
                                 st.session_state.wsc_upload_version += 1
+                                # Nguồn một lần: ghi nhớ để tắt sau lượt hỏi này,
+                                # câu sau không đính kèm thì không dùng lại.
+                                st.session_state["wsc_one_shot_source_ids"] = list(
+                                    img_batch.get("created_temporary_source_ids", [])
+                                )
+                            else:
+                                st.session_state.wsc_action_message = t(
+                                    "attached_image_unreadable",
+                                    locale=current_ui_locale,
+                                )
+                            # Xóa ảnh khỏi composer sau khi đã nạp (cả 2 đường
+                            # tải file và dán từ clipboard).
+                            st.session_state.pop(pasted_image_key, None)
                             if not q_text:
                                 q_text = "Phân tích và giải thích nội dung trong ảnh chụp màn hình đính kèm."
 

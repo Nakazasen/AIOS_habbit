@@ -39,3 +39,17 @@ def test_image_bytes_blocked_for_gemini_not_for_cagent():
     assert image_files_blocked_message("nakazasen_router", (image,))
     assert image_files_blocked_message("cagent_api", (image, text)) is None
     assert image_files_blocked_message("gemini_web", (text,)) is None
+
+
+def test_ocr_temp_source_from_attached_image_is_not_blocked_for_gemini():
+    """Regression (UX-ATTACH-SOURCES cho-muse 04/10): after OCR, the attached
+    image becomes a text-only temporary source (source_type png, no bytes).
+    It must flow on gemini_web like any text source."""
+    ocr_source = SimpleNamespace(
+        source_type="png",
+        title="clipboard-image.png",
+        text="Mã lỗi MA-UX-7741 hiển thị trên hộp thoại",
+    )
+    assert source_carries_image_payload(ocr_source) is False
+    assert image_files_blocked_message("gemini_web", (ocr_source,)) is None
+    assert image_files_blocked_message("nakazasen_router", (ocr_source,)) is None
