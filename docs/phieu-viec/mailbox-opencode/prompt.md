@@ -6,7 +6,7 @@
 
 1. **Thứ tự ưu tiên:** (a) RAG trả lời như hiện tại, không đổi; (b) chỉ khi RAG không có kết quả đạt ngưỡng tự tin → fallback sang kho bản thảo; (c) cả hai đều không có → trả lời thành thật "tôi không tìm thấy trong tài liệu có…", KHÔNG bịa đáp án.
 2. **Nhãn không thương lượng:** mọi câu trả lời lấy từ bản thảo BẮT BUỘC hiển thị nhãn `Bản thảo — chưa qua chuyên gia duyệt` ngay trong câu trả lời, không giấu.
-3. **Rào kho:** bản thảo KHÔNG nhập kho chính, KHÔNG nhập index production, KHÔNG gắn nhãn đã duyệt. Tính năng nằm sau feature flag mặc định TẮT; bật flag mới chạy luồng mới.
+3. **Rào kho:** bản thảo KHÔNG nhập kho chính, KHÔNG nhập index production, KHÔNG gắn nhãn đã duyệt. Tính năng nằm sau feature flag, **mặc định BẬT** (user yêu cầu 2026-10-04 ~23:43 +07) — tắt flag thì hành vi về đúng như cũ.
 
 ## Việc cần làm
 
@@ -22,7 +22,7 @@
 
 ## Rào cứng
 
-- Không sửa luồng RAG hiện tại khi flag tắt (test phải chứng minh hành vi cũ nguyên vẹn).
+- Luồng RAG hiện tại không được thay đổi (test phải chứng minh: tắt flag = hành vi cũ nguyên vẹn; bật flag = thêm fallback có nhãn, không sửa đường RAG).
 - Không đụng `main`, không force-push, không ghi production DB/index, không đụng `golden_answer_importer.py`.
 - Không bịa đáp án: test phải có case "ngoài phạm vi" → trả lời thành thật, không fallback bừa.
 - Commit sớm, push qua Git Data API ngay khi có commit hoàn chỉnh (không dồn cuối).
