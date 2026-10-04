@@ -2509,3 +2509,125 @@ class TestLocalGroundedFallbackAuditRegressions:
         assert len(messages) == 2
         assert [m.role for m in messages] == ["user", "assistant"]
         assert messages[0].id == "MSG-ORIGINAL-USER"
+
+
+class TestRound4BUserMessageReuse:
+    """ROUND4B-DOUBLE-BUBBLE: a question saved by the composer with its OCR
+    block merged in must be reused by the bridge, not duplicated into a
+    second user bubble."""
+
+    MERGED = (
+        "lỗi này là gì?\n\n---\n"
+        "[Nội dung chữ đọc được từ ảnh đính kèm \"07-cau1-ocr-fail.png\"]:\n"
+        "Thiếu ngữ cảnh. Chưa có nguồn nào."
+    )
+
+    @staticmethod
+    def _sandbox(monkeypatch, tmp_path):
+        import aios_habit.workspace_chat_store as store_mod
+        monkeypatch.setattr(store_mod, "LOCAL_CHAT_DIR", tmp_path)
+        monkeypatch.setattr(store_mod, "MESSAGES_FILE", tmp_path / "messages.jsonl")
+        monkeypatch.setattr(store_mod, "TRACES_FILE", tmp_path / "traces.jsonl")
+        monkeypatch.setattr(store_mod, "CONVERSATIONS_FILE", tmp_path / "conversations.jsonl")
+        monkeypatch.setattr(store_mod, "SOURCE_SELECTIONS_FILE", tmp_path / "selections.jsonl")
+        store_mod.init_chat_store()
+        return store_mod
+
+    def test_reuse_id_returns_saved_message_without_duplicate(self, tmp_path, monkeypatch):
+        store_mod = self._sandbox(monkeypatch, tmp_path)
+        from aios_habit.antigravity_bridge import _get_or_create_user_message
+        from aios_habit.workspace_chat_models import ChatMessage
+
+        store_mod.save_message(ChatMessage(
+            id="MSG-MERGED01",
+            conversation_id="CONV-4B",
+            role="user",
+            content=self.MERGED,
+        ))
+
+        msg = _get_or_create_user_message(
+            "CONV-4B", "lỗi này là gì?", reuse_message_id="MSG-MERGED01"
+        )
+
+        assert msg.id == "MSG-MERGED01"
+        assert msg.content == self.MERGED
+        assert len(store_mod.load_messages("CONV-4B")) == 1
+
+    def test_without_id_keeps_legacy_behavior(self, tmp_path, monkeypatch):
+        store_mod = self._sandbox(monkeypatch, tmp_path)
+        from aios_habit.antigravity_bridge import _get_or_create_user_message
+        from aios_habit.workspace_chat_models import ChatMessage
+
+        # Legacy exact last-message match still reuses, as before.
+        store_mod.save_message(ChatMessage(
+            id="MSG-PLAIN01",
+            conversation_id="CONV-4B2",
+            role="user",
+            content="câu hỏi",
+        ))
+        same = _get_or_create_user_message("CONV-4B2", "câu hỏi")
+        assert same.id == "MSG-PLAIN01"
+
+        # A merged message does not match the raw text, so an id-less caller
+        # still creates (unchanged); the composer now always passes the id.
+        store_mod.save_message(ChatMessage(
+            id="MSG-MERGED02",
+            conversation_id="CONV-4B3",
+            role="user",
+            content=self.MERGED,
+        ))
+        created = _get_or_create_user_message("CONV-4B3", "lỗi này là gì?")
+        assert created.id != "MSG-MERGED02"
+        assert len(store_mod.load_messages("CONV-4B3")) == 2
+
+    def test_direct_route_reuses_saved_merged_question(self, mock_fsm_server, monkeypatch, tmp_path):
+        store_mod = self._sandbox(monkeypatch, tmp_path)
+        from aios_habit.antigravity_bridge import route_workspace_chat_submission
+        from aios_habit.workspace_chat_models import ChatMessage
+
+        server, _health_url, completions_url = mock_fsm_server
+        server.completion_response = {
+            "choices": [
+                {"message": {"role": "assistant", "content": "Đây là màn hình lỗi."}}
+            ],
+            "model": "gemini-2.5-flash",
+        }
+        health = AntigravityHealthStatus(
+            status="direct_ready",
+            mode="direct",
+            capabilities=["direct_chat"],
+        )
+
+        store_mod.save_message(ChatMessage(
+            id="MSG-MERGED03",
+            conversation_id="CONV-4B-ROUTE",
+            role="user",
+            content=self.MERGED,
+        ))
+
+        ok, _msg, badge, err = route_workspace_chat_submission(
+            question=self.MERGED,
+            evidence_items=[],
+            packed_sources=(),
+            conversation_id="CONV-4B-ROUTE",
+            notebook_id="NB-4B-ROUTE",
+            retrieval_applied=False,
+            retrieved_sources=(),
+            retrieval_summary="",
+            current_keys=(),
+            chat_history=(),
+            user_raw_input="lỗi này là gì?",
+            user_message_id="MSG-MERGED03",
+            health_status=health,
+            endpoint_url=completions_url,
+        )
+
+        assert ok is True
+        assert err is None
+        msgs = store_mod.load_messages("CONV-4B-ROUTE")
+        user_msgs = [m for m in msgs if m.role == "user"]
+        assert len(user_msgs) == 1
+        assert user_msgs[0].id == "MSG-MERGED03"
+        trace = store_mod.load_evidence_trace(badge["trace_id"])
+        assert trace is not None
+        assert trace.user_message_id == "MSG-MERGED03"

@@ -1077,6 +1077,7 @@ def _run_chat_turn_async(
     ai_backend: str = "cagent",
     cagent_endpoint_url: str = "",
     cancellation_event: Any = None,
+    user_message_id: str = "",
 ) -> tuple[bool, str, dict[str, Any] | None, str | None]:
     """Execute evidence retrieval and model answer routing inside background thread pool."""
     from aios_habit.antigravity_bridge import route_workspace_chat_submission
@@ -1212,6 +1213,7 @@ def _run_chat_turn_async(
         current_keys=current_keys,
         chat_history=chat_history,
         user_raw_input=user_raw_input,
+        user_message_id=user_message_id,
         answer_language=answer_language,
         backend=ai_backend,
         cagent_endpoint_url=cagent_endpoint_url,
@@ -4974,6 +4976,7 @@ else:
                                     current_keys=tuple(current_keys),
                                     chat_history=tuple(chat_history),
                                     user_raw_input=user_input,
+                                    user_message_id=user_msg.id,
                                     answer_language=getattr(active_conversation, "answer_language", "vi"),
                                     ai_backend=ai_backend,
                                     cagent_endpoint_url=cagent_endpoint_url,

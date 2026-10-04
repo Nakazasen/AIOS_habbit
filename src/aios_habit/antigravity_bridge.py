@@ -597,11 +597,26 @@ def compress_conversation_context_direct(
         return (False, "", f"Lỗi nén ngữ cảnh qua Antigravity Direct: {sanitize_reason(str(exc))}")
 
 
-def _get_or_create_user_message(conversation_id: str, content: str) -> Any:
+def _get_or_create_user_message(
+    conversation_id: str, content: str, reuse_message_id: str = ""
+) -> Any:
+    """Return the user message this turn links to, creating one only as a fallback.
+
+    ``reuse_message_id`` is the id the composer already saved for this turn
+    (e.g. the question with its OCR block merged in). When the conversation
+    still holds that message it is returned as-is: creating another one here
+    is what produced the duplicate user bubble. Callers that pass no id keep
+    the old exact-match behavior.
+    """
     from aios_habit.workspace_chat_models import ChatMessage
     from aios_habit.workspace_chat_store import load_messages, save_message
 
     existing = load_messages(conversation_id)
+    reuse_id = str(reuse_message_id or "").strip()
+    if reuse_id:
+        for msg in existing:
+            if getattr(msg, "id", "") == reuse_id:
+                return msg
     if existing and existing[-1].role == "user" and existing[-1].content.strip() == content.strip():
         return existing[-1]
     msg = ChatMessage(
@@ -996,6 +1011,7 @@ def route_workspace_chat_submission(
     current_keys: tuple[Any, ...],
     chat_history: tuple[dict[str, Any], ...],
     user_raw_input: str,
+    user_message_id: str = "",
     health_status: AntigravityHealthStatus | None = None,
     handoff_root: Path | None = None,
     endpoint_url: str | None = None,
@@ -1011,6 +1027,9 @@ def route_workspace_chat_submission(
     ``local_synthesis`` is the already-computed local extractive answer. It is
     used ONLY to offer a provider-free fallback when no bridge is reachable;
     passing it never changes the returned tuple shape.
+
+    ``user_message_id`` is the composer-saved user turn this answer links to;
+    when empty, the bridge keeps its own exact-match/create fallback.
 
     Returns:
         (ok, success_message, badge_data, error_message)
@@ -1110,7 +1129,7 @@ def route_workspace_chat_submission(
         disclaimer = _get_ai_disclaimer(answer_language)
         answer_text = cagent_res.text.strip() + disclaimer
 
-        user_msg = _get_or_create_user_message(conversation_id, user_raw_input)
+        user_msg = _get_or_create_user_message(conversation_id, user_raw_input, reuse_message_id=user_message_id)
         assistant_msg_id = f"MSG-{uuid.uuid4().hex[:8].upper()}"
         from aios_habit.workspace_chat_store import (
             load_conversation,
@@ -1196,7 +1215,7 @@ def route_workspace_chat_submission(
         if not result.ok:
             return (False, "", None, result.error_message or "Cầu nối AI không trả về câu trả lời.")
 
-        user_msg = _get_or_create_user_message(conversation_id, user_raw_input)
+        user_msg = _get_or_create_user_message(conversation_id, user_raw_input, reuse_message_id=user_message_id)
         assistant_msg_id = f"MSG-{uuid.uuid4().hex[:8].upper()}"
         from aios_habit.workspace_chat_store import (
             load_conversation,
@@ -1330,7 +1349,7 @@ def route_workspace_chat_submission(
                 return (False, "", None, "Đã dừng yêu cầu AI.")
 
             if direct_res.ok:
-                user_msg = _get_or_create_user_message(conversation_id, user_raw_input)
+                user_msg = _get_or_create_user_message(conversation_id, user_raw_input, reuse_message_id=user_message_id)
 
                 assistant_msg_id = f"MSG-{uuid.uuid4().hex[:8].upper()}"
 
@@ -1416,7 +1435,7 @@ def route_workspace_chat_submission(
     elif health.is_handoff_ready or health.is_available:
         if was_cancelled():
             return (False, "", None, "Đã dừng yêu cầu AI.")
-        user_msg = _get_or_create_user_message(conversation_id, user_raw_input)
+        user_msg = _get_or_create_user_message(conversation_id, user_raw_input, reuse_message_id=user_message_id)
         assistant_msg = ChatMessage(
             id=f"MSG-{uuid.uuid4().hex[:8].upper()}",
             conversation_id=conversation_id,
