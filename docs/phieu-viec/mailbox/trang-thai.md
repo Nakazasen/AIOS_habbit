@@ -9,7 +9,10 @@
   4. `TOOL-3` (`prompt-queue-tool3.md`) — nối `mom_benchmark`, `rag_benchmark`, `rag_evaluator` vào chat qua khung TOOL-2. Role gợi ý: DEFAULT.
   5. `TOOL-4` (`prompt-queue-tool4.md`) — nối `expert_interview*`, `production_prediction`, `prediction_shadow_ui` vào chat. Role gợi ý: DEFAULT.
   6. `TOOL-5` (`prompt-queue-tool5.md`) — nối `visual_knowledge_map`, `knowledge_map_html`, `evidence_graph_viewer`, `worklens_semantic_map` vào chat. Role gợi ý: DEFAULT.
-- Vé audit/import ChatGPT enrichment (dedup + chấm M1–M5 + vòng sửa + import staging, tuyệt đối không nhập kho chính) CHƯA xếp — chờ user quyết có cho commit 45 file batch (1.998 cặp, có S/N và số đo sản xuất) lên repo public hay không.
+  7. `AUDIT-ENRICH-MOM` (`prompt-queue-audit-enrich-mom.md`) — audit 608 cặp MOM (sửa lỗi đã biết, numbering/format, dedup, chấm M1–M5, vòng sửa). Role gợi ý: DEFAULT.
+  8. `AUDIT-ENRICH-LSU` (`prompt-queue-audit-enrich-lsu.md`) — audit 1.390 cặp LSU (dedup mạnh mẻ 39 + batch 999/0/--, chấm M1–M5, vòng sửa). Role gợi ý: DEFAULT.
+  9. `IMPORT-STAGING-ENRICH` (`prompt-queue-import-staging-enrich.md`) — nhập cặp đã audit vào DB staging (không nhập kho chính), metric + smoke test. Role gợi ý: DEFAULT.
+- Vé audit/import ChatGPT enrichment ĐÃ xếp (user duyệt commit batch lên repo public 2026-10-04 18:11 +07). Dữ liệu thô: `docs/phieu-viec/chatgpt-enrichment-raw/` (45 file, 1.998 cặp) — chỉ dùng để audit, không import trực tiếp.
 - `commit`: 92bdab5
 - `bao_cao`: 
 - `ghi_chu`: 2026-10-04 13:14 +07 — Mã + test xong tại 92bdab5: composer tách 2 hàng (dòng mờ trạng thái/công tắc/mức tìm kiếm + hàng nút [+]/Hỏi), công tắc khối 4 lựa chọn mặc định Tự động, cờ `forced_domain` xuyên composer→adapter (ép khối bỏ qua cờ env, chặn tong_hop, thiếu kho thì báo rõ), dòng "Thư viện chung · 3 khối · luôn bật" gập sẵn ở sidebar, i18n 3 locale. Đang mở app thật để nghiệm thu + chụp ảnh.
