@@ -12,4 +12,4 @@
 - `commit`: `e60e621` (phát hành vé TOOL-2)
 - `bao_cao`: `docs/phieu-viec/ket-qua/omp-model-report.md`
 - `ghi_chu` (verdict Muse): 2026-10-04 ~23:41 +07 — **ĐẠT** vé `OMP-MODEL-REPORT` (tích tạm, chờ user nghiệm thu). Kiểm chứng độc lập qua GitHub API: diff `4a83762` chỉ +44/-0 báo cáo `omp-model-report.md` và +2/-2 `trang-thai.md`, không code, không secret, không merge `main`. Báo cáo đủ spec vé: đọc trực tiếp `C:/Users/Admin/.omp/agent/config.yml` (55 dòng), liệt kê đầy đủ ánh xạ roles (default/smol/tiny/plan/advisor/...) + chuỗi fallback. **Thay đổi đáng chú ý:** DEFAULT hiện là `commandcode/meta/muse-spark-1.3-contributor:xhigh` (khác ghi chú OMP 02/10: `xai-oauth/grok-4.7:medium` — OMP đã đổi cấu hình, không phải Muse).
-- `ghi_chu`: 2026-10-04 23:43 +07 — OMP nhận vé TOOL-2, bắt đầu đọc TOOL-1 + khảo sát chat hiện có.
+- `ghi_chu`: 2026-10-04 23:47 +07 — OMP mốc-1 khảo sát xong: TOOL-2 đã làm 30/09 (verdict ĐẠT 589d8fe), khung chat_action + tool mẫu + cờ tắt vẫn còn trong HEAD; TOOL-3/4/5 cũng đã xong sau đó. Hướng xử lý: không viết lại code, chỉ kiểm tra lại đúng 4 bước vé rồi báo cáo.
