@@ -1,7 +1,8 @@
 # Trạng thái mailbox-agy (thợ agy — model gemini-3.8-flash-high, việc khó chuyển claude-sonnet/opus-5.5-medium)
 
-- Trạng thái: `xong` (verdict ĐẠT 2026-10-04 ~23:35 +07: thu hồi +6.23GB, free 1.10->7.33GB, integrity_check 100% ok, 8/8 gate ĐẠT)
-- Ticket hiện tại: `DON-O-C-AGY` — dọn ổ C máy nhà (user duyệt 22:00; gồm state opencode 434MB, .codex 4.9GB, .gemini 7.7GB). Prompt: `docs/phieu-viec/mailbox-agy/prompt.md`.
+- Trạng thái: `moi`
+- Ticket hiện tại: `SCAN-O-D` — [NHÀ] kiểm kê ổ D chỉ đọc (cây thư mục, SHA sqlite, đề xuất dọn — không thực hiện). Prompt: `docs/phieu-viec/mailbox-agy/prompt.md`. Role gợi ý: SMOL. Không ghi/xóa ổ D.
+- `ghi_chu` (điều phối Muse): 2026-10-05 ~05:55 +07 — Phát hành vé `SCAN-O-D` theo lệnh user "điều phối 3 thợ, đừng để thợ đứng chơi". Watchdog sẽ dựng watcher trong ~10 phút.
 - `hang-cho`: chưa có
 - `commit`: 7dad2b0
 - `bao_cao`: `docs/phieu-viec/ket-qua/don-o-c-may-nha.md`

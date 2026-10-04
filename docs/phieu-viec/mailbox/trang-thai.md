@@ -1,10 +1,9 @@
 # Trạng thái mailbox
 
-- Trạng thái: `xong`
-- Ticket hiện tại: `TOOL-5` — [NHÀ] nối visual maps vào chat: đăng ký `visual_knowledge_map`, `knowledge_map_html`, `evidence_graph_viewer`, `worklens_semantic_map` làm chat action theo khung TOOL-2; user hỏi "vẽ bản đồ tri thức về X" → render map ngay trong câu trả lời. Prompt: `docs/phieu-viec/mailbox/prompt.md`. Role gợi ý: DEFAULT. Không ghi index production, chỉ code + test.
-- `hang-cho` (còn lại sau khi phát hành TOOL-5 lúc 2026-10-05 ~02:07 +07; TOOL-4 verdict ĐẠT ~02:07):
-  1. `AUDIT-ENRICH-LSU` — CHUYỂN cho opencode 22:45 +07 (opencode đã ĐẠT vé LSU 22:50; đang làm IMPORT-STAGING-ENRICH).
-  2. `IMPORT-STAGING-ENRICH` — CHUYỂN cho opencode 22:55 +07 (cả 2 audit ĐẠT, đủ điều kiện chạy; opencode đang làm, mốc-1 rào-staging ĐẠT).
+- Trạng thái: `moi`
+- Ticket hiện tại: `KNOWLEDGE-DIGEST-HOME-R2` — [NHÀ] resume sổ tay tri thức từ checkpoint 180/889 (escalation cho-muse 03/10 đã gỡ: cầu nối Gemini Web direct_ready, ROUTER-FIX 04/10 kiểm 6 câu đạt). Prompt: `docs/phieu-viec/mailbox/prompt.md`. Role gợi ý: DEFAULT. Index production chỉ đọc, không merge `main`.
+- `hang-cho`: hết — 2 vé đã chuyển cho opencode đều đã đóng (AUDIT-ENRICH-LSU ĐẠT 22:50 04/10; IMPORT-STAGING-ENRICH PARTIAL → phương án B, chốt bằng ENRICH-STAGING-FILESTORE).
+- `ghi_chu` (điều phối Muse): 2026-10-05 ~05:55 +07 — Phát hành vé `KNOWLEDGE-DIGEST-HOME-R2` theo lệnh user "điều phối 3 thợ, đừng để thợ đứng chơi". Watchdog sẽ dựng watcher trong ~10 phút.
 - Vé audit/import ChatGPT enrichment ĐÃ xếp (user duyệt commit batch lên repo public 2026-10-04 18:11 +07). Dữ liệu thô: `docs/phieu-viec/chatgpt-enrichment-raw/` (45 file, 1.998 cặp) — chỉ dùng để audit, không import trực tiếp.
 - `commit`: `27f0603` (TOOL-5 báo cáo kiểm lại 05/10)
 - `bao_cao`: `docs/phieu-viec/ket-qua/tool5-visual-chat.md` (vé TOOL-5 — kiểm lại 05/10, mục 7)
