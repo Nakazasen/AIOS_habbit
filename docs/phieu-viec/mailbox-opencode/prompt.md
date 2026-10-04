@@ -1,30 +1,36 @@
-# Vé: AUDIT-ENRICH-DIEU-TRA-LOI — audit cặp Điều-tra-lỗi (khối dieuchinh)
+# Vé xếp hàng: DRAFT-APPROVAL — Cơ chế duyệt bản thảo (Bước 2 vòng phản hồi)
 
-> Role gợi ý: DEFAULT. Làm trên repo, không cần GPU.
+> Role gợi ý: PLAN (thiết kế trước) rồi code. Lane: thợ opencode code + test + verify (opencode vừa xây module `answer_draft_fallback.py`, hiểu code nhất).
 
-> Nguồn: `docs/phieu-viec/chatgpt-enrichment-raw/dieuchinh/` (đếm thực tế số file/cặp, cấm hardcode — khoảng 34 file batch-55..88, ~995 cặp từ Q2409 trở đi).
-> Đích: `docs/phieu-viec/chatgpt-enrichment-fixed/dieuchinh/` (cùng cấu trúc file; tạo thư mục nếu chưa có).
+## Bối cảnh (user chốt 2026-10-05 ~05:47 +07, lệnh làm nhanh)
 
-## Rào cứng (giống vé AUDIT-ENRICH-LSU)
+- Vé ANSWER-DRAFT-FALLBACK đã xong: RAG trả lời trước, bản thảo enrichment làm dự bị có nhãn "Bản thảo — chưa qua chuyên gia duyệt".
+- Còn thiếu: cơ chế để chuyên gia duyệt bản thảo → nếu không làm, bản thảo mãi mãi "chưa duyệt", không có đường lên "đã duyệt". Đây chính là Bước 2 (vòng phản hồi) trong lộ trình Bước 0–5.
+- User chốt thiết kế: **PIN thay tài khoản, duyệt trong chat thay màn hình riêng, đổi nhãn thay vì nhập kho ngay.**
 
-- Chỉ sửa file trong `chatgpt-enrichment-fixed/`, không sửa thư mục raw.
-- Mọi cặp giữ nhãn Điều-tra-lỗi + `Bản thảo — chưa qua chuyên gia duyệt`.
-- Raw value (`0`, `--`, `---`, `999`, `9999`, `OPEN`, `0L`, `OL`, ô trống, `-`, v.v.) chỉ giữ nguyên, không tự gán nghĩa OK/NG, không tự sửa ký hiệu (kể cả `0L`→`OL`).
-- Chỉ dùng OK/NG khi chính nguồn file định nghĩa.
-- TUYỆT ĐỐI KHÔNG nhập vào kho tri thức chính. Không merge `main`.
+## Thiết kế (không thương lượng)
 
-## Việc cần làm
+1. **Ai được duyệt**: mã PIN 4–6 số do user đặt (lưu ở config local, KHÔNG commit lên repo), chỉ 2–3 chuyên gia biết. Nhập 1 lần mỗi phiên/ca làm việc → mở khóa nút Duyệt. Khi bấm Duyệt: hỏi tên người duyệt (tự khai), ghi log đủ 3 trường: id cặp, tên người duyệt, thời gian.
+2. **Duyệt ở đâu**: ngay dưới câu trả lời bản thảo trong khung chat — 3 nút Duyệt / Sửa rồi duyệt / Từ chối. KHÔNG màn hình riêng, KHÔNG thêm đống nút (đúng triết lý chat-first: 1 ô nhập + 1 vùng trả lời). Thêm chat action: user hỏi "liệt kê bản thảo chưa duyệt [về X]" → render danh sách ngay trong vùng trả lời.
+3. **Duyệt xong thì sao** (2 bước tách riêng):
+   - Bước 1 (vé này): đổi nhãn "Bản thảo — chưa qua chuyên gia duyệt" → "Đã duyệt bởi [tên], ngày [date]". Cặp vẫn nằm ở kho bản thảo. Cho phép gỡ duyệt (ghi log).
+   - Bước 2 (vé riêng sau, KHÔNG làm ở đây): nhập theo đợt vào kho chính — có backup, quyết định riêng.
+4. **Ba điểm bắt buộc** (quy tắc 2026-10-03):
+   - (a) Feedback tại chỗ: 3 nút ngay dưới câu trả lời bản thảo, chỉ hiện khi đã mở khóa PIN.
+   - (b) Metric đo được: tỷ lệ duyệt theo mẻ, số cặp đã duyệt / chưa duyệt / từ chối; hàm tính + nơi xem số liệu.
+   - (c) Vòng xem lại: phiên bản hóa — "Sửa rồi duyệt" tạo version mới, giữ bản cũ để đối chiếu; tài liệu ngắn mô tả cách xem lại định kỳ và ngưỡng cần cải thiện.
 
-1. **Đếm thực tế**: số file, số cặp, Q min/max, Q liền mạch (lưu ý Q3206–Q3208 bỏ trống có chủ đích vì file `信号 7303.xlsx` không đọc được ô).
-2. **Sửa 3 lỗi chép tay đã biết** (đối chiếu raw trước khi sửa):
-   - `batch-60.md` Q2571: COLOR đúng `40/40=02YN` (đang ghi nhầm `02YT`).
-   - `batch-62.md` Q2632: PWB đúng `7PA1170BCZ+GH01` (đang ghi nhầm `+AH01`).
-   - `batch-64.md` Q2691: nguồn đúng `ENGINE_3V2XC47020_03.pdf` (đang ghi nhầm `XD`).
-3. **Kiểm tra numbering/format toàn bộ file**: Q liên tục (trừ dải trống chủ đích), đủ 6 trường + Nguồn file, nhãn Cách hỏi thuộc đúng 5 nhãn (trực tiếp / tình huống / so sánh / xử lý sự cố / hỏi ngược kiểm tra hiểu), phân bố ngôn ngữ vi/zh/ja.
-4. **Dedup theo nội dung**: giữ bản đầy đủ nhất, loại bản trùng, ghi log các cặp bị loại (0 loại cũng ghi rõ).
-5. **Chấm M1–M5** bằng module `src/aios_habit/golden_question_*.py` (ghi rõ module nào tồn tại/thiếu — vé LSU đã ghi nhận kho chỉ có 5 module). Cặp điểm thấp: sửa rồi chấm lại; không sửa được thì loại. Ghi metric trước/sau.
-6. **Vòng xem lại**: chạy lại scorer một lượt sau sửa để xác nhận không còn cặp điểm thấp.
+## Rào cứng
 
-## Báo cáo
+- Feature flag riêng cho cơ chế duyệt, mặc định TẮT (luật repo). Nút duyệt chỉ hiện khi flag bật + PIN đã mở khóa + câu trả lời là bản thảo.
+- Không đụng luồng RAG; chỉ chạm `answer_draft_fallback.py` ở điểm tích hợp tối thiểu (ghi rõ diff trong báo cáo).
+- Không nhập kho chính, không ghi index production trong vé này.
+- Python 3.11 (không dùng syntax 3.12+); không merge `main`; không force-push. Commit sớm, push qua Git Data API ngay khi có commit hoàn chỉnh.
 
-`docs/phieu-viec/ket-qua/audit-enrich-dieuchinh.md`: số cặp trước/sau, số cặp sửa (+3 lỗi đã biết), số cặp loại (+lý do), metric M1–M5 trước/sau, danh sách file đã fix. Commit lên `phieu-viec/rag-fix1`, `trang-thai.md` → `xong-cho-duyet`.
+## Tiêu chí ĐẠT
+
+- Nhập PIN đúng → mở khóa; nhập sai → báo lỗi tiếng Việt, không lộ gợi ý.
+- Dưới câu trả lời bản thảo hiện đủ 3 nút khi đã mở khóa; bấm Duyệt → nhãn đổi đúng mẫu "Đã duyệt bởi [tên], ngày [date]", log đủ 3 trường; Từ chối → bắt buộc ghi lý do; Sửa rồi duyệt → tạo version mới, bản cũ còn nguyên.
+- Metric tỷ lệ duyệt/mẻ tính được trên dữ liệu thật.
+- Test: unit cho PIN (đúng/sai), log duyệt, đổi nhãn, phiên bản hóa; `compileall` + `pytest` + `cli audit` PASS; `import workspace_chat_app` OK.
+- Báo cáo `docs/phieu-viec/ket-qua/draft-approval.md`; commit lên `phieu-viec/rag-fix1`; `trang-thai.md` → `xong-cho-duyet`.
