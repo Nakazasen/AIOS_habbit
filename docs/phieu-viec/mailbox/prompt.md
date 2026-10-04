@@ -1,51 +1,30 @@
-# Vé ROUND5-UX-COMPOSER [NHÀ] — Sửa xô lệch composer + công tắc chọn khối tri thức
+# Vé: ROUTER-FIX — sửa lỗi khóa cloud Router (unknown_error từ tối 2/10)
 
-> Vé CODE (thợ OMP máy nhà implement + verify app thật). Làm SAU khi vòng 4
-> UX-ATTACH-SOURCES xong. Phát hành bằng cách copy file này vào `prompt.md`,
-> reset `trang-thai.md` về `moi`.
-> Role OMP gợi ý: DEFAULT (code + verify). Không cần PLAN (thiết kế đã chốt
-> sẵn dưới đây). Vé verify nhanh sau này dùng SMOL/TINY cho rẻ.
+Lane: [NHÀ] OMP chạy trên máy nhà h410asrock.
+Không merge `main`; code tương thích Python 3.11; không force-push.
+Role OMP gợi ý: PLAN (chẩn đoán) rồi DEFAULT (sửa + verify).
 
 ## Bối cảnh
-- Vòng 4 (one-shot-inline, commit c317d84) tách ảnh 1 lần / nguồn lâu dài.
-- User gửi ảnh chụp: hàng điều khiển dưới ô nhập bị xô lệch — chữ nút
-  "🖼️ Ảnh cho câu hỏi này" đè lên dòng "Đang dùng: Gemini qua cầu nối
-  (tự động)" vì 6 phần tử ([+], nút ảnh, trạng thái lane, dropdown Tìm nhanh,
-  gợi ý phím Ctrl+↵, nút Hỏi) bị nhồi trong một hàng.
 
-## Việc 1 — Sửa xô lệch (bắt buộc)
-- Ô nhập full-width một hàng riêng.
-- Hàng dưới chỉ còn: nút [+] đính kèm bên trái, nút Hỏi bên phải.
-- Dòng trạng thái lane ("Đang dùng: ...") dời xuống một dòng mờ riêng,
-  không chen ngang.
-- Thanh tiến trình "Đã chuẩn bị xong..." giữ khoảng cách rõ với cụm nút.
-- Bằng chứng: chụp ảnh composer sau sửa, không còn chữ đè chữ ở các độ rộng
-  cửa sổ thông thường.
+- `Nakazasen Router` (lane 3, đường gọi model cloud) chết từ tối 2/10 với lỗi `unknown_error` ở bước khóa cloud (OMP đã ghi nhận trong vé `LLM-ENABLE-DO-NHA-R1`).
+- Hệ quả: vé `SPEED-COLDSTART-HOME-R1` chỉ đo được lane 1 (cầu nối Gemini, 26s/6 câu ĐẠT), lane 3 bỏ trống; máy công ty đang làm SPEED-COLDSTART-PC0575 cũng cần Router khỏe để so sánh.
+- User chỉ đạo 2026-10-04 ~19:05 +07: **ưu tiên số 1, làm ngay sau ROUND5**.
 
-## Việc 2 — Công tắc chọn khối tri thức (bắt buộc)
-- Một dòng chữ mờ dưới ô nhập, mặc định "Tự động" (giữ nguyên hành vi
-  router hiện tại). Bấm vào bung ra 4 lựa chọn: Tự động / LSU / Điều tra lỗi
-  / MOM. Không thêm toolbar, không thêm tab.
-- Khi ép khối: câu trả lời hiện badge "Đang tra cứu khối X" đúng khối đã
-  chọn; chỉ tìm trong khối đó (không vào tong_hop).
-- Khi để Tự động: hành vi y như hiện tại.
+## Công việc
 
-## Việc 3 — Dòng thư viện chung ở sidebar (bắt buộc)
-- Thêm đúng một dòng gập sẵn: "Thư viện chung · 3 khối · luôn bật".
-- Bấm mới mở ra xem 3 khối + trạng thái; mặc định gập.
+1. **Chẩn đoán (role PLAN):** mở log/config, xác định lỗi `unknown_error` tối 2/10 nằm ở đâu — env/key/account cloud; phân biệt: key hết hạn, sai biến môi trường, account bị khóa, hay mạng. Ghi nguyên nhân gốc vào báo cáo.
+2. **Sửa:** refresh/nhập lại key đúng cách (qua Secure Vault hoặc file config máy nhà, không nhúng key vào repo/commit); sửa config/env cho đúng.
+3. **Verify:**
+   - Probe 1 câu hỏi qua `RouterSynthesisProvider` trả lời được.
+   - Chạy lại 6 câu L1–E3 **lạnh** qua lane 3 (restart app trước), ghi thời gian từng câu, parity với đáp án lane 1.
+4. **Regression nhẹ:** restart app 2 lần, xác nhận lane 1 không bị ảnh hưởng bởi thay đổi config.
 
-## Ràng buộc cứng (cấm regression)
-- GIỮ NGUYÊN thiết kế one-shot-inline vòng 4: ảnh OCR gộp vào câu hỏi,
-  không tạo nguồn tạm, câu sau không dùng lại.
-- Code tương thích Python 3.11.
-- Test hiện có phải pass: test_workspace_chat_composer_ui.py,
-  test_workspace_chat_connector_guard.py, test_workspace_chat_ui_i18n.py
-  (trừ 2 anti-hardcode đã biết fail từ trước).
-- Bổ sung test cho công tắc khối (ép khối → badge đúng; Tự động → router như cũ).
+## Tiêu chí ĐẠT
 
-## Nghiệm thu
-1. Ảnh chụp composer: không xô lệch, tối giản.
-2. Ép từng khối → badge đúng + kết quả chỉ từ khối đó.
-3. Tự động → hành vi cũ.
-4. Sidebar có dòng thư viện chung, mặc định gập.
-5. SHA kho tri_thuc không đổi (vé chỉ đụng UI).
+- Router trả lời được câu hỏi qua `RouterSynthesisProvider`, không còn `unknown_error`.
+- 6 câu lạnh lane 3 có số đo thời gian cụ thể từng câu; kết quả parity đúng với lane 1.
+- Không ghi key/secret nào vào repo hoặc commit; SHA index production không đổi.
+
+## Báo cáo
+
+Ghi rõ: nguyên nhân gốc (key/env/account/mạng) — key sửa bằng cách nào — số đo 6 câu lane 3 — commit SHA — máy đã khởi động lại app bao nhiêu lần.
