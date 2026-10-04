@@ -82,3 +82,18 @@ Không sửa: hook `workspace_chat_app.py`, `workspace_chat_ui.py` (đã gỡ he
 3. **`worklens_semantic_map` chưa gồm import NotebookLM** (`include_bridge_imports=False`) — đồ thị nhập từ bridge vẫn xem ở tab Bản đồ; nếu cần đưa vào chat thì mở vé riêng (kèm đo chi phí đọc store).
 4. **Lỗi Mermaid của Streamlit** (mục 4) là hạn chế upstream: nếu muốn diagram Mermaid thật trong bong bóng cần component riêng (như ExcaliFlow) hoặc báo upstream — ngoài phạm vi vé này.
 5. `case_store`/`learning_models` loader tự `init_store()` (mkdir/touch file rỗng) khi store chưa tồn tại — hành vi sẵn có của app, không phải do vé; khi test, handler được kiểm bằng loader giả nên khẳng định **không tạo tệp nào**.
+
+## 7. Kiểm lại ngày 2026-10-05 (vé tái phát hành 2026-10-05 ~02:07 +07)
+
+- Lý do kiểm lại: vé `TOOL-5` đã làm xong ngày 2026-09-30 và chờ duyệt, nhưng ngày 2026-10-05 Muse phát hành lại vé này sau verdict `TOOL-4` ĐẠT. OMP kiểm cổng gate lúc 2026-10-05 02:18 +07: cổng MỞ (`HEAD` = `origin` = `00a4bd7`, `prompt.md` đúng vé `TOOL-5`, trạng thái `moi` mới ~02:07, watcher `LAUNCH 1/4` lúc 02:09 `launchStallCount=1` chưa chạm ngưỡng 4 lần `cho-muse`, không có file watcher tự mở trong mailbox). Vé thuộc lane NHÀ (code + test), code đã có → chỉ kiểm lại, không viết lại code.
+- Phạm vi rà: từ bản phát hành lại (`a97f844`) tới `HEAD` không đổi mã `src`/`tests` (`git diff a97f844..HEAD -- src tests` rỗng; chỉ thêm batch enrichment `chatgpt-enrichment-raw` và dòng tiến độ `trang-thai.md`). Code gốc 30/09 còn nguyên: `chat_action_visual_maps.py` (832 dòng, 3 action `ban_do_tri_thuc`/`ban_do_ho_so`/`do_thi_bang_chung`), `visual_map_image.py` (311 dòng, renderer PNG Pillow), `tests/test_chat_action_visual_maps.py` (501 dòng, 29 bài).
+- Kiểm cổng gate lần 2 lúc 2026-10-05 02:30 +07: cổng MỞ (watcher ngoài working copy `D:/Sandbox/Vong_lap_giao_viec/watcher_state.json` ghi `launchStallCount=1`, `LAUNCH 1/4` lúc 02:09, `status` đã sang `dang-lam` sau khi OMP nhận vé 02:18, 0 `RELAUNCH` cho TOOL-5; chưa chạm ngưỡng 4 lần `cho-muse`; `prompt.md` đúng vé TOOL-5). Không đặt `cho-muse`, không quay no-op.
+- Bằng chứng chạy lại trên máy `h410asrock` (Windows, Python `3.11.14`, `uv 0.10.6`):
+  - `python -m compileall src tests` → sạch.
+  - `pytest -q tests/test_chat_action_visual_maps.py` → **29 passed** (đúng 29 bài vé gốc, 5.78s).
+  - `pytest -q` 5 file `chat_action` (TOOL-2/3/4/5) → **85 passed** (17 + 12 + 27 + 29).
+  - `PYTHONPATH=src python -m aios_habit.cli audit` → `"status": "PASS"` (0 lỗi, 0 cảnh báo); `import aios_habit.workspace_chat_app` → OK; `chat_action_enabled()` → `False` (cờ mặc định TẮT); module vé đã đăng ký trong `BUILTIN_ACTION_MODULES` (tổng 15 module); `scripts/check_docs.py` → `DOCUMENTATION_CONTRACT=PASS`; `git diff --check` → sạch.
+  - Ràng buộc vé giữ nguyên: không nút mới (`st.button`/`st.expander`/`st.tabs` = 0 trong 2 tệp vé), có `register_action`, không tham chiếu ổ D (0 kết quả `D:`), không merge `main`, không ghi index (test read-only vé gốc khẳng định store không đổi; action chỉ đọc JSONL cục bộ + trace chat store).
+  - Full suite toàn bộ chưa chạy lại lượt này; dựa vào kết quả gốc 30/09 trong mục 5e (**3.363 đạt, 2 bỏ qua, 35 lỗi, 0 error**, +29 đạt đúng bằng 29 test vé mới, 35 lỗi toàn ngoài vùng vé) + hồi quy 85/85 xanh hiện tại — code không đổi nên kết quả gốc còn giá trị.
+- Kết luận: giữ nguyên code 30/09, chỉ thêm mục kiểm lại này. Đề nghị Muse duyệt `xong-cho-duyet`.
+
