@@ -1,10 +1,13 @@
 # Trạng thái mailbox-opencode (thợ opencode — model free muse-spark-1.3 / space-bunny)
 
-- Trạng thái: `dang-lam`
+- Trạng thái: `xong-cho-duyet`
 - Ticket hiện tại: `ANSWER-DRAFT-FALLBACK` — RAG trả lời trước, bản thảo enrichment làm dự bị có nhãn (user chốt phương án 1). Prompt: `docs/phieu-viec/mailbox-opencode/prompt.md`. Role gợi ý: PLAN (thiết kế trước) rồi code.
 - `ghi_chu`: 2026-10-04 23:48 +07 — đã nhận vé ANSWER-DRAFT-FALLBACK (điều kiện mở đủ: trạng thái `moi` + prompt đúng vé; không rơi nhánh 4 lần watcher). Bắt đầu bước 1: khảo sát lane RAG, chưa sửa code.
 - `ghi_chu`: 2026-10-04 23:52 +07 — mốc khảo sát xong: lane RAG qua `workspace_chat_rag_v2_adapter` → `pipeline.query` → `synthesize_evidence` → `generate_workspace_ai_answer`; ngưỡng hiện tại là phân loại giới hạn + `confidence_label`, chưa có ngưỡng số; feedback tại chỗ đã có (`answer_feedback` + UI); kho bản thảo 54 file `chatgpt-enrichment-fixed/mom+lsu` dạng `## CÂU HỎI` + `Hỏi:/Đáp:`. Kế tiếp: thiết kế luồng a→b→c.
 - `ghi_chu`: 2026-10-05 00:05 +07 — mốc code + verify xong: module mới `src/aios_habit/answer_draft_fallback.py` (luồng a→b→c, nhãn bắt buộc, cờ mặc định BẬT, metric coverage/fallback/label + hướng dẫn xem lại), test mới 9/9 đạt, bộ liên quan 100/100 đạt, `compileall` sạch, `cli audit` PASS, import app thành công; kho thật 54 file/2.398 cặp đọc trực tiếp không qua importer. Kế tiếp: ghi báo cáo + xin duyệt.
+- `commit`: `917756a` (mốc code + verify; báo cáo ở bước tiếp theo)
+- `bao_cao`: `docs/phieu-viec/ket-qua/answer-draft-fallback.md`
+- `ghi_chu`: 2026-10-05 00:10 +07 — xong vé ANSWER-DRAFT-FALLBACK ở mức chờ duyệt: RAG giữ nguyên + fallback bản thảo có nhãn sau cờ mặc định BẬT + metric mẫu coverage 1.0/fallback 0.3/nhãn 100%; test mới 9/9, bộ liên quan 100/100, audit PASS; bộ toàn kho chưa xong do quá 10 phút (ghi trung thực, không báo đạt).
 - Trạng thái: `xong`  (verdict ĐẠT 2026-10-04 ~23:35 +07: kho bản thảo 54 file/2.398 cặp đúng rào, raw không đụng, diff sạch — chỉ báo cáo + trạng thái)
 - Ticket hiện tại: `ENRICH-STAGING-FILESTORE` — chốt kho bản thảo cặp enrichment bằng file (không qua importer), quyết định phương án B sau verdict vé trước. Prompt: `docs/phieu-viec/mailbox-opencode/prompt.md`. Role gợi ý: SMOL/TINY (~5 phút).
 - `ghi_chu`: 2026-10-04 23:16 +07 — đã nhận vé ENRICH-STAGING-FILESTORE (điều kiện mở đủ: trạng thái `moi` + prompt phương án B). Bắt đầu kiểm đếm cuối 54 file fixed, chưa ghi DB, chưa sửa code.
