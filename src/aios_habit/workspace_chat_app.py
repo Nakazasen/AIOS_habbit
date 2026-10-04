@@ -4690,6 +4690,7 @@ else:
 
                         if ai_backend == "gemini_web" and not _start_gemini_web_bridge(locale=current_ui_locale):
                             safe_rerun()
+                        image_ocr_failed = False
                         if user_attached_image is not None:
                             # Ảnh đính kèm luôn được OCR thành nguồn chữ trước khi
                             # tới lane AI, nên mọi lane (kể cả Gemini Web) đều đọc
@@ -4711,6 +4712,7 @@ else:
                                     img_batch.get("created_temporary_source_ids", [])
                                 )
                             else:
+                                image_ocr_failed = True
                                 st.session_state.wsc_action_message = t(
                                     "attached_image_unreadable",
                                     locale=current_ui_locale,
@@ -4729,7 +4731,9 @@ else:
                             st.session_state.wsc_last_ai_badge = {
                                 "conversation_id": active_conversation.id,
                                 "type": "insufficient_context",
-                                "reason": "no_sources",
+                                "reason": (
+                                    "image_ocr_failed" if image_ocr_failed else "no_sources"
+                                ),
                             }
                             safe_rerun()
                         else:

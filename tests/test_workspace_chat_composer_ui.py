@@ -466,3 +466,17 @@ def test_attached_image_unreadable_message_exists_in_all_locales() -> None:
     assert "Chưa đọc được nội dung ảnh" in translations
     assert "画像の内容を読み取れませんでした" in translations  # ja
     assert "无法读取图片内容" in translations  # zh
+
+
+def test_image_ocr_failure_reports_actionable_reason_not_generic_no_sources() -> None:
+    """Regression (UX-ATTACH-SOURCES re-verify 04/10): when OCR fails and no
+    other source is enabled, the badge reason must be 'image_ocr_failed' with
+    an actionable message — not the generic 'no_sources' dead end."""
+    source = _app_source()
+
+    assert '"reason": (\n                                    "image_ocr_failed" if image_ocr_failed else "no_sources"\n                                )' in source or '"image_ocr_failed" if image_ocr_failed else "no_sources"' in source
+    ui_source = Path("src/aios_habit/workspace_chat_ui.py").read_text(encoding="utf-8")
+    assert 'if reason == "image_ocr_failed":' in ui_source
+    translations = Path("src/aios_habit/i18n.py").read_text(encoding="utf-8")
+    assert '"image_ocr_failed_detail"' in translations
+    assert "Tesseract" in translations

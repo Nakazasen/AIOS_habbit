@@ -1390,7 +1390,10 @@ def render_handoff_pending_banner(
 def render_insufficient_context(reason: str = "no_sources", locale: str = "vi"):
     """Renders 'Thiếu ngữ cảnh' badge with appropriate message."""
     st.error(f"⚠️ **{t('insufficient_context', locale=locale)}**")
-    st.write(t("no_sources", locale=locale))
+    if reason == "image_ocr_failed":
+        st.write(t("image_ocr_failed_detail", locale=locale))
+    else:
+        st.write(t("no_sources", locale=locale))
 
 
 def render_source_changed_message(locale: str = "vi"):
