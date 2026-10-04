@@ -5,5 +5,5 @@
 - `hang-cho`: chưa có
 - `commit`: 
 - `bao_cao`: 
-- `ghi_chu`: 2026-10-04 22:09 khao sat xong 15 file raw MOM: 608 cap lien tuc Q1-608, du 6 truong, phat hien Q183 trung Q184 + ticket ghi 6 module nhung repo chi co 5.
+- `ghi_chu`: 2026-10-04 22:15 sua xong Q183 (tach khoi Q184), tao 15 file fixed/mom, dang chay vong xem lai + gate.
 
