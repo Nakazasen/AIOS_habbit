@@ -15,4 +15,4 @@
 - Vé audit/import ChatGPT enrichment ĐÃ xếp (user duyệt commit batch lên repo public 2026-10-04 18:11 +07). Dữ liệu thô: `docs/phieu-viec/chatgpt-enrichment-raw/` (45 file, 1.998 cặp) — chỉ dùng để audit, không import trực tiếp.
 - `commit`: 92bdab5
 - `bao_cao`: 
-- `ghi_chu`: 2026-10-04 18:40 +07 — Đã pull nhánh + đọc vé ROUND5. Đang kiểm tra code cũ (92bdab5 + tune db3d4ed) và sửa tràn nhãn nút ở cửa sổ hẹp, chuẩn bị chạy test bắt buộc.
+- `ghi_chu`: 2026-10-04 18:48 +07 — Test bắt buộc xong: 81 pass, 2 anti-hardcode fail cũ đã biết (vé cho phép). Cổng watcher: OMP đang chạy + dang-lam, không đủ điều kiện cho-muse. Tiếp theo: mở app thật nghiệm thu composer.
