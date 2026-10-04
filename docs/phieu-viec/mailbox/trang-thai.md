@@ -1,6 +1,6 @@
 # Trạng thái mailbox
 
-- Trạng thái: `xong-cho-duyet`
+- Trạng thái: `xong`
 - Ticket hiện tại: `TOOL-5` — [NHÀ] nối visual maps vào chat: đăng ký `visual_knowledge_map`, `knowledge_map_html`, `evidence_graph_viewer`, `worklens_semantic_map` làm chat action theo khung TOOL-2; user hỏi "vẽ bản đồ tri thức về X" → render map ngay trong câu trả lời. Prompt: `docs/phieu-viec/mailbox/prompt.md`. Role gợi ý: DEFAULT. Không ghi index production, chỉ code + test.
 - `hang-cho` (còn lại sau khi phát hành TOOL-5 lúc 2026-10-05 ~02:07 +07; TOOL-4 verdict ĐẠT ~02:07):
   1. `AUDIT-ENRICH-LSU` — CHUYỂN cho opencode 22:45 +07 (opencode đã ĐẠT vé LSU 22:50; đang làm IMPORT-STAGING-ENRICH).
@@ -27,7 +27,4 @@
 - `ghi_chu`: 2026-10-05 02:24 +07 — OMP mốc-1 TOOL-5 xong: compile sạch, test vé 29/29 đạt (5.78s), code 30/09 còn nguyên (`diff a97f844..HEAD -- src tests` rỗng, module visual_maps 832 dòng + renderer PNG 311 dòng + test 501 dòng, 3 action đã đăng ký trong BUILTIN_ACTION_MODULES); đang chạy cổng kiểm tra rồi viết báo cáo.
 - `ghi_chu`: 2026-10-05 02:28 +07 — OMP mốc verify lõi TOOL-5 xong: hồi quy chat_action 85/85 đạt (17 TOOL-2 + 12 TOOL-3 + 27 TOOL-4 + 29 TOOL-5), audit PASS, import app OK, cờ mặc định TẮT, docs PASS, diff-check sạch, không nút mới, không ghi index, không đụng ổ D; đang viết báo cáo rồi chốt xong-chờ-duyệt.
 - `ghi_chu`: 2026-10-05 02:32 +07 — OMP xong TOOL-5 chờ duyệt: code 30/09 còn nguyên (diff src/tests rỗng), báo cáo thêm mục 7 kiểm lại; test vé 29/29, hồi quy 85/85, audit PASS, import app OK, cờ TẮT, docs PASS, diff-check sạch, không nút/index, không đụng ổ D, gate MỞ (stall 1/4).
-
-
-
-
+- `ghi_chu` (verdict Muse): 2026-10-05 ~02:36 +07 — **ĐẠT** vé `TOOL-5` (kiểm lại, tích tạm, chờ user nghiệm thu). Kiểm chứng độc lập qua GitHub API: commit `27f0603` chỉ +15/-0 báo cáo `tool5-visual-chat.md` (mục 7 kiểm lại), không code, không secret, không merge `main`; `compare a97f844...fe5a54d0` không chạm `src/tests` (chỉ batch enrichment + báo cáo + trang-thai); 3 action `ban_do_tri_thuc`/`ban_do_ho_so`/`do_thi_bang_chung` tồn tại trong `chat_action_visual_maps.py` (27620 chars) đủ `register_action`, không `st.button`/`st.expander`/`st.tabs`; test vé 29/29, hồi quy chat_action 85/85 (17+12+27+29), audit PASS, cờ chat_action mặc định TẮT, docs PASS, diff-check sạch, không ghi index, không đụng ổ D. Hết vé xếp hàng của máy nhà (2 mục còn lại đã chuyển cho opencode) → merge `phieu-viec/rag-fix1` → `main` (fast-forward, không force-push) theo duyệt 2026-09-29 ~20:14.
