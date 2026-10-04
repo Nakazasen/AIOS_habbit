@@ -1,6 +1,6 @@
 # Trạng thái mailbox
 
-- Trạng thái: `dang-lam`
+- Trạng thái: `xong-cho-duyet`
 - Ticket hiện tại: `TOOL-3` — [NHÀ] nối benchmark vào chat: đăng ký `mom_benchmark`, `rag_benchmark`, `rag_evaluator` làm chat action theo khung TOOL-2; user hỏi "đánh giá chất lượng trả lời" → chạy benchmark → hiện bảng điểm trong câu trả lời. Prompt: `docs/phieu-viec/mailbox/prompt.md`. Role gợi ý: DEFAULT. Không ghi index production, chỉ code + test.
 - `hang-cho` (còn lại sau khi phát hành TOOL-3 lúc 2026-10-05 ~00:57 +07; TOOL-2 verdict ĐẠT 00:56):
   1. `TOOL-4` (`prompt-queue-tool4.md`) — nối `expert_interview*`, `production_prediction`, `prediction_shadow_ui` vào chat. Role gợi ý: DEFAULT.
@@ -8,8 +8,8 @@
   3. `AUDIT-ENRICH-LSU` — CHUYỂN cho opencode 22:45 +07 (opencode đã ĐẠT vé LSU 22:50; đang làm IMPORT-STAGING-ENRICH).
   4. `IMPORT-STAGING-ENRICH` — CHUYỂN cho opencode 22:55 +07 (cả 2 audit ĐẠT, đủ điều kiện chạy; opencode đang làm, mốc-1 rào-staging ĐẠT).
 - Vé audit/import ChatGPT enrichment ĐÃ xếp (user duyệt commit batch lên repo public 2026-10-04 18:11 +07). Dữ liệu thô: `docs/phieu-viec/chatgpt-enrichment-raw/` (45 file, 1.998 cặp) — chỉ dùng để audit, không import trực tiếp.
-- `commit`: `116f443` (verdict TOOL-2 ĐẠT 00:56)
-- `bao_cao`: `docs/phieu-viec/ket-qua/tool3-benchmark-chat.md` (vé TOOL-3 — chưa có)
+- `commit`: `9f8c489` (TOOL-3 kiểm lại xong 01:40)
+- `bao_cao`: `docs/phieu-viec/ket-qua/tool3-benchmark-chat.md` (vé TOOL-3 — đã có, mục 8 kiểm lại 05/10)
 - `ghi_chu` (verdict Muse): 2026-10-04 ~23:41 +07 — **ĐẠT** vé `OMP-MODEL-REPORT` (tích tạm, chờ user nghiệm thu). Kiểm chứng độc lập qua GitHub API: diff `4a83762` chỉ +44/-0 báo cáo `omp-model-report.md` và +2/-2 `trang-thai.md`, không code, không secret, không merge `main`. Báo cáo đủ spec vé: đọc trực tiếp `C:/Users/Admin/.omp/agent/config.yml` (55 dòng), liệt kê đầy đủ ánh xạ roles (default/smol/tiny/plan/advisor/...) + chuỗi fallback. **Thay đổi đáng chú ý:** DEFAULT hiện là `commandcode/meta/muse-spark-1.3-contributor:xhigh` (khác ghi chú OMP 02/10: `xai-oauth/grok-4.7:medium` — OMP đã đổi cấu hình, không phải Muse).
 - `ghi_chu`: 2026-10-05 00:55 +07 — OMP xong TOOL-2 chờ duyệt: khung chat_action 30/09 còn nguyên (test vé 17/17, audit PASS, cờ tắt, không nút/index), chỉ thêm mục 8 kiểm lại; full suite 3998 đạt/48 lỗi/37 bỏ qua/19 error toàn ngoài vùng vé.
 - `ghi_chu` (verdict Muse): 2026-10-05 ~00:56 +07 — **ĐẠT** vé `TOOL-2` (tích tạm, chờ user nghiệm thu). Kiểm chứng độc lập qua GitHub API: commit `116f443c` chỉ +12/-0 báo cáo `tool2-khung-action.md` và +4/-4 `trang-thai.md`, không code, không secret, không merge `main`; 3 tệp khung tồn tại đủ marker (`register_action`, `normalize_text`, `dispatch` fail-closed, `BUILTIN_ACTION_MODULES`, `handle_chat_text`); `git diff e60e621..116f443c` không chạm mã khung; cờ `chat_action` mặc định TẮT; không `st.button`/`st.expander`/`st.tabs` trong tệp khung; không ghi index (smoke chỉ đọc store chat JSONL); không đụng ổ D. Full suite 3998 đạt/48 lỗi/37 bỏ qua/19 error — OMP phân loại toàn ngoài vùng vé, 17/17 test vé xanh. Phát hành vé xếp hàng tiếp theo `TOOL-3` theo đúng thứ tự hang-cho.
@@ -19,3 +19,4 @@
 - `ghi_chu`: 2026-10-05 01:26 +07 — OMP mốc verify cổng TOOL-3: gate MỞ (watcher `launchStallCount=1`, RELAUNCH 1/4 lúc 01:16, chưa chạm ngưỡng 4 lần; vé lane NHÀ code+test, code 30/09 còn nguyên, `diff b5d2f7f..HEAD` không chạm `src/tests`); test vé 12/12, hồi quy 29/29, audit PASS, import app OK, cờ mặc định TẮT, docs PASS, diff-check sạch, không nút mới, không ghi index; đang chạy full suite rồi chốt báo cáo.
 - `ghi_chu`: 2026-10-05 01:33 +07 — OMP kiểm cổng gate lần 2: cổng MỞ (watcher `launchStallCount=2`, RELAUNCH 2/4 lúc 01:30, chưa chạm ngưỡng 4 lần cho-muse; prompt đúng vé TOOL-3, code 30/09 còn nguyên trong HEAD, `diff b5d2f7f..HEAD` không chạm `src/tests`); tiếp tục chạy kiểm tra vé rồi chốt báo cáo.
 - `ghi_chu`: 2026-10-05 01:37 +07 — OMP mốc verify lõi lần 2 TOOL-3 xong: compile sạch, test vé 12/12 (0.85s), hồi quy 29/29, audit PASS, import app OK, cờ `chat_action` mặc định TẮT, docs PASS, diff-check sạch, không nút mới, không ghi index; đang viết báo cáo rồi chốt xong-chờ-duyệt.
+- `ghi_chu`: 2026-10-05 01:40 +07 — OMP xong TOOL-3 chờ duyệt: code 30/09 còn nguyên (diff src/tests rỗng), báo cáo thêm mục 8 kiểm lại; test vé 12/12, hồi quy 29/29, audit PASS, import app OK, cờ TẮT, docs PASS, diff-check sạch, không nút/index, gate MỞ (stall 2/4).
