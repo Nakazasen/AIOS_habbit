@@ -90,3 +90,17 @@
 - TOOL-4/TOOL-5 dùng lại khung: thêm 1 module + 1 dòng `BUILTIN_ACTION_MODULES` (như vé này).
 - Nếu cần “benchmark cả hội thoại” hoặc bộ câu hỏi vàng theo sổ → vé riêng.
 - Cân nhắc bổ sung `confidence_level`/`confirmed_by_source` vào metadata trace khi luồng trả lời ghi trace, để rubric MOM chấm sát hành vi thật hơn.
+
+## 8. Kiểm lại ngày 2026-10-05 (vé tái phát hành 2026-10-05 ~00:57 +07)
+
+- Lý do kiểm lại: vé `TOOL-3` đã làm xong ngày 2026-09-30 và chờ duyệt (`15962ab`), nhưng ngày 2026-10-05 Muse phát hành lại vé này sau verdict `TOOL-2` ĐẠT. OMP kiểm cổng gate lúc 2026-10-05 01:08 +07: cổng MỞ (`HEAD` = `origin` = `b5d2f7f`, `prompt.md` đúng vé `TOOL-3`, trạng thái `moi` mới ~00:57, không có tệp watcher tự mở nào trong mailbox). Vé thuộc lane NHÀ (code + test), code đã có → chỉ kiểm lại, không viết lại code.
+- Phạm vi rà: từ bản phát hành lại (`b5d2f7f`) tới `HEAD` không đổi mã `src`/`tests` (`git diff b5d2f7f..HEAD -- src tests` rỗng; chỉ thêm batch enrichment `chatgpt-enrichment-raw` và dòng tiến độ `trang-thai.md`). Code gốc 30/09 còn nguyên: `chat_action_answer_quality.py` (391 dòng), `chat_action.py` (`BUILTIN_ACTION_MODULES` có mục `aios_habit.chat_action_answer_quality`), `tests/test_chat_action_answer_quality.py` (233 dòng, 12 bài), `ARCHITECTURE.md` + `PROJECT_HANDOVER.md` đã có mục TOOL-3.
+- Kiểm cổng gate lần 2 lúc 2026-10-05 01:33 +07: cổng MỞ (watcher ngoài working copy `D:/Sandbox/Vong_lap_giao_viec/watcher_state.json` ghi `launchStallCount=2`, `RELAUNCH 2/4` lúc 01:30:31, chưa chạm ngưỡng 4 lần `cho-muse`; `prompt.md` đúng vé TOOL-3). Không đặt `cho-muse`, không quay no-op.
+- Bằng chứng chạy lại trên máy `h410asrock` (Windows, Python `3.11.14`, `uv 0.10.6`):
+  - `python -m compileall src tests` → sạch.
+  - `pytest -q tests/test_chat_action_answer_quality.py` → **12 passed** (0.85s, đúng 12 bài vé gốc).
+  - `pytest -q tests/test_chat_action_answer_quality.py tests/test_chat_action.py` → **29 passed** (0.94s: 17 bài TOOL-2 + 12 bài mới).
+  - `PYTHONPATH=src python -m aios_habit.cli audit` → `"status": "PASS"` (0 lỗi, 0 cảnh báo); `import aios_habit.workspace_chat_app` → OK; cờ `chat_action` mặc định → `False` (TẮT); `scripts/check_docs.py` → `DOCUMENTATION_CONTRACT=PASS`; `git diff --check` → sạch.
+  - Ràng buộc vé giữ nguyên: không nút mới (`grep st.button/st.expander/st.tabs` trong 2 tệp action bằng 0), không ghi index (chỉ đọc store chat JSONL + chạy trong bộ nhớ, test read-only khẳng định byte store không đổi), không merge `main`, không đụng ổ D.
+  - Full suite toàn bộ chưa chạy lại lượt này; dựa vào kết quả gốc 30/09 trong mục 5e (lượt B đủ môi trường: **3.307 đạt, 2 bỏ qua, 35 lỗi, 0 error**, +12 đạt đúng bằng 12 test vé mới, 35 lỗi toàn ngoài vùng vé) + hồi quy 29/29 xanh hiện tại — code không đổi nên kết quả gốc còn giá trị.
+- Kết luận: giữ nguyên code 30/09, chỉ thêm mục kiểm lại này. Đề nghị Muse duyệt `xong-cho-duyet`.
