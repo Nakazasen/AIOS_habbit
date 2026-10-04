@@ -49,3 +49,4 @@
 - `bao_cao`: `-`
 - Trạng thái: `dang-lam`
 - `ghi_chu`: 2026-10-05 06:02 +07 — đã nhận vé DRAFT-APPROVAL (điều kiện mở đủ: trạng thái `moi` + prompt đúng vé DRAFT-APPROVAL + verdict audit ĐẠT 06:50; không rơi nhánh 4 lần watcher). Bắt đầu bước 1: đọc thiết kế + khảo sát `answer_draft_fallback.py`, chưa sửa code.
+- `ghi_chu`: 2026-10-05 06:05 +07 — mốc khảo sát xong: lane cũ `answer_draft_fallback.py` (nhãn Bản thảo bắt buộc, cờ BẬT, metric) + `answer_feedback.py` (JSONL local_cases) + `workspace_chat_ui.render_answer_feedback_row` (thích/không thích) đã rõ; điểm chạm tối thiểu cho 3 nút duyệt + PIN + log + metric + phiên bản hóa đã xác định. Kế tiếp: trình phương án PLAN chờ duyệt, chưa code.
