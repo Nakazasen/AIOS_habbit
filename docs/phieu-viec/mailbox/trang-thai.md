@@ -1,8 +1,8 @@
 # Trạng thái mailbox
 
-- Trạng thái: `cho-muse`
-- Ticket hiện tại: `UX-ATTACH-SOURCES` (vòng 3: cài Tesseract + verify) — [NHÀ] cài Tesseract OCR cho Windows (Phần A, một lần), rồi verify lại 3 điểm trên app thật (Phần B). Prompt: `docs/phieu-viec/mailbox/prompt.md`.
+- Trạng thái: `moi`
+- Ticket hiện tại: `UX-ATTACH-SOURCES` (vòng 4: one-shot-inline + OCR vie+eng) — [NHÀ] đặt `AIOS_OCR_LANG=vie+eng` (Phần A bổ sung), rồi verify lại theo tiêu chí vòng 4 trên app thật (Phần B). Prompt: `docs/phieu-viec/mailbox/prompt.md`.
 - `hang-cho`: hết.
-- `commit`: `7d65da5`
+- `commit`: (chưa có)
 - `bao_cao`: `docs/phieu-viec/ket-qua/ux-attach-sources.md`
-- `ghi_chu`: 2026-10-04 08:34 +07 chưa đạt. Tesseract 5.5.3 đã cài, có `vie`. Câu 1 đọc được chữ ảnh. Câu 2 không đính kèm vẫn dùng lại ảnh cũ. Nhãn `＋` đúng. SHA `tri_thuc` không đổi. Chờ Muse.
+- `ghi_chu`: Muse thiết kế lại one-shot tại commit c317d84 (đã push): chữ OCR gộp vào câu hỏi, không tạo nguồn tạm → triệt tiêu lỗi vòng 3. Chờ OMP verify.

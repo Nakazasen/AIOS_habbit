@@ -72,3 +72,23 @@ Nguyên nhân gốc OMP bắt được: app chặn câu hỏi ngay khi thấy �
 3. Thanh bên: expander hiện đúng `＋ Thêm nguồn` (một dấu cộng).
 4. (Phụ) Thử gỡ Tesseract tạm thời KHÔNG cần — code mới đã có đường báo lỗi rõ ràng (`image_ocr_failed`) thay cho "Thiếu ngữ cảnh" chung chung khi OCR thất bại.
 5. SHA kho `tri_thuc` không đổi (vé này chỉ đụng UI + luồng hỏi + môi trường OCR).
+
+## Vòng 4: one-shot theo cấu trúc — chữ OCR gộp thẳng vào câu hỏi (Muse fix commit `c317d84`, đã push)
+
+**Nguyên nhân vòng 3:** cơ chế "tắt nguồn tạm ở câu hỏi sau" dựa vào session state của Streamlit nên không đáng tin cậy trong môi trường chạy thật (nguồn tạm vẫn bật ở câu 2). Muse đã thiết kế lại cho triệt để:
+
+- Ảnh đính kèm được OCR thành chữ rồi **gộp thẳng vào câu hỏi** (không tạo nguồn tạm trong sổ nữa). Hỏi xong là hết — câu sau không đính kèm thì không thể dùng lại, vì không còn gì để dùng lại. One-shot theo cấu trúc, không cần cơ chế tắt sau.
+- Câu hỏi chỉ có ảnh (không có nguồn nào khác) vẫn chạy được — chữ trong ảnh chính là ngữ cảnh.
+- Mọi lane đều đọc được (chỉ còn chữ). Đường báo lỗi trung thực khi OCR thất bại (vòng 3) giữ nguyên.
+
+### Phần A (bổ sung) — OMP đặt ngôn ngữ OCR [NHÀ]
+
+App mặc định OCR tiếng Anh (`eng`) nên chữ Việt mất dấu. Đặt biến môi trường user (một lần):
+`AIOS_OCR_LANG=vie+eng` — rồi restart app. (Máy đã có `vie.traineddata` từ vòng 3.)
+
+### Phần B — Verify lại trên app thật [NHÀ]
+
+1. Pull `c317d84`, restart app. Đính kèm ảnh chụp màn hình lỗi THẬT + hỏi "lỗi này là gì?" trên lane Gemini tự động → câu hỏi CHẠY, câu trả lời đọc được chữ trong ảnh (kể cả chữ Việt có dấu sau khi đặt `vie+eng`).
+2. Hỏi tiếp một câu MỚI KHÔNG LIÊN QUAN đến ảnh (ví dụ một câu về kiến thức LSU), không đính kèm → câu trả lời KHÔNG nhắc đến nội dung ảnh; thanh bên KHÔNG xuất hiện nguồn tạm nào từ ảnh; huy hiệu "Nguồn gửi cùng câu hỏi" không tính ảnh.
+3. Expander thanh bên vẫn đúng `＋ Thêm nguồn` (một dấu cộng).
+4. SHA kho `tri_thuc` không đổi.
