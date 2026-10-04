@@ -1,7 +1,8 @@
 # Trạng thái mailbox-opencode (thợ opencode — model free muse-spark-1.3 / space-bunny)
 
-- Trạng thái: `moi`
+- Trạng thái: `dang-lam`
 - Ticket hiện tại: `ENRICH-STAGING-FILESTORE` — chốt kho bản thảo cặp enrichment bằng file (không qua importer), quyết định phương án B sau verdict vé trước. Prompt: `docs/phieu-viec/mailbox-opencode/prompt.md`. Role gợi ý: SMOL/TINY (~5 phút).
+- `ghi_chu`: 2026-10-04 23:16 +07 — đã nhận vé ENRICH-STAGING-FILESTORE (điều kiện mở đủ: trạng thái `moi` + prompt phương án B). Bắt đầu kiểm đếm cuối 54 file fixed, chưa ghi DB, chưa sửa code.
 - `ghi_chu`: 2026-10-04 23:03 +07 — đã nhận vé IMPORT-STAGING-ENRICH (điều kiện mở đã đủ: 2 audit ĐẠT; không rơi nhánh 4 lần watcher). Bắt đầu bước 1: xác minh rào staging của `golden_answer_importer.py`, chưa ghi gì.
 - `ghi_chu`: 2026-10-04 23:06 +07 — mốc 1 xong: rào staging-only ĐẠT (nhận `staging_enrichment.sqlite`, từ chối 4 đường production). Chưa ghi DB. Kế tiếp: kiểm tra dữ liệu fixed có đủ dạng nhập không.
 - `ghi_chu`: 2026-10-04 23:10 +07 — mốc 2 xong: đếm fixed đủ 2.398 cặp (15 file MOM + 39 file LSU, thiếu Q639–Q648 có chủ đích); KHÔNG có file JSONL/manifest cho importer nên chưa nhập staging (staging giữ 34 đáp án cũ, SHA `4ECC3D7A`, đã sao lưu). Kế tiếp: chạy trùng lặp + đo M3/M4 ánh xạ.
