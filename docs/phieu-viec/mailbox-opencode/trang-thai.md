@@ -120,3 +120,5 @@
 - `commit`: `1d17c91` (mốc upload; báo cáo ở bước tiếp theo)
 - `bao_cao`: `docs/phieu-viec/ket-qua/upload-digest-drive-home.md`
 - `ghi_chu`: 2026-10-06 06:10 +07 — xong vé UPLOAD-DIGEST-DRIVE-HOME ở mức chờ duyệt: đủ 4 file trong ngăn `digest/` (ID `1JVOdfbbIqIFCbGKcng_-eIonRNMEBL5B`); quyền "Bất kỳ ai có đường liên kết — Người xem" (ngăn + kế thừa file); tải lại ẩn danh đối chiếu SHA-256 trùng local 100% cả 4 (so_tay `fd2b10e1…`, manifest `ea7e9f99…`, wire-qa `e2425857…`, probe-R2 `e9a6ec8e…`; byte khớp tuyệt đối); bonus 2 link lsu/dieu_tra_loi chưa lấy (không bắt buộc, không đụng ngăn cũ); chỉ đọc thành phẩm, không ghi index, không merge main.
+- Trạng thái: `dang-lam`
+- `ghi_chu`: 2026-10-06 06:20 +07 — đã nhận vé VERIFY-RT-PIPELINE-HOME (điều kiện mở đủ: trạng thái `moi` + prompt đúng vé; HEAD=origin=79ad202 sạch; 0 file watcher tự mở trong mailbox-opencode; không rơi nhánh 4 lần watcher nên không đặt `cho-muse`). Bắt đầu bước 1: rà soát rt_consumer + stream_api, chưa sửa code.
