@@ -1,6 +1,7 @@
 # Trạng thái mailbox-pc0575-opencode — KDTVN-PC0575 (thợ opencode)
 
-- Trạng thái: `moi`
+- Trạng thái: `dang-lam`
+- `ghi_chu` (thợ opencode): 2026-10-05 17:06 +07 — Nhận vé `PREP-WIRE-QA-MAPPING` (vé mới khác vé cũ đã ĐẠT, đủ điều kiện mở; cổng gate 4 lần không chạm vì có việc mới). Đã `git pull` xong, thiếu `QUY-UOC.md` riêng nên dùng tạm `mailbox-opencode/QUY-UOC.md`. Bắt đầu Bước 1: đọc file fixed + build JSONL.
 - `ghi_chu` (điều phối Muse): 2026-10-05 ~17:05 +07 — Phát hành vé `PREP-WIRE-QA-MAPPING` (prompt.md mới): build JSONL 3.392 cặp hỏi đáp từ file fixed + verify + báo cáo, chuẩn bị dữ liệu cho vé WIRE-QA-CAGENT. Không cần runtime, thuần xử lý file.
 - Ticket hiện tại: `PREP-WIRE-QA-MAPPING` — [CTY] chuẩn bị dữ liệu 3.392 cặp hỏi đáp cho vé WIRE. Prompt: `docs/phieu-viec/mailbox-pc0575-opencode/prompt.md`. Role gợi ý: DEFAULT.
 - `ghi_chu` (điều phối Muse): 2026-10-05 15:32 +07 — **Sửa lỗi của Muse:** commit verdict `326ff9f` đã đẩy tree cũ (sửa trên file local chưa sync, status tụt `xong-cho-duyet`→`moi`). Đây là lần 2 vi phạm quy tắc "sửa mailbox khi chưa fetch" — xin nhận lỗi. Verdict ĐẠT vẫn nguyên trên remote; nay đặt lại `xong` cho đúng.
