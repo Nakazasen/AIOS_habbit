@@ -1,52 +1,37 @@
-# Vé RESTORE-DRIVE-PC0575 — Khôi phục runtime TẠM từ Drive (bản cũ 30/09)
+> **PHỤ LỤC PHÁT HÀNH LẠI — 2026-10-05 ~18:50 +07 (điều phối Muse):** Đây là lần phát hành thứ 2 của vé này, sau khi index production `e54c7745…` đã **MẤT không khôi phục được** (vé `RECOVER-RUNTIME-PC0575` verdict KHÔNG KHÔI PHỤC ĐƯỢC) và máy đang chạy **index TẠM `062ec090`** (2.552.659.968 B, md5 `7392ef9a54d82926f59569a9e664458f`, đặt tại `local_runs/workspace_chat_rag_v2_production/bge_m3_hybrid/collections/tri_thuc/library.sqlite`; vé `RESTORE-DRIVE-PC0575` verdict Muse **ĐẠT** — audit `Status: PASS`, smoke 1 câu thật ĐẠT).
+>
+> - Mọi chỗ trong vé gốc ghi "index SHA `e54c7745…`" nay đọc là **"đường dẫn index production, hiện đang chứa bản TẠM `062ec090`"**; tiêu chí "không được đổi index" nay là **"không được đổi/ghi bậy vào bản TẠM đang chạy"** (verify md5 trước/sau, mọi số đo ghi rõ **bản TẠM**).
+> - **Rào từ báo cáo `restore-drive-pc0575.md`:** hội thoại sổ LSU (`NB-E35A7BEE` — 0/494 nguồn khớp text-hash với index TẠM) **không dùng được** để đo parity/câu lạnh: mở hội thoại có nguồn chưa khớp khiến app chuẩn bị lại và **GHI vào index**. Chỉ đo trên hội thoại có nguồn khớp index TẠM (vd nhóm `mom_opcenter`, 16 nguồn khớp — như `CONV-4D340116`/`SRC-2441B1A3` đã smoke ĐẠT), hoặc đo riêng phần khởi động worker; muốn đo đúng 6 câu LSU cần index khớp bản nguồn hiện tại (vé rebuild riêng, chưa có — không làm trong vé này).
+> - Số đo tham chiếu trên bản TẠM (đĩa máy đang chậm hơn baseline): worker init lượt sạch ~10,5 phút, 1 câu hỏi ~6,5 phút (baseline sạch 02/10 trên bản cũ: init 180,9 s).
 
-**Mức ưu tiên:** cao nhất (app chết hoàn toàn khi không có runtime).
+---
+
+# Vé SPEED-COLDSTART-PC0575 — Sửa câu hỏi lạnh qua UI (~265 giây, bộ đọc khởi động 180,9 giây)
+
+**Mức ưu tiên:** cao nhất (user chốt tốc độ phản hồi là ưu tiên số 1).
 **Máy thực hiện:** [CTY] KDTVN-PC0575 (CPU-only).
-**Role OMP gợi ý:** DEFAULT (tải file lớn + verify + audit).
-**Xếp hàng:** vé này xong (audit PASS) → phát hành lại `SPEED-COLDSTART-PC0575` từ `prompt-queue-speed-coldstart-pc0575.md` (lưu ý: index đã đổi sang bản 062ec090, mọi số đo phải ghi rõ).
+**Xếp hàng:** đứng ĐẦU hàng chờ `mailbox-pc0575` — trước vé KNOWLEDGE-ENRICH-PILOT.
 
-## Bối cảnh
+## Bối cảnh (số liệu đã đo, đã verify)
 
-Vé `RECOVER-RUNTIME-PC0575` đã verdict **KHÔNG KHÔI PHỤC ĐƯỢC** (báo cáo `docs/phieu-viec/ket-qua/recover-runtime-pc0575.md`): bản production `e54c7745…` (2.842.415.104 B) không còn ở đâu trên máy; Recycle Bin trống; quét 1.536.807 file chỉ thấy backup cũ.
+- Vé OPT-RAGV2-SPEED-APP-PC0575 đã ĐẠT; C-Agent đo 6/6 câu: 16,5–45,8 giây/câu.
+- NHƯNG câu hỏi LẠNH qua UI (bộ đọc chưa khởi động): người dùng chờ khoảng **265 giây**.
+- Bộ đọc khởi động mất **180,9 giây**, vượt cửa sổ chờ **120 giây** của app.
+- Luồng warm-up hiện tại **làm nóng sai collection** (không phải collection đang dùng).
+- Trong phần tìm kiếm, `eligibility scan` + `chunks_fts MATCH` vẫn là đoạn chậm.
 
-Đây là vé khôi phục **TẠM** bằng bản cũ trên Drive để app chạy lại được. **Nhãn bắt buộc trong mọi báo cáo sau này: bản TẠM `062ec090` (30/09), KHÔNG phải bản production `e54c7745` đã mất.**
+## Yêu cầu
 
-## File nguồn (Muse đã verify trực tiếp trên Drive 05/10 ~16:50)
+1. **Đo chi tiết** 180,9 giây khởi động gồm những thành phần nào (nạp model, mở index/SQLite, khởi tạo embedding runtime, …). Ghi bảng thời gian từng bước.
+2. **Sửa warm-up làm nóng đúng collection** production (`workspace_chat_rag_v2_production`, index SHA `e54c7745…`). Cấm để cơ chế warm-up trỏ nhầm collection như hiện tại.
+3. **Đồng bộ cửa sổ chờ:** hoặc app chờ đủ lâu để bộ đọc sẵn sàng (đồng bộ readiness), hoặc rút khởi động xuống dưới 120 giây, hoặc giữ worker sống giữa các câu hỏi (không khởi động lại mỗi lần). Mục tiêu: **câu hỏi lạnh đầu tiên < 60 giây**.
+4. Đo lại đầy đủ 6 câu hỏi L1–E3 từ trạng thái lạnh hoàn toàn (khởi động app sạch → hỏi ngay), ghi thời gian từng câu, so với mốc 265 giây cũ.
+5. Không được đổi index (SHA `e54c7745…` phải giữ nguyên), không được giảm chất lượng đáp án (parity 100%, E1 khớp 15/15).
 
-Thư mục Drive AIOS_Data, tải bằng **command line** (curl/Python — KHÔNG dùng Chrome vì policy công ty từng chặn):
+## Điều kiện nghiệm thu
 
-1. **library.sqlite** — index cũ
-   - Link: `https://drive.google.com/uc?export=download&id=1cbydCaMAvO9eBRJg5YhZ1T2tj66C10hv`
-   - Size: **2.552.659.968 byte** | md5: `7392ef9a54d82926f59569a9e664458f`
-2. **bge-m3-onnx-fp32.zip** — cây ONNX đã nghiệm thu
-   - Link: `https://drive.google.com/uc?export=download&id=1CnTrdYLfv1ZpbZMo8zivSOxuD1cVDIrG`
-   - Size: **1.326.939.447 byte** | md5: `db7baa786e5d485a57eb95619ea6eb7b`
+- Câu lạnh đầu tiên ≤ 60 giây, các câu sau giữ trong biên 16,5–45,8 giây/câu đã đạt.
+- Parity 100% trước/sau; đáp án 15/15 E1 khớp với đáp án của vé SPEED đã duyệt.
+- Bảng thời gian từng bước khởi động trước/sau.
 
-Lưu ý: file lớn qua `uc?export=download` có thể gặp trang cảnh báo virus-scan của Google (trả về HTML thay vì binary) — nếu gặp, thử thêm `&confirm=t` hoặc báo lại. Verify **size + md5** sau tải, sai số nào cũng DỪNG và báo.
-
-## Việc cần làm
-
-### Bước 1 — Tải 2 file về PC0575
-- Tải bằng command line vào thư mục tạm (vd `D:\Sandbox\AIOS_habbit\scratch\restore-drive\`).
-- Verify size (byte chính xác) + md5 khớp bảng trên. Không khớp → DỪNG, báo `cho-muse`.
-- Nếu command line bị chặn hoàn toàn → báo `cho-muse` ghi rõ lỗi (user đã từng tải tay ngày 30/09, đó là đường dự phòng cuối).
-
-### Bước 2 — Đặt đúng path app mong đợi
-- **Không hardcode path.** Đọc từ deployment module (`aios_habit.workspace_chat_rag_v2_deployment`) + `config/workspace_chat_rag_v2.local.json` để biết đúng path production index và model mà audit kiểm tra.
-- Đặt `library.sqlite` vào đúng path index production (ghi rõ path đã đặt trong báo cáo).
-- Giải nén `bge-m3-onnx-fp32.zip` vào đúng thư mục cây ONNX (`models/bge-m3-onnx-fp32` hoặc theo config).
-- Nếu audit còn đòi cây `retrieval_models/bge-m3-5617a9f` (30 file HF): tải từ Hugging Face `BAAI/bge-m3` @ `5617a9f` (đã verify tải được ở vé trước), verify `sha256_model_tree` theo manifest.
-
-### Bước 3 — Audit + smoke
-- Chạy `python -B -m aios_habit.workspace_chat_rag_v2_deployment` → phải `Status: PASS`.
-- Smoke: app khởi động được, hỏi 1 câu đơn giản có trả lời (không cần đo tốc độ ở vé này).
-
-### Bước 4 — Báo cáo
-- Viết `docs/phieu-viec/ket-qua/restore-drive-pc0575.md`: path đã đặt, size + md5/SHA đã verify, kết quả audit, nhãn **bản TẠM 062ec090**.
-- Audit PASS → `xong-cho-duyet`. Audit FAIL hoặc tải không được → `cho-muse` kèm lỗi chính xác.
-
-## Cấm kỵ
-- Không xóa/ghi đè bất cứ dữ liệu nào khác trên máy.
-- Không đụng `C:\AIOS_p5\library.sqlite.bak-20260930`.
-- Không báo "đã khôi phục production" — luôn ghi rõ **bản TẠM**.
-- Commit riêng nhánh `phieu-viec/rag-fix1`, không đụng `main`, không force-push.
+**Verdict:** Muse review trên bằng chứng độc lập. Nếu khởi động vật lý không rút xuống dưới cửa sổ được (giới hạn máy), phải chứng minh cơ chế giữ worker sống + readiness probe hoạt động ổn định qua nhiều lần khởi động app.
