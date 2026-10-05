@@ -1,6 +1,6 @@
 # Trạng thái mailbox
 
-- Trạng thái: `moi`
+- Trạng thái: `dang-lam`
 - Ticket hiện tại: `FEEDBACK-LOOP-HOME` — [NHÀ] nút like/dislike + lý do dưới câu trả lời ngay trên khung chat, feedback store theo mã máy (không tài khoản), máy tự học thói quen ("càng dùng càng hiểu mình"), metric + vòng xem lại. Prompt: `docs/phieu-viec/mailbox/prompt.md`. Role gợi ý: DEFAULT.
 - `hang-cho`: (trống — vé `FEEDBACK-LOOP-HOME` đã phát hành 2026-10-05 ~22:35 +07)
   (2 vé cũ đã chuyển cho opencode đều đã đóng: AUDIT-ENRICH-LSU ĐẠT 22:50 04/10; IMPORT-STAGING-ENRICH PARTIAL → phương án B, chốt bằng ENRICH-STAGING-FILESTORE.)
@@ -40,3 +40,4 @@
 - `ghi_chu`: 2026-10-05 21:28 +07 — OMP resume vé R2 (watcher RELAUNCH 1/4 lúc 20:00, chưa chạm ngưỡng 4 lần → cổng MỞ): lúc resume cầu nối 8585 ĐANG TẮT (không có process) → đã dựng lại sidecar Antigravity (`scripts/antigravity_sidecar_daemon.py`, pid 15332, mode direct), health `direct_ready` + gọi thử đạt 3,0s; checkpoint 889/889 nguyên (5 mục rỗng giữ nguyên), sổ tay 889 mục + manifest SHA `fd2b10e1…02cf1cd` khớp file; probe 12 câu trước dừng ở q6/12 lúc 06:58 → chạy lại probe 2 lane (sổ tay chia 5 phần + RAG chỉ đọc) bằng bản lưu kết quả từng câu; đang chạy.
 - `ghi_chu`: 2026-10-05 22:09 +07 — OMP mốc probe R2 XONG: lane sổ tay 12/12 câu đạt (60/60 shard, tổng 548,4s, TB 45,7s/câu) + lane RAG 12/12 (91,2s, TB 7,6s); **lưu ý**: từ câu 4 Gemini bị rate-limit/cooldown → RAG trả lời bằng trích cục bộ (fallback), câu 1 `provider_validated_after_repair`, câu 2–3 hỗn hợp; SHA index `45eb0e07…b7c0` không đổi (probe before/after + `sha256sum` độc lập, mtime nguyên); chấm rubric sơ bộ HB 10/24, RAG 5/24 (kèm caveat) — đang viết báo cáo `knowledge-digest-home-r2.md`.
 - `ghi_chu`: 2026-10-05 22:23 +07 — OMP chốt vé R2 → `xong-cho-duyet` (commit `1902d61`): sổ tay 889/889 mục + manifest `fd2b10e1…02cf1cd` khớp; probe HB 12/12 (548,4s; rubric 10/24) vs RAG 12/12 (91,2s; rubric 5/24 — từ câu 4 Gemini rate-limit → trích cục bộ, có caveat trong báo cáo); SHA index `45eb0e07…b7c0` không đổi; không merge `main`, không ghi index/DB; chờ Muse đối chứng.
+- `ghi_chu`: 2026-10-06 04:03 +07 — OMP nhận vé FEEDBACK-LOOP-HOME, kiểm cổng gate: cổng MỞ (HEAD=origin=58719bf, prompt đúng vé FEEDBACK-LOOP-HOME, trạng thái moi mới ~22:35 05/10, không có file watcher tự mở trong mailbox). Vé lane NHÀ code+test mới (UI like/dislike + store mã máy + học thói quen + metric, cờ riêng mặc định TẮT). Đang audit code sẵn có (answer_feedback, khung chat) rồi code.
