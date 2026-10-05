@@ -90,3 +90,7 @@
 - Trạng thái: `dang-lam`
 - `ghi_chu`: 2026-10-06 04:28 +07 — đã nhận vé DIGEST-CTY-PREP-HOME (điều kiện mở đủ: trạng thái `moi` + prompt đúng vé; HEAD=origin=13d2499 sạch; 0 file watcher tự mở trong mailbox-opencode; không rơi nhánh 4 lần watcher nên không đặt `cho-muse`). Bắt đầu bước 1: kiểm kê thành phẩm R2, chỉ đọc.
 - `ghi_chu`: 2026-10-06 04:35 +07 — mốc kiểm kê xong: sổ tay `so_tay_tri_thuc.md` 889 mục/1.374.070 B + manifest SHA `fd2b10e1…02cf1cd` khớp file; `wire-qa-mapping.jsonl` 3.392 dòng; 4 khối local đủ byte + SHA khớp 100% với bản Drive đã tải về đối chiếu (lsu/mom/tong_hop/dieu_tra_loi + manifest); checkpoint 889/889. Chưa thấy lệch/thiếu. Kế tiếp: viết báo cáo `digest-cty-prep.md`.
+- Trạng thái: `xong-cho-duyet`
+- `commit`: `d847b5b` (báo cáo `digest-cty-prep.md` đủ 3 bảng)
+- `bao_cao`: `docs/phieu-viec/ket-qua/digest-cty-prep.md`
+- `ghi_chu`: 2026-10-06 04:45 +07 — xong vé DIGEST-CTY-PREP-HOME ở mức chờ duyệt: bảng tái dùng 9 dòng (sổ tay + manifest + checkpoint + wire-qa + 4 khối + manifest tách, kèm link/ID Drive) + danh sách CTY cần làm 5 việc + danh sách không cần làm lại 5 việc; SHA băm lại khớp 100% (sổ tay `fd2b10e1…`, 5 file tách khớp bản Drive, wire-qa `e2425857…` 3.392 dòng Q0001–Q3406 thiếu đúng 14 mã có chủ đích); không lệch/thiếu nên không sửa gì; chỉ đọc, không ghi index, không merge main.
