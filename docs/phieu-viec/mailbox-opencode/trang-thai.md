@@ -3,7 +3,7 @@
 - Trạng thái: `moi`
 - `ghi_chu` (điều phối Muse): 2026-10-06 ~04:25 +07 — Phát hành vé `DIGEST-CTY-PREP-HOME` (prompt mới `prompt-queue-digest-cty-prep-home.md`): kiểm kê thành phẩm sổ tay R2 (889 mục + manifest + wire-qa 3.392 cặp + 4 khối Drive) để máy công ty tái dùng, khỏi làm lại. Báo cáo `digest-cty-prep.md`. Role gợi ý: DEFAULT.
 
-- Ticket hiện tại: `DIGEST-CTY-PREP-HOME` — [NHÀ] kiểm kê thành phẩm sổ tay cho máy công ty tái dùng. Prompt: `docs/phieu-viec/mailbox-opencode/prompt-queue-digest-cty-prep-home.md`. Role gợi ý: DEFAULT.
+- Ticket hiện tại: `UPLOAD-DIGEST-DRIVE-HOME` — [NHÀ] upload thành phẩm sổ tay lên Drive cho máy công ty tải về. Prompt: `docs/phieu-viec/mailbox-opencode/prompt-queue-upload-digest-drive-home.md`. Role gợi ý: DEFAULT.
 - `hang-cho`: (trống)
 
 # Trạng thái mailbox-opencode (thợ opencode — model free muse-spark-1.3 / space-bunny)
@@ -94,4 +94,9 @@
 - `commit`: `d847b5b` (báo cáo `digest-cty-prep.md` đủ 3 bảng)
 - `bao_cao`: `docs/phieu-viec/ket-qua/digest-cty-prep.md`
 - `ghi_chu`: 2026-10-06 04:45 +07 — xong vé DIGEST-CTY-PREP-HOME ở mức chờ duyệt: bảng tái dùng 9 dòng (sổ tay + manifest + checkpoint + wire-qa + 4 khối + manifest tách, kèm link/ID Drive) + danh sách CTY cần làm 5 việc + danh sách không cần làm lại 5 việc; SHA băm lại khớp 100% (sổ tay `fd2b10e1…`, 5 file tách khớp bản Drive, wire-qa `e2425857…` 3.392 dòng Q0001–Q3406 thiếu đúng 14 mã có chủ đích); không lệch/thiếu nên không sửa gì; chỉ đọc, không ghi index, không merge main.
-- `ghi_chu`: 2026-10-06 04:35 +07 — kiểm cổng gate lượt mở này: HEAD=origin=d8c5382 sạch, `prompt.md` vẫn vé cũ DIGEST-CTY-PREP-HOME (đã `xong-cho-duyet` commit d847b5b/c59555a, báo cáo đủ 3 bảng); không có trạng thái `moi` nên không đủ điều kiện mở vé mới, không code lại; 0 tệp watcher tự mở, mới 1 lần gate liên tiếp chưa chạm 4 lần nên chưa đặt `cho-muse`, giữ chờ Muse duyệt.
+
+- Trạng thái: `moi`
+- `ghi_chu` (verdict Muse): 2026-10-06 ~04:38 +07 — **ĐẠT** vé `DIGEST-CTY-PREP-HOME` (tích tạm, chờ user nghiệm thu). Kiểm chứng độc lập qua GitHub API: 4 commit (`6131d0d`, `acafeff`, `d847b5b`, `c59555a`) chỉ sửa `trang-thai.md` và thêm báo cáo `digest-cty-prep.md` (+73/-0), không code, không secret, không merge `main`; báo cáo đủ 3 bảng theo tiêu chí vé (bảng tái dùng 9 dòng, CTY cần làm 5 việc, CTY không cần làm lại 5 việc), phân biệt rõ "tái dùng" vs "làm lại"; SHA khớp: sổ tay manifest `fd2b10e1…02cf1cd` khớp R2, 5 SHA khối tách khớp báo cáo `upload-split-drive-home.md` (thợ băm lại 5/5 khớp 100%), wire-qa 3.392 dòng Q0001–Q3406 (thiếu đúng 14 mã có chủ đích). Ghi chú kiểm chứng: SHA wire-qa trong báo cáo (`e2425857…`) là của file local Windows (CRLF, 1.267.666 B), git blob là LF (1.264.274 B, sha256 `6e49f55d…`) — nội dung 3.392 dòng như nhau, không sai dữ liệu; vé upload tiếp theo đã dặn upload đúng file đã băm.
+- `ghi_chu` (điều phối Muse): 2026-10-06 ~04:38 +07 — Phát hành vé `UPLOAD-DIGEST-DRIVE-HOME` (prompt mới `prompt-queue-upload-digest-drive-home.md`): upload sổ tay 889 mục + manifest + wire-qa 3.392 cặp + probe-R2 lên Drive (ngăn `digest/` trong `index-split-r5-backup`) để máy công ty tải về cho vé `DIGEST-CTY-RESUME`; tải lại đối chiếu từng byte. Báo cáo `upload-digest-drive-home.md`. Role gợi ý: DEFAULT. Watchdog sẽ dựng watcher trong ~10 phút.
+- Ticket hiện tại: `UPLOAD-DIGEST-DRIVE-HOME` — [NHÀ] upload thành phẩm sổ tay lên Drive cho máy công ty tải về. Prompt: `docs/phieu-viec/mailbox-opencode/prompt-queue-upload-digest-drive-home.md`. Role gợi ý: DEFAULT.
+- `hang-cho`: (trống)
