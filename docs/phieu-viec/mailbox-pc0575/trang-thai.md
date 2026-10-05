@@ -54,6 +54,6 @@ Trạng thái: `dang-lam`
 - `hang-cho` (bổ sung 2026-10-05 ~07:05 +07, theo chốt của user: C-Agent là đường sống ở công ty, làm tiếp sổ tay + nối dữ liệu hỏi đáp trong hôm nay):
   2. `WIRE-QA-CAGENT-PC0575` (`docs/phieu-viec/mailbox-pc0575/prompt-queue-wire-qa-cagent-pc0575.md`) — [CTY] nối 3.393 cặp hỏi đáp ChatGPT vào giao diện để hỏi đáp qua lane C-Agent (kiểm C-Agent sống, nhãn bản thảo, demo 3 câu)
   3. `DIGEST-CTY-RESUME` (`docs/phieu-viec/mailbox-pc0575/prompt-queue-digest-cty-resume.md`) — [CTY] làm tiếp sổ tay tri thức ở máy công ty bằng lane C-Agent (kiểm tra tiến độ máy nhà trước, không làm trùng; rào bản thảo)
-  4. `BENCHMARK-LOCAL-MODELS-PC0575` (`docs/phieu-viec/mailbox-pc0575/prompt-queue-benchmark-local-models-pc0575.md`) — [CTY] đo thật model chấm điểm (bge-reranker) + model mini viết câu ngắn (MiniCPM5-1B/Llama-3.2-1B/Qwen2.5-1.5B) trên đúng máy PC0575 (tốc độ, RAM đỉnh, độ chính xác, GB đĩa) — user chốt 2026-10-05: có số đo mới quyết đưa vào đâu. Role gợi ý: DEFAULT.
+  (4. `BENCHMARK-LOCAL-MODELS-PC0575` — TẠM DỪNG theo lệnh user 2026-10-05 ~20:37 +07: ổ C máy công ty không còn chỗ cho model thêm (~1GB reranker + ~2-3GB mini LLM). Prompt giữ lại ở `docs/phieu-viec/mailbox-pc0575/prompt-queue-benchmark-local-models-pc0575.md`, xếp lại khi dọn được ổ.)
 
 
