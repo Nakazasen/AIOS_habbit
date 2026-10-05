@@ -1,5 +1,13 @@
 # Trạng thái mailbox-pc0575-opencode — KDTVN-PC0575 (thợ opencode)
 
+- Trạng thái: `moi`
+- `ghi_chu` (điều phối Muse): 2026-10-06 ~06:20 +07 — Phát hành vé `BUILD-QUALITY-HARNESS-PC0575` (prompt mới `prompt-queue-build-quality-harness-pc0575.md`): dựng khung đo chất lượng câu trả lời (`quality_harness.py` + test) để thợ OMP tái dùng ở vé `LSU-QUALITY-PC0575`. Độc lập với code lane hiện có. Role gợi ý: DEFAULT.
+
+- Ticket hiện tại: `BUILD-QUALITY-HARNESS-PC0575` — [CTY] dựng khung đo chất lượng (script + test). Prompt: `docs/phieu-viec/mailbox-pc0575-opencode/prompt.md`. Role gợi ý: DEFAULT.
+- `hang-cho`: (trống)
+
+# Trạng thái mailbox-pc0575-opencode — KDTVN-PC0575 (thợ opencode)
+
 - Trạng thái: `xong`
 - `ghi_chu` (verdict Muse): 2026-10-05 ~18:22 +07 — **ĐẠT** vé `REVIEW-WIRE-CAGENT-SPEC` (tích tạm, chờ user nghiệm thu). Kiểm chứng độc lập qua GitHub API: commit `0123846` chỉ +58/-0 báo cáo `review-wire-cagent-spec.md` và +2/-1 `trang-thai.md`, không code, không secret, không merge `main`; JSONL đếm trực tiếp 3.392 dòng, đủ 6 trường id/question/answer/source/category/batch, phân bố MOM 608 / LSU 1.790 / điều-tra-lỗi 994 — khớp từng con số thợ báo; Q3401 tồn tại đúng nội dung mã lỗi C0980; spec `wire-cagent-spec.md` tồn tại (11,8KB). Báo cáo trả đủ 4 câu hỏi vé: shape khớp 6 trường, 3 demo khả thi (Q3401/Q3317, Q0001/Q0002, Q0825), 2/5 kịch bản lỗi liên quan dữ liệu (encoding ký tự CJK/backtick, rate-limit khi test hàng loạt), nhãn bản thảo bắt buộc ở mục 4 của spec + cả 3 demo; 4 ghi nhận mức thấp (template context 3 mảnh vs 2 trường JSONL; 3.393→3.392; dẫn đường dẫn raw thay vì fixed; kỳ vọng demo 1 liệt kê 4 linh kiện trong khi 2 cặp chỉ bao phủ F401+Q402/Q403) — không mục chặn. Thợ không sửa JSONL/spec đúng yêu cầu vé. Cổng: compileall OK, `cli audit` PASS, import app OK (thợ khai trung thực pytest full >10 phút chưa chạy hết — vé thuần docs, không đụng src). hang-cho trống → mailbox đóng (`xong`), chờ vé nối WIRE sau khi review chéo của agy xong.
 - `ghi_chu` (thợ opencode): 2026-10-05 18:05 +07 — vé `REVIEW-WIRE-CAGENT-SPEC` xong, verdict **OK để nối** (4 ghi nhận mức thấp, không mục chặn). Báo cáo `docs/phieu-viec/ket-qua/review-wire-cagent-spec.md`. Cổng: compileall OK, `cli audit` PASS, import app OK; pytest full quá 10 phút nên chưa chạy hết (vé thuần docs, không đụng src).

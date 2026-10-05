@@ -55,5 +55,13 @@ Trạng thái: `dang-lam`
   2. `WIRE-QA-CAGENT-PC0575` (`docs/phieu-viec/mailbox-pc0575/prompt-queue-wire-qa-cagent-pc0575.md`) — [CTY] nối 3.393 cặp hỏi đáp ChatGPT vào giao diện để hỏi đáp qua lane C-Agent (kiểm C-Agent sống, nhãn bản thảo, demo 3 câu)
   3. `DIGEST-CTY-RESUME` (`docs/phieu-viec/mailbox-pc0575/prompt-queue-digest-cty-resume.md`) — [CTY] làm tiếp sổ tay tri thức ở máy công ty bằng lane C-Agent (kiểm tra tiến độ máy nhà trước, không làm trùng; rào bản thảo)
   (4. `BENCHMARK-LOCAL-MODELS-PC0575` — TẠM DỪNG theo lệnh user 2026-10-05 ~20:37 +07: ổ C máy công ty không còn chỗ cho model thêm (~1GB reranker + ~2-3GB mini LLM). Prompt giữ lại ở `docs/phieu-viec/mailbox-pc0575/prompt-queue-benchmark-local-models-pc0575.md`, xếp lại khi dọn được ổ.)
+- `hang-cho` (tổng rà soát 2026-10-06 ~06:15 +07, theo yêu cầu user: kế hoạch chi tiết đưa hết tài liệu lên máy công ty + hợp lại dùng mượt mà, bắt kịp máy nhà):
+  1. `SPEED-COLDSTART-PC0575` — đang làm (`dang-lam`, mốc worker 19:19 05/10: restart app 18,6/19,1/34,0s ĐẠT ≤60s; `pytest -q` đang chạy)
+  2. `RESTORE-INDEX-SPLIT-PC0575` (MỚI — `prompt-queue-restore-index-split-pc0575.md`) — tải 5 khối index từ Drive về (thư mục `index-split-r5-backup`), đối chiếu SHA, hợp lại thành `library.sqlite` chính (889 doc / ~149.800 chunk), thay index TẠM `062ec090` đang lệch nguồn LSU
+  3. `WIRE-QA-CAGENT-PC0575` (`prompt-queue-wire-qa-cagent-pc0575.md`) — nối 3.392 cặp hỏi-đáp (1.790 LSU) qua lane C-Agent
+  4. `DIGEST-CTY-RESUME` (`prompt-queue-digest-cty-resume.md`) — lấy sổ tay (máy nhà đã xong 05/10, opencode đang upload lên Drive — chỉ pull, không làm lại)
+  5. `LSU-QUALITY-PC0575` (MỚI — `prompt-queue-lsu-quality-pc0575.md`) — đo chất lượng trả lời LSU trên câu hỏi thật, cả 2 lane
+  6. `LSU-ALERT-REALTIME-PC0575` (MỚI — `prompt-queue-lsu-alert-realtime-pc0575.md`) — cảnh báo log LSU realtime qua cổng SMA(20), mục tiêu <5 phút (góp ý Khiêm)
+  - Song song: agy `PREP-LSU-QUALITY-PC0575` (soạn 50 câu + rubric cho vé #5) | opencode `BUILD-QUALITY-HARNESS-PC0575` (dựng khung đo cho vé #5)
 
 
