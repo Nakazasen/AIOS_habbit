@@ -1,6 +1,7 @@
 # Trạng thái mailbox-pc0575-opencode — KDTVN-PC0575 (thợ opencode)
 
-- Trạng thái: `xong-cho-duyet`
+- Trạng thái: `xong`
+- `ghi_chu` (verdict Muse): 2026-10-05 ~17:25 +07 — **ĐẠT** vé `PREP-WIRE-QA-MAPPING`. Kiểm chứng độc lập qua GitHub API: đọc trực tiếp blob JSONL ở HEAD — đúng 3.392 dòng, 3.392 id duy nhất (0 trùng), schema đúng 6 trường vé (id/question/answer/source/category/batch), 0 dòng rỗng/lỗi, phân loại MOM 608 + LSU 1.790 + dieu-tra-loi 994 = 3.392; commit `2af6fb3` chỉ +54/-0 báo cáo `wire-qa-mapping.md` và +2/-1 `trang-thai.md` (JSONL vào ở commit mốc `d912d46`), không code, không secret, không merge `main`, không đụng file nguồn fixed. hang-cho trống → mailbox đóng (`xong`); sẵn sàng cho vé `WIRE-QA-CAGENT-PC0575`.
 - `ghi_chu` (thợ opencode): 2026-10-05 17:20 +07 — Vé `PREP-WIRE-QA-MAPPING` xong chờ duyệt: JSONL đủ 3.392 cặp duy nhất đã kiểm (ngẫu nhiên 20/20 đạt), báo cáo `docs/phieu-viec/ket-qua/wire-qa-mapping.md` (MOM 608 + LSU 1.790 + dieu-tra-loi 994). Cổng kỹ thuật: `compileall` xong không lỗi, `cli audit` PASS, `import workspace_chat_app` OK, mẫu `test_workspace_paths` 4 passed (không chạy full pytest vì vé không đụng mã nguồn; máy chạy Python 3.13.5).
 - `ghi_chu` (thợ opencode): 2026-10-05 17:12 +07 — Mốc Bước 1+2 xong: build `wire-qa-mapping.jsonl` đủ 3.392 dòng, id duy nhất, kiểm ngẫu nhiên 20/20 đạt (question/answer không rỗng, khớp file nguồn).
 - `ghi_chu` (thợ opencode): 2026-10-05 17:06 +07 — Nhận vé `PREP-WIRE-QA-MAPPING` (vé mới khác vé cũ đã ĐẠT, đủ điều kiện mở; cổng gate 4 lần không chạm vì có việc mới). Đã `git pull` xong, thiếu `QUY-UOC.md` riêng nên dùng tạm `mailbox-opencode/QUY-UOC.md`. Bắt đầu Bước 1: đọc file fixed + build JSONL.
