@@ -16,13 +16,30 @@ Tuong thich Python 3.11.
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional, Sequence
+from typing import Any, Dict, List, Mapping, Optional, Sequence
 
 WINDOW_DEFAULT = 20
 K_DEFAULT = 3.0
 DIEM_LIEN_TIEP_DEFAULT = 3
 NHIN_LAI_DEFAULT = 5
 TOI_THIEU_DEFAULT = 3
+
+# Nhom chi so cho k linh hoat (ve SMA-IMPROVE-HOME, do tren log JIG that
+# 2026_08_Master.csv 132 dong). Nhom moi truong giu k=3.0 (chuan SPC);
+# nhom chu ky may (TaktTime, phan phoi lech phai, sigma ~35s) ha ve 2.5.
+NHOM_MOI_TRUONG = "moi_truong"
+NHOM_CHU_KY = "chu_ky"
+K_MAC_DINH_NHOM_MOI_TRUONG = 3.0
+K_MAC_DINH_NHOM_CHU_KY = 2.5
+
+# Deadband mac dinh theo chi so cho nhanh nen_phang_nhung_lech (don vi goc
+# cua chi so; do tren log that, co the ghi de moi lan goi qua `deadband`).
+# Nhiet do 0.5 do C, do am 2.0 %, TaktTime 10.0 giay.
+DEADBAND_MAC_DINH_THEO_CHI_SO: Dict[str, float] = {
+    "temperature": 0.5,
+    "humidity": 2.0,
+    "takttime": 10.0,
+}
 
 
 def sma(values: Sequence[float], window: int = WINDOW_DEFAULT) -> List[Optional[float]]:
@@ -63,19 +80,72 @@ def _vuot_nguong_that(value: float, nguong: Any) -> bool:
         pass
     return False
 
+def _ten_chi_so(nguong: Any) -> str:
+    """Lay ten chi so tu NguongChiSo (chuan hoa de doi deadband)."""
+    try:
+        return str(getattr(nguong, "chi_so", "") or "").strip().lower()
+    except Exception:
+        return ""
+
+
+def deadband_cho_chi_so(nguong: Any = None, deadband: Any = None) -> float:
+    """Nguong chet (deadband) ap cho nhanh nen_phang_nhung_lech.
+
+    - `deadband` truyen truc tiep (float) duoc uu tien cao nhat.
+    - `deadband` dang mapping: tra theo ten chi so cua `nguong`
+      (`NguongChiSo.chi_so`), thieu thi ve 0.0.
+    - `deadband=None`: dung bang mac dinh theo chi so cua `nguong`;
+      khong co nguong (pure SPC) thi ve 0.0 de giu hanh vi cu.
+    """
+    if isinstance(deadband, (int, float)):
+        try:
+            return max(0.0, float(deadband))
+        except (TypeError, ValueError):
+            return 0.0
+    if isinstance(deadband, Mapping):
+        try:
+            return max(0.0, float(deadband.get(_ten_chi_so(nguong), 0.0) or 0.0))
+        except (TypeError, ValueError):
+            return 0.0
+    return DEADBAND_MAC_DINH_THEO_CHI_SO.get(_ten_chi_so(nguong), 0.0)
+
+
+def k_cho_nhom(nhom_chi_so: Any = None, k: Any = None) -> float:
+    """He so k theo nhom chi so (ve SMA-IMPROVE-HOME).
+
+    - `k` truyen truc tiep luon thang (tuong thich nguoc hoan toan).
+    - Khong truyen `k`: nhom chu ky (`chu_ky`) dung 2.5, con lai dung 3.0.
+    """
+    if k is not None:
+        return float(k)
+    if str(nhom_chi_so or "").strip().lower() == NHOM_CHU_KY:
+        return K_MAC_DINH_NHOM_CHU_KY
+    return K_MAC_DINH_NHOM_MOI_TRUONG
+
+
 
 def detect_abnormal_sma(
     values: Sequence[float],
     window: int = WINDOW_DEFAULT,
-    k: float = K_DEFAULT,
+    k: float | None = K_DEFAULT,
     nguong: Any = None,
+    nhom_chi_so: Any = None,
+    deadband: Any = None,
 ) -> List[Dict]:
     """Danh dau diem bat thuong theo SMA(window).
 
     Baseline cua diem i la trung binh `window` diem LIEN TRUOC i, LOAI TRU
     cac diem da bi danh dau bat thuong (iterative) de diem xau khong nhiem
     baseline (masking). Tra ve list dict cho moi diem.
+
+    Ve SMA-IMPROVE-HOME: `k=None` + `nhom_chi_so="chu_ky"` dung k=2.5
+    (nhom chu ky may), con lai dung k=3.0; nhanh `nen_phang_nhung_lech`
+    (sigma==0) chi gan bat thuong khi |residual| >= deadband theo chi so
+    cua `nguong` (mac dinh: nhiet do 0.5, do am 2.0, TaktTime 10.0).
+    Khong truyen gi moi -> hanh vi cu giu nguyen.
     """
+    k_hieu_dung = k_cho_nhom(nhom_chi_so, k)
+    deadband_hieu_dung = deadband_cho_chi_so(nguong, deadband)
     clean = [float(v) for v in values]
     points: List[Dict] = []
     abnormal_idx = set()
@@ -100,15 +170,22 @@ def detect_abnormal_sma(
         sigma = _stdev([v - baseline for v in hist])
         residual = value - baseline
         vuot_nguong = _vuot_nguong_that(value, nguong) if nguong is not None else False
+        nen_phang = sigma == 0 and residual != 0
         if vuot_nguong:
             abnormal, ly_do = True, "vuot_nguong_that"
-        elif sigma > 0 and abs(residual) > k * sigma:
+        elif sigma > 0 and abs(residual) > k_hieu_dung * sigma:
             abnormal, ly_do = True, "lech_xa_sma"
-        elif sigma == 0 and residual != 0:
+        elif nen_phang and abs(residual) >= deadband_hieu_dung:
             abnormal, ly_do = True, "nen_phang_nhung_lech"
+        elif nen_phang:
+            # Duoi deadband: bao binh thuong nhung VAN loai khoi baseline
+            # (mask) de giu nguyen dong luc baseline da duoc kiem chung
+            # 21/21 chan tren log that — tranh dich chuyen baseline gay
+            # canh bao xu huong gia o diem sau (vd dong Humidity 71).
+            abnormal, ly_do = False, "nen_phang_duoi_deadband"
         else:
             abnormal, ly_do = False, "binh_thuong"
-        if abnormal:
+        if abnormal or nen_phang:
             abnormal_idx.add(i)
         points.append(
             {
@@ -127,11 +204,13 @@ def detect_abnormal_sma(
 def danh_gia_xu_huong_sma(
     values: Sequence[float],
     window: int = WINDOW_DEFAULT,
-    k: float = K_DEFAULT,
+    k: float | None = K_DEFAULT,
     diem_lien_tiep: int = DIEM_LIEN_TIEP_DEFAULT,
     nhin_lai: int = NHIN_LAI_DEFAULT,
     toi_thieu: int = TOI_THIEU_DEFAULT,
     nguong: Any = None,
+    nhom_chi_so: Any = None,
+    deadband: Any = None,
 ) -> Dict[str, Any]:
     """Ket luan canh bao theo XU HUONG (khong bao tu mot diem xau don le)."""
     clean = [float(v) for v in values if isinstance(v, (int, float))]
@@ -147,7 +226,7 @@ def danh_gia_xu_huong_sma(
             "gia_tri": gia_tri,
             "diem_bat_thuong": [],
         }
-    points = detect_abnormal_sma(clean, window, k, nguong)
+    points = detect_abnormal_sma(clean, window, k, nguong, nhom_chi_so, deadband)
     recent = points[-nhin_lai:] if nhin_lai > 0 else points
     abnormal_recent = [p for p in recent if p["abnormal"]]
     abnormal_all = [p for p in points if p["abnormal"]]
