@@ -43,6 +43,8 @@ def record_feedback(
     *,
     reason: str = "",
     lane: str = "",
+    device_id: str = "",
+    topic: str = "",
 ) -> Dict:
     """Ghi mot feedback. Tra ve {"ok": True} hoac {"ok": False, "error_vi": ...}."""
     rating = str(rating or "").strip()
@@ -62,6 +64,8 @@ def record_feedback(
         "rating": rating,
         "reason": reason[:MAX_REASON_CHARS],
         "lane": str(lane or ""),
+        "device_id": str(device_id or ""),
+        "topic": str(topic or ""),
         "created_at": datetime.now(timezone.utc).astimezone().isoformat(timespec="seconds"),
     }
     path = feedback_file()

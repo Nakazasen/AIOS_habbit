@@ -366,12 +366,17 @@ def render_answer_feedback_row(
     locale: str = "vi",
 ) -> None:
     """Hang feedback nho duoi moi cau tra loi cua assistant (vong lap cai thien).
-
-    Thumbs up -> ghi nhan ngay. Thumbs down -> bat buoc nhap ly do (che thi
+    Thumbs up -> ghi nhan ngay. Thumbs down -> bat buoc chon ly do (che thi
     phai noi ro che gi) roi moi ghi. Luu o local_cases, khong vao kho tri thuc.
+    Khi co FEEDBACK-LOOP-HOME bat: ly do chon san + ma may + chu de.
     """
     from aios_habit import answer_feedback
-
+    try:
+        from aios_habit import feedback_loop_home as _feedback_loop
+        _loop_on = bool(_feedback_loop.feedback_loop_enabled())
+    except (ImportError, ValueError):
+        _feedback_loop = None  # type: ignore[assignment]
+        _loop_on = False
     if not conversation_id or not message_id:
         return
     if answer_feedback.get_feedback(conversation_id, message_id) is not None:
@@ -382,11 +387,56 @@ def render_answer_feedback_row(
     if rating is None:
         return
     if int(rating) == 1:
-        result = answer_feedback.record_feedback(
-            conversation_id, message_id, question, answer, "huu_ich"
-        )
+        if _loop_on and _feedback_loop is not None:
+            result = _feedback_loop.record_device_feedback(
+                conversation_id, message_id, question, answer, "huu_ich"
+            )
+        else:
+            result = answer_feedback.record_feedback(
+                conversation_id, message_id, question, answer, "huu_ich"
+            )
         if result.get("ok"):
             st.caption(t("answer_feedback_thanks", locale=locale))
+        return
+    if _loop_on and _feedback_loop is not None:
+        _codes = list(_feedback_loop.PRESET_REASONS)
+        _labels = [
+            t(f"feedback_loop_reason_{code}", locale=locale) for code in _codes
+        ]
+        _picked = st.radio(
+            t("feedback_loop_reason_label", locale=locale),
+            _labels,
+            key=key_base + "_loop_reason",
+        )
+        _picked_code = _codes[_labels.index(_picked)] if _picked in _labels else "khac"
+        _extra = st.text_input(
+            t("feedback_loop_reason_other", locale=locale),
+            key=key_base + "_loop_other",
+        )
+        if st.button(t("answer_feedback_send", locale=locale), key=key_base + "_send"):
+            if _picked_code == "khac":
+                _reason_text = str(_extra or "").strip()
+            else:
+                _base_label = t(f"feedback_loop_reason_{_picked_code}", locale=locale)
+                _tail = str(_extra or "").strip()
+                _reason_text = _base_label if not _tail else f"{_base_label} | {_tail}"
+            result = _feedback_loop.record_device_feedback(
+                conversation_id,
+                message_id,
+                question,
+                answer,
+                "chua_huu_ich",
+                reason=_reason_text,
+            )
+            if result.get("ok"):
+                st.caption(t("answer_feedback_recorded", locale=locale))
+            else:
+                st.warning(
+                    str(
+                        result.get("error_vi")
+                        or t("answer_feedback_save_failed", locale=locale)
+                    )
+                )
         return
     reason = st.text_input(
         t("answer_feedback_reason_prompt", locale=locale),
