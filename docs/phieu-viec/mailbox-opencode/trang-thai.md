@@ -1,6 +1,15 @@
 # Trạng thái mailbox-opencode (thợ opencode — model free muse-spark-1.3 / space-bunny)
 
 - Trạng thái: `moi`
+- `ghi_chu` (verdict Muse): 2026-10-06 ~06:33 +07 — **ĐẠT** vé `VERIFY-RT-PIPELINE-HOME`. Kiểm chứng độc lập qua GitHub API: chuỗi commit `92ee796`→`642c7e2`→`a19dabb` chỉ sửa `trang-thai.md` (mốc), `c9d4dac` single-parent chỉ +63/-0 báo cáo `verify-rt-pipeline-home.md`, `9c06db5` chỉ +4/-0 `trang-thai.md`, `2475d28` +1 dòng kiểm cổng — không đụng `src/`, không merge `main`; đủ 4 việc của vé — (1) rà soát `rt_consumer.py` + `stream_api.py`: import/khởi tạo OK, config qua tham số; (2) feed 132 dòng thật qua POST stream-log; (3) số đo: 132/132, mất 0 dòng, trễ p50 ~13,7 ms/p95 ~29,7 ms, ép drift 40+10 điểm sinh đúng 1 sự kiện (consumer 1/1, gửi trùng 10/10); (4) báo cáo nêu rõ component OK/hỏng: phát hiện giá trị duy nhất — `rt_replay.py` + `iris_log_adapter.doc_log_iris` từ chối file JIG BEAM 677 cột. Không secret. Số đo là self-report của thợ trên máy nhà (phương pháp mô tả chi tiết, số liệu hợp lý) — chấp nhận cho vé đo.
+- `ghi_chu` (điều phối Muse): 2026-10-06 ~06:33 +07 — Phát hành vé `RT-JIGBEAM-ADAPTER-HOME` (luật hàng chờ không cạn; khép phát hiện duy nhất của vé vừa rồi, dọn đường cho `LSU-ALERT-REALTIME-PC0575` ở máy công ty): xử lý khoảng trống `rt_replay` với log JIG BEAM — viết adapter hoặc chứng minh không cần + tài liệu hóa. Prompt: `docs/phieu-viec/mailbox-opencode/prompt-queue-rt-jigbeam-adapter-home.md`. Role gợi ý: DEFAULT.
+
+- Ticket hiện tại: `RT-JIGBEAM-ADAPTER-HOME` — [NHÀ] khép khoảng trống rt_replay với log JIG BEAM. Prompt: `docs/phieu-viec/mailbox-opencode/prompt.md`. Role gợi ý: DEFAULT.
+- `hang-cho`: (trống)
+
+# Trạng thái mailbox-opencode (thợ opencode — model free muse-spark-1.3 / space-bunny)
+
+- Trạng thái: `moi`
 - `ghi_chu` (verdict Muse): 2026-10-06 ~06:35 +07 — **ĐẠT** vé `UPLOAD-DIGEST-DRIVE-HOME` (vé meta cuối của opencode — từ nay tạm dừng meta theo lệnh user). Kiểm chứng độc lập: commit `6ec20ab` single-parent, chỉ +62/-0 báo cáo `upload-digest-drive-home.md` +4/-0 `trang-thai.md`, không code, không merge `main`; đủ 3 tiêu chí vé — (1) upload 4/4 file vào ngăn `digest/` (ID `1JVOdfbbIqIFCbGKcng_-eIonRNMEBL5B`); (2) đặt quyền "Bất kỳ ai có đường liên kết — Người xem"; (3) tải lại đối chiếu SHA-256 khớp 100% cả 4 file (bảng đủ link Drive từng file). Thợ trung thực: ghi rõ 5 sự cố gặp (bộ gõ tiếng Việt, Chrome trôi màn hình, popup watcher...) và cách xử lý; file tạm `C:\\temp\\verify_digest\\` giữ làm bằng chứng, xóa sau duyệt.
 - `ghi_chu` (điều phối Muse): 2026-10-06 ~06:35 +07 — Phát hành vé `VERIFY-RT-PIPELINE-HOME` (luật hàng chờ không cạn; chuyển sang LSU): kiểm chứng component realtime (`rt_consumer.py`, `stream_api.py`) chạy được với feed mô phỏng từ CSV thật — dọn đường cho vé cảnh báo realtime ở máy công ty. Chỉ chạy thử, không sửa code. Prompt: `docs/phieu-viec/mailbox-opencode/prompt-queue-verify-rt-pipeline-home.md`. Role gợi ý: DEFAULT.
 
