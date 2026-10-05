@@ -1,5 +1,14 @@
 # Trạng thái mailbox-agy (thợ agy — model gemini-3.8-flash-high, việc khó chuyển claude-sonnet/opus-5.5-medium)
 
+- Trạng thái: `moi`
+- `ghi_chu` (verdict Muse): 2026-10-06 ~06:25 +07 — **ĐẠT** vé `SMA-GATE-REALDATA-HOME`. Kiểm chứng độc lập: commit `271b90d` single-parent, chỉ +161/-0 báo cáo `sma-gate-realdata-home.md` +5176/-0 JSON dữ liệu, KHÔNG sửa `src/` đúng yêu cầu vé, không merge `main`; đủ 4 mục vé — (1) nạp CSV thật 132 dòng đúng path; (2) chạy SMA(20)+gate trên 3 chỉ số; (3) 21/21 vi phạm đơn điểm bị chặn 100%, 0 cảnh báo giả; (4) khảo sát k=1.0–4.0 + giải mã hiện tượng `nen_phang_nhung_lech` (sigma=0 do cảm biến làm tròn). Điểm cộng lớn: phát hiện thật có giá trị (58/62 điểm Nhiệt độ bất thường là giả do sigma=0) + 3 đề xuất cụ thể cho Bước 2 (deadband, k linh hoạt, warmup).
+- `ghi_chu` (điều phối Muse): 2026-10-06 ~06:25 +07 — Phát hành vé `SMA-WARMUP-LABEL-HOME` (luật hàng chờ không cạn; song song với OMP làm `SMA-IMPROVE-HOME`, chia file theo luật 1-file-1-đứa): nhãn "Đang tích lũy dữ liệu nền (N/20 điểm)" trên thẻ kiểm tra khi chuỗi <20 điểm. Prompt: `docs/phieu-viec/mailbox-agy/prompt-queue-sma-warmup-label-home.md`. Role gợi ý: DEFAULT.
+
+- Ticket hiện tại: `SMA-WARMUP-LABEL-HOME` — [NHÀ] nhãn warmup N/20 trên thẻ kiểm tra. Prompt: `docs/phieu-viec/mailbox-agy/prompt.md`. Role gợi ý: DEFAULT.
+- `hang-cho`: (trống)
+
+# Trạng thái mailbox-agy (thợ agy — model gemini-3.8-flash-high, việc khó chuyển claude-sonnet/opus-5.5-medium)
+
 - Trạng thái: `xong-cho-duyet`
 - `bao_cao`: `docs/phieu-viec/ket-qua/sma-gate-realdata-home.md`
 - `commit`: `271b90d`
