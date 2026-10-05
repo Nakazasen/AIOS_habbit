@@ -1,6 +1,7 @@
 # Trạng thái mailbox-pc0575-agy — KDTVN-PC0575 (thợ agy — Antigravity CLI)
 
 - Trạng thái: `xong-cho-duyet`
+- `commit`: `62fd131`
 - Ticket hiện tại: `PREP-WIRE-CAGENT-SPEC` — [CTY] đặc tả kỹ thuật nối C-Agent cho vé WIRE-QA-CAGENT. Prompt: `docs/phieu-viec/mailbox-pc0575-agy/prompt.md`. Role gợi ý: SMOL/TINY.
 - `hang-cho`: (trống)
 - `bao_cao`: `docs/phieu-viec/ket-qua/wire-cagent-spec.md`
