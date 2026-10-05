@@ -73,6 +73,6 @@
 - `ghi_chu`: 2026-10-05 21:32 +07 — mốc 5/5 file lên Drive xong: `dieu_tra_loi/library.sqlite` đã nằm ở ngăn dieu_tra_loi (liệt kê đúng ngăn thấy file, ngày 3 thg 10). Đủ 5 file trên Drive. Kế tiếp: đặt quyền link + tải lại đối chiếu từng byte.
 - `ghi_chu`: 2026-10-05 23:10 +07 — mốc đối chiếu xong 5/5: tải lại từng file qua phiên đăng nhập + SHA-256 trùng local 100% (`mom` 9e796f79…, `tong_hop` 4ad4bb35…, manifest 54f91694…, `lsu` 5982a4f1…, `dieu_tra_loi` 3bb7b10b…; byte khớp tuyệt đối). Link chia sẻ đã lấy 3/5 (mom/tong_hop/manifest); 2 file lớn còn kẹt hộp Chia sẻ (Drive báo thử lại sau). Phát hiện 1 file `library.sqlite` thừa ở gốc backup (lần upload lỗi) — cần xóa. Kế tiếp: dọn file thừa + lấy nốt ID + ghi báo cáo.
 - Trạng thái: `xong-cho-duyet`
-- `commit`: (mốc chốt vé; báo cáo trong cùng lượt đẩy này)
+- `commit`: `6d68248` (mốc chốt vé + báo cáo `upload-split-drive-home.md`)
 - `bao_cao`: `docs/phieu-viec/ket-qua/upload-split-drive-home.md`
 - `ghi_chu`: 2026-10-05 23:25 +07 — xong vé UPLOAD-SPLIT-DRIVE-HOME ở mức chờ duyệt: đủ 5 file (`lsu` 1.155.637.248 B, `dieu_tra_loi` 1.643.761.664 B, `mom` 21.598.208 B, `tong_hop` 36.081.664 B, manifest 491.253 B) trong `AIOS_Data/index-split-r5-backup` (ID `1T_Ao9Piy8dDtYRn6fVNxVErzQAEf14il`); tải lại đối chiếu SHA-256 trùng 100%; file thừa gốc đã xóa; đường liên kết lấy 3/5 (2 file lớn Drive còn chặn chia sẻ, đã ghi rõ trong báo cáo không bịa); local không đụng, không merge main.
