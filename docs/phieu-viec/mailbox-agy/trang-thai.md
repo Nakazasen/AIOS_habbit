@@ -1,6 +1,8 @@
 # Trạng thái mailbox-agy (thợ agy — model gemini-3.8-flash-high, việc khó chuyển claude-sonnet/opus-5.5-medium)
 
-- Trạng thái: `xong-cho-duyet`
+- Trạng thái: `xong`
+- `ghi_chu`: 2026-10-05 20:58 +07 — **Verdict Muse: ĐẠT** vé `SCAN-O-D` (poll 20:44+07): đủ 3 tiêu chí — cây thư mục + dung lượng (§2), bảng sqlite đường dẫn/SHA/size (§4), đề xuất dọn 4 mức có thứ tự (§7). Đối chiếu độc lập: SHA báo cáo khớp ghim production `45eb0e07…65b7c0` và bản đông `062ec090…4ef8ca`; commit f7836c5 chỉ chạm file báo cáo, phương pháp quét chỉ đọc. Lưu ý: SHA chi tiết 593 file sqlite tạm pytest + 13 file cache eval lưu ở CSV/hồ sơ đính kèm ngoài báo cáo (chấp nhận vì là file tạm; toàn bộ SHA kho production/backup/split đã inline). Không có vé xếp hàng tiếp cho agy → đóng mailbox ở `xong`, chờ phân công mới.
+
 - Ticket hiện tại: `SCAN-O-D` — [NHÀ] kiểm kê ổ D chỉ đọc (cây thư mục, SHA sqlite, đề xuất dọn — không thực hiện). Prompt: `docs/phieu-viec/mailbox-agy/prompt.md`. Role gợi ý: SMOL. Không ghi/xóa ổ D.
 - `hang-cho`: chưa có
 - `commit`: f7836c5
