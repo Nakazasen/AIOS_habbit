@@ -1,0 +1,5176 @@
+{
+  "csv_path": "C:\\tmp\\lsu1-deploy\\data\\lsu\\Iris LSU\\thu nghiem 6pcs do thong so va log\\2ND-1002_JIG BEAM\\2026_08_Master.csv",
+  "total_rows": 132,
+  "total_single_violations": 21,
+  "total_gate_blocked": 21,
+  "total_trend_confirmed": 0,
+  "metrics": {
+    "Humidity": {
+      "metric_name": "Humidity",
+      "total_points": 132,
+      "k": 3.0,
+      "window": 20,
+      "min_value": 33.9,
+      "max_value": 74.0,
+      "mean_value": 58.7643939393939,
+      "single_violation_count": 11,
+      "single_violations": [
+        {
+          "row_index": 4,
+          "date": "2026/08/01",
+          "time": "14:21:21",
+          "serial": "61C1047Z3311",
+          "value": 33.9
+        },
+        {
+          "row_index": 5,
+          "date": "2026/08/01",
+          "time": "14:24:45",
+          "serial": "61C1047Z3321",
+          "value": 33.9
+        },
+        {
+          "row_index": 12,
+          "date": "2026/08/03",
+          "time": "14:26:43",
+          "serial": "61C1047Z3311",
+          "value": 33.9
+        },
+        {
+          "row_index": 13,
+          "date": "2026/08/03",
+          "time": "14:29:09",
+          "serial": "61C1047Z3321",
+          "value": 33.9
+        },
+        {
+          "row_index": 27,
+          "date": "2026/08/06",
+          "time": "14:06:43",
+          "serial": "61C1047Z3311",
+          "value": 33.9
+        },
+        {
+          "row_index": 28,
+          "date": "2026/08/06",
+          "time": "14:09:09",
+          "serial": "61C1047Z3321",
+          "value": 33.9
+        },
+        {
+          "row_index": 49,
+          "date": "2026/08/12",
+          "time": "14:06:43",
+          "serial": "61C1047Z3311",
+          "value": 33.9
+        },
+        {
+          "row_index": 50,
+          "date": "2026/08/12",
+          "time": "14:09:09",
+          "serial": "61C1047Z3321",
+          "value": 33.9
+        },
+        {
+          "row_index": 55,
+          "date": "2026/08/13",
+          "time": "14:06:43",
+          "serial": "61C1047Z3311",
+          "value": 33.9
+        },
+        {
+          "row_index": 56,
+          "date": "2026/08/13",
+          "time": "14:09:09",
+          "serial": "61C1047Z3321",
+          "value": 33.9
+        },
+        {
+          "row_index": 71,
+          "date": "2026/08/18",
+          "time": "14:09:09",
+          "serial": "61C1047Z3321",
+          "value": 33.9
+        }
+      ],
+      "abnormal_full_with_nguong_count": 14,
+      "abnormal_full_pure_sma_count": 12,
+      "abnormal_full_pure_sma": [
+        {
+          "index": 49,
+          "value": 33.9,
+          "sma": 66.01000000000002,
+          "residual": -32.11000000000002,
+          "sigma": 1.6999705879808629,
+          "abnormal": true,
+          "ly_do": "lech_xa_sma"
+        },
+        {
+          "index": 50,
+          "value": 33.9,
+          "sma": 65.98947368421054,
+          "residual": -32.08947368421054,
+          "sigma": 1.741715650501602,
+          "abnormal": true,
+          "ly_do": "lech_xa_sma"
+        },
+        {
+          "index": 55,
+          "value": 33.9,
+          "sma": 66.4,
+          "residual": -32.50000000000001,
+          "sigma": 0.0,
+          "abnormal": true,
+          "ly_do": "nen_phang_nhung_lech"
+        },
+        {
+          "index": 56,
+          "value": 33.9,
+          "sma": 66.39999999999999,
+          "residual": -32.49999999999999,
+          "sigma": 0.0,
+          "abnormal": true,
+          "ly_do": "nen_phang_nhung_lech"
+        },
+        {
+          "index": 57,
+          "value": 66.4,
+          "sma": 66.39999999999999,
+          "residual": 1.4210854715202004e-14,
+          "sigma": 0.0,
+          "abnormal": true,
+          "ly_do": "nen_phang_nhung_lech"
+        },
+        {
+          "index": 58,
+          "value": 66.4,
+          "sma": 66.39999999999999,
+          "residual": 1.4210854715202004e-14,
+          "sigma": 0.0,
+          "abnormal": true,
+          "ly_do": "nen_phang_nhung_lech"
+        },
+        {
+          "index": 59,
+          "value": 66.4,
+          "sma": 66.39999999999999,
+          "residual": 1.4210854715202004e-14,
+          "sigma": 0.0,
+          "abnormal": true,
+          "ly_do": "nen_phang_nhung_lech"
+        },
+        {
+          "index": 60,
+          "value": 66.4,
+          "sma": 66.39999999999999,
+          "residual": 1.4210854715202004e-14,
+          "sigma": 0.0,
+          "abnormal": true,
+          "ly_do": "nen_phang_nhung_lech"
+        },
+        {
+          "index": 61,
+          "value": 66.4,
+          "sma": 66.39999999999999,
+          "residual": 1.4210854715202004e-14,
+          "sigma": 0.0,
+          "abnormal": true,
+          "ly_do": "nen_phang_nhung_lech"
+        },
+        {
+          "index": 62,
+          "value": 66.4,
+          "sma": 66.39999999999999,
+          "residual": 1.4210854715202004e-14,
+          "sigma": 0.0,
+          "abnormal": true,
+          "ly_do": "nen_phang_nhung_lech"
+        },
+        {
+          "index": 63,
+          "value": 66.4,
+          "sma": 66.39999999999999,
+          "residual": 1.4210854715202004e-14,
+          "sigma": 0.0,
+          "abnormal": true,
+          "ly_do": "nen_phang_nhung_lech"
+        },
+        {
+          "index": 71,
+          "value": 33.9,
+          "sma": 62.0181818181818,
+          "residual": -28.118181818181803,
+          "sigma": 9.295240050870438,
+          "abnormal": true,
+          "ly_do": "lech_xa_sma"
+        }
+      ],
+      "gate_blocked_count": 11,
+      "trend_confirmed_count": 0,
+      "spurious_alerts_count": 9,
+      "blocked_details": [
+        {
+          "row_index": 4,
+          "value": 33.9,
+          "is_violation": true,
+          "point_alert": true,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Chưa đủ điểm nền để kết luận xu hướng theo SMA(20) (mới có 5 điểm), cần thêm dữ liệu cùng JIG."
+        },
+        {
+          "row_index": 5,
+          "value": 33.9,
+          "is_violation": true,
+          "point_alert": true,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Chưa đủ điểm nền để kết luận xu hướng theo SMA(20) (mới có 6 điểm), cần thêm dữ liệu cùng JIG."
+        },
+        {
+          "row_index": 12,
+          "value": 33.9,
+          "is_violation": true,
+          "point_alert": true,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Chưa đủ điểm nền để kết luận xu hướng theo SMA(20) (mới có 13 điểm), cần thêm dữ liệu cùng JIG."
+        },
+        {
+          "row_index": 13,
+          "value": 33.9,
+          "is_violation": true,
+          "point_alert": true,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Chưa đủ điểm nền để kết luận xu hướng theo SMA(20) (mới có 14 điểm), cần thêm dữ liệu cùng JIG."
+        },
+        {
+          "row_index": 27,
+          "value": 33.9,
+          "is_violation": true,
+          "point_alert": true,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Mới có 1 điểm bất thường đơn lẻ trong 5 điểm gần nhất — một điểm xấu đơn lẻ chưa thành xu hướng, theo dõi thêm, chưa cảnh báo."
+        },
+        {
+          "row_index": 28,
+          "value": 33.9,
+          "is_violation": true,
+          "point_alert": true,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Mới có 2 điểm bất thường đơn lẻ trong 5 điểm gần nhất — một điểm xấu đơn lẻ chưa thành xu hướng, theo dõi thêm, chưa cảnh báo."
+        },
+        {
+          "row_index": 49,
+          "value": 33.9,
+          "is_violation": true,
+          "point_alert": true,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Mới có 1 điểm bất thường đơn lẻ trong 5 điểm gần nhất — một điểm xấu đơn lẻ chưa thành xu hướng, theo dõi thêm, chưa cảnh báo."
+        },
+        {
+          "row_index": 50,
+          "value": 33.9,
+          "is_violation": true,
+          "point_alert": true,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Mới có 2 điểm bất thường đơn lẻ trong 5 điểm gần nhất — một điểm xấu đơn lẻ chưa thành xu hướng, theo dõi thêm, chưa cảnh báo."
+        },
+        {
+          "row_index": 55,
+          "value": 33.9,
+          "is_violation": true,
+          "point_alert": true,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Mới có 1 điểm bất thường đơn lẻ trong 5 điểm gần nhất — một điểm xấu đơn lẻ chưa thành xu hướng, theo dõi thêm, chưa cảnh báo."
+        },
+        {
+          "row_index": 56,
+          "value": 33.9,
+          "is_violation": true,
+          "point_alert": true,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Mới có 2 điểm bất thường đơn lẻ trong 5 điểm gần nhất — một điểm xấu đơn lẻ chưa thành xu hướng, theo dõi thêm, chưa cảnh báo."
+        },
+        {
+          "row_index": 71,
+          "value": 33.9,
+          "is_violation": true,
+          "point_alert": true,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Mới có 1 điểm bất thường đơn lẻ trong 5 điểm gần nhất — một điểm xấu đơn lẻ chưa thành xu hướng, theo dõi thêm, chưa cảnh báo."
+        }
+      ],
+      "confirmed_details": [],
+      "sequential_results": [
+        {
+          "row_index": 0,
+          "value": 74.0,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Chưa đủ điểm nền để kết luận xu hướng theo SMA(20) (mới có 1 điểm), cần thêm dữ liệu cùng JIG."
+        },
+        {
+          "row_index": 1,
+          "value": 66.4,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Chưa đủ điểm nền để kết luận xu hướng theo SMA(20) (mới có 2 điểm), cần thêm dữ liệu cùng JIG."
+        },
+        {
+          "row_index": 2,
+          "value": 66.4,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Chưa đủ điểm nền để kết luận xu hướng theo SMA(20) (mới có 3 điểm), cần thêm dữ liệu cùng JIG."
+        },
+        {
+          "row_index": 3,
+          "value": 66.4,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Chưa đủ điểm nền để kết luận xu hướng theo SMA(20) (mới có 4 điểm), cần thêm dữ liệu cùng JIG."
+        },
+        {
+          "row_index": 4,
+          "value": 33.9,
+          "is_violation": true,
+          "point_alert": true,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Chưa đủ điểm nền để kết luận xu hướng theo SMA(20) (mới có 5 điểm), cần thêm dữ liệu cùng JIG."
+        },
+        {
+          "row_index": 5,
+          "value": 33.9,
+          "is_violation": true,
+          "point_alert": true,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Chưa đủ điểm nền để kết luận xu hướng theo SMA(20) (mới có 6 điểm), cần thêm dữ liệu cùng JIG."
+        },
+        {
+          "row_index": 6,
+          "value": 66.4,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Chưa đủ điểm nền để kết luận xu hướng theo SMA(20) (mới có 7 điểm), cần thêm dữ liệu cùng JIG."
+        },
+        {
+          "row_index": 7,
+          "value": 66.4,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Chưa đủ điểm nền để kết luận xu hướng theo SMA(20) (mới có 8 điểm), cần thêm dữ liệu cùng JIG."
+        },
+        {
+          "row_index": 8,
+          "value": 58.6,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Chưa đủ điểm nền để kết luận xu hướng theo SMA(20) (mới có 9 điểm), cần thêm dữ liệu cùng JIG."
+        },
+        {
+          "row_index": 9,
+          "value": 58.6,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Chưa đủ điểm nền để kết luận xu hướng theo SMA(20) (mới có 10 điểm), cần thêm dữ liệu cùng JIG."
+        },
+        {
+          "row_index": 10,
+          "value": 66.4,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Chưa đủ điểm nền để kết luận xu hướng theo SMA(20) (mới có 11 điểm), cần thêm dữ liệu cùng JIG."
+        },
+        {
+          "row_index": 11,
+          "value": 66.4,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Chưa đủ điểm nền để kết luận xu hướng theo SMA(20) (mới có 12 điểm), cần thêm dữ liệu cùng JIG."
+        },
+        {
+          "row_index": 12,
+          "value": 33.9,
+          "is_violation": true,
+          "point_alert": true,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Chưa đủ điểm nền để kết luận xu hướng theo SMA(20) (mới có 13 điểm), cần thêm dữ liệu cùng JIG."
+        },
+        {
+          "row_index": 13,
+          "value": 33.9,
+          "is_violation": true,
+          "point_alert": true,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Chưa đủ điểm nền để kết luận xu hướng theo SMA(20) (mới có 14 điểm), cần thêm dữ liệu cùng JIG."
+        },
+        {
+          "row_index": 14,
+          "value": 58.6,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Chưa đủ điểm nền để kết luận xu hướng theo SMA(20) (mới có 15 điểm), cần thêm dữ liệu cùng JIG."
+        },
+        {
+          "row_index": 15,
+          "value": 58.6,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Chưa đủ điểm nền để kết luận xu hướng theo SMA(20) (mới có 16 điểm), cần thêm dữ liệu cùng JIG."
+        },
+        {
+          "row_index": 16,
+          "value": 66.4,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Chưa đủ điểm nền để kết luận xu hướng theo SMA(20) (mới có 17 điểm), cần thêm dữ liệu cùng JIG."
+        },
+        {
+          "row_index": 17,
+          "value": 66.4,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Chưa đủ điểm nền để kết luận xu hướng theo SMA(20) (mới có 18 điểm), cần thêm dữ liệu cùng JIG."
+        },
+        {
+          "row_index": 18,
+          "value": 66.4,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Chưa đủ điểm nền để kết luận xu hướng theo SMA(20) (mới có 19 điểm), cần thêm dữ liệu cùng JIG."
+        },
+        {
+          "row_index": 19,
+          "value": 66.4,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Đạt",
+          "trend_detail": "Các điểm gần nhất đều nằm quanh SMA(20), chưa thấy xu hướng xấu."
+        },
+        {
+          "row_index": 20,
+          "value": 66.4,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Đạt",
+          "trend_detail": "Các điểm gần nhất đều nằm quanh SMA(20), chưa thấy xu hướng xấu."
+        },
+        {
+          "row_index": 21,
+          "value": 66.4,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Đạt",
+          "trend_detail": "Các điểm gần nhất đều nằm quanh SMA(20), chưa thấy xu hướng xấu."
+        },
+        {
+          "row_index": 22,
+          "value": 66.4,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Đạt",
+          "trend_detail": "Các điểm gần nhất đều nằm quanh SMA(20), chưa thấy xu hướng xấu."
+        },
+        {
+          "row_index": 23,
+          "value": 66.4,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Đạt",
+          "trend_detail": "Các điểm gần nhất đều nằm quanh SMA(20), chưa thấy xu hướng xấu."
+        },
+        {
+          "row_index": 24,
+          "value": 74.0,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Đạt",
+          "trend_detail": "Các điểm gần nhất đều nằm quanh SMA(20), chưa thấy xu hướng xấu."
+        },
+        {
+          "row_index": 25,
+          "value": 66.4,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Đạt",
+          "trend_detail": "Các điểm gần nhất đều nằm quanh SMA(20), chưa thấy xu hướng xấu."
+        },
+        {
+          "row_index": 26,
+          "value": 66.4,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Đạt",
+          "trend_detail": "Các điểm gần nhất đều nằm quanh SMA(20), chưa thấy xu hướng xấu."
+        },
+        {
+          "row_index": 27,
+          "value": 33.9,
+          "is_violation": true,
+          "point_alert": true,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Mới có 1 điểm bất thường đơn lẻ trong 5 điểm gần nhất — một điểm xấu đơn lẻ chưa thành xu hướng, theo dõi thêm, chưa cảnh báo."
+        },
+        {
+          "row_index": 28,
+          "value": 33.9,
+          "is_violation": true,
+          "point_alert": true,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Mới có 2 điểm bất thường đơn lẻ trong 5 điểm gần nhất — một điểm xấu đơn lẻ chưa thành xu hướng, theo dõi thêm, chưa cảnh báo."
+        },
+        {
+          "row_index": 29,
+          "value": 66.4,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Mới có 2 điểm bất thường đơn lẻ trong 5 điểm gần nhất — một điểm xấu đơn lẻ chưa thành xu hướng, theo dõi thêm, chưa cảnh báo."
+        },
+        {
+          "row_index": 30,
+          "value": 66.4,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Mới có 2 điểm bất thường đơn lẻ trong 5 điểm gần nhất — một điểm xấu đơn lẻ chưa thành xu hướng, theo dõi thêm, chưa cảnh báo."
+        },
+        {
+          "row_index": 31,
+          "value": 66.4,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Mới có 2 điểm bất thường đơn lẻ trong 5 điểm gần nhất — một điểm xấu đơn lẻ chưa thành xu hướng, theo dõi thêm, chưa cảnh báo."
+        },
+        {
+          "row_index": 32,
+          "value": 66.4,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Mới có 1 điểm bất thường đơn lẻ trong 5 điểm gần nhất — một điểm xấu đơn lẻ chưa thành xu hướng, theo dõi thêm, chưa cảnh báo."
+        },
+        {
+          "row_index": 33,
+          "value": 66.4,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Từng có 2 điểm bất thường đơn lẻ nhưng chuỗi đã ổn định lại quanh SMA(20) — chưa thành xu hướng, chưa cảnh báo."
+        },
+        {
+          "row_index": 34,
+          "value": 58.6,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Từng có 2 điểm bất thường đơn lẻ nhưng chuỗi đã ổn định lại quanh SMA(20) — chưa thành xu hướng, chưa cảnh báo."
+        },
+        {
+          "row_index": 35,
+          "value": 66.4,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Từng có 2 điểm bất thường đơn lẻ nhưng chuỗi đã ổn định lại quanh SMA(20) — chưa thành xu hướng, chưa cảnh báo."
+        },
+        {
+          "row_index": 36,
+          "value": 66.4,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Từng có 2 điểm bất thường đơn lẻ nhưng chuỗi đã ổn định lại quanh SMA(20) — chưa thành xu hướng, chưa cảnh báo."
+        },
+        {
+          "row_index": 37,
+          "value": 66.4,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Từng có 2 điểm bất thường đơn lẻ nhưng chuỗi đã ổn định lại quanh SMA(20) — chưa thành xu hướng, chưa cảnh báo."
+        },
+        {
+          "row_index": 38,
+          "value": 66.4,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Từng có 2 điểm bất thường đơn lẻ nhưng chuỗi đã ổn định lại quanh SMA(20) — chưa thành xu hướng, chưa cảnh báo."
+        },
+        {
+          "row_index": 39,
+          "value": 66.4,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Từng có 2 điểm bất thường đơn lẻ nhưng chuỗi đã ổn định lại quanh SMA(20) — chưa thành xu hướng, chưa cảnh báo."
+        },
+        {
+          "row_index": 40,
+          "value": 66.4,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Từng có 2 điểm bất thường đơn lẻ nhưng chuỗi đã ổn định lại quanh SMA(20) — chưa thành xu hướng, chưa cảnh báo."
+        },
+        {
+          "row_index": 41,
+          "value": 66.4,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Từng có 2 điểm bất thường đơn lẻ nhưng chuỗi đã ổn định lại quanh SMA(20) — chưa thành xu hướng, chưa cảnh báo."
+        },
+        {
+          "row_index": 42,
+          "value": 66.4,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Từng có 2 điểm bất thường đơn lẻ nhưng chuỗi đã ổn định lại quanh SMA(20) — chưa thành xu hướng, chưa cảnh báo."
+        },
+        {
+          "row_index": 43,
+          "value": 66.4,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Từng có 2 điểm bất thường đơn lẻ nhưng chuỗi đã ổn định lại quanh SMA(20) — chưa thành xu hướng, chưa cảnh báo."
+        },
+        {
+          "row_index": 44,
+          "value": 66.4,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Từng có 2 điểm bất thường đơn lẻ nhưng chuỗi đã ổn định lại quanh SMA(20) — chưa thành xu hướng, chưa cảnh báo."
+        },
+        {
+          "row_index": 45,
+          "value": 66.4,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Từng có 2 điểm bất thường đơn lẻ nhưng chuỗi đã ổn định lại quanh SMA(20) — chưa thành xu hướng, chưa cảnh báo."
+        },
+        {
+          "row_index": 46,
+          "value": 66.4,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Từng có 2 điểm bất thường đơn lẻ nhưng chuỗi đã ổn định lại quanh SMA(20) — chưa thành xu hướng, chưa cảnh báo."
+        },
+        {
+          "row_index": 47,
+          "value": 66.4,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Từng có 2 điểm bất thường đơn lẻ nhưng chuỗi đã ổn định lại quanh SMA(20) — chưa thành xu hướng, chưa cảnh báo."
+        },
+        {
+          "row_index": 48,
+          "value": 66.4,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Từng có 2 điểm bất thường đơn lẻ nhưng chuỗi đã ổn định lại quanh SMA(20) — chưa thành xu hướng, chưa cảnh báo."
+        },
+        {
+          "row_index": 49,
+          "value": 33.9,
+          "is_violation": true,
+          "point_alert": true,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Mới có 1 điểm bất thường đơn lẻ trong 5 điểm gần nhất — một điểm xấu đơn lẻ chưa thành xu hướng, theo dõi thêm, chưa cảnh báo."
+        },
+        {
+          "row_index": 50,
+          "value": 33.9,
+          "is_violation": true,
+          "point_alert": true,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Mới có 2 điểm bất thường đơn lẻ trong 5 điểm gần nhất — một điểm xấu đơn lẻ chưa thành xu hướng, theo dõi thêm, chưa cảnh báo."
+        },
+        {
+          "row_index": 51,
+          "value": 66.4,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Mới có 2 điểm bất thường đơn lẻ trong 5 điểm gần nhất — một điểm xấu đơn lẻ chưa thành xu hướng, theo dõi thêm, chưa cảnh báo."
+        },
+        {
+          "row_index": 52,
+          "value": 66.4,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Mới có 2 điểm bất thường đơn lẻ trong 5 điểm gần nhất — một điểm xấu đơn lẻ chưa thành xu hướng, theo dõi thêm, chưa cảnh báo."
+        },
+        {
+          "row_index": 53,
+          "value": 66.4,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Mới có 2 điểm bất thường đơn lẻ trong 5 điểm gần nhất — một điểm xấu đơn lẻ chưa thành xu hướng, theo dõi thêm, chưa cảnh báo."
+        },
+        {
+          "row_index": 54,
+          "value": 66.4,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Mới có 1 điểm bất thường đơn lẻ trong 5 điểm gần nhất — một điểm xấu đơn lẻ chưa thành xu hướng, theo dõi thêm, chưa cảnh báo."
+        },
+        {
+          "row_index": 55,
+          "value": 33.9,
+          "is_violation": true,
+          "point_alert": true,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Mới có 1 điểm bất thường đơn lẻ trong 5 điểm gần nhất — một điểm xấu đơn lẻ chưa thành xu hướng, theo dõi thêm, chưa cảnh báo."
+        },
+        {
+          "row_index": 56,
+          "value": 33.9,
+          "is_violation": true,
+          "point_alert": true,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Mới có 2 điểm bất thường đơn lẻ trong 5 điểm gần nhất — một điểm xấu đơn lẻ chưa thành xu hướng, theo dõi thêm, chưa cảnh báo."
+        },
+        {
+          "row_index": 57,
+          "value": 66.4,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": true,
+          "final_alert": true,
+          "trend_status": "Vi phạm",
+          "trend_detail": "Có xu hướng bất thường: 3 điểm liên tiếp lệch xa SMA(20). Điểm mới nhất 66.400 so với SMA 66.400."
+        },
+        {
+          "row_index": 58,
+          "value": 66.4,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": true,
+          "final_alert": true,
+          "trend_status": "Vi phạm",
+          "trend_detail": "Có xu hướng bất thường: 4 điểm liên tiếp lệch xa SMA(20). Điểm mới nhất 66.400 so với SMA 66.400."
+        },
+        {
+          "row_index": 59,
+          "value": 66.4,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": true,
+          "final_alert": true,
+          "trend_status": "Vi phạm",
+          "trend_detail": "Có xu hướng bất thường: 5 điểm liên tiếp lệch xa SMA(20). Điểm mới nhất 66.400 so với SMA 66.400."
+        },
+        {
+          "row_index": 60,
+          "value": 66.4,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": true,
+          "final_alert": true,
+          "trend_status": "Vi phạm",
+          "trend_detail": "Có xu hướng bất thường: 6 điểm liên tiếp lệch xa SMA(20). Điểm mới nhất 66.400 so với SMA 66.400."
+        },
+        {
+          "row_index": 61,
+          "value": 66.4,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": true,
+          "final_alert": true,
+          "trend_status": "Vi phạm",
+          "trend_detail": "Có xu hướng bất thường: 7 điểm liên tiếp lệch xa SMA(20). Điểm mới nhất 66.400 so với SMA 66.400."
+        },
+        {
+          "row_index": 62,
+          "value": 66.4,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": true,
+          "final_alert": true,
+          "trend_status": "Vi phạm",
+          "trend_detail": "Có xu hướng bất thường: 8 điểm liên tiếp lệch xa SMA(20). Điểm mới nhất 66.400 so với SMA 66.400."
+        },
+        {
+          "row_index": 63,
+          "value": 66.4,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": true,
+          "final_alert": true,
+          "trend_status": "Vi phạm",
+          "trend_detail": "Có xu hướng bất thường: 9 điểm liên tiếp lệch xa SMA(20). Điểm mới nhất 66.400 so với SMA 66.400."
+        },
+        {
+          "row_index": 64,
+          "value": 66.4,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": true,
+          "final_alert": true,
+          "trend_status": "Vi phạm",
+          "trend_detail": "Có xu hướng bất thường: 4/5 điểm gần nhất bất thường so với SMA(20)."
+        },
+        {
+          "row_index": 65,
+          "value": 66.4,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": true,
+          "final_alert": true,
+          "trend_status": "Vi phạm",
+          "trend_detail": "Có xu hướng bất thường: 3/5 điểm gần nhất bất thường so với SMA(20)."
+        },
+        {
+          "row_index": 66,
+          "value": 66.4,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Mới có 2 điểm bất thường đơn lẻ trong 5 điểm gần nhất — một điểm xấu đơn lẻ chưa thành xu hướng, theo dõi thêm, chưa cảnh báo."
+        },
+        {
+          "row_index": 67,
+          "value": 66.4,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Mới có 1 điểm bất thường đơn lẻ trong 5 điểm gần nhất — một điểm xấu đơn lẻ chưa thành xu hướng, theo dõi thêm, chưa cảnh báo."
+        },
+        {
+          "row_index": 68,
+          "value": 66.4,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Từng có 13 điểm bất thường đơn lẻ nhưng chuỗi đã ổn định lại quanh SMA(20) — chưa thành xu hướng, chưa cảnh báo."
+        },
+        {
+          "row_index": 69,
+          "value": 42.3,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Từng có 13 điểm bất thường đơn lẻ nhưng chuỗi đã ổn định lại quanh SMA(20) — chưa thành xu hướng, chưa cảnh báo."
+        },
+        {
+          "row_index": 70,
+          "value": 42.3,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Từng có 13 điểm bất thường đơn lẻ nhưng chuỗi đã ổn định lại quanh SMA(20) — chưa thành xu hướng, chưa cảnh báo."
+        },
+        {
+          "row_index": 71,
+          "value": 33.9,
+          "is_violation": true,
+          "point_alert": true,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Mới có 1 điểm bất thường đơn lẻ trong 5 điểm gần nhất — một điểm xấu đơn lẻ chưa thành xu hướng, theo dõi thêm, chưa cảnh báo."
+        },
+        {
+          "row_index": 72,
+          "value": 66.4,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Mới có 1 điểm bất thường đơn lẻ trong 5 điểm gần nhất — một điểm xấu đơn lẻ chưa thành xu hướng, theo dõi thêm, chưa cảnh báo."
+        },
+        {
+          "row_index": 73,
+          "value": 66.4,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Mới có 1 điểm bất thường đơn lẻ trong 5 điểm gần nhất — một điểm xấu đơn lẻ chưa thành xu hướng, theo dõi thêm, chưa cảnh báo."
+        },
+        {
+          "row_index": 74,
+          "value": 66.4,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Mới có 1 điểm bất thường đơn lẻ trong 5 điểm gần nhất — một điểm xấu đơn lẻ chưa thành xu hướng, theo dõi thêm, chưa cảnh báo."
+        },
+        {
+          "row_index": 75,
+          "value": 66.4,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Mới có 1 điểm bất thường đơn lẻ trong 5 điểm gần nhất — một điểm xấu đơn lẻ chưa thành xu hướng, theo dõi thêm, chưa cảnh báo."
+        },
+        {
+          "row_index": 76,
+          "value": 66.4,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Từng có 14 điểm bất thường đơn lẻ nhưng chuỗi đã ổn định lại quanh SMA(20) — chưa thành xu hướng, chưa cảnh báo."
+        },
+        {
+          "row_index": 77,
+          "value": 66.4,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Từng có 14 điểm bất thường đơn lẻ nhưng chuỗi đã ổn định lại quanh SMA(20) — chưa thành xu hướng, chưa cảnh báo."
+        },
+        {
+          "row_index": 78,
+          "value": 42.3,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Từng có 14 điểm bất thường đơn lẻ nhưng chuỗi đã ổn định lại quanh SMA(20) — chưa thành xu hướng, chưa cảnh báo."
+        },
+        {
+          "row_index": 79,
+          "value": 42.3,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Từng có 14 điểm bất thường đơn lẻ nhưng chuỗi đã ổn định lại quanh SMA(20) — chưa thành xu hướng, chưa cảnh báo."
+        },
+        {
+          "row_index": 80,
+          "value": 66.4,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Từng có 14 điểm bất thường đơn lẻ nhưng chuỗi đã ổn định lại quanh SMA(20) — chưa thành xu hướng, chưa cảnh báo."
+        },
+        {
+          "row_index": 81,
+          "value": 66.4,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Từng có 14 điểm bất thường đơn lẻ nhưng chuỗi đã ổn định lại quanh SMA(20) — chưa thành xu hướng, chưa cảnh báo."
+        },
+        {
+          "row_index": 82,
+          "value": 66.4,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Từng có 14 điểm bất thường đơn lẻ nhưng chuỗi đã ổn định lại quanh SMA(20) — chưa thành xu hướng, chưa cảnh báo."
+        },
+        {
+          "row_index": 83,
+          "value": 66.4,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Từng có 14 điểm bất thường đơn lẻ nhưng chuỗi đã ổn định lại quanh SMA(20) — chưa thành xu hướng, chưa cảnh báo."
+        },
+        {
+          "row_index": 84,
+          "value": 66.4,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Từng có 14 điểm bất thường đơn lẻ nhưng chuỗi đã ổn định lại quanh SMA(20) — chưa thành xu hướng, chưa cảnh báo."
+        },
+        {
+          "row_index": 85,
+          "value": 66.4,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Từng có 14 điểm bất thường đơn lẻ nhưng chuỗi đã ổn định lại quanh SMA(20) — chưa thành xu hướng, chưa cảnh báo."
+        },
+        {
+          "row_index": 86,
+          "value": 42.3,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Từng có 14 điểm bất thường đơn lẻ nhưng chuỗi đã ổn định lại quanh SMA(20) — chưa thành xu hướng, chưa cảnh báo."
+        },
+        {
+          "row_index": 87,
+          "value": 42.3,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Từng có 14 điểm bất thường đơn lẻ nhưng chuỗi đã ổn định lại quanh SMA(20) — chưa thành xu hướng, chưa cảnh báo."
+        },
+        {
+          "row_index": 88,
+          "value": 66.4,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Từng có 14 điểm bất thường đơn lẻ nhưng chuỗi đã ổn định lại quanh SMA(20) — chưa thành xu hướng, chưa cảnh báo."
+        },
+        {
+          "row_index": 89,
+          "value": 66.4,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Từng có 14 điểm bất thường đơn lẻ nhưng chuỗi đã ổn định lại quanh SMA(20) — chưa thành xu hướng, chưa cảnh báo."
+        },
+        {
+          "row_index": 90,
+          "value": 42.3,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Từng có 14 điểm bất thường đơn lẻ nhưng chuỗi đã ổn định lại quanh SMA(20) — chưa thành xu hướng, chưa cảnh báo."
+        },
+        {
+          "row_index": 91,
+          "value": 42.3,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Từng có 14 điểm bất thường đơn lẻ nhưng chuỗi đã ổn định lại quanh SMA(20) — chưa thành xu hướng, chưa cảnh báo."
+        },
+        {
+          "row_index": 92,
+          "value": 42.3,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Từng có 14 điểm bất thường đơn lẻ nhưng chuỗi đã ổn định lại quanh SMA(20) — chưa thành xu hướng, chưa cảnh báo."
+        },
+        {
+          "row_index": 93,
+          "value": 66.4,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Từng có 14 điểm bất thường đơn lẻ nhưng chuỗi đã ổn định lại quanh SMA(20) — chưa thành xu hướng, chưa cảnh báo."
+        },
+        {
+          "row_index": 94,
+          "value": 66.4,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Từng có 14 điểm bất thường đơn lẻ nhưng chuỗi đã ổn định lại quanh SMA(20) — chưa thành xu hướng, chưa cảnh báo."
+        },
+        {
+          "row_index": 95,
+          "value": 42.3,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Từng có 14 điểm bất thường đơn lẻ nhưng chuỗi đã ổn định lại quanh SMA(20) — chưa thành xu hướng, chưa cảnh báo."
+        },
+        {
+          "row_index": 96,
+          "value": 42.3,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Từng có 14 điểm bất thường đơn lẻ nhưng chuỗi đã ổn định lại quanh SMA(20) — chưa thành xu hướng, chưa cảnh báo."
+        },
+        {
+          "row_index": 97,
+          "value": 66.4,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Từng có 14 điểm bất thường đơn lẻ nhưng chuỗi đã ổn định lại quanh SMA(20) — chưa thành xu hướng, chưa cảnh báo."
+        },
+        {
+          "row_index": 98,
+          "value": 66.4,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Từng có 14 điểm bất thường đơn lẻ nhưng chuỗi đã ổn định lại quanh SMA(20) — chưa thành xu hướng, chưa cảnh báo."
+        },
+        {
+          "row_index": 99,
+          "value": 42.3,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Từng có 14 điểm bất thường đơn lẻ nhưng chuỗi đã ổn định lại quanh SMA(20) — chưa thành xu hướng, chưa cảnh báo."
+        },
+        {
+          "row_index": 100,
+          "value": 42.3,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Từng có 14 điểm bất thường đơn lẻ nhưng chuỗi đã ổn định lại quanh SMA(20) — chưa thành xu hướng, chưa cảnh báo."
+        },
+        {
+          "row_index": 101,
+          "value": 42.3,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Từng có 14 điểm bất thường đơn lẻ nhưng chuỗi đã ổn định lại quanh SMA(20) — chưa thành xu hướng, chưa cảnh báo."
+        },
+        {
+          "row_index": 102,
+          "value": 42.3,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Từng có 14 điểm bất thường đơn lẻ nhưng chuỗi đã ổn định lại quanh SMA(20) — chưa thành xu hướng, chưa cảnh báo."
+        },
+        {
+          "row_index": 103,
+          "value": 66.4,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Từng có 14 điểm bất thường đơn lẻ nhưng chuỗi đã ổn định lại quanh SMA(20) — chưa thành xu hướng, chưa cảnh báo."
+        },
+        {
+          "row_index": 104,
+          "value": 66.4,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Từng có 14 điểm bất thường đơn lẻ nhưng chuỗi đã ổn định lại quanh SMA(20) — chưa thành xu hướng, chưa cảnh báo."
+        },
+        {
+          "row_index": 105,
+          "value": 42.3,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Từng có 14 điểm bất thường đơn lẻ nhưng chuỗi đã ổn định lại quanh SMA(20) — chưa thành xu hướng, chưa cảnh báo."
+        },
+        {
+          "row_index": 106,
+          "value": 42.3,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Từng có 14 điểm bất thường đơn lẻ nhưng chuỗi đã ổn định lại quanh SMA(20) — chưa thành xu hướng, chưa cảnh báo."
+        },
+        {
+          "row_index": 107,
+          "value": 66.4,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Từng có 14 điểm bất thường đơn lẻ nhưng chuỗi đã ổn định lại quanh SMA(20) — chưa thành xu hướng, chưa cảnh báo."
+        },
+        {
+          "row_index": 108,
+          "value": 66.4,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Từng có 14 điểm bất thường đơn lẻ nhưng chuỗi đã ổn định lại quanh SMA(20) — chưa thành xu hướng, chưa cảnh báo."
+        },
+        {
+          "row_index": 109,
+          "value": 42.3,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Từng có 14 điểm bất thường đơn lẻ nhưng chuỗi đã ổn định lại quanh SMA(20) — chưa thành xu hướng, chưa cảnh báo."
+        },
+        {
+          "row_index": 110,
+          "value": 42.3,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Từng có 14 điểm bất thường đơn lẻ nhưng chuỗi đã ổn định lại quanh SMA(20) — chưa thành xu hướng, chưa cảnh báo."
+        },
+        {
+          "row_index": 111,
+          "value": 42.3,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Từng có 14 điểm bất thường đơn lẻ nhưng chuỗi đã ổn định lại quanh SMA(20) — chưa thành xu hướng, chưa cảnh báo."
+        },
+        {
+          "row_index": 112,
+          "value": 66.4,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Từng có 14 điểm bất thường đơn lẻ nhưng chuỗi đã ổn định lại quanh SMA(20) — chưa thành xu hướng, chưa cảnh báo."
+        },
+        {
+          "row_index": 113,
+          "value": 66.4,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Từng có 14 điểm bất thường đơn lẻ nhưng chuỗi đã ổn định lại quanh SMA(20) — chưa thành xu hướng, chưa cảnh báo."
+        },
+        {
+          "row_index": 114,
+          "value": 66.4,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Từng có 14 điểm bất thường đơn lẻ nhưng chuỗi đã ổn định lại quanh SMA(20) — chưa thành xu hướng, chưa cảnh báo."
+        },
+        {
+          "row_index": 115,
+          "value": 66.4,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Từng có 14 điểm bất thường đơn lẻ nhưng chuỗi đã ổn định lại quanh SMA(20) — chưa thành xu hướng, chưa cảnh báo."
+        },
+        {
+          "row_index": 116,
+          "value": 66.4,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Từng có 14 điểm bất thường đơn lẻ nhưng chuỗi đã ổn định lại quanh SMA(20) — chưa thành xu hướng, chưa cảnh báo."
+        },
+        {
+          "row_index": 117,
+          "value": 66.4,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Từng có 14 điểm bất thường đơn lẻ nhưng chuỗi đã ổn định lại quanh SMA(20) — chưa thành xu hướng, chưa cảnh báo."
+        },
+        {
+          "row_index": 118,
+          "value": 42.3,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Từng có 14 điểm bất thường đơn lẻ nhưng chuỗi đã ổn định lại quanh SMA(20) — chưa thành xu hướng, chưa cảnh báo."
+        },
+        {
+          "row_index": 119,
+          "value": 42.3,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Từng có 14 điểm bất thường đơn lẻ nhưng chuỗi đã ổn định lại quanh SMA(20) — chưa thành xu hướng, chưa cảnh báo."
+        },
+        {
+          "row_index": 120,
+          "value": 66.4,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Từng có 14 điểm bất thường đơn lẻ nhưng chuỗi đã ổn định lại quanh SMA(20) — chưa thành xu hướng, chưa cảnh báo."
+        },
+        {
+          "row_index": 121,
+          "value": 66.4,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Từng có 14 điểm bất thường đơn lẻ nhưng chuỗi đã ổn định lại quanh SMA(20) — chưa thành xu hướng, chưa cảnh báo."
+        },
+        {
+          "row_index": 122,
+          "value": 66.4,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Từng có 14 điểm bất thường đơn lẻ nhưng chuỗi đã ổn định lại quanh SMA(20) — chưa thành xu hướng, chưa cảnh báo."
+        },
+        {
+          "row_index": 123,
+          "value": 66.4,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Từng có 14 điểm bất thường đơn lẻ nhưng chuỗi đã ổn định lại quanh SMA(20) — chưa thành xu hướng, chưa cảnh báo."
+        },
+        {
+          "row_index": 124,
+          "value": 42.3,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Từng có 14 điểm bất thường đơn lẻ nhưng chuỗi đã ổn định lại quanh SMA(20) — chưa thành xu hướng, chưa cảnh báo."
+        },
+        {
+          "row_index": 125,
+          "value": 42.3,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Từng có 14 điểm bất thường đơn lẻ nhưng chuỗi đã ổn định lại quanh SMA(20) — chưa thành xu hướng, chưa cảnh báo."
+        },
+        {
+          "row_index": 126,
+          "value": 66.4,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Từng có 14 điểm bất thường đơn lẻ nhưng chuỗi đã ổn định lại quanh SMA(20) — chưa thành xu hướng, chưa cảnh báo."
+        },
+        {
+          "row_index": 127,
+          "value": 66.4,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Từng có 14 điểm bất thường đơn lẻ nhưng chuỗi đã ổn định lại quanh SMA(20) — chưa thành xu hướng, chưa cảnh báo."
+        },
+        {
+          "row_index": 128,
+          "value": 66.4,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Từng có 14 điểm bất thường đơn lẻ nhưng chuỗi đã ổn định lại quanh SMA(20) — chưa thành xu hướng, chưa cảnh báo."
+        },
+        {
+          "row_index": 129,
+          "value": 66.4,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Từng có 14 điểm bất thường đơn lẻ nhưng chuỗi đã ổn định lại quanh SMA(20) — chưa thành xu hướng, chưa cảnh báo."
+        },
+        {
+          "row_index": 130,
+          "value": 42.3,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Từng có 14 điểm bất thường đơn lẻ nhưng chuỗi đã ổn định lại quanh SMA(20) — chưa thành xu hướng, chưa cảnh báo."
+        },
+        {
+          "row_index": 131,
+          "value": 42.3,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Từng có 14 điểm bất thường đơn lẻ nhưng chuỗi đã ổn định lại quanh SMA(20) — chưa thành xu hướng, chưa cảnh báo."
+        }
+      ]
+    },
+    "TaktTime": {
+      "metric_name": "TaktTime",
+      "total_points": 132,
+      "k": 3.0,
+      "window": 20,
+      "min_value": 87.0,
+      "max_value": 297.0,
+      "mean_value": 140.58333333333334,
+      "single_violation_count": 8,
+      "single_violations": [
+        {
+          "row_index": 9,
+          "date": "2026/08/03",
+          "time": "6:14:52",
+          "serial": "61C1047Z3311",
+          "value": 297.0
+        },
+        {
+          "row_index": 15,
+          "date": "2026/08/04",
+          "time": "6:12:48",
+          "serial": "61C1047Z3311",
+          "value": 271.0
+        },
+        {
+          "row_index": 33,
+          "date": "2026/08/10",
+          "time": "6:17:45",
+          "serial": "61C1047Z3321",
+          "value": 256.0
+        },
+        {
+          "row_index": 70,
+          "date": "2026/08/17",
+          "time": "22:21:40",
+          "serial": "61C1047Z3311",
+          "value": 216.0
+        },
+        {
+          "row_index": 79,
+          "date": "2026/08/18",
+          "time": "22:21:40",
+          "serial": "61C1047Z3311",
+          "value": 216.0
+        },
+        {
+          "row_index": 87,
+          "date": "2026/08/19",
+          "time": "22:21:40",
+          "serial": "61C1047Z3311",
+          "value": 216.0
+        },
+        {
+          "row_index": 96,
+          "date": "2026/08/20",
+          "time": "22:10:40",
+          "serial": "61C1047Z3311",
+          "value": 216.0
+        },
+        {
+          "row_index": 106,
+          "date": "2026/08/21",
+          "time": "22:08:40",
+          "serial": "61C1047Z3311",
+          "value": 216.0
+        }
+      ],
+      "abnormal_full_with_nguong_count": 6,
+      "abnormal_full_pure_sma_count": 0,
+      "abnormal_full_pure_sma": [],
+      "gate_blocked_count": 8,
+      "trend_confirmed_count": 0,
+      "spurious_alerts_count": 0,
+      "blocked_details": [
+        {
+          "row_index": 9,
+          "value": 297.0,
+          "is_violation": true,
+          "point_alert": true,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Chưa đủ điểm nền để kết luận xu hướng theo SMA(20) (mới có 10 điểm), cần thêm dữ liệu cùng JIG."
+        },
+        {
+          "row_index": 15,
+          "value": 271.0,
+          "is_violation": true,
+          "point_alert": true,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Chưa đủ điểm nền để kết luận xu hướng theo SMA(20) (mới có 16 điểm), cần thêm dữ liệu cùng JIG."
+        },
+        {
+          "row_index": 33,
+          "value": 256.0,
+          "is_violation": true,
+          "point_alert": true,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Mới có 1 điểm bất thường đơn lẻ trong 5 điểm gần nhất — một điểm xấu đơn lẻ chưa thành xu hướng, theo dõi thêm, chưa cảnh báo."
+        },
+        {
+          "row_index": 70,
+          "value": 216.0,
+          "is_violation": true,
+          "point_alert": true,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Mới có 1 điểm bất thường đơn lẻ trong 5 điểm gần nhất — một điểm xấu đơn lẻ chưa thành xu hướng, theo dõi thêm, chưa cảnh báo."
+        },
+        {
+          "row_index": 79,
+          "value": 216.0,
+          "is_violation": true,
+          "point_alert": true,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Mới có 1 điểm bất thường đơn lẻ trong 5 điểm gần nhất — một điểm xấu đơn lẻ chưa thành xu hướng, theo dõi thêm, chưa cảnh báo."
+        },
+        {
+          "row_index": 87,
+          "value": 216.0,
+          "is_violation": true,
+          "point_alert": true,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Mới có 1 điểm bất thường đơn lẻ trong 5 điểm gần nhất — một điểm xấu đơn lẻ chưa thành xu hướng, theo dõi thêm, chưa cảnh báo."
+        },
+        {
+          "row_index": 96,
+          "value": 216.0,
+          "is_violation": true,
+          "point_alert": true,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Mới có 1 điểm bất thường đơn lẻ trong 5 điểm gần nhất — một điểm xấu đơn lẻ chưa thành xu hướng, theo dõi thêm, chưa cảnh báo."
+        },
+        {
+          "row_index": 106,
+          "value": 216.0,
+          "is_violation": true,
+          "point_alert": true,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Mới có 1 điểm bất thường đơn lẻ trong 5 điểm gần nhất — một điểm xấu đơn lẻ chưa thành xu hướng, theo dõi thêm, chưa cảnh báo."
+        }
+      ],
+      "confirmed_details": [],
+      "sequential_results": [
+        {
+          "row_index": 0,
+          "value": 145.0,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Chưa đủ điểm nền để kết luận xu hướng theo SMA(20) (mới có 1 điểm), cần thêm dữ liệu cùng JIG."
+        },
+        {
+          "row_index": 1,
+          "value": 89.0,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Chưa đủ điểm nền để kết luận xu hướng theo SMA(20) (mới có 2 điểm), cần thêm dữ liệu cùng JIG."
+        },
+        {
+          "row_index": 2,
+          "value": 103.0,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Chưa đủ điểm nền để kết luận xu hướng theo SMA(20) (mới có 3 điểm), cần thêm dữ liệu cùng JIG."
+        },
+        {
+          "row_index": 3,
+          "value": 165.0,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Chưa đủ điểm nền để kết luận xu hướng theo SMA(20) (mới có 4 điểm), cần thêm dữ liệu cùng JIG."
+        },
+        {
+          "row_index": 4,
+          "value": 133.0,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Chưa đủ điểm nền để kết luận xu hướng theo SMA(20) (mới có 5 điểm), cần thêm dữ liệu cùng JIG."
+        },
+        {
+          "row_index": 5,
+          "value": 193.0,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Chưa đủ điểm nền để kết luận xu hướng theo SMA(20) (mới có 6 điểm), cần thêm dữ liệu cùng JIG."
+        },
+        {
+          "row_index": 6,
+          "value": 89.0,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Chưa đủ điểm nền để kết luận xu hướng theo SMA(20) (mới có 7 điểm), cần thêm dữ liệu cùng JIG."
+        },
+        {
+          "row_index": 7,
+          "value": 165.0,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Chưa đủ điểm nền để kết luận xu hướng theo SMA(20) (mới có 8 điểm), cần thêm dữ liệu cùng JIG."
+        },
+        {
+          "row_index": 8,
+          "value": 158.0,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Chưa đủ điểm nền để kết luận xu hướng theo SMA(20) (mới có 9 điểm), cần thêm dữ liệu cùng JIG."
+        },
+        {
+          "row_index": 9,
+          "value": 297.0,
+          "is_violation": true,
+          "point_alert": true,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Chưa đủ điểm nền để kết luận xu hướng theo SMA(20) (mới có 10 điểm), cần thêm dữ liệu cùng JIG."
+        },
+        {
+          "row_index": 10,
+          "value": 89.0,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Chưa đủ điểm nền để kết luận xu hướng theo SMA(20) (mới có 11 điểm), cần thêm dữ liệu cùng JIG."
+        },
+        {
+          "row_index": 11,
+          "value": 165.0,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Chưa đủ điểm nền để kết luận xu hướng theo SMA(20) (mới có 12 điểm), cần thêm dữ liệu cùng JIG."
+        },
+        {
+          "row_index": 12,
+          "value": 139.0,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Chưa đủ điểm nền để kết luận xu hướng theo SMA(20) (mới có 13 điểm), cần thêm dữ liệu cùng JIG."
+        },
+        {
+          "row_index": 13,
+          "value": 134.0,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Chưa đủ điểm nền để kết luận xu hướng theo SMA(20) (mới có 14 điểm), cần thêm dữ liệu cùng JIG."
+        },
+        {
+          "row_index": 14,
+          "value": 124.0,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Chưa đủ điểm nền để kết luận xu hướng theo SMA(20) (mới có 15 điểm), cần thêm dữ liệu cùng JIG."
+        },
+        {
+          "row_index": 15,
+          "value": 271.0,
+          "is_violation": true,
+          "point_alert": true,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Chưa đủ điểm nền để kết luận xu hướng theo SMA(20) (mới có 16 điểm), cần thêm dữ liệu cùng JIG."
+        },
+        {
+          "row_index": 16,
+          "value": 89.0,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Chưa đủ điểm nền để kết luận xu hướng theo SMA(20) (mới có 17 điểm), cần thêm dữ liệu cùng JIG."
+        },
+        {
+          "row_index": 17,
+          "value": 165.0,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Chưa đủ điểm nền để kết luận xu hướng theo SMA(20) (mới có 18 điểm), cần thêm dữ liệu cùng JIG."
+        },
+        {
+          "row_index": 18,
+          "value": 89.0,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Chưa đủ điểm nền để kết luận xu hướng theo SMA(20) (mới có 19 điểm), cần thêm dữ liệu cùng JIG."
+        },
+        {
+          "row_index": 19,
+          "value": 165.0,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Đạt",
+          "trend_detail": "Các điểm gần nhất đều nằm quanh SMA(20), chưa thấy xu hướng xấu."
+        },
+        {
+          "row_index": 20,
+          "value": 89.0,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Đạt",
+          "trend_detail": "Các điểm gần nhất đều nằm quanh SMA(20), chưa thấy xu hướng xấu."
+        },
+        {
+          "row_index": 21,
+          "value": 165.0,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Đạt",
+          "trend_detail": "Các điểm gần nhất đều nằm quanh SMA(20), chưa thấy xu hướng xấu."
+        },
+        {
+          "row_index": 22,
+          "value": 89.0,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Đạt",
+          "trend_detail": "Các điểm gần nhất đều nằm quanh SMA(20), chưa thấy xu hướng xấu."
+        },
+        {
+          "row_index": 23,
+          "value": 165.0,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Đạt",
+          "trend_detail": "Các điểm gần nhất đều nằm quanh SMA(20), chưa thấy xu hướng xấu."
+        },
+        {
+          "row_index": 24,
+          "value": 108.0,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Đạt",
+          "trend_detail": "Các điểm gần nhất đều nằm quanh SMA(20), chưa thấy xu hướng xấu."
+        },
+        {
+          "row_index": 25,
+          "value": 89.0,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Đạt",
+          "trend_detail": "Các điểm gần nhất đều nằm quanh SMA(20), chưa thấy xu hướng xấu."
+        },
+        {
+          "row_index": 26,
+          "value": 165.0,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Đạt",
+          "trend_detail": "Các điểm gần nhất đều nằm quanh SMA(20), chưa thấy xu hướng xấu."
+        },
+        {
+          "row_index": 27,
+          "value": 139.0,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Đạt",
+          "trend_detail": "Các điểm gần nhất đều nằm quanh SMA(20), chưa thấy xu hướng xấu."
+        },
+        {
+          "row_index": 28,
+          "value": 134.0,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Đạt",
+          "trend_detail": "Các điểm gần nhất đều nằm quanh SMA(20), chưa thấy xu hướng xấu."
+        },
+        {
+          "row_index": 29,
+          "value": 89.0,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Đạt",
+          "trend_detail": "Các điểm gần nhất đều nằm quanh SMA(20), chưa thấy xu hướng xấu."
+        },
+        {
+          "row_index": 30,
+          "value": 165.0,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Đạt",
+          "trend_detail": "Các điểm gần nhất đều nằm quanh SMA(20), chưa thấy xu hướng xấu."
+        },
+        {
+          "row_index": 31,
+          "value": 89.0,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Đạt",
+          "trend_detail": "Các điểm gần nhất đều nằm quanh SMA(20), chưa thấy xu hướng xấu."
+        },
+        {
+          "row_index": 32,
+          "value": 165.0,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Đạt",
+          "trend_detail": "Các điểm gần nhất đều nằm quanh SMA(20), chưa thấy xu hướng xấu."
+        },
+        {
+          "row_index": 33,
+          "value": 256.0,
+          "is_violation": true,
+          "point_alert": true,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Mới có 1 điểm bất thường đơn lẻ trong 5 điểm gần nhất — một điểm xấu đơn lẻ chưa thành xu hướng, theo dõi thêm, chưa cảnh báo."
+        },
+        {
+          "row_index": 34,
+          "value": 182.0,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Mới có 1 điểm bất thường đơn lẻ trong 5 điểm gần nhất — một điểm xấu đơn lẻ chưa thành xu hướng, theo dõi thêm, chưa cảnh báo."
+        },
+        {
+          "row_index": 35,
+          "value": 89.0,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Mới có 1 điểm bất thường đơn lẻ trong 5 điểm gần nhất — một điểm xấu đơn lẻ chưa thành xu hướng, theo dõi thêm, chưa cảnh báo."
+        },
+        {
+          "row_index": 36,
+          "value": 165.0,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Mới có 1 điểm bất thường đơn lẻ trong 5 điểm gần nhất — một điểm xấu đơn lẻ chưa thành xu hướng, theo dõi thêm, chưa cảnh báo."
+        },
+        {
+          "row_index": 37,
+          "value": 89.0,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Mới có 1 điểm bất thường đơn lẻ trong 5 điểm gần nhất — một điểm xấu đơn lẻ chưa thành xu hướng, theo dõi thêm, chưa cảnh báo."
+        },
+        {
+          "row_index": 38,
+          "value": 165.0,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Từng có 1 điểm bất thường đơn lẻ nhưng chuỗi đã ổn định lại quanh SMA(20) — chưa thành xu hướng, chưa cảnh báo."
+        },
+        {
+          "row_index": 39,
+          "value": 89.0,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Từng có 1 điểm bất thường đơn lẻ nhưng chuỗi đã ổn định lại quanh SMA(20) — chưa thành xu hướng, chưa cảnh báo."
+        },
+        {
+          "row_index": 40,
+          "value": 165.0,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Từng có 1 điểm bất thường đơn lẻ nhưng chuỗi đã ổn định lại quanh SMA(20) — chưa thành xu hướng, chưa cảnh báo."
+        },
+        {
+          "row_index": 41,
+          "value": 89.0,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Từng có 1 điểm bất thường đơn lẻ nhưng chuỗi đã ổn định lại quanh SMA(20) — chưa thành xu hướng, chưa cảnh báo."
+        },
+        {
+          "row_index": 42,
+          "value": 165.0,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Từng có 1 điểm bất thường đơn lẻ nhưng chuỗi đã ổn định lại quanh SMA(20) — chưa thành xu hướng, chưa cảnh báo."
+        },
+        {
+          "row_index": 43,
+          "value": 89.0,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Từng có 1 điểm bất thường đơn lẻ nhưng chuỗi đã ổn định lại quanh SMA(20) — chưa thành xu hướng, chưa cảnh báo."
+        },
+        {
+          "row_index": 44,
+          "value": 165.0,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Từng có 1 điểm bất thường đơn lẻ nhưng chuỗi đã ổn định lại quanh SMA(20) — chưa thành xu hướng, chưa cảnh báo."
+        },
+        {
+          "row_index": 45,
+          "value": 89.0,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Từng có 1 điểm bất thường đơn lẻ nhưng chuỗi đã ổn định lại quanh SMA(20) — chưa thành xu hướng, chưa cảnh báo."
+        },
+        {
+          "row_index": 46,
+          "value": 165.0,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Từng có 1 điểm bất thường đơn lẻ nhưng chuỗi đã ổn định lại quanh SMA(20) — chưa thành xu hướng, chưa cảnh báo."
+        },
+        {
+          "row_index": 47,
+          "value": 89.0,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Từng có 1 điểm bất thường đơn lẻ nhưng chuỗi đã ổn định lại quanh SMA(20) — chưa thành xu hướng, chưa cảnh báo."
+        },
+        {
+          "row_index": 48,
+          "value": 165.0,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Từng có 1 điểm bất thường đơn lẻ nhưng chuỗi đã ổn định lại quanh SMA(20) — chưa thành xu hướng, chưa cảnh báo."
+        },
+        {
+          "row_index": 49,
+          "value": 139.0,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Từng có 1 điểm bất thường đơn lẻ nhưng chuỗi đã ổn định lại quanh SMA(20) — chưa thành xu hướng, chưa cảnh báo."
+        },
+        {
+          "row_index": 50,
+          "value": 134.0,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Từng có 1 điểm bất thường đơn lẻ nhưng chuỗi đã ổn định lại quanh SMA(20) — chưa thành xu hướng, chưa cảnh báo."
+        },
+        {
+          "row_index": 51,
+          "value": 89.0,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Từng có 1 điểm bất thường đơn lẻ nhưng chuỗi đã ổn định lại quanh SMA(20) — chưa thành xu hướng, chưa cảnh báo."
+        },
+        {
+          "row_index": 52,
+          "value": 165.0,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Từng có 1 điểm bất thường đơn lẻ nhưng chuỗi đã ổn định lại quanh SMA(20) — chưa thành xu hướng, chưa cảnh báo."
+        },
+        {
+          "row_index": 53,
+          "value": 89.0,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Từng có 1 điểm bất thường đơn lẻ nhưng chuỗi đã ổn định lại quanh SMA(20) — chưa thành xu hướng, chưa cảnh báo."
+        },
+        {
+          "row_index": 54,
+          "value": 165.0,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Từng có 1 điểm bất thường đơn lẻ nhưng chuỗi đã ổn định lại quanh SMA(20) — chưa thành xu hướng, chưa cảnh báo."
+        },
+        {
+          "row_index": 55,
+          "value": 139.0,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Từng có 1 điểm bất thường đơn lẻ nhưng chuỗi đã ổn định lại quanh SMA(20) — chưa thành xu hướng, chưa cảnh báo."
+        },
+        {
+          "row_index": 56,
+          "value": 134.0,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Từng có 1 điểm bất thường đơn lẻ nhưng chuỗi đã ổn định lại quanh SMA(20) — chưa thành xu hướng, chưa cảnh báo."
+        },
+        {
+          "row_index": 57,
+          "value": 89.0,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Từng có 1 điểm bất thường đơn lẻ nhưng chuỗi đã ổn định lại quanh SMA(20) — chưa thành xu hướng, chưa cảnh báo."
+        },
+        {
+          "row_index": 58,
+          "value": 165.0,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Từng có 1 điểm bất thường đơn lẻ nhưng chuỗi đã ổn định lại quanh SMA(20) — chưa thành xu hướng, chưa cảnh báo."
+        },
+        {
+          "row_index": 59,
+          "value": 89.0,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Từng có 1 điểm bất thường đơn lẻ nhưng chuỗi đã ổn định lại quanh SMA(20) — chưa thành xu hướng, chưa cảnh báo."
+        },
+        {
+          "row_index": 60,
+          "value": 165.0,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Từng có 1 điểm bất thường đơn lẻ nhưng chuỗi đã ổn định lại quanh SMA(20) — chưa thành xu hướng, chưa cảnh báo."
+        },
+        {
+          "row_index": 61,
+          "value": 89.0,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Từng có 1 điểm bất thường đơn lẻ nhưng chuỗi đã ổn định lại quanh SMA(20) — chưa thành xu hướng, chưa cảnh báo."
+        },
+        {
+          "row_index": 62,
+          "value": 165.0,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Từng có 1 điểm bất thường đơn lẻ nhưng chuỗi đã ổn định lại quanh SMA(20) — chưa thành xu hướng, chưa cảnh báo."
+        },
+        {
+          "row_index": 63,
+          "value": 89.0,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Từng có 1 điểm bất thường đơn lẻ nhưng chuỗi đã ổn định lại quanh SMA(20) — chưa thành xu hướng, chưa cảnh báo."
+        },
+        {
+          "row_index": 64,
+          "value": 165.0,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Từng có 1 điểm bất thường đơn lẻ nhưng chuỗi đã ổn định lại quanh SMA(20) — chưa thành xu hướng, chưa cảnh báo."
+        },
+        {
+          "row_index": 65,
+          "value": 89.0,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Từng có 1 điểm bất thường đơn lẻ nhưng chuỗi đã ổn định lại quanh SMA(20) — chưa thành xu hướng, chưa cảnh báo."
+        },
+        {
+          "row_index": 66,
+          "value": 165.0,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Từng có 1 điểm bất thường đơn lẻ nhưng chuỗi đã ổn định lại quanh SMA(20) — chưa thành xu hướng, chưa cảnh báo."
+        },
+        {
+          "row_index": 67,
+          "value": 89.0,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Từng có 1 điểm bất thường đơn lẻ nhưng chuỗi đã ổn định lại quanh SMA(20) — chưa thành xu hướng, chưa cảnh báo."
+        },
+        {
+          "row_index": 68,
+          "value": 165.0,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Từng có 1 điểm bất thường đơn lẻ nhưng chuỗi đã ổn định lại quanh SMA(20) — chưa thành xu hướng, chưa cảnh báo."
+        },
+        {
+          "row_index": 69,
+          "value": 176.0,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Từng có 1 điểm bất thường đơn lẻ nhưng chuỗi đã ổn định lại quanh SMA(20) — chưa thành xu hướng, chưa cảnh báo."
+        },
+        {
+          "row_index": 70,
+          "value": 216.0,
+          "is_violation": true,
+          "point_alert": true,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Mới có 1 điểm bất thường đơn lẻ trong 5 điểm gần nhất — một điểm xấu đơn lẻ chưa thành xu hướng, theo dõi thêm, chưa cảnh báo."
+        },
+        {
+          "row_index": 71,
+          "value": 134.0,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Mới có 1 điểm bất thường đơn lẻ trong 5 điểm gần nhất — một điểm xấu đơn lẻ chưa thành xu hướng, theo dõi thêm, chưa cảnh báo."
+        },
+        {
+          "row_index": 72,
+          "value": 89.0,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Mới có 1 điểm bất thường đơn lẻ trong 5 điểm gần nhất — một điểm xấu đơn lẻ chưa thành xu hướng, theo dõi thêm, chưa cảnh báo."
+        },
+        {
+          "row_index": 73,
+          "value": 165.0,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Mới có 1 điểm bất thường đơn lẻ trong 5 điểm gần nhất — một điểm xấu đơn lẻ chưa thành xu hướng, theo dõi thêm, chưa cảnh báo."
+        },
+        {
+          "row_index": 74,
+          "value": 89.0,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Mới có 1 điểm bất thường đơn lẻ trong 5 điểm gần nhất — một điểm xấu đơn lẻ chưa thành xu hướng, theo dõi thêm, chưa cảnh báo."
+        },
+        {
+          "row_index": 75,
+          "value": 165.0,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Từng có 2 điểm bất thường đơn lẻ nhưng chuỗi đã ổn định lại quanh SMA(20) — chưa thành xu hướng, chưa cảnh báo."
+        },
+        {
+          "row_index": 76,
+          "value": 89.0,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Từng có 2 điểm bất thường đơn lẻ nhưng chuỗi đã ổn định lại quanh SMA(20) — chưa thành xu hướng, chưa cảnh báo."
+        },
+        {
+          "row_index": 77,
+          "value": 165.0,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Từng có 2 điểm bất thường đơn lẻ nhưng chuỗi đã ổn định lại quanh SMA(20) — chưa thành xu hướng, chưa cảnh báo."
+        },
+        {
+          "row_index": 78,
+          "value": 176.0,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Từng có 2 điểm bất thường đơn lẻ nhưng chuỗi đã ổn định lại quanh SMA(20) — chưa thành xu hướng, chưa cảnh báo."
+        },
+        {
+          "row_index": 79,
+          "value": 216.0,
+          "is_violation": true,
+          "point_alert": true,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Mới có 1 điểm bất thường đơn lẻ trong 5 điểm gần nhất — một điểm xấu đơn lẻ chưa thành xu hướng, theo dõi thêm, chưa cảnh báo."
+        },
+        {
+          "row_index": 80,
+          "value": 89.0,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Mới có 1 điểm bất thường đơn lẻ trong 5 điểm gần nhất — một điểm xấu đơn lẻ chưa thành xu hướng, theo dõi thêm, chưa cảnh báo."
+        },
+        {
+          "row_index": 81,
+          "value": 165.0,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Mới có 1 điểm bất thường đơn lẻ trong 5 điểm gần nhất — một điểm xấu đơn lẻ chưa thành xu hướng, theo dõi thêm, chưa cảnh báo."
+        },
+        {
+          "row_index": 82,
+          "value": 89.0,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Mới có 1 điểm bất thường đơn lẻ trong 5 điểm gần nhất — một điểm xấu đơn lẻ chưa thành xu hướng, theo dõi thêm, chưa cảnh báo."
+        },
+        {
+          "row_index": 83,
+          "value": 165.0,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Mới có 1 điểm bất thường đơn lẻ trong 5 điểm gần nhất — một điểm xấu đơn lẻ chưa thành xu hướng, theo dõi thêm, chưa cảnh báo."
+        },
+        {
+          "row_index": 84,
+          "value": 89.0,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Từng có 3 điểm bất thường đơn lẻ nhưng chuỗi đã ổn định lại quanh SMA(20) — chưa thành xu hướng, chưa cảnh báo."
+        },
+        {
+          "row_index": 85,
+          "value": 165.0,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Từng có 3 điểm bất thường đơn lẻ nhưng chuỗi đã ổn định lại quanh SMA(20) — chưa thành xu hướng, chưa cảnh báo."
+        },
+        {
+          "row_index": 86,
+          "value": 176.0,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Từng có 3 điểm bất thường đơn lẻ nhưng chuỗi đã ổn định lại quanh SMA(20) — chưa thành xu hướng, chưa cảnh báo."
+        },
+        {
+          "row_index": 87,
+          "value": 216.0,
+          "is_violation": true,
+          "point_alert": true,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Mới có 1 điểm bất thường đơn lẻ trong 5 điểm gần nhất — một điểm xấu đơn lẻ chưa thành xu hướng, theo dõi thêm, chưa cảnh báo."
+        },
+        {
+          "row_index": 88,
+          "value": 89.0,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Mới có 1 điểm bất thường đơn lẻ trong 5 điểm gần nhất — một điểm xấu đơn lẻ chưa thành xu hướng, theo dõi thêm, chưa cảnh báo."
+        },
+        {
+          "row_index": 89,
+          "value": 165.0,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Mới có 1 điểm bất thường đơn lẻ trong 5 điểm gần nhất — một điểm xấu đơn lẻ chưa thành xu hướng, theo dõi thêm, chưa cảnh báo."
+        },
+        {
+          "row_index": 90,
+          "value": 184.0,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Mới có 1 điểm bất thường đơn lẻ trong 5 điểm gần nhất — một điểm xấu đơn lẻ chưa thành xu hướng, theo dõi thêm, chưa cảnh báo."
+        },
+        {
+          "row_index": 91,
+          "value": 197.0,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Mới có 1 điểm bất thường đơn lẻ trong 5 điểm gần nhất — một điểm xấu đơn lẻ chưa thành xu hướng, theo dõi thêm, chưa cảnh báo."
+        },
+        {
+          "row_index": 92,
+          "value": 157.0,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Từng có 4 điểm bất thường đơn lẻ nhưng chuỗi đã ổn định lại quanh SMA(20) — chưa thành xu hướng, chưa cảnh báo."
+        },
+        {
+          "row_index": 93,
+          "value": 89.0,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Từng có 4 điểm bất thường đơn lẻ nhưng chuỗi đã ổn định lại quanh SMA(20) — chưa thành xu hướng, chưa cảnh báo."
+        },
+        {
+          "row_index": 94,
+          "value": 165.0,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Từng có 4 điểm bất thường đơn lẻ nhưng chuỗi đã ổn định lại quanh SMA(20) — chưa thành xu hướng, chưa cảnh báo."
+        },
+        {
+          "row_index": 95,
+          "value": 176.0,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Từng có 4 điểm bất thường đơn lẻ nhưng chuỗi đã ổn định lại quanh SMA(20) — chưa thành xu hướng, chưa cảnh báo."
+        },
+        {
+          "row_index": 96,
+          "value": 216.0,
+          "is_violation": true,
+          "point_alert": true,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Mới có 1 điểm bất thường đơn lẻ trong 5 điểm gần nhất — một điểm xấu đơn lẻ chưa thành xu hướng, theo dõi thêm, chưa cảnh báo."
+        },
+        {
+          "row_index": 97,
+          "value": 89.0,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Mới có 1 điểm bất thường đơn lẻ trong 5 điểm gần nhất — một điểm xấu đơn lẻ chưa thành xu hướng, theo dõi thêm, chưa cảnh báo."
+        },
+        {
+          "row_index": 98,
+          "value": 165.0,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Mới có 1 điểm bất thường đơn lẻ trong 5 điểm gần nhất — một điểm xấu đơn lẻ chưa thành xu hướng, theo dõi thêm, chưa cảnh báo."
+        },
+        {
+          "row_index": 99,
+          "value": 146.0,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Mới có 1 điểm bất thường đơn lẻ trong 5 điểm gần nhất — một điểm xấu đơn lẻ chưa thành xu hướng, theo dõi thêm, chưa cảnh báo."
+        },
+        {
+          "row_index": 100,
+          "value": 139.0,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Mới có 1 điểm bất thường đơn lẻ trong 5 điểm gần nhất — một điểm xấu đơn lẻ chưa thành xu hướng, theo dõi thêm, chưa cảnh báo."
+        },
+        {
+          "row_index": 101,
+          "value": 87.0,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Từng có 5 điểm bất thường đơn lẻ nhưng chuỗi đã ổn định lại quanh SMA(20) — chưa thành xu hướng, chưa cảnh báo."
+        },
+        {
+          "row_index": 102,
+          "value": 98.0,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Từng có 5 điểm bất thường đơn lẻ nhưng chuỗi đã ổn định lại quanh SMA(20) — chưa thành xu hướng, chưa cảnh báo."
+        },
+        {
+          "row_index": 103,
+          "value": 89.0,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Từng có 5 điểm bất thường đơn lẻ nhưng chuỗi đã ổn định lại quanh SMA(20) — chưa thành xu hướng, chưa cảnh báo."
+        },
+        {
+          "row_index": 104,
+          "value": 165.0,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Từng có 5 điểm bất thường đơn lẻ nhưng chuỗi đã ổn định lại quanh SMA(20) — chưa thành xu hướng, chưa cảnh báo."
+        },
+        {
+          "row_index": 105,
+          "value": 176.0,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Từng có 5 điểm bất thường đơn lẻ nhưng chuỗi đã ổn định lại quanh SMA(20) — chưa thành xu hướng, chưa cảnh báo."
+        },
+        {
+          "row_index": 106,
+          "value": 216.0,
+          "is_violation": true,
+          "point_alert": true,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Mới có 1 điểm bất thường đơn lẻ trong 5 điểm gần nhất — một điểm xấu đơn lẻ chưa thành xu hướng, theo dõi thêm, chưa cảnh báo."
+        },
+        {
+          "row_index": 107,
+          "value": 89.0,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Mới có 1 điểm bất thường đơn lẻ trong 5 điểm gần nhất — một điểm xấu đơn lẻ chưa thành xu hướng, theo dõi thêm, chưa cảnh báo."
+        },
+        {
+          "row_index": 108,
+          "value": 165.0,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Mới có 1 điểm bất thường đơn lẻ trong 5 điểm gần nhất — một điểm xấu đơn lẻ chưa thành xu hướng, theo dõi thêm, chưa cảnh báo."
+        },
+        {
+          "row_index": 109,
+          "value": 119.0,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Mới có 1 điểm bất thường đơn lẻ trong 5 điểm gần nhất — một điểm xấu đơn lẻ chưa thành xu hướng, theo dõi thêm, chưa cảnh báo."
+        },
+        {
+          "row_index": 110,
+          "value": 138.0,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Mới có 1 điểm bất thường đơn lẻ trong 5 điểm gần nhất — một điểm xấu đơn lẻ chưa thành xu hướng, theo dõi thêm, chưa cảnh báo."
+        },
+        {
+          "row_index": 111,
+          "value": 200.0,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Từng có 6 điểm bất thường đơn lẻ nhưng chuỗi đã ổn định lại quanh SMA(20) — chưa thành xu hướng, chưa cảnh báo."
+        },
+        {
+          "row_index": 112,
+          "value": 89.0,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Từng có 6 điểm bất thường đơn lẻ nhưng chuỗi đã ổn định lại quanh SMA(20) — chưa thành xu hướng, chưa cảnh báo."
+        },
+        {
+          "row_index": 113,
+          "value": 165.0,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Từng có 6 điểm bất thường đơn lẻ nhưng chuỗi đã ổn định lại quanh SMA(20) — chưa thành xu hướng, chưa cảnh báo."
+        },
+        {
+          "row_index": 114,
+          "value": 89.0,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Từng có 6 điểm bất thường đơn lẻ nhưng chuỗi đã ổn định lại quanh SMA(20) — chưa thành xu hướng, chưa cảnh báo."
+        },
+        {
+          "row_index": 115,
+          "value": 165.0,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Từng có 6 điểm bất thường đơn lẻ nhưng chuỗi đã ổn định lại quanh SMA(20) — chưa thành xu hướng, chưa cảnh báo."
+        },
+        {
+          "row_index": 116,
+          "value": 89.0,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Từng có 6 điểm bất thường đơn lẻ nhưng chuỗi đã ổn định lại quanh SMA(20) — chưa thành xu hướng, chưa cảnh báo."
+        },
+        {
+          "row_index": 117,
+          "value": 165.0,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Từng có 6 điểm bất thường đơn lẻ nhưng chuỗi đã ổn định lại quanh SMA(20) — chưa thành xu hướng, chưa cảnh báo."
+        },
+        {
+          "row_index": 118,
+          "value": 138.0,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Từng có 6 điểm bất thường đơn lẻ nhưng chuỗi đã ổn định lại quanh SMA(20) — chưa thành xu hướng, chưa cảnh báo."
+        },
+        {
+          "row_index": 119,
+          "value": 200.0,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Từng có 6 điểm bất thường đơn lẻ nhưng chuỗi đã ổn định lại quanh SMA(20) — chưa thành xu hướng, chưa cảnh báo."
+        },
+        {
+          "row_index": 120,
+          "value": 89.0,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Từng có 6 điểm bất thường đơn lẻ nhưng chuỗi đã ổn định lại quanh SMA(20) — chưa thành xu hướng, chưa cảnh báo."
+        },
+        {
+          "row_index": 121,
+          "value": 165.0,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Từng có 6 điểm bất thường đơn lẻ nhưng chuỗi đã ổn định lại quanh SMA(20) — chưa thành xu hướng, chưa cảnh báo."
+        },
+        {
+          "row_index": 122,
+          "value": 89.0,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Từng có 6 điểm bất thường đơn lẻ nhưng chuỗi đã ổn định lại quanh SMA(20) — chưa thành xu hướng, chưa cảnh báo."
+        },
+        {
+          "row_index": 123,
+          "value": 165.0,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Từng có 6 điểm bất thường đơn lẻ nhưng chuỗi đã ổn định lại quanh SMA(20) — chưa thành xu hướng, chưa cảnh báo."
+        },
+        {
+          "row_index": 124,
+          "value": 138.0,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Từng có 6 điểm bất thường đơn lẻ nhưng chuỗi đã ổn định lại quanh SMA(20) — chưa thành xu hướng, chưa cảnh báo."
+        },
+        {
+          "row_index": 125,
+          "value": 200.0,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Từng có 6 điểm bất thường đơn lẻ nhưng chuỗi đã ổn định lại quanh SMA(20) — chưa thành xu hướng, chưa cảnh báo."
+        },
+        {
+          "row_index": 126,
+          "value": 89.0,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Từng có 6 điểm bất thường đơn lẻ nhưng chuỗi đã ổn định lại quanh SMA(20) — chưa thành xu hướng, chưa cảnh báo."
+        },
+        {
+          "row_index": 127,
+          "value": 165.0,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Từng có 6 điểm bất thường đơn lẻ nhưng chuỗi đã ổn định lại quanh SMA(20) — chưa thành xu hướng, chưa cảnh báo."
+        },
+        {
+          "row_index": 128,
+          "value": 89.0,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Từng có 6 điểm bất thường đơn lẻ nhưng chuỗi đã ổn định lại quanh SMA(20) — chưa thành xu hướng, chưa cảnh báo."
+        },
+        {
+          "row_index": 129,
+          "value": 165.0,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Từng có 6 điểm bất thường đơn lẻ nhưng chuỗi đã ổn định lại quanh SMA(20) — chưa thành xu hướng, chưa cảnh báo."
+        },
+        {
+          "row_index": 130,
+          "value": 138.0,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Từng có 6 điểm bất thường đơn lẻ nhưng chuỗi đã ổn định lại quanh SMA(20) — chưa thành xu hướng, chưa cảnh báo."
+        },
+        {
+          "row_index": 131,
+          "value": 200.0,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Từng có 6 điểm bất thường đơn lẻ nhưng chuỗi đã ổn định lại quanh SMA(20) — chưa thành xu hướng, chưa cảnh báo."
+        }
+      ]
+    },
+    "Temperature": {
+      "metric_name": "Temperature",
+      "total_points": 132,
+      "k": 3.0,
+      "window": 20,
+      "min_value": 19.2,
+      "max_value": 24.3,
+      "mean_value": 23.94696969696971,
+      "single_violation_count": 2,
+      "single_violations": [
+        {
+          "row_index": 33,
+          "date": "2026/08/10",
+          "time": "6:17:45",
+          "serial": "61C1047Z3321",
+          "value": 19.2
+        },
+        {
+          "row_index": 34,
+          "date": "2026/08/10",
+          "time": "6:21:37",
+          "serial": "61C1047Z3311",
+          "value": 19.2
+        }
+      ],
+      "abnormal_full_with_nguong_count": 62,
+      "abnormal_full_pure_sma_count": 62,
+      "abnormal_full_pure_sma": [
+        {
+          "index": 24,
+          "value": 21.7,
+          "sma": 24.040000000000006,
+          "residual": -2.340000000000007,
+          "sigma": 0.7800000000000006,
+          "abnormal": true,
+          "ly_do": "lech_xa_sma"
+        },
+        {
+          "index": 33,
+          "value": 19.2,
+          "sma": 24.02631578947369,
+          "residual": -4.826315789473689,
+          "sigma": 0.7979197329788309,
+          "abnormal": true,
+          "ly_do": "lech_xa_sma"
+        },
+        {
+          "index": 34,
+          "value": 19.2,
+          "sma": 24.011111111111116,
+          "residual": -4.811111111111117,
+          "sigma": 0.8171011693711218,
+          "abnormal": true,
+          "ly_do": "lech_xa_sma"
+        },
+        {
+          "index": 36,
+          "value": 24.3,
+          "sma": 24.300000000000008,
+          "residual": -7.105427357601002e-15,
+          "sigma": 0.0,
+          "abnormal": true,
+          "ly_do": "nen_phang_nhung_lech"
+        },
+        {
+          "index": 37,
+          "value": 24.3,
+          "sma": 24.300000000000008,
+          "residual": -7.105427357601002e-15,
+          "sigma": 0.0,
+          "abnormal": true,
+          "ly_do": "nen_phang_nhung_lech"
+        },
+        {
+          "index": 38,
+          "value": 24.3,
+          "sma": 24.300000000000008,
+          "residual": -7.105427357601002e-15,
+          "sigma": 0.0,
+          "abnormal": true,
+          "ly_do": "nen_phang_nhung_lech"
+        },
+        {
+          "index": 39,
+          "value": 24.3,
+          "sma": 24.300000000000008,
+          "residual": -7.105427357601002e-15,
+          "sigma": 0.0,
+          "abnormal": true,
+          "ly_do": "nen_phang_nhung_lech"
+        },
+        {
+          "index": 40,
+          "value": 24.3,
+          "sma": 24.300000000000008,
+          "residual": -7.105427357601002e-15,
+          "sigma": 0.0,
+          "abnormal": true,
+          "ly_do": "nen_phang_nhung_lech"
+        },
+        {
+          "index": 41,
+          "value": 24.3,
+          "sma": 24.300000000000008,
+          "residual": -7.105427357601002e-15,
+          "sigma": 0.0,
+          "abnormal": true,
+          "ly_do": "nen_phang_nhung_lech"
+        },
+        {
+          "index": 42,
+          "value": 24.3,
+          "sma": 24.300000000000008,
+          "residual": -7.105427357601002e-15,
+          "sigma": 0.0,
+          "abnormal": true,
+          "ly_do": "nen_phang_nhung_lech"
+        },
+        {
+          "index": 43,
+          "value": 24.3,
+          "sma": 24.300000000000004,
+          "residual": -3.552713678800501e-15,
+          "sigma": 0.0,
+          "abnormal": true,
+          "ly_do": "nen_phang_nhung_lech"
+        },
+        {
+          "index": 45,
+          "value": 24.3,
+          "sma": 24.300000000000004,
+          "residual": -3.552713678800501e-15,
+          "sigma": 0.0,
+          "abnormal": true,
+          "ly_do": "nen_phang_nhung_lech"
+        },
+        {
+          "index": 54,
+          "value": 24.3,
+          "sma": 24.300000000000004,
+          "residual": -3.552713678800501e-15,
+          "sigma": 0.0,
+          "abnormal": true,
+          "ly_do": "nen_phang_nhung_lech"
+        },
+        {
+          "index": 55,
+          "value": 24.3,
+          "sma": 24.300000000000004,
+          "residual": -3.552713678800501e-15,
+          "sigma": 0.0,
+          "abnormal": true,
+          "ly_do": "nen_phang_nhung_lech"
+        },
+        {
+          "index": 56,
+          "value": 24.3,
+          "sma": 24.300000000000008,
+          "residual": -7.105427357601002e-15,
+          "sigma": 0.0,
+          "abnormal": true,
+          "ly_do": "nen_phang_nhung_lech"
+        },
+        {
+          "index": 57,
+          "value": 24.3,
+          "sma": 24.300000000000008,
+          "residual": -7.105427357601002e-15,
+          "sigma": 0.0,
+          "abnormal": true,
+          "ly_do": "nen_phang_nhung_lech"
+        },
+        {
+          "index": 58,
+          "value": 24.3,
+          "sma": 24.300000000000008,
+          "residual": -7.105427357601002e-15,
+          "sigma": 0.0,
+          "abnormal": true,
+          "ly_do": "nen_phang_nhung_lech"
+        },
+        {
+          "index": 59,
+          "value": 24.3,
+          "sma": 24.300000000000008,
+          "residual": -7.105427357601002e-15,
+          "sigma": 0.0,
+          "abnormal": true,
+          "ly_do": "nen_phang_nhung_lech"
+        },
+        {
+          "index": 60,
+          "value": 24.3,
+          "sma": 24.300000000000008,
+          "residual": -7.105427357601002e-15,
+          "sigma": 0.0,
+          "abnormal": true,
+          "ly_do": "nen_phang_nhung_lech"
+        },
+        {
+          "index": 61,
+          "value": 24.3,
+          "sma": 24.300000000000008,
+          "residual": -7.105427357601002e-15,
+          "sigma": 0.0,
+          "abnormal": true,
+          "ly_do": "nen_phang_nhung_lech"
+        },
+        {
+          "index": 62,
+          "value": 24.3,
+          "sma": 24.300000000000008,
+          "residual": -7.105427357601002e-15,
+          "sigma": 0.0,
+          "abnormal": true,
+          "ly_do": "nen_phang_nhung_lech"
+        },
+        {
+          "index": 63,
+          "value": 24.3,
+          "sma": 24.300000000000008,
+          "residual": -7.105427357601002e-15,
+          "sigma": 0.0,
+          "abnormal": true,
+          "ly_do": "nen_phang_nhung_lech"
+        },
+        {
+          "index": 64,
+          "value": 24.3,
+          "sma": 24.300000000000008,
+          "residual": -7.105427357601002e-15,
+          "sigma": 0.0,
+          "abnormal": true,
+          "ly_do": "nen_phang_nhung_lech"
+        },
+        {
+          "index": 65,
+          "value": 24.3,
+          "sma": 24.300000000000008,
+          "residual": -7.105427357601002e-15,
+          "sigma": 0.0,
+          "abnormal": true,
+          "ly_do": "nen_phang_nhung_lech"
+        },
+        {
+          "index": 66,
+          "value": 24.3,
+          "sma": 24.300000000000008,
+          "residual": -7.105427357601002e-15,
+          "sigma": 0.0,
+          "abnormal": true,
+          "ly_do": "nen_phang_nhung_lech"
+        },
+        {
+          "index": 67,
+          "value": 24.3,
+          "sma": 24.300000000000008,
+          "residual": -7.105427357601002e-15,
+          "sigma": 0.0,
+          "abnormal": true,
+          "ly_do": "nen_phang_nhung_lech"
+        },
+        {
+          "index": 68,
+          "value": 24.3,
+          "sma": 24.300000000000008,
+          "residual": -7.105427357601002e-15,
+          "sigma": 0.0,
+          "abnormal": true,
+          "ly_do": "nen_phang_nhung_lech"
+        },
+        {
+          "index": 69,
+          "value": 24.3,
+          "sma": 24.300000000000008,
+          "residual": -7.105427357601002e-15,
+          "sigma": 0.0,
+          "abnormal": true,
+          "ly_do": "nen_phang_nhung_lech"
+        },
+        {
+          "index": 70,
+          "value": 24.3,
+          "sma": 24.300000000000008,
+          "residual": -7.105427357601002e-15,
+          "sigma": 0.0,
+          "abnormal": true,
+          "ly_do": "nen_phang_nhung_lech"
+        },
+        {
+          "index": 71,
+          "value": 24.3,
+          "sma": 24.300000000000008,
+          "residual": -7.105427357601002e-15,
+          "sigma": 0.0,
+          "abnormal": true,
+          "ly_do": "nen_phang_nhung_lech"
+        },
+        {
+          "index": 72,
+          "value": 24.3,
+          "sma": 24.300000000000008,
+          "residual": -7.105427357601002e-15,
+          "sigma": 0.0,
+          "abnormal": true,
+          "ly_do": "nen_phang_nhung_lech"
+        },
+        {
+          "index": 73,
+          "value": 24.3,
+          "sma": 24.300000000000008,
+          "residual": -7.105427357601002e-15,
+          "sigma": 0.0,
+          "abnormal": true,
+          "ly_do": "nen_phang_nhung_lech"
+        },
+        {
+          "index": 74,
+          "value": 24.3,
+          "sma": 24.300000000000008,
+          "residual": -7.105427357601002e-15,
+          "sigma": 0.0,
+          "abnormal": true,
+          "ly_do": "nen_phang_nhung_lech"
+        },
+        {
+          "index": 75,
+          "value": 24.3,
+          "sma": 24.300000000000008,
+          "residual": -7.105427357601002e-15,
+          "sigma": 0.0,
+          "abnormal": true,
+          "ly_do": "nen_phang_nhung_lech"
+        },
+        {
+          "index": 76,
+          "value": 24.3,
+          "sma": 24.300000000000008,
+          "residual": -7.105427357601002e-15,
+          "sigma": 0.0,
+          "abnormal": true,
+          "ly_do": "nen_phang_nhung_lech"
+        },
+        {
+          "index": 77,
+          "value": 24.3,
+          "sma": 24.300000000000008,
+          "residual": -7.105427357601002e-15,
+          "sigma": 0.0,
+          "abnormal": true,
+          "ly_do": "nen_phang_nhung_lech"
+        },
+        {
+          "index": 78,
+          "value": 24.3,
+          "sma": 24.300000000000008,
+          "residual": -7.105427357601002e-15,
+          "sigma": 0.0,
+          "abnormal": true,
+          "ly_do": "nen_phang_nhung_lech"
+        },
+        {
+          "index": 79,
+          "value": 24.3,
+          "sma": 24.300000000000008,
+          "residual": -7.105427357601002e-15,
+          "sigma": 0.0,
+          "abnormal": true,
+          "ly_do": "nen_phang_nhung_lech"
+        },
+        {
+          "index": 80,
+          "value": 24.3,
+          "sma": 24.300000000000008,
+          "residual": -7.105427357601002e-15,
+          "sigma": 0.0,
+          "abnormal": true,
+          "ly_do": "nen_phang_nhung_lech"
+        },
+        {
+          "index": 81,
+          "value": 24.3,
+          "sma": 24.300000000000008,
+          "residual": -7.105427357601002e-15,
+          "sigma": 0.0,
+          "abnormal": true,
+          "ly_do": "nen_phang_nhung_lech"
+        },
+        {
+          "index": 82,
+          "value": 24.3,
+          "sma": 24.300000000000008,
+          "residual": -7.105427357601002e-15,
+          "sigma": 0.0,
+          "abnormal": true,
+          "ly_do": "nen_phang_nhung_lech"
+        },
+        {
+          "index": 83,
+          "value": 24.3,
+          "sma": 24.300000000000008,
+          "residual": -7.105427357601002e-15,
+          "sigma": 0.0,
+          "abnormal": true,
+          "ly_do": "nen_phang_nhung_lech"
+        },
+        {
+          "index": 84,
+          "value": 24.3,
+          "sma": 24.300000000000008,
+          "residual": -7.105427357601002e-15,
+          "sigma": 0.0,
+          "abnormal": true,
+          "ly_do": "nen_phang_nhung_lech"
+        },
+        {
+          "index": 85,
+          "value": 24.3,
+          "sma": 24.300000000000008,
+          "residual": -7.105427357601002e-15,
+          "sigma": 0.0,
+          "abnormal": true,
+          "ly_do": "nen_phang_nhung_lech"
+        },
+        {
+          "index": 86,
+          "value": 24.3,
+          "sma": 24.300000000000008,
+          "residual": -7.105427357601002e-15,
+          "sigma": 0.0,
+          "abnormal": true,
+          "ly_do": "nen_phang_nhung_lech"
+        },
+        {
+          "index": 87,
+          "value": 24.3,
+          "sma": 24.300000000000008,
+          "residual": -7.105427357601002e-15,
+          "sigma": 0.0,
+          "abnormal": true,
+          "ly_do": "nen_phang_nhung_lech"
+        },
+        {
+          "index": 88,
+          "value": 24.3,
+          "sma": 24.300000000000008,
+          "residual": -7.105427357601002e-15,
+          "sigma": 0.0,
+          "abnormal": true,
+          "ly_do": "nen_phang_nhung_lech"
+        },
+        {
+          "index": 89,
+          "value": 24.3,
+          "sma": 24.300000000000008,
+          "residual": -7.105427357601002e-15,
+          "sigma": 0.0,
+          "abnormal": true,
+          "ly_do": "nen_phang_nhung_lech"
+        },
+        {
+          "index": 90,
+          "value": 24.3,
+          "sma": 24.300000000000008,
+          "residual": -7.105427357601002e-15,
+          "sigma": 0.0,
+          "abnormal": true,
+          "ly_do": "nen_phang_nhung_lech"
+        },
+        {
+          "index": 91,
+          "value": 21.7,
+          "sma": 24.300000000000008,
+          "residual": -2.6000000000000085,
+          "sigma": 0.0,
+          "abnormal": true,
+          "ly_do": "nen_phang_nhung_lech"
+        },
+        {
+          "index": 92,
+          "value": 21.7,
+          "sma": 24.17000000000001,
+          "residual": -2.4700000000000095,
+          "sigma": 0.5666568626602879,
+          "abnormal": true,
+          "ly_do": "lech_xa_sma"
+        },
+        {
+          "index": 103,
+          "value": 24.3,
+          "sma": 24.300000000000004,
+          "residual": -3.552713678800501e-15,
+          "sigma": 0.0,
+          "abnormal": true,
+          "ly_do": "nen_phang_nhung_lech"
+        },
+        {
+          "index": 104,
+          "value": 24.3,
+          "sma": 24.300000000000004,
+          "residual": -3.552713678800501e-15,
+          "sigma": 0.0,
+          "abnormal": true,
+          "ly_do": "nen_phang_nhung_lech"
+        },
+        {
+          "index": 105,
+          "value": 24.3,
+          "sma": 24.300000000000004,
+          "residual": -3.552713678800501e-15,
+          "sigma": 0.0,
+          "abnormal": true,
+          "ly_do": "nen_phang_nhung_lech"
+        },
+        {
+          "index": 106,
+          "value": 24.3,
+          "sma": 24.300000000000004,
+          "residual": -3.552713678800501e-15,
+          "sigma": 0.0,
+          "abnormal": true,
+          "ly_do": "nen_phang_nhung_lech"
+        },
+        {
+          "index": 107,
+          "value": 24.3,
+          "sma": 24.300000000000004,
+          "residual": -3.552713678800501e-15,
+          "sigma": 0.0,
+          "abnormal": true,
+          "ly_do": "nen_phang_nhung_lech"
+        },
+        {
+          "index": 108,
+          "value": 24.3,
+          "sma": 24.300000000000004,
+          "residual": -3.552713678800501e-15,
+          "sigma": 0.0,
+          "abnormal": true,
+          "ly_do": "nen_phang_nhung_lech"
+        },
+        {
+          "index": 109,
+          "value": 21.7,
+          "sma": 24.300000000000004,
+          "residual": -2.600000000000005,
+          "sigma": 0.0,
+          "abnormal": true,
+          "ly_do": "nen_phang_nhung_lech"
+        },
+        {
+          "index": 110,
+          "value": 21.7,
+          "sma": 24.300000000000004,
+          "residual": -2.600000000000005,
+          "sigma": 0.0,
+          "abnormal": true,
+          "ly_do": "nen_phang_nhung_lech"
+        },
+        {
+          "index": 111,
+          "value": 21.7,
+          "sma": 24.300000000000004,
+          "residual": -2.600000000000005,
+          "sigma": 0.0,
+          "abnormal": true,
+          "ly_do": "nen_phang_nhung_lech"
+        },
+        {
+          "index": 112,
+          "value": 24.3,
+          "sma": 24.300000000000004,
+          "residual": -3.552713678800501e-15,
+          "sigma": 0.0,
+          "abnormal": true,
+          "ly_do": "nen_phang_nhung_lech"
+        },
+        {
+          "index": 113,
+          "value": 24.3,
+          "sma": 24.300000000000004,
+          "residual": -3.552713678800501e-15,
+          "sigma": 0.0,
+          "abnormal": true,
+          "ly_do": "nen_phang_nhung_lech"
+        }
+      ],
+      "gate_blocked_count": 2,
+      "trend_confirmed_count": 0,
+      "spurious_alerts_count": 61,
+      "blocked_details": [
+        {
+          "row_index": 33,
+          "value": 19.2,
+          "is_violation": true,
+          "point_alert": true,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Mới có 1 điểm bất thường đơn lẻ trong 5 điểm gần nhất — một điểm xấu đơn lẻ chưa thành xu hướng, theo dõi thêm, chưa cảnh báo."
+        },
+        {
+          "row_index": 34,
+          "value": 19.2,
+          "is_violation": true,
+          "point_alert": true,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Mới có 2 điểm bất thường đơn lẻ trong 5 điểm gần nhất — một điểm xấu đơn lẻ chưa thành xu hướng, theo dõi thêm, chưa cảnh báo."
+        }
+      ],
+      "confirmed_details": [],
+      "sequential_results": [
+        {
+          "row_index": 0,
+          "value": 24.3,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Chưa đủ điểm nền để kết luận xu hướng theo SMA(20) (mới có 1 điểm), cần thêm dữ liệu cùng JIG."
+        },
+        {
+          "row_index": 1,
+          "value": 24.3,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Chưa đủ điểm nền để kết luận xu hướng theo SMA(20) (mới có 2 điểm), cần thêm dữ liệu cùng JIG."
+        },
+        {
+          "row_index": 2,
+          "value": 24.3,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Chưa đủ điểm nền để kết luận xu hướng theo SMA(20) (mới có 3 điểm), cần thêm dữ liệu cùng JIG."
+        },
+        {
+          "row_index": 3,
+          "value": 24.3,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Chưa đủ điểm nền để kết luận xu hướng theo SMA(20) (mới có 4 điểm), cần thêm dữ liệu cùng JIG."
+        },
+        {
+          "row_index": 4,
+          "value": 24.3,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Chưa đủ điểm nền để kết luận xu hướng theo SMA(20) (mới có 5 điểm), cần thêm dữ liệu cùng JIG."
+        },
+        {
+          "row_index": 5,
+          "value": 24.3,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Chưa đủ điểm nền để kết luận xu hướng theo SMA(20) (mới có 6 điểm), cần thêm dữ liệu cùng JIG."
+        },
+        {
+          "row_index": 6,
+          "value": 24.3,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Chưa đủ điểm nền để kết luận xu hướng theo SMA(20) (mới có 7 điểm), cần thêm dữ liệu cùng JIG."
+        },
+        {
+          "row_index": 7,
+          "value": 24.3,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Chưa đủ điểm nền để kết luận xu hướng theo SMA(20) (mới có 8 điểm), cần thêm dữ liệu cùng JIG."
+        },
+        {
+          "row_index": 8,
+          "value": 24.3,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Chưa đủ điểm nền để kết luận xu hướng theo SMA(20) (mới có 9 điểm), cần thêm dữ liệu cùng JIG."
+        },
+        {
+          "row_index": 9,
+          "value": 24.3,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Chưa đủ điểm nền để kết luận xu hướng theo SMA(20) (mới có 10 điểm), cần thêm dữ liệu cùng JIG."
+        },
+        {
+          "row_index": 10,
+          "value": 24.3,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Chưa đủ điểm nền để kết luận xu hướng theo SMA(20) (mới có 11 điểm), cần thêm dữ liệu cùng JIG."
+        },
+        {
+          "row_index": 11,
+          "value": 24.3,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Chưa đủ điểm nền để kết luận xu hướng theo SMA(20) (mới có 12 điểm), cần thêm dữ liệu cùng JIG."
+        },
+        {
+          "row_index": 12,
+          "value": 24.3,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Chưa đủ điểm nền để kết luận xu hướng theo SMA(20) (mới có 13 điểm), cần thêm dữ liệu cùng JIG."
+        },
+        {
+          "row_index": 13,
+          "value": 24.3,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Chưa đủ điểm nền để kết luận xu hướng theo SMA(20) (mới có 14 điểm), cần thêm dữ liệu cùng JIG."
+        },
+        {
+          "row_index": 14,
+          "value": 21.7,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Chưa đủ điểm nền để kết luận xu hướng theo SMA(20) (mới có 15 điểm), cần thêm dữ liệu cùng JIG."
+        },
+        {
+          "row_index": 15,
+          "value": 21.7,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Chưa đủ điểm nền để kết luận xu hướng theo SMA(20) (mới có 16 điểm), cần thêm dữ liệu cùng JIG."
+        },
+        {
+          "row_index": 16,
+          "value": 24.3,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Chưa đủ điểm nền để kết luận xu hướng theo SMA(20) (mới có 17 điểm), cần thêm dữ liệu cùng JIG."
+        },
+        {
+          "row_index": 17,
+          "value": 24.3,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Chưa đủ điểm nền để kết luận xu hướng theo SMA(20) (mới có 18 điểm), cần thêm dữ liệu cùng JIG."
+        },
+        {
+          "row_index": 18,
+          "value": 24.3,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Chưa đủ điểm nền để kết luận xu hướng theo SMA(20) (mới có 19 điểm), cần thêm dữ liệu cùng JIG."
+        },
+        {
+          "row_index": 19,
+          "value": 24.3,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Đạt",
+          "trend_detail": "Các điểm gần nhất đều nằm quanh SMA(20), chưa thấy xu hướng xấu."
+        },
+        {
+          "row_index": 20,
+          "value": 24.3,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Đạt",
+          "trend_detail": "Các điểm gần nhất đều nằm quanh SMA(20), chưa thấy xu hướng xấu."
+        },
+        {
+          "row_index": 21,
+          "value": 24.3,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Đạt",
+          "trend_detail": "Các điểm gần nhất đều nằm quanh SMA(20), chưa thấy xu hướng xấu."
+        },
+        {
+          "row_index": 22,
+          "value": 24.3,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Đạt",
+          "trend_detail": "Các điểm gần nhất đều nằm quanh SMA(20), chưa thấy xu hướng xấu."
+        },
+        {
+          "row_index": 23,
+          "value": 24.3,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Đạt",
+          "trend_detail": "Các điểm gần nhất đều nằm quanh SMA(20), chưa thấy xu hướng xấu."
+        },
+        {
+          "row_index": 24,
+          "value": 21.7,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Mới có 1 điểm bất thường đơn lẻ trong 5 điểm gần nhất — một điểm xấu đơn lẻ chưa thành xu hướng, theo dõi thêm, chưa cảnh báo."
+        },
+        {
+          "row_index": 25,
+          "value": 24.3,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Mới có 1 điểm bất thường đơn lẻ trong 5 điểm gần nhất — một điểm xấu đơn lẻ chưa thành xu hướng, theo dõi thêm, chưa cảnh báo."
+        },
+        {
+          "row_index": 26,
+          "value": 24.3,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Mới có 1 điểm bất thường đơn lẻ trong 5 điểm gần nhất — một điểm xấu đơn lẻ chưa thành xu hướng, theo dõi thêm, chưa cảnh báo."
+        },
+        {
+          "row_index": 27,
+          "value": 24.3,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Mới có 1 điểm bất thường đơn lẻ trong 5 điểm gần nhất — một điểm xấu đơn lẻ chưa thành xu hướng, theo dõi thêm, chưa cảnh báo."
+        },
+        {
+          "row_index": 28,
+          "value": 24.3,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Mới có 1 điểm bất thường đơn lẻ trong 5 điểm gần nhất — một điểm xấu đơn lẻ chưa thành xu hướng, theo dõi thêm, chưa cảnh báo."
+        },
+        {
+          "row_index": 29,
+          "value": 24.3,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Từng có 1 điểm bất thường đơn lẻ nhưng chuỗi đã ổn định lại quanh SMA(20) — chưa thành xu hướng, chưa cảnh báo."
+        },
+        {
+          "row_index": 30,
+          "value": 24.3,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Từng có 1 điểm bất thường đơn lẻ nhưng chuỗi đã ổn định lại quanh SMA(20) — chưa thành xu hướng, chưa cảnh báo."
+        },
+        {
+          "row_index": 31,
+          "value": 24.3,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Từng có 1 điểm bất thường đơn lẻ nhưng chuỗi đã ổn định lại quanh SMA(20) — chưa thành xu hướng, chưa cảnh báo."
+        },
+        {
+          "row_index": 32,
+          "value": 24.3,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Từng có 1 điểm bất thường đơn lẻ nhưng chuỗi đã ổn định lại quanh SMA(20) — chưa thành xu hướng, chưa cảnh báo."
+        },
+        {
+          "row_index": 33,
+          "value": 19.2,
+          "is_violation": true,
+          "point_alert": true,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Mới có 1 điểm bất thường đơn lẻ trong 5 điểm gần nhất — một điểm xấu đơn lẻ chưa thành xu hướng, theo dõi thêm, chưa cảnh báo."
+        },
+        {
+          "row_index": 34,
+          "value": 19.2,
+          "is_violation": true,
+          "point_alert": true,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Mới có 2 điểm bất thường đơn lẻ trong 5 điểm gần nhất — một điểm xấu đơn lẻ chưa thành xu hướng, theo dõi thêm, chưa cảnh báo."
+        },
+        {
+          "row_index": 35,
+          "value": 24.3,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Mới có 2 điểm bất thường đơn lẻ trong 5 điểm gần nhất — một điểm xấu đơn lẻ chưa thành xu hướng, theo dõi thêm, chưa cảnh báo."
+        },
+        {
+          "row_index": 36,
+          "value": 24.3,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": true,
+          "final_alert": true,
+          "trend_status": "Vi phạm",
+          "trend_detail": "Có xu hướng bất thường: 3/5 điểm gần nhất bất thường so với SMA(20)."
+        },
+        {
+          "row_index": 37,
+          "value": 24.3,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": true,
+          "final_alert": true,
+          "trend_status": "Vi phạm",
+          "trend_detail": "Có xu hướng bất thường: 4/5 điểm gần nhất bất thường so với SMA(20)."
+        },
+        {
+          "row_index": 38,
+          "value": 24.3,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": true,
+          "final_alert": true,
+          "trend_status": "Vi phạm",
+          "trend_detail": "Có xu hướng bất thường: 3 điểm liên tiếp lệch xa SMA(20). Điểm mới nhất 24.300 so với SMA 24.300."
+        },
+        {
+          "row_index": 39,
+          "value": 24.3,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": true,
+          "final_alert": true,
+          "trend_status": "Vi phạm",
+          "trend_detail": "Có xu hướng bất thường: 4 điểm liên tiếp lệch xa SMA(20). Điểm mới nhất 24.300 so với SMA 24.300."
+        },
+        {
+          "row_index": 40,
+          "value": 24.3,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": true,
+          "final_alert": true,
+          "trend_status": "Vi phạm",
+          "trend_detail": "Có xu hướng bất thường: 5 điểm liên tiếp lệch xa SMA(20). Điểm mới nhất 24.300 so với SMA 24.300."
+        },
+        {
+          "row_index": 41,
+          "value": 24.3,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": true,
+          "final_alert": true,
+          "trend_status": "Vi phạm",
+          "trend_detail": "Có xu hướng bất thường: 6 điểm liên tiếp lệch xa SMA(20). Điểm mới nhất 24.300 so với SMA 24.300."
+        },
+        {
+          "row_index": 42,
+          "value": 24.3,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": true,
+          "final_alert": true,
+          "trend_status": "Vi phạm",
+          "trend_detail": "Có xu hướng bất thường: 7 điểm liên tiếp lệch xa SMA(20). Điểm mới nhất 24.300 so với SMA 24.300."
+        },
+        {
+          "row_index": 43,
+          "value": 24.3,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": true,
+          "final_alert": true,
+          "trend_status": "Vi phạm",
+          "trend_detail": "Có xu hướng bất thường: 8 điểm liên tiếp lệch xa SMA(20). Điểm mới nhất 24.300 so với SMA 24.300."
+        },
+        {
+          "row_index": 44,
+          "value": 24.3,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": true,
+          "final_alert": true,
+          "trend_status": "Vi phạm",
+          "trend_detail": "Có xu hướng bất thường: 4/5 điểm gần nhất bất thường so với SMA(20)."
+        },
+        {
+          "row_index": 45,
+          "value": 24.3,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": true,
+          "final_alert": true,
+          "trend_status": "Vi phạm",
+          "trend_detail": "Có xu hướng bất thường: 4/5 điểm gần nhất bất thường so với SMA(20)."
+        },
+        {
+          "row_index": 46,
+          "value": 24.3,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": true,
+          "final_alert": true,
+          "trend_status": "Vi phạm",
+          "trend_detail": "Có xu hướng bất thường: 3/5 điểm gần nhất bất thường so với SMA(20)."
+        },
+        {
+          "row_index": 47,
+          "value": 24.3,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Mới có 2 điểm bất thường đơn lẻ trong 5 điểm gần nhất — một điểm xấu đơn lẻ chưa thành xu hướng, theo dõi thêm, chưa cảnh báo."
+        },
+        {
+          "row_index": 48,
+          "value": 24.3,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Mới có 1 điểm bất thường đơn lẻ trong 5 điểm gần nhất — một điểm xấu đơn lẻ chưa thành xu hướng, theo dõi thêm, chưa cảnh báo."
+        },
+        {
+          "row_index": 49,
+          "value": 24.3,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Mới có 1 điểm bất thường đơn lẻ trong 5 điểm gần nhất — một điểm xấu đơn lẻ chưa thành xu hướng, theo dõi thêm, chưa cảnh báo."
+        },
+        {
+          "row_index": 50,
+          "value": 24.3,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Từng có 12 điểm bất thường đơn lẻ nhưng chuỗi đã ổn định lại quanh SMA(20) — chưa thành xu hướng, chưa cảnh báo."
+        },
+        {
+          "row_index": 51,
+          "value": 24.3,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Từng có 12 điểm bất thường đơn lẻ nhưng chuỗi đã ổn định lại quanh SMA(20) — chưa thành xu hướng, chưa cảnh báo."
+        },
+        {
+          "row_index": 52,
+          "value": 24.3,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Từng có 12 điểm bất thường đơn lẻ nhưng chuỗi đã ổn định lại quanh SMA(20) — chưa thành xu hướng, chưa cảnh báo."
+        },
+        {
+          "row_index": 53,
+          "value": 24.3,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Từng có 12 điểm bất thường đơn lẻ nhưng chuỗi đã ổn định lại quanh SMA(20) — chưa thành xu hướng, chưa cảnh báo."
+        },
+        {
+          "row_index": 54,
+          "value": 24.3,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Mới có 1 điểm bất thường đơn lẻ trong 5 điểm gần nhất — một điểm xấu đơn lẻ chưa thành xu hướng, theo dõi thêm, chưa cảnh báo."
+        },
+        {
+          "row_index": 55,
+          "value": 24.3,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Mới có 2 điểm bất thường đơn lẻ trong 5 điểm gần nhất — một điểm xấu đơn lẻ chưa thành xu hướng, theo dõi thêm, chưa cảnh báo."
+        },
+        {
+          "row_index": 56,
+          "value": 24.3,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": true,
+          "final_alert": true,
+          "trend_status": "Vi phạm",
+          "trend_detail": "Có xu hướng bất thường: 3 điểm liên tiếp lệch xa SMA(20). Điểm mới nhất 24.300 so với SMA 24.300."
+        },
+        {
+          "row_index": 57,
+          "value": 24.3,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": true,
+          "final_alert": true,
+          "trend_status": "Vi phạm",
+          "trend_detail": "Có xu hướng bất thường: 4 điểm liên tiếp lệch xa SMA(20). Điểm mới nhất 24.300 so với SMA 24.300."
+        },
+        {
+          "row_index": 58,
+          "value": 24.3,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": true,
+          "final_alert": true,
+          "trend_status": "Vi phạm",
+          "trend_detail": "Có xu hướng bất thường: 5 điểm liên tiếp lệch xa SMA(20). Điểm mới nhất 24.300 so với SMA 24.300."
+        },
+        {
+          "row_index": 59,
+          "value": 24.3,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": true,
+          "final_alert": true,
+          "trend_status": "Vi phạm",
+          "trend_detail": "Có xu hướng bất thường: 6 điểm liên tiếp lệch xa SMA(20). Điểm mới nhất 24.300 so với SMA 24.300."
+        },
+        {
+          "row_index": 60,
+          "value": 24.3,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": true,
+          "final_alert": true,
+          "trend_status": "Vi phạm",
+          "trend_detail": "Có xu hướng bất thường: 7 điểm liên tiếp lệch xa SMA(20). Điểm mới nhất 24.300 so với SMA 24.300."
+        },
+        {
+          "row_index": 61,
+          "value": 24.3,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": true,
+          "final_alert": true,
+          "trend_status": "Vi phạm",
+          "trend_detail": "Có xu hướng bất thường: 8 điểm liên tiếp lệch xa SMA(20). Điểm mới nhất 24.300 so với SMA 24.300."
+        },
+        {
+          "row_index": 62,
+          "value": 24.3,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": true,
+          "final_alert": true,
+          "trend_status": "Vi phạm",
+          "trend_detail": "Có xu hướng bất thường: 9 điểm liên tiếp lệch xa SMA(20). Điểm mới nhất 24.300 so với SMA 24.300."
+        },
+        {
+          "row_index": 63,
+          "value": 24.3,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": true,
+          "final_alert": true,
+          "trend_status": "Vi phạm",
+          "trend_detail": "Có xu hướng bất thường: 10 điểm liên tiếp lệch xa SMA(20). Điểm mới nhất 24.300 so với SMA 24.300."
+        },
+        {
+          "row_index": 64,
+          "value": 24.3,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": true,
+          "final_alert": true,
+          "trend_status": "Vi phạm",
+          "trend_detail": "Có xu hướng bất thường: 11 điểm liên tiếp lệch xa SMA(20). Điểm mới nhất 24.300 so với SMA 24.300."
+        },
+        {
+          "row_index": 65,
+          "value": 24.3,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": true,
+          "final_alert": true,
+          "trend_status": "Vi phạm",
+          "trend_detail": "Có xu hướng bất thường: 12 điểm liên tiếp lệch xa SMA(20). Điểm mới nhất 24.300 so với SMA 24.300."
+        },
+        {
+          "row_index": 66,
+          "value": 24.3,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": true,
+          "final_alert": true,
+          "trend_status": "Vi phạm",
+          "trend_detail": "Có xu hướng bất thường: 13 điểm liên tiếp lệch xa SMA(20). Điểm mới nhất 24.300 so với SMA 24.300."
+        },
+        {
+          "row_index": 67,
+          "value": 24.3,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": true,
+          "final_alert": true,
+          "trend_status": "Vi phạm",
+          "trend_detail": "Có xu hướng bất thường: 14 điểm liên tiếp lệch xa SMA(20). Điểm mới nhất 24.300 so với SMA 24.300."
+        },
+        {
+          "row_index": 68,
+          "value": 24.3,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": true,
+          "final_alert": true,
+          "trend_status": "Vi phạm",
+          "trend_detail": "Có xu hướng bất thường: 15 điểm liên tiếp lệch xa SMA(20). Điểm mới nhất 24.300 so với SMA 24.300."
+        },
+        {
+          "row_index": 69,
+          "value": 24.3,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": true,
+          "final_alert": true,
+          "trend_status": "Vi phạm",
+          "trend_detail": "Có xu hướng bất thường: 16 điểm liên tiếp lệch xa SMA(20). Điểm mới nhất 24.300 so với SMA 24.300."
+        },
+        {
+          "row_index": 70,
+          "value": 24.3,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": true,
+          "final_alert": true,
+          "trend_status": "Vi phạm",
+          "trend_detail": "Có xu hướng bất thường: 17 điểm liên tiếp lệch xa SMA(20). Điểm mới nhất 24.300 so với SMA 24.300."
+        },
+        {
+          "row_index": 71,
+          "value": 24.3,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": true,
+          "final_alert": true,
+          "trend_status": "Vi phạm",
+          "trend_detail": "Có xu hướng bất thường: 18 điểm liên tiếp lệch xa SMA(20). Điểm mới nhất 24.300 so với SMA 24.300."
+        },
+        {
+          "row_index": 72,
+          "value": 24.3,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": true,
+          "final_alert": true,
+          "trend_status": "Vi phạm",
+          "trend_detail": "Có xu hướng bất thường: 19 điểm liên tiếp lệch xa SMA(20). Điểm mới nhất 24.300 so với SMA 24.300."
+        },
+        {
+          "row_index": 73,
+          "value": 24.3,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": true,
+          "final_alert": true,
+          "trend_status": "Vi phạm",
+          "trend_detail": "Có xu hướng bất thường: 20 điểm liên tiếp lệch xa SMA(20). Điểm mới nhất 24.300 so với SMA 24.300."
+        },
+        {
+          "row_index": 74,
+          "value": 24.3,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": true,
+          "final_alert": true,
+          "trend_status": "Vi phạm",
+          "trend_detail": "Có xu hướng bất thường: 21 điểm liên tiếp lệch xa SMA(20). Điểm mới nhất 24.300 so với SMA 24.300."
+        },
+        {
+          "row_index": 75,
+          "value": 24.3,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": true,
+          "final_alert": true,
+          "trend_status": "Vi phạm",
+          "trend_detail": "Có xu hướng bất thường: 22 điểm liên tiếp lệch xa SMA(20). Điểm mới nhất 24.300 so với SMA 24.300."
+        },
+        {
+          "row_index": 76,
+          "value": 24.3,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": true,
+          "final_alert": true,
+          "trend_status": "Vi phạm",
+          "trend_detail": "Có xu hướng bất thường: 23 điểm liên tiếp lệch xa SMA(20). Điểm mới nhất 24.300 so với SMA 24.300."
+        },
+        {
+          "row_index": 77,
+          "value": 24.3,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": true,
+          "final_alert": true,
+          "trend_status": "Vi phạm",
+          "trend_detail": "Có xu hướng bất thường: 24 điểm liên tiếp lệch xa SMA(20). Điểm mới nhất 24.300 so với SMA 24.300."
+        },
+        {
+          "row_index": 78,
+          "value": 24.3,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": true,
+          "final_alert": true,
+          "trend_status": "Vi phạm",
+          "trend_detail": "Có xu hướng bất thường: 25 điểm liên tiếp lệch xa SMA(20). Điểm mới nhất 24.300 so với SMA 24.300."
+        },
+        {
+          "row_index": 79,
+          "value": 24.3,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": true,
+          "final_alert": true,
+          "trend_status": "Vi phạm",
+          "trend_detail": "Có xu hướng bất thường: 26 điểm liên tiếp lệch xa SMA(20). Điểm mới nhất 24.300 so với SMA 24.300."
+        },
+        {
+          "row_index": 80,
+          "value": 24.3,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": true,
+          "final_alert": true,
+          "trend_status": "Vi phạm",
+          "trend_detail": "Có xu hướng bất thường: 27 điểm liên tiếp lệch xa SMA(20). Điểm mới nhất 24.300 so với SMA 24.300."
+        },
+        {
+          "row_index": 81,
+          "value": 24.3,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": true,
+          "final_alert": true,
+          "trend_status": "Vi phạm",
+          "trend_detail": "Có xu hướng bất thường: 28 điểm liên tiếp lệch xa SMA(20). Điểm mới nhất 24.300 so với SMA 24.300."
+        },
+        {
+          "row_index": 82,
+          "value": 24.3,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": true,
+          "final_alert": true,
+          "trend_status": "Vi phạm",
+          "trend_detail": "Có xu hướng bất thường: 29 điểm liên tiếp lệch xa SMA(20). Điểm mới nhất 24.300 so với SMA 24.300."
+        },
+        {
+          "row_index": 83,
+          "value": 24.3,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": true,
+          "final_alert": true,
+          "trend_status": "Vi phạm",
+          "trend_detail": "Có xu hướng bất thường: 30 điểm liên tiếp lệch xa SMA(20). Điểm mới nhất 24.300 so với SMA 24.300."
+        },
+        {
+          "row_index": 84,
+          "value": 24.3,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": true,
+          "final_alert": true,
+          "trend_status": "Vi phạm",
+          "trend_detail": "Có xu hướng bất thường: 31 điểm liên tiếp lệch xa SMA(20). Điểm mới nhất 24.300 so với SMA 24.300."
+        },
+        {
+          "row_index": 85,
+          "value": 24.3,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": true,
+          "final_alert": true,
+          "trend_status": "Vi phạm",
+          "trend_detail": "Có xu hướng bất thường: 32 điểm liên tiếp lệch xa SMA(20). Điểm mới nhất 24.300 so với SMA 24.300."
+        },
+        {
+          "row_index": 86,
+          "value": 24.3,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": true,
+          "final_alert": true,
+          "trend_status": "Vi phạm",
+          "trend_detail": "Có xu hướng bất thường: 33 điểm liên tiếp lệch xa SMA(20). Điểm mới nhất 24.300 so với SMA 24.300."
+        },
+        {
+          "row_index": 87,
+          "value": 24.3,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": true,
+          "final_alert": true,
+          "trend_status": "Vi phạm",
+          "trend_detail": "Có xu hướng bất thường: 34 điểm liên tiếp lệch xa SMA(20). Điểm mới nhất 24.300 so với SMA 24.300."
+        },
+        {
+          "row_index": 88,
+          "value": 24.3,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": true,
+          "final_alert": true,
+          "trend_status": "Vi phạm",
+          "trend_detail": "Có xu hướng bất thường: 35 điểm liên tiếp lệch xa SMA(20). Điểm mới nhất 24.300 so với SMA 24.300."
+        },
+        {
+          "row_index": 89,
+          "value": 24.3,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": true,
+          "final_alert": true,
+          "trend_status": "Vi phạm",
+          "trend_detail": "Có xu hướng bất thường: 36 điểm liên tiếp lệch xa SMA(20). Điểm mới nhất 24.300 so với SMA 24.300."
+        },
+        {
+          "row_index": 90,
+          "value": 24.3,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": true,
+          "final_alert": true,
+          "trend_status": "Vi phạm",
+          "trend_detail": "Có xu hướng bất thường: 37 điểm liên tiếp lệch xa SMA(20). Điểm mới nhất 24.300 so với SMA 24.300."
+        },
+        {
+          "row_index": 91,
+          "value": 21.7,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": true,
+          "final_alert": true,
+          "trend_status": "Vi phạm",
+          "trend_detail": "Có xu hướng bất thường: 38 điểm liên tiếp lệch xa SMA(20). Điểm mới nhất 21.700 so với SMA 24.300."
+        },
+        {
+          "row_index": 92,
+          "value": 21.7,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": true,
+          "final_alert": true,
+          "trend_status": "Vi phạm",
+          "trend_detail": "Có xu hướng bất thường: 39 điểm liên tiếp lệch xa SMA(20). Điểm mới nhất 21.700 so với SMA 24.170."
+        },
+        {
+          "row_index": 93,
+          "value": 24.3,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": true,
+          "final_alert": true,
+          "trend_status": "Vi phạm",
+          "trend_detail": "Có xu hướng bất thường: 4/5 điểm gần nhất bất thường so với SMA(20)."
+        },
+        {
+          "row_index": 94,
+          "value": 24.3,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": true,
+          "final_alert": true,
+          "trend_status": "Vi phạm",
+          "trend_detail": "Có xu hướng bất thường: 3/5 điểm gần nhất bất thường so với SMA(20)."
+        },
+        {
+          "row_index": 95,
+          "value": 24.3,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Mới có 2 điểm bất thường đơn lẻ trong 5 điểm gần nhất — một điểm xấu đơn lẻ chưa thành xu hướng, theo dõi thêm, chưa cảnh báo."
+        },
+        {
+          "row_index": 96,
+          "value": 24.3,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Mới có 1 điểm bất thường đơn lẻ trong 5 điểm gần nhất — một điểm xấu đơn lẻ chưa thành xu hướng, theo dõi thêm, chưa cảnh báo."
+        },
+        {
+          "row_index": 97,
+          "value": 24.3,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Từng có 51 điểm bất thường đơn lẻ nhưng chuỗi đã ổn định lại quanh SMA(20) — chưa thành xu hướng, chưa cảnh báo."
+        },
+        {
+          "row_index": 98,
+          "value": 24.3,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Từng có 51 điểm bất thường đơn lẻ nhưng chuỗi đã ổn định lại quanh SMA(20) — chưa thành xu hướng, chưa cảnh báo."
+        },
+        {
+          "row_index": 99,
+          "value": 24.3,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Từng có 51 điểm bất thường đơn lẻ nhưng chuỗi đã ổn định lại quanh SMA(20) — chưa thành xu hướng, chưa cảnh báo."
+        },
+        {
+          "row_index": 100,
+          "value": 24.3,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Từng có 51 điểm bất thường đơn lẻ nhưng chuỗi đã ổn định lại quanh SMA(20) — chưa thành xu hướng, chưa cảnh báo."
+        },
+        {
+          "row_index": 101,
+          "value": 24.3,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Từng có 51 điểm bất thường đơn lẻ nhưng chuỗi đã ổn định lại quanh SMA(20) — chưa thành xu hướng, chưa cảnh báo."
+        },
+        {
+          "row_index": 102,
+          "value": 24.3,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Từng có 51 điểm bất thường đơn lẻ nhưng chuỗi đã ổn định lại quanh SMA(20) — chưa thành xu hướng, chưa cảnh báo."
+        },
+        {
+          "row_index": 103,
+          "value": 24.3,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Mới có 1 điểm bất thường đơn lẻ trong 5 điểm gần nhất — một điểm xấu đơn lẻ chưa thành xu hướng, theo dõi thêm, chưa cảnh báo."
+        },
+        {
+          "row_index": 104,
+          "value": 24.3,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Mới có 2 điểm bất thường đơn lẻ trong 5 điểm gần nhất — một điểm xấu đơn lẻ chưa thành xu hướng, theo dõi thêm, chưa cảnh báo."
+        },
+        {
+          "row_index": 105,
+          "value": 24.3,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": true,
+          "final_alert": true,
+          "trend_status": "Vi phạm",
+          "trend_detail": "Có xu hướng bất thường: 3 điểm liên tiếp lệch xa SMA(20). Điểm mới nhất 24.300 so với SMA 24.300."
+        },
+        {
+          "row_index": 106,
+          "value": 24.3,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": true,
+          "final_alert": true,
+          "trend_status": "Vi phạm",
+          "trend_detail": "Có xu hướng bất thường: 4 điểm liên tiếp lệch xa SMA(20). Điểm mới nhất 24.300 so với SMA 24.300."
+        },
+        {
+          "row_index": 107,
+          "value": 24.3,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": true,
+          "final_alert": true,
+          "trend_status": "Vi phạm",
+          "trend_detail": "Có xu hướng bất thường: 5 điểm liên tiếp lệch xa SMA(20). Điểm mới nhất 24.300 so với SMA 24.300."
+        },
+        {
+          "row_index": 108,
+          "value": 24.3,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": true,
+          "final_alert": true,
+          "trend_status": "Vi phạm",
+          "trend_detail": "Có xu hướng bất thường: 6 điểm liên tiếp lệch xa SMA(20). Điểm mới nhất 24.300 so với SMA 24.300."
+        },
+        {
+          "row_index": 109,
+          "value": 21.7,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": true,
+          "final_alert": true,
+          "trend_status": "Vi phạm",
+          "trend_detail": "Có xu hướng bất thường: 7 điểm liên tiếp lệch xa SMA(20). Điểm mới nhất 21.700 so với SMA 24.300."
+        },
+        {
+          "row_index": 110,
+          "value": 21.7,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": true,
+          "final_alert": true,
+          "trend_status": "Vi phạm",
+          "trend_detail": "Có xu hướng bất thường: 8 điểm liên tiếp lệch xa SMA(20). Điểm mới nhất 21.700 so với SMA 24.300."
+        },
+        {
+          "row_index": 111,
+          "value": 21.7,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": true,
+          "final_alert": true,
+          "trend_status": "Vi phạm",
+          "trend_detail": "Có xu hướng bất thường: 9 điểm liên tiếp lệch xa SMA(20). Điểm mới nhất 21.700 so với SMA 24.300."
+        },
+        {
+          "row_index": 112,
+          "value": 24.3,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": true,
+          "final_alert": true,
+          "trend_status": "Vi phạm",
+          "trend_detail": "Có xu hướng bất thường: 10 điểm liên tiếp lệch xa SMA(20). Điểm mới nhất 24.300 so với SMA 24.300."
+        },
+        {
+          "row_index": 113,
+          "value": 24.3,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": true,
+          "final_alert": true,
+          "trend_status": "Vi phạm",
+          "trend_detail": "Có xu hướng bất thường: 11 điểm liên tiếp lệch xa SMA(20). Điểm mới nhất 24.300 so với SMA 24.300."
+        },
+        {
+          "row_index": 114,
+          "value": 24.3,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": true,
+          "final_alert": true,
+          "trend_status": "Vi phạm",
+          "trend_detail": "Có xu hướng bất thường: 4/5 điểm gần nhất bất thường so với SMA(20)."
+        },
+        {
+          "row_index": 115,
+          "value": 24.3,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": true,
+          "final_alert": true,
+          "trend_status": "Vi phạm",
+          "trend_detail": "Có xu hướng bất thường: 3/5 điểm gần nhất bất thường so với SMA(20)."
+        },
+        {
+          "row_index": 116,
+          "value": 24.3,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Mới có 2 điểm bất thường đơn lẻ trong 5 điểm gần nhất — một điểm xấu đơn lẻ chưa thành xu hướng, theo dõi thêm, chưa cảnh báo."
+        },
+        {
+          "row_index": 117,
+          "value": 24.3,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Mới có 1 điểm bất thường đơn lẻ trong 5 điểm gần nhất — một điểm xấu đơn lẻ chưa thành xu hướng, theo dõi thêm, chưa cảnh báo."
+        },
+        {
+          "row_index": 118,
+          "value": 21.7,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Từng có 62 điểm bất thường đơn lẻ nhưng chuỗi đã ổn định lại quanh SMA(20) — chưa thành xu hướng, chưa cảnh báo."
+        },
+        {
+          "row_index": 119,
+          "value": 21.7,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Từng có 62 điểm bất thường đơn lẻ nhưng chuỗi đã ổn định lại quanh SMA(20) — chưa thành xu hướng, chưa cảnh báo."
+        },
+        {
+          "row_index": 120,
+          "value": 24.3,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Từng có 62 điểm bất thường đơn lẻ nhưng chuỗi đã ổn định lại quanh SMA(20) — chưa thành xu hướng, chưa cảnh báo."
+        },
+        {
+          "row_index": 121,
+          "value": 24.3,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Từng có 62 điểm bất thường đơn lẻ nhưng chuỗi đã ổn định lại quanh SMA(20) — chưa thành xu hướng, chưa cảnh báo."
+        },
+        {
+          "row_index": 122,
+          "value": 24.3,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Từng có 62 điểm bất thường đơn lẻ nhưng chuỗi đã ổn định lại quanh SMA(20) — chưa thành xu hướng, chưa cảnh báo."
+        },
+        {
+          "row_index": 123,
+          "value": 24.3,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Từng có 62 điểm bất thường đơn lẻ nhưng chuỗi đã ổn định lại quanh SMA(20) — chưa thành xu hướng, chưa cảnh báo."
+        },
+        {
+          "row_index": 124,
+          "value": 21.7,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Từng có 62 điểm bất thường đơn lẻ nhưng chuỗi đã ổn định lại quanh SMA(20) — chưa thành xu hướng, chưa cảnh báo."
+        },
+        {
+          "row_index": 125,
+          "value": 21.7,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Từng có 62 điểm bất thường đơn lẻ nhưng chuỗi đã ổn định lại quanh SMA(20) — chưa thành xu hướng, chưa cảnh báo."
+        },
+        {
+          "row_index": 126,
+          "value": 24.3,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Từng có 62 điểm bất thường đơn lẻ nhưng chuỗi đã ổn định lại quanh SMA(20) — chưa thành xu hướng, chưa cảnh báo."
+        },
+        {
+          "row_index": 127,
+          "value": 24.3,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Từng có 62 điểm bất thường đơn lẻ nhưng chuỗi đã ổn định lại quanh SMA(20) — chưa thành xu hướng, chưa cảnh báo."
+        },
+        {
+          "row_index": 128,
+          "value": 24.3,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Từng có 62 điểm bất thường đơn lẻ nhưng chuỗi đã ổn định lại quanh SMA(20) — chưa thành xu hướng, chưa cảnh báo."
+        },
+        {
+          "row_index": 129,
+          "value": 24.3,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Từng có 62 điểm bất thường đơn lẻ nhưng chuỗi đã ổn định lại quanh SMA(20) — chưa thành xu hướng, chưa cảnh báo."
+        },
+        {
+          "row_index": 130,
+          "value": 21.7,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Từng có 62 điểm bất thường đơn lẻ nhưng chuỗi đã ổn định lại quanh SMA(20) — chưa thành xu hướng, chưa cảnh báo."
+        },
+        {
+          "row_index": 131,
+          "value": 21.7,
+          "is_violation": false,
+          "point_alert": false,
+          "trend_alert": false,
+          "final_alert": false,
+          "trend_status": "Cận biên",
+          "trend_detail": "Từng có 62 điểm bất thường đơn lẻ nhưng chuỗi đã ổn định lại quanh SMA(20) — chưa thành xu hướng, chưa cảnh báo."
+        }
+      ]
+    }
+  },
+  "k_sensitivity": {
+    "Humidity": [
+      {
+        "k": 1.0,
+        "abnormal_points_count": 60,
+        "trend_alert_steps": 64
+      },
+      {
+        "k": 1.5,
+        "abnormal_points_count": 46,
+        "trend_alert_steps": 36
+      },
+      {
+        "k": 2.0,
+        "abnormal_points_count": 27,
+        "trend_alert_steps": 24
+      },
+      {
+        "k": 2.5,
+        "abnormal_points_count": 28,
+        "trend_alert_steps": 20
+      },
+      {
+        "k": 3.0,
+        "abnormal_points_count": 12,
+        "trend_alert_steps": 9
+      },
+      {
+        "k": 3.5,
+        "abnormal_points_count": 11,
+        "trend_alert_steps": 9
+      },
+      {
+        "k": 4.0,
+        "abnormal_points_count": 11,
+        "trend_alert_steps": 9
+      }
+    ],
+    "TaktTime": [
+      {
+        "k": 1.0,
+        "abnormal_points_count": 65,
+        "trend_alert_steps": 68
+      },
+      {
+        "k": 1.5,
+        "abnormal_points_count": 12,
+        "trend_alert_steps": 0
+      },
+      {
+        "k": 2.0,
+        "abnormal_points_count": 4,
+        "trend_alert_steps": 0
+      },
+      {
+        "k": 2.5,
+        "abnormal_points_count": 1,
+        "trend_alert_steps": 0
+      },
+      {
+        "k": 3.0,
+        "abnormal_points_count": 0,
+        "trend_alert_steps": 0
+      },
+      {
+        "k": 3.5,
+        "abnormal_points_count": 0,
+        "trend_alert_steps": 0
+      },
+      {
+        "k": 4.0,
+        "abnormal_points_count": 0,
+        "trend_alert_steps": 0
+      }
+    ],
+    "Temperature": [
+      {
+        "k": 1.0,
+        "abnormal_points_count": 70,
+        "trend_alert_steps": 65
+      },
+      {
+        "k": 1.5,
+        "abnormal_points_count": 70,
+        "trend_alert_steps": 65
+      },
+      {
+        "k": 2.0,
+        "abnormal_points_count": 66,
+        "trend_alert_steps": 61
+      },
+      {
+        "k": 2.5,
+        "abnormal_points_count": 62,
+        "trend_alert_steps": 61
+      },
+      {
+        "k": 3.0,
+        "abnormal_points_count": 62,
+        "trend_alert_steps": 61
+      },
+      {
+        "k": 3.5,
+        "abnormal_points_count": 61,
+        "trend_alert_steps": 59
+      },
+      {
+        "k": 4.0,
+        "abnormal_points_count": 61,
+        "trend_alert_steps": 59
+      }
+    ]
+  }
+}

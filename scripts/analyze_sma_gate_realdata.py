@@ -322,11 +322,25 @@ def run_full_analysis(csv_path: Path = CSV_PATH_DEFAULT) -> Dict[str, Any]:
 
 
 if __name__ == "__main__":
-    path_arg = Path(sys.argv[1]) if len(sys.argv) > 1 else CSV_PATH_DEFAULT
+    import argparse
+
+    parser = argparse.ArgumentParser(description="Phan tich cong gate SMA tren log JIG that")
+    parser.add_argument("csv_path", nargs="?", default=str(CSV_PATH_DEFAULT), help="Duong dan CSV")
+    parser.add_argument("--json-out", default="", help="Xuat ket qua ra file JSON")
+    args = parser.parse_args()
+
+    path_arg = Path(args.csv_path)
     print(f"--- BAT DAU PHAN TICH SMA-GATE-REALDATA-HOME ---")
     print(f"File du lieu: {path_arg}")
 
     summary = run_full_analysis(path_arg)
+
+    if args.json_out:
+        out_p = Path(args.json_out)
+        out_p.parent.mkdir(parents=True, exist_ok=True)
+        # Loai bo sequential_results khoi summary json de gon gang neu can
+        out_p.write_text(json.dumps(summary, indent=2, ensure_ascii=False), encoding="utf-8")
+        print(f"Da xuat ket qua JSON toi: {out_p}")
 
     print(f"\nTong so dong: {summary['total_rows']}")
     print(f"Tong so vi pham nguong don diem: {summary['total_single_violations']}")
