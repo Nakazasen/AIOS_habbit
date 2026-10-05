@@ -93,6 +93,7 @@
 - Trạng thái: `xong-cho-duyet`
 - `commit`: `d847b5b` (báo cáo `digest-cty-prep.md` đủ 3 bảng)
 - `bao_cao`: `docs/phieu-viec/ket-qua/digest-cty-prep.md`
+- `ghi_chu`: 2026-10-06 04:35 +07 — kiểm cổng gate lượt mở này: HEAD=origin=d8c5382 sạch, `prompt.md` vẫn vé cũ DIGEST-CTY-PREP-HOME (đã `xong-cho-duyet` commit d847b5b/c59555a, báo cáo đủ 3 bảng); không có trạng thái `moi` nên không đủ điều kiện mở vé mới, không code lại; 0 tệp watcher tự mở, mới 1 lần gate liên tiếp chưa chạm 4 lần nên chưa đặt `cho-muse`, giữ chờ Muse duyệt.
 - `ghi_chu`: 2026-10-06 04:45 +07 — xong vé DIGEST-CTY-PREP-HOME ở mức chờ duyệt: bảng tái dùng 9 dòng (sổ tay + manifest + checkpoint + wire-qa + 4 khối + manifest tách, kèm link/ID Drive) + danh sách CTY cần làm 5 việc + danh sách không cần làm lại 5 việc; SHA băm lại khớp 100% (sổ tay `fd2b10e1…`, 5 file tách khớp bản Drive, wire-qa `e2425857…` 3.392 dòng Q0001–Q3406 thiếu đúng 14 mã có chủ đích); không lệch/thiếu nên không sửa gì; chỉ đọc, không ghi index, không merge main.
 
 - Trạng thái: `moi`
