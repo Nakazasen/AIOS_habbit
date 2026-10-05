@@ -1,6 +1,9 @@
 # Trạng thái mailbox-agy (thợ agy — model gemini-3.8-flash-high, việc khó chuyển claude-sonnet/opus-5.5-medium)
 
-- Trạng thái: `dang-lam`
+- Trạng thái: `xong-cho-duyet`
+- `bao_cao`: `docs/phieu-viec/ket-qua/upload-split-drive-home.md`
+- `commit`: 122cf3c
+- `ghi_chu`: 2026-10-06 05:30 +07 — Hoàn thành 100% các tiêu chí vé DRIVE-LINK-RETRY-HOME: 1) Thử lấy share link/ID cho 2 file lớn, Drive vẫn chưa cho chia sẻ lúc 05:10 & 05:14 ngày 06/10 (ghi nhận trung thực, tuyệt đối không bịa link/ID ảo; đã cập nhật bổ sung Folder ID chính xác của dieu_tra_loi 1MeM7BWGeDO1skAusH6DVrBAOwHvVZrLp và lsu 10gL0Zbwbm1oko7gckrizFUoU8dR0_Yno); 2) Xác nhận 5 file trên Drive nguyên vẹn 100% đúng tên và byte size so với báo cáo ban đầu; 3) Đã xóa sạch 5 file tạm C:\temp\verify_* (~2,85GB), ổ C tăng từ 12.73GB lên 15.39GB; 4) Bổ sung section 8 vào báo cáo kết quả; 5) Cổng kiểm tra: compileall PASS, cli audit status PASS, import workspace_chat_app IMPORT_OK. Đang chờ Muse duyệt.
 - `ghi_chu`: 2026-10-06 04:29 +07 — Nhận vé DRIVE-LINK-RETRY-HOME: bắt đầu kiểm tra Drive lấy 2 link chia sẻ còn thiếu (LSU, Dieu-tra-loi), xác nhận 5 file còn nguyên và dọn dẹp file tạm C:\temp\verify_*.
 - `ghi_chu` (điều phối Muse): 2026-10-06 ~04:25 +07 — Phát hành vé `DRIVE-LINK-RETRY-HOME` (prompt mới `prompt-queue-drive-link-retry-home.md`): lấy nốt 2 link chia sẻ Drive còn thiếu (LSU, Dieu-tra-loi), xác nhận 5 file còn nguyên, xóa file tạm C:\temp\verify_* (~2,8GB). Role gợi ý: SMOL.
 
