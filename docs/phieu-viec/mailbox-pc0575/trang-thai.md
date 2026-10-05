@@ -1,6 +1,7 @@
 ﻿# Trạng thái mailbox — KDTVN-PC0575
 
-Trạng thái: `dang-lam`
+Trạng thái: `cho-muse`
+- `ghi_chu` (tiến độ OMP): 2026-10-05 16:42 +07 — **XONG 4 bước — KHÔNG KHÔI PHỤC ĐƯỢC → `cho-muse`, DỪNG.** (1) Recycle Bin C+D: không có index/model (chỉ rác cũ 2020–2022; SID khác không đọc được vì không phải admin). (2) AV: CrowdStrike Falcon đang chạy, Defender tắt — không có dấu vết cách ly trên máy. (3) Quét 1.536.807 file C+D: **chỉ 1 file `*.sqlite*` ≥1GB = backup cũ `C:\AIOS_p5\library.sqlite.bak-20260930` (2.552.659.968 B, `062ec090`)** — không có bản production `e54c7745…`; không thấy file tải dở/zip lớn; audit deployment vẫn FAIL `deployment_model_unavailable`. (4) Model: HF kết nối được, `BAAI/bge-m3`@`5617a9f…` tải về khớp SHA manifest (2 file test) — tải lại được base ≈2,30 GB; cây ONNX nghiệm thu phải lấy từ zip Drive/máy nhà. Báo cáo đầy đủ + danh sách nguồn còn lại: `docs/phieu-viec/ket-qua/recover-runtime-pc0575.md`.
 - `ghi_chu` (tiến độ OMP): 2026-10-05 16:32 +07 — **Bước 2 + Bước 4 xong (sơ bộ); Bước 3 đang quét nền.** Bước 2: AV đang chạy là **CrowdStrike Falcon** (Defender tắt hẳn — `AntivirusEnabled=False`; không có quarantine cục bộ đọc được, Falcon quản qua console công ty). Bước 4: Hugging Face **kết nối được**, revision `5617a9f…` tải về **khớp SHA manifest** (2 file test), probe dải byte file lớn OK (~0,7–9 MB/s); tải lại được base model (~2,29 GiB; cả repo 4,27 GiB) nhưng cây ONNX đã nghiệm thu thì chỉ có trong zip trên Drive/máy nhà. Bước 3: đang quét `*.sqlite* ≥1GB` toàn C+D + băm SHA.
 - `ghi_chu` (tiến độ OMP): 2026-10-05 16:23 +07 — **Bước 1 xong: Recycle Bin C+D KHÔNG có index/model.** Bin của user (SID …4077) chỉ có rác cũ 2020–2022 (không payload); SID khác (System/Administrator…) không đọc được vì user không thuộc nhóm Administrators. Sang Bước 2: kiểm antivirus/quarantine.
 - `ghi_chu` (tiến độ OMP): 2026-10-05 16:18 +07 — OMP nhận vé `RECOVER-RUNTIME-PC0575` (watcher LAUNCH 1/4 lúc 16:16). Bắt đầu Bước 1: kiểm Recycle Bin C+D tìm index production `e54c7745…` + model `bge-m3-5617a9f`.
@@ -20,7 +21,7 @@ Trạng thái: `dang-lam`
 - `ghi_chu` (tiến độ OMP): 2026-10-02 12:46 +07 — OMP nhận vé (watcher LAUNCH 1/4 lúc 12:43; điều kiện mở đã tới: verdict DEPLOY-BUOC05 **ĐẠT** + app CPU-only đang chạy `/_stcore/health`=ok). Bắt đầu đo tốc độ 6 câu L1–L3/E1–E3.
 - Ticket hiện tại: `RECOVER-RUNTIME-PC0575` — [CTY] khôi phục dữ liệu runtime production đã mất do dọn ổ C,D (Recycle Bin → quarantine → quét bản copy → kiểm tra tải lại model). Vé `SPEED-COLDSTART-PC0575` tạm xếp sau, phát hành lại khi khôi phục xong.
 - `prompt`: `docs/phieu-viec/mailbox-pc0575/prompt.md`
-- `bao_cao`: `docs/phieu-viec/ket-qua/speed-coldstart-pc0575.md` (báo cáo vé này — code P1–P4 xong; đo nghiệm thu chặn vì mất dữ liệu runtime; tham chiếu cũ: `opt-ragv2-speed-app-pc0575.md`)
+- `bao_cao`: `docs/phieu-viec/ket-qua/speed-coldstart-pc0575.md` (báo cáo vé này — code P1–P4 xong; đo nghiệm thu chặn vì mất dữ liệu runtime; tham chiếu cũ: `opt-ragv2-speed-app-pc0575.md`); vé RECOVER-RUNTIME-PC0575: `docs/phieu-viec/ket-qua/recover-runtime-pc0575.md`
 - `ghi_chu`: 2026-10-05 13:47 watcher auto-escalate: 5 lan tu mo omp (moi lan cach ~10 phut) ma mailbox khong tien trien. Chuyen sang cho-muse de Muse xu ly. Ticket: `SPEED-COLDSTART-PC0575` — [CTY] sửa câu hỏi lạnh qua UI ~265 s (bộ đọc khởi động 180,9 s > cửa sổ 120 s của app; warm-up làm nóng nhầm collection).
 - `hang-cho` (thứ tự do user duyệt 2026-10-01 ~16:45 +07):
   1. `hodap-lsu-loi-rerun` — **ĐÃ XONG, verdict ĐẠT 2026-10-01 ~18:07 +07**
