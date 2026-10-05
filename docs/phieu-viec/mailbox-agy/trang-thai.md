@@ -1,9 +1,10 @@
 # Trạng thái mailbox-agy (thợ agy — model gemini-3.8-flash-high, việc khó chuyển claude-sonnet/opus-5.5-medium)
 
-- Trạng thái: `moi`
+- Trạng thái: `dang-lam`
+- `ghi_chu`: 2026-10-06 04:29 +07 — Nhận vé DRIVE-LINK-RETRY-HOME: bắt đầu kiểm tra Drive lấy 2 link chia sẻ còn thiếu (LSU, Dieu-tra-loi), xác nhận 5 file còn nguyên và dọn dẹp file tạm C:\temp\verify_*.
 - `ghi_chu` (điều phối Muse): 2026-10-06 ~04:25 +07 — Phát hành vé `DRIVE-LINK-RETRY-HOME` (prompt mới `prompt-queue-drive-link-retry-home.md`): lấy nốt 2 link chia sẻ Drive còn thiếu (LSU, Dieu-tra-loi), xác nhận 5 file còn nguyên, xóa file tạm C:\temp\verify_* (~2,8GB). Role gợi ý: SMOL.
 
-- Ticket hiện tại: `DRIVE-LINK-RETRY-HOME` — [NHÀ] lấy nốt 2 link chia sẻ Drive + dọn file tạm verify. Prompt: `docs/phieu-viec/mailbox-agy/prompt-queue-drive-link-retry-home.md`. Role gợi ý: SMOL.
+- Ticket hiện tại: `DRIVE-LINK-RETRY-HOME` — [NHÀ] lấy nốt 2 link chia sẻ Drive + dọn file tạm verify. Prompt: `docs/phieu-viec/mailbox-agy/prompt.md`. Role gợi ý: SMOL.
 - `hang-cho`: chưa có
 
 # Trạng thái mailbox-agy (thợ agy — model gemini-3.8-flash-high, việc khó chuyển claude-sonnet/opus-5.5-medium)
