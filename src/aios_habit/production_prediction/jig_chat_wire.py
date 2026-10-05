@@ -287,6 +287,19 @@ def format_instant_card_text(card: Dict[str, Any]) -> str:
     xu_huong = str(card.get("xu_huong_sma", "") or "").strip()
     if xu_huong:
         lines.append(f"Xu hướng SMA(20): {xu_huong}")
+    nhan_warmup = card.get("nhan_warmup")
+    if not nhan_warmup:
+        from aios_habit.production_prediction.jig_alert_cards import (
+            SO_DIEM_WARMUP_MAC_DINH,
+            tao_nhan_warmup,
+            trich_so_diem_nen,
+        )
+
+        n = trich_so_diem_nen(card.get("so_diem"), card, card)
+        if n is not None and n < SO_DIEM_WARMUP_MAC_DINH:
+            nhan_warmup = tao_nhan_warmup(n, SO_DIEM_WARMUP_MAC_DINH)
+    if nhan_warmup:
+        lines.append(str(nhan_warmup).strip())
     phan_doan = str(card.get("phan_doan_nguyen_nhan", "") or "").strip()
     if phan_doan:
         lines.append(f"Phán đoán nguyên nhân (giả thuyết): {phan_doan}")
@@ -596,7 +609,11 @@ def decide_jig_action(
                 history_depth + [first_depth.value],
                 xu_huong_depth,
             )
-            the_depth = build_instant_log_card(first_depth.to_dict(), ket_luan_depth)
+            the_depth = build_instant_log_card(
+                first_depth.to_dict(),
+                ket_luan_depth,
+                so_diem=len(history_depth) + 1,
+            )
             return JigChatOutcome(
                 handled=True,
                 assistant_text=(
@@ -688,7 +705,11 @@ def decide_jig_action(
             result, first.jig_id, first.metric,
             history + [first.value], xu_huong_iris,
         )
-        card = build_instant_log_card(first.to_dict(), result)
+        card = build_instant_log_card(
+            first.to_dict(),
+            result,
+            so_diem=len(history) + 1,
+        )
         reply = format_instant_card_text(card)
         reply += (
             f"\nĐã tách {len(hop_le)} giá trị đo từ dòng log Iris "
@@ -768,7 +789,11 @@ def decide_jig_action(
             result, first.jig_id, first.metric,
             history + [first.value], _xu_huong,
         )
-        card = build_instant_log_card(first.to_dict(), result)
+        card = build_instant_log_card(
+            first.to_dict(),
+            result,
+            so_diem=len(history) + 1,
+        )
         reply = format_instant_card_text(card)
         if len(parsed) > 1:
             reply += f"\nĐã nhận thêm {len(parsed) - 1} dòng log trong cùng tin nhắn."

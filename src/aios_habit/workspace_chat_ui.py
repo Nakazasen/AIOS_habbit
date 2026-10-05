@@ -1601,6 +1601,10 @@ def render_jig_instant_log_card(dong_log: Dict[str, Any], ket_qua_ewma: Dict[str
     goi_y = t("jig_instant_card_hint", locale=locale, suggestions=", ".join(card["goi_y"]))
     st.info(tieu_de)
     st.write(card["chi_tiet"])
+    if card.get("nhan_warmup"):
+        so_diem = card.get("so_diem")
+        n_val = so_diem if so_diem is not None else 0
+        st.caption(t("jig_instant_card_warmup", locale=locale, n=n_val))
     st.caption(card["nguong_tham_khao"])
     st.caption(goi_y)
 

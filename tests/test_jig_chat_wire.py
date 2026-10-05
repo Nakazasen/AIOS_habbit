@@ -179,3 +179,80 @@ def test_khong_co_xu_huong_thi_khong_phan_doan():
     )
     assert outcome.handled is True
     assert "Phán đoán nguyên nhân" not in outcome.assistant_text
+
+
+def test_sma_warmup_label_cac_muc_n():
+    """SMA-WARMUP-LABEL-HOME: N=5 có nhãn đúng số, N=20 không nhãn, N=0 nhãn 0/20."""
+    from aios_habit.production_prediction.jig_alert_cards import build_instant_log_card
+    from aios_habit.production_prediction.jig_chat_wire import format_instant_card_text
+
+    dong_mau = {
+        "unit_serial": "UNIT001",
+        "jig_id": "JIG-01",
+        "metric": "bowskew",
+        "value": "0.12",
+        "unit": "mm",
+    }
+    ewma_mau = {
+        "trang_thai": "Cận biên",
+        "chi_tiet": "Đang theo dõi điểm đo.",
+    }
+
+    # N = 5: có nhãn đúng số
+    card_5 = build_instant_log_card(dong_mau, ewma_mau, so_diem=5)
+    assert card_5["so_diem"] == 5
+    assert card_5["nhan_warmup"] == "Đang tích lũy dữ liệu nền (5/20 điểm) — chưa đủ cơ sở kết luận xu hướng."
+    text_5 = format_instant_card_text(card_5)
+    assert "Đang tích lũy dữ liệu nền (5/20 điểm) — chưa đủ cơ sở kết luận xu hướng." in text_5
+
+    # N = 0: có nhãn "0/20"
+    card_0 = build_instant_log_card(dong_mau, ewma_mau, so_diem=0)
+    assert card_0["so_diem"] == 0
+    assert card_0["nhan_warmup"] == "Đang tích lũy dữ liệu nền (0/20 điểm) — chưa đủ cơ sở kết luận xu hướng."
+    text_0 = format_instant_card_text(card_0)
+    assert "Đang tích lũy dữ liệu nền (0/20 điểm) — chưa đủ cơ sở kết luận xu hướng." in text_0
+
+    # N = 20: không nhãn (giữ giao diện gọn)
+    card_20 = build_instant_log_card(dong_mau, ewma_mau, so_diem=20)
+    assert card_20["so_diem"] == 20
+    assert card_20["nhan_warmup"] is None
+    text_20 = format_instant_card_text(card_20)
+    assert "Đang tích lũy dữ liệu nền" not in text_20
+
+    # N = 25: không nhãn
+    card_25 = build_instant_log_card(dong_mau, ewma_mau, so_diem=25)
+    assert card_25["nhan_warmup"] is None
+    text_25 = format_instant_card_text(card_25)
+    assert "Đang tích lũy dữ liệu nền" not in text_25
+
+
+def test_sma_warmup_label_decide_jig_action_routing():
+    """Kiểm tra end-to-end routing qua decide_jig_action với lịch sử chuỗi."""
+    # History 4 điểm + điểm hiện tại 1 = 5 điểm -> có nhãn 5/20
+    outcome_5 = decide_jig_action(
+        "2026-09-20T08:00:00,UNIT001,JIG-01,bowskew,0.12,mm,OK",
+        history_provider=lambda jig, metric: [0.10] * 4,
+    )
+    assert outcome_5.handled is True
+    assert "Đang tích lũy dữ liệu nền (5/20 điểm) — chưa đủ cơ sở kết luận xu hướng." in outcome_5.assistant_text
+
+    # History 19 điểm + điểm hiện tại 1 = 20 điểm -> không nhãn
+    outcome_20 = decide_jig_action(
+        "2026-09-20T08:00:00,UNIT001,JIG-01,bowskew,0.12,mm,OK",
+        history_provider=lambda jig, metric: [0.10] * 19,
+    )
+    assert outcome_20.handled is True
+    assert "Đang tích lũy dữ liệu nền" not in outcome_20.assistant_text
+
+
+def test_sma_warmup_label_i18n_key_parity():
+    """Kiểm tra dịch thuật nhãn warmup qua hàm t() cho đủ 3 ngôn ngữ."""
+    from aios_habit.i18n import t
+
+    nhan_vi = t("jig_instant_card_warmup", locale="vi", n=5)
+    assert nhan_vi == "Đang tích lũy dữ liệu nền (5/20 điểm) — chưa đủ cơ sở kết luận xu hướng."
+    nhan_ja = t("jig_instant_card_warmup", locale="ja", n=5)
+    assert "5/20" in nhan_ja
+    nhan_zh = t("jig_instant_card_warmup", locale="zh-CN", n=5)
+    assert "5/20" in nhan_zh
+
