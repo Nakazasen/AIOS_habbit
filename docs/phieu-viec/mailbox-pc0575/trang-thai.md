@@ -1,6 +1,6 @@
-# Trạng thái mailbox — KDTVN-PC0575
+﻿# Trạng thái mailbox — KDTVN-PC0575
 
-Trạng thái: `dang-lam`
+Trạng thái: `cho-muse`
 - `ghi_chu` (tiến độ OMP): 2026-10-02 19:44 +07 — Mốc P3+P4 (code `24973e7`): worker BGE **sống qua restart app** bằng named pipe (`AIOS_RAGV2_WORKER_PERSIST=1` bật trong `RUN_AIOS_WORKSPACE_CHAT.bat`; tự tắt sau 6 h không dùng; pipe gắn với config + dấu vân tay mã nguồn nên không dùng nhầm worker cũ). Smoke PC0575: client khởi động lại **gắn lại đúng worker cũ (cùng PID)**, config lệch bị chặn, shutdown sạch. Test mới `tests/test_bge_worker_persist.py` + 2 test warm-up config; vá thêm 1 test G2 đỏ sẵn từ 28/09 (seed đúng `model_fingerprint` theo convention có sẵn trong file). Cổng: compileall PASS, `cli audit` PASS, import app OK; full suite **3647 passed**, còn 19 failed + 19 errors đang phân loại (nghi thiếu dữ liệu VM `\home\hatch\...` + môi trường — có bằng chứng baseline). Tiếp theo: đo nghiệm thu app thật (restart ×3 giữ worker, 6 câu L1–E3, parity + SHA).
 - `ghi_chu` (tiến độ OMP): 2026-10-02 18:36 +07 — Mốc P1+P2 (code `2f52359`): (1) đo pha init (model_verify/model_load/index_open/dense/sparse) in vào log worker + trả về readiness; (2) warm-up đã trỏ đúng collection production `collections/tri_thuc/library.sqlite` read-only (trước trỏ nhầm index legacy gốc profile nên không bao giờ tái dùng được); (3) đồng bộ cửa sổ chờ: `AIOS_BGE_INIT_TIMEOUT` (mặc định 300 s), timeout thì giữ tiến trình đang nạp cho lần gọi sau chờ tiếp (không spawn trùng), app mở lên tự làm nóng đúng config. Baseline cùng máy trước sửa: init **408,5 s** (đĩa bận; mốc sạch 180,9 s), L1 qua worker 128,7 s. Test nhanh: 16 test client/worker + 6 test warm-up adapter đạt. Tiếp theo P3: worker sống lâu qua named pipe (sống qua restart app).
 - `ghi_chu` (tiến độ OMP): 2026-10-02 17:58 +07 — OMP nhận vé (watcher LAUNCH 1/4 lúc 17:54; điều kiện mở đã tới: verdict SPEED-APP **ĐẠT** 15:47 + app CPU-only đang chạy `/_stcore/health`=ok, PID streamlit 19024). Bắt đầu Bước 1: đo chi tiết init worker 180,9 s; kế tiếp sửa warm-up đúng collection + đồng bộ cửa sổ chờ/giữ worker; cuối cùng đo lại 6 câu lạnh.
@@ -15,7 +15,7 @@ Trạng thái: `dang-lam`
 - Ticket hiện tại: `SPEED-COLDSTART-PC0575` — [CTY] sửa câu hỏi lạnh qua UI ~265 s (bộ đọc khởi động 180,9 s > cửa sổ 120 s của app; warm-up làm nóng nhầm collection).
 - `prompt`: `docs/phieu-viec/mailbox-pc0575/prompt.md`
 - `bao_cao`: `docs/phieu-viec/ket-qua/opt-ragv2-speed-app-pc0575.md`
-- `ghi_chu`: 2026-10-02 — Muse verdict DEPLOY-BUOC05-PC0575: **ĐẠT** (6/6 B0–B5 chạy trên app thật CPU-only, B1-FEAT 1,6 s/câu ×3 mã, index production `e54c7745…` không đổi; LAN treo theo chỉ đạo 12:07 chờ admin/IT). Phát hiện 5.1 (ưu tiên action B3 bị `tra_cuu_loi_tuong_tu` cướp phrasing chuẩn, nguồn `b330020`): Muse tự vá trên VM, không giao OMP. Phát hành vé xếp hàng tiếp theo `OPT-RAGV2-SPEED-APP-PC0575` theo chỉ đạo 12:07.
+- `ghi_chu`: 2026-10-05 09:08 watcher auto-escalate: 4 lan tu mo omp (moi lan cach ~10 phut) ma mailbox khong tien trien. Chuyen sang cho-muse de Muse xu ly. Ticket: `SPEED-COLDSTART-PC0575` — [CTY] sửa câu hỏi lạnh qua UI ~265 s (bộ đọc khởi động 180,9 s > cửa sổ 120 s của app; warm-up làm nóng nhầm collection).
 - `hang-cho` (thứ tự do user duyệt 2026-10-01 ~16:45 +07):
   1. `hodap-lsu-loi-rerun` — **ĐÃ XONG, verdict ĐẠT 2026-10-01 ~18:07 +07**
   2. `OPT-RAGV2-PYLOOPS` — **ĐÃ XONG, verdict Muse ĐẠT 2026-10-02 ~09:26 +07**
