@@ -1,5 +1,13 @@
 # Trạng thái mailbox-opencode (thợ opencode — model free muse-spark-1.3 / space-bunny)
 
+- Trạng thái: `moi`
+- `ghi_chu` (điều phối Muse): 2026-10-06 ~04:25 +07 — Phát hành vé `DIGEST-CTY-PREP-HOME` (prompt mới `prompt-queue-digest-cty-prep-home.md`): kiểm kê thành phẩm sổ tay R2 (889 mục + manifest + wire-qa 3.392 cặp + 4 khối Drive) để máy công ty tái dùng, khỏi làm lại. Báo cáo `digest-cty-prep.md`. Role gợi ý: DEFAULT.
+
+- Ticket hiện tại: `DIGEST-CTY-PREP-HOME` — [NHÀ] kiểm kê thành phẩm sổ tay cho máy công ty tái dùng. Prompt: `docs/phieu-viec/mailbox-opencode/prompt-queue-digest-cty-prep-home.md`. Role gợi ý: DEFAULT.
+- `hang-cho`: (trống)
+
+# Trạng thái mailbox-opencode (thợ opencode — model free muse-spark-1.3 / space-bunny)
+
 - Trạng thái: `xong`
 - `ghi_chu` (verdict Muse): 2026-10-05 ~23:39 +07 — **ĐẠT** vé `UPLOAD-SPLIT-DRIVE-HOME` (tích tạm, chờ user nghiệm thu). Kiểm chứng độc lập qua GitHub API: commit `6d68248` chỉ +84/-0 báo cáo `upload-split-drive-home.md` và +4/-0 `trang-thai.md`, không code, không secret, không merge `main`; số liệu báo cáo khớp spec vé (lsu 1.155.637.248 B/92 doc/71.945 chunk, dieu_tra_loi 1.643.761.664 B/681 doc/74.439 chunk, mom 21.598.208 B/44 doc/1.014 chunk, tong_hop 36.081.664 B/72 doc/2.402 chunk, manifest 491.253 B); SHA-256 tải lại khớp local 100% cả 5 file (full SHA trong báo cáo); spot-check độc lập 2/3 link chia sẻ mở được trang Drive đúng tên file (`domain_manifest.json`, `library.sqlite`). Điểm trừ (không chặn): 2/5 link chia sẻ (lsu, dieu_tra_loi) chưa lấy được ID — Drive báo "không thể chia sẻ vào thời điểm này" 21:45–23:16, thợ ghi trung thực không bịa, quyền file hiện "Đã chia sẻ", sẽ bổ sung khi Drive mở lại (vào được qua link thư mục backup `1T_Ao9Piy8dDtYRn6fVNxVErzQAEf14il`); mâu thuẫn nhỏ §3/§7 về xóa bản tải kiểm chứng (~2,8GB `C:\temp\verify_*`) — thợ xóa sau duyệt cho gọn ổ C. hang-cho opencode rỗng → mailbox đóng (`xong`), không merge nhánh (mailbox nhà `moi`, pc0575 `dang-lam`).
 - `ghi_chu` (điều phối Muse): 2026-10-05 ~20:05 +07 — Phát hành vé `UPLOAD-SPLIT-DRIVE-HOME` (prompt mới `prompt-upload-split-drive-home.md`): upload 4 khối index tách (LSU ~1,16GB + Dieu-tra-loi ~1,64GB + MOM ~21,6MB + Tong-hop ~36MB + manifest) từ `D:\Sandbox\AIOS_index_split_new\` lên Drive làm backup — bài học sáng 05/10 mất dữ liệu máy công ty vì không có backup ngoài. Đối chiếu dung lượng từng byte sau upload. Role gợi ý: DEFAULT.

@@ -1,5 +1,13 @@
 # Trạng thái mailbox-agy (thợ agy — model gemini-3.8-flash-high, việc khó chuyển claude-sonnet/opus-5.5-medium)
 
+- Trạng thái: `moi`
+- `ghi_chu` (điều phối Muse): 2026-10-06 ~04:25 +07 — Phát hành vé `DRIVE-LINK-RETRY-HOME` (prompt mới `prompt-queue-drive-link-retry-home.md`): lấy nốt 2 link chia sẻ Drive còn thiếu (LSU, Dieu-tra-loi), xác nhận 5 file còn nguyên, xóa file tạm C:\temp\verify_* (~2,8GB). Role gợi ý: SMOL.
+
+- Ticket hiện tại: `DRIVE-LINK-RETRY-HOME` — [NHÀ] lấy nốt 2 link chia sẻ Drive + dọn file tạm verify. Prompt: `docs/phieu-viec/mailbox-agy/prompt-queue-drive-link-retry-home.md`. Role gợi ý: SMOL.
+- `hang-cho`: chưa có
+
+# Trạng thái mailbox-agy (thợ agy — model gemini-3.8-flash-high, việc khó chuyển claude-sonnet/opus-5.5-medium)
+
 - Trạng thái: `xong`
 - `ghi_chu`: 2026-10-05 20:58 +07 — **Verdict Muse: ĐẠT** vé `SCAN-O-D` (poll 20:44+07): đủ 3 tiêu chí — cây thư mục + dung lượng (§2), bảng sqlite đường dẫn/SHA/size (§4), đề xuất dọn 4 mức có thứ tự (§7). Đối chiếu độc lập: SHA báo cáo khớp ghim production `45eb0e07…65b7c0` và bản đông `062ec090…4ef8ca`; commit f7836c5 chỉ chạm file báo cáo, phương pháp quét chỉ đọc. Lưu ý: SHA chi tiết 593 file sqlite tạm pytest + 13 file cache eval lưu ở CSV/hồ sơ đính kèm ngoài báo cáo (chấp nhận vì là file tạm; toàn bộ SHA kho production/backup/split đã inline). Không có vé xếp hàng tiếp cho agy → đóng mailbox ở `xong`, chờ phân công mới.
 
