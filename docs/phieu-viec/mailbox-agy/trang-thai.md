@@ -5,7 +5,8 @@
 - `ghi_chu` (điều phối Muse): 2026-10-06 ~04:25 +07 — Phát hành vé `DRIVE-LINK-RETRY-HOME` (prompt mới `prompt-queue-drive-link-retry-home.md`): lấy nốt 2 link chia sẻ Drive còn thiếu (LSU, Dieu-tra-loi), xác nhận 5 file còn nguyên, xóa file tạm C:\temp\verify_* (~2,8GB). Role gợi ý: SMOL.
 
 - Ticket hiện tại: `DRIVE-LINK-RETRY-HOME` — [NHÀ] lấy nốt 2 link chia sẻ Drive + dọn file tạm verify. Prompt: `docs/phieu-viec/mailbox-agy/prompt.md`. Role gợi ý: SMOL.
-- `hang-cho`: chưa có
+- `hang-cho`: 1. `OMP-EXIT-PROBE-HOME` → `prompt-queue-omp-exit-probe-home.md` (điều tra vì sao omp -p xong việc không thoát; phát hành tự động sau verdict vé hiện tại)
+- `ghi_chu` (điều phối Muse): 2026-10-06 ~04:40 +07 — Xếp hàng vé `OMP-EXIT-PROBE-HOME` (chữa gốc vụ zombie 5,5 tiếng). Áp quy ước chuẩn mới trong mẫu vé: heartbeat mốc bước tối thiểu 15 phút/lần + checkpoint/resume bắt buộc vé dài.
 
 # Trạng thái mailbox-agy (thợ agy — model gemini-3.8-flash-high, việc khó chuyển claude-sonnet/opus-5.5-medium)
 
