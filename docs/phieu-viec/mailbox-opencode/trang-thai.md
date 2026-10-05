@@ -101,6 +101,6 @@
 - `ghi_chu` (điều phối Muse): 2026-10-06 ~04:38 +07 — Phát hành vé `UPLOAD-DIGEST-DRIVE-HOME` (prompt mới `prompt-queue-upload-digest-drive-home.md`): upload sổ tay 889 mục + manifest + wire-qa 3.392 cặp + probe-R2 lên Drive (ngăn `digest/` trong `index-split-r5-backup`) để máy công ty tải về cho vé `DIGEST-CTY-RESUME`; tải lại đối chiếu từng byte. Báo cáo `upload-digest-drive-home.md`. Role gợi ý: DEFAULT. Watchdog sẽ dựng watcher trong ~10 phút.
 - Ticket hiện tại: `UPLOAD-DIGEST-DRIVE-HOME` — [NHÀ] upload thành phẩm sổ tay lên Drive cho máy công ty tải về. Prompt: `docs/phieu-viec/mailbox-opencode/prompt-queue-upload-digest-drive-home.md`. Role gợi ý: DEFAULT.
 - `hang-cho`: (trống)
+
 - Trạng thái: `dang-lam`
 - `ghi_chu`: 2026-10-06 04:50 +07 — đã nhận vé UPLOAD-DIGEST-DRIVE-HOME (điều kiện mở đủ: trạng thái `moi` + prompt đúng vé; HEAD=origin=255e7b6 sạch; 0 file watcher tự mở trong mailbox-opencode; không rơi nhánh 4 lần watcher nên không đặt `cho-muse`). Bắt đầu bước 1: kiểm kê 4 file local + SHA, chưa upload.
-- `ghi_chu`: 2026-10-06 04:52 +07 — mốc kiểm kê xong: đủ 4 file local (so_tay 1.374.070 B SHA fd2b10e1…02cf1cd khớp vé; manifest 290 B SHA ea7e9f99…54fdca; wire-qa 1.267.666 B SHA e2425857…3632a khớp vé; probe-R2 41.697 B SHA e9a6ec8e…47ec2b1). Đính chính timestamp mốc trước ghi 04:50 thực tế ~04:36 (giờ máy). Kế tiếp: tạo ngăn digest/ + upload Drive.
