@@ -1,6 +1,9 @@
 # Trạng thái mailbox-agy (thợ agy — model gemini-3.8-flash-high, việc khó chuyển claude-sonnet/opus-5.5-medium)
 
-- Trạng thái: `dang-lam`
+- Trạng thái: `xong-cho-duyet`
+- `bao_cao`: `docs/phieu-viec/ket-qua/audit-buoc2-jig-home.md`
+- `commit`: `f794051`
+- `ghi_chu`: 2026-10-06 06:24 +07 — Hoàn thành 100% vé AUDIT-BUOC2-JIG-HOME: 1) Rà soát toàn bộ 8 chức năng Bước 1 theo kế hoạch công ty 30/09, đối chiếu đầy đủ mã nguồn, bộ test tự động và bằng chứng chạy trên dữ liệu thật (LSU Sub CSV 24,4MB và Master CSV 132 dòng); 2) Tuân thủ rào cứng loại trừ cổng SMA(20) do OMP đang sửa; 3) Phát hiện 1 điểm lệch test cũ test_j1_csv.py do cổng gate SMA(20) chặn vi phạm đơn điểm; 4) Chốt danh sách 6 việc còn thiếu cho Bước 2 (hạn 15/10) xếp theo độ gấp và độ lớn; 5) Lập báo cáo docs/phieu-viec/ket-qua/audit-buoc2-jig-home.md; 6) Cổng kiểm tra: compileall PASS, cli audit status PASS, import app IMPORT_OK, diff src/tests rỗng. Đang chờ Muse duyệt.
 - `ghi_chu`: 2026-10-06 06:23 +07 — Đã rà soát xong 8 chức năng Bước 1 tool JIG theo kế hoạch 30/09 và chạy đối chiếu test/bằng chứng dữ liệu thật; phát hiện 1 lệch test cũ trong test_j1_csv.py do cổng SMA(20) chặn vi phạm đơn điểm; đang tổng hợp danh sách việc Bước 2 và lập báo cáo audit-buoc2-jig-home.md.
 - `ghi_chu`: 2026-10-06 06:20 +07 — Nhận vé AUDIT-BUOC2-JIG-HOME, kiểm cổng gate: cổng MỞ (vé mới `moi`). Bắt đầu rà soát readiness Bước 2 tool JIG (chỉ đọc, không sửa code): đối chiếu 8 chức năng Bước 1 theo kế hoạch công ty 30/09 với mã nguồn, test và dữ liệu thật; loại trừ cổng SMA(20) theo yêu cầu.
 - `ghi_chu` (verdict Muse): 2026-10-06 ~06:30 +07 — **ĐẠT** vé `SMA-WARMUP-LABEL-HOME`. Kiểm chứng độc lập: commit `4f07d73` single-parent, 6 file (báo cáo +142, i18n +3, jig_alert_cards +50, jig_chat_wire +31/-1, workspace_chat_ui +4, test +77), KHÔNG đụng `trend_alerts.py` đúng luật 1-file-1-đứa với OMP, không merge `main`; đủ 4 tiêu chí vé — (1) nhãn "Đang tích lũy dữ liệu nền (N/20 điểm)" khi N<20; (2) tự ẩn khi N>=20; (3) i18n đủ 3 ngôn ngữ (key `jig_instant_card_warmup` ×3); (4) test 17/17 xanh (chạy lại độc lập trên VM: 17 passed), py_compile sạch. Thợ làm xong trong 6 phút (06:06→06:12).
