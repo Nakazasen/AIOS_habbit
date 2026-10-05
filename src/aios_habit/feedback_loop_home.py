@@ -132,6 +132,12 @@ def detect_topic(question: str) -> str:
     except (ValueError, TypeError):
         return "chua_phan_loai"
     domain = str(getattr(result, "domain", "") or "").strip()
+    try:
+        confidence = float(getattr(result, "confidence", 0.0) or 0.0)
+    except (TypeError, ValueError):
+        confidence = 0.0
+    if confidence < 0.4:
+        return "chua_phan_loai"
     if domain in ("lsu", "mom", "dieu_tra_loi"):
         return domain
     return "chua_phan_loai"

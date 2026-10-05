@@ -59,8 +59,8 @@ def test_detect_topic_uses_domain_classifier():
     assert loop.detect_topic("hệ thống MOM Opcenter") == "mom"
     assert loop.detect_topic("lỗi JAM4709 kẹt giấy") == "dieu_tra_loi"
     assert loop.detect_topic("") == "chua_phan_loai"
-
-
+    assert loop.detect_topic("xin chào") == "chua_phan_loai"
+    assert loop.detect_topic("cảm ơn bạn") == "chua_phan_loai"
 def test_question_key_normalizes():
     assert loop.question_key("  Lỗi   JAM 4709? ") == "lỗi jam 4709?"
 
