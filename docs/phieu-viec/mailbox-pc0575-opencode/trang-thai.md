@@ -1,6 +1,7 @@
 # Trạng thái mailbox-pc0575-opencode — KDTVN-PC0575 (thợ opencode)
 
-- Trạng thái: `moi`
+- Trạng thái: `dang-lam`
+- `ghi_chu` (thợ opencode): 2026-10-05 18:05 +07 — nhận vé `REVIEW-WIRE-CAGENT-SPEC`, đủ điều kiện mở (`moi` + ticket mới + chưa có báo cáo), bắt đầu review.
 - `ghi_chu` (điều phối Muse): 2026-10-05 ~18:05 +07 — Phát hành vé `REVIEW-WIRE-CAGENT-SPEC` (prompt mới `prompt-review-wire-cagent-spec.md`): review chéo spec C-Agent của agy từ góc nhìn dữ liệu (spec có tính shape thực tế? 3 câu demo khả thi với JSONL? kịch bản lỗi nào data trigger được? nhãn bản thảo có bắt buộc hiển thị?). Chỉ review, không sửa. Role gợi ý: SMOL.
 - `ghi_chu` (verdict Muse): 2026-10-05 ~17:25 +07 — **ĐẠT** vé `PREP-WIRE-QA-MAPPING`. (giữ nguyên)
 - Ticket hiện tại: `REVIEW-WIRE-CAGENT-SPEC` — [CTY] review chéo spec C-Agent từ góc nhìn dữ liệu trước khi nối WIRE. Prompt: `docs/phieu-viec/mailbox-pc0575-opencode/prompt-review-wire-cagent-spec.md`. Role gợi ý: SMOL.
