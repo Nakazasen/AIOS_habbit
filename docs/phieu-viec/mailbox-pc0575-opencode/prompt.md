@@ -1,23 +1,36 @@
-# Mailbox thợ opencode — máy công ty KDTVN-PC0575
+# Vé AUDIT-BATCH88-PC0575 — Audit 15 cặp mẻ 88 (Q3392–Q3406) raw → fixed
 
 **Thợ:** opencode
 **Máy thực hiện:** [CTY] KDTVN-PC0575 (CPU-only)
 **Thư mục làm việc DUY NHẤT:** `D:\Sandbox\AIOS_habbit`
-**Trạng thái:** chưa có ticket — mailbox mới tạo, chờ phân công.
+Role gợi ý: DEFAULT.
 
-## Luật thợ (bắt buộc)
+## Bối cảnh
 
-1. Chỉ làm trong `D:\Sandbox\AIOS_habbit`. Không đụng ổ D máy nhà, không đụng máy khác.
-2. Quy trình mailbox: nhận vé khi `trang-thai.md` → `moi` → đặt `dang-lam` khi bắt đầu,
-   ghi `ghi_chu` mốc tiến độ, xong thì viết báo cáo vào `docs/phieu-viec/ket-qua/` rồi
-   đặt `trang-thai.md` → `xong-cho-duyet`.
-3. Commit sớm, push qua Git Data API ngay khi có commit hoàn chỉnh. Không dồn cuối.
-4. Không merge `main`. Không force-push. Không xóa dữ liệu/backup khi chưa có lệnh user.
-5. Code mới phải tương thích Python 3.11 (không dùng syntax 3.12+).
-6. Watcher tự mở thợ khi có vé mới; nếu 4 lần mở mà mailbox không tiến triển, watcher
-   tự dựng cờ `cho-muse` — khi đó DỪNG, chờ Muse xử lý, không tự ý làm tiếp.
+Khâu sinh hỏi đáp ChatGPT đã xong toàn bộ 88 mẻ (3.393 cặp raw). Mẻ 88 là mẻ vét cuối
+(15 cặp Q3392–Q3406, Điều-tra-lỗi, vi 5 / zh 5 / ja 5) — **chưa qua audit/fixed**.
+Các mẻ trước đã fixed: MOM 608, LSU 1.790, Điều-tra-lỗi batch 55–87 được 979
+(loại Q3214 trùng Q3124).
 
-## Khi chưa có ticket
+## Việc cần làm
 
-Giữ mailbox ở trạng thái `trong`. Không tự nhận việc ngoài vé. Chờ Muse phát vé mới
-(vé sẽ được copy vào file này, `trang-thai.md` → `moi`).
+1. Đọc `docs/phieu-viec/chatgpt-enrichment-raw/dieuchinh/batch-88.md` (15 cặp).
+2. Audit từng cặp theo đúng chuẩn các mẻ trước: đủ 6 trường (Khối/Ngôn ngữ/Bối cảnh/
+   Cách hỏi/Hỏi/Đáp), đáp án có nguồn, không bịa, văn phong đúng ngôn ngữ.
+3. Kiểm tra trùng lặp với toàn bộ cặp đã fixed (đặc biệt các cặp Q31xx–Q33xx);
+   cặp nào trùng thì loại và ghi rõ.
+4. Ghi kết quả vào `docs/phieu-viec/chatgpt-enrichment-fixed/dieuchinh/batch-88.md`
+   (giữ nguyên format các file fixed batch 55–87).
+
+## Tiêu chí ĐẠT
+
+- File fixed đủ 15 cặp (hoặc ít hơn nếu loại trùng — ghi rõ số loại + mã cặp).
+- Báo cáo `docs/phieu-viec/ket-qua/audit-batch88-pc0575.md`: số cặp đạt/loại,
+  lỗi tìm thấy (nếu có), đối chiếu chuẩn format.
+- Xong thì `trang-thai.md` → `xong-cho-duyet`.
+
+## Cấm
+
+- Không merge `main`. Không force-push. Không sửa file raw.
+- Không đụng file của thợ khác (mailbox-pc0575, mailbox-pc0575-agy).
+- Code mới (nếu có) tương thích Python 3.11.
