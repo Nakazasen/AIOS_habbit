@@ -1,33 +1,39 @@
-# VÉ: DRIVE-LINK-RETRY-HOME (lấy nốt 2 link chia sẻ Drive + dọn file tạm)
+# VÉ: OMP-EXIT-PROBE-HOME (điều tra vì sao omp -p xong việc không thoát)
 
-- Mã vé: `DRIVE-LINK-RETRY-HOME`
-- Role OMP gợi ý: SMOL (việc kiểm tra nhanh, không upload lại)
+- Mã vé: `OMP-EXIT-PROBE-HOME`
+- Role OMP gợi ý: DEFAULT (chẩn đoán process, cần chạy thử)
 - Máy: nhà h410asrock
-- Báo cáo: cập nhật `docs/phieu-viec/ket-qua/upload-split-drive-home.md` (thêm mục bổ sung, không viết lại)
+- Báo cáo: `docs/phieu-viec/ket-qua/omp-exit-probe-home.md`
 
 ## Bối cảnh
 
-Vé `UPLOAD-SPLIT-DRIVE-HOME` đã ĐẠT (05/10 ~23:39): 5/5 file (~2,66GB) đã nằm trên
-Drive, SHA-256 khớp local 100%. Còn 2 điểm dở dang ghi trong verdict:
-1. 2/5 link chia sẻ (khối LSU, khối Dieu-tra-loi) chưa lấy được ID — Drive báo
-   "không thể chia sẻ vào thời điểm này" trong khung 21:45–23:16 ngày 05/10.
-2. File tải về để kiểm chứng (~2,8GB trong `C:\temp\verify_*`) thợ hẹn xóa sau
-   duyệt cho gọn ổ C.
+Đêm 05→06/10, process OMP làm xong vé nhưng không thoát, án ngữ vé mới 5,5 tiếng
+(vé FEEDBACK-LOOP-HOME phát 22:35, thợ mới chỉ nhặt được sau khi kill tay lúc
+~04:00). Watcher đã được vá diệt zombie (kill khi vé im >20 phút + CPU và I/O
+đứng yên 3 nhịp poll) — đó là băng gạc. Vé này chữa gốc: tìm vì sao `omp -p`
+không thoát sau khi xong việc.
 
 ## Việc cần làm
 
-1. Thử lấy lại ID/link chia sẻ cho 2 file còn thiếu (LSU ~1,16GB, Dieu-tra-loi
-   ~1,64GB) trong thư mục `index-split-r5-backup` trên Drive. Nếu Drive vẫn chặn,
-   ghi trung thực "Drive vẫn chưa cho chia sẻ lúc <giờ>" — không bịa ID.
-2. Kiểm tra nhanh cả 5 file vẫn còn trên Drive (tên + dung lượng khớp báo cáo cũ).
-3. Xóa các file tạm `C:\temp\verify_*` (file thợ tự tải về để đối chiếu — bản gốc
-   vẫn còn đủ trên Drive và local, xóa an toàn). Chỉ xóa đúng các file verify_*,
-   không đụng gì khác trong C:\temp.
-4. Bổ sung vào báo cáo cũ một mục "Bổ sung ngày 06/10": 2 link (hoặc lý do chưa
-   lấy được) + xác nhận 5 file còn nguyên + đã xóa file tạm giải phóng ~2,8GB.
+1. Tái hiện: chạy `omp -p` với một việc nhỏ, quan sát sau khi xong việc process
+   có thoát không, thoát mã mấy, mất bao lâu. Chạy probe cô lập — KHÔNG đụng
+   process thợ đang chạy vé khác.
+2. Nếu tái hiện được kẹt: xác định kẹt ở đâu — đang chờ approval/prompt, exit-code
+   không trả về, hay tiến trình con giữ session không buông.
+3. Đề xuất cách thoát sạch (đề xuất + bằng chứng là đủ cho vé này; code sửa để
+   vé sau). Không sửa code watcher/omp trong vé này.
+4. Ghi báo cáo `omp-exit-probe-home.md`: cách tái hiện, điểm kẹt, đề xuất.
+
+## Quy ước heartbeat + checkpoint (chuẩn mới, áp mọi vé dài từ nay)
+
+- **Heartbeat**: mỗi bước ghi 1 dòng tiến độ vào mailbox (`ghi_chu` mốc bước).
+  Vé dài heartbeat tối thiểu 15 phút/lần — im quá 20 phút + CPU/I/O đứng yên
+  là watcher kill theo luật zombie, không kêu oan.
+- **Checkpoint/resume**: mỗi bước xong ghi kết quả vào báo cáo nháp ngay —
+  kẹt/giết giữa chừng thì người sau đọc tiếp được, không làm lại từ đầu.
 
 ## Tiêu chí nghiệm thu
 
-- ĐẠT = đã thử lấy 2 link (có link hoặc lý do trung thực vì sao chưa) + 5 file
-  xác nhận còn nguyên + file tạm đã xóa + báo cáo được bổ sung.
-- Không upload lại, không xóa file local/Drive. Không merge `main`.
+- ĐẠT = tái hiện được (hoặc chứng minh không tái hiện được, kèm bằng chứng) +
+  xác định được điểm kẹt + đề xuất cách thoát sạch có cơ sở.
+- Không merge `main`.

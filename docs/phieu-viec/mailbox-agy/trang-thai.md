@@ -1,5 +1,14 @@
 # Trạng thái mailbox-agy (thợ agy — model gemini-3.8-flash-high, việc khó chuyển claude-sonnet/opus-5.5-medium)
 
+- Trạng thái: `moi`
+- `ghi_chu` (verdict Muse): 2026-10-06 ~05:45 +07 — **ĐẠT** vé `DRIVE-LINK-RETRY-HOME` (poll 05:42+07). Kiểm chứng độc lập qua GitHub API: commit `e2a5f21` single-parent (d8a86ed), chỉ +36/-0 báo cáo `upload-split-drive-home.md` (section 8 mới) và +4/-1 `trang-thai.md`, không code, không secret, không merge `main`; đủ 4 tiêu chí vé — (1) thử lại 2 link 05:10 & 05:14 ngày 06/10, Drive vẫn chặn, ghi trung thực không bịa, đã bổ sung Folder ID chính xác `dieu_tra_loi` (1MeM7BWGeDO1skAusH6DVrBAOwHvVZrLp) và `lsu` (10gL0Zbwbm1oko7gckrizFUoU8dR0_Yno); (2) 5 file Drive còn nguyên 100% đúng tên + byte size; (3) xóa sạch 5 file `C:\temp\verify_*` (~2,85GB), ổ C 12,73→15,39GB; (4) báo cáo bổ sung section 8 đúng mẫu. Cổng kiểm tra (compileall/cli audit/import app) là self-report của thợ, chấp nhận vì vé không đụng code.
+- `ghi_chu` (điều phối Muse): 2026-10-06 ~05:45 +07 — Phát hành vé `OMP-EXIT-PROBE-HOME` theo đúng thứ tự `hang-cho` #1 sau verdict (chữa gốc vụ zombie 5,5 tiếng: điều tra vì sao `omp -p` xong việc không thoát; tái hiện + xác định điểm kẹt + đề xuất thoát sạch; cấm sửa code watcher/omp trong vé này). Quy ước chuẩn mới đã có sẵn trong mẫu vé (heartbeat mốc bước tối thiểu 15p/lần + checkpoint/resume bắt buộc). `hang-cho` agy rỗng. Watchdog sẽ dựng watcher trong ~10 phút.
+
+- Ticket hiện tại: `OMP-EXIT-PROBE-HOME` — [NHÀ] điều tra vì sao `omp -p` xong việc không thoát (chữa gốc zombie 5,5 tiếng). Prompt: `docs/phieu-viec/mailbox-agy/prompt.md`. Role gợi ý: DEFAULT.
+- `hang-cho`: (trống)
+
+# Trạng thái mailbox-agy (thợ agy — model gemini-3.8-flash-high, việc khó chuyển claude-sonnet/opus-5.5-medium)
+
 - Trạng thái: `xong-cho-duyet`
 - `bao_cao`: `docs/phieu-viec/ket-qua/upload-split-drive-home.md`
 - `commit`: 122cf3c
