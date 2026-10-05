@@ -1,12 +1,11 @@
 # Trạng thái mailbox-pc0575-opencode — KDTVN-PC0575 (thợ opencode)
 
-- Trạng thái: `xong`
-- `ghi_chu` (verdict Muse): 2026-10-05 ~17:25 +07 — **ĐẠT** vé `PREP-WIRE-QA-MAPPING`. Kiểm chứng độc lập qua GitHub API: đọc trực tiếp blob JSONL ở HEAD — đúng 3.392 dòng, 3.392 id duy nhất (0 trùng), schema đúng 6 trường vé (id/question/answer/source/category/batch), 0 dòng rỗng/lỗi, phân loại MOM 608 + LSU 1.790 + dieu-tra-loi 994 = 3.392; commit `2af6fb3` chỉ +54/-0 báo cáo `wire-qa-mapping.md` và +2/-1 `trang-thai.md` (JSONL vào ở commit mốc `d912d46`), không code, không secret, không merge `main`, không đụng file nguồn fixed. hang-cho trống → mailbox đóng (`xong`); sẵn sàng cho vé `WIRE-QA-CAGENT-PC0575`.
-- `ghi_chu` (thợ opencode): 2026-10-05 17:20 +07 — Vé `PREP-WIRE-QA-MAPPING` xong chờ duyệt: JSONL đủ 3.392 cặp duy nhất đã kiểm (ngẫu nhiên 20/20 đạt), báo cáo `docs/phieu-viec/ket-qua/wire-qa-mapping.md` (MOM 608 + LSU 1.790 + dieu-tra-loi 994). Cổng kỹ thuật: `compileall` xong không lỗi, `cli audit` PASS, `import workspace_chat_app` OK, mẫu `test_workspace_paths` 4 passed (không chạy full pytest vì vé không đụng mã nguồn; máy chạy Python 3.13.5).
-- `ghi_chu` (thợ opencode): 2026-10-05 17:12 +07 — Mốc Bước 1+2 xong: build `wire-qa-mapping.jsonl` đủ 3.392 dòng, id duy nhất, kiểm ngẫu nhiên 20/20 đạt (question/answer không rỗng, khớp file nguồn).
-- `ghi_chu` (thợ opencode): 2026-10-05 17:06 +07 — Nhận vé `PREP-WIRE-QA-MAPPING` (vé mới khác vé cũ đã ĐẠT, đủ điều kiện mở; cổng gate 4 lần không chạm vì có việc mới). Đã `git pull` xong, thiếu `QUY-UOC.md` riêng nên dùng tạm `mailbox-opencode/QUY-UOC.md`. Bắt đầu Bước 1: đọc file fixed + build JSONL.
-- `ghi_chu` (điều phối Muse): 2026-10-05 ~17:05 +07 — Phát hành vé `PREP-WIRE-QA-MAPPING` (prompt.md mới): build JSONL 3.392 cặp hỏi đáp từ file fixed + verify + báo cáo, chuẩn bị dữ liệu cho vé WIRE-QA-CAGENT. Không cần runtime, thuần xử lý file.
-- Ticket hiện tại: `PREP-WIRE-QA-MAPPING` — [CTY] chuẩn bị dữ liệu 3.392 cặp hỏi đáp cho vé WIRE. Prompt: `docs/phieu-viec/mailbox-pc0575-opencode/prompt.md`. Role gợi ý: DEFAULT.
+- Trạng thái: `moi`
+- `ghi_chu` (điều phối Muse): 2026-10-05 ~18:05 +07 — Phát hành vé `REVIEW-WIRE-CAGENT-SPEC` (prompt mới `prompt-review-wire-cagent-spec.md`): review chéo spec C-Agent của agy từ góc nhìn dữ liệu (spec có tính shape thực tế? 3 câu demo khả thi với JSONL? kịch bản lỗi nào data trigger được? nhãn bản thảo có bắt buộc hiển thị?). Chỉ review, không sửa. Role gợi ý: SMOL.
+- `ghi_chu` (verdict Muse): 2026-10-05 ~17:25 +07 — **ĐẠT** vé `PREP-WIRE-QA-MAPPING`. (giữ nguyên)
+- Ticket hiện tại: `REVIEW-WIRE-CAGENT-SPEC` — [CTY] review chéo spec C-Agent từ góc nhìn dữ liệu trước khi nối WIRE. Prompt: `docs/phieu-viec/mailbox-pc0575-opencode/prompt-review-wire-cagent-spec.md`. Role gợi ý: SMOL.
+- `hang-cho`: (trống)
+- `bao_cao`: `docs/phieu-viec/ket-qua/review-wire-cagent-spec.md`
 - `ghi_chu` (điều phối Muse): 2026-10-05 15:32 +07 — **Sửa lỗi của Muse:** commit verdict `326ff9f` đã đẩy tree cũ (sửa trên file local chưa sync, status tụt `xong-cho-duyet`→`moi`). Đây là lần 2 vi phạm quy tắc "sửa mailbox khi chưa fetch" — xin nhận lỗi. Verdict ĐẠT vẫn nguyên trên remote; nay đặt lại `xong` cho đúng.
 - Ticket hiện tại: (không — vé `AUDIT-BATCH88-PC0575` đã đóng với verdict ĐẠT; hết vé xếp hàng.) — [CTY] audit 15 cặp mẻ 88 (Q3392–Q3406) raw → fixed. Prompt: `docs/phieu-viec/mailbox-pc0575-opencode/prompt.md`. Role gợi ý: DEFAULT.
 - `hang-cho`: (trống)
