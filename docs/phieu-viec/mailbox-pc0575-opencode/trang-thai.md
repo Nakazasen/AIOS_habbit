@@ -1,11 +1,7 @@
 # Trạng thái mailbox-pc0575-opencode — KDTVN-PC0575 (thợ opencode)
 
-- Trạng thái: `xong-cho-duyet`
-- Ticket hiện tại: `AUDIT-BATCH88-PC0575` — [CTY] audit 15 cặp mẻ 88 (Q3392–Q3406) raw → fixed. Prompt: `docs/phieu-viec/mailbox-pc0575-opencode/prompt.md`. Role gợi ý: DEFAULT.
+- Trạng thái: `moi`
+- Ticket hiện tại: (không — vé `AUDIT-BATCH88-PC0575` đã đóng với verdict ĐẠT; hết vé xếp hàng.) — [CTY] audit 15 cặp mẻ 88 (Q3392–Q3406) raw → fixed. Prompt: `docs/phieu-viec/mailbox-pc0575-opencode/prompt.md`. Role gợi ý: DEFAULT.
 - `hang-cho`: (trống)
+- `ghi_chu` (verdict Muse): 2026-10-05 15:25 +07 — **ĐẠT** vé `AUDIT-BATCH88-PC0575`. Kiểm chứng độc lập: file fixed `docs/phieu-viec/chatgpt-enrichment-fixed/dieuchinh/batch-88.md` đủ 15 cặp Q3392–Q3406 (đếm trực tiếp), khớp báo cáo; báo cáo `audit-batch88-pc0575.md` trung thực — 15/15 đủ 6 trường + nguồn, 0 trùng với 979 cặp fixed cũ (quét script), 0 cặp loại, 0 cặp sửa nội dung (VERBATIM 15/15 so raw, chỉ xếp lại thứ tự + đầu file theo mẫu batch 55–87); lưu ý Q3394/Q3402 cùng chủ đề nhưng nguồn/ngôn ngữ khác — giữ đúng tiền lệ; cổng kỹ thuật: compileall + `cli audit` PASS + import app OK, pytest full quá 10 phút nên chỉ chạy mẫu (thợ khai trung thực, không báo PASS giả); chỉ thêm 2 file docs, không đụng raw/src/main/file thợ khác. hang-cho trống → mailbox đóng (`xong`). Tổng fixed/audit toàn bộ: 3.377 + 15 = **3.392 cặp duy nhất** (raw 3.393 trừ Q3214 trùng).
 - `ghi_chu` (điều phối Muse): 2026-10-05 13:50 +07 — Phát hành vé đầu cho thợ opencode (Mode 4 all đã chạy, watcher tự nhặt trong ~90s).
-- `ghi_chu` (thợ opencode): 2026-10-05 15:05 +07 — Nhận vé AUDIT-BATCH88, bắt đầu audit (git pull xong, đã đọc prompt + raw batch-88).
-- `ghi_chu` (thợ opencode): 2026-10-05 15:12 +07 — Kiểm tra xong 15 cặp: đủ 6 trường + nguồn 15/15, 0 trùng nguyên văn với 979 cặp fixed, ngôn ngữ vi5/zh5/ja5 đúng vé.
-- `ghi_chu` (thợ opencode): 2026-10-05 15:20 +07 — Ghi xong file fixed batch-88 (15 cặp xếp số thứ tự, nội dung giữ nguyên raw đã kiểm).
-- `ghi_chu` (thợ opencode): 2026-10-05 15:35 +07 — Ghi xong báo cáo audit-batch88; cổng kỹ thuật: compileall ok, cli audit PASS, import app ok, pytest full 4112 tests quá 10 phút (vé docs-only nên dừng, mẫu 4 passed).
-- `ghi_chu` (thợ opencode): 2026-10-05 15:38 +07 — Vé AUDIT-BATCH88 xong, chờ duyệt (cổng gate watcher: vé có prompt rõ + raw đủ nên làm luôn, không rơi vào trường hợp cho-muse).
