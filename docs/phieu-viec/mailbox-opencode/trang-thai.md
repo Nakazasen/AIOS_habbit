@@ -107,3 +107,7 @@
 - `ghi_chu`: 2026-10-06 04:52 +07 — mốc kiểm kê xong: đủ 4 file local (so_tay 1.374.070 B SHA fd2b10e1…02cf1cd khớp vé; manifest 290 B SHA ea7e9f99…54fdca; wire-qa 1.267.666 B SHA e2425857…3632a khớp vé; probe-R2 41.697 B SHA e9a6ec8e…47ec2b1). Đính chính timestamp mốc trước ghi 04:50 thực tế ~04:36 (giờ máy). Kế tiếp: tạo ngăn digest/ + upload Drive.
 - `ghi_chu`: 2026-10-06 05:12 +07 — mốc ngăn xong: `digest/` đã tạo trong `index-split-r5-backup` (Drive hiện đủ dieu_tra_loi/digest/lsu/mom/tong_hop + manifest). Kế tiếp: upload 4 file vào ngăn.
 - `ghi_chu`: 2026-10-06 05:42 +07 — mốc upload xong 4/4: `so_tay_tri_thuc.md` + manifest + `wire-qa-mapping.jsonl` + `probe-R2.json` đã nằm trong ngăn `digest/` (toast Drive "Đã tải 4 mục lên", tích xanh cả 4). ID ngăn `1JVOdfbbIqIFCbGKcng_-eIonRNMEBL5B`. Kế tiếp: đặt quyền chia sẻ + tải lại đối chiếu SHA.
+- Trạng thái: `xong-cho-duyet`
+- `commit`: `1d17c91` (mốc upload; báo cáo ở bước tiếp theo)
+- `bao_cao`: `docs/phieu-viec/ket-qua/upload-digest-drive-home.md`
+- `ghi_chu`: 2026-10-06 06:10 +07 — xong vé UPLOAD-DIGEST-DRIVE-HOME ở mức chờ duyệt: đủ 4 file trong ngăn `digest/` (ID `1JVOdfbbIqIFCbGKcng_-eIonRNMEBL5B`); quyền "Bất kỳ ai có đường liên kết — Người xem" (ngăn + kế thừa file); tải lại ẩn danh đối chiếu SHA-256 trùng local 100% cả 4 (so_tay `fd2b10e1…`, manifest `ea7e9f99…`, wire-qa `e2425857…`, probe-R2 `e9a6ec8e…`; byte khớp tuyệt đối); bonus 2 link lsu/dieu_tra_loi chưa lấy (không bắt buộc, không đụng ngăn cũ); chỉ đọc thành phẩm, không ghi index, không merge main.
