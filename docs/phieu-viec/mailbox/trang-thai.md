@@ -1,10 +1,11 @@
 # Trạng thái mailbox
 
-- Trạng thái: `xong-cho-duyet`
-- Ticket hiện tại: `KNOWLEDGE-DIGEST-HOME-R2` — [NHÀ] resume sổ tay tri thức từ checkpoint 180/889 (escalation cho-muse 03/10 đã gỡ: cầu nối Gemini Web direct_ready, ROUTER-FIX 04/10 kiểm 6 câu đạt). Prompt: `docs/phieu-viec/mailbox/prompt.md`. Role gợi ý: DEFAULT. Index production chỉ đọc, không merge `main`.
-- `hang-cho`: (1 vé — user duyệt 2026-10-05 ~20:10 +07)
-  1. `FEEDBACK-LOOP-HOME` — nút like/dislike + lý do dưới câu trả lời, feedback store theo mã máy (không tài khoản), máy tự học thói quen ("càng dùng càng hiểu mình"), metric + vòng xem lại. Prompt: `docs/phieu-viec/mailbox/prompt-queue-feedback-loop-home.md`. Role gợi ý: DEFAULT. (trống trước đó — vé DRAFT-APPROVAL đã chuyển sang opencode làm ngay theo lệnh user "làm nhanh" lúc ~06:25 +07.)
+- Trạng thái: `moi`
+- Ticket hiện tại: `FEEDBACK-LOOP-HOME` — [NHÀ] nút like/dislike + lý do dưới câu trả lời ngay trên khung chat, feedback store theo mã máy (không tài khoản), máy tự học thói quen ("càng dùng càng hiểu mình"), metric + vòng xem lại. Prompt: `docs/phieu-viec/mailbox/prompt.md`. Role gợi ý: DEFAULT.
+- `hang-cho`: (trống — vé `FEEDBACK-LOOP-HOME` đã phát hành 2026-10-05 ~22:35 +07)
   (2 vé cũ đã chuyển cho opencode đều đã đóng: AUDIT-ENRICH-LSU ĐẠT 22:50 04/10; IMPORT-STAGING-ENRICH PARTIAL → phương án B, chốt bằng ENRICH-STAGING-FILESTORE.)
+- `ghi_chu` (verdict Muse): 2026-10-05 ~22:35 +07 — **ĐẠT** vé `KNOWLEDGE-DIGEST-HOME-R2` (tích tạm, chờ user nghiệm thu). Kiểm chứng độc lập qua GitHub API: commit `1902d61` chỉ +416/-0 báo cáo `knowledge-digest-home-r2.md`, không code, không secret, không merge `main`; commit `f62eedd9` chỉ +4/-3 `trang-thai.md`. Báo cáo đủ 4 tiêu chí vé: (1) sổ tay 889/889 mục = số document đếm lại thực tế, manifest SHA-256 `fd2b10e1…02cf1cd` khớp file, dòng đầu "Bản thảo — chưa qua chuyên gia duyệt"; (2) probe 12 câu × 2 lane: sổ tay 548,4s/12 câu (rubric 10/24) vs RAG 91,2s (5/24) — kèm caveat trung thực: lane RAG bị rate-limit từ câu 4, đáp án là trích cục bộ, chưa so sánh được cloud khỏe; (3) SHA index `45eb0e07…b7c0` không đổi (probe before/after + sha256sum độc lập, mtime nguyên); (4) rào cứng giữ nguyên: không ghi index/DB, không đụng ổ D. Điểm lỗ hổng phạm vi sổ tay (5/12 câu báo "chưa đủ dữ kiện") đã được OMP ghi rõ để Muse quyết vòng cải thiện — không tự sửa. Phát hành vé xếp hàng `FEEDBACK-LOOP-HOME` theo đúng thứ tự hang-cho.
+- `ghi_chu` (điều phối Muse): 2026-10-05 ~22:35 +07 — Phát hành vé `FEEDBACK-LOOP-HOME` (copy `prompt-queue-feedback-loop-home.md` → `prompt.md`, trạng thái → `moi`). Watchdog sẽ dựng watcher trong ~10 phút.
 - `ghi_chu` (điều phối Muse): 2026-10-05 ~05:55 +07 — Phát hành vé `KNOWLEDGE-DIGEST-HOME-R2` theo lệnh user "điều phối 3 thợ, đừng để thợ đứng chơi". Watchdog sẽ dựng watcher trong ~10 phút.
 - Vé audit/import ChatGPT enrichment ĐÃ xếp (user duyệt commit batch lên repo public 2026-10-04 18:11 +07). Dữ liệu thô: `docs/phieu-viec/chatgpt-enrichment-raw/` (45 file, 1.998 cặp) — chỉ dùng để audit, không import trực tiếp.
 - `commit`: `1902d61` (R2 báo cáo chốt 05/10)

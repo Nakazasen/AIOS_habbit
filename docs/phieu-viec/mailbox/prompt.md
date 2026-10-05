@@ -1,38 +1,46 @@
-# Vé: KNOWLEDGE-DIGEST-HOME-R2 — resume sổ tay tri thức từ checkpoint 180/889
+# VÉ: FEEDBACK-LOOP-HOME (nút like/dislike + máy tự học thói quen, không cần tài khoản)
 
-Lane: [NHÀ] OMP chạy trên máy nhà h410asrock, qua cầu nối Gemini Web (`127.0.0.1:8585`).
-Role OMP gợi ý: DEFAULT (batch chạy dài).
+- Mã vé: `FEEDBACK-LOOP-HOME`
+- Role OMP gợi ý: DEFAULT (code UI + store + học thói quen)
+- Máy: nhà h410asrock
+- Báo cáo: `docs/phieu-viec/ket-qua/feedback-loop-home.md`
 
 ## Bối cảnh
 
-- R1 (2026-10-03 01:47–02:26 +07) đếm được **889 document / 149.800 chunk** trong collection `tri_thuc`, chạy batch tóm tắt tới checkpoint **180/889** thì cầu nối Gemini Web trả 405/502 từ 02:03 → watcher escalate `cho-muse` lúc ~05:35 (`docs/phieu-viec/mailbox/cho-muse-knowledge-digest-home.md`).
-- Escalation **ĐÃ được gỡ**: vé ROUTER-FIX (2026-10-04 21:42–23:0x) kiểm tra cầu nối = `direct_ready`, gọi trực tiếp `openai_compatible_local/gemini-web` OK ("Kết nối thành công"), 6 câu kiểm tra đạt.
-- Đây là mục tiêu user chốt cho 2 ngày cuối tuần (2026-10-03): nén toàn bộ kho thành sổ tay Markdown để hỏi đáp qua context dài, chạy song song với RAG. R1 chưa xong → R2 resume, không làm lại từ đầu.
-- Báo cáo R1: `docs/phieu-viec/ket-qua/knowledge-digest-home.md`. Checkpoint: `C:/tmp/knowledge-digest-home/`.
+User chốt 2026-10-03: mọi tính năng phải có vòng lặp cải thiện liên tục
+(feedback tại chỗ → metric đo được → vòng xem lại). Hai yêu cầu "đừng quên":
+(a) feedback câu trả lời ngay trên khung chat (thumbs + lý do khi chê);
+(b) đã có sẵn `answer_feedback` + UI từ vé ANSWER-DRAFT-FALLBACK — vé này
+mở rộng nó thành vòng lặp đầy đủ + máy tự học thói quen.
 
-## Việc OMP làm [NHÀ]
+Ràng buộc user 2026-10-05: **không quản lý theo tài khoản người dùng**.
+Định danh bằng mã máy (device ID) lưu local, không đăng nhập.
 
-0. Kiểm tra checkpoint `C:/tmp/knowledge-digest-home/` còn nguyên vẹn (số doc đã xong phải = 180). Nếu checkpoint hỏng/mất: báo trung thực, đếm lại từ đầu là phương án cuối cùng.
-1. Resume batch tóm tắt từ doc 181 → 889 qua cầu nối Gemini Web (đặt `AIOS_SYNTHESIS_ALLOW_CLOUD_PROVIDERS=1` trong tiến trình gọi). Checkpoint mỗi 25 doc; **cấm quá 45 phút không ghi log tiến độ**.
-2. Nếu cầu nối lại trả 405/502: backoff 5/15/30/60 phút theo cổng R1; sau 2 giờ vẫn lỗi → DỪNG trung thực, báo số doc đã xong + đặt `cho-muse` (không fake số, không tự đổi provider — đổi provider là quyết định của user).
-3. Gom thành sổ tay Markdown duy nhất + manifest SHA-256. Dòng đầu file sổ tay: "Bản thảo — chưa qua chuyên gia duyệt".
-4. Kiểm tra bao phủ: số mục trong sổ tay phải = số document đếm ở bước 0 (cấm hardcode 889 — đếm lại thực tế).
-5. Chạy probe hỏi đáp trên bộ benchmark của R1 (10–15 câu): ghi đáp án + thời gian từng câu; chạy cùng bộ câu qua lane RAG hiện tại để so sánh (thời gian + độ bao quát theo rubric).
-6. Index production **chỉ đọc**: đo SHA-256 trước/sau, phải khớp `45eb0e07…b7c0`.
+## Việc cần làm
 
-## Rào cứng (giữ nguyên từ R1)
+1. **Nút like/dislike + lý do** ngay dưới mỗi câu trả lời trong khung chat.
+   - UI tiếng Việt, gọn trong câu trả lời (đúng luật chat-first: không thêm
+     đống nút toolbar).
+   - Bấm dislike bắt buộc chọn lý do (ngắn gọn, vài lựa chọn + ô tự ghi).
+2. **Feedback store theo mã máy**: mỗi máy có ID ngẫu nhiên lưu local.
+   - Ghi vào `local_cases/` (tuyệt đối không ghi vào kho tri thức chung).
+   - Mỗi record: mã máy + mã câu hỏi + câu trả lời + like/dislike + lý do + thời gian.
+3. **Hai tác dụng** (đều không cần biết tên người dùng):
+   - (a) Sửa chung: nhiều máy cùng dislike một câu → đánh dấu để đội ngũ sửa gốc.
+   - (b) Học thói quen từng máy: chủ đề hay hỏi, độ dài ưa thích, giờ hay dùng.
+4. **"Càng dùng càng hiểu mình"**: hồ sơ thói quen theo mã máy, app dùng để
+   điều chỉnh (vd hay hỏi LSU buổi sáng → ưu tiên tìm đống LSU; hay chê dài
+   → trả lời súc tích hơn cho máy đó). Lịch sử chat hiện có là một phần trí nhớ.
+5. **Metric + vòng xem lại**: hàm tính tỷ lệ dislike theo câu trả lời / theo
+   chủ đề; báo cáo định kỳ câu nào bị chê nhiều để sửa gốc.
+6. Cờ tính năng riêng (mặc định TẮT), theo đúng luật repo.
 
-- Sổ tay là **bản thảo do LLM soạn** — không gắn nhãn `kiến thức đã được đào tạo bổ sung`; không nhập sổ tay vào kho tri thức; không nhập vào luồng trả lời chính của app; không lưu vết LLM nào vào DB.
-- Không merge `main`; không force-push; code tương thích Python 3.11.
-- Không ghi index production; không đụng ổ D.
+## Tiêu chí nghiệm thu
 
-## Tiêu chí ĐẠT
+- Nút like/dislike + lý do hiện dưới câu trả lời, UI tiếng Việt, không vỡ layout chat.
+- Feedback ghi đúng `local_cases/`, có mã máy, không lọt vào kho tri thức.
+- Test đủ 3: ghi feedback, tính metric, vòng học thói quen (dữ liệu giả lập nhiều máy).
+- `compileall` sạch, `pytest -q` đạt, `cli audit` PASS, import app OK.
+- Không nút thừa, không ghi index, không merge `main`, không secret.
+- Báo cáo `feedback-loop-home.md` có ảnh/số đo demo vòng lặp chạy thật.
 
-- Sổ tay bao phủ 100% document đã đếm; manifest SHA-256 hợp lệ.
-- Probe: số liệu từng câu đầy đủ (đáp án + thời gian), so sánh được với lane RAG.
-- SHA index production không đổi.
-- Báo cáo `docs/phieu-viec/ket-qua/knowledge-digest-home-r2.md`; commit riêng trên nhánh `phieu-viec/rag-fix1`; `trang-thai.md` → `xong-cho-duyet`.
-
-## Tiêu chí CHƯA ĐẠT
-
-- Số bao phủ báo cáo không khớp đếm thực tế; hoặc thiếu log tiến độ quá 45 phút; hoặc có thao tác ghi vào index/DB.
