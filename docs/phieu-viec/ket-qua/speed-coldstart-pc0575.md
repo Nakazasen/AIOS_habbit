@@ -4,7 +4,7 @@
 
 > **Cập nhật 2026-10-05 15:32 +07 — vì sao chặn (MỚI NHẤT, đọc trước).**
 > OMP nhận lại vé qua watcher (`LAUNCH 1/4` lúc 14:42); chuỗi trong ngày watcher đã tự mở/leo thang ≥4 lần liên tiếp không tiến triển (log `D:\Sandbox\agent-mailbox\watcher-mailbox-pc0575.log` 09:04→14:40, leo thang 4/4…8/4). Kiểm cổng gate trong phiên: **điều kiện mở KHÔNG còn — dữ liệu runtime của app đã biến mất khỏi PC0575**:
-> - `D:\Sandbox\AIOS_habbit\local_runs\` (index production SHA `e54c7745…`, 2.842.415.104 B, mtime 2026-10-01 15:46; model `retrieval_models\bge-m3-5617a9f`; ledger; log worker) — **không còn** (`Test-Path` = False). Quét toàn ổ C và D không thấy `library.sqlite` / `local_runs` / `retrieval_models` nào khác.
+> - `D:\Sandbox\AIOS_habbit\local_runs\workspace_chat_rag_v2_production\` (index production SHA `e54c7745…`, 2.842.415.104 B, mtime 2026-10-01 15:46; ledger; log worker) và `local_runs\retrieval_models\bge-m3-5617a9f` (model) — **không còn** (`Test-Path` = False; thư mục `local_runs` hiện chỉ còn `dieu_tra` + `workspace_chat_rag_v2_canary` do test tạo lúc 15:14 hôm nay, KHÔNG có index production). Quét toàn ổ C và D không thấy bản `library.sqlite` production nào khác.
 > - Audit chính thức của app: `.venv\Scripts\python.exe -B -m aios_habit.workspace_chat_rag_v2_deployment` (PYTHONPATH=src) → `Status: FAIL` / `deployment_model_unavailable`.
 > - Bản còn lại trên máy: `C:\AIOS_p5\library.sqlite.bak-20260930` (2.552.659.968 B — bản `062ec090…` ngày 29–30/09, **không phải** bản production `e54c7745…`).
 > - Hệ quả: bảng "Sau" mục 2, mục 4 (đo lạnh qua UI), mục 5 (parity) và mục 7 chưa thể hoàn tất; code P1–P4 (`2f52359` + `24973e7`) giữ nguyên giá trị — khi dữ liệu được khôi phục chỉ cần chạy lại các mục đo.
