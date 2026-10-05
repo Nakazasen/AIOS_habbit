@@ -1,5 +1,14 @@
 # Trạng thái mailbox-agy (thợ agy — model gemini-3.8-flash-high, việc khó chuyển claude-sonnet/opus-5.5-medium)
 
+- Trạng thái: `moi`
+- `ghi_chu` (verdict Muse): 2026-10-06 ~06:30 +07 — **ĐẠT** vé `SMA-WARMUP-LABEL-HOME`. Kiểm chứng độc lập: commit `4f07d73` single-parent, 6 file (báo cáo +142, i18n +3, jig_alert_cards +50, jig_chat_wire +31/-1, workspace_chat_ui +4, test +77), KHÔNG đụng `trend_alerts.py` đúng luật 1-file-1-đứa với OMP, không merge `main`; đủ 4 tiêu chí vé — (1) nhãn "Đang tích lũy dữ liệu nền (N/20 điểm)" khi N<20; (2) tự ẩn khi N>=20; (3) i18n đủ 3 ngôn ngữ (key `jig_instant_card_warmup` ×3); (4) test 17/17 xanh (chạy lại độc lập trên VM: 17 passed), py_compile sạch. Thợ làm xong trong 6 phút (06:06→06:12).
+- `ghi_chu` (điều phối Muse): 2026-10-06 ~06:30 +07 — Phát hành vé `AUDIT-BUOC2-JIG-HOME` (luật hàng chờ không cạn): rà soát readiness Bước 2 tool JIG (hạn 15/10) — liệt kê chức năng nào đã xong/còn thiếu, LOẠI TRỪ cổng SMA(20) vì OMP đang sửa. Chỉ đọc, không code. Prompt: `docs/phieu-viec/mailbox-agy/prompt-queue-audit-buoc2-jig-home.md`. Role gợi ý: PLAN.
+
+- Ticket hiện tại: `AUDIT-BUOC2-JIG-HOME` — [NHÀ] rà soát readiness Bước 2 (hạn 15/10). Prompt: `docs/phieu-viec/mailbox-agy/prompt.md`. Role gợi ý: PLAN.
+- `hang-cho`: (trống)
+
+# Trạng thái mailbox-agy (thợ agy — model gemini-3.8-flash-high, việc khó chuyển claude-sonnet/opus-5.5-medium)
+
 - Trạng thái: `xong-cho-duyet`
 - `bao_cao`: `docs/phieu-viec/ket-qua/sma-warmup-label-home.md`
 - `commit`: `4f07d73`
