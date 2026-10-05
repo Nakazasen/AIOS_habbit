@@ -119,6 +119,22 @@ def test_review_trend_end_to_end_with_report(tmp_path):
     assert "De xuat" in body
     assert result["de_xuat"], "expected prioritized proposals"
 
+def test_short_series_report_notes_preliminary(tmp_path):
+    records = [_rec("Cau ngan?", "huu_ich", 5), _rec("Cau ngan?", "chua_huu_ich", 6)]
+    out = tmp_path / "ngan.md"
+    result = review.run_periodic_review(records, output_path=str(out))
+    assert result["ok"] is True
+    body = out.read_text(encoding="utf-8")
+    assert "Chuoi du lieu" in body
+    assert "so bo" in body
+    assert result["canh_bao_cau"] == []
+
+def test_cli_flag_off_exits_zero_without_file(tmp_path):
+    loop.set_feedback_loop_override(False)
+    out = tmp_path / "tat.md"
+    assert review.main(["--dau-ra", str(out)]) == 0
+    assert not out.exists()
+
 
 def test_cli_main_writes_report(tmp_path, monkeypatch, capsys):
     records = _seed_stable_then_spike("Loi ket giay?", spike_days=3)

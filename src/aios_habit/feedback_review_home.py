@@ -384,6 +384,25 @@ def run_periodic_review(
             float(metrics.get("ti_le_che", 0.0) or 0.0),
         )
     )
+    do_dai_dai_nhat = 0
+    ngay_phan_biet = set()
+    for nhom in (daily.get("theo_cau") or {}, daily.get("theo_chu_de") or {}):
+        for rows in nhom.values():
+            do_dai_dai_nhat = max(do_dai_dai_nhat, len(rows or []))
+            for dong in rows or []:
+                ngay_phan_biet.add(str(dong.get("ngay", "")))
+    so_ngay_du_lieu = len([n for n in ngay_phan_biet if n and n != "khong-ro-ngay"])
+    if do_dai_dai_nhat < span:
+        lines.append(
+            "- Chuoi du lieu: chuoi dai nhat %d ngay trong %d ngay co du lieu "
+            "(chua du %d diem, so bo; khong canh bao gia tu du lieu it)."
+            % (do_dai_dai_nhat, so_ngay_du_lieu, span)
+        )
+    else:
+        lines.append(
+            "- Chuoi du lieu: chuoi dai nhat %d ngay trong %d ngay co du lieu."
+            % (do_dai_dai_nhat, so_ngay_du_lieu)
+        )
     lines.append("")
     lines.append("## Bang xep hang cau bi che nhieu nhat")
     lines.append("")
@@ -470,7 +489,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     result = run_periodic_review(window=args.window, k=args.k, output_path=args.output)
     if not result.get("ok"):
         print(str(result.get("thong_bao", "Co dang tat nen khong chay.")))
-        return 2
+        return 0
     print("Da ghi bao cao: %s" % result.get("bao_cao", ""))
     print(
         "Tong %d luot, ti le che %.3f, canh bao %d cau / %d chu de."
