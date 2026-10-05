@@ -15,7 +15,7 @@ Trạng thái: `cho-muse`
 - Ticket hiện tại: `SPEED-COLDSTART-PC0575` — [CTY] sửa câu hỏi lạnh qua UI ~265 s (bộ đọc khởi động 180,9 s > cửa sổ 120 s của app; warm-up làm nóng nhầm collection).
 - `prompt`: `docs/phieu-viec/mailbox-pc0575/prompt.md`
 - `bao_cao`: `docs/phieu-viec/ket-qua/opt-ragv2-speed-app-pc0575.md`
-- `ghi_chu`: 2026-10-05 09:08 watcher auto-escalate: 4 lan tu mo omp (moi lan cach ~10 phut) ma mailbox khong tien trien. Chuyen sang cho-muse de Muse xu ly. Ticket: `SPEED-COLDSTART-PC0575` — [CTY] sửa câu hỏi lạnh qua UI ~265 s (bộ đọc khởi động 180,9 s > cửa sổ 120 s của app; warm-up làm nóng nhầm collection).
+- `ghi_chu`: 2026-10-05 13:37 watcher auto-escalate: 4 lan tu mo omp (moi lan cach ~10 phut) ma mailbox khong tien trien. Chuyen sang cho-muse de Muse xu ly. Ticket: `SPEED-COLDSTART-PC0575` — [CTY] sửa câu hỏi lạnh qua UI ~265 s (bộ đọc khởi động 180,9 s > cửa sổ 120 s của app; warm-up làm nóng nhầm collection).
 - `hang-cho` (thứ tự do user duyệt 2026-10-01 ~16:45 +07):
   1. `hodap-lsu-loi-rerun` — **ĐÃ XONG, verdict ĐẠT 2026-10-01 ~18:07 +07**
   2. `OPT-RAGV2-PYLOOPS` — **ĐÃ XONG, verdict Muse ĐẠT 2026-10-02 ~09:26 +07**
@@ -39,3 +39,4 @@ Trạng thái: `cho-muse`
 - `hang-cho` (bổ sung 2026-10-05 ~07:05 +07, theo chốt của user: C-Agent là đường sống ở công ty, làm tiếp sổ tay + nối dữ liệu hỏi đáp trong hôm nay):
   2. `WIRE-QA-CAGENT-PC0575` (`docs/phieu-viec/mailbox-pc0575/prompt-queue-wire-qa-cagent-pc0575.md`) — [CTY] nối 3.393 cặp hỏi đáp ChatGPT vào giao diện để hỏi đáp qua lane C-Agent (kiểm C-Agent sống, nhãn bản thảo, demo 3 câu)
   3. `DIGEST-CTY-RESUME` (`docs/phieu-viec/mailbox-pc0575/prompt-queue-digest-cty-resume.md`) — [CTY] làm tiếp sổ tay tri thức ở máy công ty bằng lane C-Agent (kiểm tra tiến độ máy nhà trước, không làm trùng; rào bản thảo)
+
