@@ -1,5 +1,14 @@
 # Trạng thái mailbox-agy (thợ agy — model gemini-3.8-flash-high, việc khó chuyển claude-sonnet/opus-5.5-medium)
 
+- Trạng thái: `moi`
+- `ghi_chu` (verdict Muse): 2026-10-06 ~06:05 +07 — **ĐẠT** vé `OMP-EXIT-PROBE-HOME`. Kiểm chứng độc lập: commit `d918a1b` single-parent, chỉ +162/-0 báo cáo `omp-exit-probe-home.md`, không code, không secret, không merge `main`; đủ 3 tiêu chí vé — (1) tái hiện 5 probe cô lập: 2 dạng kẹt (startup do readPipedInput thiếu EOF stdin; shutdown do daemon nền giữ event loop) + 2 lần thoát sạch 9s/16s Exit Code 0; (2) xác định 3 điểm kẹt có dẫn chứng (sidecar PID 15332 ở phiên F1 đêm 05/10, `strictWithoutDeadline: true` trong waitForAdvisorCatchup, readPipedInput khi headless); (3) 4 đề xuất thoát sạch, không đụng code watcher/omp đúng yêu cầu vé. Bảng đối chứng F1 (kẹt 5,5h) vs F2/F3 (thoát 75ms/13ms, có `Session exit recorded`) khớp sự cố thực tế. Lưu ý: phần giải mã binary (offset hàm Bun) là self-report, không kiểm độc lập được từ VM — nhưng kết luận không phụ thuộc vào đó (bằng chứng hành vi từ probe đủ vững).
+- `ghi_chu` (điều phối Muse): 2026-10-06 ~06:05 +07 — Phát hành vé `SMA-GATE-REALDATA-HOME` ngay sau verdict (luật hàng chờ không cạn): kiểm chứng cổng cảnh báo xu hướng SMA(20) trên log JIG thật (phục vụ Bước 2 lộ trình tool JIG, hạn 15/10). Prompt: `docs/phieu-viec/mailbox-agy/prompt-queue-sma-gate-realdata-home.md`. Role gợi ý: DEFAULT. `hang-cho` agy trống.
+
+- Ticket hiện tại: `SMA-GATE-REALDATA-HOME` — [NHÀ] kiểm chứng cổng SMA(20) trên log JIG thật (đo chất lượng cảnh báo cho Bước 2). Prompt: `docs/phieu-viec/mailbox-agy/prompt.md`. Role gợi ý: DEFAULT.
+- `hang-cho`: (trống)
+
+# Trạng thái mailbox-agy (thợ agy — model gemini-3.8-flash-high, việc khó chuyển claude-sonnet/opus-5.5-medium)
+
 - Trạng thái: `xong-cho-duyet`
 - `bao_cao`: `docs/phieu-viec/ket-qua/omp-exit-probe-home.md`
 - `commit`: `d918a1b`
