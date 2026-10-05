@@ -1,52 +1,52 @@
-# Vé RECOVER-RUNTIME-PC0575 — Khôi phục dữ liệu runtime production đã mất
+# Vé RESTORE-DRIVE-PC0575 — Khôi phục runtime TẠM từ Drive (bản cũ 30/09)
 
-**Mức ưu tiên:** cao nhất (chặn toàn bộ vé đo/app trên máy công ty).
+**Mức ưu tiên:** cao nhất (app chết hoàn toàn khi không có runtime).
 **Máy thực hiện:** [CTY] KDTVN-PC0575 (CPU-only).
-**Role OMP gợi ý:** SMOL/TINY (vé kiểm tra nhanh, chủ yếu đọc + liệt kê).
-**Xếp hàng:** vé này xong → phát hành lại `SPEED-COLDSTART-PC0575` (file vé gốc: `docs/phieu-viec/mailbox-pc0575/prompt-queue-speed-coldstart-pc0575.md`) để đo phần còn thiếu.
+**Role OMP gợi ý:** DEFAULT (tải file lớn + verify + audit).
+**Xếp hàng:** vé này xong (audit PASS) → phát hành lại `SPEED-COLDSTART-PC0575` từ `prompt-queue-speed-coldstart-pc0575.md` (lưu ý: index đã đổi sang bản 062ec090, mọi số đo phải ghi rõ).
 
 ## Bối cảnh
 
-Sáng 2026-10-05 user dọn ổ C và D → thư mục `D:\Sandbox\AIOS_habbit\local_runs\` bị mất, gồm:
-- `local_runs\workspace_chat_rag_v2_production\` — index production SHA `e54c7745…`, **2.842.415.104 byte**, mtime 2026-10-01 15:46 (kèm ledger + log worker).
-- `local_runs\retrieval_models\bge-m3-5617a9f` — model embedding.
+Vé `RECOVER-RUNTIME-PC0575` đã verdict **KHÔNG KHÔI PHỤC ĐƯỢC** (báo cáo `docs/phieu-viec/ket-qua/recover-runtime-pc0575.md`): bản production `e54c7745…` (2.842.415.104 B) không còn ở đâu trên máy; Recycle Bin trống; quét 1.536.807 file chỉ thấy backup cũ.
 
-Audit chính thức `python -B -m aios_habit.workspace_chat_rag_v2_deployment` → `Status: FAIL` / `deployment_model_unavailable`.
-Bản còn lại `C:\AIOS_p5\library.sqlite.bak-20260930` (2.552.659.968 byte, SHA `062ec090…`) là bản cũ 29–30/09, **KHÔNG phải production** — cấm dùng thay.
+Đây là vé khôi phục **TẠM** bằng bản cũ trên Drive để app chạy lại được. **Nhãn bắt buộc trong mọi báo cáo sau này: bản TẠM `062ec090` (30/09), KHÔNG phải bản production `e54c7745` đã mất.**
 
-Chi tiết: `docs/phieu-viec/ket-qua/speed-coldstart-pc0575.md` (mục cập nhật 15:32).
+## File nguồn (Muse đã verify trực tiếp trên Drive 05/10 ~16:50)
 
-## Việc cần làm (theo thứ tự)
+Thư mục Drive AIOS_Data, tải bằng **command line** (curl/Python — KHÔNG dùng Chrome vì policy công ty từng chặn):
 
-### Bước 1 — Kiểm tra Recycle Bin (làm ĐẦU TIÊN, ~5 phút)
-- Mở Recycle Bin của **cả ổ C và ổ D**, tìm: file `*.sqlite*` cỡ ~2,8 GB, thư mục `retrieval_models\bge-m3-5617a9f`, thư mục `local_runs\workspace_chat_rag_v2_production`.
-- Nếu tìm thấy file khớp (size ≈ 2.842.415.104 byte): tính SHA-256, đối chiếu 8 ký tự đầu với `e54c7745`.
-  - Khớp → **khôi phục về đúng path cũ** `D:\Sandbox\AIOS_habbit\local_runs\...`, verify lại SHA + `Test-Path`, chạy audit deployment → PASS thì sang Bước 5.
-  - Không khớp → ghi lại path + size + SHA vào báo cáo, KHÔNG khôi phục mù.
+1. **library.sqlite** — index cũ
+   - Link: `https://drive.google.com/uc?export=download&id=1cbydCaMAvO9eBRJg5YhZ1T2tj66C10hv`
+   - Size: **2.552.659.968 byte** | md5: `7392ef9a54d82926f59569a9e664458f`
+2. **bge-m3-onnx-fp32.zip** — cây ONNX đã nghiệm thu
+   - Link: `https://drive.google.com/uc?export=download&id=1CnTrdYLfv1ZpbZMo8zivSOxuD1cVDIrG`
+   - Size: **1.326.939.447 byte** | md5: `db7baa786e5d485a57eb95619ea6eb7b`
 
-### Bước 2 — Kiểm tra antivirus/quarantine
-- Kiểm tra Windows Defender Protection History + quarantine của AV đang dùng: có file nào trong `local_runs` bị cách ly sáng nay không. Nếu có → ghi tên file + thời gian, KHÔNG tự restore khi chưa rõ (ghi vào báo cáo để Muse quyết).
+Lưu ý: file lớn qua `uc?export=download` có thể gặp trang cảnh báo virus-scan của Google (trả về HTML thay vì binary) — nếu gặp, thử thêm `&confirm=t` hoặc báo lại. Verify **size + md5** sau tải, sai số nào cũng DỪNG và báo.
 
-### Bước 3 — Quét toàn máy tìm bản copy khác
-- Quét C, D và mọi ổ USB/ổ ngoài đang cắm: tìm mọi file `*.sqlite*` ≥ 1 GB. Với mỗi file ghi: path đầy đủ, size (byte), SHA-256 (8 ký tự đầu).
-- Đối chiếu với 2 dấu vân tay đã biết: `e54c7745…` (production cần tìm), `062ec090…` (backup cũ — đã biết ở `C:\AIOS_p5\`).
-- Kiểm tra thêm các path từng chứa index: `C:\AIOS_workspace_chat_rag_v2_production\`, `C:\AIOS_habit_index_ve03\`, `C:\AIOS_p5\`.
+## Việc cần làm
 
-### Bước 4 — Kiểm tra khả năng tải lại model (chỉ kiểm tra, CHƯA tải)
-- Kiểm tra kết nối tới Hugging Face + ước tính tải được model `bge-m3` đúng revision `5617a9f` không. Chỉ báo kết quả, chưa tải vội (chờ Muse quyết sau khi rõ tình trạng index).
+### Bước 1 — Tải 2 file về PC0575
+- Tải bằng command line vào thư mục tạm (vd `D:\Sandbox\AIOS_habbit\scratch\restore-drive\`).
+- Verify size (byte chính xác) + md5 khớp bảng trên. Không khớp → DỪNG, báo `cho-muse`.
+- Nếu command line bị chặn hoàn toàn → báo `cho-muse` ghi rõ lỗi (user đã từng tải tay ngày 30/09, đó là đường dự phòng cuối).
 
-### Bước 5 — Báo cáo + verdict
-- Viết `docs/phieu-viec/ket-qua/recover-runtime-pc0575.md`: liệt kê từng bước đã làm + bằng chứng (path, size, SHA).
-- **KHÔI PHỤC ĐƯỢC** (index đúng SHA `e54c7745…` đã về đúng path + audit deployment PASS) → `xong-cho-duyet`.
-- **KHÔNG KHÔI PHỤC ĐƯỢC** → `cho-muse`, kèm danh sách đầy đủ mọi nguồn còn lại trên máy (backup cũ, file Drive đã tải dở, v.v.) để Muse quyết hướng tiếp theo (dùng backup cũ tạm / tải lại từ Drive / rebuild).
+### Bước 2 — Đặt đúng path app mong đợi
+- **Không hardcode path.** Đọc từ deployment module (`aios_habit.workspace_chat_rag_v2_deployment`) + `config/workspace_chat_rag_v2.local.json` để biết đúng path production index và model mà audit kiểm tra.
+- Đặt `library.sqlite` vào đúng path index production (ghi rõ path đã đặt trong báo cáo).
+- Giải nén `bge-m3-onnx-fp32.zip` vào đúng thư mục cây ONNX (`models/bge-m3-onnx-fp32` hoặc theo config).
+- Nếu audit còn đòi cây `retrieval_models/bge-m3-5617a9f` (30 file HF): tải từ Hugging Face `BAAI/bge-m3` @ `5617a9f` (đã verify tải được ở vé trước), verify `sha256_model_tree` theo manifest.
+
+### Bước 3 — Audit + smoke
+- Chạy `python -B -m aios_habit.workspace_chat_rag_v2_deployment` → phải `Status: PASS`.
+- Smoke: app khởi động được, hỏi 1 câu đơn giản có trả lời (không cần đo tốc độ ở vé này).
+
+### Bước 4 — Báo cáo
+- Viết `docs/phieu-viec/ket-qua/restore-drive-pc0575.md`: path đã đặt, size + md5/SHA đã verify, kết quả audit, nhãn **bản TẠM 062ec090**.
+- Audit PASS → `xong-cho-duyet`. Audit FAIL hoặc tải không được → `cho-muse` kèm lỗi chính xác.
 
 ## Cấm kỵ
-- **Không xóa thêm bất cứ file/thư mục nào** trên máy trong vé này.
-- Không đụng tới `C:\AIOS_p5\library.sqlite.bak-20260930`.
-- Không copy backup cũ đè lên path production rồi gọi là "đã khôi phục".
-- Không rebuild/nhúng lại index khi chưa có lệnh của Muse.
-
-## Điều kiện nghiệm thu
-- Báo cáo liệt kê đủ 4 bước với bằng chứng cụ thể (path + size + SHA).
-- Nếu khôi phục: SHA index sau khôi phục = `e54c7745…` (8 ký tự đầu), audit deployment `Status: PASS`.
-- Commit riêng trên nhánh `phieu-viec/rag-fix1`, không đụng `main`, không force-push.
+- Không xóa/ghi đè bất cứ dữ liệu nào khác trên máy.
+- Không đụng `C:\AIOS_p5\library.sqlite.bak-20260930`.
+- Không báo "đã khôi phục production" — luôn ghi rõ **bản TẠM**.
+- Commit riêng nhánh `phieu-viec/rag-fix1`, không đụng `main`, không force-push.
