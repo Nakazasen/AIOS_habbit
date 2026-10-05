@@ -62,3 +62,5 @@
 - `commit`: `c868ee4` (mốc code phương án A; báo cáo phần 2 trong cùng lượt đẩy này)
 - `bao_cao`: `docs/phieu-viec/ket-qua/draft-approval.md`
 - `ghi_chu`: 2026-10-05 06:45 +07 — xong vé DRAFT-APPROVAL ở mức chờ duyệt: PIN thay tài khoản (băm local, khóa sau 5 lần sai, không gợi ý) + 3 nút Duyệt/Sửa/Từ chối trong chat (hiện khi cờ bật + PIN mở + là bản thảo) + đổi nhãn `Đã duyệt bởi [tên], ngày [date]` (cặp ở lại kho bản thảo, gỡ được) + metric theo mẻ trên kho thật 87 file/3.377 cặp + phiên bản hóa giữ bản cũ + action liệt kê trong vùng trả lời; test mới 10/10, cụm liên quan 42/42, audit PASS; bộ toàn kho quá 10 phút chưa xong + 2 lỗi chữ cứng cũ có sẵn (ghi trung thực, không báo đạt cho 2 hạng mục đó).
+- Trạng thái: `dang-lam`
+- `ghi_chu`: 2026-10-05 20:09 +07 — đã nhận vé UPLOAD-SPLIT-DRIVE-HOME (điều kiện mở đủ: trạng thái `moi` mới 20:05 + prompt `prompt-upload-split-drive-home.md` đúng vé + verdict DRAFT-APPROVAL ĐẠT; 0 file watcher tự mở, không rơi nhánh 4 lần nên không đặt `cho-muse`). Bắt đầu bước 1: kiểm đủ 4 khối + manifest, chưa upload.
