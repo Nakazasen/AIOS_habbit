@@ -19,6 +19,8 @@ from pathlib import Path
 from typing import Any, Dict, Iterable, Iterator, List, Optional, Sequence
 
 from .iris_log_adapter import BanGhiIris, doc_log_iris
+from .jigbeam_log_adapter import co_flag_bat as co_flag_jigbeam
+from .jigbeam_log_adapter import la_log_jigbeam, phat_lai_csv_jigbeam
 from .stream_api import NGUON_PHAT_LAI_MO_PHONG, STREAM_PATH
 
 #: Nhan mo phong bat buoc cho moi ban tin phat lai.
@@ -71,6 +73,38 @@ def phat_lai_csv_iris(
         if ban_tin is not None:
             dem += 1
             yield ban_tin
+
+
+def phat_lai_csv_tu_dong(
+    duong_dan: str | Path,
+    jig_id: str = "",
+    chi_so: Optional[Sequence[str]] = None,
+    gioi_han_dong: Optional[int] = None,
+) -> Iterator[Dict[str, Any]]:
+    """Phat lai tu dong: Iris cu hoac JIG BEAM moi (sau co, mac dinh tat).
+
+    - Co ``AIOS_FEATURE_JIGBEAM_ADAPTER`` TAT (mac dinh): chi doc log Iris
+      nhu cu, tep JIG BEAM bi tu choi y nhu truoc (giong ``doc_log_iris``).
+    - Co BAT: tu nhan dien tieu de; tep JIG BEAM di qua
+      ``phat_lai_csv_jigbeam``, tep Iris di qua ``phat_lai_csv_iris``.
+    """
+    import csv as _csv
+
+    path = Path(duong_dan)
+    try:
+        with path.open("r", encoding="utf-8-sig", newline="") as f:
+            tieu_de = next(_csv.reader(f), [])
+    except (OSError, UnicodeDecodeError):
+        tieu_de = []
+    if la_log_jigbeam([str(t or "").strip() for t in tieu_de]):
+        if not co_flag_jigbeam():
+            raise ValueError(
+                "Tep log JIG BEAM can bat co %s truoc khi phat lai tu dong. "
+                "Hoac goi truc tiep phat_lai_csv_jigbeam." % "AIOS_FEATURE_JIGBEAM_ADAPTER"
+            )
+        yield from phat_lai_csv_jigbeam(duong_dan, jig_id, chi_so, gioi_han_dong)
+        return
+    yield from phat_lai_csv_iris(duong_dan, jig_id, chi_so, gioi_han_dong)
 
 
 def gui_lo_len_server(
