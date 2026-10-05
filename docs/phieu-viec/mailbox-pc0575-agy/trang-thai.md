@@ -1,7 +1,8 @@
 # Trạng thái mailbox-pc0575-agy — KDTVN-PC0575 (thợ agy — Antigravity CLI)
 
-- Trạng thái: `xong`
-- Ticket hiện tại: `PROBE-CAGENT-PC0575` — [CTY] kiểm tra lane C-Agent còn sống từ PC0575 (1 câu ngắn, không qua app UI). Prompt: `docs/phieu-viec/mailbox-pc0575-agy/prompt.md`. Role gợi ý: SMOL/TINY.
+- Trạng thái: `moi`
+- `ghi_chu` (điều phối Muse): 2026-10-05 ~17:05 +07 — Phát hành vé `PREP-WIRE-CAGENT-SPEC` (prompt.md mới): viết đặc tả kỹ thuật nối C-Agent cho vé WIRE (API contract, timeout/retry, error handling, nhãn bản thảo, demo 3 câu) dựa trên báo cáo probe. Không cần runtime, thuần đọc + viết tài liệu.
+- Ticket hiện tại: `PREP-WIRE-CAGENT-SPEC` — [CTY] đặc tả kỹ thuật nối C-Agent cho vé WIRE-QA-CAGENT. Prompt: `docs/phieu-viec/mailbox-pc0575-agy/prompt.md`. Role gợi ý: SMOL/TINY.
 - `hang-cho`: (trống)
 - `bao_cao`: `docs/phieu-viec/ket-qua/probe-cagent-pc0575.md`
 - `ghi_chu`: 2026-10-05 13:56 +07 — Hoàn thành probe C-Agent: KẾT LUẬN SỐNG, phản hồi sau 30,76 s ("Xin chào! Tôi là trợ lý AI và đã sẵn sàng hỗ trợ bạn."). Cổng gate watcher bình thường, không kẹt.
