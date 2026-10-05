@@ -1,6 +1,15 @@
 # Trạng thái mailbox-opencode (thợ opencode — model free muse-spark-1.3 / space-bunny)
 
 - Trạng thái: `moi`
+- `ghi_chu` (verdict Muse): 2026-10-06 ~06:35 +07 — **ĐẠT** vé `UPLOAD-DIGEST-DRIVE-HOME` (vé meta cuối của opencode — từ nay tạm dừng meta theo lệnh user). Kiểm chứng độc lập: commit `6ec20ab` single-parent, chỉ +62/-0 báo cáo `upload-digest-drive-home.md` +4/-0 `trang-thai.md`, không code, không merge `main`; đủ 3 tiêu chí vé — (1) upload 4/4 file vào ngăn `digest/` (ID `1JVOdfbbIqIFCbGKcng_-eIonRNMEBL5B`); (2) đặt quyền "Bất kỳ ai có đường liên kết — Người xem"; (3) tải lại đối chiếu SHA-256 khớp 100% cả 4 file (bảng đủ link Drive từng file). Thợ trung thực: ghi rõ 5 sự cố gặp (bộ gõ tiếng Việt, Chrome trôi màn hình, popup watcher...) và cách xử lý; file tạm `C:\\temp\\verify_digest\\` giữ làm bằng chứng, xóa sau duyệt.
+- `ghi_chu` (điều phối Muse): 2026-10-06 ~06:35 +07 — Phát hành vé `VERIFY-RT-PIPELINE-HOME` (luật hàng chờ không cạn; chuyển sang LSU): kiểm chứng component realtime (`rt_consumer.py`, `stream_api.py`) chạy được với feed mô phỏng từ CSV thật — dọn đường cho vé cảnh báo realtime ở máy công ty. Chỉ chạy thử, không sửa code. Prompt: `docs/phieu-viec/mailbox-opencode/prompt-queue-verify-rt-pipeline-home.md`. Role gợi ý: DEFAULT.
+
+- Ticket hiện tại: `VERIFY-RT-PIPELINE-HOME` — [NHÀ] kiểm chứng đường log realtime. Prompt: `docs/phieu-viec/mailbox-opencode/prompt.md`. Role gợi ý: DEFAULT.
+- `hang-cho`: (trống)
+
+# Trạng thái mailbox-opencode (thợ opencode — model free muse-spark-1.3 / space-bunny)
+
+- Trạng thái: `moi`
 - `ghi_chu` (điều phối Muse): 2026-10-06 ~04:25 +07 — Phát hành vé `DIGEST-CTY-PREP-HOME` (prompt mới `prompt-queue-digest-cty-prep-home.md`): kiểm kê thành phẩm sổ tay R2 (889 mục + manifest + wire-qa 3.392 cặp + 4 khối Drive) để máy công ty tái dùng, khỏi làm lại. Báo cáo `digest-cty-prep.md`. Role gợi ý: DEFAULT.
 
 - Ticket hiện tại: `UPLOAD-DIGEST-DRIVE-HOME` — [NHÀ] upload thành phẩm sổ tay lên Drive cho máy công ty tải về. Prompt: `docs/phieu-viec/mailbox-opencode/prompt-queue-upload-digest-drive-home.md`. Role gợi ý: DEFAULT.
