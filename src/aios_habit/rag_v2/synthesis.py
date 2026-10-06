@@ -365,6 +365,25 @@ _LINE_DROPPABLE_PROVIDER_VALIDATION_ERRORS = frozenset({
 })
 
 
+def _provider_validation_allows_line_surgery(
+    validation: ProviderSynthesisValidation,
+) -> bool:
+    """Return whether dropping offending lines can still make the candidate passable.
+
+    A combined failure qualifies when every error is either line-droppable or
+    presentation-repairable and at least one offending line can be dropped: the
+    bad lines are removed first and only the remaining presentation errors are
+    handed to the single repair attempt. Literal and unknown-source errors stay
+    drop-only and are never sent to repair.
+    """
+    errors = set(validation.errors)
+    if not errors & _LINE_DROPPABLE_PROVIDER_VALIDATION_ERRORS:
+        return False
+    return errors <= (
+        _LINE_DROPPABLE_PROVIDER_VALIDATION_ERRORS | _REPAIRABLE_PROVIDER_VALIDATION_ERRORS
+    )
+
+
 def _provider_material_line_issues(
     line: str,
     evidence_by_citation: dict[str, str],
@@ -800,9 +819,13 @@ def synthesize_with_provider(
 
     validation = validate_provider_synthesis_answer(pack, answer, plan)
     repaired = False
-    if not validation.valid and set(validation.errors) <= _LINE_DROPPABLE_PROVIDER_VALIDATION_ERRORS:
+    if not validation.valid and _provider_validation_allows_line_surgery(validation):
         # Surgical repair first: drop only the offending lines instead of
-        # discarding the whole answer, then re-validate what remains.
+        # discarding the whole answer, then re-validate what remains. A combined
+        # failure keeps dropping while offending lines remain; once only
+        # presentation errors are left, the single repair attempt below gets its
+        # chance to finish. Unknown sources and unsupported literals are never
+        # handed to repair.
         for _surgical_attempt in range(4):
             cleaned = drop_invalid_provider_answer_lines(answer, pack, plan)
             if cleaned is None:
@@ -815,7 +838,7 @@ def synthesize_with_provider(
             ) <= _REPAIRABLE_PROVIDER_VALIDATION_ERRORS:
                 answer, validation = cleaned, cleaned_validation
                 break
-            if set(cleaned_validation.errors) <= _LINE_DROPPABLE_PROVIDER_VALIDATION_ERRORS:
+            if _provider_validation_allows_line_surgery(cleaned_validation):
                 answer, validation = cleaned, cleaned_validation
                 continue
             break

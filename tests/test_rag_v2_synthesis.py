@@ -1482,3 +1482,124 @@ def test_e2_b5_selects_house_method_definition_line():
     assert result.grounded is True
     assert "HOUSE_METHOD" in result.answer
     assert "倉庫へ格納" in result.answer
+
+
+def _make_release_pair_pack():
+    return build_evidence_pack(
+        "release procedure",
+        _make_response([
+            _make_result(
+                "release-a", "d1", 5.0, "Verify access before release.",
+                matched_terms=("release", "procedure"),
+            ),
+            _make_result(
+                "release-b", "d1", 4.0, "Deploy the release package.",
+                matched_terms=("release", "procedure"),
+            ),
+        ]),
+    )
+
+
+def test_combined_droppable_and_repairable_failure_recovers_via_surgery_then_repair():
+    """Combined failures drop the fabricated line first, then hand the
+    remaining presentation error to the single repair attempt."""
+    pack = _make_release_pair_pack()
+    calls = []
+
+    def provider(request):
+        calls.append(request)
+        if len(calls) == 1:
+            return (
+                "- Verify access before release [1]\n"
+                "- Invented step without a source [99]\n"
+                "- Deploy the release package [2]"
+            )
+        return "- Verify access before release [1]"
+
+    result = synthesize_with_provider(
+        pack, provider, answer_shape="grounded_summary", max_claims=1
+    )
+
+    assert len(calls) == 2
+    assert calls[0].repair_errors == ()
+    assert calls[1].repair_candidate == (
+        "- Verify access before release [1]\n- Deploy the release package [2]"
+    )
+    assert calls[1].repair_errors == ("provider_answer_claim_budget_exceeded",)
+    assert result.provider_used is True
+    assert result.mode == "provider_validated_after_repair"
+    assert result.answer == "- Verify access before release [1]"
+    assert "[99]" not in result.answer
+
+
+def test_combined_failure_with_only_fabricated_lines_stays_fail_closed():
+    """Every offending line is fabricated (bad literal + unknown source): line
+    surgery keeps nothing citeable and the answer must fall back without any
+    repair attempt."""
+    pack = _make_release_pair_pack()
+    calls = []
+
+    def provider(request):
+        calls.append(request)
+        return (
+            "- Invented step 2026-01-01 [1]\n"
+            "- Invented step two [98]"
+        )
+
+    result = synthesize_with_provider(
+        pack, provider, answer_shape="grounded_summary", max_claims=1
+    )
+
+    assert len(calls) == 1
+    assert result.provider_used is False
+    assert result.mode.startswith("local_")
+    assert "Invented" not in result.answer
+    assert "[98]" not in result.answer
+
+
+def test_pure_repairable_and_pure_droppable_keep_previous_routing():
+    """Single-category failures keep their original routes: droppable-only
+    failures are fixed by line surgery without a repair call, repairable-only
+    failures still use exactly one repair attempt."""
+    pack = _make_release_pair_pack()
+    drop_calls = []
+
+    def drop_provider(request):
+        drop_calls.append(request)
+        return (
+            "- Verify access before release [1]\n"
+            "- Invented step [99]\n"
+            "- Deploy the release package [2]"
+        )
+
+    dropped = synthesize_with_provider(
+        pack, drop_provider, answer_shape="grounded_summary", max_claims=3
+    )
+
+    assert len(drop_calls) == 1
+    assert dropped.provider_used is True
+    assert dropped.mode == "provider_validated"
+    assert dropped.answer == (
+        "- Verify access before release [1]\n- Deploy the release package [2]"
+    )
+
+    repair_calls = []
+
+    def repair_provider(request):
+        repair_calls.append(request)
+        if len(repair_calls) == 1:
+            return (
+                "- Verify access before release [1]\n"
+                "- Deploy the release package [2]"
+            )
+        return "- Verify access before release [1]"
+
+    repaired = synthesize_with_provider(
+        pack, repair_provider, answer_shape="grounded_summary", max_claims=1
+    )
+
+    assert len(repair_calls) == 2
+    assert repair_calls[0].repair_errors == ()
+    assert repair_calls[1].repair_errors == ("provider_answer_claim_budget_exceeded",)
+    assert repaired.mode == "provider_validated_after_repair"
+    assert repaired.answer == "- Verify access before release [1]"
