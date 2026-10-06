@@ -63,9 +63,10 @@ Cụm test + cổng repo:
 
 | Hạng mục | Kết quả |
 |---|---|
-| `tests/test_rag_v2_synthesis.py` + `test_rag_v2_synthesis_provider.py` + `test_rag_v2_evidence.py` | 96 đạt / 4 lỗi — **4 lỗi có sẵn trên HEAD** (đã chạy lại đúng 4 test đó trên code cũ: lỗi y hệt; nhóm nhãn privacy, ngoài phạm vi vé) |
+| Cụm synthesis+provider+evidence | 96 đạt / 4 lỗi — **4 lỗi có sẵn trên HEAD** (đã chạy lại đúng 4 test đó trên code cũ: lỗi y hệt; nhóm nhãn privacy, ngoài phạm vi vé) |
 | Cụm rộng `tests/test_rag_v2_*.py` | 399 đạt / 7 lỗi — **7 lỗi có sẵn** (đối chứng HEAD khớp cả 7, đều nhóm privacy/nhãn: `test_provider_limitations_contain_accurate_reasons`, 3× `RouterSynthesisProvider` privacy/label, `dev_cli` privacy pass rate, 2× `eval_harness` privacy) |
-| `compileall src tests` | PASS (exit 0) |
+| Full `pytest -q` (07/10, 901,75s) | **4115 đạt / 22 lỗi / 37 bỏ qua / 19 error** — phân loại trọn ca đỏ, không ca nào do code vé: (a) nhóm RAG 7/7 lỗi y hệt trên code cũ `6ed40ea` (limitations + 3 `RouterSynthesisProvider` + `dev_cli` + 2 `eval_harness`, đều nhãn privacy/pass-rate); (b) 10 lỗi ngoài RAG y hệt cũ (omnibar path-traversal, antigravity handoff, `chunk_evaluation` manifest, `commit_d` uv-lock, expert-e2e, mom-pilot, notebook-qa, phase4-owner, ai_answer xlsx, `missing_db` outcome); (c) 5 lỗi còn lại + 19 error thiếu file môi trường Windows (`\home\hatch\workspace\aios_data\...` — `error_lookup` 10 error, `error_cases_f4` 9 error) hoặc `local_cases` của cây tách; (d) đã `grep` — không test đỏ nào import `rag_v2.synthesis`. 3 test vé vẫn xanh (`-k "combined or pure_repairable"`: 3/3). Đối chứng bằng cây làm việc tách `C:/tmp/wt-old@6ed40ea` + `PYTHONPATH` trỏ đúng `src` cũ, đã xóa sau xong. |
+| `compileall src tests` | PASS (exit 0, Python 3.11.14) |
 | `cli audit` | PASS (`errors`/`warnings` rỗng) |
 | `import aios_habit.workspace_chat_app` | OK |
 
