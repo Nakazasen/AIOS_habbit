@@ -1,6 +1,7 @@
 # Trạng thái mailbox-pc0575-opencode — KDTVN-PC0575 (thợ opencode)
 
-- Trạng thái: `moi`
+- Trạng thái: `dang-lam`
+- `ghi_chu` (thợ opencode): 2026-10-06 11:42 +07 — nhận vé `BUILD-QUALITY-HARNESS-PC0575`, đủ điều kiện mở (`moi` + ticket mới + chưa có báo cáo), bắt đầu dựng khung đo.
 - `ghi_chu` (điều phối Muse): 2026-10-06 ~06:20 +07 — Phát hành vé `BUILD-QUALITY-HARNESS-PC0575` (prompt mới `prompt-queue-build-quality-harness-pc0575.md`): dựng khung đo chất lượng câu trả lời (`quality_harness.py` + test) để thợ OMP tái dùng ở vé `LSU-QUALITY-PC0575`. Độc lập với code lane hiện có. Role gợi ý: DEFAULT.
 
 - Ticket hiện tại: `BUILD-QUALITY-HARNESS-PC0575` — [CTY] dựng khung đo chất lượng (script + test). Prompt: `docs/phieu-viec/mailbox-pc0575-opencode/prompt.md`. Role gợi ý: DEFAULT.
