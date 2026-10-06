@@ -1,7 +1,7 @@
 # Trạng thái mailbox-pc0575-opencode — KDTVN-PC0575 (thợ opencode)
 
 - Trạng thái: `xong-cho-duyet`
-- `commit`: (điền sau khi push báo cáo)
+- `commit`: `750010d` (vé `BUILD-QUALITY-HARNESS-PC0575` xong, chờ duyệt)
 - `bao_cao`: `docs/phieu-viec/ket-qua/build-quality-harness-pc0575.md`
 - `ghi_chu` (thợ opencode): 2026-10-06 12:05 +07 — vé `BUILD-QUALITY-HARNESS-PC0575` xong, chờ duyệt. Khung + test 5/5 (mock), thử 5 câu × 2 lane đối chiếu tay 5/5 đúng. Cổng: compileall đạt, `cli audit` PASS, import app đạt; pytest toàn bộ quá 10 phút chưa xong (đang chạy nền, không báo PASS giả).
 - `ghi_chu` (thợ opencode): 2026-10-06 11:42 +07 — nhận vé `BUILD-QUALITY-HARNESS-PC0575`, đủ điều kiện mở (`moi` + ticket mới + chưa có báo cáo), bắt đầu dựng khung đo.
