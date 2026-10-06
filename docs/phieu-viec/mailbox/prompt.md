@@ -34,6 +34,13 @@
 - Không đổi hợp đồng hàm (`danh_gia_xu_huong_sma`, `gate_canh_bao_theo_xu_huong`).
 - Python 3.11. Không merge `main`. Không ghi index.
 
+## Nhịp heartbeat (BẮT BUỘC — không ghi mốc = coi như kẹt)
+
+- Mỗi **15 phút** append một dòng `` `ghi_chu`: <giờ> +07 — <đang làm gì, tới đâu> ``
+  vào `trang-thai.md` của mailbox này. Đang chạy test dài thì ghi "đang chạy test X".
+- CẤM im lặng quá 15 phút không mốc. Điều phối phát hiện im >15 phút sẽ coi là kẹt
+  và can thiệp (đã xảy ra báo động giả 22:21 06/10 vì thiếu mốc — không lặp lại).
+
 ## Báo cáo
 
 `docs/phieu-viec/ket-qua/sma-improve-home.md` — bảng trước/sau số điểm bất thường giả,
