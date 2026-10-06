@@ -1,6 +1,7 @@
 # Trạng thái mailbox
 
 - Trạng thái: `dang-lam`
+- `ghi_chu`: 2026-10-06 22:36 +07 — OMP mốc giữa chừng: compileall sạch, `cli audit` PASS, `import workspace_chat_app` OK (Python 3.11.14); chạy lại script `analyze_sma_gate_realdata.py` nguyên vẹn trên log thật 132 dòng → 21/21 vi phạm đơn điểm vẫn bị chặn (11 ẩm + 8 Takt + 2 nhiệt), 0 cảnh báo giả sau gate; flat `nen_phang_nhung_lech` sau fix: nhiệt 4, ẩm 0 (giảm 93%/100%); hồi quy trend 62/62 xanh; `pytest -q` toàn bộ đang chạy nền. Đang chốt báo cáo.
 - `ghi_chu` (điều phối Muse): 2026-10-06 ~22:23 +07 — Bổ sung mục heartbeat BẮT BUỘC vào vé (15 phút/mốc, cấm im lặng quá 15 phút không mốc). Thợ vẫn chạy tốt (user kiểm 22:21: session tươi từng phút) — chỉ cần ghi mốc đều để khỏi báo động giả.
 - `ghi_chu`: 2026-10-06 22:22 +07 — OMP (phiên nối tiếp theo lệnh user 21:07) nhận lại vé SMA-IMPROVE-HOME: xác nhận state — code + test đã commit `3c7f2f3`, báo cáo `sma-improve-home.md` đã viết (chờ phần cổng repo + đo lại). Đang chạy cổng repo (compileall/pytest/audit/import) + chạy lại script đo thật rồi chốt báo cáo.
 - `ghi_chu` (điều phối Muse): 2026-10-06 ~20:50 +07 — GỌI THỢ: OMP resume lúc 20:33 (RELAUNCH 2/4) nhưng từ 20:41 đến giờ không có mốc mới, máy gần như đứng yên, báo cáo chưa có bản mới. Chạy tiếp phần kiểm tra cuối (kiểm gate repo + đo lại trên log thật) và chốt báo cáo như đã ghi ở mốc 20:33. Ghi mốc tiến độ mỗi ≤15 phút theo quy ước heartbeat.
