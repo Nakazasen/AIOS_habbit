@@ -1,6 +1,7 @@
 # Trạng thái mailbox-pc0575-agy — KDTVN-PC0575 (thợ agy — Antigravity CLI)
 
-- Trạng thái: `moi`
+- Trạng thái: `dang-lam`
+- `ghi_chu`: 2026-10-06 14:26 +07 — Tiếp nhận vé `LSU-QUALITY-DRYRUN-PC0575`: bắt đầu đọc bộ 50 câu hỏi và chuẩn bị chạy thử pipeline đo chất lượng qua 2 lane (cagent, rag) trên index TẠM.
 - `ghi_chu` (verdict Muse): 2026-10-06 ~12:35 +07 — **ĐẠT** vé `PREP-LSU-QUALITY-PC0575` (tích tạm, chờ user nghiệm thu). Kiểm chứng độc lập: 50/50 ID duy nhất, khớp 100% `wire-qa-mapping.jsonl` (3.392 dòng, 1.790 LSU), 4 nhóm 13/12/12/13 đúng cơ cấu; rubric 0–3 đầy đủ tiêu chí từng nhóm; nhãn bản thảo đúng rào; commit `92d0b98` chỉ thêm báo cáo.
 - `ghi_chu` (điều phối Muse): 2026-10-06 ~12:35 +07 — Phát hành vé tiếp `LSU-QUALITY-DRYRUN-PC0575` (prompt mới `prompt-queue-lsu-quality-dryrun-pc0575.md`): chạy thử trọn pipeline đo (50 câu × 2 lane × rubric) trên index TẠM để bắt lỗi tích hợp trước lần đo thật. Nhãn DRY-RUN bắt buộc, điểm số không có giá trị đo thật.
 - Ticket hiện tại: `LSU-QUALITY-DRYRUN-PC0575` — [CTY] chạy thử pipeline đo chất lượng LSU. Prompt: `docs/phieu-viec/mailbox-pc0575-agy/prompt.md`. Role gợi ý: SMOL.
