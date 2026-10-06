@@ -15,9 +15,9 @@ mất bao lâu (mục tiêu <5 phút theo góp ý Khiêm).
 
 Chỉ bắt đầu SAU KHI mailbox (OMP) có verdict Muse **ĐẠT** `SMA-IMPROVE-HOME` — cổng phát
 hiện (`trend_alerts.py`) đang được OMP sửa (deadband + k theo nhóm chỉ số). Đo trên cổng
-MỚI để baseline đúng với bản máy công ty sẽ dùng. Trước khi làm, đọc mục CỔNG GATE
-trong prompt này; mỗi lượt watcher mở mà cổng chưa mở thì ghi `ghi_chu` kiểm cổng +
-dừng chờ lượt sau (chưa đủ 4 lần liên tiếp thì không đặt `cho-muse`).
+MỚI để baseline đúng với bản máy công ty sẽ dùng. Cổng chưa mở thì đặt `Trạng thái:
+`dang-lam` + CHỜ, KHÔNG THOÁT (kiểm lại cổng gate mỗi ~10 phút, ghi heartbeat;
+cổng mở thì làm tiếp ngay).
 
 ## Việc cần làm
 

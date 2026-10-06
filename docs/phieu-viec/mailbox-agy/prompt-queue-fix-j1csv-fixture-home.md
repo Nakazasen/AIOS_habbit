@@ -12,8 +12,8 @@ khớp hành vi cổng gate CUỐI CÙNG, viết sớm sẽ phải làm lại.
 
 - Kiểm tra ngay khi nhận vé. Nếu chưa có verdict ĐẠT: append một dòng
   `` `ghi_chu`: <giờ> +07 — chờ OMP xong SMA-IMPROVE-HOME, chưa đủ điều kiện bắt đầu. ``
-  vào `trang-thai.md` của mailbox này, GIỮ NGUYÊN `Trạng thái: `moi``, rồi DỪNG
-  (watcher sẽ mở lại vé ở vòng sau — kiểm lại cổng gate mỗi lần mở).
+  vào `trang-thai.md` của mailbox này, đặt `Trạng thái: `dang-lam` + CHỜ, KHÔNG THOÁT
+  (gate chưa mở thì chờ — kiểm lại cổng gate mỗi ~10 phút, ghi heartbeat; cổng mở thì làm tiếp ngay).
 
 ## Bối cảnh
 
