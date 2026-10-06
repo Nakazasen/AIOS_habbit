@@ -1,4 +1,4 @@
-﻿# Watch-Mailbox.ps1 (v4.1) — watcher + giám sát OMP, vòng lặp cưỡng chế 2 đầu
+﻿# Watch-Mailbox.ps1 (v5) — watcher + giám sát OMP, vòng lặp cưỡng chế 2 đầu
 #
 # Đầu 1 (Muse, trên VM): viết ticket -> poll 5 phút -> review.
 # Đầu 2 (script này, máy Windows): poll mailbox mỗi ~90s, và:
@@ -12,15 +12,15 @@
 #   - `xong` ổn định đủ $idleExitChecks lần check liên tiếp -> popup tổng kết
 #     + TỰ DỪNG script (vòng lặp kết thúc thật sự)
 #
-# Phân vé theo máy (v4.1): mỗi máy poll RIÊNG một thư mục mailbox qua -MailboxDir.
-#   Máy nhà:  -MailboxDir "docs/phieu-viec/mailbox"          (mặc định)
-#   Máy công ty: -MailboxDir "docs/phieu-viec/mailbox-pc0575"
-# Hai watcher không bao giờ nhìn vào mailbox của nhau -> không nhặt nhầm vé.
-#
 # Cài đặt: xem HUONG-DAN-WATCHER.md.
+# -MailboxDir: thư mục mailbox trên repo (mặc định "docs/phieu-viec/mailbox" = máy nhà).
+#   Máy công ty chạy: .\Watch-Mailbox.ps1 -MailboxDir "docs/phieu-viec/mailbox-pc0575"
 
 param(
-    [string]$MailboxDir = "docs/phieu-viec/mailbox"
+    [string]$MailboxDir = "docs/phieu-viec/mailbox",
+    [string]$Worker = "omp",
+    [string]$AgyModel = "gemini-3.8-flash-high",
+    [string]$OpenCodeModel = "opencode/muse-spark-1.3-contributor-free"
 )
 
 $ErrorActionPreference = "SilentlyContinue"
@@ -41,24 +41,203 @@ $ompProcessName = "omp"
 # $false = chỉ popup nhắc (an toàn, mặc định).
 # $true  = tự mở OMP chạy ticket khi OMP đang rảnh (CHỈ bật khi OMP hỗ trợ
 #          chạy kèm prompt từ dòng lệnh, và bạn chấp nhận OMP tự chạy).
-$AUTO_LAUNCH = $false
+$AUTO_LAUNCH = $true
 # $ompLaunchCommand = "C:\tools\omp.exe"
-# $ompLaunchArgs    = @("run", "doc $MailboxDir/prompt.md va lam theo, tuan thu QUY-UOC.md")
-# (Ví dụ máy công ty: "doc docs/phieu-viec/mailbox-pc0575/prompt.md va lam theo")
-$ompLaunchCommand = ""
-$ompLaunchArgs    = @()
+# Vi du cu (khong dung): $ompLaunchArgs = @("-p", "...") -- array vo khong quote, dung string nhu tren
+$aiosDir           = "D:\Sandbox\AIOS_habbit"
+$ompLaunchCommand = "C:\Users\Admin\AppData\Local\omp\omp.exe"
+# $true = mo cua so de nhin chu chay (yen tam); $false = chay an hoan toan.
+$SHOW_WORKER_WINDOW = $true
+# Nhat ky tho (phan biet ket that vs dang lam viec dai):
+$sessionDir       = "C:\Users\Admin\.omp\agent\sessions\--D--Sandbox-AIOS_habbit--"
+$heartbeatMinutes = 5
+# $true = tu mo lai tho khi bien mat giua chung (chi khi khong con process OMP nao).
+$AUTO_RELAUNCH = $true
+$relaunchCooldownMinutes = 10  # moi ve duoc mo lai toi da 1 lan moi N phut
+$maxStallLaunches = 4  # spec N=4: 4 su kien cach nhau 10p (~30p) khong tien trien -> escalate cho-muse (code-level, khong trong cho OMP tu giac)
+# --- Chong chet im (batch 1) ---
+$maxPollFails = 5        # poll loi lien tiep N lan (~7.5 phut) -> popup (mang/GitHub chet)
+$choMuseSlaHours = 6     # cho-muse dung yen qua N gio -> popup (cron Muse co the dung)
+$minDiskGB = 1           # o nao duoi N GB -> popup + tam ngung mo tho moi
+$ompLaunchTicket = "git pull origin phieu-viec/rag-fix1; doc ky $MailboxDir/QUY-UOC.md va $MailboxDir/prompt.md roi lam dung theo ticket, tuan thu quy uoc (commit + push + cap nhat trang-thai.md). Vua lam vua giai thich ngan gon tung buoc bang tieng Viet don gian. Den moi moc quan trong: cap nhat ngay 1 dong tien do + timestamp vao trang-thai.md roi push. Kiem cong gate: neu 4 lan watcher tu mo OMP lien tiep (moi lan cach nhau ~10 phut) ma van chua thay dieu kien mo thi dat trang-thai.md thanh cho-muse + DUNG, khong quay no-op."
+$ompLaunchArgs = '-p --auto-approve "{0}"' -f $ompLaunchTicket
+
+# --- Tho phu: agy (Antigravity CLI) ---
+# Headless: agy --model <model> -p --dangerously-skip-permissions "<ticket>"
+# Model mac dinh viec thuong: gemini-3.8-flash-high; viec kho: claude-sonnet-5-5-medium / claude-opus-5-5-medium.
+$agyProcessName = "agy"
+$agyLaunchCommand = "C:\Users\Admin\AppData\Local\agy\bin\agy.exe"
+$agyModel = $AgyModel
+
+# --- Tho phu: opencode (free) ---
+# Headless theo version CLI (may nha v1.18.34, may cong ty v2.0.22):
+#   v2: opencode run "<ticket>" --standalone --model <model> --auto
+#       (--standalone = server rieng moi lan chay; CLI v2 khong con
+#       --dir/--attach/--dangerously-skip-permissions)
+#   v1: opencode run "<ticket>" --model <model> --auto --dir <aiosDir>
+#       --attach 127.0.0.1:4096 (--auto da kiem chung viet file duoc;
+#       --attach phong khi server tu dung hong kieu Session not found)
+# Watcher tu nhan major version luc khoi dong (opencode --version).
+# Chay qua powershell wrapper (opencode.ps1 -> node.exe) de Start-Process on dinh.
+$opencodeShim = "C:\Users\Admin\AppData\Roaming\npm\opencode.ps1"
+$opencodeLaunchCommand = "powershell.exe"
+$opencodeModel = $OpenCodeModel
+$opencodePort = 4096
+$opencodeMajor = 1
+try {
+    $ocvAll = & powershell -NoProfile -ExecutionPolicy Bypass -File $opencodeShim --version 2>$null | Out-String
+    if ($ocvAll -match '(\d+)\.\d+\.\d+') { $opencodeMajor = [int]$Matches[1] }
+} catch {}
 # =====================================================================
 
-$stateFile  = Join-Path $PSScriptRoot ("watcher_state_" + ($MailboxDir -replace '[^a-zA-Z0-9]', '_') + ".json")
-$ticketFile = Join-Path $PSScriptRoot ("_ticket-moi_" + ($MailboxDir -replace '[^a-zA-Z0-9]', '_') + ".md")
-$logFile    = Join-Path $PSScriptRoot ("watcher_" + ($MailboxDir -replace '[^a-zA-Z0-9]', '_') + ".log")
-$statusApiPath = "$MailboxDir/trang-thai.md"
-$promptApiPath = "$MailboxDir/prompt.md"
+# --- Chot tho cho lan chay nay (che do B: moi watcher 1 tho, 1 mailbox) ---
+$worker = $Worker.ToLower()
+if ($worker -ne "omp" -and $worker -ne "agy" -and $worker -ne "opencode") { $worker = "omp" }
+# Ve goi tho theo ten tho hien tai (tranh ghi cung "OMP" cho ca 3).
+$workerTicket = $ompLaunchTicket -replace 'tu mo OMP', ("tu mo " + $worker)
+$activeProcessName = $ompProcessName
+$activeLaunchCommand = $ompLaunchCommand
+$activeLaunchArgsTemplate = $ompLaunchArgs
+$activeSessionDir = $sessionDir
+if ($worker -eq "agy") {
+    $activeProcessName = $agyProcessName
+    $activeLaunchCommand = $agyLaunchCommand
+    # Luu y: -p nuot token ke tiep lam prompt -> prompt phai dinh kem -p, co khac dung truoc.
+    $activeLaunchArgsTemplate = '--model {0} --dangerously-skip-permissions -p "{1}"' -f $agyModel, $workerTicket
+    $activeSessionDir = ""
+} elseif ($worker -eq "opencode") {
+    $activeLaunchCommand = $opencodeLaunchCommand
+    if ($opencodeMajor -ge 2) {
+        $activeLaunchArgsTemplate = '-NoProfile -ExecutionPolicy Bypass -File "{0}" run "{1}" --standalone --model {2} --auto' -f $opencodeShim, $workerTicket, $opencodeModel
+    } else {
+        $activeLaunchArgsTemplate = '-NoProfile -ExecutionPolicy Bypass -File "{0}" run "{1}" --model {2} --auto --dir "{3}" --attach http://127.0.0.1:{4}' -f $opencodeShim, $workerTicket, $opencodeModel, $aiosDir, $opencodePort
+    }
+    $activeSessionDir = ""
+}
+function Test-OpencodeServer {
+    try {
+        $c = New-Object Net.Sockets.TcpClient
+        $r = $c.BeginConnect("127.0.0.1", $opencodePort, $null, $null)
+        $ok = $r.AsyncWaitHandle.WaitOne(1500)
+        if ($ok) { $c.EndConnect($r) }
+        $c.Close()
+        return $ok
+    } catch { return $false }
+}
+function Ensure-OpencodeServer {
+    if (Test-OpencodeServer) { return $true }
+    $serveArgs = '-NoProfile -ExecutionPolicy Bypass -File "{0}" serve --port {1}' -f $opencodeShim, $opencodePort
+    Start-Process -FilePath "powershell.exe" -ArgumentList $serveArgs -WorkingDirectory $aiosDir -WindowStyle Hidden
+    for ($i = 0; $i -lt 25; $i++) {
+        Start-Sleep -Seconds 1
+        if (Test-OpencodeServer) { Write-Log ("OPENCODE-SRV: server len o port $opencodePort"); return $true }
+    }
+    Write-Log ("OPENCODE-SRV: khong dung duoc server port $opencodePort")
+    return $false
+}
+function Test-WorkerRunning {
+    if ($worker -eq "opencode") {
+        # Khop chat: worker that co dang `...opencode(.exe|.ps1)" run "...`.
+        # KHONG dung pattern long `*opencode*run*` vi chinh cau lenh giam sat
+        # (chua pattern do) cung khop -> tuong tho ban, bo mo tho that.
+        $hit = Get-CimInstance Win32_Process -ErrorAction SilentlyContinue | Where-Object {
+            $_.CommandLine -like "*opencode* run *"
+        }
+        return $null -ne $hit
+    }
+    if ($worker -eq "agy") {
+        # Loai tien trinh hub nen cua Antigravity IDE (--hub, chay thuong truc);
+        # chi tinh tho worker (co -p/--print trong dong lenh).
+        $hit = Get-CimInstance Win32_Process -Filter "Name='agy.exe'" -ErrorAction SilentlyContinue |
+            Where-Object { $_.CommandLine -notlike "*--hub*" }
+        return $null -ne $hit
+    }
+    return $null -ne (Get-Process -Name $activeProcessName -ErrorAction SilentlyContinue)
+}
+function Get-WorkerPid {
+    # PID tho that (loai tien trinh phu: hub IDE, broker/lsp cua omp).
+    if ($worker -eq "omp") {
+        return @(Get-CimInstance Win32_Process -Filter "Name='omp.exe'" -ErrorAction SilentlyContinue |
+            Where-Object { $_.CommandLine -like "*-p *" } | Select-Object -ExpandProperty ProcessId)
+    }
+    if ($worker -eq "agy") {
+        return @(Get-CimInstance Win32_Process -Filter "Name='agy.exe'" -ErrorAction SilentlyContinue |
+            Where-Object { $_.CommandLine -notlike "*--hub*" } | Select-Object -ExpandProperty ProcessId)
+    }
+    return @()
+}
+function Get-WorkerCpu {
+    # Tong CPU (giay) cua tho that; $null neu khong thay (da chet truoc do).
+    $pids = Get-WorkerPid
+    if ($pids.Count -eq 0) { return $null }
+    $sum = 0
+    foreach ($id in $pids) { try { $sum += (Get-Process -Id $id -ErrorAction Stop).CPU } catch {} }
+    return [math]::Round($sum, 1)
+}
+function Get-WorkerIO {
+    # Tong byte I/O (file + mang + thiet bi) cua tho that; $null neu khong thay.
+    # So sanh bang nhau giua 2 poll lien tiep = khong I/O (k ca upload/download).
+    # Dung raw counter (tich luy) nen so bang nhau la chuan, khong can chia toc do.
+    $pids = Get-WorkerPid
+    if ($pids.Count -eq 0) { return $null }
+    $sum = [uint64]0
+    foreach ($id in $pids) {
+        try {
+            $c = Get-CimInstance Win32_PerfRawData_PerfProc_Process -Filter ("IDProcess=" + $id) -ErrorAction Stop |
+                Select-Object -First 1
+            if ($c -ne $null) { $sum += ([uint64]$c.IOReadBytesPersec + [uint64]$c.IOWriteBytesPersec) }
+        } catch {}
+    }
+    return [double]$sum
+}
+function Invoke-WorkerLaunch {
+    # CLI v1: dam bao server chung 4096 truoc khi run --attach (tu dung hay hong).
+    # CLI v2 (--standalone): server rieng moi lan, khong can.
+    if ($worker -eq "opencode" -and $opencodeMajor -lt 2) { Ensure-OpencodeServer | Out-Null }
+    if ($SHOW_WORKER_WINDOW) {
+        Start-Process -FilePath $activeLaunchCommand -ArgumentList $activeLaunchArgsTemplate -WorkingDirectory $aiosDir
+    } else {
+        if ($activeLaunchCommand -like "*powershell.exe") {
+            Start-Process -FilePath $activeLaunchCommand -ArgumentList $activeLaunchArgsTemplate -WorkingDirectory $aiosDir -WindowStyle Hidden
+        } else {
+            Start-Process -FilePath $activeLaunchCommand -ArgumentList $activeLaunchArgsTemplate -WorkingDirectory $aiosDir -WindowStyle Hidden
+        }
+    }
+}
+
+# Cau hinh rieng tung may (neu co): file cung thu muc ten config.local.ps1.
+# Copy config.mau.ps1 (hoac config.PC0575.ps1) thanh config.local.ps1 roi sua theo may.
+$localCfg = Join-Path $PSScriptRoot "config.local.ps1"
+if (Test-Path -LiteralPath $localCfg) { . $localCfg }
+# Dung lai lenh goi tho sau khi nap config rieng (phong port/model bi doi).
+# Chu y: tho omp CUNG phai dung lai (truoc day giu duong dan mac dinh C:\Users\Admin\... nen mo tho that bai).
+if ($worker -eq "omp") {
+    $activeProcessName = $ompProcessName
+    $activeLaunchCommand = $ompLaunchCommand
+    $activeLaunchArgsTemplate = $ompLaunchArgs
+    $activeSessionDir = $sessionDir
+} elseif ($worker -eq "agy") {
+    $activeLaunchCommand = $agyLaunchCommand
+    $activeLaunchArgsTemplate = '--model {0} --dangerously-skip-permissions -p "{1}"' -f $agyModel, $workerTicket
+} elseif ($worker -eq "opencode") {
+    $activeLaunchCommand = $opencodeLaunchCommand
+    if ($opencodeMajor -ge 2) {
+        $activeLaunchArgsTemplate = '-NoProfile -ExecutionPolicy Bypass -File "{0}" run "{1}" --standalone --model {2} --auto' -f $opencodeShim, $workerTicket, $opencodeModel
+    } else {
+        $activeLaunchArgsTemplate = '-NoProfile -ExecutionPolicy Bypass -File "{0}" run "{1}" --model {2} --auto --dir "{3}" --attach http://127.0.0.1:{4}' -f $opencodeShim, $workerTicket, $opencodeModel, $aiosDir, $opencodePort
+    }
+}
+$mailboxTag = Split-Path $MailboxDir -Leaf
+if ($mailboxTag -eq "mailbox") { $mailboxTag = "" } else { $mailboxTag = "-" + $mailboxTag }
+if ($worker -ne "omp") { $mailboxTag = "$mailboxTag-$worker" }
+$stateFile  = Join-Path $PSScriptRoot ("watcher_state{0}.json" -f $mailboxTag)
+$ticketFile = Join-Path $PSScriptRoot ("_ticket-moi{0}.md" -f $mailboxTag)
+$logFile    = Join-Path $PSScriptRoot ("watcher{0}.log" -f $mailboxTag)
 # Muon poll moi 60 giay: tao token fine-grained (quyen Contents: read),
 # bo comment dong duoi va dan token vao. KHONG commit token len git.
 # $token = "DAN_TOKEN_VAO_DAY"
 
-$mutex = New-Object System.Threading.Mutex($false, ("Global\MailboxWatcher_" + ($MailboxDir -replace '[^a-zA-Z0-9]', '_')))
+$mutex = New-Object System.Threading.Mutex($false, "Global\MailboxWatcher$mailboxTag")
 if (-not $mutex.WaitOne(0)) { exit }
 
 function Get-MailboxFile {
@@ -79,10 +258,79 @@ function Parse-Field {
     return ""
 }
 function Test-OmpRunning {
-    return $null -ne (Get-Process -Name $ompProcessName -ErrorAction SilentlyContinue)
+    return Test-WorkerRunning
+}
+function Get-SessionAgeMinutes {
+    if ([string]::IsNullOrWhiteSpace($activeSessionDir)) { return $null }
+    $sf = Get-ChildItem -LiteralPath $activeSessionDir -Filter "*.jsonl" -File -ErrorAction SilentlyContinue | Sort-Object LastWriteTime -Descending | Select-Object -First 1
+    if ($sf -eq $null) { return $null }
+    return ((Get-Date) - $sf.LastWriteTime).TotalMinutes
 }
 function Write-Log($msg) {
     ("[{0}] {1}" -f (Get-Date).ToString("s"), $msg) | Out-File $logFile -Append -Encoding utf8
+}
+function Invoke-StallEscalation {
+    # Gate that that: dem code-level so lan watcher tu mo OMP ma sig khong doi.
+    # Thu tu theo spec: ghi cho-muse -> commit + push -> xac nhan push moi ngung mo.
+    # Push fail -> tra $false de caller popup bao dong (cron Muse doc tu GitHub).
+    param([string]$stallSig, [string]$stallTicket, [string]$stallStatus, [int]$stallCount)
+    $mailboxRel = "$MailboxDir/trang-thai.md"
+    $mailboxFile = Join-Path $aiosDir $mailboxRel
+    $ts = (Get-Date).ToString("yyyy-MM-dd HH:mm")
+    $reason = "$ts watcher auto-escalate: $stallCount lan tu mo $worker (moi lan cach ~${relaunchCooldownMinutes} phut) ma mailbox khong tien trien. Chuyen sang cho-muse de Muse xu ly. Ticket: $stallTicket"
+    if (-not (Test-Path -LiteralPath $mailboxFile)) {
+        Show-Popup "Mailbox: escalate THAT BAI" ("Khong tim thay file local:`n$mailboxFile`n`nCron Muse doc tu GitHub nen can push. Kiem tra aiosDir.")
+        Write-Log ("ESCALATE FAIL: missing file $mailboxFile sig=$stallSig")
+        return $false
+    }
+    try {
+        $c = Get-Content -LiteralPath $mailboxFile -Raw -Encoding UTF8
+        if ($c -match 'Trạng thái:\s*`[^`]+`') {
+            $c = $c -replace 'Trạng thái:\s*`[^`]+`', 'Trạng thái: `cho-muse`'
+        } else { throw "khong tim thay dong Trang thai" }
+        if ($c -match '(?m)^\s*-\s*`?ghi_chu`?\s*:') {
+            $c = $c -replace '(?m)^\s*-\s*`?ghi_chu`?\s*:.*$', ("- ``ghi_chu``: " + $reason)
+        } else {
+            $c = $c.TrimEnd() + "`r`n- ``ghi_chu``: " + $reason + "`r`n"
+        }
+        $c | Out-File -LiteralPath $mailboxFile -Encoding utf8
+    } catch {
+        Show-Popup "Mailbox: escalate THAT BAI" ("Ghi cho-muse that bai: $($_.Exception.Message)")
+        Write-Log ("ESCALATE FAIL write: " + $_.Exception.Message)
+        return $false
+    }
+    try {
+        # Keo ve moi nhat truoc khi sua (sach se moi rebase duoc; fail thi abort + mo tho du phong o caller).
+        $syncOut = & git -C $aiosDir pull --rebase origin $branch 2>&1 | Out-String
+        if ($LASTEXITCODE -ne 0) {
+            & git -C $aiosDir rebase --abort 2>&1 | Out-Null
+            Show-Popup "Mailbox: escalate THAT BAI" ("Pull-rebase that bai truoc khi day cho-muse.`n$stallTicket`n`nSe van mo tho chay tiep thay vi cho. Tu pull-rebase + day tay neu can.`n$syncOut")
+            Write-Log ("ESCALATE FAIL sync: $syncOut")
+            return $false
+        }
+        $addOut = & git -C $aiosDir add $mailboxRel 2>&1 | Out-String
+        if ($LASTEXITCODE -ne 0) {
+            Write-Log ("ESCALATE FAIL add: $addOut")
+            return $false
+        }
+        $commitOut = & git -C $aiosDir commit -m "watcher: escalate stall to cho-muse after $stallCount launches no progress ($stallStatus ticket $stallTicket)" 2>&1 | Out-String
+        if ($LASTEXITCODE -ne 0) {
+            & git -C $aiosDir checkout -- $mailboxRel 2>&1 | Out-Null
+            Write-Log ("ESCALATE FAIL commit (da hoan tac sua local): $commitOut")
+            return $false
+        }
+        $pushOut = & git -C $aiosDir push origin $branch 2>&1 | Out-String
+        if ($LASTEXITCODE -eq 0) { Write-Log ("ESCALATE OK: $stallSig -> cho-muse. $pushOut"); return $true }
+        else {
+            Show-Popup "Mailbox: escalate THAT BAI" ("Da $stallCount lan mo OMP khong tien trien nhung push cho-muse THAT BAI.`n$stallTicket`n`nCron Muse khong thay duoc - kiem tra git push tay.`n$pushOut")
+            Write-Log ("ESCALATE FAIL push: $pushOut")
+            return $false
+        }
+    } catch {
+        Show-Popup "Mailbox: escalate THAT BAI" ("Push cho-muse that bai: $($_.Exception.Message)")
+        Write-Log ("ESCALATE FAIL push ex: " + $_.Exception.Message)
+        return $false
+    }
 }
 
 $st = @{}
@@ -97,13 +345,32 @@ $firstSeenMoi   = St-Get "firstSeenMoi" ""
 $warnedMoi      = [bool](St-Get "warnedMoi" $false)
 $warnedStuck    = [bool](St-Get "warnedStuck" $false)
 $warnedIdle     = [bool](St-Get "warnedIdle" $false)
+$warnedUnknown  = [bool](St-Get "warnedUnknown" $false)
+$warnedSla      = [bool](St-Get "warnedSla" $false)
+$warnedDisk     = [bool](St-Get "warnedDisk" $false)
+$pollFails      = [int](St-Get "pollFails" 0)
+$workerCpu      = [double](St-Get "workerCpu" -1)
+$cpuFlat        = [int](St-Get "cpuFlat" 0)
+$workerIO       = [double](St-Get "workerIO" -1)
+$ioFlat         = [int](St-Get "ioFlat" 0)
+$expectWorker   = St-Get "expectWorker" ""
+$lastStuckWarn  = St-Get "lastStuckWarn" ""
 $launchedTicket = St-Get "launchedTicket" ""
+$launchedAt = St-Get "launchedAt" ""
+$relaunchedTicket = St-Get "relaunchedTicket" ""
+$relaunchedAt = St-Get "relaunchedAt" ""
+$launchSig = St-Get "launchSig" ""
+$launchStallCount = [int](St-Get "launchStallCount" 0)
+$escalatedSig = St-Get "escalatedSig" ""
 $idleCount      = [int](St-Get "idleCount" 0)
 $ticketsDone    = @(St-Get "ticketsDone" @())
+# Dem rieng ticket xong TRONG LAN CHAY NAY (khong luu state) - de quyet dinh co popup
+# khi idle-exit hay khong. Tranh popup lap lai sau khi watchdog mo lai watcher.
+$ticketsDoneThisRun = 0
 
 while ($true) {
     try {
-        $text       = Get-MailboxFile $statusApiPath
+        $text       = Get-MailboxFile "$MailboxDir/trang-thai.md"
         $status     = Parse-Field $text 'Trạng thái:\s*`([^`]+)`'
         $ticket     = Parse-Field $text 'Ticket hiện tại:\s*([^\r\n]+)'
         $note       = Parse-Field $text '(?m)^\s*-\s*[Gg]hi ch[uú][:\s]`?([^`\r\n]+)'
@@ -112,22 +379,104 @@ while ($true) {
         $now        = Get-Date
         $ompRunning = Test-OmpRunning
 
-        if ($sig -ne $lastSig) { $lastSig = $sig; $sigTime = $now.ToString("s"); $warnedStuck = $false }
+        # --- DON DEP ZOMBIE POST-COMPLETION (FEATURE FLAG: EnableZombieCleanup) ---
+        if ($EnableZombieCleanup) {
+            if ($status -eq "xong-cho-duyet" -or $status -eq "xong") {
+                if ($ompRunning) {
+                    if ($sigTime -ne "") {
+                        $doneElapsed = ($now - [datetime]$sigTime).TotalMinutes
+                        if ($doneElapsed -ge $DoneGraceMinutes) {
+                            $zpids = Get-WorkerPid
+                            if ($zpids.Count -gt 0) {
+                                Write-Log ("POST-DONE-ZOMBIE [$worker]: Da o trang thai $status hon $($doneElapsed.ToString('N1')) phut (qua an han $DoneGraceMinutes phut) nhung process van con song. Don dep de giai phong slot.")
+                                Stop-WorkerTree -pidsToStop $zpids -reason "Post-completion zombie cleanup ($status $doneElapsed min)"
+                                $cpuFlat = 0; $ioFlat = 0; $workerCpu = -1; $workerIO = -1
+                                Show-Popup ("Mailbox [{0}]: don tho zombie" -f $worker) ("Tho {0} da bao {1} hon {2} phut nhung khong tu thoat.`nDa don dep cay tien trinh de san sang cho ve tiep theo." -f $worker, $status, $DoneGraceMinutes)
+                                $ompRunning = Test-OmpRunning
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        # Chot o dia (C: chua session + o chua repo): day thi bao + ngung mo tho.
+        $diskOK = $true; $diskInfo = ""
+        try {
+            $drives = @("C", $aiosDir.Substring(0, 1).ToUpper()) | Select-Object -Unique
+            $low = @()
+            foreach ($dd in $drives) {
+                $fg = (Get-PSDrive -Name $dd -ErrorAction Stop).Free / 1GB
+                if ($fg -lt $minDiskGB) { $low += ("{0}: ({1:N1} GB)" -f $dd, $fg) }
+            }
+            if ($low.Count -gt 0) {
+                $diskOK = $false; $diskInfo = ($low -join ", ")
+                if (-not $warnedDisk) {
+                    Show-Popup "Mailbox: o dia sap day" ("O dia con duoi {0} GB: {1}.`n`nDa TAM NGUNG tu mo tho moi. Don o ngay (ve DON-O-C)." -f $minDiskGB, $diskInfo)
+                    Write-Log ("DISK-LOW: $diskInfo (nguong {0} GB) - tam ngung launch" -f $minDiskGB)
+                    $warnedDisk = $true
+                }
+            } else { $warnedDisk = $false }
+        } catch { $diskOK = $true }
+
+        $pollFails = 0
+        if ($sig -ne $lastSig) { $lastSig = $sig; $sigTime = $now.ToString("s"); $warnedStuck = $false; $warnedUnknown = $false; $warnedSla = $false; $lastStuckWarn = ""; $cpuFlat = 0; $workerCpu = -1; $ioFlat = 0; $workerIO = -1; $expectWorker = "" }
+
+        # Tho moi mo nhung khong thay chay (chet non): qua 6p van vang + sig dung
+        # yen thi mo lai ngay + tinh 1 strike (khong doi du 4 strike ~40p).
+        if ($expectWorker -ne "" -and -not $ompRunning -and $sig -eq $launchSig) {
+            $sinceOpen = ($now - [datetime]$expectWorker).TotalMinutes
+            if ($sinceOpen -ge 6) {
+                $expectWorker = ""
+                $launchStallCount++
+                if ($launchStallCount -ge $maxStallLaunches) {
+                    Write-Log ("ESCALATE: sig stall $launchStallCount/$maxStallLaunches ticket=$ticket (no-pickup)")
+                    $ok = Invoke-StallEscalation -stallSig $sig -stallTicket $ticket -stallStatus $status -stallCount $launchStallCount
+                    $launchedAt = $now.ToString("s"); $relaunchedAt = $now.ToString("s")
+                    if ($ok) {
+                        $escalatedSig = $sig
+                        Show-Popup "Mailbox: escalate cho-muse" ("Da mo {0} {1} lan ma tho khong len (ve dung yen).`n$ticket`n`nDa chuyen sang cho-muse + push." -f $worker, $launchStallCount)
+                        Write-Log ("ESCALATE OK: $sig -> cho-muse")
+                    }
+                } else {
+                    Invoke-WorkerLaunch
+                    $launchedTicket = $ticket; $launchedAt = $now.ToString("s")
+                    $relaunchedTicket = $ticket; $relaunchedAt = $now.ToString("s")
+                    $expectWorker = $now.ToString("s")
+                    Show-Popup ("Mailbox [{0}]: tho khong len" -f $worker) ("Da mo {0} hon 6 phut ma khong thay process (ve van {1}).`n`nDa tu mo lai + tinh 1 strike ({2}/{3})." -f $worker, $status, $launchStallCount, $maxStallLaunches)
+                    Write-Log ("NO-PICKUP [$worker] $launchStallCount/$maxStallLaunches ticket=$ticket sig=$sig.")
+                }
+            }
+        }
 
         # Ghi nhận ticket hoàn thành: chuyển sang xong-cho-duyet
         if ($status -eq "xong-cho-duyet" -and $lastStatus -ne "xong-cho-duyet" -and $ticket -ne "") {
-            if ($ticketsDone -notcontains $ticket) { $ticketsDone += $ticket }
+            if ($ticketsDone -notcontains $ticket) { $ticketsDone += $ticket; $ticketsDoneThisRun++ }
         }
 
-        if ($status -eq "xong") {
+        $validStatuses = @("moi", "dang-lam", "xong-cho-duyet", "xong", "cho-muse")
+        if ($validStatuses -notcontains $status) {
+            # Trang thai la (sai format/encoding, Muse doi schema): bao ngay, khong im lang.
+            $idleCount = 0
+            if (-not $warnedUnknown) {
+                Show-Popup ("Mailbox [{0}]: trang thai la" -f $worker) ("Trang thai doc duoc: '{0}'.`nKhong thuoc moi/dang-lam/xong-cho-duyet/xong/cho-muse.`n`nKiem tra file trang-thai.md (sai format/encoding?)." -f $status)
+                Write-Log ("UNKNOWN-STATUS: '$status' ticket=$ticket")
+                $warnedUnknown = $true
+            }
+        }
+        elseif ($status -eq "xong") {
             # Trạng thái kết thúc: đếm số lần check ổn định liên tiếp rồi tự dừng
             $idleCount++
             if ($idleCount -ge $idleExitChecks) {
                 $doneList = ($ticketsDone | Select-Object -Last 5) -join "`n- "
                 if ($doneList -eq "") { $doneList = "(không ghi nhận)" }
                 $summary = "Vong lap mailbox ket thuc.`n`nTicket da xong ($($ticketsDone.Count)):`n- $doneList`n`nWatcher tu dung sau $idleExitChecks lan check on dinh."
-                Show-Popup "Mailbox: hoan thanh" $summary
-                Write-Log "STOP: trang thai 'xong' on dinh $idleExitChecks lan. Tong ticket xong: $($ticketsDone.Count)."
+                # Chi popup khi lan chay NAY thuc su lam xong ve; neu chi idle (watchdog
+                # mo lai sau khi da xong) thi chi ghi log, khong lam phien user.
+                if ($ticketsDoneThisRun -gt 0) {
+                    Show-Popup "Mailbox: hoan thanh" $summary
+                }
+                Write-Log "STOP: trang thai 'xong' on dinh $idleExitChecks lan. Tong ticket xong: $($ticketsDone.Count). (trong lan chay nay: $ticketsDoneThisRun)"
                 exit
             }
         } else {
@@ -137,52 +486,168 @@ while ($true) {
                 $isNewTicket = ($ticket -ne $lastTicket -or $lastStatus -ne "moi")
                 if ($isNewTicket) {
                     try {
-                        $prompt = Get-MailboxFile $promptApiPath
+                        $prompt = Get-MailboxFile "$MailboxDir/prompt.md"
                         $prompt | Out-File -FilePath $ticketFile -Encoding utf8
                     } catch {}
                     $firstSeenMoi = $now.ToString("s")
                     $warnedMoi = $false; $warnedIdle = $false
                 }
                 if (-not $ompRunning) {
-                    if ($AUTO_LAUNCH -and $ompLaunchCommand -ne "" -and $launchedTicket -ne $ticket) {
-                        Start-Process -FilePath $ompLaunchCommand -ArgumentList $ompLaunchArgs -WorkingDirectory "D:\Sandbox\AIOS_habbit"
+                    if ($sig -eq $escalatedSig) {
+                        # Da escalate sig nay roi -> cho Muse (cron 3p se thay), khong mo lai
+                    } else {
+                    $canLaunch = ($launchedTicket -ne $ticket -or $launchedAt -eq "" -or ((Get-Date) - [datetime]$launchedAt).TotalMinutes -ge $relaunchCooldownMinutes)
+                    if ($AUTO_LAUNCH -and $activeLaunchCommand -ne "" -and $canLaunch -and $diskOK) {
+                        if ($sig -eq $launchSig) { if ($launchStallCount -lt $maxStallLaunches) { $launchStallCount++ } } else { $launchSig = $sig; $launchStallCount = 1 }
+                        if ($launchStallCount -ge $maxStallLaunches) {
+                            Write-Log ("ESCALATE: sig stall $launchStallCount/$maxStallLaunches ticket=$ticket (moi)")
+                            $ok = Invoke-StallEscalation -stallSig $sig -stallTicket $ticket -stallStatus $status -stallCount $launchStallCount
+                            $launchedAt = $now.ToString("s"); $relaunchedAt = $now.ToString("s")
+                            if ($ok) {
+                                $escalatedSig = $sig
+                                Show-Popup "Mailbox: escalate cho-muse" ("Watcher da tu mo {0} $launchStallCount lan (~30 phut) ma mailbox khong tien trien:`n$ticket`n`nDa chuyen sang cho-muse + push. Cron Muse (3 phut) se thay trong 15 phut SLA." -f $worker)
+                                Write-Log ("ESCALATE OK: $sig -> cho-muse")
+                            } else {
+                                Invoke-WorkerLaunch
+                                $launchedTicket = $ticket
+                                Show-Popup ("Mailbox [{0}]: tu mo tho (du phong)" -f $worker) ("Day cho-muse that bai (xem log) nen van mo {0} chay ticket de khoi doi ve:`n$ticket" -f $worker)
+                                Write-Log ("FALLBACK-LAUNCH [$worker] ticket=$ticket sig=$sig (escalate day that bai)")
+                            }
+                        } else {
+                        Invoke-WorkerLaunch
                         $launchedTicket = $ticket
-                        Show-Popup "Mailbox: tu mo OMP" ("Da tu dong mo OMP chay ticket:`n$ticket")
+                        $launchedAt = $now.ToString("s")
+                        $expectWorker = $now.ToString("s")
+                        Show-Popup ("Mailbox [{0}]: tu mo tho" -f $worker) ("Da tu dong mo {0} chay ticket:`n$ticket ($launchStallCount/$maxStallLaunches)")
+                        Write-Log ("LAUNCH [$worker] $launchStallCount/$maxStallLaunches ticket=$ticket sig=$sig")
+                        }
                     } elseif (-not $warnedIdle) {
-                        Show-Popup "Mailbox: ticket moi (OMP ranh)" ("Co ticket moi ma OMP chua chay:`n$ticket`n`nMo OMP len hoac bao no: doc mailbox, co ticket moi.")
+                        Show-Popup ("Mailbox [{0}]: ticket moi (tho ranh)" -f $worker) ("Co ticket moi ma {0} chua chay:`n$ticket`n`nMo {0} len hoac bao no: doc mailbox, co ticket moi." -f $worker)
                         $warnedIdle = $true
                     } elseif (-not $warnedMoi -and $firstSeenMoi -ne "") {
                         $age = $now - [datetime]$firstSeenMoi
                         if ($age.TotalMinutes -ge $moiWarnMinutes) {
-                            Show-Popup "Mailbox: ticket treo" ("Ticket moi da hon $moiWarnMinutes phut chua ai nhan:`n$ticket`n`nNhac OMP: git pull origin $branch roi doc mailbox.")
+                            Show-Popup "Mailbox: ticket treo" ("Ticket moi da hon $moiWarnMinutes phut chua ai nhan:`n$ticket`n`nNhac {0}: git pull origin $branch roi doc mailbox." -f $worker)
                             $warnedMoi = $true
                         }
                     }
+                    }
                 } else {
                     if ($isNewTicket -and -not $warnedIdle) {
-                        Show-Popup "Mailbox: ticket moi" ("Co ticket moi cho OMP:`n$ticket`n`nDa luu ban local: $(Split-Path $ticketFile -Leaf)`nBao OMP doc va lam theo prompt.")
+                        Show-Popup "Mailbox: ticket moi" ("Co ticket moi cho {0}:`n$ticket`n`nDa luu ban local: _ticket-moi.md`nBao {0} doc va lam theo prompt." -f $worker)
                         $warnedIdle = $true
                     }
                 }
             }
             elseif ($status -eq "dang-lam") {
+                $sessAge = Get-SessionAgeMinutes
+                $sessFresh = ($sessAge -ne $null -and $sessAge -lt $heartbeatMinutes)
                 if (-not $ompRunning) {
-                    if (-not $warnedStuck) {
-                        Show-Popup "Mailbox: OMP bien mat?" ("Trang thai dang-lam nhung khong thay process OMP ($ompProcessName).`nCo the OMP da crash giua chung - kiem tra terminal.")
+                    if ($sig -eq $escalatedSig) {
+                        # Da escalate sig nay roi -> cho Muse, khong mo lai
+                    } else {
+                    $canRelaunch = ($relaunchedTicket -ne $ticket -or $relaunchedAt -eq "" -or ((Get-Date) - [datetime]$relaunchedAt).TotalMinutes -ge $relaunchCooldownMinutes)
+                    if ($AUTO_RELAUNCH -and $activeLaunchCommand -ne "" -and $canRelaunch -and $diskOK) {
+                        if ($sig -eq $launchSig) { if ($launchStallCount -lt $maxStallLaunches) { $launchStallCount++ } } else { $launchSig = $sig; $launchStallCount = 1 }
+                        if ($launchStallCount -ge $maxStallLaunches) {
+                            Write-Log ("ESCALATE: sig stall $launchStallCount/$maxStallLaunches ticket=$ticket (dang-lam)")
+                            $ok = Invoke-StallEscalation -stallSig $sig -stallTicket $ticket -stallStatus $status -stallCount $launchStallCount
+                            $launchedAt = $now.ToString("s"); $relaunchedAt = $now.ToString("s")
+                            if ($ok) {
+                                $escalatedSig = $sig
+                                Show-Popup "Mailbox: escalate cho-muse" ("Watcher da tu mo lai {0} $launchStallCount lan (~30 phut) ma mailbox khong tien trien:`n$ticket`n`nDa chuyen sang cho-muse + push. Cron Muse (3 phut) se thay trong 15 phut SLA." -f $worker)
+                                Write-Log ("ESCALATE OK: $sig -> cho-muse")
+                            } else {
+                                Invoke-WorkerLaunch
+                                $relaunchedTicket = $ticket
+                                Show-Popup ("Mailbox [{0}]: tu mo lai tho (du phong)" -f $worker) ("Day cho-muse that bai (xem log) nen van mo lai {0} chay tiep de khoi doi ve:`n$ticket" -f $worker)
+                                Write-Log ("FALLBACK-RELAUNCH [$worker] ticket=$ticket sig=$sig (escalate day that bai)")
+                            }
+                        } else {
+                        Invoke-WorkerLaunch
+                        $relaunchedTicket = $ticket
+                        $relaunchedAt = $now.ToString("s")
+                        $expectWorker = $now.ToString("s")
+                        Show-Popup "Mailbox: tu mo lai tho" ("{0} bien mat giua chung khi dang lam:`n$ticket`n`nDa tu dong mo lai tho chay tiep ($launchStallCount/$maxStallLaunches)." -f $worker)
+                        Write-Log ("RELAUNCH [$worker] $launchStallCount/$maxStallLaunches ticket=$ticket sig=$sig.")
+                        }
+                    } elseif (-not $warnedStuck) {
+                        Show-Popup ("Mailbox: {0} bien mat?" -f $worker) ("Trang thai dang-lam nhung khong thay process {0} ({1}).`nCo the tho da crash giua chung - kiem tra terminal." -f $worker, $activeProcessName)
                         $warnedStuck = $true
                     }
+                    }
                 } else {
-                    if (-not $warnedStuck -and $sigTime -ne "") {
+                    if ($sigTime -ne "") {
                         $idle = $now - [datetime]$sigTime
-                        if ($idle.TotalMinutes -ge $stuckMinutes) {
-                            Show-Popup "Mailbox: co ve ket" ("OMP dang-lam hon $stuckMinutes phut khong tien trien:`n$ticket`n`nKiem tra terminal OMP xem co bi treo khong.")
-                            $warnedStuck = $true
-                        }
+                        if ($idle.TotalMinutes -ge $stuckMinutes -and -not $sessFresh) {
+                            # Bao ket: nhac lai moi 60p (truoc day chi 1 lan, user ngu la mat).
+                            $sinceWarn = 9999
+                            if ($lastStuckWarn -ne "") { $sinceWarn = ($now - [datetime]$lastStuckWarn).TotalMinutes }
+                            if ((-not $warnedStuck) -or ($sinceWarn -ge 60)) {
+                                Show-Popup "Mailbox: co ve ket" ("{0} dang-lam hon $stuckMinutes phut khong tien trien:`n$ticket`n`nKiem tra terminal {0} xem co bi treo khong." -f $worker)
+                                Write-Log ("STUCK [{0}]: {1:N0} phut khong tien trien ticket={2}" -f $worker, $idle.TotalMinutes, $ticket)
+                                $warnedStuck = $true; $lastStuckWarn = $now.ToString("s")
+                            }
+                            # Tho song nhung chet lam sang thi giet + mo lai ngay.
+                            # Dieu kien chat: sig im >= stuckMinutes (da co) + CPU VA I/O
+                            # (gom mang: upload/download van dem) cung phang 3 poll lien
+                            # tiep (~4.5p). Viec dai van chay thi CPU hoac I/O van nhich.
+                            # opencode bo qua: cay powershell->node do CPU/IO vo nghia + CLI
+                            # print-mode khong co kenh dung nhe -> giu escalate cu (ly do ghi
+                            # tai PROMPT-van-hanh muc 5, khong de thanh luat truyen mieng).
+                            if ($worker -ne "opencode") {
+                                $cpuNow = Get-WorkerCpu
+                                $ioNow = Get-WorkerIO
+                                if ($cpuNow -ne $null -and $ioNow -ne $null) {
+                                    if ($cpuNow -eq $workerCpu) { $cpuFlat++ } else { $cpuFlat = 0 }
+                                    $workerCpu = $cpuNow
+                                    if ($ioNow -eq $workerIO) { $ioFlat++ } else { $ioFlat = 0 }
+                                    $workerIO = $ioNow
+                                    if ($cpuFlat -ge 2 -and $ioFlat -ge 2) {
+                                        $zpids = Get-WorkerPid
+                                        foreach ($z in $zpids) { try { Stop-Process -Id $z -Force -ErrorAction Stop } catch {} }
+                                        if ($sig -eq $launchSig) { $launchStallCount++ } else { $launchSig = $sig; $launchStallCount = 1 }
+                                        if ($launchStallCount -ge $maxStallLaunches) {
+                                            Write-Log ("ESCALATE: sig stall $launchStallCount/$maxStallLaunches ticket=$ticket (zombie-kill)")
+                                            $ok = Invoke-StallEscalation -stallSig $sig -stallTicket $ticket -stallStatus $status -stallCount $launchStallCount
+                                            $launchedAt = $now.ToString("s"); $relaunchedAt = $now.ToString("s")
+                                            if ($ok) {
+                                                $escalatedSig = $sig
+                                                Show-Popup "Mailbox: escalate cho-muse" ("Tho {0} chet lam sang (CPU dung yen) da {1} lan giet-mo lai khong tien trien:`n$ticket`n`nDa chuyen sang cho-muse + push." -f $worker, $launchStallCount)
+                                                Write-Log ("ESCALATE OK: $sig -> cho-muse")
+                                            }
+                                        } else {
+                                            Invoke-WorkerLaunch
+                                            $relaunchedTicket = $ticket
+                                            $relaunchedAt = $now.ToString("s")
+                                            $launchedTicket = $ticket
+                                            $launchedAt = $now.ToString("s")
+                                            $expectWorker = $now.ToString("s")
+                                            $cpuFlat = 0; $ioFlat = 0
+                                            Show-Popup "Mailbox: giet tho ket" ("{0} song nhung CPU + I/O dung yen (ve dang-lam khong tien trien hon 20 phut).`n`nDa dung process ket + mo lai tho chay tiep ($launchStallCount/$maxStallLaunches)." -f $worker)
+                                            Write-Log ("ZOMBIE-KILL [$worker] $launchStallCount/$maxStallLaunches ticket=$ticket sig=$sig.")
+                                        }
+                                    }
+                                }
+                            }
+                        } else { $cpuFlat = 0 }
                     }
                 }
             }
             elseif ($status -eq "xong-cho-duyet" -and $status -ne $lastStatus) {
-                Show-Popup "Mailbox: OMP bao xong" "OMP da bao xong-cho-duyet. Muse poll moi 5 phut se review ngay."
+                Show-Popup "Mailbox: tho bao xong" ("{0} da bao xong-cho-duyet. Muse poll moi 5 phut se review ngay." -f $worker)
+            }
+            elseif ($status -eq "cho-muse") {
+                # Watcher da escalate (hoac tho tu dung theo gate) -> im lang cho Muse (cron 3p se thay).
+                # Nhung khong im vinh vien: qua SLA thi bao (cron Muse co the da dung).
+                if (-not $warnedSla -and $sigTime -ne "") {
+                    $wait = $now - [datetime]$sigTime
+                    if ($wait.TotalHours -ge $choMuseSlaHours) {
+                        Show-Popup ("Mailbox [{0}]: cho Muse lau" -f $worker) ("cho-muse da {0:N1} gio khong doi:`n$ticket`n`nCron Muse co the da dung - kiem tra VM/cron." -f $wait.TotalHours)
+                        Write-Log ("SLA cho-muse qua {0:N1}h ticket=$ticket" -f $wait.TotalHours)
+                        $warnedSla = $true
+                    }
+                }
             }
         }
 
@@ -191,11 +656,22 @@ while ($true) {
             status = $status; ticket = $ticket; sig = $sig; sigTime = $sigTime
             firstSeenMoi = $firstSeenMoi; warnedMoi = $warnedMoi
             warnedStuck = $warnedStuck; warnedIdle = $warnedIdle
-            launchedTicket = $launchedTicket; idleCount = $idleCount
+            warnedUnknown = $warnedUnknown; warnedSla = $warnedSla; warnedDisk = $warnedDisk
+            pollFails = $pollFails; workerCpu = $workerCpu; cpuFlat = $cpuFlat
+            workerIO = $workerIO; ioFlat = $ioFlat; expectWorker = $expectWorker
+            lastStuckWarn = $lastStuckWarn
+            launchedTicket = $launchedTicket; launchedAt = $launchedAt; relaunchedTicket = $relaunchedTicket; relaunchedAt = $relaunchedAt; idleCount = $idleCount
+            launchSig = $launchSig; launchStallCount = $launchStallCount; escalatedSig = $escalatedSig
             ticketsDone = $ticketsDone; updated = $now.ToString("s")
         } | ConvertTo-Json | Out-File $stateFile -Encoding utf8
     } catch {
-        Write-Log ("loi: " + $_.Exception.Message)
+        $pollFails++
+        Write-Log ("loi ({0}/{1}): " -f $pollFails, $maxPollFails) + $_.Exception.Message
+        if ($pollFails -eq $maxPollFails) {
+            Show-Popup ("Mailbox [{0}]: poll that bai lien tuc" -f $worker) ("Da {0} lan lien tiep khong doc duoc mailbox ({1}).`n`nKiem tra mang + han muc GitHub API (403 = het quota, can token)." -f $maxPollFails, $MailboxDir)
+            Write-Log ("POLL-FAIL x{0}: can thiep tay" -f $maxPollFails)
+        }
     }
     Start-Sleep -Seconds $pollSeconds
 }
+
