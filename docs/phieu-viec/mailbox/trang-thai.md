@@ -1,7 +1,8 @@
 # Trạng thái mailbox
 
-- Trạng thái: `moi`
+- Trạng thái: `dang-lam`
 - `ghi_chu` (điều phối Muse): 2026-10-06 ~23:44 +07 — Phát hành vé `LSU-QUALITY-RAG-HOME` theo lệnh user: máy nhà đo thay lane RAG bộ 50 câu LSU (máy công ty hết pin, dừng ở 33/50). **CPU-ONLY tuyệt đối — cấm dùng GPU/VGA**, index chỉ-đọc, cùng rubric với lane PC0575, checkpoint từng câu + heartbeat 15 phút. Prompt: `docs/phieu-viec/mailbox/prompt.md`. Role gợi ý: DEFAULT.
+- `ghi_chu`: 2026-10-07 00:12 +07 — OMP nhận vé LSU-QUALITY-RAG-HOME, kiểm cổng gate: cổng MỞ (máy h410asrock, HEAD=origin=1bfeee5, prompt đúng vé RAG-HOME, trạng thái moi mới ~23:44 06/10, không có file watcher tự mở mới trong mailbox). Vé lane ĐO (50 câu LSU, CPU-only tuyệt đối, index chỉ-đọc, cùng rubric PC0575). Đang khảo sát bộ câu + index + lane RAG rồi đo.
 - Ticket hiện tại: `LSU-QUALITY-RAG-HOME` — đo lane RAG 50 câu LSU, CPU-only.
 - `hang-cho`: (trống)
 
