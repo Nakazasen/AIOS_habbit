@@ -1076,7 +1076,9 @@ def route_workspace_chat_submission(
         if retrieval_applied and retrieved_sources:
             candidate_sources = tuple(retrieved_sources)
         else:
-            raw_pool = packed_sources if packed_sources else candidate_sources
+            # Không có nguồn đính kèm: nhóm ứng viên rỗng (trước đây tham chiếu
+            # biến chưa gán -> UnboundLocalError khi packed_sources rỗng).
+            raw_pool = packed_sources if packed_sources else ()
             lex_evidence, lex_sources = _extract_top_chunks_lexical(question, raw_pool)
             if lex_sources:
                 candidate_sources = lex_sources
@@ -1116,10 +1118,17 @@ def route_workspace_chat_submission(
             answer_language=answer_language,
             memory_result=memory_result,
         )
+        from aios_habit.wire_qa_staging import build_wire_qa_reference
+
+        wire_reference = build_wire_qa_reference(question)
+        if wire_reference is not None:
+            system_prompt = f"{system_prompt}\n\n{wire_reference.system_note}"
+            user_prompt = f"{wire_reference.prompt_block}\n\n{user_prompt}"
         cagent_res = call_cagent_prediction(
             endpoint,
             system_prompt=system_prompt,
             user_prompt=user_prompt,
+            cancellation_event=cancellation_event,
         )
         if was_cancelled():
             return (False, "", None, "Đã dừng yêu cầu AI.")
@@ -1128,6 +1137,8 @@ def route_workspace_chat_submission(
 
         disclaimer = _get_ai_disclaimer(answer_language)
         answer_text = cagent_res.text.strip() + disclaimer
+        if wire_reference is not None:
+            answer_text = f"{wire_reference.label_block}\n\n{answer_text}"
 
         user_msg = _get_or_create_user_message(conversation_id, user_raw_input, reuse_message_id=user_message_id)
         assistant_msg_id = f"MSG-{uuid.uuid4().hex[:8].upper()}"

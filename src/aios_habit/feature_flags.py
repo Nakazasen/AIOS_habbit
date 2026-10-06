@@ -42,6 +42,11 @@ FEATURE_CHAT_ACTION = "chat_action"
 # AIOS_FEATURE_INVESTIGATION_REPORT=1.
 FEATURE_INVESTIGATION_REPORT = "investigation_report"
 
+# WIRE-QA-CAGENT-PC0575: inject the reviewed 3.392-pair Q&A staging corpus as
+# draft reference context into the Workspace Chat C-Agent lane (fail-closed;
+# default off). Enable with AIOS_FEATURE_WIRE_QA_CAGENT=1.
+FEATURE_WIRE_QA_CAGENT = "wire_qa_cagent"
+
 # Consolidated Goal 010 feature set (single flag)
 ALL_010_FEATURES = (
     FEATURE_EXPERT_KNOWLEDGE_ACQUISITION,
@@ -57,6 +62,7 @@ class FeatureFlagState:
     adaptive_work_memory: bool = False
     chat_action: bool = False
     investigation_report: bool = False
+    wire_qa_cagent: bool = False
 
     @property
     def expert_knowledge_coverage(self) -> bool:
@@ -82,6 +88,7 @@ class FeatureFlagState:
             FEATURE_ADAPTIVE_WORK_MEMORY: self.adaptive_work_memory,
             FEATURE_CHAT_ACTION: self.chat_action,
             FEATURE_INVESTIGATION_REPORT: self.investigation_report,
+            FEATURE_WIRE_QA_CAGENT: self.wire_qa_cagent,
         }
 
     def is_enabled(self, flag_name: str) -> bool:
@@ -102,6 +109,8 @@ class FeatureFlagState:
             return self.chat_action
         if flag_name in (FEATURE_INVESTIGATION_REPORT, "investigation_report"):
             return self.investigation_report
+        if flag_name in (FEATURE_WIRE_QA_CAGENT, "wire_qa_cagent"):
+            return self.wire_qa_cagent
         return False
 
 
@@ -135,6 +144,8 @@ class FeatureFlagRegistry:
             return FEATURE_CHAT_ACTION
         if flag_name in (FEATURE_INVESTIGATION_REPORT, "investigation_report"):
             return FEATURE_INVESTIGATION_REPORT
+        if flag_name in (FEATURE_WIRE_QA_CAGENT, "wire_qa_cagent"):
+            return FEATURE_WIRE_QA_CAGENT
         return flag_name
 
     def get_flag(self, flag_name: str) -> bool:
@@ -173,6 +184,7 @@ class FeatureFlagRegistry:
             adaptive_work_memory=self.get_flag(FEATURE_ADAPTIVE_WORK_MEMORY),
             chat_action=self.get_flag(FEATURE_CHAT_ACTION),
             investigation_report=self.get_flag(FEATURE_INVESTIGATION_REPORT),
+            wire_qa_cagent=self.get_flag(FEATURE_WIRE_QA_CAGENT),
         )
 
 

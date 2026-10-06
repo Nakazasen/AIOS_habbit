@@ -2003,7 +2003,7 @@ class TestAntigravityHandoffMultilingualE2E:
         )
         captured = {}
 
-        def fake_call(endpoint, *, system_prompt, user_prompt):
+        def fake_call(endpoint, *, system_prompt, user_prompt, **_kwargs):
             captured["user_prompt"] = user_prompt
             return SimpleNamespace(ok=False, text="", error_message="Dừng sau khi bắt prompt")
 
@@ -2086,7 +2086,7 @@ def test_route_workspace_chat_submission_cagent_uses_lexical_chunks_on_fallback(
 
     captured = {}
 
-    def fake_cagent(endpoint, *, system_prompt, user_prompt):
+    def fake_cagent(endpoint, *, system_prompt, user_prompt, **_kwargs):
         captured["system_prompt"] = system_prompt
         captured["user_prompt"] = user_prompt
         return SimpleNamespace(ok=True, text="Minh phụ trách ticket ORCHID-731.")
