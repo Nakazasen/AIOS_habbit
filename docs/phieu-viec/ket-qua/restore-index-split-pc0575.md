@@ -113,4 +113,4 @@
 - Đề xuất cho Muse/user:
   1. Nghiệm thu bằng cách mở app như thường lệ (`RUN_AIOS_WORKSPACE_CHAT.bat`); lần mở đầu worker cần ~5,5 phút nạp (đã đo trên index mới), sau đó giữ ấm theo cơ chế cũ — đề xuất giữ nguyên `AIOS_BGE_INIT_TIMEOUT` hiện tại; cân nhắc nâng lên 600 s như đề xuất trước đó nếu muốn câu hỏi đầu sau khi worker chết không bị timeout mềm.
   2. Các sổ có nguồn chưa trùng dấu vân tay index (LSU 35/494, mom 27/150) sẽ tự chuẩn bị lại khi mở — nếu muốn "khớp ngay từ đầu" cho toàn bộ sổ, cần vé riêng **đồng bộ nguồn ↔ index** (dựng lại text-id hoặc tái nhúng theo bản nguồn hiện tại).
-  3. Dọn `scratch/restore-index-split/` (≈5,7 GB gồm 4 khối + log…) sau khi Muse chốt, nếu cần ổ đĩa.
+  3. Dọn `scratch/restore-index-split/` (≈2,7 GiB: 4 khối đã tải + log/script) sau khi Muse chốt, nếu cần ổ đĩa; **giữ** `local_runs/backup_index_tam_062ec090_2026-10-06/` (2,4 GiB — bản TẠM dự phòng) tới khi user nghiệm thu xong.
