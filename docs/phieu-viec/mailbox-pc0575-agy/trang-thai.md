@@ -1,6 +1,8 @@
 # Trạng thái mailbox-pc0575-agy — KDTVN-PC0575 (thợ agy — Antigravity CLI)
 
-- Trạng thái: `dang-lam`
+- Trạng thái: `xong-cho-duyet`
+- `bao_cao`: `docs/phieu-viec/ket-qua/lsu-quality-dryrun-pc0575.md`
+- `ghi_chu`: 2026-10-06 15:52 +07 — Hoàn thành vé `LSU-QUALITY-DRYRUN-PC0575`: 50/50 câu đã qua pipeline trên cả 2 lane (C-Agent 50/50 thành công kỹ thuật, lỗi 0, TB 40.15s/câu; RAG 50/50 an toàn trên index TẠM). Rubric 0–3 chuẩn hóa, 5 ví dụ minh họa và đề xuất cho lần đo thật. Cổng kiểm thử: compileall PASS, cli audit PASS, import app OK, test_quality_harness PASS. Kết luận: pipeline SẴN SÀNG cho lần đo thật.
 - `ghi_chu`: 2026-10-06 15:05 +07 — Tiến độ dry-run LSU: hoàn thành Đợt 4 (40/50 câu lane C-Agent, 40/40 thành công kỹ thuật, lỗi kỹ thuật 0). Đang tiếp tục Đợt 5 (câu 41–50, đợt cuối).
 - `ghi_chu`: 2026-10-06 14:53 +07 — Tiến độ dry-run LSU: hoàn thành Đợt 3 (30/50 câu lane C-Agent, 30/30 thành công kỹ thuật, lỗi kỹ thuật 0). Đang tiếp tục Đợt 4 (câu 31–40).
 - `ghi_chu`: 2026-10-06 14:45 +07 — Tiến độ dry-run LSU: hoàn thành Đợt 2 (20/50 câu lane C-Agent, 20/20 thành công kỹ thuật, lỗi kỹ thuật 0). Đang tiếp tục Đợt 3 (câu 21–30).
