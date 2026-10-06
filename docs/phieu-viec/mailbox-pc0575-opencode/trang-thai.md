@@ -1,6 +1,8 @@
 # Trạng thái mailbox-pc0575-opencode — KDTVN-PC0575 (thợ opencode)
 
-- Trạng thái: `dang-lam`
+- Trạng thái: `xong-cho-duyet`
+- `ghi_chu` (thợ opencode): 2026-10-06 16:35 +07 — vé `LSU-ALERT-REALTIME-PC0575` xong, chờ duyệt. Pipeline cổng SMA(20) đã nối (điểm đơn lẻ → "Cần biến", 0 báo sai), feedback thẻ → `local_cases/alert_feedback.jsonl`, latency replay 132 điểm khoảng 0,0014 giây (< 5 phút). Test mới 4/4 PASS; hồi quy liên quan 56 passed/3 skipped; `compileall` sạch, `cli audit` PASS, import app đạt (pytest toàn bộ quá 10 phút chưa xong — khai trung thực). Báo cáo `docs/phieu-viec/ket-qua/lsu-alert-realtime-pc0575.md`.
+- `bao_cao`: `docs/phieu-viec/ket-qua/lsu-alert-realtime-pc0575.md`
 - `ghi_chu` (thợ opencode): 2026-10-06 16:20 +07 — code xong pipeline cổng SMA(20) + feedback thẻ + đo latency, test mới 4/4 PASS. Chuẩn bị chạy cổng đầy đủ + viết báo cáo.
 - `ghi_chu` (thợ opencode): 2026-10-06 16:05 +07 — nhận vé `LSU-ALERT-REALTIME-PC0575` (đủ điều kiện mở: `moi` + ticket mới + chưa có báo cáo `lsu-alert-realtime-pc0575.md`; gate watcher chưa chạm 4 lần nên không đặt `cho-muse`). Bắt đầu nối pipeline qua cổng SMA(20).
 - `ghi_chu` (điều phối Muse): 2026-10-06 ~15:25 +07 — Phát hành vé `LSU-ALERT-REALTIME-PC0575`: nối `RtConsumer` realtime JIG qua cổng xu hướng SMA(20) (`gate_canh_bao_theo_xu_huong`, có sẵn từ commit `846713e` — không viết lại), chỉ xu hướng đã xác nhận mới thành thẻ cảnh báo trong chat; điểm đơn lẻ → "Cần biến". Thêm feedback tại chỗ trên thẻ cảnh báo (đúng/sai + lý do khi chê → `local_cases/alert_feedback.jsonl`), đo latency đầu-cuối < 5 phút (mục tiêu góp ý Khiêm). Vé dài: heartbeat 15 phút + checkpoint/resume. Phạm vi: `rt_consumer.py`, `rt_replay.py`, file feedback mới, hook UI chat — không đụng file WIRE-QA của OMP, không đụng index.
