@@ -1,6 +1,6 @@
 # Báo cáo vé `SPEED-COLDSTART-PC0575` — sửa câu hỏi lạnh qua UI (~265 giây, bộ đọc khởi động 180,9 giây)
 
-- Trạng thái: **ĐO XONG → `xong-cho-duyet` (2026-10-05 19:19 +07)** — đo trên **bản TẠM `062ec090`** theo phụ lục phát hành lại; phiên này **không sửa mã nguồn** (code P1–P4 đã có từ 02/10).
+- Trạng thái: **ĐO XONG → `xong-cho-duyet` (2026-10-05 19:19 +07; chốt cổng chất lượng + `pytest` xong 06/10 ~12:10 +07)** — đo trên **bản TẠM `062ec090`** theo phụ lục phát hành lại; phiên này **không sửa mã nguồn** (code P1–P4 đã có từ 02/10).
 - **NHÃN BẮT BUỘC: bản TẠM `062ec090` (30/09) — KHÔNG PHẢI production `e54c7745…` đã mất.**
 
 > **Cập nhật 2026-10-05 19:19 +07 — KẾT QUẢ ĐO (MỚI NHẤT, đọc trước).**
@@ -127,17 +127,21 @@ Probe `probe_routing.py` (đọc từ deployment module + config, không hardcod
 - **1 điểm lệch cần theo dõi**: câu hỏi pha chữ Nhật (`全OK trong ORICON STATUS có nghĩa là gì?`) bị đánh `insufficient_evidence` (0 trích dẫn) dù đáp án bám tài liệu — nghi hỏi pha CJK + cổng evidence của bản TẠM; không phải vấn đề tốc độ. Ghi lại cho vé rebuild/quality sau.
 - **Toàn vẹn index**: md5 trước phiên = sau phiên = `7392ef9a54d82926f59569a9e664458f` (mục 7).
 
-## 6. Cổng chất lượng (phiên đo 2026-10-05)
+## 6. Cổng chất lượng (phiên đo 2026-10-05, chốt 06/10)
 
-- `compileall src tests`: **PASS**.
+- `compileall src tests`: **PASS** (chạy lại 06/10 12:2x — phiên chốt).
 - `python -B -m aios_habit.workspace_chat_rag_v2_deployment` (audit deployment, bản TẠM): **`Status: PASS`** — `model_path_exists` ✓, `profile_match` ✓, `model_revision_match` ✓, `fail_closed` ✓ (`adaptive_enabled=False` là bình thường).
 - `cli audit`: **PASS** (`"status": "PASS"`, `errors: []`, `warnings: []`).
 - `import aios_habit.workspace_chat_app`: **OK**.
-- `pytest -q`: _đang chạy — điền khi xong_. Tham chiếu phiên 02/10 (mã P1–P4): 3647 passed / 37 skipped; **18 failed + 19 errors đã chứng minh pre-existing/environment** (đối chiếu mã cũ `bb8c0cf` cho cùng tên fail; 19 errors thiếu dữ liệu VM, 6 fail model-pack checksum, còn lại mạng/OCR/privacy) — phiên này **không sửa mã** nên không thể phát sinh fail mới.
+- `pytest -q` (**phiên nối 06/10**, 11:37→12:08; log đầy đủ `scratch/speed-coldstart/pytest_final.log`): **21 failed, 4076 passed, 39 skipped, 19 errors trong 1837,79 s (30:37)**. Phân loại cả 40 ca đỏ — **không ca nào thuộc mã vé** (phiên đo không sửa mã nguồn; mọi ca chạm file vé đã `git blame` xác định commit khác/trước vé):
+  - **19 errors**: trọn 2 file `test_chat_action_error_lookup` + `test_error_cases_f4` — thiếu dữ liệu VM `\home\hatch\workspace\aios_data\...` (đúng loại "thiếu dữ liệu VM" đã phân loại phiên 02/10).
+  - **21 failed theo nhóm**: packaging/phụ thuộc (4 — pip thiếu trong venv, `uv lock --check` lệch, model-pack `b1d…` ≠ cây máy `697a…`, clean-venv smoke — đều trong `test_commit_d_wheel_and_packaging`); cổng privacy đoạn dev (4 — `test_phase4_owner_pilot`, `test_rag_v2_dev_cli`, `test_rag_v2_eval_harness` ×2, "Privacy pass rate 0.50"); handoff Antigravity + gác privacy UI (2 — `test_local_only_cloud_provider_blocked_and_vi_instruction` blocked=False, tier5 privacy guard lỗi DNS khác thông điệp chặn); OCR/prompt-pack mom (2 — `rapidocr_unavailable`, `cloud_warning` rỗng); mạng/LLM cục bộ (1 — notebook in-app QA, connection refused); dữ liệu/manifest (1 — `test_chunk_evaluation` checksum); expert-lifecycle (1 — `NOT_APPLICABLE` ≠ `BLOCKED_PRIVACY`); j1csv (1 — vé agy đang dở); UI/nhãn của commit khác trên nhánh (5 — `test_workspace_chat_ui_i18n` ×2: chuỗi do `9298ee63`+`d5d32503` 03/10; owner-choice lệch do i18n `941c31c5` 29/09; omnibar artifact-guard + xlsx-guard soi code cũ `767ea666c` 04/07).
+  - **Test của vé đều PASS**: `tests/test_bge_worker_persist.py` + 2 test warm-up config trong `test_workspace_chat_rag_v2_adapter.py` — không nằm trong danh sách đỏ.
+  - Tham chiếu phiên 02/10 (mã P1–P4): 3647 passed / 37 skipped; 18 failed + 19 errors đã đối chiếu mã cũ `bb8c0cf` cho cùng tên fail (thiếu dữ liệu VM, model-pack checksum, mạng/OCR/privacy).
 
 ## 7. An toàn dữ liệu
 
-- **Index TẠM `062ec090` nguyên trạng**: md5 trước phiên `7392ef9a54d82926f59569a9e664458f` (đo 18:59) = **sau phiên** `7392ef9a…` (đo 19:2x, 13,0 s). Worker mở index **read-only**; 5 câu hỏi đều trên hội thoại nguồn `ready` nên **không kích hoạt đường "chuẩn bị nguồn" ghi index** (bài học mục 3.2 của báo cáo RESTORE-DRIVE: không mở/render hội thoại LSU).
+- **Index TẠM `062ec090` nguyên trạng**: md5 trước phiên `7392ef9a54d82926f59569a9e664458f` (đo 18:59) = **sau phiên** `7392ef9a…` (đo 19:2x, 13,0 s) = **đo lại cuối cùng 06/10 12:02** `7392ef9a54d82926f59569a9e664458f` (7,6 phút; lúc đó app/worker đều đã dừng, không ai mở index). Worker mở index **read-only**; 5 câu hỏi đều trên hội thoại nguồn `ready` nên **không kích hoạt đường "chuẩn bị nguồn" ghi index** (bài học mục 3.2 của báo cáo RESTORE-DRIVE: không mở/render hội thoại LSU).
 - **Không đụng** `C:\AIOS_p5\library.sqlite.bak-20260930`; không xóa/ghi dữ liệu khác; không merge `main`, không force-push.
 - Ghi trong phiên: `scratch/speed-coldstart/` (gitignored: script đo + log + ảnh), `local_cases/workspace_chat/` (4 hội thoại mới `CONV-A1A56200`, `CONV-963438A5`, `CONV-7C0A008D`, `CONV-BB53BF46` + tin nhắn + trace — local_only, không commit), `local_runs/…/logs/` (log worker), báo cáo này + `trang-thai.md`.
 - **`uv.lock`**: chạy thử `uv run --with playwright` (không `--no-sync`) của OMP có sửa lock ngoài phạm vi — đã **revert về đúng HEAD** (`git checkout -- uv.lock`); sau đó chỉ dùng `uv run --no-sync` (không còn churn). Kiểm chứng: `git status --short uv.lock` trống.
@@ -150,7 +154,7 @@ Probe `probe_routing.py` (đọc từ deployment module + config, không hardcod
 1. **Câu lạnh sau restart app ≤ 60 s: ĐẠT** — 18,6 s / 19,1 s / 34,0 s qua 3 lần restart liên tiếp, cả ba dùng đúng **một** worker pid `31484` (`reused=true`, init lại 2,7 ms; `serve` count không tăng). Worker sống qua `taskkill /F` app — đúng cơ chế named pipe + `AIOS_RAGV2_WORKER_PERSIST=1` (vé yêu cầu: chứng minh cơ chế giữ worker + readiness probe ổn định qua nhiều lần khởi động app).
 2. **Câu lạnh khi worker chết** (máy mới khởi động / worker hết 6 h idle): 130,4–209,4 s, **trả lời thật** trong cửa sổ chờ + retry (bản cũ ~265 s → LỖI). Không thể ≤ 60 s trên bản TẠM CPU-only vì init vật lý 119,8–335,6 s — nằm đúng nhánh "giới hạn máy" của vé.
 3. **Warm-up đúng collection** (yêu cầu 2): config warm-up trùng khít config câu hỏi (cùng index read-only, cùng pipe) — hết lỗi "làm nóng nhầm collection".
-4. **Bảng pha init trước/sau** đầy đủ (mục 2); index TẠM không đổi một byte; cổng chất lượng PASS (mục 6).
+4. **Bảng pha init trước/sau** đầy đủ (mục 2); index TẠM không đổi một byte (md5 khớp mọi lần đo trước/sau); cổng chất lượng PASS (mục 6 — `pytest` 06/10 xong: 4076 passed; 21 failed + 19 errors đều thuộc nhóm environment/vé khác, không có ca đỏ nào của mã vé).
 
 **Đề xuất cho Muse/user:**
 
