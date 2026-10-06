@@ -1,54 +1,53 @@
-# Vé RESTORE-INDEX-SPLIT-PC0575 — Tải 5 khối index từ Drive về, hợp lại thành kho chính
+# Vé WIRE-QA-CAGENT-PC0575 — Nối 3.392 cặp hỏi-đáp vào lane C-Agent của Workspace Chat
 
 **Máy thực hiện:** [CTY] KDTVN-PC0575 (CPU-only).
-**Xếp hàng:** sau `SPEED-COLDSTART-PC0575`, trước `WIRE-QA-CAGENT-PC0575`.
-**Role gợi ý:** DEFAULT (tải file lớn + kiểm SHA).
+**Xếp hàng:** sau `RESTORE-INDEX-SPLIT-PC0575` (index chính 889 doc / 149.800 chunk đã vào vị trí).
+**Role gợi ý:** DEFAULT (tích hợp lane + kiểm thử đầu-cuối).
 
 ## Bối cảnh
 
-- Máy công ty đang chạy index TẠM `062ec090` (2,55GB) — bản này lệch nguồn LSU hiện tại
-  (0/494 nguồn `NB-E35A7BEE` khớp), chỉ là giải pháp tình thế sau vụ mất dữ liệu 05/10.
-- Máy nhà đã upload đủ 5 file khối tách của index production (`45eb0e07…`,
-  889 document / 149.800 chunk) lên Drive, SHA tải lại khớp 100%
-  (vé `UPLOAD-SPLIT-DRIVE-HOME`, verdict Muse ĐẠT 2026-10-05 ~23:39).
-- Vé này: tải về + hợp lại + thay cho index TẠM để máy công ty "dùng mượt mà".
+- 3.392 cặp hỏi-đáp (MOM 608 / LSU 1.790 / điều-tra-lỗi 994) đã review chéo: ID duy nhất, 0 rỗng, 6 trường đúng tên (vé REVIEW-WIRE-QA-MAPPING, verdict Muse ĐẠT 2026-10-05).
+- Spec kỹ thuật nối C-Agent đã có: `docs/phieu-viec/ket-qua/wire-cagent-spec.md` (agy lập 05/10; opencode review 05/10: **OK để nối**, 4 ghi nhận mức thấp — đọc kỹ trước khi implement, chốt trong vé này).
+- Endpoint C-Agent **SỐNG trên mạng công ty** (vé CAGENT-HEALTH-RETRY-PC0575, verdict Muse ĐẠT 06/10 ~13:33: 3/3 câu Q0001/Q0609/Q2409 thành công, **20,0–44,7 s/câu**, timeout 150 s/câu). **KT_CHETAO KHÔNG vào được `kdtvn-ai.cmcts.vn`** (vé CAGENT-HEALTH chạy sai mạng — kết luận CHẾT vô giá trị; user đính chính 06/10 ~12:56: KT_CHETAO chỉ tải Drive).
 
-## Nguồn trên Drive
+## Cổng mạng (bắt buộc — làm TRƯỚC mọi việc khác)
 
-- Thư mục: `index-split-r5-backup` — ID `1T_Ao9Piy8dDtYRn6fVNxVErzQAEf14il`
-- 5 file: `lsu` (1.155.637.248 B) + `dieu_tra_loi` (1.643.761.664 B) +
-  `mom` (21.598.208 B) + `tong_hop` (36.081.664 B) + `domain_manifest.json` (491.253 B)
-- Lưu ý: 2 link chia sẻ riêng (lsu, dieu_tra_loi) Drive đang chặn (thử lại 06/10 vẫn chặn)
-  → tải qua link thư mục chung. Tuyệt đối không bịa link/ID.
-- Bảng SHA-256 đầy đủ trong `docs/phieu-viec/ket-qua/upload-split-drive-home.md`.
+1. Kiểm tra SSID hiện tại (`netsh wlan show interfaces`): phải là mạng công ty vào được `kdtvn-ai.cmcts.vn` (hiện tại: `vn-kdwireless`).
+2. Probe 1 câu qua đúng hàm `call_cagent_prediction` trong `src/aios_habit/cagent_api.py` (tái dùng Q0001 đã đo — kỳ vọng ~20–45 s).
+3. Nếu probe rớt (timeout/DNS/403): ghi vào `trang-thai.md` dòng `ghi_chu` **"YÊU CẦU CHUYỂN MẠNG vn-kdwireless: vé WIRE cần gọi endpoint kdtvn-ai.cmcts.vn (KT_CHETAO không vào được)"** rồi **DỪNG CHỜ** xác nhận của điều phối viên (Muse) trong cùng file, kiểm tra lại mỗi 3 phút — **không implement tiếp trước xác nhận** (đúng pattern rào mạng vé RESTORE-INDEX-SPLIT).
 
-## Việc cần làm (đúng thứ tự)
+## Việc cần làm
 
-1. XIN CHUYỂN MẠNG KT_CHETAO TRƯỚC KHI TẢI (bắt buộc, làm TRƯỚC bước tải):
-   ghi vào `docs/phieu-viec/mailbox-pc0575/trang-thai.md` một dòng `ghi_chu`
-   với nội dung "YÊU CẦU CHUYỂN MẠNG KT_CHETAO: sắp tải ~4,4GB từ Drive".
-   Sau đó DỪNG CHỜ — không tải cho đến khi trong cùng file xuất hiện dòng
-   `ghi_chu` của điều phối viên (Muse) xác nhận "đã chuyển mạng KT_CHETAO,
-   tiếp tục tải". Kiểm tra lại file mỗi 3 phút. Lý do: user yêu cầu chuyển
-   mạng KT_CHETAO trước mọi lượt tải Drive lớn.
-2. Tải đủ 5 file về máy công ty. Nếu `drive.google.com` timeout thì dùng endpoint
-   `drive.usercontent.google.com/download` (vé RESTORE-DRIVE đã chứng minh được).
-3. Đối chiếu SHA-256 từng file với báo cáo upload — lệch 1 byte cũng tải lại, không làm tiếp.
-4. Hợp 4 khối thành `library.sqlite` hoàn chỉnh theo manifest
-   (xem cách tách trong báo cáo upload hoặc script split trong repo).
-5. `PRAGMA integrity_check` phải = ok; đếm document/chunk (kỳ vọng ~889 / ~149.800).
-6. DỪNG APP trước khi thay. Backup index TẠM ra thư mục khác (KHÔNG xóa).
-7. Đặt index đã hợp vào đúng path app mong đợi — kiểm lại bằng deployment module
-   (`python -B -m aios_habit.workspace_chat_rag_v2_deployment`), không hardcode path.
-8. Audit deployment → `Status: PASS` + smoke 1 câu hỏi thật qua UI.
+1. Đọc spec `wire-cagent-spec.md` + báo cáo review `review-wire-cagent-spec.md`, chốt 4 ghi nhận thấp trong implement:
+   - #1: JSONL chỉ có 2 trường `question`/`answer` (không có trường bối cảnh riêng) → **quy tắc chốt: template context dùng đúng 2 mảnh `{câu hỏi gốc}` / `{trả lời gốc}`, KHÔNG bịa trường "Bối cảnh"**.
+   - #2: tổng số đúng là **3.392** (không phải 3.393) — mọi tài liệu/báo cáo trong vé dùng số này.
+   - #3: trích dẫn `source` theo trường `source` trong JSONL (đường dẫn fixed), không dẫn đường dẫn raw.
+   - #4: kỳ vọng demo 1 (C0980) ghi mức **tối thiểu "F401 đứt + Q402/Q403 short 3 cực"** — không nghiệm thu cứng cả 4 linh kiện (tránh trượt oan).
+2. Nguồn dữ liệu staging: file `wire-qa-mapping.jsonl` (3.392 dòng, 6 trường `id/question/answer/source/category/batch`). Kiểm tra tồn tại trên máy công ty; nếu chưa có: tải từ Drive ngăn `digest/` trong thư mục `index-split-r5-backup` (ID + SHA trong báo cáo `upload-digest-drive-home.md`) bằng đúng pattern đã chứng minh (`drive.usercontent.google.com/download`, đối chiếu SHA-256, **không bịa ID**).
+3. Implement lane C-Agent trong Workspace Chat theo spec §1–§3:
+   - Endpoint giữ nguyên `DEFAULT_CAGENT_API_URL` trong `cagent_api.py` — **không thêm địa chỉ mới**.
+   - Payload `{"question": "<system_prompt>\n\n<user_prompt>"}` theo template spec §1.2 (đã chốt 2 mảnh ở bước 1).
+   - Timeout 60 s; retry tối đa **1 lần** (chỉ khi mất kết nối đột ngột hoặc HTTP 5xx); backoff 2–3 s; **không retry** với HTTP 4xx hoặc khi user hủy.
+   - Thông báo lỗi **100% tiếng Việt** theo bảng spec §3.2 — **cấm traceback thô, cấm lộ đường dẫn `D:\...` hay endpoint nội bộ**.
+4. Nhãn bản thảo (rào cứng spec §4): mọi câu trả lời dùng context 3.392 cặp phải hiển thị `⚠️ Bản thảo — chưa qua chuyên gia duyệt` + nguồn cặp Q&A (đầu bong bóng tin nhắn hoặc footer).
+5. Rào cứng an toàn: 3.392 cặp **CHỈ ở staging/local** — cấm nạp vào vector DB production / BM25 index chính của AIOS; cấm tự tạo/ghi đè case chính thức khi chưa có phê duyệt thủ công của kỹ sư.
+6. Encoding: test 1 câu chứa tiếng Nhật + backtick (vd Q3401) để khóa encoding UTF-8/JSON ngay từ đầu (ghi nhận review).
+7. Rate limit: giãn cách giữa các lần gọi, **không gọi dồn dập** (từng bị 403 ngày 02/10 khi chạy hàng loạt).
+8. Quy ước chuẩn 06/10: heartbeat mốc bước tối thiểu **15 phút/lần** + checkpoint/resume bắt buộc (vé dài).
+9. Code tương thích Python 3.11. Không merge `main`. Mọi commit trên `phieu-viec/rag-fix1`.
 
-## Rào cứng
+## Nghiệm thu (3 câu demo theo spec §5 — chạy qua lane đã nối)
 
-- Thiếu 1 file hoặc SHA lệch → DỪNG, báo rõ, không ráp bừa.
-- Không ghi đè khi chưa backup bản TẠM. Không merge `main`.
-- Code tương thích Python 3.11. Heartbeat mốc 15 phút/lần.
+| # | Câu hỏi | Nguồn | Kỳ vọng tối thiểu |
+|---|---|---|---|
+| 1 | Mã lỗi C0980 báo hiệu gì + bước kiểm tra linh kiện | Q3401/Q3317 (điều-tra-lỗi) | định nghĩa `24V電源断検知` + F401 đứt + Q402/Q403 short 3 cực |
+| 2 | `ctrlMode = 0` và `1` khác nhau thế nào (Matecon) | Q0001 (MOM) | =0 chế độ tự động / =1 thủ công + giao thức SLMP |
+| 3 | Jig 2ND-1004 Serial 61C999999902: xuất hiện mấy lần, OK/NG từng màu | Q0825 (LSU) | xuất hiện **4 lần**; Total NG; Black/Magenta/Yellow NG, Cyan OK |
+
+- Mỗi câu: **<60 s**, có nhãn bản thảo, ghi thời gian + độ dài đáp án vào báo cáo.
+- Cổng kỹ thuật: `compileall src tests` PASS; test liên quan (`test_cagent_api.py` + `test_quality_harness.py`) PASS; `cli audit` PASS; `import workspace_chat_app` OK.
+- Phạm vi vé này là **tích hợp lane + demo 3 câu** (không phải gọi hết 3.392 câu qua endpoint trong vé này).
 
 ## Báo cáo
 
-`docs/phieu-viec/ket-qua/restore-index-split-pc0575.md` — đủ: bảng SHA 5 file,
-kết quả integrity_check, số document/chunk, kết quả audit + smoke.
+`docs/phieu-viec/ket-qua/wire-qa-cagent-pc0575.md` — đủ: kết quả cổng mạng + probe; quy tắc context đã chốt (4 ghi nhận); mô tả implement (file/hàm đổi); bảng 3 câu demo (thời gian, độ dài đáp án, đạt kỳ vọng tối thiểu hay không); kết quả cổng kỹ thuật; danh sách file thay đổi.
