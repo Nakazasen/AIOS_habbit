@@ -1,6 +1,8 @@
 # Trạng thái mailbox-pc0575-opencode — KDTVN-PC0575 (thợ opencode)
 
-- Trạng thái: `dang-lam`
+- Trạng thái: `xong-cho-duyet`
+- `bao_cao`: `docs/phieu-viec/ket-qua/cagent-health-retry-pc0575.md`
+- `ghi_chu` (thợ opencode): 2026-10-06 13:40 +07 — vé `CAGENT-HEALTH-RETRY-PC0575` xong, chờ duyệt. Kết luận: đầu mối **SỐNG** trên mạng công ty `vn-kdwireless` (3/3 câu thành công: Q0001 20,0 s / Q0609 26,4 s / Q2409 44,7 s), **SẴN SÀNG** cho vé WIRE (lưu ý độ trễ 20–45 s/câu, nên chạy mẻ nhỏ). Cổng: compileall đạt, pytest mẫu liên quan 8/8, `cli audit` PASS, import app đạt (pytest toàn bộ chưa chạy hết — vé không đụng mã nguồn).
 - `ghi_chu` (thợ opencode): 2026-10-06 13:26 +07 — nhận vé `CAGENT-HEALTH-RETRY-PC0575` (đủ điều kiện mở: `moi` + ticket mới + chưa có báo cáo `cagent-health-retry-pc0575.md`; gate watcher chưa chạm ngưỡng 4 lần nên không đặt `cho-muse`). Mạng xác nhận `vn-kdwireless`, tái dùng 3 câu Q0001/Q0609/Q2409 để so sánh trực tiếp vé trước. Bắt đầu gọi endpoint.
 - `ghi_chu` (thợ opencode): 2026-10-06 13:33 +07 — gọi xong 3 câu mẫu trên `vn-kdwireless`: cả 3 SỐNG (Q0001 20,0 s / Q0609 26,4 s / Q2409 44,7 s, timeout 150 s/câu). Đang viết báo cáo.
 - `ghi_chu` (điều phối Muse): 2026-10-06 ~13:25 +07 — Phát hành vé `CAGENT-HEALTH-RETRY-PC0575` (prompt mới `prompt-queue-cagent-health-retry-pc0575.md`): kiểm tra LẠI endpoint C-Agent trên mạng công ty `vn-kdwireless` (user vừa chuyển ~13:20). Vé trước chạy sai mạng KT_CHETAO nên kết luận vô giá trị. Ghi rõ tên mạng vào báo cáo.
