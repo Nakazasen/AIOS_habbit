@@ -13,11 +13,18 @@
 ## Yêu cầu (làm theo đúng thứ tự)
 
 0. **Kiểm tra trước, không làm trùng:** đọc `docs/phieu-viec/mailbox/trang-thai.md` (máy nhà) xem OMP đã xong chưa. Nếu OMP đã `xong-cho-duyet`/`xong` và sổ tay đã push → chỉ `git pull` sổ tay về, KHÔNG làm lại, báo rõ rồi kết thúc vé ở mức ĐẠT.
-1. Nếu OMP chưa xong: kiểm tra checkpoint `C:/tmp/knowledge-digest-home/` có được OMP push lên GitHub/Drive không. Có → pull về, resume từ checkpoint. Không → DỪNG, báo trung thực (không tự làm lại 889 doc từ đầu khi chưa có lệnh — tốn hàng giờ).
-2. Resume batch tóm tắt qua lane C-Agent (đặt `AIOS_CAGENT_API_URL` nếu cần; không hardcode URL vào code). Checkpoint mỗi 25 doc; cấm quá 45 phút không ghi log tiến độ.
-3. Gom thành sổ tay Markdown duy nhất + manifest SHA-256. Dòng đầu file: `Bản thảo — chưa qua chuyên gia duyệt`.
-4. Kiểm tra bao phủ: số mục trong sổ tay = số document đếm thực tế (cấm hardcode 889).
-5. Chạy probe hỏi đáp `src/aios_habit/digest_qa.py` trên 10–15 câu benchmark, so sánh với lane RAG.
+1. **XIN CHUYỂN MẠNG KT_CHETAO TRƯỚC KHI KÉO TỪ DRIVE (chỉ khi thực sự kéo từ Drive):**
+   nếu checkpoint/sổ tay nằm trên Drive (không phải GitHub), ghi vào
+   `docs/phieu-viec/mailbox-pc0575/trang-thai.md` một dòng `ghi_chu` với nội dung
+   "YÊU CẦU CHUYỂN MẠNG KT_CHETAO: sắp kéo checkpoint/sổ tay từ Drive".
+   Sau đó DỪNG CHỜ — không kéo cho đến khi trong cùng file xuất hiện dòng
+   `ghi_chu` của điều phối viên (Muse) xác nhận "đã chuyển mạng KT_CHETAO,
+   tiếp tục kéo". Kiểm tra lại file mỗi 3 phút. (Kéo từ GitHub thì bỏ qua bước này.)
+2. Nếu OMP chưa xong: kiểm tra checkpoint `C:/tmp/knowledge-digest-home/` có được OMP push lên GitHub/Drive không. Có → pull về, resume từ checkpoint. Không → DỪNG, báo trung thực (không tự làm lại 889 doc từ đầu khi chưa có lệnh — tốn hàng giờ).
+3. Resume batch tóm tắt qua lane C-Agent (đặt `AIOS_CAGENT_API_URL` nếu cần; không hardcode URL vào code). Checkpoint mỗi 25 doc; cấm quá 45 phút không ghi log tiến độ.
+4. Gom thành sổ tay Markdown duy nhất + manifest SHA-256. Dòng đầu file: `Bản thảo — chưa qua chuyên gia duyệt`.
+5. Kiểm tra bao phủ: số mục trong sổ tay = số document đếm thực tế (cấm hardcode 889).
+6. Chạy probe hỏi đáp `src/aios_habit/digest_qa.py` trên 10–15 câu benchmark, so sánh với lane RAG.
 
 ## Rào cứng
 

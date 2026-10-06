@@ -24,16 +24,23 @@
 
 ## Việc cần làm (đúng thứ tự)
 
-1. Tải đủ 5 file về máy công ty. Nếu `drive.google.com` timeout thì dùng endpoint
+1. XIN CHUYỂN MẠNG KT_CHETAO TRƯỚC KHI TẢI (bắt buộc, làm TRƯỚC bước tải):
+   ghi vào `docs/phieu-viec/mailbox-pc0575/trang-thai.md` một dòng `ghi_chu`
+   với nội dung "YÊU CẦU CHUYỂN MẠNG KT_CHETAO: sắp tải ~4,4GB từ Drive".
+   Sau đó DỪNG CHỜ — không tải cho đến khi trong cùng file xuất hiện dòng
+   `ghi_chu` của điều phối viên (Muse) xác nhận "đã chuyển mạng KT_CHETAO,
+   tiếp tục tải". Kiểm tra lại file mỗi 3 phút. Lý do: user yêu cầu chuyển
+   mạng KT_CHETAO trước mọi lượt tải Drive lớn.
+2. Tải đủ 5 file về máy công ty. Nếu `drive.google.com` timeout thì dùng endpoint
    `drive.usercontent.google.com/download` (vé RESTORE-DRIVE đã chứng minh được).
-2. Đối chiếu SHA-256 từng file với báo cáo upload — lệch 1 byte cũng tải lại, không làm tiếp.
-3. Hợp 4 khối thành `library.sqlite` hoàn chỉnh theo manifest
+3. Đối chiếu SHA-256 từng file với báo cáo upload — lệch 1 byte cũng tải lại, không làm tiếp.
+4. Hợp 4 khối thành `library.sqlite` hoàn chỉnh theo manifest
    (xem cách tách trong báo cáo upload hoặc script split trong repo).
-4. `PRAGMA integrity_check` phải = ok; đếm document/chunk (kỳ vọng ~889 / ~149.800).
-5. DỪNG APP trước khi thay. Backup index TẠM ra thư mục khác (KHÔNG xóa).
-6. Đặt index đã hợp vào đúng path app mong đợi — kiểm lại bằng deployment module
+5. `PRAGMA integrity_check` phải = ok; đếm document/chunk (kỳ vọng ~889 / ~149.800).
+6. DỪNG APP trước khi thay. Backup index TẠM ra thư mục khác (KHÔNG xóa).
+7. Đặt index đã hợp vào đúng path app mong đợi — kiểm lại bằng deployment module
    (`python -B -m aios_habit.workspace_chat_rag_v2_deployment`), không hardcode path.
-7. Audit deployment → `Status: PASS` + smoke 1 câu hỏi thật qua UI.
+8. Audit deployment → `Status: PASS` + smoke 1 câu hỏi thật qua UI.
 
 ## Rào cứng
 
