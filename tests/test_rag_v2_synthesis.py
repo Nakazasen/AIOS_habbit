@@ -1603,3 +1603,86 @@ def test_pure_repairable_and_pure_droppable_keep_previous_routing():
     assert repair_calls[1].repair_errors == ("provider_answer_claim_budget_exceeded",)
     assert repaired.mode == "provider_validated_after_repair"
     assert repaired.answer == "- Verify access before release [1]"
+
+
+def test_budget_contract_counts_lines_and_bans_uncited_openers():
+    """RAG-CLAIM-BUDGET-HOME: the attempt-1 contract names the line budget and
+    bans uncited opening lines (lane proof: every budget miss carried an
+    uncited opener beside cited lines)."""
+    pack = _make_release_pair_pack()
+    plan = build_synthesis_plan(pack, answer_shape="grounded_summary", max_claims=1)
+    contract = format_provider_synthesis_contract(plan)
+
+    assert "Maximum material claims: 1" in contract
+    assert "at most 1 such lines" in contract
+    assert "uncited" in contract
+
+
+def test_pure_budget_miss_after_repair_recovers_via_deterministic_merge():
+    """RAG-CLAIM-BUDGET-HOME (a): a pure budget miss after the repair attempt
+    merges same-label cited lines deterministically (Q0703/Q0693 lane shape);
+    cited values stay verbatim and the answer is accepted only when valid."""
+    pack = _make_release_pair_pack()
+    calls = []
+
+    def provider(request):
+        calls.append(request)
+        return (
+            "- Verify access before release [1]\n"
+            "- Deploy the release package [1]"
+        )
+
+    result = synthesize_with_provider(
+        pack, provider, answer_shape="grounded_summary", max_claims=1
+    )
+
+    assert len(calls) == 2
+    assert calls[1].repair_errors == ("provider_answer_claim_budget_exceeded",)
+    assert result.provider_used is True
+    assert result.mode == "provider_validated_after_repair"
+    assert result.answer == (
+        "- Verify access before release [1]; Deploy the release package [1]"
+    )
+
+
+def test_budget_miss_with_fabricated_literal_never_merges():
+    """RAG-CLAIM-BUDGET-HOME (b): a budget overrun carrying an unsupported
+    literal or unknown source is never merged into grounded text — the
+    literal line stays drop-only and an all-fabricated answer stays
+    fail-closed."""
+    pack = _make_release_pair_pack()
+    calls = []
+
+    def provider(request):
+        calls.append(request)
+        return (
+            "- Invented step 2026-01-01 [1]\n"
+            "- Deploy the release package [1]"
+        )
+
+    result = synthesize_with_provider(
+        pack, provider, answer_shape="grounded_summary", max_claims=1
+    )
+
+    assert len(calls) == 1
+    assert result.provider_used is True
+    assert result.mode == "provider_validated"
+    assert result.answer == "- Deploy the release package [1]"
+    assert "2026-01-01" not in result.answer
+
+    fail_calls = []
+
+    def fail_provider(request):
+        fail_calls.append(request)
+        return (
+            "- Invented step 2026-01-01 [1]\n"
+            "- Invented step two [98]"
+        )
+
+    failed = synthesize_with_provider(
+        pack, fail_provider, answer_shape="grounded_summary", max_claims=1
+    )
+
+    assert len(fail_calls) == 1
+    assert failed.provider_used is False
+    assert failed.mode.startswith("local_")

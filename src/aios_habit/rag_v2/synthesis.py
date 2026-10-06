@@ -309,6 +309,12 @@ def format_provider_synthesis_contract(plan: SynthesisPlan) -> str:
         if plan.answer_shape in {"architecture", "integration"}
         else ""
     )
+    budget_rule = (
+        f"Count every factual bullet or paragraph as one material claim: emit at most "
+        f"{plan.max_claims} such lines in total. Every factual line must end with an "
+        f"allowed evidence label, including any opening summary line — an uncited "
+        f"opening line still consumes the budget and fails validation."
+    )
     return (
         "RAG_V2_GROUNDED_ANSWER_CONTRACT\n"
         f"Answer shape: {plan.answer_shape}. Maximum material claims: {plan.max_claims}.\n"
@@ -319,6 +325,7 @@ def format_provider_synthesis_contract(plan: SynthesisPlan) -> str:
         f"Missing obligations that must be stated as limitations, not invented: {missing_obligations}.\n"
         "Treat each NGUỒN n block as the preassigned evidence label [n]; do not create labels. "
         "Every factual bullet or paragraph must end with one or more allowed evidence labels. "
+        f"{budget_rule} "
         "Dates, percentages, quantities, and identifiers must appear in the evidence blocks cited "
         "by that same factual line. "
         f"Do not emit unknown labels. {shape_rule} {architecture_rule} {limitation_rule}"
@@ -443,6 +450,87 @@ def drop_invalid_provider_answer_lines(
     ]
     if not material_kept:
         return None
+    return "\n".join(kept)
+
+
+def merge_cited_provider_answer_lines(
+    answer: str,
+    pack: EvidencePack,
+    plan: SynthesisPlan,
+) -> str | None:
+    """Merge cited material lines sharing one evidence label to fit the budget.
+
+    Deterministic last-resort compression used only after the single provider
+    repair attempt still exceeds the claim budget: join adjacent material lines
+    that cite exactly the same evidence label with "; ", keeping every cited
+    value verbatim (no words are added or removed, only the separator joins
+    them). Lines with different labels, missing citations, unknown labels, or
+    unsupported critical literals are never merged — they stay for validation
+    to reject. Headings and the LIMITATIONS marker pass through untouched.
+    Returns None when no merge was possible or the budget is already met.
+    """
+    stripped_lines = tuple(
+        line.strip() for line in answer.splitlines() if line.strip()
+    )
+    material_lines = [
+        line
+        for line in stripped_lines
+        if not line.startswith("LIMITATIONS:") and not _HEADING_RE.match(line)
+    ]
+    if len(material_lines) <= plan.max_claims:
+        return None
+    evidence_by_citation = {
+        item.citation_id: item.text.casefold() for item in pack.items
+    }
+    allowed = set(plan.allowed_citation_ids)
+    merged: list[str] = []
+    index = 0
+    merged_any = False
+    while index < len(material_lines):
+        current = material_lines[index]
+        current_labels = tuple(
+            dict.fromkeys(f"[{value}]" for value in _CITATION_RE.findall(current))
+        )
+        if (
+            len(current_labels) == 1
+            and current_labels[0] in allowed
+            and not _provider_material_line_issues(current, evidence_by_citation, allowed)
+        ):
+            group = [current]
+            cursor = index + 1
+            while cursor < len(material_lines):
+                candidate = material_lines[cursor]
+                candidate_labels = tuple(
+                    dict.fromkeys(f"[{value}]" for value in _CITATION_RE.findall(candidate))
+                )
+                if (
+                    candidate_labels != current_labels
+                    or _provider_material_line_issues(candidate, evidence_by_citation, allowed)
+                ):
+                    break
+                group.append(candidate)
+                cursor += 1
+            if len(group) > 1:
+                first, rest = group[0], group[1:]
+                stripped_rest = [re.sub(r"^[-*]\s+", "", line) for line in rest]
+                merged.append("; ".join([first, *stripped_rest]))
+                merged_any = True
+                index = cursor
+                continue
+        merged.append(current)
+        index += 1
+    if not merged_any:
+        return None
+    kept: list[str] = []
+    material_iter = iter(merged)
+    for line in stripped_lines:
+        if line.startswith("LIMITATIONS:") or _HEADING_RE.match(line):
+            kept.append(line)
+        else:
+            try:
+                kept.append(next(material_iter))
+            except StopIteration:
+                break
     return "\n".join(kept)
 
 
@@ -864,6 +952,27 @@ def synthesize_with_provider(
                 answer = repaired_answer
                 validation = repaired_validation
                 repaired = True
+            elif repaired_validation.errors == (
+                "provider_answer_claim_budget_exceeded",
+            ):
+                # Deterministic last resort for a pure budget miss after the
+                # single provider repair: merge adjacent cited lines sharing
+                # one evidence label. Mixed failures are NOT merged — uncited
+                # lines or unsupported literals must stay rejected. Accept the
+                # merged text only when it passes full validation.
+                merged = merge_cited_provider_answer_lines(repaired_answer, pack, plan)
+                if merged is not None:
+                    merged_validation = validate_provider_synthesis_answer(
+                        pack, merged, plan
+                    )
+                    if merged_validation.valid:
+                        answer = merged
+                        validation = merged_validation
+                        repaired = True
+                    else:
+                        validation = merged_validation
+                else:
+                    validation = repaired_validation
             else:
                 validation = repaired_validation
     if not validation.valid:
