@@ -12,13 +12,23 @@
 
 ## Bước 1 — Khảo sát chỗ cấu hình (chỉ đọc)
 
-- Tìm đúng nơi cầu 8585 / `RouterSynthesisProvider` đọc **endpoint + model + API key** (env/config trên máy nhà). Ghi vào báo cáo: đường dẫn file + tên trường/biến — **TUYỆT ĐỐI không ghi giá trị key**.
-- Báo cáo lại trong mailbox để điều phối biết chỗ nhập.
+Đã tra code (Muse): tuyến tổng hợp đọc cấu hình từ biến môi trường —
+`AIOS_LOCAL_AI_ENDPOINT`, `AIOS_LOCAL_AI_MODEL`, `AIOS_LOCAL_AI_API_KEY`
+(slot "OpenAI-compatible", `ai_provider_bridge.py` / `ai_router.py`), cộng công tắc
+`AIOS_SYNTHESIS_ALLOW_CLOUD_PROVIDERS`. Command Code đi vào đúng slot này.
+Việc của thợ: tìm trên máy nhà xem các biến này hiện đang được đặt ở đâu (file env/launcher
+của app) — ghi vào báo cáo: đường dẫn file — **TUYỆT ĐỐI không ghi giá trị key**.
 
-## Bước 2 — Cấu hình (key do user nhập tại máy)
+## Bước 2 — Chuẩn bị chỗ nhập cho user (key do user dán tại máy)
 
-- API key Command Code do **user tự nhập tại máy nhà** vào đúng trường ở Bước 1. KHÔNG nhận key qua mailbox/chat/log; KHÔNG commit file chứa key (kiểm tra file nằm ngoài Git hoặc đã gitignore; chưa thì xử lý trước khi nhập).
-- Trỏ tuyến tổng hợp sang endpoint Command Code: model chính + **ít nhất 1 model failover** từ pool user đã kết nối; bật failover khi rate-limit/5xx. Ghi cấu hình trước/sau (che key).
+- Tạo/chuẩn bị **đúng 1 file cấu hình local** mà app thực sự đọc trên máy nhà (nằm ngoài Git
+  hoặc đã gitignore — kiểm tra trước; chứa key thì KHÔNG commit trong mọi trường hợp).
+- Điền sẵn 2 dòng endpoint + model của Command Code, để trống đúng 1 dòng
+  `AIOS_LOCAL_AI_API_KEY=` cho user dán key. Bật công tắc cloud + failover:
+  model chính + **ít nhất 1 model failover** từ pool user đã kết nối; Router chuyển tuyến
+  khi rate-limit/5xx.
+- Ghi đường dẫn file + tên 3 dòng vào mailbox để điều phối báo user mở đúng file đó.
+  KHÔNG nhận key qua mailbox/chat/log.
 
 ## Bước 3 — Kiểm chứng tuyến mới
 
