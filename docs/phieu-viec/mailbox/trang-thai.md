@@ -1,5 +1,12 @@
 # Trạng thái mailbox
 
+- Trạng thái: `moi`
+- `ghi_chu` (điều phối Muse): 2026-10-06 ~23:44 +07 — Phát hành vé `LSU-QUALITY-RAG-HOME` theo lệnh user: máy nhà đo thay lane RAG bộ 50 câu LSU (máy công ty hết pin, dừng ở 33/50). **CPU-ONLY tuyệt đối — cấm dùng GPU/VGA**, index chỉ-đọc, cùng rubric với lane PC0575, checkpoint từng câu + heartbeat 15 phút. Prompt: `docs/phieu-viec/mailbox/prompt.md`. Role gợi ý: DEFAULT.
+- Ticket hiện tại: `LSU-QUALITY-RAG-HOME` — đo lane RAG 50 câu LSU, CPU-only.
+- `hang-cho`: (trống)
+
+# Trạng thái mailbox
+
 - Trạng thái: `xong`
 - `ghi_chu` (verdict Muse): 2026-10-06 ~23:30 +07 — **ĐẠT** vé `SMA-IMPROVE-HOME` (tích tạm, chờ user nghiệm thu). Kiểm chứng độc lập (poll + Muse chính): commit code `3c7f2f3` single-parent, chỉ `trend_alerts.py` + test; deadband nen_phang_nhung_lech (nhiệt 0.5/ẩm 2.0/Takt 10.0, tham số hóa) + k theo nhóm (chu_ky 2.5 / còn lại 3.0); đo lại log thật 132 dòng: 21/21 vi phạm đơn điểm chặn đúng, 0 cảnh báo giả, flat giả nhiệt 58→4 / ẩm 9→0; 8 test vé + hồi quy trend 62/62 xanh; pytest 4109 pass, 43 ca đỏ phân loại ngoài vé; không merge main, không ghi index. Cổng gate MỞ cho agy (`FIX-J1CSV-FIXTURE-HOME`) và opencode (`RT-ALERT-E2E-HOME`). hang-cho trống → mailbox đóng (`xong`).
 - `ghi_chu`: 2026-10-06 23:13 +07 — **XONG → chốt `xong-cho-duyet`.** Vé `SMA-IMPROVE-HOME` đủ 4 việc prompt: (1) deadband `nen_phang_nhung_lech` (nhiệt 0.5/ẩm 2.0/Takt 10.0, tham số hóa, pure SPC giữ hành vi cũ); (2) k theo nhóm (`chu_ky` 2.5 / còn lại 3.0); (3) 8 test vé + hồi quy trend 62/62 (đối chứng A/B nhánh B 75/75 ↔ nhánh A 83/83 trên 5 file trend); (4) đo lại nguyên vẹn `scripts/analyze_sma_gate_realdata.py` trên log thật 132 dòng → 21/21 vi phạm đơn điểm vẫn bị chặn (11 ẩm + 8 Takt + 2 nhiệt), 0 cảnh báo giả; flat `nen_phang_nhung_lech` còn nhiệt 4/ẩm 0 (−93%/−100%). Cổng repo: compileall sạch, `cli audit` PASS, import `workspace_chat_app` OK, `pytest -q` 4109 đạt/24 lỗi/37 bỏ qua/19 error trong 932,7s — phân loại trọn 43 ca đỏ, không ca nào thuộc mã vé (19 error thiếu file `D:/home/hatch/...` VM; 24 lỗi packaging/privacy-dev/handoff/OCR/mạng/lifecycle/J1CSV + UI-nhãn của commit khác). Rào cứng giữ: chỉ `trend_alerts.py` + test của nó (commit code `3c7f2f3`), không merge `main`, không ghi index. Chờ Muse đối chứng.
