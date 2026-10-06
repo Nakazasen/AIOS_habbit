@@ -40,6 +40,28 @@ của app) — ghi vào báo cáo: đường dẫn file — **TUYỆT ĐỐI kh�
 - Trọn lane RAG 50 câu, **CPU-only** (bằng chứng device = CPU), index chỉ-đọc + SHA trước/sau, cùng rubric, checkpoint từng câu, heartbeat 15 phút.
 - Đối chiếu với FIX1 (GPA 1,29, validated 6) và SYNTH (GPA 1,22, validated 9): số validated, số lỗi provider, số fallback, GPA. Ghi rõ model nào trả lời từng câu nếu lấy được.
 
+## Danh sách model ứng viên — CHỈ model gắn nhãn free (user chốt 06:25 07/10)
+
+Từ danh sách model trên máy nhà (ảnh user gửi). **Chỉ dùng con có nhãn `free`**; con tính phí
+($/token) bị loại, kể cả mạnh. Ứng viên (ưu tiên từ trên xuống):
+
+Chính (chọn 1):
+- `mistral/mistral-large-4` — free, context 524k, ~116 tok/s (model mới, mạnh).
+- `commandcode/gpt-6.1-sol` — free, context 1,1M, ~52 tok/s.
+
+Failover (chọn 1–2):
+- `inclusionai/ling-3.1-flash:free` — free, 262k.
+- `poolside/laguna-s-2.1-free` — free, 256k.
+- `commandcode/stealth/space-bunny-alpha:high` — user khoanh; chỉ dùng nếu xác nhận free.
+- `opencode-zen/muse-spark-1.3-contributor-free` — free, 1M, ~187 tok/s.
+- `xai-oauth/grok-4.7` — free, 500k (đang là DEFAULT của OMP nhà).
+- `nvidia/deepseek-ai/deepseek-v4.1-flash` — free, 1M.
+
+**Điều kiện cứng:** prefix trong danh sách OMP chưa chắc = tới được qua endpoint Command Code.
+Thợ phải gọi thử từng ứng viên QUA endpoint Command Code; chỉ con nào trả lời thật mới vào pool,
+ghi rõ con nào bị loại vì không tới được / không free. Loại hẳn model không phải chat
+(image/TTS/STT như grok-imagine-image, kokoro, parakeet).
+
 ## Rào cứng
 
 - Không merge `main`. Không ghi index. Python 3.11. Không nới chuẩn kiểm định để lấy điểm.
