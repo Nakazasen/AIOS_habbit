@@ -20,6 +20,7 @@ from typing import Any, Callable, Dict, List, Optional, Tuple
 
 from .jig_alert_cards import build_realtime_alert_card
 from .stream_api import EVENTS_PATH
+from .trend_alerts import danh_gia_xu_huong_sma, gate_canh_bao_theo_xu_huong
 
 
 @dataclass
@@ -138,4 +139,132 @@ def dinh_dang_canh_bao(su_kien: Dict[str, Any]) -> Dict[str, Any]:
         metric=str(su_kien.get("metric") or "—"),
         chi_tiet=chi_tiet,
         muc_do="Cần kiểm tra",
+    )
+
+
+def trich_gia_tri_su_kien(su_kien: Dict[str, Any]) -> Optional[float]:
+    """Trich gia tri so tu mot su kien server (None neu khong co)."""
+    noi_dung = su_kien.get("noi_dung") or {}
+    for khoa in ("gia_tri", "value", "gia_tri_moi"):
+        try:
+            gia_tri = noi_dung.get(khoa)
+        except AttributeError:
+            gia_tri = None
+        if isinstance(gia_tri, (int, float)):
+            return float(gia_tri)
+    return None
+
+
+def gom_gia_tri_theo_chi_so(
+    su_kien_list: List[Dict[str, Any]],
+) -> Dict[Tuple[str, str], List[float]]:
+    """Gom gia tri su kien theo (jig_id, metric), giu dung thu tu nhan."""
+    gom: Dict[Tuple[str, str], List[float]] = {}
+    for su_kien in su_kien_list or []:
+        gia_tri = trich_gia_tri_su_kien(su_kien)
+        if gia_tri is None:
+            continue
+        khoa = (str(su_kien.get("jig_id") or "—"), str(su_kien.get("metric") or "—"))
+        gom.setdefault(khoa, []).append(gia_tri)
+    return gom
+
+
+def danh_gia_lo_su_kien_qua_cong_xu_huong(
+    su_kien_list: List[Dict[str, Any]],
+    lich_su_theo_chi_so: Optional[Dict[Tuple[str, str], List[float]]] = None,
+    window: int = 20,
+) -> List[Dict[str, Any]]:
+    """Danh gia tung nhom (jig, metric) qua cong xu huong SMA(20).
+
+    - Chuoi danh gia = lich su cu + gia tri moi trong lo.
+    - Ket luan diem: su kien loai ``canh_bao_drift`` coi la diem vi pham,
+      loai khac la can bien (khong bao don le).
+    - Chi xu huong da xac nhan (>=3 diem bat thuong lien tiep hoac >=3/5
+      diem gan nhat) moi ``canh_bao=True``. Diem don le -> "Cần biến".
+    - KHONG doi hanh vi gate SMA(20) hien co, chi goi `danh_gia_xu_huong_sma`
+      va `gate_canh_bao_theo_xu_huong`.
+    """
+    lich_su_theo_chi_so = lich_su_theo_chi_so or {}
+    gom = gom_gia_tri_theo_chi_so(su_kien_list)
+    # Map (jig, metric) -> su kien dai dien (lay su kien canh bao cuoi cung).
+    dai_dien: Dict[Tuple[str, str], Dict[str, Any]] = {}
+    for su_kien in su_kien_list or []:
+        khoa = (str(su_kien.get("jig_id") or "—"), str(su_kien.get("metric") or "—"))
+        if khoa not in gom:
+            continue
+        cu = dai_dien.get(khoa)
+        if cu is None or str(su_kien.get("loai") or "") == "canh_bao_drift":
+            dai_dien[khoa] = su_kien
+    ket_qua: List[Dict[str, Any]] = []
+    for khoa, gia_tri_moi in gom.items():
+        lich_su = list(lich_su_theo_chi_so.get(khoa) or [])
+        chuoi = lich_su + list(gia_tri_moi)
+        xu_huong = danh_gia_xu_huong_sma(chuoi, window=window)
+        su_kien = dai_dien.get(khoa) or {}
+        la_diem_bao = str(su_kien.get("loai") or "") == "canh_bao_drift"
+        ket_luan_diem: Dict[str, Any] = {
+            "trang_thai": "Vi phạm" if la_diem_bao else "Cận biên",
+            "chi_tiet": str((su_kien.get("noi_dung") or {}).get("chi_tiet") or ""),
+            "canh_bao": bool(la_diem_bao),
+            "gia_tri": gia_tri_moi[-1] if gia_tri_moi else None,
+        }
+        gate_canh_bao_theo_xu_huong(ket_luan_diem, xu_huong)
+        if not ket_luan_diem.get("canh_bao"):
+            ket_luan_diem["trang_thai"] = "Cần biến"
+        ket_qua.append({
+            "jig_id": khoa[0],
+            "metric": khoa[1],
+            "su_kien": su_kien,
+            "chuoi_danh_gia": chuoi,
+            "xu_huong": xu_huong,
+            "ket_luan": ket_luan_diem,
+            "canh_bao": bool(ket_luan_diem.get("canh_bao")),
+        })
+    return ket_qua
+
+
+def chuyen_lo_thanh_the_da_qua_cong(
+    su_kien_list: List[Dict[str, Any]],
+    lich_su_theo_chi_so: Optional[Dict[Tuple[str, str], List[float]]] = None,
+    window: int = 20,
+) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
+    """Chuyen lo su kien thanh (the_canh_bao, muc_can_bien).
+
+    - Chi nhom co xu huong xac nhan moi thanh the canh bao (hien trong chat).
+    - Nhom con lai (diem don le / du lieu on dinh) thanh muc "Cần biến",
+      KHONG bao.
+    """
+    danh_gia = danh_gia_lo_su_kien_qua_cong_xu_huong(
+        su_kien_list, lich_su_theo_chi_so, window
+    )
+    cac_the: List[Dict[str, Any]] = []
+    cac_muc_can_bien: List[Dict[str, str]] = []
+    for muc in danh_gia:
+        if muc.get("canh_bao"):
+            cac_the.append(dinh_dang_canh_bao(muc.get("su_kien") or {}))
+        else:
+            cac_muc_can_bien.append({
+                "ma_jig": str(muc.get("jig_id") or "—"),
+                "thong_so": str(muc.get("metric") or "—"),
+                "trang_thai": "Cần biến",
+                "ly_do": str((muc.get("xu_huong") or {}).get("chi_tiet") or ""),
+            })
+    return cac_the, cac_muc_can_bien
+
+
+def dinh_dang_text_chat_cho_the_realtime(the: Dict[str, Any]) -> str:
+    """Render the canh bao realtime thanh text nam trong vung tra loi chat."""
+    dong = [
+        "Cảnh báo realtime — %s — %s (%s)"
+        % (the.get("ma_jig", "—"), the.get("thong_so", "—"), the.get("muc_do", "Cần kiểm tra")),
+        str(the.get("chi_tiet", "")),
+        str(the.get("huong_dan", "")),
+    ]
+    return "\n".join(d for d in dong if str(d).strip())
+
+
+def tom_tat_can_bien_cho_chat(muc: Dict[str, Any]) -> str:
+    """Render muc can bien (diem don le) thanh 1 dong trong chat, khong bao."""
+    return "Cần biến — %s — %s: %s" % (
+        muc.get("ma_jig", "—"), muc.get("thong_so", "—"), muc.get("ly_do", "")
     )

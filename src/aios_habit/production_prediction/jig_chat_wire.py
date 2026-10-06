@@ -310,6 +310,34 @@ def format_instant_card_text(card: Dict[str, Any]) -> str:
     return "\n".join(line for line in lines if line.strip())
 
 
+def day_the_realtime_qua_cong_vao_chat(
+    su_kien_list: List[Dict[str, Any]],
+    lich_su_theo_chi_so: Optional[Dict[Any, List[float]]] = None,
+) -> str:
+    """Hook chat-first: dua the realtime da qua cong xu huong vao vung tra loi chat.
+
+    - Chi xu huong xac nhan moi thanh the canh bao (hien day du trong chat).
+    - Diem don le thanh 1 dong "Cần biến", KHONG bao, KHONG them nut bam.
+    """
+    from aios_habit.production_prediction.rt_consumer import (
+        chuyen_lo_thanh_the_da_qua_cong,
+        dinh_dang_text_chat_cho_the_realtime,
+        tom_tat_can_bien_cho_chat,
+    )
+
+    cac_the, cac_can_bien = chuyen_lo_thanh_the_da_qua_cong(
+        su_kien_list or [], lich_su_theo_chi_so=lich_su_theo_chi_so
+    )
+    dong: List[str] = []
+    for the in cac_the:
+        dong.append(dinh_dang_text_chat_cho_the_realtime(the))
+    for muc in cac_can_bien:
+        dong.append(tom_tat_can_bien_cho_chat(muc))
+    if not dong:
+        return "Chưa có sự kiện realtime mới."
+    return "\n".join(dong)
+
+
 def _quyet_dinh_ve_bieu_do(
     text: str,
     chart_rows_provider: Optional[Callable[[], Any]],

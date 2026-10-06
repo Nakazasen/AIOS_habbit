@@ -172,3 +172,42 @@ def _gui_mot_lo(
     raise ValueError(
         "Không gửi được lô dữ liệu tới máy chủ sau %d lần thử." % so_lan
     ) from loi_cuoi
+
+
+def do_latency_qua_cong_xu_huong(
+    chuoi_gia_tri: Sequence[float],
+    jig_id: str = "JIG-DEMO",
+    metric: str = "demo",
+    window: int = 20,
+) -> Dict[str, Any]:
+    """Do latency dau-cuoi (event -> the hien tren chat) offline, khong can server.
+
+    Mo phong: tung gia tri la 1 event realtime, gom theo chi so, chay qua
+    `danh_gia_xu_huong_sma` + gate, chi xu huong xac nhan moi thanh the.
+    Tra ve latency giay + so canh bao + so muc can bien. Muc tieu < 5 phut.
+    """
+    from .rt_consumer import chuyen_lo_thanh_the_da_qua_cong
+
+    bat_dau = time.perf_counter()
+    su_kien_list: List[Dict[str, Any]] = []
+    for gia_tri in list(chuoi_gia_tri):
+        su_kien_list.append({
+            "cursor": 0,
+            "thoi_gian": "",
+            "loai": "canh_bao_drift",
+            "jig_id": jig_id,
+            "metric": metric,
+            "noi_dung": {"gia_tri": float(gia_tri), "chi_tiet": "Điểm phát lại"},
+        })
+    cac_the, cac_can_bien = chuyen_lo_thanh_the_da_qua_cong(
+        su_kien_list, lich_su_theo_chi_so=None, window=window
+    )
+    ket_thuc = time.perf_counter()
+    return {
+        "trang_thai": "Đã đo xong",
+        "latency_giay": round(ket_thuc - bat_dau, 4),
+        "so_diem": len(list(chuoi_gia_tri)),
+        "so_canh_bao": len(cac_the),
+        "so_can_bien": len(cac_can_bien),
+        "dat_muc_tieu_5_phut": (ket_thuc - bat_dau) < 300.0,
+    }
