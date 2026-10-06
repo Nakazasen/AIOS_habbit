@@ -1,18 +1,19 @@
-﻿# Trạng thái mailbox-pc0575-agy — KDTVN-PC0575 (thợ agy — Antigravity CLI)
+# Trạng thái mailbox-pc0575-agy — KDTVN-PC0575 (thợ agy — Antigravity CLI)
 
 - Trạng thái: `xong`
 - `ghi_chu` (verdict Muse): 2026-10-06 ~12:30 +07 — **ĐẠT** vé `PREP-LSU-QUALITY-PC0575` (tích tạm, chờ user nghiệm thu). Kiểm chứng độc lập: commit `92d0b98` single-parent chỉ +139/-0 `lsu-quality-set.md`, không code, không merge `main`; Muse kiểm trên máy VM: 50/50 ID tồn tại trong `wire-qa-mapping.jsonl` và đều `category=LSU`, số đếm LSU 1790/3392 khớp báo cáo, nội dung câu hỏi–đáp án khớp nguồn (spot-check `Q0699`); rubric 0–3 đủ 4 mức + hướng dẫn đặc thù 4 nhóm, nhãn `BẢN THẢO — CHƯA QUA CHUYÊN GIA DUYỆT` đúng quy ước. Kiểm thực thi: `tests/test_quality_harness.py` 5/5 PASS trên máy Muse → bộ câu hỏi dùng được với khung đo của opencode. hang-cho trống → mailbox đóng (`xong`).
 
 # Trạng thái mailbox-pc0575-agy — KDTVN-PC0575 (thợ agy — Antigravity CLI)
 
-- Trạng thái: `xong-cho-duyet`
-- `commit`: `92d0b98`
-- `bao_cao`: `docs/phieu-viec/ket-qua/lsu-quality-set.md`
+- Trạng thái: `moi`
+- `ghi_chu` (verdict Muse): 2026-10-06 ~12:35 +07 — **ĐẠT** vé `PREP-LSU-QUALITY-PC0575` (tích tạm, chờ user nghiệm thu). Kiểm chứng độc lập: 50/50 ID duy nhất, khớp 100% `wire-qa-mapping.jsonl` (3.392 dòng, 1.790 LSU), 4 nhóm 13/12/12/13 đúng cơ cấu; rubric 0–3 đầy đủ tiêu chí từng nhóm; nhãn bản thảo đúng rào; commit `92d0b98` chỉ thêm báo cáo.
+- `ghi_chu` (điều phối Muse): 2026-10-06 ~12:35 +07 — Phát hành vé tiếp `LSU-QUALITY-DRYRUN-PC0575` (prompt mới `prompt-queue-lsu-quality-dryrun-pc0575.md`): chạy thử trọn pipeline đo (50 câu × 2 lane × rubric) trên index TẠM để bắt lỗi tích hợp trước lần đo thật. Nhãn DRY-RUN bắt buộc, điểm số không có giá trị đo thật.
+- Ticket hiện tại: `LSU-QUALITY-DRYRUN-PC0575` — [CTY] chạy thử pipeline đo chất lượng LSU. Prompt: `docs/phieu-viec/mailbox-pc0575-agy/prompt.md`. Role gợi ý: SMOL.
 - `ghi_chu`: 2026-10-06 12:18 +07 — Hoàn thành vé `PREP-LSU-QUALITY-PC0575`: hoàn tất bảng 50 câu hỏi LSU đại diện từ wire-qa-mapping.jsonl (1.790 cặp LSU thực tế), phủ đều 4 nhóm nghiệp vụ (13 mã lỗi, 12 nguyên nhân, 12 đối sách, 13 thông số kỹ thuật) kèm rubric chấm điểm chuẩn hóa thang 0–3 và nhãn bản thảo chưa qua chuyên gia duyệt. Cổng: compileall PASS, cli audit PASS, import workspace_chat_app OK, test_quality_harness 5/5 PASS. Sẵn sàng cho thợ OMP chạy vé đo chất lượng LSU-QUALITY-PC0575.
 - `ghi_chu`: 2026-10-06 11:36 +07 — Tiếp nhận vé `PREP-LSU-QUALITY-PC0575`, bắt đầu xử lý lọc JSONL category=LSU và chuẩn bị 50 câu hỏi kèm rubric.
 - `ghi_chu` (điều phối Muse): 2026-10-06 ~06:20 +07 — Phát hành vé `PREP-LSU-QUALITY-PC0575` (prompt mới `prompt-queue-prep-lsu-quality-pc0575.md`): chuẩn bị 50 câu hỏi LSU + rubric chấm điểm từ `wire-qa-mapping.jsonl` để thợ OMP dùng ở vé `LSU-QUALITY-PC0575`. Độc lập, làm ngay khi máy bật. Role gợi ý: SMOL.
 
-- Ticket hiện tại: `PREP-LSU-QUALITY-PC0575` — [CTY] soạn bộ 50 câu hỏi LSU + rubric đo chất lượng. Prompt: `docs/phieu-viec/mailbox-pc0575-agy/prompt.md`. Role gợi ý: SMOL.
+- Ticket hiện tại: `LSU-QUALITY-DRYRUN-PC0575` — [CTY] chạy thử pipeline đo chất lượng LSU trên index TẠM. Prompt: `docs/phieu-viec/mailbox-pc0575-agy/prompt.md`. Role gợi ý: SMOL.
 - `hang-cho`: (trống)
 
 # Trạng thái mailbox-pc0575-agy — KDTVN-PC0575 (thợ agy — Antigravity CLI)

@@ -1,8 +1,8 @@
 # Trạng thái mailbox-pc0575-opencode — KDTVN-PC0575 (thợ opencode)
 
-- Trạng thái: `xong`
-- `commit`: `750010d` (vé `BUILD-QUALITY-HARNESS-PC0575` xong, chờ duyệt)
-- `bao_cao`: `docs/phieu-viec/ket-qua/build-quality-harness-pc0575.md`
+- Trạng thái: `moi`
+- `ghi_chu` (điều phối Muse): 2026-10-06 ~12:35 +07 — Phát hành vé `CAGENT-HEALTH-PC0575` (prompt mới `prompt-queue-cagent-health-pc0575.md`): kiểm tra nhanh endpoint C-Agent còn sống không + đo độ trễ 3 câu mẫu, trước khi vé `WIRE-QA-CAGENT-PC0575` đẩy 3.392 cặp qua. Chỉ kiểm tra, không sửa lane.
+- Ticket hiện tại: `CAGENT-HEALTH-PC0575` — [CTY] kiểm tra sức khỏe endpoint C-Agent. Prompt: `docs/phieu-viec/mailbox-pc0575-opencode/prompt.md`. Role gợi ý: SMOL.
 - `ghi_chu` (verdict Muse): 2026-10-06 ~12:10 +07 — **ĐẠT** vé `BUILD-QUALITY-HARNESS-PC0575`. Kiểm chứng độc lập qua GitHub API: commit `031a9cd8` chỉ +296/-0 `src/aios_habit/quality_harness.py`, +85/-0 `tests/test_quality_harness.py`, +1/-0 `trang-thai.md` — không sửa lane, không sửa UI, không merge `main`; khung đọc JSON câu hỏi + rubric, chạy 1 lane (`cagent`/`rag`) qua interface có sẵn (import lười trong hàm), xuất CSV + JSON; logic chấm chạy lại độc lập trên VM: 5/5 khẳng định test tự viết đều PASS, trường hợp nghiêm `44%` không trúng `43,9`/`43/98` đúng như báo cáo; regex trích dẫn bắt `.pptx`/`.xlsx`/`.csv`/`.pdf`, `Nguồn file`, `http`, `[...]`; syntax tương thích Python 3.11 (union type trong annotation + `from __future__ import annotations`); điểm thử chỉ ghi `local_cases/`, không kho tri thức. hang-cho trống → mailbox đóng (`xong`), chờ vé đo thật `LSU-QUALITY-PC0575` (thợ OMP) dùng khung.
 - `ghi_chu` (thợ opencode): 2026-10-06 12:05 +07 — vé `BUILD-QUALITY-HARNESS-PC0575` xong, chờ duyệt. Khung + test 5/5 (mock), thử 5 câu × 2 lane đối chiếu tay 5/5 đúng. Cổng: compileall đạt, `cli audit` PASS, import app đạt; pytest toàn bộ quá 10 phút chưa xong (đang chạy nền, không báo PASS giả).
 - `ghi_chu` (thợ opencode): 2026-10-06 11:42 +07 — nhận vé `BUILD-QUALITY-HARNESS-PC0575`, đủ điều kiện mở (`moi` + ticket mới + chưa có báo cáo), bắt đầu dựng khung đo.
