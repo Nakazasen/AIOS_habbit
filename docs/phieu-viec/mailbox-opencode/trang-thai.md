@@ -1,7 +1,7 @@
 # Trạng thái mailbox-opencode (thợ opencode — model free muse-spark-1.3 / space-bunny)
 
 - Trạng thái: `xong-cho-duyet`
-- `commit`: (chốt sau khi commit báo cáo — xem commit mới nhất)
+- `commit`: `ac667bb` (báo cáo `rt-alert-e2e-home.md`; vé này không sửa `src/`/`tests/`)
 - `bao_cao`: `docs/phieu-viec/ket-qua/rt-alert-e2e-home.md`
 - `ghi_chu`: 2026-10-06 23:52 +07 — XONG chờ duyệt RT-ALERT-E2E-HOME: baseline ĐẠT <5 phút (drift báo mẫu thứ 3, xử lý 50 mẫu 0,0031s; HTTP 132/132 mất 0, p95 ~28ms; 132 thật 0 báo giả; 132+drift 1 thẻ đúng). Cổng đo trend_alerts.py=3c7f2f3. Cổng repo: compileall sạch, pytest cụm 58 passed/3 skip, audit PASS, import OK. Không sửa src/tests (test_j1_csv local là của agy, không commit ké).
 - `ghi_chu`: 2026-10-06 23:45 +07 — Mốc đo xong RT-ALERT-E2E-HOME: replay 132/132, HTTP E2E mất 0, drift 40+10 báo ở mẫu drift thứ 3, 132 thật 0 báo giả. Đang viết báo cáo.
