@@ -1,44 +1,44 @@
-# Vé LSU-QUALITY-RAG-HOME — Đo lane RAG bộ 50 câu LSU trên máy nhà, CPU-only
+# Vé RAG-LANE-INVESTIGATE-HOME — Điều tra lane RAG: 0/50 tổng hợp cloud + 21 câu bằng chứng rỗng
 
 **Máy thực hiện:** NHÀ h410asrock (thợ OMP).
-**Role gợi ý:** DEFAULT (đo + báo cáo, không sửa logic).
-**Lệnh user (23:41 06/10):** "Máy nhà đo nhưng không dùng VGA."
+**Role gợi ý:** DEFAULT (điều tra + sửa mức cấu hình + đo lại).
+**Nguồn:** báo cáo `docs/phieu-viec/ket-qua/lsu-quality-rag-home.md` §6–§7 (vé `LSU-QUALITY-RAG-HOME`, verdict ĐẠT phần đo).
 
-## Bối cảnh
+## Hai lỗi cần tìm gốc
 
-Vé `LSU-QUALITY-PC0575` (máy công ty) đo 2 lane trên bộ 50 câu LSU:
-- Lane C-Agent: XONG 50/50 (108,2/150, GPA 2,16; khớp staging 38 câu GPA 2,78 / không khớp 12 câu GPA 0,21).
-- Lane RAG: mới 33/50 thì máy công ty hết pin/tắt (im từ 22:38), chưa biết khi nào bật lại.
+**Lỗi A — 21/50 câu gói bằng chứng rỗng** (`provider_not_called`, 0 điểm):
+- Cùng index, cùng câu Q0699: pilot PC0575 lấy được 26 item (retrieval 198,4s), lượt máy nhà lấy 0 mảnh (3,97s).
+- So runner 2 bên (scratch PC0575 vs runner máy nhà): đường retrieval, ngưỡng, cách dựng gói
+  bằng chứng khác nhau ở đâu? Vì sao 21 câu rỗng trong khi kho có cặp hỏi–đáp y hệt (theo ID)?
+- Phân biệt rõ: rỗng do matcher staging loại (phát hiện §6, 12 câu) vs rỗng do retrieval
+  toàn kho không trả mảnh nào — hai cơ chế khác nhau, đừng gộp.
 
-User lệnh: máy nhà đo thay lane RAG — **nhưng CPU-ONLY, cấm dùng GPU/VGA**, để số liệu cùng
-mặt bằng điều kiện với máy công ty (CPU-only). Chạy **trọn 50 câu** (không nối 17 câu lẻ)
-để lane có một bộ số tự nhất quán; kết quả PC0575 (33 câu) dùng đối chiếu chéo sau.
+**Lỗi B — 29/29 lượt tổng hợp cloud lỗi** (`provider_fallback`):
+- `RouterSynthesisProvider` (gemini-2.5-flash, max_attempts=1, timeout 120s): gọi thử cầu
+  `127.0.0.1:8585` đạt 2,7s trước khi đo, nhưng mọi lượt gọi thật trong lane đều lỗi.
+- Bắt lỗi thật (exception/status/body) của 1 lượt gọi đại diện: lỗi ở đâu — Router (khóa/model),
+  cầu 8585, timeout, hay payload? Không đoán, phải có log.
 
-## Điều kiện đo (khóa cứng)
+## Phạm vi sửa
 
-1. **CPU-only tuyệt đối:** ép backend nhúng chạy CPU (vd `CUDA_VISIBLE_DEVICES=""` /
-   chọn `CPUExecutionProvider`), KHÔNG để fallback lặng lẽ sang GPU. Đầu mỗi phiên đo +
-   trong báo cáo phải có bằng chứng device thực tế đang dùng = CPU (log provider/dòng cấu hình).
-2. **Index chỉ-đọc:** dùng index production hiện hành của máy nhà, KHÔNG ghi/nhúng lại.
-   Ghi SHA256/md5 của file index vào báo cáo để đối chiếu với index PC0575
-   (md5 giữa chừng PC0575 ghi: `a7c7c2325949c05d3396ab5371e42e64` — lệch thì DỪNG, báo ngay).
-3. **Cùng bộ câu + cùng rubric:** bộ 50 câu lấy từ `docs/phieu-viec/ket-qua/lsu-quality-set.md`
-   (JSON hoá như PC0575 đã làm), rubric `chinh_xac` 2.0 + `trich_dan` 1.0, thang 0–3/câu.
-   Giữ nguyên cấu hình matcher hiện hành (kể cả ngưỡng `MIN_MATCH_SCORE=3.0`) — vé này ĐO,
-   không sửa matcher; ghi nhận riêng số câu bị matcher loại như một phát hiện.
-4. **Checkpoint từng câu + resume:** kết quả ghi dồn theo câu, mất điện/mất phiên chạy tiếp
-   từ câu chưa đo. Không đo lại câu đã có kết quả trong cùng vé.
+- Sửa được ở mức **cấu hình/env/runner** (chọn model còn sống, thông số gọi, đường dựng gói
+  bằng chứng cho khớp điều kiện pilot) → sửa luôn, ghi rõ trước/sau.
+- Phải đụng logic lõi (`quality_harness.py`, provider tổng hợp trong `src/`) → DỪNG ở báo cáo
+  + đề xuất, chờ Muse verdict. Không tự redesign.
+- Không ghi index. Không merge `main`. Python 3.11.
+
+## Đo lại (sau khi sửa)
+
+- Chạy lại trọn lane RAG 50 câu, **CPU-only** như vé trước (bằng chứng device = CPU, index
+  chỉ-đọc + SHA trước/sau), checkpoint từng câu, cùng rubric.
+- Mục tiêu: tổng hợp cloud thành công >0 câu (kỳ vọng đa số), gói bằng chứng không còn rỗng
+  bất thường. Báo cáo đối chiếu 3 cột: lượt này / lượt fallback trước (GPA 0,75) / C-Agent (2,16).
 
 ## Nhịp heartbeat (BẮT BUỘC)
 
-- Mỗi **15 phút** append một dòng `` `ghi_chu`: <giờ> +07 — RAG x/50, <ghi chú ngắn> `` vào
-  `trang-thai.md` mailbox này. Cấm im lặng quá 15 phút không mốc.
+Mỗi **15 phút** append mốc `` `ghi_chu` `` vào `trang-thai.md` mailbox này. Cấm im lặng quá 15 phút.
 
 ## Báo cáo
 
-`docs/phieu-viec/ket-qua/lsu-quality-rag-home.md`:
-- Tổng điểm /150, GPA, số câu đạt ≥2, số câu =3, 0 lỗi kỹ thuật hay không.
-- Tách theo staging khớp/không khớp như báo cáo lane C-Agent để so trực tiếp.
-- Thời gian từng câu (retrieval + tổng hợp) và tổng thời gian lane.
-- Bằng chứng CPU-only + SHA index.
-- Phát hiện matcher: số câu có cặp hỏi–đáp trong kho nhưng bị ngưỡng loại (nếu gặp).
+`docs/phieu-viec/ket-qua/rag-lane-investigate-home.md` — gốc lỗi A + gốc lỗi B (kèm log),
+điểm đã sửa, bảng đo lại 50 câu, tách staging khớp/không khớp như cũ.
