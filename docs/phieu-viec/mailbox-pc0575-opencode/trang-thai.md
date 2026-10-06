@@ -1,5 +1,11 @@
 # Trạng thái mailbox-pc0575-opencode — KDTVN-PC0575 (thợ opencode)
 
+- Trạng thái: `xong`
+- `ghi_chu` (verdict Muse): 2026-10-06 ~22:42 +07 — **ĐẠT** vé `WATCHER-UPGRADE-PC0575` (tích tạm, chờ user nghiệm thu). Kiểm chứng độc lập qua GitHub API: commit `1e58e386` single-parent, chỉ +33/-0 báo cáo `watcher-upgrade-pc0575.md` và +3/-1 `trang-thai.md`, không đụng mã nguồn, không merge `main`, không commit `config.local.ps1`. Đủ yêu cầu vé: (1) pull --rebase fast-forward `132e2c8..e202c10`, không conflict — 4 commit yêu cầu đều có trên `main` repo agent-mailbox, đã kiểm độc lập: zombie v2 `5fa86d7`, chọn template theo major `dbf23c4`, remote-access `d1c9dbb`, chống mù BOM `e202c10` (message `e202c10` xác nhận đã gỡ max-time blanket — đúng rào vé); (2) Parser 0 lỗi mọi .ps1, BOM đủ (config.local.ps1 ASCII không dấu — guard BOM chỉ kiểm Watch-Mailbox.ps1 nên watcher vẫn chạy); vé test chạy thật: LAUNCH 22:24:28, thợ PID 19496 đúng template v2 `--standalone --model ... --auto`, sống ~8 phút; (3) 2 watcher poll tươi (opencode `updated 22:31:49`, OMP `updated 22:32:02`, đều `dang-lam`), không `loi:`/`UNKNOWN-STATUS` mới; (4) chỉ restart watcher opencode (kill 30592 → mở lại 28984 code mới), KHÔNG đụng watcher/process OMP (PID 868) đang đo lane RAG `LSU-QUALITY-PC0575` — đúng vé. Theo lệnh user (dừng lan man, tạm dừng vé hạ tầng): không phát vé mới cho opencode-PC0575, mailbox để `xong`.
+- `bao_cao`: `docs/phieu-viec/ket-qua/watcher-upgrade-pc0575.md`
+
+# Trạng thái mailbox-pc0575-opencode — KDTVN-PC0575 (thợ opencode)
+
 - Trạng thái: `xong-cho-duyet`
 - `ghi_chu` (thợ opencode): 2026-10-06 22:38 +07 — vé `WATCHER-UPGRADE-PC0575` xong, chờ duyệt. Watcher opencode đã chạy code mới e202c10 (thợ v2 sống ~8 phút đúng template, 2 watcher poll tươi, OMP an toàn, git sạch). Báo cáo `docs/phieu-viec/ket-qua/watcher-upgrade-pc0575.md`.
 - `bao_cao`: `docs/phieu-viec/ket-qua/watcher-upgrade-pc0575.md`
