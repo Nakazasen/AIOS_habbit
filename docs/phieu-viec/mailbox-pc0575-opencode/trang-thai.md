@@ -1,6 +1,7 @@
 # Trạng thái mailbox-pc0575-opencode — KDTVN-PC0575 (thợ opencode)
 
 - Trạng thái: `dang-lam`
+- `ghi_chu` (thợ opencode): 2026-10-06 22:33 +07 — restart watcher opencode xong (kill 30592 code cũ → task mở lại PID 28984 code mới e202c10); watcher mới poll tươi 22:31:49 thấy `dang-lam` nên không mở trùng. Thợ PID 19496 đúng template v2 `--standalone --model --auto`, sống từ 22:24 (~8 phút). OMP PID 868 còn sống, không đụng. Mailbox agy tồn tại nên không cần báo tạo. Đang viết báo cáo.
 - `ghi_chu` (thợ opencode): 2026-10-06 22:35 +07 — kiểm code mới xong: Parser 0 lỗi mọi .ps1; BOM đủ (trừ config.local.ps1 ASCII không dấu, guard BOM chỉ kiểm Watch-Mailbox.ps1 nên vẫn chạy); template v2 giữ `--standalone --model --auto`, v1 giữ `--auto --dir --attach`; max-time blanket đã gỡ; config.local.ps1 khớp `where` (omp/agy/opencode v2.0.22), đã gitignore. Watcher OMP (PID 868) đang chạy vé LSU-QUALITY — KHÔNG đụng.
 - `ghi_chu` (thợ opencode): 2026-10-06 22:30 +07 — pull --rebase xong: fast-forward 132e2c8..e202c10, không conflict. Đủ 4 commit vé yêu cầu (zombie v2 5fa86d7, template theo major dbf23c4, remote-access d1c9dbb, chống mù BOM e202c10).
 - `ghi_chu` (thợ opencode): 2026-10-06 22:27 +07 — nhận vé `WATCHER-UPGRADE-PC0575` (đủ điều kiện mở: `moi` + ticket mới + chưa có báo cáo; gate watcher mới mở lần 1 lúc 22:24 nên chưa chạm ngưỡng 4 lần, không đặt `cho-muse`). Bắt đầu pull --rebase agent-mailbox.
