@@ -1,37 +1,54 @@
-> **PHỤ LỤC PHÁT HÀNH LẠI — 2026-10-05 ~18:50 +07 (điều phối Muse):** Đây là lần phát hành thứ 2 của vé này, sau khi index production `e54c7745…` đã **MẤT không khôi phục được** (vé `RECOVER-RUNTIME-PC0575` verdict KHÔNG KHÔI PHỤC ĐƯỢC) và máy đang chạy **index TẠM `062ec090`** (2.552.659.968 B, md5 `7392ef9a54d82926f59569a9e664458f`, đặt tại `local_runs/workspace_chat_rag_v2_production/bge_m3_hybrid/collections/tri_thuc/library.sqlite`; vé `RESTORE-DRIVE-PC0575` verdict Muse **ĐẠT** — audit `Status: PASS`, smoke 1 câu thật ĐẠT).
->
-> - Mọi chỗ trong vé gốc ghi "index SHA `e54c7745…`" nay đọc là **"đường dẫn index production, hiện đang chứa bản TẠM `062ec090`"**; tiêu chí "không được đổi index" nay là **"không được đổi/ghi bậy vào bản TẠM đang chạy"** (verify md5 trước/sau, mọi số đo ghi rõ **bản TẠM**).
-> - **Rào từ báo cáo `restore-drive-pc0575.md`:** hội thoại sổ LSU (`NB-E35A7BEE` — 0/494 nguồn khớp text-hash với index TẠM) **không dùng được** để đo parity/câu lạnh: mở hội thoại có nguồn chưa khớp khiến app chuẩn bị lại và **GHI vào index**. Chỉ đo trên hội thoại có nguồn khớp index TẠM (vd nhóm `mom_opcenter`, 16 nguồn khớp — như `CONV-4D340116`/`SRC-2441B1A3` đã smoke ĐẠT), hoặc đo riêng phần khởi động worker; muốn đo đúng 6 câu LSU cần index khớp bản nguồn hiện tại (vé rebuild riêng, chưa có — không làm trong vé này).
-> - Số đo tham chiếu trên bản TẠM (đĩa máy đang chậm hơn baseline): worker init lượt sạch ~10,5 phút, 1 câu hỏi ~6,5 phút (baseline sạch 02/10 trên bản cũ: init 180,9 s).
+# Vé RESTORE-INDEX-SPLIT-PC0575 — Tải 5 khối index từ Drive về, hợp lại thành kho chính
 
----
-
-# Vé SPEED-COLDSTART-PC0575 — Sửa câu hỏi lạnh qua UI (~265 giây, bộ đọc khởi động 180,9 giây)
-
-**Mức ưu tiên:** cao nhất (user chốt tốc độ phản hồi là ưu tiên số 1).
 **Máy thực hiện:** [CTY] KDTVN-PC0575 (CPU-only).
-**Xếp hàng:** đứng ĐẦU hàng chờ `mailbox-pc0575` — trước vé KNOWLEDGE-ENRICH-PILOT.
+**Xếp hàng:** sau `SPEED-COLDSTART-PC0575`, trước `WIRE-QA-CAGENT-PC0575`.
+**Role gợi ý:** DEFAULT (tải file lớn + kiểm SHA).
 
-## Bối cảnh (số liệu đã đo, đã verify)
+## Bối cảnh
 
-- Vé OPT-RAGV2-SPEED-APP-PC0575 đã ĐẠT; C-Agent đo 6/6 câu: 16,5–45,8 giây/câu.
-- NHƯNG câu hỏi LẠNH qua UI (bộ đọc chưa khởi động): người dùng chờ khoảng **265 giây**.
-- Bộ đọc khởi động mất **180,9 giây**, vượt cửa sổ chờ **120 giây** của app.
-- Luồng warm-up hiện tại **làm nóng sai collection** (không phải collection đang dùng).
-- Trong phần tìm kiếm, `eligibility scan` + `chunks_fts MATCH` vẫn là đoạn chậm.
+- Máy công ty đang chạy index TẠM `062ec090` (2,55GB) — bản này lệch nguồn LSU hiện tại
+  (0/494 nguồn `NB-E35A7BEE` khớp), chỉ là giải pháp tình thế sau vụ mất dữ liệu 05/10.
+- Máy nhà đã upload đủ 5 file khối tách của index production (`45eb0e07…`,
+  889 document / 149.800 chunk) lên Drive, SHA tải lại khớp 100%
+  (vé `UPLOAD-SPLIT-DRIVE-HOME`, verdict Muse ĐẠT 2026-10-05 ~23:39).
+- Vé này: tải về + hợp lại + thay cho index TẠM để máy công ty "dùng mượt mà".
 
-## Yêu cầu
+## Nguồn trên Drive
 
-1. **Đo chi tiết** 180,9 giây khởi động gồm những thành phần nào (nạp model, mở index/SQLite, khởi tạo embedding runtime, …). Ghi bảng thời gian từng bước.
-2. **Sửa warm-up làm nóng đúng collection** production (`workspace_chat_rag_v2_production`, index SHA `e54c7745…`). Cấm để cơ chế warm-up trỏ nhầm collection như hiện tại.
-3. **Đồng bộ cửa sổ chờ:** hoặc app chờ đủ lâu để bộ đọc sẵn sàng (đồng bộ readiness), hoặc rút khởi động xuống dưới 120 giây, hoặc giữ worker sống giữa các câu hỏi (không khởi động lại mỗi lần). Mục tiêu: **câu hỏi lạnh đầu tiên < 60 giây**.
-4. Đo lại đầy đủ 6 câu hỏi L1–E3 từ trạng thái lạnh hoàn toàn (khởi động app sạch → hỏi ngay), ghi thời gian từng câu, so với mốc 265 giây cũ.
-5. Không được đổi index (SHA `e54c7745…` phải giữ nguyên), không được giảm chất lượng đáp án (parity 100%, E1 khớp 15/15).
+- Thư mục: `index-split-r5-backup` — ID `1T_Ao9Piy8dDtYRn6fVNxVErzQAEf14il`
+- 5 file: `lsu` (1.155.637.248 B) + `dieu_tra_loi` (1.643.761.664 B) +
+  `mom` (21.598.208 B) + `tong_hop` (36.081.664 B) + `domain_manifest.json` (491.253 B)
+- Lưu ý: 2 link chia sẻ riêng (lsu, dieu_tra_loi) Drive đang chặn (thử lại 06/10 vẫn chặn)
+  → tải qua link thư mục chung. Tuyệt đối không bịa link/ID.
+- Bảng SHA-256 đầy đủ trong `docs/phieu-viec/ket-qua/upload-split-drive-home.md`.
 
-## Điều kiện nghiệm thu
+## Việc cần làm (đúng thứ tự)
 
-- Câu lạnh đầu tiên ≤ 60 giây, các câu sau giữ trong biên 16,5–45,8 giây/câu đã đạt.
-- Parity 100% trước/sau; đáp án 15/15 E1 khớp với đáp án của vé SPEED đã duyệt.
-- Bảng thời gian từng bước khởi động trước/sau.
+1. XIN CHUYỂN MẠNG KT_CHETAO TRƯỚC KHI TẢI (bắt buộc, làm TRƯỚC bước tải):
+   ghi vào `docs/phieu-viec/mailbox-pc0575/trang-thai.md` một dòng `ghi_chu`
+   với nội dung "YÊU CẦU CHUYỂN MẠNG KT_CHETAO: sắp tải ~4,4GB từ Drive".
+   Sau đó DỪNG CHỜ — không tải cho đến khi trong cùng file xuất hiện dòng
+   `ghi_chu` của điều phối viên (Muse) xác nhận "đã chuyển mạng KT_CHETAO,
+   tiếp tục tải". Kiểm tra lại file mỗi 3 phút. Lý do: user yêu cầu chuyển
+   mạng KT_CHETAO trước mọi lượt tải Drive lớn.
+2. Tải đủ 5 file về máy công ty. Nếu `drive.google.com` timeout thì dùng endpoint
+   `drive.usercontent.google.com/download` (vé RESTORE-DRIVE đã chứng minh được).
+3. Đối chiếu SHA-256 từng file với báo cáo upload — lệch 1 byte cũng tải lại, không làm tiếp.
+4. Hợp 4 khối thành `library.sqlite` hoàn chỉnh theo manifest
+   (xem cách tách trong báo cáo upload hoặc script split trong repo).
+5. `PRAGMA integrity_check` phải = ok; đếm document/chunk (kỳ vọng ~889 / ~149.800).
+6. DỪNG APP trước khi thay. Backup index TẠM ra thư mục khác (KHÔNG xóa).
+7. Đặt index đã hợp vào đúng path app mong đợi — kiểm lại bằng deployment module
+   (`python -B -m aios_habit.workspace_chat_rag_v2_deployment`), không hardcode path.
+8. Audit deployment → `Status: PASS` + smoke 1 câu hỏi thật qua UI.
 
-**Verdict:** Muse review trên bằng chứng độc lập. Nếu khởi động vật lý không rút xuống dưới cửa sổ được (giới hạn máy), phải chứng minh cơ chế giữ worker sống + readiness probe hoạt động ổn định qua nhiều lần khởi động app.
+## Rào cứng
+
+- Thiếu 1 file hoặc SHA lệch → DỪNG, báo rõ, không ráp bừa.
+- Không ghi đè khi chưa backup bản TẠM. Không merge `main`.
+- Code tương thích Python 3.11. Heartbeat mốc 15 phút/lần.
+
+## Báo cáo
+
+`docs/phieu-viec/ket-qua/restore-index-split-pc0575.md` — đủ: bảng SHA 5 file,
+kết quả integrity_check, số document/chunk, kết quả audit + smoke.
