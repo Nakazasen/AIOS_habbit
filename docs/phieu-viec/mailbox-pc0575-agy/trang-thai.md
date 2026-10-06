@@ -1,6 +1,7 @@
 # Trạng thái mailbox-pc0575-agy — KDTVN-PC0575 (thợ agy — Antigravity CLI)
 
-- Trạng thái: `moi`
+- Trạng thái: `dang-lam`
+- `ghi_chu`: 2026-10-06 11:36 +07 — Tiếp nhận vé `PREP-LSU-QUALITY-PC0575`, bắt đầu xử lý lọc JSONL category=LSU và chuẩn bị 50 câu hỏi kèm rubric.
 - `ghi_chu` (điều phối Muse): 2026-10-06 ~06:20 +07 — Phát hành vé `PREP-LSU-QUALITY-PC0575` (prompt mới `prompt-queue-prep-lsu-quality-pc0575.md`): chuẩn bị 50 câu hỏi LSU + rubric chấm điểm từ `wire-qa-mapping.jsonl` để thợ OMP dùng ở vé `LSU-QUALITY-PC0575`. Độc lập, làm ngay khi máy bật. Role gợi ý: SMOL.
 
 - Ticket hiện tại: `PREP-LSU-QUALITY-PC0575` — [CTY] soạn bộ 50 câu hỏi LSU + rubric đo chất lượng. Prompt: `docs/phieu-viec/mailbox-pc0575-agy/prompt.md`. Role gợi ý: SMOL.
