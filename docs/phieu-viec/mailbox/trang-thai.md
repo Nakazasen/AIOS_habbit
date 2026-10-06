@@ -1,6 +1,7 @@
 # Trạng thái mailbox
 
-- Trạng thái: `dang-lam`
+- Trạng thái: `xong-cho-duyet`
+- `ghi_chu`: 2026-10-06 23:13 +07 — **XONG → chốt `xong-cho-duyet`.** Vé `SMA-IMPROVE-HOME` đủ 4 việc prompt: (1) deadband `nen_phang_nhung_lech` (nhiệt 0.5/ẩm 2.0/Takt 10.0, tham số hóa, pure SPC giữ hành vi cũ); (2) k theo nhóm (`chu_ky` 2.5 / còn lại 3.0); (3) 8 test vé + hồi quy trend 62/62 (đối chứng A/B nhánh B 75/75 ↔ nhánh A 83/83 trên 5 file trend); (4) đo lại nguyên vẹn `scripts/analyze_sma_gate_realdata.py` trên log thật 132 dòng → 21/21 vi phạm đơn điểm vẫn bị chặn (11 ẩm + 8 Takt + 2 nhiệt), 0 cảnh báo giả; flat `nen_phang_nhung_lech` còn nhiệt 4/ẩm 0 (−93%/−100%). Cổng repo: compileall sạch, `cli audit` PASS, import `workspace_chat_app` OK, `pytest -q` 4109 đạt/24 lỗi/37 bỏ qua/19 error trong 932,7s — phân loại trọn 43 ca đỏ, không ca nào thuộc mã vé (19 error thiếu file `D:/home/hatch/...` VM; 24 lỗi packaging/privacy-dev/handoff/OCR/mạng/lifecycle/J1CSV + UI-nhãn của commit khác). Rào cứng giữ: chỉ `trend_alerts.py` + test của nó (commit code `3c7f2f3`), không merge `main`, không ghi index. Chờ Muse đối chứng.
 - `ghi_chu`: 2026-10-06 22:43 +07 — OMP heartbeat (đúng 15 phút): vẫn đang chốt báo cáo `sma-improve-home.md` (đã điền số đo lại: 21/21 chặn, flat nhiệt 4/ẩm 0; cổng repo compileall/audit/import PASS); chờ `pytest -q` nền xong để điền số cuối rồi commit báo cáo + chuyển `xong-cho-duyet`.
 - `ghi_chu`: 2026-10-06 22:36 +07 — OMP mốc giữa chừng: compileall sạch, `cli audit` PASS, `import workspace_chat_app` OK (Python 3.11.14); chạy lại script `analyze_sma_gate_realdata.py` nguyên vẹn trên log thật 132 dòng → 21/21 vi phạm đơn điểm vẫn bị chặn (11 ẩm + 8 Takt + 2 nhiệt), 0 cảnh báo giả sau gate; flat `nen_phang_nhung_lech` sau fix: nhiệt 4, ẩm 0 (giảm 93%/100%); hồi quy trend 62/62 xanh; `pytest -q` toàn bộ đang chạy nền. Đang chốt báo cáo.
 - `ghi_chu` (điều phối Muse): 2026-10-06 ~22:23 +07 — Bổ sung mục heartbeat BẮT BUỘC vào vé (15 phút/mốc, cấm im lặng quá 15 phút không mốc). Thợ vẫn chạy tốt (user kiểm 22:21: session tươi từng phút) — chỉ cần ghi mốc đều để khỏi báo động giả.
@@ -12,9 +13,9 @@
 - `ghi_chu`: 2026-10-06 06:15 +07 — OMP mốc khảo sát SMA-IMPROVE-HOME xong: repo chưa có thresholds.yaml (ngưỡng hiện hành là NguongChiSo/JSON) nên sẽ tham số hóa deadband + k_theo_nhom trong trend_alerts.py (default giữ hành vi cũ, không đổi hợp đồng, đúng rào 1-file-1-đứa); agy đang làm SMA-WARMUP-LABEL-HOME ở mailbox-agy (không đụng file nhau). Đang chạy đo baseline trước khi code.
 - `ghi_chu`: 2026-10-06 06:45 +07 — OMP mốc code SMA-IMPROVE-HOME xong: deadband cho nen_phang_nhung_lech (nhiệt 0.5 / ẩm 2.0 / Takt 10.0, tham số hóa, pure SPC giữ hành vi cũ) + k theo nhóm (chu_ky 2.5, còn lại 3.0) + điểm dưới deadband vẫn mask khỏi baseline (giữ 21/21 chặn); test vé 8 + hồi quy trend 62/62 xanh. Đang đo lại trên log thật + viết báo cáo.
 - `ghi_chu`: 2026-10-06 20:33 +07 — OMP resume vé SMA-IMPROVE-HOME (watcher tự mở lại 2/4 — chưa chạm ngưỡng 4 lần cho-muse): kiểm cổng gate — cổng MỞ, điều kiện mở ĐÃ TỚI (code + test đã commit `3c7f2f3`, báo cáo đã viết đủ phần đo thật tại `docs/phieu-viec/ket-qua/sma-improve-home.md`, log JIG gốc 132 dòng còn nguyên) → không dùng nhánh "4 lần watcher"/`cho-muse`, không quay no-op; agy + opencode đang chờ vé này để thông cổng. Đang chạy cổng repo (compileall/pytest/audit/import) + chạy lại script đo thật rồi chốt báo cáo.
-- `commit`: `3c7f2f3` (mốc code SMA-IMPROVE-HOME 06/10 — deadband + k nhóm + test; đang chốt đo lại + báo cáo 06/10 20:33)
+- `commit`: `9554e9d` (chốt SMA-IMPROVE-HOME 06/10 — báo cáo + đo lại + cổng repo; commit code `3c7f2f3`)
 
-- Ticket hiện tại: `SMA-IMPROVE-HOME` — [NHÀ] cải tiến cổng SMA(20) (deadband + k linh hoạt). Prompt: `docs/phieu-viec/mailbox/prompt.md`. Role gợi ý: DEFAULT.
+- `bao_cao`: `docs/phieu-viec/ket-qua/sma-improve-home.md` (vé SMA-IMPROVE-HOME — `xong-cho-duyet` 06/10)
 - `hang-cho`: (trống)
 
 # Trạng thái mailbox
