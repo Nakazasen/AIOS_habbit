@@ -9,7 +9,7 @@
 - `commit`: (chờ thợ)
 - `bao_cao`: `docs/phieu-viec/ket-qua/rag-claim-budget-home.md` (vé RAG-CLAIM-BUDGET-HOME — chưa có, thợ tạo khi xong)
 - Ticket hiện tại: `RAG-CLAIM-BUDGET-HOME` — điều tra + xử lý nút thắt claim_budget_exceeded + đo lại 50 câu.
-- `hang-cho`: (trống)
+- `hang-cho`: 1) `ROUTER-POOL-COMMANDCODE-HOME` — trỏ tuyến tổng hợp sang pool Command Code (failover) + đo lại 50 câu. File: `docs/phieu-viec/mailbox/prompt-queue-router-pool-commandcode-home.md`. Chạy sau RAG-CLAIM-BUDGET-HOME.
 
 # Trạng thái mailbox
 
