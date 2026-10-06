@@ -17,7 +17,11 @@ QUESTION = (
 )
 
 
-def _run_cagent_route(monkeypatch, question: str = QUESTION):
+def _run_cagent_route(
+    monkeypatch,
+    question: str = QUESTION,
+    answer_text: str = "ctrlMode = 0 là tự động; ctrlMode = 1 là thủ công.",
+):
     import aios_habit.workspace_chat_store as store
     from aios_habit import antigravity_bridge as bridge
 
@@ -28,7 +32,7 @@ def _run_cagent_route(monkeypatch, question: str = QUESTION):
         captured["system_prompt"] = system_prompt
         captured["user_prompt"] = user_prompt
         captured["call_kwargs"] = kwargs
-        return CAgentResponse(True, text="ctrlMode = 0 là tự động; ctrlMode = 1 là thủ công.")
+        return CAgentResponse(True, text=answer_text)
 
     def fake_save_message(message):  # type: ignore[no-untyped-def]
         captured["saved_contents"].append(message.content)
@@ -94,6 +98,22 @@ def test_cagent_lane_without_staging_context_when_flag_off(monkeypatch) -> None:
     assert "DỮ LIỆU THAM KHẢO (BẢN THẢO)" not in str(captured["user_prompt"])
     saved = "\n".join(captured["saved_contents"])
     assert not saved.startswith("> ⚠️ **Bản thảo")
+
+
+def test_cagent_lane_dedupes_model_echoed_draft_label(monkeypatch) -> None:
+    echoed = (
+        "> ⚠️ **Bản thảo — chưa qua chuyên gia duyệt**\n"
+        "> *Nguồn dữ liệu tham khảo: Khối MOM — Cặp Q&A #Q0001*\n\n"
+        "ctrlMode = 0 là tự động; ctrlMode = 1 là thủ công."
+    )
+    with override_feature_flags(wire_qa_cagent=True):
+        (ok, _message, _badge, error), captured = _run_cagent_route(monkeypatch, answer_text=echoed)
+
+    assert ok is True
+    assert error is None
+    saved = "\n".join(captured["saved_contents"])
+    assert saved.count("Bản thảo — chưa qua chuyên gia duyệt") == 1
+    assert "ctrlMode = 0 là tự động" in saved
 
 
 def test_cagent_lane_without_staging_context_for_unrelated_question(monkeypatch) -> None:

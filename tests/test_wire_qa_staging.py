@@ -16,6 +16,7 @@ from aios_habit.wire_qa_staging import (
     build_wire_qa_reference,
     load_staging_pairs,
     select_relevant_pairs,
+    strip_echoed_draft_label,
 )
 
 DEMO_ERROR_CODE_QUESTION = (
@@ -110,3 +111,21 @@ def test_limit_caps_selected_pairs() -> None:
 
 def test_missing_mapping_file_loads_empty(tmp_path: Path) -> None:
     assert load_staging_pairs(tmp_path / "khong-ton-tai.jsonl") == ()
+
+
+def test_strip_echoed_draft_label_removes_model_echo() -> None:
+    echoed = (
+        "> ⚠️ **Bản thảo — chưa qua chuyên gia duyệt**\n"
+        "> *Nguồn dữ liệu tham khảo: Khối MOM — Cặp Q&A #Q0001*\n\n"
+        "Nội dung trả lời thật."
+    )
+    assert strip_echoed_draft_label(echoed) == "Nội dung trả lời thật."
+
+
+def test_strip_echoed_draft_label_keeps_normal_answer() -> None:
+    body = "Kết quả: F401 đứt.\n\n> ghi chú nhỏ trong câu trả lời"
+    assert strip_echoed_draft_label(body) == body
+
+
+def test_strip_echoed_draft_label_plain_text_untouched() -> None:
+    assert strip_echoed_draft_label("  Đáp án bình thường.  ") == "Đáp án bình thường."

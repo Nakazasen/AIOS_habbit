@@ -1118,7 +1118,7 @@ def route_workspace_chat_submission(
             answer_language=answer_language,
             memory_result=memory_result,
         )
-        from aios_habit.wire_qa_staging import build_wire_qa_reference
+        from aios_habit.wire_qa_staging import build_wire_qa_reference, strip_echoed_draft_label
 
         wire_reference = build_wire_qa_reference(question)
         if wire_reference is not None:
@@ -1136,9 +1136,11 @@ def route_workspace_chat_submission(
             return (False, "", None, cagent_res.error_message or "C-AGENT API không trả về câu trả lời.")
 
         disclaimer = _get_ai_disclaimer(answer_language)
-        answer_text = cagent_res.text.strip() + disclaimer
         if wire_reference is not None:
-            answer_text = f"{wire_reference.label_block}\n\n{answer_text}"
+            model_text = strip_echoed_draft_label(cagent_res.text)
+            answer_text = f"{wire_reference.label_block}\n\n{model_text}{disclaimer}"
+        else:
+            answer_text = cagent_res.text.strip() + disclaimer
 
         user_msg = _get_or_create_user_message(conversation_id, user_raw_input, reuse_message_id=user_message_id)
         assistant_msg_id = f"MSG-{uuid.uuid4().hex[:8].upper()}"

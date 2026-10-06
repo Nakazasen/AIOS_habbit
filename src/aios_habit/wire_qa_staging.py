@@ -41,7 +41,9 @@ SYSTEM_NOTE = (
     "DỮ LIỆU THAM KHẢO (BẢN THẢO) gồm các cặp hỏi-đáp kỹ thuật nội bộ chưa qua "
     "chuyên gia duyệt: ưu tiên thông tin trong phần này; giữ nguyên số liệu kỹ thuật, "
     "mã lỗi, serial và ký hiệu linh kiện; nếu tài liệu chưa ghi nhận thì nói rõ là chưa "
-    "có thông tin, không tự bịa đặt."
+    "có thông tin, không tự bịa đặt. Không tự viết lại nhãn "
+    "'Bản thảo — chưa qua chuyên gia duyệt' hay dòng 'Nguồn dữ liệu tham khảo' trong "
+    "câu trả lời — hệ thống tự gắn nhãn này."
 )
 
 _TOKEN_RE = re.compile(r"\w+(?:-\w+)*", re.UNICODE)
@@ -207,6 +209,33 @@ def _render_prompt_block(pairs: Sequence[WireQaPair]) -> str:
 def _render_label_block(pairs: Sequence[WireQaPair]) -> str:
     entries = "; ".join(f"Khối {pair.category} — Cặp Q&A #{pair.id}" for pair in pairs)
     return f"> {DRAFT_LABEL_HEADER}\n> *Nguồn dữ liệu tham khảo: {entries}*"
+
+
+def strip_echoed_draft_label(text: str) -> str:
+    """Bỏ khối nhãn bản thảo do MODEL tự viết lại ở đầu câu trả lời.
+
+    Model nhìn thấy nhãn trong lịch sử hội thoại nên đôi khi tự "nhại" lại
+    (kèm danh sách cặp Q&A riêng của nó); hệ thống đã có nhãn chính thức nên
+    phần nhại ở đầu phải bị cắt để tránh hiển thị hai nhãn.
+    """
+    lines = str(text or "").splitlines()
+    index = 0
+    while index < len(lines) and not lines[index].strip():
+        index += 1
+    head = lines[index].strip() if index < len(lines) else ""
+    is_echoed_label = head.startswith(">") and (
+        ("Bản thảo" in head and "chưa qua chuyên gia duyệt" in head)
+        or "Nguồn dữ liệu tham khảo:" in head
+    )
+    if not is_echoed_label:
+        return str(text or "").strip()
+    while index < len(lines):
+        line = lines[index].strip()
+        if line.startswith(">") or not line:
+            index += 1
+            continue
+        break
+    return "\n".join(lines[index:]).strip()
 
 
 def build_wire_qa_reference(question: str) -> WireQaReference | None:
