@@ -1,6 +1,8 @@
 # Trạng thái mailbox-pc0575-opencode — KDTVN-PC0575 (thợ opencode)
 
-- Trạng thái: `moi`
+- Trạng thái: `dang-lam`
+- `ghi_chu` (thợ opencode): 2026-10-06 22:30 +07 — pull --rebase xong: fast-forward 132e2c8..e202c10, không conflict. Đủ 4 commit vé yêu cầu (zombie v2 5fa86d7, template theo major dbf23c4, remote-access d1c9dbb, chống mù BOM e202c10).
+- `ghi_chu` (thợ opencode): 2026-10-06 22:27 +07 — nhận vé `WATCHER-UPGRADE-PC0575` (đủ điều kiện mở: `moi` + ticket mới + chưa có báo cáo; gate watcher mới mở lần 1 lúc 22:24 nên chưa chạm ngưỡng 4 lần, không đặt `cho-muse`). Bắt đầu pull --rebase agent-mailbox.
 - `ghi_chu` (điều phối Muse): 2026-10-06 ~22:16 +07 — Phát hành vé `WATCHER-UPGRADE-PC0575`: nâng cấp vòng lặp mailbox (`D:\Sandbox\agent-mailbox`) lên code mới nhất (zombie v2, chống mù chữ BOM, chọn template theo major CLI, remote-access), kiểm chứng thợ chạy được rồi báo cáo. Rào: pull --rebase, cấm force-push; KHÔNG commit config.local.ps1; KHÔNG đụng process/vé LSU-QUALITY-PC0575 của OMP. Prompt: `docs/phieu-viec/mailbox-pc0575-opencode/prompt.md`. Role gợi ý: DEFAULT.
 - Ticket hiện tại: `WATCHER-UPGRADE-PC0575` — nâng cấp watcher mailbox PC0575 lên code mới nhất.
 - `hang-cho`: (trống)
