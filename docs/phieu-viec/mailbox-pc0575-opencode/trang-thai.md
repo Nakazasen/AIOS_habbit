@@ -1,5 +1,12 @@
 # Trạng thái mailbox-pc0575-opencode — KDTVN-PC0575 (thợ opencode)
 
+- Trạng thái: `moi`
+- `ghi_chu` (điều phối Muse): 2026-10-06 ~22:16 +07 — Phát hành vé `WATCHER-UPGRADE-PC0575`: nâng cấp vòng lặp mailbox (`D:\Sandbox\agent-mailbox`) lên code mới nhất (zombie v2, chống mù chữ BOM, chọn template theo major CLI, remote-access), kiểm chứng thợ chạy được rồi báo cáo. Rào: pull --rebase, cấm force-push; KHÔNG commit config.local.ps1; KHÔNG đụng process/vé LSU-QUALITY-PC0575 của OMP. Prompt: `docs/phieu-viec/mailbox-pc0575-opencode/prompt.md`. Role gợi ý: DEFAULT.
+- Ticket hiện tại: `WATCHER-UPGRADE-PC0575` — nâng cấp watcher mailbox PC0575 lên code mới nhất.
+- `hang-cho`: (trống)
+
+# Trạng thái mailbox-pc0575-opencode — KDTVN-PC0575 (thợ opencode)
+
 - Trạng thái: `xong`
 - `ghi_chu` (verdict Muse): 2026-10-06 ~15:55 +07 — **ĐẠT** vé `LSU-ALERT-REALTIME-PC0575` (tích tạm, chờ user nghiệm thu). Kiểm chứng độc lập qua GitHub API: commit code `c9d0e84` single-parent — +131 `src/aios_habit/alert_feedback.py` (mới), +129 `rt_consumer.py`, +41 `rt_replay.py`, +28 `jig_chat_wire.py`, +88 test mới; KHÔNG đụng `trend_alerts.py` (gate SMA(20) giữ nguyên hành vi), không đụng file WIRE-QA của OMP, không đụng index, không merge `main`. Rà diff: `rt_consumer.py` gọi đúng `danh_gia_xu_huong_sma` + `gate_canh_bao_theo_xu_huong`, điểm đơn lẻ → "Cần biến"; feedback chê bắt buộc lý do, chỉ ghi `local_cases/alert_feedback.jsonl` (không vào kho); hook `day_the_realtime_qua_cong_vao_chat()` đưa thẻ vào vùng trả lời chat, không thêm nút bấm; `do_latency_qua_cong_xu_huong()` đo offline. Không syntax 3.12+. Cổng: 4/4 test mới PASS + hồi quy 56 passed/3 skipped (self-report, logic test khớp diff), compileall sạch, `cli audit` PASS, import app OK. Latency 0,0014 s << 5 phút; precision điểm đơn lẻ 0 cảnh báo. Ghi nhận trung thực: file thật `2026_08_Master.csv` không có trên máy → đo trên chuỗi mirror cùng cỡ 132 điểm (biên an toàn ~200.000 lần, không đe dọa verdict); pytest toàn bộ >10 phút chưa xong (F/E nhóm khác, ngoài phạm vi). hang-cho trống → mailbox đóng (`xong`).
 - `bao_cao`: `docs/phieu-viec/ket-qua/lsu-alert-realtime-pc0575.md`
