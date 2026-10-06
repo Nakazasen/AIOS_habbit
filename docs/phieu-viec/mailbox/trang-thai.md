@@ -1,6 +1,7 @@
 # Trạng thái mailbox
 
-- Trạng thái: `moi`
+- Trạng thái: `dang-lam`
+- `ghi_chu`: 2026-10-07 02:15 +07 — OMP nhận vé RAG-LANE-INVESTIGATE-HOME, kiểm cổng gate: cổng MỞ (máy h410asrock, HEAD=origin=ce09aa4, prompt đúng vé INVESTIGATE, trạng thái moi mới ~02:10 07/10, không có file watcher tự mở mới trong mailbox). Vé lane ĐIỀU TRA + ĐO LẠI (lỗi A: 21 câu bằng chứng rỗng; lỗi B: 29 lượt tổng hợp cloud lỗi). Đang đọc báo cáo cũ §6-§7 rồi điều tra.
 - `ghi_chu` (verdict Muse): 2026-10-07 ~02:10 +07 — **ĐẠT (phần đo)** vé `LSU-QUALITY-RAG-HOME` (tích tạm). Đo đúng spec: 50/50 CPU-only (bằng chứng providers chỉ CPU), index chỉ-đọc SHA-256 `45eb0e07…b7c0` khớp trước/sau, checkpoint + số từng câu trung thực. **LƯU Ý CỨNG: GPA 0,75 (37,68/150) KHÔNG phải chất lượng lane RAG** — 0/50 câu tổng hợp cloud thành công (21 câu gói bằng chứng rỗng + 29 câu provider lỗi → trích cục bộ), số này chỉ đo retrieval + trích fallback. Phát vé điều tra tiếp ngay dưới.
 - `ghi_chu` (điều phối Muse): 2026-10-07 ~02:10 +07 — Phát hành vé `RAG-LANE-INVESTIGATE-HOME`: tìm gốc (A) 21 câu bằng chứng rỗng — cùng câu Q0699 pilot PC0575 có 26 item, máy nhà 0 mảnh; (B) 29/29 lượt RouterSynthesisProvider lỗi dù gọi thử cầu đạt. Sửa mức cấu hình/runner; đụng logic lõi thì dừng ở đề xuất. Xong thì đo lại trọn 50 câu CPU-only. Prompt: `docs/phieu-viec/mailbox/prompt.md`. Role gợi ý: DEFAULT.
 - Ticket hiện tại: `RAG-LANE-INVESTIGATE-HOME` — điều tra lane RAG + đo lại.
