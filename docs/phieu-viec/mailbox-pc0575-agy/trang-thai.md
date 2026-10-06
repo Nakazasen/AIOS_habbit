@@ -1,6 +1,7 @@
 # Trạng thái mailbox-pc0575-agy — KDTVN-PC0575 (thợ agy — Antigravity CLI)
 
 - Trạng thái: `dang-lam`
+- `ghi_chu`: 2026-10-06 14:45 +07 — Tiến độ dry-run LSU: hoàn thành Đợt 2 (20/50 câu lane C-Agent, 20/20 thành công kỹ thuật, lỗi kỹ thuật 0). Đang tiếp tục Đợt 3 (câu 21–30).
 - `ghi_chu`: 2026-10-06 14:38 +07 — Tiến độ dry-run LSU: hoàn thành Đợt 1 (10/50 câu lane C-Agent, 10/10 thành công kỹ thuật, lỗi kỹ thuật 0; lane RAG 50/50 đã chạy an toàn trên index TẠM). Đang tiếp tục Đợt 2 (câu 11–20).
 - `ghi_chu`: 2026-10-06 14:26 +07 — Tiếp nhận vé `LSU-QUALITY-DRYRUN-PC0575`: bắt đầu đọc bộ 50 câu hỏi và chuẩn bị chạy thử pipeline đo chất lượng qua 2 lane (cagent, rag) trên index TẠM.
 - `ghi_chu` (verdict Muse): 2026-10-06 ~12:35 +07 — **ĐẠT** vé `PREP-LSU-QUALITY-PC0575` (tích tạm, chờ user nghiệm thu). Kiểm chứng độc lập: 50/50 ID duy nhất, khớp 100% `wire-qa-mapping.jsonl` (3.392 dòng, 1.790 LSU), 4 nhóm 13/12/12/13 đúng cơ cấu; rubric 0–3 đầy đủ tiêu chí từng nhóm; nhãn bản thảo đúng rào; commit `92d0b98` chỉ thêm báo cáo.
