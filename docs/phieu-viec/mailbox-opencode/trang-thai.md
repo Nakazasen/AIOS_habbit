@@ -1,6 +1,9 @@
 # Trạng thái mailbox-opencode (thợ opencode — model free muse-spark-1.3 / space-bunny)
 
-- Trạng thái: `dang-lam`
+- Trạng thái: `xong-cho-duyet`
+- `commit`: (chốt sau khi commit báo cáo — xem commit mới nhất)
+- `bao_cao`: `docs/phieu-viec/ket-qua/rt-alert-e2e-home.md`
+- `ghi_chu`: 2026-10-06 23:52 +07 — XONG chờ duyệt RT-ALERT-E2E-HOME: baseline ĐẠT <5 phút (drift báo mẫu thứ 3, xử lý 50 mẫu 0,0031s; HTTP 132/132 mất 0, p95 ~28ms; 132 thật 0 báo giả; 132+drift 1 thẻ đúng). Cổng đo trend_alerts.py=3c7f2f3. Cổng repo: compileall sạch, pytest cụm 58 passed/3 skip, audit PASS, import OK. Không sửa src/tests (test_j1_csv local là của agy, không commit ké).
 - `ghi_chu`: 2026-10-06 23:45 +07 — Mốc đo xong RT-ALERT-E2E-HOME: replay 132/132, HTTP E2E mất 0, drift 40+10 báo ở mẫu drift thứ 3, 132 thật 0 báo giả. Đang viết báo cáo.
 - `ghi_chu`: 2026-10-06 23:32 +07 — Nhận vé RT-ALERT-E2E-HOME, kiểm cổng gate: cổng MỞ (verdict Muse ĐẠT SMA-IMPROVE-HOME 23:30, HEAD=d678cfc, trend_alerts.py=3c7f2f3 deadband+k nhóm). Không rơi nhánh 4 lần watcher/cho-muse. Bắt đầu đo E2E.
 - `ghi_chu` (điều phối Muse): 2026-10-06 ~23:30 +07 — Gỡ cờ `cho-muse`: CỔNG GATE ĐÃ MỞ (OMP `SMA-IMPROVE-HOME` verdict ĐẠT). Vé `RT-ALERT-E2E-HOME` bắt đầu được — đo trên cổng SMA mới.
