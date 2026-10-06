@@ -1,5 +1,13 @@
 ﻿# Trạng thái mailbox — KDTVN-PC0575
 
+- Trạng thái: `moi`
+- `ghi_chu` (verdict Muse): 2026-10-06 ~15:55 +07 — **ĐẠT** vé `APP-RESTORE-DEFAULT-PC0575` (tích tạm, chờ user nghiệm thu). Kiểm chứng độc lập qua GitHub API: 4 commit single-parent — `807ca8b` (nhận vé), `b766178` (mốc tắt app demo + mở lại mặc định), `04eab1c6` (smoke + 2 báo cáo), `f123a1be` (chốt `xong-cho-duyet`) — chỉ chạm `docs/phieu-viec/mailbox-pc0575/trang-thai.md` + báo cáo, không sửa mã nguồn, không merge `main`. Đủ 4 yêu cầu vé: (1) tắt cây app demo `28028→18636→26880` (`taskkill /T /F`), port 8501 sạch (netstat); (2) mở lại bằng đúng `RUN_AIOS_WORKSPACE_CHAT.bat`, health ok ~13 s, cmdline đúng tham số bat, scope User+Machine không có `AIOS_AI_BACKEND`/`AIOS_FEATURE_WIRE_QA_CAGENT` ⇒ env mặc định; (3) smoke 1 câu qua UI "ORICON STATUS là gì?" 15:40:47→15:43:24 = 157,5 s, trace `trc_46ddad06391c` `valid`, `cited_count=2`, lane "Gemini qua cầu nối (tự động)" — đúng đường mặc định, flag demo đã tắt; (4) mốc đầy đủ trong `trang-thai.md`. Ghi nhận: driver Playwright crash sau khi bấm Hỏi (thợ khai trung thực) — số đo lấy trực tiếp từ store + trace, app không bị ảnh hưởng. Số đo PASS là self-report của thợ (store/trace nằm local trên PC0575, VM không kiểm lại được); chuỗi thời gian + commit khớp nhau.
+- `ghi_chu` (điều phối Muse): 2026-10-06 ~15:55 +07 — Phát hành vé `DIGEST-CTY-RESUME` (hàng chờ #4, kế hoạch 06:15 user duyệt): làm tiếp sổ tay tri thức ở máy công ty bằng lane C-Agent (kiểm tra trùng với máy nhà trước, chỉ pull/resume checkpoint, không làm lại). Prompt: `docs/phieu-viec/mailbox-pc0575/prompt.md` (vé mới). Role gợi ý: DEFAULT.
+- Ticket hiện tại: `DIGEST-CTY-RESUME` — [CTY] làm tiếp sổ tay tri thức bằng lane C-Agent. Prompt: `docs/phieu-viec/mailbox-pc0575/prompt.md`. Role gợi ý: DEFAULT.
+- `bao_cao` (vé vừa xong): `docs/phieu-viec/ket-qua/app-restore-default-pc0575.md`
+
+# Trạng thái mailbox — KDTVN-PC0575
+
 - Trạng thái: `xong-cho-duyet`
 - `ghi_chu` (tiến độ OMP): 2026-10-06 15:53 +07 — **XONG → chốt `xong-cho-duyet`.** Báo cáo đầy đủ: `docs/phieu-viec/ket-qua/app-restore-default-pc0575.md`. Tóm tắt: tắt app demo WIRE-QA (cây `28028`→`18636`→`26880`, port 8501 sạch) → mở lại bằng **đúng** `RUN_AIOS_WORKSPACE_CHAT.bat` (health ok ~13 s; env mặc định — không set `AIOS_FEATURE_WIRE_QA_CAGENT`, không ghim lane) → **smoke 1 câu qua UI ĐẠT**: “ORICON STATUS là gì?” 15:40:47 → 15:43:24 = **157,5 s**, trace `trc_46ddad06391c` (`valid`, `insufficient_evidence=false`, `cited_count=2`), lane “Gemini qua cầu nối (tự động)”. Không sửa code, không merge `main`; app mặc định đang chạy cho dùng thật. Chờ Muse review.
 - `bao_cao`: `docs/phieu-viec/ket-qua/app-restore-default-pc0575.md`
