@@ -1,5 +1,12 @@
 # Trạng thái mailbox-pc0575-opencode — KDTVN-PC0575 (thợ opencode)
 
+- Trạng thái: `moi`
+- `ghi_chu` (điều phối Muse): 2026-10-06 ~15:25 +07 — Phát hành vé `LSU-ALERT-REALTIME-PC0575`: nối `RtConsumer` realtime JIG qua cổng xu hướng SMA(20) (`gate_canh_bao_theo_xu_huong`, có sẵn từ commit `846713e` — không viết lại), chỉ xu hướng đã xác nhận mới thành thẻ cảnh báo trong chat; điểm đơn lẻ → "Cần biến". Thêm feedback tại chỗ trên thẻ cảnh báo (đúng/sai + lý do khi chê → `local_cases/alert_feedback.jsonl`), đo latency đầu-cuối < 5 phút (mục tiêu góp ý Khiêm). Vé dài: heartbeat 15 phút + checkpoint/resume. Phạm vi: `rt_consumer.py`, `rt_replay.py`, file feedback mới, hook UI chat — không đụng file WIRE-QA của OMP, không đụng index.
+- Ticket hiện tại: `LSU-ALERT-REALTIME-PC0575` — [CTY] nối consumer realtime JIG qua cổng xu hướng SMA(20), cảnh báo trong chat. Prompt: `docs/phieu-viec/mailbox-pc0575-opencode/prompt.md`. Role gợi ý: DEFAULT.
+- `hang-cho`: (trống)
+
+# Trạng thái mailbox-pc0575-opencode — KDTVN-PC0575 (thợ opencode)
+
 - Trạng thái: `xong`
 - `ghi_chu` (verdict Muse): 2026-10-06 ~13:33 +07 — **ĐẠT** vé `CAGENT-HEALTH-RETRY-PC0575` (tích tạm, chờ user nghiệm thu). Kiểm chứng độc lập qua GitHub API: commit `7740f7e` single-parent (parent `946c521`), chỉ +37/-0 báo cáo `cagent-health-retry-pc0575.md` +3/-1 `trang-thai.md` — không sửa mã nguồn, không merge `main`. Báo cáo đủ 4 yêu cầu vé: (1) tên mạng ghi rõ `vn-kdwireless` (xác nhận bằng `netsh wlan show interfaces`: SSID `vn-kdwireless`, băng tần 5 GHz, tín hiệu 75%); (2) 3 câu mẫu Q0001/Q0609/Q2409 qua đúng hàm `call_cagent_prediction`, timeout 150 s/câu, tái dùng đúng 3 câu của vé trước để so sánh trực tiếp; (3) cả 3 SỐNG: Q0001 20,0 s / Q0609 26,4 s / Q2409 44,7 s (774/361/518 ký tự), không lỗi kết nối; (4) kết luận **SẴN SÀNG** cho vé WIRE + lưu ý độ trễ 20–45 s/câu nên chạy mẻ nhỏ, và "tuyệt đối không dùng kết quả KT_CHETAO để kết luận". Hệ quả cho hàng chờ công ty: vé `WIRE-QA-CAGENT-PC0575` (hàng chờ #3 trong `mailbox-pc0575`) GỠ CHẶN — endpoint sống trên mạng công ty; khi chạy WIRE máy phải ở mạng công ty (không phải KT_CHETAO). Cổng kỹ thuật: compileall đạt, pytest mẫu liên quan 8/8, `cli audit` PASS, import app đạt (pytest toàn bộ chưa chạy hết được khai trung thực — vé không đụng mã nguồn). hang-cho trống → mailbox đóng (`xong`).
 - `bao_cao`: `docs/phieu-viec/ket-qua/cagent-health-retry-pc0575.md`
