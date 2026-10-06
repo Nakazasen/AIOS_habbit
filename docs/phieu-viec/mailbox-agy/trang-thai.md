@@ -1,6 +1,7 @@
 # Trạng thái mailbox-agy (thợ agy — model gemini-3.8-flash-high, việc khó chuyển claude-sonnet/opus-5.5-medium)
 
-- Trạng thái: `xong-cho-duyet`
+- Trạng thái: `xong`
+- `ghi_chu` (verdict Muse): 2026-10-06 ~23:58 +07 — **ĐẠT** vé `FIX-J1CSV-FIXTURE-HOME` (tích tạm, chờ user nghiệm thu). Kiểm chứng độc lập: commit `5acdf11` — fixture `tests/test_j1_csv.py` dùng chuỗi 3 điểm xấu liên tiếp kích hoạt đúng cổng SMA(20) sau SMA-IMPROVE; test đối chứng: 1 điểm xấu đơn lẻ bị cổng chặn. test_j1_csv 12 passed/4 skipped, hồi quy trend_alerts 22/22, cụm liên quan 178/178; poll kiểm lại trên VM: test_j1_csv + test_trend_alerts 38 passed. compileall/audit/import PASS. hang-cho trống → mailbox đóng (`xong`).
 - `bao_cao`: `docs/phieu-viec/ket-qua/fix-j1csv-fixture-home.md`
 - `commit`: `5acdf11`
 - `ghi_chu`: 2026-10-06 23:36 +07 — Hoàn thành 100% vé FIX-J1CSV-FIXTURE-HOME: Cập nhật fixture tests/test_j1_csv.py dùng chuỗi 3 điểm xấu liên tiếp kích hoạt đúng cổng SMA(20) sau SMA-IMPROVE-HOME (vi phạm -> tự động vẽ biểu đồ phân bố); bổ sung test đối chứng xác nhận 1 điểm xấu đơn lẻ bị cổng SMA(20) chặn cảnh báo; test_j1_csv 12 passed/4 skipped (100% test chạy được đều xanh); hồi quy trend_alerts 22/22 xanh; test suite liên quan 178/178 xanh; compileall PASS, audit PASS, import app IMPORT_OK; báo cáo docs/phieu-viec/ket-qua/fix-j1csv-fixture-home.md. Không đụng trend_alerts.py, không đụng UI, không merge main. Chờ Muse đối chứng.
