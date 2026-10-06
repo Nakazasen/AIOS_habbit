@@ -1,4 +1,4 @@
-﻿# Watch-Mailbox.ps1 (v5) — watcher + giám sát OMP, vòng lặp cưỡng chế 2 đầu
+# Watch-Mailbox.ps1 (v5) — watcher + giám sát OMP, vòng lặp cưỡng chế 2 đầu
 #
 # Đầu 1 (Muse, trên VM): viết ticket -> poll 5 phút -> review.
 # Đầu 2 (script này, máy Windows): poll mailbox mỗi ~90s, và:
@@ -20,7 +20,9 @@ param(
     [string]$MailboxDir = "docs/phieu-viec/mailbox",
     [string]$Worker = "omp",
     [string]$AgyModel = "gemini-3.8-flash-high",
-    [string]$OpenCodeModel = "opencode/muse-spark-1.3-contributor-free"
+    [string]$OpenCodeModel = "opencode/muse-spark-1.3-contributor-free",
+    [bool]$EnableZombieCleanup = $true,
+    [double]$DoneGraceMinutes = 2
 )
 
 $ErrorActionPreference = "SilentlyContinue"
@@ -60,7 +62,13 @@ $maxPollFails = 5        # poll loi lien tiep N lan (~7.5 phut) -> popup (mang/G
 $choMuseSlaHours = 6     # cho-muse dung yen qua N gio -> popup (cron Muse co the dung)
 $minDiskGB = 1           # o nao duoi N GB -> popup + tam ngung mo tho moi
 $ompLaunchTicket = "git pull origin phieu-viec/rag-fix1; doc ky $MailboxDir/QUY-UOC.md va $MailboxDir/prompt.md roi lam dung theo ticket, tuan thu quy uoc (commit + push + cap nhat trang-thai.md). Vua lam vua giai thich ngan gon tung buoc bang tieng Viet don gian. Den moi moc quan trong: cap nhat ngay 1 dong tien do + timestamp vao trang-thai.md roi push. Kiem cong gate: neu 4 lan watcher tu mo OMP lien tiep (moi lan cach nhau ~10 phut) ma van chua thay dieu kien mo thi dat trang-thai.md thanh cho-muse + DUNG, khong quay no-op."
-$ompLaunchArgs = '-p --auto-approve "{0}"' -f $ompLaunchTicket
+# --- Chong tho zombie (OMP-STABILIZE-HOME / FIX) ---
+if ($null -eq $EnableZombieCleanup) { $EnableZombieCleanup = $true }
+if ($null -eq $DoneGraceMinutes -or $DoneGraceMinutes -le 0) { $DoneGraceMinutes = 2 }
+$OmpMaxTimeMinutes = 60
+$ompMaxTimeSeconds = $OmpMaxTimeMinutes * 60
+
+$ompLaunchArgs = '--max-time {0} -p --auto-approve "{1}"' -f $ompMaxTimeSeconds, $ompLaunchTicket
 
 # --- Tho phu: agy (Antigravity CLI) ---
 # Headless: agy --model <model> -p --dangerously-skip-permissions "<ticket>"
@@ -269,6 +277,26 @@ function Get-SessionAgeMinutes {
 function Write-Log($msg) {
     ("[{0}] {1}" -f (Get-Date).ToString("s"), $msg) | Out-File $logFile -Append -Encoding utf8
 }
+function Stop-WorkerTree {
+    param(
+        [Parameter(Mandatory=$true)]
+        $pidsToStop,
+        [string]$reason = ""
+    )
+    if ($null -eq $pidsToStop) { return }
+    $pidArray = @($pidsToStop)
+    if ($pidArray.Count -eq 0) { return }
+    foreach ($p in $pidArray) {
+        if (-not $p -or $p -le 0) { continue }
+        Write-Log ("CLEANUP-WORKER-TREE [{0}]: Bat dau dung PID {1} (ly do: {2})" -f $worker, $p, $reason)
+        try {
+            $tkOut = & taskkill.exe /PID $p /T /F 2>&1 | Out-String
+            Write-Log ("CLEANUP-WORKER-TREE [{0}]: Ket qua taskkill PID {1}: {2}" -f $worker, $p, $tkOut.Trim())
+        } catch {
+            Write-Log ("CLEANUP-WORKER-TREE [{0}]: Ngoai le khi dung PID {1}: {2}" -f $worker, $p, $_.Exception.Message)
+        }
+    }
+}
 function Invoke-StallEscalation {
     # Gate that that: dem code-level so lan watcher tu mo OMP ma sig khong doi.
     # Thu tu theo spec: ghi cho-muse -> commit + push -> xac nhan push moi ngung mo.
@@ -388,7 +416,7 @@ while ($true) {
                         if ($doneElapsed -ge $DoneGraceMinutes) {
                             $zpids = Get-WorkerPid
                             if ($zpids.Count -gt 0) {
-                                Write-Log ("POST-DONE-ZOMBIE [$worker]: Da o trang thai $status hon $($doneElapsed.ToString('N1')) phut (qua an han $DoneGraceMinutes phut) nhung process van con song. Don dep de giai phong slot.")
+                                Write-Log ("POST-DONE-ZOMBIE [{0}]: Da o trang thai {1} hon {2} phut (qua an han {3} phut) nhung process van con song. Don dep de giai phong slot." -f $worker, $status, $doneElapsed.ToString('N1'), $DoneGraceMinutes)
                                 Stop-WorkerTree -pidsToStop $zpids -reason "Post-completion zombie cleanup ($status $doneElapsed min)"
                                 $cpuFlat = 0; $ioFlat = 0; $workerCpu = -1; $workerIO = -1
                                 Show-Popup ("Mailbox [{0}]: don tho zombie" -f $worker) ("Tho {0} da bao {1} hon {2} phut nhung khong tu thoat.`nDa don dep cay tien trinh de san sang cho ve tiep theo." -f $worker, $status, $DoneGraceMinutes)
@@ -492,6 +520,25 @@ while ($true) {
                     $firstSeenMoi = $now.ToString("s")
                     $warnedMoi = $false; $warnedIdle = $false
                 }
+                if ($ompRunning -and $isNewTicket) {
+                    # TANG 3: New Ticket Zombie Override
+                    # Co ticket moi nhung tho van song: do CPU/IO neu dung yen thi tho la zombie sot lai -> don dep de mo ve moi
+                    $cpu1 = Get-WorkerCpu
+                    $io1  = Get-WorkerIO
+                    Start-Sleep -Seconds 2
+                    $cpu2 = Get-WorkerCpu
+                    $io2  = Get-WorkerIO
+                    if ($cpu1 -ne $null -and $cpu2 -ne $null -and $cpu1 -eq $cpu2 -and $io1 -eq $io2) {
+                        $oldPids = Get-WorkerPid
+                        if ($oldPids.Count -gt 0) {
+                            Write-Log ("NEW-TICKET-ZOMBIE-OVERRIDE [{0}]: Phat hien tho cu van song khi co ve moi nhung CPU va I/O dung yen (CPU: {1} s, IO: {2} bytes). Don dep de mo ve moi." -f $worker, $cpu1, $io1)
+                            Stop-WorkerTree -pidsToStop $oldPids -reason "New ticket zombie override (ticket: $ticket)"
+                            Show-Popup ("Mailbox [{0}]: don tho cu de nhan ve moi" -f $worker) ("Co ve moi ($ticket) nhung tho cu van ton tai o trang thai zombie (CPU/IO dung yen).`nDa don dep tho cu de khoi chay ve moi." -f $worker)
+                            $ompRunning = Test-OmpRunning
+                        }
+                    }
+                }
+
                 if (-not $ompRunning) {
                     if ($sig -eq $escalatedSig) {
                         # Da escalate sig nay roi -> cho Muse (cron 3p se thay), khong mo lai
@@ -605,7 +652,7 @@ while ($true) {
                                     $workerIO = $ioNow
                                     if ($cpuFlat -ge 2 -and $ioFlat -ge 2) {
                                         $zpids = Get-WorkerPid
-                                        foreach ($z in $zpids) { try { Stop-Process -Id $z -Force -ErrorAction Stop } catch {} }
+                                        Stop-WorkerTree -pidsToStop $zpids -reason "Worker hung during dang-lam (CPU+IO flat >20m)"
                                         if ($sig -eq $launchSig) { $launchStallCount++ } else { $launchSig = $sig; $launchStallCount = 1 }
                                         if ($launchStallCount -ge $maxStallLaunches) {
                                             Write-Log ("ESCALATE: sig stall $launchStallCount/$maxStallLaunches ticket=$ticket (zombie-kill)")
