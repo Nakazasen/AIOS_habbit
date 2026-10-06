@@ -1,5 +1,14 @@
 # Trạng thái mailbox-agy (thợ agy — model gemini-3.8-flash-high, việc khó chuyển claude-sonnet/opus-5.5-medium)
 
+- Trạng thái: `moi`
+- `ghi_chu` (điều phối Muse): 2026-10-06 ~21:20 +07 — [LỆNH TRỰC TIẾP CỦA USER] Phát hành vé `OMP-STABILIZE-HOME`: điều tra vì sao thợ chính OMP zombie đêm 05→06/10 (xong việc không thoát, án ngữ vé mới 5,5 tiếng, user phải kill tay) + fix cho ổn định. Vé này thay thế `OMP-EXIT-PROBE-HOME` (chưa chạy) — gộp điều tra + fix trong một vé. Gỡ cờ `cho-muse` (19:54) theo lệnh user; `FIX-J1CSV-FIXTURE-HOME` trả về hàng chờ #1, giữ nguyên cổng gate (chỉ bắt đầu sau khi mailbox OMP verdict ĐẠT `SMA-IMPROVE-HOME`). Prompt: `docs/phieu-viec/mailbox-agy/prompt-queue-omp-stabilize-home.md`. Role gợi ý: DEFAULT.
+
+- Ticket hiện tại: `OMP-STABILIZE-HOME` — [NHÀ] điều tra zombie thợ chính OMP + fix cho ổn định. Prompt: `docs/phieu-viec/mailbox-agy/prompt.md`. Role gợi ý: DEFAULT.
+- `hang-cho`:
+  1. `FIX-J1CSV-FIXTURE-HOME` — [NHÀ] cập nhật fixture test JIG theo cổng SMA(20) mới (CỔNG GATE: chỉ bắt đầu sau khi mailbox OMP verdict ĐẠT `SMA-IMPROVE-HOME` — đọc mục 0 trong prompt trước khi làm).
+
+# Trạng thái mailbox-agy (thợ agy — model gemini-3.8-flash-high, việc khó chuyển claude-sonnet/opus-5.5-medium)
+
 - Trạng thái: `cho-muse`
 - `ghi_chu` (verdict Muse): 2026-10-06 ~06:33 +07 — **ĐẠT** vé `AUDIT-BUOC2-JIG-HOME`. Kiểm chứng độc lập qua GitHub API: commit `f794051` single-parent, chỉ +159/-0 báo cáo `audit-buoc2-jig-home.md`, không code, không merge `main`; commit `2faccf2` chỉ +4/-1 `trang-thai.md`; đủ 5 tiêu chí vé — (1) 8 chức năng Bước 1 liệt kê đủ; (2) mỗi chức năng có bằng chứng test + dữ liệu thật (tên test/báo cáo); (3) loại trừ cổng SMA(20) đúng rào; (4) 6 việc Bước 2 xếp P0/P1/P2 kèm ước lượng độ lớn; (5) báo cáo đúng path. Điểm phát hiện `test_canh_bao_tu_dong_ve_bieu_do_da_cau_hinh` đối chiếu độc lập khớp mã nguồn trên nhánh (fixture 1 điểm 99.9 trên nền 20 điểm 10.0). Không secret. Cổng compileall/audit/import là self-report của thợ, chấp nhận vì vé không đụng code.
 - `ghi_chu` (điều phối Muse): 2026-10-06 ~06:33 +07 — Phát hành vé `FIX-J1CSV-FIXTURE-HOME` (luật hàng chờ không cạn; P0 #2 từ chính báo cáo audit): cập nhật fixture test JIG cho đúng cổng SMA(20) mới. CÓ CỔNG GATE: chỉ bắt đầu sau khi mailbox (OMP) verdict ĐẠT `SMA-IMPROVE-HOME` — đọc mục 0 trong prompt trước khi làm. Prompt: `docs/phieu-viec/mailbox-agy/prompt-queue-fix-j1csv-fixture-home.md`. Role gợi ý: DEFAULT.
