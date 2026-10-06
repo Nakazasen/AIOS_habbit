@@ -228,7 +228,30 @@ def test_bieu_do_tu_dong_theo_cau_hinh():
 
 
 def test_canh_bao_tu_dong_ve_bieu_do_da_cau_hinh():
-    """Canh bao kich hoat -> tu dong ve dung bieu do user da setup."""
+    """Canh bao kich hoat -> tu dong ve dung bieu do user da setup.
+
+    Chuỗi 3 điểm xấu liên tiếp (2 điểm trong history + 1 điểm trong dòng log hiện tại)
+    để thỏa mãn cổng gate SMA(20) (tối thiểu 3 điểm liên tiếp lệch xa SMA20).
+    """
+    cau_hinh = AlertConfig(bieu_do_dinh_kem=["phan_bo"])
+    dong_log = "2026-10-01T10:00:00,U001,JIG-A,BOW_VALUE,99.9,um,OK"
+    ket_qua = decide_jig_action(
+        dong_log,
+        alert_config=cau_hinh,
+        history_provider=lambda jig, chi_so: [10.0] * 20 + [99.9, 99.9],
+        chart_rows_provider=lambda: [
+            dict(h, jig_id="JIG-A") for h in _hang_ve()
+        ],
+    )
+    assert ket_qua.handled
+    assert "Vi phạm" in ket_qua.assistant_text
+    assert ket_qua.chart_png is not None and len(ket_qua.chart_png) > 1000
+    assert ket_qua.chart_meta["loai_bieu_do"] == "phan_bo"
+    assert "tự động vẽ" in ket_qua.assistant_text
+
+
+def test_mot_diem_xau_don_le_bi_cong_gate_sma_chan_khong_tu_dong_ve():
+    """Điểm xấu đơn lẻ bị cổng SMA(20) chặn cảnh báo -> không tự động vẽ biểu đồ."""
     cau_hinh = AlertConfig(bieu_do_dinh_kem=["phan_bo"])
     dong_log = "2026-10-01T10:00:00,U001,JIG-A,BOW_VALUE,99.9,um,OK"
     ket_qua = decide_jig_action(
@@ -240,10 +263,8 @@ def test_canh_bao_tu_dong_ve_bieu_do_da_cau_hinh():
         ],
     )
     assert ket_qua.handled
-    assert "Vi phạm" in ket_qua.assistant_text
-    assert ket_qua.chart_png is not None and len(ket_qua.chart_png) > 1000
-    assert ket_qua.chart_meta["loai_bieu_do"] == "phan_bo"
-    assert "tự động vẽ" in ket_qua.assistant_text
+    assert ket_qua.chart_png is None
+    assert "tự động vẽ" not in ket_qua.assistant_text
 
 
 def test_lenh_chat_nhap_tep_csv(tmp_path):
