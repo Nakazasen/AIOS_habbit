@@ -1,6 +1,9 @@
 # Trạng thái mailbox-pc0575-agy — KDTVN-PC0575 (thợ agy — Antigravity CLI)
 
-- Trạng thái: `dang-lam`
+- Trạng thái: `xong-cho-duyet`
+- `commit`: `92d0b98`
+- `bao_cao`: `docs/phieu-viec/ket-qua/lsu-quality-set.md`
+- `ghi_chu`: 2026-10-06 12:18 +07 — Hoàn thành vé `PREP-LSU-QUALITY-PC0575`: hoàn tất bảng 50 câu hỏi LSU đại diện từ wire-qa-mapping.jsonl (1.790 cặp LSU thực tế), phủ đều 4 nhóm nghiệp vụ (13 mã lỗi, 12 nguyên nhân, 12 đối sách, 13 thông số kỹ thuật) kèm rubric chấm điểm chuẩn hóa thang 0–3 và nhãn bản thảo chưa qua chuyên gia duyệt. Cổng: compileall PASS, cli audit PASS, import workspace_chat_app OK, test_quality_harness 5/5 PASS. Sẵn sàng cho thợ OMP chạy vé đo chất lượng LSU-QUALITY-PC0575.
 - `ghi_chu`: 2026-10-06 11:36 +07 — Tiếp nhận vé `PREP-LSU-QUALITY-PC0575`, bắt đầu xử lý lọc JSONL category=LSU và chuẩn bị 50 câu hỏi kèm rubric.
 - `ghi_chu` (điều phối Muse): 2026-10-06 ~06:20 +07 — Phát hành vé `PREP-LSU-QUALITY-PC0575` (prompt mới `prompt-queue-prep-lsu-quality-pc0575.md`): chuẩn bị 50 câu hỏi LSU + rubric chấm điểm từ `wire-qa-mapping.jsonl` để thợ OMP dùng ở vé `LSU-QUALITY-PC0575`. Độc lập, làm ngay khi máy bật. Role gợi ý: SMOL.
 
