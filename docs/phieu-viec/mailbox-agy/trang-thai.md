@@ -5,6 +5,7 @@
 - `ghi_chu` (điều phối Muse): 2026-10-06 ~21:57 +07 — Phát hành vé `FIX-J1CSV-FIXTURE-HOME` (hàng chờ #1; CỔNG GATE giữ nguyên: chỉ bắt đầu sau khi mailbox OMP verdict ĐẠT `SMA-IMPROVE-HOME` — đọc mục 0 trong prompt trước khi làm). Copy `prompt-queue-fix-j1csv-fixture-home.md` → `prompt.md`, trạng thái → `moi`.
 - `ghi_chu`: 2026-10-06 22:05 +07 — kiểm cổng gate lần 1: chờ OMP xong SMA-IMPROVE-HOME (mailbox OMP hiện đang dang-lam, chưa có verdict Muse ĐẠT), chưa đủ điều kiện bắt đầu; giữ nguyên Trạng thái: `moi`, dừng chờ vòng watcher kế tiếp (1/4 lần).
 - `ghi_chu`: 2026-10-06 22:18 +07 — Nhận vé FIX-J1CSV-FIXTURE-HOME, kiểm cổng gate lần 2: chờ OMP xong SMA-IMPROVE-HOME (chưa có verdict Muse ĐẠT), chưa đủ điều kiện bắt đầu; đặt Trạng thái: `dang-lam` + CHỜ theo prompt mới (kiểm cổng mỗi ~10 phút, ghi heartbeat; cổng mở làm tiếp ngay; chưa đủ 4 lần liên tiếp không đặt `cho-muse`).
+- `ghi_chu`: 2026-10-06 22:25 +07 — kiểm cổng gate lần 3: chờ OMP xong SMA-IMPROVE-HOME (OMP đang viết báo cáo và đo đạc, chưa có verdict Muse ĐẠT), chưa đủ điều kiện bắt đầu; giữ Trạng thái: `dang-lam` + CHỜ (3/4 lần; kiểm cổng mỗi ~10 phút, ghi heartbeat; cổng mở làm tiếp ngay; nếu đủ 4 lần liên tiếp chưa mở sẽ đặt `cho-muse` + DỪNG theo quy ước).
 
 - Ticket hiện tại: `FIX-J1CSV-FIXTURE-HOME` — [NHÀ] cập nhật fixture test JIG theo cổng SMA(20) mới (CỔNG GATE: chỉ bắt đầu sau khi mailbox OMP verdict ĐẠT `SMA-IMPROVE-HOME` — đọc mục 0 trong prompt trước khi làm). Prompt: `docs/phieu-viec/mailbox-agy/prompt.md`. Role gợi ý: DEFAULT.
 - `hang-cho`: (trống)
