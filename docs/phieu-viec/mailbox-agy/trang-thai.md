@@ -1,6 +1,7 @@
 # Trạng thái mailbox-agy (thợ agy — model gemini-3.8-flash-high, việc khó chuyển claude-sonnet/opus-5.5-medium)
 
 - Trạng thái: `dang-lam`
+- `ghi_chu`: 2026-10-06 21:22 +07 — Hoàn thành Pha 1: Tái hiện cô lập xác nhận omp -p chạy bình thường thoát sạch trong 3.67s (Exit Code 0); xác định 2 nguyên nhân gốc gây zombie 5.5h (Bun event loop bị daemon con giữ mở khiến waitForAdvisorCatchup kẹt vô hạn + watcher thiếu cơ chế dọn thợ zombie sau khi báo xong-cho-duyet). Bắt đầu Pha 2: thiết kế cơ chế dọn thợ zombie post-completion và cờ bảo vệ cho watcher.
 - `ghi_chu`: 2026-10-06 21:19 +07 — Nhận vé OMP-STABILIZE-HOME, kiểm cổng gate: cổng MỞ (lệnh trực tiếp từ user, không vướng cổng SMA-IMPROVE-HOME). Bắt đầu Pha 1: điều tra cô lập nguyên nhân omp -p zombie, kế thừa phát hiện từ omp-exit-probe-home.md và triển khai cơ chế đảm bảo thoát sạch ở tầng launcher/watcher.
 - `ghi_chu` (điều phối Muse): 2026-10-06 ~21:20 +07 — [LỆNH TRỰC TIẾP CỦA USER] Phát hành vé `OMP-STABILIZE-HOME`: điều tra vì sao thợ chính OMP zombie đêm 05→06/10 (xong việc không thoát, án ngữ vé mới 5,5 tiếng, user phải kill tay) + fix cho ổn định. Vé này thay thế `OMP-EXIT-PROBE-HOME` (chưa chạy) — gộp điều tra + fix trong một vé. Gỡ cờ `cho-muse` (19:54) theo lệnh user; `FIX-J1CSV-FIXTURE-HOME` trả về hàng chờ #1, giữ nguyên cổng gate (chỉ bắt đầu sau khi mailbox OMP verdict ĐẠT `SMA-IMPROVE-HOME`). Prompt: `docs/phieu-viec/mailbox-agy/prompt-queue-omp-stabilize-home.md`. Role gợi ý: DEFAULT.
 
