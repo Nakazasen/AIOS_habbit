@@ -1,6 +1,7 @@
 # Trạng thái mailbox-pc0575-agy — KDTVN-PC0575 (thợ agy — Antigravity CLI)
 
 - Trạng thái: `dang-lam`
+- `ghi_chu`: 2026-10-06 15:05 +07 — Tiến độ dry-run LSU: hoàn thành Đợt 4 (40/50 câu lane C-Agent, 40/40 thành công kỹ thuật, lỗi kỹ thuật 0). Đang tiếp tục Đợt 5 (câu 41–50, đợt cuối).
 - `ghi_chu`: 2026-10-06 14:53 +07 — Tiến độ dry-run LSU: hoàn thành Đợt 3 (30/50 câu lane C-Agent, 30/30 thành công kỹ thuật, lỗi kỹ thuật 0). Đang tiếp tục Đợt 4 (câu 31–40).
 - `ghi_chu`: 2026-10-06 14:45 +07 — Tiến độ dry-run LSU: hoàn thành Đợt 2 (20/50 câu lane C-Agent, 20/20 thành công kỹ thuật, lỗi kỹ thuật 0). Đang tiếp tục Đợt 3 (câu 21–30).
 - `ghi_chu`: 2026-10-06 14:38 +07 — Tiến độ dry-run LSU: hoàn thành Đợt 1 (10/50 câu lane C-Agent, 10/10 thành công kỹ thuật, lỗi kỹ thuật 0; lane RAG 50/50 đã chạy an toàn trên index TẠM). Đang tiếp tục Đợt 2 (câu 11–20).
