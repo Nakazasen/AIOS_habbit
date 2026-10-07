@@ -1,35 +1,36 @@
-# Vé MATCHER-FIX-PC0575 — Vá 2 lỗi bộ ghép cặp staging + đo lại lane C-Agent
+# Vé RAG-REMEASURE-PC0575 — Đo lại hợp nhất 2 lane sau khi các fix đã về (hồi quy §6.5)
 
 **Máy thực hiện:** CÔNG TY KDTVN-PC0575 (thợ OMP), CPU-only.
-**Role gợi ý:** DEFAULT (code + đo).
-**Nguồn:** báo cáo `docs/phieu-viec/ket-qua/lsu-quality-pc0575.md` §3.2 + §6 mục 1 (ưu tiên 1 — lãi ngay 14/50 câu C-Agent).
+**Role gợi ý:** DEFAULT (chạy đo + phân tích).
+**Nguồn:** `lsu-quality-pc0575.md` §6 mục 5 — hồi quy bằng chính bộ 50 câu sau các fix.
 
-## Bối cảnh — 2 lỗi đã tái lập được
+## Cổng chờ (BẮT BUỘC)
 
-File đích: `src/aios_habit/wire_qa_staging.py` (chỉ file này + test của nó; luật 1 file 1 đứa).
+Vé này chỉ bắt đầu khi vé `RETRIEVAL-ENTITY-PC0575` (mailbox-pc0575-agy) đã có verdict ĐẠT trong mailbox của nó. Chưa đạt → đặt `dang-lam` + ghi mốc chờ cổng, KHÔNG chạy lane, KHÔNG thoát vé.
 
-1. **Lỗi recall (12/50 câu).** Cả 12 câu đều có cặp trong staging với câu hỏi **y hệt**, nhưng chấm câu hỏi với chính cặp của nó chỉ được 0–2 điểm (token hoá gom cả mạch CJK thành 1 token, token chứa số bị bỏ) → bị ngưỡng `MIN_MATCH_SCORE=3.0` loại. Nhóm câu: Q0703, Q0851, Q1034, Q0685, Q0635, Q0684, Q0688, Q0696, Q1827…
-2. **Lỗi ranking (2/50 câu — Q0671, Q0658).** Bonus mã linh kiện (tối đa +8, kích bởi ý định "kiểm tra") nâng 6 cặp nhiễu `dieu-tra-loi` lên 8,0 điểm, lấn át cặp đúng (5,0) → top-3 toàn cặp sai chủ đề → model trả "không đủ dữ kiện" oan.
+## Bối cảnh — các fix đã/đang về kể từ lượt đo gốc
 
-Hiện trạng: 38/50 câu có ngữ cảnh đúng. Vá xong trần = 50/50.
+- MATCHER-FIX: C-Agent 2,16 → 2,92 (đo lại sau vá), thước chuẩn hoá → 2,95.
+- RUBRIC-NORMALIZE: thước đo đã chuẩn hoá; lane RAG chấm lại offline 0,93 → 1,21 (đáp án cũ).
+- RETRIEVAL-ENTITY (đang làm ở agy): boost thực thể + cap 3 mảnh/tệp — thay đổi retrieval thật, cần đo lane mới để thấy tác động.
+- SRC-SYNC (đang chạy ở opencode): bổ sung file nguồn về máy — nếu đã xong pha ingest thì ghi rõ trạng thái nguồn trong báo cáo; vé này KHÔNG tự ingest.
 
 ## Việc phải làm
 
-1. **Vá recall:** thêm điểm thưởng khớp câu hỏi gần đúng — chuẩn hoá khoảng trắng/dấu câu; nếu câu hỏi truy vấn xuất hiện nguyên văn (sau chuẩn hoá) trong `pair.question` ⇒ điểm áp đảo (ví dụ ≥100), không ngưỡng nào loại được.
-2. **Vá ranking:** bonus mã linh kiện chỉ cộng khi cặp đã có ≥1 khớp thật (word/code); điểm gốc từ khớp câu hỏi phải luôn lớn hơn mọi bonus.
-3. **Rà `MIN_MATCH_SCORE=3.0`** cho câu CJK ngắn (hoặc tách token theo ranh giới Hán/Kana/Latin): làm khi bằng chứng test cho thấy cần; hành vi với câu Latin không đổi.
-4. **Test:** unit test tái lập cả 2 lỗi (tự chấm câu CJK với chính cặp của nó; ca bonus nhiễu lấn át) — đỏ trên code cũ, xanh trên code mới; hồi quy test staging liên quan.
-
-## Nghiệm thu (2 tầng)
-
-- **Tầng 1 — mức ghép cặp (không gọi LLM):** chạy matcher trên bộ 50 câu: mục tiêu **50/50 câu có cặp của chính nó trong top-3** (hiện 38/50); liệt kê câu nào còn hụt + lý do.
-- **Tầng 2 — đo lại lane C-Agent:** 50 câu trên PC0575 (mạng `vn-kdwireless` cho endpoint C-Agent), cùng rubric 0–3. Đối chiếu GPA **2,16** hiện tại; mục tiêu **≥2,5**. Index chỉ-đọc + md5 trước/sau. Heartbeat 15 phút, checkpoint từng câu.
+1. Kéo code mới nhất của nhánh `phieu-viec/rag-fix1`, ghi commit HEAD vào báo cáo. Index chỉ-đọc, md5 trước/sau.
+2. Chạy lại **trọn 2 lane × 50 câu** (bộ đề + thước đã chuẩn hoá, đúng bản đã đóng dấu trong repo ở vé RETRIEVAL-ENTITY bước 0):
+   - Lane C-Agent: qua endpoint trên mạng `vn-kdwireless` (lưu ý: nếu vé SRC-SYNC vừa chuyển mạng, chờ máy về `vn-kdwireless` rồi mới chạy lane này).
+   - Lane RAG: CPU-only như các lượt trước.
+   - Checkpoint từng câu, heartbeat tối thiểu 15 phút (lane RAG ~2 phút/câu — vé dài).
+3. So sánh 3 cột cho mỗi lane: đo gốc (C-Agent 2,16 / RAG 0,93) → sau từng fix (2,95 / 1,21) → **lượt này**. Mục tiêu theo báo cáo gốc: C-Agent ≥2,5 (kỳ vọng ~2,9), RAG ≥1,5.
+4. Phân tích riêng các câu còn dưới chuẩn sau lượt này: thuộc nhóm nào (A retrieval / B bảng / D thiếu nguồn / khác), đếm số lượng — làm đầu vào cho vòng fix tiếp theo.
 
 ## Rào cứng
 
-- Không merge `main`. Không ghi index. Python 3.11. Không đụng `rag_v2/synthesis.py` (việc của máy nhà).
-- Không nới chuẩn chấm để lấy điểm; không sửa bộ câu hỏi/đáp án tham chiếu.
+- Không merge `main`. Không ghi index. Không tự ingest file nguồn. Python 3.11.
+- Không sửa code ở vé này (đo thuần); phát hiện lỗi code thì ghi vào báo cáo, không tự vá.
+- Không nới thước đo; dùng đúng bộ đề/thước đã đóng dấu.
 
 ## Báo cáo
 
-`docs/phieu-viec/ket-qua/matcher-fix-pc0575.md` — diff tóm tắt, test trước/sau, bảng ghép cặp 50 câu, điểm lane C-Agent trước/sau.
+`docs/phieu-viec/ket-qua/rag-remeasure-pc0575.md` — commit code đã đo, trạng thái nguồn (SRC-SYNC tới đâu), bảng 3 cột 2 lane, phân loại câu còn dưới chuẩn.

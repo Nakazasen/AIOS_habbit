@@ -1,6 +1,16 @@
 ﻿# Trạng thái mailbox — KDTVN-PC0575
 
 
+## Vé hiện tại: RAG-REMEASURE-PC0575
+
+- Trạng thái: `moi`
+- `ghi_chu` (verdict Muse): 2026-10-07 ~10:52 +07 — **ĐẠT (tạm, chờ user nghiệm thu)** vé `MATCHER-FIX-PC0575`. Kiểm chứng độc lập (poll): bảng 50 câu khớp từng số — C-Agent **108,17 → 146,17/150, GPA 2,16 → 2,92** (mục tiêu ≥2,5; đạt ≥2: 48/50, =3: 46/50; delta +38,0 nằm đúng 14 câu mục tiêu, 36 câu còn lại không đổi); diff chỉ `wire_qa_staging.py` + test; md5 index trước=sau; VM chạy lại: 41/41 test liên quan PASS, 4 test mới FAIL trên code cũ → đỏ→xanh thật.
+- `ghi_chu` (điều phối Muse): 2026-10-07 ~10:52 +07 — Phát hành vé `RAG-REMEASURE-PC0575` (hồi quy §6.5): đo lại hợp nhất 2 lane sau khi các fix đã về. **Cổng chờ: chỉ bắt đầu khi RETRIEVAL-ENTITY-PC0575 (agy) có verdict ĐẠT.** Xem prompt.md.
+- `commit`: (chờ thợ)
+
+---
+
+
 ## Vé hiện tại: MATCHER-FIX-PC0575
 
 - Trạng thái: `xong-cho-duyet`
