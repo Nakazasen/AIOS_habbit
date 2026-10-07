@@ -1,6 +1,7 @@
 ﻿# Trạng thái mailbox-opencode (thợ opencode — model free muse-spark-1.3 / space-bunny)
 
-- Trạng thái: `xong-cho-duyet`
+- Trạng thái: `moi`
+- `ghi_chu` (verdict Muse): 2026-10-08 ~01:22 +07 — **ĐẠT** vé `INDEX-LOCALCOPY-FIX-HOME` (tích tạm, chờ user nghiệm thu): sửa đúng 3 điểm — script kích hoạt bỏ mặc định bản cũ (resolve production từ config, thiếu thì dừng với lỗi tiếng Việt rõ ràng), script benchmark bỏ fallback `local_runs` (thiếu thì BLOCKED minh bạch), test index_status chuyển hướng (a) đọc đúng production theo config. Điều phối chạy lại trên VM: 8 passed + 1 skip sạch (VM không có tệp production ổ C — đúng thiết kế); tại máy nhà test đọc production thật 889/149.800 PASS, hết đỏ oan. **Phát hành vé `SRC-421-PROVENANCE-HOME`** (prompt.md đã thay — truy nguồn byte đúng lúc nạp cho 421 mã lệch). Hàng chờ tiếp: #1 `CJK-PREFILTER-FIX-HOME`, #2 `SYNTH-COMPOSER-NOISE-FIX-HOME`. (Tải gói 90 lên Drive: vẫn chờ kênh user chọn.)
 - `commit`: `8856926` (code 3 điểm `db98ced` + báo cáo `index-localcopy-fix-home.md`; vé này không đụng production/index, không merge `main`)
 - `bao_cao`: `docs/phieu-viec/ket-qua/index-localcopy-fix-home.md`
 - `ghi_chu`: 2026-10-08 01:28 +07 — XONG chờ duyệt `INDEX-LOCALCOPY-FIX-HOME`: activation mặc định None + đọc production từ config/thiếu thì dừng tiếng Việt; benchmark bỏ fallback local_runs, trỏ production hoặc BLOCK rõ; test hướng (a) đọc production theo config + skip sạch. Kiểm chứng: test_index_status 9/9 (34,2s, gồm bài production PASSED), deployment 25/25, compileall sạch, audit PASS, import OK; parser_default None, resolve ra C:\AIOS_workspace_chat_rag_v2_production. Không xoá bản sao, không đụng production, không ghi index, không merge `main`.

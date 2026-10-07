@@ -1,23 +1,17 @@
-# VÉ: INDEX-LOCALCOPY-FIX-HOME (loại bản sao chỉ mục cũ 28/09 khỏi mọi đường đọc mặc định)
+# VÉ XẾP HÀNG: SRC-421-PROVENANCE-HOME (truy nguồn byte đúng lúc nạp chỉ mục cho 421 mã lệch băm)
 
-- Mã vé: `INDEX-LOCALCOPY-FIX-HOME`
-- Role gợi ý: DEFAULT (code nhỏ + test)
-- Máy: nhà h410asrock
-- Báo cáo: `docs/phieu-viec/ket-qua/index-localcopy-fix-home.md`
-- Căn cứ: báo cáo `index-localcopy-check-home.md` (ĐẠT 08/10) — bản sao `local_runs/workspace_chat_rag_v2_production/.../library.sqlite` là bản ghim cũ 28/09 (496 tài liệu / 133.144 mảnh, thiếu 393 tài liệu / 16.656 mảnh so với production 889 / 149.800). App thật an toàn (đọc production ở ổ C), nhưng 3 đường mặc định còn trỏ vào bản cũ. Điều phối DUYỆT hướng (b) của báo cáo: sửa đường mặc định, KHÔNG làm tươi bản sao, KHÔNG xoá bản sao ở vé này.
+- Mã vé: `SRC-421-PROVENANCE-HOME`
+- Role gợi ý: DEFAULT (điều tra chỉ-đọc + băm đối chiếu)
+- Máy: nhà h410asrock (phần kiểm trên kho Drive do điều phối chỉ định thêm nếu cần)
+- Báo cáo: `docs/phieu-viec/ket-qua/src-421-provenance-home.md`
+- Căn cứ: báo cáo `src-package-511-home.md` — 421/479 tệp ở gốc canary đã bị **tái vật liệu hoá sau khi dựng chỉ mục** nên byte hiện tại lệch vân tay chỉ mục (danh sách: `docs/phieu-viec/ket-qua/src-package-511-lech.csv`, kèm băm hiện tại + vân tay kỳ vọng từng mã). 90 mã khớp đã đóng gói riêng (vé UPLOAD + vé nhận PC0575 lo phần đó; vé này chỉ lo 421).
 
-## Việc phải làm (đúng 3 điểm đã rà)
+## Việc phải làm (CHỈ ĐỌC ở mọi kho ứng viên)
 
-1. `scripts/workspace_chat_rag_v2_activation.py:54` — `DEFAULT_RUNTIME_ROOT` đang trỏ `local_runs/workspace_chat_rag_v2_production`: đổi hành vi để khi không truyền `--runtime-root` thì dùng đường production thật ở ổ C (theo config `config/workspace_chat_rag_v2.local.json`) hoặc dừng với thông báo rõ ràng bằng tiếng Việt nếu không xác định được — tuyệt đối không lặng lẽ dùng bản cũ trong `local_runs`.
-2. `scripts/benchmark_adaptive_reranking.py:593` — fallback `PROJECT_ROOT / "local_runs/workspace_chat_rag_v2_production"` khi thiếu `runtime_root`/`deployment`: xử lý cùng nguyên tắc như điểm 1 (trỏ production thật hoặc dừng rõ ràng).
-3. `tests/test_index_status.py` (`test_index_status_matches_real_db_if_present`) — bài kiểm đang đọc bản trong `local_runs` rồi khẳng định số production (149.800/889) nên đỏ oan và gây hiểu nhầm production hỏng: sửa để bài kiểm hoặc (a) đọc đúng tệp production theo config và bỏ qua sạch khi tệp không tồn tại, hoặc (b) nếu vẫn đọc bản local thì khẳng định đúng tính chất "bản cũ" của nó. Chọn một hướng, ghi lý do trong báo cáo. Không nới test vô căn cứ.
-
-## Kiểm chứng
-
-- Chạy lại `tests/test_index_status.py` trên máy nhà: xanh (hoặc skip có lý do rõ in ra).
-- Chạy thử 2 script ở chế độ an toàn (dry-run/help nếu có) để chứng minh mặc định mới không còn trỏ `local_runs`.
-- Cổng repo: Python 3.11, compileall, `cli audit`, import app; không hồi quy các suite chạm tới.
+1. Liệt kê các kho ứng viên có thể còn giữ byte đúng lúc nạp cho các tài liệu canary, theo dấu vết thời gian dựng chỉ mục (canary dựng trong đợt chia kho đầu tháng 10): bản sao lưu pre-split ở máy nhà (`D:\Sandbox\AIOS_index_split_backup\...` — kiểm cả cây materialized_sources nếu có), các thư mục `local_runs/` khác ở máy nhà, và mọi vị trí vật liệu hoá cũ còn sót. Ghi rõ từng kho: đường dẫn, thời điểm, căn cứ cho rằng nó có thể chứa bản đúng.
+2. Với mỗi kho ứng viên: băm đối chiếu các tệp tương ứng 421 mã (đúng hàm băm byte thô như vé PACKAGE) → đếm bao nhiêu mã tìm được byte khớp vân tay kỳ vọng, liệt kê mã nào kho nào.
+3. Kết luận + khuyến nghị theo số liệu: (a) tìm đủ/phần lớn → đề xuất vé đóng gói bổ sung; (b) không kho nào có → đề xuất hướng chấp nhận nạp lại 421 mã từ tệp hiện tại phía máy công ty (kèm hệ quả: phải dựng lại phần chỉ mục của 421 mã đó + kiểm chứng lại vân tay) để điều phối trình user quyết. KHÔNG tự thực hiện hướng nào ở vé này.
 
 ## Rào cứng
 
-- Không xoá/di chuyển/đổi tên bản sao cũ; không đụng tệp production; không ghi index; không merge `main`.
+- Chỉ đọc; không sửa/xoá/di chuyển tệp ở bất cứ kho nào; không ghi index; không merge `main`.
