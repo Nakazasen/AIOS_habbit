@@ -1,5 +1,9 @@
 ﻿# Trạng thái mailbox-opencode (thợ opencode — model free muse-spark-1.3 / space-bunny)
 
+- Trạng thái: `xong-cho-duyet`
+- `commit`: `db98ced` (code 3 điểm) + báo cáo `index-localcopy-fix-home.md` ở lượt đẩy này
+- `bao_cao`: `docs/phieu-viec/ket-qua/index-localcopy-fix-home.md`
+- `ghi_chu`: 2026-10-08 01:28 +07 — XONG chờ duyệt `INDEX-LOCALCOPY-FIX-HOME`: activation mặc định None + đọc production từ config/thiếu thì dừng tiếng Việt; benchmark bỏ fallback local_runs, trỏ production hoặc BLOCK rõ; test hướng (a) đọc production theo config + skip sạch. Kiểm chứng: test_index_status 9/9 (34,2s, gồm bài production PASSED), deployment 25/25, compileall sạch, audit PASS, import OK; parser_default None, resolve ra C:\AIOS_workspace_chat_rag_v2_production. Không xoá bản sao, không đụng production, không ghi index, không merge `main`.
 - `ghi_chu`: 2026-10-08 01:22 +07 — Mốc code xong vé `INDEX-LOCALCOPY-FIX-HOME`: sửa 3 điểm (activation mặc định None + đọc production từ config/thiếu thì dừng tiếng Việt; benchmark bỏ fallback local_runs, trỏ production hoặc BLOCK rõ; test chuyển hướng (a) đọc production theo config + skip sạch). `compileall` sạch. Kế tiếp: chạy test + thử dry-run/help + cổng repo.
 - Trạng thái: `dang-lam`
 - `ghi_chu`: 2026-10-08 01:14 +07 — Nhận vé `INDEX-LOCALCOPY-FIX-HOME`, cổng MỞ (trạng thái `moi` + prompt đúng vé + verdict ĐẠT CHECK-HOME 01:10 phát hành FIX-HOME; không rơi nhánh 4-lần/cho-muse). Vé sửa 3 điểm mặc định trỏ bản cũ, không xoá bản sao, không đụng production. Bắt đầu bước 1: đọc code 3 điểm + config, chưa sửa gì.
