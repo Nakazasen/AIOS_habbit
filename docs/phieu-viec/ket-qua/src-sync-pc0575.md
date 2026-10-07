@@ -1,9 +1,9 @@
-# Báo cáo vé `SRC-SYNC-PC0575` — nháp Pha 0 (xong điều tra, chờ cổng mạng)
+# Báo cáo vé `SRC-SYNC-PC0575` — nháp Pha 1 (xong liệt kê Drive, chờ chốt phương án 349 mã trống vân tay)
 
 - Vé: `SRC-SYNC-PC0575` — đưa tệp nguồn về máy công ty để RAG chạy đúng thiết kế.
 - Máy làm: công ty `KDTVN-PC0575` (mạng công ty `vn-kdwireless` suốt Pha 0).
 - Thời gian Pha 0: 2026-10-07 10:05 → 10:25 +07 (giờ máy).
-- Trạng thái vé: xong Pha 0, **dừng ở cổng mạng** (chưa tải bất kỳ tệp nào).
+- Trạng thái vé: xong Pha 1 (cổng mạng mở theo cơ chế mới, đã liệt kê Drive, tuyệt đối chưa tải tệp nào).
 - Nhánh làm việc: `phieu-viec/rag-fix1`, không gộp nhánh chính.
 - Đầu vào đã đọc trước: mục 2.3 + 2.4 của `docs/phieu-viec/ket-qua/lsu-quality-pc0575.md` và báo cáo `docs/phieu-viec/ket-qua/knowledge-digest-cty.md`.
 
@@ -46,14 +46,30 @@
 - Mã băm `MD5` của tệp chỉ mục đo sau Pha 0: `A7C7C2325949C05D3396AB5371E42E64` — khớp mã đã ghi ở vé đo chất lượng và vé sổ tay (không đổi, không ghi gì vào chỉ mục).
 - Lệnh kiểm tra dùng trong Pha 0 đều mở cơ sở dữ liệu ở chế độ chỉ đọc; chi tiết lệnh nằm ở `scratch/src_sync_ph0_schema.py`, `scratch/src_sync_ph0_prefix.py`, `scratch/src_sync_ph0_size.py` (ngoài Git, không nhập kho).
 
-## 2. Yêu cầu chuyển mạng (cổng Pha 1 — bắt buộc dừng chờ)
+## 2. Yêu cầu chuyển mạng (cổng Pha 1 — cơ chế MỚI từ 2026-10-07, thay đoạn dừng chờ cũ)
 
-- Thợ xin chuyển sang mạng `KT_CHETAO` chỉ để liệt kê và tải thư mục Drive `AIOS_Data` (nhóm `MOM`, `LSU`, `Dieu-tra-loi`).
-- Thợ **dừng chờ** dòng xác nhận của Muse với đúng nội dung: đã chuyển mạng `KT_CHETAO`, tiếp tục kéo.
-- Tuyệt đối chưa tải bất kỳ tệp nào trước dòng xác nhận đó. Tải xong sẽ về lại mạng công ty mới chạy chương trình và đầu mối (đúng vé).
+- Thợ TỰ chuyển sang mạng `KT_CHETAO` bằng `D:\Sandbox\agent-mailbox\Chuyen-Mang.ps1 -Mang ngoai`, kiểm kết quả `DRIVE=OK` rồi mới tải — không chờ dòng xác nhận của Muse nữa (quy ước mới trong `docs/phieu-viec/mailbox-pc0575-opencode/QUY-UOC.md`).
+- Tải xong chuyển về `-Mang congty` mới chạy chương trình và đầu mối.
+- Bằng chứng cổng mở lúc 10:46: `MANG=KT_CHETAO`, `DRIVE=OK` (chạy lại lệnh chuyển mạng, ra được `drive.usercontent.google.com:443`).
 
 ## 3. Rào đã giữ trong Pha 0
 
 - Không ghi hay sửa chỉ mục (mã băm không đổi như trên).
 - Không chạm tệp `wire_qa_staging.py` (đồng nghiệp đang vá ở vé song song).
 - Không khởi động lại chương trình của đồng nghiệp, không gộp nhánh chính, không đưa bí mật vào báo cáo hay nhật ký.
+
+## 4. Pha 1 xong — liệt kê Drive `AIOS_Data` (chỉ đọc, chưa tải tệp nào)
+
+- Cách liệt kê: trang xem thư mục công khai của Drive (`embeddedfolderview`) qua mạng `KT_CHETAO`, không đăng nhập, không tải tệp.
+- Gốc `AIOS_Data` (11 mục): 3 thư mục — `Hệ thống MOM_Opcenter_WMS`, `index-split-r5-backup`, `Tài liệu của tất cả dòng máy` — và 8 tệp (`bge-m3-onnx-fp32.zip`, `error_cases_dict.db`, `export_dc.jsonl`, `gpu-262b-delta-20261001.zip`, `gpu-dc-delta-20261001.zip`, `library.sqlite`, `text_export.jsonl`, `Điều chỉnh-20260905T053942Z-1-001.zip`).
+- `Hệ thống MOM_Opcenter_WMS`: khoảng 30 tệp nguồn nhóm MOM (bản trình chiếu, bảng tính, bản vẽ, văn bản).
+- `Tài liệu của tất cả dòng máy`: 3 thư mục con `6thA3 LSU`, `Iris LSU`, `Sirius LSU` (mỗi thư mục còn thư mục cháu như `log`, `Lỗi JIG BEAM`) + vài tệp lẻ nhóm LSU.
+- Ghi chú: tệp `gpu-dc-delta-20261001.zip` và `gpu-262b-delta-20261001.zip` ở gốc có tên gợi ý chứa phần chênh lệch của máy dựng chỉ mục — chưa mở, để dành cho bước tải.
+
+## 5. Phát hiện quyết định khi đọc mã (ảnh hưởng trực tiếp Pha 2)
+
+- Đếm lại trong chỉ mục (chỉ đọc): 889 mã tài liệu — 348 đường dẫn `gpu-dc://…` / `gpu-262b://…`, 541 đường dẫn tệp `.txt` vật liệu hóa (496 ở `local_runs/workspace_chat_rag_v2_canary/materialized_sources`, 45 ở `C:\AIOS_workspace_chat_rag_v2_production\…`).
+- Vân tay trong chỉ mục: **cả 348 mã nhóm `gpu-…` đều để trống** (`source_fingerprint` rỗng), thêm 1 mã nhóm vật liệu hóa cũng trống; 540 mã còn lại có vân tay đầy đủ.
+- Vì sao quan trọng: mỗi truy vấn, chương trình băm tệp trên đĩa (`_file_fingerprint`, `src/aios_habit/rag_v2/pipeline.py:162`) rồi so với vân tay trong chỉ mục ở 3 cổng (`verify_selected_document_coverage`, `_is_stale`, `_hybrid_result_is_safe`); đường dẫn `gpu-…` không phải tệp trên đĩa nên luôn ra `__source_unavailable__`, khác vân tay rỗng trong chỉ mục — **tải tệp về cũng không qua được cổng với 349 mã này** nếu không có cơ chế ánh xạ trong mã (hiện mã nguồn không có chỗ nào ánh xạ `gpu-…` ra tệp đĩa).
+- Hệ quả trung thực cho tiêu chí nghiệm thu: chỉ tải tệp không đủ cho cả 889; tối đa qua được cổng vân tay là 540/889 (nhóm có vân tay, nếu đặt đúng từng byte vào đúng đường dẫn tuyệt đối trong chỉ mục). Muốn đủ 889 phải thêm một trong: cơ chế ánh xạ `gpu-…` (đổi mã, cần duyệt kiến trúc), hoặc dựng lại chỉ mục có vân tay (vé cấm ghi chỉ mục), hoặc chốt chế độ chỉ-dùng-chỉ-mục chính thức.
+- Đề xuất bước tiếp theo (chờ Muse chốt, không tự làm bừa): tải đối chiếu `text_export.jsonl` + 2 gói `gpu-dc-delta` trước để xem có sẵn nội dung từng byte của 541 tệp vật liệu hóa không; nếu có thì đặt vào đúng đường dẫn, đo lại probe trên nhóm 540; song song xin quyết định cơ chế cho 349 mã còn lại.
