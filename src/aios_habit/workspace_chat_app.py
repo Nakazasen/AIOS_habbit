@@ -3988,6 +3988,21 @@ else:
                             locale=current_ui_locale,
                         )
 
+                # Dòng trạng thái chỉ mục trong khung chat (INDEX-STATUS-LINE-PC0575)
+                from aios_habit.index_status import (
+                    get_cached_index_status_line,
+                    resolve_active_index_db_path,
+                )
+
+                _active_idx_path = resolve_active_index_db_path(
+                    getattr(active_conversation, "collection_id", None)
+                )
+                _idx_status_text, _idx_is_err = get_cached_index_status_line(
+                    _active_idx_path,
+                    session_state=st.session_state,
+                )
+                st.caption(_idx_status_text)
+
                 chat_container = st.container()
                 with chat_container:
                     if not messages:
