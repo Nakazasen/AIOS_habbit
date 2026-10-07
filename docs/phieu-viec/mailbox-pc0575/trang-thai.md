@@ -1,5 +1,15 @@
 ﻿# Trạng thái mailbox — KDTVN-PC0575
 
+
+## Vé hiện tại: MATCHER-FIX-PC0575
+
+- Trạng thái: `moi`
+- `ghi_chu` (verdict Muse): 2026-10-07 ~09:35 +07 — **ĐẠT (tạm, chờ user nghiệm thu)** vé `LSU-QUALITY-PC0575`. Kiểm chứng độc lập (poll): phụ lục khớp từng câu — C-Agent **108,17/150 GPA 2,16** (đạt ≥2: 35, =3: 33); RAG **46,5/150 GPA 0,93** (đo bằng đường cũ trên máy công ty; chuỗi đã vá ở máy nhà hiện 1,28 — hai số không cùng phiên bản code). Phát hiện chính: 2 lỗi matcher staging làm 14/50 câu C-Agent mất ngữ cảnh đúng. hang-cho trống → phát vé tiếp theo theo ưu tiên 1 của báo cáo.
+- `ghi_chu` (điều phối Muse): 2026-10-07 ~09:35 +07 — Phát hành vé `MATCHER-FIX-PC0575` cho OMP PC0575 (xem prompt.md): vá lỗi recall (ngưỡng 3,0 loại 12 câu có cặp y hệt) + lỗi ranking (bonus mã linh kiện lấn át cặp đúng, Q0671/Q0658); nghiệm thu 2 tầng: ghép cặp 50/50 top-3 + đo lại lane C-Agent, mục tiêu GPA ≥2,5.
+- `commit`: (chờ thợ)
+
+---
+
 - Trạng thái: `xong-cho-duyet`
 - `ghi_chu` (tiến độ OMP): 2026-10-07 09:30 +07 — **XONG → chốt `xong-cho-duyet`.** Báo cáo đầy đủ: `docs/phieu-viec/ket-qua/lsu-quality-pc0575.md`. Tóm tắt: 2 lane đủ **50/50 câu, 0 lỗi kỹ thuật**: **C-Agent 108,2/150** (GPA 2,16; đạt ≥2: 35 câu 70,0%; =3: 33) — tách theo staging: khớp 38 câu GPA 2,78 / không khớp 12 câu GPA 0,21; phát hiện **2 lỗi cụ thể của `wire_qa_staging.py`**: recall (12 câu có cặp trong kho với câu hỏi y hệt nhưng tự chấm chỉ 0–2 < ngưỡng 3,0) + ranking (bonus mã linh kiện +8 lấn át cặp đúng ở Q0671/Q0658). **RAG 46,5/150** (GPA 0,93; đạt ≥2: 12 câu 24,0%; =3: 3 câu) trên index CHỈ-ĐỌC (md5 TRƯỚC=SAU=`a7c7c2325949c05d3396ab5371e42e64`, khớp vé digest) với 2 cổng vân tay hạ như phương pháp vé digest; 19/50 câu "thiếu dữ kiện" (retrieval hụt dữ liệu bảng), ≥4 câu trả lời lệch mảnh (đã FTS kiểm chuỗi nghi vấn có trong index → **không có ca bịa nào ở cả 2 lane**); 10 câu tệ nhất + phân loại lỗi + 5 đề xuất vá ở báo cáo. Rào giữ: không nhập điểm vào kho tri thức, không merge `main`, kết quả thô không commit (`local_cases/lsu_quality_pc0575/`). Chờ Muse review.
 - `bao_cao`: `docs/phieu-viec/ket-qua/lsu-quality-pc0575.md`
