@@ -1134,6 +1134,16 @@ def _is_fragment_noise(fragment: str) -> bool:
         return True
     if _FRAGMENT_FOOTER_RE.search(normalized) and len(normalized) < 90:
         return True
+    # A split window can cut through a sentence and leave a shard with an
+    # unbalanced bracket (for example "ABV(Step1..." cut at "|"). Real claims
+    # are balanced, so reject unbalanced shards regardless of language.
+    _BRACKET_PAIRS = (("(", ")"), ("[", "]"), ("{", "}"), ("\u3008", "\u3009"),
+                      ("\u300a", "\u300b"), ("\u300c", "\u300d"), ("\u300e", "\u300f"),
+                      ("\u3010", "\u3011"), ("\u3016", "\u3017"), ("\uff08", "\uff09"),
+                      ("\uff3b", "\uff3d"), ("\uff5b", "\uff5d"))
+    for opener, closer in _BRACKET_PAIRS:
+        if normalized.count(opener) != normalized.count(closer):
+            return True
     # OCR/table extraction can produce repeated words and decorative glyph runs.
     # These fragments often score highly on lexical overlap while carrying no
     # coherent claim, so reject them before facet selection.  Keep the rule
@@ -1600,6 +1610,9 @@ def _best_facet_candidate(
     first-match loop then lets a weak overview/table fragment mask a later,
     query-supported claim. Rank the best bounded fragment from every tagged
     item, while retaining evidence order as the deterministic tie-breaker.
+    Broadly tagged items (several facets) are only telemetry hints, so a
+    narrowly scoped item wins when lexical scores tie; overlap still outranks
+    scope, and length only breaks remaining ties.
     """
     best: tuple[tuple[int, ...], EvidenceItem, str] | None = None
     for item_index, item in enumerate(items):
@@ -1614,16 +1627,19 @@ def _best_facet_candidate(
         )
         if not fragment:
             continue
+        score = _fragment_score(
+            fragment,
+            query_terms,
+            facet_id,
+            prioritize_literals=prioritize_literals,
+            field_codes=field_codes,
+            file_identifiers=file_identifiers,
+        )
         candidate_key = (
             int(prefer_body_evidence and not _is_summary_evidence(item)),
-            *_fragment_score(
-                fragment,
-                query_terms,
-                facet_id,
-                prioritize_literals=prioritize_literals,
-                field_codes=field_codes,
-                file_identifiers=file_identifiers,
-            ),
+            *score[:-1],
+            int(len(item.matched_query_facets) == 1),
+            score[-1],
             -item_index,
         )
         candidate = (candidate_key, item, fragment)
