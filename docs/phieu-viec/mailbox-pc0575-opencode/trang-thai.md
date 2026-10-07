@@ -1,5 +1,7 @@
 ﻿# Trạng thái mailbox-pc0575-opencode — KDTVN-PC0575 (thợ opencode)
 
+- `ghi_chu` (thợ opencode): 2026-10-07 13:05 +07 — nhận phiên theo lệnh user (pull xong, đã đọc vé/Chỉ thị 12:22+12:35 + mục 2.3/2.4 + digest). Kiểm cổng gate: watcher chuỗi mới sig 2cd00ea mới 2/4 (12:34 RELAUNCH 1/4 + 13:04 NO-PICKUP 2/4), chưa chạm ngưỡng 4 nên KHÔNG đặt cho-muse, tiếp tục vé `SRC-SYNC-PC0575` ở `dang-lam`. Bắt đầu bước tiếp: kiểm mạng + tải 5 gốc mẫu hướng B đúng-nghĩa. Không đụng rag_v2* local (WIP agy), không ghi index.
+
 - `ghi_chu` (thợ opencode): 2026-10-07 13:00 +07 — xong bước (1) kiểm chứng chỉ mục chỉ-đọc (`mode=ro`): quick_check `ok`, đủ 889 mã / 149.800 mảnh (385 tóm tắt + 149.415 nội dung; 540 có vân tay + 348 gpu trống + 1 chỉ-tóm-tắt), vân tay logic nội dung `87a3626a…`, tổng `fce85b60…` đã ghi báo cáo mục 8; xong bản đồ B đúng-nghĩa (mã ↔ tên gốc ↔ bộ chuyển đổi, ví dụ 2 mã xlsm/xlsx lớn). Chưa tải Drive (cần cổng `ngoai` + `DRIVE=OK` ở nhịp sau). Không ghi index, không đụng rag_v2* local. Kiểm cổng gate: chuỗi mới 1/4, chưa 4 nên giữ `dang-lam`, không đặt cho-muse.
 
 - `ghi_chu` (thợ opencode): 2026-10-07 12:45 +07 — đã pull `9238b3c` + đọc vé/Chỉ thị 12:22 + gỡ cờ 12:35; kiểm cổng gate: watcher chuỗi mới sig 2cd00ea mới mở 1/4 lúc 12:34, chưa chạm ngưỡng 4 nên KHÔNG đặt cho-muse, tiếp tục vé `SRC-SYNC-PC0575` ở `dang-lam`. Bắt đầu bước (1) kiểm chứng chỉ mục chỉ-đọc (quick_check + đếm 889/149.800 + vân tay logic). Không đụng src/rag_v2* local, không ghi index.
