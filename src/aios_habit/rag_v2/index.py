@@ -60,7 +60,8 @@ _EXACT_IDENTIFIER_RE = re.compile(
 _SPECIAL_ENTITY_RES = (
     re.compile(r"(?<![A-Za-z0-9])C\d{2,5}(?![A-Za-z0-9])", re.IGNORECASE),
     re.compile(r"(?<!\w)[0-9][A-Z0-9]{5,}(?!\w)", re.IGNORECASE),
-    re.compile(r"\b(?:Sirius(?:\s*2)?|OKNGUNIT|Camera\s*140|MOUNT\s*LD\s*BLOCK|SIM\s*tape|NanoScan|Bow_Skew)\b", re.IGNORECASE),
+    re.compile(r"\b(?:Sirius(?:\s*2)?|OKNGUNIT|Camera(?:\s*140)?|MOUNT(?:\s*LD)?\s*BLOCK|NanoScan|Bow_Skew)\b", re.IGNORECASE),
+    re.compile(r"\b(?:SIM(?:\s*tape)?|LSU(?:\s*Line)?|COVER\s*GLASS)\b", re.IGNORECASE),
     re.compile(r"\b(?:g1|g2|OHP)\b", re.IGNORECASE),
     re.compile(r"\b(?:1035|1004)\b"),
     re.compile(r"(?<!\w)[A-Za-z][A-Za-z0-9]*(?:[_-][A-Za-z0-9]+)+(?!\w)"),
@@ -94,13 +95,14 @@ def _compute_entity_boost(
     boost = 0.0
     source_name_lower = (source_name or "").lower()
     source_path_lower = (source_path or "").lower()
-    prefix_text_lower = (text or "")[:300].lower()
+    prefix_text_lower = (text or "")[:500].lower()
     for entity in entities:
         ent_lower = entity.lower()
-        if ent_lower in source_name_lower or ent_lower in source_path_lower:
-            boost += 0.012
-        elif ent_lower in prefix_text_lower:
-            boost += 0.006
+        ent_stem = ent_lower.replace(" tape", "").replace(" line", "").strip()
+        if ent_lower in source_name_lower or ent_lower in source_path_lower or (len(ent_stem) >= 3 and ent_stem in source_name_lower):
+            boost += 0.015
+        elif ent_lower in prefix_text_lower or (len(ent_stem) >= 3 and ent_stem in prefix_text_lower):
+            boost += 0.008
     return min(boost, MAX_ENTITY_BOOST)
 
 
@@ -4203,9 +4205,19 @@ class LocalChunkIndex:
         """
         if not cjk_prefilter_enabled():
             return None
-        usable_terms = sorted(
-            {term for term in terms if term}, key=lambda term: (-len(term), term)
-        )[:2]
+        entities = _extract_query_entities(" ".join(terms))
+        if entities:
+            usable_terms = sorted(entities, key=lambda term: (-len(term), term))[:2]
+        else:
+            generic_stop = {"data", "file", "sheet", "line", "view", "part", "this", "from"}
+            filtered = [
+                term for term in terms
+                if term and term.lower() not in generic_stop and (len(term) <= 6 or not _CJK_RE.search(term))
+            ]
+            usable_terms = sorted(
+                {term for term in filtered if term},
+                key=lambda term: (-len(term), term),
+            )[:2]
         if not usable_terms or not eligible_ids:
             return None
         search_expression = (
@@ -4904,11 +4916,18 @@ class LocalChunkIndex:
         entities = _extract_query_entities(query_text)
         if entities:
             src_lower = (source_name or "").lower() + " " + (source_path or "").lower()
-            title_hits = sum(1 for ent in entities if ent.lower() in src_lower)
+            title_hits = 0
+            prefix_hits = 0
+            prefix_lower = (text or "")[:500].lower()
+            for ent in entities:
+                ent_lower = ent.lower()
+                ent_stem = ent_lower.replace(" tape", "").replace(" line", "").strip()
+                if ent_lower in src_lower or (len(ent_stem) >= 3 and ent_stem in src_lower):
+                    title_hits += 1
+                elif ent_lower in prefix_lower or (len(ent_stem) >= 3 and ent_stem in prefix_lower):
+                    prefix_hits += 1
             if title_hits:
                 signals["entity_title_match"] = min(3.0 * float(title_hits), 4.0)
-            prefix_lower = (text or "")[:300].lower()
-            prefix_hits = sum(1 for ent in entities if ent.lower() in prefix_lower)
             if prefix_hits:
                 signals["entity_prefix_match"] = min(1.5 * float(prefix_hits), 2.0)
 
