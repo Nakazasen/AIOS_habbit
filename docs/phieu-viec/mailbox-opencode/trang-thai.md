@@ -1,6 +1,7 @@
 ﻿# Trạng thái mailbox-opencode (thợ opencode — model free muse-spark-1.3 / space-bunny)
 
-- Trạng thái: `xong-cho-duyet`
+- Trạng thái: `moi`
+- `ghi_chu` (verdict Muse): 2026-10-08 ~02:55 +07 — **ĐẠT** vé `TEST-HEALTH-ROUND2-HOME` (tích tạm, chờ user nghiệm thu): chạy đủ 4.228 test trong 30,9 phút; đối chiếu vòng 1 chặt chẽ — 18/22 đỏ-code cũ đã khép (gồm 3 ca synthesis_provider hết lệch máy và index_status xanh), 23 đỏ môi trường cũ còn nguyên đúng như phân loại, 10 đỏ mới truy ra gốc thiếu gói tùy chọn graphify (môi trường), flaky 0. Còn 5 ca nghi code. Điều phối tự chạy đối chiếu VM: `dieu_huong` + `phase2i` đỏ cả trên VM; 3 ca còn lại xanh trên VM (ca lệch trạng thái máy nhà). **Phát hành vé `TEST-RED5-FIX-HOME`** (prompt.md đã thay — 5 ca + skip sạch cho graphify + đồng bộ uv.lock).
 - `commit`: `67a8936` (báo cáo `test-health-round2-home.md`; vé này không sửa `src/`/`tests/`)
 - `bao_cao`: `docs/phieu-viec/ket-qua/test-health-round2-home.md`
 - `ghi_chu`: 2026-10-08 02:43 +07 — XONG chờ duyệt `TEST-HEALTH-ROUND2-HOME`: toàn bộ 4.228 lượt (30,9 phút) — 4.153 đạt, 37 skip, 38 điểm đỏ đã phân loại: 33 môi trường (19 error y vòng 1 + 4 fail cũ + 10 mới do thiếu gói `graphifyy`), 0 flaky (3 ca mới chạy riêng đều fail), 5 nghi code thật (4 cũ còn lại + 1 mới `dieu_huong`). Khép 18/22 đỏ cũ (cả 3 `synthesis_provider` đã xanh — hết lệch máy; `index_status` xanh — đường đọc production đúng; `composer_noise` + 2 `cjk` xanh). Cổng: compileall sạch, audit PASS, import OK; không ghi index, không merge `main`.
