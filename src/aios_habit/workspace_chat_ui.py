@@ -657,7 +657,7 @@ def render_chat_bubble(
                         if verified_result_path
                         else {
                             "ok": False,
-                            "data": b"",
+                            "data": "",
                             "mime": "text/plain",
                             "file_name": f"{work_id}.md",
                             "is_binary": False,

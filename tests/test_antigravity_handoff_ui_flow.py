@@ -105,11 +105,11 @@ def test_wrong_request_unknown_id_missing_privacy_and_full_bundle_false_rejected
 
 
 def test_local_only_cloud_provider_blocked_and_vi_instruction(tmp_path):
+    # 2026-09-29 DATA_POLICY: owner removed local_only provider block.
     req = write_ide_handoff_bundle("CASE-1", "question", "active_case_all", fake_items(), root=tmp_path, request_id="REQ-PRIV")
     blocked, message = block_cloud_provider_for_local_only(req.manifest)
-    assert blocked is True
-    assert "local_only" in message
-    assert "Bị chặn" in message
+    assert blocked is False
+    assert "Cho phép" in message
     instruction = vietnamese_next_step_instruction(req.request_id, req.bundle_dir, req.inbox_response_path, req.manifest["privacy_mode"])
     assert "Mở Antigravity" in instruction
     assert "Kiểm tra phản hồi từ Antigravity" in instruction

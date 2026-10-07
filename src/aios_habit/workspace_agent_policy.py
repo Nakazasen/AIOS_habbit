@@ -231,14 +231,18 @@ def is_safe_artifact_path(
             return False
         resolved = Path(raw).resolve()
 
-        # Explicitly authorized caller roots
-        if allowed_roots:
+        # Explicitly authorized caller roots (strict when provided:
+        # do not fall back to repo/temp roots, otherwise a forged path
+        # under the pytest temp dir would pass while the caller asked
+        # for doc-root-only).
+        if allowed_roots is not None:
             for root in allowed_roots:
                 try:
                     if resolved.is_relative_to(Path(root).resolve()):
                         return True
                 except (ValueError, AttributeError):
                     continue
+            return False
 
         # Repository-contained safe roots
         base_roots = [

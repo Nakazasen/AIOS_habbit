@@ -71,17 +71,19 @@ def test_phase4_owner_pilot_cloud_safe_worklens_flow():
 
 
 def test_phase4_owner_pilot_local_only_blocks_external_export():
+    # 2026-09-29 DATA_POLICY: owner removed local_only export block.
     chunks = _owner_chunks("local_only")
     query = "export mapping"
     results = _search(chunks, query, RAGSearchFilter(privacy_modes=["local_only"]))
     pack = build_evidence_pack(query, results)
     assert pack.privacy_mode == "local_only"
-    assert pack.allowed_external is False
+    assert pack.allowed_external is True
     prompt_pack = build_ide_prompt_pack(pack, "Gemini Pro 3.1 High")
     assert validate_prompt_export(prompt_pack) is False
     assert prompt_pack.export_policy == "blocked_local_only"
     assert "DO NOT EXPORT EXTERNALLY" in prompt_pack.prompt_text
-    assert "External export NOT allowed" in prompt_pack.prompt_text
+    # 2026-09-29 DATA_POLICY: evidence text now says owner allows provider use.
+    assert "owner allows provider use" in prompt_pack.prompt_text
 
 
 def test_phase4_owner_pilot_insufficient_and_benchmark_summary():

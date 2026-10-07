@@ -60,7 +60,8 @@ def test_mom_prompt_pack_includes_refs_and_privacy_warning(tmp_path, monkeypatch
 
     assert pack["privacy_level"] == "local_only"
     assert pack["source_refs"]
-    assert "local_only" in pack["cloud_warning"]
+    # 2026-09-29 DATA_POLICY: cloud_warning cleared (owner allows provider).
+    assert pack["cloud_warning"] == ""
     assert "relative_path" in pack["source_refs"][0]
     assert "chưa đủ bằng chứng" in pack["prompt"]
 

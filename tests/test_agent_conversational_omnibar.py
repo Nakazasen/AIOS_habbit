@@ -384,6 +384,6 @@ def test_render_chat_bubble_denies_untrusted_metadata_path_traversal(tmp_path: P
     dl_calls = mock_st.download_button.call_args_list
     assert len(dl_calls) == 1
     assert dl_calls[0][1]["disabled"] is True
-    assert dl_calls[0][1]["data"] == ""
-    assert "SUPER_SECRET_KEY" not in dl_calls[0][1]["data"]
+    assert dl_calls[0][1]["data"] in ("", b"")
+    assert "SUPER_SECRET_KEY" not in str(dl_calls[0][1]["data"])
 

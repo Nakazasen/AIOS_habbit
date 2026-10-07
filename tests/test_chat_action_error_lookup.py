@@ -149,7 +149,9 @@ def test_extract_codes_normalizes():
 # --------------------------------------------------------------------------
 
 
-def test_missing_db_returns_none():
+def test_missing_db_returns_none(monkeypatch):
+    # Hermetic: machine may have real deploy DB in default candidates.
+    monkeypatch.setattr(lookup, "_DEFAULT_DB_CANDIDATES", ())
     old = os.environ.pop("AIOS_ERROR_CASES_DB", None)
     try:
         outcome = _dispatch("C7620", context={"error_cases_db": "/khong/co/file.db"})
