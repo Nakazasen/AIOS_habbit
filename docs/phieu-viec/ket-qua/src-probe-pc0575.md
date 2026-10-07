@@ -101,3 +101,10 @@
 - Máy lúc kiểm vẫn bận: các tiến trình nặng của thợ khác còn sống (bắt đầu từ 17:13, 17:41, 17:47) — đúng trường hợp chốt 17:48 dặn chỉ chạy mẫu khi máy rảnh.
 - Quyết định giữ nguyên: hoãn mẫu 3 truy vấn đầy đủ (gồm tệp đã kẹt `wsc-015067b7`, chạy nền tách phiên, ghi nhật ký từng chặng, trần 900 giây mỗi truy vấn) sang cửa máy rảnh. Bao phủ 29/29 + âm 5/5 + dương 5/5 ở mục 3 giữ nguyên giá trị.
 - Rào giữ nguyên: không ghi hay sửa tệp nguồn hay chỉ mục, không đụng `src/rag_v2*`, không gộp nhánh chính.
+
+## 9. Mốc kiểm nhẹ 18:11 + giữ hoãn mẫu truy vấn theo chốt 17:48
+
+- Kiểm nhẹ lúc 18:11 +07 (chỉ đọc chỉ mục `mode=ro` + `query_only=ON`, truy trực tiếp 29 mã, đối chiếu đường dẫn tuyệt đối + băm `SHA-256`, không mở mô hình): 29/29 tồn tại và khớp vân tay, hết 0,0 giây.
+- Máy lúc kiểm vẫn bận: tiến trình kiểm thử của thợ khác từ 17:13, đo truy hồi từ 17:47, notebook từ 17:41 còn sống — đúng trường hợp chốt 17:48 dặn chỉ chạy mẫu khi máy rảnh.
+- Quyết định giữ nguyên: hoãn mẫu 3 truy vấn đầy đủ (gồm tệp đã kẹt `wsc-015067b7`, chạy nền tách phiên, ghi nhật ký từng chặng, trần 900 giây mỗi truy vấn) sang cửa máy rảnh. Bao phủ 29/29 + âm 5/5 + dương 5/5 ở mục 3 giữ nguyên giá trị.
+- Rào giữ nguyên: không ghi hay sửa tệp nguồn hay chỉ mục, không đụng `src/rag_v2*`, không gộp nhánh chính.
