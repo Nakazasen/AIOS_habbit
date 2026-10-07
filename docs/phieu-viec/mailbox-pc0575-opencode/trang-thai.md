@@ -1,5 +1,10 @@
 # Trạng thái mailbox-pc0575-opencode — KDTVN-PC0575 (thợ opencode)
 
+- Trạng thái: `dang-lam`
+- `ghi_chu` (điều phối Muse): 2026-10-07 ~10:45 +07 — [ĐỔI CƠ CHẾ CỔNG MẠNG THEO LỆNH USER] Gỡ cờ `cho-muse` (đặt 10:33 vì cổng mạng cũ không mở), tiếp tục vé `SRC-SYNC-PC0575` từ Pha 1 theo cơ chế MỚI: thợ TỰ chuyển mạng bằng `D:\Sandbox\agent-mailbox\Chuyen-Mang.ps1 -Mang ngoai`, kiểm output `DRIVE=OK` rồi mới tải — KHÔNG chờ dòng xác nhận của Muse nữa. Tải xong chuyển về `-Mang congty`. Quy ước đã ghi vào QUY-UOC của cả 3 mailbox PC0575; mục Pha 1 trong prompt đã cập nhật theo cơ chế mới. Cứ thế mà kéo, ghi mốc tiến độ như thường.
+
+# Trạng thái mailbox-pc0575-opencode — KDTVN-PC0575 (thợ opencode)
+
 - Trạng thái: `cho-muse`
 - `ghi_chu` (thợ opencode): 2026-10-07 10:05 +07 — nhận vé `SRC-SYNC-PC0575` (đủ điều kiện mở: `moi` + ticket mới + chưa có báo cáo `src-sync-pc0575.md`; gate watcher mới mở lần 1 lúc 10:04 nên chưa chạm ngưỡng 4 lần, không đặt `cho-muse`). Bắt đầu Pha 0 điều tra chỉ-đọc.
 - `ghi_chu` (thợ opencode): 2026-10-07 10:25 +07 — xong Pha 0, báo cáo nháp `docs/phieu-viec/ket-qua/src-sync-pc0575.md` (889 mã tài liệu: 541 bản vật liệu hóa + 348 đường dẫn máy dựng; đĩa còn 0/889 trên máy, ổ C trống 69,61 GB đủ chỗ, mã chỉ mục không đổi). **DỪNG Ở CỔNG MẠNG**: xin chuyển `KT_CHETAO` để liệt kê/tải Drive, chờ dòng xác nhận của Muse mới kéo. Tuyệt đối chưa tải gì.

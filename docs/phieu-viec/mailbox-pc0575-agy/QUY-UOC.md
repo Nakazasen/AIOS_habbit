@@ -50,3 +50,19 @@ Branch làm việc: `phieu-viec/rag-fix1`. **Không push/merge trực tiếp, kh
 - Watcher Windows coi "`dang-lam` quá 20 phút không đổi `ghi_chu`/commit"
   là kẹt và popup cảnh báo; "`moi` quá 15 phút không ai nhận" thì popup
   nhắc OMP `git pull` và đọc mailbox.
+
+## Công tắc mạng PC0575 (thợ tự chuyển, KHÔNG gọi user, KHÔNG chờ Muse xác nhận)
+
+- Lệnh: `powershell -ExecutionPolicy Bypass -File "D:\Sandbox\agent-mailbox\Chuyen-Mang.ps1" -Mang ngoai|congty`
+  - Không tham số = chỉ xem trạng thái hiện tại.
+  - Output: `MANG=<SSID>`, `DRIVE=OK/FAIL`.
+- Ý nghĩa:
+  - `ngoai` = `KT_CHETAO`: ra được Google Drive, KHÔNG vào được LAN công ty
+    (endpoint C-Agent `kdtvn-ai.cmcts.vn` KHÔNG chạy trên mạng này — cấm thử).
+  - `congty` = `vn-kdwireless`: vào được LAN/C-Agent, Drive hên xui.
+- Áp dụng cho MỌI vé trên PC0575:
+  - Vé nào cần tải Drive: thợ TỰ mở đầu bằng `-Mang ngoai`, kiểm output `DRIVE=OK`
+    rồi mới tải. `DRIVE=FAIL` thì ghi mốc mailbox và chờ nhịp sau — không tải bừa.
+  - Tải xong: chuyển về `-Mang congty` nếu vé tiếp theo cần LAN/C-Agent.
+  - Cơ chế này THAY cổng cũ "dừng chờ user chuyển mạng + Muse ghi dòng xác nhận"
+    (user chốt 2026-10-07).

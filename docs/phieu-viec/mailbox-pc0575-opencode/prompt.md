@@ -31,11 +31,10 @@ Vé này xử lý gốc: làm cho file nguồn có mặt trên PC0575 đúng ch�
    danh sách 889 tài liệu trong index với file trên Drive, liệt kê thiếu/thừa.
 4. Ghi kết quả Pha 0 vào báo cáo nháp + mốc mailbox, rồi **DỪNG Ở CỔNG MẠNG** (Pha 1).
 
-### Pha 1 — CỔNG MẠNG (bắt buộc, không tự ý qua)
-- Trước khi tải BẤT KỲ file nào từ Drive: ghi yêu cầu chuyển mạng vào mailbox và
-  **DỪNG CHỜ** dòng xác nhận của Muse "đã chuyển mạng KT_CHETAO, tiếp tục kéo"
-  (KT_CHETAO chỉ để tải Drive; tải xong phải về mạng công ty mới chạy được C-Agent/app).
-- TUYỆT ĐỐI không tự tải khi chưa có dòng xác nhận đó.
+### Pha 1 — CHUYỂN MẠNG (thợ tự làm theo QUY-UOC, KHÔNG chờ xác nhận — cập nhật 2026-10-07)
+- Chạy: `powershell -ExecutionPolicy Bypass -File "D:\Sandbox\agent-mailbox\Chuyen-Mang.ps1" -Mang ngoai`
+- Kiểm output `DRIVE=OK` rồi mới tải. `DRIVE=FAIL`: ghi mốc mailbox, chờ nhịp sau thử lại — không tải bừa.
+- Tải xong: chuyển về `-Mang congty` (vé sau cần LAN/C-Agent).
 
 ### Pha 2 — Đồng bộ + kiểm chứng (sau khi cổng mở)
 1. Tải file nguồn về, đặt đúng đường dẫn index mong đợi (hoặc cơ chế ánh xạ tương đương —
@@ -64,4 +63,4 @@ Vé này xử lý gốc: làm cho file nguồn có mặt trên PC0575 đúng ch�
 
 - ĐẠT = file nguồn có mặt đủ (khớp danh sách index) + probe RAG chạy `strict_semantic=True`
   không hạ cổng vẫn trả lời được + md5 index không đổi.
-- Chưa qua cổng mạng thì trạng thái đúng là "xong Pha 0, chờ cổng" — ghi rõ, không coi là xong vé.
+- Nếu chuyển mạng `ngoai` mà `DRIVE=FAIL` kéo dài: ghi trạng thái "kẹt cổng mạng" kèm output làm bằng chứng — không coi là xong vé.
