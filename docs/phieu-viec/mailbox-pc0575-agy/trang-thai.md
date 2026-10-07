@@ -2,9 +2,10 @@
 
 ## Vé hiện tại: INDEX-STATUS-LINE-PC0575
 
-- Trạng thái: `dang-lam`
-- `commit`: `d5861c5a`
+- Trạng thái: `xong-cho-duyet`
+- `commit`: `f566f9f4`
 - `bao_cao`: `docs/phieu-viec/ket-qua/index-status-line-pc0575.md`
+- `ghi_chu`: 2026-10-07 21:32 +07 — Hoàn thành vé `INDEX-STATUS-LINE-PC0575`: Thêm dòng trạng thái mảnh `st.caption` ngay trên `chat_container` trong `workspace_chat_app.py`; hiển thị đúng chuẩn "Kho đang dùng: library.sqlite · 889 tài liệu · 149.800 mảnh · mã 87a3626a85bc · ONNX fp32"; có fallback cảnh báo khi thiếu/lỗi DB; tính 1 lần và cache theo phiên (session_state + memory cache); bài test test_index_status.py đạt 9/9 PASS (đối chiếu trực tiếp DB thật); 4 cổng repo PASS (compileall, pytest, cli audit PASS, import app OK). Sẵn sàng bàn giao cho điều phối Muse nghiệm thu.
 - `ghi_chu`: 2026-10-07 21:20 +07 — Tiến độ INDEX-STATUS-LINE: Xác minh thành công công thức vân tay logic trên library.sqlite thực tế: 889 tài liệu, 149.800 mảnh, mã 12-hex rút gọn `87a3626a85bc` khớp 100% mốc SRC-SYNC; backend ONNX fp32. Bắt đầu thiết kế module index_status và tích hợp vào workspace_chat_app.py.
 - Ticket hiện tại: `INDEX-STATUS-LINE-PC0575` — [CTY] dòng trạng thái chỉ mục trong khung chat. Prompt: `docs/phieu-viec/mailbox-pc0575-agy/prompt.md`.
 
