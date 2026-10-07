@@ -1,4 +1,4 @@
-# Quy ước riêng — mailbox KDTVN-PC0575 (thợ OMP)
+﻿# Quy ước riêng — mailbox KDTVN-PC0575 (thợ OMP)
 
 Quy ước chung của hệ mailbox: xem `docs/phieu-viec/mailbox/QUY-UOC.md`.
 File này chỉ ghi phần RIÊNG của máy công ty KDTVN-PC0575.
@@ -18,3 +18,8 @@ File này chỉ ghi phần RIÊNG của máy công ty KDTVN-PC0575.
   - Tải xong: chuyển về `-Mang congty` nếu vé tiếp theo cần LAN/C-Agent.
   - Cơ chế này THAY cổng cũ "dừng chờ user chuyển mạng + Muse ghi dòng xác nhận"
     (user chốt 2026-10-07).
+
+## Vé chờ cổng — miễn leo thang (user duyệt 2026-10-07, guard watcher 0d3d797)
+
+- Vé nào có dòng `- cho-cong: <lý do> | han yyyy-MM-dd HH:mm` trong `trang-thai.md` (hạn tối đa 24h) thì watcher không đếm stall (log SKIP-STALL), và **thợ cũng không tự áp luật 4-lượt**: không đặt `cho-muse`, không dừng — tiếp tục heartbeat và kiểm cổng mỗi phiên cho tới khi cổng mở hoặc dòng cho-cong hết hạn.
+- Dòng cho-cong hết hạn mà điều phối chưa gia hạn: luật leo thang cũ sống lại bình thường.
