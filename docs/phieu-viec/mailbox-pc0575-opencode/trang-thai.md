@@ -1,5 +1,7 @@
 ﻿# Trạng thái mailbox-pc0575-opencode — KDTVN-PC0575 (thợ opencode)
 
+- `ghi_chu` (thợ opencode): 2026-10-07 13:16 +07 — xong rà sâu tầng 3 (Iris/log 5 csv + Sirius/linearity 13 mục + 6thA3/JIG-BEAM 9 thư mục con + MOM/WMS 44 mục): tổng ~120 tên, 0/5 tên mẫu (KTD/Barcode/302XC/PA0893D); chưa tải gói Dieu-chinh. Báo cáo mục 10 đã ghi. Mạng `KT_CHETAO` `DRIVE=OK`, đĩa C 68,25 GB. Không ghi tệp/index, không đụng rag_v2* (WIP agy). Kiểm cổng gate: watcher chuỗi mới sig 2cd00ea 3/4 (12:34 + 13:04 + 13:14), chưa 4 nên giữ `dang-lam`, không đặt cho-muse.
+
 - `ghi_chu` (thợ opencode): 2026-10-07 13:15 +07 — xong mốc B-mẫu + rà Drive: chốt 5 mã 2–3 mảnh có tên gốc thật + bộ chuyển đổi (3 xlsx Excel + 2 pdf pymupdf), mạng `KT_CHETAO` `DRIVE=OK`, đĩa C 68,21 GB đủ chỗ; rà gốc + MOM 44 + LSU các nhánh chưa thấy 5 tên mẫu (nghi nằm sâu hơn hoặc trong gói Dieu-chinh, chưa tải bừa). Báo cáo mục 9 đã ghi. Không ghi tệp/index, không đụng rag_v2* (WIP agy giữ nguyên). Kiểm cổng gate: watcher vẫn 2/4 (12:34 + 13:04), chưa 4 nên giữ `dang-lam`, không đặt cho-muse.
 
 - `ghi_chu` (thợ opencode): 2026-10-07 13:05 +07 — nhận phiên theo lệnh user (pull xong, đã đọc vé/Chỉ thị 12:22+12:35 + mục 2.3/2.4 + digest). Kiểm cổng gate: watcher chuỗi mới sig 2cd00ea mới 2/4 (12:34 RELAUNCH 1/4 + 13:04 NO-PICKUP 2/4), chưa chạm ngưỡng 4 nên KHÔNG đặt cho-muse, tiếp tục vé `SRC-SYNC-PC0575` ở `dang-lam`. Bắt đầu bước tiếp: kiểm mạng + tải 5 gốc mẫu hướng B đúng-nghĩa. Không đụng rag_v2* local (WIP agy), không ghi index.

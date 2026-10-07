@@ -148,3 +148,11 @@
   - `MOM_Opcenter_WMS` 44 mục, `Tài liệu của tất cả dòng máy` 8 mục (3 thư mục LSU + 5 tệp lẻ), `Iris LSU` 11 mục, `6thA3 LSU` 1 mục, `Sirius LSU` 7 mục — **không thấy 5 tên gốc mẫu** ở các mức đã liệt kê.
   - Suy đoán trung thực: 5 tệp KTD/PDF mẫu nằm sâu hơn (thư mục cháu chưa duyệt hết) hoặc trong gói `Điều chỉnh-20260905T053942Z-1-001.zip` ở gốc — cần duyệt tiếp ở nhịp sau, không tải bừa cả gói lớn.
 - Rào giữ: chỉ đọc chỉ mục (`mode=ro`), không ghi tệp nào, không sửa chỉ mục, không đụng `wire_qa_staging.py`, không đụng `src/rag_v2*` local (WIP của agy giữ nguyên).
+
+## 10. Rà sâu tầng 3 (thợ làm 13:14 → 13:16, chỉ liệt kê Drive, chưa tải gì)
+
+- Cách làm: liệt kê `embeddedfolderview` từng thư mục con qua mạng `KT_CHETAO` (`DRIVE=OK`), đối chiếu đúng tên 5 tệp mẫu mục 9.
+- Kết quả tầng 2: `MOM_Opcenter_WMS` 44 mục (5 thư mục con + 37 tệp, toàn tài liệu MOM/WMS/PLM — không có tên mẫu); `Tài liệu của tất cả dòng máy` 8 mục (3 thư mục LSU + 5 tệp lẻ LSU — không có tên mẫu); `Iris LSU` 11 mục, `Sirius LSU` 7 mục, `6thA3 LSU` 1 mục (`Lỗi JIG BEAM`) — không có tên mẫu.
+- Kết quả tầng 3: `Iris/log` 5 tệp csv, `Iris/thử nghiệm TAPE` 2 mục, `Sirius/NG BOW_SKEW_RC9` 1 mục, `Sirius/Sirius2_linearity` 13 mục (6 thư mục con + 7 tệp xlsm/xlsx/png), `Sirius/ảnh hưởng độ dạt tia` 5 mục, `6thA3/Lỗi JIG BEAM` 9 thư mục con (ngày `2021.03.xx`) — **không thấy 5 tên mẫu** ở tầng này.
+- Tổng đã rà khoảng 120 tên qua 3 tầng: **0/5 tên mẫu**. Không tải bừa gói `Điều chỉnh-...zip` ở gốc (chưa rõ dung lượng, để nhịp sau quyết).
+- Rào giữ: chỉ liệt kê Drive + đọc chỉ mục cũ, không ghi tệp nào, không sửa chỉ mục, không đụng `src/rag_v2*` local.
