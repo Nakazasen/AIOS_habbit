@@ -264,6 +264,17 @@ _RETRYABLE_PREPARATION_ERRORS = frozenset({
     "preparation_init_bge_worker_model_load_failed",
     "semanticbackendunavailable",
     "source_text_unavailable",
+    # BGE-WORKER-FIX-HOME: Bổ sung các mã lỗi timeout / kết nối worker để tự phục hồi,
+    # không ghim cờ lỗi vĩnh viễn cho nguồn hay độc phiên hỏi đáp.
+    "bge_worker_init_timeout",
+    "bge_worker_persist_timeout",
+    "bge_worker_persist_unavailable",
+    "bge_worker_init_spawn_failed",
+    "preparation_init_bge_worker_init_timeout",
+    "preparation_init_bge_worker_persist_timeout",
+    "preparation_init_bge_worker_persist_unavailable",
+    "preparation_init_bge_worker_init_spawn_failed",
+    "preparation_init_worker_busy",
 })
 _SEMANTIC_SOURCE_STOP_WORDS = frozenset(
     {
@@ -1253,6 +1264,8 @@ def initialize_workspace_chat_rag_v2_worker(
             )
         )
     except Exception as exc:
+        # BGE-WORKER-FIX-HOME: Tự phục hồi: giải phóng cờ lỗi client để lượt gọi sau có thể thử lại
+        _SUBPROCESS_CLIENT.clear_failure_reason()
         raise RuntimeError(f"preparation_init_{_safe_reason(exc)}") from exc
 
 
@@ -1512,6 +1525,8 @@ def prepare_workspace_chat_sources(
         reason = "library_writer_busy" if busy else _safe_reason(exc)
         status = "pending" if busy else "failed"
         latency_ms = round((time.perf_counter() - started) * 1000.0, 3)
+        if "timeout" in reason or "bge_worker" in reason:
+            _SUBPROCESS_CLIENT.clear_failure_reason()
         with _PREPARATION_LOCK:
             for source in sources:
                 key = _preparation_key(resolved, source)
@@ -3462,6 +3477,10 @@ def retrieve_workspace_chat_evidence(
     except Exception as error:
         reason = _safe_reason(error)
         LOGGER.warning("Workspace Chat BGE-M3 retrieval unavailable: %s", reason, exc_info=True)
+        # BGE-WORKER-FIX-HOME: Tự phục hồi: khi gặp lỗi timeout hoặc worker không sẵn sàng,
+        # xóa cờ lỗi client để lượt hỏi tiếp theo có thể thử kích hoạt lại worker thay vì fail-fast 0.01s.
+        if "timeout" in reason or "unavailable" in reason or "bge_worker" in reason:
+            _SUBPROCESS_CLIENT.clear_failure_reason()
         return _finish(_quality_search_unavailable(reason))
 
 

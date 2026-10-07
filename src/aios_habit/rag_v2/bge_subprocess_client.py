@@ -30,11 +30,13 @@ from aios_habit.rag_v2.adaptive_retrieval import (
 
 LOGGER = logging.getLogger(__name__)
 
-# Model-tree verification and local PyTorch model loading are a bounded startup
+# Model-tree verification and local model loading are a bounded startup
 # operation, distinct from the per-document preparation SLA. CPU cold starts can
-# exceed three minutes while still completing successfully, so allow five minutes
-# but retain a hard fail-closed process deadline.
-_INIT_TIMEOUT_SECONDS = 300.0
+# exceed three minutes while still completing successfully, so retain a hard fail-closed
+# process deadline.
+# Căn cứ số đo init thực tế 246–302s (báo cáo chẩn đoán bge-worker-diag-home.md)
+# trên CPU máy nhà h410asrock, nâng trần lên 420.0s (7 phút) để không bị timeout khi máy có tải nền.
+_INIT_TIMEOUT_SECONDS = 420.0
 _PREPARE_TIMEOUT_SECONDS = float(os.environ.get("AIOS_BGE_PREPARE_TIMEOUT", "300.0"))
 _QUERY_TIMEOUT_ENV_VAR = "AIOS_BGE_QUERY_TIMEOUT"
 _INIT_TIMEOUT_ENV_VAR = "AIOS_BGE_INIT_TIMEOUT"
@@ -43,9 +45,9 @@ _INIT_TIMEOUT_ENV_VAR = "AIOS_BGE_INIT_TIMEOUT"
 def default_init_timeout_seconds() -> float:
     """Bounded worker init timeout, in seconds.
 
-    The default 300.0 s matches the fail-closed cold-start deadline above. On
+    The default 420.0 s matches the fail-closed cold-start deadline above. On
     slow CPU-only hosts the physical BGE-M3 init (dense + sparse preloads) can
-    exceed the historical 120 s caller window (KDTVN-PC0575: 180.9 s), which
+    exceed 300 s (bge-worker-diag-home.md: 246–302 s on h410asrock CPU), which
     used to abandon the loading worker and respawn a fresh one per attempt.
     Operators may raise or lower this via ``AIOS_BGE_INIT_TIMEOUT``; it is
     clamped to a minimum of 1.0 s so a bad value cannot disable the budget.
@@ -78,7 +80,11 @@ def default_query_timeout_seconds() -> float:
 _QUERY_TIMEOUT_SECONDS = default_query_timeout_seconds()
 _WORKER_PROTOCOL_VERSION = "1"
 _PERSIST_PROBE_TIMEOUT_SECONDS = 4.0
-_PERSIST_SPAWN_WAIT_SECONDS = 120.0
+# Bounded wait for detached persistent worker to spawn and open named pipe.
+# Căn cứ số đo model_load ONNX fp32 trên CPU mất 188–214s trước khi mở named pipe
+# (báo cáo chẩn đoán bge-worker-diag-home.md), nâng từ 120s lên 360s (6 phút)
+# để client kiên nhẫn chờ worker hoàn tất nạp model.
+_PERSIST_SPAWN_WAIT_SECONDS = 360.0
 _PERSIST_QUERY_CONNECT_SECONDS = 20.0
 
 
@@ -199,6 +205,11 @@ class BgeSubprocessWorkerClient:
             return self._process is not None and self._process.poll() is None
         finally:
             self._lock.release()
+
+    def clear_failure_reason(self) -> None:
+        """Clear cached failure reason to allow fresh retry on subsequent attempts."""
+        with self._lock:
+            self._last_failure_reason = ""
 
     def _start_worker_locked(self, config: RagV2DevConfig) -> None:
         """Track an init request for ``config``: keep a pending one or spawn.
@@ -896,15 +907,20 @@ class BgeSubprocessWorkerClient:
                 connect_timeout_s=min(timeout, _PERSIST_SPAWN_WAIT_SECONDS),
                 allow_spawn=True,
             )
-        except SemanticBackendError:
+        except SemanticBackendError as exc:
+            self._last_failure_reason = str(exc)
             raise
         except Exception as exc:
-            raise SemanticBackendError("bge_worker_persist_init_exception") from exc
+            self._last_failure_reason = "bge_worker_persist_init_exception"
+            raise SemanticBackendError(self._last_failure_reason) from exc
         if response.get("status") != "ok":
-            raise SemanticBackendError(str(response.get("error", "bge_worker_init_failed")))
+            self._last_failure_reason = str(response.get("error", "bge_worker_init_failed"))
+            raise SemanticBackendError(self._last_failure_reason)
         readiness = response.get("readiness")
         if not isinstance(readiness, dict):
-            raise SemanticBackendError("bge_worker_init_invalid_response")
+            self._last_failure_reason = "bge_worker_init_invalid_response"
+            raise SemanticBackendError(self._last_failure_reason)
+        self._last_failure_reason = ""
         return {
             "status": "ok",
             "reused": bool(readiness.get("reused", False)),

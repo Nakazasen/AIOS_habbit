@@ -14,8 +14,10 @@ from aios_habit.rag_v2.semantic import DeterministicEmbeddingBackend, SemanticBa
 
 
 
-def test_bge_worker_cold_start_has_five_minute_fail_closed_deadline() -> None:
-    assert worker_client_module._INIT_TIMEOUT_SECONDS == 300.0
+def test_bge_worker_cold_start_has_fail_closed_deadline() -> None:
+    assert worker_client_module._INIT_TIMEOUT_SECONDS == 420.0
+    assert worker_client_module._PERSIST_SPAWN_WAIT_SECONDS == 360.0
+    assert worker_client_module.default_init_timeout_seconds() == 420.0
 
 
 def test_lexical_worker_does_not_require_default_onnx_model(
