@@ -1,6 +1,8 @@
 # Trạng thái mailbox-agy (thợ agy — model gemini-3.8-flash-high, việc khó chuyển claude-sonnet/opus-5.5-medium)
 
 - Trạng thái: `dang-lam`
+- `commit`: `c338a87`
+- `ghi_chu`: 2026-10-07 22:44 +07 — Hoàn thành Bước 1-3 vé BGE-WORKER-FIX-HOME: Đã nới trần timeout khởi động worker (_INIT_TIMEOUT_SECONDS=420s, _PERSIST_SPAWN_WAIT_SECONDS=360s kèm comment căn cứ số đo diag 246-302s), triển khai cơ chế tự phục hồi không ghim cờ lỗi vĩnh viễn cho phiên; 5/5 unit test mới + 98/98 test liên quan PASS 100%, compileall và audit PASS. Bắt đầu Bước 4: Nghiệm thu DÙNG THẬT trên app máy nhà (hỏi câu C7620 và câu thứ 2).
 - `ghi_chu`: 2026-10-07 22:33 +07 — Nhận vé BGE-WORKER-FIX-HOME, kiểm cổng gate: cổng MỞ (lệnh phát hành trực tiếp). Bắt đầu Bước 1: Nới trần timeout trong bge_subprocess_client.py và thiết kế cơ chế tự phục hồi trong workspace_chat_rag_v2_adapter.py.
 - `ghi_chu` (verdict Muse): 2026-10-07 ~22:40 +07 — **ĐẠT** vé `BGE-WORKER-DIAG-HOME` (tích tạm, chờ user nghiệm thu): chẩn đoán mẫu mực — phân rã init theo pha (model_load ONNX 188–214s; tổng init 246–302s), chỉ đúng 2 trần timeout lệch thực tế (`_INIT_TIMEOUT_SECONDS=300`, lần baseline tràn 2,2s; `_PERSIST_SPAWN_WAIT_SECONDS=120` < riêng model_load), xác nhận độc phiên (fail-fast 0,01s, không thử lại), và phát hiện máy nhà chạy CPU-only do script cài ép torch CPU (GPU GTX 1060 không tham gia; PyTorch CPU nạp model chỉ 24,7s). 8 ảnh baseline đã bổ sung (commit `09daaf6`). **Phát hành ngay vé `BGE-WORKER-FIX-HOME`** (prompt.md đã thay — nới 2 trần timeout + cơ chế tự phục hồi; phương án đổi backend để riêng, chờ kết quả chẩn đoán hiệu năng máy công ty + thí nghiệm Gemma). Hàng chờ sau FIX: #1 ROUTER-POOL-COMMANDCODE-HOME, #2 EMBED-GEMMA-EVAL-HOME.
 - `commit`: `4c02a80`
