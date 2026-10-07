@@ -164,3 +164,15 @@
 - Đo dung lượng KHÔNG tải (lệnh `curl --range 0-0` lấy `Content-Range`): `bytes 0-0/858190286` = 858.190.286 B ≈ 818,4 MB ≈ 0,799 GB — **dưới ngưỡng 1 GB nên được tải thẳng theo vé** (không cần báo trước mới tải).
 - Đĩa C lúc đo: trống ~73,8 GB (73.858.588.672 B) — đủ chỗ cho gói 0,8 GB + giải nén.
 - Rào giữ: chỉ đọc header + liệt kê, chưa tải byte nào, không ghi tệp/index, không đụng `wire_qa_staging.py`, không đụng `src/rag_v2*` local.
+
+## 12. Tải gói Điều-chỉnh + đối chiếu 5 mẫu bằng bộ chuyển đổi của chương trình (thợ làm 15:02 → 15:15)
+
+- Tải: `drive.usercontent.google.com/download?id=1jJpYPMgyPPRt2tPmuOuKEb8rWtwxB1eP` về `local_runs/src_sync/Dieu-chinh-20260905T053942Z-1-001.zip` (ngoài Git), đủ 858.190.286 B khớp `Content-Range`, tốc độ ~37 MB/s (~21 giây).
+- Giải nén chỉ-đọc: gói có 2.201 mục trong thư mục `Điều chỉnh/`.
+- Đối chiếu tên 5 mẫu mục 9 với tên trong gói: **4/5 có mặt** — `KTD-2026-01-0067…C4701.xlsx` (Lịch sử lỗi/C Call), `302XC47210-01.pdf` (Sơ đồ điện/Led), `PA0893D_circuit.pdf` (Sơ đồ điện/Tranfer Assy), `KTD-2025-11-1181…Màn hình không sáng.xlsx` (Lịch sử lỗi/C Call); **vắng `Barcode_List.xlsx`** (0 hit trong gói; rà gốc MOM 44+ mục cũng không thấy — cần nhịp sau tìm tiếp hoặc xin bản khác).
+- Tách 4 tệp ra `local_runs/src_sync/goc_mau/` (ngoài Git, chỉ để đối chiếu, chưa đặt vào `materialized_sources`).
+- Chạy đúng bộ chuyển đổi tải file hiện tại của chương trình (`ingest_and_extract_bytes` trong `src/aios_habit/workspace_chat_source_ingest.py`): băm SHA-256 văn bản đã xén so với vân tay chỉ mục — **0/4 khớp** (xlsx KTD-…C4701 900 ký tự `88b5de…` vs `f9023c…`; pdf 302XC 2.248 ký tự `69155f…` vs `983402…`; pdf PA0893D 1.080 ký tự `0a4be7…` vs `6fabc8…`; xlsx KTD-…1181 1.258 ký tự `651c50…` vs `c45516…`).
+- Ý nghĩa trung thực: tệp gốc cùng tên trong gói Điều-chỉnh KHÔNG cho ra đúng từng byte bản vật liệu hóa trong chỉ mục khi chạy bộ chuyển đổi hiện tại — có thể khác phiên bản tệp, khác bộ chuyển đổi lúc dựng chỉ mục, hoặc đường nối văn bản khác. Vì vậy **chưa ghi tệp nào vào `materialized_sources`** (đúng rào chỉ-ghi-khi-khớp).
+- Kiểm chứng chỉ mục trước/sau: chỉ mở `mode=ro`, không ghi/sửa chỉ mục (md5 logic sẽ đo ở nhịp probe sau).
+- Đề xuất xin Muse chốt: (a) tìm `Barcode_List.xlsx` ở nguồn khác; (b) thử đường chuyển đổi `rag_v2` (`ExcelDocumentConverterAdapter`/`PDFDocumentConverterAdapter` qua `registry`) thay vì đường tải file, hoặc xin 4 tệp đúng phiên bản từ máy dựng chỉ mục; (c) nếu vẫn lệch thì báo phương án C (chế độ index-only) — thợ KHÔNG tự chốt.
+- Rào giữ: không ghi `materialized_sources`, không sửa chỉ mục, không đụng `wire_qa_staging.py`, không đụng `src/rag_v2*` local, không merge `main`, không secret.
