@@ -183,15 +183,22 @@ def extract_content_terms(value: str) -> Tuple[str, ...]:
     """Return ordered, unique query terms after generic function-word removal."""
     seen: set[str] = set()
     result = []
-    text = _split_script_boundaries(value or "")
-    for match in _TOKEN_RE.finditer(text):
+    for match in _TOKEN_RE.finditer(value or ""):
         token = match.group(0).lower()
         if token in _COMMON_STOPWORDS or token in seen:
             continue
         seen.add(token)
         result.append(token)
-    if _CJK_RE.search(text):
-        for match in _CJK_RE.finditer(text):
+    split_text = _split_script_boundaries(value or "")
+    if split_text != (value or ""):
+        for match in _TOKEN_RE.finditer(split_text):
+            token = match.group(0).lower()
+            if token in _COMMON_STOPWORDS or token in seen:
+                continue
+            seen.add(token)
+            result.append(token)
+    if _CJK_RE.search(split_text):
+        for match in _CJK_RE.finditer(split_text):
             compound = match.group(0).lower()
             if len(compound) < 2:
                 continue
