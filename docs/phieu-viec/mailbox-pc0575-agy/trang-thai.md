@@ -1,6 +1,9 @@
 # Trạng thái mailbox-pc0575-agy — KDTVN-PC0575 (thợ agy — Antigravity CLI)
 
-- Trạng thái: `dang-lam`
+- Trạng thái: `xong-cho-duyet`
+- `commit`: `4f1f31c`
+- `bao_cao`: `docs/phieu-viec/ket-qua/rag-fail-analysis-pc0575.md`
+- `ghi_chu`: 2026-10-07 10:14 +07 — Hoàn thành vé `RAG-FAIL-ANALYSIS-PC0575`: phân loại toàn diện 50 câu đo thật lane RAG (12 ĐẠT, 38 dưới chuẩn). Trả lời định lượng câu hỏi cốt lõi: thước đo chấm tự động dìm mất 18,0 điểm (+0,360 GPA) do định dạng số/dấu phẩy/đơn vị/bộ đề lỗi; GPA thực chất của lane RAG trên dữ liệu hiện có đạt 1,290 / 3,0 (thay vì 0,930). 16 câu mất điểm do thiếu 11 tệp nguồn CSV/PPTX trong Index (+0,650 GPA); 7 câu do retrieval trượt (+0,280 GPA); 5 câu do lệch bảng Excel (+0,210 GPA). Đề xuất kế hoạch hành động 4 bước xếp ưu tiên bằng số. Cổng kiểm thử: compileall PASS, cli audit PASS, import app OK, test_quality_harness 5/5 PASS.
 - `ghi_chu`: 2026-10-07 10:12 +07 — Đã hoàn thành đối chiếu và phân loại toàn bộ 50 câu lane RAG: 12 ĐẠT, 38 DƯỚI CHUẨN (A: 7 câu retrieval trượt, B: 5 câu tổng hợp lệch bảng, C: 10 câu oan do thước đo, D: 16 câu thiếu nguồn trong index). Đang viết báo cáo chi tiết kèm bằng chứng.
 - `ghi_chu`: 2026-10-07 10:05 +07 — Tiếp nhận vé `RAG-FAIL-ANALYSIS-PC0575`: bắt đầu đọc báo cáo lsu-quality-pc0575.md và dữ liệu thô lane RAG để phân loại 50 câu theo 4 nhóm gốc (retrieval trượt / trả lời lệch / oan do chấm / thiếu nguồn).
 - `ghi_chu` (điều phối Muse): 2026-10-07 ~09:55 +07 — Phát hành vé `RAG-FAIL-ANALYSIS-PC0575` (luật hàng chờ không bao giờ cạn; user nhắc agy đang rảnh): phân loại 50 đáp án lane RAG của vé LSU-QUALITY-PC0575 (GPA 0,93) theo nhóm gốc — retrieval trượt / có mảnh mà trả lời lệch / oan do cách chấm / thiếu nguồn — định lượng từng nhóm + xếp ưu tiên sửa bằng số. CHỈ ĐỌC, không sửa code, không đụng `wire_qa_staging.py` (OMP đang vá MATCHER-FIX). Prompt: `docs/phieu-viec/mailbox-pc0575-agy/prompt-queue-rag-fail-analysis-pc0575.md`. Role gợi ý: PLAN.
