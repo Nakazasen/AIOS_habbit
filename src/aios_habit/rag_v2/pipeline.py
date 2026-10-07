@@ -177,7 +177,7 @@ class RagV2DevConfig:
     retrieval_limit: int = 15
     candidate_limit: int = 100
     dense_candidate_limit: int = 100
-    per_document_limit: int = 5
+    per_document_limit: int = 3
     retrieval_profile: str = "lexical"
     embedding_model_id: str = "BAAI/bge-small-en-v1.5"
     embedding_model_revision: str = ""
@@ -863,7 +863,7 @@ class RagV2DevPipeline:
         # operational question.  Preserve the configured cap for multi-source
         # searches, but permit the normal retrieval window for one document.
         effective_per_document_limit = (
-            self.config.retrieval_limit
+            max(self.config.retrieval_limit, self.config.rerank_limit)
             if (
                 len(set(allowed_documents)) == 1
                 and plan.intent_category in {"procedure", "actionable_output", "diagnosis"}

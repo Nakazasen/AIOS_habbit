@@ -1,10 +1,11 @@
-﻿# Trạng thái mailbox-pc0575-agy — KDTVN-PC0575 (thợ agy — Antigravity CLI)
+# Trạng thái mailbox-pc0575-agy — KDTVN-PC0575 (thợ agy — Antigravity CLI)
 
 
 ## Vé hiện tại: RETRIEVAL-ENTITY-PC0575
 
 - Trạng thái: `dang-lam`
 - `ghi_chu` (điều phối Muse — KHẨN: CỨU WIP AGY 14:26): 2026-10-07 ~14:26 +07 — Nhận tin từ phía máy: cả 2 tiến trình agy (28824/27988) đã chết, watcher nội bộ leo thang 14:12 nhưng đồng bộ thất bại; cây làm việc còn WIP chưa commit ở `rag_v2/*` (phần việc sau mốc 11:55 của vé RETRIEVAL-ENTITY). **LỆNH CỨU HỘ cho phiên agy mở lại / phía máy: (1) TRƯỚC MỌI thao tác git, chạy `git status` — nếu thấy thay đổi chưa commit ở rag_v2 thì COMMIT WIP NGAY (kể cả chưa hoàn thiện, ghi rõ WIP trong message), cấm reset/checkout đè lên WIP; (2) sau khi WIP an toàn, TIẾP TỤC vé RETRIEVAL-ENTITY từ bước xác thực đang dở (tái lập ca Q0704 + test nhóm liên quan), ghi mốc mỗi bước như thường; phần code Bước 1–2 đã an toàn ở commit `dbdf9af`.** Điều phối đã báo user tại chỗ.
+- `ghi_chu`: 2026-10-07 14:26 +07 — Tiếp nhận phiên sau cứu hộ WIP: bảo toàn thay đổi Bước 1 & 2 trong rag_v2, bắt đầu bước xác thực retrieval 7/7 câu nhóm A và viết unit test hồi quy.
 - `ghi_chu` (điều phối Muse — XẾP HÀNG): 2026-10-07 ~13:10 +07 — Vé `INDEX-STATUS-LINE-PC0575` (dòng trạng thái chỉ mục trong khung chat, user duyệt 13:04) đã vào hàng chờ #1 của mailbox này: file `prompt-queue-index-status-line-pc0575.md`. Chỉ bốc khi `RETRIEVAL-ENTITY-PC0575` xong-cho-duyet + có verdict và điều phối phát hành. Vé hiện tại không đổi.
 - `ghi_chu`: 2026-10-07 11:55 +07 — Tiến độ RETRIEVAL-ENTITY: Xác thực bằng chứng thực tế trên pipeline ONNX fp32 (tái lập ca trượt Q0704 do Loi KDTPS.xlsx lấn át). Đang tiến hành áp mã nguồn hoàn chỉnh cho Entity Matching Boost (trần 0.025), Diversity Capping (≤ 3 mảnh/tệp nguồn kèm log) và tách từ khóa ranh giới Latin/CJK.
 - `ghi_chu`: 2026-10-07 11:30 +07 — Bắt đầu triển khai Bước 1 & 2: code Entity Matching Boost có trần và Diversity Capping (tối đa 3 mảnh/tệp nguồn kèm log cảnh báo) trong tầng retrieval/evidence, chuẩn bị nghiệm thu 7/7 câu Nhóm A.
