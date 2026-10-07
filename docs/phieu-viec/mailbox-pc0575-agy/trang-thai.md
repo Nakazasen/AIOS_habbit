@@ -1,12 +1,13 @@
-﻿# Trạng thái mailbox-pc0575-agy — KDTVN-PC0575 (thợ agy — Antigravity CLI)
+# Trạng thái mailbox-pc0575-agy — KDTVN-PC0575 (thợ agy — Antigravity CLI)
 
 
 ## Vé hiện tại: RUBRIC-NORMALIZE-PC0575
 
-- Trạng thái: `moi`
+- Trạng thái: `dang-lam`
+- `ghi_chu`: 2026-10-07 10:23 +07 — Tiếp nhận vé `RUBRIC-NORMALIZE-PC0575`: bắt đầu triển khai chuẩn hóa thước đo `normalize_text_for_eval`, sửa từ khóa lỗi bộ đề và chuẩn bị chấm lại offline 50 câu lane RAG.
 - `ghi_chu` (verdict Muse): 2026-10-07 ~10:20 +07 — **ĐẠT (tạm, chờ user nghiệm thu)** vé `RAG-FAIL-ANALYSIS-PC0575`. Kiểm chứng độc lập (poll): commit chỉ-docs, không code/không đụng matcher/không merge main; bảng 50 câu cộng khớp 46,5 → GPA 0,93; số học QC khớp: nhóm C (thước đo oan) +0,360 → GPA thực chất 1,290; D thiếu 11 file nguồn +0,650; A retrieval trượt +0,280; B lệch hàng bảng +0,210; trần toàn diện 2,430. Lưu ý nhỏ đã ghi: thứ tự ưu tiên theo ROI (C→A→B→D), một câu tỉ lệ ~24% (báo cáo ghi gần 28%).
 - `ghi_chu` (điều phối Muse): 2026-10-07 ~10:20 +07 — Phát hành vé `RUBRIC-NORMALIZE-PC0575` (ưu tiên 1 của báo cáo): chuẩn hoá thước đo chấm (định dạng số/đơn vị) + sửa 4 từ khóa lỗi của bộ đề + chấm lại offline từ đáp án đã lưu. Xem prompt.md.
-- `commit`: (chờ thợ)
+- `commit`: (đang thực hiện)
 
 ---
 
