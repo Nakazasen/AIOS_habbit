@@ -1,6 +1,7 @@
 ﻿# Trạng thái mailbox-opencode (thợ opencode — model free muse-spark-1.3 / space-bunny)
 
-- Trạng thái: `xong-cho-duyet`
+- Trạng thái: `moi`
+- `ghi_chu` (verdict Muse): 2026-10-07 ~21:45 +07 — **ĐẠT** vé `INDEX-PROD-HOME` (tích tạm, chờ user nghiệm thu): app máy nhà đọc đúng tệp production `C:\AIOS_workspace_chat_rag_v2_production\...\library.sqlite`, 889/149.800, vân tay nội dung khớp 100%, **SHA-256 45eb0e07… trùng byte với bản gốc đã kiểm chứng**. Đồng thời khép vụ vân tay tổng: giá trị đúng là `fce85b60b783…` (báo cáo src-sync đúng; chuỗi máy nhà ở vé trước lệch 1 ký tự chép tay). **Phát hành ngay vé `TEST-HEALTH-HOME`** (prompt.md đã thay).
 - `commit`: `91825f5` (báo cáo `index-prod-home.md`; vé này không sửa `src/`/`tests/`)
 - `bao_cao`: `docs/phieu-viec/ket-qua/index-prod-home.md`
 - `ghi_chu`: 2026-10-07 21:52 +07 — XONG chờ duyệt `INDEX-PROD-HOME`: app đọc `C:\AIOS_workspace_chat_rag_v2_production\bge_m3_hybrid\collections\tri_thuc\library.sqlite` (bằng chứng chuỗi cấu hình trong báo cáo §1); file này `quick_check=ok`, 889/889/149.800 khớp mốc, vân tay nội dung khớp 100%, SHA-256 toàn file GIỐNG TỪNG BYTE bản backup đã kiểm — KHÔNG phải file khác, rủi ro bằng 0. Phát hiện thêm: chuỗi vân tay tổng đúng là `fce85b60b783d0a…` (báo cáo cũ sai 1 ký tự vị trí 8). Chỉ-đọc tuyệt đối, không đổi cấu hình, không merge `main`.

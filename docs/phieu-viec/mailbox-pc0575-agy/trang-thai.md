@@ -1,8 +1,9 @@
-# Trạng thái mailbox-pc0575-agy — KDTVN-PC0575 (thợ agy — Antigravity CLI)
+﻿# Trạng thái mailbox-pc0575-agy — KDTVN-PC0575 (thợ agy — Antigravity CLI)
 
 ## Vé hiện tại: INDEX-STATUS-LINE-PC0575
 
-- Trạng thái: `xong-cho-duyet`
+- Trạng thái: `moi`
+- `ghi_chu` (verdict Muse): 2026-10-07 ~21:45 +07 — **ĐẠT** vé `INDEX-STATUS-LINE-PC0575` (tích tạm, chờ user nghiệm thu): điều phối chạy lại test trên VM 8 pass + 1 skip; báo cáo đối chiếu app thật ↔ đếm độc lập từ DB khớp 100% (889 / 149.800 / mã 87a3626a85bc / ONNX fp32). **Phát hành ngay vé `RETRIEVAL-PERF-DIAG-PC0575`** (prompt.md đã thay — chẩn đoán 225–255s tìm kiếm; chạy SAU mốc 'mẫu xong' của SRC-PROBE và TRƯỚC lane đo lại theo xếp lượt máy).
 - `commit`: `f566f9f4`
 - `bao_cao`: `docs/phieu-viec/ket-qua/index-status-line-pc0575.md`
 - `ghi_chu`: 2026-10-07 21:32 +07 — Hoàn thành vé `INDEX-STATUS-LINE-PC0575`: Thêm dòng trạng thái mảnh `st.caption` ngay trên `chat_container` trong `workspace_chat_app.py`; hiển thị đúng chuẩn "Kho đang dùng: library.sqlite · 889 tài liệu · 149.800 mảnh · mã 87a3626a85bc · ONNX fp32"; có fallback cảnh báo khi thiếu/lỗi DB; tính 1 lần và cache theo phiên (session_state + memory cache); bài test test_index_status.py đạt 9/9 PASS (đối chiếu trực tiếp DB thật); 4 cổng repo PASS (compileall, pytest, cli audit PASS, import app OK). Sẵn sàng bàn giao cho điều phối Muse nghiệm thu.
