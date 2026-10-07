@@ -1,5 +1,7 @@
 ﻿# Trạng thái mailbox-pc0575-opencode — KDTVN-PC0575 (thợ opencode)
 
+- \ghi_chu\ (tho opencode): 2026-10-07 17:57 +07 - nhan phien theo lenh user (pull Already up to date, da doc ve SRC-PROBE + QUY-UOC chung + rieng). Kiem cong gate: watcher moi nhat 17:55 NO-PICKUP 1/4 sau SKIP-STALL 17:46 + RELAUNCH 17:48 (cho-cong den 2026-10-08 13:30 con han nen luat 4-luot vo hieu), chua cham 4 nen giu \dang-lam\, khong dat cho-muse. Bat dau kiem may ranh + 29 tep nhe. Khong ghi tep/index, khong dung src/rag_v2*.
+
 - \ghi_chu\ (tho opencode): 2026-10-07 17:55 +07 - da ghi muc 7 vao bao cao \src-probe-pc0575.md\ (kiem nhe 29/29 OK + hoan mau query khi may ranh theo chot Muse 17:48). Gate 17:48 1/4 + cho-cong den 2026-10-08 13:30 con han nen giu \dang-lam\. Khong ghi tep/index, khong dung src/rag_v2*.
 
 - \ghi_chu\ (tho opencode): 2026-10-07 17:53 +07 - kiem nhe dia + bam 29 tep: 29/29 OK (0.1s, chi doc index mode=ro, khong mo mo hinh). May van ban: streamlit + pytest + kiem thu retrieval cua tho khac dang chay nen theo chot Muse 17:48 CHUA chay mau truy van day du voi (chi chay khi may ranh, tran 900s/truy van). Giu \dang-lam\, gate 17:48 1/4 + cho-cong con han. Khong ghi tep/index, khong dung src/rag_v2*.
