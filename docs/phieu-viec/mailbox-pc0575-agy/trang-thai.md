@@ -1,7 +1,16 @@
-﻿# Trạng thái mailbox-pc0575-agy — KDTVN-PC0575 (thợ agy — Antigravity CLI)
+# Trạng thái mailbox-pc0575-agy — KDTVN-PC0575 (thợ agy — Antigravity CLI)
 
+## Vé hiện tại: INDEX-STATUS-LINE-PC0575
 
-## Vé hiện tại: RETRIEVAL-ENTITY-PC0575
+- Trạng thái: `dang-lam`
+- `commit`: `e9782924`
+- `bao_cao`: `docs/phieu-viec/ket-qua/index-status-line-pc0575.md`
+- `ghi_chu`: 2026-10-07 21:15 +07 — Tiếp nhận vé `INDEX-STATUS-LINE-PC0575`: Bắt đầu triển khai dòng trạng thái chỉ mục mảnh trong khung chat của workspace_chat_app.py (tên tệp, số tài liệu, số mảnh, mã vân tay logic 12 ký tự hex, backend).
+- Ticket hiện tại: `INDEX-STATUS-LINE-PC0575` — [CTY] dòng trạng thái chỉ mục trong khung chat. Prompt: `docs/phieu-viec/mailbox-pc0575-agy/prompt.md`.
+
+---
+
+## Vé trước: RETRIEVAL-ENTITY-PC0575
 
 - Trạng thái: `moi`
 - `ghi_chu` (verdict Muse): 2026-10-07 ~21:10 +07 — **ĐẠT** vé `RETRIEVAL-ENTITY-PC0575` (tích tạm, chờ user nghiệm thu). Kiểm chứng độc lập của điều phối: commit code `da079d66` single-parent, chỉ `rag_v2/index.py` (+43/-12) + test mới; hằng trần boost `MAX_ENTITY_BOOST = 0.025` và log `diversity_cap_triggered` có thật trong code; chạy lại trên VM: 106 test (gồm 4 test mới) PASS. Bằng chứng báo cáo: 7/7 câu nhóm A tài liệu đích Rank 1–2 (trước vá 0/7), tệp Loi KDTPS bị cap còn 2/15 mảnh (trước 15/15). **Phát hành ngay vé `INDEX-STATUS-LINE-PC0575`** (prompt.md đã thay; hàng chờ agy trống sau vé này — điều phối bổ sung khi cần). LƯU Ý LỚN ghi nhận riêng, không thuộc tiêu chí vé này: thời gian dùng thật còn ~4,5–4,9 phút/câu (retrieval 225–255s) — vé đo lại + dòng vé hiệu năng sẽ xử lý.
