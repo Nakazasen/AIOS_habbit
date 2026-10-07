@@ -1,9 +1,10 @@
 # Trạng thái mailbox-pc0575-opencode — KDTVN-PC0575 (thợ opencode)
 
-- Trạng thái: `dang-lam`
+- Trạng thái: `cho-muse`
 - `ghi_chu` (điều phối Muse): 2026-10-07 ~10:45 +07 — [ĐỔI CƠ CHẾ CỔNG MẠNG THEO LỆNH USER] Gỡ cờ `cho-muse` (đặt 10:33 vì cổng mạng cũ không mở), tiếp tục vé `SRC-SYNC-PC0575` từ Pha 1 theo cơ chế MỚI: thợ TỰ chuyển mạng bằng `D:\Sandbox\agent-mailbox\Chuyen-Mang.ps1 -Mang ngoai`, kiểm output `DRIVE=OK` rồi mới tải — KHÔNG chờ dòng xác nhận của Muse nữa. Tải xong chuyển về `-Mang congty`. Quy ước đã ghi vào QUY-UOC của cả 3 mailbox PC0575; mục Pha 1 trong prompt đã cập nhật theo cơ chế mới. Cứ thế mà kéo, ghi mốc tiến độ như thường.
 - `ghi_chu` (thợ opencode): 2026-10-07 10:46 +07 — đã lấy code mới `phieu-viec/rag-fix1` xong (đúng bản `d32ff50`, sạch), đã đọc quy ước + vé mới; kiểm cổng: watcher mở 4 lần liên tiếp đã được Muse 10:45 gỡ chờ nên tiếp tục vé, không đặt `cho-muse`; mạng `KT_CHETAO`, kiểm tra cho kết quả `DRIVE=OK` (cổng Pha 1 mở theo cơ chế mới). Bắt đầu liệt kê thư mục Drive `AIOS_Data`.
 - `ghi_chu` (thợ opencode): 2026-10-07 11:05 +07 — xong Pha 1: liệt kê Drive `AIOS_Data` (3 thư mục `MOM_Opcenter_WMS` / `index-split-r5-backup` / `Tài liệu của tất cả dòng máy` + 8 tệp gốc, tuyệt đối chưa tải gì); phát hiện quyết định: 348 mã `gpu-…` + 1 mã vật liệu hóa trống vân tay trong chỉ mục nên tải tệp thôi không qua được cổng (mã nguồn hiện không ánh xạ `gpu-…` ra đĩa). Báo cáo `src-sync-pc0575.md` đã cập nhật, xin Muse chốt phương án 349 mã này trước khi tải.
+- `ghi_chu` (thợ opencode): 2026-10-07 11:00 +07 — kiểm cổng gate: watcher mở liên tiếp 10:04 LAUNCH + 10:18 RELAUNCH + 10:25 NO-PICKUP 2/4 + 10:31 NO-PICKUP 3/4 + 10:43 ESCALATE 4/4 + 10:58 FALLBACK-RELAUNCH (sig không đổi dang-lam cùng vé SRC-SYNC); không đủ điều kiện mở (ticket cũ + báo cáo src-sync-pc0575.md đã có + Pha 1 xong chờ Muse chốt 349 mã); mạng KT_CHETAO DRIVE=OK giữ nguyên, tuyệt đối chưa tải. Đặt cho-muse + DỪNG, không quay no-op.
 
 # Trạng thái mailbox-pc0575-opencode — KDTVN-PC0575 (thợ opencode)
 
