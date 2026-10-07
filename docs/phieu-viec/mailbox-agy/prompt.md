@@ -1,45 +1,26 @@
-# Vé FIX-J1CSV-FIXTURE-HOME — Cập nhật fixture test JIG cho đúng cổng SMA(20)
+# VÉ: BASELINE-USE-HOME (đo nền dùng thật trên máy nhà — đối tác của các vé hiệu năng máy công ty)
 
-**Máy thực hiện:** NHÀ h410asrock (thợ agy).
-**Role gợi ý:** DEFAULT (sửa test + chạy test).
-
-## 0. ĐIỀU KIỆN BẮT ĐẦU (cổng gate — đọc trước khi làm gì khác)
-
-Vé này CHỈ được bắt đầu SAU khi `docs/phieu-viec/mailbox/trang-thai.md` (thợ OMP)
-có dòng `` `ghi_chu` (verdict Muse) `` với verdict **ĐẠT** cho vé `SMA-IMPROVE-HOME`.
-Lý do: OMP đang sửa `trend_alerts.py` (deadband + k linh hoạt); fixture test phải
-khớp hành vi cổng gate CUỐI CÙNG, viết sớm sẽ phải làm lại.
-
-- Kiểm tra ngay khi nhận vé. Nếu chưa có verdict ĐẠT: append một dòng
-  `` `ghi_chu`: <giờ> +07 — chờ OMP xong SMA-IMPROVE-HOME, chưa đủ điều kiện bắt đầu. ``
-  vào `trang-thai.md` của mailbox này, đặt `Trạng thái: `dang-lam` + CHỜ, KHÔNG THOÁT
-  (gate chưa mở thì chờ — kiểm lại cổng gate mỗi ~10 phút, ghi heartbeat; cổng mở thì làm tiếp ngay).
+- Mã vé: `BASELINE-USE-HOME`
+- Role gợi ý: DEFAULT (đo dùng thật, không code)
+- Máy: nhà h410asrock
+- Báo cáo: `docs/phieu-viec/ket-qua/baseline-use-home.md`
 
 ## Bối cảnh
 
-Báo cáo `AUDIT-BUOC2-JIG-HOME` (vừa ĐẠT) phát hiện 1 điểm lệch (mục P0 #2):
-test `test_canh_bao_tu_dong_ve_bieu_do_da_cau_hinh` trong `tests/test_j1_csv.py`
-dùng 1 điểm vi phạm đơn lẻ `99.9` trên nền 20 điểm `10.0`. Từ commit `846713e`
-(03/10), cổng gate SMA(20) chặn đúng điểm xấu đơn lẻ (`canh_bao = False`) nên
-biểu đồ cảnh báo không tự vẽ → test lệch với hành vi cổng hiện tại.
+User chốt hướng nghiệm thu bằng SỬ DỤNG THẬT (07/10) và chỉ đạo triển khai ngang các lỗi/phát hiện ở máy công ty sang máy nhà. Trên máy công ty đã phát hiện: mở sổ chờ mấy phút, các con số tài liệu mâu thuẫn (494/35/33), hỏi đáp chậm. Cần bộ số nền tương đương đo trên máy nhà (có GPU) để biết phần nào do máy, phần nào do code — làm mốc đối chiếu cho các vé `APP-SOURCE-MODEL-PC0575`, `APP-OPEN-PERF-PC0575` (code chung một nhánh, sửa xong áp cả hai máy).
 
-## Việc cần làm
+## Việc phải làm (toàn bộ bằng dùng thật trên app đang chạy, tự động hoá thao tác)
 
-1. Cập nhật fixture của test trên: thay 1 điểm xấu đơn lẻ bằng CHUỖI 3 ĐIỂM XẤU
-   LIÊN TIẾP để kích hoạt cảnh báo xu hướng đúng logic cổng SMA(20) sau vé
-   `SMA-IMPROVE-HOME` (đọc kỹ hành vi gate mới trong `trend_alerts.py` sau khi
-   OMP xong — nhưng KHÔNG SỬA file đó).
-2. Chỉ sửa fixture/kỳ vọng trong `tests/test_j1_csv.py`; không sửa logic gate,
-   không sửa code sản phẩm.
-3. Chạy: `tests/test_j1_csv.py` phải xanh 100%; hồi quy `tests/test_trend_alerts.py`
-   không được đỏ thêm so với trước vé.
-4. Báo cáo `docs/phieu-viec/ket-qua/fix-j1csv-fixture-home.md`: fixture cũ/mới,
-   số test trước/sau, xác nhận khớp hành vi gate sau SMA-IMPROVE.
+1. Mở app trên máy nhà, đo thời gian mở sổ "Điều tra lỗi LSU": từ lúc bấm tới (a) thấy danh sách trò chuyện, (b) gõ được câu hỏi. Mở lạnh (app vừa khởi động) và mở lại (đã ấm), mỗi loại 2 lần.
+2. Chụp màn hình sổ/trò chuyện: ghi lại mọi con số tài liệu app hiển thị (số tài liệu của sổ, đang bật, đã chuẩn bị...) để đối chiếu tính nhất quán với phía máy công ty.
+3. Hỏi 3 câu kiểm ngay trong app, ghi đáp án + thời gian chờ từng câu:
+   - "Mã C0030 là lỗi gì?" (đáp án đúng phải chứa: bất thường hệ thống bản mạch FAX)
+   - "C7620中Magenta相对Black的副扫描色差达到多少会成为NG？" (phải nhắc ngưỡng 70 dot)
+   - 1 câu tự chọn về lịch sử lỗi KDTPS (ghi rõ câu hỏi; đáp án phải nêu tên tệp nguồn cụ thể)
+4. Ghi nhận mọi hiện tượng đơ/treo/chờ bất thường kèm thời gian và ngữ cảnh (máy lúc đó còn tiến trình nặng nào chạy song song không).
 
 ## Rào cứng
 
-- Không merge `main`. Python 3.11 (không dùng syntax 3.12+).
-- 1 file 1 đứa: KHÔNG đụng `trend_alerts.py` (của OMP) và không đụng UI.
-- Heartbeat: mốc tiến độ tối thiểu 15 phút/lần trong `trang-thai.md`
-  (vé ngắn, chỉ cần 1-2 mốc + chốt).
-
+- Chỉ đo và ghi, KHÔNG sửa code, không ghi index, không đổi cấu hình app.
+- Máy nhà đo không dùng GPU cho vé này ngoài những gì app tự dùng khi chạy bình thường (ghi rõ app đã dùng backend nào trong báo cáo).
+- Không merge `main`.
