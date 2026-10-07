@@ -54,3 +54,14 @@ Danh sách 421 mã lệch kèm băm thực tế + vân tay kỳ vọng: `docs/ph
 - `import aios_habit.workspace_chat_app`: thành công.
 - Không chạy toàn bộ pytest vì vé không đụng mã nguồn (tiền lệ vé đo `INDEX-PROD-HOME` cũng chỉ chạy 3 cổng này).
 - Rào giữ: chỉ đọc tệp nguồn và chỉ mục (mở chỉ mục ở chế độ chỉ đọc), không ghi chỉ mục, không xóa/sửa tệp gốc, không merge `main`, không secret.
+
+## 7. Bổ sung: tải Drive (vé `SRC-PACKAGE-511-UPLOAD-HOME`, máy nhà 2026-10-08 00:41–01:00 +07)
+
+- Kết quả: **CHƯA TẢI** — mọi đường tải đều bị chặn thật sự trong phiên này, không báo xong bừa, không nhờ tải tay trong báo cáo này.
+- Xác minh đầu vào: tệp `local_runs/src-package-511/src-package-511-home-match90.zip` đủ 430.510 byte, SHA-256 `862CAD6EF5943678DA25424AF177DA8D66EE3B53FC4DADC87827836A37613403` khớp ghim vé.
+- Đã thử và bị chặn ở đâu:
+  1. `rclone` / Drive đồng bộ: máy không có `rclone`, không có thư mục Drive đồng bộ, không có thông tin OAuth để gọi API — không cài thêm phần mềm theo rào vé.
+  2. Đường Chrome UI Automation (đường thành công của vé `onnx-upload-drive` / `upload-delta-drive`, script còn ở `C:\temp\upl*.ps1` + `C:\temp\ui_lib.ps1`): Chrome đang chạy (15 tiến trình, 1 cửa sổ `Chat — Muse`), mạng tới `drive.google.com` thông — nhưng **không đưa Chrome lên trước được**: chạy `upl9_nav_and_menu.ps1` báo `chrome not fg`, chạy `Focus-Chrome` của `ui_lib.ps1` vẫn `foreground hwnd=powershell`, đã lưu ảnh `C:\temp\upl_home_probe.png` làm bằng chứng. Bấm / gõ mù lúc này dễ lạc sang tab trò chuyện của user và Drive đang đăng nhập nên **DỪNG, không click bừa** (đúng rào vé chỉ thêm đúng 1 tệp).
+  3. Sao chép cookie Chrome: không làm — Chrome đang chạy nên tệp khóa, bản sao cũng không giải mã được do mã hóa App-Bound (tiền lệ vé `onnx-upload-drive` đã ghi).
+- Cổng kho chạy lại trong vé này: `compileall src tests` sạch, `cli audit` PASS, `import workspace_chat_app` thành công; không sửa `src/`/`tests/`, không commit tệp zip, không merge `main`.
+- Đề xuất: chạy lại đúng bước tải trong phiên tương tác (màn hình thật, Chrome đưa lên trước được) rồi ghi link tệp trong thư mục `AIOS_Data` (giữ nguyên tên tệp) vào đây; gói đã sẵn ở đường dẫn mục 4.
