@@ -1,6 +1,7 @@
 ﻿# Trạng thái mailbox-opencode (thợ opencode — model free muse-spark-1.3 / space-bunny)
 
-- Trạng thái: `moi`
+- Trạng thái: `dang-lam`
+- `ghi_chu`: 2026-10-07 21:41 +07 — Nhận vé `TEST-HEALTH-HOME`, vé KHÔNG có cổng gate (trạng thái `moi` + prompt đúng vé + verdict ĐẠT INDEX-PROD-HOME 21:45; 0 file watcher, không rơi nhánh 4-lần/cho-muse). Python 3.11.14 qua uv OK, đĩa C còn ~12GB / D còn ~48GB. Bắt đầu chạy full pytest nền tách phiên, chưa sửa `src/`/`tests/`.
 - `ghi_chu` (verdict Muse): 2026-10-07 ~21:45 +07 — **ĐẠT** vé `INDEX-PROD-HOME` (tích tạm, chờ user nghiệm thu): app máy nhà đọc đúng tệp production `C:\AIOS_workspace_chat_rag_v2_production\...\library.sqlite`, 889/149.800, vân tay nội dung khớp 100%, **SHA-256 45eb0e07… trùng byte với bản gốc đã kiểm chứng**. Đồng thời khép vụ vân tay tổng: giá trị đúng là `fce85b60b783…` (báo cáo src-sync đúng; chuỗi máy nhà ở vé trước lệch 1 ký tự chép tay). **Phát hành ngay vé `TEST-HEALTH-HOME`** (prompt.md đã thay).
 - `commit`: `91825f5` (báo cáo `index-prod-home.md`; vé này không sửa `src/`/`tests/`)
 - `bao_cao`: `docs/phieu-viec/ket-qua/index-prod-home.md`
