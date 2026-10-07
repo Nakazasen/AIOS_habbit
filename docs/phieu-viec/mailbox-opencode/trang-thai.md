@@ -1,10 +1,11 @@
 ﻿# Trạng thái mailbox-opencode (thợ opencode — model free muse-spark-1.3 / space-bunny)
 
-- Trạng thái: `moi`
+- Trạng thái: `dang-lam`
 - `ghi_chu` (điều phối Muse — PHÁT VÉ): 2026-10-07 ~20:25 +07 — Vé mới `INDEX-VERIFY-HOME` (prompt.md đã thay): kiểm chứng chỉ mục máy nhà CHỈ-ĐỌC theo chuẩn vân tay logic mới (đối chiếu mốc máy công ty: nội dung `87a3626a…`, tổng `fce85b60…`; 889 tài liệu / 149.800 mảnh). Triển khai ngang phép kiểm đã làm ở máy công ty ngày 07/10.
+- `ghi_chu`: 2026-10-07 20:28 +07 — Nhận vé `INDEX-VERIFY-HOME`, vé KHÔNG có cổng gate (làm ngay, không rơi nhánh 4-lần/cho-muse). Python 3.11.14 qua uv OK. Đang tìm chỉ mục gốc máy nhà + công thức vân tay (mốc trong `src-sync-pc0575.md` mục 8).
 - `ghi_chu` (verdict Muse): 2026-10-06 ~23:58 +07 — **ĐẠT** vé `RT-ALERT-E2E-HOME` (tích tạm, chờ user nghiệm thu). Kiểm chứng độc lập: báo cáo `ac667bb`, vé không sửa src/tests. Baseline đầu-cuối ĐẠT mục tiêu <5 phút: drift báo ở mẫu thứ 3, xử lý 50 mẫu 0,0031s; HTTP replay 132/132 mất 0 dòng, p95 ~28ms; chuỗi thật 132 điểm → 0 báo giả; 132+drift → đúng 1 thẻ. Đo trên cổng mới trend_alerts.py=`3c7f2f3`. Poll kiểm lại trên VM: cụm 61 passed. hang-cho trống → mailbox đóng (`xong`).
-- `commit`: `ac667bb` (báo cáo `rt-alert-e2e-home.md`; vé này không sửa `src/`/`tests/`)
-- `bao_cao`: `docs/phieu-viec/ket-qua/rt-alert-e2e-home.md`
+- `commit`: `-` (vé mới `INDEX-VERIFY-HOME`, đang làm)
+- `bao_cao`: `docs/phieu-viec/ket-qua/index-verify-home.md` (chưa có, đang làm)
 - `ghi_chu`: 2026-10-06 23:52 +07 — XONG chờ duyệt RT-ALERT-E2E-HOME: baseline ĐẠT <5 phút (drift báo mẫu thứ 3, xử lý 50 mẫu 0,0031s; HTTP 132/132 mất 0, p95 ~28ms; 132 thật 0 báo giả; 132+drift 1 thẻ đúng). Cổng đo trend_alerts.py=3c7f2f3. Cổng repo: compileall sạch, pytest cụm 58 passed/3 skip, audit PASS, import OK. Không sửa src/tests (test_j1_csv local là của agy, không commit ké).
 - `ghi_chu`: 2026-10-06 23:45 +07 — Mốc đo xong RT-ALERT-E2E-HOME: replay 132/132, HTTP E2E mất 0, drift 40+10 báo ở mẫu drift thứ 3, 132 thật 0 báo giả. Đang viết báo cáo.
 - `ghi_chu`: 2026-10-06 23:32 +07 — Nhận vé RT-ALERT-E2E-HOME, kiểm cổng gate: cổng MỞ (verdict Muse ĐẠT SMA-IMPROVE-HOME 23:30, HEAD=d678cfc, trend_alerts.py=3c7f2f3 deadband+k nhóm). Không rơi nhánh 4 lần watcher/cho-muse. Bắt đầu đo E2E.
@@ -12,7 +13,7 @@
 - `ghi_chu` (verdict Muse): 2026-10-06 ~06:58 +07 — **ĐẠT** vé `RT-JIGBEAM-ADAPTER-HOME`. Kiểm chứng độc lập qua GitHub API: commit code `7888778` single-parent (+270 adapter mới `jigbeam_log_adapter.py`, +34 `rt_replay.py` chỉ thêm hàm `phat_lai_csv_tu_dong`, +183 test mới), commit báo cáo `a62c2f5` single-parent (+58/-0 `rt-jigbeam-adapter-home.md`), không merge `main`; đủ 3 tiêu chí vé — (1) chọn phương án (a) adapter riêng + lý do rõ (§1 báo cáo); (2) đọc file thật 132 dòng/677 cột, phát lại 132/132, E2E HTTP 132→kho 132 mất 0 dòng, gửi trùng 3/3 chống trùng giữ nguyên, test mới 8/8, hồi quy 36 passed/3 skip; (3) báo cáo đúng path. Kiểm chứng độc lập TRÊN VM: chạy lại 8/8 test xanh (kể cả 2 test file thật `2026_08_Master.csv` trên VM), hồi quy `test_j1_rt`+`test_stream_api` 31 passed — khớp số thợ báo. Rào cứng: không syntax 3.12+ (rà độc lập, chỉ dùng %-format, có `from __future__ import annotations`), cờ `AIOS_FEATURE_JIGBEAM_ADAPTER` mặc định TẮT (fail-closed), không đụng `trend_alerts.py`/UI, không secret, SQLite chỉ trong thư mục tạm của test.
 - `ghi_chu` (điều phối Muse): 2026-10-06 ~06:58 +07 — Phát hành vé `RT-ALERT-E2E-HOME` (luật hàng chờ không cạn; đo baseline đầu-cuối "log → phát lại → phát hiện → cảnh báo" cho vé `LSU-ALERT-REALTIME-PC0575`, mục tiêu <5 phút): ép drift vào feed JIG BEAM thật, đo độ trễ đến cảnh báo qua cổng phát hiện — chỉ gọi, không sửa. CÓ CỔNG GATE: chỉ bắt đầu sau khi mailbox (OMP) verdict ĐẠT `SMA-IMPROVE-HOME` (đo trên cổng mới cho đúng bản PC0575 sẽ dùng). Prompt: `docs/phieu-viec/mailbox-opencode/prompt-queue-rt-alert-e2e-home.md`. Role gợi ý: DEFAULT. Lưu ý: máy nhà đã tắt (~07:00, user lên công ty) — vé xếp `moi` chờ watcher nhặt khi máy bật lại.
 
-- Ticket hiện tại: `RT-ALERT-E2E-HOME` — [NHÀ] đo đầu-cuối cảnh báo realtime, baseline <5 phút cho vé PC0575. Prompt: `docs/phieu-viec/mailbox-opencode/prompt.md`. Role gợi ý: DEFAULT.
+- Ticket hiện tại: `INDEX-VERIFY-HOME` — [NHÀ] kiểm chứng chỉ mục máy nhà CHỈ-ĐỌC theo chuẩn vân tay logic mới. Prompt: `docs/phieu-viec/mailbox-opencode/prompt.md`. Role gợi ý: SMOL/TINY.
 - `hang-cho`: (trống)
 
 # Trạng thái mailbox-opencode (thợ opencode — model free muse-spark-1.3 / space-bunny)
