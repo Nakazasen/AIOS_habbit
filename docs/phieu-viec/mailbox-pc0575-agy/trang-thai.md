@@ -1,6 +1,7 @@
 # Trạng thái mailbox-pc0575-agy — KDTVN-PC0575 (thợ agy — Antigravity CLI)
 
 - Trạng thái: `dang-lam`
+- `ghi_chu`: 2026-10-07 10:12 +07 — Đã hoàn thành đối chiếu và phân loại toàn bộ 50 câu lane RAG: 12 ĐẠT, 38 DƯỚI CHUẨN (A: 7 câu retrieval trượt, B: 5 câu tổng hợp lệch bảng, C: 10 câu oan do thước đo, D: 16 câu thiếu nguồn trong index). Đang viết báo cáo chi tiết kèm bằng chứng.
 - `ghi_chu`: 2026-10-07 10:05 +07 — Tiếp nhận vé `RAG-FAIL-ANALYSIS-PC0575`: bắt đầu đọc báo cáo lsu-quality-pc0575.md và dữ liệu thô lane RAG để phân loại 50 câu theo 4 nhóm gốc (retrieval trượt / trả lời lệch / oan do chấm / thiếu nguồn).
 - `ghi_chu` (điều phối Muse): 2026-10-07 ~09:55 +07 — Phát hành vé `RAG-FAIL-ANALYSIS-PC0575` (luật hàng chờ không bao giờ cạn; user nhắc agy đang rảnh): phân loại 50 đáp án lane RAG của vé LSU-QUALITY-PC0575 (GPA 0,93) theo nhóm gốc — retrieval trượt / có mảnh mà trả lời lệch / oan do cách chấm / thiếu nguồn — định lượng từng nhóm + xếp ưu tiên sửa bằng số. CHỈ ĐỌC, không sửa code, không đụng `wire_qa_staging.py` (OMP đang vá MATCHER-FIX). Prompt: `docs/phieu-viec/mailbox-pc0575-agy/prompt-queue-rag-fail-analysis-pc0575.md`. Role gợi ý: PLAN.
 
