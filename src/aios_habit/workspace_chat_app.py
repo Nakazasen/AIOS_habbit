@@ -1935,10 +1935,9 @@ current_ui_locale = "vi"
 
 # UX-CHAT-CORE: bo radio "Dieu huong" 3 nhanh. Moi chuc nang mo qua y dinh
 # trong cau chat (chat_intent_router) - nguoi dung khong bao gio phai chon nhanh.
-st.sidebar.markdown("### 💬 Trợ lý AIOS")
+st.sidebar.markdown(t("sidebar_assistant_title", locale=current_ui_locale))
 st.sidebar.caption(
-    "Bạn chỉ cần gõ vào ô chat — AIOS tự hiểu và mở đúng chức năng "
-    "(hỏi tài liệu, hồ sơ điều tra, phân tích JIG, cảnh báo ngưỡng...)."
+    t("sidebar_assistant_caption", locale=current_ui_locale)
 )
 
 is_case = bool(st.session_state.get("wsc_show_case_workspace", False))

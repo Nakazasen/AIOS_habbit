@@ -735,7 +735,7 @@ def render_chat_bubble(
                     if is_viewing:
                         with st.container(border=True):
                             if dl_is_binary:
-                                st.info("File nhị phân — bấm nút Tải về để mở bằng Word/PowerPoint.")
+                                st.info(t("agent_artifact_binary_hint", locale=locale))
                             elif verified_result_path and verified_result_path.is_file():
                                 st.markdown(f"**📄 {t('agent_artifact_view_full', locale=locale)} ({verified_result_path.name}):**")
                                 st.markdown(verified_result_path.read_text(encoding="utf-8"))

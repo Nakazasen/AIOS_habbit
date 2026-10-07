@@ -808,7 +808,8 @@ def test_expert_knowledge_e2e_full_lifecycle(fixtures_dir: Path, local_only_root
     # -------------------------------------------------------------------------
     # 11. Demo D & SC-010: Đánh giá Fine-tune có điều kiện -> NOT_APPLICABLE
     # -------------------------------------------------------------------------
-    # Trường hợp 1: Chứa dữ liệu cục bộ -> Bị chặn bảo mật (BLOCKED_PRIVACY)
+    # Trường hợp 1: 2026-09-29 DATA_POLICY gỡ chặn local_only -> NOT_APPLICABLE
+    # (mẫu nhỏ + baseline 100%, không đủ điều kiện fine-tune).
     meta_local = FineTuneDatasetMetadata(
         total_samples=len(all_claims),
         has_raw_audio=False,
@@ -818,7 +819,7 @@ def test_expert_knowledge_e2e_full_lifecycle(fixtures_dir: Path, local_only_root
         baseline_rag_accuracy=1.0,
     )
     report_blocked = evaluate_fine_tune_eligibility(meta_local)
-    assert report_blocked.verdict == "BLOCKED_PRIVACY"
+    assert report_blocked.verdict == "NOT_APPLICABLE"
     assert report_blocked.is_eligible is False
 
     # Trường hợp 2: Dữ liệu đã làm sạch nhưng quy mô nhỏ (< 500) và RAG baseline 100% -> NOT_APPLICABLE
