@@ -1,5 +1,7 @@
 ﻿# Trạng thái mailbox-opencode (thợ opencode — model free muse-spark-1.3 / space-bunny)
 
+- Trạng thái: `dang-lam`
+- `ghi_chu`: 2026-10-08 02:53 +07 — Nhận vé `TEST-RED5-FIX-HOME`, cổng MỞ (trạng thái `moi` + prompt đúng vé + verdict ĐẠT ROUND2 02:55 phát hành RED5; HEAD=origin=f1bd99e sạch, Python 3.11.14 OK; không rơi nhánh 4-lần/cho-muse). Vé sửa 5 ca + skip sạch graphify + đồng bộ uv.lock, không ghi index, không merge `main`. Bắt đầu bước 1: truy vết 5 ca theo thứ tự, chưa sửa gì.
 - Trạng thái: `moi`
 - `ghi_chu` (verdict Muse): 2026-10-08 ~02:55 +07 — **ĐẠT** vé `TEST-HEALTH-ROUND2-HOME` (tích tạm, chờ user nghiệm thu): chạy đủ 4.228 test trong 30,9 phút; đối chiếu vòng 1 chặt chẽ — 18/22 đỏ-code cũ đã khép (gồm 3 ca synthesis_provider hết lệch máy và index_status xanh), 23 đỏ môi trường cũ còn nguyên đúng như phân loại, 10 đỏ mới truy ra gốc thiếu gói tùy chọn graphify (môi trường), flaky 0. Còn 5 ca nghi code. Điều phối tự chạy đối chiếu VM: `dieu_huong` + `phase2i` đỏ cả trên VM; 3 ca còn lại xanh trên VM (ca lệch trạng thái máy nhà). **Phát hành vé `TEST-RED5-FIX-HOME`** (prompt.md đã thay — 5 ca + skip sạch cho graphify + đồng bộ uv.lock).
 - `commit`: `67a8936` (báo cáo `test-health-round2-home.md`; vé này không sửa `src/`/`tests/`)
