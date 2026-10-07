@@ -429,3 +429,107 @@ def test_language_fit_selects_matching_provider_before_priority():
     assert used == ["groq"]
     assert result.attempts[-1].key_id_masked != "jp-key"
     assert "jp-key" not in result.route_summary_vi
+
+
+def test_provider_configs_from_env_openai_compatible_pool():
+    env = {
+        "AIOS_LOCAL_AI_ENDPOINT": "https://api.commandcode.ai/provider/v1/chat/completions",
+        "AIOS_LOCAL_AI_MODEL": "inclusionai/ling-3.1-flash:free",
+        "AIOS_LOCAL_AI_FAILOVER_MODELS": "inclusionai/ling-3.0-flash-sante:free, poolside/laguna-s-2.1-free",
+        "AIOS_LOCAL_AI_API_KEY": "fake-cmd-key",
+    }
+    configs = provider_configs_from_env(env)
+    assert len(configs) == 3
+    # Check primary
+    assert configs[0].provider_id == "openai_compatible_local"
+    assert configs[0].model_name == "inclusionai/ling-3.1-flash:free"
+    assert configs[0].priority == 10
+    assert configs[0].trusted_internal is False  # Cloud endpoint detected
+    assert configs[0].api_key == "fake-cmd-key"
+
+    # Check failover 1
+    assert configs[1].provider_id == "openai_compatible_local:failover_1"
+    assert configs[1].model_name == "inclusionai/ling-3.0-flash-sante:free"
+    assert configs[1].priority == 12
+    assert configs[1].trusted_internal is False
+
+    # Check failover 2
+    assert configs[2].provider_id == "openai_compatible_local:failover_2"
+    assert configs[2].model_name == "poolside/laguna-s-2.1-free"
+    assert configs[2].priority == 14
+    assert configs[2].trusted_internal is False
+
+
+def test_openai_compatible_pool_failover_on_rate_limit():
+    configs = [
+        RouterProviderConfig(
+            "openai_compatible_local",
+            "AI trong máy (chính)",
+            "https://api.commandcode.ai/v1",
+            "inclusionai/ling-3.1-flash:free",
+            "test-key",
+            enabled=True,
+            trusted_internal=False,
+            priority=10,
+        ),
+        RouterProviderConfig(
+            "openai_compatible_local:failover_1",
+            "AI trong máy (failover)",
+            "https://api.commandcode.ai/v1",
+            "inclusionai/ling-3.0-flash-sante:free",
+            "test-key",
+            enabled=True,
+            trusted_internal=False,
+            priority=12,
+        ),
+    ]
+    calls = []
+    def client(c, r):
+        calls.append(c.model_name)
+        if c.model_name == "inclusionai/ling-3.1-flash:free":
+            raise RuntimeError("429 rate limit exceeded on ling-3.1-flash")
+        return "response from failover model"
+
+    result = route_answer(req(SAFETY_MODE_NORMAL), configs, {}, client)
+    assert not result.used_fallback
+    assert result.answer_text == "response from failover model"
+    assert result.used_model == "inclusionai/ling-3.0-flash-sante:free"
+    assert calls == ["inclusionai/ling-3.1-flash:free", "inclusionai/ling-3.0-flash-sante:free"]
+
+
+def test_openai_compatible_pool_failover_on_server_error():
+    configs = [
+        RouterProviderConfig(
+            "openai_compatible_local",
+            "AI trong máy (chính)",
+            "https://api.commandcode.ai/v1",
+            "inclusionai/ling-3.1-flash:free",
+            "test-key",
+            enabled=True,
+            trusted_internal=False,
+            priority=10,
+        ),
+        RouterProviderConfig(
+            "openai_compatible_local:failover_1",
+            "AI trong máy (failover)",
+            "https://api.commandcode.ai/v1",
+            "inclusionai/ling-3.0-flash-sante:free",
+            "test-key",
+            enabled=True,
+            trusted_internal=False,
+            priority=12,
+        ),
+    ]
+    calls = []
+    def client(c, r):
+        calls.append(c.model_name)
+        if c.model_name == "inclusionai/ling-3.1-flash:free":
+            raise RuntimeError("502 Bad Gateway")
+        return "response from failover after 502"
+
+    result = route_answer(req(SAFETY_MODE_NORMAL), configs, {}, client)
+    assert not result.used_fallback
+    assert result.answer_text == "response from failover after 502"
+    assert result.used_model == "inclusionai/ling-3.0-flash-sante:free"
+    assert calls == ["inclusionai/ling-3.1-flash:free", "inclusionai/ling-3.0-flash-sante:free"]
+

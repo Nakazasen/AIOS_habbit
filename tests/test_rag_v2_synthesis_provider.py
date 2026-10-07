@@ -156,6 +156,10 @@ class TestFormatting:
 
 
 class TestRouterSynthesisProvider:
+    @pytest.fixture(autouse=True)
+    def clean_cloud_opt_in(self, monkeypatch):
+        monkeypatch.delenv("AIOS_SYNTHESIS_ALLOW_CLOUD_PROVIDERS", raising=False)
+
     @patch("aios_habit.rag_v2_synthesis_provider.route_answer")
     def test_success_returns_answer_text(self, mock_route):
         mock_route.return_value = _make_router_result()

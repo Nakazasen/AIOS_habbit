@@ -501,27 +501,48 @@ def _env_int(
 def provider_configs_from_env(env: dict[str, Any] | None = None) -> list[RouterProviderConfig]:
     """Create provider configs from environment without logging secrets."""
     import os
+    from aios_habit.ai_provider_bridge import is_local_endpoint
     values = env if env is not None else os.environ
     configs: list[RouterProviderConfig] = []
     local_timeout = _env_int(values, "AIOS_LOCAL_AI_TIMEOUT_SECONDS", 30)
     cloud_timeout = _env_int(values, "AIOS_PROVIDER_TIMEOUT_SECONDS", 30)
     local_endpoint = str(values.get("AIOS_LOCAL_AI_ENDPOINT") or "").strip()
-    local_model = str(values.get("AIOS_LOCAL_AI_MODEL") or "").strip()
-    if local_endpoint and local_model:
+    raw_local_model = str(values.get("AIOS_LOCAL_AI_MODEL") or "").strip()
+    raw_failover_models = str(values.get("AIOS_LOCAL_AI_FAILOVER_MODELS") or "").strip()
+
+    local_models: list[str] = []
+    if raw_local_model:
+        for m in raw_local_model.split(","):
+            cleaned = m.strip()
+            if cleaned and cleaned not in local_models:
+                local_models.append(cleaned)
+    if raw_failover_models:
+        for m in raw_failover_models.split(","):
+            cleaned = m.strip()
+            if cleaned and cleaned not in local_models:
+                local_models.append(cleaned)
+
+    if local_endpoint and local_models:
         profile = get_provider_profile("openai_compatible_local")
-        configs.append(
-            RouterProviderConfig(
-                "openai_compatible_local",
-                profile.display_name_vi if profile else "AI trong máy tương thích OpenAI",
-                local_endpoint,
-                local_model,
-                str(values.get("AIOS_LOCAL_AI_API_KEY") or ""),
-                True,
-                True,
-                10,
-                local_timeout,
+        trusted_internal = is_local_endpoint(local_endpoint)
+        base_display = profile.display_name_vi if profile else "AI trong máy tương thích OpenAI"
+        api_key = str(values.get("AIOS_LOCAL_AI_API_KEY") or "")
+        for idx, model_name in enumerate(local_models):
+            pid = "openai_compatible_local" if idx == 0 else f"openai_compatible_local:failover_{idx}"
+            disp = base_display if len(local_models) == 1 else f"{base_display} ({model_name})"
+            configs.append(
+                RouterProviderConfig(
+                    pid,
+                    disp,
+                    local_endpoint,
+                    model_name,
+                    api_key,
+                    True,
+                    trusted_internal,
+                    10 + idx * 2,
+                    local_timeout,
+                )
             )
-        )
     priority = 100
     for provider_id, key_name, model_name_env in ENV_PROVIDER_MAP:
         api_key = str(values.get(key_name) or "").strip()
@@ -567,6 +588,7 @@ def provider_env_presence(env: dict[str, Any] | None = None) -> dict[str, bool]:
         "HF_TOKEN",
         "AIOS_LOCAL_AI_ENDPOINT",
         "AIOS_LOCAL_AI_MODEL",
+        "AIOS_LOCAL_AI_FAILOVER_MODELS",
         "AIOS_LOCAL_AI_API_KEY",
     ]
     names.extend(name for name in values if name.startswith("AIOS_PROVIDER_") or name.startswith("AIOS_LOCAL_AI_"))

@@ -88,7 +88,13 @@ def get_provider_catalog() -> tuple[AIProviderProfile, ...]:
 
 
 def get_provider_profile(provider_id: str) -> AIProviderProfile | None:
-    return next((p for p in get_provider_catalog() if p.provider_id == provider_id), None)
+    match = next((p for p in get_provider_catalog() if p.provider_id == provider_id), None)
+    if match is not None:
+        return match
+    base_id = provider_id.split(":", 1)[0] if ":" in provider_id else provider_id
+    if base_id != provider_id:
+        return next((p for p in get_provider_catalog() if p.provider_id == base_id), None)
+    return None
 
 
 def list_provider_groups() -> tuple[str, ...]:
