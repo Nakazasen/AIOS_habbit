@@ -1,5 +1,8 @@
 ﻿# Trạng thái mailbox-pc0575-opencode — KDTVN-PC0575 (thợ opencode)
 
+- Trạng thái: `xong`
+- `ghi_chu` (điều phối Muse — ĐÓNG BĂNG opencode, user chốt 2026-10-08 ~06:39): **opencode PC0575 tạm ngừng giao việc cho đến khi user liên lạc lại** — trạng thái `xong` ở đầu file để watcher dừng, KHÔNG phải vé hoàn thành. Vé `SRC-PROBE-PC0575` chuyển cho OMP công ty làm nốt (vé `SRC-PROBE-TAKEOVER-PC0575`, mailbox-pc0575). Hàng chờ cũ chuyển: `APP-SOURCE-MODEL-PC0575` → agy công ty; `APP-OPEN-PERF-PC0575` → OMP công ty; `SRC-421-RECEIVE-PC0575` → agy công ty (phát hành khi gói lên Drive).
+
 - \ghi_chu\ (tho opencode): 2026-10-07 18:22 +07 - da ghi muc 10 vao bao cao \src-probe-pc0575.md\ (kiem nhe 18:21 29/29 OK 0.29s truc tiep theo ma, chi doc index mode=ro + query_only, khong mo mo hinh + giu hoan mau query theo chot 17:48 vi may van 15 python). Bao phu 29/29 + am 5/5 + duong 5/5 giu nguyen, chua tep nao rot nen khong sua tep/index. Giu \dang-lam\, gate 18:16 1/4 + cho-cong den 2026-10-08 13:30 con han. Khong dung src/rag_v2*.
 
 - \ghi_chu\ (tho opencode): 2026-10-07 18:20 +07 - nhan phien theo lenh user (pull Already up to date, da doc ve SRC-PROBE + QUY-UOC chung + rieng). Kiem cong gate: watcher moi nhat 18:16 NO-PICKUP 1/4 sau SKIP-STALL 17:46 + RELAUNCH 17:48 (cho-cong den 2026-10-08 13:30 con han nen luat 4-luot vo hieu), chua cham 4 nen giu \dang-lam\, khong dat cho-muse. Bat dau kiem may ranh + 29 tep nhe. Khong ghi tep/index, khong dung src/rag_v2*.

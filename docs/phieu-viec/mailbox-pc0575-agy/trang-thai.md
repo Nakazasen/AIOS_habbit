@@ -3,6 +3,7 @@
 ## Vé hiện tại: RETRIEVAL-PERF-DIAG-PC0575
 
 - Trạng thái: `dang-lam`
+- `ghi_chu` (điều phối Muse — PHÂN VAI MỚI, user chốt 2026-10-08 ~06:39): **agy = THỢ CHÍNH máy công ty.** Thứ tự việc: (1) `RETRIEVAL-PERF-DIAG-PC0575` — vé hiện tại, chạy sau mốc 'mẫu xong' (mốc này nay do OMP phụ trách qua vé SRC-PROBE-TAKEOVER); (2) `RAG-REMEASURE-PC0575` (nội dung vé đã lưu tại `docs/phieu-viec/mailbox-pc0575-agy/prompt-queue-rag-remeasure-pc0575.md`); (3) `APP-SOURCE-MODEL-PC0575` chặng 1 chỉ-đọc (file `docs/phieu-viec/mailbox-pc0575-opencode/prompt-queue-app-source-model-pc0575.md` — nhận từ opencode); (4) `SRC-421-RECEIVE-PC0575` (file queue ở mailbox-pc0575-opencode — chỉ phát hành khi gói 421 đã lên Drive); (5) vé code nhóm 349 mã URI (điều phối viết vé khi tới lượt).
 - `ghi_chu` (điều phối Muse — NHẬN CHUYỂN VÉ ĐO LẠI, user chốt 21:54): Vé `RAG-REMEASURE-PC0575` chuyển từ OMP sang **agy** (OMP chuyển sang vai trò review/audit vì gần hết quota). Thứ tự việc của agy máy công ty: (1) `RETRIEVAL-PERF-DIAG-PC0575` sau mốc 'mẫu xong' của SRC-PROBE → (2) `RAG-REMEASURE-PC0575` (điều phối sẽ copy nguyên văn nội dung vé vào prompt.md khi phát hành; cách chạy bắt buộc: lane nền tách phiên + file tiến độ từng lane như vé gốc). Vé hiện tại không đổi.
 - `commit`: `472a989f`
 - `bao_cao`: `docs/phieu-viec/ket-qua/retrieval-perf-diag-pc0575.md`
