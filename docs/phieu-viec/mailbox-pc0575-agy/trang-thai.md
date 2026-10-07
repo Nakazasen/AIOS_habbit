@@ -3,7 +3,10 @@
 
 ## Vé hiện tại: RETRIEVAL-ENTITY-PC0575
 
-- Trạng thái: `dang-lam`
+- Trạng thái: `xong-cho-duyet`
+- `commit`: `da079d6`
+- `bao_cao`: `docs/phieu-viec/ket-qua/retrieval-entity-pc0575.md`
+- `ghi_chu`: 2026-10-07 20:55 +07 — Hoàn thành vé `RETRIEVAL-ENTITY-PC0575`: (1) Đóng dấu bộ đề 50 câu và rubric vào repo (commit `c1b3507`); (2) Cài đặt Entity Matching Boost (trần 0.025) và Diversity Capping (≤3 mảnh/nguồn kèm log cảnh báo); (3) Nghiệm thu retrieval 7/7 câu Nhóm A đưa đúng tài liệu nguồn vào top-1/top-2 (100% PASS, Loi KDTPS giảm còn 0–2 mảnh); (4) Unit test hồi quy test_retrieval_entity_boost_and_capping.py đạt 4/4 PASS, toàn bộ suite hồi quy 106/106 PASS; (5) Nghiệm thu SỬ DỤNG THẬT qua spot-check 3 câu Nhóm A (Q0704, Q0701, Q0671) trên app thật/bridge 8585: đo đủ thời gian retrieval/synthesis và ghi trích đoạn đáp án thật vào báo cáo; (6) Vượt qua đủ 4 cổng chất lượng (compileall, pytest, cli audit PASS, import app OK). Sẵn sàng bàn giao cho điều phối Muse nghiệm thu.
 - `ghi_chu` (điều phối Muse — SPOT-CHECK DÙNG THẬT khi nộp vé): 2026-10-07 ~18:50 +07 — User chốt hướng nghiệm thu mới (đã ghi vào QUY-UOC mọi mailbox): ưu tiên hiệu suất + giao diện khi DÙNG THẬT, thợ tự dùng chương trình để nghiệm thu thay vì chỉ chạy file test. Áp ngay cho vé này: khi nộp `xong-cho-duyet`, ngoài kết quả harness/test, phải kèm **spot-check trên app thật**: hỏi 3 câu thuộc nhóm A ngay trong giao diện app trên máy công ty, ghi đáp án nhận được + thời gian chờ từng câu vào báo cáo. Thiếu phần dùng thật này điều phối chấm CHƯA ĐẠT.
 - Ticket hiện tại: `RETRIEVAL-ENTITY-PC0575` — [CTY] ràng buộc thực thể + chống lấn át trong retrieval (fix nhóm A). Prompt: `docs/phieu-viec/mailbox-pc0575-agy/prompt.md`.
 - `ghi_chu`: 2026-10-07 20:36 +07 — Tiến độ RETRIEVAL-ENTITY: (1) Đã nghiệm thu retrieval mức 7/7 câu Nhóm A đều đưa đúng tài liệu nguồn vào top-k (7/7 HIT rank 1–2); (2) Đã áp dụng chuẩn Diversity Capping ≤3 mảnh/tệp nguồn kèm log cảnh báo; (3) Unit test test_retrieval_entity_boost_and_capping.py đạt 4/4 PASS; (4) Đang chạy spot-check sử dụng thật 3 câu qua bridge 8585 trên máy công ty và lập báo cáo docs/phieu-viec/ket-qua/retrieval-entity-pc0575.md.
@@ -19,7 +22,6 @@
 - `ghi_chu`: 2026-10-07 10:42 +07 — Tiếp nhận vé `RETRIEVAL-ENTITY-PC0575`: bắt đầu đóng dấu bộ đề 50 câu và rubric/từ khóa chuẩn hoá vào repo (bước 0), sau đó triển khai Entity Matching Boost và Diversity Capping cho retrieval.
 - `ghi_chu` (verdict Muse): 2026-10-07 ~10:40 +07 — **ĐẠT (tạm, chờ user nghiệm thu)** vé `RUBRIC-NORMALIZE-PC0575`. Kiểm chứng độc lập (poll + báo cáo): RAG **46,5 → 60,5 (GPA 0,93 → 1,21)** — lấy lại 7/10 câu nhóm C; C-Agent **146,17 → 147,5 (GPA 2,92 → 2,95)** trên đáp án sau MATCHER-FIX; pytest VM 9/9. Sai lệch so với dự đoán 1,29 đã giải thích (3 câu giữ nguyên từ khóa theo rào cứng). Hai ghi chú: (1) hàm chuẩn hoá có thêm ánh xạ cụm đồng nghĩa — thợ tự khai trong báo cáo, áp hai chiều và giữ nghĩa, chấp nhận lần này, lần sau phải liệt kê trước trong vé; (2) bộ từ khóa chưa nằm trong repo → vé tiếp theo đóng dấu ở bước 0.
 - `ghi_chu` (điều phối Muse): 2026-10-07 ~10:40 +07 — Phát hành vé `RETRIEVAL-ENTITY-PC0575` (ưu tiên 2 của báo cáo phân tích): đóng dấu bộ đề vào repo + boost thực thể + cap đa dạng nguồn trong retrieval (fix nhóm A, 7 câu). Xem prompt.md.
-- `commit`: (đang thực hiện)
 
 ---
 
