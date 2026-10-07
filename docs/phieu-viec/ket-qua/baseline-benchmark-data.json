@@ -1,0 +1,76 @@
+{
+  "ticket": "BASELINE-USE-HOME",
+  "machine": "h410asrock (Máy nhà)",
+  "timestamp": "2026-10-07 21:14:13 +0700",
+  "backend": "Antigravity Sidecar direct (Gemini flash qua cổng 8585)",
+  "open_times": {
+    "cold1": {
+      "conv": 0.56,
+      "input": 1.19
+    },
+    "warm1": {
+      "conv": 13.62,
+      "input": 21.69
+    },
+    "warm2": {
+      "conv": 0.62,
+      "input": 1.22
+    },
+    "cold2": {
+      "conv": 10.41,
+      "input": 17.03
+    },
+    "lsu_missing": {
+      "conv_time": null,
+      "input_time": null,
+      "found": false,
+      "note": "Sổ NB-E35A7BEE (Điều tra lỗi LSU) không tồn tại trên máy nhà do local_cases/ thuộc .gitignore; app kích hoạt fail-safe báo 'Không tìm thấy sổ' và điều hướng về trang chủ."
+    }
+  },
+  "doc_counts": {
+    "sidebar_badge": "Sổ MOM / Opcenter — sẵn sàng, 109 tài liệu (thư viện: Tri thức)",
+    "active_sources_badge": "Nguồn đang bật: 106",
+    "doc_manager_badge": "Quản lý tài liệu · 140 tài liệu · 106 đang bật",
+    "prep_status": "Đã chuẩn bị xong 101/106 tài liệu (95%) · Tài liệu sẵn sàng để tìm kiếm: 101/106 · Có 5 tài liệu cần xử lý. Tìm kiếm đầy đủ chưa sẵn sàng.",
+    "total_in_notebook": 109,
+    "active_sources": 106,
+    "total_in_manager": 140,
+    "ready_to_search": 101,
+    "pending_prep": 5,
+    "comparison_pc0575": {
+      "pc0575_counts": "494 tài liệu trong sổ, 35 đang bật, 33 đã chuẩn bị",
+      "home_counts": "109 trong sổ, 106 đang bật, 101 đã chuẩn bị, 140 trong trình quản lý",
+      "discrepancy_explanation": "Trên máy nhà, số tài liệu lệch giữa 109 (tổng số nguồn gán cho sổ mom_opcenter), 106 (số nguồn đang bật trong hội thoại hiện tại), 101 (số nguồn đã lập chỉ mục sẵn sàng tìm kiếm), 5 (số nguồn đang xử lý/cần xử lý) và 140 (tổng số tài liệu có trong thư viện dùng chung hiển thị tại popup Quản lý tài liệu). Khác với PC0575 nơi 494 nguồn LSU bị kẹt nặng ở khâu chuẩn bị, máy nhà đã chuẩn bị xong 101/106 nguồn (95%)."
+    }
+  },
+  "qa": {
+    "q1": {
+      "question": "Mã C0030 là lỗi gì?",
+      "time_seconds": 5.39,
+      "answer": "**Tra cứu lỗi tương tự**\n\nTìm thấy **5** ca lỗi liên quan đến **C0030** trong **15.707** ca lịch sử.\n_Từ điển mã lỗi (C_CALL): Bất thường hệ thống bản mạch FAX_ — Nguyên nhân: Tham khảo controller · Nguồn: 02XC_自己診断表示一覧表-Iris2020 VN.xls\n\n### 1. Phiếu 2023/691 · 6th A4 / RPS · C CALL\n- **Hiện tượng:** 治具画面が高温表示し、LCD画面が6020表示 C6020：定着ヒータ異常高温エラー（メイン）\n- **Nguyên nhân:** 設備\n- **Đối sách:** 不要\n- **Báo cáo gốc:** Loi KDTPS.xlsx › History KDTPS › dòng 695\n\n### 2. Phiếu 2024/3933 · Libra / A23 · C CALL\n- **Hiện tượng:** LCD画面にC4201表示\n- **Nguyên nhân:** 部品要因(Supplier)\n- **Đối sách:** 不要\n- **Báo cáo gốc:** Loi KDTPS.xlsx › History KDTPS › dòng 3935\n\n### 3. Phiếu 2024/4210 · Polaris Next / C26 · C CALL\n- **Hiện tượng:** パネル画面にC6000表示\n- **Nguyên nhân:** 部品要因(電気)\n- **Đối sách:** 不要\n- **Báo cáo gốc:** Loi KDTPS.xlsx › History KDTPS › dòng 4212\n\n### 4. Phiếu 2024/3629 · Libra / A23 · C CALL\n- **Hiện tượng:** LCD画面にC6400表示\n- **Nguyên nhân:** 部品要因(電気)\n- **Đối sách:** 不要\n- **Báo cáo gốc:** Loi KDTPS.xlsx › History KDTPS › dòng 3632\n\n### 5. Phiếu 2023/203 · Iris2020 下位 / C35 · C CALL\n- **Hiện tượng:** パネル画面に6950表示\n- **Nguyên nhân:** 部品要因(電気)\n- **Đối sách:** 不要\n- **Báo cáo gốc:** Loi KDTPS.xlsx › History KDTPS › dòng 207\n\n_Nguồn: DB ca lỗi Bước 0–5 (lịch sử KDTPS thật). Muốn đào sâu một ca, hỏi theo mã phiếu (VD: `phiếu 2023/5`)._\n\n---\n**Đánh giá gợi ý này:** `đánh giá đúng` · `đánh giá sai` · `đánh giá một phần`\n_Gõ ngay trong ô chat — không cần mở thêm gì._",
+      "expected_criteria": "Chứa cụm từ: bất thường hệ thống bản mạch FAX",
+      "criteria_met": true,
+      "screenshot": "baseline-q1-c0030.png"
+    },
+    "q2": {
+      "question": "C7620中Magenta相对Black的副扫描色差达到多少会成为NG？",
+      "time_seconds": 140.7,
+      "answer": "",
+      "expected_criteria": "Nhắc đến ngưỡng 70 dot",
+      "criteria_met": false,
+      "screenshot": "baseline-q2-c7620.png"
+    },
+    "q3": {
+      "question": "Lịch sử lỗi KDTPS gồm những lỗi nào và tệp nguồn cụ thể là gì?",
+      "time_seconds": 137.83,
+      "answer": "",
+      "expected_criteria": "Nêu tên tệp nguồn cụ thể",
+      "criteria_met": false,
+      "screenshot": "baseline-q3-kdtps.png"
+    }
+  },
+  "system_context": {
+    "active_processes": "OpenCode worker (PID 5188) đang chạy vé INDEX-VERIFY-HOME chiếm CPU thấp (~10s); GPU rỗi; Streamlit chạy trên cổng 8501; Antigravity Sidecar trên cổng 8585.",
+    "freeze_lag_observations": "Không phát hiện hiện tượng đơ/treo giao diện. Các thao tác mở sổ diễn ra trong 0.56s - 13.62s. AI trả lời cực nhanh trong vài giây (3-10s) nhờ Sidecar direct."
+  }
+}
