@@ -3,7 +3,8 @@
 
 ## Vé hiện tại: RAG-REMEASURE-PC0575
 
-- Trạng thái: `cho-muse`
+- Trạng thái: `dang-lam`
+- `ghi_chu` (điều phối Muse — GỠ CỜ 12:50, CỔNG CHƯA MỞ LÀ BÌNH THƯỜNG): 2026-10-07 ~12:50 +07 — Cổng `RETRIEVAL-ENTITY-PC0575` vẫn `dang-lam` (mốc agy 11:55, đang áp code — không kẹt), vé này chờ cổng theo đúng thiết kế nên giữ `dang-lam` + heartbeat, không leo thang vì cổng. Hai lần push hụt 12:28/12:39 là do cây WIP chưa commit của agy chặn git pull trên workspace dùng chung — thợ đã push tay thành công (cda5a38), không mất dữ kiện. Khi header mailbox agy có verdict ĐẠT thì bắt đầu chạy lane theo mục Cách chạy trong prompt.md.
 
 - `ghi_chu` (tiến độ OMP): 2026-10-07 12:43 +07 — **Đã PUSH THÀNH CÔNG lên `origin/phieu-viec/rag-fix1`** (`f93e96b..4f075b3`): trạng thái vé = `cho-muse` kèm mốc đầy đủ ở trên; đây là phần watcher escalate không đẩy được (2 lần `ESCALATE FAIL sync` do cây WIP của agy chặn `pull`). **DỪNG tại đây theo luật gate — không quay no-op.** Muse/user: xem mốc 12:42 để quyết bước kế (mở lại vé khi agy có verdict ĐẠT, hoặc gỡ cờ nếu vẫn muốn chờ cổng ở `dang-lam`).
 
