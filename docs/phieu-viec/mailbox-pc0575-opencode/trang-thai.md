@@ -1,5 +1,7 @@
 ﻿# Trạng thái mailbox-pc0575-opencode — KDTVN-PC0575 (thợ opencode)
 
+- `ghi_chu` (thợ opencode): 2026-10-07 17:00 +07 — đo bao phủ đủ 29 tệp `verify_selected_document_coverage` (`readonly+strict`, mở 31,5s): dương 29/29 `valid=True`, âm 5/5 bị chặn đúng (`valid=False`), dương 5/5 qua. Đĩa + hash 29/29 PASS. Chưa chạy truy vấn đầy đủ (dense hay kẹt khi agy song song) nên nhịp sau thử 1-2 truy vấn ngắn có timeout. Kiểm cổng gate: watcher 16:53 2/4, chưa chạm 4 nên giữ `dang-lam`. Không ghi tệp/index, không đụng src/rag_v2*.
+
 - `ghi_chu` (thợ opencode): 2026-10-07 16:56 +07 — nhận phiên theo lệnh user (pull xong `245eed3`, đã đọc vé SRC-PROBE + QUY-UOC chung + riêng). Kiểm cổng gate: watcher opencode mới nhất 16:53 2/4 cho vé SRC-PROBE (16:23 1/4 + 16:53 2/4), chưa chạm 4 nên giữ `dang-lam`, không đặt cho-muse. Bắt đầu probe đủ 29 tệp + đối chứng âm/dương chỉ-đọc. Không ghi tệp/index, không đụng src/rag_v2* (WIP agy giữ nguyên).
 
 - `ghi_chu` (thợ opencode): 2026-10-07 16:55 +07 — chẩn đoán kẹt truy vấn: nhánh `lexical` rớt nhanh đúng cổng (`semantic_index_coverage_incomplete` khi chưa nạp backend), nhánh `bge_m3_hybrid` mở 28s rồi kẹt quá 6 phút ở bước dense (máy bận do agy đo song song, vector 149k mảnh). Bao phủ vẫn PASS (dương 3/3, âm 2/2 đúng chặn). Hướng tiếp: chạy probe nền từng tốp nhỏ có log, ưu tiên bao phủ + truy vấn đầy đủ cho từng tệp. Kiểm cổng gate: watcher mới nhất 16:23 1/4 cho vé mới, chưa chạm 4 nên giữ `dang-lam`. Không ghi tệp/index, không đụng src/rag_v2*.
