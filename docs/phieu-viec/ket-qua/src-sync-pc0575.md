@@ -132,3 +132,19 @@
   - Ví dụ thật (nhóm nhiều-mảnh, đọc chỉ-đọc): `wsc-9c82b1ca2e1898a8d9d03e8b` (61.760 mảnh) ↔ `61C1065D8513_B4_Bow_Skew.xlsm`; `wsc-4fc7eb76bdc2e05c08b3f0f6` (39.870 mảnh) ↔ `Loi KDTPS.xlsx`.
   - Cơ chế đúng của chương trình (đọc mã `HEAD`): tệp gốc → trích văn bản (`source.text`) → ghi `{mã}.txt` (`_materialize_sources`) → băm SHA-256 toàn tệp (`_file_fingerprint`) → tách mảnh theo phần tử. Vì vậy nối tay các mảnh không bao giờ khớp — phải tải gốc + chạy đúng bộ chuyển đổi rồi đối chiếu vân tay.
   - Bước tiếp theo cần cổng mạng `ngoai` + `DRIVE=OK`: tải 5 tệp gốc mẫu từ Drive `AIOS_Data` (nhóm MOM/LSU), chạy bộ chuyển đổi của chương trình, đối chiếu từng tệp; báo mẫu trước khi mở rộng. Nếu mẫu đúng-nghĩa vẫn 0/5 thì dừng báo điều phối (không tự chốt C).
+
+## 9. Mẫu B 5 mã + rà Drive (thợ làm 13:05 → 13:15, chỉ-đọc + liệt kê Drive)
+
+- Cổng mạng lúc làm: `MANG=KT_CHETAO`, `DRIVE=OK` (chạy lại `Chuyen-Mang.ps1`, ra được Drive). Đĩa C trống 68,21 GB, D trống 20,73 GB — đủ chỗ tải mẫu.
+- Chọn 5 mã nhóm `.txt` 2–3 mảnh nội dung, có vân tay, tên gốc thật (đọc chỉ-đọc `mode=ro`, khóa `metadata.metadata.extractor`):
+  - `wsc-3d9aa320fd815c22934dd257` (3 mảnh) ↔ `KTD-2026-01-0067-Iris2020-C34-A1-C4701.xlsx` ↔ `ExcelDocumentConverterAdapter`.
+  - `wsc-8a3bd0d172fd52cb192c6be7` (3 mảnh) ↔ `Barcode_List.xlsx` ↔ `ExcelDocumentConverterAdapter`.
+  - `wsc-6d6398a3ab79894c5425393f` (3 mảnh) ↔ `302XC47210-01.pdf` ↔ `PDFDocumentConverterAdapter+pymupdf_fallback`.
+  - `wsc-b124bf7cf16c2ffe0bd1518a` (2 mảnh) ↔ `PA0893D_circuit.pdf` ↔ `PDFDocumentConverterAdapter+pymupdf_fallback`.
+  - `wsc-c3e7ff49251ad8ff24cf613e` (3 mảnh) ↔ `KTD-2025-11-1181-Iris2024-C35-A5-Màn hình không sáng.xlsx` ↔ `ExcelDocumentConverterAdapter`.
+- Bối cảnh: nhóm `.txt` 2–3 mảnh có vân tay có 36 mã; chỉ 13 mã có tên gốc thật, 23 mã tên `wsc-*.txt` (mất tên gốc, chưa tải được nếu không có bản đồ khác).
+- Rà Drive `AIOS_Data` (`1gE4xrS9qPPz-ZYQeL_oTc4JwBFq9iR8F`, liệt kê `embeddedfolderview` qua `KT_CHETAO`, chưa tải gì):
+  - Gốc 11 mục khớp Pha 1 (3 thư mục + 8 tệp).
+  - `MOM_Opcenter_WMS` 44 mục, `Tài liệu của tất cả dòng máy` 8 mục (3 thư mục LSU + 5 tệp lẻ), `Iris LSU` 11 mục, `6thA3 LSU` 1 mục, `Sirius LSU` 7 mục — **không thấy 5 tên gốc mẫu** ở các mức đã liệt kê.
+  - Suy đoán trung thực: 5 tệp KTD/PDF mẫu nằm sâu hơn (thư mục cháu chưa duyệt hết) hoặc trong gói `Điều chỉnh-20260905T053942Z-1-001.zip` ở gốc — cần duyệt tiếp ở nhịp sau, không tải bừa cả gói lớn.
+- Rào giữ: chỉ đọc chỉ mục (`mode=ro`), không ghi tệp nào, không sửa chỉ mục, không đụng `wire_qa_staging.py`, không đụng `src/rag_v2*` local (WIP của agy giữ nguyên).
