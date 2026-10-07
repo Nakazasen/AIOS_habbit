@@ -2,7 +2,7 @@
 
 - Trạng thái: `xong-cho-duyet`
 - `bao_cao`: `docs/phieu-viec/ket-qua/baseline-use-home.md`
-- `commit`: `4b7619d`
+- `commit`: `16a0df8`
 - `ghi_chu`: 2026-10-07 21:18 +07 — Hoàn thành 100% vé BASELINE-USE-HOME bằng tự động hoá đầu-cuối qua Chrome CDP trên ứng dụng thật đang chạy: 1) Đo thời gian mở sổ trên máy nhà (mom_opcenter 109 nguồn): Lạnh 1 (0.56s danh sách / 1.19s ô nhập), Ấm 1 (13.62s / 21.69s), Ấm 2 (0.62s / 1.22s), Lạnh 2 (10.41s / 17.03s); đối chiếu sổ LSU NB-E35A7BEE không tồn tại trên máy nhà do local_cases/ thuộc .gitignore, app kích hoạt fail-safe báo không tìm thấy sổ và điều hướng về trang chủ an toàn; 2) Ghi nhận các con số tài liệu app hiển thị: thẻ sổ 109 tài liệu, nguồn đang bật 106, trình quản lý popup 140 tài liệu, tiến độ chuẩn bị 101/106 (95%); khi tạo chat mới đặt mặc định 0 đang bật; 3) Hỏi 3 câu kiểm: Câu 1 (mã C0030) trả lời sau 5.39s chứa chính xác 'bất thường hệ thống bản mạch FAX' và trích nguồn 02XC_自己診断表示一覧表-Iris2020 VN.xls + Loi KDTPS.xlsx › History KDTPS (ĐẠT 100%); Câu 2 và Câu 3 phát hiện nguyên nhân nghẽn tiến trình con BGE-M3 (preparation_init_bge_worker_persist_timeout); 4) Lưu trữ 8 ảnh chụp màn hình minh chứng + file dữ liệu gốc baseline-benchmark-data.json; 5) Cổng kiểm tra: compileall PASS, cli audit status PASS, import workspace_chat_app IMPORT_OK, tuyệt đối không sửa code/index/cấu hình, không đụng tiến trình nền khác. Đang chờ Muse duyệt.
 - `Ticket hiện tại`: `BASELINE-USE-HOME` — [NHÀ] đo nền dùng thật trên máy nhà theo luật nghiệm thu mới. Prompt: `docs/phieu-viec/mailbox-agy/prompt.md`. Role gợi ý: DEFAULT.
 - `hang-cho`: (trống)
