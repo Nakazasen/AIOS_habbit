@@ -1,6 +1,7 @@
 # Trạng thái mailbox-pc0575-opencode — KDTVN-PC0575 (thợ opencode)
 
-- Trạng thái: `moi`
+- Trạng thái: `dang-lam`
+- `ghi_chu` (thợ opencode): 2026-10-07 10:05 +07 — nhận vé `SRC-SYNC-PC0575` (đủ điều kiện mở: `moi` + ticket mới + chưa có báo cáo `src-sync-pc0575.md`; gate watcher mới mở lần 1 lúc 10:04 nên chưa chạm ngưỡng 4 lần, không đặt `cho-muse`). Bắt đầu Pha 0 điều tra chỉ-đọc.
 - `ghi_chu` (điều phối Muse): 2026-10-07 ~09:55 +07 — Phát hành vé `SRC-SYNC-PC0575` (luật hàng chờ không bao giờ cạn; user nhắc opencode đang rảnh): xử lý gốc vụ máy công ty 0/889 file nguồn — RAG đến nay phải hạ 2 cổng vân tay + tắt strict_semantic mới chạy được. Pha 0 điều tra ngay (index mong đợi file ở đâu, dung lượng, đĩa trống, đối chiếu Drive); Pha 1 DỪNG Ở CỔNG MẠNG chờ Muse xác nhận chuyển KT_CHETAO mới tải; Pha 2 đồng bộ + probe strict không hạ cổng. Không ghi index, không đụng `wire_qa_staging.py` (OMP đang vá MATCHER-FIX). Prompt: `docs/phieu-viec/mailbox-pc0575-opencode/prompt-queue-src-sync-pc0575.md`. Role gợi ý: DEFAULT.
 
 - Ticket hiện tại: `SRC-SYNC-PC0575` — [CTY] đưa file nguồn về PC0575 để RAG chạy strict_semantic đúng thiết kế. Prompt: `docs/phieu-viec/mailbox-pc0575-opencode/prompt.md`. Role gợi ý: DEFAULT.
