@@ -4206,18 +4206,18 @@ class LocalChunkIndex:
         if not cjk_prefilter_enabled():
             return None
         entities = _extract_query_entities(" ".join(terms))
-        if entities:
-            usable_terms = sorted(entities, key=lambda term: (-len(term), term))[:2]
-        else:
-            generic_stop = {"data", "file", "sheet", "line", "view", "part", "this", "from"}
-            filtered = [
-                term for term in terms
-                if term and term.lower() not in generic_stop and (len(term) <= 6 or not _CJK_RE.search(term))
-            ]
-            usable_terms = sorted(
-                {term for term in filtered if term},
-                key=lambda term: (-len(term), term),
-            )[:2]
+        generic_stop = {"data", "file", "sheet", "line", "view", "part", "this", "from"}
+        filtered = [
+            term for term in terms
+            if term and term.lower() not in generic_stop and (len(term) <= 6 or not _CJK_RE.search(term))
+        ]
+        # Entities are candidates, not the whole filter: a narrow entity
+        # such as a lone short code must not hide the longest content terms.
+        candidates = {term for term in filtered if term} | set(entities)
+        usable_terms = sorted(
+            candidates,
+            key=lambda term: (-len(term), term),
+        )[:2]
         if not usable_terms or not eligible_ids:
             return None
         search_expression = (
