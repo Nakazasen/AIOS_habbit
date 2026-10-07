@@ -1,33 +1,35 @@
-# VÉ: RETRIEVAL-ENTITY-PC0575 (ràng buộc thực thể + chống lấn át trong retrieval — fix nhóm A)
+# VÉ: INDEX-STATUS-LINE-PC0575 (dòng trạng thái chỉ mục trong khung chat)
 
-- Mã vé: `RETRIEVAL-ENTITY-PC0575`
-- Máy: CÔNG TY KDTVN-PC0575 (thợ agy), CPU-only.
-- Role gợi ý: DEFAULT (code + test + kiểm chứng mức retrieval).
-- Nguồn: `docs/phieu-viec/ket-qua/rag-fail-analysis-pc0575.md` §4.3 + §5 Ưu tiên 2 (tác động kỳ vọng +0,280 GPA lane RAG).
+- Mã vé: `INDEX-STATUS-LINE-PC0575`
+- Role gợi ý: DEFAULT (code UI nhỏ + test)
+- Máy: công ty KDTVN-PC0575
+- Báo cáo: `docs/phieu-viec/ket-qua/index-status-line-pc0575.md`
+- Điều kiện bốc vé: xếp hàng sau `RETRIEVAL-ENTITY-PC0575` — chỉ bắt đầu khi điều phối phát hành (vé hiện tại của mailbox đã xong-cho-duyet + có verdict).
 
 ## Bối cảnh
 
-Nhóm A — 7 câu retrieval trượt (mất 14,0 điểm): tài liệu ĐÃ có trong index (`Sirius 2`, `OKNGUNIT`, `3V2ND19040`, `Y_BeamH_Camera 140`…) nhưng mảnh đúng không vào được top-k vì tệp khổng lồ `Loi KDTPS.xlsx` lấn át kết quả. Danh sách 7 câu: xem §4.3 của báo cáo phân tích.
+User kiểm chứng theo checklist ngày 07/10, mở app và nhận xét: trên giao diện không có chỗ nào cho biết app đang dùng tệp chỉ mục nào. Đúng sự thật: app chọn chỉ mục theo cấu hình cố định (ô chọn tay đã bỏ theo hướng chat-first tối giản — xem ghi chú trong code quanh `workspace_chat_app.py`). User duyệt bổ sung **một dòng trạng thái trong khung chat** để nhìn là biết app đang chạy trên chỉ mục nào. Không làm ô chọn, không thêm nút.
 
 ## Việc phải làm
 
-0. **Đóng dấu thước đo vào repo (việc nhỏ, làm trước):** commit bộ đề 50 câu + bộ từ khóa đã chuẩn hoá (đúng trạng thái đã dùng khi chấm lại ở vé RUBRIC-NORMALIZE) vào repo — đường dẫn fixtures/eval rõ ràng, kèm ghi chú nguồn gốc. Từ nay thước đo phải tái lập được từ repo.
-1. **Entity Matching Boost:** khi câu hỏi chứa mã lỗi chuyên biệt (ví dụ `C7620`) hoặc số hiệu đồ gá/tên chuyên đề (`1035`, `MOUNT LD BLOCK`, `Sirius 2`…), tăng trọng số cho tài liệu có thực thể đó trong tiêu đề/nội dung đầu. Boost phải có trần, không áp đảo hoàn toàn điểm liên quan gốc.
-2. **Diversity Capping:** tối đa **3 mảnh từ một tệp nguồn duy nhất** trong top-k ngữ cảnh (ca điển hình: `Loi KDTPS.xlsx`). Cap áp ở tầng chọn ngữ cảnh, ghi log khi cap kích hoạt.
-3. **Test:** tái lập ca lấn át (tệp lớn chiếm gần hết top-k → sau vá ≤3); ca boost thực thể (câu có mã lỗi → tài liệu chuyên đề vào top-k); ca không đổi hành vi khi câu hỏi không có thực thể.
-
-## Nghiệm thu (mức retrieval — KHÔNG chạy lại lane ở vé này)
-
-- Trên đúng 7 câu nhóm A: mảnh/tài liệu đúng vào top-k ở **7/7 câu** (trước vá: trượt cả 7 theo báo cáo).
-- Hồi quy test retrieval liên quan xanh; không đổi hành vi lane C-Agent (matcher không thuộc vé này).
-- Đo lại toàn lane để sau, khi các fix đã gom đủ (matcher + thước đo + retrieval + bổ sung nguồn) — vé này chỉ cần bằng chứng mức retrieval.
+1. Thêm **1 dòng trạng thái mảnh** (caption, chữ nhỏ/mờ) trong khung chat của `src/aios_habit/workspace_chat_app.py` — ngay trên vùng hội thoại hoặc dưới ô nhập, đúng 1 dòng, không nút bấm, không menu, không sidebar mới.
+2. Nội dung dòng, lấy từ **chính chỉ mục app đang nạp** (không hardcode, không đọc nguồn khác):
+   - Tên tệp chỉ mục (vd `workspace_chat.sqlite`).
+   - Số tài liệu + số mảnh đếm trực tiếp từ DB đang mở (trên máy này kỳ vọng 889 tài liệu / 149.800 mảnh — lấy số thật lúc chạy, không gõ cứng).
+   - Mã nhận diện rút gọn = 12 ký tự hex đầu của **vân tay logic**: SHA-256 trên danh sách đã sắp xếp của (mã tài liệu + vân tay nguồn từng tài liệu). Rẻ (889 dòng), ổn định khi SQLite chốt sổ — đây là thước chuẩn điều phối đã chốt ở vé SRC-SYNC thay cho MD5 thô của tệp.
+   - Backend đang dùng (vd `ONNX fp32`).
+   - Mẫu định dạng: `Kho đang dùng: workspace_chat.sqlite · 889 tài liệu · 149.800 mảnh · mã <12-hex> · ONNX fp32`.
+3. **Trạng thái lỗi phải hiện rõ:** chỉ mục thiếu/không đọc được → dòng trạng thái hiện cảnh báo (vd `⚠ Không nạp được kho tri thức`), cấm im lặng để trống hoặc hiện số liệu cũ của phiên trước.
+4. Số liệu tính 1 lần khi app nạp chỉ mục (cache theo phiên), không tính lại mỗi câu hỏi.
 
 ## Rào cứng
 
-- Không merge `main`. Không ghi index. Python 3.11.
-- Không đụng `wire_qa_staging.py` (vé MATCHER-FIX của OMP) và không đụng `rag_v2/synthesis.py` (việc máy nhà). Nếu cơ chế boost/cap buộc phải chạm file chung, DỪNG và ghi rõ vào mailbox chờ điều phối.
-- Heartbeat tối thiểu 15 phút nếu việc kéo dài.
+- CHỈ hiển thị: không đổi cách app chọn chỉ mục, không thêm ô chọn/nút/menu, không đụng logic retrieval/synthesis, không ghi index.
+- Tương thích Python 3.11. Không merge `main`.
+- Vòng cải thiện theo luật user: metric đo được = test khẳng định số hiển thị khớp số đọc trực tiếp từ DB; có test cho trạng thái lỗi.
 
-## Báo cáo
+## Kiểm chứng & báo cáo
 
-`docs/phieu-viec/ket-qua/retrieval-entity-pc0575.md` — đường dẫn bộ đề đã commit, cơ chế boost/cap, bảng top-k trước/sau cho 7 câu nhóm A, kết quả test.
+- Unit test cho hàm dựng dòng trạng thái (DB giả lập: số đếm khớp đầu ra; DB thiếu → trạng thái cảnh báo).
+- Cổng kiểm chứng theo AGENTS.md của repo: compileall + pytest liên quan + `cli audit` + import app.
+- Chạy app thật trên PC0575: ghi lại dòng trạng thái hiển thị thực tế; đối chiếu số đếm bằng truy vấn DB độc lập và mã rút gọn bằng script tính vân tay logic độc lập — cả hai phải khớp tuyệt đối mới kết luận ĐẠT trong báo cáo.
