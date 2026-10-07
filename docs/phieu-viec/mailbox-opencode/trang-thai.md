@@ -1,5 +1,6 @@
 ﻿# Trạng thái mailbox-opencode (thợ opencode — model free muse-spark-1.3 / space-bunny)
 
+- `ghi_chu`: 2026-10-08 02:27 +07 — Heartbeat vé `TEST-HEALTH-ROUND2-HOME`: pytest nền vẫn chạy (python CPU 60s → 98s; log 4.538 → 6.968 byte, tới ~73%). Chưa chạm `src/`/`tests/`.
 - `ghi_chu`: 2026-10-08 02:16 +07 — Heartbeat vé `TEST-HEALTH-ROUND2-HOME`: pytest nền vẫn chạy (python CPU 19s → 60s; log 1.460 → 4.538 byte, tới ~47%, có `F` rải rác đúng như vòng 1 — chưa phân loại vội, chờ chạy xong). Không có vé khác tranh tài nguyên (chỉ có BGE worker con của chính pytest + MCP harness nhẹ). Chưa chạm `src/`/`tests/`.
 - `ghi_chu`: 2026-10-08 02:04 +07 — Mốc chạy nền vé `TEST-HEALTH-ROUND2-HOME`: tiến trình pytest toàn bộ đã khởi động tách phiên (cha powershell pid 12292, con pytest pid 9988 đang chạy); log `local_runs/test-health-round2-home/pytest-full.log` + `.err.log` (mới tạo, đang ghi); Python 3.11.14 qua uv OK, đĩa C còn ~11GB / D còn ~42GB. Heartbeat tiếp theo ~15 phút.
 - Trạng thái: `dang-lam`
