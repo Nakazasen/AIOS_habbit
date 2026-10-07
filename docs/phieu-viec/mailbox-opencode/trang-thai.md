@@ -4,7 +4,7 @@
 - `ghi_chu`: 2026-10-08 00:52 +07 — Nhận vé `INDEX-LOCALCOPY-CHECK-HOME`, cổng MỞ (trạng thái `moi` + prompt đúng vé + verdict CHƯA ĐẠT UPLOAD-HOME 00:52 giữ bước tải ở CHỜ KÊNH; không rơi nhánh 4-lần/cho-muse). Vé chỉ-đọc, không đụng production. Bắt đầu bước 1: xác nhận số đếm bản sao local, chưa đụng index nào.
 - `ghi_chu`: 2026-10-08 01:05 +07 — Mốc đếm xong vé `INDEX-LOCALCOPY-CHECK-HOME`: bản sao `local_runs/.../library.sqlite` (2.552.659.968 B, mtime 28/09) chỉ-đọc `immutable=1` ra 133.144 mảnh / 496 tài liệu / 107.331 truy xuất được, `quick_check=ok`; thiếu ~16.656 mảnh + 393 tài liệu so với production 889/149.800 (không mở file production theo rào). Kế tiếp: rà đường đọc local_runs trong code/test.
 - Trạng thái: `xong-cho-duyet`
-- `commit`: `TBD` (báo cáo `index-localcopy-check-home.md`; vé này không sửa `src/`/`tests/`)
+- `commit`: `e4964aa` (báo cáo `index-localcopy-check-home.md`; vé này không sửa `src/`/`tests/`)
 - `bao_cao`: `docs/phieu-viec/ket-qua/index-localcopy-check-home.md`
 - `ghi_chu`: 2026-10-08 01:01 +07 — XONG chờ duyệt `INDEX-LOCALCOPY-CHECK-HOME`: bản sao local 133.144/496 (`quick_check=ok`, bản ghim cũ 28/09) thiếu 16.656 mảnh + 393 tài liệu so với production; app thật an toàn (đọc ổ C), 3 đường mặc định nguy hiểm nhất là test `test_index_status.py:143` (đỏ chắc chắn), activation `:54`, benchmark `:593`; khuyến nghị hướng (b) loại khỏi đường mặc định, chưa tự làm. Cổng: compileall sạch, audit PASS, import OK; không đụng production, không merge `main`.
 - Trạng thái: `moi`
