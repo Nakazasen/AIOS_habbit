@@ -1,17 +1,17 @@
-# VÉ: SRC-PACKAGE-511-UPLOAD-HOME (tải gói 90 tệp đã đóng lên Drive + ghi link cho vé nhận)
+# VÉ XẾP HÀNG: INDEX-LOCALCOPY-CHECK-HOME (kiểm tra bản sao chỉ mục thiếu mảnh trong local_runs ở máy nhà)
 
-- Mã vé: `SRC-PACKAGE-511-UPLOAD-HOME`
-- Role gợi ý: SMOL/TINY (việc ngắn, một thao tác tải lên + kiểm chứng)
+- Mã vé: `INDEX-LOCALCOPY-CHECK-HOME`
+- Role gợi ý: SMOL/TINY (kiểm tra chỉ-đọc + khuyến nghị)
 - Máy: nhà h410asrock
-- Báo cáo: bổ sung mục vào `docs/phieu-viec/ket-qua/src-package-511-home.md` (mục "Bổ sung: tải Drive")
-- Đầu vào (đã có sẵn ở máy nhà, từ vé `SRC-PACKAGE-511-HOME`): tệp `local_runs/src-package-511/src-package-511-home-match90.zip` — 430.510 byte, SHA-256 `862CAD6EF5943678DA25424AF177DA8D66EE3B53FC4DADC87827836A37613403`, kèm `manifest.csv` trong gói (90 tệp khớp băm: 58 canary + 32 production).
+- Báo cáo: `docs/phieu-viec/ket-qua/index-localcopy-check-home.md`
+- Căn cứ: phát hiện §3 báo cáo `test-health-home.md` — bản sao `local_runs/workspace_chat_rag_v2_production/.../library.sqlite` ở máy nhà chỉ có **133.144 mảnh**, thiếu ~16.656 so với production đã kiểm chứng (149.800 mảnh, tệp ở `C:\AIOS_workspace_chat_rag_v2_production\...`).
 
-## Việc phải làm
+## Việc phải làm (CHỈ ĐỌC với dữ liệu; không xoá, không ghi đè gì ở vé này)
 
-1. Tải tệp zip lên thư mục **AIOS_Data** trên Google Drive (folder id `1gE4xrS9qPPz-ZYQeL_oTc4JwBFq9iR8F`), giữ nguyên tên tệp. Dùng đường tải mà các vé trước trên máy này đã dùng thành công (kiểm mailbox/tra cứu cách làm cũ trong repo trước khi thử cách mới); thao tác cẩn thận trong Drive đang đăng nhập — chỉ thêm đúng 1 tệp, không di chuyển/xoá/đổi tên bất cứ thứ gì khác.
-2. Kiểm chứng sau tải: tệp xuất hiện trong thư mục với đúng tên + đúng kích thước 430.510 byte; ghi **link tệp Drive** vào mục bổ sung của báo cáo.
-3. Nếu mọi đường tải đều bị chặn thật sự: ghi rõ đã thử những đường nào, chặn ở đâu — không báo xong bừa, không nhờ user tải tay.
+1. Xác nhận số đếm của bản sao local (tài liệu/mảnh/vân tay) và thời điểm/đường nào đã tạo ra nó (dấu vết trong log/manifest nếu có).
+2. Rà trong code + script + test: có đường nào (mặc định hay fallback) đọc bản sao `local_runs/` này thay vì production không — nếu có, liệt kê chính xác file/dòng và điều kiện kích hoạt. Đây là phần quan trọng nhất: bản sao thiếu chỉ nguy hiểm nếu có ai/có gì đo hay chạy trên nó.
+3. Khuyến nghị chốt một trong hai hướng và ghi lý do: (a) làm tươi bản sao từ production (kèm cách làm an toàn + chi phí dung lượng/thời gian), hoặc (b) đánh dấu/loại khỏi mọi đường đọc mặc định. KHÔNG tự thực hiện ở vé này — điều phối duyệt hướng mới làm.
 
 ## Rào cứng
 
-- Chỉ tải lên, không sửa/xoá dữ liệu Drive hiện có; không commit tệp zip vào git; không merge `main`.
+- Chỉ đọc; không đụng tệp production; không đụng index nào khác; không merge `main`.
