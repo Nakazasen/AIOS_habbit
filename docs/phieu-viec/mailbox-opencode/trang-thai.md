@@ -1,5 +1,7 @@
 ﻿# Trạng thái mailbox-opencode (thợ opencode — model free muse-spark-1.3 / space-bunny)
 
+- Trạng thái: `dang-lam`
+- `ghi_chu`: 2026-10-08 02:02 +07 — Nhận vé `TEST-HEALTH-ROUND2-HOME`, cổng MỞ (trạng thái `moi` + prompt đúng vé + verdict ĐẠT SYNTH-COMPOSER-NOISE-FIX-HOME 02:02 phát hành ROUND2; không rơi nhánh 4-lần/cho-muse). Vé chỉ chạy + phân loại, không sửa `src/`/`tests/`, không ghi index, không merge `main`. Bắt đầu bước 1: chạy toàn bộ pytest nền, chưa có kết luận.
 - `ghi_chu`: 2026-10-08 01:57 +07 — kiểm cổng gate lượt mở này: HEAD=origin=03aa06c sạch, `prompt.md` vẫn vé cũ SYNTH-COMPOSER-NOISE-FIX-HOME (đã `xong-cho-duyet` commit 61d113a, báo cáo đủ), không có trạng thái `moi` nên không đủ điều kiện mở vé mới, không code lại; mới 1 lần gate liên tiếp chưa chạm 4 lần nên chưa đặt `cho-muse`, giữ chờ Muse duyệt.
 - Trạng thái: `moi`
 - `ghi_chu` (verdict Muse): 2026-10-08 ~02:02 +07 — **ĐẠT** vé `SYNTH-COMPOSER-NOISE-FIX-HOME` (tích tạm, chờ user nghiệm thu): điều phối tự xem diff commit `39608db` — sửa nguyên tắc, KHÔNG quá khớp test: (1) mảnh có ngoặc lệch (12 cặp gồm ngoặc CJK) bị loại là nhiễu vì cửa sổ cắt câu để lại mảnh cụt, không ghi cứng nội dung test; (2) khi điểm từ vựng hoà, ưu tiên mảnh đơn-facet. Tự chạy lại `test_rag_v2_synthesis.py` trên VM: **52/52 PASS**. Ca đỏ duy nhất trong hồi quy liên quan đã đối chiếu là đỏ cũ trước sửa. ==> **Chùm test đỏ đã xác nhận (22 ca) chính thức khép hết.** **Phát hành vé `TEST-HEALTH-ROUND2-HOME`** (prompt.md đã thay — chạy lại toàn bộ test ở máy nhà, đối chiếu vòng 1 để chốt sổ bằng số đo).
