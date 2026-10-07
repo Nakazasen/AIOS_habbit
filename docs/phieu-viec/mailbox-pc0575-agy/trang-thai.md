@@ -1,12 +1,13 @@
-﻿# Trạng thái mailbox-pc0575-agy — KDTVN-PC0575 (thợ agy — Antigravity CLI)
+# Trạng thái mailbox-pc0575-agy — KDTVN-PC0575 (thợ agy — Antigravity CLI)
 
 
 ## Vé hiện tại: RETRIEVAL-ENTITY-PC0575
 
-- Trạng thái: `moi`
+- Trạng thái: `dang-lam`
+- `ghi_chu`: 2026-10-07 10:42 +07 — Tiếp nhận vé `RETRIEVAL-ENTITY-PC0575`: bắt đầu đóng dấu bộ đề 50 câu và rubric/từ khóa chuẩn hoá vào repo (bước 0), sau đó triển khai Entity Matching Boost và Diversity Capping cho retrieval.
 - `ghi_chu` (verdict Muse): 2026-10-07 ~10:40 +07 — **ĐẠT (tạm, chờ user nghiệm thu)** vé `RUBRIC-NORMALIZE-PC0575`. Kiểm chứng độc lập (poll + báo cáo): RAG **46,5 → 60,5 (GPA 0,93 → 1,21)** — lấy lại 7/10 câu nhóm C; C-Agent **146,17 → 147,5 (GPA 2,92 → 2,95)** trên đáp án sau MATCHER-FIX; pytest VM 9/9. Sai lệch so với dự đoán 1,29 đã giải thích (3 câu giữ nguyên từ khóa theo rào cứng). Hai ghi chú: (1) hàm chuẩn hoá có thêm ánh xạ cụm đồng nghĩa — thợ tự khai trong báo cáo, áp hai chiều và giữ nghĩa, chấp nhận lần này, lần sau phải liệt kê trước trong vé; (2) bộ từ khóa chưa nằm trong repo → vé tiếp theo đóng dấu ở bước 0.
 - `ghi_chu` (điều phối Muse): 2026-10-07 ~10:40 +07 — Phát hành vé `RETRIEVAL-ENTITY-PC0575` (ưu tiên 2 của báo cáo phân tích): đóng dấu bộ đề vào repo + boost thực thể + cap đa dạng nguồn trong retrieval (fix nhóm A, 7 câu). Xem prompt.md.
-- `commit`: (chờ thợ)
+- `commit`: (đang thực hiện)
 
 ---
 
