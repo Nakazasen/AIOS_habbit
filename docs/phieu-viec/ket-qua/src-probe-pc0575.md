@@ -82,8 +82,15 @@
 - Không ghi hay sửa tệp nguồn, không xóa dữ liệu đã tải ở `local_runs/src_sync`.
 - Không đụng `src/rag_v2*`, không gộp nhánh chính, không đưa bí mật vào báo cáo.
 
-## 6. Kết luận tạm thời
+## 6. Kết luận tạm thời (giữ nguyên mốc 17:24)
 
 - Bao phủ đạt: dương 29/29 qua, âm 5/5 bị chặn đúng, dương 5/5 qua.
 - Truy vấn đầy đủ chưa xong: 1 mẫu kẹt quá 5 phút do máy bận, cần thử lại khi máy rảnh.
 - Vé chưa khép, nhịp sau chạy tiếp truy vấn từng tốp nhỏ có ghi nhật ký từng chặng.
+
+## 7. Mốc kiểm nhẹ 17:53 + hoãn mẫu truy vấn đầy đủ theo chốt 17:48
+
+- Kiểm nhẹ lúc 17:53 +07 (chỉ đọc chỉ mục `mode=ro`, không mở mô hình): đĩa + băm `SHA-256` của 29 tệp vẫn 29/29 khớp, hết 0,1 giây.
+- Máy lúc kiểm còn bận: chương trình giao diện của thợ khác còn chạy, một lượt kiểm thử đang chạy từ 17:13, một kiểm thử truy hồi của thợ khác chạy từ 17:47 — đúng trường hợp chốt 17:48 dặn chỉ chạy mẫu khi máy rảnh.
+- Quyết định trung thực: hoãn mẫu 3 truy vấn đầy đủ (gồm tệp đã kẹt `wsc-015067b7`, chạy nền tách phiên, ghi nhật ký từng chặng, trần 900 giây mỗi truy vấn) sang cửa máy rảnh, không cố chạy lúc máy bận để khỏi treo như hai lần trước (300 giây + 330 giây).
+- Rào giữ nguyên: không ghi hay sửa tệp nguồn hay chỉ mục, không đụng `src/rag_v2*`, không gộp nhánh chính.
