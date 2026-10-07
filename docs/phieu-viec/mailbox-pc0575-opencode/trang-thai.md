@@ -1,5 +1,7 @@
 ﻿# Trạng thái mailbox-pc0575-opencode — KDTVN-PC0575 (thợ opencode)
 
+- `ghi_chu` (thợ opencode): 2026-10-07 17:22 +07 — thử lại truy vấn đầy đủ mẫu `wsc-015067b7` (`readonly+strict`, mở 39,2s) vẫn kẹt quá 5,5 phút ở bước truy vấn (treo sau dòng `querying`, phải timeout 330s). Máy đã bớt tiến trình agy nhưng dense 149k véc-tơ trên CPU vẫn treo. Bao phủ 29/29 PASS giữ nguyên, chưa ghi tệp nào rớt. Kiểm cổng gate: watcher 17:13 3/4, chưa chạm 4 nên giữ `dang-lam`. Không ghi tệp/index, không đụng src/rag_v2*.
+
 - `ghi_chu` (thợ opencode): 2026-10-07 17:14 +07 — nhận phiên theo lệnh user (pull xong `863ea42`, đã đọc vé SRC-PROBE + QUY-UOC chung + riêng). Kiểm cổng gate: watcher opencode mới nhất 17:13 3/4 cho vé SRC-PROBE (16:23 1/4 + 16:53 2/4 + 17:13 3/4), chưa chạm 4 nên giữ `dang-lam`, không đặt cho-muse. Bắt đầu thử lại truy vấn đầy đủ khi máy rảnh (bao phủ 29/29 đã PASS). Không ghi tệp/index, không đụng src/rag_v2*.
 
 - `ghi_chu` (thợ opencode): 2026-10-07 17:12 +07 — ghi báo cáo nháp `docs/phieu-viec/ket-qua/src-probe-pc0575.md` (bảng 29 mã đạt + bao phủ 29/29 qua, âm 5/5 chặn đúng, dương 5/5 qua + bằng chứng truy vấn kẹt dense quá 300s). Vé chưa khép, nhịp sau thử lại truy vấn khi máy rảnh. Kiểm cổng gate: watcher 17:05 vẫn 2/4, chưa chạm 4 nên giữ `dang-lam`. Không ghi tệp/index, không đụng src/rag_v2*.
