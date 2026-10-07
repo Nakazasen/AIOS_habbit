@@ -73,3 +73,28 @@
 - Vì sao quan trọng: mỗi truy vấn, chương trình băm tệp trên đĩa (`_file_fingerprint`, `src/aios_habit/rag_v2/pipeline.py:162`) rồi so với vân tay trong chỉ mục ở 3 cổng (`verify_selected_document_coverage`, `_is_stale`, `_hybrid_result_is_safe`); đường dẫn `gpu-…` không phải tệp trên đĩa nên luôn ra `__source_unavailable__`, khác vân tay rỗng trong chỉ mục — **tải tệp về cũng không qua được cổng với 349 mã này** nếu không có cơ chế ánh xạ trong mã (hiện mã nguồn không có chỗ nào ánh xạ `gpu-…` ra tệp đĩa).
 - Hệ quả trung thực cho tiêu chí nghiệm thu: chỉ tải tệp không đủ cho cả 889; tối đa qua được cổng vân tay là 540/889 (nhóm có vân tay, nếu đặt đúng từng byte vào đúng đường dẫn tuyệt đối trong chỉ mục). Muốn đủ 889 phải thêm một trong: cơ chế ánh xạ `gpu-…` (đổi mã, cần duyệt kiến trúc), hoặc dựng lại chỉ mục có vân tay (vé cấm ghi chỉ mục), hoặc chốt chế độ chỉ-dùng-chỉ-mục chính thức.
 - Đề xuất bước tiếp theo (chờ Muse chốt, không tự làm bừa): tải đối chiếu `text_export.jsonl` + 2 gói `gpu-dc-delta` trước để xem có sẵn nội dung từng byte của 541 tệp vật liệu hóa không; nếu có thì đặt vào đúng đường dẫn, đo lại probe trên nhóm 540; song song xin quyết định cơ chế cho 349 mã còn lại.
+
+## 6. Kết quả bước 1 theo phương án 11:15 (tải xong, chưa khôi phục được 541)
+
+- Thời gian tải: 2026-10-07 11:22 → 11:30 +07, mạng `KT_CHETAO`, kênh `drive.usercontent.google.com`, ngoài Git (`local_runs/src_sync`).
+- Tệp đã tải (mã SHA-256 khớp ghim đã biết):
+  - `text_export.jsonl` 81.531.448 B (`95aecf07…`), 52.979 dòng, 262 mã tài liệu.
+  - `gpu-dc-delta-20261001.zip` 74.065.213 B (`31afe1e3…`), mở ra 329 mã tài liệu.
+  - `gpu-262b-delta-20261001.zip` 20.867.536 B (`5bd7c56d…`), mở ra 19 mã tài liệu.
+  - Tổng khoảng 176 MB, dưới ngưỡng 1 GB nên tải thẳng theo phương án.
+- Đối chiếu với chỉ mục (mở chỉ đọc):
+  - Chỉ mục có 889 mã: 541 đường dẫn `.txt` vật liệu hóa + 348 đường dẫn `gpu-…`.
+  - Hai gói delta gộp lại đúng bằng nhóm `gpu-…` (329 + 19 = 348, trùng từng mã).
+  - Tệp `text_export.jsonl` giao với nhóm vật liệu hóa = 0/541; giao với nhóm `gpu-…` = 19 mã; còn 243 mã nằm ngoài chỉ mục này.
+  - Vậy cả 3 tệp đã tải **không chứa nội dung 541 tệp vật liệu hóa** (0/541).
+- Thử dựng lại từ chỉ mục (chỉ đọc, chưa ghi tệp nào):
+  - Tệp 1 mảnh: băm SHA-256 của nội dung mảnh bằng đúng vân tay trong chỉ mục (thử 3/3 khớp) — nhóm này dựng lại được.
+  - Tệp nhiều mảnh: nối nội dung các mảnh (đã trừ mảnh tóm tắt, xếp theo mã phần tử, thử nối rỗng / xuống dòng / hai xuống dòng, cả nội dung thường và nội dung chuẩn hóa) **không khớp** vân tay (thử 1 mã 5 mảnh và 20 mã ngẫu nhiên, chỉ 1 mã 1 mảnh khớp).
+  - Nguyên nhân: mảnh trong chỉ mục tách từ danh sách phần tử tài liệu, không phải cắt chuỗi tệp vật liệu hóa — muốn dựng đúng từng byte phải biết công thức tạo tệp gốc từ phần tử, chưa có.
+- Chỉ mục không đổi: mã MD5 sau bước tải vẫn `A7C7C2325949C05D3396AB5371E42E64`, khớp mã Pha 0.
+- Rào đã giữ: tuyệt đối chưa ghi tệp nào vào `materialized_sources`, chưa sửa chỉ mục, chưa đụng `wire_qa_staging.py`, chưa khởi động lại chương trình.
+- Trở ngại kỹ thuật (không phải câu hỏi 349 đã chốt): bước 1 không khôi phục được 541 tệp từ 3 tệp đã tải vì thiếu nguồn từng byte của nhóm vật liệu hóa.
+- Đề xuất hướng mới (chờ điều phối chốt, không tự làm bừa):
+  - Hướng A (nhẹ): dựng tệp 1 mảnh trước từ chỉ mục (đã chứng minh khớp), đo probe trên nhóm này để lấy đà.
+  - Hướng B (đúng gốc): tải tệp gốc nhóm MOM / LSU từ Drive `AIOS_Data` rồi chạy bộ chuyển đổi của chương trình để tạo lại 541 tệp `.txt` đúng từng byte, sau đó mới đo probe nhóm 540.
+  - Hướng C (chốt kiến trúc): công nhận chế độ chỉ-dùng-chỉ-mục cho nhóm vật liệu hóa nếu không lấy được nguồn gốc.
