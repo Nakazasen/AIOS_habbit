@@ -3,10 +3,12 @@
 
 ## Vé hiện tại: RAG-REMEASURE-PC0575
 
-- Trạng thái: `moi`
+- Trạng thái: `dang-lam`
 - `ghi_chu` (verdict Muse): 2026-10-07 ~10:52 +07 — **ĐẠT (tạm, chờ user nghiệm thu)** vé `MATCHER-FIX-PC0575`. Kiểm chứng độc lập (poll): bảng 50 câu khớp từng số — C-Agent **108,17 → 146,17/150, GPA 2,16 → 2,92** (mục tiêu ≥2,5; đạt ≥2: 48/50, =3: 46/50; delta +38,0 nằm đúng 14 câu mục tiêu, 36 câu còn lại không đổi); diff chỉ `wire_qa_staging.py` + test; md5 index trước=sau; VM chạy lại: 41/41 test liên quan PASS, 4 test mới FAIL trên code cũ → đỏ→xanh thật.
 - `ghi_chu` (điều phối Muse): 2026-10-07 ~10:52 +07 — Phát hành vé `RAG-REMEASURE-PC0575` (hồi quy §6.5): đo lại hợp nhất 2 lane sau khi các fix đã về. **Cổng chờ: chỉ bắt đầu khi RETRIEVAL-ENTITY-PC0575 (agy) có verdict ĐẠT.** Xem prompt.md.
-- `commit`: (chờ thợ)
+- `ghi_chu` (tiến độ OMP): 2026-10-07 10:57 +07 — **NHẬN VÉ `RAG-REMEASURE-PC0575` + KIỂM CỔNG: CHƯA MỞ → đặt `dang-lam` chờ cổng (đúng luật vé: KHÔNG chạy lane, KHÔNG thoát vé).** Cổng: `RETRIEVAL-ENTITY-PC0575` (agy) vẫn `dang-lam` — Bước 0 đóng dấu bộ đề xong 10:47, chưa có verdict ĐẠT trong mailbox agy. Watcher mới tự mở **1 lần** (LAUNCH 10:53:21, `launchStallCount=1/4` — chưa chạm ngưỡng, không đặt `cho-muse`; không quay no-op: các lượt watcher mở sau chỉ kiểm cổng, nếu đủ 4 lượt liên tiếp mà cổng vẫn chưa mở sẽ chuyển `cho-muse` + DỪNG theo luật). Tiền đề đã kiểm trên nhánh (HEAD `45378d5`, cây sạch, pull mới nhất): bộ đề + rubric đóng dấu `tests/fixtures/eval/` (đúng bản bước 0 của agy), runner sẵn `scratch/lsu-quality/run_cagent.py` + `run_rag.py`, index chính `library.sqlite` hiện diện (2,85 GB, bản hợp nhất R5). Mạng hiện `KT_CHETAO` (opencode đang SRC-SYNC — KHÔNG đụng công tắc mạng; khi cổng mở sẽ chờ máy về `vn-kdwireless` mới chạy lane C-Agent; lane RAG CPU-only chạy độc lập mạng). Kế hoạch khi cổng mở: md5 index TRƯỚC → 2 lane × 50 câu (checkpoint từng câu, heartbeat ≤15 phút) → md5 SAU → so 3 cột + phân loại câu dưới chuẩn → báo cáo `docs/phieu-viec/ket-qua/rag-remeasure-pc0575.md`.
+- `commit`: `(SHA ghi ở commit kế)`
+- Ticket hiện tại: `RAG-REMEASURE-PC0575` — [CTY] đo lại hợp nhất 2 lane sau khi các fix đã về (hồi quy §6.5). Prompt: `docs/phieu-viec/mailbox-pc0575/prompt.md`. Role gợi ý: DEFAULT.
 
 ---
 
