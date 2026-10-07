@@ -120,7 +120,10 @@ def discover_available_models(
 
     for probe_url in probe_urls:
         try:
-            headers: dict[str, str] = {"Content-Type": "application/json"}
+            headers: dict[str, str] = {
+                "Content-Type": "application/json",
+                "User-Agent": "AIOS-WorkLens/1.0",
+            }
             if api_key:
                 headers["Authorization"] = f"Bearer {api_key}"
 

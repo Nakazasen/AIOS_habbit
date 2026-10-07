@@ -264,7 +264,10 @@ def _post_chat(config: ProviderConfig, user_prompt: str, max_tokens: int = 700) 
         "temperature": 0.1,
         "max_tokens": max_tokens,
     }
-    headers = {"Content-Type": "application/json"}
+    headers = {
+        "Content-Type": "application/json",
+        "User-Agent": "AIOS-WorkLens/1.0",
+    }
     if config.api_key:
         headers["Authorization"] = f"Bearer {config.api_key}"
     request = urllib.request.Request(
@@ -276,10 +279,17 @@ def _post_chat(config: ProviderConfig, user_prompt: str, max_tokens: int = 700) 
     with urllib.request.urlopen(request, timeout=config.timeout_seconds) as response:
         data = json.loads(response.read().decode("utf-8"))
     choices = data.get("choices") or []
-    content = choices[0].get("message", {}).get("content", "") if choices else ""
-    if not str(content).strip():
+    msg = choices[0].get("message", {}) if choices else {}
+    content = msg.get("content")
+    if content is None:
+        content = ""
+    content = str(content).strip()
+    if not content:
+        reasoning = msg.get("reasoning") or msg.get("reasoning_content") or ""
+        content = str(reasoning).strip()
+    if not content:
         raise RuntimeError("Endpoint không trả về nội dung trả lời.")
-    return str(content).strip()
+    return content
 
 
 def answer_with_provider(
