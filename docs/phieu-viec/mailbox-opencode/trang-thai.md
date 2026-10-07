@@ -1,6 +1,7 @@
 ﻿# Trạng thái mailbox-opencode (thợ opencode — model free muse-spark-1.3 / space-bunny)
 
 - Trạng thái: `dang-lam`
+- `hang-cho` (Muse): 2026-10-08 ~05:57 +07 — Hàng chờ #2 (sau UPLOAD): vé `SRC-421-PACKAGE-HOME` — file `docs/phieu-viec/mailbox/prompt-queue-src-421-package-home.md`. User chốt hướng (2) cho 421 mã: đóng gói tệp HIỆN TẠI ở máy nhà + manifest vân tay mới, tải qua kênh Drive. Vé nhận phía PC0575 (`SRC-421-RECEIVE-PC0575`, file queue đã đặt ở mailbox-pc0575-opencode) chỉ phát hành khi gói đã lên Drive và kiểm chứng xong.
 - `hang-cho` (Muse): 2026-10-08 ~05:48 +07 — Hàng chờ #1 sau `TEST-RED5-FIX-HOME`: vé `SRC-PACKAGE-511-UPLOAD-HOME` (v2) — file `docs/phieu-viec/mailbox/prompt-queue-src-upload-drive-home.md`. User đã chốt phương án (a): cài kênh đồng bộ Drive chính thức một lần ở máy nhà rồi tải gói 90 tệp lên AIOS_Data. Điều phối phát hành ngay khi RED5 có verdict.
 - `ghi_chu`: 2026-10-08 02:53 +07 — Nhận vé `TEST-RED5-FIX-HOME`, cổng MỞ (trạng thái `moi` + prompt đúng vé + verdict ĐẠT ROUND2 02:55 phát hành RED5; HEAD=origin=f1bd99e sạch, Python 3.11.14 OK; không rơi nhánh 4-lần/cho-muse). Vé sửa 5 ca + skip sạch graphify + đồng bộ uv.lock, không ghi index, không merge `main`. Bắt đầu bước 1: truy vết 5 ca theo thứ tự, chưa sửa gì.
 - Trạng thái: `moi`
