@@ -1,8 +1,9 @@
-# Trạng thái mailbox-pc0575-agy — KDTVN-PC0575 (thợ agy — Antigravity CLI)
+﻿# Trạng thái mailbox-pc0575-agy — KDTVN-PC0575 (thợ agy — Antigravity CLI)
 
 ## Vé hiện tại: RETRIEVAL-PERF-DIAG-PC0575
 
 - Trạng thái: `dang-lam`
+- `ghi_chu` (điều phối Muse — NHẬN CHUYỂN VÉ ĐO LẠI, user chốt 21:54): Vé `RAG-REMEASURE-PC0575` chuyển từ OMP sang **agy** (OMP chuyển sang vai trò review/audit vì gần hết quota). Thứ tự việc của agy máy công ty: (1) `RETRIEVAL-PERF-DIAG-PC0575` sau mốc 'mẫu xong' của SRC-PROBE → (2) `RAG-REMEASURE-PC0575` (điều phối sẽ copy nguyên văn nội dung vé vào prompt.md khi phát hành; cách chạy bắt buộc: lane nền tách phiên + file tiến độ từng lane như vé gốc). Vé hiện tại không đổi.
 - `commit`: `472a989f`
 - `bao_cao`: `docs/phieu-viec/ket-qua/retrieval-perf-diag-pc0575.md`
 - `ghi_chu`: 2026-10-07 21:52 +07 — Tiếp nhận phiên agy theo lệnh user: Đã đọc kỹ QUY-UOC.md và prompt.md vé `RETRIEVAL-PERF-DIAG-PC0575` (chẩn đoán 225–255s tìm kiếm, chỉ-đọc, không sửa code/index). Kiểm cổng gate theo quy tắc: điều kiện chạy vé là "sau khi opencode ghi mốc 'mẫu xong' của SRC-PROBE và TRƯỚC khi OMP khởi lane đo lại"; đối chiếu `mailbox-pc0575-opencode` thấy opencode mốc cuối vẫn là 18:22 (chưa có mốc 'mẫu xong' của 3 tệp); `mailbox-pc0575` của OMP cũng đang giữ chờ; kiểm tra watcher agy local: watcher tự mở lần 1/4 (21:50:41, sau khi verdict vé trước ĐẠT), chưa chạm 4 lần liên tiếp (~10 phút/lần) nên giữ `dang-lam` chờ cổng, KHÔNG đặt cho-muse, KHÔNG quay no-op. Đã phân tích sẵn sàng luồng đo phân rã 5 chặng (load model, dense 149k, sparse, fusion, scoring/pack) cho 3 câu nhóm A (Q0704, Q0701, Q0671) để thực thi đo tách phiên ngay khi opencode ghi mốc 'mẫu xong'.

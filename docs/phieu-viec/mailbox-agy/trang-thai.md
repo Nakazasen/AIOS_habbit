@@ -1,6 +1,7 @@
-# Trạng thái mailbox-agy (thợ agy — model gemini-3.8-flash-high, việc khó chuyển claude-sonnet/opus-5.5-medium)
+﻿# Trạng thái mailbox-agy (thợ agy — model gemini-3.8-flash-high, việc khó chuyển claude-sonnet/opus-5.5-medium)
 
 - Trạng thái: `dang-lam`
+- `ghi_chu` (điều phối Muse — HÀNG CHỜ MỚI, user chốt 21:54): OMP gần hết quota → chuyển vai trò review/audit; việc triển khai dồn cho agy + opencode. Hàng chờ agy nhà sau `BGE-WORKER-DIAG-HOME`: **#1 `ROUTER-POOL-COMMANDCODE-HOME`** (chuyển từ OMP — file `docs/phieu-viec/mailbox/prompt-queue-router-pool-commandcode-home.md`), **#2 `EMBED-GEMMA-EVAL-HOME`** (file `docs/phieu-viec/mailbox/prompt-queue-embed-gemma-eval-home.md`). Điều phối phát hành theo thứ tự khi vé hiện tại được verdict. Vé hiện tại không đổi.
 - `ghi_chu`: 2026-10-07 21:30 +07 — Nhận vé BGE-WORKER-DIAG-HOME, kiểm cổng gate: cổng MỞ (không bị phụ thuộc chặn). Bắt đầu Mục 0 (bổ sung ảnh chụp baseline vào git) và tiến hành điều tra, đo đạc độc lập worker BGE.
 - `Ticket hiện tại`: `BGE-WORKER-DIAG-HOME` — [NHÀ] chẩn đoán worker BGE không khởi động được trên app máy nhà. Prompt: `docs/phieu-viec/mailbox-agy/prompt.md`. Role gợi ý: DEFAULT.
 - `bao_cao`: `docs/phieu-viec/ket-qua/bge-worker-diag-home.md`
