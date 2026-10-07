@@ -1,6 +1,7 @@
-# Trạng thái mailbox-agy (thợ agy — model gemini-3.8-flash-high, việc khó chuyển claude-sonnet/opus-5.5-medium)
+﻿# Trạng thái mailbox-agy (thợ agy — model gemini-3.8-flash-high, việc khó chuyển claude-sonnet/opus-5.5-medium)
 
-- Trạng thái: `xong`
+- Trạng thái: `moi`
+- `ghi_chu` (điều phối Muse — PHÁT VÉ): 2026-10-07 ~20:25 +07 — Vé mới `BASELINE-USE-HOME` (prompt.md đã thay): đo nền dùng thật trên máy nhà theo luật nghiệm thu mới — thời gian mở sổ LSU (lạnh/ấm), chụp các con số tài liệu app hiển thị, hỏi 3 câu kiểm kèm thời gian chờ. Chỉ đo, không sửa code/index.
 - `ghi_chu` (verdict Muse): 2026-10-06 ~23:58 +07 — **ĐẠT** vé `FIX-J1CSV-FIXTURE-HOME` (tích tạm, chờ user nghiệm thu). Kiểm chứng độc lập: commit `5acdf11` — fixture `tests/test_j1_csv.py` dùng chuỗi 3 điểm xấu liên tiếp kích hoạt đúng cổng SMA(20) sau SMA-IMPROVE; test đối chứng: 1 điểm xấu đơn lẻ bị cổng chặn. test_j1_csv 12 passed/4 skipped, hồi quy trend_alerts 22/22, cụm liên quan 178/178; poll kiểm lại trên VM: test_j1_csv + test_trend_alerts 38 passed. compileall/audit/import PASS. hang-cho trống → mailbox đóng (`xong`).
 - `bao_cao`: `docs/phieu-viec/ket-qua/fix-j1csv-fixture-home.md`
 - `commit`: `5acdf11`
