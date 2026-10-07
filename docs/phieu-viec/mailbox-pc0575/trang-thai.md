@@ -3,9 +3,10 @@
 
 ## Vé hiện tại: MATCHER-FIX-PC0575
 
-- Trạng thái: `moi`
+- Trạng thái: `dang-lam`
 - `ghi_chu` (verdict Muse): 2026-10-07 ~09:35 +07 — **ĐẠT (tạm, chờ user nghiệm thu)** vé `LSU-QUALITY-PC0575`. Kiểm chứng độc lập (poll): phụ lục khớp từng câu — C-Agent **108,17/150 GPA 2,16** (đạt ≥2: 35, =3: 33); RAG **46,5/150 GPA 0,93** (đo bằng đường cũ trên máy công ty; chuỗi đã vá ở máy nhà hiện 1,28 — hai số không cùng phiên bản code). Phát hiện chính: 2 lỗi matcher staging làm 14/50 câu C-Agent mất ngữ cảnh đúng. hang-cho trống → phát vé tiếp theo theo ưu tiên 1 của báo cáo.
 - `ghi_chu` (điều phối Muse): 2026-10-07 ~09:35 +07 — Phát hành vé `MATCHER-FIX-PC0575` cho OMP PC0575 (xem prompt.md): vá lỗi recall (ngưỡng 3,0 loại 12 câu có cặp y hệt) + lỗi ranking (bonus mã linh kiện lấn át cặp đúng, Q0671/Q0658); nghiệm thu 2 tầng: ghép cặp 50/50 top-3 + đo lại lane C-Agent, mục tiêu GPA ≥2,5.
+- `ghi_chu` (tiến độ OMP): 2026-10-07 09:41 +07 — **NHẬN VÉ `MATCHER-FIX-PC0575`** (điều kiện mở CÓ: vé mới phát hành ~09:35, prompt đầy đủ; watcher chưa từng tự mở cho vé này — 0 dòng log `MATCHER-FIX` nên cổng gate 4 lần không áp dụng, không no-op). Tiền đề đủ trên nhánh: `src/aios_habit/wire_qa_staging.py`, test `tests/test_wire_qa_staging.py`, bộ 50 câu `local_cases/lsu_quality_50_questions.json`, runner `scratch/lsu-quality/run_cagent.py`. Kế hoạch: tái lập 2 lỗi (recall 12 câu + ranking Q0671/Q0658) → vá + unit test đỏ→xanh → Tầng 1 ghép cặp 50/50 top-3 → Tầng 2 đo lại C-Agent 50 câu (mục tiêu GPA ≥2,5, heartbeat 15', checkpoint từng câu). Rào giữ: không merge `main`, không ghi index, Python 3.11, không đụng `rag_v2/synthesis.py`.
 - `commit`: (chờ thợ)
 
 ---
