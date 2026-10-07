@@ -1,9 +1,10 @@
-# Trạng thái mailbox-pc0575-agy — KDTVN-PC0575 (thợ agy — Antigravity CLI)
+﻿# Trạng thái mailbox-pc0575-agy — KDTVN-PC0575 (thợ agy — Antigravity CLI)
 
 
 ## Vé hiện tại: RETRIEVAL-ENTITY-PC0575
 
 - Trạng thái: `dang-lam`
+- `ghi_chu` (điều phối Muse — YÊU CẦU BÁO MỐC NGAY 17:16): 2026-10-07 ~17:16 +07 — Mailbox này im từ mốc 14:26 (gần 3 giờ) dù vé quy ước mốc tối thiểu 15 phút/lần. **Phiên agy đang sống hoặc phiên mở lại gần nhất phải làm ngay, theo thứ tự: (1) commit mọi WIP trong cây (kể cả dở) — không để việc ngoài git thêm nữa; (2) ghi mốc trả lời 3 ý: đang ở bước nào của khâu xác thực 7/7 câu nhóm A + test hồi quy, kết quả từng phần tới đâu, còn thiếu gì để nộp xong-cho-duyet.** Nếu phiên trước đã chết giữa chừng: phiên mới đọc mốc 14:26 + commit WIP `ce90691`, kiểm `git status` rồi tiếp tục từ đó và báo mốc như trên. Điều phối đang chờ mốc này để biết đường găng đo lại còn tắc ở đâu.
 - `ghi_chu` (điều phối Muse — KHẨN: CỨU WIP AGY 14:26): 2026-10-07 ~14:26 +07 — Nhận tin từ phía máy: cả 2 tiến trình agy (28824/27988) đã chết, watcher nội bộ leo thang 14:12 nhưng đồng bộ thất bại; cây làm việc còn WIP chưa commit ở `rag_v2/*` (phần việc sau mốc 11:55 của vé RETRIEVAL-ENTITY). **LỆNH CỨU HỘ cho phiên agy mở lại / phía máy: (1) TRƯỚC MỌI thao tác git, chạy `git status` — nếu thấy thay đổi chưa commit ở rag_v2 thì COMMIT WIP NGAY (kể cả chưa hoàn thiện, ghi rõ WIP trong message), cấm reset/checkout đè lên WIP; (2) sau khi WIP an toàn, TIẾP TỤC vé RETRIEVAL-ENTITY từ bước xác thực đang dở (tái lập ca Q0704 + test nhóm liên quan), ghi mốc mỗi bước như thường; phần code Bước 1–2 đã an toàn ở commit `dbdf9af`.** Điều phối đã báo user tại chỗ.
 - `ghi_chu`: 2026-10-07 14:26 +07 — Tiếp nhận phiên sau cứu hộ WIP: bảo toàn thay đổi Bước 1 & 2 trong rag_v2, bắt đầu bước xác thực retrieval 7/7 câu nhóm A và viết unit test hồi quy.
 - `ghi_chu` (điều phối Muse — XẾP HÀNG): 2026-10-07 ~13:10 +07 — Vé `INDEX-STATUS-LINE-PC0575` (dòng trạng thái chỉ mục trong khung chat, user duyệt 13:04) đã vào hàng chờ #1 của mailbox này: file `prompt-queue-index-status-line-pc0575.md`. Chỉ bốc khi `RETRIEVAL-ENTITY-PC0575` xong-cho-duyet + có verdict và điều phối phát hành. Vé hiện tại không đổi.
