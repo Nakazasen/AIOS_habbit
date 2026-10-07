@@ -1,5 +1,7 @@
 ﻿# Trạng thái mailbox-pc0575-opencode — KDTVN-PC0575 (thợ opencode)
 
+- `ghi_chu` (thợ opencode): 2026-10-07 15:16 +07 — nhận chốt Muse 15:22 sau mẫu 0/4 (dừng săn Drive nhóm 511, lập bản kê mục 13). Kiểm cổng gate: watcher sig 2cd00ea vẫn 1/4 sau SKIP-STALL (13:43 + 13:49 + 13:56 + 14:04 + 14:11 + 14:17 + 14:24 + 14:31 + 14:37 + 14:44 + 14:50 + 14:57 + 15:09, cho-cong đến 2026-10-08 13:30), chưa chạm 4 nên giữ `dang-lam`, không đặt cho-muse. Mạng hiện `vn-kdwireless` DRIVE=OK nhưng curl Drive timeout nên làm offline đúng chốt. Bắt đầu lập bản kê 511. Không ghi index, không đụng wire_qa_staging.
+
 - `ghi_chu` (thợ opencode): 2026-10-07 15:15 +07 — tải xong gói Dieu-chinh 858MB (đủ byte, 2.201 mục), tìm 4/5 gốc mẫu (vắng Barcode_List), chạy bộ chuyển đổi của chương trình 0/4 khớp vân tay nên CHƯA ghi materialized_sources (đúng rào). Báo cáo mục 12 đã ghi. Xin Muse chốt bước tiếp (tìm Barcode + thử đường rag_v2 hoặc xin tệp đúng phiên bản). Không ghi index, không đụng rag_v2*.
 
 - `ghi_chu` (thợ opencode): 2026-10-07 15:02 +07 — đo xong gói Dieu-chinh: 858.190.286 B (~818MB, dưới 1GB nên được tải thẳng), gốc Drive đủ 11 mục, đĩa C ~73,8 GB đủ chỗ. Báo cáo mục 11 đã ghi. Bắt đầu tải gói về `local_runs/src_sync` (ngoài Git). Không ghi index, không đụng rag_v2*.
@@ -166,7 +168,6 @@
 - `ghi_chu` (điều phối Muse): 2026-10-05 13:50 +07 — Phát hành vé đầu cho thợ opencode (Mode 4 all đã chạy, watcher tự nhặt trong ~90s).
 - `ghi_chu` (thợ opencode): 2026-10-05 15:26 +07 — cổng gate watcher 1/4 (mở lúc 15:25:07, sig `moi` hết vé): đã `git pull` xong, prompt vẫn vé cũ AUDIT-BATCH88 đã ĐẠT, fixed + báo cáo đủ, `hang-cho` trống, thiếu `QUY-UOC.md` riêng nên dùng tạm `mailbox-opencode/QUY-UOC.md` — chưa đủ điều kiện mở, chưa chạm ngưỡng 4 lần nên không đặt `cho-muse`, giữ chờ Muse, DỪNG không quay no-op.
 - `ghi_chu`: 2026-10-07 13:31 watcher auto-escalate: 4 lan tu mo opencode (moi lan cach ~10 phut) ma mailbox khong tien trien. Chuyen sang cho-muse de Muse xu ly. Ticket: `SRC-SYNC-PC0575` — [CTY] đưa file nguồn về PC0575 để RAG chạy strict_semantic đúng thiết kế. Prompt: `docs/phieu-viec/mailbox-pc0575-opencode/prompt.md`. Role gợi ý: DEFAULT.
-
 
 
 
