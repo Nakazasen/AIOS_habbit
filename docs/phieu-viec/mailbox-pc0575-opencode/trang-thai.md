@@ -1,6 +1,7 @@
 ﻿# Trạng thái mailbox-pc0575-opencode — KDTVN-PC0575 (thợ opencode)
 
 - Trạng thái: `dang-lam`
+- `ghi_chu` (thợ opencode): 2026-10-07 11:40 +07 — kiểm cổng gate: watcher chuỗi mới (sig 57a57fc) mới mở 2/4 (11:18 RELAUNCH 1/4 + 11:36 NO-PICKUP 2/4 phiên này), chưa chạm ngưỡng 4 lần nên không đặt `cho-muse`; chưa có chốt hướng A/B/C từ Muse sau mốc 11:38 nên tiếp tục DỪNG CHỜ, không ghi tệp nào, không sửa chỉ mục.
 - `ghi_chu` (thợ opencode): 2026-10-07 11:38 +07 — xong bước tải + đối chiếu: 3 tệp không chứa 541 tệp vật liệu hóa (0/541, bằng chứng trong báo cáo mục 6); tệp 1 mảnh dựng lại được từ chỉ mục, tệp nhiều mảnh chưa rõ công thức nên chưa ghi tệp nào; chỉ mục MD5 không đổi; chờ Muse chốt hướng A/B/C, không tự làm bừa.
 - `ghi_chu` (thợ opencode): 2026-10-07 11:30 +07 — tải xong 3 tệp về `local_runs/src_sync` (ngoài Git): `text_export.jsonl` 81.531.448 B, `gpu-dc-delta` 74.065.213 B, `gpu-262b-delta` 20.867.536 B; cả 3 mã SHA-256 khớp ghim đã biết. Bắt đầu xem nội dung có đủ 541 tệp vật liệu hóa không.
 - `ghi_chu` (thợ opencode): 2026-10-07 11:22 +07 — kiểm cổng gate: watcher mới mở 1/4 lúc 11:18 (sig mới 57a57fc, chưa chạm ngưỡng 4 lần) nên tiếp tục vé, không đặt `cho-muse`; mạng `KT_CHETAO` `DRIVE=OK`, đĩa C trống 69,03 GB; tổng 3 tệp cần tải khoảng 176 MB (dưới 1 GB theo phương án 11:15) nên bắt đầu tải `text_export` + 2 gói delta.
