@@ -1,6 +1,7 @@
 """Unit tests for index status line (INDEX-STATUS-LINE-PC0575)."""
 
 import hashlib
+import json
 from pathlib import Path
 import sqlite3
 import pytest
@@ -139,10 +140,42 @@ def test_resolve_display_backend_name() -> None:
     assert resolve_display_backend_name("ONNX fp32") == "ONNX fp32"
 
 
+def _resolve_production_db_path() -> Path | None:
+    """Return the real production index DB from config, or None if unknown.
+
+    Reads ``runtime.root`` + ``requested_profile`` from
+    ``config/workspace_chat_rag_v2.local.json`` and builds
+    ``<root>/<profile>/collections/tri_thuc/library.sqlite`` — the file the
+    app really queries (INDEX-PROD-HOME). Returns None when the config or
+    the file is missing so the caller can skip cleanly.
+    """
+    config_path = Path("config/workspace_chat_rag_v2.local.json")
+    try:
+        raw = json.loads(config_path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeError, json.JSONDecodeError):
+        return None
+    runtime = raw.get("runtime") or {}
+    root_raw = str(runtime.get("root") or "").strip()
+    profile = str(raw.get("requested_profile") or "bge_m3_hybrid").strip()
+    if not root_raw or not profile:
+        return None
+    candidate = Path(root_raw) / profile / "collections" / "tri_thuc" / "library.sqlite"
+    try:
+        if candidate.is_file():
+            return candidate
+    except OSError:
+        return None
+    return None
+
+
 def test_index_status_matches_real_db_if_present() -> None:
-    real_db = Path("local_runs/workspace_chat_rag_v2_production/bge_m3_hybrid/collections/tri_thuc/library.sqlite")
-    if not real_db.is_file():
-        pytest.skip("Chỉ mục thật không có sẵn trên môi trường kiểm thử này.")
+    # Hướng (a) của vé INDEX-LOCALCOPY-FIX-HOME: đọc đúng tệp production theo
+    # config thay vì bản sao cũ trong local_runs (bản ghim 28/09 chỉ có
+    # 133.144 mảnh / 496 tài liệu nên khẳng định số production trên nó gây đỏ
+    # oan). Bỏ qua sạch khi tệp production không tồn tại (CI/VM).
+    real_db = _resolve_production_db_path()
+    if real_db is None or not real_db.is_file():
+        pytest.skip("Chỉ mục production thật không có sẵn trên môi trường kiểm thử này.")
 
     # Đọc trực tiếp từ DB độc lập
     con = sqlite3.connect(f"file:{real_db.resolve().as_posix()}?mode=ro", uri=True)

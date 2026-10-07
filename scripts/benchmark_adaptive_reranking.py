@@ -56,6 +56,33 @@ from aios_habit.workspace_chat_rag_v2_deployment import (
 _pipeline_init_count = 0
 _auxiliary_init_count = 0
 
+# Legacy stale copy (28/09: 496 docs / 133144 chunks). Never used silently.
+_LEGACY_STALE_RUNTIME_ROOT = PROJECT_ROOT / "local_runs/workspace_chat_rag_v2_production"
+_PRODUCTION_MANIFEST = PROJECT_ROOT / "config/workspace_chat_rag_v2.local.json"
+
+
+def _resolve_production_runtime_root() -> Path | None:
+    """Return the real production root from config, or None if unknown.
+
+    Reads ``runtime.root`` from the deployment manifest config. Only returns
+    an absolute directory that actually exists, so CI/Linux never invents a
+    bogus ``C:\\...`` folder and never falls back to the stale local copy.
+    """
+    try:
+        raw = json.loads(_PRODUCTION_MANIFEST.read_text(encoding="utf-8"))
+        root_raw = str((raw.get("runtime") or {}).get("root") or "").strip()
+    except (OSError, UnicodeError, json.JSONDecodeError):
+        return None
+    if not root_raw:
+        return None
+    candidate = Path(root_raw)
+    try:
+        if candidate.is_absolute() and candidate.is_dir():
+            return candidate
+    except OSError:
+        return None
+    return None
+
 
 def _get_git_sha() -> str:
     try:
@@ -590,7 +617,21 @@ def run_benchmark(
 
     dataset_checksum = _compute_dataset_checksum(fixture_path, corpus_file)
     git_sha = _get_git_sha()
-    effective_runtime = str(runtime_root or (deployment.runtime_root if deployment else PROJECT_ROOT / "local_runs/workspace_chat_rag_v2_production"))
+    if runtime_root is not None:
+        effective_runtime_path: Path | None = runtime_root
+    elif deployment is not None:
+        effective_runtime_path = deployment.runtime_root
+    else:
+        effective_runtime_path = _resolve_production_runtime_root()
+    if effective_runtime_path is None:
+        blocked_reasons = list(blocked_reasons) + [
+            "runtime_root_chua_xac_dinh: Thiếu --runtime-root, không có deployment và "
+            "không xác định được đường production từ config/workspace_chat_rag_v2.local.json. "
+            "Vui lòng truyền --runtime-root trỏ tới thư mục production thật. "
+            "Không tự dùng bản cũ trong local_runs (bản ghim 28/09 thiếu 16.656 mảnh)."
+        ]
+        is_ready = False
+    effective_runtime = str(effective_runtime_path) if effective_runtime_path is not None else ""
 
     # Fail-closed path when any prerequisite is missing: NEVER output synthetic numbers
     if not is_ready:

@@ -1,5 +1,6 @@
 ﻿# Trạng thái mailbox-opencode (thợ opencode — model free muse-spark-1.3 / space-bunny)
 
+- `ghi_chu`: 2026-10-08 01:22 +07 — Mốc code xong vé `INDEX-LOCALCOPY-FIX-HOME`: sửa 3 điểm (activation mặc định None + đọc production từ config/thiếu thì dừng tiếng Việt; benchmark bỏ fallback local_runs, trỏ production hoặc BLOCK rõ; test chuyển hướng (a) đọc production theo config + skip sạch). `compileall` sạch. Kế tiếp: chạy test + thử dry-run/help + cổng repo.
 - Trạng thái: `dang-lam`
 - `ghi_chu`: 2026-10-08 01:14 +07 — Nhận vé `INDEX-LOCALCOPY-FIX-HOME`, cổng MỞ (trạng thái `moi` + prompt đúng vé + verdict ĐẠT CHECK-HOME 01:10 phát hành FIX-HOME; không rơi nhánh 4-lần/cho-muse). Vé sửa 3 điểm mặc định trỏ bản cũ, không xoá bản sao, không đụng production. Bắt đầu bước 1: đọc code 3 điểm + config, chưa sửa gì.
 - `ghi_chu`: 2026-10-08 01:03 +07 — kiểm cổng gate lượt mở này: HEAD=origin=7425cf9 sạch, `prompt.md` vẫn vé cũ INDEX-LOCALCOPY-CHECK-HOME (đã `xong-cho-duyet` commit e4964aa, báo cáo đủ), không có trạng thái `moi` nên không đủ điều kiện mở vé mới, không code lại; mới 1 lần gate liên tiếp chưa chạm 4 lần nên chưa đặt `cho-muse`, giữ chờ Muse duyệt.

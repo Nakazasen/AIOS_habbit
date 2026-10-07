@@ -51,8 +51,46 @@ DEFAULT_RERANKER_DESTINATION = (
 # historical run here would make a successfully qualified current corpus
 # impossible to activate, or worse, encourage rebinding it to stale evidence.
 DEFAULT_EVIDENCE_ROOT: Path | None = None
+# Legacy stale copy pinned on 28/09 (496 docs / 133144 chunks, missing
+# 393 docs / 16656 chunks vs production 889 / 149800). Kept only for
+# explicit-reference detection; never used silently as a default.
 DEFAULT_RUNTIME_ROOT = PROJECT_ROOT / "local_runs/workspace_chat_rag_v2_production"
+_LEGACY_STALE_RUNTIME_ROOT = PROJECT_ROOT / "local_runs/workspace_chat_rag_v2_production"
 DEFAULT_MANIFEST = PROJECT_ROOT / "config/workspace_chat_rag_v2.local.json"
+
+
+def resolve_runtime_root(explicit: Path | None) -> Path:
+    """Resolve the runtime root without ever silently using the stale copy.
+
+    Technical resolver (English docstring for developers):
+    - explicit path wins (operator intent, even if it points at legacy copy)
+    - otherwise read ``runtime.root`` from the deployment manifest config
+    - otherwise raise a Vietnamese operator-facing ActivationError
+    """
+    if explicit is not None:
+        return explicit
+    try:
+        raw = json.loads(DEFAULT_MANIFEST.read_text(encoding="utf-8"))
+        root_raw = str((raw.get("runtime") or {}).get("root") or "").strip()
+    except (OSError, UnicodeError, json.JSONDecodeError):
+        root_raw = ""
+    if root_raw:
+        candidate = Path(root_raw)
+        # Only accept an absolute production path that actually exists.
+        # This avoids creating a bogus "C:\\..." folder on CI/Linux and
+        # avoids silently falling back to the stale local_runs copy.
+        try:
+            if candidate.is_absolute() and candidate.is_dir():
+                return candidate
+        except OSError:
+            pass
+    raise ActivationError(
+        "Thiếu --runtime-root và không xác định được đường production từ "
+        f"{DEFAULT_MANIFEST.name} (runtime.root). Vui lòng truyền --runtime-root "
+        "trỏ tới thư mục production thật (ví dụ C:\\AIOS_workspace_chat_rag_v2_production). "
+        "Không tự dùng bản cũ trong local_runs (bản ghim 28/09 thiếu 16.656 mảnh) "
+        "để tránh đọc nhầm."
+    )
 
 
 class ActivationError(RuntimeError):
@@ -458,7 +496,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--reranker-destination", type=Path, default=DEFAULT_RERANKER_DESTINATION)
     parser.add_argument("--enable-adaptive", action="store_true", help="Prepare or activate with adaptive reranking")
     parser.add_argument("--evidence-root", type=Path, default=DEFAULT_EVIDENCE_ROOT)
-    parser.add_argument("--runtime-root", type=Path, default=DEFAULT_RUNTIME_ROOT)
+    parser.add_argument("--runtime-root", type=Path, default=None)
     parser.add_argument("--manifest", type=Path, default=DEFAULT_MANIFEST)
     parser.add_argument("--candidate-manifest", type=Path)
     parser.add_argument("--benchmark-report", type=Path)
@@ -469,6 +507,8 @@ def build_parser() -> argparse.ArgumentParser:
 def main() -> int:
     args = build_parser().parse_args()
     try:
+        if args.action in ("prepare", "activate"):
+            args.runtime_root = resolve_runtime_root(args.runtime_root)
         if args.action == "prepare":
             result = prepare(args)
         elif args.action == "activate":
