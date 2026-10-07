@@ -1,0 +1,14 @@
+{
+  "criteria": [
+    {
+      "name": "chinh_xac",
+      "max_score": 2.0,
+      "description": "Độ chính xác và đầy đủ so với đáp án tham chiếu (0-2 điểm)"
+    },
+    {
+      "name": "trich_dan",
+      "max_score": 1.0,
+      "description": "Có trích dẫn tài liệu nguồn kiểm chứng hợp lệ (1 điểm)"
+    }
+  ]
+}

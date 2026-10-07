@@ -150,3 +150,28 @@ def test_score_one_does_not_change_when_answer_truly_wrong():
     row_temp_wrong = harness.score_one(q_temp, ans_temp_wrong, rubric)
     assert row_temp_wrong.scores["chinh_xac"] == 0.0
     assert row_temp_wrong.total == 0.0
+
+
+def test_eval_fixtures_loadable_and_reproducible():
+    from pathlib import Path
+    fixtures_dir = Path(__file__).parent / "fixtures" / "eval"
+    q_file = fixtures_dir / "lsu_quality_50_questions.json"
+    r_file = fixtures_dir / "lsu_quality_rubric.json"
+    assert q_file.is_file(), "lsu_quality_50_questions.json must exist in fixtures/eval"
+    assert r_file.is_file(), "lsu_quality_rubric.json must exist in fixtures/eval"
+
+    questions = harness.load_questions(q_file)
+    assert len(questions) == 50, "Evaluation fixture must contain exactly 50 questions"
+
+    q_map = {q.qid: q for q in questions}
+    # Verify the 4 normalized questions from RUBRIC-NORMALIZE ticket
+    assert q_map["Q0630"].expected_keywords == ["quét ngang", "quay drum"]
+    assert q_map["Q0635"].expected_keywords == ["quang lượng tâm", "vùng biên", "nhạt màu"]
+    assert q_map["Q0674"].expected_keywords == ["không bất thường", "không thay đổi"]
+    assert q_map["Q0708"].expected_keywords == ["1.15", "1.24"]
+
+    rubric = harness.load_rubric(r_file)
+    assert len(rubric) == 2
+    r_names = {r.name: r.max_score for r in rubric}
+    assert r_names == {"chinh_xac": 2.0, "trich_dan": 1.0}
+
