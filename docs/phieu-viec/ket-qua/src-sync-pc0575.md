@@ -156,3 +156,11 @@
 - Kết quả tầng 3: `Iris/log` 5 tệp csv, `Iris/thử nghiệm TAPE` 2 mục, `Sirius/NG BOW_SKEW_RC9` 1 mục, `Sirius/Sirius2_linearity` 13 mục (6 thư mục con + 7 tệp xlsm/xlsx/png), `Sirius/ảnh hưởng độ dạt tia` 5 mục, `6thA3/Lỗi JIG BEAM` 9 thư mục con (ngày `2021.03.xx`) — **không thấy 5 tên mẫu** ở tầng này.
 - Tổng đã rà khoảng 120 tên qua 3 tầng: **0/5 tên mẫu**. Không tải bừa gói `Điều chỉnh-...zip` ở gốc (chưa rõ dung lượng, để nhịp sau quyết).
 - Rào giữ: chỉ liệt kê Drive + đọc chỉ mục cũ, không ghi tệp nào, không sửa chỉ mục, không đụng `src/rag_v2*` local.
+
+## 11. Cổng mạng mở lại + đo dung lượng gói Điều-chỉnh (thợ làm 14:59 → 15:02, chỉ đọc header, chưa tải)
+
+- Cổng mạng: `Chuyen-Mang.ps1 -Mang ngoai` OK (`MANG=KT_CHETAO`, `DRIVE=OK`, exit 0), wifi `KT_CHETAO` 86% 5GHz, `curl drive.google.com` HTTP 302 ~0,4s — cổng Pha 2 MỞ thật (khác các nhịp trước FAIL ở `vn-kdwireless`).
+- Liệt kê lại gốc `AIOS_Data` qua `embeddedfolderview`: đủ 11 mục như Pha 1 (3 thư mục + 8 tệp), gói `Điều chỉnh-20260905T053942Z-1-001.zip` ID `1jJpYPMgyPPRt2tPmuOuKEb8rWtwxB1eP`.
+- Đo dung lượng KHÔNG tải (lệnh `curl --range 0-0` lấy `Content-Range`): `bytes 0-0/858190286` = 858.190.286 B ≈ 818,4 MB ≈ 0,799 GB — **dưới ngưỡng 1 GB nên được tải thẳng theo vé** (không cần báo trước mới tải).
+- Đĩa C lúc đo: trống ~73,8 GB (73.858.588.672 B) — đủ chỗ cho gói 0,8 GB + giải nén.
+- Rào giữ: chỉ đọc header + liệt kê, chưa tải byte nào, không ghi tệp/index, không đụng `wire_qa_staging.py`, không đụng `src/rag_v2*` local.
