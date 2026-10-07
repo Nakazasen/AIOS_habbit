@@ -1,17 +1,17 @@
-# VÉ XẾP HÀNG: CJK-PREFILTER-FIX-HOME (sửa lọc sơ bộ CJK giữ sai mảnh — 2 test đỏ đã truy vết)
+# VÉ XẾP HÀNG: SYNTH-COMPOSER-NOISE-FIX-HOME (chặn mảnh nhiễu lọt vào khâu soạn đáp án)
 
-- Mã vé: `CJK-PREFILTER-FIX-HOME`
-- Role gợi ý: DEFAULT (code + test)
+- Mã vé: `SYNTH-COMPOSER-NOISE-FIX-HOME`
+- Role gợi ý: PLAN → DEFAULT (việc cần suy nghĩ trước khi code)
 - Máy: nhà h410asrock
-- Báo cáo: `docs/phieu-viec/ket-qua/cjk-prefilter-fix-home.md`
-- Căn cứ: báo cáo `test-red22-fix-home.md` mục 2 — đã truy vết gốc: với câu truy vấn của 2 test, `extract_content_terms` cho `entities=('lsu',)` nên tầng lọc sơ bộ chỉ giữ mảnh chứa `lsu`: giữ nhầm mảnh short-only, bỏ sót mảnh nguyen-nhan/metadata-only. Điểm sửa: `src/aios_habit/rag_v2/index.py` (`_extract_query_entities` / `_cjk_like_prefilter_ids`). Vé trước cấm đụng file này vì vé khác đang dùng; khi vé này được phát hành thì điều phối đã xác nhận file trống.
+- Báo cáo: `docs/phieu-viec/ket-qua/synth-composer-noise-fix-home.md`
+- Căn cứ: báo cáo `test-red22-fix-home.md` mục 2 — test đỏ `test_architecture_composer_rejects_noise_and_unscoped_multi_facet_fillers` (tests/test_rag_v2_synthesis.py): mảnh nhiễu dạng `ABV...©2025...` lọt vào COMPONENTS dù `_is_fragment_noise` có chặn boilerplate `^grounded local evidence` — cửa sổ mảnh cắt qua câu nên thoát bộ lọc. Gốc nằm ở khâu chọn mảnh theo facet trong `synthesis.py`.
 
 ## Việc phải làm
 
-1. Sửa tầng lọc sơ bộ để không rớt mảnh liên quan khi thực thể trích được quá hẹp (hướng gợi ý từ truy vết: mở rộng tập thực thể/thuật ngữ cho prefilter hoặc cho prefilter nới điều kiện khi số thực thể ít — chọn hướng theo code thực tế, ghi rõ lý do + đánh đổi tốc độ trong báo cáo; prefilter là đường TỐC ĐỘ nên không được biến nó thành quét đủ trá hình).
-2. 2 test đích phải xanh: `test_cjk_prefilter_matches_full_scan_on_long_term_queries`, `test_cjk_prefilter_drops_short_term_only_matches` (tests/test_rag_v2_opt_pyloops.py). Nếu kết luận kỳ vọng test cần đổi theo đánh đổi đã duyệt thì ghi rõ căn cứ — cấm nới test im lặng.
-3. Không hồi quy: suites rag_v2 liên quan (index, pipeline, pyloops) + cổng repo (Python 3.11, compileall, cli audit, import app).
+1. Đọc và truy vết đường chọn mảnh của composer: vì sao mảnh nhiễu qua được cả bộ lọc nhiễu lẫn điều kiện facet. Đề xuất hướng sửa trong báo cáo TRƯỚC khi code (mục riêng): sửa ở bộ lọc nhiễu, ở khâu chọn theo facet, hay cả hai — kèm rủi ro quá khớp test (overfit) và cách tránh.
+2. Code theo hướng đã chọn; test đích xanh; chạy thêm bộ đề chất lượng nhỏ (fixtures eval có sẵn) để chứng minh không làm rớt mảnh tốt ở câu thật — sửa lọc nhiễu mà giết recall là thất bại.
+3. Không hồi quy: suites synthesis + synthesis_provider + eval_harness + cổng repo (Python 3.11, compileall, cli audit, import app).
 
 ## Rào cứng
 
-- Không ghi index thật (chỉ test trên fixture/index tạm); không đổi hành vi ngoài tầng prefilter; không merge `main`.
+- Không đụng tầng retrieval/index; không ghi index; không merge `main`.

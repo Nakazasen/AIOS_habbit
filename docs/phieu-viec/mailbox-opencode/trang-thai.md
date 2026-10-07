@@ -1,6 +1,7 @@
 ﻿# Trạng thái mailbox-opencode (thợ opencode — model free muse-spark-1.3 / space-bunny)
 
-- Trạng thái: `dang-lam`
+- Trạng thái: `moi`
+- `ghi_chu` (verdict Muse): 2026-10-08 ~01:46 +07 — **ĐẠT** vé `CJK-PREFILTER-FIX-HOME` (tích tạm, chờ user nghiệm thu): điều phối tự xem diff (commit `195b970`, sửa đúng 1 hàm `_cjk_like_prefilter_ids`: trước đây có entity là lọc chỉ theo entity — 1 mã hẹp như 'lsu' che mất các cụm nội dung dài; nay gộp entity + term và lấy 2 cụm dài nhất, có comment giải thích) và tự chạy lại `test_rag_v2_opt_pyloops.py` trên VM: **18/18 PASS** (2 test đích xanh trên cả VM). Prefilter vẫn là tầng lọc tốc độ, không biến thành quét đủ. **Phát hành vé `SYNTH-COMPOSER-NOISE-FIX-HOME`** (prompt.md đã thay — ca đỏ cuối của nhóm đã xác nhận). Hàng chờ tiếp: điều phối bổ sung sau.
 - `ghi_chu`: 2026-10-08 01:50 +07 — Nhận vé `CJK-PREFILTER-FIX-HOME`, cổng MỞ (trạng thái `moi` + prompt đúng vé + verdict ĐẠT SRC-421 01:36 phát hành PREFILTER; không rơi nhánh 4-lần/cho-muse). Vé sửa tầng prefilter trong `rag_v2/index.py`, chỉ test fixture/index tạm, không ghi index thật. Bắt đầu bước 1: đọc code + 2 test đỏ, chưa sửa gì.
 - `ghi_chu`: 2026-10-08 02:05 +07 — Mốc code xong vé `CJK-PREFILTER-FIX-HOME`: sửa `_cjk_like_prefilter_ids` — thực thể chỉ là ứng viên, gộp với thuật ngữ rồi lấy 2 cụm dài nhất (thay vì chỉ dùng thực thể); 2 test đích xanh (0,5s). Giữ nguyên tốc độ (tối đa 2 mệnh đề LIKE). Kế tiếp: chạy suite hồi quy + cổng repo.
 - Trạng thái: `xong-cho-duyet`
