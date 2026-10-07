@@ -1,5 +1,9 @@
 ﻿# Trạng thái mailbox-opencode (thợ opencode — model free muse-spark-1.3 / space-bunny)
 
+- Trạng thái: `xong-cho-duyet`
+- `commit`: `67a8936` (báo cáo `test-health-round2-home.md`; vé này không sửa `src/`/`tests/`)
+- `bao_cao`: `docs/phieu-viec/ket-qua/test-health-round2-home.md`
+- `ghi_chu`: 2026-10-08 02:43 +07 — XONG chờ duyệt `TEST-HEALTH-ROUND2-HOME`: toàn bộ 4.228 lượt (30,9 phút) — 4.153 đạt, 37 skip, 38 điểm đỏ đã phân loại: 33 môi trường (19 error y vòng 1 + 4 fail cũ + 10 mới do thiếu gói `graphifyy`), 0 flaky (3 ca mới chạy riêng đều fail), 5 nghi code thật (4 cũ còn lại + 1 mới `dieu_huong`). Khép 18/22 đỏ cũ (cả 3 `synthesis_provider` đã xanh — hết lệch máy; `index_status` xanh — đường đọc production đúng; `composer_noise` + 2 `cjk` xanh). Cổng: compileall sạch, audit PASS, import OK; không ghi index, không merge `main`.
 - `ghi_chu`: 2026-10-08 02:38 +07 — Mốc chạy xong vé `TEST-HEALTH-ROUND2-HOME`: pytest toàn bộ xong sau 30,9 phút — 19 failed, 4153 passed, 37 skipped, 19 errors (`done.marker exit=1`). Vòng 1 là 26 failed / 4138 passed — giảm 7 đỏ. Đang phân loại fail/error đối chiếu vòng 1, chưa chạm `src/`/`tests/`.
 - `ghi_chu`: 2026-10-08 02:27 +07 — Heartbeat vé `TEST-HEALTH-ROUND2-HOME`: pytest nền vẫn chạy (python CPU 60s → 98s; log 4.538 → 6.968 byte, tới ~73%). Chưa chạm `src/`/`tests/`.
 - `ghi_chu`: 2026-10-08 02:16 +07 — Heartbeat vé `TEST-HEALTH-ROUND2-HOME`: pytest nền vẫn chạy (python CPU 19s → 60s; log 1.460 → 4.538 byte, tới ~47%, có `F` rải rác đúng như vòng 1 — chưa phân loại vội, chờ chạy xong). Không có vé khác tranh tài nguyên (chỉ có BGE worker con của chính pytest + MCP harness nhẹ). Chưa chạm `src/`/`tests/`.
