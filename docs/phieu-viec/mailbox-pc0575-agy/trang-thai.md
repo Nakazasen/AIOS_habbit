@@ -3,9 +3,9 @@
 ## Vé hiện tại: INDEX-STATUS-LINE-PC0575
 
 - Trạng thái: `dang-lam`
-- `commit`: `e9782924`
+- `commit`: `d5861c5a`
 - `bao_cao`: `docs/phieu-viec/ket-qua/index-status-line-pc0575.md`
-- `ghi_chu`: 2026-10-07 21:15 +07 — Tiếp nhận vé `INDEX-STATUS-LINE-PC0575`: Bắt đầu triển khai dòng trạng thái chỉ mục mảnh trong khung chat của workspace_chat_app.py (tên tệp, số tài liệu, số mảnh, mã vân tay logic 12 ký tự hex, backend).
+- `ghi_chu`: 2026-10-07 21:20 +07 — Tiến độ INDEX-STATUS-LINE: Xác minh thành công công thức vân tay logic trên library.sqlite thực tế: 889 tài liệu, 149.800 mảnh, mã 12-hex rút gọn `87a3626a85bc` khớp 100% mốc SRC-SYNC; backend ONNX fp32. Bắt đầu thiết kế module index_status và tích hợp vào workspace_chat_app.py.
 - Ticket hiện tại: `INDEX-STATUS-LINE-PC0575` — [CTY] dòng trạng thái chỉ mục trong khung chat. Prompt: `docs/phieu-viec/mailbox-pc0575-agy/prompt.md`.
 
 ---
