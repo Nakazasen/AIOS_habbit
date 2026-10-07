@@ -1,25 +1,72 @@
-# VÉ: BGE-WORKER-FIX-HOME (sửa timeout khởi động worker + tự phục hồi sau lỗi khởi động)
+# Vé ROUTER-POOL-COMMANDCODE-HOME — Trỏ tuyến tổng hợp sang pool Command Code + đo lại
 
-- Mã vé: `BGE-WORKER-FIX-HOME`
-- Role gợi ý: DEFAULT (code + test + nghiệm thu dùng thật)
-- Máy: nhà h410asrock (code chung nhánh — máy công ty hưởng cùng bản sửa khi cập nhật)
-- Báo cáo: `docs/phieu-viec/ket-qua/bge-worker-fix-home.md`
-- Căn cứ: báo cáo chẩn đoán `docs/phieu-viec/ket-qua/bge-worker-diag-home.md` (ĐẠT 07/10).
+**Máy thực hiện:** NHÀ h410asrock (thợ OMP).
+**Role gợi ý:** DEFAULT (cấu hình + đo).
+**Lệnh user (06:01 07/10):** đã kết nối thêm provider trên Command Code (gói $10) — trỏ Router sang pool mới và đo lại.
 
-## Gốc lỗi đã chẩn đoán (không chẩn lại)
+## Bối cảnh
 
-1. Worker BGE (ONNX fp32) khởi động mất 246–302 giây trên CPU (nạp model 188–214s + preload dense/sparse), trong khi code đặt 2 trần thấp hơn thực tế: `_INIT_TIMEOUT_SECONDS = 300` (lần baseline tràn đúng 2,2s) và `_PERSIST_SPAWN_WAIT_SECONDS = 120` (client bỏ cuộc trước khi worker kịp mở named pipe — model_load một mình đã ≥188s).
-2. Độc phiên: một lần timeout là `_last_failure_reason` giữ nguyên, mọi câu sau fail-fast 0,01s không thử lại — mất tìm kiếm ngữ nghĩa cả phiên.
+- Tuyến tổng hợp hiện tại: harness → cầu `127.0.0.1:8585` → Nakazasen Router → **một tuyến Gemini duy nhất** (gemini-2.5-flash). Lượt đo đầu: 29/29 lượt gọi lỗi `rate_limited`; các lượt sau vẫn rớt câu vì limit + provider thiếu ổn định.
+- User đã kết nối thêm provider trong tài khoản Command Code của user. Pool mới phải có **failover**: tuyến chính bị rate-limit/5xx thì Router chuyển tuyến khác, thay vì harness rơi về trích cục bộ.
+- Vé này chạy SAU `RAG-CLAIM-BUDGET-HOME` (đang làm).
 
-## Việc phải làm
+## Bước 1 — Khảo sát chỗ cấu hình (chỉ đọc)
 
-1. **Nới trần theo số đo** trong `src/aios_habit/rag_v2/bge_subprocess_client.py`: `_INIT_TIMEOUT_SECONDS` 300 → **420**; `_PERSIST_SPAWN_WAIT_SECONDS` 120 → **360**. Ghi comment cạnh hằng: căn cứ số đo init 246–302s (báo cáo diag) để người sau không hạ bừa.
-2. **Tự phục hồi:** trong `workspace_chat_rag_v2_adapter.py` (và/hoặc registry chuẩn bị nguồn liên quan): khi khởi động worker timeout, KHÔNG giữ cờ lỗi vĩnh viễn cho phiên — lượt hỏi tiếp theo phải được thử khởi động lại worker (xoá `_last_failure_reason`/đánh dấu nguồn ở trạng thái cho phép thử lại). Giữ nguyên hành vi báo lỗi rõ ràng cho lượt đang chạy (không treo im lặng, không bịa đáp án).
-3. **Test:** unit test cho (a) các hằng timeout mới; (b) hành vi thử lại: lần 1 timeout → lần 2 được phép kích hoạt lại worker (mock worker thành công ở lần 2 → trả kết quả bình thường); (c) không hồi quy các suite liên quan (rag_v2, adapter).
-4. **Nghiệm thu DÙNG THẬT trên app máy nhà (bắt buộc):** phiên mới → hỏi câu C7620 (ngữ nghĩa): ghi thời gian chờ thực tế (kỳ vọng: chờ khởi động một lần rồi CÓ đáp án đúng ngưỡng 70 dot); hỏi tiếp câu ngữ nghĩa thứ hai: kỳ vọng nhanh (worker đã sống). Ghi cả hai vào báo cáo kèm ảnh chụp.
+Đã tra code (Muse): tuyến tổng hợp đọc cấu hình từ biến môi trường —
+`AIOS_LOCAL_AI_ENDPOINT`, `AIOS_LOCAL_AI_MODEL`, `AIOS_LOCAL_AI_API_KEY`
+(slot "OpenAI-compatible", `ai_provider_bridge.py` / `ai_router.py`), cộng công tắc
+`AIOS_SYNTHESIS_ALLOW_CLOUD_PROVIDERS`. Command Code đi vào đúng slot này.
+Việc của thợ: tìm trên máy nhà xem các biến này hiện đang được đặt ở đâu (file env/launcher
+của app) — ghi vào báo cáo: đường dẫn file — **TUYỆT ĐỐI không ghi giá trị key**.
+
+## Bước 2 — Chuẩn bị chỗ nhập cho user (key do user dán tại máy)
+
+- Tạo/chuẩn bị **đúng 1 file cấu hình local** mà app thực sự đọc trên máy nhà (nằm ngoài Git
+  hoặc đã gitignore — kiểm tra trước; chứa key thì KHÔNG commit trong mọi trường hợp).
+- Điền sẵn 2 dòng endpoint + model của Command Code, để trống đúng 1 dòng
+  `AIOS_LOCAL_AI_API_KEY=` cho user dán key. Bật công tắc cloud + failover:
+  model chính + **ít nhất 1 model failover** từ pool user đã kết nối; Router chuyển tuyến
+  khi rate-limit/5xx.
+- Ghi đường dẫn file + tên 3 dòng vào mailbox để điều phối báo user mở đúng file đó.
+  KHÔNG nhận key qua mailbox/chat/log.
+
+## Bước 3 — Kiểm chứng tuyến mới
+
+- Gọi thử vài lượt tổng hợp qua tuyến mới: ghi provider/model thực trả lời + độ trễ + lỗi nếu có (che key, không log payload chứa secret).
+- Xác nhận đường fallback cục bộ vẫn nguyên (tuyến chết hẳn thì về trích cục bộ như cũ, không sập lane).
+
+## Bước 4 — Đo lại
+
+- Trọn lane RAG 50 câu, **CPU-only** (bằng chứng device = CPU), index chỉ-đọc + SHA trước/sau, cùng rubric, checkpoint từng câu, heartbeat 15 phút.
+- Đối chiếu với FIX1 (GPA 1,29, validated 6) và SYNTH (GPA 1,22, validated 9): số validated, số lỗi provider, số fallback, GPA. Ghi rõ model nào trả lời từng câu nếu lấy được.
+
+## Danh sách model — ĐÃ TRA GIÁ CHÍNH THỨC Command Code (trang GOAT, 07/10)
+
+Nguồn: https://commandcode.ai/docs/plans/goat (Muse tra trực tiếp). Gói GOAT $10/tháng =
+$70 credits (trần $14/5 giờ, $35/tuần); model tính phí trừ vào credits, hết trần thì **dừng**
+— trừ model Free. Nhãn "free" trong danh sách OMP là của kết nối khác (Mistral/xAI/NVIDIA
+trực tiếp), KHÔNG áp cho đường Command Code. `mistral-large-4` qua Command Code = $1,36/$4,18
+mỗi 1M token — LOẠI. `gpt-6.1-sol` không có bản free trên GOAT — LOẠI.
+
+**Tầng 1 — Free thật trên GOAT (chỉ 3 con, không trừ credits, chạy cả khi hết trần):**
+- `inclusionai/ling-3.1-flash:free` — context 262K (chính).
+- `inclusionai/ling-3.0-flash-sante:free` — 262K (failover 1).
+- `poolside/laguna-s-2.1-free` — 256K (failover 2).
+Cả 3 là model flash chưa có điểm benchmark — chất lượng do lượt đo quyết định.
+
+**Tầng 2 — Giá rẻ (chỉ khi tầng 1 không tới được hoặc đo quá tệ; user đã duyệt hướng này):**
+- DeepSeek V4.1 Flash — $0,15/$0,60 mỗi 1M (giờ cao điểm $0,30/$1,20), hạn mức ~30.800 lượt/5 giờ.
+- Dự phòng: Muse Spark 1.3 Contributor — $0,10/$0,20 mỗi 1M.
+
+**Điều kiện cứng:** gọi thử từng ứng viên QUA Provider API của Command Code (key của user)
+trước khi đo; chỉ con trả lời thật mới vào pool; ghi rõ con bị loại và lý do. Loại hẳn model
+không phải chat (image/TTS/STT). Đo bằng model tính phí phải ghi ước lượng credits tiêu thụ.
 
 ## Rào cứng
 
-- Không đổi backend, không đổi model, không ghi index, không đụng `src/aios_habit/rag_v2/index.py`/`pipeline.py`.
-- Cổng kiểm chứng repo: Python 3.11, compileall + pytest liên quan + `cli audit` + import app.
-- Không merge `main`.
+- Không merge `main`. Không ghi index. Python 3.11. Không nới chuẩn kiểm định để lấy điểm.
+- Không để lộ key trong bất kỳ file/log/báo cáo/commit nào.
+
+## Báo cáo
+
+`docs/phieu-viec/ket-qua/router-pool-commandcode-home.md` — chỗ cấu hình (file + trường, không giá trị), cấu hình trước/sau, kết quả gọi thử, bảng đo lại đối chiếu.
