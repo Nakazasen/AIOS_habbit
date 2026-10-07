@@ -29,3 +29,4 @@
 - Cổng kiểm chứng repo: compileall + pytest liên quan + `cli audit` + import app; tương thích Python 3.11.
 - Metric vòng cải thiện: thời gian mở sổ (giây) ghi trong báo cáo là metric chuẩn — các vé UI sau đối chiếu trên cùng thước.
 - **NGHIỆM THU DÙNG THẬT LÀ CHÍNH (user chốt 18:42 07/10):** mọi số đo và ảnh trong vé này phải lấy từ việc **dùng app thật trên máy thật** (tự động hoá thao tác mở sổ/hỏi đáp như người dùng cuối). Test file chỉ phụ trợ giữ hồi quy, không thay thế.
+- **PHỤ THUỘC APP-SOURCE-MODEL (bổ sung 19:05 07/10):** phần việc liên quan tới khâu "chuẩn bị tài liệu" trong vé này phải chờ kết luận chặng 1 của vé `APP-SOURCE-MODEL-PC0575` (điều phối duyệt hướng mô hình hợp nhất xong mới sửa phần chuẩn bị — tránh vá trên mô hình sắp bỏ). Phần đo đường mở sổ + phân rã thời gian vẫn làm bình thường.
