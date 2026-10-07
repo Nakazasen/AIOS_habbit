@@ -114,3 +114,21 @@
   - Tệp gốc trên Drive cho 5 mã này chưa tải (cần bản đồ tên tệp gốc ↔ mã; tên gợi ý `KTD-…xlsx`, `302XC…pdf` nằm trong nhóm MOM/LSU).
   - KHÔNG ghi tệp nào cho nhóm nhiều-mảnh (đúng rào chỉ-ghi-khi-khớp).
 - Kết luận thợ: A đạt một phần (29/541 có mặt đúng từng byte, qua cổng); B mẫu 0/5 — xin điều phối chốt tiếp (bản đồ Drive cho 500 mã nhiều-mảnh, hoặc cho chạy toàn bộ B khi có nguồn, hoặc quay lại C nếu B bất khả thi). Probe RAG đầy đủ `strict_semantic=True` chưa chạy (máy đang mạng `KT_CHETAO` để tải; chạy đo cần về mạng công ty + runtime app).
+
+## 8. Kiểm chứng chỉ mục + bản đồ hướng B đúng nghĩa (lệnh 12:22, thợ làm 12:45 → 13:00, chỉ-đọc)
+
+- Kiểm chứng chặn trước mọi việc khác trên chỉ mục (mở `mode=ro`, không ghi):
+  - `PRAGMA quick_check` = `ok`.
+  - Đếm trực tiếp: 889 mã tài liệu riêng biệt / 889 đường dẫn riêng biệt / 149.800 mảnh — khớp mốc chuẩn.
+  - Phân loại mảnh: 385 mảnh tóm tắt (`document_summary`, vân tay trống) + 149.415 mảnh nội dung.
+  - Nhóm nội dung có vân tay: 540 mã có vân tay đầy đủ + 348 mã `gpu-…` trống vân tay + 1 mã chỉ-có-tóm-tắt (tổng 889). Khớp phát hiện mục 5.
+  - Vân tay logic mới (thay MD5 thô, vì byte SQLite đổi khi tiến trình chạy/chốt sổ):
+    - Công thức nội dung (khuyên dùng): SHA-256 trên danh sách sắp xếp `mã | vân tay nội dung | số mảnh nội dung` = `87a3626a85bc32c81ec899c0b5c47d59f6208afd73c80cc94c0a4f2f1df6de3c`.
+    - Công thức tổng (để đối chiếu): SHA-256 trên `mã | vân tay nội dung | tổng mảnh` = `fce85b60b783d0a59545f87042ac2b1b63212bbd8d9dd9948df647b9dbdcf`.
+  - Ghi nhận thay đổi byte 11:36: cùng cỡ 2.853.646.336 B, không thợ nào ghi chỉ mục trong bước này, probe 29/29 khớp vân tay — dấu hiệu nội dung nguyên vẹn, chờ điều phối xác minh thêm.
+  - Rào giữ: không ghi/sửa chỉ mục, không đụng `wire_qa_staging.py`, không đụng `src/rag_v2*` local.
+- Hướng B đúng nghĩa (bản đồ tệp gốc ↔ mã từ siêu dữ liệu chỉ mục, chưa tải Drive):
+  - Cách đọc: mỗi mã có `source_path` là đường dẫn `.txt` vật liệu hóa tuyệt đối + `source_name` là tên tệp gốc + `metadata_json.extractor` là bộ chuyển đổi (ví dụ `ExcelDocumentConverterAdapter`).
+  - Ví dụ thật (nhóm nhiều-mảnh, đọc chỉ-đọc): `wsc-9c82b1ca2e1898a8d9d03e8b` (61.760 mảnh) ↔ `61C1065D8513_B4_Bow_Skew.xlsm`; `wsc-4fc7eb76bdc2e05c08b3f0f6` (39.870 mảnh) ↔ `Loi KDTPS.xlsx`.
+  - Cơ chế đúng của chương trình (đọc mã `HEAD`): tệp gốc → trích văn bản (`source.text`) → ghi `{mã}.txt` (`_materialize_sources`) → băm SHA-256 toàn tệp (`_file_fingerprint`) → tách mảnh theo phần tử. Vì vậy nối tay các mảnh không bao giờ khớp — phải tải gốc + chạy đúng bộ chuyển đổi rồi đối chiếu vân tay.
+  - Bước tiếp theo cần cổng mạng `ngoai` + `DRIVE=OK`: tải 5 tệp gốc mẫu từ Drive `AIOS_Data` (nhóm MOM/LSU), chạy bộ chuyển đổi của chương trình, đối chiếu từng tệp; báo mẫu trước khi mở rộng. Nếu mẫu đúng-nghĩa vẫn 0/5 thì dừng báo điều phối (không tự chốt C).
