@@ -1,5 +1,6 @@
 ﻿# Trạng thái mailbox-opencode (thợ opencode — model free muse-spark-1.3 / space-bunny)
 
+- `ghi_chu`: 2026-10-08 01:03 +07 — kiểm cổng gate lượt mở này: HEAD=origin=7425cf9 sạch, `prompt.md` vẫn vé cũ INDEX-LOCALCOPY-CHECK-HOME (đã `xong-cho-duyet` commit e4964aa, báo cáo đủ), không có trạng thái `moi` nên không đủ điều kiện mở vé mới, không code lại; mới 1 lần gate liên tiếp chưa chạm 4 lần nên chưa đặt `cho-muse`, giữ chờ Muse duyệt.
 - Trạng thái: `dang-lam`
 - `ghi_chu`: 2026-10-08 00:52 +07 — Nhận vé `INDEX-LOCALCOPY-CHECK-HOME`, cổng MỞ (trạng thái `moi` + prompt đúng vé + verdict CHƯA ĐẠT UPLOAD-HOME 00:52 giữ bước tải ở CHỜ KÊNH; không rơi nhánh 4-lần/cho-muse). Vé chỉ-đọc, không đụng production. Bắt đầu bước 1: xác nhận số đếm bản sao local, chưa đụng index nào.
 - `ghi_chu`: 2026-10-08 01:05 +07 — Mốc đếm xong vé `INDEX-LOCALCOPY-CHECK-HOME`: bản sao `local_runs/.../library.sqlite` (2.552.659.968 B, mtime 28/09) chỉ-đọc `immutable=1` ra 133.144 mảnh / 496 tài liệu / 107.331 truy xuất được, `quick_check=ok`; thiếu ~16.656 mảnh + 393 tài liệu so với production 889/149.800 (không mở file production theo rào). Kế tiếp: rà đường đọc local_runs trong code/test.
