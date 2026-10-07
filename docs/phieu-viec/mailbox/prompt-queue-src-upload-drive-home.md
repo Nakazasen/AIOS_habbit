@@ -4,7 +4,8 @@
 - Role gợi ý: DEFAULT (thao tác máy + kiểm chứng)
 - Máy: nhà h410asrock
 - Báo cáo: bổ sung mục 8 vào `docs/phieu-viec/ket-qua/src-package-511-home.md`
-- Quyết định nền: user chốt 2026-10-08 ~05:45 +07 — phương án (a): cài kênh đồng bộ chính thức MỘT LẦN ở máy nhà để các gói sau dùng lại; bỏ hướng bấm Chrome UI Automation (đã gãy ở lần thử trước, mục 7 của báo cáo gốc).
+- Quyết định nền: user chốt 2026-10-08 ~05:45 +07 — phương án (a): dùng kênh đồng bộ chính thức ở máy nhà để các gói sau dùng lại; bỏ hướng bấm Chrome UI Automation (đã gãy ở lần thử trước, mục 7 của báo cáo gốc).
+- **Cập nhật thực tế 2026-10-08 ~06:15 +07 (user gửi ảnh chụp máy nhà):** Google Drive ĐÃ CÓ SẴN trên máy nhà — đã đăng nhập (giao diện web mở được, thấy thư mục AIOS_Data được chia sẻ; biểu tượng Drive hiện ở khay hệ thống). Vì vậy KHÔNG mặc định cài mới: việc đầu tiên là kiểm tra kênh có sẵn theo bước 1 dưới đây; chỉ khi kênh có sẵn thật sự không dùng được từ phía thợ mới tính cài đặt, và phải nêu rõ lý do kỹ thuật cụ thể trong báo cáo.
 
 ## Đối tượng tải
 
@@ -13,9 +14,9 @@
 
 ## Việc phải làm
 
-1. **Cài kênh đồng bộ chính thức (một lần):** ưu tiên **Google Drive cho máy tính** (bản chính thức của Google). Nếu bản đó không cài được sạch trên máy này thì dùng **rclone** với cấu hình OAuth riêng. Ghi vào báo cáo: kênh đã chọn + phiên bản + cách thợ các lần sau dùng lại kênh này (đường dẫn thư mục đồng bộ / lệnh rclone mẫu).
-2. **Điểm cần người:** bước đăng nhập Google (OAuth) là việc CHỈ user làm được. Chuẩn bị mọi thứ tới đúng bước đó, mở sẵn màn hình đăng nhập, ghi mốc `cho-cong: cho user dang nhap Google tai may nha | han <+24h>` vào trang-thai rồi chờ — không bấm thay, không vòng qua.
-3. **Tải lên:** đưa tệp zip vào thư mục AIOS_Data qua kênh vừa cài (chép vào thư mục đồng bộ và chờ đồng bộ xong, hoặc `rclone copy` đúng folder id).
+1. **Kiểm tra kênh Drive có sẵn trước tiên:** (a) tiến trình/ứng dụng Google Drive cho máy tính có đang chạy không; (b) ổ ảo (thường là `G:`) hoặc thư mục mirror/stream của Drive có truy cập được từ phiên làm việc của thợ không; (c) thư mục **AIOS_Data** (được chia sẻ với tài khoản này) có thấy và ghi được qua đường đó không — thử bằng một tệp kiểm tra nhỏ rồi xoá tệp kiểm tra. Ghi kết quả từng điểm vào báo cáo. Nếu kênh có sẵn dùng được: đó chính là kênh chính thức cho vé này và các gói sau — ghi rõ đường dẫn cách dùng lại. Nếu không dùng được (vd phiên nền không thấy ổ ảo): nêu đúng điểm gãy, khi đó mới cài Google Drive cho máy tính hoặc rclone OAuth và ghi lý do.
+2. **Điểm cần người (chỉ khi thật sự phải đăng nhập lại/cài mới):** bước đăng nhập Google (OAuth) là việc CHỈ user làm được. Chuẩn bị mọi thứ tới đúng bước đó, mở sẵn màn hình đăng nhập, ghi mốc `cho-cong: cho user dang nhap Google tai may nha | han <+24h>` vào trang-thai rồi chờ — không bấm thay, không vòng qua.
+3. **Tải lên:** đưa tệp zip vào thư mục AIOS_Data qua kênh đã xác minh (chép vào thư mục/ổ đồng bộ và chờ đồng bộ xong, hoặc `rclone copy` đúng folder id).
 4. **Kiểm chứng phía Drive:** tệp xuất hiện trong AIOS_Data với đúng kích thước 430.510 byte; nếu kênh hỗ trợ đối chiếu băm thì đối chiếu; chụp ảnh hoặc trích danh sách tệp làm bằng chứng trong báo cáo. Ghi rõ thời điểm đồng bộ hoàn tất.
 
 ## Rào cứng
