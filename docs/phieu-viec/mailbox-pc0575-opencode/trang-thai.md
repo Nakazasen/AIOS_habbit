@@ -1,5 +1,7 @@
 ﻿# Trạng thái mailbox-pc0575-opencode — KDTVN-PC0575 (thợ opencode)
 
+- \ghi_chu\ (tho opencode): 2026-10-07 18:04 +07 - kiem nhe 29 tep truc tiep theo ma (chi doc index mode=ro + query_only, khong mo mo hinh): 29/29 ton-tai-va-khop hash (0.2s). May van ban (python 17:41 + 17:47 retrieval + 17:13 pytest cua tho khac) nen theo chot Muse 17:48 HOAN mau 3 truy van day du sang cua may ranh (tran 900s/truy van, chay nen tach phien). Giu \dang-lam\, gate 18:01 1/4 + cho-cong den 2026-10-08 13:30 con han. Khong ghi tep/index, khong dung src/rag_v2*.
+
 - \ghi_chu\ (tho opencode): 2026-10-07 18:02 +07 - nhan phien theo lenh user (pull Already up to date af3aa1a7, da doc ve SRC-PROBE + QUY-UOC chung + rieng). Kiem cong gate: watcher moi nhat 18:01 NO-PICKUP 1/4 sau SKIP-STALL 17:46 + RELAUNCH 17:48 (cho-cong den 2026-10-08 13:30 con han nen luat 4-luot vo hieu), chua cham 4 nen giu \dang-lam\, khong dat cho-muse. Bat dau kiem may ranh + 29 tep nhe. Khong ghi tep/index, khong dung src/rag_v2*.
 
 - \ghi_chu\ (tho opencode): 2026-10-07 17:59 +07 - kiem nhe 29 tep (chi doc index mode=ro, khong mo mo hinh): 40 ma 1-manh txt, 29 ton-tai-va-khop / 11 vang (dung nhu ky vong, khong lech hash). May van ban (python 17:41 + 17:47 retrieval cua tho khac) nen theo chot Muse 17:48 HOAN mau 3 truy van day du sang cua may ranh (tran 900s/truy van, chay nen tach phien). Giu \dang-lam\, gate 17:55 1/4 + cho-cong den 2026-10-08 13:30 con han. Khong ghi tep/index, khong dung src/rag_v2*.
