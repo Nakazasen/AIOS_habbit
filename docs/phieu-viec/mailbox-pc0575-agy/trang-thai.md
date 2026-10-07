@@ -1,9 +1,10 @@
-# Trạng thái mailbox-pc0575-agy — KDTVN-PC0575 (thợ agy — Antigravity CLI)
+﻿# Trạng thái mailbox-pc0575-agy — KDTVN-PC0575 (thợ agy — Antigravity CLI)
 
 
 ## Vé hiện tại: RETRIEVAL-ENTITY-PC0575
 
-- Trạng thái: `xong-cho-duyet`
+- Trạng thái: `moi`
+- `ghi_chu` (verdict Muse): 2026-10-07 ~21:10 +07 — **ĐẠT** vé `RETRIEVAL-ENTITY-PC0575` (tích tạm, chờ user nghiệm thu). Kiểm chứng độc lập của điều phối: commit code `da079d66` single-parent, chỉ `rag_v2/index.py` (+43/-12) + test mới; hằng trần boost `MAX_ENTITY_BOOST = 0.025` và log `diversity_cap_triggered` có thật trong code; chạy lại trên VM: 106 test (gồm 4 test mới) PASS. Bằng chứng báo cáo: 7/7 câu nhóm A tài liệu đích Rank 1–2 (trước vá 0/7), tệp Loi KDTPS bị cap còn 2/15 mảnh (trước 15/15). **Phát hành ngay vé `INDEX-STATUS-LINE-PC0575`** (prompt.md đã thay; hàng chờ agy trống sau vé này — điều phối bổ sung khi cần). LƯU Ý LỚN ghi nhận riêng, không thuộc tiêu chí vé này: thời gian dùng thật còn ~4,5–4,9 phút/câu (retrieval 225–255s) — vé đo lại + dòng vé hiệu năng sẽ xử lý.
 - `commit`: `da079d6`
 - `bao_cao`: `docs/phieu-viec/ket-qua/retrieval-entity-pc0575.md`
 - `ghi_chu`: 2026-10-07 20:55 +07 — Hoàn thành vé `RETRIEVAL-ENTITY-PC0575`: (1) Đóng dấu bộ đề 50 câu và rubric vào repo (commit `c1b3507`); (2) Cài đặt Entity Matching Boost (trần 0.025) và Diversity Capping (≤3 mảnh/nguồn kèm log cảnh báo); (3) Nghiệm thu retrieval 7/7 câu Nhóm A đưa đúng tài liệu nguồn vào top-1/top-2 (100% PASS, Loi KDTPS giảm còn 0–2 mảnh); (4) Unit test hồi quy test_retrieval_entity_boost_and_capping.py đạt 4/4 PASS, toàn bộ suite hồi quy 106/106 PASS; (5) Nghiệm thu SỬ DỤNG THẬT qua spot-check 3 câu Nhóm A (Q0704, Q0701, Q0671) trên app thật/bridge 8585: đo đủ thời gian retrieval/synthesis và ghi trích đoạn đáp án thật vào báo cáo; (6) Vượt qua đủ 4 cổng chất lượng (compileall, pytest, cli audit PASS, import app OK). Sẵn sàng bàn giao cho điều phối Muse nghiệm thu.
