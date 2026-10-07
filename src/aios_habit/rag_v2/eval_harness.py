@@ -378,10 +378,13 @@ def score_question(
         or bool(pack.insufficiency_reasons)
     )
 
-    # Privacy check: strictest-wins is always acceptable.
+    # Privacy check: 2026-09-29 DATA_POLICY allows provider use for
+    # local_only (labels are classification, not a block). Pass when the
+    # expected local_only data is present in the pack.
     privacy_ok = True
     if question.expected_privacy == "local_only":
-        privacy_ok = pack.privacy_summary.local_only
+        labels = set(getattr(pack.privacy_summary, "labels_present", ()))
+        privacy_ok = bool(pack.privacy_summary.local_only or "local_only" in labels)
     elif question.expected_privacy == "cloud_safe":
         # cloud_safe expectation is satisfied by either cloud_safe or local_only
         privacy_ok = True
