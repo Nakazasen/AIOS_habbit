@@ -98,3 +98,19 @@
   - Hướng A (nhẹ): dựng tệp 1 mảnh trước từ chỉ mục (đã chứng minh khớp), đo probe trên nhóm này để lấy đà.
   - Hướng B (đúng gốc): tải tệp gốc nhóm MOM / LSU từ Drive `AIOS_Data` rồi chạy bộ chuyển đổi của chương trình để tạo lại 541 tệp `.txt` đúng từng byte, sau đó mới đo probe nhóm 540.
   - Hướng C (chốt kiến trúc): công nhận chế độ chỉ-dùng-chỉ-mục cho nhóm vật liệu hóa nếu không lấy được nguồn gốc.
+
+## 7. Kết quả hướng A + mẫu B theo chốt 11:47 (thợ làm 11:53 → 12:15)
+
+- Cách đếm sửa cho đúng (rút kinh nghiệm từ lần chạy đầu): mỗi mã có thêm 1 mảnh tóm tắt (`file_type=document_summary`, vân tay trống) nên phải trừ ra; chỉ xét mảnh nội dung.
+- Hướng A (toàn bộ nhóm 1 mảnh, có kiểm hash từng tệp, chỉ mục mở chỉ-đọc):
+  - 541 mã txt = 40 một-mảnh nội dung + 500 nhiều-mảnh + 1 chỉ-có-tóm-tắt.
+  - Dựng được 29/40 một-mảnh (băm SHA-256 nội dung mảnh bằng đúng vân tay mới ghi, kiểm lại sau ghi); 11 mã một-mảnh không khớp cả 3 biến thể (thường/chuẩn hóa/đã xén) nên KHÔNG ghi (đúng rào).
+  - Đĩa hiện có 29 tệp (canary 16 + `C:/AIOS_workspace…` 13), đúng đường dẫn tuyệt đối trong chỉ mục (không dùng ánh xạ).
+  - Probe mức cổng (mô phỏng `_is_stale`): 29 qua / 0 rớt; 11 mã chưa ghi vẫn thiếu tệp (đúng như dự kiến).
+  - Chỉ mục MD5 trước/sau bước này đều `492c065f8f741ad5c73a900fa6bcdf3e` (không đổi trong bước; thành thật ghi nhận khác mã Pha 0 `A7C7…` dù cùng cỡ 2853646336 B, tệp sửa lúc 11:36 — cần điều phối xác minh, thợ không sửa chỉ mục).
+- Mẫu B (5 mã nhiều-mảnh: 2 xlsx/txt 2 mảnh + 3 txt/pdf 3 mảnh):
+  - Thử 9 công thức nối (nội dung thường/chuẩn hóa/đã xén × nối rỗng/xuống dòng/hai xuống dòng, xếp theo mã mảnh): 0/5 khớp — chưa rút được công thức nối.
+  - Đối chiếu 5/5 với `text_export.jsonl` và 2 gói delta: không có mã nào trong đó.
+  - Tệp gốc trên Drive cho 5 mã này chưa tải (cần bản đồ tên tệp gốc ↔ mã; tên gợi ý `KTD-…xlsx`, `302XC…pdf` nằm trong nhóm MOM/LSU).
+  - KHÔNG ghi tệp nào cho nhóm nhiều-mảnh (đúng rào chỉ-ghi-khi-khớp).
+- Kết luận thợ: A đạt một phần (29/541 có mặt đúng từng byte, qua cổng); B mẫu 0/5 — xin điều phối chốt tiếp (bản đồ Drive cho 500 mã nhiều-mảnh, hoặc cho chạy toàn bộ B khi có nguồn, hoặc quay lại C nếu B bất khả thi). Probe RAG đầy đủ `strict_semantic=True` chưa chạy (máy đang mạng `KT_CHETAO` để tải; chạy đo cần về mạng công ty + runtime app).
