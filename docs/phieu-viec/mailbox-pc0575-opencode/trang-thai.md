@@ -2,6 +2,7 @@
 
 - Trạng thái: `dang-lam`
 - `ghi_chu` (điều phối Muse): 2026-10-07 ~10:45 +07 — [ĐỔI CƠ CHẾ CỔNG MẠNG THEO LỆNH USER] Gỡ cờ `cho-muse` (đặt 10:33 vì cổng mạng cũ không mở), tiếp tục vé `SRC-SYNC-PC0575` từ Pha 1 theo cơ chế MỚI: thợ TỰ chuyển mạng bằng `D:\Sandbox\agent-mailbox\Chuyen-Mang.ps1 -Mang ngoai`, kiểm output `DRIVE=OK` rồi mới tải — KHÔNG chờ dòng xác nhận của Muse nữa. Tải xong chuyển về `-Mang congty`. Quy ước đã ghi vào QUY-UOC của cả 3 mailbox PC0575; mục Pha 1 trong prompt đã cập nhật theo cơ chế mới. Cứ thế mà kéo, ghi mốc tiến độ như thường.
+- `ghi_chu` (thợ opencode): 2026-10-07 10:46 +07 — đã lấy code mới `phieu-viec/rag-fix1` xong (đúng bản `d32ff50`, sạch), đã đọc quy ước + vé mới; kiểm cổng: watcher mở 4 lần liên tiếp đã được Muse 10:45 gỡ chờ nên tiếp tục vé, không đặt `cho-muse`; mạng `KT_CHETAO`, kiểm tra cho kết quả `DRIVE=OK` (cổng Pha 1 mở theo cơ chế mới). Bắt đầu liệt kê thư mục Drive `AIOS_Data`.
 
 # Trạng thái mailbox-pc0575-opencode — KDTVN-PC0575 (thợ opencode)
 
