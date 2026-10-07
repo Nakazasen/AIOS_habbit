@@ -22,10 +22,8 @@ rem Python lexical/sparse/assembly ~700s). Dat 1200s = so do + margin.
 rem Mac dinh trong code van la 30s khi khong set. Day la timeout tam cho may
 rem CPU-only; Muse se toi uu 3 vong Python trong rag_v2/index.py roi ha xuong.
 set "AIOS_BGE_QUERY_TIMEOUT=1200"
-rem Lan mo dau tien tung cham vi preflight "import torch, FlagEmbedding"
-rem nap DLL native roi thoat, sau do moi mo Streamlit. Chi can biet goi da
-rem cai. Sidecar cung khong duoc chan cua so nay: app van ket noi khi san sang.
-set "AIOS_BGE_INIT_TIMEOUT=300"
+rem BGE-WORKER-FIX-HOME: nới trần init lên 420s theo số đo thực tế 246-302s máy nhà
+set "AIOS_BGE_INIT_TIMEOUT=420"
 rem SPEED-COLDSTART-PC0575 (2026-10-02): giu worker BGE song qua restart app
 rem bang named pipe (khong phai nap lai 180,9 s moi lan mo app). Worker tu tat
 rem sau 6 gio khong dung (AIOS_RAGV2_WORKER_IDLE_EXIT_SECONDS).
