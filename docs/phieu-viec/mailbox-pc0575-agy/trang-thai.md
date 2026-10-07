@@ -1,5 +1,13 @@
 # Trạng thái mailbox-pc0575-agy — KDTVN-PC0575 (thợ agy — Antigravity CLI)
 
+- Trạng thái: `moi`
+- `ghi_chu` (điều phối Muse): 2026-10-07 ~09:55 +07 — Phát hành vé `RAG-FAIL-ANALYSIS-PC0575` (luật hàng chờ không bao giờ cạn; user nhắc agy đang rảnh): phân loại 50 đáp án lane RAG của vé LSU-QUALITY-PC0575 (GPA 0,93) theo nhóm gốc — retrieval trượt / có mảnh mà trả lời lệch / oan do cách chấm / thiếu nguồn — định lượng từng nhóm + xếp ưu tiên sửa bằng số. CHỈ ĐỌC, không sửa code, không đụng `wire_qa_staging.py` (OMP đang vá MATCHER-FIX). Prompt: `docs/phieu-viec/mailbox-pc0575-agy/prompt-queue-rag-fail-analysis-pc0575.md`. Role gợi ý: PLAN.
+
+- Ticket hiện tại: `RAG-FAIL-ANALYSIS-PC0575` — [CTY] phân tích lỗi lane RAG theo 50 câu đo thật, xếp ưu tiên sửa. Prompt: `docs/phieu-viec/mailbox-pc0575-agy/prompt.md`. Role gợi ý: PLAN.
+- `hang-cho`: (trống)
+
+# Trạng thái mailbox-pc0575-agy — KDTVN-PC0575 (thợ agy — Antigravity CLI)
+
 - Trạng thái: `xong`
 - `ghi_chu` (verdict Muse): 2026-10-06 ~15:55 +07 — **ĐẠT** vé `LSU-QUALITY-DRYRUN-PC0575` (tích tạm, chờ user nghiệm thu). Kiểm chứng độc lập qua GitHub API: commit `d3ea54a` single-parent chỉ +141/-1 báo cáo `lsu-quality-dryrun-pc0575.md` +4/-1 `trang-thai.md` — không sửa mã nguồn, không merge `main`. Đủ điều kiện nghiệm thu: (1) 50/50 câu qua pipeline 2 lane (chuỗi mốc Đợt 1→5 khớp thời gian 14:26→15:52); (2) báo cáo đủ 4 mục — tỉ lệ thành công từng lane (C-Agent 50/50, 0 lỗi, TB 40,15 s/câu; RAG 50/50 an toàn trên index TẠM), danh sách lỗi kỹ thuật (0 lỗi cả 4 nhóm timeout/mạng/parse/sập + 3 đề xuất cho đo thật), 5 câu ví dụ có đáp án + điểm chấm thử minh họa rubric, kết luận pipeline SẴN SÀNG; (3) nhãn DRY-RUN rõ ràng ngay đầu báo cáo, ghi rõ index TẠM `062ec090` lệch nguồn LSU 0/494, điểm số không có giá trị đo thật; (4) commit riêng nhánh. Điểm số là self-report của thợ (CSV/JSON output nằm local, không commit) — rubric chấm 0 điểm thẳng tay cả 2 lane, không thổi phồng. hang-cho trống → mailbox đóng (`xong`).
 - `bao_cao`: `docs/phieu-viec/ket-qua/lsu-quality-dryrun-pc0575.md`

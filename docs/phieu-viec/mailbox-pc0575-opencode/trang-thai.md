@@ -1,5 +1,13 @@
 # Trạng thái mailbox-pc0575-opencode — KDTVN-PC0575 (thợ opencode)
 
+- Trạng thái: `moi`
+- `ghi_chu` (điều phối Muse): 2026-10-07 ~09:55 +07 — Phát hành vé `SRC-SYNC-PC0575` (luật hàng chờ không bao giờ cạn; user nhắc opencode đang rảnh): xử lý gốc vụ máy công ty 0/889 file nguồn — RAG đến nay phải hạ 2 cổng vân tay + tắt strict_semantic mới chạy được. Pha 0 điều tra ngay (index mong đợi file ở đâu, dung lượng, đĩa trống, đối chiếu Drive); Pha 1 DỪNG Ở CỔNG MẠNG chờ Muse xác nhận chuyển KT_CHETAO mới tải; Pha 2 đồng bộ + probe strict không hạ cổng. Không ghi index, không đụng `wire_qa_staging.py` (OMP đang vá MATCHER-FIX). Prompt: `docs/phieu-viec/mailbox-pc0575-opencode/prompt-queue-src-sync-pc0575.md`. Role gợi ý: DEFAULT.
+
+- Ticket hiện tại: `SRC-SYNC-PC0575` — [CTY] đưa file nguồn về PC0575 để RAG chạy strict_semantic đúng thiết kế. Prompt: `docs/phieu-viec/mailbox-pc0575-opencode/prompt.md`. Role gợi ý: DEFAULT.
+- `hang-cho`: (trống)
+
+# Trạng thái mailbox-pc0575-opencode — KDTVN-PC0575 (thợ opencode)
+
 - Trạng thái: `xong`
 - `ghi_chu` (verdict Muse): 2026-10-06 ~22:42 +07 — **ĐẠT** vé `WATCHER-UPGRADE-PC0575` (tích tạm, chờ user nghiệm thu). Kiểm chứng độc lập qua GitHub API: commit `1e58e386` single-parent, chỉ +33/-0 báo cáo `watcher-upgrade-pc0575.md` và +3/-1 `trang-thai.md`, không đụng mã nguồn, không merge `main`, không commit `config.local.ps1`. Đủ yêu cầu vé: (1) pull --rebase fast-forward `132e2c8..e202c10`, không conflict — 4 commit yêu cầu đều có trên `main` repo agent-mailbox, đã kiểm độc lập: zombie v2 `5fa86d7`, chọn template theo major `dbf23c4`, remote-access `d1c9dbb`, chống mù BOM `e202c10` (message `e202c10` xác nhận đã gỡ max-time blanket — đúng rào vé); (2) Parser 0 lỗi mọi .ps1, BOM đủ (config.local.ps1 ASCII không dấu — guard BOM chỉ kiểm Watch-Mailbox.ps1 nên watcher vẫn chạy); vé test chạy thật: LAUNCH 22:24:28, thợ PID 19496 đúng template v2 `--standalone --model ... --auto`, sống ~8 phút; (3) 2 watcher poll tươi (opencode `updated 22:31:49`, OMP `updated 22:32:02`, đều `dang-lam`), không `loi:`/`UNKNOWN-STATUS` mới; (4) chỉ restart watcher opencode (kill 30592 → mở lại 28984 code mới), KHÔNG đụng watcher/process OMP (PID 868) đang đo lane RAG `LSU-QUALITY-PC0575` — đúng vé. Theo lệnh user (dừng lan man, tạm dừng vé hạ tầng): không phát vé mới cho opencode-PC0575, mailbox để `xong`.
 - `bao_cao`: `docs/phieu-viec/ket-qua/watcher-upgrade-pc0575.md`
