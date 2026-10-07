@@ -73,6 +73,7 @@
 - Mở pipeline 25,2 giây (`readonly+strict`), gửi truy vấn rồi treo quá 300 giây phải ngắt.
 - Nhánh `lexical` rớt nhanh đúng cổng khi chưa nạp hậu thuẫn, nhánh `bge_m3_hybrid` mở 28 giây rồi kẹt ở bước dày đặc quá 6 phút.
 - Nguyên nhân: máy bận do tiến trình đo song song của nhóm khác (149 nghìn mảnh véc-tơ), không phải lỗi tệp (bao phủ vẫn đạt).
+- Thử lại 17:22 +07: mở pipeline 39,2 giây (`readonly+strict`), gửi cùng truy vấn mẫu rồi treo quá 330 giây phải ngắt (lần kẹt thứ hai, máy đã bớt tiến trình đo của nhóm khác nhưng bước dày đặc vẫn treo).
 - Theo rào vé: chưa ghi nhận tệp nào rớt ở pipeline thật, chỉ ghi nhận kẹt hệ thống nên không sửa tệp hay chỉ mục, chờ nhịp máy rảnh thử lại từng tốp nhỏ.
 
 ## 5. Rào đã giữ
