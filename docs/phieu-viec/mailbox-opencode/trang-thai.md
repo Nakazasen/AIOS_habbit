@@ -1,5 +1,7 @@
 ﻿# Trạng thái mailbox-opencode (thợ opencode — model free muse-spark-1.3 / space-bunny)
 
+- Trạng thái: `dang-lam`
+- `ghi_chu`: 2026-10-08 00:52 +07 — Nhận vé `INDEX-LOCALCOPY-CHECK-HOME`, cổng MỞ (trạng thái `moi` + prompt đúng vé + verdict CHƯA ĐẠT UPLOAD-HOME 00:52 giữ bước tải ở CHỜ KÊNH; không rơi nhánh 4-lần/cho-muse). Vé chỉ-đọc, không đụng production. Bắt đầu bước 1: xác nhận số đếm bản sao local, chưa đụng index nào.
 - Trạng thái: `moi`
 - `ghi_chu` (verdict Muse): 2026-10-08 ~00:52 +07 — **CHƯA ĐẠT** vé `SRC-PACKAGE-511-UPLOAD-HOME` (chặn môi trường, thợ xử lý đúng): gói zip xác minh khớp (430.510 byte, SHA `862CAD6E...`); máy nhà không có rclone/thư mục Drive đồng bộ; đường Chrome UI Automation (tiền lệ thành công của vé onnx-upload) gãy vì không đưa được Chrome lên trước trong phiên này (`chrome not fg`) — thợ dừng đúng lúc thay vì bấm mù cạnh tab trò chuyện của user. Điều phối giữ bước tải ở trạng thái CHỜ KÊNH (trình user chọn: cài kênh đồng bộ 1 lần hoặc tải tay 1 lần) — sẽ phát lại ngay khi có kênh. **Phát hành vé `INDEX-LOCALCOPY-CHECK-HOME`** (prompt.md đã thay) để thợ không đứng chờ. Hàng chờ tiếp: #1 `SRC-421-PROVENANCE-HOME`, #2 `CJK-PREFILTER-FIX-HOME`, #3 `SYNTH-COMPOSER-NOISE-FIX-HOME`.
 - `ghi_chu`: 2026-10-08 00:41 +07 — Nhận vé `SRC-PACKAGE-511-UPLOAD-HOME`, cổng MỞ (trạng thái `moi` + prompt đúng vé + verdict ĐẠT một phần PACKAGE-511 00:35; zip local đủ 430.510 byte, SHA `862CAD6E...` khớp ghim). Không rơi nhánh 4-lần/cho-muse. Bắt đầu bước 1: kiểm đường tải cũ (Chrome UI Automation) + xác minh zip, chưa đụng Drive.
