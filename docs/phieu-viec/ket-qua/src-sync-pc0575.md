@@ -176,3 +176,14 @@
 - Kiểm chứng chỉ mục trước/sau: chỉ mở `mode=ro`, không ghi/sửa chỉ mục (md5 logic sẽ đo ở nhịp probe sau).
 - Đề xuất xin Muse chốt: (a) tìm `Barcode_List.xlsx` ở nguồn khác; (b) thử đường chuyển đổi `rag_v2` (`ExcelDocumentConverterAdapter`/`PDFDocumentConverterAdapter` qua `registry`) thay vì đường tải file, hoặc xin 4 tệp đúng phiên bản từ máy dựng chỉ mục; (c) nếu vẫn lệch thì báo phương án C (chế độ index-only) — thợ KHÔNG tự chốt.
 - Rào giữ: không ghi `materialized_sources`, không sửa chỉ mục, không đụng `wire_qa_staging.py`, không đụng `src/rag_v2*` local, không merge `main`, không secret.
+
+## 13. Bản kê dứt điểm nhóm 511 theo chốt Muse 15:22 (thợ làm 15:42 → 15:50, chỉ-đọc)
+
+- Chốt áp dụng: DỪNG hẳn đường săn tệp gốc trên Drive cho nhóm 511 (mẫu mục 12 0/4 bằng chính bộ chuyển đổi của chương trình = tệp trong gói Điều-chỉnh khác phiên bản lúc nạp chỉ mục, không truy `Barcode_List` nữa). Nguồn byte đáng tin duy nhất cho nhóm 511 = các tệp `.txt` vật liệu hoá trên máy nhà giữ chỉ mục — vé đóng gói riêng sẽ làm sau.
+- Cách lập: đọc chỉ mục chỉ-đọc (`mode=ro&immutable=1`, `PRAGMA query_only=ON`, không ghi/sửa gì), nhóm theo mã tài liệu, lọc 541 đường dẫn `.txt` có vân tay (540 mã), trừ 29 mã một-mảnh đã khôi phục đúng hash ở mục 7 (đĩa còn nguyên: canary 16 + `C:/AIOS…` 13, đã kiểm lại ở nhịp này).
+- Kết quả: **511 mã** = **500 mã nhiều-mảnh** + **11 mã một-mảnh lệch** (40 một-mảnh − 29 đã ghi). File checklist đầy đủ: `docs/phieu-viec/ket-qua/ban-ke-511.csv` (511 dòng + header, cột `document_id, source_path, source_fingerprint, n_content, nhom`).
+- Mẫu 11 mã một-mảnh lệch (để vé đóng gói đối chiếu nhanh): `wsc-1696cf072`, `wsc-575eb6de7`, `wsc-6d14cd1be`, `wsc-72286b0d4`, `wsc-8782bf3e4`, `wsc-8ce71e2a1`, `wsc-a36e39c1d`, `wsc-c3ac0ce86`, `wsc-d28ff291f`, `wsc-fa75c3428`, `wsc-ffa5990a7` — mỗi mã 1 mảnh nội dung, có vân tay kỳ vọng trong CSV, đích là đường dẫn tuyệt đối trong cột `source_path` (2 gốc: `local_runs/workspace_chat_rag_v2_canary/materialized_sources` và `C:/AIOS_workspace_chat_rag_v2_production/materialized_sources`).
+- Nhóm 500 mã nhiều-mảnh: số mảnh nội dung từ 2 đến 61.760 (phân bố đã đo ở mục 7–8), vân tay kỳ vọng + đường dẫn đích trong CSV. Vé đóng gói máy nhà chỉ cần: chép đúng byte tệp `.txt` vào đúng `source_path`, băm SHA-256 khớp `source_fingerprint` mới ghi.
+- Phần máy công ty của vé khép ở đây: 29 tệp khôi phục + kiểm chứng chỉ mục ĐẠT (mục 8: `quick_check=ok`, 889/149.800, vân tay logic nội dung `87a3626a…`) + bản đồ bằng chứng đầy đủ (mục 8–12) + bản kê 511 này. Nhóm 511 và nhóm 349 (`gpu-…` + 1 trống vân tay) chuyển vé riêng.
+- Giữ nguyên toàn bộ tệp đã tải ở `local_runs/src_sync` (gói Điều-chỉnh 858MB + 3 tệp delta + 4 gốc mẫu), không xóa.
+- Rào giữ: chỉ đọc chỉ mục, không ghi/sửa index, không ghi `materialized_sources`, không đụng `wire_qa_staging.py`, không đụng `src/rag_v2*` local (WIP agy), không merge `main`, không secret.
