@@ -13,6 +13,7 @@ from typing import Optional
 from aios_habit.ai_router import (
     RouterProviderConfig,
     RouterRequest,
+    RouterResult,
     provider_configs_from_env,
     route_answer,
 )
@@ -115,6 +116,7 @@ class RouterSynthesisProvider:
         self._max_attempts = max_attempts
         self._timeout_override = timeout_seconds
         self._session_id = session_id
+        self.last_result: Optional[RouterResult] = None
 
     # -- helpers --------------------------------------------------------
 
@@ -170,6 +172,7 @@ class RouterSynthesisProvider:
             configs,
             health_state=self._health_store,
         )
+        self.last_result = result
 
         if result.used_fallback or not result.answer_text.strip():
             reasons = [
