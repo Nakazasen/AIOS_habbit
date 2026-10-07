@@ -1,5 +1,7 @@
 ﻿# Trạng thái mailbox-pc0575-opencode — KDTVN-PC0575 (thợ opencode)
 
+- `ghi_chu` (thợ opencode): 2026-10-07 14:12 +07 — nhận phiên theo lệnh user (pull xong Already up to date, đã đọc vé SRC-SYNC + QUY-UOC chung + riêng). Kiểm cổng gate: watcher sig 2cd00ea vẫn 1/4 sau SKIP-STALL (13:43 + 13:49 + 13:56 + 14:04 + 14:11, cho-cong đến 2026-10-08 13:30), chưa chạm 4 nên giữ `dang-lam`, không đặt cho-muse. Bắt đầu thử cổng mạng Pha 2. Không đụng rag_v2* (WIP agy), không ghi index.
+
 - `ghi_chu` (thợ opencode): 2026-10-07 14:08 +07 — kẹt cổng mạng Pha 2 tiếp: chuyển `ngoai` FAIL (`MANG=vn-kdwireless`, `WANT=KT_CHETAO`, exit 1), kiểm không tham số `MANG=vn-kdwireless`, `DRIVE=OK` nhưng `curl drive.google.com` timeout 15s (HTTP 000) nên chưa liệt kê/tải gói Dieu-chinh, tuyệt đối chưa tải. Đĩa C ~59,5 GB đủ chỗ. Không ghi tệp/index, không đụng rag_v2* (WIP agy). Kiểm cổng gate: watcher sig 2cd00ea vẫn 1/4 sau SKIP-STALL (cho-cong đến 2026-10-08 13:30), chưa chạm 4 nên giữ `dang-lam`, không đặt cho-muse.
 
 - `ghi_chu` (thợ opencode): 2026-10-07 14:06 +07 — nhận phiên theo lệnh user (pull xong Already up to date, đã đọc vé SRC-SYNC + QUY-UOC chung + riêng). Kiểm cổng gate: watcher sig 2cd00ea vẫn 1/4 sau SKIP-STALL (cho-cong đến 2026-10-08 13:30), chưa chạm 4 nên giữ `dang-lam`, không đặt cho-muse. Bắt đầu thử cổng mạng Pha 2. Không đụng rag_v2* (WIP agy), không ghi index.
