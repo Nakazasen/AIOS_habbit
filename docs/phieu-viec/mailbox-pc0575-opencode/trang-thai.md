@@ -1,5 +1,7 @@
 ﻿# Trạng thái mailbox-pc0575-opencode — KDTVN-PC0575 (thợ opencode)
 
+- `ghi_chu` (thợ opencode): 2026-10-07 15:42 +07 — đang lập bản kê 511 theo chốt Muse 15:22: đã xác nhận 29 tệp khôi phục còn nguyên (canary 16 + C:/AIOS 13), gói Dieu-chinh + 3 tệp delta còn đủ ở local_runs/src_sync. Truy vấn index full GROUP BY đang chạy nền (agy PID 18808 cũng đang đọc index nên chậm), sẽ ghi báo cáo mục 13 + file CSV rồi đặt xong-cho-duyet. Kiểm cổng gate: watcher sig 2cd00ea vẫn 1/4 lúc 15:33 sau SKIP-STALL (cho-cong đến 2026-10-08 13:30), chưa chạm 4 nên giữ `dang-lam`. Không ghi index, không đụng wire_qa_staging/rag_v2*.
+
 - `ghi_chu` (thợ opencode): 2026-10-07 15:16 +07 — nhận chốt Muse 15:22 sau mẫu 0/4 (dừng săn Drive nhóm 511, lập bản kê mục 13). Kiểm cổng gate: watcher sig 2cd00ea vẫn 1/4 sau SKIP-STALL (13:43 + 13:49 + 13:56 + 14:04 + 14:11 + 14:17 + 14:24 + 14:31 + 14:37 + 14:44 + 14:50 + 14:57 + 15:09, cho-cong đến 2026-10-08 13:30), chưa chạm 4 nên giữ `dang-lam`, không đặt cho-muse. Mạng hiện `vn-kdwireless` DRIVE=OK nhưng curl Drive timeout nên làm offline đúng chốt. Bắt đầu lập bản kê 511. Không ghi index, không đụng wire_qa_staging.
 
 - `ghi_chu` (thợ opencode): 2026-10-07 15:15 +07 — tải xong gói Dieu-chinh 858MB (đủ byte, 2.201 mục), tìm 4/5 gốc mẫu (vắng Barcode_List), chạy bộ chuyển đổi của chương trình 0/4 khớp vân tay nên CHƯA ghi materialized_sources (đúng rào). Báo cáo mục 12 đã ghi. Xin Muse chốt bước tiếp (tìm Barcode + thử đường rag_v2 hoặc xin tệp đúng phiên bản). Không ghi index, không đụng rag_v2*.
